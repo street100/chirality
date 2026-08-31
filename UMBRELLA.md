@@ -1,6 +1,6 @@
 # chirality
 
-Planning umbrella for **chirality** — a new programming language with modular focus,
+Planning umbrella for **chirality**, a new programming language with modular focus,
 designed in dialogue with the reimplementation needs of the bhumi tool ecosystem.
 
 - Longhand: `chirality`
@@ -11,9 +11,9 @@ Tagline read: *common-sense, the language*.
 
 ## Start here
 
-- [MAP.md](MAP.md) — the whole project on one screen, with links into detail.
-- [PERSONA.md](PERSONA.md) — how to work in this repo.
-- [.planning/PROJECT.md](.planning/PROJECT.md) and [.planning/ROADMAP.md](.planning/ROADMAP.md) — the long road as developmental stages.
+- [MAP.md](MAP.md): the whole project on one screen, with links into detail.
+- [PERSONA.md](PERSONA.md): how to work in this repo.
+- [.planning/PROJECT.md](.planning/PROJECT.md) and [.planning/ROADMAP.md](.planning/ROADMAP.md): the long road as developmental stages.
 
 ## Three sibling GSD projects
 
@@ -33,7 +33,7 @@ Information flows 01 → 02 → 03, but expect backflow:
 - 03 may expose a feature gap → adds to 02.
 - 01 may reveal a recurring shape that *should be* a language primitive → seeds 02.
 
-Treat the order as the **primary spine**, not a one-way pipeline.
+Treat the order as the **primary spine** rather than a one-way pipeline.
 
 ## Design knowledge base
 
@@ -53,9 +53,9 @@ the audit of what was kept or rejected is [docs/dump-integration.md](docs/defini
 Actively developed. Principles are drafted (condensed seven→five, 2026-07-20) and
 the module architecture is mapped across two axes (typeability and altitude) in
 `docs/`, with the major forks settled (`docs/decision-*`) and the open edges
-listed. Since 2026-07-05 a host-language **scaffold** runs first targets — a QTT
+listed. Since 2026-07-05 a host-language **scaffold** runs first targets: a QTT
 kernel, typed-assembly floor, native x86-64 backend, refinement/totality slices,
-a self-hosted syscall arena, and an orchestration substrate — with 281 tests
+a self-hosted syscall arena, and an orchestration substrate. 281 tests are
 green. What is real vs. designed is tracked in
 [docs/status-ledger.md](docs/definitions/status-ledger.md) and
 [scaffold/README.md](docs/implementation/README.md).

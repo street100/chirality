@@ -33,8 +33,13 @@ BASELINE="$ROOT/.planning/PROSE-BASELINE.tsv"
 _checks_doc() {
   cat <<'EOF'
   em-dash          every —. The single loudest tic; 18,415 of them at baseline.
-  antithesis       ", not x" / ", never x" / ", rather than x". Called out by
-                   the author twice as a template nobody speaks in.
+  antithesis       ", not x" / ", never x" / ", rather than x", and the same
+                   with a conjunction wedged in (", but not x"). The bare form
+                   was called out by the author twice. The conjunction form was
+                   added 2026-08-31 after a cleanup agent scored a file to zero
+                   by inserting "but" six times, which defeats the match and
+                   lengthens the sentence. A check you can satisfy without
+                   improving the text measures nothing.
   copula-negation  "is not just x" / "are not merely x". The same move, wearing
                    a verb.
   not-but          "not x but y".
@@ -75,7 +80,7 @@ _scan() {
       $0 = $0
       gsub(/`[^`]*`/, "", $0)
       c["em-dash"]         = gsub(/—/, "&")
-      c["antithesis"]      = gsub(/, (not|never|rather than) [a-z]/, "&")
+      c["antithesis"]      = gsub(/, (but |and |though |yet )?(not|never|rather than) [a-z]/, "&")
       c["copula-negation"] = gsub(/(is|are|was|were|isn.t|aren.t) not (just |merely |simply )?[a-z]/, "&")
       c["not-but"]         = gsub(/not [a-z]+ but /, "&")
       c["parallel-no"]     = gsub(/[Nn]o [a-z]+, no [a-z]+|[Nn]ever [a-z]+, never /, "&")
@@ -141,7 +146,7 @@ cmd_lines() {
       {
         s = $0
         gsub(/`[^`]*`/, "", s)
-        while (match(s, /—|, (not|never|rather than) [a-z]|(is|are|was|were) not (just |merely |simply )?[a-z]|not [a-z]+ but |[Dd]elve|[Tt]apestry|[Ss]eamless|[Ss]howcase|testament to|worth noting|important to note|[Ii]n essence|[Aa]t its core|Furthermore|Moreover/)) {
+        while (match(s, /—|, (but |and |though |yet )?(not|never|rather than) [a-z]|(is|are|was|were) not (just |merely |simply )?[a-z]|not [a-z]+ but |[Dd]elve|[Tt]apestry|[Ss]eamless|[Ss]howcase|testament to|worth noting|important to note|[Ii]n essence|[Aa]t its core|Furthermore|Moreover/)) {
           printf "%6d  %s\n", FNR, substr(s, RSTART, RLENGTH)
           s = substr(s, RSTART + RLENGTH)
         }

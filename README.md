@@ -28,17 +28,17 @@ to provide guarantees where they cannot be bypassed.
   be consumed exactly once, ω for unrestricted use. One judgement unifies
   dependency and linearity. Types may freely mention values in the erased
   fragment, while runtime resources like handles, capabilities, and secrets
-  get exact-use enforcement from the same core rules, not from a bolted-on
+  get exact-use enforcement from the same core rules, without a bolted-on
   linearity checker.
 
 - All values going from code to something happening in the world pass through
   **declared, typed entry points**, and everything coming back in is verified
   against its declared type at the moment of return. An outside component that
-  lies produces a typed error at the boundary, not corruption downstream.
+  lies produces a typed error at the boundary instead of corruption downstream.
 
 - Beneath the compiler sits a **floor of typed assembly**. Compiled output is
   re-checked there, instruction by instruction, by a checker independent of
-  everything above it. Even the compiler is not taken on trust.
+  everything above it. Trust does not extend even to the compiler.
 
 What a conventional language ships as one monolithic feature, chirality splits into
 pieces like these, each living at the boundary responsible for enforcing it.
@@ -46,7 +46,7 @@ pieces like these, each living at the boundary responsible for enforcing it.
 ## Status
 
 **Self-hosting (2026-08-05).** chirality compiles itself: the native compiler
-compiles its own source to a **byte-identical** copy of itself — the fixpoint —
+compiles its own source to a **byte-identical** copy of itself, the fixpoint,
 with no interpreter and no Python in the compile path (`selfhost.py stage2` →
 `FIXPOINT: B1 == B2`, 1 s, peak 0.1 GB). The Python scaffold that *bootstrapped*
 the first native compiler remains only as the reference oracle for the test
@@ -55,16 +55,16 @@ suite (pending a Rocq rewrite); it is off the build and run paths. 703 tests
 [docs/status-ledger.md](docs/definitions/status-ledger.md) and
 [scaffold/README.md](docs/implementation/README.md).
 
-**Measured performance** (narrow, dated, reproducible —
+**Measured performance** (narrow, dated, reproducible:
 [scaffold/bench/](docs/benchmarks/RESULTS-2026-08-01.md), `sh run.sh` reruns
 everything): on three micro-kernels, chirality-emitted x86-64 runs **2–6× faster
 than gcc -O0** and **1.4×–8.4× behind gcc -O2** (compute-bound: 1.37×), the honest optimized-C
-reference. Cross-side ratios only — absolute times do not travel off the
+reference. Cross-side ratios only: absolute times do not travel off the
 measurement guest. The remaining gap is attributed pass-by-pass, and part of
 the optimizer is *trait-native* rather than borrowed: transforms licensed by
 facts the checker proves (totality-licensed compile-time evaluation,
 refinement/constant guard elision, dense-tag tables, Euclidean strength
-reduction) — see [scaffold/bench/TRAIT-OPTS.md](docs/benchmarks/TRAIT-OPTS.md).
+reduction). See [scaffold/bench/TRAIT-OPTS.md](docs/benchmarks/TRAIT-OPTS.md).
 
 ## Try it
 
@@ -77,7 +77,7 @@ chirality test               # 703 tests, one command
 chirality run hello.chiral --entry main   # compile + run in one go
 ```
 
-Write a program, compile it, run it — zero Python in the path:
+Write a program, compile it, run it, with zero Python in the path:
 
 ```
 $ echo '(def main (-> I64 I64) (lam (n) 42))' > hello.chiral
@@ -92,7 +92,7 @@ $ ./build.sh
 FIXPOINT: bin/chirality-bin.new == bin/chirality-bin (byte-identical)
 ```
 
-## What's real — verifiable in 30 seconds
+## What's real: verifiable in 30 seconds
 
 No roadmap, no "eventually." Everything here runs right now.
 
@@ -112,7 +112,7 @@ $ chirality run hello.chiral --entry main
 ```
 
 The type system catches bugs at compile time. Each line is a tiny file in
-`scaffold/demo/` — 2 to 4 lines, open them and see exactly what was checked:
+`scaffold/demo/`, 2 to 4 lines long. Open them and see exactly what was checked:
 
 ```
 $ cd scaffold
@@ -146,21 +146,21 @@ $ python3 -m chirality lower demo/_tal.chiral
   → lowered to tal, preserve-checked: 1
 ```
 
-`chirality check` is the native compiler's own front end with the ELF thrown away —
+`chirality check` is the native compiler's own front end with the ELF thrown away:
 no Python, and no second checker to drift.  Its messages are terser than the
 Python floor's used to be; the diagnostics are being widened separately.
 
 Other programs in `scaffold/demo/`: `passman-min` (a secret structurally can't
 leak to a socket), `tomodachi` (effect-gated behavior pack), `wl-client`
-(Wayland wire codec).  Self-contained samples with zero imports in
-`scaffold/samples/` — compilable directly with `chirality compile`.
+(Wayland wire codec).  Self-contained samples with zero imports live in
+`scaffold/samples/`, compilable directly with `chirality compile`.
 
 ## Where to look
 
 | What | Where |
 |---|---|
 | judgement core (QTT) | [`scaffold/chirality/kernel.py`](scaffold/chirality/kernel.py) |
-| effect membrane (-> vs =>) — carried natively, **enforced only in the Python floor** (E171) | [`effects.py`](scaffold/chirality/effects.py) (the three seams) + [`kernel.py`](scaffold/chirality/kernel.py) + demo [`_eff.chiral`](scaffold/demo/_eff.chiral) |
+| effect membrane (-> vs =>): carried natively, **enforced only in the Python floor** (E171) | [`effects.py`](scaffold/chirality/effects.py) (the three seams) + [`kernel.py`](scaffold/chirality/kernel.py) + demo [`_eff.chiral`](scaffold/demo/_eff.chiral) |
 | refinement types | [`scaffold/chirality/refine.py`](scaffold/chirality/refine.py) + demo [`_ref.chiral`](scaffold/demo/_ref.chiral) |
 | typed assembly floor | [`scaffold/chirality/tal.py`](scaffold/chirality/tal.py) + demo [`_tal.chiral`](scaffold/demo/_tal.chiral) |
 | typed entry points | [`scaffold/chirality/bridge.py`](scaffold/chirality/bridge.py) |
@@ -178,7 +178,7 @@ leak to a socket), `tomodachi` (effect-gated behavior pack), `wl-client`
 
 This is the public mirror of a private working repo. Planning and process
 lanes are filtered out of the published history, so some older commits
-reference paths that are not present here. That is the filter, not breakage.
+reference paths that are missing here. That is the filter at work.
 
 ## License
 
