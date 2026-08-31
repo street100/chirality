@@ -2,69 +2,103 @@
 
 *common-sense, the language.*
 
-Most broadly, chirality is an approach to programming that takes the idea of zero
-trust as far as physically possible. The idea is that almost nothing should be
-trusted by position. Every claim is checked at the point it enters, carried to
-the lowest level achievable.
+chirality takes zero trust as far as it will go. Almost nothing is trusted by
+position. Every claim is checked where it enters, and the check is carried to
+the lowest level reachable.
 
-In terms of makeup, it is a set of modules that operate at specific boundaries
-to provide guarantees where they cannot be bypassed.
+The makeup is a set of modules that sit at boundaries, so their guarantees
+cannot be bypassed.
 
-- A **minimal judgement core** is the sole authority on what is possible.
-  (Note: this is separate from being able to say yes to anything. It
-  determines, based on the set of modules run against it, what should be
-  possible at compile time. Modules may add rules, but cannot go around them.)
-  It is deliberately tiny enough for a human to read in full.
+- A **minimal judgement core** is the sole authority on what is possible. It
+  decides, from the modules run against it, what may happen at compile time.
+  Modules add rules and cannot route around them. It is small enough for a
+  human to read in full.
 
 - The language you write is **not the language that is trusted**. Surface code
-  is elaborated (translated down) into a small core calculus, and the
-  judgement core checks the result of that translation. Convenience syntax
-  cannot smuggle anything past checking because it no longer exists by the
-  time checking happens.
+  is elaborated down into a small core calculus, and the judgement core checks
+  the result of that elaboration. Convenience syntax cannot smuggle anything
+  past checking, because by then it no longer exists.
 
 - Typing is **quantitative** (QTT, in the Atkey-McBride line). Every binder
-  carries a usage annotation from the 0/1/ω semiring: 0 for variables that may
-  appear in types but are erased from runtime entirely, 1 for values that must
-  be consumed exactly once, ω for unrestricted use. One judgement unifies
-  dependency and linearity. Types may freely mention values in the erased
-  fragment, while runtime resources like handles, capabilities, and secrets
-  get exact-use enforcement from the same core rules, without a bolted-on
-  linearity checker.
+  carries a usage annotation from the 0/1/ω semiring. 0 is erased from runtime
+  and may still appear in types. 1 must be consumed exactly once. ω is
+  unrestricted. One judgement unifies dependency and linearity, so runtime
+  resources like handles, capabilities and secrets get exact-use enforcement
+  from the core rules, with no bolted-on linearity checker.
 
-- All values going from code to something happening in the world pass through
-  **declared, typed entry points**, and everything coming back in is verified
+- Every value going from code to something happening in the world crosses a
+  **declared, typed entry point**, and everything coming back is verified
   against its declared type at the moment of return. An outside component that
-  lies produces a typed error at the boundary instead of corruption downstream.
+  lies produces a typed error at the boundary, and no corruption downstream.
 
 - Beneath the compiler sits a **floor of typed assembly**. Compiled output is
   re-checked there, instruction by instruction, by a checker independent of
   everything above it. Trust does not extend even to the compiler.
 
-What a conventional language ships as one monolithic feature, chirality splits into
-pieces like these, each living at the boundary responsible for enforcing it.
+What a conventional language ships as one monolithic feature, chirality splits
+into pieces like these, each living at the boundary that enforces it. Those are
+the boundaries by design. **Status**, below, says which of them run today.
 
 ## Status
 
-**Self-hosting (2026-08-05).** chirality compiles itself: the native compiler
-compiles its own source to a **byte-identical** copy of itself, the fixpoint,
-with no interpreter and no Python in the compile path (`selfhost.py stage2` →
-`FIXPOINT: B1 == B2`, 1 s, peak 0.1 GB). The Python scaffold that *bootstrapped*
-the first native compiler remains only as the reference oracle for the test
-suite (pending a Rocq rewrite); it is off the build and run paths. 703 tests
-(1 skipped) green as of 2026-08-10. What is real versus designed is tracked in
-[docs/status-ledger.md](docs/definitions/status-ledger.md) and
-[scaffold/README.md](docs/implementation/README.md).
+**Self-hosting since 2026-08-05.** The compiler compiles its own source to a
+byte-identical copy of itself. `bin/chirality-bin` is committed at 1,102,200
+bytes, and the fixpoint is verified at generation 3 (gen2 == gen3).
 
-**Measured performance** (narrow, dated, reproducible:
-[scaffold/bench/](docs/benchmarks/RESULTS-2026-08-01.md), `sh run.sh` reruns
-everything): on three micro-kernels, chirality-emitted x86-64 runs **2–6× faster
-than gcc -O0** and **1.4×–8.4× behind gcc -O2** (compute-bound: 1.37×), the honest optimized-C
-reference. Cross-side ratios only: absolute times do not travel off the
-measurement guest. The remaining gap is attributed pass-by-pass, and part of
-the optimizer is *trait-native* rather than borrowed: transforms licensed by
-facts the checker proves (totality-licensed compile-time evaluation,
-refinement/constant guard elision, dense-tag tables, Euclidean strength
-reduction). See [scaffold/bench/TRAIT-OPTS.md](docs/benchmarks/TRAIT-OPTS.md).
+No Python runs in the compile, check or run path. 14 Python files remain,
+4,654 LOC, measured 2026-08-31, all under `tools/` and `docs/examples/refs/`.
+The target is zero. The rule is that the compiler compiles everything.
+
+`bin/chirality test` reports **118 assertions passed, 0 failed**, plus 86
+compile-only roots that gate and assert nothing. 5 of the old suite's 12 phases
+are unported; the run prints each by name and reason, every time.
+
+What is real versus designed is tracked in
+[status-ledger](docs/definitions/status-ledger.md) and
+[docs/implementation/](docs/implementation/README.md).
+
+### ⚑ Honest limits
+
+- `python3 tools/ledger-lint/ledger-lint.py` **exits 1** today, on one check.
+  Lint fails.
+- The effect membrane's three refusing rules are in the tree and **nothing
+  calls them**. A `->` body that reaches an `=>` one is refused nowhere. The
+  bit is carried; the gate is element E171, unbuilt.
+- The typed-assembly floor is built and **unadopted**. Neither the floor
+  checker nor the optimizer's re-check runs in the shipping compile.
+- Inbound entry-point verification is **cut**, and it has no successor in this
+  tree. The declaration side is built; the return-side check is absent.
+- **External judgment is cut**: the Rocq leg, the CompCert leg, the Python
+  oracle. What replaces them is three semantically distinct judgment cores that
+  must agree, and that is **unbuilt**. So every rung in the ledger is
+  enforcement against error. An adversary who controls the source is out of
+  its reach.
+
+### Scope
+
+Current work is **self-hosting only**: the language compiling and checking
+itself, and being good enough to write its own tooling. The ownership and trust
+model is a separate track, **deferred** from this one and built in its own
+lane: the re-bootstrap climb, DDC, the
+[secure datum model](docs/definitions/secure-datum-model.md), the register
+root, the cascade.
+
+### Measured performance
+
+Narrow and dated: [RESULTS-2026-08-01](docs/benchmarks/RESULTS-2026-08-01.md).
+On three micro-kernels, chirality-emitted x86-64 ran **2–6× faster than gcc
+-O0** and **1.37×–8.4× behind gcc -O2**, the honest optimized-C reference.
+Cross-side ratios only: absolute times do not travel off the measurement guest.
+
+⚑ The benchmark harness was Python and did not come across in the doc hoist, so
+these numbers cannot be re-measured in this tree today. They stand as a dated
+record.
+
+The remaining gap is attributed pass by pass, and part of the optimizer is
+*trait-native* rather than borrowed: transforms licensed by facts the checker
+proves. Totality-licensed compile-time evaluation, refinement and constant
+guard elision, dense-tag tables, Euclidean strength reduction. See
+[TRAIT-OPTS](docs/benchmarks/TRAIT-OPTS.md).
 
 ## Try it
 
@@ -72,113 +106,93 @@ reduction). See [scaffold/bench/TRAIT-OPTS.md](docs/benchmarks/TRAIT-OPTS.md).
 git clone https://git.shredbox.rip/shred/chirality.git
 cd chirality
 ln -s "$PWD/bin/chirality" ~/.local/bin/chirality
-
-chirality test               # 703 tests, one command
-chirality run hello.chiral --entry main   # compile + run in one go
 ```
 
-Write a program, compile it, run it, with zero Python in the path:
+The four subcommands are `compile`, `run`, `check` and `test`.
 
 ```
-$ echo '(def main (-> I64 I64) (lam (n) 42))' > hello.chiral
-$ chirality run hello.chiral --entry main
-chirality: hello.chiral -> hello (16760 bytes, entry: main)   # ELF runs, exit code 42
-```
-
-The native compiler is self-hosting:
-
-```
-$ ./build.sh
-FIXPOINT: bin/chirality-bin.new == bin/chirality-bin (byte-identical)
-```
-
-## What's real: verifiable in 30 seconds
-
-No roadmap, no "eventually." Everything here runs right now.
-
-```
-# self-hosting: chirality compiles chirality
-$ ./build.sh
-  → FIXPOINT: bin/chirality-bin.new == bin/chirality-bin (byte-identical)
-
-# 703 tests
+# the suite: one command, zero Python
 $ chirality test
-  → Ran 703 tests  OK (skipped=1)
+  → assertions: 118 passed, 0 failed
+  → compile-only: 86 roots built, 0 failed
+  → chirality test: gate PASSED
 
-# native ELF from chirality source
+# source to a native ELF, compiled and run
 $ echo '(def main (-> I64 I64) (lam (n) 42))' > hello.chiral
 $ chirality run hello.chiral --entry main
-  → chirality: hello.chiral -> hello (16760 bytes, entry: main)   # ELF exits 42
+  → exit code 42
 ```
 
-The type system catches bugs at compile time. Each line is a tiny file in
-`scaffold/demo/`, 2 to 4 lines long. Open them and see exactly what was checked:
+`chirality check` is the compiler's own front end with the ELF thrown away. One
+front end, so there is no second checker to drift. Each demo below is a file of
+two to four lines. Open it and see exactly what was checked.
 
 ```
-$ cd scaffold
+# refinement types: an out-of-range value is a compile error
+$ chirality check prog/demo/_ref.chiral
+  → load: cannot prove refinement   # exit 1
+$ chirality check prog/demo/_ref2.chiral
+  → chirality check: prog/demo/_ref2.chiral OK
 
-# effect membrane — the `=>` crossing rides in the type and is checked as part of it
-$ chirality check demo/_eff.chiral
-  → load: type mismatch          # exit 1
-# ⚑ honest scope, measured 2026-08-25 against scaffold/build/B1: this line used
-# to read "pure code structurally can't do I/O", and the demo does not show that.
-# Its refusal is the ARGUMENT mismatch -- `put : (=> Str Unit)` handed an I64.
-# Repair it to (put "x") under the same (-> I64 Unit) signature and it compiles
-# and prints. The native compiler CARRIES the ->/=> bit but does not yet REFUSE a
-# `->` body that calls an `=>` one; the three seams that refuse
-# (on_apply/on_binder/erased_allow) exist only in the Python floor
-# (scaffold/chirality/effects.py). Enforcing them natively is catalog element E171.
+# arity: a two-argument type given a one-argument lambda
+$ chirality check prog/demo/_type.chiral
+  → load: type mismatch             # exit 1
 
-# refinement types — out-of-range values are compile errors
-$ chirality check demo/_ref.chiral
-  → load: cannot prove refinement # exit 1
-
-$ chirality check demo/_ref2.chiral
-  → chirality check: demo/_ref2.chiral OK
-
-# type mismatch — arity error caught
-$ chirality check demo/_type.chiral
-  → load: type mismatch          # exit 1
-
-# typed assembly floor — lowered code re-checked instruction by instruction
-# (still the Python floor: there is no native `chirality lower` subcommand yet)
-$ python3 -m chirality lower demo/_tal.chiral
-  → lowered to tal, preserve-checked: 1
+# the effect membrane: the `=>` crossing rides in the type
+$ chirality check prog/demo/_eff.chiral
+  → load: type mismatch             # exit 1
 ```
 
-`chirality check` is the native compiler's own front end with the ELF thrown away:
-no Python, and no second checker to drift.  Its messages are terser than the
-Python floor's used to be; the diagnostics are being widened separately.
+⚑ Honest scope on `_eff.chiral`, measured 2026-08-25. The refusal is an
+**argument** mismatch: `put : (=> Str Unit)` handed an I64. Repair it to
+`(put "x")` under the same `(-> I64 Unit)` signature and it compiles and prints.
+The compiler carries the `->`/`=>` bit and does not yet refuse a `->` body that
+calls an `=>` one. That gate is E171.
 
-Other programs in `scaffold/demo/`: `passman-min` (a secret structurally can't
-leak to a socket), `tomodachi` (effect-gated behavior pack), `wl-client`
-(Wayland wire codec).  Self-contained samples with zero imports live in
-`scaffold/samples/`, compilable directly with `chirality compile`.
+Bigger programs live in `prog/demo/`: `passman-min` (a secret has no structural
+path to a socket), `tomodachi` (an effect-gated behavior pack), `wl-client`
+(the Wayland wire codec). `prog/samples/` holds 69 small programs the suite
+sweeps.
+
+### Rebuilding the compiler
+
+The existing binary builds the next one. Nothing replaces itself in place.
+
+```
+. bin/chirality-resolve.sh
+chirality_blob_file "lib:prog" prog/compiler.prog > /tmp/blob.chiral
+(ulimit -s unlimited; bin/chirality-bin < /tmp/blob.chiral > /tmp/C1) && chmod +x /tmp/C1
+[ -s /tmp/C1 ] && (ulimit -s unlimited; /tmp/C1 < /tmp/blob.chiral > /tmp/C2) && cmp /tmp/C1 /tmp/C2
+```
+
+The `-s` test is load-bearing: two empty files compare equal, and a fixpoint on
+nothing proves nothing.
 
 ## Where to look
 
 | What | Where |
 |---|---|
-| judgement core (QTT) | [`scaffold/chirality/kernel.py`](scaffold/chirality/kernel.py) |
-| effect membrane (-> vs =>): carried natively, **enforced only in the Python floor** (E171) | [`effects.py`](scaffold/chirality/effects.py) (the three seams) + [`kernel.py`](scaffold/chirality/kernel.py) + demo [`_eff.chiral`](scaffold/demo/_eff.chiral) |
-| refinement types | [`scaffold/chirality/refine.py`](scaffold/chirality/refine.py) + demo [`_ref.chiral`](scaffold/demo/_ref.chiral) |
-| typed assembly floor | [`scaffold/chirality/tal.py`](scaffold/chirality/tal.py) + demo [`_tal.chiral`](scaffold/demo/_tal.chiral) |
-| typed entry points | [`scaffold/chirality/bridge.py`](scaffold/chirality/bridge.py) |
-| native compiler (in chirality) | [`scaffold/lib/compile-all.chiral`](scaffold/lib/compile-all.chiral) |
-| typed process spawn | [`scaffold/lib/proc.chiral`](scaffold/lib/proc.chiral) |
-| userland in chirality | [`scaffold/lib/`](scaffold/lib/): JSON, HTTP, FSMs, x86-64 emitter |
-| design docs | [`docs/`](docs/): start at [`docs/index.md`](docs/index.md) |
-| benchmarks | [`docs/benchmarks/`](docs/benchmarks/): native codegen vs `gcc -O2` + growing-allocator scale |
-| worked examples | [`examples/`](examples/), indexed in [`examples/INDEX.md`](docs/examples/INDEX.md) |
-| threat model | [`docs/definitions/secure-datum-model.md`](docs/definitions/secure-datum-model.md) |
+| judgement core (QTT) | [`lib/typing/kernel.chiral`](lib/typing/kernel.chiral) + [`qtt.chiral`](lib/typing/qtt.chiral) |
+| effect membrane (`->` vs `=>`): carried, **refused nowhere** (E171) | [`lib/typing/effects.chiral`](lib/typing/effects.chiral) (the three seams) + demo [`_eff.chiral`](prog/demo/_eff.chiral) |
+| refinement types | [`lib/typing/refine.chiral`](lib/typing/refine.chiral) + demo [`_ref.chiral`](prog/demo/_ref.chiral) |
+| typed assembly floor, **built and unadopted** | [`lib/lowering/tal/check.chiral`](lib/lowering/tal/check.chiral) |
+| where a crossing is declared | [`lib/ports/`](lib/ports/): 9 registries behind [`ports.chiral`](lib/ports/ports.chiral) |
+| the compiler, in chirality | [`lib/lowering/compile-all.chiral`](lib/lowering/compile-all.chiral), entry [`prog/compiler.prog`](prog/compiler.prog) |
+| typed process spawn | [`lib/runtime/proc.chiral`](lib/runtime/proc.chiral) + [`process.port`](lib/ports/process.port) |
+| userland in chirality | [`lib/`](lib/): [JSON](lib/protocol/json.chiral), [HTTP](lib/protocol/http.chiral), FSMs, the [x86-64 emitter](lib/lowering/x64/emit.chiral) |
+| the tree contract: extensions, roles, the module key | [`LAYOUT.md`](LAYOUT.md) |
+| design docs | [`docs/`](docs/), starting at [`docs/index.md`](docs/index.md) |
+| benchmarks | [`docs/benchmarks/`](docs/benchmarks/) |
+| worked examples | [`docs/examples/INDEX.md`](docs/examples/INDEX.md) |
+| threat model (ownership track, deferred) | [`secure-datum-model`](docs/definitions/secure-datum-model.md) |
 | principles | [`PRINCIPLES.md`](PRINCIPLES.md) |
 | project map | [`MAP.md`](MAP.md) |
 
 ## About this repository
 
-This is the public mirror of a private working repo. Planning and process
-lanes are filtered out of the published history, so some older commits
-reference paths that are missing here. That is the filter at work.
+This is the public mirror of a private working repo. Planning and process lanes
+are filtered out of the published history, so some older commits reference
+paths that are missing here. That is the filter at work.
 
 ## License
 
