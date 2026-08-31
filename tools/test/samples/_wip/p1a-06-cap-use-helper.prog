@@ -1,0 +1,9 @@
+; V6: capture; consumption goes through a NAMED helper (use), like flag2-k0.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare mk-a (-> I64 Voc))
+(def mk-a (lam (k) (voc (lam (x) (+ x k)) 1)))
+(declare use (-> Voc I64 I64))
+(def use (lam (v x) (case v ((voc d n) (d x)))))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (- (use (mk-a 1) 10) 11)))

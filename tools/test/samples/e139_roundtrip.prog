@@ -1,0 +1,122 @@
+; e139_roundtrip.chiral — E139 conformance: manifest-to-json ⟲ manifest-from-json.
+;
+; PURE, network-free, exit-code oracle (exit 0 iff every assertion holds, else 1).
+; No ports, no backend, no file reads — the whole test is `->`. This is the payoff
+; gate: E139's serializer and E141's deserializer are INVERSES, and the round-trip
+; ALSO cross-checks E141's deserializer against E139's serializer.
+;
+;   POSITIVE  — a fully-populated RunManifest (every field non-default: fired ids,
+;               config_binds, context chunks, an ExpertCall, combiner patches) put
+;               through manifest-to-json -> json-show -> json-parse-str ->
+;               manifest-from-json, structurally conforms to itself
+;               (manifest-conforms orig round-tripped => true). Proves to-json emits
+;               EXACTLY the shape from-json reads, losslessly, across every field
+;               type: str, i64 (via i64->str/j-num), bool, str-array, int-array,
+;               expert-call-array, config_binds OBJECT.
+;   DISCRIMINATE — a copy differing only in a STABLE field (config-id) does NOT
+;               conform to the round-tripped orig; i.e. to-json faithfully CARRIES
+;               the distinguishing datum (not blanked/defaulted in transit).
+;   NEG-1     — a MALFORMED JSON string => json-parse-str none (parser rejects).
+;   NEG-2     — a well-formed JSON object MISSING run_id => manifest-from-json none
+;               (deserializer rejects an incomplete record — no partial manifest).
+;
+; Recipe (per the E139 SPEC gate):
+;   chirality_blob "lib:prog" manas/contract/manifest manas/contract/golden json > blob
+;   cat tools/test/samples/e139_roundtrip.chiral >> blob ; B1 < blob > elf ; run.
+
+(import "prelude/prelude")                 ; str-eq, i64->str, case, and, not
+(import "protocol/json")                    ; json-show, json-parse-str
+(import "manas/core/types")        ; RunManifest, ExpertCall, Binding
+(import "manas/contract/manifest") ; manifest-to-json (E139) + manifest-from-json (E141)
+(import "manas/contract/golden")   ; manifest-conforms
+
+; ---------------------------------------------------------- the round-trip pipeline
+; manifest-to-json -> json-show -> json-parse-str -> manifest-from-json. Any failure
+; (parse fail / a rejected field) collapses to none.
+(def roundtrip (-> RunManifest (Maybe RunManifest))
+  (lam (m)
+    (case (json-parse-str (json-show (manifest-to-json m)))
+      (none none)
+      ((some j) (manifest-from-json j)))))
+
+; ---------------------------------------------------------- a fully-populated manifest
+; Every field carries a real, non-default value so the round-trip exercises every
+; serializer arm (str, i64, bool, the three array kinds, and the config_binds object).
+(def ec1 ExpertCall
+  (expert-call "claim-vs-source" "cheap-verifier" "qwen2.5:0.5b"
+               8192 "psha-abc" "rsha-def" true true 137))
+
+(def orig RunManifest
+  (run-manifest
+    "run-42"                                   ; run-id
+    "refine this doc"                          ; request
+    "/docs/in.md"                              ; doc-path
+    "/docs/out.md"                             ; artifact-path
+    "doc-refine"                               ; pipeline-id      (STABLE)
+    "auto"                                     ; pipeline-choice
+    "route-by-keyword"                         ; routing-decision (STABLE)
+    (cons "claim-vs-source" (cons "anchor-sharpen" nil))  ; fired-expert-ids (STABLE)
+    "smoke-local"                              ; config-id        (STABLE)
+    (cons (binding "cheap-verifier" "qwen2.5:0.5b" 8192)  ; config-binds (OBJECT)
+     (cons (binding "reasoner" "qwen3:8b" 32768) nil))
+    (cons 1 (cons 2 (cons 3 nil)))             ; context-chunks-used (int array)
+    (cons ec1 nil)                             ; expert-calls        (STABLE per-call)
+    (cons "--- a/x" (cons "+++ b/x" nil))      ; combiner-patches (str array)
+    "the merged yield text"                    ; final-yield
+    "2026-08-15T12:00:00Z"))                   ; generated-at
+
+; a copy differing ONLY in a stable field (config-id) — must NOT conform to orig.
+(def orig-diff RunManifest
+  (run-manifest
+    "run-42" "refine this doc" "/docs/in.md" "/docs/out.md" "doc-refine" "auto"
+    "route-by-keyword" (cons "claim-vs-source" (cons "anchor-sharpen" nil))
+    "cheap-local"                              ; <-- config-id changed
+    (cons (binding "cheap-verifier" "qwen2.5:0.5b" 8192)
+     (cons (binding "reasoner" "qwen3:8b" 32768) nil))
+    (cons 1 (cons 2 (cons 3 nil))) (cons ec1 nil)
+    (cons "--- a/x" (cons "+++ b/x" nil)) "the merged yield text" "2026-08-15T12:00:00Z"))
+
+; ---------------------------------------------------------- assertions
+; POSITIVE: orig round-trips and conforms to itself.
+(def pos-ok (-> I64 Bool)
+  (lam (_)
+    (case (roundtrip orig)
+      (none false)
+      ((some rt) (manifest-conforms orig rt)))))
+
+; DISCRIMINATE: the round-tripped orig does NOT conform to a stable-field-mutated copy
+; (proves the serializer carried config-id, not a default) — AND the mutated copy is
+; genuinely different pre-round-trip (sanity on the fixtures).
+(def discrim-ok (-> I64 Bool)
+  (lam (_)
+    (and (not (manifest-conforms orig orig-diff))
+      (case (roundtrip orig)
+        (none false)
+        ((some rt) (not (manifest-conforms orig-diff rt)))))))
+
+; NEG-1: a malformed JSON string is rejected by the parser.
+(def neg1-ok (-> I64 Bool)
+  (lam (_)
+    (case (json-parse-str "{ this is not valid json")
+      (none true)
+      ((some j) false))))
+
+; NEG-2: a well-formed object missing the required run_id is rejected by from-json.
+(def neg2-ok (-> I64 Bool)
+  (lam (_)
+    (case (json-parse-str "{\"request\":\"x\"}")
+      (none false)
+      ((some j)
+        (case (manifest-from-json j)
+          (none true)
+          ((some m) false))))))
+
+; ---------------------------------------------------------- entry (I64 -> I64)
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (and (pos-ok 0)
+          (and (discrim-ok 0)
+          (and (neg1-ok 0)
+               (neg2-ok 0))))
+      (true 0)
+      (false 1))))

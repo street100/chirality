@@ -1,0 +1,11 @@
+; E42 negative: let-binding a linear SockVec. A let binder is unrestricted
+; quantity, so threading a q=1 cap through `let` (aliasing) is rejected.
+(import "runtime/poll")
+(import "ports/ports")
+(import "capability/lincoll")
+(import "runtime/supervisor")
+
+(def bad-let (=> (1 caps SockVec) SockVec)
+  (lam (caps)
+    (let (v caps)
+      v)))

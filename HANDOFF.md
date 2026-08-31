@@ -17,7 +17,7 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
 | tests | `bin/chirality test` → **142 assertions, 0 failed**, 7 of 12 old phases ported + Phase 13 (E157), new here |
 | tools | `tools/` — 9 Python tools carried as-is, each with `MIGRATION-NOTES.md` |
 | docs | 226 files, sorted by role (`LAYOUT.md`); `.planning/` 245, catalog + LEDGER included |
-| record | `.planning/MIGRATION-MAP.tsv`, 677 rows, every `new_path` verified to exist |
+| record | `.planning/MIGRATION-MAP.tsv`, 869 rows; `tools/test/map-integrity.sh` checks every `new_path` exists |
 
 ### Verified, not asserted
 
@@ -74,10 +74,18 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
   ⚑ Seven `prog/manas/profile/` files are 0-`data`/all-`def`/zero-`lam`, the manifest
   shape by LAYOUT's letter. They ship `.chiral` because E163's loader check does not
   exist. They are E163's first candidates.
-- samples / demo / fixtures (~204 files). ⚑ `prog/samples/` currently holds **six
-  files recreated by judgment** — Phase 2's manifest named them and
-  `.planning/MIGRATION-MAP.tsv` has zero rows for `scaffold/samples/`. They move if this slice
-  picks another home.
+- ~~samples / demo / fixtures~~ **DONE** (slice 8) — 192 files. Destinations read off
+  the consumers: `scaffold/tests/samples` → `tools/test/samples/` (the path Phases 9
+  and 12 name), `samples` → `prog/samples/`, `demo` → `prog/demo/`, and `agent/`, a
+  third unmigrated source dir the hoist had missed, → `prog/agent/`.
+  ⚑ **The six recreated-by-judgment files were right on content and wrong on kind.**
+  All six are byte-identical to the originals. None of the originals defines
+  `compile-main` — they define `main` — so they are modules, and the `.prog`
+  extension was the invention. The duplicates are gone and `test-runner.prog` names
+  the `.chiral` files. Deleting them broke Phase 2, which is how it was found: my
+  grep for consumers checked the shell scripts and missed that the runner is
+  chirality source.
+  Not migrated, by decision: 80 `.py` (the Python oracle) and 159 `.pyc`.
 - ~~`collections`~~ **DONE** (slice 5) — split into `prelude/{ord,list,maybe,alist,map,set}`,
   with `str-join` moved to `prelude/string`. Two past the four named: `maybe` because
   `Maybe` is its own type and `str-join` because it produces a `Str`; leaving either in

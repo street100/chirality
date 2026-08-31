@@ -1,0 +1,56 @@
+; E168 Phase 12, G9(i) -- MUST NOT COMPILE. THE RANK FLOOR'S OWN GUARD.
+;
+; The defect, measured 2026-08-25: `Gate` carried two adjacent `(List Expect)`
+; fields, `checks` and `diffs`, and `diff-expect` returned a plain `Expect`. So
+; taking e168_rank_floor's case 1 and changing ONE FIELD -- putting the
+; differential-minted expectation into `checks` instead of `diffs` -- compiled
+; and scored `g-green`. Two in-tree providers wrong the same way, zero anchors
+; outside the comparison, gate passing: E161 G0 verbatim, reintroduced by a
+; field name, while the floor's own comment claimed `diffs` made the provenance
+; "a fact of the type rather than a naming convention".
+;
+; It is a fact of the type now. `diff-expect` mints a `DiffExpect`, `checks` is
+; still `(List Expect)`, and the gate below is `load: type mismatch`.
+;
+; ⚑ The minted value is taken FROM `diff-expect`, and it goes into BOTH slots.
+; Both details are the E159 false-control lesson. Declaring a `DiffExpect`
+; parameter instead would pin only "checks rejects DiffExpect", which stays true
+; even after `diff-expect` is reverted to return a plain `Expect` -- the row
+; would go on passing while the hole reopened. And annotating `diffs` as empty
+; instead of filling it would let the annotation, not the swap, be the refusal.
+; Measured against the revert (Gate's `diffs` back to `(List Expect)`,
+; `diff-expect` back to a bare `Expect`): this file COMPILES and this row goes
+; red, which is what makes it able to fail at all.
+;
+; The compiling twin is e168_rank_floor.chiral, which runs the same differential
+; and puts the result in the slot that accepts it.
+;
+; want: exit 1, `load: type mismatch`
+
+(import "evidence/test-floor")
+
+(def wrong-src Bytes (str->bytes "(def main (-> I64 I64) (lam (n) 41))"))
+(def killed MutRun (mu-killed "a mutant that ran and died" (ob-exit 42) (ob-exit 41)))
+(def one-obs (List Obs) (cons (ob-exit 41) nil))
+
+(def swapped (=> (1 bld Builder) I64)
+  (lam (bld)
+    (case (differ bld
+                  (oracle (or-native "the fold provider"))
+                  (oracle (or-native "the emit provider"))
+                  wrong-src)
+      ((differ-r d bld2)
+        (case bld2
+          ((builder v)
+            (case (diff-expect (obk-given "both providers' marker") d)
+              ((ex-refused why) 1)
+              ((ex-ok minted)
+                ; THE SWAP: `checks` gets what only `diffs` may hold.
+                (case (gate-verdict
+                        (gate "markers agree" (cons minted nil) (cons minted nil) killed)
+                        one-obs)
+                  ((g-green nm c w)     0)
+                  ((g-red nm why2)      2)
+                  ((g-inadequate nm lb) 3))))))))))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

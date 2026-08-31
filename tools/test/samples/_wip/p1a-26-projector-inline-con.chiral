@@ -1,0 +1,6 @@
+; V26: projector + NAMED global, record built inline at the call site.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare add1 (-> I64 I64)) (def add1 (lam (x) (+ x 1)))
+(declare voc-draw (-> Voc (-> I64 I64))) (def voc-draw (lam (v) (case v ((voc d n) d))))
+(declare compile-main (-> Unit I64)) (def compile-main (lam (u) (- ((voc-draw (voc add1 1)) 10) 11)))

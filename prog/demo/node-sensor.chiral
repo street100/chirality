@@ -1,0 +1,39 @@
+; The sensor node, standalone form: offers a listening door and serves
+; whoever connects. One half of the two-node tomodachi; the core logic is
+; sensor-core. A remote node is just a node you hold a port to
+; (docs/node-architecture.md); here the renderer holds one to us.
+
+(import "demo/sensor-core")
+
+(def main (=> Unit Unit)
+  (lam (u)
+    (let (1 e0 (env-open unit))
+      (case (env-view e0 "NIRI_SOCKET")
+        ((env-none e1)
+          (do (env-close e1)
+              (halt Unit "sensor: NIRI_SOCKET or MET_NODE_SOCKET not set")))
+        ((env-r np e1)
+          (case (env-view e1 "MET_NODE_SOCKET")
+            ((env-none e2)
+              (do (env-close e2)
+                  (halt Unit "sensor: NIRI_SOCKET or MET_NODE_SOCKET not set")))
+            ((env-r sp e2)
+              (do (env-close e2)
+          (case (sock-listen sp)
+            ((lis-err em) (halt Unit (str-cat "sensor: listen failed: " em)))
+            ((lis-r l)
+              (case (sock-accept l)
+                ((acc-err em) (halt Unit (str-cat "sensor: accept failed: " em)))
+                ((acc-r l2 peer)
+                  (do (lsock-close l2)   ; one peer; the door closes behind it
+                      (case (sock-connect np)
+                        ((conn-err em)
+                          (do (sock-close peer)
+                              (halt Unit (str-cat "sensor: connect failed: " em))))
+                        ((conn-r ni0)
+                          (case (sock-send ni0 (str->bytes "\"EventStream\"\n"))
+                            ((send-err em)
+                              (do (sock-close peer)
+                                  (halt Unit (str-cat "sensor: send failed: " em))))
+                            ((send-r ni1)
+                              (sloop (the SSt (sst ni1 peer "" boot-mood))))))))))))))))))))

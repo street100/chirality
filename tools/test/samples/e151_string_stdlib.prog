@@ -1,0 +1,133 @@
+; e151_string_stdlib.chiral — the E151a canonical-string-stdlib runtime gate.
+;
+; E151a adds five canonical functions to lib/prelude/string.chiral:
+; str-cmp, str-lower, str-upper, str-trim, str-replace; E151b adds a sixth,
+; str-pad (plus `su-`-prefixed internals — the E154
+; flat-emitted-label-namespace guard). string-utils is a
+; shelf module nothing in a shipping blob links yet, so the self-host fixpoint
+; CANNOT catch a bug here: a wrong str-trim byte-reproduces the compiler
+; cleanly. So this checks RESULTS at runtime — each case asserts the RIGHT
+; answer. Exit 0 iff ALL correct; else the failing case number.
+;
+; Coverage: cmp lt/eq/gt + the prefix case ("ab" vs "abc") + empty on both
+; sides; lower/upper over mixed case with non-alpha passthrough (digits,
+; punctuation, already-folded bytes); trim leading / trailing / both /
+; all-whitespace / empty / interior-preserving, with tab+CR+LF built from
+; codepoints (chirality string literals have no \r escape); replace with 0, 1 and
+; many occurrences, adjacent occurrences, a growing and a shrinking
+; replacement, deletion, and the empty-needle identity; pad (E151b) with a
+; width below / equal to / above the subject's length, an empty subject, the
+; empty-pad identity, and a multi-byte pad unit both cut mid-unit and landing
+; exactly on a unit boundary.
+(import "prelude/prelude")
+(import "prelude/ord")
+(import "prelude/string")
+
+; ── assertion helpers ───────────────────────────────────────────────────────
+; Ord is an enum with no payload, so equality is a nested case.
+(def ord-eq (-> Ord Ord Bool)
+  (lam (a b)
+    (case a
+      ((lt) (case b ((lt) true) ((eq) false) ((gt) false)))
+      ((eq) (case b ((lt) false) ((eq) true) ((gt) false)))
+      ((gt) (case b ((lt) false) ((eq) false) ((gt) true))))))
+
+; control bytes by codepoint — no \r escape in the chirality reader.
+(def su-t-byte (-> I64 Str) (lam (c) (bytes->str (bslice (pack-u32 c) 0 1))))
+(def su-t-tab Str (su-t-byte 9))
+(def su-t-lf  Str (su-t-byte 10))
+(def su-t-cr  Str (su-t-byte 13))
+; " \t\r\n" — every whitespace byte str-trim must strip
+(def su-t-ws Str (str-cat " " (str-cat su-t-tab (str-cat su-t-cr su-t-lf))))
+
+; ── the checks, as one flat Bool list; the first false is the exit code ─────
+(def su-t-first-bad (-> (List Bool) I64 I64)
+  (lam (bs k)
+    (case bs
+      (nil 0)
+      ((cons b rest)
+        (case b
+          (false k)
+          (true (su-t-first-bad rest (+ k 1))))))))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (su-t-first-bad
+      (cons ; 1..8  str-cmp
+        (ord-eq (str-cmp "a" "b")      (lt))
+      (cons
+        (ord-eq (str-cmp "b" "a")      (gt))
+      (cons
+        (ord-eq (str-cmp "abc" "abc")  (eq))
+      (cons
+        (ord-eq (str-cmp "ab" "abc")   (lt))   ; prefix sorts before extension
+      (cons
+        (ord-eq (str-cmp "abc" "ab")   (gt))
+      (cons
+        (ord-eq (str-cmp "" "")        (eq))
+      (cons
+        (ord-eq (str-cmp "" "a")       (lt))
+      (cons
+        (ord-eq (str-cmp "a" "")       (gt))
+      (cons ; 9..14  str-lower / str-upper
+        (str-eq (str-lower "MeTiS-42!") "chirality-42!")
+      (cons
+        (str-eq (str-upper "MeTiS-42!") "METIS-42!")
+      (cons
+        (str-eq (str-lower "already lower") "already lower")
+      (cons
+        (str-eq (str-upper "ALREADY UPPER") "ALREADY UPPER")
+      (cons
+        (str-eq (str-lower "") "")
+      (cons
+        (str-eq (str-upper "[]{}~`0189") "[]{}~`0189")   ; non-alpha passthrough
+      (cons ; 15..22  str-trim
+        (str-eq (str-trim "   lead") "lead")
+      (cons
+        (str-eq (str-trim "trail   ") "trail")
+      (cons
+        (str-eq (str-trim (str-cat su-t-ws (str-cat "both" su-t-ws))) "both")
+      (cons
+        (str-eq (str-trim su-t-ws) "")                     ; all whitespace
+      (cons
+        (str-eq (str-trim "") "")
+      (cons
+        (str-eq (str-trim "none") "none")
+      (cons
+        (str-eq (str-trim "  a b  ") "a b")                ; interior preserved
+      (cons
+        (str-eq (str-trim (str-cat su-t-lf (str-cat su-t-tab "x"))) "x")
+      (cons ; 23..30  str-replace
+        (str-eq (str-replace "hello" "zz" "Q") "hello")    ; 0 occurrences
+      (cons
+        (str-eq (str-replace "hello" "ell" "ipp") "hippo")
+      (cons
+        (str-eq (str-replace "a-b-c" "-" "+") "a+b+c")     ; many
+      (cons
+        (str-eq (str-replace "aaaa" "aa" "b") "bb")        ; adjacent, shrinking
+      (cons
+        (str-eq (str-replace "xx" "x" "yy") "yyyy")        ; growing
+      (cons
+        (str-eq (str-replace "abcabc" "abc" "") "")        ; deletion
+      (cons
+        (str-eq (str-replace "hello" "" "Q") "hello")      ; empty needle = identity
+      (cons
+        (str-eq (str-replace "" "a" "b") "")               ; empty haystack
+      (cons ; 31..38  str-pad  (str-pad s width pad) — subject-first, RIGHT-pad
+        (str-eq (str-pad "hello" 3 "-") "hello")           ; width < len: no-op
+      (cons
+        (str-eq (str-pad "hello" 5 "-") "hello")           ; width = len: no-op
+      (cons
+        (str-eq (str-pad "ab" 5 "-") "ab---")              ; width > len: grows
+      (cons
+        (str-eq (str-pad "" 3 "-") "---")                  ; empty subject
+      (cons
+        (str-eq (str-pad "" 0 "-") "")                     ; empty, nothing to do
+      (cons
+        (str-eq (str-pad "ab" 5 "") "ab")                  ; empty pad = identity
+      (cons
+        (str-eq (str-pad "ab" 5 "-=") "ab-=-")             ; multi-byte, cut mid-unit
+      (cons
+        (str-eq (str-pad "ab" 6 "-=") "ab-=-=")            ; multi-byte, exact fit
+        nil))))))))))))))))))))))))))))))))))))))
+      1)))

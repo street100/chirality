@@ -1,0 +1,16 @@
+; Sensor node profile. Note what the frozen set excludes: no pool, no
+; fd-passing, no poll. This runtime can watch the compositor's events and
+; speak moods; it cannot draw a pixel.
+
+(import "demo/node-sensor")
+
+(target node-sensor
+  (require main (=> Unit Unit))
+  (require on-event (-> Str Mood Mood))
+  (require mood-name (-> Mood Str)))
+
+(profile node-sensor
+  (ports sock-connect sock-send sock-recv sock-close
+         sock-listen sock-accept lsock-close
+         trace env-open env-view env-close exit halt)
+  (target node-sensor))

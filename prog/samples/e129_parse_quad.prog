@@ -1,0 +1,33 @@
+; e129_parse_quad.chiral — E129 conformance: dotted-quad parse-quad happy + error arms.
+;
+; Pure hermetic confirming test of the boundary parser (no crossing, no I/O):
+;   parse-quad "1.2.3.4"  -> (quad-ok (quad 1 2 3 4))   the happy path
+;   parse-quad "1.2.3"    -> (quad-err ...)             wrong count (3, not 4)
+;   parse-quad "1..2"     -> (quad-err ...)             empty octet
+; The wrong-count and empty-octet arms prove the parser REJECTS malformed
+; hosts, so sock-connect-in can never hand a garbage sockaddr_in to the kernel.
+;
+; Stepwise exit codes:
+;   42 = happy parses correctly AND both error arms fire
+;    1 = happy path returned quad-err   2 = happy octets wrong
+;    3 = "1.2.3" did NOT quad-err       4 = "1..2" did NOT quad-err
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/inet")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (parse-quad "1.2.3.4")
+      ((quad-err m) 1)
+      ((quad-ok q)
+        (case q
+          ((quad a b c d)
+            (case (and (and (=i a 1) (=i b 2)) (and (=i c 3) (=i d 4)))
+              (false 2)
+              (true
+                (case (parse-quad "1.2.3")
+                  ((quad-ok q2) 3)
+                  ((quad-err m2)
+                    (case (parse-quad "1..2")
+                      ((quad-ok q3) 4)
+                      ((quad-err m3) 42))))))))))))

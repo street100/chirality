@@ -1,0 +1,7 @@
+; V8: capturing lam LET-BOUND first, then stored in the record.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare mk-a (-> I64 Voc))
+(def mk-a (lam (k) (let ((f (lam (x) (+ x k)))) (voc f 1))))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (- (case (mk-a 1) ((voc d n) (d 10))) 11)))

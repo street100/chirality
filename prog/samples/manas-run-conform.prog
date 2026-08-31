@@ -1,0 +1,81 @@
+; manas-run-conform.chiral -- Step A, slice A3: the live run + golden conformance
+; oracle. MANAS-STATE-VS-GOAL §8.A ("capture the RunManifest; assert it conforms
+; to a golden via E141 manifest-conforms"). Combines the live orchestration
+; (guarded-run, E138, smoke-local + doc-refine against 100.64.0.5:11434) with the
+; E141 oracle: read the frozen golden off disk (open-rw/read/fd-close, like
+; e141_conformance.chiral), json-parse -> manifest-from-json -> golden RunManifest;
+; run the pipeline LIVE -> actual RunManifest; assert manifest-conforms golden
+; actual. The structural fields (pipeline/config/routing/fired/expert-call
+; id+slot+model) are a PURE function of (request, doc, extra, config), so they
+; reproduce across runs even though the model's yield does not -- which is exactly
+; what manifest-conforms pins and what the ignored fields let drift.
+;
+; Exit 0 iff the live run conforms to the golden; 90/91/92 on IO/parse/deserialize
+; failure; 1 on non-conformance.
+;
+; Build: same recipe as manas-run.chiral but add golden + ports to the closure roots:
+;   chirality_blob "lib:prog" manas/pipeline/guarded manas/profile/profiles \
+;     manas/profile/doc-refine manas/contract/manifest manas/contract/golden json ports
+;   then tal-ir + the 5 linkage libs + this file; B1.
+(import "prelude/prelude")
+(import "manas/backend")                  ; backend-open / backend-close (E137 linear porttype)
+(import "manas/pipeline/guarded")   ; guarded-run
+(import "manas/profile/profiles")   ; smoke-local-config
+(import "manas/profile/doc-refine") ; doc-refine-pipeline, expert-pool
+(import "manas/contract/manifest")  ; manifest-from-json
+(import "manas/contract/golden")    ; manifest-conforms
+(import "protocol/json")                     ; json-parse
+(import "ports/ports")                    ; open-rw, read, adopt-fd, fd-close
+
+; ---------------------------------------------------------- the run inputs (as manas-run)
+(def the-doc Str
+  "# widget config\n\nThe loader reads `/etc/widget/config.toml` at boot.\n\n```\nwidget --start\n```\n\nExample: `widget --start` brings the service up.\n")
+(def the-extra (List (Pair Str Str))
+  (cons (pair "spec" "docs/widget-SPEC.md")
+  (cons (pair "sibling_docs" "docs/widget-overview.md")
+        nil)))
+
+; ---------------------------------------------------------- file-read helpers (=>)
+; (mirrors e141_conformance.chiral; NUL-terminated path, 64 KiB drain, linear close.)
+(def mr-path-bytes (-> Str Bytes)
+  (lam (p) (bcat (str->bytes p) (bslice (pack-u32 0) 0 1))))
+(def mr-read-all (=> I64 Bytes Bytes)
+  (lam (fd acc)
+    (let (chunk (read fd 65536))
+      (case (=i (blen chunk) 0)
+        (true acc)
+        (false (mr-read-all fd (bcat acc chunk)))))))
+(def mr-close (=> I64 Unit)
+  (lam (fd) (fd-close (adopt-fd fd))))
+
+; ---------------------------------------------------------- the live run (=>)
+; guarded-run -> (Pair I64 (Pair Str RunManifest)); pull out the actual manifest.
+(def run-actual (=> I64 RunManifest)
+  (lam (_)
+    (case (guarded-run (backend-open "http://100.64.0.5:11434") 0
+             "refine this doc: check it against reality, sharpen anchors, complete its examples"
+             (cons doc-refine-pipeline nil) expert-pool smoke-local-config
+             the-doc the-extra)
+      ((grun-r fails yield m raws b2)
+        (do (backend-close b2) m)))))    ; discharge the linear handle, keep the manifest
+
+; ---------------------------------------------------------- entry (effectful)
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (fd (open-rw (mr-path-bytes
+               "/workspace/chirality-the-lang/scaffold/tests/golden/manas-smoke-doc-refine.golden.json")))
+      (case (<i fd 0)
+        (true 90)                                    ; open failed
+        (false
+          (let (gbytes (mr-read-all fd (str->bytes "")))
+            (let (_ (mr-close fd))
+              (case (json-parse gbytes)
+                (none 91)                            ; JSON parse failed
+                ((some j)
+                  (case (manifest-from-json j)
+                    (none 92)                        ; golden deserialize failed
+                    ((some golden)
+                      (let (actual (run-actual 0))
+                        (case (manifest-conforms golden actual)
+                          (true  (do (put "CONFORM: true\n") 0))
+                          (false (do (put "CONFORM: false\n") 1)))))))))))))))

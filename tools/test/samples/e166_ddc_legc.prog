@@ -1,0 +1,237 @@
+; e166_ddc_legc.chiral — the E166 step-6 gate on `ddc-legc`, the external leg.
+;
+; lib/evidence/ddc.chiral is a SHELF module: nothing in a shipping blob imports
+; it (grep -l ddc scaffold/lib/*.chiral finds only ddc.chiral itself), so the
+; self-hosting fixpoint cannot see one byte of it — a leg whose provenance
+; overlaps leg 0 would byte-reproduce the compiler perfectly. The teeth have to
+; be a program that RUNS. Exit 0 iff every case holds; otherwise the 1-based
+; number of the first failing case.
+;
+; ⚑ WHAT THE TEETH ARE. The claim being made is not "a constant exists" — it is
+; that the quorum survives S12's deletion of the Python leg. So case 9 asserts
+; the thing that goes WRONG if the ordering is violated: leg 0 ALONE is
+; `ddc-bad-quorum`, which is exactly the state the tree would be left in by
+; deleting leg 1 before this leg was admitted (SPEC decision 5). Cases 4–6 are
+; the G5 mutant expressed as assertions rather than as an edit: a leg sharing
+; EITHER axis must be refused, and both single-axis overlaps are checked, so
+; "disjoint" cannot degrade to "differs somewhere".
+;
+; ⚑ AND SINCE 2026-08-25 THERE ARE TWO C LEGS, WHICH IS THE SUBTLE PART. The leg
+; script runs green under gcc AND under ccomp 3.17, so `ddc-legcc` was added
+; beside `ddc-legc` — each constant naming a toolchain that actually built
+; something. They are NOT two legs: `leg2-disjoint?` demands that BOTH axes
+; differ and they share "c", so a quorum is leg 0 plus EXACTLY ONE of them.
+; Cases 18 and 20 assert precisely that refusal, in both the pairwise and the
+; list-shaped spelling, so nobody can bank the second compiler as a third leg.
+;
+; ⚑ CASES 21 AND 24–34 EXIST BECAUSE 18 AND 20 WERE NOT ENOUGH. Those two ask
+; `prov-disjoint?` directly, and it has always answered correctly. What they do
+; not touch is whether `ddc-compare` ever ASKS -- and until 2026-08-25 it did
+; not: it folded bytes and returned `ddc-converged` for any list whose bytes
+; agreed, provenance unread, though `DdcR`'s own declaration promises
+; `ddc-bad-quorum` for "provenance not disjoint". Case 21 used to assert that
+; convergence, with a comment explaining it as a seam the driver owed. That was
+; the defect written down as an expectation: a gate that pins the bug cannot
+; catch it. It now asserts the refusal. The block 24–34 covers what a verdict
+; tag alone cannot show -- that the three refusal REASONS stay distinct (a
+; caller must tell "collect more legs" from "what you collected is not
+; independent"), that the gate fires BEFORE the fold (case 32: non-disjoint legs
+; with DIFFERENT bytes are bad-quorum, never diverged), and that it does not
+; over-refuse (cases 31, 33: genuinely disjoint two- and three-leg lists still
+; converge). Case 29 is the headline: leg 0 + BOTH C legs is three entries
+; carrying two opinions, and it is refused.
+
+(import "prelude/prelude")
+(import "evidence/ddc")
+
+; ── helpers ─────────────────────────────────────────────────────────────────
+(def dl-first-bad (-> (List Bool) I64 I64)
+  (lam (bs k)
+    (case bs
+      (nil 0)
+      ((cons b rest)
+        (case b
+          (false k)
+          (true (dl-first-bad rest (+ k 1))))))))
+
+(def dl-verdict (-> DdcR I64)
+  (lam (r)
+    (case r
+      ((ddc-converged bs) 0)
+      ((ddc-diverged a b) 1)
+      ((ddc-bad-quorum w) 2))))
+
+; the diverged verdict NAMES the two legs; a gate that only read the tag could
+; not tell "leg 0 vs leg c" from "leg 0 vs leg 1".
+(def dl-diverged-names (-> DdcR Str)
+  (lam (r)
+    (case r
+      ((ddc-converged bs) "converged")
+      ((ddc-diverged a b) (str-cat a (str-cat "|" b)))
+      ((ddc-bad-quorum w) w))))
+
+(def dl-lang (-> Leg Str)
+  (lam (l) (case l ((leg n p) (case p ((prov lang tc au ep) lang))))))
+(def dl-tool (-> Leg Str)
+  (lam (l) (case l ((leg n p) (case p ((prov lang tc au ep) tc))))))
+(def dl-name (-> Leg Str)
+  (lam (l) (case l ((leg n p) n))))
+
+; the refusal REASON, readable without letting a converged/diverged verdict
+; masquerade as one: the non-bad-quorum arms answer with strings no
+; `ddc-bad-quorum` ever carries.
+(def dl-why (-> DdcR Str)
+  (lam (r)
+    (case r
+      ((ddc-converged bs) "!converged")
+      ((ddc-diverged a b) "!diverged")
+      ((ddc-bad-quorum w) w))))
+
+(def dl-pair (-> Leg Leg (List Leg))
+  (lam (a b) (cons a (cons b (the (List Leg) nil)))))
+
+(def dl-a Bytes (str->bytes "ELF-artifact-bytes"))
+(def dl-b Bytes (str->bytes "ELF-artifact-bytez"))
+
+(def dl-run2 (-> Leg Bytes Leg Bytes DdcR)
+  (lam (l1 b1 l2 b2)
+    (ddc-compare (cons (leg-out l1 b1) (cons (leg-out l2 b2)
+                  (the (List LegOut) nil))))))
+
+; three legs is the shape a driver holding leg 0 + both C compilers actually
+; passes, and the shape in which the double-count would happen.
+(def dl-run3 (-> Leg Bytes Leg Bytes Leg Bytes DdcR)
+  (lam (l1 b1 l2 b2 l3 b3)
+    (ddc-compare (cons (leg-out l1 b1) (cons (leg-out l2 b2)
+                  (cons (leg-out l3 b3) (the (List LegOut) nil)))))))
+
+; the two single-axis overlaps — the G5 mutant, as values
+(def dl-shares-toolchain Leg (leg "forged" (prov "c" "chirality-native" "shred" 2026)))
+(def dl-shares-language  Leg (leg "forged" (prov "chirality" "gcc-12" "shred" 2026)))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (dl-first-bad
+      (cons ; 1  the leg is named, and its provenance is the declared one
+        (str-eq (dl-name ddc-legc) "c-external")
+      (cons ; 2..3  the two CHECKED axes — the swap point for CompCert is (3)
+        (str-eq (dl-lang ddc-legc) "c")
+      (cons
+        (str-eq (dl-tool ddc-legc) "gcc-12")
+      (cons ; 4  G5 proper: leg 0 and leg c are pairwise disjoint
+        (leg2-disjoint? ddc-leg0 ddc-legc)
+      (cons ; 5..6  and a leg overlapping on EITHER axis alone is refused
+        (not (leg2-disjoint? ddc-leg0 dl-shares-toolchain))
+      (cons
+        (not (leg2-disjoint? ddc-leg0 dl-shares-language))
+      (cons ; 7  the quorum as a list, which is what a driver actually holds
+        (prov-disjoint? (dl-pair ddc-leg0 ddc-legc))
+      (cons ; 8  all three legs are mutually disjoint (pre-S12 state)
+        (prov-disjoint? (cons ddc-leg1 (dl-pair ddc-leg0 ddc-legc)))
+      (cons ; 9  ⚑ THE ORDERING, as an observable: leg 0 alone is NOT a quorum
+        (=i (dl-verdict (ddc-compare (cons (leg-out ddc-leg0 dl-a)
+                                      (the (List LegOut) nil)))) 2)
+      (cons ; 10  and with leg c beside it, the same bytes CONVERGE
+        (=i (dl-verdict (dl-run2 ddc-leg0 dl-a ddc-legc dl-a)) 0)
+      (cons ; 11..12  disagreement is named, not merely counted
+        (=i (dl-verdict (dl-run2 ddc-leg0 dl-a ddc-legc dl-b)) 1)
+      (cons
+        (str-eq (dl-diverged-names (dl-run2 ddc-leg0 dl-a ddc-legc dl-b))
+                "self-hosted|c-external")
+      (cons ; 13  bytes=? is the compare, so equal-content/distinct Bytes agree
+        (=i (dl-verdict (dl-run2 ddc-leg0 (str->bytes "abc")
+                                 ddc-legc (str->bytes "abc"))) 0)
+      (cons ; 14..16  the SECOND C leg, named and on both checked axes
+        (str-eq (dl-name ddc-legcc) "c-compcert")
+      (cons
+        (str-eq (dl-lang ddc-legcc) "c")
+      (cons
+        (str-eq (dl-tool ddc-legcc) "compcert-3.17")
+      (cons ; 17  it is disjoint from leg 0, so it can carry the quorum alone
+        (leg2-disjoint? ddc-leg0 ddc-legcc)
+      (cons ; 18  ⚑ THE ONE THAT MATTERS: the two C legs are NOT disjoint from
+            ;     each other. They differ on toolchain and share "c", and
+            ;     leg2-disjoint? needs BOTH — a shared language is a common mode
+            ;     no amount of compiler diversity removes. Building under gcc
+            ;     and under ccomp buys more evidence about ONE leg.
+        (not (leg2-disjoint? ddc-legc ddc-legcc))
+      (cons ; 19  leg 0 + exactly one of them IS a quorum, either way round
+        (prov-disjoint? (dl-pair ddc-leg0 ddc-legcc))
+      (cons ; 20  ⚑ and a three-leg list carrying BOTH is refused as a list,
+            ;     not merely pairwise — this is the shape a driver actually
+            ;     holds, and the shape in which the double-count would happen.
+        (not (prov-disjoint? (cons ddc-leg0 (dl-pair ddc-legc ddc-legcc))))
+      (cons ; 21  ⚑ AND THE SAME PAIR, GIVEN IDENTICAL BYTES, IS REFUSED. This
+            ;     case asserted `0` until 2026-08-25, because ddc-compare folded
+            ;     bytes and never consulted provenance -- the seam was called a
+            ;     separate obligation the driver owed, which made the gate pin
+            ;     the defect. Two builds of the one C leg agreeing is exactly
+            ;     the common mode DDC refuses, so the core owes the check, and
+            ;     agreement can no longer be banked as a quorum.
+        (=i (dl-verdict (dl-run2 ddc-legc dl-a ddc-legcc dl-a)) 2)
+      (cons ; 22  the Python leg is disjoint from it too (pre-S12 state holds
+            ;     with EITHER C leg substituted in, not just the gcc one)
+        (prov-disjoint? (cons ddc-leg1 (dl-pair ddc-leg0 ddc-legcc)))
+      (cons ; 23  and divergence names THIS leg, not the other C one
+        (str-eq (dl-diverged-names (dl-run2 ddc-leg0 dl-a ddc-legcc dl-b))
+                "self-hosted|c-compcert")
+      (cons ; 24  the refusal in 21 is NAMED, not merely tagged -- a bare `2`
+            ;     could not tell a non-independent quorum from a short one.
+        (str-eq (dl-why (dl-run2 ddc-legc dl-a ddc-legcc dl-a))
+                "provenance not pairwise disjoint")
+      (cons ; 25..26  the degenerate case the verdict exists for: ONE leg listed
+            ;         twice. Its bytes agree by construction -- it is a compiler
+            ;         agreeing with itself -- and that must never read as a
+            ;         quorum, whatever the bytes say.
+        (=i (dl-verdict (dl-run2 ddc-leg0 dl-a ddc-leg0 dl-a)) 2)
+      (cons
+        (str-eq (dl-why (dl-run2 ddc-leg0 dl-a ddc-leg0 dl-a))
+                "provenance not pairwise disjoint")
+      (cons ; 27..28  the <2-legs reasons survive as their OWN reasons. Case 9
+            ;         pins the tag; these pin that a caller can still act on the
+            ;         difference (collect more legs vs. collect DIFFERENT ones).
+        (str-eq (dl-why (ddc-compare (cons (leg-out ddc-leg0 dl-a)
+                                      (the (List LegOut) nil))))
+                "one leg is not a quorum")
+      (cons
+        (str-eq (dl-why (ddc-compare (the (List LegOut) nil))) "no legs")
+      (cons ; 29  ⚑ THE HEADLINE: leg 0 + BOTH C legs, all three emitting the
+            ;     same bytes, is not a three-leg quorum. It is three entries
+            ;     carrying two opinions, and before the gate landed it came back
+            ;     `ddc-converged` -- a trusting-trust pass reported off two
+            ;     agreeing C builds.
+        (=i (dl-verdict (dl-run3 ddc-leg0 dl-a ddc-legc dl-a ddc-legcc dl-a)) 2)
+      (cons ; 30  and it is refused for the disjointness reason, not for arity
+        (str-eq (dl-why (dl-run3 ddc-leg0 dl-a ddc-legc dl-a ddc-legcc dl-a))
+                "provenance not pairwise disjoint")
+      (cons ; 31  ⚑ IT DOES NOT OVER-REFUSE: leg 0 + EXACTLY ONE C leg on equal
+            ;     bytes still converges. Case 10 says it for gcc; this says it
+            ;     for CompCert, so the quorum that survives S12 is checked on
+            ;     whichever C leg is kept.
+        (=i (dl-verdict (dl-run2 ddc-leg0 dl-a ddc-legcc dl-a)) 0)
+      (cons ; 32  ⚑ THE ORDERING: the gate fires BEFORE the fold. These two legs
+            ;     are not disjoint AND their bytes differ; the verdict is
+            ;     bad-quorum (2), never diverged (1). A non-independent quorum
+            ;     has no business reporting WHICH of its two opinions won.
+        (=i (dl-verdict (dl-run2 ddc-legc dl-a ddc-legcc dl-b)) 2)
+      (cons ; 33  and a genuinely disjoint THREE-leg list still converges, so 29
+            ;     refuses for non-independence and not merely for being long.
+        (=i (dl-verdict (dl-run3 ddc-leg0 dl-a ddc-leg1 dl-a ddc-legc dl-a)) 0)
+      (cons ; 34  the two refusal reasons are distinct STRINGS, not two spellings
+            ;     of one -- the property cases 24/27 rely on, asserted directly.
+        (not (str-eq (dl-why (dl-run2 ddc-leg0 dl-a ddc-leg0 dl-a))
+                     (dl-why (ddc-compare (cons (leg-out ddc-leg0 dl-a)
+                                           (the (List LegOut) nil))))))
+      (cons ; 35..36  ⚑ THE GATE ANSWERS TO BOTH AXES, i.e. it is wired to THE
+            ;         rule and not to a weaker lookalike. Cases 5–6 already say
+            ;         `leg2-disjoint?` refuses each single-axis overlap, but that
+            ;         is only about the routine; these say ddc-compare itself
+            ;         refuses them, on bytes that AGREE. A compare path gated on
+            ;         language alone converges on 35, one gated on toolchain
+            ;         alone converges on 36, and both are laundering: one owner
+            ;         per rule, or the quorum means whatever the second copy says.
+        (=i (dl-verdict (dl-run2 ddc-leg0 dl-a dl-shares-toolchain dl-a)) 2)
+      (cons
+        (=i (dl-verdict (dl-run2 ddc-leg0 dl-a dl-shares-language dl-a)) 2)
+        (the (List Bool) nil)))))))))))))))))))))))))))))))))))))
+      1)))

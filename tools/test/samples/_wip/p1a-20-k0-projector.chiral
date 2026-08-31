@@ -1,0 +1,8 @@
+; V20: CONTROL -- projector global with k=0 NAMED globals (no capture anywhere).
+; Isolates whether "body is not a lambda chain" is about the projector itself.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare add1 (-> I64 I64)) (def add1 (lam (x) (+ x 1)))
+(declare voc-draw (-> Voc (-> I64 I64))) (def voc-draw (lam (v) (case v ((voc d n) d))))
+(declare va Voc) (def va (voc add1 1))
+(declare compile-main (-> Unit I64)) (def compile-main (lam (u) (- ((voc-draw va) 10) 11)))

@@ -1,0 +1,6 @@
+; FLAG 1 falsifier -- does E7 strict positivity see through a PARAMETERLESS hop?
+(import "prelude/prelude")
+(data Prov () (prov (f (-> Buf I64))))   ; Buf to the LEFT of an arrow, one hop away
+(data Buf  () (buf (q Prov) (n I64)))    ; the hop: a parameterless t-tcon
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) 0))

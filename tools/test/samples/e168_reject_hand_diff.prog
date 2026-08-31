@@ -1,0 +1,32 @@
+; E168 Phase 12, G9(ii) -- MUST NOT COMPILE. THE SWAP IN THE OTHER DIRECTION.
+;
+; A hand-written `Expect` dropped into the `diffs` slot claims a provenance it
+; does not have: `diffs` means "minted by a differential", and `gate-verdict`
+; reads that claim to decide whether the rank floor applies at all. Before
+; 2026-08-25 this compiled. It happened to fail CLOSED -- `best-rank` of an
+; empty `checks` list is 5, so the floor fired and the gate scored inadequate --
+; which is luck, not design: the same forgery beside any rank-3 check would have
+; cleared the floor on an anchor that was never independent of anything.
+;
+; Both directions are refused by the same type now. G9(i) is the direction that
+; failed OPEN; this is the one that failed closed for the wrong reason.
+;
+; The compiling twin is e168_rank_floor.chiral, whose `fixed-check` and
+; `meaning-check` are hand-written and stay in `checks`, where a hand-written
+; expectation belongs.
+;
+; want: exit 1, `load: type mismatch`
+
+(import "evidence/test-floor")
+
+(def killed MutRun (mu-killed "a mutant that ran and died" (ob-exit 42) (ob-exit 41)))
+
+(def hand Expect
+  (ex (obk-given "written by hand, not minted by a differential")
+      (ob-exit 41)
+      (pv-meaning "the source returns 41, so the process exits 41")))
+
+(def forged Gate
+  (gate "markers agree" (the (List Expect) nil) (cons hand nil) killed))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

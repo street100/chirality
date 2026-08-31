@@ -1,0 +1,2 @@
+(def at (-> (refine I64 (>= 0) (< 64)) I64) (lam (i) i))
+(def ok I64 (at 10))

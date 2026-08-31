@@ -1,0 +1,21 @@
+; V36: THE D-U7 (b) ACCEPTANCE SHAPE -- two DIFFERENT document payload types,
+; each with its own constructor, packed into ONE homogeneous list of Buf
+; (the type variable erased by capture), iterated by a single loop.
+(import "prelude/prelude")
+(data Buf () (bufv (b-name (-> Unit Str)) (b-len (-> Unit I64))))
+
+; lane 1: a Str-backed document
+(declare mk-text (-> Str Buf))
+(def mk-text (lam (s) (bufv (the (-> Unit Str) (lam (u) "text"))
+                            (the (-> Unit I64) (lam (u) (str-len s))))))
+; lane 2: an I64-backed document -- a DIFFERENT payload type, same vocabulary
+(declare mk-count (-> I64 Buf))
+(def mk-count (lam (n) (bufv (the (-> Unit Str) (lam (u) "count"))
+                             (the (-> Unit I64) (lam (u) (* n 10))))))
+
+(declare buf-len (-> Buf I64)) (def buf-len (lam (v) (case v ((bufv nm ln) (ln unit)))))
+(declare sum-lens (-> (List Buf) I64))
+(def sum-lens (lam (bs) (case bs (nil 0) ((cons b r) (+ (buf-len b) (sum-lens r))))))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u)
+  (- (sum-lens (cons (mk-text "hello") (cons (mk-count 3) (cons (mk-text "abc") nil)))) 38)))

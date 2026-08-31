@@ -1,0 +1,36 @@
+; e106_sockvec_accept.chiral — E106 conformance: THE ACCEPT (checker leg).
+;
+; Holds ≥2 move-only `Sock` caps in a `SockVec`, exercises `sv-count` (the
+; discard-free `length`) and `sv-detach-at` (the swap-remove analog), then
+; drains every remaining cap exactly once. It PASSES the linear checker — the
+; `1`-fielded container threads move-only, no cap is dropped or duplicated.
+; (Linear values are threaded through `case`/application, never `let`-bound —
+; a `let` binder is unrestricted quantity, so a linear value there is rejected.)
+;
+; It does NOT run natively: draining consumes each cap via `sock-close`, which
+; is a `porttype` close absent from the lowering table (`crossing-wraps.chiral`),
+; so B1 accepts it at the type level but emits no native entry
+; (`no emitted label for entry compile-main`). That is decision 2 / the E107
+; follow-on, NOT E106. The exactly-once guarantee is proved HERE, at the checker.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "capability/lincoll")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (sock-connect "a")
+      ((conn-err e) 1)
+      ((conn-r s0)
+        (case (sock-connect "b")
+          ((conn-err e) (case (sock-close s0) (unit 2)))  ; s0 still live: close it
+          ((conn-r s1)
+            ; hold two caps [s1, s0]; count without discarding (threads the vec
+            ; back), then detach the head, close it, and drain the rest — each
+            ; cap consumed exactly once.
+            (case (sv-count (sv-push s1 (sv-push s0 sv-nil)))
+              ((count-r cnt v2)
+                (case (sv-detach-at v2 0)
+                  ((det-none v3)   (case (sv-drain v3) (unit cnt)))
+                  ((det-r s rest)
+                    (case (sock-close s)
+                      (unit (case (sv-drain rest) (unit cnt))))))))))))))

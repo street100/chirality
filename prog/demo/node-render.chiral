@@ -1,0 +1,89 @@
+; The renderer node: holds the compositor port and the pool, knows nothing
+; about niri or behavior. Moods arrive over the port to the sensor node as
+; mood-name lines; this node just draws them. The other half of the two-node
+; tomodachi.
+
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/wire")
+(import "demo/mood")
+(import "demo/sprites")
+(import "demo/wl-client")
+
+(def rdie (=> (1 wl Sock) (1 peer Sock) (1 pl (Pool 16384)) Str I64 Unit)
+  (lam (wl peer pl msg code)
+    (do (trace msg)
+        (sock-close wl) (sock-close peer) (pool-close 16384 pl)
+        (exit Unit code))))
+
+; each complete peer line is a mood name; redraw on change
+(data RLR () (rlr (1 wl Sock) (1 pl (Pool 16384)) (pbuf Str) (mood Mood)))
+
+(def on-peer-lines (=> (1 wl Sock) (1 pl (Pool 16384)) Str Mood RLR)
+  (lam (wl pl buf m)
+    (case (line1 buf)
+      ((lsplit ml rest)
+        (case ml
+          (none (the RLR (rlr wl pl rest m)))
+          ((some line)
+            (let (m2 (mood-parse line))
+              (case (mood-eq m2 m)
+                (true (on-peer-lines wl pl rest m2))
+                (false
+                  (case (draw-commit wl pl m2)
+                    ((wpr wl2 pl2) (on-peer-lines wl2 pl2 rest m2))))))))))))
+
+(data RSt () (rst (1 wl Sock) (1 peer Sock) (1 pl (Pool 16384))
+                  (wbuf Bytes) (pbuf Str) (mood Mood)))
+
+(def rloop (=> (1 s RSt) Unit)
+  (lam (s0)
+    (case s0
+      ((rst wl peer pl wbuf pbuf m)
+        (case (poll2 wl peer -1)
+          ((poll2-r idx wl2 peer2)
+            (case (=i idx 0)
+              (true  ; wayland readable
+                (case (sock-recv wl2 4096)
+                  ((recv-closed wl3)
+                    (rdie wl3 peer2 pl "render: wayland closed" 1))
+                  ((recv-err em)
+                    (do (trace (str-cat "render: wayland recv failed: " em))
+                        (sock-close peer2) (pool-close 16384 pl)
+                        (exit Unit 1)))
+                  ((recv-r chunk wl3)
+                    (case (on-wl-msgs wl3 pl (bcat wbuf chunk) m)
+                      ((wpb wl4 pl2 wbuf2)
+                        (rloop (the RSt (rst wl4 peer2 pl2 wbuf2 pbuf m))))))))
+              (false ; peer readable
+                (case (sock-recv peer2 4096)
+                  ((recv-closed peer3)
+                    (rdie wl2 peer3 pl "render: sensor node departed" 0))
+                  ((recv-err em)
+                    (do (trace (str-cat "render: peer recv failed: " em))
+                        (sock-close wl2) (pool-close 16384 pl)
+                        (exit Unit 1)))
+                  ((recv-r chunk peer3)
+                    (case (on-peer-lines wl2 pl (str-cat pbuf (bytes->str chunk)) m)
+                      ((rlr wl3 pl2 pbuf2 m2)
+                        (rloop (the RSt (rst wl3 peer3 pl2 wbuf pbuf2 m2)))))))))))))))
+
+; the staged entry: a spawned renderer receives its one port from the parent
+(def node-main (=> (1 peer Sock) Unit)
+  (lam (peer)
+    (case (wl-init m-idle)
+      ((wl-up wl pl buf)
+        (rloop (the RSt (rst wl peer pl buf "" m-idle)))))))
+
+; standalone entry: fetch the port by connecting to a sensor's door instead
+(def main (=> Unit Unit)
+  (lam (u)
+    (let (1 e0 (env-open unit))
+      (case (env-view e0 "MET_NODE_SOCKET")
+        ((env-none e1)
+          (do (env-close e1) (halt Unit "render: MET_NODE_SOCKET not set")))
+        ((env-r sp e1)
+          (do (env-close e1)
+              (case (sock-connect sp)
+                ((conn-err em) (halt Unit (str-cat "render: connect failed: " em)))
+                ((conn-r peer) (node-main peer)))))))))

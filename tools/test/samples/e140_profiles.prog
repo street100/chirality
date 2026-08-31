@@ -1,0 +1,89 @@
+; e140_profiles.chiral — E140 INTEGRATION: the real doc-refine payload flows
+; through the whole pure core (E136 match + E134 gate + E135 bind) over the E140
+; typed values (the four Config profiles + the doc-refine Pipeline + Expert pool).
+;
+;   assert A — match-pipeline a doc-refine-ish request over [doc-refine-pipeline]
+;              => match-found "doc-refine"  (WHEN keyword-overlap routing).
+;   assert B — run-gate (pipeline-gate doc-refine-pipeline) over a doc with a
+;              ```code``` block + a "foo/bar/baz" path + a "spec" extra-input
+;              => gate-fired, ids ⊇ {claim-vs-source, anchor-sharpen,
+;              coverage-vs-spec}  (has-code-or-paths + has-spec fire; no example
+;              word, no sibling key, so those two rules stay silent — SPARSE).
+;   assert C — turn those fired ids -> slots (expert-by-id over expert-pool +
+;              expert-slot-of), dedup, then:
+;                bind-config smoke-local-config <slots> => bind-ok, every model
+;                  "qwen2.5:0.5b" (the resident proof profile);
+;                bind-config cheap-local-config <slots> => bind-ok, reasoner's
+;                  binding model "qwen3:8b" (the SWAPPABLE backend — same fired
+;                  slot set, different mix).
+; Exit-code test (no print -> no linkage): exits 0 iff A ∧ B ∧ C hold, else 1.
+
+(import "prelude/prelude")
+(import "prelude/list")
+(import "manas/profile/profiles")   ; smoke-local-config, cheap-local-config
+(import "manas/profile/doc-refine")  ; doc-refine-pipeline, expert-pool, expert-by-id, expert-slot-of, pipeline-gate
+(import "manas/core/gate")          ; run-gate, dedup-str
+(import "manas/core/bind")          ; bind-config
+(import "manas/core/match")         ; match-pipeline, pipeline-id
+
+; id membership in a (List Str)
+(def has-id (-> Str (List Str) Bool)
+  (lam (x xs)
+    (case xs
+      (nil false)
+      ((cons h t) (cond ((str-eq h x) true) (else (has-id x t)))))))
+
+; the model a binding resolves; the model bound to a slot (or "" if absent)
+(def binding-model (-> Binding Str)
+  (lam (b) (case b ((binding s m n) m))))
+(def model-for (-> (List Binding) Str Str)
+  (lam (binds slot)
+    (case (find Binding (lam (b) (case b ((binding s m n) (str-eq s slot)))) binds)
+      (none "")
+      ((some b) (binding-model b)))))
+
+; fired expert ids -> the deduped SLOT list (what E138 does): look up each id in
+; the pool, take its slot, drop unknowns, dedup (dedup-str from E134's gate).
+(def slots-of-ids (-> (List Str) (List Str))
+  (lam (ids)
+    (dedup-str
+      (foldl Str (List Str)
+        (lam (acc id)
+          (case (expert-by-id id expert-pool)
+            ((some e) (append Str acc (cons (expert-slot-of e) nil)))
+            (none acc)))
+        nil ids))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((req  "a doc checked against reality sharpened with examples")
+          (doc  "intro ```lang\ncode\n``` and see foo/bar/baz for the module details")
+          (extra (cons (pair "spec" "the-spec-body") nil)))
+      (let ((pass-a
+              (case (match-pipeline req (cons doc-refine-pipeline nil))
+                ((match-found p w)        (str-eq (pipeline-id p) "doc-refine"))
+                ((match-none listing)     false)
+                ((match-tied ids listing) false))))
+        (case (run-gate (pipeline-gate doc-refine-pipeline) doc extra)
+          ((gate-no-match r) 1)
+          ((gate-fired ids reason)
+            (let ((pass-b
+                    (and (has-id "claim-vs-source" ids)
+                    (and (has-id "anchor-sharpen" ids)
+                         (has-id "coverage-vs-spec" ids))))
+                  (slots (slots-of-ids ids)))
+              (let ((pass-c-smoke
+                      (case (bind-config smoke-local-config slots)
+                        ((bind-miss ms cid) false)
+                        ((bind-ok bs)
+                          (and (str-eq (model-for bs "cheap-verifier") "qwen2.5:0.5b")
+                               (str-eq (model-for bs "reasoner") "qwen2.5:0.5b")))))
+                    (pass-c-cheap
+                      (case (bind-config cheap-local-config slots)
+                        ((bind-miss ms cid) false)
+                        ((bind-ok bs)
+                          (and (str-eq (model-for bs "reasoner") "qwen3:8b")
+                               (str-eq (model-for bs "cheap-verifier") "qwen2.5:0.5b"))))))
+                (case (and pass-a (and pass-b (and pass-c-smoke pass-c-cheap)))
+                  (true 0)
+                  (false 1))))))))))

@@ -1,0 +1,39 @@
+; e124_adopt_roundtrip.chiral — E124+E107 conformance: the native cap LIFECYCLE.
+;
+; Proves the full below-the-type-layer cap round-trip on a real fd:
+;   carrier (E123: Fd -> nt-i64)  +  acquire (open-rw : Bytes -> raw I64)
+;   +  adopt (E124: adopt-fd : I64 -> Fd, identity/nb-id)  +  release
+;   (E107: fd-close -> nb-sys-close). All four compose to a native exit 42.
+;
+; DISCRIMINATING:
+;   - OLD B1 (pre-E124): `adopt-fd` has no prim2lib row -> erase-prim falls
+;     through -> `prim not in native subset: adopt-fd` (compile exit 1). (And
+;     pre-E107, `fd-close` has no crossing row either.)
+;   - NEW B1: adopt-fd -> nb-id (identity word) and fd-close -> nb-sys-close ->
+;     the ELF runs -> exit 42.
+;
+; Locally declared (like e123) so the adopt+close pair is the ONLY thing under
+; test; the crossing/prim tables route by NAME, so these exercise the same
+; committed lowerings the ports.chiral externs get.
+(import "prelude/prelude")
+
+(porttype Fd)                          ; opaque linear atom -> t-primty "Fd"
+
+(extern open-rw  (=> Bytes I64))       ; "open-rw" -> nb-sys-open-rw : path -> raw fd
+(extern adopt-fd (=> I64 Fd))          ; E124: raw fd -> linear Fd cap (nb-id, no-op); E159: a linear result must be minted by a crossing
+(extern fd-close (=> (1 f Fd) Unit))   ; E107: consume the Fd cap -> close(fd)
+
+; NUL-terminated /dev/null path (same construction as e123 / the E106 control).
+(def devnull Bytes (bcat (str->bytes "/dev/null") (bslice (pack-u32 0) 0 1)))
+
+; consume the adopted linear Fd cap exactly once via fd-close, yield 42.
+(def use-cap (=> (1 f Fd) I64)
+  (lam (f)
+    (case (fd-close f)
+      (unit 42))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (raw (open-rw devnull))        ; raw : I64   (acquire)
+      (let ((1 fd (adopt-fd raw)))      ; fd  : Fd, q1 (adopt — this element)
+        (use-cap fd)))))                ; release (E107) — consumes fd once

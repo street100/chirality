@@ -1,0 +1,25 @@
+; A chirality-verify profile: the sub-category where every morphism is total
+; (open-edge 9, docs/totality.md). The (total) clause makes the profile demand
+; that every def in the composite is proven total -- structural recursion,
+; coverage, and strict positivity all discharged. `chirality verify` reports it.
+;
+;   python3 -m chirality verify demo/verify-total.chiral
+;
+; Every def below is total: `sum-to` recurses structurally on the list it folds,
+; `main` is non-recursive. A guarded counting loop would prove too (measure-based
+; termination); an UNGUARDED one -- (def spin (-> I64 I64) (lam (i) (spin (+ i 1))))
+; -- does not, and adding it turns verify INVALID.
+
+(import "ports/ports")
+
+(def sum-to (-> (List I64) I64)
+  (lam (xs)
+    (case xs
+      (nil 0)
+      ((cons h t) (+ h (sum-to t))))))
+
+(def main (=> Unit Unit) (lam (u) u))
+
+(target totalizer (require main (=> Unit Unit)))
+
+(profile p (ports halt) (target totalizer) (total))

@@ -1,0 +1,23 @@
+; E170 lane E -- MUST NOT COMPILE. Sock: the cap is lost.
+;
+; The wrong implementation: a `sock-send` stand-in that decides not to send and
+; reports the error, WITHOUT discharging the socket. Every name is real, the
+; result is a genuine inhabitant of `SendR` built from the declared constructor
+; at the declared arity, and the function has the crossing's own type. In a
+; language with ambient close-on-GC this is ordinary code; here it leaks a live
+; descriptor and the port type says so.
+;
+; ⚑ WHY THE WRONGNESS IS SEMANTIC AND NOT STRUCTURAL. The twin `pe-send-abort`
+; in e170_port_twin.chiral returns the SAME `(send-err "not sent")` from the same
+; declared type and compiles -- because it closes the socket first. The
+; difference between the two is one `case` on `sock-close`: what the
+; implementation DOES with the capability, not how it is spelled.
+;
+; want: exit 1, `load: linear binder usage mismatch`
+
+(import "ports/sock")
+
+(def pe-send-abort (=> (1 s Sock) Bytes SendR)
+  (lam (s bs) (send-err "not sent")))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

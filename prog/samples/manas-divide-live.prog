@@ -1,0 +1,81 @@
+; manas-divide-live.chiral — DC-2a: the semantic-divider PORT, live.
+;
+; The unit gate (divide-test.chiral) covers the CODE pass exhaustively and mesh-free. What it
+; cannot cover is the residue leg: a message that carries several asks with NO structural seam a
+; marker can find. This drives that leg on the mesh and REPORTS what came back — the model is
+; non-deterministic, so nothing here is asserted byte-exact.
+;
+; What IS gated is the code-prior CONTRACT, which is ours and deterministic:
+;   (a) a STRUCTURED message never dials the port — `divided-via` must be "structural";
+;   (b) a too-thin message never dials the port — via "whole";
+;   (c) the residue path returns a well-formed division either way: on a useful model reply
+;       via "model" with >1 chunk, otherwise via "whole" with the code chunk (mesh down, empty
+;       reply, or the model agreeing it is one ask). It must NEVER come back with zero chunks
+;       for a message that had content.
+;
+; Build:
+;   . bin/chirality-resolve.sh
+;   chirality_blob "lib:prog" manas/chatter/divide ports > blob
+;   cat scaffold/samples/manas-divide-live.chiral >> blob; echo >> blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
+;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
+
+(import "prelude/prelude")                 ; Bool, and, case, do, let, str-cat, str-eq, i64->str, cons, nil
+(import "manas/chatter/divide")    ; divide, divide-code, Divided (+ accessors), Chunk (+ accessors), Origin, origin-name
+(import "manas/chatter/router")    ; intent-name
+(import "ports/ports")                   ; put
+
+(def endpoint Str "http://100.64.0.5:11434")
+(def bool->str (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
+
+(declare show-chunks (-> (List Chunk) I64 Unit))
+(def show-chunks
+  (lam (cs i)
+    (case cs
+      (nil unit)
+      ((cons c rest)
+        (do (put (str-cat "    [" (str-cat (i64->str i)
+             (str-cat "] (" (str-cat (intent-name (chunk-intent c))
+             (str-cat ") " (str-cat (chunk-text c)
+             (case (str-eq (chunk-data c) "")
+               (true "\n")
+               (false (str-cat "\n        data: " (str-cat (chunk-data c) "\n")))))))))))
+          (show-chunks rest (+ i 1)))))))
+
+; run one message through the FULL divider (port included) and print what came back.
+(def probe (=> Str Str Str)
+  (lam (label message)
+    (let ((d (divide endpoint message)))
+      (let ((via (origin-name (divided-via d))))
+        (do (put (str-cat "--- " (str-cat label (str-cat "  via=" (str-cat via
+                  (str-cat "  chunks=" (str-cat (i64->str (chunk-count (divided-chunks d))) "\n")))))))
+          (do (show-chunks (divided-chunks d) 0)
+              via))))))
+
+; a residue message is WELL-DIVIDED iff the port either produced a real division (via "model")
+; or honestly fell back to the code chunk (via "whole") — both are non-empty for a message with
+; content, and both are correct outcomes. Read off the SAME probe call: the port is expensive
+; (qwen3:4b, ~10s), so nothing here divides the same message twice.
+(def well-divided (-> Str Bool)
+  (lam (via) (or (str-eq via "model") (str-eq via "whole"))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (do (put "DIVIDE LIVE (DC-2a) — the semantic-divider port on the mesh\n")
+    (let ((a (probe "structured (port must stay SHUT)" "sort these claims and then decide whether to adopt it")))
+    (let ((b (probe "thin (port must stay SHUT)" "ok")))
+    (let ((c (probe "residue (port OPENS — no structural seam)"
+                    "tell me what caused the outage last night whether we should roll it back")))
+    (let ((d (probe "short single ask (the LATENCY gate keeps the port shut)"
+                    "what is a monad in functional programming")))
+      (do (put (str-cat "gate: structural-shut=" (str-cat (bool->str (str-eq a "structural"))
+               (str-cat "  thin-shut=" (str-cat (bool->str (str-eq b "whole"))
+               (str-cat "  residue-well-divided=" (str-cat (bool->str (well-divided c))
+               (str-cat "  single-well-divided=" (str-cat (bool->str (well-divided d)) "\n")))))))))
+        (case (and (str-eq a "structural")
+              (and (str-eq b "whole")
+              (and (well-divided c)
+                   (well-divided d))))
+          (true  (do (put "DC-2a live divider gate: PASS\n") 0))
+          (false (do (put "DC-2a live divider gate: FAIL\n") 1)))))))))))

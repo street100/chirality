@@ -1,0 +1,28 @@
+; Headless behavior harness: the same behavior pack, a different runtime.
+; Drives on-event from a comma-separated MET_EVENTS list and prints the mood
+; transitions. No compositor, no niri, no pool: its profile freezes the port
+; set to print and the env cap trio, and the checker plus verify hold it there.
+
+(import "prelude/prelude")
+(import "ports/ports")
+(import "demo/mood")
+(import "demo/behavior")
+
+(def drive (=> Mood Str Unit)
+  (lam (m evs)
+    (case (str-eq evs "")
+      (true (print (str-cat "final: " (mood-name m))))
+      (false
+        (let ((i (str-find evs ","))
+              (ev (case (=i i -1) (true evs) (false (str-sub evs 0 i))))
+              (rest (case (=i i -1) (true "") (false (str-sub evs (+ i 1) (str-len evs)))))
+              (m2 (on-event ev m)))
+          (do (print (str-cat ev (str-cat " -> " (mood-name m2))))
+              (drive m2 rest)))))))
+
+(def main (=> Unit Unit)
+  (lam (u)
+    (let (1 e0 (env-open unit))
+      (case (env-view e0 "MET_EVENTS")
+        ((env-none e1) (do (env-close e1) (drive boot-mood "")))
+        ((env-r evs e1) (do (env-close e1) (drive boot-mood evs)))))))

@@ -37,12 +37,12 @@
 (data Sample () (sample (path Str) (want I64)))
 
 (def manifest (List Sample)
-  (cons (sample "prog/samples/exit42.prog" 42)
-  (cons (sample "prog/samples/exit7.prog" 7)
-  (cons (sample "prog/samples/multi-def.prog" 42)
-  (cons (sample "prog/samples/boxed-a.prog" 42)
-  (cons (sample "prog/samples/boxed-b.prog" 2)
-  (cons (sample "prog/samples/enum-tag.prog" 5)
+  (cons (sample "prog/samples/exit42.chiral" 42)
+  (cons (sample "prog/samples/exit7.chiral" 7)
+  (cons (sample "prog/samples/multi-def.chiral" 42)
+  (cons (sample "prog/samples/boxed-a.chiral" 42)
+  (cons (sample "prog/samples/boxed-b.chiral" 2)
+  (cons (sample "prog/samples/enum-tag.chiral" 5)
     nil)))))))
 
 ; rank 3 -- `pv-meaning`, per SPEC decision 3: the want is written down from what
@@ -69,7 +69,7 @@
 (def mutant-src Str "(def main (-> I64 I64) (lam (n) 41))")
 
 (def adequacy-mutant Mutant
-  (mutant "prog/samples/exit42.prog returns 41 instead of 42" (str->bytes mutant-src)))
+  (mutant "prog/samples/exit42.chiral returns 41 instead of 42" (str->bytes mutant-src)))
 
 (def sample-suite (-> MutRun Suite)
   (lam (adequacy)
@@ -109,7 +109,7 @@
 
 (def mk-suites (=> (1 bld Builder) SuitesR)
   (lam (bld)
-    (case (mut-run bld "prog/samples/exit42.prog" adequacy-mutant)
+    (case (mut-run bld "prog/samples/exit42.chiral" adequacy-mutant)
       ((mu-unbuilt why bld2) (suites-noadeq (mut-fail-show why) bld2))
       ((mu-ok run bld2)      (suites-ok (cons (sample-suite run) nil) bld2)))))
 

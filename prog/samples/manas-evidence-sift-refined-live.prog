@@ -1,0 +1,152 @@
+; manas-evidence-sift-refined-live -- the REFINEMENT PASS proof.
+;
+; The original evidence-sift classified each item with a MODEL verdict; on a 0.5b that
+; symbol-manipulation coin-flips (measured 1/5). The refined flow (evidence-sift-refined.chiral)
+; splits that leaf into EXTRACT (model, text-understanding) + DECIDE (flow-pure, code). Two proofs:
+;
+;   OFFLINE (mesh-free, DETERMINISTIC) -- the code decider run-pure on the four item sentences:
+;     1 benchmark/table/measured -> evidence ; 2 "probably inspired" -> speculation ;
+;     3 CVE/changelog/release    -> evidence ; 4 "likely prefer"     -> speculation.
+;     4/4 correct, every run, no model. PLUS flow-ty derives (arrow ty-doc ty-verdict) and the
+;     SG1 codec round-trips the flow-pure step (json->flow (flow->json f) = some, re-encode equal).
+;
+;   LIVE (mesh 0.5b) -- run the refined fractal; the flow-pure verdicts (raws with eid "flow-pure")
+;     are the CODE decisions, and manifest-all-green? holds (the model only extracts). Prints each
+;     code verdict so you can see the per-item classification is now correct, not a coin-flip.
+;
+; Exit 0 iff OFFLINE (4 asserts + flow-ty + codec) AND LIVE (green) both pass.
+;
+; Build (closure = evidence-sift-refined + flow-persist + json + skill + ports; append sys leaves):
+;   . bin/chirality-resolve.sh
+;   chirality_blob "lib:prog" manas/profile/evidence-sift-refined manas/core/flow-persist json manas/core/skill ports > blob
+;   cat scaffold/samples/manas-evidence-sift-refined-live.chiral >> blob; echo >> blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
+(import "prelude/prelude")
+(import "manas/backend")                    ; backend-open / backend-close
+(import "manas/core/flow")            ; run-flow-stop, run-pure, PureFn (pf-has-any), flow-ty, manifest-all-green?, str-has, RunR
+(import "manas/core/types")           ; StopPolicy (stop-single), RawCall (raw-call), RunManifest
+(import "manas/core/flow-persist")    ; flow->json, json->flow
+(import "protocol/json")                       ; json-show
+(import "manas/core/skill")           ; (Skill surface, kept in closure parity with the other live samples)
+(import "manas/profile/evidence-sift"); evidence-sift-config
+(import "manas/profile/evidence-sift-refined"); evidence-sift-refined-flow, evidence-sift-refined-pool, citation-markers
+(import "ports/ports")                      ; put
+
+; ---------------------------------------------------------- the four item sentences (for the offline decider test)
+(def item1 Str "The 2019 benchmark logged a 37 percent throughput gain (table 4, measured).")
+(def item2 Str "The library was probably inspired by an older Erlang design.")
+(def item3 Str "CVE-2021-1234 was patched in release 2.3.0, per the published changelog.")
+(def item4 Str "Users likely prefer the new API because it feels cleaner.")
+
+(def the-text Str
+  "Prior cheap-pass flags to sort:\n1. The 2019 benchmark logged a 37 percent throughput gain (table 4, measured).\n2. The library was probably inspired by an older Erlang design.\n3. CVE-2021-1234 was patched in release 2.3.0, per the published changelog.\n4. Users likely prefer the new API because it feels cleaner.\n")
+(def the-extra (List (Pair Str Str))
+  (cons (pair "reference_level" "an item is evidence only if the text cites a source, a measurement, or a record")
+        nil))
+
+(def bool->str (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
+
+; the code decider under test
+(def decider PureFn (pf-has-any citation-markers "evidence" "speculation"))
+
+; ---------------------------------------------------------- OFFLINE proof (deterministic, no mesh)
+; each item's run-pure verdict must contain the expected kind.
+(def decide-is (-> Str Str Bool) (lam (item kind) (str-has (run-pure decider item) kind)))
+
+(def offline-decider-ok (=> Unit Bool)
+  (lam (_)
+    (do (put (str-cat "OFFLINE item1 -> " (str-cat (run-pure decider item1) "\n")))
+    (do (put (str-cat "OFFLINE item2 -> " (str-cat (run-pure decider item2) "\n")))
+    (do (put (str-cat "OFFLINE item3 -> " (str-cat (run-pure decider item3) "\n")))
+    (do (put (str-cat "OFFLINE item4 -> " (str-cat (run-pure decider item4) "\n")))
+        (and (decide-is item1 "evidence")
+        (and (decide-is item2 "speculation")
+        (and (decide-is item3 "evidence")
+             (decide-is item4 "speculation"))))))))))
+
+(def flow-ty-ok (=> Unit Bool)
+  (lam (_)
+    (case (flow-ty evidence-sift-refined-flow)
+      (none (do (put "flow-ty refined: none (ILL-TYPED)\n") false))
+      ((some ar) (do (put "flow-ty evidence-sift-refined-flow: ty-doc -> ty-verdict (derived)\n") true)))))
+
+; codec round-trip: encode -> decode -> re-encode; the two JSON strings must be identical
+; (a string-level fixpoint), and decode must not be none. Proves flow-pure round-trips (SG1 total).
+(def codec-ok (=> Unit Bool)
+  (lam (_)
+    (let ((j1 (json-show (flow->json evidence-sift-refined-flow))))
+      (case (json->flow (flow->json evidence-sift-refined-flow))
+        (none (do (put "codec: json->flow = none (FLOW-PURE DID NOT ROUND-TRIP)\n") false))
+        ((some f2)
+          (let ((j2 (json-show (flow->json f2))))
+            (do (put (str-cat "codec round-trip fixpoint: " (str-cat (bool->str (str-eq j1 j2)) "\n")))
+                (str-eq j1 j2))))))))
+
+; ---------------------------------------------------------- LIVE proof (0.5b)
+(def raw-eid  (-> RawCall Str) (lam (r) (case r ((raw-call e s m p rp) e))))
+(def raw-resp (-> RawCall Str) (lam (r) (case r ((raw-call e s m p rp) rp))))
+
+; dump only the flow-pure (code-decided) verdicts.
+(declare dump-pure (-> (List RawCall) I64))
+(def dump-pure
+  (lam (rs)
+    (case rs
+      (nil 0)
+      ((cons r rest)
+        (case (str-eq (raw-eid r) "flow-pure")
+          (true  (do (put (str-cat "LIVE code-verdict: " (str-cat (raw-resp r) "\n"))) (dump-pure rest)))
+          (false (dump-pure rest)))))))
+
+; any raw response contains `sub`?
+(declare raw-has-str (-> (List RawCall) Str Bool))
+(def raw-has-str
+  (lam (rs sub)
+    (case rs
+      (nil false)
+      ((cons r rest) (case (str-has (raw-resp r) sub) (true true) (false (raw-has-str rest sub)))))))
+
+; the fractal is now MODEL-FREE (flow-branch-pure splits the numbered list, extract+decide+tally+
+; audit are all code), so this is a DETERMINISTIC end-to-end assertion: exactly the correct
+; two-track partition (evidence-track count=2, speculation-track count=2) AND all-green.
+(def run-live (=> I64 Bool)
+  (lam (_)
+    (case (run-flow-stop (backend-open "http://100.64.0.5:11434")
+             evidence-sift-refined-flow (stop-single)
+             "evidence-sift refined: pure split -> extract -> decide -> tally -> audit (all code)"
+             nil evidence-sift-refined-pool evidence-sift-config the-text the-extra)
+      ((run-r y m raws b2)
+        (do (backend-close b2)
+        (let ((green (manifest-all-green? m)))
+          (let ((_d (dump-pure raws)))
+            (let ((ev2 (raw-has-str raws "\"evidence-track\",\"target\":\"consolidated\",\"body\":\"count=2\"")))
+              (let ((sp2 (raw-has-str raws "\"speculation-track\",\"target\":\"consolidated\",\"body\":\"count=2\"")))
+                (do (put (str-cat "END-TO-END all-green: " (str-cat (bool->str green) "\n")))
+                (do (put (str-cat "END-TO-END tally correct (evidence=2, speculation=2): " (str-cat (bool->str (and ev2 sp2)) "\n")))
+                    (and green (and ev2 sp2)))))))))))))
+
+; ---------------------------------------------------------- NEGATIVE test (Audit F1/F6)
+; A structural abort must route NON-green — never read green with zero output. Feed the flow a
+; non-numbered document: pf-split-numbered yields "" -> parse-perspectives nil -> flow-branch-pure
+; routes "no-perspectives" with zero calls -> manifest-all-green? MUST be false. (Before the gate
+; fix this read GREEN — the hole this test guards.)
+(def neg-text Str "This is prose with no numbered items whatsoever. Nothing here to sort.\n")
+(def run-negative (=> I64 Bool)
+  (lam (_)
+    (case (run-flow-stop (backend-open "http://100.64.0.5:11434")
+             evidence-sift-refined-flow (stop-single) "negative: non-numbered input"
+             nil evidence-sift-refined-pool evidence-sift-config neg-text nil)
+      ((run-r y m raws b2)
+        (do (backend-close b2)
+        (let ((green (manifest-all-green? m)))
+          (do (put (str-cat "NEGATIVE (non-numbered -> structural abort routes NON-green): " (str-cat (bool->str (not green)) "\n")))
+              (not green))))))))
+
+; ---------------------------------------------------------- entry
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((off (and (offline-decider-ok unit) (and (flow-ty-ok unit) (codec-ok unit)))))
+      (do (put (str-cat "OFFLINE (4 asserts + flow-ty + codec): " (str-cat (bool->str off) "\n")))
+      (let ((live (run-live 0)))
+      (let ((neg (run-negative 0)))
+        (case (and off (and live neg)) (true (do (put "REFINED gate: PASS\n") 0)) (false (do (put "REFINED gate: FAIL\n") 1)))))))))

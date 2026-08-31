@@ -1,0 +1,61 @@
+; e147_nested_ho.chiral — the E147 nested/higher-order defunctionalization gate
+; (runtime, not compile).
+;
+; E147: a captured FUNCTION value applied INSIDE a `$apply` arm body must itself
+; route through `$apply` (a SECOND defunctionalization level). Before the fix,
+; `arm-body` ran the remapped body through `rw` with an EMPTY de-Bruijn context,
+; so a nested application whose head is a captured function (`(eq hk k)` where eq
+; is a captured `str-eqf`; `(f x)` where f is a captured `dbl`) had `ty-of` return
+; none for the capture var → the Var-head app was left bare → lower hit
+; "higher-order application" → the whole family, hence the entry, was pruned to a
+; bare "no emitted label". The fix gives `rw` the arm's capture types (the kept
+; field types, reversed) so the nested app resolves its arrow type and dispatches
+; through the family's `$apply`.
+;
+; The self-host fixpoint CANNOT catch a bug here — the compiler's own sources use
+; no nested-captured-fn defunctionalization, so a miscompile byte-reproduces the
+; compiler cleanly and passes. So this test checks RESULTS at runtime: each case
+; asserts the RIGHT answer. Exit 0 iff ALL correct; else the failing case number.
+;
+;   1. (alist-get Str Str str-eqf) partially applied, then applied  -> lookup hits
+;   2. a MONOMORPHIC captured fn (zero type args) applied in the arm -> f(21)=42
+;   3. a captured fn PLUS a captured value applied in the arm        -> f(base+x)
+;
+; Resolver-compiled (imports resolve to prelude/collections), like the E100 sample.
+(import "prelude/prelude")
+(import "prelude/alist")
+
+; ---- case 1: (alist-get Str Str str-eqf) — captured fn + erased type args ----
+; captures K=Str,V=Str (erased q0 type args) AND eq=str-eqf (a FUNCTION, kept);
+; the remaining (-> (List (Pair Str Str)) Str (Maybe Str)) is then applied. The
+; `(eq hk k)` inside alist-get's body is the nested captured-fn application.
+(def lookup1 (-> I64 Str)
+  (lam (n)
+    (let ((g  (alist-get Str Str str-eqf))
+          (xs (cons (pair "a" "A") (cons (pair "b" "B") (cons (pair "c" "C") nil)))))
+      (case (g xs "b")
+        (none "MISS")
+        ((some v) v)))))
+
+; ---- case 2: monomorphic captured fn, zero type args ------------------------
+; applyer captures a FUNCTION param `f` (a plain (-> I64 I64), no type args at
+; all), then applies it in its body: `(f x)`.
+(def applyer (-> (-> I64 I64) I64 I64) (lam (f x) (f x)))
+(def dbl     (-> I64 I64)             (lam (x) (+ x x)))
+
+; ---- case 3: captured fn PLUS a captured value ------------------------------
+; addbase captures BOTH the function `f` and the value `base`, applying the fn to
+; a value built from the captured value: `(f (+ base x))`.
+(def addbase (-> (-> I64 I64) I64 I64 I64) (lam (f base x) (f (+ base x))))
+(def inc     (-> I64 I64)                  (lam (x) (+ x 1)))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (let ((g2 (applyer dbl))            ; captures dbl
+          (g3 (addbase inc 100)))       ; captures inc + base=100
+      (let ((c1 (str-eq (lookup1 0) "B"))
+            (c2 (=i (g2 21) 42))         ; dbl(21) = 42
+            (c3 (=i (g3 5) 106)))        ; inc(100+5) = 106
+        (case c1 (false 1) (true
+        (case c2 (false 2) (true
+        (case c3 (false 3) (true 0))))))))))

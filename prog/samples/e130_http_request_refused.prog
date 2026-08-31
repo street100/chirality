@@ -1,0 +1,25 @@
+; e130_http_request_refused.chiral — E130 conformance: the connect-ERROR path.
+;
+; http-request "GET" "http://127.0.0.1:1/" runs parse-url (pure) -> sock-connect-in
+; (E129 crossing) against 127.0.0.1:1 — a closed port, so connect() returns
+; -ECONNREFUSED. The conn-err arm maps to (http-r -1 msg-bytes): the frozen
+; shim's transport mapping (impl_ports.py:377), so ok2xx() is false and the
+; failure flows to the circuit breaker exactly like a 5xx.
+; Exit 42 = status -1 reached (adversarial, HERMETIC: no peer, port 1 is closed).
+;   1 = the request returned a non--1 status (wrong arm reached).
+;
+; LINEAR DISCIPLINE: the conn-r SUCCESS arm is compiled but unreached here; it
+; must be present because the linear Sock bound by conn-r is consumed by
+; http-request-on (send->recv->parse->close). A missing arm fails the checker.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/inet")
+(import "protocol/http")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (http-request "GET" "http://127.0.0.1:1/" (str->bytes ""))
+      ((http-r status body)
+        (case (=i status -1)
+          (true 42)
+          (false 1))))))

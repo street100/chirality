@@ -1,0 +1,7 @@
+; V33: p1a-26, projector written directly as a 2-binder def (lam (v y)).
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare add1 (-> I64 I64)) (def add1 (lam (x) (+ x 1)))
+(declare voc-draw (-> Voc (-> I64 I64)))
+(def voc-draw (lam (v y) (case v ((voc d n) (d y)))))
+(declare compile-main (-> Unit I64)) (def compile-main (lam (u) (- ((voc-draw (voc add1 1)) 10) 11)))

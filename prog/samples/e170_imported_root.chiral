@@ -1,0 +1,18 @@
+; E170 W0.2 -- the floor's first observable root WITH AN IMPORT.
+;
+; Every other file in this directory that the test floor observes is import-free,
+; and that was not a style choice: `observe` compiled ONE FILE with no resolution
+; step, so the six import-free samples were the only ones it could reach and they
+; are exactly test-runner.chiral's manifest. 62 of the 68 files here import
+; something, and a chirality-in-chirality test needs `prelude` at minimum, so the floor
+; could not observe a single one of the programs E170 migrates.
+;
+; This root is the positive control for the fix. It USES what it imports --
+; `max`/`min` are prelude defs, not prims -- so it cannot compile from its own
+; bytes alone: hand this file to `compile-all` unresolved and the answer is
+; `load: unknown name max`, i.e. `ob-nobuild`. Observing it as `ob-exit 42` is
+; therefore a claim that resolution actually ran.
+(import "prelude/prelude")
+
+(def main (-> I64 I64)
+  (lam (n) (max 42 (min 7 3))))

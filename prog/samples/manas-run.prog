@@ -1,0 +1,59 @@
+; manas-run.chiral -- Step A: the FIRST live multi-agent orchestration run.
+; MANAS-STATE-VS-GOAL §8.A -- the gate that turns the compile-verified skeleton
+; into a working orchestrator. Drives guarded-run (E138) with the smoke-local
+; profile (E140, every slot on qwen2.5:0.5b) and the doc-refine pipeline/pool
+; against shredtower ollama on the tailnet (100.64.0.5:11434), on a real doc,
+; then prints the RunManifest as JSON (manifest-to-json + json-show, E139/E141).
+;
+; The doc + extra are crafted so all four doc-refine GATE rules fire: the doc
+; cites a path ("/") and a fenced block (```) -> claim-vs-source + anchor-sharpen;
+; it contains "Example" -> example-completeness + example-organization; the extra
+; carries a "spec" key -> coverage-vs-spec and a "sibling_docs" key -> cross-doc-
+; drift. So the full 6-expert fan-out + curate-merge combiner runs (7 be-chat
+; crossings), the whole split-into-individuals loop end-to-end.
+;
+; Build (mirrors bin/scriba's linkage-append, closure ~160KB):
+;   . bin/chirality-resolve.sh
+;   chirality_blob "lib:prog" manas/pipeline/guarded manas/profile/profiles \
+;     manas/profile/doc-refine manas/contract/manifest json > blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
+;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   cat scaffold/samples/manas-run.chiral >> blob; echo >> blob
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > manas-run.elf; chmod +x manas-run.elf
+(import "prelude/prelude")                  ; str-cat, List, Pair, pair, cons, nil
+(import "manas/backend")                  ; backend-open / backend-close (E137 linear porttype)
+(import "manas/pipeline/guarded")   ; guarded-run
+(import "manas/profile/profiles")   ; smoke-local-config
+(import "manas/profile/doc-refine") ; doc-refine-pipeline, expert-pool
+(import "manas/contract/manifest")  ; manifest-to-json
+(import "protocol/json")                     ; json-show
+
+; a small real doc: a path-like "/" token AND a fenced ``` block (fires
+; code/paths) plus the literal "Example" (fires examples). No embedded quote.
+(def the-doc Str
+  "# widget config\n\nThe loader reads `/etc/widget/config.toml` at boot.\n\n```\nwidget --start\n```\n\nExample: `widget --start` brings the service up.\n")
+
+; extra inputs: a "spec" key fires coverage-vs-spec; a "sibling_docs" key fires
+; cross-doc-drift. With the-doc's code/paths + examples, all four gates fire.
+(def the-extra (List (Pair Str Str))
+  (cons (pair "spec" "docs/widget-SPEC.md")
+  (cons (pair "sibling_docs" "docs/widget-overview.md")
+        nil)))
+
+; the entry: build the mesh Backend, fire the pipeline under the breaker (0
+; incoming failures), destructure (Pair I64 (Pair Str RunManifest)), print.
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((1 b (backend-open "http://100.64.0.5:11434"))   ; E159: a linear handle binds at q1
+          (req "refine this doc: check it against reality, sharpen anchors, complete its examples"))
+      (case (guarded-run b 0 req
+              (cons doc-refine-pipeline nil) expert-pool smoke-local-config
+              the-doc the-extra)
+        ((grun-r fails yield m raws b2)
+          (do (backend-close b2)               ; discharge the linear handle
+              (do (put "=== MANAS RUN MANIFEST ===\n")
+                  (put (json-show (manifest-to-json m)))
+                  (put "\n=== FINAL YIELD ===\n")
+                  (put yield)
+                  (put "\n")
+                  0)))))))

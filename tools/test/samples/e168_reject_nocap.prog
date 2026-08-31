@@ -1,0 +1,29 @@
+; E168 Phase 12, G6(i) -- MUST NOT COMPILE.
+;
+; THE ELEMENT'S CENTRAL CLAIM, as a refusal a built checker makes. `ex-check`
+; and `gate-verdict` are `->` defs that hold no `Builder` binder, so a judgment
+; body cannot reach the evidence-producing seam WITH NO CAP IN HAND: the call is
+; `load: type mismatch`, not a convention anyone has to remember.
+;
+; ⚑ Qualified deliberately. This does NOT say a `->` def cannot reach a
+; crossing -- measured, it can: a `->` def that mints its own `(builder …)` and
+; calls `observe` compiles, runs, and performs the crossing. What is pinned here
+; is that reaching it costs a VISIBLE LINE inside the judgment body instead of
+; no line at all. Detection, not prevention; prevention is E171's or E80's.
+;
+; The compiling twin is e168_cap_thread.chiral. A trivial entry is present so the
+; ONLY error is the load error and not "no such def: compile-main".
+;
+; want: exit 1, `load: type mismatch`
+
+(import "evidence/test-floor")
+
+(def judge (-> Str I64)
+  (lam (path)
+    (case (observe path)
+      ((ob-nofile p b)  1)
+      ((ob-nobuild w b) 2)
+      ((ob-nomatch p b) 3)
+      ((ob-ok o b)      0))))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

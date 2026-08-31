@@ -1,0 +1,217 @@
+; E170 Phase 12 -- RE-FOUNDING `conv`'s ETA RULE, which today has no isolated
+; coverage outside the leg E170 deletes.
+;
+; The finding (.planning/RUNG1-CHECKLIST.md:452, measured 2026-08-26 at 3c5d35c):
+; of the checker rules enumerated from `infer`'s arms and the named side-condition
+; procedures, THREE have no isolated coverage -- no test in the tree fails when
+; only that rule is wrong -- and all three are covered solely inside the 335-
+; assertion differential leg. `conv` eta is one: `grep -ln eta scaffold/tests/*.py`
+; finds one checker-side hit, `test_nbe_selfhost.py`, a differential. E170 D1
+; records that the Rocq leg can re-found ZERO of the 335 today, so deleting the
+; corpus removes the only thing that can tell this rule from its absence -- the
+; "gate that cannot fail" class one level up, of which this tree has shipped four
+; and caught them all late.
+;
+; ⚑ WHY THIS IS METAMORPHIC AND NOT AN OUTCOME LOCK. An outcome-locking test
+; ("this term normalizes to that") encodes the intent exactly as faithfully as
+; the oracle did; rewriting it in chirality moves the tautology instead of breaking
+; it. This states a RELATION between two runs of `conv` on terms built from the
+; same head -- `conv` must identify a neutral with its eta-expansion -- which
+; survives a reimplementation of NbE and can be checked without knowing any
+; normal form in advance. It is quantified over a FAMILY of five heads (two
+; globals, a prim, and two neutrals that differ only in their spine), not over
+; one term a fixture happened to name.
+;
+; ⚑ THE NEGATIVE HALF IS WHAT GIVES IT ISOLATION. `conv` returning `true`
+; unconditionally satisfies every positive eta law there is, so the positive
+; gate alone could not fail for the reason it claims. Check C asserts the
+; refusals: a different head, a spine that differs, a literal where the bound
+; variable must be, and the bare identity lambda -- the 20 ordered pairs of
+; DISTINCT heads at two conversions each, plus two non-eta lambdas per head:
+; 50 conversions, every one of which must come back FALSE. (The count REPORTED
+; on a failure is of failing predicates, not of conversions: 25 is the whole
+; family wrong.) Check D is the control that separates "eta is gone" from
+; "conv is broken": literals, universes and Pi types convert exactly as before.
+;
+; ⚑ THE MUTANT RUNS. `mut-run` cannot build it -- that observes the base by PATH
+; and the mutant by SELF-CONTAINED TEXT (test-floor.chiral:611-627), and a mutant
+; of a checker rule is neither -- so the falsifier is harness-run and its label
+; is the `MutRun` below, which test-e168-floor.sh greps this file for so the
+; written claim and the mutation it names cannot drift apart. Two mutants, both
+; measured 2026-08-26 against a scratch copy of scaffold/lib:
+;   (i)  kernel.chiral conv: (or (is-lam a) (is-lam b)) -> (and (is-lam a) (is-lam b))
+;        -- eta is gone while lam-vs-lam conversion still works. Measured: exit
+;        1, check A "want int 0, got int 5", all five heads.
+;   (ii) kernel.chiral conv-neut: (and (head-eq h h2) (conv-spine lvl sp sp2)) -> true
+;        -- every neutral converts with every other. Measured: exit 1, check C
+;        "want int 0, got int 25". A and B stayed green (the report stops at the
+;        FIRST failure and C is the third check), so the negative half is armed
+;        and is not merely riding on the positive one.
+;
+; ⚑ AND THE MUTANTS ARE ISOLATING, measured 2026-08-26 as a 6x3 matrix over the
+; three fixtures this lane adds: each of the six reddens ITS OWN fixture and
+; leaves the other two green -- a clean diagonal. That is how "isolated" is
+; established here rather than asserted: a check that fails when only this rule
+; is wrong, and that does not fail when a different rule is.
+;
+; The observations are the fixture's OWN evaluations, so the gate is handed them
+; through `suite-main` rather than gathered by `test-main`: an `obk-given` names
+; an observation this floor cannot rebuild by running a root, and pretending
+; otherwise is what the `ObsKey` retype exists to prevent.
+;
+; exit 0 = every check green; 1 = the floor's report on stdout names which.
+
+(import "evidence/test-floor")
+(import "typing/kernel")
+
+; ---- the family: five closed neutral heads ---------------------------------
+; Two globals and a prim are stuck under `eval-term` with no Sig (kernel.chiral's
+; t-global/t-prim arms), so each is a `v-ne` with an empty spine. The last two
+; differ ONLY in their spine argument, which is the sharpest negative available:
+; their eta-expansions are the same shape and must still not be identified.
+(def eta-heads (List Term)
+  (cons (t-global "f")
+  (cons (t-global "g")
+  (cons (t-prim "p")
+  (cons (t-app (t-global "f") (t-lit-i 7))
+  (cons (t-app (t-global "f") (t-lit-i 8)) nil))))))
+
+; the eta-expansions, one and two binders deep. `(t-var 0)` is the binder just
+; introduced; at two levels the head takes `(t-var 1)` then `(t-var 0)`.
+(def eta1 (-> Term Term) (lam (h) (t-lam (t-app h (t-var 0)))))
+(def eta2 (-> Term Term) (lam (h) (t-lam (t-lam (t-app (t-app h (t-var 1)) (t-var 0))))))
+; eta-SHAPED and not an eta-expansion: the head is applied to a literal instead
+; of to the binder.
+(def eta-litarg (-> Term Term) (lam (h) (t-lam (t-app h (t-lit-i 0)))))
+
+(def eta-conv (-> Term Term Bool)
+  (lam (a b) (conv 0 (eval-term nil a) (eval-term nil b))))
+
+; ---- the folds: a failure COUNT, so the observation is one I64 --------------
+(declare eta-count1 (-> (-> Term Bool) (List Term) I64))
+(def eta-count1
+  (lam (p ts)
+    (case ts
+      (nil 0)
+      ((cons t r) (+ (case (p t) (true 0) (false 1)) (eta-count1 p r))))))
+
+; every ORDERED pair, including the diagonal -- the diagonal is where the
+; positive law lives for the cross-family checks and the off-diagonal is where
+; the refusals do, so both folds walk the same 25 pairs.
+(declare eta-count2 (-> (-> Term Term Bool) (List Term) (List Term) I64))
+(declare eta-row2   (-> (-> Term Term Bool) Term (List Term) I64))
+(def eta-row2
+  (lam (p a bs)
+    (case bs
+      (nil 0)
+      ((cons b r) (+ (case (p a b) (true 0) (false 1)) (eta-row2 p a r))))))
+(def eta-count2
+  (lam (p as bs)
+    (case as
+      (nil 0)
+      ((cons a r) (+ (eta-row2 p a bs) (eta-count2 p r bs))))))
+
+; a syntactic identity on the family, so "same head" is decided WITHOUT calling
+; the rule under test. Terms are compared by their rendered position in the
+; family list instead: the index is the identity.
+(declare eta-same?  (-> Term Term Bool))
+(declare eta-index (-> Term (List Term) I64 I64))
+(def eta-index
+  (lam (t ts i)
+    (case ts
+      (nil (- 0 1))
+      ((cons h r) (case (eta-same? t h) (true i) (false (eta-index t r (+ i 1))))))))
+
+; structural equality on exactly the five shapes the family uses. Deliberately
+; NOT `conv`: a family whose membership were decided by the rule under test
+; would make the negative half circular.
+(def eta-same?
+  (lam (a b)
+    (case a
+      ((t-global x) (case b ((t-global y) (str-eq x y)) (_ false)))
+      ((t-prim x)   (case b ((t-prim y) (str-eq x y)) (_ false)))
+      ((t-app f x)  (case b
+                      ((t-app g y)
+                        (and (eta-same? f g)
+                          (case x ((t-lit-i i) (case y ((t-lit-i j) (=i i j)) (_ false))) (_ false))))
+                      (_ false)))
+      (_ false))))
+
+; ---- A: the positive law, one binder, in BOTH argument orders --------------
+(def eta-pos1? (-> Term Bool)
+  (lam (h) (and (eta-conv h (eta1 h)) (eta-conv (eta1 h) h))))
+
+; ---- B: the positive law, two binders -------------------------------------
+(def eta-pos2? (-> Term Bool)
+  (lam (h) (and (eta-conv h (eta2 h)) (eta-conv (eta2 h) h))))
+
+; ---- C: the refusals -------------------------------------------------------
+; For every ordered pair of DISTINCT heads, the eta-expansion of one must not be
+; identified with the other; and for every head, neither the literal-argument
+; lambda nor the bare identity may be.
+(def eta-neg? (-> Term Term Bool)
+  (lam (a b)
+    (case (=i (eta-index a eta-heads 0) (eta-index b eta-heads 0))
+      (true true)                                   ; same head: A and B judge it
+      (false (and (not (eta-conv a (eta1 b))) (not (eta-conv (eta1 a) b)))))))
+
+(def eta-noneta? (-> Term Bool)
+  (lam (h)
+    (and (not (eta-conv h (eta-litarg h)))
+         (not (eta-conv h (t-lam (t-var 0)))))))
+
+; ---- D: the control -- conversion OUTSIDE eta is untouched -----------------
+; If A or B goes red while this is green, eta is what broke. If this goes red
+; too, `conv` is broken as a whole and the report says so on its own line.
+(def eta-pi (-> Qty Term)
+  (lam (q) (t-pi q (s-pure) (t-primty "I64") (t-primty "I64"))))
+
+(def eta-control-fails (-> I64 I64)
+  (lam (n)
+    (+ (case (eta-conv (t-lit-i 1) (t-lit-i 1))     (true 0) (false 1))
+    (+ (case (eta-conv (t-lit-i 1) (t-lit-i 2))     (true 1) (false 0))
+    (+ (case (eta-conv (t-type 0) (t-type 0))       (true 0) (false 1))
+    (+ (case (eta-conv (t-type 0) (t-type 1))       (true 1) (false 0))
+    (+ (case (eta-conv (eta-pi (q1)) (eta-pi (q1))) (true 0) (false 1))
+       (case (eta-conv (eta-pi (q1)) (eta-pi (qw))) (true 1) (false 0)))))))))
+
+; ===========================================================================
+; the gate. Every expectation is rank 3 -- `pv-meaning`, a law written down
+; before it was run -- and the gate carries no differential, so no rank floor
+; applies and none is claimed.
+; ===========================================================================
+(def eta-checks (List Expect)
+  (cons (ex (obk-given "conv identifies every neutral in the family with its one-level eta-expansion, in both argument orders")
+            (ob-int 0) (pv-meaning "eta: f = (lam (x) (f x)) for a neutral f -- the defining law of eta-conversion"))
+  (cons (ex (obk-given "conv identifies every neutral with its two-level eta-expansion")
+            (ob-int 0) (pv-meaning "eta is closed under nesting: f = (lam (x) (lam (y) ((f x) y)))"))
+  (cons (ex (obk-given "conv REFUSES every lambda that is not its partner's eta-expansion: a different head, a spine that differs, a literal in the binder's place, the bare identity")
+            (ob-int 0) (pv-meaning "eta identifies f with (lam (x) (f x)) and with NOTHING else -- a conv that says true everywhere satisfies the positive law and this one is what it fails"))
+  (cons (ex (obk-given "conversion outside eta is untouched: equal literals and universes convert, distinct ones do not, and a Pi converts only at the same quantity")
+            (ob-int 0) (pv-meaning "the eta arm is one case of conv; the structural cases are decided by conv-struct and are not eta's to change"))
+    nil)))))
+
+; ⚑ THE WRITTEN CLAIM, and test-e168-floor.sh greps this file for this exact
+; label before running the mutation it names. A hand-written MutRun is a claim,
+; not evidence (test-floor.chiral:517-520); the harness is what makes it evidence.
+(def eta-adequacy MutRun
+  (mu-killed "lib/typing/kernel.chiral conv: (or (is-lam a) (is-lam b)) -> (and (is-lam a) (is-lam b))"
+             (ob-int 0) (ob-int 1)))
+
+(def eta-suite (List Suite)
+  (cons (suite "conv eta"
+          (cons (gate "conv eta -- the rule, its refusals, and the control"
+                  eta-checks (the (List DiffExpect) nil) eta-adequacy)
+            nil))
+    nil))
+
+(def eta-obs (List (List Obs))
+  (cons (cons (ob-int (eta-count1 eta-pos1? eta-heads))
+        (cons (ob-int (eta-count1 eta-pos2? eta-heads))
+        (cons (ob-int (+ (eta-count2 eta-neg? eta-heads eta-heads)
+                         (eta-count1 eta-noneta? eta-heads)))
+        (cons (ob-int (eta-control-fails 0)) nil))))
+    nil))
+
+(def compile-main (=> I64 I64)
+  (lam (n) (suite-main eta-suite eta-obs)))

@@ -1,0 +1,22 @@
+; V24: the actual D-U7 (b) shape -- "buffer as object": a record of THREE closures
+; that all captured the same typed document value, built by a named constructor,
+; extracted and applied across a function boundary.
+(import "prelude/prelude")
+(data Doc () (doc (len I64) (base I64)))
+(data Buf ()
+  (buf (b-len  (-> Unit I64))
+       (b-nth  (-> I64 I64))
+       (b-with (-> I64 I64))))
+(declare mk-buf (-> Doc Buf))
+(def mk-buf (lam (d)
+  (case d ((doc n b)
+    (buf (the (-> Unit I64) (lam (u) n))
+         (the (-> I64 I64)  (lam (i) (+ b i)))
+         (the (-> I64 I64)  (lam (k) (+ (* n 100) k))))))))
+(declare b-len-of  (-> Buf I64)) (def b-len-of  (lam (v) (case v ((buf l g w) (l unit)))))
+(declare b-nth-of  (-> Buf I64 I64)) (def b-nth-of  (lam (v i) (case v ((buf l g w) (g i)))))
+(declare b-with-of (-> Buf I64 I64)) (def b-with-of (lam (v k) (case v ((buf l g w) (w k)))))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u)
+  (let ((v (mk-buf (doc 7 1000))))
+    (- (+ (b-len-of v) (+ (b-nth-of v 5) (b-with-of v 3))) 1715))))

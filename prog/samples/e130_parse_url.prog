@@ -1,0 +1,46 @@
+; e130_parse_url.chiral — E130 conformance: parse-url (pure URL boundary).
+;
+; parse-url strips "http://", splits host:port, and splits the path on the
+; first '/', defaulting to "/". Dotted-quad host only (validated via inet's
+; parse-quad), port parsed as decimal in 1..65535. Malformed -> (url-err msg).
+; PURE and HERMETIC: no socket, no network, no peer.
+;
+; Exit 42 = every case matched its expectation:
+;   good url -> url-ok("127.0.0.1", 11434, "/v1/models")
+;   no-path  -> url-ok("127.0.0.1", 80, "/")
+;   bad scheme / missing port / non-numeric port / bad quad -> url-err
+;   1 = good-parse wrong   2 = default-path wrong   3 = bad scheme not rejected
+;   4 = missing port not rejected   5 = non-numeric port not rejected
+;   6 = bad quad not rejected
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/inet")
+(import "protocol/http")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (parse-url "http://127.0.0.1:11434/v1/models")
+      ((url-ok host port path)
+        (case (and (str-eq host "127.0.0.1")
+                   (and (=i port 11434) (str-eq path "/v1/models")))
+          (true
+            (case (parse-url "http://127.0.0.1:80")
+              ((url-ok h p pt)
+                (case (and (=i p 80) (str-eq pt "/"))
+                  (true
+                    (case (parse-url "ftp://127.0.0.1:80/")
+                      ((url-err m)
+                        (case (parse-url "http://127.0.0.1/")
+                          ((url-err m2)
+                            (case (parse-url "http://127.0.0.1:abc/")
+                              ((url-err m3)
+                                (case (parse-url "http://999.0.0.1:80/")
+                                  ((url-err m4) 42)
+                                  ((url-ok hh pp ptp) 6)))
+                              ((url-ok hh pp ptp) 5)))
+                          ((url-ok hh pp ptp) 4)))
+                      ((url-ok hh pp ptp) 3)))
+                  (false 2)))
+              ((url-err m) 2)))
+          (false 1)))
+      ((url-err m) 1))))

@@ -1,0 +1,53 @@
+; t1_child_wiring.chiral — the T1 (child-wiring crossings) behavioral test.
+; Needs a devpts mount (/dev/ptmx). Reads the child ELF (t1_child_ctty compiled
+; separately to /tmp/t1_child.elf), then open-pty + spawn-in-pty it in one shot
+; via spawn-pty-child (term.chiral). The fat TAL driver nb-spawn-in-pty-t forks;
+; the child runs the login_tty dance (setsid -> TIOCSCTTY -> dup2 0/1/2) at the
+; tal floor and execs the child ELF, which writes 'Z' (0x5A) to /dev/tty. The
+; parent reads that marker back on the MASTER end.
+;
+; A recovered 'Z' proves, end to end: fork worked; setsid + TIOCSCTTY + dup2 all
+; succeeded (a failure would have exit_group'd the child in the driver BEFORE the
+; exec, so the child ELF would never run and no byte would appear); the pts is
+; the child's controlling terminal (the child reached it through /dev/tty); and
+; the master<->slave pair is connected.
+;
+; Exit 42 = success · 11 = child ELF unreadable · 12 = spawn-in-pty failed
+;      · 21 = wrong marker byte · 22 = no marker (child never adopted the tty).
+(import "prelude/prelude")
+(import "ports/ports")
+(import "lowering/tal/bytes")
+(import "protocol/term")
+
+(def child-path Bytes (bcat (str->bytes "/tmp/t1_child.elf") nul-byte))
+
+; read a whole fd in 64 KiB chunks (the blob's read-fd-go idiom) — a single
+; multi-MB read would overrun the arena (nb-arena-commit code 2 = exit 2).
+(def read-all-go (=> I64 Bytes Bytes)
+  (lam (fd acc)
+    (let (chunk (read fd 65536))
+      (case (=i (blen chunk) 0)
+        (true acc)
+        (false (read-all-go fd (bcat acc chunk)))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (cfd (open-rw child-path))
+      (case (<i cfd 0)
+        (true 11)
+        (false
+          (let (elf (read-all-go cfd (str->bytes "")))
+            (let (_ (close cfd))
+              (case (spawn-pty-child elf)
+                ((spawn-err e) 12)
+                ((spawn-r master slave pid)
+                  (let (got (read master 1))
+                    (let (_ (close slave))
+                    (let (_ (close master))
+                      (case (=i (blen got) 1)
+                        (true  (case (=i (bget got 0) 90)     ; 'Z' = ctty acquired
+                                 (true 42)
+                                 (false (case (=i (bget got 0) 88)  ; 'X' = ran, no ctty
+                                          (true 23)
+                                          (false 21)))))
+                        (false 22))))))))))))))

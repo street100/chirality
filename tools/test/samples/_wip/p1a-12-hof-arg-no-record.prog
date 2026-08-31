@@ -1,0 +1,6 @@
+; V12: an anonymous lam passed as an ARGUMENT (no record) -- the classic HOF.
+(import "prelude/prelude")
+(declare twice (-> (-> I64 I64) I64 I64))
+(def twice (lam (f x) (f (f x))))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (- (twice (lam (x) (+ x 1)) 10) 12)))

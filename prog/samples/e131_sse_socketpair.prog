@@ -1,0 +1,54 @@
+; e131_sse_socketpair.chiral -- E131 conformance gate: spine integration.
+; Hermetic socketpair-fed chat-read loop, no network. Writes a canned SSE stream
+; into one end of a socketpair, closes it, wraps the other end as a live
+; ChatStream, and loops chat-read collecting deltas. Asserts chunk "hello" ->
+; chunk "world" -> chunk-done, then closes the done handle and a dead handle.
+; Exit 0 iff the sequence holds, 2 on any mismatch.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/http")
+
+(def canned-stream Bytes
+  (str->bytes "data: {\"choices\":[{\"delta\":{\"content\":\"hello\"}}]}\n\ndata: {\"choices\":[{\"delta\":{\"content\":\"world\"}}]}\n\ndata: [DONE]\n\n"))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (socketpair unit)
+      ((sp-err m) 2)
+      ((sp-ok a b)
+        (case (sock-send a canned-stream)
+          ((send-err m)
+            (case (sock-close b) (unit 2)))
+          ((send-r a2)
+            (case (sock-close a2)
+              (unit
+                (case (chat-read (cs (so-live b) (str->bytes "") (m-body)))
+                  ((chunk d s2)
+                    (case (str-eq d "hello")
+                      (false
+                        (case (chat-close s2) (unit 2)))
+                      (true
+                        (case (chat-read s2)
+                          ((chunk d2 s3)
+                            (case (str-eq d2 "world")
+                              (false
+                                (case (chat-close s3) (unit 2)))
+                              (true
+                                (case (chat-read s3)
+                                  ((chunk-done s4)
+                                    (case (chat-close s4)
+                                      (unit
+                                        (case (chat-close (cs so-dead (str->bytes "") (m-body)))
+                                          (unit 0)))))
+                                  ((chunk d3 s4)
+                                    (case (chat-close s4) (unit 2)))
+                                  ((chunk-err st s4)
+                                    (case (chat-close s4) (unit 2)))))))
+                          ((chunk-done s3)
+                            (case (chat-close s3) (unit 2)))
+                          ((chunk-err st s3)
+                            (case (chat-close s3) (unit 2)))))))
+                  ((chunk-done s2)
+                    (case (chat-close s2) (unit 2)))
+                  ((chunk-err st s2)
+                    (case (chat-close s2) (unit 2))))))))))))

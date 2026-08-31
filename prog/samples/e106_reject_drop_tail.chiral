@@ -1,0 +1,20 @@
+; e106_reject_drop_tail.chiral — E106 conformance: REJECTION 3 of 4.
+;
+; Dropping the TAIL of a linear container in a `case` arm is rejected: the `tl`
+; binder of a `1`-fielded cons is itself linear (it holds the remaining caps), so
+; ignoring it leaks every cap it transitively holds. Even "return just the head"
+; is illegal — the tail must be consumed. This is the guarantee that makes
+; `sv-drain` the ONLY way to end a `SockVec`. Expected B1 verdict:
+; `load: field binder usage mismatch`.
+(import "prelude/prelude")
+(import "ports/ports")
+
+(data LEnvVec ()
+  (lv-nil)
+  (lv-cons (1 hd Env) (1 tl LEnvVec)))
+
+(def bad-head (=> (1 v LEnvVec) Unit)
+  (lam (v)
+    (case v
+      (lv-nil unit)
+      ((lv-cons h t) (env-close h)))))   ; t (the linear tail) dropped: leaked caps

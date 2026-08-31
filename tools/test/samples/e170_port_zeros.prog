@@ -1,0 +1,122 @@
+; E170 lane E -- THE ZEROS. Seven semantically WRONG implementations that the
+; port types ACCEPT, and this file compiling is the measurement.
+;
+; ⚑ THIS FIXTURE IS NOT A CONTROL AND NOT A DEMO. Lane E's operational test --
+; a port type carries meaning iff there exists a wrong implementation satisfying
+; its shape that the type rejects -- has a negative answer for facets of every
+; port here, and a lane that reported only its refusals would be reporting half
+; a measurement. So each zero is committed as a definition that TYPECHECKS, and
+; Phase 12 asserts that it does. The row is not decoration: the day one of these
+; is refused -- E171 lands, a carrier registry closes the forgery, a profile
+; hands out the caps -- this fixture goes RED and the per-port map in
+; .planning/RUNG1-CHECKLIST.md has to be re-measured instead of quietly rotting.
+; That is the whole reason a zero is written as an assertion rather than a note.
+;
+; The seven, and what each one measures:
+;
+;   Z1 pe-send-noop   THE PAYLOAD IS UNPINNED, and it is the widest zero in the
+;                     lane. A `sock-send` stand-in that reports success and
+;                     sends nothing has the crossing's exact type, conserves the
+;                     capability, and is accepted. No port type in the tree says
+;                     anything about what a crossing DOES -- only about who may
+;                     hold the authority to do it and how the handle moves.
+;   Z2 pe-forge-fd    NON-FORGEABILITY IS ZERO for Fd. `adopt-fd : (=> I64 Fd)`
+;                     (ports/fd.chiral:32) mints the capability from an arbitrary
+;                     integer, so holding an `Fd` is evidence of nothing. The
+;                     same shape mints every other cap in the tree:
+;                     `adopt-pty : (=> I64 Pty)`, `env-open : (=> Unit Env)`,
+;                     `secret-seal`, `backend-open`, `pool-create`,
+;                     `sock-connect`, `sock-listen`, `socketpair`.
+;   Z3 pe-ambient-w   HOLDING THE CAP IS NOT REQUIRED to do the thing the cap
+;                     names. `write-fd : (=> I64 Bytes I64)` performs the real
+;                     write(2) on a bare integer, beside `fd-close`, which takes
+;                     `(1 f Fd)`. So the Fd cap governs DISPOSAL and not USE, and
+;                     42 of the 62 crossings in scaffold/lib take no capability
+;                     parameter at all. This is the no-ambient-authority gap the
+;                     port bank names (docs/banks/port.md, shard 3), as a
+;                     program.
+;   Z4 pe-pure-write  THE `->`/`=>` MEMBRANE REFUSES NOTHING AT THE CALL. A PURE
+;                     arrow performs a crossing. ⚑ This is a SHARPER measurement
+;                     than the one E171 was minted on: that one had a `->` def
+;                     calling a `=>` DEF (docs/banks/port.md shard 3, third leg,
+;                     2026-08-25); this one calls the `=>` EXTERN directly, so
+;                     not even the declared crossing itself is confined to an
+;                     effectful context. Enforcement is E171, unbuilt.
+;   Z5 pe-pool-oob    THE VALUE INDEX PINS SIZE IDENTITY, NOT OFFSET VALIDITY.
+;                     `(Pool 4096)` is a different type from `(Pool 16384)` --
+;                     e170_reject_pool_size.chiral proves the type refuses the
+;                     confusion -- but a write at offset 999999 into a 4096-byte
+;                     pool compiles. The refinement machinery that WOULD decide
+;                     it exists (`mem-put-checked`); `pool-write`'s own type does
+;                     not use it.
+;   Z6 pe-reap-dup    THE OMEGA GUARD IS PORTTYPE-ONLY, so a cap-shaped `data`
+;                     can be DUPLICATED. `(w s Sock)` is refused outright
+;                     ("function parameter of a linear type at quantity omega");
+;                     `(w r Reap)` is accepted, and one `Reap` becomes two. Reap
+;                     is a live obligation -- proc.chiral:25, "dropping it is a
+;                     type error" -- and duplicating it means two waits on one
+;                     child. Named in test-e168-floor.sh's G8 comment as a
+;                     measured gap decision 10 takes on purpose; this is the
+;                     exploit, committed.
+;
+;   Z7 pe-send-after   PROTOCOL STATE IS NOT IN THE TYPE, beyond the Sock/LSock
+;                     split. `recv-closed (1 sock Sock)` (ports/sock.chiral:24)
+;                     hands back a PLAIN `Sock`, so sending on a socket the peer
+;                     has already closed typechecks. docs/banks/port.md shard 8
+;                     says "do not assert ports are session-typed"; this is that
+;                     sentence as a program, and it is the reason the map's
+;                     `Sock` row does not get a protocol column.
+;
+; ⚑ AN EIGHTH ZERO THAT CANNOT BE WRITTEN AS A DEFINITION, so it is asserted by
+; the enumeration guard in test-e168-floor.sh instead: `Clock` and `Timer` are
+; UNINHABITED. No extern in scaffold/lib returns either one, and a porttype has
+; no constructor, so no term anywhere can produce a `Clock` -- `time-mono` and
+; `sleep-ms` are crossings no program can reach. Their types still refuse a
+; dropped or duplicated cap (the generated family in Phase 12 covers all ten
+; porttypes, these two included), which is a refusal quantified over an empty
+; set of callers. Recording that as "meaning" without the reachability column
+; would be the lane's own version of a gate that cannot fail.
+;
+; Nothing here crosses at runtime: `compile-main` calls none of them, because
+; the measurement is acceptance at LOAD. exit 0 = all seven typecheck.
+
+(import "ports/sock")
+(import "ports/fd")
+(import "ports/pool")
+(import "runtime/proc")
+
+; ---- Z1: the crossing that does not cross ----------------------------------
+(def pe-send-noop (=> (1 s Sock) Bytes SendR)
+  (lam (s bs) (send-r s)))
+
+; ---- Z2: a capability from an integer --------------------------------------
+(def pe-forge-fd (=> I64 Fd)
+  (lam (i) (adopt-fd i)))
+
+; ---- Z3: the real write, with no capability held ---------------------------
+(def pe-ambient-w (=> Bytes I64)
+  (lam (bs) (write-fd 1 bs)))
+
+; ---- Z4: a PURE arrow performing a crossing --------------------------------
+(def pe-pure-write (-> Bytes I64)
+  (lam (bs) (write-fd 1 bs)))
+
+; ---- Z5: an offset outside the bound the port type carries -----------------
+(def pe-pool-oob (=> (1 p (Pool 4096)) (Pool 4096))
+  (lam (p) (pool-write 4096 p 999999 (str->bytes "x"))))
+
+; ---- Z6: one linear obligation, duplicated ---------------------------------
+(data PeTwoReap () (pe-two-reap (1 a Reap) (1 b Reap)))
+
+(declare pe-reap-dup (=> (w r Reap) PeTwoReap))
+(def pe-reap-dup (lam (r) (pe-two-reap r r)))
+
+; ---- Z7: a send on a socket the peer already closed ------------------------
+(def pe-send-after (=> (1 s Sock) Bytes SendR)
+  (lam (s bs)
+    (case (sock-recv s 1)
+      ((recv-r b s2)    (sock-send s2 bs))
+      ((recv-closed s2) (sock-send s2 bs))
+      ((recv-err m)     (send-err m)))))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

@@ -1,0 +1,16 @@
+; Diagnostic: find B1's native recursion ceiling.
+; A function that recurses N times on a dummy list, then returns the depth.
+; Increment N until B1 produces a runnable ELF that segfaults or B1 itself
+; fails with "(lam (x ...) body)".
+
+(import "prelude/prelude")
+
+(declare recurse-n (-> I64 I64))
+(def recurse-n (-> I64 I64)
+  (lam (n)
+    (case (<i n 1)
+      (true 1)
+      (false (+ 1 (recurse-n (- n 1)))))))
+
+(def compile-main (-> I64)
+  (lam (_) (recurse-n 500)))

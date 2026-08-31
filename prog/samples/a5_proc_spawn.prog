@@ -1,0 +1,21 @@
+; a5_proc_spawn.chiral — A2 conformance: native process spawn + stdout capture.
+; proc-spawn -> raw-proc-spawn -> nb-run-cmd (fork + pipe + dup2 + execve + drain
+; + wait4) with ZERO CPython. Exit 42 = /bin/echo's stdout captured as "hi".
+; Non-hermetic (needs /bin/echo); confirming, not adversarial.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "runtime/proc")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (proc-spawn (cons "/bin/echo" (cons "hi" nil)))
+      ((sp-ok c)
+        (case c
+          ((child r out)
+            (case (wait r)
+              ((exited code)
+                (case (=i code 0)
+                  (true (let (_ (put (bytes->str out))) (let (_ (put "\n")) 42)))
+                  (false 1)))
+              ((signaled sg) 2)))))
+      ((sp-err e) 3))))

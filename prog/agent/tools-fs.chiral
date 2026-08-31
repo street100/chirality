@@ -1,0 +1,96 @@
+; tools-fs.chiral — A1: read/write/edit file tools for the Pi-minimal coding agent.
+;
+; Wraps the ALREADY-NATIVE file crossings — open-rw, open-create, read,
+; write-fd, adopt-fd, fd-close (all in ports.chiral) — plus a pure string splice
+; for the edit tool.
+; Zero new syscalls, zero new crossings. The agent loop (a later stage) drives
+; these three primitives.
+;
+; Discipline: open -> do -> close, with the close threading a linear Fd cap
+; (adopt-fd mints it from the raw fd; fd-close consumes it exactly once — the
+; E124/E107 pattern). fs-read opens with open-rw (O_RDWR|O_NOCTTY, no create);
+; fs-write opens with open-create (O_RDWR|O_CREAT|O_TRUNC|O_NOCTTY|O_CLOEXEC),
+; so the write tool can CREATE a new file (I3 self-extend prerequisite).
+;
+; NOTE (I1): the NUL byte is inlined (no top-level `nul-byte`) and every helper
+; is fs- prefixed, because this module is imported into the scriba blob too.
+; term.chiral defines a top-level `nul-byte`, and scriba's file-io.chiral already
+; defines path-bytes/close-fd/read-all — redefining any of those names would
+; collide at link time when the agent and scriba share a blob.
+
+(import "prelude/prelude")
+(import "ports/ports")
+
+; Str path -> NUL-terminated Bytes. The NUL terminator is inlined as
+; `(bslice (pack-u32 0) 0 1)` (chirality strings have no \0 escape).
+(def fs-path-bytes (-> Str Bytes)
+  (lam (p) (bcat (str->bytes p) (bslice (pack-u32 0) 0 1))))
+
+; close a raw fd: mint a linear Fd cap from it, consume the cap exactly once.
+(def fs-close-fd (=> I64 Unit)
+  (lam (fd)
+    (let ((1 cap (adopt-fd fd)))     ; E159: a linear cap binds at q1
+      (fd-close cap))))
+
+; drain a whole fd in 64 KiB chunks (a single multi-MB read would overrun the
+; arena). An empty chunk is EOF.
+(def fs-read-all (=> I64 Bytes Bytes)
+  (lam (fd acc)
+    (let (chunk (read fd 65536))
+      (case (=i (blen chunk) 0)
+        (true acc)
+        (false (fs-read-all fd (bcat acc chunk)))))))
+
+; The three tools share one result sum: content on success, a reason on failure.
+(data FsR ()
+  (fs-ok  (v Str))
+  (fs-err (msg Str)))
+
+; read: open the path, drain it, close. Returns the file content as a Str.
+(def fs-read (=> Str FsR)
+  (lam (path)
+    (let (fd (open-rw (fs-path-bytes path)))
+      (case (<i fd 0)
+        (true (fs-err "open failed"))
+        (false
+          (let (bs (fs-read-all fd (str->bytes "")))
+            (let (_ (fs-close-fd fd))
+              (fs-ok (bytes->str bs)))))))))
+
+; write: open the path, write the content, close. fs-ok "" on success (a write
+; has no content to return; "" is the success payload).
+(def fs-write (=> Str Str FsR)
+  (lam (path content)
+    (let (fd (open-create (fs-path-bytes path)))
+      (case (<i fd 0)
+        (true (fs-err "open failed"))
+        (false
+          (let (n (write-fd fd (str->bytes content)))
+            (let (_ (fs-close-fd fd))
+              (case (<i n 0)
+                (true (fs-err "write failed"))
+                (false (fs-ok ""))))))))))
+
+; splice: replace the FIRST occurrence of needle in hay with repl (pure).
+; Not-found returns hay unchanged (a no-op splice, not an error).
+(def str-splice (-> Str Str Str Str)
+  (lam (hay needle repl)
+    (let (i (str-find hay needle))
+      (case (<i i 0)
+        (true hay)
+        (false
+          (let (pre (str-sub hay 0 i))
+            (let (post (str-sub hay (+ i (str-len needle)) (str-len hay)))
+              (str-cat pre (str-cat repl post)))))))))
+
+; edit: read the path, splice needle -> repl, write it back. Returns the new
+; content (unchanged when the needle is absent, since str-splice is then a no-op).
+(def fs-edit (=> Str Str Str FsR)
+  (lam (path needle repl)
+    (case (fs-read path)
+      ((fs-err m) (fs-err m))
+      ((fs-ok cur)
+        (let (new (str-splice cur needle repl))
+          (case (fs-write path new)
+            ((fs-err m) (fs-err m))
+            ((fs-ok _) (fs-ok new))))))))

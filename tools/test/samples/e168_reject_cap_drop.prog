@@ -1,0 +1,20 @@
+; E168 Phase 12, G6(ii) -- MUST NOT COMPILE.
+;
+; A cap that an observation merely CONSUMED would serve exactly one observation
+; and a gate needs many, so every arm of `ObsR` hands a fresh one back and every
+; holder must thread it on. This def takes the cap and returns without it. The
+; checker refuses the DROP, which is what makes "the run built exactly these
+; programs" a fact of the type rather than a claim in a comment -- and it does so
+; on the declared binder quantity alone, with no borrowed handle involved.
+;
+; The compiling twin is e168_cap_thread.chiral, which threads its cap to a
+; discharge in every leaf.
+;
+; want: exit 1, `load: linear binder usage mismatch`
+
+(import "evidence/test-floor")
+
+(def observe-leak (=> (1 bld Builder) Str I64)
+  (lam (bld path) 0))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

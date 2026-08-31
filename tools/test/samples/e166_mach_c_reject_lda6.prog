@@ -1,0 +1,22 @@
+; e166_mach_c_reject_lda6.chiral — the NEGATIVE half of the E166 step-2 gate.
+;
+; `halt` ends the process, so a refusal cannot be one more row in
+; e166_mach_c.chiral's Bool list: the first refusal would eat every later case.
+; It gets its own program, in the repo's `_reject_` shape — this one MUST NOT
+; exit 0.
+;
+; What it pins: mach-c reproduces mach-x64.chiral:1663's ">6 args" refusal on
+; `lda`. The two legs must ACCEPT THE SAME LANGUAGE, or a DDC comparison is
+; comparing two different programs. Argument position 5 is the last accepted
+; one (asserted in e166_mach_c.chiral case 7); position 6 must refuse here.
+
+(import "prelude/prelude")
+(import "lowering/mach/asm-reloc")
+(import "lowering/mach/mach")
+(import "lowering/c/mach")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case ((mach-lda mc) 6 0)
+      (nil 0)
+      ((cons a rest) 0))))

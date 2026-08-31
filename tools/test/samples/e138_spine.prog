@@ -1,0 +1,128 @@
+; e138_spine.chiral — E138 conformance: the PURE spine of the multi-agent run loop
+; (plan-run + assemble-manifest), exercised network-free over the REAL E140 payload
+; (doc-refine-pipeline + expert-pool + the Config profiles) with CANNED model
+; outcomes. No backend import -> pure blob, links nothing (the functional-core /
+; imperative-shell split is a MODULE boundary; SPEC decision #1). The effectful
+; run-pipeline is a SEPARATE B1-lowers gate — its live model run is deferred.
+;
+;   assert A (routing) — plan-run a code+spec doc through [doc-refine-pipeline] +
+;     expert-pool + smoke-local-config => plan-ok whose fired ids ⊇ {claim-vs-source,
+;     anchor-sharpen, coverage-vs-spec} (has-code-or-paths + has-spec fire; no
+;     example word / sibling key, so those rules stay SILENT), and whose bindings
+;     put cheap-verifier -> qwen2.5:0.5b.
+;   assert A2 (swap)   — the SAME fired set under cheap-local-config => reasoner ->
+;     qwen3:8b (the swappable-backend property).
+;   assert B (record)  — feed 3 CANNED ExpertOutcomes (one per fired expert) + a
+;     canned CombinerOutcome into assemble-manifest => RunManifest with
+;     fired-expert-ids = the fired set, one ExpertCall per fired expert with the
+;     right expert-id/slot/bound-model, config-id = "smoke-local", final-yield =
+;     the canned yield "YIELD-OK".
+;   negative control    — a gibberish request over [doc-refine-pipeline] must
+;     plan-no-route (NOT plan-ok); a bindingless config must plan-unbound.
+; Exit 0 iff every assertion holds, else 1.
+
+(import "prelude/prelude")
+(import "prelude/list")               ; find, str-eq
+(import "manas/pipeline/plan")       ; plan-run, assemble-manifest, PlanOutcome, ids-of-experts, bnd-model, elem-str (via gate)
+(import "manas/profile/doc-refine")  ; doc-refine-pipeline, expert-pool
+(import "manas/profile/profiles")    ; smoke-local-config, cheap-local-config
+
+; --------------------------------------------------------------- test accessors
+; membership over a (List Str) (elem-str is in gate, imported via plan; alias here
+; under a distinct name to avoid any leaf-blob shadowing question).
+(def t-has (-> Str (List Str) Bool)
+  (lam (x xs)
+    (case xs (nil false)
+      ((cons h t) (cond ((str-eq h x) true) (else (t-has x t)))))))
+
+; RunManifest field accessors (15 golden fields).
+(def mf-fired (-> RunManifest (List Str))
+  (lam (m) (case m ((run-manifest rid rq dp ap pid pc rd fids cid cb ccu ec cp fy ga) fids))))
+(def mf-calls (-> RunManifest (List ExpertCall))
+  (lam (m) (case m ((run-manifest rid rq dp ap pid pc rd fids cid cb ccu ec cp fy ga) ec))))
+(def mf-cfgid (-> RunManifest Str)
+  (lam (m) (case m ((run-manifest rid rq dp ap pid pc rd fids cid cb ccu ec cp fy ga) cid))))
+(def mf-yield (-> RunManifest Str)
+  (lam (m) (case m ((run-manifest rid rq dp ap pid pc rd fids cid cb ccu ec cp fy ga) fy))))
+
+; ExpertCall field accessors.
+(def ec-id    (-> ExpertCall Str) (lam (c) (case c ((expert-call eid sl bm nc ps rs pk am dm) eid))))
+(def ec-slot  (-> ExpertCall Str) (lam (c) (case c ((expert-call eid sl bm nc ps rs pk am dm) sl))))
+(def ec-model (-> ExpertCall Str) (lam (c) (case c ((expert-call eid sl bm nc ps rs pk am dm) bm))))
+
+(def call-by-id (-> Str (List ExpertCall) (Maybe ExpertCall))
+  (lam (id cs) (find ExpertCall (lam (c) (str-eq (ec-id c) id)) cs)))
+
+; a found ExpertCall's slot=want-slot AND bound-model=want-model (else false).
+(def call-is (-> (List ExpertCall) Str Str Str Bool)
+  (lam (cs id want-slot want-model)
+    (case (call-by-id id cs)
+      (none false)
+      ((some c) (and (str-eq (ec-slot c) want-slot) (str-eq (ec-model c) want-model))))))
+
+; --------------------------------------------------------------- fixtures
+; the same doc/req/extra the E140 integration test uses (known to fire exactly
+; {claim-vs-source, anchor-sharpen, coverage-vs-spec}).
+(def req  Str "a doc checked against reality sharpened with examples")
+(def doc  Str "intro ```lang\ncode\n``` and see foo/bar/baz for the module details")
+(def extra (List (Pair Str Str)) (cons (pair "spec" "the-spec-body") nil))
+
+; 3 canned outcomes, IN plan-ok fired order (claim-vs-source, anchor-sharpen,
+; coverage-vs-spec): two parse ok, one is a be-chat failure (expert-bad).
+(def canned-outcomes (List ExpertOutcome)
+  (cons (expert-ok  (cons (finding "raw" "" "f-claim") nil) "raw-claim")
+  (cons (expert-ok  (cons (finding "raw" "" "f-anchor") nil) "raw-anchor")
+  (cons (expert-bad "raw-cov" "parse-fail") nil))))
+
+; canned combiner outcome: accepted two of the three; yield "YIELD-OK".
+(def canned-combiner CombinerOutcome
+  (combiner-ok "YIELD-OK"
+    (cons "claim-vs-source" (cons "coverage-vs-spec" nil)) "raw-comb"))
+
+; --------------------------------------------------------------- the test
+(def compile-main (=> I64 I64)
+  (lam (n)
+    ; assert A + A2 + B all hinge on a successful plan under smoke-local.
+    (case (plan-run req (cons doc-refine-pipeline nil) expert-pool smoke-local-config doc extra)
+      ((plan-no-route l)      1)
+      ((plan-no-fire r)       1)
+      ((plan-unbound ms cid)  1)
+      ((plan-ok pid cid routing fired comb bindings)
+        (let ((fired-ids (ids-of-experts fired)))
+          (let ((pass-a
+                  (and (str-eq pid "doc-refine")
+                  (and (str-eq cid "smoke-local")
+                  (and (t-has "claim-vs-source" fired-ids)
+                  (and (t-has "anchor-sharpen" fired-ids)
+                  (and (t-has "coverage-vs-spec" fired-ids)
+                       (str-eq (bnd-model bindings "cheap-verifier") "qwen2.5:0.5b")))))))
+                ; A2 — same fired set, cheap-local backend: reasoner -> qwen3:8b.
+                (pass-a2
+                  (case (plan-run req (cons doc-refine-pipeline nil) expert-pool cheap-local-config doc extra)
+                    ((plan-ok p2 c2 r2 f2 cm2 b2)
+                      (and (str-eq (bnd-model b2 "reasoner") "qwen3:8b")
+                           (str-eq (bnd-model b2 "cheap-verifier") "qwen2.5:0.5b")))
+                    ((plan-no-route l) false) ((plan-no-fire r) false) ((plan-unbound ms c) false)))
+                ; B — assemble the run record from the canned outcomes.
+                (manifest (assemble-manifest req pid cid routing fired bindings canned-outcomes canned-combiner)))
+            (let ((mcalls (mf-calls manifest)))
+              (let ((pass-b
+                      (and (t-has "claim-vs-source" (mf-fired manifest))
+                      (and (t-has "coverage-vs-spec" (mf-fired manifest))
+                      (and (call-is mcalls "claim-vs-source" "cheap-verifier" "qwen2.5:0.5b")
+                      (and (call-is mcalls "anchor-sharpen" "reasoner" "qwen2.5:0.5b")
+                      (and (call-is mcalls "coverage-vs-spec" "reasoner" "qwen2.5:0.5b")
+                      (and (str-eq (mf-cfgid manifest) "smoke-local")
+                           (str-eq (mf-yield manifest) "YIELD-OK"))))))))
+                    ; negative controls — the spine must REFUSE the bad inputs.
+                    (neg-route
+                      (case (plan-run "zzz qqq" (cons doc-refine-pipeline nil) expert-pool smoke-local-config "" nil)
+                        ((plan-ok a b c d e f) false)   ; must NOT plan-ok
+                        ((plan-no-route l) true) ((plan-no-fire r) true) ((plan-unbound ms c) true)))
+                    (neg-unbound
+                      (case (plan-run req (cons doc-refine-pipeline nil) expert-pool (config "empty" nil) doc extra)
+                        ((plan-unbound ms c) true)      ; a bindingless config => plan-unbound
+                        ((plan-ok a b c d e f) false) ((plan-no-route l) false) ((plan-no-fire r) false))))
+                (case (and pass-a (and pass-a2 (and pass-b (and neg-route neg-unbound))))
+                  (true 0)
+                  (false 1))))))))))

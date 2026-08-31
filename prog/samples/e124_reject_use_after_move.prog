@@ -1,0 +1,28 @@
+; e124_reject_use_after_move.chiral — E124 NEGATIVE 3 of 3 (stands alone, no E107).
+;
+; The adopted Fd cap is MOVED into the first fd-close (a consuming application);
+; referencing `f` again afterward — here handing it to `sink`, another consumer —
+; uses a spent binder. The checker REJECTS the use-after-move (quantity-1
+; exceeded). A CHECKER rejection, not a lowering error.
+(import "prelude/prelude")
+
+(porttype Fd)
+(extern open-rw  (=> Bytes I64))
+(extern adopt-fd (=> I64 Fd))   ; E159: a linear result must be minted by a crossing
+(extern fd-close (=> (1 f Fd) Unit))
+
+(def devnull Bytes (bcat (str->bytes "/dev/null") (bslice (pack-u32 0) 0 1)))
+
+(def sink (=> (1 f Fd) I64)
+  (lam (f) (case (fd-close f) (unit 7))))
+
+; f moved into the first fd-close, then referenced again by sink -> REJECTED.
+(def bad (=> (1 f Fd) I64)
+  (lam (f)
+    (case (fd-close f)
+      (unit (sink f)))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (raw (open-rw devnull))
+      (bad (adopt-fd raw)))))

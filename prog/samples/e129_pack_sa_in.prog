@@ -1,0 +1,47 @@
+; e129_pack_sa_in.chiral — E129 conformance: the big-endian sockaddr_in byte layout.
+;
+; Pure hermetic confirming test of the ONE ABI fact that matters: the sin_port
+; u16 is NETWORK byte order (big-endian — high byte first), while sin_family is
+; host order (little-endian on x86). pack-sa-in (quad 1 2 3 4) 80 must produce
+; exactly 16 bytes:
+;   off 0..1  = [02 00]  family = 2 (AF_INET), host order
+;   off 2..3  = [00 50]  port = 80, BIG-endian (the trap: NOT [50 00])
+;   off 4..7  = [01 02 03 04]  the four octets verbatim
+;   off 8..15 = [00 ... 00]  sin_zero, eight zero bytes
+; The E109 bput-u16-le precedent packs little-endian; copied here it would emit
+; [50 00] at off 2 — the one failure this crossing must not produce.
+;
+; Every byte is asserted with bget/blen (the Bytes accessors). A str-eq on the
+; NUL-containing regions is avoided: bytes->str/str-eq treat embedded NULs
+; unreliably, so the layout is pinned byte-by-byte instead.
+;
+; Stepwise exit codes so a wrong lowering surfaces as a distinct code:
+;   42 = layout correct    1 = wrong length     2 = family != [02 00]
+;    3 = port not [00 50] (the little-endian trap)   4 = addr != [01 02 03 04]
+;    5 = sin_zero not all zero
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/inet")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((bs (pack-sa-in (quad 1 2 3 4) 80)))
+      (case (=i (blen bs) 16)
+        (false 1)
+        (true
+          (case (and (=i (bget bs 0) 2) (=i (bget bs 1) 0))
+            (false 2)
+            (true
+              (case (and (=i (bget bs 2) 0) (=i (bget bs 3) 80))
+                (false 3)
+                (true
+                  (case (and (and (=i (bget bs 4) 1) (=i (bget bs 5) 2))
+                             (and (=i (bget bs 6) 3) (=i (bget bs 7) 4)))
+                    (false 4)
+                    (true
+                      (case (and (and (and (=i (bget bs 8) 0) (=i (bget bs 9) 0))
+                                      (and (=i (bget bs 10) 0) (=i (bget bs 11) 0)))
+                                 (and (and (=i (bget bs 12) 0) (=i (bget bs 13) 0))
+                                      (and (=i (bget bs 14) 0) (=i (bget bs 15) 0))))
+                        (false 5)
+                        (true 42)))))))))))))

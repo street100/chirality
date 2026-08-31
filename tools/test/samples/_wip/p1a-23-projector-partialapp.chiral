@@ -1,0 +1,7 @@
+; V23: projector + a partial-application cs-g site (capture, but site kind cs-g).
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare voc-draw (-> Voc (-> I64 I64))) (def voc-draw (lam (v) (case v ((voc d n) d))))
+(declare addk (-> I64 I64 I64)) (def addk (lam (k x) (+ x k)))
+(declare mk-a (-> I64 Voc)) (def mk-a (lam (k) (voc (addk k) 1)))
+(declare compile-main (-> Unit I64)) (def compile-main (lam (u) (- ((voc-draw (mk-a 1)) 10) 11)))

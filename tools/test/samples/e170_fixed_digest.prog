@@ -1,0 +1,99 @@
+; E170 Phase 12, G2 -- AN EDITED FIXTURE IS REFUSED.
+;
+; The defect this closes: `oracle-ask`'s `or-fixed` arm opened the named path,
+; read it, and returned its bytes WITHOUT EVER CONSULTING `dg`. So rank 2 -- "a
+; fixed committed artifact, or a reference outside BOTH legs", the rank that
+; caught E161 G0 -- was a path plus an argument nothing looked at, and an anchor
+; edited after the fact was honoured in full. `e168_rank_floor.chiral:43-56` wrote
+; that gap down in its own comment and named its condition for closure: "a floor
+; that OPENS the named path and compares the digest before honouring rank 2".
+; This is that floor, and this fixture is what makes it a claim that can fail.
+;
+; The digest IS the bytes, and no hash is invented -- testing-floors.md:250-252
+; sanctions exactly that, and admission clause 5 (small enough to review) is what
+; makes it buildable. The two constraints are one design.
+;
+; The anchor is not minted to justify a sentence, which is the thing
+; e168_rank_floor refused. `scaffold/tests/fixed/end-module-prelude.txt` holds the
+; exact bytes BOTH module providers emit after the `prelude` module --
+; bin/chirality-resolve.sh's emit loop and resolve.chiral's `concat-mods`, which are
+; pinned byte-for-byte against each other and were STILL both wrong once: E161 G0
+; reported ok with both legs emitting the same wrong marker, and only a fixed
+; expectation outside both legs saw it. The negative control is that defect as a
+; file: the same line with the closing quote dropped.
+;
+; Paths are REPO-ROOT-relative and this program is run from the repo root.
+;
+; exit 0 = every case; otherwise the number of the first failing case:
+;   1  a hand-minted anchor is refused by the licence rule (D2 inverted)
+;   2  a CCOMP-minted artifact is ADMITTED -- committing one is distribution,
+;      which is what keeps the DDC path inside INRIA's non-commercial licence
+;   3  the committed anchor is not there
+;   4  asking a fixed port tried to BUILD something
+;   5  the committed anchor does not match its own digest -- the anchor rotted
+;   6  it matched, but the bytes handed back are not the bytes asked for
+;   7  the negative control is not there
+;   8  asking for the negative control tried to build something
+;   9  THE ROW: the EDITED file was ACCEPTED at rank 2 -- this is the case that
+;      is green before W0.3 and red after, and dropping the `bytes=?` comparison
+;      from `oracle-ask` puts it back
+;   10 `or-fixed` stopped ranking 2
+;
+; ⚑ WHAT THIS FIXTURE DELIBERATELY DOES NOT TEST, and why the omission is the
+; honest answer rather than a gap. The first draft had a fourth ask against an
+; ABSENT path, to keep `ob-nofile` and `ob-nomatch` visibly apart. `ledger-lint`
+; check S -- which lands in the same wave -- convicted it, correctly: naming an
+; untracked path in an `or-fixed` is exactly the laundering the check exists to
+; refuse, and a negative control does not get an exemption the next launder could
+; hide behind. Case 7 already asserts the direction W0.3 changed (an existing
+; file whose bytes are wrong is NOT reported as missing); the other direction is
+; `openat` returning a negative fd, which `e168_cap_thread` already covers on a
+; path that is not an anchor claim at all.
+
+(import "evidence/test-floor")
+
+(def anchor-path   Str "scaffold/tests/fixed/end-module-prelude.txt")
+(def tampered-path Str "scaffold/tests/fixed/end-module-prelude-tampered.txt")
+
+; the digest, which is the bytes, sitting inside the gate file exactly as
+; admission clause 5 requires.
+(def anchor-bytes Bytes (str->bytes "\n(end-module \"prelude\")\n"))
+
+; ⚑ Recorded as `or-native` because that is what an in-tree hand-written file is
+; -- an in-tree provider -- and `Minting` records WHERE THE BYTES CAME FROM, not
+; how strong an opinion they are. The rank is `or-fixed`'s (2), decided by
+; `oid-prov` on the port and not by this record.
+(def anchor-mint Minting
+  (minted-by (or-native "written by hand from E161's module-marker rule") "2026-08-25"))
+
+; the minting D2 forbids: committing a ccomp-built artifact IS distributing one.
+(def forbidden-mint Minting (minted-by (or-ccomp "3.17") "2026-08-25"))
+
+(def no-input Bytes (str->bytes ""))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (mint-licensed? anchor-mint)
+      (false 1)
+      (true
+        (case (mint-licensed? forbidden-mint)
+          (true 2)
+          (false
+            (case (oracle-ask (builder "B1") (oracle (or-fixed anchor-path anchor-bytes)) no-input)
+              ((ob-nofile p b)   (case b ((builder v) 3)))
+              ((ob-nobuild w b)  (case b ((builder v) 4)))
+              ((ob-nomatch p b)  (case b ((builder v) 5)))
+              ((ob-ok o b)
+                (case (obs-cmp (ob-bytes anchor-bytes) o)
+                  ((ck-fail g w) (case b ((builder v) 6)))
+                  ((ck-pass)
+                    (case (oracle-ask b (oracle (or-fixed tampered-path anchor-bytes)) no-input)
+                      ((ob-nofile p2 b2)  (case b2 ((builder v) 7)))
+                      ((ob-nobuild w2 b2) (case b2 ((builder v) 8)))
+                      ((ob-ok o2 b2)      (case b2 ((builder v) 9)))
+                      ((ob-nomatch p2 b2)
+                        (case b2
+                          ((builder v)
+                            (case (=i (prov-rank (oid-prov (or-fixed anchor-path anchor-bytes))) 2)
+                              (true  0)
+                              (false 10))))))))))))))))

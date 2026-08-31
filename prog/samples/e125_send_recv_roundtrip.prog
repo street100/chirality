@@ -1,0 +1,45 @@
+; e125_send_recv_roundtrip.chiral — E125 conformance: native send→recv DATA round-trip.
+;
+; Proves the below-the-type-layer socket floor moves bytes end-to-end with zero
+; CPython: socketpair (E126, nb-sys-socketpair) -> sock-send (E125, nb-sock-send)
+; -> sock-recv (E125, nb-sock-recv) -> bytes->str/str-eq compare -> sock-close
+; (E107, nb-sys-close). Every crossing is a native TAL wrapper in sys-tal.chiral;
+; nothing here needs impl_ports.py.
+;
+; Exit 42 = the 18 bytes "hello chirality socket" survived the round-trip intact.
+;   1 = sp-err   2 = send-err   3 = recv-err   4 = recv-closed   5 = mismatch.
+;
+; LINEAR DISCIPLINE: every arm of every nested case must consume every live cap.
+; sock-send consumes `a` (threads `a2` back); the send-err arm still owes `b`.
+; sock-recv consumes `b` (threads `b3` back); its error arms still owe `a2`.
+; Dropping a cap in an error arm is a linearity violation, NOT tolerated — the
+; native checker rejects it (field/linear binder usage mismatch). This is the
+; pattern the agent's read/write/bash tools (A1/A2) must follow.
+;
+; DISCRIMINATING: the OLD B1 (pre-E125) had no sock-send/sock-recv/socketpair
+; crossing-wraps rows, so it could not compile this at all. This is the first
+; native run that exercises nb-sock-send-go's sendall recursion + nb-sock-recv's
+; three-way split (data/half-close/error) on real kernel socket fds.
+(import "prelude/prelude")
+(import "ports/ports")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (socketpair unit)
+      ((sp-err m) 1)
+      ((sp-ok a b)
+        (case (sock-send a (str->bytes "hello chirality socket"))
+          ((send-err m)
+            (case (sock-close b) (unit 2)))
+          ((send-r a2)
+            (case (sock-recv b 18)
+              ((recv-err m)
+                (case (sock-close a2) (unit 3)))
+              ((recv-closed b2)
+                (case (sock-close a2) (unit (case (sock-close b2) (unit 4)))))
+              ((recv-r bs b3)
+                (case (str-eq (bytes->str bs) "hello chirality socket")
+                  (true
+                    (case (sock-close a2) (unit (case (sock-close b3) (unit 42)))))
+                  (false
+                    (case (sock-close a2) (unit (case (sock-close b3) (unit 5))))))))))))))

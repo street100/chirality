@@ -1,0 +1,113 @@
+; E168 Phase 12, G4 -- E161 G0 re-expressed on the floor. THE RANK FLOOR.
+;
+; The historical defect, in docs/testing-floors.md:197-202's own words: making
+; BOTH providers emit the same wrong marker left the provider-vs-provider
+; differential reporting `ok`. "Only the gate's own expected blob -- a rank-2
+; source OUTSIDE BOTH LEGS -- caught it." The operative phrase is outside both
+; legs. (The page said "the fixed committed blob" until 2026-08-25; the anchor
+; was the heredoc pin inside test-module-kind.sh, not the gitignored compiler
+; blob -- testing-floors.md:216-262.)
+; The two legs were genuinely distinct, so `df-common-mode` cannot see this;
+; what was missing is that EVERY expectation came from inside the comparison.
+;
+; Mechanized: `differ` mints its `Expect` at the WEAKER leg's provenance, so two
+; in-tree providers mint `pv-derived` (rank 4), and `gate-verdict`'s clause 2
+; scores the gate `g-inadequate` unless `checks` ALSO carries an expectation at
+; rank <= 3 -- one not derived from the thing under test. Rank <= 3 and not <= 2
+; because :163-164 states the requirement as independence from the thing under
+; test, which ranks 1, 2 and 3 all satisfy.
+;
+; Three cases, one exit code (a fixture with more than one internal case still
+; counts once -- inflating the assertion count is how an unsourced figure gets
+; built). It CROSSES, building two programs through one cap, but reads no file,
+; so its answer does not depend on the working directory.
+;
+; exit 0 = all three; 1 = the differential minted nothing to judge;
+; 2 = differential-only scored GREEN (the 2026 defect verbatim); 3 = it scored
+; red for the wrong reason; 4/5 = the rank-2 fix did not clear the floor;
+; 6/7 = the rank-3 anchor did not clear it, i.e. the boundary moved.
+
+(import "evidence/test-floor")
+
+; both legs are handed the SAME source and both run it, so they agree -- and
+; they agree on 41, which is wrong. Two providers wrong the same way.
+(def wrong-src Bytes (str->bytes "(def main (-> I64 I64) (lam (n) 41))"))
+
+; adequacy is not what is under test here, so it is a mutant that WAS run and
+; WAS killed; clause 1 must not be what reddens these gates.
+(def killed MutRun (mu-killed "a mutant that ran and died" (ob-exit 42) (ob-exit 41)))
+
+; rank 2 -- the SHAPE of the historical fix: a fixed artifact outside both legs.
+; Its key is `obk-given`: nothing here rebuilds it, the harness supplies it.
+;
+; ⚑ THE TWO FIELDS ARE REAL AS OF 2026-08-25 (E170 W0.4), and the history is kept
+; because it is the point. This fixture judges the RANK ARITHMETIC -- that a
+; rank-2 anchor clears a floor a rank-4 differential-minted expectation cannot --
+; and `gate-verdict` ranks the CONSTRUCTOR: it does not open the path or check the
+; digest, so any two strings buy rank 2 here. That is still true, and it is why
+; the fields were once written as `scaffold/tests/golden/e161-marker.blob` and
+; `"sha256:committed"` -- a file that never existed and a digest nobody computed,
+; "a fixed COMMITTED artifact" doing rhetorical work no artifact backed. Replacing
+; those strings with placeholders was the honest move at the time, and this
+; comment then recorded the two conditions for closing it properly: a floor that
+; OPENS the named path and compares the digest, and something that checks a claim
+; nothing opens.
+;
+; BOTH now exist, so the placeholders go. `oracle-ask`'s `or-fixed` arm compares
+; its digest (W0.3), and `ledger-lint` check S (W0.4) asserts clauses 1-3 of the
+; admission test -- tracked, not gitignored, digest non-empty -- for every anchor
+; path written down in scaffold/**/*.chiral, which is the only mechanical check a
+; `pv-fixed` can have: it is an `ExProv`, and nothing in chirality opens one. The
+; anchor below is a real 24-byte committed file whose bytes ARE its digest
+; (testing-floors.md:250-252), and it is not minted to justify this sentence: it
+; holds the exact marker BOTH module providers emit after `prelude`, which is the
+; E161 G0 anchor class -- the gate that reported ok with both legs emitting the
+; same wrong marker.
+(def fixed-check Expect
+  (ex (obk-given "a fixed artifact outside both legs: the committed end-module marker")
+      (ob-exit 41)
+      (pv-fixed "scaffold/tests/fixed/end-module-prelude.txt"
+                (str->bytes "\n(end-module \"prelude\")\n"))))
+
+; rank 3 -- an anchor written down from what the form MEANS. It must clear the
+; floor too, which is what makes <= 3 a chosen boundary rather than an accident.
+(def meaning-check Expect
+  (ex (obk-given "what the program means")
+      (ob-exit 41)
+      (pv-meaning "the source returns 41, so the process exits 41")))
+
+(def one-obs (List Obs) (cons (ob-exit 41) nil))
+(def two-obs (List Obs) (cons (ob-exit 41) (cons (ob-exit 41) nil)))
+
+(def judge (-> DiffExpect I64)
+  (lam (minted)
+    ; case 1: EVERY expectation came from inside the comparison.
+    (case (gate-verdict (gate "markers agree" (the (List Expect) nil) (cons minted nil) killed) one-obs)
+      ((g-green nm c w) 2)
+      ((g-red nm why)   3)
+      ((g-inadequate nm lb)
+        ; case 2: the historical fix -- add the fixed expected blob (rank 2).
+        (case (gate-verdict (gate "markers agree" (cons fixed-check nil) (cons minted nil) killed) two-obs)
+          ((g-red nm2 why2)      4)
+          ((g-inadequate nm2 l2) 5)
+          ((g-green nm2 c2 w2)
+            ; case 3: a rank-3 anchor clears it too. Without this case, raising
+            ; the floor to <= 2 would leave the rank-2 anchor green and the
+            ; mutant that moves the boundary could not fire at all.
+            (case (gate-verdict (gate "markers agree" (cons meaning-check nil) (cons minted nil) killed) two-obs)
+              ((g-red nm3 why3)      6)
+              ((g-inadequate nm3 l3) 7)
+              ((g-green nm3 c3 w3)   0))))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (differ (builder "B1")
+                  (oracle (or-native "the fold provider"))
+                  (oracle (or-native "the emit provider"))
+                  wrong-src)
+      ((differ-r d bld2)
+        (case bld2
+          ((builder v)
+            (case (diff-expect (obk-given "both providers' marker") d)
+              ((ex-refused why) 1)
+              ((ex-ok minted)   (judge minted)))))))))

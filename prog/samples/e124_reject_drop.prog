@@ -1,0 +1,23 @@
+; e124_reject_drop.chiral — E124 NEGATIVE 1 of 3 (stands alone, no E107).
+;
+; Adopting a raw fd mints a linear (quantity-1) Fd cap that MUST be consumed.
+; Here `bad` takes the adopted Fd and drops it (never closes it) — the linear
+; binder `f` is unused, so the checker REJECTS it (a leaked cap). This is a
+; CHECKER rejection (load-time linearity), not a lowering error.
+(import "prelude/prelude")
+
+(porttype Fd)
+(extern open-rw  (=> Bytes I64))
+(extern adopt-fd (=> I64 Fd))   ; E159: a linear result must be minted by a crossing
+(extern fd-close (=> (1 f Fd) Unit))
+
+(def devnull Bytes (bcat (str->bytes "/dev/null") (bslice (pack-u32 0) 0 1)))
+
+; f : linear Fd, dropped without fd-close -> leaked cap -> REJECTED.
+(def bad (=> (1 f Fd) I64)
+  (lam (f) 42))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (raw (open-rw devnull))
+      (bad (adopt-fd raw)))))

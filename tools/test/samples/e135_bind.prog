@@ -1,0 +1,81 @@
+; e135_bind.chiral — E135 conformance: manas config binding, the "add backends" seam.
+;
+; Builds THREE Config profiles inline (orchestration/configs.md) and binds the SAME
+; slot set {cheap-verifier, reasoner, combiner} under each — the config-swap /
+; add-backends property: one pipeline, any backend mix, unchanged.
+;   assert 1 — smoke-local: all three slots -> qwen2.5:0.5b  => bind-ok, 3 bindings,
+;              every model "qwen2.5:0.5b".
+;   assert 2 — cheap-local: cheap-verifier -> qwen2.5:0.5b, reasoner/combiner ->
+;              qwen3:8b (SAME slot set, DIFFERENT backend) => bind-ok, reasoner's
+;              model "qwen3:8b"  (the swappable-backend property).
+;   assert 3 — verifier-only (binds only cheap-verifier), ask for {combiner}
+;              => bind-miss carrying "combiner"  (a VALUE, not a KeyError).
+; Exit-code test (no print): exits 0 iff all three assertions hold, else 1.
+; bind-config is -> so the membrane already PROVES no network call — this checks
+; the RESOLUTION.
+
+(import "prelude/prelude")             ; str-eq, =i, +, cond, List, Pair, Bool
+(import "prelude/list")         ; find
+(import "manas/core/bind")     ; bind-config, Binding, Config, BindResult (via types)
+
+; the model a binding resolves
+(def binding-model (-> Binding Str)
+  (lam (b) (case b ((binding s m n) m))))
+
+; model bound to `slot` in a (List Binding), or "" if absent
+(def model-for (-> (List Binding) Str Str)
+  (lam (binds slot)
+    (case (find Binding (lam (b) (case b ((binding s m n) (str-eq s slot)))) binds)
+      (none "")
+      ((some b) (binding-model b)))))
+
+; length of a (List Binding)
+(declare len-binds (-> (List Binding) I64))
+(def len-binds
+  (lam (bs) (case bs (nil 0) ((cons h t) (+ 1 (len-binds t))))))
+
+; membership of an id in a (List Str)
+(def mem-str (-> Str (List Str) Bool)
+  (lam (x xs)
+    (case xs
+      (nil false)
+      ((cons h t) (cond ((str-eq h x) true) (else (mem-str x t)))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((slots3
+            (cons "cheap-verifier" (cons "reasoner" (cons "combiner" nil))))
+          (smoke
+            (config "smoke-local"
+              (cons (binding "cheap-verifier" "qwen2.5:0.5b" 8192)
+              (cons (binding "reasoner"       "qwen2.5:0.5b" 16384)
+              (cons (binding "combiner"       "qwen2.5:0.5b" 16384) nil)))))
+          (cheap
+            (config "cheap-local"
+              (cons (binding "cheap-verifier" "qwen2.5:0.5b" 8192)
+              (cons (binding "reasoner"       "qwen3:8b"     16384)
+              (cons (binding "combiner"       "qwen3:8b"     16384) nil)))))
+          (vonly
+            (config "verifier-only"
+              (cons (binding "cheap-verifier" "qwen2.5:0.5b" 8192) nil))))
+      (let ((pass1
+              (case (bind-config smoke slots3)
+                ((bind-miss ms cid) false)
+                ((bind-ok bs)
+                  (and (=i (len-binds bs) 3)
+                       (and (str-eq (model-for bs "cheap-verifier") "qwen2.5:0.5b")
+                            (and (str-eq (model-for bs "reasoner") "qwen2.5:0.5b")
+                                 (str-eq (model-for bs "combiner") "qwen2.5:0.5b")))))))
+            (pass2
+              (case (bind-config cheap slots3)
+                ((bind-miss ms cid) false)
+                ((bind-ok bs)
+                  (and (str-eq (model-for bs "reasoner") "qwen3:8b")
+                       (str-eq (model-for bs "cheap-verifier") "qwen2.5:0.5b")))))
+            (pass3
+              (case (bind-config vonly (cons "combiner" nil))
+                ((bind-ok bs) false)
+                ((bind-miss ms cid) (mem-str "combiner" ms)))))
+        (case (and pass1 (and pass2 pass3))
+          (true 0)
+          (false 1))))))

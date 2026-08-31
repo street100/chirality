@@ -1,0 +1,12 @@
+; V38: flag2 REPAIRED -- 3 capturing `the`-lam instances + a projector global
+; written with a FULL binder chain (lam (v x)) matching its arrow arity.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare voc-draw (-> Voc (-> I64 I64)))
+(def voc-draw (lam (v x) (case v ((voc d n) (d x)))))
+(declare mk-a (-> I64 Voc)) (def mk-a (lam (k) (voc (the (-> I64 I64) (lam (x) (+ x k))) 1)))
+(declare mk-b (-> I64 Voc)) (def mk-b (lam (k) (voc (the (-> I64 I64) (lam (x) (* x k))) 2)))
+(declare mk-c (-> I64 Voc)) (def mk-c (lam (k) (voc (the (-> I64 I64) (lam (x) (- x k))) 3)))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u)
+  (- (+ ((voc-draw (mk-a 1)) 10) (+ ((voc-draw (mk-b 2)) 10) ((voc-draw (mk-c 5)) 10))) 36)))

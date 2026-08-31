@@ -1,0 +1,30 @@
+; E170 lane E -- MUST NOT COMPILE. Pool: the wrong size.
+;
+; The wrong implementation: hand a 4 KiB pool to a consumer that was written
+; against a 16 KiB one. `Pool` is the tree's one VALUE-INDEXED porttype --
+; `(porttype Pool (n I64))`, ports/pool.chiral:13 -- so the buffer's size travels
+; in the port's type and `(Pool 16384)` and `(Pool 4096)` are different types.
+; A consumer that indexes past 4096 into a pool it believes is 16384 is a
+; straightforward out-of-bounds write, which is exactly what the index is for.
+;
+; ⚑ WHY THE WRONGNESS IS SEMANTIC AND NOT STRUCTURAL. The twin `pe-pool-16` in
+; e170_port_twin.chiral is this file with the parameter's index changed from 4096
+; to 16384 -- one integer literal, inside a type. Same porttype, same arity,
+; same shape, same consumer. Only the VALUE in the type differs, and that value
+; is the whole content of the claim the port makes.
+;
+; ⚑ What it does NOT buy, measured beside it and recorded as a zero in
+; e170_port_zeros.chiral: the index pins the pool's size IDENTITY, not the
+; validity of an OFFSET into it. `(pool-write 4096 p 999999 bs)` compiles.
+;
+; want: exit 1, `load: type mismatch`
+
+(import "ports/pool")
+
+(declare pe-use-16 (=> (1 p (Pool 16384)) Unit))
+(def pe-use-16 (lam (p) (pool-close 16384 p)))
+
+(def pe-pool-16 (=> (1 p (Pool 4096)) Unit)
+  (lam (p) (pe-use-16 p)))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

@@ -1,0 +1,5 @@
+; CONTROL -- the DIRECT field the claim was originally made about. Must be REFUSED.
+(import "prelude/prelude")
+(data Buf () (buf (op (-> Buf I64)) (n I64)))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) 0))

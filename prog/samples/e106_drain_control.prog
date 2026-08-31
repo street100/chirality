@@ -1,0 +1,41 @@
+; e106_drain_control.chiral — E106 conformance: the NATIVE DRAIN-AND-CLOSE CONTROL.
+;
+; This is the exit-42 control run for E106's §5 leg 2. It proves the drain-and-
+; close SHAPE reaches native runtime over a *lowering* crossing: it holds a small
+; set of RAW fds in a `(List I64)`, drains them recursively closing each exactly
+; once via the raw-fd `close` crossing (crossing-wraps.chiral:21, close ->
+; nb-sys-close), then exits 42.
+;
+; It is deliberately NOT the linear `SockVec` drain: `sv-drain` consumes each cap
+; via `sock-close`, a porttype close absent from the lowering table, so its native
+; run is gated on the E107 follow-on (decision 2) and is NOT claimed here. The
+; linear exactly-once guarantee is carried entirely by the checker legs (the
+; accept + four rejects); this control only shows the drain-close shape lowers.
+;
+; Exit 42 = all fds opened + drained · 10 = a /dev/null open failed.
+(import "prelude/prelude")
+
+(extern openat (=> Bytes I64))   ; NUL-terminated path -> fd | -errno  (nb-sys-openat)
+(extern close  (=> I64 Unit))    ; close(fd)                           (nb-sys-close)
+
+(def devnull Bytes (bcat (str->bytes "/dev/null") (bslice (pack-u32 0) 0 1)))
+
+; drain: close every held fd exactly once. Structural recursion over the spine.
+(def drain-fds (=> (List I64) Unit)
+  (lam (fds)
+    (case fds
+      (nil unit)
+      ((cons fd rest)
+        (case (close fd)
+          (unit (drain-fds rest)))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (a (openat devnull))
+      (let (b (openat devnull))
+        (let (c (openat devnull))
+          (case (or (<i a 0) (or (<i b 0) (<i c 0)))
+            (true 10)                          ; an open failed — can't run the control
+            (false
+              (case (drain-fds (cons a (cons b (cons c nil))))
+                (unit 42)))))))))

@@ -1,0 +1,16 @@
+; a5_be_chat.chiral — A5: the first real model turn, all-chirality, zero CPython.
+; be-chat -> http-request (native, E130) -> sock-connect-in (E129) -> the mesh
+; ollama endpoint over Tailscale. Exit 42 = a live assistant reply came back.
+; This is the milestone that closes A3+A5: a chat round-trip with no Python in
+; the run path. Non-hermetic (needs the endpoint up); confirming, not adversarial.
+(import "prelude/prelude")
+(import "manas/backend")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (be-chat (backend-open "http://100.64.0.5:11434") "qwen2.5:0.5b"
+                   (cons (msg "user" "say hello in one word") nil))
+      ((chat-ok text b2)
+        (do (backend-close b2) (do (put text) (put "\n") 42)))
+      ((chat-bad st raw b2)
+        (do (backend-close b2) (do (put "chat-bad: ") (put raw) (put "\n") 1))))))

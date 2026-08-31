@@ -1,0 +1,24 @@
+; e108_shift.chiral — E108 behavioral gate for the right-shift surface externs.
+; Exercises both new ops with values that DISTINGUISH logical from arithmetic:
+;   (shr -1 63) = 1   logical: the top bit shifts to the LSB, zero-filled
+;   (sar -1 63) = -1  arithmetic: the sign smears, all-ones preserved
+;   (shr 8 2)   = 2   unsigned scale-down
+;   (sar -8 1)  = -4  signed divide-by-two, rounds toward -inf
+; Exit 42 iff all four hold; otherwise the first failing check's marker
+; (10/20/30/40) so a failure names the offending op.
+(import "prelude/prelude")
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (case (=i (shr -1 63) 1)
+      (false 10)
+      (true
+        (case (=i (sar -1 63) -1)
+          (false 20)
+          (true
+            (case (=i (shr 8 2) 2)
+              (false 30)
+              (true
+                (case (=i (sar -8 1) -4)
+                  (false 40)
+                  (true 42))))))))))

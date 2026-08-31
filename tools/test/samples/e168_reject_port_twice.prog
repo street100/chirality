@@ -1,0 +1,24 @@
+; E168 Phase 12, G6(iii) -- MUST NOT COMPILE.
+;
+; Asking IS the crossing and it SPENDS the port: one opinion, asked once. A
+; differential that asked the same port twice would be one source reported as
+; two, which is the failure `df-common-mode` refuses by identity and this one
+; refuses by quantity. `o` is used once in the scrutinee and once again in every
+; arm, so the binder audit fires.
+;
+; The compiling twin is e168_cap_thread.chiral, which asks its oracle exactly once
+; and drops a second one exactly once.
+;
+; want: exit 1, `load: linear binder usage mismatch`
+
+(import "evidence/test-floor")
+
+(def ask-twice (=> (1 bld Builder) (1 o Oracle) Bytes ObsR)
+  (lam (bld o input)
+    (case (oracle-ask bld o input)
+      ((ob-ok a b2)      (oracle-ask b2 o input))
+      ((ob-nofile p b2)  (oracle-ask b2 o input))
+      ((ob-nomatch p b2) (oracle-ask b2 o input))
+      ((ob-nobuild w b2) (oracle-ask b2 o input)))))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

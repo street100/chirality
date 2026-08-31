@@ -1,0 +1,28 @@
+; duo: the two-node tomodachi where the language does the assembling.
+; This runtime is the sensor; it STAGES its renderer with spawn and holds the
+; one port to it. No listening door, no rendezvous path: staging births the
+; runtime and hands back the crossing (docs/process-and-runtime.md). Closing
+; that port is the teardown.
+
+(import "demo/sensor-core")
+
+(def main (=> Unit Unit)
+  (lam (u)
+    (let (1 e0 (env-open unit))
+      (case (env-view e0 "NIRI_SOCKET")
+        ((env-none e1)
+          (do (env-close e1) (halt Unit "duo: NIRI_SOCKET not set")))
+        ((env-r np e1)
+          (do (env-close e1)
+          (let (1 peer (spawn "demo/profile-node-render.chiral"))
+            (case (sock-connect np)
+              ((conn-err em)
+                (do (sock-close peer)
+                    (halt Unit (str-cat "duo: connect failed: " em))))
+              ((conn-r ni0)
+                (case (sock-send ni0 (str->bytes "\"EventStream\"\n"))
+                  ((send-err em)
+                    (do (sock-close peer)
+                        (halt Unit (str-cat "duo: send failed: " em))))
+                  ((send-r ni1)
+                    (sloop (the SSt (sst ni1 peer "" boot-mood))))))))))))))

@@ -1,0 +1,38 @@
+; The tomodachi profile: modules plus the target they must satisfy.
+;
+; This is decision-profiles (G9) at scaffold scale. The imports are the
+; manifest; the target is the requirement type from docs/target-tomodachi.md,
+; the part of it the scaffold can state today (named crossings at named
+; types). Conformance is type-checking: `python3 -m chirality verify` judges each
+; requirement against what the composite provides, by subtyping.
+;
+; The behavior-pack requirements double as the confinement contract: every
+; required pack signature is a pure arrow, so a conforming pack cannot
+; perform a port operation.
+
+(import "demo/tomodachi")
+
+(target tomodachi
+  (require main (=> Unit Unit))
+  (require boot-mood Mood)
+  (require idle-after I64)
+  (require on-event (-> Str Mood Mood))
+  (require on-idle (-> Mood Mood))
+  (require mood-eq (-> Mood Mood Bool))
+  (require draw (-> (0 n I64) (=> (1 p (Pool n)) Mood (Pool n))))
+  ; the memory bound of target-tomodachi, as a type: the client comes up
+  ; holding exactly a (Pool 16384), stated in WlUp's declaration
+  (require wl-init (=> Mood WlUp)))
+
+; the frozen port set: every crossing the composite may use, and nothing
+; else. time-mono is deliberately absent: the companion has no clock beyond
+; the poll deadline, and using one would invalidate the profile.
+(profile tomodachi
+  (ports sock-connect sock-send sock-send-fd sock-recv sock-close poll2
+         pool-create pool-write pool-close fd-close
+         trace env-open env-view env-close exit halt)
+  (target tomodachi)
+  ; the allocation discipline: the composite writes the pool at explicit
+  ; offsets and closes it once (lib/mem-linear). A different discipline over
+  ; the same (Pool n) substrate is a one-word change here plus its import.
+  (memory linear))

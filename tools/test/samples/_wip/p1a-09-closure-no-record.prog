@@ -1,0 +1,6 @@
+; V9: a capturing closure with NO record at all -- does curried capture lower?
+(import "prelude/prelude")
+(declare mk-adder (-> I64 (-> I64 I64)))
+(def mk-adder (lam (k) (lam (x) (+ x k))))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (- ((mk-adder 1) 10) 11)))

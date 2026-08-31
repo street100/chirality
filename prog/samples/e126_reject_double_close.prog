@@ -1,0 +1,18 @@
+; e126_reject_double_close.chiral — E126 conformance: NEGATIVE (double-consume).
+;
+; socketpair returns two linear Sock caps (sp-ok a b). This arm closes `a`, then
+; closes `a` AGAIN: the second use is a use-after-move of a moved-out linear cap.
+; The linear checker must reject it. Expected B1 verdict: a linearity error
+; (use of a consumed `1`-binder), compile exit 1.
+(import "prelude/prelude")
+(import "ports/ports")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (socketpair unit)
+      ((sp-err m) 1)
+      ((sp-ok a b)
+        (case (sock-close a)
+          (unit (case (sock-close a)   ; a already moved into the first close
+                  (unit (case (sock-close b)
+                          (unit 42))))))))))

@@ -1,0 +1,66 @@
+; e100_poly_ho.chiral — the E100 closure-CORRECTNESS gate (runtime, not compile).
+;
+; E100: polymorphic higher-order defunctionalization erased type-kinded captures.
+; A poly HO closure captures type variables (q0 / Type-valued) that have NO runtime
+; witness. The pre-fix compiler word-ified them into $clo ctor fields; a `t-type`
+; field failed `term->ntalty`, the whole $clo data was dropped, `$apply` hit "case
+; on unknown data", and the program vanished as a bare "no emitted label". The fix
+; DROPS type-kinded captures from the closure (field list, construction args, and
+; the $apply arm's de Bruijn re-addressing).
+;
+; The self-host fixpoint CANNOT catch a bug here — the compiler's own sources use
+; no poly-HO defunctionalization, so a miscompile byte-reproduces the compiler
+; cleanly and passes. So this test checks RESULTS at runtime: each case asserts the
+; RIGHT answer. Exit 0 iff ALL correct; else the failing case number (1..5).
+;
+;   1. map-list Str Str  with a named fn        -> mapped list correct
+;   2. map-list Msg Json msg->json (orig case)  -> distinct-type map correct
+;   3. foldl with a NAMED polymorphic fn        -> fold correct
+;   4. papply of a polymorphic global (type caps only, m'=0) -> applied result
+;   5. a closure capturing BOTH a type var AND a real value  -> value survives,
+;      the type capture is correctly absent
+;
+; Resolver-compiled (imports resolve to prelude/collections), like the E145 sample.
+(import "prelude/prelude")
+(import "prelude/list")
+
+; ---- case 1: map-list over Str with a named fn ------------------------------
+(def wrap1 (-> Str Str) (lam (s) (str-cat "<" s)))
+(def hd-str (-> (List Str) Str) (lam (xs) (case xs (nil "") ((cons h t) h))))
+
+; ---- case 2: distinct data types Msg -> Json (the original failing shape) ----
+(data Msg  () (msg  (body Str)))
+(data Json () (jstr (s Str)))
+(def msg->json (-> Msg Json) (lam (m) (case m ((msg b) (jstr (str-cat "j:" b))))))
+(def jbody (-> Json Str) (lam (j) (case j ((jstr s) s))))
+(def hd-json (-> (List Json) Json) (lam (xs) (case xs (nil (jstr "")) ((cons h t) h))))
+
+; ---- case 3: foldl with a named polymorphic fn ------------------------------
+(def addf (-> I64 I64 I64) (lam (acc x) (+ acc x)))
+
+; ---- case 4: a poly global for pure type-capture partial application --------
+; (pfst Str I64) : (-> (Pair Str I64) Str) — captures A=Str,B=I64 (both erased).
+(def pfst (-> (0 A (type 0)) (0 B (type 0)) (Pair A B) A)
+  (lam (A B p) (case p ((pair a b) a))))
+
+; ---- case 5: capture BOTH a type var AND a real value -----------------------
+; (constf Str I64 "hi") : (-> I64 Str) — captures A,B (erased) + x="hi" (kept).
+(def constf (-> (0 A (type 0)) (0 B (type 0)) A B A) (lam (A B x y) x))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (let ((m1  (map-list Str Str wrap1 (cons "a" (cons "b" nil))))
+          (m2  (map-list Msg Json msg->json (cons (msg "a") (cons (msg "b") nil))))
+          (f3  (foldl I64 I64 addf 0 (cons 10 (cons 20 (cons 12 nil)))))
+          (g4  (pfst Str I64))
+          (k5  (constf Str I64 "hi")))
+      (let ((c1 (str-eq (hd-str m1) "<a"))
+            (c2 (str-eq (jbody (hd-json m2)) "j:a"))
+            (c3 (=i f3 42))
+            (c4 (str-eq (g4 (pair "z" 7)) "z"))
+            (c5 (str-eq (k5 999) "hi")))
+        (case c1 (false 1) (true
+        (case c2 (false 2) (true
+        (case c3 (false 3) (true
+        (case c4 (false 4) (true
+        (case c5 (false 5) (true 0))))))))))))))

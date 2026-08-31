@@ -1,0 +1,14 @@
+; CONTROL B -- the EXACT live scriba shape: fn field filled by a NAMED GLOBAL
+; (k=0, no capture), instances as top-level constants, consumed by inline case.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare add1 (-> I64 I64))   (def add1 (lam (x) (+ x 1)))
+(declare dbl  (-> I64 I64))   (def dbl  (lam (x) (* x 2)))
+(declare neg  (-> I64 I64))   (def neg  (lam (x) (- 0 x)))
+(declare va Voc) (def va (voc add1 1))
+(declare vb Voc) (def vb (voc dbl  2))
+(declare vc Voc) (def vc (voc neg  3))
+(declare use (-> Voc I64 I64))
+(def use (lam (v x) (case v ((voc d n) (d x)))))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (- (+ (use va 10) (+ (use vb 10) (use vc 10))) 21)))

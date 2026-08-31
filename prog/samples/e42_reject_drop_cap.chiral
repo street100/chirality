@@ -1,0 +1,13 @@
+; E42 negative: dropping the linear SockVec on an arm leaks the held caps.
+; The nil arm returns a fresh sv-nil, ignoring `caps` -> linear checker rejects.
+(import "runtime/poll")
+(import "ports/ports")
+(import "capability/lincoll")
+(import "runtime/supervisor")
+
+(def bad-dispatch (=> (1 caps SockVec) (List ReadyFd) SockVec)
+  (lam (caps rs)
+    (case rs
+      (nil sv-nil)                                   ; <- DROPS caps (leaked)
+      ((cons r more)
+        (case r ((ready fd cnd) (mux-step caps (fd->index fd))))))))

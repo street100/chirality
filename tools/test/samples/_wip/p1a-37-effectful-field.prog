@@ -1,0 +1,8 @@
+; V37: an EFFECTFUL (=>) closure field with a capture -- the live ScribaOp shape.
+(import "prelude/prelude")
+(data Sop () (sop (name Str) (fn (=> I64 I64))))
+(declare mk-op (-> Str I64 Sop))
+(def mk-op (lam (nm k) (sop nm (the (=> I64 I64) (lam (x) (+ x k))))))
+(declare run-op (=> Sop I64 I64)) (def run-op (lam (o x) (case o ((sop nm f) (f x)))))
+(declare compile-main (=> Unit I64))
+(def compile-main (lam (u) (- (+ (run-op (mk-op "a" 1) 10) (run-op (mk-op "b" 5) 10)) 26)))

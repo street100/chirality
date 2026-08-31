@@ -1,0 +1,21 @@
+; self-extend-probe.chiral -- I3 (minimal self-extend): drive agent-run (A4)
+; against shredtower ollama to prove the write->compile->run loop. The prompt
+; instructs the agent to (1) write a trivial pure chirality program to a NEW path
+; via the write tool, (2) compile + chmod + run it in ONE bash command that
+; also echoes the ELF's exit code, (3) report that output. Step (1) is only
+; possible because fs-write now opens with open-create (tools-fs), so the
+; write tool creates a file that did not exist. The program has no imports and
+; no externs, so it compiles with a bare `B1 < src > elf` (no linkage files).
+; Compile: resolve agent/agent + tal-ir + crossing-wraps + sys-check +
+; target-linux + sys-tal + sys-linkage + this file (entry compile-main), B1.
+; Mirrors agent-probe.chiral / bin/scriba verbatim.
+(import "prelude/prelude")
+(import "agent/agent")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (answer
+          (agent-run "http://100.64.0.5:11434" "qwen3:8b"
+            "Create a new chirality program and run it. Step 1: use the write tool to write file /tmp/selfext.chiral with exactly this content and nothing else: (def compile-main (=> I64 I64) (lam (n) 42)). Step 2: use the bash tool to run this exact command: ./scaffold/build/B1 < /tmp/selfext.chiral > /tmp/selfext.elf && chmod +x /tmp/selfext.elf && /tmp/selfext.elf; echo exit:$?. Step 3: report the exact output of step 2."
+            12))
+      (do (put "AGENT-ANSWER: ") (put answer) (put "\n") 0))))

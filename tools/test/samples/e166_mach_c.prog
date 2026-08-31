@@ -1,0 +1,238 @@
+; e166_mach_c.chiral — the E166 step-2 gate on `mc`, the C-emitting Mach.
+;
+; `emit-c` does not exist until step 4, so nothing can drive `mc` through
+; emit-core yet. This drives the ARMS DIRECTLY — (mach-bin mc), (mach-sys mc),
+; (mach-lda mc) … — and asserts the emitted C text. Exit 0 iff every case
+; holds; otherwise the 1-based number of the first failing case.
+;
+; ⚑ ALL 37 ARMS ARE INHABITED, and that is checked by the compiler, not here:
+; `(def mc Mach (mach …))` does not load unless the constructor is saturated at
+; exactly 37 fields with exactly the declared arrow kinds — including the FOUR
+; effectful ones (mach.chiral:66 stp, :68 lda, :118 fjc, :122 clb). The example's
+; §2 finding 1 says "only two"; writing fjc/clb as (->) type-errors. Every one
+; of the 37 is also exercised below, so a saturated-but-wrong arm cannot hide.
+;
+; ⚑ WHAT THE TEETH ARE — cases 9..24, the infix/shim split. chirality I64 wraps;
+; C's signed + - * << are UNDEFINED on overflow and gcc optimizes on the
+; assumption they cannot happen. So `op-add` MUST render `m_add(...)` and NOT
+; `+`. Case 24 asserts the negative directly: this is the difference between a
+; leg that means what mach-x64 means and one gcc may reinterpret. Case 26 pins
+; LONG_MIN, which has no C literal at all. Cases 61-62 pin `fjc` rendering a
+; BARE condition inside `if (...)` — the example's first draft emitted
+; `if ((( = _ca < _cb;) ? 1 : 0) != 0)`, which is not C twice over: an
+; assignment where an expression belongs, and `? 1 : 0` where prelude.chiral:18
+; makes `true` tag 0, so the map is `? 0 : 1`. Case 63 pins `switch`, never
+; `goto *tbl[i]` — a GNU extension CompCert refuses.
+
+(import "prelude/prelude")
+(import "prelude/list")
+(import "prelude/string")
+(import "lowering/mach/asm-reloc")
+(import "lowering/mach/mach")
+(import "lowering/c/assemble")
+(import "lowering/c/mach")
+
+; ── helpers ─────────────────────────────────────────────────────────────────
+; the a-bytes text of a chunk, and the number of relocations in it. Both
+; matter: an arm that forgets its a-rel renders fine and then fails to link,
+; because c-assemble's forward declarations come from the a-rel names alone.
+(def mt-text (-> (List Asm) Str)
+  (lam (xs)
+    (case xs
+      (nil "")
+      ((cons a rest)
+        (case a
+          ((a-bytes b) (str-cat (bytes->str b) (mt-text rest)))
+          (_ (mt-text rest)))))))
+
+(def mt-rels (-> (List Asm) I64)
+  (lam (xs)
+    (case xs
+      (nil 0)
+      ((cons a rest)
+        (case a ((a-rel s e l) (+ 1 (mt-rels rest))) (_ (mt-rels rest)))))))
+
+(def mt-bin (-> Op Str) (lam (op) (mt-text ((mach-bin mc) op 1 2 3))))
+(def mt-nil? (-> (List Asm) Bool)
+  (lam (xs) (case xs (nil true) ((cons a r) false))))
+
+(def mt-l2 (List I64) (cons 4 (cons 7 (the (List I64) nil))))
+(def mt-ls (List Str) (cons "La" (cons "Lb" (the (List Str) nil))))
+(def mt-min I64 (- (- 0 9223372036854775807) 1))
+
+(def mt-first-bad (-> (List Bool) I64 I64)
+  (lam (bs k)
+    (case bs
+      (nil 0)
+      ((cons b rest) (case b (false k) (true (mt-first-bad rest (+ k 1))))))))
+
+; ── A (1-8): the frame and the argument file ────────────────────────────────
+; c-assemble already emitted `long m_<n>(void) {`, so `pro` opens NO brace.
+; Outgoing args ride the global m_arg; incoming ones are copied into the
+; locals a0..a5 at entry, which is what makes `clb` (case 56) honestly nil.
+(def mt-a (List Bool)
+  (cons (str-eq (mt-text ((mach-pro mc) 3))
+    (str-cat "  long r[4]; long _ca = 0; long _cb = 0; long _sc = 0; long _p = 0;\n"
+      (str-cat "  long a0 = m_arg[0]; long a1 = m_arg[1]; long a2 = m_arg[2];\n"
+        (str-cat "  long a3 = m_arg[3]; long a4 = m_arg[4]; long a5 = m_arg[5];\n"
+          "  (void)r; (void)_ca; (void)_cb; (void)_sc; (void)_p; (void)a0; (void)a1; (void)a2; (void)a3; (void)a4; (void)a5;\n"))))
+  (cons (str-starts-with "  long r[1];" (mt-text ((mach-pro mc) 0)))
+  (cons (str-eq (mt-text ((mach-stp mc) 0 5)) "  r[5] = a0;\n")
+  (cons (str-eq (mt-text ((mach-stp mc) 5 0)) "  r[0] = a5;\n")
+  (cons (str-eq (mt-text ((mach-stp mc) 7 5)) "  r[5] = m_arg[7];\n")
+  (cons (str-eq (mt-text ((mach-lda mc) 0 7)) "  m_arg[0] = r[7];\n")
+  (cons (str-eq (mt-text ((mach-lda mc) 5 0)) "  m_arg[5] = r[0];\n")
+  ; ldr with i==j is FREE on x64 (one register, both roles) and MUST NOT be
+  ; free here: the incoming local and the outgoing file are distinct objects.
+  (cons (str-eq (mt-text ((mach-ldr mc) 1 1)) "  m_arg[1] = a1;\n")
+    (the (List Bool) nil))))))))))
+
+; ── B (9-17): the nine ops that CANNOT stay infix ───────────────────────────
+(def mt-b (List Bool)
+  (cons (str-eq (mt-bin (op-add))   "  r[1] = m_add(r[2], r[3]);\n")
+  (cons (str-eq (mt-bin (op-sub))   "  r[1] = m_sub(r[2], r[3]);\n")
+  (cons (str-eq (mt-bin (op-mul))   "  r[1] = m_mul(r[2], r[3]);\n")
+  (cons (str-eq (mt-bin (op-shl))   "  r[1] = m_shl(r[2], r[3]);\n")
+  (cons (str-eq (mt-bin (op-sar))   "  r[1] = m_sar(r[2], r[3]);\n")
+  (cons (str-eq (mt-bin (op-shr))   "  r[1] = m_shr(r[2], r[3]);\n")
+  (cons (str-eq (mt-bin (op-div))   "  r[1] = m_div(r[2], r[3]);\n")
+  (cons (str-eq (mt-bin (op-mod))   "  r[1] = m_mod(r[2], r[3]);\n")
+  (cons (str-eq (mt-bin (op-mulhi)) "  r[1] = m_mulhi(r[2], r[3]);\n")
+    (the (List Bool) nil)))))))))))
+
+; ── C (18-24): the six that may, and the negative that names the hazard ─────
+(def mt-c (List Bool)
+  (cons (str-eq (mt-bin (op-band)) "  r[1] = (r[2] & r[3]);\n")
+  (cons (str-eq (mt-bin (op-bor))  "  r[1] = (r[2] | r[3]);\n")
+  (cons (str-eq (mt-bin (op-bxor)) "  r[1] = (r[2] ^ r[3]);\n")
+  ; ⚑ THESE THREE WERE ASSERTING THE BUG, and were corrected 2026-08-24 after
+  ; the C leg was measured returning inverted Bools. A comparison materialized
+  ; as a VALUE must yield the chirality TAG, and `true` is tag 0
+  ; (prelude.chiral:18), so the C spelling is the INVERSE of the chirality predicate
+  ; -- exactly as mach-x64:367/369/371 emit setne/setge/setg rather than
+  ; sete/setl/setle. Asserting `==` here is asserting that every `or`/`and`/
+  ; `not` in the compiled program returns its opposite.
+  (cons (str-eq (mt-bin (op-eqi))  "  r[1] = (r[2] != r[3]);\n")
+  (cons (str-eq (mt-bin (op-lti))  "  r[1] = (r[2] >= r[3]);\n")
+  (cons (str-eq (mt-bin (op-lei))  "  r[1] = (r[2] > r[3]);\n")
+  ; THE assertion of this element: add is not `+`.
+  (cons (not (str-eq (mt-bin (op-add)) "  r[1] = (r[2] + r[3]);\n"))
+    (the (List Bool) nil)))))))))
+
+; ── D (25-32): immediates ───────────────────────────────────────────────────
+; LONG_MIN's digits exceed LONG_MAX before the unary minus applies, so it has
+; no C literal; mc-imm spells it as a subtraction, found without naming it (it
+; is the one nonzero fixpoint of negation in two's complement).
+(def mt-d (List Bool)
+  (cons (str-eq (mt-text ((mach-con mc) 1 (- 0 5))) "  r[1] = -5L;\n")
+  (cons (str-eq (mt-text ((mach-con mc) 1 mt-min)) "  r[1] = (-9223372036854775807L - 1L);\n")
+  (cons (str-eq (mt-text ((mach-con mc) 1 0)) "  r[1] = 0L;\n")
+  (cons (str-eq (mt-text ((mach-dcon mc) 1 2)) "  r[1] = 2L;\n")
+  (cons (str-eq (mt-text ((mach-bini mc) (op-mul) 1 2 7)) "  r[1] = m_mul(r[2], 7L);\n")
+  (cons (str-eq (mt-text ((mach-bini mc) (op-band) 1 2 7)) "  r[1] = (r[2] & 7L);\n")
+  (cons (str-eq (mt-text ((mach-binr mc) (op-sub) 1 2 3)) "  r[1] = m_sub(a2, r[3]);\n")
+  (cons (str-eq (mt-text ((mach-binir mc) (op-shl) 1 2 3)) "  r[1] = m_shl(a2, 3L);\n")
+    (the (List Bool) nil))))))))))
+
+; ── E (33-41): the heap face ────────────────────────────────────────────────
+; A cell pointer is a real address held in a long, and every cast lives in the
+; shim: `lea` (case 42) puts a LITERAL array's address into the same register
+; file bln/bgt/bpr consume, so heap and literal cells must share one
+; representation, and c-assemble already fixed literals as standalone objects.
+; `_p` is not decoration: x-alo stores the cell pointer to dst AFTER the
+; fields, so `(alo d tag (list d …))` is correct — case 34 is that aliasing.
+(def mt-e (List Bool)
+  (cons (str-eq (mt-text ((mach-alo mc) 1 2 mt-l2))
+    (str-cat "  _p = m_alloc(2L, 2);\n"
+      (str-cat "  m_setf(_p, 0, r[4]);\n" (str-cat "  m_setf(_p, 1, r[7]);\n" "  r[1] = _p;\n"))))
+  (cons (str-eq (mt-text ((mach-alo mc) 4 0 mt-l2))
+    (str-cat "  _p = m_alloc(0L, 2);\n"
+      (str-cat "  m_setf(_p, 0, r[4]);\n" (str-cat "  m_setf(_p, 1, r[7]);\n" "  r[4] = _p;\n"))))
+  (cons (str-eq (mt-text ((mach-fld mc) 1 2 3)) "  r[1] = m_getf(r[2], 3);\n")
+  (cons (str-eq (mt-text ((mach-lsb mc) 2)) "  _sc = m_tag(r[2]);\n")
+  (cons (str-eq (mt-text ((mach-bnw mc) 1 2)) "  r[1] = m_balloc(r[2]);\n")
+  (cons (str-eq (mt-text ((mach-bgt mc) 1 2 3)) "  r[1] = m_bget(r[2], r[3]);\n")
+  (cons (str-eq (mt-text ((mach-bpt mc) 1 2 3)) "  m_bput(r[1], r[2], r[3]);\n")
+  (cons (str-eq (mt-text ((mach-bln mc) 1 2)) "  r[1] = m_blen(r[2]);\n")
+  (cons (str-eq (mt-text ((mach-bpr mc) 1 2)) "  r[1] = m_bptr(r[2]);\n")
+    (the (List Bool) nil)))))))))))
+
+; ── F (42-48): literals, tables, the crossing ───────────────────────────────
+; `dat` renders exactly x-dat's bytes — 8-byte little-endian length, payload,
+; zero padding to 8 — and supplies the `};` c-assemble's `unsigned char m_<n>[]
+; = ` is waiting for. `ltb` is a static table indexed with no bounds check, for
+; x-ltb's reason: ctor tags are dense and coverage is total.
+(def mt-f (List Bool)
+  (cons (str-eq (mt-text ((mach-lea mc) 1 "$lit3")) "  r[1] = m_addr(m__Slit3);\n")
+  (cons (=i (mt-rels ((mach-lea mc) 1 "$lit3")) 1)
+  (cons (str-eq (mt-text ((mach-dat mc) (str->bytes "AB")))
+                "{2,0,0,0,0,0,0,0,65,66,0,0,0,0,0,0};\n")
+  (cons (str-eq (mt-text ((mach-dat mc) (str->bytes ""))) "{0,0,0,0,0,0,0,0};\n")
+  (cons (str-eq (mt-text ((mach-ltb mc) 1 2 mt-l2))
+                "  { static const long _t[] = {4L,7L}; r[1] = _t[r[2]]; }\n")
+  (cons (str-eq (mt-text ((mach-ltb mc) 1 2 (the (List I64) nil)))
+                "  { static const long _t[] = {0}; r[1] = _t[r[2]]; }\n")
+  (cons (str-eq (mt-text ((mach-sys mc) 1 60 mt-l2))
+                "  r[1] = m_sys(60L, r[4], r[7], 0L, 0L, 0L, 0L);\n")
+    (the (List Bool) nil)))))))))
+
+; ── G (49-56): calls, returns, dispatch scaffolding ─────────────────────────
+; Every chirality name reaching C goes through c-assemble's c-mangle — `foo-bar`
+; is `m_foo_Dbar`, `$skip1` is `m__Sskip1` — and the a-rel is what puts the
+; forward declaration in the prologue, so it is asserted, not assumed.
+(def mt-g (List Bool)
+  (cons (str-eq (mt-text ((mach-cal mc) 1 "foo-bar" mt-l2))
+    (str-cat "  m_arg[0] = r[4];\n" (str-cat "  m_arg[1] = r[7];\n" "  r[1] = m_foo_Dbar();\n")))
+  (cons (=i (mt-rels ((mach-cal mc) 1 "foo-bar" mt-l2)) 1)
+  (cons (str-eq (mt-text ((mach-ret mc) 2)) "  return r[2];\n")
+  (cons (str-eq (mt-text ((mach-lsc mc) 2)) "  _sc = r[2];\n")
+  (cons (str-eq (mt-text ((mach-cjne mc) 3 "$skip1")) "  if (_sc != 3L) goto m__Sskip1;\n")
+  (cons (str-eq (mt-text ((mach-tca mc) "go")) "  return m_go();\n")
+  (cons (mt-nil? (mach-fin mc))                       ; the heap lives in the shim
+  (cons (case ((mach-clb mc) "bin:add") (nil true) ((cons h t) false))
+    (the (List Bool) nil))))))))))
+
+; ── H (57-64): the flags model, the branch, the jump table ──────────────────
+(def mt-h (List Bool)
+  (cons (str-eq (mt-text ((mach-fcp mc) 1 2)) "  _ca = r[1]; _cb = r[2];\n")
+  (cons (str-eq (mt-text ((mach-fci mc) 1 9)) "  _ca = r[1]; _cb = 9L;\n")
+  (cons (str-eq (mt-text ((mach-fcpr mc) 1 2)) "  _ca = a1; _cb = r[2];\n")
+  (cons (str-eq (mt-text ((mach-fcir mc) 1 2)) "  _ca = a1; _cb = 2L;\n")
+  ; a BARE condition inside if (...), and NO ternary: c-op's comparisons now
+  ; yield the tag directly, so `? 0 : 1` would invert it back. The old ternary
+  ; was compensating for c-op's inverted spelling -- two errors that cancelled,
+  ; which is why the fused path worked while every materialized Bool was wrong.
+  (cons (str-eq (mt-text ((mach-fjc mc) (op-lti) 0 "$skip2"))
+                "  if ((_ca >= _cb) != 0L) goto m__Sskip2;\n")
+  (cons (str-eq (mt-text ((mach-fjc mc) (op-eqi) 1 "Lb"))
+                "  if ((_ca != _cb) != 1L) goto m_Lb;\n")
+  ; a switch, NOT `goto *tbl[i]`; one a-rel per arm.
+  (cons (str-eq (mt-text ((mach-jtb mc) 2 mt-ls))
+    (str-cat "  switch (r[2]) {\n"
+      (str-cat "  case 0: goto m_La;\n"
+        (str-cat "  case 1: goto m_Lb;\n" (str-cat "  default: m_trap();\n" "  }\n")))))
+  (cons (=i (mt-rels ((mach-jtb mc) 2 mt-ls)) 2)
+    (the (List Bool) nil))))))))))
+
+; ── I (65-68): E91 growth, and the shim contract this file publishes ────────
+; galo/gbnw are unreachable under alloc-fixed but must stay total and PURE, so
+; they cannot halt: they render as alo/bnw preceded by a bounds-check CALL, and
+; the trap lives in the shim (SPEC decision 3b), naming the allocation that
+; blew the reserve (decision 11) by tag and word count.
+(def mt-i (List Bool)
+  (cons (str-eq (mt-text ((mach-galo mc) 1 2 mt-l2))
+    (str-cat "  m_gcheck(2L, 3);\n" (mt-text ((mach-alo mc) 1 2 mt-l2))))
+  (cons (str-eq (mt-text ((mach-gbnw mc) 1 2))
+    (str-cat "  m_gcheckb(r[2]);\n" (mt-text ((mach-bnw mc) 1 2))))
+  (cons (str-starts-with "/* generated by chirality mach-c (E166)." (mt-text mc-preamble))
+  (cons (str-starts-with "/* generated by chirality mach-c (E166). helpers: scaffold/rt/chirality-rt.c */\nextern long m_arg[64];\nlong m_add(long, long);\n"
+                         (mt-text mc-preamble))
+    (the (List Bool) nil))))))
+
+(def mt-all (List Bool)
+  (append Bool mt-a (append Bool mt-b (append Bool mt-c (append Bool mt-d
+    (append Bool mt-e (append Bool mt-f (append Bool mt-g
+      (append Bool mt-h mt-i)))))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n) (mt-first-bad mt-all 1)))

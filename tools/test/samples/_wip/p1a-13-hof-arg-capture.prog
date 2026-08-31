@@ -1,0 +1,8 @@
+; V13: an anonymous CAPTURING lam passed as an argument (no record).
+(import "prelude/prelude")
+(declare twice (-> (-> I64 I64) I64 I64))
+(def twice (lam (f x) (f (f x))))
+(declare go (-> I64 I64))
+(def go (lam (k) (twice (lam (x) (+ x k)) 10)))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (- (go 1) 12)))

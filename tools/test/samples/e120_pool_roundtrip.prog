@@ -1,0 +1,31 @@
+; e120_pool_roundtrip.chiral — E122+E120 conformance: the native Pool round-trip.
+;
+; Proves the full linear-Pool cap lifecycle on a real memfd-backed region:
+;   mint  (E122: pool-create : size -> PoolR, memfd->ftruncate->mmap->box)
+;   write (E120: pool-write, bounds-checked byte copy into base+off)
+;   read  (E120: pool-read, len bytes from base+off, pool threaded back in a Pair)
+;   close (E120: pool-close, zeroize+munmap) + release the memfd fd (E107 fd-close).
+; The read-back bytes equal the written "META" -> native exit 42.
+;
+; DISCRIMINATING: pre-E122/E120 the compiler has NO crossing-wraps row for
+; pool-create/pool-write/pool-read/pool-close (cw-lookup = none), so the program
+; does not lower/link under the old B1 (`no emitted label for entry compile-main`,
+; compile exit 1). NEW B1: the four crossings lower, the ELF runs -> exit 42.
+;
+; The linear (Pool n) cap is threaded through application (pool-write feeds
+; pool-read) and the Pair-destructuring case; the memfd Fd is the separate PoolR
+; field, consumed exactly once by fd-close. Nothing is dropped or aliased.
+(import "prelude/prelude")
+(import "ports/ports")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (pool-create 4096)
+      ((pool-r p fd)
+        (case (pool-read 4096 (pool-write 4096 p 0 (str->bytes "META")) 0 4)
+          ((pr-r bs p2)
+            (case (str-eq (bytes->str bs) "META")
+              (false (case (pool-close 4096 p2)
+                       (unit (case (fd-close fd) (unit 20)))))
+              (true  (case (pool-close 4096 p2)
+                       (unit (case (fd-close fd) (unit 42))))))))))))

@@ -1,0 +1,52 @@
+; E168 Phase 12, G5 -- one source is not two opinions.
+;
+; ddc.chiral:120-126 states the rule in its own words: "THE QUORUM GATE FIRES
+; BEFORE ANY BYTE IS READ. Agreement is not a quorum." Here that is `differ`'s
+; first act: two ports carrying the same `OracleId` are refused WITHOUT either
+; being asked, both are spent so neither leaks, and the `Builder` is handed back
+; UNSPENT -- which the type carries, because a discarded cap is
+; `load: linear binder usage mismatch`.
+;
+; "Without being asked" is made OBSERVABLE rather than asserted: the input is a
+; source that CANNOT build. If either leg were consulted, the answer would be
+; `df-unasked` (its ask failed), not `df-common-mode`. Case 2 is that control --
+; two DISTINCT ids over the same unbuildable input, which does get asked and does
+; come back `df-unasked`. Without it, case 1 would pass for a compiler error.
+;
+; ⚑ And `df-common-mode` is NOT what catches E161 G0: those two providers were
+; genuinely distinct. This row polices the source COUNT; e168_rank_floor polices
+; independence. They are different failures and neither substitutes.
+;
+; exit 0 = both; 1..3 = the distinct-id control came back wrong;
+; 4..6 = the same-id pair was not refused unasked.
+
+(import "evidence/test-floor")
+
+; no `main`, so `compile-all … "main"` refuses it: an ask over this input can
+; only produce `ob-nobuild`, never an observation.
+(def unbuildable Bytes (str->bytes "(def notmain (-> I64 I64) (lam (n) 0))"))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (differ (builder "B1")
+                  (oracle (or-native "the same provider"))
+                  (oracle (or-native "the same provider"))
+                  unbuildable)
+      ((differ-r d b2)
+        (case d
+          ((df-common-mode id)
+            (case (differ b2
+                          (oracle (or-native "provider a"))
+                          (oracle (or-native "provider b"))
+                          unbuildable)
+              ((differ-r d2 b3)
+                (case b3
+                  ((builder v)
+                    (case d2
+                      ((df-common-mode i2)    1)
+                      ((df-agree ia ib o)     2)
+                      ((df-differ ia a ib b)  3)
+                      ((df-unasked i2 why)    0)))))))
+          ((df-agree ia ib o)    (case b2 ((builder v) 4)))
+          ((df-differ ia a ib b) (case b2 ((builder v) 5)))
+          ((df-unasked i why)    (case b2 ((builder v) 6))))))))

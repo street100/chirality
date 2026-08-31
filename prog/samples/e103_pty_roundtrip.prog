@@ -1,0 +1,31 @@
+; e103_pty_roundtrip.chiral — E103 Step 4 behavioral test (unblocked by E105 write-fd).
+; Opens a pty (E104 open-pty), puts the SLAVE into raw mode (E103 term-raw),
+; writes a byte to the MASTER via write-fd (E105), and reads it back from the
+; SLAVE. A correct round-trip proves, in one shot:
+;   - both fds name the SAME pty (master write -> slave read),
+;   - raw mode delivers a single byte with NO newline (VMIN=1, unbuffered),
+;   - E104 open-pty  ∘  E103 term-raw  ∘  E105 write-fd compose end to end.
+; Exit 42 = success · 10 = open-pty failed · 20 = short read / byte mismatch.
+; Requires a devpts mount (/dev/ptmx). Compile via the resolver blob (it imports
+; term, which pulls prelude/ports/bytes-tal).
+(import "prelude/prelude")
+(import "ports/ports")
+(import "lowering/tal/bytes")
+(import "protocol/term")
+
+(def test-byte Bytes (bslice (pack-u32 65) 0 1))   ; a single byte 0x41 'A'
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (open-pty unit)
+      ((pty-err e) 10)
+      ((pty-ok master slave idx)
+        (let (_ (term-raw slave))                  ; slave raw: VMIN=1, ECHO off
+          (let (_ (write-fd master test-byte))     ; write 'A' to the master end
+            (let (got (read slave 1))              ; read 1 byte from the slave end
+              (let (rc (case (=i (blen got) 1)
+                         (true  (case (=i (bget got 0) 65) (true 42) (false 20)))
+                         (false 20)))
+                (let (_ (close slave))
+                  (let (_ (close master))
+                    rc))))))))))

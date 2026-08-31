@@ -1,0 +1,78 @@
+; E170 Phase 12 -- `suite-main`, THE ENTRY FOR OBSERVATIONS MADE ELSEWHERE.
+;
+; `observe-exs` cannot gather an `obk-given`: it returns an EMPTY list at that
+; element, so a gate carrying one loses every later observation too and
+; `fold-checks` scores it `g-inadequate (in-unobserved …)`. That is the floor
+; refusing to pretend it made an observation somebody else made, and it is right.
+; The consequence is that `test-main` -- which observes and then judges -- can
+; never judge such a gate, and E170's C-leg recording seam (D6) is made entirely
+; of them: the harness records the leg's verdict, generated chirality source carries
+; it as a value, and the gate is HANDED it.
+;
+; `suite-fold`'s own comment has claimed since E168 that "suite-fold takes the
+; observations rather than making them, which is what lets a second chirality build
+; or the Rocq leg re-judge the SAME observations without re-running anything".
+; Until W0.5 there was no entry point above that fold, so the claim was true of a
+; function nothing could call from a root. This fixture is the adoption -- the
+; repo's measured failure mode is "built but unadopted", four occurrences.
+;
+; The three cases are the whole argument, and case 1 is what makes 2 mean
+; anything: the SAME suite through the SAME floor, judged two ways.
+;
+; exit 0 = every case; otherwise the number of the first failing case:
+;   1  `test-main` reported the obk-given gate GREEN -- the floor stopped
+;      refusing to judge an observation it did not make, and D6's seam would be
+;      an unchecked claim rather than a judged one
+;   2  `suite-main` handed the right observation did NOT report green
+;   3  `suite-main` handed a WRONG observation still reported green -- fail-open,
+;      which is the shape `all-green? nil` had until 2026-08-25
+
+(import "evidence/test-floor")
+
+; rank 1 -- `pv-external`. This is D6's shape in miniature: an external leg's
+; verdict, transcribed, named by a label rather than a path, because no gatherer
+; here can produce it.
+(def given-check Expect
+  (ex (obk-given "an external leg said the two builds are byte-identical")
+      (ob-exit 0)
+      (pv-external "gcc" "12.2.0")))
+
+; rank 3 companion. A gate carrying a differential with no rank <= 3 companion is
+; `g-inadequate (in-no-anchor)`; this gate carries no differential, so the
+; companion is not required -- it is here because a one-check gate would not show
+; that `suites-fold` walks a LIST.
+(def meaning-check Expect
+  (ex (obk-given "and the harness recorded the exit code it saw")
+      (ob-exit 0)
+      (pv-meaning "a leg that convicts byte-identically exits 0")))
+
+(def killed MutRun
+  (mu-killed "the survey decremented by one file" (ob-exit 0) (ob-exit 1)))
+
+(def given-suite (List Suite)
+  (cons (suite "a phase judged from recorded observations"
+          (cons (gate "the recording seam"
+                  (cons given-check (cons meaning-check nil))
+                  (the (List DiffExpect) nil)
+                  killed)
+            nil))
+    nil))
+
+; one (List Obs) per gate, in order -- two observations for the gate's two checks.
+(def right-obs (List (List Obs))
+  (cons (cons (ob-exit 0) (cons (ob-exit 0) nil)) nil))
+
+(def wrong-obs (List (List Obs))
+  (cons (cons (ob-exit 0) (cons (ob-exit 1) nil)) nil))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (=i (test-main given-suite) 0)
+      (true 1)
+      (false
+        (case (=i (suite-main given-suite right-obs) 0)
+          (false 2)
+          (true
+            (case (=i (suite-main given-suite wrong-obs) 0)
+              (true  3)
+              (false 0))))))))

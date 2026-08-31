@@ -1,0 +1,9 @@
+; V18: 3 capturing instances, `the`-annotated lams, consumed by INLINE case.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare mk-a (-> I64 Voc)) (def mk-a (lam (k) (voc (the (-> I64 I64) (lam (x) (+ x k))) 1)))
+(declare mk-b (-> I64 Voc)) (def mk-b (lam (k) (voc (the (-> I64 I64) (lam (x) (* x k))) 2)))
+(declare mk-c (-> I64 Voc)) (def mk-c (lam (k) (voc (the (-> I64 I64) (lam (x) (- x k))) 3)))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u)
+  (- (+ (case (mk-a 1) ((voc d n) (d 10))) (+ (case (mk-b 2) ((voc d n) (d 10))) (case (mk-c 5) ((voc d n) (d 10))))) 36)))
