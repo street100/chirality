@@ -1,0 +1,620 @@
+; The byte library, authored AT THE TAL LEVEL: chirality values of type TIFn,
+; hand-written typed assembly consumed by the chirality emitter. This exercises
+; the design's claim that tal is human-writable (modules-lowering). Every
+; function here is preserve-checked by the tal checker (native.py reverse-
+; shuttles these to tal.TalFn and re-checks) and differentially tested
+; against the host prims.
+;
+; At the floor Str and Bytes are the same [len][payload] cell, so one library
+; serves both: the shuttle maps str-cat to nb-bcat-t, str-sub to nb-bslice-t, and
+; str->bytes / bytes->str to nb-id-t. Conventions: params in r0..; Bool is the
+; enum tag 0=true 1=false; recursion instead of loops (honest limit: calls
+; are real calls, so very large buffers can exhaust the stack; the native
+; fragment's strings are small).
+;
+; Honest domain limits (documented in README): pack/unpack and / % agree
+; with the host on non-negative operands; string indices are byte indices
+; (UTF-8), which coincides with the host on ASCII.
+
+(import "prelude")
+(import "tal-ir")
+
+; identity: str->bytes and bytes->str are free at the floor
+(def nb-id-t TIFn (ti-fn "nb-id" 1 1 (ti-ret 0)))
+
+; E145: be-peek laundering peel for linear str-porttypes. Like nb-id it is a
+; runtime no-op on the pointer, but it DUPLICATES the handle into a two-field
+; boxed sum -- (be-peek-r (base Str) (1 b Backend)) -- so a caller can `case` it
+; and get the base string (qw) beside a fresh q1 handle. The duplication is the
+; laundering: at the type level the base is unrestricted and the handle stays
+; linear, and the caller's `case` accounts both binders atomically (a case does
+; NOT scale its scrutinee's usage the way an application/let does). Both fields
+; are r0 -- Backend IS its base pointer at runtime (the E144 nt-str carrier), so
+; base and handle are the same address. Single ctor => tag 0. Mirrors the
+; nb-sock-recv-t / RecvR ti-cona shape (sys-tal.chiral), pure (no ti-sys).
+(def nb-be-peek-t TIFn
+  (ti-fn "nb-be-peek" 1 2
+    (t-seq (ti-cona 1 0 (cons 0 (cons 0 nil)))   ; (be-peek-r base=r0 b=r0)  tag 0
+      (ti-ret 1))))
+
+; E137: backend-close discharges a linear Backend handle to Unit. Unlike be-base
+; (nb-id, an identity peel whose result ALIASES the handle -- so it only type-
+; checks in strict tail position, used once, never dropped), this genuinely
+; CONSUMES r0 and returns a FRESH unit word, mirroring fd-close/nb-sys-close's
+; consume->fresh-result shape but with NO syscall (Backend is just a string, no
+; fd to close). r0 is consumed as a prim operand (r0 * 0 = 0 = unit), so the tal
+; linear checker sees the handle used exactly once and the result is a clean 0.
+(def nb-be-close-t TIFn
+  (ti-fn "nb-be-close" 1 3
+    (t-seq (ti-const 1 0)
+    (t-seq (ti-prim 2 (op-mul) 0 1)   ; consume the handle r0; produce fresh unit
+      (ti-ret 2)))))
+
+(def nb-blen-t TIFn
+  (ti-fn "nb-blen" 1 2 (t-seq (ti-blen 1 0) (ti-ret 1))))
+
+(def nb-bget-t TIFn
+  (ti-fn "nb-bget" 2 3 (t-seq (ti-bget 2 0 1) (ti-ret 2))))
+
+; byte-wise copy: nb-copy-t(dst, src, doff, soff, n) returns dst
+(def nb-copy-t TIFn
+  (ti-fn "nb-copy" 5 13
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 6 (op-eqi) 4 5)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil) (ti-ret 0))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-bget 7 1 3)
+          (t-seq (ti-bput 0 2 7)
+          (t-seq (ti-const 8 1)
+          (t-seq (ti-prim 9 (op-add) 2 8)
+          (t-seq (ti-prim 10 (op-add) 3 8)
+          (t-seq (ti-prim 11 (op-sub) 4 8)
+          (t-seq (ti-call 12 "nb-copy" (cons 0 (cons 1 (cons 9 (cons 10 (cons 11 nil))))))
+            (ti-ret 12)))))))))
+        nil))
+        none)))))
+
+; equality: lengths first, then byte-wise
+(def nb-beq-go-t TIFn
+  (ti-fn "nb-beq-go" 4 13
+    (t-seq (ti-prim 4 (op-eqi) 2 3)
+      (ti-tcase 4 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-con 5 0) (ti-ret 5)))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-bget 6 0 2)
+          (t-seq (ti-bget 7 1 2)
+          (t-seq (ti-prim 8 (op-eqi) 6 7)
+            (ti-tcase 8 false
+              (cons (pair (pair 0 nil)
+                (t-seq (ti-const 9 1)
+                (t-seq (ti-prim 10 (op-add) 2 9)
+                (t-seq (ti-call 11 "nb-beq-go" (cons 0 (cons 1 (cons 10 (cons 3 nil)))))
+                  (ti-ret 11)))))
+              (cons (pair (pair 1 nil)
+                (t-seq (ti-con 12 1) (ti-ret 12)))
+              nil))
+              none)))))
+        nil))
+        none))))
+
+(def nb-beq-t TIFn
+  (ti-fn "nb-beq" 2 8
+    (t-seq (ti-blen 2 0)
+    (t-seq (ti-blen 3 1)
+    (t-seq (ti-prim 4 (op-eqi) 2 3)
+      (ti-tcase 4 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-const 5 0)
+          (t-seq (ti-call 6 "nb-beq-go" (cons 0 (cons 1 (cons 5 (cons 2 nil)))))
+            (ti-ret 6))))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-con 7 1) (ti-ret 7)))
+        nil))
+        none))))))
+
+(def nb-bcat-t TIFn
+  (ti-fn "nb-bcat" 2 9
+    (t-seq (ti-blen 2 0)
+    (t-seq (ti-blen 3 1)
+    (t-seq (ti-prim 4 (op-add) 2 3)
+    (t-seq (ti-bnew 5 4)
+    (t-seq (ti-const 6 0)
+    (t-seq (ti-call 7 "nb-copy" (cons 5 (cons 0 (cons 6 (cons 6 (cons 2 nil))))))
+    (t-seq (ti-call 8 "nb-copy" (cons 7 (cons 1 (cons 2 (cons 6 (cons 3 nil))))))
+      (ti-ret 8))))))))))
+
+; slice [i, j): requires 0 <= i <= j <= len (in-range at all demo call sites;
+; out-of-range faults instead of clamping -- the honest alarm)
+(def nb-bslice-t TIFn
+  (ti-fn "nb-bslice" 3 7
+    (t-seq (ti-prim 3 (op-sub) 2 1)
+    (t-seq (ti-bnew 4 3)
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-call 6 "nb-copy" (cons 4 (cons 0 (cons 5 (cons 1 (cons 3 nil))))))
+      (ti-ret 6)))))))
+
+(def nb-rep-go-t TIFn
+  (ti-fn "nb-rep-go" 5 12
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 6 (op-eqi) 3 5)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil) (ti-ret 0))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-call 7 "nb-copy" (cons 0 (cons 1 (cons 2 (cons 5 (cons 4 nil))))))
+          (t-seq (ti-prim 8 (op-add) 2 4)
+          (t-seq (ti-const 9 1)
+          (t-seq (ti-prim 10 (op-sub) 3 9)
+          (t-seq (ti-call 11 "nb-rep-go" (cons 7 (cons 1 (cons 8 (cons 10 (cons 4 nil))))))
+            (ti-ret 11)))))))
+        nil))
+        none)))))
+
+(def nb-brepeat-t TIFn
+  (ti-fn "nb-brepeat" 2 7
+    (t-seq (ti-blen 2 0)
+    (t-seq (ti-prim 3 (op-mul) 2 1)
+    (t-seq (ti-bnew 4 3)
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-call 6 "nb-rep-go" (cons 4 (cons 0 (cons 5 (cons 1 (cons 2 nil))))))
+      (ti-ret 6))))))))
+
+; little-endian packing (non-negative domain)
+(def nb-pack32-t TIFn
+  (ti-fn "nb-pack32" 1 15
+    (t-seq (ti-const 1 4)
+    (t-seq (ti-bnew 2 1)
+    (t-seq (ti-const 3 256)
+    (t-seq (ti-const 4 0)
+    (t-seq (ti-prim 5 (op-mod) 0 3)
+    (t-seq (ti-bput 2 4 5)
+    (t-seq (ti-prim 6 (op-div) 0 3)
+    (t-seq (ti-const 7 1)
+    (t-seq (ti-prim 8 (op-mod) 6 3)
+    (t-seq (ti-bput 2 7 8)
+    (t-seq (ti-prim 9 (op-div) 6 3)
+    (t-seq (ti-const 10 2)
+    (t-seq (ti-prim 11 (op-mod) 9 3)
+    (t-seq (ti-bput 2 10 11)
+    (t-seq (ti-prim 12 (op-div) 9 3)
+    (t-seq (ti-const 13 3)
+    (t-seq (ti-prim 14 (op-mod) 12 3)
+    (t-seq (ti-bput 2 13 14)
+      (ti-ret 2)))))))))))))))))))))
+
+(def nb-pack16-t TIFn
+  (ti-fn "nb-pack16" 1 9
+    (t-seq (ti-const 1 2)
+    (t-seq (ti-bnew 2 1)
+    (t-seq (ti-const 3 256)
+    (t-seq (ti-const 4 0)
+    (t-seq (ti-prim 5 (op-mod) 0 3)
+    (t-seq (ti-bput 2 4 5)
+    (t-seq (ti-prim 6 (op-div) 0 3)
+    (t-seq (ti-const 7 1)
+    (t-seq (ti-prim 8 (op-mod) 6 3)
+    (t-seq (ti-bput 2 7 8)
+      (ti-ret 2)))))))))))))
+
+(def nb-unpack32-t TIFn
+  (ti-fn "nb-unpack32" 2 19
+    (t-seq (ti-bget 2 0 1)
+    (t-seq (ti-const 3 1)
+    (t-seq (ti-prim 4 (op-add) 1 3)
+    (t-seq (ti-bget 5 0 4)
+    (t-seq (ti-const 6 2)
+    (t-seq (ti-prim 7 (op-add) 1 6)
+    (t-seq (ti-bget 8 0 7)
+    (t-seq (ti-const 9 3)
+    (t-seq (ti-prim 10 (op-add) 1 9)
+    (t-seq (ti-bget 11 0 10)
+    (t-seq (ti-const 12 256)
+    (t-seq (ti-prim 13 (op-mul) 11 12)
+    (t-seq (ti-prim 14 (op-add) 8 13)
+    (t-seq (ti-prim 15 (op-mul) 14 12)
+    (t-seq (ti-prim 16 (op-add) 5 15)
+    (t-seq (ti-prim 17 (op-mul) 16 12)
+    (t-seq (ti-prim 18 (op-add) 2 17)
+      (ti-ret 18))))))))))))))))))))
+
+(def nb-unpack16-t TIFn
+  (ti-fn "nb-unpack16" 2 9
+    (t-seq (ti-bget 2 0 1)
+    (t-seq (ti-const 3 1)
+    (t-seq (ti-prim 4 (op-add) 1 3)
+    (t-seq (ti-bget 5 0 4)
+    (t-seq (ti-const 6 256)
+    (t-seq (ti-prim 7 (op-mul) 5 6)
+    (t-seq (ti-prim 8 (op-add) 2 7)
+      (ti-ret 8))))))))))
+
+; decimal rendering: digit count, then fill from the low end
+(def nb-digits-t TIFn
+  (ti-fn "nb-digits" 1 8
+    (t-seq (ti-const 1 10)
+    (t-seq (ti-prim 2 (op-lti) 0 1)
+      (ti-tcase 2 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-const 3 1) (ti-ret 3)))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-prim 4 (op-div) 0 1)
+          (t-seq (ti-call 5 "nb-digits" (cons 4 nil))
+          (t-seq (ti-const 6 1)
+          (t-seq (ti-prim 7 (op-add) 5 6)
+            (ti-ret 7))))))
+        nil))
+        none)))))
+
+(def nb-fill-t TIFn
+  (ti-fn "nb-fill" 3 13
+    (t-seq (ti-const 3 10)
+    (t-seq (ti-prim 4 (op-mod) 1 3)
+    (t-seq (ti-const 5 48)
+    (t-seq (ti-prim 6 (op-add) 4 5)
+    (t-seq (ti-bput 0 2 6)
+    (t-seq (ti-prim 7 (op-div) 1 3)
+    (t-seq (ti-const 8 0)
+    (t-seq (ti-prim 9 (op-eqi) 7 8)
+      (ti-tcase 9 false
+        (cons (pair (pair 0 nil) (ti-ret 0))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-const 10 1)
+          (t-seq (ti-prim 11 (op-sub) 2 10)
+          (t-seq (ti-call 12 "nb-fill" (cons 0 (cons 7 (cons 11 nil))))
+            (ti-ret 12)))))
+        nil))
+        none)))))))))))
+
+(def nb-i64s-t TIFn
+  (ti-fn "nb-i64s" 1 19
+    (t-seq (ti-const 1 0)
+    (t-seq (ti-prim 2 (op-eqi) 0 1)
+      (ti-tcase 2 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-const 3 1)
+          (t-seq (ti-bnew 4 3)
+          (t-seq (ti-const 5 48)
+          (t-seq (ti-bput 4 1 5)
+            (ti-ret 4))))))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-prim 6 (op-lti) 0 1)
+            (ti-tcase 6 false
+              (cons (pair (pair 0 nil)
+                (t-seq (ti-prim 7 (op-sub) 1 0)
+                (t-seq (ti-call 8 "nb-digits" (cons 7 nil))
+                (t-seq (ti-const 9 1)
+                (t-seq (ti-prim 10 (op-add) 8 9)
+                (t-seq (ti-bnew 11 10)
+                (t-seq (ti-const 12 45)
+                (t-seq (ti-bput 11 1 12)
+                (t-seq (ti-call 13 "nb-fill" (cons 11 (cons 7 (cons 8 nil))))
+                  (ti-ret 13))))))))))
+              (cons (pair (pair 1 nil)
+                (t-seq (ti-call 14 "nb-digits" (cons 0 nil))
+                (t-seq (ti-bnew 15 14)
+                (t-seq (ti-const 16 1)
+                (t-seq (ti-prim 17 (op-sub) 14 16)
+                (t-seq (ti-call 18 "nb-fill" (cons 15 (cons 0 (cons 17 nil))))
+                  (ti-ret 18)))))))
+              nil))
+              none)))
+        nil))
+        none)))))
+
+; substring search: match at each offset from start, else -1
+(def nb-match-t TIFn
+  (ti-fn "nb-match" 5 15
+    (t-seq (ti-prim 5 (op-eqi) 3 4)
+      (ti-tcase 5 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-con 6 0) (ti-ret 6)))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-prim 7 (op-add) 2 3)
+          (t-seq (ti-bget 8 0 7)
+          (t-seq (ti-bget 9 1 3)
+          (t-seq (ti-prim 10 (op-eqi) 8 9)
+            (ti-tcase 10 false
+              (cons (pair (pair 0 nil)
+                (t-seq (ti-const 11 1)
+                (t-seq (ti-prim 12 (op-add) 3 11)
+                (t-seq (ti-call 13 "nb-match" (cons 0 (cons 1 (cons 2 (cons 12 (cons 4 nil))))))
+                  (ti-ret 13)))))
+              (cons (pair (pair 1 nil)
+                (t-seq (ti-con 14 1) (ti-ret 14)))
+              nil))
+              none))))))
+        nil))
+        none))))
+
+(def nb-bfind-from-t TIFn
+  (ti-fn "nb-bfind-from" 3 15
+    (t-seq (ti-blen 3 0)
+    (t-seq (ti-blen 4 1)
+    (t-seq (ti-prim 5 (op-add) 2 4)
+    (t-seq (ti-prim 6 (op-lei) 5 3)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-const 10 0)
+          (t-seq (ti-call 11 "nb-match" (cons 0 (cons 1 (cons 2 (cons 10 (cons 4 nil))))))
+            (ti-tcase 11 false
+              (cons (pair (pair 0 nil) (ti-ret 2))
+              (cons (pair (pair 1 nil)
+                (t-seq (ti-const 12 1)
+                (t-seq (ti-prim 13 (op-add) 2 12)
+                (t-seq (ti-call 14 "nb-bfind-from" (cons 0 (cons 1 (cons 13 nil))))
+                  (ti-ret 14)))))
+              nil))
+              none))))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-const 7 0)
+          (t-seq (ti-const 8 1)
+          (t-seq (ti-prim 9 (op-sub) 7 8)
+            (ti-ret 9)))))
+        nil))
+        none)))))))
+
+(def nb-bfind-t TIFn
+  (ti-fn "nb-bfind" 2 4
+    (t-seq (ti-const 2 0)
+    (t-seq (ti-call 3 "nb-bfind-from" (cons 0 (cons 1 (cons 2 nil))))
+      (ti-ret 3)))))
+
+; read an i64 from 8 LE bytes at a byte offset: Horner from the top
+; byte down -- two's-complement sign falls out of wrapped arithmetic.
+; The out-param reader for kernel-filled cells (clock_gettime).
+(def nb-cell-i64-t TIFn
+  (ti-fn "nb-cell-i64" 2 7
+    (t-seq (ti-const 2 256)
+    (t-seq (ti-const 6 7)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-bget 3 0 4)
+    (t-seq (ti-const 6 6)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-bget 5 0 4)
+    (t-seq (ti-prim 3 (op-mul) 3 2)
+    (t-seq (ti-prim 3 (op-add) 3 5)
+    (t-seq (ti-const 6 5)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-bget 5 0 4)
+    (t-seq (ti-prim 3 (op-mul) 3 2)
+    (t-seq (ti-prim 3 (op-add) 3 5)
+    (t-seq (ti-const 6 4)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-bget 5 0 4)
+    (t-seq (ti-prim 3 (op-mul) 3 2)
+    (t-seq (ti-prim 3 (op-add) 3 5)
+    (t-seq (ti-const 6 3)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-bget 5 0 4)
+    (t-seq (ti-prim 3 (op-mul) 3 2)
+    (t-seq (ti-prim 3 (op-add) 3 5)
+    (t-seq (ti-const 6 2)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-bget 5 0 4)
+    (t-seq (ti-prim 3 (op-mul) 3 2)
+    (t-seq (ti-prim 3 (op-add) 3 5)
+    (t-seq (ti-const 6 1)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-bget 5 0 4)
+    (t-seq (ti-prim 3 (op-mul) 3 2)
+    (t-seq (ti-prim 3 (op-add) 3 5)
+    (t-seq (ti-const 6 0)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-bget 5 0 4)
+    (t-seq (ti-prim 3 (op-mul) 3 2)
+    (t-seq (ti-prim 3 (op-add) 3 5)
+      (ti-ret 3))))))))))))))))))))))))))))))))))))))))))
+
+; write an i64 as 8 LE bytes at a byte offset (initialization write
+; into a fresh cell). Euclidean %/ keep the bytes nonnegative for
+; negative values. Returns 0.
+(def nb-cell-put-i64-t TIFn
+  (ti-fn "nb-cell-put-i64" 3 8
+    (t-seq (ti-const 3 256)
+    (t-seq (ti-const 6 0)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-prim 5 (op-mod) 2 3)
+    (t-seq (ti-bput 0 4 5)
+    (t-seq (ti-prim 2 (op-div) 2 3)
+    (t-seq (ti-const 6 1)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-prim 5 (op-mod) 2 3)
+    (t-seq (ti-bput 0 4 5)
+    (t-seq (ti-prim 2 (op-div) 2 3)
+    (t-seq (ti-const 6 2)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-prim 5 (op-mod) 2 3)
+    (t-seq (ti-bput 0 4 5)
+    (t-seq (ti-prim 2 (op-div) 2 3)
+    (t-seq (ti-const 6 3)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-prim 5 (op-mod) 2 3)
+    (t-seq (ti-bput 0 4 5)
+    (t-seq (ti-prim 2 (op-div) 2 3)
+    (t-seq (ti-const 6 4)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-prim 5 (op-mod) 2 3)
+    (t-seq (ti-bput 0 4 5)
+    (t-seq (ti-prim 2 (op-div) 2 3)
+    (t-seq (ti-const 6 5)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-prim 5 (op-mod) 2 3)
+    (t-seq (ti-bput 0 4 5)
+    (t-seq (ti-prim 2 (op-div) 2 3)
+    (t-seq (ti-const 6 6)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-prim 5 (op-mod) 2 3)
+    (t-seq (ti-bput 0 4 5)
+    (t-seq (ti-prim 2 (op-div) 2 3)
+    (t-seq (ti-const 6 7)
+    (t-seq (ti-prim 4 (op-add) 1 6)
+    (t-seq (ti-prim 5 (op-mod) 2 3)
+    (t-seq (ti-bput 0 4 5)
+    (t-seq (ti-prim 2 (op-div) 2 3)
+    (t-seq (ti-const 7 0)
+      (ti-ret 7)))))))))))))))))))))))))))))))))))))))))))))
+
+; read a 64-bit little-endian word from a cell at offset (dual of nb-put-u64)
+(def nb-get-u64-t TIFn
+  (ti-fn "nb-get-u64" 3 15
+    (t-seq (ti-bget 3 0 1)
+    (t-seq (ti-const 4 1)
+    (t-seq (ti-prim 5 (op-add) 1 4)
+    (t-seq (ti-bget 6 0 5)
+    (t-seq (ti-const 7 2)
+    (t-seq (ti-prim 8 (op-add) 1 7)
+    (t-seq (ti-bget 9 0 8)
+    (t-seq (ti-const 10 3)
+    (t-seq (ti-prim 11 (op-add) 1 10)
+    (t-seq (ti-bget 12 0 11)
+    (t-seq (ti-const 4 4)
+    (t-seq (ti-prim 5 (op-add) 1 4)
+    (t-seq (ti-bget 7 0 5)
+    (t-seq (ti-const 8 5)
+    (t-seq (ti-prim 10 (op-add) 1 8)
+    (t-seq (ti-bget 11 0 10)
+    (t-seq (ti-const 4 6)
+    (t-seq (ti-prim 5 (op-add) 1 4)
+    (t-seq (ti-bget 8 0 5)
+    (t-seq (ti-const 10 7)
+    (t-seq (ti-prim 4 (op-add) 1 10)
+    (t-seq (ti-bget 13 0 4)
+    (t-seq (ti-const 14 0)
+    (t-seq (ti-prim 14 (op-add) 14 13)
+    (t-seq (ti-const 5 256)
+    (t-seq (ti-prim 14 (op-mul) 14 5)
+    (t-seq (ti-prim 14 (op-add) 14 8)
+    (t-seq (ti-prim 14 (op-mul) 14 5)
+    (t-seq (ti-prim 14 (op-add) 14 11)
+    (t-seq (ti-prim 14 (op-mul) 14 5)
+    (t-seq (ti-prim 14 (op-add) 14 7)
+    (t-seq (ti-prim 14 (op-mul) 14 5)
+    (t-seq (ti-prim 14 (op-add) 14 12)
+    (t-seq (ti-prim 14 (op-mul) 14 5)
+    (t-seq (ti-prim 14 (op-add) 14 9)
+    (t-seq (ti-prim 14 (op-mul) 14 5)
+    (t-seq (ti-prim 14 (op-add) 14 6)
+    (t-seq (ti-prim 14 (op-mul) 14 5)
+    (t-seq (ti-prim 14 (op-add) 14 3)
+      (ti-ret 14))))))))))))))))))))))))))))))))))))))))))
+
+; ---- "structs at the floor": little-endian store-at-computed-offset (E30) ----
+; Generalize the nb-pack32-t idiom: instead of a fresh cell written at [0..k), a
+; word is decomposed and stored into an ALREADY-ALLOCATED (fresh, unfrozen) cell
+; at off+0..off+k-1. Composition over ti-bput -- no new floor primitive (the
+; edge-6 "the floor is thin" finding). The cell is mutated in place and threaded
+; back. u64/ptr compose two u32 stores (low word at off, high word at off+4).
+
+; store a 32-bit little-endian word: cell[off..off+4) = val (mod 2^32)
+(def nb-put-u32-t TIFn
+  (ti-fn "nb-put-u32" 3 17
+    (t-seq (ti-const 3 256)
+    (t-seq (ti-prim 4 (op-mod) 2 3)          ; byte 0
+    (t-seq (ti-bput 0 1 4)
+    (t-seq (ti-prim 5 (op-div) 2 3)
+    (t-seq (ti-const 6 1)               ; byte 1 at off+1
+    (t-seq (ti-prim 7 (op-add) 1 6)
+    (t-seq (ti-prim 8 (op-mod) 5 3)
+    (t-seq (ti-bput 0 7 8)
+    (t-seq (ti-prim 9 (op-div) 5 3)
+    (t-seq (ti-const 10 2)              ; byte 2 at off+2
+    (t-seq (ti-prim 11 (op-add) 1 10)
+    (t-seq (ti-prim 12 (op-mod) 9 3)
+    (t-seq (ti-bput 0 11 12)
+    (t-seq (ti-prim 13 (op-div) 9 3)
+    (t-seq (ti-const 14 3)              ; byte 3 at off+3
+    (t-seq (ti-prim 15 (op-add) 1 14)
+    (t-seq (ti-prim 16 (op-mod) 13 3)
+    (t-seq (ti-bput 0 15 16)
+      (ti-ret 0)))))))))))))))))))))
+
+; store a 64-bit little-endian word: low u32 at off, high u32 at off+4
+(def nb-put-u64-t TIFn
+  (ti-fn "nb-put-u64" 3 10
+    (t-seq (ti-const 3 4294967296)
+    (t-seq (ti-prim 4 (op-mod) 2 3)
+    (t-seq (ti-call 5 "nb-put-u32" (cons 0 (cons 1 (cons 4 nil))))
+    (t-seq (ti-prim 6 (op-div) 2 3)
+    (t-seq (ti-const 7 4)
+    (t-seq (ti-prim 8 (op-add) 1 7)
+    (t-seq (ti-call 9 "nb-put-u32" (cons 5 (cons 8 (cons 6 nil))))
+      (ti-ret 9))))))))))
+
+; store a raw pointer word (an arena/cell address from ti-bptr) -- same as u64
+(def nb-put-ptr-t TIFn
+  (ti-fn "nb-put-ptr" 3 4
+    (t-seq (ti-call 3 "nb-put-u64" (cons 0 (cons 1 (cons 2 nil))))
+      (ti-ret 3))))
+
+; cell-new: allocate n zeroed bytes (surface helper, not a TAL function).
+(def cell-new (-> I64 Bytes)
+  (lam (n)
+    (let (q (/ n 4))
+      (let (r (% n 4))
+        (case (=i r 0)
+          (true  (brepeat (pack-u32 0) q))
+          (false (bslice (brepeat (pack-u32 0) (+ q 1)) 0 n)))))))
+
+; bget-u16-le: read a u16 at little-endian offset (wraps unpack-u16).
+(def bget-u16-le (-> Bytes I64 I64) (lam (cell off) (unpack-u16 cell off)))
+
+; bget-u32-le: read a u32 at little-endian offset (wraps unpack-u32).
+(def bget-u32-le (-> Bytes I64 I64) (lam (cell off) (unpack-u32 cell off)))
+
+; bput-u32-le: write a u32 at offset, return new Bytes (length-preserving).
+; NOTE: surface `bslice` is (cell, start, END) — the third arg is the exclusive
+; end index, NOT a length. The suffix is therefore [off+4, blen). (The prior
+; version passed (blen-(off+4)) as the end, which silently TRUNCATED the tail;
+; it was latent because term.chiral was the sole caller and only read back the
+; word it wrote — but E103 chains four writes and needs all 60 bytes.)
+(def bput-u32-le (-> Bytes I64 I64 Bytes)
+  (lam (cell off val)
+    (let (prefix (bslice cell 0 off))
+      (let (word (pack-u32 val))
+        (let (suffix (bslice cell (+ off 4) (blen cell)))
+          (bcat prefix (bcat word suffix)))))))
+
+; bput-u8: write a single byte (val & 0xFF) at offset, return a FRESH Bytes
+; (same fresh-cell discipline as bput-u32-le; never mutates in place, length-
+; preserving). The low byte of (pack-u32 val) is exactly val mod 256; the
+; single byte is that low byte. Neighboring bytes are untouched. Surface
+; `bslice` is (cell, start, END): the suffix is [off+1, blen). The suffix is
+; guarded so writing the LAST byte (off+1 == len) yields an empty tail via
+; cell-new rather than an end-boundary bslice (.planning/BUGS-AND-GAPS.md).
+(def bput-u8 (-> Bytes I64 I64 Bytes)
+  (lam (cell off val)
+    (let (prefix (bslice cell 0 off))
+      (let (byte (bslice (pack-u32 val) 0 1))
+        (let (rest-off (+ off 1))
+          (let (suffix
+                 (case (=i rest-off (blen cell))
+                   (true  (cell-new 0))
+                   (false (bslice cell rest-off (blen cell)))))
+            (bcat prefix (bcat byte suffix))))))))
+
+; bput-u16-le: write a u16 at offset, return a FRESH Bytes (length-preserving,
+; little-endian). The inverse of bget-u16-le (:532), and the u16 mirror of
+; bput-u32-le. `pack-u16` (prelude extern) lays the low byte at `off` first, so
+; value 0x0102 stores bytes [0x02, 0x01]. Surface `bslice` is (cell, start, END):
+; the suffix is [off+2, blen), with (blen cell) as the END — a length there would
+; TRUNCATE the tail (the E103 bug). No boundary guard is needed: when
+; off+2 == blen the slice `bslice cell blen blen` is a legal empty tail.
+(def bput-u16-le (-> Bytes I64 I64 Bytes)
+  (lam (cell off val)
+    (let (prefix (bslice cell 0 off))
+      (let (word (pack-u16 val))
+        (let (suffix (bslice cell (+ off 2) (blen cell)))
+          (bcat prefix (bcat word suffix)))))))
+
+; the whole library, in emission order
+(def native-lib (List TIFn)
+  (cons nb-cell-i64-t (cons nb-cell-put-i64-t
+  (cons nb-id-t (cons nb-blen-t (cons nb-bget-t (cons nb-copy-t (cons nb-beq-go-t
+  (cons nb-beq-t (cons nb-bcat-t (cons nb-bslice-t (cons nb-rep-go-t (cons nb-brepeat-t
+  (cons nb-pack32-t (cons nb-pack16-t (cons nb-unpack32-t (cons nb-unpack16-t
+  (cons nb-digits-t (cons nb-fill-t (cons nb-i64s-t (cons nb-match-t
+  (cons nb-put-u32-t (cons nb-get-u64-t (cons nb-put-u64-t (cons nb-put-ptr-t
+  ; E145: appended LAST so it does not shift the addresses of the other runtime
+  ; routines (existing programs that never call be-peek keep their layout).
+  (cons nb-bfind-from-t (cons nb-bfind-t (cons nb-be-peek-t (cons nb-be-close-t nil)))))))))))))))))))))))))))))

@@ -1,0 +1,15 @@
+; ports/file — opening a path.
+;
+; The two openat crossings are the only place in the port floor where a NAME
+; becomes a descriptor. They are deliberately their own registry: naming
+; `open-rw` is a strictly larger authority than naming `read`/`write-fd`, and a
+; module that only shuffles already-open descriptors should not be able to
+; reach for a path.
+;
+; Both return a raw fd (or -errno), not an Fd cap -- the mint is `adopt-fd` in
+; ports/fd, kept one seam away on purpose.
+
+(import "prelude")
+
+(extern open-rw       (=> Bytes I64))     ; openat O_RDWR|O_NOCTTY, NUL-term path -> fd | -errno
+(extern open-create   (=> Bytes I64))     ; openat O_RDWR|O_CREAT|O_TRUNC|O_NOCTTY|O_CLOEXEC, NUL-term path -> fd | -errno

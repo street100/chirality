@@ -1,0 +1,96 @@
+; scriba-runview-stream-test.chiral — S17 unit gate for the STREAMING render core.
+;
+; Drives runview-render / streaming-row / phase-tag over hand-built RunView values
+; carrying the rv-streaming phase and byte-checks the open ">>" row + the COMBINER
+; tag, then re-asserts the S15 settle path is unchanged. Pure — NO PTY, NO network,
+; NO fork (the whole point: the live row is drawn from the TYPED phase, no socket).
+; compile-main returns 0 iff all three tests pass (exit 0).
+;
+; Build+run (fast, ~seconds — the manas-runview closure only, no full scriba tree):
+;   . bin/chirality-resolve.sh
+;   chirality_blob scaffold/lib scriba/manas-runview manas/core/types > blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
+;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   cat TUI/scriba/scriba-runview-stream-test.chiral >> blob; echo >> blob
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
+
+(import "prelude")
+(import "render")                  ; Rendering (r-lines / r-face / r-text) — to dig rows
+(import "manas-runview")           ; RunView, RunPhase (rv-streaming), runview-render, streaming-row, phase-tag, rv-*
+(import "manas/core/types")        ; ExpertOutcome (expert-ok / expert-bad)
+
+; ─── Rendering extractors (dig the tree runview-render produces) ─────────────
+
+(def rl-children (-> Rendering (List Rendering))
+  (lam (r) (case r
+    ((r-lines cs) cs)
+    (_ nil))))
+
+(def nth-rendering (-> (List Rendering) I64 Rendering)
+  (lam (rs i)
+    (case rs
+      (nil (r-hole "<none>"))
+      ((cons h t) (case (=i i 0) (true h) (false (nth-rendering t (- i 1))))))))
+
+; the text content of a row: unwrap r-face -> r-text, or a bare r-text.
+(def row-text (-> Rendering Str)
+  (lam (r) (case r
+    ((r-face f b) (row-text b))
+    ((r-text s bold) s)
+    (_ ""))))
+
+(def face-of (-> Rendering Str)
+  (lam (r) (case r
+    ((r-face f b) f)
+    (_ ""))))
+
+; substring membership (str-find returns -1 when absent).
+(def has-sub (-> Str Str Bool)
+  (lam (s needle) (<=i 0 (str-find s needle))))
+
+; ─── T1 — the open streaming row (an rv-streaming view) ──────────────────────
+; rows = [RUN, GATE, streaming-row, COMBINER]. The streaming-row prefix ends
+; exactly where tokens flow; the COMBINER tag reads back "(streaming 0)". Proves
+; the live row is drawn faithfully from the TYPED phase with NO network.
+(def t1 (-> Unit Bool)
+  (lam (_)
+    (let ((rv (run-view "refine X"
+                (rv-streaming 0 "claim-vs-source" "reasoner" "qwen2.5:0.5b")
+                "6 rules matched" (cons "claim-vs-source" nil) nil "" none)))
+      (let ((rows (rl-children (runview-render rv (pair 24 80) 0))))
+        (and (str-eq (row-text (nth-rendering rows 2))
+                     "  >>   claim-vs-source   (reasoner -> qwen2.5:0.5b)  ")
+             (and (str-eq (face-of (nth-rendering rows 2)) "manas-ok")
+                  (str-eq (row-text (nth-rendering rows 3)) "COMBINER  (streaming 0)")))))))
+
+; ─── T2 — the settle path is unchanged (an rv-done view) ─────────────────────
+; A done list of one OK + one BAD RvCall renders the green OK row and red BAD row
+; exactly as S15 (outcome-row untouched). Proves S17 replaced WHEN text is
+; observed, not WHAT settles.
+(def t2 (-> Unit Bool)
+  (lam (_)
+    (let ((okrow  (outcome-row (rv-call "claim-vs-source" "reasoner" "qwen2.5:0.5b"
+                                 (expert-ok nil "raw ok"))))
+          (badrow (outcome-row (rv-call "anchor-sharpen" "reasoner" "qwen2.5:0.5b"
+                                 (expert-bad "raw bad" "http-500")))))
+      (and (and (str-eq (face-of okrow) "manas-ok")
+                (has-sub (row-text okrow) "OK   claim-vs-source"))
+           (and (str-eq (face-of badrow) "manas-bad")
+                (has-sub (row-text badrow) "BAD  http-500"))))))
+
+; ─── T3 — phase-tag totality over the extended sum ───────────────────────────
+; The combiner-live case (D1) reads back "(streaming 3)"; the S15 tags are
+; unchanged. Proves the closed sum's readback stays faithful with the new arm.
+(def t3 (-> Unit Bool)
+  (lam (_)
+    (and (str-eq (phase-tag (rv-streaming 3 "curate-merge" "combiner" "qwen3:8b"))
+                 "(streaming 3)")
+         (and (str-eq (phase-tag (rv-calling 2)) "(calling 2)")
+              (str-eq (phase-tag rv-done) "(done)")))))
+
+; ─── entry: 0 iff all three pass ─────────────────────────────────────────────
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (and (t1 unit) (and (t2 unit) (t3 unit)))
+      (true 0)
+      (false 1))))

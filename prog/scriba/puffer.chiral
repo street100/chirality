@@ -1,0 +1,154 @@
+; puffer — S1 scriba primitive: the port-buffer.
+; Typed lens over a port with a zipper cursor.
+; Implemented from audited SPEC: .planning/specs/S1-puffer-SPEC.md
+(import "prelude")
+(import "ports")
+(import "kill-ring")
+
+; ─── (2026-08-22) The inlined collection helpers are GONE.
+; They were `puf-rev-onto`/`puf-reverse`/`puf-length`, carrying the note
+; "no (import \"collections\") — B1 poison". Two facts retired them:
+;   1. E147 (built 2026-08-16) fixed the higher-order-capture defunctionalization
+;      class the note meant; its own runtime gate is `(alist-get Str Str str-eqf)`.
+;   2. Independently, all three were DEAD — self-referential only, zero callers
+;      anywhere in the tree. No `(import "collections")` is needed to replace them.
+; Altitude note (`.planning/BUILD-ORDER.md` A1/A2): this is one instance of the
+; clone-instead-of-import pattern. The rest are E151/E152/E154.
+
+; ─── Effect row stubs (bare =>, membrane tracks via extern name) ──────────────
+(extern port (=> Unit Unit))
+(extern port-close (=> Unit Unit))
+
+; ─── Data declarations ───────────────────────────────────────────────────────
+(data Zipper ((A (type 0)))
+  (zipper (focus (Maybe A)) (path (List I64))))
+
+; Undo history: past/future stacks of Zipper values. Polymorphic so it can
+; thread through any (Puffer A). Each edit pushes the pre-edit zipper onto
+; past (clearing future); undo/redo swap zippers between the two stacks.
+; Storing Zipper (not TextZipper) restores BOTH text and cursor offset.
+(data Undo ((A (type 0)))
+  (undo (past (List (Zipper A))) (future (List (Zipper A)))))
+
+; NOTE: (handle Port) without linear annotation — Port is (data Port () (port)),
+; an unrestricted data type. Linear annotations (1 ...) on atom porttypes work;
+; on data-type Port, B1 requires unrestricted.
+(data Puffer ((A (type 0)))
+  (puffer (id I64) (name Str) (type-name Str) (handle Port)
+          (zipper (Zipper A)) (dirty Bool) (undo (Undo A))
+          (mark (Maybe (Zipper A))) (kr KillRing)))
+
+(data NewPufR ((A (type 0)))
+  (puf-ok  (p (Puffer A)))
+  (puf-err (msg Str)))
+
+(data PufTypeR ((A (type 0)))
+  (puf-type-ok (type-name Str) (puf (Puffer A))))
+
+(data PufValueR ((A (type 0)))
+  (puf-value-ok   (val A)      (puf (Puffer A)))
+  (puf-value-none              (puf (Puffer A))))
+
+; ─── Pure accessors (->) ─────────────────────────────────────────────────────
+
+(declare puffer-port-type (-> (0 A (type 0)) (Puffer A) (PufTypeR A)))
+(def puffer-port-type
+  (lam (A puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puf-type-ok type-name
+          (puffer id name type-name handle z dirty u mark kr))))))
+
+; Helper: case on zipper focus, return PufValueR.
+; Extracted to avoid 3-level nested case (puffer→zipper→focus) that B1 rejects.
+(def pv-focus (-> (0 A (type 0)) (Maybe A) I64 Str Str Port (Zipper A) Bool (Undo A) (Maybe (Zipper A)) KillRing (PufValueR A))
+  (lam (A focus id name type-name handle z dirty u mark kr)
+    (case focus
+      ((some val) (puf-value-ok val (puffer id name type-name handle z dirty u mark kr)))
+      (none       (puf-value-none     (puffer id name type-name handle z dirty u mark kr))))))
+
+(declare puffer-value (-> (0 A (type 0)) (Puffer A) (PufValueR A)))
+(def puffer-value
+  (lam (A puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case z
+          ((zipper f p)
+            (pv-focus A f id name type-name handle z dirty u mark kr)))))))
+
+; Helper: compute new Maybe Str focus for puffer-str-insert.
+(def ps-insert-focus (-> (Maybe Str) Str (Maybe Str))
+  (lam (focus s)
+    (case focus
+      ((some val) (some (str-cat val s)))
+      (none       (some s)))))
+
+; puffer-str-insert — insert a string at the zipper focus.
+; Phase 1: appends to current focus value (or sets it if focus is none).
+; Full S5 TextZipper bridge deferred.
+; NOTE: variable names in case patterns avoid shadowing the outer `z`
+; (the Zipper value) with the inner `(zipper f p)` destructuring.
+(declare puffer-str-insert (-> (Puffer Str) Str (Puffer Str)))
+(def puffer-str-insert
+  (lam (puf s)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case z
+          ((zipper f p)
+            (puffer id name type-name handle
+              (zipper (ps-insert-focus f s) p) true u mark kr)))))))
+
+; ─── Undo / redo history (SCRIBA-SLICES slice 3) ────────────────────────────
+; Each edit pushes the pre-edit zipper onto `past` (clearing `future`); undo/
+; redo swap zippers between the two stacks. Movement ops never touch history.
+; The registered ops live in init-loader (op-undo/op-redo); these are the pure
+; helpers they call.
+
+; push-undo: record the current zipper before an edit. Clears future — a new
+; edit invalidates the redo chain. Pure (->).
+(def push-undo (-> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case u
+          ((undo past future)
+            (puffer id name type-name handle z dirty (undo (cons z past) nil) mark kr)))))))
+
+; puffer-undo: restore the previous zipper. No-op when past is empty.
+(def puffer-undo (-> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case u
+          ((undo past future)
+            (case past
+              (nil puf)
+              ((cons prev rest-past)
+                (puffer id name type-name handle prev true (undo rest-past (cons z future)) mark kr)))))))))
+
+; puffer-redo: restore the next zipper. No-op when future is empty.
+(def puffer-redo (-> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case u
+          ((undo past future)
+            (case future
+              (nil puf)
+              ((cons next rest-future)
+                (puffer id name type-name handle next true (undo (cons z past) rest-future) mark kr)))))))))
+
+; ─── Effectful operations (=>) ────────────────────────────────────────────────
+
+(declare puffer-new (=> Port Str (NewPufR Str)))
+(def puffer-new
+  (lam (port name)
+    (puf-ok (puffer 1 name "Str" port (zipper none nil) false (undo nil nil)
+             none (kill-ring-new (some 60))))))
+
+(declare puffer-close (=> (Puffer Str) Unit))
+(def puffer-close
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (port-close unit)))))

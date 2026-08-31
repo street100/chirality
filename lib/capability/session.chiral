@@ -1,0 +1,69 @@
+; session.chiral — T7: the cap-returning pty acquisition surface.
+;
+; Promotes the raw four-step acquisition dance (term.chiral:open-pty, which stays
+; put for its still-raw callers, D2) into one that returns a linear Pty cap:
+; holding the master IS the authority to read that child's output — quantity-1,
+; unforgeable, so provably exactly one reader.
+;
+; The four-step dance is kept VERBATIM from term.chiral:197-212 — same primitives
+; (nb-ptunlock-w / nb-ptsno / pts-path / open-rw / close / nul-byte), same
+; per-step error close — only the success hand-back changes: mint the master into
+; a Pty via adopt-pty (the D1 mint-at-boundary seam, used ONLY here, never
+; re-exported) and return PtyAcqR. The slave stays a raw I64 (about to be dup2'd
+; into the child, D4).
+;
+; NAMING (T7 deviation, forced): the acquirer is `open-pty-cap`, not `open-pty`.
+; D2 RETAINS term.chiral:open-pty for its four raw callers; chirality has a flat
+; module namespace, so a second `open-pty` co-resident with term's would shadow
+; it (and silently rebind term's own spawn-pty-child). A distinct name is the
+; safe promotion. Caller migration + retirement of the raw name is T8.
+;
+; The native bindings for adopt-pty / pty-read / pty-close are E107/T8 (declared
+; in ports.chiral, owned at declaration): this surface TYPECHECKS today; reaching
+; a crossing native-emits only once it is registered (spec §5c).
+(import "prelude")
+(import "ports")           ; Pty, PtyAcqR, PtyReadR, adopt-pty, pty-read, pty-close, open-rw
+(import "term")            ; nb-ptunlock-w, nb-ptsno, pts-path, close, nul-byte (raw dance, untouched)
+
+; open-pty-cap: the raw four-step dance, only the success arm changed to MINT the
+; master into a Pty via adopt-pty. Error arms keep the raw close (no cap was
+; minted — nothing linear to thread).
+(def open-pty-cap (=> Unit PtyAcqR)
+  (lam (u)
+    (let (master (open-rw (bcat (str->bytes "/dev/ptmx") nul-byte)))
+      (case (<i master 0)
+        (true  (pty-err-c master))
+        (false
+          (case (nb-ptunlock-w master)
+            ((unlock-err e) (let (_ (close master)) (pty-err-c e)))
+            ((unlock-ok)
+              (case (nb-ptsno master)
+                ((ptn-err e) (let (_ (close master)) (pty-err-c e)))
+                ((ptn-ok n)
+                  (let (slave (open-rw (bcat (str->bytes (pts-path n)) nul-byte)))
+                    (case (<i slave 0)
+                      (true  (let (_ (close master)) (pty-err-c slave)))
+                      (false (pty-ok-c (adopt-pty master) slave)))))))))))))  ; MINT
+
+; read-once: read the master, thread the cap via `case` (NEVER `let` — a let-bound
+; threaded result fails the linearity check, spec §2). bytes/hup thread the cap on
+; to pty-close; rerr is the corpse (nothing to close).
+(def read-once (=> (1 p Pty) Bytes)
+  (lam (p)
+    (case (pty-read p 4096)
+      ((pty-bytes bs p2) (case (pty-close p2) (unit bs)))
+      ((pty-hup p2)      (case (pty-close p2) (unit (str->bytes ""))))
+      ((pty-rerr m)      (str->bytes "")))))                 ; corpse: nothing to close
+
+; ── E106 composition proof: PtyVec ────────────────────────────────────────────
+; monomorphize lincoll.chiral:SockVec Sock->Pty — the linear container a T9 mux
+; holds N session ptys in. Both cons fields quantity-1 => the vector registers
+; linear and threads move-only for free. count / detach-at / drain transcribe
+; verbatim from lincoll.chiral when T9 needs them (residue, spec §6).
+(data PtyVec ()
+  (pv-nil)
+  (pv-cons (1 hd Pty) (1 tl PtyVec)))
+
+; pv-push = move a cap in. Pure: repacking a port is not a crossing (->).
+(def pv-push (-> (1 p Pty) (1 v PtyVec) PtyVec)
+  (lam (p v) (pv-cons p v)))

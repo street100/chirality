@@ -1,0 +1,24 @@
+; The growing Alloc discipline (E91) — the canonical instance: an arena that
+; takes more memory from mmap/mremap when it runs out.
+;
+; Typeability category C (docs/axis-typeability.md): its correctness rests on
+; evidence over an admitted hole, not on proof — growth takes its memory from a
+; syscall, so the cell "pointer" is an integer no theorem can follow
+; (arena.chiral:1 already self-describes as a "category-C bridge: typed arena
+; over mmap/mremap"). The reasoning lives in docs/banks/verification.md
+; Shard 8b; this line only records the category.
+
+(import "alloc")
+(import "mach")
+
+; bare global refs — same pattern as alloc-fixed (mach-alo/mach-bnw).
+; mach-galo/gbnw are (-> Mach (-> I64 I64 (List I64) (List Asm))) and
+; (-> Mach (-> I64 I64 (List Asm))) — curried types match the field types
+; exactly, so specialize-singletons rewrites projectors straight to them.
+(def alloc-growing Alloc
+  (alloc
+    mach-galo
+    mach-gbnw
+    (lam (m slot) (the (List Asm) nil))
+    (lam (m slot) (the (List Asm) nil))
+    (lam (m src)  (the (List Asm) nil))))

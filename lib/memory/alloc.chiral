@@ -1,0 +1,31 @@
+; The Alloc seam: the allocation discipline as a record of functions, plus its
+; five accessors. This is the INTERFACE half only — the same interface/instance
+; split mach.chiral / mach-x64.chiral / mach-listing.chiral already has (E166
+; Step 0). The instances live beside it: alloc-growing.chiral (canonical) and
+; alloc-fixed.chiral (the C leg). Deliberately no instance here, and no import
+; of mach-x64: a blob picks exactly one fn-bearing instance, because
+; specialize-singletons refuses two of them in one blob
+; (specialize-singleton.chiral:78-84).
+
+(import "prelude")
+(import "asm-reloc")
+(import "mach")
+
+(data Alloc ()
+  (alloc
+    (cell   (-> Mach I64 I64 (List I64) (List Asm)))
+    (bytes  (-> Mach I64 I64 (List Asm)))
+    (renter (-> Mach I64 (List Asm)))
+    (rexit  (-> Mach I64 (List Asm)))
+    (adrop  (-> Mach I64 (List Asm)))))
+
+(def alo-cell (-> Alloc (-> Mach I64 I64 (List I64) (List Asm)))
+  (lam (a) (case a ((alloc c b re rx dr) c))))
+(def alo-bytes (-> Alloc (-> Mach I64 I64 (List Asm)))
+  (lam (a) (case a ((alloc c b re rx dr) b))))
+(def alo-renter (-> Alloc (-> Mach I64 (List Asm)))
+  (lam (a) (case a ((alloc c b re rx dr) re))))
+(def alo-rexit (-> Alloc (-> Mach I64 (List Asm)))
+  (lam (a) (case a ((alloc c b re rx dr) rx))))
+(def alo-drop (-> Alloc (-> Mach I64 (List Asm)))
+  (lam (a) (case a ((alloc c b re rx dr) dr))))

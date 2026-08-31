@@ -1,0 +1,32 @@
+; scriba: list-utils — pure list helpers shared across window, flook, and others.
+; ~25 lines.
+;
+; These two functions were defined in BOTH window.chiral and dired.chiral
+; (now flook.chiral), causing name collisions. Extracted here as a shared
+; dependency.
+;
+; Deps: prelude (List, Maybe, I64, Bool, =i, -, some, none, cons, nil, case)
+
+(import "prelude")
+
+; list-nth: get element at index i (0-based) in a list.
+; Returns Maybe — none on out-of-bounds.
+(def list-nth (-> (0 A (type 0)) (List A) I64 (Maybe A))
+  (lam (A xs i)
+    (case xs
+      (nil none)
+      ((cons h t)
+        (case (=i i 0)
+          (true (some h))
+          (false (list-nth A t (- i 1))))))))
+
+; list-remove-at: drop the element at index i.
+; Returns the original list unchanged if i is out of bounds.
+(def list-remove-at (-> (0 A (type 0)) (List A) I64 (List A))
+  (lam (A xs i)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (case (=i i 0)
+          (true t)
+          (false (cons h (list-remove-at A t (- i 1)))))))))

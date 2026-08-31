@@ -1,0 +1,175 @@
+; scriba S13: vim-like modal editing — the mode and pending-operator algebra.
+; Pure (->) module: the VimMode sum, the Pending operator state, and the
+; operator+motion resolver. The effectful shell (mode-first dispatch, the
+; Command/Chat prompt loops) lives in command-loop.chiral; this module owns
+; only the closed sums and the pure decision functions, so the resolver is
+; unit-testable without a PTY.
+;
+; Deps: prelude (Str, Bool, I64, List, Maybe, bytes->str, bslice, pack-u32)
+;       ports   (Key, KeySeq, keyseq, k-char)
+
+(import "prelude")
+(import "ports")
+(import "manas-mode")     ; ManasDoc — the open library value rides in vm-manas (S14)
+(import "manas-runview")  ; RunView — the in-flight/finished run rides in vm-runview (S15)
+(import "chat-view")      ; ChatView — the transcript + memory + scroll ride in vm-chat (DC-scriba)
+
+; ─── Mode sum ──────────────────────────────────────────────────────────────
+
+; The puffer's editing state. Orthogonal to the Str/chirality/manas render modes
+; (those are the syntax faces); this is the vim editing mode. vm-visual carries
+; linewise so V (line-wise) and v (char-wise) share one constructor.
+(data VimMode ()
+  (vm-normal)
+  (vm-insert)
+  (vm-visual (linewise Bool))
+  (vm-command)
+  ; CHAT now carries its state like its peers: the transcript, the conversation memory and the
+  ; scroll offset ride inside the variant, so chat-dispatch reads it and the resize arm can
+  ; re-render it. It used to carry nothing, which is why CHAT could neither scroll nor repaint.
+  (vm-chat (cv ChatView))
+  ; S14/N1 manas author mode — a navigable Outline (the open ManasDoc + a cursor
+  ; index + the open-layer keys) rides inside the variant (exactly as vm-visual
+  ; carries linewise), so command-loop-inner's arity is unchanged.
+  (vm-manas (ol Outline))
+  ; S15 manas run-view — the in-flight/finished RunView rides inside the variant,
+  ; same reasoning: nav dispatch reads it, the resize arm re-renders it.
+  (vm-runview (rv RunView))
+  ; N3 manas catalog — the discovery VIEW (a grouped, cursor-navigable list of
+  ; every openable pipeline/config/saved setup) rides inside the variant, same
+  ; reasoning: catalog-dispatch reads it, the resize arm re-renders it.
+  (vm-catalog (cat Catalog)))
+
+; ─── Pending operator state ────────────────────────────────────────────────
+
+; Normal-mode d/c/y (and g) are pending operators, not one-key ops: the first
+; key arms the operator, the second key (a motion, or the operator letter again
+; for the line op) resolves it. "g" is the chat prefix (g c).
+(data Pending ()
+  (pending-none)
+  (pending-op (op Str))
+  ; Waiting for a single arbitrary target char: f/F/t/T (find-on-line motions)
+  ; and r (replace). The next printable key is the argument, not a command.
+  (pending-char-arg (op Str))
+  ; After d/c/y + i/a: waiting for the object char (w " ' ` ( { [ …). `op` is
+  ; the operator letter, `inner` distinguishes iw (inner) from aw (around).
+  (pending-textobj (op Str) (inner Bool))
+  ; Named register: " then a register char selects the active register for the
+  ; next command. pending-reg-name awaits the register char; pending-reg holds
+  ; it (op "" = awaiting command; "y"/"d" = awaiting the second letter of yy/dd).
+  (pending-reg-name)
+  (pending-reg (reg I64) (op Str))
+  ; Numeric count: a leading 1-9 starts it, further digits extend it. A motion
+  ; then repeats n times (2j, 5w); an operator carries the count (3dd, 2dw) via
+  ; pending-count-op.
+  (pending-count (n I64))
+  (pending-count-op (n I64) (op Str)))
+
+; ─── mode-name ─────────────────────────────────────────────────────────────
+
+; Human-readable mode name for the status bar. Visual prints "Visual Line" for
+; linewise and "Visual" for charwise.
+(def mode-name (-> VimMode Str)
+  (lam (m)
+    (case m
+      (vm-normal "Normal")
+      (vm-insert "Insert")
+      ((vm-visual l) (case l (true "Visual Line") (false "Visual")))
+      (vm-command "Command")
+      ((vm-chat cv) "Chat")
+      ((vm-manas d) "Manas")
+      ((vm-runview rv) "Run")
+      ((vm-catalog cat) "Catalog"))))
+
+; ─── key-motion-char ───────────────────────────────────────────────────────
+
+; The single printable character of a KeySeq, when the seq is exactly one
+; k-char. Used to turn a pending-operator's second key into a motion letter
+; ("w", "d", "$", "c", ...). Returns none for multi-key seqs or non-char keys.
+(def key-motion-char (-> KeySeq (Maybe Str))
+  (lam (ks)
+    (case ks
+      ((keyseq keys)
+        (case keys
+          ((cons k rest)
+            (case rest
+              (nil
+                (case k
+                  ((k-char code)
+                    (case (and (not (<i code 32)) (<=i code 126))
+                      (true (some (bytes->str (bslice (pack-u32 code) 0 1))))
+                      (false none)))
+                  (_ none)))
+              (_ none)))
+          (_ none)))
+      (_ none))))
+
+; key-char-code: the raw code of a single-k-char KeySeq (the target for a
+; char-argument op: f/F/t/T/r). Returns none for multi-key or non-char seqs,
+; so a lone ESC (k-escape, not k-char) cancels the pending op.
+(def key-char-code (-> KeySeq (Maybe I64))
+  (lam (ks)
+    (case ks
+      ((keyseq keys)
+        (case keys
+          ((cons k rest)
+            (case rest
+              (nil
+                (case k
+                  ((k-char code) (some code))
+                  (_ none)))
+              (_ none)))
+          (_ none)))
+      (_ none))))
+
+; key-digit: the numeric value of a single-k-char digit key, restricted to the
+; given low bound (49='1' for a count's first digit, 48='0' for continuation).
+; Returns none for non-digit / multi-key seqs.
+(def key-digit (-> KeySeq I64 (Maybe I64))
+  (lam (ks lo)
+    (case (key-char-code ks)
+      (none none)
+      ((some code)
+        (case (and (<=i lo code) (<=i code 57))
+          (true (some (- code 48)))
+          (false none))))))
+
+; ─── resolve-pending ───────────────────────────────────────────────────────
+
+; (operator, motion) -> composed op name, or none when the motion does not
+; resolve (the caller beeps and clears pending). The composed op name is a
+; registered ScribaOp for the delete/yank half; change ops run that op and the
+; caller then enters Insert. "kill-line" is the existing op (d+$ = kill to end
+; of line). "g"+"c" resolves to "vim-chat" (the chat transition).
+(def resolve-pending (-> Str Str (Maybe Str))
+  (lam (op motion)
+    (case (str-eq op "d")
+      (true
+        (case (str-eq motion "d") (true (some "delete-line"))
+          (false
+            (case (str-eq motion "w") (true (some "delete-word"))
+              (false
+                (case (str-eq motion "$") (true (some "kill-line"))
+                  (false none)))))))
+      (false
+        (case (str-eq op "c")
+          (true
+            (case (str-eq motion "c") (true (some "change-line"))
+              (false
+                (case (str-eq motion "w") (true (some "change-word"))
+                  (false none)))))
+          (false
+            (case (str-eq op "y")
+              (true
+                (case (str-eq motion "y") (true (some "yank-line"))
+                  (false
+                    (case (str-eq motion "w") (true (some "yank-word"))
+                      (false none)))))
+              (false
+                (case (str-eq op "g")
+                  (true
+                    (case (str-eq motion "c") (true (some "vim-chat"))
+                      (false
+                        (case (str-eq motion "g") (true (some "goto-top"))
+                          (false none)))))
+                  (false none))))))))))

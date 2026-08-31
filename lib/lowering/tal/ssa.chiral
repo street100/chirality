@@ -1,0 +1,50 @@
+; The typed SSA tal IR -- the ONE shared definition of the type-annotated
+; assembly floor that lowering PRODUCES and the checker + interpreter CONSUME.
+; Previously this exact ADT set was written three times (lib/lower.chiral,
+; lib/tal-check.chiral, lib/tal-eval.chiral); those copies were structurally
+; identical, so their `TFn`/`Block`/`Instr`/`TalTerm`/`Branch` values already
+; interoperated -- this leaf makes them literally the same type, so the
+; check -> lower -> (interp) seam composes with no conversion and cannot drift.
+;
+; NOT lib/tal-ir.chiral. tal-ir is the type-ERASED executable IR (TInstr/TCode
+; + an untyped TFn carrying nparams) that the x86-64 emitter consumes; the two
+; IRs join by ERASURE (drop the `ty` annotations, flatten Block/TalTerm into the
+; TCode seq). This module is the annotated form the preserve-and-recheck floor
+; is stated over. Keep the two separate: same names, different meanings.
+(import "prelude")
+
+; a tal type: the ground prims + a (possibly parameterized) data type.
+; tt-word (B1/B2): the uniform erased one-word type -- the tal type of a value
+; whose chirality type is an erased (q=0) type variable, or a $W carrier. It is
+; representation-compatible with any one-word type (I64/Str/Bytes/Data pointer),
+; checked by tal-ty=? (mirrors lower.py's WORD + _wcompat).
+(data TalTy () (tt-i64) (tt-str) (tt-bytes) (tt-word)
+              (tt-data (dn Str) (targs (List TalTy))))
+
+; one typed SSA instruction. Every value-defining form carries its result type
+; annotation (`ty`), so the checker re-verifies independently of the kernel.
+(data Instr ()
+  (i-const (dst I64) (ty TalTy) (val I64))
+  (i-prim  (dst I64) (op Str) (srcs (List I64)) (ty TalTy))
+  (i-call  (dst I64) (f Str) (srcs (List I64)) (ty TalTy))
+  (i-con   (dst I64) (dn Str) (cn Str) (srcs (List I64)) (ty TalTy))
+  (i-bnew  (dst I64) (len I64))
+  (i-bget  (dst I64) (ptr I64) (idx I64))
+  (i-bput  (ptr I64) (idx I64) (val I64))
+  (i-blen  (dst I64) (src I64)))
+; a block is a straight-line instruction run ending in a terminator; a `case`
+; terminator branches per constructor, each branch binding fields into dsts.
+(data Block  () (block (instrs (List Instr)) (term TalTerm)))
+(data TalTerm   () (t-ret (src I64)) (tt-case (src I64) (branches (List Branch)) (dflt (Maybe Block))))
+(data Branch () (branch (cn Str) (dsts (List I64)) (body Block)))
+(data TFn    () (tfn (name Str) (params (List TalTy)) (ret TalTy) (body Block) (nregs I64)))
+(data Prog   () (prog (fns (List TFn))))
+
+; a tal function signature (arg types -> return type), for the prim/fn tables.
+(data TalSig () (talsig (args (List TalTy)) (ret TalTy)))
+
+; data declarations the checker/emitter read: a ctor's field types, the ctor
+; list of a data type, and the check environment (extern + fn sigs + datas).
+(data DCtor () (dctor (cn Str) (ftys (List TalTy))))
+(data DData () (ddata (dn Str) (ctors (List DCtor))))
+(data CEnv  () (cenv (prims (List (Pair Str TalSig))) (fns (List (Pair Str TalSig))) (datas (List DData)) (lits (List Str))))

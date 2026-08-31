@@ -1,0 +1,384 @@
+; E6: the data layer -- constructors, case coverage, ctor-param unification.
+; Ported from scaffold/chirality/data.py (_check_case coverage + _infer_ctor_params).
+; This file delivers the two PURE STANDALONE algorithms (coverage verdict +
+; bounded sound-by-recheck ctor-param solver); the Con/Case CHECK-HANDLERS
+; (check-con/check-case, Step 4) are deferred -- they need E10 narrow-hooks (not
+; built) and the VTCon/VCon eval arms E3 deferred. Positivity->E7, linear-kind->
+; E8, termination->E11, telescopes->E48.
+;
+; E04 slice 4a-ii: field + param types are the shared kernel Term (imported from
+; the "syntax" leaf) -- the Step-4 integration this file's header always named.
+; The E6 solver + E7 positivity walk over Term (as data.py's _infer_ctor_params /
+; _positivity do), so a `w`-arrow field's quantity is no longer dropped. The old
+; standalone `Ty` skeleton is kept below ONLY because ty-cmp.chiral (D-1 order)
+; still imports it; it no longer types any Field/DataDecl (residue: move ty-cmp to
+; a Term/Value order for the fixpoint seen-set).
+(import "prelude")
+(import "syntax")                          ; the shared full-ADT Term (E04 decision #7)
+
+; ---- vestigial Ty skeleton (kept for ty-cmp.chiral only; not a field type now) --
+(data Ty ()
+  (ty-var  (ix I64))
+  (ty-tcon (name Str) (args (List Ty)))
+  (ty-pi   (dom Ty) (cod Ty))
+  (ty-app  (f Ty) (a Ty))
+  (ty-i64))
+
+; ---- data declarations: field + param types are kernel Term --------------------
+; params: each parameter's KIND (a Term, typically (t-type 0)); the p-th param sits
+; at de Bruijn index (len params)-1-p inside a field/param type. Fields carry Term
+; types; q stays I64 (matches kernel.py's int quantity: 0 erased / 1 linear / w).
+(data Field ()    (field (q I64) (fname Str) (fty Term)))
+(data Ctor ()     (ctor (cname Str) (fields (List Field))))
+(data DataDecl () (data-decl (dname Str) (params (List Term)) (ctors (List Ctor))))
+
+; ---- results are sums, not None/exceptions -----------------------------------
+(data OptTy () (o-none) (o-some (t Term)))
+(data CovR ()
+  (cov-ok)
+  (cov-missing (cname Str))                ; declared ctor with no branch
+  (cov-dup     (cname Str))                ; same ctor matched twice
+  (cov-unknown (cname Str)))               ; branch names a ctor not in the decl
+(data SolveR ()
+  (sv-solved (params (List Term)))         ; a CANDIDATE -- check-con rechecks it
+  (sv-unsolved (p I64))                    ; parameter p has no bare occurrence
+  (sv-arity))                              ; args/fields length mismatch
+
+; ---- small helpers -----------------------------------------------------------
+(def str= (-> Str Str Bool) (lam (a b) (str-eq a b)))
+(def llen (-> (0 A (type 0)) (List A) I64)
+  (lam (A xs) (case xs (nil 0) ((cons x r) (+ 1 (llen A r))))))
+
+; ============================================================ coverage
+(declare count-name (-> Str (List Str) I64))
+(def count-name
+  (lam (want names)
+    (case names
+      (nil 0)
+      ((cons n rest) (case (str= want n)
+                       (true  (+ 1 (count-name want rest)))
+                       (false (count-name want rest)))))))
+
+(declare name-in (-> Str (List Str) Bool))
+(def name-in
+  (lam (want names)
+    (case names
+      (nil false)
+      ((cons n rest) (case (str= want n) (true true) (false (name-in want rest)))))))
+
+(def ctor-names (-> (List Ctor) (List Str))
+  (lam (cs) (case cs
+              (nil nil)
+              ((cons c rest) (case c ((ctor cn fs) (cons cn (ctor-names rest))))))))
+
+; any branch that names no declared ctor -> cov-unknown; else cov-ok
+(declare cov-unknowns (-> (List Str) (List Str) CovR))
+(def cov-unknowns
+  (lam (branches declared)
+    (case branches
+      (nil (cov-ok))
+      ((cons b rest) (case (name-in b declared)
+                       (true  (cov-unknowns rest declared))
+                       (false (cov-unknown b)))))))
+
+; walk declared ctors: each must be matched exactly once; leftover branches are
+; unknown. (Mirrors data.py _check_case: unknown / duplicate / non-exhaustive.)
+(declare cov-go (-> (List Ctor) (List Str) (List Str) CovR))
+(def cov-go
+  (lam (ctors branch-names declared)
+    (case ctors
+      (nil (cov-unknowns branch-names declared))
+      ((cons c rest)
+        (case c
+          ((ctor cname fields)
+            (let (k (count-name cname branch-names))
+              (case (=i k 0)
+                (true (cov-missing cname))
+                (false (case (<i 1 k)
+                         (true  (cov-dup cname))
+                         (false (cov-go rest branch-names declared))))))))))))
+
+(def check-coverage (-> DataDecl (List Str) CovR)
+  (lam (decl branch-names)
+    (case decl
+      ((data-decl dname params ctors)
+        (cov-go ctors branch-names (ctor-names ctors))))))
+
+; ============================================================ ctor-param solver
+; A parameter is solved ONLY where a field's type is exactly that parameter (a
+; bare ty-var); returns p in [0,nparams), else -1. p = nparams-1-ix, matching
+; data.py's de-Bruijn arithmetic.
+(def bare-param (-> I64 Term I64)
+  (lam (nparams fty)
+    (case fty
+      ((t-var ix) (let (p (- (- nparams 1) ix))
+                    (case (and (<=i 0 p) (<i p nparams)) (true p) (false -1))))
+      (_ -1))))
+
+(def opt-init (-> I64 (List OptTy))
+  (lam (n) (case (<=i n 0) (true nil) (false (cons (o-none) (opt-init (- n 1)))))))
+
+; set slot p (from the front) iff currently o-none (first bare occurrence wins,
+; matching data.py's `solved[p] is None` guard).
+(declare opt-set1 (-> (List OptTy) I64 Term (List OptTy)))
+(def opt-set1
+  (lam (acc p t)
+    (case acc
+      (nil nil)
+      ((cons x rest)
+        (case (=i p 0)
+          (true (case x ((o-none) (cons (o-some t) rest)) ((o-some old) (cons x rest))))
+          (false (cons x (opt-set1 rest (- p 1) t))))))))
+
+; argtys: the caller-inferred type of each argument, o-none where inference
+; failed (data.py's try/except probe, as a value). Fill each solvable slot.
+(declare solve-go (-> I64 (List Field) (List OptTy) (List OptTy) (List OptTy)))
+(def solve-go
+  (lam (nparams fields argtys acc)
+    (case fields
+      (nil acc)
+      ((cons f frest)
+        (case argtys
+          (nil acc)
+          ((cons aty arest)
+            (case f
+              ((field q fname fty)
+                (let (p (bare-param nparams fty))
+                  (case aty
+                    ((o-none) (solve-go nparams frest arest acc))
+                    ((o-some t) (case (<i p 0)
+                                  (true  (solve-go nparams frest arest acc))
+                                  (false (solve-go nparams frest arest (opt-set1 acc p t)))))))))))))))
+
+(declare first-none (-> (List OptTy) I64 I64))    ; index of first o-none from p, else -1
+(def first-none
+  (lam (opts p)
+    (case opts
+      (nil -1)
+      ((cons x rest) (case x ((o-none) p) ((o-some t) (first-none rest (+ p 1))))))))
+
+(declare extract (-> (List OptTy) (List Term)))   ; precondition: all o-some
+(def extract
+  (lam (opts)
+    (case opts
+      (nil nil)
+      ((cons x rest) (case x ((o-some t) (cons t (extract rest))) ((o-none) nil))))))
+
+(def finish (-> (List OptTy) SolveR)
+  (lam (opts)
+    (let (fn (first-none opts 0))
+      (case (<i fn 0)
+        (true  (sv-solved (extract opts)))
+        (false (sv-unsolved fn))))))
+
+(def infer-ctor-params (-> I64 (List Field) (List OptTy) SolveR)
+  (lam (nparams fields argtys)
+    (case (=i (llen Field fields) (llen OptTy argtys))
+      (true  (finish (solve-go nparams fields argtys (opt-init nparams))))
+      (false (sv-arity)))))
+
+; ============================================================ E7: strict positivity
+; Ported from data.py _positivity (296-428): one walk, two targets. pt-name
+; hunts a datatype's own recursive occurrences; pt-var measures a parameter's
+; variance. A recursive occurrence to the LEFT OF AN ARROW (or under an
+; unmeasured app / a non-positive container parameter) forecloses divergence and
+; is refused. Single-under (mutual-group frozenset -> E79 assembly, decision #3).
+(data PosR ()    (pos-ok) (pos-bad (reason Str)))
+(data PTarget () (pt-name (d Str)) (pt-var (idx I64)))
+(data SP ()      (sp-yes) (sp-no))
+
+(def hit? (-> PTarget I64 Term Bool)
+  (lam (tgt depth t)
+    (case tgt
+      ((pt-name d)  (case t ((t-tcon n as) (str= n d)) (_ false)))
+      ((pt-var ix)  (case t ((t-var i) (=i i (+ ix depth))) (_ false))))))
+
+; mentions? = is-hit OR a recursive occurrence anywhere (data.py _positivity's
+; inner `mentions`). Over the full Term: binders raise depth (pi cod, lam body,
+; let body, case arm by its nvars); the non-type leaf forms carry no occurrence.
+(declare mentions?      (-> PTarget I64 Term Bool))
+(declare mentions-any?  (-> PTarget I64 (List Term) Bool))
+(declare mentions-arms? (-> PTarget I64 (List KArm) Bool))
+(declare mentions-mb?   (-> PTarget I64 (Maybe Term) Bool))
+(def mentions?
+  (lam (tgt depth t)
+    (case (hit? tgt depth t)
+      (true true)
+      (false (case t
+        ((t-pi q s dom cod) (or (mentions? tgt depth dom) (mentions? tgt (+ depth 1) cod)))
+        ((t-lam body)       (mentions? tgt (+ depth 1) body))
+        ((t-app f a)        (or (mentions? tgt depth f) (mentions? tgt depth a)))
+        ((t-let q v body)   (or (mentions? tgt depth v) (mentions? tgt (+ depth 1) body)))
+        ((t-tcon n as)      (mentions-any? tgt depth as))
+        ((t-con dn cn as)   (mentions-any? tgt depth as))
+        ((t-case s arms d)  (or (mentions? tgt depth s)
+                             (or (mentions-arms? tgt depth arms) (mentions-mb? tgt depth d))))
+        ((t-ann tm ty)      (or (mentions? tgt depth tm) (mentions? tgt depth ty)))
+        (_ false))))))                                   ; var/type/global/prim/primty/lit
+(def mentions-any?
+  (lam (tgt depth ts)
+    (case ts
+      (nil false)
+      ((cons x r) (or (mentions? tgt depth x) (mentions-any? tgt depth r))))))
+(def mentions-arms?
+  (lam (tgt depth arms)
+    (case arms
+      (nil false)
+      ((cons a r) (case a ((karm cn nv b)
+        (or (mentions? tgt (+ depth nv) b) (mentions-arms? tgt depth r))))))))
+(def mentions-mb?
+  (lam (tgt depth mb) (case mb (none false) ((some d) (mentions? tgt depth d)))))
+
+; sp cache lookup: is `con` known strictly positive in its i-th parameter?
+; the type under analysis is positive in itself; absent/short/sp-no -> false.
+(declare sp-cache (-> (List (Pair Str (List SP))) Str (List SP)))
+(def sp-cache
+  (lam (sig con)
+    (case sig
+      (nil nil)
+      ((cons p rest) (case p ((pair k v) (case (str= k con) (true v) (false (sp-cache rest con)))))))))
+(def nth-sp (-> (List SP) I64 Bool)
+  (lam (sps i)
+    (case sps
+      (nil false)
+      ((cons x r) (case (=i i 0)
+                    (true (case x ((sp-yes) true) ((sp-no) false)))
+                    (false (nth-sp r (- i 1))))))))
+(def sp-in (-> (List (Pair Str (List SP))) Str Str I64 Bool)
+  (lam (sig con under i)
+    (case (str= con under) (true true) (false (nth-sp (sp-cache sig con) i)))))
+
+; the walk: first pos-bad wins by case-threading (no mutable reason cell).
+; Over Term (data.py _positivity's `walk`): a head hit is fine bare, refused if
+; nested in its own type args; an arrow domain is the negative door; a tcon arg
+; recurses only through a strictly-positive parameter; app/lam/let/con/case with
+; an occurrence inside are refused (variance unknown). The other leaves are inert.
+(declare walk      (-> (List (Pair Str (List SP))) Str PTarget I64 Term PosR))
+(declare walk-args (-> (List (Pair Str (List SP))) Str PTarget I64 Str (List Term) I64 PosR))
+(def walk
+  (lam (sig under tgt depth t)
+    (case (hit? tgt depth t)
+      (true (case t                                     ; a head occurrence
+        ((t-tcon n as) (case (mentions-any? tgt depth as)
+                         (true (pos-bad "as a nested (non-uniform) type argument"))
+                         (false (pos-ok))))
+        (_ (pos-ok))))
+      (false (case t
+        ((t-pi q s dom cod) (case (mentions? tgt depth dom) ; arrow domain = the door
+                              (true (pos-bad "to the left of a function arrow"))
+                              (false (walk sig under tgt (+ depth 1) cod))))
+        ((t-tcon n as)  (walk-args sig under tgt depth n as 0))
+        ((t-app f a)    (case (mentions? tgt depth t)
+                          (true (pos-bad "under a type-level application (variance unknown)"))
+                          (false (pos-ok))))
+        ((t-lam body)   (case (mentions? tgt depth t)
+                          (true (pos-bad "inside a lambda in a field type (variance unknown)")) (false (pos-ok))))
+        ((t-let q v b)  (case (mentions? tgt depth t)
+                          (true (pos-bad "inside a let in a field type (variance unknown)")) (false (pos-ok))))
+        ((t-con dn cn a) (case (mentions? tgt depth t)
+                          (true (pos-bad "inside a con in a field type (variance unknown)")) (false (pos-ok))))
+        ((t-case s ar d) (case (mentions? tgt depth t)
+                          (true (pos-bad "inside a case in a field type (variance unknown)")) (false (pos-ok))))
+        (_ (pos-ok)))))))                               ; var/type/ann/global/prim/primty/lit
+(def walk-args
+  (lam (sig under tgt depth con args i)
+    (case args
+      (nil (pos-ok))
+      ((cons a rest)
+        (case (mentions? tgt depth a)
+          (false (walk-args sig under tgt depth con rest (+ i 1)))
+          (true (case (sp-in sig con under i)
+                  (false (pos-bad "through a non-positive parameter"))
+                  (true (case (walk sig under tgt depth a)
+                          ((pos-bad r) (pos-bad r))
+                          ((pos-ok)    (walk-args sig under tgt depth con rest (+ i 1))))))))))))
+
+; compute-sp: measure each parameter's variance -- run the SAME walk with a
+; pt-var target (param p sits at de-Bruijn index nparams-1-p) over every field
+; of every ctor; all pos-ok => sp-yes. (data.py _compute_sp_params.)
+(declare fields-ok? (-> (List (Pair Str (List SP))) Str I64 (List Field) Bool))
+(def fields-ok?
+  (lam (sig under idx fields)
+    (case fields
+      (nil true)
+      ((cons f rest) (case f ((field q fn fty)
+        (case (walk sig under (pt-var idx) 0 fty)
+          ((pos-bad r) false)
+          ((pos-ok)    (fields-ok? sig under idx rest)))))))))
+(declare ctors-ok? (-> (List (Pair Str (List SP))) Str I64 (List Ctor) Bool))
+(def ctors-ok?
+  (lam (sig under idx ctors)
+    (case ctors
+      (nil true)
+      ((cons c rest) (case c ((ctor cn fs)
+        (case (fields-ok? sig under idx fs) (false false) (true (ctors-ok? sig under idx rest)))))))))
+(declare compute-sp-go (-> (List (Pair Str (List SP))) Str I64 I64 (List Ctor) (List SP)))
+(def compute-sp-go
+  (lam (sig under nparams p ctors)
+    (case (<i p nparams)
+      (false nil)
+      (true (cons (case (ctors-ok? sig under (- (- nparams 1) p) ctors) (true (sp-yes)) (false (sp-no)))
+                  (compute-sp-go sig under nparams (+ p 1) ctors))))))
+(def compute-sp (-> (List (Pair Str (List SP))) DataDecl (List SP))
+  (lam (sig decl) (case decl ((data-decl dname params ctors) (compute-sp-go sig dname (llen Term params) 0 ctors)))))
+
+; ============================================================ E8: linear-kind
+; Ported from data.py _linear_data (77): a bounded abstract walk deciding
+; whether a data type is linear (holds a linear resource). Any q=1 field, or any
+; field whose type is linear, makes it linear. Fuel + a seen-list bound the walk
+; (mutual linear-ty<->fields-lin, E50); exhaustion is lin-defer (never a silent
+; admission). Arrows are opaque -> lin-no (shapes-not-captures, the settled
+; boundary). Distinct names (TyV/LFld/LDecl) so E6/E7's Ty/Field are untouched.
+(data TyV ()
+  (tv-atom (aname Str) (lin Bool))          ; porttype atoms carry their flag
+  (tv-tcon (tname Str) (targs (List TyV)))  ; declared data applied to args
+  (tv-arrow)                                ; closures: opaque to this walk
+  (tv-other))
+(data LFld  () (lfld (lq I64) (lty TyV)))
+(data LDecl () (ldcl (ldname Str) (lfields (List LFld))))
+(data LinR  () (lin-yes) (lin-no) (lin-defer))
+
+(declare seen-has (-> (List Str) Str Bool))
+(def seen-has
+  (lam (seen n) (case seen (nil false)
+                  ((cons x r) (case (str= x n) (true true) (false (seen-has r n)))))))
+
+(declare ldecl-fields (-> (List LDecl) Str (List LFld)))    ; assoc lookup
+(def ldecl-fields
+  (lam (decls n) (case decls (nil nil)
+                   ((cons d r) (case d ((ldcl dn fs)
+                     (case (str= dn n) (true fs) (false (ldecl-fields r n)))))))))
+
+; join with lin-defer sticky (an undecided branch is never dropped); lin-yes wins.
+(def lin-join (-> LinR LinR LinR)
+  (lam (a b)
+    (case a
+      ((lin-yes)   (lin-yes))
+      ((lin-defer) (case b ((lin-yes) (lin-yes)) (_ (lin-defer))))
+      ((lin-no)    b))))
+
+(declare linear-ty  (-> (List LDecl) (List Str) I64 TyV LinR))
+(declare fields-lin (-> (List LDecl) (List Str) I64 (List LFld) LinR))
+(def linear-ty
+  (lam (decls seen fuel ty)
+    (case ty
+      ((tv-atom name lin) (case lin (true (lin-yes)) (false (lin-no))))
+      ((tv-arrow) (lin-no))
+      ((tv-other) (lin-no))
+      ((tv-tcon name args)
+        (case (<=i fuel 0)
+          (true (lin-defer))
+          (false (case (seen-has seen name)
+                   (true (lin-no))
+                   (false (fields-lin decls (cons name seen) (- fuel 1)
+                                      (ldecl-fields decls name))))))))))
+(def fields-lin
+  (lam (decls seen fuel fields)
+    (case fields
+      (nil (lin-no))
+      ((cons f rest)
+        (case f ((lfld q ty)
+          (case (=i q 1)
+            (true (lin-yes))
+            (false (lin-join (linear-ty decls seen fuel ty)
+                             (fields-lin decls seen fuel rest))))))))))

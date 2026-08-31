@@ -1,0 +1,400 @@
+; scriba S6: window tree — binary split tree partitioning the terminal
+; into non-overlapping rectangles, each displaying a puffer.
+; ~200 lines. All operations are pure -> transforms.
+;
+; Deps: prelude (I64, Str, Bool, Unit, List, Pair, Maybe)
+;       collections (length, append, reverse, map-list, foldl, concat, head)
+;       scriba/puffer (Puffer type)
+;
+; Audit: FIX #1 (wrong coord in rect-split-horizontal) applied.
+;        FIX #2 (minimum-size guards in rect-split functions) applied.
+;        FLAG 2A: (Puffer Str) hardcoded — deliberate scoping per §5.6.
+;        FLAG 4C: resize sibling clamps to min 1×1; total-area may drift.
+
+(import "prelude")
+(import "collections")
+(import "puffer")
+(import "list-utils")
+
+; ---------------------------------------------------------------- Types
+
+; Split direction. horizontal = children left-to-right.
+; vertical = children top-to-bottom.
+(data Split ()
+  (horizontal)
+  (vertical))
+
+; A screen rectangle. (row, col) = top-left corner, 0-indexed.
+; height and width are in character cells. All I64.
+(data Rect ()
+  (rect (row I64) (col I64) (height I64) (width I64)))
+
+; The window tree. w-leaf holds a puffer at a rect; w-split is an
+; internal node that divides its space among children.
+; Tree invariant: children of a w-split partition the parent rect.
+; The type hardcodes (Puffer Str) for the first milestone — see Knobs §5.6.
+(data Window ()
+  (w-leaf  (puf (Puffer Str)) (rect Rect))
+  (w-split (dir Split) (children (List Window))))
+
+; ---------------------------------------------------------------- List utilities
+; Needed for window tree path manipulation. Now imported from scriba/list-utils.
+; (list-nth, list-remove-at moved to scriba/list-utils to resolve collisions.)
+
+; list-replace: replace element at index i with v. Unchanged if out of bounds.
+(def list-replace (-> (0 A (type 0)) (List A) I64 A (List A))
+  (lam (A xs i v)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (case (=i i 0)
+          (true (cons v t))
+          (false (cons h (list-replace A t (- i 1) v))))))))
+
+; list-eq-i64: structural equality for (List I64).
+(def list-eq-i64 (-> (List I64) (List I64) Bool)
+  (lam (a b)
+    (case (pair a b)
+      ((pair nil nil) true)
+      ((pair (cons ha ta) (cons hb tb))
+        (and (=i ha hb) (list-eq-i64 ta tb)))
+      (_ false))))
+
+; ---------------------------------------------------------------- Rect arithmetic
+
+; rect-area: total character cells in the rectangle.
+(def rect-area (-> Rect I64)
+  (lam (r)
+    (case r
+      ((rect _ _ h w) (* h w)))))
+
+; rect-split-horizontal: divide a rect vertically (top-to-bottom).
+; FIX #1 APPLIED: second rect uses `row`, not `col`.
+; FIX #2 APPLIED: minimum-size guard — if height ≤ 1, returns (r, r).
+; Caller must detect this and refuse the split.
+(def rect-split-horizontal (-> Rect (Pair Rect Rect))
+  (lam (r)
+    (case r
+      ((rect row col height width)
+        (case (<=i height 1)
+          (true (pair r r))
+          (false
+            (let (half (/ height 2))
+              (pair (rect row col half width)
+                    (rect (+ row half) col (- height half) width)))))))))
+
+; rect-split-vertical: divide a rect horizontally (left-to-right).
+; FIX #2 APPLIED: minimum-size guard — if width ≤ 1, returns (r, r).
+(def rect-split-vertical (-> Rect (Pair Rect Rect))
+  (lam (r)
+    (case r
+      ((rect row col height width)
+        (case (<=i width 1)
+          (true (pair r r))
+          (false
+            (let (half (/ width 2))
+              (pair (rect row col height half)
+                    (rect row (+ col half) height (- width half))))))))))
+
+; rect-split-n: divide rect along split direction into n equal parts.
+; Integer division — remainder cells are unused. Each part is at least 1 cell.
+(def rect-split-n (-> Split Rect I64 (List Rect))
+  (lam (dir rect n)
+    (case dir
+      (horizontal
+        (case rect
+          ((rect row col height width)
+            (let (each (max 1 (/ height n)))
+              (rect-split-horizontal-n-aux row col width each n 0)))))
+      (vertical
+        (case rect
+          ((rect row col height width)
+            (let (each (max 1 (/ width n)))
+              (rect-split-vertical-n-aux row col height each n 0))))))))
+
+(def rect-split-horizontal-n-aux (-> I64 I64 I64 I64 I64 I64 (List Rect))
+  (lam (row col width each n i)
+    (case (=i i n)
+      (true nil)
+      (false
+        (cons (rect (+ row (* i each)) col each width)
+              (rect-split-horizontal-n-aux row col width each n (+ i 1)))))))
+
+(def rect-split-vertical-n-aux (-> I64 I64 I64 I64 I64 I64 (List Rect))
+  (lam (row col height each n i)
+    (case (=i i n)
+      (true nil)
+      (false
+        (cons (rect row (+ col (* i each)) height each)
+              (rect-split-vertical-n-aux row col height each n (+ i 1)))))))
+
+; rect-resize: change a rect's height by dh and width by dw.
+; Clamps to minimum 1 × 1.
+(def rect-resize (-> Rect I64 I64 Rect)
+  (lam (r dh dw)
+    (case r
+      ((rect row col h w)
+        (let (new-h (max 1 (+ h dh)))
+          (let (new-w (max 1 (+ w dw)))
+            (rect row col new-h new-w)))))))
+
+; rect-union: smallest rect containing both a and b.
+(def rect-union (-> Rect Rect Rect)
+  (lam (a b)
+    (case (pair a b)
+      ((pair (rect r1 c1 h1 w1) (rect r2 c2 h2 w2))
+        (let (r (min r1 r2))
+          (let (c (min c1 c2))
+            (let (r-end (max (+ r1 h1) (+ r2 h2)))
+              (let (c-end (max (+ c1 w1) (+ c2 w2)))
+                (rect r c (- r-end r) (- c-end c))))))))))
+
+; ---------------------------------------------------------------- Core operations
+
+; ─── window-split ───
+; Replace the focused leaf (at focus-path) with a w-split node
+; containing the old leaf and a new leaf with the given puffer.
+; The old leaf keeps its puffer; the new leaf gets new-puf.
+; Rects are computed by splitting the old leaf's rect according to dir.
+; Pure (->).
+(def window-split (-> Window Split (Puffer Str) (List I64) Window)
+  (lam (tree dir new-puf path)
+    (case (pair tree path)
+      ; Focus path exhausted — replace target leaf with a split.
+      ((pair (w-leaf old-puf old-rect) nil)
+        (case dir
+          (horizontal
+            (case (rect-split-horizontal old-rect)
+              ((pair r1 r2)
+                (w-split dir (cons (w-leaf old-puf r1)
+                                   (cons (w-leaf new-puf r2) nil))))))
+          (vertical
+            (case (rect-split-vertical old-rect)
+              ((pair r1 r2)
+                (w-split dir (cons (w-leaf old-puf r1)
+                                   (cons (w-leaf new-puf r2) nil))))))))
+      ; Recurse into child at index i.
+      ((pair (w-split d children) (cons i rest-path))
+        (case (list-nth Window children i)
+          (none tree)
+          ((some child)
+            (let (new-child (window-split child dir new-puf rest-path))
+              (w-split d (list-replace Window children i new-child))))))
+      ; Path mismatch or root-only leaf with non-empty path.
+      (_ tree))))
+
+; ─── window-delete ───
+; Remove the focused leaf at focus-path. If the parent split has exactly
+; 2 children, promote the sibling to replace the parent.
+; If the root is a single leaf, return it unchanged (can't delete last window).
+; Pure (->).
+(def window-delete (-> Window (List I64) Window)
+  (lam (tree path)
+    (case tree
+      ; Root is a leaf — can't delete the only window.
+      ((w-leaf _ _) tree)
+      ((w-split dir children)
+        (case path
+          ; Path exhausted at a split — shouldn't happen (focus always on leaf).
+          (nil tree)
+          ; Single-element path: delete child at path[0].
+          ((cons i nil)
+            (let (new-children (list-remove-at Window children i))
+              (case (length Window new-children)
+                ; One child left — promote it (collapse the split).
+                (1
+                  (case (list-nth Window new-children 0)
+                    (none (w-split dir nil))
+                    ((some child) child)))
+                ; Zero children — tree invariant broken. Return empty split.
+                (0 (w-split dir nil))
+                ; Multiple children left — keep the split.
+                (_ (w-split dir new-children)))))
+          ; Deeper path — recurse into child i.
+          ((cons i rest-path)
+            (case (list-nth Window children i)
+              (none tree)
+              ((some child)
+                (let (new-child (window-delete child rest-path))
+                  (w-split dir (list-replace Window children i new-child)))))))))))
+
+; ─── window-other-path ───
+; Return the path of the next leaf in depth-first order, wrapping
+; around to the first leaf if focus is on the last leaf.
+; Pure (->). Does not modify the tree.
+(def window-other-path (-> Window (List I64) (List I64))
+  (lam (tree current-path)
+    (let (leaves (window-collect-paths tree nil nil))
+      (window-next-cyclic leaves current-path))))
+
+; ─── window-resize ───
+; Resize the focused leaf by dh rows and dw columns.
+; The adjacent sibling's rect is adjusted by the inverse delta.
+; Both target and sibling are clamped to minimum 1×1.
+; For 3+ children, falls back to no-op (see Knobs §5.6).
+; FLAG 4C acknowledged: total-area invariant may drift at boundaries.
+; Pure (->).
+(def window-resize (-> Window (List I64) I64 I64 Window)
+  (lam (tree path dh dw)
+    (case (pair tree path)
+      ; Root is a leaf — nothing to resize against.
+      ((pair (w-leaf _ _) _) tree)
+      ((pair (w-split dir children) (cons i nil))
+        (case (length Window children)
+          (2
+            (let (other-idx (case i (0 1) (_ 0)))
+              (case (list-nth Window children i)
+                (none tree)
+                ((some target)
+                  (case (list-nth Window children other-idx)
+                    (none tree)
+                    ((some other)
+                      (let (new-target (window-resize-leaf target dh dw))
+                        (let (new-other  (window-resize-leaf other
+                                           (- 0 dh) (- 0 dw)))
+                          (case (=i i 0)
+                            (true  (w-split dir
+                                     (cons new-target (cons new-other nil))))
+                            (false (w-split dir
+                                     (cons new-other (cons new-target nil)))))))))))))
+          (_ tree)))
+      ; Deeper path — recurse.
+      ((pair (w-split dir children) (cons i rest-path))
+        (case (list-nth Window children i)
+          (none tree)
+          ((some child)
+            (let (new-child (window-resize child rest-path dh dw))
+              (w-split dir (list-replace Window children i new-child))))))
+      (_ tree))))
+
+; ─── window-balance ───
+; Re-equalize all rects in the tree. For each w-split, divide the
+; node's bounding rect equally among its children, then recurse.
+; This is the equivalent of Emacs's balance-windows (C-x +).
+; Pure (->).
+(def window-balance (-> Window Window)
+  (lam (tree)
+    (case tree
+      ((w-leaf puf rect) tree)
+      ((w-split dir children)
+        (let (bounding (window-bounding-rect tree))
+          (let (n (length Window children))
+            (let (rects (rect-split-n dir bounding n))
+              (let (balanced (window-distribute-rects children rects))
+                (w-split dir balanced)))))))))
+
+; ─── walk-window-tree ───
+; Flatten the tree into a list of (Rect, Puffer) pairs.
+; The rendering engine (S2) iterates this list and renders each puffer
+; constrained to its rect.
+; Pure (->).
+(def walk-window-tree (-> Window (List (Pair Rect (Puffer Str))))
+  (lam (w)
+    (case w
+      ((w-leaf puf rect) (cons (pair rect puf) nil))
+      ((w-split _ children)
+        (foldl Window (List (Pair Rect (Puffer Str)))
+          (lam (acc sub)
+            (append (Pair Rect (Puffer Str)) acc (walk-window-tree sub)))
+          nil
+          children)))))
+
+; ─── window-initial ───
+; Create the initial window tree with a single leaf filling the
+; entire terminal. Called at startup.
+(def window-initial (-> (Puffer Str) I64 I64 Window)
+  (lam (puf rows cols)
+    (w-leaf puf (rect 0 0 rows cols))))
+
+; ---------------------------------------------------------------- Internal helpers
+
+; window-resize-leaf: adjust a leaf window's rect by (dh, dw).
+; Non-leaf windows are returned unchanged.
+(def window-resize-leaf (-> Window I64 I64 Window)
+  (lam (w dh dw)
+    (case w
+      ((w-leaf puf rect) (w-leaf puf (rect-resize rect dh dw)))
+      (_ w))))
+
+; window-bounding-rect: compute the union rect of a window node.
+; For a leaf, the leaf's rect. For a split, the union of all children's rects.
+(def window-bounding-rect (-> Window Rect)
+  (lam (w)
+    (case w
+      ((w-leaf _ rect) rect)
+      ((w-split _ children)
+        (case children
+          (nil (rect 0 0 0 0))
+          ((cons first rest)
+            (foldl Window Rect
+              (lam (acc sub) (rect-union acc (window-bounding-rect sub)))
+              (window-bounding-rect first)
+              rest)))))))
+
+; window-distribute-rects: assign each window a rect from the list,
+; then recursively set and balance each window.
+(def window-distribute-rects (-> (List Window) (List Rect) (List Window))
+  (lam (windows rects)
+    (case (pair windows rects)
+      ((pair nil nil) nil)
+      ((pair (cons w ws) (cons r rs))
+        (cons (window-set-rect-and-balance w r)
+              (window-distribute-rects ws rs)))
+      (_ windows))))
+
+; window-set-rect-and-balance: set a window's rect, then recursively
+; balance its children if it's a split.
+(def window-set-rect-and-balance (-> Window Rect Window)
+  (lam (w rect)
+    (case w
+      ((w-leaf puf _) (w-leaf puf rect))
+      ((w-split dir children)
+        (let (n (length Window children))
+          (let (child-rects (rect-split-n dir rect n))
+            (let (new-children (window-distribute-rects children child-rects))
+              (w-split dir new-children))))))))
+
+; window-collect-paths: collect paths to all leaves in depth-first order.
+; Paths are built root→leaf by reversing at collection time.
+(def window-collect-paths (-> Window (List I64) (List (List I64))
+                                (List (List I64)))
+  (lam (w current-path acc)
+    (case w
+      ((w-leaf _ _) (cons (reverse I64 current-path) acc))
+      ((w-split _ children)
+        (window-collect-paths-children children current-path 0 acc)))))
+
+(def window-collect-paths-children
+     (-> (List Window) (List I64) I64 (List (List I64))
+         (List (List I64)))
+  (lam (children current-path idx acc)
+    (case children
+      (nil acc)
+      ((cons child rest)
+        (let (new-acc (window-collect-paths child (cons idx current-path) acc))
+          (window-collect-paths-children rest current-path
+            (+ idx 1) new-acc))))))
+
+; window-next-cyclic: find the element AFTER needle in haystack, wrapping
+; around to the first element if needle is last (or not found).
+(def window-next-cyclic (-> (List (List I64)) (List I64) (List I64))
+  (lam (paths current)
+    (case (window-next-cyclic-helper paths current false)
+      (none
+        (case paths
+          ((cons first _) first)
+          (nil nil)))
+      ((some p) p))))
+
+(def window-next-cyclic-helper (-> (List (List I64)) (List I64) Bool
+                                    (Maybe (List I64)))
+  (lam (paths target found-prev)
+    (case paths
+      (nil none)
+      ((cons p rest)
+        (case found-prev
+          (true (some p))
+          (false
+            (case (list-eq-i64 p target)
+              (true (window-next-cyclic-helper rest target true))
+              (false (window-next-cyclic-helper rest target false)))))))))

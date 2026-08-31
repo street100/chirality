@@ -1,0 +1,47 @@
+; ports/pty — the pseudo-terminal registry (T7).
+;
+; The Pty cap is the master side, held by the emulator. Acquisition, reads,
+; disposal, and the child-wiring crossings that only ever run between fork and
+; exec (setsid / TIOCSCTTY / dup2 / spawn) live together because they are one
+; protocol: nothing here is meaningful without the rest of it.
+;
+; ports/tty is the neighbouring registry and NOT the same thing: tty owns the
+; line-discipline ioctls on a descriptor you already have, pty owns minting the
+; pair and wiring a child onto it.
+
+(import "prelude")
+
+(porttype Pty)            ; T7: the pty master side, held by the emulator
+
+; T7: pty acquisition/read result shapes (mirror the RecvR pattern in ports/sock).
+; acquisition: success mints the master as a linear Pty cap; the slave is a raw
+; I64 (about to be dup2'd into the child, T1/T7-D4). The error arm mints nothing.
+(data PtyAcqR ()
+  (pty-ok-c  (1 p Pty) (slave-fd I64))
+  (pty-err-c (errno I64)))
+; a read: bytes + the cap threaded back; hup = half-close (child EOF, still a
+; live cap to discharge); rerr = corpse (the crossing consumed the cap on
+; failure, nothing threads back). One-for-one with RecvR.
+(data PtyReadR ()
+  (pty-bytes (bs Bytes) (1 p Pty))
+  (pty-hup   (1 p Pty))
+  (pty-rerr  (msg Str)))
+
+; T7: pty crossings. adopt-pty = mint-at-boundary (raw master fd -> Pty; the D1
+; seam, used ONLY inside acquisition, never re-exported — else a cap is mintable
+; from any int). pty-read/pty-close take the cap by move. Their native TAL
+; bindings are deferred (E107 owns the porttype-taking close; T8's session loop
+; drives read/adopt) — declared here, owned at declaration, so callers typecheck
+; now; reaching the crossing native-emits only once it is registered.
+(extern adopt-pty (=> I64 Pty))
+(extern pty-read  (=> (1 p Pty) I64 PtyReadR))
+(extern pty-close (=> (1 p Pty) Unit))
+
+; E104: pty acquisition crossings on the E99 ioctl surface.
+(extern nb-ptsno-raw  (=> I64 Bytes))     ; TIOCGPTN (0x80045430), fd -> 4-byte cell | empty
+(extern nb-ptunlock   (=> I64 Bytes I64)) ; TIOCSPTLCK (0x40045431), fd, in-cell(int 0) -> 0 | -errno
+; T1: child-wiring crossings (setsid + TIOCSCTTY + dup2)
+(extern nb-setsid     (=> Unit I64))      ; setsid() -> new sid | -errno
+(extern nb-tiocsctty  (=> I64 I64))       ; ioctl(fd, TIOCSCTTY, 0) -> 0 | -errno
+(extern nb-dup2       (=> I64 I64 I64))   ; dup2(old,new) -> newfd | -errno
+(extern spawn-in-pty  (=> Bytes Bytes I64)) ; (elf-bytes, slave-path) -> child pid

@@ -1,0 +1,213 @@
+; Pure string helpers over the prelude's str primitives. The bits the router
+; (N2 technique-prefix parsing) and the coordinator plumbing reach for that the
+; prelude doesn't give directly: prefix tests, prefix stripping, substring
+; membership, and splitting. No host binding of their own.
+
+(import "prelude")
+(import "collections")   ; Ord = (lt)/(eq)/(gt)  [E151a: str-cmp]
+
+; E161: "All category A" was the prose above; this is the checked form of it.
+; The port-set half is derived rather than written: this module binds no extern,
+; so its datasheet's `crossings` is empty without anyone claiming it.
+(module string-utils (cat A) (alt upper))
+
+; does s begin with prefix? (str-sub clamps, so a too-long prefix is just false)
+(def str-starts-with (-> Str Str Bool)
+  (lam (prefix s)
+    (str-eq (str-sub s 0 (str-len prefix)) prefix)))
+
+; s with prefix removed if it is present, else s unchanged
+(def str-strip-prefix (-> Str Str Str)
+  (lam (prefix s)
+    (cond ((str-starts-with prefix s)
+           (str-sub s (str-len prefix) (str-len s)))
+          (else s))))
+
+; (str-contains haystack needle) — does needle occur anywhere in haystack?
+; (str-find returns -1 when absent). HAYSTACK-FIRST (E151b flipped it): this was
+; the tree's one outlier, against its own callee — the prelude's `str-find` is
+; (str-find haystack needle), the sibling str-replace is
+; (str-replace haystack needle replacement), and every other copy in the tree was
+; haystack-first. The owner moved to the convention, not the callers.
+(def str-contains (-> Str Str Bool)
+  (lam (haystack needle)
+    (<=i 0 (str-find haystack needle))))
+
+; split s at every occurrence of a non-empty separator into its pieces.
+; Recurses on the shrinking suffix; a trailing separator yields a trailing "".
+(declare str-split-go (-> Str Str (List Str)))
+(def str-split-go
+  (lam (sep s)
+    (let (i (str-find s sep))
+      (cond ((<i i 0) (cons s nil))
+            (else (cons (str-sub s 0 i)
+                        (str-split-go sep
+                          (str-sub s (+ i (str-len sep)) (str-len s)))))))))
+
+(def str-split (-> Str Str (List Str))
+  (lam (sep s)
+    (cond ((=i (str-len sep) 0) (cons s nil))   ; empty sep: one piece, no loop
+          (else (str-split-go sep s)))))
+
+; ─────────────────────────────────────────────────────────────────────────────
+; E151a — the canonical string stdlib.
+;
+; The functions every chirality module reaches for: a total byte order, ASCII case
+; folding, whitespace trimming, substring replacement, and (E151b) padding to a
+; column width. They live HERE (the string shelf) rather than in whichever
+; module first happened to need them; E151b retires the ad-hoc copies in
+; ty-cmp.chiral / row-infer.chiral / match.chiral / router.chiral / flow.chiral and
+; points their callers at these.
+;
+; NAMING — every internal helper below carries an `su-` prefix. chirality has ONE
+; FLAT EMITTED-LABEL NAMESPACE (cataloged as E154): two modules that land in
+; the same blob cannot define the same name. E151b co-blobs this file with
+; ty-cmp.chiral, which already owns `cmp-bytes`. The prefix is the collision
+; guard — only the public `str-` names are unprefixed.
+;
+; Everything here is category A: pure, total (structurally recursive on a
+; shrinking byte index / suffix), no host binding of its own.
+
+
+; ── str-cmp : byte-lexicographic total order ────────────────────────────────
+; A prefix sorts before its extension ("ab" < "abc"); "" is the least element.
+; Composed from the byte face (str->bytes/blen/bget) — there is no byte-compare
+; primitive. Total: i strictly increases toward min(blen ba, blen bb).
+(declare su-cmp-bytes (-> Bytes Bytes I64 Ord))
+(def su-cmp-bytes
+  (lam (ba bb i)
+    (case (<i i (blen ba))
+      (false (case (<i i (blen bb)) (true (lt)) (false (eq))))   ; a exhausted at i
+      (true (case (<i i (blen bb))
+              (false (gt))                                       ; b exhausted, a is not
+              (true (let ((ca (bget ba i))
+                          (cb (bget bb i)))
+                      (case (<i ca cb)
+                        (true (lt))
+                        (false (case (<i cb ca)
+                                 (true (gt))
+                                 (false (su-cmp-bytes ba bb (+ i 1)))))))))))))
+
+(def str-cmp (-> Str Str Ord)
+  (lam (a b) (su-cmp-bytes (str->bytes a) (str->bytes b) 0)))
+
+; ── str-lower / str-upper : ASCII case folding ──────────────────────────────
+; ASCII ONLY, and deliberately so: 'A'..'Z' (65..90) and 'a'..'z' (97..122) map
+; through the alphabet tables below; every other byte — digits, punctuation,
+; and every byte ≥ 128 — is copied verbatim. That makes the fold LENGTH-
+; PRESERVING (1 byte -> 1 byte), so an index found on a folded copy is still
+; valid on the original string. Total: structural on the byte count n.
+(def su-lc-alpha Str "abcdefghijklmnopqrstuvwxyz")
+(def su-uc-alpha Str "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+(declare su-lower-go (-> Bytes I64 I64 Str Str))
+(def su-lower-go
+  (lam (b i n acc)
+    (case (=i i n)
+      (true acc)
+      (false
+        (let ((c (bget b i)))
+          (su-lower-go b (+ i 1) n
+            (str-cat acc
+              (case (and (<=i 65 c) (<=i c 90))
+                (true  (str-sub su-lc-alpha (- c 65) (- c 64)))
+                (false (bytes->str (bslice b i (+ i 1))))))))))))
+
+(def str-lower (-> Str Str)
+  (lam (s) (let ((b (str->bytes s))) (su-lower-go b 0 (blen b) ""))))
+
+(declare su-upper-go (-> Bytes I64 I64 Str Str))
+(def su-upper-go
+  (lam (b i n acc)
+    (case (=i i n)
+      (true acc)
+      (false
+        (let ((c (bget b i)))
+          (su-upper-go b (+ i 1) n
+            (str-cat acc
+              (case (and (<=i 97 c) (<=i c 122))
+                (true  (str-sub su-uc-alpha (- c 97) (- c 96)))
+                (false (bytes->str (bslice b i (+ i 1))))))))))))
+
+(def str-upper (-> Str Str)
+  (lam (s) (let ((b (str->bytes s))) (su-upper-go b 0 (blen b) ""))))
+
+; ── str-trim : strip leading/trailing ASCII whitespace ──────────────────────
+; The whitespace set is exactly space(32), tab(9), CR(13), LF(10) — written as
+; CODEPOINTS because chirality string literals have no \r escape. The scan finds a
+; [lo,hi) window and slices ONCE (no accumulator rebuild); an all-whitespace or
+; empty input collapses to lo=hi=n and yields "".
+(def su-is-ws (-> I64 Bool)
+  (lam (c) (or (=i c 32) (or (=i c 9) (or (=i c 13) (=i c 10))))))
+
+(declare su-trim-lo (-> Bytes I64 I64 I64))
+(def su-trim-lo
+  (lam (b i n)
+    (case (<i i n)
+      (false i)
+      (true (case (su-is-ws (bget b i))
+              (true (su-trim-lo b (+ i 1) n))
+              (false i))))))
+
+; hi is EXCLUSIVE: walk it down while the byte just before it is whitespace.
+; Bounded below by lo, so a fully-blank string stops at hi = lo.
+(declare su-trim-hi (-> Bytes I64 I64 I64))
+(def su-trim-hi
+  (lam (b lo hi)
+    (case (<i lo hi)
+      (false hi)
+      (true (case (su-is-ws (bget b (- hi 1)))
+              (true (su-trim-hi b lo (- hi 1)))
+              (false hi))))))
+
+(def str-trim (-> Str Str)
+  (lam (s)
+    (let ((b (str->bytes s)))
+      (let ((n (blen b)))
+        (let ((lo (su-trim-lo b 0 n)))
+          (str-sub s lo (su-trim-hi b lo n)))))))
+
+; ── str-replace : replace ALL non-overlapping occurrences ───────────────────
+; (str-replace haystack needle replacement). Scanning restarts PAST the match
+; (from + (str-len needle)), so occurrences never overlap and the replacement's
+; own text is never rescanned. An EMPTY needle returns the haystack unchanged
+; (the alternative — splicing between every byte — is not a useful total
+; function and would not terminate on a naive scan). Total: `from` strictly
+; increases (needle is non-empty on the recursive path) toward (str-len hay).
+(declare su-replace-go (-> Str Str Str I64 Str Str))
+(def su-replace-go
+  (lam (hay needle repl from acc)
+    (let ((i (str-find-from hay needle from)))
+      (case (<i i 0)
+        (true (str-cat acc (str-sub hay from (str-len hay))))    ; no more: flush the tail
+        (false (su-replace-go hay needle repl (+ i (str-len needle))
+                 (str-cat acc (str-cat (str-sub hay from i) repl))))))))
+
+(def str-replace (-> Str Str Str Str)
+  (lam (hay needle repl)
+    (case (=i (str-len needle) 0)
+      (true hay)
+      (false (su-replace-go hay needle repl 0 "")))))
+
+; ── str-pad : right-pad to EXACTLY `width` bytes ────────────────────────────
+; (str-pad s width pad) — SUBJECT-FIRST, RIGHT-pad, matching the sibling
+; str-replace's (haystack needle replacement) shape: the string being worked on
+; comes first. A `width` at or below (str-len s) returns s UNCHANGED — this
+; function only ever grows, it never truncates the subject. An EMPTY pad also
+; returns s unchanged (total, no loop: there is nothing to grow with). Otherwise
+; `pad` is repeated and the result cut to EXACTLY width bytes, so a multi-byte
+; pad may end mid-unit: (str-pad "ab" 5 "-=") = "ab-=-". Byte-level like the
+; rest of the shelf. Total: the accumulator grows by (str-len pad) >= 1 bytes
+; per step toward the bounded target width.
+(declare su-pad-go (-> Str I64 Str Str))
+(def su-pad-go
+  (lam (acc width pad)
+    (case (<i (str-len acc) width)
+      (false (str-sub acc 0 width))
+      (true (su-pad-go (str-cat acc pad) width pad)))))
+
+(def str-pad (-> Str I64 Str Str)
+  (lam (s width pad)
+    (case (or (<=i width (str-len s)) (=i (str-len pad) 0))
+      (true s)
+      (false (su-pad-go s width pad)))))

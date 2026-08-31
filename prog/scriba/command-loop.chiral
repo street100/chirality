@@ -1,0 +1,2545 @@
+; scriba S3: command loop — read key, lookup in keymap, dispatch op on puffer. Loop forever.
+; ~150 lines. Imports Key from S4, KeySeq/Keymap from keymap.chiral, Puffer from S1, Rendering from S2.
+; Zero mutation primitives — all state threaded through recursion.
+; Effect rows: ("put" "read" "poll") on the loop; pure (->) for registries and render-puffer.
+;
+; Deps: prelude.chiral (I64, Str, Bool, Unit, List, Maybe, Pair, =i, i64->str, str-cat, and, or, not)
+;       collections.chiral (find, alist-get)
+;       ports.chiral (put)
+;       scriba/key-parser.chiral (Key type)
+;       scriba/keymap.chiral (KeySeq, Keymap, lookup-keymap, default-keymap, keyseq-eq)
+;       scriba/puffer.chiral (Puffer, puffer-port-type, puffer-value, puffer-str-insert)
+;       scriba/render.chiral (Rendering, renderer-fn, render-to-ansi-full, render-to-ansi-delta,
+;                             ansi-clear, ansi-home, lookup-renderer, r-hole)
+
+(import "prelude")
+(import "ports")
+(import "term")
+(import "key-parser")
+(import "keymap")
+(import "puffer")
+(import "render")
+(import "cmd-types")
+(import "editor-state")            ; S18 — Scriba: km/puf/chat/dims/scroll/msg/rendering/renderers/ops/mode/pending as ONE value
+(import "dispatch")
+(import "file-io")
+(import "chat")
+(import "str-edit")
+(import "zipper-bridge")
+(import "minipuffer")
+(import "vim-mode")
+(import "bytes-tal")
+(import "manas/pipeline/compose")  ; S16 — compose-preflight, all-pipelines, pipeline-by-id, pipeline-ids, config-ids
+(import "manas/core/flow-persist")  ; SG6 — json->flow (SG1's total Flow decoder)
+(import "flow-view")                ; SG6 — flow-outline-nodes, flow-view-render (render a saved Flow, read-only)
+(import "manas/profile/skills")     ; the SKILL REGISTRY — all-skills, skill-names, skill-by-name, all-skill-configs
+(import "manas/chatter/turn")       ; C4 — turn, the general-chatter entry; C6b — turn-seq; DC-4b — turn-seq-view + TurnView/Lane (the turn's structure, surfaced)
+(import "chat-view")                ; ChatView (+ cv-*), Exchange, chat-render — CHAT's state and its pure renderer
+(import "manas/chatter/router")     ; C5 — route-message + intent-name (per-turn intent TAG); C6a — ConvState (+ conv-empty), resolve-intent, conv-update
+
+; ─── R6 forward declares ────────────────────────────────────────────────────
+; command-loop-inner references handle-find-file / handle-save-buffer before
+; their defs (which live at the end of this file), so declare them up front.
+; Their defs (below) carry no inline type — the load-finish path pairs with
+; these declares.
+(declare handle-find-file
+  (=> Scriba Unit))
+(declare handle-save-buffer
+  (=> Scriba Unit))
+(declare handle-chat-send
+  (=> Scriba Unit))
+(declare handle-keybind-help
+  (=> Scriba Unit))
+(declare handle-isearch-forward
+  (=> Scriba Unit))
+(declare handle-isearch-backward
+  (=> Scriba Unit))
+(declare handle-query-replace
+  (=> Scriba Unit))
+(declare handle-save-as
+  (=> Scriba Unit))
+(declare handle-save-to-path
+  (=> Scriba Str Unit))
+(declare handle-set-file-name
+  (=> Scriba Str Unit))
+(declare handle-set-file-name-prompt
+  (=> Scriba Unit))
+(declare handle-chat-toggle
+  (=> Scriba Unit))
+(declare puffer-scroll (-> (Puffer Str) (Pair I64 I64) I64))
+
+; Op type and RenderResult — imported from cmd-types.chiral.
+; register-op and lookup-scribaop — imported from cmd-types.chiral.
+
+; ─── render-puffer (bridge to S2) ──────────────────────────────────────────
+
+; Renders a puffer to a Rendering tree. Uses the type-driven renderer
+; registry from S2 and the puffer accessors from S1.
+;
+; Pure (->). The renderer registry is an immutable parameter — no mutation.
+; The puffer's type-name and value are extracted via pure field accessors.
+;
+; The mode's renderer receives the buffer content Str (RendererFn is
+; (-> Str (Pair I64 I64) Rendering)), so the puffer text is passed through
+; directly — no type-erasure at the registry boundary.
+(def render-puffer (-> (Puffer Str) (Pair I64 I64) I64 (List (Pair Str Mode)) RenderResult)
+  (lam (puf dims scroll modes)
+    (case (puffer-port-type Str puf)
+      ((puf-type-ok type-name puf1)
+        (case (puffer-value Str puf1)
+          ((puf-value-ok val puf2)
+            (case (lookup-mode modes type-name)
+              (none
+                (render-ok (r-hole (str-cat "no mode for type: " type-name)) puf2))
+              ((some m)
+                (case m
+                  ((mode r faces)
+                    (case r
+                      ((rf f)
+                        (render-ok (f val dims scroll) puf2))))))))
+          ((puf-value-none puf2)
+            (render-ok (r-text "" false) puf2)))))))
+
+; ─── read-keyseq (bridge to S4) ────────────────────────────────────────────
+;
+; Reads one key's raw bytes from fd 0 via the native read-key crossing,
+; decodes them via key-parser's parse-key, and returns (Maybe KeySeq).
+; none = EOF (empty read) or an incomplete escape sequence (ESC alone).
+
+; KeyIn: 3-way result of reading one key sequence. ki-eof = empty read
+; (EOF), ki-key = a parsed key sequence, ki-unknown = unrecognized or
+; incomplete sequence (beep and keep looping — never quit on unknown input).
+(data KeyIn () (ki-eof) (ki-key (ks KeySeq)) (ki-unknown))
+
+(def read-keyseq-tail (=> Key Bytes I64 KeyIn)
+  (lam (k bytes pos)
+    (case (<i pos (blen bytes))
+      (true
+        (case (parse-key bytes pos (blen bytes))
+          ((pair mk2 _)
+            (case mk2
+              ((some k2) (ki-key (keyseq (cons k (cons k2 nil)))))
+              (none (ki-unknown))))))
+      (false
+        (let (bytes2 (read-key 0 32))
+          (case (=i (blen bytes2) 0)
+            (true (ki-unknown))
+            (false
+              (case (parse-key bytes2 0 (blen bytes2))
+                ((pair mk2 _)
+                  (case mk2
+                    ((some k2) (ki-key (keyseq (cons k (cons k2 nil)))))
+                    (none (ki-unknown))))))))))))
+
+; read-keyseq: read one key's raw bytes, parse via key-parser's parse-key.
+; If the first key is a prefix (C-x), read/parse the second key to build
+; a two-key KeySeq. ki-eof = EOF, ki-unknown = unrecognized/incomplete
+; sequence (beep, keep looping). An incomplete escape (lone ESC, or a CSI
+; that arrives split across reads) lands here as ki-unknown — a proper
+; read-more-until-complete loop is a follow-up (needs a timeout/select).
+; ─── ESC timeout read (S13) ────────────────────────────────────────────────
+; vim's timeoutlen: after read-keyseq reads a lone ESC (or an incomplete CSI/
+; SS3), poll stdin for a following byte. A byte within ~80ms -> the meta/CSI
+; path (ESC x = M-x) as today; timeout -> a lone k-escape. parse-key stays
+; pure; the poll lives here in read-keyseq.
+
+; Poll fd 0 for readability with a timeout (ms). Returns true when readable.
+; pollfd: fd u32@0, events u16@4 (POLLIN=1), revents u16@6.
+(def stdin-readable (=> I64 Bool)
+  (lam (ms)
+    (let (cell (bput-u8 (bput-u32-le (cell-new 8) 0 0) 4 1))
+      (let (rc (nb-poll cell 1 ms))
+        (<i 0 rc)))))
+
+; read-keyseq-esc: after a lone ESC / incomplete CSI in `bytes`, poll for more.
+; Readable -> read the next chunk, re-parse the concatenation; still incomplete
+; -> recurse. Timeout -> a lone k-escape.
+(declare read-keyseq-esc-more (=> Bytes KeyIn))
+
+(def read-keyseq-esc (=> Bytes KeyIn)
+  (lam (bytes)
+    (case (stdin-readable 80)
+      (true (read-keyseq-esc-more bytes))
+      (false (ki-key (keyseq (cons k-escape nil)))))))
+
+; read-keyseq-esc-more: stdin became readable after a lone ESC; read the next
+; chunk and re-parse the concatenation. Still incomplete -> recurse.
+(def read-keyseq-esc-more
+  (lam (bytes)
+    (let (more (read-key 0 32))
+      (case (=i (blen more) 0)
+        (true (ki-key (keyseq (cons k-escape nil))))
+        (false
+          (let (bytes2 (bcat bytes more))
+            (case (parse-key bytes2 0 (blen bytes2))
+              ((pair mk2 _)
+                (case mk2
+                  ((some k) (ki-key (keyseq (cons k nil))))
+                  (none (read-keyseq-esc bytes2)))))))))))
+
+(def read-keyseq (=> Unit KeyIn)
+  (lam (_)
+    (let (bytes (read-key 0 32))
+      (case (=i (blen bytes) 0)
+        (true (ki-eof))
+        (false
+          (case (parse-key bytes 0 (blen bytes))
+            ((pair mk pos)
+              (case mk
+                ((some k)
+                  (case (prefix-key? k)
+                    (true (read-keyseq-tail k bytes pos))
+                    (false (ki-key (keyseq (cons k nil))))))
+                (none (read-keyseq-esc bytes))))))))))
+
+; ─── minipuffer modal loop (SCRIBA-SLICES 5) ───────────────────────────────
+
+; BEL byte for the no-match beep. chirality string literals have no \x escape, so
+; the control byte is built via pack-u32/bslice (same idiom as render's ansi-esc).
+; Defined here (before its users) and shared by isearch/qr below.
+(def bel-byte Str (bytes->str (bslice (pack-u32 7) 0 1)))
+
+; minipuffer-loop: recursive modal-input loop. Threads the PromptState; each
+; iteration renders the prompt at the bottom row (minipuffer-render), then
+; reads one key and dispatches: printable k-char -> insert, backspace ->
+; delete, Tab -> complete, Enter -> commit (some input), C-g/Esc/unknown ->
+; cancel (none). The PromptState is threaded; no globals.
+(def minipuffer-loop (=> Prompt (List Str) PromptState (Pair I64 I64) (Maybe Str))
+  (lam (kind candidates st dims)
+    (let (_ (minipuffer-render st dims))
+      (case (read-keyseq unit)
+        ((ki-eof) none)
+        ((ki-unknown) none)
+        ((ki-key ks)
+          (case ks
+            ((keyseq keys)
+              (case keys
+                ((cons k rest)
+                  (case rest
+                    (nil
+                      (case k
+                        ((k-char code)
+                          (case (and (not (<i code 32)) (<=i code 126))
+                            (true (minipuffer-loop kind candidates (minipuffer-insert st code) dims))
+                            (false (minipuffer-loop kind candidates st dims))))
+                        (k-backspace
+                          (minipuffer-loop kind candidates (minipuffer-delete st) dims))
+                        (k-enter
+                          (some (minipuffer-input st)))
+                        (k-tab
+                          (minipuffer-loop kind candidates (minipuffer-complete st candidates) dims))
+                        ((k-ctrl code)
+                          (case (=i code 7)
+                            (true none)
+                            (false (minipuffer-loop kind candidates st dims))))
+                        (k-escape none)
+                        (_ (minipuffer-loop kind candidates st dims))))
+                    (_ (minipuffer-loop kind candidates st dims))))
+                (_ (minipuffer-loop kind candidates st dims))))
+            (_ (minipuffer-loop kind candidates st dims))))))))
+
+; minipuffer-read: enter the modal prompt and read one line. Returns
+; (some input) on Enter, none on cancel (C-g / Esc / EOF / unknown).
+(def minipuffer-read (=> Prompt (List Str) (Pair I64 I64) (Maybe Str))
+  (lam (kind candidates dims)
+    (minipuffer-loop kind candidates (minipuffer-start kind candidates) dims)))
+
+; ─── Command loop ──────────────────────────────────────────────────────────
+
+; command-loop: entry point. Clears the screen, performs the initial render,
+; then delegates to the recursive inner loop that threads all state as parameters.
+;
+; Parameters:
+;   km         — current keymap (global + puffer-local merged)
+;   puf        — the current puffer (S1)
+;   dims       — terminal dimensions (rows, cols)
+;   renderers  — immutable renderer registry (S2)
+;   ops        — immutable op registry
+;
+; Effect row: ("put" "read" "poll") — output (ANSI), input (stdin),
+; and poll (blocking wait on stdin via read-key-sequence).
+; command-loop-inner is forward-declared in dispatch.chiral (which resolves
+; earlier in the blob), so the def below (no inline type) already has its
+; prior declare. Declaring it again here duplicates the label.
+(declare command-loop (=> Keymap (Puffer Str) (Pair I64 I64) (List (Pair Str Mode)) (List ScribaOp) Unit))
+(def command-loop
+  (lam (km puf dims renderers ops)
+    ; Clear screen and home cursor for initial paint
+    (let (_ (put ansi-clear))
+      (let (_ (put ansi-home))
+        ; Initial render — produces the first Rendering tree
+        (case (render-puffer puf dims (puffer-scroll puf dims) renderers)
+          ((render-ok old-rendering puf')
+            ; Full-screen ANSI emission, then enter inner loop
+            (let (_ (render-to-ansi-full old-rendering dims))
+              ; S18: the external entry is unchanged; it CONSTRUCTS the initial
+              ; Scriba here, which is what keeps scriba-main.chiral and
+              ; scriba-test-b1.chiral out of this change entirely.
+              (command-loop-inner (scriba km puf' none dims (puffer-scroll puf' dims) "" old-rendering renderers ops vm-normal pending-none)))))))))
+
+; ─── cursor positioning ────────────────────────────────────────────────────
+
+; Flat-text cursor offset from a Zipper path. The bridge stores it as a
+; one-element list (cons offset nil); nil path (fresh puffer) is offset 0.
+(def zb-path-offset (-> (List I64) I64)
+  (lam (path)
+    (case path
+      (nil 0)
+      ((cons off rest) off))))
+
+; The document text from a zipper focus, or "" when there is none.
+(def focus-text (-> (Maybe Str) Str)
+  (lam (f)
+    (case f
+      (none "")
+      ((some s) s))))
+
+; The puffer's name field (used to tell "focused on the chat buffer" apart from
+; "focused on a file").
+(def puf-name (-> (Puffer Str) Str)
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr) name))))
+
+; Apply a flat-text movement function to a Zipper: extract the focus text and
+; path offset, move the offset, rebuild the Zipper. Flat movement (str-edit's
+; flat-* fns) operates on (Str, I64), so movement does NOT pay the O(n)
+; zipper<->text-zipper split+join per keystroke.
+(def zb-move (-> (-> Str I64 I64) (Zipper Str) (Zipper Str))
+  (lam (f z)
+    (case z
+      ((zipper focus path)
+        (case focus
+          (none z)
+          ((some s)
+            (zipper (some s) (cons (f s (zb-path-offset path)) nil))))))))
+
+; Absolute 1-indexed cursor row from the puffer's flat-text offset. Extracts
+; just the row half of cursor-row-col.
+(def puf-cursor-row (-> (Puffer Str) I64)
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case z
+          ((zipper focus path)
+            (let (off (zb-path-offset path))
+              (let (text (focus-text focus))
+                (case (cursor-row-col text off)
+                  ((pair row col) row))))))))))
+
+; Position the terminal block at the puffer's cursor after a render. The
+; zipper focus holds the document text, the path holds the flat-text offset;
+; render's cursor-row-col turns (text, offset) into 1-indexed (row, col).
+; Scroll offset so the cursor stays visible in the content viewport (rows
+; 1..rows-1; the last row is the status bar). scroll = max(0, cursor_row-(rows-1)).
+(def puffer-scroll
+  (lam (puf dims)
+    (case dims
+      ((pair rows cols)
+        (case puf
+          ((puffer id name type-name handle z dirty u mark kr)
+            (case z
+              ((zipper focus path)
+                (let (off (zb-path-offset path))
+                  (let (text (focus-text focus))
+                    (case (cursor-row-col text off)
+                      ((pair crow ccol)
+                        (let (limit (- rows 1))
+                          (case (<i limit crow)
+                            (true (- crow limit))
+                            (false 0)))))))))))))))
+
+(def emit-cursor-goto (=> (Puffer Str) (Pair I64 I64) I64 Unit)
+  (lam (puf dims scroll)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case z
+          ((zipper focus path)
+            (let (off (zb-path-offset path))
+              (let (text (focus-text focus))
+                (case (cursor-row-col text off)
+                  ((pair row col)
+                    (case dims
+                      ((pair rows cols)
+                        (put (ansi-goto (- row scroll) (min col cols)))))))))))))))
+
+; Hysteretic scroll update. Only scroll DOWN when the cursor passes the bottom
+; of the content viewport (rows 1..rows-1); only scroll UP when the cursor
+; reaches the top of the visible window. In between the scroll stays put, so
+; after scrolling down, moving up does NOT scroll the view back up until the
+; cursor reaches the top row. crow is the absolute 1-indexed cursor row.
+(def next-scroll (-> (Puffer Str) (Pair I64 I64) I64 I64)
+  (lam (puf dims scroll)
+    (let (crow (puf-cursor-row puf))
+      (case dims
+        ((pair rows cols)
+          (let (limit (- rows 1))
+            (case (<i (+ scroll limit) crow)
+              (true (- crow limit))
+              (false
+                (case (<i crow (+ scroll 1))
+                  (true (- crow 1))
+                  (false scroll))))))))))
+
+; ─── status line (chrome, drawn outside the Rendering tree) ────────────────
+
+; Bottom terminal row from dims (rows, cols).
+(def dims-rows (-> (Pair I64 I64) I64)
+  (lam (d)
+    (case d
+      ((pair rows cols) rows))))
+
+; Terminal column count from dims.
+(def dims-cols (-> (Pair I64 I64) I64)
+  (lam (d)
+    (case d
+      ((pair rows cols) cols))))
+
+
+; Repeat " " n times (n <= 0 gives ""). Pure.
+(def str-spaces (-> I64 Str)
+  (lam (n)
+    (case (<=i n 0)
+      (true "")
+      (false (str-cat " " (str-spaces (- n 1)))))))
+
+; Last n chars of a string (n >= len -> the whole string). Used to cap the
+; buffer name in the status bar so the mode/position/transient-message always
+; fit; the tail (basename) identifies the file better than the head of a long
+; absolute path. str-sub is END-INDEX, so the len<n guard avoids a negative slice.
+(def str-tail (-> Str I64 Str)
+  (lam (s n)
+    (let (l (str-len s))
+      (case (<i l n)
+        (true s)
+        (false (str-sub s (- l n) l))))))
+
+; Left half of the status bar: buffer name, mode, 1-indexed cursor row:col,
+; dirty marker, and a transient message (e.g. "saved" after a save). str-cat is
+; binary, so the line is assembled by nesting.
+(def status-left (-> Str Str Str I64 I64 Bool Str Str)
+  (lam (vmode name mode row col dirty msg)
+    (let (pos (str-cat (i64->str row) (str-cat ":" (i64->str col))))
+      (let (head (str-cat "-- " (str-cat vmode (str-cat " -- " (str-cat (str-tail name 32) (str-cat " [" (str-cat mode (str-cat "] " pos))))))))
+        (let (head2 (str-cat head (case dirty (true " modified") (false ""))))
+          (str-cat head2 (case (str-eq msg "") (true "") (false (str-cat " " msg)))))))))
+
+; Right half of the status bar: a DYNAMIC per-mode keybind hint (the mode's most
+; useful keys), so the display teaches the current mode instead of a fixed emacs
+; string. Command/Chat replace the status row with their prompt, so their hints
+; are only seen briefly on entry. Kept short to fit beside the left info.
+(def mode-hint (-> VimMode Str)
+  (lam (m)
+    (case m
+      (vm-normal      " i:ins  v:vis  ::cmd  dd/yy/p  u:undo  :help ")
+      (vm-insert      " ESC:normal   printable inserts ")
+      ((vm-visual l)  " hjkl:extend  y:yank  d:cut  c:change  ESC:exit ")
+      (vm-command     " RET:run  ESC:cancel ")
+      ((vm-chat cv)   " i:compose  j/k:scroll  G:newest  ESC:normal ")
+      ((vm-manas ol)  " j/k/l/h nav  e:edit a:add d:del  :run  ESC ")
+      ((vm-runview r) " j/k:scroll  ESC:normal ")
+      ((vm-catalog c) " j/k move  Enter open  ESC back "))))
+
+; Full status line: LEFT info + middle gap + RIGHT hint, exactly `cols` wide. The
+; gap (dynamic space) sits between the halves, so the hint hugs the right edge.
+(def status-line-str (-> Str Str Str I64 I64 Bool Str Str I64 Str)
+  (lam (vmode name mode row col dirty msg hint cols)
+    (let (left (status-left vmode name mode row col dirty msg))
+      (let (gap (- cols (+ (str-len left) (str-len hint))))
+        (str-cat left (str-cat (str-spaces (max 0 gap)) hint))))))
+
+; Truncate s to at most n chars. str-sub is END-INDEX; a shorter s is unchanged.
+(def str-trunc (-> Str I64 Str)
+  (lam (s n)
+    (case (<i (str-len s) n)
+      (true s)
+      (false (str-sub s 0 n)))))
+
+
+; Draw the status/mode line on the bottom terminal row: goto bottom row,
+; inverse-video ON, put the (width-truncated) text, reset. Runs every loop
+; iteration. `msg` is a transient notification (e.g. "saved" after a save),
+; shown in the left half for one iteration.
+(def emit-status (=> (Puffer Str) (Pair I64 I64) Str VimMode Unit)
+  (lam (puf dims msg vmode)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case z
+          ((zipper focus path)
+            (let (off (zb-path-offset path))
+              (let (text (focus-text focus))
+                (case (cursor-row-col text off)
+                  ((pair row col)
+                    (let (line (str-trunc (status-line-str (mode-name vmode) name type-name row col dirty msg (mode-hint vmode) (dims-cols dims))
+                                          (dims-cols dims)))
+                      (let (_ (put (ansi-goto (dims-rows dims) 1)))
+                        (let (_ (put ansi-inverse))
+                          (let (_ (put line))
+                            (put ansi-reset)))))))))))))))
+
+; ─── dispatch helper imported from dispatch.chiral ───
+; try-dispatch and command-loop-inner forward-declare live in dispatch.chiral.
+; This module imports dispatch, so both are already in scope.
+
+; command-loop-inner: recursive inner loop. All state is threaded through
+; parameters — no mutable refs, no global variables. Each iteration:
+;   1. Read a key sequence from stdin
+;   2. Look up the key sequence in the keymap
+;   3. On match: dispatch the op on the current puffer, re-render, recurse
+;   4. On no match: self-insert for single printable k-char, beep otherwise
+;   5. On "quit": return Unit (exit the loop)
+;
+; Effect row: ("put" "read" "poll")
+
+; command-loop-inner: recursive inner loop. All state is threaded through
+; parameters — no mutation, no globals. Every branch returns a recursive call
+; with updated state. The puffer is threaded as (Puffer Str) without linear
+; quantity (B1 rejects (1 ...) on compound types).
+
+; puffer-insert-at-point: self-insert one char at the puffer's cursor. Inserts
+; FLAT (flat-insert at the flat-text offset), not via the zipper<->text-zipper
+; bridge, so typing does not pay the O(n) split+join per keystroke.
+(def puffer-insert-at-point (-> (Puffer Str) Str (Puffer Str))
+  (lam (puf s)
+    (let (puf1 (push-undo puf))
+      (case puf1
+        ((puffer id name type-name handle z dirty u mark kr)
+          (case z
+            ((zipper focus path)
+              (case focus
+                ; Empty focus (fresh *scratch* buffer): seed the document with s
+                ; and land the point just past it. Without this, typing the FIRST
+                ; character into an empty buffer was silently dropped — the body
+                ; rendered empty and the point never left 1:1.
+                (none
+                  (puffer id name type-name handle
+                    (zipper (some s) (cons (str-len s) nil))
+                    true u mark kr))
+                ((some text)
+                  (let (off (zb-path-offset path))
+                    (puffer id name type-name handle
+                      (zipper (some (flat-insert text off s))
+                              (cons (+ off (str-len s)) nil))
+                      true u mark kr)))))))))))
+
+; apply-charop: resolve a char-argument op (f/F/t/T motion, r replace) against
+; a target char `code`. Motions move the point on the current line; r replaces
+; the char at point (undo pushed) and stays. Empty focus / EOF -> unchanged.
+(def apply-charop (-> (Puffer Str) Str I64 (Puffer Str))
+  (lam (puf0 op code)
+    (let (puf (case (str-eq op "r") (true (push-undo puf0)) (false puf0)))
+      (case puf
+        ((puffer id name type-name handle z dirty u mark kr)
+          (case z
+            ((zipper focus path)
+              (case focus
+                (none puf)
+                ((some text)
+                  (let (off (zb-path-offset path))
+                    (case (str-eq op "m")
+                      ; m{c}: set mark named `code` at the current offset (no edit).
+                      (true (puffer id name type-name handle z dirty u mark (kr-mark-set code off kr)))
+                      (false
+                        (case (str-eq op "bt")
+                          ; `{c}: jump to mark named `code`; missing mark -> stay put.
+                          (true
+                            (case (kr-mark-get code kr)
+                              (none puf)
+                              ((some moff)
+                                (puffer id name type-name handle (zipper (some text) (cons moff nil)) dirty u mark kr))))
+                          (false
+                            (case (str-eq op "r")
+                              (true
+                                (puffer id name type-name handle
+                                  (zipper (some (flat-replace-char text off code)) (cons off nil))
+                                  true u mark kr))
+                              (false
+                                (let (noff
+                                       (case (str-eq op "f") (true (flat-find-char-fwd text off code))
+                                         (false (case (str-eq op "F") (true (flat-find-char-back text off code))
+                                           (false (case (str-eq op "t") (true (flat-till-char-fwd text off code))
+                                             (false (flat-till-char-back text off code))))))))
+                                  (puffer id name type-name handle
+                                    (zipper (some text) (cons noff nil))
+                                    dirty u mark kr))))))))))))))))))
+
+; apply-textobj: resolve a text object (op = d/c/y, inner?, object code) to a
+; span and apply the operator. y copies the span to the kill-ring (no edit,
+; no undo); d/c delete it (undo pushed, cursor -> span start, killed text on the
+; ring; the loop enters Insert for c). Empty focus / empty span -> no-op.
+(def apply-textobj (-> (Puffer Str) Str Bool I64 (Puffer Str))
+  (lam (puf0 op inner objcode)
+    (let (puf (case (str-eq op "y") (true puf0) (false (push-undo puf0))))
+      (case puf
+        ((puffer id name type-name handle z dirty u mark kr)
+          (case z
+            ((zipper focus path)
+              (case focus
+                (none puf)
+                ((some text)
+                  (let (off (zb-path-offset path))
+                    (case (flat-textobj-range text off inner objcode)
+                      ((pair start end)
+                        (case (str-eq op "y")
+                          (true
+                            (puffer id name type-name handle z dirty u mark
+                              (kill-ring-push (str-sub text start end) kr)))
+                          (false
+                            (let (killed (str-sub text start end))
+                              (let (newtext (str-cat (str-sub text 0 start) (str-sub text end (str-len text))))
+                                (puffer id name type-name handle
+                                  (zipper (some newtext) (cons start nil))
+                                  true u mark (kill-ring-push killed kr))))))))))))))))))
+
+; ─── Named registers ("{r}yy / "{r}dd / "{r}p) ─────────────────────────────
+
+; "{r}p — paste the named register's text at point (reuses the seed-aware
+; insert). Missing register -> no-op.
+(def apply-reg-paste (-> (Puffer Str) I64 (Puffer Str))
+  (lam (puf reg)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case (kr-reg-get reg kr)
+          (none puf)
+          ((some s) (puffer-insert-at-point puf s)))))))
+
+; "{r}yy — copy the current line into register r (no edit, cursor unchanged).
+(def apply-reg-yank-line (-> (Puffer Str) I64 (Puffer Str))
+  (lam (puf reg)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle z dirty u mark
+          (kr-reg-set reg (current-line (zipper->text-zipper z)) kr))))))
+
+; "{r}dd — delete the current line into register r (undo pushed).
+(def apply-reg-delete-line (-> (Puffer Str) I64 (Puffer Str))
+  (lam (puf0 reg)
+    (let (puf (push-undo puf0))
+      (case puf
+        ((puffer id name type-name handle z dirty u mark kr)
+          (case (str-kill-lines 1 (str-move-beginning-of-line (zipper->text-zipper z)))
+            ((pair killed tz)
+              (puffer id name type-name handle (text-zipper->zipper tz) true u mark
+                (kr-reg-set reg killed kr)))))))))
+
+; Run a resolved register command (which = "p" | "yy" | "dd"), re-render, Normal.
+(def run-reg-into
+  (=> Scriba I64 Str Unit)
+  (lam (s reg which)
+    (let (puf2 (case (str-eq which "p") (true (apply-reg-paste (sc-puf s) reg))
+                 (false (case (str-eq which "yy") (true (apply-reg-yank-line (sc-puf s) reg))
+                   (false (apply-reg-delete-line (sc-puf s) reg))))))
+      (let (scroll2 (next-scroll puf2 (sc-dims s) (sc-scroll s)))
+        (case (render-puffer puf2 (sc-dims s) scroll2 (sc-renderers s))
+          ((render-ok new-rendering puf3)
+            (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+              (command-loop-inner (sc-with-msg (sc-enter (sc-repaint s puf3 scroll2 new-rendering) vm-normal pending-none) "")))))))))
+
+; Re-read the terminal size so a resize is reflected on the next keypress.
+; Returns the fresh (rows, cols), or the previous dims if the ioctl fails.
+(def fresh-dims (=> (Pair I64 I64) (Pair I64 I64))
+  (lam (cur)
+    (case (tiocgwinsz 1)
+      ((ws-r rows cols) (pair rows cols))
+      ((ws-err eno) cur))))
+
+; Structural equality on terminal dims (rows, cols).
+(def dims-eq (-> (Pair I64 I64) (Pair I64 I64) Bool)
+  (lam (a b)
+    (case a
+      ((pair ar ac)
+        (case b
+          ((pair br bc)
+            (and (=i ar br) (=i ac bc))))))))
+
+
+; ─── Vim modal dispatch helpers (S13) ──────────────────────────────────────
+; The mode-first dispatch is factored into small effectful helpers so
+; command-loop-inner stays shallow. Each takes the threaded loop state and
+; recurses via command-loop-inner (forward-declared in dispatch.chiral) with an
+; explicit mode + pending.
+
+; Set the mark to the current zipper (v/V entry into Visual).
+(def puf-set-mark (-> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle z dirty u (some z) kr)))))
+
+; Clear the mark (Visual exit).
+(def puf-clear-mark (-> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle z dirty u none kr)))))
+
+; Drop the last char of a string ("" stays "").
+(def vm-drop-last (-> Str Str)
+  (lam (s)
+    (case (=i (str-len s) 0)
+      (true s)
+      (false (str-sub s 0 (- (str-len s) 1))))))
+
+; Run a registered op via try-dispatch, re-render, recurse in mode/pending.
+(def run-op-into
+  (=> Scriba Str VimMode Pending Unit)
+  (lam (s opname mode pending)
+    (let (puf2 (try-dispatch s opname))
+      (let (scroll2 (next-scroll puf2 (sc-dims s) (sc-scroll s)))
+        (case (render-puffer puf2 (sc-dims s) scroll2 (sc-renderers s))
+          ((render-ok new-rendering puf3)
+            (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+              (command-loop-inner (sc-with-msg (sc-enter (sc-repaint s puf3 scroll2 new-rendering) mode pending) "")))))))))
+
+; Resolve a char-argument op against target `code`, re-render, back to Normal.
+(def run-charop-into
+  (=> Scriba Str I64 Unit)
+  (lam (s op code)
+    (let (puf2 (apply-charop (sc-puf s) op code))
+      (let (scroll2 (next-scroll puf2 (sc-dims s) (sc-scroll s)))
+        (case (render-puffer puf2 (sc-dims s) scroll2 (sc-renderers s))
+          ((render-ok new-rendering puf3)
+            (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+              (command-loop-inner (sc-with-msg (sc-enter (sc-repaint s puf3 scroll2 new-rendering) vm-normal pending-none) "")))))))))
+
+; Apply a registered op n times (counts: 5w, 3dd). n<=0 is a no-op.
+(def try-dispatch-n
+  (=> Scriba Str I64 (Puffer Str))
+  (lam (s opname n)
+    (case (<=i n 0)
+      (true (sc-puf s))
+      (false (try-dispatch-n (sc-with-puf s (try-dispatch s opname)) opname (- n 1))))))
+
+; Run opname n times, re-render, recurse in `mode` (pending cleared).
+(def run-op-n-into
+  (=> Scriba Str I64 VimMode Unit)
+  (lam (s opname n mode)
+    (let (puf2 (try-dispatch-n s opname n))
+      (let (scroll2 (next-scroll puf2 (sc-dims s) (sc-scroll s)))
+        (case (render-puffer puf2 (sc-dims s) scroll2 (sc-renderers s))
+          ((render-ok new-rendering puf3)
+            (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+              (command-loop-inner (sc-with-msg (sc-enter (sc-repaint s puf3 scroll2 new-rendering) mode pending-none) "")))))))))
+
+; Resolve+apply a text object, re-render, recurse in `mode` (Insert for c).
+(def run-textobj-into
+  (=> Scriba Str Bool I64 VimMode Unit)
+  (lam (s op inner objcode mode)
+    (let (puf2 (apply-textobj (sc-puf s) op inner objcode))
+      (let (scroll2 (next-scroll puf2 (sc-dims s) (sc-scroll s)))
+        (case (render-puffer puf2 (sc-dims s) scroll2 (sc-renderers s))
+          ((render-ok new-rendering puf3)
+            (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+              (command-loop-inner (sc-with-msg (sc-enter (sc-repaint s puf3 scroll2 new-rendering) mode pending-none) "")))))))))
+
+; Re-enter the loop in a new mode/pending (no op, no re-render).
+(def recurse-mode
+  (=> Scriba VimMode Pending Unit)
+  (lam (s mode pending)
+    (command-loop-inner (sc-with-msg (sc-enter s mode pending) ""))))
+
+; Beep and re-enter the loop in mode/pending.
+(def beep-recurse
+  (=> Scriba VimMode Pending Unit)
+  (lam (s mode pending)
+    (let (_ (put bel-byte))
+      (command-loop-inner (sc-with-msg (sc-enter s mode pending) "")))))
+
+; ─── S14 manas author mode (effectful shell over manas-mode's pure core) ────
+; The value (a ManasDoc) is the model of record: manas-doc-render paints it,
+; each key opens a candidate-constrained minipuffer, apply-edit transforms the
+; typed value, and manas-render-into repaints + recurses in vm-manas. The parked
+; Str puffer is untouched (no write-back — SPEC §9). Ordered before
+; vim-command-run / command-loop-inner so both can reference these directly.
+
+; Repaint the Outline (cursor-aware) and recurse in author mode (sibling of
+; run-op-into). N1: the model of record is the Outline (doc + cursor + open set),
+; so an edit/nav that returns a new Outline repaints with the cursor preserved.
+(def manas-render-into
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (let (rendering (outline-render ol (sc-dims s) (sc-scroll s)))
+      (let (_ (render-to-ansi-full rendering (sc-dims s)))
+        (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s (vm-manas ol) pending-none) "") rendering))))))
+
+; Like manas-render-into, but with a transient status message (emit-status paints
+; msg on the bottom row). Used by the :w <path> save branch to show "wrote <path>"
+; on success or the error reason on failure — the outline stays intact either way.
+(def manas-render-msg
+  (=> Scriba Outline Str Unit)
+  (lam (s ol msg)
+    (let (rendering (outline-render ol (sc-dims s) (sc-scroll s)))
+      (let (_ (render-to-ansi-full rendering (sc-dims s)))
+        (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s (vm-manas ol) pending-none) msg) rendering))))))
+
+; manas-save-doc — the :w <path> branch: encode the live doc to its P1 JSON,
+; write it to <path> via save-string-to-path (crossing-free), and repaint author
+; mode with a status. Empty path beeps (a path is required — the setups-dir/name
+; convention is P4). doc is unchanged: a save never mutates the edited value.
+(def manas-save-doc
+  (=> Scriba Outline Str Unit)
+  (lam (s ol path)
+    (let (d (outline-doc ol))
+    (case (=i (str-len path) 0)
+      (true
+        (let (_ (put bel-byte))
+          (manas-render-into s ol)))
+      (false
+        (case (save-string-to-path path (json-show (doc->json d)))
+          ((write-err msg)
+            (let (_ (put bel-byte))
+              (manas-render-msg s ol msg)))
+          ((write-ok)
+            (manas-render-msg s ol
+              (str-cat "wrote " path)))))))))
+
+; s — set the pipeline's STOP. Prompt for the policy kind; capped/until-dry then
+; prompt for a numeric cap. apply-edit + repaint. Only a Pipeline.
+(def manas-edit-stop
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (let (d (outline-doc ol))
+    (case d
+      ((doc-pipeline p)
+        (case (minipuffer-read prompt-manas-stop stop-kinds (sc-dims s))
+          (none (manas-render-into s ol))
+          ((some kind)
+            (case (str-eq kind "single")
+              (true (manas-render-into s
+                      (outline-with-doc ol (apply-edit d (parse-stop-edit "single" "")))))
+              (false
+                (case (minipuffer-read prompt-manas-cap nil (sc-dims s))
+                  (none (manas-render-into s ol))
+                  ((some capstr)
+                    (manas-render-into s
+                      (outline-with-doc ol (apply-edit d (parse-stop-edit kind capstr)))))))))))
+      ((doc-config c)
+        (beep-recurse s (vm-manas ol) pending-none))))))
+
+; author-mode key dispatch (sibling of visual-dispatch). m/g/s open the matching
+; edit; q/ESC exit to Normal (the edited doc is discarded — SPEC §9); any other
+; key beeps and stays in author mode.
+; o — replace the Pipeline ORDER (fan-out | chain | branch).
+(def manas-edit-order
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (let (d (outline-doc ol))
+    (case d
+      ((doc-pipeline p)
+        (case (minipuffer-read prompt-manas-order order-kinds (sc-dims s))
+          (none (manas-render-into s ol))
+          ((some kind)
+            (manas-render-into s
+              (outline-with-doc ol (apply-edit d (parse-order-edit kind)))))))
+      ((doc-config c)
+        (beep-recurse s (vm-manas ol) pending-none))))))
+
+; c — set the COMBINER agent id (candidates: the shared expert pool).
+(def manas-edit-combiner
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (let (d (outline-doc ol))
+    (case d
+      ((doc-pipeline p)
+        (case (minipuffer-read prompt-manas-combiner (expert-pool-ids expert-pool) (sc-dims s))
+          (none (manas-render-into s ol))
+          ((some cid)
+            (manas-render-into s
+              (outline-with-doc ol (apply-edit d (edit-combiner cid)))))))
+      ((doc-config c)
+        (beep-recurse s (vm-manas ol) pending-none))))))
+
+; y — set the YIELD prose (free text).
+(def manas-edit-yield
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (let (d (outline-doc ol))
+    (case d
+      ((doc-pipeline p)
+        (case (minipuffer-read prompt-manas-yield nil (sc-dims s))
+          (none (manas-render-into s ol))
+          ((some txt)
+            (manas-render-into s
+              (outline-with-doc ol (apply-edit d (edit-yield txt)))))))
+      ((doc-config c)
+        (beep-recurse s (vm-manas ol) pending-none))))))
+
+; w — set the WHEN match text (free text).
+(def manas-edit-when
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (let (d (outline-doc ol))
+    (case d
+      ((doc-pipeline p)
+        (case (minipuffer-read prompt-manas-when nil (sc-dims s))
+          (none (manas-render-into s ol))
+          ((some txt)
+            (manas-render-into s
+              (outline-with-doc ol (apply-edit d (edit-when txt)))))))
+      ((doc-config c)
+        (beep-recurse s (vm-manas ol) pending-none))))))
+
+; ─── slice-A: whole-binding add (Config) — reused by the `a` verb ────────────
+
+; B — add a whole Config binding. Prompt slot (free text), model (known-models
+; rail), num-ctx (numeric free text, empty -> default). apply-edit appends it
+; (dup-slot -> identity). Only a Config. Cancel at any prompt -> unchanged.
+(def manas-edit-bind-add
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (let (d (outline-doc ol))
+    (case d
+      ((doc-config c)
+        (case (minipuffer-read prompt-manas-slot nil (sc-dims s))
+          (none (manas-render-into s ol))
+          ((some slot)
+            (case (minipuffer-read prompt-manas-model known-models (sc-dims s))
+              (none (manas-render-into s ol))
+              ((some model)
+                (case (minipuffer-read prompt-manas-ctx nil (sc-dims s))
+                  (none (manas-render-into s ol))
+                  ((some ctxstr)
+                    (manas-render-into s
+                      (outline-with-doc ol (apply-edit d (edit-bind-add slot model (ctx-or-default ctxstr))))))))))))
+      ((doc-pipeline p)
+        (beep-recurse s (vm-manas ol) pending-none))))))
+
+; ─── slice-B: expert-ids pool add (Pipeline) — reused by the `a` verb ────────
+
+; e — add an expert id to the Pipeline's top-level pool. Prompt over the whole
+; expert-pool (expert-pool-ids); apply-edit appends it (non-pool id / dup ->
+; identity). Only a Pipeline.
+(def manas-edit-expert-add
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (let (d (outline-doc ol))
+    (case d
+      ((doc-pipeline p)
+        (case (minipuffer-read prompt-manas-expert-add (expert-pool-ids expert-pool) (sc-dims s))
+          (none (manas-render-into s ol))
+          ((some eid)
+            (manas-render-into s
+              (outline-with-doc ol (apply-edit d (edit-expert-add eid)))))))
+      ((doc-config c)
+        (beep-recurse s (vm-manas ol) pending-none))))))
+
+; ─── N2: selection-targeted verbs (e / a / d,x) ──────────────────────────────
+; The edit keys are now VERBS acting on the cursor-selected identity
+; (cursor-focus), not first-applicable pickers. Targeting comes from the outline
+; cursor; the edit MECHANISM (apply-edit over the same set-fns) is unchanged.
+
+; apply a fully-built edit to the live doc and repaint (no prompt — the `d`/`x`
+; delete verbs already know the target identity from the cursor).
+(def manas-apply-into
+  (=> Scriba Outline ManasEdit Unit)
+  (lam (s ol e)
+    (manas-render-into s
+      (outline-with-doc ol (apply-edit (outline-doc ol) e)))))
+
+; prompt ONE value (label + candidate rail), build the edit from it (mk), apply +
+; repaint; cancel (none) repaints unchanged. `mk` closes over the cursor identity.
+(def manas-prompt1
+  (=> Scriba Outline Prompt (List Str) (-> Str ManasEdit) Unit)
+  (lam (s ol prm rail mk)
+    (case (minipuffer-read prm rail (sc-dims s))
+      (none (manas-render-into s ol))
+      ((some typed)
+        (manas-render-into s
+          (outline-with-doc ol (apply-edit (outline-doc ol) (mk typed))))))))
+
+; e / Enter-on-leaf — EDIT the focused identity. Scalars route to the existing
+; single-field prompt handler; a gate rule prompts a member to toggle; a binding
+; prompts a model (num-ctx carried forward). Layer headers / experts / members
+; are non-editable here (l expands a layer; expert-field edit is N4).
+(def manas-verb-edit
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (case (cursor-focus ol)
+      (none (beep-recurse s (vm-manas ol) pending-none))
+      ((some f)
+        (case f
+          ((foc-field which)
+            (cond
+              ((str-eq which "WHEN")     (manas-edit-when s ol))
+              ((str-eq which "ORDER")    (manas-edit-order s ol))
+              ((str-eq which "STOP")     (manas-edit-stop s ol))
+              ((str-eq which "COMBINER") (manas-edit-combiner s ol))
+              ((str-eq which "YIELD")    (manas-edit-yield s ol))
+              (else (beep-recurse s (vm-manas ol) pending-none))))
+          ((foc-layer which) (beep-recurse s (vm-manas ol) pending-none))
+          ((foc-gate-rule cond)
+            (manas-prompt1 s ol
+              prompt-manas-expert (expert-pool-ids expert-pool) (lam (id) (edit-gate cond id))))
+          ((foc-gate-member cond id) (beep-recurse s (vm-manas ol) pending-none))
+          ((foc-expert id) (beep-recurse s (vm-manas ol) pending-none))
+          ((foc-binding slot)
+            (case (outline-doc ol)
+              ((doc-config c)
+                (manas-prompt1 s ol
+                  prompt-manas-model known-models (lam (m) (edit-rebind slot m (config-ctx-of c slot)))))
+              ((doc-pipeline p) (beep-recurse s (vm-manas ol) pending-none)))))))))
+
+; d / x — DELETE the focused identity. No prompt: the cursor IS the target. A
+; member toggles off (edit-gate removes a present id); rules/experts/bindings drop
+; whole. Scalars/layers can't be deleted (a required field / a header) -> beep.
+(def manas-verb-del
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (case (cursor-focus ol)
+      (none (beep-recurse s (vm-manas ol) pending-none))
+      ((some f)
+        (case f
+          ((foc-field which) (beep-recurse s (vm-manas ol) pending-none))
+          ((foc-layer which) (beep-recurse s (vm-manas ol) pending-none))
+          ((foc-gate-rule cond)      (manas-apply-into s ol (edit-gate-del cond)))
+          ((foc-gate-member cond id) (manas-apply-into s ol (edit-gate cond id)))
+          ((foc-expert id)           (manas-apply-into s ol (edit-expert-del id)))
+          ((foc-binding slot)        (manas-apply-into s ol (edit-bind-del slot))))))))
+
+; a — ADD a sibling in the focused layer/context. On a layer header: add a rule
+; (GATE) / expert (EXPERTS) / binding (CONFIG). On a rule or member: add a member
+; to THAT rule (toggle). On an expert/binding leaf: add a sibling in its layer.
+(def manas-verb-add
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (case (cursor-focus ol)
+      (none (beep-recurse s (vm-manas ol) pending-none))
+      ((some f)
+        (case f
+          ((foc-layer which)
+            (cond
+              ((str-eq which "GATE")
+                (manas-prompt1 s ol
+                  prompt-manas-gate-cond nil (lam (cnd) (edit-gate-add cnd))))
+              ((str-eq which "EXPERTS") (manas-edit-expert-add s ol))
+              ((str-eq which "CONFIG")  (manas-edit-bind-add s ol))
+              (else (beep-recurse s (vm-manas ol) pending-none))))
+          ((foc-gate-rule cond)
+            (manas-prompt1 s ol
+              prompt-manas-expert (expert-pool-ids expert-pool) (lam (id) (edit-gate cond id))))
+          ((foc-gate-member cond id)
+            (manas-prompt1 s ol
+              prompt-manas-expert (expert-pool-ids expert-pool) (lam (i2) (edit-gate cond i2))))
+          ((foc-expert id)    (manas-edit-expert-add s ol))
+          ((foc-binding slot) (manas-edit-bind-add s ol))
+          ((foc-field which)  (beep-recurse s (vm-manas ol) pending-none)))))))
+
+; Enter: on an expandable node, toggle it (open/close); on a leaf, EDIT it
+; (mirrors `e`). So Enter is the universal "drill / act" key.
+(def manas-outline-enter
+  (=> Scriba Outline Unit)
+  (lam (s ol)
+    (case (cursor-node ol)
+      (none (manas-render-into s (outline-toggle ol)))
+      ((some nd)
+        (case nd
+          ((onode depth focus text expandable)
+            (case expandable
+              (true  (manas-render-into s (outline-toggle ol)))
+              (false (manas-verb-edit s ol)))))))))
+
+; Forward-declared (B1 loader is define-before-use): the `:` arm of
+; manas-author-dispatch below reaches manas-command-line, whose body needs
+; vim-line-read (defined further down), so both defs live after vim-line-read.
+(declare manas-command-line
+  (=> Scriba Outline Unit))
+
+; N2 author dispatch. NAV keys (j/k/l/h + Enter, plus the arrow keys) move the
+; cursor / open-close a layer-or-rule over the Outline. The VERB keys act on the
+; cursor-selected identity (cursor-focus): `e` edits it, `a` adds a sibling in
+; its layer/context, `d`/`x` delete it. `:` opens the author command line;
+; q/ESC exit to Normal (the edited outline is discarded — SPEC §9).
+(def manas-author-dispatch
+  (=> Scriba Outline KeySeq Unit)
+  (lam (s ol ks)
+    (case (key-motion-char ks)
+      ((some ch)
+        ; ── nav (before the verb keys) ──
+        (case (str-eq ch "j")
+          (true (manas-render-into s (cursor-down ol)))
+          (false
+        (case (str-eq ch "k")
+          (true (manas-render-into s (cursor-up ol)))
+          (false
+        (case (str-eq ch "l")
+          (true (manas-render-into s (outline-toggle ol)))
+          (false
+        (case (str-eq ch "h")
+          (true (manas-render-into s (outline-collapse ol)))
+          (false
+        (case (str-eq ch ":")
+          (true (manas-command-line s ol))
+          (false
+        ; ── verbs (act on cursor-focus) ──
+        (case (str-eq ch "e")
+          (true (manas-verb-edit s ol))
+          (false
+        (case (str-eq ch "a")
+          (true (manas-verb-add s ol))
+          (false
+        (case (str-eq ch "d")
+          (true (manas-verb-del s ol))
+          (false
+        (case (str-eq ch "x")
+          (true (manas-verb-del s ol))
+          (false
+        (case (str-eq ch "q")
+          (true (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) "")))
+          (false (beep-recurse s (vm-manas ol) pending-none))))))))))))))))))))))
+      (none
+        ; ── non-printable keys: Enter drills/edits, arrows navigate, ESC exits ──
+        (case ks
+          ((keyseq keys)
+            (case keys
+              ((cons k rest)
+                (case rest
+                  (nil
+                    (case k
+                      (k-escape (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) "")))
+                      (k-enter  (manas-outline-enter s ol))
+                      (k-down   (manas-render-into s (cursor-down ol)))
+                      (k-up     (manas-render-into s (cursor-up ol)))
+                      (k-right  (manas-render-into s (outline-toggle ol)))
+                      (k-left   (manas-render-into s (outline-collapse ol)))
+                      (_ (beep-recurse s (vm-manas ol) pending-none))))
+                  (_ (beep-recurse s (vm-manas ol) pending-none))))
+              (_ (beep-recurse s (vm-manas ol) pending-none))))
+          (_ (beep-recurse s (vm-manas ol) pending-none)))))))
+
+; ─── setups library (persistence P4) ────────────────────────────────────────
+; The named-setup library: author-mode `:save <name>` stores the live doc as
+; setups/<name>.json AND registers <name> in setups/index.json; the :manas
+; browser folds those saved names in beside the compiled-in ids so any saved
+; setup reloads. Enumeration is INDEX-FILE based (index.json = a JSON array of
+; names), NOT getdents: no getdents/mkdir crossings exist (test-runner.chiral
+; confirms getdents is deferred, manifest-driven), so scanning a directory would
+; be ~5-file compiler sprawl — the index mirrors test-runner's own manifest
+; precedent, crossing-free. The setups/ dir and a seed index.json ([]) are
+; committed so both paths exist at runtime (there is no mkdir crossing).
+;
+; CAVEAT: setups-dir is CWD-RELATIVE ("setups"), so the library resolves when
+; scriba runs from the repo root (as bin/scriba does). An absolute / config-dir
+; path would need getenv + mkdir crossings — out of scope, a known limitation.
+(def setups-dir Str "setups")
+(def index-path Str "setups/index.json")
+(def setup-path (-> Str Str)
+  (lam (name) (str-cat setups-dir (str-cat "/" (str-cat name ".json")))))
+
+; Membership over a Str list — index dedupe (idempotent :save) and the browser's
+; on-disk-vs-compiled-in split (a picked id in saved-names loads from its file).
+(def name-in? (-> Str (List Str) Bool)
+  (lam (n xs)
+    (case xs
+      (nil false)
+      ((cons h t) (case (str-eq h n) (true true) (false (name-in? n t)))))))
+
+; Read the saved-setup names from setups/index.json. TOTAL: a missing file,
+; malformed JSON, a non-array, or a non-string element all collapse to nil — the
+; library stays usable (still saveable, seeding a fresh index) and never crashes.
+(def read-index-names (=> Unit (List Str))
+  (lam (_)
+    (case (load-bytes index-path)
+      (none nil)
+      ((some bs)
+        (case (json-parse bs)
+          (none nil)
+          ((some j)
+            (case (as-arr j)
+              (none nil)
+              ((some items)
+                (case (jsons->strs items)
+                  (none nil)
+                  ((some names) names))))))))))
+
+; ─── :load <path> — read a saved setup and enter author mode (persistence P3) ─
+; The reload half of persistence: LoadR names the four honest outcomes of the
+; read chain (a distinct error per stage, or the decoded doc). load-doc-from-path
+; runs the effectful read (load-bytes) then the pure decode (json-parse ->
+; json->doc); manas-load-doc dispatches the LoadR — success enters author mode
+; over the decoded doc (manas-render-into), failure paints the stage's error on
+; the status row and stays in Normal. Sibling of vim-open-file; entered from the
+; :load arm of vim-command-run, and reused by manas-browse for on-disk picks.
+; Placed above manas-browse so the browser's load-on-pick can reference it.
+(data LoadR ()
+  (load-ok  (doc ManasDoc))
+  (load-err (msg Str)))
+
+(def load-doc-from-path (=> Str LoadR)
+  (lam (path)
+    (case (load-bytes path)
+      (none (load-err (str-cat "cannot open " path)))
+      ((some bs)
+        (case (json-parse bs)
+          (none (load-err (str-cat "malformed JSON in " path)))
+          ((some j)
+            (case (json->doc j)
+              (none (load-err (str-cat "not a manas setup: " path)))
+              ((some d) (load-ok d)))))))))
+
+(def manas-load-doc
+  (=> Scriba Str Unit)
+  (lam (s path)
+    (case (load-doc-from-path path)
+      ((load-ok d)
+        (manas-render-into s (outline-of d)))
+      ((load-err msg)
+        (let (_ (put bel-byte))
+          (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) msg)))))))
+
+; ─── :flow <path> — load a saved Flow (SG1 json->flow) and render its fractal ──
+; The SG6 read-only surface: read the file (load-bytes), parse (json-parse), decode
+; to a Flow (json->flow — SG1's total decoder, which rejects malformed / unknown-
+; kind JSON), then flatten (flow-outline-nodes) + paint (flow-view-render) the
+; nested tree. Success lands in Normal with the fractal on screen + a status line;
+; any stage failure beeps and paints that stage's error. Sibling of manas-load-doc
+; — authoring a Flow natively in scriba is a later arc.
+(def flow-load-view
+  (=> Scriba Str Unit)
+  (lam (s path)
+    (case (load-bytes path)
+      (none
+        (let (_ (put bel-byte))
+          (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) (str-cat "cannot open " path)))))
+      ((some bs)
+        (case (json-parse bs)
+          (none
+            (let (_ (put bel-byte))
+              (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) (str-cat "malformed JSON in " path)))))
+          ((some j)
+            (case (json->flow j)
+              (none
+                (let (_ (put bel-byte))
+                  (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) (str-cat "not a Flow: " path)))))
+              ((some f)
+                (let (rendering (flow-view-render (flow-outline-nodes f)))
+                  (let (_ (render-to-ansi-full rendering (sc-dims s)))
+                    (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s vm-normal pending-none) (str-cat "flow: " path)) rendering))))))))))))
+
+; manas-save-named — the `:save <name>` branch: write setups/<name>.json =
+; json-show (doc->json d), then register <name> in setups/index.json (idempotent —
+; re-saving the same name does NOT duplicate it). A missing/corrupt index is
+; treated as [] (read-index-names), so a first save seeds it. Empty name beeps.
+; The doc is never mutated. On a setup-file write error, paint it and skip the
+; index; on an index-file write error the setup IS already on disk — report both.
+(def manas-save-named
+  (=> Scriba Outline Str Unit)
+  (lam (s ol name)
+    (let (d (outline-doc ol))
+    (case (=i (str-len name) 0)
+      (true
+        (let (_ (put bel-byte))
+          (manas-render-into s ol)))
+      (false
+        (case (save-string-to-path (setup-path name) (json-show (doc->json d)))
+          ((write-err msg)
+            (let (_ (put bel-byte))
+              (manas-render-msg s ol msg)))
+          ((write-ok)
+            (let (names (read-index-names unit))
+              (let (names2 (case (name-in? name names)
+                             (true names)
+                             (false (append Str names (cons name nil)))))
+                (case (save-string-to-path index-path (json-show (j-arr (str-list->jsons names2))))
+                  ((write-err msg2)
+                    (let (_ (put bel-byte))
+                      (manas-render-msg s ol
+                        (str-cat "saved " (str-cat name (str-cat " (index write failed: " (str-cat msg2 ")")))))))
+                  ((write-ok)
+                    (manas-render-msg s ol
+                      (str-cat "saved " name)))))))))))))
+
+; :manas <id> entry — look up an existing compiled library value and enter
+; author mode over it (SPEC §4.3). Resolution is registry-driven, not hardcoded:
+; try the Pipeline registry FIRST (doc-refine and every future pipeline resolve
+; here) -> the Pipeline; else a Config by id -> the Config; unknown id -> beep
+; back to Normal. This same routing serves the :manas browser (manas-browse),
+; so the browser covers EVERY library value, not just doc-refine.
+(def manas-enter
+  (=> Scriba Str Unit)
+  (lam (s id)
+    (case (pipeline-by-id id all-pipelines)
+      ((some p) (manas-render-into s (outline-of (doc-pipeline p))))
+      (none
+        (case (profile-by-id id all-profiles)
+          ((some c) (manas-render-into s (outline-of (doc-config c))))
+          (none (beep-recurse s vm-normal pending-none)))))))
+
+; ─── N3 catalog view (discovery) — replaces the :manas Tab-completion browser ──
+; Bare :manas snapshots a Catalog (every compiled pipeline id as kind "pipeline",
+; every compiled config id as "config", every saved-setup name from
+; setups/index.json as "saved") and lands in vm-catalog — a grouped,
+; cursor-navigable list of everything openable. catalog-dispatch drives it: j/k +
+; arrows move the cursor over the ENTRIES; Enter opens the focused entry into the
+; manas outline; q/ESC -> Normal. Ordered before command-loop-inner (its dispatch
+; arm) and vim-command-run (the bare-:manas arm) so both references resolve.
+
+; build-catalog — snapshot the openable things at entry: the static compiled ids
+; (kinds "pipeline"/"config") ++ the live saved index (kind "saved"), cursor 0.
+; Effectful only for read-index-names.
+(def build-catalog (=> Unit Catalog)
+  (lam (_)
+    (let (pipes (strs->cat-entries (pipeline-ids all-pipelines) "pipeline"))
+      (let (skills (strs->cat-entries (skill-names all-skills) "skill"))            ; the Flow fractal library
+        (let (confs (strs->cat-entries (config-ids (append Config all-profiles all-skill-configs)) "config"))
+          (let (saved (strs->cat-entries (read-index-names unit) "saved"))
+            ; append order MUST match catalog-render's group order: pipes ++ skills ++ confs ++ saved
+            (catalog (append CatEntry pipes (append CatEntry skills (append CatEntry confs saved))) 0)))))))
+
+; repaint the catalog and recurse in vm-catalog (sibling of manas-render-into).
+(def catalog-render-into
+  (=> Scriba Catalog Unit)
+  (lam (s cat)
+    (let (rendering (catalog-render cat (sc-dims s)))
+      (let (_ (render-to-ansi-full rendering (sc-dims s)))
+        (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s (vm-catalog cat) pending-none) "") rendering))))))
+
+; like catalog-render-into, but paints a transient message (a saved-load error).
+(def catalog-render-msg
+  (=> Scriba Catalog Str Unit)
+  (lam (s cat msg)
+    (let (rendering (catalog-render cat (sc-dims s)))
+      (let (_ (render-to-ansi-full rendering (sc-dims s)))
+        (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s (vm-catalog cat) pending-none) msg) rendering))))))
+
+; open the focused entry: a "saved" entry loads from its file (load-err paints the
+; stage error + STAYS in the catalog); a "pipeline"/"config" entry routes through
+; manas-enter (compiled, pipeline-first), which lands in the outline. An empty
+; catalog (no focus) beeps and stays.
+; ─── Stage 2: RUN a skill — fire its Flow, build a finished RunView, show the S15 run-view ──
+; map one run-flow-stop ExpertCall (the digest) to a run-view RvCall row: parsed-ok -> OK, else
+; BAD. The synthesized pure calls (id "flow-pure"/"flow-branch-pure") render as OK code rows.
+(def ecall->rvcall (-> ExpertCall RvCall)
+  (lam (c)
+    (case c
+      ((expert-call eid slot bm nc ps rs pok aim dm)
+        (rv-call eid slot bm
+          (case pok (true (expert-ok nil "")) (false (expert-bad "" "not-parsed"))))))))
+(declare ecalls->rvcalls (-> (List ExpertCall) (List RvCall)))
+(def ecalls->rvcalls
+  (lam (cs) (case cs (nil nil) ((cons c rest) (cons (ecall->rvcall c) (ecalls->rvcalls rest))))))
+; a run-flow-stop RunManifest -> a finished RunView (phase rv-done), reusing runview-render.
+(def flow-manifest->runview (-> Str RunManifest RunView)
+  (lam (req m)
+    (case m
+      ((run-manifest ri rq dp ap pid pc rd fe cid cb ccu ec cp fy ga)
+        (run-view req (rv-done) rd fe (ecalls->rvcalls ec) fy (some m))))))
+; fire run-flow-stop on the skill's sample under its config; Backend opened once, threaded, closed.
+(def flow-runview-fire
+  (=> Scriba SkillEntry Unit)
+  (lam (s se)
+    (case (run-flow-stop (backend-open rv-endpoint) (skill-entry-flow se) (stop-single)
+            (str-cat "skill: " (skill-entry-name se))
+            nil (skill-entry-pool se) (skill-entry-config se) (skill-entry-sample se) nil)
+      ((run-r y m raws b2)
+        (do (backend-close b2)
+          (let (rv (flow-manifest->runview (str-cat "skill: " (skill-entry-name se)) m))
+            (let (rendering (runview-render rv (sc-dims s) (sc-scroll s)))
+              (let (_ (render-to-ansi-full rendering (sc-dims s)))
+                (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s (vm-runview rv) pending-none) "") rendering))))))))))
+
+; open a SKILL entry (a Flow-based fractal): resolve it from the registry and paint its nested
+; fractal read-only (reusing SG6's flow-view). The status line offers :run — Stage 2 fires it.
+(def skill-open-view
+  (=> Scriba Str Unit)
+  (lam (s nm)
+    (case (skill-by-name nm all-skills)
+      (none
+        (let (_ (put bel-byte))
+          (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) (str-cat "no skill: " nm)))))
+      ((some se)
+        (let (rendering (flow-view-render (flow-outline-nodes (skill-entry-flow se))))
+          (let (_ (render-to-ansi-full rendering (sc-dims s)))
+            (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s vm-normal pending-none) (str-cat "skill: " (str-cat nm "  (:run to run)"))) rendering))))))))
+
+(def catalog-open
+  (=> Scriba Catalog Unit)
+  (lam (s cat)
+    (case (catalog-focus cat)
+      (none (beep-recurse s (vm-catalog cat) pending-none))
+      ((some e)
+        (case e
+          ((cat-entry kind id)
+            (case (str-eq kind "skill")
+              (true
+                (case (skill-by-name id all-skills)
+                  (none (beep-recurse s (vm-catalog cat) pending-none))
+                  ((some se) (flow-runview-fire s se))))
+              (false
+            (case (str-eq kind "saved")
+              (true
+                (case (load-doc-from-path (setup-path id))
+                  ((load-ok d) (manas-render-into s (outline-of d)))
+                  ((load-err msg)
+                    (let (_ (put bel-byte))
+                      (catalog-render-msg s cat msg)))))
+              (false (manas-enter s id)))))))))))
+
+; catalog-dispatch — j/k + arrows move the cursor over the entries; Enter opens;
+; q/ESC -> Normal. Mirrors manas-author-dispatch's key split: a printable letter
+; via key-motion-char, the rest via the raw Key sum.
+(def catalog-dispatch
+  (=> Scriba Catalog KeySeq Unit)
+  (lam (s cat ks)
+    (case (key-motion-char ks)
+      ((some ch)
+        (case (str-eq ch "j")
+          (true (catalog-render-into s (catalog-move cat 1)))
+          (false
+        (case (str-eq ch "k")
+          (true (catalog-render-into s (catalog-move cat -1)))
+          (false
+        (case (str-eq ch "q")
+          (true (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) "")))
+          (false (beep-recurse s (vm-catalog cat) pending-none))))))))
+      (none
+        (case ks
+          ((keyseq keys)
+            (case keys
+              ((cons k rest)
+                (case rest
+                  (nil
+                    (case k
+                      (k-escape (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) "")))
+                      (k-enter  (catalog-open s cat))
+                      (k-down   (catalog-render-into s (catalog-move cat 1)))
+                      (k-up     (catalog-render-into s (catalog-move cat -1)))
+                      (_ (beep-recurse s (vm-catalog cat) pending-none))))
+                  (_ (beep-recurse s (vm-catalog cat) pending-none))))
+              (_ (beep-recurse s (vm-catalog cat) pending-none))))
+          (_ (beep-recurse s (vm-catalog cat) pending-none)))))))
+
+; ─── S15 manas run-view (nav dispatch over a finished RunView) ───────────────
+; In vm-runview the run is already finished (runview-fire blocks through it), so
+; keys are NAVIGATION only: ESC -> Normal; any other key beeps and stays in the
+; run view. Scroll-the-manifest is residue (SPEC §9). Sibling of the ESC-handling
+; none-branch of manas-author-dispatch; ordered before command-loop-inner so the
+; dispatch arm can reference it.
+(def runview-nav-dispatch
+  (=> Scriba RunView KeySeq Unit)
+  (lam (s rv ks)
+    (case ks
+      ((keyseq keys)
+        (case keys
+          ((cons k rest)
+            (case rest
+              (nil
+                (case k
+                  (k-escape (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) "")))
+                  (_ (beep-recurse s (vm-runview rv) pending-none))))
+              (_ (beep-recurse s (vm-runview rv) pending-none))))
+          (_ (beep-recurse s (vm-runview rv) pending-none)))))))
+
+; :run entry — fire the crafted doc-refine run against the mesh and land in
+; vm-runview over the finished value (SPEC §4.3). runview-drive renders the GATE
+; before any be-chat (plan-run is pure) and repaints one row per call-expert
+; return; it BLOCKS through the run (synchronous, exactly as vim-chat-prompt
+; blocks per chat-ask). Special-cased by command name like manas-enter/chat-send,
+; because firing is effectful and returns into a mode (neither a RendererFn nor a
+; ScribaOp). Ordered before vim-command-run so it can reference this.
+(def runview-fire
+  (=> Scriba Unit)
+  (lam (s)
+    ; E159: the linear Backend is INLINED into the drive call, never let-bound —
+    ; a let binder's usage is scaled by the enclosing omega let (close-binder's
+    ; `uscale q uv`), which reads back as a linear-usage mismatch. Same rule the
+    ; chatter-ask/turn seam already states (:ask, above).
+    (let (rv (runview-drive (backend-open rv-endpoint) rv-req (cons doc-refine-pipeline nil) expert-pool
+               smoke-local-config rv-doc rv-extra (sc-dims s)))       ; blocks through the run
+      (let (rendering (runview-render rv (sc-dims s) (sc-scroll s)))
+        (let (_ (render-to-ansi-full rendering (sc-dims s)))
+          (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s (vm-runview rv) pending-none) "") rendering)))))))
+
+; ─── S16 manas compose (pick a pipeline, bind a config, pre-flight, dispatch) ──
+; :compose is the TOP of the cockpit — the glue from the S14 library to the S15
+; run-view, with E135's PURE pre-flight wedged between. Two picks chain
+; synchronously (minipuffer-read is a blocking => (Maybe Str)), exactly as
+; manas-edit-stop chains its STOP+cap prompts — NO pending sum, NO new VimMode
+; (SPEC §6 D1). Ordered before vim-command-run so the :compose arm can reference
+; compose-enter.
+
+; compose-fire — the PURE pre-flight GATES the effectful fire. bind-miss -> a red
+; pre-flight line, NO be-chat, back to Normal. bind-ok -> runview-fire's tail with
+; the chosen pair, landing in vm-runview over the finished run (SPEC §4.2).
+; Defined before compose-enter (its only caller) so the reference resolves.
+(def compose-fire
+  (=> Scriba Pipeline Config Unit)
+  (lam (s pipe config)
+    (case (compose-preflight pipe config expert-pool)          ; PURE — no network yet
+      ((bind-miss missing cid)
+        ; a VALUE, never a halt: paint the pre-flight failure, stay put, no be-chat.
+        (let (msg (str-cat "PRE-FLIGHT  " (str-cat cid (str-cat " missing: " (join-comma missing)))))
+          (let (rendering (r-lines (cons (r-face "manas-bad" (r-text msg false)) nil)))
+            (let (_ (render-to-ansi-full rendering (sc-dims s)))
+              (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s vm-normal pending-none) "") rendering))))))
+      ((bind-ok bindings)
+        ; covered — fire. runview-fire's tail with the chosen pair.
+        ; E159: Backend INLINED into the drive call, never let-bound (see runview-fire).
+        (let (rv (runview-drive (backend-open rv-endpoint) rv-req (cons pipe nil) expert-pool
+                   config rv-doc rv-extra (sc-dims s)))              ; blocks through the run
+          (let (rendering (runview-render rv (sc-dims s) (sc-scroll s)))
+            (let (_ (render-to-ansi-full rendering (sc-dims s)))
+              (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s (vm-runview rv) pending-none) "") rendering)))))))))
+
+; compose-enter — the two-step pick. ESC/cancel at either prompt (none) -> Normal;
+; an id that fails to resolve beeps (defensive — the candidate rail prevents it).
+(def compose-enter
+  (=> Scriba Unit)
+  (lam (s)
+    (case (minipuffer-read prompt-manas-pick-pipeline (pipeline-ids all-pipelines) (sc-dims s))
+      (none (beep-recurse s vm-normal pending-none))
+      ((some pid)
+        (case (pipeline-by-id pid all-pipelines)
+          (none (beep-recurse s vm-normal pending-none))
+          ((some pipe)
+            (case (minipuffer-read prompt-manas-pick-config (config-ids all-profiles) (sc-dims s))
+              (none (beep-recurse s vm-normal pending-none))
+              ((some cid)
+                (case (profile-by-id cid all-profiles)
+                  (none (beep-recurse s vm-normal pending-none))
+                  ((some config)
+                    (compose-fire s pipe config)))))))))))
+
+; Self-insert one char (by code) at point, re-render, stay in Insert.
+(def self-insert-recurse
+  (=> Scriba I64 Unit)
+  (lam (s code)
+    (let (ch (bytes->str (bslice (pack-u32 code) 0 1)))
+      (let (puf2 (puffer-insert-at-point (sc-puf s) ch))
+        (let (scroll2 (next-scroll puf2 (sc-dims s) (sc-scroll s)))
+          (case (render-puffer puf2 (sc-dims s) scroll2 (sc-renderers s))
+            ((render-ok new-rendering puf3)
+              (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                (command-loop-inner (sc-with-msg (sc-enter (sc-repaint s puf3 scroll2 new-rendering) vm-insert pending-none) ""))))))))))
+
+; Run an op, clear the mark, re-render, recurse in `mode` (pending none).
+(def run-op-mark-into
+  (=> Scriba Str VimMode Unit)
+  (lam (s opname mode)
+    (let (puf2 (try-dispatch s opname))
+      (let (puf3 (puf-clear-mark puf2))
+        (let (scroll2 (next-scroll puf3 (sc-dims s) (sc-scroll s)))
+          (case (render-puffer puf3 (sc-dims s) scroll2 (sc-renderers s))
+            ((render-ok new-rendering puf4)
+              (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                (command-loop-inner (sc-with-msg (sc-enter (sc-repaint s puf4 scroll2 new-rendering) mode pending-none) ""))))))))))
+
+; Clear the mark and re-enter Normal (Visual exit via v/ESC).
+(def clear-mark-recurse
+  (=> Scriba Unit)
+  (lam (s)
+    (let (puf2 (puf-clear-mark (sc-puf s)))
+      (command-loop-inner (sc-with-msg (sc-with-puf (sc-enter s vm-normal pending-none) puf2) "")))))
+
+; Render the Command/Chat prompt line (inverse video on the bottom row).
+; ansi-clear-line (ESC[K) erases the row FIRST, with the default background,
+; before the inverse prompt is drawn — otherwise the short prompt only
+; overwrites the left of the old status bar and the rest bleeds through
+; (e.g. "-- COMMAND -- cratch [Str] 1:1 modified …").
+(def vim-prompt-render (=> Str (Pair I64 I64) Str Unit)
+  (lam (label dims acc)
+    (case dims
+      ((pair rows cols)
+        (let (_ (put (ansi-goto rows 1)))
+          (let (_ (put ansi-clear-line))
+            (let (_ (put ansi-inverse))
+              (let (_ (put (str-trunc (str-cat label acc) (- cols 1))))
+                (put ansi-reset)))))))))
+
+; vim-line-read: modal single-line prompt. Enter commits, ESC/C-g/unknown/eof
+; cancels. label is "-- COMMAND -- " or "-- CHAT -- ".
+(def vim-line-read (=> Str (Pair I64 I64) Str (Maybe Str))
+  (lam (label dims acc)
+    (let (_ (vim-prompt-render label dims acc))
+      (case (read-keyseq unit)
+        ((ki-eof) none)
+        ((ki-unknown) none)
+        ((ki-key ks)
+          (case ks
+            ((keyseq keys)
+              (case keys
+                ((cons k rest)
+                  (case rest
+                    (nil
+                      (case k
+                        ((k-char code)
+                          (case (and (not (<i code 32)) (<=i code 126))
+                            (true (vim-line-read label dims (str-cat acc (bytes->str (bslice (pack-u32 code) 0 1)))))
+                            (false (vim-line-read label dims acc))))
+                        (k-backspace (vim-line-read label dims (vm-drop-last acc)))
+                        (k-enter (some acc))
+                        (k-escape none)
+                        ((k-ctrl code) (case (=i code 7) (true none) (false (vim-line-read label dims acc))))
+                        (_ (vim-line-read label dims acc))))
+                    (_ (vim-line-read label dims acc))))
+                (_ (vim-line-read label dims acc))))
+            (_ (vim-line-read label dims acc))))))))
+
+; o (below=true): end-of-line, insert newline, enter Insert. O (below=false):
+; beginning-of-line, insert newline, previous-line, enter Insert.
+(def vim-open-line
+  (=> Scriba Bool Unit)
+  (lam (s below)
+    (case below
+      (true
+        (let (puf1 (try-dispatch s "end-of-line"))
+          (let (puf2 (puffer-insert-at-point puf1 "\n"))
+            (let (scroll2 (next-scroll puf2 (sc-dims s) (sc-scroll s)))
+              (case (render-puffer puf2 (sc-dims s) scroll2 (sc-renderers s))
+                ((render-ok new-rendering puf3)
+                  (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                    (command-loop-inner (sc-with-msg (sc-enter (sc-repaint s puf3 scroll2 new-rendering) vm-insert pending-none) "")))))))))
+      (false
+        (let (puf1 (try-dispatch s "beginning-of-line"))
+          (let (puf2 (puffer-insert-at-point puf1 "\n"))
+            (let (puf3 (try-dispatch (sc-with-puf s puf2) "previous-line"))
+              (let (scroll2 (next-scroll puf3 (sc-dims s) (sc-scroll s)))
+                (case (render-puffer puf3 (sc-dims s) scroll2 (sc-renderers s))
+                  ((render-ok new-rendering puf4)
+                    (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                      (command-loop-inner (sc-with-msg (sc-enter (sc-repaint s puf4 scroll2 new-rendering) vm-insert pending-none) "")))))))))))))
+
+; Open `path` (find-file) and re-enter Normal.
+(def vim-open-file
+  (=> Scriba Str Unit)
+  (lam (s path)
+    (case (find-file path)
+      ((file-err msg)
+        ; not on disk yet -> open a fresh EMPTY buffer for it (created on :w),
+        ; matching vim's :e newfile. new-file always succeeds (pure construct).
+        (case (new-file path)
+          ((file-ok newpuf)
+            (case (render-puffer newpuf (sc-dims s) (puffer-scroll newpuf (sc-dims s)) (sc-renderers s))
+              ((render-ok new-rendering newpuf2)
+                (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                  (command-loop-inner (sc-with-msg (sc-enter (sc-repaint s newpuf2 (puffer-scroll newpuf2 (sc-dims s)) new-rendering) vm-normal pending-none) "(new file)"))))))
+          ((file-err m2)
+            (let (_ (put bel-byte))
+              (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) ""))))))
+      ((file-ok newpuf)
+        (case (render-puffer newpuf (sc-dims s) (puffer-scroll newpuf (sc-dims s)) (sc-renderers s))
+          ((render-ok new-rendering newpuf2)
+            (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+              (command-loop-inner (sc-with-msg (sc-enter (sc-repaint s newpuf2 (puffer-scroll newpuf2 (sc-dims s)) new-rendering) vm-normal pending-none) "")))))))))
+
+; (LoadR / load-doc-from-path / manas-load-doc moved up next to the setups
+; library — manas-browse's load-on-pick reuses load-doc-from-path, which the
+; define-before-use loader needs above manas-browse.)
+
+; runview-fire-doc — the KNOWN-GAP-#1 fix: fire the EDITED author-mode value, not
+; the static doc-refine run. Mirrors runview-fire's tail (backend-open ->
+; runview-drive -> runview-render -> land in vm-runview), but the (pipeline,config)
+; pair comes from the live ManasDoc: an edited (doc-pipeline p) pairs with
+; smoke-local-config; an edited (doc-config c) pairs with doc-refine-pipeline —
+; each mirrors the statics runview-fire hard-codes. The linear Backend b is opened
+; once and consumed exactly once per case arm. Placed after vim-line-read so
+; manas-command-line (below) can reference both it and vim-line-read backward.
+(def runview-fire-doc
+  (=> Scriba ManasDoc Unit)
+  (lam (s d)
+    ; E159: Backend INLINED into EACH drive arm — exactly one open on whichever
+    ; path runs, moved exactly once; never let-bound (see runview-fire).
+    (let (rv (case d
+               ((doc-pipeline p)
+                 (runview-drive (backend-open rv-endpoint) rv-req (cons p nil) expert-pool
+                   smoke-local-config rv-doc rv-extra (sc-dims s)))    ; edited pipeline + static config
+               ((doc-config c)
+                 (runview-drive (backend-open rv-endpoint) rv-req (cons doc-refine-pipeline nil) expert-pool
+                   c rv-doc rv-extra (sc-dims s)))))                   ; static pipeline + edited config
+      (let (rendering (runview-render rv (sc-dims s) (sc-scroll s)))
+        (let (_ (render-to-ansi-full rendering (sc-dims s)))
+          (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s (vm-runview rv) pending-none) "") rendering)))))))
+
+; manas-command-line — the author-mode `:` command line (mode-hint promises
+; `:run`). Reads a line exactly as vm-command-mode does, then dispatches a SMALL
+; author set over the live doc d: `run` -> runview-fire-doc (fire the edited
+; value); cancel (ESC/C-g) repaints author mode with d intact; any other command
+; beeps and stays in vm-manas (still editing — never falls back to vm-normal). d
+; is carried directly, NOT threaded through vim-command-run (which doesn't carry
+; it). Body-only def — forward-declared above manas-author-dispatch.
+(def manas-command-line
+  (lam (s ol)
+    (case (vim-line-read "-- COMMAND -- :" (sc-dims s) "")
+      (none (manas-render-into s ol))
+      ((some cmd)
+        (case (str-eq cmd "run")
+          (true (runview-fire-doc s (outline-doc ol)))
+          (false
+            (case (=i (str-find cmd "w ") 0)
+              (true (manas-save-doc s ol (str-sub cmd 2 (str-len cmd))))
+              (false
+                (case (=i (str-find cmd "save ") 0)
+                  (true (manas-save-named s ol (str-sub cmd 5 (str-len cmd))))
+                  (false (beep-recurse s (vm-manas ol) pending-none)))))))))))
+
+; :wq — save then quit.
+(def handle-save-buffer-then-quit
+  (=> Scriba Unit)
+  (lam (s)
+    (case (save-puffer (sc-puf s))
+      ((save-err msg)
+        (let (_ (put bel-byte))
+          (command-loop-inner (sc-with-msg (sc-with-scroll (sc-enter s vm-normal pending-none) (puffer-scroll (sc-puf s) (sc-dims s))) "save failed"))))
+      ((save-ok p) unit))))
+
+; NOTE (2026-08-21): `vim-chat-prompt` / `vim-chat-mode` are GONE. They were CHAT-as-a-buffer
+; with its own private prompt recursion, calling ONE model directly (chat-ask -> a single qwen3:8b
+; agent run). CHAT is now a real top-level mode over the ROUTED chatter (chatter-chat / vm-chat /
+; chat-dispatch, below), so `g c` goes there. The `*chat*` BUFFER survives for what it is actually
+; good at — C-x C-a to park a file beside it, C-c C-c to send the file's content — and that send
+; now routes through `turn-seq` too (chat.chiral).
+
+; ─── :ask <message> — C4 the general-chatter entry (one-shot) ──────────────────
+; Route the message to a pipeline, run it, verbalize — all inside `turn`. The linear
+; Backend (E137) is OWNED by turn: opened with backend-open and INLINED straight into
+; the turn call so it is moved EXACTLY ONCE (never let-bound — a let binder would read
+; as a linear-usage mismatch). turn consumes it on every path and returns a plain Str.
+; The response paints as an "ASK" header row over the reply field; land back in Normal
+; with a short status. MVP: one-shot, not an interactive chat loop. Sibling of
+; flow-load-view; ordered before vim-command-run so the :ask arm resolves.
+(def chatter-ask
+  (=> Scriba Str Unit)
+  (lam (s message)
+    ; ONE surface: `:ask` paints through the same wrapped, structure-showing renderer CHAT uses,
+    ; over a one-exchange view. It used to build its own two-row Rendering, so a one-shot ask
+    ; silently dropped the lanes AND ran a long reply off the frame.
+    (case (turn-seq-view rv-endpoint (conv-empty) message)
+      ((pair cs2 v)
+        (let (cv (cv-add cv-empty (exchange message (view-tag v) (view-reply v) (view-lanes v)) cs2))
+          (let (rendering (chat-render cv (sc-dims s)))
+            (let (_ (render-to-ansi-full rendering (sc-dims s)))
+              (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s vm-normal pending-none) (str-cat "ask: " (view-tag v))) rendering)))))))))
+
+; ─── :chat — C5 the interactive CHAT loop (the chatter, looped) ────────────────
+; C4 `:ask` is a ONE-SHOT (type -> one routed answer -> Normal). C5 makes CHAT a
+; real interactive mode: it LOOPS `turn` over a scrolling transcript and STAYS in
+; the mode until ESC. Each iteration reads a line, routes it (route-message, PURE —
+; for the intent TAG shown beside the answer), runs it through `turn`, appends the
+; you/intent/reply row, repaints the transcript, and waits for the next line. This
+; IS the chatter's CHAT mode (the general router), superseding the legacy single-
+; model `gc` chat — Principle #4: no monolithic "general assistant", every message
+; is ROUTED. (The prompt-driven loop owns its own line-read, mirroring vim-chat-
+; prompt, so it never needs a command-loop-inner arm or a new VimMode variant; it
+; lands back in vm-normal only on ESC.)
+;
+; LINEAR BACKEND (E137): `turn` CONSUMES its Backend (moves it exactly once). So the
+; loop opens a FRESH mesh Backend PER TURN and INLINES it straight into that turn's
+; `turn` call (never let-bound — a let binder reads as a linear-usage mismatch); one
+; handle cannot be reused across iterations. Mirrors chatter-ask's inline-move shape.
+
+; ─── CHAT as a real top-level mode (dispatch + compose) ────────────────────────
+; The old `chatter-chat-loop` owned a private recursion with its own line-read, so CHAT could not
+; scroll, could not repaint on resize, and `vm-chat` was an inert arm that beeped. It now works
+; exactly like PIPELINE and RUN: the state rides in the variant (`vm-chat cv`), `chat-dispatch`
+; routes keys, and command-loop-inner's resize arm re-renders from the same value.
+;
+; LINEAR BACKEND (E137) is unchanged: `turn-seq-view` opens and closes its own handle(s) per turn
+; — nothing linear is held across a keystroke, which is precisely what let CHAT become a normal
+; mode instead of a blocking loop.
+
+; repaint the view and return to the loop in CHAT.
+(def chat-repaint
+  (=> Scriba ChatView Str Unit)
+  (lam (s cv msg)
+    (let (rendering (chat-render cv (sc-dims s)))
+      (let (_ (render-to-ansi-full rendering (sc-dims s)))
+        (command-loop-inner (sc-with-rendering (sc-with-msg (sc-enter s (vm-chat cv) pending-none) msg) rendering))))))
+
+; compose: read one line, run the turn, append the exchange (tag + fused reply + LANES straight
+; off `TurnView` — scriba re-derives nothing), pin the scroll to the newest row, repaint. An
+; empty line or a cancel just returns to the view.
+(def chat-compose
+  (=> Scriba ChatView Unit)
+  (lam (s cv)
+    (case (vim-line-read "-- CHAT -- " (sc-dims s) "")
+      (none (chat-repaint s cv ""))
+      ((some message)
+        (case (=i (str-len message) 0)
+          (true (chat-repaint s cv ""))
+          (false
+            ; F1 — paint each stage as it happens. A turn blocks for as long as the mesh takes
+            ; (the divider port alone is ~10s, then one run per lane, then the synth) and the
+            ; frame used to show NOTHING for the whole time, so a slow turn and a hung one looked
+            ; identical. `turn-seq-view-on` calls this at every stage boundary; `emit-status`
+            ; writes the mode line in place, which is the one row we can touch without disturbing
+            ; the transcript already on screen.
+            (case (turn-seq-view-on rv-endpoint (cv-cs cv) message
+                    (lam (step) (emit-status (sc-puf s) (sc-dims s) (str-cat "chat: " step) (vm-chat cv))))
+              ((pair cs2 v)
+                (chat-repaint s
+                  (cv-add cv (exchange message (view-tag v) (view-reply v) (view-lanes v)) cs2)
+                  (str-cat "chat: " (view-tag v)))))))))))
+
+; chat-dispatch : the CHAT keymap. i / Enter compose; j / k (and the arrows / page keys) walk the
+; transcript; ESC leaves. Anything else beeps and stays put — CHAT is a mode, not a trap.
+(def chat-dispatch
+  (=> Scriba ChatView KeySeq Unit)
+  (lam (s cv ks)
+    (case ks
+      ((keyseq keys)
+        (case keys
+          ((cons k rest)
+            (case k
+              (k-escape (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) "chat: ended")))
+              ((k-enter) (chat-compose s cv))
+              ((k-up)        (chat-repaint s (cv-back cv 1) ""))
+              ((k-down)      (chat-repaint s (cv-fwd  cv 1) ""))
+              ((k-page-up)   (chat-repaint s (cv-back cv 10) ""))
+              ((k-page-down) (chat-repaint s (cv-fwd  cv 10) ""))
+              ((k-char c)
+                (case (=i c 105)                                   ; i — compose
+                  (true (chat-compose s cv))
+                  (false (case (=i c 107)                          ; k — one row back (older)
+                    (true (chat-repaint s (cv-back cv 1) ""))
+                    (false (case (=i c 106)                        ; j — one row forward (newer)
+                      (true (chat-repaint s (cv-fwd cv 1) ""))
+                      (false (case (=i c 71)                       ; G — jump to the newest
+                        (true (chat-repaint s (cv-fwd cv 100000) ""))
+                        (false (beep-recurse s (vm-chat cv) pending-none))))))))))
+              (_ (beep-recurse s (vm-chat cv) pending-none))))
+          (_ (beep-recurse s (vm-chat cv) pending-none)))))))
+
+; chatter-chat: enter CHAT — clear, paint the empty transcript, and hand control to the loop in
+; vm-chat. No private recursion: from here CHAT is dispatched like every other top-level mode.
+(def chatter-chat
+  (=> Scriba Unit)
+  (lam (s)
+    (let (_ (put ansi-clear))
+      (chat-repaint s cv-empty "chat: i to compose"))))
+
+; vim-command-run: interpret a :command line and dispatch.
+(def vim-command-run
+  (=> Scriba Str Unit)
+  (lam (s cmd)
+    (case (str-eq cmd "q") (true unit) (false (case (str-eq cmd "q!") (true unit) (false (case (str-eq cmd "w") (true (handle-save-buffer s)) (false (case (str-eq cmd "wq") (true (handle-save-buffer-then-quit s)) (false (case (=i (str-find cmd "w ") 0) (true (handle-save-to-path s (str-sub cmd 2 (str-len cmd)))) (false (case (str-eq cmd "saveas") (true (handle-save-as s)) (false (case (=i (str-find cmd "saveas ") 0) (true (handle-save-to-path s (str-sub cmd 7 (str-len cmd)))) (false (case (str-eq cmd "f") (true (handle-set-file-name-prompt s)) (false (case (str-eq cmd "file") (true (handle-set-file-name-prompt s)) (false (case (=i (str-find cmd "file ") 0) (true (handle-set-file-name s (str-sub cmd 5 (str-len cmd)))) (false (case (=i (str-find cmd "f ") 0) (true (handle-set-file-name s (str-sub cmd 2 (str-len cmd)))) (false (case (str-eq cmd "chat") (true (chatter-chat s)) (false (case (str-eq cmd "help") (true (handle-keybind-help s)) (false (case (=i (str-find cmd "e ") 0) (true (vim-open-file s (str-sub cmd 2 (str-len cmd)))) (false (case (=i (str-find cmd "load ") 0) (true (manas-load-doc s (str-sub cmd 5 (str-len cmd)))) (false (case (str-eq cmd "manas") (true (catalog-render-into s (build-catalog unit))) (false (case (=i (str-find cmd "manas ") 0) (true (manas-enter s (str-sub cmd 6 (str-len cmd)))) (false (case (str-eq cmd "run") (true (runview-fire s)) (false (case (str-eq cmd "compose") (true (compose-enter s)) (false (case (=i (str-find cmd "ask ") 0) (true (chatter-ask s (str-sub cmd 4 (str-len cmd)))) (false (case (=i (str-find cmd "flow ") 0) (true (flow-load-view s (str-sub cmd 5 (str-len cmd)))) (false (beep-recurse s vm-normal pending-none)))))))))))))))))))))))))))))))))))))))))))))
+(def vim-command-mode
+  (=> Scriba Unit)
+  (lam (s)
+    ; The ":" you pressed to get here leads the line, vim-style, so the command
+    ; is visible as ":w" rather than a bare "w" after the mode tag.
+    (case (vim-line-read "-- COMMAND -- :" (sc-dims s) "")
+      (none (command-loop-inner (sc-with-msg (sc-enter s vm-normal pending-none) "")))
+      ((some cmd) (vim-command-run s cmd)))))
+
+; emacs-op-dispatch: the Emacs op ladder (quit / file / save / chat / help /
+; search / query-replace) plus the try-dispatch fallback. Reached from Normal
+; via the default-keymap fallback or shared op names (undo, yank, isearch...).
+(def emacs-op-dispatch
+  (=> Scriba Str Unit)
+  (lam (s opname)
+    (case (str-eq opname "quit") (true unit) (false (case (str-eq opname "find-file") (true (handle-find-file s)) (false (case (str-eq opname "save-buffer") (true (handle-save-buffer s)) (false (case (str-eq opname "save-as") (true (handle-save-as s)) (false (case (str-eq opname "chat-toggle") (true (handle-chat-toggle s)) (false (case (str-eq opname "chat-send") (true (handle-chat-send s)) (false (case (str-eq opname "keybind-help") (true (handle-keybind-help s)) (false (case (str-eq opname "isearch-forward") (true (handle-isearch-forward s)) (false (case (str-eq opname "isearch-backward") (true (handle-isearch-backward s)) (false (case (str-eq opname "query-replace") (true (handle-query-replace s)) (false (run-op-into s opname vm-normal pending-none)))))))))))))))))))))))
+(def vim-normal-op
+  (=> Scriba Str Unit)
+  (lam (s opname)
+    (case (str-eq opname "vim-insert") (true (recurse-mode s vm-insert pending-none)) (false (case (str-eq opname "vim-insert-after") (true (run-op-into s "forward-char" vm-insert pending-none)) (false (case (str-eq opname "vim-insert-eol") (true (run-op-into s "end-of-line" vm-insert pending-none)) (false (case (str-eq opname "vim-insert-first-non-blank") (true (run-op-into s "first-non-blank" vm-insert pending-none)) (false (case (str-eq opname "vim-open-line-below") (true (vim-open-line s true)) (false (case (str-eq opname "vim-open-line-above") (true (vim-open-line s false)) (false (case (str-eq opname "vim-visual") (true (recurse-mode (sc-with-puf s (puf-set-mark (sc-puf s))) (vm-visual false) pending-none)) (false (case (str-eq opname "vim-visual-line") (true (recurse-mode (sc-with-puf s (puf-set-mark (sc-puf s))) (vm-visual true) pending-none)) (false (case (str-eq opname "vim-command") (true (vim-command-mode s)) (false (case (str-eq opname "vim-operator-d") (true (recurse-mode s vm-normal (pending-op "d"))) (false (case (str-eq opname "vim-operator-c") (true (recurse-mode s vm-normal (pending-op "c"))) (false (case (str-eq opname "vim-operator-y") (true (recurse-mode s vm-normal (pending-op "y"))) (false (case (str-eq opname "vim-operator-g") (true (recurse-mode s vm-normal (pending-op "g"))) (false (case (str-eq opname "vim-find-f") (true (recurse-mode s vm-normal (pending-char-arg "f"))) (false (case (str-eq opname "vim-find-F") (true (recurse-mode s vm-normal (pending-char-arg "F"))) (false (case (str-eq opname "vim-find-t") (true (recurse-mode s vm-normal (pending-char-arg "t"))) (false (case (str-eq opname "vim-find-T") (true (recurse-mode s vm-normal (pending-char-arg "T"))) (false (case (str-eq opname "vim-replace") (true (recurse-mode s vm-normal (pending-char-arg "r"))) (false (case (str-eq opname "vim-mark-set") (true (recurse-mode s vm-normal (pending-char-arg "m"))) (false (case (str-eq opname "vim-mark-jump") (true (recurse-mode s vm-normal (pending-char-arg "bt"))) (false (case (str-eq opname "vim-register") (true (recurse-mode s vm-normal pending-reg-name)) (false (emacs-op-dispatch s opname)))))))))))))))))))))))))))))))))))))))))))))
+(def normal-dispatch
+  (=> Scriba Pending KeySeq Unit)
+  (lam (s pending ks)
+    (case pending
+      (pending-none
+        (case (lookup-keymap ks normal-keymap)
+          ((some opname) (vim-normal-op s opname))
+          (none
+            ; a leading 1-9 starts a numeric count (0 stays beginning-of-line).
+            (case (key-digit ks 49)
+              ((some d) (recurse-mode s vm-normal (pending-count d)))
+              (none
+                (case (lookup-keymap ks (sc-km s))
+                  ((some opname) (emacs-op-dispatch s opname))
+                  (none (beep-recurse s vm-normal pending-none))))))))
+      ((pending-op op)
+        (case (key-motion-char ks)
+          (none (beep-recurse s vm-normal pending-none))
+          ((some motion)
+            ; i/a after an operator begin a text object (d i w, c a "); every
+            ; other second key resolves the classic operator+motion (dd, dw, d$).
+            (case (str-eq motion "i")
+              (true (recurse-mode s vm-normal (pending-textobj op true)))
+              (false
+                (case (str-eq motion "a")
+                  (true (recurse-mode s vm-normal (pending-textobj op false)))
+                  (false
+                    (case (resolve-pending op motion)
+                      (none (beep-recurse s vm-normal pending-none))
+                      ((some composed)
+                        (case (str-eq op "c")
+                          (true (run-op-into s composed vm-insert pending-none))
+                          (false
+                            (case (str-eq op "g")
+                              (true
+                                ; g-prefix: g c -> chat (a mode change), else the resolved
+                                ; motion op (g g -> goto-top) runs like any Normal motion.
+                                (case (str-eq composed "vim-chat")
+                                  (true (chatter-chat s))
+                                  (false (run-op-into s composed vm-normal pending-none))))
+                              (false (run-op-into s composed vm-normal pending-none))))))))))))))
+      ; f/F/t/T/r — the next printable key is the target char, not a command.
+      ((pending-char-arg op)
+        (case (key-char-code ks)
+          (none (beep-recurse s vm-normal pending-none))
+          ((some code) (run-charop-into s op code))))
+      ; d/c/y + i/a + object-char (w " ' ` ( ) b { } [ ]) — a text object.
+      ((pending-textobj op inner)
+        (case (key-char-code ks)
+          (none (beep-recurse s vm-normal pending-none))
+          ((some objcode)
+            (case (str-eq op "c")
+              (true (run-textobj-into s op inner objcode vm-insert))
+              (false (run-textobj-into s op inner objcode vm-normal))))))
+      ; " {r} — the register prefix: the next key names the register.
+      ((pending-reg-name)
+        (case (key-char-code ks)
+          (none (beep-recurse s vm-normal pending-none))
+          ((some reg) (recurse-mode s vm-normal (pending-reg reg "")))))
+      ; register active: p pastes it; y/d await the second letter (yy/dd).
+      ((pending-reg reg op)
+        (case (str-eq op "")
+          (true
+            (case (key-char-code ks)
+              (none (beep-recurse s vm-normal pending-none))
+              ((some c)
+                (case (=i c 112)
+                  (true (run-reg-into s reg "p"))
+                  (false
+                    (case (=i c 121)
+                      (true (recurse-mode s vm-normal (pending-reg reg "y")))
+                      (false
+                        (case (=i c 100)
+                          (true (recurse-mode s vm-normal (pending-reg reg "d")))
+                          (false (beep-recurse s vm-normal pending-none))))))))))
+          (false
+            (case (str-eq op "y")
+              (true
+                (case (key-char-code ks)
+                  (none (beep-recurse s vm-normal pending-none))
+                  ((some c)
+                    (case (=i c 121)
+                      (true (run-reg-into s reg "yy"))
+                      (false (beep-recurse s vm-normal pending-none))))))
+              (false
+                (case (key-char-code ks)
+                  (none (beep-recurse s vm-normal pending-none))
+                  ((some c)
+                    (case (=i c 100)
+                      (true (run-reg-into s reg "dd"))
+                      (false (beep-recurse s vm-normal pending-none))))))))))
+      ; count: further digits extend it; a motion repeats n times; an operator
+      ; carries the count (pending-count-op); other vim- transitions drop it.
+      ((pending-count n)
+        (case (key-digit ks 48)
+          ((some d) (recurse-mode s vm-normal (pending-count (+ (* n 10) d))))
+          (none
+            (case (lookup-keymap ks normal-keymap)
+              (none (beep-recurse s vm-normal pending-none))
+              ((some opname)
+                (case (str-eq opname "vim-operator-d")
+                  (true (recurse-mode s vm-normal (pending-count-op n "d")))
+                  (false
+                    (case (str-eq opname "vim-operator-c")
+                      (true (recurse-mode s vm-normal (pending-count-op n "c")))
+                      (false
+                        (case (str-eq opname "vim-operator-y")
+                          (true (recurse-mode s vm-normal (pending-count-op n "y")))
+                          (false
+                            (case (=i (str-find opname "vim-") 0)
+                              (true (vim-normal-op s opname))
+                              (false (run-op-n-into s opname n vm-normal))))))))))))))
+      ; count + operator: the motion resolves, then runs n times (3dd, 2dw).
+      ((pending-count-op n op)
+        (case (key-motion-char ks)
+          (none (beep-recurse s vm-normal pending-none))
+          ((some motion)
+            (case (resolve-pending op motion)
+              (none (beep-recurse s vm-normal pending-none))
+              ((some composed)
+                (case (str-eq op "c")
+                  (true (run-op-n-into s composed n vm-insert))
+                  (false (run-op-n-into s composed n vm-normal)))))))))))
+
+; insert-dispatch: Insert-mode key handling (self-insert, Enter, backspace/
+; arrows via insert-keymap, ESC -> Normal).
+(def insert-dispatch
+  (=> Scriba KeySeq Unit)
+  (lam (s ks)
+    (case (lookup-keymap ks insert-keymap)
+      ((some opname) (run-op-into s opname vm-insert pending-none))
+      (none
+        (case ks
+          ((keyseq keys)
+            (case keys
+              ((cons k rest)
+                (case rest
+                  (nil
+                    (case k
+                      (k-escape (recurse-mode s vm-normal pending-none))
+                      ((k-char code)
+                        (case (and (not (<i code 32)) (<=i code 126))
+                          (true (self-insert-recurse s code))
+                          (false (beep-recurse s vm-insert pending-none))))
+                      (k-enter (self-insert-recurse s 10))
+                      (_ (beep-recurse s vm-insert pending-none))))
+                  (_ (beep-recurse s vm-insert pending-none))))
+              (_ (beep-recurse s vm-insert pending-none))))
+          (_ (beep-recurse s vm-insert pending-none)))))))
+
+; visual-dispatch: Visual-mode key handling (movement extends the region, y/d/c
+; apply, v/ESC exit).
+(def visual-dispatch
+  (=> Scriba Bool KeySeq Unit)
+  (lam (s lw ks)
+    (case (lookup-keymap ks visual-keymap)
+      ((some opname)
+        (case (str-eq opname "copy-region")
+          (true (run-op-mark-into s "copy-region" vm-normal))
+          (false
+            (case (str-eq opname "kill-region")
+              (true (run-op-mark-into s "kill-region" vm-normal))
+              (false
+                (case (str-eq opname "vim-visual-change")
+                  (true (run-op-mark-into s "kill-region" vm-insert))
+                  (false
+                    (case (str-eq opname "vim-visual-off")
+                      (true (clear-mark-recurse s))
+                      (false (run-op-into s opname (vm-visual lw) pending-none))))))))))
+      (none
+        (case ks
+          ((keyseq keys)
+            (case keys
+              ((cons k rest)
+                (case rest
+                  (nil
+                    (case k
+                      (k-escape (clear-mark-recurse s))
+                      (_ (beep-recurse s (vm-visual lw) pending-none))))
+                  (_ (beep-recurse s (vm-visual lw) pending-none))))
+              (_ (beep-recurse s (vm-visual lw) pending-none))))
+          (_ (beep-recurse s (vm-visual lw) pending-none)))))))
+
+; ─── the two-level mode model ───────────────────────────────────────────────
+; scriba is a PORT VIEWER. The TOP-LEVEL modes are peers, each a distinct way to
+; view/interact with a port: EDITOR (text editing), CHAT (talk to an AI), PIPELINE
+; (author a manas setup), RUN (watch a run). command-loop-inner routes the
+; top-level mode; EDITOR is the one top-level mode that carries SUBMODES — the vim
+; states normal/insert/visual/command — and editor-dispatch is their router.
+; New editor keys go in editor-dispatch; a new top-level mode is a new arm in
+; command-loop-inner. (VimMode is still one flat sum for threading; the DISPATCH
+; is what encodes the two levels — that is where fixes are routed.)
+
+; editor-dispatch: the EDITOR top-level mode. Routes a vim submode key. Reached
+; only when the top-level mode is one of the editor submodes; a stray non-editor
+; mode here is a no-op beep (defensive — command-loop-inner never sends one).
+(def editor-dispatch
+  (=> Scriba VimMode Pending KeySeq Unit)
+  (lam (s mode pending ks)
+    (case mode
+      (vm-normal      (normal-dispatch s pending ks))
+      (vm-insert      (insert-dispatch s ks))
+      ((vm-visual lw) (visual-dispatch s lw ks))
+      (_              (beep-recurse s vm-normal pending-none)))))
+
+; ─── command-loop-inner (top-level mode dispatch) ──────────────────────────
+
+(def command-loop-inner
+  (lam (s0)
+    ; S18: the state is ONE value. The only slot this def owns outright is
+    ; `dims` — it re-reads the terminal size on every keypress, so the working
+    ; state `s` is s0 with the FRESH dims already installed. Every arm below
+    ; threads `s`; the resize branch (dims changed) repaints before recursing.
+    (let (old-dims (sc-dims s0))
+    (let (dims (fresh-dims old-dims))
+    (let (s (sc-with-dims s0 dims))
+    (case (dims-eq dims old-dims)
+      (true
+      (let (_ (emit-status (sc-puf s) dims (sc-msg s) (sc-mode s)))
+      (let (_ (emit-cursor-goto (sc-puf s) dims (sc-scroll s)))
+        (case (read-keyseq unit)
+          ((ki-eof) unit)
+          ((ki-unknown)
+            (let (_ (put bel-byte))
+              (command-loop-inner (sc-with-msg s ""))))
+          ((ki-key ks)
+            ; TOP-LEVEL mode routing. Editor (its four submodes) delegates to
+            ; editor-dispatch; Chat / Pipeline / Run are top-level peers.
+            (case (sc-mode s)
+              ; ── EDITOR (top-level) — submodes routed by editor-dispatch ──
+              (vm-normal      (editor-dispatch s (sc-mode s) (sc-pending s) ks))
+              (vm-insert      (editor-dispatch s (sc-mode s) (sc-pending s) ks))
+              ((vm-visual lw) (editor-dispatch s (sc-mode s) (sc-pending s) ks))
+              (vm-command     (editor-dispatch s (sc-mode s) (sc-pending s) ks))
+              ; ── CHAT (top-level) — transcript navigation + compose ──
+              ((vm-chat cv)   (chat-dispatch s cv ks))
+              ; ── PIPELINE (top-level) — manas author over the open outline ──
+              ((vm-manas ol)  (manas-author-dispatch s ol ks))
+              ; ── RUN (top-level) — run-view navigation ──
+              ((vm-runview rv)(runview-nav-dispatch s rv ks))
+              ; ── CATALOG (top-level) — discovery-view navigation ──
+              ((vm-catalog cat)(catalog-dispatch s cat ks))))))))
+      (false
+        (case (sc-mode s)
+          ((vm-chat cv)                                   ; resize: re-wrap the transcript to the new width
+            (let (rendering (chat-render cv dims))
+              (let (_ (render-to-ansi-full rendering dims))
+                (command-loop-inner (sc-with-rendering (sc-with-msg s "") rendering)))))
+          ((vm-manas ol)
+            (let (rendering (outline-render ol dims (puffer-scroll (sc-puf s) dims)))
+              (let (_ (render-to-ansi-full rendering dims))
+                (command-loop-inner (sc-with-rendering (sc-with-scroll (sc-with-msg s "") (puffer-scroll (sc-puf s) dims)) rendering)))))
+          ((vm-runview rv)
+            (let (rendering (runview-render rv dims (puffer-scroll (sc-puf s) dims)))
+              (let (_ (render-to-ansi-full rendering dims))
+                (command-loop-inner (sc-with-rendering (sc-with-scroll (sc-with-msg s "") (puffer-scroll (sc-puf s) dims)) rendering)))))
+          ((vm-catalog cat)
+            (let (rendering (catalog-render cat dims))
+              (let (_ (render-to-ansi-full rendering dims))
+                (command-loop-inner (sc-with-rendering (sc-with-scroll (sc-with-msg s "") (puffer-scroll (sc-puf s) dims)) rendering)))))
+          (_
+            (case (render-puffer (sc-puf s) dims (puffer-scroll (sc-puf s) dims) (sc-renderers s))
+              ((render-ok new-rendering puf2)
+                (let (_ (render-to-ansi-full new-rendering dims))
+                  (command-loop-inner (sc-with-msg (sc-repaint s puf2 (puffer-scroll puf2 dims) new-rendering) ""))))))))))))))
+; resume-normal: re-enter the loop in Normal mode (pending cleared). Every
+; handler reachable only from Normal mode (find-file/save/chat/isearch/qr/help)
+; returns through here instead of threading mode+pending itself.
+(def resume-normal
+  (=> Scriba Unit)
+  (lam (s)
+    (command-loop-inner (sc-enter s vm-normal pending-none))))
+
+
+; ─── R6 file open/save (special-cased in the loop) ─────────────────────────
+
+; find-file and save-puffer are genuinely effectful and return result sums
+; (FileR / SaveR), so they do NOT fit ScribaOp's fn type
+; (=> (Puffer Str) (Puffer Str)). They are routed directly here, keyed by
+; opname, rather than through the ScribaOp registry.
+
+; Fixed demo target for find-file, used as a fallback when the path prompt is
+; cancelled or left empty. A .chiral path so find-file assigns the "chirality"
+; mode and the demo exercises comment/keyword face tagging.
+(def demo-path Str "/tmp/scriba.chiral")
+
+; Rebuild a puffer pointed at a NEW path: set both the name (save-buffer
+; writes there) and the mode name derived from the extension, exactly like
+; find-file does on open.
+(def puf-retarget (-> (Puffer Str) Str (Puffer Str))
+  (lam (puf name)
+    (case puf
+      ((puffer id old-name type-name handle z dirty u mark kr)
+        (puffer id name (mode-from-path name) handle z dirty u mark kr)))))
+
+; Shared open-and-loop: call find-file with `path`, then keep looping.
+; effectful: find-file + render + resume-normal.
+(def handle-find-file-open
+  (=> Scriba Str Unit)
+  (lam (s path)
+    (case (find-file path)
+      ((file-err msg)
+        (let (_ (put bel-byte))
+          (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) ""))))
+      ((file-ok newpuf)
+        (case (render-puffer newpuf (sc-dims s) (puffer-scroll newpuf (sc-dims s)) (sc-renderers s))
+          ((render-ok new-rendering newpuf')
+            (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+              (resume-normal (sc-with-msg (sc-repaint s newpuf' (puffer-scroll newpuf' (sc-dims s)) new-rendering) "")))))))))
+
+; C-x C-f: prompt for a path via the minipuffer, then open it. An empty
+; (Enter with nothing typed) prompt falls back to the demo path; C-g cancels
+; and leaves the buffer unchanged.
+(def handle-find-file
+  (lam (s)
+    (case (minipuffer-read prompt-file nil (sc-dims s))
+      (none
+        (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) "")))
+      ((some path)
+        (case (=i (str-len path) 0)
+          (true (handle-find-file-open s demo-path))
+          (false (handle-find-file-open s path)))))))
+
+; The name a brand-new, never-saved buffer carries until it is written to a real
+; path. scriba-main starts the editor with this. Both the status bar and the
+; "unnamed?" test key off it.
+(def scratch-name Str "*scratch*")
+
+; A buffer that has never been given a real file path (still the *scratch* name).
+; Saving one must ask for a path rather than write a literal ./*scratch* file.
+(def puffer-unnamed? (-> (Puffer Str) Bool)
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (str-eq name scratch-name)))))
+
+; C-x C-s / :w — save the buffer. An UNNAMED buffer (the fresh *scratch*) has no
+; real path yet, so this prompts for one (save-as) instead of silently writing a
+; ./*scratch* file. A named buffer writes straight back to its path.
+(def handle-save-buffer
+  (lam (s)
+    (case (puffer-unnamed? (sc-puf s))
+      (true (handle-save-as s))
+      (false
+    (case (save-puffer (sc-puf s))
+      ((save-err msg)
+        (let (_ (put bel-byte))
+          (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) "save failed"))))
+      ((save-ok p)
+        (case (render-puffer p (sc-dims s) (puffer-scroll p (sc-dims s)) (sc-renderers s))
+          ((render-ok new-rendering p')
+            (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+              (resume-normal (sc-with-msg (sc-repaint s p' (puffer-scroll p' (sc-dims s)) new-rendering) "saved")))))))))))
+
+; :w <path> — retarget the buffer at <path> (name + mode) and save, CREATING the
+; file (save-puffer opens with open-create). This is save-as without the prompt,
+; and the primary way to name+write a brand-new buffer in one step.
+(def handle-save-to-path
+  (lam (s path)
+    (case (=i (str-len path) 0)
+      (true
+        (let (_ (put bel-byte))
+          (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) ""))))
+      (false
+        (let (puf' (puf-retarget (sc-puf s) path))
+          (case (save-puffer puf')
+            ((save-err msg)
+              (let (_ (put bel-byte))
+                (resume-normal (sc-with-msg (sc-with-scroll (sc-with-puf s puf') (puffer-scroll puf' (sc-dims s))) "save failed"))))
+            ((save-ok p)
+              (case (render-puffer p (sc-dims s) (puffer-scroll p (sc-dims s)) (sc-renderers s))
+                ((render-ok new-rendering p')
+                  (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                    (resume-normal (sc-with-msg (sc-repaint s p' (puffer-scroll p' (sc-dims s)) new-rendering) "saved"))))))))))))
+
+; :f <path> / :file <path> — DECLARE the buffer's path (name + mode) WITHOUT
+; writing to disk. The next :w then saves there. This is vim's :file — set the
+; name, keep editing. Empty path beeps.
+(def handle-set-file-name
+  (lam (s path)
+    (case (=i (str-len path) 0)
+      (true
+        (let (_ (put bel-byte))
+          (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) ""))))
+      (false
+        (let (puf' (puf-retarget (sc-puf s) path))
+          (case (render-puffer puf' (sc-dims s) (puffer-scroll puf' (sc-dims s)) (sc-renderers s))
+            ((render-ok new-rendering p')
+              (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                (resume-normal (sc-with-msg (sc-repaint s p' (puffer-scroll p' (sc-dims s)) new-rendering) "file name set"))))))))))
+
+; :f / :file with no path — PROMPT for the path to declare (no save). Cancel /
+; empty leaves the buffer unchanged.
+(def handle-set-file-name-prompt
+  (lam (s)
+    (case (minipuffer-read prompt-name nil (sc-dims s))
+      (none
+        (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) "")))
+      ((some path)
+        (handle-set-file-name s path)))))
+
+; C-x C-w: save-as. Prompt for a NEW path via the minipuffer, retarget the
+; puffer at that path (name + mode), then save. save-puffer opens with
+; open-create (O_CREAT|O_TRUNC), so a NEW file is created on disk. An empty
+; or cancelled prompt is a no-op (keep looping unchanged).
+(def handle-save-as
+  (lam (s)
+    (case (minipuffer-read prompt-save nil (sc-dims s))
+      (none
+        (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) "")))
+      ((some path)
+        (case (=i (str-len path) 0)
+          (true
+            (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) "")))
+          (false
+            (let (puf' (puf-retarget (sc-puf s) path))
+              (case (save-puffer puf')
+                ((save-err msg)
+                  (let (_ (put bel-byte))
+                    (resume-normal (sc-with-msg (sc-with-scroll (sc-with-puf s puf') (puffer-scroll puf' (sc-dims s))) "save failed"))))
+                ((save-ok p)
+                  (case (render-puffer p (sc-dims s) (puffer-scroll p (sc-dims s)) (sc-renderers s))
+                    ((render-ok new-rendering p')
+                      (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                        (resume-normal (sc-with-msg (sc-repaint s p' (puffer-scroll p' (sc-dims s)) new-rendering) "saved"))))))))))))))
+
+; ─── I1 chat (special-cased in the loop) ────────────────────────────────────
+
+; C-x C-a: send the puffer's full text to the agent (agent-run), append the
+; reply to the buffer, re-render, and keep looping. chat-send is effectful and
+; returns a Str, so — exactly like find-file/save-buffer — it is routed here
+; keyed by opname rather than through the ScribaOp registry.
+(def handle-chat-send
+  (lam (s)
+    (case (str-eq (puf-name (sc-puf s)) chat-name)
+      (true
+        (case (sc-chat s)
+          (none
+            (let (_ (put bel-byte))
+              (resume-normal (sc-with-msg (sc-with-scroll (sc-with-chat s none) (puffer-scroll (sc-puf s) (sc-dims s))) ""))))
+          ((some file)
+            (let (chat' (chat-send file (sc-puf s)))
+              (case (render-puffer chat' (sc-dims s) (puffer-scroll chat' (sc-dims s)) (sc-renderers s))
+                ((render-ok new-rendering chat'')
+                  (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                    (resume-normal (sc-with-msg (sc-with-chat (sc-repaint s chat'' (puffer-scroll chat'' (sc-dims s)) new-rendering) (some file)) "")))))))))
+      (false
+        (let (_ (put bel-byte))
+          (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) "")))))))
+
+; C-x C-a: swap between the file buffer and the chat buffer. Creates the chat
+; buffer on first open (chat = none); otherwise swaps focused and parked.
+(def handle-chat-toggle
+  (lam (s)
+    (case (sc-chat s)
+      (none
+        (case (puffer-new (port) chat-name)
+          ((puf-ok c)
+            (case (render-puffer c (sc-dims s) 0 (sc-renderers s))
+              ((render-ok new-rendering c')
+                (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                  (resume-normal (sc-with-msg (sc-with-chat (sc-repaint s c' 0 new-rendering) (some (sc-puf s))) ""))))))
+          ((puf-err msg)
+            (let (_ (put bel-byte))
+              (resume-normal (sc-with-msg (sc-with-scroll (sc-with-chat s none) (puffer-scroll (sc-puf s) (sc-dims s))) ""))))))
+      ((some other)
+        (case (render-puffer other (sc-dims s) (puffer-scroll other (sc-dims s)) (sc-renderers s))
+          ((render-ok new-rendering other')
+            (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+              (resume-normal (sc-with-msg (sc-with-chat (sc-repaint s other' (puffer-scroll other' (sc-dims s)) new-rendering) (some (sc-puf s))) "")))))))))
+
+; ─── M-h keybind help (special-cased in the loop) ───────────────────────────
+
+; ─── :help — a mode-organized vim key reference ───────────────────────────
+(def hl (-> Str Str) (lam (s) (str-cat s km-nl)))
+(def help-lines (-> (List Str) Str)
+  (lam (ls)
+    (case ls
+      (nil "")
+      ((cons h t) (str-cat (hl h) (help-lines t))))))
+(def vim-help-text Str (help-lines (cons "  scriba — vim key reference" (cons "" (cons "NORMAL" (cons "  h j k l      move          w b e   word fwd / back / end" (cons "  0  ^  $      line: start / first-non-blank / end" (cons "  gg  G  %     top / bottom / matching bracket" (cons "  f F t T {c}  find / till a char on the line" (cons "  x   r{c}  ~  delete char / replace char / toggle case" (cons "  J            join current line with the next" (cons "  dd  dw  d$   delete line / word / to end-of-line" (cons "  cc  cw       change line / word" (cons "  yy  yw   p   yank line / word / paste" (cons "  diw ciw yiw  text objects (also a-variants, i( i{ i[ and quotes)" (cons "  u    C-r     undo / redo" (cons "  {n}cmd       count prefix, e.g. 3dd  2j  5w" (cons "  m{a}  `{a}   set mark / jump to mark" (cons "  <r>yy <r>p   named register yank / paste  (r = a..z)" (cons "  /   ?   n    search forward / back / repeat" (cons "  i a o O A I  enter Insert" (cons "  v   V        enter Visual (charwise / linewise)" (cons "  :            enter Command        g c   enter Chat" (cons "" (cons "INSERT    printable inserts | RET newline | DEL back | ESC to Normal" (cons "" (cons "VISUAL    h j k l w b e extend | y yank | d cut | c change | ESC exit" (cons "" (cons "COMMAND   (type : first)" (cons "  :w [path]     save (prompts if the buffer is unnamed)" (cons "  :saveas [p]   save-as (always prompts for a path)" (cons "  :f [path]     declare the file name, no save" (cons "  :e <path>     open an existing file or start a NEW one" (cons "  :q  :q!  :wq  quit / force-quit / save + quit" (cons "  :help  :chat  :run  :compose" (cons "" (cons "  -- press any key to return --" nil)))))))))))))))))))))))))))))))))))))
+
+; C-x C-c / M-h: clear the screen, show the full keybind list, wait for ONE
+; key to dismiss, then re-render the buffer and resume the loop. The single
+; dismissal key is read and discarded — KeyIn is non-linear, so ignoring it
+; is fine.
+(def handle-keybind-help
+  (lam (s)
+    (let (_ (put ansi-clear))
+      (let (_ (put ansi-home))
+        (let (_ (put vim-help-text))
+          (let (_ (read-keyseq unit))
+            (case (render-puffer (sc-puf s) (sc-dims s) (puffer-scroll (sc-puf s) (sc-dims s)) (sc-renderers s))
+              ((render-ok new-rendering puf'')
+                (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                  (resume-normal (sc-with-msg (sc-repaint s puf'' (puffer-scroll puf'' (sc-dims s)) new-rendering) "")))))))))))
+
+; ─── Search (SCRIBA-SLICES slice 6) — C-s / C-r isearch + M-% query-replace ──
+;
+; The pure search machinery already lives in str-edit.chiral: str-search-forward
+; (cursor to end) and str-search-backward (start to cursor), both dispatching
+; through str-search on Dir. This slice only WIRES them into the loop.
+;
+; Both are special-cased here, keyed by opname — exactly like find-file /
+; save / chat / help — because the isearch sub-loop reads keys and re-renders,
+; which the ScribaOp fn type (=> (Puffer Str) (Puffer Str)) cannot carry.
+
+; BEL byte is defined earlier (minipuffer modal loop section), before its
+; isearch/qr users below.
+
+; ─── puffer zipper access / update ───────────────────────────────────────────
+
+; The zipper out of a puffer (pure).
+(def puf-zipper (-> (Puffer Str) (Zipper Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr) z))))
+
+; Rebuild the puffer with a new zipper, preserving the dirty flag. Cursor moves
+; (isearch) do not dirty the buffer.
+(def puf-move-cursor (-> (Puffer Str) (Zipper Str) (Puffer Str))
+  (lam (puf z)
+    (case puf
+      ((puffer id name type-name handle oldz dirty u mark kr)
+        (puffer id name type-name handle z dirty u mark kr)))))
+
+; Rebuild the puffer with a new zipper, marking it dirty. Edits do.
+(def puf-apply-edit (-> (Puffer Str) (Zipper Str) (Puffer Str))
+  (lam (puf z)
+    (case puf
+      ((puffer id name type-name handle oldz old-dirty u mark kr)
+        (puffer id name type-name handle z true u mark kr)))))
+
+; Drop the last character of a string ("" stays ""). str-sub is end-index, so
+; the length-0 guard avoids a negative-length slice.
+(def cl-drop-last (-> Str Str)
+  (lam (s)
+    (case (=i (str-len s) 0)
+      (true s)
+      (false (str-sub s 0 (- (str-len s) 1))))))
+
+; ─── query-replace inline prompt ─────────────────────────────────────────────
+;
+; Accumulates printable chars until Enter; backspace drops the last char; C-g
+; cancels. A lone ESC arrives as ki-unknown (parse-key returns none for a lone
+; 0x1b byte), so ki-unknown also cancels — that is how "Esc cancels" is
+; realized without an ESC-timeout read.
+
+(data PromptR ()
+  (pr-commit (s Str))
+  (pr-cancel))
+
+(declare qr-read (=> Str PromptR))
+(def qr-read
+  (lam (acc)
+    (case (read-keyseq unit)
+      ((ki-eof) pr-cancel)
+      ((ki-unknown) pr-cancel)
+      ((ki-key ks)
+        (case ks
+          ((keyseq keys)
+            (case keys
+              ((cons k rest)
+                (case rest
+                  (nil
+                    (case k
+                      ((k-char code)
+                        (case (and (not (<i code 32)) (<=i code 126))
+                          (true
+                            (qr-read (str-cat acc (bytes->str (bslice (pack-u32 code) 0 1)))))
+                          (false (qr-read acc))))
+                      (k-backspace (qr-read (cl-drop-last acc)))
+                      (k-enter (pr-commit acc))
+                      ((k-ctrl code)
+                        (case (=i code 7)
+                          (true pr-cancel)
+                          (false (qr-read acc))))
+                      (k-escape pr-cancel)
+                      (_ (qr-read acc))))
+                  (_ (qr-read acc))))
+              (_ (qr-read acc))))
+          (_ (qr-read acc)))))))
+
+; ─── isearch sub-loop ────────────────────────────────────────────────────────
+;
+; Threads (dir query anchor current) plus the loop state. `anchor` is the puffer
+; at search start (re-search origin + cancel target); `current` is the puffer
+; whose cursor tracks the latest match. Each printable char appends to the
+; query and re-runs str-search from the anchor; backspace drops the last char
+; and re-searches; Enter commits (cursor stays at the match); C-g or Esc
+; (lone ESC = ki-unknown) cancels back to the anchor.
+
+(declare isearch-loop
+  (=> Dir Str (Puffer Str) (Puffer Str) Scriba Unit))
+
+(def isearch-loop
+  (lam (dir query anchor current s)
+    (case (read-keyseq unit)
+      ((ki-eof)
+        (resume-normal (sc-with-msg (sc-with-scroll (sc-with-puf s anchor) (puffer-scroll anchor (sc-dims s))) "")))
+      ((ki-unknown)
+        (resume-normal (sc-with-msg (sc-with-scroll (sc-with-puf s anchor) (puffer-scroll anchor (sc-dims s))) "")))
+      ((ki-key ks)
+        (case ks
+          ((keyseq keys)
+            (case keys
+              ((cons k rest)
+                (case rest
+                  (nil
+                    (case k
+                      ((k-char code)
+                        (case (and (not (<i code 32)) (<=i code 126))
+                          (true
+                            (let (ch (bytes->str (bslice (pack-u32 code) 0 1)))
+                              (let (query' (str-cat query ch))
+                                (case (str-search dir query' (zipper->text-zipper (puf-zipper anchor)))
+                                  (none
+                                    (let (_ (put bel-byte))
+                                      (isearch-loop dir query' anchor current s)))
+                                  ((some tz)
+                                    (let (puf' (puf-move-cursor anchor (text-zipper->zipper tz)))
+                                      (let (_ (emit-cursor-goto puf' (sc-dims s) (puffer-scroll puf' (sc-dims s))))
+                                        (isearch-loop dir query' anchor puf' s))))))))
+                          (false
+                            (let (_ (put bel-byte))
+                              (isearch-loop dir query anchor current s)))))
+                      (k-backspace
+                        (let (query' (cl-drop-last query))
+                          (case (str-search dir query' (zipper->text-zipper (puf-zipper anchor)))
+                            (none
+                              (let (_ (put bel-byte))
+                                (isearch-loop dir query' anchor current s)))
+                            ((some tz)
+                              (let (puf' (puf-move-cursor anchor (text-zipper->zipper tz)))
+                                (let (_ (emit-cursor-goto puf' (sc-dims s) (puffer-scroll puf' (sc-dims s))))
+                                  (isearch-loop dir query' anchor puf' s)))))))
+                      (k-enter
+                        (resume-normal (sc-with-msg (sc-with-scroll (sc-with-puf s current) (puffer-scroll current (sc-dims s))) "")))
+                      ((k-ctrl code)
+                        (case (=i code 7)
+                          (true (resume-normal (sc-with-msg (sc-with-scroll (sc-with-puf s anchor) (puffer-scroll anchor (sc-dims s))) "")))
+                          (false
+                            (let (_ (put bel-byte))
+                              (isearch-loop dir query anchor current s)))))
+                      (k-escape
+                        (resume-normal (sc-with-msg (sc-with-scroll (sc-with-puf s anchor) (puffer-scroll anchor (sc-dims s))) "")))
+                      (_
+                        (let (_ (put bel-byte))
+                          (isearch-loop dir query anchor current s)))))
+                  (_
+                    (let (_ (put bel-byte))
+                      (isearch-loop dir query anchor current s)))))
+              (_
+                (let (_ (put bel-byte))
+                  (isearch-loop dir query anchor current s)))))
+          (_
+            (let (_ (put bel-byte))
+              (isearch-loop dir query anchor current s))))))))
+
+; ─── query-replace apply ─────────────────────────────────────────────────────
+;
+; Replace the FIRST occurrence of `needle` from the cursor with `repl`.
+; str-search-forward finds the match (cursor at needle start); str-delete-forward
+; removes the needle within the line; str-insert-char inserts the replacement.
+; A needle that spans a newline is NOT handled (replace-first is single-line) —
+; documented choice. The edit pushes undo first (puffer.chiral push-undo).
+
+(def qr-splice (-> (Puffer Str) (TextZipper Str) Str Str (Puffer Str))
+  (lam (puf tz needle repl)
+    (let (tz1 (str-delete-forward (str-len needle) tz))
+      (let (tz2 (str-insert-char repl tz1))
+        (puf-apply-edit puf (text-zipper->zipper tz2))))))
+
+(def qr-apply (=> Scriba Str Str Unit)
+  (lam (s needle repl)
+    (case (str-eq needle "")
+      (true
+        (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) "")))
+      (false
+        (case (str-search-forward needle (zipper->text-zipper (puf-zipper (sc-puf s))))
+          (none
+            (let (_ (put bel-byte))
+              (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) ""))))
+          ((some tz)
+            (let (puf1 (push-undo (sc-puf s)))
+              (let (puf2 (qr-splice puf1 tz needle repl))
+                (case (render-puffer puf2 (sc-dims s) (puffer-scroll puf2 (sc-dims s)) (sc-renderers s))
+                  ((render-ok new-rendering puf'')
+                    (let (_ (render-to-ansi-full new-rendering (sc-dims s)))
+                      (resume-normal (sc-with-msg (sc-repaint s puf'' (puffer-scroll puf'' (sc-dims s)) new-rendering) "")))))))))))))
+
+; ─── handlers (defs pair with the declares at the top of this file) ──────────
+
+(def handle-isearch-forward
+  (lam (s)
+    (isearch-loop forward "" (sc-puf s) (sc-puf s) s)))
+
+(def handle-isearch-backward
+  (lam (s)
+    (isearch-loop backward "" (sc-puf s) (sc-puf s) s)))
+
+(def handle-query-replace
+  (lam (s)
+    (case (qr-read "")
+      (pr-cancel
+        (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) "")))
+      ((pr-commit needle)
+        (case (qr-read "")
+          (pr-cancel
+            (resume-normal (sc-with-msg (sc-with-scroll s (puffer-scroll (sc-puf s) (sc-dims s))) "")))
+          ((pr-commit repl)
+            (qr-apply s needle repl)))))))

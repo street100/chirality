@@ -1,0 +1,402 @@
+(import "prelude")
+(import "grid")
+(import "utf8")     ; decode-utf8 : Bytes -> (List I64) codepoints (RFC 3629)
+(import "apc")      ; dec-frame / apc-intro / apc-st + the Rendering sum (E112 side-channel)
+
+; ─── PState: one constructor per Williams VT500 state ──────────────────────────
+;   params : finished CSI params, reversed (cons at head) — flipped once at dispatch
+;   cur    : the digit being accumulated (-1 = none), key-parser.chiral idiom
+;   priv   : the private-marker byte 0x3C–0x3F (0 = none)
+;   buf    : reversed-accumulated content for string states (I64 codepoints)
+(data PState ()
+  (ps-ground)
+  (ps-escape)
+  (ps-escape-inter)
+  (ps-csi-entry)
+  (ps-csi-param (params (List I64)) (cur I64) (priv I64))
+  (ps-csi-inter)
+  (ps-csi-ignore)
+  (ps-osc-string (buf (List I64)))
+  (ps-dcs-pass   (buf (List I64)))
+  (ps-apc-string (buf (List I64))))
+
+; ─── Action: one constructor per Williams action — the boundary sum ─────────────
+;   Unknown finals become act-csi-other (a value), never a dropped case.
+(data Action ()
+  (act-print    (cp I64))
+  (act-execute  (b  I64))
+  (act-cup      (row I64) (col I64))
+  (act-cuu      (n I64))
+  (act-cud      (n I64))
+  (act-cuf      (n I64))
+  (act-cub      (n I64))
+  (act-ed       (mode I64))
+  (act-el       (mode I64))
+  (act-sgr      (params (List I64)))
+  (act-dsr      (arg I64))
+  (act-decrst   (mode I64))
+  (act-decsets  (mode I64))
+  (act-decsbm   (top I64) (bot I64))
+  (act-csi-other (final I64))
+  (act-apc-render (r Rendering))
+  (act-ignore))
+
+; ─── FeedR: feed threads (PState, linear Grid) — a generic Pair cannot hold the
+;   linear Grid in its snd, so the result carries the region in a `1` field (the
+;   PoolReadR/AllocR pattern). E111.
+(data FeedR ((n I64)) (feed-r (st PState) (1 g (Grid n))))
+
+
+; ─── forward declares — all signatures before any body ─────────────────────────
+(declare byte-is-final  (-> I64 Bool))
+(declare byte-is-digit  (-> I64 Bool))
+(declare reverse-onto   (-> (List I64) (List I64) (List I64)))
+(declare param-nth      (-> (List I64) I64 I64 I64))
+(declare step           (-> PState I64 (Pair PState (List Action))))
+(declare csi-dispatch   (-> (List I64) I64 I64 (Pair PState (List Action))))
+; ─── Grid-threading membrane (E111): every op below moves the linear (Grid n)
+;   region on the `=>` process membrane and threads it back. `n` is the erased
+;   size index (used only to pass to the pool crossings); `rows`/`cols` carry the
+;   runtime dims. Thread with `case`/inlining, never `let` (a `let` reuses the
+;   consumed owner).
+(declare apply-action   (-> (0 n I64) (=> (1 g (Grid n)) Action (Grid n))))
+(declare apply-actions  (-> (0 n I64) (=> (1 g (Grid n)) (List Action) (Grid n))))
+(declare exec-c0        (-> (0 n I64) (=> (1 g (Grid n)) I64 (Grid n))))
+(declare exec-lf        (-> (0 n I64) (=> (1 g (Grid n)) (Grid n))))
+(declare exec-cr        (-> (0 n I64) (=> (1 g (Grid n)) (Grid n))))
+(declare exec-bs        (-> (0 n I64) (=> (1 g (Grid n)) (Grid n))))
+(declare exec-tab       (-> (0 n I64) (=> (1 g (Grid n)) (Grid n))))
+(declare move-cursor    (-> (0 n I64) (=> (1 g (Grid n)) I64 I64 (Grid n))))
+(declare move-cursor-by (-> (0 n I64) (=> (1 g (Grid n)) I64 I64 (Grid n))))
+(declare erase-display  (-> (0 n I64) (=> (1 g (Grid n)) I64 (Grid n))))
+(declare erase-line     (-> (0 n I64) (=> (1 g (Grid n)) I64 (Grid n))))
+(declare erase-display-after  (-> (0 n I64) (=> (1 g (Grid n)) (Grid n))))
+(declare erase-display-before (-> (0 n I64) (=> (1 g (Grid n)) (Grid n))))
+(declare feed            (-> (0 n I64) (=> PState (1 g (Grid n)) (List I64) (FeedR n))))
+(declare parse           (-> (0 n I64) (=> Bytes (1 g (Grid n)) (Grid n))))
+(declare apc-cp->str     (-> I64 Str))
+(declare apc-payload->str (-> (List I64) Str))
+
+; ─── small classifiers ──────────────────────────────────────────────────────────
+(def byte-is-final (lam (b) (and (not (<i b 64)) (<=i b 126))))
+(def byte-is-digit (lam (b) (and (not (<i b 48)) (<=i b 57))))
+(def reverse-onto  (lam (xs acc)
+  (case xs (nil acc) ((cons h t) (reverse-onto t (cons h acc))))))
+
+; ─── APC payload: codepoint list (all graphic ASCII) → Str, for the decode seam ─
+(def apc-cp->str      (lam (c) (bytes->str (bslice (pack-u16 c) 0 1))))
+(def apc-payload->str (lam (cps)
+  (case cps (nil "") ((cons c t) (str-cat (apc-cp->str c) (apc-payload->str t))))))
+
+; ─── param-nth: extract the n-th param from forward-order list, default if short ─
+(def param-nth
+  (lam (ps n def)
+    (case (=i n 0)
+      (true (case ps (nil def) ((cons h t) h)))
+      (false (case ps (nil def) ((cons h t) (param-nth t (- n 1) def)))))))
+
+; ─── UTF-8 decode: provided by utf8.chiral (decode-utf8, RFC 3629) via import ─────
+;   The former inline decode-utf8/decode-one/decode-one-tail were removed here in
+;   favor of the standalone utf8.chiral primitive (E-UTF8) — one decoder, correct
+;   for overlong/surrogate/>U+10FFFF/truncated (the inline copy dropped a valid
+;   trailing multibyte via an off-by-one bound and skipped those validations).
+
+; ─── step: the pure Williams transition. (state, codepoint) → (next state, actions)
+;   "Anywhere" guard FIRST: ESC restarts, CAN/SUB cancel to ground.
+(def step
+  (lam (st b)
+    (cond
+      ; ESC "anywhere" restarts — EXCEPT in ps-apc-string, where the ESC that
+      ; opens ST also terminates the payload: decode the accumulated buffer here
+      ; (this guard fires before the per-state case, so the buffer is only
+      ; reachable at this point). A malformed frame degrades to act-ignore.
+      ((=i b 27)
+        (case st
+          ((ps-apc-string buf)
+            (let ((payload (apc-payload->str (reverse-onto buf nil))))
+              (case (dec-frame (str-cat (apc-intro unit) (str-cat payload (apc-st unit))))
+                ((p-ok r _)   (pair ps-escape (cons (act-apc-render r) nil)))
+                ((p-err m p)  (pair ps-escape (cons act-ignore nil))))))
+          (_ (pair ps-escape (cons act-ignore nil)))))
+      ((or (=i b 24) (=i b 26)) (pair ps-ground (cons act-ignore nil)))
+      (else
+        (case st
+          ; ── GROUND ──
+          (ps-ground
+            (cond
+              ((and (not (<i b 32)) (<=i b 126))
+                (pair ps-ground (cons (act-print b) nil)))
+              ((<=i b 31)
+                (pair ps-ground (cons (act-execute b) nil)))
+              ((and (not (<i b 128)) (<=i b 255))
+                (pair ps-ground (cons (act-print b) nil)))
+              (else
+                (pair ps-ground (cons act-ignore nil)))))
+          ; ── ESCAPE ──
+          (ps-escape
+            (cond
+              ((=i b 91) (pair ps-csi-entry nil))
+              ((=i b 93) (pair (ps-osc-string nil) nil))
+              ((=i b 80) (pair (ps-dcs-pass nil) nil))
+              ((=i b 95) (pair (ps-apc-string nil) nil))
+              ((and (not (<i b 32)) (<i b 48)) (pair ps-escape-inter nil))
+              ((=i b 40) (pair ps-escape-inter nil))
+              ((=i b 41) (pair ps-escape-inter nil))
+              ((=i b 42) (pair ps-escape-inter nil))
+              ((=i b 43) (pair ps-escape-inter nil))
+              ((byte-is-final b) (pair ps-ground (cons act-ignore nil)))
+              (else (pair ps-ground (cons act-ignore nil)))))
+          ; ── ESCAPE-INTER ──
+          (ps-escape-inter
+            (cond
+              ((byte-is-final b) (pair ps-ground (cons act-ignore nil)))
+              (else (pair ps-escape-inter nil))))
+          ; ── CSI-ENTRY ──
+          (ps-csi-entry
+            (cond
+              ((byte-is-digit b) (pair (ps-csi-param nil (- b 48) 0) nil))
+              ((and (not (<i b 60)) (<=i b 63))
+                (pair (ps-csi-param nil -1 b) nil))
+              ((byte-is-final b) (csi-dispatch nil 0 b))
+              ((=i b 58) (pair ps-csi-ignore nil))
+              (else (pair ps-csi-entry nil))))
+          ; ── CSI-PARAM ──
+          ((ps-csi-param params cur priv)
+            (cond
+              ((byte-is-digit b)
+                (let (nc (case (=i cur -1) (true (- b 48))
+                                           (false (+ (* cur 10) (- b 48)))))
+                  (pair (ps-csi-param params nc priv) nil)))
+              ((=i b 59)
+                (let (v (case (=i cur -1) (true 0) (false cur)))
+                  (pair (ps-csi-param (cons v params) -1 priv) nil)))
+              ((byte-is-final b)
+                (let (final-params (case (=i cur -1) (true params) (false (cons cur params))))
+                  (csi-dispatch final-params priv b)))
+              ((=i b 58) (pair ps-csi-ignore nil))
+              ((and (not (<i b 32)) (<i b 48)) (pair ps-csi-inter nil))
+              (else (pair (ps-csi-param params cur priv) nil))))
+          ; ── CSI-INTER ──
+          (ps-csi-inter
+            (cond
+              ((byte-is-final b) (csi-dispatch nil 0 b))
+              (else (pair ps-csi-inter nil))))
+          ; ── CSI-IGNORE ──
+          (ps-csi-ignore
+            (case (byte-is-final b) (true (pair ps-ground nil)) (false (pair ps-csi-ignore nil))))
+          ; ── OSC-STRING ──
+          ((ps-osc-string buf)
+            (cond
+              ((=i b 7) (pair ps-ground nil))
+              ((=i b 27) (pair ps-ground nil))
+              (else (pair (ps-osc-string (cons b buf)) nil))))
+          ; ── DCS-PASS ──
+          ((ps-dcs-pass buf)
+            (cond
+              ((=i b 27) (pair ps-ground nil))
+              (else (pair (ps-dcs-pass (cons b buf)) nil))))
+          ; ── APC-STRING ──
+          ((ps-apc-string buf)
+            (cond
+              ((=i b 27) (pair ps-ground nil))
+              (else (pair (ps-apc-string (cons b buf)) nil)))))))))
+
+; ─── csi-dispatch: params (reversed) + priv + final → Action(s) + ground ────────
+(def csi-dispatch
+  (lam (params priv final)
+    (let (ps (reverse-onto params nil))
+      (cond
+        ((=i final 65)
+          (pair ps-ground (cons (act-cuu (param-nth ps 0 1)) nil)))
+        ((=i final 66)
+          (pair ps-ground (cons (act-cud (param-nth ps 0 1)) nil)))
+        ((=i final 67)
+          (pair ps-ground (cons (act-cuf (param-nth ps 0 1)) nil)))
+        ((=i final 68)
+          (pair ps-ground (cons (act-cub (param-nth ps 0 1)) nil)))
+        ((=i final 72)
+          (pair ps-ground (cons (act-cup (- (param-nth ps 0 1) 1) (- (param-nth ps 1 1) 1)) nil)))
+        ((=i final 74)
+          (pair ps-ground (cons (act-ed (param-nth ps 0 0)) nil)))
+        ((=i final 75)
+          (pair ps-ground (cons (act-el (param-nth ps 0 0)) nil)))
+        ((=i final 109)
+          (pair ps-ground (cons (act-sgr ps) nil)))
+        ((=i final 110)
+          (pair ps-ground (cons (act-dsr (param-nth ps 0 0)) nil)))
+        ((=i final 108)
+          (pair ps-ground (cons (act-decrst (param-nth ps 0 0)) nil)))
+        ((=i final 104)
+          (pair ps-ground (cons (act-decsets (param-nth ps 0 0)) nil)))
+        ((=i final 114)
+          (let (top (param-nth ps 0 1))
+            (case (=i top 0)
+              (true (pair ps-ground (cons act-ignore nil)))
+              (false
+                (pair ps-ground (cons (act-decsbm (- top 1) (param-nth ps 1 0)) nil))))))
+        (else
+          (pair ps-ground (cons (act-csi-other final) nil)))))))
+
+; ─── apply-action: total case of Action onto the linear Grid ─────────────────────
+(def apply-action
+  (lam (n g a)
+    (case a
+      ((act-print cp)    (put-cell n g cp))
+      ((act-execute b)   (exec-c0 n g b))
+      ((act-cup r c)     (move-cursor n g r c))
+      ((act-cuu k)       (move-cursor-by n g (- 0 k) 0))
+      ((act-cud k)       (move-cursor-by n g k 0))
+      ((act-cuf k)       (move-cursor-by n g 0 k))
+      ((act-cub k)       (move-cursor-by n g 0 (- 0 k)))
+      ((act-ed mode)     (erase-display n g mode))
+      ((act-el mode)     (erase-line n g mode))
+      ((act-sgr params)  (apply-sgr n g params))
+      ((act-dsr arg)     g)
+      ((act-decrst mode) g)
+      ((act-decsets mode) g)
+      ((act-decsbm t b)  g)
+      ((act-csi-other _) g)
+      ((act-apc-render _) g)      ; structured render is a side-channel value, no grid effect
+      (act-ignore        g))))
+
+; ─── apply-actions: fold action list onto the linear Grid ──────────────────────
+(def apply-actions
+  (lam (n g as)
+    (case as (nil g) ((cons a t) (apply-actions n (apply-action n g a) t)))))
+
+; ─── C0 execute: LF/CR/BS/TAB → cursor move, else no-op ────────────────────────
+(def exec-c0
+  (lam (n g b)
+    (cond
+      ((=i b 10) (exec-lf n g))
+      ((=i b 13) (exec-cr n g))
+      ((=i b 8)  (exec-bs n g))
+      ((=i b 9)  (exec-tab n g))
+      (else g))))
+
+(def exec-lf
+  (lam (n g)
+    (case g
+      ((grid rows cols store cur pen)
+        (case cur
+          ((cursor cr cc)
+            (case (not (<i (+ cr 1) rows))
+              (true  (scroll-up n (grid rows cols store (cursor cr cc) pen)))
+              (false (grid rows cols store (cursor (+ cr 1) cc) pen)))))))))
+
+(def exec-cr
+  (lam (n g)
+    (case g
+      ((grid rows cols store cur pen)
+        (case cur
+          ((cursor cr cc)
+            (grid rows cols store (cursor cr 0) pen)))))))
+
+(def exec-bs
+  (lam (n g)
+    (case g
+      ((grid rows cols store cur pen)
+        (case cur
+          ((cursor cr cc)
+            (case (not (<i 0 cc))
+              (true  (grid rows cols store (cursor cr (- cc 1)) pen))
+              (false (grid rows cols store (cursor cr cc) pen)))))))))
+
+(def exec-tab
+  (lam (n g)
+    (case g
+      ((grid rows cols store cur pen)
+        (case cur
+          ((cursor cr cc)
+            (let (nc (* (+ (/ cc 8) 1) 8))
+              (case (<i nc cols)
+                (true  (grid rows cols store (cursor cr nc) pen))
+                (false (grid rows cols store (cursor cr cc) pen))))))))))
+
+; ─── move-cursor: absolute row/col (clamped) ────────────────────────────────────
+(def move-cursor
+  (lam (n g row col)
+    (case g
+      ((grid rows cols store cur pen)
+        (let (r (case (<i row 0) (true 0) (false (case (<i row rows) (true row) (false (- rows 1))))))
+          (let (c (case (<i col 0) (true 0) (false (case (<i col cols) (true col) (false (- cols 1))))))
+            (grid rows cols store (cursor r c) pen)))))))
+
+; ─── move-cursor-by: relative delta row/col (clamped) ───────────────────────────
+(def move-cursor-by
+  (lam (n g dr dc)
+    (case g
+      ((grid rows cols store cur pen)
+        (case cur
+          ((cursor cr cc)
+            (move-cursor n (grid rows cols store (cursor cr cc) pen) (+ cr dr) (+ cc dc))))))))
+
+; ─── erase-display: mode → cursor-end / beg-cursor / clear / clear+scrollback ──
+(def erase-display
+  (lam (n g mode)
+    (cond
+      ((=i mode 0) (erase-display-after n g))
+      ((=i mode 1) (erase-display-before n g))
+      ((=i mode 2) (clear n g))
+      ((=i mode 3) (clear n g))
+      (else g))))
+
+; ─── erase-display-after: blank [cursor, end) as a ranged pool-write fill ──────
+(def erase-display-after
+  (lam (n g)
+    (case g
+      ((grid rows cols store cur pen)
+        (case cur
+          ((cursor cr cc)
+            (grid rows cols
+                  (fill-blank n store (+ (* cr cols) cc) (* rows cols))
+                  (cursor cr cc) pen)))))))
+
+; ─── erase-display-before: blank [0, cursor] as a ranged pool-write fill ───────
+(def erase-display-before
+  (lam (n g)
+    (case g
+      ((grid rows cols store cur pen)
+        (case cur
+          ((cursor cr cc)
+            (grid rows cols
+                  (fill-blank n store 0 (+ (+ (* cr cols) cc) 1))
+                  (cursor cr cc) pen)))))))
+
+; ─── erase-line: mode → cursor-end / beg-cursor / whole line ────────────────────
+;   Each mode is a ranged blank fill over the current row (row-major offsets).
+(def erase-line
+  (lam (n g mode)
+    (case g
+      ((grid rows cols store cur pen)
+        (case cur
+          ((cursor cr cc)
+            (cond
+              ((=i mode 0)
+                (grid rows cols
+                      (fill-blank n store (+ (* cr cols) cc) (+ (* cr cols) cols))
+                      (cursor cr cc) pen))
+              ((=i mode 1)
+                (grid rows cols
+                      (fill-blank n store (* cr cols) (+ (+ (* cr cols) cc) 1))
+                      (cursor cr cc) pen))
+              ((=i mode 2)
+                (grid rows cols
+                      (fill-blank n store (* cr cols) (+ (* cr cols) cols))
+                      (cursor cr cc) pen))
+              (else (grid rows cols store (cursor cr cc) pen)))))))))
+
+; ─── feed: fold step over codepoint list, threading PState + linear Grid ────────
+(def feed
+  (lam (n st g cps)
+    (case cps
+      (nil (feed-r st g))
+      ((cons cp rest)
+        (case (step st cp)
+          ((pair st2 acts) (feed n st2 (apply-actions n g acts) rest)))))))
+
+; ─── parse: Bytes + linear Grid → Grid (decode UTF-8, fold from ps-ground) ──────
+(def parse
+  (lam (n bytes g0)
+    (case (feed n ps-ground g0 (decode-utf8 bytes))
+      ((feed-r _ g) g))))

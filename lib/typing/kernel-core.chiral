@@ -1,0 +1,59 @@
+; E52 Phase B: the kernel-core certificate seam -- the small, spec-directed
+; trusted `recheck` that replaces trusting the elaborator+checker monolith. The
+; elaborator becomes an untrusted producer emitting a Cert (the elaborated core
+; term + a named conversion tier + a carrier version); `recheck` re-derives it and
+; returns a VERDICT VALUE (errors-as-values, never a raised KernelError); install
+; consumes the verdict, never producer output. Ported from the E52 example §5 over
+; the checker port (E3/E4, lib/kernel.chiral).
+;
+; KEY (example finding #1): the elaborated term IS the derivation -- the
+; bidirectional judgment is deterministic re-run, and every non-syntax-directed
+; point already carries an Ann. So recheck's typing half = run the EXISTING
+; infer/check on the certificate's term; there is NO new judgment logic here, only
+; the certificate/verdict boundary + the carrier guard.
+;
+; TIER (decision #1): conv-rerun ONLY -- the core CONTAINS eval, so tier-1
+; conversion is re-run inside infer; conv-trace/conv-cached are reserved
+; constructors (honest un-built), each a later per-site pick.
+; FUEL (decision #2, coupled to E3 dec#1 = the fuel-verdict posture): recheck is
+; structurally total; conversion re-run rides lib/kernel.chiral's conv (no SN axiom
+; in trusted code -- SN is a P5 claim in kernel-spec). v-fuel names conversion
+; exhaustion and is RESERVED (conv is not fuel-threaded in this build, matching E3:
+; the core is not asserted (total)); wiring the fuel bound is the follow-on.
+(import "kernel")         ; Term / Ctx / TcR + infer + ctx-nil (E3/E4)
+
+; ---- kernel-spec, as data: the demanded statement (an audited artifact) -------
+(data JForm () (j-check) (j-infer) (j-conv) (j-usage) (j-data) (j-membrane))
+(data SpecRule () (spec-rule (form JForm) (name Str) (statement Str)))
+(data Spec () (spec (rules (List SpecRule)) (carrier-ver I64)))   ; + the frozen carrier arity
+
+; ---- the certificate: what a producer must show ------------------------------
+(data ConvEv ()
+  (conv-rerun)                             ; tier 1: cert empty; core re-runs NbE
+  (conv-trace (steps (List Str)))          ; tier 2: reserved (step-checker un-built)
+  (conv-cached (nf-hash Bytes) (sig Bytes)))   ; tier 3: reserved (amortized, weaker)
+(data Cert () (cert (tm Term) (conv ConvEv) (carrier-ver I64)))
+
+; ---- kernel-core: the one trusted function; verdicts are VALUES ---------------
+(data Verdict ()
+  (v-accepted)
+  (v-rejected (rule Str) (at Str))
+  (v-wrong-carrier (want I64) (got I64))
+  (v-fuel))                                ; reserved: conversion exhaustion (fuel posture)
+
+(def spec-cver (-> Spec I64) (lam (s) (case s ((spec rules cv) cv))))
+(def cert-tm   (-> Cert Term) (lam (c) (case c ((cert tm cv cver) tm))))
+(def cert-cver (-> Cert I64)  (lam (c) (case c ((cert tm cv cver) cver))))
+
+; recheck spec cert : re-derive the certificate against the judgment. Carrier first
+; (partial coverage cannot parse as current), then re-run the bidirectional
+; judgment on the (fully annotated) term -- accept iff it re-derives, else the
+; failing rule is the verdict. A producer bug is a v-rejected VALUE, not a soundness
+; bug. Structural over the term via infer; pure.
+(declare recheck (-> Spec Cert Verdict))
+(def recheck (lam (sp c)
+  (case (=i (cert-cver c) (spec-cver sp))
+    (false (v-wrong-carrier (spec-cver sp) (cert-cver c)))
+    (true (case (infer (mk-sig nil nil nil nil nil nil nil nil nil) (ctx-nil) (cert-tm c))  ; closed-core cert: empty Sig
+      ((tc-ok ty use) (v-accepted))
+      ((tc-err msg)   (v-rejected msg "")))))))

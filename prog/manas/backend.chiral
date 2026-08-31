@@ -1,0 +1,261 @@
+; The model-backend interface: the replaceable seam between the orchestration
+; cycle and whatever serves a model. It is a *contract* -- the OpenAI-compatible
+; HTTP API -- so ANY conforming server (the manas worker, Ollama, vLLM, OpenAI
+; itself) plugs in unchanged; only the base URL and the transport (impl_ports'
+; urllib shim today) differ. Request bodies are built with lib/json and
+; responses parsed back through it, so the cycle above never touches a wire
+; format.
+;
+; Contract (grounded in manas-worker/manas_worker/serve/router.py + app.py):
+;   POST /v1/chat/completions  {model, messages:[{role,content}], stream}
+;         non-stream -> {choices:[{message:{role,content}}], ...}
+;         stream     -> SSE: data: {choices:[{delta:{content}}]} ... data:[DONE]
+;   GET  /v1/models            -> {data:[{id}, ...]}
+;   GET  /internal/health      -> {status, gpu}
+;   POST /internal/embed       {text, source_type} -> {chunk_id}
+;   POST /internal/search      {query, k}          -> [{chunk_id, content, distance}]
+; (train-start/status are documented-not-built on the worker; add when they land.)
+
+(import "prelude")
+(import "collections")
+(import "http")
+(import "json")
+
+; E137: Backend is a LINEAR porttype (a q1 str-handle carried by the E144 nt-str
+; carrier), not a plain copyable/droppable `data`. backend-open mints a fresh q1
+; handle from a base URL; every be-* consumes the handle and RETURNS a fresh one
+; in its result sum, so a run is a proven-unbroken linear chain -- no duplicated
+; handle (the worker is single-flight) and no silent drop (a dropped run loses its
+; log). be-base is the discharge peel (consume -> base Str); it is a runtime no-op
+; (Backend IS its base string, E144), the linear discipline being type-level only.
+(porttype Backend)
+; E159: `=>`. backend-open MINTS the linear handle; a mint of a linear result
+; must cross, or the handle never enters the q1 context and the porttype's
+; single-use discipline is vacuous. It still issues no syscall (E144: a Backend
+; IS its base string; nb-id) -- the crossing is the minting, not the machine.
+(extern backend-open (=> Str Backend))
+(extern be-base (-> (1 b Backend) Str))
+
+; backend-close discharges a linear handle at a run's end -> Unit. It CONSUMES
+; the handle and returns a fresh unit (lowered to nb-be-close-t, bytes-tal); it is
+; NOT be-base+drop, because be-base is an identity peel whose result aliases the
+; handle (drop would trip the tal linear checker). Pure (`->`): no syscall.
+(extern backend-close (-> (1 b Backend) Unit))
+
+; E145: the laundering peel that lets a LINEAR (q1) Backend handle be USED (its
+; base Str extracted for a qw op like str-cat / http-request) while a FRESH q1
+; handle threads onward -- without the QTT semiring scaling the handle from q1 to
+; qw. Mirrors the committed `sock-recv : (=> (1 s Sock) I64 RecvR)` /
+; `RecvR = (recv-r (bs Bytes) (1 sock Sock))` shape: a struct-returning crossing
+; whose `case` accounts the two binders atomically (a case does NOT scale its
+; scrutinee's usage the way an application/let does). Pure (`->`): it crosses no
+; membrane and issues no syscall -- it lowers to nb-be-peek-t (bytes-tal), a
+; ti-cona that duplicates the handle pointer into both fields (base=qw, b=q1).
+; Every be-* below be-peeks the handle to reach the base URL and thread the cap.
+(data BePeekR () (be-peek-r (base Str) (1 b Backend)))
+(extern be-peek (-> (1 b Backend) BePeekR))
+
+; build a request URL from a base string (extracted via be-peek) + path.
+(def be-url (-> Str Str Str)
+  (lam (base path) (str-cat base path)))
+
+(def ok2xx (-> I64 Bool)
+  (lam (s) (and (<=i 200 s) (<i s 300))))
+
+; --- chat (the core op) -----------------------------------------------------
+
+; one message in the conversation. A List Msg is the history the orchestrator
+; threads; multi-turn is just a longer list.
+(data Msg () (msg (role Str) (content Str)))
+
+(def msg->json (-> Msg Json)
+  (lam (m)
+    (case m ((msg r c)
+      (j-obj (cons (pair "role" (j-str r))
+              (cons (pair "content" (j-str c)) nil)))))))
+
+; {model, messages:[...], stream:<bool>}
+(def chat-body (-> Str (List Msg) Bool Bytes)
+  (lam (model msgs stream)
+    (str->bytes
+      (json-show
+        (j-obj
+          (cons (pair "model" (j-str model))
+           (cons (pair "messages" (j-arr (map-list Msg Json msg->json msgs)))
+            (cons (pair "stream" (j-bool stream)) nil))))))))
+
+; dig choices[0].message.content out of a non-stream chat completion.
+(def chat-content (-> Json (Maybe Str))
+  (lam (jv)
+    (case (obj-get jv "choices")
+      (none none)
+      ((some ch)
+        (case (as-arr ch)
+          (none none)
+          ((some items)
+            (case (head Json items)
+              (none none)
+              ((some fst)
+                (case (obj-get fst "message")
+                  (none none)
+                  ((some m)
+                    (case (obj-get m "content")
+                      (none none)
+                      ((some c) (as-str c)))))))))))))
+
+; the chat result: the assistant text, or a failure carrying the status and raw
+; body as evidence (a transport failure arrives here too, as a negative status
+; from the shim -- see impl_ports -- so the cycle's breaker can count it instead
+; of the run aborting). E137: EVERY variant threads the fresh q1 Backend handle so
+; the caller can continue the linear chain.
+(data ChatR ()
+  (chat-ok  (text Str) (1 b Backend))
+  (chat-bad (status I64) (raw Str) (1 b Backend)))
+
+(def be-chat (=> (1 b Backend) Str (List Msg) ChatR)
+  (lam (b model msgs)
+    (case (be-peek b)
+      ((be-peek-r base b2)
+        (case (http-request "POST" (be-url base "/v1/chat/completions")
+                            (chat-body model msgs false))
+          ((http-r st body)
+            (case (ok2xx st)
+              (false (chat-bad st (bytes->str body) b2))
+              (true
+                (case (json-parse body)
+                  (none (chat-bad st (bytes->str body) b2))
+                  ((some jv)
+                    (case (chat-content jv)
+                      (none (chat-bad st (bytes->str body) b2))
+                      ((some t) (chat-ok t b2)))))))))))))
+
+; --- chat, streaming --------------------------------------------------------
+
+; drain a stream: read deltas, invoke on-delta for each as it arrives (the
+; incremental hook -- print to a UI, append to a buffer), accumulate the full
+; text, and close on done/err. Returns a DrainR (NO backend handle -- the stream
+; loop threads only the linear ChatStream) so a mid-stream failure is NOT silent:
+; chunk-done -> drain-ok (full text); chunk-err -> drain-bad (status, text
+; assembled before the break). be-chat-stream re-wraps it into a ChatR carrying
+; the threaded Backend handle.
+(data DrainR ()
+  (drain-ok  (text Str))
+  (drain-bad (status I64) (raw Str)))
+(declare drain-stream (=> (1 s ChatStream) (=> Str Unit) Str DrainR))
+(def drain-stream
+  (lam (s on-delta acc)
+    (case (chat-read s)
+      ((chunk d s2)
+        (do (on-delta d)
+            (drain-stream s2 on-delta (str-cat acc d))))
+      ((chunk-done s2)   (do (chat-close s2) (drain-ok acc)))
+      ((chunk-err st s2) (do (chat-close s2) (drain-bad st acc))))))
+
+(def be-chat-stream (=> (1 b Backend) Str (List Msg) (=> Str Unit) ChatR)
+  (lam (b model msgs on-delta)
+    (case (be-peek b)
+      ((be-peek-r base b2)
+        (case (drain-stream
+                (chat-open "POST" (be-url base "/v1/chat/completions")
+                           (chat-body model msgs true))
+                on-delta "")
+          ((drain-ok t)    (chat-ok t b2))
+          ((drain-bad s r) (chat-bad s r b2)))))))
+
+; --- health -----------------------------------------------------------------
+; GET {base}/internal/health; ok iff the worker answered 2xx. Threads the handle.
+(data HealthR () (health-r (ok Bool) (1 b Backend)))
+(def be-health (=> (1 b Backend) HealthR)
+  (lam (b)
+    (case (be-peek b)
+      ((be-peek-r base b2)
+        (health-r
+          (ok2xx (http-status
+                   (http-request "GET" (be-url base "/internal/health") (str->bytes ""))))
+          b2)))))
+
+; --- models -----------------------------------------------------------------
+; GET {base}/v1/models -> the list of served model ids. Threads the handle.
+(data ModelsR () (models-r (ids (List Str)) (1 b Backend)))
+(def be-models (=> (1 b Backend) ModelsR)
+  (lam (b)
+    (case (be-peek b)
+      ((be-peek-r base b2)
+        (case (http-request "GET" (be-url base "/v1/models") (str->bytes ""))
+          ((http-r st body)
+            (case (json-parse body)
+              (none (models-r nil b2))
+              ((some jv)
+                (case (maybe-then Json (List Json) as-arr (obj-get jv "data"))
+                  (none (models-r nil b2))
+                  ((some items)
+                    (models-r
+                      (cat-maybes Str
+                        (map-list Json (Maybe Str)
+                          (lam (it) (maybe-then Json Str as-str (obj-get it "id")))
+                          items))
+                      b2)))))))))))
+
+; --- embed ------------------------------------------------------------------
+; POST {base}/internal/embed {text, source_type} -> the stored chunk id. The
+; embedding vector lives worker-side; the crossing is integer ids + text, so no
+; float type is needed here. Threads the handle.
+(data EmbedR () (embed-r (chunk (Maybe I64)) (1 b Backend)))
+(def be-embed (=> (1 b Backend) Str Str EmbedR)
+  (lam (b text stype)
+    (case (be-peek b)
+      ((be-peek-r base b2)
+        (case (http-request "POST" (be-url base "/internal/embed")
+                (str->bytes (json-show
+                  (j-obj (cons (pair "text" (j-str text))
+                          (cons (pair "source_type" (j-str stype)) nil))))))
+          ((http-r st body)
+            (case (ok2xx st)
+              (false (embed-r none b2))
+              (true
+                (case (json-parse body)
+                  (none (embed-r none b2))
+                  ((some jv)
+                    (embed-r (maybe-then Json I64 as-int (obj-get jv "chunk_id")) b2)))))))))))
+
+; --- search -----------------------------------------------------------------
+; POST {base}/internal/search {query, k} -> nearest hits. distance is a float
+; kept as its raw lexeme (Str), since ordering is done worker-side and chirality has
+; no float type; callers that only forward/store it are unaffected.
+(data Hit () (hit (chunk-id I64) (content Str) (distance Str)))
+
+(def parse-hit (-> Json (Maybe Hit))
+  (lam (jv)
+    (case (maybe-then Json I64 as-int (obj-get jv "chunk_id"))
+      (none none)
+      ((some cid)
+        (case (maybe-then Json Str as-str (obj-get jv "content"))
+          (none none)
+          ((some content)
+            (case (maybe-then Json Str as-numstr (obj-get jv "distance"))
+              (none (some (hit cid content "0")))     ; distance optional
+              ((some d) (some (hit cid content d))))))))))
+
+; search result: the hits BESIDE the threaded handle (E137).
+(data SearchR () (search-r (hits (List Hit)) (1 b Backend)))
+(def be-search (=> (1 b Backend) Str I64 SearchR)
+  (lam (b query k)
+    (case (be-peek b)
+      ((be-peek-r base b2)
+        (case (http-request "POST" (be-url base "/internal/search")
+                (str->bytes (json-show
+                  (j-obj (cons (pair "query" (j-str query))
+                          (cons (pair "k" (j-num (i64->str k))) nil))))))
+          ((http-r st body)
+            (case (ok2xx st)
+              (false (search-r nil b2))
+              (true
+                (case (json-parse body)
+                  (none (search-r nil b2))
+                  ((some jv)
+                    (case (as-arr jv)
+                      (none (search-r nil b2))
+                      ((some items)
+                        (search-r
+                          (cat-maybes Hit (map-list Json (Maybe Hit) parse-hit items))
+                          b2)))))))))))))

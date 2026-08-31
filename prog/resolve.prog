@@ -1,0 +1,103 @@
+; resolve-driver.chiral -- the resolver's ENTRY. Split out of resolve.chiral on
+; 2026-08-25 (E170 W0.1) so the resolver can be IMPORTED as a library.
+;
+; Why the split. `compile-main` is the one symbol the native driver compiles, so
+; a module that defines it cannot be imported by a program that has an entry of
+; its own -- the blob carries two `compile-main` labels and B1 refuses with
+; `duplicate label`. Five modules in scaffold/lib define one. resolve.chiral was
+; among them, which made "import the resolver" unavailable to every root; the
+; first caller that needed it is scaffold/lib/test-floor.chiral, whose `observe`
+; must resolve a root's imports before compiling it.
+;
+; The precedent is the tree's own and predates this: compile-all.chiral (library)
+; beside compile-driver.chiral (entry), closconv.chiral beside closconv-driver.chiral.
+; compile-all.chiral states the rule in its own header.
+;
+; Usage is unchanged -- this is the file you compile to get `resolve`:
+;   printf -- '-L scaffold/lib\nscriba/scriba-main\n' | ./resolve > blob.chiral
+;   B1 < blob.chiral > program.elf
+
+(import "resolve")
+
+; ── stdin protocol ──
+;
+; The resolver's whole input is stdin, one directive per line:
+;
+;   -L <dir>     append <dir> to the module search path (repeatable, in order)
+;   <module>     the root module to bundle (the first such line wins)
+;
+; With no -L line the search path is the single default root `scaffold/lib`,
+; so `echo scriba/scriba-main | resolve` behaves exactly as before. Directives
+; are classified ONCE into a closed sum (docs/pattern-boundary-sums.md); no
+; downstream code re-sniffs the prefix.
+
+(data Arg ()
+  (arg-libdir (dir Str))
+  (arg-root   (name Str))
+  (arg-blank))
+
+; split-lines: split on "\n". A trailing newline yields a final "" (arg-blank).
+(def split-lines (-> Str (List Str))
+  (lam (s)
+    (case (=i (str-len s) 0)
+      (true nil)
+      (false
+        (let (i (str-find s "\n"))
+          (case (<i i 0)
+            (true (cons s nil))
+            (false (cons (str-sub s 0 i)
+                     (split-lines (str-sub s (+ i 1) (str-len s)))))))))))
+
+(def classify-line (-> Str Arg)
+  (lam (l)
+    (case (str-eq (str-sub l 0 3) "-L ")
+      (true  (arg-libdir (str-sub l 3 (str-len l))))
+      (false (case (str-eq l "")
+               (true  (arg-blank))
+               (false (arg-root l)))))))
+
+; the parsed stdin: the search path (in order) and the root module.
+(data Cmd () (cmd (roots (List Str)) (root Str)))
+
+; rev-strs: local monomorphic reverse (mirrors rev-mods — keeps the resolver's
+; import set minimal rather than pulling in collections).
+(def rev-strs (-> (List Str) (List Str) (List Str))
+  (lam (xs acc)
+    (case xs
+      (nil acc)
+      ((cons h t) (rev-strs t (cons h acc))))))
+
+(def parse-args (-> (List Str) (List Str) Str Cmd)
+  (lam (lines roots root)
+    (case lines
+      (nil (cmd (rev-strs roots nil) root))
+      ((cons l rest)
+        (case (classify-line l)
+          ((arg-libdir d) (parse-args rest (cons d roots) root))
+          ((arg-blank)    (parse-args rest roots root))
+          ((arg-root n)
+            (case (str-eq root "")
+              (true  (parse-args rest roots n))
+              (false (parse-args rest roots root)))))))))
+
+; default-roots: an empty search path means the built-in default.
+(def default-roots (-> (List Str) (List Str))
+  (lam (roots)
+    (case roots
+      (nil (cons "scaffold/lib" nil))
+      ((cons a b) (cons a b)))))
+
+; the ENTRY. Named `compile-main` because that is the one symbol the native
+; driver compiles -- the same convention self-wield, test-runner and chirality-compile
+; itself follow.
+(def compile-main (=> I64 I64)
+  (lam (_)
+    (let (txt (bytes->str (slurp-fd 0)))
+      (case (parse-args (split-lines txt) nil "")
+        ((cmd roots root)
+          (case (str-eq root "")
+            (true (let (_ (put "resolve: no root module on stdin\n")) 1))
+            (false
+              (case (bundle (default-roots roots) root)
+                ((bundle-err e) (let (_ (put (res-err-msg e))) 1))
+                ((bundle-ok blob) (let (_ (put blob)) 0))))))))))

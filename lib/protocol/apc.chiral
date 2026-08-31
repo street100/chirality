@@ -1,0 +1,252 @@
+; ─── E112 — APC structured side-channel codec ──────────────────────────────────
+;   Encode a scriba `Rendering` tree into a printable APC envelope
+;   (ESC _ … ESC \, silently discarded by non-supporting terminals) and decode
+;   it back into the SAME `Rendering`. Netstring field grammar (<declen>:<chars>)
+;   with single-char constructor tags — printable-safe (graphic ASCII), so it is
+;   legal APC payload (ECMA-48 §5.4). Errors are VALUES (p-err), never throws.
+;
+;   Every addressable node (r-section / r-hole) carries a content-hash `block-id`
+;   (FNV-1a-64 → 16 hex chars) emitted as a leading field and re-verified on
+;   decode, so a block keeps a stable name across re-render (fold, re-run, diff).
+;
+;   Pure `->` throughout: the codec transports a value, it never crosses the
+;   effect membrane. Only the Terminal port's write (E112 Step 3, gated) is `=>`.
+
+(import "prelude")
+(import "render")   ; the Rendering sum (r-text/r-table/r-section/r-stream/r-tree/r-hole)
+
+; ─── parse-result sums — the cursor + a failure carried AS DATA ─────────────────
+(data PR ()  (p-ok  (v Rendering) (pos I64))              (p-err  (msg Str) (pos I64)))
+(data SR ()  (s-ok  (v Str) (pos I64))                    (s-err  (msg Str) (pos I64)))
+(data BR ()  (b-ok  (v Bool) (pos I64))                   (b-err  (msg Str) (pos I64)))
+(data SLR () (sl-ok (v (List Str)) (pos I64))             (sl-err (msg Str) (pos I64)))
+(data RLR () (rl-ok (v (List Rendering)) (pos I64))       (rl-err (msg Str) (pos I64)))
+(data RRR () (rr-ok (v (List (List Rendering))) (pos I64))(rr-err (msg Str) (pos I64)))
+
+; ─── forward declares — every signature before any body (mutual recursion) ──────
+(declare byte->str      (-> I64 Str))
+(declare apc-intro      (-> Unit Str))
+(declare apc-st         (-> Unit Str))
+(declare enc-str        (-> Str Str))
+(declare enc-bool       (-> Bool Str))
+(declare list-len-str   (-> (List Str) I64))
+(declare list-len-rend  (-> (List Rendering) I64))
+(declare list-len-rows  (-> (List (List Rendering)) I64))
+(declare enc-strs       (-> (List Str) Str))
+(declare enc-strs-body  (-> (List Str) Str))
+(declare enc-rends      (-> (List Rendering) Str))
+(declare enc-rends-body (-> (List Rendering) Str))
+(declare enc-rows       (-> (List (List Rendering)) Str))
+(declare enc-rows-body  (-> (List (List Rendering)) Str))
+(declare enc            (-> Rendering Str))
+(declare enc-frame      (-> Rendering Str))
+(declare fnv1a          (-> Bytes I64))
+(declare fnv1a-go       (-> Bytes I64 I64 I64))
+(declare hex-digit      (-> I64 Str))
+(declare hex16          (-> I64 Str))
+(declare hex16-go       (-> I64 I64 Str))
+(declare block-id       (-> Rendering Str))
+(declare digit-val      (-> Str I64))
+(declare read-num       (-> Str I64 Str I64 (Pair I64 I64)))
+(declare read-len       (-> Str I64 (Pair I64 I64)))
+(declare read-count     (-> Str I64 (Pair I64 I64)))
+(declare dec-str        (-> Str I64 SR))
+(declare dec-bool       (-> Str I64 BR))
+(declare dec-strs       (-> Str I64 SLR))
+(declare dec-strs-n     (-> Str I64 I64 SLR))
+(declare dec-rends      (-> Str I64 RLR))
+(declare dec-rends-n    (-> Str I64 I64 RLR))
+(declare dec-rows       (-> Str I64 RRR))
+(declare dec-rows-n     (-> Str I64 I64 RRR))
+(declare dec            (-> Str I64 PR))
+(declare dec-frame      (-> Str PR))
+
+; ─── APC envelope bytes (web-verified ECMA-48): APC = ESC _ (27 95),
+;     ST = ESC \ (27 92). A single-byte Str via pack-u16 (LE) sliced to 1. ───────
+(def byte->str (lam (n) (bytes->str (bslice (pack-u16 n) 0 1))))
+(def apc-intro (lam (u) (str-cat (byte->str 27) (byte->str 95))))
+(def apc-st    (lam (u) (str-cat (byte->str 27) (byte->str 92))))
+
+; ─── printable field grammar (netstring <declen>:<chars>) — no delimiter bug ────
+(def enc-str  (lam (s) (str-cat (str-cat (i64->str (str-len s)) ":") s)))
+(def enc-bool (lam (b) (case b (true "1") (false "0"))))
+
+; ─── list lengths (count prefix for the recursing shapes) ───────────────────────
+(def list-len-str  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (list-len-str t))))))
+(def list-len-rend (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (list-len-rend t))))))
+(def list-len-rows (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (list-len-rows t))))))
+
+(def enc-strs-body  (lam (xs) (case xs (nil "") ((cons h t) (str-cat (enc-str h)   (enc-strs-body t))))))
+(def enc-strs       (lam (xs) (str-cat (str-cat (i64->str (list-len-str xs))  ";") (enc-strs-body xs))))
+(def enc-rends-body (lam (xs) (case xs (nil "") ((cons h t) (str-cat (enc h)       (enc-rends-body t))))))
+(def enc-rends      (lam (xs) (str-cat (str-cat (i64->str (list-len-rend xs)) ";") (enc-rends-body xs))))
+(def enc-rows-body  (lam (xs) (case xs (nil "") ((cons h t) (str-cat (enc-rends h) (enc-rows-body t))))))
+(def enc-rows       (lam (xs) (str-cat (str-cat (i64->str (list-len-rows xs)) ";") (enc-rows-body xs))))
+
+; ─── ENCODE: Rendering subtree → printable payload (pure `->`) ──────────────────
+;     tags: t=text  s=section  S=stream  h=hole  T=table  r=tree
+;     s / h carry a leading block-id field (content-hash address).
+(def enc (lam (r)
+  (case r
+    ((r-text content bold)
+      (str-cat "t" (str-cat (enc-bool bold) (enc-str content))))
+    ((r-table headers rows)
+      (str-cat "T" (str-cat (enc-strs headers) (enc-rows rows))))
+    ((r-section title collapsed body)
+      (str-cat "s" (str-cat (enc-str (block-id r))
+                   (str-cat (enc-bool collapsed)
+                   (str-cat (enc-str title) (enc body))))))
+    ((r-stream sid)
+      (str-cat "S" (enc-str sid)))
+    ((r-tree children selected)
+      (str-cat "r" (str-cat (enc-rends children) (enc selected))))
+    ((r-hole label)
+      (str-cat "h" (str-cat (enc-str (block-id r)) (enc-str label)))))))
+
+(def enc-frame (lam (r) (str-cat (apc-intro unit) (str-cat (enc r) (apc-st unit)))))
+
+; ─── block-id: FNV-1a-64 content-hash → 16 hex chars (decision #4) ──────────────
+;     Constants are DECIMAL literals (the sexp reader is decimal-only): offset
+;     basis -3750763034362895579 (the i64 whose bit pattern is 0xcbf29ce484222325),
+;     prime 1099511628211 (0x100000001b3). `*` wraps two's-complement I64 = mod 2^64.
+(def fnv1a-go (lam (bs i acc)
+  (case (=i i (blen bs))
+    (true acc)
+    (false (fnv1a-go bs (+ i 1) (* (bxor acc (bget bs i)) 1099511628211))))))
+(def fnv1a (lam (bs) (fnv1a-go bs 0 -3750763034362895579)))
+
+(def hex-digit (lam (v) (case (<i v 10) (true (byte->str (+ 48 v))) (false (byte->str (+ 87 v))))))
+(def hex16-go (lam (h i)
+  (case (=i i 16)
+    (true "")
+    (false (str-cat (hex-digit (band (shr h (* (- 15 i) 4)) 15)) (hex16-go h (+ i 1)))))))
+(def hex16 (lam (h) (hex16-go h 0)))
+
+;   section = hash of title+body, EXCLUDING collapsed (a fold must not re-key);
+;   hole = hash of its label; only section/hole are addressable, else "".
+(def block-id (lam (r)
+  (case r
+    ((r-section title collapsed body)
+      (hex16 (fnv1a (str->bytes (str-cat (enc-str title) (enc body))))))
+    ((r-hole label)
+      (hex16 (fnv1a (str->bytes (enc-str label)))))
+    (_ ""))))
+
+; ─── DECODE — every failure is a VALUE (no throw, no silent wrong branch) ────────
+(def digit-val (lam (c) (- (bget (str->bytes c) 0) 48)))   ; no str->i64 (unlowered in B1)
+
+(def read-num (lam (src pos delim acc)                     ; decimal until `delim`
+  (let ((c (str-sub src pos (+ pos 1))))
+    (case (str-eq c delim)
+      (true  (pair acc (+ pos 1)))
+      (false (read-num src (+ pos 1) delim (+ (* acc 10) (digit-val c))))))))
+(def read-len   (lam (src pos) (read-num src pos ":" 0)))
+(def read-count (lam (src pos) (read-num src pos ";" 0)))
+
+(def dec-str (lam (src pos)                                ; str-sub = [start,end)
+  (case (read-len src pos)
+    ((pair len p2) (s-ok (str-sub src p2 (+ p2 len)) (+ p2 len))))))
+(def dec-bool (lam (src pos)
+  (let ((c (str-sub src pos (+ pos 1))))
+    (case (str-eq c "1") (true (b-ok true (+ pos 1))) (false (b-ok false (+ pos 1)))))))
+
+(def dec-strs (lam (src pos)
+  (case (read-count src pos) ((pair n p1) (dec-strs-n src p1 n)))))
+(def dec-strs-n (lam (src pos n)
+  (case (=i n 0)
+    (true (sl-ok nil pos))
+    (false
+      (case (dec-str src pos)
+        ((s-ok h p2)
+          (case (dec-strs-n src p2 (- n 1))
+            ((sl-ok t p3) (sl-ok (cons h t) p3))
+            ((sl-err m p) (sl-err m p))))
+        ((s-err m p) (sl-err m p)))))))
+
+(def dec-rends (lam (src pos)
+  (case (read-count src pos) ((pair n p1) (dec-rends-n src p1 n)))))
+(def dec-rends-n (lam (src pos n)
+  (case (=i n 0)
+    (true (rl-ok nil pos))
+    (false
+      (case (dec src pos)
+        ((p-ok h p2)
+          (case (dec-rends-n src p2 (- n 1))
+            ((rl-ok t p3) (rl-ok (cons h t) p3))
+            ((rl-err m p) (rl-err m p))))
+        ((p-err m p) (rl-err m p)))))))
+
+(def dec-rows (lam (src pos)
+  (case (read-count src pos) ((pair n p1) (dec-rows-n src p1 n)))))
+(def dec-rows-n (lam (src pos n)
+  (case (=i n 0)
+    (true (rr-ok nil pos))
+    (false
+      (case (dec-rends src pos)
+        ((rl-ok h p2)
+          (case (dec-rows-n src p2 (- n 1))
+            ((rr-ok t p3) (rr-ok (cons h t) p3))
+            ((rr-err m p) (rr-err m p))))
+        ((rl-err m p) (rr-err m p)))))))
+
+; ─── dec: tag → reconstruct the SAME sum; s/h re-verify their block-id ──────────
+(def dec (lam (src pos)
+  (let ((tag (str-sub src pos (+ pos 1))))
+    (cond
+      ((str-eq tag "t")
+        (case (dec-bool src (+ pos 1))
+          ((b-ok bold p2)
+            (case (dec-str src p2)
+              ((s-ok content p3) (p-ok (r-text content bold) p3))
+              ((s-err m p) (p-err m p))))
+          ((b-err m p) (p-err m p))))
+      ((str-eq tag "s")
+        (case (dec-str src (+ pos 1))                     ; the block-id field
+          ((s-ok id p1)
+            (case (dec-bool src p1)
+              ((b-ok collapsed p2)
+                (case (dec-str src p2)
+                  ((s-ok title p3)
+                    (case (dec src p3)                    ; body recurses
+                      ((p-ok body p4)
+                        (let ((node (r-section title collapsed body)))
+                          (case (str-eq id (block-id node))
+                            (true  (p-ok node p4))
+                            (false (p-err "block-id mismatch" p4)))))
+                      ((p-err m p) (p-err m p))))
+                  ((s-err m p) (p-err m p))))
+              ((b-err m p) (p-err m p))))
+          ((s-err m p) (p-err m p))))
+      ((str-eq tag "S")
+        (case (dec-str src (+ pos 1))
+          ((s-ok sid p2) (p-ok (r-stream sid) p2))
+          ((s-err m p) (p-err m p))))
+      ((str-eq tag "h")
+        (case (dec-str src (+ pos 1))                     ; the block-id field
+          ((s-ok id p1)
+            (case (dec-str src p1)
+              ((s-ok label p2)
+                (let ((node (r-hole label)))
+                  (case (str-eq id (block-id node))
+                    (true  (p-ok node p2))
+                    (false (p-err "block-id mismatch" p2)))))
+              ((s-err m p) (p-err m p))))
+          ((s-err m p) (p-err m p))))
+      ((str-eq tag "T")
+        (case (dec-strs src (+ pos 1))
+          ((sl-ok headers p2)
+            (case (dec-rows src p2)
+              ((rr-ok rows p3) (p-ok (r-table headers rows) p3))
+              ((rr-err m p) (p-err m p))))
+          ((sl-err m p) (p-err m p))))
+      ((str-eq tag "r")
+        (case (dec-rends src (+ pos 1))
+          ((rl-ok children p2)
+            (case (dec src p2)
+              ((p-ok selected p3) (p-ok (r-tree children selected) p3))
+              ((p-err m p) (p-err m p))))
+          ((rl-err m p) (p-err m p))))
+      (else (p-err (str-cat "bad tag " tag) pos))))))     ; malformed = a VALUE
+
+(def dec-frame (lam (frame)                                ; strip APC intro (2) + ST (2)
+  (let ((n (str-len frame))) (dec (str-sub frame 2 (- n 2)) 0))))

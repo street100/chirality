@@ -1,0 +1,208 @@
+; scriba file I/O — find-file (open + read into a fresh Puffer Str) and
+; save-puffer (write a puffer's content back to disk). R6 wiring.
+;
+; Uses the ALREADY-NATIVE file crossings from ports.chiral — open-rw, open-create,
+; read, write-fd, adopt-fd, fd-close — exactly like agent/tools-fs.chiral. Zero new
+; syscalls, zero new crossings. find-file uses open-rw (O_RDWR|O_NOCTTY|O_CLOEXEC,
+; NO O_CREAT/O_TRUNC: opens an EXISTING file only). save-puffer uses open-create
+; (O_RDWR|O_CREAT|O_TRUNC|O_NOCTTY|O_CLOEXEC, mode 0644) so a save truncates the
+; target — a shortening save no longer leaves a stale trailing byte
+; (SCRIBA-SLICES 4). Creating new files via save is a later slice.
+;
+; Discipline: open -> do -> close, with close threading a linear Fd cap
+; (adopt-fd mints it from the raw fd; fd-close consumes it exactly once —
+; the E124/E107 pattern). Content lives entirely in memory after reading;
+; no fd is stored on the puffer between operations.
+;
+; Deps: prelude (Str, Bool, I64, Bytes, Maybe, List, Pair, Unit)
+;       ports  (open-rw, open-create, read, write-fd, adopt-fd, fd-close)
+;       puffer (Puffer, Zipper, port constructor)
+
+(import "prelude")
+(import "ports")
+(import "puffer")
+(import "kill-ring")
+
+; ---------------------------------------------------------------- helpers
+
+; NUL terminator for the C path string handed to openat. Inlined here as
+; `(bslice (pack-u32 0) 0 1)` because term.chiral (already in the scriba blob)
+; defines a top-level `nul-byte` — redefining it collides at link time.
+(def path-bytes (-> Str Bytes)
+  (lam (p) (bcat (str->bytes p) (bslice (pack-u32 0) 0 1))))
+
+; Close a raw fd: mint a linear Fd cap from it, consume the cap exactly once.
+(def close-fd (=> I64 Unit)
+  (lam (fd)
+    (let ((1 cap (adopt-fd fd)))                        ; E159: a linear cap must be bound at 1
+      (fd-close cap))))
+
+; Drain a whole fd in 64 KiB chunks (a single multi-MB read would overrun the
+; arena). An empty chunk is EOF.
+(def read-all (=> I64 Bytes Bytes)
+  (lam (fd acc)
+    (let (chunk (read fd 65536))
+      (case (=i (blen chunk) 0)
+        (true acc)
+        (false (read-all fd (bcat acc chunk)))))))
+
+; ---------------------------------------------------------------- load-bytes
+; Open an EXISTING file and read its RAW BYTES (mirrors find-file's read, but
+; returns the bytes rather than wrapping them in a Puffer). Used by the manas
+; author mode's :load <path> to feed json-parse. `none` if open-rw fails (the
+; caller reports the distinct "cannot open" error); zero new crossings.
+(def load-bytes (=> Str (Maybe Bytes))
+  (lam (path)
+    (let (fd (open-rw (path-bytes path)))
+      (case (<i fd 0)
+        (true none)
+        (false
+          (let (bs (read-all fd (str->bytes "")))
+            (let (_ (close-fd fd))
+              (some bs))))))))
+
+; ---------------------------------------------------------------- result types
+
+; Result of find-file: success carries the fresh puffer, error carries a
+; reason. Puffer is a data value (not a function), so the field lowers
+; without the R2 fn-typed-field defunctionalization path.
+(data FileR ()
+  (file-ok  (p (Puffer Str)))
+  (file-err (msg Str)))
+
+; Result of save-puffer: success threads the same puffer forward, error
+; carries a reason.
+(data SaveR ()
+  (save-ok  (p (Puffer Str)))
+  (save-err (msg Str)))
+
+; Result of a raw string-to-path write (save-string-to-path). There is no
+; puffer to thread here — success carries nothing (write-ok), error carries a
+; reason. Distinct from SaveR precisely so save-string-to-path no longer has to
+; fabricate a throwaway 0-byte Puffer for its success payload.
+(data WriteR ()
+  (write-ok)
+  (write-err (msg Str)))
+
+; ---------------------------------------------------------------- find-file
+
+; Is this path one of the manas orchestration library files? Used by
+; mode-from-path to pick the "manas" mode (Tier 1). Filename heuristic: any
+; path ending in the four library filenames.
+(def manas-path? (-> Str Bool)
+  (lam (path)
+    (or (<=i 0 (str-find path "agents.md"))
+        (or (<=i 0 (str-find path "processes.md"))
+            (or (<=i 0 (str-find path "configs.md"))
+                (<=i 0 (str-find path "SCHEMA.md")))))))
+
+; Derive the buffer mode from the file extension: ".chiral" → "chirality", a manas
+; library filename → "manas", else "Str".
+(def mode-from-path (-> Str Str)
+  (lam (path)
+    (case (<=i 0 (str-find path ".chiral"))
+      (true "chirality")
+      (false
+        (case (manas-path? path)
+          (true "manas")
+          (false "Str"))))))
+
+; Open an EXISTING file, read its contents into a fresh (Puffer Str).
+; The puffer's name field is set to the path (save-buffer writes back there),
+; the zipper focus holds the file text with the cursor at start, and dirty is
+; false (content matches disk on open).
+(def find-file (=> Str FileR)
+  (lam (path)
+    (let (fd (open-rw (path-bytes path)))
+      (case (<i fd 0)
+        (true (file-err (str-cat "find-file: cannot open " path)))
+        (false
+          (let (bs (read-all fd (str->bytes "")))
+            (let (_ (close-fd fd))
+              (file-ok
+                (puffer 0 path (mode-from-path path) (port)
+                  (zipper (some (bytes->str bs)) nil)
+                  false
+                  (undo nil nil)
+                  none
+                  (kill-ring-new (some 60)))))))))))
+
+; Does the string end with a newline? (empty string: no.)
+(def ends-with-nl (-> Str Bool)
+  (lam (s)
+    (case (=i (str-len s) 0)
+      (true false)
+      (false (str-eq (str-sub s (- (str-len s) 1) (str-len s)) "\n")))))
+
+; POSIX text convention: a non-empty file ends with a newline. This is what vim
+; ('fixeol') and emacs ('require-final-newline') do — and it stops the shell from
+; flagging "no final newline" (zsh prints a reverse-video % after `cat`). An
+; empty buffer stays a 0-byte file; a content already ending in \n is unchanged.
+(def ensure-final-nl (-> Str Str)
+  (lam (s)
+    (case (=i (str-len s) 0)
+      (true s)
+      (false (case (ends-with-nl s) (true s) (false (str-cat s "\n")))))))
+
+; ---------------------------------------------------------------- new-file
+
+; Make a fresh EMPTY buffer for a path that does not exist on disk yet. No I/O
+; here — the file is created on the first save (save-puffer opens with
+; open-create). The focus is (some "") rather than none so typing seeds into it
+; and :w writes it immediately; dirty=true marks it unsaved. Pure (->).
+(def new-file (-> Str FileR)
+  (lam (path)
+    (file-ok
+      (puffer 0 path (mode-from-path path) (port)
+        (zipper (some "") nil)
+        true
+        (undo nil nil)
+        none
+        (kill-ring-new (some 60))))))
+
+; ---------------------------------------------------------------- save-puffer
+
+; Write the puffer's content back to the path in its `name` field. The puffer
+; is unrestricted (no linear fields), so it is threaded forward on success.
+; No dirty check — the caller decides when to save. Opens with open-create
+; (O_CREAT|O_TRUNC), so the write truncates any longer existing content.
+(def save-puffer (=> (Puffer Str) SaveR)
+  (lam (p)
+    (case p
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case z
+          ((zipper focus path)
+            ; An empty buffer (focus none, or a fresh :e newfile) is saveable —
+            ; it writes a 0-byte file. none is treated as "". A non-empty buffer
+            ; gets a final newline so the file is a well-formed POSIX text file.
+            (let (content (ensure-final-nl (case focus (none "") ((some s) s))))
+              (let (fd (open-create (path-bytes name)))
+                (case (<i fd 0)
+                  (true
+                    (save-err (str-cat "save-puffer: cannot open " name)))
+                  (false
+                    (let (n (write-fd fd (str->bytes content)))
+                      (let (_ (close-fd fd))
+                        (case (<i n 0)
+                          (true (save-err "save-puffer: write failed"))
+                          (false (save-ok (puffer id name type-name handle z false u mark kr))))))))))))))))
+
+; ---------------------------------------------------------------- save-string-to-path
+
+; Write an arbitrary string to <path>, mirroring save-puffer's body but with no
+; Puffer wrapper — used by the manas author mode's :w <path> to persist a setup's
+; JSON. Same primitives (open-create O_CREAT|O_TRUNC, write-fd, close-fd), same
+; zero new crossings. Returns WriteR: (write-ok) on success (no payload — nothing
+; to thread), (write-err reason) on failure. No ensure-final-nl: JSON is written
+; byte-for-byte as json-show produced it.
+(def save-string-to-path (=> Str Str WriteR)
+  (lam (path content)
+    (let (fd (open-create (path-bytes path)))
+      (case (<i fd 0)
+        (true (write-err (str-cat "save-string-to-path: cannot open " path)))
+        (false
+          (let (n (write-fd fd (str->bytes content)))
+            (let (_ (close-fd fd))
+              (case (<i n 0)
+                (true (write-err "save-string-to-path: write failed"))
+                (false (write-ok))))))))))

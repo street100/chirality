@@ -1,0 +1,301 @@
+; ===========================================================================
+; lib/compile-back.chiral  --  BRIDGE 1 (back half) + the lower->erase drive.
+;
+; The lowering-image end of the source->native pipeline. Reconstructs
+; lib/lower.chiral's LCore + TalTy from a neutral NDef (lib/lowspec.chiral) and
+; drives the chirality back half as far as this image reaches:
+;   NDef -> lower.LCore + TalTys -> compile-fn (SSA) -> erase-fn (neutral NFn).
+; The resulting NFns (lib/erased-nf.chiral) pass to the emit image (tal-ir),
+; which cannot coexist with tal-ssa here (the TFn/tt-case name collision).
+;
+; Lives in the lower image (imports "lower" + "tal-erase", both over tal-ssa);
+; CANNOT import "kernel" (TalTerm collision) -- hence the NDef hop from the front.
+; ===========================================================================
+
+(import "lower")               ; LCore / LCArm / TalTy / CEnv / TalSig / compile-fn
+(import "tal-erase")           ; erase-fn : (List DData) TFn -> XF ; NFn
+(import "lowspec")             ; NTalTy / NCore / NArm / NDef
+(import "collections")         ; E27 Map: tree-set literal dedup
+(import "string-utils")
+(import "skip-diag")           ; E97: SkReason/SkRec + format-blame (single decl home)
+
+; ---- neutral -> lower.chiral's tal type ----------------------------------------
+(declare ntalty->talty      (-> NTalTy TalTy))
+(declare ntalty->talty-list (-> (List NTalTy) (List TalTy)))
+(def ntalty->talty (lam (t)
+  (case t
+    ((nt-i64) (tt-i64)) ((nt-str) (tt-str)) ((nt-bytes) (tt-bytes))
+    ((nt-word) (tt-word))
+    ((nt-data dn args) (tt-data dn (ntalty->talty-list args))))))
+(def ntalty->talty-list (lam (ts)
+  (case ts (nil nil) ((cons x r) (cons (ntalty->talty x) (ntalty->talty-list r))))))
+
+; ---- neutral -> lower.chiral's LCore --------------------------------------------
+(declare ncore->core       (-> NCore LCore))
+(declare ncore->core-list  (-> (List NCore) (List LCore)))
+(declare ncore->carms      (-> (List NArm) (List LCArm)))
+(declare ncore->cdflt      (-> (Maybe NCore) (Maybe LCore)))
+(def ncore->core (lam (c)
+  (case c
+    ((nc-var i)          (lc-var i))
+    ((nc-global n)       (lc-global n))
+    ((nc-prim n)         (lc-prim n))
+    ((nc-lit-i v)        (lc-lit-i v))
+    ((nc-lit-s v)        (lc-lit-s v))
+    ((nc-ann e)          (lc-ann (ncore->core e)))
+    ((nc-lam b)          (lc-lam (ncore->core b)))
+    ((nc-con dn cn args) (lc-con dn cn (ncore->core-list args)))
+    ((nc-let q v b)      (lc-let q (ncore->core v) (ncore->core b)))
+    ((nc-app f a)        (lc-app (ncore->core f) (ncore->core a)))
+    ((nc-case s arms d)  (lc-case (ncore->core s) (ncore->carms arms) (ncore->cdflt d))))))
+(def ncore->core-list (lam (cs)
+  (case cs (nil nil) ((cons x r) (cons (ncore->core x) (ncore->core-list r))))))
+(def ncore->carms (lam (as)
+  (case as (nil nil) ((cons a r) (case a ((narm cn nv b) (cons (lc-arm cn nv (ncore->core b)) (ncore->carms r))))))))
+(def ncore->cdflt (lam (m)
+  (case m (none (none)) ((some c) (some (ncore->core c))))))
+
+; ---- the fixed prim table (the pure I64 externs, mirroring native._PRIM_SIGS) -
+; lowering looks a used prim up in the CEnv; these are builtin, not Sig-declared.
+(def i64-binop TalSig (talsig (cons (tt-i64) (cons (tt-i64) nil)) (tt-i64)))
+(def prim-table (List (Pair Str TalSig))
+  (cons (pair "+" i64-binop) (cons (pair "-" i64-binop) (cons (pair "*" i64-binop)
+    (cons (pair "/" i64-binop) (cons (pair "%" i64-binop) nil))))))
+
+; ---- neutral NData -> lower.chiral's DData (the tag/boxing + ctor-field env) ---
+(declare ndctors->dctors (-> (List NDCtor) (List DCtor)))
+(def ndctors->dctors (lam (cs)
+  (case cs (nil nil) ((cons c r) (case c ((ndctor cn ftys)
+    (cons (dctor cn (ntalty->talty-list ftys)) (ndctors->dctors r))))))))
+(declare ndatas->ddatas (-> (List NData) (List DData)))
+(def ndatas->ddatas (lam (ds)
+  (case ds (nil nil) ((cons d r) (case d ((ndata dn cs)
+    (cons (ddata dn (ndctors->dctors cs)) (ndatas->ddatas r))))))))
+
+; ---- gather EVERY def's tal signature (so an inter-def call resolves) ---------
+(declare def-sigs (-> (List NDef) (List (Pair Str TalSig))))
+(def def-sigs (lam (defs)
+  (case defs (nil nil) ((cons d r) (case d ((ndef name params ret erased body)
+    (cons (pair name (talsig (ntalty->talty-list params) (ntalty->talty ret))) (def-sigs r))))))))
+
+; ---- erase a list of SSA TFns (with the real data env) to neutral NFns --------
+; XF errors -> br-err. `datas` is the whole-program env (never nil now), so a
+; con/case over a user data type erases with the correct tags + boxing.
+; ---- collect the program's string literals (deduped, first-occurrence order),
+; the literal TABLE: a string const lowers to i-const tt-str <index>; the same
+; table is shuttled to emit to place each payload in the data section. -----------
+(declare app-str (-> (List Str) (List Str) (List Str)))
+(def app-str (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (app-str t ys))))))
+(declare lits-mem (-> (List Str) Str Bool))
+(def lits-mem (lam (xs s) (case xs (nil false) ((cons x r) (case (str-eq x s) (true true) (false (lits-mem r s)))))))
+(declare clits-nc   (-> NCore (List Str)))
+(declare clits-ncl  (-> (List NCore) (List Str)))
+(declare clits-arms (-> (List NArm) (List Str)))
+(declare clits-dflt (-> (Maybe NCore) (List Str)))
+(def clits-nc (lam (c)
+  (case c
+    ((nc-lit-s v)        (cons v nil))
+    ((nc-var i)          nil)
+    ((nc-global n)       nil)
+    ((nc-prim n)         nil)
+    ((nc-lit-i v)        nil)
+    ((nc-ann e)          (clits-nc e))
+    ((nc-lam b)          (clits-nc b))
+    ((nc-con dn cn args) (clits-ncl args))
+    ((nc-let q v b)      (app-str (clits-nc v) (clits-nc b)))
+    ((nc-app f a)        (app-str (clits-nc f) (clits-nc a)))
+    ((nc-case s arms d)  (app-str (clits-nc s) (app-str (clits-arms arms) (clits-dflt d)))))))
+(def clits-ncl (lam (cs) (case cs (nil nil) ((cons x r) (app-str (clits-nc x) (clits-ncl r))))))
+(def clits-arms (lam (as) (case as (nil nil) ((cons a r) (case a ((narm cn nv b) (app-str (clits-nc b) (clits-arms r))))))))
+(def clits-dflt (lam (m) (case m (none nil) ((some c) (clits-nc c)))))
+(declare clits-defs (-> (List NDef) (List Str)))
+(def clits-defs (lam (defs) (case defs (nil nil) ((cons d r) (case d ((ndef nm p ret er b) (app-str (clits-nc b) (clits-defs r))))))))
+; first-occurrence dedup with TREE-SET membership -- the linear seen-list
+; scan was O(occurrences x distinct) interpreted. First-occurrence order is
+; unchanged, so emitted bytes are too.
+(declare dedup-str (-> (List Str) (Map Str I64) (List Str)))
+(def dedup-str (lam (xs seen)
+  (case xs (nil nil)
+    ((cons x r) (case (m-lookup Str I64 str-cmp x seen)
+      ((some v) (dedup-str r seen))
+      (none (cons x (dedup-str r (m-insert Str I64 str-cmp x 1 seen)))))))))
+(declare program-lits (-> (List NDef) (List Str)))
+(def program-lits (lam (defs) (dedup-str (clits-defs defs) (m-empty Str I64))))
+
+(data BR () (br-ok (fns (List NFn)) (lits (List Str)) (skips (List SkRec))) (br-err (msg Str)))
+(declare erase-list (-> (List Str) (List DData) (List TFn) BR))
+(def erase-list (lam (lits datas fns)
+  (case fns
+    (nil (br-ok nil lits nil))
+    ((cons f r) (case (erase-fn datas f)
+      ((xf-err m) (br-err (str-cat "erase: " m)))
+      ((xf-ok nf) (case (erase-list lits datas r)
+        ((br-err m)       (br-err m))
+        ((br-ok rest rl sk0)  (br-ok (cons nf rest) rl sk0)))))))))
+
+; ---- lower + erase EVERY def, accumulating all emitted TFns -------------------
+; Each def compiles under a CEnv carrying the WHOLE program's fn sigs (inter-def
+; calls) + the data env (con/case). compile-fn returns main + outlined extras;
+; all of them join one flat TFn list the emitter resolves labels across.
+(declare lapp-tfn (-> (List TFn) (List TFn) (List TFn)))
+(def lapp-tfn (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (lapp-tfn t ys))))))
+; nprim transport -> a prim-table entry; the whole extern table for the program.
+(declare nprim->ts (-> NPrim (Pair Str TalSig)))
+(def nprim->ts (lam (np) (case np ((nprim nm params ret)
+  (pair nm (talsig (ntalty->talty-list params) (ntalty->talty ret)))))))
+(declare nprims->table (-> (List NPrim) (List (Pair Str TalSig))))
+(def nprims->table (lam (ps) (case ps (nil nil) ((cons p r) (cons (nprim->ts p) (nprims->table r))))))
+(declare app-ts (-> (List (Pair Str TalSig)) (List (Pair Str TalSig)) (List (Pair Str TalSig))))
+(def app-ts (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (app-ts t ys))))))
+
+; ---- prune emitted TFns whose call targets are not available (a skipped def
+; leaves a lowered caller referencing a missing label) -- iterate to a fixpoint,
+; mirroring lower.py's cascade (a caller of a non-lowered def is itself dropped).
+(declare instr-call (-> Instr (List Str)))
+(def instr-call (lam (i) (case i ((i-call dst f srcs ty) (cons f nil)) (_ nil))))
+(declare instrs-calls (-> (List Instr) (List Str)))
+(def instrs-calls (lam (is) (case is (nil nil) ((cons i r) (app-str (instr-call i) (instrs-calls r))))))
+(declare block-calls (-> Block (List Str)))
+(declare bterm-calls (-> TalTerm (List Str)))
+(declare branches-calls (-> (List Branch) (List Str)))
+(def block-calls (lam (b) (case b ((block is t) (app-str (instrs-calls is) (bterm-calls t))))))
+(def bterm-calls (lam (t) (case t
+  ((t-ret s) nil)
+  ((tt-case s brs d) (app-str (branches-calls brs) (case d (none nil) ((some db) (block-calls db))))))))
+(def branches-calls (lam (brs) (case brs (nil nil) ((cons b r) (case b ((branch cn dsts body) (app-str (block-calls body) (branches-calls r))))))))
+(declare tfn-nm (-> TFn Str))
+(def tfn-nm (lam (f) (case f ((tfn nm ps ret body nr) nm))))
+(declare tfn-names (-> (List TFn) (List Str)))
+(def tfn-names (lam (fs) (case fs (nil nil) ((cons f r) (cons (tfn-nm f) (tfn-names r))))))
+(declare cb-all-in (-> (List Str) (List Str) Bool))
+(def cb-all-in (lam (xs avail) (case xs (nil true) ((cons x r) (case (lits-mem avail x) (true (cb-all-in r avail)) (false false))))))
+(declare tfn-count (-> (List TFn) I64))
+(def tfn-count (lam (fs) (case fs (nil 0) ((cons f r) (+ 1 (tfn-count r))))))
+(declare prim-names (-> (List (Pair Str TalSig)) (List Str)))
+(def prim-names (lam (ps) (case ps (nil nil) ((cons p r) (case p ((pair k v) (cons k (prim-names r))))))))
+
+; drop TFns the erase step cannot handle (e.g. a non-native prim like str->i64):
+; a dry-run erase-fn, keeping only the ones that succeed. Runs BEFORE prune, so
+; a dropped fn's callers cascade-drop too. The erase (not compile-fn) is the
+; authority on the prim subset (op-parse / prim2lib are the authority) -- crossings (put/print) erase fine.
+; Returns kept TFns + skip records for each dropped fn with the offending op.
+(declare first-nonlowering-op (-> TFn (Maybe Str)))
+(declare filter-erasable (-> (List DData) (List TFn) (Pair (List TFn) (List SkRec))))
+(def filter-erasable (lam (datas fs)
+  (case fs (nil (pair nil nil))
+    ((cons f r) (case (erase-fn datas f)
+      ((xf-err m) (case (first-nonlowering-op f)
+        (none (case (filter-erasable datas r) ((pair kept skips) (pair kept skips))))
+        ((some op) (case (filter-erasable datas r) ((pair kept skips)
+          (pair kept (cons (mk-skrec (tfn-nm f) (sk-extern op)) skips)))))))
+      ((xf-ok nf) (case (filter-erasable datas r) ((pair kept skips)
+        (pair (cons f kept) skips)))))))))
+
+; first call name in `calls` not present in `avail` (for callee-blame cascade)
+(declare first-missing (-> (List Str) (List Str) (Maybe Str)))
+(def first-missing (lam (calls avail)
+  (case calls
+    (nil (none))
+    ((cons c r) (case (lits-mem avail c)
+      (true (first-missing r avail))
+      (false (some c)))))))
+
+(declare prune-pass (-> (List Str) (List TFn) (List SkRec) (Pair (List TFn) (List SkRec))))
+(def prune-pass (lam (avail fs skips) (case fs (nil (pair nil skips))
+  ((cons f r) (case (cb-all-in (block-calls (case f ((tfn nm ps ret body nr) body))) avail)
+    (true (case (prune-pass avail r skips) ((pair kept more-skips)
+      (pair (cons f kept) more-skips))))
+    (false (case (first-missing (block-calls (case f ((tfn nm ps ret body nr) body))) avail)
+      (none (prune-pass avail r skips))
+      ((some cn) (prune-pass avail r (cons (mk-skrec (tfn-nm f) (sk-callee cn)) skips))))))))))
+
+(declare prune-fix (-> (List Str) (List TFn) (Pair (List TFn) (List SkRec))))
+(def prune-fix (lam (primnames fs)
+  (case (prune-pass (app-str primnames (tfn-names fs)) fs nil) ((pair kept skips)
+    (case (=i (tfn-count kept) (tfn-count fs))
+      (true (pair kept skips))
+      (false (case (prune-fix primnames kept) ((pair kept2 skips2)
+        (pair kept2 (lapp-skip skips skips2))))))))))
+
+(declare lower-defs (-> (List Str) (List (Pair Str TalSig)) (List (Pair Str TalSig)) (List DData) (List NDef) (List TFn) (List SkRec) BR))
+(def lower-defs (lam (lits prims fnsigs datas defs acc skips)
+  (case defs
+    (nil (case (filter-erasable datas acc) ((pair filtered fskips)
+      (case (prune-fix (prim-names prims) filtered) ((pair pruned pskips)
+        (case (erase-list lits datas pruned)
+          ((br-err m) (br-err m))
+          ((br-ok efns elits esk) (br-ok efns elits (lapp-skip skips (lapp-skip fskips (lapp-skip pskips esk)))))))))))
+    ((cons d r) (case d ((ndef name params ret erased body)
+      (let (ptys (ntalty->talty-list params))
+      (let (rty  (ntalty->talty ret))
+      (let (ce   (cenv prims fnsigs datas lits))
+        (case (compile-fn ce name (ncore->core body) ptys erased rty)
+          ; a def the back cannot lower is SKIPPED (not fatal) -- mirrors
+          ; lower.py.lower_all, whose skipped map is non-fatal. The front's peel
+          ; gate (types lower) is coarser than the back's body compile, so a def
+          ; can pass peel yet fail here; a reachable skipped def surfaces as a
+          ; missing label at emit, not a whole-program abort.
+          ((le-skip er)        (lower-defs lits prims fnsigs datas r acc
+                                (cons (mk-skrec name (sk-extern er)) skips)))
+          ((le-ok main extra)  (lower-defs lits prims fnsigs datas r (lapp-tfn acc (cons main extra)) skips))))))))))))
+
+; ---- skip-chain diagnostics pure helpers (E97) ------------------------------
+; Check if an op name is in the erasure-lowerable set (op-parse ∪ prim2lib ∪ inline cases)
+(declare first-nonlowering-instr (-> (List Instr) (Maybe Str)))
+(declare first-nonlowering-term (-> TalTerm (Maybe Str)))
+(declare first-nonlowering-branches (-> (List Branch) (Maybe Str)))
+(declare first-nonlowering-block (-> Block (Maybe Str)))
+(declare lowerable-prim? (-> Str Bool))
+(def lowerable-prim? (lam (op)
+  (case (op-parse op)
+    ((some o) true)
+    (none (case (prim2lib op)
+      ((some lib) true)
+      (none (case (str-eq op "bget") (true true)
+        (false (case (str-eq op "blen") (true true)
+          (false (case (str-eq op "str-len") (true true)
+            (false false))))))))))))
+
+; Find the first non-lowering prim op name in an instruction list
+(def first-nonlowering-instr (lam (is)
+  (case is
+    (nil (none))
+    ((cons i r) (case i
+      ((i-prim dst op srcs ty) (case (lowerable-prim? op)
+        (true (first-nonlowering-instr r))
+        (false (some op))))
+      (_ (first-nonlowering-instr r)))))))
+
+; Find the first non-lowering op in a TFn (scan block + term branches)
+(def first-nonlowering-term (lam (t)
+  (case t
+    ((t-ret s) (none))
+    ((tt-case s brs d) (first-nonlowering-branches brs)))))
+
+(def first-nonlowering-branches (lam (brs)
+  (case brs
+    (nil (none))
+    ((cons b r) (case b ((branch cn dsts body)
+      (case (first-nonlowering-block body)
+        (none (first-nonlowering-branches r))
+        ((some op) (some op)))))))))
+
+(def first-nonlowering-block (lam (b)
+  (case b ((block is t)
+    (case (first-nonlowering-instr is)
+      (none (first-nonlowering-term t))
+      ((some op) (some op)))))))
+
+(def first-nonlowering-op (lam (f)
+  (case f ((tfn nm ps ret body nr)
+    (first-nonlowering-block body)))))
+
+; THE BACK ENTRY: the whole program (every lowerable NDef) + the data env ->
+; br-ok (List NFn) / br-err msg. Reconstructs the lower inputs per def, compiles
+; each to typed SSA under a program-wide CEnv, then erases every emitted TFn to
+; the neutral NFns the emit image consumes.
+(def back-program (-> (List NDef) (List NData) (List NPrim) BR)
+  (lam (defs ndatas nprims)
+    (lower-defs (program-lits defs)
+                (app-ts (nprims->table nprims) prim-table)
+                (def-sigs defs) (ndatas->ddatas ndatas) defs nil nil)))

@@ -1,0 +1,254 @@
+; E17: the tal->tal optimizer -- const-fold, DCE, specialize (partial eval = the
+; pregen primitive), and the optimize pipeline. Ported from scaffold/chirality/
+; optimize.py fold (:216)/_fold_block (:132)/_fold_prim (:44), dead (:456)/
+; _dead_block (:424)/_uses_in_block (:61), specialize (:506)/_remap_block (:465).
+; Each pass is a PURE (->) transform (an "optimization" that read a file or
+; reordered I/O would be untypeable), and the preserve-check moves INTO the
+; signature: optimize/specialize return a Checked result sum whose c-ok cannot be
+; formed without ck-fn (E18) re-judging the residual. optimize.py stays the oracle.
+;
+; This operates on the TYPED tal IR that optimize.py rewrites and E18 checks (NOT
+; tal-ir.chiral's erased ti-* IR -- the example predates E16/E18 landing). It
+; IMPORTS tal-check (E18) for that IR + the real ck-fn, so re-check is wired end to
+; end. Folds are BIT-IDENTICAL to runtime (chirality I64 wraps two's-complement, div is
+; Euclidean -- same as optimize.py's wrap64/i64_div). Meaning-preserving only; no
+; cost claim (that is E38).
+(import "prelude")
+(import "tal-check")
+
+; constant facts for folding; static-arg bindings for specialize; the check result.
+(data CVal () (cv-i (n I64)) (cv-c (cn Str)))
+(data SVal () (sv-i (n I64)) (sv-con (dn Str) (cn Str)))
+(data Checked () (chk-ok (v TFn)) (chk-err (msg Str)))
+
+; ---- generic helpers ---------------------------------------------------------
+(declare olen (-> (0 A (type 0)) (List A) I64))
+(def olen (lam (A xs) (case xs (nil 0) ((cons h t) (+ 1 (olen A t))))))
+(declare oapp (-> (0 A (type 0)) (List A) (List A) (List A)))
+(def oapp (lam (A xs ys) (case xs (nil ys) ((cons h t) (cons h (oapp A t ys))))))
+(declare onth (-> (0 A (type 0)) (List A) I64 (Maybe A)))
+(def onth (lam (A xs i) (case xs (nil (none)) ((cons h t) (case (<=i i 0) (true (some h)) (false (onth A t (- i 1))))))))
+(declare imem (-> I64 (List I64) Bool))
+(def imem (lam (x xs) (case xs (nil false) ((cons y r) (case (=i x y) (true true) (false (imem x r)))))))
+(declare iassoc (-> (List (Pair I64 I64)) I64 (Maybe I64)))
+(def iassoc (lam (ps k) (case ps (nil (none)) ((cons p r) (case p ((pair pk pv) (case (=i pk k) (true (some pv)) (false (iassoc r k)))))))))
+
+; ---- const env: reg -> CVal (assoc) ------------------------------------------
+(declare cenv-get (-> (List (Pair I64 CVal)) I64 (Maybe CVal)))
+(def cenv-get (lam (cenv r) (case cenv (nil (none)) ((cons p rest) (case p ((pair k v) (case (=i k r) (true (some v)) (false (cenv-get rest r)))))))))
+(declare cenv-pop (-> (List (Pair I64 CVal)) I64 (List (Pair I64 CVal))))
+(def cenv-pop (lam (cenv r) (case cenv (nil nil) ((cons p rest) (case p ((pair k v) (case (=i k r) (true (cenv-pop rest r)) (false (cons p (cenv-pop rest r))))))))))
+(declare cenv-set (-> (List (Pair I64 CVal)) I64 CVal (List (Pair I64 CVal))))
+(def cenv-set (lam (cenv r v) (cons (pair r v) (cenv-pop cenv r))))
+(declare cenv-c (-> (List (Pair I64 CVal)) I64 (Maybe Str)))
+(def cenv-c (lam (cenv r) (case (cenv-get cenv r) ((some v) (case v ((cv-c cn) (some cn)) (_ (none)))) (none (none)))))
+
+; ---- fold: arithmetic + comparison + static case dispatch --------------------
+(def tt-i64? (-> TalTy Bool) (lam (t) (case t ((tt-i64) true) (_ false))))
+(def bool->cn (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
+(declare fold-prim (-> Str I64 I64 (Maybe I64)))
+(def fold-prim (lam (op a b)
+  (case (str-eq op "+") (true (some (+ a b)))
+  (false (case (str-eq op "-") (true (some (- a b)))
+  (false (case (str-eq op "*") (true (some (* a b)))
+  (false (case (str-eq op "/") (true (case (=i b 0) (true (none)) (false (some (/ a b)))))
+  (false (case (str-eq op "%") (true (case (=i b 0) (true (none)) (false (some (% a b)))))
+  (false (none)))))))))))))
+(declare fold-cmp (-> Str I64 I64 (Maybe Str)))
+(def fold-cmp (lam (op a b)
+  (case (str-eq op "=i") (true (some (bool->cn (=i a b))))
+  (false (case (str-eq op "<i") (true (some (bool->cn (<i a b))))
+  (false (case (str-eq op "<=i") (true (some (bool->cn (<=i a b))))
+  (false (none)))))))))
+
+(declare two-srcs (-> (List I64) (Maybe (Pair I64 I64))))
+(def two-srcs (lam (srcs) (case srcs ((cons a r0) (case r0 ((cons b r1) (case r1 (nil (some (pair a b))) (_ (none)))) (_ (none)))) (_ (none)))))
+(declare both-i (-> (List (Pair I64 CVal)) I64 I64 (Maybe (Pair I64 I64))))
+(def both-i (lam (cenv s0 s1)
+  (case (cenv-get cenv s0) ((some v0) (case v0 ((cv-i a) (case (cenv-get cenv s1) ((some v1) (case v1 ((cv-i b) (some (pair a b))) (_ (none)))) (none (none)))) (_ (none)))) (none (none)))))
+
+(declare fold-prim-instr (-> Instr I64 Str (List I64) TalTy (List (Pair I64 CVal)) (Pair (List Instr) (List (Pair I64 CVal)))))
+(def fold-prim-instr (lam (i dst op srcs ty cenv)
+  (case (two-srcs srcs)
+    (none (pair (cons i nil) (cenv-pop cenv dst)))
+    ((some pr) (case pr ((pair s0 s1)
+      (case (both-i cenv s0 s1)
+        (none (pair (cons i nil) (cenv-pop cenv dst)))
+        ((some ab) (case ab ((pair a b)
+          (case (fold-prim op a b)
+            ((some v) (pair (cons (i-const dst (tt-i64) v) nil) (cenv-set cenv dst (cv-i v))))
+            (none (case (fold-cmp op a b)
+              ((some cn) (pair (cons (i-con dst "Bool" cn nil ty) nil) (cenv-set cenv dst (cv-c cn))))
+              (none (pair (cons i nil) (cenv-pop cenv dst))))))))))))))))
+
+(declare fold-instr (-> Instr (List (Pair I64 CVal)) (Pair (List Instr) (List (Pair I64 CVal)))))
+(def fold-instr (lam (i cenv)
+  (case i
+    ((i-const dst ty val) (case (tt-i64? ty) (true (pair (cons i nil) (cenv-set cenv dst (cv-i val)))) (false (pair (cons i nil) (cenv-pop cenv dst)))))
+    ((i-prim dst op srcs ty) (fold-prim-instr i dst op srcs ty cenv))
+    ((i-con dst dn cn srcs ty) (case srcs (nil (pair (cons i nil) (cenv-set cenv dst (cv-c cn)))) (_ (pair (cons i nil) (cenv-pop cenv dst)))))
+    ((i-call dst f srcs ty) (pair (cons i nil) (cenv-pop cenv dst)))
+    ((i-bnew dst len) (pair (cons i nil) (cenv-pop cenv dst)))
+    ((i-bget dst ptr idx) (pair (cons i nil) (cenv-pop cenv dst)))
+    ((i-bput ptr idx v) (pair (cons i nil) cenv))
+    ((i-blen dst src) (pair (cons i nil) (cenv-pop cenv dst))))))
+
+(declare fold-instrs (-> (List Instr) (List (Pair I64 CVal)) (Pair (List Instr) (List (Pair I64 CVal)))))
+(def fold-instrs (lam (instrs cenv)
+  (case instrs
+    (nil (pair nil cenv))
+    ((cons i rest) (case (fold-instr i cenv) ((pair emitted cenv1)
+      (case (fold-instrs rest cenv1) ((pair more cenv2) (pair (oapp Instr emitted more) cenv2)))))))))
+
+(declare fold-block (-> Block (List (Pair I64 CVal)) Block))
+(declare fold-branches (-> (List Branch) (List (Pair I64 CVal)) (List Branch)))
+(declare fold-dflt (-> (Maybe Block) (List (Pair I64 CVal)) (Maybe Block)))
+(declare dispatch (-> (List Instr) (List (Pair I64 CVal)) (List Branch) (Maybe Block) Str (Maybe Block)))
+(def prepend (-> (List Instr) Block Block) (lam (out blk) (case blk ((block ins term) (block (oapp Instr out ins) term)))))
+(def fold-block (lam (blk cenv)
+  (case blk ((block instrs term)
+    (case (fold-instrs instrs cenv) ((pair out cenv2)
+      (case term
+        ((t-ret src) (block out (t-ret src)))
+        ((tt-case src branches dflt)
+          (case (cenv-c cenv2 src)
+            ((some cn) (case (dispatch out cenv2 branches dflt cn)
+              ((some b) b)
+              (none (block out (tt-case src (fold-branches branches cenv2) (fold-dflt dflt cenv2))))))
+            (none (block out (tt-case src (fold-branches branches cenv2) (fold-dflt dflt cenv2)))))))))))))
+(def dispatch (lam (out cenv branches dflt cn)
+  (case branches
+    (nil (case dflt ((some d) (some (prepend out (fold-block d cenv)))) (none (none))))
+    ((cons br rest) (case br ((branch bcn dsts body)
+      (case (and (str-eq bcn cn) (case dsts (nil true) (_ false)))
+        (true (some (prepend out (fold-block body cenv))))
+        (false (dispatch out cenv rest dflt cn)))))))))
+(def fold-branches (lam (branches cenv)
+  (case branches (nil nil) ((cons br rest) (case br ((branch cn dsts body) (cons (branch cn dsts (fold-block body cenv)) (fold-branches rest cenv))))))))
+(def fold-dflt (lam (dflt cenv) (case dflt (none (none)) ((some d) (some (fold-block d cenv))))))
+(def fold (-> TFn TFn) (lam (fn) (case fn ((tfn name params ret body nregs) (tfn name params ret (fold-block body nil) nregs)))))
+
+; ---- dead: DCE via a bounded liveness fixpoint -------------------------------
+(declare uses-instr (-> Instr (List I64) (List I64)))
+(def uses-instr (lam (i acc)
+  (case i
+    ((i-const dst ty val) acc)
+    ((i-prim dst op srcs ty) (oapp I64 srcs acc))
+    ((i-con dst dn cn srcs ty) (oapp I64 srcs acc))
+    ((i-call dst f srcs ty) (oapp I64 srcs acc))
+    ((i-bnew dst len) (cons len acc))
+    ((i-bget dst ptr idx) (cons ptr (cons idx acc)))
+    ((i-bput ptr idx v) (cons ptr (cons idx (cons v acc))))
+    ((i-blen dst src) (cons src acc)))))
+(declare uses-instrs (-> (List Instr) (List I64) (List I64)))
+(def uses-instrs (lam (instrs acc) (case instrs (nil acc) ((cons i rest) (uses-instrs rest (uses-instr i acc))))))
+(declare uses-block (-> (List Instr) TalTerm (List I64) (List I64)))
+(declare uses-branches (-> (List Branch) (List I64) (List I64)))
+(declare uses-dflt (-> (Maybe Block) (List I64) (List I64)))
+(def uses-block (lam (instrs term acc)
+  (case term
+    ((t-ret src) (uses-instrs instrs (cons src acc)))
+    ((tt-case src branches dflt) (uses-dflt dflt (uses-branches branches (uses-instrs instrs (cons src acc))))))))
+(def uses-branches (lam (branches acc) (case branches (nil acc) ((cons br rest) (case br ((branch cn dsts body) (case body ((block bi bt) (uses-branches rest (uses-block bi bt acc))))))))))
+(def uses-dflt (lam (dflt acc) (case dflt (none acc) ((some d) (case d ((block bi bt) (uses-block bi bt acc)))))))
+
+(declare droppable? (-> Instr (List I64) Bool))
+(def droppable? (lam (i used)
+  (case i
+    ((i-const dst ty val) (not (imem dst used)))
+    ((i-prim dst op srcs ty) (not (imem dst used)))
+    ((i-blen dst src) (not (imem dst used)))
+    ((i-bget dst ptr idx) (not (imem dst used)))
+    ((i-con dst dn cn srcs ty) (case srcs (nil (not (imem dst used))) (_ false)))
+    (_ false))))
+(declare drop-dead (-> (List Instr) (List I64) (List Instr)))
+(def drop-dead (lam (kept used) (case kept (nil nil) ((cons i rest) (case (droppable? i used) (true (drop-dead rest used)) (false (cons i (drop-dead rest used))))))))
+(declare dead-fix (-> (List Instr) TalTerm (List Instr)))
+(def dead-fix (lam (kept term)
+  (let ((out (drop-dead kept (uses-block kept term nil))))
+    (case (=i (olen Instr out) (olen Instr kept)) (true kept) (false (dead-fix out term))))))
+(declare dead-block (-> Block Block))
+(declare dead-branches (-> (List Branch) (List Branch)))
+(declare dead-dflt (-> (Maybe Block) (Maybe Block)))
+(def dead-block (lam (blk)
+  (case blk ((block instrs term)
+    (let ((kept (dead-fix instrs term)))
+      (case term
+        ((t-ret src) (block kept (t-ret src)))
+        ((tt-case src branches dflt) (block kept (tt-case src (dead-branches branches) (dead-dflt dflt))))))))))
+(def dead-branches (lam (branches) (case branches (nil nil) ((cons br rest) (case br ((branch cn dsts body) (cons (branch cn dsts (dead-block body)) (dead-branches rest))))))))
+(def dead-dflt (lam (dflt) (case dflt (none (none)) ((some d) (some (dead-block d))))))
+(def dead (-> TFn TFn) (lam (fn) (case fn ((tfn name params ret body nregs) (tfn name params ret (dead-block body) nregs)))))
+
+; ---- specialize: bind static args -> residual (the pregen primitive) ---------
+(declare rf (-> (List (Pair I64 I64)) I64 I64))
+(def rf (lam (remap r) (case (iassoc remap r) ((some r2) r2) (none r))))
+(declare rmap-srcs (-> (List (Pair I64 I64)) (List I64) (List I64)))
+(def rmap-srcs (lam (remap srcs) (case srcs (nil nil) ((cons s r) (cons (rf remap s) (rmap-srcs remap r))))))
+(declare rmap-instr (-> (List (Pair I64 I64)) Instr Instr))
+(def rmap-instr (lam (remap i)
+  (case i
+    ((i-const dst ty val) (i-const (rf remap dst) ty val))
+    ((i-prim dst op srcs ty) (i-prim (rf remap dst) op (rmap-srcs remap srcs) ty))
+    ((i-con dst dn cn srcs ty) (i-con (rf remap dst) dn cn (rmap-srcs remap srcs) ty))
+    ((i-call dst f srcs ty) (i-call (rf remap dst) f (rmap-srcs remap srcs) ty))
+    ((i-bnew dst len) (i-bnew (rf remap dst) (rf remap len)))
+    ((i-bget dst ptr idx) (i-bget (rf remap dst) (rf remap ptr) (rf remap idx)))
+    ((i-bput ptr idx v) (i-bput (rf remap ptr) (rf remap idx) (rf remap v)))
+    ((i-blen dst src) (i-blen (rf remap dst) (rf remap src))))))
+(declare rmap-instrs (-> (List (Pair I64 I64)) (List Instr) (List Instr)))
+(def rmap-instrs (lam (remap instrs) (case instrs (nil nil) ((cons i r) (cons (rmap-instr remap i) (rmap-instrs remap r))))))
+(declare rmap-block (-> (List (Pair I64 I64)) Block Block))
+(declare rmap-branches (-> (List (Pair I64 I64)) (List Branch) (List Branch)))
+(declare rmap-dflt (-> (List (Pair I64 I64)) (Maybe Block) (Maybe Block)))
+(declare rmap-dsts (-> (List (Pair I64 I64)) (List I64) (List I64)))
+(def rmap-dsts (lam (remap ds) (case ds (nil nil) ((cons d r) (cons (rf remap d) (rmap-dsts remap r))))))
+(def rmap-block (lam (remap blk)
+  (case blk ((block instrs term)
+    (case term
+      ((t-ret src) (block (rmap-instrs remap instrs) (t-ret (rf remap src))))
+      ((tt-case src branches dflt) (block (rmap-instrs remap instrs) (tt-case (rf remap src) (rmap-branches remap branches) (rmap-dflt remap dflt)))))))))
+(def rmap-branches (lam (remap branches) (case branches (nil nil) ((cons br rest) (case br ((branch cn dsts body) (cons (branch cn (rmap-dsts remap dsts) (rmap-block remap body)) (rmap-branches remap rest))))))))
+(def rmap-dflt (lam (remap dflt) (case dflt (none (none)) ((some d) (some (rmap-block remap d))))))
+
+; build remap + entry from the bindings; params 0..n-1, unbound take 0.., bound the rest.
+(declare bnd? (-> (List (Pair I64 SVal)) I64 Bool))
+(def bnd? (lam (bs i) (case bs (nil false) ((cons p r) (case p ((pair k v) (case (=i k i) (true true) (false (bnd? r i)))))))))
+(declare bnd-get (-> (List (Pair I64 SVal)) I64 (Maybe SVal)))
+(def bnd-get (lam (bs i) (case bs (nil (none)) ((cons p r) (case p ((pair k v) (case (=i k i) (true (some v)) (false (bnd-get r i)))))))))
+(declare idx-range (-> I64 I64 (List I64)))       ; [lo, hi)
+(def idx-range (lam (lo hi) (case (<i lo hi) (false nil) (true (cons lo (idx-range (+ lo 1) hi))))))
+(declare filt-unbound (-> (List (Pair I64 SVal)) (List I64) (List I64)))
+(def filt-unbound (lam (bs xs) (case xs (nil nil) ((cons i r) (case (bnd? bs i) (true (filt-unbound bs r)) (false (cons i (filt-unbound bs r))))))))
+(declare filt-bound (-> (List (Pair I64 SVal)) (List I64) (List I64)))
+(def filt-bound (lam (bs xs) (case xs (nil nil) ((cons i r) (case (bnd? bs i) (true (cons i (filt-bound bs r))) (false (filt-bound bs r)))))))
+(declare mk-remap (-> (List I64) I64 (List (Pair I64 I64))))     ; assign each index the next slot from base
+(def mk-remap (lam (xs base) (case xs (nil nil) ((cons i r) (cons (pair i base) (mk-remap r (+ base 1)))))))
+(declare mk-entry (-> (List I64) (List (Pair I64 SVal)) (List (Pair I64 I64)) (List Instr)))
+(def mk-entry (lam (bound bs remap)
+  (case bound (nil nil) ((cons b r)
+    (case (bnd-get bs b) (none (mk-entry r bs remap)) ((some sv)
+      (case sv
+        ((sv-i n) (cons (i-const (rf remap b) (tt-i64) n) (mk-entry r bs remap)))
+        ((sv-con dn cn) (cons (i-con (rf remap b) dn cn nil (tt-data dn nil)) (mk-entry r bs remap))))))))))
+(declare sel-params (-> (List TalTy) (List I64) (List TalTy)))
+(def sel-params (lam (params xs) (case xs (nil nil) ((cons i r) (case (onth TalTy params i) ((some t) (cons t (sel-params params r))) (none (sel-params params r)))))))
+
+(declare specialize-raw (-> TFn (List (Pair I64 SVal)) TFn))
+(def specialize-raw (lam (fn bindings)
+  (case fn ((tfn name params ret body nregs)
+    (let ((all (idx-range 0 (olen TalTy params))))
+    (let ((unbound (filt-unbound bindings all)))
+    (let ((bound (filt-bound bindings all)))
+    (let ((remap (oapp (Pair I64 I64) (mk-remap unbound 0) (mk-remap bound (olen I64 unbound)))))
+      (case (rmap-block remap body) ((block rins rterm)
+        (dead (fold (tfn (str-cat name "#spec") (sel-params params unbound) ret
+                         (block (oapp Instr (mk-entry bound bindings remap) rins) rterm) nregs)))))))))))))
+
+; ---- re-check + optimize pipeline (the preserve-check in the signature) -------
+(declare re-check (-> CEnv TFn Checked))
+(def re-check (lam (ce t) (case (ck-fn ce t) ((ck-ok env) (chk-ok t)) ((ck-err m) (chk-err m)))))
+(declare optimize (-> CEnv TFn Checked))
+(def optimize (lam (ce fn) (re-check ce (dead (fold fn)))))
+(declare specialize (-> CEnv TFn (List (Pair I64 SVal)) Checked))
+(def specialize (lam (ce fn bindings) (re-check ce (specialize-raw fn bindings))))

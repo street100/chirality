@@ -1,0 +1,74 @@
+; ports/sock — the socket registry: stream caps and their result sums.
+;
+; Sock and LSock are the same wire in two different protocol states, so they
+; share a home. Every fallible socket op carries its error IN the result type
+; (E29): a real error is a corpse -- the *-err arm drops the operand handle
+; (nothing to thread back, the bridge/kernel is done with the fd) and carries
+; only a message. Only success and the half-close (recv-closed) thread a live
+; socket onward.
+;
+; Depends on ports/fd for the Fd cap: sock-send-fd moves a descriptor across
+; the wire, so the fd-passing shapes cannot be stated without it.
+
+(import "prelude")
+(import "ports/fd")
+
+(porttype Sock)
+(porttype LSock)          ; a listening socket: same wire, different protocol state
+
+; Port result shapes. The port fields are linear: the returned port is the
+; same authority moved back to you, and you must move it onward exactly once.
+; A closed stream is a named event in the type, not a sentinel value.
+(data RecvR ()
+  (recv-r (bs Bytes) (1 sock Sock))
+  (recv-closed (1 sock Sock))
+  (recv-err (msg Str)))
+
+(data Poll2R () (poll2-r (idx I64) (1 a Sock) (1 b Sock)))
+(data AccR ()
+  (acc-r (1 l LSock) (1 s Sock))
+  (acc-err (msg Str)))
+(data ConnR ()
+  (conn-r (1 s Sock))
+  (conn-err (msg Str)))
+; socketpair (E126): a hermetic connected pair — TWO live Sock caps, no peer,
+; no listener, no network. Both success caps are linear (moved back to you once
+; each); the error arm folds -errno into a Str message (numeric render deferred,
+; like conn-err). Tags in declaration order: sp-ok=0, sp-err=1.
+(data SockPairR ()
+  (sp-ok (1 a Sock) (1 b Sock))
+  (sp-err (msg Str)))
+(data LisR ()
+  (lis-r (1 l LSock))
+  (lis-err (msg Str)))
+(data SendR ()
+  (send-r (1 s Sock))
+  (send-err (msg Str)))
+; fd-passing (E30): the Fd is consumed on success (the kernel moved it to the
+; peer); on error the Sock AND the Fd come back, so the caller can retry or
+; discharge them -- an errored fd was NOT sent, it is still yours to close.
+(data SendFdR ()
+  (sfd-ok  (1 s Sock))
+  (sfd-err (errno I64) (1 s Sock) (1 f Fd)))
+
+(extern sock-connect (=> Str ConnR))
+; E129: raw AF_INET client connect crossing. Takes the packed 16-byte
+; sockaddr_in (family u16 = 2, port u16 network-order, 4-byte addr, 8 zero
+; bytes) as Bytes; runs socket(2,1,0) then connect(fd, sa, 16), closing the
+; fd on failure. Returns (conn-r s) or (conn-err msg). Bare types, no named
+; params (the B1 `load: unknown name` trap).
+(extern nb-sock-connect-in (=> Bytes ConnR))
+; socketpair(AF_UNIX, SOCK_STREAM, 0) -> two connected caps | -errno (E126).
+; Takes no address (Unit): a socketpair needs no name. Crosses the membrane (=>).
+(extern socketpair (=> Unit SockPairR))
+(extern sock-listen (=> Str LisR))
+(extern sock-accept (=> (1 l LSock) AccR))
+(extern lsock-close (=> (1 l LSock) Unit))
+(extern sock-send (=> (1 s Sock) Bytes SendR))
+(extern sock-send-fd (=> (1 s Sock) Bytes (1 f Fd) SendFdR))
+(extern sock-recv (=> (1 s Sock) (refine I64 (> 0)) RecvR))
+(extern sock-close (=> (1 s Sock) Unit))
+(extern poll2 (=> (1 a Sock) (1 b Sock) I64 Poll2R))
+; T3: N-fd poll crossing riding the existing nb-sys-poll-t (nr 7).
+; Takes (cell, nfds, timeout-ms), returns ready-count (or 0 timeout, -errno).
+(extern nb-poll (=> Bytes I64 I64 I64))

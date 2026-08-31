@@ -1,0 +1,47 @@
+; erased-nf: the neutral erased normal form -- the transport ADT that carries a
+; type-ERASED function BETWEEN the two colliding namespaces of the tal back half.
+;
+; WHY THIS MODULE EXISTS (a real structural finding, see lib/tal-erase.chiral):
+; the erasure bridges lib/tal-ssa.chiral (typed SSA, what lowering PRODUCES) and
+; lib/tal-ir.chiral (the executable IR the x86-64 emitter CONSUMES). Those two
+; modules DELIBERATELY reuse the same constructor names -- `TFn`/`tfn`/`t-ret`/
+; `t-case` mean the annotated thing in one and the erased thing in the other
+; ("same names, different meanings. Keep the two separate", tal-ssa header).
+; chirality has a FLAT global namespace and whole-file `import` (no selective or
+; qualified import), so a single module importing BOTH is a hard load error
+; (`t-ret redeclared`). The erasure therefore CANNOT be one module: it is
+;   erase-fn  (lib/tal-erase.chiral, imports tal-ssa) : ssa.TFn -> NFn
+;   reify-fn  (lib/tal-reify.chiral, imports tal-ir)  : NFn     -> ir.TFn
+; joined by THIS neutral form. NFn/NInstr/NCode use only prelude types and
+; `n-`-prefixed constructors, so it collides with neither side and can be
+; imported alongside either. All the real erasure work (drop the TalTy
+; annotations, flatten Block/Term into the seq-structured code, resolve a
+; constructor NAME to its declaration-order tag, decide immediate-vs-boxed
+; representation, classify prim ops) happens in tal-erase, producing NFn; reify
+; is then a mechanical 1:1 rebuild into tal-ir. The shape here is EXACTLY the
+; subset of tal-ir a lowered pure function can reach -- no ti-sys / ti-bptr
+; (hand-authored sys tal only), and n-lit only for a Str/Bytes const.
+(import "prelude")
+
+(data NInstr ()
+  (n-const (dst I64) (val I64))                    ; -> ti-const
+  (en-prim  (dst I64) (op Op) (a I64) (b I64))      ; -> ti-prim  (binary)
+  (n-con   (dst I64) (tag I64))                    ; -> ti-con   (immediate enum tag)
+  (n-cona  (dst I64) (tag I64) (fields (List I64)))  ; -> ti-cona (boxed cell)
+  (n-call  (dst I64) (fname Str) (args (List I64)))  ; -> ti-call
+  (n-lit   (dst I64) (lit I64))                    ; -> ti-lit
+  (n-bnew  (dst I64) (len I64))                    ; -> ti-bnew
+  (n-bget  (dst I64) (ptr I64) (idx I64))          ; -> ti-bget
+  (n-bput  (ptr I64) (idx I64) (val I64))          ; -> ti-bput
+  (n-blen  (dst I64) (src I64)))                   ; -> ti-blen
+
+; seq-structured code: the flattened Block/Term of the typed SSA. A branch is
+; ((tag, binds), code) exactly as tal-ir carries it, so reify is a pure rename.
+(data NCode ()
+  (n-seq (i NInstr) (rest NCode))
+  (n-ret (src I64))
+  (n-case (src I64) (boxed Bool)
+          (branches (List (Pair (Pair I64 (List I64)) NCode)))
+          (dflt (Maybe NCode))))
+
+(data NFn () (n-fn (name Str) (nparams I64) (nregs I64) (code NCode)))

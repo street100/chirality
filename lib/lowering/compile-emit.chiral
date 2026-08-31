@@ -1,0 +1,330 @@
+; ===========================================================================
+; lib/compile-emit.chiral  --  the emit-image end: NFn -> a runnable ELF file.
+;
+; The last image of the source->native pipeline (tal-ir + the x86-64 emitter +
+; the ELF layout). Reifies the neutral NFns (lib/erased-nf.chiral) into tal-ir,
+; emits x86-64 code bytes, prepends the ENTRY STUB (BRIDGE 2), and wraps the
+; result in the pure ELF layout (lib/elf.chiral). The returned bytes ARE the
+; executable file; writing/chmod/exec is the host's Decision #4 crossing.
+;
+; Lives in the emit image (emit-x64 + tal-reify + elf); CANNOT coexist with
+; tal-ssa (the TIFn/ti-tcase name collision), hence it takes NFns, not SSA TFns.
+; ===========================================================================
+
+(import "emit-x64")            ; emit : (List TIFn) (List Bytes) => (Pair Bytes offsets)
+(import "tal-reify")           ; reify-fn : NFn -> tal-ir TIFn ; NFn (erased-nf)
+(import "bytes-tal")           ; native-lib : the byte/string runtime routines
+(import "sys-linkage")         ; E70: link-lib -- the wrap-* E51 wrappers + sys-lib crossings
+(import "elf")                 ; elf-file : Bytes -> Bytes (+ pack-u16/u32/bcat/bslice)
+
+; E89: checked arena init. On mmap failure exits 1.
+; scaffold/chirality/native.py `_entry_stub`. `e_entry` points HERE. It zeroes the
+; dummy arg0, calls the batch entry (rip-relative), moves the i64 result to the
+; exit status, and exit_group(231)s. `entry-off` is the entry fn's byte offset
+; within the full code ONCE this stub is prepended; the `call` displacement is
+; `entry-off - 7` (the call instruction sits at stub offset 2, its next
+; instruction at 7). The single crossing (231) matches nb-sys-exit-group-t.
+;
+; No pack-u8 exists in the pure bytes fragment; a single opcode byte is the low
+; byte of a pack-u16 (Euclidean, LE). rel32/imm32 are pack-u32 (LE), matching
+; native.py's struct.pack("<i", rel) / struct.pack("<I", 231) for the
+; nonnegative values a prepended stub produces (entry-off >= 16 => rel >= 9).
+(def byte1 (-> I64 Bytes) (lam (b) (bslice (pack-u16 b) 0 1)))
+
+; The stub ALSO initializes the arena (E89/E91 reserve-commit v3): the static
+; ELF has no loader to poke the heap cells (native.py's JIT does that in ctypes),
+; so the stub RESERVES a large PROT_NONE VA range (mmap), then COMMITS a PROT_RW
+; prefix (mprotect), then stores the four arena cells at their ABSOLUTE vaddrs
+; (ET_EXEC's fixed load base makes `mov [moffs64], rax` addressing available)
+; before calling main: heapptr=base, heapbase=base, heapend=base+init-commit,
+; heapreserve=base+reserve-bytes. Both syscalls are checked; on failure it writes
+; "can't allocate arena\n" to fd 2 and exit_group(1)s. 224 bytes; MIRRORS
+; native.py `_entry_stub` byte-for-byte (test_entry_stub_matches_native_byte_for_
+; byte). Crossings: mmap (9), mprotect (10), write (1), exit_group (231).
+; `entry-off` = stub-len + entry code offset; the `call` next instruction sits at
+; stub offset 158, so rel32 = entry-off - 158. The `48 a3` moffs64 store writes
+; RAX only, so every base+K sum is built in rax first (mov rax,rdi; movabs rsi,K;
+; add rax,rsi). reserve-bytes/init-commit MUST equal native.py RESERVE_BYTES /
+; INIT_COMMIT (they are cross-checked by the byte-identity test).
+(def reserve-bytes I64 68719476736)         ; 64 GiB PROT_NONE reservation
+(def init-commit   I64 262144)              ; 256 KiB PROT_RW committed prefix (grows on demand)
+; the 21-byte fd-2 diagnostic "can't allocate arena\n", built from raw bytes
+; (the pure bytes fragment has no pack-u8; b1 gives a single low byte):
+(def arena-fail-msg Bytes
+  (bcat (b1 99) (bcat (b1 97) (bcat (b1 110) (bcat (b1 39) (bcat (b1 116)
+  (bcat (b1 32) (bcat (b1 97) (bcat (b1 108) (bcat (b1 108) (bcat (b1 111)
+  (bcat (b1 99) (bcat (b1 97) (bcat (b1 116) (bcat (b1 101) (bcat (b1 32)
+  (bcat (b1 97) (bcat (b1 114) (bcat (b1 101) (bcat (b1 110) (bcat (b1 97)
+        (b1 10)))))))))))))))))))))) ; 20 bcat + def
+(def entry-stub-v2 (-> I64 I64 I64 I64 I64 Bytes)
+  (lam (entry-off heapptr-abs heapbase-abs heapend-abs heapreserve-abs)
+    (bcat (byte1 184)                          ; b8       mov eax, imm32
+    (bcat (pack-u32 9)                         ; 9 = mmap
+    (bcat (pack-u16 65329)                     ; 31 ff    xor edi, edi   (addr = 0)
+    (bcat (pack-u16 48712)                     ; 48 be    movabs rsi, imm64
+    (bcat (pack-u64 reserve-bytes)             ; RESERVE_BYTES (len)
+    (bcat (byte1 186)                          ; ba       mov edx, imm32
+    (bcat (pack-u32 0)                         ; 0 = PROT_NONE
+    (bcat (pack-u16 47681)                     ; 41 ba    mov r10d, imm32
+    (bcat (pack-u32 34)                        ; 0x22 = PRIVATE|ANON
+    (bcat (bc3 (b1 73) (b1 199) (b1 192))      ; 49 c7 c0 mov r8, imm32 (sign-ext)
+    (bcat (pack-u32 4294967295)                ; 0xffffffff -> -1 (fd)
+    (bcat (bc3 (b1 69) (b1 49) (b1 201))       ; 45 31 c9 xor r9d, r9d (offset = 0)
+    (bcat (pack-u16 1295)                      ; 0f 05    mmap syscall
+    (bcat (bc3 (b1 72) (b1 133) (b1 192))      ; 48 85 c0 test rax, rax
+    (bcat (pack-u16 633)                       ; 79 02    jns +2 (skip fail jmp)
+    (bcat (pack-u16 30955)                     ; eb 78    jmp +120 -> fail_tail
+    (bcat (bc3 (b1 72) (b1 137) (b1 199))      ; 48 89 c7 mov rdi, rax (save base)
+    (bcat (pack-u16 41800)                     ; 48 a3    mov [moffs64], rax
+    (bcat (pack-u64 heapptr-abs)               ; &heapptr <- base
+    (bcat (pack-u16 41800)                     ; 48 a3    mov [moffs64], rax
+    (bcat (pack-u64 heapbase-abs)              ; &heapbase <- base
+    (bcat (byte1 184)                          ; b8       mov eax, imm32
+    (bcat (pack-u32 10)                        ; 10 = mprotect
+    (bcat (pack-u16 48712)                     ; 48 be    movabs rsi, imm64
+    (bcat (pack-u64 init-commit)               ; INIT_COMMIT (len)
+    (bcat (byte1 186)                          ; ba       mov edx, imm32
+    (bcat (pack-u32 3)                         ; 3 = PROT_READ|PROT_WRITE
+    (bcat (pack-u16 1295)                      ; 0f 05    mprotect syscall
+    (bcat (bc3 (b1 72) (b1 133) (b1 192))      ; 48 85 c0 test rax, rax
+    (bcat (pack-u16 633)                       ; 79 02    jns +2 (skip fail jmp)
+    (bcat (pack-u16 17643)                     ; eb 44    jmp +68 -> fail_tail
+    (bcat (bc3 (b1 72) (b1 137) (b1 248))      ; 48 89 f8 mov rax, rdi (base)
+    (bcat (pack-u16 48712)                     ; 48 be    movabs rsi, imm64
+    (bcat (pack-u64 init-commit)               ; INIT_COMMIT
+    (bcat (bc3 (b1 72) (b1 1) (b1 240))        ; 48 01 f0 add rax, rsi
+    (bcat (pack-u16 41800)                     ; 48 a3    mov [moffs64], rax
+    (bcat (pack-u64 heapend-abs)               ; &heapend <- base+init-commit
+    (bcat (bc3 (b1 72) (b1 137) (b1 248))      ; 48 89 f8 mov rax, rdi (base)
+    (bcat (pack-u16 48712)                     ; 48 be    movabs rsi, imm64
+    (bcat (pack-u64 reserve-bytes)             ; RESERVE_BYTES
+    (bcat (bc3 (b1 72) (b1 1) (b1 240))        ; 48 01 f0 add rax, rsi
+    (bcat (pack-u16 41800)                     ; 48 a3    mov [moffs64], rax
+    (bcat (pack-u64 heapreserve-abs)           ; &heapreserve <- base+reserve-bytes
+    (bcat (pack-u16 65329)                     ; 31 ff    xor edi, edi (dummy arg0 = 0)
+    (bcat (byte1 232)                          ; e8       call <entry>
+    (bcat (pack-u32 (- entry-off 158))         ; rel32 (LE) = entry-off - 158
+    (bcat (pack-u16 51081)                     ; 89 c7    mov edi, eax (result -> status)
+    (bcat (byte1 184)                          ; b8       mov eax, imm32
+    (bcat (pack-u32 231)                       ; 231 (exit_group)
+    (bcat (pack-u16 1295)                      ; 0f 05    exit_group syscall
+    (bcat (byte1 184)                          ; b8       mov eax, imm32
+    (bcat (pack-u32 1)                         ; 1 = write
+    (bcat (byte1 191)                          ; bf       mov edi, imm32
+    (bcat (pack-u32 2)                         ; 2 = stderr
+    (bcat (bc3 (b1 72) (b1 141) (b1 53))       ; 48 8d 35 lea rsi, [rip+19]
+    (bcat (pack-u32 19)                        ; rip+19 -> msg
+    (bcat (byte1 186)                          ; ba       mov edx, imm32
+    (bcat (pack-u32 21)                        ; 21 = msg length
+    (bcat (pack-u16 1295)                      ; 0f 05    write syscall
+    (bcat (byte1 184)                          ; b8       mov eax, imm32
+    (bcat (pack-u32 231)                       ; 231 (exit_group)
+    (bcat (byte1 191)                          ; bf       mov edi, imm32
+    (bcat (pack-u32 1)                         ; 1
+    (bcat (pack-u16 1295)                      ; 0f 05    exit_group syscall
+          arena-fail-msg))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+
+; ---- reify a list of neutral NFns into tal-ir TFns ----------------------------
+(declare reify-all (-> (List NFn) (List TIFn)))
+(def reify-all (lam (fs)
+  (case fs (nil nil) ((cons f r) (cons (reify-fn f) (reify-all r))))))
+
+; ---- assemble emitted code + its entry offset into the ELF file bytes ---------
+; `code` is the emitter's output; `entry-code-off` is the entry fn's offset
+; WITHIN `code` (from the emit offsets). Prepend the 16-byte stub (so the entry
+; fn sits at 16 + its offset), then wrap in elf-file. Pure `->`.
+; the entry stub's byte length (mirrors native.py _ENTRY_STUB_LEN).
+(def entry-stub-len I64 224)
+
+; A cell's absolute vaddr = load-base + code-off + stub-len + its code offset
+; (load-base/code-off imported from elf). heapptr/heapend offsets come from the
+; emit `offs` list (x-fin emits both labels once per program).
+(def assemble-elf (-> Bytes I64 I64 I64 I64 I64 Bytes)
+  (lam (code entry-code-off heapptr-off heapbase-off heapend-off heapreserve-off)
+    (elf-file
+      (bcat (entry-stub-v2 (+ entry-stub-len entry-code-off)
+                        (+ (+ load-base code-off) (+ entry-stub-len heapptr-off))
+                        (+ (+ load-base code-off) (+ entry-stub-len heapbase-off))
+                        (+ (+ load-base code-off) (+ entry-stub-len heapend-off))
+                        (+ (+ load-base code-off) (+ entry-stub-len heapreserve-off)))
+            code))))
+
+; ---- the offsets lookup (emit returns (List (Pair Str I64))) ------------------
+(declare offs-lookup (-> (List (Pair Str I64)) Str (Maybe I64)))
+(def offs-lookup (lam (os name)
+  (case os (nil (none))
+    ((cons p r) (case p ((pair k v) (case (str-eq k name) (true (some v)) (false (offs-lookup r name)))))))))
+
+; THE EMIT ENTRY: reify NFns -> emit -> stub + elf-file -> the executable bytes.
+; `=>` because `emit` is effectful (the process arrow); the composition is pure
+; codegen otherwise. elf-ok bytes / elf-err msg (entry label missing from emit).
+(data ElfR () (elf-ok (bytes Bytes)) (elf-err (msg Str)))
+(declare strs->bytes (-> (List Str) (List Bytes)))
+(def strs->bytes (lam (xs) (case xs (nil nil) ((cons x r) (cons (str->bytes x) (strs->bytes r))))))
+; link the chirality-authored byte/string runtime library (bytes-tal.chiral) into
+; every program: a pure prim like str-cat routes to a call of nb-bcat-t etc.
+(declare app-tfn (-> (List TIFn) (List TIFn) (List TIFn)))
+(def app-tfn (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (app-tfn t ys))))))
+; Labels share ONE flat namespace: the object program's fns + the linked
+; byte/string runtime + the crossing wrappers. A collision (an object def named
+; nb-*/wrap-*) silently rebinds every call on that name -- the self-compile
+; shipped a compiler whose put/bcat called the wrong code. REFUSE loudly.
+(declare tifn-nm (-> TIFn Str))
+(def tifn-nm (lam (f) (case f ((ti-fn nm np nr c) nm))))
+(declare names-mem (-> (List Str) Str Bool))
+(def names-mem (lam (xs y) (case xs (nil false) ((cons x r) (case (str-eq x y) (true true) (false (names-mem r y)))))))
+(declare first-dup-go (-> (List TIFn) (List Str) (Maybe Str)))
+(def first-dup-go (lam (fs seen)
+  (case fs
+    (nil (none))
+    ((cons f r) (let (nm (tifn-nm f))
+      (case (names-mem seen nm)
+        (true (some nm))
+        (false (first-dup-go r (cons nm seen)))))))))
+; ---- E76: THE SYSCALL CHOKEPOINT, ENFORCED HERE -----------------------------
+; The chokepoint (lib/sys-check.chiral) was computed and thrown away: one
+; `checked-sys-lib` definition site, zero uses, its only enforcement a Python
+; test the build never runs. A verdict nothing consults is not a gate. Emit is
+; the last place bytes can still be refused, so the REFUSAL LIVES HERE.
+;
+; Two bindings, in order:
+;
+;   H7 (registry).  EVERY ti-sys in the WHOLE emitted image -- the byte runtime,
+;   the linked crossings, AND the object program's own reified code -- must name
+;   a function registered in the swappable target registry with a MATCHING
+;   number. Default-deny by absence: an unregistered crossing, or one whose
+;   immediate has been re-pointed at another call, refuses the emit. This holds
+;   for every program, profile or no profile, and is the reason a profile-less
+;   program is not "everything permitted".
+;
+;   H8 (profile).  If the source declared a `(profile ...)`, the crossings the
+;   OBJECT PROGRAM CALLS must lie inside that frozen port set. This is the
+;   per-program half: two sources with different profiles get different verdicts.
+;
+; A crossing is visible here as a `ti-call` into the crossing's E51 WRAPPER --
+; tal-erase.chiral:215 rewrites `i-prim <extern>` to exactly that call, so the
+; codomain of `crossing-wraps` is the complete vocabulary of "this code crosses".
+; The scan is over the object program's OWN fns only: the byte runtime's arena
+; machinery (nb-arena-grow -> nb-sys-mprotect) is the substrate every program is
+; built on, not a port the composition chose, and charging it to the manifest
+; would force every profile to list `mprotect`.
+(declare cw-wrappers (-> (List (Pair Str Str)) (List Str)))
+(def cw-wrappers (lam (t)
+  (case t (nil nil) ((cons p r) (case p ((pair k v) (cons v (cw-wrappers r))))))))
+; the extern name behind a wrapper (first row wins) -- for the refusal message.
+(declare cw-extern-of (-> (List (Pair Str Str)) Str Str))
+(def cw-extern-of (lam (t w)
+  (case t (nil w) ((cons p r) (case p ((pair k v)
+    (case (str-eq v w) (true k) (false (cw-extern-of r w)))))))))
+; the profile's permitted PORTS (extern names) as the wrapper names object code
+; actually calls. A port with no crossing-wraps row names no wrapper and so
+; permits nothing -- silently, because H6 already refused a port that is not a
+; declared crossing at the front.
+(declare ports->wrappers (-> (List Str) (List Str)))
+(def ports->wrappers (lam (ps)
+  (case ps (nil nil) ((cons p r)
+    (case (cw-lookup crossing-wraps p)
+      (none      (ports->wrappers r))
+      ((some w)  (cons w (ports->wrappers r))))))))
+; the first call to a crossing wrapper that the manifest does not permit.
+(declare xw-instr (-> (List Str) (List Str) TInstr (Maybe Str)))
+(def xw-instr (lam (cw allow i)
+  (case i
+    ((ti-call d f a)
+      (case (names-mem cw f)
+        (false (none))
+        (true  (case (names-mem allow f) (true (none)) (false (some f))))))
+    (_ (none)))))
+(declare xw-code (-> (List Str) (List Str) TCode (Maybe Str)))
+(declare xw-branches (-> (List Str) (List Str) (List (Pair (Pair I64 (List I64)) TCode)) (Maybe Str)))
+(def xw-code (lam (cw allow c)
+  (case c
+    ((t-seq i rest) (case (xw-instr cw allow i)
+      ((some w) (some w))
+      (none     (xw-code cw allow rest))))
+    ((ti-ret s) (none))
+    ((ti-tcase s bx brs dflt)
+      (case (xw-branches cw allow brs)
+        ((some w) (some w))
+        (none (case dflt (none (none)) ((some d) (xw-code cw allow d)))))))))
+(def xw-branches (lam (cw allow brs)
+  (case brs (nil (none)) ((cons b r) (case b ((pair hd code)
+    (case (xw-code cw allow code) ((some w) (some w)) (none (xw-branches cw allow r)))))))))
+(declare xw-fns (-> (List Str) (List Str) (List TIFn) (Maybe Str)))
+(def xw-fns (lam (cw allow fs)
+  (case fs (nil (none)) ((cons f r) (case f ((ti-fn nm np nr code)
+    (case (xw-code cw allow code) ((some w) (some w)) (none (xw-fns cw allow r)))))))))
+; (none) manifest = no profile declared = no narrowing at this layer (H7 still
+; governs). (some ps) = the frozen port set; anything outside it is the offender.
+(declare manifest-offender (-> (Maybe (List Str)) (List TIFn) (Maybe Str)))
+(def manifest-offender (lam (ports objs)
+  (case ports
+    (none      (none))
+    ((some ps) (xw-fns (cw-wrappers crossing-wraps) (ports->wrappers ps) objs)))))
+
+; ---- H8's HONEST SCOPE, and what USED to live here --------------------------
+; E160 put a second gate right here: a module's authored `(pure)` / `(crosses)`
+; claim, decided against the crossings its own object code reached. E161 retired
+; it (D2/D9), and the retirement is not a loss of coverage -- it is the axis
+; moving to where the fact is. `(pure)` was a SECOND statement of something the
+; module already said by binding, or not binding, an effectful extern; the
+; datasheet DERIVES that statement instead (`Sheet`'s `crossings`,
+; loader.chiral's crossings-of), so there is no claim left to contradict and no
+; apparatus left to catch a contradiction. What that gate BORROWED from here --
+; `xw-code` with an empty allow-set, `cw-wrappers`, `cw-extern-of` -- was always
+; H8's, and stays H8's: "what the emitted program CALLS" is a property of a
+; PROGRAM, not of a module.
+;
+; H8's own bound, stated because it is a real one and the retired gate is no
+; longer here to state its neighbour. The scan is over the object program's
+; REIFIED fns (`obj`) -- closure conversion's lifted globals (`$clo<n>` /
+; `$apply<n>` / `$k<i>_<j>`, closconv.chiral) included, since by this point they
+; are ordinary object fns -- but NOT the byte runtime and NOT the linked wrapper
+; bodies. A crossing the substrate itself reaches (nb-arena-grow ->
+; nb-sys-mprotect) is not charged to the composition, because it is not a port
+; the composition chose; charging it would force every profile to list
+; `mprotect`. That is the whole of what "outside the declared port set" means
+; here, and H7 above is what makes a profile-less program still not
+; "everything permitted".
+
+; emit-elf-m: THE emit entry, manifest-aware. `emit-elf` below is the
+; manifest-free face (an unprofiled program) the older callers still use.
+(def emit-elf-m (=> (List NFn) (List Str) Str (Maybe (List Str)) ElfR)
+  (lam (nfns lits entry ports)
+    (let (obj (reify-all nfns))
+    (let (image (app-tfn native-lib (app-tfn link-lib obj)))
+    (case (ck-tiprog linux-syscalls image)
+      ((sbad m) (elf-err (str-cat "E76 chokepoint REFUSED emit: " m)))
+      ((sok)
+    (case (manifest-offender ports obj)
+      ((some w) (elf-err (str-cat "E76 profile REFUSED emit: crossing "
+                  (str-cat (cw-extern-of crossing-wraps w)
+                  (str-cat " (" (str-cat w ") is outside the declared profile port set"))))))
+      (none
+    (case (first-dup-go image nil)
+      ((some d) (elf-err (str-cat "duplicate label (an object def collides with the linked runtime): " d)))
+      (none
+    (case (emit image (strs->bytes lits))
+      ((pair code offs)
+        (case (offs-lookup offs entry)
+          (none      (elf-err (str-cat "no emitted label for entry " entry)))
+          ((some off)
+            (case (offs-lookup offs "heapptr")
+              (none    (elf-err "no heapptr cell in emitted offsets"))
+              ((some hp)
+                (case (offs-lookup offs "heapbase")
+                  (none    (elf-err "no heapbase cell in emitted offsets"))
+                  ((some hb)
+                    (case (offs-lookup offs "heapend")
+                      (none    (elf-err "no heapend cell in emitted offsets"))
+                      ((some he)
+                        (case (offs-lookup offs "heapreserve")
+                          (none    (elf-err "no heapreserve cell in emitted offsets"))
+                          ((some hr) (elf-ok (assemble-elf code off hp hb he hr))))))))))))))))))))))))
+
+; the manifest-free face: a caller with no Sig in hand (the legacy 3-RT shuttle,
+; and any embedder that only has NFns) emits under H7 alone -- no profile to
+; narrow it.
+(def emit-elf (=> (List NFn) (List Str) Str ElfR)
+  (lam (nfns lits entry) (emit-elf-m nfns lits entry (none))))
+

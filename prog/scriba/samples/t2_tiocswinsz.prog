@@ -1,0 +1,7 @@
+; T2 behavioral test — TIOCSWINSZ round-trip through E104 open-pty
+(import "prelude")
+(import "ports")
+(import "term")
+
+(declare compile-main (=> Unit I64))
+(def compile-main (lam (_) (case (open-pty unit) ((pty-err e) 1) ((pty-ok master slave n) (case (set-winsize slave 24 80) ((winsz-err e) 2) ((winsz-ok) (case (tiocgwinsz slave) ((ws-err e) 3) ((ws-r rows cols) (case (=i rows 24) (true (case (=i cols 80) (true 0) (false 4))) (false 5))))))))))

@@ -1,0 +1,79 @@
+; ===========================================================================
+; lib/climb.chiral  —  the re-bootstrap climb as a CHECKABLE MANIFEST (E72)
+;
+; "Anyone can take chirality and self-host it, forever, with no trusted binary
+; anywhere" is true iff the climb chain below exists, ships with the artifact,
+; and is verified — not hoped. This file is that chain as data: the shape a
+; future `chirality climb --verify` consumes, and the structural companion to the
+; human-facing BOOTSTRAP.md (the same chain in prose).
+;
+; SCOPE (honest): this MANIFEST is buildable now. The climb ACTUALLY RUNNING
+; end-to-end is gated — stages 2/3 need the native compiler (E69 closure
+; conversion [done] + E70 effectful lowering [core done 2026-08-02: first-order
+; AND closure-effectful defs lower + run native; step (f) sysface-projection is
+; the only deferred sliver]); stage 1 needs E71's tal-spec + vectors [done,
+; provisional]; stage 4 needs E53's DDC leg-running; the fixpoint needs the
+; D-1/D-2 determinism debts paid [scaffold side PAID 2026-08-02: D-2 sorted
+; emission + D-1 structural linear-kind key; the chirality-side tyv-cmp port mirror
+; remains, itself gated on the self-hosted-checker context]. The one gate still
+; wholly open is the self-hosted checker (chirality-in-chirality) that stages 2/3 run.
+; Those gates are named in `breakers` and the SPEC §6 — the manifest does not
+; pretend the climb runs.
+;
+; Trust bottoms out in exactly two places: the audited prose, and the human
+; reading it. Every stage's input is text the previous stage checked; every
+; stage's check is against the SPEC or a prior stage's output — never a shipped
+; binary, because there is none.
+; ===========================================================================
+
+(import "prelude")
+
+; ---- what ships (stage 0): every item is text, every item is checkable -----
+(data ShipItem ()
+  (ship-prose   (path Str))              ; kernel-spec + tal-spec.md (+ vectors)
+  (ship-source  (path Str))              ; the upper chirality source tree
+  (ship-tal     (path Str) (sig Str))    ; preserve-checked tal lowering + sigs
+  (ship-genref  (path Str)))             ; refs/gen-*.py — ABI facts re-derive
+
+; ---- the climb: each stage names what it does and what CHECKS it -----------
+(data Stage ()
+  (stage (n I64) (does Str) (checked-by Str)))
+
+(def climb (List Stage)
+  (cons (stage 0 "unpack: prose + source + checked tal + gen-refs"
+               "human audit of the prose; gen-refs re-run locally")
+  (cons (stage 1 "weekend leg: implement tal executor + tal checker + sexp reader from tal-spec prose, in ANY language"
+               "tal-spec vectors (pinned input/observable pairs per instruction) -- the executor is admitted like any floor (E71)")
+  (cons (stage 2 "verify shipped tal against its signatures with the stage-1 tal checker -- then RUN the chirality checker (as checked tal) over the upper source, and the compiler over itself"
+               "the shipped tal's preserve-check re-derived independently, plus the checker's verdicts on the source")
+  (cons (stage 3 "go native: the checked compiler emits machine code; then REGENERATE the shipped tal from upper source"
+               "regenerated tal == shipped tal, byte-for-byte: the tal fixpoint. A mismatch names a lie somewhere.")
+  (cons (stage 4 "DDC: a second party's independent stage-1..3 climb, comparing final artifacts"
+               "Wheeler's compare -- the weekend leg is the provenance-disjoint compiler DDC needs (E53)")
+  nil))))))
+
+; ---- chain-breakers: what must be PINNED or the climb dies -----------------
+; (each is a named obligation on other elements, not a hope)
+(data Breaker ()
+  (breaker (what Str) (pinned-by Str)))
+
+(def breakers (List Breaker)
+  (cons (breaker "semantics not in the spec (iteration order, encodings, arithmetic edges)"
+                 "fixpoint determinism debts -> tal-spec vectors, on purpose (E71, the division-pin precedent)")
+  (cons (breaker "a stage needing a prior binary"
+                 "stage inputs are text, and stage 1 is human+prose only -- the E52 spec-size budget keeps 'weekend' true, so spec growth is a tracked cost")
+  (cons (breaker "spec drift from implementation"
+                 "fixed demanded statement (certificate discipline) + stage-3 fixpoint + stage-4 DDC -- drift becomes a named divergence")
+  nil))))
+
+; ---- the ship-list: what the packaged form carries (stage 0's unpack) ------
+; The artifact = spec (prose + vectors) + upper source + preserve-checked tal +
+; ref-bank scripts + this manifest. Trust roots are the two prose entries.
+(def ship-list (List ShipItem)
+  (cons (ship-prose  "docs/tal-spec.md")                 ; the golden object (E71)
+  (cons (ship-prose  "docs/floor-agreement.md")          ; what the golden means
+  (cons (ship-source "lib")                              ; the upper chirality tree
+  (cons (ship-tal    "lib (lowered)" "preserve-checked signatures per fn")
+  (cons (ship-genref "examples/refs")                    ; ABI facts, re-derivable
+  (cons (ship-prose  "BOOTSTRAP.md")                     ; this chain, in prose
+  nil)))))))

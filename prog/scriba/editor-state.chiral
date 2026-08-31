@@ -1,0 +1,125 @@
+; scriba/editor-state.chiral — `Scriba`, the editor's central state, as ONE value.
+;
+; S18. Before this module the loop's state was a positional run threaded by hand
+; through 79 defs in NINE different shapes (only command-loop-inner carried all
+; eleven slots; isearch-loop threaded the same state in a DIFFERENT ORDER behind
+; four of its own parameters). Nine shapes the compiler relates to none of the
+; others is not a convention — it is a per-def re-derivation. `Scriba` is the one
+; shape, and adding a field to the editor's state is now one line here.
+;
+; THE BOUNDARY — two rules, not a precedent to copy (SPEC §3.3):
+;
+;   R1 (authority). A field belongs here IFF its type can be bound at
+;   unrestricted quantity — i.e. it transitively holds no linear `porttype`
+;   capability. This is not a convention to remember: a `Scriba` is read at every
+;   accessor and duplicated at every `sc-with-*`, so a capability inside one
+;   would be moved more than once and the checker would REFUSE the program.
+;   Authority-bearing state cannot be added here even by an author who wants to;
+;   it earns its own node (S20b). scriba's network authority is real and it is
+;   held in CODE, not in state: `backend-open rv-endpoint` is inlined into the
+;   drive call at command-loop.chiral:1327,1443,1477,1645,1648, never let-bound,
+;   precisely because it is linear. It is not in the thread, so it is not here.
+;
+;   R2 (transposition). The eleven field types are PAIRWISE DISTINCT, and that is
+;   a requirement rather than an accident: it is what makes a mis-ordered
+;   destructure — the one failure mode a several-hundred-site mechanical rewrite
+;   actually has — a TYPE ERROR. Any future field whose type duplicates an
+;   existing one must be wrapped in a one-field newtype before it goes in.
+;
+; HONEST COST. 58 defs could not previously see `msg`, `mode` or `pending`; they
+; can now. That erases the incidental least-privilege arity was providing — and
+; the answer is not to pretend arity was a control. Visibility inside one process
+; is not an authority boundary and a parameter list is not a capability. R1 is
+; the boundary that is real, because the checker enforces it.
+;
+; PLACEMENT. Not cmd-types (it sits BELOW the loop and would drag vim-mode →
+; manas-mode/manas-runview/chat-view in behind it); not dispatch (its job is
+; "resolve an op name and run it"). Acyclic: none of cmd-types, vim-mode,
+; manas-mode, manas-runview or chat-view imports dispatch, command-loop or
+; editor-state.
+
+(import "prelude")                ; Maybe, Pair, I64, Str
+(import "puffer")                 ; (Puffer Str)
+(import "keymap")                 ; Keymap
+(import "render")                 ; Rendering, Mode
+(import "cmd-types")              ; ScribaOp
+(import "vim-mode")               ; VimMode, Pending
+
+; ─── the record ─────────────────────────────────────────────────────────────
+;
+; Flat, not nested. Nesting would buy one thing (grouping the five slots that
+; never vary — km, dims, renderers, ops and, at 46 of 47 sites, chat) and cost
+; two destructures on every access plus a second name to teach. Those slots are
+; never WRITTEN, which is a read cost, and accessors already solve reads.
+;
+; Field order is command-loop-inner's historical parameter order, so migrating
+; that def was a transcription rather than a re-derivation.
+
+(data Scriba ()
+  (scriba
+    (km        Keymap)                     ; active keymap
+    (puf       (Puffer Str))               ; current buffer
+    (chat      (Maybe (Puffer Str)))       ; retires into the buffer list — S19
+    (dims      (Pair I64 I64))             ; terminal (rows, cols)
+    (scroll    I64)                        ; first visible row
+    (msg       Str)                        ; status line for THIS frame
+    (rendering Rendering)                  ; last painted frame (the diff base)
+    (renderers (List (Pair Str Mode)))     ; renderer registry
+    (ops       (List ScribaOp))            ; op registry
+    (mode      VimMode)                    ; editing mode
+    (pending   Pending)))                  ; armed operator
+
+; ─── accessors ──────────────────────────────────────────────────────────────
+; House style is <short>-<field> (cv-xs, rv-req, outline-doc, catalog-cursor).
+; Scriba takes `sc-`.
+
+(def sc-km        (-> Scriba Keymap)                 (lam (s) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) km))))
+(def sc-puf       (-> Scriba (Puffer Str))           (lam (s) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) puf))))
+(def sc-chat      (-> Scriba (Maybe (Puffer Str)))   (lam (s) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) chat))))
+(def sc-dims      (-> Scriba (Pair I64 I64))         (lam (s) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) dims))))
+(def sc-scroll    (-> Scriba I64)                    (lam (s) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) scroll))))
+(def sc-msg       (-> Scriba Str)                    (lam (s) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) msg))))
+(def sc-rendering (-> Scriba Rendering)              (lam (s) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) rendering))))
+(def sc-renderers (-> Scriba (List (Pair Str Mode))) (lam (s) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) renderers))))
+(def sc-ops       (-> Scriba (List ScribaOp))        (lam (s) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) ops))))
+(def sc-mode      (-> Scriba VimMode)                (lam (s) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) mode))))
+(def sc-pending   (-> Scriba Pending)                (lam (s) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) pending))))
+
+; ─── updaters ───────────────────────────────────────────────────────────────
+; One destructure, one re-construction with the named field replaced. `v` is the
+; new value; every other field rides through untouched.
+
+(def sc-with-km        (-> Scriba Keymap Scriba)                 (lam (s v) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) (scriba v  puf chat dims scroll msg rendering renderers ops mode pending)))))
+(def sc-with-puf       (-> Scriba (Puffer Str) Scriba)           (lam (s v) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) (scriba km v   chat dims scroll msg rendering renderers ops mode pending)))))
+(def sc-with-chat      (-> Scriba (Maybe (Puffer Str)) Scriba)   (lam (s v) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) (scriba km puf v    dims scroll msg rendering renderers ops mode pending)))))
+(def sc-with-dims      (-> Scriba (Pair I64 I64) Scriba)         (lam (s v) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) (scriba km puf chat v    scroll msg rendering renderers ops mode pending)))))
+(def sc-with-scroll    (-> Scriba I64 Scriba)                    (lam (s v) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) (scriba km puf chat dims v      msg rendering renderers ops mode pending)))))
+(def sc-with-msg       (-> Scriba Str Scriba)                    (lam (s v) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) (scriba km puf chat dims scroll v   rendering renderers ops mode pending)))))
+(def sc-with-rendering (-> Scriba Rendering Scriba)              (lam (s v) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) (scriba km puf chat dims scroll msg v         renderers ops mode pending)))))
+(def sc-with-renderers (-> Scriba (List (Pair Str Mode)) Scriba) (lam (s v) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) (scriba km puf chat dims scroll msg rendering v         ops mode pending)))))
+(def sc-with-ops       (-> Scriba (List ScribaOp) Scriba)        (lam (s v) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) (scriba km puf chat dims scroll msg rendering renderers v   mode pending)))))
+(def sc-with-mode      (-> Scriba VimMode Scriba)                (lam (s v) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) (scriba km puf chat dims scroll msg rendering renderers ops v    pending)))))
+(def sc-with-pending   (-> Scriba Pending Scriba)                (lam (s v) (case s ((scriba km puf chat dims scroll msg rendering renderers ops mode pending) (scriba km puf chat dims scroll msg rendering renderers ops mode v)))))
+
+; ─── the two combinators ────────────────────────────────────────────────────
+;
+; These are read off the data, not chosen for convenience. Over the 47
+; fully-applied command-loop-inner call sites the varying slots co-vary in
+; exactly two blocks: `puf` never changed without `scroll` and `rendering`
+; changing with it (12 of 14) — that block is A REPAINT; `mode` and `pending`
+; changed together at 35 of 47 — that block is A MODE TRANSITION. `msg` needs no
+; combinator: it is one field, so sc-with-msg IS the idiom.
+
+; a repaint: new buffer, new first-visible row, new painted frame.
+(def sc-repaint (-> Scriba (Puffer Str) I64 Rendering Scriba)
+  (lam (s p sc r)
+    (case s
+      ((scriba km puf chat dims scroll msg rendering renderers ops mode pending)
+        (scriba km p chat dims sc msg r renderers ops mode pending)))))
+
+; a mode transition: the new mode and the operator state that goes with it.
+(def sc-enter (-> Scriba VimMode Pending Scriba)
+  (lam (s m pn)
+    (case s
+      ((scriba km puf chat dims scroll msg rendering renderers ops mode pending)
+        (scriba km puf chat dims scroll msg rendering renderers ops m pn)))))

@@ -1,0 +1,256 @@
+; ===========================================================================
+; lib/closconv-driver.chiral  --  the E69 STATEFUL DRIVER (the deferred piece).
+;
+; closconv.chiral ported the PURE closure-conversion core (collect/synth term-
+; building/rewrite) over the elaborator's `Core` IR and an immutable `SigV` view.
+; What was DEFERRED there is the driver that (a) builds the SigV from a real
+; checked `Sig` (Term-based, from load-source), (b) runs collect -> synth ->
+; rewrite, and (c) INSTALLS the results back into the Sig: new `$clo` DataDecls +
+; `$apply` defs + the rewritten def bodies, yielding a first-order Sig the whole-
+; program native path (compile-front/back/emit) already handles.
+;
+; This is the chirality mirror of scaffold/chirality/closconv.py `closure_convert(sig)`,
+; installed STRUCTURALLY (rebuild the Sig's global/data tables) rather than
+; through a kernel re-check: the ported kernel judgments accepted the identical
+; construction in the oracle, and the native RUN is the order-independent
+; end-to-end check. Re-checking each installed `$apply`/`$clo` through the loader
+; (load-data/load-def) is the safety hardening residue (see report).
+;
+; It lives in the KERNEL image (loader -> kernel + surface), co-imported with
+; closconv (surface); the only name clash was closconv's `llen`, now `cc-llen`.
+; ===========================================================================
+
+(import "loader")     ; Sig / Term / DataDecl / Field / Ctor / core->term / mk-sig
+(import "closconv")   ; Core / SigV / collect / synth term-builders / rw / ...
+
+; ---------------------------------------------------------------- term -> core
+; The inverse of loader's core->term (near-identity; Term is de-Bruijn so binder
+; names become "_", and a KArm's nvars count expands to that many "_" names).
+(def dqty->i   (-> Qty I64)   (lam (q) (case q ((q0) 0) ((q1) 1) ((qw) 2))))
+(def dseat->i  (-> Seat I64)  (lam (s) (case s ((s-pure) 0) ((s-proc) 1))))
+(def symop->s (-> SymOp Str) (lam (o) (case o ((s-ge) ">=") ((s-gt) ">") ((s-le) "<=") ((s-lt) "<") ((s-ne) "!="))))
+
+(declare nnames (-> I64 (List Str)))
+(def nnames (lam (n) (case (<=i n 0) (true nil) (false (cons "_" (nnames (- n 1)))))))
+
+(declare term->core  (-> Term Core))
+(declare tc-list     (-> (List Term) (List Core)))
+(declare tc-arms     (-> (List KArm) (List CArm)))
+(declare tc-atoms    (-> (List RfAtom) (List CAtom)))
+(declare tc-mb       (-> (Maybe Term) (Maybe Core)))
+(def term->core (lam (t)
+  (case t
+    ((t-lit-i v)          (c-lit-i v))
+    ((t-lit-s v)          (c-lit-s v))
+    ((t-var ix)           (c-var ix))
+    ((t-type l)           (c-type l))
+    ((t-pi q s dom cod)   (c-pi (dqty->i q) (dseat->i s) "_" (term->core dom) (term->core cod)))
+    ((t-lam b)            (c-lam "_" (term->core b)))
+    ((t-let q v b)        (c-let (dqty->i q) "_" (term->core v) (term->core b)))
+    ((t-ann e ty)         (c-ann (term->core e) (term->core ty)))
+    ((t-refine base ats)  (c-refine (term->core base) (tc-atoms ats)))
+    ((t-con home name as) (c-con home name (tc-list as)))
+    ((t-tcon name as)     (c-tcon name (tc-list as)))
+    ((t-primty name)      (c-primty name))
+    ((t-global name)      (c-global name))
+    ((t-prim name)        (c-prim name))
+    ((t-app f a)          (c-app (term->core f) (term->core a)))
+    ((t-case sc arms df)  (c-case (term->core sc) (tc-arms arms) (tc-mb df))))))
+(def tc-list  (lam (ts) (case ts (nil nil) ((cons x r) (cons (term->core x) (tc-list r))))))
+(def tc-arms  (lam (as) (case as (nil nil) ((cons a r) (case a ((karm cn nv b) (cons (carm cn (nnames nv) (term->core b)) (tc-arms r))))))))
+(def tc-atoms (lam (as) (case as (nil nil) ((cons a r) (case a ((r-atom op tm) (cons (catom (symop->s op) (term->core tm)) (tc-atoms r))))))))
+(def tc-mb    (lam (m) (case m (none none) ((some c) (some (term->core c))))))
+
+; ---------------------------------------------------------------- SigV builder
+; A read-only SigV over a checked Sig: each global's stored TYPE Term and BODY
+; Term bridged to Core (closconv's SigV models terms.py-as-Core; the Sig's stored
+; types are already Terms, so no quoting -- just term->core).
+(declare glist->tys  (-> (List (Pair Str (Pair Term Term))) (List (Pair Str Core))))
+(declare glist->defs (-> (List (Pair Str (Pair Term Term))) (List (Pair Str Core))))
+(def glist->tys  (lam (gs) (case gs (nil nil) ((cons p r) (case p ((pair nm tb) (case tb ((pair ty body) (cons (pair nm (term->core ty)) (glist->tys r))))))))))
+(def glist->defs (lam (gs) (case gs (nil nil) ((cons p r) (case p ((pair nm tb) (case tb ((pair ty body) (cons (pair nm (term->core body)) (glist->defs r))))))))))
+
+; ctor name -> field types (as Core), folded over the Sig's data decls, so the
+; case-arm walk (cwalk-arms/rw-arms) can type an extracted field and route a
+; fn-typed field APPLICATION through $apply.
+(declare d-field->core (-> Field Core))
+(def d-field->core (lam (f) (case f ((field q fn fty) (term->core fty)))))
+(declare d-fields->core (-> (List Field) (List Core)))
+(def d-fields->core (lam (fs) (case fs (nil nil) ((cons f r) (cons (d-field->core f) (d-fields->core r))))))
+(declare d-ctors->cmap (-> (List Ctor) (List (Pair Str (List Core)))))
+(def d-ctors->cmap (lam (cs) (case cs (nil nil) ((cons c r) (case c ((ctor cn fields) (cons (pair cn (d-fields->core fields)) (d-ctors->cmap r))))))))
+(declare d-cmap-append (-> (List (Pair Str (List Core))) (List (Pair Str (List Core))) (List (Pair Str (List Core)))))
+(def d-cmap-append (lam (xs ys) (case xs (nil ys) ((cons x r) (cons x (d-cmap-append r ys))))))
+(declare d-datas->ctors (-> (List DataDecl) (List (Pair Str (List Core)))))
+(def d-datas->ctors
+  (lam (ds)
+    (case ds
+      (nil nil)
+      ((cons d r) (case d ((data-decl dn ps cs) (d-cmap-append (d-ctors->cmap cs) (d-datas->ctors r))))))))
+
+(def build-sigv (-> Sig SigV) (lam (s) (sigv (glist->tys (sig-globals s)) (glist->defs (sig-globals s)) (d-datas->ctors (sig-datas s)))))
+
+; ---------------------------------------------------------------- family filter
+; keys = families with >=1 site, minus poisoned (closconv.py's `keys` set).
+(declare keep-fams (-> (List Family) (List Core) (List Family)))
+(def keep-fams
+  (lam (fams pois)
+    (case fams
+      (nil nil)
+      ((cons f r) (case f ((family key sites)
+        (case sites
+          (nil (keep-fams r pois))
+          (_   (case (key-in? pois key)
+                 (true  (keep-fams r pois))
+                 (false (cons f (keep-fams r pois))))))))))))
+
+; ---------------------------------------------------------------- synth install
+; Per family i: mint the $clo DataDecl (one ctor per site) + the $apply def, and
+; an ApplyEnt for the rewrite map. Accumulated in a SynR triple.
+(data SynR ()
+  (synr (clos (List DataDecl))
+        (applies (List (Pair Str (Pair Term Term))))
+        (ka (List ApplyEnt))))
+
+(def site-fields (-> Csite (List (Pair I64 Core)))
+  (lam (s) (case s ((cs-g g k f) f) ((cs-lam inr d cap f) f))))
+(def site-ckey (-> Csite Ckey)
+  (lam (s) (case s ((cs-g g k f) (ckey-g g k)) ((cs-lam inr d cap f) (ckey-lam inr cap)))))
+
+; the $clo ctor field list for one site: (field q "capN" (core->term fty)).
+; E100: type-kinded / q0 captures carry no runtime witness and are DROPPED here
+; (kept cap# numbering advances only over kept fields, matching cap-names, the
+; arm binder count, and the construction-side arg drop).
+(declare site-fields->term (-> I64 (List (Pair I64 Core)) (List Field)))
+(def site-fields->term
+  (lam (n fs)
+    (case fs
+      (nil nil)
+      ((cons p r)
+        (case (field-erased? p)
+          (true (site-fields->term n r))
+          (false (case p ((pair q fty)
+            (cons (field q (str-cat "cap" (i64->str n)) (core->term fty))
+                  (site-fields->term (+ n 1) r))))))))))
+
+; one family's ctors (for the $clo data) + its ctor-of map (Ckey -> ctor name).
+(data SitesR () (sitesr (ctors (List Ctor)) (cof (List (Pair Ckey Str)))))
+(declare build-sites (-> I64 I64 (List Csite) SitesR))
+(def build-sites
+  (lam (i j sites)
+    (case sites
+      (nil (sitesr nil nil))
+      ((cons s r) (case (build-sites i (+ j 1) r) ((sitesr cs co)
+        (sitesr (cons (ctor (ctor-name i j) (site-fields->term 0 (site-fields s))) cs)
+                (cons (pair (site-ckey s) (ctor-name i j)) co))))))))
+
+; phase 1: mint the $clo DataDecl + ApplyEnt per family (no $apply body yet --
+; the body needs the COMPLETE ka so a fn-value global in any arm resolves to
+; its nullary Con). Accumulated in SynR (clos + ka; applies filled in phase 2).
+(declare synth-ent (-> SigV Core (List Csite) I64 SynR SynR))
+(def synth-ent
+  (lam (sv key sites i acc)
+    (case acc ((synr clos applies ka)
+      (case (build-sites i 0 sites) ((sitesr ctors cof)
+        (let (dname (clo-name i))
+        (let (aname (apply-name i))
+          (synr (cons (data-decl dname nil ctors) clos)
+                applies
+                (cons (apply-ent key dname aname cof) ka))))))))))
+
+(declare synth-ents (-> SigV (List Family) I64 SynR SynR))
+(def synth-ents
+  (lam (sv fams i acc)
+    (case fams
+      (nil acc)
+      ((cons f r) (case f ((family key sites)
+        (synth-ents sv r (+ i 1) (synth-ent sv key sites i acc))))))))
+
+; phase 2: the $apply def for one family, using the COMPLETE ka.
+(declare synth-apply (-> SigV (List ApplyEnt) Core (List Csite) I64 (List (Pair Str (Pair Term Term))) (List (Pair Str (Pair Term Term)))))
+(def synth-apply
+  (lam (sv ka key sites i acc)
+    (let (doms (peel-pi-doms key))
+    (let (cod (peel-pi-cod key))
+    (let (aty (core->term (apply-ty (clo-name i) doms cod (pi-effs key))))
+    (let (abody (core->term (apply-body sv i sites (cc-llen doms) ka)))
+      (cons (pair (apply-name i) (pair aty abody)) acc)))))))
+
+(declare synth-applies (-> SigV (List ApplyEnt) (List Family) I64 (List (Pair Str (Pair Term Term))) (List (Pair Str (Pair Term Term)))))
+(def synth-applies
+  (lam (sv ka fams i acc)
+    (case fams
+      (nil acc)
+      ((cons f r) (case f ((family key sites)
+        (synth-applies sv ka r (+ i 1) (synth-apply sv ka key sites i acc))))))))
+
+(declare synth-fams (-> SigV (List Family) I64 SynR SynR))
+(def synth-fams
+  (lam (sv fams i acc)
+    (case (synth-ents sv fams i acc) ((synr clos _ ka)
+      (synr clos (synth-applies sv ka fams 0 nil) ka)))))
+
+; ---------------------------------------------------------------- rewrite install
+; Rewrite each original def's body (rw) and its arrow-typed params/return to $clo.
+(declare dom->clo (-> (List ApplyEnt) Core Core))
+(def dom->clo
+  (lam (ka d)
+    (case (is-arrow d)
+      (false d)
+      (true (case (ka-find ka d)
+              ((none) d)
+              ((some ae) (case ae ((apply-ent k dn an co) (c-tcon dn nil)))))))))
+(declare map-dom (-> (List ApplyEnt) (List Core) (List Core)))
+(def map-dom
+  (lam (ka ds) (case ds (nil nil) ((cons d r) (cons (dom->clo ka d) (map-dom ka r))))))
+
+; B1/B2: rewrite a def's TYPE, rewriting arrow doms/cod to their $clo TCon while
+; PRESERVING each binder's quantity + seat (a q=0 type param must stay q=0, else
+; B1 cannot erase it and its `Type` domain fails to lower). Mirrors the
+; quantity-preserving new_ty in closconv.py _rewrite (vs the w-forcing mk-pi).
+(declare rewrite-ty (-> (List ApplyEnt) Core Core))
+(def rewrite-ty
+  (lam (ka t)
+    (case t
+      ((c-pi q e n dom cod) (c-pi q e n (dom->clo ka dom) (rewrite-ty ka cod)))
+      (_ (dom->clo ka t)))))
+
+(def rewrite-one (-> SigV (List ApplyEnt) (Pair Str (Pair Term Term)) (Pair Str (Pair Term Term)))
+  (lam (sv ka gp)
+    (case gp ((pair name tb)
+      (case (def-ctx sv name)
+        ((none) gp)
+        ((some dc) (case dc ((dctx ctx cod inner n)
+          (case (sv-type sv name)
+            ((none) gp)
+            ((some ty)
+              (let (new-ty   (rewrite-ty ka ty))
+              (let (new-body (mk-lams n (rw sv ka ctx none inner)))
+                (pair name (pair (core->term new-ty) (core->term new-body)))))))))))))))
+
+(declare rewrite-defs (-> SigV (List ApplyEnt) (List (Pair Str (Pair Term Term))) (List (Pair Str (Pair Term Term)))))
+(def rewrite-defs
+  (lam (sv ka gs)
+    (case gs (nil nil) ((cons p r) (cons (rewrite-one sv ka p) (rewrite-defs sv ka r))))))
+
+; ---------------------------------------------------------------- assemble
+(declare app-glob (-> (List (Pair Str (Pair Term Term))) (List (Pair Str (Pair Term Term))) (List (Pair Str (Pair Term Term)))))
+(def app-glob (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (app-glob t ys))))))
+(declare app-data (-> (List DataDecl) (List DataDecl) (List DataDecl)))
+(def app-data (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (app-data t ys))))))
+
+; THE DRIVER: defunctionalize a checked Sig in place. NO-OP (returns the Sig
+; unchanged) on closure-free programs (no kept family). Mirrors closure_convert.
+(def closconv-sig (-> Sig Sig)
+  (lam (s)
+    (case s ((mk-sig g p d la ld tg pf km sh)
+      (let (sv (build-sigv s))
+        (case (collect sv) ((cstate fams ho pois)
+          (case (keep-fams fams pois)
+            (nil s)                                     ; closure-free: untouched
+            ((cons kf kr)
+              (case (synth-fams sv (cons kf kr) 0 (synr nil nil nil)) ((synr clos applies ka)
+                (mk-sig (app-glob (rewrite-defs sv ka g) applies)
+                        p
+                        (app-data d clos)
+                        la ld tg pf km sh))))))))))))

@@ -1,0 +1,1332 @@
+; E69: closure conversion (defunctionalization), the port of
+; scaffold/chirality/closconv.py. This file is the FOUNDATION slice: the two pure
+; de-Bruijn utilities every later phase (collect/synth/rewrite/arm-body) rests
+; on, ported over the elaborator's `Core` IR (lib/surface.chiral) --- the exact
+; term vocabulary closconv.py drives (terms.py tuples: Var/Lam/App/Let/Pi/Con/
+; TCon/Global/Prim/Case/Ann/Refine).
+;
+;   free-indices : the set of enclosing de-Bruijn indices free in a Core term,
+;                  returned as a SORTED, deduplicated (List I64) -- closconv.py's
+;                  every consumer does `sorted(_free_indices(...))`, so the sorted
+;                  list IS the canonical form (and, unlike CPython's set iteration
+;                  order, it is reproducible from source -- a D-2 determinism win).
+;   remap        : rewrite free variables per an enclosing-index->enclosing-index
+;                  substitution; binders shift both the threshold and the mapped
+;                  index. The capture/param re-addressing every $apply arm uses.
+;
+; closconv.py brackets exactly these two as its verified foundation
+; ("_free_indices + _remap reproduce design doc SS1.3's remap exactly"). The
+; stateful whole-sig transform (collect/synth/rewrite over the def table + the
+; kernel re-entry declare-def/finish-def/check-data) is the E69 follow-on, and
+; is deferred to the chirality sig-building driver (E2's loader residue) --- the same
+; way E16 shipped its partition slice before the SSA-emission driver.
+;
+; closconv.py stays the golden oracle until the chirality kernel drives conversion.
+(import "surface")
+
+; ---------------------------------------------------------------- small helpers
+
+; length of a (List Str) -- arm/binder variable counts slide the de-Bruijn depth.
+(declare slen (-> (List Str) I64))
+(def slen
+  (lam (xs)
+    (case xs
+      ((nil)         0)
+      ((cons x rest) (+ 1 (slen rest))))))
+
+; insert x into an ascending-sorted (List I64), dropping duplicates. Keeping the
+; accumulator sorted-unique makes free-indices' result independent of walk order.
+(declare ins-uniq (-> I64 (List I64) (List I64)))
+(def ins-uniq
+  (lam (x xs)
+    (case xs
+      ((nil) (cons x nil))
+      ((cons y ys)
+        (case (=i x y)
+          (true  xs)                                  ; already present
+          (false (case (<i x y)
+                   (true  (cons x xs))                ; x belongs before y
+                   (false (cons y (ins-uniq x ys))))))))))
+
+; ---------------------------------------------------------------- free-indices
+; Mirror of closconv.py `_free_indices` go(t, d): a Var whose index >= d is free,
+; contributing (idx - d); each binder node slides d by 1 for the subterm that
+; sees the new binder (Lam body, Let body, Pi cod, a Case arm by its var count).
+; The accumulator is threaded left-to-right; ins-uniq keeps it sorted-unique.
+
+(declare fi       (-> I64 (List I64) Core       (List I64)))
+(declare fi-list  (-> I64 (List I64) (List Core)  (List I64)))
+(declare fi-arms  (-> I64 (List I64) (List CArm)  (List I64)))
+(declare fi-atoms (-> I64 (List I64) (List CAtom) (List I64)))
+
+(def fi
+  (lam (d acc t)
+    (case t
+      ((c-lit-i v)          acc)
+      ((c-lit-s v)          acc)
+      ((c-var i)            (case (<=i d i)
+                              (true  (ins-uniq (- i d) acc))   ; free
+                              (false acc)))                    ; bound
+      ((c-type l)           acc)
+      ((c-pi q e n dom cod) (fi (+ d 1) (fi d acc dom) cod))   ; dom at d, cod at d+1
+      ((c-lam n b)          (fi (+ d 1) acc b))
+      ((c-let q n v b)      (fi (+ d 1) (fi d acc v) b))       ; val at d, body at d+1
+      ((c-ann e ty)         (fi d (fi d acc e) ty))
+      ((c-refine base ats)  (fi-atoms d (fi d acc base) ats))
+      ((c-con home name as) (fi-list d acc as))
+      ((c-tcon name as)     (fi-list d acc as))
+      ((c-primty name)      acc)
+      ((c-global name)      acc)
+      ((c-prim name)        acc)
+      ((c-app f a)          (fi d (fi d acc f) a))
+      ((c-case sc arms df)  (case df
+                              ((none)   (fi-arms d (fi d acc sc) arms))
+                              ((some g) (fi d (fi-arms d (fi d acc sc) arms) g)))))))
+
+(def fi-list
+  (lam (d acc xs)
+    (case xs
+      ((nil)         acc)
+      ((cons x rest) (fi-list d (fi d acc x) rest)))))
+
+(def fi-arms
+  (lam (d acc arms)
+    (case arms
+      ((nil)         acc)
+      ((cons a rest) (case a
+                       ((carm ctor vars body)
+                        (fi-arms d (fi (+ d (slen vars)) acc body) rest)))))))
+
+(def fi-atoms
+  (lam (d acc ats)
+    (case ats
+      ((nil)         acc)
+      ((cons a rest) (case a
+                       ((catom op term) (fi-atoms d (fi d acc term) rest)))))))
+
+; Public entry: enclosing free indices of t, sorted ascending, deduplicated.
+(def free-indices (-> Core (List I64))
+  (lam (t) (fi 0 nil t)))
+
+; ---------------------------------------------------------------- remap
+; Mirror of closconv.py `_remap`. The substitution maps ENCLOSING index ->
+; ENCLOSING index; under d binders a free Var (idx >= d) at enclosing (idx - d)
+; is looked up and, if mapped to m, rewritten to (m + d). Binder nodes recurse
+; with d+1 for their new-binder subterm. Pi/Global/Prim/lits/type/primty carry no
+; substitutable free var in the bodies remap runs on and pass through unchanged,
+; exactly as the Python `go` falls through with no elif.
+
+(declare subst-get (-> (List (Pair I64 I64)) I64 (Maybe I64)))
+(def subst-get
+  (lam (s k)
+    (case s
+      ((nil) none)
+      ((cons p rest)
+        (case p
+          ((pair a b) (case (=i a k)
+                        (true  (some b))
+                        (false (subst-get rest k)))))))))
+
+(declare rm       (-> (List (Pair I64 I64)) I64 Core       Core))
+(declare rm-list  (-> (List (Pair I64 I64)) I64 (List Core)  (List Core)))
+(declare rm-arms  (-> (List (Pair I64 I64)) I64 (List CArm)  (List CArm)))
+(declare rm-atoms (-> (List (Pair I64 I64)) I64 (List CAtom) (List CAtom)))
+
+(def rm
+  (lam (s d t)
+    (case t
+      ((c-var i)            (case (<=i d i)
+                              (true  (case (subst-get s (- i d))
+                                       ((some m) (c-var (+ m d)))
+                                       ((none)   t)))
+                              (false t)))
+      ((c-lam n b)          (c-lam n (rm s (+ d 1) b)))
+      ((c-app f a)          (c-app (rm s d f) (rm s d a)))
+      ((c-let q n v b)      (c-let q n (rm s d v) (rm s (+ d 1) b)))
+      ((c-con home name as) (c-con home name (rm-list s d as)))
+      ((c-tcon name as)     (c-tcon name (rm-list s d as)))
+      ((c-case sc arms df)  (c-case (rm s d sc) (rm-arms s d arms)
+                              (case df ((none) none) ((some g) (some (rm s d g))))))
+      ((c-ann e ty)         (c-ann (rm s d e) (rm s d ty)))
+      ((c-refine base ats)  (c-refine (rm s d base) (rm-atoms s d ats)))
+      ; pass-through (no substitutable free var in remap's inputs):
+      ((c-lit-i v)          t)
+      ((c-lit-s v)          t)
+      ((c-type l)           t)
+      ((c-pi q e n dom cod) t)
+      ((c-primty name)      t)
+      ((c-global name)      t)
+      ((c-prim name)        t))))
+
+(def rm-list
+  (lam (s d xs)
+    (case xs
+      ((nil)         nil)
+      ((cons x rest) (cons (rm s d x) (rm-list s d rest))))))
+
+(def rm-arms
+  (lam (s d arms)
+    (case arms
+      ((nil)         nil)
+      ((cons a rest) (case a
+                       ((carm ctor vars body)
+                        (cons (carm ctor vars (rm s (+ d (slen vars)) body))
+                              (rm-arms s d rest))))))))
+
+(def rm-atoms
+  (lam (s d ats)
+    (case ats
+      ((nil)         nil)
+      ((cons a rest) (case a
+                       ((catom op term)
+                        (cons (catom op (rm s d term)) (rm-atoms s d rest))))))))
+
+; Public entry: rewrite t's free variables per the enclosing-index subst.
+(def remap (-> (List (Pair I64 I64)) Core Core)
+  (lam (s t) (rm s 0 t)))
+
+; ================================================================ arrow keys
+; The next closconv phase (collect) groups closure sites by the ARROW SIGNATURE
+; they inhabit. closconv.py keys a Python dict on `_arrow_key` = a _freeze'd
+; (hashable) tuple of (dom terms, cod term, per-arrow eff flags). chirality has no
+; hashing, so the key becomes the arrow's structure compared by STRUCTURAL
+; equality: two arrows share a family iff their peeled dom terms are equal, their
+; cod term is equal, and their per-arrow eff flags are equal. This section is the
+; pure machinery for that -- structural `core-eq` (the hashing replacement) plus
+; the Pi/lambda shape utilities collect drives.
+
+; ---------------------------------------------------------------- core-eq
+; Full structural equality on Core -- the port of closconv.py `_freeze` used as a
+; dict/set key. Includes q/eff/bname (freeze tuple-izes them); a ctor mismatch is
+; inequality (the `_` arm). Strings by str-eq, indices/q/eff/levels by =i.
+
+(declare core-eq   (-> Core Core Bool))
+(declare clist-eq  (-> (List Core) (List Core) Bool))
+(declare carms-eq  (-> (List CArm) (List CArm) Bool))
+(declare catoms-eq (-> (List CAtom) (List CAtom) Bool))
+(declare slist-eq  (-> (List Str) (List Str) Bool))
+(declare mcore-eq  (-> (Maybe Core) (Maybe Core) Bool))
+
+(def core-eq
+  (lam (a b)
+    (case a
+      ((c-lit-i x)          (case b ((c-lit-i y) (=i x y)) (_ false)))
+      ((c-lit-s x)          (case b ((c-lit-s y) (str-eq x y)) (_ false)))
+      ((c-var i)            (case b ((c-var j) (=i i j)) (_ false)))
+      ((c-type l)           (case b ((c-type m) (=i l m)) (_ false)))
+      ((c-pi q e n dom cod) (case b
+                              ((c-pi q2 e2 n2 d2 c2)
+                               (and (=i q q2) (and (=i e e2) (and (str-eq n n2)
+                                 (and (core-eq dom d2) (core-eq cod c2))))))
+                              (_ false)))
+      ((c-lam n bo)         (case b
+                              ((c-lam n2 bo2) (and (str-eq n n2) (core-eq bo bo2)))
+                              (_ false)))
+      ((c-let q n v bo)     (case b
+                              ((c-let q2 n2 v2 bo2)
+                               (and (=i q q2) (and (str-eq n n2)
+                                 (and (core-eq v v2) (core-eq bo bo2)))))
+                              (_ false)))
+      ((c-ann e ty)         (case b
+                              ((c-ann e2 ty2) (and (core-eq e e2) (core-eq ty ty2)))
+                              (_ false)))
+      ((c-refine base ats)  (case b
+                              ((c-refine b2 ats2) (and (core-eq base b2) (catoms-eq ats ats2)))
+                              (_ false)))
+      ((c-con h nm as)      (case b
+                              ((c-con h2 nm2 as2)
+                               (and (str-eq h h2) (and (str-eq nm nm2) (clist-eq as as2))))
+                              (_ false)))
+      ((c-tcon nm as)       (case b
+                              ((c-tcon nm2 as2) (and (str-eq nm nm2) (clist-eq as as2)))
+                              (_ false)))
+      ((c-primty nm)        (case b ((c-primty nm2) (str-eq nm nm2)) (_ false)))
+      ((c-global nm)        (case b ((c-global nm2) (str-eq nm nm2)) (_ false)))
+      ((c-prim nm)          (case b ((c-prim nm2) (str-eq nm nm2)) (_ false)))
+      ((c-app f a2)         (case b
+                              ((c-app f2 a3) (and (core-eq f f2) (core-eq a2 a3)))
+                              (_ false)))
+      ((c-case sc arms df)  (case b
+                              ((c-case sc2 arms2 df2)
+                               (and (core-eq sc sc2) (and (carms-eq arms arms2) (mcore-eq df df2))))
+                              (_ false))))))
+
+(def clist-eq
+  (lam (xs ys)
+    (case xs
+      ((nil)         (case ys ((nil) true) (_ false)))
+      ((cons x xr)   (case ys
+                       ((cons y yr) (and (core-eq x y) (clist-eq xr yr)))
+                       (_ false))))))
+
+(def carms-eq
+  (lam (xs ys)
+    (case xs
+      ((nil)       (case ys ((nil) true) (_ false)))
+      ((cons a ar) (case ys
+                     ((cons b br)
+                      (case a ((carm c1 v1 b1)
+                        (case b ((carm c2 v2 b2)
+                          (and (str-eq c1 c2) (and (slist-eq v1 v2)
+                            (and (core-eq b1 b2) (carms-eq ar br)))))))))
+                     (_ false))))))
+
+(def catoms-eq
+  (lam (xs ys)
+    (case xs
+      ((nil)       (case ys ((nil) true) (_ false)))
+      ((cons a ar) (case ys
+                     ((cons b br)
+                      (case a ((catom o1 t1)
+                        (case b ((catom o2 t2)
+                          (and (str-eq o1 o2) (and (core-eq t1 t2) (catoms-eq ar br))))))
+                        ))
+                     (_ false))))))
+
+(def slist-eq
+  (lam (xs ys)
+    (case xs
+      ((nil)       (case ys ((nil) true) (_ false)))
+      ((cons x xr) (case ys
+                     ((cons y yr) (and (str-eq x y) (slist-eq xr yr)))
+                     (_ false))))))
+
+(def mcore-eq
+  (lam (a b)
+    (case a
+      ((none)   (case b ((none) true) (_ false)))
+      ((some x) (case b ((some y) (core-eq x y)) (_ false))))))
+
+; ---------------------------------------------------------------- Pi shape
+; peel a (c-pi ...) chain: all leading arrows' dom terms, and the final cod.
+; Mirrors closconv.py `_peel_pi_terms`.
+
+(declare peel-pi-doms (-> Core (List Core)))
+(def peel-pi-doms
+  (lam (t)
+    (case t
+      ((c-pi q e n dom cod) (cons dom (peel-pi-doms cod)))
+      (_ nil))))
+
+(declare peel-pi-cod (-> Core Core))
+(def peel-pi-cod
+  (lam (t)
+    (case t
+      ((c-pi q e n dom cod) (peel-pi-cod cod))
+      (_ t))))
+
+; per-arrow COARSE eff flag of each arrow in the chain (0 = -> pure, 1 = =>).
+; Mirrors closconv.py `_pi_effs` (bool(seat)); the Core `eff` field is already 0/1.
+; i64-list equality (the eff-flag vectors) -- declared here, used by arrow-key-eq.
+(declare ieq-list (-> (List I64) (List I64) Bool))
+
+(declare pi-effs (-> Core (List I64)))
+(def pi-effs
+  (lam (t)
+    (case t
+      ((c-pi q e n dom cod) (cons e (pi-effs cod)))
+      (_ nil))))
+
+; is this type term an arrow? (closconv.py `_is_arrow`; None-ness lives in Maybe
+; at the call sites, so here it is simply "is it a c-pi".)
+(def is-arrow (-> Core Bool)
+  (lam (t) (case t ((c-pi q e n dom cod) true) (_ false))))
+
+; B2: representation-shape equality (mirrors closconv.py `_erase_shape`). Every
+; NON-arrow type is one uniform word, so any two non-arrows are shape-equal; a
+; nested arrow keeps its structure (recurse on doms/cod + effs). This is what
+; makes defunctionalization erasure-aware -- (-> A B), (-> I64 I64), (-> Str Bool)
+; all share one family/key.
+(declare shape-eq  (-> Core Core Bool))
+(declare shapes-eq (-> (List Core) (List Core) Bool))
+(def shape-eq
+  (lam (a b)
+    (case (is-arrow a)
+      (false (not (is-arrow b)))                 ; both non-arrow = both one word
+      (true (case (is-arrow b)
+        (false false)
+        (true (and (shapes-eq (peel-pi-doms a) (peel-pi-doms b))
+                   (and (shape-eq (peel-pi-cod a) (peel-pi-cod b))
+                        (ieq-list (pi-effs a) (pi-effs b))))))))))
+(def shapes-eq
+  (lam (as bs)
+    (case as
+      (nil (case bs (nil true) (_ false)))
+      ((cons x r) (case bs (nil false)
+        ((cons y r2) (and (shape-eq x y) (shapes-eq r r2))))))))
+
+; the codomain contribution to a family key (mirrors closconv.py `_cod_key`).
+; DOMAINS always erase (a poly `(-> K K ..)` param must share a family with the
+; concrete closures passed to it), but the CODOMAIN is kept concrete when it is
+; a GROUND non-arrow type: two families that return different ground types
+; (`Bool` vs `Ord` comparators) must NOT merge, else one $apply's concrete return
+; miscompiles the other's `case`. A nested-arrow cod erases structurally; a
+; variable/neutral cod (free de-Bruijn -- e.g. `foldl`'s poly `B`) is one word.
+(def cod-key-eq (-> Core Core Bool)
+  (lam (a b)
+    (case (is-arrow a)
+      (true  (case (is-arrow b) (true (shape-eq a b)) (false false)))
+      (false (case (is-arrow b)
+        (true false)
+        (false (case (free-indices a)
+          ((cons x xs) (case (free-indices b)             ; a is a variable cod
+                         ((cons y ys) true) (nil false)))  ;   eq iff b is too
+          (nil (case (free-indices b)                     ; a is ground
+                 ((cons y ys) false)                       ;   b variable: differ
+                 (nil (core-eq a b)))))))))))              ;   both ground: exact
+
+; two arrow types share a defunctionalization family: same ERASED dom shapes
+; (word arity) + concrete-when-ground cod (cod-key-eq) + same per-arrow eff flags.
+; `_arrow_key(a)==_arrow_key(b)`.
+(def arrow-key-eq (-> Core Core Bool)
+  (lam (a b)
+    (and (shapes-eq (peel-pi-doms a) (peel-pi-doms b))
+         (and (cod-key-eq (peel-pi-cod a) (peel-pi-cod b))
+              (ieq-list (pi-effs a) (pi-effs b))))))
+
+(def ieq-list
+  (lam (xs ys)
+    (case xs
+      ((nil)       (case ys ((nil) true) (_ false)))
+      ((cons x xr) (case ys
+                     ((cons y yr) (and (=i x y) (ieq-list xr yr)))
+                     (_ false))))))
+
+; ---------------------------------------------------------------- lambda shape
+; strip d leading Lam binders, skipping Ann wrappers between them, or `none` if
+; t is not d-deep in lams. Mirrors closconv.py `_peel_lams` (the skip-Ann lets a
+; nested literal collapse to its true d-ary body).
+
+(declare skip-ann (-> Core Core))
+(def skip-ann
+  (lam (t) (case t ((c-ann e ty) (skip-ann e)) (_ t))))
+
+(declare peel-lams (-> I64 Core (Maybe Core)))
+(def peel-lams
+  (lam (d t)
+    (case (<=i d 0)
+      (true (some t))
+      (false (case (skip-ann t)
+               ((c-lam n b) (peel-lams (- d 1) b))
+               (_ none))))))
+
+; true if t, lifted verbatim into an $apply arm, lowers first-order: no nested
+; Lam, no higher-order (Var-head) application. Mirrors closconv.py
+; `_first_order_body`. An App's ultimate head being a Var is the disqualifier.
+
+(declare fob      (-> Core Bool))
+(declare fob-list (-> (List Core) Bool))
+(declare fob-arms (-> (List CArm) Bool))
+(declare app-head (-> Core Core))
+(declare app-args (-> Core (List Core) (List Core)))
+
+; the ultimate head of an application spine, and its arguments in order.
+(def app-head
+  (lam (t) (case t ((c-app f a) (app-head f)) (_ t))))
+(def app-args
+  (lam (t acc)
+    (case t
+      ((c-app f a) (app-args f (cons a acc)))
+      (_ acc))))
+
+(def fob
+  (lam (t)
+    (case t
+      ((c-lam n b)         false)
+      ((c-app f a)         (case (app-head t)
+                             ((c-var i) false)        ; higher-order call
+                             (_ (and (fob (app-head t)) (fob-list (app-args t nil))))))
+      ((c-let q n v b)     (and (fob v) (fob b)))
+      ((c-con h nm as)     (fob-list as))
+      ((c-case sc arms df) (and (fob sc) (and (fob-arms arms)
+                             (case df ((none) true) ((some g) (fob g))))))
+      ((c-ann e ty)        (fob e))
+      (_ true))))
+
+(def fob-list
+  (lam (xs) (case xs ((nil) true) ((cons x rest) (and (fob x) (fob-list rest))))))
+
+(def fob-arms
+  (lam (arms)
+    (case arms
+      ((nil)       true)
+      ((cons a ar) (case a ((carm c v b) (and (fob b) (fob-arms ar))))))))
+
+; ================================================================ sig view
+; collect drives read-only type queries against the checked signature. The
+; Python pass reads mutable `sig.global_types`/`sig.global_defs`; the chirality port
+; models the read-only view as an immutable SigV of two assoc-lists (types and
+; def bodies, both as `Core` -- types already quoted, so `_type_term`'s
+; K.quote(sig,0,tyv) is a plain lookup here). The stateful transform that mutates
+; the sig + re-enters the kernel is the deferred driver (E2-loader residue).
+
+(data SigV () (sigv (tys (List (Pair Str Core))) (defs (List (Pair Str Core))) (ctors (List (Pair Str (List Core))))))
+
+; _def_ctx's result: the param type-ctx (reversed doms, innermost = Var 0), the
+; codomain, the body after peeling the param-lam chain, and the param count.
+(data DefCtx () (dctx (ctx (List (Maybe Core))) (cod Core) (body Core) (n I64)))
+
+(declare assoc-core (-> (List (Pair Str Core)) Str (Maybe Core)))
+(def assoc-core
+  (lam (xs k)
+    (case xs
+      ((nil) none)
+      ((cons p rest)
+        (case p ((pair a b)
+          (case (str-eq a k) (true (some b)) (false (assoc-core rest k)))))))))
+
+(def sv-type (-> SigV Str (Maybe Core))
+  (lam (s n) (case s ((sigv tys defs ctors) (assoc-core tys n)))))
+(def sv-def (-> SigV Str (Maybe Core))
+  (lam (s n) (case s ((sigv tys defs ctors) (assoc-core defs n)))))
+(def sv-ctors (-> SigV (List (Pair Str (List Core))))
+  (lam (s) (case s ((sigv tys defs ctors) ctors))))
+
+(declare cc-llen (-> (List Core) I64))
+(def cc-llen
+  (lam (xs) (case xs ((nil) 0) ((cons x r) (+ 1 (cc-llen r))))))
+
+; _arity: number of Pi domains of Global g's type, or none if g has no type.
+(def arity (-> SigV Str (Maybe I64))
+  (lam (s g)
+    (case (sv-type s g)
+      ((none)   none)
+      ((some ty) (some (cc-llen(peel-pi-doms ty)))))))
+
+; _g_param_specs: the first k (quantity, dom-term) pairs of g's Pi telescope --
+; the capture fields of a k-ary partial application of g.
+(declare gps (-> Core I64 (List (Pair I64 Core))))
+(def gps
+  (lam (t k)
+    (case (<=i k 0)
+      (true nil)
+      (false (case t
+               ((c-pi q e n dom cod) (cons (pair q dom) (gps cod (- k 1))))
+               (_ nil))))))
+(def g-param-specs (-> SigV Str I64 (List (Pair I64 Core)))
+  (lam (s g k)
+    (case (sv-type s g) ((none) nil) ((some ty) (gps ty k)))))
+
+; ctx[i], where each entry is itself a (Maybe Core) -- the walk pushes `none` for
+; untyped binders (nested Lam / Case-arm vars / an unknown Let value). Both an
+; out-of-range index and a `none` entry mean "type unknown". Matches _ty_of's
+; `ctx[i] if i<len else None` where ctx[i] may itself be None.
+(declare ctx-get (-> (List (Maybe Core)) I64 (Maybe Core)))
+(def ctx-get
+  (lam (xs i)
+    (case xs
+      ((nil) none)
+      ((cons x r) (case (=i i 0) (true x) (false (ctx-get r (- i 1))))))))
+
+; peel exactly n leading Pis (none if fewer) -- the App type-application step.
+(declare peel-n-pi (-> I64 Core (Maybe Core)))
+(def peel-n-pi
+  (lam (n t)
+    (case (<=i n 0)
+      (true (some t))
+      (false (case t
+               ((c-pi q e nm dom cod) (peel-n-pi (- n 1) cod))
+               (_ none))))))
+
+; _ty_of: best-effort type TERM of t under type-context ctx, or none. A Var reads
+; ctx; a Global its stored type; an App peels its head type by the spine length;
+; an Ann carries its type; anything else is unknown.
+(declare ty-of (-> SigV (List (Maybe Core)) Core (Maybe Core)))
+(def ty-of
+  (lam (s ctx t)
+    (case t
+      ((c-var i)     (ctx-get ctx i))
+      ((c-global nm) (sv-type s nm))
+      ((c-ann e ty)  (some ty))
+      ((c-app f a)   (case (ty-of s ctx (app-head t))
+                       ((none)     none)
+                       ((some hty) (peel-n-pi (cc-llen(app-args t nil)) hty))))
+      (_ none))))
+
+; _callee_doms: the first n domain type terms of callee `head`, each wrapped as
+; a Maybe (real dom -> some, run past the arrows -> none padding), or none for
+; the whole thing if head's type is unknown.
+(declare take-doms (-> I64 Core (List (Maybe Core))))
+(def take-doms
+  (lam (n t)
+    (case (<=i n 0)
+      (true nil)
+      (false (case t
+               ((c-pi q e nm dom cod) (cons (some dom) (take-doms (- n 1) cod)))
+               (_ (cons none (take-doms (- n 1) t))))))))
+(def callee-doms (-> SigV (List (Maybe Core)) Core I64 (Maybe (List (Maybe Core))))
+  (lam (s ctx head n)
+    (case (ty-of s ctx head)
+      ((none)     none)
+      ((some hty) (some (take-doms n hty))))))
+
+; strip exactly n leading Lam binders (no Ann-skip -- _def_ctx demands a plain
+; lam chain), or none.
+(declare peel-lam-exact (-> I64 Core (Maybe Core)))
+(def peel-lam-exact
+  (lam (n t)
+    (case (<=i n 0)
+      (true (some t))
+      (false (case t
+               ((c-lam nm b) (peel-lam-exact (- n 1) b))
+               (_ none))))))
+
+; reverse a (List Core), wrapping each entry in `some` -- the param types become
+; the initial typing ctx (innermost/last param = Var 0), all known.
+(declare rev-onto-some (-> (List Core) (List (Maybe Core)) (List (Maybe Core))))
+(def rev-onto-some
+  (lam (xs acc) (case xs ((nil) acc) ((cons x r) (rev-onto-some r (cons (some x) acc))))))
+
+; _def_ctx: (reversed param-type ctx, cod, body-after-param-lams, param count) for
+; a plain lam-chain def, or none. ctx is de Bruijn: the last param is Var 0.
+(def def-ctx (-> SigV Str (Maybe DefCtx))
+  (lam (s fname)
+    (case (sv-type s fname)
+      ((none) none)
+      ((some ty)
+        (case (sv-def s fname)
+          ((none) none)
+          ((some body)
+            (case (peel-lam-exact (cc-llen(peel-pi-doms ty)) body)
+              ((none) none)
+              ((some lam)
+               (some (dctx (rev-onto-some (peel-pi-doms ty) nil)
+                           (peel-pi-cod ty)
+                           lam
+                           (cc-llen(peel-pi-doms ty))))))))))))
+
+; ================================================================ collect
+; The classification walk: scan every def, and per closure-producing site record
+; a defunctionalization family (keyed by arrow signature) with one ctor per site.
+; Python mutates three dicts/sets (families / ho_keys / poisoned) through nested
+; closures; the chirality port threads them as an immutable CState through the walk.
+;
+; A site is one of (mirrors closconv.py `_collect`):
+;   cs-g  g k fields   -- a k-ary partial application of Global g (k=0 = g as a
+;                         bare function value). ckey = (g, k).
+;   cs-lam inner d captys fields -- an escaping lambda literal. ckey = (inner,captys).
+; A family is keyed by its arrow signature, compared with arrow-key-eq. ho-keys
+; are families higher-order-applied (Var head at exact arity); poisoned families
+; have an unsaturated higher-order use and are excluded wholesale downstream.
+
+(data Csite ()
+  (cs-g   (g Str) (k I64) (fields (List (Pair I64 Core))))
+  (cs-lam (inner Core) (d I64) (captys (List Core)) (fields (List (Pair I64 Core)))))
+
+(data Family () (family (key Core) (sites (List Csite))))
+
+(data CState () (cstate (fams (List Family)) (ho (List Core)) (pois (List Core))))
+
+; ---- ckey / family membership (structural, the dict-key stand-ins) ----------
+
+(def csite-key-eq (-> Csite Csite Bool)
+  (lam (a b)
+    (case a
+      ((cs-g g1 k1 f1)          (case b ((cs-g g2 k2 f2) (and (str-eq g1 g2) (=i k1 k2))) (_ false)))
+      ((cs-lam in1 d1 cap1 f1)  (case b ((cs-lam in2 d2 cap2 f2)
+                                          (and (core-eq in1 in2) (clist-eq cap1 cap2))) (_ false))))))
+
+(declare site-present? (-> (List Csite) Csite Bool))
+(def site-present?
+  (lam (ss site)
+    (case ss ((nil) false)
+      ((cons s r) (case (csite-key-eq s site) (true true) (false (site-present? r site)))))))
+
+; setdefault: keep the first-inserted site (order irrelevant -- synth sorts).
+(def site-setdefault (-> (List Csite) Csite (List Csite))
+  (lam (ss site) (case (site-present? ss site) (true ss) (false (cons site ss)))))
+
+(declare key-in? (-> (List Core) Core Bool))
+(def key-in?
+  (lam (ks key)
+    (case ks ((nil) false)
+      ((cons k r) (case (arrow-key-eq k key) (true true) (false (key-in? r key)))))))
+(def key-add (-> (List Core) Core (List Core))
+  (lam (ks key) (case (key-in? ks key) (true ks) (false (cons key ks)))))
+
+(declare fam-has? (-> (List Family) Core Bool))
+(def fam-has?
+  (lam (fs key)
+    (case fs ((nil) false)
+      ((cons f r) (case f ((family k ss)
+                    (case (arrow-key-eq k key) (true true) (false (fam-has? r key)))))))))
+(def ensure-fam (-> (List Family) Core (List Family))
+  (lam (fs key) (case (fam-has? fs key) (true fs) (false (cons (family key nil) fs)))))
+
+(declare fam-add-site (-> (List Family) Core Csite (List Family)))
+(def fam-add-site
+  (lam (fs key site)
+    (case fs
+      ((nil) nil)                                  ; unreachable: ensure-fam ran first
+      ((cons f r) (case f ((family k ss)
+                    (case (arrow-key-eq k key)
+                      (true  (cons (family k (site-setdefault ss site)) r))
+                      (false (cons f (fam-add-site r key site))))))))))
+
+; ---- CState operations (fam(ty) always registers the family) ----------------
+
+(def st-ensure-fam (-> CState Core CState)
+  (lam (st key) (case st ((cstate fs ho po) (cstate (ensure-fam fs key) ho po)))))
+(def st-add-site (-> CState Core Csite CState)
+  (lam (st key site)
+    (case (st-ensure-fam st key) ((cstate fs ho po) (cstate (fam-add-site fs key site) ho po)))))
+(def st-add-ho (-> CState Core CState)
+  (lam (st key)
+    (case (st-ensure-fam st key) ((cstate fs ho po) (cstate fs (key-add ho key) po)))))
+(def st-add-pois (-> CState Core CState)
+  (lam (st key)
+    (case (st-ensure-fam st key) ((cstate fs ho po) (cstate fs ho (key-add po key))))))
+
+; ---- reg-lam helpers --------------------------------------------------------
+
+; captys = the ctx types at the lam's sorted free indices (each a Maybe Core).
+(declare map-ctxget (-> (List (Maybe Core)) (List I64) (List (Maybe Core))))
+(def map-ctxget
+  (lam (ctx idxs)
+    (case idxs ((nil) nil) ((cons e r) (cons (ctx-get ctx e) (map-ctxget ctx r))))))
+; every capture type known and non-arrow? (else §6: skip -- unknown/arrow capture)
+(declare captys-ok (-> (List (Maybe Core)) Bool))
+(def captys-ok
+  (lam (xs)
+    (case xs ((nil) true)
+      ((cons x r) (case x
+                    ((none) false)
+                    ((some c) (case (is-arrow c) (true false) (false (captys-ok r)))))))))
+(declare unwrap-somes (-> (List (Maybe Core)) (List Core)))
+(def unwrap-somes
+  (lam (xs)
+    (case xs ((nil) nil)
+      ((cons x r) (case x ((some c) (cons c (unwrap-somes r))) ((none) (unwrap-somes r)))))))
+(declare mk-fields (-> (List Core) (List (Pair I64 Core))))
+(def mk-fields
+  (lam (cs) (case cs ((nil) nil) ((cons c r) (cons (pair 2 c) (mk-fields r))))))
+
+; ---- erased-capture detection (E100) ----------------------------------------
+; A closure capture with NO runtime witness: an erased (q=0) capture, OR a
+; type-kinded (Type-valued) one. Such a capture MUST be dropped from the closure
+; -- both its $clo field and its construction arg -- because word-ifying it would
+; leave a dangling de Bruijn reference (a captured TYPE has no runtime value).
+; The full field list is kept in each Csite (for de Bruijn re-addressing); the
+; drop happens where fields/args are MATERIALIZED (site-fields->term, arm-body,
+; lam-con, the cs-g partial-app Con). One uniform predicate covers both site
+; kinds: cs-g carries the param quantity (q0 = a poly type/erased arg); cs-lam
+; forces q2 so its type-kinded captures are caught by the Type-shape test.
+(declare is-tykind (-> Core Bool))
+(def is-tykind (lam (c) (case c ((c-type l) true) (_ false))))
+(declare field-erased? (-> (Pair I64 Core) Bool))
+(def field-erased?
+  (lam (f) (case f ((pair q ty) (case (=i q 0) (true true) (false (is-tykind ty)))))))
+(declare kept-count (-> (List (Pair I64 Core)) I64))
+(def kept-count
+  (lam (fs) (case fs ((nil) 0)
+    ((cons f r) (case (field-erased? f) (true (kept-count r)) (false (+ 1 (kept-count r))))))))
+
+; register an escaping lambda literal of arrow type aty (or skip it silently when
+; its body/captures are out of this slice's scope). Mirrors closconv.py reg_lam.
+(def reg-lam (-> SigV CState Core Core (List (Maybe Core)) CState)
+  (lam (sig st lam aty ctx)
+    (case (peel-lams (cc-llen(peel-pi-doms aty)) lam)
+      ((none) st)
+      ((some inr)
+        (case (fob inr)
+          (false st)
+          (true (case (captys-ok (map-ctxget ctx (free-indices lam)))
+                  (false st)
+                  (true (st-add-site st aty
+                          (cs-lam inr (cc-llen(peel-pi-doms aty))
+                                  (unwrap-somes (map-ctxget ctx (free-indices lam)))
+                                  (mk-fields (unwrap-somes (map-ctxget ctx (free-indices lam))))))))))))))
+
+; detect an escaping lambda literal: (the (-> ..) (lam ..)) or a bare (lam ..) in
+; a typed (arrow-expected) position. Returns (lam-node, arrow-type).
+(declare lam-lit (-> Core (Maybe Core) (Maybe (Pair Core Core))))
+(def lam-lit
+  (lam (t expected)
+    (case t
+      ((c-ann e ty) (case e
+                      ((c-lam n b) (case (is-arrow ty) (true (some (pair e ty))) (false none)))
+                      (_ none)))
+      ((c-lam n b)  (case expected
+                      ((some ety) (case (is-arrow ety) (true (some (pair t ety))) (false none)))
+                      ((none) none)))
+      (_ none))))
+
+; ---- the walk ---------------------------------------------------------------
+
+(declare cwalk            (-> SigV CState (List (Maybe Core)) (Maybe Core) Core CState))
+(declare cwalk-descend    (-> SigV CState (List (Maybe Core)) Core Core CState))
+(declare cwalk-struct     (-> SigV CState (List (Maybe Core)) Core CState))
+(declare cwalk-struct-case (-> SigV CState (List (Maybe Core)) (List CArm) (Maybe Core) CState))
+(declare cwalk-app        (-> SigV CState (List (Maybe Core)) Core CState))
+(declare cwalk-app-head   (-> SigV CState (List (Maybe Core)) Core CState))
+(declare cwalk-args    (-> SigV CState (List (Maybe Core)) (Maybe (List (Maybe Core))) (List Core) CState))
+(declare cwalk-list    (-> SigV CState (List (Maybe Core)) (List Core) CState))
+(declare cwalk-arms    (-> SigV CState (List (Maybe Core)) (List CArm) CState))
+(declare scan-fvargs   (-> SigV CState (List (Maybe Core)) (Maybe (List (Maybe Core))) (List Core) CState))
+(declare push-nones    (-> I64 (List (Maybe Core)) (List (Maybe Core))))
+(declare sv-ctor-fields (-> (List (Pair Str (List Core))) Str (Maybe (List Core))))
+(declare arm-ctx       (-> (List (Pair Str (List Core))) Str I64 (List (Maybe Core)) (List (Maybe Core))))
+
+(def cwalk
+  (lam (sig st ctx expected t)
+    (case (lam-lit t expected)
+      ((some pr) (case pr ((pair lam aty)
+                   (cwalk-descend sig (reg-lam sig st lam aty ctx) ctx aty lam))))
+      ((none) (cwalk-struct sig st ctx t)))))
+
+; after registering an escaping literal, descend into its body to find nested
+; closures, extending ctx with the literal's own param types.
+(def cwalk-descend
+  (lam (sig st ctx aty lam)
+    (case (peel-lams (cc-llen(peel-pi-doms aty)) lam)
+      ((some inr) (cwalk sig st (rev-onto-some (peel-pi-doms aty) ctx) none inr))
+      ((none) st))))
+
+(def cwalk-struct
+  (lam (sig st ctx t)
+    (case t
+      ((c-app f a)         (cwalk-app sig st ctx t))
+      ((c-lam n b)         (cwalk sig st (cons none ctx) none b))
+      ((c-let q n v b)     (cwalk sig (cwalk sig st ctx none v) (cons (ty-of sig ctx v) ctx) none b))
+      ((c-con h nm as)     (cwalk-list sig (scan-fvargs sig st ctx none as) ctx as))
+      ((c-case sc arms df) (cwalk-struct-case sig (cwalk sig st ctx none sc) ctx arms df))
+      ((c-ann e ty)        (cwalk sig st ctx none e))
+      (_ st))))                                       ; Var/Global/Prim/TCon/Refine/Pi/lit/type: nothing
+
+; Case: walk scrut (done by caller), then arms (ctx += one none per arm var), then default.
+(def cwalk-struct-case
+  (lam (sig st ctx arms df)
+    (case df
+      ((none)   (cwalk-arms sig st ctx arms))
+      ((some g) (cwalk sig (cwalk-arms sig st ctx arms) ctx none g)))))
+
+; an application: head-based ho/partial handling, function-value args, then walk
+; the args (with their callee-domain expected types) and the head.
+(def cwalk-app
+  (lam (sig st ctx t)
+    (cwalk sig
+      (cwalk-args sig
+        (scan-fvargs sig (cwalk-app-head sig st ctx t) ctx
+          (callee-doms sig ctx (app-head t) (cc-llen(app-args t nil))) (app-args t nil))
+        ctx (callee-doms sig ctx (app-head t) (cc-llen(app-args t nil))) (app-args t nil))
+      ctx none (app-head t))))
+
+; the head-driven step: a Var head of arrow type -> ho (saturated) or poison
+; (unsaturated); a Global partial application -> a cs-g capture ctor.
+(def cwalk-app-head
+  (lam (sig st ctx t)
+    (case (app-head t)
+      ((c-var i)     (case (ty-of sig ctx (app-head t))
+                       ((some hty) (case (is-arrow hty)
+                                     (true (case (=i (cc-llen(app-args t nil)) (cc-llen(peel-pi-doms hty)))
+                                             (true  (st-add-ho st hty))
+                                             (false (st-add-pois st hty))))
+                                     (false st)))
+                       ((none) st)))
+      ((c-global g)  (case (arity sig g)
+                       ((some ar) (case (and (<i 0 (cc-llen(app-args t nil))) (<i (cc-llen(app-args t nil)) ar))
+                                    (true (case (ty-of sig ctx t)
+                                            ((some rem) (case (is-arrow rem)
+                                                          (true (st-add-site st rem
+                                                                  (cs-g g (cc-llen(app-args t nil))
+                                                                        (g-param-specs sig g (cc-llen(app-args t nil))))))
+                                                          (false st)))
+                                            ((none) st)))
+                                    (false st)))
+                       ((none) st)))
+      (_ st))))
+
+; function-value args: a Global of arrow type in value position -> a nullary cs-g.
+; key a function-value Global by the CALLEE-PARAM slot (the poly arrow it fills)
+; when that slot is an arrow, else its own type -- mirrors closconv.py's Option-A
+; keying, so a ground-cod param keeps its concrete return and a variable-cod
+; param erases it (both sides must agree for the family to align).
+(def fv-own (-> SigV CState (List (Maybe Core)) Str Core CState)
+  (lam (sig st ctx g a)
+    (case (ty-of sig ctx a)
+      ((some aty) (case (is-arrow aty)
+                    (true  (st-add-site st aty (cs-g g 0 nil)))
+                    (false st)))
+      ((none) st))))
+
+(def fv-site (-> SigV CState (List (Maybe Core)) (Maybe Core) Core CState)
+  (lam (sig st ctx slot a)
+    (case a
+      ((c-global g)
+        (case slot
+          ((some d) (case (is-arrow d)
+                      (true  (st-add-site st d (cs-g g 0 nil)))
+                      (false (fv-own sig st ctx g a))))
+          ((none)   (fv-own sig st ctx g a))))
+      (_ st))))
+
+(def scan-fvargs
+  (lam (sig st ctx cdoms spine)
+    (case spine
+      ((nil) st)
+      ((cons a rest)
+        (case cdoms
+          ((none)    (scan-fvargs sig (fv-site sig st ctx none a) ctx none rest))
+          ((some ds) (case ds
+                       ((nil)       (scan-fvargs sig (fv-site sig st ctx none a) ctx (some nil) rest))
+                       ((cons d dr) (scan-fvargs sig (fv-site sig st ctx d a)    ctx (some dr) rest)))))))))
+
+; walk each arg carrying its callee-domain expected type (for bare-lambda args).
+(def cwalk-args
+  (lam (sig st ctx cdoms spine)
+    (case spine
+      ((nil) st)
+      ((cons a rest)
+        (case cdoms
+          ((none)    (cwalk-args sig (cwalk sig st ctx none a) ctx none rest))
+          ((some ds) (case ds
+                       ((nil)          (cwalk-args sig (cwalk sig st ctx none a) ctx (some nil) rest))
+                       ((cons d drest) (cwalk-args sig (cwalk sig st ctx d a) ctx (some drest) rest)))))))))
+
+(def cwalk-list
+  (lam (sig st ctx xs)
+    (case xs ((nil) st) ((cons x r) (cwalk-list sig (cwalk sig st ctx none x) ctx r)))))
+
+(def cwalk-arms
+  (lam (sig st ctx arms)
+    (case arms
+      ((nil) st)
+      ((cons a r) (case a ((carm c vs b)
+                    (cwalk-arms sig (cwalk sig st (arm-ctx (sv-ctors sig) c (slen vs) ctx) none b) ctx r)))))))
+
+(def push-nones
+  (lam (n ctx) (case (<=i n 0) (true ctx) (false (push-nones (- n 1) (cons none ctx))))))
+
+; resolve a case-arm ctor's field types from the SigV ctor map (ctor name ->
+; field types, as Core). `none` when the ctor is unknown.
+(def sv-ctor-fields
+  (lam (cm c)
+    (case cm
+      ((nil) none)
+      ((cons p r) (case p ((pair nm fs)
+        (case (str-eq nm c) (true (some fs)) (false (sv-ctor-fields r c)))))))))
+
+; the arm-var type context for a case arm: (some fty) per known ctor field
+; (reversed, so the last field is Var 0), else `none` padding -- so an
+; application of an extracted fn-typed field resolves its arrow type and rw
+; routes it through $apply (mirrors def-ctx's rev-onto-some convention).
+(def arm-ctx
+  (lam (cm c n ctx)
+    (case (sv-ctor-fields cm c)
+      ((none) (push-nones n ctx))
+      ((some fs) (rev-onto-some fs ctx)))))
+
+; ---- entry: scan every def under its param ctx ------------------------------
+
+(declare collect-defs (-> SigV CState (List (Pair Str Core)) CState))
+(def collect-defs
+  (lam (sig st defs)
+    (case defs
+      ((nil) st)
+      ((cons p rest) (case p ((pair fname body)
+                       (case (def-ctx sig fname)
+                         ((none) (collect-defs sig st rest))
+                         ((some dc) (case dc ((dctx ctx cod b n)
+                                      (collect-defs sig (cwalk sig st ctx none b) rest)))))))))))
+
+(def collect (-> SigV CState)
+  (lam (sig)
+    (case sig ((sigv tys defs ctors) (collect-defs sig (cstate nil nil nil) defs)))))
+
+; ================================================================ synth
+; Term-building for one defunctionalization family: the $clo `data` sum (one ctor
+; per site) and the $apply dispatcher (a case over the closure cell). Ports the
+; pure construction of closconv.py `_synth` -- the arm bodies (_arm_body), the
+; apply type (_mk_pi), and the apply body (_mk_lams over a Case). The INSTALL
+; (`check_data`/`check_def` mutating + re-checking the sig) is the deferred driver
+; residue; the ctor/family ORDERING + naming ($clo<i>/$apply<i>/$k<i>_<j>, from
+; closconv.py's `sorted(key=repr)`) is a determinism seam flagged for the port
+; (it needs a source-reproducible canonical order -- ty-cmp/D-1 -- adopted on both
+; stages; repr-order reaches emitted names, so it is a fixpoint concern).
+
+; ---- de-Bruijn re-addressing for an $apply arm (the substance) --------------
+
+(declare app2 (-> (List (Pair I64 I64)) (List (Pair I64 I64)) (List (Pair I64 I64))))
+(def app2 (lam (xs ys) (case xs ((nil) ys) ((cons x r) (cons x (app2 r ys))))))
+
+; g-site arm: g's peeled body remapped. gbody param p sits at index (arity-1-p).
+; The first k params are captured (pre-applied); params [k,arity) are supplied by
+; $apply. m = the KEPT capture count (type-kinded/q0 captures are dropped, E100).
+;   captured, KEPT    (kj-th kept field)  -> arm index (m-1-kj)
+;   captured, ERASED  (no field)          -> arm index (m+d) = the clo binder; the
+;     reference sits in an erased position and is discarded by term->ncore.
+;   supplied  p>=k    (apply arg a_{p-k}) -> arm index (m+d-1-(p-k))
+; (With no erasure m=k and this reduces to the old {m-1-p, 2m+d-1-p} forms.)
+(declare g-subst-go (-> I64 I64 (List (Pair I64 Core)) I64 I64 I64 I64 (List (Pair I64 I64))))
+(def g-subst-go
+  (lam (p kj fs arity k m d)
+    (case (<i p arity)
+      (false nil)
+      (true
+        (let (src (- (- arity 1) p))
+          (case (<i p k)
+            (true (case fs
+                    ((nil) nil)                              ; unreachable: fs has k entries
+                    ((cons f rest)
+                      (case (field-erased? f)
+                        (true  (cons (pair src (+ m d))
+                                     (g-subst-go (+ p 1) kj rest arity k m d)))
+                        (false (cons (pair src (- (- m 1) kj))
+                                     (g-subst-go (+ p 1) (+ kj 1) rest arity k m d)))))))
+            (false (cons (pair src (- (- (+ m d) 1) (- p k)))
+                         (g-subst-go (+ p 1) kj fs arity k m d)))))))))
+(def g-subst (-> I64 (List (Pair I64 Core)) I64 I64 I64 (List (Pair I64 I64)))
+  (lam (arity fields k m d) (g-subst-go 0 0 fields arity k m d)))
+
+; lam-site arm: the literal's inner body; own param v<dd -> apply's arg (m+v);
+; a capture at inner index (dd+e) for enclosing e -> field (m-1-kj) when kept,
+; else the clo binder (m+dd = m+d; erased ref, dropped by term->ncore). m = kept
+; count; `fields` (aligned with the sorted enclosing captures) gates erasure. E100.
+(declare own-subst (-> I64 I64 I64 (List (Pair I64 I64))))
+(def own-subst
+  (lam (v dd m)
+    (case (<i v dd)
+      (false nil)
+      (true (cons (pair v (+ m v)) (own-subst (+ v 1) dd m))))))
+(declare shift-nonneg (-> I64 (List I64) (List I64)))    ; map (- dd), drop negatives
+(def shift-nonneg
+  (lam (dd xs)
+    (case xs ((nil) nil)
+      ((cons x r) (case (<=i dd x)
+                    (true  (cons (- x dd) (shift-nonneg dd r)))
+                    (false (shift-nonneg dd r)))))))
+(declare cap-subst (-> I64 I64 (List I64) (List (Pair I64 Core)) I64 I64 (List (Pair I64 I64))))
+(def cap-subst
+  (lam (dd kj caps fields d m)
+    (case caps
+      ((nil) nil)
+      ((cons e r)
+        (case fields
+          ((nil) nil)                                       ; unreachable: aligned
+          ((cons f fr)
+            (case (field-erased? f)
+              (true  (cons (pair (+ dd e) (+ m d))
+                           (cap-subst dd kj r fr d m)))
+              (false (cons (pair (+ dd e) (- (- m 1) kj))
+                           (cap-subst dd (+ kj 1) r fr d m))))))))))
+(def lam-subst (-> Core I64 (List (Pair I64 Core)) I64 I64 (List (Pair I64 I64)))
+  (lam (inner dd fields d m)
+    (app2 (own-subst 0 dd m)
+          (cap-subst dd 0 (shift-nonneg dd (free-indices inner)) fields d m))))
+
+; forward: arm-body composes rw (defined below) over the remapped body, so a
+; fn-value global in value position becomes its nullary Con and the
+; defunctionalization output is fully first-order.
+(declare rw (-> SigV (List ApplyEnt) (List (Maybe Core)) (Maybe Core) Core Core))
+
+; E147: the arm-body de-Bruijn context for rw. The remapped body runs under m
+; capture binders (Var 0..m-1 = the kept fields, innermost first) then the apply
+; args and clo binder (Var m..m+d). rw needs the CAPTURE types so a nested
+; application whose head is a captured FUNCTION value (`(eq hk k)` where eq is a
+; captured `str-eqf`; `(f x)` where f is a captured fn) resolves its arrow type
+; and routes through `$apply` (the SECOND defunctionalization level) instead of
+; falling to lower's "higher-order application" skip. Without this ctx `ty-of`
+; returns none for the capture var, the Var-head app is left bare, and the whole
+; family — hence the entry — is pruned. m = kept count; g-subst/cap-subst map the
+; kj-th KEPT field to arm index (m-1-kj), so arm index 0 = the LAST kept field:
+; rev-onto-some over the kept field types in order gives ctx[0]=last, ctx[m-1]=
+; first. Apply-arg / clo positions (>= m) resolve to none via ctx-get (out of
+; range) — correct: a captured value at those slots is not higher-order-applied
+; in the reported shapes. (Erased type-kinded captures carry no field and no ctx
+; slot; they never reach an application head.)
+(declare kept-tys (-> (List (Pair I64 Core)) (List Core)))
+(def kept-tys
+  (lam (fs)
+    (case fs
+      ((nil) nil)
+      ((cons f r) (case (field-erased? f)
+                    (true  (kept-tys r))
+                    (false (case f ((pair q ty) (cons ty (kept-tys r))))))))))
+(def arm-rw-ctx (-> (List (Pair I64 Core)) (List (Maybe Core)))
+  (lam (fields) (rev-onto-some (kept-tys fields) nil)))
+
+; the arm body for a site: d = the family (apply) arity, m = the site's capture
+; count. Mirrors closconv.py _arm_body. The remapped body runs through rw so a
+; fn-value global lifted verbatim (e.g. as-str) lowers first-order.
+(def arm-body (-> SigV Csite I64 I64 (List ApplyEnt) Core)
+  (lam (sig site d m ka)
+    (case site
+      ((cs-g g k fields)
+        (case (def-ctx sig g)
+          ((some dc) (case dc ((dctx ctx cod gbody n) (rw sig ka (arm-rw-ctx fields) none (remap (g-subst n fields k m d) gbody)))))
+          ((none) (c-lit-i 0))))                    ; unreachable: g always has a def-ctx
+      ((cs-lam inner dd captys fields)
+        (rw sig ka (arm-rw-ctx fields) none (remap (lam-subst inner dd fields d m) inner))))))
+
+; ---- the $clo type / $apply term assembly -----------------------------------
+
+; n nested lams over body (closconv.py _mk_lams).
+(declare mk-lams (-> I64 Core Core))
+(def mk-lams
+  (lam (n body) (case (<=i n 0) (true body) (false (mk-lams (- n 1) (c-lam "_" body))))))
+
+; a non-dependent Pi chain over doms (each carrying its eff flag) ending in cod
+; (closconv.py _mk_pi). effs shorter than doms -> the tail arrows are pure.
+(declare mk-pi (-> (List Core) (List I64) Core Core))
+(def mk-pi
+  (lam (doms effs cod)
+    (case doms
+      ((nil) cod)
+      ((cons d dr) (case effs
+                     ((cons e er) (c-pi 2 e "_" d (mk-pi dr er cod)))
+                     ((nil)       (c-pi 2 0 "_" d (mk-pi dr nil cod))))))))
+
+; apply : (-> $clo dom0..dom_{d-1} cod). The leading $clo arrow is pure; the rest
+; carry the family's eff flags (closconv.py: apply_effs = (False,) + fam effs).
+(def apply-ty (-> Str (List Core) Core (List I64) Core)
+  (lam (dname doms cod fam-effs)
+    (mk-pi (cons (c-tcon dname nil) doms) (cons 0 fam-effs) cod)))
+
+; field / ctor / clo names (indices come from the flagged ordering).
+(declare field-count (-> (List (Pair I64 Core)) I64))
+(def field-count
+  (lam (fs) (case fs ((nil) 0) ((cons f r) (+ 1 (field-count r))))))
+; the RUNTIME capture count = kept fields only (E100: type-kinded captures are
+; dropped, so cap-names / arm binder count / ctor arity all use kept-count).
+(def site-m (-> Csite I64)
+  (lam (s) (case s ((cs-g g k f) (kept-count f)) ((cs-lam inr d cap f) (kept-count f)))))
+(declare cap-names-go (-> I64 I64 (List Str)))
+(def cap-names-go
+  (lam (i m) (case (<i i m) (false nil) (true (cons (str-cat "cap" (i64->str i)) (cap-names-go (+ i 1) m))))))
+(def cap-names (-> I64 (List Str)) (lam (m) (cap-names-go 0 m)))
+(def clo-name    (-> I64 Str)     (lam (i) (str-cat "$clo" (i64->str i))))
+(def apply-name  (-> I64 Str)     (lam (i) (str-cat "$apply" (i64->str i))))
+(def ctor-name   (-> I64 I64 Str) (lam (i j) (str-cat "$k" (str-cat (i64->str i) (str-cat "_" (i64->str j))))))
+
+; the apply body: \clo.\a0..a_{d-1}. case (Var d = clo) of one arm per site.
+(declare build-arms (-> SigV I64 I64 (List Csite) I64 (List ApplyEnt) (List CArm)))
+(def build-arms
+  (lam (sig i j sites d ka)
+    (case sites
+      ((nil) nil)
+      ((cons s r) (cons (carm (ctor-name i j) (cap-names (site-m s)) (arm-body sig s d (site-m s) ka))
+                        (build-arms sig i (+ j 1) r d ka))))))
+(def apply-body (-> SigV I64 (List Csite) I64 (List ApplyEnt) Core)
+  (lam (sig i sites d ka)
+    (mk-lams (+ 1 d) (c-case (c-var d) (build-arms sig i 0 sites d ka) none))))
+
+; ================================================================ rewrite
+; The term->term pass (closconv.py `_rewrite`'s inner `rw`): a capture-bearing
+; lambda literal -> its `Con`; a saturated higher-order Var application -> an
+; `$apply` call; a partial application of a Global -> the capture `Con`; a
+; function-value Global -> its nullary `Con`. Driven by the synth map, modelled
+; here as a (List ApplyEnt) looked up by arrow-key-eq (the arrow_key->(dname,
+; apply_name, ctor_of) dict). The per-def INSTALL + param-type rewrite (the
+; mutation/re-check) is the deferred driver; this is the pure body rewriter.
+
+(data Ckey ()
+  (ckey-g   (g Str) (k I64))
+  (ckey-lam (inner Core) (captys (List Core))))
+
+(data ApplyEnt ()
+  (apply-ent (key Core) (dname Str) (aname Str) (ctor-of (List (Pair Ckey Str)))))
+
+(def ckey-eq (-> Ckey Ckey Bool)
+  (lam (a b)
+    (case a
+      ((ckey-g g1 k1)      (case b ((ckey-g g2 k2) (and (str-eq g1 g2) (=i k1 k2))) (_ false)))
+      ((ckey-lam in1 cap1) (case b ((ckey-lam in2 cap2)
+                                     (and (core-eq in1 in2) (clist-eq cap1 cap2))) (_ false))))))
+
+(declare ctor-of-find (-> (List (Pair Ckey Str)) Ckey (Maybe Str)))
+(def ctor-of-find
+  (lam (co ck)
+    (case co ((nil) none)
+      ((cons p r) (case p ((pair k nm)
+                    (case (ckey-eq k ck) (true (some nm)) (false (ctor-of-find r ck)))))))))
+
+(declare ka-find (-> (List ApplyEnt) Core (Maybe ApplyEnt)))
+(def ka-find
+  (lam (ka key)
+    (case ka ((nil) none)
+      ((cons e r) (case e ((apply-ent k dn an co)
+                    (case (arrow-key-eq k key) (true (some e)) (false (ka-find r key)))))))))
+
+; [ (Var e) | e <- caps ] -- the closure Con's captured-var arguments.
+(declare vars-of (-> (List I64) (List Core)))
+(def vars-of
+  (lam (es) (case es ((nil) nil) ((cons e r) (cons (c-var e) (vars-of r))))))
+
+; E100: the closure Con's captured-var args, DROPPING type-kinded captures so the
+; ctor arity matches site-fields->term's kept-only field list. `captys` (the
+; enclosing types at each capture, aligned with `es`) gates the drop -- a capture
+; whose type is a kind (Type) has no runtime witness. A `none` capty keeps the
+; var (captys-ok has already gated genuine unknowns out before this runs).
+(declare vars-of-kept (-> (List (Maybe Core)) (List I64) (List Core)))
+(def vars-of-kept
+  (lam (captys es)
+    (case es
+      ((nil) nil)
+      ((cons e r)
+        (case captys
+          ((nil) (cons (c-var e) (vars-of-kept nil r)))
+          ((cons c cr)
+            (case c
+              ((some ty) (case (is-tykind ty)
+                           (true  (vars-of-kept cr r))
+                           (false (cons (c-var e) (vars-of-kept cr r)))))
+              ((none)    (cons (c-var e) (vars-of-kept cr r))))))))))
+
+; E100: drop the rspine entries at g's erased capture positions (a k-ary partial
+; application of a poly global captures type args at its q0 slots). `fields` = gps.
+(declare drop-erased-args (-> (List (Pair I64 Core)) (List Core) (List Core)))
+(def drop-erased-args
+  (lam (fields args)
+    (case fields
+      ((nil) args)
+      ((cons f fr)
+        (case args
+          ((nil) nil)
+          ((cons a ar)
+            (case (field-erased? f)
+              (true  (drop-erased-args fr ar))
+              (false (cons a (drop-erased-args fr ar))))))))))
+
+; fold an application spine (closconv.py _spine).
+(declare cspine (-> Core (List Core) Core))
+(def cspine
+  (lam (head args) (case args ((nil) head) ((cons a r) (cspine (c-app head a) r)))))
+
+; if t is a converted escaping lambda literal, its Con; else none. Mirrors
+; closconv.py `lam_con` -- resolves the SAME ckey collect/reg-lam registered.
+(declare lam-con (-> SigV (List ApplyEnt) (List (Maybe Core)) (Maybe Core) Core (Maybe Core)))
+(def lam-con
+  (lam (sig ka ctx expected t)
+    (case (lam-lit t expected)
+      ((none) none)
+      ((some pr) (case pr ((pair lam aty)
+        (case (ka-find ka aty)
+          ((none) none)
+          ((some ae) (case ae ((apply-ent key dn an co)
+            (case (peel-lams (cc-llen(peel-pi-doms aty)) lam)
+              ((none) none)
+              ((some inner)
+               (case (captys-ok (map-ctxget ctx (free-indices lam)))
+                 (false none)                         ; concrete-capty ctors only
+                 (true (case (ctor-of-find co
+                              (ckey-lam inner (unwrap-somes (map-ctxget ctx (free-indices lam)))))
+                         ((none) none)
+                         ((some cn) (some (c-con dn cn (vars-of-kept (map-ctxget ctx (free-indices lam)) (free-indices lam))))))))))))))))))))
+
+(declare rw-app      (-> SigV (List ApplyEnt) (List (Maybe Core)) Core Core))
+(declare rw-app-disp (-> SigV (List ApplyEnt) (List (Maybe Core)) Core (List Core) Core))
+(declare rw-global   (-> SigV (List ApplyEnt) (List (Maybe Core)) (Maybe Core) Core Core))
+(declare rw-args     (-> SigV (List ApplyEnt) (List (Maybe Core)) (Maybe (List (Maybe Core))) (List Core) (List Core)))
+(declare rw-list     (-> SigV (List ApplyEnt) (List (Maybe Core)) (List Core) (List Core)))
+(declare rw-arms     (-> SigV (List ApplyEnt) (List (Maybe Core)) (List CArm) (List CArm)))
+
+(def rw
+  (lam (sig ka ctx expected t)
+    (case (lam-con sig ka ctx expected t)
+      ((some con) con)
+      ((none)
+        (case t
+          ((c-app f a)         (rw-app sig ka ctx t))
+          ((c-global nm)       (rw-global sig ka ctx expected t))
+          ((c-lam n b)         (c-lam n (rw sig ka (cons none ctx) none b)))
+          ((c-let q n v b)     (c-let q n (rw sig ka ctx none v)
+                                 (rw sig ka (cons (ty-of sig ctx v) ctx) none b)))
+          ((c-con h nm as)     (c-con h nm (rw-list sig ka ctx as)))
+          ((c-case sc arms df) (c-case (rw sig ka ctx none sc) (rw-arms sig ka ctx arms)
+                                 (case df ((none) none) ((some g) (some (rw sig ka ctx none g))))))
+          ((c-ann e ty)        (c-ann (rw sig ka ctx none e) ty))
+          (_ t))))))                            ; Var/Prim/TCon/Refine/Pi/lit/type: unchanged
+
+; an application: rewrite the args (with their callee-domain expected types) then
+; dispatch on the head. Fallthrough is _spine(rw(head), rspine) -- ported faithfully.
+(def rw-app
+  (lam (sig ka ctx t)
+    (rw-app-disp sig ka ctx t
+      (rw-args sig ka ctx (callee-doms sig ctx (app-head t) (cc-llen(app-args t nil))) (app-args t nil)))))
+
+(def rw-app-disp
+  (lam (sig ka ctx t rspine)
+    (case (app-head t)
+      ((c-var i)
+        (case (ty-of sig ctx (app-head t))
+          ((some hty) (case (is-arrow hty)
+                        (true (case (=i (cc-llen(app-args t nil)) (cc-llen(peel-pi-doms hty)))
+                                (true (case (ka-find ka hty)
+                                        ((some ae) (case ae ((apply-ent key dn an co)
+                                                     (cspine (c-global an) (cons (app-head t) rspine)))))
+                                        ((none) (cspine (rw sig ka ctx none (app-head t)) rspine))))
+                                (false (cspine (rw sig ka ctx none (app-head t)) rspine))))
+                        (false (cspine (rw sig ka ctx none (app-head t)) rspine))))
+          ((none) (cspine (rw sig ka ctx none (app-head t)) rspine))))
+      ((c-global g)
+        ; a Global in HEAD position is a DIRECT CALL target -- keep it (only a
+        ; value-position Global converts to a closure Con). Otherwise a def that
+        ; is also a closure ctor would have its own saturated self-call rewritten
+        ; to a bare `((con ..) arg)` application, which cannot lower. Only the
+        ; partial-application exit below produces a Con.
+        (case (arity sig g)
+          ((some ar) (case (and (<i 0 (cc-llen(app-args t nil))) (<i (cc-llen(app-args t nil)) ar))
+                       (true (case (ty-of sig ctx t)
+                               ((some rem) (case (is-arrow rem)
+                                             (true (case (ka-find ka rem)
+                                                     ((some ae) (case ae ((apply-ent key dn an co)
+                                                                  (case (ctor-of-find co (ckey-g g (cc-llen(app-args t nil))))
+                                                                    ((some cn) (c-con dn cn (drop-erased-args (g-param-specs sig g (cc-llen(app-args t nil))) rspine)))
+                                                                    ((none) (cspine (app-head t) rspine))))))
+                                                     ((none) (cspine (app-head t) rspine))))
+                                             (false (cspine (app-head t) rspine))))
+                               ((none) (cspine (app-head t) rspine))))
+                       (false (cspine (app-head t) rspine))))
+          ((none) (cspine (app-head t) rspine))))
+      (_ (cspine (rw sig ka ctx none (app-head t)) rspine)))))
+
+; a candidate closure Con for name `nm` from a candidate arrow type, or none.
+(def gcon-try (-> SigV (List ApplyEnt) Str (Maybe Core) (Maybe Core))
+  (lam (sig ka nm cand)
+    (case cand
+      ((some ty) (case (is-arrow ty)
+                   (true (case (ka-find ka ty)
+                           ((some ae) (case ae ((apply-ent key dn an co)
+                                        (case (ctor-of-find co (ckey-g nm 0))
+                                          ((some cn) (some (c-con dn cn nil)))
+                                          ((none) none)))))
+                           ((none) none)))
+                   (false none)))
+      ((none) none))))
+
+; a bare function-value Global of arrow type -> its nullary Con (closconv.py rw
+; Global). Match _collect: prefer the callee-param slot (`expected`), fall back
+; to the Global's own type, so the family key is identical on both sides.
+(def rw-global
+  (lam (sig ka ctx expected t)
+    (case t
+      ((c-global nm)
+        (case (gcon-try sig ka nm expected)
+          ((some con) con)
+          ((none) (case (gcon-try sig ka nm (ty-of sig ctx t))
+                    ((some con) con)
+                    ((none) t)))))
+      (_ t))))
+
+(def rw-args
+  (lam (sig ka ctx cdoms spine)
+    (case spine
+      ((nil) nil)
+      ((cons a rest)
+        (case cdoms
+          ((none)    (cons (rw sig ka ctx none a) (rw-args sig ka ctx none rest)))
+          ((some ds) (case ds
+                       ((nil)          (cons (rw sig ka ctx none a) (rw-args sig ka ctx (some nil) rest)))
+                       ((cons d drest) (cons (rw sig ka ctx d a) (rw-args sig ka ctx (some drest) rest))))))))))
+
+(def rw-list
+  (lam (sig ka ctx xs)
+    (case xs ((nil) nil) ((cons x r) (cons (rw sig ka ctx none x) (rw-list sig ka ctx r))))))
+
+(def rw-arms
+  (lam (sig ka ctx arms)
+    (case arms
+      ((nil) nil)
+      ((cons a r) (case a ((carm c vs b)
+                    (cons (carm c vs (rw sig ka (arm-ctx (sv-ctors sig) c (slen vs) ctx) none b))
+                          (rw-arms sig ka ctx r))))))))

@@ -1,0 +1,187 @@
+; E18 (interpreter half): the reference tal interpreter -- the Category-A oracle
+; that defines what checked programs MEAN. Ported from scaffold/chirality/tal.py
+; TalMachine.call (:274) / _block (:281). The register file and the byte store
+; are EXPLICIT and THREADED (a cell is an ID, not a ctypes address; bnew appends
+; a zero-init cell, bput returns a NEW Store) -- so evaluation is replayable by
+; construction, no hidden mutation. General tal recursion is tamed by a strictly-
+; decreasing FUEL at each i-call: "out of fuel" is the r-oot constructor, not a
+; hang, so the meaning function is total. PURE (->). tal.py stays the oracle.
+;
+; Soundness cross-check (SPEC gate): no ck-ok program ever evaluates to r-err
+; (progress+preservation, operationally). Sysface (sys/bptr) omitted (pure floor).
+; The fuel is morally (refine I64 (>= 0)) (decision #b); plain I64 here, bounded
+; operationally (<=i fuel 0 -> r-oot) to keep the port refinement-obligation-free.
+;
+; The typed SSA IR (TalTy/Instr/Block/TalTerm/Branch/TFn/Prog) is now the ONE
+; shared definition in lib/tal-ssa.chiral: the interpreter ignores the `ty`
+; fields tal.py's tuple carries, so ONE value drives both the checker and this
+; interpreter floor.
+(import "prelude")
+(import "tal-ssa")
+
+; runtime values: a con carries only cname + fields (tal.py stores ("con",cn,fs)
+; -- the dname is erased at runtime); a cell is an id into the Store.
+(data Val ()
+  (v-i64  (n I64))
+  (v-str  (s Str))
+  (v-cell (id I64))
+  (v-con  (cn Str) (fields (List Val))))
+(data Store () (st-nil) (st-cons (id I64) (b Bytes) (rest Store)))    ; cell id -> Bytes
+(data RunR () (r-ok (v Val) (st Store)) (r-err (msg Str)) (r-oot))     ; r-oot = fuel out
+(data ER   () (e-ok (rf (List (Pair I64 Val))) (st Store)) (e-err (msg Str)) (e-oot))
+
+; ---- register file (assoc I64 -> Val), store, small helpers ------------------
+(declare reg-get (-> (List (Pair I64 Val)) I64 (Maybe Val)))
+(def reg-get (lam (rf r)
+  (case rf (nil (none))
+    ((cons p pr) (case p ((pair k v) (case (=i k r) (true (some v)) (false (reg-get pr r)))))))))
+(declare reg-set (-> (List (Pair I64 Val)) I64 Val (List (Pair I64 Val))))
+(def reg-set (lam (rf r v)
+  (case rf
+    (nil (cons (pair r v) nil))
+    ((cons p pr) (case p ((pair k old) (case (=i k r) (true (cons (pair r v) pr)) (false (cons p (reg-set pr r v))))))))))
+(declare gather (-> (List (Pair I64 Val)) (List I64) (Maybe (List Val))))
+(def gather (lam (rf srcs)
+  (case srcs
+    (nil (some nil))
+    ((cons s sr) (case (reg-get rf s)
+      (none (none))
+      ((some v) (case (gather rf sr) (none (none)) ((some vs) (some (cons v vs))))))))))
+(declare cell-id (-> (List (Pair I64 Val)) I64 (Maybe I64)))
+(def cell-id (lam (rf r) (case (reg-get rf r) ((some v) (case v ((v-cell id) (some id)) (_ (none)))) (none (none)))))
+(declare idx-of (-> (List (Pair I64 Val)) I64 (Maybe I64)))
+(def idx-of (lam (rf r) (case (reg-get rf r) ((some v) (case v ((v-i64 n) (some n)) (_ (none)))) (none (none)))))
+
+(declare store-count (-> Store I64))
+(def store-count (lam (s) (case s ((st-nil) 0) ((st-cons id b rest) (+ 1 (store-count rest))))))
+(declare store-get (-> Store I64 (Maybe Bytes)))
+(def store-get (lam (s id) (case s ((st-nil) (none)) ((st-cons id2 b rest) (case (=i id id2) (true (some b)) (false (store-get rest id)))))))
+(declare store-set (-> Store I64 Bytes Store))
+(def store-set (lam (s id nb) (case s ((st-nil) (st-nil)) ((st-cons id2 b rest) (case (=i id id2) (true (st-cons id2 nb rest)) (false (st-cons id2 b (store-set rest id nb))))))))
+
+; byte helpers (prelude bytes ops). A fresh cell is zero-init; bput writes the
+; low byte of v (tal.py: v & 255), returning a NEW Bytes (no in-place mutation).
+(def onezero Bytes (bslice (pack-u16 0) 0 1))
+(def zeros (-> I64 Bytes) (lam (n) (brepeat onezero n)))
+(def byte-of (-> I64 Bytes) (lam (v) (bslice (pack-u16 v) 0 1)))
+(declare bput-bytes (-> Bytes I64 I64 Bytes))
+(def bput-bytes (lam (old idx v) (bcat (bcat (bslice old 0 idx) (byte-of v)) (bslice old (+ idx 1) (blen old)))))
+
+(declare find-tfn (-> (List TFn) Str (Maybe TFn)))
+(def find-tfn (lam (fns name)
+  (case fns (nil (none))
+    ((cons f fr) (case f ((tfn n params ret body nregs) (case (str-eq n name) (true (some f)) (false (find-tfn fr name)))))))))
+(declare prog-fns-of (-> Prog (List TFn)))
+(def prog-fns-of (lam (p) (case p ((prog fns) fns))))
+
+; ---- pure prim dispatch (the arithmetic the corpus needs) --------------------
+(declare two-i64 (-> (List Val) (Maybe (Pair I64 I64))))
+(def two-i64 (lam (vals)
+  (case vals
+    ((cons x xr) (case xr
+      ((cons y yr) (case x ((v-i64 a) (case y ((v-i64 b) (some (pair a b))) (_ (none)))) (_ (none))))
+      (_ (none))))
+    (_ (none)))))
+(declare eval-prim (-> Str (List Val) Val))
+(def eval-prim (lam (op vals)
+  (case (two-i64 vals)
+    (none (v-i64 0))
+    ((some pr) (case pr ((pair a b)
+      (case (str-eq op "+") (true (v-i64 (+ a b)))
+      (false (case (str-eq op "-") (true (v-i64 (- a b)))
+      (false (case (str-eq op "*") (true (v-i64 (* a b)))
+      (false (case (str-eq op "/") (true (v-i64 (/ a b)))
+      (false (case (str-eq op "%") (true (v-i64 (% a b)))
+      (false (v-i64 0)))))))))))))))))
+
+; ---- the interpreter spine (mutually recursive; fuel decreases at i-call) -----
+(declare tal-eval      (-> I64 Prog Store TFn (List Val) RunR))
+(declare eval-block    (-> I64 Prog Store (List (Pair I64 Val)) Block RunR))
+(declare eval-instrs   (-> I64 Prog Store (List (Pair I64 Val)) (List Instr) ER))
+(declare eval-instr    (-> I64 Prog Store (List (Pair I64 Val)) Instr ER))
+(declare eval-term     (-> I64 Prog Store (List (Pair I64 Val)) TalTerm RunR))
+(declare eval-branches (-> I64 Prog Store (List (Pair I64 Val)) Str (List Val) (List Branch) (Maybe Block) RunR))
+(declare bind-vals     (-> (List (Pair I64 Val)) (List I64) (List Val) (List (Pair I64 Val))))
+(declare seed-args     (-> I64 (List Val) (List (Pair I64 Val))))
+
+(def seed-args (lam (i args) (case args (nil nil) ((cons a rest) (cons (pair i a) (seed-args (+ i 1) rest))))))
+(def bind-vals (lam (rf dsts fields)
+  (case dsts (nil rf) ((cons d dr) (case fields (nil rf) ((cons v vr) (bind-vals (reg-set rf d v) dr vr)))))))
+
+(def tal-eval (lam (fuel prog store fn args)
+  (case fn ((tfn name params ret body nregs) (eval-block fuel prog store (seed-args 0 args) body)))))
+
+(def eval-block (lam (fuel prog store rf blk)
+  (case blk ((block instrs term)
+    (case (eval-instrs fuel prog store rf instrs)
+      ((e-err m) (r-err m))
+      ((e-oot) (r-oot))
+      ((e-ok rf2 st2) (eval-term fuel prog st2 rf2 term)))))))
+
+(def eval-instrs (lam (fuel prog store rf instrs)
+  (case instrs
+    (nil (e-ok rf store))
+    ((cons i rest) (case (eval-instr fuel prog store rf i)
+      ((e-err m) (e-err m))
+      ((e-oot) (e-oot))
+      ((e-ok rf2 st2) (eval-instrs fuel prog st2 rf2 rest)))))))
+
+(def eval-instr (lam (fuel prog store rf i)
+  (case i
+    ((i-const dst ty v) (e-ok (reg-set rf dst (v-i64 v)) store))
+    ((i-prim dst op srcs ty) (case (gather rf srcs)
+      (none (e-err "prim: unbound source register"))
+      ((some vals) (e-ok (reg-set rf dst (eval-prim op vals)) store))))
+    ((i-call dst f srcs ty) (case (<=i fuel 0)
+      (true (e-oot))
+      (false (case (find-tfn (prog-fns-of prog) f)
+        (none (e-err "call: unknown tal function"))
+        ((some callee) (case (gather rf srcs)
+          (none (e-err "call: unbound argument register"))
+          ((some argvals) (case (tal-eval (- fuel 1) prog store callee argvals)
+            ((r-ok rv st2) (e-ok (reg-set rf dst rv) st2))
+            ((r-err m) (e-err m))
+            ((r-oot) (e-oot))))))))))
+    ((i-con dst dn cn srcs ty) (case (gather rf srcs)
+      (none (e-err "con: unbound source register"))
+      ((some vals) (e-ok (reg-set rf dst (v-con cn vals)) store))))
+    ((i-bnew dst len) (case (idx-of rf len)
+      (none (e-err "bnew: unbound or non-i64 length"))
+      ((some n) (e-ok (reg-set rf dst (v-cell (store-count store))) (st-cons (store-count store) (zeros n) store)))))
+    ((i-bget dst ptr idx) (case (cell-id rf ptr)
+      (none (e-err "bget: not a cell"))
+      ((some id) (case (store-get store id)
+        (none (e-err "bget: dangling cell"))
+        ((some bytes) (case (idx-of rf idx)
+          (none (e-err "bget: bad index"))
+          ((some ix) (e-ok (reg-set rf dst (v-i64 (bget bytes ix))) store))))))))
+    ((i-bput ptr idx v) (case (cell-id rf ptr)
+      (none (e-err "bput: not a cell"))
+      ((some id) (case (store-get store id)
+        (none (e-err "bput: dangling cell"))
+        ((some bytes) (case (idx-of rf idx)
+          (none (e-err "bput: bad index"))
+          ((some ix) (case (idx-of rf v)
+            (none (e-err "bput: bad value"))
+            ((some n) (e-ok rf (store-set store id (bput-bytes bytes ix n))))))))))))
+    ((i-blen dst src) (case (cell-id rf src)
+      (none (e-err "blen: not a cell"))
+      ((some id) (case (store-get store id)
+        (none (e-err "blen: dangling cell"))
+        ((some bytes) (e-ok (reg-set rf dst (v-i64 (blen bytes))) store)))))))))
+
+(def eval-term (lam (fuel prog store rf term)
+  (case term
+    ((t-ret src) (case (reg-get rf src) ((some v) (r-ok v store)) (none (r-err "ret: unbound register"))))
+    ((tt-case src branches dflt) (case (reg-get rf src)
+      (none (r-err "case: unbound scrutinee"))
+      ((some v) (case v
+        ((v-con cn fields) (eval-branches fuel prog store rf cn fields branches dflt))
+        (_ (r-err "case: scrutinee is not a constructor")))))))))
+(def eval-branches (lam (fuel prog store rf cn fields branches dflt)
+  (case branches
+    (nil (case dflt ((some blk) (eval-block fuel prog store rf blk)) (none (r-err "case fell through, no default"))))
+    ((cons b rest) (case b ((branch bcn dsts body)
+      (case (str-eq bcn cn)
+        (true (eval-block fuel prog store (bind-vals rf dsts fields) body))
+        (false (eval-branches fuel prog store rf cn fields rest dflt)))))))))

@@ -1,0 +1,248 @@
+; scriba S10: help — self-documentation from typed metadata.
+; ~100 lines. C-h k/f/b/a. Renders help text from op/key registries.
+; All functions are pure (->) — they build help text as Str values.
+; The IO layer (command loop) renders results into read-only Str puffers.
+;
+; Deps: prelude.chiral, collections.chiral, string-utils.chiral (str-contains)
+;       scriba/command-loop (Op, OpName, lookup-op)
+;       scriba/completion (complete)
+;       scriba/keymap (KeySeq, Keymap, lookup-keymap)
+;       scriba/key-parser (Key)
+
+(import "prelude")
+(import "string-utils")    ; str-contains (E151b: the owner, no longer a local copy)
+(import "command-loop")    ; Op, OpName, lookup-op
+(import "completion")      ; complete
+(import "keymap")          ; KeySeq, Keymap, lookup-keymap
+(import "key-parser")      ; Key
+
+; ─── Local helpers (inlined from collections) ──────────────────────────────
+
+(def filter (-> (0 A (type 0)) (-> A Bool) (List A) (List A))
+  (lam (A p xs)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (let ((r (p h))) (cond (r (cons h (filter A p t))) (else (filter A p t))))))))
+
+(def map-list (-> (0 A (type 0)) (0 B (type 0)) (-> A B) (List A) (List B))
+  (lam (A B f xs)
+    (case xs
+      (nil nil)
+      ((cons h t) (cons (f h) (map-list A B f t))))))
+
+(def str-join (-> Str (List Str) Str)
+  (lam (sep xs)
+    (case xs
+      (nil "")
+      ((cons h t)
+        (case t
+          (nil h)
+          ((cons h2 t2) (str-cat h (str-cat sep (str-join sep t)))))))))
+
+(def length (-> (0 A (type 0)) (List A) I64)
+  (lam (A xs)
+    (case xs
+      (nil 0)
+      ((cons h t) (+ 1 (length A t))))))
+
+; ─── key->str: render a Key as a human-readable string ───
+; Exhaustive over all 18 Key constructors from S4.
+
+(def ctrl-code->char (-> I64 Str)
+  (lam (code)
+    ; Ctrl+A..Ctrl+Z → a..z (code 1..26 maps to ASCII 97..122)
+    (case (and (not (<i code 1)) (<=i code 26))
+      (true (i64->str (+ code 96)))
+      (false (i64->str code)))))
+
+(def key->str (-> Key Str)
+  (lam (k)
+    (case k
+      ((k-char code)    (i64->str code))
+      ((k-ctrl code)    (str-cat "C-" (ctrl-code->char code)))
+      ((k-meta code)    (str-cat "M-" (i64->str code)))
+      ((k-c-meta code)  (str-cat "C-M-" (i64->str code)))
+      ((k-enter)        "RET")
+      ((k-tab)          "TAB")
+      ((k-backspace)    "DEL")
+      ((k-escape)       "ESC")
+      ((k-up)           "<up>")
+      ((k-down)         "<down>")
+      ((k-left)         "<left>")
+      ((k-right)        "<right>")
+      ((k-home)         "<home>")
+      ((k-end)          "<end>")
+      ((k-page-up)      "<pgup>")
+      ((k-page-down)    "<pgdn>")
+      ((k-delete)       "<delete>")
+      ((k-insert)       "<insert>"))))
+
+; ─── keyseq->str: render a KeySeq as a space-separated string ───
+; (keyseq (k-ctrl 24) (k-ctrl 6)) → "C-x C-f"
+
+(def keyseq->str (-> KeySeq Str)
+  (lam (ks)
+    (case ks
+      ((keyseq keys)
+        (str-join " " (map-list key->str keys))))))
+
+; ─── make-rule: produce a string of n dash characters ───
+
+(def make-rule (-> I64 Str)
+  (lam (n)
+    (case (=i n 0)
+      (true "")
+      (false (str-cat "-" (make-rule (- n 1)))))))
+
+; ─── find-keybindings: reverse lookup — all key sequences bound to opname ───
+
+(def find-keybindings (-> Str Keymap (List Str))
+  (lam (opname km)
+    (case km
+      ((keymap bindings)
+        (let (matching
+              (filter
+                (lam (b)
+                  (case b ((pair ks name) (str-eq name opname))))
+                bindings))
+          (map-list
+            (lam (b) (case b ((pair ks name) (keyseq->str ks))))
+            matching))))))
+
+; ─── help-describe-op: render an op's docstring, signature, and keybindings ───
+; Output format:
+;   op-name
+;   ────────
+;   (=> Puffer Puffer)
+;
+;   <docstring>
+;
+;   Keybindings: C-f, <right>
+
+(def help-describe-op (-> OpName (List ScribaOp) Keymap Str)
+  (lam (opname ops km)
+    (case (lookup-op ops opname)
+      (none
+        (str-cat "No op named '" (str-cat opname "' found.")))
+      ((some op)
+        (case op
+          ((op name fn doc)
+            (let (rule (make-rule (str-len name)))
+              (let (sig "  (=> Puffer Puffer)")
+                (let (binds (find-keybindings name km))
+                  (let (bind-str
+                        (case binds
+                          (nil "  Keybindings: (none)")
+                          ((cons first rest)
+                            (str-cat "  Keybindings: " (str-join ", " binds)))))
+                    (str-cat name
+                      (str-cat "\n"
+                        (str-cat rule
+                          (str-cat "\n"
+                            (str-cat sig
+                              (str-cat "\n\n"
+                                (str-cat doc
+                                  (str-cat "\n\n" bind-str))))))))))))))))))
+
+; ─── help-describe-key: given a Key, show the op bound to it ───
+; Looks up the key in the keymap (as a single-key KeySeq), then describes the op.
+
+(def help-describe-key (-> Key Keymap (List ScribaOp) Str)
+  (lam (k km ops)
+    (let (ks (keyseq (cons k nil)))
+      (let (ks-str (keyseq->str ks))
+        (case (lookup-keymap ks km)
+          (none
+            (str-cat ks-str " is unbound"))
+          ((some opname)
+            (case (lookup-op ops opname)
+              (none
+                (str-cat ks-str
+                  (str-cat " is bound to '"
+                    (str-cat opname
+                      "' but the op is not registered."))))
+              ((some op)
+                (case op
+                  ((op name fn doc)
+                    (str-cat ks-str
+                      (str-cat " runs the command "
+                        (str-cat name
+                          (str-cat "\n\n  (=> Puffer Puffer)\n\n" doc))))))))))))))
+
+; ─── help-list-keybindings: format all keybindings as a sorted list ───
+
+(def binding-entry->str (-> (Pair KeySeq Str) Str)
+  (lam (b)
+    (case b
+      ((pair ks opname)
+        (str-cat "  "
+          (str-cat (keyseq->str ks)
+            (str-cat "  \t" opname)))))))
+
+(def help-list-keybindings (-> Keymap Str)
+  (lam (km)
+    (case km
+      ((keymap bindings)
+        (let (body
+              (str-join "\n"
+                (map-list binding-entry->str bindings)))
+          (let (count (length bindings))
+            (let (footer
+                  (str-cat "\n───\n"
+                    (str-cat (i64->str count) " bindings in keymap")))
+              (str-cat "Key bindings:\n\n" (str-cat body footer)))))))))
+
+; ─── help-apropos: keyword search over op names + docstrings ───
+; Case-sensitive substring match. str-contains is IMPORTED from string-utils,
+; the owner (E151b) — (str-contains haystack needle), the same arg order and the
+; same str-find-based test this module's retired local copy used.
+
+(def apropos-format-result (-> ScribaOp Str)
+  (lam (op)
+    (case op
+      ((op name fn doc)
+        ; Extract first line of docstring
+        (let (nl (str-find doc "\n"))
+          (let (first-line
+                (case (=i nl (- 0 1))
+                  (true doc)
+                  (false (str-sub doc 0 nl))))
+            (str-cat "  "
+              (str-cat name
+                (str-cat "  (=> Puffer Puffer)\n    "
+                  (str-cat first-line "\n"))))))))))
+
+(def help-apropos (-> Str (List ScribaOp) Str)
+  (lam (keyword ops)
+    (let (matches
+          (filter
+            (lam (o)
+              (case o
+                ((op name fn doc)
+                  (or (str-contains name keyword)
+                      (str-contains doc keyword)))))
+            ops))
+      (let (count (length matches))
+        (let (header
+              (str-cat "Ops matching \""
+                (str-cat keyword
+                  (str-cat "\" ("
+                    (str-cat (i64->str count) " found):\n\n")))))
+          (let (body
+                (str-join ""
+                  (map-list apropos-format-result matches)))
+            (let (footer
+                  (str-cat "\n───\n"
+                    (str-cat "apropos: "
+                      (str-cat (i64->str count) " matches in op registry"))))
+              (str-cat header (str-cat body footer)))))))))
+
+; ─── help-keymap: keybindings for help mode ───
+; Read-only: only navigation (scroll, quit). No editing ops.
+; Returns a Keymap with help-mode bindings.
+
+(def help-keymap Keymap
+  (keymap
+    (list
+      (pair (keyseq (cons k-char 113 nil)) "quit"))))  ; q → quit

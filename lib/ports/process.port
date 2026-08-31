@@ -1,0 +1,18 @@
+; ports/process — leaving, address space, and signals.
+;
+; NOT named `ports/proc`: E155 makes two different modules under one basename a
+; hard error in both resolvers, and `scaffold/lib/proc.chiral` already owns the
+; key `proc`. A module's key is its basename, not its path.
+;
+; leave: exit is the clean end, halt is the fatal alarm counter effect
+; (docs/error-and-alarm.md). Both are polymorphic so an alarm path can close
+; what it holds and leave without faking an inhabitant of its return type.
+
+(import "prelude")
+
+(extern exit (-> (0 A (type 0)) (=> I64 A)))
+(extern halt (-> (0 A (type 0)) (=> Str A)))
+
+(extern mmap (=> I64 I64 I64 I64 I64 I64 I64))  ; mmap(addr,len,prot,flags,fd,off) -> base or -errno
+(extern mprotect (=> I64 I64 I64 I64))            ; mprotect(addr,len,prot) -> 0 or -errno
+(extern signal (=> I64 I64 I64))              ; signal(signum,handler) -> old handler (SIG_DFL=0/SIG_IGN=1)

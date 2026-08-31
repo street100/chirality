@@ -1,0 +1,280 @@
+; scriba S3: keymap -- KeySeq and Keymap types, pure lookup, default Emacs bindings.
+; ~200 lines. Imports Key type from S4 (key-parser.chiral) -- does NOT redefine it.
+; All lookup/equality functions are pure (->). Zero mutation primitives.
+;
+; Deps: prelude.chiral (I64, Str, Bool, List, Pair, =i, and, not)
+;       collections.chiral (alist-get)
+;       key-parser.chiral (Key type + 18 constructors)
+
+(import "prelude")
+(import "key-parser")
+(import "ports")
+(import "collections")
+
+; --- Key equality ----------------------------------------------------------
+
+; key-eq: structural equality for individual Key values.
+; EXHAUSTIVE over all 18 S4 Key constructors.
+; The compiler's coverage checker verifies every arm is present.
+(def key-eq (-> Key Key Bool)
+  (lam (a b)
+    (case a
+      ; Printable characters -- compare code points
+      ((k-char ca)    (case b ((k-char cb)    (=i ca cb)) (_ false)))
+      ; Control-modified keys -- compare control byte values
+      ((k-ctrl ca)    (case b ((k-ctrl cb)    (=i ca cb)) (_ false)))
+      ; Single-byte special keys -- tag equality only
+      ((k-enter)      (case b (k-enter true) (_ false)))
+      ((k-tab)        (case b (k-tab true) (_ false)))
+      ((k-backspace)  (case b (k-backspace true) (_ false)))
+      ((k-escape)     (case b (k-escape true) (_ false)))
+      ; Arrow keys
+      ((k-up)         (case b (k-up true) (_ false)))
+      ((k-down)       (case b (k-down true) (_ false)))
+      ((k-left)       (case b (k-left true) (_ false)))
+      ((k-right)      (case b (k-right true) (_ false)))
+      ; Navigation keys
+      ((k-home)       (case b (k-home true) (_ false)))
+      ((k-end)        (case b (k-end true) (_ false)))
+      ((k-page-up)    (case b (k-page-up true) (_ false)))
+      ((k-page-down)  (case b (k-page-down true) (_ false)))
+      ((k-delete)     (case b (k-delete true) (_ false)))
+      ((k-insert)     (case b (k-insert true) (_ false)))
+      ; Meta-modified keys -- compare the underlying byte
+      ((k-meta ca)    (case b ((k-meta cb)    (=i ca cb)) (_ false)))
+      ; Ctrl+Meta-modified keys -- compare the underlying byte
+      ((k-c-meta ca)  (case b ((k-c-meta cb)  (=i ca cb)) (_ false))))))
+
+; list-key-eq: element-wise Key list equality.
+; Pure structural recursion -- length-aware via case/case.
+(def list-key-eq (-> (List Key) (List Key) Bool)
+  (lam (a b)
+    (case a
+      (nil
+        (case b (nil true) (_ false)))
+      ((cons ha ta)
+        (case b
+          (nil false)
+          ((cons hb tb)
+            (and (key-eq ha hb) (list-key-eq ta tb))))))))
+
+; keyseq-eq: equality for KeySeq values (list equality lifted through keyseq).
+(def keyseq-eq (-> KeySeq KeySeq Bool)
+  (lam (a b)
+    (case a
+      ((keyseq ta)
+        (case b
+          ((keyseq tb)
+            (list-key-eq ta tb)))))))
+
+; prefix-key?: is a Key a keymap prefix, i.e. a key that begins a multi-key
+; sequence? C-x (k-ctrl 24) and C-c (k-ctrl 3) are the prefixes in the default
+; keymap: C-x C-c (quit), C-x C-f (find-file), C-x C-s (save-buffer), C-x C-a
+; (chat-toggle), C-c C-c (chat-send). M-x (k-meta 120) is bound as a one-key
+; sequence, so it is NOT a prefix. read-keyseq calls this to decide whether to
+; read a second key.
+(def prefix-key? (-> Key Bool)
+  (lam (k)
+    (case k
+      ((k-ctrl ca) (or (=i ca 24) (=i ca 3)))
+      (_ false))))
+
+; --- Keymap lookup ---------------------------------------------------------
+
+; lookup-keymap: pure keymap lookup via collections alist-get.
+; Returns (Maybe Str) -- the op name. Caller handles unmatched keys
+; (beep, self-insert for printable chars).
+(def lookup-keymap (-> KeySeq Keymap (Maybe Str))
+  (lam (ks km)
+    (case km
+      ((keymap bs)
+        (alist-get KeySeq Str keyseq-eq bs ks)))))
+
+; --- Default keybindings ---------------------------------------------------
+
+; default-keymap: Emacs-compatible initial keybindings.
+; Uses S4's Key constructors:
+;   k-ctrl <byte> for Ctrl combinations (Ctrl+A=1 .. Ctrl+Z=26)
+;   k-meta <code> for Meta combinations (M-x = k-meta 120)
+;   k-up/k-down/k-left/k-right for arrow keys
+(def default-keymap Keymap
+  (keymap
+    (cons
+      ; --- Movement ---
+      (pair (keyseq (cons (k-ctrl 6) nil))  "forward-char")       ; C-f
+    (cons
+      (pair (keyseq (cons (k-ctrl 2) nil))  "backward-char")      ; C-b
+    (cons
+      (pair (keyseq (cons (k-ctrl 14) nil)) "next-line")          ; C-n
+    (cons
+      (pair (keyseq (cons (k-ctrl 16) nil)) "previous-line")      ; C-p
+    (cons
+      (pair (keyseq (cons (k-ctrl 1) nil))  "beginning-of-line")  ; C-a
+    (cons
+      (pair (keyseq (cons (k-ctrl 5) nil))  "end-of-line")        ; C-e
+    (cons
+      ; --- Arrow keys ---
+      (pair (keyseq (cons k-up nil))    "previous-line")
+    (cons
+      (pair (keyseq (cons k-down nil))  "next-line")
+    (cons
+      (pair (keyseq (cons k-left nil))  "backward-char")
+    (cons
+      (pair (keyseq (cons k-right nil)) "forward-char")
+    (cons
+      ; --- Editing ---
+      (pair (keyseq (cons (k-ctrl 4) nil))   "delete-char")       ; C-d
+    (cons
+      (pair (keyseq (cons k-backspace nil))  "backward-delete-char")
+    (cons
+      (pair (keyseq (cons (k-ctrl 11) nil))  "kill-line")         ; C-k
+    (cons
+      ; Undo / redo (SCRIBA-SLICES slice 3). C-_ (0x1f, k-ctrl 31) is Emacs's
+      ; undo, free in scriba; M-_ (ESC 0x5f, k-meta 95) is free and pairs with it.
+      (pair (keyseq (cons (k-ctrl 31) nil)) "undo")               ; C-_
+    (cons
+      (pair (keyseq (cons (k-meta 95) nil)) "redo")               ; M-_
+    (cons
+      (pair (keyseq (cons (k-ctrl 25) nil))  "yank")              ; C-y
+    (cons
+      ; --- Mark / region ---
+      (pair (keyseq (cons (k-ctrl 0) nil))  "set-mark")           ; C-SPC
+    (cons
+      (pair (keyseq (cons (k-ctrl 23) nil)) "kill-region")        ; C-w
+    (cons
+      (pair (keyseq (cons (k-meta 119) nil)) "copy-region")       ; M-w
+    (cons
+      ; --- Search ---
+      (pair (keyseq (cons (k-ctrl 19) nil)) "isearch-forward")    ; C-s
+    (cons
+      (pair (keyseq (cons (k-ctrl 18) nil)) "isearch-backward")   ; C-r
+    (cons
+      (pair (keyseq (cons (k-meta 37) nil)) "query-replace")      ; M-%
+    (cons
+      ; --- Files ---
+      (pair (keyseq (cons (k-ctrl 24) (cons (k-ctrl 6) nil)))  "find-file")    ; C-x C-f
+    (cons
+      (pair (keyseq (cons (k-ctrl 24) (cons (k-ctrl 19) nil))) "save-buffer")  ; C-x C-s
+    (cons
+      (pair (keyseq (cons (k-ctrl 24) (cons (k-ctrl 23) nil))) "save-as")      ; C-x C-w
+    (cons
+      (pair (keyseq (cons (k-ctrl 24) (cons (k-ctrl 1) nil))) "chat-toggle")   ; C-x C-a
+    (cons
+      (pair (keyseq (cons (k-ctrl 3) (cons (k-ctrl 3) nil))) "chat-send")      ; C-c C-c
+    (cons
+      (pair (keyseq (cons (k-ctrl 24) (cons (k-ctrl 3) nil)))  "quit")         ; C-x C-c
+    (cons
+      ; --- Help ---
+      (pair (keyseq (cons (k-meta 104) nil)) "keybind-help")  ; M-h
+    (cons
+      ; --- Extended command ---
+      (pair (keyseq (cons (k-meta 120) nil)) "execute-extended-command")  ; M-x
+    nil))))))))))))))))))))))))))))))))
+
+
+; ─── Vim per-mode keymaps (S13) ───────────────────────────────────────────
+; normal-keymap (vm-normal): reuses existing op names for motions/edit; the
+; vim-* names are mode transitions handled in command-loop's mode-first
+; dispatch (not ScribaOps). g is vim-operator-g (g c = chat, two keys).
+(def normal-keymap Keymap
+  (keymap
+    (cons (pair (keyseq (cons (k-char 104) nil)) "backward-char") (cons (pair (keyseq (cons (k-char 106) nil)) "next-line") (cons (pair (keyseq (cons (k-char 107) nil)) "previous-line") (cons (pair (keyseq (cons (k-char 108) nil)) "forward-char") (cons (pair (keyseq (cons (k-char 48) nil)) "beginning-of-line") (cons (pair (keyseq (cons (k-char 36) nil)) "end-of-line") (cons (pair (keyseq (cons (k-char 94) nil)) "first-non-blank") (cons (pair (keyseq (cons (k-char 119) nil)) "forward-word") (cons (pair (keyseq (cons (k-char 98) nil)) "backward-word") (cons (pair (keyseq (cons (k-char 101) nil)) "end-of-word") (cons (pair (keyseq (cons (k-char 120) nil)) "delete-char") (cons (pair (keyseq (cons (k-char 117) nil)) "undo") (cons (pair (keyseq (cons (k-char 112) nil)) "yank") (cons (pair (keyseq (cons (k-ctrl 18) nil)) "redo") (cons (pair (keyseq (cons (k-char 47) nil)) "isearch-forward") (cons (pair (keyseq (cons (k-char 63) nil)) "isearch-backward") (cons (pair (keyseq (cons (k-char 105) nil)) "vim-insert") (cons (pair (keyseq (cons (k-char 97) nil)) "vim-insert-after") (cons (pair (keyseq (cons (k-char 111) nil)) "vim-open-line-below") (cons (pair (keyseq (cons (k-char 79) nil)) "vim-open-line-above") (cons (pair (keyseq (cons (k-char 65) nil)) "vim-insert-eol") (cons (pair (keyseq (cons (k-char 73) nil)) "vim-insert-first-non-blank") (cons (pair (keyseq (cons (k-char 118) nil)) "vim-visual") (cons (pair (keyseq (cons (k-char 86) nil)) "vim-visual-line") (cons (pair (keyseq (cons (k-char 58) nil)) "vim-command") (cons (pair (keyseq (cons (k-char 100) nil)) "vim-operator-d") (cons (pair (keyseq (cons (k-char 99) nil)) "vim-operator-c") (cons (pair (keyseq (cons (k-char 121) nil)) "vim-operator-y") (cons (pair (keyseq (cons (k-char 103) nil)) "vim-operator-g") (cons (pair (keyseq (cons (k-char 71) nil)) "goto-bottom") (cons (pair (keyseq (cons (k-char 126) nil)) "toggle-case") (cons (pair (keyseq (cons (k-char 74) nil)) "join-line") (cons (pair (keyseq (cons (k-char 37) nil)) "match-bracket") (cons (pair (keyseq (cons (k-char 102) nil)) "vim-find-f") (cons (pair (keyseq (cons (k-char 70) nil)) "vim-find-F") (cons (pair (keyseq (cons (k-char 116) nil)) "vim-find-t") (cons (pair (keyseq (cons (k-char 84) nil)) "vim-find-T") (cons (pair (keyseq (cons (k-char 114) nil)) "vim-replace") (cons (pair (keyseq (cons (k-char 109) nil)) "vim-mark-set") (cons (pair (keyseq (cons (k-char 96) nil)) "vim-mark-jump") (cons (pair (keyseq (cons (k-char 34) nil)) "vim-register") nil)))))))))))))))))))))))))))))))))))))))))))
+
+; visual-keymap (vm-visual): movement extends the region (the mark is set on
+; entry, so moving the cursor grows it); y/d/c/v apply or exit.
+(def visual-keymap Keymap
+  (keymap
+    (cons (pair (keyseq (cons (k-char 104) nil)) "backward-char") (cons (pair (keyseq (cons (k-char 106) nil)) "next-line") (cons (pair (keyseq (cons (k-char 107) nil)) "previous-line") (cons (pair (keyseq (cons (k-char 108) nil)) "forward-char") (cons (pair (keyseq (cons (k-char 119) nil)) "forward-word") (cons (pair (keyseq (cons (k-char 98) nil)) "backward-word") (cons (pair (keyseq (cons (k-char 101) nil)) "end-of-word") (cons (pair (keyseq (cons (k-char 48) nil)) "beginning-of-line") (cons (pair (keyseq (cons (k-char 36) nil)) "end-of-line") (cons (pair (keyseq (cons (k-char 121) nil)) "copy-region") (cons (pair (keyseq (cons (k-char 100) nil)) "kill-region") (cons (pair (keyseq (cons (k-char 99) nil)) "vim-visual-change") (cons (pair (keyseq (cons (k-char 118) nil)) "vim-visual-off") nil)))))))))))))))
+
+; insert-keymap (vm-insert): backspace + arrows. Printable self-insert and
+; ESC->Normal are handled inline in command-loop (not via this keymap).
+(def insert-keymap Keymap
+  (keymap
+    (cons (pair (keyseq (cons k-backspace nil)) "backward-delete-char") (cons (pair (keyseq (cons k-up nil)) "previous-line") (cons (pair (keyseq (cons k-down nil)) "next-line") (cons (pair (keyseq (cons k-left nil)) "backward-char") (cons (pair (keyseq (cons k-right nil)) "forward-char") nil)))))))
+
+; --- Key rendering (status line / keybind help) ----------------------------
+
+; A byte code as a printable ASCII char when in range, else the number.
+(def km-code->char (-> I64 Str)
+  (lam (code)
+    (case (and (not (<i code 32)) (<=i code 126))
+      (true (bytes->str (bslice (pack-u32 code) 0 1)))
+      (false (i64->str code)))))
+
+; Ctrl+A..Ctrl+Z -> 'a'..'z' (code 1..26 -> 97..122).
+(def km-ctrl->char (-> I64 Str)
+  (lam (code)
+    (case (and (not (<i code 1)) (<=i code 26))
+      (true (bytes->str (bslice (pack-u32 (+ code 96)) 0 1)))
+      (false (i64->str code)))))
+
+; key->str: human-readable name for one Key. Exhaustive over all 18 ports
+; Key constructors (mirrors key-eq above).
+(def km-key->str (-> Key Str)
+  (lam (k)
+    (case k
+      ((k-char code)    (km-code->char code))
+      ((k-ctrl code)    (str-cat "C-" (km-ctrl->char code)))
+      ((k-meta code)    (str-cat "M-" (km-code->char code)))
+      ((k-c-meta code)  (str-cat "C-M-" (km-code->char code)))
+      ((k-enter)        "RET")
+      ((k-tab)          "TAB")
+      ((k-backspace)    "DEL")
+      ((k-escape)       "ESC")
+      ((k-up)           "<up>")
+      ((k-down)         "<down>")
+      ((k-left)         "<left>")
+      ((k-right)        "<right>")
+      ((k-home)         "<home>")
+      ((k-end)          "<end>")
+      ((k-page-up)      "<pgup>")
+      ((k-page-down)    "<pgdn>")
+      ((k-delete)       "<delete>")
+      ((k-insert)       "<insert>"))))
+
+; Space-separated key names for one KeySeq.
+(def km-keys->str (-> Str (List Key) Str)
+  (lam (sep keys)
+    (case keys
+      (nil "")
+      ((cons k rest)
+        (case rest
+          (nil (km-key->str k))
+          ((cons k2 rest2) (str-cat (km-key->str k) (str-cat sep (km-keys->str sep rest)))))))))
+
+; keyseq->str: "C-x C-f" from a KeySeq.
+(def km-keyseq->str (-> KeySeq Str)
+  (lam (ks)
+    (case ks
+      ((keyseq keys)
+        (km-keys->str " " keys)))))
+
+; One binding line: "  C-x C-f  ->  find-file".
+(def km-binding->str (-> (Pair KeySeq Str) Str)
+  (lam (b)
+    (case b
+      ((pair ks opname)
+        (str-cat "  " (str-cat (km-keyseq->str ks) (str-cat "  ->  " opname)))))))
+
+; CR byte (0x0d). Scriba's term-raw disables OPOST/ONLCR, so a bare LF (0x0a)
+; written straight to the terminal moves the cursor down WITHOUT carriage
+; return — a multi-line string put directly renders with cumulative indent.
+; The keybind help is the one place scriba puts a raw multi-line string, so it
+; needs CRLF. chirality has no \r escape; build CR from its byte.
+(def km-cr Str (bytes->str (bslice (pack-u32 13) 0 1)))
+(def km-nl Str (str-cat km-cr "\n"))
+
+; Fold the binding alist into a multi-line string.
+(def km-bindings-str (-> (List (Pair KeySeq Str)) Str Str)
+  (lam (bs acc)
+    (case bs
+      (nil acc)
+      ((cons b rest)
+        (km-bindings-str rest (str-cat acc (str-cat (km-binding->str b) km-nl)))))))
+
+; Full keybind list, ready to put: header + one line per binding.
+(def km-keybind-list-str (-> Keymap Str)
+  (lam (km)
+    (case km
+      ((keymap bs)
+        (km-bindings-str bs (str-cat "Key bindings:" (str-cat km-nl km-nl)))))))

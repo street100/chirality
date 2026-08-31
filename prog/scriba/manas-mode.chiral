@@ -1,0 +1,1035 @@
+; scriba S14: manas author mode — the pure edit core over the E133 typed values.
+;
+; Mirrors vim-mode.chiral's shape: a mostly-pure module owning the closed sums
+; (ManasDoc / ManasEdit) and the total decision/transform functions, plus (in
+; §5, below) the value renderer. The effectful shell (author-mode dispatch, the
+; minipuffer prompts, the :manas entry) lives in command-loop.chiral; this module
+; owns only the sums and the pure transforms, so apply-edit is unit-testable
+; without a PTY (exactly like S13's resolve-pending).
+;
+; The whole thesis: the only buffer transform is apply-edit over closed sums, so
+; a mis-edit (a slot that does not exist, an agent the pool does not contain, a
+; string context length) is UN-REPRESENTABLE — it cannot be built as a ManasEdit.
+;
+; Deps: prelude (Str, Bool, I64, List, Maybe, str-eq, =i, cons, nil)
+;       render (Rendering, r-face, r-lines, r-text — the value renderer, §5)
+;       manas/core/types (Config, Binding, GateRule, Order, StopPolicy, Pipeline, Expert)
+;       manas/profile/profiles  (Config values — pulled into the blob for the loop entry)
+;       manas/profile/doc-refine (expert-pool, expert-by-id, doc-refine-pipeline)
+
+(import "prelude")
+(import "render")
+(import "manas/core/types")
+(import "manas/profile/profiles")
+(import "manas/profile/doc-refine")
+(import "manas/pipeline/persist")  ; pipeline->json, config->json (P1 pure codec)
+
+; ─── The two sums ────────────────────────────────────────────────────────────
+
+; An open manas library value: a Config profile OR the doc-refine Pipeline. The
+; author mode carries exactly one of these (ManasDoc rides inside the VimMode
+; variant vm-manas).
+(data ManasDoc ()
+  (doc-config   (config Config))
+  (doc-pipeline (pipeline Pipeline)))
+
+; One schema-safe typed edit. num-ctx is I64 by the E133 Binding type — this is
+; where the YAML "16k-as-string" mis-edit becomes a compile-time rejection: there
+; is no ManasEdit value carrying a string context length.
+(data ManasEdit ()
+  (edit-rebind   (slot Str) (model Str) (num-ctx I64))  ; a Config Binding rewrite
+  (edit-gate     (condition Str) (expert-id Str))       ; toggle an agent in a GATE rule
+  (edit-stop     (policy StopPolicy))                   ; replace a Pipeline STOP
+  (edit-order    (order Order))                         ; replace a Pipeline ORDER
+  (edit-combiner (id Str))                              ; set the COMBINER agent id
+  (edit-yield    (desc Str))                            ; set the YIELD prose
+  (edit-when     (whn Str))                             ; set the WHEN match text
+  ; slice-A structural add/remove: whole GATE rules and whole Config bindings.
+  ; Duplicate-guarded in the set-fns (dup condition / dup slot -> identity), so a
+  ; second add of an existing rule/binding is a no-op, not a silent overwrite.
+  (edit-gate-add (condition Str))                       ; append an empty GATE rule
+  (edit-gate-del (condition Str))                       ; drop a GATE rule by condition
+  (edit-bind-add (slot Str) (model Str) (num-ctx I64))  ; append a Config Binding
+  (edit-bind-del (slot Str))                             ; drop a Config Binding by slot
+  ; slice-B structural add/remove: the Pipeline's top-level expert-ids pool (the
+  ; set of experts the pipeline may use; GATE rules reference subsets of it).
+  ; Pool-guarded + dup-guarded in the set-fn (a non-pool id / a present id ->
+  ; identity), mirroring the toggle-ids "no reference to a dead agent" guard.
+  (edit-expert-add (id Str))                             ; add an id to the expert-ids pool
+  (edit-expert-del (id Str)))                            ; drop an id from the expert-ids pool
+
+; ─── doc->json: the open doc as its P1 JSON tree (persistence P2) ────────────
+; Dispatch the ManasDoc to the matching P1 encoder — experts stay a compiled-in
+; pool referenced by id, so the codec is bounded to Pipeline + Config. json-show
+; over the result is the on-disk string (written by manas-command-line's :w).
+(def doc->json (-> ManasDoc Json)
+  (lam (d) (case d
+    ((doc-pipeline p) (pipeline->json p))
+    ((doc-config   c) (config->json c)))))
+
+; ─── json->doc: the reload half (persistence P3) ─────────────────────────────
+; Total inverse of doc->json's dispatch: read the "kind" tag off the parsed JSON
+; object, then delegate the whole object to the matching P1 decoder. Anything
+; off the happy path — a non-object (obj-get fails), a missing/non-string kind,
+; an unknown kind, or a decoder that rejects the body — yields `none`, so a
+; malformed setup file cannot silently become a default doc.
+(def json->doc (-> Json (Maybe ManasDoc))
+  (lam (j)
+    (case (obj-get j "kind")
+      (none none)
+      ((some kj) (case (as-str kj)
+        (none none)
+        ((some kind)
+          (cond
+            ((str-eq kind "pipeline")
+              (case (json->pipeline j)
+                (none none)
+                ((some p) (some (doc-pipeline p)))))
+            ((str-eq kind "config")
+              (case (json->config j)
+                (none none)
+                ((some c) (some (doc-config c)))))
+            (else none))))))))
+
+; ─── rebind-slot: rewrite one Binding's model + num-ctx inside a Config ──────
+
+; Walk the (List Binding), replace the binding whose slot matches (str-eq), carry
+; the rest unchanged. The dispatch carries the old binding's num-ctx forward (a
+; rebind changes the model, keeping the context window) unless a cap edit sets it.
+(def rebind-binds (-> (List Binding) Str Str I64 (List Binding))
+  (lam (bs slot model nctx)
+    (case bs
+      (nil nil)
+      ((cons b rest)
+        (case b
+          ((binding s m n)
+            (case (str-eq s slot)
+              (true  (cons (binding s model nctx) (rebind-binds rest slot model nctx)))
+              (false (cons b (rebind-binds rest slot model nctx))))))))))
+
+(def rebind-slot (-> Config Str Str I64 Config)
+  (lam (c slot model nctx)
+    (case c ((config id bs) (config id (rebind-binds bs slot model nctx))))))
+
+; ─── set-stop: swap the Pipeline's STOP (all seven other fields carried) ─────
+
+; E133 Pipeline field order: id when gate order expert-ids combiner stop yield-desc.
+(def set-stop (-> Pipeline StopPolicy Pipeline)
+  (lam (p sp)
+    (case p
+      ((pipeline id whn g o eids cmb stp yd)
+        (pipeline id whn g o eids cmb sp yd)))))    ; stp -> sp
+
+; ─── set-order / set-combiner / set-yield / set-when (S14 all-levels) ────────
+; Each carries the other seven Pipeline fields untouched (field order:
+; id when gate order expert-ids combiner stop yield-desc).
+(def set-order (-> Pipeline Order Pipeline)
+  (lam (p ord)
+    (case p ((pipeline id whn g o eids cmb stp yd) (pipeline id whn g ord eids cmb stp yd)))))
+
+(def set-combiner (-> Pipeline Str Pipeline)
+  (lam (p cid)
+    (case p ((pipeline id whn g o eids cmb stp yd) (pipeline id whn g o eids cid stp yd)))))
+
+(def set-yield (-> Pipeline Str Pipeline)
+  (lam (p yd2)
+    (case p ((pipeline id whn g o eids cmb stp yd) (pipeline id whn g o eids cmb stp yd2)))))
+
+(def set-when (-> Pipeline Str Pipeline)
+  (lam (p w2)
+    (case p ((pipeline id whn g o eids cmb stp yd) (pipeline id w2 g o eids cmb stp yd)))))
+
+; ─── toggle-gate: toggle an expert-id in a GATE rule's list ──────────────────
+
+; str-eq membership over a (List Str).
+(def gate-has? (-> (List Str) Str Bool)
+  (lam (ids eid)
+    (case ids
+      (nil false)
+      ((cons h t)
+        (case (str-eq h eid)
+          (true true)
+          (false (gate-has? t eid)))))))
+
+; Drop all str-eq matches of eid from the list.
+(def gate-remove (-> (List Str) Str (List Str))
+  (lam (ids eid)
+    (case ids
+      (nil nil)
+      ((cons h t)
+        (case (str-eq h eid)
+          (true (gate-remove t eid))
+          (false (cons h (gate-remove t eid))))))))
+
+; Toggle eid: present -> removed; absent -> ADDED ONLY IF expert-by-id resolves
+; it in expert-pool (a non-pool id cannot be added — the structural "GATE
+; references a dead agent" guard).
+(def toggle-ids (-> (List Str) Str (List Str))
+  (lam (ids eid)
+    (case (gate-has? ids eid)
+      (true  (gate-remove ids eid))
+      (false (case (expert-by-id eid expert-pool)
+               (none ids)
+               ((some _) (cons eid ids)))))))
+
+; Find the GateRule by condition (str-eq); toggle eid in its expert-ids; carry
+; the rest unchanged.
+(def toggle-rules (-> (List GateRule) Str Str (List GateRule))
+  (lam (rules cond eid)
+    (case rules
+      (nil nil)
+      ((cons r rest)
+        (case r
+          ((gate-rule c ids)
+            (case (str-eq c cond)
+              (true  (cons (gate-rule c (toggle-ids ids eid)) (toggle-rules rest cond eid)))
+              (false (cons r (toggle-rules rest cond eid))))))))))
+
+(def toggle-gate (-> Pipeline Str Str Pipeline)
+  (lam (p cond eid)
+    (case p ((pipeline id whn g o eids cmb stp yd)
+      (pipeline id whn (toggle-rules g cond eid) o eids cmb stp yd)))))
+
+; ─── slice-A: whole-rule add/remove (Pipeline GATE) ──────────────────────────
+
+; Membership by condition (str-eq) over the GATE-rule list — the duplicate guard.
+(def rules-have-cond? (-> (List GateRule) Str Bool)
+  (lam (rules cond)
+    (case rules
+      (nil false)
+      ((cons r rest)
+        (case r
+          ((gate-rule c ids)
+            (case (str-eq c cond)
+              (true true)
+              (false (rules-have-cond? rest cond)))))))))
+
+; append at the tail (order-preserving — a new rule reads last in the render).
+(def rules-append (-> (List GateRule) GateRule (List GateRule))
+  (lam (rules nr)
+    (case rules
+      (nil (cons nr nil))
+      ((cons h t) (cons h (rules-append t nr))))))
+
+; drop every rule whose condition str-eq matches.
+(def rules-drop-cond (-> (List GateRule) Str (List GateRule))
+  (lam (rules cond)
+    (case rules
+      (nil nil)
+      ((cons r rest)
+        (case r
+          ((gate-rule c ids)
+            (case (str-eq c cond)
+              (true (rules-drop-cond rest cond))
+              (false (cons r (rules-drop-cond rest cond))))))))))
+
+; gate-add-rule: append (gate-rule cond nil). Duplicate-condition guard -> the
+; identity Pipeline if a rule with that condition already exists (members are
+; then added via the existing `g` toggle, not a second add).
+(def gate-add-rule (-> Pipeline Str Pipeline)
+  (lam (p cond)
+    (case p
+      ((pipeline id whn g o eids cmb stp yd)
+        (case (rules-have-cond? g cond)
+          (true  (pipeline id whn g o eids cmb stp yd))
+          (false (pipeline id whn (rules-append g (gate-rule cond nil)) o eids cmb stp yd)))))))
+
+; gate-del-rule: drop the rule whose condition str-eq matches (identity if none).
+(def gate-del-rule (-> Pipeline Str Pipeline)
+  (lam (p cond)
+    (case p
+      ((pipeline id whn g o eids cmb stp yd)
+        (pipeline id whn (rules-drop-cond g cond) o eids cmb stp yd)))))
+
+; ─── slice-A: whole-binding add/remove (Config) ──────────────────────────────
+
+; Membership by slot (str-eq) over the Binding list — the duplicate guard.
+(def binds-have-slot? (-> (List Binding) Str Bool)
+  (lam (bs slot)
+    (case bs
+      (nil false)
+      ((cons b rest)
+        (case b
+          ((binding s m n)
+            (case (str-eq s slot)
+              (true true)
+              (false (binds-have-slot? rest slot)))))))))
+
+(def binds-append (-> (List Binding) Binding (List Binding))
+  (lam (bs nb)
+    (case bs
+      (nil (cons nb nil))
+      ((cons h t) (cons h (binds-append t nb))))))
+
+(def binds-drop-slot (-> (List Binding) Str (List Binding))
+  (lam (bs slot)
+    (case bs
+      (nil nil)
+      ((cons b rest)
+        (case b
+          ((binding s m n)
+            (case (str-eq s slot)
+              (true (binds-drop-slot rest slot))
+              (false (cons b (binds-drop-slot rest slot))))))))))
+
+; bind-add: append (binding slot model nctx). Duplicate-slot guard -> identity
+; if the slot already exists (changing an existing slot is what `m`/rebind is
+; for — this op only introduces NEW slots).
+(def bind-add (-> Config Str Str I64 Config)
+  (lam (c slot model nctx)
+    (case c
+      ((config id bs)
+        (case (binds-have-slot? bs slot)
+          (true  (config id bs))
+          (false (config id (binds-append bs (binding slot model nctx)))))))))
+
+; bind-del: drop the binding whose slot str-eq matches (identity if none).
+(def bind-del (-> Config Str Config)
+  (lam (c slot)
+    (case c ((config id bs) (config id (binds-drop-slot bs slot))))))
+
+; ─── slice-B: expert-ids pool add/remove (Pipeline) ──────────────────────────
+
+; append at the tail (order-preserving — a new id reads last in the render).
+(def ids-append (-> (List Str) Str (List Str))
+  (lam (ids nid)
+    (case ids
+      (nil (cons nid nil))
+      ((cons h t) (cons h (ids-append t nid))))))
+
+; the pipeline's top-level expert-ids pool (the 5th field).
+(def pipeline-expert-ids (-> Pipeline (List Str))
+  (lam (p) (case p ((pipeline id whn g o eids cmb stp yd) eids))))
+
+; experts-add: append eid to the pool. Two guards -> identity Pipeline: the id
+; must resolve in expert-pool (no pooling a non-existent agent — the same
+; structural guard toggle-ids applies to a GATE reference), AND it must not
+; already be present (no duplicate). Otherwise append order-preserving.
+(def experts-add (-> Pipeline Str Pipeline)
+  (lam (p eid)
+    (case p
+      ((pipeline id whn g o eids cmb stp yd)
+        (case (gate-has? eids eid)
+          (true  (pipeline id whn g o eids cmb stp yd))
+          (false (case (expert-by-id eid expert-pool)
+                   (none (pipeline id whn g o eids cmb stp yd))
+                   ((some _) (pipeline id whn g o (ids-append eids eid) cmb stp yd)))))))))
+
+; experts-del: drop the id from the pool (gate-remove drops all str-eq matches;
+; identity if absent). GATE rules that still reference it are left as-is — the
+; author removes those via X separately.
+(def experts-del (-> Pipeline Str Pipeline)
+  (lam (p eid)
+    (case p
+      ((pipeline id whn g o eids cmb stp yd)
+        (pipeline id whn g o (gate-remove eids eid) cmb stp yd)))))
+
+; ─── apply-edit: total, the acceptance-critical function ─────────────────────
+
+; Cases on both the ManasDoc and the ManasEdit. The cross terms (an edit-rebind
+; against an open Pipeline, an edit-gate/edit-stop against an open Config) are
+; identity no-ops — total and honest; the dispatch only OFFERS the applicable
+; edit for the open doc kind, but apply-edit stays total regardless.
+(def apply-edit (-> ManasDoc ManasEdit ManasDoc)
+  (lam (d e)
+    (case d
+      ((doc-config c)
+        (case e
+          ((edit-rebind slot model nctx)     (doc-config (rebind-slot c slot model nctx)))
+          ((edit-bind-add slot model nctx)   (doc-config (bind-add c slot model nctx)))
+          ((edit-bind-del slot)              (doc-config (bind-del c slot)))
+          (_ d)))                                  ; gate/stop/gate-add/del/expert-add/del don't apply to a Config
+      ((doc-pipeline p)
+        (case e
+          ((edit-gate cond eid)  (doc-pipeline (toggle-gate p cond eid)))
+          ((edit-stop sp)        (doc-pipeline (set-stop p sp)))
+          ((edit-order ord)      (doc-pipeline (set-order p ord)))
+          ((edit-combiner cid)   (doc-pipeline (set-combiner p cid)))
+          ((edit-yield yd2)      (doc-pipeline (set-yield p yd2)))
+          ((edit-when w2)        (doc-pipeline (set-when p w2)))
+          ((edit-gate-add cond)  (doc-pipeline (gate-add-rule p cond)))
+          ((edit-gate-del cond)  (doc-pipeline (gate-del-rule p cond)))
+          ((edit-expert-add eid) (doc-pipeline (experts-add p eid)))
+          ((edit-expert-del eid) (doc-pipeline (experts-del p eid)))
+          (_ d))))))                               ; rebind/bind-add/del don't apply to a Pipeline
+
+; ─── candidate extractors (feed the minipuffer) ──────────────────────────────
+
+; config-slots and expert-pool-ids are the safety rail: a slot/agent the value
+; does not contain is never a candidate, so a typo'd slot/agent cannot be
+; confirmed. stop-kinds is the closed sum's three constructor tags — no fourth
+; policy exists to type.
+
+(def binds-slots (-> (List Binding) (List Str))
+  (lam (bs)
+    (case bs
+      (nil nil)
+      ((cons b rest)
+        (case b
+          ((binding s m n) (cons s (binds-slots rest))))))))
+
+(def config-slots (-> Config (List Str))
+  (lam (c)
+    (case c
+      ((config id bs) (binds-slots bs)))))
+
+; the num-ctx currently bound to `slot` (0 if absent) — N2 rebind carries the
+; existing context window forward when only the model is being changed.
+(def binds-ctx-of (-> (List Binding) Str I64)
+  (lam (bs slot)
+    (case bs
+      (nil 0)
+      ((cons b rest)
+        (case b
+          ((binding s m n) (case (str-eq s slot) (true n) (false (binds-ctx-of rest slot)))))))))
+
+(def config-ctx-of (-> Config Str I64)
+  (lam (c slot) (case c ((config id bs) (binds-ctx-of bs slot)))))
+
+(def expert-pool-ids (-> (List Expert) (List Str))
+  (lam (pool)
+    (case pool
+      (nil nil)
+      ((cons e rest)
+        (cons (expert-id e) (expert-pool-ids rest))))))
+
+(def stop-kinds (List Str)
+  (cons "single" (cons "capped" (cons "until-dry" nil))))
+
+; ─── slice-A candidate rails + ctx parse ─────────────────────────────────────
+
+; gate-rule-conds: the existing GATE conditions — the delete-picker's rail (a
+; condition the Pipeline does not contain is never a candidate). config-slots
+; (above) is the sibling rail for the binding delete-picker.
+(def rules-conds (-> (List GateRule) (List Str))
+  (lam (rules)
+    (case rules
+      (nil nil)
+      ((cons r rest)
+        (case r
+          ((gate-rule c ids) (cons c (rules-conds rest))))))))
+
+(def gate-rule-conds (-> Pipeline (List Str))
+  (lam (p)
+    (case p ((pipeline id whn g o eids cmb stp yd) (rules-conds g)))))
+
+; num-ctx parse for the bind-add prompt: empty -> a sensible default (8192),
+; else the decimal fold (str->i64). Keeps num-ctx an I64 at the type boundary —
+; the string never survives into the Binding.
+(def ctx-or-default (-> Str I64)
+  (lam (s)
+    (case (=i (str-len s) 0)
+      (true 8192)
+      (false (str->i64 s)))))
+
+; ORDER candidate tags (the closed sum's three constructors) + the parser that
+; turns a chosen tag into an edit-order. Unknown folds to fan-out (total).
+(def order-kinds (List Str)
+  (cons "fan-out" (cons "chain" (cons "branch" nil))))
+
+(def parse-order-edit (-> Str ManasEdit)
+  (lam (kind)
+    (case (str-eq kind "chain")
+      (true (edit-order (order-chain)))
+      (false
+        (case (str-eq kind "branch")
+          (true  (edit-order (order-branch)))
+          (false (edit-order (order-fan-out))))))))
+
+; ─── §5 the value renderer (manas-doc-render) ────────────────────────────────
+
+; Pure -> Rendering, reusing the slice-12 faces (manas-header / manas-field,
+; already in default-faces). Walks the ManasDoc and emits r-lines of face-tagged
+; rows — each field a labelled, face-tagged row. StopPolicy / Order render as
+; their CONSTRUCTOR TAGS (the closed sum read back), not a free string, so the
+; STOP/ORDER rows are a faithful readback of the typed value.
+
+; join a (List Str) with ", ".
+(def join-comma (-> (List Str) Str)
+  (lam (xs)
+    (case xs
+      (nil "")
+      ((cons h t)
+        (case t
+          (nil h)
+          (_ (str-cat h (str-cat ", " (join-comma t)))))))))
+
+(def order-tag (-> Order Str)
+  (lam (o)
+    (case o
+      (order-fan-out "order-fan-out")
+      (order-chain   "order-chain")
+      (order-branch  "order-branch"))))
+
+(def stop-tag (-> StopPolicy Str)
+  (lam (sp)
+    (case sp
+      (stop-single "stop-single")
+      ((stop-capped c)    (str-cat "stop-capped "    (i64->str c)))
+      ((stop-until-dry c) (str-cat "stop-until-dry " (i64->str c))))))
+
+; one face-tagged row.
+(def mf-row (-> Str Rendering) (lam (s) (r-face "manas-field"  (r-text s false))))
+(def mh-row (-> Str Rendering) (lam (s) (r-face "manas-header" (r-text s false))))
+
+(def binds-rows (-> (List Binding) (List Rendering))
+  (lam (bs)
+    (case bs
+      (nil nil)
+      ((cons b rest)
+        (case b
+          ((binding s m n)
+            (cons (mf-row (str-cat s (str-cat "  " (str-cat m (str-cat "  " (i64->str n))))))
+                  (binds-rows rest))))))))
+
+(def gate-rows (-> (List GateRule) (List Rendering))
+  (lam (rules)
+    (case rules
+      (nil nil)
+      ((cons r rest)
+        (case r
+          ((gate-rule c ids)
+            (cons (mf-row (str-cat "GATE  " (str-cat c (str-cat " -> " (join-comma ids)))))
+                  (gate-rows rest))))))))
+
+(def rrows-append (-> (List Rendering) (List Rendering) (List Rendering))
+  (lam (xs ys)
+    (case xs
+      (nil ys)
+      ((cons h t) (cons h (rrows-append t ys))))))
+
+(def config-rows (-> Config (List Rendering))
+  (lam (c)
+    (case c
+      ((config id bs)
+        (cons (mh-row (str-cat "CONFIG  " id)) (binds-rows bs))))))
+
+(def pipeline-rows (-> Pipeline (List Rendering))
+  (lam (p)
+    (case p
+      ((pipeline id whn g o eids cmb stp yd)
+        (cons (mh-row (str-cat "PIPELINE  " id))
+        (cons (mf-row (str-cat "WHEN  " whn))
+        (cons (mf-row (str-cat "ORDER  " (order-tag o)))
+        (cons (mf-row (str-cat "EXPERTS  " (join-comma eids)))
+          (rrows-append (gate-rows g)
+            (cons (mf-row (str-cat "STOP  " (stop-tag stp)))
+            (cons (mf-row (str-cat "COMBINER  " cmb))
+            (cons (mf-row (str-cat "YIELD  " yd)) nil))))))))))))
+
+; The value renderer. dims/scroll are carried for parity with RendererFn (the
+; registered-mode renderer shape); S14 renders the whole value (no windowing).
+(def manas-doc-render (-> ManasDoc (Pair I64 I64) I64 Rendering)
+  (lam (d dims scroll)
+    (case d
+      ((doc-config c)   (r-lines (config-rows c)))
+      ((doc-pipeline p) (r-lines (pipeline-rows p))))))
+
+; ─── §4 dispatch support: first-applicable target policy + candidate lists ───
+;
+; S14 targets the FIRST applicable binding/rule (SPEC §4.1: "S14 targets the
+; first applicable binding/rule; the config's first Binding; the named GATE
+; rule"). Row-cursor selection is out of S14 (SPEC §6 D4). These are PURE — the
+; effectful prompt/apply/re-render loop lives in command-loop.chiral.
+
+; Build an edit-rebind for the config's FIRST binding, changing its model and
+; carrying its slot + num-ctx forward (SPEC §3.4). Empty config -> harmless edit.
+(def mk-rebind-edit (-> Config Str ManasEdit)
+  (lam (c model)
+    (case c
+      ((config id bs)
+        (case bs
+          (nil (edit-rebind "" model 0))
+          ((cons b rest)
+            (case b ((binding s m n) (edit-rebind s model n)))))))))
+
+; Build an edit-gate toggling `agent` in the pipeline's FIRST GATE rule.
+(def mk-gate-edit (-> Pipeline Str ManasEdit)
+  (lam (p agent)
+    (case p
+      ((pipeline id whn g o eids cmb stp yd)
+        (case g
+          (nil (edit-gate "" agent))
+          ((cons r rest)
+            (case r ((gate-rule c ids) (edit-gate c agent)))))))))
+
+; Build an edit-stop from a chosen policy kind ("single"|"capped"|"until-dry")
+; and a cap string (ignored for single; str->i64 parsed otherwise). Unknown kind
+; folds to until-dry (total).
+(def parse-stop-edit (-> Str Str ManasEdit)
+  (lam (kind capstr)
+    (case (str-eq kind "single")
+      (true (edit-stop (stop-single)))
+      (false
+        (case (str-eq kind "capped")
+          (true  (edit-stop (stop-capped    (str->i64 capstr))))
+          (false (edit-stop (stop-until-dry (str->i64 capstr)))))))))
+
+; The model catalogue for the rebind prompt (SPEC D3): the union of model
+; strings across all-profiles — the honest "known models" list drawn from the
+; value world (a free-typed model is still representable; availability is E135).
+(def add-uniq (-> (List Str) Str (List Str))
+  (lam (acc s) (case (gate-has? acc s) (true acc) (false (cons s acc)))))
+
+(def binds-models (-> (List Binding) (List Str) (List Str))
+  (lam (bs acc)
+    (case bs
+      (nil acc)
+      ((cons b rest)
+        (case b ((binding s m n) (binds-models rest (add-uniq acc m))))))))
+
+(def configs-models (-> (List Config) (List Str) (List Str))
+  (lam (cs acc)
+    (case cs
+      (nil acc)
+      ((cons c rest)
+        (case c ((config id bs) (configs-models rest (binds-models bs acc))))))))
+
+(def known-models (List Str) (configs-models all-profiles nil))
+
+; ─── §6 N1: the navigable outline (Focus / OutlineNode / Outline) ────────────
+;
+; The manas author view is a cursor OUTLINE, not a flat render: one cursor moves
+; through the doc's layers and the identities within them. Every navigable thing
+; is a `Focus` — a closed sum (boundary-sums discipline), so a cursor position is
+; a typed identity, never a row-index guess.
+;
+; N1 is navigation + display only: `outline-nodes` flattens the doc (honoring the
+; open-layer set) into indented rows; `outline-render` paints them with the
+; cursor row highlighted; the nav helpers (down/up/toggle/collapse) move the
+; cursor and open/close layers. The EDIT keys still target first-applicable over
+; `outline-doc` (unchanged — N2 retargets them to the focused identity).
+
+; Identity = a closed sum. foc-field = a scalar layer (WHEN|ORDER|STOP|COMBINER|
+; YIELD, plus the synthetic TITLE header); foc-layer = a collapsible header
+; (GATE|EXPERTS|CONFIG); the rest name the identities inside a layer.
+(data Focus ()
+  (foc-field       (which Str))
+  (foc-layer       (which Str))
+  (foc-gate-rule   (cond Str))
+  (foc-gate-member (cond Str) (id Str))
+  (foc-expert      (id Str))
+  (foc-binding     (slot Str)))
+
+; One flattened visible row: its indent depth, its identity, its display text,
+; and whether it is an expandable layer header.
+(data OutlineNode ()
+  (onode (depth I64) (focus Focus) (text Str) (expandable Bool)))
+
+; The outline state that rides in vm-manas: the open doc, the cursor index into
+; the flattened visible-node list, and the set of open layer keys.
+(data Outline ()
+  (outline (doc ManasDoc) (cursor I64) (expanded (List Str))))
+
+; ─── accessors ───────────────────────────────────────────────────────────────
+(def outline-doc (-> Outline ManasDoc)
+  (lam (ol) (case ol ((outline d c e) d))))
+(def outline-cursor (-> Outline I64)
+  (lam (ol) (case ol ((outline d c e) c))))
+(def outline-expanded (-> Outline (List Str))
+  (lam (ol) (case ol ((outline d c e) e))))
+
+; ─── flatten helpers ──────────────────────────────────────────────────────────
+
+; a run of n spaces (indent by depth*2).
+(def spaces (-> I64 Str)
+  (lam (n) (case (<i n 1) (true "") (false (str-cat " " (spaces (- n 1)))))))
+
+; List Str length (expert count / binding count / node count all reuse this via
+; the *-slots/*-conds Str projections and onodes-len below).
+(def strs-len (-> (List Str) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (strs-len t))))))
+
+(def onodes-len (-> (List OutlineNode) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (onodes-len t))))))
+
+; child nodes (depth 1) — one identity per member of an expanded layer.
+(def expert-nodes (-> (List Str) (List OutlineNode))
+  (lam (ids)
+    (case ids
+      (nil nil)
+      ((cons h t) (cons (onode 1 (foc-expert h) h false) (expert-nodes t))))))
+
+; a GATE rule's own open-set key: "rule:<cond>". Distinct from the layer key
+; "GATE" so a rule opens/closes independently of the GATE layer (N2 member drill).
+(def rule-key (-> Str Str) (lam (cond) (str-cat "rule:" cond)))
+
+; the members of one rule as depth-2 foc-gate-member children (N2: a rule opens
+; into one identity per member, so a delete lands on THAT member, not the rule).
+(def gate-member-nodes (-> Str (List Str) (List OutlineNode))
+  (lam (cond ids)
+    (case ids
+      (nil nil)
+      ((cons h t) (cons (onode 2 (foc-gate-member cond h) h false) (gate-member-nodes cond t))))))
+
+; N2: each rule is now an EXPANDABLE depth-1 node; when its rule-key is in the
+; open set it opens into its member identities at depth 2.
+(def gate-rule-nodes (-> (List GateRule) (List Str) (List OutlineNode))
+  (lam (rules expanded)
+    (case rules
+      (nil nil)
+      ((cons r rest)
+        (case r
+          ((gate-rule c ids)
+            (cons (onode 1 (foc-gate-rule c) (str-cat c (str-cat " -> " (join-comma ids))) true)
+              (append OutlineNode
+                (case (gate-has? expanded (rule-key c)) (true (gate-member-nodes c ids)) (false nil))
+                (gate-rule-nodes rest expanded)))))))))
+
+(def binding-nodes (-> (List Binding) (List OutlineNode))
+  (lam (bs)
+    (case bs
+      (nil nil)
+      ((cons b rest)
+        (case b
+          ((binding s m n)
+            (cons (onode 1 (foc-binding s)
+                    (str-cat s (str-cat "  " (str-cat m (str-cat "  " (i64->str n))))) false)
+                  (binding-nodes rest))))))))
+
+; layer header text: "LABEL  (n)".
+(def layer-head (-> Str I64 Str)
+  (lam (label n) (str-cat label (str-cat "  (" (str-cat (i64->str n) ")")))))
+
+; pipeline flatten: title + scalar fields, with the EXPERTS and GATE layers
+; opening into their child identities only when their key is in `expanded`.
+(def pipeline-nodes (-> Pipeline (List Str) (List OutlineNode))
+  (lam (p expanded)
+    (case p
+      ((pipeline id whn g o eids cmb stp yd)
+        (append OutlineNode
+          (cons (onode 0 (foc-field "TITLE") (str-cat "PIPELINE  " id) false)
+          (cons (onode 0 (foc-field "WHEN")  (str-cat "WHEN  " whn) false)
+          (cons (onode 0 (foc-field "ORDER") (str-cat "ORDER  " (order-tag o)) false)
+            nil)))
+          (append OutlineNode
+            (cons (onode 0 (foc-layer "EXPERTS") (layer-head "EXPERTS" (strs-len eids)) true)
+                  (case (gate-has? expanded "EXPERTS") (true (expert-nodes eids)) (false nil)))
+            (append OutlineNode
+              (cons (onode 0 (foc-layer "GATE") (layer-head "GATE" (strs-len (rules-conds g))) true)
+                    (case (gate-has? expanded "GATE") (true (gate-rule-nodes g expanded)) (false nil)))
+              (cons (onode 0 (foc-field "COMBINER") (str-cat "COMBINER  " cmb) false)
+              (cons (onode 0 (foc-field "STOP")     (str-cat "STOP  " (stop-tag stp)) false)
+              (cons (onode 0 (foc-field "YIELD")    (str-cat "YIELD  " yd) false)
+                nil))))))))))
+
+; config flatten: the CONFIG header IS the bindings layer — it opens into one
+; foc-binding identity per binding when "CONFIG" is in `expanded`.
+(def config-nodes (-> Config (List Str) (List OutlineNode))
+  (lam (c expanded)
+    (case c
+      ((config id bs)
+        (cons (onode 0 (foc-layer "CONFIG")
+                (str-cat "CONFIG  " (str-cat id (str-cat "  (" (str-cat (i64->str (strs-len (binds-slots bs))) ")")))) true)
+              (case (gate-has? expanded "CONFIG") (true (binding-nodes bs)) (false nil)))))))
+
+; flatten a bare doc under an explicit expanded set.
+(def pipeline-or-config-nodes (-> ManasDoc (List Str) (List OutlineNode))
+  (lam (d e)
+    (case d
+      ((doc-pipeline p) (pipeline-nodes p e))
+      ((doc-config c)   (config-nodes c e)))))
+
+; the flattened visible-node list for the whole doc.
+(def outline-nodes (-> Outline (List OutlineNode))
+  (lam (ol) (pipeline-or-config-nodes (outline-doc ol) (outline-expanded ol))))
+
+; ─── cursor discipline ─────────────────────────────────────────────────────────
+
+; clamp the cursor into [0, count-1]. Called after every doc/expanded change so a
+; structural edit (a dropped rule/binding shrinking the list) can never leave the
+; cursor dangling past the end.
+(def clamp-cursor (-> Outline Outline)
+  (lam (ol)
+    (case ol
+      ((outline d c e)
+        (let (n (onodes-len (outline-nodes ol)))
+          (let (maxc (case (<i n 1) (true 0) (false (- n 1))))
+            (outline d
+              (case (<i c 0) (true 0)
+                (false (case (<i maxc c) (true maxc) (false c))))
+              e)))))))
+
+; replace the doc, keep cursor + expanded (clamped to the new node count).
+(def outline-with-doc (-> Outline ManasDoc Outline)
+  (lam (ol d2)
+    (case ol ((outline d c e) (clamp-cursor (outline d2 c e))))))
+
+; fresh-entry builder: cursor at the top, no layer open.
+(def outline-of (-> ManasDoc Outline)
+  (lam (d) (outline d 0 nil)))
+
+; the node under the cursor (none only for an empty outline — never happens).
+(def nth-node (-> (List OutlineNode) I64 (Maybe OutlineNode))
+  (lam (xs i)
+    (case xs
+      (nil none)
+      ((cons h t) (case (<i i 1) (true (some h)) (false (nth-node t (- i 1))))))))
+
+(def cursor-node (-> Outline (Maybe OutlineNode))
+  (lam (ol) (nth-node (outline-nodes ol) (outline-cursor ol))))
+
+; the identity under the cursor (N2: edits target THIS, not first-applicable).
+; none only for an empty outline — the verb dispatch treats none as a no-op.
+(def cursor-focus (-> Outline (Maybe Focus))
+  (lam (ol)
+    (case (cursor-node ol)
+      (none none)
+      ((some nd) (case nd ((onode depth focus text expandable) (some focus)))))))
+
+; ─── navigation (pure Outline -> Outline) ──────────────────────────────────────
+
+(def cursor-down (-> Outline Outline)
+  (lam (ol) (case ol ((outline d c e) (clamp-cursor (outline d (+ c 1) e))))))
+(def cursor-up (-> Outline Outline)
+  (lam (ol) (case ol ((outline d c e) (clamp-cursor (outline d (- c 1) e))))))
+
+; the layer key an expandable header carries (none for a scalar/child).
+(def focus-layer-key (-> Focus (Maybe Str))
+  (lam (f) (case f ((foc-layer which) (some which)) (_ none))))
+
+; the open-set key an EXPANDABLE node toggles (N2: a layer OR a gate rule). A
+; leaf identity carries none.
+(def focus-expand-key (-> Focus (Maybe Str))
+  (lam (f)
+    (case f
+      ((foc-layer which) (some which))
+      ((foc-gate-rule c) (some (rule-key c)))
+      (_ none))))
+
+; the parent open-set key of a child identity (h collapses this parent). A member
+; collapses its RULE (rule-key), not the whole GATE layer.
+(def child-layer-key (-> Focus (Maybe Str))
+  (lam (f)
+    (case f
+      ((foc-expert id)         (some "EXPERTS"))
+      ((foc-gate-rule c)       (some "GATE"))
+      ((foc-gate-member c i)   (some (rule-key c)))
+      ((foc-binding s)         (some "CONFIG"))
+      (_ none))))
+
+; toggle a layer key in the open set (present -> removed, absent -> added).
+(def toggle-expanded (-> (List Str) Str (List Str))
+  (lam (xs k) (case (gate-has? xs k) (true (gate-remove xs k)) (false (cons k xs)))))
+
+; l / Enter: if the cursor is on an expandable node (a layer header OR a gate
+; rule), open/close it by its expand-key.
+(def outline-toggle (-> Outline Outline)
+  (lam (ol)
+    (case (cursor-node ol)
+      (none ol)
+      ((some nd)
+        (case nd
+          ((onode depth focus text expandable)
+            (case expandable
+              (false ol)
+              (true
+                (case (focus-expand-key focus)
+                  (none ol)
+                  ((some k)
+                    (case ol ((outline d c e) (clamp-cursor (outline d c (toggle-expanded e k)))))))))))))))
+
+; index of the expandable node (layer header OR gate rule) carrying expand-key k
+; — for moving the cursor to a parent after collapsing it.
+(def expand-index (-> (List OutlineNode) Str I64 (Maybe I64))
+  (lam (xs k i)
+    (case xs
+      (nil none)
+      ((cons h t)
+        (case h
+          ((onode depth focus text expandable)
+            (case (focus-expand-key focus)
+              ((some kk) (case (str-eq kk k) (true (some i)) (false (expand-index t k (+ i 1)))))
+              (none (expand-index t k (+ i 1))))))))))
+
+; collapse the parent open-set key of a child identity and jump the cursor to
+; that parent's header (or stay put if the parent has no visible header).
+(def collapse-to-parent (-> Outline Focus Outline)
+  (lam (ol focus)
+    (case ol
+      ((outline d c e)
+        (case (child-layer-key focus)
+          (none ol)
+          ((some k)
+            (let (e2 (gate-remove e k))
+              (case (expand-index (pipeline-or-config-nodes d e2) k 0)
+                (none (clamp-cursor (outline d c e2)))
+                ((some idx) (clamp-cursor (outline d idx e2)))))))))))
+
+; h: on an OPEN expandable node, collapse it in place (its members close); on a
+; CLOSED expandable node or a leaf, collapse the parent and move up to it.
+(def outline-collapse (-> Outline Outline)
+  (lam (ol)
+    (case (cursor-node ol)
+      (none ol)
+      ((some nd)
+        (case nd
+          ((onode depth focus text expandable)
+            (case ol
+              ((outline d c e)
+                (case (focus-expand-key focus)
+                  ((some k)
+                    (case (gate-has? e k)
+                      (true  (clamp-cursor (outline d c (gate-remove e k))))
+                      (false (collapse-to-parent ol focus))))
+                  (none (collapse-to-parent ol focus)))))))))))
+
+; ─── render (cursor-aware) ─────────────────────────────────────────────────────
+
+; chirality string escapes are only \n \t \" \\ (any other \X is the literal byte X),
+; so the ▸/▾ triangles are built from their raw UTF-8 bytes, exactly as render's
+; ansi-esc builds ESC. ▸ = U+25B8 = E2 96 B8; ▾ = U+25BE = E2 96 BE.
+(def one-byte (-> I64 Str) (lam (n) (bytes->str (bslice (pack-u32 n) 0 1))))
+(def mark-closed Str (str-cat (one-byte 226) (str-cat (one-byte 150) (str-cat (one-byte 184) " "))))
+(def mark-open   Str (str-cat (one-byte 226) (str-cat (one-byte 150) (str-cat (one-byte 190) " "))))
+
+; the ▾/▸ marker for a node: open/closed for an expandable layer, two spaces else.
+(def marker-for (-> OutlineNode (List Str) Str)
+  (lam (nd expanded)
+    (case nd
+      ((onode depth focus text expandable)
+        (case expandable
+          (false "  ")
+          (true
+            (case (focus-expand-key focus)
+              (none mark-closed)
+              ((some k) (case (gate-has? expanded k) (true mark-open) (false mark-closed))))))))))
+
+; the non-cursor face for a node: header face for a layer/title, field face else.
+(def node-face (-> OutlineNode Str)
+  (lam (nd)
+    (case nd
+      ((onode depth focus text expandable)
+        (case expandable
+          (true "manas-header")
+          (false
+            (case focus
+              ((foc-field which) (case (str-eq which "TITLE") (true "manas-header") (false "manas-field")))
+              (_ "manas-field"))))))))
+
+(def outline-rows (-> (List OutlineNode) (List Str) I64 I64 (List Rendering))
+  (lam (nodes expanded cursor i)
+    (case nodes
+      (nil nil)
+      ((cons nd rest)
+        (case nd
+          ((onode depth focus text expandable)
+            (let (row-text (str-cat (spaces (* depth 2)) (str-cat (marker-for nd expanded) text)))
+              (let (fc (case (=i i cursor) (true "manas-cursor") (false (node-face nd))))
+                (cons (r-face fc (r-text row-text false))
+                      (outline-rows rest expanded cursor (+ i 1)))))))))))
+
+; the whole outline as a Rendering. dims/scroll carried for RendererFn parity
+; (N1 renders the whole outline — no windowing; doc-refine fits one screen).
+(def outline-render (-> Outline (Pair I64 I64) I64 Rendering)
+  (lam (ol dims scroll)
+    (r-lines (outline-rows (outline-nodes ol) (outline-expanded ol) (outline-cursor ol) 0))))
+
+; ─── §7 N3: the catalog view (discovery) ─────────────────────────────────────
+;
+; The catalog is a distinct top-level VIEW (rides in vm-catalog), not a ManasDoc:
+; a flat, grouped list of every openable thing — the compiled-in PIPELINES +
+; CONFIGS + the SAVED setups. A cursor moves over the ENTRIES (the group headers
+; are not focusable); Enter (in command-loop) opens the focused entry into the
+; manas outline. Simpler than the outline (no expand) — it reuses the N1
+; manas-cursor face + the mh-row/mf-row helpers.
+
+; kind = "pipeline" | "config" | "saved" — the closed set of openable sources.
+(data CatEntry ()
+  (cat-entry (kind Str) (id Str)))
+
+(data Catalog ()
+  (catalog (entries (List CatEntry)) (cursor I64)))
+
+(def catalog-entries (-> Catalog (List CatEntry))
+  (lam (c) (case c ((catalog es cur) es))))
+(def catalog-cursor (-> Catalog I64)
+  (lam (c) (case c ((catalog es cur) cur))))
+
+; List CatEntry length + nth (cursor discipline over the flat entry list).
+(def cat-len (-> (List CatEntry) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (cat-len t))))))
+(def nth-cat (-> (List CatEntry) I64 (Maybe CatEntry))
+  (lam (xs i)
+    (case xs
+      (nil none)
+      ((cons h t) (case (<i i 1) (true (some h)) (false (nth-cat t (- i 1))))))))
+
+; the focused entry (none only for an empty catalog).
+(def catalog-focus (-> Catalog (Maybe CatEntry))
+  (lam (c) (case c ((catalog es cur) (nth-cat es cur)))))
+
+; move the cursor by delta over the ENTRIES, clamped into [0, n-1].
+(def catalog-move (-> Catalog I64 Catalog)
+  (lam (c d)
+    (case c
+      ((catalog es cur)
+        (let (n (cat-len es))
+          (let (maxc (case (<i n 1) (true 0) (false (- n 1))))
+            (let (c2 (+ cur d))
+              (catalog es
+                (case (<i c2 0) (true 0)
+                  (false (case (<i maxc c2) (true maxc) (false c2))))))))))))
+
+; turn a (List Str) of ids into CatEntry rows of one kind (build-catalog input).
+(def strs->cat-entries (-> (List Str) Str (List CatEntry))
+  (lam (xs k)
+    (case xs
+      (nil nil)
+      ((cons h t) (cons (cat-entry k h) (strs->cat-entries t k))))))
+
+; the entries of a given kind (the render's group split).
+(def filter-kind (-> (List CatEntry) Str (List CatEntry))
+  (lam (es k)
+    (case es
+      (nil nil)
+      ((cons e rest)
+        (case e
+          ((cat-entry kind id)
+            (case (str-eq kind k)
+              (true (cons e (filter-kind rest k)))
+              (false (filter-kind rest k)))))))))
+
+; one entry row: an indented id, highlighted (manas-cursor) when its GLOBAL index
+; == cursor, else the field face. base = this run's first global index.
+(def cat-entry-rows (-> (List CatEntry) I64 I64 (List Rendering))
+  (lam (es base cursor)
+    (case es
+      (nil nil)
+      ((cons e rest)
+        (case e
+          ((cat-entry kind id)
+            (let (fc (case (=i base cursor) (true "manas-cursor") (false "manas-field")))
+              (cons (r-face fc (r-text (str-cat "  " id) false))
+                    (cat-entry-rows rest (+ base 1) cursor)))))))))
+
+; one group: a header row + its entries (or a "(none)" row when empty). base =
+; the global index of this group's first entry (running over the whole list).
+(def cat-group-rows (-> Str (List CatEntry) I64 I64 (List Rendering))
+  (lam (label es base cursor)
+    (cons (mh-row label)
+      (case es
+        (nil (cons (mf-row "  (none)") nil))
+        (_   (cat-entry-rows es base cursor))))))
+
+; the whole catalog as a Rendering: PIPELINES / CONFIGS / SAVED, each a header +
+; its entries; the cursor highlights the entry at its global index. dims carried
+; for parity (no windowing — the catalog is short).
+; group order (must match build-catalog's append order so the cursor's global index lines up):
+; PIPELINES ++ SKILLS ++ CONFIGS ++ SAVED. SKILLS is the Flow-based fractal library.
+(def catalog-render (-> Catalog (Pair I64 I64) Rendering)
+  (lam (c dims)
+    (case c
+      ((catalog es cur)
+        (let (pipes (filter-kind es "pipeline"))
+          (let (skills (filter-kind es "skill"))
+            (let (confs (filter-kind es "config"))
+              (let (saved (filter-kind es "saved"))
+                (let (np (cat-len pipes))
+                  (let (ns (cat-len skills))
+                    (let (nc (cat-len confs))
+                      (r-lines
+                        (append Rendering (cat-group-rows "PIPELINES" pipes 0 cur)
+                          (append Rendering (cat-group-rows "SKILLS" skills np cur)
+                            (append Rendering (cat-group-rows "CONFIGS" confs (+ np ns) cur)
+                              (cat-group-rows "SAVED" saved (+ (+ np ns) nc) cur))))))))))))))))

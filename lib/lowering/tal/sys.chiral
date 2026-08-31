@@ -1,0 +1,1343 @@
+; The sys library: crossings authored at the tal floor, tal's C category in
+; miniature. Where lib/bytes-tal.chiral is pure computation over cells, these
+; functions perform real syscalls -- the first pieces of the port
+; implementations moving out of python. The tal checker marks every function
+; here as sys-face (TalFn.sysface); lowered pure code has no surface path to
+; ti-sys/ti-bptr, so the membrane holds structurally: only this file, linked
+; deliberately, can cross.
+;
+; Linux x86-64 syscall numbers are immediates in the instruction (read=0,
+; write=1). A syscall's buffer argument is the PAYLOAD address of a byte
+; cell (ti-bptr), never the cell pointer -- the len word is chirality's, not the
+; kernel's.
+
+(import "prelude")
+(import "tal-ir")
+
+; write(fd, buf, len) -> bytes written (or -errno): the first native crossing
+(def nb-sys-write-t TIFn
+  (ti-fn "nb-sys-write" 2 5
+    (t-seq (ti-bptr 2 1)
+    (t-seq (ti-blen 3 1)
+    (t-seq (ti-sys 4 1 (cons 0 (cons 2 (cons 3 nil))))
+      (ti-ret 4))))))
+
+; read(fd, n) -> fresh cell holding what arrived, truncated to the actual
+; count by copying (a second cell; honest cost until cells can shrink)
+; openat(AT_FDCWD=-100, pathname, O_RDONLY=0, mode=0) -> fd. The path (reg0) is a
+; byte cell whose payload MUST be null-terminated by the caller; bptr gives the
+; C-string pointer. Returns the fd (or a negative errno the caller checks).
+(def nb-sys-openat-t TIFn
+  (ti-fn "nb-sys-openat" 1 6
+    (t-seq (ti-bptr 1 0)
+    (t-seq (ti-const 2 -100)
+    (t-seq (ti-const 3 0)
+    (t-seq (ti-const 4 0)
+    (t-seq (ti-sys 5 257 (cons 2 (cons 1 (cons 3 (cons 4 nil)))))
+      (ti-ret 5))))))))
+
+(def nb-sys-read-t TIFn
+  (ti-fn "nb-sys-read" 2 11
+    (t-seq (ti-bnew 2 1)
+    (t-seq (ti-bptr 3 2)
+    (t-seq (ti-sys 4 0 (cons 0 (cons 3 (cons 1 nil))))
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 6 (op-lei) 5 4)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-bnew 7 4)
+          (t-seq (ti-const 8 0)
+          (t-seq (ti-call 9 "nb-copy" (cons 7 (cons 2 (cons 8 (cons 8 (cons 4 nil))))))
+            (ti-ret 9)))))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-const 10 0)
+          (t-seq (ti-bnew 7 10)
+            (ti-ret 7))))
+        nil))
+        none))))))))
+
+; lseek(fd, offset, whence) -> the new file offset (or -errno): random-access
+; positioning, an all-integer crossing -- no buffer, so it needs neither ti-bptr
+; nor ti-blen, just the syscall itself. whence is SEEK_SET 0 / SEEK_CUR 1 /
+; SEEK_END 2. The reference machine and the native drop each issue the real
+; syscall (nr 8), so they agree by construction on any seekable fd.
+(def nb-sys-lseek-t TIFn
+  (ti-fn "nb-sys-lseek" 3 4
+    (t-seq (ti-sys 3 8 (cons 0 (cons 1 (cons 2 nil))))
+      (ti-ret 3))))
+
+; memfd_create(name, flags) -> fd: an anonymous in-memory file, the backing a
+; chirality-side arena will size and map (the milestone-4 goal of not borrowing the
+; python loader's mmap). memfd_create wants a NUL-terminated C name; a chirality byte
+; cell is [len][payload] with no NUL, so we hand it a fresh 1-byte cell holding a
+; single 0 -- the empty name "" -- rather than read past a payload. flags is a
+; parameter (0, or MFD_CLOEXEC = 1). nr 319.
+(def nb-sys-memfd-t TIFn
+  (ti-fn "nb-sys-memfd" 1 6
+    (t-seq (ti-const 1 1)                        ; name cell length 1
+    (t-seq (ti-bnew 2 1)                          ; reg2 = fresh 1-byte cell
+    (t-seq (ti-const 3 0)                         ; 0: the index and the NUL value
+    (t-seq (ti-bput 2 3 3)                        ; cell[0] := 0  -> name is ""
+    (t-seq (ti-bptr 4 2)                          ; reg4 = payload address
+    (t-seq (ti-sys 5 319 (cons 4 (cons 0 nil)))   ; memfd_create("", flags=reg0)
+      (ti-ret 5)))))))))
+
+; ftruncate(fd, length) -> 0 (or -errno): size a file, an all-integer crossing.
+; A memfd is created empty; ftruncate gives it a length before it is written or
+; mapped. nr 77.
+(def nb-sys-ftruncate-t TIFn
+  (ti-fn "nb-sys-ftruncate" 2 3
+    (t-seq (ti-sys 2 77 (cons 0 (cons 1 nil)))
+      (ti-ret 2))))
+
+; mmap(addr, length, prot, flags, fd, offset) -> mapped address (or -errno):
+; the last piece of the chirality-side arena. With the memfd from nb-sys-memfd-t,
+; sized by nb-sys-ftruncate-t, MAP_SHARED (flags 1) over that fd gives chirality a
+; region it owns end to end; MAP_PRIVATE|MAP_ANONYMOUS (34) with fd -1 gives
+; fresh pages. prot is PROT_READ 1 | PROT_WRITE 2. Six all-integer args go in
+; rdi rsi rdx r10 r8 r9 -- the full syscall register bank. nr 9.
+(def nb-sys-mmap-t TIFn
+  (ti-fn "nb-sys-mmap" 6 7
+    (t-seq (ti-sys 6 9 (cons 0 (cons 1 (cons 2 (cons 3 (cons 4 (cons 5 nil)))))))
+      (ti-ret 6))))
+
+; munmap(addr, length) -> 0 (or -errno): release a mapping, an all-integer
+; crossing that closes the map/unmap pair. nr 11.
+(def nb-sys-munmap-t TIFn
+  (ti-fn "nb-sys-munmap" 2 3
+    (t-seq (ti-sys 2 11 (cons 0 (cons 1 nil)))
+      (ti-ret 2))))
+
+; mprotect(addr, length, prot) -> 0 (or -errno): change page protection.
+; W^X pattern is map RW -> fill -> mprotect RX. nr 10; args rdi rsi rdx.
+(def nb-sys-mprotect-t TIFn
+  (ti-fn "nb-sys-mprotect" 3 4
+    (t-seq (ti-sys 3 10 (cons 0 (cons 1 (cons 2 nil))))
+      (ti-ret 3))))
+
+; nb-arena-fail(code): exit_group(code) -- honest fail, never returns.
+; E89 honest-fail helper: called by nb-arena-commit on ceiling overrun or mprotect refusal.
+(def nb-arena-fail-t TIFn
+  (ti-fn "nb-arena-fail" 1 2
+    (t-seq (ti-sys 1 231 (cons 0 nil))
+      (ti-ret 1))))
+
+; nb-arena-commit(from, to, reserve_end, heapend_cell) -> to
+; Commit the chunk [from, to] from PROT_NONE to PROT_READ|PROT_WRITE via mprotect,
+; then publish the new committed end into heapend_cell. Fails honestly on ceiling
+; overrun (code 1) or mprotect refusal (code 2).
+;   from         reg0 -- current committed end
+;   to           reg1 -- desired new committed end
+;   reserve_end  reg2 -- hard ceiling (E89 reservation end)
+;   heapend_cell reg3 -- tracking cell, updated to 'to' on success
+(def nb-arena-commit-t TIFn
+  (ti-fn "nb-arena-commit" 4 16
+    ; -- ceiling check: reserve_end < to ? --
+    (t-seq (ti-prim 4 (op-lti) 2 1)
+      (ti-tcase 4 false
+        (cons (pair (pair 0 nil)                               ; tag0=true: exceeded -> fail code 1
+          (t-seq (ti-const 5 1)
+          (t-seq (ti-call 6 "nb-arena-fail" (cons 5 nil))
+            (ti-ret 6))))
+        (cons (pair (pair 1 nil)                               ; tag1=false: room to grow
+          ; -- mprotect(from, to - from, PROT_READ|PROT_WRITE) --
+          (t-seq (ti-prim 7 (op-sub) 1 0)
+          (t-seq (ti-const 8 3)
+          (t-seq (ti-call 9 "nb-sys-mprotect" (cons 0 (cons 7 (cons 8 nil))))
+          (t-seq (ti-const 10 0)
+          (t-seq (ti-prim 11 (op-lti) 9 10)
+            (ti-tcase 11 false
+              (cons (pair (pair 0 nil)                          ; tag0=true: mprotect failed -> code 2
+                (t-seq (ti-const 12 2)
+                (t-seq (ti-call 13 "nb-arena-fail" (cons 12 nil))
+                  (ti-ret 13))))
+              (cons (pair (pair 1 nil)                          ; tag1=false: committed OK -> publish heapend
+                ; heapend_cell is a RAW 8-byte slot (no boxed len header), but
+                ; nb-put-u64 -> ti-bput writes at ptr+off+8 (the boxed payload
+                ; offset). Use off = -8 so the write lands on the raw cell byte 0.
+                (t-seq (ti-const 14 -8)
+                (t-seq (ti-call 15 "nb-put-u64" (cons 3 (cons 14 (cons 1 nil))))
+                  (ti-ret 1))))
+              nil))
+            none)))))))
+        nil))
+        none))))
+
+; nb-arena-grow(base, reserve_end, need, heapend_cell) -> new_committed_end
+; Grow the committed prefix of a PROT_NONE reservation. Reads current committed_end
+; from heapend_cell (via nb-get-u64), computes target = committed_end + max(current_size, need),
+; then calls nb-arena-commit to mprotect the new chunk and publish the result.
+;   base         reg0 -- reservation base (E89), for the doubling measure
+;   reserve_end  reg1 -- reservation ceiling (E89)
+;   need         reg2 -- bytes required beyond current committed_end
+;   heapend_cell reg3 -- tracking cell: read current end, updated on commit
+(def nb-arena-grow-t TIFn
+  (ti-fn "nb-arena-grow" 4 15
+    ; -- read current committed_end from heapend --
+    ; heapend_cell is a RAW 8-byte slot (no boxed len header), but nb-get-u64 ->
+    ; ti-bget reads at ptr+off+8 (the boxed payload offset). Use off = -8 so the
+    ; read lands on the raw cell byte 0. (Same compensation as nb-arena-commit.)
+    (t-seq (ti-const 4 -8)
+    (t-seq (ti-call 5 "nb-get-u64" (cons 3 (cons 4 nil)))
+    ; -- compute committed_size = committed_end - base --
+    (t-seq (ti-prim 6 (op-sub) 5 0)
+    ; -- committed_size < need ? --
+    (t-seq (ti-prim 7 (op-lti) 6 2)
+      (ti-tcase 7 false
+        (cons (pair (pair 0 nil)                               ; tag0=true: need dominates
+          (t-seq (ti-prim 8 (op-add) 5 2)
+          (t-seq (ti-call 9 "nb-arena-commit" (cons 5 (cons 8 (cons 1 (cons 3 nil)))))
+            (ti-ret 9))))
+        (cons (pair (pair 1 nil)                               ; tag1=false: doubling dominates
+          (t-seq (ti-prim 8 (op-add) 5 6)
+          (t-seq (ti-call 9 "nb-arena-commit" (cons 5 (cons 8 (cons 1 (cons 3 nil)))))
+            (ti-ret 9))))
+        nil))
+        none)))))))
+
+; close(fd) -> 0 (or -errno): release an fd; the memfd side of the pool.
+; nr 3; one arg in rdi.
+(def nb-sys-close-t TIFn
+  (ti-fn "nb-sys-close" 1 2
+    (t-seq (ti-sys 1 3 (cons 0 nil))
+      (ti-ret 1))))
+
+; E121: fcntl(fd, cmd, arg) -> result in rax (flag word for F_GETFD, 0 for
+; F_SETFD; -errno on error). Value-in / rax-out: NO cell, so NO ti-bptr/ti-bnew.
+; Mirror of nb-sys-close-t; 3 register args instead of 1. nr 72 = __NR_fcntl.
+(def nb-sys-fcntl-t TIFn
+  (ti-fn "nb-sys-fcntl" 3 4
+    (t-seq (ti-sys 3 72 (cons 0 (cons 1 (cons 2 nil))))
+      (ti-ret 3))))
+
+; clock_gettime(clockid, timespec-cell) -> 0 (or -errno): fill the caller's
+; 16-byte cell with (tv_sec, tv_nsec). The cell is caller-allocated; the
+; kernel is just another writer -- the len word stays chirality's (memfd
+; precedent). nr 228; args rdi rsi.
+(def nb-sys-clock-gettime-t TIFn
+  (ti-fn "nb-sys-clock-gettime" 2 4
+    (t-seq (ti-bptr 2 1)
+    (t-seq (ti-sys 3 228 (cons 0 (cons 2 nil)))
+      (ti-ret 3)))))
+
+; nanosleep(req-cell, rem-cell) -> 0 (or -errno; -EINTR leaves the remainder
+; in rem). NO retry loop -- the raw return is the honest observable; the
+; interrupted/resume policy belongs to the typed face above. nr 35.
+(def nb-sys-nanosleep-t TIFn
+  (ti-fn "nb-sys-nanosleep" 2 5
+    (t-seq (ti-bptr 2 0)
+    (t-seq (ti-bptr 3 1)
+    (t-seq (ti-sys 4 35 (cons 2 (cons 3 nil)))
+      (ti-ret 4))))))
+
+; exit_group(status): never returns; the ti-ret after the syscall is the
+; checker's sentinel, unreachable at runtime (the never-return floor
+; semantics -- Never/Exit -- are E26's). nr 231.
+(def nb-sys-exit-group-t TIFn
+  (ti-fn "nb-sys-exit-group" 1 2
+    (t-seq (ti-sys 1 231 (cons 0 nil))
+      (ti-ret 1))))
+
+; execveat(dirfd, pathname, argv, envp, flags): replace the running process
+; image with the program at (dirfd, pathname). The memfd-exec crossing -- run
+; bytes already written to an anonymous fd WITHOUT ever touching the filesystem:
+; pass the memfd as dirfd, "" as pathname, and AT_EMPTY_PATH (0x1000) as flags.
+; This is the chirality side of python's write-tempfile+exec (Decision #4): the
+; bootstrap chain execs the next stage rather than returning. On success it
+; NEVER returns (the process is replaced); on failure it returns -errno, so the
+; ti-ret is the checker's sentinel, like nb-sys-exit-group-t. The pointer args
+; (pathname/argv/envp) are supplied already ti-bptr'd by the fat driver above
+; this floor, where the assembly and this crossing share one function so the
+; machine's pins hold every cross-cell pointer (the nb-sys-send-fd-t precedent).
+; Five all-int/pointer args go in rdi rsi rdx r10 r8. nr 322.
+(def nb-sys-execveat-t TIFn
+  (ti-fn "nb-sys-execveat" 5 6
+    (t-seq (ti-sys 5 322 (cons 0 (cons 1 (cons 2 (cons 3 (cons 4 nil))))))
+      (ti-ret 5))))
+
+; nb-sys-exec-elf-t(elf): run the ELF bytes as a fresh process image, no
+; filesystem. The fat driver over nb-sys-execveat-t, the whole no-python run
+; path: python's write-tempfile+chmod+subprocess (Decision #4) collapses to
+; one crossing over an fd that never hits disk. Create an anonymous memfd,
+; write the whole ELF to it (offset 0), assemble the empty pathname + a
+; [&"" , NULL] argv + a [NULL] envp inline -- their pointers ti-bptr'd in THIS
+; function so the machine's pins hold every pointer the kernel dereferences at
+; the crossing (the nb-sys-send-fd-t precedent: assembly and syscall share one
+; frame) -- then execveat(memfd, "", argv, envp, AT_EMPTY_PATH=0x1000). On
+; success it never returns (this process becomes the ELF); on failure it
+; returns -errno. Uses ti-bptr, so it is a sys-face crossing (name nb-sys-*);
+; its own body has no ti-sys (it calls the registered wrappers), so it needs
+; no SYSCALL_TABLE entry -- the execveat governance rides nb-sys-execveat-t.
+(def nb-sys-exec-elf-t TIFn
+  (ti-fn "nb-sys-exec-elf" 1 30
+    (t-seq (ti-const 1 0)                                  ; memfd flags = 0
+    (t-seq (ti-call 2 "nb-sys-memfd" (cons 1 nil))          ; reg2 = anonymous fd
+    (t-seq (ti-call 3 "nb-sys-write" (cons 2 (cons 0 nil))) ; ELF -> fd @ offset 0
+    (t-seq (ti-const 4 1)                                   ; pathname "" : 1-byte cell
+    (t-seq (ti-bnew 5 4)
+    (t-seq (ti-const 6 0)
+    (t-seq (ti-bput 5 6 6)                                  ; path[0] := 0
+    (t-seq (ti-bptr 7 5)                                    ; reg7 = &path payload
+    (t-seq (ti-const 8 16)                                  ; argv : [&path, NULL] (16 bytes)
+    (t-seq (ti-bnew 9 8)
+    (t-seq (ti-const 10 0)
+    (t-seq (ti-call 11 "nb-put-ptr" (cons 9 (cons 10 (cons 7 nil))))   ; argv[0] := &path
+    (t-seq (ti-const 12 8)
+    (t-seq (ti-const 13 0)
+    (t-seq (ti-call 14 "nb-put-u64" (cons 11 (cons 12 (cons 13 nil)))) ; argv[1] := NULL
+    (t-seq (ti-bptr 15 14)                                  ; reg15 = &argv payload
+    (t-seq (ti-const 16 8)                                  ; envp : [NULL] (8 bytes)
+    (t-seq (ti-bnew 17 16)
+    (t-seq (ti-const 18 0)
+    (t-seq (ti-call 19 "nb-put-u64" (cons 17 (cons 18 (cons 18 nil)))) ; envp[0] := NULL
+    (t-seq (ti-bptr 20 19)                                  ; reg20 = &envp payload
+    (t-seq (ti-const 21 4096)                               ; AT_EMPTY_PATH
+    (t-seq (ti-call 22 "nb-sys-execveat" (cons 2 (cons 7 (cons 15 (cons 20 (cons 21 nil))))))
+      (ti-ret 22))))))))))))))))))))))))))
+
+
+; poll(fds, nfds, timeout-ms) -> ready count (or 0 timeout, -errno): block
+; until one of the fds is ready or the deadline passes. Uses ti-bptr to get
+; pointer from Bytes cells. nr 7; args rdi rsi rdx.
+(def nb-sys-poll-t TIFn
+  (ti-fn "nb-sys-poll" 3 6
+    (t-seq (ti-bptr 3 0)
+    (t-seq (ti-sys 4 7 (cons 3 (cons 1 (cons 2 nil))))
+      (ti-ret 4)))))
+; pollfd-fill(fa, fb): assemble the 2-entry pollfd array inline (the
+; nb-sys-memfd-t precedent -- crossing-argument assembly lives in sys-tal).
+; fd i32@0, events i16@4, revents i16@6; entry i at 8*i.
+(def nb-pollfd-fill-t TIFn
+  (ti-fn "nb-pollfd-fill" 2 7
+    (t-seq (ti-const 3 16)
+    (t-seq (ti-bnew 2 3)
+    (t-seq (ti-const 3 256)
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 4 (op-add) 0 5)
+    (t-seq (ti-prim 5 (op-mod) 4 3)
+    (t-seq (ti-const 6 0)
+    (t-seq (ti-bput 2 6 5)
+    (t-seq (ti-prim 4 (op-div) 4 3)
+    (t-seq (ti-prim 5 (op-mod) 4 3)
+    (t-seq (ti-const 6 1)
+    (t-seq (ti-bput 2 6 5)
+    (t-seq (ti-prim 4 (op-div) 4 3)
+    (t-seq (ti-prim 5 (op-mod) 4 3)
+    (t-seq (ti-const 6 2)
+    (t-seq (ti-bput 2 6 5)
+    (t-seq (ti-prim 4 (op-div) 4 3)
+    (t-seq (ti-prim 5 (op-mod) 4 3)
+    (t-seq (ti-const 6 3)
+    (t-seq (ti-bput 2 6 5)
+    (t-seq (ti-prim 4 (op-div) 4 3)
+    (t-seq (ti-const 5 1)
+    (t-seq (ti-const 6 4)
+    (t-seq (ti-bput 2 6 5)
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 4 (op-add) 1 5)
+    (t-seq (ti-prim 5 (op-mod) 4 3)
+    (t-seq (ti-const 6 8)
+    (t-seq (ti-bput 2 6 5)
+    (t-seq (ti-prim 4 (op-div) 4 3)
+    (t-seq (ti-prim 5 (op-mod) 4 3)
+    (t-seq (ti-const 6 9)
+    (t-seq (ti-bput 2 6 5)
+    (t-seq (ti-prim 4 (op-div) 4 3)
+    (t-seq (ti-prim 5 (op-mod) 4 3)
+    (t-seq (ti-const 6 10)
+    (t-seq (ti-bput 2 6 5)
+    (t-seq (ti-prim 4 (op-div) 4 3)
+    (t-seq (ti-prim 5 (op-mod) 4 3)
+    (t-seq (ti-const 6 11)
+    (t-seq (ti-bput 2 6 5)
+    (t-seq (ti-prim 4 (op-div) 4 3)
+    (t-seq (ti-const 5 1)
+    (t-seq (ti-const 6 12)
+    (t-seq (ti-bput 2 6 5)
+      (ti-ret 2))))))))))))))))))))))))))))))))))))))))))))))))
+
+; send an open fd to a peer across a connected AF_UNIX socket: sendmsg(2) + a
+; SCM_RIGHTS cmsghdr (E30, "the hard one"). Builds the cmsghdr/iovec/msghdr in
+; byte cells at the ABI's exact offsets (nb-put-* store-at-offset over ti-bput,
+; "structs at the floor"), takes the payload's ti-bptr for iov_base, and issues
+; syscall 46. All four cells are ti-bptr'd before the one ti-sys, so the
+; machine's pins hold every cross-cell pointer through the crossing. Returns
+; bytes sent (or -errno). r0=sockfd, r1=payload cell, r2=fd int.
+(def nb-sys-send-fd-t TIFn
+  (ti-fn "nb-sys-send-fd" 3 50
+    (t-seq (ti-const 3 24)
+    (t-seq (ti-bnew 4 3)
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-const 6 20)
+    (t-seq (ti-call 7 "nb-put-u64" (cons 4 (cons 5 (cons 6 nil))))
+    (t-seq (ti-const 8 8)
+    (t-seq (ti-const 9 1)
+    (t-seq (ti-call 10 "nb-put-u32" (cons 7 (cons 8 (cons 9 nil))))
+    (t-seq (ti-const 11 12)
+    (t-seq (ti-const 12 1)
+    (t-seq (ti-call 13 "nb-put-u32" (cons 10 (cons 11 (cons 12 nil))))
+    (t-seq (ti-const 14 16)
+    (t-seq (ti-call 15 "nb-put-u32" (cons 13 (cons 14 (cons 2 nil))))
+    (t-seq (ti-const 16 16)
+    (t-seq (ti-bnew 17 16)
+    (t-seq (ti-const 18 0)
+    (t-seq (ti-bptr 19 1)
+    (t-seq (ti-call 20 "nb-put-ptr" (cons 17 (cons 18 (cons 19 nil))))
+    (t-seq (ti-const 21 8)
+    (t-seq (ti-blen 22 1)
+    (t-seq (ti-call 23 "nb-put-u64" (cons 20 (cons 21 (cons 22 nil))))
+    (t-seq (ti-const 24 56)
+    (t-seq (ti-bnew 25 24)
+    (t-seq (ti-const 26 0)
+    (t-seq (ti-const 27 0)
+    (t-seq (ti-call 28 "nb-put-u64" (cons 25 (cons 26 (cons 27 nil))))
+    (t-seq (ti-const 29 8)
+    (t-seq (ti-const 30 0)
+    (t-seq (ti-call 31 "nb-put-u32" (cons 28 (cons 29 (cons 30 nil))))
+    (t-seq (ti-const 32 16)
+    (t-seq (ti-bptr 33 23)
+    (t-seq (ti-call 34 "nb-put-ptr" (cons 31 (cons 32 (cons 33 nil))))
+    (t-seq (ti-const 35 24)
+    (t-seq (ti-const 36 1)
+    (t-seq (ti-call 37 "nb-put-u64" (cons 34 (cons 35 (cons 36 nil))))
+    (t-seq (ti-const 38 32)
+    (t-seq (ti-bptr 39 15)
+    (t-seq (ti-call 40 "nb-put-ptr" (cons 37 (cons 38 (cons 39 nil))))
+    (t-seq (ti-const 41 40)
+    (t-seq (ti-const 42 24)
+    (t-seq (ti-call 43 "nb-put-u64" (cons 40 (cons 41 (cons 42 nil))))
+    (t-seq (ti-const 44 48)
+    (t-seq (ti-const 45 0)
+    (t-seq (ti-call 46 "nb-put-u32" (cons 43 (cons 44 (cons 45 nil))))
+    (t-seq (ti-bptr 47 46)
+    (t-seq (ti-const 48 0)
+    (t-seq (ti-sys 49 46 (cons 0 (cons 47 (cons 48 nil))))
+    (ti-ret 49))))))))))))))))))))))))))))))))))))))))))))))))))
+
+; fork() -> pid: 0 in the child, the child's pid in the parent, -errno on
+; failure. nr 57. No args, no buffer -- the simplest crossing. The forked child
+; must IMMEDIATELY exec (nb-sys-exec-elf) so essentially no chirality runs in the
+; child beyond the branch; the parent gets the pid and waits. Single-threaded
+; native process + exec-promptly => fork-safe. Only ever executed on the native
+; drop (the test runner is native); never forks the reference machine.
+(def nb-sys-fork-t TIFn
+  (ti-fn "nb-sys-fork" 0 1
+    (t-seq (ti-sys 0 57 nil)
+      (ti-ret 0))))
+
+; wait4(pid, *status, options=0, rusage=NULL) -> pid. nr 61. The status int is
+; written to the PAYLOAD of the caller's byte cell (reg1), mirroring read/write's
+; ti-bptr buffer discipline (the kernel gets the payload address, never the cell).
+; The caller reads byte 1 of the little-endian status for a normal-exit code
+; (WEXITSTATUS = (status >> 8) & 0xff).
+(def nb-sys-wait4-t TIFn
+  (ti-fn "nb-sys-wait4" 2 6
+    (t-seq (ti-bptr 2 1)
+    (t-seq (ti-const 3 0)
+    (t-seq (ti-const 4 0)
+    (t-seq (ti-sys 5 61 (cons 0 (cons 2 (cons 3 (cons 4 nil)))))
+      (ti-ret 5)))))))
+
+; nb-run-elf(elf) -> the child's exit code. The test-runner primitive: fork; the
+; child exec-elf's the bytes (becomes that process image; on exec FAILURE it
+; exit-group's the -errno so a broken ELF can never resurrect the runner); the
+; parent wait4's the pid and returns WEXITSTATUS -- byte 1 of the little-endian
+; wait status. A driver over nb-sys-fork / nb-sys-exec-elf / nb-sys-wait4
+; (execveat replaces the image, so a parent could not observe a child's exit
+; until fork+wait4 landed). No ti-sys of its own -> no SYSCALL_TABLE entry, and
+; not sys-faced (it issues no raw syscall/pointer, only composes registered
+; crossings) -- the governance rides the three crossings it calls.
+(def nb-run-elf-t TIFn
+  (ti-fn "nb-run-elf" 1 11
+    (t-seq (ti-call 1 "nb-sys-fork" nil)
+    (t-seq (ti-const 2 0)
+    (t-seq (ti-prim 3 (op-eqi) 1 2)
+      ; Bool is (data Bool () (true) (false)) -> true=tag0, false=tag1.
+      ; (pid == 0) is TRUE in the child, so tag0 = CHILD, tag1 = PARENT.
+      (ti-tcase 3 false
+        (cons (pair (pair 0 nil)                          ; tag0 = true = CHILD
+          (t-seq (ti-call 9 "nb-sys-exec-elf" (cons 0 nil))
+          (t-seq (ti-call 10 "nb-sys-exit-group" (cons 9 nil))
+            (ti-ret 10))))
+        (cons (pair (pair 1 nil)                          ; tag1 = false = PARENT
+          (t-seq (ti-const 4 4)
+          (t-seq (ti-bnew 5 4)
+          (t-seq (ti-call 6 "nb-sys-wait4" (cons 1 (cons 5 nil)))
+          (t-seq (ti-const 7 1)
+          (t-seq (ti-bget 8 5 7)
+            (ti-ret 8)))))))
+        nil))
+        none))))))
+
+; nb-sys-winsz-t: TIOCGWINSZ (21523 = 0x5413), alloc-inside.
+; Allocates an 8-byte cell internally, ioctl(fd, 0x5413, ptr),
+; returns fresh cell on success or empty cell on error.
+(def nb-sys-winsz-t TIFn
+  (ti-fn "nb-sys-winsz" 1 8
+    (t-seq (ti-const 1 21523)
+    (t-seq (ti-const 4 8)                ; bnew len is a SLOT, not an immediate
+    (t-seq (ti-bnew 2 4)
+    (t-seq (ti-bptr 3 2)
+    (t-seq (ti-sys 4 16 (cons 0 (cons 1 (cons 3 nil))))
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 6 (op-lti) 4 5)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-const 7 0)
+          (t-seq (ti-bnew 7 7)
+            (ti-ret 7))))
+        (cons (pair (pair 1 nil)
+          (ti-ret 2))
+        nil))
+        none))))))))))
+
+; nb-sys-tcgets-t: TCGETS (21505 = 0x5401), alloc-inside.
+; Allocates a 60-byte termios cell internally, ioctl(fd, 0x5401, ptr),
+; returns fresh cell on success or empty cell on error.
+(def nb-sys-tcgets-t TIFn
+  (ti-fn "nb-sys-tcgets" 1 8
+    (t-seq (ti-const 1 21505)
+    (t-seq (ti-const 4 60)               ; bnew len is a SLOT, not an immediate
+    (t-seq (ti-bnew 2 4)
+    (t-seq (ti-bptr 3 2)
+    (t-seq (ti-sys 4 16 (cons 0 (cons 1 (cons 3 nil))))
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 6 (op-lti) 4 5)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-const 7 0)
+          (t-seq (ti-bnew 7 7)
+            (ti-ret 7))))
+        (cons (pair (pair 1 nil)
+          (ti-ret 2))
+        nil))
+        none))))))))))
+
+; nb-sys-tcsets-t: TCSETS (21506 = 0x5402), value-in.
+; Kernel only reads the cell — no writeback mutation.
+; Returns ioctl result (0 or -errno).
+(def nb-sys-tcsets-t TIFn
+  (ti-fn "nb-sys-tcsets" 2 5
+    (t-seq (ti-const 2 21506)
+    (t-seq (ti-bptr 3 1)
+    (t-seq (ti-sys 4 16 (cons 0 (cons 2 (cons 3 nil))))
+      (ti-ret 4))))))
+
+; nb-sys-winszw-t: TIOCSWINSZ (21524 = 0x5414), value-in.
+; Kernel only READS the caller's 8-byte struct winsize cell — no writeback.
+; Sets the tty window size AND raises SIGWINCH on the fg process group.
+; Returns ioctl result (0 or -errno). Mirror of nb-sys-tcsets-t (value-in ioctl);
+; the Set partner of nb-sys-winsz-t (alloc-inside Get, 21523).
+(def nb-sys-winszw-t TIFn
+  (ti-fn "nb-sys-winszw" 2 5
+    (t-seq (ti-const 2 21524)
+    (t-seq (ti-bptr 3 1)
+    (t-seq (ti-sys 4 16 (cons 0 (cons 2 (cons 3 nil))))
+      (ti-ret 4))))))
+
+; read-key(fd, count) -> fresh cell: real read(2) crossing, matching nb-sys-read-t.
+; The fd and count come directly as args; ti-bnew allocates a fresh cell,
+; ti-bptr gets its raw pointer, and read(2) fills it. On EOF or short read
+; the returned cell is copied to the actual count (honest cost until cells
+; can shrink).
+(def nb-read-key-t TIFn
+  (ti-fn "nb-read-key" 2 11
+    (t-seq (ti-bnew 2 1)
+    (t-seq (ti-bptr 3 2)
+    (t-seq (ti-sys 4 0 (cons 0 (cons 3 (cons 1 nil))))
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 6 (op-lei) 5 4)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-bnew 7 4)
+          (t-seq (ti-const 8 0)
+          (t-seq (ti-call 9 "nb-copy" (cons 7 (cons 2 (cons 8 (cons 8 (cons 4 nil))))))
+            (ti-ret 9)))))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-const 10 0)
+          (t-seq (ti-bnew 7 10)
+            (ti-ret 7))))
+        nil))
+        none))))))))
+
+; ── T1 child-wiring crossings (setsid + dup2 + TIOCSCTTY) ──
+
+; setsid() -> new session id (or -errno): detaches the caller into a fresh
+; session with NO controlling terminal, making it a session leader (the
+; precondition for TIOCSCTTY to acquire one). 0-arg, mirror of nb-sys-fork-t.
+; nr 112.
+(def nb-sys-setsid-t TIFn
+  (ti-fn "nb-sys-setsid" 0 1
+    (t-seq (ti-sys 0 112 nil)
+      (ti-ret 0))))
+
+; dup2(oldfd, newfd) -> newfd (or -errno): redirect a std fd onto the slave.
+; Bare 2-arg all-integer crossing (no buffer). nr 33.
+(def nb-sys-dup2-t TIFn
+  (ti-fn "nb-sys-dup2" 2 3
+    (t-seq (ti-sys 2 33 (cons 0 (cons 1 nil)))
+      (ti-ret 2))))
+
+; rt_sigaction(signum, act, oldact, sigsetsize) -> 0 (or -errno): set a signal
+; disposition. The handler arg (0=SIG_DFL, 1=SIG_IGN) is written as the 8-byte
+; sa_handler at offset 0 of a fresh zeroed 152-byte struct sigaction cell
+; (sa_flags/sa_restorer/sa_mask stay zero), the cell passed as *act. nr 13.
+; SIG_IGN on SIGHUP (1) lets a closed terminal degrade to a clean EOF exit.
+(def nb-signal-t TIFn
+  (ti-fn "nb-signal" 2 9
+    (t-seq (ti-const 2 152)
+    (t-seq (ti-bnew 3 2)
+    (t-seq (ti-const 4 0)
+    (t-seq (ti-call 5 "nb-cell-put-i64" (cons 3 (cons 4 (cons 1 nil))))
+    (t-seq (ti-bptr 6 3)
+    (t-seq (ti-const 7 8)
+    (t-seq (ti-sys 8 13 (cons 0 (cons 6 (cons 4 (cons 7 nil)))))
+      (ti-ret 8))))))))))
+
+; ioctl(fd, TIOCSCTTY=0x540E=21518, 0) -> 0 (or -errno): make fd the caller's
+; controlling terminal. Must follow setsid() (caller is session leader, no ctty
+; yet). The third ioctl arg is a scalar 0 passed BY VALUE (0 = don't steal;
+; 1 = steal, needs CAP_SYS_ADMIN) — so unlike the pointer-arg ioctls
+; (winsz/tcsets/ptunlock) there is NO ti-bnew/ti-bptr out-cell. nr 16.
+(def nb-sys-tiocsctty-t TIFn
+  (ti-fn "nb-sys-tiocsctty" 1 4
+    (t-seq (ti-const 1 21518)
+    (t-seq (ti-const 2 0)
+    (t-seq (ti-sys 3 16 (cons 0 (cons 1 (cons 2 nil))))
+      (ti-ret 3))))))
+
+; ── E104 pty acquisition crossings (restored) ──
+; (These three were momentarily dropped from sys-lib while T2's TIOCSWINSZ
+; landed; open-pty / spawn-in-pty depend on them, so they are back.)
+
+; nb-sys-ptsno-t: TIOCGPTN (0x80045430 = 2147767344), alloc-inside.
+; Allocates a 4-byte cell internally, ioctl(fd, 0x80045430, ptr) reads the
+; slave pts index into it; returns fresh cell on success or empty cell on error.
+; Mirror of nb-sys-winsz-t (alloc-inside ioctl), 4-byte *uint out-cell.
+(def nb-sys-ptsno-t TIFn
+  (ti-fn "nb-sys-ptsno" 1 8
+    (t-seq (ti-const 1 2147767344)
+    (t-seq (ti-const 4 4)                ; bnew len is a SLOT, not an immediate
+    (t-seq (ti-bnew 2 4)
+    (t-seq (ti-bptr 3 2)
+    (t-seq (ti-sys 4 16 (cons 0 (cons 1 (cons 3 nil))))
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 6 (op-lti) 4 5)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-const 7 0)
+          (t-seq (ti-bnew 7 7)
+            (ti-ret 7))))
+        (cons (pair (pair 1 nil)
+          (ti-ret 2))
+        nil))
+        none))))))))))
+
+; nb-sys-ptunlock-t: TIOCSPTLCK (0x40045431 = 1074025521), value-in.
+; Kernel only reads the caller's 4-byte cell (holding int 0 to unlock the slave).
+; Returns ioctl result (0 or -errno). Mirror of nb-sys-tcsets-t (value-in ioctl).
+(def nb-sys-ptunlock-t TIFn
+  (ti-fn "nb-sys-ptunlock" 2 5
+    (t-seq (ti-const 2 1074025521)
+    (t-seq (ti-bptr 3 1)
+    (t-seq (ti-sys 4 16 (cons 0 (cons 2 (cons 3 nil))))
+      (ti-ret 4))))))
+
+; nb-sys-open-rw-t: openat(AT_FDCWD=-100, path,
+;   O_RDWR|O_NOCTTY|O_CLOEXEC=0x80102=524546, 0) -> fd.
+; The O_RDWR sibling of nb-sys-openat-t (which is hardcoded O_RDONLY): opening
+; /dev/ptmx (and the slave /dev/pts/n) needs read-write, without acquiring a
+; controlling terminal (O_NOCTTY). O_CLOEXEC (0x80000=524288, bits: 0x2 O_RDWR |
+; 0x100 O_NOCTTY | 0x80000 O_CLOEXEC = 0x80102 = 524546) auto-closes the fd at the
+; child's exec so the pty master does not leak across exec — mirrors the in-tree
+; MFD_CLOEXEC precedent in nb-sys-memfd-t (:75). Path (reg0) is a NUL-terminated byte cell.
+(def nb-sys-open-rw-t TIFn
+  (ti-fn "nb-sys-open-rw" 1 6
+    (t-seq (ti-bptr 1 0)
+    (t-seq (ti-const 2 -100)
+    (t-seq (ti-const 3 524546)
+    (t-seq (ti-const 4 0)
+    (t-seq (ti-sys 5 257 (cons 2 (cons 1 (cons 3 (cons 4 nil)))))
+      (ti-ret 5))))))))
+
+; nb-sys-open-create-t: openat(AT_FDCWD=-100, path,
+;   O_RDWR|O_CREAT|O_TRUNC|O_NOCTTY|O_CLOEXEC=0x80342=525122, 0644=420) -> fd.
+; The O_CREAT|O_TRUNC sibling of nb-sys-open-rw-t (which is O_RDWR|O_NOCTTY with
+; no create/truncate): creating a new file and truncating on overwrite so a
+; shortening save leaves no stale tail bytes (SCRIBA-SLICES 4). O_CREAT=0x40,
+; O_TRUNC=0x200, O_RDWR=0x2, O_NOCTTY=0x100, O_CLOEXEC=0x80000 -> 0x80342 =
+; 525122. mode 0644 = 0o644 = 420. Path (reg0) is a NUL-terminated byte cell.
+(def nb-sys-open-create-t TIFn
+  (ti-fn "nb-sys-open-create" 1 6
+    (t-seq (ti-bptr 1 0)
+    (t-seq (ti-const 2 -100)
+    (t-seq (ti-const 3 525122)
+    (t-seq (ti-const 4 420)
+    (t-seq (ti-sys 5 257 (cons 2 (cons 1 (cons 3 (cons 4 nil)))))
+      (ti-ret 5))))))))
+
+; nb-spawn-in-pty(elf, slave-path) -> child pid: the fat TAL driver that hands a
+; freshly-acquired pty slave to a forked child as its controlling terminal, then
+; execs the ELF there — login_tty(3) inlined at the tal floor (no chirality surface
+; code runs in the child, the nb-run-elf-t discipline). fork; in the CHILD (raw
+; syscalls, async-signal-safe — the native process is single-threaded and the
+; arena is a lock-free bump allocator, so cell allocation between fork and exec
+; is safe): setsid() -> open the slave by path (O_RDWR|O_NOCTTY, so the open does
+; NOT itself grab a ctty) -> ioctl TIOCSCTTY (acquire, session leader now) ->
+; dup2 slave onto 0/1/2 -> close the slave fd (it is >= 3) -> exec-elf. ANY step
+; that returns < 0 exit_group's that (negative) value so a half-wired child can
+; never fall through to run on the wrong terminal (the nb-run-elf-t exec-fail
+; precedent). The PARENT returns the child pid. No ti-sys of its own -> not
+; sys-faced, no SYSCALL_TABLE / sys-row entry (governance rides the crossings it
+; composes), exactly like nb-run-elf-t.
+;   reg0 = elf bytes cell   reg1 = NUL-terminated slave-path cell
+(def nb-spawn-in-pty-t TIFn
+  (ti-fn "nb-spawn-in-pty" 2 8
+(t-seq (ti-call 2 "nb-sys-fork" nil)
+(t-seq (ti-const 3 0)
+(t-seq (ti-prim 4 (op-eqi) 2 3)
+(ti-tcase 4 false
+  (cons (pair (pair 0 nil) (t-seq (ti-call 3 "nb-sys-setsid" nil)
+(t-seq (ti-const 4 0)
+(t-seq (ti-prim 5 (op-lti) 3 4)
+(ti-tcase 5 false
+  (cons (pair (pair 0 nil) (t-seq (ti-call 6 "nb-sys-exit-group" (cons 3 nil)) (ti-ret 6)))
+  (cons (pair (pair 1 nil) (t-seq (ti-call 2 "nb-sys-open-rw" (cons 1 nil))
+(t-seq (ti-const 4 0)
+(t-seq (ti-prim 5 (op-lti) 2 4)
+(ti-tcase 5 false
+  (cons (pair (pair 0 nil) (t-seq (ti-call 6 "nb-sys-exit-group" (cons 2 nil)) (ti-ret 6)))
+  (cons (pair (pair 1 nil) (t-seq (ti-call 3 "nb-sys-tiocsctty" (cons 2 nil))
+(t-seq (ti-const 4 0)
+(t-seq (ti-prim 5 (op-lti) 3 4)
+(ti-tcase 5 false
+  (cons (pair (pair 0 nil) (t-seq (ti-call 6 "nb-sys-exit-group" (cons 3 nil)) (ti-ret 6)))
+  (cons (pair (pair 1 nil) (t-seq (ti-const 7 0)
+(t-seq (ti-call 3 "nb-sys-dup2" (cons 2 (cons 7 nil)))
+(t-seq (ti-const 4 0)
+(t-seq (ti-prim 5 (op-lti) 3 4)
+(ti-tcase 5 false
+  (cons (pair (pair 0 nil) (t-seq (ti-call 6 "nb-sys-exit-group" (cons 3 nil)) (ti-ret 6)))
+  (cons (pair (pair 1 nil) (t-seq (ti-const 7 1)
+(t-seq (ti-call 3 "nb-sys-dup2" (cons 2 (cons 7 nil)))
+(t-seq (ti-const 4 0)
+(t-seq (ti-prim 5 (op-lti) 3 4)
+(ti-tcase 5 false
+  (cons (pair (pair 0 nil) (t-seq (ti-call 6 "nb-sys-exit-group" (cons 3 nil)) (ti-ret 6)))
+  (cons (pair (pair 1 nil) (t-seq (ti-const 7 2)
+(t-seq (ti-call 3 "nb-sys-dup2" (cons 2 (cons 7 nil)))
+(t-seq (ti-const 4 0)
+(t-seq (ti-prim 5 (op-lti) 3 4)
+(ti-tcase 5 false
+  (cons (pair (pair 0 nil) (t-seq (ti-call 6 "nb-sys-exit-group" (cons 3 nil)) (ti-ret 6)))
+  (cons (pair (pair 1 nil) (t-seq (ti-const 7 2)
+(t-seq (ti-prim 5 (op-lti) 7 2)
+(ti-tcase 5 false
+  (cons (pair (pair 0 nil) (t-seq (ti-call 3 "nb-sys-close" (cons 2 nil)) (t-seq (ti-call 6 "nb-sys-exec-elf" (cons 0 nil)) (t-seq (ti-call 6 "nb-sys-exit-group" (cons 6 nil)) (ti-ret 6)))))
+  (cons (pair (pair 1 nil) (t-seq (ti-call 6 "nb-sys-exec-elf" (cons 0 nil)) (t-seq (ti-call 6 "nb-sys-exit-group" (cons 6 nil)) (ti-ret 6)))) nil)) none)))) nil)) none)))))) nil)) none)))))) nil)) none)))))) nil)) none))))) nil)) none))))) nil)) none)))))
+  (cons (pair (pair 1 nil) (ti-ret 2)) nil)) none))))))
+
+; nb-sys-socketpair-t: socketpair(AF_UNIX=1, SOCK_STREAM=1, protocol=0, sv), nr 53.
+; Alloc-inside out-cell (mirror of nb-sys-ptsno-t): allocate an 8-byte boxed cell,
+; hand its payload address as the 4th arg (positional -> r10) so the kernel writes
+; the two u32 fds into it, then split on r < 0. On success read fd0 (offset 0) and
+; fd1 (offset 4) with two cross-lib nb-unpack32 calls (passing the BOXED cell, as
+; nb-run-elf-t's ti-bget reads the boxed cell) and build (sp-ok fd0 fd1) via ti-cona
+; -- each returned fd word IS a Sock at the boundary (E123 carrier). On -errno build
+; (sp-err msg) with an in-body empty-Str cell (numeric errno render deferred, §3.3).
+; FIRST hand-authored ti-cona body + FIRST native crossing returning a boxed sum.
+(def nb-sys-socketpair-t TIFn
+  (ti-fn "nb-sys-socketpair" 0 14
+    (t-seq (ti-const 0 1)                ; AF_UNIX
+    (t-seq (ti-const 1 1)                ; SOCK_STREAM
+    (t-seq (ti-const 2 0)                ; protocol
+    (t-seq (ti-const 3 8)                ; out-cell len slot (2 * u32)
+    (t-seq (ti-bnew 4 3)                 ; boxed 8-byte out-cell
+    (t-seq (ti-bptr 5 4)                 ; payload address for the kernel
+    (t-seq (ti-sys 6 53 (cons 0 (cons 1 (cons 2 (cons 5 nil)))))
+    (t-seq (ti-const 7 0)
+    (t-seq (ti-prim 8 (op-lti) 6 7)      ; r < 0 ?  (true=tag0=ERROR)
+      (ti-tcase 8 false
+        (cons (pair (pair 0 nil)         ; tag0 = ERROR
+          (t-seq (ti-const 9 0)
+          (t-seq (ti-bnew 10 9)          ; empty Str message
+          (t-seq (ti-cona 11 1 (cons 10 nil))   ; (sp-err msg)
+            (ti-ret 11)))))
+        (cons (pair (pair 1 nil)         ; tag1 = OK
+          (t-seq (ti-const 9 0)
+          (t-seq (ti-call 10 "nb-unpack32" (cons 4 (cons 9 nil)))   ; fd0 @ off 0
+          (t-seq (ti-const 11 4)
+          (t-seq (ti-call 12 "nb-unpack32" (cons 4 (cons 11 nil)))  ; fd1 @ off 4
+          (t-seq (ti-cona 13 0 (cons 10 (cons 12 nil)))             ; (sp-ok fd0 fd1)
+            (ti-ret 13)))))))
+        nil))
+        none))))))))))))
+
+; E125 -- socket USE stage over write/read. sock-send/sock-recv move bytes on a
+; Sock (E123 fd word-carrier) and thread the cap back in a boxed result sum
+; (SendR/RecvR) built with ti-cona, the nb-sys-socketpair-t precedent above.
+;
+; nb-sock-send-go(fd, ptr, len, off): the recursive sendall WORKER -- writes the
+; remaining slice [ptr+off, len-off), advances off by the byte count, and
+; tail-recurses until nothing remains (send-r) or write returns <0 (send-err).
+; Spine copied from nb-bfind-from-t (bytes-tal.chiral:302-327, self-recursion via
+; ti-call + op-add offset). Issues ti-sys 1 (write) -> needs its own E76 name-row
+; (nb-sock-send-go->1) in target-linux.chiral. SendR tags: send-r=0, send-err=1.
+; TERMINATION (hand-authored sys-face, not totality-checked): the measure
+; (len - off) strictly decreases whenever write returns >0; on a blocking stream
+; socket write returns >0 or <0 (never 0 for len>0). Assumption documented, not
+; machine-proved (raw TAL is outside the totality checker).
+(def nb-sock-send-go-t TIFn
+  (ti-fn "nb-sock-send-go" 4 15
+    (t-seq (ti-const 4 0)
+    (t-seq (ti-prim 5 (op-sub) 2 3)        ; rem = len - off
+    (t-seq (ti-prim 6 (op-lei) 5 4)        ; rem <= 0 ?  (true=tag0=done)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil)           ; tag0 = done: all bytes sent
+          (t-seq (ti-cona 7 0 (cons 0 nil))   ; (send-r fd)
+            (ti-ret 7)))
+        (cons (pair (pair 1 nil)           ; tag1 = more to send
+          (t-seq (ti-prim 8 (op-add) 1 3)     ; cur = ptr + off
+          (t-seq (ti-sys 9 1 (cons 0 (cons 8 (cons 5 nil))))  ; write(fd, cur, rem)
+          (t-seq (ti-prim 10 (op-lti) 9 4)    ; r < 0 ?  (true=tag0=ERROR)
+            (ti-tcase 10 false
+              (cons (pair (pair 0 nil)     ; tag0 = write error
+                (t-seq (ti-bnew 11 4)         ; empty Str message
+                (t-seq (ti-cona 12 1 (cons 11 nil))   ; (send-err msg)
+                  (ti-ret 12))))
+              (cons (pair (pair 1 nil)     ; tag1 = wrote r>=0, advance + recurse
+                (t-seq (ti-prim 13 (op-add) 3 9)   ; off' = off + r
+                (t-seq (ti-call 14 "nb-sock-send-go" (cons 0 (cons 1 (cons 2 (cons 13 nil)))))
+                  (ti-ret 14))))
+              nil))
+              none)))))
+        nil))
+        none))))))
+
+; nb-sock-send(sock, bytes): the entry -- resolve the Bytes payload address/len,
+; seed off=0, tail-call the sendall worker (the nb-bfind->nb-bfind-from seed
+; pattern, bytes-tal.chiral:329-333). Issues NO ti-sys (only ti-call) -> no E76 row.
+(def nb-sock-send-t TIFn
+  (ti-fn "nb-sock-send" 2 6
+    (t-seq (ti-bptr 2 1)                   ; ptr = payload address of the Bytes
+    (t-seq (ti-blen 3 1)                   ; len = payload length
+    (t-seq (ti-const 4 0)                  ; off = 0
+    (t-seq (ti-call 5 "nb-sock-send-go" (cons 0 (cons 2 (cons 3 (cons 4 nil)))))
+      (ti-ret 5)))))))
+
+; nb-sock-recv(sock, n): one read into a fresh n-byte cell, then a three-way
+; split (nested ti-tcase, the nb-sys-read-t precedent :39-57 extended by one
+; level). r<0 -> recv-err (cap dropped); r==0 -> recv-closed (peer half-close,
+; cap re-threaded); r>0 -> recv-r, cell truncated to r via nb-copy (:48-50) +
+; the Sock re-threaded. Issues ti-sys 0 (read) -> needs its own E76 name-row
+; (nb-sock-recv->0). RecvR tags: recv-r=0, recv-closed=1, recv-err=2.
+(def nb-sock-recv-t TIFn
+  (ti-fn "nb-sock-recv" 2 15
+    (t-seq (ti-bnew 2 1)                   ; fresh n-byte cell
+    (t-seq (ti-bptr 3 2)                   ; payload address for the kernel
+    (t-seq (ti-sys 4 0 (cons 0 (cons 3 (cons 1 nil))))  ; read(fd, ptr, n)
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 6 (op-lti) 4 5)        ; r < 0 ?  (true=tag0=ERROR)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil)           ; tag0 = read error
+          (t-seq (ti-bnew 7 5)                ; empty Str message (len 0)
+          (t-seq (ti-cona 8 2 (cons 7 nil))   ; (recv-err msg)  tag2
+            (ti-ret 8))))
+        (cons (pair (pair 1 nil)           ; tag1 = r >= 0
+          (t-seq (ti-prim 9 (op-lti) 5 4)     ; 0 < r ?  (true=tag0=DATA)
+            (ti-tcase 9 false
+              (cons (pair (pair 0 nil)     ; tag0 = r>0: data arrived
+                (t-seq (ti-bnew 10 4)            ; fresh r-length cell
+                (t-seq (ti-const 11 0)
+                (t-seq (ti-call 12 "nb-copy" (cons 10 (cons 2 (cons 11 (cons 11 (cons 4 nil))))))
+                (t-seq (ti-cona 13 0 (cons 12 (cons 0 nil)))  ; (recv-r bs sock)  tag0
+                  (ti-ret 13))))))
+              (cons (pair (pair 1 nil)     ; tag1 = r==0: peer half-close
+                (t-seq (ti-cona 14 1 (cons 0 nil))   ; (recv-closed sock)  tag1
+                  (ti-ret 14)))
+              nil))
+              none)))
+        nil))
+        none))))))))
+
+; E127 -- client socket ACQUISITION. sock-connect runs TWO syscalls (socket then
+; connect) and hands back a ConnR boxed sum. The fused nb-sock-connect-t issues
+; NO raw ti-sys: a name maps to exactly ONE syscall number at the E76 chokepoint
+; (sys-check row-find short-circuits on the first match), so a single body cannot
+; carry 41 AND 42. Instead each syscall is a single-syscall helper with its own
+; E76 name-row, called via ti-call -- the nb-spawn-in-pty-t / nb-sock-send-t
+; precedent (zero ti-sys in the fused body, all ti-call). ConnR tags: conn-r=0,
+; conn-err=1 (ports.chiral declaration order).
+
+; socket(domain, type, protocol) -> fd (or -errno). Value-in / rax-out, 3 args,
+; no cell -- the nb-sys-fcntl-t shape. nr 41. Its own E76 row (nb-sys-socket->41).
+(def nb-sys-socket-t TIFn
+  (ti-fn "nb-sys-socket" 3 4
+    (t-seq (ti-sys 3 41 (cons 0 (cons 1 (cons 2 nil))))
+      (ti-ret 3))))
+
+; connect(fd, sockaddr-ptr, addrlen) -> 0 (or -errno). Value-in / rax-out, 3 args.
+; The sockaddr pointer is supplied already ti-bptr'd by the fused caller. nr 42.
+; Its own E76 row (nb-sys-connect->42).
+(def nb-sys-connect-t TIFn
+  (ti-fn "nb-sys-connect" 3 4
+    (t-seq (ti-sys 3 42 (cons 0 (cons 1 (cons 2 nil))))
+      (ti-ret 3))))
+
+; nb-sa-un-len(path-cell) -> 2 + strlen(path) + 1: the tight pathname-socket
+; addrlen (offsetof(sun_path)=2 + the NUL). Pure byte op -- no ti-sys, no E76 row.
+(def nb-sa-un-len-t TIFn
+  (ti-fn "nb-sa-un-len" 1 4
+    (t-seq (ti-blen 1 0)                  ; strlen(path)
+    (t-seq (ti-const 2 3)                 ; 2 (family) + 1 (NUL)
+    (t-seq (ti-prim 3 (op-add) 1 2)       ; 2 + strlen + 1
+      (ti-ret 3))))))
+
+; nb-sa-un-pack(path-cell) -> a fresh sockaddr_un cell: family AF_UNIX=1 (u16 LE)
+; at offset 0, the path bytes at offset 2, trailing NUL from the zero-filled
+; ti-bnew (bput-u16-le of value 1 = low byte 1 @0, high byte 0 already zeroed).
+; nb-copy(dst, src, dst-off, src-off, count) lays the path at offset 2. Pure byte
+; op -- no ti-sys, no E76 row. Reusable by the future sock-listen bind.
+(def nb-sa-un-pack-t TIFn
+  (ti-fn "nb-sa-un-pack" 1 9
+    (t-seq (ti-blen 1 0)                  ; strlen(path)
+    (t-seq (ti-const 2 3)
+    (t-seq (ti-prim 3 (op-add) 1 2)       ; total len = 2 + strlen + 1
+    (t-seq (ti-bnew 4 3)                  ; zero-filled sockaddr_un cell
+    (t-seq (ti-const 5 0)                 ; offset 0 (family) / src-off (path)
+    (t-seq (ti-const 6 1)                 ; AF_UNIX low byte
+    (t-seq (ti-bput 4 5 6)                ; family[0] = 1 (high byte already 0)
+    (t-seq (ti-const 7 2)                 ; dst offset for the path
+    (t-seq (ti-call 8 "nb-copy" (cons 4 (cons 0 (cons 7 (cons 5 (cons 1 nil))))))
+      (ti-ret 8))))))))))))
+
+; nb-sock-connect(path-cell) -> ConnR: acquire a client AF_UNIX stream socket and
+; connect it to the pathname socket at path. Issues NO ti-sys (all via ti-call);
+; the two-level ti-tcase/ti-cona sum assembly copies nb-sys-socketpair-t and the
+; fused/ti-call + close-on-error shape copies nb-spawn-in-pty-t.
+;   reg0 = NUL-terminated path bytes cell
+(def nb-sock-connect-t TIFn
+  (ti-fn "nb-sock-connect" 1 17
+    (t-seq (ti-const 1 1)                 ; AF_UNIX
+    (t-seq (ti-const 2 1)                 ; SOCK_STREAM
+    (t-seq (ti-const 3 0)                 ; protocol
+    (t-seq (ti-call 4 "nb-sys-socket" (cons 1 (cons 2 (cons 3 nil))))   ; fd = socket(1,1,0)
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 6 (op-lti) 4 5)       ; fd < 0 ?  (true=tag0=ERROR)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil)          ; tag0 = socket() failed, nothing to close
+          (t-seq (ti-const 7 0)
+          (t-seq (ti-bnew 8 7)            ; empty Str message
+          (t-seq (ti-cona 9 1 (cons 8 nil))   ; (conn-err msg)  tag1
+            (ti-ret 9)))))
+        (cons (pair (pair 1 nil)          ; tag1 = fd >= 0
+          (t-seq (ti-call 7 "nb-sa-un-pack" (cons 0 nil))   ; sockaddr_un cell
+          (t-seq (ti-bptr 8 7)            ; &sa
+          (t-seq (ti-call 9 "nb-sa-un-len" (cons 0 nil))    ; addrlen = 2+strlen+1
+          (t-seq (ti-call 10 "nb-sys-connect" (cons 4 (cons 8 (cons 9 nil))))
+          (t-seq (ti-const 11 0)
+          (t-seq (ti-prim 12 (op-lti) 10 11)   ; connect r < 0 ?  (true=tag0=ERROR)
+            (ti-tcase 12 false
+              (cons (pair (pair 0 nil)    ; tag0 = connect failed: close fd THEN conn-err
+                (t-seq (ti-call 13 "nb-sys-close" (cons 4 nil))
+                (t-seq (ti-const 14 0)
+                (t-seq (ti-bnew 15 14)    ; empty Str message
+                (t-seq (ti-cona 16 1 (cons 15 nil))   ; (conn-err msg)  tag1
+                  (ti-ret 16))))))
+              (cons (pair (pair 1 nil)    ; tag1 = connected: fd word IS a Sock (E123)
+                (t-seq (ti-cona 13 0 (cons 4 nil))   ; (conn-r fd)  tag0
+                  (ti-ret 13)))
+              nil))
+              none))))))))
+        nil))
+        none)))))))))
+; E129 -- AF_INET client connect. sock-connect-in runs TWO syscalls (socket
+; then connect) and hands back a ConnR boxed sum. reg0 is the ALREADY-PACKED
+; 16-byte sockaddr_in (built by the pure surface pack-sa-in), so there is no
+; nb-sa-un-pack / nb-sa-un-len here: ti-bptr reg0 directly and pass a constant
+; addrlen 16. socket args are (2,1,0) = AF_INET, SOCK_STREAM, 0 (vs AF_UNIX
+; (1,1,0) in nb-sock-connect-t). Same ti-call-only / ti-tcase / close-on-error
+; shape as nb-sock-connect-t (E127). ConnR tags: conn-r=0, conn-err=1.
+(def nb-sock-connect-in-t TIFn
+  (ti-fn "nb-sock-connect-in" 1 16
+    (t-seq (ti-const 1 2)                 ; AF_INET
+    (t-seq (ti-const 2 1)                 ; SOCK_STREAM
+    (t-seq (ti-const 3 0)                 ; protocol
+    (t-seq (ti-call 4 "nb-sys-socket" (cons 1 (cons 2 (cons 3 nil))))   ; fd = socket(2,1,0)
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-prim 6 (op-lti) 4 5)       ; fd < 0 ?  (true=tag0=ERROR)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil)          ; tag0 = socket() failed, nothing to close
+          (t-seq (ti-const 7 0)
+          (t-seq (ti-bnew 8 7)            ; empty Str message
+          (t-seq (ti-cona 9 1 (cons 8 nil))   ; (conn-err msg)  tag1
+            (ti-ret 9)))))
+        (cons (pair (pair 1 nil)          ; tag1 = fd >= 0
+          (t-seq (ti-bptr 7 0)            ; &sa -- reg0 IS the packed sockaddr_in
+          (t-seq (ti-const 8 16)          ; addrlen = 16 (sizeof sockaddr_in)
+          (t-seq (ti-call 9 "nb-sys-connect" (cons 4 (cons 7 (cons 8 nil))))
+          (t-seq (ti-const 10 0)
+          (t-seq (ti-prim 11 (op-lti) 9 10)   ; connect r < 0 ?  (true=tag0=ERROR)
+            (ti-tcase 11 false
+              (cons (pair (pair 0 nil)    ; tag0 = connect failed: close fd THEN conn-err
+                (t-seq (ti-call 12 "nb-sys-close" (cons 4 nil))
+                (t-seq (ti-const 13 0)
+                (t-seq (ti-bnew 14 13)    ; empty Str message
+                (t-seq (ti-cona 15 1 (cons 14 nil))   ; (conn-err msg)  tag1
+                  (ti-ret 15))))))
+              (cons (pair (pair 1 nil)    ; tag1 = connected: fd word IS a Sock (E123)
+                (t-seq (ti-cona 12 0 (cons 4 nil))   ; (conn-r fd)  tag0
+                  (ti-ret 12)))
+              nil))
+              none)))))))
+        nil))
+        none)))))))))
+
+
+; ── E122 / E120: native Pool round-trip (create / write / read / close) ──
+; The Pool's native witness is a 2-slot boxed cell [base(off0) | size(off8)]
+; (ti-bnew 16). base = mmap address, size = the runtime witness of the erased n.
+; None of these bodies issue a raw ti-sys — they compose the registered E28
+; wrappers (nb-sys-memfd/ftruncate/mmap/munmap) and nb-copy/nb-get-u64/nb-put-u64
+; via ti-call (the nb-sock-connect-t / nb-run-elf-t precedent), so NONE needs an
+; E76 name-row in target-linux.chiral; the syscall governance rides the wrappers.
+; The raw mmap region at `base` is addressed by passing `base - 8` as the cell to
+; nb-copy/ti-bput: their +8 payload skip then lands on base+off (the arena's raw-
+; slot -8 idiom, sys-tal.chiral:157). A real bounds violation is a corpse: on
+; size<=0 or off/len out of range the body takes the arena-fail shape
+; (exit_group(-EINVAL), never returns) — the externs' return types carry no error
+; arm (ports.chiral:83-85), so a fatal exit is control flow, not a value sentinel.
+
+; nb-pool-create(size) -> PoolR: memfd -> ftruncate(size) -> mmap(size) -> box
+; the [base|size] cell -> assemble (pool-r cell fd). size<=0 or any crossing <0
+; -> nb-arena-fail (honest fail). reg0 = size (the `w n` runtime arg).
+(def nb-pool-create-t TIFn
+  (ti-fn "nb-pool-create" 1 24
+    (t-seq (ti-const 1 0)
+    (t-seq (ti-prim 2 (op-lei) 0 1)                     ; size <= 0 ?  true=tag0
+      (ti-tcase 2 false
+        (cons (pair (pair 0 nil)                        ; tag0: reject size<=0
+          (t-seq (ti-const 3 -22)                       ; -EINVAL
+          (t-seq (ti-call 4 "nb-arena-fail" (cons 3 nil))
+            (ti-ret 4))))
+        (cons (pair (pair 1 nil)                        ; tag1: size > 0
+          (t-seq (ti-const 3 0)                         ; memfd flags = 0
+          (t-seq (ti-call 4 "nb-sys-memfd" (cons 3 nil))          ; reg4 = fd
+          (t-seq (ti-const 5 0)
+          (t-seq (ti-prim 6 (op-lti) 4 5)               ; fd < 0 ?
+            (ti-tcase 6 false
+              (cons (pair (pair 0 nil)
+                (t-seq (ti-call 7 "nb-arena-fail" (cons 4 nil)) (ti-ret 7)))
+              (cons (pair (pair 1 nil)
+                (t-seq (ti-call 7 "nb-sys-ftruncate" (cons 4 (cons 0 nil)))  ; reg7 = rc
+                (t-seq (ti-const 8 0)
+                (t-seq (ti-prim 9 (op-lti) 7 8)         ; ftruncate < 0 ?
+                  (ti-tcase 9 false
+                    (cons (pair (pair 0 nil)
+                      (t-seq (ti-call 10 "nb-arena-fail" (cons 7 nil)) (ti-ret 10)))
+                    (cons (pair (pair 1 nil)
+                      (t-seq (ti-const 10 0)            ; addr
+                      (t-seq (ti-const 11 3)            ; prot PROT_READ|PROT_WRITE
+                      (t-seq (ti-const 12 1)            ; MAP_SHARED
+                      (t-seq (ti-const 13 0)            ; offset
+                      (t-seq (ti-call 14 "nb-sys-mmap" (cons 10 (cons 0 (cons 11 (cons 12 (cons 4 (cons 13 nil)))))))  ; reg14 = base
+                      (t-seq (ti-const 15 0)
+                      (t-seq (ti-prim 16 (op-lti) 14 15)   ; base < 0 ?
+                        (ti-tcase 16 false
+                          (cons (pair (pair 0 nil)
+                            (t-seq (ti-call 17 "nb-arena-fail" (cons 14 nil)) (ti-ret 17)))
+                          (cons (pair (pair 1 nil)
+                            (t-seq (ti-const 17 16)     ; boxed cell len = 16
+                            (t-seq (ti-bnew 18 17)      ; reg18 = [base|size] cell
+                            (t-seq (ti-const 19 0)
+                            (t-seq (ti-call 20 "nb-put-u64" (cons 18 (cons 19 (cons 14 nil))))  ; cell[0] := base
+                            (t-seq (ti-const 21 8)
+                            (t-seq (ti-call 22 "nb-put-u64" (cons 20 (cons 21 (cons 0 nil))))   ; cell[8] := size
+                            (t-seq (ti-cona 23 0 (cons 22 (cons 4 nil)))   ; (pool-r cell fd)
+                              (ti-ret 23))))))))
+                          ) nil)) none)
+                          )))))))
+                    ) nil)) none)
+                    )))
+              ) nil)) none)
+              ))))
+        ) nil)) none)
+        ))))
+
+; nb-pool-write(pool, off, bytes) -> (Pool n): bounds-check off>=0 && off+len<=size,
+; then copy len bytes from the Bytes payload into base+off via nb-copy(base-8,...).
+; reg0 = pool cell, reg1 = off, reg2 = bytes cell. Returns the pool cell (threaded).
+(def nb-pool-write-t TIFn
+  (ti-fn "nb-pool-write" 3 16
+    (t-seq (ti-const 3 0)
+    (t-seq (ti-call 4 "nb-get-u64" (cons 0 (cons 3 nil)))   ; reg4 = base
+    (t-seq (ti-const 5 8)
+    (t-seq (ti-call 6 "nb-get-u64" (cons 0 (cons 5 nil)))   ; reg6 = size
+    (t-seq (ti-blen 7 2)                                    ; reg7 = len
+    (t-seq (ti-const 8 0)
+    (t-seq (ti-prim 9 (op-lti) 1 8)                         ; off < 0 ?
+      (ti-tcase 9 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-const 10 -22)
+          (t-seq (ti-call 11 "nb-arena-fail" (cons 10 nil)) (ti-ret 11))))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-prim 10 (op-add) 1 7)                  ; end = off + len
+          (t-seq (ti-prim 11 (op-lti) 6 10)                 ; size < end ?  (OOB)
+            (ti-tcase 11 false
+              (cons (pair (pair 0 nil)
+                (t-seq (ti-const 12 -22)
+                (t-seq (ti-call 13 "nb-arena-fail" (cons 12 nil)) (ti-ret 13))))
+              (cons (pair (pair 1 nil)                      ; in range: copy
+                (t-seq (ti-const 12 8)
+                (t-seq (ti-prim 13 (op-sub) 4 12)           ; base_m8 = base - 8
+                (t-seq (ti-const 14 0)                      ; soff = 0
+                (t-seq (ti-call 15 "nb-copy" (cons 13 (cons 2 (cons 1 (cons 14 (cons 7 nil))))))
+                  (ti-ret 0))))))                           ; return the pool cell
+              nil))
+              none)))
+        ) nil))
+        none))))))))))
+
+; nb-pool-read(pool, off, len) -> (Pair Bytes (Pool n)): read len bytes from
+; base+off into a fresh cell, thread the pool back in a Pair. Same bounds shape.
+; reg0 = pool cell, reg1 = off, reg2 = len.
+(def nb-pool-read-t TIFn (ti-fn "nb-pool-read" 3 17 (t-seq (ti-const 3 0) (t-seq (ti-call 4 "nb-get-u64" (cons 0 (cons 3 nil))) (t-seq (ti-const 5 8) (t-seq (ti-call 6 "nb-get-u64" (cons 0 (cons 5 nil))) (t-seq (ti-const 7 0) (t-seq (ti-prim 8 (op-lti) 1 7) (ti-tcase 8 false (cons (pair (pair 0 nil) (t-seq (ti-const 9 -22) (t-seq (ti-call 10 "nb-arena-fail" (cons 9 nil)) (ti-ret 10)))) (cons (pair (pair 1 nil) (t-seq (ti-prim 9 (op-add) 1 2) (t-seq (ti-prim 10 (op-lti) 6 9) (ti-tcase 10 false (cons (pair (pair 0 nil) (t-seq (ti-const 11 -22) (t-seq (ti-call 12 "nb-arena-fail" (cons 11 nil)) (ti-ret 12)))) (cons (pair (pair 1 nil) (t-seq (ti-bnew 11 2) (t-seq (ti-const 12 8) (t-seq (ti-prim 13 (op-sub) 4 12) (t-seq (ti-const 14 0) (t-seq (ti-call 15 "nb-copy" (cons 11 (cons 13 (cons 14 (cons 1 (cons 2 nil)))))) (t-seq (ti-cona 16 0 (cons 15 (cons 0 nil))) (ti-ret 16)))))))) nil)) none)))) nil)) none)))))))))
+
+; nb-pool-zero(base_m8, off, size): recursive zero-fill of [base, base+size).
+; ti-bput(base_m8, off, 0) lands on base+off (the +8 payload skip). Pure byte
+; op, no ti-sys, not a crossing (called only by nb-pool-close).
+(def nb-pool-zero-t TIFn
+  (ti-fn "nb-pool-zero" 3 8
+    (t-seq (ti-prim 3 (op-lti) 1 2)                         ; off < size ?
+      (ti-tcase 3 false
+        (cons (pair (pair 0 nil)                            ; more to zero
+          (t-seq (ti-const 4 0)
+          (t-seq (ti-bput 0 1 4)                            ; base+off := 0
+          (t-seq (ti-const 5 1)
+          (t-seq (ti-prim 6 (op-add) 1 5)                   ; off + 1
+          (t-seq (ti-call 7 "nb-pool-zero" (cons 0 (cons 6 (cons 2 nil))))
+            (ti-ret 7)))))))
+        (cons (pair (pair 1 nil)                            ; done
+          (t-seq (ti-const 4 0) (ti-ret 4)))
+        nil))
+        none))))
+
+; nb-pool-close(pool) -> Unit: zeroize [base,base+size) then munmap(base,size).
+; The memfd fd is discharged separately by fd-close on the PoolR.fd field.
+; reg0 = pool cell. Returns the munmap rc (Unit-erased at the boundary, the
+; nb-sys-close-for-a-Unit-extern precedent).
+(def nb-pool-close-t TIFn
+  (ti-fn "nb-pool-close" 1 10
+    (t-seq (ti-const 1 0)
+    (t-seq (ti-call 2 "nb-get-u64" (cons 0 (cons 1 nil)))   ; reg2 = base
+    (t-seq (ti-const 3 8)
+    (t-seq (ti-call 4 "nb-get-u64" (cons 0 (cons 3 nil)))   ; reg4 = size
+    (t-seq (ti-const 5 8)
+    (t-seq (ti-prim 6 (op-sub) 2 5)                         ; base_m8 = base - 8
+    (t-seq (ti-const 7 0)                                   ; off = 0
+    (t-seq (ti-call 8 "nb-pool-zero" (cons 6 (cons 7 (cons 4 nil))))
+    (t-seq (ti-call 9 "nb-sys-munmap" (cons 2 (cons 4 nil)))
+      (ti-ret 9))))))))))))
+
+(def nb-run-cmd-t TIFn
+  (ti-fn "nb-run-cmd" 1 61
+    (t-seq (ti-blen 1 0)
+(t-seq (ti-bptr 2 0)
+(t-seq (ti-const 3 0)
+(t-seq (ti-call 4 "nb-pkt-argc" (cons 0 (cons 3 nil)))
+(t-seq (ti-const 5 1)
+(t-seq (ti-prim 6 (op-add) 4 5)
+(t-seq (ti-const 7 8)
+(t-seq (ti-prim 8 (op-mul) 6 7)
+(t-seq (ti-bnew 9 8)
+(t-seq (ti-const 10 0)
+(t-seq (ti-call 11 "nb-argv-fill" (cons 0 (cons 3 (cons 10 (cons 9 (cons 2 nil))))))
+(t-seq (ti-bptr 12 9)
+(t-seq (ti-const 13 8)
+(t-seq (ti-bnew 14 13)
+(t-seq (ti-bptr 15 14)
+(t-seq (ti-const 16 8)
+(t-seq (ti-bnew 17 16)
+(t-seq (ti-const 18 0)
+(t-seq (ti-call 19 "nb-sys-pipe" (cons 17 (cons 18 nil)))
+(t-seq (ti-const 20 0)
+(t-seq (ti-prim 21 (op-lti) 19 20)
+(ti-tcase 21 false (cons (pair (pair 0 nil) (t-seq (ti-con 22 0)
+(t-seq (ti-cona 23 1 (cons 22 nil))
+(ti-ret 23)))) (cons (pair (pair 1 nil) (t-seq (ti-const 22 0)
+(t-seq (ti-call 23 "nb-unpack32" (cons 17 (cons 22 nil)))
+(t-seq (ti-const 24 4)
+(t-seq (ti-call 25 "nb-unpack32" (cons 17 (cons 24 nil)))
+(t-seq (ti-const 26 8)
+(t-seq (ti-bnew 27 26)
+(t-seq (ti-const 28 524288)
+(t-seq (ti-call 29 "nb-sys-pipe" (cons 27 (cons 28 nil)))
+(t-seq (ti-const 30 0)
+(t-seq (ti-prim 31 (op-lti) 29 30)
+(ti-tcase 31 false (cons (pair (pair 0 nil) (t-seq (ti-con 32 0)
+(t-seq (ti-cona 33 1 (cons 32 nil))
+(ti-ret 33)))) (cons (pair (pair 1 nil) (t-seq (ti-const 32 0)
+(t-seq (ti-call 33 "nb-unpack32" (cons 27 (cons 32 nil)))
+(t-seq (ti-const 34 4)
+(t-seq (ti-call 35 "nb-unpack32" (cons 27 (cons 34 nil)))
+(t-seq (ti-call 36 "nb-sys-fork" nil)
+(t-seq (ti-const 37 0)
+(t-seq (ti-prim 38 (op-lti) 36 37)
+(ti-tcase 38 false (cons (pair (pair 0 nil) (t-seq (ti-con 39 0)
+(t-seq (ti-cona 40 1 (cons 39 nil))
+(ti-ret 40)))) (cons (pair (pair 1 nil) (t-seq (ti-const 39 0)
+(t-seq (ti-prim 40 (op-eqi) 36 39)
+(ti-tcase 40 false (cons (pair (pair 0 nil) (t-seq (ti-call 41 "nb-cmd-child" (cons 25 (cons 23 (cons 35 (cons 33 (cons 2 (cons 12 (cons 15 nil))))))))
+(ti-ret 41))) (cons (pair (pair 1 nil) (t-seq (ti-call 41 "nb-sys-close" (cons 25 nil))
+(t-seq (ti-call 42 "nb-sys-close" (cons 35 nil))
+(t-seq (ti-const 43 8)
+(t-seq (ti-call 44 "nb-sys-read" (cons 33 (cons 43 nil)))
+(t-seq (ti-blen 45 44)
+(t-seq (ti-const 46 0)
+(t-seq (ti-prim 47 (op-eqi) 45 46)
+(ti-tcase 47 false (cons (pair (pair 0 nil) (t-seq (ti-call 48 "nb-sys-close" (cons 33 nil))
+(t-seq (ti-const 49 0)
+(t-seq (ti-bnew 50 49)
+(t-seq (ti-call 51 "nb-drain" (cons 23 (cons 50 nil)))
+(t-seq (ti-call 52 "nb-sys-close" (cons 23 nil))
+(t-seq (ti-const 53 4)
+(t-seq (ti-bnew 54 53)
+(t-seq (ti-call 55 "nb-sys-wait4" (cons 36 (cons 54 nil)))
+(t-seq (ti-const 56 1)
+(t-seq (ti-bget 57 54 56)
+(t-seq (ti-cona 58 0 (cons 36 (cons 57 nil)))
+(t-seq (ti-cona 59 0 (cons 58 (cons 51 nil)))
+(t-seq (ti-cona 60 0 (cons 59 nil))
+(ti-ret 60))))))))))))))) (cons (pair (pair 1 nil) (t-seq (ti-const 48 0)
+(t-seq (ti-call 49 "nb-get-u64" (cons 44 (cons 48 nil)))
+(t-seq (ti-call 50 "nb-sys-close" (cons 33 nil))
+(t-seq (ti-call 51 "nb-sys-close" (cons 23 nil))
+(t-seq (ti-const 52 4)
+(t-seq (ti-bnew 53 52)
+(t-seq (ti-call 54 "nb-sys-wait4" (cons 36 (cons 53 nil)))
+(t-seq (ti-cona 55 1 (cons 49 nil))
+(t-seq (ti-cona 56 1 (cons 55 nil))
+(ti-ret 56))))))))))) nil)) none))))))))) nil)) none)))) nil)) none))))))))) nil)) none)))))))))))) nil)) none))))))))))))))))))))))))
+(def nb-cmd-child-t TIFn
+  (ti-fn "nb-cmd-child" 7 21
+    (t-seq (ti-const 7 1)
+(t-seq (ti-call 8 "nb-sys-dup2" (cons 0 (cons 7 nil)))
+(t-seq (ti-call 9 "nb-sys-close" (cons 1 nil))
+(t-seq (ti-call 10 "nb-sys-close" (cons 0 nil))
+(t-seq (ti-call 11 "nb-sys-close" (cons 3 nil))
+(t-seq (ti-call 12 "nb-sys-execve" (cons 4 (cons 5 (cons 6 nil))))
+(t-seq (ti-const 13 8)
+(t-seq (ti-bnew 14 13)
+(t-seq (ti-const 15 0)
+(t-seq (ti-call 16 "nb-put-u64" (cons 14 (cons 15 (cons 12 nil))))
+(t-seq (ti-call 17 "nb-sys-write" (cons 2 (cons 14 nil)))
+(t-seq (ti-call 18 "nb-sys-close" (cons 2 nil))
+(t-seq (ti-const 19 127)
+(t-seq (ti-call 20 "nb-sys-exit-group" (cons 19 nil))
+(ti-ret 20)))))))))))))))))
+(def nb-drain-t TIFn
+  (ti-fn "nb-drain" 2 9
+    (t-seq (ti-const 2 4096)
+(t-seq (ti-call 3 "nb-sys-read" (cons 0 (cons 2 nil)))
+(t-seq (ti-blen 4 3)
+(t-seq (ti-const 5 0)
+(t-seq (ti-prim 6 (op-eqi) 4 5)
+(ti-tcase 6 false (cons (pair (pair 0 nil) (ti-ret 1)) (cons (pair (pair 1 nil) (t-seq (ti-call 7 "nb-bcat" (cons 1 (cons 3 nil)))
+(t-seq (ti-call 8 "nb-drain" (cons 0 (cons 7 nil)))
+(ti-ret 8)))) nil)) none))))))))
+(def nb-argv-fill-t TIFn
+  (ti-fn "nb-argv-fill" 5 15
+    (t-seq (ti-blen 5 0)
+(t-seq (ti-prim 6 (op-lti) 1 5)
+(ti-tcase 6 false (cons (pair (pair 0 nil) (t-seq (ti-call 7 "nb-scan-nul" (cons 0 (cons 1 nil)))
+(t-seq (ti-prim 8 (op-add) 4 1)
+(t-seq (ti-const 9 8)
+(t-seq (ti-prim 10 (op-mul) 2 9)
+(t-seq (ti-call 11 "nb-put-ptr" (cons 3 (cons 10 (cons 8 nil))))
+(t-seq (ti-const 12 1)
+(t-seq (ti-prim 13 (op-add) 7 12)
+(t-seq (ti-prim 14 (op-add) 2 12)
+(t-seq (ti-call 12 "nb-argv-fill" (cons 0 (cons 13 (cons 14 (cons 3 (cons 4 nil))))))
+(ti-ret 12))))))))))) (cons (pair (pair 1 nil) (t-seq (ti-const 7 8)
+(t-seq (ti-prim 8 (op-mul) 2 7)
+(t-seq (ti-const 9 0)
+(t-seq (ti-call 10 "nb-put-u64" (cons 3 (cons 8 (cons 9 nil))))
+(ti-ret 3)))))) nil)) none)))))
+(def nb-scan-nul-t TIFn
+  (ti-fn "nb-scan-nul" 2 7
+    (t-seq (ti-bget 2 0 1)
+(t-seq (ti-const 3 0)
+(t-seq (ti-prim 4 (op-eqi) 2 3)
+(ti-tcase 4 false (cons (pair (pair 0 nil) (ti-ret 1)) (cons (pair (pair 1 nil) (t-seq (ti-const 5 1)
+(t-seq (ti-prim 5 (op-add) 1 5)
+(t-seq (ti-call 6 "nb-scan-nul" (cons 0 (cons 5 nil)))
+(ti-ret 6))))) nil)) none))))))
+(def nb-pkt-argc-t TIFn
+  (ti-fn "nb-pkt-argc" 2 11
+    (t-seq (ti-blen 2 0)
+(t-seq (ti-prim 3 (op-lti) 1 2)
+(ti-tcase 3 false (cons (pair (pair 0 nil) (t-seq (ti-bget 4 0 1)
+(t-seq (ti-const 5 0)
+(t-seq (ti-prim 6 (op-eqi) 4 5)
+(ti-tcase 6 false (cons (pair (pair 0 nil) (t-seq (ti-const 7 1)
+(t-seq (ti-prim 8 (op-add) 1 7)
+(t-seq (ti-call 9 "nb-pkt-argc" (cons 0 (cons 8 nil)))
+(t-seq (ti-const 10 1)
+(t-seq (ti-prim 10 (op-add) 9 10)
+(ti-ret 10))))))) (cons (pair (pair 1 nil) (t-seq (ti-const 7 1)
+(t-seq (ti-prim 8 (op-add) 1 7)
+(t-seq (ti-call 9 "nb-pkt-argc" (cons 0 (cons 8 nil)))
+(ti-ret 9))))) nil)) none))))) (cons (pair (pair 1 nil) (t-seq (ti-const 7 0)
+(ti-ret 7))) nil)) none)))))
+(def nb-sys-pipe-t TIFn
+  (ti-fn "nb-sys-pipe" 2 4
+    (t-seq (ti-bptr 2 0)
+(t-seq (ti-sys 3 293 (cons 2 (cons 1 nil)))
+(ti-ret 3)))))
+(def nb-sys-execve-t TIFn
+  (ti-fn "nb-sys-execve" 3 4
+    (t-seq (ti-sys 3 59 (cons 0 (cons 1 (cons 2 nil))))
+(ti-ret 3))))
+(def nb-wait-t TIFn
+  (ti-fn "nb-wait" 1 4
+    (t-seq (ti-const 1 8)
+(t-seq (ti-call 2 "nb-get-u64" (cons 0 (cons 1 nil)))
+(t-seq (ti-cona 3 0 (cons 2 nil))
+(ti-ret 3))))))
+
+(def sys-lib (List TIFn)
+  (cons nb-run-cmd-t
+  (cons nb-cmd-child-t
+  (cons nb-drain-t
+  (cons nb-argv-fill-t
+  (cons nb-scan-nul-t
+  (cons nb-pkt-argc-t
+  (cons nb-sys-pipe-t
+  (cons nb-sys-execve-t
+  (cons nb-wait-t
+  (cons nb-pool-create-t
+  (cons nb-pool-write-t
+  (cons nb-pool-read-t
+  (cons nb-pool-zero-t
+  (cons nb-pool-close-t
+  (cons nb-sock-connect-t
+  (cons nb-sock-connect-in-t
+  (cons nb-sys-socket-t
+  (cons nb-sys-connect-t
+  (cons nb-sa-un-pack-t
+  (cons nb-sa-un-len-t
+  (cons nb-sock-send-go-t
+  (cons nb-sock-send-t
+  (cons nb-sock-recv-t
+  (cons nb-sys-socketpair-t
+  (cons nb-run-elf-t
+  (cons nb-sys-fork-t
+  (cons nb-sys-wait4-t
+  (cons nb-sys-exec-elf-t
+  (cons nb-sys-execveat-t
+  (cons nb-sys-send-fd-t
+  (cons nb-sys-poll-t (cons nb-pollfd-fill-t (cons nb-sys-clock-gettime-t (cons nb-sys-nanosleep-t (cons nb-sys-exit-group-t
+    (cons nb-sys-mprotect-t (cons nb-arena-fail-t (cons nb-arena-commit-t (cons nb-arena-grow-t (cons nb-sys-close-t (cons nb-sys-fcntl-t
+      (cons nb-sys-mmap-t (cons nb-sys-munmap-t
+        (cons nb-sys-memfd-t (cons nb-sys-ftruncate-t
+          (cons nb-sys-lseek-t (cons nb-sys-write-t (cons nb-sys-read-t (cons nb-sys-openat-t (cons nb-sys-winsz-t (cons nb-sys-tcgets-t (cons nb-sys-tcsets-t (cons nb-sys-winszw-t (cons nb-read-key-t (cons nb-sys-setsid-t (cons nb-sys-dup2-t (cons nb-sys-tiocsctty-t (cons nb-sys-ptsno-t (cons nb-sys-ptunlock-t (cons nb-sys-open-rw-t (cons nb-sys-open-create-t (cons nb-spawn-in-pty-t (cons nb-signal-t nil))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))

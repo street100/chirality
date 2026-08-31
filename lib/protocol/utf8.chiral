@@ -1,0 +1,105 @@
+(import "prelude")     ; I64, Bool, List, Pair, Bytes + bget/blen/band/bor/shl
+
+; ─── utf8.chiral — a pure UTF-8 decoder (RFC 3629), the vt-core NEED ──────────────
+;
+; The one multibyte-decode primitive the terminal stack lacks (PRIMITIVE-AUDIT
+; NEED #2). Pure (`->` throughout): bytes are opaque, touched only via bget/blen —
+; never `case`-matched. Two entry points:
+;
+;   utf8-decode1 : Bytes, pos -> (Pair codepoint nbytes)   the primitive
+;   decode-utf8  : Bytes      -> (List I64)                 the whole-buffer fold
+;
+; The primitive returns the codepoint AND how many bytes it consumed (1..4), so a
+; caller stepping a buffer knows the next offset. The T5 parser folds `decode-utf8`
+; over a pty chunk to get a codepoint stream (`vt-parser.chiral` imports this); the
+; T4 wide-cell width computation reads codepoints from the same primitive.
+;
+; Malformed input never faults and never silently drops: any invalid lead byte,
+; bad continuation, overlong encoding, surrogate (U+D800..U+DFFF), out-of-range
+; codepoint (> U+10FFFF), or truncated tail decodes to U+FFFD (65533) consuming
+; exactly ONE byte, so the decoder resyncs on the next byte (boundary-sum ethos:
+; a byte that is not a well-formed codepoint is the replacement VALUE, not a crash).
+;
+; RFC 3629 well-formedness (web-verified against the spec table, not memory):
+;   U+0000..U+007F  0x00..0x7F
+;   U+0080..U+07FF  0xC2..0xDF  80..BF
+;   U+0800..U+FFFF  0xE0..0xEF  80..BF  80..BF   (minus surrogates D800..DFFF)
+;   U+10000..10FFFF 0xF0..0xF4  80..BF  80..BF  80..BF
+; Overlong 2-byte leads 0xC0/0xC1 and 4-byte leads > 0xF4 are rejected as invalid;
+; overlong 3/4-byte forms are caught by the codepoint-range checks below.
+
+(declare cont?        (-> Bytes I64 I64 Bool))              ; in-bounds 10xxxxxx byte at i?
+(declare utf8-decode1 (-> Bytes I64 (Pair I64 I64)))        ; (codepoint, nbytes) at pos
+(declare decode-from  (-> Bytes I64 I64 (List I64)))        ; fold pos..len -> codepoints
+(declare decode-utf8  (-> Bytes (List I64)))                ; whole buffer -> codepoints
+
+; cont?: byte at index i is a well-formed continuation (0x80..0xBF) AND in bounds.
+; Bounds-checked FIRST so a truncated tail never reaches bget.
+(def cont?
+  (lam (b i len)
+    (case (<i i len)
+      (false false)
+      (true (=i (band (bget b i) 192) 128)))))              ; (byte & 0xC0) == 0x80
+
+; utf8-decode1: classify the lead byte, validate, assemble the codepoint.
+; Assumes pos < (blen b) (the caller stepped here because a byte exists).
+(def utf8-decode1
+  (lam (b pos)
+    (let ((len (blen b)))
+      (let ((b0 (bget b pos)))
+        (cond
+          ; ── 1 byte: ASCII 0x00..0x7F ──────────────────────────────────────────
+          ((<i b0 128) (pair b0 1))
+          ; ── invalid lead: stray continuation 0x80..0xBF or overlong 0xC0/0xC1 ──
+          ((<i b0 194) (pair 65533 1))
+          ; ── 2 bytes: 0xC2..0xDF, cp >= 0x80 by construction (no overlong) ──────
+          ((<i b0 224)
+            (case (cont? b (+ pos 1) len)
+              (false (pair 65533 1))
+              (true
+                (pair (bor (shl (band b0 31) 6)
+                           (band (bget b (+ pos 1)) 63))
+                      2))))
+          ; ── 3 bytes: 0xE0..0xEF, reject overlong (< 0x800) and surrogates ──────
+          ((<i b0 240)
+            (case (and (cont? b (+ pos 1) len) (cont? b (+ pos 2) len))
+              (false (pair 65533 1))
+              (true
+                (let ((cp (bor (bor (shl (band b0 15) 12)
+                                    (shl (band (bget b (+ pos 1)) 63) 6))
+                               (band (bget b (+ pos 2)) 63))))
+                  (case (and (not (<i cp 2048))                        ; >= 0x800
+                             (not (and (not (<i cp 55296))             ; D800..DFFF
+                                       (<=i cp 57343))))               ;   surrogate
+                    (true  (pair cp 3))
+                    (false (pair 65533 1)))))))
+          ; ── 4 bytes: 0xF0..0xF4, reject overlong (< 0x10000) and > 0x10FFFF ────
+          ((<=i b0 244)
+            (case (and (and (cont? b (+ pos 1) len) (cont? b (+ pos 2) len))
+                       (cont? b (+ pos 3) len))
+              (false (pair 65533 1))
+              (true
+                (let ((cp (bor (bor (bor (shl (band b0 7) 18)
+                                         (shl (band (bget b (+ pos 1)) 63) 12))
+                                    (shl (band (bget b (+ pos 2)) 63) 6))
+                               (band (bget b (+ pos 3)) 63))))
+                  (case (and (not (<i cp 65536))                       ; >= 0x10000
+                             (<=i cp 1114111))                         ; <= 0x10FFFF
+                    (true  (pair cp 4))
+                    (false (pair 65533 1)))))))
+          ; ── invalid lead: 0xF5..0xFF ──────────────────────────────────────────
+          (else (pair 65533 1)))))))
+
+; decode-from: structural recursion on the byte position, natural-order cons.
+; nbytes is always >= 1, so pos strictly increases — total.
+(def decode-from
+  (lam (b pos len)
+    (case (<i pos len)
+      (false nil)
+      (true
+        (case (utf8-decode1 b pos)
+          ((pair cp n) (cons cp (decode-from b (+ pos n) len))))))))
+
+; decode-utf8: the whole-buffer codepoint stream the T5 parser folds over.
+(def decode-utf8
+  (lam (b) (decode-from b 0 (blen b))))

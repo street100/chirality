@@ -1,0 +1,93 @@
+; The manas profile: the conformance instance that drives the whole
+; orchestration stack -- http + json + collections + the fsm engine + the model
+; backend -- to run tasks against a model headlessly (the overnight
+; example-generation / audit loop). manas is a CALLER of the general modules, not
+; the reason they exist; this file is the only one that knows what "a manas run"
+; is.
+;
+; Shape: functional core + imperative shell.
+;   * cycle-step -- the pure control policy: a circuit breaker over consecutive
+;     backend failures, expressed as an fsm transition (Step). This is the ENTIRE
+;     stop/continue decision, in one place.
+;   * run-recorded -- the pure driver: folds an already-obtained list of turns
+;     through the fsm engine. Deterministic, backend-free, fully testable.
+;   * run-batch -- the effectful headless driver: generates each prompt against
+;     the backend, threads the same breaker, and stops early if it trips (so a
+;     run against a dead worker halts instead of spinning all night).
+
+(import "prelude")
+(import "collections")
+(import "backend")
+(import "fsm")
+
+; the result of one generation, as data the policy can branch on.
+(data Outcome () (produced (text Str)) (failed (status I64) (raw Str)))
+
+; a recorded turn: the prompt and what came back.
+(data Turn () (turn (prompt Str) (outcome Outcome)))
+
+(def turn-prompt  (-> Turn Str)     (lam (t) (case t ((turn p o) p))))
+(def turn-outcome (-> Turn Outcome) (lam (t) (case t ((turn p o) o))))
+
+(def outcome-failed (-> Outcome Bool)
+  (lam (o) (case o ((produced t) false) ((failed s r) true))))
+
+; after this many CONSECUTIVE backend failures the cycle halts.
+(def fail-limit I64 3)
+
+; cycle-step: the pure control policy. State is the consecutive-failure count;
+; each event is a completed Turn, emitted as output (so the fsm's output stream
+; IS the transcript, in order). A success resets the counter; a failure bumps it
+; and halts once it reaches the limit.
+(def cycle-step (-> I64 Turn (Step I64 Turn))
+  (lam (fails ev)
+    (case (outcome-failed (turn-outcome ev))
+      (false (step-go 0 (cons ev nil)))
+      (true
+        (let (f2 (+ fails 1))
+          (case (<=i fail-limit f2)
+            (true  (step-halt f2 (cons ev nil)))
+            (false (step-go   f2 (cons ev nil)))))))))
+
+; run-recorded: the pure driver. Fold a list of turns (e.g. replayed from a log,
+; or produced by a pure planner) through the breaker. Returns the final failure
+; count paired with the accepted transcript.
+(def run-recorded (-> (List Turn) (Pair I64 (List Turn)))
+  (lam (evs) (run-fsm I64 Turn Turn cycle-step 0 evs)))
+
+; --- the effectful headless driver -----------------------------------------
+
+; generate one prompt into a Turn: a single user-role chat turn (multi-turn
+; history is a longer List Msg; the batch driver keeps each prompt independent).
+; E137: gen-turn threads the linear handle out in GenR (the Turn BESIDE the fresh
+; handle); drive-batch carries it through the recursion like the accumulator.
+(data GenR   () (gen-r   (t Turn) (1 b Backend)))
+(data DriveR () (drive-r (turns (List Turn)) (1 b Backend)))
+(def gen-turn (=> (1 b Backend) Str Str GenR)
+  (lam (b model prompt)
+    (case (be-chat b model (cons (msg "user" prompt) nil))
+      ((chat-ok t b2)    (gen-r (turn prompt (produced t)) b2))
+      ((chat-bad s r b2) (gen-r (turn prompt (failed s r)) b2)))))
+
+; drive-batch: interleave real generation with the pure breaker. acc holds the
+; transcript reversed (O(1) prepend); recurses structurally on the prompt list;
+; on a broken circuit it records the tripping turn and stops.
+(declare drive-batch
+  (=> (1 b Backend) Str I64 (List Str) (List Turn) DriveR))
+
+(def drive-batch
+  (lam (b model fails prompts acc)
+    (case prompts
+      (nil (drive-r (reverse Turn acc) b))
+      ((cons p rest)
+        (case (gen-turn b model p)
+          ((gen-r tn b2)
+            (case (cycle-step fails tn)
+              ((step-halt f2 outs) (drive-r (reverse Turn (cons tn acc)) b2))
+              ((step-go   f2 outs) (drive-batch b2 model f2 rest (cons tn acc))))))))))
+
+; run-batch: the entry point. Run a batch of prompts against one model on one
+; backend, returning the transcript in order (up to and including the turn that
+; broke the circuit, if any) BESIDE the fresh handle for the caller to discharge.
+(def run-batch (=> (1 b Backend) Str (List Str) DriveR)
+  (lam (b model prompts) (drive-batch b model 0 prompts nil)))

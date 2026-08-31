@@ -1,0 +1,32 @@
+; T5 conformance test — exit 42 on pass
+(import "prelude")
+(import "grid")
+(import "vt-parser")
+
+(declare compile-main (-> Unit I64))
+(declare mkbyte (-> I64 Bytes))
+(declare mkbytes (-> (List I64) Bytes))
+(declare cat-actions (-> (List Action) (List Action) (List Action)))
+(declare collect-actions (-> PState (List I64) (List Action)))
+(declare parse-actions (-> Bytes (List Action)))
+(declare nth-action (-> (List Action) I64 Action))
+(declare test1-print (-> Unit I64))
+(declare test2-c0 (-> Unit I64))
+(declare test3-cup (-> Unit I64))
+(declare find-cup (-> (List Action) Action))
+
+(def mkbyte (lam (n) (bslice (pack-u32 n) 0 1)))
+(def mkbytes (lam (xs) (case xs (nil (str->bytes "")) ((cons h t) (bcat (mkbyte h) (mkbytes t))))))
+(def cat-actions (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (cat-actions t ys))))))
+(def collect-actions (lam (st cps) (case cps (nil nil) ((cons cp rest) (case (step st cp) ((pair st2 acts) (cat-actions acts (collect-actions st2 rest))))))))
+(def parse-actions (lam (bytes) (collect-actions ps-ground (decode-utf8 bytes))))
+(def nth-action (lam (as i) (case as (nil act-ignore) ((cons h t) (case (=i i 0) (true h) (false (nth-action t (- i 1))))))))
+(def test1-print (lam (_) (let ((acts (parse-actions (str->bytes "A")))) (case (nth-action acts 0) ((act-print cp) (case (=i cp 65) (true 0) (false -1))) (_ -1)))))
+(def test2-c0 (lam (_) (let ((acts (parse-actions (mkbytes (cons 13 nil))))) (case (nth-action acts 0) ((act-execute b) (case (=i b 13) (true 0) (false -2))) (_ -2)))))
+; find-cup: scan the action stream for the first act-cup. ESC emits a leading
+; act-ignore (the boundary sum keeps every byte a value, never dropped), so CUP
+; is not at index 0 — this was the exit-253 bug: the test read nth-action 0.
+(def find-cup (lam (as) (case as (nil act-ignore) ((cons h t) (case h ((act-cup r c) h) (_ (find-cup t)))))))
+(def test3-cup (lam (_) (let ((acts (parse-actions (mkbytes (cons 27 (cons 91 (cons 49 (cons 59 (cons 49 (cons 72 nil)))))))))) (case (find-cup acts) ((act-cup r c) (case (and (=i r 0) (=i c 0)) (true 0) (false -3))) (_ -3)))))
+
+(def compile-main (lam (_) (let ((t1 (test1-print unit))) (case (=i t1 0) (false t1) (true (let ((t2 (test2-c0 unit))) (case (=i t2 0) (false t2) (true (let ((t3 (test3-cup unit))) (case (=i t3 0) (false t3) (true 42)))))))))))

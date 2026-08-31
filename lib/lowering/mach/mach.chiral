@@ -1,0 +1,137 @@
+; The machine interface: the frozen contract a code-generation target must
+; satisfy. emit-core (the codegen) is written against this and nothing else,
+; so a new target is a conforming Mach value, not a fork of the codegen
+; (P4: modularity is conformance, not configuration). Each field produces
+; relocatable (List Asm), so control flow (calls, branches) is expressed
+; through asm-reloc's a-rel and stays target-independent above this line.
+;
+; Milestone 2 added the heap face: alo (allocate a [tag][field...] cell from
+; the bump arena), fld (load a field of a boxed scrutinee), lsb (load a boxed
+; scrutinee's tag for dispatch), and fin (trailing material the target needs
+; once per program -- for x64 the arena's heapptr/heapend cells; nil for a
+; target with no heap story).
+;
+; Milestone 3 adds the byte face for variable-length data ([len][payload]
+; cells): bnw (allocate with dynamic length), bgt/bpt (byte load / byte
+; initialization write), bln (length), lea (reference a labeled literal
+; cell), dat (render one literal cell into the data section).
+;
+; Milestone 4 adds the sys face, tal's C category in miniature: sys (a raw
+; syscall) and bpr (payload address of a byte cell). Only hand-authored tal
+; reaches these; lowered pure code has no surface path to them.
+
+(import "prelude")
+(import "asm-reloc")
+
+(data Mach ()
+  (mach
+    (pro (-> I64 (List Asm)))                    ; prologue for nregs slots
+    (stp (=> I64 I64 (List Asm)))                ; store incoming param: argpos slot (may halt past the register args)
+    (lda (=> I64 I64 (List Asm)))                ; load outgoing arg: argpos slot (may halt past the register args)
+    (con (-> I64 I64 (List Asm)))                ; const: slot value
+    (dcon (-> I64 I64 (List Asm)))               ; enum data as immediate: slot tag
+    (bin (-> Op I64 I64 I64 (List Asm)))         ; binop op dst a b
+    (cal (-> I64 Str (List I64) (List Asm)))     ; call: dst fname argslots (the target places ALL args -- registers AND, past 6, the SysV stack zone)
+    (ret (-> I64 (List Asm)))                    ; return slot (load + epilogue)
+    (lsc (-> I64 (List Asm)))                    ; load immediate scrutinee into the compare reg
+    (cjne (-> I64 Str (List Asm)))               ; compare scrut to tag, jump to label if not equal
+    (alo (-> I64 I64 (List I64) (List Asm)))     ; allocate: dst tag fieldslots
+    (fld (-> I64 I64 I64 (List Asm)))            ; field load: dst srcslot fieldindex
+    (lsb (-> I64 (List Asm)))                    ; load boxed scrutinee's tag into the compare reg
+    (fin (List Asm))                             ; once-per-program trailing material
+    (bnw (-> I64 I64 (List Asm)))                ; byte cell alloc: dst lenslot
+    (bgt (-> I64 I64 I64 (List Asm)))            ; byte load: dst ptrslot idxslot
+    (bpt (-> I64 I64 I64 (List Asm)))            ; byte init write: ptrslot idxslot valslot
+    (bln (-> I64 I64 (List Asm)))                ; cell length: dst ptrslot
+    (lea (-> I64 Str (List Asm)))                ; literal ref: dst label
+    (dat (-> Bytes (List Asm)))                  ; one literal cell into the data section
+    (sys (-> I64 I64 (List I64) (List Asm)))     ; syscall: dst nr argslots (the sys face)
+    (bpr (-> I64 I64 (List Asm)))                ; payload address: dst ptrslot
+    (bini (-> Op I64 I64 I64 (List Asm)))        ; binop with immediate: op dst a imm
+    (tca (-> Str (List Asm)))                    ; tail call: frame teardown + jmp fname (args already placed)
+    (ltb (-> I64 I64 (List I64) (List Asm)))     ; lookup table: dst := vals[scrut], tags dense by construction
+    (fcp (-> I64 I64 (List Asm)))                ; fused-compare setup: flags := cmp a b (no bool materialized)
+    (fci (-> I64 I64 (List Asm)))                ; fused-compare setup, immediate: flags := cmp a imm
+    (fjc (=> Op I64 Str (List Asm)))            ; fused branch: jump to label when (op) result != tag (flags from fcp/fci)
+    (jtb (-> I64 (List Str) (List Asm)))         ; jump table: indexed dispatch to the tag-ordered branch labels
+    (clb (=> Str (List I64)))                    ; clobber table: op key -> argument-register INDICES the op may write (placement ops stp/lda are positional, handled by the caller)
+    (binr (-> Op I64 I64 I64 (List Asm)))        ; bin, a-operand from RESIDENT argreg: op dst argidx b
+    (binir (-> Op I64 I64 I64 (List Asm)))       ; bini, a-operand from resident argreg: op dst argidx imm
+    (fcpr (-> I64 I64 (List Asm)))               ; fused compare, a from resident argreg: argidx b
+    (fcir (-> I64 I64 (List Asm)))               ; fused compare imm, a from resident argreg: argidx imm
+    (ldr (-> I64 I64 (List Asm))) (galo (-> I64 I64 (List I64) (List Asm))) (gbnw (-> I64 I64 (List Asm)))))              ; place arg pos j from resident argreg i (NOTHING when i==j: the pass-through param)
+
+(def mach-pro (-> Mach (-> I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) a))))
+(def mach-stp (-> Mach (=> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) b))))
+(def mach-lda (-> Mach (=> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) c))))
+(def mach-con (-> Mach (-> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) d))))
+(def mach-dcon (-> Mach (-> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) e))))
+(def mach-bin (-> Mach (-> Op I64 I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) f))))
+(def mach-cal (-> Mach (-> I64 Str (List I64) (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) g))))
+(def mach-ret (-> Mach (-> I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) h))))
+(def mach-lsc (-> Mach (-> I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) i))))
+(def mach-cjne (-> Mach (-> I64 Str (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) j))))
+(def mach-alo (-> Mach (-> I64 I64 (List I64) (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) k))))
+(def mach-fld (-> Mach (-> I64 I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) l))))
+(def mach-lsb (-> Mach (-> I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) n))))
+(def mach-fin (-> Mach (List Asm))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) o))))
+(def mach-bnw (-> Mach (-> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) p))))
+(def mach-bgt (-> Mach (-> I64 I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) q))))
+(def mach-bpt (-> Mach (-> I64 I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) r))))
+(def mach-bln (-> Mach (-> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) s))))
+(def mach-lea (-> Mach (-> I64 Str (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) t))))
+(def mach-dat (-> Mach (-> Bytes (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) u))))
+(def mach-sys (-> Mach (-> I64 I64 (List I64) (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) v))))
+(def mach-bpr (-> Mach (-> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) w))))
+(def mach-bini (-> Mach (-> Op I64 I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) x))))
+(def mach-tca (-> Mach (-> Str (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) y))))
+(def mach-ltb (-> Mach (-> I64 I64 (List I64) (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) z))))
+(def mach-fcp (-> Mach (-> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) fa))))
+(def mach-fci (-> Mach (-> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) fb))))
+(def mach-fjc (-> Mach (=> Op I64 Str (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) fc))))
+(def mach-jtb (-> Mach (-> I64 (List Str) (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) fd))))
+(def mach-clb (-> Mach (=> Str (List I64)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) fe))))
+(def mach-binr (-> Mach (-> Op I64 I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) ff))))
+(def mach-binir (-> Mach (-> Op I64 I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) fg))))
+(def mach-fcpr (-> Mach (-> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) fh))))
+(def mach-fcir (-> Mach (-> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) fi))))
+(def mach-ldr (-> Mach (-> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) fj))))
+(def mach-galo (-> Mach (-> I64 I64 (List I64) (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) fk))))
+(def mach-gbnw (-> Mach (-> I64 I64 (List Asm)))
+  (lam (m) (case m ((mach a b c d e f g h i j k l n o p q r s t u v w x y z fa fb fc fd fe ff fg fh fi fj fk fl) fl))))

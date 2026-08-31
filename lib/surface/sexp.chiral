@@ -1,0 +1,315 @@
+; E1: a byte-directed S-expression reader in chirality source. Pure (->), errors as
+; values (RR/AllR sums, never a throw). The self-hosted port of
+; scaffold/chirality/sexp.py (read_all / _tokenize / _parse), in the json.chiral
+; recursive-descent-over-Bytes idiom. sexp.py stays the bootstrap reader AND the
+; differential oracle until the front end (E2/E49) switches.
+;
+; Scope (SPEC decision #4): plain -?[0-9]+ integers, where the int/symbol split
+; matches str->i64 exactly; exotic int() spellings (+5, 1_000) are excluded.
+(import "collections")            ; brings prelude transitively + `reverse`
+
+; ---- the surface tree the elaborator (E2) consumes ---------------------
+(data Sexp ()
+  (s-list (items (List Sexp)))
+  (s-sym  (name Str))
+  (s-i64  (val I64))
+  (s-str  (text Str)))
+
+; read-result: success carries the node + next cursor; failure a msg + position.
+(data RR ()
+  (r-ok  (form Sexp) (pos I64))
+  (r-err (msg Str)   (pos I64)))
+
+; top-level: all forms, or the first error.
+(data AllR ()
+  (a-ok  (forms (List Sexp)))
+  (a-err (msg Str) (pos I64)))
+
+; ---- E102: per-function paren delta report type ------------------------
+(data ParenDelta ()
+  (pd-ok)
+  (pd-missing (name Str) (delta I64))
+  (pd-extra   (name Str) (delta I64)))
+
+; ---- E102: form + byte-offset pair (for binary-search form splitting) --
+(data FormPos ()
+  (fp (offset I64) (form Sexp)))
+
+; ---- E102: top-level form-splitter result type -------------------------
+(data AllFR ()
+  (af-ok  (forms (List FormPos)))
+  (af-err (msg Str) (pos I64)))
+
+; ---- E102: max nesting depth guard -------------------------------------
+(def MAX-DEPTH I64 200)
+
+; ---- char helpers (json.chiral idiom) -----------------------------------
+(def code (-> Str I64) (lam (s) (bget (str->bytes s) 0)))
+(def u8 (-> I64 Bytes) (lam (c) (bslice (pack-u32 c) 0 1)))
+
+(def CH-LPAREN I64 (code "("))
+(def CH-RPAREN I64 (code ")"))
+(def CH-DQUOTE I64 (code "\""))
+(def CH-SEMI   I64 (code ";"))
+(def CH-BSLASH I64 (code "\\"))
+(def CH-MINUS  I64 (code "-"))
+(def CH-0      I64 (code "0"))
+(def CH-9      I64 (code "9"))
+(def CH-n      I64 (code "n"))
+(def CH-t      I64 (code "t"))
+(def CH-SP     I64 (code " "))
+(def CH-NL     I64 10)          ; control bytes: the bootstrap reader can't
+(def CH-TAB    I64 9)           ; escape \r, so give the codes numerically
+(def CH-CR     I64 13)
+
+; ---- predicates --------------------------------------------------------
+(def is-trivia (-> I64 Bool)
+  (lam (c) (or (=i c CH-SP) (or (=i c CH-TAB) (or (=i c CH-CR) (=i c CH-NL))))))
+
+(def is-digit-b (-> I64 Bool)
+  (lam (c) (and (<=i CH-0 c) (<=i c CH-9))))
+
+; delimiters that END an atom: whitespace, ( ) " and ';' -- exactly sexp.py's
+; ' \t\r\n();"' set (a ';' ends the atom and then starts a comment).
+(def is-delim (-> I64 Bool)
+  (lam (c) (or (is-trivia c)
+               (or (=i c CH-LPAREN)
+                   (or (=i c CH-RPAREN)
+                       (or (=i c CH-DQUOTE) (=i c CH-SEMI)))))))
+
+; ---- trivia + comment skipping -----------------------------------------
+(def skip-comment (-> Bytes I64 I64)          ; advance to the newline or EOF
+  (lam (b i)
+    (case (<i i (blen b))
+      (false i)
+      (true (case (=i (bget b i) CH-NL)
+              (true i)
+              (false (skip-comment b (+ i 1))))))))
+
+(def skip-trivia (-> Bytes I64 I64)
+  (lam (b i)
+    (case (<i i (blen b))
+      (false i)
+      (true (let (c (bget b i))
+              (case (is-trivia c)
+                (true (skip-trivia b (+ i 1)))
+                (false (case (=i c CH-SEMI)
+                         (true (skip-trivia b (skip-comment b (+ i 1))))
+                         (false i)))))))))
+
+; ---- atom scan + int/symbol classifier ---------------------------------
+(def atom-end (-> Bytes I64 I64)              ; scan to the first delimiter
+  (lam (b i)
+    (case (<i i (blen b))
+      (false i)
+      (true (case (is-delim (bget b i))
+              (true i)
+              (false (atom-end b (+ i 1))))))))
+
+(def all-digits (-> Bytes I64 I64 Bool)       ; every byte in [i,j) is a digit
+  (lam (b i j)
+    (case (<i i j)
+      (false true)
+      (true (case (is-digit-b (bget b i))
+              (true (all-digits b (+ i 1) j))
+              (false false))))))
+
+; is [i,j) a plain integer literal?  -?[0-9]+ (nonempty digit run; '-' alone no)
+(def is-i64-lit (-> Bytes I64 I64 Bool)
+  (lam (b i j)
+    (case (<i i j)
+      (false false)
+      (true (case (=i (bget b i) CH-MINUS)
+              (true  (and (<i (+ i 1) j) (all-digits b (+ i 1) j)))
+              (false (all-digits b i j)))))))
+
+; pure digit fold -- str->i64 is an interpreter impl outside the native
+; subset, and read-atom sits on the self-compile path (parser <- compile-main).
+; is-i64-lit has already validated the range (nonempty digits, lone '-' no).
+(def digits->i64 (-> Bytes I64 I64 I64 I64)
+  (lam (b i j acc)
+    (case (<i i j)
+      (false acc)
+      (true (digits->i64 b (+ i 1) j (+ (* acc 10) (- (bget b i) 48)))))))
+
+; ---- E101: position helpers -- compute line:col from byte offset ---------
+(declare pos-line-go (-> Bytes I64 I64 I64 I64))
+(def pos-line (-> Bytes I64 I64)
+  (lam (b pos) (pos-line-go b pos 1 0)))
+
+(def pos-line-go
+  (lam (b target cur off)
+    (case (<=i target off)
+      (true cur)
+      (false (case (<i off (blen b))
+              (true (case (=i (bget b off) CH-NL)
+                      (true (pos-line-go b target (+ cur 1) (+ off 1)))
+                      (false (pos-line-go b target cur (+ off 1)))))
+              (false cur))))))
+
+(declare pos-col-go (-> Bytes I64 I64 I64 I64))
+(def pos-col (-> Bytes I64 I64)
+  (lam (b pos) (pos-col-go b pos 0 0)))
+
+(def pos-col-go
+  (lam (b target cur off)
+    (case (<=i target off)
+      (true cur)
+      (false (case (<i off (blen b))
+              (true (case (=i (bget b off) CH-NL)
+                      (true (pos-col-go b target 0 (+ off 1)))
+                      (false (pos-col-go b target (+ cur 1) (+ off 1)))))
+              (false cur))))))
+
+(def fmt-pos (-> Bytes I64 Str)
+  (lam (b pos)
+    (str-cat (str-cat (i64->str (pos-line b pos)) ":") (i64->str (pos-col b pos)))))
+
+(def read-atom (-> Bytes I64 RR)
+  (lam (b i)
+    (let (j (atom-end b i))
+      (let (txt (bytes->str (bslice b i j)))
+        (case (is-i64-lit b i j)
+          (true  (r-ok (s-i64 (case (=i (bget b i) CH-MINUS)
+                                (true (- 0 (digits->i64 b (+ i 1) j 0)))
+                                (false (digits->i64 b i j 0)))) j))
+          (false (r-ok (s-sym txt) j)))))))
+
+; ---- string scan with escapes ------------------------------------------
+; escape set = sexp.py's: \n \t \" \\ ; any other \X -> literal byte X.
+(def esc-char (-> I64 I64)
+  (lam (c)
+    (case (=i c CH-n)
+      (true CH-NL)
+      (false (case (=i c CH-t)
+               (true CH-TAB)
+               (false c))))))               ; \" -> " , \\ -> \ , \X -> X
+
+(declare scan-str        (-> Bytes I64 Bytes RR))
+(declare scan-str-escape (-> Bytes I64 Bytes RR))
+
+(def scan-str                                 ; i points into the string body
+  (lam (b i acc)
+    (case (<i i (blen b))
+      (false (r-err "unterminated string" i))
+      (true (let (c (bget b i))
+              (case (=i c CH-DQUOTE)
+                (true (r-ok (s-str (bytes->str acc)) (+ i 1)))
+                (false (case (=i c CH-BSLASH)
+                         (true (scan-str-escape b (+ i 1) acc))
+                         (false (scan-str b (+ i 1) (bcat acc (u8 c))))))))))))
+
+(def scan-str-escape
+  (lam (b i acc)
+    (case (<i i (blen b))
+      (false (r-err "unterminated escape" i))
+      (true (scan-str b (+ i 1) (bcat acc (u8 (esc-char (bget b i)))))))))
+
+(def read-string (-> Bytes I64 RR)            ; b[i-1] was the opening quote
+  (lam (b i) (scan-str b i (str->bytes ""))))
+
+; ---- the recursive spine (read-form* <-> read-list*) --------------------
+; E101: enhanced with depth + last-form context for error messages.
+(declare read-form* (-> Bytes I64 I64 Str RR))
+(declare read-list* (-> Bytes I64 I64 Str (List Sexp) RR))
+
+(def read-form*
+  (lam (b i0 depth last-form)
+    (let (i (skip-trivia b i0))
+      (case (<i i (blen b))
+        (false (r-err (str-cat (str-cat "unexpected end of input at "
+                                 (fmt-pos b i0))
+                        (str-cat " depth=" (i64->str depth)))
+                      i))
+        (true (let (c (bget b i))
+                (case (=i c CH-LPAREN)
+                  (true (read-list* b (+ i 1) (+ depth 1) "(" nil))
+                  (false (case (=i c CH-RPAREN)
+                           (true (r-err (str-cat (str-cat "unexpected ) at "
+                                                   (fmt-pos b i))
+                                          (str-cat " depth=" (i64->str depth)))
+                                        i))
+                           (false (case (=i c CH-DQUOTE)
+                                    (true (read-string b (+ i 1)))
+                                    (false (read-atom b i)))))))))))))
+
+(def read-list*
+  (lam (b i depth last-form acc)
+    (let (j (skip-trivia b i))
+      (case (<i j (blen b))
+        (false (r-err (str-cat (str-cat "unclosed ( at "
+                                 (fmt-pos b i))
+                        (str-cat " depth=" (i64->str depth)))
+                      j))
+        (true (case (=i (bget b j) CH-RPAREN)
+                (true (r-ok (s-list (reverse Sexp acc)) (+ j 1)))
+                (false (case (read-form* b j depth last-form)
+                         ((r-err m p) (r-err m p))
+                         ((r-ok f p)
+                           (case f
+                             ((s-sym nm) (read-list* b p depth nm (cons f acc)))
+                             (_          (read-list* b p depth last-form (cons f acc)))))))))))))
+
+; backward-compatible wrappers
+(def read-form (-> Bytes I64 RR)
+  (lam (b i) (read-form* b i 0 "")))
+
+(def read-list (-> Bytes I64 (List Sexp) RR)
+  (lam (b i acc) (read-list* b i 0 "" acc)))
+
+; ---- top level ----------------------------------------------------------
+(def read-all-go (-> Bytes I64 (List Sexp) AllR)
+  (lam (b i acc)
+    (case (<i i (blen b))
+      (false (a-ok (reverse Sexp acc)))
+      (true (case (read-form b i)
+              ((r-err m p) (a-err m p))
+              ((r-ok f p)  (read-all-go b (skip-trivia b p) (cons f acc))))))))
+
+(def read-all (-> Bytes AllR)
+  (lam (b) (read-all-go b (skip-trivia b 0) nil)))
+
+(def read-all-str (-> Str AllR)
+  (lam (s) (read-all (str->bytes s))))
+
+; ---- E102: form-splitter — read all top-level forms with byte offsets ---
+(def read-all-forms-go (-> Bytes I64 (List FormPos) AllFR)
+  (lam (b pos acc)
+    (let (p (skip-trivia b pos))
+      (case (<i p (blen b))
+        (false (af-ok (reverse FormPos acc)))
+        (true (case (read-form b p)
+                ((r-err m p2) (af-err m p2))
+                ((r-ok f p2)
+                  (read-all-forms-go b p2 (cons (fp pos f) acc)))))))))
+
+(def read-all-forms (-> Str AllFR)
+  (lam (s) (read-all-forms-go (str->bytes s) 0 nil)))
+
+; ---- paren-fix: auto-correct 1-extra or 1-missing close paren -----------
+(def paren-fix-go (-> Bytes I64 I64 Bytes Bytes)
+  (lam (b i depth acc)
+    (case (<i i (blen b))
+      (false
+        (case (<=i depth 0) (true acc) (false (paren-fix-go b i (- depth 1) (bcat acc (u8 CH-RPAREN))))))
+      (true
+        (let (c (bget b i))
+          (case (=i c CH-DQUOTE)
+            (true
+              (let (r (read-string b (+ i 1)))
+                (case r
+                  ((r-err m p) (bcat (bcat acc (bslice b i p)) (str->bytes m)))
+                  ((r-ok f p) (paren-fix-go b p depth (bcat acc (bslice b i p)))))))
+            (false (case (=i c CH-SEMI)
+              (true (paren-fix-go b (skip-comment b (+ i 1)) depth (bcat acc (u8 c))))
+              (false (case (=i c CH-LPAREN)
+                (true (paren-fix-go b (+ i 1) (+ depth 1) (bcat acc (u8 c))))
+                (false (case (=i c CH-RPAREN)
+                  (true
+                    (case (<=i depth 0)
+                      (true (bcat acc (bslice b (+ i 1) (blen b))))
+                      (false (paren-fix-go b (+ i 1) (- depth 1) (bcat acc (u8 c))))))
+                  (false (paren-fix-go b (+ i 1) depth (bcat acc (u8 c))))))))))))))))
+
+(def paren-fix (-> Str Str)
+  (lam (s) (bytes->str (paren-fix-go (str->bytes s) 0 0 (str->bytes "")))))

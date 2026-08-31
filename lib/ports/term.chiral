@@ -1,0 +1,295 @@
+; term.chiral — terminal-control typed wrappers over per-request ioctl crossings.
+; E99: the honest ioctl surface. Each request family gets its own crossing that
+; allocates its out-cell INSIDE the wrapper and returns a fresh Bytes.
+; No surface-allocated (cell-new) Bytes is ever kernel-mutated.
+; Three layers:
+;   1. Per-request-family externs (in ports.chiral): nb-winsz-raw, nb-tcgets-raw, nb-tcsets
+;   2. Per-request-family wrappers (TIOCGWINSZ, TCGETS/TCSETS)
+;   3. High-level term-raw / term-restore that scriba's command loop uses
+;
+; All struct packing rides bytes-tal primitives.
+(import "prelude")
+(import "ports")           ; nb-winsz-raw, nb-tcgets-raw, nb-tcsets, nb-winszw-raw externs
+(import "bytes-tal")       ; bget-u16-le, bput-u32-le, etc.
+
+; ── TIOCGWINSZ — terminal window size ──
+; struct winsize { u16 ws_row, ws_col, ws_xpixel, ws_ypixel } = 8 bytes.
+; Unpack row/col only; pixels are unused by scriba.
+
+(data WinsizeR ()
+  (ws-r (rows I64) (cols I64))
+  (ws-err (errno I64)))
+
+; tiocgwinsz: alloc-inside via nb-winsz-raw — no surface cell-new.
+; On success the returned cell has 8 bytes of winsize data.
+; On error the cell is empty (blen == 0).
+(def tiocgwinsz (=> I64 WinsizeR)
+  (lam (fd)
+    (let (cell (nb-winsz-raw fd))
+      (case (=i (blen cell) 0)
+        (false
+          (let (rows (bget-u16-le cell 0))
+            (let (cols (bget-u16-le cell 2))
+              (ws-r rows cols))))
+        (true  (ws-err -1))))))
+
+; ── TIOCSWINSZ — Set window size (the Set mirror of tiocgwinsz Get) ──
+; struct winsize { u16 ws_row, ws_col, ws_xpixel, ws_ypixel } = 8 bytes LE.
+; Packs rows@0, cols@2, xpixel@4=0, ypixel@6=0 via pack-u16/pack-u32/bcat
+; (prelude externs — same offsets tiocgwinsz READS with bget-u16-le).
+
+(data WinSzWR ()
+  (winsz-ok)
+  (winsz-err (errno I64)))
+
+; pack-winsize: build the 8-byte struct winsize LE.
+; rows@0 (u16)  cols@2 (u16)  xpixel@4=0  ypixel@6=0
+; Built by concatenating LE words with the prelude pack-* externs.
+(def pack-winsize (-> I64 I64 Bytes)
+  (lam (rows cols)
+    (bcat (bcat (pack-u16 rows) (pack-u16 cols)) (pack-u32 0))))
+
+; set-winsize: push a window size to fd's tty. Value-in via nb-winszw-raw —
+; kernel reads the packed cell (no writeback). rc < 0 => errno; rc == 0 => ok
+; (and the kernel has raised SIGWINCH on the child's fg process group).
+(def set-winsize (=> I64 I64 I64 WinSzWR)
+  (lam (fd rows cols)
+    (let (rc (nb-winszw-raw fd (pack-winsize rows cols)))
+      (case (<i rc 0)
+        (true  (winsz-err rc))
+        (false (winsz-ok))))))
+
+; ── TCGETS / TCSETS — terminal attributes ──
+; struct termios is ~60 bytes. chirality only touches c_lflag (offset 12, u32):
+;   ECHO (0x08), ICANON (0x02), ISIG (0x01)
+; Read-modify-write: get attrs, flip raw-mode bits, set attrs.
+
+(def TERMIOS_LEN I64 60)
+(def TERMIOS_C_LFLAG_OFF I64 12)
+
+; cfmakeraw-equivalent clear-masks, each a full-u32 complement AND-mask
+; (the idiom the old termios-raw-mask used, generalized to all five words).
+(def RAW_IFLAG_AND I64 4294965780)   ; ~0x05EB  clears IXON|ICRNL|INLCR|IGNCR|ISTRIP|BRKINT|IGNBRK|PARMRK
+(def RAW_OFLAG_AND I64 4294967294)   ; ~0x0001  clears OPOST
+(def RAW_CFLAG_AND I64 4294966991)   ; ~0x0130  clears CSIZE|PARENB
+(def RAW_CFLAG_SET I64 48)           ;  0x0030  sets   CS8
+(def RAW_LFLAG_AND I64 4294934452)   ; ~0x804B  clears IEXTEN|ECHONL|ECHO|ICANON|ISIG
+; softer profile (keep Ctrl-C): use ~0x804A = 4294934453 for RAW_LFLAG_AND (leaves ISIG).
+
+(data TermiosR ()
+  (tios-ok (cell Bytes))
+  (tios-err (errno I64)))
+
+; tcgetattr: alloc-inside via nb-tcgets-raw — returns fresh cell or empty on error.
+(def tcgetattr (=> I64 TermiosR)
+  (lam (fd)
+    (let (cell (nb-tcgets-raw fd))
+      (case (=i (blen cell) 0)
+        (false (tios-ok cell))
+        (true  (tios-err -1))))))
+
+; tcsetattr: value-in via nb-tcsets — kernel only reads the cell, no writeback.
+(def tcsetattr (=> I64 Bytes Unit)
+  (lam (fd cell)
+    (let (_ (nb-tcsets fd cell))
+      unit)))
+
+; termios-set-raw: pure cfmakeraw-equivalent — clears the raw bits in
+; c_iflag@0/c_oflag@4/c_cflag@8/c_lflag@12, ORs CS8 into c_cflag, and writes
+; VMIN=1@23 / VTIME=0@22. Returns a fresh cell at every step (never mutates in
+; place). No tty needed to test the masks.
+(def termios-set-raw (-> Bytes Bytes)
+  (lam (b0)
+    (let (b1 (bput-u32-le b0 0  (band (bget-u32-le b0 0)  RAW_IFLAG_AND)))
+      (let (b2 (bput-u32-le b1 4  (band (bget-u32-le b1 4)  RAW_OFLAG_AND)))
+        (let (b3 (bput-u32-le b2 8  (band (bget-u32-le b2 8)  RAW_CFLAG_AND)))
+          (let (b4 (bput-u32-le b3 8  (bor (bget-u32-le b3 8) RAW_CFLAG_SET)))
+            (let (b5 (bput-u32-le b4 12 (band (bget-u32-le b4 12) RAW_LFLAG_AND)))
+              (bput-u8 (bput-u8 b5 23 1) 22 0))))))))   ; VMIN=1  VTIME=0
+
+; ── term-raw / term-restore (scriba's API) ──
+
+(data RawR ()
+  (raw-r (orig Bytes))                  ; original termios cell (for restore)
+  (raw-err (errno I64)))
+
+(def term-raw (=> I64 RawR)             ; fd -> enter raw mode, return saved attrs
+  (lam (fd)
+    (case (tcgetattr fd)
+      ((tios-err e) (raw-err e))
+      ((tios-ok attrs)
+        (let (saved (bslice attrs 0 TERMIOS_LEN))   ; copy before modifying
+          (let (_ (tcsetattr fd (termios-set-raw attrs)))
+            (raw-r saved)))))))
+
+(def term-restore (=> I64 Bytes Unit)   ; fd, saved termios -> restore cooked mode
+  (lam (fd orig)
+    (tcsetattr fd orig)))
+
+; ── E104 — native pty acquisition ──
+; Acquire a pseudo-terminal pair on the E99 ioctl surface: open /dev/ptmx
+; (open-rw, O_RDWR|O_NOCTTY), unlock the slave (TIOCSPTLCK), read the slave
+; index (TIOCGPTN), open the slave /dev/pts/N. fds stay raw I64 (matching
+; openat/read; a linear Fd is a follow-on element). close is reused for
+; error-path cleanup (the crossing is already built; declared here, owned at
+; declaration).
+
+(extern close (=> I64 Unit))            ; release an fd (nb-sys-close); error-path cleanup
+
+; NUL terminator idiom (resolve.chiral:29): open-rw hands the payload pointer
+; straight to openat, so the caller must NUL-terminate the C path string.
+(def nul-byte Bytes (bslice (pack-u32 0) 0 1))
+
+(data PtnR ()
+  (ptn-ok (n I64))                      ; slave pts index
+  (ptn-err (errno I64)))
+
+(data UnlockR ()
+  (unlock-ok)
+  (unlock-err (errno I64)))
+
+(data PtyR ()
+  (pty-ok (master I64) (slave I64) (n I64))
+  (pty-err (errno I64)))
+
+; nb-ptsno: TIOCGPTN via nb-ptsno-raw. Success => 4-byte cell holding the pts
+; index; empty cell => ioctl error.
+(def nb-ptsno (=> I64 PtnR)
+  (lam (fd)
+    (let (cell (nb-ptsno-raw fd))
+      (case (=i (blen cell) 0)
+        (false (ptn-ok (bget-u32-le cell 0)))
+        (true  (ptn-err -1))))))
+
+; nb-ptunlock-w: TIOCSPTLCK via nb-ptunlock. Pass a 4-byte cell holding int 0
+; (unlock the slave). rc < 0 => errno. The cell is (pack-u32 0) — exactly a
+; 4-byte little-endian int 0 — rather than (bput-u32-le (cell-new 4) 0 0): the
+; latter routes through a bslice at offset==len that hits a pre-existing bslice
+; end-boundary bug (bslice c 4 0 on a 4-byte cell faults); pack-u32 is the
+; proven-working equivalent for an all-zero word.
+(def nb-ptunlock-w (=> I64 UnlockR)
+  (lam (fd)
+    (let (rc (nb-ptunlock fd (pack-u32 0)))
+      (case (<i rc 0)
+        (false (unlock-ok))
+        (true  (unlock-err rc))))))
+
+; pts-path: the slave device path for pts index n.
+(def pts-path (-> I64 Str)
+  (lam (n) (str-cat "/dev/pts/" (i64->str n))))
+
+; E121: fd-flag hygiene over the fcntl crossing. F_GETFD reads a fd's flag word;
+; F_SETFD writes it; FD_CLOEXEC (bit 0) is the close-on-exec bit. Typed pure sugar
+; over the raw `fcntl` extern (ports.chiral). fd-cloexec? returns FD_CLOEXEC(1) when
+; the bit is set, 0 when clear, or -errno propagated as a value.
+(def F_GETFD I64 1)
+(def F_SETFD I64 2)
+(def FD_CLOEXEC I64 1)
+(def fd-cloexec? (=> I64 I64)
+  (lam (fd)
+    (let (flags (fcntl fd F_GETFD 0))
+      (case (<i flags 0)
+        (true  flags)                       ; propagate -errno as a value
+        (false (band flags FD_CLOEXEC))))))  ; 0 or FD_CLOEXEC(1)
+
+; open-pty: the four-step acquisition dance. Threads close on every error path
+; after the master fd is open (the fd-leak the example skeleton flagged).
+(def open-pty (=> Unit PtyR)
+  (lam (u)
+    (let (master (open-rw (bcat (str->bytes "/dev/ptmx") nul-byte)))
+      (case (<i master 0)
+        (true  (pty-err master))
+        (false
+          (case (nb-ptunlock-w master)
+            ((unlock-err e) (let (_ (close master)) (pty-err e)))
+            ((unlock-ok)
+              (case (nb-ptsno master)
+                ((ptn-err e) (let (_ (close master)) (pty-err e)))
+                ((ptn-ok n)
+                  (let (slave (open-rw (bcat (str->bytes (pts-path n)) nul-byte)))
+                    (case (<i slave 0)
+                      (true  (let (_ (close master)) (pty-err slave)))
+                      (false (pty-ok master slave n)))))))))))))
+; ── T1 — child-wiring typed wrappers (setsid + TIOCSCTTY + dup2) ──
+; Result sums: errno-or-value, never a -1 sentinel (boundary-sum directive).
+; Surface wrappers case each raw I64 return into the sums.
+; login-tty sequences them with ORDER enforced as data-flow through the sums.
+
+(data SetsidR () (setsid-ok (sid I64)) (setsid-err (errno I64)))
+(data CttyR   () (ctty-ok)             (ctty-err (errno I64)))
+(data WireR   () (wire-ok)             (wire-err (errno I64)))
+
+; do-setsid: wrap nb-setsid into SetsidR, converting -errno to positive errno.
+(def do-setsid (=> Unit SetsidR)
+  (lam (_)
+    (let ((sid (nb-setsid unit)))
+      (case (<i sid 0) (true (setsid-err (- 0 sid))) (false (setsid-ok sid))))))
+
+; do-ctty: wrap nb-tiocsctty into CttyR. TIOCSCTTY third arg is 0 (don't steal).
+(def do-ctty (=> I64 CttyR)
+  (lam (slave)
+    (let ((rc (nb-tiocsctty slave)))
+      (case (<i rc 0) (true (ctty-err (- 0 rc))) (false (ctty-ok))))))
+
+; do-dup2: wire slave -> one target fd (0, 1, or 2).
+(def do-dup2 (=> I64 I64 WireR)
+  (lam (slave target)
+    (let ((rc (nb-dup2 slave target)))
+      (case (<i rc 0) (true (wire-err (- 0 rc))) (false (wire-ok))))))
+
+; login-tty: the full dance, cased at every step. ORDER is the data flow:
+; setsid -> TIOCSCTTY -> dup2 slave->0,1,2 -> close slave (if >=3).
+; Runs in the CHILD after fork, immediately before exec.
+(def login-tty (=> I64 WireR)
+  (lam (slave)
+    (case (do-setsid unit)
+      ((setsid-err e) (wire-err e))
+      ((setsid-ok _)
+        (case (do-ctty slave)
+          ((ctty-err e) (wire-err e))
+          ((ctty-ok)
+            (case (do-dup2 slave 0)
+              ((wire-err e) (wire-err e))
+              ((wire-ok)
+                (case (do-dup2 slave 1)
+                  ((wire-err e) (wire-err e))
+                  ((wire-ok)
+                    (case (do-dup2 slave 2)
+                      ((wire-err e) (wire-err e))
+                      ((wire-ok)
+                        (case (<i 2 slave)
+                          (true  (let ((_ (close slave))) (wire-ok)))
+                          (false (wire-ok)))))))))))))))
+
+; spawn-pty-child: open-pty + the spawn-in-pty crossing. The surface acquires
+; the pty (open-pty) and delegates fork+login-tty+exec to the extern
+; spawn-in-pty, whose fat TAL driver forks and — in the child — REOPENS the
+; slave by PATH (login_tty at the tal floor), then execs. On success it returns
+; the live master fd, the parent's own slave fd, AND the child pid.
+;
+; The parent's slave fd is kept OPEN across the spawn on purpose: the child
+; reopens its own slave by path, but there is a window between open-pty (which
+; opened, then would close, a slave) and the child's reopen in which the pts
+; would have ZERO slaves open — and a Linux pty master goes to EOF the moment
+; its last slave closes, so a parent that closed its slave first and then read
+; the master would get an immediate EOF (0 bytes) instead of the child's output.
+; Holding the slave keeps the pts alive continuously; the caller closes it (and
+; the master) after it has finished reading. On failure the errno is carried and
+; both fds are discharged.
+;
+; NB: this def MUST NOT be named `spawn-in-pty` — that is the arity-2 extern
+; (elf, slave-path); a same-named arity-1 surface def shadows it and its own
+; body then applies an I64 to a second arg ("cannot apply a non-function").
+(data SpawnR ()
+  (spawn-r (master I64) (slave I64) (pid I64))
+  (spawn-err (errno I64)))
+
+(def spawn-pty-child (=> Bytes SpawnR)
+  (lam (child-elf)
+    (case (open-pty unit)
+      ((pty-err e) (spawn-err e))
+      ((pty-ok master slave n)
+        (let ((pid (spawn-in-pty child-elf (bcat (str->bytes (pts-path n)) nul-byte))))
+          (case (<i pid 0)
+            (true  (let ((_ (close slave))) (let ((_ (close master))) (spawn-err (- 0 pid)))))
+            (false (spawn-r master slave pid))))))))

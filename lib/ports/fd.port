@@ -1,0 +1,36 @@
+; ports/fd — the raw file-descriptor registry.
+;
+; The Fd porttype is the linear cap for "an open descriptor that is yours";
+; the numeric read/write/fcntl crossings beside it are the untyped floor the
+; higher registries (sock, pool, pty, tty, file) are built over. Splitting the
+; cap and the raw syscalls apart would put the mint (`adopt-fd`) in a different
+; module from the thing it mints, so they share one home.
+;
+; What a registry buys is a NAMING boundary — which crossings a module may
+; name — not a smaller binary: `native-lib ++ link-lib` is appended
+; unconditionally at compile-emit.chiral:189, so importing one registry or all
+; nine costs exactly the same bytes.
+
+(import "prelude")
+
+(porttype Fd)
+
+; release the memfd behind a pool. The tomodachi discharges its fd by sending
+; it to the compositor (sock-send-fd); a pool kept local -- a scratch region
+; that is never shared -- discharges it here. Either way the linear Fd is
+; consumed exactly once.
+(extern fd-close (=> (1 f Fd) Unit))
+; E124: re-type of an already-open raw fd into the linear Fd cap; trusted
+; (caller vouches the fd is open and theirs, category-C).
+; Fd is already in porttype-word? so the E123 carrier peel (Fd -> nt-i64) applies;
+; lowers to nb-id (identity), runtime no-op -- it issues no syscall.
+; E159: the arrow is `=>` all the same. It is not the syscall that makes the
+; arrow, it is the MINT: a linear result only ever enters the q1 context through
+; a crossing, so a `->` here would hand out an Fd that is duplicable and
+; droppable and the porttype would protect nothing. Adopting a raw integer as a
+; capability IS the membrane crossing, whatever the machine does afterwards.
+(extern adopt-fd (=> I64 Fd))
+
+(extern read (=> I64 I64 Bytes))       ; read(fd, count) -> the bytes actually read
+(extern write-fd (=> I64 Bytes I64))   ; E105: write(fd, bytes) -> bytes written (or -errno)
+(extern fcntl (=> I64 I64 I64 I64))    ; E121: fcntl(fd,cmd,arg) -> flags | -errno

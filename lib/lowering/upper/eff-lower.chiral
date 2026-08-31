@@ -1,0 +1,183 @@
+; E70 port (slice 1): the reachable-crossings walk + the row-escape verdict.
+;
+; Ports lower.py `_reachable_crossings` (:170) and the `lower_all` row-escape
+; decision (:439) -- the preserve-check that makes an effect claim travel to the
+; floor CHECKED: re-derive, from a lowered tal footprint alone, the effectful
+; crossings it actually reaches, and demand `reached <= declared`. lower.py is
+; the differential oracle (this file agrees with it function-for-function).
+;
+; The two loader-derived inputs -- `crossing_sigs` (the E51-bound port names,
+; sys-bindings) and `def_rows` (E39's inferred per-def effect rows) -- are NOT
+; yet ported chirality-side (E39 row inference lives in the deferred E2-loader seam).
+; So, exactly as E69 slice-3 takes an immutable `SigV` rather than mutating a
+; kernel signature, this slice takes them as GIVEN inputs: `xs` (the bound
+; crossing names) and `dr` (def_rows as a name -> row-names assoc-list). Deriving
+; them is deferred residue with an E2-loader / E51 home.
+;
+; Pure, total-shaped. The row algebra (subset / dedup-union) is E12's effects.chiral.
+
+(import "prelude")
+(import "tal-check")   ; the CHECKER's typed IR: Block / Instr / TalTerm / Branch
+(import "effects")     ; row-sub (containment), mem-str, row-join
+
+; ================================================================ def_rows view
+; def_rows lookup: a def name -> the crossing names its (transitive) row reaches.
+(declare dr-get (-> (List (Pair Str (List Str))) Str (Maybe (List Str))))
+(def dr-get
+  (lam (dr k)
+    (case dr
+      (nil none)
+      ((cons p r)
+        (case p
+          ((pair name row)
+            (case (str-eq k name) (true (some row)) (false (dr-get r k)))))))))
+
+; keep-in xs ys : the crossings of ys that are bound (in xs) -- the effectful
+; projection (`c for c in row.names if c in crossing_sigs`).
+(declare keep-in (-> (List Str) (List Str) (List Str)))
+(def keep-in
+  (lam (xs ys)
+    (case ys
+      (nil nil)
+      ((cons y r)
+        (case (mem-str y xs) (true (cons y (keep-in xs r))) (false (keep-in xs r)))))))
+
+; ================================================================ the walk
+; Accumulate the reached crossings (a dedup set) over a lowered tal footprint.
+;   xs : (List Str)                     -- crossing_sigs keys (bound crossings)
+;   dr : (List (Pair Str (List Str)))   -- def_rows (name -> row names)
+; A `prim <c>` whose op is bound contributes `c`; a `call <g>` contributes g's
+; declared effectful projection (def_rows is transitive, so one lookup closes
+; the call graph -- no recursion into g's body); every case arm + default is
+; recursed. `found` is threaded and deduped (row-join / mem-str).
+(declare rc-instr  (-> (List Str) (List (Pair Str (List Str))) (List Str) Instr        (List Str)))
+(declare rc-instrs (-> (List Str) (List (Pair Str (List Str))) (List Str) (List Instr) (List Str)))
+(declare rc-block  (-> (List Str) (List (Pair Str (List Str))) (List Str) Block        (List Str)))
+(declare rc-term   (-> (List Str) (List (Pair Str (List Str))) (List Str) TalTerm         (List Str)))
+(declare rc-brs    (-> (List Str) (List (Pair Str (List Str))) (List Str) (List Branch) (List Str)))
+(declare rc-mblk   (-> (List Str) (List (Pair Str (List Str))) (List Str) (Maybe Block) (List Str)))
+
+(def rc-instr
+  (lam (xs dr found ins)
+    (case ins
+      ((i-prim dst op srcs ty)
+        (case (mem-str op xs) (true (row-join (cons op nil) found)) (false found)))
+      ((i-call dst f srcs ty)
+        (case (dr-get dr f)
+          (none found)
+          ((some grow) (row-join (keep-in xs grow) found))))
+      (_ found))))
+
+(def rc-instrs
+  (lam (xs dr found is)
+    (case is
+      (nil found)
+      ((cons i r) (rc-instrs xs dr (rc-instr xs dr found i) r)))))
+
+(def rc-block
+  (lam (xs dr found b)
+    (case b
+      ((block instrs term)
+        (rc-term xs dr (rc-instrs xs dr found instrs) term)))))
+
+(def rc-term
+  (lam (xs dr found t)
+    (case t
+      ((t-ret src) found)
+      ((tt-case src branches dflt)
+        (rc-mblk xs dr (rc-brs xs dr found branches) dflt)))))
+
+(def rc-brs
+  (lam (xs dr found brs)
+    (case brs
+      (nil found)
+      ((cons b r)
+        (case b
+          ((branch cn dsts body) (rc-brs xs dr (rc-block xs dr found body) r)))))))
+
+(def rc-mblk
+  (lam (xs dr found mb)
+    (case mb
+      (none found)
+      ((some b) (rc-block xs dr found b)))))
+
+; reachable : the union over a footprint (the def body + its outlined non-tail
+; cases), so a crossing hiding in an outlined arm is still weighed.
+(declare reachable-go (-> (List Str) (List (Pair Str (List Str))) (List Str) (List Block) (List Str)))
+(def reachable-go
+  (lam (xs dr found blocks)
+    (case blocks
+      (nil found)
+      ((cons b r) (reachable-go xs dr (rc-block xs dr found b) r)))))
+
+(def reachable (-> (List Str) (List (Pair Str (List Str))) (List Block) (List Str))
+  (lam (xs dr blocks) (reachable-go xs dr nil blocks)))
+
+; ================================================================ the verdict
+; RowCheckR: row-ok, or row-escape naming the fn + the offending crossings.
+; (The offending set is `reached \ declared`, matching lower.py's RowEscape
+; message `sorted(reached - declared)`; the example's singular `(crossing Str)`
+; is widened to the full set the oracle actually reports.)
+(data RowCheckR ()
+  (row-ok)
+  (row-escape (fn Str) (crossings (List Str))))
+
+; set-diff a b : the elements of a not in b.
+(declare set-diff (-> (List Str) (List Str) (List Str)))
+(def set-diff
+  (lam (a b)
+    (case a
+      (nil nil)
+      ((cons x r)
+        (case (mem-str x b) (true (set-diff r b)) (false (cons x (set-diff r b))))))))
+
+(declare row-verdict (-> Str (List Str) (List Str) RowCheckR))
+(def row-verdict
+  (lam (name reached declared)
+    (case (row-sub reached declared)
+      (true (row-ok))
+      (false (row-escape name (set-diff reached declared))))))
+
+; row-check : the lower_all decision. declared = def_rows[name] projected to the
+; bound crossings; reached = the walk over the footprint; verdict = reached <=
+; declared or a row-escape. Mirrors lower.py lower_all:439 exactly.
+(def row-check (-> Str (List Str) (List (Pair Str (List Str))) (List Str) (List Block) RowCheckR)
+  (lam (name xs dr declared-row blocks)
+    (row-verdict name (reachable xs dr blocks) (keep-in xs declared-row))))
+
+; ================================================================ sysface
+; sysface: the sys-family PROJECTION of a def's effect shadow -- def_rows[name]
+; ∩ bound (lower.py `sysface` :153; DESIGN §0 `sysface = shadow ∩ sys-crossings`).
+; A pure `->` def (no row) projects to nil; an effectful def to exactly the E51
+; ports it crosses -- the queryable artifact for E51 capability accounting, a READ
+; over the already-built shadow (NOT the raw `sys`/`bptr` membrane bit). `bound`
+; is the E51-bound crossing names (given; lower.py derives it via _bound_crossings).
+(def sysface (-> (List (Pair Str (List Str))) Str (List Str) (List Str))
+  (lam (dr name bound)
+    (case (dr-get dr name)
+      (none nil)
+      ((some row) (keep-in bound row)))))
+
+; ================================================================ the => gate
+; eff-gate: the `lower_all` eligibility decision for an effectful def (lower.py
+; lower_all :405). Called only on a def with a nonempty eff seat. An open row
+; (rowvar) stays upper -- we cannot statically bound what it crosses; a port
+; crossing without an E51 binding stays upper (its syscall path does not exist);
+; otherwise the def lowers like a pure one (native routes each crossing through
+; its wrapper). `names` = the def's row; `ports` = the port crossings
+; (prim_is_port); `bound` = the E51-bound crossings (crossing_sigs). ports/bound
+; are the deferred loader seam, given here as data.
+(data EffGate ()
+  (g-lower)
+  (g-open-row)                       ; rowvar present -- unbounded crossings
+  (g-unbound (crossings (List Str))))  ; port crossings with no E51 binding
+
+(def eff-gate (-> Bool (List Str) (List Str) (List Str) EffGate)
+  (lam (rowvar? names ports bound)
+    (case rowvar?
+      (true (g-open-row))
+      (false
+        ; unbound = (row ∩ ports) \ bound
+        (case (set-diff (keep-in ports names) bound)
+          (nil (g-lower))
+          ((cons u r) (g-unbound (cons u r))))))))

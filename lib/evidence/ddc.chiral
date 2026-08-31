@@ -1,0 +1,191 @@
+; Diverse double-compilation (E53): the PURE compare core. Verdicts are
+; values; divergence is named, not logged. The leg-running orchestration
+; (spawn/exec each leg on one source) is effectful lane-A machinery and
+; lives outside this file. The verdict is re-derivable on the reference
+; floor because everything here is pure and total.
+;
+; ⚑ THE MIRROR CLAIM, CORRECTED 2026-08-25. This header used to say that an
+; untrusted Python driver at `tools/ddc.py` mirrors this fold and is checked
+; against THIS core. Two things were wrong with that. The path: there is no
+; `tools/ddc.py` and there never was on this branch -- the driver is
+; `scaffold/tests/ddc.py`. And the direction: the drift ran the other way.
+; `ddc.py:56-68` has gated on provenance BEFORE comparing bytes all along,
+; while `ddc-compare` here folded bytes and never consulted `prov-disjoint?`
+; at all, so the core could return `ddc-converged` for a list the driver
+; refuses. Restoring the gate here CONVERGES the two, it does not diverge
+; them. What stays different, on purpose: this core distinguishes "no legs"
+; from "one leg is not a quorum" where the driver collapses both to "fewer
+; than two legs", so the three `why` strings are NOT interchangeable. The
+; Python oracle is retired (S12) and is not being maintained in lockstep;
+; treat `ddc.py` as provenance for how the rule reads, never as the
+; authority. The authority is this file, and its teeth are
+; `scaffold/tests/samples/e166_ddc_legc.chiral`, a program that runs.
+
+(import "prelude")
+
+; ---- provenance: declared, checked, never assumed (split-role) ----------
+; Axes are the named ones; disjointness is checked on the axes the threat
+; names (language + toolchain). Honest rung: language/toolchain are
+; attestable-ish; author is assertable only -- recorded, not laundered.
+(data Prov ()
+  (prov (language Str) (toolchain Str) (author Str) (epoch I64)))
+
+(data Leg ()
+  (leg (name Str) (p Prov)))
+
+; ---- verdicts are values -------------------------------------------------
+(data DdcR ()
+  (ddc-converged (artifact Bytes))            ; all legs emitted these bytes
+  (ddc-diverged  (a Str) (b Str))             ; WHICH legs disagreed
+  (ddc-bad-quorum (why Str)))                 ; provenance not disjoint / <2 legs
+
+; a leg's run result: the bytes its execution of the one emitter produced
+(data LegOut () (leg-out (l Leg) (bs Bytes)))
+
+; ---- byte equality: the floor compare, total by the symbolic measure -----
+(def bytes-eq-from (-> Bytes Bytes I64 I64 Bool)
+  (lam (a b i n)
+    (case (<i i n)
+      (true (case (=i (bget a i) (bget b i))
+              (true (bytes-eq-from a b (+ i 1) n))
+              (false false)))
+      (false true))))
+
+(def bytes=? (-> Bytes Bytes Bool)
+  (lam (a b)
+    (case (=i (blen a) (blen b))
+      (true (bytes-eq-from a b 0 (blen a)))
+      (false false))))
+
+; the fixpoint is the same byte-equality, named for its role: stage1's
+; artifact vs stage2's. Bit-identity or the determinism debts are unpaid.
+(def fixpoint=? (-> Bytes Bytes Bool)
+  (lam (a b) (bytes=? a b)))
+
+; ---- provenance disjointness: pairwise, on the named axes ----------------
+; Two legs are disjoint when BOTH the language and the toolchain differ --
+; a shared member on either axis is a common mode the quorum must refuse.
+(def leg2-disjoint? (-> Leg Leg Bool)
+  (lam (x y)
+    (case x ((leg nx px)
+      (case y ((leg ny py)
+        (case px ((prov lx tx ax ex)
+          (case py ((prov ly ty ay ey)
+            (case (str-eq lx ly)
+              (true false)
+              (false (case (str-eq tx ty)
+                       (true false)
+                       (false true))))))))))))))
+
+(def leg-disjoint-all? (-> Leg (List Leg) Bool)
+  (lam (x rest)
+    (case rest
+      (nil true)
+      ((cons y more) (case (leg2-disjoint? x y)
+                       (true (leg-disjoint-all? x more))
+                       (false false))))))
+
+(def prov-disjoint? (-> (List Leg) Bool)
+  (lam (ls)
+    (case ls
+      (nil true)
+      ((cons h t) (case (leg-disjoint-all? h t)
+                    (true (prov-disjoint? t))
+                    (false false))))))
+
+; ---- the compare: a pure fold -- first divergence wins, named ------------
+(def ddc-fold (-> Leg Bytes (List LegOut) DdcR)
+  (lam (l0 bs0 rest)
+    (case rest
+      (nil (ddc-converged bs0))
+      ((cons o more)
+       (case o
+         ((leg-out li bsi)
+          (case (bytes=? bs0 bsi)
+            (true (ddc-fold l0 bs0 more))
+            (false (case l0 ((leg n0 p0)
+                     (case li ((leg ni pi)
+                       (ddc-diverged n0 ni)))))))))))))
+
+; the legs a run result carries, in order -- so the quorum rule reads the
+; SAME `prov-disjoint?` the driver and the gate read. One owner per rule:
+; there is deliberately no second disjointness routine on this path.
+(def ddc-legs (-> (List LegOut) (List Leg))
+  (lam (os)
+    (case os
+      (nil (the (List Leg) nil))
+      ((cons o rest)
+       (case o ((leg-out l bs) (cons l (ddc-legs rest))))))))
+
+; ⚑ THE QUORUM GATE FIRES BEFORE ANY BYTE IS READ. Agreement is not a
+; quorum: two runs of the SAME compiler agree with each other by
+; construction, which is precisely the common mode DDC exists to refuse, so
+; converging on a non-disjoint list would report a trusting-trust attack as
+; a pass. Three reasons, kept distinct because a caller must be able to act
+; on them differently -- an empty list and a lone leg are "you have not
+; collected a quorum yet" (add legs), while non-disjoint provenance is "what
+; you collected is not independent" (adding another gcc will not help).
+; The two C legs share `language "c"`, so leg 0 + BOTH of them is three
+; entries carrying two opinions and lands here, not in `ddc-fold`.
+(def ddc-compare (-> (List LegOut) DdcR)
+  (lam (outs)
+    (case outs
+      (nil (ddc-bad-quorum "no legs"))
+      ((cons first rest)
+       (case rest
+         (nil (ddc-bad-quorum "one leg is not a quorum"))
+         ((cons o2 more)
+          (case (prov-disjoint? (ddc-legs outs))
+            (false (ddc-bad-quorum "provenance not pairwise disjoint"))
+            (true (case first
+                    ((leg-out l0 bs0) (ddc-fold l0 bs0 rest)))))))))))
+
+; ---- a floor-runnable harness: verdict as an all-integer observable ------
+; Two fixed, genuinely-disjoint legs over caller-supplied bytes. Returns
+; 0 = converged, 1 = diverged, 2 = bad-quorum -- so the reference floor can
+; re-derive the driver's verdict with no marshalling beyond Bytes in, I64
+; out. (str-eq never runs on this path: ddc-fold compares bytes only.)
+(def ddc-leg0 Leg (leg "self-hosted" (prov "chirality" "chirality-native" "shred" 2026)))
+(def ddc-leg1 Leg (leg "py-scaffold" (prov "python" "cpython3" "shred" 2025)))
+; E166. The EXTERNAL-COMPILER leg: chirality source -> mach-c -> C -> gcc -> a
+; native compiler, whose emitted artifact is then compared against the
+; self-hosted one (scaffold/tests/ddc-c-leg.sh). It exists so that deleting
+; leg 1 leaves a quorum: ddc-compare refuses below two legs, so retiring the
+; Python floor before this leg is admitted leaves NO quorum at all (SPEC
+; decision 5 -- admit before delete, a hard ordering).
+;
+; What it buys is TOOLCHAIN disjointness, which is the axis a trusting-trust
+; attack lives on: ("c","gcc-12") differs from ("chirality","chirality-native") on
+; both checked axes. What it does NOT buy is a smaller trusted base -- gcc
+; carries the whole of gcc. `author` stays "shred" and that is RECORDED, not
+; laundered: :14 already concedes the axis is assertable only.
+(def ddc-legc Leg (leg "c-external" (prov "c" "gcc-12" "shred" 2026)))
+; The SECOND C leg, added 2026-08-25 rather than overwriting the first, because
+; each constant must name a toolchain that actually built something and BOTH now
+; have: ddc-c-leg.sh runs 9/9 green with G4 byte-identical at 1,077,624 B under
+; gcc 12.2.0 AND under ccomp 3.17. CompCert is the one that shrinks the trusted
+; drop, its front end, optimizer and backend being machine-checked -- and the
+; long-standing note that "swapping this one constant is the whole of that
+; change" was MEASURED FALSE: it cost a shim split (three GNU asm constructs
+; ccomp refuses) and per-compiler flags. A constant is not a port.
+;
+; ⚑ THE TWO C LEGS ARE NOT DISJOINT FROM EACH OTHER, and that is the fact that
+; matters more than either constant. leg2-disjoint? demands that BOTH the
+; language and the toolchain differ; these two share "c", so the pair is refused
+; and ddc-compare returns ddc-bad-quorum on it. That last clause was written
+; as a promise on 2026-08-25 and was FALSE for as long as it stood -- the gate
+; it names landed the same day, below; until then ddc-compare converged on the
+; pair and the sample asserted the convergence. A quorum is leg 0 plus
+; EXACTLY ONE of them -- never both counted as two. Running the leg under both
+; compilers buys more evidence about the SAME leg; it does not buy a third leg,
+; and a driver that lists both has one leg fewer than it thinks.
+; scaffold/tests/samples/e166_ddc_legc.chiral asserts all three shapes of this.
+(def ddc-legcc Leg (leg "c-compcert" (prov "c" "compcert-3.17" "shred" 2026)))
+
+(def ddc-verdict-code (-> Bytes Bytes I64)
+  (lam (a b)
+    (case (ddc-compare (cons (leg-out ddc-leg0 a)
+                       (cons (leg-out ddc-leg1 b) nil)))
+      ((ddc-converged bs) 0)
+      ((ddc-diverged x y) 1)
+      ((ddc-bad-quorum w) 2))))

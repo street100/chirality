@@ -1,0 +1,109 @@
+; E15: the golden reference interpreter -- a big-step tree-walk evaluator over the
+; PURE FRAGMENT, in the fsm.chiral trampoline idiom. Ported from scaffold/chirality/
+; runtime.py RT.run (:74) / apply1 (:183): the manual `while True` + (value |
+; (env,body)) return becomes a `data Step` the `case` must COVER, and the trampoline
+; hop becomes an ordinary TAIL CALL -- chirality's proper-tail-call guarantee makes `run`
+; constant-stack by construction (no hand-managed stack). runtime.py stays the oracle.
+;
+; MEMBRANE: eval-step/eval/run/eval-args are ONE mutual-recursion group, declared =>
+; (process): a big-step evaluator forces subterms and the loop run->eval-step->eval
+; ->run is not structurally decreasing, so it may diverge -- and P4 counts
+; non-termination as a port. step-stuck is the coverage-forced "unreachable on
+; checked terms" case (returns a sentinel here; the typed alarm CROSSING is the
+; deferred E26/bridge face, SPEC decision #2). list-nth/arm-body are monomorphized
+; to Value/Term (the example's polymorphic (-> (0 A) ..) has no A to return on the
+; unreachable out-of-range case; the sole use is env:List Value).
+;
+; SCOPE (SPEC): the pure core -- var/lit/lam/app/let/case (+ e-con, the Knob the
+; example names, needed to build a con VALUE so e-case has a scrutinee). The
+; extern/port/bridge face (e-global/e-prim, pap/talf, IMPLS, bridge.verify, the E51
+; sys path) + the linker are the DEFERRED bridge connector (decision #2).
+(import "prelude")
+
+; runtime values -- CLOSED sum (no fall-through the way runtime.py's tuples can; no
+; ("erased",): a q=0 binding is erased by QTT upstream, so it cannot be represented).
+(data Value ()
+  (v-lit (n I64))
+  (v-clo (env (List Value)) (body Term))          ; captures env; body sees 1 new binder
+  (v-con (tag I64) (args (List Value))))
+
+; the nameless core term (the pure fragment; Global/Prim are the omitted bridge face).
+(data Term ()
+  (e-var  (idx I64))
+  (e-lit  (n I64))
+  (e-lam  (body Term))                            ; body sees 1 new binder
+  (e-app  (fn Term) (arg Term))
+  (e-let  (rhs Term) (body Term))                 ; body sees 1 new binder (q=0 erased upstream)
+  (e-con  (tag I64) (args (List Term)))           ; a data constructor (the example's Knob)
+  (e-case (scrut Term) (arms (List (Pair I64 Term)))))
+
+; one trampoline result = runtime.py's apply1 return, made a closed sum.
+(data Step ()
+  (step-done  (val Value))
+  (step-tail  (env (List Value)) (next Term))
+  (step-stuck (why I64)))                          ; unreachable on checked terms
+
+; env lookup by de-Bruijn index (index 0 = head = most-recent binder, mirroring
+; runtime.py's env[len-1-i] under a head-oriented env). Out-of-range is unreachable
+; on checked terms -> a sentinel.
+(declare list-nth (-> (List Value) I64 Value))
+(def list-nth (lam (xs i)
+  (case xs
+    (nil (v-lit (- 0 1)))
+    ((cons h t) (case (<=i i 0) (true h) (false (list-nth t (- i 1))))))))
+; select a case arm's body by constructor tag; no-match is unreachable -> sentinel.
+(declare arm-body (-> (List (Pair I64 Term)) I64 Term))
+(def arm-body (lam (arms tg)
+  (case arms
+    (nil (e-lit (- 0 1)))
+    ((cons p rest) (case p ((pair bc body) (case (=i bc tg) (true body) (false (arm-body rest tg)))))))))
+; bind constructor args as new binders so the LAST field is index 0 (matches
+; runtime.py's env + list(args): prepend each in order -> last arg ends up at head).
+(declare bind-args (-> (List Value) (List Value) (List Value)))
+(def bind-args (lam (args env)
+  (case args (nil env) ((cons a rest) (bind-args rest (cons a env))))))
+
+; eval-step <-> eval <-> run <-> eval-args : one mutual-recursion group (=>), so ALL
+; declares precede ANY def (the json.chiral forward-decl idiom).
+(declare eval-step (=> (List Value) Term Step))
+(declare eval      (=> (List Value) Term Value))
+(declare run       (=> Step Value))
+(declare eval-args (=> (List Value) (List Term) (List Value)))
+
+; eval-step env t : evaluate ONE node in tail position; forces non-tail subterms
+; (fn / arg / scrutinee / con args) via eval, yields a Step the driver iterates.
+(def eval-step
+  (lam (env t)
+    (case t
+      ((e-var i)     (step-done (list-nth env i)))
+      ((e-lit n)     (step-done (v-lit n)))
+      ((e-lam body)  (step-done (v-clo env body)))       ; capture env as a closure
+      ((e-con tg as) (step-done (v-con tg (eval-args env as))))
+      ((e-let rhs body)
+        (step-tail (cons (eval env rhs) env) body))      ; bind, then TAIL into body
+      ((e-app f a)
+        (case (eval env f)
+          ((v-clo cenv cbody) (step-tail (cons (eval env a) cenv) cbody))   ; the one tail CALL
+          ((v-lit n)     (step-stuck 1))                 ; applied a non-function
+          ((v-con tg ar) (step-stuck 1))))
+      ((e-case scrut arms)
+        (case (eval env scrut)
+          ((v-con tg ar) (step-tail (bind-args ar env) (arm-body arms tg)))  ; select arm by tag
+          ((v-lit n)     (step-stuck 2))                 ; case on non-data
+          ((v-clo e b)   (step-stuck 2)))))))
+
+; eval env t : force a subterm to a Value (run the trampoline from one node).
+(def eval (lam (env t) (run (eval-step env t))))
+
+; run s : drive the trampoline to a Value. Loops on step-tail via a TAIL self-call
+; (chirality's PTC makes it constant-stack) exactly where runtime.py loops with while True.
+(def run
+  (lam (s)
+    (case s
+      ((step-done  v)      v)
+      ((step-tail  env nx) (run (eval-step env nx)))     ; TCO: tail self-call = the loop
+      ((step-stuck why)    (v-lit (- 0 1))))))            ; sentinel; typed alarm crossing deferred
+
+(def eval-args
+  (lam (env args)
+    (case args (nil nil) ((cons a rest) (cons (eval env a) (eval-args env rest))))))

@@ -1,0 +1,242 @@
+(import "prelude")
+(import "bytes-tal")   ; cell-new / bput-u8 / bput-u32-le / bget-u16-le / bget-u32-le
+(import "ports")       ; Pool / pool-create / pool-write / pool-read / pool-close / fd-close
+
+; ─── Color: a closed sum — superset of default / 256-index / 24-bit truecolor. ─
+(data Color ()
+  (color-default)
+  (color-indexed (idx I64))              ; 0..255 palette index (SGR 30-37/38;5;n)
+  (color-rgb (r I64) (g I64) (b I64)))   ; 24-bit truecolor      (SGR 38;2;r;g;b)
+
+; ─── Attrs: the "pen" — ECMA-48 rendition stamped onto written cells. ─────────
+(data Attrs ()
+  (attrs (bold Bool) (underline Bool) (italic Bool)
+         (reverse Bool) (blink Bool) (strike Bool)
+         (fg Color) (bg Color)))
+
+; ─── Cell: one screen cell = base codepoint + rendition + display width. ──────
+(data Cell () (cell (ch I64) (rend Attrs) (width I64)))
+
+; ─── Cursor: cursor and pen are GRID STATE, not ambient globals. ──────────────
+(data Cursor () (cursor (row I64) (col I64)))
+
+; ─── Grid: E111 — the store is a LINEAR, size-indexed native region. ──────────
+;   A cell lives at byte offset idx*cell-bytes (idx = row*cols + col); a single
+;   cell write is an O(1) in-place `pool-write` crossing, not an O(rows*cols)
+;   list-spine rebuild. `rows`/`cols` are runtime (unerased) witnesses — the
+;   row-major index needs them; the BOUND `n` is the erased type-level size.
+(data Grid ((n I64))
+  (grid (rows I64) (cols I64)
+        (1 store (Pool n))                ; the mutable cell region, rows*cols*16 bytes
+        (cur  Cursor)
+        (pen  Attrs)))                     ; current SGR rendition
+
+; ─── Sgr as a boundary sum: parse each param ONCE, case totally downstream ────
+(data Sgr ()
+  (sgr-reset)
+  (sgr-bold (on Bool)) (sgr-underline (on Bool)) (sgr-italic (on Bool))
+  (sgr-reverse (on Bool)) (sgr-blink (on Bool)) (sgr-strike (on Bool))
+  (sgr-fg (c Color)) (sgr-bg (c Color))
+  (sgr-other (code I64)))                  ; unknown/unsupported — ignored, not fatal
+
+; ═══════════════════════════════════════════════════════════════════════════════
+;   The 16-byte Cell⇄bytes codec (E111 decision #2). Fixed-width, pure,
+;   allocation-bounded (one `cell-new 16` + fixed `bput-*`/`bget-*`).
+;
+;     [0..4)  ch (u32 LE codepoint)         [9]      bg tag
+;     [4]     flags: b0 bold b1 ul b2 it    [10..13) bg payload (idx | r,g,b)
+;             b3 rev b4 blink b5 strike     [13]     width (u8)
+;     [5]     fg tag (0 def 1 idx 2 rgb)    [14..16) pad (0)
+;     [6..9)  fg payload (idx | r,g,b)
+; ═══════════════════════════════════════════════════════════════════════════════
+(def cell-bytes I64 16)
+
+; forward declares for the codec
+(declare b2i        (-> Bool I64))
+(declare bget-u8    (-> Bytes I64 I64))
+(declare bit?       (-> I64 I64 Bool))
+(declare enc-color  (-> Bytes I64 Color Bytes))
+(declare dec-color  (-> Bytes I64 Color))
+(declare cell->bytes (-> Cell Bytes))
+(declare bytes->cell (-> Bytes Cell))
+
+; bool → 0/1
+(def b2i (lam (b) (case b (true 1) (false 0))))
+
+; read a single byte (low 8 bits of the little-endian u16 at off)
+(def bget-u8 (lam (b off) (band (bget-u16-le b off) 255)))
+
+; is bit i of `flags` set?
+(def bit? (lam (flags i) (=i (band (shr flags i) 1) 1)))
+
+; enc-color: tag byte at off + 3 payload bytes at off+1..off+3
+(def enc-color
+  (lam (rec off c)
+    (case c
+      (color-default     (bput-u8 rec off 0))                          ; tag 0, payload stays 0
+      ((color-indexed i) (bput-u8 (bput-u8 rec off 1) (+ off 1) i))    ; tag 1, idx
+      ((color-rgb r g b) (bput-u8 (bput-u8 (bput-u8 (bput-u8 rec off 2)
+                                    (+ off 1) r) (+ off 2) g) (+ off 3) b)))))
+
+; dec-color: read the tag at off, decode 3 payload bytes at off+1..off+3
+(def dec-color
+  (lam (rec off)
+    (let (tag (bget-u8 rec off))
+      (cond
+        ((=i tag 1) (color-indexed (bget-u8 rec (+ off 1))))
+        ((=i tag 2) (color-rgb (bget-u8 rec (+ off 1)) (bget-u8 rec (+ off 2)) (bget-u8 rec (+ off 3))))
+        (else color-default)))))
+
+; Cell -> a fresh 16-byte record (constant-size allocation, NOT O(grid))
+(def cell->bytes
+  (lam (cl)
+    (case cl
+      ((cell ch rend width)
+        (case rend
+          ((attrs bold ul it rev bl st fg bg)
+            (let (flags (bor (b2i bold)
+                        (bor (shl (b2i ul) 1)
+                        (bor (shl (b2i it) 2)
+                        (bor (shl (b2i rev) 3)
+                        (bor (shl (b2i bl) 4)
+                             (shl (b2i st) 5)))))))
+              (let (r0 (cell-new cell-bytes))
+              (let (r1 (bput-u32-le r0 0 ch))
+              (let (r2 (bput-u8 r1 4 flags))
+              (let (r3 (enc-color r2 5 fg))
+              (let (r4 (enc-color r3 9 bg))
+                   (bput-u8 r4 13 width)))))))))))))
+
+; a fresh 16-byte record -> Cell (dual of cell->bytes)
+(def bytes->cell
+  (lam (rec)
+    (let (ch    (bget-u32-le rec 0))
+    (let (flags (bget-u8 rec 4))
+    (let (fg    (dec-color rec 5))
+    (let (bg    (dec-color rec 9))
+    (let (width (bget-u8 rec 13))
+      (cell ch
+            (attrs (bit? flags 0) (bit? flags 1) (bit? flags 2)
+                   (bit? flags 3) (bit? flags 4) (bit? flags 5) fg bg)
+            width))))))))
+
+; ─── blanks ────────────────────────────────────────────────────────────────────
+(def blank-attrs Attrs
+  (attrs false false false false false false color-default color-default))
+(def blank-cell  Cell (cell 32 blank-attrs 1))       ; space, default pen, width 1
+(def blank-cell-bytes Bytes (cell->bytes blank-cell)) ; the 16-byte blank record
+
+; ─── forward declares — all signatures before any body ─────────────────────────
+(declare fill-blank  (-> (0 n I64) (=> (1 p (Pool n)) I64 I64 (Pool n))))
+(declare grid-new    (-> (w n I64) (=> I64 I64 (Grid n))))
+(declare grid-close  (-> (0 n I64) (=> (1 g (Grid n)) Unit)))
+(declare put-cell    (-> (0 n I64) (=> (1 g (Grid n)) I64 (Grid n))))
+(declare clear       (-> (0 n I64) (=> (1 g (Grid n)) (Grid n))))
+(declare scroll-up   (-> (0 n I64) (=> (1 g (Grid n)) (Grid n))))
+(declare parse-sgr   (-> I64 Sgr))
+(declare apply-one   (-> Attrs Sgr Attrs))
+(declare fold-sgr    (-> Attrs (List I64) Attrs))
+(declare apply-sgr   (-> (0 n I64) (=> (1 g (Grid n)) (List I64) (Grid n))))
+
+; ─── fill-blank: write the blank cell into every cell index in [from, to) ─────
+;   Ranged in-place pool-write loop, threading the linear pool. Replaces the old
+;   (List Cell) blank-cells/erase surgery.
+(def fill-blank
+  (lam (n p from to)
+    (case (not (<i from to))
+      (true p)
+      (false (fill-blank n (pool-write n p (* from cell-bytes) blank-cell-bytes) (+ from 1) to)))))
+
+; ─── grid-new: mint a fresh Pool of rows*cols*16 bytes and blank-fill it ──────
+;   The caller passes n = rows*cols*cell-bytes (the runtime size witness that
+;   agrees with the erased type index by construction). The memfd fd is
+;   discharged immediately (the mmap survives closing the fd), so the Grid owns
+;   only the Pool region — it frees as a unit at grid-close.
+(def grid-new
+  (lam (n rows cols)
+    (case (pool-create n)
+      ((pool-r p fd)
+        (case (fd-close fd)
+          (unit (grid rows cols (fill-blank n p 0 (* rows cols)) (cursor 0 0) blank-attrs)))))))
+
+; ─── grid-close: free the whole cell region as a unit ─────────────────────────
+(def grid-close
+  (lam (n g)
+    (case g
+      ((grid rows cols store cur pen) (pool-close n store)))))
+
+; ─── put-cell: stamp the pen onto the cell at cursor, advance column — O(1) ────
+(def put-cell
+  (lam (n g cp)
+    (case g
+      ((grid rows cols store cur pen)
+        (case cur
+          ((cursor cr cc)
+            (grid rows cols
+                  (pool-write n store (* (+ (* cr cols) cc) cell-bytes) (cell->bytes (cell cp pen 1)))
+                  (cursor cr (+ cc 1))
+                  pen)))))))
+
+; ─── clear: whole screen to blanks, cursor home, pen preserved ────────────────
+(def clear
+  (lam (n g)
+    (case g
+      ((grid rows cols store cur pen)
+        (grid rows cols (fill-blank n store 0 (* rows cols)) (cursor 0 0) pen)))))
+
+; ─── scroll-up: row-block copy (decision #3) — shift rows up one, blank bottom ─
+;   Read rows [1, rows) as one block and write it at row 0, then blank the freed
+;   last row. O(cells) but correct-by-construction; the ring base-row is §6 residue.
+(def scroll-up
+  (lam (n g)
+    (case g
+      ((grid rows cols store cur pen)
+        (case (pool-read n store (* cols cell-bytes) (* (* (- rows 1) cols) cell-bytes))
+          ((pr-r block store1)
+            (grid rows cols
+                  (fill-blank n (pool-write n store1 0 block) (* (- rows 1) cols) (* rows cols))
+                  cur pen)))))))
+
+; ─── parse-sgr: the boundary — ONE int → one Sgr value ────────────────────────
+(def parse-sgr
+  (lam (code)
+    (cond ((=i code 0)  sgr-reset)
+          ((=i code 1)  (sgr-bold true))
+          ((=i code 22) (sgr-bold false))
+          ((=i code 4)  (sgr-underline true))
+          ((=i code 24) (sgr-underline false))
+          ((=i code 7)  (sgr-reverse true))
+          ((=i code 27) (sgr-reverse false))
+          ((and (<=i 30 code) (<=i code 37)) (sgr-fg (color-indexed (- code 30))))
+          ((and (<=i 40 code) (<=i code 47)) (sgr-bg (color-indexed (- code 40))))
+          (else (sgr-other code)))))
+
+; ─── apply-one: total case over Sgr — no default clause ──────────────────────
+(def apply-one
+  (lam (a s)
+    (case a
+      ((attrs bold ul it rev bl st fg bg)
+        (case s
+          (sgr-reset          blank-attrs)
+          ((sgr-bold on)      (attrs on   ul it rev bl st fg bg))
+          ((sgr-underline on) (attrs bold on it rev bl st fg bg))
+          ((sgr-italic on)    (attrs bold ul on rev bl st fg bg))
+          ((sgr-reverse on)   (attrs bold ul it on  bl st fg bg))
+          ((sgr-blink on)     (attrs bold ul it rev on st fg bg))
+          ((sgr-strike on)    (attrs bold ul it rev bl on fg bg))
+          ((sgr-fg c)         (attrs bold ul it rev bl st c  bg))
+          ((sgr-bg c)         (attrs bold ul it rev bl st fg c))
+          ((sgr-other _)      (attrs bold ul it rev bl st fg bg)))))))
+
+; ─── fold-sgr + apply-sgr: fold the CSI-m param list into the grid's pen ──────
+(def fold-sgr
+  (lam (pen params)
+    (case params
+      (nil pen)
+      ((cons p rest) (fold-sgr (apply-one pen (parse-sgr p)) rest)))))
+
+(def apply-sgr
+  (lam (n g params)
+    (case g
+      ((grid rows cols store cur pen)
+        (grid rows cols store cur (fold-sgr pen params))))))

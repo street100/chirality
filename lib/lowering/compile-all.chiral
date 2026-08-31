@@ -1,0 +1,55 @@
+; THE WHOLE COMPILE in ONE Sig -- no 3-RT con-value shuttle. Loaded LAST in the
+; co-load sequence (after compile-front/back/emit), so their defs + the shared
+; intermediate types (NDef/NData/NPrim, NFn/lits) are all visible in one Sig and
+; pass straight through. This is the def that lowers to the native compiler
+; binary; the Python MetisCompiler's 3-RT shuttle cannot (it is host glue).
+; NOT standalone-loadable by design (relies on the co-load order).
+; Imports declared 2026-08-22. This module CALLS compile-front / back-program /
+; emit-elf-m but declared no imports at all, so it could not resolve itself: the
+; compiler needed six explicit roots, and any program embedding the compiler
+; (self-wield, test-runner) failed with `load: unknown name compile-front`.
+; The co-load ORDER note above still holds -- these imports express the same
+; order the six roots did by hand.
+(import "compile-front")
+(import "compile-back")
+(import "compile-emit")
+
+(data CAllR () (ca-ok (elf Bytes)) (ca-err (msg Str)))
+(def compile-all (=> Str Str CAllR)
+  (lam (src entry)
+    (case (compile-front src entry)
+      ((fr-err m) (ca-err m))
+      ((fr-ok defs datas prims ports)
+        (case (back-program defs datas prims)
+          ((br-err m) (ca-err m))
+          ((br-ok fns lits skips)
+            ; H8: the declared port manifest rides through to the emit gate --
+            ; emit-elf-m REFUSES a program that calls a crossing the profile
+            ; froze out. `ports` is (none) when the source declares no profile.
+            ; E160's module coordinates USED to ride the same seam, so the emit
+            ; gate could decide their (pure)/(crosses) claim. E161 retired that
+            ; claim: the port-set axis is derived on each module's datasheet at
+            ; LOAD, from what the module binds, so nothing about a module needs
+            ; carrying to the back half any more.
+            (case (emit-elf-m fns lits entry ports)
+              ((elf-ok b) (ca-ok b))
+              ((elf-err m) (case skips
+                (nil (ca-err m))
+                ((cons s r) (ca-err (str-cat m (str-cat " | " (format-blame entry skips))))))))))))))
+
+; read ALL of fd into one Bytes: 64K chunks until a read returns empty (EOF).
+(def read-fd-go (=> I64 Bytes Bytes)
+  (lam (fd acc)
+    (let (chunk (read fd 65536))
+      (case (=i (blen chunk) 0)
+        (true acc)
+        (false (read-fd-go fd (bcat acc chunk)))))))
+(def read-fd-all (=> I64 Bytes)
+  (lam (fd) (read-fd-go fd (str->bytes ""))))
+
+; The `compile-main` ENTRY does NOT live here. This module is a LIBRARY -- it is
+; imported by test-runner.chiral and self-wield.chiral, which are root programs with
+; entries of their own. A library that also defines the entry symbol makes every
+; program embedding the compiler collide on it ("duplicate label ... compile-main"),
+; which is why the tools reached for the Python interpreter to build anything whose
+; entry was not `compile-main`. The entry lives in compile-driver.chiral.

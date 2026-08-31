@@ -1,0 +1,64 @@
+; E70 -- the bound-crossing -> E51-wrapper routing table, as prelude-only data.
+; A lowered effectful def emits each bound crossing as an `i-prim <crossing>`
+; (compile-fn); ERASE rewrites that to a call into the crossing's wrapper
+; (native.py:294, _conv_code's sys_bindings branch). The erase image imports
+; tal-ssa and so CANNOT import sys-linkage (tal-ir collision) -- hence this leaf,
+; the one representation of the map the erase image can see.
+;
+; INVARIANT: this must agree with lib/sys-linkage.chiral `sys-bindings` (the
+; linkage-side authority, consulted by native.py). tests/test_effectful_lowering
+; and test_e76 both load sys-linkage, which rebuilds sys-bindings from THIS table.
+(import "prelude")
+
+(def crossing-wraps (List (Pair Str Str))
+  (cons (pair "put"   "wrap-put")
+  (cons (pair "print" "wrap-print")
+  (cons (pair "trace" "wrap-trace")
+  (cons (pair "halt"  "wrap-halt")
+  (cons (pair "exit"  "nb-sys-exit-group")
+  (cons (pair "read"  "nb-sys-read")
+  (cons (pair "openat" "nb-sys-openat")
+  (cons (pair "close"  "nb-sys-close")
+  (cons (pair "run-elf" "nb-run-elf")
+  (cons (pair "poll"   "nb-sys-poll")
+  (cons (pair "nb-poll" "nb-sys-poll")
+  (cons (pair "read-key" "nb-read-key")
+  (cons (pair "mmap"   "nb-sys-mmap")
+  (cons (pair "mprotect" "nb-sys-mprotect")
+  (cons (pair "nb-winsz-raw"  "nb-sys-winsz")
+  (cons (pair "nb-tcgets-raw" "nb-sys-tcgets")
+  (cons (pair "nb-tcsets"     "nb-sys-tcsets")
+  (cons (pair "nb-winszw-raw" "nb-sys-winszw")
+  (cons (pair "nb-ptsno-raw"  "nb-sys-ptsno")
+  (cons (pair "nb-ptunlock"   "nb-sys-ptunlock")
+  (cons (pair "open-rw"       "nb-sys-open-rw")
+  (cons (pair "open-create"   "nb-sys-open-create")
+  (cons (pair "write-fd"      "nb-sys-write")
+  (cons (pair "sock-send"     "nb-sock-send")     ; E125  socket use: sendall
+  (cons (pair "sock-recv"     "nb-sock-recv")     ; E125  socket use: one read, 3-way
+  (cons (pair "socketpair"    "nb-sys-socketpair") ; E126  hermetic connected pair
+  (cons (pair "sock-connect"  "nb-sock-connect")   ; E127  client acquisition: socket+connect
+  (cons (pair "nb-sock-connect-in" "nb-sock-connect-in") ; E129  AF_INET client connect: socket+connect
+  (cons (pair "sock-close"    "nb-sys-close")    ; E107  ─┐
+  (cons (pair "lsock-close"   "nb-sys-close")    ; E107   │ fd-backed cap release = close(fd)
+  (cons (pair "fd-close"      "nb-sys-close")    ; E107  ─┘
+  (cons (pair "fcntl"         "nb-sys-fcntl")
+  (cons (pair "nb-setsid"     "nb-sys-setsid")
+  (cons (pair "nb-tiocsctty"  "nb-sys-tiocsctty")
+  (cons (pair "nb-dup2"       "nb-sys-dup2")
+  (cons (pair "spawn-in-pty"  "nb-spawn-in-pty")
+  (cons (pair "pool-create"   "nb-pool-create")  ; E122  size -> PoolR (memfd/ftruncate/mmap)
+  (cons (pair "pool-write"    "nb-pool-write")   ; E120  bounds-checked byte copy into base+off
+  (cons (pair "pool-read"     "nb-pool-read")    ; E120  read len bytes from base+off -> Pair
+  (cons (pair "pool-close"    "nb-pool-close")
+  (cons (pair "raw-proc-spawn" "nb-run-cmd")  ; E33-A2: native process spawn
+  (cons (pair "wait"           "nb-wait")        ; E33-A2: native reap decode
+  (cons (pair "signal"         "nb-signal")      ; signal(2): set signal disposition
+    nil))))))))))))))))))))))))))))))))))))))))))))
+
+(declare cw-lookup (-> (List (Pair Str Str)) Str (Maybe Str)))
+(def cw-lookup (lam (t op)
+  (case t
+    (nil (none))
+    ((cons p r) (case p ((pair k v)
+      (case (str-eq k op) (true (some v)) (false (cw-lookup r op)))))))))

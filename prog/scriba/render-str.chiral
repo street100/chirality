@@ -1,0 +1,41 @@
+; scriba S2.3: Str renderer — the first and most critical renderer.
+; ~30 lines (target: ~30). Pure (->) — no ANSI emission, no stdout.
+;
+; Renders a Str value as lines of text. This is what makes scriba a
+; text editor — the Str renderer is the face the user sees.
+;
+; Terminal dimensions come in as (rows, cols) — the renderer doesn't
+; query the terminal itself. Word wrapping is deferred (Knobs); this
+; version does simple line splitting.
+;
+; Deps: prelude.chiral (Str, Bool, Pair, I64, i64->str)
+;       string-utils.chiral (str-split)
+;       collections.chiral (str-join)
+;       scriba/render.chiral (Rendering, r-text)
+
+(import "prelude")
+(import "string-utils")
+(import "render")
+
+; ─── Local helpers (inlined from collections) ──────────────────────────────
+
+(def str-join (-> Str (List Str) Str)
+  (lam (sep xs)
+    (case xs
+      (nil "")
+      ((cons h t)
+        (case t
+          (nil h)
+          ((cons h2 t2) (str-cat h (str-cat sep (str-join sep t)))))))))
+
+; str-renderer: produce an r-text Rendering node from a Str value.
+; Splits text on newline (LF = I64 10 — chirality has no Char type),
+; then rejoins with newlines. The result is an r-text node with
+; bold = false. Word-boundary wrapping is deferred (see Knobs in
+; render.chiral).
+(def str-renderer (-> Str (Pair I64 I64) Rendering)
+  (lam (text dims)
+    (case dims
+      ((pair rows cols)
+        (let (lines (str-split text (i64->str 10)))
+          (r-text (str-join (i64->str 10) lines) false))))))

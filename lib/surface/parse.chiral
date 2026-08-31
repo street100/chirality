@@ -1,0 +1,1465 @@
+; item-3 (loader FRONT HALF): the chirality-side Sexp -> Surf parser + the top-level
+; form loop. This is the piece that makes the self-hosted loader take SOURCE
+; BYTES rather than pre-bridged terms. The completed pipeline:
+;
+;   source --(E1 sexp.chiral read-all-str)--> (List Sexp)
+;          --(THIS: parse, Sexp -> Surf)---> Surf
+;          --(E2 surface.chiral elab)--------> Core
+;          --(loader.chiral core->term + load-def/load-data)--> checked Sig
+;
+; `parse` mirrors scaffold/chirality/surface.py's FORM DISPATCH (elab :539, arrow
+; :636, lam :674, let :687, case :711, do_ :758) exactly -- it recognizes the
+; same 13 surface forms and the same binder/arm/field shapes -- but it does the
+; RECOGNITION ONLY: a bare symbol becomes (s-var name); resolution to
+; primty/tcon/con/global/var is elab's job (surface.py resolve :598). The
+; top-level loop (`load-source`) threads BOTH a kernel Sig (loader's checker
+; state) and an SEnv (elab's name-resolution tables): each installed def/data
+; grows both so later items see earlier ones. This ports surface.py's
+; toplevel/_data_header/_data_ctors (:145,486,498) def+data handling and E2's
+; DEFERRED data-decl elaboration slice.
+;
+; PURE (->), errors-as-values: parse threads surface's PR result sum; the loop
+; threads loader's LoadR. surface.py stays the differential oracle
+; (test_parse_chirality.py) until the front end switches.
+;
+; RESIDUE (honest scope of the differential corpus):
+;   * `parse` covers all 13 surface forms; def bodies exercised end-to-end are
+;     lit/var/type/arrow/lam/app/case/the/cond (cond desugars to case at elab)
+;     plus `let`/`do` -- both now CHECK end to end (kernel.chiral infer/check lift
+;     t-let via the QTT let rule; do desugars to a linear let), so a let/do body
+;     type-checks into the Sig and is in the corpus.
+;   * `refine` parses, but a real refinement needs comparison-op prims that the
+;     empty base Sig lacks (the deferred extern path) -> not corpus'd.
+;   * top-level: def (BOTH the 4-arg atomic (def name ty body) and the 3-arg
+;     (def name body) that completes a prior (declare name ty)) + (declare name
+;     ty) forward declarations for MUTUAL RECURSION + data + extern (prim) +
+;     porttype (opaque linear atom) + target/profile (H6: the composition
+;     manifest -- parsed, judged and STORED in the Sig; enforcement of the
+;     frozen port set is a separate stage) now load from source. STILL DEFERRED
+;     (a clear step-err): import (needs the file-reading sys face -- the next
+;     slice), the (declare name ty (measure ...)) attribute, and the INDEXED
+;     (porttype Name (idx ty)...) form.
+(import "sexp")                ; Sexp / read-all-str / AllR (E1 reader)
+(import "surface")             ; Surf + sub-types, SEnv/senv, elab, PR/p-ok/p-err
+(import "loader")              ; core->term, load-def, load-data, LoadR, empty-sig
+
+; ================= small classifiers over Sexp =================================
+
+; a quantity token in a binder/field/let position: 0 | 1 | w  ->  I64 0 | 1 | 2.
+(def is-quant (-> Sexp (Maybe I64))
+  (lam (s)
+    (case s
+      ((s-i64 v) (case (=i v 0) (true (some 0))
+                   (false (case (=i v 1) (true (some 1)) (false (none))))))
+      ((s-sym nm) (case (str-eq nm "w") (true (some 2)) (false (none))))
+      (_ (none)))))
+
+; a quantified triple (q name rhs): first is a quant token, second a symbol,
+; exactly three elements. Used for arrow binders, let bindings, and fields.
+(data QB () (qb (q I64) (name Str) (rhs Sexp)) (qb-no))
+(def try-qbinder (-> Sexp QB)
+  (lam (item)
+    (case item
+      ((s-list items)
+        (case items
+          ((cons a r1)
+            (case (is-quant a)
+              (none (qb-no))
+              ((some q)
+                (case r1
+                  ((cons b r2)
+                    (case b
+                      ((s-sym name)
+                        (case r2
+                          ((cons c r3) (case r3 (nil (qb q name c)) (_ (qb-no))))
+                          (nil (qb-no))))
+                      (_ (qb-no))))
+                  (nil (qb-no))))))
+          (nil (qb-no))))
+      (_ (qb-no)))))
+
+; a two-element (name rhs) with a symbol name: params `(P kind)`, `(name ty)`.
+(data P2 () (p2 (name Str) (rhs Sexp)) (p2-no))
+(def extract-2 (-> Sexp P2)
+  (lam (s)
+    (case s
+      ((s-list items)
+        (case items
+          ((cons a r1)
+            (case a
+              ((s-sym name)
+                (case r1
+                  ((cons b r2) (case r2 (nil (p2 name b)) (_ (p2-no))))
+                  (nil (p2-no))))
+              (_ (p2-no))))
+          (nil (p2-no))))
+      (_ (p2-no)))))
+
+; a do step of the shape (<- name e)  ->  some (pair name e).
+(def try-do-bind (-> Sexp (Maybe (Pair Str Sexp)))
+  (lam (s)
+    (case s
+      ((s-list items)
+        (case items
+          ((cons a r1)
+            (case a
+              ((s-sym h)
+                (case (str-eq h "<-")
+                  (true (case r1
+                          ((cons b r2)
+                            (case b
+                              ((s-sym name)
+                                (case r2
+                                  ((cons e r3) (case r3 (nil (some (pair name e))) (_ (none))))
+                                  (nil (none))))
+                              (_ (none))))
+                          (nil (none))))
+                  (false (none))))
+              (_ (none))))
+          (nil (none))))
+      (_ (none)))))
+
+; a list of symbols -> a list of names (lam params, case pattern vars).
+(declare syms->names (-> (List Sexp) (PR (List Str))))
+(def syms->names
+  (lam (items)
+    (case items
+      (nil (p-ok nil))
+      ((cons x r)
+        (case x
+          ((s-sym nm) (case (syms->names r) ((p-err m) (p-err m)) ((p-ok rs) (p-ok (cons nm rs)))))
+          (_ (p-err "expected a symbol")))))))
+
+; ================= the recursive-descent spine: Sexp -> Surf ===================
+
+(declare parse       (-> Sexp (PR Surf)))
+(declare parse-list  (-> (List Sexp) (PR Surf)))
+(declare parse-args  (-> (List Sexp) (PR (List Surf))))
+(declare parse-app   (-> Sexp (List Sexp) (PR Surf)))
+(declare parse-type  (-> (List Sexp) (PR Surf)))
+(declare parse-the   (-> (List Sexp) (PR Surf)))
+(declare parse-lam   (-> (List Sexp) (PR Surf)))
+(declare parse-let   (-> (List Sexp) (PR Surf)))
+(declare parse-case  (-> (List Sexp) (PR Surf)))
+(declare parse-do    (-> (List Sexp) (PR Surf)))
+(declare parse-cond  (-> (List Sexp) (PR Surf)))
+(declare parse-refine(-> (List Sexp) (PR Surf)))
+(declare parse-arrow (-> (List Sexp) I64 (PR Surf)))
+(declare parse-arrow-go (-> (List SBind) (List Sexp) I64 (PR Surf)))
+(declare parse-binder (-> Sexp (PR SBind)))
+(declare parse-arms  (-> (List Sexp) (List SArm) (Maybe Surf) (PR (Pair (List SArm) (Maybe Surf)))))
+(declare parse-arm   (-> Sexp Sexp (List SArm) (Maybe Surf) (List Sexp) (PR (Pair (List SArm) (Maybe Surf)))))
+(declare parse-lbind (-> Sexp (PR LBind)))
+(declare parse-lbinds(-> (List Sexp) (PR (List LBind))))
+(declare parse-do-stmt (-> Sexp (PR DoStmt)))
+(declare parse-do-stmts(-> (List Sexp) (PR (List DoStmt))))
+(declare parse-clauses (-> (List Sexp) (PR (List Clause))))
+(declare parse-clause-normal (-> Sexp Sexp (List Sexp) (PR (List Clause))))
+(declare parse-ratoms (-> (List Sexp) (PR (List RAtom))))
+
+; literals -> s-lit-*; a bare symbol -> s-var (resolution is elab's job);
+; a list dispatches on its head.
+(def parse
+  (lam (s)
+    (case s
+      ((s-i64 v)  (p-ok (s-lit-i v)))
+      ((s-str t)  (p-ok (s-lit-s t)))
+      ((s-sym nm) (p-ok (s-var nm)))
+      ((s-list items) (parse-list items)))))
+
+; head dispatch mirrors surface.py elab's keyword table; anything else is an
+; application whose head is the (parsed) first element.
+(def parse-list
+  (lam (items)
+    (case items
+      (nil (p-err "empty ()"))
+      ((cons head rest)
+        (case head
+          ((s-sym h)
+            (cond
+              ((str-eq h "type")   (parse-type rest))
+              ((str-eq h "->")     (parse-arrow rest 0))
+              ((str-eq h "=>")     (parse-arrow rest 1))
+              ((str-eq h "lam")    (parse-lam rest))
+              ((str-eq h "let")    (parse-let rest))
+              ((str-eq h "case")   (parse-case rest))
+              ((str-eq h "do")     (parse-do rest))
+              ((str-eq h "cond")   (parse-cond rest))
+              ((str-eq h "the")    (parse-the rest))
+              ((str-eq h "refine") (parse-refine rest))
+              (else (parse-app head rest))))
+          (_ (parse-app head rest)))))))
+
+(def parse-args
+  (lam (args)
+    (case args
+      (nil (p-ok nil))
+      ((cons a r)
+        (case (parse a)
+          ((p-err m) (p-err m))
+          ((p-ok aS) (case (parse-args r) ((p-err m) (p-err m)) ((p-ok rS) (p-ok (cons aS rS))))))))))
+
+(def parse-app
+  (lam (headSexp args)
+    (case (parse headSexp)
+      ((p-err m) (p-err m))
+      ((p-ok headS)
+        (case (parse-args args)
+          ((p-err m) (p-err m))
+          ((p-ok argsS) (p-ok (s-app headS argsS))))))))
+
+(def parse-type
+  (lam (rest)
+    (case rest
+      ((cons a r) (case r (nil (case a ((s-i64 n) (p-ok (s-type n))) (_ (p-err "(type level)"))))
+                          (_ (p-err "(type level)"))))
+      (nil (p-err "(type level)")))))
+
+(def parse-the
+  (lam (rest)
+    (case rest
+      ((cons tyf r)
+        (case r
+          ((cons ef r2)
+            (case r2
+              (nil (case (parse tyf) ((p-err m) (p-err m))
+                     ((p-ok tyS) (case (parse ef) ((p-err m) (p-err m)) ((p-ok eS) (p-ok (s-the tyS eS)))))))
+              (_ (p-err "(the ty e)"))))
+          (nil (p-err "(the ty e)"))))
+      (nil (p-err "(the ty e)")))))
+
+(def parse-lam
+  (lam (rest)
+    (case rest
+      ((cons paramsS r)
+        (case r
+          ((cons bodyf r2)
+            (case r2
+              (nil (case paramsS
+                     ((s-list psItems)
+                       (case (syms->names psItems) ((p-err m) (p-err m))
+                         ((p-ok names) (case (parse bodyf) ((p-err m) (p-err m))
+                                         ((p-ok bodyS) (p-ok (s-lam names bodyS)))))))
+                     (_ (p-err "(lam (x ...) body)"))))
+              (_ (p-err "(lam (x ...) body)"))))
+          (nil (p-err "(lam (x ...) body)"))))
+      (nil (p-err "(lam (x ...) body)")))))
+
+; single binding `(x v)` OR a list of bindings `((x v) (y w))`: surface.py keys
+; on whether the FIRST element of the binding form is itself a list.
+(def parse-let
+  (lam (rest)
+    (case rest
+      ((cons bindS r)
+        (case r
+          ((cons bodyf r2)
+            (case r2
+              (nil (case bindS
+                     ((s-list bitems)
+                       (case bitems
+                         (nil (p-err "(let binding body)"))
+                         ((cons first more)
+                           (let (blist (case first ((s-list z) bitems) (_ (cons bindS nil))))
+                             (case (parse-lbinds blist) ((p-err m) (p-err m))
+                               ((p-ok lbs) (case (parse bodyf) ((p-err m) (p-err m))
+                                             ((p-ok bodyS) (p-ok (s-let lbs bodyS))))))))))
+                     (_ (p-err "(let binding body)"))))
+              (_ (p-err "(let binding body)"))))
+          (nil (p-err "(let binding body)"))))
+      (nil (p-err "(let binding body)")))))
+
+(def parse-lbind
+  (lam (b)
+    (case (try-qbinder b)
+      ((qb q name valf) (case (parse valf) ((p-err m) (p-err m)) ((p-ok valS) (p-ok (lbind q name valS)))))
+      (qb-no (case (extract-2 b)
+               ((p2 name valf) (case (parse valf) ((p-err m) (p-err m)) ((p-ok valS) (p-ok (lbind 2 name valS)))))
+               (p2-no (p-err "bad let binding")))))))
+
+(def parse-lbinds
+  (lam (bs)
+    (case bs
+      (nil (p-ok nil))
+      ((cons b r) (case (parse-lbind b) ((p-err m) (p-err m))
+                    ((p-ok lb) (case (parse-lbinds r) ((p-err m) (p-err m)) ((p-ok rs) (p-ok (cons lb rs))))))))))
+
+(def parse-case
+  (lam (rest)
+    (case rest
+      ((cons scrutf branches)
+        (case (parse scrutf) ((p-err m) (p-err m))
+          ((p-ok scrutS) (case (parse-arms branches nil (none)) ((p-err m) (p-err m))
+                           ((p-ok pr) (case pr ((pair arms dflt) (p-ok (s-case scrutS arms dflt)))))))))
+      (nil (p-err "(case scrut branch...)")))))
+
+(def parse-arms
+  (lam (branches acc dflt)
+    (case branches
+      (nil (p-ok (pair (reverse SArm acc) dflt)))
+      ((cons br rest)
+        (case br
+          ((s-list bitems)
+            (case bitems
+              ((cons patS r1)
+                (case r1
+                  ((cons bodyf r2) (case r2 (nil (parse-arm patS bodyf acc dflt rest))
+                                            (_ (p-err "bad case branch (want (pattern body))"))))
+                  (nil (p-err "bad case branch (want (pattern body))"))))
+              (nil (p-err "bad case branch (want (pattern body))"))))
+          (_ (p-err "bad case branch (want (pattern body))")))))))
+
+; a branch pattern: `_` -> default; a bare ctor sym -> nullary arm;
+; `(ctor x y)` -> arm binding pattern vars.
+(def parse-arm
+  (lam (patS bodyf acc dflt rest)
+    (case patS
+      ((s-sym pn)
+        (case (str-eq pn "_")
+          (true (case (parse bodyf) ((p-err m) (p-err m))
+                  ((p-ok bodyS) (parse-arms rest acc (some bodyS)))))
+          (false (case (parse bodyf) ((p-err m) (p-err m))
+                   ((p-ok bodyS) (parse-arms rest (cons (sarm pn nil bodyS) acc) dflt))))))
+      ((s-list patitems)
+        (case patitems
+          ((cons ch cvars)
+            (case ch
+              ((s-sym cname)
+                (case (syms->names cvars) ((p-err m) (p-err m))
+                  ((p-ok vars) (case (parse bodyf) ((p-err m) (p-err m))
+                                 ((p-ok bodyS) (parse-arms rest (cons (sarm cname vars bodyS) acc) dflt))))))
+              (_ (p-err "bad case pattern"))))
+          (nil (p-err "bad case pattern"))))
+      (_ (p-err "bad case pattern")))))
+
+(def parse-do
+  (lam (rest)
+    (case (parse-do-stmts rest) ((p-err m) (p-err m)) ((p-ok stmts) (p-ok (s-do stmts))))))
+(def parse-do-stmts
+  (lam (stmts)
+    (case stmts
+      (nil (p-ok nil))
+      ((cons s rest)
+        (case (parse-do-stmt s) ((p-err m) (p-err m))
+          ((p-ok st) (case (parse-do-stmts rest) ((p-err m) (p-err m)) ((p-ok rs) (p-ok (cons st rs))))))))))
+(def parse-do-stmt
+  (lam (s)
+    (case (try-do-bind s)
+      ((some pr) (case pr ((pair name ef) (case (parse ef) ((p-err m) (p-err m)) ((p-ok eS) (p-ok (do-bind name eS)))))))
+      (none (case (parse s) ((p-err m) (p-err m)) ((p-ok eS) (p-ok (do-plain eS))))))))
+
+(def parse-cond
+  (lam (rest)
+    (case (parse-clauses rest) ((p-err m) (p-err m)) ((p-ok cls) (p-ok (s-cond cls))))))
+(def parse-clauses
+  (lam (cs)
+    (case cs
+      (nil (p-ok nil))
+      ((cons c rest)
+        (case c
+          ((s-list citems)
+            (case citems
+              ((cons testf r1)
+                (case r1
+                  ((cons bodyf r2)
+                    (case r2
+                      (nil (case testf
+                             ((s-sym tn)
+                               (case (str-eq tn "else")
+                                 (true (case (parse bodyf) ((p-err m) (p-err m))
+                                         ((p-ok bodyS) (case (parse-clauses rest) ((p-err m) (p-err m))
+                                                         ((p-ok rs) (p-ok (cons (else-clause bodyS) rs)))))))
+                                 (false (parse-clause-normal testf bodyf rest))))
+                             (_ (parse-clause-normal testf bodyf rest))))
+                      (_ (p-err "bad cond clause"))))
+                  (nil (p-err "bad cond clause"))))
+              (nil (p-err "bad cond clause"))))
+          (_ (p-err "bad cond clause")))))))
+(def parse-clause-normal
+  (lam (testf bodyf rest)
+    (case (parse testf) ((p-err m) (p-err m))
+      ((p-ok testS) (case (parse bodyf) ((p-err m) (p-err m))
+                      ((p-ok bodyS) (case (parse-clauses rest) ((p-err m) (p-err m))
+                                      ((p-ok rs) (p-ok (cons (clause testS bodyS) rs))))))))))
+
+(def parse-refine
+  (lam (rest)
+    (case rest
+      ((cons basef atomforms)
+        (case (parse basef) ((p-err m) (p-err m))
+          ((p-ok baseS) (case (parse-ratoms atomforms) ((p-err m) (p-err m))
+                          ((p-ok atoms) (p-ok (s-refine baseS atoms)))))))
+      (nil (p-err "(refine base atoms)")))))
+(def parse-ratoms
+  (lam (as)
+    (case as
+      (nil (p-ok nil))
+      ((cons a rest)
+        (case a
+          ((s-list aitems)
+            (case aitems
+              ((cons opS r1)
+                (case r1
+                  ((cons operandf r2)
+                    (case r2
+                      (nil (case opS
+                             ((s-sym op) (case (parse operandf) ((p-err m) (p-err m))
+                                           ((p-ok operS) (case (parse-ratoms rest) ((p-err m) (p-err m))
+                                                           ((p-ok rs) (p-ok (cons (ratom op operS) rs)))))))
+                             (_ (p-err "bad refinement atom"))))
+                      (_ (p-err "bad refinement atom (want (op operand))"))))
+                  (nil (p-err "bad refinement atom (want (op operand))"))))
+              (nil (p-err "bad refinement atom (want (op operand))"))))
+          (_ (p-err "bad refinement atom")))))))
+
+; arrow: every item but the last is a binder, the last is the codomain; proc=0
+; for ->, 1 for =>.  needs >= 2 items (surface.py arrow :637).
+(def parse-arrow
+  (lam (items proc)
+    (case items
+      (nil (p-err "arrow needs at least a domain and codomain"))
+      ((cons x rest)
+        (case rest
+          (nil (p-err "arrow needs at least a domain and codomain"))
+          (_ (parse-arrow-go nil items proc)))))))
+(def parse-arrow-go
+  (lam (acc items proc)
+    (case items
+      (nil (p-err "arrow: unreachable"))
+      ((cons x rest)
+        (case rest
+          (nil (case (parse x) ((p-err m) (p-err m))
+                 ((p-ok cod) (p-ok (s-arr (reverse SBind acc) cod proc)))))
+          (_ (case (parse-binder x) ((p-err m) (p-err m))
+               ((p-ok b) (parse-arrow-go (cons b acc) rest proc)))))))))
+; a named quantified binder `(q name ty)`, else an anonymous `_`-binder whose
+; type is the whole item parsed.
+(def parse-binder
+  (lam (item)
+    (case (try-qbinder item)
+      ((qb q name tyf) (case (parse tyf) ((p-err m) (p-err m)) ((p-ok ty) (p-ok (sbind q name ty)))))
+      (qb-no (case (parse item) ((p-err m) (p-err m)) ((p-ok ty) (p-ok (sbind 2 "_" ty))))))))
+
+; ================= the top-level loop: thread Sig + SEnv =======================
+
+; the driver state: the growing kernel Sig (checker) + the growing SEnv (elab
+; name resolution). Both start minimal and grow as each def/data installs.
+(data SrcSt () (sst (sg Sig) (ev SEnv)))
+(data StepR () (step-ok (st SrcSt)) (step-err (msg Str)))
+
+; base SEnv: only the core literal-bearing atoms; everything else is defined by
+; the program (matches a fresh Python Elab, whose data/globals/prims are empty).
+(def base-senv SEnv (senv (cons "I64" (cons "Str" (cons "Bytes" nil))) nil nil nil nil))
+
+(def senv-add-global (-> SEnv Str SEnv)
+  (lam (e n) (case e ((senv a c d g p) (senv a c d (cons n g) p)))))
+(def senv-add-data (-> SEnv Str SEnv)
+  (lam (e n) (case e ((senv a c d g p) (senv a c (cons n d) g p)))))
+(def senv-add-ctor (-> SEnv Str Str SEnv)
+  (lam (e cn home) (case e ((senv a c d g p) (senv a (cons (pair cn home) c) d g p)))))
+; an extern grows the prims table (elab resolves it to c-prim); a porttype grows
+; the atoms table (elab resolves it to c-primty, like a core prim type).
+(def senv-add-prim (-> SEnv Str SEnv)
+  (lam (e n) (case e ((senv a c d g p) (senv a c d g (cons n p))))))
+(def senv-add-atom (-> SEnv Str SEnv)
+  (lam (e n) (case e ((senv a c d g p) (senv (cons n a) c d g p)))))
+
+; register every constructor of a just-loaded data type (name -> its home).
+(declare add-ctors (-> SEnv (List Ctor) Str SEnv))
+(def add-ctors
+  (lam (e cs home)
+    (case cs
+      (nil e)
+      ((cons c r) (case c ((ctor cn flds) (add-ctors (senv-add-ctor e cn home) r home)))))))
+
+; ---- data-decl elaboration (E2's deferred slice) -----------------------------
+; params: each `(P kind)` elaborates its kind (earlier params in scope) to a
+; Term; returns the kind terms + the field-elaboration ctx (all param names,
+; de-Bruijn order = innermost first).
+(declare build-params (-> SEnv (List Str) (List Sexp) (PR (Pair (List Term) (List Str)))))
+(def build-params
+  (lam (env ctx specs)
+    (case specs
+      (nil (p-ok (pair nil ctx)))
+      ((cons spec rest)
+        (case (extract-2 spec)
+          (p2-no (p-err "bad data parameter (want (P kind))"))
+          ((p2 pname kindf)
+            (case (parse kindf) ((p-err m) (p-err m))
+              ((p-ok ksurf)
+                (case (elab env ctx ksurf) ((p-err m) (p-err m))
+                  ((p-ok kcore)
+                    (case (build-params env (cons pname ctx) rest) ((p-err m) (p-err m))
+                      ((p-ok pr) (case pr ((pair ts fctx)
+                        (p-ok (pair (cons (core->term kcore) ts) fctx))))))))))))))))
+
+; a field `(name ty)` (q defaults to w=2) or `(q name ty)`; the ty elaborates
+; against the data name (already registered) + the param ctx.
+(data FldR () (fld-spec (q I64) (fname Str) (tys Sexp)) (fld-no (msg Str)))
+(def parse-field-spec (-> Sexp FldR)
+  (lam (ff)
+    (case (try-qbinder ff)
+      ((qb q name tys) (fld-spec q name tys))
+      (qb-no (case (extract-2 ff)
+               ((p2 name rhs) (fld-spec 2 name rhs))
+               (p2-no (fld-no "bad field (want (name ty) or (q name ty))")))))))
+(declare build-fields (-> SEnv (List Str) (List Sexp) (PR (List Field))))
+(def build-fields
+  (lam (env fctx ffs)
+    (case ffs
+      (nil (p-ok nil))
+      ((cons ff rest)
+        (case (parse-field-spec ff)
+          ((fld-no m) (p-err m))
+          ((fld-spec q fname tys)
+            (case (parse tys) ((p-err m) (p-err m))
+              ((p-ok tsurf)
+                (case (elab env fctx tsurf) ((p-err m) (p-err m))
+                  ((p-ok tcore)
+                    (case (build-fields env fctx rest) ((p-err m) (p-err m))
+                      ((p-ok frest) (p-ok (cons (field q fname (core->term tcore)) frest))))))))))))))
+(declare build-ctors (-> SEnv (List Str) (List Sexp) (PR (List Ctor))))
+(def build-ctors
+  (lam (env fctx cforms)
+    (case cforms
+      (nil (p-ok nil))
+      ((cons cf rest)
+        (case cf
+          ((s-list citems)
+            (case citems
+              ((cons headS fieldforms)
+                (case headS
+                  ((s-sym cname)
+                    (case (build-fields env fctx fieldforms) ((p-err m) (p-err m))
+                      ((p-ok flds) (case (build-ctors env fctx rest) ((p-err m) (p-err m))
+                                     ((p-ok crest) (p-ok (cons (ctor cname flds) crest)))))))
+                  (_ (p-err "constructor needs a name"))))
+              (nil (p-err "empty constructor"))))
+          (_ (p-err "bad constructor")))))))
+
+; ---- the per-form handlers ---------------------------------------------------
+; (def ...): surface.py toplevel keys on arity -- 4-elem (def name ty body) is
+; the atomic self-contained def, 3-elem (def name body) completes a prior
+; (declare name ty). handle-def dispatches on the shape of the tail after the
+; name: one item left -> body-only (finish); two -> ty+body (atomic).
+(declare handle-def   (-> Sig SEnv (List Sexp) StepR))
+(declare handle-def4  (-> Sig SEnv Str Sexp Sexp StepR))
+(declare handle-finish (-> Sig SEnv Str Sexp StepR))
+(def handle-def
+  (lam (sig env rest)
+    (case rest
+      ((cons namS r1)
+        (case namS
+          ((s-sym name)
+            (case r1
+              ((cons af r2)
+                (case r2
+                  (nil (handle-finish sig env name af))            ; (def name body)
+                  ((cons bodyf r3)
+                    (case r3
+                      (nil (handle-def4 sig env name af bodyf))    ; (def name ty body)
+                      (_ (step-err "(def name ty body) or (def name body)"))))))
+              (nil (step-err "(def name ty body) or (def name body)"))))
+          (_ (step-err "def name must be a symbol"))))
+      (nil (step-err "(def name ty body) or (def name body)")))))
+
+; (def name ty body): elaborate ty (name not yet visible), declare the name
+; (recursion), elaborate the body, install+check via loader's load-def.
+(def handle-def4
+  (lam (sig env name tyf bodyf)
+    (case (parse tyf) ((p-err m) (step-err m))
+      ((p-ok tysurf)
+        (case (elab env nil tysurf) ((p-err m) (step-err m))
+          ((p-ok tycore)
+            (let (env2 (senv-add-global env name))
+              (case (parse bodyf) ((p-err m) (step-err m))
+                ((p-ok bodysurf)
+                  (case (elab env2 nil bodysurf) ((p-err m) (step-err m))
+                    ((p-ok bodycore)
+                      (case (load-def sig name tycore bodycore)
+                        ((ld-err m) (step-err m))
+                        ; E160/E161: charge the name, tagged with the head that
+                        ; exported it, to the module's open coordinate (a no-op
+                        ; when none is open -- unannotated modules untouched).
+                        ((ld-ok sig2) (step-ok (sst (sig-charge sig2 name (eh-def)) env2)))))))))))))))
+
+; (def name body): completes a prior (declare name ty). name is already in the
+; SEnv globals (handle-declare added it), so the body resolves it as a Global --
+; supporting self- and mutual recursion. load-finish looks the declared type up
+; (rejecting an undeclared name) and checks the body against it. SEnv unchanged.
+(def handle-finish
+  (lam (sig env name bodyf)
+    (case (parse bodyf) ((p-err m) (step-err m))
+      ((p-ok bodysurf)
+        (case (elab env nil bodysurf) ((p-err m) (step-err m))
+          ((p-ok bodycore)
+            (case (load-finish sig name bodycore)
+              ((ld-err m) (step-err m))
+              ((ld-ok sig2) (step-ok (sst (sig-charge sig2 name (eh-def)) env))))))))))
+
+; (declare name ty): forward declaration for mutual recursion -- install name:ty
+; into the kernel Sig (load-declare, checked as a universe) so a LATER (def name
+; body) or another declare's body can forward-reference name, and grow the SEnv
+; globals so elab resolves it. surface.py toplevel `declare` (:155). The trailing
+; (measure ...) attribute (4-elem declare) is DEFERRED -- a clear step-err.
+(declare handle-declare (-> Sig SEnv (List Sexp) StepR))
+(def handle-declare
+  (lam (sig env rest)
+    (case rest
+      ((cons namS r1)
+        (case namS
+          ((s-sym name)
+            (case r1
+              ((cons tyf r2)
+                (case r2
+                  (nil (case (parse tyf) ((p-err m) (step-err m))
+                         ((p-ok tysurf)
+                           (case (elab env nil tysurf) ((p-err m) (step-err m))
+                             ((p-ok tycore)
+                               (case (load-declare sig name tycore)
+                                 ((ld-err m) (step-err m))
+                                 ((ld-ok sig2) (step-ok (sst sig2 (senv-add-global env name))))))))))
+                  (_ (step-err "(declare name ty (measure ...)) -- measure attribute DEFERRED"))))
+              (nil (step-err "(declare name ty)"))))
+          (_ (step-err "declare name must be a symbol"))))
+      (nil (step-err "(declare name ty)")))))
+
+; (data Name (params) ctors) and (porttype Name ...) in the LINEAR pass:
+; CHARGE-ONLY, install nothing.
+;
+; Both heads are HOISTED out of the linear pass -- load-source installs every
+; porttype atom first (phase 1, install-porttypes) and then the whole data group
+; at once (phase 2, load-data-group), because a data field may forward-reference
+; another data type or a porttype. By the time either installs, not one
+; `(module ...)` form has been read and no coordinate is open, so the INSTALL site cannot
+; charge them: the hoist destroys exactly the position the charge needs. The
+; linear pass still walks the form in source position, and that is where the
+; charge belongs. Hence one head, two jobs, split across the two passes -- the
+; install upstream, the charge here.
+;
+; The form is already VALIDATED when this runs (phases 1 and 2 refuse a
+; malformed one and load-source stops there), so the shape arm below is
+; unreachable; it is a refusal rather than a silent no-op so that a future
+; caller reaching it fails closed.
+(declare handle-hoisted (-> Sig SEnv (List Sexp) ExpHead StepR))
+(def handle-hoisted
+  (lam (sig env rest hd)
+    (case rest
+      ((cons namS r1)
+        (case namS
+          ((s-sym name) (step-ok (sst (sig-charge sig name hd) env)))
+          (_ (step-err "hoisted head: name must be a symbol"))))
+      (nil (step-err "hoisted head: (data Name ...) / (porttype Name ...)")))))
+
+; (extern name ty): elaborate the declared type (name not yet visible; an extern
+; is not self-referential), check it is a universe, install name:ty into `prims`,
+; and grow the SEnv so later (prim name)/bare-name references resolve. Mirrors
+; surface.py toplevel's `extern` head -> K.declare_extern.
+(declare handle-extern (-> Sig SEnv (List Sexp) StepR))
+(def handle-extern
+  (lam (sig env rest)
+    (case rest
+      ((cons namS r1)
+        (case namS
+          ((s-sym name)
+            (case r1
+              ((cons tyf r2)
+                (case r2
+                  (nil (case (parse tyf) ((p-err m) (step-err m))
+                         ((p-ok tysurf)
+                           (case (elab env nil tysurf) ((p-err m) (step-err m))
+                             ((p-ok tycore)
+                               (case (load-extern sig name tycore)
+                                 ((ld-err m) (step-err m))
+                                 ; E161: an extern is an export head -- charge it.
+                                 ((ld-ok sig2) (step-ok (sst (sig-charge sig2 name (eh-extern))
+                                                             (senv-add-prim env name))))))))))
+                  (_ (step-err "(extern name ty)"))))
+              (nil (step-err "(extern name ty)"))))
+          (_ (step-err "extern name must be a symbol"))))
+      (nil (step-err "(extern name ty)")))))
+
+; (porttype Name): an opaque linear atom -- install Name into the linear-atom
+; registry (surface.py toplevel `porttype` head, 2-element form -> declare_atom
+; linear=True) and grow the SEnv so later field types resolve Name as a prim type.
+; The INDEXED form `(porttype Name (idx ty)...)` (value-indexed linear port, an
+; empty data + linear_data) is DEFERRED -- a clear step-err naming the next slice.
+(declare handle-porttype (-> Sig SEnv (List Sexp) StepR))
+(def handle-porttype
+  (lam (sig env rest)
+    (case rest
+      ((cons namS r1)
+        (case namS
+          ((s-sym name)
+            (case r1
+              (nil (case (load-atom sig name)
+                     ((ld-err m) (step-err m))
+                     ((ld-ok sig2) (step-ok (sst sig2 (senv-add-atom env name))))))
+              ; indexed `(porttype Name (n ty)...)`: a value-indexed linear port =
+              ; EMPTY data with the index params, marked linear (mirrors surface.py
+              ; check_data(name, params, {}, []) + linear_data.add). r1 = the specs.
+              (_ (case (build-params env nil r1)
+                   ((p-err m) (step-err m))
+                   ((p-ok pr) (case pr ((pair params fctx)
+                     (case (load-data sig (data-decl name params nil))
+                       ((ld-err m) (step-err m))
+                       ((ld-ok sig2)
+                         (step-ok (sst (sig-add-linear-data sig2 name)
+                                       (senv-add-data env name))))))))))))
+          (_ (step-err "porttype name must be a symbol"))))
+      (nil (step-err "(porttype Name)")))))
+
+; ================= H6: the composition manifest (target / profile) ============
+; Ported from scaffold/chirality/surface.py top_target (:285) and top_profile (:228),
+; which stay the oracle for the semantics:
+;
+;   (target  name (require dname ty) ...)
+;   (profile name (ports p...) (target t) [(memory d)] [(total)])
+;
+; A profile is an ADDITIVE MANIFEST over a FROZEN PORT SET: the imports above it
+; are the manifest, the port list freezes which crossings the composite may use,
+; the target is the requirement type it must satisfy, the optional memory clause
+; names its allocation discipline, and (total) demands a sub-category in which
+; every morphism is total. This slice PARSES + JUDGES + STORES; ENFORCEMENT (emit
+; refusing an off-manifest crossing) reads sig-profiles later and is not here.
+;
+; The oracle RAISES SurfaceError; here every refusal is a VALUE, and the
+; which-of-N reason is a CLOSED SUM (MfErr) parsed once at the point of decision,
+; rendered to a message only at the step-err boundary -- never a string compared
+; downstream (pattern-boundary-sums).
+(data MfErr ()
+  (mf-target-shape)                                ; (target name (require ...) ...)
+  (mf-target-redecl  (n Str))
+  (mf-req-shape)                                   ; a malformed (require name ty)
+  (mf-req-not-type   (r Str) (t Str))              ; requirement type is not a type
+  (mf-profile-shape)                               ; (profile name clause clause ...)
+  (mf-profile-redecl (n Str))
+  (mf-clause-shape)                                ; a clause that is not (head ...)
+  (mf-clause-unknown (h Str))
+  (mf-total-shape)                                 ; (total) takes no arguments
+  (mf-no-ports)
+  (mf-no-target)
+  (mf-port-nonsym)
+  (mf-port-unknown   (p Str))                      ; listed port is not an extern
+  (mf-port-pure      (p Str))                      ; listed port does not cross
+  (mf-target-unknown (pn Str) (tn Str))
+  (mf-memory-shape)
+  (mf-memory-unknown (pn Str) (d Str))
+  (mf-elab           (msg Str)))                   ; an inner parse/elab/infer message
+; a manifest result: the payload, or the closed reason.
+(data MfR ((X (type 0)))
+  (mf-ok  (v X))
+  (mf-bad (e MfErr)))
+
+(declare mf-msg (-> MfErr Str))
+(def mf-msg
+  (lam (e)
+    (case e
+      ((mf-target-shape)      "(target name (require dname ty) ...)")
+      ((mf-target-redecl n)   (str-cat "target " (str-cat n " redeclared")))
+      ((mf-req-shape)         "bad requirement (want (require name ty))")
+      ((mf-req-not-type r t)  (str-cat "requirement " (str-cat r (str-cat " of target " (str-cat t " is not a type")))))
+      ((mf-profile-shape)     "(profile name (ports p...) (target t) [(memory d)])")
+      ((mf-profile-redecl n)  (str-cat "profile " (str-cat n " redeclared")))
+      ((mf-clause-shape)      "bad profile clause")
+      ((mf-clause-unknown h)  (str-cat "unknown profile clause " h))
+      ((mf-total-shape)       "profile total clause is a bare (total)")
+      ((mf-no-ports)          "profile needs (ports p...)")
+      ((mf-no-target)         "profile needs (target name)")
+      ((mf-port-nonsym)       "profile port is not a declared extern")
+      ((mf-port-unknown p)    (str-cat "profile port " (str-cat p " is not a declared extern")))
+      ((mf-port-pure p)       (str-cat "profile port " (str-cat p " is pure; only crossings belong in the port set")))
+      ((mf-target-unknown pn tn) (str-cat "profile " (str-cat pn (str-cat " names unknown target " tn))))
+      ((mf-memory-shape)      "profile memory clause is (memory discipline)")
+      ((mf-memory-unknown pn d) (str-cat "profile " (str-cat pn (str-cat ": unknown memory discipline " (str-cat d " (have linear, region)")))))
+      ((mf-elab m)            m))))
+
+; ---- (target name (require dname ty) ...) ------------------------------------
+; each requirement's type is elaborated in the EMPTY local scope (surface.py
+; self.elab(r[2], [])) and must be a universe (expect_universe). It is stored as
+; a Term -- the Sig's currency; eval-term recovers the oracle's value form.
+(declare mf-req  (-> Sig SEnv Str Sexp (MfR (Pair Str Term))))
+(declare mf-reqs (-> Sig SEnv Str (List Sexp) (MfR (List (Pair Str Term)))))
+(def mf-req
+  (lam (sig env tname r)
+    (case r
+      ((s-list items)
+        (case items
+          ((cons hS r1)
+            (case hS
+              ((s-sym h)
+                (case (str-eq h "require")
+                  (false (mf-bad (mf-req-shape)))
+                  (true
+                    (case r1
+                      ((cons dnS r2)
+                        (case dnS
+                          ((s-sym dn)
+                            (case r2
+                              ((cons tyf r3)
+                                (case r3
+                                  (nil
+                                    (case (parse tyf) ((p-err m) (mf-bad (mf-elab m)))
+                                      ((p-ok tysurf)
+                                        (case (elab env nil tysurf) ((p-err m) (mf-bad (mf-elab m)))
+                                          ((p-ok tycore)
+                                            (let (tyt (core->term tycore))
+                                              (case (infer sig (ctx-nil) tyt)
+                                                ((tc-err m) (mf-bad (mf-elab m)))
+                                                ((tc-ok tty tu)
+                                                  (case tty
+                                                    ((v-type l) (mf-ok (pair dn tyt)))
+                                                    (_ (mf-bad (mf-req-not-type dn tname))))))))))))
+                                  (_ (mf-bad (mf-req-shape)))))
+                              (nil (mf-bad (mf-req-shape)))))
+                          (_ (mf-bad (mf-req-shape)))))
+                      (nil (mf-bad (mf-req-shape)))))))
+              (_ (mf-bad (mf-req-shape)))))
+          (nil (mf-bad (mf-req-shape)))))
+      (_ (mf-bad (mf-req-shape))))))
+(def mf-reqs
+  (lam (sig env tname rs)
+    (case rs
+      (nil (mf-ok nil))
+      ((cons r rest)
+        (case (mf-req sig env tname r)
+          ((mf-bad e) (mf-bad e))
+          ((mf-ok p)
+            (case (mf-reqs sig env tname rest)
+              ((mf-bad e) (mf-bad e))
+              ((mf-ok ps) (mf-ok (cons p ps))))))))))
+
+(declare handle-target (-> Sig SEnv (List Sexp) StepR))
+(def handle-target
+  (lam (sig env rest)
+    (case rest
+      ((cons namS reqs)
+        (case namS
+          ((s-sym name)
+            (case reqs
+              (nil (step-err (mf-msg (mf-target-shape))))       ; needs >= 1 requirement
+              (_ (case (sig-target sig name)
+                   ((some old) (step-err (mf-msg (mf-target-redecl name))))
+                   (none
+                     (case (mf-reqs sig env name reqs)
+                       ((mf-bad e) (step-err (mf-msg e)))
+                       ((mf-ok rs)
+                         (step-ok (sst (sig-add-target sig (mk-target name rs)) env)))))))))
+          (_ (step-err (mf-msg (mf-target-shape))))))
+      (nil (step-err (mf-msg (mf-target-shape)))))))
+
+; ---- (profile name (ports p...) (target t) [(memory d)] [(total)]) -----------
+; clause lookup is BY HEAD, so memory/total are optional and the order is free
+; (surface.py parses the clauses into ports_f/target_f/memory_f the same way).
+(declare mf-known-clause (-> Str Bool))
+(def mf-known-clause
+  (lam (h) (or (str-eq h "ports")
+               (or (str-eq h "target") (or (str-eq h "memory") (str-eq h "total"))))))
+; every clause must be (head ...) with a KNOWN head; (total) takes no arguments.
+(declare mf-check-clauses (-> (List Sexp) (Maybe MfErr)))
+(def mf-check-clauses
+  (lam (cs)
+    (case cs
+      (nil none)
+      ((cons c rest)
+        (case c
+          ((s-list items)
+            (case items
+              ((cons hS r1)
+                (case hS
+                  ((s-sym h)
+                    (case (mf-known-clause h)
+                      (false (some (mf-clause-unknown h)))
+                      (true (case (str-eq h "total")
+                              (false (mf-check-clauses rest))
+                              (true (case r1
+                                      (nil (mf-check-clauses rest))
+                                      (_ (some (mf-total-shape)))))))))
+                  (_ (some (mf-clause-shape)))))
+              (nil (some (mf-clause-shape)))))
+          (_ (some (mf-clause-shape))))))))
+; the TAIL (arguments) of the clause with this head, if any. A repeated clause
+; keeps the LAST one -- surface.py's clause loop assigns ports_f/target_f/
+; memory_f on every hit, so a later clause overwrites an earlier one.
+(declare mf-find-clause (-> (List Sexp) Str (Maybe (List Sexp))))
+(def mf-find-clause
+  (lam (cs h)
+    (case cs
+      (nil none)
+      ((cons c rest)
+        (case c
+          ((s-list items)
+            (case items
+              ((cons hS r1)
+                (case hS
+                  ((s-sym hn)
+                    (case (str-eq hn h)
+                      (true (case (mf-find-clause rest h)
+                              (none (some r1))
+                              ((some later) (some later))))
+                      (false (mf-find-clause rest h))))
+                  (_ (mf-find-clause rest h))))
+              (nil (mf-find-clause rest h))))
+          (_ (mf-find-clause rest h)))))))
+; a listed port must be a DECLARED EXTERN and must CROSS -- a pure extern in a
+; port set is a category error: the set names the crossings, nothing else.
+(declare mf-check-ports (-> Sig (List Sexp) (MfR (List Str))))
+(def mf-check-ports
+  (lam (sig ps)
+    (case ps
+      (nil (mf-ok nil))
+      ((cons p rest)
+        (case p
+          ((s-sym pn)
+            (case (sig-prim-ty sig pn)
+              (none (mf-bad (mf-port-unknown pn)))
+              ((some ty)
+                (case (ty-crosses ty)
+                  (false (mf-bad (mf-port-pure pn)))
+                  (true (case (mf-check-ports sig rest)
+                          ((mf-bad e) (mf-bad e))
+                          ((mf-ok r) (mf-ok (cons pn r)))))))))
+          (_ (mf-bad (mf-port-nonsym))))))))
+; (target t) as a clause: exactly one symbol, else the profile has no target.
+(declare mf-target-of (-> (List Sexp) (Maybe Str)))
+(def mf-target-of
+  (lam (cs)
+    (case (mf-find-clause cs "target")
+      (none none)
+      ((some tail)
+        (case tail
+          ((cons tS r)
+            (case r
+              (nil (case tS ((s-sym t) (some t)) (_ none)))
+              (_ none)))
+          (nil none))))))
+; (memory d) as a clause: absent, or exactly one symbol naming a discipline with
+; a real library home (lib/mem-<d>.chiral) -- a composition-time choice.
+(declare mf-memory-of (-> Str (List Sexp) (MfR (Maybe Str))))
+(def mf-memory-of
+  (lam (pn cs)
+    (case (mf-find-clause cs "memory")
+      (none (mf-ok none))
+      ((some tail)
+        (case tail
+          ((cons dS r)
+            (case r
+              (nil (case dS
+                     ((s-sym d)
+                       (case (name-in d (cons "linear" (cons "region" nil)))
+                         (true  (mf-ok (some d)))
+                         (false (mf-bad (mf-memory-unknown pn d)))))
+                     (_ (mf-bad (mf-memory-shape)))))
+              (_ (mf-bad (mf-memory-shape)))))
+          (nil (mf-bad (mf-memory-shape))))))))
+(declare mf-has-total (-> (List Sexp) Bool))
+(def mf-has-total
+  (lam (cs) (case (mf-find-clause cs "total") (none false) ((some x) true))))
+
+(declare handle-profile-body (-> Sig SEnv Str (List Sexp) StepR))
+(def handle-profile-body
+  (lam (sig env name clauses)
+    (case (sig-profile sig name)
+      ((some old) (step-err (mf-msg (mf-profile-redecl name))))
+      (none
+        (case (mf-check-clauses clauses)
+          ((some e) (step-err (mf-msg e)))
+          (none
+            (case (mf-find-clause clauses "ports")
+              (none (step-err (mf-msg (mf-no-ports))))
+              ((some portspecs)
+                (case (mf-target-of clauses)
+                  (none (step-err (mf-msg (mf-no-target))))
+                  ((some tname)
+                    (case (mf-check-ports sig portspecs)
+                      ((mf-bad e) (step-err (mf-msg e)))
+                      ((mf-ok allowed)
+                        (case (sig-target sig tname)
+                          (none (step-err (mf-msg (mf-target-unknown name tname))))
+                          ((some td)
+                            (case (mf-memory-of name clauses)
+                              ((mf-bad e) (step-err (mf-msg e)))
+                              ((mf-ok mem)
+                                (step-ok (sst (sig-add-profile sig
+                                                (mk-profile name allowed tname mem
+                                                            (mf-has-total clauses)))
+                                              env))))))))))))))))))
+
+(declare handle-profile (-> Sig SEnv (List Sexp) StepR))
+(def handle-profile
+  (lam (sig env rest)
+    (case rest
+      ((cons namS clauses)
+        (case namS
+          ((s-sym name)
+            (case clauses                                     ; needs >= 2 clauses
+              ((cons c1 r1)
+                (case r1
+                  ((cons c2 r2) (handle-profile-body sig env name clauses))
+                  (nil (step-err (mf-msg (mf-profile-shape))))))
+              (nil (step-err (mf-msg (mf-profile-shape))))))
+          (_ (step-err (mf-msg (mf-profile-shape))))))
+      (nil (step-err (mf-msg (mf-profile-shape)))))))
+
+; ============== E161: (module ...) -- the module COORDINATE ==================
+;
+;   (module prelude (cat A) (alt upper))
+;   (module ports   (cat C) (alt upper))
+;
+; THE HEAD IS `module`, not E160's `kind`. The form declares a MODULE's
+; coordinate, and the datasheet it opens (kernel.chiral's Sheet) is the module's
+; own record; naming the head after one of its six fields was E160 reading the
+; form as "a kind annotation" rather than as the module's identity.
+;
+; THE CLAUSES ARE KEYED, not positional, and that is the load-bearing half of the
+; rename. This form's whole thesis is that ONE field is authored and every other
+; field of the record has no surface production at all -- so the grammar has to
+; make "which fields does an author write" readable off the form itself. Keyed
+; clauses do: what you can write is exactly what you can name. E160's positional
+; `A upper` could not, and the cost was measured -- `examples/E161-REQUIREMENTS.md`
+; wrote the sample record as `(module backend (cat C))` and silently dropped
+; `alt`, a field the shipped grammar REQUIRED, because a positional slot names
+; nothing when it is missing. Keyed clauses also make D7 closable at its own
+; grain: if altitude is derived or dropped, the change is deleting one clause
+; here, not re-arity-ing every coordinate in the tree.
+;
+; TWO CLAUSES, BOTH REQUIRED, IN THIS ORDER. Order-freedom would buy nothing and
+; cost a clause-set pass; a missing or misspelled clause is `k-shape`, which
+; prints the whole grammar.
+;
+; ⚑ AUTHORED PENDING D7 -- `(alt ...)`. `(cat ...)` is authored because no
+; traversal answers what a module's correctness RESTS ON. `(alt ...)` has no
+; such warrant: nothing derives altitude and nothing reads it either. It is
+; E160's field carried forward as a stated interim, and the open decision --
+; derive it, keep it a second authored clause, or drop it from the schema --
+; lives at .planning/specs/E161-kind-identifier-SPEC.md D7. Keyed clauses are
+; what make that decision closable HERE, by deleting these two lines and this
+; clause, instead of re-arity-ing every coordinate in the tree.
+;
+; THE PORT-SET CLAUSE IS GONE. E160 had an optional `(pure)` / `(crosses)`, and
+; deleting it is the element: it was a SECOND statement of a fact the module
+; already made by binding (or not binding) an effectful extern, so it could
+; disagree, and a whole emit-gate apparatus existed to catch the disagreement.
+; `Sheet`'s `crossings` derives the same axis from the module's own charges
+; (loader.chiral's crossings-of), so there is nothing to write, nothing to
+; disagree, and every coordinate carries the axis rather than only the ones that
+; remembered to claim.
+;
+; OPTIONAL: a module with no `(module ...)` form loads exactly as it did before.
+; The honest split is worth repeating here because it is the point of the form:
+;
+;   CHECKED here   the SHAPE, the axis VALUES, and REDECLARATION -- an unknown
+;                  typeability letter, an unknown altitude, a malformed clause,
+;                  and a coordinate NAME already declared in this source.
+;   CHECKED at the boundary   the coordinate NAME, against the name the source
+;                  provider emits with `(end-module "<n>")` (k-extent-name), and
+;                  the one-coordinate-per-extent rule (k-two-in-extent).
+;   DERIVED, not checked   the port-set axis. It is not a claim any more; it is
+;                  a field, filled at close from what the module binds.
+;   NOT CHECKED    the typeability LETTER itself. axis-typeability's test is
+;                  "what does its correctness rest on" -- a judgment about a
+;                  proof obligation, not a property of the text. Same for the
+;                  altitude name: partially derivable is not derivable, and a
+;                  check that is right two-thirds of the time is a check that
+;                  gets suppressed. Both are stored and validated, nothing more.
+;
+; WHY THE NAME. Redeclaration has to be decidable, and position cannot decide
+; it. `chirality_blob <roots> > x.chiral && cat prog.chiral >> x.chiral` is how every
+; sample, gate and test program in this repo is built, so a program's own
+; coordinate routinely lands right after the last module's -- and when that last
+; module is a FAÇADE (lib/ports.chiral: imports, a coordinate, one `data` form
+; and nothing else, with `data` forms hoisted out of the linear pass) the loader
+; sees two ADJACENT coordinate forms, structurally identical to one module
+; declaring itself twice. No rule over positions can tell those apart. A name
+; can, exactly and at any distance -- and it is the shape `(target ...)` and
+; `(profile ...)` redeclaration already have here. What it cannot catch is one
+; module declaring two coordinates under DIFFERENT names, which in a flat blob is
+; indistinguishable from two modules; that is a limit of the blob, stated rather
+; than hidden -- and the declared extent narrows it further: two coordinates
+; inside one extent are refused outright.
+;
+; The HANDLERS below keep the `kind` vocabulary (handle-kind / sig-add-kind /
+; kinds-close / ModKind) on purpose: `ModKind` is the internal name of the
+; coordinate value across kernel.chiral and loader.chiral, and renaming only the
+; two parse handlers would split one vocabulary in half. The HEAD is what the
+; author writes; `ModKind` is what it builds.
+;
+; Every refusal is a VALUE and its which-of-N reason is a CLOSED SUM decided at
+; the point of decision, rendered to a message only at the step-err boundary --
+; never a string compared downstream (pattern-boundary-sums), the same shape
+; H6's MfErr and E159's XErr already have.
+(data KErr ()
+  (k-shape)                       ; the form itself is malformed
+  (k-redeclared    (n Str))       ; this coordinate name is already declared
+  (k-cat-unknown   (n Str) (c Str))   ; typeability letter outside A/B/C
+  (k-alt-unknown   (n Str) (a Str))   ; altitude outside upper/tal/metal
+  ; E161 -- the DECLARED extent. The provider emits `(end-module "<name>")`
+  ; after each module's source, so a module's boundary is read, never guessed.
+  (k-extent-shape)                ; the end-module form itself is malformed
+  (k-extent-name (declared Str) (extent Str))  ; coordinate name /= extent name
+  (k-two-in-extent (n Str)))      ; a second coordinate inside one extent
+(declare k-msg (-> KErr Str))
+(def k-msg
+  (lam (e)
+    (case e
+      ((k-shape)        "(module <name> (cat A|B|C) (alt upper|tal|metal))")
+      ((k-redeclared n)
+        (str-cat "module coordinate redeclared: " (str-cat n " already declared its (module ...)")))
+      ((k-cat-unknown n c)
+        (str-cat "module " (str-cat n (str-cat ": unknown typeability category " (str-cat c
+          " (have A, B, C -- what does this module's correctness rest on: proof, an admitted hole, or cross-checked evidence about a hole)")))))
+      ((k-alt-unknown n a)
+        (str-cat "module " (str-cat n (str-cat ": unknown altitude " (str-cat a " (have upper, tal, metal)")))))
+      ((k-extent-shape) "(end-module \"<module>\")")
+      ((k-extent-name declared extent)
+        (str-cat "module coordinate " (str-cat declared
+          (str-cat " is declared inside the extent of module " (str-cat extent
+            " -- the coordinate name and the module it closes must agree")))))
+      ((k-two-in-extent n)
+        (str-cat "module " (str-cat n
+          " declares a second coordinate inside one module extent (the previous (module ...) is still open; one module, one coordinate)"))))))
+
+(declare k-cat-of (-> Str (Maybe KCat)))
+(def k-cat-of
+  (lam (s)
+    (cond ((str-eq s "A") (some (cat-a)))
+          ((str-eq s "B") (some (cat-b)))
+          ((str-eq s "C") (some (cat-c)))
+          (else (none)))))
+(declare k-alt-of (-> Str (Maybe KAlt)))
+(def k-alt-of
+  (lam (s)
+    (cond ((str-eq s "upper") (some (alt-upper)))
+          ((str-eq s "tal")   (some (alt-tal)))
+          ((str-eq s "metal") (some (alt-metal)))
+          (else (none)))))
+; ONE KEYED CLAUSE: exactly `(<key> <value>)`, both bare symbols. Returns the
+; value when the clause is that key and well shaped, `none` otherwise -- the
+; caller turns `none` into k-shape, which prints the whole grammar. There is no
+; per-clause error arm because there is no useful per-clause diagnosis: with two
+; required clauses in a fixed order, "this is not the (cat ...) clause" and "the
+; form is malformed" are the same fact.
+(declare k-clause-of (-> Str Sexp (Maybe Str)))
+(def k-clause-of
+  (lam (key f)
+    (case f
+      ((s-list items)
+        (case items
+          ((cons hS t)
+            (case t
+              ((cons vS t2)
+                (case t2
+                  (nil
+                    (case hS
+                      ((s-sym h)
+                        (case (str-eq h key)
+                          (false (none))
+                          (true  (case vS ((s-sym v) (some v)) (_ (none))))))
+                      (_ (none))))
+                  (_ (none))))
+              (nil (none))))
+          (nil (none))))
+      (_ (none)))))
+
+(declare handle-kind  (-> Sig SEnv (List Sexp) StepR))
+(declare handle-kind4 (-> Sig SEnv Str (List Sexp) StepR))
+(def handle-kind
+  (lam (sig env rest)
+    (case rest
+      ((cons namS r0)
+        (case namS
+          ((s-sym nm)
+            ; the name is the IDENTITY, so the redeclaration judgment is FIRST
+            ; and does not depend on where in the module the form sits. It is
+            ; also the sharper diagnosis of the two: a repeat of THIS name is a
+            ; redeclaration whatever the extent structure around it looks like.
+            (case (sig-kind-taken sig nm)
+              (true  (step-err (k-msg (k-redeclared nm))))
+              (false
+                ; E161: a coordinate is declared once per EXTENT. A DIFFERENT
+                ; name while one is still open is a second coordinate inside one
+                ; module -- refused, never silently read as the previous
+                ; module's close (that reading was the deleted heuristic).
+                (case (sig-open-kind sig)
+                  ((some _) (step-err (k-msg (k-two-in-extent nm))))
+                  (none     (handle-kind4 sig env nm r0))))))
+          (_ (step-err (k-msg (k-shape))))))
+      (nil (step-err (k-msg (k-shape)))))))
+; the two AUTHORED clauses, both required, `(cat ...)` then `(alt ...)`, and
+; nothing after them. The axis VALUES are validated (an unknown letter or
+; altitude names itself in the refusal); the clause SHAPE is not diagnosed per
+; clause -- see k-clause-of.
+(def handle-kind4
+  (lam (sig env nm rest)
+    (case rest
+      ((cons catS r1)
+        (case r1
+          ((cons altS r2)
+            (case r2
+              (nil
+                (case (k-clause-of "cat" catS)
+                  (none (step-err (k-msg (k-shape))))
+                  ((some cn)
+                    (case (k-clause-of "alt" altS)
+                      (none (step-err (k-msg (k-shape))))
+                      ((some an)
+                        (case (k-cat-of cn)
+                          (none (step-err (k-msg (k-cat-unknown nm cn))))
+                          ((some cat)
+                            (case (k-alt-of an)
+                              (none (step-err (k-msg (k-alt-unknown nm an))))
+                              ((some alt)
+                                ; E161: opening a coordinate can also CLOSE one
+                                ; (defensively -- k-two-in-extent refuses the
+                                ; real case upstream), and a close is fenced, so
+                                ; this arm renders sh-msg at the same step-err
+                                ; boundary that renders k-msg.
+                                (case (sig-add-kind sig (mk-modkind nm cat alt true nil))
+                                  ((close-err e) (step-err (sh-msg e)))
+                                  ((close-ok s2) (step-ok (sst s2 env)))))))))))))
+              (_ (step-err (k-msg (k-shape))))))
+          (nil (step-err (k-msg (k-shape))))))
+      (nil (step-err (k-msg (k-shape)))))))
+
+; E161 -- `(end-module "<name>")`: the DECLARED extent boundary, emitted by the
+; source provider after every module it resolved. It closes the open coordinate
+; unconditionally, and refuses when the open coordinate's name is not the name
+; of the module being closed (k-extent-name) -- the check that makes the
+; coordinate name verifiable instead of merely declared. The close itself is the
+; second refusal point: it derives the coordinate's datasheet and fences the
+; authored letter against it (loader's cat-fenced), and that SheetErr is
+; rendered here, at the same step-err boundary as k-msg.
+;
+; With nothing open it is a NO-OP, which is R9: an unannotated module carries
+; the same marker, closes nothing and charges nobody, and so compiles exactly as
+; it did before this element. That is also why the marker is safe to emit for
+; every module rather than only the annotated ones.
+(declare handle-end-module (-> Sig SEnv (List Sexp) StepR))
+(def handle-end-module
+  (lam (sig env rest)
+    (case rest
+      ((cons nS r0)
+        (case r0
+          (nil
+            (case nS
+              ((s-str ext)
+                (case (sig-open-kind sig)
+                  (none (step-ok (sst sig env)))
+                  ((some declared)
+                    (case (str-eq declared ext)
+                      (false (step-err (k-msg (k-extent-name declared ext))))
+                      (true  (case (sig-close-extent sig)
+                               ((close-err e) (step-err (sh-msg e)))
+                               ((close-ok s2) (step-ok (sst s2 env)))))))))
+              (_ (step-err (k-msg (k-extent-shape))))))
+          (_ (step-err (k-msg (k-extent-shape))))))
+      (nil (step-err (k-msg (k-extent-shape)))))))
+
+; one top-level form -> a new driver state (or an error). Handles def (atomic +
+; body-only) / declare (forward decl) / extern (prim) / target+profile (the
+; composition manifest) / kind + end-module (the coordinate and its extent), and
+; the two HOISTED heads -- data and porttype -- which install upstream and here
+; only charge their module's coordinate. Still DEFERRED (a
+; clear step-err via the else): import (needs the file-reading sys face -- the
+; NEXT slice) and the (declare name ty (measure ...)) attribute.
+(declare load-form (-> SrcSt Sexp StepR))
+(def load-form
+  (lam (st f)
+    (case st ((sst sig env)
+      (case f
+        ((s-list items)
+          (case items
+            ((cons headS rest)
+              (case headS
+                ((s-sym head)
+                  (cond
+                    ((str-eq head "def")      (handle-def sig env rest))
+                    ((str-eq head "declare")  (handle-declare sig env rest))
+                    ; E161: `data` / `porttype` are installed by load-source's
+                    ; hoisted phases; here they only CHARGE their head to the
+                    ; open coordinate (handle-hoisted).
+                    ((str-eq head "data")     (handle-hoisted sig env rest (eh-data)))
+                    ((str-eq head "extern")   (handle-extern sig env rest))
+                    ((str-eq head "porttype") (handle-hoisted sig env rest (eh-porttype)))
+                    ; the composition manifest (H6): a target's requirement type
+                    ; must be installed BEFORE the profile that names it -- the
+                    ; linear pass preserves file order, exactly like the oracle.
+                    ((str-eq head "target")   (handle-target sig env rest))
+                    ((str-eq head "profile")  (handle-profile sig env rest))
+                    ; E161: the module coordinate (optional; see handle-kind).
+                    ; The head was `kind` through E160 and is `module` now: the
+                    ; form declares a MODULE, not one of its six record fields.
+                    ((str-eq head "module")   (handle-kind sig env rest))
+                    ; E161: the declared extent boundary (see handle-end-module).
+                    ((str-eq head "end-module") (handle-end-module sig env rest))
+                    ; import installs NOTHING: the self-compile input is a
+                    ; flattened, dependency-ordered, dedup'd blob that inlines
+                    ; every module once, so an imported module's decls are
+                    ; already present. A mis-ordered blob fails loudly on the
+                    ; first unresolved name. It is a pure no-op again as of
+                    ; E161: it used to double as a guessed module boundary, and
+                    ; the guess could not see a def-less façade's end at all.
+                    ; The boundary is declared now -- `(end-module ...)` owns it.
+                    ((str-eq head "import")   (step-ok st))
+                    (else (step-err (str-cat "unsupported toplevel form " head)))))
+                (_ (step-err "bad toplevel form (head not a symbol)"))))
+            (nil (step-err "empty toplevel form"))))
+        (_ (step-err "bad toplevel form (not a list)")))))))
+
+(declare load-forms (-> SrcSt (List Sexp) LoadR))
+(def load-forms
+  (lam (st forms)
+    (case forms
+      (nil (case st ((sst sig env) (ld-ok sig))))
+      ((cons f rest)
+        (case (load-form st f)
+          ((step-err m) (ld-err m))
+          ((step-ok st2) (load-forms st2 rest)))))))
+
+; ---- A1d.1: data-group loading (mutually-recursive data) --------------------
+; The source has mutually-recursive data types (Surf <-> SBind). load-forms is
+; linear, so a forward field ref fails "unknown name". Mirror the Python
+; check_data_group: pull ALL (data ...) forms, register every data NAME in the
+; SEnv, elaborate every decl, load the whole group (add all then check all), then
+; process the remaining forms linearly.
+(declare is-data-form (-> Sexp Bool))
+(def is-data-form (lam (f)
+  (case f
+    ((s-list items) (case items
+      ((cons h r) (case h ((s-sym hd) (str-eq hd "data")) (_ false)))
+      (nil false)))
+    (_ false))))
+(declare data-form-name (-> Sexp Str))
+(def data-form-name (lam (f)
+  (case f
+    ((s-list items) (case items
+      ((cons h r) (case r ((cons nm r2) (case nm ((s-sym dn) dn) (_ ""))) (nil "")))
+      (nil "")))
+    (_ ""))))
+(declare collect-data  (-> (List Sexp) (List Sexp)))
+(def collect-data (lam (forms)
+  (case forms (nil nil)
+    ((cons f rest) (case (is-data-form f)
+      (true  (cons f (collect-data rest)))
+      (false (collect-data rest)))))))
+(declare keep-non-data (-> (List Sexp) (List Sexp)))
+(def keep-non-data (lam (forms)
+  (case forms (nil nil)
+    ((cons f rest) (case (is-data-form f)
+      (true  (keep-non-data rest))
+      (false (cons f (keep-non-data rest))))))))
+(declare senv-add-datanames (-> SEnv (List Sexp) SEnv))
+(def senv-add-datanames (lam (env dforms)
+  (case dforms (nil env)
+    ((cons f rest) (senv-add-datanames (senv-add-data env (data-form-name f)) rest)))))
+; elaborate ONE data form to a DataDecl under `env` (all data names registered).
+(declare elab-data-decl (-> SEnv Sexp (PR DataDecl)))
+(def elab-data-decl (lam (env f)
+  (case f
+    ((s-list items) (case items
+      ((cons hd rest) (case rest
+        ((cons namS r1) (case namS
+          ((s-sym dname) (case r1
+            ((cons plS ctorforms) (case plS
+              ((s-list paramspecs)
+                (case (build-params env nil paramspecs)
+                  ((p-err m) (p-err m))
+                  ((p-ok pr) (case pr ((pair params fctx)
+                    (case (build-ctors env fctx ctorforms)
+                      ((p-err m) (p-err m))
+                      ((p-ok ctors) (p-ok (data-decl dname params ctors)))))))))
+              (_ (p-err "(data Name (params) ctors)"))))
+            (nil (p-err "(data Name (params) ctors)"))))
+          (_ (p-err "data name must be a symbol"))))
+        (nil (p-err "(data Name ...)"))))
+      (nil (p-err "empty data form"))))
+    (_ (p-err "data form not a list")))))
+(declare elab-all-data (-> SEnv (List Sexp) (PR (List DataDecl))))
+(def elab-all-data (lam (env dforms)
+  (case dforms (nil (p-ok nil))
+    ((cons f rest)
+      (case (elab-data-decl env f)
+        ((p-err m) (p-err m))
+        ((p-ok d) (case (elab-all-data env rest)
+          ((p-err m) (p-err m))
+          ((p-ok ds) (p-ok (cons d ds))))))))))
+(declare add-all-ctors (-> SEnv (List DataDecl) SEnv))
+(def add-all-ctors (lam (env decls)
+  (case decls (nil env)
+    ((cons d rest) (case d ((data-decl dn params ctors)
+      (add-all-ctors (add-ctors env ctors dn) rest)))))))
+; porttypes are leaf atoms (no fields, no refs) but DATA may reference them
+; ((data Held () (hold (1 s Sock)))), so they install BEFORE the data group.
+(declare is-porttype-form (-> Sexp Bool))
+(def is-porttype-form (lam (f)
+  (case f
+    ((s-list items) (case items
+      ((cons h r) (case h ((s-sym hd) (str-eq hd "porttype")) (_ false)))
+      (nil false)))
+    (_ false))))
+(declare collect-porttype (-> (List Sexp) (List Sexp)))
+(def collect-porttype (lam (forms)
+  (case forms (nil nil)
+    ((cons f rest) (case (is-porttype-form f)
+      (true  (cons f (collect-porttype rest)))
+      (false (collect-porttype rest)))))))
+; E161: `keep-rest` -- "the forms the LINEAR pass still handles: neither data nor
+; porttype" -- is DELETED, not kept as an identity. The linear pass now walks
+; EVERY form: a hoisted head is charge-only there (handle-hoisted), and dropping
+; it would drop the only place its module of origin is still visible.
+;
+; install-porttypes: phase 1's installer. It calls handle-porttype DIRECTLY
+; rather than going through load-form, because load-form's `porttype` head is
+; now the charge-only one. Same dispatch as load-form's, minus the head lookup.
+(declare install-porttypes (-> SrcSt (List Sexp) StepR))
+(def install-porttypes (lam (st forms)
+  (case forms (nil (step-ok st))
+    ((cons f rest)
+      (case st ((sst sig env)
+        (case f
+          ((s-list items)
+            (case items
+              ((cons h r)
+                (case (handle-porttype sig env r)
+                  ((step-err m) (step-err m))
+                  ((step-ok st2) (install-porttypes st2 rest))))
+              (nil (step-err "(porttype Name)"))))
+          (_ (step-err "(porttype Name)")))))))))
+
+; THE ENTRY: source string -> checked Sig (or an error message). read (E1) ->
+; data group, then per-form parse+elab+install linearly, threading the Sig + SEnv.
+(def load-source (-> Str LoadR)
+  (lam (src)
+    (case (read-all-str src)
+      ((a-err m p) (ld-err (str-cat "parse: " m)))
+      ((a-ok forms)
+        ; 1. porttype atoms first (data may reference them),
+        (case (install-porttypes (sst empty-sig base-senv) (collect-porttype forms))
+          ((step-err m) (ld-err m))
+          ((step-ok stpt) (case stpt ((sst sigpt envpt)
+            ; 2. the whole data group (mutual recursion), then
+            (let (dforms (collect-data forms))
+              (let (envd (senv-add-datanames envpt dforms))
+                (case (elab-all-data envd dforms)
+                  ((p-err m) (ld-err (str-cat "data-group: " m)))
+                  ((p-ok decls)
+                    (case (load-data-group sigpt decls)
+                      ((ld-err m) (ld-err m))
+                      ((ld-ok sig1)
+                        ; 3. EVERY form, linearly, in source order -- data and
+                        ;    porttype forms included, where they charge their
+                        ;    module's coordinate and install nothing (E161;
+                        ;    steps 1 and 2 already installed them),
+                        ;    then E161: close the last extent at EOF. A source
+                        ;    compiled without a provider (`B1 < file`, and the
+                        ;    `chirality_blob ... && cat prog >>` shape above) has one
+                        ;    implicit extent running to EOF and carries no
+                        ;    marker. Leaving it open would mean the loader never
+                        ;    finishes the coordinate for exactly those sources --
+                        ;    fail-open, and silent. One file, one extent, closed.
+                        (case (load-forms (sst sig1 (add-all-ctors envd decls))
+                                          forms)
+                          ((ld-err m) (ld-err m))
+                          ((ld-ok sigf)
+                            (case (sig-close-extent sigf)
+                              ((close-err e) (ld-err (sh-msg e)))
+                              ((close-ok sc) (ld-ok sc)))))))))))))))))))

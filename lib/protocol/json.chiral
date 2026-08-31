@@ -1,0 +1,361 @@
+; JSON as a chirality value tree, with a serializer and a recursive-descent parser.
+; A general module (any program that speaks JSON uses it); the manas backend
+; interface is one caller. Numbers are kept as their raw lexeme (Str): chirality has
+; no float type, so this is lossless and json-int converts when you know it's an
+; integer. Parsing runs on the RT interpreter over Bytes (bget), so it uses the
+; pure prims, not the native nb-* byte library.
+;
+; Known limits (documented, not silent): \u decodes BMP code points to UTF-8 via
+; arithmetic (no bitwise prims at the floor); surrogate pairs (>U+FFFF, e.g.
+; emoji) are not paired and encode their raw surrogate value. Fine for the model
+; metadata / structural JSON the orchestrator exchanges.
+
+(import "prelude")
+
+(data Json ()
+  (j-null)
+  (j-bool (b Bool))
+  (j-num (lexeme Str))
+  (j-str (s Str))
+  (j-arr (items (List Json)))
+  (j-obj (fields (List (Pair Str Json)))))
+
+; ---------------------------------------------------------------- char helpers
+(def code (-> Str I64) (lam (s) (bget (str->bytes s) 0)))
+(def byte->str (-> I64 Str) (lam (c) (bytes->str (bslice (pack-u32 c) 0 1))))
+(def u8 (-> I64 Bytes) (lam (c) (bslice (pack-u32 c) 0 1)))
+
+(def c-quote  I64 (code "\""))
+(def c-bslash I64 (code "\\"))
+(def c-lbrace I64 (code "{"))
+(def c-rbrace I64 (code "}"))
+(def c-lbrack I64 (code "["))
+(def c-rbrack I64 (code "]"))
+(def c-colon  I64 (code ":"))
+(def c-comma  I64 (code ","))
+(def c-minus  I64 (code "-"))
+(def c-0      I64 (code "0"))
+(def c-9      I64 (code "9"))
+
+(def is-digit (-> I64 Bool) (lam (c) (and (<=i c-0 c) (<=i c c-9))))
+(def is-ws (-> I64 Bool)
+  (lam (c) (or (=i c 32) (or (=i c 9) (or (=i c 10) (=i c 13))))))
+
+; ---------------------------------------------------------------- serialize
+(declare json-show (-> Json Str))
+(declare show-items (-> (List Json) Bool Str))
+(declare show-fields (-> (List (Pair Str Json)) Bool Str))
+
+; escape one character (given its byte code and 1-char string) for JSON output
+(def esc-one (-> I64 Str Str)
+  (lam (c ch)
+    (case (=i c c-quote)
+      (true "\\\"")
+      (false (case (=i c c-bslash)
+        (true "\\\\")
+        (false (case (=i c 10)
+          (true "\\n")
+          (false (case (=i c 9)
+            (true "\\t")
+            (false (case (=i c 13)
+              (true (str-cat (byte->str c-bslash) "r"))
+              (false ch))))))))))))
+
+; escape a string body (without the surrounding quotes)
+(def esc-go (-> Str I64 I64 Str)
+  (lam (s i n)
+    (case (<i i n)
+      (false "")
+      (true
+        (let (ch (str-sub s i (+ i 1)))
+          (str-cat (esc-one (code ch) ch) (esc-go s (+ i 1) n)))))))
+
+(def json-quote (-> Str Str)
+  (lam (s) (str-cat "\"" (str-cat (esc-go s 0 (str-len s)) "\""))))
+
+(def json-show
+  (lam (j)
+    (case j
+      (j-null "null")
+      ((j-bool b) (case b (true "true") (false "false")))
+      ((j-num lex) lex)
+      ((j-str s) (json-quote s))
+      ((j-arr items) (str-cat "[" (str-cat (show-items items true) "]")))
+      ((j-obj fields) (str-cat "{" (str-cat (show-fields fields true) "}"))))))
+
+(def show-items
+  (lam (items first)
+    (case items
+      (nil "")
+      ((cons h t)
+        (str-cat (case first (true "") (false ","))
+          (str-cat (json-show h) (show-items t false)))))))
+
+(def show-fields
+  (lam (fields first)
+    (case fields
+      (nil "")
+      ((cons kv rest)
+        (case kv
+          ((pair k v)
+            (str-cat (case first (true "") (false ","))
+              (str-cat (json-quote k)
+                (str-cat ":" (str-cat (json-show v) (show-fields rest false)))))))))))
+
+; ---------------------------------------------------------------- parse
+(data PR () (p-ok (val Json) (pos I64)) (p-err (msg Str) (pos I64)))
+(data SR () (s-ok (s Str) (pos I64)) (s-err (msg Str)))
+(data LR () (l-ok (items (List Json)) (pos I64)) (l-err (msg Str) (pos I64)))
+(data FR () (f-ok (fields (List (Pair Str Json))) (pos I64)) (f-err (msg Str) (pos I64)))
+
+(def skip-ws (-> Bytes I64 I64)
+  (lam (b i)
+    (case (<i i (blen b))
+      (false i)
+      (true (case (is-ws (bget b i)) (true (skip-ws b (+ i 1))) (false i))))))
+
+(def is-num-char (-> I64 Bool)
+  (lam (c)
+    (or (is-digit c)
+      (or (=i c c-minus)
+        (or (=i c (code "+"))
+          (or (=i c (code "."))
+            (or (=i c (code "e")) (=i c (code "E")))))))))
+
+(def scan-num-end (-> Bytes I64 I64)
+  (lam (b i)
+    (case (<i i (blen b))
+      (false i)
+      (true (case (is-num-char (bget b i)) (true (scan-num-end b (+ i 1))) (false i))))))
+
+(def starts-with (-> Bytes I64 Str Bool)
+  (lam (b i kw)
+    (let (klen (str-len kw))
+      (case (<=i (+ i klen) (blen b))
+        (false false)
+        (true (str-eq (bytes->str (bslice b i (+ i klen))) kw))))))
+
+; the char after a backslash -> the byte to emit (simple escapes; ", \, / and
+; anything unknown map to themselves)
+(def esc-char (-> I64 I64)
+  (lam (c)
+    (cond ((=i c (code "n")) 10)
+          ((=i c (code "t")) 9)
+          ((=i c (code "r")) 13)
+          ((=i c (code "b")) 8)
+          ((=i c (code "f")) 12)
+          (else c))))
+
+(def hex-val (-> I64 I64)
+  (lam (c)
+    (cond ((and (<=i c-0 c) (<=i c c-9))               (- c c-0))
+          ((and (<=i (code "a") c) (<=i c (code "f")))  (+ 10 (- c (code "a"))))
+          ((and (<=i (code "A") c) (<=i c (code "F")))  (+ 10 (- c (code "A"))))
+          (else (- 0 1)))))
+; -1 = not a hex digit
+
+; code point -> UTF-8 bytes (via / and %, since there are no bitwise prims).
+; Handles all four lengths, up to U+10FFFF, so astral characters (emoji, decoded
+; from a \uXXXX surrogate pair below) encode correctly. Emits the whole sequence
+; as one Bytes value so the accumulator can decode it once at the closing quote.
+(def utf8 (-> I64 Bytes)
+  (lam (cp)
+    (case (<i cp 128) (true (u8 cp))
+      (false (case (<i cp 2048)
+        (true (bcat (u8 (+ 192 (/ cp 64))) (u8 (+ 128 (% cp 64)))))
+        (false (case (<i cp 65536)
+          (true
+            (bcat (u8 (+ 224 (/ cp 4096)))
+              (bcat (u8 (+ 128 (% (/ cp 64) 64))) (u8 (+ 128 (% cp 64))))))
+          (false
+            (bcat (u8 (+ 240 (/ cp 262144)))
+              (bcat (u8 (+ 128 (% (/ cp 4096) 64)))
+                (bcat (u8 (+ 128 (% (/ cp 64) 64))) (u8 (+ 128 (% cp 64))))))))))))))
+
+; \u escapes for astral characters arrive as a surrogate pair: a high surrogate
+; (D800..DBFF) followed by \u + a low surrogate (DC00..DFFF). These helpers
+; recognise and recombine them; a lone/unpaired surrogate degrades to U+FFFD.
+(def hex4 (-> Bytes I64 I64)
+  (lam (b i)
+    (+ (* (hex-val (bget b i)) 4096)
+       (+ (* (hex-val (bget b (+ i 1))) 256)
+          (+ (* (hex-val (bget b (+ i 2))) 16) (hex-val (bget b (+ i 3))))))))
+(def is-hi-surr (-> I64 Bool) (lam (cp) (and (<=i 55296 cp) (<=i cp 56319))))
+(def is-lo-surr (-> I64 Bool) (lam (cp) (and (<=i 56320 cp) (<=i cp 57343))))
+(def combine-surr (-> I64 I64 I64)
+  (lam (hi lo) (+ 65536 (+ (* (- hi 55296) 1024) (- lo 56320)))))
+
+; The accumulator is Bytes, not Str: the string body is gathered raw and decoded
+; once at the closing quote (bytes->str), so multi-byte UTF-8 -- from \u escapes
+; or from raw bytes in the source -- survives intact instead of being decoded a
+; byte at a time.
+(declare scan-str-go (-> Bytes I64 Bytes SR))
+
+(def scan-uescape (-> Bytes I64 Bytes SR)
+  (lam (b i acc)
+    (case (<=i (+ i 4) (blen b))
+      (false (s-err "bad unicode escape"))
+      (true
+        (let (cp (hex4 b i))
+          (case (is-hi-surr cp)
+            ; the common case: a BMP code point, emitted directly
+            (false (scan-str-go b (+ i 4) (bcat acc (utf8 cp))))
+            ; a high surrogate: pair it with a following \u low surrogate
+            (true
+              (case (<=i (+ i 10) (blen b))
+                (false (scan-str-go b (+ i 4) (bcat acc (utf8 65533))))
+                (true
+                  (case (and (=i (bget b (+ i 4)) c-bslash)
+                             (=i (bget b (+ i 5)) (code "u")))
+                    (false (scan-str-go b (+ i 4) (bcat acc (utf8 65533))))
+                    (true
+                      (let (lo (hex4 b (+ i 6)))
+                        (case (is-lo-surr lo)
+                          (false (scan-str-go b (+ i 4) (bcat acc (utf8 65533))))
+                          (true (scan-str-go b (+ i 10)
+                                  (bcat acc (utf8 (combine-surr cp lo))))))))))))))))))
+
+(def scan-escape (-> Bytes I64 Bytes SR)
+  (lam (b i acc)
+    (case (<i i (blen b))
+      (false (s-err "unterminated escape"))
+      (true
+        (let (c (bget b i))
+          (case (=i c (code "u"))
+            (true (scan-uescape b (+ i 1) acc))
+            (false (scan-str-go b (+ i 1) (bcat acc (u8 (esc-char c)))))))))))
+
+; b[start] is a quote; scan-string starts just past it via scan-str-go
+(def scan-str-go
+  (lam (b i acc)
+    (case (<i i (blen b))
+      (false (s-err "unterminated string"))
+      (true
+        (let (c (bget b i))
+          (case (=i c c-quote)
+            (true (s-ok (bytes->str acc) (+ i 1)))
+            (false (case (=i c c-bslash)
+              (true (scan-escape b (+ i 1) acc))
+              (false (scan-str-go b (+ i 1) (bcat acc (u8 c))))))))))))
+
+(def scan-string (-> Bytes I64 SR)
+  (lam (b i) (scan-str-go b (+ i 1) (str->bytes ""))))   ; b[i] == quote
+
+(declare parse-value (-> Bytes I64 PR))
+(declare parse-elems (-> Bytes I64 LR))
+(declare parse-members (-> Bytes I64 FR))
+
+(def parse-array (-> Bytes I64 PR)
+  (lam (b i)   ; b[i] == '['
+    (let (j (skip-ws b (+ i 1)))
+      (case (<i j (blen b))
+        (false (p-err "unterminated array" j))
+        (true (case (=i (bget b j) c-rbrack)
+          (true (p-ok (j-arr (the (List Json) nil)) (+ j 1)))
+          (false (case (parse-elems b j)
+            ((l-ok items p) (p-ok (j-arr items) p))
+            ((l-err m p) (p-err m p))))))))))
+
+(def parse-elems
+  (lam (b i)
+    (case (parse-value b i)
+      ((p-err m p) (l-err m p))
+      ((p-ok v p)
+        (let (k (skip-ws b p))
+          (case (<i k (blen b))
+            (false (l-err "unterminated array" k))
+            (true (case (=i (bget b k) c-comma)
+              (true (case (parse-elems b (+ k 1))
+                ((l-ok rest q) (l-ok (cons v rest) q))
+                ((l-err m q) (l-err m q))))
+              (false (case (=i (bget b k) c-rbrack)
+                (true (l-ok (cons v (the (List Json) nil)) (+ k 1)))
+                (false (l-err "expected , or ]" k))))))))))))
+
+(def parse-object (-> Bytes I64 PR)
+  (lam (b i)   ; b[i] == '{'
+    (let (j (skip-ws b (+ i 1)))
+      (case (<i j (blen b))
+        (false (p-err "unterminated object" j))
+        (true (case (=i (bget b j) c-rbrace)
+          (true (p-ok (j-obj (the (List (Pair Str Json)) nil)) (+ j 1)))
+          (false (case (parse-members b j)
+            ((f-ok fs p) (p-ok (j-obj fs) p))
+            ((f-err m p) (p-err m p))))))))))
+
+(def parse-members
+  (lam (b i)   ; i at a "key"
+    (let (j (skip-ws b i))
+      (case (<i j (blen b))
+        (false (f-err "unterminated object" j))
+        (true (case (=i (bget b j) c-quote)
+          (false (f-err "expected string key" j))
+          (true (case (scan-string b j)
+            ((s-err m) (f-err m j))
+            ((s-ok key p)
+              (let (k (skip-ws b p))
+                (case (<i k (blen b))
+                  (false (f-err "unterminated object" k))
+                  (true (case (=i (bget b k) c-colon)
+                    (false (f-err "expected :" k))
+                    (true (case (parse-value b (+ k 1))
+                      ((p-err m q) (f-err m q))
+                      ((p-ok v q)
+                        (let (r (skip-ws b q))
+                          (case (<i r (blen b))
+                            (false (f-err "unterminated object" r))
+                            (true (case (=i (bget b r) c-comma)
+                              (true (case (parse-members b (+ r 1))
+                                ((f-ok rest s) (f-ok (cons (pair key v) rest) s))
+                                ((f-err m s) (f-err m s))))
+                              (false (case (=i (bget b r) c-rbrace)
+                                (true (f-ok (cons (pair key v) (the (List (Pair Str Json)) nil)) (+ r 1)))
+                                (false (f-err "expected , or }" r))))))))))))))))))))))))
+
+(def parse-value
+  (lam (b i0)
+    (let (i (skip-ws b i0))
+      (case (<i i (blen b))
+        (false (p-err "unexpected end of input" i))
+        (true
+          (let (c (bget b i))
+            (case (=i c c-lbrace) (true (parse-object b i))
+              (false (case (=i c c-lbrack) (true (parse-array b i))
+                (false (case (=i c c-quote)
+                  (true (case (scan-string b i)
+                    ((s-ok s p) (p-ok (j-str s) p))
+                    ((s-err m) (p-err m i))))
+                  (false (case (or (is-digit c) (=i c c-minus))
+                    (true (let (e (scan-num-end b i)) (p-ok (j-num (bytes->str (bslice b i e))) e)))
+                    (false (case (starts-with b i "true") (true (p-ok (j-bool true) (+ i 4)))
+                      (false (case (starts-with b i "false") (true (p-ok (j-bool false) (+ i 5)))
+                        (false (case (starts-with b i "null") (true (p-ok j-null (+ i 4)))
+                          (false (p-err "unexpected character" i)))))))))))))))))))))
+
+(def json-parse (-> Bytes (Maybe Json))
+  (lam (b) (case (parse-value b 0)
+    ((p-ok v p) (some v))
+    ((p-err m p) none))))
+
+(def json-parse-str (-> Str (Maybe Json))
+  (lam (s) (json-parse (str->bytes s))))
+
+; ---------------------------------------------------------------- accessors
+(def alist-find (-> (List (Pair Str Json)) Str (Maybe Json))
+  (lam (fs key)
+    (case fs
+      (nil none)
+      ((cons kv rest)
+        (case kv ((pair k v) (case (str-eq k key) (true (some v)) (false (alist-find rest key)))))))))
+
+(def obj-get (-> Json Str (Maybe Json))
+  (lam (j key) (case j ((j-obj fs) (alist-find fs key)) (_ none))))
+
+(def as-str (-> Json (Maybe Str)) (lam (j) (case j ((j-str s) (some s)) (_ none))))
+(def as-int (-> Json (Maybe I64)) (lam (j) (case j ((j-num lex) (some (str->i64 lex))) (_ none))))
+(def as-bool (-> Json (Maybe Bool)) (lam (j) (case j ((j-bool b) (some b)) (_ none))))
+(def as-arr (-> Json (Maybe (List Json))) (lam (j) (case j ((j-arr xs) (some xs)) (_ none))))
+; numbers with a fractional part have no I64 form (chirality is I64-only); keep the
+; raw lexeme so callers that only need to store/forward a float (e.g. a search
+; distance) can, without a float type.
+(def as-numstr (-> Json (Maybe Str)) (lam (j) (case j ((j-num lex) (some lex)) (_ none))))

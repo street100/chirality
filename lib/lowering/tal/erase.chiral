@@ -1,0 +1,284 @@
+; tal-erase: the ERASURE half of the tal back-half join -- typed SSA -> the
+; neutral erased normal form. This is the step lib/tal-ssa.chiral's header names
+; ("the two IRs join by ERASURE") but which had no implementation: it drops the
+; TalTy annotations, flattens Block/TalTerm into the seq-structured code, resolves
+; each constructor NAME to its declaration-order tag, decides the immediate-vs-
+; boxed representation (an all-nullary data type is an immediate tag; any fielded
+; constructor boxes the whole type), and classifies prim ops. The Python oracle
+; is scaffold/chirality/native.py `_conv_code` / `tal_to_tfn` (the TalFn -> tal-ir
+; shuttle); this is its chirality port over lib/tal-ssa.chiral values.
+;
+; STRUCTURAL FINDING -- why erasure is TWO modules, not one: tal-ssa (the input)
+; and tal-ir (the output the emitter consumes) deliberately REUSE constructor
+; names (`TFn`/`tfn`/`t-ret`/`tt-case`). chirality has a flat namespace + whole-file
+; `import` with no selective/qualified form, so a single module importing both
+; is a hard load error (`t-ret redeclared`). The erasure is therefore split:
+; THIS module (imports tal-ssa) produces the neutral NFn (lib/erased-nf.chiral);
+; lib/tal-reify.chiral (imports tal-ir) rebuilds tal-ir.TFn from NFn 1:1. The
+; erasure is `reify-fn . erase-fn`. Pure, total, errors-as-values (a construct
+; outside the native subset returns an xf-err reason, never a raise).
+(import "prelude")
+(import "tal-ssa")
+(import "erased-nf")
+(import "crossing-wraps")       ; E70: the bound-crossing -> wrapper routing table
+
+; ---- result carriers (errors-as-values) ------------------------------------
+(data XI  () (xi-ok  (i NInstr)) (xi-err  (reason Str)))
+(data XC  () (xc-ok  (code NCode)) (xc-err (reason Str)))
+(data XBR () (xbr-ok (brs (List (Pair (Pair I64 (List I64)) NCode)))) (xbr-err (reason Str)))
+(data XD  () (xd-ok  (dflt (Maybe NCode))) (xd-err (reason Str)))
+(data XF  () (xf-ok  (fn NFn)) (xf-err  (reason Str)))
+(data XFS () (xfs-ok (fns (List NFn))) (xfs-err (reason Str)))
+
+; ---- generic + string helpers ----------------------------------------------
+(declare nlen (-> (0 A (type 0)) (List A) I64))
+(def nlen (lam (A xs) (case xs (nil 0) ((cons h t) (+ 1 (nlen A t))))))
+
+(declare str-mem (-> Str (List Str) Bool))
+(def str-mem (lam (x xs) (case xs (nil false)
+  ((cons h t) (case (str-eq x h) (true true) (false (str-mem x t)))))))
+
+(declare str-assoc (-> Str (List (Pair Str Str)) (Maybe Str)))
+(def str-assoc (lam (k ps) (case ps (nil (none))
+  ((cons p r) (case p ((pair pk pv) (case (str-eq pk k) (true (some pv)) (false (str-assoc k r)))))))))
+
+; ---- data-declaration lookups (the tag + boxing oracle, native.py:220-234) --
+(declare find-ddata (-> (List DData) Str (Maybe (List DCtor))))
+(def find-ddata (lam (ds dn) (case ds (nil (none))
+  ((cons d r) (case d ((ddata dn2 cs) (case (str-eq dn2 dn) (true (some cs)) (false (find-ddata r dn)))))))))
+
+; index of cn within a constructor list, threading the running position
+(declare dctor-index (-> (List DCtor) Str I64 (Maybe I64)))
+(def dctor-index (lam (cs cn i) (case cs (nil (none))
+  ((cons c r) (case c ((dctor cn2 ftys) (case (str-eq cn2 cn)
+    (true (some i)) (false (dctor-index r cn (+ i 1))))))))))
+
+; the tag of a constructor: its index in its OWN data type's order (native
+; builds one global ctor_tag map, tag = order.index(cname))
+(declare ctor-tag (-> (List DData) Str (Maybe I64)))
+(def ctor-tag (lam (ds cn) (case ds (nil (none))
+  ((cons d r) (case d ((ddata dn cs) (case (dctor-index cs cn 0)
+    ((some i) (some i)) (none (ctor-tag r cn)))))))))
+
+; the data type a constructor belongs to
+(declare dname-of (-> (List DData) Str (Maybe Str)))
+(def dname-of (lam (ds cn) (case ds (nil (none))
+  ((cons d r) (case d ((ddata dn cs) (case (dctor-index cs cn 0)
+    ((some i) (some dn)) (none (dname-of r cn)))))))))
+
+(declare all-nullary (-> (List DCtor) Bool))
+(def all-nullary (lam (cs) (case cs (nil true)
+  ((cons c r) (case c ((dctor cn ftys) (case ftys (nil (all-nullary r)) (_ false))))))))
+
+; _is_enum: the data exists and every constructor is nullary -> immediate tags
+(declare is-enum (-> (List DData) Str Bool))
+(def is-enum (lam (ds dn) (case (find-ddata ds dn) (none false) ((some cs) (all-nullary cs)))))
+
+; a case scrutinee is boxed iff its data type is not an enum (all branches
+; share one data type, so the first branch decides -- native.py:245-248)
+(declare boxed-of (-> (List DData) (List Branch) Bool))
+(def boxed-of (lam (ds brs) (case brs (nil false)
+  ((cons b rest) (case b ((branch cn dsts body)
+    (case (dname-of ds cn) (none false)
+      ((some dn) (case (is-enum ds dn) (true false) (false true))))))))))
+
+; ---- prim classification (native.py _PRIMS / PRIM2LIB, same precedence) -----
+; the machine-native binary ops the emitter's op table implements directly.
+; op-parse is THE erase boundary (former native-prims membership): a `Str` op
+; name is parsed ONCE into the closed `Op` sum, so every downstream node/consumer
+; carries `Op`, matches it exhaustively, and needs no defensive "unknown prim".
+(declare op-parse (-> Str (Maybe Op)))
+(def op-parse (lam (op)
+  (case (str-eq op "+")    (true (some (op-add)))
+  (false (case (str-eq op "-")     (true (some (op-sub)))
+  (false (case (str-eq op "*")     (true (some (op-mul)))
+  (false (case (str-eq op "/")     (true (some (op-div)))
+  (false (case (str-eq op "%")     (true (some (op-mod)))
+  (false (case (str-eq op "=i")    (true (some (op-eqi)))
+  (false (case (str-eq op "<i")    (true (some (op-lti)))
+  (false (case (str-eq op "<=i")   (true (some (op-lei)))
+  (false (case (str-eq op "mulhi") (true (some (op-mulhi)))
+  (false (case (str-eq op "sar")   (true (some (op-sar)))
+  (false (case (str-eq op "shr")   (true (some (op-shr)))
+  (false (case (str-eq op "band")  (true (some (op-band)))
+  (false (case (str-eq op "bor")   (true (some (op-bor)))
+  (false (case (str-eq op "bxor")  (true (some (op-bxor)))
+  (false (case (str-eq op "shl")   (true (some (op-shl)))
+  (false (none)))))))))))))))))))))))))))))))))
+
+; every other lowerable prim is a call into the chirality-authored byte library
+(declare prim2lib-table (List (Pair Str Str)))
+(def prim2lib-table
+  (cons (pair "str-len" "nb-blen") (cons (pair "blen" "nb-blen")
+  (cons (pair "str-eq" "nb-beq")
+  (cons (pair "str-sub" "nb-bslice") (cons (pair "bslice" "nb-bslice")
+  (cons (pair "str-find" "nb-bfind") (cons (pair "str-find-from" "nb-bfind-from")
+  (cons (pair "str-cat" "nb-bcat") (cons (pair "bcat" "nb-bcat")
+  (cons (pair "i64->str" "nb-i64s")
+  (cons (pair "str->bytes" "nb-id") (cons (pair "bytes->str" "nb-id")
+  (cons (pair "adopt-fd" "nb-id")
+  ; E144: Str<->Backend identity peels for the str-carried Backend porttype
+  ; (Backend IS its base URL string at runtime; open/base are runtime no-ops,
+  ; the linear discipline is type-level only). Same nb-id mechanism as adopt-fd.
+  (cons (pair "backend-open" "nb-id") (cons (pair "be-base" "nb-id")
+  ; E145: be-peek launders a linear str-porttype -- pure `->` extern, lowered
+  ; like the nb-id peels but to nb-be-peek-t (bytes-tal), which ti-cona's the
+  ; two-field (be-peek-r base b) sum so the base is usable (qw) beside a fresh
+  ; q1 handle. Same prim2lib path as the E144 sibling peels; no crossing-wraps
+  ; row (it crosses no membrane, issues no syscall).
+  ; E137: backend-close discharges the linear handle to Unit (consume->fresh-unit,
+  ; nb-be-close-t) -- the terminal of every linear Backend chain. Pure `->`, no
+  ; crossing-wraps row (crosses no membrane, issues no syscall).
+  (cons (pair "backend-close" "nb-be-close")
+  (cons (pair "be-peek" "nb-be-peek")
+  (cons (pair "bget" "nb-bget")
+  (cons (pair "brepeat" "nb-brepeat")
+  (cons (pair "pack-u32" "nb-pack32") (cons (pair "unpack-u32" "nb-unpack32")
+  (cons (pair "pack-u16" "nb-pack16") (cons (pair "unpack-u16" "nb-unpack16")
+    nil))))))))))))))))))))))))
+(def prim2lib (-> Str (Maybe Str)) (lam (op) (str-assoc op prim2lib-table)))
+
+; erase one i-prim, in native.py's precedence: native binary op, then the
+; inlined bget / blen machine ops, then the byte-library call rewrite.
+; two operands off a src list (patterns are one level deep, so peel twice)
+(declare two-srcs (-> (List I64) (Maybe (Pair I64 I64))))
+(def two-srcs (lam (srcs)
+  (case srcs
+    (nil (none))
+    ((cons a rest) (case rest (nil (none)) ((cons b more) (some (pair a b))))))))
+(declare one-src (-> (List I64) (Maybe I64)))
+(def one-src (lam (srcs) (case srcs (nil (none)) ((cons a rest) (some a)))))
+
+(declare erase-prim (-> I64 Str (List I64) XI))
+(def erase-prim (lam (dst op srcs)
+  (case (op-parse op)
+    ((some o) (case (two-srcs srcs)
+      ((some ab) (case ab ((pair a b) (xi-ok (en-prim dst o a b)))))
+      (none (xi-err (str-cat "native prim needs 2 operands: " op)))))
+    ((none) (case (str-eq op "bget")
+      (true (case (two-srcs srcs)
+        ((some pi) (case pi ((pair p i) (xi-ok (n-bget dst p i)))))
+        (none (xi-err "bget needs 2 operands"))))
+      (false (case (str-eq op "blen")
+        (true (case (one-src srcs) ((some s) (xi-ok (n-blen dst s))) (none (xi-err "blen needs 1 operand"))))
+        (false (case (str-eq op "str-len")
+          (true (case (one-src srcs) ((some s) (xi-ok (n-blen dst s))) (none (xi-err "str-len needs 1 operand"))))
+          (false (case (prim2lib op)
+            ((some lib) (xi-ok (n-call dst lib srcs)))
+            (none (xi-err (str-cat "prim not in native subset: " op))))))))))))))
+
+; ---- the walk: Instr -> NInstr, Block/TalTerm -> NCode, TFn -> NFn -------------
+(declare erase-instr    (-> (List DData) Instr XI))
+(declare erase-instrs   (-> (List DData) (List Instr) NCode XC))
+(declare erase-term     (-> (List DData) TalTerm XC))
+(declare erase-branches (-> (List DData) (List Branch) XBR))
+(declare erase-dflt     (-> (List DData) (Maybe Block) XD))
+(declare erase-block    (-> (List DData) Block XC))
+(declare erase-fn       (-> (List DData) TFn XF))
+(declare erase-prog     (-> (List DData) (List TFn) XFS))
+
+(def erase-instr (lam (env i)
+  (case i
+    ; drop the TalTy annotation; a Str/Bytes const would be a literal-cell
+    ; reference (lower never emits one -- its val field is I64)
+    ((i-const dst ty val) (case ty
+      ((tt-i64)     (xi-ok (n-const dst val)))
+      ((tt-word)    (xi-ok (n-const dst val)))   ; erased word: an immediate word
+      ((tt-str)     (xi-ok (n-lit dst val)))
+      ((tt-bytes)   (xi-ok (n-lit dst val)))
+      ((tt-data d a) (xi-err "const of a data type does not erase"))))
+    ((i-prim dst op srcs ty) (erase-prim dst op srcs))
+    ((i-call dst f srcs ty)  (xi-ok (n-call dst f srcs)))
+    ; a constructor: immediate enum tag, or a boxed cell carrying its fields
+    ((i-con dst dn cn srcs ty) (case (ctor-tag env cn)
+      (none (xi-err (str-cat "con: unknown constructor " cn)))
+      ((some tag) (case (is-enum env dn)
+        (true  (xi-ok (n-con  dst tag)))
+        (false (xi-ok (n-cona dst tag srcs)))))))
+    ((i-bnew dst len)     (xi-ok (n-bnew dst len)))
+    ((i-bget dst ptr idx) (xi-ok (n-bget dst ptr idx)))
+    ((i-bput ptr idx val) (xi-ok (n-bput ptr idx val)))
+    ((i-blen dst src)     (xi-ok (n-blen dst src))))))
+
+; erase ONE instruction ONTO an already-erased tail. Usually one node, but a
+; bound effectful crossing (E70) expands to TWO: a call into its E51 wrapper,
+; then an overwrite of dst with the crossing's declared Unit result (tag 0) --
+; the wrapper returns the raw syscall count, which is information-free (the seam
+; discards it). Mirrors native.py:294-307's _conv_code sys_bindings branch.
+; a crossing whose declared result is Unit (put/print/trace/halt) discards the
+; wrapper's raw syscall count; a value-returning crossing (read -> Bytes) keeps it.
+(declare is-unit-ty (-> TalTy Bool))
+(def is-unit-ty (lam (ty) (case ty ((tt-data dn a) (str-eq dn "Unit")) (_ false))))
+(declare erase-instr-onto (-> (List DData) Instr NCode XC))
+(def erase-instr-onto (lam (env i tail)
+  (case i
+    ((i-prim dst op srcs ty) (case (cw-lookup crossing-wraps op)
+      ((some wrapper) (case (is-unit-ty ty)
+        ; Unit crossing: call the wrapper, then overwrite dst with the Unit tag
+        (true  (xc-ok (n-seq (n-call dst wrapper srcs) (n-seq (n-con dst 0) tail))))
+        ; value crossing (read): keep the wrapper's returned cell in dst
+        (false (xc-ok (n-seq (n-call dst wrapper srcs) tail)))))
+      (none (case (erase-instr env i)
+        ((xi-err r) (xc-err r))
+        ((xi-ok ni) (xc-ok (n-seq ni tail)))))))
+    (_ (case (erase-instr env i)
+      ((xi-err r) (xc-err r))
+      ((xi-ok ni) (xc-ok (n-seq ni tail))))))))
+
+; fold the instruction list onto an already-erased tail, preserving order
+(def erase-instrs (lam (env instrs tail)
+  (case instrs
+    (nil (xc-ok tail))
+    ((cons i rest) (case (erase-instrs env rest tail)
+      ((xc-err r) (xc-err r))
+      ((xc-ok restcode) (erase-instr-onto env i restcode)))))))
+
+(def erase-term (lam (env t)
+  (case t
+    ((t-ret src) (xc-ok (n-ret src)))
+    ((tt-case src branches dflt) (case (erase-branches env branches)
+      ((xbr-err r) (xc-err r))
+      ((xbr-ok brs) (case (erase-dflt env dflt)
+        ((xd-err r) (xc-err r))
+        ((xd-ok md) (xc-ok (n-case src (boxed-of env branches) brs md))))))))))
+
+(def erase-branches (lam (env brs)
+  (case brs
+    (nil (xbr-ok nil))
+    ((cons b rest) (case b ((branch cn dsts body)
+      (case (ctor-tag env cn)
+        (none (xbr-err (str-cat "branch: unknown constructor " cn)))
+        ((some tag) (case (erase-block env body)
+          ((xc-err r) (xbr-err r))
+          ((xc-ok code) (case (erase-branches env rest)
+            ((xbr-err r) (xbr-err r))
+            ((xbr-ok more) (xbr-ok (cons (pair (pair tag dsts) code) more))))))))))))))
+
+(def erase-dflt (lam (env d)
+  (case d
+    (none (xd-ok (none)))
+    ((some blk) (case (erase-block env blk)
+      ((xc-err r) (xd-err r))
+      ((xc-ok code) (xd-ok (some code))))))))
+
+(def erase-block (lam (env b)
+  (case b ((block instrs term)
+    (case (erase-term env term)
+      ((xc-err r) (xc-err r))
+      ((xc-ok tail) (erase-instrs env instrs tail)))))))
+
+; erase one typed-SSA function: drop param/return types, keep the arity
+(def erase-fn (lam (env f)
+  (case f ((tfn name params ret body nregs)
+    (case (erase-block env body)
+      ((xc-err r) (xf-err r))
+      ((xc-ok code) (xf-ok (n-fn name (nlen TalTy params) nregs code))))))))
+
+(def erase-prog (lam (env fns)
+  (case fns
+    (nil (xfs-ok nil))
+    ((cons f rest) (case (erase-fn env f)
+      ((xf-err r) (xfs-err r))
+      ((xf-ok nf) (case (erase-prog env rest)
+        ((xfs-err r) (xfs-err r))
+        ((xfs-ok more) (xfs-ok (cons nf more))))))))))

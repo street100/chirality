@@ -1,0 +1,128 @@
+; T6 conformance test — E112 APC structured side-channel codec. Exit 42 on pass,
+; a distinct negative code (as an unsigned exit byte) on the first failing test.
+;
+; Build: chirality_blob scaffold/lib apc vt-parser  → append this file → B1 → ELF.
+;   Covers: (1) full-tree round-trip (enc-frame → dec-frame) structurally, all
+;   six Rendering constructors; (2) block-id stability under fold, content
+;   sensitivity, integrity; (3) the vt-parser ps-apc-string decode wiring
+;   (act-apc-render on a good frame, act-ignore on a corrupted one).
+(import "prelude")
+(import "apc")        ; enc-frame / dec-frame / block-id / PR
+(import "render")     ; the Rendering sum + diff-node (structural equality)
+(import "vt-parser")  ; Action / step / ps-ground / decode-utf8 (the decode seam)
+
+(declare compile-main    (-> Unit I64))
+(declare struct-eq       (-> Rendering Rendering Bool))
+(declare cat-actions     (-> (List Action) (List Action) (List Action)))
+(declare collect-actions (-> PState (List I64) (List Action)))
+(declare frame-actions   (-> Str (List Action)))
+(declare has-apc         (-> (List Action) Bool))
+(declare find-apc        (-> (List Action) Rendering))
+(declare corrupt-id      (-> Str Str))
+(declare t1-section      (-> Unit I64))
+(declare t2-tree         (-> Unit I64))
+(declare t3-table        (-> Unit I64))
+(declare t4-stream       (-> Unit I64))
+(declare t5-fold-stable  (-> Unit I64))
+(declare t6-content-sens (-> Unit I64))
+(declare t7-integrity    (-> Unit I64))
+(declare t8-parse-good   (-> Unit I64))
+(declare t9-parse-bad    (-> Unit I64))
+
+; ─── structural equality via render.chiral diff-node (diff-same = identical) ─────
+(def struct-eq (lam (a b) (case (diff-node a b) (diff-same true) (_ false))))
+
+; ─── run a frame Str through the real vt parser, collecting every Action ────────
+(def cat-actions (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (cat-actions t ys))))))
+(def collect-actions (lam (st cps)
+  (case cps (nil nil)
+    ((cons cp rest) (case (step st cp) ((pair st2 acts) (cat-actions acts (collect-actions st2 rest))))))))
+(def frame-actions (lam (frame) (collect-actions ps-ground (decode-utf8 (str->bytes frame)))))
+(def has-apc (lam (as) (case as (nil false) ((cons h t) (case h ((act-apc-render r) true) (_ (has-apc t)))))))
+(def find-apc (lam (as)
+  (case as (nil (r-hole "__none__")) ((cons h t) (case h ((act-apc-render r) r) (_ (find-apc t)))))))
+
+; ─── corrupt the first hex nibble of the leading block-id (frame index 6:
+;     ESC _ 's' '1' '6' ':' <hex0…> ) — flips the emitted id, integrity must catch it.
+(def corrupt-id (lam (frame)
+  (let ((c6 (str-sub frame 6 7)))
+    (let ((nc (case (str-eq c6 "0") (true "1") (false "0"))))
+      (str-cat (str-sub frame 0 6) (str-cat nc (str-sub frame 7 (str-len frame))))))))
+
+; ─── (1) round-trip a section⊃text (the audited ground-truth case) ──────────────
+(def t1-section (lam (_)
+  (let ((orig (r-section "Diagnostics" false (r-text "no crossing" true))))
+    (case (dec-frame (enc-frame orig))
+      ((p-ok r _) (case (struct-eq orig r) (true 0) (false -1)))
+      ((p-err m p) -1)))))
+
+; ─── (2) nested r-tree with r-text + r-hole + r-table children ──────────────────
+(def t2-tree (lam (_)
+  (let ((orig (r-tree
+                (cons (r-text "a" false)
+                (cons (r-hole "slot1")
+                (cons (r-table (cons "H" nil) (cons (cons (r-text "c" true) nil) nil)) nil)))
+                (r-text "a" false))))
+    (case (dec-frame (enc-frame orig))
+      ((p-ok r _) (case (struct-eq orig r) (true 0) (false -2)))
+      ((p-err m p) -2)))))
+
+; ─── (3) an r-table with a 2×2 body ─────────────────────────────────────────────
+(def t3-table (lam (_)
+  (let ((orig (r-table (cons "H1" (cons "H2" nil))
+                       (cons (cons (r-text "x" false) (cons (r-text "y" true)  nil))
+                       (cons (cons (r-text "z" false) (cons (r-text "w" false) nil)) nil)))))
+    (case (dec-frame (enc-frame orig))
+      ((p-ok r _) (case (struct-eq orig r) (true 0) (false -3)))
+      ((p-err m p) -3)))))
+
+; ─── (4) r-stream round-trip (diff-node treats streams as changed, so check directly)
+(def t4-stream (lam (_)
+  (case (dec-frame (enc-frame (r-stream "log1")))
+    ((p-ok r _) (case r ((r-stream sid) (case (str-eq sid "log1") (true 0) (false -4))) (_ -4)))
+    ((p-err m p) -4))))
+
+; ─── (5) block-id stable under fold-toggle (collapse must not re-key) ────────────
+(def t5-fold-stable (lam (_)
+  (let ((body (r-text "hi" false)))
+    (case (str-eq (block-id (r-section "T" false body)) (block-id (r-section "T" true body)))
+      (true 0) (false -5)))))
+
+; ─── (6) block-id is content-sensitive (different body → different address) ──────
+(def t6-content-sens (lam (_)
+  (let ((a (block-id (r-section "T" false (r-text "aaa" false)))))
+    (let ((b (block-id (r-section "T" false (r-text "bbb" false)))))
+      (case (str-eq a b) (true -6) (false 0))))))
+
+; ─── (7) integrity: a corrupted id decodes to p-err, not a wrong node ───────────
+(def t7-integrity (lam (_)
+  (let ((frame (enc-frame (r-section "Diagnostics" false (r-text "no crossing" true)))))
+    (case (dec-frame (corrupt-id frame))
+      ((p-ok r _) -7)
+      ((p-err m p) 0)))))
+
+; ─── (8) the parser emits act-apc-render for a good frame, and it round-trips ────
+(def t8-parse-good (lam (_)
+  (let ((orig (r-section "Diagnostics" false (r-text "no crossing" true))))
+    (let ((acts (frame-actions (enc-frame orig))))
+      (case (has-apc acts)
+        (true (case (struct-eq orig (find-apc acts)) (true 0) (false -8)))
+        (false -8))))))
+
+; ─── (9) the parser degrades a corrupted frame to act-ignore (no act-apc-render) ─
+(def t9-parse-bad (lam (_)
+  (let ((frame (corrupt-id (enc-frame (r-section "Diagnostics" false (r-text "no crossing" true))))))
+    (case (has-apc (frame-actions frame)) (true -9) (false 0)))))
+
+; ─── all-pass ⇒ 42, else the first failing test's code ──────────────────────────
+(def compile-main (lam (_)
+  (let ((r1 (t1-section unit)))       (case (=i r1 0) (false r1) (true
+  (let ((r2 (t2-tree unit)))          (case (=i r2 0) (false r2) (true
+  (let ((r3 (t3-table unit)))         (case (=i r3 0) (false r3) (true
+  (let ((r4 (t4-stream unit)))        (case (=i r4 0) (false r4) (true
+  (let ((r5 (t5-fold-stable unit)))   (case (=i r5 0) (false r5) (true
+  (let ((r6 (t6-content-sens unit)))  (case (=i r6 0) (false r6) (true
+  (let ((r7 (t7-integrity unit)))     (case (=i r7 0) (false r7) (true
+  (let ((r8 (t8-parse-good unit)))    (case (=i r8 0) (false r8) (true
+  (let ((r9 (t9-parse-bad unit)))     (case (=i r9 0) (false r9) (true
+    42)))))))))))))))))))))))))))))

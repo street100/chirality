@@ -1,0 +1,45 @@
+; t7_pty_cap.chiral — T7 conformance sample: the linear Pty cap surface.
+;
+; TYPE-LEVEL proof (testable today): the Pty porttype + PtyAcqR/PtyReadR sums +
+; the cap-threading acquisition/reader (TUI/session) LOAD through B1's linearity
+; checker. `acquire-then-read` below exercises the full shape — mint via
+; open-pty-cap, thread the Pty through read-once — using the REAL adopt-pty /
+; pty-read / pty-close crossings. It is kept UNREACHABLE from compile-main, so it
+; is type-checked but dead-code-eliminated: the ELF emits (no native binding of
+; the E107/T8-gated crossings is reached). compile-main returns 42.
+;
+; NEGATIVE gates (each FAILS to type-check — the linearity checker IS the gate):
+;   - read the master twice:            reuse of a moved Pty        -> rejected
+;   - close it twice:                   reuse of a moved Pty        -> rejected
+;   - drop the cap:                     linear binder never consumed -> rejected
+;   - (let ((_ (pty-close p))) ...):    let-bound threaded result   -> `field/linear binder usage mismatch`
+; (verified out-of-band; a program containing any of them will not compile.)
+;
+; NATIVE round-trip GATED: a real open-pty-cap -> read-once -> child-output run
+; native-emits only once adopt-pty / pty-read / pty-close are registered (E107 =
+; native porttype-taking close; T8 = the session-loop read/adopt bindings). The
+; raw round-trip that RUNS today is scaffold/samples/e103_pty_roundtrip.chiral
+; (unchanged by T7). Exit 42 = the type-level path compiled.
+(import "prelude")
+(import "ports")
+(import "session")
+
+; the full cap discipline, type-checked (unreachable => DCE, no native emit):
+; acquire a master as a Pty, then thread it through the reader (read-once closes
+; it exactly once on every arm). Every Pty is moved exactly once — the checker
+; accepts this and rejects any double-use / drop / let-thread variant.
+(def acquire-then-read (=> Unit Bytes)
+  (lam (u)
+    (case (open-pty-cap unit)
+      ((pty-err-c e)          (str->bytes ""))
+      ((pty-ok-c p slave-fd)  (read-once p)))))            ; slave-fd is raw (D4)
+
+; PtyVec discipline proof, type-checked: push a minted cap into the linear vector
+; (both cons fields quantity-1 => the vector threads move-only for free).
+(def one-vec (=> Unit PtyVec)
+  (lam (u)
+    (case (open-pty-cap unit)
+      ((pty-err-c e)          pv-nil)
+      ((pty-ok-c p slave-fd)  (pv-push p pv-nil)))))
+
+(def compile-main (=> I64 I64) (lam (n) 42))

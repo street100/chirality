@@ -1,0 +1,1737 @@
+; x86-64 as one conforming Mach. All the instruction-set knowledge the backend
+
+; has lives in this file; emit-core never mentions a register or an opcode.
+
+; SysV amd64: args in rdi/rsi/rdx/rcx/r8/r9, result in rax, direct rel32 calls.
+
+; Memory-machine codegen: every virtual register in a stack slot, rax/rcx
+
+; scratch, so no register allocator is needed for the first target.
+
+
+
+(import "prelude")
+
+(import "ports")
+
+(import "collections")
+
+(import "asm-reloc")
+
+(import "mach")
+
+
+
+; ---------------------------------------------------------------- bytes
+
+(def b1 (-> I64 Bytes) (lam (v) (bslice (pack-u32 v) 0 1)))
+
+(def b2 (-> I64 Bytes) (lam (v) (bslice (pack-u32 v) 0 2)))
+
+(def b4 (-> I64 Bytes) (lam (v) (pack-u32 v)))
+
+(def b8 (-> I64 Bytes)
+
+  (lam (v) (bcat (pack-u32 v) (pack-u32 (/ v 4294967296)))))
+
+(def bc3 (-> Bytes Bytes Bytes Bytes)
+
+  (lam (a b c) (bcat a (bcat b c))))
+
+
+
+; stack slot for register r: [rbp - 8*(r+1)]
+
+(def slotd (-> I64 I64) (lam (r) (- 0 (* 8 (+ r 1)))))
+
+
+
+; frame size, kept a multiple of 16 so rsp stays 16-aligned at inner calls
+
+; (after push rbp, rsp is 16-aligned; a multiple-of-16 frame preserves that)
+
+(def frame (-> I64 I64)
+
+  (lam (nregs)
+
+    (let (f (* 8 nregs))
+
+      (case (=i (% f 16) 0) (true f) (false (+ f 8))))))
+
+
+
+; ---------------------------------------------------------------- encodings
+
+(def x-prologue (-> I64 Bytes)
+
+  (lam (nregs)
+
+    (bc3 (b1 85)                                    ; push rbp
+
+         (bcat (b1 72) (b2 (+ 137 (* 256 229))))    ; mov rbp, rsp
+
+         (bc3 (b1 72) (b2 (+ 129 (* 256 236))) (b4 (frame nregs))))))  ; sub rsp, imm32
+
+
+
+(def x-epilogue Bytes
+
+  (bc3 (bcat (b1 72) (b2 (+ 137 (* 256 236))))      ; mov rsp, rbp
+
+       (b1 93)                                      ; pop rbp
+
+       (b1 195)))                                   ; ret
+
+
+
+(def x-load-rax (-> I64 Bytes)
+
+  (lam (r) (bc3 (b1 72) (bcat (b1 139) (b1 133)) (b4 (slotd r)))))
+
+; mov rax, [rbp + d] with a RAW displacement (positive: the caller's frame).
+
+; SysV places the 7th+ argument on the stack; after `push rbp` the i-th
+
+; argument (i >= 6) sits at [rbp + 16 + 8*(i-6)].
+
+(def x-load-rax-rbp (-> I64 Bytes)
+
+  (lam (d) (bc3 (b1 72) (bcat (b1 139) (b1 133)) (b4 d))))
+
+(def stk-arg-disp (-> I64 I64) (lam (i) (+ 16 (* 8 (- i 6)))))
+
+(def x-store-rax (-> I64 Bytes)
+
+  (lam (r) (bc3 (b1 72) (bcat (b1 137) (b1 133)) (b4 (slotd r)))))
+
+(def x-load-rcx (-> I64 Bytes)
+
+  (lam (r) (bc3 (b1 72) (bcat (b1 139) (b1 141)) (b4 (slotd r)))))
+
+(def x-mov-rax-imm (-> I64 Bytes)
+
+  (lam (v) (bc3 (b1 72) (b1 184) (b8 v))))
+
+
+
+(def arg-modrm (-> I64 I64)
+
+  (lam (i)
+
+    (case (=i i 0) (true 189)
+
+      (false (case (=i i 1) (true 181)
+
+        (false (case (=i i 2) (true 149)
+
+          (false (case (=i i 3) (true 141)
+
+            (false (case (=i i 4) (true 133) (false 141))))))))))))
+
+(def arg-rex (-> I64 I64) (lam (i) (case (<=i i 3) (true 72) (false 76))))
+
+(def x-store-arg (-> I64 I64 Bytes)
+
+  (lam (i r) (bc3 (b1 (arg-rex i)) (bcat (b1 137) (b1 (arg-modrm i))) (b4 (slotd r)))))
+
+(def x-load-arg (-> I64 I64 Bytes)
+
+  (lam (i r) (bc3 (b1 (arg-rex i)) (bcat (b1 139) (b1 (arg-modrm i))) (b4 (slotd r)))))
+
+
+
+(def x-add Bytes (bc3 (b1 72) (b1 1) (b1 200)))
+
+(def x-sub Bytes (bc3 (b1 72) (b1 41) (b1 200)))
+
+(def x-imul Bytes (bcat (bcat (b1 72) (b1 15)) (bcat (b1 175) (b1 193))))
+
+(def x-cmp-rcx Bytes (bc3 (b1 72) (b1 57) (b1 200)))
+
+(def x-cmp-imm (-> I64 Bytes) (lam (v) (bc3 (b1 72) (b1 61) (b4 v))))
+
+(def x-setcc (-> I64 Bytes)
+
+  (lam (cc) (bc3 (bc3 (b1 15) (b1 cc) (b1 192)) (bcat (b1 15) (b1 182)) (b1 192))))
+
+
+
+; signed division: cqo sign-extends rax into rdx, idiv rcx leaves the truncated
+
+; quotient in rax and the truncated remainder (sign of dividend) in rdx. idiv
+
+; alone truncates toward zero; chirality division is EUCLIDEAN (0 <= r < |b|), so a
+
+; branchless correction below turns the truncated result into the Euclidean one,
+
+; matching the reference/fold. Scratch: rsi, rdi, r8 (all caller-saved in SysV;
+
+; rbx/r12-r15 are callee-saved and must not be touched). The correction fires
+
+; via cmovs exactly when the truncated remainder is negative.
+
+; GUARD (D3): raw idiv faults (#DE) on two inputs -- a zero divisor, and
+
+; INT_MIN/-1 (the +2^63 quotient overflows I64). The reference/fold floors
+
+; resolve-label both (PortError on divisor 0; the wrapped value INT_MIN, remainder
+
+; 0, on INT_MIN/-1). x-div-guarded / x-mod-guarded below wrap idiv so native
+
+; agrees: divisor 0 traps deliberately (ud2, native's fatal-error idiom until
+
+; the effect floor lands), divisor -1 takes a branch that computes the
+
+; Euclidean answer without idiv (quotient = -dividend, which wraps to INT_MIN
+
+; for INT_MIN; remainder = 0), and every other divisor runs the normal
+
+; cqo/idiv/correction. Jump displacements are computed with blen, so they stay
+
+; correct if the correction sequences change.
+
+(def x-cqo Bytes (bcat (b1 72) (b1 153)))
+
+(def x-idiv-rcx Bytes (bc3 (b1 72) (b1 247) (b1 249)))
+
+(def x-mov-rax-rdx Bytes (bc3 (b1 72) (b1 137) (b1 208)))
+
+
+
+(def i-mov-rsi-rcx  Bytes (bc3 (b1 72) (b1 137) (b1 206)))              ; mov rsi,rcx
+
+(def i-sar-rsi-63   Bytes (bcat (bc3 (b1 72) (b1 193) (b1 254)) (b1 63))) ; sar rsi,63
+
+(def i-lea-rdi-sgn  Bytes (bcat (bc3 (b1 72) (b1 141) (b1 124))
+
+                                (bcat (b1 54) (b1 1))))                 ; lea rdi,[rsi+rsi+1]
+
+(def i-mov-r8-rax   Bytes (bc3 (b1 73) (b1 137) (b1 192)))              ; mov r8,rax
+
+(def i-sub-r8-rdi   Bytes (bc3 (b1 73) (b1 41) (b1 248)))               ; sub r8,rdi
+
+(def i-test-rdx     Bytes (bc3 (b1 72) (b1 133) (b1 210)))              ; test rdx,rdx
+
+(def i-cmovs-rax-r8 Bytes (bcat (bc3 (b1 73) (b1 15) (b1 72)) (b1 192))); cmovs rax,r8
+
+(def i-mov-rdi-rcx  Bytes (bc3 (b1 72) (b1 137) (b1 207)))              ; mov rdi,rcx
+
+(def i-xor-rdi-rsi  Bytes (bc3 (b1 72) (b1 49) (b1 247)))               ; xor rdi,rsi
+
+(def i-sub-rdi-rsi  Bytes (bc3 (b1 72) (b1 41) (b1 247)))               ; sub rdi,rsi
+
+(def i-lea-r8-rdx-rdi Bytes (bcat (bc3 (b1 76) (b1 141) (b1 4)) (b1 58))) ; lea r8,[rdx+rdi]
+
+
+
+; rsi=sign-bit(b); rdi=sign(b); r8=q_trunc-sign(b); take it when r_trunc<0
+
+(def x-div-fix Bytes
+
+  (bcat (bcat i-mov-rsi-rcx i-sar-rsi-63)
+
+    (bcat (bcat i-lea-rdi-sgn i-mov-r8-rax)
+
+      (bcat (bcat i-sub-r8-rdi i-test-rdx) i-cmovs-rax-r8))))
+
+
+
+; rsi=sign-bit(b); rdi=|b|; r8=r_trunc+|b|; take it when r_trunc<0
+
+(def x-mod-fix Bytes
+
+  (bcat (bcat i-mov-rsi-rcx i-sar-rsi-63)
+
+    (bcat (bcat i-mov-rdi-rcx i-xor-rdi-rsi)
+
+      (bcat (bcat i-sub-rdi-rsi i-lea-r8-rdx-rdi)
+
+        (bcat (bcat i-test-rdx x-mov-rax-rdx) i-cmovs-rax-r8)))))
+
+
+
+; division guard pieces (D3). All fixed-length; short rel8 jumps suffice
+
+; because the blocks they skip are well under 128 bytes.
+
+(def x-test-rcx Bytes (bc3 (b1 72) (b1 133) (b1 201)))    ; test rcx, rcx
+
+(def x-trap-if-zero Bytes                                 ; jnz +2 ; ud2
+
+  (bcat (bcat (b1 117) (b1 2)) (bcat (b1 15) (b1 11))))
+
+(def x-cmp-rcx-m1 Bytes                                   ; cmp rcx, -1
+
+  (bcat (bc3 (b1 72) (b1 131) (b1 249)) (b1 255)))
+
+(def x-neg-rax Bytes (bc3 (b1 72) (b1 247) (b1 216)))     ; neg rax
+
+(def x-xor-rax-rax Bytes (bc3 (b1 72) (b1 49) (b1 192)))  ; xor rax, rax
+
+(def x-jne8 (-> I64 Bytes) (lam (d) (bcat (b1 117) (b1 d))))  ; jne rel8
+
+(def x-jmp8 (-> I64 Bytes) (lam (d) (bcat (b1 235) (b1 d))))  ; jmp rel8
+
+
+
+; test divisor: trap on 0; on -1 take `special` (the overflow-free answer) and
+
+; jump over `normal`; otherwise fall through to `normal` (cqo/idiv/correction).
+
+(def x-guarded (-> Bytes Bytes Bytes)
+
+  (lam (special-tail normal)
+
+    (let (special (bcat special-tail (x-jmp8 (blen normal))))
+
+      (bcat (bcat x-test-rcx x-trap-if-zero)
+
+        (bcat x-cmp-rcx-m1
+
+          (bcat (x-jne8 (blen special))
+
+            (bcat special normal)))))))
+
+
+
+; divisor -1: Euclidean quotient is -dividend (wraps to INT_MIN for INT_MIN)
+
+(def x-div-guarded Bytes
+
+  (x-guarded x-neg-rax (bcat x-cqo (bcat x-idiv-rcx x-div-fix))))
+
+; divisor -1: Euclidean remainder is 0
+
+(def x-mod-guarded Bytes
+
+  (x-guarded x-xor-rax-rax (bcat x-cqo (bcat x-idiv-rcx x-mod-fix))))
+
+
+
+; the optimizer's synthetic prims (magic division, OPT-LEDGER #14):
+
+; mulhi = signed high 64 of rax*rcx (one-operand imul leaves it in rdx);
+
+; sar/shr take their count from cl (rcx) -- the slot form; bini emits the
+
+; imm8 forms when the count is a tracked constant (the generated shape).
+
+(def x-imul-rcx-1op Bytes (bc3 (b1 72) (b1 247) (b1 233)))   ; imul rcx
+
+(def x-sar-cl Bytes (bc3 (b1 72) (b1 211) (b1 248)))         ; sar rax, cl
+
+(def x-shr-cl Bytes (bc3 (b1 72) (b1 211) (b1 232)))         ; shr rax, cl
+
+(def x-and-rcx Bytes (bc3 (b1 72) (b1 33) (b1 200)))       ; and rax, rcx
+
+(def x-or-rcx Bytes (bc3 (b1 72) (b1 9) (b1 200)))         ; or rax, rcx
+
+(def x-xor-rcx Bytes (bc3 (b1 72) (b1 49) (b1 200)))        ; xor rax, rcx
+
+(def x-shl-cl Bytes (bc3 (b1 72) (b1 211) (b1 224)))        ; shl rax, cl
+
+(def x-shr-imm (-> I64 Bytes)                                ; shr rax, imm8
+
+  (lam (k) (bcat (bc3 (b1 72) (b1 193) (b1 232)) (b1 k))))
+
+(def x-shl-imm (-> I64 Bytes)                                ; shl rax, imm8
+
+  (lam (k) (bcat (bc3 (b1 72) (b1 193) (b1 224)) (b1 k))))
+
+
+
+; Bool is tag 0 = true, so each comparison emits the NEGATED setcc
+
+; total: the op is a closed `Op` (parsed once at erase), so this is exhaustive --
+
+; no defensive "unknown prim" halt, hence op-bytes is PURE. That purity is what
+
+; keeps emit-instr off the effect membrane (no spurious `halt` crossing).
+
+(def op-bytes (-> Op Bytes)
+
+  (lam (op)
+
+    (case op
+
+      ((op-add)   x-add)
+
+      ((op-sub)   x-sub)
+
+      ((op-mul)   x-imul)
+
+      ((op-div)   x-div-guarded)
+
+      ((op-mod)   x-mod-guarded)
+
+      ((op-eqi)   (bcat x-cmp-rcx (x-setcc 149)))
+
+      ((op-lti)   (bcat x-cmp-rcx (x-setcc 157)))
+
+      ((op-lei)   (bcat x-cmp-rcx (x-setcc 159)))
+
+      ((op-mulhi) (bcat x-imul-rcx-1op x-mov-rax-rdx))
+
+      ((op-sar)   x-sar-cl)
+
+      ((op-shr)   x-shr-cl)
+
+      ((op-band)  x-and-rcx)
+
+      ((op-bor)   x-or-rcx)
+
+      ((op-bxor)  x-xor-rcx)
+
+      ((op-shl)   x-shl-cl))))
+
+
+
+; ---------------------------------------------------------------- relocations
+
+(def enc-jne (-> I64 Bytes) (lam (d) (bc3 (b1 15) (b1 133) (b4 d))))
+
+(def enc-call (-> I64 Bytes) (lam (d) (bcat (b1 232) (b4 d))))
+
+
+
+(def wrap (-> Bytes (List Asm)) (lam (b) (one-b b)))
+
+
+
+; ---------------------------------------------------------------- the heap
+
+; Boxed data (milestone 2): a constructor with fields is a pointer to an
+
+; 8-byte-aligned cell [tag][field0][field1]... bump-allocated from an arena.
+
+; heapptr/heapend are 8-byte cells emitted after the code (x-fin below); the
+
+; loader points them at a RW arena. All heap addressing is RIP-relative
+
+; through a-rel (disp = target - end of instruction, exactly asm-reloc's
+
+; convention), so the code stays position-independent.
+
+
+
+(def enc-ldheap (-> I64 Bytes)                       ; mov rax, [rip+d]
+
+  (lam (d) (bc3 (b1 72) (bcat (b1 139) (b1 5)) (b4 d))))
+
+(def enc-stheap (-> I64 Bytes)                       ; mov [rip+d], rcx
+
+  (lam (d) (bc3 (b1 72) (bcat (b1 137) (b1 13)) (b4 d))))
+
+(def enc-cmpheap (-> I64 Bytes)                      ; cmp rcx, [rip+d]
+
+  (lam (d) (bc3 (b1 72) (bcat (b1 59) (b1 13)) (b4 d))))
+
+
+
+(def x-store-tag (-> I64 Bytes)                      ; mov qword [rax], imm32
+
+  (lam (tag) (bc3 (b1 72) (bcat (b1 199) (b1 0)) (b4 tag))))
+
+(def x-store-field (-> I64 Bytes)                    ; mov [rax + 8*(i+1)], rcx
+
+  (lam (i) (bc3 (b1 72) (bcat (b1 137) (b1 136)) (b4 (* 8 (+ i 1))))))
+
+(def x-load-field (-> I64 Bytes)                     ; mov rax, [rax + 8*(i+1)]
+
+  (lam (i) (bc3 (b1 72) (bcat (b1 139) (b1 128)) (b4 (* 8 (+ i 1))))))
+
+(def x-lea-bump (-> I64 Bytes)                       ; lea rcx, [rax + size]
+
+  (lam (size) (bc3 (b1 72) (bcat (b1 141) (b1 136)) (b4 size))))
+
+(def x-deref-rax Bytes (bc3 (b1 72) (b1 139) (b1 0)))  ; mov rax, [rax]
+
+
+
+; the arena alarm: past heapend would corrupt, so fault loudly instead
+
+; (jbe +2 skips the ud2 when the new bump still fits)
+
+(def x-trap Bytes (bcat (bcat (b1 118) (b1 2)) (bcat (b1 15) (b1 11))))
+
+
+
+(def x-alo-fields (-> (List I64) I64 Bytes)
+
+  (lam (fs i)
+
+    (case fs
+
+      (nil (str->bytes ""))
+
+      ((cons f rest)
+
+        (bc3 (x-load-rcx f) (x-store-field i) (x-alo-fields rest (+ i 1)))))))
+
+
+
+; allocate: rax := bump; write tag and fields; dst := rax; advance the bump
+
+; through rcx with the bound check against heapend before committing
+
+(def x-alo (-> I64 I64 (List I64) (List Asm))
+
+  (lam (dst tag fs)
+
+    (cons (a-rel 7 e-ldheap "heapptr")
+
+      (cons (a-bytes (x-lea-bump (* 8 (+ 1 (length I64 fs)))))
+
+        (cons (a-rel 7 e-cmpheap "heapend")
+
+          (cons (a-bytes x-trap)
+
+            (cons (a-bytes (bc3 (x-store-tag tag)
+
+                                (x-alo-fields fs 0)
+
+                                (x-store-rax dst)))
+
+              (cons (a-bytes (x-lea-bump (* 8 (+ 1 (length I64 fs)))))
+
+                (cons (a-rel 7 e-stheap "heapptr")
+
+                  (the (List Asm) nil))))))))))
+
+
+
+; growing value-cell allocator: same layout as x-alo, but if the bump exceeds
+
+; heapend it calls the shared arena-grow stub (E90) and retries instead of
+
+; trapping. Uses e-jmp for the retry loop (Decision #6: no inline duplication).
+
+(def x-galo (-> I64 I64 (List I64) (List Asm))
+  (lam (dst tag fs)
+    (let (sz (* 8 (+ 1 (length I64 fs))))
+        (cons (a-rel 7 e-ldheap "heapptr")               ; retry: rax = *heapptr
+          (cons (a-bytes (x-lea-bump sz))                ; rcx = rax + sz
+            (cons (a-rel 7 e-cmpheap "heapend")          ; cmp rcx, *heapend
+              (cons (a-bytes (bcat (b1 118) (b1 7)))     ; jbe +7  (fits -> commit)
+                (cons (a-rel 5 e-call "arena-grow")      ; miss -> grow (never <0)
+                  (cons (a-bytes (bcat (b1 235) (b1 226))) ; jmp -30 -> retry
+                    (cons (a-bytes (bc3 (x-store-tag tag) (x-alo-fields fs 0) (x-store-rax dst)))
+                      (cons (a-bytes (x-lea-bump sz))    ; recompute bump
+                        (cons (a-rel 7 e-stheap "heapptr")
+                          (the (List Asm) nil))))))))))
+)))
+(def x-fld (-> I64 I64 I64 (List Asm))
+
+  (lam (dst src idx)
+
+    (one-b (bc3 (x-load-rax src) (x-load-field idx) (x-store-rax dst)))))
+
+
+
+; the arena's cells, once per program, after all code; the loader fills them.
+
+; page-aligned so the loader can make the code W^X: everything before
+
+; heapptr becomes read-execute, the mutable heap pointers stay read-write.
+
+(def x-fin (List Asm)
+
+    (cons (a-label "arena-grow")
+
+      (cons (a-bytes (bcat (bcat (b1 81) (b1 86)) (bcat (bcat (b1 87) (b1 82)) (bcat (bcat (b1 65) (b1 80)) (bcat (bcat (b1 65) (b1 81)) (bcat (bcat (b1 65) (b1 82)) (bcat (b1 65) (b1 83))))))))
+
+        (cons (a-rel 7 e-ldrsi "heapend")
+
+          (cons (a-bytes (bcat (bc3 (b1 72) (b1 137) (b1 202)) (bc3 (b1 72) (b1 41) (b1 242))))
+
+            (cons (a-rel 7 e-ldrdi "heapbase")
+
+              (cons (a-rel 7 e-ldrsi "heapreserve")
+
+                (cons (a-rel 7 e-learcx "heapend")
+
+                  (cons (a-rel 5 e-call "nb-arena-grow")
+
+                  (cons (a-bytes (bcat (bcat (b1 65) (b1 91)) (bcat (bcat (b1 65) (b1 90)) (bcat (bcat (b1 65) (b1 89)) (bcat (bcat (b1 65) (b1 88)) (bcat (bcat (b1 90) (b1 95)) (bcat (b1 94) (b1 89))))))))
+
+                    (cons (a-bytes (b1 195))
+
+                      (cons (a-align 4096)
+
+                        (cons (a-label "heapptr")
+
+                          (cons (a-bytes (b8 0))
+
+                            (cons (a-label "heapbase")
+
+                              (cons (a-bytes (b8 0))
+
+                            (cons (a-label "heapend")
+
+                              (cons (a-bytes (b8 0))
+
+                                (cons (a-label "heapreserve")
+
+                                  (cons (a-bytes (b8 0))
+
+                                    (the (List Asm) nil))))))))))))))))))))
+
+)
+
+
+
+; ---------------------------------------------------------------- byte cells
+
+; Variable-length data (milestone 3): a Bytes/Str value is a pointer to a
+
+; [len][payload...] cell, allocated with a dynamic length from a register.
+
+; The payload is rounded up to 8 so the bump stays aligned; size = the len
+
+; word plus the rounded payload, i.e. (len + 15) & ~7.
+
+
+
+(def x-mov-cell-len Bytes (bc3 (b1 72) (b1 137) (b1 8)))   ; mov [rax], rcx
+
+(def x-add-rcx-15 Bytes                                    ; add rcx, 15
+
+  (bcat (bcat (b1 72) (b1 131)) (bcat (b1 193) (b1 15))))
+
+(def x-and-rcx-align Bytes                                 ; and rcx, -8
+
+  (bcat (bcat (b1 72) (b1 131)) (bcat (b1 225) (b1 248))))
+
+(def x-add-rcx-rax Bytes (bc3 (b1 72) (b1 1) (b1 193)))    ; add rcx, rax
+
+(def x-movzx-byte Bytes                                    ; movzx rax, byte [rax+rcx+8]
+
+  (bcat (bc3 (b1 72) (b1 15) (b1 182)) (bc3 (b1 68) (b1 8) (b1 8))))
+
+(def x-load-rdx (-> I64 Bytes)                             ; mov rdx, [rbp+slot]
+
+  (lam (r) (bc3 (b1 72) (bcat (b1 139) (b1 149)) (b4 (slotd r)))))
+
+(def x-store-byte Bytes                                    ; mov [rax+rcx+8], dl
+
+  (bcat (bcat (b1 136) (b1 84)) (bcat (b1 8) (b1 8))))
+
+(def enc-lea (-> I64 Bytes)                                ; lea rax, [rip+d]
+
+  (lam (d) (bc3 (b1 72) (bcat (b1 141) (b1 5)) (b4 d))))
+
+
+
+; a fresh cell's payload is zero-initialized: the arena is a zero-mapped
+
+; region (the loader mmaps it fresh) and cells are bump-allocated without
+
+; reuse, so unwritten bytes read as 0 -- matching the reference floor's
+
+; bytearray(n). A contract, not an accident (test_native pins it).
+
+(def x-bnw (-> I64 I64 (List Asm))
+
+  (lam (dst len)
+
+    (cons (a-rel 7 e-ldheap "heapptr")
+
+      (cons (a-bytes (bc3 (x-load-rcx len)
+
+                          (x-add-rcx-15)
+
+                          (bcat x-and-rcx-align x-add-rcx-rax)))
+
+        (cons (a-rel 7 e-cmpheap "heapend")
+
+          (cons (a-bytes x-trap)
+
+            (cons (a-bytes (bc3 (bcat (x-load-rcx len) x-mov-cell-len)
+
+                                (bcat (x-store-rax dst) x-add-rcx-15)
+
+                                (bcat x-and-rcx-align x-add-rcx-rax)))
+
+              (cons (a-rel 7 e-stheap "heapptr")
+
+                (the (List Asm) nil)))))))))
+
+
+
+; growing byte-cell allocator: same retry pattern as x-galo but with byte-cell
+
+; sizing (dynamic length). If the bump exceeds heapend, calls arena-grow and
+
+; retries. e-jmp retry loop — no inline duplication (Decision #6).
+
+(def x-gbnw (-> I64 I64 (List Asm))
+  (lam (dst len)
+      (cons (a-rel 7 e-ldheap "heapptr")                 ; retry: rax = *heapptr
+        (cons (a-bytes (bc3 (x-load-rcx len) (x-add-rcx-15) (bcat x-and-rcx-align x-add-rcx-rax)))  ; rcx = aligned bump
+          (cons (a-rel 7 e-cmpheap "heapend")            ; cmp rcx, *heapend
+            (cons (a-bytes (bcat (b1 118) (b1 7)))       ; jbe +7  (fits -> commit)
+              (cons (a-rel 5 e-call "arena-grow")        ; miss -> grow (never <0)
+                (cons (a-bytes (bcat (b1 235) (b1 215))) ; jmp -41 -> retry
+                  (cons (a-bytes (bc3 (bcat (x-load-rcx len) x-mov-cell-len) (bcat (x-store-rax dst) x-add-rcx-15) (bcat x-and-rcx-align x-add-rcx-rax)))
+                    (cons (a-rel 7 e-stheap "heapptr")
+                      (the (List Asm) nil)))))))))
+))
+(def x-bgt (-> I64 I64 I64 (List Asm))
+
+  (lam (dst ptr idx)
+
+    (one-b (bc3 (bcat (x-load-rax ptr) (x-load-rcx idx))
+
+                x-movzx-byte (x-store-rax dst)))))
+
+
+
+(def x-bpt (-> I64 I64 I64 (List Asm))
+
+  (lam (ptr idx val)
+
+    (one-b (bc3 (bcat (x-load-rax ptr) (x-load-rcx idx))
+
+                (x-load-rdx val) x-store-byte))))
+
+
+
+(def x-bln (-> I64 I64 (List Asm))
+
+  (lam (dst src)
+
+    (one-b (bc3 (x-load-rax src) x-deref-rax (x-store-rax dst)))))
+
+
+
+(def x-lea (-> I64 Str (List Asm))
+
+  (lam (dst label)
+
+    (cons (a-rel 7 e-lea label) (one-b (x-store-rax dst)))))
+
+
+
+; a literal cell in the data section: [len][payload], padded to 8. x86 loads
+
+; tolerate the unaligned len word; padding keeps the NEXT cell's start sane.
+
+(def one-zero Bytes (bslice (pack-u32 0) 0 1))
+
+(def x-dat (-> Bytes (List Asm))
+
+  (lam (b)
+
+    (one-b (bcat (b8 (blen b))
+
+                 (bcat b (brepeat one-zero (% (- 8 (% (blen b) 8)) 8)))))))
+
+
+
+; ---------------------------------------------------------------- sys face
+
+; linux syscall convention: nr in rax, args in rdi rsi rdx r10 r8 r9 (note
+
+; r10 where the function convention uses rcx -- syscall clobbers rcx), result
+
+; in rax. Args load straight from their slots; nothing live sits in a
+
+; register between chunks, so the rcx/r11 clobber is harmless.
+
+
+
+(def sys-rex (-> I64 I64) (lam (i) (case (<=i 3 i) (true 76) (false 72))))
+
+(def sys-modrm (-> I64 I64)
+
+  (lam (i)
+
+    (case (=i i 0) (true 189)          ; rdi
+
+      (false (case (=i i 1) (true 181) ; rsi
+
+        (false (case (=i i 2) (true 149) ; rdx
+
+          (false (case (=i i 3) (true 149) ; r10 (rex.r makes 149 mean r10)
+
+            (false (case (=i i 4) (true 133) (false 141))))))))))))  ; r8, r9
+
+
+
+(def x-load-sysarg (-> I64 I64 Bytes)
+
+  (lam (i r) (bc3 (b1 (sys-rex i)) (bcat (b1 139) (b1 (sys-modrm i))) (b4 (slotd r)))))
+
+
+
+(def x-sysargs (-> (List I64) I64 Bytes)
+
+  (lam (rs i)
+
+    (case rs
+
+      (nil (str->bytes ""))
+
+      ((cons r rest) (bcat (x-load-sysarg i r) (x-sysargs rest (+ i 1)))))))
+
+
+
+(def x-syscall Bytes (bcat (b1 15) (b1 5)))
+
+
+
+(def x-sys (-> I64 I64 (List I64) (List Asm))
+
+  (lam (dst nr args)
+
+    (one-b (bc3 (x-sysargs args 0)
+
+                (bcat (x-mov-rax-imm nr) x-syscall)
+
+                (x-store-rax dst)))))
+
+
+
+; payload address of a byte cell: cell pointer + 8
+
+(def x-add-rax-8 Bytes
+
+  (bcat (bcat (b1 72) (b1 131)) (bcat (b1 192) (b1 8))))
+
+(def x-bpr (-> I64 I64 (List Asm))
+
+  (lam (dst src)
+
+    (one-b (bc3 (x-load-rax src) x-add-rax-8 (x-store-rax dst)))))
+
+
+
+; ---------------------------------------------------------------- immediates
+
+; rax-op-imm32 forms (imm sign-extends to 64). Used by bini when the constant
+
+; operand fits i32; otherwise bini materializes the constant into rcx and
+
+; falls back to the slot-form op-bytes sequence, so bini accepts ANY op/imm
+
+; that bin accepts.
+
+(def x-imm-add (-> I64 Bytes) (lam (v) (bc3 (b1 72) (b1 5) (b4 v))))    ; add rax, imm32
+
+(def x-imm-sub (-> I64 Bytes) (lam (v) (bc3 (b1 72) (b1 45) (b4 v))))   ; sub rax, imm32
+
+(def x-imm-imul (-> I64 Bytes)                                          ; imul rax, rax, imm32
+
+  (lam (v) (bcat (bc3 (b1 72) (b1 105) (b1 192)) (b4 v))))
+
+(def x-imm-and (-> I64 Bytes) (lam (v) (bc3 (b1 72) (b1 37) (b4 v))))   ; and rax, imm32
+
+(def x-imm-or (-> I64 Bytes) (lam (v) (bc3 (b1 72) (b1 13) (b4 v))))    ; or rax, imm32
+
+(def x-imm-xor (-> I64 Bytes) (lam (v) (bc3 (b1 72) (b1 53) (b4 v))))   ; xor rax, imm32
+
+(def x-sar-imm (-> I64 Bytes)                                           ; sar rax, imm8
+
+  (lam (k) (bcat (bc3 (b1 72) (b1 193) (b1 248)) (b1 k))))
+
+(def x-mov-rcx-imm (-> I64 Bytes) (lam (v) (bc3 (b1 72) (b1 185) (b8 v))))
+
+
+
+(def imm32? (-> I64 Bool)
+
+  (lam (v) (and (<=i (- 0 2147483648) v) (<=i v 2147483647))))
+
+
+
+; k if v = 2^k (v >= 1), else -1. Euclidean division makes the pow2 forms
+
+; exact for ALL signed dividends: q = a sar k (floor division), r = a and
+
+; (2^k - 1) (always in [0, 2^k)) -- no correction sequence, unlike truncated
+
+; semantics. Verified against the reference i64_div/i64_mod incl. INT_MIN.
+
+(def pow2-k-go (-> I64 I64 I64)
+
+  (lam (v k)
+
+    (case (=i v 1) (true k)
+
+      (false (case (=i (% v 2) 0)
+
+        (true (pow2-k-go (/ v 2) (+ k 1)))
+
+        (false (- 0 1)))))))
+
+(def pow2-k (-> I64 I64)
+
+  (lam (v) (case (<=i v 0) (true (- 0 1)) (false (pow2-k-go v 0)))))
+
+
+
+; T4 (TRAIT-OPTS): a CONSTANT divisor statically decides the D3 guard, so
+
+; the test/ud2 + cmp -1/branch sequence is dead code for every d not in
+
+; {0, -1} — emit the bare cqo/idiv/correction. d = -1 and d = 1 collapse
+
+; to their answers with no idiv at all; d = 0 keeps the deliberate trap.
+
+(def x-div-unguarded Bytes (bcat x-cqo (bcat x-idiv-rcx x-div-fix)))
+
+(def x-mod-unguarded Bytes (bcat x-cqo (bcat x-idiv-rcx x-mod-fix)))
+
+
+
+(def x-div-imm (-> I64 Bytes)
+
+  (lam (d)
+
+    (let (k (pow2-k d))
+
+      (case (<=i 0 k) (true (x-sar-imm k))         ; Euclidean / 2^k = sar k
+
+        (false (case (=i d (- 0 1))
+
+          (true x-neg-rax)                         ; / -1 = negate (wraps INT_MIN)
+
+          (false (case (=i d 0)
+
+            (true (bcat (x-mov-rcx-imm 0) x-div-guarded))  ; deliberate ud2
+
+            (false (bcat (x-mov-rcx-imm d) x-div-unguarded))))))))))
+
+
+
+(def x-mod-imm (-> I64 Bytes)
+
+  (lam (d)
+
+    (let (k (pow2-k d))
+
+      (case (and (<=i 1 k) (<=i k 31))
+
+        (true (x-imm-and (- d 1)))                 ; Euclidean % 2^k = and mask
+
+        (false (case (<=i 1 k)                     ; k in [32,62]: mask via rcx
+
+          (true (bcat (x-mov-rcx-imm (- d 1)) x-and-rcx))
+
+          (false (case (or (=i d 1) (=i d (- 0 1)))
+
+            (true x-xor-rax-rax)                   ; % 1 = % -1 = 0
+
+            (false (case (=i d 0)
+
+              (true (bcat (x-mov-rcx-imm 0) x-mod-guarded))  ; deliberate ud2
+
+              (false (bcat (x-mov-rcx-imm d) x-mod-unguarded))))))))))))
+
+
+
+; the rax-only body of a bini (operands: rax and the immediate)
+
+; total on the closed `Op`: the imm-specific encodings for the ops that have one,
+
+; every other op falling back to the slot-form (move imm to rcx, then op-bytes).
+
+; imm32?-gated ops fall back when the immediate does not fit a 32-bit field; the
+
+; shift ops fall back when the count is out of 0..63. No halt anywhere.
+
+(def bini-body (-> Op I64 Bytes)
+
+  (lam (op imm)
+
+    (case op
+
+      ((op-div) (x-div-imm imm))
+
+      ((op-mod) (x-mod-imm imm))
+
+      ((op-sar) (case (and (<=i 0 imm) (<=i imm 63))
+
+                  (true (x-sar-imm imm))
+
+                  (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-shr) (case (and (<=i 0 imm) (<=i imm 63))
+
+                  (true (x-shr-imm imm))
+
+                  (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-band) (case (imm32? imm) (true (x-imm-and imm))
+
+                   (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-add) (case (imm32? imm) (true (x-imm-add imm))
+
+                  (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-sub) (case (imm32? imm) (true (x-imm-sub imm))
+
+                  (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-mul) (case (imm32? imm) (true (x-imm-imul imm))
+
+                  (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-eqi) (case (imm32? imm) (true (bcat (x-cmp-imm imm) (x-setcc 149)))
+
+                  (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-lti) (case (imm32? imm) (true (bcat (x-cmp-imm imm) (x-setcc 157)))
+
+                  (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-lei) (case (imm32? imm) (true (bcat (x-cmp-imm imm) (x-setcc 159)))
+
+                  (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-bor) (case (imm32? imm) (true (x-imm-or imm))
+
+                  (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-bxor) (case (imm32? imm) (true (x-imm-xor imm))
+
+                   (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-shl) (case (and (<=i 0 imm) (<=i imm 63))
+
+                 (true (x-shl-imm imm))
+
+                 (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
+
+      ((op-mulhi) (bcat (x-mov-rcx-imm imm) (op-bytes op))))))
+
+
+
+(def x-bini (-> Op I64 I64 I64 (List Asm))
+
+  (lam (op dst a imm)
+
+    (wrap (bc3 (x-load-rax a) (bini-body op imm) (x-store-rax dst)))))
+
+
+
+; ---------------------------------------------------------------- tail call
+
+; args are already placed in the SysV argument registers (lda); tear the
+
+; frame down (mov rsp,rbp; pop rbp) and jmp -- the callee returns straight
+
+; to OUR caller. Same rel32 discipline as enc-call.
+
+(def enc-jmp (-> I64 Bytes) (lam (d) (bcat (b1 233) (b4 d))))
+
+(def x-tca (-> Str (List Asm))
+
+  (lam (fname)
+
+    (cons (a-bytes (bc3 (bcat (b1 72) (b2 (+ 137 (* 256 236)))) (b1 93) (str->bytes "")))
+
+      (cons (a-rel 5 e-jmp fname) (the (List Asm) nil)))))
+
+
+
+; ---------------------------------------------------------------- lookup table
+
+; T1 (TRAIT-OPTS): a case whose arms are all constants over an enum scrutinee
+
+; is a load from a table -- sound with NO bounds check because ctor tags are
+
+; dense 0..n-1 by construction and coverage is total. The table is emitted
+
+; INLINE: jmp over it, then a rip-relative backward lea; every displacement
+
+; is known at emit time, so no relocation is involved.
+
+;   layout: [jmp +8n][n*8 table][mov rax,slot][lea rcx,rip-(8n+14)]
+
+;           [mov rax,[rcx+rax*8]][mov slot,rax]
+
+(def x-lea-rcx-rel (-> I64 Bytes)                          ; lea rcx, [rip+d]
+
+  (lam (d) (bc3 (b1 72) (bcat (b1 141) (b1 13)) (b4 d))))
+
+(def x-ld-tbl Bytes                                        ; mov rax, [rcx+rax*8]
+
+  (bcat (bc3 (b1 72) (b1 139) (b1 4)) (b1 193)))
+
+(def tbl-bytes (-> (List I64) Bytes)
+
+  (lam (vs)
+
+    (case vs
+
+      (nil (str->bytes ""))
+
+      ((cons v r) (bcat (b8 v) (tbl-bytes r))))))
+
+
+
+(def x-ltb (-> I64 I64 (List I64) (List Asm))
+
+  (lam (dst scrut vals)
+
+    (let (n (length I64 vals))
+
+      (one-b (bcat (enc-jmp (* 8 n))
+
+               (bcat (tbl-bytes vals)
+
+                 (bc3 (x-load-rax scrut)
+
+                      (bcat (x-lea-rcx-rel (- 0 (+ (* 8 n) 14))) x-ld-tbl)
+
+                      (x-store-rax dst))))))))
+
+
+
+; ---------------------------------------------------------------- jump table
+
+; Item 16 (OPT-LEDGER): control dispatch over a dense-tag enum case jumps
+
+; through an inline table instead of a cmp/jne chain. Each entry is a plain
+
+; (a-rel 4) record -- rel32 to its branch label under the EXISTING reloc
+
+; convention (disp = target - end of the 4-byte window) -- so no new
+
+; relocation machinery exists; the dispatch computes entry_addr + 4 + e.
+
+;   load scrut; lea rcx,[rip+14] (table start); lea rcx,[rcx+rax*4];
+
+;   movsxd rax,[rcx]; lea rax,[rcx+rax+4]; jmp rax; <n rel32 entries>
+
+(def x-jtb-head Bytes
+
+  (bcat (bc3 (b1 72) (bcat (b1 141) (b1 13)) (b4 14))            ; lea rcx,[rip+14]
+
+    (bcat (bcat (bc3 (b1 72) (b1 141) (b1 12)) (b1 129))         ; lea rcx,[rcx+rax*4]
+
+      (bcat (bc3 (b1 72) (b1 99) (b1 1))                         ; movsxd rax,[rcx]
+
+        (bcat (bcat (bc3 (b1 72) (b1 141) (b1 68)) (bcat (b1 1) (b1 4)))  ; lea rax,[rcx+rax+4]
+
+          (bcat (b1 255) (b1 224)))))))                          ; jmp rax
+
+
+
+(def enc-tbl (-> I64 Bytes) (lam (d) (b4 d)))
+
+
+
+(def jtb-entries (-> (List Str) (List Asm))
+
+  (lam (ls)
+
+    (case ls
+
+      (nil (the (List Asm) nil))
+
+      ((cons l rest) (cons (a-rel 4 e-tbl l) (jtb-entries rest))))))
+
+
+
+(def x-jtb (-> I64 (List Str) (List Asm))
+
+  (lam (scrut labels)
+
+    (cons (a-bytes (bcat (x-load-rax scrut) x-jtb-head))
+
+      (jtb-entries labels))))
+
+
+
+; ---------------------------------------------------------------- fused branch
+
+; Item 6 (OPT-CHECKLIST): a comparison whose only consumer is the very next
+
+; case emits cmp + jcc directly -- no setcc/movzx, no bool slot round-trip.
+
+; Flags survive the taken jcc (jumps do not write flags), so a two-arm Bool
+
+; case runs both branch tests off ONE cmp.
+
+(def x-fcp (-> I64 I64 (List Asm))
+
+  (lam (a b) (one-b (bc3 (x-load-rax a) (x-load-rcx b) x-cmp-rcx))))
+
+(def x-fci (-> I64 I64 (List Asm))
+
+  (lam (a v) (one-b (bcat (x-load-rax a)
+    (case (imm32? v) (true (x-cmp-imm v))
+      (false (bcat (x-mov-rcx-imm v) x-cmp-rcx)))))))
+
+
+
+; jcc opcode byte for "skip this arm": arm taken when (op a b) == tag
+
+; (true = tag 0), so skip on the NEGATION for tag 0 and on the op for tag 1.
+
+(def fjc-cc (-> Op I64 I64)
+
+  (lam (op tag)
+
+    (case op
+
+      ((op-eqi) (case (=i tag 0) (true 133) (false 132)))   ; jne / je
+
+      ((op-lti) (case (=i tag 0) (true 141) (false 140)))   ; jge / jl
+
+      (_        (case (=i tag 0) (true 143) (false 142))))))  ; <=i: jg / jle
+
+
+
+(def enc-jcc (-> I64 (-> I64 Bytes))
+
+  (lam (cc) (lam (d) (bc3 (b1 15) (b1 cc) (b4 d)))))
+
+
+
+(def x-fjc (=> Op I64 Str (List Asm))
+
+  (lam (op tag skip)
+
+    (cons (a-rel 6 (e-jcc (fjc-cc op tag)) skip) (the (List Asm) nil))))
+
+
+
+; ---------------------------------------------------------------- peephole
+
+; Item 8 (OPT-CHECKLIST): rax residency as a byte-level fact. When one
+
+; chunk ends `mov [slot], rax` and the NEXT chunk begins `mov rax, [slot]`
+
+; with the same displacement, rax provably already holds the value -- drop
+
+; the reload. Sound unconditionally: chunks are contiguous bytes, and a
+
+; jump can only land on a label, which is its own list element and blocks
+
+; the pair, so an elided load is only ever on the fall-through path. The
+
+; store stays, so the slot remains truthful for any later reader.
+
+(def peep-hit (-> Bytes Bytes Bool)
+
+  (lam (x y)
+
+    (case (<=i 7 (blen x))
+
+      (false false)
+
+      (true (case (<=i 7 (blen y))
+
+        (false false)
+
+        (true (let (n (- (blen x) 7))
+
+          (and (and (=i (bget x n) 72)
+
+                    (and (=i (bget x (+ n 1)) 137) (=i (bget x (+ n 2)) 133)))
+
+            (and (and (=i (bget y 0) 72)
+
+                      (and (=i (bget y 1) 139) (=i (bget y 2) 133)))
+
+              (and (=i (bget x (+ n 3)) (bget y 3))
+
+                (and (=i (bget x (+ n 4)) (bget y 4))
+
+                  (and (=i (bget x (+ n 5)) (bget y 5))
+
+                       (=i (bget x (+ n 6)) (bget y 6))))))))))))))
+
+
+
+; pattern B: the reload targets RCX (the b-operand path) -- same residency
+
+; fact, but the value must land in rcx, so the 7-byte load becomes a 3-byte
+
+; mov rcx,rax. Kills the store-to-load forward on every chained b-operand
+
+; (the magic-division sequence's n - q*d is exactly this shape).
+
+(def peep-hit-rcx (-> Bytes Bytes Bool)
+
+  (lam (x y)
+
+    (case (<=i 7 (blen x))
+
+      (false false)
+
+      (true (case (<=i 7 (blen y))
+
+        (false false)
+
+        (true (let (n (- (blen x) 7))
+
+          (and (and (=i (bget x n) 72)
+
+                    (and (=i (bget x (+ n 1)) 137) (=i (bget x (+ n 2)) 133)))
+
+            (and (and (=i (bget y 0) 72)
+
+                      (and (=i (bget y 1) 139) (=i (bget y 2) 141)))
+
+              (and (=i (bget x (+ n 3)) (bget y 3))
+
+                (and (=i (bget x (+ n 4)) (bget y 4))
+
+                  (and (=i (bget x (+ n 5)) (bget y 5))
+
+                       (=i (bget x (+ n 6)) (bget y 6))))))))))))))
+
+
+
+(def x-mov-rcx-rax Bytes (bc3 (b1 72) (b1 137) (b1 193)))
+
+
+
+(def x64-peep (-> (List Asm) (List Asm))
+
+  (lam (asms)
+
+    (case asms
+
+      (nil (the (List Asm) nil))
+
+      ((cons a rest)
+
+        (case rest
+
+          (nil (cons a (the (List Asm) nil)))
+
+          ((cons b rest2)
+
+            (case a
+
+              ((a-bytes xb)
+
+                (case b
+
+                  ((a-bytes yb)
+
+                    (case (peep-hit xb yb)
+
+                      (true (cons a (x64-peep
+
+                              (cons (a-bytes (bslice yb 7 (blen yb))) rest2))))
+
+                      (false
+
+                        (case (peep-hit-rcx xb yb)
+
+                          (true (cons a (x64-peep
+
+                                  (cons (a-bytes (bcat x-mov-rcx-rax
+
+                                          (bslice yb 7 (blen yb)))) rest2))))
+
+                          (false (cons a (x64-peep rest)))))))
+
+                  (_ (cons a (x64-peep rest)))))
+
+              (_ (cons a (x64-peep rest))))))))))
+
+
+
+; ---------------------------------------------------------------- clobbers
+
+; Step 2 of reg-disciplines (scaffold/docs/reg-disciplines.md): the implicit
+
+; register-effects convention made explicit data. Keys are op kinds (with
+
+; "bin:<op>"/"bini:<op>" carrying the prim); values are ARGUMENT-REGISTER
+
+; INDICES the op may write -- 0=rdi 1=rsi 2=rdx 3=rcx 4=r8 5=r9 -- the only
+
+; registers a placement discipline can keep values resident in. rax is
+
+; clobbered by essentially everything and is the accumulator cache's problem
+
+; (rd-cache), not this table's. Placement ops are positional and handled by
+
+; the caller: stp reads argreg k, lda writes argreg k.
+
+;   all six: calls (SysV caller-saved) and syscalls (kernel clobbers rcx/r11,
+
+;     and the sysarg loads write rdi/rsi/rdx/r10/r8/r9)
+
+;   div family: cqo/idiv own rdx; the Euclidean fixups scratch rsi/rdi/r8;
+
+;     the divisor/materialize path uses rcx -> {0,1,2,3,4}
+
+;   mulhi: one-operand imul writes rdx:rax, operand in rcx -> {2,3}
+
+;   bpt: value loads through rdx, index through rcx -> {2,3}
+
+;   default {3}: every op whose second operand or scratch is rcx (generic
+
+;     bin/bini incl. cl-count shifts and materialized immediates, alo/bnw/bgt
+
+;     heap+byte ops, ltb/jtb/fcp table and compare setups)
+
+;   {} (proven rax-or-nothing): con dcon fld bln lea bpr lsc lsb cjne fci
+
+;     fjc ret stp tca pro
+
+(def clb-none (List I64) (the (List I64) nil))
+
+(def clb-rcx (List I64) (cons 3 (the (List I64) nil)))
+
+(def clb-rdx-rcx (List I64) (cons 2 (cons 3 (the (List I64) nil))))
+
+(def clb-div (List I64)
+
+  (cons 0 (cons 1 (cons 2 (cons 3 (cons 4 (the (List I64) nil)))))))
+
+(def clb-all (List I64)
+
+  (cons 0 (cons 1 (cons 2 (cons 3 (cons 4 (cons 5 (the (List I64) nil))))))))
+
+
+
+(def clb-clean? (-> Str Bool)
+
+  (lam (k)
+
+    (or (str-eq k "con") (or (str-eq k "dcon") (or (str-eq k "fld")
+
+      (or (str-eq k "bln") (or (str-eq k "lea") (or (str-eq k "bpr")
+
+        (or (str-eq k "lsc") (or (str-eq k "lsb") (or (str-eq k "cjne")
+
+          (or (str-eq k "fci") (or (str-eq k "fjc") (or (str-eq k "ret")
+
+            (or (str-eq k "stp") (or (str-eq k "tca") (str-eq k "pro")))))))))))))))))
+
+
+
+(def x64-clobbers (=> Str (List I64))
+
+  (lam (k)
+
+    (case (or (str-eq k "cal") (str-eq k "sys")) (true clb-all)
+
+      (false (case (or (str-eq k "bin:/") (or (str-eq k "bin:%")
+
+                     (or (str-eq k "bini:/") (str-eq k "bini:%"))))
+
+        (true clb-div)
+
+        (false (case (or (str-eq k "bin:mulhi") (or (str-eq k "bini:mulhi") (str-eq k "bpt")))
+
+          (true clb-rdx-rcx)
+
+          (false (case (clb-clean? k)
+
+            (true clb-none)
+
+            (false clb-rcx))))))))))
+
+
+
+; ---------------------------------------------------------------- residency
+
+; rd-param (reg-disciplines step 3): a-operands source from a still-resident
+
+; SysV argument register instead of the slot -- mov rax, argreg (3 bytes, no
+
+; memory) replaces mov rax, [slot] (7 bytes + load latency). ldr places a
+
+; tail-call argument from a resident argreg: ZERO bytes when the position
+
+; matches (the pass-through param), a reg-reg mov otherwise.
+
+; argreg encoding column (0=rdi 1=rsi 2=rdx 3=rcx 4=r8 5=r9): low 3 bits of
+
+; the register number, rex.R/rex.B for r8/r9.
+
+(def arg-lo3 (-> I64 I64)
+
+  (lam (i)
+
+    (case (=i i 0) (true 7)          ; rdi
+
+      (false (case (=i i 1) (true 6) ; rsi
+
+        (false (case (=i i 2) (true 2) ; rdx
+
+          (false (case (=i i 3) (true 1) ; rcx
+
+            (false (case (=i i 4) (true 0) (false 1))))))))))))  ; r8, r9
+
+
+
+; mov rax, argreg_i : rex(.R if i>=4) 8B /r with modrm 11 000 lo3? -- use
+
+; 89 /r store-form: mov r/m64(rax), r64(argreg): rex 137 modrm(11 reg=argreg rm=rax)
+
+(def x-mov-rax-from-arg (-> I64 Bytes)
+
+  (lam (i)
+
+    (bc3 (b1 (case (<=i i 3) (true 72) (false 76)))
+
+         (b1 137)
+
+         (b1 (+ 192 (* 8 (arg-lo3 i)))))))
+
+
+
+; mov argreg_j, argreg_i : rex(.R for i>=4, .B for j>=4) 137 modrm(11 i j)
+
+(def x-mov-arg-arg (-> I64 I64 Bytes)
+
+  (lam (j i)
+
+    (bc3 (b1 (+ 72 (+ (case (<=i 4 i) (true 4) (false 0))
+
+                      (case (<=i 4 j) (true 1) (false 0)))))
+
+         (b1 137)
+
+         (b1 (+ 192 (+ (* 8 (arg-lo3 i)) (arg-lo3 j)))))))
+
+
+
+(def x-binr (-> Op I64 I64 I64 (List Asm))
+
+  (lam (op dst i b)
+
+    (wrap (bcat (bcat (x-mov-rax-from-arg i) (x-load-rcx b))
+
+                (bcat (op-bytes op) (x-store-rax dst))))))
+
+
+
+(def x-binir (-> Op I64 I64 I64 (List Asm))
+
+  (lam (op dst i imm)
+
+    (wrap (bc3 (x-mov-rax-from-arg i) (bini-body op imm) (x-store-rax dst)))))
+
+
+
+(def x-fcpr (-> I64 I64 (List Asm))
+
+  (lam (i b) (one-b (bc3 (x-mov-rax-from-arg i) (x-load-rcx b) x-cmp-rcx))))
+
+
+
+(def x-fcir (-> I64 I64 (List Asm))
+
+  (lam (i v) (one-b (bcat (x-mov-rax-from-arg i)
+    (case (imm32? v) (true (x-cmp-imm v))
+      (false (bcat (x-mov-rcx-imm v) x-cmp-rcx)))))))
+
+
+
+(def x-ldr (-> I64 I64 (List Asm))
+
+  (lam (j i)
+
+    (case (=i i j)
+
+      (true (the (List Asm) nil))                 ; already in place: free
+
+      (false (one-b (x-mov-arg-arg j i))))))
+
+
+
+; ------------------------------------------------- SysV call (all arg counts)
+
+; The target owns the WHOLE call: register args 0-5 loaded from their slots,
+
+; and -- past 6 -- an outgoing stack zone reserved below rsp (rounded to 16
+
+; via `frame` so rsp stays 16-aligned at the call), args at the LOW end
+
+; ([rsp+0] = arg 6, [rsp+8] = arg 7, ...), then call, release, store result.
+
+; Register loads are rbp-relative so the rsp adjustment cannot disturb them;
+
+; the stack writes scratch only rax. For <=6 args the emitted items are
+
+; byte-identical to the historical emit-args/cal split (one a-bytes per
+
+; register arg, the a-rel call, the result store).
+
+(def x-sub-rsp (-> I64 Bytes)
+
+  (lam (s) (bc3 (b1 72) (b2 (+ 129 (* 256 236))) (b4 s))))      ; sub rsp, imm32
+
+(def x-add-rsp (-> I64 Bytes)
+
+  (lam (s) (bc3 (b1 72) (b2 (+ 129 (* 256 196))) (b4 s))))      ; add rsp, imm32
+
+(def x-store-rsp (-> I64 Bytes)                                  ; mov [rsp+d], rax
+
+  (lam (d) (bcat (bc3 (b1 72) (b1 137) (b1 132)) (bcat (b1 36) (b4 d)))))
+
+
+
+(def x-cal-regs (-> (List I64) I64 (List Asm))
+
+  (lam (args pos)
+
+    (case args
+
+      (nil (the (List Asm) nil))
+
+      ((cons slot rest)
+
+        (case (<=i pos 5)
+
+          (true (cons (a-bytes (x-load-arg pos slot)) (x-cal-regs rest (+ pos 1))))
+
+          (false (the (List Asm) nil)))))))
+
+
+
+(def x-cal-stack (-> (List I64) I64 (List Asm))
+
+  (lam (args pos)
+
+    (case args
+
+      (nil (the (List Asm) nil))
+
+      ((cons slot rest)
+
+        (case (<=i pos 5)
+
+          (true (x-cal-stack rest (+ pos 1)))
+
+          (false (cons
+
+                   (a-bytes (bcat (x-load-rax slot) (x-store-rsp (* 8 (- pos 6)))))
+
+                   (x-cal-stack rest (+ pos 1)))))))))
+
+
+
+(def x-cal (-> I64 Str (List I64) (List Asm))
+
+  (lam (dst fname args)
+
+    (let (n (length I64 args))
+
+      (case (<=i n 6)
+
+        (true (append Asm (x-cal-regs args 0)
+
+                (cons (a-rel 5 e-call fname) (wrap (x-store-rax dst)))))
+
+        (false
+
+          (let (s (frame (- n 6)))
+
+            (append Asm (x-cal-regs args 0)
+
+              (cons (a-bytes (x-sub-rsp s))
+
+                (append Asm (x-cal-stack args 0)
+
+                  (cons (a-rel 5 e-call fname)
+
+                    (cons (a-bytes (x-add-rsp s))
+
+                      (wrap (x-store-rax dst)))))))))))))
+
+
+
+; ---------------------------------------------------------------- the Mach
+
+(def x64 Mach
+
+  (mach
+
+    (lam (nregs) (wrap (x-prologue nregs)))                          ; pro
+
+    (lam (ap slot) (case (<=i ap 5) (true (wrap (x-store-arg ap slot))) ; stp
+
+      (false (wrap (bcat (x-load-rax-rbp (stk-arg-disp ap)) (x-store-rax slot))))))
+
+    (lam (ap slot) (case (<=i ap 5) (true (wrap (x-load-arg ap slot)))   ; lda
+
+      (false (halt (List Asm) "emit(x64): call/def with >6 args; SysV passes the 7th+ on the stack, unimplemented"))))
+
+    (lam (slot val) (wrap (bcat (x-mov-rax-imm val) (x-store-rax slot))))  ; con
+
+    (lam (slot tag) (wrap (bcat (x-mov-rax-imm tag) (x-store-rax slot))))  ; dcon
+
+    (lam (op dst a b)                                                ; bin
+
+      (wrap (bcat (bcat (x-load-rax a) (x-load-rcx b))
+
+                  (bcat (op-bytes op) (x-store-rax dst)))))
+
+    x-cal                                                            ; cal
+
+    (lam (slot) (wrap (bcat (x-load-rax slot) x-epilogue)))          ; ret
+
+    (lam (slot) (wrap (x-load-rax slot)))                            ; lsc
+
+    (lam (tag skip)                                                  ; cjne
+
+      (cons (a-bytes (x-cmp-imm tag)) (cons (a-rel 6 e-jne skip) nil)))
+
+    x-alo                                                            ; alo
+
+    x-fld                                                            ; fld
+
+    (lam (slot) (wrap (bcat (x-load-rax slot) x-deref-rax)))         ; lsb
+
+    x-fin                                                            ; fin
+
+    x-bnw                                                            ; bnw
+
+    x-bgt                                                            ; bgt
+
+    x-bpt                                                            ; bpt
+
+    x-bln                                                            ; bln
+
+    x-lea                                                            ; lea
+
+    x-dat                                                            ; dat
+
+    x-sys                                                            ; sys
+
+    x-bpr                                                            ; bpr
+
+    x-bini                                                           ; bini
+
+    x-tca                                                            ; tca
+
+    x-ltb                                                            ; ltb
+
+    x-fcp                                                            ; fcp
+
+    x-fci                                                            ; fci
+
+    x-fjc                                                            ; fjc
+
+    x-jtb                                                            ; jtb
+
+    x64-clobbers                                                     ; clb
+
+    x-binr                                                           ; binr
+
+    x-binir                                                          ; binir
+
+    x-fcpr                                                           ; fcpr
+
+    x-fcir                                                           ; fcir
+
+    x-ldr                                                            ; ldr
+
+    x-galo                                                           ; galo (E91)
+
+    x-gbnw))                                                         ; gbnw (E91)

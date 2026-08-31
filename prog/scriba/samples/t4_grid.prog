@@ -1,0 +1,174 @@
+; T4 conformance (E111) — the linear Pool-backed (Grid n) behavioral gate.
+;   Exercises grid-new / put-cell / apply-sgr / clear / scroll-up, reading cells
+;   back through pool-read + bytes->cell. GOLDEN: byte-identical screen contents
+;   to the old (List Cell) grid — same glyph at each (row,col), pen after SGR,
+;   post-scroll contents. Exit 42 on all-pass, the negated test number on first
+;   failure. Native (pool-* lower to native, E120/E122).
+;
+;   Functions stay polymorphic in the size index n (the (0 n I64) idiom the whole
+;   linear-region substrate uses); the driver instantiates them at n=144 (=3*3*16).
+(import "prelude")
+(import "grid")
+
+(declare compile-main (=> I64 I64))
+
+; ─── read-back: decode the cell at (r,c) via pool-read, thread the grid on ─────
+(data CellR ((n I64)) (cell-r (c Cell) (1 g (Grid n))))
+(declare read-cell (-> (0 n I64) (=> (1 g (Grid n)) I64 I64 (CellR n))))
+(def read-cell
+  (lam (n g r c)
+    (case g
+      ((grid rows cols store cur pen)
+        (case (pool-read n store (* (+ (* r cols) c) cell-bytes) cell-bytes)
+          ((pr-r bs store2)
+            (cell-r (bytes->cell bs) (grid rows cols store2 cur pen))))))))
+
+; ─── put-at: absolute-position write = set the cursor then put-cell ───────────
+(declare set-cur (-> (0 n I64) (=> (1 g (Grid n)) I64 I64 (Grid n))))
+(def set-cur
+  (lam (n g r c)
+    (case g ((grid rows cols store cur pen) (grid rows cols store (cursor r c) pen)))))
+(declare put-at (-> (0 n I64) (=> (1 g (Grid n)) I64 I64 I64 (Grid n))))
+(def put-at
+  (lam (n g r c cp)
+    (put-cell n (set-cur n g r c) cp)))
+
+; ─── cell field readers ───────────────────────────────────────────────────────
+(declare cell-ch   (-> Cell I64))
+(def cell-ch (lam (c) (case c ((cell ch rend width) ch))))
+(declare cell-bold? (-> Cell Bool))
+(def cell-bold?
+  (lam (c)
+    (case c
+      ((cell ch rend width)
+        (case rend ((attrs bold ul it rev bl st fg bg) bold))))))
+(declare cell-fg-idx1? (-> Cell Bool))
+(def cell-fg-idx1?
+  (lam (c)
+    (case c
+      ((cell ch rend width)
+        (case rend
+          ((attrs bold ul it rev bl st fg bg)
+            (case fg ((color-indexed idx) (=i idx 1)) (_ false))))))))
+
+; ─── tests: each consumes a fresh grid, closes the region, returns 0/-N ────────
+(declare test-blank  (-> (0 n I64) (=> (1 g (Grid n)) I64)))
+(declare test-put    (-> (0 n I64) (=> (1 g (Grid n)) I64)))
+(declare test-sgr    (-> (0 n I64) (=> (1 g (Grid n)) I64)))
+(declare test-clear  (-> (0 n I64) (=> (1 g (Grid n)) I64)))
+(declare test-scroll (-> (0 n I64) (=> (1 g (Grid n)) I64)))
+
+; Test 1: blank 3x3 — every cell an ASCII space (32) at the corners.
+(def test-blank
+  (lam (n g)
+    (case (read-cell n g 0 0)
+      ((cell-r c00 g1)
+        (case (read-cell n g1 2 2)
+          ((cell-r c22 g2)
+            (case g2
+              ((grid rows cols store cur pen)
+                (case (pool-close n store)
+                  (unit
+                    (case (and (=i (cell-ch c00) 32) (=i (cell-ch c22) 32))
+                      (true 0) (false -1))))))))))))
+
+; Test 2: put-cell stamps 'A' at (0,0) and advances the column to 1.
+(def test-put
+  (lam (n g)
+    (case (read-cell n (put-cell n g 65) 0 0)
+      ((cell-r c g1)
+        (case g1
+          ((grid rows cols store cur pen)
+            (case cur
+              ((cursor cr cc)
+                (case (pool-close n store)
+                  (unit
+                    (case (and (=i (cell-ch c) 65) (=i cc 1))
+                      (true 0) (false -2))))))))))))
+
+; Test 3: apply-sgr folds CSI-m into the pen; put-cell stamps bold red 'B'.
+(def test-sgr
+  (lam (n g)
+    ; 'A' at (0,0); pen := bold(1) + fg-red(31); 'B' at (0,1) in that pen.
+    (case (read-cell n
+            (put-cell n (apply-sgr n (put-cell n g 65) (cons 1 (cons 31 nil))) 66)
+            0 1)
+      ((cell-r c g1)
+        (case g1
+          ((grid rows cols store cur pen)
+            (case pen
+              ((attrs bold ul it rev bl st fg bg)
+                (case (pool-close n store)
+                  (unit
+                    (case (and (and bold (=i (cell-ch c) 66))
+                               (and (cell-bold? c) (cell-fg-idx1? c)))
+                      (true 0) (false -3))))))))))))
+
+; Test 4: clear blanks every cell, homes the cursor, PRESERVES the pen.
+(def test-clear
+  (lam (n g)
+    ; pen := bold; 'A' at (0,0); clear.
+    (case (read-cell n
+            (clear n (put-cell n (apply-sgr n g (cons 1 nil)) 65))
+            0 0)
+      ((cell-r c g1)
+        (case g1
+          ((grid rows cols store cur pen)
+            (case cur
+              ((cursor cr cc)
+                (case pen
+                  ((attrs bold ul it rev bl st fg bg)
+                    (case (pool-close n store)
+                      (unit
+                        (case (and (and (=i cr 0) (=i cc 0))
+                                   (and bold (=i (cell-ch c) 32)))
+                          (true 0) (false -4))))))))))))))
+
+; Test 5: scroll-up drops the top row, shifts up, blank-fills the bottom.
+;   Fill A B C / D E F / G H I, scroll: new (0,0)=D(68), (1,0)=G(71), (2,0)=space.
+(def test-scroll
+  (lam (n g)
+    (case (read-cell n
+            (scroll-up n
+              (put-at n (put-at n (put-at n
+               (put-at n (put-at n (put-at n
+               (put-at n (put-at n (put-at n g 0 0 65) 0 1 66) 0 2 67)
+               1 0 68) 1 1 69) 1 2 70)
+               2 0 71) 2 1 72) 2 2 73))
+            0 0)
+      ((cell-r c00 g1)
+        (case (read-cell n g1 1 0)
+          ((cell-r c10 g2)
+            (case (read-cell n g2 2 0)
+              ((cell-r c20 g3)
+                (case g3
+                  ((grid rows cols store cur pen)
+                    (case (pool-close n store)
+                      (unit
+                        (case (and (=i (cell-ch c00) 68)
+                                   (and (=i (cell-ch c10) 71) (=i (cell-ch c20) 32)))
+                          (true 0) (false -5))))))))))))))
+
+; ─── driver: one fresh grid per test at n = 3*3*16 = 144, chained on pass ──────
+(def compile-main
+  (lam (arg)
+    (let (r1 (test-blank 144 (grid-new 144 3 3)))
+      (case (=i r1 0)
+        (false r1)
+        (true
+          (let (r2 (test-put 144 (grid-new 144 3 3)))
+            (case (=i r2 0)
+              (false r2)
+              (true
+                (let (r3 (test-sgr 144 (grid-new 144 3 3)))
+                  (case (=i r3 0)
+                    (false r3)
+                    (true
+                      (let (r4 (test-clear 144 (grid-new 144 3 3)))
+                        (case (=i r4 0)
+                          (false r4)
+                          (true
+                            (let (r5 (test-scroll 144 (grid-new 144 3 3)))
+                              (case (=i r5 0)
+                                (false r5)
+                                (true 42)))))))))))))))))

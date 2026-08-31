@@ -1,0 +1,44 @@
+; lib/arena.chiral — category-C bridge: typed arena over mmap/mremap.
+; The entry stub bootstraps the first arena via its own checked mmap (init-heap
+; needs a heap). init-heap and arena-grow are chirality functions that wrap the
+; raw mmap/mremap externs with error checking and typed return values.
+; arena-grow is called by the bump allocator when cursor >= heapend.
+(import "prelude")
+(import "ports")          ; mmap, mremap externs
+
+; ── syscall constants ──
+(def PROT-RW     I64 3)              ; PROT_READ | PROT_WRITE
+(def MAP-PRIVATE I64 2)
+(def MAP-ANON    I64 32)
+(def MAP-NORESERVE I64 16384)        ; 0x4000
+(def MREMAP-MAYMOVE I64 1)
+
+; ── the arena: an mmap'd region tracked as a base+len pair ──
+(data Arena ()
+  (arena (base I64) (len I64)))
+
+; ── checked mmap: returns (arena-ok Arena) or (arena-err errno) ──
+(data ArenaR ()
+  (arena-ok (a Arena))
+  (arena-err (errno I64)))
+
+; init-heap: allocate the initial arena. 64 MB virtual (MAP_NORESERVE).
+(declare init-heap (=> Unit ArenaR))
+(def init-heap
+  (lam (_)
+    (let (len 67108864)
+      (let (base (mmap 0 len PROT-RW (+ MAP-PRIVATE (+ MAP-ANON MAP-NORESERVE)) -1 0))
+        (case (<i base 0)  ; base < 0 is an -errno (Linux guarantees errors in [-4095,-1])
+          (true (arena-err base))
+          (false (arena-ok (arena base len))))))))
+
+; ── arena-grow: double the arena when the bump cursor exhausts it ──
+(declare arena-grow (=> (a Arena) ArenaR))
+(def arena-grow
+  (lam (a)
+    (case a ((arena base len)
+      (let (new-len (* len 2))
+        (let (new-base (mremap base len new-len MREMAP-MAYMOVE 0))
+          (case (<i new-base 0)
+            (true (arena-err new-base))
+            (false (arena-ok (arena new-base new-len))))))))))

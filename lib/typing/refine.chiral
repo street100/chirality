@@ -1,0 +1,168 @@
+; E9: the refinement entailment decision procedure (the built decidable
+; fragment). Ported from scaffold/chirality/refine.py (is_empty:106, entails:123):
+; interval-with-holes (constant, complete) + symbolic (op,level) facts (syntactic
+; subset, sound-incomplete), emptiness decided FIRST so vacuous truth is
+; structural. Pure, total. refine.py stays the oracle; this PROVIDES
+; entails/Constraint to E10 (occurrence typing). Kernel untouched.
+; Non-goal: the full-predicate REFACTOR (solver, inter-variable arith) -> E41.
+(import "prelude")
+
+; the five predicate operators (refine.py _OPS): >= > <= < <>
+(data SymOp () (s-ge) (s-gt) (s-le) (s-lt) (s-ne))
+
+(data Constraint ()
+  (constraint
+    (lo  (Maybe I64))                  ; inclusive floor,  none = -inf
+    (hi  (Maybe I64))                  ; inclusive ceiling, none = +inf
+    (ex  (List I64))                   ; holes: forbidden values (v <> k)
+    (sym (List (Pair SymOp I64)))))    ; symbolic bounds keyed by operand level
+
+; ---- constant-domain helpers -------------------------------------------------
+(def below-lo (-> (Maybe I64) I64 Bool)
+  (lam (lo x) (case lo (none false) ((some l) (<i x l)))))
+(def above-hi (-> (Maybe I64) I64 Bool)
+  (lam (hi x) (case hi (none false) ((some h) (<i h x)))))
+
+(declare i64-mem (-> I64 (List I64) Bool))
+(def i64-mem
+  (lam (x xs) (case xs (nil false)
+                ((cons y rest) (case (=i x y) (true true) (false (i64-mem x rest)))))))
+
+(def ilen (-> (List I64) I64)
+  (lam (xs) (case xs (nil 0) ((cons x r) (+ 1 (ilen r))))))
+
+; c1's floor is at least as high as every floor c2 demands.
+(def lo-ok (-> (Maybe I64) (Maybe I64) Bool)
+  (lam (lo1 lo2) (case lo2 (none true)
+                   ((some l2) (case lo1 (none false) ((some l1) (not (<i l1 l2))))))))
+; c1's ceiling is at least as low as every ceiling c2 demands.
+(def hi-ok (-> (Maybe I64) (Maybe I64) Bool)
+  (lam (hi1 hi2) (case hi2 (none true)
+                   ((some h2) (case hi1 (none false) ((some h1) (not (<i h2 h1))))))))
+
+; every hole c2 punches, c1 must punch too -- unless already outside c1's range.
+(declare holes-ok (-> (Maybe I64) (Maybe I64) (List I64) (List I64) Bool))
+(def holes-ok
+  (lam (lo1 hi1 ex1 ex2)
+    (case ex2
+      (nil true)
+      ((cons x rest)
+        (case (or (or (below-lo lo1 x) (above-hi hi1 x)) (i64-mem x ex1))
+          (true  (holes-ok lo1 hi1 ex1 rest))
+          (false false))))))
+
+; every point in [lo,hi] is excluded (the finite-fully-punched case).
+(declare range-punched (-> I64 I64 (List I64) Bool))
+(def range-punched
+  (lam (lo hi ex)
+    (case (<i hi lo)
+      (true true)
+      (false (case (i64-mem lo ex) (true (range-punched (+ lo 1) hi ex)) (false false))))))
+
+; is-empty: empty interval (lo>hi) OR a finite range covered by the holes.
+(def is-empty (-> Constraint Bool)
+  (lam (c)
+    (case c ((constraint lo hi ex sym)
+      (case lo (none false)
+        ((some l) (case hi (none false)
+          ((some h) (case (<i h l)
+            (true true)
+            (false (case (<=i (+ (- h l) 1) (ilen ex))    ; size guard
+              (true (range-punched l h ex))
+              (false false))))))))))))
+
+; ---- symbolic-domain helpers (sound, incomplete: syntactic subset) -----------
+(def sym-tag (-> SymOp I64)
+  (lam (o) (case o (s-ge 0) (s-gt 1) (s-le 2) (s-lt 3) (s-ne 4))))
+(def fact-eq (-> (Pair SymOp I64) (Pair SymOp I64) Bool)
+  (lam (p q)
+    (case p ((pair po pl)
+      (case q ((pair qo ql) (and (=i (sym-tag po) (sym-tag qo)) (=i pl ql))))))))
+(declare fact-mem (-> (Pair SymOp I64) (List (Pair SymOp I64)) Bool))
+(def fact-mem
+  (lam (f fs) (case fs (nil false)
+                ((cons g rest) (case (fact-eq f g) (true true) (false (fact-mem f rest)))))))
+(declare sym-subset (-> (List (Pair SymOp I64)) (List (Pair SymOp I64)) Bool))
+(def sym-subset
+  (lam (sub super) (case sub (nil true)
+                     ((cons f rest) (case (fact-mem f super)
+                                      (true (sym-subset rest super)) (false false))))))
+
+; ---- the decision procedure --------------------------------------------------
+; entails c1 c2: does every value satisfying c1 satisfy c2? Emptiness first.
+(def entails (-> Constraint Constraint Bool)
+  (lam (c1 c2)
+    (case c1 ((constraint lo1 hi1 ex1 sym1)
+    (case c2 ((constraint lo2 hi2 ex2 sym2)
+      (case (is-empty c1)
+        (true true)
+        (false (and (lo-ok lo1 lo2)
+               (and (hi-ok hi1 hi2)
+               (and (holes-ok lo1 hi1 ex1 ex2)
+                    (sym-subset sym2 sym1))))))))))))
+
+; ---- constraint builders (refine.py _atom/_sym_atom/satisfies/TOP) -----------
+; Used by the kernel's VRefine integration (E04 decision #6): eval-refine folds
+; each Refine-term atom into a Constraint; check/narrow consult satisfies.
+(def c-top Constraint (constraint none none nil nil))
+(def max-lo (-> (Maybe I64) I64 I64)
+  (lam (lo k) (case lo (none k) ((some l) (case (<i l k) (true k) (false l))))))
+(def min-hi (-> (Maybe I64) I64 I64)
+  (lam (hi k) (case hi (none k) ((some h) (case (<i k h) (true k) (false h))))))
+; add a constant-bound atom (op against the literal k); the symbolic part rides along.
+(def c-atom (-> Constraint SymOp I64 Constraint)
+  (lam (c op k)
+    (case c ((constraint lo hi ex sym)
+      (case op
+        (s-ge (constraint (some (max-lo lo k))       hi ex sym))
+        (s-gt (constraint (some (max-lo lo (+ k 1))) hi ex sym))
+        (s-le (constraint lo (some (min-hi hi k))       ex sym))
+        (s-lt (constraint lo (some (min-hi hi (- k 1))) ex sym))
+        (s-ne (constraint lo hi (cons k ex) sym)))))))
+; add a symbolic bound (op against the variable at de-Bruijn `level`).
+(def c-sym-atom (-> Constraint SymOp I64 Constraint)
+  (lam (c op level) (case c ((constraint lo hi ex sym) (constraint lo hi ex (cons (pair op level) sym))))))
+; satisfies c v: does the constant v satisfy c? (a symbolic bound is unprovable
+; for a bare constant -> false, matching refine.py.)
+(def satisfies (-> Constraint I64 Bool)
+  (lam (c v)
+    (case c ((constraint lo hi ex sym)
+      (case sym
+        ((cons f fr) false)                            ; any symbolic bound: unprovable
+        (nil (and (not (below-lo lo v)) (and (not (above-hi hi v)) (not (i64-mem v ex))))))))))
+
+; ============================================================ E10: occurrence typing (narrow)
+; The path-sensitivity hook (refine.py _narrow:298), atom-selection only: given a
+; Guard the scrutinee proved and which branch (on-true), append the atom it
+; teaches to the variable's refinement. The comparison-spine unwinder (a term
+; (<i i n) -> Guard) is a non-goal (a small follow-on). Pure, total. Env/Atom are
+; the narrow-layer stand-in (decision #4); the engine that DECIDES them is E9.
+(data Bound () (b-const (k I64)) (b-sym (bn Str)))
+(data Guard () (g-lt (gv Str) (gb Bound)) (g-le (gv Str) (gb Bound)) (g-none))
+(data Atom  () (a-lt (alb Bound)) (a-le (aleb Bound)) (a-ge (ageb Bound)) (a-gt (agtb Bound)))
+
+(def lt-atom (-> Bound Atom) (lam (b) (a-lt b)))
+(def le-atom (-> Bound Atom) (lam (b) (a-le b)))
+(def ge-atom (-> Bound Atom) (lam (b) (a-ge b)))
+(def gt-atom (-> Bound Atom) (lam (b) (a-gt b)))
+(def pick-atom (-> Bool Atom Atom Atom)
+  (lam (on-true a-then a-else) (case on-true (true a-then) (false a-else))))
+
+; add-atom: cons the atom onto var's atom-list (fresh singleton if absent).
+(declare add-atom (-> (List (Pair Str (List Atom))) Str Atom (List (Pair Str (List Atom)))))
+(def add-atom
+  (lam (env var at)
+    (case env
+      (nil (cons (pair var (cons at nil)) nil))
+      ((cons e rest) (case e ((pair k ats)
+        (case (str-eq k var)
+          (true  (cons (pair k (cons at ats)) rest))
+          (false (cons e (add-atom rest var at))))))))))
+
+(declare narrow (-> (List (Pair Str (List Atom))) Guard Bool (List (Pair Str (List Atom)))))
+(def narrow
+  (lam (env g on-true)
+    (case g
+      (g-none env)
+      ((g-lt var bnd) (add-atom env var (pick-atom on-true (lt-atom bnd) (ge-atom bnd))))
+      ((g-le var bnd) (add-atom env var (pick-atom on-true (le-atom bnd) (gt-atom bnd)))))))

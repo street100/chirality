@@ -1,0 +1,232 @@
+; ===========================================================================
+; lib/specialize-singleton.chiral -- port of chirality/specialize.py
+; specialize_singletons, the compile pass that monomorphizes a SINGLETON
+; record-of-functions dictionary (a backend vtable like Mach/x64) so it lowers.
+;
+; A data type whose ctor fields are (partly) FUNCTIONS, of which exactly ONE
+; value is ever constructed and which is threaded as a param and projected+
+; applied, does not lower (the dict type is not ground; the threaded param blocks
+; the lowerer). Since there is one known value, monomorphize it -- WITHOUT
+; touching the source abstraction ("the pass, not the programmer, removes the
+; seam"; P4 intact: Mach stays retargetable, mach-listing stays a conforming
+; second instance). Runs in compile-front BEFORE closconv-sig (lower.py's order).
+;
+; Sig -> Sig, differential vs specialize.py. Operates on Term directly (no Core).
+; ===========================================================================
+(import "loader")   ; Sig / Term / DataDecl / Field / Ctor / KArm / Qty / mk-sig / accessors
+
+; ---- Term walk: collect the `home` name of every t-con node (for the "built
+; exactly once" count) --------------------------------------------------------
+(declare cons-homes    (-> Term (List Str)))
+(declare cons-homes-l  (-> (List Term) (List Str)))
+(declare cons-homes-a  (-> (List KArm) (List Str)))
+(declare sp-app2 (-> (List Str) (List Str) (List Str)))
+(def sp-app2 (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (sp-app2 t ys))))))
+(def cons-homes (lam (t)
+  (case t
+    ((t-con home name as) (cons home (cons-homes-l as)))
+    ((t-app f a)          (sp-app2 (cons-homes f) (cons-homes a)))
+    ((t-lam b)            (cons-homes b))
+    ((t-let q v b)        (sp-app2 (cons-homes v) (cons-homes b)))
+    ((t-ann e ty)         (sp-app2 (cons-homes e) (cons-homes ty)))
+    ((t-pi q s dom cod)   (sp-app2 (cons-homes dom) (cons-homes cod)))
+    ((t-tcon name as)     (cons-homes-l as))
+    ((t-case sc arms df)  (sp-app2 (cons-homes sc) (sp-app2 (cons-homes-a arms)
+                            (case df (none nil) ((some d) (cons-homes d))))))
+    (_ nil))))
+(def cons-homes-l (lam (ts) (case ts (nil nil) ((cons x r) (sp-app2 (cons-homes x) (cons-homes-l r))))))
+(def cons-homes-a (lam (as) (case as (nil nil) ((cons a r) (case a ((karm cn nv b) (sp-app2 (cons-homes b) (cons-homes-a r))))))))
+
+(declare count-home (-> (List Str) Str I64))
+(def count-home (lam (hs d) (case hs (nil 0) ((cons x r) (case (str-eq x d) (true (+ 1 (count-home r d))) (false (count-home r d)))))))
+
+; count inline t-con with home=d across ALL global bodies
+(declare count-inline (-> (List (Pair Str (Pair Term Term))) Str I64))
+(def count-inline (lam (gs d)
+  (case gs (nil 0) ((cons p r) (case p ((pair nm tb) (case tb ((pair ty body)
+    (+ (count-home (cons-homes body) d) (count-inline r d))))))))))
+
+; ---- a ctor field type list is "function-bearing" if any field is a t-pi -----
+(declare any-fn-field (-> (List Field) Bool))
+(def any-fn-field (lam (fs)
+  (case fs (nil false) ((cons f r) (case f ((field q fn fty)
+    (case fty ((t-pi q2 s d c) true) (_ (any-fn-field r)))))))))
+(declare data-has-fn (-> DataDecl Bool))
+(def data-has-fn (lam (dd)
+  (case dd ((data-decl dn ps cs)
+    (case cs (nil false) ((cons c r) (case c ((ctor cn fs)
+      (case (any-fn-field fs) (true true) (false (data-has-fn (data-decl dn ps r))))))))))))
+
+; ---- find the sp-single global whose top-level body is (t-con dname ctor args) --
+(data SpSingle () (sp-single (gname Str) (cname Str) (fbodies (List Term)) (ftypes (List Field))))
+(declare ctor-of (-> (List Ctor) Str (Maybe (List Field))))
+(def ctor-of (lam (cs cn) (case cs (nil (none)) ((cons c r) (case c ((ctor cn2 fs) (case (str-eq cn cn2) (true (some fs)) (false (ctor-of r cn)))))))))
+(declare find-con-global (-> (List (Pair Str (Pair Term Term))) Str DataDecl (Maybe SpSingle)))
+(def find-con-global (lam (gs dname dd)
+  (case gs
+    (nil (none))
+    ((cons p r) (case p ((pair nm tb) (case tb ((pair ty body)
+      (case body
+        ((t-con home cn args)
+          (case (str-eq home dname)
+            (true  (case dd ((data-decl dn ps cs) (case (ctor-of cs cn)
+                     ((some fs) (some (sp-single nm cn args fs)))
+                     ((none)    (find-con-global r dname dd))))))
+            (false (find-con-global r dname dd))))
+        (_ (find-con-global r dname dd)))))))))))
+
+; a singleton: fn-bearing data, built EXACTLY ONCE. The count==1 gate is LOUD by
+; construction: a fn-bearing type built >1 time returns `none` here, so it is not
+; specialized -> it threads as a runtime fn-valued dict -> the lowering path
+; er-skips it -> a visible compile failure. This is the correct behavior: two
+; distinct fn-bearing instances (e.g. two Alloc disciplines) cannot coexist in
+; one blob, and the pass must NOT silently pick one (the `16d6d1a` count>=1
+; relaxation did exactly that -- an order-dependent silent miscompile; reverted).
+(declare find-singleton (-> Sig DataDecl (Maybe (Pair Str SpSingle))))
+(def find-singleton (lam (s dd)
+  (case (data-has-fn dd)
+    (false (none))
+    (true (case dd ((data-decl dname ps cs)
+      (case (find-con-global (sig-globals s) dname dd)
+        ((none) (none))
+        ((some sg) (case (=i (count-inline (sig-globals s) dname) 1)
+          (false (none))
+          (true (some (pair dname sg))))))))))))
+
+; ---- projectors: (t-lam (t-case (t-var 0) [(cname nvars (t-var k))] none)) ----
+; field index = (nvars - 1) - k. Returns proj-name -> field index.
+(declare proj-idx (-> Str Term (Maybe I64)))
+(def proj-idx (lam (cname body)
+  (case body
+    ((t-lam inner) (case inner
+      ((t-case sc arms df) (case sc
+        ((t-var v0) (case (=i v0 0)
+          (false (none))
+          (true (case arms
+            ((cons a rest) (case rest
+              (nil (case a ((karm cn nv armb)
+                (case (str-eq cn cname)
+                  (false (none))
+                  (true (case armb ((t-var k) (some (- (- nv 1) k))) (_ (none))))))))
+              (_ (none))))
+            (_ (none))))))
+        (_ (none))))
+      (_ (none))))
+    (_ (none)))))
+
+; ---- _sp-rw: (t-app (t-global proj) m) -> (t-global target) across a Term --------
+; pm : (List (Pair Str Str)) proj-name -> target-global-name
+(declare pm-find (-> (List (Pair Str Str)) Str (Maybe Str)))
+(def pm-find (lam (pm k) (case pm (nil (none)) ((cons p r) (case p ((pair a b) (case (str-eq a k) (true (some b)) (false (pm-find r k)))))))))
+(declare sp-rw (-> (List (Pair Str Str)) Term Term))
+(declare sp-rw-l (-> (List (Pair Str Str)) (List Term) (List Term)))
+(declare sp-rw-a (-> (List (Pair Str Str)) (List KArm) (List KArm)))
+(def sp-rw (lam (pm t)
+  (case t
+    ((t-app f a)
+      (let (f2 (sp-rw pm f))                  ; rewrite head FIRST, then re-check:
+        (case f2                              ; a chained singleton projection (an
+          ((t-global g) (case (pm-find pm g)  ; Alloc field that is a Mach projector)
+            ((some tgt) (t-global tgt))       ; forms its redex only after the inner
+            ((none) (t-app f2 (sp-rw pm a)))))  ; projection collapses. E81.
+          (_ (t-app f2 (sp-rw pm a))))))
+    ((t-lam b)          (t-lam (sp-rw pm b)))
+    ((t-let q v b)      (t-let q (sp-rw pm v) (sp-rw pm b)))
+    ((t-ann e ty)       (t-ann (sp-rw pm e) (sp-rw pm ty)))
+    ((t-con home nm as) (t-con home nm (sp-rw-l pm as)))
+    ((t-tcon nm as)     (t-tcon nm (sp-rw-l pm as)))
+    ((t-pi q s dom cod) (t-pi q s (sp-rw pm dom) (sp-rw pm cod)))
+    ((t-case sc arms df) (t-case (sp-rw pm sc) (sp-rw-a pm arms)
+                           (case df (none none) ((some d) (some (sp-rw pm d))))))
+    (_ t))))
+(def sp-rw-l (lam (pm ts) (case ts (nil nil) ((cons x r) (cons (sp-rw pm x) (sp-rw-l pm r))))))
+(def sp-rw-a (lam (pm as) (case as (nil nil) ((cons a r) (case a ((karm cn nv b) (cons (karm cn nv (sp-rw pm b)) (sp-rw-a pm r))))))))
+
+; ---- q0-dom: retype a Pi param whose dom is a dict type (t-tcon d) to q=0 -----
+(declare mem-str (-> (List Str) Str Bool))
+(def mem-str (lam (xs y) (case xs (nil false) ((cons x r) (case (str-eq x y) (true true) (false (mem-str r y)))))))
+(declare dom-q0 (-> (List Str) Term Qty Qty))
+(def dom-q0 (lam (dn dom q)
+  (case dom
+    ((t-tcon nm as) (case (mem-str dn nm) (true (q0)) (false q)))
+    ((t-global nm)  (case (mem-str dn nm) (true (q0)) (false q)))
+    (_ q))))
+(declare q0-dom (-> (List Str) Term Term))
+(def q0-dom (lam (dn t)
+  (case t
+    ((t-pi q s dom cod) (t-pi (dom-q0 dn dom q) s dom (q0-dom dn cod)))
+    (_ t))))
+
+; ---- driver assembly (all forward declares first) ---------------------------
+(data SpLiftR () (sp-liftr (fg (List (Pair I64 Str))) (defs (List (Pair Str (Pair Term Term)))) (names (List Str))))
+(data SpOneR () (sp-oner (lifted (List (Pair Str (Pair Term Term)))) (pm (List (Pair Str Str))) (prune (List Str)) (dname Str)))
+(data SpAccR () (sp-accr (lifted (List (Pair Str (Pair Term Term)))) (pm (List (Pair Str Str))) (prune (List Str)) (dnames (List Str))))
+(declare app-g (-> (List (Pair Str (Pair Term Term))) (List (Pair Str (Pair Term Term))) (List (Pair Str (Pair Term Term)))))
+(declare app-p (-> (List (Pair Str Str)) (List (Pair Str Str)) (List (Pair Str Str))))
+(declare collect-singles (-> Sig (List DataDecl) (List (Pair Str SpSingle))))
+(declare lift-fields (-> Str I64 (List Term) (List Field) SpLiftR))
+(declare lift-add (-> Str I64 Term Field SpLiftR SpLiftR))
+(declare lift-lifted (-> Str I64 Term Field SpLiftR SpLiftR))
+(declare fg-find (-> (List (Pair I64 Str)) I64 (Maybe Str)))
+(declare find-projs (-> (List (Pair Str (Pair Term Term))) Str (List (Pair Str I64))))
+(declare find-projs-add (-> Str Str Term (List (Pair Str I64)) (List (Pair Str I64))))
+(declare projs->pm (-> (List (Pair Str I64)) (List (Pair I64 Str)) (List (Pair Str Str))))
+(declare projs->names (-> (List (Pair Str I64)) (List Str)))
+(declare process-one (-> Sig (Pair Str SpSingle) SpOneR))
+(declare process-mk (-> Str Str SpLiftR (List (Pair Str I64)) Str SpOneR))
+(declare accumulate (-> Sig (List (Pair Str SpSingle)) SpAccR))
+(declare acc-merge (-> SpOneR SpAccR SpAccR))
+(declare sp-rw-only (-> (List (Pair Str Str)) (List Str) (List (Pair Str (Pair Term Term))) (List (Pair Str (Pair Term Term)))))
+(declare sp-one (-> (List (Pair Str Str)) (List Str) (Pair Str (Pair Term Term)) (Pair Str (Pair Term Term))))
+(declare term-refs (-> Str Term Bool))
+(declare term-refs-l (-> Str (List Term) Bool))
+(declare term-refs-a (-> Str (List KArm) Bool))
+(declare gs-refs (-> (List (Pair Str (Pair Term Term))) Str Bool))
+(declare prune-live (-> (List (Pair Str (Pair Term Term))) (List Str) (List Str)))
+(declare drop-pruned (-> (List Str) (List (Pair Str (Pair Term Term))) (List (Pair Str (Pair Term Term)))))
+(declare specialize-singletons (-> Sig Sig))
+(declare sp-finish (-> Sig SpAccR Sig))
+
+(def app-g (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (app-g t ys))))))
+(def app-p (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (app-p t ys))))))
+(def collect-singles (lam (s dds) (case dds (nil nil) ((cons dd r) (case (find-singleton s dd) ((none) (collect-singles s r)) ((some ps) (cons ps (collect-singles s r))))))))
+(def lift-fields (lam (gname i fbs fts) (case fbs (nil (sp-liftr nil nil nil)) ((cons fb fbr) (case fts (nil (sp-liftr nil nil nil)) ((cons ft ftr) (lift-add gname i fb ft (lift-fields gname (+ i 1) fbr ftr))))))))
+(def lift-add (lam (gname i fb ft acc) (case acc ((sp-liftr fg defs names) (case fb ((t-global g) (sp-liftr (cons (pair i g) fg) defs names)) (_ (lift-lifted gname i fb ft acc)))))))
+(def lift-lifted (lam (gname i fb ft acc) (case acc ((sp-liftr fg defs names) (case ft ((field q fn fty) (let (nm (str-cat (str-cat gname "$") (i64->str i))) (sp-liftr (cons (pair i nm) fg) (cons (pair nm (pair fty fb)) defs) (cons nm names)))))))))
+(def fg-find (lam (fg i) (case fg (nil (none)) ((cons p r) (case p ((pair j nm) (case (=i i j) (true (some nm)) (false (fg-find r i)))))))))
+(def find-projs (lam (gs cname) (case gs (nil nil) ((cons p r) (case p ((pair nm tb) (case tb ((pair ty body) (find-projs-add nm cname body (find-projs r cname))))))))))
+(def find-projs-add (lam (nm cname body rest) (case (proj-idx cname body) ((some idx) (cons (pair nm idx) rest)) ((none) rest))))
+(def projs->pm (lam (ps fg) (case ps (nil nil) ((cons p r) (case p ((pair pn idx) (case (fg-find fg idx) ((some tgt) (cons (pair pn tgt) (projs->pm r fg))) ((none) (projs->pm r fg)))))))))
+(def projs->names (lam (ps) (case ps (nil nil) ((cons p r) (case p ((pair pn idx) (cons pn (projs->names r))))))))
+(def process-one (lam (s ds) (case ds ((pair dname sg) (case sg ((sp-single gname cname fbs fts) (process-mk gname cname (lift-fields gname 0 fbs fts) (find-projs (sig-globals s) cname) dname)))))))
+(def process-mk (lam (gname cname lr ps dname) (case lr ((sp-liftr fg lifted names) (sp-oner lifted (projs->pm ps fg) (cons gname (projs->names ps)) dname)))))
+(def accumulate (lam (s singles) (case singles (nil (sp-accr nil nil nil nil)) ((cons sg rest) (acc-merge (process-one s sg) (accumulate s rest))))))
+(def acc-merge (lam (o a) (case o ((sp-oner lifted pm prune dname) (case a ((sp-accr l2 pm2 pr2 dn2) (sp-accr (app-g lifted l2) (app-p pm pm2) (sp-app2 prune pr2) (cons dname dn2))))))))
+(def sp-rw-only (lam (pm dnames gs) (case gs (nil nil) ((cons p r) (cons (sp-one pm dnames p) (sp-rw-only pm dnames r))))))
+(def sp-one (lam (pm dnames p) (case p ((pair nm tb) (case tb ((pair ty body) (pair nm (pair (q0-dom dnames ty) (sp-rw pm body)))))))))
+; prune only the genuinely dead (mirrors specialize.py): a driver may pass the
+; singleton WHOLE to a q0-retyped param -- that reference stays at check level
+; (the lowerer's q=0 erasure drops the arg later), so deleting the global would
+; poison any later check with "unknown global".
+(def term-refs (lam (nm t)
+  (case t
+    ((t-global g)        (str-eq g nm))
+    ((t-app f a)         (or (term-refs nm f) (term-refs nm a)))
+    ((t-lam b)           (term-refs nm b))
+    ((t-let q v b)       (or (term-refs nm v) (term-refs nm b)))
+    ((t-ann e ty)        (or (term-refs nm e) (term-refs nm ty)))
+    ((t-con home cn as)  (term-refs-l nm as))
+    ((t-tcon cn as)      (term-refs-l nm as))
+    ((t-pi q s dom cod)  (or (term-refs nm dom) (term-refs nm cod)))
+    ((t-case sc arms df) (or (term-refs nm sc) (or (term-refs-a nm arms)
+                            (case df (none false) ((some dd) (term-refs nm dd))))))
+    (_ false))))
+(def term-refs-l (lam (nm ts) (case ts (nil false) ((cons x r) (or (term-refs nm x) (term-refs-l nm r))))))
+(def term-refs-a (lam (nm as) (case as (nil false) ((cons a r) (case a ((karm cn nv b) (or (term-refs nm b) (term-refs-a nm r))))))))
+(def gs-refs (lam (gs nm) (case gs (nil false) ((cons p r) (case p ((pair n2 tb) (case tb ((pair ty body) (case (term-refs nm body) (true true) (false (gs-refs r nm)))))))))))
+(def prune-live (lam (all pr) (case pr (nil nil) ((cons nm r) (case (gs-refs all nm) (true (prune-live all r)) (false (cons nm (prune-live all r))))))))
+(def drop-pruned (lam (prune gs) (case gs (nil nil) ((cons p r) (case p ((pair nm tb) (case (mem-str prune nm) (true (drop-pruned prune r)) (false (cons p (drop-pruned prune r))))))))))
+(def specialize-singletons (lam (s) (case s ((mk-sig g p d la ld tg pf km sh) (case (collect-singles s d) (nil s) ((cons c0 cr) (sp-finish s (accumulate s (cons c0 cr)))))))))
+(def sp-finish (lam (s acc) (case s ((mk-sig g p d la ld tg pf km sh) (case acc ((sp-accr lifted pm prune dnames)
+  (let (all (app-g (sp-rw-only pm dnames g) lifted))
+    (mk-sig (drop-pruned (prune-live all prune) all) p d la ld tg pf km sh))))))))

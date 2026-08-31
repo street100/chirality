@@ -1,0 +1,638 @@
+; scriba S11: init file loader — load ~/.config/scriba/init.chiral at startup.
+; ~50 lines. define-key (keymap update), init-load (resolve, compile, run),
+; init-default (fallback). register-op in scriba/command-loop,
+; register-renderer in scriba/render — define-key lives here.
+;
+; Deps: prelude, ports, scriba/command-loop, scriba/keymap, scriba/render
+
+(import "prelude")
+(import "ports")
+(import "command-loop")   ; Op, register-op
+(import "keymap")         ; Keymap, KeySeq, keyseq, default-keymap, keyseq-eq
+(import "render")         ; renderer-fn, register-renderer
+(import "puffer")         ; Puffer, Zipper, push-undo, puffer-undo, puffer-redo
+(import "str-edit")       ; TextZipper movement/edit ops
+(import "zipper-bridge")  ; zipper->text-zipper, text-zipper->zipper
+(import "kill-ring")      ; KillRing, kill-ring-push, kill-ring-top
+(import "mark-region")    ; Mark, mark-at, kill-region, copy-region
+
+; ─── define-key ───────────────────────────────────────────────────────────
+
+; Drop any existing binding for KeySeq ks from the alist. Pure, O(n).
+(def remove-binding (-> KeySeq (List (Pair KeySeq Str)) (List (Pair KeySeq Str)))
+  (lam (ks bindings)
+    (case bindings
+      (nil nil)
+      ((cons b rest)
+        (case b
+          ((pair ks2 _)
+            (case (keyseq-eq ks ks2)
+              (true (remove-binding ks rest))
+              (false (cons b (remove-binding ks rest))))))))))
+
+; Return a new Keymap with ks→opname. Replaces any existing binding for ks.
+; Pure (->) — immutable alist update. New bindings at front take priority.
+
+(declare define-key (-> Keymap KeySeq Str Keymap))
+(def define-key
+  (lam (km ks opname)
+    (case km
+      ((keymap bindings)
+        (keymap (cons (pair ks opname)
+                      (remove-binding ks bindings)))))))
+
+; ─── init-default ─────────────────────────────────────────────────────────
+
+; Return (default-keymap, default-ops, default-renderers) — the fallback when
+; no init file exists or init loading fails. Pure (->).
+;
+; The default ops/renderers are registered here (NOT nil) so the fn-typed
+; field construction sites are referenced and lower through defunctionalization:
+; render-puffer (render.chiral) and try-dispatch (dispatch.chiral) destructure
+; and APPLY the stored fn, which needs a $clo/$apply site to route through.
+
+; Default "Str" renderer — renders the buffer text itself (RendererFn now
+; receives the content Str). Named global (not an inline lam) so the fn-field
+; construction site lowers. Splits content into lines and renders each as its
+; own r-text row under r-lines (ansi-goto per line). Without the split, the
+; whole multi-line content lands in ONE r-text and its raw LF (0x0a) renders
+; with cumulative indent under term-raw (no ONLCR) — the same class as the
+; keybind-help CRLF fix.
+(def str-lines-render (-> (List Str) (List Rendering))
+  (lam (lines)
+    (case lines
+      (nil nil)
+      ((cons l rest)
+        (cons (r-text l false) (str-lines-render rest))))))
+
+(def default-str-renderer (-> Str (Pair I64 I64) I64 Rendering)
+  (lam (content dims scroll)
+    (case dims
+      ((pair rows cols)
+        (r-lines (str-lines-render (str-split-window content (+ scroll 1) (- rows 1))))))))
+
+; Default no-op command — identity on the puffer. Named global for the same
+; reason (the stored fn must lower as a $clo site, not an inline lam literal).
+(def default-noop-op (=> (Puffer Str) (Puffer Str))
+  (lam (p) p))
+
+; ─── demo "chirality" mode: comment + keyword face tagging ─────────────────────
+
+; Skip leading opener chars ( (40), space (32), tab (9); return the first
+; non-opener offset, or str-len if the line is all openers.
+(def skip-openers (-> Str I64 I64)
+  (lam (s i)
+    (case (<i i (str-len s))
+      (false i)
+      (true
+        (let (c (bget (str->bytes s) i))
+          (case (or (=i c 40) (or (=i c 32) (=i c 9)))
+            (true (skip-openers s (+ i 1)))
+            (false i)))))))
+
+; Read one token from offset i; stops at ( ) space tab or end of string.
+(def read-token (-> Str I64 Str)
+  (lam (s i)
+    (case (<i i (str-len s))
+      (false "")
+      (true
+        (let (c (bget (str->bytes s) i))
+          (case (or (=i c 40) (or (=i c 41) (or (=i c 32) (=i c 9))))
+            (true "")
+            (false (str-cat (bytes->str (bslice (str->bytes s) i (+ i 1)))
+                            (read-token s (+ i 1))))))))))
+
+(def first-token (-> Str Str)
+  (lam (s) (read-token s (skip-openers s 0))))
+
+; Is the token one of the chirality binding keywords?
+(def chirality-keyword? (-> Str Bool)
+  (lam (t)
+    (or (str-eq t "def")
+        (or (str-eq t "lam")
+            (or (str-eq t "case")
+                (str-eq t "data"))))))
+
+; Classify a line: "comment" (starts with ;), "keyword" (opens with a binding
+; keyword), or "default".
+(def chirality-line-face (-> Str Str)
+  (lam (line)
+    (let (tok (first-token line))
+      (case (str-eq tok "")
+        (true "default")
+        (false
+          (let (c (bget (str->bytes line) (skip-openers line 0)))
+            (case (=i c 59)
+              (true "comment")
+              (false
+                (case (chirality-keyword? tok)
+                  (true "keyword")
+                  (false "default"))))))))))
+
+(def chirality-line-render (-> Str Rendering)
+  (lam (line)
+    (case (str-eq (chirality-line-face line) "comment")
+      (true (r-face "comment" (r-text line false)))
+      (false
+        (case (str-eq (chirality-line-face line) "keyword")
+          (true (r-face "keyword" (r-text line false)))
+          (false (r-text line false)))))))
+
+(def chirality-lines-render (-> (List Str) (List Rendering))
+  (lam (lines)
+    (case lines
+      (nil nil)
+      ((cons l rest)
+        (cons (chirality-line-render l) (chirality-lines-render rest))))))
+
+; The face set each mode declares (the renderer emits these faces).
+(def str-mode-faces (List (Pair Str Face))
+  (cons (pair "default" (lookup-face default-faces "default")) nil))
+
+(def chirality-mode-faces (List (Pair Str Face))
+  (cons (pair "comment" (lookup-face default-faces "comment"))
+  (cons (pair "keyword" (lookup-face default-faces "keyword"))
+  nil)))
+
+; The chirality mode renderer: split content into lines, tag each, wrap in r-lines
+; (vertical flat list — no indent). r-tree would indent children 2 columns, so
+; the cursor block (computed from the raw text offset) would sit 2 columns left
+; of the rendered text. r-lines renders every child at the same column, which
+; keeps the block and the text aligned one-for-one.
+(def chirality-renderer (-> Str (Pair I64 I64) I64 Rendering)
+  (lam (content dims scroll)
+    (case dims
+      ((pair rows cols)
+        (r-lines (chirality-lines-render (str-split-window content (+ scroll 1) (- rows 1))))))))
+
+; ─── "manas" mode: color the orchestration .md library (Tier 1) ─────────────
+; Classifies a manas/orchestration/{agents,processes,configs,SCHEMA}.md line by
+; schema: firmness tags (WALL/NEAR-WALL/FIRM/UPKEEP), field keys (LENS/GATE/
+; BIND/...), and section headers (##/###). Mirrors chirality-line-face's per-line
+; shape; the renderer below is the same r-lines windowed split as chirality-renderer.
+
+(def manas-tag? (-> Str Bool)
+  (lam (t)
+    (or (str-eq t "WALL")
+        (or (str-eq t "NEAR-WALL")
+            (or (str-eq t "FIRM")
+                (str-eq t "UPKEEP"))))))
+
+(def manas-field-names (List Str)
+  (cons "LENS"
+  (cons "SEES"
+  (cons "RETURNS"
+  (cons "SLOT"
+  (cons "TOOLS"
+  (cons "GATE"
+  (cons "ORDER"
+  (cons "COMBINER"
+  (cons "STOP"
+  (cons "YIELD"
+  (cons "STAGES"
+  (cons "STATE"
+  (cons "WHEN"
+  (cons "BIND"
+  (cons "AGENTS" nil))))))))))))))))
+
+(def manas-mem? (-> Str (List Str) Bool)
+  (lam (s xs)
+    (case xs
+      (nil false)
+      ((cons h t)
+        (case (str-eq s h)
+          (true true)
+          (false (manas-mem? s t)))))))
+
+(def manas-field? (-> Str Bool)
+  (lam (t) (manas-mem? t manas-field-names)))
+
+(def manas-line-face (-> Str Str)
+  (lam (line)
+    (let (i (skip-openers line 0))
+      (case (<i i (str-len line))
+        (false "default")
+        (true
+          (let (c (bget (str->bytes line) i))
+            (case (=i c 35)
+              (true "manas-header")
+              (false
+                (let (tok (first-token line))
+                  (case (manas-tag? tok)
+                    (true "manas-tag")
+                    (false
+                      (case (manas-field? tok)
+                        (true "manas-field")
+                        (false "default")))))))))))))
+
+
+(def manas-line-render (-> Str Rendering)
+  (lam (line)
+    (let (f (manas-line-face line))
+      (case (str-eq f "default")
+        (true (r-text line false))
+        (false (r-face f (r-text line false)))))))
+
+(def manas-lines-render (-> (List Str) (List Rendering))
+  (lam (lines)
+    (case lines
+      (nil nil)
+      ((cons l rest)
+        (cons (manas-line-render l) (manas-lines-render rest))))))
+
+(def manas-mode-faces (List (Pair Str Face))
+  (cons (pair "manas-tag" (lookup-face default-faces "manas-tag"))
+  (cons (pair "manas-field" (lookup-face default-faces "manas-field"))
+  (cons (pair "manas-header" (lookup-face default-faces "manas-header"))
+  nil))))
+
+(def manas-renderer (-> Str (Pair I64 I64) I64 Rendering)
+  (lam (content dims scroll)
+    (case dims
+      ((pair rows cols)
+        (r-lines (manas-lines-render (str-split-window content (+ scroll 1) (- rows 1))))))))
+
+; ─── Navigation/edit ops ──────────────────────────────────────────────────
+
+; Each op extracts the puffer's Zipper, bridges to TextZipper, applies the
+; matching str-edit op, bridges back, and rebuilds the Puffer with dirty true.
+; Pure bodies under => (the op fn type requires the effectful arrow; the
+; actual work is pure).
+;
+; Movement ops thread the undo field through unchanged (they must NOT push
+; history). Edit ops (delete-char, backward-delete-char, kill-line) call
+; push-undo FIRST so the pre-edit zipper is recorded on `past`.
+
+(def op-forward-char (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle
+          (zb-move flat-forward-char z)
+          dirty u mark kr)))))
+
+(def op-backward-char (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle
+          (zb-move flat-backward-char z)
+          dirty u mark kr)))))
+
+(def op-next-line (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle
+          (zb-move flat-next-line z)
+          dirty u mark kr)))))
+
+(def op-previous-line (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle
+          (zb-move flat-previous-line z)
+          dirty u mark kr)))))
+
+(def op-beginning-of-line (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle
+          (zb-move flat-beginning-of-line z)
+          dirty u mark kr)))))
+
+(def op-end-of-line (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle
+          (zb-move flat-end-of-line z)
+          dirty u mark kr)))))
+
+(def op-delete-char (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (let (puf1 (push-undo puf))
+      (case puf1
+        ((puffer id name type-name handle z dirty u mark kr)
+          (case z
+            ((zipper focus path)
+              (case focus
+                (none puf1)
+                ((some text)
+                  (let (off (zb-path-offset path))
+                    (case (flat-delete-forward text off)
+                      ((pair new-text new-off)
+                        (puffer id name type-name handle
+                          (zipper (some new-text) (cons new-off nil)) true u mark kr)))))))))))))
+
+(def op-backward-delete-char (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (let (puf1 (push-undo puf))
+      (case puf1
+        ((puffer id name type-name handle z dirty u mark kr)
+          (case z
+            ((zipper focus path)
+              (case focus
+                (none puf1)
+                ((some text)
+                  (let (off (zb-path-offset path))
+                    (case (flat-delete-backward text off)
+                      ((pair new-text new-off)
+                        (puffer id name type-name handle
+                          (zipper (some new-text) (cons new-off nil)) true u mark kr)))))))))))))
+
+(def op-kill-line (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (let (puf1 (push-undo puf))
+      (case puf1
+        ((puffer id name type-name handle z dirty u mark kr)
+          (case (str-kill-line (zipper->text-zipper z))
+            ((pair killed tz)
+              (let (kr2 (case (str-eq killed "")
+                          (true kr)
+                          (false (kill-ring-push killed kr))))
+                (puffer id name type-name handle (text-zipper->zipper tz) true u mark kr2)))))))))
+
+; ─── Undo / redo ops (SCRIBA-SLICES slice 3) ──────────────────────────────
+; op-undo / op-redo call the pure puffer-undo / puffer-redo helpers in
+; puffer.chiral. Registered ops (=> (Puffer Str) (Puffer Str)) so they dispatch
+; through try-dispatch exactly like every other op.
+
+(def op-undo (=> (Puffer Str) (Puffer Str))
+  (lam (puf) (puffer-undo puf)))
+
+(def op-redo (=> (Puffer Str) (Puffer Str))
+  (lam (puf) (puffer-redo puf)))
+
+; ─── Mark / region + kill-ring ops (SCRIBA-SLICES slice 2) ─────────────────
+; set-mark stores the current zipper in the mark field ((Maybe (Zipper Str))).
+; kill-region / copy-region bridge mark and point to TextZipper, call the pure
+; mark-region machinery, and push the killed/copied text onto the kill-ring.
+; yank pops the ring top and inserts it at point. All are (=> (Puffer Str)
+; (Puffer Str)) and dispatch through try-dispatch like every other op.
+
+(def op-set-mark (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle z dirty u (some z) kr)))))
+
+(def op-yank (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case (kill-ring-top kr)
+          (none
+            (let (_ (put bel-byte)) puf))
+          ((some top)
+            (let (puf1 (push-undo puf))
+              (case puf1
+                ((puffer id2 name2 type-name2 handle2 z2 dirty2 u2 mark2 kr2)
+                  (puffer id2 name2 type-name2 handle2
+                    (text-zipper->zipper (str-insert-char top (zipper->text-zipper z2)))
+                    true u2 mark2 kr2))))))))))
+
+(def op-kill-region (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case mark
+          (none
+            (let (_ (put bel-byte)) puf))
+          ((some mz)
+            (case (kill-region (mark-at (zipper->text-zipper mz)) (zipper->text-zipper z))
+              ((pair killed tz)
+                (case (str-eq killed "")
+                  (true puf)
+                  (false
+                    (let (puf1 (push-undo puf))
+                      (case puf1
+                        ((puffer id2 name2 type-name2 handle2 z2 dirty2 u2 mark2 kr2)
+                          (puffer id2 name2 type-name2 handle2
+                            (text-zipper->zipper tz) true u2 none
+                            (kill-ring-push killed kr2)))))))))))))))
+
+(def op-copy-region (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case mark
+          (none
+            (let (_ (put bel-byte)) puf))
+          ((some mz)
+            (let (copied (copy-region (mark-at (zipper->text-zipper mz)) (zipper->text-zipper z)))
+              (case (str-eq copied "")
+                (true puf)
+                (false
+                  (puffer id name type-name handle z dirty u mark
+                    (kill-ring-push copied kr)))))))))))
+
+; ─── Vim word / line / non-blank ops (S13) ────────────────────────────────
+; Word + first-non-blank movements route through zb-move (flat-text offset,
+; no TextZipper bridge). The line/word delete+yank ops bridge to TextZipper
+; and reuse str-edit's str-kill-lines / str-move-forward-word + mark-region's
+; kill-region/copy-region. dd/yy are the acceptance-critical ones.
+
+(def op-forward-word (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle
+          (zb-move flat-forward-word z)
+          dirty u mark kr)))))
+
+(def op-backward-word (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle
+          (zb-move flat-backward-word z)
+          dirty u mark kr)))))
+
+(def op-end-of-word (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle
+          (zb-move flat-end-of-word z)
+          dirty u mark kr)))))
+
+(def op-first-non-blank (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle
+          (zb-move flat-first-non-blank z)
+          dirty u mark kr)))))
+
+; dd: delete the current line (bridge, move to line start, kill 1 line, push
+; the killed text to the kill-ring). undo pushed first.
+(def op-delete-line (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (let (puf1 (push-undo puf))
+      (case puf1
+        ((puffer id name type-name handle z dirty u mark kr)
+          (case (str-kill-lines 1 (str-move-beginning-of-line (zipper->text-zipper z)))
+            ((pair killed tz)
+              (puffer id name type-name handle (text-zipper->zipper tz) true u mark
+                (kill-ring-push killed kr)))))))))
+
+; yy: copy the current line to the kill-ring (no delete, no cursor move).
+(def op-yank-line (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle z dirty u mark
+          (kill-ring-push (current-line (zipper->text-zipper z)) kr))))))
+
+; dw: delete from cursor to the start of the next word.
+(def op-delete-word (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (let (puf1 (push-undo puf))
+      (case puf1
+        ((puffer id name type-name handle z dirty u mark kr)
+          (let (tz (zipper->text-zipper z))
+            (case (kill-region (mark-at tz) (str-move-forward-word tz))
+              ((pair killed tz2)
+                (puffer id name type-name handle (text-zipper->zipper tz2) true u mark
+                  (kill-ring-push killed kr))))))))))
+
+; yw: copy from cursor to the next word start to the kill-ring (no delete).
+(def op-yank-word (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (let (tz (zipper->text-zipper z))
+          (puffer id name type-name handle z dirty u mark
+            (kill-ring-push (copy-region (mark-at tz) (str-move-forward-word tz)) kr)))))))
+
+; cw = dw (the loop enters Insert after); cc = dd.
+(def op-change-word (=> (Puffer Str) (Puffer Str))
+  (lam (puf) (op-delete-word puf)))
+
+(def op-change-line (=> (Puffer Str) (Puffer Str))
+  (lam (puf) (op-delete-line puf)))
+
+; ─── S13 vim gg/G/~/J/% ─────────────────────────────────────────────────────
+
+; gg: first non-blank of the first line.
+(def op-goto-top (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle (zb-move flat-doc-top z) dirty u mark kr)))))
+
+; G: first non-blank of the last line.
+(def op-goto-bottom (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle (zb-move flat-doc-bottom z) dirty u mark kr)))))
+
+; %: jump to the matching bracket.
+(def op-match-bracket (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (puffer id name type-name handle (zb-move flat-match-bracket z) dirty u mark kr)))))
+
+; ~: toggle the case of the char at point and advance one char. undo pushed.
+(def op-toggle-case (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (let (puf1 (push-undo puf))
+      (case puf1
+        ((puffer id name type-name handle z dirty u mark kr)
+          (case z
+            ((zipper focus path)
+              (case focus
+                (none puf1)
+                ((some text)
+                  (let (off (zb-path-offset path))
+                    (puffer id name type-name handle
+                      (zipper (some (flat-toggle-case text off))
+                              (cons (flat-forward-char text off) nil))
+                      true u mark kr)))))))))))
+
+; J: join the current line with the next (single space). undo pushed.
+(def op-join-line (=> (Puffer Str) (Puffer Str))
+  (lam (puf)
+    (let (puf1 (push-undo puf))
+      (case puf1
+        ((puffer id name type-name handle z dirty u mark kr)
+          (case z
+            ((zipper focus path)
+              (case focus
+                (none puf1)
+                ((some text)
+                  (let (off (zb-path-offset path))
+                    (case (flat-join-line text off)
+                      ((pair new-text new-off)
+                        (puffer id name type-name handle
+                          (zipper (some new-text) (cons new-off nil))
+                          true u mark kr)))))))))))))
+
+(declare init-default
+  (-> Unit (Pair Keymap (Pair (List ScribaOp) (List (Pair Str Mode))))))
+
+(def init-default
+  (lam (_)
+    (pair default-keymap
+      (pair
+        (cons (op "forward-char" op-forward-char "move forward one char")
+        (cons (op "backward-char" op-backward-char "move backward one char")
+        (cons (op "next-line" op-next-line "move to next line")
+        (cons (op "previous-line" op-previous-line "move to previous line")
+        (cons (op "beginning-of-line" op-beginning-of-line "move to line start")
+        (cons (op "end-of-line" op-end-of-line "move to line end")
+        (cons (op "delete-char" op-delete-char "delete char forward")
+        (cons (op "backward-delete-char" op-backward-delete-char "delete char backward")
+        (cons (op "kill-line" op-kill-line "kill to end of line")
+        (cons (op "yank" op-yank "yank last kill")
+        (cons (op "set-mark" op-set-mark "set mark at point")
+        (cons (op "kill-region" op-kill-region "kill region between mark and point")
+        (cons (op "copy-region" op-copy-region "copy region to kill-ring")
+        (cons (op "undo" op-undo "undo last edit")
+        (cons (op "redo" op-redo "redo undone edit")
+        (cons (op "forward-word" op-forward-word "move to next word")
+        (cons (op "backward-word" op-backward-word "move to previous word")
+        (cons (op "end-of-word" op-end-of-word "move to end of word")
+        (cons (op "first-non-blank" op-first-non-blank "move to first non-blank")
+        (cons (op "delete-line" op-delete-line "delete current line")
+        (cons (op "yank-line" op-yank-line "yank current line")
+        (cons (op "delete-word" op-delete-word "delete to next word")
+        (cons (op "yank-word" op-yank-word "yank to next word")
+        (cons (op "change-word" op-change-word "change to next word")
+        (cons (op "change-line" op-change-line "change current line")
+        (cons (op "goto-top" op-goto-top "go to first line")
+        (cons (op "goto-bottom" op-goto-bottom "go to last line")
+        (cons (op "match-bracket" op-match-bracket "jump to matching bracket")
+        (cons (op "toggle-case" op-toggle-case "toggle case at point")
+        (cons (op "join-line" op-join-line "join current line with next")
+        (cons (op "noop" default-noop-op "no-op") nil)))))))))))))))))))))))))))))))
+        (cons (pair "Str" (mode (rf default-str-renderer) str-mode-faces))
+        (cons (pair "chirality" (mode (rf chirality-renderer) chirality-mode-faces))
+        (cons (pair "manas" (mode (rf manas-renderer) manas-mode-faces)) nil)))))))
+
+; ─── init-load ────────────────────────────────────────────────────────────
+
+; Resolve ~/.config/scriba/init.chiral (XDG-aware), compile and run the init
+; file, return the configured (keymap, ops, renderers) triple.
+; Falls back to init-default on missing file or compile error.
+;
+; Effect row: ("env-read" "fs-stat" "spawn" "put")
+;
+; NOTE: Compilation deferred (Knob 1 — init file caching). Until the chirality
+; runtime loads compiled artifacts, init-load returns init-default. Real path:
+; spawn chirality compile, load artifact, call init-config with defaults to get
+; user's (km, ops, renderers). On compile error: put stderr, return defaults.
+(declare init-load
+  (=> Unit (Pair Keymap (Pair (List ScribaOp) (List (Pair Str Mode))))))
+
+(def init-load
+  (lam (_)
+    ; E98: env-get retired. init file loading deferred (Knob 1 — no runtime
+    ; compilation yet). Path resolution (~/.config/scriba/init.chiral) will
+    ; use nb-sys-env-get or a typed Env port when init-load is implemented.
+    (init-default unit)))

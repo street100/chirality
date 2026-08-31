@@ -1,0 +1,91 @@
+; lincoll.chiral — E106, the linear collection of caps.
+;
+; A MONOMORPHIC linear cap vector for the TUI `mux` (T9): a container that
+; HOLDS N move-only `porttype` caps (`Sock`) and threads each one linearly.
+; It is the linear-fielded cousin of `collections.chiral` (whose `List`/`Map`
+; are unrestricted and whose `length` discards the head), NOT an edit to it.
+;
+; The whole trick: both fields of the cons carry quantity `1`, so the cap is
+; held linearly, the tail is held linearly, and the whole `SockVec` registers
+; linear (`is-linear` reads `ldatas`) and threads move-only for free. Every op
+; that would "look without consuming" (`length`, `map`) is replaced by one that
+; RETURNS the container back inside a result sum whose vector/cap fields are
+; quantity `1` — the `ports.chiral` `RecvR` pattern. No operation discards a cap.
+;
+; Monomorphic on purpose: the polymorphic `(data LVec ((A (type 0))) …)` form
+; type-checks identically (the `1` field admits any `A`), but polymorphic
+; higher-order code does not lower to native during bootstrap yet — the same
+; status as `collections.chiral` — and `mux` is real code that must run.
+
+(import "prelude")
+(import "ports")            ; Sock, sock-recv/-send/-close, RecvR
+
+; ── the container ─────────────────────────────────────────────────────────────
+; both fields quantity-1: the cap is held linearly, the tail is held linearly, so
+; the whole SockVec registers linear (is-linear reads ldatas) and threads move-only.
+(data SockVec ()
+  (sv-nil)
+  (sv-cons (1 hd Sock) (1 tl SockVec)))
+
+; push = move a cap in. Pure: repacking a port is not a crossing (-> , empty row).
+(def sv-push (-> (1 s Sock) (1 v SockVec) SockVec)
+  (lam (s v) (sv-cons s v)))
+
+; ── count WITHOUT discarding — the linearity-preserving replacement for `length` ─
+; the unrestricted `length` is REJECTED here (it drops the head); instead thread
+; the vector back beside the tally.  count-r's vector field is quantity-1.
+(data CountR () (count-r (n I64) (1 v SockVec)))
+(declare sv-count (-> (1 v SockVec) CountR))
+(def sv-count
+  (lam (v)
+    (case v
+      (sv-nil (count-r 0 sv-nil))
+      ((sv-cons h t)
+        (case (sv-count t)
+          ((count-r n t2) (count-r (+ 1 n) (sv-cons h t2))))))))   ; head put back
+
+; ── detach the cap at index i — the swap-remove analog (returns cap + rest) ──────
+; a returned cap rides a 1-field of a sum, never a bare Pair. det-none = out of
+; range (a value, not a panic); the untouched vector still comes back on that arm.
+(data DetachR ()
+  (det-none (1 v SockVec))
+  (det-r    (1 s Sock) (1 rest SockVec)))
+(declare sv-detach-at (-> (1 v SockVec) I64 DetachR))
+(def sv-detach-at
+  (lam (v i)
+    (case v
+      (sv-nil (det-none sv-nil))
+      ((sv-cons h t)
+        (case (=i i 0)
+          (true  (det-r h t))                                  ; pull this one out
+          (false (case (sv-detach-at t (- i 1))
+                   ((det-none t2)   (det-none (sv-cons h t2)))  ; not found, rebuild
+                   ((det-r s t2)    (det-r s (sv-cons h t2))))))))))  ; splice around
+
+; ── drain: the ONLY end of a SockVec — close every held cap exactly once ─────────
+; process (=>): sock-close is a crossing. Structural recursion ⇒ total.
+(declare sv-drain (=> (1 v SockVec) Unit))
+(def sv-drain
+  (lam (v)
+    (case v
+      (sv-nil unit)
+      ((sv-cons h t)
+        (case (sock-close h)
+          (unit (sv-drain t)))))))
+
+; ── the mux servicing step (skeleton) ────────────────────────────────────────────
+; hold N sessions; pick a ready index (poll over the held fds); detach it, service
+; it once (recv/send threads the SAME cap back via RecvR), push it back, loop.
+; "concurrent progress, serial mutation": only the serviced cap is ever mutated.
+(declare mux-step (=> (1 v SockVec) (=> I64 SockVec)))
+(def mux-step
+  (lam (v ready)
+    (case (sv-detach-at v ready)
+      ((det-none v2) v2)                        ; index gone: hand the pool back
+      ((det-r s rest)
+        (case (sock-recv s 4096)
+          ((recv-r bs s2)     (sv-push s2 rest))   ; … echo/route bs, cap back in
+          ((recv-closed s2)   (case (sock-close s2) (unit rest)))  ; peer gone: close, drop from pool
+          ((recv-err m)       rest))))))            ; recv-err carries NO Sock (ports.chiral:31): sock-recv already consumed the cap on error, so it is gone — just hand the rest of the pool back
+; … the outer loop: build the pollset from the held caps, block, dispatch the
+;   ready index into mux-step, recurse on the returned SockVec (E42 supervisor land).

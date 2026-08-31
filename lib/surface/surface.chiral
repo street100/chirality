@@ -1,0 +1,321 @@
+; E2: the surface elaborator core (elab/resolve). Ported from
+; scaffold/chirality/surface.py: elab (:539), resolve (:598), apply (:615),
+; arrow (:636), lam (:674), let (:687), case (:711), _cond_to_case (:736),
+; do_ (:758). Lowers a parsed Surf node to a name-erased Core (kernel) term:
+; resolves names to de Bruijn INDICES over an IMMUTABLE (List Str) context
+; (index = depth-from-top), dispatches every surface form, and desugars
+; cond/the/refine/multi-param-lam/do at elab time (SPEC decision #1). PURE (->),
+; total (structural on the closed Surf sum), errors-as-values (the PR result sum
+; instead of surface.py's SurfaceError raises). surface.py stays the oracle.
+;
+; SCOPE (SPEC decision #6 -- the elab/resolve core only): profile/target verify,
+; data-decl elaboration, effect-row inference (E39-coupled), the import loader
+; (E51), and the CLI are E2's DEFERRED slices, not this file. The Pi seat is the
+; standalone-elab case: EMPTY_SEATS (pure / non-last) vs DYN_SEATS (the last
+; binder of a =>), encoded here as the eff bit (row inference is E39).
+;
+; ENCODINGS pinned against the oracle: quantity q in {0,1,w} -> codes {0,1,2}
+; (surface.py QUANTS + K.W="w"); eff bit 0/1 <-> EMPTY_SEATS/DYN_SEATS.
+(import "prelude")
+
+; ---- result sum: POLYMORPHIC so one type carries Core / I64 / a pair / a list
+; (prelude has no PR; json.chiral's is local+monomorphic). errors are VALUES.
+(data PR ((X (type 0)))
+  (p-ok  (v X))
+  (p-err (msg Str)))
+
+; ---- surface AST (E1's reader output; names still present) --------------------
+(data Surf ()
+  (s-lit-i  (v I64))
+  (s-lit-s  (v Str))
+  (s-var    (name Str))
+  (s-type   (lvl I64))
+  (s-arr    (binders (List SBind)) (cod Surf) (proc I64))   ; -> (proc 0) vs => (proc 1)
+  (s-lam    (params (List Str)) (body Surf))
+  (s-let    (binds (List LBind)) (body Surf))
+  (s-case   (scrut Surf) (arms (List SArm)) (dflt (Maybe Surf)))
+  (s-do     (stmts (List DoStmt)))
+  (s-cond   (clauses (List Clause)))
+  (s-the    (ty Surf) (e Surf))
+  (s-refine (base Surf) (atoms (List RAtom)))
+  (s-app    (head Surf) (args (List Surf))))
+(data SBind   () (sbind (q I64) (name Str) (ty Surf)))       ; arrow binder; name "_" = unnamed
+(data LBind   () (lbind (q I64) (name Str) (val Surf)))
+(data SArm    () (sarm (ctor Str) (vars (List Str)) (body Surf)))
+(data DoStmt  () (do-plain (e Surf)) (do-bind (name Str) (e Surf)))
+(data Clause  () (clause (test Surf) (body Surf)) (else-clause (body Surf)))
+(data RAtom   () (ratom (op Str) (operand Surf)))
+
+; ---- core / kernel term (E-checker input; NAMES ARE GONE, mirrors terms.py) ---
+(data Core ()
+  (c-lit-i  (v I64))                                          ; ("Lit","i64",v)
+  (c-lit-s  (v Str))                                          ; ("Lit","str",v)
+  (c-var    (ix I64))                                         ; ("Var", ix)
+  (c-type   (lvl I64))                                        ; ("Type", lvl)
+  (c-pi     (q I64) (eff I64) (bname Str) (dom Core) (cod Core))   ; ("Pi",q,seat,bname,ty,cod)
+  (c-lam    (bname Str) (body Core))                          ; ("Lam", name, body)
+  (c-let    (q I64) (bname Str) (val Core) (body Core))       ; ("Let",q,bname,val,body)
+  (c-ann    (e Core) (ty Core))                               ; ("Ann", e, ty)
+  (c-refine (base Core) (atoms (List CAtom)))                 ; ("Refine", base, atoms)
+  (c-con    (home Str) (name Str) (args (List Core)))         ; ("Con", home, name, args)
+  (c-tcon   (name Str) (args (List Core)))                    ; ("TCon", name, args)
+  (c-primty (name Str))                                       ; ("PrimTy", name)
+  (c-global (name Str))                                       ; ("Global", name)
+  (c-prim   (name Str))                                       ; ("Prim", name)
+  (c-app    (fn Core) (arg Core))                             ; ("App", fn, arg)
+  (c-case   (scrut Core) (arms (List CArm)) (dflt (Maybe Core))))  ; ("Case",s,br,default)
+(data CAtom () (catom (op Str) (term Core)))
+(data CArm  () (carm (ctor Str) (vars (List Str)) (body Core)))
+; working accumulators for the arrow / let folds:
+(data CBind () (cbind (q I64) (name Str) (ty Core)))
+(data CLet  () (clet (q I64) (name Str) (val Core)))
+
+; ---- Sig-env: the six resolution tables resolve falls through (decision #5).
+; atoms = CORE_ATOMS + atom_types (both -> PrimTy); ctors = name->home. ---------
+(data SEnv () (senv
+  (atoms   (List Str))
+  (ctors   (List (Pair Str Str)))
+  (datas   (List Str))
+  (globals (List Str))
+  (prims   (List Str))))
+(def se-atoms   (-> SEnv (List Str))              (lam (s) (case s ((senv a c d g p) a))))
+(def se-ctors   (-> SEnv (List (Pair Str Str)))   (lam (s) (case s ((senv a c d g p) c))))
+(def se-datas   (-> SEnv (List Str))              (lam (s) (case s ((senv a c d g p) d))))
+(def se-globals (-> SEnv (List Str))              (lam (s) (case s ((senv a c d g p) g))))
+(def se-prims   (-> SEnv (List Str))              (lam (s) (case s ((senv a c d g p) p))))
+
+; ---- small helpers -----------------------------------------------------------
+(declare in? (-> Str (List Str) Bool))
+(def in? (lam (x xs) (case xs (nil false) ((cons y r) (case (str-eq x y) (true true) (false (in? x r)))))))
+(declare assoc (-> Str (List (Pair Str Str)) (Maybe Str)))
+(def assoc (lam (k ps)
+  (case ps (nil (none))
+    ((cons p r) (case p ((pair pk pv) (case (str-eq pk k) (true (some pv)) (false (assoc k r)))))))))
+(declare push-all (-> (List Str) (List Str) (List Str)))
+(def push-all (lam (ctx names) (case names (nil ctx) ((cons n rest) (push-all (cons n ctx) rest)))))
+(declare wrap-lams (-> (List Str) Core Core))
+(def wrap-lams (lam (names body) (case names (nil body) ((cons n rest) (c-lam n (wrap-lams rest body))))))
+(declare fold-app (-> Core (List Core) Core))
+(def fold-app (lam (h args) (case args (nil h) ((cons a rest) (fold-app (c-app h a) rest)))))
+(declare build-pis (-> (List CBind) Core I64 Core))
+(def build-pis (lam (cbs cod proc)              ; eff=proc on the LAST binder (innermost Pi) only
+  (case cbs (nil cod)
+    ((cons b rest) (case b ((cbind q name ty)
+      (case rest
+        (nil (c-pi q proc name ty cod))
+        (_   (c-pi q 0 name ty (build-pis rest cod proc))))))))))
+(declare build-lets (-> (List CLet) Core Core))
+(def build-lets (lam (cls body)
+  (case cls (nil body) ((cons c rest) (case c ((clet q name val) (c-let q name val (build-lets rest body))))))))
+
+; ---- resolve: local deBruijn search, THEN the five-way Sig fallback ----------
+(declare ctx-find (-> (List Str) Str I64 (PR I64)))
+(def ctx-find (lam (ctx nm d)
+  (case ctx
+    (nil (p-err "unbound"))
+    ((cons h rest) (case (str-eq h nm) (true (p-ok d)) (false (ctx-find rest nm (+ d 1))))))))
+(declare resolve (-> SEnv (List Str) Str (PR Core)))
+(def resolve (lam (sig ctx name)
+  (case (ctx-find ctx name 0)
+    ((p-ok ix) (p-ok (c-var ix)))                                  ; local binder
+    ((p-err ignore)
+      (case (in? name (se-atoms sig))
+        (true (p-ok (c-primty name)))                              ; PrimTy
+        (false (case (assoc name (se-ctors sig))
+          ((some home) (p-ok (c-con home name nil)))               ; Con (home, 0 args)
+          (none (case (in? name (se-datas sig))
+            (true (p-ok (c-tcon name nil)))                        ; TCon (0 args)
+            (false (case (in? name (se-globals sig))
+              (true (p-ok (c-global name)))                        ; Global
+              (false (case (in? name (se-prims sig))
+                (true (p-ok (c-prim name)))                        ; Prim
+                (false (p-err (str-cat "unknown name " name))))))))))))))))
+
+; ---- the elab spine (declared mutually with its per-form helpers) -------------
+(declare elab        (-> SEnv (List Str) Surf (PR Core)))
+(declare elab-list   (-> SEnv (List Str) (List Surf) (PR (List Core))))
+(declare elab-app    (-> SEnv (List Str) Surf (List Surf) (PR Core)))
+(declare elab-arr    (-> SEnv (List Str) (List SBind) Surf I64 (PR Core)))
+(declare elab-binders(-> SEnv (List Str) (List SBind) (PR (Pair (List Str) (List CBind)))))
+(declare elab-lam    (-> SEnv (List Str) (List Str) Surf (PR Core)))
+(declare elab-let    (-> SEnv (List Str) (List LBind) Surf (PR Core)))
+(declare elab-lbinds (-> SEnv (List Str) (List LBind) (PR (Pair (List Str) (List CLet)))))
+(declare elab-case   (-> SEnv (List Str) Surf (List SArm) (Maybe Surf) (PR Core)))
+(declare elab-arms   (-> SEnv (List Str) (List SArm) (PR (List CArm))))
+(declare elab-dflt   (-> SEnv (List Str) (Maybe Surf) (PR (Maybe Core))))
+(declare elab-do     (-> SEnv (List Str) (List DoStmt) (PR Core)))
+(declare elab-cond   (-> SEnv (List Str) (List Clause) (PR Core)))
+(declare cond-to-case(-> (List Clause) (PR Surf)))
+(declare elab-refine (-> SEnv (List Str) Surf (List RAtom) (PR Core)))
+(declare elab-atoms  (-> SEnv (List Str) (List RAtom) (PR (List CAtom))))
+
+(def elab (lam (sig ctx s)
+  (case s
+    ((s-lit-i v)        (p-ok (c-lit-i v)))
+    ((s-lit-s v)        (p-ok (c-lit-s v)))
+    ((s-var name)       (resolve sig ctx name))
+    ((s-type lvl)       (p-ok (c-type lvl)))
+    ((s-arr bs cod pr)  (elab-arr sig ctx bs cod pr))
+    ((s-lam ps b)       (elab-lam sig ctx ps b))
+    ((s-let bs b)       (elab-let sig ctx bs b))
+    ((s-case sc ar df)  (elab-case sig ctx sc ar df))
+    ((s-do stmts)       (elab-do sig ctx stmts))
+    ((s-cond cls)       (elab-cond sig ctx cls))
+    ((s-the ty e)       (case (elab sig ctx e)            ; ("Ann", elab(e), elab(ty))
+                          ((p-err m) (p-err m))
+                          ((p-ok ce) (case (elab sig ctx ty)
+                            ((p-err m) (p-err m))
+                            ((p-ok cty) (p-ok (c-ann ce cty)))))))
+    ((s-refine base at) (elab-refine sig ctx base at))
+    ((s-app head args)  (elab-app sig ctx head args)))))
+
+; elaborate a list of subterms, threading the first error
+(def elab-list (lam (sig ctx ss)
+  (case ss
+    (nil (p-ok nil))
+    ((cons x rest) (case (elab sig ctx x)
+      ((p-err m) (p-err m))
+      ((p-ok cx) (case (elab-list sig ctx rest)
+        ((p-err m) (p-err m))
+        ((p-ok cr) (p-ok (cons cx cr))))))))))
+
+; application: args first; a Con/TCon head absorbs them, else fold c-app
+(def elab-app (lam (sig ctx head args)
+  (case (elab-list sig ctx args)
+    ((p-err m) (p-err m))
+    ((p-ok cargs)
+      (case head
+        ((s-var name) (case (resolve sig ctx name)
+          ((p-err m) (p-err m))
+          ((p-ok hc) (case hc
+            ((c-con home nm old) (p-ok (c-con home nm cargs)))
+            ((c-tcon nm old)     (p-ok (c-tcon nm cargs)))
+            (_                   (p-ok (fold-app hc cargs)))))))
+        (_ (case (elab sig ctx head)
+          ((p-err m) (p-err m))
+          ((p-ok hc) (p-ok (fold-app hc cargs))))))))))
+
+; arrow -> nested c-pi; each binder pushes a name; eff rides the last Pi
+(def elab-arr (lam (sig ctx binders cod proc)
+  (case (elab-binders sig ctx binders)
+    ((p-err m) (p-err m))
+    ((p-ok pr) (case pr ((pair ctx2 cbs)
+      (case (elab sig ctx2 cod)
+        ((p-err m) (p-err m))
+        ((p-ok ccod) (p-ok (build-pis cbs ccod proc))))))))))
+(def elab-binders (lam (sig ctx bs)
+  (case bs
+    (nil (p-ok (pair ctx nil)))
+    ((cons b rest) (case b ((sbind q name ty)
+      (case (elab sig ctx ty)                       ; ty elaborated BEFORE pushing name
+        ((p-err m) (p-err m))
+        ((p-ok cty) (case (elab-binders sig (cons name ctx) rest)
+          ((p-err m) (p-err m))
+          ((p-ok pr) (case pr ((pair ctx2 cbs)
+            (p-ok (pair ctx2 (cons (cbind q name cty) cbs)))))))))))))))
+
+; (lam (x y) b) -> nested c-lam; push all params, elab body one-deeper
+(def elab-lam (lam (sig ctx params body)
+  (case (elab sig (push-all ctx params) body)
+    ((p-err m) (p-err m))
+    ((p-ok cbody) (p-ok (wrap-lams params cbody))))))
+
+; let: each value elaborated before its name is pushed (non-recursive)
+(def elab-let (lam (sig ctx binds body)
+  (case (elab-lbinds sig ctx binds)
+    ((p-err m) (p-err m))
+    ((p-ok pr) (case pr ((pair ctx2 cls)
+      (case (elab sig ctx2 body)
+        ((p-err m) (p-err m))
+        ((p-ok cbody) (p-ok (build-lets cls cbody))))))))))
+(def elab-lbinds (lam (sig ctx binds)
+  (case binds
+    (nil (p-ok (pair ctx nil)))
+    ((cons b rest) (case b ((lbind q name val)
+      (case (elab sig ctx val)
+        ((p-err m) (p-err m))
+        ((p-ok cval) (case (elab-lbinds sig (cons name ctx) rest)
+          ((p-err m) (p-err m))
+          ((p-ok pr) (case pr ((pair ctx2 cls)
+            (p-ok (pair ctx2 (cons (clet q name cval) cls)))))))))))))))
+
+; case: scrut, then each arm one-deeper by its pattern vars, then the default
+(def elab-case (lam (sig ctx scrut arms dflt)
+  (case (elab sig ctx scrut)
+    ((p-err m) (p-err m))
+    ((p-ok cscrut) (case (elab-arms sig ctx arms)
+      ((p-err m) (p-err m))
+      ((p-ok carms) (case (elab-dflt sig ctx dflt)
+        ((p-err m) (p-err m))
+        ((p-ok cdflt) (p-ok (c-case cscrut carms cdflt))))))))))
+(def elab-arms (lam (sig ctx arms)
+  (case arms
+    (nil (p-ok nil))
+    ((cons a rest) (case a ((sarm cname vars body)
+      (case (elab sig (push-all ctx vars) body)
+        ((p-err m) (p-err m))
+        ((p-ok cbody) (case (elab-arms sig ctx rest)
+          ((p-err m) (p-err m))
+          ((p-ok cr) (p-ok (cons (carm cname vars cbody) cr))))))))))))
+(def elab-dflt (lam (sig ctx dflt)
+  (case dflt
+    (none (p-ok (none)))
+    ((some d) (case (elab sig ctx d) ((p-err m) (p-err m)) ((p-ok cd) (p-ok (some cd))))))))
+
+; do: linear (q=1) let-sequencing. (<- x e) binds; a plain step is let-and-destruct
+(def elab-do (lam (sig ctx stmts)
+  (case stmts
+    (nil (p-err "(do e1 ... result)"))
+    ((cons f0 rest) (case f0
+      ((do-bind name e) (case rest
+        (nil (p-err "a do-bind (<- x e) cannot be the last step of a do"))
+        (_ (case (elab sig ctx e)
+          ((p-err m) (p-err m))
+          ((p-ok ce) (case (elab-do sig (cons name ctx) rest)
+            ((p-err m) (p-err m))
+            ((p-ok crest) (p-ok (c-let 1 name ce crest)))))))))
+      ((do-plain e) (case rest
+        (nil (elab sig ctx e))
+        (_ (case (elab sig ctx e)
+          ((p-err m) (p-err m))
+          ((p-ok ce1) (case (elab-do sig (cons "#u" ctx) rest)
+            ((p-err m) (p-err m))
+            ((p-ok crest) (p-ok (c-let 1 "#u" ce1
+              (c-case (c-var 0) (cons (carm "unit" nil crest) nil) (none))))))))))))))))
+
+; cond -> nested Bool case, then re-elaborate (decision #1)
+(def elab-cond (lam (sig ctx clauses)
+  (case (cond-to-case clauses)
+    ((p-err m) (p-err m))
+    ((p-ok surf) (elab sig ctx surf)))))
+(def cond-to-case (lam (clauses)
+  (case clauses
+    (nil (p-err "(cond) needs at least one clause"))
+    ((cons c rest) (case c
+      ((else-clause body) (case rest (nil (p-ok body)) (_ (p-err "(cond): else must be the last clause"))))
+      ((clause test body) (case rest
+        (nil (p-err "(cond): last clause must be (else body) for exhaustiveness"))
+        (_ (case (cond-to-case rest)
+          ((p-err m) (p-err m))
+          ((p-ok elsebranch)
+            (p-ok (s-case test
+                    (cons (sarm "true" nil body)
+                    (cons (sarm "false" nil elsebranch) nil))
+                    (none)))))))))))))
+
+; refine: narrow a base with a conjunction of (op operand) atoms
+(def elab-refine (lam (sig ctx base atoms)
+  (case (elab sig ctx base)
+    ((p-err m) (p-err m))
+    ((p-ok cbase) (case (elab-atoms sig ctx atoms)
+      ((p-err m) (p-err m))
+      ((p-ok catoms) (p-ok (c-refine cbase catoms))))))))
+(def elab-atoms (lam (sig ctx atoms)
+  (case atoms
+    (nil (p-ok nil))
+    ((cons a rest) (case a ((ratom op operand)
+      (case (elab sig ctx operand)
+        ((p-err m) (p-err m))
+        ((p-ok cterm) (case (elab-atoms sig ctx rest)
+          ((p-err m) (p-err m))
+          ((p-ok cr) (p-ok (cons (catom op cterm) cr))))))))))))

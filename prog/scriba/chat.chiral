@@ -1,0 +1,71 @@
+; chat.chiral — I1 (revised): the chat window. A dedicated, persistent `*chat*`
+; buffer that the user swaps to (C-x C-a) while a file stays open, fullscreen.
+; C-c C-c sends the FILE buffer's content as context to the agent (agent/agent.chiral,
+; the A4 Pi-minimal tool-call loop) and appends the reply to the chat buffer.
+; The file buffer is never the target of an insert, and never re-prompted.
+;
+; chat-send is effectful and returns a puffer, so it is special-cased in
+; command-loop.chiral keyed by opname, exactly like find-file/save-buffer.
+;
+; ⚑ ROUTED (2026-08-21): this used to call ONE model directly
+; (`agent-run-transcript chat-base chat-model` on qwen3:8b) — a monolithic general
+; assistant, which is exactly what the chatter exists to replace ("no one-chat-one-AI;
+; every message is ROUTED"). `command-loop.chiral`'s C5 comment had already declared the
+; legacy path superseded, but the code was still wired to it, so `C-c C-c` and `g c`
+; kept reaching a single model with no routing, no divide and no lanes. The send now
+; goes through `turn-seq` — the same routed entry `:chat` and `:ask` use — so the FILE
+; buffer's content is divided, assigned and consolidated like any other message.
+;
+; Deps: prelude, puffer (Puffer, puffer-value, Zipper), manas/chatter/{turn,router}.
+
+(import "prelude")
+(import "puffer")
+(import "manas/chatter/turn")      ; turn-seq — the ROUTED entry (replaces the single-model agent call)
+(import "manas/chatter/router")    ; ConvState (conv-empty) — a send is one-shot, so it starts from empty memory
+
+; The mesh endpoint. The MODEL is no longer named here: which model answers is now a
+; per-skill Config decision inside the routed pipeline, not a constant in the editor.
+(def chat-base Str "http://100.64.0.5:11434")
+
+; The chat buffer's display name. Distinct from any file path so the loop can
+; tell "focused on chat" apart from "focused on a file".
+(def chat-name Str " *chat*")
+
+; ---------------------------------------------------------------- append
+
+; chat-append: append `text` to a puffer's buffer content, cursor at end.
+; FLAT rebuild — the Zipper focus holds the whole document text and the path
+; holds the flat-text cursor offset, so appending is just: new-text = cur (+"\n")
+; + text, cursor = (len new-text). No TextZipper bridge, no line-invariant
+; corruption (this is the fix for the old str-insert-char no-split bug).
+(def chat-append (-> (Puffer Str) Str (Puffer Str))
+  (lam (puf text)
+    (case puf
+      ((puffer id name type-name handle z dirty u mark kr)
+        (case z
+          ((zipper f p)
+            (let (cur (case f (none "") ((some s) s)))
+              (let (full (case (str-eq cur "")
+                          (true text)
+                          (false (str-cat cur (str-cat "\n" text)))))
+                (puffer id name type-name handle
+                  (zipper (some full) (cons (str-len full) nil))
+                  true u mark kr)))))))))
+
+; ---------------------------------------------------------------- send
+
+; Route a prompt through the chatter and return the reply. One-shot (conv-empty): a
+; C-c C-c send is not a conversation, it is "answer this buffer".
+(def chat-ask (=> Str Str)
+  (lam (prompt)
+    (case (turn-seq chat-base (conv-empty) prompt) ((pair cs2 reply) reply))))
+
+; chat-send: send the FILE buffer's content as context, append the reply to the
+; CHAT buffer. Returns the updated chat puffer. The file puffer is untouched.
+(def chat-send (=> (Puffer Str) (Puffer Str) (Puffer Str))
+  (lam (file chat)
+    (case (puffer-value Str file)
+      ((puf-value-ok text file2)
+        (chat-append chat (chat-ask text)))
+      ((puf-value-none file2)
+        (chat-append chat (chat-ask ""))))))

@@ -1,0 +1,407 @@
+; E16 (partition slice): the lowering connector's eligibility partition. Ported
+; from scaffold/chirality/lower.py ttype (:37) + lower_all (:389)'s gate. The connector
+; decides which upper defs lower to the tal floor and, for the rest, WHY they stay
+; upper -- as a pure, total `->` transform returning a result sum (low-ok / low-skip
+; reason) instead of raising Ineligible. lower.py stays the oracle.
+;
+; SCOPE (SPEC decision #4 / §5 gate): the PARTITION -- ttype + eligible?/skip-reason
+; + lower-all's lowered/skipped split, the self-contained half differentiable
+; against lower.py.lower_all's partition today. The SSA body emission (compile-fn:
+; Low.fn/tail/expr) + the tal preserve-check (E18 ck-fn, now landed) is the larger
+; emission piece; its differential was recorded E18-gated and is the follow-on.
+;
+; The gate ORDER mirrors lower.py exactly: dependent codomain (lower.py raises in
+; _peel) -> effectful (E70 stays-upper) -> quantified binder (0/1 upper) -> a type
+; that does not lower (ttype = none). Narrow eligibility (pure, non-dependent,
+; ground) is the honest scaffold slice; widening (closures/HO) is separate work.
+(import "prelude")
+; the shared typed SSA tal IR (TalTy / Instr / Block / TalTerm / Branch / TFn /
+; TalSig + the DCtor/DData/CEnv env) lowering EMITS -- one definition, so an
+; emitted TFn feeds tal-check's ck-prog and tal-eval directly, no conversion.
+(import "tal-ssa")
+
+; the upper-type slice ttype reads: a ground prim, a data tcon, an erased type
+; variable (a neutral, from a dropped q=0 binder -> a uniform word, B1), else
+; "other" (functions / universes -- everything that stays upper).
+(data UT () (u-prim (name Str)) (u-tcon (name Str) (targs (List UT)))
+            (u-erased) (u-other))
+
+; a peeled arrow binder: quantity code (0/1/2=w), eff bit, dependent bit, domain.
+(data LowBind  () (lowbind (q I64) (eff I64) (dep I64) (dom UT)))
+(data Lowdef () (lowdef (name Str) (binders (List LowBind)) (cod UT)))
+(data LowRes () (low-ok (name Str)) (low-skip (name Str) (reason Str)))
+
+; ---- ttype: an upper ground type -> a tal type, or none (stays upper) ---------
+(declare ttype      (-> UT (Maybe TalTy)))
+(declare ttype-list (-> (List UT) (Maybe (List TalTy))))
+(def ttype (lam (u)
+  (case u
+    ((u-prim n)
+      (case (str-eq n "I64")
+        (true (some (tt-i64)))
+        (false (case (str-eq n "Str")
+          (true (some (tt-str)))
+          (false (case (str-eq n "Bytes") (true (some (tt-bytes))) (false (none))))))))
+    ((u-tcon n targs) (case (ttype-list targs) ((some ts) (some (tt-data n ts))) (none (none))))
+    ; B1: an erased (q=0) type variable is one uniform word -> tt-word, the
+    ; word carrier with word-compat in tal-ty=? (so an erased value flows into
+    ; any one-word position and back).
+    ((u-erased) (some (tt-word)))
+    ((u-other) (none)))))
+(def ttype-list (lam (us)
+  (case us
+    (nil (some nil))
+    ((cons x r) (case (ttype x)
+      (none (none))
+      ((some t) (case (ttype-list r) (none (none)) ((some ts) (some (cons t ts))))))))))
+
+; ---- the eligibility gate (mirrors lower_all's order) -------------------------
+(declare any-dep?   (-> (List LowBind) Bool))
+(def any-dep? (lam (bs) (case bs (nil false)
+  ((cons b r) (case b ((lowbind q eff dep dom) (case (=i dep 1) (true true) (false (any-dep? r)))))))))
+(declare any-eff?   (-> (List LowBind) Bool))
+(def any-eff? (lam (bs) (case bs (nil false)
+  ((cons b r) (case b ((lowbind q eff dep dom) (case (=i eff 1) (true true) (false (any-eff? r)))))))))
+; B1: a binder stays upper only when LINEAR (q=1). q=0 is erased (dropped from
+; the tal sig), q=2 (W) is a normal runtime param -- both lower.
+(declare any-quant? (-> (List LowBind) Bool))
+(def any-quant? (lam (bs) (case bs (nil false)
+  ((cons b r) (case b ((lowbind q eff dep dom) (case (=i q 1) (true true) (false (any-quant? r)))))))))
+; only the KEPT (q!=0) binders' domains must lower -- an erased q=0 binder is
+; dropped, so its domain (a universe) is never a tal type (mirrors lower.py's kept).
+(declare doms-lower? (-> (List LowBind) Bool))
+(def doms-lower? (lam (bs) (case bs (nil true)
+  ((cons b r) (case b ((lowbind q eff dep dom)
+    (case (=i q 0)
+      (true (doms-lower? r))
+      (false (case (ttype dom) (none false) ((some t) (doms-lower? r)))))))))))
+(declare types-lower? (-> (List LowBind) UT Bool))
+(def types-lower? (lam (bs cod) (case (ttype cod) (none false) ((some t) (doms-lower? bs)))))
+
+; skip-reason: none = eligible (lowers), (some reason) = stays upper, with WHY.
+(declare skip-reason (-> Lowdef (Maybe Str)))
+(def skip-reason (lam (d)
+  (case d ((lowdef name binders cod)
+    (case (any-dep? binders)
+      (true (some "dependent type"))
+      (false (case (any-eff? binders)
+        (true (some "effectful (stays upper)"))
+        (false (case (any-quant? binders)
+          (true (some "quantified binder (0/1 stay upper for now)"))
+          (false (case (types-lower? binders cod)
+            (true (none))
+            (false (some "type does not lower")))))))))))))
+(def eligible? (-> Lowdef Bool) (lam (d) (case (skip-reason d) (none true) (_ false))))
+
+; ---- lower-all: partition every def into lowered / skipped-with-reason --------
+(declare lower-def (-> Lowdef LowRes))
+(def lower-def (lam (d)
+  (case d ((lowdef name binders cod)
+    (case (skip-reason d)
+      (none (low-ok name))
+      ((some reason) (low-skip name reason)))))))
+(declare lower-all (-> (List Lowdef) (List LowRes)))
+(def lower-all (lam (defs)
+  (case defs (nil nil) ((cons d r) (cons (lower-def d) (lower-all r))))))
+
+; ============================================================================
+; E16 emission: compile-fn -- SSA body emission + non-tail-case outlining.
+; Ported from lower.py Low.fn (:221) / tail (:234) / expr (:268). A monotonic
+; fresh-register counter threaded through a state St gives single-assignment tal;
+; a non-tail `case` is OUTLINED into a synthesized fn `name$k` whose params are
+; the enclosing live registers plus the scrutinee (decision #2). Ineligibility is
+; a low-skip VALUE, not a raise. The tal IR (Instr / Block / TalTerm / Branch /
+; TFn / TalSig + the DCtor/DData/CEnv env) is the shared lib/tal-ssa.chiral
+; imported above, so an emitted TFn feeds ck-prog directly (the preserve-check).
+(data LCore ()
+  (lc-var (ix I64)) (lc-global (n Str)) (lc-lit-i (v I64)) (lc-lit-s (v Str))
+  (lc-ann (e LCore)) (lc-prim (n Str)) (lc-lam (body LCore))
+  (lc-con (dn Str) (cn Str) (args (List LCore)))
+  (lc-let (q I64) (val LCore) (body LCore))
+  (lc-app (fn LCore) (arg LCore))
+  (lc-case (scrut LCore) (arms (List LCArm)) (dflt (Maybe LCore))))
+(data LCArm () (lc-arm (cn Str) (nvars I64) (body LCore)))
+(data St    () (st (nreg I64) (extra (List TFn)) (fns (List (Pair Str TalSig))) (ncase I64) (name Str)))
+(data ExprR () (er-ok (reg I64) (ty TalTy) (instrs (List Instr)) (st St)) (er-skip (reason Str)))
+(data TailR () (tr-ok (block Block) (st St)) (tr-skip (reason Str)))
+(data EA    () (ea-ok (srcs (List I64)) (instrs (List Instr)) (st St)) (ea-skip (reason Str)))
+(data TB    () (tb-ok (branches (List Branch)) (st St)) (tb-skip (reason Str)))
+(data TD    () (td-ok (dflt (Maybe Block)) (st St)) (td-skip (reason Str)))
+(data BO    () (bo-ok (fn TFn) (extra (List TFn)) (fns (List (Pair Str TalSig)))) (bo-skip (reason Str)))
+(data LowE  () (le-ok (main TFn) (extra (List TFn))) (le-skip (reason Str)))
+
+; ---- generic list + state helpers -------------------------------------------
+(declare l-snoc (-> (0 A (type 0)) (List A) A (List A)))
+(def l-snoc (lam (A xs x) (case xs (nil (cons x nil)) ((cons h t) (cons h (l-snoc A t x))))))
+(declare l-llen (-> (0 A (type 0)) (List A) I64))
+(def l-llen (lam (A xs) (case xs (nil 0) ((cons h t) (+ 1 (l-llen A t))))))
+; the prims the native floor supports (mach-x64 arithmetic + the bytes-tal lib,
+; mirroring native.py PRIM2LIB + op-bytes). A prim outside this set (e.g.
+; str->i64) leaves its def UPPER (skipped) rather than hard-failing at erase.
+(declare str-elem (-> Str (List Str) Bool))
+(def str-elem (lam (x xs) (case xs (nil false) ((cons h t) (case (str-eq x h) (true true) (false (str-elem x t)))))))
+
+; the index of a string in the (deduped, ordered) literal table (B1: strings)
+(declare str-index (-> (List Str) Str I64 (Maybe I64)))
+(def str-index (lam (lits s i)
+  (case lits
+    (nil (none))
+    ((cons x r) (case (str-eq x s) (true (some i)) (false (str-index r s (+ i 1))))))))
+(declare lnth (-> (0 A (type 0)) (List A) I64 (Maybe A)))
+(def lnth (lam (A xs i) (case xs (nil (none)) ((cons h t) (case (<=i i 0) (true (some h)) (false (lnth A t (- i 1))))))))
+(declare lapp2 (-> (0 A (type 0)) (List A) (List A) (List A)))
+(def lapp2 (lam (A xs ys) (case xs (nil ys) ((cons h t) (cons h (lapp2 A t ys))))))
+
+(def st-nreg  (-> St I64) (lam (s) (case s ((st n e f c nm) n))))
+(def st-extra (-> St (List TFn)) (lam (s) (case s ((st n e f c nm) e))))
+(def st-fns   (-> St (List (Pair Str TalSig))) (lam (s) (case s ((st n e f c nm) f))))
+(def ssa-fresh (-> St (Pair I64 St)) (lam (s) (case s ((st n e f c nm) (pair n (st (+ n 1) e f c nm))))))
+
+(declare sig-assoc (-> (List (Pair Str TalSig)) Str (Maybe TalSig)))
+(def sig-assoc (lam (ps k) (case ps (nil (none)) ((cons p r) (case p ((pair pk pv) (case (str-eq pk k) (true (some pv)) (false (sig-assoc r k)))))))))
+(declare find-data (-> (List DData) Str (Maybe (List DCtor))))
+(declare ctor-data (-> (List DData) Str (Maybe Str)))
+(declare case-sty (-> (List DData) TalTy (List LCArm) TalTy))
+(def find-data (lam (ds dn) (case ds (nil (none)) ((cons d r) (case d ((ddata dn2 cs) (case (str-eq dn2 dn) (true (some cs)) (false (find-data r dn)))))))))
+(declare l-find-ctor (-> (List DCtor) Str (Maybe (List TalTy))))
+(def l-find-ctor (lam (cs cn) (case cs (nil (none)) ((cons c r) (case c ((dctor cn2 ftys) (case (str-eq cn2 cn) (true (some ftys)) (false (l-find-ctor r cn)))))))))
+; B1 recovery: a scrutinee typed WORD (a value out of a POLYMORPHIC container
+; field -- the front flattens a data param's type var to word) still cases
+; fine: the kernel already type-checked the case, so the data type is exactly
+; the one the arm ctors belong to. Recover it from the first arm's ctor.
+; (python's lower instantiates field types via data_fields instead; the
+; recovered (tt-data dn nil) drives the same dispatch.)
+(def ctor-data (lam (ds cn)
+  (case ds (nil (none))
+    ((cons d r) (case d ((ddata dn cs)
+      (case (l-find-ctor cs cn)
+        ((some f) (some dn))
+        ((none) (ctor-data r cn)))))))))
+(def case-sty (lam (ds sty arms)
+  (case sty
+    ((tt-data dn da) sty)
+    (_ (case arms
+      (nil sty)
+      ((cons a0 r) (case a0 ((lc-arm cn nv bd)
+        (case (ctor-data ds cn)
+          ((some dn) (tt-data dn nil))
+          ((none) sty))))))))))
+(def ce-prims (-> CEnv (List (Pair Str TalSig))) (lam (c) (case c ((cenv p f d l) p))))
+(def ce-fns   (-> CEnv (List (Pair Str TalSig))) (lam (c) (case c ((cenv p f d l) f))))
+(def ce-datas (-> CEnv (List DData)) (lam (c) (case c ((cenv p f d l) d))))
+(def ce-lits  (-> CEnv (List Str)) (lam (c) (case c ((cenv p f d l) l))))
+
+(declare env-get (-> (List (Pair I64 TalTy)) I64 (Maybe (Pair I64 TalTy))))
+(def env-get (lam (env ix) (lnth (Pair I64 TalTy) env (- (- (l-llen (Pair I64 TalTy) env) 1) ix))))
+(declare map-fst (-> (List (Pair I64 TalTy)) (List I64)))
+(def map-fst (lam (env) (case env (nil nil) ((cons p r) (case p ((pair a b) (cons a (map-fst r))))))))
+(declare map-snd (-> (List (Pair I64 TalTy)) (List TalTy)))
+(def map-snd (lam (env) (case env (nil nil) ((cons p r) (case p ((pair a b) (cons b (map-snd r))))))))
+(declare last-reg (-> (List (Pair I64 TalTy)) I64))
+(def last-reg (lam (env) (case env ((cons p r) (case r (nil (case p ((pair a b) a))) (_ (last-reg r)))) (nil 0))))
+(declare drop-last-env (-> (List (Pair I64 TalTy)) (List (Pair I64 TalTy))))
+(def drop-last-env (lam (env) (case env (nil nil) ((cons p r) (case r (nil nil) (_ (cons p (drop-last-env r))))))))
+(declare append-binders (-> (List (Pair I64 TalTy)) (List I64) (List TalTy) (List (Pair I64 TalTy))))
+(def append-binders (lam (env dsts ftys) (case dsts (nil env) ((cons d dr) (case ftys (nil env) ((cons f fr) (append-binders (l-snoc (Pair I64 TalTy) env (pair d f)) dr fr)))))))
+(declare fresh-dsts (-> I64 St (Pair (List I64) St)))
+(def fresh-dsts (lam (n st) (case (<=i n 0) (true (pair nil st)) (false (case (ssa-fresh st) ((pair d st1) (case (fresh-dsts (- n 1) st1) ((pair ds st2) (pair (cons d ds) st2)))))))))
+(declare seed-env (-> (List TalTy) St (Pair (List (Pair I64 TalTy)) St)))
+(def seed-env (lam (ptys st) (case ptys (nil (pair nil st)) ((cons p rest) (case (ssa-fresh st) ((pair r st1) (case (seed-env rest st1) ((pair env st2) (pair (cons (pair r p) env) st2)))))))))
+(declare spine (-> LCore (List LCore) (Pair LCore (List LCore))))
+(def spine (lam (core acc) (case core ((lc-app f a) (spine f (cons a acc))) (_ (pair core acc)))))
+(declare strip-ann (-> LCore LCore))
+(def strip-ann (lam (core) (case core ((lc-ann e) (strip-ann e)) (_ core))))
+(declare strip-lams (-> LCore I64 (Maybe LCore)))
+(def strip-lams (lam (core n) (case (<=i n 0) (true (some core)) (false (case (strip-ann core) ((lc-lam b) (strip-lams b (- n 1))) (_ (none)))))))
+(def data-dn (-> TalTy Str) (lam (t) (case t ((tt-data dn a) dn) (_ ""))))
+(def mk-call (-> Str I64 Str (List I64) TalTy Instr) (lam (op d n srcs ret) (case (str-eq op "prim") (true (i-prim d n srcs ret)) (false (i-call d n srcs ret)))))
+
+; ---- the walker (mutually recursive) ----------------------------------------
+(declare expr          (-> CEnv (List (Pair I64 TalTy)) LCore (List Instr) (Maybe TalTy) St ExprR))
+(declare expr-args     (-> CEnv (List (Pair I64 TalTy)) (List LCore) (List TalTy) (List Instr) St EA))
+(declare expr-app      (-> CEnv (List (Pair I64 TalTy)) LCore (List Instr) St ExprR))
+(declare emit-call     (-> CEnv (List (Pair I64 TalTy)) Str Str TalSig (List LCore) (List Instr) St ExprR))
+(declare expr-con      (-> CEnv (List (Pair I64 TalTy)) Str Str (List LCore) (List Instr) TalTy St ExprR))
+(declare expr-case     (-> CEnv (List (Pair I64 TalTy)) LCore (List LCArm) (Maybe LCore) (List Instr) (Maybe TalTy) St ExprR))
+(declare outline       (-> CEnv (List (Pair I64 TalTy)) I64 TalTy (List LCArm) (Maybe LCore) (List Instr) TalTy St ExprR))
+(declare build-outline (-> CEnv Str (List TalTy) TalTy TalTy (List LCArm) (Maybe LCore) (List (Pair Str TalSig)) BO))
+(declare tail          (-> CEnv (List (Pair I64 TalTy)) LCore (Maybe TalTy) (List Instr) St TailR))
+(declare tail-case     (-> CEnv (List (Pair I64 TalTy)) LCore (List LCArm) (Maybe LCore) (Maybe TalTy) (List Instr) St TailR))
+(declare tail-branches (-> CEnv (List (Pair I64 TalTy)) (List DCtor) (List LCArm) (Maybe TalTy) St TB))
+(declare tail-default  (-> CEnv (List (Pair I64 TalTy)) (Maybe LCore) (Maybe TalTy) St TD))
+(declare compile-fn    (-> CEnv Str LCore (List TalTy) (List I64) TalTy LowE))
+
+(def expr (lam (ce env core instrs expected st)
+  (case core
+    ((lc-var ix) (case (env-get env ix) ((some p) (case p ((pair r ty) (er-ok r ty instrs st)))) (none (er-skip "unbound var"))))
+    ((lc-lit-i v) (case (ssa-fresh st) ((pair d st1) (er-ok d (tt-i64) (l-snoc Instr instrs (i-const d (tt-i64) v)) st1))))
+    ((lc-lit-s v) (case (str-index (ce-lits ce) v 0)
+      (none (er-skip "string literal not in the literal table"))
+      ((some ix) (case (ssa-fresh st) ((pair d st1)
+        (er-ok d (tt-str) (l-snoc Instr instrs (i-const d (tt-str) ix)) st1))))))
+    ((lc-global n) (case (sig-assoc (st-fns st) n)
+      (none (er-skip (str-cat "reference stays upper: " n)))
+      ((some sig) (case sig ((talsig args ret) (case args
+        (nil (case (ssa-fresh st) ((pair d st1) (er-ok d ret (l-snoc Instr instrs (i-call d n nil ret)) st1))))
+        (_ (er-skip (str-cat "reference stays upper: " n)))))))))
+    ((lc-prim n) (er-skip "prim stays upper"))
+    ((lc-lam b) (er-skip "lambda stays upper"))
+    ((lc-ann e) (expr ce env e instrs expected st))
+    ((lc-con dn cn args) (case expected
+      ((some exty) (expr-con ce env dn cn args instrs exty st))
+      (none (expr-con ce env dn cn args instrs (tt-data dn nil) st))))
+    ((lc-let q val body) (case (=i q 0)
+      (true (case (ssa-fresh st) ((pair d st1) (expr ce (l-snoc (Pair I64 TalTy) env (pair d (tt-i64))) body (l-snoc Instr instrs (i-const d (tt-i64) 0)) expected st1))))
+      (false (case (expr ce env val instrs (none) st)
+        ((er-skip r) (er-skip r))
+        ((er-ok r ty instrs2 st2) (expr ce (l-snoc (Pair I64 TalTy) env (pair r ty)) body instrs2 expected st2))))))
+    ((lc-app f a) (expr-app ce env core instrs st))
+    ((lc-case scrut arms dflt) (expr-case ce env scrut arms dflt instrs expected st)))))
+
+(def expr-args (lam (ce env args doms instrs st)
+  (case args
+    (nil (case doms (nil (ea-ok nil instrs st)) (_ (ea-skip "partial application"))))
+    ((cons a ar) (case doms
+      (nil (ea-skip "over-application"))
+      ((cons d dr) (case (expr ce env a instrs (some d) st)
+        ((er-skip r) (ea-skip r))
+        ((er-ok reg ty instrs2 st2) (case (expr-args ce env ar dr instrs2 st2)
+          ((ea-skip r) (ea-skip r))
+          ((ea-ok srcs instrs3 st3) (ea-ok (cons reg srcs) instrs3 st3)))))))))))
+
+(def expr-app (lam (ce env core instrs st)
+  (case (spine core nil) ((pair head args) (case head
+    ((lc-prim n) (case (sig-assoc (ce-prims ce) n)
+      (none (er-skip (str-cat "extern does not lower: " n)))
+      ((some sig) (emit-call ce env "prim" n sig args instrs st))))
+    ((lc-global n) (case (sig-assoc (st-fns st) n)
+      (none (er-skip (str-cat "call target not lowered: " n)))
+      ((some sig) (emit-call ce env "call" n sig args instrs st))))
+    (_ (er-skip "higher-order application")))))))
+
+(def emit-call (lam (ce env op n sig args instrs st)
+  (case sig ((talsig doms ret) (case (expr-args ce env args doms instrs st)
+    ((ea-skip r) (er-skip r))
+    ((ea-ok srcs instrs2 st2) (case (ssa-fresh st2) ((pair d st3)
+      (er-ok d ret (l-snoc Instr instrs2 (mk-call op d n srcs ret)) st3)))))))))
+
+(def expr-con (lam (ce env dn cn args instrs exty st)
+  (case (find-data (ce-datas ce) dn)
+    (none (er-skip "con: unknown data"))
+    ((some ctors) (case (l-find-ctor ctors cn)
+      (none (er-skip "con: unknown ctor"))
+      ((some ftys) (case (expr-args ce env args ftys instrs st)
+        ((ea-skip r) (er-skip r))
+        ((ea-ok srcs instrs2 st2) (case (ssa-fresh st2) ((pair d st3)
+          (er-ok d (tt-data dn nil) (l-snoc Instr instrs2 (i-con d dn cn srcs (tt-data dn nil))) st3)))))))))))
+
+(def expr-case (lam (ce env scrut arms dflt instrs expected st)
+  ; B4 (mirrors lower.py): no expected type from context -> the result is one
+  ; uniform WORD; downstream uses are word-compatible
+  (let (exty (case expected ((some e) e) (none (tt-word))))
+    (case (expr ce env scrut instrs (none) st)
+      ((er-skip r) (er-skip r))
+      ((er-ok src sty instrs2 st2) (case (case-sty (ce-datas ce) sty arms)
+        ((tt-data dn dargs) (outline ce env src (tt-data dn dargs) arms dflt instrs2 exty st2))
+        (_ (er-skip "case on non-data"))))))))
+
+(def outline (lam (ce env src sty arms dflt instrs exty s0)
+  (case s0 ((st nreg extra fns ncase name)
+    (case (build-outline ce (str-cat (str-cat name "$") (i64->str ncase))
+                         (l-snoc TalTy (map-snd env) sty) exty sty arms dflt
+                         (cons (pair (str-cat (str-cat name "$") (i64->str ncase)) (talsig (l-snoc TalTy (map-snd env) sty) exty)) fns))
+      ((bo-skip r) (er-skip r))
+      ((bo-ok ofn oextra ofns)
+        (er-ok nreg exty
+               (l-snoc Instr instrs (i-call nreg (str-cat (str-cat name "$") (i64->str ncase)) (l-snoc I64 (map-fst env) src) exty))
+               (st (+ nreg 1) (lapp2 TFn (l-snoc TFn extra ofn) oextra) ofns (+ ncase 1) name))))))))
+
+(def build-outline (lam (ce nm params exty sty arms dflt fns0)
+  (case (seed-env params (st 0 nil fns0 0 nm)) ((pair senv st0)
+    (case (find-data (ce-datas ce) (data-dn sty))
+      (none (bo-skip "outline: unknown data"))
+      ((some ctors) (case (tail-branches ce (drop-last-env senv) ctors arms (some exty) st0)
+        ((tb-skip r) (bo-skip r))
+        ((tb-ok branches st1) (case (tail-default ce (drop-last-env senv) dflt (some exty) st1)
+          ((td-skip r) (bo-skip r))
+          ((td-ok default st2)
+            (bo-ok (tfn nm params exty (block nil (tt-case (last-reg senv) branches default)) (st-nreg st2))
+                   (st-extra st2) (st-fns st2))))))))))))
+
+(def tail (lam (ce env core expected instrs st)
+  (case core
+    ((lc-case scrut arms dflt) (tail-case ce env scrut arms dflt expected instrs st))
+    ((lc-ann e) (tail ce env e expected instrs st))
+    ((lc-let q val body) (case (=i q 0)
+      (true (case (ssa-fresh st) ((pair d st1) (tail ce (l-snoc (Pair I64 TalTy) env (pair d (tt-i64))) body expected (l-snoc Instr instrs (i-const d (tt-i64) 0)) st1))))
+      (false (case (expr ce env val instrs (none) st)
+        ((er-skip r) (tr-skip r))
+        ((er-ok r ty instrs2 st2) (tail ce (l-snoc (Pair I64 TalTy) env (pair r ty)) body expected instrs2 st2))))))
+    (_ (case (expr ce env core instrs expected st)
+      ((er-skip r) (tr-skip r))
+      ((er-ok r ty instrs2 st2) (tr-ok (block instrs2 (t-ret r)) st2)))))))
+
+(def tail-case (lam (ce env scrut arms dflt expected instrs st)
+  (case (expr ce env scrut instrs (none) st)
+    ((er-skip r) (tr-skip r))
+    ((er-ok src sty instrs2 st2) (case (case-sty (ce-datas ce) sty arms)
+      ((tt-data dn dargs) (case (find-data (ce-datas ce) dn)
+        (none (tr-skip "case on unknown data"))
+        ((some ctors) (case (tail-branches ce env ctors arms expected st2)
+          ((tb-skip r) (tr-skip r))
+          ((tb-ok branches st3) (case (tail-default ce env dflt expected st3)
+            ((td-skip r) (tr-skip r))
+            ((td-ok default st4) (tr-ok (block instrs2 (tt-case src branches default)) st4))))))))
+      (_ (tr-skip "case on non-data")))))))
+
+(def tail-branches (lam (ce env ctors arms expected st)
+  (case arms
+    (nil (tb-ok nil st))
+    ((cons a rest) (case a ((lc-arm cn nvars body) (case (l-find-ctor ctors cn)
+      (none (tb-skip "branch not a ctor"))
+      ((some ftys) (case (fresh-dsts nvars st) ((pair dsts st1)
+        (case (tail ce (append-binders env dsts ftys) body expected nil st1)
+          ((tr-skip r) (tb-skip r))
+          ((tr-ok blk st2) (case (tail-branches ce env ctors rest expected st2)
+            ((tb-skip r) (tb-skip r))
+            ((tb-ok brs st3) (tb-ok (cons (branch cn dsts blk) brs) st3)))))))))))))))
+
+(def tail-default (lam (ce env dflt expected st)
+  (case dflt
+    (none (td-ok (none) st))
+    ((some d) (case (tail ce env d expected nil st) ((tr-skip r) (td-skip r)) ((tr-ok blk st2) (td-ok (some blk) st2)))))))
+
+; B1: is i a member of the erased-position list?
+(declare mem-i (-> (List I64) I64 Bool))
+(def mem-i (lam (xs y) (case xs (nil false) ((cons x r) (case (=i x y) (true true) (false (mem-i r y)))))))
+
+; B1: build the full binder env in binder order (outermost first). The kept
+; params were pre-seeded as `pregs` (kept order, the first-k registers); an
+; erased (q=0) position gets a ssa-fresh PLACEHOLDER register (never read: q=0 =
+; zero runtime uses), typed tt-word, so de Bruijn stays aligned. Mirrors
+; lower.py Low.fn's parts-walk.
+(declare build-binders (-> (List (Pair I64 TalTy)) (List I64) I64 I64 St
+                           (Pair (List (Pair I64 TalTy)) St)))
+(def build-binders (lam (pregs erased total pos st)
+  (case (<i pos total)
+    (false (pair nil st))
+    (true (case (mem-i erased pos)
+      (true (case (ssa-fresh st) ((pair d st1)
+        (case (build-binders pregs erased total (+ pos 1) st1) ((pair rest st2)
+          (pair (cons (pair d (tt-word)) rest) st2))))))
+      (false (case pregs
+        (nil (case (build-binders nil erased total (+ pos 1) st) ((pair rest st1)
+               (pair rest st1))))                       ; defensive: no more params
+        ((cons pr prest)
+          (case (build-binders prest erased total (+ pos 1) st) ((pair rest st1)
+            (pair (cons pr rest) st1)))))))))))
+
+(def compile-fn (lam (ce name body ptys erased ret)
+  (case (seed-env ptys (st 0 nil (ce-fns ce) 0 name)) ((pair pregs st1)
+    (let (total (+ (l-llen TalTy ptys) (l-llen I64 erased)))
+    (case (build-binders pregs erased total 0 st1) ((pair env st2)
+      (case (strip-lams body total)
+        (none (le-skip "body is not a lambda chain"))
+        ((some sp) (case (tail ce env sp (some ret) nil st2)
+          ((tr-skip r) (le-skip r))
+          ((tr-ok blk st3) (le-ok (tfn name ptys ret blk (st-nreg st3)) (st-extra st3)))))))))))))

@@ -1,0 +1,105 @@
+; scriba SG6: flow-view — render a saved Flow (the skill-grower FRACTAL) as a
+; nested outline, READ-ONLY. Via SG1 (json->flow) scriba loads a persisted Flow;
+; flow-outline-nodes flattens the recursive Flow tree into the S14 OutlineNode
+; shape (a depth + a label per node), and flow-view-render paints it with the S14
+; manas faces. Authoring a Flow natively in scriba is a later arc — this slice
+; only SURFACES the fractal in the cockpit.
+;
+; PURE: flow-outline-nodes is a total flatten (no effect, no mesh — even though
+; the imported manas/core/flow links the run engine, it is never CALLED here);
+; the render is a pure Rendering builder. Strictly ADDITIVE — manas/core/flow and
+; manas-mode are untouched; only new defs live here.
+
+(import "prelude")            ; Str, I64, List, cons, nil, str-cat, case, +, *, <i
+(import "collections")        ; append  (flat concat of a branch's two sub-flows)
+(import "render")             ; Rendering (+ r-lines)
+(import "manas-mode")         ; OutlineNode (onode), Focus (foc-field), mf-row, mh-row, spaces
+(import "manas/core/flow")    ; Flow (+ 5 ctors), Ty
+
+; A flow node: a depth + a display label. focus = a harmless placeholder — SG6 is
+; read-only (no selection / no edit), so every node carries (foc-field "flow");
+; expandable is false (the whole tree is flattened, always visible — no windowing).
+(def flow-node (-> I64 Str OutlineNode)
+  (lam (depth text) (onode depth (foc-field "flow") text false)))
+
+; flow-outline-nodes : flatten the recursive Flow tree into OutlineNodes. Each
+; node is labelled by KIND + its id (step:<expert-id>, gate:<combiner>,
+; fan:<combiner>, chain, branch:<perspectivist>); a composite's children indent by
+; depth+1. A branch's two sub-flows sit under labelled "per-perspective:" /
+; "backtrack:" headers so the fractal reads unambiguously. Mutually recursive with
+; flows-onodes-at (a chain's / fan's children are themselves Flows).
+; the display name of a PureFn (a code step's transform / a pure perspectivist split).
+(def pf-label (-> PureFn Str)
+  (lam (p)
+    (case p
+      ((pf-has-any n y k)     "has-any")
+      ((pf-tally a b c d)     "tally")
+      ((pf-all-present n y k) "all-present")
+      ((pf-line-after m)      "line-after")
+      ((pf-split-numbered)    "split-numbered")
+      ((pf-collect-angles k)  "collect-angles"))))
+
+(declare flow-onodes-at (-> I64 Flow (List OutlineNode)))
+(declare flows-onodes-at (-> I64 (List Flow) (List OutlineNode)))
+
+(def flow-onodes-at
+  (lam (depth f)
+    (case f
+      ((flow-step eid ity oty)
+        (cons (flow-node depth (str-cat "step: " eid)) nil))
+      ((flow-pure fn ity oty)
+        (cons (flow-node depth (str-cat "pure: " (pf-label fn))) nil))
+      ((flow-gate rls cmb ity oty)
+        (cons (flow-node depth (str-cat "gate: " cmb)) nil))
+      ((flow-fan steps cmb oty)
+        (cons (flow-node depth (str-cat "fan: " cmb))
+              (flows-onodes-at (+ depth 1) steps)))
+      ((flow-chain steps)
+        (cons (flow-node depth "chain")
+              (flows-onodes-at (+ depth 1) steps)))
+      ((flow-branch p a pp bt)
+        (cons (flow-node depth (str-cat "branch: " p))
+          (append OutlineNode
+            (cons (flow-node (+ depth 1) "per-perspective:")
+                  (flow-onodes-at (+ depth 2) pp))
+            (cons (flow-node (+ depth 1) "backtrack:")
+                  (flow-onodes-at (+ depth 2) bt)))))
+      ((flow-branch-pure sp a pp bt)
+        (cons (flow-node depth (str-cat "branch-pure: " (pf-label sp)))
+          (append OutlineNode
+            (cons (flow-node (+ depth 1) "per-perspective:")
+                  (flow-onodes-at (+ depth 2) pp))
+            (cons (flow-node (+ depth 1) "backtrack:")
+                  (flow-onodes-at (+ depth 2) bt))))))))
+
+(def flows-onodes-at
+  (lam (depth fs)
+    (case fs
+      (nil nil)
+      ((cons h t)
+        (append OutlineNode (flow-onodes-at depth h) (flows-onodes-at depth t))))))
+
+(def flow-outline-nodes (-> Flow (List OutlineNode))
+  (lam (f) (flow-onodes-at 0 f)))
+
+; ─── render (pure Rendering) ────────────────────────────────────────────────
+; one node -> an indented, face-tagged row (depth*2 spaces). Reuses the S14 faces:
+; the depth-0 root reads as a header (mh-row), deeper nodes as fields (mf-row).
+(def flow-node-row (-> OutlineNode Rendering)
+  (lam (nd)
+    (case nd
+      ((onode depth focus text expandable)
+        (case (<i depth 1)
+          (true  (mh-row (str-cat (spaces (* depth 2)) text)))
+          (false (mf-row (str-cat (spaces (* depth 2)) text))))))))
+
+(def flow-node-rows (-> (List OutlineNode) (List Rendering))
+  (lam (nds)
+    (case nds
+      (nil nil)
+      ((cons h t) (cons (flow-node-row h) (flow-node-rows t))))))
+
+; flow-view-render : the flattened Flow as a Rendering (SG6 renders the whole tree
+; — no windowing; a saved skill fits one screen).
+(def flow-view-render (-> (List OutlineNode) Rendering)
+  (lam (nds) (r-lines (flow-node-rows nds))))

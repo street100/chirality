@@ -1,0 +1,170 @@
+; Target-independent relocation, written in chirality. An assembly is a list of
+; chunks: raw bytes, a label, or a relocation to a label. A relocation carries
+; its own size and its own encoder (given the signed displacement, produce
+; exactly that many bytes), so this file knows nothing about any instruction
+; set: x86-64, arm64, or a listing target all reuse it unchanged. The split is
+; the point (P4: modularity is conformance, not a switch statement).
+
+(import "prelude")
+(import "ports")
+(import "collections")
+(import "string-utils")
+
+; A relocation's encoder, DEFUNCTIONALIZED. Originally `enc : (-> I64 Bytes)`
+; kept a-rel target-independent, but a stored function does not lower (the field
+; type is not ground) and there is exactly one target. So the encoder is a
+; ground tag applied by `apply-enc`; a-rel + materialize stay generic over the
+; tag set, the x86 byte shapes live in apply-enc (the one deliberate coupling to
+; the target's instruction encodings -- P4 softened for the single target).
+; e-jcc carries its condition-code byte (the only parameterized encoder).
+(data EncTag ()
+  (e-noenc) (e-ldheap) (e-stheap) (e-cmpheap) (e-lea)
+  (e-ldrdi) (e-ldrsi) (e-ldrdx) (e-learcx)
+  (e-jmp) (e-tbl) (e-call) (e-jne) (e-jcc (cc I64)))
+
+(data Asm ()
+  (a-bytes (b Bytes))
+  (a-label (l Str))
+  ; a relocation: sz bytes total, enc gets disp = target - (site + sz)
+  (a-rel (sz I64) (enc EncTag) (l Str))
+  ; pad with zeros to the next multiple of n bytes (its size depends on the
+  ; current offset, so place/materialize handle it specially, not asm-size)
+  (a-align (n I64)))
+
+(def asm-size (-> Asm I64)
+  (lam (a)
+    (case a
+      ((a-bytes b) (blen b))
+      ((a-label l) 0)
+      ((a-rel sz enc l) sz)
+      ((a-align n) 0))))
+
+; round off up to the next multiple of n
+(def align-off (-> I64 I64 I64)
+  (lam (off n) (+ off (% (- n (% off n)) n))))
+
+(def zeros (-> I64 Bytes)
+  (lam (n) (brepeat (bslice (pack-u32 0) 0 1) n)))
+
+; pass 1: label -> byte offset
+(def place (-> (List Asm) I64 (List (Pair Str I64)) (List (Pair Str I64)))
+  (lam (xs off acc)
+    (case xs
+      (nil acc)
+      ((cons a rest)
+        (case a
+          ; labels are globally unique (emit-elf REFUSES duplicates), so a
+          ; plain cons builds the table -- the old alist-put replace scan was
+          ; O(labels^2) across a self-compile-sized program
+          ((a-label l) (place rest off (cons (pair l off) acc)))
+          ((a-align n) (place rest (align-off off n) acc))
+          (_ (place rest (+ off (asm-size a)) acc)))))))
+
+; resolution runs once per relocation (~15k on a self-compile) against ~6k
+; labels: the linear alist scan was the emit's dominant cost (~10^8
+; interpreted string compares). An E27 ordered Map (log n) replaces it; the
+; RETURNED offs table stays a list (compile-emit + the python harness read it).
+
+(def offs->tree (-> (List (Pair Str I64)) (Map Str I64) (Map Str I64))
+  (lam (xs acc)
+    (case xs
+      (nil acc)
+      ((cons p rest)
+        (case p ((pair l o)
+          (offs->tree rest (m-insert Str I64 str-cmp l o acc))))))))
+
+; an unknown label is the assembler's alarm, not a guess
+(def resolve-label (=> Str (Map Str I64) I64)
+  (lam (l offs)
+    (case (m-lookup Str I64 str-cmp l offs)
+      ((some o) o)
+      (none (halt I64 (str-cat "asm: unknown label " l))))))
+
+; an encoder that produces the wrong length would silently shift everything;
+; catch it here rather than crash at run
+(def check-len (=> I64 Bytes Bytes)
+  (lam (sz b)
+    (case (=i (blen b) sz)
+      (true b)
+      (false (halt Bytes "asm: relocation encoder produced the wrong size")))))
+
+; one opcode byte (low byte of v); b1/b4 from mach-x64 are not visible here so
+; the raw prelude byte externs are used directly.
+(def eb1 (-> I64 Bytes) (lam (v) (bslice (pack-u32 v) 0 1)))
+
+; the defunctionalized encoder: a relocation tag + its displacement -> exactly
+; the instruction's rel/rip bytes. The x86-64 byte shapes (the deliberate,
+; single-target coupling this file otherwise avoids).
+(def apply-enc (-> EncTag I64 Bytes)
+  (lam (enc d)
+    (case enc
+      (e-noenc (str->bytes ""))
+      (e-ldheap  (bcat (eb1 72) (bcat (eb1 139) (bcat (eb1 5) (pack-u32 d)))))
+      (e-stheap  (bcat (eb1 72) (bcat (eb1 137) (bcat (eb1 13) (pack-u32 d)))))
+      (e-cmpheap (bcat (eb1 72) (bcat (eb1 59) (bcat (eb1 13) (pack-u32 d)))))
+      (e-lea     (bcat (eb1 72) (bcat (eb1 141) (bcat (eb1 5) (pack-u32 d)))))
+      (e-ldrdi   (bcat (eb1 72) (bcat (eb1 139) (bcat (eb1 61) (pack-u32 d)))))
+      (e-ldrsi   (bcat (eb1 72) (bcat (eb1 139) (bcat (eb1 53) (pack-u32 d)))))
+      (e-ldrdx   (bcat (eb1 72) (bcat (eb1 139) (bcat (eb1 21) (pack-u32 d)))))
+      (e-learcx  (bcat (eb1 72) (bcat (eb1 141) (bcat (eb1 13) (pack-u32 d)))))
+      (e-jmp  (bcat (eb1 233) (pack-u32 d)))
+      (e-tbl  (pack-u32 d))
+      (e-call (bcat (eb1 232) (pack-u32 d)))
+      (e-jne  (bcat (eb1 15) (bcat (eb1 133) (pack-u32 d))))
+      ((e-jcc cc) (bcat (eb1 15) (bcat (eb1 cc) (pack-u32 d)))))))
+
+; the per-chunk bytes, in order (labels contribute none). Same bytes the old
+; right-nested materialize produced -- but as a LIST, so the concatenation can
+; be balanced instead of right-folded.
+(def mat-chunks (=> (List Asm) I64 (Map Str I64) (List Bytes))
+  (lam (xs off offs)
+    (case xs
+      (nil (the (List Bytes) nil))
+      ((cons a rest)
+        (case a
+          ((a-bytes b) (cons b (mat-chunks rest (+ off (blen b)) offs)))
+          ((a-label l) (mat-chunks rest off offs))
+          ((a-align n)
+            (cons (zeros (- (align-off off n) off))
+                  (mat-chunks rest (align-off off n) offs)))
+          ((a-rel sz enc l)
+            (cons (check-len sz (apply-enc enc (- (resolve-label l offs) (+ off sz))))
+                  (mat-chunks rest (+ off sz) offs))))))))
+
+; balanced concatenation: combine adjacent pairs, halving the list each round.
+; bcat is associative, so the result is byte-identical to a right-nested fold,
+; but the cost is O(N log M) not O(N*M) -- the emit's dominant memory quadratic
+; (a self-compile-sized image over ~10^4 chunks churned ~12GB the old way).
+(def bcat-pairs (-> (List Bytes) (List Bytes))
+  (lam (bs)
+    (case bs
+      (nil (the (List Bytes) nil))
+      ((cons a rest)
+        (case rest
+          (nil (cons a (the (List Bytes) nil)))
+          ((cons b more) (cons (bcat a b) (bcat-pairs more))))))))
+
+(def bcat-all (-> (List Bytes) Bytes)
+  (lam (bs)
+    (case bs
+      (nil (str->bytes ""))
+      ((cons a rest)
+        (case rest
+          (nil a)
+          (_ (bcat-all (bcat-pairs bs))))))))
+
+(def materialize (=> (List Asm) I64 (Map Str I64) Bytes)
+  (lam (xs off offs)
+    (bcat-all (mat-chunks xs off offs))))
+
+; assemble a chunk list into (machine code, label offset table)
+(def assemble (=> (List Asm) (Pair Bytes (List (Pair Str I64))))
+  (lam (xs)
+    (let (offs (place xs 0 (the (List (Pair Str I64)) nil)))
+      (let (tree (offs->tree offs (m-empty Str I64)))
+        (the (Pair Bytes (List (Pair Str I64)))
+          (pair (materialize xs 0 tree) offs))))))
+
+; small helper the codegen and machines share
+(def one-b (-> Bytes (List Asm))
+  (lam (b) (the (List Asm) (cons (a-bytes b) nil))))

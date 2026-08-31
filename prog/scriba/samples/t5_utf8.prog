@@ -1,0 +1,101 @@
+; UTF-8 decoder conformance test (TUI/vt-core/utf8.chiral).
+; Exit 42 on pass, negated test-number (as an unsigned exit byte) on first failure.
+; Build: prelude + TUI/vt-core/utf8.chiral + this file -> B1 -> ELF.
+
+(declare compile-main (-> Unit I64))
+
+; ─── byte-buffer builders (mkbyte via pack-u32 low byte; mkbytes folds a list) ───
+(declare mkbyte  (-> I64 Bytes))
+(declare mkbytes (-> (List I64) Bytes))
+(def mkbyte  (lam (n) (bslice (pack-u32 n) 0 1)))
+(def mkbytes (lam (xs) (case xs (nil (str->bytes "")) ((cons h t) (bcat (mkbyte h) (mkbytes t))))))
+
+; dec-eq: does utf8-decode1 at offset 0 yield exactly (cp, n)?
+(declare dec-eq (-> Bytes I64 I64 Bool))
+(def dec-eq
+  (lam (b cp n)
+    (case (utf8-decode1 b 0)
+      ((pair c k) (and (=i c cp) (=i k n))))))
+
+; codepoint-list read-back helpers
+(declare cp-len (-> (List I64) I64))
+(def cp-len (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (cp-len t))))))
+(declare cp-nth (-> (List I64) I64 I64))
+(def cp-nth
+  (lam (xs i)
+    (case xs
+      (nil -999)
+      ((cons h t) (case (=i i 0) (true h) (false (cp-nth t (- i 1))))))))
+
+; ─── the suite — each returns 0 on pass, a negative marker on failure ────────────
+(declare t1-ascii   (-> Unit I64))
+(declare t2-two     (-> Unit I64))
+(declare t3-three   (-> Unit I64))
+(declare t4-four    (-> Unit I64))
+(declare t5-emoji   (-> Unit I64))
+(declare t6-badlead (-> Unit I64))
+(declare t7-stray   (-> Unit I64))
+(declare t8-overlong(-> Unit I64))
+(declare t9-trunc   (-> Unit I64))
+(declare t10-surr   (-> Unit I64))
+(declare t11-stream (-> Unit I64))
+
+; Test 1: ASCII 'A' (U+0041) = [0x41] -> (65, 1)
+(def t1-ascii (lam (_) (case (dec-eq (mkbytes (cons 65 nil)) 65 1) (true 0) (false -1))))
+
+; Test 2: 2-byte '¢' (U+00A2) = [0xC2 0xA2] -> (162, 2)
+(def t2-two (lam (_) (case (dec-eq (mkbytes (cons 194 (cons 162 nil))) 162 2) (true 0) (false -2))))
+
+; Test 3: 3-byte '€' (U+20AC) = [0xE2 0x82 0xAC] -> (8364, 3)
+(def t3-three (lam (_) (case (dec-eq (mkbytes (cons 226 (cons 130 (cons 172 nil)))) 8364 3) (true 0) (false -3))))
+
+; Test 4: 4-byte '𐍈' (U+10348) = [0xF0 0x90 0x8D 0x88] -> (66376, 4)
+(def t4-four (lam (_) (case (dec-eq (mkbytes (cons 240 (cons 144 (cons 141 (cons 136 nil))))) 66376 4) (true 0) (false -4))))
+
+; Test 5: emoji '😀' (U+1F600) = [0xF0 0x9F 0x98 0x80] -> (128512, 4)
+(def t5-emoji (lam (_) (case (dec-eq (mkbytes (cons 240 (cons 159 (cons 152 (cons 128 nil))))) 128512 4) (true 0) (false -5))))
+
+; Test 6: invalid lead 0xFF -> (U+FFFD, 1) — resync one byte
+(def t6-badlead (lam (_) (case (dec-eq (mkbytes (cons 255 nil)) 65533 1) (true 0) (false -6))))
+
+; Test 7: stray continuation 0x80 -> (U+FFFD, 1)
+(def t7-stray (lam (_) (case (dec-eq (mkbytes (cons 128 nil)) 65533 1) (true 0) (false -7))))
+
+; Test 8: overlong 2-byte 0xC0 0x80 (fake U+0000) -> lead 0xC0 rejected -> (U+FFFD, 1)
+(def t8-overlong (lam (_) (case (dec-eq (mkbytes (cons 192 (cons 128 nil))) 65533 1) (true 0) (false -8))))
+
+; Test 9: truncated 3-byte 0xE2 0x82 (missing 3rd byte) -> (U+FFFD, 1)
+(def t9-trunc (lam (_) (case (dec-eq (mkbytes (cons 226 (cons 130 nil))) 65533 1) (true 0) (false -9))))
+
+; Test 10: surrogate 0xED 0xA0 0x80 (would be U+D800) -> rejected -> (U+FFFD, 1)
+(def t10-surr (lam (_) (case (dec-eq (mkbytes (cons 237 (cons 160 (cons 128 nil)))) 65533 1) (true 0) (false -10))))
+
+; Test 11: whole-buffer decode-utf8 of "A¢€" = [41 C2 A2 E2 82 AC] -> [65 162 8364]
+(def t11-stream
+  (lam (_)
+    (let ((cps (decode-utf8 (mkbytes (cons 65 (cons 194 (cons 162 (cons 226 (cons 130 (cons 172 nil))))))))))
+      (case (=i (cp-len cps) 3)
+        (false -11)
+        (true
+          (case (and (and (=i (cp-nth cps 0) 65) (=i (cp-nth cps 1) 162))
+                     (=i (cp-nth cps 2) 8364))
+            (true 0)
+            (false -11)))))))
+
+; ─── collect all results, return the first non-zero (or 42 if all pass) ─────────
+(declare run-tests (-> Unit (List I64)))
+(def run-tests
+  (lam (_)
+    (cons (t1-ascii unit)   (cons (t2-two unit)     (cons (t3-three unit)
+    (cons (t4-four unit)    (cons (t5-emoji unit)    (cons (t6-badlead unit)
+    (cons (t7-stray unit)   (cons (t8-overlong unit) (cons (t9-trunc unit)
+    (cons (t10-surr unit)   (cons (t11-stream unit)  nil)))))))))))))
+
+(declare first-bad (-> (List I64) I64))
+(def first-bad
+  (lam (xs)
+    (case xs
+      (nil 42)
+      ((cons h t) (case (=i h 0) (true (first-bad t)) (false h))))))
+
+(def compile-main (lam (_) (first-bad (run-tests unit))))

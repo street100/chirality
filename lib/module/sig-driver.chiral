@@ -1,0 +1,77 @@
+; sig-driver (Group B) -- the effect-sig assembly + the E70 floor obligation over
+; chirality-DERIVED data. The final composition layer:
+;
+;   sig-derive : scan-calls (call graph), prim-is-port (ports), bound-crossings
+;                -- the caller runs these to derive the three input lists below.
+;   row-infer  : infer-row (def_rows, the monotone closure)  [imported here]
+;   eff-lower  : eff-gate (the => gate), row-check (preserve-check)  [imported here]
+;
+; EffSig is the focused view the floor check needs -- ports + bound + def_rows --
+; NOT an extension of E69's SigV (that serves closure conversion's tys/defs; the
+; effect-row data is an orthogonal concern, kept in its own view). This layer sits
+; OVER E16's pure lowering (lib/lower.chiral) rather than editing its tested driver:
+; the scaffold's monolithic lower_all refracts into E16 (partition + emission) plus
+; this effect layer (the gate + row obligation).
+;
+; NOTE: this composes row-infer + eff-lower ONLY. sig-derive's prim-is-port pulls
+; closconv -> surface (a heavy graph with duplicate `llen`/`Ord` helpers chirality has
+; no namespace to disambiguate), so its outputs (the ports/bound/calls lists) are
+; passed IN as data rather than co-imported. Net: with sig-derive's derivations,
+; chirality produces every input eff-lower's gate/check needs -- no "given" inputs.
+
+(import "prelude")
+(import "row-infer")    ; RowSig, infer-row, assoc-row
+(import "eff-lower")    ; eff-gate/EffGate, row-check/RowCheckR, Block
+
+; ================================================================ EffSig
+;   ports : port crossings (prim_is_port)   bound : E51-bound crossings
+;   dr    : def_rows (name -> its effect row), derived for the whole unit
+(data EffSig ()
+  (effsig (ports (List Str)) (bound (List Str)) (dr (List (Pair Str (List Str))))))
+
+(def effsig-ports (-> EffSig (List Str))                   (lam (s) (case s ((effsig p b d) p))))
+(def effsig-bound (-> EffSig (List Str))                   (lam (s) (case s ((effsig p b d) b))))
+(def effsig-dr    (-> EffSig (List (Pair Str (List Str)))) (lam (s) (case s ((effsig p b d) d))))
+
+; ================================================================ assembly
+; def-names: the keys of the call graph (the definitions to infer rows for).
+(declare def-names (-> (List (Pair Str (List Str))) (List Str)))
+(def def-names
+  (lam (cs) (case cs (nil nil) ((cons p r) (case p ((pair n cl) (cons n (def-names r))))))))
+
+; build-dr: def_rows for every definition. stamped={} -- infer-row's seen-closure
+; is a full transitive closure per def, so each yields its complete reachable-port
+; row with no stamping order needed (stamping is only an optimization).
+(declare build-dr (-> RowSig (List Str) (List (Pair Str (List Str)))))
+(def build-dr
+  (lam (rs names)
+    (case names
+      (nil nil)
+      ((cons n r) (cons (pair n (infer-row rs n)) (build-dr rs r))))))
+
+; build-effsig: assemble the EffSig from a program's DERIVED lists.
+;   ports : the port crossings (sig-derive's filter over prim-is-port)
+;   bound : the E51-bound names (sig-derive's bound-crossings)
+;   calls : the call graph (sig-derive's scan-calls)
+(def build-effsig (-> (List Str) (List Str) (List (Pair Str (List Str))) EffSig)
+  (lam (ports bound calls)
+    (effsig ports bound (build-dr (rowsig ports calls nil) (def-names calls)))))
+
+; ================================================================ the obligation
+; eff-eligible?: the E70 => gate for a def -- given its derived row + ports +
+; bound, lower or stay upper (wraps eff-gate; rowvar=false, DYN never reaches the
+; floor post-E69). A def with no row (pure) lowers.
+(def eff-eligible? (-> EffSig Str EffGate)
+  (lam (sg name)
+    (case (assoc-row (effsig-dr sg) name)
+      (none (g-lower))
+      ((some row) (eff-gate false row (effsig-ports sg) (effsig-bound sg))))))
+
+; check-def-row: the E70 preserve-check for a lowered def -- re-derive the row its
+; tal footprint reaches and demand reached <= declared (its inferred row), else
+; row-escape (wraps eff-lower's row-check; xs = the bound crossings).
+(def check-def-row (-> EffSig Str (List Block) RowCheckR)
+  (lam (sg name blocks)
+    (case (assoc-row (effsig-dr sg) name)
+      (none      (row-check name (effsig-bound sg) (effsig-dr sg) nil blocks))
+      ((some row) (row-check name (effsig-bound sg) (effsig-dr sg) row blocks)))))

@@ -1,0 +1,96 @@
+; flow-view-test.chiral — SG6 PURE unit gate for flow-outline-nodes (the Flow->
+; OutlineNode flatten). Mesh-free: builds a hand-nested Flow (branch over a chain
+; that contains a fan of steps; backtrack a chain of a gate + a step) and asserts
+; the produced OutlineNode list has the expected DEPTHS + LABELS — the fractal is
+; surfaced faithfully. compile-main returns 0 iff every assertion passes (exit 0).
+;
+; Build+run (fast — links flow's engine closure but never CALLS it; pure at runtime):
+;   . bin/chirality-resolve.sh
+;   chirality_blob scaffold/lib scriba/flow-view > blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
+;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   cat TUI/scriba/flow-view-test.chiral >> blob; echo >> blob
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
+
+(import "prelude")               ; Bool, Unit, and, some, none, case, unit, str-eq, =i, cons, nil
+(import "manas/core/types")      ; GateRule (+ gate-rule ctor)
+(import "manas/core/flow")       ; Ty (+ ctors), Flow (+ ctors)
+(import "manas-mode")            ; OutlineNode (onode)
+(import "flow-view")             ; flow-outline-nodes (under test)
+
+; ─── the NESTED Flow fixture (mirrors SG3's doc-edit fractal shape) ─────────────
+;   branch "P" {
+;     per-perspective: chain[ step "proposer",  fan[ step "style", step "acc" ] "merge" ]
+;     backtrack:       chain[ gate "consolidate", step "audit" ] }
+(def per-persp Flow
+  (flow-chain
+    (cons (flow-step "proposer" ty-doc ty-patch)
+    (cons (flow-fan (cons (flow-step "style"    ty-patch ty-findings)
+                    (cons (flow-step "accuracy" ty-patch ty-findings) nil))
+                    "merge-findings" ty-findings)
+          nil))))
+
+(def back-track Flow
+  (flow-chain
+    (cons (flow-gate (cons (gate-rule "always" (cons "reviewer-a" nil)) nil)
+                     "consolidate" ty-findings ty-patch)
+    (cons (flow-step "audit" ty-patch ty-verdict) nil))))
+
+(def fixture Flow
+  (flow-branch "critique-perspectivist" ty-doc per-persp back-track))
+
+; ─── OutlineNode accessors (local — manas-mode exposes no depth/text getter) ───
+(def node-depth (-> OutlineNode I64)
+  (lam (nd) (case nd ((onode d f t e) d))))
+(def node-text (-> OutlineNode Str)
+  (lam (nd) (case nd ((onode d f t e) t))))
+
+(def tv-nth (-> (List OutlineNode) I64 (Maybe OutlineNode))
+  (lam (xs i)
+    (case xs
+      (nil none)
+      ((cons h t) (case (<i i 1) (true (some h)) (false (tv-nth t (- i 1))))))))
+
+; assert node i has depth `d` and text `txt`.
+(def node-is? (-> (List OutlineNode) I64 I64 Str Bool)
+  (lam (nds i d txt)
+    (case (tv-nth nds i)
+      (none false)
+      ((some nd) (and (=i (node-depth nd) d) (str-eq (node-text nd) txt))))))
+
+(def list-len (-> (List OutlineNode) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (list-len t))))))
+
+; ─── expected flatten (pre-order, depth-indented) ──────────────────────────────
+;   0 branch: critique-perspectivist
+;   1   per-perspective:
+;   2     chain
+;   3       step: proposer
+;   3       fan: merge-findings
+;   4         step: style
+;   4         step: accuracy
+;   1   backtrack:
+;   2     chain
+;   3       gate: consolidate
+;   3       step: audit
+(def check (-> Unit Bool)
+  (lam (_)
+    (let ((nds (flow-outline-nodes fixture)))
+      (and (=i (list-len nds) 11)
+      (and (node-is? nds 0  0 "branch: critique-perspectivist")
+      (and (node-is? nds 1  1 "per-perspective:")
+      (and (node-is? nds 2  2 "chain")
+      (and (node-is? nds 3  3 "step: proposer")
+      (and (node-is? nds 4  3 "fan: merge-findings")
+      (and (node-is? nds 5  4 "step: style")
+      (and (node-is? nds 6  4 "step: accuracy")
+      (and (node-is? nds 7  1 "backtrack:")
+      (and (node-is? nds 8  2 "chain")
+      (and (node-is? nds 9  3 "gate: consolidate")
+           (node-is? nds 10 3 "step: audit")))))))))))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (check unit)
+      (true 0)
+      (false 1))))

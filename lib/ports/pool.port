@@ -1,0 +1,31 @@
+; ports/pool — the sized shared-buffer registry.
+;
+; The buffer supply carries its size in the port type (memory-model,
+; target-tomodachi): (Pool 16384) and (Pool 4096) are different types, the
+; bridge verifies the claim at the crossing, and a target can demand a bound.
+;
+; Depends on ports/fd: a pool's backing memfd comes back as a linear Fd, so
+; PoolR cannot be stated without the descriptor cap.
+
+(import "prelude")
+(import "ports/fd")
+
+(porttype Pool (n I64))
+
+(data PoolR ((n I64)) (pool-r (1 pool (Pool n)) (1 fd Fd)))
+; pool-read result (E113/E120): the read Bytes beside the pool cap moved back.
+; The pool is linear, so it rides a `1`-field here (a Pair's snd is unrestricted
+; and would reject the linear witness). Single con, tag 0.
+(data PoolReadR ((n I64)) (pr-r (bs Bytes) (1 p (Pool n))))
+
+; the size argument flows into the type: (pool-create 16384) : (PoolR 16384).
+; pool-write and pool-close take the bound as an erased (0) parameter: it
+; exists only in types, never at runtime. A constant offset within the bound is
+; compile-time bounds-checked by refinement types (`mem-put-checked`); a computed
+; offset still falls back to a runtime check (memory-model).
+(extern pool-create (=> (w n I64) (PoolR n)))
+(extern pool-write (-> (0 n I64) (=> (1 p (Pool n)) I64 Bytes (Pool n))))
+; E113/E120: read len bytes at off, threading the pool back beside the fresh
+; Bytes (the pool is linear -- it cannot be dropped, so read returns a Pair).
+(extern pool-read (-> (0 n I64) (=> (1 p (Pool n)) I64 I64 (PoolReadR n))))
+(extern pool-close (-> (0 n I64) (=> (1 p (Pool n)) Unit)))

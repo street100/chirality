@@ -1,0 +1,65 @@
+; E13: de-Bruijn machinery over a closed core-term sum. Pure (->), total
+; (structural on Term), coverage-checked (case over data Term). The self-hosted
+; port of scaffold/chirality/terms.py's uses_below / shift_close (the core subset:
+; Var/App/Lam/Pi/Let). The extension nodes (TCon/Con/Case/Refine/Ann) are the
+; same traversal at wider arity, added in lockstep to BOTH walkers when the full
+; shared Term ADT is assembled (E1/E3/E6/E9) -- deferred, not a new idea.
+;
+; This is syntax BENEATH judgment: it touches no port and no type. terms.py
+; stays the bootstrap plumbing and the differential oracle until the chirality
+; kernel (E3/E4) imports this file.
+(import "prelude")
+
+; The nameless core term. Each binder node opens exactly one new index for the
+; subterm noted below; `depth` in the walkers counts how many binders crossed.
+(data Term ()
+  (t-var (idx I64))
+  (t-app (fn Term) (arg Term))
+  (t-lam (body Term))               ; body sees 1 new binder
+  (t-pi  (dom Term) (cod Term))     ; cod sees 1 new binder
+  (t-let (val Term) (body Term)))   ; body sees 1 new binder
+
+; uses-below-at b depth t : does t reference a free variable whose index lands in
+; the half-open window [depth, depth+b)? Under each binder the window slides by
+; sliding depth, exactly as terms.py threads its `depth`. Total: every recursive
+; call is on a strict subterm of t, so no measure is needed.
+(declare uses-below-at (-> I64 I64 Term Bool))
+(def uses-below-at
+  (lam (b depth t)
+    (case t
+      ((t-var i)      (and (<=i depth i) (<i i (+ depth b))))
+      ((t-app f a)    (or (uses-below-at b depth f)
+                          (uses-below-at b depth a)))
+      ((t-lam body)   (uses-below-at b (+ depth 1) body))
+      ((t-pi dom cod) (or (uses-below-at b depth dom)
+                          (uses-below-at b (+ depth 1) cod)))
+      ((t-let v body) (or (uses-below-at b depth v)
+                          (uses-below-at b (+ depth 1) body))))))
+
+; Public entry: ask about the outermost context (depth 0).
+(def uses-below (-> I64 Term Bool)
+  (lam (b t) (uses-below-at b 0 t)))
+
+; shift-close-at delta depth t : lower every FREE index (idx >= depth) by delta,
+; leaving BOUND indices (idx < depth) alone. Sound only when (uses-below delta t)
+; is false -- the caller (a binder-elimination site in the kernel) must hold
+; that; QTT's usage vector is where that proof already lives (caller obligation,
+; as in OURS; not encodable in E9's refinement fragment -- it is a computed-Bool
+; predicate).
+(declare shift-close-at (-> I64 I64 Term Term))
+(def shift-close-at
+  (lam (delta depth t)
+    (case t
+      ((t-var i)      (case (<i i depth)
+                        (true  (t-var i))              ; bound: unchanged
+                        (false (t-var (- i delta)))))  ; free: lowered
+      ((t-app f a)    (t-app (shift-close-at delta depth f)
+                             (shift-close-at delta depth a)))
+      ((t-lam body)   (t-lam (shift-close-at delta (+ depth 1) body)))
+      ((t-pi dom cod) (t-pi  (shift-close-at delta depth dom)
+                             (shift-close-at delta (+ depth 1) cod)))
+      ((t-let v body) (t-let (shift-close-at delta depth v)
+                             (shift-close-at delta (+ depth 1) body))))))
+
+(def shift-close (-> I64 Term Term)
+  (lam (delta t) (shift-close-at delta 0 t)))

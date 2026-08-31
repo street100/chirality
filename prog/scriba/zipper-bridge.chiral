@@ -1,0 +1,61 @@
+; scriba zipper bridge — S1 Zipper <-> S5 TextZipper conversion.
+; Pure (->) converters. Does NOT redefine either type; imports them.
+;
+; The two zipper types are NOT structurally identical:
+;   Zipper Str  = (zipper (focus (Maybe Str)) (path (List I64)))
+;   TextZipper  = (text-zipper (focus Unit) (ctx LineCtx)) with
+;                 LineCtx = (line-ctx (above (List Str)) (left Str)
+;                                     (right Str) (below (List Str)))
+;
+; The S1 Zipper's focus holds the whole document text (Maybe Str); its path
+; encodes the cursor as a flat-text character offset: (cons offset nil).
+; TextZipper splits the document into above/left/right/below with the cursor
+; implicit in the split.
+;
+; Bridge: focus text <-> full reconstructed text, and path <-> cursor offset.
+; The cursor position survives the round-trip: zipper->text-zipper positions
+; the TextZipper at the offset in the path (nil path = offset 0), and
+; text-zipper->zipper recomputes the offset from the LineCtx split. This is
+; what makes navigation stick and self-insert land at the moved cursor.
+
+(import "prelude")
+(import "puffer")
+(import "str-edit")
+
+; zb-cursor-offset : (List Str) Str -> I64
+; Flat-text character offset of the cursor, computed from the LineCtx split:
+;   sum over `above` lines of (len line + 1)   ; +1 for the newline separator
+;   + (len left)                                ; column on the current line
+(declare zb-cursor-offset (-> (List Str) Str I64))
+(def zb-cursor-offset
+  (lam (above left)
+    (case above
+      (nil (str-len left))
+      ((cons h t)
+        (+ (str-len h) (+ 1 (zb-cursor-offset t left)))))))
+
+; zipper->text-zipper : (Zipper Str) -> (TextZipper Str)
+; Positions the TextZipper cursor at the flat-text offset encoded in the path.
+; nil path (fresh puffer) = offset 0. advance-by crosses line boundaries so
+; the offset is a true character offset into the whole document, not a column.
+(def zipper->text-zipper (-> (Zipper Str) (TextZipper Str))
+  (lam (z)
+    (case z
+      ((zipper f p)
+        (case f
+          ((some s)
+            (case p
+              (nil (text-zipper-from-str s))
+              ((cons off rest) (advance-by off (text-zipper-from-str s)))))
+          (none (text-zipper unit (line-ctx nil "" "" nil))))))))
+
+; text-zipper->zipper : (TextZipper Str) -> (Zipper Str)
+; Encodes the cursor offset back into the path as (cons offset nil).
+(def text-zipper->zipper (-> (TextZipper Str) (Zipper Str))
+  (lam (tz)
+    (case tz
+      ((text-zipper focus ctx)
+        (case ctx
+          ((line-ctx above left right below)
+            (zipper (some (zipper-to-text tz))
+                    (cons (zb-cursor-offset above left) nil))))))))

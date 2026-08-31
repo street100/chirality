@@ -1,0 +1,44 @@
+; self-wield -- chirality reads its OWN source file (by path, via the openat crossing)
+; and compiles it, with no shell resolver in the loop. The driver entry `compile-main`
+; reads a file PATH on stdin, opens it, reads its source, compiles the `compile-main`
+; entry, and writes the ELF to stdout. This is the native replacement for the shell
+; wrapper `bin/chirality` -- the filesystem source provider, in the language.
+;
+; Mint the native wielder by compiling this with B1 -- the entry is `compile-main`,
+; the one symbol the driver compiles, so no interpreter and no shim (like chirality-compile is
+; minted from compile-main). Multi-module import resolution (following (import ...)
+; across files) is the next step; this lands the openat-read-compile spine first.
+
+(import "compile-all")   ; read-fd-all, compile-all, put/trace, byte ops
+
+(extern openat (=> Bytes I64))   ; NUL-terminated path bytes -> fd (or negative errno)
+
+; a single NUL byte, with no new primitive: pack-u32 0 is four zero bytes.
+(def nul-byte Bytes (bslice (pack-u32 0) 0 1))
+
+; drop one trailing '\n' (10) so `echo path | wielder` works
+(def rstrip-nl (-> Bytes Bytes)
+  (lam (b)
+    (let (n (blen b))
+      (case (=i n 0)
+        (true b)
+        (false
+          (case (=i (bget b (- n 1)) 10)
+            (true (bslice b 0 (- n 1)))
+            (false b)))))))
+
+; entry: named `compile-main` -- the entry symbol the native driver compiles, the
+; same convention resolve-driver.chiral and test-runner.chiral follow. Before
+; compile-all.chiral stopped defining the entry itself, blobbing this root picked
+; up the COMPILER's driver instead and silently produced chirality-compile, not the wielder.
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (path (rstrip-nl (read-fd-all 0)))
+      (let (fd (openat (bcat path nul-byte)))
+        (case (<i fd 0)
+          (true (do (trace "self-wield: openat failed") 1))
+          (false
+            (let (src (bytes->str (read-fd-all fd)))
+              (case (compile-all src "compile-main")
+                ((ca-ok elf) (do (put (bytes->str elf)) 0))
+                ((ca-err m)  (do (trace m) 1))))))))))

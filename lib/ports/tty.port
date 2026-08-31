@@ -1,0 +1,29 @@
+; ports/tty — the terminal registry: line-discipline ioctls and key input.
+;
+; E99: per-request-family ioctl crossings — alloc-inside, returns fresh Bytes.
+; No surface cell-new Bytes is ever kernel-mutated (the old ioctl pattern).
+;
+; Key/KeySeq/Keymap sit here rather than in an editor module because a key is
+; what the tty crossing YIELDS: the decode of read-key's bytes is the type of
+; this port's output, and typing it anywhere else would leave the crossing
+; returning raw Bytes with its meaning declared elsewhere.
+
+(import "prelude")
+
+(data Key ()
+  (k-char      (code I64))
+  (k-ctrl      (code I64))
+  (k-enter) (k-tab) (k-backspace) (k-escape)
+  (k-up) (k-down) (k-left) (k-right)
+  (k-home) (k-end) (k-page-up) (k-page-down)
+  (k-delete) (k-insert)
+  (k-meta      (code I64))
+  (k-c-meta    (code I64)))
+(data KeySeq () (keyseq (keys (List Key))))
+(data Keymap () (keymap (bindings (List (Pair KeySeq Str)))))
+
+(extern read-key (=> I64 I64 Bytes))
+(extern nb-winsz-raw  (=> I64 Bytes))   ; TIOCGWINSZ (0x5413), returns 8-byte cell
+(extern nb-tcgets-raw (=> I64 Bytes))   ; TCGETS     (0x5401), returns 60-byte cell
+(extern nb-tcsets     (=> I64 Bytes I64)) ; TCSETS (0x5402), value-in only
+(extern nb-winszw-raw (=> I64 Bytes I64)) ; TIOCSWINSZ (0x5414), value-in — kernel reads cell, no writeback

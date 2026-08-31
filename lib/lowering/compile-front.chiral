@@ -1,0 +1,329 @@
+; ===========================================================================
+; lib/compile-front.chiral  --  BRIDGE 1 (front half): a checked Sig -> an NDef.
+;
+; The kernel-image end of the source->native pipeline. `compile-front` runs the
+; WHOLE chirality front half (lib/parse.chiral's load-source = read -> elaborate ->
+; typecheck-into-Sig) and then PEELS the named entry def out of the checked Sig:
+;   - its type Term  -> a Pi-chain peel -> parameter NTalTys + a return NTalTy
+;   - its body Term  -> the neutral NCore (de-Bruijn, name-dropped)
+; producing a neutral NDef (lib/lowspec.chiral) the lowering image consumes.
+;
+; This lives in the kernel image (imports "parse", which pulls surface/loader/
+; kernel) and CANNOT import "lower" (the `Term` name collision) -- hence the
+; NDef hop. A non-lowerable def (higher-order/dependent/non-ground type, or a
+; body outside the lowerable fragment) is REJECTED as an fr-err value, never a
+; raise: errors-as-values, matching lower.py's Ineligible-as-a-partition.
+; ===========================================================================
+
+(import "parse")               ; load-source (+ surface/loader/kernel: Sig/Term/Qty)
+(import "load-batch")           ; E94: load-source-batched (capacity-bounded loader)
+(import "specialize-singleton") ; specialize-singletons: monomorphize a singleton vtable (Mach) -- BEFORE closconv
+(import "closconv-driver")     ; closconv-sig: defunctionalize HO defs before peel
+(import "lowspec")             ; NTalTy / NCore / NArm / NDef
+
+; Qty -> the I64 quantity code lower.Core uses (inverse of kernel i->qty).
+(def qty->i (-> Qty I64) (lam (q) (case q ((q0) 0) ((q1) 1) ((qw) 2))))
+
+; ---- E123: the word-carried handle porttypes --------------------------------
+; A nullary `(porttype X)` loads as `t-primty "X"`. The six fd/handle caps below
+; each carry ONE machine word (an fd or handle token), so they erase to nt-i64 at
+; the front peel -- WITHOUT this, term->ntalty drops to (none) and any def whose
+; arg/return/data-field is one of them is silently dropped (no entry label). This
+; is a single closed set (boundary-sums: the carrier classification parsed ONCE),
+; NOT a scattered which-of-N sentinel -- every member shares the one carrier.
+; `Pool n` is indexed (t-tcon, a cell carrier) and is deliberately NOT here (E122).
+(declare porttype-word? (-> Str Bool))
+(def porttype-word? (lam (n)
+  (case (str-eq n "Sock")  (true true)
+  (false (case (str-eq n "LSock") (true true)
+  (false (case (str-eq n "Fd")    (true true)
+  (false (case (str-eq n "Clock") (true true)
+  (false (case (str-eq n "Timer") (true true)
+  (false (case (str-eq n "Env")   (true true)
+  (false false))))))))))))))
+
+; E144: non-word (Str-carried) porttypes — the handle IS a pointer/string at
+; runtime (nt-str), reached by an nb-id identity peel (like adopt-fd for words).
+; STOPGAP: an explicit name list mirroring porttype-word?; the general
+; carrier registry (a per-porttype declared carrier, consulted like `latoms`)
+; is the E123 §6 deferred refinement. `Backend` is the first client (E137).
+(declare porttype-str? (-> Str Bool))
+(def porttype-str? (lam (n)
+  (case (str-eq n "Backend") (true true)
+  (false false))))
+
+; ---- a type Term -> a ground NTalTy (or none: stays upper) --------------------
+(declare term->ntalty      (-> Term (Maybe NTalTy)))
+(declare term->ntalty-list (-> (List Term) (Maybe (List NTalTy))))
+(def term->ntalty (lam (t)
+  (case t
+    ((t-primty n)
+      (case (str-eq n "I64") (true (some (nt-i64)))
+        (false (case (str-eq n "Str") (true (some (nt-str)))
+          (false (case (str-eq n "Bytes") (true (some (nt-bytes)))
+            (false (case (porttype-str? n) (true (some (nt-str)))
+              (false (case (porttype-word? n) (true (some (nt-i64))) (false (none))))))))))))
+    ((t-tcon dn args) (case (term->ntalty-list args) ((some ts) (some (nt-data dn ts))) (none (none))))
+    ((t-refine base atoms) (term->ntalty base))  ; E125: a refinement is proof-irrelevant / erased at runtime — lower as its base (e.g. (refine I64 (>0)) -> I64), so refine-typed extern args (sock-recv's n) lower
+    ((t-var i) (some (nt-word)))   ; B1: an erased type variable in a KEPT position
+    ((t-pi _ _ _ _) (some (nt-word))) ; B1: arrow types (kept by ty-kept-doms) are pointer-sized
+    (_ (none)))))
+(def term->ntalty-list (lam (ts)
+  (case ts
+    (nil (some nil))
+    ((cons x r) (case (term->ntalty x)
+      (none (none))
+      ((some t) (case (term->ntalty-list r) (none (none)) ((some ts2) (some (cons t ts2))))))))))
+
+; ---- peel a Pi-chain type Term into (parameter domains, codomain) -------------
+(data Peel () (peeled (params (List Term)) (cod Term)))
+(declare peel-pi (-> Term Peel))
+(def peel-pi (lam (t)
+  (case t
+    ((t-pi q s dom cod) (case (peel-pi cod) ((peeled ps c) (peeled (cons dom ps) c))))
+    (_ (peeled nil t)))))
+
+; ---- erased-position map (B1): a global name -> its q=0 binder positions -----
+; ErMap = (List (Pair Str (List I64))). At each call site, the args at the
+; callee's erased positions are dropped -- an erased arg is a TYPE Term that
+; does not convert to NCore, and the callee's tal sig omits it anyway.
+(declare emap-get (-> (List (Pair Str (List I64))) Str (List I64)))
+(def emap-get (lam (m g) (case m (nil nil) ((cons p r) (case p ((pair k v) (case (str-eq k g) (true v) (false (emap-get r g)))))))))
+(declare mem-if (-> (List I64) I64 Bool))
+(def mem-if (lam (xs y) (case xs (nil false) ((cons x r) (case (=i x y) (true true) (false (mem-if r y)))))))
+(declare tspine (-> Term (List Term) (Pair Term (List Term))))
+(def tspine (lam (t acc) (case t ((t-app f a) (tspine f (cons a acc))) (_ (pair t acc)))))
+(declare fold-napp (-> NCore (List NCore) NCore))
+(def fold-napp (lam (h args) (case args (nil h) ((cons a r) (fold-napp (nc-app h a) r)))))
+
+; ---- a body Term -> the neutral NCore, threading the ErMap `em` --------------
+(declare term->ncore       (-> (List (Pair Str (List I64))) Term (Maybe NCore)))
+(declare term->ncore-list  (-> (List (Pair Str (List I64))) (List Term) (Maybe (List NCore))))
+(declare tnc-keep          (-> (List (Pair Str (List I64))) (List Term) (List I64) I64 (Maybe (List NCore))))
+(declare term->narms       (-> (List (Pair Str (List I64))) (List KArm) (Maybe (List NArm))))
+(declare term->ndflt       (-> (List (Pair Str (List I64))) (Maybe Term) (Maybe (Maybe NCore))))
+(def term->ncore (lam (em t)
+  (case t
+    ((t-var i)     (some (nc-var i)))
+    ((t-global n)  (some (nc-global n)))
+    ((t-prim n)    (some (nc-prim n)))
+    ((t-lit-i v)   (some (nc-lit-i v)))
+    ((t-lit-s v)   (some (nc-lit-s v)))
+    ((t-ann tm ty) (case (term->ncore em tm) (none (none)) ((some e) (some (nc-ann e)))))
+    ((t-lam b)     (case (term->ncore em b) (none (none)) ((some e) (some (nc-lam e)))))
+    ((t-app f a)   (case (tspine t nil) ((pair head args)
+                     ; erased positions come from the callee -- a GLOBAL's q=0
+                     ; binders, or a PRIM/CROSSING's (halt's type argument is a
+                     ; q=0 binder too; python's lower.py erases crossing q=0
+                     ; args the same way)
+                     (let (es (case head ((t-global g) (emap-get em g))
+                                ((t-prim g) (emap-get em g)) (_ nil)))
+                     (case (term->ncore em head)
+                       (none (none))
+                       ((some nh) (case (tnc-keep em args es 0)
+                         (none (none))
+                         ((some nks) (some (fold-napp nh nks))))))))))
+    ((t-let q v b) (case (term->ncore em v) (none (none))
+                     ((some ev) (case (term->ncore em b) (none (none)) ((some eb) (some (nc-let (qty->i q) ev eb)))))))
+    ((t-con dn cn args) (case (term->ncore-list em args) (none (none)) ((some es) (some (nc-con dn cn es)))))
+    ((t-case scrut arms dflt) (case (term->ncore em scrut) (none (none))
+      ((some es) (case (term->narms em arms) (none (none))
+        ((some ar) (case (term->ndflt em dflt) (none (none)) ((some df) (some (nc-case es ar df)))))))))
+    (_ (none)))))
+; keep the args NOT at an erased position, converting each
+(def tnc-keep (lam (em args es pos)
+  (case args
+    (nil (some nil))
+    ((cons a r) (case (mem-if es pos)
+      (true  (tnc-keep em r es (+ pos 1)))
+      (false (case (term->ncore em a)
+        (none (none))
+        ((some na) (case (tnc-keep em r es (+ pos 1)) (none (none)) ((some rest) (some (cons na rest))))))))))))
+(def term->ncore-list (lam (em ts)
+  (case ts (nil (some nil))
+    ((cons x r) (case (term->ncore em x) (none (none))
+      ((some e) (case (term->ncore-list em r) (none (none)) ((some es) (some (cons e es))))))))))
+(def term->narms (lam (em as)
+  (case as (nil (some nil))
+    ((cons a r) (case a ((karm cn nv b)
+      (case (term->ncore em b) (none (none))
+        ((some eb) (case (term->narms em r) (none (none)) ((some rest) (some (cons (narm cn nv eb) rest))))))))))))
+(def term->ndflt (lam (em m)
+  (case m
+    (none (some (none)))
+    ((some t) (case (term->ncore em t) (none (none)) ((some e) (some (some e))))))))
+
+; ---- Pi-chain type helpers keeping quantities (B1) ---------------------------
+(declare ty-kept-doms (-> Term (List Term)))
+(def ty-kept-doms (lam (t)
+  (case t
+    ((t-pi q s dom cod) (case (=i (qty->i q) 0) (true (ty-kept-doms cod)) (false (cons dom (ty-kept-doms cod)))))
+    (_ nil))))
+(declare ty-cod (-> Term Term))
+(def ty-cod (lam (t) (case t ((t-pi q s dom cod) (ty-cod cod)) (_ t))))
+(declare ty-erased (-> Term I64 (List I64)))
+(def ty-erased (lam (t pos)
+  (case t
+    ((t-pi q s dom cod) (case (=i (qty->i q) 0) (true (cons pos (ty-erased cod (+ pos 1)))) (false (ty-erased cod (+ pos 1)))))
+    (_ nil))))
+(declare build-emap (-> (List (Pair Str (Pair Term Term))) (List (Pair Str (List I64)))))
+(def build-emap (lam (gs)
+  (case gs (nil nil)
+    ((cons p r) (case p ((pair nm tb) (case tb ((pair ty body)
+      (cons (pair nm (ty-erased ty 0)) (build-emap r))))))))))
+; the prims' q=0 positions join the same map: a crossing like halt carries a
+; q=0 TYPE argument that call sites must drop exactly like a global's
+(declare build-pmap (-> (List (Pair Str Term)) (List (Pair Str (List I64)))))
+(def build-pmap (lam (ps)
+  (case ps (nil nil)
+    ((cons p r) (case p ((pair nm ty)
+      (cons (pair nm (ty-erased ty 0)) (build-pmap r))))))))
+(declare emap-app (-> (List (Pair Str (List I64))) (List (Pair Str (List I64))) (List (Pair Str (List I64)))))
+(def emap-app (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (emap-app t ys))))))
+
+; ---- the bridge: pick the entry global out of the Sig, peel it to an NDef -----
+(declare glookup (-> (List (Pair Str (Pair Term Term))) Str (Maybe (Pair Term Term))))
+(def glookup (lam (gs name)
+  (case gs (nil (none))
+    ((cons p r) (case p ((pair k v) (case (str-eq k name) (true (some v)) (false (glookup r name)))))))))
+
+; ---- peel ONE def (type+body) into a Maybe NDef (none = stays upper) ----------
+(declare peel-def (-> (List (Pair Str (List I64))) Str Term Term (Maybe NDef)))
+(def peel-def (lam (em name ty body)
+  (case (term->ntalty-list (ty-kept-doms ty))
+    (none (none))
+    ((some ptys) (case (term->ntalty (ty-cod ty))
+      (none (none))
+      ((some ret) (case (term->ncore em body)
+        (none (none))
+        ((some nb) (some (ndef name ptys ret (ty-erased ty 0) nb))))))))))
+
+; ---- peel EVERY lowerable global into an NDef list (non-lowerable ones dropped)
+(declare peel-globals (-> (List (Pair Str (List I64))) (List (Pair Str (Pair Term Term))) (List NDef)))
+(def peel-globals (lam (em gs)
+  (case gs
+    (nil nil)
+    ((cons p r) (case p ((pair nm tb) (case tb ((pair ty body)
+      (case (peel-def em nm ty body)
+        (none      (peel-globals em r))
+        ((some nd) (cons nd (peel-globals em r))))))))))))
+
+; ---- thread the user DATA declarations: kernel DataDecl -> neutral NData ------
+; The field-type peel reuses term->ntalty. A data type with a field that does not
+; lower is dropped whole (a def using it then fails to lower too, cleanly).
+(declare field-tys->n (-> (List Field) (Maybe (List NTalTy))))
+(def field-tys->n (lam (fs)
+  (case fs
+    (nil (some nil))
+    ((cons f rest) (case f ((field q fn fty)
+      (case (term->ntalty fty)
+        (none (none))
+        ((some nt) (case (field-tys->n rest) (none (none)) ((some more) (some (cons nt more))))))))))))
+(declare ctors->n (-> (List Ctor) (Maybe (List NDCtor))))
+(def ctors->n (lam (cs)
+  (case cs
+    (nil (some nil))
+    ((cons c rest) (case c ((ctor cn fields)
+      (case (field-tys->n fields)
+        (none (none))
+        ((some ftys) (case (ctors->n rest) (none (none)) ((some more) (some (cons (ndctor cn ftys) more))))))))))))
+(declare datas->n (-> (List DataDecl) (List NData)))
+(def datas->n (lam (ds)
+  (case ds
+    (nil nil)
+    ((cons d rest) (case d ((data-decl dn params ctors)
+      (case (ctors->n ctors)
+        (none      (datas->n rest))
+        ((some ncs) (cons (ndata dn ncs) (datas->n rest))))))))))
+
+; ---- membership: is the entry among the peeled defs? -------------------------
+(declare has-def (-> (List NDef) Str Bool))
+(def has-def (lam (ds name)
+  (case ds
+    (nil false)
+    ((cons d r) (case d ((ndef nm p ret er b) (case (str-eq nm name) (true true) (false (has-def r name)))))))))
+
+; ---- H8: the PORT MANIFEST the composition declares --------------------------
+; A `(profile ...)` freezes a PORT SET -- the crossings the composite may use
+; (kernel.chiral Profile, stored on the Sig by H6). Enforcement is downstream (the
+; emit gate, compile-emit.chiral), so all the front half owes is the projection.
+;
+; Several profiles may be declared over one source. Each is a manifest the
+; composite must satisfy, so the effective permitted set is their INTERSECTION:
+; adding a declaration can only NARROW, never widen. (The alternative -- union,
+; or "the last one wins" -- would let a second `(profile ...)` line hand a program
+; a crossing the first one froze out, which is a manifest that permits rather
+; than freezes.)
+;
+; `(none)` = NO profile declared = no narrowing at this layer. That is NOT
+; "everything permitted": the target registry's own default-deny-by-absence
+; (lib/sys-check.chiral, applied at the emit gate) still governs every program.
+; A profile is an ATTENUATION of that closed set, never a grant.
+(declare pm-mem (-> (List Str) Str Bool))
+(def pm-mem (lam (xs y)
+  (case xs (nil false) ((cons x r) (case (str-eq x y) (true true) (false (pm-mem r y)))))))
+(declare pm-isect (-> (List Str) (List Str) (List Str)))
+(def pm-isect (lam (xs ys)
+  (case xs (nil nil) ((cons x r)
+    (case (pm-mem ys x) (true (cons x (pm-isect r ys))) (false (pm-isect r ys)))))))
+(declare profile-ports (-> Profile (List Str)))
+(def profile-ports (lam (p) (case p ((mk-profile nm po tg me to) po))))
+(declare ports-manifest (-> (List Profile) (Maybe (List Str))))
+(def ports-manifest (lam (ps)
+  (case ps
+    (nil (none))
+    ((cons p r) (case (ports-manifest r)
+      (none     (some (profile-ports p)))
+      ((some q) (some (pm-isect (profile-ports p) q))))))))
+
+
+; FR now carries the WHOLE program: every lowerable def + the data env the back
+; half's erase/lower steps need + the declared port manifest (H8). fr-err if the
+; entry itself does not lower.
+;
+; E161 removed a fifth field. E160 projected the declared module coordinates
+; through here as `(pair module-name (pair crosses? (its def names)))` rows, so
+; the emit gate could decide each module's `(pure)` / `(crosses)` claim against
+; the crossings its own object code reached. There is no claim to decide any
+; more: the port-set axis is DERIVED at load, on the module's own datasheet
+; (loader.chiral's crossings-of), so it neither needs nor gets a ride to the back
+; half. The coordinates are still in the Sig, reachable by `sig-sheet`.
+(data FR () (fr-ok (defs (List NDef)) (datas (List NData)) (prims (List NPrim))
+                   (ports (Maybe (List Str))))
+            (fr-err (msg Str)))
+
+; ---- extract the pure externs' tal sigs (mirrors lower.py prim_sigs) ----------
+; kept-filter the params (drop q=0), ttype each; a prim whose type does not lower
+; (effectful/higher-order/open) is DROPPED (it is not a pure prim at this floor).
+(declare prim->n (-> (Pair Str Term) (Maybe NPrim)))
+(def prim->n (lam (p)
+  (case p ((pair nm ty)
+    (case (term->ntalty-list (ty-kept-doms ty))
+      (none (none))
+      ((some ptys) (case (term->ntalty (ty-cod ty))
+        (none (none))
+        ((some ret) (some (nprim nm ptys ret))))))))))
+(declare prims->n (-> (List (Pair Str Term)) (List NPrim)))
+(def prims->n (lam (ps)
+  (case ps (nil nil) ((cons p r) (case (prim->n p)
+    (none (prims->n r))
+    ((some np) (cons np (prims->n r))))))))
+
+(def bridge-sig (-> Sig Str FR)
+  (lam (sig name)
+    (case (glookup (sig-globals sig) name)
+      (none (fr-err (str-cat "no such def: " name)))
+      ((some tb) (let (defs (peel-globals (emap-app (build-emap (sig-globals sig)) (build-pmap (sig-prims sig))) (sig-globals sig)))
+        (case (has-def defs name)
+          (false (fr-err (str-cat "the entry def does not lower: " name)))
+          (true  (fr-ok defs (datas->n (sig-datas sig)) (prims->n (sig-prims sig))
+                        (ports-manifest (sig-profiles sig))))))))))
+
+; THE FRONT ENTRY: source string + entry name -> FR (fr-ok NDef / fr-err msg).
+; Pure chirality: parse + elaborate + typecheck (load-source) then peel. The whole
+; source-driven, type-checked front half of the native compile in one call.
+(def compile-front (-> Str Str FR)
+  (lam (src name)
+    (case (load-source-batched src)
+      ((ld-err m)  (fr-err (str-cat "load: " m)))
+      ((ld-ok sig) (bridge-sig (closconv-sig (specialize-singletons sig)) name)))))

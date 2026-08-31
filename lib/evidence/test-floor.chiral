@@ -1,0 +1,1019 @@
+; test-floor (E168) -- the native test system a test is a VALUE in. An `Expect`
+; carries the PROVENANCE of its expected result as a closed sum, a `Gate` cannot
+; be constructed without a mutant that was built and run, and judgment is a pure
+; total fold. Only observation crosses.
+;
+; The defect this exists to end: three recorded shapes in which a gate COULD NOT
+; FAIL -- E156 G4 passed 14/14 with `list-sort` deleted, E161 G0 reported ok with
+; both providers emitting the same wrong marker, and E166 G3's `m_mul` mutant
+; objdumped identically to its base, so no value assertion could tell the two
+; apart. NONE of the three shipped, and the record says so: the first two are the
+; near-misses docs/testing-floors.md:183-187 names, each caught in the session
+; that produced it, and the third was caught at DESIGN time and replaced by a
+; value-changing mutant before the row shipped (E166-mach-c-SPEC.md:556 --
+; "naming it here would have been a mutant that could never fail"). All three had
+; sound expectations; what they lacked was structure. The contract is
+; docs/testing-floors.md:161-214; this file is that contract as types.
+;
+; Split, per ddc.chiral:1-5's settled precedent: the pure compare core is one
+; file and the leg-running orchestration lives outside it, which is what makes a
+; verdict re-derivable by a second chirality build or the Rocq leg without re-running
+; anything.
+
+(import "prelude")
+(import "collections")
+; for `bytes=?`. ddc.chiral owns the tree's only byte comparator and states the
+; rule in its own header -- one owner per rule, no second routine on this path.
+; Its `Prov` is why the sum below is `ExProv`: the E166 DDC gate is one of the
+; gates that will return a `Suite`, so the two live in one import closure and
+; the shadowing that duplicate type names get away with elsewhere is unavailable.
+(import "ddc")
+; for `read-fd-all` / `compile-all` -- the build-and-run body `observe` and the
+; in-tree leg of `oracle-ask` are made of, and the same one `run-one` already uses.
+(import "compile-all")
+; for `bundle-src` / `res-err-msg` / `openat` / `close` / `nul-byte` (E170 W0.2).
+; `observe` compiled ONE FILE and did no resolution, so it could observe exactly
+; the six import-free files in scaffold/samples/ and none of the other 62 -- and a
+; chirality-in-chirality test needs `prelude` at minimum. The floor does not OWN
+; resolution and does not re-implement module search: it CALLS the resolver E155
+; built and Phase 11 gates. E168 SPEC decision 2 refused two things at once and
+; only one of them moves here -- the harness's ~35% resolver FORK cost stays
+; refused and unowned, because `bundle-src` is an in-tree read with no
+; bin/chirality-resolve.sh in it.
+(import "resolve")
+
+; ===========================================================================
+; 1. PROVENANCE -- where the expected value came from, as a closed sum.
+;    testing-floors.md:166-177 ranks four sources and :179 calls an unlabelled
+;    rank 4 a finding. As a sum, "unlabelled" is not constructible.
+; ===========================================================================
+(data ExProv ()
+  (pv-external (tool Str) (ver Str))       ; rank 1 -- an independent implementation
+                                           ;   with independent semantics. The only
+                                           ;   rank that survives rewriting the
+                                           ;   thing under test.
+  (pv-fixed    (path Str) (digest Bytes))  ; rank 2 -- a fixed committed artifact, or
+                                           ;   a reference outside BOTH legs. This is
+                                           ;   what caught E161 G0.
+  (pv-meaning  (law Str))                  ; rank 3 -- follows from the meaning of the
+                                           ;   form, written down before running.
+  (pv-derived  (why Str)))                 ; rank 4 -- implementation-derived AND
+                                           ;   labelled: the label is a REQUIRED
+                                           ;   argument, so :179's unlabelled
+                                           ;   rank 4 is not writable. ⚑ Narrowly:
+                                           ;   the ARITY is what is enforced, not
+                                           ;   the content -- `Str` has an empty
+                                           ;   value and `(pv-derived "")` builds
+                                           ;   and ranks 4 (measured 2026-08-25).
+                                           ;   An empty label is a visible empty
+                                           ;   label; an omitted one is not
+                                           ;   expressible.
+
+; total, and deliberately WITHOUT a default arm: a fifth source must force every
+; rank policy in this file to be revisited rather than silently rank "unknown".
+(def prov-rank (-> ExProv I64)
+  (lam (p)
+    (case p
+      ((pv-external t v) 1)
+      ((pv-fixed pa d)   2)
+      ((pv-meaning l)    3)
+      ((pv-derived w)    4))))
+
+; ===========================================================================
+; 2. OBSERVATION -- behaviour, never a rendering. E166 shipped 68 text
+;    assertions that pinned an INVERTED comparison for two sessions: the
+;    printout matched while the bytes were wrong. There is deliberately no
+;    `ob-text` arm, so a rendering cannot be the deciding value.
+; ===========================================================================
+(data Obs ()
+  (ob-exit  (code I64))                    ; the process said this
+  (ob-bytes (b Bytes))                     ; the emitter produced these bytes
+  (ob-int   (v I64)))                      ; the evaluator returned this
+
+(data CheckR () (ck-pass) (ck-fail (got Obs) (want Obs)))
+
+; Structural: the OUTER case has one arm per `Obs` constructor and no default,
+; so a new observation kind breaks this function instead of falling through it.
+; Mismatched constructors are a failure, not an error -- comparing an exit code
+; against bytes is a real answer to a real question, and the answer is no.
+; Argument order is `want` then `got` -- the same order `ex-check` calls it in
+; (`(obs-cmp want got)`, the file's one caller of it from an `Expect`). ⚑ `ck-fail` REPORTS in the OTHER order: its fields are `(got, want)`,
+; so the constructor calls below read `(ck-fail got want)`. That is deliberate --
+; a comparison is asked want-first and a failure is reported got-first, because
+; a report leads with what happened -- and the two orders are written down here
+; precisely because E166's inverted comparison is what happens when an order is
+; left to the reader. (This sentence used to say `ck-fail` reports in the same
+; order, which is the confusion it exists to prevent; corrected 2026-08-25.)
+(def obs-cmp (-> Obs Obs CheckR)
+  (lam (want got)
+    (case want
+      ((ob-exit w)  (case got ((ob-exit g)  (case (=i w g)     (true (ck-pass)) (false (ck-fail got want))))
+                              (_             (ck-fail got want))))
+      ((ob-bytes w) (case got ((ob-bytes g) (case (bytes=? w g) (true (ck-pass)) (false (ck-fail got want))))
+                              (_             (ck-fail got want))))
+      ((ob-int w)   (case got ((ob-int g)   (case (=i w g)     (true (ck-pass)) (false (ck-fail got want))))
+                              (_             (ck-fail got want)))))))
+
+; ===========================================================================
+; 3. AN EXPECTATION IS A VALUE, AND JUDGMENT IS PURE. `ex` has no arity that
+;    omits the provenance, so an unlabelled expectation cannot be written.
+;    `check` takes no capability: it cannot manufacture an `Obs`, only compare
+;    one a crossing already produced.
+; ===========================================================================
+
+; WHAT THE EXPECTATION IS ABOUT, as a closed sum rather than a `Str` whose
+; meaning varies by caller. Step 4 shipped `(what Str)` and the gatherer read
+; it as a PATH while `diff-expect` wrote a LABEL into it -- a which-of-N riding
+; in a string, which docs/pattern-boundary-sums.md makes a finding rather than a
+; style preference ("retype every boundary classification as a closed sum, parse
+; once, reasons as values"). The consequence was not cosmetic: `observe-exs`
+; would `openat` a differential's label, get `-ENOENT`, and score the gate
+; inadequate for a reason that was never about the file system.
+;
+; Retyped, the compiler enumerates the two cases at every consumer, and the one
+; consumer that can only handle one of them has to say so out loud.
+(data ObsKey ()
+  (obk-root  (path Str))    ; a root program at this path. BUILDING AND RUNNING it
+                            ; is what produces the observation, so `observe` can
+                            ; gather this one on its own.
+  (obk-given (label Str)))  ; the observation was produced ELSEWHERE -- a
+                            ; differential asked its legs, a harness read a file --
+                            ; and this only NAMES it. No gatherer can make it.
+
+; rendering only, and deliberately not the deciding value (section 2's rule).
+(def obk-show (-> ObsKey Str)
+  (lam (k)
+    (case k
+      ((obk-root p)  p)
+      ((obk-given l) l))))
+
+(data Expect () (ex (what ObsKey) (want Obs) (src ExProv)))
+
+(def ex-check (-> Expect Obs CheckR)
+  (lam (e got)
+    (case e ((ex what want src) (obs-cmp want got)))))
+
+; ===========================================================================
+; 4. THE CAPABILITY -- what separates judging from producing evidence.
+;    E168 mints `Builder` (SPEC decision 4). It is a single-ctor `data`, NOT a
+;    porttype: a freshly named porttype needs freshly named mint/discharge
+;    externs, and those do not lower (`extern does not lower: builder-close`).
+;    Exactly-once comes from the DECLARED BINDER QUANTITY and not from any
+;    carried handle -- a wrapper with no linear field at all is still refused
+;    `load: linear binder usage mismatch` when dropped or used twice.
+;
+;    What the cap buys, stated narrowly because the wide claim is false: with
+;    `(1 bld Builder)` threaded, an `(observe s)` sitting inside the cap-less
+;    `check` above is `load: type mismatch`. What it does NOT buy is
+;    unforgeability -- a `->` def can construct a `(builder …)` and call the
+;    cap-taking observer anyway. That is DETECTION, not prevention; prevention
+;    is E171's (a `->` body may not reach a crossing) or E80's (the ambient
+;    externs go away), and nothing here waits on either.
+;
+;    The same measurement fixes the declaration at ω being ADMITTED for a
+;    `data` wrapper where a porttype parameter would be refused. Every
+;    `Builder` / `Oracle` binder in this file is written `(1 x T)` by hand and
+;    E168's G8 row is the grep that catches a slip -- a grep, so detection.
+; ===========================================================================
+(data Builder () (builder (via Str)))
+
+; the build-and-run authority itself is still ambient (E80's to reify); what
+; changes here is that it is reached only with a cap in hand.
+;
+; ⚑ `openat` / `close` / `nul-byte` are NOT redeclared here as of E170 W0.2, and
+; that is forced rather than tidy: a duplicate extern is `load: extern
+; redeclared: openat` (measured), and the resolver this file now imports declares
+; both -- it opens module files for a living. `run-elf` is the floor's own, and it
+; is the one authority the resolver does not carry: the resolver READS, this file
+; READS AND RUNS. So "named in one file" is now "named in the two files that
+; between them are the whole read-and-run surface", which is a weaker sentence and
+; the true one.
+(extern run-elf (=> Bytes I64))  ; ELF bytes -> the child's exit code
+
+; A cap that an observation merely CONSUMED would serve exactly one observation
+; and a gate needs many, so every arm hands a fresh one back -- backend.chiral's
+; rule ("every be-* consumes the handle and RETURNS a fresh one in its result
+; sum, so a run is a proven-unbroken linear chain") applied to a multi-arm sum.
+; The arms are a result sum and not an `(ob-exit -1)` sentinel: a which-of-N
+; encoded as a magic number is what docs/pattern-boundary-sums.md exists to
+; refuse, and "the file was not there" is not an observation of anything.
+;
+; ⚑ Threading rule, measured: an APPLICATION scales a q1 binder to ω, so a
+; threaded cap consumed as `(+ c (discharge b2))` is refused even though the
+; binder is used exactly once. Discharge every threaded binder by a `case` in
+; TAIL position or in a `do` head.
+; ⚑ `ob-nomatch` is the FOURTH arm, added by E170 W0.3 with the digest
+; comparison it exists to report. "The artifact at this path is not the one the
+; digest names" is neither `ob-nofile` (the file IS there) nor `ob-nobuild`
+; (nothing was built), and folding it onto either would be a which-of-N riding in
+; a string -- the shape docs/pattern-boundary-sums.md refuses and the shape
+; `MutFail` was retyped out of on 2026-08-25. It carries only the path: the digest
+; it failed against is in the `OracleId` the caller already holds.
+(data ObsR ()
+  (ob-ok      (o Obs)    (1 bld Builder))
+  (ob-nofile  (path Str) (1 bld Builder))
+  (ob-nobuild (why Str)  (1 bld Builder))
+  (ob-nomatch (path Str) (1 bld Builder)))
+
+; Build a source text and run the ELF it becomes: the one place this file
+; spends build-and-exec authority on caller-supplied source. `observe` below
+; and `oracle-ask`'s in-tree leg are both made of it, so there is one owner for
+; "compile this, run it, and say honestly why not".
+(def run-src (=> (1 bld Builder) Bytes ObsR)
+  (lam (bld src)
+    (case (compile-all (bytes->str src) "main")
+      ((ca-err m)  (ob-nobuild m bld))
+      ((ca-ok elf) (ob-ok (ob-exit (run-elf elf)) bld)))))
+
+; ===========================================================================
+; 5. THE SECOND OPINION IS A PORT, NOT AN IMPORT. The 335 Python differentials
+;    die with `py_check` precisely because their meaning was a module
+;    reference. Here it is a value you hold: swapping the dying leg for the C
+;    leg is constructing a different `Oracle` at the call site.
+; ===========================================================================
+(data OracleId ()
+  (or-python)                                ; the leg being deleted
+  (or-ccomp  (ver Str))                      ; E166's mach-c leg, convicting byte-identically
+  (or-gcc    (ver Str))
+  (or-rocq)                                  ; the rocq/ floor; nothing pins its version yet
+  (or-fixed  (path Str) (digest Bytes))      ; a committed artifact standing in as an opinion
+  (or-native (name Str)))                    ; an in-tree provider -- a SIBLING of the thing
+                                             ; under test, which is why it ranks 4
+
+; Total, no default arm. `or-python` and every in-tree provider are rank 4:
+; a sibling implementation of the thing under test is implementation-derived,
+; and testing-floors.md:174-177 says that is never a correctness claim -- which
+; is exactly what E161 G0 discovered the expensive way.
+(def oid-prov (-> OracleId ExProv)
+  (lam (id)
+    (case id
+      ((or-python)        (pv-derived "the python checker: a sibling implementation of the thing under test"))
+      ((or-ccomp v)       (pv-external "ccomp" v))
+      ((or-gcc v)         (pv-external "gcc" v))
+      ((or-rocq)          (pv-external "rocq" "unpinned"))
+      ((or-fixed pa dg)   (pv-fixed pa dg))
+      ((or-native nm)     (pv-derived (str-cat "an in-tree provider: " nm))))))
+
+; WHAT MINTED A COMMITTED ARTIFACT, and when. `or-fixed` names a path and a
+; digest and says nothing about where the bytes came from; e168_rank_floor.chiral
+; wrote that gap down in its own comment and it is half of what W0.3 closes (the
+; other half is the digest comparison below, which is that fixture's own stated
+; condition for closure).
+;
+; It is a value BESIDE the fixture, not a field of `or-fixed`: an `OracleId`
+; carrying a `Minting` that carries an `OracleId` is a regress, and the thing
+; worth recording is one step deep.
+(data Minting () (minted-by (o OracleId) (date Str)))
+
+; D2's licence constraint, as a total function rather than a sentence in a
+; script. ddc-c-leg.sh:29-35 states it about itself -- "the artifacts this script
+; builds are COMPARED AND DISCARDED, never distributed ... NEVER ship, publish,
+; or promote a ccomp-built binary out of here" -- and COMMITTING a ccomp-produced
+; artifact IS distribution, which is what keeps the path inside INRIA's
+; non-commercial licence. A fixture minted by the retired python leg is refused
+; for the other reason: rank 2 means "outside both legs", and a sibling
+; implementation of the thing under test is not outside anything.
+;
+; No default arm: a new provider must be judged here rather than admitted by
+; falling through.
+(def mint-licensed? (-> Minting Bool)
+  (lam (m)
+    (case m
+      ((minted-by o d)
+        (case o
+          ((or-ccomp v)     false)
+          ((or-python)      false)
+          ((or-gcc v)       true)
+          ((or-rocq)        true)
+          ((or-fixed pa dg) true)
+          ((or-native nm)   true))))))
+
+; rendering only, downstream of every verdict.
+(def mint-show (-> Minting Str)
+  (lam (m)
+    (case m
+      ((minted-by o d)
+        (case (oid-prov o)
+          ((pv-external tool ver) (str-cat tool (str-cat " " (str-cat ver (str-cat " on " d)))))
+          ((pv-fixed pa dg)       (str-cat "a committed artifact on " d))
+          ((pv-meaning law)       (str-cat "by hand on " d))
+          ((pv-derived why)       (str-cat why (str-cat " on " d))))))))
+
+; The port. A single-ctor `data` whose field is its OWN identity -- it carries
+; no borrowed handle, because `oracle-ask` reaches its leg through the ambient
+; crossings above, so a carried Fd or Backend would be inert at runtime and
+; minted from nothing. Possession we do not have is not a possession to claim.
+(data Oracle () (oracle (id OracleId)))
+
+; Reading a port's identity THREADS the port back, the be-peek shape: pure,
+; because possession is not exercise. No extern is involved -- the wrapper is
+; taken apart and a fresh one built, which is why no new sysface hole opens.
+(data OracleIdR () (oid-r (id OracleId) (1 o Oracle)))
+
+(def oracle-id (-> (1 o Oracle) OracleIdR)
+  (lam (o) (case o ((oracle id) (oid-r id (oracle id))))))
+
+; the consuming discharge, for the port that is refused before it is asked.
+; Pure, matching backend-close's own precedent: no syscall.
+(def oracle-drop (-> (1 o Oracle) Unit)
+  (lam (o) (case o ((oracle id) (unit)))))
+
+; structural, one arm per constructor -- a new provider breaks this rather than
+; silently comparing unequal.
+(def id-eq (-> OracleId OracleId Bool)
+  (lam (x y)
+    (case x
+      ((or-python)      (case y ((or-python) true) (_ false)))
+      ((or-ccomp a)     (case y ((or-ccomp b) (str-eq a b)) (_ false)))
+      ((or-gcc a)       (case y ((or-gcc b) (str-eq a b)) (_ false)))
+      ((or-rocq)        (case y ((or-rocq) true) (_ false)))
+      ((or-fixed pa da) (case y ((or-fixed pb db) (str-eq pa pb)) (_ false)))
+      ((or-native a)    (case y ((or-native b) (str-eq a b)) (_ false))))))
+
+; Asking IS the crossing, and it spends the port: one opinion, asked once.
+; It also needs build-and-exec authority, so it takes the cap and returns a
+; fresh one in every arm. The external legs (ccomp/gcc/rocq) are reached by the
+; shell harness, not from inside chirality, so asking one here is honestly a
+; `ob-nobuild` rather than a fabricated observation.
+(def oracle-ask (=> (1 bld Builder) (1 o Oracle) Bytes ObsR)
+  (lam (bld o input)
+    (case o ((oracle id)
+      (case id
+        ; the fd is closed on the success path -- see `observe`'s note: a leaked
+        ; descriptor comes back later as `ob-nofile`, which names the wrong
+        ; reason and scores a gate inadequate for something that never happened.
+        ; ⚑ IT COMPARES THE DIGEST (E170 W0.3). Until then this arm read the
+        ; file and returned its bytes without ever looking at `dg`, so a rank-2
+        ; anchor was a path plus an argument nothing consulted -- an edited
+        ; fixture was honoured at rank 2, which is the whole rank's meaning gone.
+        ; The digest IS the bytes and no hash is invented: testing-floors.md:250-252
+        ; sanctions exactly that ("an anchor small enough to sit inside the gate
+        ; file ... is its own digest: `cmp` against the committed bytes IS the
+        ; check"), and clause 5's reviewable-size constraint is what makes it
+        ; buildable -- the two constraints are one design.
+        ((or-fixed path dg)
+          (let ((fd (openat (bcat (str->bytes path) nul-byte))))
+            (case (<i fd 0)
+              (true  (ob-nofile path bld))
+              (false
+                (let ((bs (read-fd-all fd)))
+                  (do (close fd)
+                    (case (bytes=? dg bs)
+                      (true  (ob-ok (ob-bytes bs) bld))
+                      (false (ob-nomatch path bld)))))))))
+        ((or-native nm) (run-src bld input))
+        ((or-python)  (ob-nobuild "the python leg is retired; it is not askable from here" bld))
+        ((or-ccomp v) (ob-nobuild (str-cat "an external leg the harness runs, not this floor: ccomp " v) bld))
+        ((or-gcc v)   (ob-nobuild (str-cat "an external leg the harness runs, not this floor: gcc " v) bld))
+        ((or-rocq)    (ob-nobuild "an external leg the harness runs, not this floor: rocq" bld)))))))
+
+; ===========================================================================
+; 6. A DIFFERENTIAL IS AN EXPECTATION SOURCE, NOT A VERDICT.
+;    Two ports carrying the SAME identity are refused WITHOUT being asked --
+;    ddc.chiral says the rule in its own words, "Agreement is not a quorum".
+;    ⚑ And `df-common-mode` is NOT what catches E161 G0: those two providers
+;    were genuinely distinct, so only the provenance RANK sees them. Linearity
+;    and `df-common-mode` police the source COUNT; rank polices independence.
+; ===========================================================================
+(data DiffR ()
+  (df-agree       (ida OracleId) (idb OracleId) (obs Obs))
+  (df-differ      (ida OracleId) (a Obs) (idb OracleId) (b Obs))
+  (df-common-mode (id OracleId))
+  (df-unasked     (id OracleId) (why Str)))   ; a leg that could not be reached supplies
+                                              ; no opinion; it is not an agreement
+
+(def diff-of (-> OracleId OracleId Obs Obs DiffR)
+  (lam (ida idb a b)
+    (case (obs-cmp a b)
+      ((ck-pass)     (df-agree ida idb a))
+      ((ck-fail g w) (df-differ ida a idb b)))))
+
+; the WEAKER of two legs -- weaker = the larger rank. An agreed observation can
+; be no stronger than the worse source that produced it.
+(def weaker-prov (-> OracleId OracleId ExProv)
+  (lam (ida idb)
+    (let ((pa (oid-prov ida)))
+      (let ((pb (oid-prov idb)))
+        (case (<=i (prov-rank pa) (prov-rank pb))
+          (true  pb)
+          (false pa))))))
+
+(data DifferR () (differ-r (d DiffR) (1 bld Builder)))
+
+(def differ (=> (1 bld Builder) (1 a Oracle) (1 b Oracle) Bytes DifferR)
+  (lam (bld a b input)
+    (case (oracle-id a) ((oid-r ida a2)
+      (case (oracle-id b) ((oid-r idb b2)
+        (case (id-eq ida idb)
+          ; refuse WITHOUT asking: spend both ports so nothing leaks, hand the
+          ; cap straight back UNSPENT, and let the type say so.
+          (true (do (oracle-drop a2)
+                  (do (oracle-drop b2)
+                    (differ-r (df-common-mode ida) bld))))
+          ; otherwise ask each port exactly once -- each ask spends its own
+          ; port, so neither can be re-asked and neither can leak.
+          (false
+            (case (oracle-ask bld a2 input)
+              ((ob-ok oa bld2)
+                (case (oracle-ask bld2 b2 input)
+                  ((ob-ok ob bld3)      (differ-r (diff-of ida idb oa ob) bld3))
+                  ((ob-nofile p bld3)   (differ-r (df-unasked idb (str-cat "no such file: " p)) bld3))
+                  ((ob-nomatch p bld3)  (differ-r (df-unasked idb (str-cat "the committed artifact is not the one its digest names: " p)) bld3))
+                  ((ob-nobuild w bld3)  (differ-r (df-unasked idb w) bld3))))
+              ((ob-nofile p bld2)  (do (oracle-drop b2) (differ-r (df-unasked ida (str-cat "no such file: " p)) bld2)))
+              ((ob-nomatch p bld2) (do (oracle-drop b2) (differ-r (df-unasked ida (str-cat "the committed artifact is not the one its digest names: " p)) bld2)))
+              ((ob-nobuild w bld2) (do (oracle-drop b2) (differ-r (df-unasked ida w) bld2))))))))))))
+
+; A DIFFERENTIAL-MINTED EXPECTATION IS ITS OWN TYPE, and that is what actually
+; arms the rank floor. Until 2026-08-25 `diff-expect` returned a plain `Expect`
+; and `Gate` carried two adjacent `(List Expect)` fields, so moving a minted
+; expectation from `diffs` to `checks` -- ONE FIELD NAME -- compiled and scored
+; `g-green`: E161 G0 reintroduced, with two in-tree providers wrong the same
+; way, zero independent anchors, and the gate passing. The old comment on §8
+; claimed the opposite ("a fact of the type rather than a naming convention");
+; this type is what makes it true. Measured: that swap is now `load: type
+; mismatch`, and so is the reverse (a hand-written `Expect` dropped into
+; `diffs`), which before was refused only by the accident that `best-rank nil`
+; is 5 -- closed by luck rather than by design.
+;
+; ⚑ At its honest rung, the same one `Builder` is named at: `dx-minted` is a
+; public constructor like every other in this tree, so a caller CAN forge one.
+; What the type buys is that forging costs a VISIBLE LINE naming the type,
+; instead of no line at all. DETECTION, not prevention; prevention is E171's or
+; a module-privacy element nothing here waits on. G8's lint is the grep under
+; it: `(dx-minted ` may be constructed at exactly one site in this file.
+(data DiffExpect () (dx-minted (e Expect)))
+
+(def dx-expect (-> DiffExpect Expect)
+  (lam (d) (case d ((dx-minted e) e))))
+
+(def dx-expects (-> (List DiffExpect) (List Expect))
+  (lam (ds) (map-list DiffExpect Expect dx-expect ds)))
+
+; WHY AN EXPECTATION WAS NOT MINTED, as a closed sum rather than a `Str`. The
+; three cases are three different things -- `xr-differ` is a FINDING (the legs
+; really do disagree, and that is the result), `xr-common-mode` is a SETUP
+; ERROR (one source dressed as two), `xr-unasked` is an ABSENCE (a leg could
+; not be reached, so it supplied no opinion at all). Collapsing them into one
+; string is the shape docs/pattern-boundary-sums.md refuses, and it was three
+; doors from the `ObsKey` retype that same rule forced. The payload is carried
+; rather than rendered: a consumer that wants to report the disagreement gets
+; both observations and both leg identities, not a sentence about them.
+(data ExRefusal ()
+  (xr-differ      (ida OracleId) (a Obs) (idb OracleId) (b Obs))
+  (xr-common-mode (id OracleId))
+  (xr-unasked     (id OracleId) (why Str)))
+
+; The seam decision 7 states rather than leaves to inference: an agreed
+; observation becomes an expectation AT THE WEAKER LEG'S PROVENANCE; two
+; opinions that differ supply no expected value at all, and the disagreement is
+; itself the finding.
+(data ExpectR () (ex-ok (e DiffExpect)) (ex-refused (why ExRefusal)))
+
+; `what` is an `ObsKey` and a differential's is honestly `obk-given`: the
+; observation came from asking two legs, not from a path this floor can rebuild.
+; Typing it lets the gatherer refuse it by name instead of opening it as a file.
+;
+; THE ONE MINT SITE for `DiffExpect`. Every other `Expect` in the tree is
+; hand-written and stays an `Expect`; only what comes out of a `df-agree` is
+; wrapped, which is what makes "this expectation was minted by a differential"
+; a fact `gate-verdict` can read off the type of the slot it came in.
+(def diff-expect (-> ObsKey DiffR ExpectR)
+  (lam (what d)
+    (case d
+      ((df-agree ida idb obs)  (ex-ok (dx-minted (ex what obs (weaker-prov ida idb)))))
+      ((df-differ ida a idb b) (ex-refused (xr-differ ida a idb b)))
+      ((df-common-mode id)     (ex-refused (xr-common-mode id)))
+      ((df-unasked id why)     (ex-refused (xr-unasked id why))))))
+
+; ===========================================================================
+; 7. THE MUTANT RULE -- evidence, not a promise. Three recorded shapes in which
+;    a gate could not fail, NONE of which shipped: E156 G4 passed 14/14 with
+;    `list-sort` deleted and E161 G0 reported ok with both providers wrong the
+;    same way -- the two near-misses, each caught in the session that produced
+;    it -- while E166 G3's `m_mul` mutant objdumped identically to its base and
+;    was retired at design time for exactly that reason.
+;
+;    What the type buys: a `Gate` cannot be CONSTRUCTED without a `MutRun` --
+;    the field has no defaulting arity, so "I named no mutant" is not writable
+;    -- and `mut-run` below is the only thing in this file that PRODUCES one,
+;    from two programs it built and ran through a `Builder`.
+;
+;    What it does NOT buy, stated as narrowly as §4's note on `Builder`, which
+;    is the same gap one seam over: unforgeability. `mu-killed` and
+;    `mu-survived` are ordinary public constructors, so
+;      (gate "x" (cons hand-check nil) (the (List DiffExpect) nil)
+;            (mu-killed "I promise I ran one" (ob-exit 0) (ob-exit 1)))
+;    type-checks, and `gate-verdict` scores it GREEN with no adequacy evidence
+;    behind it at all -- measured 2026-08-25, compiled by B1 and run: exit 0,
+;    the `g-green` arm. That is E156 G4's exact shape, admitted by the type.
+;    It is taken on purpose rather than linted away: FIVE of E168's own Phase 12
+;    fixtures build `MutRun` values from literals to exercise this fold without
+;    building four programs (`grep -l '(mu-killed "\|(mu-survived "'` over
+;    scaffold/tests/samples/ -- empty_floor, rank_floor, mut_survived,
+;    reject_diff_swap, reject_hand_diff), so a single-mint-site lint like G8's
+;    would flag correct code.
+;
+;    The honest reading is the one the report can carry: `mut-run` is EVIDENCE,
+;    a hand-written `MutRun` is a WRITTEN CLAIM, and what the type adds is that
+;    the claim must be written down, in the gate, beside its label, where a
+;    reader of the fixture sees it. Real closure comes from where §4 already
+;    names it for the cap -- E171 (a `->` body may not reach a crossing) and
+;    E80 (the ambient build/exec externs go away) -- after which "produced by a
+;    run" is a property of the only path that can reach one. Nothing here waits
+;    on either.
+; ===========================================================================
+(data MutRun ()
+  (mu-killed   (label Str) (base Obs) (mutated Obs))   ; the two observations differed
+  (mu-survived (label Str) (obs Obs)))                 ; they did not -- E166 G3 lives here
+
+; a mutant carries its own label, because a gate must be able to NAME the mutant
+; that falsifies it and a bare Bytes cannot be named in a report.
+(data Mutant () (mutant (label Str) (src Bytes)))
+
+; WHY NO MEASUREMENT WAS MADE, as a closed sum. Four causes rode in one string
+; behind hand-written prefixes ("the base was not there: ", "the mutant did not
+; build, so it was never run: ") until 2026-08-25 -- a which-of-4 in a `Str`,
+; the same shape docs/pattern-boundary-sums.md made a finding for `ObsKey`. The
+; base failing and the mutant failing are opposite diagnoses: one says the
+; fixture is pointed at nothing, the other says the mutant text is wrong, and a
+; caller cannot tell them apart by reading a prefix without parsing it back.
+;
+; ⚑ `mf-mutant-missing` is structurally reachable and behaviourally not:
+; `run-src` compiles caller-supplied BYTES and never opens a file, so its
+; `ob-nofile` arm cannot fire. The arm exists so `mut-run` stays total over
+; `ObsR` without a default -- a new `ObsR` kind must break it, not fall through.
+; ⚑ `mf-nomatch` is one arm and not the base/mutant PAIR the four above are,
+; and that is deliberate. `ObsR` gained `ob-nomatch` in E170 W0.3, but neither
+; observer on this path can produce one: `observe` opens a source file and
+; compares no digest, and `run-src` opens nothing at all -- only `oracle-ask`'s
+; `or-fixed` arm does, and `mut-run` never calls it. The arm exists so `mut-run`
+; stays total over `ObsR` without a default, exactly as `mf-mutant-missing` does.
+; A second one would invite a reader to believe the two cases can be told apart
+; at runtime, and there is no runtime in which either fires.
+(data MutFail ()
+  (mf-base-missing   (path Str))
+  (mf-base-nobuild   (why Str))
+  (mf-mutant-missing (path Str))
+  (mf-mutant-nobuild (why Str))
+  (mf-nomatch        (path Str)))
+
+; A mutant the compiler REJECTS was never built, so it produces no measurement:
+; `mu-unbuilt` says that instead of scoring it as a survival, which would report
+; a syntax error as a passing adequacy check.
+(data MutRunR ()
+  (mu-ok      (run MutRun)  (1 bld Builder))
+  (mu-unbuilt (why MutFail) (1 bld Builder)))
+
+; `run-one`'s body with the comparison removed: the comparison is `ex-check`'s
+; and lives on the other side of the membrane. The three exits are three arms,
+; not an `(ob-exit -1)` sentinel -- "the file was not there" is not an
+; observation of the program's behaviour, it is the absence of one.
+;
+; ⚑ THE FD IS CLOSED. Inherited from `run-one`, which opened one per SAMPLE and
+; leaked it; the gate now opens one per EXPECTATION per gate, so the leak scales
+; with the suite. Measured 2026-08-25 under `ulimit -n 64`: 61 of 100
+; observations succeeded and the rest came back `ob-nofile` -- an exhausted
+; descriptor table reported as "the file was not there", which is a lie about
+; the reason and would score a gate inadequate for something that never
+; happened. With the close: 100 of 100.
+; ⚑ IT RESOLVES IMPORTS (E170 W0.2). Until then this handed the raw file bytes
+; straight to `run-src`, which is `compile-all` on one file -- so a root with an
+; `(import "prelude")` in it came back `ob-nobuild`, and 62 of the 68 files in
+; scaffold/samples/ import something. The six it COULD observe are exactly
+; test-runner.chiral's six-entry manifest, which is why E168's own adopter never
+; met the limit.
+;
+; The two error arms are two different diagnoses and stay apart. The `openat` is
+; still done HERE, so `ob-nofile` keeps meaning "the root is not there"; a
+; `bundle-err` is `ob-nobuild`, because "the imports did not resolve" is a build
+; failure and reporting it as a missing file names the wrong reason -- the same
+; class of lie the fd leak produced (see the note above).
+;
+; The search path is `scaffold/lib`, relative to the CWD, and every root the
+; harness observes is run from the REPO ROOT: Phase 12's fixtures already were
+; (test-e168-floor.sh:121-127), and Phase 2 was moved there in this same commit so
+; there is one answer to "relative to what" rather than two.
+(def observe (=> (1 bld Builder) Str ObsR)
+  (lam (bld path)
+    (let ((fd (openat (bcat (str->bytes path) nul-byte))))
+      (case (<i fd 0)
+        (true  (ob-nofile path bld))
+        (false
+          (let ((src (read-fd-all fd)))
+            (do (close fd)
+              (case (bundle-src (cons "scaffold/lib" nil) (bytes->str src))
+                ((bundle-err e)   (ob-nobuild (res-err-msg e) bld))
+                ((bundle-ok blob) (run-src bld (str->bytes blob)))))))))))
+
+; TWO observations are performed here, which is the whole point of the cap being
+; linear rather than ambient: the type says how many programs this gate built.
+(def mut-run (=> (1 bld Builder) Str Mutant MutRunR)
+  (lam (bld path m)
+    (case m
+      ((mutant label src)
+        (case (observe bld path)
+          ((ob-nofile p bld2)  (mu-unbuilt (mf-base-missing p) bld2))
+          ((ob-nomatch p bld2) (mu-unbuilt (mf-nomatch p) bld2))
+          ((ob-nobuild w bld2) (mu-unbuilt (mf-base-nobuild w) bld2))
+          ((ob-ok base bld2)
+            (case (run-src bld2 src)
+              ((ob-nofile p bld3)  (mu-unbuilt (mf-mutant-missing p) bld3))
+              ((ob-nomatch p bld3) (mu-unbuilt (mf-nomatch p) bld3))
+              ((ob-nobuild w bld3) (mu-unbuilt (mf-mutant-nobuild w) bld3))
+              ((ob-ok mut bld3)
+                (case (obs-cmp base mut)
+                  ((ck-pass)     (mu-ok (mu-survived label base) bld3))
+                  ((ck-fail g w) (mu-ok (mu-killed label base mut) bld3)))))))))))
+
+; ===========================================================================
+; 8. THE GATE FOLD -- pure, total, and RED before it is green.
+;    `diffs` is its own field AND ITS OWN TYPE so that "this expectation was
+;    minted by a differential" is a fact of the type rather than a naming
+;    convention. The type is the load-bearing half: two adjacent
+;    `(List Expect)` fields made the field name the only thing separating them,
+;    and a one-word swap disarmed the rank floor while compiling green.
+; ===========================================================================
+(data Gate () (gate (name Str) (checks (List Expect)) (diffs (List DiffExpect)) (adequacy MutRun)))
+
+; WHY A CHECK FAILED, carrying WHICH expectation it was. `g-red` used to carry a
+; bare `CheckR`, so a failing six-sample gate printed `FAIL samples -- want exit
+; 42, got exit 41` and named no sample -- a diagnostic REGRESSION against the
+; pre-E168 runner, which printed a line per sample. `obk-show` existed with zero
+; callers for exactly as long.
+(data CheckFail () (cf-at (what ObsKey) (cmp CheckR)))
+
+; WHY A GATE WAS INADEQUATE, as a closed sum. `(label Str)` carried three
+; unrelated meanings -- a surviving mutant's NAME, the rank policy's sentence,
+; and the short-observation sentence -- which is a which-of-3 in a string, the
+; shape docs/pattern-boundary-sums.md refuses. Rendering is `inadequacy-show`'s
+; job and lives downstream with the rest of the rendering.
+(data Inadequacy ()
+  (in-mutant-survived (label Str))   ; a mutant was built and run and nothing died
+  (in-nothing-asserted)              ; the gate carries no expectation AT ALL
+  (in-no-anchor)                     ; every expectation came from inside the compared legs
+  (in-unobserved (what ObsKey)))     ; an expectation nothing observed
+
+(data GateR ()
+  (g-green      (name Str) (n I64) (worst I64))   ; worst = the weakest rank present
+  (g-red        (name Str) (why CheckFail))
+  (g-inadequate (name Str) (why Inadequacy)))     ; the evidence failed, whatever the checks said
+
+; STRONGEST rank present; best = smallest. ⚑ The empty case is 5 and not 0, and
+; that is the whole of the rank floor working: seeded at 0 a gate carrying a
+; differential-minted expectation and NO checks at all scores green, which is
+; E161 G0 reintroduced by an accumulator. 5 is not a rank -- it is "weaker than
+; any rank", which is what an absent expectation is.
+(def best-rank (-> (List Expect) I64)
+  (lam (es)
+    (case es
+      (nil 5)
+      ((cons e r) (case e ((ex what want src) (min (prov-rank src) (best-rank r))))))))
+
+; WEAKEST rank present; the mirror, and its empty case is 0 for the mirror
+; reason -- 0 is not a rank either, it is "no expectation at all", and folding
+; it in with `max` leaves a non-empty list's answer unchanged.
+(def worst-rank (-> (List Expect) I64)
+  (lam (es)
+    (case es
+      (nil 0)
+      ((cons e r) (case e ((ex what want src) (max (prov-rank src) (worst-rank r))))))))
+
+; first failure wins, and it is NAMED -- both which expectation and, for a
+; mismatch, both observations. Running out of observations is NOT a pass: an
+; expectation with no observation is a gate that did not produce the evidence it
+; claims, which is inadequacy under its own name, and it is its own arm here.
+;
+; ⚑ Three arms, not `(Maybe CheckR)`. The old shape had to fabricate
+; `(ck-fail (ob-int 0) (ob-int 0))` for the short case -- a made-up observation
+; standing in for "there was no observation", which is precisely what §2 says
+; must not be constructible. `ff-short` says the absence instead.
+(data FirstFail ()
+  (ff-none)
+  (ff-fail  (what ObsKey) (cmp CheckR))
+  (ff-short (what ObsKey)))
+
+(def first-fail (-> (List Expect) (List Obs) FirstFail)
+  (lam (es got)
+    (case es
+      (nil (ff-none))
+      ((cons e r)
+        (case e
+          ((ex what want src)
+            (case got
+              (nil (ff-short what))
+              ((cons o gr)
+                (case (ex-check e o)
+                  ((ck-pass)     (first-fail r gr))
+                  ((ck-fail g w) (ff-fail what (ck-fail g w))))))))))))
+
+; The length guard is gone because `ff-short` subsumes it exactly: gathering
+; stops at the first unobservable expectation, so a short list runs out AT the
+; expectation that has no observation, and that expectation gets named. A real
+; failing check earlier in the list now wins over the shortness, which is the
+; better answer -- a wrong value is a more specific finding than a missing one,
+; and both are non-green.
+(def fold-checks (-> Str (List Expect) (List Obs) GateR)
+  (lam (name es got)
+    (case (first-fail es got)
+      ((ff-fail what cmp) (g-red name (cf-at what cmp)))
+      ((ff-short what)    (g-inadequate name (in-unobserved what)))
+      ((ff-none)          (g-green name (length Expect es) (worst-rank es))))))
+
+; The arms are in this order and the ORDER IS THE CONTRACT.
+;   1. a mutant that survived scores RED before any check runs -- E156 G4 and
+;      E166 G3, which both passed every check they had;
+;   1b. a gate that asserts NOTHING is inadequate, whatever its mutant did.
+;      Commit 28eb06f's subject -- "an empty checks list is not a strong one" --
+;      was true only inside the differential branch: `(gate "x" nil nil killed)`
+;      scored `g-green`, "0 checks, weakest rank 0", because `worst-rank nil` is
+;      0 and nothing looked at the count. Adequacy is scored before green
+;      throughout this fold, and "no expectation at all" is the weakest evidence
+;      there is, so it is scored here rather than folded into a vacuous pass;
+;   2. a gate whose expectations were minted by its own differential and which
+;      carries no expectation at rank <= 3 is inadequate BY RANK -- E161 G0.
+;      The operative phrase in testing-floors.md:197-202 is "outside both
+;      legs": the defect was not that the two legs were the same source, it was
+;      that every expectation came from inside the comparison. Rank <= 3 and
+;      not <= 2 because :163-164 puts the requirement as independence from the
+;      thing under test, which ranks 1-3 all satisfy;
+;   3. only then are the checks folded.
+; This is a rank floor scoped to differential-minted expectations, NOT a
+; phase-wide "no gate weaker than rank 2" -- that is policy and stays out of
+; the library. A hand-written rank-4 regression net with no differential in it
+; is still constructible and still green, which is what labelling buys.
+(def gate-verdict (-> Gate (List Obs) GateR)
+  (lam (g got)
+    (case g
+      ((gate name checks diffs adequacy)
+        (case adequacy
+          ((mu-survived label o) (g-inadequate name (in-mutant-survived label)))
+          ((mu-killed label bs mu)
+            (let ((all (append Expect checks (dx-expects diffs))))
+              (case all
+                (nil (g-inadequate name (in-nothing-asserted)))
+                ((cons e0 er)
+                  (case diffs
+                    (nil (fold-checks name checks got))
+                    ((cons d dr)
+                      (case (<i 3 (best-rank checks))
+                        (true  (g-inadequate name (in-no-anchor)))
+                        (false (fold-checks name all got))))))))))))))
+
+; ===========================================================================
+; 9. THE SUITE IS A FOLD. A phase becomes ONE root returning a `Suite` value,
+;    and run-native.sh keeps only its process-level job. Judgment stays pure:
+;    `suite-fold` takes the observations rather than making them, which is what
+;    lets a second chirality build or the Rocq leg re-judge the SAME observations
+;    without re-running anything.
+; ===========================================================================
+(data Suite () (suite (phase Str) (gates (List Gate))))
+
+(def gates-fold (-> (List Gate) (List (List Obs)) (List GateR))
+  (lam (gs oss)
+    (case gs
+      (nil (the (List GateR) nil))
+      ((cons g r)
+        (case oss
+          ; a gate with no observations at all is judged on that fact, not
+          ; skipped: `fold-checks` scores it inadequate.
+          (nil (cons (gate-verdict g (the (List Obs) nil))
+                     (gates-fold r (the (List (List Obs)) nil))))
+          ((cons o rest) (cons (gate-verdict g o) (gates-fold r rest))))))))
+
+(def suite-fold (-> Suite (List (List Obs)) (List GateR))
+  (lam (s oss) (case s ((suite phase gates) (gates-fold gates oss)))))
+
+; ---- rendering, deliberately DOWNSTREAM of the verdict ---------------------
+; It can never decide one: `report` takes `GateR`s that are already decided.
+; The `Obs` rendering below is diagnostics and nothing else -- E166 shipped 68
+; assertions on a rendering and pinned an inverted comparison for two sessions.
+(def obs-show (-> Obs Str)
+  (lam (o)
+    (case o
+      ((ob-exit c)  (str-cat "exit " (i64->str c)))
+      ((ob-bytes b) (str-cat "bytes:" (i64->str (blen b))))
+      ((ob-int v)   (str-cat "int " (i64->str v))))))
+
+; the three closed sums §6/§7/§8 replaced their strings with, rendered HERE and
+; only here -- downstream of the verdict, where a rendering cannot decide one.
+(def ex-refusal-show (-> ExRefusal Str)
+  (lam (r)
+    (case r
+      ((xr-differ ida a idb b) (str-cat "the legs disagree: " (str-cat (obs-show a)
+                                 (str-cat " vs " (obs-show b)))))
+      ((xr-common-mode id)     "one source is not two opinions")
+      ((xr-unasked id why)     (str-cat "a leg supplied no opinion: " why)))))
+
+(def mut-fail-show (-> MutFail Str)
+  (lam (f)
+    (case f
+      ((mf-base-missing p)   (str-cat "the base was not there: " p))
+      ((mf-base-nobuild w)   (str-cat "the base did not build: " w))
+      ((mf-mutant-missing p) (str-cat "the mutant was not there: " p))
+      ((mf-mutant-nobuild w) (str-cat "the mutant did not build, so it was never run: " w))
+      ((mf-nomatch p)        (str-cat "the committed artifact is not the one its digest names: " p)))))
+
+(def inadequacy-show (-> Inadequacy Str)
+  (lam (i)
+    (case i
+      ((in-mutant-survived label) (str-cat "the mutant survived: " label))
+      ((in-nothing-asserted)      "the gate asserts nothing -- an empty checks list is not a strong one")
+      ((in-no-anchor)             "no expectation outside the compared legs")
+      ((in-unobserved what)       (str-cat "nothing observed for " (obk-show what))))))
+
+; ⚑ THE FAILING GATE NAMES THE EXPECTATION. `obk-show` had zero callers and this
+; renderer never printed the key, so a failing six-sample gate said `FAIL samples
+; -- want exit 42, got exit 41` and left the reader to find which of six. The
+; pre-E168 runner printed a line per sample; this restores the diagnostic and
+; gives `obk-show` the caller that earns it (P6: an abstraction that constrains
+; nothing is overhead).
+(def gate-line (-> GateR Str)
+  (lam (r)
+    (case r
+      ((g-green name n worst)
+        (str-cat "ok " (str-cat name (str-cat " -- " (str-cat (i64->str n)
+          (str-cat " checks, weakest rank " (str-cat (i64->str worst) "\n")))))))
+      ((g-red name why)
+        (case why
+          ((cf-at what cmp)
+            (case cmp
+              ((ck-pass) (str-cat "FAIL " (str-cat name (str-cat " -- " (str-cat (obk-show what) "\n")))))
+              ((ck-fail got want)
+                (str-cat "FAIL " (str-cat name (str-cat " -- " (str-cat (obk-show what)
+                  (str-cat ": want " (str-cat (obs-show want)
+                    (str-cat ", got " (str-cat (obs-show got) "\n")))))))))))))
+      ((g-inadequate name why)
+        (str-cat "INADEQUATE " (str-cat name (str-cat " -- " (str-cat (inadequacy-show why) "\n"))))))))
+
+; An EMPTY verdict list gets a line of its own rather than an empty report: a
+; run that printed nothing and exited 0 is the fail-open shape below, and the
+; report is where a human sees it.
+(def report (-> (List GateR) Str)
+  (lam (rs)
+    (case rs
+      (nil "FAIL nothing ran -- no gate reported a verdict\n")
+      ((cons r rr) (str-join "" (map-list GateR Str gate-line rs))))))
+
+; ⚑ NOTHING RAN IS NOT SUCCESS. `all-green? nil` answered `true` until
+; 2026-08-25, so `test-main nil` printed an empty report and exited 0 -- a suite
+; list that lost its contents reporting total success. test-runner.chiral:85-87
+; already had to route around this locally, which is the proof the hole belonged
+; to the library and not to one caller.
+;
+; The recursion is split because the empty list means two different things in
+; the two positions: as the WHOLE list it is "no gate reported", and as the TAIL
+; it is "no gate left to check". Folding both onto one base case is exactly how
+; the fail-open arm got written.
+(def rest-green? (-> GateR (List GateR) Bool)
+  (lam (r rest)
+    (case r
+      ((g-green n c w)
+        (case rest
+          (nil true)
+          ((cons r2 rest2) (rest-green? r2 rest2))))
+      ((g-red n why)        false)
+      ((g-inadequate n why) false))))
+
+(def all-green? (-> (List GateR) Bool)
+  (lam (rs)
+    (case rs
+      (nil false)
+      ((cons r rest) (rest-green? r rest)))))
+
+; ---- the one crossing that gathers the evidence ---------------------------
+; An `Expect`'s `what` says WHICH observation it is about, and it is an
+; `ObsKey`, not a string this gatherer guesses at: `obk-root` is the only kind
+; this crossing can produce, because building and running the named path is
+; exactly what it does. `obk-given` names an observation somebody else made, and
+; the arm below says so rather than opening the label as a file -- which is what
+; the `(what Str)` shape did, turning "a differential minted this" into ENOENT.
+; Gathering stops at the first expectation that cannot be observed, which leaves
+; the list SHORTER than the checks; `fold-checks` then scores the gate
+; inadequate. That is the point: an expectation nothing observed is not a
+; passing one, and a gate that carries `obk-given` checks must be handed its
+; observations rather than run through here.
+(data ObsListR ()  (obs-list-r (os (List Obs)) (1 bld Builder)))
+(data ObsSuiteR () (obs-suite-r (oss (List (List Obs))) (1 bld Builder)))
+(data RunR ()      (run-r (rs (List GateR)) (1 bld Builder)))
+
+(def observe-exs (=> (1 bld Builder) (List Expect) ObsListR)
+  (lam (bld es)
+    (case es
+      (nil (obs-list-r (the (List Obs) nil) bld))
+      ((cons e r)
+        (case e
+          ((ex what want src)
+            (case what
+              ; nothing here can make an observation somebody else already made,
+              ; and pretending to would cost a syscall and lie about the reason.
+              ((obk-given label) (obs-list-r (the (List Obs) nil) bld))
+              ((obk-root path)
+                (case (observe bld path)
+                  ((ob-nofile p b2)  (obs-list-r (the (List Obs) nil) b2))
+                  ((ob-nomatch p b2) (obs-list-r (the (List Obs) nil) b2))
+                  ((ob-nobuild w b2) (obs-list-r (the (List Obs) nil) b2))
+                  ((ob-ok o b2)
+                    (case (observe-exs b2 r)
+                      ((obs-list-r os b3) (obs-list-r (cons o os) b3)))))))))))))
+
+; `checks ++ diffs`, the same list `gate-verdict` folds, so the observations
+; line up with the expectations by construction rather than by agreement.
+(def observe-gate (=> (1 bld Builder) Gate ObsListR)
+  (lam (bld g)
+    (case g
+      ((gate name checks diffs adequacy) (observe-exs bld (append Expect checks (dx-expects diffs)))))))
+
+(def observe-gates (=> (1 bld Builder) (List Gate) ObsSuiteR)
+  (lam (bld gs)
+    (case gs
+      (nil (obs-suite-r (the (List (List Obs)) nil) bld))
+      ((cons g r)
+        (case (observe-gate bld g)
+          ((obs-list-r os b2)
+            (case (observe-gates b2 r)
+              ((obs-suite-r rest b3) (obs-suite-r (cons os rest) b3)))))))))
+
+(def observe-suite (=> (1 bld Builder) Suite ObsSuiteR)
+  (lam (bld s) (case s ((suite phase gates) (observe-gates bld gates)))))
+
+(def run-suites (=> (1 bld Builder) (List Suite) RunR)
+  (lam (bld ss)
+    (case ss
+      (nil (run-r (the (List GateR) nil) bld))
+      ((cons s r)
+        (case (observe-suite bld s)
+          ((obs-suite-r oss b2)
+            (case (run-suites b2 r)
+              ((run-r rest b3) (run-r (append GateR (suite-fold s oss) rest) b3)))))))))
+
+; THE OTHER ENTRY -- for a suite whose observations were made ELSEWHERE.
+;
+; `observe-exs` cannot gather an `obk-given`: it returns an EMPTY list at that
+; element (see its own note), so a gate carrying one loses every later
+; observation too and `fold-checks` scores it `g-inadequate (in-unobserved …)`.
+; That is correct behaviour and the file says the remedy in place -- "a gate that
+; carries `obk-given` checks must be handed its observations rather than run
+; through here". This is the entry that hands them in.
+;
+; It takes NO `Builder`, and the absence is the point: nothing is built, so no
+; build authority is spent, and the type says which of the two entries a caller
+; used. That is also what `suite-fold`'s own note already claimed for the fold --
+; "suite-fold takes the observations rather than making them, which is what lets
+; a second chirality build or the Rocq leg re-judge the SAME observations without
+; re-running anything" -- and until now the claim had no entry point above it.
+;
+; ⚑ Same `report` and same exit code as `test-main`, deliberately: two entries
+; that disagree about what green means would be two floors.
+;
+; The observation list is FLAT across suites -- one `(List Obs)` per gate, in
+; order -- and `suites-fold` consumes as many entries as each suite has gates
+; before handing the rest on. A short list is not padded: `gates-fold` judges a
+; gate with no observations on that fact, which is `fold-checks` scoring it
+; inadequate. Running out of observations is a finding, not a skip.
+(def obs-after (-> (List (List Obs)) (List Gate) (List (List Obs)))
+  (lam (oss gs)
+    (case gs
+      (nil oss)
+      ((cons g r)
+        (case oss
+          (nil (the (List (List Obs)) nil))
+          ((cons o rest) (obs-after rest r)))))))
+
+(def suites-fold (-> (List Suite) (List (List Obs)) (List GateR))
+  (lam (ss oss)
+    (case ss
+      (nil (the (List GateR) nil))
+      ((cons s r)
+        (case s
+          ((suite phase gates)
+            (append GateR (suite-fold s oss)
+                          (suites-fold r (obs-after oss gates)))))))))
+
+(def suite-main (=> (List Suite) (List (List Obs)) I64)
+  (lam (ss oss)
+    (let ((rs (suites-fold ss oss)))
+      (do (put (report rs))
+        (case (all-green? rs)
+          (true 0)
+          (false 1))))))
+
+; THE ENTRY, and the floor's ONE mint site: the single `(builder "B1")` the run
+; threads is constructed here and discharged here, and nothing below constructs
+; one. That is a checked fact about this file, not a guarantee about chirality -- a
+; second construction anywhere would compile, which is why G8's grep exists and
+; why it is labelled detection.
+;
+; No `(1 c Console)`: `Console` does not exist and reifying it is E80's. Printing
+; stays ambient here for a benefit the floor does not need, and when E80 lands
+; this is a signature change at one call site.
+(def test-main (=> (List Suite) I64)
+  (lam (ss)
+    (case (run-suites (builder "B1") ss)
+      ((run-r rs bld)
+        (case bld
+          ((builder via)
+            (do (put (report rs))
+              (case (all-green? rs)
+                (true 0)
+                (false 1)))))))))

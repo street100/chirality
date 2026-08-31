@@ -1,0 +1,79 @@
+; skip-diag.chiral — E97 skip-chain diagnostics: types, accessors, blame-chain.
+;
+; ACCESSOR-FUNCTION PATTERN: every case on SkRec/SkReason lives inside a small
+; accessor def so callers never pattern-match these types inside case arms.
+; This avoids the B1 "unknown name" bug triggered by nested case patterns
+; over newly-defined data types.
+
+(import "prelude")
+
+; ---- Data types ----
+(data SkReason () (sk-extern (op Str)) (sk-callee (name Str)))
+(data SkRec () (mk-skrec (def-name Str) (why SkReason)))
+
+; ---- Accessor functions (no nested-case in callers) ----
+(def skrec-name (-> SkRec Str)
+  (lam (r) (case r ((mk-skrec dn why) dn))))
+
+(def skrec-why (-> SkRec SkReason)
+  (lam (r) (case r ((mk-skrec dn why) why))))
+
+(def skwhy-name (-> SkReason Str)
+  (lam (w) (case w ((sk-extern op) op) ((sk-callee name) name))))
+
+(def skwhy-tag (-> SkReason Str)
+  (lam (w) (case w ((sk-extern op) "extern") ((sk-callee name) "callee"))))
+
+; ---- SkRec list append ----
+(def lapp-skip (-> (List SkRec) (List SkRec) (List SkRec))
+  (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (lapp-skip t ys))))))
+
+; ---- Lookup skip record by def name (uses accessor, no nested-case) ----
+(def find-skip (-> (List SkRec) Str (Maybe SkRec))
+  (lam (skips name)
+    (case skips
+      (nil (none))
+      ((cons s r)
+        (let (dn (skrec-name s))
+          (case (str-eq dn name)
+            (true (some s))
+            (false (find-skip r name))))))))
+
+; ---- Format leaf error: "name: extern does not lower: op" ----
+(def leaf-label (-> Str Str Str)
+  (lam (name op)
+    (str-cat name (str-cat ": extern does not lower: " op))))
+
+; ---- Walk skip chain root-first using accessors, no nested-case ----
+; blame-chain skips name fuel -> list of diagnostic strings (root first)
+(def blame-chain (-> (List SkRec) Str I64 (List Str))
+  (lam (skips name fuel)
+    (case (<=i fuel 0)
+      (true (cons name nil))
+      (false (case (find-skip skips name)
+        (none (cons name nil))
+        ((some rec)
+          (let (dn (skrec-name rec))
+            (let (w (skrec-why rec))
+              (let (tag (skwhy-tag w))
+                (case (str-eq tag "extern")
+                  (true (let (op (skwhy-name w))
+                    (cons (leaf-label dn op) nil)))
+                  (false (let (cn (skwhy-name w))
+                    (cons dn (blame-chain skips cn (- fuel 1)))))))))))))))
+
+; ---- Join name list with " <- " ----
+(def join-arrows (-> (List Str) Str)
+  (lam (xs)
+    (case xs
+      (nil "")
+      ((cons x r)
+        (case r
+          (nil x)
+          ((cons y s) (str-cat x (str-cat " <- " (join-arrows r)))))))))
+
+; ---- Format the full blame message ----
+(def format-blame (-> Str (List SkRec) Str)
+  (lam (entry skips)
+    (let (chain (blame-chain skips entry 100))
+      (str-cat "skip chain for " (str-cat entry (str-cat ": " (join-arrows chain)))))))

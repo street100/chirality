@@ -1,0 +1,136 @@
+; scriba S5: kill-ring — a bounded list of killed strings.
+; ~40 lines. All ops are pure -> functions.
+;
+; Append semantics for consecutive kills are NOT implemented here —
+; that's the command loop's concern. The kill-ring is a simple LIFO
+; stack with an optional max capacity.
+;
+; Deps: prelude (Str, I64, Bool, List, Maybe)
+
+(import "prelude")
+
+; ---------------------------------------------------------------- Type
+
+; KillRing: a bounded stack of killed strings, plus the buffer-local vim
+; state that threads with it (it already rides in every puffer's kr field).
+;   entries — the killed strings, most recent first.
+;   max     — optional maximum number of entries. When pushing exceeds
+;             max, the oldest entry (last in the list) is dropped.
+;   regs    — named registers ("a…"z): regname-code -> text (S13 C3).
+;   marks   — named marks (m a … ` a): markname-code -> flat offset (S13 C2).
+(data KillRing ()
+  (kill-ring (entries (List Str)) (max (Maybe I64))
+             (regs (List (Pair I64 Str)))
+             (marks (List (Pair I64 I64)))))
+
+; Forward declares: helpers used by kill-ring-push before their defs.
+(declare kill-ring-trim (-> (Maybe I64) (List Str) (List Str)))
+(declare kill-ring-take (-> I64 (List Str) (List Str)))
+
+; ---------------------------------------------------------------- Operations
+
+; Create an empty kill-ring.
+; max: optional maximum capacity. Pass none for unbounded, or (some n).
+(def kill-ring-new (-> (Maybe I64) KillRing)
+  (lam (max)
+    (kill-ring nil max nil nil)))
+
+; Push a string onto the kill-ring. Drops the oldest entry if the ring
+; exceeds its max capacity. Returns a new KillRing (regs/marks preserved).
+(def kill-ring-push (-> Str KillRing KillRing)
+  (lam (s kr)
+    (case kr
+      ((kill-ring entries max regs marks)
+        (let ((new-entries (cons s entries))
+              (trimmed (kill-ring-trim max new-entries)))
+          (kill-ring trimmed max regs marks))))))
+
+; Trim entries to max capacity. If max is none, return entries unchanged.
+(def kill-ring-trim
+  (lam (max entries)
+    (case max
+      (none entries)
+      ((some n)
+        (kill-ring-take n entries)))))
+
+; Take at most n elements from a list. Drops elements beyond n.
+(def kill-ring-take
+  (lam (n xs)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (case (=i n 0)
+          (true nil)
+          (false (cons h (kill-ring-take (- n 1) t))))))))
+
+; Peek at the top of the kill-ring (most recent kill).
+; Returns (some str) if the ring is non-empty, none otherwise.
+(def kill-ring-top (-> KillRing (Maybe Str))
+  (lam (kr)
+    (case kr
+      ((kill-ring entries max regs marks)
+        (case entries
+          (nil none)
+          ((cons h t) (some h)))))))
+
+; Check if the kill-ring is empty.
+(def kill-ring-empty? (-> KillRing Bool)
+  (lam (kr)
+    (case kr
+      ((kill-ring entries max regs marks)
+        (case entries
+          (nil true)
+          ((cons h t) false))))))
+
+; ─── Named registers + marks — a polymorphic I64-keyed alist ─────────────────
+
+(def kr-alist-drop (-> (0 A (type 0)) I64 (List (Pair I64 A)) (List (Pair I64 A)))
+  (lam (A k xs)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (case h
+          ((pair hk hv)
+            (case (=i hk k)
+              (true (kr-alist-drop A k t))
+              (false (cons h (kr-alist-drop A k t))))))))))
+
+; Prepend (k,v), dropping any prior binding of k (last write wins).
+(def kr-alist-put (-> (0 A (type 0)) I64 A (List (Pair I64 A)) (List (Pair I64 A)))
+  (lam (A k v xs)
+    (cons (pair k v) (kr-alist-drop A k xs))))
+
+(def kr-alist-get (-> (0 A (type 0)) I64 (List (Pair I64 A)) (Maybe A))
+  (lam (A k xs)
+    (case xs
+      (nil none)
+      ((cons h t)
+        (case h
+          ((pair hk hv)
+            (case (=i hk k)
+              (true (some hv))
+              (false (kr-alist-get A k t)))))))))
+
+; Named marks: name-code -> flat offset.
+(def kr-mark-set (-> I64 I64 KillRing KillRing)
+  (lam (name off kr)
+    (case kr
+      ((kill-ring e m regs marks)
+        (kill-ring e m regs (kr-alist-put I64 name off marks))))))
+
+(def kr-mark-get (-> I64 KillRing (Maybe I64))
+  (lam (name kr)
+    (case kr
+      ((kill-ring e m regs marks) (kr-alist-get I64 name marks)))))
+
+; Named registers: name-code -> text.
+(def kr-reg-set (-> I64 Str KillRing KillRing)
+  (lam (name s kr)
+    (case kr
+      ((kill-ring e m regs marks)
+        (kill-ring e m (kr-alist-put Str name s regs) marks)))))
+
+(def kr-reg-get (-> I64 KillRing (Maybe Str))
+  (lam (name kr)
+    (case kr
+      ((kill-ring e m regs marks) (kr-alist-get Str name regs)))))

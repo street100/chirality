@@ -1,0 +1,32 @@
+; Memory discipline: linear. The default and simplest, named so a profile can
+; declare it (memory-model.md: discipline is a profile choice, not a runtime
+; setting). A (Pool n) is one linear resource with its size in the type; you
+; write at explicit offsets and close it once. Direct, no bookkeeping. This is
+; the discipline chirality-bare and chirality-firmware use in the dump's four-profile
+; table: linear, no region, no GC.
+;
+; It adds nothing over lib/ports.chiral; it exists to give the discipline a name
+; and a home, so `(memory linear)` in a profile points somewhere real.
+
+(import "prelude")
+(import "ports")
+
+; write a byte string at an offset, threading the linear pool (bound erased)
+(def mem-put (-> (0 n I64) (=> (1 p (Pool n)) I64 Bytes (Pool n)))
+  (lam (n p off bs) (pool-write n p off bs)))
+
+; the bounds-checked write: the offset must be proven in [0, n) at the type
+; level, so the substrate's runtime bound check is discharged at COMPILE time --
+; this is the offset half of F8 (docs/memory-model.md), the piece that "needs
+; refinement types" (AUDIT.md F8). The refinement's `< n` references the erased
+; capacity: at a concrete pool it collapses to a constant bound (a literal or
+; guarded offset is checked directly); generic code threads a {< n} offset. The
+; raw `mem-put`/`pool-write` stays for computed offsets the fragment cannot yet
+; prove (e.g. a strided `(* y k)` write), which keep the runtime witness.
+(def mem-put-checked
+  (-> (0 n I64) (=> (1 p (Pool n)) (refine I64 (>= 0) (< n)) Bytes (Pool n)))
+  (lam (n p off bs) (pool-write n p off bs)))   ; forget the refinement to the base I64
+
+; release the whole region at once (zeroized by the substrate on close)
+(def mem-drop (-> (0 n I64) (=> (1 p (Pool n)) Unit))
+  (lam (n p) (pool-close n p)))

@@ -1,0 +1,573 @@
+; Target-independent code generation: tal -> (List Asm), programmed only
+; against the Mach interface. This file contains ZERO instruction-set
+; knowledge; swap the Mach and the same codegen targets a different machine.
+; Control flow (case -> compare+branch, call -> arg placement + call) and the
+; heap shape decisions (a boxed value's fields bind by index at branch entry)
+; live here; encodings live behind Mach; relocation lives in asm-reloc.
+
+(import "prelude")
+(import "collections")
+(import "asm-reloc")
+(import "mach")
+(import "alloc")
+(import "tal-ir")
+
+(def cat2 (-> (List Asm) (List Asm) (List Asm))
+  (lam (a b) (append Asm a b)))
+
+; ---------------------------------------------------------------- const env
+; "register r currently holds the compile-time constant v", threaded through
+; the walk so a ti-prim whose SECOND operand is a known constant emits the
+; machine's bini (immediate form) instead of a slot load. Soundness does NOT
+; assume SSA: every defining instruction deletes its dst's fact (cenv-step),
+; so hand-authored tal that reuses scratch registers stays correct.
+(def cenv-del (-> (List (Pair I64 I64)) I64 (List (Pair I64 I64)))
+  (lam (c r)
+    (case c
+      (nil (the (List (Pair I64 I64)) nil))
+      ((cons p rest)
+        (case p ((pair k v)
+          (case (=i k r) (true (cenv-del rest r))
+            (false (cons p (cenv-del rest r))))))))))
+
+(def cenv-put (-> (List (Pair I64 I64)) I64 I64 (List (Pair I64 I64)))
+  (lam (c r v) (cons (pair r v) (cenv-del c r))))
+
+(def cenv-get (-> (List (Pair I64 I64)) I64 (Maybe I64))
+  (lam (c r)
+    (case c
+      (nil none)
+      ((cons p rest)
+        (case p ((pair k v)
+          (case (=i k r) (true (some v)) (false (cenv-get rest r)))))))))
+
+; the fact update an instruction imposes: a const defines one; every other
+; defining instruction kills its dst's stale fact
+(def cenv-step (-> (List (Pair I64 I64)) TInstr (List (Pair I64 I64)))
+  (lam (c i)
+    (case i
+      ((ti-const dst val) (cenv-put c dst val))
+      ((ti-con dst tag) (cenv-del c dst))
+      ((ti-cona dst tag fields) (cenv-del c dst))
+      ((ti-prim dst op a b) (cenv-del c dst))
+      ((ti-lit dst lit) (cenv-del c dst))
+      ((ti-bnew dst len) (cenv-del c dst))
+      ((ti-bget dst ptr idx) (cenv-del c dst))
+      ((ti-bput ptr idx val) c)
+      ((ti-blen dst src) (cenv-del c dst))
+      ((ti-sys dst nr args) (cenv-del c dst))
+      ((ti-bptr dst src) (cenv-del c dst))
+      ((ti-call dst fname args) (cenv-del c dst)))))
+
+(def cenv-del-all (-> (List (Pair I64 I64)) (List I64) (List (Pair I64 I64)))
+  (lam (c rs)
+    (case rs
+      (nil c)
+      ((cons r rest) (cenv-del-all (cenv-del c r) rest)))))
+
+; ---------------------------------------------------------------- residency
+; rd-param (reg-disciplines step 3): "vreg r is RESIDENT in argument
+; register i" -- true for params at entry (param k arrives in argreg k; the
+; stp stores keep the slot truthful), killed by (a) any redefinition of r
+; (hand-tal reuses registers; lowered SSA never does) and (b) any op whose
+; clobber entry (mach clb) names argreg i. When off (rd-truthful/rd-cache)
+; the map is empty and every form falls back to the slot path.
+(def res-find (-> (List (Pair I64 I64)) I64 (Maybe I64))
+  (lam (res r)
+    (case res
+      (nil none)
+      ((cons p rest)
+        (case p ((pair v i)
+          (case (=i v r) (true (some i)) (false (res-find rest r)))))))))
+
+; first-order membership (the HO (find (lam ...)) form kept this def out of
+; the native subset -- the closure never earned its keep for an equality test)
+(def res-mem (-> (List I64) I64 Bool)
+  (lam (xs y)
+    (case xs
+      (nil false)
+      ((cons x rest) (case (=i x y) (true true) (false (res-mem rest y)))))))
+
+(def res-kill-args (-> (List (Pair I64 I64)) (List I64) (List (Pair I64 I64)))
+  (lam (res killed)
+    (case res
+      (nil (the (List (Pair I64 I64)) nil))
+      ((cons p rest)
+        (case p ((pair v i)
+          (case (res-mem killed i)
+            (true (res-kill-args rest killed))
+            (false (cons p (res-kill-args rest killed))))))))))
+
+(def res-kill-vreg (-> (List (Pair I64 I64)) I64 (List (Pair I64 I64)))
+  (lam (res r)
+    (case res
+      (nil (the (List (Pair I64 I64)) nil))
+      ((cons p rest)
+        (case p ((pair v i)
+          (case (=i v r) (true (res-kill-vreg rest r))
+            (false (cons p (res-kill-vreg rest r))))))))))
+
+; the dst a TInstr defines (bput defines none)
+(def res-def-kill (-> (List (Pair I64 I64)) TInstr (List (Pair I64 I64)))
+  (lam (res i)
+    (case i
+      ((ti-bput ptr idx val) res)
+      ((ti-const dst v) (res-kill-vreg res dst))
+      ((ti-con dst v) (res-kill-vreg res dst))
+      ((ti-cona dst t fs) (res-kill-vreg res dst))
+      ((ti-prim dst o a b) (res-kill-vreg res dst))
+      ((ti-lit dst l) (res-kill-vreg res dst))
+      ((ti-bnew dst l) (res-kill-vreg res dst))
+      ((ti-bget dst pp ii) (res-kill-vreg res dst))
+      ((ti-blen dst sr) (res-kill-vreg res dst))
+      ((ti-sys dst nr as) (res-kill-vreg res dst))
+      ((ti-bptr dst sr) (res-kill-vreg res dst))
+      ((ti-call dst f as) (res-kill-vreg res dst)))))
+
+(def res-init-go (-> I64 I64 (List (Pair I64 I64)))
+  (lam (i n)
+    (case (<i i n)
+      (false (the (List (Pair I64 I64)) nil))
+      (true (cons (pair i i) (res-init-go (+ i 1) n))))))
+
+(def res-init (-> Bool I64 (List (Pair I64 I64)))
+  (lam (on nparams)
+    (case on
+      (false (the (List (Pair I64 I64)) nil))
+      (true (res-init-go 0 (case (<=i nparams 6) (true nparams) (false 6)))))))
+
+; an emitted instruction: its asm plus its clobber-table key
+(data EmitI () (emit-i (asmv (List Asm)) (key Str)))
+
+; literal cells live in a data section after the code, one label per entry
+(def lit-label (-> I64 Str)
+  (lam (i) (str-cat "$lit" (i64->str i))))
+
+(def emit-instr (=> Mach Alloc TInstr (List (Pair I64 I64)) (List (Pair I64 I64)) EmitI)
+  (lam (m disc i c res)
+    (case i
+      ((ti-const dst val) (emit-i ((mach-con m) dst val) "con"))
+      ((ti-con dst tag) (emit-i ((mach-dcon m) dst tag) "dcon"))
+      ((ti-cona dst tag fields) (emit-i ((alo-cell disc) m dst tag fields) "alo"))
+      ((ti-prim dst op a b)
+        (case (cenv-get c b)
+          ((some v)
+            (case (res-find res a)
+              ((some i2) (emit-i ((mach-binir m) op dst i2 v) (str-cat "bini:" (op-name op))))
+              (none (emit-i ((mach-bini m) op dst a v) (str-cat "bini:" (op-name op))))))
+          (none
+            (case (res-find res a)
+              ((some i2) (emit-i ((mach-binr m) op dst i2 b) (str-cat "bin:" (op-name op))))
+              (none (emit-i ((mach-bin m) op dst a b) (str-cat "bin:" (op-name op))))))))
+      ((ti-lit dst lit) (emit-i ((mach-lea m) dst (lit-label lit)) "lea"))
+      ((ti-bnew dst len) (emit-i ((alo-bytes disc) m dst len) "bnw"))
+      ((ti-bget dst ptr idx) (emit-i ((mach-bgt m) dst ptr idx) "bgt"))
+      ((ti-bput ptr idx val) (emit-i ((mach-bpt m) ptr idx val) "bpt"))
+      ((ti-blen dst src) (emit-i ((mach-bln m) dst src) "bln"))
+      ((ti-sys dst nr args) (emit-i ((mach-sys m) dst nr args) "sys"))
+      ((ti-bptr dst src) (emit-i ((mach-bpr m) dst src) "bpr"))
+      ((ti-call dst fname args)
+        ; the target owns the whole call -- register args AND, past its
+        ; register budget, a bracketed stack zone no per-arg hook can express
+        (emit-i ((mach-cal m) dst fname args) "cal")))))
+
+; tail-call argument placement with residency: a pass-through param (arg r
+; already resident at its own position) places for FREE; everything else
+; loads from its (truthful) slot -- which also dodges the parallel-move
+; hazard entirely, since ldr is only used position-identical.
+(def emit-args-res (=> Mach (List I64) I64 (List (Pair I64 I64)) (List Asm))
+  (lam (m args pos res)
+    (case args
+      (nil (the (List Asm) nil))
+      ((cons r rest)
+        (cat2 (case (res-find res r)
+                ((some i2) (case (=i i2 pos)
+                  (true ((mach-ldr m) pos i2))
+                  (false ((mach-lda m) pos r))))
+                (none ((mach-lda m) pos r)))
+          (emit-args-res m rest (+ pos 1) res))))))
+
+; bind a branch's fields: each bound slot loads field idx of the scrutinee
+(def emit-binds (=> Mach I64 (List I64) I64 (List Asm))
+  (lam (m src binds idx)
+    (case binds
+      (nil (the (List Asm) nil))
+      ((cons d rest)
+        (cat2 ((mach-fld m) d src idx) (emit-binds m src rest (+ idx 1)))))))
+
+(data EmitR () (emit-r (asm (List Asm)) (next I64)))
+
+(declare emit-code (=> Mach Alloc TCode I64 (List (Pair I64 I64)) (List (Pair I64 I64)) EmitR))
+
+; branches: cmp scrut, tag; jne skip; <binds>; <block, terminates>; skip: ...
+; each branch's cenv drops its bound registers (they are fresh definitions)
+(def emit-branches (=> Mach Alloc I64 (List (Pair (Pair I64 (List I64)) TCode)) I64 (List (Pair I64 I64)) (List (Pair I64 I64)) EmitR)
+  (lam (m disc src brs lbl ce res)
+    (case brs
+      (nil (the EmitR (emit-r (the (List Asm) nil) lbl)))
+      ((cons b rest)
+        (case b
+          ((pair hdr code)
+            (case hdr
+              ((pair tag binds)
+                (let (skip (str-cat "$b" (i64->str lbl)))
+                  (case (emit-code m disc code (+ lbl 1) (cenv-del-all ce binds) res)
+                    ((emit-r body lbl2)
+                      (case (emit-branches m disc src rest lbl2 ce res)
+                        ((emit-r more lbl3)
+                          (the EmitR (emit-r
+                            (cat2 ((mach-cjne m) tag skip)
+                              (cat2 (emit-binds m src binds 0)
+                                (cat2 body
+                                  (cat2 (the (List Asm) (cons (a-label skip) nil)) more))))
+                            lbl3)))))))))))))))
+
+; ---------------------------------------------------------------- tables
+; T1 (TRAIT-OPTS): a tail case over an UNBOXED scrutinee whose arms all
+; bind nothing and return a constant is a lookup table -- dst := vals[tag].
+; Sound with no bounds check: enum tags are dense 0..n-1 by construction
+; and coverage is total (no default). Small cases (n < 3) keep the compare
+; chain; the general path handles everything else.
+(def arm-const (-> (Pair (Pair I64 (List I64)) TCode) (Maybe (Pair I64 I64)))
+  (lam (b)
+    (case b
+      ((pair hdr code)
+        (case hdr
+          ((pair tag binds)
+            (case binds
+              ((cons x xs) none)
+              (nil
+                (case code
+                  ((t-seq i rest)
+                    (case i
+                      ((ti-const d v)
+                        (case rest
+                          ((ti-ret rr) (case (=i rr d) (true (some (pair tag v))) (false none)))
+                          (_ none)))
+                      ; an enum constant is an immediate tag -- same table row
+                      ((ti-con d v)
+                        (case rest
+                          ((ti-ret rr) (case (=i rr d) (true (some (pair tag v))) (false none)))
+                          (_ none)))
+                      (_ none)))
+                  (_ none))))))))))
+
+(def arms-const (-> (List (Pair (Pair I64 (List I64)) TCode)) (Maybe (List (Pair I64 I64))))
+  (lam (brs)
+    (case brs
+      (nil (some (the (List (Pair I64 I64)) nil)))
+      ((cons b rest)
+        (case (arm-const b)
+          (none none)
+          ((some p)
+            (case (arms-const rest)
+              (none none)
+              ((some ps) (some (cons p ps))))))))))
+
+(def tbl-find (-> (List (Pair I64 I64)) I64 (Maybe I64))
+  (lam (ps t)
+    (case ps
+      (nil none)
+      ((cons p rest)
+        (case p ((pair tag v)
+          (case (=i tag t) (true (some v)) (false (tbl-find rest t)))))))))
+
+; the dense-order value list vals[0..n-1], or none if any tag is missing
+(def tbl-vals (-> (List (Pair I64 I64)) I64 I64 (Maybe (List I64)))
+  (lam (ps n i)
+    (case (=i i n)
+      (true (some (the (List I64) nil)))
+      (false
+        (case (tbl-find ps i)
+          (none none)
+          ((some v)
+            (case (tbl-vals ps n (+ i 1))
+              (none none)
+              ((some rest) (some (cons v rest))))))))))
+
+(def table-of (-> Bool (List (Pair (Pair I64 (List I64)) TCode)) (Maybe TCode) (Maybe (List I64)))
+  (lam (boxed brs dflt)
+    (case boxed (true none)
+      (false (case dflt ((some d) none)
+        (none (case (<=i 3 (length (Pair (Pair I64 (List I64)) TCode) brs))
+          (false none)
+          (true (case (arms-const brs)
+            (none none)
+            ((some ps) (tbl-vals ps (length (Pair I64 I64) ps) 0)))))))))))
+
+; ---------------------------------------------------------------- jump table
+; Item 16 (OPT-LEDGER): a tail case over an UNBOXED dense-tag scrutinee with
+; n >= 4 non-constant arms (the all-const shape already took ltb) dispatches
+; through a jump table: one indexed jump replaces the cmp/jne chain. Sound
+; for the same reason ltb is -- tags are dense 0..n-1 by construction and
+; coverage is total, so no bounds check and no default path exist.
+(def nil-binds (-> (List (Pair (Pair I64 (List I64)) TCode)) Bool)
+  (lam (brs)
+    (case brs
+      (nil true)
+      ((cons b rest)
+        (case b ((pair hdr code)
+          (case hdr ((pair tag binds)
+            (case binds
+              (nil (nil-binds rest))
+              ((cons x xs) false))))))))))
+
+(def br-code (-> (List (Pair (Pair I64 (List I64)) TCode)) I64 (Maybe TCode))
+  (lam (brs t)
+    (case brs
+      (nil none)
+      ((cons b rest)
+        (case b ((pair hdr code)
+          (case hdr ((pair tag binds)
+            (case (=i tag t) (true (some code)) (false (br-code rest t)))))))))))
+
+; the tag-ordered code list codes[0..n-1], or none if any tag is missing
+(def jtb-collect (-> (List (Pair (Pair I64 (List I64)) TCode)) I64 I64 (Maybe (List TCode)))
+  (lam (brs n i)
+    (case (=i i n)
+      (true (some (the (List TCode) nil)))
+      (false
+        (case (br-code brs i)
+          (none none)
+          ((some c)
+            (case (jtb-collect brs n (+ i 1))
+              (none none)
+              ((some rest) (some (cons c rest))))))))))
+
+(def jtb-codes (-> Bool (List (Pair (Pair I64 (List I64)) TCode)) (Maybe TCode) (Maybe (List TCode)))
+  (lam (boxed brs dflt)
+    (case boxed (true none)
+      (false (case dflt ((some d) none)
+        (none (case (nil-binds brs)
+          (false none)
+          (true (case (<=i 4 (length (Pair (Pair I64 (List I64)) TCode) brs))
+            (false none)
+            (true (jtb-collect brs (length (Pair (Pair I64 (List I64)) TCode) brs) 0)))))))))))
+
+(def mk-labels (-> I64 I64 (List Str))
+  (lam (k s)
+    (case (=i k 0)
+      (true (the (List Str) nil))
+      (false (cons (str-cat "$b" (i64->str s)) (mk-labels (- k 1) (+ s 1)))))))
+
+(declare emit-jtb-bodies (=> Mach Alloc (List TCode) (List Str) I64 (List (Pair I64 I64)) (List (Pair I64 I64)) EmitR))
+
+(def emit-jtb-bodies
+  (lam (m disc codes labels lbl ce res)
+    (case codes
+      (nil (the EmitR (emit-r (the (List Asm) nil) lbl)))
+      ((cons c rest)
+        (case labels
+          (nil (halt EmitR "emit: jump-table label/body mismatch"))
+          ((cons l lrest)
+            (case (emit-code m disc c lbl ce res)
+              ((emit-r body lbl2)
+                (case (emit-jtb-bodies m disc rest lrest lbl2 ce res)
+                  ((emit-r more lbl3)
+                    (the EmitR (emit-r
+                      (cat2 (the (List Asm) (cons (a-label l) nil))
+                        (cat2 body more))
+                      lbl3))))))))))))
+
+; ---------------------------------------------------------------- fused branch
+; Item 6 (OPT-CHECKLIST): a comparison immediately scrutinized by a case
+; fuses into cmp + jcc -- the bool is never materialized, its slot never
+; written. Sound because the comparison's dst is a compiler temp (SSA-fresh,
+; invisible to source, so no arm can read it); the only other reader is the
+; synthesized dead tail (all Bool arms terminate), which never executes.
+; Bool branches bind nothing (nullary ctors), enforced in the match.
+(def fused-of (-> TInstr TCode Bool)
+  (lam (i rest)
+    (case i
+      ((ti-prim d op a b)
+        (case (op-cmp? op)
+          (false false)
+          (true
+            (case rest
+              ((ti-tcase src boxed branches dflt)
+                (case boxed (true false)
+                  (false (case (=i src d)
+                    (false false)
+                    (true (nil-binds branches))))))
+              (_ false)))))
+      (_ false))))
+
+(declare emit-fused-branches (=> Mach Alloc Op (List (Pair (Pair I64 (List I64)) TCode)) I64 (List (Pair I64 I64)) (List (Pair I64 I64)) EmitR))
+
+(def emit-fused-branches
+  (lam (m disc op brs lbl ce res)
+    (case brs
+      (nil (the EmitR (emit-r (the (List Asm) nil) lbl)))
+      ((cons b rest)
+        (case b
+          ((pair hdr code)
+            (case hdr
+              ((pair tag binds)
+                (let (skip (str-cat "$b" (i64->str lbl)))
+                  (case (emit-code m disc code (+ lbl 1) ce res)
+                    ((emit-r body lbl2)
+                      (case (emit-fused-branches m disc op rest lbl2 ce res)
+                        ((emit-r more lbl3)
+                          (the EmitR (emit-r
+                            (cat2 ((mach-fjc m) op tag skip)
+                              (cat2 body
+                                (cat2 (the (List Asm) (cons (a-label skip) nil)) more)))
+                            lbl3)))))))))))))))
+
+; a (t-seq (ti-call dst f args) (ti-ret dst)) pair IS a tail call: the callee's
+; result is returned unchanged, so place the args, tear the frame down, and
+; jmp (mach tca) instead of call+epilogue. Constant stack depth for self- and
+; mutual recursion in tail position; the callee returns straight to OUR caller.
+; A tail call with more arguments than a target's argument registers is
+; DEMOTED to a plain call+ret: a jump-style tail call tears the frame down
+; first, so an argument spilled to the outgoing stack zone would land in the
+; dead frame (the callee would read its caller's caller). Register-arg tail
+; calls keep the constant-stack jump. The budget (6) is the register-arg
+; count shared by the conforming register targets; a per-target budget field
+; on Mach is deliberate residue, not yet paid for.
+(def tail-call-of (-> TInstr TCode (Maybe (Pair Str (List I64))))
+  (lam (i rest)
+    (case rest
+      ((ti-ret rr)
+        (case i
+          ((ti-call dst fname args)
+            (case (=i dst rr)
+              (true (case (<=i (length I64 args) 6)
+                (true (some (pair fname args)))
+                (false none)))
+              (false none)))
+          (_ none)))
+      (_ none))))
+
+(def emit-code
+  (lam (m disc c lbl ce res)
+    (case c
+      ((ti-ret src) (the EmitR (emit-r ((mach-ret m) src) lbl)))
+      ((t-seq i rest)
+        (case (tail-call-of i rest)
+          ((some fa)
+            (case fa
+              ((pair fname args)
+                (the EmitR (emit-r
+                  (cat2 (emit-args-res m args 0 res) ((mach-tca m) fname)) lbl)))))
+          (none
+            (case (fused-of i rest)
+              (true
+                (case i
+                  ((ti-prim d op a b)
+                    (case rest
+                      ((ti-tcase src boxed branches dflt)
+                        (let (res2 (res-kill-args res ((mach-clb m) "fcp")))
+                          (case (emit-fused-branches m disc op branches lbl ce res2)
+                            ((emit-r brs lbl2)
+                              (let (tail (case dflt ((some dd) dd) (none (ti-ret src))))
+                                (case (emit-code m disc tail lbl2 ce res2)
+                                  ((emit-r dasm lbl3)
+                                    (the EmitR (emit-r
+                                      (cat2 (case (res-find res a)
+                                              ((some i2)
+                                                (case (cenv-get ce b)
+                                                  ((some v) ((mach-fcir m) i2 v))
+                                                  (none ((mach-fcpr m) i2 b))))
+                                              (none
+                                                (case (cenv-get ce b)
+                                                  ((some v) ((mach-fci m) a v))
+                                                  (none ((mach-fcp m) a b)))))
+                                        (cat2 brs dasm))
+                                      lbl3)))))))))
+                      (_ (halt EmitR "emit: fused-of shape mismatch"))))
+                  (_ (halt EmitR "emit: fused-of shape mismatch"))))
+              (false
+                (case (emit-instr m disc i ce res)
+                  ((emit-i iasm ikey)
+                    (case (emit-code m disc rest lbl (cenv-step ce i)
+                            (res-kill-args (res-def-kill res i) ((mach-clb m) ikey)))
+                      ((emit-r more lbl2)
+                        (the EmitR (emit-r (cat2 iasm more) lbl2)))))))))))
+      ((ti-tcase src boxed branches dflt)
+        (case (table-of boxed branches dflt)
+          ((some vals)
+            ; all-const tail case: one table load, then return. The scrut
+            ; slot doubles as the result slot -- it is dead after dispatch.
+            (the EmitR (emit-r
+              (cat2 ((mach-ltb m) src src vals) ((mach-ret m) src)) lbl)))
+          (none
+            (case (jtb-codes boxed branches dflt)
+              ((some codes)
+                ; dense control dispatch: one indexed jump, bodies in tag
+                ; order behind their table labels. Every body terminates,
+                ; so nothing falls between them.
+                (let (n (length TCode codes))
+                  (let (labels (mk-labels n lbl))
+                    (case (emit-jtb-bodies m disc codes labels (+ lbl n) ce
+                            (res-kill-args res ((mach-clb m) "jtb")))
+                      ((emit-r bodies lbl2)
+                        (the EmitR (emit-r
+                          (cat2 ((mach-jtb m) src labels) bodies) lbl2)))))))
+              (none
+                (case (emit-branches m disc src branches lbl ce res)
+                  ((emit-r brs lbl2)
+                    (let (tail (case dflt ((some d) d) (none (ti-ret src))))
+                      (case (emit-code m disc tail lbl2 ce res)
+                        ((emit-r dasm lbl3)
+                          (the EmitR (emit-r
+                            (cat2 (case boxed (true ((mach-lsb m) src)) (false ((mach-lsc m) src)))
+                              (cat2 brs dasm))
+                            lbl3)))))))))))))))
+
+(def store-params (=> Mach I64 I64 (List Asm))
+  (lam (m nparams pos)
+    (case (=i pos nparams)
+      (true (the (List Asm) nil))
+      (false (cat2 ((mach-stp m) pos pos) (store-params m nparams (+ pos 1)))))))
+
+(def emit-fn (=> Mach Alloc TIFn I64 Bool EmitR)
+  (lam (m disc f lbl rp)
+    (case f
+      ((ti-fn name nparams nregs code)
+        (case (emit-code m disc code lbl (the (List (Pair I64 I64)) nil)
+                (res-init rp nparams))
+          ((emit-r body lbl2)
+            (the EmitR (emit-r
+              (cat2 (the (List Asm) (cons (a-label name) nil))
+                (cat2 ((mach-pro m) nregs)
+                  (cat2 (store-params m nparams 0) body)))
+              lbl2))))))))
+
+(def emit-program (=> Mach Alloc (List TIFn) I64 Bool (List Asm))
+  (lam (m disc fns lbl rp)
+    (case fns
+      (nil (the (List Asm) nil))
+      ((cons f rest)
+        (case (emit-fn m disc f lbl rp)
+          ((emit-r a lbl2) (cat2 a (emit-program m disc rest lbl2 rp))))))))
+
+; the literal data section: each interned payload as a labeled cell
+(def emit-data (=> Mach (List Bytes) I64 (List Asm))
+  (lam (m ls i)
+    (case ls
+      (nil (the (List Asm) nil))
+      ((cons b rest)
+        (cat2 (cons (a-label (lit-label i)) ((mach-dat m) b))
+              (emit-data m rest (+ i 1)))))))
+
+; the whole codegen, for any conforming machine; literal cells then the
+; machine's once-per-program trailing material land after all code
+(def emit-with (=> Mach Alloc (List TIFn) (List Bytes) (Pair Bytes (List (Pair Str I64))))
+  (lam (m disc fns lits)
+    (assemble (cat2 (emit-program m disc fns 0 false)
+                    (cat2 (emit-data m lits 0) (mach-fin m))))))
+
+; same, with a target-supplied peephole over the Asm list before assembly
+; (the x64 machine passes its byte-level residency pass; a target with no
+; peephole uses plain emit-with)
+(def emit-with-peep (=> Mach Alloc (-> (List Asm) (List Asm)) (List TIFn) (List Bytes) (Pair Bytes (List (Pair Str I64))))
+  (lam (m disc peep fns lits)
+    (assemble (peep (cat2 (emit-program m disc fns 0 false)
+                          (cat2 (emit-data m lits 0) (mach-fin m)))))))
+
+; rd-param: same, with param-register residency ON during emission
+(def emit-with-param (=> Mach Alloc (-> (List Asm) (List Asm)) (List TIFn) (List Bytes) (Pair Bytes (List (Pair Str I64))))
+  (lam (m disc peep fns lits)
+    (assemble (peep (cat2 (emit-program m disc fns 0 true)
+                          (cat2 (emit-data m lits 0) (mach-fin m)))))))

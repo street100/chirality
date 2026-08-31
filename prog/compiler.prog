@@ -1,0 +1,20 @@
+; compile-driver -- THE NATIVE COMPILER ENTRY, and nothing else.
+;
+; Split out of compile-all.chiral 2026-08-22. compile-all is a library (test-runner
+; and self-wield import it); an entry symbol defined inside a library collides with
+; the entry of any program that embeds the compiler. Keeping the entry in its own
+; leaf module means a root program supplies its own `compile-main` and simply does
+; not import this one -- no shim, no blob surgery, no interpreter.
+;
+; Read source from stdin (fd 0), compile the entry `compile-main`, write the ELF to
+; stdout (fd 1). Exit 0 on success, 1 on a compile error (message to stderr). This
+; is what lowers to the standalone compiler binary; the fixpoint runs it on the
+; compiler's own source.
+(import "compile-all")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (src (bytes->str (read-fd-all 0)))
+      (case (compile-all src "compile-main")
+        ((ca-ok elf) (do (put (bytes->str elf)) 0))
+        ((ca-err m)  (do (trace m) 1))))))

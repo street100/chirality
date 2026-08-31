@@ -1,0 +1,47 @@
+; scriba-main — entry point. Real editor startup:
+;   term-raw → tiocgwinsz → init-load → puffer-new → command-loop → term-restore.
+; R1: wired the real command loop (command-loop.chiral) in place of the
+; "scriba ok" stub. R2 lifted the fn-typed-data-field gate, so ScribaOp's
+; op-fn field lowers via defunctionalization and try-dispatch is reachable.
+
+(import "prelude")
+(import "ports")                  ; Port (constructor `port`), put, read
+(import "term")                   ; term-raw, term-restore, tiocgwinsz
+(import "puffer")                 ; puffer-new, puffer-close
+(import "render")                 ; ansi-clear, ansi-home, render-to-ansi-full
+(import "command-loop")           ; command-loop
+(import "keymap")                 ; default-keymap
+(import "init-loader")            ; init-load, init-default
+
+; ── scriba-main: the binary entry point ──
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (_ (signal 1 1))   ; ignore SIGHUP: terminal close degrades to a clean EOF exit
+    (let (saved (term-raw 0))
+      (case saved
+        ((raw-r attrs)
+          (let (_ (put ansi-nowrap))
+          (let (dims-r (tiocgwinsz 1))
+            (case dims-r
+              ((ws-r rows cols)
+                (let (dims (pair rows cols))
+                  (let (cfg (init-load unit))
+                    (case cfg
+                      ((pair km inner)
+                        (case inner
+                          ((pair ops renderers)
+                            (let (puf-r (puffer-new (port) scratch-name))
+                              (case puf-r
+                                ((puf-ok puf)
+                                  (let (_ (put ansi-altscreen-on))    ; private screen — shell scrollback untouched
+                                  (let (_ (command-loop km puf dims renderers ops))
+                                    (let (_ (put ansi-altscreen-off)) ; restore the pre-scriba terminal on quit
+                                    (let (_ (put ansi-wrap))
+                                    (let (_ (term-restore 0 attrs))
+                                      0))))))
+                                ((puf-err msg)
+                                  (let (_ (term-restore 0 attrs))
+                                    1)))))))))))
+              ((ws-err eno) (let (_ (term-restore 0 attrs)) 1))))))
+        ((raw-err eno) 1))))))

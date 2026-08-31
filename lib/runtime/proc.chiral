@@ -1,0 +1,148 @@
+; E33 — Process model: proc-spawn — typed, single-return external process launch.
+;
+; The process model wraps fork+execve+wait4 into a typed, linear-obligation
+; surface.  fork-returns-twice stays locked inside one Category B primitive;
+; the surface is a single return with a linear Reap obligation.  This is the
+; chirality-native face of E33 — the TAL crossings under it (fork, execveat, wait4,
+; pipe, dup2) live in lib/sys-tal.chiral.
+;
+; Follows .planning/specs/E33-process-spawn-SPEC.md (audited 2026-07-27)
+; and examples/E33-process-spawn.md (drafted).
+
+(import "prelude")
+
+; ---- typed surface -----------------------------------------------------------
+
+; SpawnErr: every way a spawn can fail, distinguished at the type level.
+; se-nomem: fork/pipe resource failure before any exec.
+; se-noexec: execve failed — errno carried, child already reaped.
+; se-badargv: interior NUL in argv, caught before any syscall.
+(data SpawnErr ()
+  (se-nomem)
+  (se-noexec (errno I64))
+  (se-badargv))
+
+; Reap: a linear obligation to wait on a child.  Dropping it is a type error;
+; consuming it twice is a type error.  The pid is refinement-locked positive.
+(data Reap ()
+  (reap (pid (refine I64 (> 0))) (code I64)))  ; pid + stored exit code
+
+; Child: a live child = a reap obligation + our communication channel.
+; Both fields are linear (usage 1).
+(data Child ()
+  (child (1 reap Reap) (io Bytes)))   ; io: captured stdout bytes (not linear)
+
+; SpawnRes: the single return from spawn — either a live Child or an error.
+(data SpawnRes ()
+  (sp-ok  (1 c Child))
+  (sp-err (e SpawnErr)))
+
+; ExitStatus: wait4's status word decoded — no raw int escapes the membrane.
+(data ExitStatus ()
+  (exited   (code (refine I64 (>= 0) (< 256))))
+  (signaled (sig  (refine I64 (> 0)  (< 64)))))
+
+; ---- pure edge: validate + marshal argv BEFORE the membrane ------------------
+
+(declare scan-nul (-> (List Str) Bool))
+(declare str-has-nul (-> Str Bool))
+(declare bytes-has-nul (-> Bytes I64 I64 Bool))
+(declare build-pkt (-> (List Str) Bytes))
+(declare argv->pkt (-> (List Str) (Maybe Bytes)))
+
+; argv->pkt: fold a list of strings into a NUL-framed byte block.
+; Returns none if any string contains an interior NUL (unrepresentable in
+; execve's argv).  Runs BEFORE the membrane — a bad argv issues zero syscalls.
+(def argv->pkt
+  (lam (argv)
+    ; scan-then-build: first pass checks for interior NUL; second builds.
+    (let (bad (scan-nul argv))
+      (case bad
+        (true none)
+        (false (some (build-pkt argv)))))))
+
+; scan-nul: does any string in the list contain a NUL byte?
+(def scan-nul
+  (lam (xs)
+    (case xs
+      (nil false)
+      ((cons s r)
+        (case (str-has-nul s)
+          (true true)
+          (false (scan-nul r)))))))
+
+; str-has-nul: does this string contain byte 0?
+(def str-has-nul
+  (lam (s)
+    (let (b (str->bytes s))
+      (let (len (blen b))
+        (bytes-has-nul b 0 len)))))
+
+(def bytes-has-nul
+  (lam (bs i n)
+    (case (<i i n)
+      (false false)
+      (true
+        (case (=i (bget bs i) 0)
+          (true true)
+          (false (bytes-has-nul bs (+ i 1) n)))))))
+
+; a single NUL byte — pack-u32 0 is four zero bytes; bslice takes one.
+(def nul-byte Bytes (bslice (pack-u32 0) 0 1))
+
+; build-pkt: frame each string as NUL-terminated bytes into one block.
+(def build-pkt
+  (lam (xs)
+    (case xs
+      (nil (str->bytes ""))
+      ((cons s r)
+        (bcat (bcat (str->bytes s) nul-byte) (build-pkt r))))))
+
+; ---- Category B substrate (the only fork site) -------------------------------
+
+; raw-proc-spawn: the native fork+execve+wait4 primitive.  Takes a pre-validated
+; NUL-framed pkt (path + argv + envp), launches the child, captures its stdout,
+; returns a Child (reap + stdout bytes) or an error.  This is the ONLY place
+; fork-returns-twice lives; the surface never sees it.
+;
+; Backed by Python host binding (impl_ports.py) for now; the native TAL path
+; (nb-run-cmd in sys-tal.chiral) is the follow-up per SPEC §6 residue.
+(extern raw-proc-spawn (=> Bytes SpawnRes))
+
+; ---- reap: consume the linear Reap, decode the status word -------------------
+
+; wait: consumes the linear Reap obligation, returns the decoded ExitStatus.
+; Forgetting to reap is a type error; reaping twice is a type error.
+; Backed by Python host binding (impl_ports.py) for now.
+(extern wait (=> (1 reap Reap) ExitStatus))
+
+; ---- Category C bridge: typed, single-return proc-spawn ---------------------
+
+; proc-spawn: launch an external program from an argv list.
+; Interior-NUL argv is rejected before any syscall.  Returns either a live
+; Child (with its stdout already captured) or a SpawnErr.
+(declare proc-spawn (=> (List Str) SpawnRes))
+(def proc-spawn
+  (lam (argv)
+    (case (argv->pkt argv)
+      (none       (sp-err se-badargv))     ; rejected pre-syscall
+      ((some pkt) (raw-proc-spawn pkt)))))
+
+; ---- worked use: run a filter child, drain its stdout, check exit ------------
+
+; run-filter: spawn a program, send it input, collect its stdout, check exit 0.
+; Returns (some stdout) on success, none on any failure.
+(declare run-filter (=> (List Str) Bytes (Maybe Bytes)))
+(def run-filter
+  (lam (argv input)
+    (case (proc-spawn argv)
+      ((sp-err e) none)
+      ((sp-ok c)
+        (case c
+          ((child r out)
+            (case (wait r)             ; linear: r consumed
+              ((exited code)
+                (case (=i code 0)
+                  (true (some out))
+                  (false none)))
+              ((signaled sg) none))))))))

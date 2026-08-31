@@ -1,0 +1,256 @@
+; scriba S15: manas run-view — the run-manifest cockpit (Tier 2).
+;
+; Filename is deliberate (SPEC §6 D1): this is the run *view*, NOT the headless
+; scaffold/samples/manas-run.chiral (which fires the same engine and dumps JSON).
+; Two same-basename files with opposite jobs would be a blob/reader footgun, so
+; the scriba resident is manas-runview.chiral.
+;
+; Two layers, split by the effect membrane:
+;   PURE (->)  : the RunView/RunPhase/RvCall sums + runview-render / outcome-row /
+;                phase-tag + the rv-* constructor helpers. Unit-testable with NO
+;                network (the whole point: plan-run is pure, so the GATE renders
+;                before any be-chat crossing).
+;   EFFECTFUL (=>) : runview-drive + fan-render (added in commit 2) — fire ONE run
+;                and repaint one row per call-expert return, reusing the four
+;                PUBLIC engine prims with a repaint seam BETWEEN the calls.
+;
+; Per-expert incremental, NOT token streaming (the engine is non-streaming
+; be-chat; true token-by-token is S17). Synchronous/blocking is accepted — the
+; driver blocks per be-chat exactly as chat mode blocks per chat-ask (SPEC §5).
+
+(import "prelude")                     ; Str, Bool, I64, List, Pair, Maybe, str-cat, i64->str, cons, nil, some, none
+(import "render")                      ; Rendering, r-face, r-lines, r-text, render-to-ansi-full
+(import "ports")                       ; put (=> Str Unit) — the on-delta terminal-write (S17; coordinator.chiral:20)
+(import "manas-mode")                  ; mf-row, mh-row, join-comma, rrows-append  (S14 helpers, reused)
+(import "manas/core/types")            ; ExpertOutcome, Expert, Binding, Config, Pipeline, RunManifest, CombinerOutcome
+; --- the effectful driver's deps (commit 2) ---
+(import "collections")                 ; reverse, append
+(import "backend")                     ; backend (the Backend ctor), Backend
+(import "manas/pipeline/plan")         ; plan-run, PlanOutcome, assemble-manifest, ids-of-experts, bnd-model, exp-slot, yield-of
+(import "manas/pipeline/runner")       ; call-expert, call-combiner, call-expert-stream, call-combiner-stream, gather-findings (S17 twins)
+(import "manas/profile/profiles")      ; smoke-local-config  (the crafted config the sample fires)
+(import "manas/profile/doc-refine")    ; doc-refine-pipeline, expert-pool, expert-id  (the crafted pipeline + pool)
+
+; ─── §3.1 the three sums ─────────────────────────────────────────────────────
+
+; The in-flight run's stage. Closed sum, so phase-tag + the renderer are FORCED
+; to handle every stage (a dropped stage is not representable).
+(data RunPhase ()
+  (rv-planning)                 ; before plan-run returns
+  (rv-planned)                  ; GATE decided, no calls yet
+  (rv-calling  (idx I64))       ; mid fan-out — idx experts returned so far
+  (rv-streaming (idx I64) (id Str) (slot Str) (model Str)) ; S17: idx is LIVE, tokens flowing (expert OR combiner)
+  (rv-combining)                ; fan-out done, combiner in flight
+  (rv-done)                     ; finished — final is (some manifest)
+  (rv-failed   (reason Str)))   ; plan-no-route / plan-no-fire / plan-unbound — a VALUE
+
+; A small record that grows monotonically as the run proceeds.
+(data RunView ()
+  (run-view
+    (req      Str)              ; the request being run
+    (phase    RunPhase)         ; where the run is
+    (routing  Str)              ; the GATE reason ("" until planned)
+    (fired    (List Str))       ; fired expert ids — the plan (nil until planned)
+    (done     (List RvCall))    ; per-expert results SO FAR (grows one per be-chat)
+    (yield    Str)              ; combiner yield ("" until combined)
+    (final    (Maybe RunManifest)))) ; none until finished; the run record
+
+; §3.1 D2: the id/slot/model-bearing per-expert row. ExpertOutcome carries no
+; id/slot/model, but fan-render has the Expert + bindings + outcome in hand at
+; cons-time, so it bundles them into this scriba-side render wrapper. ZERO engine
+; change — assemble-manifest still gets the bare (List ExpertOutcome).
+(data RvCall ()
+  (rv-call (id Str) (slot Str) (model Str) (outcome ExpertOutcome)))
+
+; ─── §3.2 outcome-row — one RvCall -> one face-tagged row (pure) ──────────────
+; A bad outcome is a manas-bad row FORCED by the case — a silently-dropped
+; failure is not representable.
+(def outcome-row (-> RvCall Rendering)
+  (lam (rc)
+    (case rc
+      ((rv-call id slot model oc)
+        (case oc
+          ((expert-ok  fs raw)
+            (r-face "manas-ok"  (r-text (str-cat "  OK   " (str-cat id (str-cat "   (" (str-cat slot (str-cat " -> " (str-cat model ")")))))) false)))
+          ((expert-bad raw reason)
+            (r-face "manas-bad" (r-text (str-cat "  BAD  " (str-cat reason (str-cat "   " id))) false))))))))
+
+(def outcome-rows (-> (List RvCall) (List Rendering))
+  (lam (rcs)
+    (case rcs
+      (nil nil)
+      ((cons r rest) (cons (outcome-row r) (outcome-rows rest))))))
+
+; ─── §3.3 phase-tag — the closed-sum status string (pure, total) ─────────────
+(def phase-tag (-> RunPhase Str)
+  (lam (p)
+    (case p
+      (rv-planning        "(planning)")
+      (rv-planned         "(planned)")
+      ((rv-calling idx)   (str-cat "(calling " (str-cat (i64->str idx) ")")))
+      ((rv-streaming idx id slot model) (str-cat "(streaming " (str-cat (i64->str idx) ")")))
+      (rv-combining       "(combining)")
+      (rv-done            "(done)")
+      ((rv-failed reason) (str-cat "(failed: " (str-cat reason ")"))))))
+
+; ─── §3.2b streaming-row — the open ">>" row (pure, no new node) ──────────────
+; One manas-ok-faced r-text whose prefix ends exactly where the tokens flow; the
+; on-delta puts deltas right after it. Reuses r-face/r-text — NO new render node.
+(def streaming-row (-> Str Str Str Rendering)
+  (lam (id slot model)
+    (r-face "manas-ok"
+      (r-text (str-cat "  >>   " (str-cat id (str-cat "   (" (str-cat slot (str-cat " -> " (str-cat model ")  ")))))) false))))
+
+; ─── §3.4 runview-render — the total value renderer (pure -> Rendering) ───────
+; Walks the whole RunView into r-lines of face-tagged rows, reusing S14's
+; mh-row/mf-row/join-comma/rrows-append. dims/scroll are carried for parity with
+; the S14 renderer shape; S15 renders the whole value (no windowing — scroll
+; residue, SPEC §9).
+(def runview-render (-> RunView (Pair I64 I64) I64 Rendering)
+  (lam (rv dims scroll)
+    (case rv
+      ((run-view req phase routing fired done yield final)
+        (r-lines
+          (cons (mh-row (str-cat "RUN  " req))
+          (cons (mf-row (str-cat "GATE  " (str-cat routing (str-cat "  ->  " (join-comma fired)))))
+            (rrows-append (outcome-rows done)
+              (case phase
+                ((rv-streaming idx id slot model)             ; S17: the live open row, appended
+                  (cons (streaming-row id slot model)
+                  (cons (mf-row (str-cat "COMBINER  " (phase-tag phase))) nil)))
+                (_                                            ; every other phase = the S15 frame
+                  (cons (mf-row (str-cat "COMBINER  " (phase-tag phase)))
+                  (cons (mf-row (str-cat "YIELD  " yield)) nil))))))))))))
+
+; ─── §3.5 rv-* constructor helpers (pure) ────────────────────────────────────
+; Small total builders the driver uses to grow the RunView between stages. Each
+; carries all seven fields, rewriting only phase/done/yield/final.
+
+; a routing-failure view (nothing fired).
+(def rv-fail (-> Str Str RunView)
+  (lam (req reason)
+    (run-view req (rv-failed reason) "" nil nil "" none)))
+
+; the GATE decided, no calls yet.
+(def rv-planned-of (-> Str Str (List Str) RunView)
+  (lam (req routing fired)
+    (run-view req (rv-planned) routing fired nil "" none)))
+
+; replace done + set phase (rv-calling idx) — the mid-fan repaint state.
+(def rv-with-calls (-> RunView (List RvCall) I64 RunView)
+  (lam (rv calls idx)
+    (case rv
+      ((run-view req phase routing fired done yield final)
+        (run-view req (rv-calling idx) routing fired calls yield final)))))
+
+; the finished run — phase rv-done, yield set, final (some m).
+(def rv-done-of (-> Str Str (List Str) (List RvCall) Str RunManifest RunView)
+  (lam (req routing fired calls yield m)
+    (run-view req (rv-done) routing fired calls yield (some m))))
+
+; ─── §4 the effectful driver ─────────────────────────────────────────────────
+
+; length of an RvCall list (the idx for rv-calling).
+(def len-rvcall (-> (List RvCall) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (len-rvcall t))))))
+
+; §3.3 rv-streaming-of — the pure builder (sibling of rv-with-calls). Sets the
+; live streaming phase (idx = calls-so-far), keeps done = acc (the settled calls),
+; carries every other field. Serves an expert OR the combiner (unified marker, D1).
+(def rv-streaming-of (-> RunView (List RvCall) Str Str Str RunView)
+  (lam (rv acc id slot model)
+    (case rv
+      ((run-view req phase routing fired done yield final)
+        (run-view req (rv-streaming (len-rvcall acc) id slot model) routing fired acc yield final)))))
+
+; unwrap the bundles to the bare outcomes gather-findings / assemble-manifest are
+; typed on — assembling from the RAW outcomes keeps the manifest byte-identical to
+; the headless path (RvCall is a render-only wrapper).
+(def outcomes-of (-> (List RvCall) (List ExpertOutcome))
+  (lam (rcs)
+    (case rcs
+      (nil nil)
+      ((cons r rest)
+        (case r ((rv-call id slot model oc) (cons oc (outcomes-of rest))))))))
+
+; repaint the RunView mid-effect (the proven paint vim-chat-prompt uses after a
+; network call). scroll 0 = top during the live run.
+(def repaint-runview (=> RunView (Pair I64 I64) Unit)
+  (lam (rv dims)
+    (render-to-ansi-full (runview-render rv dims 0) dims)))
+
+; §4.2 fan-render — the incremental heart. run-pipeline's fan-experts with a
+; REPAINT SEAM + the RvCall bundling. Structural recursion on the fired list ->
+; total; carries an idx for the rv-calling phase. Row: (be-chat), N times.
+; E137: FanRenderR threads the linear handle out of the recursion (calls BESIDE
+; the fresh handle), exactly like runner.chiral's FanR.
+(data FanRenderR () (fan-render-r (calls (List RvCall)) (1 b Backend)))
+(declare fan-render
+  (=> (1 b Backend) (List Expert) (List Binding) Str (List (Pair Str Str)) RunView (Pair I64 I64) (List RvCall) FanRenderR))
+(def fan-render
+  (lam (b exps bindings doc extra rv dims acc)
+    (case exps
+      (nil (fan-render-r (reverse RvCall acc) b))     ; done — hand the handle back
+      ((cons e rest)
+        (let ((slot  (exp-slot e)))
+          (let ((model (bnd-model bindings slot)))
+            (let ((id (expert-id e)))
+              (let ((rv-live (rv-streaming-of rv acc id slot model)))
+                (let ((_ (repaint-runview rv-live dims)))          ; 1. paint OPEN row; cursor parks at its end
+                  (case (call-expert-stream b e doc extra model ret-json-findings (lam (d) (put d))) ; 2. tokens flow INLINE
+                    ((call-r oc raw b2)                           ; E139: CallR gained a raw field (run-view ignores it); thread the fresh handle onward
+                      (let ((acc2 (append RvCall acc (cons (rv-call id slot model oc) nil))))
+                        (let ((rv2 (rv-with-calls rv acc2 (len-rvcall acc2))))
+                          (let ((_ (repaint-runview rv2 dims)))    ; 3. SETTLE: clear+redraw, S15 OK/BAD row
+                            (fan-render b2 rest bindings doc extra rv2 dims acc2)))))))))))))))
+
+; §4.1 runview-drive — fire one run, repaint per stage. Mirrors run-pipeline's
+; body but reuses the four PUBLIC prims directly with a repaint seam (NOT a black
+; box — a black box returns only at the end and per-expert repaint needs the seam
+; BETWEEN the calls). The plan branch renders the GATE BEFORE any network
+; (plan-run is PURE). A routing failure is a VALUE (rv-fail), never a halt. Effect
+; row: exactly (be-chat).
+; E137: runview-drive OPENS nothing (runview-fire hands it the linear handle) but
+; it is the CLOSE point — it returns a pure RunView, so every branch discharges the
+; handle exactly once via (do (backend-close …) …): the routing-failure branches
+; close the untouched handle; the plan-ok branch threads b -> fan-render -> b2 ->
+; call-combiner-stream -> b3 -> backend-close.
+(def runview-drive
+  (=> (1 b Backend) Str (List Pipeline) (List Expert) Config Str (List (Pair Str Str)) (Pair I64 I64) RunView)
+  (lam (b req pipes pool config doc extra dims)
+    (case (plan-run req pipes pool config doc extra)          ; PURE — no network yet
+      ((plan-no-route listing)     (do (backend-close b) (rv-fail req "no-route")))
+      ((plan-no-fire  reason)      (do (backend-close b) (rv-fail req reason)))
+      ((plan-unbound  missing cid) (do (backend-close b) (rv-fail req "unbound")))
+      ((plan-ok pid cid routing fired comb bindings)
+        (let ((fids (ids-of-experts fired)))
+          (let ((rv0 (rv-planned-of req routing fids)))
+            (let ((_ (repaint-runview rv0 dims)))               ; PAINT before any be-chat
+              (case (fan-render b fired bindings doc extra rv0 dims nil)
+                ((fan-render-r calls b2)
+                  (let ((cslot (exp-slot comb)))
+                    (let ((cmodel (bnd-model bindings cslot)))
+                      ; combiner open row — the SAME rv-streaming marker, idx past the last expert (D1)
+                      (let ((rvc (rv-streaming-of (rv-with-calls rv0 calls (len-rvcall calls))
+                                   calls (expert-id comb) cslot cmodel)))
+                        (let ((_ (repaint-runview rvc dims)))               ; PAINT the combiner open row
+                          (case (call-combiner-stream b2 comb (gather-findings (outcomes-of calls))
+                                   fids cmodel (lam (d) (put d)))           ; combiner yield streams INLINE
+                            ((comb-r comb-oc b3)
+                              (do (backend-close b3)                        ; discharge — run is complete
+                                (let ((m (assemble-manifest req pid cid routing fired bindings
+                                           (outcomes-of calls) comb-oc)))   ; bare outcomes -> byte-identical manifest
+                                  (rv-done-of req routing fids calls (yield-of comb-oc) m))))))))))))))))))
+
+; ─── §4.4 crafted-input constants (the sample's inputs) ──────────────────────
+; The sample scaffold/samples/manas-run.chiral crafts a doc + extra so all six
+; doc-refine experts fire (7 be-chat crossings). S15 re-declares them (a scriba
+; module can't import a sample), prefixed rv- to avoid any clash.
+(def rv-endpoint Str "http://100.64.0.5:11434")     ; the mesh (sample :47; chat.chiral:19 same host)
+(def rv-req Str "refine this doc: check it against reality, sharpen anchors, complete its examples")
+(def rv-doc Str
+  "# widget config\n\nThe loader reads `/etc/widget/config.toml` at boot.\n\n```\nwidget --start\n```\n\nExample: `widget --start` brings the service up.\n")
+(def rv-extra (List (Pair Str Str))
+  (cons (pair "spec" "docs/widget-SPEC.md")
+  (cons (pair "sibling_docs" "docs/widget-overview.md")
+        nil)))

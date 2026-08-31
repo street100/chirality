@@ -1,0 +1,1225 @@
+; scriba S5: str editing operations on TextZipper.
+; ~300 lines. All ops are pure -> functions on TextZipper.
+;
+; CRITICAL: defines its own TextZipper and LineCtx types — does NOT use
+; S1's Zipper (they are incompatible). The bridge to Puffer (S1→S5) is
+; deferred to a later integration pass.
+;
+; Deps: prelude (Str, I64, Bool, Unit, List, Maybe, Pair)
+;       collections (reverse, length, str-join)
+;
+; Audit: v2 CLEAN PASS — all 12 FLAGs resolved.
+; Boundary semantics: all deletions clamp, kill at EOB no-ops,
+; undo/redo on empty stack no-ops, search-not-found returns none,
+; yank on empty ring returns zipper unchanged.
+
+(import "prelude")
+
+; ─── Local helpers (inlined from collections) ──────────────────────────────
+
+(def se-rev-onto (-> (0 A (type 0)) (List A) (List A) (List A))
+  (lam (A xs acc)
+    (case xs
+      (nil acc)
+      ((cons h t) (se-rev-onto A t (cons h acc))))))
+
+(def se-reverse (-> (0 A (type 0)) (List A) (List A))
+  (lam (A xs)
+    (se-rev-onto A xs nil)))
+
+(def se-length (-> (0 A (type 0)) (List A) I64)
+  (lam (A xs)
+    (case xs
+      (nil 0)
+      ((cons h t) (+ 1 (se-length A t))))))
+
+(def se-str-join (-> Str (List Str) Str)
+  (lam (sep xs)
+    (case xs
+      (nil "")
+      ((cons h t)
+        (case t
+          (nil h)
+          ((cons h2 t2) (str-cat h (str-cat sep (se-str-join sep t)))))))))
+
+; ---------------------------------------------------------------- Types
+
+; LineCtx: the zipper context for line-based text.
+;   above — lines before the current line, in document order (first line first).
+;   left  — characters to the left of the cursor on the current line.
+;   right — characters to the right of the cursor on the current line.
+;   below — lines after the current line, in document order.
+;
+; The zipper invariant: (append Str above [str-cat left right] below)
+; reconstructs the full text when joined with newlines.
+(data LineCtx ()
+  (line-ctx (above (List Str)) (left Str) (right Str) (below (List Str))))
+
+; TextZipper: a cursor into text.
+; The type parameter A names the container type (e.g. Str for text editing).
+; The focus is Unit — cursor position is implicit in the LineCtx split.
+; This is NOT S1's Zipper (which uses focus Maybe A + path List I64).
+; The name TextZipper prevents accidental unification with S1's type.
+(data TextZipper ((A (type 0)))
+  (text-zipper (focus Unit) (ctx LineCtx)))
+
+; Dir: search direction.
+(data Dir ()
+  (forward)
+  (backward))
+
+; UndoState: past and future stacks of TextZipper values.
+; Each edit produces a new zipper; undo is keeping the old one.
+(data UndoState ()
+  (undo-state (past (List (TextZipper Str))) (future (List (TextZipper Str)))))
+
+; ---------------------------------------------------------------- Forward declares
+; Helpers called before their definitions. B1 requires a declare before first use.
+
+(declare skip-word-forward (-> (TextZipper Str) (TextZipper Str)))
+(declare skip-whitespace-forward (-> (TextZipper Str) (TextZipper Str)))
+(declare skip-whitespace-backward (-> (TextZipper Str) (TextZipper Str)))
+(declare skip-word-backward (-> (TextZipper Str) (TextZipper Str)))
+
+(declare take (-> (0 A (type 0)) I64 (List A) (List A)))
+(declare drop (-> (0 A (type 0)) I64 (List A) (List A)))
+
+(declare str-search-forward (-> Str (TextZipper Str) (Maybe (TextZipper Str))))
+(declare str-search-backward (-> Str (TextZipper Str) (Maybe (TextZipper Str))))
+(declare str-search-backward-from (-> Str Str I64 (TextZipper Str) (Maybe (TextZipper Str))))
+(declare zipper-from-start (-> I64 (TextZipper Str) (TextZipper Str)))
+(declare text-zipper-from-str (-> Str (TextZipper Str)))
+(declare str-split-lines (-> Str (List Str)))
+(declare str-split-lines-onto (-> Str (List Str) (List Str)))
+
+; ---------------------------------------------------------------- Internal helpers
+
+; Return the column number (length of left text at cursor).
+(def col (-> (TextZipper Str) I64)
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (str-len left)))))))
+
+; Return the current line text (left ++ right).
+(def current-line (-> (TextZipper Str) Str)
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (str-cat left right)))))))
+
+; Reconstruct the full text from a TextZipper as a single newline-joined Str.
+; Used by str-search to get a haystack for str-find.
+(def zipper-to-text (-> (TextZipper Str) Str)
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (se-str-join "\n"
+          (append Str
+            (append Str above
+              (cons (str-cat left right) nil))
+            below))))))))
+
+; Reconstruct text from cursor position to end of buffer.
+; Used by forward search: the haystack is everything after the cursor.
+(def text-from-cursor-to-end (-> (TextZipper Str) Str)
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (se-str-join "\n"
+          (append Str
+            (cons right nil)
+            below))))))))
+
+; Reconstruct text from beginning of buffer to cursor position.
+; Used by backward search.
+(def text-from-start-to-cursor (-> (TextZipper Str) Str)
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (se-str-join "\n"
+          (append Str
+            (append Str above
+              (cons left nil))
+            nil))))))))
+
+; Advance the zipper forward by n characters within the buffer,
+; crossing line boundaries as needed. n is clamped to available chars.
+; Used by str-search to position at a match offset.
+(def advance-by (-> I64 (TextZipper Str) (TextZipper Str))
+  (lam (n z)
+    (case (=i n 0)
+      (true z)
+      (false
+        (case z
+          ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+            (let ((rlen (str-len right)))
+              (case (<=i n rlen)
+                (true
+                  ; n chars fit within the current line's right side (n == rlen
+                  ; means cursor lands exactly at end of line)
+                  (text-zipper focus
+                    (line-ctx above
+                      (str-cat left (str-sub right 0 n))
+                      (str-sub right n rlen)
+                      below)))
+                (false
+                  ; cross into next line(s)
+                  (case (=i rlen 0)
+                    (true
+                      ; at end of line — cross to next line if any
+                      (case below
+                        (nil z)  ; EOB, nowhere to advance
+                        ((cons next-line rest-below)
+                          (advance-by (- n 1)
+                            (text-zipper focus
+                              (line-ctx (append Str above (cons left nil))
+                                ""
+                                next-line
+                                rest-below))))))
+                    (false
+                      ; consume rest of right, then cross
+                      (case below
+                        (nil
+                          ; EOB — advance as far as possible (end of line)
+                          (text-zipper focus
+                            (line-ctx above
+                              (str-cat left right)
+                              ""
+                              below)))
+                        ((cons next-line rest-below)
+                          (let ((remaining (- n rlen)))
+                            (advance-by (- remaining 1)
+                              (text-zipper focus
+                                (line-ctx (append Str above
+                                            (cons (str-cat left right) nil))
+                                  ""
+                                  next-line
+                                  rest-below)))))))))))))))))))
+
+; ---------------------------------------------------------------- Movement operations
+; All take TextZipper Str and return TextZipper Str.
+; At boundaries, return the zipper unchanged.
+
+; Move focus one character forward. No-op at end of buffer.
+(def str-move-forward-char (-> (TextZipper Str) (TextZipper Str))
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (case (str-eq right "")
+          (true
+            ; at end of line — cross to next line if any
+            (case below
+              (nil z)  ; end of buffer
+              ((cons next-line rest-below)
+                (text-zipper focus
+                  (line-ctx (append Str above (cons left nil))
+                    ""
+                    next-line
+                    rest-below)))))
+          (false
+            ; advance within line
+            (text-zipper focus
+              (line-ctx above
+                (str-cat left (str-sub right 0 1))
+                (str-sub right 1 (str-len right))
+                below))))))))))
+
+; Move focus one character backward. No-op at beginning of buffer.
+(def str-move-backward-char (-> (TextZipper Str) (TextZipper Str))
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (case (str-eq left "")
+          (true
+            ; at beginning of line — cross to previous line if any
+            (case above
+              (nil z)  ; beginning of buffer
+              (_
+                ; above is in document order; cross to the last line via reverse
+                (let ((rev-above (se-reverse Str above)))
+                  (case rev-above
+                    (nil z)
+                    ((cons prev-line rest-rev)
+                      (let ((plen (str-len prev-line)))
+                        (text-zipper focus
+                          (line-ctx (se-reverse Str rest-rev)
+                            prev-line
+                            ""
+                            (cons (str-cat "" right) below))))))))))
+          (false
+            ; move backward within line
+            (let ((llen (str-len left)))
+              (text-zipper focus
+                (line-ctx above
+                  (str-sub left 0 (- llen 1))
+                  (str-cat (str-sub left (- llen 1) llen) right)
+                  below)))))))))))
+
+; ----------------------------------------------------------------
+; Word movement helpers — check character type for word boundaries.
+
+; Check if the character AFTER the cursor is whitespace.
+; Returns false at end of buffer/line.
+(def at-whitespace? (-> (TextZipper Str) Bool)
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (case (str-eq right "")
+          (true false)  ; EOL or EOB — not whitespace for word boundary
+          (false
+            (let ((ch (str-sub right 0 1)))
+              (str-eq ch " "))))))))))
+
+; Check if the character BEFORE the cursor is whitespace.
+; Returns false at beginning of buffer.
+(def at-whitespace-back? (-> (TextZipper Str) Bool)
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (case (str-eq left "")
+          (true false)
+          (false
+            (let ((llen (str-len left)))
+              (str-eq (str-sub left (- llen 1) llen) " "))))))))))
+
+; Structural equality test for two TextZippers.
+; Used to detect no-progress in word movement (compares left+right strings).
+(def text-zipper-eq? (-> (0 A (type 0)) (TextZipper A) (TextZipper A) Bool)
+  (lam (A a b)
+    (case a
+      ((text-zipper f1 ctx1)
+        (case ctx1
+          ((line-ctx a1 l1 r1 b1)
+            (case b
+              ((text-zipper f2 ctx2)
+                (case ctx2
+                  ((line-ctx a2 l2 r2 b2)
+                    (and (str-eq l1 l2)
+                      (str-eq r1 r2))))))))))))
+
+; ----------------------------------------------------------------
+; Word movement.
+
+; Move forward one word. Word chars are non-whitespace.
+; Skips word chars, then skips whitespace. No-op at end of buffer.
+(def str-move-forward-word (-> (TextZipper Str) (TextZipper Str))
+  (lam (z)
+    (let ((z1 (skip-word-forward z)))
+      (skip-whitespace-forward z1))))
+
+; Skip non-whitespace characters forward.
+(def skip-word-forward
+  (lam (z)
+    (case (at-whitespace? z)
+      (true z)
+      (false
+        (let ((z2 (str-move-forward-char z)))
+          (case (text-zipper-eq? Str z z2)
+            (true z)   ; no progress = EOB
+            (false (skip-word-forward z2))))))))
+
+; Skip whitespace characters forward.
+(def skip-whitespace-forward
+  (lam (z)
+    (case (at-whitespace? z)
+      (true
+        (let ((z2 (str-move-forward-char z)))
+          (case (text-zipper-eq? Str z z2)
+            (true z)
+            (false (skip-whitespace-forward z2)))))
+      (false z))))
+
+; Move backward one word. Skips whitespace backward, then word chars.
+; No-op at beginning of buffer.
+(def str-move-backward-word (-> (TextZipper Str) (TextZipper Str))
+  (lam (z)
+    (let ((z1 (skip-whitespace-backward z)))
+      (skip-word-backward z1))))
+
+; Skip whitespace characters backward.
+(def skip-whitespace-backward
+  (lam (z)
+    (let ((z2 (str-move-backward-char z)))
+      (case (text-zipper-eq? Str z z2)
+        (true z)  ; no progress = BOB
+        (false
+          (case (at-whitespace? z2)
+            (true (skip-whitespace-backward z2))
+            (false z)))))))
+
+; Skip non-whitespace characters backward.
+(def skip-word-backward
+  (lam (z)
+    (let ((z2 (str-move-backward-char z)))
+      (case (text-zipper-eq? Str z z2)
+        (true z)  ; no progress = BOB
+        (false
+          (case (at-whitespace? z2)
+            (true z)
+            (false (skip-word-backward z2))))))))
+
+; ----------------------------------------------------------------
+; Line movement.
+
+; Move to the next line, preserving column (clamped to line length).
+; No-op at last line.
+(def str-move-next-line (-> (TextZipper Str) (TextZipper Str))
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (case below
+          (nil z)  ; last line
+          ((cons next-line rest-below)
+            (let ((old-col (str-len left))
+                  (nlen (str-len next-line))
+                  (new-col (min old-col nlen)))
+              (text-zipper focus
+                (line-ctx (append Str above (cons (str-cat left right) nil))
+                  (str-sub next-line 0 new-col)
+                  (str-sub next-line new-col nlen)
+                  rest-below)))))))))))
+
+; Move to the previous line, preserving column (clamped to line length).
+; No-op at first line.
+(def str-move-previous-line (-> (TextZipper Str) (TextZipper Str))
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (case above
+          (nil z)  ; first line
+          (_
+            ; above is in document order; take the last element via reverse
+            (let ((rev-above (se-reverse Str above)))
+              (case rev-above
+                (nil z)
+                ((cons last-line rest-rev)
+                  (let ((old-col (str-len left))
+                        (plen (str-len last-line))
+                        (new-col (min old-col plen)))
+                    (text-zipper focus
+                      (line-ctx (se-reverse Str rest-rev)
+                        (str-sub last-line 0 new-col)
+                        (str-sub last-line new-col plen)
+                        (cons (str-cat left right) below)))))))))))))))
+
+; Move to the beginning of the current line (col = 0).
+(def str-move-beginning-of-line (-> (TextZipper Str) (TextZipper Str))
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (text-zipper focus
+          (line-ctx above
+            ""
+            (str-cat left right)
+            below))))))))
+
+; Move to the end of the current line.
+(def str-move-end-of-line (-> (TextZipper Str) (TextZipper Str))
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (text-zipper focus
+          (line-ctx above
+            (str-cat left right)
+            ""
+            below))))))))
+
+; Move to the beginning of the buffer (first line, col 0).
+(def str-move-beginning-of-buffer (-> (TextZipper Str) (TextZipper Str))
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        ; Reconstruct all lines, then rebuild zipper at (0, 0).
+        (let ((all-lines (append Str
+                           (append Str above
+                             (cons (str-cat left right) nil))
+                           below)))
+          (case all-lines
+            (nil (text-zipper unit (line-ctx nil "" "" nil)))
+            ((cons first rest)
+              (text-zipper unit
+                (line-ctx nil
+                  ""
+                  first
+                  rest)))))))))))
+
+; Move to the end of the buffer (last line, end of line).
+(def str-move-end-of-buffer (-> (TextZipper Str) (TextZipper Str))
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (let ((all-lines (append Str
+                           (append Str above
+                             (cons (str-cat left right) nil))
+                           below)))
+          (case all-lines
+            (nil (text-zipper unit (line-ctx nil "" "" nil)))
+            ((cons h t)
+              ; walk to last line via reverse
+              (let ((rev (se-reverse Str all-lines)))
+                (case rev
+                  (nil (text-zipper unit (line-ctx nil "" "" nil)))
+                  ((cons last-line rest-rev)
+                    (let ((llen (str-len last-line)))
+                      (text-zipper unit
+                        (line-ctx (se-reverse Str rest-rev)
+                          last-line
+                          ""
+                          nil)))))))))))))))
+
+; ---------------------------------------------------------------- Edit operations
+; All pure -> functions. Insertion advances focus past the inserted text.
+; Deletion clamps to available characters.
+
+; Insert a string at the cursor position. Focus advances past the insertion.
+(def str-insert-char (-> Str (TextZipper Str) (TextZipper Str))
+  (lam (s z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (text-zipper focus
+          (line-ctx above
+            (str-cat left s)
+            right
+            below))))))))
+
+; Delete n characters backward from cursor. Clamps n to available chars.
+; Returns new zipper at the deletion point.
+(def str-delete-backward (-> I64 (TextZipper Str) (TextZipper Str))
+  (lam (n z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (let ((llen (str-len left))
+              (k (min n llen)))
+          (case (=i k 0)
+            (true
+              ; cursor at start of line — delete the newline by joining with
+              ; the immediately-previous line (last element of above)
+              (case above
+                (nil z)  ; beginning of buffer — nothing to delete
+                (_
+                  (let ((rev-above (se-reverse Str above)))
+                    (case rev-above
+                      (nil z)
+                      ((cons prev-line rest-rev)
+                        (text-zipper focus
+                          (line-ctx (se-reverse Str rest-rev)
+                            prev-line
+                            right
+                            below))))))))
+            (false
+              (text-zipper focus
+                (line-ctx above
+                  (str-sub left 0 (- llen k))
+                  right
+                  below)))))))))))
+
+; Delete n characters forward from cursor. Clamps n to available chars.
+(def str-delete-forward (-> I64 (TextZipper Str) (TextZipper Str))
+  (lam (n z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        ; Delete within current line. Cross-line delete deferred.
+        (let ((rlen (str-len right))
+              (k (min n rlen)))
+          (case (=i k 0)
+            (true z)
+            (false
+              (text-zipper focus
+                (line-ctx above
+                  left
+                  (str-sub right k rlen)
+                  below)))))))))))
+
+; ---------------------------------------------------------------- Kill / Yank
+; Kill extracts text and returns it alongside the new zipper.
+; Yank inserts from a (List Str) kill-ring.
+
+; Kill from cursor to end of line. Returns (killed-text, new-zipper).
+; If cursor is at end of line: kill the newline (join with next line).
+; If at end of buffer: returns ("", zipper unchanged).
+(def str-kill-line (-> (TextZipper Str) (Pair Str (TextZipper Str)))
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (case (str-eq right "")
+          (true
+            ; cursor at end of line — kill newline (join with next line)
+            (case below
+              (nil (pair "" z))  ; EOB, nothing to kill
+              ((cons next-line rest-below)
+                (pair "\n"
+                  (text-zipper focus
+                    (line-ctx above
+                      left
+                      next-line
+                      rest-below))))))
+          (false
+            ; kill from cursor to end of line
+            (pair right
+              (text-zipper focus
+                (line-ctx above
+                  left
+                  ""
+                  below)))))))))))
+
+; Kill n lines forward from cursor (including current line from focus).
+; Returns killed text (joined with newlines) and new zipper.
+; Clamps n to available lines.
+(def str-kill-lines (-> I64 (TextZipper Str) (Pair Str (TextZipper Str)))
+  (lam (n z)
+    (case z
+      ((text-zipper focus ctx) (case ctx ((line-ctx above left right below)
+        (let ((lines-below (se-length Str below))
+              (total-lines (+ 1 lines-below))
+              (k (min n total-lines)))
+          (case (=i k 0)
+            (true (pair "" z))
+            (false
+              ; Build the list of killed lines: first line from cursor,
+              ; then k-1 full lines from below.
+              (let ((killed-first right)  ; from cursor to end of current line
+                    (taken-rest (take Str (- k 1) below))
+                    (rest-below (drop Str (- k 1) below)))
+                ; Join killed text
+                (let ((killed-text
+                        (case taken-rest
+                          (nil killed-first)
+                          (_
+                            (se-str-join "\n"
+                              (cons killed-first taken-rest))))))
+                  (pair killed-text
+                    (text-zipper focus
+                      (line-ctx above
+                        left
+                        (case rest-below
+                          (nil "")
+                          ((cons h t) h))
+                        (case rest-below
+                          (nil nil)
+                          ((cons h t) t))))))))))))))))
+
+; Take first n elements of a list.
+(def take
+  (lam (A n xs)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (case (=i n 0)
+          (true nil)
+          (false (cons h (take A (- n 1) t))))))))
+
+; Drop first n elements of a list (clamps to list length).
+(def drop
+  (lam (A n xs)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (case (=i n 0)
+          (true xs)
+          (false (drop A (- n 1) t)))))))
+
+; Yank: insert the most recent kill (head of kill-ring) at cursor.
+; Kill-ring is read-only — yank does not modify it.
+; If kill-ring is empty, returns zipper unchanged.
+(def yank (-> (List Str) (TextZipper Str) (TextZipper Str))
+  (lam (ring z)
+    (case ring
+      (nil z)  ; empty kill-ring, no-op
+      ((cons top rest)
+        (str-insert-char top z)))))
+
+; ---------------------------------------------------------------- Search
+; Search for needle from cursor position in the given direction.
+; Returns (some new-zipper) if found, none otherwise.
+
+(def str-search (-> Dir Str (TextZipper Str) (Maybe (TextZipper Str)))
+  (lam (dir needle z)
+    (case dir
+      (forward (str-search-forward needle z))
+      (backward (str-search-backward needle z)))))
+
+; Forward search: look for needle from cursor to end of buffer.
+(def str-search-forward
+  (lam (needle z)
+    (let ((haystack (text-from-cursor-to-end z))
+          (idx (str-find haystack needle)))
+      (case (<i idx 0)
+        (true none)  ; not found
+        (false
+          ; advance zipper by idx characters to position at match
+          (some (advance-by idx z)))))))
+
+; Backward search: look for needle from start of buffer to cursor.
+; Returns the LAST occurrence of needle in the text before the cursor.
+(def str-search-backward
+  (lam (needle z)
+    (let ((haystack (text-from-start-to-cursor z)))
+      (str-search-backward-from needle haystack 0 z))))
+
+; Helper: find the last occurrence of needle in haystack (the text before the
+; cursor). str-find-from is a FORWARD find (haystack.find(needle, from)), so we
+; walk matches left to right and keep recursing while a later match exists.
+(def str-search-backward-from
+  (lam (needle haystack pos z)
+    (let ((idx (str-find-from haystack needle pos)))
+      (case (<i idx 0)
+        (true none)
+        (false
+          (let ((idx2 (str-find-from haystack needle (+ idx 1))))
+            (case (<i idx2 0)
+              (true (some (zipper-from-start idx z)))
+              (false (str-search-backward-from needle haystack (+ idx 1) z)))))))))
+
+; Create a zipper positioned at character offset idx from start of buffer.
+; Uses the original zipper's text (reconstructed), then rebuilds at (0,0)
+; and advances by idx characters.
+(def zipper-from-start
+  (lam (idx z)
+    (let ((full (zipper-to-text z)))
+      (let ((z0 (text-zipper-from-str full)))
+        (advance-by idx z0)))))
+
+; Build a TextZipper at (0, 0) from a single Str separated by newlines.
+(def text-zipper-from-str
+  (lam (s)
+    (let ((lines (str-split-lines s)))
+      (case lines
+        (nil (text-zipper unit (line-ctx nil "" "" nil)))
+        ((cons first rest)
+          (text-zipper unit (line-ctx nil "" first rest)))))))
+
+; Split a string into lines by "\n" separator.
+; Uses tail-recursive helper accumulating reversed lines, then reverses.
+(def str-split-lines
+  (lam (s)
+    (let ((rev-lines (str-split-lines-onto s nil)))
+      (se-reverse Str rev-lines))))
+
+(def str-split-lines-onto
+  (lam (s acc)
+    (let ((nl-idx (str-find s "\n")))
+      (case (<i nl-idx 0)
+        (true (cons s acc))  ; no more newlines (empty s has none)
+        (false
+          (let ((before (str-sub s 0 nl-idx))
+                (rest (str-sub s (+ nl-idx 1) (str-len s))))
+            (str-split-lines-onto rest (cons before acc))))))))
+
+; Byte offset of the start of 1-indexed line `target` in s (skip target-1
+; newlines). cur = byte offset, line = current 1-indexed line. Clamps to end
+; of s if there are fewer than `target` lines.
+(def line-start-offset (-> Str I64 I64 I64 I64)
+  (lam (s target cur line)
+    (case (=i line target)
+      (true cur)
+      (false
+        (let (nl (str-find-from s "\n" cur))
+          (case (<i nl 0)
+            (true cur)
+            (false (line-start-offset s target (+ nl 1) (+ line 1)))))))))
+
+; Split at most `n` lines of s starting at byte offset `pos`, walking with
+; str-find-from and copying ONLY each line (str-sub pos nl). The old str-split-n
+; copied the remaining suffix every iteration (O(n^2)) and str-split-window
+; copied the whole file suffix first — that O(file-size) copying per keystroke
+; was the movement latency on large files.
+(def str-split-n-onto (-> Str I64 I64 (List Str))
+  (lam (s pos n)
+    (case (<=i n 0)
+      (true nil)
+      (false
+        (let (nl (str-find-from s "\n" pos))
+          (case (<i nl 0)
+            (true (cons (str-sub s pos (str-len s)) nil))
+            (false
+              (cons (str-sub s pos nl)
+                    (str-split-n-onto s (+ nl 1) (- n 1))))))))))
+
+; The visible window of at most `n` lines starting at 1-indexed line `start`.
+; Used by the windowed renderers so a keystroke splits only the viewport, not
+; the whole file (the O(n) full-file split + highlight per keystroke).
+(def str-split-window (-> Str I64 I64 (List Str))
+  (lam (s start n)
+    (let (off (line-start-offset s start 0 1))
+      (str-split-n-onto s off n))))
+
+; ---------------------------------------------------------------- Undo / Redo
+; Undo is structural: each edit produces a new zipper.
+; UndoState holds past and future stacks.
+
+; Push the current zipper onto the past stack.
+; Called by the command loop before each edit.
+; NOTE: future is cleared on push (new edit invalidates redo chain).
+(def undo-push (-> UndoState (TextZipper Str) (Pair UndoState (TextZipper Str)))
+  (lam (us z)
+    (case us
+      ((undo-state past future)
+        (pair (undo-state (cons z past) nil) z)))))
+
+; Pop from undo: current zipper goes to future, previous zipper becomes current.
+; If past is empty, returns stack and zipper unchanged.
+(def undo-pop (-> UndoState (TextZipper Str) (Pair UndoState (TextZipper Str)))
+  (lam (us z)
+    (case us
+      ((undo-state past future)
+        (case past
+          (nil (pair us z))  ; empty past, no-op
+          ((cons prev rest-past)
+            (pair (undo-state rest-past (cons z future)) prev)))))))
+
+; Pop from redo: current zipper goes to past, next zipper becomes current.
+; If future is empty, returns stack and zipper unchanged.
+(def redo-pop (-> UndoState (TextZipper Str) (Pair UndoState (TextZipper Str)))
+  (lam (us z)
+    (case us
+      ((undo-state past future)
+        (case future
+          (nil (pair us z))  ; empty future, no-op
+          ((cons next rest-future)
+            (pair (undo-state (cons z past) rest-future) next)))))))
+
+
+; ─── Flat-text movement (no TextZipper bridge) ────────────────────────────
+; The zipper<->text-zipper bridge splits + rejoins the whole file on every
+; movement key (O(n) per keystroke). These move the flat-text offset directly,
+; O(line) worst case (line-start walks back over the column, line-end finds the
+; next newline). Used by the command-loop movement ops via zb-move.
+
+(def flat-forward-char (-> Str I64 I64)
+  (lam (s off) (min (+ off 1) (str-len s))))
+
+(def flat-backward-char (-> Str I64 I64)
+  (lam (s off) (max (- off 1) 0)))
+
+; Offset of the start of the line containing `off` (walk back to the newline).
+; O(column): stops at the first newline before the cursor.
+(def flat-line-start (-> Str I64 I64)
+  (lam (s off)
+    (case (=i off 0)
+      (true 0)
+      (false
+        (case (str-eq (str-sub s (- off 1) off) "\n")
+          (true off)
+          (false (flat-line-start s (- off 1))))))))
+
+; Offset of the newline ending the line containing `off` (or str-len at EOF).
+(def flat-line-end (-> Str I64 I64)
+  (lam (s off)
+    (let (nl (str-find-from s "\n" off))
+      (case (<i nl 0)
+        (true (str-len s))
+        (false nl)))))
+
+(def flat-beginning-of-line (-> Str I64 I64)
+  (lam (s off) (flat-line-start s off)))
+
+(def flat-end-of-line (-> Str I64 I64)
+  (lam (s off) (flat-line-end s off)))
+
+; Move to the next line, preserving column (clamped to line length). No-op at
+; the last line.
+(def flat-next-line (-> Str I64 I64)
+  (lam (s off)
+    (let (eol (flat-line-end s off))
+      (case (=i eol (str-len s))
+        (true off)
+        (false
+          (let (col (- off (flat-line-start s off)))
+            (let (next-start (+ eol 1))
+              (let (next-eol (str-find-from s "\n" next-start))
+                (let (next-len (case (<i next-eol 0)
+                                 (true (- (str-len s) next-start))
+                                 (false (- next-eol next-start))))
+                  (+ next-start (min col next-len)))))))))))
+
+; Move to the previous line, preserving column (clamped). No-op at first line.
+(def flat-previous-line (-> Str I64 I64)
+  (lam (s off)
+    (let (start (flat-line-start s off))
+      (case (=i start 0)
+        (true off)
+        (false
+          (let (col (- off start))
+            (let (prev-start (flat-line-start s (- start 1)))
+              (let (prev-len (- (- start 1) prev-start))
+                (+ prev-start (min col prev-len))))))))))
+
+; Insert `s` at byte offset `off` in text (flat). O(len) copy but only a few
+; allocations (2 str-sub + 2 str-cat), vs the zipper bridge's O(n) split+join
+; (n string allocations) per self-insert keystroke.
+(def flat-insert (-> Str I64 Str Str)
+  (lam (text off s)
+    (str-cat (str-sub text 0 off)
+             (str-cat s (str-sub text off (str-len text))))))
+
+; Delete 1 char AT offset `off` (forward). No-op at EOF. Returns (new-text, off).
+(def flat-delete-forward (-> Str I64 (Pair Str I64))
+  (lam (text off)
+    (case (<=i (str-len text) off)
+      (true (pair text off))
+      (false (pair (str-cat (str-sub text 0 off) (str-sub text (+ off 1) (str-len text))) off)))))
+
+; Delete 1 char BEFORE offset `off` (backward). No-op at BOF. Returns (new-text, new-off).
+(def flat-delete-backward (-> Str I64 (Pair Str I64))
+  (lam (text off)
+    (case (<=i off 0)
+      (true (pair text off))
+      (false (pair (str-cat (str-sub text 0 (- off 1)) (str-sub text off (str-len text))) (- off 1))))))
+
+; ─── Flat word / non-blank movement (S13 vim w/b/e/^) ──────────────────────
+; Flat-text word movement matching vim w/b/e/^. "Word char" = non-whitespace
+; (space 32, tab 9, newline 10). Operate on (Str, offset) like the other flat-*
+; fns so the movement ops route through zb-move without the O(n) TextZipper
+; bridge.
+
+; Is the byte at `off` whitespace? False at/after EOF.
+(def flat-ws? (-> Str I64 Bool)
+  (lam (s off)
+    (case (<i off (str-len s))
+      (true
+        (let (c (bget (str->bytes s) off))
+          (or (=i c 32) (or (=i c 9) (=i c 10)))))
+      (false false))))
+
+; Skip whitespace forward from `off`.
+(def skip-ws-fwd (-> Str I64 I64)
+  (lam (s off)
+    (case (flat-ws? s off)
+      (true (skip-ws-fwd s (+ off 1)))
+      (false off))))
+
+; Skip non-whitespace (word chars) forward from `off`.
+(def skip-nonws-fwd (-> Str I64 I64)
+  (lam (s off)
+    (case (<i off (str-len s))
+      (true
+        (case (flat-ws? s off)
+          (true off)
+          (false (skip-nonws-fwd s (+ off 1)))))
+      (false off))))
+
+; Skip whitespace backward (chars BEFORE off).
+(def skip-ws-back (-> Str I64 I64)
+  (lam (s off)
+    (case (=i off 0)
+      (true 0)
+      (false
+        (case (flat-ws? s (- off 1))
+          (true (skip-ws-back s (- off 1)))
+          (false off))))))
+
+; Skip non-whitespace backward (chars BEFORE off).
+(def skip-nonws-back (-> Str I64 I64)
+  (lam (s off)
+    (case (=i off 0)
+      (true 0)
+      (false
+        (case (flat-ws? s (- off 1))
+          (true off)
+          (false (skip-nonws-back s (- off 1))))))))
+
+; vim w: start of next word (skip word chars, then whitespace).
+(def flat-forward-word (-> Str I64 I64)
+  (lam (s off) (skip-ws-fwd s (skip-nonws-fwd s off))))
+
+; vim b: start of previous word (skip whitespace back, then word chars).
+(def flat-backward-word (-> Str I64 I64)
+  (lam (s off) (skip-nonws-back s (skip-ws-back s off))))
+
+; vim e: end of current/next word (skip whitespace, then word chars).
+(def flat-end-of-word (-> Str I64 I64)
+  (lam (s off) (skip-nonws-fwd s (skip-ws-fwd s off))))
+
+; Skip spaces and tabs forward (not newline — the line separator).
+(def skip-blank-fwd (-> Str I64 I64)
+  (lam (s off)
+    (case (<i off (str-len s))
+      (true
+        (let (c (bget (str->bytes s) off))
+          (case (or (=i c 32) (=i c 9))
+            (true (skip-blank-fwd s (+ off 1)))
+            (false off))))
+      (false off))))
+
+; vim ^: first non-blank char of the current line.
+(def flat-first-non-blank (-> Str I64 I64)
+  (lam (s off) (skip-blank-fwd s (flat-line-start s off))))
+
+; ─── Flat document / line motions + edits (S13 vim gg/G/~/J/%) ──────────────
+; All flat motions keep the (-> Str I64 I64) shape so they route through zb-move;
+; the edits (~/J) return (new-text) or (new-text, new-off) for the op wrappers.
+
+; vim gg: first non-blank of the FIRST line (off ignored — absolute motion).
+(def flat-doc-top (-> Str I64 I64)
+  (lam (s off) (skip-blank-fwd s 0)))
+
+; vim G: first non-blank of the LAST line. A trailing newline means the true
+; last line is empty; probe the char BEFORE it so G lands on the last content
+; line, matching vim.
+(def flat-doc-bottom (-> Str I64 I64)
+  (lam (s off)
+    (let (n (str-len s))
+      (case (=i n 0)
+        (true 0)
+        (false
+          (let (probe (case (str-eq (str-sub s (- n 1) n) "\n") (true (- n 1)) (false n)))
+            (flat-first-non-blank s probe)))))))
+
+; vim ~: toggle the case of the char at `off`, returning the new text (same
+; length). Non-letters and EOF are unchanged. The op advances the point by 1.
+(def flat-toggle-case (-> Str I64 Str)
+  (lam (s off)
+    (case (<i off (str-len s))
+      (true
+        (let (c (bget (str->bytes s) off))
+          (let (c2 (case (and (<=i 65 c) (<=i c 90)) (true (+ c 32))
+                     (false (case (and (<=i 97 c) (<=i c 122)) (true (- c 32)) (false c)))))
+            (str-cat (str-sub s 0 off)
+              (str-cat (bytes->str (bslice (pack-u32 c2) 0 1)) (str-sub s (+ off 1) (str-len s)))))))
+      (false s))))
+
+; vim J: join the current line with the next — replace the line's terminating
+; newline with a single space and drop the next line's leading blanks. Returns
+; (new-text, join-offset); the cursor lands on the inserted space (vim behavior).
+; No-op on the last line.
+(def flat-join-line (-> Str I64 (Pair Str I64))
+  (lam (s off)
+    (let (eol (flat-line-end s off))
+      (case (=i eol (str-len s))
+        (true (pair s off))
+        (false
+          (let (next-start (skip-blank-fwd s (+ eol 1)))
+            (pair (str-cat (str-sub s 0 eol)
+                    (str-cat " " (str-sub s next-start (str-len s))))
+                  eol)))))))
+
+; ─── vim % : matching-bracket motion ───────────────────────────────────────
+
+(def se-bracket-open? (-> I64 Bool)
+  (lam (c) (or (=i c 40) (or (=i c 91) (=i c 123)))))     ; ( [ {
+
+(def se-bracket-close? (-> I64 Bool)
+  (lam (c) (or (=i c 41) (or (=i c 93) (=i c 125)))))     ; ) ] }
+
+(def se-bracket? (-> I64 Bool)
+  (lam (c) (or (se-bracket-open? c) (se-bracket-close? c))))
+
+; The open-code of any bracket char (its own code if already open).
+(def se-open-of (-> I64 I64)
+  (lam (c)
+    (case (or (=i c 40) (=i c 41)) (true 40)
+      (false (case (or (=i c 91) (=i c 93)) (true 91) (false 123))))))
+
+; The close-code of any bracket char.
+(def se-close-of (-> I64 I64)
+  (lam (c)
+    (case (or (=i c 40) (=i c 41)) (true 41)
+      (false (case (or (=i c 91) (=i c 93)) (true 93) (false 125))))))
+
+; Scan forward for the close matching an open at depth 0 (the open itself lifts
+; depth to 1). Returns the match index or -1.
+(def se-scan-fwd-match (-> Str I64 I64 I64 I64 I64)
+  (lam (s i oc cc depth)
+    (case (<i i (str-len s))
+      (true
+        (let (c (bget (str->bytes s) i))
+          (let (d2 (case (=i c oc) (true (+ depth 1))
+                     (false (case (=i c cc) (true (- depth 1)) (false depth)))))
+            (case (=i d2 0) (true i) (false (se-scan-fwd-match s (+ i 1) oc cc d2))))))
+      (false (- 0 1)))))
+
+; Scan backward for the open matching a close. Returns the match index or -1.
+(def se-scan-back-match (-> Str I64 I64 I64 I64 I64)
+  (lam (s i oc cc depth)
+    (case (<i i 0)
+      (true (- 0 1))
+      (false
+        (let (c (bget (str->bytes s) i))
+          (let (d2 (case (=i c cc) (true (+ depth 1))
+                     (false (case (=i c oc) (true (- depth 1)) (false depth)))))
+            (case (=i d2 0) (true i) (false (se-scan-back-match s (- i 1) oc cc d2)))))))))
+
+; First bracket char at/after `off` on the current line (stop at newline/EOF).
+(def se-find-bracket-on-line (-> Str I64 I64)
+  (lam (s off)
+    (case (<i off (str-len s))
+      (true
+        (let (c (bget (str->bytes s) off))
+          (case (=i c 10) (true (- 0 1))
+            (false (case (se-bracket? c) (true off)
+              (false (se-find-bracket-on-line s (+ off 1))))))))
+      (false (- 0 1)))))
+
+; ─── vim f/F/t/T : find-char-on-line motions ────────────────────────────────
+; All search the CURRENT line only (stop at newline / buffer end) and stay put
+; when the target is not found, matching vim.
+
+; Scan forward from `i` for `code`, bounded by end-of-line. -1 if not found.
+(def se-scan-char-fwd (-> Str I64 I64 I64)
+  (lam (s i code)
+    (case (<i i (str-len s))
+      (true
+        (let (c (bget (str->bytes s) i))
+          (case (=i c 10) (true (- 0 1))
+            (false (case (=i c code) (true i) (false (se-scan-char-fwd s (+ i 1) code)))))))
+      (false (- 0 1)))))
+
+; Scan backward from `i` for `code`, bounded by start-of-line. -1 if not found.
+(def se-scan-char-back (-> Str I64 I64 I64)
+  (lam (s i code)
+    (case (<i i 0)
+      (true (- 0 1))
+      (false
+        (let (c (bget (str->bytes s) i))
+          (case (=i c 10) (true (- 0 1))
+            (false (case (=i c code) (true i) (false (se-scan-char-back s (- i 1) code))))))))))
+
+; vim f{c}: forward to the next occurrence of c (cursor lands ON it).
+(def flat-find-char-fwd (-> Str I64 I64 I64)
+  (lam (s off code)
+    (let (m (se-scan-char-fwd s (+ off 1) code))
+      (case (<i m 0) (true off) (false m)))))
+
+; vim F{c}: backward to the previous occurrence of c.
+(def flat-find-char-back (-> Str I64 I64 I64)
+  (lam (s off code)
+    (let (m (se-scan-char-back s (- off 1) code))
+      (case (<i m 0) (true off) (false m)))))
+
+; vim t{c}: forward to just BEFORE the next c.
+(def flat-till-char-fwd (-> Str I64 I64 I64)
+  (lam (s off code)
+    (let (m (se-scan-char-fwd s (+ off 1) code))
+      (case (<i m 0) (true off) (false (- m 1))))))
+
+; vim T{c}: backward to just after the previous c.
+(def flat-till-char-back (-> Str I64 I64 I64)
+  (lam (s off code)
+    (let (m (se-scan-char-back s (- off 1) code))
+      (case (<i m 0) (true off) (false (+ m 1))))))
+
+; vim r{c}: replace the char at `off` with code (same length). EOF -> unchanged.
+(def flat-replace-char (-> Str I64 I64 Str)
+  (lam (s off code)
+    (case (<i off (str-len s))
+      (true
+        (str-cat (str-sub s 0 off)
+          (str-cat (bytes->str (bslice (pack-u32 code) 0 1)) (str-sub s (+ off 1) (str-len s)))))
+      (false s))))
+
+; vim %: jump to the bracket matching the one under the cursor (or the first
+; bracket at/after the cursor on the line). No bracket / no match -> stay put.
+(def flat-match-bracket (-> Str I64 I64)
+  (lam (s off)
+    (let (start (se-find-bracket-on-line s off))
+      (case (<i start 0)
+        (true off)
+        (false
+          (let (c (bget (str->bytes s) start))
+            (let (m (case (se-bracket-open? c)
+                      (true  (se-scan-fwd-match  s start (se-open-of c) (se-close-of c) 0))
+                      (false (se-scan-back-match s start (se-open-of c) (se-close-of c) 0))))
+              (case (<i m 0) (true off) (false m)))))))))
+
+; ─── vim text objects (iw/aw, i"/a", i(/a( …) ───────────────────────────────
+; Pure range finders returning a half-open (start, end) span; the operator
+; (d/c/y) then deletes/yanks/changes that span. An unresolved object returns
+; (off, off) — an empty span, a harmless no-op.
+
+; The code at `off`, or -1 at EOF.
+(def se-char-at (-> Str I64 I64)
+  (lam (s off)
+    (case (<i off (str-len s))
+      (true (bget (str->bytes s) off))
+      (false (- 0 1)))))
+
+; Start of the non-whitespace run containing `off` (walk back while prev non-ws).
+(def flat-word-start (-> Str I64 I64)
+  (lam (s off)
+    (case (=i off 0) (true 0)
+      (false (case (flat-ws? s (- off 1)) (true off) (false (flat-word-start s (- off 1))))))))
+
+; One-past-end of the non-whitespace run containing `off` (walk fwd while non-ws).
+(def flat-word-end (-> Str I64 I64)
+  (lam (s off)
+    (case (<i off (str-len s))
+      (true (case (flat-ws? s off) (true off) (false (flat-word-end s (+ off 1)))))
+      (false off))))
+
+; The (open-code . close-code) pair for a bracket-family object char.
+; ( ) b -> (), { } B -> {}, [ ] -> []; anything else defaults to ().
+(def se-paren-codes (-> I64 (Pair I64 I64))
+  (lam (code)
+    (case (or (=i code 123) (or (=i code 125) (=i code 66))) (true (pair 123 125))
+      (false (case (or (=i code 91) (=i code 93)) (true (pair 91 93))
+        (false (pair 40 41)))))))
+
+; Walk back from `i` for the UNMATCHED open of the pair enclosing the cursor.
+; A close seen on the way in raises the depth we owe; the open that clears it
+; is the encloser. -1 if the cursor is not inside a pair.
+(def se-encl-open (-> Str I64 I64 I64 I64 I64)
+  (lam (s i oc cc depth)
+    (case (<i i 0)
+      (true (- 0 1))
+      (false
+        (let (c (bget (str->bytes s) i))
+          (case (=i c cc) (true (se-encl-open s (- i 1) oc cc (+ depth 1)))
+            (false
+              (case (=i c oc)
+                (true (case (=i depth 0) (true i) (false (se-encl-open s (- i 1) oc cc (- depth 1)))))
+                (false (se-encl-open s (- i 1) oc cc depth))))))))))
+
+; Quote object: the pair of `code` quotes around the cursor (same char opens
+; and closes). inner excludes the quotes, around includes them.
+(def se-quote-range (-> Str I64 Bool I64 (Pair I64 I64))
+  (lam (s off inner code)
+    (let (openq (se-scan-char-back s off code))
+      (case (<i openq 0)
+        (true (pair off off))
+        (false
+          (let (closeq (se-scan-char-fwd s (+ openq 1) code))
+            (case (<i closeq 0)
+              (true (pair off off))
+              (false
+                (case inner
+                  (true (pair (+ openq 1) closeq))
+                  (false (pair openq (+ closeq 1))))))))))))
+
+; Bracket object: the innermost oc/cc pair enclosing the cursor. If the cursor
+; sits ON a bracket, that bracket anchors the pair.
+(def se-bracket-range (-> Str I64 Bool I64 I64 (Pair I64 I64))
+  (lam (s off inner oc cc)
+    (let (cat (se-char-at s off))
+      (let (openp
+             (case (=i cat oc) (true off)
+               (false (case (=i cat cc) (true (se-scan-back-match s off oc cc 0))
+                 (false (se-encl-open s off oc cc 0))))))
+        (case (<i openp 0)
+          (true (pair off off))
+          (false
+            (let (closep (se-scan-fwd-match s openp oc cc 0))
+              (case (<i closep 0)
+                (true (pair off off))
+                (false
+                  (case inner
+                    (true (pair (+ openp 1) closep))
+                    (false (pair openp (+ closep 1)))))))))))))
+
+; flat-textobj-range: (text, cursor, inner?, object-code) -> half-open span.
+(def flat-textobj-range (-> Str I64 Bool I64 (Pair I64 I64))
+  (lam (s off inner code)
+    (case (=i code 119)
+      (true
+        (let (ws (flat-word-start s off))
+          (let (we (flat-word-end s off))
+            (case inner
+              (true (pair ws we))
+              (false (pair ws (skip-ws-fwd s we)))))))
+      (false
+        (case (or (=i code 34) (or (=i code 39) (=i code 96)))
+          (true (se-quote-range s off inner code))
+          (false
+            (case (se-paren-codes code)
+              ((pair oc cc) (se-bracket-range s off inner oc cc)))))))))
+

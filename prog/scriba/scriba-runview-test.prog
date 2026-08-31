@@ -1,0 +1,114 @@
+; scriba-runview-test.chiral — S15 unit gate for the manas run-view PURE render core.
+;
+; Drives runview-render / outcome-row / phase-tag over hand-built RunView values
+; and byte-checks the rendered rows. Pure — NO PTY, NO network, NO fork (the whole
+; point: plan-run is pure, so the GATE renders before any be-chat). compile-main
+; returns 0 iff all four tests pass (exit 0).
+;
+; Build+run (fast, ~seconds — the manas-runview closure only, no full scriba tree):
+;   . bin/chirality-resolve.sh
+;   chirality_blob scaffold/lib scriba/manas-runview manas/core/types > blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
+;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   cat TUI/scriba/scriba-runview-test.chiral >> blob; echo >> blob
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
+
+(import "prelude")
+(import "render")                  ; Rendering (r-lines / r-face / r-text) — to dig rows
+(import "manas-runview")           ; RunView, RunPhase, RvCall, runview-render, outcome-row, phase-tag, rv-*
+(import "manas/core/types")        ; ExpertOutcome (expert-ok / expert-bad), RunManifest, ExpertCall, Binding
+
+; ─── Rendering extractors (dig the tree runview-render produces) ─────────────
+
+; the children of an r-lines node (nil for anything else — total).
+(def rl-children (-> Rendering (List Rendering))
+  (lam (r) (case r
+    ((r-lines cs) cs)
+    (_ nil))))
+
+(def nth-rendering (-> (List Rendering) I64 Rendering)
+  (lam (rs i)
+    (case rs
+      (nil (r-hole "<none>"))
+      ((cons h t) (case (=i i 0) (true h) (false (nth-rendering t (- i 1))))))))
+
+(def rlist-len (-> (List Rendering) I64)
+  (lam (rs) (case rs (nil 0) ((cons h t) (+ 1 (rlist-len t))))))
+
+; the face name of an r-face row ("" for anything else).
+(def face-of (-> Rendering Str)
+  (lam (r) (case r
+    ((r-face f b) f)
+    (_ ""))))
+
+; the text content of a row: unwrap r-face -> r-text, or a bare r-text.
+(def row-text (-> Rendering Str)
+  (lam (r) (case r
+    ((r-face f b) (row-text b))
+    ((r-text s bold) s)
+    (_ ""))))
+
+; substring membership (str-find returns -1 when absent).
+(def has-sub (-> Str Str Bool)
+  (lam (s needle) (<=i 0 (str-find s needle))))
+
+; ─── a hand-built RunManifest for T3 (final = (some m)) ──────────────────────
+(def m0 RunManifest
+  (run-manifest "" "refine X" "" "" "doc-refine" "doc-refine" "route"
+    (the (List Str) nil) "smoke-local" (the (List Binding) nil) (the (List I64) nil)
+    (the (List ExpertCall) nil) (the (List Str) nil) "the merged refinement" ""))
+
+; ─── T1 — the GATE line (a rv-planned view) ──────────────────────────────────
+; The routing reason + join-comma of the fired ids on the 2nd row — proves the
+; GATE renders from a PURE value with no network.
+(def t1 (-> Unit Bool)
+  (lam (_)
+    (let ((rv (rv-planned-of "refine X" "6 rules matched"
+                (cons "claim-vs-source" (cons "anchor-sharpen" nil)))))
+      (let ((rows (rl-children (runview-render rv (pair 24 80) 0))))
+        (str-eq (row-text (nth-rendering rows 1))
+          "GATE  6 rules matched  ->  claim-vs-source, anchor-sharpen")))))
+
+; ─── T2 — a good row and a bad row (outcome-row directly) ────────────────────
+; The OK row is a manas-ok face carrying "SLOT -> model"; the BAD row is a
+; manas-bad face carrying the reason. The case on ExpertOutcome FORCES the bad
+; branch — a dropped failure is not representable.
+(def t2 (-> Unit Bool)
+  (lam (_)
+    (let ((okrow  (outcome-row (rv-call "claim-vs-source" "reasoner" "qwen2.5:0.5b"
+                                 (expert-ok nil "raw ok"))))
+          (badrow (outcome-row (rv-call "anchor-sharpen" "reasoner" "qwen2.5:0.5b"
+                                 (expert-bad "raw bad" "http-500")))))
+      (and (and (str-eq (face-of okrow) "manas-ok")
+                (and (has-sub (row-text okrow) "OK   claim-vs-source")
+                     (has-sub (row-text okrow) "(reasoner -> qwen2.5:0.5b)")))
+           (and (str-eq (face-of badrow) "manas-bad")
+                (and (has-sub (row-text badrow) "BAD  http-500")
+                     (has-sub (row-text badrow) "anchor-sharpen")))))))
+
+; ─── T3 — the finished run (a rv-done view) ──────────────────────────────────
+; COMBINER row = "(done)" (phase-tag readback); YIELD row carries the yield.
+(def t3 (-> Unit Bool)
+  (lam (_)
+    (let ((rv (rv-done-of "refine X" "route"
+                (cons "claim-vs-source" nil) nil "the merged refinement" m0)))
+      (let ((rows (rl-children (runview-render rv (pair 24 80) 0))))
+        (and (str-eq (row-text (nth-rendering rows 2)) "COMBINER  (done)")
+             (str-eq (row-text (nth-rendering rows 3)) "YIELD  the merged refinement"))))))
+
+; ─── T4 — a routing failure (a rv-failed view) ───────────────────────────────
+; COMBINER row = "(failed: no-route)"; there are NO outcome-rows (exactly 4 rows:
+; RUN, GATE, COMBINER, YIELD). Proves a routing failure renders as a value.
+(def t4 (-> Unit Bool)
+  (lam (_)
+    (let ((rv (rv-fail "req" "no-route")))
+      (let ((rows (rl-children (runview-render rv (pair 24 80) 0))))
+        (and (str-eq (row-text (nth-rendering rows 2)) "COMBINER  (failed: no-route)")
+             (=i (rlist-len rows) 4))))))
+
+; ─── entry: 0 iff all four pass ──────────────────────────────────────────────
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (and (and (t1 unit) (t2 unit)) (and (t3 unit) (t4 unit)))
+      (true 0)
+      (false 1))))

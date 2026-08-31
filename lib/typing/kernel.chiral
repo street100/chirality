@@ -1,0 +1,1514 @@
+; E3 + E4: the trusted kernel core in chirality source.
+;   E3 -- Normalization-by-Evaluation: eval / quote / conv (+ eta).
+;   E4 -- the bidirectional judgment: infer / check / subsume / subtype,
+;         errors-as-values (TcR/CkR) + QTT usage vectors.
+; Ported from scaffold/chirality/kernel.py (eval_term:223, vapp:261, close_apply:270,
+; conv:277, quote:361, subtype:321, infer:400, check:483). Pure (->). kernel.py
+; stays the differential oracle until the front end imports this file.
+;
+; The shared full-ADT Term/KArm/Seat live in the leaf "syntax" (imported here, so
+; the data layer can reference Term without a cycle -- E04 decision #7); this file
+; OWNS the Value ADT + the judgment. Convergence seams:
+;   q : Qty (E5, imported here -- E3's I64 placeholder converged to Qty at E4);
+;   Seat concrete 2-point (E12/E39 supply the rich row-bearing Seat, compared by
+;   seat= only); the effect-row allow_eff threading + membrane seams
+;   (on_apply/on_binder/erased_allow) -> E12; subtype's Pi row-subsumption ->
+;   E39; globals/prims, data values, let, literals -> E6/full-ADT assembly.
+(import "qtt")                 ; brings prelude + Qty (q0/q1/qw) + uzero/uadd/uscale/qfits
+(import "refine")              ; Constraint + entails/is-empty/satisfies/c-* (VRefine, E04 #6)
+(import "syntax")              ; the shared full-ADT Term + KArm + Seat (leaf; E04 decision #7)
+(import "data")                ; DataDecl (Sig.datas + the con/case arms reuse E6/E7)
+
+; ---- semantics: values / closures / neutrals (Value <-> Clos mutual) ---------
+(data Value ()
+  (v-type (n I64))
+  (v-pi   (q Qty) (s Seat) (dom Value) (cod Clos))
+  (v-lam  (body Clos))
+  (v-ne   (head Neut) (spine (List Value)))
+  (v-primty (n Str))                                 ; a primitive type value
+  (v-lit-i (v I64)) (v-lit-s (v Str))                ; literal values
+  (v-con  (dn Str) (cn Str) (args (List Value)))     ; a constructor value
+  (v-tcon (dn Str) (args (List Value)))              ; a data-type value
+  (v-refine (base Value) (cns Constraint)))          ; {base | cns} refinement type (E04 #6)
+(data Clos () (clos (env (List Value)) (body Term)))
+(data Neut ()
+  (n-var    (lvl I64))
+  (n-global (n Str))                                 ; a stuck global (slice 3: unfolds via Sig)
+  (n-prim   (n Str)))                                ; a stuck extern (matches kernel.py NPrim)
+
+; ---- E04 slice 3: the full Sig -- the judgment reads it, the loader writes it -
+; Lives HERE (not sig.chiral) because infer needs it and Sig holds Term: a separate
+; module would import-cycle with kernel. Subsumes E69's SigV / the sig-driver's
+; EffSig (their projections). globals: name -> (type, body); prims: name -> type.
+; latoms/ldatas = the linearity registries (E04 decision #5, kernel.py atom_types/
+; linear_data): a linear porttype ATOM name, or a data type known linear. The
+; loader populates them at check_data; is-linear reads them.
+; H6: the COMPOSITION MANIFEST (surface.py top_target :285 / top_profile :228).
+; A target is a requirement type the composite must satisfy: a named list of
+; (requirement-name, type) pairs, each type already judged to be a universe.
+; A profile is the additive manifest itself -- the frozen port set (which
+; crossings the composite may use), the target it must satisfy, an optional
+; memory discipline (a COMPOSITION-time choice: which mem-<d> lib it is built
+; on) and the `total` flag (every morphism total -- judged by verify, open-edge
+; 9). Both are STORED here so the later stages (enforcement) can read them off
+; the Sig; this file's judgment never consults them.
+; Requirement types are kept as TERMS (the Sig's own currency -- globals/prims
+; are Terms too); a consumer that wants surface.py's evaluated form applies
+; eval-term to them, exactly as infer does for a prim's type.
+(data TargetDef () (mk-target  (name Str) (reqs (List (Pair Str Term)))))
+(data Profile   () (mk-profile (name Str) (ports (List Str)) (target Str)
+                               (memory (Maybe Str)) (total Bool)))
+
+; ---- E160: the MODULE COORDINATE ---------------------------------------------
+; docs/banks/module.md §1: a module is "(a) placed on the typeability axis in
+; exactly one of A/B/C, (b) spanned across the altitude axis upper->tal->metal,
+; (c) faced outward by a port-set (its membrane)." Three ORTHOGONAL axes, one
+; value each -- a coordinate, so an overlap is not expressible. Ten-odd modules
+; already stated theirs in PROSE, where nothing checked it; a kind nothing checks
+; is decoration (pretty.chiral's own header is the precedent for what "checked"
+; means: "a display function PROVABLY crosses no port").
+;
+; Each axis is a CLOSED SUM parsed ONCE at the declaration and never a string
+; compared downstream (pattern-boundary-sums). What each buys:
+;
+;   KCat   -- STORED, VALIDATED, NOT DERIVED. axis-typeability's test is "what
+;             does its correctness rest on: proof (A) / an admitted hole (B) /
+;             cross-checked evidence about a hole (C)". That is a JUDGMENT about
+;             a proof obligation, not a property of the source text, so the
+;             compiler can refuse a letter outside A/B/C and nothing more.
+;             Deriving it would mean inventing a verdict, which is worse than
+;             storing an author's.
+;   KAlt   -- STORED, VALIDATED, NOT DERIVED. Altitude is partially visible
+;             (a module defining TIFns is tal-tier), but only partially: an
+;             `upper` module that merely MENTIONS tal types is still upper, and
+;             the metal tier has no source-level signature at all. A check that
+;             is right two-thirds of the time is a check that gets suppressed,
+;             so the honest scope is the value's shape.
+;
+; THE THIRD AXIS IS NO LONGER AUTHORED. E160 had a `KClaim` -- a bare `(pure)` /
+; `(crosses)` clause -- checked at the emit gate against the crossings the
+; module's own emitted code reached. E161 deletes it, and the deletion is the
+; point rather than a simplification: a claim is a SECOND statement of a fact the
+; module already makes, so it can disagree with the module and something has to
+; be built to catch it. `Sheet`'s `crossings` (below) states the same axis by
+; DERIVING it -- which externs this module binds -- so there is no second
+; statement, nothing to disagree, and the port-set axis is present on every
+; coordinate instead of only the ones that remembered to claim. The object-code
+; sense the retired gate used ("what the emitted program CALLS") is a property of
+; a PROGRAM, not of a module, and it stays where it was borrowed from: H8's
+; profile gate in compile-emit.chiral.
+(data KCat   () (cat-a) (cat-b) (cat-c))                       ; typeability axis
+; ⚑ AUTHORED PENDING D7 -- altitude is the one axis with neither a producer
+; nor a consumer: nothing derives it and no analysis reads it. It is carried
+; forward from E160 unchanged, as an interim, and the open decision is whether
+; it is derived, stays a second authored field, or leaves the schema
+; (.planning/specs/E161-kind-identifier-SPEC.md D7).
+(data KAlt   () (alt-upper) (alt-tal) (alt-metal))             ; altitude axis
+
+; E161 -- WHICH TOPLEVEL HEAD charged a name to a module's coordinate.
+;
+; A which-of-N read ONCE, at the point of decision (the loader's head dispatch),
+; and carried as a value; nothing downstream re-derives it from a Str
+; (pattern-boundary-sums). Before E161 the coordinate charged only `def` heads
+; and needed no tag, which is exactly why `ModKind` held a def list and not an
+; export list -- `data`, `extern` and `porttype` exported names that the record
+; could not see.
+;
+; This is NOT the datasheet's `ExpKind` (E161 step 3), and deliberately so.
+; `ExpKind` splits a def into `ek-fn` / `ek-proc`, and that split is a READING of
+; the def's arrow (ty-crosses over sig-global-ty, :299-305) -- not knowable at
+; charge time, since the charge runs in the same step that installs the type,
+; and storing it here would be a SECOND copy of what the type already says. The
+; charge therefore records only what the charge site actually knows: the head.
+; Step 4's def->export maps `eh-def` through ty-crosses and the other three arms
+; straight across -- a total function, and no "undetermined" arm anywhere.
+(data ExpHead () (eh-def) (eh-data) (eh-extern) (eh-porttype))
+
+; E161 -- WHAT KIND OF EXPORT a charged name is. The datasheet's grain.
+;
+; This is NOT `ExpHead` above. `ExpHead` records which HEAD charged the name --
+; all the charge site can honestly know. `ExpKind` is the READING taken once the
+; type is installed: a `def` splits into `ek-fn` / `ek-proc` by ty-crosses over
+; its own arrow (:299-305 below), and the other three heads map straight across.
+; The split is read off the type, never declared, so there is no second copy to
+; fall out of sync -- and the map is total, with no "undetermined" arm.
+;
+; A closed sum: the which-of-N is decided at the point of decision and carried
+; as a value; nothing downstream re-derives it by comparing a Str
+; (docs/pattern-boundary-sums.md).
+(data ExpKind () (ek-fn) (ek-proc) (ek-data) (ek-porttype) (ek-extern))
+(data Export  () (exp (name Str) (ek ExpKind)))
+
+; E161 -- THE MODULE DATASHEET. A certificate with a fixed schema
+; (docs/certificate-discipline.md owns the general mechanism): ONE authored
+; axis, every other field filled by the compiler and carrying no surface
+; production at all, so it cannot be written and therefore cannot disagree with
+; the module it describes.
+;
+; TOTAL. Every field is present on every record -- no Maybe, no "unspecified"
+; arm. A facade (lib/ports.chiral defines no def at all) carries the same six
+; fields with EMPTY lists, and empty is the CORRECT reading of its membrane
+; rather than a placeholder: under the sense declared below, a module that binds
+; nothing outward crosses nothing, and the crossings it re-exports are real one
+; import down, on those modules' own sheets.
+;
+; `crossings` holds extern NAMES. It deliberately does not mint a parallel
+; closed sum: crossing-wraps.chiral:6 is already "the one representation of the
+; map the erase image can see", and a hand-written twin of that table would be a
+; second source of truth for it. A genuine sum would have to be GENERATED from
+; the table, which is a separate change.
+;
+; The SENSE of `crossings` is DECLARED, because three inequivalent senses exist
+; and an unnamed one is a real derivation of an empty statement:
+;   (a) BINDS   -- this module's own effectful externs. THIS ONE. It is the
+;                  membrane the module governs (PRINCIPLES P3).
+;   (b) REACHES -- transitive through calls. No field: it is a FOLD over (a)
+;                  across imports, which composition already gives.
+;   (c) OBJECT  -- what the emitted code actually calls. A property of a
+;                  PROGRAM, not of a module; it stays in the H8 profile gate.
+;
+; `alt` is E160's altitude axis carried forward UNCHANGED and still AUTHORED:
+; nothing derives altitude and nothing reads it. That is the stated interim, not
+; a silently added second authored field.
+(data Sheet ()
+  (sheet (name      Str)                 ; the coordinate
+         (cat       KCat)                ; AUTHORED -- the typeability axis
+         (alt       KAlt)                ; AUTHORED (interim) -- the altitude axis
+         (crossings (List Str))          ; derived -- WHICH, not whether
+         (exports   (List Export))       ; derived -- def grain
+         (mints     (List Str))))        ; derived -- linear porttypes minted here
+
+; One module's coordinate: its NAME, its three axis values, the loader's scope
+; state, and the def names it owns.
+;
+; The NAME is the declaration's IDENTITY, and it is what makes redeclaration
+; decidable. It also lines up with E155, where the resolver already refuses two
+; different modules under one basename; a repeated coordinate name is that same
+; collision one layer up.
+;
+; E161 -- the name is now VERIFIABLE. It used not to be: the compiler is pure
+; (Str -> ELF) and never sees a file, so a `(target ...)` / `(profile ...)` name
+; is not checkable against anything either, and this one was declared to be the
+; same. That changed when the module extent became DECLARED: the source provider
+; emits `(end-module "<name>")` after each module it resolved, carrying the
+; resolver's basename key, and the close refuses when the open coordinate's name
+; differs from it. Two names for one thing with nothing comparing them is the
+; second-source-of-truth disease; there is a comparison now, so it runs.
+;
+; `open` is the scope state. A blob is a FLAT CONCATENATION of module sources,
+; so module identity is not handed to the compiler by the filesystem -- the
+; bracket is declared in the text and read off the forms:
+;
+;   a `(module ...)` form OPENS this coordinate. A second one while another is
+;   still open is REFUSED (k-two-in-extent), never read as the previous module's
+;   close; one module, one coordinate.
+;
+;   an `(end-module "<n>")` form CLOSES the open coordinate unconditionally, and
+;   is a no-op when none is open -- which is why an unannotated module carries
+;   the same marker and compiles exactly as it did before. The end of a source
+;   closes the last extent the same way, so a file compiled with no provider
+;   (`B1 < file`) has one implicit extent that is CLOSED, not left open.
+;
+;   an `import` form closes nothing. It used to close a coordinate whose body
+;   had begun -- a guess at the boundary, and a guess that could not see a
+;   def-less façade's end at all (it charged the 345 defs following
+;   lib/ports.chiral to `ports`). The declared extent replaced the guess.
+;
+; Every name installed while it is open is the module's own, and E161 charges
+; EVERY export head, not just `def`: the list pairs the name with the head that
+; installed it (ExpHead, above). `data` and `porttype` forms are hoisted out of
+; the loader's linear pass, so their charge is taken in source position by the
+; linear pass rather than at their install site -- see parse.chiral's
+; handle-hoisted.
+(data ModKind ()
+  (mk-modkind (name Str) (cat KCat) (alt KAlt)
+              (open Bool) (exports (List (Pair Str ExpHead)))))
+
+(data Sig ()
+  (mk-sig
+    (globals (List (Pair Str (Pair Term Term))))
+    (prims   (List (Pair Str Term)))
+    (datas   (List DataDecl))
+    (latoms  (List Str))
+    (ldatas  (List Str))
+    (targets  (List TargetDef))
+    (profiles (List Profile))
+    (kinds    (List ModKind))
+    (sheets   (List Sheet))))
+(def sig-globals (-> Sig (List (Pair Str (Pair Term Term)))) (lam (s) (case s ((mk-sig g p d la ld tg pf km sh) g))))
+(def sig-prims   (-> Sig (List (Pair Str Term)))             (lam (s) (case s ((mk-sig g p d la ld tg pf km sh) p))))
+(def sig-datas   (-> Sig (List DataDecl))                    (lam (s) (case s ((mk-sig g p d la ld tg pf km sh) d))))
+(def sig-latoms  (-> Sig (List Str))                         (lam (s) (case s ((mk-sig g p d la ld tg pf km sh) la))))
+(def sig-ldatas  (-> Sig (List Str))                         (lam (s) (case s ((mk-sig g p d la ld tg pf km sh) ld))))
+(def sig-targets  (-> Sig (List TargetDef)) (lam (s) (case s ((mk-sig g p d la ld tg pf km sh) tg))))
+(def sig-profiles (-> Sig (List Profile))   (lam (s) (case s ((mk-sig g p d la ld tg pf km sh) pf))))
+; E160 -- the declared module coordinates, MOST RECENT FIRST (the head is the
+; module the loader is currently inside, which is why `open` lives on the row).
+(def sig-kinds    (-> Sig (List ModKind))   (lam (s) (case s ((mk-sig g p d la ld tg pf km sh) km))))
+; E161 -- the finished module datasheets, one per CLOSED coordinate. A record
+; lands here when the loader closes the module's extent, so a sheet in this list
+; is done with its module and there is no window in which it is half-derived.
+(def sig-sheets   (-> Sig (List Sheet))     (lam (s) (case s ((mk-sig g p d la ld tg pf km sh) sh))))
+
+; manifest lookups (the redeclaration + unknown-target judgments read these).
+(declare find-target (-> (List TargetDef) Str (Maybe TargetDef)))
+(def find-target (lam (ts n) (case ts (nil none)
+  ((cons t r) (case t ((mk-target tn rs) (case (str-eq n tn) (true (some t)) (false (find-target r n)))))))))
+(declare find-profile (-> (List Profile) Str (Maybe Profile)))
+(def find-profile (lam (ps n) (case ps (nil none)
+  ((cons p r) (case p ((mk-profile pn po tg me to)
+    (case (str-eq n pn) (true (some p)) (false (find-profile r n)))))))))
+(def sig-target  (-> Sig Str (Maybe TargetDef)) (lam (s n) (find-target  (sig-targets  s) n)))
+(def sig-profile (-> Sig Str (Maybe Profile))   (lam (s n) (find-profile (sig-profiles s) n)))
+
+; E161 -- THE DATASHEET LOOKUP. Deliberately the same shape as find-target /
+; sig-profile just above: one LINEAR ASSOC SCAN over a manifest, returning the
+; record. It never traverses the module's defs -- the derivation already ran, at
+; close; this only finds what it produced. And it RETURNS the record rather than
+; a verdict, because a check is not an API: E160 could observe a module's port
+; set only from inside the emit gate, one module at a time, and then threw the
+; answer away.
+(declare find-sheet (-> (List Sheet) Str (Maybe Sheet)))
+(def find-sheet (lam (ss n) (case ss (nil none)
+  ((cons s r) (case s ((sheet nm c a xs es ms)
+    (case (str-eq n nm) (true (some s)) (false (find-sheet r n)))))))))
+(def sig-sheet (-> Sig Str (Maybe Sheet)) (lam (s n) (find-sheet (sig-sheets s) n)))
+
+; the queries a consumer actually asks, all off that ONE lookup.
+(def sheet-crossings (-> Sheet (List Str))
+  (lam (s) (case s ((sheet nm c a xs es ms) xs))))
+; ExpKind equality. Exhaustive on the left, so a new arm on ExpKind is a compile
+; error here rather than a silently wrong answer.
+(def ek-eq (-> ExpKind ExpKind Bool)
+  (lam (a b)
+    (case a
+      ((ek-fn)       (case b ((ek-fn) true)       (_ false)))
+      ((ek-proc)     (case b ((ek-proc) true)     (_ false)))
+      ((ek-data)     (case b ((ek-data) true)     (_ false)))
+      ((ek-porttype) (case b ((ek-porttype) true) (_ false)))
+      ((ek-extern)   (case b ((ek-extern) true)   (_ false))))))
+(declare exports-of-kind (-> (List Export) ExpKind (List Str)))
+(def exports-of-kind
+  (lam (es k)
+    (case es
+      (nil nil)
+      ((cons e r) (case e ((exp n ek)
+        (case (ek-eq ek k)
+          (true  (cons n (exports-of-kind r k)))
+          (false (exports-of-kind r k)))))))))
+; `(exports-by s (ek-proc))` is "which of this module's defs cross" -- the
+; question E160 could only answer as one bit, inside emit, and then discarded.
+(def exports-by (-> Sheet ExpKind (List Str))
+  (lam (s k) (case s ((sheet nm c a xs es ms) (exports-of-kind es k)))))
+; E160's AUTHORED (pure)/(crosses) claim, reborn as a one-line READER of a
+; derived field. There is no declaration left for a module to contradict.
+(def sheet-crosses (-> Sheet Bool)
+  (lam (s) (case (sheet-crossings s) (nil false) ((cons x r) true))))
+
+; does this TYPE cross? kernel.py declare_extern's is_port (:605-611): an extern
+; crosses iff ANY arrow of its Pi spine is effectful. Computed from the stored
+; type rather than cached in a registry -- the type IS the authority, so there is
+; no second copy to fall out of sync.
+(def seat-crosses (-> Seat Bool) (lam (s) (case s ((s-pure) false) ((s-proc) true))))
+(declare ty-crosses (-> Term Bool))
+(def ty-crosses
+  (lam (t)
+    (case t
+      ((t-pi q s dom cod) (case (seat-crosses s) (true true) (false (ty-crosses cod))))
+      (_ false))))
+
+; is-linear: linearity is a property of the type (kernel.py:208). A prim atom is
+; linear if registered; a data type is linear if in the ldatas registry. (E8's
+; recursive linear-ty is the loader's hook that POPULATES ldatas; at check-time
+; this registry lookup is what the con arm reads.)
+(def is-linear (-> Sig Value Bool)
+  (lam (s v)
+    (case v
+      ((v-primty n) (name-in n (sig-latoms s)))
+      ((v-tcon dn a) (name-in dn (sig-ldatas s)))
+      (_ false))))                                     ; v-refine over I64 is not linear
+
+; E159: the RESULT of a Pi spine -- walk past every arrow to the thing the whole
+; application finally yields. `(-> A (=> B C))` results in C. A non-arrow is its
+; own result. Syntactic (Term, not Value) on purpose: a codomain may mention the
+; binders above it (`pool-write`'s `(Pool n)`), so there is no environment in
+; which an eval could be honest here; the registries are keyed by NAME anyway.
+(declare ty-result (-> Term Term))
+(def ty-result
+  (lam (t) (case t ((t-pi q s dom cod) (ty-result cod)) (_ t))))
+
+; E159 -- the binder rule, and the CLOSED SUM of its refusals. A linear type has
+; exactly ONE legal quantity on a binder: 1. Bind it at omega and the usage audit
+; (qfits) accepts any number of uses, so the value may be duplicated or dropped;
+; bind it at 0 and it is erased without ever being discharged. Either way the
+; `porttype` protects nothing. check_data already enforces this for a data FIELD
+; ("linear field declared non-1"); these are its two missing twins -- the LET
+; binder and the PI binder -- so that the rule holds at every place a linear
+; value can come to rest, not just inside a constructor.
+; SCOPE: this is the TYPE-LEVEL discipline. At rung 1 an Fd is a raw integer at
+; runtime and this adds no machine authority over it.
+(data LinErr ()
+  (lin-let (q Qty))                  ; a let binding a linear value at q != 1
+  (lin-pi  (q Qty)))                 ; a Pi domain that is linear at q != 1
+(def qty-name (-> Qty Str) (lam (q) (case q ((q0) "0") ((q1) "1") ((qw) "omega"))))
+(declare lin-msg (-> LinErr Str))
+(def lin-msg
+  (lam (e)
+    (case e
+      ((lin-let q) (str-cat "let binds a linear value at quantity "
+                     (str-cat (qty-name q) " -- a linear value must be bound at 1")))
+      ((lin-pi q)  (str-cat "function parameter of a linear type at quantity "
+                     (str-cat (qty-name q) " -- a linear parameter must be declared (1 x T)"))))))
+; is binding a value of type `v` at quantity `q` a linearity violation?
+; Mirrors the loader's linear-bad? over a data field, on the same is-linear.
+(def linear-binder-bad (-> Sig Qty Value Bool)
+  (lam (s q v) (case q ((q1) false) (_ (is-linear s v)))))
+
+; is the result of this Pi spine a LINEAR type, and if so which one? The
+; Term-side twin of is-linear: same two registries (latoms for a `porttype`
+; atom, ldatas for an indexed porttype), read off the syntax instead of a Value.
+; Returns the NAME so a refusal can say which capability it was about.
+(def ty-result-linear (-> Sig Term (Maybe Str))
+  (lam (s t)
+    (case (ty-result t)
+      ((t-primty n)  (case (name-in n (sig-latoms s)) (true (some n)) (false none)))
+      ((t-tcon dn a) (case (name-in dn (sig-ldatas s)) (true (some dn)) (false none)))
+      (_ none))))
+
+(declare assoc-tt (-> (List (Pair Str (Pair Term Term))) Str (Maybe (Pair Term Term))))
+(def assoc-tt (lam (ps k) (case ps (nil none)
+  ((cons pr r) (case pr ((pair nm v) (case (str-eq k nm) (true (some v)) (false (assoc-tt r k)))))))))
+(declare assoc-t (-> (List (Pair Str Term)) Str (Maybe Term)))
+(def assoc-t (lam (ps k) (case ps (nil none)
+  ((cons pr r) (case pr ((pair nm v) (case (str-eq k nm) (true (some v)) (false (assoc-t r k)))))))))
+
+(def sig-global-ty (-> Sig Str (Maybe Term))
+  (lam (s n) (case (assoc-tt (sig-globals s) n) (none none) ((some tb) (case tb ((pair ty body) (some ty)))))))
+(def sig-global-body (-> Sig Str (Maybe Term))
+  (lam (s n) (case (assoc-tt (sig-globals s) n) (none none) ((some tb) (case tb ((pair ty body) (some body)))))))
+(def sig-prim-ty (-> Sig Str (Maybe Term)) (lam (s n) (assoc-t (sig-prims s) n)))
+; is this extern a CROSSING? (kernel.py prim_is_port). Defined here, after
+; sig-prim-ty, because it reads the stored type.
+(def sig-prim-crosses (-> Sig Str Bool)
+  (lam (s n) (case (sig-prim-ty s n) (none false) ((some ty) (ty-crosses ty)))))
+; E161 -- the same judgment for a DEF: does this global's own arrow cross? The
+; one-line twin of sig-prim-crosses, over sig-global-ty instead of sig-prim-ty.
+; It is a twin and not a second copy: both read ty-crosses off the STORED TYPE,
+; which is the authority, so there is nothing here that can fall out of sync
+; with what the def actually is. This is where the datasheet's ek-fn / ek-proc
+; split comes from -- read, never declared.
+(def def-crosses (-> Sig Str Bool)
+  (lam (s n) (case (sig-global-ty s n) (none false) ((some ty) (ty-crosses ty)))))
+(declare find-decl (-> (List DataDecl) Str (Maybe DataDecl)))
+(def find-decl (lam (ds dn) (case ds (nil none)
+  ((cons d r) (case d ((data-decl dn2 ps cs) (case (str-eq dn dn2) (true (some d)) (false (find-decl r dn)))))))))
+(def sig-data (-> Sig Str (Maybe DataDecl)) (lam (s dn) (find-decl (sig-datas s) dn)))
+
+; ---- checking context + errors-as-values result sums -------------------------
+(data Ctx () (ctx-nil) (ctx-bind (q Qty) (ty Value) (rest Ctx)))
+(data TcR () (tc-ok (ty Value) (use (List Qty))) (tc-err (msg Str)))   ; infer
+(data CkR () (ck-ok (use (List Qty)))            (ck-err (msg Str)))   ; check
+; E04 slice 4b: instantiated field types + usage-accumulating loops (con/case)
+(data FtR () (ft-ok (fts (List (Pair Qty Value)))) (ft-err (msg Str)))
+(data UR  () (u-ok (u (List Qty)))                 (u-err (msg Str)))
+; E04 slice 4b-ii: the case arm's threaded state + escapes result
+(data CaseSt () (cst (rty (Maybe Value)) (joined (Maybe (List Qty))) (covered (List Str))))
+(data CaseR  () (cr-ok (st CaseSt)) (cr-err (msg Str)))
+(data EscR   () (esc-ok (v Value)) (esc-err (msg Str)))
+; E04 #6 R3: a comparison operand for the narrow hook (a constant or a bare var)
+(data OperR () (o-const (k I64)) (o-var (ix I64)) (o-nope))
+
+; ---- forward declarations (two mutual groups + seams) ------------------------
+(declare eval-term   (-> (List Value) Term Value))
+(declare vapp        (-> Value Value Value))
+(declare clos-apply  (-> Clos Value Value))
+(declare conv        (-> I64 Value Value Bool))
+(declare conv-struct (-> I64 Value Value Bool))
+(declare conv-neut   (-> I64 Neut (List Value) Value Bool))
+(declare conv-spine  (-> I64 (List Value) (List Value) Bool))
+(declare quote-val   (-> I64 Value Term))
+(declare quote-neut  (-> I64 Neut (List Value) Term))
+(declare normalize   (-> Term Term))
+(declare spine->apps (-> Term I64 (List Value) Term))
+(declare infer       (-> Sig Ctx Term TcR))
+(declare check       (-> Sig Ctx Term Value CkR))
+(declare check-body  (-> Sig Ctx Term Value CkR))
+(declare subsume     (-> Sig Ctx Term Value CkR))
+(declare subtype     (-> I64 Value Value Bool))
+(declare infer-pi    (-> Sig Ctx Qty Term Term TcR))
+(declare infer-pi2   (-> Sig Ctx I64 Term Term TcR))
+(declare infer-app   (-> Sig Ctx Term Term TcR))
+(declare infer-app2  (-> Sig Ctx Term Value (List Qty) TcR))
+(declare infer-pi-lin (-> Sig Ctx Qty I64 Term Term TcR))
+(declare infer-let   (-> Sig Ctx Qty Term Term TcR))
+(declare infer-let2  (-> Sig Ctx Qty Term Term Value (List Qty) TcR))
+(declare check-let   (-> Sig Ctx Qty Term Term Value CkR))
+(declare check-let2  (-> Sig Ctx Qty Term Term Value Value (List Qty) CkR))
+(declare infer-let3  (-> Sig Ctx Qty Term Term Value (List Qty) TcR))
+(declare check-let3  (-> Sig Ctx Qty Term Term Value Value (List Qty) CkR))
+(declare infer-ann   (-> Sig Ctx Term Term TcR))
+(declare infer-ann2  (-> Sig Ctx Term Term Value TcR))
+(declare infer-global (-> Sig Ctx Str TcR))
+(declare infer-prim   (-> Sig Ctx Str TcR))
+; ---- E04 slice 4b-i: the con/tcon typing arms + helpers ----------------------
+(declare tcr->ckr        (-> TcR CkR))
+(declare i->qty          (-> I64 Qty))
+(declare rev-vals        (-> (List Value) (List Value)))
+(declare rev-go          (-> (List Value) (List Value) (List Value)))
+(declare find-ctor       (-> (List Ctor) Str (Maybe (List Field))))
+(declare ctor-fields     (-> DataDecl Str (Maybe (List Field))))
+(declare decl-params     (-> DataDecl (List Term)))
+(declare ctor-field-types (-> Sig (List Value) (List Field) FtR))
+(declare check-tcon      (-> Sig Ctx Str (List Term) (Maybe Value) TcR))
+(declare check-tparams   (-> Sig Ctx (List Term) (List Term) (List Value) (Maybe Value) Str TcR))
+(declare finish-tcon     (-> Sig Ctx (Maybe Value) Str TcR))
+(declare check-con       (-> Sig Ctx Str Str (List Term) (Maybe Value) TcR))
+(declare con-with-targs  (-> Sig Ctx Str Str (List Term) (Maybe Value) DataDecl (List Field) TcR))
+(declare con-check       (-> Sig Ctx Str Str (List Term) (List Value) (List Field) TcR))
+(declare check-con-args  (-> Sig Ctx (List Term) (List (Pair Qty Value)) (List Qty) UR))
+(declare solve-con-params (-> Sig Ctx I64 (List Field) (List Term) (Maybe (List Value))))
+(declare solve-slots     (-> Sig Ctx I64 (List Field) (List Term) (List (Maybe Value)) (List (Maybe Value))))
+(declare slots-init      (-> I64 (List (Maybe Value))))
+(declare slot-get        (-> (List (Maybe Value)) I64 (Maybe Value)))
+(declare slot-set        (-> (List (Maybe Value)) I64 Value (List (Maybe Value))))
+(declare slots-all       (-> (List (Maybe Value)) (Maybe (List Value))))
+; ---- E04 slice 4b-ii: the case typing arm + helpers --------------------------
+(declare check-case      (-> Sig Ctx Term (List KArm) (Maybe Term) (Maybe Value) TcR))
+(declare case-branches   (-> Sig Ctx DataDecl (List Value) Term (List KArm) CaseSt CaseR))
+(declare proc-branch     (-> Sig Ctx DataDecl (List Value) Term (List KArm) Str I64 Term (List Field) (Maybe Value) (Maybe (List Qty)) (List Str) CaseR))
+(declare proc-branch2    (-> Sig Ctx DataDecl (List Value) Term (List KArm) Str I64 Term (List (Pair Qty Value)) (Maybe Value) (Maybe (List Qty)) (List Str) CaseR))
+(declare branch-finish   (-> Sig Ctx Term (List KArm) Str (List Qty) (List (Pair Qty Value)) (Maybe Value) (Maybe (List Qty)) (List Str) DataDecl (List Value) CaseR))
+; E04 #6 R3: the path-sensitivity narrow hook (refine.py _narrow)
+(declare narrow-branch   (-> Ctx Term Str Ctx))
+(declare narrow-side     (-> Ctx Str Bool Bool OperR OperR Ctx))
+(declare learn-ops       (-> Str Bool Bool (List SymOp)))
+(declare pick1           (-> Bool Bool SymOp SymOp SymOp SymOp (List SymOp)))
+(declare apply-ops       (-> Constraint (List SymOp) OperR I64 Constraint))
+(declare oper-of         (-> Term OperR))
+(declare ctx-narrow      (-> Ctx I64 Value Ctx))
+(declare base-cns        (-> Value (Maybe Constraint)))
+(declare narrow-2        (-> Ctx Str Bool OperR OperR Ctx))
+(declare is-cmp-op       (-> Str Bool))
+(declare unann-term      (-> Term Term))
+(declare both-oper?      (-> OperR OperR Bool))
+(declare finish-case     (-> Sig Ctx DataDecl (Maybe Term) (List Qty) CaseSt TcR))
+(declare case-with-default (-> Sig Ctx (Maybe Value) (Maybe (List Qty)) (List Qty) Term TcR))
+(declare finish-join     (-> Value (Maybe (List Qty)) (List Qty) TcR))
+(declare bind-fields     (-> Ctx (List (Pair Qty Value)) Ctx))
+(declare nth-qty         (-> (List Qty) I64 Qty))
+(declare take-qty        (-> (List Qty) I64 (List Qty)))
+(declare check-binders   (-> (List Qty) I64 I64 (List (Pair Qty Value)) UR))
+(declare all-covered?    (-> DataDecl (List Str) Bool))
+(declare all-in          (-> (List Str) (List Str) Bool))
+(declare ensure-escapes  (-> Ctx Ctx Value EscR))
+(declare ub-at           (-> I64 I64 Term Bool))
+(declare ub-any          (-> I64 I64 (List Term) Bool))
+(declare ub-arms         (-> I64 I64 (List KArm) Bool))
+(declare ub-mb           (-> I64 I64 (Maybe Term) Bool))
+(declare ub-ratoms       (-> I64 I64 (List RfAtom) Bool))
+(declare sc-ratoms       (-> I64 I64 (List RfAtom) (List RfAtom)))
+(declare sc-at           (-> I64 I64 Term Term))
+(declare sc-any          (-> I64 I64 (List Term) (List Term)))
+(declare sc-arms         (-> I64 I64 (List KArm) (List KArm)))
+(declare sc-mb           (-> I64 I64 (Maybe Term) (Maybe Term)))
+; ---- E04 decision #6: the VRefine integration (port refine.py into the kernel) --
+(declare fold-atoms      (-> (List Value) Constraint (List RfAtom) Constraint))
+(declare refine-atoms    (-> I64 Constraint (List RfAtom)))
+(declare ex-atoms        (-> (List I64) (List RfAtom)))
+(declare sym-atoms       (-> I64 (List (Pair SymOp I64)) (List RfAtom)))
+(declare concat-ra       (-> (List RfAtom) (List RfAtom) (List RfAtom)))
+(declare c-eq            (-> Constraint Constraint Bool))
+(declare c-is-top        (-> Constraint Bool))
+(declare mi64-eq         (-> (Maybe I64) (Maybe I64) Bool))
+(declare mi-none         (-> (Maybe I64) Bool))
+(declare iset-eq         (-> (List I64) (List I64) Bool))
+(declare fset-eq         (-> (List (Pair SymOp I64)) (List (Pair SymOp I64)) Bool))
+(declare i64-subset      (-> (List I64) (List I64) Bool))
+(declare fact-subset     (-> (List (Pair SymOp I64)) (List (Pair SymOp I64)) Bool))
+(declare check-refine    (-> Sig Ctx Term (List RfAtom) TcR))
+(declare check-ratoms    (-> Sig Ctx (List RfAtom) TcR))
+(declare obase-i64?      (-> Value Bool))
+(declare operand-ok?     (-> Value Bool))
+(declare check-against   (-> Sig Ctx Term Value Constraint CkR))
+(declare refine-entails? (-> Value Constraint Bool))
+(declare subtype-into    (-> I64 Value Value Constraint Bool))
+(declare unann-lit       (-> Term (Maybe I64)))
+(declare nth         (-> (List Value) I64 Value))
+(declare snoc        (-> (List Value) Value (List Value)))
+(declare stuck       Value)
+(declare fresh       (-> I64 Value))
+(declare seat=       (-> Seat Seat Bool))
+(declare is-lam      (-> Value Bool))
+(declare app-either  (-> Value Value Value))
+
+; ---- small value helpers -----------------------------------------------------
+(def fresh (lam (lvl) (v-ne (n-var lvl) nil)))
+(def stuck (v-ne (n-var 0) nil))                     ; unreachable placeholder
+
+(def nth
+  (lam (env i)
+    (case env
+      ((nil) stuck)                                  ; dead (E4 discharges 0<=i<len)
+      ((cons x r) (case (=i i 0) (true x) (false (nth r (- i 1))))))))
+
+(def snoc
+  (lam (xs y)
+    (case xs ((nil) (cons y nil)) ((cons x r) (cons x (snoc r y))))))
+
+(def seat=
+  (lam (a b)
+    (case a
+      ((s-pure) (case b ((s-pure) true) (_ false)))
+      ((s-proc) (case b ((s-proc) true) (_ false))))))
+
+(def qeq (-> Qty Qty Bool)
+  (lam (a b)
+    (case a
+      ((q0) (case b ((q0) true) (_ false)))
+      ((q1) (case b ((q1) true) (_ false)))
+      ((qw) (case b ((qw) true) (_ false))))))
+
+(def is-lam (lam (v) (case v ((v-lam c) true) (_ false))))
+(def app-either
+  (lam (f x) (case f ((v-lam c) (clos-apply c x)) (_ (vapp f x)))))
+
+; ---- usage-vector helpers (one-hot, strip) -----------------------------------
+(def u-onehot (-> I64 I64 (List Qty))                ; length `len`, q1 at `pos`
+  (lam (len pos)
+    (case (<=i len 0)
+      (true nil)
+      (false (cons (case (=i pos 0) (true (q1)) (false (q0)))
+                   (u-onehot (- len 1) (- pos 1)))))))
+; one-hot for de-Bruijn index ix in a depth-n context: q1 at position n-1-ix
+; (usage vectors are oldest-first, matching kernel.py's u[n-1-i]=1).
+(def u-one (-> I64 I64 (List Qty))
+  (lam (n ix) (u-onehot n (- (- n 1) ix))))
+
+(def last-qty (-> (List Qty) Qty)
+  (lam (u) (case u
+             ((nil) (q0))
+             ((cons x r) (case r ((nil) x) ((cons y r2) (last-qty r)))))))
+(def drop-last (-> (List Qty) (List Qty))
+  (lam (u) (case u
+             ((nil) nil)
+             ((cons x r) (case r ((nil) nil) ((cons y r2) (cons x (drop-last r))))))))
+
+; ---- context helpers ---------------------------------------------------------
+(def ctx-len (-> Ctx I64)
+  (lam (c) (case c ((ctx-nil) 0) ((ctx-bind q ty rest) (+ 1 (ctx-len rest))))))
+
+(def ctx-ty (-> Ctx I64 Value)                       ; precondition: 0<=ix<len
+  (lam (c ix)
+    (case c
+      ((ctx-nil) stuck)
+      ((ctx-bind q ty rest) (case (=i ix 0) (true ty) (false (ctx-ty rest (- ix 1))))))))
+
+(def in-range (-> Ctx I64 Bool)
+  (lam (c ix) (and (<=i 0 ix) (<i ix (ctx-len c)))))
+
+(def ctx-lookup (-> Ctx I64 TcR)
+  (lam (c ix)
+    (case (in-range c ix)
+      (false (tc-err "variable index out of range"))
+      (true  (tc-ok (ctx-ty c ix) (u-one (ctx-len c) ix))))))
+
+; the evaluation env of a ctx: a neutral per binding. Front (newest) binding is
+; at the highest level (depth-1); nth env 0 = fresh(n-1), matching kernel.py's
+; env[len-1-i] = NVar(n-1-i) for de-Bruijn index i.
+(declare env-of-go (-> Ctx I64 (List Value)))
+(def env-of-go
+  (lam (c lvl)
+    (case c
+      ((ctx-nil) nil)
+      ((ctx-bind q ty rest) (cons (fresh lvl) (env-of-go rest (- lvl 1)))))))
+(def env-of (-> Ctx (List Value))
+  (lam (c) (env-of-go c (- (ctx-len c) 1))))
+
+(def max-lvl (-> I64 I64 I64)
+  (lam (a b) (case (<=i a b) (true b) (false a))))
+
+; audit the binder's own usage (the newest = last entry) against its declared q,
+; then drop it (kernel.py strip_binder). Errors as a value.
+(def strip-binder (-> (List Qty) Qty CkR)
+  (lam (u q)
+    (case (qfits (last-qty u) q)
+      (true  (ck-ok (drop-last u)))
+      (false (ck-err "linear binder usage mismatch")))))
+
+; close a let binder (kernel.py close_binder): audit the let-bound variable's own
+; usage (the newest = last entry of the body vector ub) against its declared q,
+; then fold the val's usage uv, scaled by q, back into the outer vector. This is
+; strip-binder PLUS `uadd _ (uscale q uv)` -- using the body's binding q times
+; means the val is used q times (the QTT let rule). uv and (drop-last ub) are both
+; length n (val was inferred in the outer ctx); the sum is the let's usage.
+(def close-binder (-> (List Qty) Qty (List Qty) CkR)
+  (lam (ub q uv)
+    (case (qfits (last-qty ub) q)
+      (true  (ck-ok (uadd (drop-last ub) (uscale q uv))))
+      (false (ck-err "let binder usage mismatch")))))
+
+; ============================================================ E3: the NbE core
+; ---- E04 slice-2 eval helpers ------------------------------------------------
+(declare eval-args (-> (List Value) (List Term) (List Value)))
+(def eval-args (lam (env ts) (case ts (nil nil) ((cons t r) (cons (eval-term env t) (eval-args env r))))))
+; push a con's fields onto env in order: the LAST field lands at de-Bruijn 0.
+(declare push-args (-> (List Value) (List Value) (List Value)))
+(def push-args (lam (env args) (case args (nil env) ((cons a r) (push-args (cons a env) r)))))
+(declare find-arm (-> (List KArm) Str (Maybe KArm)))
+(def find-arm (lam (arms cn) (case arms (nil none)
+  ((cons a r) (case a ((karm cn2 nv b) (case (str-eq cn cn2) (true (some a)) (false (find-arm r cn)))))))))
+; eval a case: a con scrutinee selects + reduces its arm; anything else is stuck
+; (a neutral-scrutinee stuck-case neutral is slice-4 residue).
+(declare eval-case (-> (List Value) Value (List KArm) (Maybe Term) Value))
+(def eval-case (lam (env sv arms dflt)
+  (case sv
+    ((v-con dn cn cargs)
+      (case (find-arm arms cn)
+        ((some a) (case a ((karm cn2 nv b) (eval-term (push-args env cargs) b))))
+        (none (case dflt ((some d) (eval-term env d)) (none stuck)))))
+    (_ stuck))))
+
+(def eval-term
+  (lam (env t)
+    (case t
+      ((t-var i)       (nth env i))
+      ((t-type n)      (v-type n))
+      ((t-pi q s d c)  (v-pi q s (eval-term env d) (clos env c)))
+      ((t-lam b)       (v-lam (clos env b)))
+      ((t-app f a)     (vapp (eval-term env f) (eval-term env a)))
+      ((t-let q v b)   (eval-term (cons (eval-term env v) env) b))
+      ((t-ann tm ty)   (eval-term env tm))            ; annotations erase at eval
+      ((t-global n)    (v-ne (n-global n) nil))       ; stuck (slice 3: unfold via Sig)
+      ((t-prim n)      (v-ne (n-prim n) nil))         ; stuck extern (kernel.py NPrim)
+      ((t-primty n)    (v-primty n))
+      ((t-lit-i v)     (v-lit-i v))
+      ((t-lit-s v)     (v-lit-s v))
+      ((t-con dn cn a) (v-con dn cn (eval-args env a)))
+      ((t-tcon dn a)   (v-tcon dn (eval-args env a)))
+      ((t-case s arms dflt) (eval-case env (eval-term env s) arms dflt))
+      ((t-refine base atoms) (v-refine (eval-term env base) (fold-atoms env c-top atoms))))))
+
+(def vapp
+  (lam (f a)
+    (case f
+      ((v-lam c)      (clos-apply c a))
+      ((v-ne h sp)    (v-ne h (snoc sp a)))
+      (_ stuck))))                                    ; type/pi/lit/con/tcon: ill-typed apply
+
+(def clos-apply
+  (lam (c v) (case c ((clos env body) (eval-term (cons v env) body)))))
+
+(def conv
+  (lam (lvl a b)
+    (case (or (is-lam a) (is-lam b))
+      (true (let (x (fresh lvl)) (conv (+ lvl 1) (app-either a x) (app-either b x))))
+      (false (conv-struct lvl a b)))))
+
+(def conv-struct
+  (lam (lvl a b)
+    (case a
+      ((v-type n)     (case b ((v-type m) (=i n m)) (_ false)))
+      ((v-pi q s d c) (case b
+                        ((v-pi q2 s2 d2 c2)
+                          (and (qeq q q2)                     ; quantity part of =
+                            (and (seat= s s2)                 ; seat part of =
+                              (and (conv lvl d d2)
+                                (conv (+ lvl 1)
+                                      (clos-apply c  (fresh lvl))
+                                      (clos-apply c2 (fresh lvl)))))))
+                        (_ false)))
+      ((v-ne h sp)    (conv-neut lvl h sp b))
+      ((v-primty x)   (case b ((v-primty y) (str-eq x y)) (_ false)))
+      ((v-lit-i n)    (case b ((v-lit-i m) (=i n m)) (_ false)))
+      ((v-lit-s x)    (case b ((v-lit-s y) (str-eq x y)) (_ false)))
+      ((v-con dn cn a) (case b
+                         ((v-con dn2 cn2 a2)
+                           (and (str-eq dn dn2) (and (str-eq cn cn2) (conv-spine lvl a a2))))
+                         (_ false)))
+      ((v-tcon dn a)  (case b
+                        ((v-tcon dn2 a2) (and (str-eq dn dn2) (conv-spine lvl a a2)))
+                        (_ false)))
+      ((v-refine ab ac) (case b                             ; refine.py _conv: base conv + constraint EQ
+                          ((v-refine bb bc) (and (conv lvl ab bb) (c-eq ac bc)))
+                          (_ false)))
+      ((v-lam c)      false))))                              ; dead: eta handled lams
+
+(declare head-eq (-> Neut Neut Bool))
+(def head-eq
+  (lam (h h2)
+    (case h
+      ((n-var k)    (case h2 ((n-var k2) (=i k k2)) (_ false)))
+      ((n-global n) (case h2 ((n-global n2) (str-eq n n2)) (_ false)))
+      ((n-prim n)   (case h2 ((n-prim n2) (str-eq n n2)) (_ false))))))
+
+(def conv-neut
+  (lam (lvl h sp b)
+    (case b
+      ((v-ne h2 sp2) (and (head-eq h h2) (conv-spine lvl sp sp2)))
+      (_ false))))
+
+(def conv-spine
+  (lam (lvl sp sp2)
+    (case sp
+      ((nil) (case sp2 ((nil) true) (_ false)))
+      ((cons x r) (case sp2
+                    ((nil) false)
+                    ((cons y r2) (and (conv lvl x y) (conv-spine lvl r r2))))))))
+
+(declare quote-args (-> I64 (List Value) (List Term)))
+(def quote-args (lam (lvl vs) (case vs (nil nil) ((cons v r) (cons (quote-val lvl v) (quote-args lvl r))))))
+
+(def quote-val
+  (lam (lvl v)
+    (case v
+      ((v-type n)     (t-type n))
+      ((v-pi q s d c) (t-pi q s (quote-val lvl d)
+                           (quote-val (+ lvl 1) (clos-apply c (fresh lvl)))))
+      ((v-lam c)      (t-lam (quote-val (+ lvl 1) (clos-apply c (fresh lvl)))))
+      ((v-ne h sp)    (quote-neut lvl h sp))
+      ((v-primty n)   (t-primty n))
+      ((v-lit-i n)    (t-lit-i n))
+      ((v-lit-s x)    (t-lit-s x))
+      ((v-con dn cn a) (t-con dn cn (quote-args lvl a)))
+      ((v-tcon dn a)  (t-tcon dn (quote-args lvl a)))
+      ((v-refine b cns) (t-refine (quote-val lvl b) (refine-atoms lvl cns))))))
+
+(def quote-neut
+  (lam (lvl h sp)
+    (case h
+      ((n-var k)    (spine->apps (t-var (- (- lvl 1) k)) lvl sp))
+      ((n-global n) (spine->apps (t-global n) lvl sp))
+      ((n-prim n)   (spine->apps (t-prim n) lvl sp)))))
+
+(def spine->apps
+  (lam (head lvl sp)
+    (case sp
+      ((nil) head)
+      ((cons v r) (spine->apps (t-app head (quote-val lvl v)) lvl r)))))
+
+(def normalize (lam (t) (quote-val 0 (eval-term nil t))))
+
+; ============================================================ E4: bidirectional
+
+; subtype = conversion + universe cumulativity. Pi row-subsumption is an E39
+; seam (falls through to conv here -- strict, sound, not yet subsumptive).
+; subtype = conversion + universe cumulativity + the VRefine rules (refine.py
+; _subtype): refine<:refine = base-conv + entails; refine<:base = forget; base<:
+; refine only if the refinement is trivial (TOP).
+(def subtype
+  (lam (lvl a b)
+    (case a
+      ((v-type la) (case b
+                     ((v-type lb) (<=i la lb))
+                     ((v-refine bb bc) (subtype-into lvl a bb bc))
+                     (_ (conv lvl a b))))
+      ((v-refine ab ac) (case b
+                          ((v-refine bb bc) (and (conv lvl ab bb) (entails ac bc)))
+                          (_ (subtype lvl ab b))))            ; forget the refinement
+      (_ (case b
+           ((v-refine bb bc) (subtype-into lvl a bb bc))
+           (_ (conv lvl a b)))))))
+(def subtype-into                                             ; a <: {bb | bc}: only if bc is TOP
+  (lam (lvl a bb bc) (and (subtype lvl a bb) (c-is-top bc))))
+
+; infer: elimination + annotation forms synthesize. Structural on Term; every
+; recursive call case-dispatches its tc-err/ck-err (errors-as-values).
+; infer dispatches; the multi-step elimination/formation forms are shallow
+; helpers so each function's parens are locally countable.
+(def infer
+  (lam (sig c t)
+    (case t
+      ((t-var ix)         (ctx-lookup c ix))
+      ((t-type l)         (tc-ok (v-type (+ l 1)) (uzero (ctx-len c))))
+      ((t-pi q s dom cod) (infer-pi sig c q dom cod))
+      ((t-lam b)          (tc-err "cannot infer an un-annotated lambda"))
+      ((t-app f a)        (infer-app sig c f a))
+      ((t-let q v b)      (infer-let sig c q v b))
+      ((t-ann tm ty)      (infer-ann sig c tm ty))
+      ((t-global n)       (infer-global sig c n))
+      ((t-prim n)         (infer-prim sig c n))
+      ((t-primty n)       (tc-ok (v-type 0) (uzero (ctx-len c))))       ; a prim type : Type 0
+      ((t-lit-i v)        (tc-ok (v-primty "I64") (uzero (ctx-len c)))) ; I64 literal : I64
+      ((t-lit-s v)        (tc-ok (v-primty "Str") (uzero (ctx-len c)))) ; Str literal : Str
+      ((t-tcon dn args)   (check-tcon sig c dn args none))              ; applied data type : Type 0
+      ((t-con dn cn args) (check-con sig c dn cn args none))            ; constructor : VTCon
+      ((t-case sc arms df) (check-case sig c sc arms df none))          ; case
+      ((t-refine base atoms) (check-refine sig c base atoms)))))        ; {base | atoms} : Type 0
+
+; global/prim: look the declared type up in the Sig, eval it (globals have closed
+; types), synthesize it with empty usage. Ports kernel.py infer's Global/Prim arms.
+(def infer-global
+  (lam (sig c n)
+    (case (sig-global-ty sig n)
+      (none (tc-err (str-cat "unknown global " n)))
+      ((some ty) (tc-ok (eval-term nil ty) (uzero (ctx-len c)))))))
+(def infer-prim
+  (lam (sig c n)
+    (case (sig-prim-ty sig n)
+      (none (tc-err (str-cat "unknown prim " n)))
+      ((some ty) (tc-ok (eval-term nil ty) (uzero (ctx-len c)))))))
+
+; Pi formation: dom must be a type; bind it (at q0 -- formation), cod must be a
+; type; result Type(max l1 l2). Usage is empty at formation (types erase).
+(def infer-pi
+  (lam (sig c q dom cod)
+    (case (infer sig c dom)
+      ((tc-err m) (tc-err m))
+      ((tc-ok dty du)
+        (case dty
+          ((v-type l1) (infer-pi-lin sig c q l1 dom cod))
+          (_ (tc-err "pi domain is not a type")))))))
+; E159: a linear DOMAIN pins the binder's quantity to 1 -- the same judgment the
+; let arm makes, at the other place a linear value comes to rest. Formation-time,
+; so an omega-quantified linear parameter is not even a writable TYPE.
+(def infer-pi-lin
+  (lam (sig c q l1 dom cod)
+    (case (linear-binder-bad sig q (eval-term (env-of c) dom))
+      (true  (tc-err (lin-msg (lin-pi q))))
+      (false (infer-pi2 sig c l1 dom cod)))))
+(def infer-pi2
+  (lam (sig c l1 dom cod)
+    (case (infer sig (ctx-bind (q0) (eval-term (env-of c) dom) c) cod)
+      ((tc-err m) (tc-err m))
+      ((tc-ok cty cu)
+        (case cty
+          ((v-type l2) (tc-ok (v-type (max-lvl l1 l2)) (uzero (ctx-len c))))
+          (_ (tc-err "pi codomain is not a type")))))))
+
+; application: f must infer to a Pi; check the arg against the domain; usage is
+; u_f + q * u_a (the QTT app rule); result type is the codomain at the arg.
+(def infer-app
+  (lam (sig c f a)
+    (case (infer sig c f)
+      ((tc-err m) (tc-err m))
+      ((tc-ok fty fu) (infer-app2 sig c a fty fu)))))
+(def infer-app2
+  (lam (sig c a fty fu)
+    (case fty
+      ((v-pi q s dom cod)
+        (case (check sig c a dom)
+          ((ck-err m) (tc-err m))
+          ((ck-ok au) (tc-ok (clos-apply cod (eval-term (env-of c) a))
+                             (uadd fu (uscale q au))))))
+      (_ (tc-err "cannot apply a non-function")))))
+
+; let (infer mode): infer the val's type + usage in the outer ctx, bind it at q,
+; infer the body in the extended ctx, then close the binder (audit its usage vs q,
+; fold q*uv back). No allow_eff/erased_allow/on_binder -- the row/membrane layer is
+; E12, kept as the seat. Ports kernel.py infer's Let arm (:457).
+(def infer-let
+  (lam (sig c q v b)
+    (case (infer sig c v)
+      ((tc-err m) (tc-err m))
+      ((tc-ok vty uv) (infer-let2 sig c q v b vty uv)))))
+(def infer-let2
+  (lam (sig c q v b vty uv)
+    (case (linear-binder-bad sig q vty)                   ; E159: q must be 1
+      (true (tc-err (lin-msg (lin-let q))))
+      (false (infer-let3 sig c q v b vty uv)))))
+(def infer-let3
+  (lam (sig c q v b vty uv)
+    (case (infer sig (ctx-bind q vty c) b)
+      ((tc-err m) (tc-err m))
+      ((tc-ok bty ub)
+        (case (close-binder ub q uv)
+          ((ck-err m) (tc-err m))
+          ((ck-ok u) (tc-ok bty u)))))))
+
+; annotation (the ty tm): ty must be a type; eval it; flip to check tm against it.
+(def infer-ann
+  (lam (sig c tm ty)
+    (case (infer sig c ty)
+      ((tc-err m) (tc-err m))
+      ((tc-ok tyty tu) (infer-ann2 sig c tm ty tyty)))))
+(def infer-ann2
+  (lam (sig c tm ty tyty)
+    (case tyty
+      ((v-type l)
+        (case (check sig c tm (eval-term (env-of c) ty))
+          ((ck-err m) (tc-err m))
+          ((ck-ok u) (tc-ok (eval-term (env-of c) ty) u))))
+      (_ (tc-err "annotation is not a type")))))
+
+; check: if the EXPECTED type is a refinement, route to check-against (refine.py
+; _check_against, a check_hook that fires on the expected value form) -- else the
+; normal term dispatch. Intro forms (lam) check directly; everything else infers.
+(def check
+  (lam (sig c t want)
+    (case want
+      ((v-refine base cns) (check-against sig c t base cns))
+      (_ (check-body sig c t want)))))
+(def check-body
+  (lam (sig c t want)
+    (case t
+      ((t-lam b)
+        (case want
+          ((v-pi qp s dom cod)
+            (case (check sig (ctx-bind qp dom c) b (clos-apply cod (fresh (ctx-len c))))
+              ((ck-err m) (ck-err m))
+              ((ck-ok ub) (strip-binder ub qp))))
+          (_ (ck-err "lambda checked against a non-function type"))))
+      ((t-var ix)     (subsume sig c t want))
+      ((t-type l)     (subsume sig c t want))
+      ((t-pi q s d k) (subsume sig c t want))
+      ((t-app f a)    (subsume sig c t want))
+      ((t-ann tm ty)  (subsume sig c t want))
+      ((t-let q v b)  (check-let sig c q v b want))
+      ; con/tcon check bidirectionally against `want` (kernel.py routes the ext
+      ; handler with the expected type; NOT infer-then-subsume -- the expected
+      ; supplies the ctor's type parameters).
+      ((t-tcon dn args)   (tcr->ckr (check-tcon sig c dn args (some want))))
+      ((t-con dn cn args) (tcr->ckr (check-con sig c dn cn args (some want))))
+      ((t-case sc arms df) (tcr->ckr (check-case sig c sc arms df (some want))))
+      (_ (subsume sig c t want)))))                    ; global/prim/lit: infer then subsume
+
+; subsume: the ONE infer->check boundary; subtyping is consulted exactly here.
+(def subsume
+  (lam (sig c t want)
+    (case (infer sig c t)
+      ((tc-err m) (ck-err m))
+      ((tc-ok got use)
+        (case (subtype (ctx-len c) got want)
+          (true  (ck-ok use))
+          (false (ck-err "type mismatch")))))))
+
+; let (check mode): infer the val, bind at q, CHECK the body against the expected
+; type (routing through `check` so an expected refinement still fires), then close
+; the binder. Ports kernel.py check's Let arm (:502).
+(def check-let
+  (lam (sig c q v b want)
+    (case (infer sig c v)
+      ((tc-err m) (ck-err m))
+      ((tc-ok vty uv) (check-let2 sig c q v b want vty uv)))))
+(def check-let2
+  (lam (sig c q v b want vty uv)
+    (case (linear-binder-bad sig q vty)                   ; E159: q must be 1
+      (true (ck-err (lin-msg (lin-let q))))
+      (false (check-let3 sig c q v b want vty uv)))))
+(def check-let3
+  (lam (sig c q v b want vty uv)
+    (case (check sig (ctx-bind q vty c) b want)
+      ((ck-err m) (ck-err m))
+      ((ck-ok ub) (close-binder ub q uv)))))
+
+; ================================================ E04 slice 4b-i: con/tcon arms
+; Ports data.py _check_tcon (:131) / _check_con (:193) / _ctor_field_types (:148)
+; / _infer_ctor_params (:166) over the Term-based DataDecl. Folded into the closed
+; infer/check dispatch: each handler takes a (Maybe Value) expected -> TcR; check
+; passes (some want), infer passes none. No allow_eff (the row layer is E12, kept
+; as the existing seat). QTT usage accumulates via uadd/uscale.
+
+(def tcr->ckr (lam (r) (case r ((tc-ok ty u) (ck-ok u)) ((tc-err m) (ck-err m)))))
+(def i->qty
+  (lam (i) (case (=i i 0) (true (q0)) (false (case (=i i 1) (true (q1)) (false (qw)))))))
+(def rev-go   (lam (xs acc) (case xs (nil acc) ((cons x r) (rev-go r (cons x acc))))))
+(def rev-vals (lam (xs) (rev-go xs nil)))
+
+(def find-ctor
+  (lam (cs cn) (case cs (nil none)
+    ((cons c r) (case c ((ctor cn2 fs) (case (str-eq cn cn2) (true (some fs)) (false (find-ctor r cn)))))))))
+(def ctor-fields (lam (d cn) (case d ((data-decl dn ps cs) (find-ctor cs cn)))))
+(def decl-params (lam (d) (case d ((data-decl dn ps cs) ps))))
+
+; _ctor_field_types: instantiate each field type under the type-arguments (env =
+; REVERSED targs -- kernel.py evals Var i as env[len-1-i], chirality nth env i is
+; front, so a bare-param field resolves to its param only under reversed targs),
+; judging the linear-kind rule (a q!=1 field may not hold a linear value).
+(def ctor-field-types
+  (lam (sig env fields)
+    (case fields
+      (nil (ft-ok nil))
+      ((cons f rest)
+        (case f ((field q fname fty)
+          (let (ftyv (eval-term env fty))
+            (case (and (not (=i q 1)) (is-linear sig ftyv))  ; q!=1 AND linear
+              (true  (ft-err (str-cat "linear field " fname)))
+              (false (case (ctor-field-types sig env rest)
+                       ((ft-err m)   (ft-err m))
+                       ((ft-ok more) (ft-ok (cons (pair (i->qty q) ftyv) more)))))))))))))
+
+; _check_tcon: applied data type. Each param arg checks against that param's KIND
+; (usage erased), the arg evaluated into the accumulating param env for dependent
+; kinds; result is Type 0 (subtyped against expected if any).
+(def check-tcon
+  (lam (sig c dn args expected)
+    (case (sig-data sig dn)
+      (none (tc-err (str-cat "unknown data type " dn)))
+      ((some decl)
+        (case (=i (llen Term args) (llen Term (decl-params decl)))
+          (false (tc-err (str-cat dn " wrong number of type parameters")))
+          (true  (check-tparams sig c (decl-params decl) args nil expected dn)))))))
+(def check-tparams
+  (lam (sig c params args env expected dn)
+    (case params
+      (nil (finish-tcon sig c expected dn))
+      ((cons pk prest)
+        (case args
+          (nil (tc-err "tcon arity"))
+          ((cons arg arest)
+            (case (check sig c arg (eval-term env pk))       ; arg : param kind
+              ((ck-err m) (tc-err m))
+              ((ck-ok u)  (check-tparams sig c prest arest
+                            (cons (eval-term (env-of c) arg) env) expected dn)))))))))
+(def finish-tcon
+  (lam (sig c expected dn)
+    (case expected
+      (none (tc-ok (v-type 0) (uzero (ctx-len c))))
+      ((some e) (case (subtype (ctx-len c) (v-type 0) e)
+                  (true  (tc-ok (v-type 0) (uzero (ctx-len c))))
+                  (false (tc-err (str-cat dn " is a type; a non-type was expected"))))))))
+
+; _check_con: a constructor. targs come from the expected VTCon, else are solved
+; from the args (bare-param occurrences); then each arg checks against its
+; instantiated field type, QTT usage = sum q_i * u_i.
+(def check-con
+  (lam (sig c dn cn args expected)
+    (case (sig-data sig dn)
+      (none (tc-err (str-cat "unknown data type " dn)))
+      ((some decl)
+        (case (ctor-fields decl cn)
+          (none (tc-err (str-cat cn " is not a constructor of this type")))
+          ((some fields) (con-with-targs sig c dn cn args expected decl fields)))))))
+(def con-with-targs
+  (lam (sig c dn cn args expected decl fields)
+    (case expected
+      ((some e)
+        (case e
+          ((v-tcon dn2 targs)
+            (case (str-eq dn dn2)
+              (true  (con-check sig c dn cn args targs fields))
+              (false (tc-err (str-cat cn " checked against a different data type")))))
+          (_ (tc-err (str-cat cn " checked against a non-data type")))))
+      (none
+        (case (=i (llen Term (decl-params decl)) 0)
+          (true  (con-check sig c dn cn args nil fields))
+          (false (case (solve-con-params sig c (llen Term (decl-params decl)) fields args)
+                   (none (tc-err (str-cat "cannot infer type parameters of " cn)))
+                   ((some targs) (con-check sig c dn cn args targs fields)))))))))
+(def con-check
+  (lam (sig c dn cn args targs fields)
+    (case (ctor-field-types sig (rev-vals targs) fields)
+      ((ft-err m) (tc-err m))
+      ((ft-ok fts)
+        (case (=i (llen Term args) (llen Field fields))
+          (false (tc-err (str-cat cn " wrong number of arguments")))
+          (true  (case (check-con-args sig c args fts (uzero (ctx-len c)))
+                   ((u-err m) (tc-err m))
+                   ((u-ok u)  (tc-ok (v-tcon dn targs) u)))))))))
+(def check-con-args
+  (lam (sig c args fts acc)
+    (case args
+      (nil (u-ok acc))
+      ((cons arg arest)
+        (case fts
+          (nil (u-err "constructor arity"))
+          ((cons ft frest)
+            (case ft ((pair q ftyv)
+              (case (check sig c arg ftyv)
+                ((ck-err m) (u-err m))
+                ((ck-ok ua) (check-con-args sig c arest frest (uadd acc (uscale q ua)))))))))))))
+
+; _infer_ctor_params: solve a param ONLY where some field is a bare occurrence
+; (bare-param), by inferring the matching arg's type; None if any param unsolved.
+(def solve-con-params
+  (lam (sig c np fields args)
+    (slots-all (solve-slots sig c np fields args (slots-init np)))))
+(def slots-init
+  (lam (n) (case (<=i n 0) (true nil) (false (cons none (slots-init (- n 1)))))))
+(def slot-get
+  (lam (slots p) (case slots (nil none)
+    ((cons x r) (case (=i p 0) (true x) (false (slot-get r (- p 1))))))))
+(def slot-set
+  (lam (slots p v) (case slots (nil nil)
+    ((cons x r) (case (=i p 0) (true (cons (some v) r)) (false (cons x (slot-set r (- p 1) v))))))))
+(def solve-slots
+  (lam (sig c np fields args slots)
+    (case fields
+      (nil slots)
+      ((cons f frest)
+        (case args
+          (nil slots)
+          ((cons arg arest)
+            (case f ((field q fname fty)
+              (let (p (bare-param np fty))
+                (case (<i p 0)
+                  (true  (solve-slots sig c np frest arest slots))
+                  (false (case (slot-get slots p)
+                           ((some x) (solve-slots sig c np frest arest slots))
+                           (none (case (infer sig c arg)
+                                   ((tc-err m)   (solve-slots sig c np frest arest slots))
+                                   ((tc-ok ty u) (solve-slots sig c np frest arest (slot-set slots p ty)))))))))))))))))
+(def slots-all
+  (lam (slots) (case slots
+    (nil (some nil))
+    ((cons x r) (case x
+      (none none)
+      ((some v) (case (slots-all r) (none none) ((some vs) (some (cons v vs))))))))))
+
+; ================================================ E04 slice 4b-ii: the case arm
+; Ports data.py _check_case (:222) + _ensure_escapes (:279) over the Term-based
+; DataDecl. Per branch: coverage (dup/unknown/exhaustive), instantiate the ctor's
+; field types (+ the linear rule via ctor-field-types), bind the fields at their
+; qtys, infer/check the body, check each field binder's usage with qfits, ujoin
+; the branch usages, and (infer mode) ensure the branch-inferred type escapes the
+; branch binders. Result usage = scrutinee usage + the joined branch usages.
+;
+; NARROW SEAM (E04 decision #6, re-flagged): kernel.py runs sig.narrow_hooks here
+; for path-sensitivity (a guard tightens a binder's refinement type). The chirality
+; kernel Value has NO v-refine form and refine.chiral is the standalone atom
+; decision procedure ("Kernel untouched") -- so "wire narrow" needs the whole
+; VRefine-in-Value integration (port refine.py _check_refine/_eval_refine/subtype +
+; Ctx narrow), an unbuilt subsystem, NOT a call here. Omitted for now: SOUND (no
+; tightening only DECLINES some refinements, never mis-accepts). See the handoff.
+
+(def bind-fields
+  (lam (c fts) (case fts (nil c) ((cons ft rest) (case ft ((pair q ty) (bind-fields (ctx-bind q ty c) rest)))))))
+(def nth-qty
+  (lam (u i) (case u (nil (q0)) ((cons x r) (case (=i i 0) (true x) (false (nth-qty r (- i 1))))))))
+(def take-qty
+  (lam (u n) (case (<=i n 0) (true nil) (false (case u (nil nil) ((cons x r) (cons x (take-qty r (- n 1)))))))))
+(def all-in
+  (lam (xs ys) (case xs (nil true) ((cons x r) (case (name-in x ys) (true (all-in r ys)) (false false))))))
+(def all-covered?
+  (lam (decl covered) (case decl ((data-decl dn ps cs) (all-in (ctor-names cs) covered)))))
+(def check-binders
+  (lam (ub n i fts)
+    (case fts
+      (nil (u-ok nil))
+      ((cons ft rest)
+        (case ft ((pair q ty)
+          (case (qfits (nth-qty ub (+ n i)) q)
+            (false (u-err "field binder usage mismatch"))
+            (true  (check-binders ub n (+ i 1) rest)))))))))
+
+; uses-below / shift-close over the kernel Term (data.py uses_below / shift_close),
+; for _ensure_escapes. Binders raise depth; the non-type leaves are inert.
+(def ub-at
+  (lam (b depth t)
+    (case t
+      ((t-var i)          (case (<=i depth i) (true (<i i (+ depth b))) (false false)))
+      ((t-pi q s d c)     (or (ub-at b depth d) (ub-at b (+ depth 1) c)))
+      ((t-lam bd)         (ub-at b (+ depth 1) bd))
+      ((t-app f a)        (or (ub-at b depth f) (ub-at b depth a)))
+      ((t-let q v bd)     (or (ub-at b depth v) (ub-at b (+ depth 1) bd)))
+      ((t-ann tm ty)      (or (ub-at b depth tm) (ub-at b depth ty)))
+      ((t-tcon dn as)     (ub-any b depth as))
+      ((t-con dn cn as)   (ub-any b depth as))
+      ((t-case sc arms df) (or (ub-at b depth sc) (or (ub-arms b depth arms) (ub-mb b depth df))))
+      ((t-refine base ats) (or (ub-at b depth base) (ub-ratoms b depth ats)))
+      (_ false))))
+(def ub-ratoms
+  (lam (b depth ats) (case ats (nil false)
+    ((cons a r) (case a ((r-atom op oper) (or (ub-at b depth oper) (ub-ratoms b depth r))))))))
+(def ub-any
+  (lam (b depth ts) (case ts (nil false) ((cons x r) (or (ub-at b depth x) (ub-any b depth r))))))
+(def ub-arms
+  (lam (b depth arms) (case arms (nil false)
+    ((cons a r) (case a ((karm cn nv bd) (or (ub-at b (+ depth nv) bd) (ub-arms b depth r))))))))
+(def ub-mb
+  (lam (b depth mb) (case mb (none false) ((some d) (ub-at b depth d)))))
+
+(def sc-at
+  (lam (delta depth t)
+    (case t
+      ((t-var i)          (case (<i i depth) (true (t-var i)) (false (t-var (- i delta)))))
+      ((t-type n)         (t-type n))
+      ((t-pi q s d c)     (t-pi q s (sc-at delta depth d) (sc-at delta (+ depth 1) c)))
+      ((t-lam bd)         (t-lam (sc-at delta (+ depth 1) bd)))
+      ((t-app f a)        (t-app (sc-at delta depth f) (sc-at delta depth a)))
+      ((t-let q v bd)     (t-let q (sc-at delta depth v) (sc-at delta (+ depth 1) bd)))
+      ((t-ann tm ty)      (t-ann (sc-at delta depth tm) (sc-at delta depth ty)))
+      ((t-global n)       (t-global n))
+      ((t-prim n)         (t-prim n))
+      ((t-primty n)       (t-primty n))
+      ((t-lit-i v)        (t-lit-i v))
+      ((t-lit-s v)        (t-lit-s v))
+      ((t-con dn cn as)   (t-con dn cn (sc-any delta depth as)))
+      ((t-tcon dn as)     (t-tcon dn (sc-any delta depth as)))
+      ((t-case sc arms df) (t-case (sc-at delta depth sc) (sc-arms delta depth arms) (sc-mb delta depth df)))
+      ((t-refine base ats) (t-refine (sc-at delta depth base) (sc-ratoms delta depth ats))))))
+(def sc-ratoms
+  (lam (delta depth ats) (case ats (nil nil)
+    ((cons a r) (case a ((r-atom op oper) (cons (r-atom op (sc-at delta depth oper)) (sc-ratoms delta depth r))))))))
+(def sc-any
+  (lam (delta depth ts) (case ts (nil nil) ((cons x r) (cons (sc-at delta depth x) (sc-any delta depth r))))))
+(def sc-arms
+  (lam (delta depth arms) (case arms (nil nil)
+    ((cons a r) (case a ((karm cn nv bd) (cons (karm cn nv (sc-at delta (+ depth nv) bd)) (sc-arms delta depth r))))))))
+(def sc-mb
+  (lam (delta depth mb) (case mb (none none) ((some d) (some (sc-at delta depth d))))))
+
+; _ensure_escapes: a branch-inferred type must make sense in the outer context.
+(def ensure-escapes
+  (lam (outer inner tyv)
+    (let (nb (- (ctx-len inner) (ctx-len outer)))
+      (let (term (quote-val (ctx-len inner) tyv))
+        (case (ub-at nb 0 term)
+          (true  (esc-err "case branch type mentions branch binders"))
+          (false (esc-ok (eval-term (env-of outer) (sc-at nb 0 term)))))))))
+
+; the per-branch fold, threading (result_ty, joined-usage, covered-set) as CaseSt.
+(def case-branches
+  (lam (sig c decl targs scrut arms st)
+    (case arms
+      (nil (cr-ok st))
+      ((cons a rest)
+        (case a ((karm cn nvars body)
+          (case st ((cst rty joined covered)
+            (case (name-in cn covered)
+              (true (cr-err "duplicate case branch"))
+              (false (case (ctor-fields decl cn)
+                       (none (cr-err "branch names a non-constructor"))
+                       ((some fields) (proc-branch sig c decl targs scrut rest cn nvars body fields rty joined covered)))))))))))))
+(def proc-branch
+  (lam (sig c decl targs scrut rest cn nvars body fields rty joined covered)
+    (case (ctor-field-types sig (rev-vals targs) fields)
+      ((ft-err m) (cr-err m))
+      ((ft-ok fts)
+        (case (=i nvars (llen Field fields))
+          (false (cr-err "branch binds the wrong number of names"))
+          (true  (proc-branch2 sig c decl targs scrut rest cn nvars body fts rty joined covered)))))))
+; proc-branch2: NARROW the outer ctx from the guard (refine.py runs narrow_hooks
+; on the ctx BEFORE binding fields), then bind fields; length refs stay on the
+; un-narrowed c (narrow preserves length), only the infer/check env is tightened.
+(def proc-branch2
+  (lam (sig c decl targs scrut rest cn nvars body fts rty joined covered)
+    (let (ctx2 (bind-fields (narrow-branch c scrut cn) fts))
+      (case rty
+        (none (case (infer sig ctx2 body)
+                ((tc-err m) (cr-err m))
+                ((tc-ok rt ub)
+                  (case (ensure-escapes c ctx2 rt)
+                    ((esc-err m) (cr-err m))
+                    ((esc-ok rt2) (branch-finish sig c scrut rest cn ub fts (some rt2) joined covered decl targs))))))
+        ((some rtv) (case (check sig ctx2 body rtv)
+                      ((ck-err m) (cr-err m))
+                      ((ck-ok ub) (branch-finish sig c scrut rest cn ub fts (some rtv) joined covered decl targs))))))))
+(def branch-finish
+  (lam (sig c scrut rest cn ub fts rty joined covered decl targs)
+    (case (check-binders ub (ctx-len c) 0 fts)
+      ((u-err m) (cr-err m))
+      ((u-ok x)
+        (let (ubo (take-qty ub (ctx-len c)))
+          (case-branches sig c decl targs scrut rest
+            (cst rty (case joined (none (some ubo)) ((some j) (some (ujoin j ubo)))) (cons cn covered))))))))
+
+(def check-case
+  (lam (sig c scrut arms dflt expected)
+    (case (infer sig c scrut)
+      ((tc-err m) (tc-err m))
+      ((tc-ok sty us)
+        (case sty
+          ((v-tcon dname targs)
+            (case (sig-data sig dname)
+              (none (tc-err "unknown data type in case scrutinee"))
+              ((some decl)
+                (case (case-branches sig c decl targs scrut arms (cst expected none nil))
+                  ((cr-err m) (tc-err m))
+                  ((cr-ok st) (finish-case sig c decl dflt us st))))))
+          (_ (tc-err "case scrutinee has a non-data type")))))))
+(def finish-case
+  (lam (sig c decl dflt us st)
+    (case st ((cst rty joined covered)
+      (case dflt
+        ((some d) (case-with-default sig c rty joined us d))
+        (none (case (all-covered? decl covered)
+                (false (tc-err "non-exhaustive case"))
+                (true  (case rty
+                         (none (tc-err "empty case"))
+                         ((some rt) (finish-join rt joined us)))))))))))
+(def case-with-default
+  (lam (sig c rty joined us d)
+    (case rty
+      (none (case (infer sig c d)
+              ((tc-err m) (tc-err m))
+              ((tc-ok rt ud) (finish-join rt (case joined (none (some ud)) ((some j) (some (ujoin j ud)))) us))))
+      ((some rt) (case (check sig c d rt)
+                   ((ck-err m) (tc-err m))
+                   ((ck-ok ud) (finish-join rt (case joined (none (some ud)) ((some j) (some (ujoin j ud)))) us)))))))
+(def finish-join
+  (lam (rt mj us) (case mj (none (tc-err "empty case")) ((some j) (tc-ok rt (uadd us j))))))
+
+; ============================================ E04 decision #6: VRefine internals
+; Ports refine.py _eval_refine / _check_refine / _check_against / _subtype / _conv
+; / _quote into the kernel (the chirality kernel is closed sums, so refine.py's hooks
+; become arms, above). The Constraint decision procedure (entails/is-empty/
+; satisfies/c-atom) is reused from refine.chiral.
+
+; eval (refine.py _eval_refine): fold each atom's operand into the Constraint --
+; a literal is a constant bound, a bare NVar a symbolic bound keyed by its level.
+(def fold-atoms
+  (lam (env c atoms)
+    (case atoms
+      (nil c)
+      ((cons a rest) (case a ((r-atom op operand)
+        (case (eval-term env operand)
+          ((v-lit-i k) (fold-atoms env (c-atom c op k) rest))
+          ((v-ne h sp) (case sp
+                         ((nil) (case h ((n-var lvl) (fold-atoms env (c-sym-atom c op lvl) rest)) (_ (fold-atoms env c rest))))
+                         (_ (fold-atoms env c rest))))
+          (_ (fold-atoms env c rest)))))))))
+
+; quote (refine.py _quote): rebuild the atom list from the Constraint. const bounds
+; -> (op literal); symbolic (op,level) -> (op (Var lvl-1-level)) mirroring quote's NVar.
+(def concat-ra (lam (xs ys) (case xs (nil ys) ((cons x r) (cons x (concat-ra r ys))))))
+(def ex-atoms (lam (ex) (case ex (nil nil) ((cons x r) (cons (r-atom (s-ne) (t-lit-i x)) (ex-atoms r))))))
+(def sym-atoms
+  (lam (lvl sym) (case sym (nil nil)
+    ((cons f r) (case f ((pair op level) (cons (r-atom op (t-var (- (- lvl 1) level))) (sym-atoms lvl r))))))))
+(def refine-atoms
+  (lam (lvl cns) (case cns ((constraint lo hi ex sym)
+    (concat-ra (case lo (none nil) ((some l) (cons (r-atom (s-ge) (t-lit-i l)) nil)))
+    (concat-ra (case hi (none nil) ((some h) (cons (r-atom (s-le) (t-lit-i h)) nil)))
+    (concat-ra (ex-atoms ex) (sym-atoms lvl sym))))))))
+
+; conv / subtype helpers: structural Constraint equality (refine.py a[2]==b[2] =
+; tuple eq, frozensets compared as sets) and the TOP test.
+(def mi64-eq (lam (a b) (case a (none (case b (none true) (_ false))) ((some x) (case b ((some y) (=i x y)) (_ false))))))
+(def mi-none (lam (a) (case a (none true) (_ false))))
+(def i64-subset (lam (xs ys) (case xs (nil true) ((cons x r) (case (i64-mem x ys) (true (i64-subset r ys)) (false false))))))
+(def iset-eq (lam (a b) (and (i64-subset a b) (i64-subset b a))))
+(def fact-subset (lam (xs ys) (case xs (nil true) ((cons x r) (case (fact-mem x ys) (true (fact-subset r ys)) (false false))))))
+(def fset-eq (lam (a b) (and (fact-subset a b) (fact-subset b a))))
+(def c-eq
+  (lam (a b) (case a ((constraint lo1 hi1 ex1 sym1) (case b ((constraint lo2 hi2 ex2 sym2)
+    (and (mi64-eq lo1 lo2) (and (mi64-eq hi1 hi2) (and (iset-eq ex1 ex2) (fset-eq sym1 sym2))))))))))
+(def c-is-top
+  (lam (c) (case c ((constraint lo hi ex sym)
+    (and (mi-none lo) (and (mi-none hi) (and (case ex (nil true) (_ false)) (case sym (nil true) (_ false)))))))))
+
+; infer (refine.py _check_refine): base must be a type whose value is I64; each
+; operand must infer to I64 (possibly refined) and evaluate to a constant or bare var.
+(def obase-i64?
+  (lam (oty) (case oty
+    ((v-primty n) (str-eq n "I64"))
+    ((v-refine b cns) (case b ((v-primty n) (str-eq n "I64")) (_ false)))
+    (_ false))))
+(def operand-ok?
+  (lam (v) (case v
+    ((v-lit-i k) true)
+    ((v-ne h sp) (case sp ((nil) (case h ((n-var lvl) true) (_ false))) (_ false)))
+    (_ false))))
+(def check-refine
+  (lam (sig c base atoms)
+    (case (infer sig c base)
+      ((tc-err m) (tc-err m))
+      ((tc-ok bty bu)
+        (case bty
+          ((v-type l)
+            (case (eval-term (env-of c) base)
+              ((v-primty n) (case (str-eq n "I64")
+                              (true  (check-ratoms sig c atoms))
+                              (false (tc-err "scaffold refinements are over I64 only"))))
+              (_ (tc-err "scaffold refinements are over I64 only"))))
+          (_ (tc-err "refinement base is not a type")))))))
+(def check-ratoms
+  (lam (sig c atoms)
+    (case atoms
+      (nil (tc-ok (v-type 0) (uzero (ctx-len c))))
+      ((cons a rest) (case a ((r-atom op operand)
+        (case (infer sig c operand)
+          ((tc-err m) (tc-err m))
+          ((tc-ok oty ou)
+            (case (obase-i64? oty)
+              (false (tc-err "refinement operand must be an I64"))
+              (true (case (operand-ok? (eval-term (env-of c) operand))
+                      (false (tc-err "refinement operand must be a constant or a bare variable"))
+                      (true  (check-ratoms sig c rest)))))))))))))
+
+; check against a refinement (refine.py _check_against): a base value that either
+; has an inferred refinement entailing this one, or is a literal satisfying it.
+(def refine-entails?
+  (lam (ity cns) (case ity ((v-refine b c2) (entails c2 cns)) (_ false))))
+(def unann-lit
+  (lam (t) (case t ((t-lit-i k) (some k)) ((t-ann tm ty) (unann-lit tm)) (_ none))))
+(def check-against
+  (lam (sig c t base cns)
+    (case (check sig c t base)
+      ((ck-err m) (ck-err m))
+      ((ck-ok u)
+        (case (infer sig c t)
+          ((tc-err m) (ck-err m))
+          ((tc-ok ity iu)
+            (case (refine-entails? ity cns)
+              (true (ck-ok u))
+              (false (case (unann-lit t)
+                       ((some k) (case (satisfies cns k) (true (ck-ok u)) (false (ck-err "cannot prove refinement"))))
+                       (none (ck-err "cannot prove refinement")))))))))))
+
+; ============================================ E04 #6 R3: the narrow hook (case)
+; Ports refine.py _narrow: when a case scrutinee is a comparison of a variable
+; (Prim <i/<=i/=i on two operands) the true/false branch PROVES a bound on that
+; variable; tighten its VRefine in the branch ctx so a guarded body checks against
+; the refined bound with no runtime test. Non-comparison scrutinees -> ctx as-is.
+(def is-cmp-op (lam (op) (or (str-eq op "<i") (or (str-eq op "<=i") (str-eq op "=i")))))
+(def unann-term (lam (t) (case t ((t-ann tm ty) (unann-term tm)) (_ t))))
+(def oper-of
+  (lam (t) (case (unann-term t)
+    ((t-lit-i k) (o-const k))
+    ((t-var i)   (o-var i))
+    (_ (o-nope)))))
+(def both-oper? (lam (a b) (case a (o-nope false) (_ (case b (o-nope false) (_ true))))))
+(def ctx-narrow
+  (lam (c ix newty)
+    (case c
+      ((ctx-nil) (ctx-nil))
+      ((ctx-bind q ty rest) (case (=i ix 0)
+                              (true  (ctx-bind q newty rest))
+                              (false (ctx-bind q ty (ctx-narrow rest (- ix 1) newty))))))))
+(def base-cns
+  (lam (tyv) (case tyv
+    ((v-primty n)     (case (str-eq n "I64") (true (some c-top)) (false none)))
+    ((v-refine b cns) (case b ((v-primty n) (case (str-eq n "I64") (true (some cns)) (false none))) (_ none)))
+    (_ none))))
+; the _LEARN table: (op, var-is-left, branch-is-true) -> the ops proved about the var.
+(def pick1
+  (lam (vl it tt tf ft ff)
+    (case vl
+      (true  (case it (true (cons tt nil)) (false (cons tf nil))))
+      (false (case it (true (cons ft nil)) (false (cons ff nil)))))))
+(def learn-ops
+  (lam (op vl it)
+    (case (str-eq op "<i")
+      (true  (pick1 vl it (s-lt) (s-ge) (s-gt) (s-le)))
+      (false (case (str-eq op "<=i")
+        (true  (pick1 vl it (s-le) (s-gt) (s-ge) (s-lt)))
+        (false (case it (true (cons (s-ge) (cons (s-le) nil))) (false (cons (s-ne) nil)))))))))
+; apply each learned op to the constraint, from the OTHER operand (const -> interval
+; bound; var -> symbolic bound keyed by that var's de-Bruijn level n-1-j).
+(def apply-ops
+  (lam (c ops other n)
+    (case ops
+      (nil c)
+      ((cons o rest)
+        (case other
+          ((o-const k) (apply-ops (c-atom c o k) rest other n))
+          ((o-var j)   (apply-ops (c-sym-atom c o (- (- n 1) j)) rest other n))
+          ((o-nope)    c))))))
+(def narrow-side
+  (lam (c op var-left it me other)
+    (case me
+      ((o-var ix) (case (base-cns (ctx-ty c ix))
+                    (none c)                                  ; not I64/refined-I64: skip
+                    ((some cc) (ctx-narrow c ix
+                                 (v-refine (v-primty "I64")
+                                           (apply-ops cc (learn-ops op var-left it) other (ctx-len c)))))))
+      (_ c))))                                                ; a constant operand: nothing to narrow
+(def narrow-2
+  (lam (c op it o0 o1)
+    (case (both-oper? o0 o1)
+      (false c)
+      (true (narrow-side (narrow-side c op true it o0 o1) op false it o1 o0)))))
+(def narrow-branch
+  (lam (c scrut cn)
+    (case (or (str-eq cn "true") (str-eq cn "false"))
+      (false c)
+      (true (case scrut
+        ((t-app g arg1) (case g
+          ((t-app h arg0) (case h
+            ((t-prim op) (case (is-cmp-op op)
+                           (false c)
+                           (true (narrow-2 c op (str-eq cn "true") (oper-of arg0) (oper-of arg1)))))
+            (_ c)))
+          (_ c)))
+        (_ c))))))

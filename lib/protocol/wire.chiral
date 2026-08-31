@@ -1,0 +1,96 @@
+; Wayland wire codec, written in chirality.
+; A message is: object id (u32) | opcode+size (u32, size in the high 16 bits,
+; size includes the 8 byte header) | body. All little-endian, args padded to 4.
+; No libwayland anywhere: the compositor is a foreign counterpart across one
+; typed port, and this file is the port protocol's data layer.
+
+(import "prelude")
+
+; one zero byte, for NUL terminators and padding
+(def zb Bytes (bslice (pack-u32 0) 0 1))
+
+; encode a message: object id, opcode, body
+(def wenc (-> I64 I64 Bytes Bytes)
+  (lam (obj op body)
+    (bcat (pack-u32 obj)
+          (bcat (pack-u32 (+ op (* 65536 (+ 8 (blen body)))))
+                body))))
+
+; encode a string argument: u32 length including NUL, bytes, NUL, pad to 4
+(def wstr (-> Str Bytes)
+  (lam (s)
+    (let ((raw (str->bytes s))
+          (n (+ (blen raw) 1))
+          (pad (% (- 4 (% n 4)) 4)))
+      (bcat (pack-u32 n)
+            (bcat raw (brepeat zb (+ 1 pad)))))))
+
+; one decoded message
+(data WMsg () (wmsg (obj I64) (op I64) (body Bytes)))
+(data WSplit () (wsplit (msg (Maybe WMsg)) (rest Bytes)))
+
+; split one complete message off the front of the buffer, if there is one
+(def wsplit1 (-> Bytes WSplit)
+  (lam (buf)
+    (case (<=i 8 (blen buf))
+      (false (the WSplit (wsplit (the (Maybe WMsg) none) buf)))
+      (true
+        (let ((szop (unpack-u32 buf 4))
+              (size (/ szop 65536))
+              (op (% szop 65536)))
+          (case (<=i size (blen buf))
+            (false (the WSplit (wsplit (the (Maybe WMsg) none) buf)))
+            (true
+              (the WSplit (wsplit
+                (the (Maybe WMsg)
+                  (some (wmsg (unpack-u32 buf 0) op (bslice buf 8 size))))
+                (bslice buf size (blen buf)))))))))))
+
+; wl_registry.global event body: name u32 | interface string | version u32
+(def glob-name (-> Bytes I64) (lam (b) (unpack-u32 b 0)))
+(def glob-iface (-> Bytes Str)
+  (lam (b)
+    (let (n (unpack-u32 b 4))          ; length including NUL
+      (bytes->str (bslice b 8 (+ 8 (- n 1)))))))
+
+; wl_registry.bind request body: name u32 | interface string | version | new id
+(def wbind (-> I64 Str I64 I64 Bytes)
+  (lam (name iface version newid)
+    (bcat (pack-u32 name)
+          (bcat (wstr iface)
+                (bcat (pack-u32 version) (pack-u32 newid))))))
+
+; newline-terminated line splitting for the niri IPC stream
+(data LSplit () (lsplit (line (Maybe Str)) (rest Str)))
+
+(def line1 (-> Str LSplit)
+  (lam (s)
+    (let (i (str-find s "\n"))
+      (case (=i i (- 0 1))
+        (true (the LSplit (lsplit (the (Maybe Str) none) s)))
+        (false (the LSplit (lsplit
+                 (the (Maybe Str) (some (str-sub s 0 i)))
+                 (str-sub s (+ i 1) (str-len s)))))))))
+
+; wl_display.error body: object id u32 | code u32 | message string.
+; The alarm carries what diverged from what (docs/error-and-alarm.md).
+(def err-msg (-> Bytes Str)
+  (lam (b)
+    (str-cat "object "
+      (str-cat (i64->str (unpack-u32 b 0))
+        (str-cat " code "
+          (str-cat (i64->str (unpack-u32 b 4))
+            (str-cat ": "
+              (bytes->str (bslice b 12 (+ 12 (- (unpack-u32 b 8) 1)))))))))))
+
+; the outer key of a one-key JSON object: {"WorkspaceActivated":...} -> that name
+(def ev-name (-> Str Str)
+  (lam (s)
+    (let (a (str-find s "\""))
+      (case (=i a (- 0 1))
+        (true "")
+        (false
+          (let (b (str-find-from s "\"" (+ a 1)))
+            (case (=i b (- 0 1))
+              (true "")
+              (false (str-sub s (+ a 1) b)))))))))

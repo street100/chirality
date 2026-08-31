@@ -1,0 +1,229 @@
+; scriba-manas-test.chiral — S14 unit gate for the manas author-mode edit core.
+;
+; Runs the three example edits (S14 example §6.1–§6.3) through apply-edit and
+; byte-checks the rewritten fields; plus T4 (cross-term totality). Pure — no PTY,
+; no network, no fork. compile-main returns 0 iff all four tests pass (exit 0).
+;
+; Build+run (fast, ~seconds — the manas-mode closure only, no full scriba tree):
+;   . bin/chirality-resolve.sh
+;   chirality_blob scaffold/lib scriba/manas-mode manas/profile/profiles \
+;     manas/profile/doc-refine manas/core/types > blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
+;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   cat TUI/scriba/scriba-manas-test.chiral >> blob; echo >> blob
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
+
+(import "prelude")
+(import "manas-mode")             ; ManasDoc, ManasEdit, apply-edit, gate-has?
+(import "manas/core/types")       ; Config, Binding, GateRule, Order, StopPolicy, Pipeline
+(import "manas/profile/profiles") ; smoke-local-config, config-id
+(import "manas/profile/doc-refine"); doc-refine-pipeline, pipeline-gate
+
+; ─── accessors (E133 types have no accessors; add exactly what the tests need) ─
+
+(def cbinds (-> Config (List Binding))
+  (lam (c) (case c ((config id bs) bs))))
+
+(def bmodel (-> Binding Str) (lam (b) (case b ((binding s m n) m))))
+(def bnctx  (-> Binding I64) (lam (b) (case b ((binding s m n) n))))
+
+(def find-binding (-> (List Binding) Str (Maybe Binding))
+  (lam (bs slot)
+    (case bs
+      (nil none)
+      ((cons b rest)
+        (case b ((binding s m n)
+          (case (str-eq s slot) (true (some b)) (false (find-binding rest slot)))))))))
+
+(def binding-model-eq (-> (List Binding) Str Str Bool)
+  (lam (bs slot want)
+    (case (find-binding bs slot)
+      (none false)
+      ((some b) (str-eq (bmodel b) want)))))
+
+(def binding-nctx-eq (-> (List Binding) Str I64 Bool)
+  (lam (bs slot want)
+    (case (find-binding bs slot)
+      (none false)
+      ((some b) (=i (bnctx b) want)))))
+
+; ManasDoc projections — the tests call these only on the known-correct branch;
+; the other arm returns a harmless value so the case stays total.
+(def md-config (-> ManasDoc Config)
+  (lam (d) (case d ((doc-config c) c) ((doc-pipeline p) (config "!none" nil)))))
+(def md-pipeline (-> ManasDoc Pipeline)
+  (lam (d) (case d ((doc-pipeline p) p) ((doc-config c) doc-refine-pipeline))))
+
+; Pipeline field accessors.
+(def pid    (-> Pipeline Str)        (lam (p) (case p ((pipeline id whn g o eids cmb stp yd) id))))
+(def porder (-> Pipeline Order)      (lam (p) (case p ((pipeline id whn g o eids cmb stp yd) o))))
+(def pstop  (-> Pipeline StopPolicy) (lam (p) (case p ((pipeline id whn g o eids cmb stp yd) stp))))
+
+; GATE-rule id list by condition (nil if the condition is not present).
+(def rule-ids-of (-> (List GateRule) Str (List Str))
+  (lam (rules cond)
+    (case rules
+      (nil nil)
+      ((cons r rest)
+        (case r ((gate-rule c ids)
+          (case (str-eq c cond) (true ids) (false (rule-ids-of rest cond)))))))))
+
+(def slist-len (-> (List Str) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (slist-len t))))))
+
+; StopPolicy / Order readbacks.
+(def stop-is-until-dry (-> StopPolicy I64 Bool)
+  (lam (sp want) (case sp (stop-single false) ((stop-capped c) false) ((stop-until-dry c) (=i c want)))))
+(def stop-is-capped (-> StopPolicy I64 Bool)
+  (lam (sp want) (case sp (stop-single false) ((stop-capped c) (=i c want)) ((stop-until-dry c) false))))
+(def order-is-fan-out (-> Order Bool)
+  (lam (o) (case o (order-fan-out true) (order-chain false) (order-branch false))))
+
+; ─── T1 — rebind smoke-local `reasoner` (example §6.1) ───────────────────────
+; edit reasoner -> qwen3:8b @ 16384; other two bindings unchanged.
+(def t1 (-> Unit Bool)
+  (lam (_)
+    (let ((r  (apply-edit (doc-config smoke-local-config) (edit-rebind "reasoner" "qwen3:8b" 16384)))
+          (id "reasoner"))
+      (let ((bs (cbinds (md-config r))))
+        (and (and (binding-model-eq bs "reasoner" "qwen3:8b")
+                  (binding-nctx-eq  bs "reasoner" 16384))
+             (and (binding-model-eq bs "cheap-verifier" "qwen2.5:0.5b")
+                  (binding-model-eq bs "combiner"       "qwen2.5:0.5b")))))))
+
+; ─── T2 — toggle `example-organization` in the "carries examples?" GATE (§6.2) ─
+(def t2 (-> Unit Bool)
+  (lam (_)
+    (let ((d (doc-pipeline doc-refine-pipeline))
+          (e (edit-gate "carries examples?" "example-organization")))
+      (let ((r  (apply-edit d e)))
+        (let ((r2 (apply-edit r e))                                    ; toggle back on
+              (r3 (apply-edit d (edit-gate "carries examples?" "no-such-agent")))) ; no-op
+          (let ((ids1 (rule-ids-of (pipeline-gate (md-pipeline r))  "carries examples?"))
+                (ids2 (rule-ids-of (pipeline-gate (md-pipeline r2)) "carries examples?"))
+                (ids3 (rule-ids-of (pipeline-gate (md-pipeline r3)) "carries examples?")))
+            (and (and (=i (slist-len ids1) 1)
+                      (and (not (gate-has? ids1 "example-organization"))
+                           (gate-has? ids1 "example-completeness")))
+                 (and (and (=i (slist-len ids2) 2) (gate-has? ids2 "example-organization"))
+                      (=i (slist-len ids3) 2)))))))))              ; dead agent NOT added
+
+; ─── T3 — set doc-refine STOP (example §6.3) ─────────────────────────────────
+(def t3 (-> Unit Bool)
+  (lam (_)
+    (let ((d (doc-pipeline doc-refine-pipeline)))
+      (let ((p1 (md-pipeline (apply-edit d (edit-stop (stop-until-dry 4)))))
+            (p2 (md-pipeline (apply-edit d (edit-stop (stop-capped 2))))))
+        (and (and (stop-is-until-dry (pstop p1) 4)
+                  (and (str-eq (pid p1) "doc-refine") (order-is-fan-out (porder p1))))
+             (stop-is-capped (pstop p2) 2))))))
+
+; ─── T4 — cross-term totality (identity no-ops) ──────────────────────────────
+(def t4 (-> Unit Bool)
+  (lam (_)
+    (let ((a (apply-edit (doc-config smoke-local-config) (edit-stop (stop-single))))
+          (b (apply-edit (doc-pipeline doc-refine-pipeline) (edit-rebind "reasoner" "x" 1))))
+      (and (and (str-eq (config-id (md-config a)) "smoke-local")
+                (binding-model-eq (cbinds (md-config a)) "reasoner" "qwen2.5:0.5b"))
+           (and (str-eq (pid (md-pipeline b)) "doc-refine")
+                (stop-is-until-dry (pstop (md-pipeline b)) 8))))))
+
+; ─── T5 — gate-add-rule: append a whole GATE rule (slice-A) ──────────────────
+; add "needs-tests?" (absent) -> present, empty id list; dup-add is identity.
+(def t5 (-> Unit Bool)
+  (lam (_)
+    (let ((d  (doc-pipeline doc-refine-pipeline)))
+      (let ((r  (apply-edit d (edit-gate-add "needs-tests?"))))
+        (let ((p1 (md-pipeline r))
+              (r2 (apply-edit r (edit-gate-add "needs-tests?"))))   ; dup -> identity
+          (let ((conds1 (gate-rule-conds p1))
+                (conds2 (gate-rule-conds (md-pipeline r2)))
+                (ids1   (rule-ids-of (pipeline-gate (md-pipeline r)) "needs-tests?")))
+            (and (and (gate-has? conds1 "needs-tests?")     ; the rule now exists
+                      (=i (slist-len ids1) 0))              ; ...with no members yet
+                 (=i (slist-len conds1) (slist-len conds2))))))))) ; dup add did not grow it
+
+; ─── T6 — gate-del-rule: drop a whole GATE rule (slice-A) ────────────────────
+(def t6 (-> Unit Bool)
+  (lam (_)
+    (let ((d  (doc-pipeline doc-refine-pipeline)))
+      (let ((added (apply-edit d (edit-gate-add "needs-tests?"))))
+        (let ((back  (apply-edit added (edit-gate-del "needs-tests?"))))  ; add then del
+          (and (gate-has?     (gate-rule-conds (md-pipeline added)) "needs-tests?")
+               (not (gate-has? (gate-rule-conds (md-pipeline back))  "needs-tests?"))))))))
+
+; ─── T7 — bind-add: append a whole Config binding (slice-A) ──────────────────
+; add "extra"@llama3:8b/4096 (absent) -> present; dup-add of "reasoner" identity.
+(def t7 (-> Unit Bool)
+  (lam (_)
+    (let ((d (doc-config smoke-local-config)))
+      (let ((r  (apply-edit d (edit-bind-add "extra" "llama3:8b" 4096)))
+            (rd (apply-edit d (edit-bind-add "reasoner" "SHOULD-NOT-APPLY" 1)))) ; dup slot
+        (let ((bs  (cbinds (md-config r)))
+              (bsd (cbinds (md-config rd))))
+          (and (and (gate-has? (config-slots (md-config r)) "extra")
+                    (and (binding-model-eq bs "extra" "llama3:8b")
+                         (binding-nctx-eq  bs "extra" 4096)))
+               (binding-model-eq bsd "reasoner" "qwen2.5:0.5b")))))))  ; dup add did NOT overwrite
+
+; ─── T8 — bind-del: drop a whole Config binding (slice-A) ────────────────────
+(def t8 (-> Unit Bool)
+  (lam (_)
+    (let ((d (doc-config smoke-local-config)))
+      (let ((added (apply-edit d (edit-bind-add "extra" "llama3:8b" 4096))))
+        (let ((back  (apply-edit added (edit-bind-del "extra"))))       ; add then del
+          (and (gate-has?     (config-slots (md-config added)) "extra")
+               (not (gate-has? (config-slots (md-config back))  "extra"))))))))
+
+; ─── T9 — experts-add: add a poolable id to the pipeline pool (slice-B) ──────
+; doc-refine's pool already holds all 7 experts, so first del "anchor-sharpen"
+; then add it back -> present again; add of a non-pool id is identity; add of an
+; already-present id is identity (no duplicate).
+(def t9 (-> Unit Bool)
+  (lam (_)
+    (let ((d (doc-pipeline doc-refine-pipeline)))
+      (let ((gone (apply-edit d (edit-expert-del "anchor-sharpen"))))    ; remove first
+        (let ((back (apply-edit gone (edit-expert-add "anchor-sharpen")))) ; poolable -> added
+          (let ((ids-back (pipeline-expert-ids (md-pipeline back)))
+                (ids-gone (pipeline-expert-ids (md-pipeline gone))))
+            (and (and (not (gate-has? ids-gone "anchor-sharpen"))        ; removed
+                      (gate-has? ids-back "anchor-sharpen"))             ; added back
+                 (and (=i (slist-len ids-back)
+                          (slist-len (pipeline-expert-ids (md-pipeline d)))) ; back to 7
+                      ; add of a non-pool id is identity (no growth)
+                      (=i (slist-len (pipeline-expert-ids
+                             (md-pipeline (apply-edit d (edit-expert-add "no-such-agent")))))
+                          (slist-len (pipeline-expert-ids (md-pipeline d))))))))))))
+
+; ─── T10 — experts-add dup guard: adding a present id is identity (slice-B) ──
+(def t10 (-> Unit Bool)
+  (lam (_)
+    (let ((d (doc-pipeline doc-refine-pipeline)))
+      (let ((r (apply-edit d (edit-expert-add "curate-merge"))))         ; already present
+        (=i (slist-len (pipeline-expert-ids (md-pipeline r)))
+            (slist-len (pipeline-expert-ids (md-pipeline d))))))))       ; unchanged length
+
+; ─── T11 — experts-del: drop an id from the pool (slice-B) ───────────────────
+(def t11 (-> Unit Bool)
+  (lam (_)
+    (let ((d (doc-pipeline doc-refine-pipeline)))
+      (let ((r (apply-edit d (edit-expert-del "coverage-vs-spec"))))
+        (and (gate-has?     (pipeline-expert-ids (md-pipeline d)) "coverage-vs-spec")
+             (not (gate-has? (pipeline-expert-ids (md-pipeline r)) "coverage-vs-spec")))))))
+
+; ─── T12 — pool edits don't apply to a Config (cross-term totality, slice-B) ──
+(def t12 (-> Unit Bool)
+  (lam (_)
+    (let ((a (apply-edit (doc-config smoke-local-config) (edit-expert-add "reasoner")))
+          (b (apply-edit (doc-config smoke-local-config) (edit-expert-del "reasoner"))))
+      (and (str-eq (config-id (md-config a)) "smoke-local")
+           (str-eq (config-id (md-config b)) "smoke-local")))))
+
+; ─── entry: 0 iff all twelve pass ────────────────────────────────────────────
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (and (and (and (and (t1 unit) (t2 unit)) (and (t3 unit) (t4 unit)))
+                    (and (and (t5 unit) (t6 unit)) (and (t7 unit) (t8 unit))))
+               (and (and (t9 unit) (t10 unit)) (and (t11 unit) (t12 unit))))
+      (true 0)
+      (false 1))))

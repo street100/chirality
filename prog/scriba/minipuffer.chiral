@@ -1,0 +1,255 @@
+; scriba S8: minipuffer — modal single-line prompt at bottom of screen.
+;
+; A modal single-line prompt for M-x (op name), C-x C-f (file path),
+; C-x b (puffer switch), C-s (search). When active, keypresses go to
+; the minipuffer instead of the current window. On Enter, the command
+; executes. On C-g, it cancels.
+;
+; Replaces: Emacs minibuf.c (2K lines) + minibuffer.el (3K lines).
+; No minibuffer-history, no completing-read, no recursive-edit.
+; Just a one-line puffer with completion over a list of strings.
+;
+; All 8 functions are implemented here as PURE state transforms plus one
+; effectful render. The modal READ loop itself lives in command-loop.chiral
+; (which owns read-keyseq); this module owns the PromptState algebra.
+;
+; Deps: prelude (Str, Bool, I64, List, Maybe, Pair, Unit)
+;       ports (Key, KeySeq, Keymap constructors + put extern)
+;       scriba/completion (complete, complete-exact, longest-common-prefix)
+
+(import "prelude")
+(import "ports")        ; Key, KeySeq, Keymap constructors + put
+(import "completion")   ; complete, complete-exact, longest-common-prefix
+
+; ─── Prompt kind ─────────────────────────────────────────────────
+
+; The kind of minipuffer prompt.
+; Determines the prompt text and what the caller does with the result.
+(data Prompt ()
+  (prompt-op)       ; M-x — read an op name
+  (prompt-file)     ; C-x C-f — read a file path
+  (prompt-save)     ; C-x C-w / :w on an unnamed buffer — read a save path
+  (prompt-name)     ; :f / :file — declare the buffer's path without saving
+  (prompt-puffer)   ; C-x b — switch to a puffer
+  (prompt-search)   ; C-s — read a search string
+  ; S14 manas author-mode prompts — same modal machinery, candidate list drawn
+  ; from the open ManasDoc at the call site (the label is all that differs).
+  (prompt-manas-model)   ; m — pick a model for a Config slot
+  (prompt-manas-expert)  ; g — toggle an agent in a GATE rule
+  (prompt-manas-stop)    ; s — pick a STOP policy (single|capped|until-dry)
+  (prompt-manas-cap)     ; s — the numeric cap for capped/until-dry
+  (prompt-manas-order)   ; o — pick a Pipeline ORDER (fan-out|chain|branch)
+  (prompt-manas-combiner); c — pick the COMBINER agent id
+  (prompt-manas-yield)   ; y — the YIELD prose
+  (prompt-manas-when)    ; w — the WHEN match text
+  ; slice-A structural add/remove — whole GATE rule / whole Config binding.
+  (prompt-manas-gate-cond) ; G/X — a GATE rule condition (free text add / rail del)
+  (prompt-manas-slot)      ; B/R — a Config binding slot (free text add / rail del)
+  (prompt-manas-ctx)       ; B — the numeric num-ctx for a new binding
+  ; slice-B structural add/remove — the Pipeline's top-level expert-ids pool.
+  (prompt-manas-expert-add) ; e — add an id to the pool (rail: the whole expert-pool)
+  (prompt-manas-expert-del) ; E — drop an id from the pool (rail: the pipeline's ids)
+  ; S16 compose prompts — pick an EXISTING library value; candidate list drawn from
+  ; the registries (pipeline-ids all-pipelines / config-ids all-profiles). Same
+  ; modal machinery; only the label + candidate source differ.
+  (prompt-manas-pick-pipeline)   ; :compose step 1 — pick a Pipeline
+  (prompt-manas-pick-config)     ; :compose step 2 — bind a Config
+  ; S14 browser — :manas (bare) picks ANY library setup to author; candidate list
+  ; is the merged pipeline-ids ++ config-ids, routed by id through manas-enter.
+  (prompt-manas-browse))         ; :manas — open a pipeline/config to author
+
+; ─── PromptState ─────────────────────────────────────────────────
+
+; The state of an active minipuffer prompt.
+;   kind      — what kind of prompt this is
+;   input     — the current text the user has typed
+;   done      — true when the user has confirmed (Enter)
+;   cancelled — true when the user has cancelled (C-g)
+; Done and cancelled are mutually exclusive. Both false = active.
+(data PromptState ()
+  (prompt-state (kind Prompt) (input Str) (done Bool) (cancelled Bool)))
+
+; ─── Lifecycle ───────────────────────────────────────────────────
+
+; Enter the modal prompt. Takes a prompt kind and a list of
+; completion candidates, returns the initial PromptState.
+; Pure — constructs the fresh state value with empty input and
+; both flags false.
+(declare minipuffer-start (-> Prompt (List Str) PromptState))
+(def minipuffer-start
+  (lam (kind candidates)
+    (prompt-state kind "" false false)))
+
+; ─── Editing ─────────────────────────────────────────────────────
+
+; Insert a character into the prompt input at cursor position.
+; Takes PromptState and a character code (I64), returns updated state.
+; Only printable ASCII (0x20–0x7e) is inserted; others are no-ops.
+; Pure state transform — no I/O.
+(declare minipuffer-insert (-> PromptState I64 PromptState))
+(def minipuffer-insert
+  (lam (st code)
+    (case st
+      ((prompt-state kind input done cancelled)
+        (case (and (not (<i code 32)) (<=i code 126))
+          (true (prompt-state kind
+                  (str-cat input (bytes->str (bslice (pack-u32 code) 0 1)))
+                  done cancelled))
+          (false st))))))
+
+; Delete the character before the cursor.
+; No-op if cursor is at the start of input.
+; Pure state transform — no I/O.
+(declare minipuffer-delete (-> PromptState PromptState))
+(def minipuffer-delete
+  (lam (st)
+    (case st
+      ((prompt-state kind input done cancelled)
+        (case (=i (str-len input) 0)
+          (true st)
+          (false (prompt-state kind
+                   (str-sub input 0 (- (str-len input) 1))
+                   done cancelled)))))))
+
+; ─── Completion ──────────────────────────────────────────────────
+
+; Tab-complete the current input against the candidate list.
+; Uses complete from scriba/completion for prefix matching.
+; If exactly one match, fills input with the match.
+; If multiple matches, fills with the longest common prefix.
+; Pure — delegates to pure completion functions.
+(declare minipuffer-complete (-> PromptState (List Str) PromptState))
+(def minipuffer-complete
+  (lam (st candidates)
+    (case st
+      ((prompt-state kind input done cancelled)
+        (let (matches (complete input candidates))
+          (case matches
+            (nil st)
+            ((cons m rest)
+              (case rest
+                (nil (prompt-state kind m done cancelled))
+                (_ (case (longest-common-prefix matches)
+                     (none st)
+                     ((some p) (prompt-state kind p done cancelled))))))))))))
+
+; ─── Lifecycle transitions ───────────────────────────────────────
+
+; Mark the prompt as done (user pressed Enter).
+; Pure — sets (done true). Caller reads .input to get the result.
+(declare minipuffer-confirm (-> PromptState PromptState))
+(def minipuffer-confirm
+  (lam (st)
+    (case st
+      ((prompt-state kind input done cancelled)
+        (prompt-state kind input true cancelled)))))
+
+; Mark the prompt as cancelled (user pressed C-g).
+; Pure — sets (cancelled true).
+(declare minipuffer-cancel (-> PromptState PromptState))
+(def minipuffer-cancel
+  (lam (st)
+    (case st
+      ((prompt-state kind input done cancelled)
+        (prompt-state kind input done true)))))
+
+; ─── Accessor ────────────────────────────────────────────────────
+
+; Read the input string out of a PromptState (pure). The modal read loop
+; in command-loop.chiral uses this to recover the committed text on Enter.
+(def minipuffer-input (-> PromptState Str)
+  (lam (st)
+    (case st
+      ((prompt-state kind input done cancelled) input))))
+
+; ─── Rendering ───────────────────────────────────────────────────
+
+; ESC byte — chirality string literals have no \x escape, so the control byte
+; is built via pack-u32/bslice (same idiom as render's ansi-esc).
+(def mp-esc Str (bytes->str (bslice (pack-u32 27) 0 1)))
+; DEC save/restore cursor (ESC 7 / ESC 8).
+(def mp-save-cursor Str (str-cat mp-esc "7"))
+(def mp-restore-cursor Str (str-cat mp-esc "8"))
+; Clear to end of line (ESC [ K).
+(def mp-clear-line Str (str-cat mp-esc "[K"))
+; Cursor goto (ESC [ row ; col H) — ansi-goto equivalent, built locally
+; to avoid importing render.
+(def mp-goto (-> I64 I64 Str)
+  (lam (row col)
+    (str-cat (str-cat (str-cat (str-cat mp-esc "[") (i64->str row)) ";")
+      (str-cat (i64->str col) "H"))))
+
+; Prompt label for a kind.
+(def mp-prompt-label (-> Prompt Str)
+  (lam (kind)
+    (case kind
+      (prompt-op "M-x ")
+      (prompt-file "Find file: ")
+      (prompt-save "Save as: ")
+      (prompt-name "File name: ")
+      (prompt-puffer "Switch to puffer: ")
+      (prompt-search "I-search: ")
+      (prompt-manas-model "Model for slot: ")
+      (prompt-manas-expert "Toggle agent: ")
+      (prompt-manas-stop "STOP [single|capped|until-dry]: ")
+      (prompt-manas-cap "cap: ")
+      (prompt-manas-order "ORDER [fan-out|chain|branch]: ")
+      (prompt-manas-combiner "COMBINER agent: ")
+      (prompt-manas-yield "YIELD: ")
+      (prompt-manas-when "WHEN: ")
+      (prompt-manas-gate-cond "GATE condition: ")
+      (prompt-manas-slot "Slot: ")
+      (prompt-manas-ctx "num-ctx: ")
+      (prompt-manas-expert-add "Add expert: ")
+      (prompt-manas-expert-del "Remove expert: ")
+      (prompt-manas-pick-pipeline "Run pipeline: ")
+      (prompt-manas-pick-config   "Bind config: ")
+      (prompt-manas-browse        "Open setup: "))))
+
+; Render the prompt line at the bottom of the terminal.
+; Takes the current state and terminal dimensions (rows, cols).
+; Writes ANSI: save cursor, goto bottom line, clear line,
+; render prompt + input, restore cursor.
+; Effectful — writes ANSI escape sequences via put.
+(declare minipuffer-render (=> PromptState (Pair I64 I64) Unit))
+(def minipuffer-render
+  (lam (st dims)
+    (case st
+      ((prompt-state kind input done cancelled)
+        (case dims
+          ((pair rows cols)
+            ; Draw the prompt on the bottom row and LEAVE the caret right after
+            ; the typed input — the terminal advances the cursor as it prints, so
+            ; no goto is needed. (The old ESC7/ESC8 save+restore snapped the caret
+            ; back into the buffer body, so the highlight sat in the wrong place.)
+            (let (_ (put (mp-goto rows 1)))
+              (let (_ (put mp-clear-line))
+                (let (_ (put (mp-prompt-label kind)))
+                  (put input))))))))))
+
+; ─── Keymap ──────────────────────────────────────────────────────
+
+; Return the keymap for minipuffer mode.
+; Binds Enter→confirm, C-g→cancel, Tab→complete, and standard
+; single-line editing keys (backspace, C-a, C-e, C-b, C-f, C-d, C-k).
+; Pure — the keymap is an immutable data structure returned by value.
+; NOTE: the modal loop in command-loop.chiral dispatches these keys
+; directly (read-keyseq -> match) rather than via lookup-keymap; this
+; keymap documents the binding set and is available for keymap-driven use.
+; NOTE: `(-> Keymap)` (a single-item arrow with no codomain) is rejected by
+; B1's arrow parser; this is a VALUE of type Keymap, so the declare carries
+; the bare type. (default-keymap in keymap.chiral is the same value shape.)
+(declare minipuffer-keymap Keymap)
+(def minipuffer-keymap
+  (keymap
+    (cons (pair (keyseq (cons k-enter nil)) "minipuffer-confirm")
+    (cons (pair (keyseq (cons (k-ctrl 7) nil)) "minipuffer-cancel")
+    (cons (pair (keyseq (cons k-tab nil)) "minipuffer-complete")
+    (cons (pair (keyseq (cons k-backspace nil)) "minipuffer-delete")
+    (cons (pair (keyseq (cons (k-ctrl 1) nil)) "minipuffer-beginning")
+    (cons (pair (keyseq (cons (k-ctrl 5) nil)) "minipuffer-end")
+    (cons (pair (keyseq (cons (k-ctrl 2) nil)) "minipuffer-backward")
+    (cons (pair (keyseq (cons (k-ctrl 6) nil)) "minipuffer-forward")
+    (cons (pair (keyseq (cons (k-ctrl 4) nil)) "minipuffer-delete-char")
+    (cons (pair (keyseq (cons (k-ctrl 11) nil)) "minipuffer-kill-line")
+    nil))))))))))))

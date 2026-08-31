@@ -1,0 +1,40 @@
+; D-1 (port-side mirror): the chirality type comparator for the self-hosted checker's
+; linear-kind cycle-detection key. Mirrors the scaffold's now-pinned
+; `_tyv_key(sig, tyv) = _freeze(K.quote(sig, 0, tyv))` (data.py:85, DETERMINISM-
+; DEBTS D-1): a structural, host-independent canonical key for a type, replacing
+; the old CPython `repr(tyv)`. Here the substrate is data.chiral's `Ty` -- already a
+; closure-free normal-form syntax (the "quote" is trivial), so the key is a total
+; STRUCTURAL order over it. Definitionally-distinct-but-repr-colliding types can no
+; longer collide (structure, not text), so the linear-kind verdict this drives
+; converges bit-identically at the Stage1==Stage2 fixpoint.
+;
+; `ty-cmp : (-> Ty Ty Ord)` is a total order usable as an E27 ordered-map / seen-set
+; key (the D-1 deliverable). Strings compare BYTE-LEXICOGRAPHICALLY via str->bytes +
+; bget (no bcmp primitive needed -- composed from the existing byte face). PURE, total.
+(import "data")            ; the Ty ADT (ty-var/ty-tcon/ty-pi/ty-app/ty-i64) + prelude bytes ops
+(import "string-utils")   ; E151b: the owner of str-cmp (and, via collections, of Ord)
+
+(def cmp-i64 (-> I64 I64 Ord)
+  (lam (x y) (case (<i x y) (true (lt)) (false (case (<i y x) (true (gt)) (false (eq)))))))
+; lexicographic combine: first non-eq wins (strict -- both already evaluated).
+(def then (-> Ord Ord Ord) (lam (o k) (case o ((eq) k) ((lt) (lt)) ((gt) (gt)))))
+
+; a total order over the 5 Ty constructors: rank by constructor first, then fields.
+(def ty-rank (-> Ty I64)
+  (lam (t) (case t ((ty-var i) 0) ((ty-tcon n a) 1) ((ty-pi d c) 2) ((ty-app f a) 3) ((ty-i64) 4))))
+(declare ty-cmp      (-> Ty Ty Ord))
+(declare ty-list-cmp (-> (List Ty) (List Ty) Ord))
+(def ty-cmp (lam (a b)
+  (case (cmp-i64 (ty-rank a) (ty-rank b))
+    ((lt) (lt))
+    ((gt) (gt))
+    ((eq) (case a                                                   ; same constructor: compare fields
+      ((ty-var ia)     (case b ((ty-var ib)     (cmp-i64 ia ib))                       (_ (eq))))
+      ((ty-tcon na aa) (case b ((ty-tcon nb ab) (then (str-cmp na nb) (ty-list-cmp aa ab))) (_ (eq))))
+      ((ty-pi da ca)   (case b ((ty-pi db cb)   (then (ty-cmp da db) (ty-cmp ca cb)))  (_ (eq))))
+      ((ty-app fa xa)  (case b ((ty-app fb xb)  (then (ty-cmp fa fb) (ty-cmp xa xb)))  (_ (eq))))
+      ((ty-i64)        (eq)))))))
+(def ty-list-cmp (lam (aa ab)
+  (case aa
+    (nil (case ab (nil (eq)) (_ (lt))))                             ; shorter (prefix) sorts first
+    ((cons x xr) (case ab (nil (gt)) ((cons y yr) (then (ty-cmp x y) (ty-list-cmp xr yr))))))))

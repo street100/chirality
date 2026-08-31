@@ -1,0 +1,46 @@
+; E12: the effect membrane -- the three rules effects.py's Rules enforces
+; (on_apply:23 / on_binder:38 / erased_allow:46), generalized from the one-bit
+; lattice to set-containment over the effect row. Pure, total. effects.py stays
+; the oracle. The row CARRIER (Row/Seats/row_subsumes) is E39's; here Row is a
+; minimal names-list stand-in the same rules program against (decision #1). The
+; membrane only GATES -- it interprets nothing.
+(import "prelude")
+
+; ---- the row, as a set of crossing names (E39 swaps the full carrier) --------
+(def row-empty (List Str) (the (List Str) nil))
+
+(declare mem-str (-> Str (List Str) Bool))
+(def mem-str
+  (lam (x xs) (case xs (nil false)
+                ((cons y r) (case (str-eq x y) (true true) (false (mem-str x r)))))))
+
+; row-sub sub super: containment -- every crossing sub performs is permitted.
+(declare row-sub (-> (List Str) (List Str) Bool))
+(def row-sub
+  (lam (sub super) (case sub (nil true)
+                     ((cons x r) (case (mem-str x super) (true (row-sub r super)) (false false))))))
+
+; row-join: sequencing accumulates crossings (dedup union).
+(declare row-join (-> (List Str) (List Str) (List Str)))
+(def row-join
+  (lam (a b) (case a (nil b)
+               ((cons x r) (case (mem-str x b) (true (row-join r b)) (false (cons x (row-join r b))))))))
+
+; the projection today's `->` vs `=>` bit becomes.
+(def row-pure? (-> (List Str) Bool) (lam (r) (row-sub r row-empty)))
+
+(data Qtt () (q0) (q1) (qw))   ; erased / linear / unrestricted
+
+; rule 1 -- on-apply: a callee's row must be contained in the context's permitted row.
+(def on-apply-ok (-> (List Str) (List Str) Bool)
+  (lam (here callee) (row-sub callee here)))
+
+; rule 2 -- erased-allow: a q0 (erased, runtime-absent) position must be pure.
+(def erased-allow (-> Qtt (List Str) (List Str))
+  (lam (q here) (case q (q0 row-empty) (q1 here) (qw here))))
+
+; rule 3 -- on-binder: a linear (port-holding) type may be bound only at 1.
+; is-linear (E8) is consulted at the seam; here it arrives as a Bool.
+(def on-binder-ok (-> Qtt Bool Bool)
+  (lam (q is-lin) (case is-lin (false true)
+                    (true (case q (q1 true) (q0 false) (qw false))))))

@@ -1,0 +1,123 @@
+; E94 — batch loader: a drop-in replacement for parse.chiral's `load-source`
+; that avoids B1's native recursion depth limit by processing def/declare/extern
+; forms in capacity-bounded batches rather than one unbounded recursive pass.
+;
+; The bottleneck: `load-forms` (parse.chiral) recurses
+; linearly over the form list, and B1's native codegen has a finite stack depth.
+; The compiler's own ~260-form blob compiles; the scriba+linkage blob (~500+
+; forms) overflows.  The sexp reader (`read-all-str`) parses the full blob fine
+; (it's iterative, not recursive), so the fix is to parse once then batch the
+; loader's recursive phase.
+;
+; Cap value: empirically tuned.  B1 compiles its own blob (~260 forms) without
+; issue but fails scriba+linkage.  Start at 200, double until scriba passes.
+; The default cap of 200 has a 2x safety margin below the compiler's known-good
+; size — scriba+linkage just needs more batches, each well within the limit.
+;
+; Lands in: scaffold/lib/load-batch.chiral (new file).
+; Used by: compile-front.chiral — replaces `(load-source src)` with
+;          `(load-source-batched src)`.
+
+(import "parse")   ; load-source, load-form, install-porttypes, read-all-str,
+                   ; sig-close-extent + CloseR + sh-msg (via loader),
+                   ; Sexp, SrcSt, StepR, SEnv, base-senv, empty-sig (via loader),
+                   ; collect-porttype, collect-data,
+                   ; senv-add-datanames, add-all-ctors, elab-all-data,
+                   ; load-data-group
+
+; ---- capacity token: bounds recursion depth in the rest-form loop ------------
+(data Cap ()
+  (cap-remaining (steps I64))   ; steps left in this batch
+  (cap-exhausted))              ; no steps remaining (yield to caller)
+
+; ---- batch result: partial progress through the rest-form list ---------------
+(data BatchR ()
+  (batch-done  (sig Sig))                          ; all forms processed
+  (batch-more (sig Sig) (env SEnv) (pending (List Sexp)) (steps I64))  ; cap exhausted
+  (batch-err  (msg Str)))                          ; error
+
+; ---- capacity-bounded rest-form loop ----------------------------------------
+; Like load-forms but decrements a cap on each form and yields
+; (batch-more) when exhausted.  The Sig and SEnv are threaded through so later
+; batches can resolve data types and constructors from earlier ones.
+(declare rest-forms-capped (-> Sig SEnv (List Sexp) Cap BatchR))
+(def rest-forms-capped
+  (lam (sig env forms cap)
+    (case cap
+      ((cap-exhausted)
+        (batch-more sig env forms 0))
+      ((cap-remaining n)
+        (case (<i n 1)
+          (true (batch-more sig env forms 0))
+          (false
+            (case forms
+              (nil (batch-done sig))
+              ((cons f rest)
+                (case (load-form (sst sig env) f)
+                  ((step-err m) (batch-err m))
+                  ((step-ok st2)
+                    (case st2 ((sst sig2 env2)
+                      (rest-forms-capped sig2 env2 rest
+                        (cap-remaining (- n 1)))))))))))))))
+
+; ---- batch-aware rest-form loop ---------------------------------------------
+; Calls rest-forms-capped repeatedly with fresh caps until all rest forms are
+; processed.  The Sig and SEnv accumulate naturally across batches — no
+; serialization or sig-merge needed since we work directly on Sexp lists.
+; E161: the batched loop is `load-source`'s twin and owes the SAME EOF close.
+; `load-source` closes the last extent when its linear pass ends
+; (parse.chiral's step 3); this loop is the one `compile-front` actually runs, so
+; without the close here every source whose last extent carries no marker -- the
+; `chirality_blob ... && cat prog >>` shape and every `B1 < file` -- would leave its
+; coordinate open forever, and from step 4 on that means no sheet and therefore
+; no fence for exactly those sources. Fail-open, and silent, which is the class
+; this element exists to remove. The close is on `batch-done`, the one arm that
+; ends the walk; `batch-more` recurses and must NOT close.
+(declare rest-batched (-> Sig SEnv (List Sexp) Cap LoadR))
+(def rest-batched
+  (lam (sig env forms cap)
+    (case (rest-forms-capped sig env forms cap)
+      ((batch-err m) (ld-err m))
+      ((batch-done sig2) (case (sig-close-extent sig2)
+                           ((close-err e) (ld-err (sh-msg e)))
+                           ((close-ok sc) (ld-ok sc))))
+      ((batch-more sig2 env2 pending steps)
+        (rest-batched sig2 env2 pending cap)))))
+
+; ---- THE ENTRY: drop-in replacement for load-source -------------------------
+; Parses the full source once (sexp reader handles the size), processes
+; porttypes + data in one unbounded pass (they're few, well within recursion
+; limits), then processes the rest (def/declare/extern forms) in capped batches.
+;
+; Cap = 200:  B1 compiles its own ~260-form blob without issue (all forms in
+; one pass through load-forms).  200 leaves a ~25% safety margin below that
+; known-good ceiling.  The scriba+linkage blob needs multiple batches of 200.
+(declare load-source-batched (-> Str LoadR))
+(def load-source-batched
+  (lam (src)
+    (case (read-all-str src)
+      ((a-err m p) (ld-err (str-cat "parse: " m)))
+      ((a-ok forms)
+        ; Phase 1: porttypes (few — bounded by distinct porttype declarations)
+        (case (install-porttypes (sst empty-sig base-senv) (collect-porttype forms))
+          ((step-err m) (ld-err m))
+          ((step-ok stpt) (case stpt ((sst sigpt envpt)
+            ; Phase 2: data group (few — bounded by distinct data declarations)
+            (let (dforms (collect-data forms))
+              (let (envd (senv-add-datanames envpt dforms))
+                (case (elab-all-data envd dforms)
+                  ((p-err m) (ld-err (str-cat "data-group: " m)))
+                  ((p-ok decls)
+                    (case (load-data-group sigpt decls)
+                      ((ld-err m) (ld-err m))
+                      ((ld-ok sig1)
+                        ; Phase 3: EVERY form, in source order, in capacity-
+                        ; bounded batches. E161: data and porttype forms are NOT
+                        ; dropped here any more -- phases 1 and 2 installed them,
+                        ; and the linear walk is the only place their module of
+                        ; origin is still visible, so they charge their
+                        ; coordinate here (parse.chiral's handle-hoisted).
+                        (let (rest-forms forms)
+                          (let (env-full (add-all-ctors envd decls))
+                            (rest-batched sig1 env-full rest-forms
+                                         (cap-remaining 100000))))))))))))))))))

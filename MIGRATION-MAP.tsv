@@ -1,0 +1,148 @@
+old_path	new_path	ext	reason
+TUI/apc.metis	lib/protocol/apc.chiral	chiral	map §5 | default (has lambdas)
+TUI/samples/t1_child_wiring.metis	prog/scriba/samples/t1_child_wiring.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t2_tiocswinsz.metis	prog/scriba/samples/t2_tiocswinsz.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t4_codec.metis	prog/scriba/samples/t4_codec.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t4_grid.metis	prog/scriba/samples/t4_grid.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t4_minimal.metis	prog/scriba/samples/t4_minimal.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t5_utf8.metis	prog/scriba/samples/t5_utf8.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t5_vt_parser.metis	prog/scriba/samples/t5_vt_parser.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t6_apc_roundtrip.metis	prog/scriba/samples/t6_apc_roundtrip.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t7_pty_cap.metis	prog/scriba/samples/t7_pty_cap.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/scriba/chat-view.metis	prog/scriba/chat-view.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/chat.metis	prog/scriba/chat.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/cmd-types.metis	prog/scriba/cmd-types.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/command-loop.metis	prog/scriba/command-loop.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/completion.metis	prog/scriba/completion.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/dispatch.metis	prog/scriba/dispatch.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/editor-state.metis	prog/scriba/editor-state.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/file-io.metis	prog/scriba/file-io.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/flook.metis	prog/scriba/flook.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/flow-view-test.metis	prog/scriba/flow-view-test.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/flow-view.metis	prog/scriba/flow-view.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/help.metis	prog/scriba/help.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/init-loader.metis	prog/scriba/init-loader.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/key-parser.metis	prog/scriba/key-parser.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/keymap.metis	prog/scriba/keymap.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/kill-ring.metis	prog/scriba/kill-ring.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/list-utils.metis	prog/scriba/list-utils.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/manas-mode.metis	prog/scriba/manas-mode.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/manas-runview.metis	prog/scriba/manas-runview.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/mark-region.metis	prog/scriba/mark-region.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/minipuffer.metis	prog/scriba/minipuffer.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/puffer.metis	prog/scriba/puffer.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/render-str.metis	prog/scriba/render-str.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/render.metis	lib/protocol/render.chiral	chiral	map §5 | default (has lambdas)
+TUI/scriba/scriba-main.metis	prog/scriba/scriba-main.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/scriba-manas-test.metis	prog/scriba/scriba-manas-test.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/scriba-runview-stream-test.metis	prog/scriba/scriba-runview-stream-test.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/scriba-runview-test.metis	prog/scriba/scriba-runview-test.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/scriba-test-b1.metis	prog/scriba/scriba-test-b1.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/str-edit.metis	prog/scriba/str-edit.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/vim-mode.metis	prog/scriba/vim-mode.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/window.metis	prog/scriba/window.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/zipper-bridge.metis	prog/scriba/zipper-bridge.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/session/session.metis	lib/capability/session.chiral	chiral	map §5 | default (has lambdas)
+TUI/vt-core/grid.metis	lib/protocol/grid.chiral	chiral	map §5 | default (has lambdas)
+TUI/vt-core/utf8.metis	lib/protocol/utf8.chiral	chiral	map §5 | default (has lambdas)
+TUI/vt-core/vt-parser.metis	lib/protocol/vt-parser.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/alloc-fixed.metis	lib/memory/alloc-fixed.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/alloc-growing.metis	lib/memory/alloc-growing.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/alloc.metis	lib/memory/alloc.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/arena.metis	lib/memory/arena.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/asm-reloc.metis	lib/lowering/mach/asm-reloc.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/backend.metis	prog/manas/backend.chiral	chiral	map §5 silent; manas model-backend contract -> prog/manas/ | default (has lambdas)
+scaffold/lib/bytes-tal.metis	lib/lowering/tal/bytes.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/c-assemble.metis	lib/lowering/c/assemble.chiral	chiral	task rule 'same shape for c/' -> drop the c- prefix | default (has lambdas)
+scaffold/lib/climb.metis	prog/climb.manifest	manifest	MAP-vs-TEST CONFLICT: map §5 lists climb.prog, but climb has no compile-main and is pure data ('a CHECKABLE MANIFEST', its own header) -> derived .manifest, kept in map's prog/ dir | zero (lam, zero ^(extern
+scaffold/lib/closconv-driver.metis	lib/lowering/upper/closconv-driver.chiral	chiral	map §5 silent; stateful driver for closconv (which map puts in upper/) | default (has lambdas)
+scaffold/lib/closconv.metis	lib/lowering/upper/closconv.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/collections.metis	lib/prelude/collections.chiral	chiral	task: do NOT split into ord/list/map/set/alist yet; pure move | default (has lambdas)
+scaffold/lib/compile-all.metis	lib/lowering/compile-all.chiral	chiral	map §5 silent; the whole-compile drive across the lowering images -> lowering/ root | default (has lambdas)
+scaffold/lib/compile-back.metis	lib/lowering/compile-back.chiral	chiral	map §5 silent; back-half image of the source->native pipeline -> lowering/ root | default (has lambdas)
+scaffold/lib/compile-driver-c.metis	prog/compiler-c.prog	prog	map §5 prog/ names only one 'compiler'; this is the second (C-backend) entry | entry: ^(def compile-main
+scaffold/lib/compile-driver.metis	prog/compiler.prog	prog	map §5 | entry: ^(def compile-main
+scaffold/lib/compile-emit.metis	lib/lowering/compile-emit.chiral	chiral	map §5 silent; emit image (NFn -> ELF) -> lowering/ root | default (has lambdas)
+scaffold/lib/compile-front.metis	lib/lowering/compile-front.chiral	chiral	map §5 silent; front-half image of the source->native pipeline -> lowering/ root | default (has lambdas)
+scaffold/lib/coordinator.metis	prog/manas/coordinator.chiral	chiral	map §5 silent; manas coordinator loop -> prog/manas/ | default (has lambdas)
+scaffold/lib/crossing-wraps.metis	lib/ports/crossing-wraps.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/data.metis	lib/surface/data.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/ddc.metis	lib/evidence/ddc.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/eff-lower.metis	lib/lowering/upper/eff-lower.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/effects.metis	lib/typing/effects.chiral	chiral	map §5 silent; E12 effect-membrane rules, importers eff-lower + row-infer -> typing/ | default (has lambdas)
+scaffold/lib/elf.metis	lib/lowering/x64/elf.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/emit-c.metis	lib/lowering/c/emit.chiral	chiral	task rule -> lowering/c/emit (map §5 kept the affix; see findings) | default (has lambdas)
+scaffold/lib/emit-core.metis	lib/lowering/mach/emit-core.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/emit-x64.metis	lib/lowering/x64/emit.chiral	chiral	task rule -> lowering/x64/emit (map §5 kept the affix; see findings) | default (has lambdas)
+scaffold/lib/erased-nf.metis	lib/typing/erased-nf.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/fsm.metis	prog/manas/fsm.chiral	chiral	map §5 body directs it: 'it is manas/runtime/fsm until a second consumer appears' (importers: manas only) | default (has lambdas)
+scaffold/lib/harness.metis	lib/evidence/harness.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/http.metis	lib/protocol/http.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/inet.metis	lib/ports/inet.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/interp.metis	lib/evidence/interp.chiral	chiral	map §5 silent; 'golden reference interpreter', zero importers -> evidence/ (cross-checked truth) | default (has lambdas)
+scaffold/lib/json.metis	lib/protocol/json.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/kernel-core.metis	lib/typing/kernel-core.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/kernel.metis	lib/typing/kernel.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/lincoll.metis	lib/capability/lincoll.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/load-batch.metis	lib/module/load-batch.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/loader.metis	lib/module/loader.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/lower.metis	lib/lowering/upper/lower.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/lowspec.metis	lib/lowering/lowspec.chiral	chiral	map §5 silent; neutral check->lower transport ADT, imported by compile-front/back | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/mach-c.metis	lib/lowering/c/mach.chiral	chiral	task rule -> lowering/c/mach (map §5 kept the affix; see findings) | default (has lambdas)
+scaffold/lib/mach-listing.metis	lib/lowering/listing/mach.chiral	chiral	task rule 'same shape for listing/' -> lowering/listing/mach | default (has lambdas)
+scaffold/lib/mach-x64.metis	lib/lowering/x64/mach.chiral	chiral	task rule -> lowering/x64/mach (map §5 kept the affix; see findings) | default (has lambdas)
+scaffold/lib/mach.metis	lib/lowering/mach/mach.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/manas.metis	prog/manas/manas.chiral	chiral	map §5 silent; the manas program -> prog/manas/ | default (has lambdas)
+scaffold/lib/mem-linear.metis	lib/memory/mem-linear.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/mem-region.metis	lib/memory/mem-region.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/optimize.metis	lib/lowering/upper/optimize.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/parse.metis	lib/surface/parse.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/poll.metis	lib/runtime/poll.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/ports.metis	lib/ports/ports.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/ports/clock.metis	lib/ports/clock.port	port	map §5 | zero (lam, 5 extern/3 porttype
+scaffold/lib/ports/fd.metis	lib/ports/fd.port	port	map §5 | zero (lam, 5 extern/1 porttype
+scaffold/lib/ports/file.metis	lib/ports/file.port	port	map §5 | zero (lam, 2 extern/0 porttype
+scaffold/lib/ports/pool.metis	lib/ports/pool.port	port	map §5 | zero (lam, 4 extern/1 porttype
+scaffold/lib/ports/process.metis	lib/ports/process.port	port	map §5 | zero (lam, 5 extern/0 porttype
+scaffold/lib/ports/pty.metis	lib/ports/pty.port	port	map §5 | zero (lam, 9 extern/1 porttype
+scaffold/lib/ports/sock.metis	lib/ports/sock.port	port	map §5 | zero (lam, 12 extern/2 porttype
+scaffold/lib/ports/stdio.metis	lib/ports/stdio.port	port	map §5 | zero (lam, 3 extern/0 porttype
+scaffold/lib/ports/tty.metis	lib/ports/tty.port	port	map §5 | zero (lam, 5 extern/0 porttype
+scaffold/lib/prelude.metis	lib/prelude/prelude.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/pretty.metis	lib/typing/pretty.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/proc.metis	lib/runtime/proc.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/qtt.metis	lib/typing/qtt.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/refine.metis	lib/typing/refine.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/reflect-floor.metis	lib/typing/reflect-floor.chiral	chiral	map §5 silent; E45 type-level reflective floor, zero importers -> typing/ | default (has lambdas)
+scaffold/lib/resolve-driver.metis	prog/resolve.prog	prog	map §5 | entry: ^(def compile-main
+scaffold/lib/resolve.metis	lib/module/resolve.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/row-infer.metis	lib/typing/row-infer.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/secret.metis	lib/capability/secret.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/self-wield.metis	prog/wield.prog	prog	map §5 | entry: ^(def compile-main
+scaffold/lib/sexp.metis	lib/surface/sexp.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/sig-derive.metis	lib/module/sig-derive.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/sig-driver.metis	lib/module/sig-driver.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/skip-diag.metis	lib/lowering/skip-diag.chiral	chiral	map §5 silent; E97 skip-chain diagnostics, sole importer compile-back | default (has lambdas)
+scaffold/lib/specialize-singleton.metis	lib/lowering/upper/specialize-singleton.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/string-utils.metis	lib/prelude/string.chiral	chiral	map §5 prelude/string; pure rename | default (has lambdas)
+scaffold/lib/supervisor.metis	lib/runtime/supervisor.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/surface.metis	lib/surface/surface.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/syntax.metis	lib/surface/syntax.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/sys-check.metis	lib/lowering/tal/sys-check.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/sys-linkage.metis	lib/lowering/tal/sys-linkage.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/sys-tal.metis	lib/lowering/tal/sys.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/tal-check.metis	lib/lowering/tal/check.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/tal-erase.metis	lib/lowering/tal/erase.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/tal-eval.metis	lib/lowering/tal/eval.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/tal-ir.metis	lib/lowering/tal/ir.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/tal-reify.metis	lib/lowering/tal/reify.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/tal-spec.metis	lib/lowering/tal/spec.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/tal-ssa.metis	lib/lowering/tal/ssa.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/target-linux.metis	lib/lowering/tal/target-linux.manifest	manifest	map §5 silent; Linux syscall table consumed by sys-check -> lowering/tal/ | zero (lam, zero ^(extern
+scaffold/lib/term.metis	lib/ports/term.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/terms.metis	lib/surface/terms.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/test-floor.metis	lib/evidence/test-floor.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/test-runner.metis	prog/test-runner.prog	prog	map §5 | entry: ^(def compile-main
+scaffold/lib/totality.metis	lib/typing/totality.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/ty-cmp.metis	lib/typing/ty-cmp.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/wire.metis	lib/protocol/wire.chiral	chiral	map §5 | default (has lambdas)

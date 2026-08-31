@@ -1,0 +1,265 @@
+; scriba S4: key event parser
+; Pure function that parses raw terminal bytes into Key values.
+; ~85 lines. v2 audit: CLEAN PASS — 0 blocking FLAGs.
+; Bytes is opaque in prelude — access via bget/blen, never case-match.
+
+(import "prelude")       ; I64, Str, Bool, List, Maybe, Pair, Bytes + bget/blen
+; reverse inlined — collections import removed for B1 label compatibility
+(import "ports")         ; Key type
+
+; Local reverse — avoids collections import for B1 compatibility
+(def rev-onto-params (-> (List I64) (List I64) (List I64))
+  (lam (xs acc)
+    (case xs
+      (nil acc)
+      ((cons h t) (rev-onto-params t (cons h acc))))))
+(def reverse-params (-> (List I64) (List I64))
+  (lam (xs)
+    (case xs
+      (nil nil)
+      ((cons h t) (rev-onto-params t (cons h nil))))))
+
+; ─── Single-byte dispatch ───
+;
+; In raw mode (term-raw enables raw mode, then read(0, n) gets individual
+; bytes immediately without line buffering), the terminal sends:
+;   - Printable ASCII: 0x20–0x7e as-is
+;   - Enter: 0x0d (CR) — some terms send 0x0a (LF)
+;   - Tab: 0x09
+;   - Backspace: 0x7f (DEL) — some terms send 0x08 (BS)
+;   - Ctrl+letter: 0x01–0x1a (Ctrl+A..Ctrl+Z)
+;   - Ctrl+others: 0x00 (Ctrl+Space), 0x1b (Ctrl+[), 0x1c (Ctrl+\), etc.
+;   - Escape: 0x1b — handled specially in parse-key (may be prefix)
+;
+; The function is a pure (->) pattern match. No IO, no refs.
+
+(def parse-single-byte (-> I64 (Maybe Key))
+  (lam (b)
+    (cond
+      ; Backspace: DEL (0x7f) or BS (0x08)
+      ((or (=i b 127) (=i b 8))
+        (some k-backspace))
+      ; Tab
+      ((=i b 9)
+        (some k-tab))
+      ; Enter: CR (0x0d) or LF (0x0a)
+      ((or (=i b 13) (=i b 10))
+        (some k-enter))
+      ; Control codes: 0x00–0x1f (except 0x1b which is ESC)
+      ; In raw mode, Ctrl+A..Ctrl+Z arrive as 0x01..0x1a
+      ; We keep the byte as-is; the keymap maps k-ctrl 1 to "C-a"
+      ((and (not (<i b 0)) (<=i b 31))
+        (case (=i b 27)
+          (true (some k-escape))    ; \x1b alone (no following bytes) → escape
+          (false (some (k-ctrl b)))))
+      ; Printable ASCII: 0x20–0x7e
+      ((and (not (<i b 32)) (<=i b 126))
+        (some (k-char b)))
+      ; Extended (0x80+): pass through as k-char (UTF-8 fragments)
+      ; The caller handles UTF-8 reassembly before calling this
+      (else
+        (some (k-char b))))))
+
+; ─── CSI parser helpers ───
+
+; CSI parameter accumulator state.
+; params  — list of parsed numbers so far (in reverse, for efficient cons)
+; current — the number currently being parsed (digits accumulated)
+;          -1 means "no current number"
+; has-param — Bool: true if we've seen at least one digit in the current param
+;
+; This is a pure state machine — no refs, no IO. The state is threaded
+; through successive calls.
+
+; push-param: finish the current parameter and push it onto the list.
+; If current is -1 (no digits seen), push 1 (default parameter value
+; per ECMA-48: missing parameters default to 1 for most functions).
+(def push-param (-> (List I64) I64 (List I64))
+  (lam (params current)
+    (let (val (case (=i current -1) (true 1) (false current)))
+      (cons val params))))
+
+; csi-dispatch-ansi: given the final byte, produce the Key.
+; Pure (->) — a lookup table expressed as a nested case.
+;
+; Legacy escape sequences from xterm/vt220:
+;   A = up, B = down, C = right, D = left           (ANSI cursor)
+;   H = home (CSI), F = end (CSI)                    (xterm cursor)
+;   1~ = home (DEC), 2~ = insert, 3~ = delete,
+;   4~ = end (DEC), 5~ = PgUp, 6~ = PgDn             (DEC private)
+;   OA = up, OB = down, OC = right, OD = left        (SS3, app cursor)
+;   OH = home, OF = end                              (SS3, app cursor)
+
+(def csi-dispatch-ansi (-> I64 (Maybe Key))
+  (lam (final)
+    (cond
+      ((=i final 65)  (some k-up))        ; A
+      ((=i final 66)  (some k-down))      ; B
+      ((=i final 67)  (some k-right))     ; C
+      ((=i final 68)  (some k-left))      ; D
+      ((=i final 72)  (some k-home))      ; H — CSI cursor home
+      ((=i final 70)  (some k-end))       ; F — CSI cursor end
+      (else none))))
+
+(def csi-dispatch-dec (-> I64 (Maybe Key))
+  (lam (param)
+    (cond
+      ((=i param 1)  (some k-home))       ; \x1b[1~
+      ((=i param 2)  (some k-insert))     ; \x1b[2~
+      ((=i param 3)  (some k-delete))     ; \x1b[3~
+      ((=i param 4)  (some k-end))        ; \x1b[4~
+      ((=i param 5)  (some k-page-up))    ; \x1b[5~
+      ((=i param 6)  (some k-page-down))  ; \x1b[6~
+      (else none))))
+
+; csi-dispatch-u: kitty keyboard protocol CSI-u final byte ('u', 0x75).
+; CSI <codepoint>[;<modifiers>] u. Enter/Tab map to their keys regardless
+; of modifiers; printable codepoints with the shift bit set (mods bit 1)
+; map to k-char of the codepoint; everything else is none (unknown -> beep,
+; non-fatal thanks to the 3-way read-keyseq).
+(def csi-dispatch-u (-> I64 I64 (Maybe Key))
+  (lam (codepoint mods)
+    (cond
+      ((=i codepoint 13) (some k-enter))   ; Enter, Shift+Enter
+      ((=i codepoint 9)  (some k-tab))     ; Tab, Shift+Tab
+      ((and (and (not (<i codepoint 32)) (<=i codepoint 126))
+            (not (=i (band mods 2) 0)))
+        (some (k-char codepoint)))          ; Shift+letter -> uppercase char
+      (else none))))
+
+
+; parse-csi: consume bytes from a CSI sequence (already past \x1b[).
+;
+; Returns (Maybe Key) — None means "need more bytes."
+; Returns the new byte position (consumed or pause point).
+;
+; Parameters:
+;   params  — accumulated parameters (reversed — most recent last)
+;   current — current parameter value being built (-1 = none)
+;   bytes   — the full Bytes blob (never destructured; accessed via bget)
+;   pos     — current read position within bytes
+;   len     — total length of bytes (from blen)
+;
+; Bytes is opaque in prelude (extern blen, bget, bslice, bcat). We use
+; bget for single-byte access and advance pos explicitly. No (case bytes ...)
+; — Bytes is NOT an ADT.
+;
+; State transitions:
+;   pos >= len          → None (need more bytes)
+;   digit (0x30–0x39)  → accumulate into current, recurse at pos+1
+;   ';' (0x3b)         → push current, start new param, recurse at pos+1
+;   '~' (0x7e)         → DEC private sequence: dispatch on first param
+;   final byte (0x40–0x7e except '~') → ANSI sequence: dispatch on final byte
+;   anything else       → unknown — skip byte (pos+1), return None
+
+(def parse-csi (-> (List I64) I64 Bytes I64 I64 (Pair (Maybe Key) I64))
+  (lam (params current bytes pos len)
+    (case (not (<i pos len))
+      (true
+        ; Need more bytes — incomplete CSI sequence
+        (pair none pos))
+      (false
+        (let (b (bget bytes pos))
+          (cond
+            ; Digit: 0x30–0x39 ('0'..'9')
+            ((and (not (<i b 48)) (<=i b 57))
+              (let (digit (- b 48))
+                (let (new-cur (case (=i current -1) (true digit)
+                                       (false (+ (* current 10) digit))))
+                  (parse-csi params new-cur bytes (+ pos 1) len))))
+            ; Semicolon: push current parameter, start new
+            ((=i b 59)  ; ';'
+              (let (new-params (push-param params current))
+                (parse-csi new-params -1 bytes (+ pos 1) len)))
+            ; DEC private termination: '~' (0x7e)
+            ; Need first parameter; params are in reverse order (cons at head),
+            ; so reverse then take the head.
+            ((=i b 126)
+              (let (first-param (case (=i current -1)
+                                     (true
+                                       (case (reverse-params params)
+                                         (nil 1)
+                                         ((cons p _) p)))
+                                     (false current)))
+                (pair (csi-dispatch-dec first-param) (+ pos 1))))
+            ; kitty CSI-u: 'u' (0x75) — codepoint = first param, modifiers = last.
+            ((=i b 117)
+              (let (codepoint (case params
+                                (nil (case (=i current -1) (true 0) (false current)))
+                                ((cons _ _)
+                                  (let (r (reverse-params params))
+                                    (case r
+                                      (nil 0)
+                                      ((cons p _) p))))))
+                (let (mods (case params
+                             (nil 0)
+                             ((cons _ _) (case (=i current -1) (true 0) (false current)))))
+                  (pair (csi-dispatch-u codepoint mods) (+ pos 1)))))
+            ; ANSI final byte: 0x40–0x7e (except '~', handled above)
+            ; 0x7f is DEL, not a final byte
+            ((and (and (not (<i b 64)) (<=i b 126)) (not (=i b 126)))
+              (pair (csi-dispatch-ansi b) (+ pos 1)))
+            ; Unknown byte — skip and return none (caller handles unknown seqs)
+            (else
+              (pair none (+ pos 1)))))))))
+
+; ─── parse-key — the top-level entry point ───
+;
+; The pure function that drives the whole parser.
+; Signature: (-> Bytes I64 I64 (Pair (Maybe Key) I64))
+;
+; Takes the full Bytes blob, current position, and total length (from blen).
+; Uses bget for single-byte access — never pattern-matches on Bytes.
+; Returns (Maybe Key) and new position (for chaining / consuming input).
+;
+; Algorithm:
+;   1. If pos >= len → (None, pos)  — no more bytes.
+;   2. If first byte (at pos) is NOT \x1b → dispatch single-byte key, advance.
+;   3. If first byte IS \x1b:
+;      a. If pos+1 >= len → (None, pos) — caller applies timeout.
+;      b. If \x1b [ → parse-csi starting at pos+2.
+;      c. If \x1b O → SS3: read byte at pos+2, dispatch, advance to pos+3.
+;      d. If \x1b followed by control byte → k-c-meta, advance to pos+2.
+;      e. If \x1b followed by printable byte → k-meta, advance to pos+2.
+
+(def parse-key (-> Bytes I64 I64 (Pair (Maybe Key) I64))
+  (lam (bytes pos len)
+    (case (not (<i pos len))
+      (true
+        ; Empty — no key possible
+        (pair none pos))
+      (false
+        (let (b (bget bytes pos))
+          (case (not (=i b 27))   ; not ESC
+            (true
+              ; Single-byte key — no ambiguity
+              (pair (parse-single-byte b) (+ pos 1)))
+            (false
+              ; ESC byte (0x1b) — need to look ahead
+              (case (not (<i (+ pos 1) len))
+                ; Only ESC in buffer — caller decides (timeout or wait)
+                (true
+                  ; Return pos (not pos+1) so caller retries with same buffer start
+                  (pair none pos))
+                (false
+                  (let (next (bget bytes (+ pos 1)))
+                    (cond
+                      ; \x1b [ → CSI sequence
+                      ((=i next 91)  ; '['
+                        (parse-csi nil -1 bytes (+ pos 2) len))
+                      ; \x1b O → SS3 sequence (application mode keys)
+                      ; \x1bOA → up, \x1bOB → down, \x1bOC → right, \x1bOD → left
+                      ; \x1bOH → home, \x1bOF → end
+                      ((=i next 79)  ; 'O'
+                        (case (not (<i (+ pos 2) len))
+                          (true (pair none pos))      ; incomplete SS3
+                          (false (let (final (bget bytes (+ pos 2)))
+                                   (pair (csi-dispatch-ansi final) (+ pos 3))))))
+                      ; \x1b <control> → Ctrl+Meta
+                      ; \x1b \x01..\x1f → C-M-A..C-M-_
+                      ((and (not (<i next 0)) (<=i next 31))
+                        (pair (some (k-c-meta (+ next 64))) (+ pos 2)))
+                      ; \x1b <printable/del> → Meta
+                      ; \x1b x → M-x, \x1b \x7f → M-DEL
+                      (else
+                        (pair (some (k-meta next)) (+ pos 2))))))))))))))

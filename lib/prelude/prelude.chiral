@@ -1,0 +1,154 @@
+;  chirality scaffold prelude -- the floor everything else stands on.
+; Data types and the pure primitives, declared here in chirality source as typed
+; externs. The host provides implementations against these declarations at
+; link time; nothing about a primitive's type lives outside this file.
+; The port floor (category C) is lib/ports.chiral.
+;
+; E161: "the category A floor" used to be a PROSE claim on this line, checked by
+; nothing. It is now the declaration below. The port-set axis is not part of the
+; declaration: it is derived on this module's datasheet from what it binds --
+; prelude declares 38 externs and every one of them is `->`, so its `crossings`
+; is empty by derivation.
+; prelude has no imports, so the coordinate opens at the very top of the blob.
+; The name is the declaration's identity -- what makes a redeclaration decidable
+; in a flat blob; it is checked against the extent marker the provider emits.
+(module prelude (cat A) (alt upper))
+
+(data Unit () (unit))
+(data Bool () (true) (false))
+
+(data Pair ((A (type 0)) (B (type 0)))
+  (pair (fst A) (snd B)))
+
+(data Maybe ((A (type 0)))
+  (none)
+  (some (val A)))
+
+(data List ((A (type 0)))
+  (nil)
+  (cons (hd A) (tl (List A))))
+
+; the CLOSED set of native binary machine ops. A tal-ir prim carries an `Op`,
+; not a `Str`: the op is validated ONCE at the erase boundary (op-parse, the
+; former native-prims membership test) into this sum, so every downstream
+; consumer (op-bytes, the tal emitter) matches it EXHAUSTIVELY -- no stringly
+; dispatch, no "unknown prim" defensive halt, hence no spurious effect to track.
+(data Op ()
+  (op-add) (op-sub) (op-mul) (op-div) (op-mod)
+  (op-eqi) (op-lti) (op-lei) (op-mulhi) (op-sar) (op-shr) (op-band)
+  (op-bor) (op-bxor) (op-shl))
+
+; the canonical name of an op -- the inverse of op-parse. Used only to rebuild
+; the human-readable "bin:<op>"/"bini:<op>" clobber-table keys at the emit site
+; (the op itself now flows as `Op`, not this string).
+(def op-name (-> Op Str)
+  (lam (op)
+    (case op
+      ((op-add) "+")   ((op-sub) "-")   ((op-mul) "*")   ((op-div) "/")
+      ((op-mod) "%")   ((op-eqi) "=i")  ((op-lti) "<i")  ((op-lei) "<=i")
+      ((op-mulhi) "mulhi") ((op-sar) "sar") ((op-shr) "shr") ((op-band) "band")
+      ((op-bor) "bor") ((op-bxor) "bxor") ((op-shl) "shl"))))
+
+; is this a comparison op (the ops the fused compare-branch path handles)?
+(def op-cmp? (-> Op Bool)
+  (lam (op) (case op ((op-eqi) true) ((op-lti) true) ((op-lei) true) (_ false))))
+
+; ---------------------------------------------------------------- i64
+
+(extern + (-> I64 I64 I64))
+(extern - (-> I64 I64 I64))
+(extern * (-> I64 I64 I64))
+(extern / (-> I64 I64 I64))
+(extern % (-> I64 I64 I64))
+(extern =i (-> I64 I64 Bool))
+(extern <i (-> I64 I64 Bool))
+(extern <=i (-> I64 I64 Bool))
+(extern band (-> I64 I64 I64))            ; bitwise AND
+(extern bor (-> I64 I64 I64))             ; bitwise OR
+(extern bxor (-> I64 I64 I64))            ; bitwise XOR
+(extern shl (-> I64 I64 I64))             ; shift left
+(extern shr (-> I64 I64 I64))             ; shift right, logical    (zero-fill)
+(extern sar (-> I64 I64 I64))             ; shift right, arithmetic (sign-fill)
+
+; ---------------------------------------------------------------- str
+
+(extern str-len (-> Str I64))
+(extern str-eq (-> Str Str Bool))
+; a GLOBAL wrapper of the str-eq prim, so it can be passed as a first-class
+; function value that closconv defunctionalizes (a prim value is not collected).
+(def str-eqf (-> Str Str Bool) (lam (a b) (str-eq a b)))
+(extern str-sub (-> Str I64 I64 Str))
+(extern str-find (-> Str Str I64))
+(extern str-find-from (-> Str Str I64 I64))
+(extern str-cat (-> Str Str Str))
+(extern i64->str (-> I64 Str))
+; str->i64 is now a pure def (E100 follow-up) — see the decimal fold below
+; (after the bytes externs). It was an interpreter-only extern; converting it
+; to a def lets json.chiral's as-int (and the shared $apply0 dispatcher) lower.
+(extern str->bytes (-> Str Bytes))
+(extern bytes->str (-> Bytes Str))
+
+; ---------------------------------------------------------------- bytes
+
+(extern blen (-> Bytes I64))
+(extern bget (-> Bytes I64 I64))
+(extern bslice (-> Bytes I64 I64 Bytes))
+(extern bcat (-> Bytes Bytes Bytes))
+(extern brepeat (-> Bytes I64 Bytes))
+(extern pack-u32 (-> I64 Bytes))
+(extern unpack-u32 (-> Bytes I64 I64))
+(extern pack-u16 (-> I64 Bytes))
+(extern unpack-u16 (-> Bytes I64 I64))
+
+; ---------------------------------------------------------------- str->i64
+; Pure decimal fold, junk -> 0 (E100 follow-up). Plain -?[0-9]+ to I64,
+; mirroring sexp.chiral's digits->i64 fold (whose comment asserts equivalence
+; to str->i64). A leading '-' is the only sign; empty / '+' / whitespace / '_'
+; / lone '-' are junk -> 0. Pure (->): a decimal parse is a byte fold, not a
+; crossing. Was the interpreter-only extern; now lowers so json.chiral's as-int
+; and the shared $apply0 dispatcher emit.
+(def s2i-fold (-> Bytes I64 I64 I64 I64)
+  (lam (b i n acc)
+    (case (<i i n)
+      (false acc)
+      (true (let ((c (bget b i)))
+              (case (<=i 48 c)
+                (true (case (<=i c 57)
+                        (true (s2i-fold b (+ i 1) n (+ (* acc 10) (- c 48))))
+                        (false 0)))
+                (false 0)))))))
+
+(def str->i64 (-> Str I64)
+  (lam (s)
+    (let ((b (str->bytes s)))
+      (let ((n (blen b)))
+        (case (<i 0 n)
+          (false 0)
+          (true
+            (case (=i (bget b 0) 45)        ; '-'
+              (true
+                (case (<i 1 n)
+                  (false 0)                 ; lone '-'
+                  (true (- 0 (s2i-fold b 1 n 0)))))
+              (false (s2i-fold b 0 n 0)))))))))
+
+; ---------------------------------------------------------------- helpers
+
+(def not (-> Bool Bool)
+  (lam (b) (case b (true false) (false true))))
+
+(def and (-> Bool Bool Bool)
+  (lam (x y) (case x (true y) (false false))))
+
+(def or (-> Bool Bool Bool)
+  (lam (x y) (case x (true true) (false y))))
+
+; strict in both branches: use case, not if, for effects or linear values
+(def if (-> (0 A (type 0)) Bool A A A)
+  (lam (A c t e) (case c (true t) (false e))))
+
+(def max (-> I64 I64 I64)
+  (lam (a b) (case (<=i a b) (true b) (false a))))
+
+(def min (-> I64 I64 I64)
+  (lam (a b) (case (<=i a b) (true a) (false b))))

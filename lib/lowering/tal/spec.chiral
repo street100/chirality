@@ -1,0 +1,126 @@
+; ===========================================================================
+; lib/tal-spec.chiral  —  the tal semantics as DATA (spec-as-golden, E71)
+;
+; PROVISIONAL (2026-08-02, revisitable — the branch is the author's call; see
+; docs/floor-agreement.md's provisional banner). This is the checkable DATA form
+; of the floor's golden object; the human-audited PROSE reading in
+; docs/tal-spec.md is the trust root, this is the first derived checker.
+;
+; The golden object is a spec, not an executor: every executor (the Python
+; reference, a chirality reference, the native floor) is first-among-producers,
+; validated AGAINST these entries. An executor behavior not derivable from a
+; spec vector is a bug even if every executor agrees on it — correlated
+; agreement can no longer ratify an accident into law.
+;
+; First cut: two exemplar entries seeded from the LIVE differential corpus (the
+; Euclidean division sign grid + the byte-cell zero-read), so the anchor moves
+; with zero passing tests changed. Coverage grows by the standing rule "a new
+; tal instruction is a new spec entry FIRST" (E71 §3 #3). MState is deliberately
+; minimal / exemplar-driven (§3 #4) — each new entry extends it as needed.
+; ===========================================================================
+
+(import "prelude")
+
+; ---- the spec's vocabulary ------------------------------------------------
+; An observable is what floor agreement compares: the returned value, a fatal
+; alarm, or a crossing. Registers, encodings, and arena layout are executor-
+; private and deliberately unspecified — the spec speaks only in observables.
+(data Obs ()
+  (obs-val (v I64))
+  (obs-halt)
+  (obs-sys (n I64) (args (List I64))))
+
+; The abstract machine state the exemplars observe: minimal by design. `div`
+; reads two operands; the byte zero-read reads an index into a fresh cell (in
+; `a`). Grows per the new-entry-first rule.
+(data MState ()
+  (mstate (a I64) (b I64)))
+
+; One spec entry: an instruction's semantics as a TOTAL, PURE function from the
+; input machine-state to its observable, plus pinned input/observable vectors.
+; Pure -> is the point — the floor's semantics is itself category-A, checkable,
+; weekend-readable. The determinism debts live in the vectors, on purpose.
+(data SpecEntry ()
+  (spec-entry
+    (name Str)
+    (sem (-> MState Obs))
+    (vectors (List (Pair MState Obs)))))
+
+; A conformance verdict for an executor checked against an entry.
+(data Verdict ()
+  (admitted)
+  (diverged (at Str) (got Obs) (want Obs)))
+
+; ---- observable equality (structural; the two exemplar shapes) ------------
+(def obs-eq (-> Obs Obs Bool)
+  (lam (x y)
+    (case x
+      ((obs-val a)
+        (case y ((obs-val b) (=i a b)) (obs-halt false) ((obs-sys n as) false)))
+      (obs-halt
+        (case y ((obs-val b) false) (obs-halt true) ((obs-sys n as) false)))
+      ((obs-sys n as)
+        (case y ((obs-val b) false) (obs-halt false) ((obs-sys m bs) (=i n m)))))))
+
+; ---- the demanded statement (the socket) ----------------------------------
+; An executor is any MState -> Obs function (the reference is the first through
+; the gate). conform-vecs folds an entry's vectors: the executor is ADMITTED iff
+; it matches the pinned observable on every vector, else DIVERGED naming the
+; entry and the first disagreement. (The general `conform` over a whole spec +
+; an abstract Executor with differential runs is the follow-on runner, §6.)
+(def conform-vecs (-> Str (-> MState Obs) (List (Pair MState Obs)) Verdict)
+  (lam (name exec vs)
+    (case vs
+      (nil admitted)
+      ((cons p rest)
+        (case p
+          ((pair s want)
+            (case (obs-eq (exec s) want)
+              (true (conform-vecs name exec rest))
+              (false (diverged name (exec s) want)))))))))
+
+(def conform-entry (-> (-> MState Obs) SpecEntry Verdict)
+  (lam (exec e)
+    (case e ((spec-entry name sem vs) (conform-vecs name exec vs)))))
+
+; ---- exemplar entry 1: div (Euclidean / SMT-LIB, the pin the floor obeys) --
+; Guards b=0 -> the fatal alarm (obs-halt) so the semantic function is total and
+; never traps; every other input is the reference's Euclidean quotient. The
+; vectors are the exact reference observables (verified against the live floor):
+; the sign grid, INT_MIN/-1 -> wrapped INT_MIN (agreeing two's-complement), and
+; /0 -> obs-halt.
+(def div-sem (-> MState Obs)
+  (lam (s)
+    (case s
+      ((mstate a b)
+        (case (=i b 0)
+          (true obs-halt)
+          (false (obs-val (/ a b))))))))
+
+(def spec-div SpecEntry
+  (spec-entry "div" div-sem
+    (cons (pair (mstate 7 2)   (obs-val 3))
+    (cons (pair (mstate -7 2)  (obs-val -4))
+    (cons (pair (mstate 7 -2)  (obs-val -3))
+    (cons (pair (mstate -7 -2) (obs-val 4))
+    (cons (pair (mstate 0 5)   (obs-val 0))
+    (cons (pair (mstate -9223372036854775808 -1) (obs-val -9223372036854775808))
+    (cons (pair (mstate 7 0)   obs-halt)
+    nil)))))))))
+
+; ---- exemplar entry 2: byte zero-read (a floor contract, now a pinned vector)
+; An unwritten byte reads 0 on every executor — today a floor contract, under
+; the spec a pinned vector like any other. `a` is the read index; the observable
+; is 0 for any index into a fresh (zeroed) cell.
+(def byte-zero-sem (-> MState Obs)
+  (lam (s) (case s ((mstate a b) (obs-val 0)))))
+
+(def spec-byte-zero SpecEntry
+  (spec-entry "byte-zero-read" byte-zero-sem
+    (cons (pair (mstate 0 0) (obs-val 0))
+    (cons (pair (mstate 5 0) (obs-val 0))
+    nil))))
+
+; ---- the spec: the list of entries ----------------------------------------
+(def tal-spec (List SpecEntry)
+  (cons spec-div (cons spec-byte-zero nil)))

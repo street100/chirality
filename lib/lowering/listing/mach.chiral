@@ -1,0 +1,136 @@
+; A second conforming Mach: instead of machine bytes it emits a human-readable
+; listing of the abstract operations. It exists to prove emit-core is genuinely
+; target-independent (the same codegen drives it with no change) and to give a
+; golden, eyeball-checkable view of what the codegen decided. It is a legal
+; target in the G9 sense: a conforming Mach value, nothing more.
+;
+; Each op renders one line into an a-bytes chunk; relocations render a symbolic
+; reference whose encoder ignores the displacement (this target does not run).
+
+(import "prelude")
+(import "ports")
+(import "asm-reloc")
+(import "mach")
+
+(def line (-> Str (List Asm))
+  (lam (s) (one-b (str->bytes (str-cat s "\n")))))
+
+(def r (-> I64 Str) (lam (n) (str-cat "r" (i64->str n))))
+
+(def noenc (-> I64 Bytes) (lam (d) (str->bytes "")))
+
+; the field-slot list of an alo, rendered "r1 r4 r7"
+(def slots (-> (List I64) Str)
+  (lam (fs)
+    (case fs
+      (nil "")
+      ((cons f rest) (str-cat " " (str-cat (r f) (slots rest)))))))
+
+(def lbl-list (-> (List Str) Str)
+  (lam (ls)
+    (case ls
+      (nil "")
+      ((cons l rest) (str-cat " -> " (str-cat l (lbl-list rest)))))))
+
+(def lcat (-> (List Asm) (List Asm) (List Asm))
+  (lam (xs ys) (case xs (nil ys) ((cons a rest) (cons a (lcat rest ys))))))
+
+; outgoing args for a call, one line per position (mirrors the historical
+; emit-args/lda split, so <=6-arg listings are unchanged; this target has no
+; register limit, every position past 5 is just another line)
+(def l-args (-> (List I64) I64 (List Asm))
+  (lam (args pos)
+    (case args
+      (nil (the (List Asm) nil))
+      ((cons slot rest)
+        (lcat (line (str-cat "arg " (str-cat (i64->str pos)
+                      (str-cat " <- " (r slot)))))
+              (l-args rest (+ pos 1)))))))
+
+(def listing Mach
+  (mach
+    (lam (nregs) (line (str-cat "enter nregs=" (i64->str nregs))))          ; pro
+    (lam (ap slot) (line (str-cat "param " (str-cat (i64->str ap)           ; stp
+                                    (str-cat " -> " (r slot))))))
+    (lam (ap slot) (line (str-cat "arg " (str-cat (i64->str ap)             ; lda
+                                    (str-cat " <- " (r slot))))))
+    (lam (slot val) (line (str-cat (r slot) (str-cat " = const "            ; con
+                                    (i64->str val)))))
+    (lam (slot tag) (line (str-cat (r slot) (str-cat " = tag "              ; dcon
+                                    (i64->str tag)))))
+    (lam (op dst a b)                                                      ; bin
+      (line (str-cat (r dst) (str-cat " = " (str-cat (r a)
+              (str-cat " " (str-cat (op-name op) (str-cat " " (r b)))))))))
+    (lam (dst fname args) (lcat (l-args args 0)                            ; cal
+                            (cons (a-rel 0 e-noenc fname)
+                              (line (str-cat (r dst) (str-cat " = call " fname))))))
+    (lam (slot) (line (str-cat "ret " (r slot))))                          ; ret
+    (lam (slot) (line (str-cat "test " (r slot))))                         ; lsc
+    (lam (tag skip) (cons (a-bytes (str->bytes                             ; cjne
+                            (str-cat "  if != tag " (i64->str tag))))
+                       (cons (a-rel 0 e-noenc skip)
+                         (line (str-cat " goto " skip)))))
+    (lam (dst tag fs) (line (str-cat (r dst)                               ; alo
+                        (str-cat " = alloc tag " (str-cat (i64->str tag) (slots fs))))))
+    (lam (dst src idx) (line (str-cat (r dst)                              ; fld
+                         (str-cat " = " (str-cat (r src)
+                           (str-cat "." (i64->str idx)))))))
+    (lam (slot) (line (str-cat "test tag-of " (r slot))))                  ; lsb
+    (the (List Asm) nil)                                                   ; fin
+    (lam (dst len) (line (str-cat (r dst)                                  ; bnw
+                     (str-cat " = bytes-new len=" (r len)))))
+    (lam (dst ptr idx) (line (str-cat (r dst)                              ; bgt
+                        (str-cat " = " (str-cat (r ptr)
+                          (str-cat "[" (str-cat (r idx) "]")))))))
+    (lam (ptr idx val) (line (str-cat (r ptr)                              ; bpt
+                        (str-cat "[" (str-cat (r idx)
+                          (str-cat "] := " (r val)))))))
+    (lam (dst src) (line (str-cat (r dst) (str-cat " = len " (r src)))))   ; bln
+    (lam (dst label) (cons (a-rel 0 e-noenc label)                           ; lea
+                       (line (str-cat (r dst) (str-cat " = &" label)))))
+    (lam (b) (line (str-cat "data " (str-cat (i64->str (blen b))           ; dat
+                     " bytes"))))
+    (lam (dst nr args) (line (str-cat (r dst)                              ; sys
+                         (str-cat " = syscall " (str-cat (i64->str nr) (slots args))))))
+    (lam (dst src) (line (str-cat (r dst)                                  ; bpr
+                     (str-cat " = payload-of " (r src)))))
+    (lam (op dst a imm) (line (str-cat (r dst)                             ; bini
+                          (str-cat " = " (str-cat (r a)
+                            (str-cat " " (str-cat (op-name op)
+                              (str-cat " #" (i64->str imm)))))))))
+    (lam (fname) (cons (a-rel 0 e-noenc fname)                               ; tca
+                   (line (str-cat "tailcall " fname))))
+    (lam (dst scrut vals) (line (str-cat (r dst)                           ; ltb
+                            (str-cat " = table[" (str-cat (r scrut) "]")))))
+    (lam (a b) (line (str-cat "flags = cmp " (str-cat (r a)                 ; fcp
+                       (str-cat " " (r b))))))
+    (lam (a v) (line (str-cat "flags = cmp " (str-cat (r a)                 ; fci
+                       (str-cat " #" (i64->str v))))))
+    (lam (op tag skip) (cons (a-rel 0 e-noenc skip)                          ; fjc
+                         (line (str-cat "  unless " (str-cat (op-name op)
+                           (str-cat "==" (str-cat (i64->str tag)
+                             (str-cat " goto " skip))))))))
+    (lam (scrut labels) (cons (a-bytes (str->bytes                         ; jtb
+                            (str-cat "jumptable " (r scrut))))
+                          (cons (a-bytes (str->bytes (lbl-list labels)))
+                            (line ""))))
+    (lam (k) (the (List I64) nil))                                         ; clb (this target does not run)
+    (lam (op dst i b) (line (str-cat (r dst)                               ; binr
+                        (str-cat " = arg" (str-cat (i64->str i)
+                          (str-cat " " (str-cat (op-name op) (str-cat " " (r b)))))))))
+    (lam (op dst i imm) (line (str-cat (r dst)                             ; binir
+                          (str-cat " = arg" (str-cat (i64->str i)
+                            (str-cat " " (str-cat (op-name op)
+                              (str-cat " #" (i64->str imm)))))))))
+    (lam (i b) (line (str-cat "flags = cmp arg" (str-cat (i64->str i)      ; fcpr
+                       (str-cat " " (r b))))))
+    (lam (i v) (line (str-cat "flags = cmp arg" (str-cat (i64->str i)      ; fcir
+                       (str-cat " #" (i64->str v))))))
+    (lam (j i) (case (=i i j)                                              ; ldr
+                 (true (line (str-cat "arg " (str-cat (i64->str j) " kept in place"))))
+                 (false (line (str-cat "arg " (str-cat (i64->str j)
+                          (str-cat " <- arg" (i64->str i))))))))
+    (lam (dst tag fs) (line (str-cat (r dst)                               ; galo (E91: renders as alo -- growth is an epilogue detail, not a per-site decision)
+                        (str-cat " = alloc tag " (str-cat (i64->str tag) (slots fs))))))
+    (lam (dst len) (line (str-cat (r dst)                                  ; gbnw (E91)
+                     (str-cat " = bytes-new len=" (r len)))))))

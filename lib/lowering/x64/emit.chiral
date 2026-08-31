@@ -1,0 +1,15 @@
+(import "emit-core")
+(import "mach-x64")
+(import "alloc")
+(import "alloc-growing")
+
+(def rd-truthful (-> (List Asm) (List Asm)) (lam (a) a))
+
+(def emit-truthful (=> (List TIFn) (List Bytes) (Pair Bytes (List (Pair Str I64))))
+  (lam (fns lits) (emit-with-peep x64 alloc-growing rd-truthful fns lits)))
+
+(def emit (=> (List TIFn) (List Bytes) (Pair Bytes (List (Pair Str I64))))
+  (lam (fns lits) (emit-with-peep x64 alloc-growing x64-peep fns lits)))
+
+(def emit-param (=> (List TIFn) (List Bytes) (Pair Bytes (List (Pair Str I64))))
+  (lam (fns lits) (emit-with-param x64 alloc-growing x64-peep fns lits)))

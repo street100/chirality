@@ -1,0 +1,31 @@
+; scriba S3 types — ScribaOp, RenderResult, registries, render-puffer bridge.
+; Collections import removed — lookup-scribaop inlined to avoid B1 label issue.
+(import "prelude")
+(import "puffer")
+(import "keymap")
+(import "render")
+
+; ─── Op type ───────────────────────────────────────────────────────────────
+
+(data ScribaOp ()
+  (op (name Str) (fn (=> (Puffer Str) (Puffer Str))) (doc Str)))
+
+(data RenderResult ()
+  (render-ok (rendering Rendering) (puf (Puffer Str))))
+
+; ─── Op registry ───────────────────────────────────────────────────────────
+
+(def register-op (-> (List ScribaOp) ScribaOp (List ScribaOp))
+  (lam (ops o) (cons o ops)))
+
+; Inlined to avoid collections import + find → B1 label issue.
+(def lookup-scribaop (-> (List ScribaOp) Str (Maybe ScribaOp))
+  (lam (ops name)
+    (case ops
+      (nil none)
+      ((cons o rest)
+        (case o
+          ((op n f d)
+            (let ((r (str-eq n name)))
+              (cond (r (some o))
+                    (else (lookup-scribaop rest name))))))))))

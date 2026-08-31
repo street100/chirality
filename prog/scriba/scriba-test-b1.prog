@@ -1,0 +1,67 @@
+; scriba-test-b1.chiral — 5 gate tests for scriba B1 compilation
+; Run: chirality_blob scaffold/lib scriba/scriba-test-b1 | scaffold/build/B1
+
+(import "prelude")(import "collections")(import "ports")(import "term")(import "puffer")(import "render")(import "command-loop")(import "keymap")(import "init-loader")
+
+; ── TEST 1: find (1 type param + fn param) — must pass ──
+(def test1-find (=> I64 (Maybe I64))
+  (lam (n)
+    (find I64 (lam (i) (=i i 1)) (cons 1 (cons 2 nil)))))
+
+; ── TEST 2: alist-get (2 type params + fn param) — must pass ──
+(def test2-alist-get (=> I64 (Maybe Str))
+  (lam (n)
+    (alist-get Str Str str-eq (cons (pair "a" "A") (cons (pair "b" "B") nil)) "a")))
+
+; ── TEST 3: minimal 2-type-param + fn-param repro — must pass ──
+(def test3-two-type (-> (0 K (type 0)) (0 V (type 0))
+                         (-> K K Bool) (List (Pair K V)) K (Maybe V))
+  (lam (K V eq xs k)
+    (case xs
+      (nil none)
+      ((cons h t)
+        (case h
+          ((pair hk hv)
+            (let ((r (eq hk k)))
+              (cond (r (some hv))
+                    (else (test3-two-type K V eq t k))))))))))
+
+; ── TEST 4: command-loop full chain — must pass ──
+(def test4-command-loop (=> I64 Unit)
+  (lam (n)
+    (let (p (puffer-new (port) "x"))
+      (case p
+        ((puf-ok puf)
+          (command-loop default-keymap puf (pair 24 80) nil nil))
+        ((puf-err e) unit)))))
+
+; ── TEST 5: full editor ELF — must pass ──
+(def test5-full-editor (=> I64 I64)
+  (lam (n)
+    (let (saved (term-raw 0))
+      (case saved
+        ((raw-r attrs)
+          (let (dims-r (tiocgwinsz 1))
+            (case dims-r
+              ((ws-r rows cols)
+                (let (dims (pair rows cols))
+                  (let (cfg (init-load unit))
+                    (case cfg
+                      ((pair km inner)
+                        (case inner
+                          ((pair ops renderers)
+                            (let (puf-r (puffer-new (port) "scratch"))
+                              (case puf-r
+                                ((puf-ok puf)
+                                  (let (_ (command-loop km puf dims renderers ops))
+                                    (let (_ (term-restore 0 attrs))
+                                      0)))
+                                ((puf-err msg)
+                                  (let (_ (term-restore 0 attrs))
+                                    1)))))))))))
+              ((ws-err eno) (let (_ (term-restore 0 attrs)) 1)))))
+        ((raw-err eno) 1)))))
+
+; ── ENTRY POINT: runs test5 by default ──
+(def compile-main (=> I64 I64)
+  (lam (n) (test5-full-editor n)))

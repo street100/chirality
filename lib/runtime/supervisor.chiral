@@ -1,0 +1,139 @@
+; supervisor.chiral — E42 v1: the supervised event loop + alarm-as-crossing core.
+;
+; The runtime supervisor / scheduler on the coarse `=>` effect bit. It multiplexes
+; {fd-readiness, fired alarms} through ONE blocking primitive (poll's ms timeout),
+; dispatches EXACTLY ONE unit of work per tick (serial mutation), and threads the
+; linear `SockVec` (E106) + `Clock` (E32) cap on EVERY arm — no dropped cap.
+;
+; An alarm is a CROSSING, not an ambient signal: `fire-earliest` notifies the
+; resident at the other end of its port and reads back a `KontMsg`. `k-resume dt`
+; re-arms FORWARD from now (the only sound post-crossing resume); `k-cancel` is the
+; synthesized cancel that drops the alarm. The pending set is a value the loop
+; threads — there is no ambient timer heap.
+;
+; SCOPE (SPEC E42 v1): the coarse-`=>` loop + alarm crossing SHAPE only. The typed
+; alarm (recoverable-vs-fatal as an E39-row TAG, the wider counter-effect set) is
+; E26 (hard-gated on E39) — NOT built here. The rung-2 halves (critical sections,
+; register-root custody, interrupt→alarm, SMP) have no rung-1 referent (metal-only,
+; RUNG-2-MAP Cluster 1) — the shape is built, the metal enforcement never faked.
+;
+; `notify` is a STUB extern: it stands for the handler port; the E39 row makes it a
+; row-tag crossing (E26). It has no rung-1 native lowering, so functions reaching it
+; (`fire-earliest`/`supervise-step`/`supervise`) typecheck but do not emit native —
+; the pure spine + the `apply-kont` decision are what run.
+
+(import "poll")        ; poll-fds, PollR, ReadyFd, Cond
+(import "ports")       ; Clock, time-mono, TimeR   (E32 split)
+(import "lincoll")     ; SockVec, sv-detach-at, mux-step   (E106)
+
+; ── alarms as data on the membrane ────────────────────────────────────────────
+; recoverable-vs-fatal is the CONSTRUCTOR OFFERING (effect-and-alarm Shard 5):
+; a handler returning k-resume|k-cancel is recoverable; k-cancel-only is fatal.
+; NOTE: today the row is the coarse `eff` bit; the alarm-as-a-typed-row-TAG is
+; E26, hard-gated on the E39 effect row. This is the shape that row will carry.
+(data KontMsg () (k-resume (rearm-ms I64)) (k-cancel))
+
+; an alarm registered ahead of time: a monotonic-ms deadline + the resident to
+; notify. It holds NO linear cap (custody of caps stays in the SockVec), so the
+; pending set is an ordinary unrestricted value the supervisor threads.
+(data Alarm   () (alarm (deadline I64) (rid I64)))
+(data AlarmSet () (as-nil) (as-cons (hd Alarm) (tl AlarmSet)))
+(data DueR    () (due-none) (due (ms I64) (rid I64)))
+
+; earliest pending deadline (pure min-scan, structural recursion = total).
+(def earliest (-> AlarmSet DueR)
+  (lam (s)
+    (case s
+      (as-nil (due-none))
+      ((as-cons a rest)
+        (case a
+          ((alarm d r)
+            (case (earliest rest)
+              (due-none      (due d r))
+              ((due md mr)   (case (<i d md) (true (due d r))
+                                             (false (due md mr)))))))))))
+
+; THE MULTIPLEX: fold the nearest alarm deadline INTO poll's timeout.
+;   poll(2): timeout in ms; -1 = block forever; 0 = return immediately.
+; So fd-readiness and alarm-firing share ONE blocking primitive.
+(def wait-ms (-> AlarmSet I64 I64)
+  (lam (s now)
+    (case (earliest s)
+      (due-none    (- 0 1))                       ; no alarm: -1 = infinite
+      ((due ms r)  (case (<i ms now) (true 0)     ; already due: don't block
+                                     (false (- ms now)))))))
+
+(def remove-rid (-> AlarmSet I64 AlarmSet)
+  (lam (s r)
+    (case s
+      (as-nil (as-nil))
+      ((as-cons a rest)
+        (case a
+          ((alarm d ar) (case (=i ar r) (true  (remove-rid rest r))
+                                        (false (as-cons a (remove-rid rest r))))))))))
+
+; ── firing an alarm IS the crossing ───────────────────────────────────────────
+; notify the resident at the other end of its port; read its KontMsg answer.
+; (`notify` stands for the handler port; the E39 row makes it a row-tag crossing.)
+(extern notify (=> I64 KontMsg))
+
+; the re-arm/cancel DECISION, factored PURE so it is directly testable without the
+; unbound `notify` crossing (SPEC §5 / the behavioral conformance sample):
+;   k-resume dt => re-arm FORWARD at now+dt (the only sound post-crossing resume);
+;   k-cancel    => synthesized cancel: drop the alarm (closing captured inventory).
+(def apply-kont (-> AlarmSet I64 I64 KontMsg AlarmSet)
+  (lam (s now r m)
+    (case m
+      ((k-resume dt) (as-cons (alarm (+ now dt) r) (remove-rid s r)))
+      ((k-cancel)    (remove-rid s r)))))
+
+(declare fire-earliest (=> AlarmSet I64 AlarmSet))
+(def fire-earliest
+  (lam (s now)
+    (case (earliest s)
+      (due-none s)
+      ((due ms r) (apply-kont s now r (notify r))))))            ; <- the crossing
+
+; ── one supervised tick: the scheduler's body ─────────────────────────────────
+; multiplex {fd-readiness, fired alarm}; dispatch exactly ONE unit; thread the
+; caps + clock back linearly. `=>` process: it crosses (time, poll, service).
+(data Tick () (tick (1 caps SockVec) (rest AlarmSet) (1 c Clock)))
+
+; mechanical glue (SPEC §4: elided in the example, implemented here). v1 uses the
+; ready fd AS the SockVec index — the real fd→index map is §6 residue.
+(def fd->index (-> I64 I64) (lam (fd) fd))
+
+(declare dispatch-one (=> (1 caps SockVec) (List ReadyFd) SockVec))
+(def dispatch-one
+  (lam (caps rs)
+    (case rs
+      (nil caps)                                     ; nothing ready: pool unchanged
+      ((cons r more)
+        (case r ((ready fd cnd) (mux-step caps (fd->index fd))))))))  ; caps used ONCE
+
+(declare supervise-step (=> (1 caps SockVec) (List I64) AlarmSet (1 c Clock) Tick))
+(def supervise-step
+  (lam (caps fds s c)
+    (case (time-mono c)                              ; read the monotonic anchor
+      ((time-err e c2) (tick caps s c2))             ; clock diverged: its own alarm
+      ((time-r now c2)
+        (case (poll-fds fds (wait-ms s now))         ; block on fds OR alarm deadline
+          ((poll-ready rs)                           ; an fd is ready …
+            (tick (dispatch-one caps rs) s c2))      ;   … service ONE (serial mutation)
+          ((poll-timeout)                            ; the nearest alarm fired …
+            (tick caps (fire-earliest s now) c2))    ;   … raise it as a crossing
+          ((poll-err e) (tick caps s c2)))))))       ; poll diverged: supervisor alarm
+
+; v1: the held fd set is STABLE across ticks, so the loop reuses `fds` (deriving it
+; from the mutated SockVec is linearity-impossible without consuming caps — the
+; dynamic recompute is §6 residue). Identity marks the seam.
+(def held-fds (-> (List I64) (List I64)) (lam (fds) fds))
+
+; the outer loop is the SCHEDULER: recurse on the returned Tick forever. It is a
+; PRODUCTIVE process (an event loop), not a terminating function — it lives
+; outside the (total) demand: partiality is one effect in the totality modality.
+(declare supervise (=> (1 caps SockVec) (List I64) AlarmSet (1 c Clock) Unit))
+(def supervise
+  (lam (caps fds s c)
+    (case (supervise-step caps fds s c)
+      ((tick caps2 s2 c2) (supervise caps2 (held-fds fds) s2 c2)))))

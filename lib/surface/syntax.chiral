@@ -1,0 +1,35 @@
+; E13/E04: the shared de-Bruijn syntax -- the full-ADT Term the whole checker
+; rests on. Extracted to a leaf (imports only qtt) so BOTH the data layer
+; (E6/E7/E8 walks over field types) and the kernel judgment can reference Term
+; without an import cycle: kernel imports data for DataDecl, and data's field
+; types are Term (E04 decision #7 / RUNG1-CRITICAL-PATH item 1). terms.chiral
+; (E13) stays the closed-core differential artifact; THIS is the live full-ADT
+; Term the kernel owns via import.
+(import "qtt")                 ; Qty (t-pi carries the binder quantity)
+(import "refine")              ; SymOp (the refinement op enum) for t-refine's atoms
+
+; ---- the effect seat: concrete 2-point instance, compared by equality only ---
+(data Seat () (s-pure) (s-proc))
+
+; ---- a refinement-type atom: (op operand) e.g. (< n) -- E04 decision #6 --------
+(data RfAtom () (r-atom (op SymOp) (operand Term)))
+
+; ---- syntax: de-Bruijn core terms --------------------------------------------
+(data Term ()
+  (t-var  (i I64))
+  (t-type (n I64))
+  (t-pi   (q Qty) (s Seat) (dom Term) (cod Term))
+  (t-lam  (body Term))
+  (t-app  (f Term) (a Term))
+  (t-let  (q Qty) (v Term) (body Term))              ; let-bound at quantity q (QTT let rule)
+  (t-ann  (tm Term) (ty Term))                       ; (the ty tm) -- the mode switch
+  ; ---- E04 full-ADT extension (slice 2): globals/prims/literals/data/case ----
+  (t-global (n Str))                                 ; a top-level def reference
+  (t-prim   (n Str))                                 ; an extern reference
+  (t-primty (n Str))                                 ; a primitive type (I64/Str/Bytes)
+  (t-lit-i  (v I64)) (t-lit-s (v Str))               ; I64 / Str literals
+  (t-con    (dn Str) (cn Str) (args (List Term)))    ; a data constructor
+  (t-tcon   (dn Str) (args (List Term)))             ; an applied data type
+  (t-case   (scrut Term) (arms (List KArm)) (dflt (Maybe Term)))
+  (t-refine (base Term) (atoms (List RfAtom))))       ; {base | atoms} refinement type
+(data KArm () (karm (cn Str) (nvars I64) (body Term)))

@@ -1,0 +1,75 @@
+; Memory discipline: region (bump-allocated arena), the same substrate under a
+; smarter discipline. This is the "regions for stack-allocated dynamic data
+; without GC" of the dump's chirality-systems profile, built from what already
+; exists: a linear (Pool n) plus a cursor. No new kernel feature, no garbage
+; collector, no runtime allocator-of-record; conservation stays by linearity
+; and the static size stays in the type (memory-model.md).
+;
+; The bound n is erased (quantity 0): it exists only in types, so nothing may
+; branch on it at runtime. The arena therefore carries a runtime capacity
+; witness `cap` alongside the erased type index -- the value the pool was
+; created with, agreeing with n by construction. mem-alloc checks the cursor
+; against `cap`, never against n. (Refinement types would make the offset
+; itself typed and retire the runtime check; that is deferred, edge 3.)
+;
+; A Region is linear -- it holds a Pool, a linear kind -- so it is threaded and
+; dropped exactly once and the whole arena frees as a unit. Every operation
+; that reads the arena hands it back; you cannot peek without threading.
+
+(import "prelude")
+(import "ports")
+
+; the arena: the linear pool, its runtime capacity witness, and bytes used
+(data Region ((n I64))
+  (region (1 pool (Pool n)) (cap I64) (used I64)))
+
+; open an arena over a fresh pool; pass the same capacity the pool was made with
+(def region-open (-> (0 n I64) (=> (1 p (Pool n)) I64 (Region n)))
+  (lam (n p cap) (region p cap 0)))
+
+; result of an allocation: the offset handed out and the advanced region
+(data AllocR ((n I64))
+  (alloc-r (off I64) (1 rgn (Region n))))
+
+; bump: reserve `len` bytes, return their offset and the advanced region.
+; over-capacity is the arena alarm (checked against the runtime witness, never
+; against the erased bound); on overflow the pool is closed and we halt.
+(def mem-alloc (-> (0 n I64) (=> (1 r (Region n)) I64 (AllocR n)))
+  (lam (n r len)
+    (case r
+      ((region p cap used)
+        (case (<=i (+ used len) cap)
+          (true (alloc-r used (region p cap (+ used len))))
+          (false (do (pool-close n p)
+                     (halt (AllocR n) "region: allocation past capacity"))))))))
+
+; write bytes into an already-reserved offset, threading the region
+(def mem-write (-> (0 n I64) (=> (1 r (Region n)) I64 Bytes (Region n)))
+  (lam (n r off bs)
+    (case r
+      ((region p cap used)
+        (region (pool-write n p off bs) cap used)))))
+
+; allocate and write in one step: reserve len=|bs|, write bs there
+(data WroteR ((n I64))
+  (wrote-r (off I64) (1 rgn (Region n))))
+
+(def mem-stow (-> (0 n I64) (=> (1 r (Region n)) Bytes (WroteR n)))
+  (lam (n r bs)
+    (case (mem-alloc n r (blen bs))
+      ((alloc-r off r2)
+        (wrote-r off (mem-write n r2 off bs))))))
+
+; how much room is left; threads the region back (linear, cannot just peek --
+; a generic Pair cannot hold the region, so the result field is linear)
+(data AvailR ((n I64))
+  (avail-r (free I64) (1 rgn (Region n))))
+
+(def region-avail (-> (0 n I64) (=> (1 r (Region n)) (AvailR n)))
+  (lam (n r)
+    (case r
+      ((region p cap used) (avail-r (- cap used) (region p cap used))))))
+
+; drop the whole arena at once
+(def region-close (-> (0 n I64) (=> (1 r (Region n)) Unit))
+  (lam (n r) (case r ((region p cap used) (pool-close n p)))))

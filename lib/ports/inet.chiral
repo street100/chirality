@@ -1,0 +1,114 @@
+; =====================================================================
+; E129 — sock-connect-in: the AF_INET TCP client connect crossing.
+; Reaches a local model endpoint over the mesh/Tailscale with zero TLS.
+; WireGuard is the transport crypto, so the chirality path is plain HTTP
+; over a connected AF_INET socket.
+;
+; Pure surface only. The one effectful step is the fused socket+connect
+; crossing nb-sock-connect-in (extern in ports.chiral), which takes the
+; already-packed 16-byte sockaddr_in as Bytes and returns ConnR.
+; =====================================================================
+
+(import "prelude")
+(import "ports")
+
+; ---- dotted-quad host: a boundary sum, parsed ONCE, pure (no crossing) ----
+
+(data Quad ()
+  (quad (a I64) (b I64) (c I64) (d I64)))
+
+(data QuadR ()
+  (quad-ok (q Quad))
+  (quad-err (msg Str)))
+
+; ---- sockaddr_in packer: the ONE ABI fact that matters is byte order ----
+; 16 bytes (sockaddr_in(3type)):
+;   off 0 : sin_family = 2 (AF_INET), u16 host order (little-endian on x86)
+;   off 2 : sin_port, u16 NETWORK order (big-endian: high byte first)
+;   off 4 : sin_addr, four octets verbatim
+;   off 8 : sin_zero, eight zero bytes
+; The port is big-endian. The E109 bput-u16-le precedent is little-endian
+; and must NOT be copied here.
+
+(def byte (-> I64 Bytes)        ; low 8 bits of n, as a one-byte cell
+  (lam (n) (bslice (pack-u16 n) 0 1)))
+
+(def pack-sa-in (-> Quad I64 Bytes)
+  (lam (q port)
+    (case q
+      ((quad a b c d)
+        (let ((phi (/ port 256))   ; network byte order: high byte first
+              (plo (% port 256)))  ; low byte second
+          (bcat (pack-u16 2)                            ; sin_family = AF_INET
+            (bcat (bcat (byte phi) (byte plo))          ; sin_port, big-endian
+              (bcat (bcat (bcat (bcat (byte a) (byte b))
+                                  (byte c)) (byte d))   ; sin_addr
+                (brepeat (byte 0) 8)))))))))
+
+; ---- dotted-quad parser: split (str->bytes s) on '.' (46) ----
+; Four octets, each 0-255. Empty field, non-numeric field, out-of-range
+; field, or a field count other than 4 -> (quad-err "...").
+
+; pq-go bs i acc infield count packed -> QuadR
+;   acc    : the current field's accumulated decimal value
+;   infield: 1 once at least one digit of the current field has been seen
+;   count  : the number of complete octets committed so far
+;   packed : the first `count` octets, each shifted in packed*256 + octet
+(def pq-go (-> Bytes I64 I64 I64 I64 I64 QuadR)
+  (lam (bs i acc infield count packed)
+    (case (=i i (blen bs))
+      (true
+        ; end of input: a pending field commits as the fourth octet
+        (case (=i infield 1)
+          (true
+            (case (<=i acc 255)
+              (true
+                (case (=i count 3)
+                  (true
+                    (quad-ok (quad (/ packed 65536)
+                                   (% (/ packed 256) 256)
+                                   (% packed 256)
+                                   acc)))
+                  (false (quad-err "wrong octet count"))))
+              (false (quad-err "octet out of range"))))
+          (false (quad-err "empty octet"))))
+      (false
+        (let ((b (bget bs i)))
+          (case (=i b 46)                   ; '.'
+            (true
+              ; field terminator: commit acc if a field is in progress
+              (case (=i infield 1)
+                (true
+                  (case (<=i acc 255)
+                    (true
+                      (case (=i count 3)
+                        (true (quad-err "too many octets"))
+                        (false (pq-go bs (+ i 1) 0 0 (+ count 1)
+                                      (+ (* packed 256) acc)))))
+                    (false (quad-err "octet out of range"))))
+                (false (quad-err "empty octet"))))
+            (false
+              ; must be a decimal digit
+              (case (and (<=i 48 b) (<=i b 57))
+                (true
+                  (case (<i acc 26)
+                    (true (pq-go bs (+ i 1) (+ (* acc 10) (- b 48)) 1 count packed))
+                    (false (quad-err "octet out of range"))))
+                (false (quad-err "non-numeric octet"))))))))))
+
+(def parse-quad (-> Str QuadR)
+  (lam (s)
+    (pq-go (str->bytes s) 0 0 0 0 0)))
+
+; ---- the crossing: socket + connect cross the effect membrane ----
+; ports.chiral extern (bare types): (extern nb-sock-connect-in (=> Bytes ConnR)).
+; crossing-wraps maps nb-sock-connect-in -> nb-sock-connect-in; sys-tal.chiral
+; nb-sock-connect-in-t does socket(2,1,0) then connect(fd, sa, 16), closing
+; the fd on failure, mirroring nb-sock-connect-t (E127).
+
+(declare sock-connect-in (=> Str I64 ConnR))
+(def sock-connect-in
+  (lam (host port)
+    (case (parse-quad host)
+      ((quad-err msg) (conn-err msg))
+      ((quad-ok q) (nb-sock-connect-in (pack-sa-in q port))))))

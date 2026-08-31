@@ -1,0 +1,62 @@
+; E76 -- THE SWAPPABLE LINUX BACKEND. Pure B-referent data: the Linux x86-64
+; permitted syscall set as a SysReg value. The trusted mechanism (SysReg /
+; sys-lookup / ck-sys) lives in lib/sys-check.chiral and holds ZERO Linux numbers;
+; a rung-2 backend ("chirality is the kernel") replaces THIS FILE alone -- the whole
+; Linux-vanishes-at-rung-2 surface concentrated in one artifact (WATCH-2/WATCH-3).
+; Numbers are the canonical unistd_64.h values, mirroring the oracle
+; scaffold/chirality/tal.py SYSCALL_TABLE. Adding a crossing = one row here + its
+; nb-sys-* def; a profile later narrows this to a permitted SUBSET (E76 remainder).
+(import "sys-check")
+
+; E161: "Pure B-referent data" (line 1) as a coordinate. B because this file's
+; correctness rests on an admitted hole the language cannot type -- the claim
+; that 0 really is Linux's `read` -- and nothing in chirality can prove that row; the
+; numbers are cross-checked against unistd_64.h by a human. The port-set axis is
+; NOT a restatement of that letter and is no longer written at all: the datasheet
+; derives it, and it comes out empty, which says exactly the interesting thing --
+; this module DESCRIBES every crossing there is and binds none of them.
+(module target-linux (cat B) (alt upper))
+
+(def linux-syscalls SysReg
+  (sys-reg
+    (cons (sys-row "nb-sys-read"          0)
+    (cons (sys-row "nb-sys-write"         1)
+    (cons (sys-row "nb-sys-close"         3)
+    (cons (sys-row "nb-sys-fcntl"        72)   ; E121: fcntl F_GETFD/F_SETFD
+    (cons (sys-row "nb-sys-lseek"         8)
+    (cons (sys-row "nb-sys-mmap"          9)
+    (cons (sys-row "nb-sys-mprotect"     10)
+    (cons (sys-row "nb-sys-munmap"        11)
+    (cons (sys-row "nb-sys-winsz"        16)
+    (cons (sys-row "nb-sys-tcgets"       16)
+    (cons (sys-row "nb-sys-tcsets"       16)
+    (cons (sys-row "nb-sys-winszw"      16)   ; T2: ioctl TIOCSWINSZ (0x5414)
+    (cons (sys-row "nb-sys-ptsno"        16)   ; E104: ioctl TIOCGPTN (0x80045430)
+    (cons (sys-row "nb-sys-ptunlock"     16)   ; E104: ioctl TIOCSPTLCK (0x40045431)
+    (cons (sys-row "nb-sys-open-rw"     257)   ; E104: openat O_RDWR|O_NOCTTY sibling
+    (cons (sys-row "nb-sys-open-create" 257)   ; SCRIBA-SLICES 4: openat O_RDWR|O_CREAT|O_TRUNC sibling
+    (cons (sys-row "nb-sys-poll"           7)
+    (cons (sys-row "nb-sys-nanosleep"    35)
+    (cons (sys-row "nb-sys-send-fd"      46)
+    (cons (sys-row "nb-sys-ftruncate"    77)
+    (cons (sys-row "nb-sys-clock-gettime" 228)
+    (cons (sys-row "nb-sys-exit-group"   231)
+    (cons (sys-row "nb-sys-memfd"        319)
+    (cons (sys-row "nb-sys-execveat"     322)
+    (cons (sys-row "nb-sys-openat"       257)
+    (cons (sys-row "nb-sock-send-go"       1)   ; E125: sendall worker issues write (nr 1)
+    (cons (sys-row "nb-sock-recv"          0)   ; E125: recv issues read (nr 0)
+    (cons (sys-row "nb-sys-socketpair"    53)   ; E126: socketpair(AF_UNIX, SOCK_STREAM)
+    (cons (sys-row "nb-sys-socket"        41)   ; E127: socket(AF_UNIX, SOCK_STREAM)
+    (cons (sys-row "nb-sys-connect"       42)   ; E127: connect(fd, sockaddr_un, len)
+    (cons (sys-row "nb-sys-fork"          57)
+    (cons (sys-row "nb-sys-wait4"         61)
+    (cons (sys-row "nb-sys-pipe"        293)   ; A2: pipe2(pipefd, flags)
+    (cons (sys-row "nb-sys-execve"       59)
+    (cons (sys-row "nb-read-key"           0)   ; read: the key/keyseq stub crossing
+    (cons (sys-row "nb-arena-fail"       231)   ; exit_group: E90-REV honest arena fail
+    (cons (sys-row "nb-sys-setsid"       112)   ; T1: setsid
+    (cons (sys-row "nb-sys-dup2"          33)   ; T1: dup2
+    (cons (sys-row "nb-sys-tiocsctty"     16)   ; T1: ioctl TIOCSCTTY
+    (cons (sys-row "nb-signal"            13)   ; rt_sigaction(2): set a signal disposition
+          (nil)))))))))))))))))))))))))))))))))))))))))))

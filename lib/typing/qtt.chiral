@@ -1,0 +1,78 @@
+; E5: the QTT quantity semiring + usage-vector linearity accounting. The
+; self-hosted port of kernel.py:65-107 (qadd/qmul/qjoin/qfits + uzero/uadd/
+; uscale/ujoin). Pure (->): accounting performs no crossing. Standalone -- only
+; prelude. kernel.py stays the differential oracle until the chirality kernel
+; (E3/E4/E5) imports this file.
+;
+; The grade instance (Qty + its four op tables) is the swappable seat: the E38
+; enrichment (usage x time x space x info-flow, frozen width) replaces THIS data
+; type + ops; the vector algebra below is untouched. That parametricity is the
+; point of the port's shape.
+(import "prelude")
+
+; ---- the grade set: today's instance -----------------------------------
+(data Qty () (q0) (q1) (qw))
+
+; ---- the semiring, as total coverage-checked tables --------------------
+(def qadd (-> Qty Qty Qty)
+  (lam (a b)
+    (case a
+      ((q0) b)
+      ((q1) (case b ((q0) (q1)) ((q1) (qw)) ((qw) (qw))))   ; 1+1 saturates
+      ((qw) (qw)))))
+
+(def qmul (-> Qty Qty Qty)
+  (lam (a b)
+    (case a
+      ((q0) (q0))                                            ; 0 annihilates
+      ((q1) b)                                               ; 1 is unit
+      ((qw) (case b ((q0) (q0)) ((q1) (qw)) ((qw) (qw)))))))
+
+; branch merge: divergent linear use across case arms saturates to w
+(def qjoin (-> Qty Qty Qty)
+  (lam (a b)
+    (case a
+      ((q0) (case b ((q0) (q0)) ((q1) (qw)) ((qw) (qw))))
+      ((q1) (case b ((q0) (qw)) ((q1) (q1)) ((qw) (qw))))
+      ((qw) (qw)))))
+
+; computed-vs-declared: w admits anything, else exact
+(def qfits (-> Qty Qty Bool)
+  (lam (computed declared)
+    (case declared
+      ((qw) true)
+      ((q1) (case computed ((q1) true) ((q0) false) ((qw) false)))
+      ((q0) (case computed ((q0) true) ((q1) false) ((qw) false))))))
+
+; ---- usage vectors: one Qty per de Bruijn context slot -----------------
+; Numeric-measure recursion (n toward 0): the termination checker's measure
+; fragment proves this total (docs/totality.md).
+(def uzero (-> I64 (List Qty))
+  (lam (n) (case (<=i n 0)
+             (true  nil)
+             (false (cons (q0) (uzero (- n 1)))))))
+
+; Structural recursion, explicit (no partial application: floor-friendly shape).
+(def uadd (-> (List Qty) (List Qty) (List Qty))
+  (lam (u1 u2)
+    (case u1
+      ((nil) nil)
+      ((cons a r1)
+       (case u2
+         ((nil) nil)
+         ((cons b r2) (cons (qadd a b) (uadd r1 r2))))))))
+
+(def uscale (-> Qty (List Qty) (List Qty))
+  (lam (q u)
+    (case u
+      ((nil) nil)
+      ((cons x r) (cons (qmul q x) (uscale q r))))))
+
+(def ujoin (-> (List Qty) (List Qty) (List Qty))
+  (lam (u1 u2)
+    (case u1
+      ((nil) nil)
+      ((cons a r1)
+       (case u2
+         ((nil) nil)
+         ((cons b r2) (cons (qjoin a b) (ujoin r1 r2))))))))

@@ -1,0 +1,18 @@
+; T1 behavioral test — simple crossings (setsid + dup2)
+(import "prelude")
+(import "ports")
+
+(declare test-setsid (=> Unit I64))
+(def test-setsid (lam (_)
+  (let ((sid (nb-setsid unit)))
+    (case (<i sid 0) (true 1) (false 0)))))
+
+(declare test-dup2 (=> Unit I64))
+(def test-dup2 (lam (_)
+  (let ((rc (nb-dup2 1 10)))
+    (case (=i rc 10) (true 0) (false 1)))))
+
+(declare compile-main (=> Unit I64))
+(def compile-main (lam (_)
+  (let ((s (test-setsid unit)))
+    (case (=i s 0) (true (test-dup2 unit)) (false s)))))

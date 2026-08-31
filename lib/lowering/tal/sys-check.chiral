@@ -1,0 +1,77 @@
+; E76 -- the syscall chokepoint, ENFORCED at the tal-ir floor (where `sys` lives
+; in chirality). The nb-sys-* crossings are hand-authored TIFns in lib/sys-tal.chiral
+; as `ti-sys` in the ERASED tal-ir -- NOT lowered SSA -- so the E18 SSA checker
+; (ck-fn over tal-ssa Instr) never sees a syscall. This file is the faithful
+; analog of tal.py check_fn's `sys` arm (tal.py:208-229), applied to the IR where
+; sys actually occurs: walk each TIFn and, for every ti-sys, enforce the two
+; bindings -- (a) the fn is registered [DEFAULT-DENY BY ABSENCE], (b) the
+; immediate == the registered number [name<->number, closing the "nb-sys-write
+; carries open's number" hole]. Keyed by the fn's own name.
+;
+; The permitted set is the SWAPPABLE lib/target-linux.chiral SysReg value; this
+; file holds ZERO Linux numbers (the rule is chirality-permanent, the table is Linux
+; data -- WATCH-2/WATCH-3). A rung-2 backend swaps target-linux alone.
+(import "prelude")
+(import "tal-ir")
+
+(data SysRow () (sys-row (name Str) (num I64)))
+(data SysReg () (sys-reg (rows (List SysRow))))
+(data SysR   () (sok) (sbad (msg Str)))
+
+; default-deny by ABSENCE: an unregistered name -> none
+(declare row-find (-> (List SysRow) Str (Maybe I64)))
+(def row-find (lam (rows nm)
+  (case rows
+    (nil (none))
+    ((cons r rr) (case r ((sys-row rn rnum)
+      (case (str-eq rn nm) (true (some rnum)) (false (row-find rr nm)))))))))
+(declare sys-lookup (-> SysReg Str (Maybe I64)))
+(def sys-lookup (lam (reg nm) (case reg ((sys-reg rows) (row-find rows nm)))))
+
+; ck-sys: the two E76 bindings on one ti-sys immediate.
+(declare ck-sys (-> SysReg Str I64 SysR))
+(def ck-sys (lam (reg fn nr)
+  (case (sys-lookup reg fn)
+    (none (sbad "sys: crossing not in permitted registry (default-deny, E76)"))
+    ((some permitted)
+      (case (=i nr permitted)
+        (true  (sok))
+        (false (sbad "sys: ti-sys number does not match registered number (E76)")))))))
+
+; walk one instruction: only ti-sys is E76-relevant, everything else passes.
+(declare ck-ti-instr (-> SysReg Str TInstr SysR))
+(def ck-ti-instr (lam (reg fn i)
+  (case i
+    ((ti-sys dst nr args) (ck-sys reg fn nr))
+    (_ (sok)))))
+
+; walk a code chain: t-seq / ti-ret / ti-tcase (branches + optional default).
+(declare ck-ti-code (-> SysReg Str TCode SysR))
+(declare ck-ti-branches (-> SysReg Str (List (Pair (Pair I64 (List I64)) TCode)) SysR))
+(def ck-ti-code (lam (reg fn code)
+  (case code
+    ((t-seq i rest) (case (ck-ti-instr reg fn i)
+      ((sbad m) (sbad m))
+      ((sok) (ck-ti-code reg fn rest))))
+    ((ti-ret src) (sok))
+    ((ti-tcase src boxed branches dflt) (case (ck-ti-branches reg fn branches)
+      ((sbad m) (sbad m))
+      ((sok) (case dflt (none (sok)) ((some d) (ck-ti-code reg fn d)))))))))
+(def ck-ti-branches (lam (reg fn brs)
+  (case brs
+    (nil (sok))
+    ((cons b rest) (case b ((pair hd code)
+      (case (ck-ti-code reg fn code)
+        ((sbad m) (sbad m))
+        ((sok) (ck-ti-branches reg fn rest)))))))))
+
+; the chokepoint over one crossing / the whole crossing library, keyed by name.
+(declare ck-tifn (-> SysReg TIFn SysR))
+(def ck-tifn (lam (reg f) (case f ((ti-fn name np nr code) (ck-ti-code reg name code)))))
+(declare ck-tiprog (-> SysReg (List TIFn) SysR))
+(def ck-tiprog (lam (reg fns)
+  (case fns
+    (nil (sok))
+    ((cons f rest) (case (ck-tifn reg f)
+      ((sbad m) (sbad m))
+      ((sok) (ck-tiprog reg rest)))))))

@@ -1,0 +1,168 @@
+; E88 — Mark + region system for scriba.
+; Pure functional design: all types are immutable data, all operations are
+; pure (->) functions. The effectful command loop threads these through.
+;
+; Deps: prelude (I64, Str, Bool, Unit, List, Maybe, Pair)
+;       scriba/str-edit (TextZipper, LineCtx, zipper-to-text, advance-by,
+;                         text-zipper-from-str, str-delete-forward, str-len,
+;                         str-sub, str-cat, str-eq)
+;
+; Lands in: scaffold/lib/scriba/mark-region.chiral (~80 lines)
+
+(import "prelude")
+(import "str-edit")
+
+; ---------------------------------------------------------------- Types
+
+; Mark: a saved cursor position — a TextZipper Str snapshot.
+; The mark captures the full buffer context (above, left, right, below)
+; at the moment it was set. Two marks define a region.
+(data Mark ()
+  (mark-at (zipper (TextZipper Str))))
+
+; MarkRing: a bounded LIFO stack of marks.
+; Pushed before long jumps; popped to return. Same pattern as KillRing.
+(data MarkRing ()
+  (mark-ring (marks (List Mark)) (max (Maybe I64))))
+
+; Forward declares: helpers used before their defs.
+(declare mark-ring-trim (-> (Maybe I64) (List Mark) (List Mark)))
+(declare mark-take (-> I64 (List Mark) (List Mark)))
+(declare sum-line-lengths (-> (List Str) I64))
+(declare zipper-at-offset (-> I64 (TextZipper Str) (TextZipper Str)))
+
+; ---------------------------------------------------------------- Mark operations
+
+; Create an empty mark ring with optional max capacity.
+(def mark-ring-new (-> (Maybe I64) MarkRing)
+  (lam (max)
+    (mark-ring nil max)))
+
+; Push a mark onto the ring. If the ring exceeds max, drop the oldest entry.
+(def mark-ring-push (-> Mark MarkRing MarkRing)
+  (lam (m mr)
+    (case mr
+      ((mark-ring marks max)
+        (let ((new-marks (cons m marks))
+              (trimmed (mark-ring-trim max new-marks)))
+          (mark-ring trimmed max))))))
+
+; Trim marks to max capacity.
+(def mark-ring-trim
+  (lam (max marks)
+    (case max
+      (none marks)
+      ((some n) (mark-take n marks)))))
+
+; Take first n elements from a list of Marks.
+(def mark-take
+  (lam (n xs)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (case (=i n 0)
+          (true nil)
+          (false (cons h (mark-take (- n 1) t))))))))
+
+; Pop the most recent mark from the ring. Returns (Maybe Mark, MarkRing).
+(def mark-ring-pop (-> MarkRing (Pair (Maybe Mark) MarkRing))
+  (lam (mr)
+    (case mr
+      ((mark-ring marks max)
+        (case marks
+          (nil (pair none mr))
+          ((cons h t) (pair (some h) (mark-ring t max))))))))
+
+; Set the mark at the current cursor position (point).
+; Returns a new Mark from the current zipper.
+(def set-mark (-> (TextZipper Str) Mark)
+  (lam (z)
+    (mark-at z)))
+
+; ---------------------------------------------------------------- Region operations
+
+; Compute the character offset of a zipper position within the buffer.
+; The offset is the number of characters before the cursor.
+(def zipper-offset (-> (TextZipper Str) I64)
+  (lam (z)
+    (case z
+      ((text-zipper focus ctx)
+        (case ctx
+          ((line-ctx above left right below)
+            (let ((above-len (sum-line-lengths above)))
+              (+ above-len (str-len left)))))))))
+
+; Sum the lengths of lines in a list, counting newline separators.
+(def sum-line-lengths
+  (lam (lines)
+    (case lines
+      (nil 0)
+      ((cons h t) (+ (+ (str-len h) 1) (sum-line-lengths t))))))
+
+; Extract the text between two positions in the buffer.
+; The positions may be in any order — this returns text from the
+; earlier position to the later position (the region).
+; Returns (region-text, start-offset, end-offset).
+(def region-between (-> (TextZipper Str) (TextZipper Str) (Pair Str (Pair I64 I64)))
+  (lam (a b)
+    (let ((off-a (zipper-offset a))
+          (off-b (zipper-offset b))
+          (full (zipper-to-text a)))
+      (case (<i off-a off-b)
+        (true
+          (let ((start off-a)
+                (end off-b))
+            (pair (str-sub full start end) (pair start end))))
+        (false
+          (case (<i off-b off-a)
+            (true
+              (let ((start off-b)
+                    (end off-a))
+                (pair (str-sub full start end) (pair start end))))
+            (false
+              (pair "" (pair off-a off-a)))))))))
+
+; Kill the region between mark and point.
+; Extracts the text, deletes it from the buffer, returns the killed text
+; and the new zipper positioned at the deletion point.
+(def kill-region (-> Mark (TextZipper Str) (Pair Str (TextZipper Str)))
+  (lam (mk pt)
+    (case mk
+      ((mark-at mk-z)
+        (let ((rb (region-between mk-z pt)))
+          (case rb
+            ((pair killed offsets)
+              (case offsets
+                ((pair start-off end-off)
+                  (case (str-eq killed "")
+                    (true (pair "" pt))
+                    (false
+                      (let ((new-z (zipper-at-offset start-off pt)))
+                        (pair killed (str-delete-forward (str-len killed) new-z))))))))))))))
+
+; Copy the region between mark and point to a string (no deletion).
+(def copy-region (-> Mark (TextZipper Str) Str)
+  (lam (mk pt)
+    (case mk
+      ((mark-at mk-z)
+        (let ((rb (region-between mk-z pt)))
+          (case rb
+            ((pair killed _)
+              killed)))))))
+
+; Exchange point and mark — the old point becomes the new mark,
+; returns (new-mark, new-point-where-old-mark-was).
+(def exchange-point-and-mark (-> Mark (TextZipper Str) (Pair Mark (TextZipper Str)))
+  (lam (mk pt)
+    (case mk
+      ((mark-at mk-z)
+        (pair (mark-at pt) mk-z)))))
+
+; Position a new zipper at a given character offset within the buffer,
+; using the original zipper's text as the source.
+; Advances from the beginning of the buffer to the target offset.
+(def zipper-at-offset
+  (lam (offset z)
+    (let ((full (zipper-to-text z)))
+      (let ((z0 (text-zipper-from-str full)))
+        (advance-by offset z0)))))

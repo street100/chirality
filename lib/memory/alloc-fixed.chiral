@@ -1,0 +1,23 @@
+; The fixed Alloc discipline — one static heap object, indexed in bounds, never
+; grown. The instance the C leg (E166) selects; canonical never imports it.
+;
+; Typeability category A (docs/axis-typeability.md): its correctness rests on
+; proof — one copy correct — because a fixed object indexed in bounds is
+; followable by a theorem, where a grown one is not. The reasoning lives in
+; docs/banks/verification.md Shard 8b; this line only records the category.
+
+(import "alloc")
+(import "mach")
+
+; bare global refs — same pattern as alloc-growing (mach-galo/mach-gbnw), but
+; the NON-growing arms. mach-alo/mach-bnw are
+; (-> Mach (-> I64 I64 (List I64) (List Asm))) and
+; (-> Mach (-> I64 I64 (List Asm))) — curried types match the field types
+; exactly, so specialize-singletons rewrites projectors straight to them.
+(def alloc-fixed Alloc
+  (alloc
+    mach-alo
+    mach-bnw
+    (lam (m slot) (the (List Asm) nil))
+    (lam (m slot) (the (List Asm) nil))
+    (lam (m src)  (the (List Asm) nil))))

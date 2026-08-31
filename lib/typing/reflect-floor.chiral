@@ -1,0 +1,54 @@
+; E45: the reflective floor, made checkable at the TYPE LEVEL (the E40 pattern --
+; enforcement is structural, no runtime code). The line (decision-reflective-floor,
+; edge 5): the running judgment is staged-in, never granted-to, not swappable after
+; staging -- reconfiguration is UNEXPRESSIBLE, not merely forbidden.
+;
+; Two types + one linear move draw it:
+;   SigB   -- the write-capable builder, used ONLY during staging;
+;   Frozen -- the read-only judgment (no write field, no unfreeze);
+;   freeze : (1 b SigB) -> Frozen -- the single LINEAR CONSUME. After it, the
+;            write-capable handle no longer exists to name, so reconfiguration is
+;            untypeable (QTT linearity, E5/E8: reusing the consumed builder is a
+;            "declared 1 but used 2" rejection at check time).
+; Read-only reflection (reflect-formers) is expressible; a writeback (Frozen->SigB)
+; is not -- the seam stand-ins (Former/Rules/VHook) are OPAQUE, so a SigB cannot be
+; fabricated from a Frozen (no constructor path). The Python Sig stays interim
+; discipline (decision #1); this is the constraint the kernel-core port must carry.
+(import "prelude")
+
+; opaque seam stand-ins: no user constructor, so a membrane/hook cannot be
+; fabricated -- which is what makes a writeback (Frozen -> SigB) undefinable.
+(declare Former (type 0))
+(declare Rules  (type 0))
+(declare VHook  (type 0))
+
+; SigB: the LINEAR write-capable builder (staging phase only). Carries the seam set
+; decision #2 freezes conservatively (formers, the membrane, and the v-hooks).
+(data SigB () (sig-b (formers (List Former)) (membrane Rules) (vhooks (List VHook))))
+; Frozen: the read-only judgment -- NO write field, no `unfreeze`, no membrane handle.
+(data Frozen () (frozen (formers (List Former))))
+
+; install-* : a linear update of the builder -- consume the handle, thread the
+; membrane/hooks (never fabricated), return the extended builder. Staging-only.
+(declare install-former (-> (1 b SigB) Former SigB))
+(def install-former (lam (b fm) (case b ((sig-b fs m vs) (sig-b (cons fm fs) m vs)))))
+(declare install-vhook (-> (1 b SigB) VHook SigB))
+(def install-vhook (lam (b vh) (case b ((sig-b fs m vs) (sig-b fs m (cons vh vs))))))
+
+; freeze: THE floor-drawing move. Consumes the linear builder exactly once (the
+; `case`) and returns a read-only Frozen; the membrane/hooks are dropped, so no
+; write handle survives. A second use of `b` is a linearity rejection.
+(declare freeze (-> (1 b SigB) Frozen))
+(def freeze (lam (b) (case b ((sig-b fs m vs) (frozen fs)))))
+
+; read-only reflection: querying a Frozen is fine (it exposes only its formers).
+(declare reflect-formers (-> Frozen (List Former)))
+(def reflect-formers (lam (f) (case f ((frozen fs) fs))))
+
+; ---- the succession seam (forward to E52; the body is E52's recheck) ----------
+; a successor's core must PASS recheck before it is staged; E45 pins the seam shape.
+(declare Cert    (type 0))
+(declare Verdict (type 0))
+(declare StageR  (type 0))
+(declare recheck (-> Frozen Cert Verdict))
+(declare stage-successor (=> (1 self Frozen) Cert StageR))

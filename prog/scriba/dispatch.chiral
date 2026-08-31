@@ -1,0 +1,141 @@
+; scriba/dispatch.chiral — op dispatch (BLOCKED by B1 effect chain threshold)
+;
+; This module defines `try-dispatch` which resolves a keymap op name into an
+; actual ScribaOp function and executes it. Adding this call to
+; command-loop-inner pushes past B1's current effect chain threshold.
+;
+; WHAT WORKS TODAY:
+;   command-loop-inner handles: read-key-sequence → lookup-keymap → quit check
+;   That's 2 effectful ops (read-key-sequence, lookup-keymap via keyseq-eq)
+;   plus the recursive call. Tight but functional.
+;
+; WHAT'S BLOCKED:
+;   Adding lookup-scribaop (list traversal + str-eq) AND op-fn call (the
+;   effectful op function itself) in the same function body would add 2 more
+;   effectful operations to the chain. B1's current threshold (~3 effectful
+;   operations per function body) can't fuse/sequence this many ops.
+;
+; WHAT NEEDS TO HAPPEN TO ACTIVATE:
+;   1. B1's effect chain threshold must be raised to handle 4+ sequential
+;      effectful operations in a single function body, OR effect fusion
+;      must be implemented so compound expressions count as one chain node.
+;   2. Once fixed, add (import "dispatch") to scriba-main.chiral and replace
+;      the (false ...) arm of the quit check with a call to try-dispatch
+;      (see the patch template at the bottom of this file).
+;   3. Rebuild: chirality_blob scaffold/lib scriba/scriba-main | scaffold/build/B1
+;
+; This file is self-contained and can be imported once B1 is ready.
+; It does NOT import scriba-main (avoids circular dep) — it forward-declares
+; command-loop-inner instead.
+
+(import "prelude")
+(import "puffer")
+(import "render")
+(import "cmd-types")
+(import "keymap")
+(import "vim-mode")
+(import "editor-state")     ; S18 — Scriba, the editor state as ONE value
+
+; ─── Forward declaration ────────────────────────────────────────────────────
+;
+; command-loop-inner lives in command-loop.chiral (:2044). We forward-declare it
+; here so try-dispatch can recurse back into the main loop after executing an op.
+; Signature must match the real definition exactly.
+;
+; S18: it takes ONE argument. The eleven state slots the declare used to spell
+; out (km, puf, chat, dims, scroll, msg, rendering, renderers, ops, mode,
+; pending) are the fields of `Scriba` (editor-state.chiral), so this declare no
+; longer has to be kept in sync with a positional run — adding a field to the
+; editor's state does not touch this line.
+;
+;   s       : Scriba   — the whole editor state
+;   returns : Unit
+
+(declare command-loop-inner
+  (=> Scriba Unit))
+
+; ─── try-dispatch ───────────────────────────────────────────────────────────
+;
+; Resolve an op name (from keymap lookup) into a registered ScribaOp and
+; execute its effectful op-fn. Then recurse back into command-loop-inner.
+;
+; Flow:
+;   1. lookup-scribaop ops opname → (Maybe ScribaOp)
+;   2. If (none): op not registered — fall through to command-loop-inner
+;      (TODO: beep or self-insert for unbound printable keys)
+;   3. If (some op): destructure ScribaOp, call op-fn with puffer,
+;      recurse into command-loop-inner with the updated puffer.
+;
+; Effectful (=>) because op-fn has type (=> (Puffer Str) (Puffer Str))
+; — it may perform I/O, cursor moves, buffer mutations, etc.
+
+(declare try-dispatch
+  (=> Scriba Str (Puffer Str)))
+
+(def try-dispatch
+  (lam (s opname)
+    ; Step 1: look up the op name in the registered ops list.
+    ; lookup-scribaop is defined in cmd-types.chiral — pure list traversal
+    ; with str-eq, returns (Maybe ScribaOp).
+    (case (lookup-scribaop (sc-ops s) opname)
+
+      ; Step 2a: op name not registered. No op to execute.
+      ; Fall through to the next iteration of the command loop.
+      ; TODO: when self-insert is implemented, handle printable char keys here.
+      (none (sc-puf s))
+
+      ; Step 2b: op registered. ScribaOp carries a fn-typed field
+      ; (fn : (=> (Puffer Str) (Puffer Str))). The CALL side now lowers
+      ; via $apply defunctionalization, so we destructure and invoke it.
+      ((some scribaop)
+        (case scribaop
+          ((op nm f d)
+            (f (sc-puf s))))))))
+
+; ═══════════════════════════════════════════════════════════════════════════
+; ACTIVATION PATCH — apply to scriba-main.chiral once B1 is fixed
+; ═══════════════════════════════════════════════════════════════════════════
+;
+; STEP 1: Add import. Change line 4 of scriba-main.chiral from:
+;
+;   (import "prelude")(import "ports")(import "term")(import "puffer")(import "render")(import "keymap")(import "cmd-types")(import "init-loader")
+;
+; To:
+;
+;   (import "prelude")(import "ports")(import "term")(import "puffer")(import "render")(import "keymap")(import "cmd-types")(import "init-loader")(import "dispatch")
+;
+; STEP 2: Update command-loop-inner definition. Change from:
+;
+;   (declare command-loop-inner (=> (Puffer Str) (Pair I64 I64) Rendering (List (Pair Str Mode)) (List ScribaOp) Unit))
+;   (def command-loop-inner
+;     (lam (puf dims unused renderers ops)
+;       (let (ks (read-key-sequence default-keymap))
+;         (case (lookup-keymap ks default-keymap)
+;           (none (command-loop-inner puf dims unused renderers ops))
+;           ((some opname)
+;             (case (str-eq opname "quit")
+;               (true unit)
+;               (false (command-loop-inner puf dims unused renderers ops))))))))
+;
+; To:
+;
+;   (declare command-loop-inner (=> (Puffer Str) (Pair I64 I64) Rendering (List (Pair Str Mode)) (List ScribaOp) Unit))
+;   (def command-loop-inner
+;     (lam (puf dims rendering renderers ops)
+;       (let (ks (read-key-sequence default-keymap))
+;         (case (lookup-keymap ks default-keymap)
+;           (none (command-loop-inner puf dims rendering renderers ops))
+;           ((some opname)
+;             (case (str-eq opname "quit")
+;               (true unit)
+;               (false (try-dispatch puf dims rendering renderers ops opname))))))))
+;
+; Key change: the (false ...) arm now calls try-dispatch instead of directly
+; recursing. try-dispatch handles lookup-scribaop → op-fn execution,
+; then recurses back into command-loop-inner.
+;
+; STEP 3: Rebuild and test:
+;   chirality_blob scaffold/lib scriba/scriba-main | scaffold/build/B1
+;
+; Once B1 handles the larger effect chain, the editor will dispatch
+; C-f/C-b/C-n/C-p and all other registered keybindings to their ops.

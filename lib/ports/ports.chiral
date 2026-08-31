@@ -1,0 +1,63 @@
+; chirality scaffold port floor: the category C boundary, declared in source.
+;
+; porttype introduces an opaque linear atom: the kernel learns nothing about
+; it except that it exists and that B-ness lives in the type, so a value of
+; it (or anything transitively holding one) can only ever be bound with
+; quantity 1. Every crossing below is an extern: its type is owned here, the
+; host implementation is bound at link time, and the checker holds every
+; caller to move-only threading.
+;
+; H11: the declarations themselves now live in nine registries under
+; scaffold/lib/ports/, one per concern. This file is the FAÇADE -- importing
+; "ports" still names the whole floor, so every existing importer is
+; unchanged. Import a single registry instead when you want the smaller
+; naming surface:
+;
+;   ports/fd       Fd cap + adopt-fd/fd-close + read/write-fd/fcntl
+;   ports/sock     Sock/LSock + the socket crossings + their result sums
+;   ports/pool     sized shared buffers (Pool n) [needs ports/fd]
+;   ports/file     open-rw / open-create -- a NAME becomes a descriptor
+;   ports/pty      Pty cap, acquisition, child wiring, spawn-in-pty
+;   ports/tty      line-discipline ioctls + read-key + Key/KeySeq/Keymap
+;   ports/stdio    print / put / trace
+;   ports/clock    Clock, Timer, Env caps and their result sums
+;   ports/process  exit / halt / signal / mmap / mprotect
+;
+; What that buys is a NAMING boundary -- what a module is allowed to name --
+; and nothing else. It is worth exactly 0 bytes at runtime: `native-lib ++
+; link-lib` is appended unconditionally (compile-emit.chiral:189), so a program
+; importing one registry and a program importing all nine emit the same size.
+
+(import "prelude")
+(import "ports/fd")
+(import "ports/sock")
+(import "ports/pool")
+(import "ports/file")
+(import "ports/pty")
+(import "ports/tty")
+(import "ports/stdio")
+(import "ports/clock")
+(import "ports/process")
+
+; E160: the coordinate that this file's opening line used to state in prose.
+;
+; NO PORT-SET CLAIM, and that is a FINDING rather than an omission. The port-set
+; claim is decided against the crossings a module's OWN defs reach, and since
+; H11 moved the declarations into the nine registries above, this file defines
+; no def at all -- it is a FAÇADE. E160 made this the awkward case: neither
+; `(crosses)` nor `(pure)` was writable without lying, so the axis was left
+; unstated. E161 dissolves it rather than working around it. The axis is DERIVED
+; and its sense is DECLARED as "what this module binds outward", so a façade's
+; `crossings` is EMPTY and empty is the true reading, not a vacuous one: the
+; crossings are real and they live one import down, in ports/fd, ports/sock and
+; the rest, on those modules' own sheets. The category letter is still this
+; file's to state: importing "ports" names the category C floor.
+(module ports (cat C) (alt upper))
+
+; scriba — whitelisted through B1 build source.
+; The one declaration that is not a port: `Port` is scriba's puffer HANDLE
+; placeholder (TUI/scriba/puffer.chiral), a nullary data type with no crossing
+; behind it. It fits none of the nine registries, and inventing a tenth for a
+; single scriba placeholder would be worse than leaving it on the façade until
+; the puffer handle gets a real type.
+(data Port () (port))

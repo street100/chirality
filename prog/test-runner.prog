@@ -1,0 +1,134 @@
+; test-runner -- Phase 2, rewritten onto the E168 test floor. The six samples
+; are no longer a hand-rolled compare loop: they are a `Suite` of `Expect`s, each
+; carrying the PROVENANCE of its expected exit code, judged by a pure total fold
+; that cannot reach a crossing. Everything that builds or runs a program lives in
+; test-floor.chiral behind a `(1 bld Builder)`.
+;
+; This file is E168's ADOPTER, and the adoption is the point. A floor nothing
+; runs on is this repo's measured failure mode ("built but unadopted", four
+; occurrences including E42), so Phase 2 of scaffold/tests/run-native.sh REBUILDS
+; this program from source before executing it. Until 2026-08-25 it executed a
+; prebuilt, untracked binary that no phase rebuilt, which meant a break in either
+; source file was invisible to the whole suite.
+;
+; What each piece became:
+;   run-one   -> `observe` (test-floor) plus `ex-check`; the crossing and the
+;                comparison are now on opposite sides of the membrane.
+;   run-all   -> `run-suites` / `suite-fold`.
+;   the exit-code compare -> `obs-cmp`, structural over `Obs`.
+;   openat / run-elf -> named ONCE, in test-floor.chiral, reachable only with the
+;                cap in hand. They are still ambient externs; removing that is
+;                E80's and nothing here claims otherwise.
+;
+; Manifest-driven still (a bundled list); directory auto-discovery (getdents) is
+; the next crossing. Minted native with B1 from an unmodified blob -- the entry
+; is named `compile-main`, the one symbol the driver compiles, so self-wield,
+; chirality-compile and this runner are all built the same way, by chirality.
+
+(import "test-floor")
+
+; one example: its source path + the exit code it must produce. The path is the
+; sample's, relative to the REPO ROOT -- Phase 2 runs this binary from there as of
+; E170 W0.2. It used to run from scaffold/ with `samples/...` paths, which was the
+; tree's only test root not run from the repo root (Phase 12's fixtures always
+; were, test-e168-floor.sh:121-127). That difference stopped being cosmetic when
+; `observe` gained a search path: a CWD-relative `scaffold/lib` has to mean one
+; directory, not two.
+(data Sample () (sample (path Str) (want I64)))
+
+(def manifest (List Sample)
+  (cons (sample "scaffold/samples/exit42.chiral" 42)
+  (cons (sample "scaffold/samples/exit7.chiral" 7)
+  (cons (sample "scaffold/samples/multi-def.chiral" 42)
+  (cons (sample "scaffold/samples/boxed-a.chiral" 42)
+  (cons (sample "scaffold/samples/boxed-b.chiral" 2)
+  (cons (sample "scaffold/samples/enum-tag.chiral" 5)
+    nil)))))))
+
+; rank 3 -- `pv-meaning`, per SPEC decision 3: the want is written down from what
+; the sample is SUPPOSED TO MEAN, by hand, before anything ran. Not rank 2: a
+; sample's exit code is not a committed artifact with a digest, and the .chiral
+; file is the INPUT, not the artifact.
+;
+; The key is `obk-root`, and that is load-bearing rather than decoration: it says
+; this observation is produced by BUILDING AND RUNNING the named path, which is
+; the one kind `observe-exs` can gather. A differential-minted expectation would
+; be `obk-given` and the gatherer would refuse it by name.
+(def sample-check (-> Sample Expect)
+  (lam (s)
+    (case s
+      ((sample path want)
+        (ex (obk-root path) (ob-exit want) (pv-meaning "the sample's declared exit code"))))))
+
+; THE ADEQUACY MUTANT. `exit42.chiral` means 42; this is the same program meaning
+; 41. A gate cannot be constructed without a `MutRun`, and a `MutRun` exists only
+; if a mutated program was BUILT AND RUN -- so "the manifest gate has a mutant"
+; is a fact this binary re-establishes on every run, not a sentence in a comment.
+; If it ever comes back `mu-survived`, the gate is scored RED before a single
+; check runs: a compare loop that cannot tell 41 from 42 is not evidence.
+(def mutant-src Str "(def main (-> I64 I64) (lam (n) 41))")
+
+(def adequacy-mutant Mutant
+  (mutant "scaffold/samples/exit42.chiral returns 41 instead of 42" (str->bytes mutant-src)))
+
+(def sample-suite (-> MutRun Suite)
+  (lam (adequacy)
+    (suite "phase 2 -- the samples"
+      (cons (gate "samples"
+              (map-list Sample Expect sample-check manifest)
+              (the (List DiffExpect) nil)      ; no differential here; Phase 12 has those
+              adequacy)
+        nil))))
+
+; Running the mutant SPENDS build authority, so it happens under a cap -- and
+; because it happens before any `Gate` exists, this pass cannot borrow the one
+; `test-main` mints for the observation pass. Two passes, two caps, each held to
+; exactly once by the checker. The floor's own "one mint site" claim is scoped to
+; test-floor.chiral (E168 G8's grep) and stays true; this is the second program in
+; the tree that mints, and it says so here rather than being discovered.
+;
+; A mutant the compiler REJECTS was never built and produces no measurement, so
+; that case gets its own arm instead of being scored as a survival or -- worse --
+; silently yielding an empty suite.
+;
+; ⚑ That last clause used to read "which `all-green?` would report as success",
+; and it was true: this arm was routing around a fail-open hole in the library.
+; Routing around it here proved the hole belonged THERE, so 2026-08-25 closed it
+; at the floor -- `all-green? nil` is now false and `report` prints a FAIL line
+; for an empty verdict list. This arm survives on its own merit, which is that
+; "the mutant never built" is a DIFFERENT fact from "a gate failed" and gets its
+; own exit code (2), not because it is the only thing standing between an empty
+; suite and exit 0.
+;
+; `why` is a `MutFail` as of the same date, not a `Str` with four hand-written
+; prefixes in it; `mut-fail-show` is the rendering, and rendering is all this
+; does with it.
+(data SuitesR ()
+  (suites-ok     (ss (List Suite)) (1 bld Builder))
+  (suites-noadeq (why Str)         (1 bld Builder)))
+
+(def mk-suites (=> (1 bld Builder) SuitesR)
+  (lam (bld)
+    (case (mut-run bld "scaffold/samples/exit42.chiral" adequacy-mutant)
+      ((mu-unbuilt why bld2) (suites-noadeq (mut-fail-show why) bld2))
+      ((mu-ok run bld2)      (suites-ok (cons (sample-suite run) nil) bld2)))))
+
+; entry: build the adequacy evidence, then hand the suite to the floor. Named
+; `compile-main` because that is the entry symbol the native driver compiles --
+; the same convention resolve-driver.chiral follows. This module is a ROOT program
+; (nothing imports it), and since compile-all.chiral no longer defines the entry
+; itself, embedding the compiler here no longer collides.
+;
+; Exit 0 iff every gate is green; 1 if any check failed or any gate was
+; inadequate; 2 if the adequacy mutant never built, which is a different fact and
+; gets a different code.
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (mk-suites (builder "B1 -- the adequacy pass"))
+      ((suites-noadeq why bld)
+        (case bld
+          ((builder via)
+            (do (put (str-cat "INADEQUATE phase 2 -- the mutant never ran: " (str-cat why "\n"))) 2))))
+      ((suites-ok ss bld)
+        (case bld
+          ((builder via) (test-main ss)))))))

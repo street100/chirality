@@ -1,0 +1,780 @@
+; The HTTP effect: chirality's network reach for orchestration. A request is a
+; process crossing (=>) that returns an HttpR -- status plus the raw response
+; body as Bytes (JSON parsing is lib/json's job, kept separate so this module
+; stays a plain transport). E130 swapped the Python urllib shim for a
+; chirality-native HTTP/1.1 client over the four native socket caps
+; (sock-connect-in, sock-send, sock-recv, sock-close): zero CPython in the
+; non-streaming model path. The typed face is FROZEN (HttpR / http-request /
+; http-status / http-body); backend.chiral and everything above are untouched.
+;
+; This is a general module: any program that talks HTTP uses it. The manas
+; backend is one caller, not the reason it exists.
+
+(import "prelude")
+(import "ports")     ; Sock, ConnR, SendR, RecvR, sock-send/-recv/-close
+(import "inet")      ; sock-connect-in, parse-quad, byte (E129)
+(import "json")     ; json-parse, Json (j-obj/j-str), obj-get, alist-find
+
+; status: the HTTP status code (or -1 on a transport failure). body: raw bytes.
+(data HttpR () (http-r (status I64) (body Bytes)))
+
+; convenience projections (records are single-ctor data + case projection, the
+; established pattern from mach.chiral's accessors)
+(def http-status (-> HttpR I64) (lam (r) (case r ((http-r s b) s))))
+(def http-body (-> HttpR Bytes) (lam (r) (case r ((http-r s b) b))))
+
+; ------------------------------------------------------------ pure framing
+;
+; Everything that touches bytes without touching the network is a pure `->`
+; function: parse-url, format-request, parse-response and their helpers. Only
+; the four socket caps cross the effect membrane.
+
+; ---- shared byte helpers ----
+
+; lowercase fold: 65..90 (A-Z) -> +32, else unchanged.
+(def lc (-> I64 I64)
+  (lam (c)
+    (case (and (<=i 65 c) (<=i c 90))
+      (true (+ c 32))
+      (false c))))
+
+; digit value: 48..57 -> 0..9, else -1.
+(def digit (-> I64 I64)
+  (lam (b)
+    (case (and (<=i 48 b) (<=i b 57))
+      (true (- b 48))
+      (false -1))))
+
+; find ':' (58) in bytes[i,n), or -1.
+(def find-colon (-> Bytes I64 I64 I64)
+  (lam (buf i n)
+    (case (<i i n)
+      (false -1)
+      (true
+        (case (=i (bget buf i) 58)
+          (true i)
+          (false (find-colon buf (+ i 1) n)))))))
+
+; ---- URL boundary: parse once into a closed sum ----
+
+(data UrlR ()
+  (url-ok (host Str) (port I64) (path Str))
+  (url-err (msg Str)))
+
+; scheme-go: bytes b[i..] match "http://" (104 116 116 112 58 47 47) lockstep.
+(def scheme-go (-> Bytes I64 Bool)
+  (lam (b i)
+    (case (=i i 7)
+      (true true)
+      (false
+        (case (=i (bget b i) (bget (str->bytes "http://") i))
+          (true (scheme-go b (+ i 1)))
+          (false false))))))
+
+(def scheme-ok (-> Bytes Bool)
+  (lam (b)
+    (case (<i (blen b) 7)
+      (true false)
+      (false (scheme-go b 0)))))
+
+; find the first '/' (47) in b[i,n), or n if none.
+(def find-slash (-> Bytes I64 I64 I64)
+  (lam (b i n)
+    (case (<i i n)
+      (false n)
+      (true
+        (case (=i (bget b i) 47)
+          (true i)
+          (false (find-slash b (+ i 1) n)))))))
+
+; fold decimal digits of a port string; -1 on a non-digit, 0 on empty.
+(def port-go (-> Bytes I64 I64 I64)
+  (lam (bs i acc)
+    (case (=i i (blen bs))
+      (true acc)
+      (false
+        (let ((b (bget bs i)))
+          (case (and (<=i 48 b) (<=i b 57))
+            (true (port-go bs (+ i 1) (+ (* acc 10) (- b 48))))
+            (false -1)))))))
+
+(def parse-url (-> Str UrlR)
+  (lam (url)
+    (let ((b (str->bytes url)))
+      (let ((n (blen b)))
+        (case (scheme-ok b)
+          (false (url-err "bad scheme"))
+          (true
+            (let ((ps (find-slash b 7 n)))
+              (let ((hostport (bslice b 7 ps)))
+                (let ((colon (find-colon hostport 0 (blen hostport))))
+                  (case (<i colon 0)
+                    (true (url-err "missing port"))
+                    (false
+                      (let ((host (bytes->str (bslice hostport 0 colon))))
+                        (let ((portstr (bslice hostport (+ colon 1) (blen hostport))))
+                          (case (parse-quad host)
+                            ((quad-err msg) (url-err msg))
+                            ((quad-ok q)
+                              (let ((p (port-go portstr 0 0)))
+                                (case (and (<=i 1 p) (<=i p 65535))
+                                  (true
+                                    (url-ok host p
+                                      (case (=i ps n)
+                                        (true "/")
+                                        (false (bytes->str (bslice b ps n))))))
+                                  (false (url-err "bad port")))))))))))))))))))
+
+; ---- request framing ----
+; CRLF is bytes 13 10. chirality Str literals do NOT escape \r (the escape set is
+; \n \t \" \\), so the separator is assembled as Bytes via bcat with byte (inet).
+(def CRLF Bytes (bcat (byte 13) (byte 10)))
+(def SP Bytes (byte 32))
+
+(def format-request (-> Str Str I64 Str Bytes Bytes)
+  (lam (method host port path body)
+    (let ((reqline (bcat (bcat (bcat (str->bytes method) SP)
+                               (str->bytes path))
+                         (str->bytes " HTTP/1.1"))))
+      (let ((hostline (bcat (bcat (bcat (bcat (str->bytes "Host: ")
+                                               (str->bytes host))
+                                         (str->bytes ":"))
+                                   (str->bytes (i64->str port)))
+                             CRLF)))
+        (let ((headers (bcat (str->bytes "Content-Type: application/json")
+                             (bcat CRLF
+                               (bcat (str->bytes "Content-Length: ")
+                                 (bcat (str->bytes (i64->str (blen body)))
+                                   (bcat CRLF
+                                     (bcat (str->bytes "Connection: close")
+                                       (bcat CRLF CRLF)))))))))
+          (bcat (bcat (bcat reqline CRLF) hostline) (bcat headers body)))))))
+
+; ---- response parsing ----
+
+(data ParseR ()
+  (parse-ok (status I64) (body Bytes))
+  (parse-err (msg Str)))
+
+; find CRLF (13 10) at/after i, or -1.
+(def find-crlf (-> Bytes I64 I64)
+  (lam (buf i)
+    (case (<i i (- (blen buf) 1))
+      (false -1)
+      (true
+        (case (and (=i (bget buf i) 13) (=i (bget buf (+ i 1)) 10))
+          (true i)
+          (false (find-crlf buf (+ i 1))))))))
+
+; find CRLF CRLF at/after i, or -1.
+(def find-crlfcrlf (-> Bytes I64 I64)
+  (lam (buf i)
+    (case (<i i (- (blen buf) 3))
+      (false -1)
+      (true
+        (case (and (and (=i (bget buf i) 13) (=i (bget buf (+ i 1)) 10))
+                   (and (=i (bget buf (+ i 2)) 13) (=i (bget buf (+ i 3)) 10)))
+          (true i)
+          (false (find-crlfcrlf buf (+ i 1))))))))
+
+; find the first SP (32) in buf[i,n), or -1.
+(def find-sp (-> Bytes I64 I64 I64)
+  (lam (buf i n)
+    (case (<i i n)
+      (false -1)
+      (true
+        (case (=i (bget buf i) 32)
+          (true i)
+          (false (find-sp buf (+ i 1) n)))))))
+
+; three decimal digits at buf[i..i+3) -> status, or -1.
+(def parse3 (-> Bytes I64 I64)
+  (lam (buf i)
+    (case (<=i (+ i 3) (blen buf))
+      (false -1)
+      (true
+        (let ((d0 (digit (bget buf i)))
+              (d1 (digit (bget buf (+ i 1))))
+              (d2 (digit (bget buf (+ i 2)))))
+          (case (and (and (<=i 0 d0) (<=i 0 d1)) (<=i 0 d2))
+            (true (+ (+ (* d0 100) (* d1 10)) d2))
+            (false -1)))))))
+
+; header name [i,j) == "content-length", case-insensitively.
+(def cl-name-go (-> Bytes I64 I64 Bool)
+  (lam (buf i k)
+    (case (=i k 14)
+      (true true)
+      (false
+        (case (=i (lc (bget buf (+ i k))) (bget (str->bytes "content-length") k))
+          (true (cl-name-go buf i (+ k 1)))
+          (false false))))))
+
+(def cl-name-eq (-> Bytes I64 I64 Bool)
+  (lam (buf i j)
+    (case (=i (- j i) 14)
+      (true (cl-name-go buf i 0))
+      (false false))))
+
+; skip OWS (space 32, tab 9) in buf[i,n).
+(def skip-ows (-> Bytes I64 I64 I64)
+  (lam (buf i n)
+    (case (<i i n)
+      (false i)
+      (true
+        (let ((b (bget buf i)))
+          (case (or (=i b 32) (=i b 9))
+            (true (skip-ows buf (+ i 1) n))
+            (false i)))))))
+
+; fold the Content-Length decimal value: digits until the first non-digit.
+(def clval-go (-> Bytes I64 I64 I64 I64)
+  (lam (buf i n acc)
+    (case (<i i n)
+      (false acc)
+      (true
+        (let ((b (bget buf i)))
+          (case (and (<=i 48 b) (<=i b 57))
+            (true (clval-go buf (+ i 1) n (+ (* acc 10) (- b 48))))
+            (false acc)))))))
+
+; scan header lines buf[i,term) for Content-Length -> value or -1 (absent).
+(def find-clen (-> Bytes I64 I64 I64)
+  (lam (buf i term)
+    (case (<=i term i)
+      (true -1)
+      (false
+        (let ((le (find-crlf buf i)))
+          (case (<i le 0)
+            (true -1)
+            (false
+              (let ((colon (find-colon buf i le)))
+                (case (and (<=i 0 colon) (cl-name-eq buf i colon))
+                  (true (clval-go buf (skip-ows buf (+ colon 1) le) le 0))
+                  (false (find-clen buf (+ le 2) term)))))))))))
+
+; ---- chunked transfer coding (RFC 7230 §4.1) ----
+;
+; Ollama's Go net/http server answers with Transfer-Encoding: chunked and NO
+; Content-Length, so find-clen returns -1 and the raw body below carries the
+; chunk framing (e.g. "8f5\r\n<2293 bytes>\r\n0\r\n\r\n"). json-parse tolerates
+; a leading chunk-size digit, so the non-streaming http-request path silently
+; mis-parses. This section detects the TE header and de-chunks the body.
+
+; header name [i,j) == "transfer-encoding", case-insensitively (17 chars).
+(def te-name-go (-> Bytes I64 I64 Bool)
+  (lam (buf i k)
+    (case (=i k 17)
+      (true true)
+      (false
+        (case (=i (lc (bget buf (+ i k))) (bget (str->bytes "transfer-encoding") k))
+          (true (te-name-go buf i (+ k 1)))
+          (false false))))))
+
+(def te-name-eq (-> Bytes I64 I64 Bool)
+  (lam (buf i j)
+    (case (=i (- j i) 17)
+      (true (te-name-go buf i 0))
+      (false false))))
+
+; value buf[i,j) == "chunked", case-insensitively (7 chars).
+(def chunked-go (-> Bytes I64 I64 Bool)
+  (lam (buf i k)
+    (case (=i k 7)
+      (true true)
+      (false
+        (case (=i (lc (bget buf (+ i k))) (bget (str->bytes "chunked") k))
+          (true (chunked-go buf i (+ k 1)))
+          (false false))))))
+
+(def chunked-val (-> Bytes I64 I64 Bool)
+  (lam (buf i j)
+    (case (=i (- j i) 7)
+      (true (chunked-go buf i 0))
+      (false false))))
+
+; scan header lines buf[i,term) for Transfer-Encoding: chunked -> Bool.
+(def find-chunked (-> Bytes I64 I64 Bool)
+  (lam (buf i term)
+    (case (<=i term i)
+      (true false)
+      (false
+        (let ((le (find-crlf buf i)))
+          (case (<i le 0)
+            (true false)
+            (false
+              (let ((colon (find-colon buf i le)))
+                (case (and (<=i 0 colon) (te-name-eq buf i colon))
+                  (true (chunked-val buf (skip-ows buf (+ colon 1) le) le))
+                  (false (find-chunked buf (+ le 2) term)))))))))))
+
+; hex digit value: 0-9 a-f A-F -> 0..15, else -1.
+(def hx-val (-> I64 I64)
+  (lam (c)
+    (case (and (<=i 48 c) (<=i c 57))
+      (true (- c 48))
+      (false
+        (case (and (<=i 97 c) (<=i c 102))
+          (true (+ 10 (- c 97)))
+          (false
+            (case (and (<=i 65 c) (<=i c 70))
+              (true (+ 10 (- c 65)))
+              (false (- 0 1)))))))))
+
+; fold the hex digits of a chunk-size line buf[i,j) -> size; -1 on a non-hex.
+(def hx-fold (-> Bytes I64 I64 I64 I64)
+  (lam (buf i j acc)
+    (case (<i i j)
+      (false acc)
+      (true
+        (let ((h (hx-val (bget buf i))))
+          (case (<i h 0)
+            (true (- 0 1))
+            (false (hx-fold buf (+ i 1) j (+ (* acc 16) h)))))))))
+
+; de-chunk: decode chunked transfer coding over buf[i,). At position i, parse
+; the hex chunk-size line (hex digits then CRLF), take that many data bytes,
+; skip the trailing CRLF, recurse. A 0-size chunk is the last-chunk; any
+; trailers/CRLFs after it are dropped.
+(def de-chunk (-> Bytes I64 Bytes)
+  (lam (buf i)
+    (let ((crlf (find-crlf buf i)))
+      (case (<i crlf 0)
+        (true (str->bytes ""))          ; no size line: malformed, stop
+        (false
+          (let ((n (hx-fold buf i crlf 0)))
+            (case (<=i n 0)
+              (true (str->bytes ""))    ; 0 (last) or -1 (bad): stop, drop rest
+              (false
+                (let ((dstart (+ crlf 2)))
+                  (let ((dend (+ dstart n)))
+                    (case (<i (blen buf) dend)
+                      (true (str->bytes ""))    ; truncated chunk: stop
+                      (false
+                        (bcat (bslice buf dstart dend)
+                              (de-chunk buf (+ dend 2)))))))))))))))
+
+(def parse-response (-> Bytes ParseR)
+  (lam (buf)
+    (let ((term (find-crlfcrlf buf 0)))
+      (case (<i term 0)
+        (true (parse-err "truncated headers"))
+        (false
+          (let ((st (find-crlf buf 0)))
+            (case (<i st 0)
+              (true (parse-err "bad status line"))
+              (false
+                (let ((sp (find-sp buf 0 st)))
+                  (case (<i sp 0)
+                    (true (parse-err "bad status line"))
+                    (false
+                      (let ((status (parse3 buf (+ sp 1))))
+                        (case (<i status 0)
+                          (true (parse-err "bad status line"))
+                          (false
+                            (let ((bstart (+ term 4)))
+                              (let ((clen (find-clen buf (+ st 2) term)))
+                                (let ((raw
+                                        (case (<i clen 0)
+                                          (true (bslice buf bstart (blen buf)))
+                                          (false
+                                            (let ((bend (+ bstart clen)))
+                                              (case (<i (blen buf) bend)
+                                                (true (bslice buf bstart (blen buf)))
+                                                (false (bslice buf bstart bend))))))))
+                                  (case (find-chunked buf (+ st 2) term)
+                                    (true (parse-ok status (de-chunk raw 0)))
+                                    (false (parse-ok status raw))))))))))))))))))))
+
+; ------------------------------------------------------------ effectful spine
+
+(data ReadAllR ()
+  (read-all-done (1 s Sock) (buf Bytes))
+  (read-all-err (msg Str)))
+
+; a hostile peer that never FINs must not make recv-all diverge: a MAX-BODY
+; ceiling (64 MiB) bounds the read. On overflow the live cap is closed and the
+; read fails as a value. The read-timeout half is deferred (hardening).
+(def MAX-BODY I64 67108864)
+
+(declare recv-all (=> (1 s Sock) Bytes ReadAllR))
+(def recv-all
+  (lam (s acc)
+    (case (sock-recv s 4096)
+      ((recv-r chunk s2)
+        (let ((acc2 (bcat acc chunk)))
+          (case (<i (blen acc2) MAX-BODY)
+            (true (recv-all s2 acc2))
+            (false (case (sock-close s2) (unit (read-all-err "response too large")))))))
+      ((recv-closed s2) (read-all-done s2 acc))
+      ((recv-err m) (read-all-err m)))))
+
+; the connected-Sock half of the spine: send -> recv -> parse -> close. Split
+; out of http-request so no single body carries more than ~3 effectful ops
+; (B1's effect-chain threshold).
+(declare http-request-on (=> (1 s Sock) Str Str I64 Str Bytes HttpR))
+(def http-request-on
+  (lam (s method host port path body)
+    (let ((req (format-request method host port path body)))
+      (case (sock-send s req)
+        ((send-r s2)
+          (case (recv-all s2 (str->bytes ""))
+            ((read-all-done s3 buf)
+              (case (parse-response buf)
+                ((parse-ok status resp-body)
+                  (case (sock-close s3) (unit (http-r status resp-body))))
+                ((parse-err m)
+                  (case (sock-close s3) (unit (http-r -1 (str->bytes m)))))))
+            ((read-all-err m) (http-r -1 (str->bytes m)))))
+        ((send-err m) (http-r -1 (str->bytes m)))))))
+
+; http-request(method, url, body) -> HttpR. method is "GET"/"POST"/...; url is
+; the full URL (http://host:port/path, dotted-quad host); body is the payload.
+; Every failure arm returns (http-r -1 msg-bytes) -- the frozen shim's transport
+; mapping (impl_ports.py:377), so ok2xx() is false and the failure flows to the
+; circuit breaker exactly like a 5xx.
+(declare http-request (=> Str Str Bytes HttpR))
+(def http-request
+  (lam (method url body)
+    (case (parse-url url)
+      ((url-ok host port path)
+        (case (sock-connect-in host port)
+          ((conn-r s) (http-request-on s method host port path body))
+          ((conn-err m) (http-r -1 (str->bytes m)))))
+      ((url-err m) (http-r -1 (str->bytes m))))))
+
+; ---------------------------------------------------------------- streaming
+;
+; E131: retire the chat-* Python shim (impl_ports.py:357/399/440). The typed
+; face is FROZEN (chat-open/chat-read/chat-close signatures, ChatChunk shape);
+; what changes is ChatStream gains a native carrier and the externs become defs
+; over the E125/E129/E130 socket floor. No new crossings; no TAL work.
+
+; ---- the handle: a native carrier for the former bare porttype.
+; A bare porttype cannot be bridged from a crossing return, so retype it as a
+; single-ctor data carrying the live Sock cap + the unconsumed-byte reservoir
+; + parse state. The frozen signatures reference ChatStream by name, so they
+; are untouched.
+
+; A socket that may already be gone: connect failed, or the peer reset the
+; stream mid-flight. The frozen ChatChunk face always hands a handle back
+; (chunk-err "still must close"), so the handle needs a way to say "nothing
+; left to close". A bare (Maybe Sock) is the trap (its field is w, rejects the
+; linear Sock), so this is a linear option.
+(data SockOpt ()
+  (so-live (1 s Sock))
+  (so-dead))
+
+; parse state across the header/body boundary of the response.
+(data StreamMode ()
+  (m-body)                 ; SSE body streaming, healthy
+  (m-failed (status I64))) ; terminal: open-time or transport failure, status kept
+
+(data ChatStream ()
+  (cs (1 sock SockOpt) (buf Bytes) (mode StreamMode)))
+
+; the frozen face, unchanged:
+(data ChatChunk ()
+  (chunk      (delta Str)   (1 s ChatStream))   ; a content delta; stream moved back
+  (chunk-done               (1 s ChatStream))   ; [DONE]/EOF; caller must close
+  (chunk-err  (status I64)  (1 s ChatStream)))  ; transport/HTTP error; still must close
+
+; the frozen face, unchanged signatures, extern -> declare (def bodies below):
+(declare chat-open  (=> Str Str Bytes ChatStream))     ; method url body -> stream
+(declare chat-read  (=> (1 s ChatStream) ChatChunk))
+(declare chat-close (=> (1 s ChatStream) Unit))
+
+; ------------------------------------------------------------ pure SSE framing
+; Everything that touches bytes without touching the socket is a pure ->.
+
+; one line off the front of the buffer: bytes before the first newline, plus
+; the rest (after the newline). a trailing CR (CRLF) is dropped from the line.
+; no newline -> (line-none): the recv returned mid-line, need more bytes.
+(data LineSplit ()
+  (line-ok  (line Bytes) (rest Bytes))
+  (line-none))
+
+; find newline (10) in buf[i,n), or -1.
+(def find-nl (-> Bytes I64 I64 I64)
+  (lam (buf i n)
+    (case (<i i n)
+      (false -1)
+      (true
+        (case (=i (bget buf i) 10)
+          (true i)
+          (false (find-nl buf (+ i 1) n)))))))
+
+(def split-line (-> Bytes LineSplit)
+  (lam (buf)
+    (let ((i (find-nl buf 0 (blen buf))))
+      (case (<i i 0)
+        (true (line-none))
+        (false
+          (let ((raw (bslice buf 0 i)))
+            (let ((le (blen raw)))
+              (case (and (<i 0 le) (=i (bget raw (- le 1)) 13))
+                (true (line-ok (bslice raw 0 (- le 1)) (bslice buf (+ i 1) (blen buf))))
+                (false (line-ok raw (bslice buf (+ i 1) (blen buf))))))))))))
+
+; a leading "data:" (100 97 116 97 58), compared lockstep against the literal.
+(def data-go (-> Bytes I64 Bool)
+  (lam (line k)
+    (case (=i k 5)
+      (true true)
+      (false
+        (case (=i (bget line k) (bget (str->bytes "data:") k))
+          (true (data-go line (+ k 1)))
+          (false false))))))
+
+(def data-prefix (-> Bytes Bool)
+  (lam (line)
+    (case (<=i 5 (blen line))
+      (false false)
+      (true (data-go line 0)))))
+
+; strip a leading "data:" then one optional space (32). none for event:/id:/
+; retry:/blank/comment lines.
+(def strip-data (-> Bytes (Maybe Bytes))
+  (lam (line)
+    (case (data-prefix line)
+      (false none)
+      (true
+        (let ((d (bslice line 5 (blen line))))
+          (case (and (<i 0 (blen d)) (=i (bget d 0) 32))
+            (true (some (bslice d 1 (blen d))))
+            (false (some d))))))))
+
+; scan the reservoir for ONE complete SSE event. an event ends at a blank line;
+; its payload is its "data:" lines joined by newline. comment/keepalive (":")
+; lines are skipped inside the scan. (fs-need) = the event is still incomplete.
+(data FrameScan ()
+  (fs-event (payload Bytes) (rest Bytes))
+  (fs-need))
+
+(def scan-event-go (-> Bytes Bytes FrameScan)
+  (lam (buf payload)
+    (case (split-line buf)
+      ((line-none) (fs-need))
+      ((line-ok line rest)
+        (case (=i (blen line) 0)
+          (true (fs-event payload rest))          ; blank line: event complete
+          (false
+            (case (=i (bget line 0) 58)           ; ':' comment/keepalive
+              (true (scan-event-go rest payload))
+              (false
+                (case (strip-data line)
+                  (none (scan-event-go rest payload))   ; event:/id:/retry:/other
+                  ((some d)
+                    (scan-event-go rest
+                      (case (=i (blen payload) 0)
+                        (true d)
+                        (false (bcat payload (bcat (byte 10) d)))))))))))))))
+
+(def scan-event (-> Bytes FrameScan)
+  (lam (buf) (scan-event-go buf (str->bytes ""))))
+
+; payload classification: [DONE] vs a content delta vs skip vs error.
+(data FrameKind ()
+  (fk-done)
+  (fk-data (delta Str))
+  (fk-skip)                 ; keepalive / role-only / finish_reason frame
+  (fk-err  (status I64)))   ; JSON parse fail / mid-stream error frame
+
+(def is-done (-> Bytes Bool)
+  (lam (payload) (str-eq (bytes->str payload) "[DONE]")))
+
+; delta extraction result: the four ways a parsed frame classifies.
+(data DeltaR ()
+  (delta-ok   (delta Str))
+  (delta-skip)               ; parsed, no content field this frame
+  (delta-error)              ; parsed, top-level "error" field present
+  (delta-bad))               ; json-parse returned none
+
+; top-level "error" field present -> error frame
+(def j-has-error (-> Json Bool)
+  (lam (j)
+    (case (obj-get j "error")
+      (none false)
+      ((some e) true))))
+
+; Ollama /api/chat passthrough: message.content, or none.
+(def message-content (-> Json (Maybe Str))
+  (lam (j)
+    (case (obj-get j "message")
+      (none none)
+      ((some m)
+        (case (obj-get m "content")
+          (none none)
+          ((some c) (as-str c)))))))
+
+; content delta: choices[0].delta.content (OpenAI) OR message.content (Ollama).
+(def j-content (-> Json (Maybe Str))
+  (lam (j)
+    (case (obj-get j "choices")
+      (none (message-content j))
+      ((some ch)
+        (case (as-arr ch)
+          (none (message-content j))
+          ((some items)
+            (case items
+              (nil (message-content j))
+              ((cons fst rest)
+                (case (obj-get fst "delta")
+                  (none (message-content j))
+                  ((some delta)
+                    (case (obj-get delta "content")
+                      (none (message-content j))
+                      ((some c) (as-str c)))))))))))))
+
+; json-delta: parse the payload; the two providers differ only in where the
+; content string sits, so this is one closed case over Json.
+(def json-delta (-> Bytes DeltaR)
+  (lam (payload)
+    (case (json-parse payload)
+      (none (delta-bad))
+      ((some j)
+        (case (j-has-error j)
+          (true (delta-error))
+          (false (case (j-content j)
+            ((some d) (delta-ok d))
+            (none (delta-skip)))))))))
+
+(def classify-payload (-> Bytes FrameKind)
+  (lam (payload)
+    (case (is-done payload)
+      (true (fk-done))
+      (false
+        (case (=i (blen payload) 0)
+          (true (fk-skip))      ; a comment-only/keepalive event: no data
+          (false (case (json-delta payload)
+            ((delta-ok d)  (fk-data d))
+            ((delta-skip)  (fk-skip))
+            ((delta-error) (fk-err -1))     ; mid-stream {"error":...}
+            ((delta-bad)   (fk-err -1))))))))) ; JSON parse fail
+
+; ------------------------------------------------------------ process spine
+
+; one pull of the stream: scan the reservoir for a complete event; if none,
+; recv more and retry (the read-all pattern: recursion over the recv result
+; stream, not a structural argument).
+(data EventOut ()
+  (ev-chunk (delta Str)  (1 sock SockOpt) (buf Bytes))
+  (ev-done               (1 sock SockOpt) (buf Bytes))
+  (ev-err   (status I64) (1 sock SockOpt) (buf Bytes)))
+
+(def read-event (=> (1 s Sock) Bytes EventOut)
+  (lam (s buf)
+    (case (scan-event buf)
+      ((fs-event payload rest)
+        (case (classify-payload payload)
+          ((fk-done)    (ev-done (so-live s) rest))
+          ((fk-data d)  (ev-chunk d (so-live s) rest))
+          ((fk-skip)    (read-event s rest))
+          ((fk-err stt) (ev-err stt (so-live s) rest))))
+      ((fs-need)
+        (case (sock-recv s 4096)
+          ((recv-r bs s2)   (read-event s2 (bcat buf bs)))
+          ((recv-closed s2) (ev-err -1 (so-live s2) buf)) ; EOF before [DONE]
+          ((recv-err m)     (ev-err -1 so-dead buf)))))))  ; corpse: no sock
+
+(def chat-read
+  (lam (st)
+    (case st
+      ((cs sock buf mode)
+        (case mode
+          ((m-failed stt) (chunk-err stt (cs sock buf mode)))
+          ((m-body)
+            (case sock
+              ((so-live s)
+                (case (read-event s buf)
+                  ((ev-chunk d sock2 buf2) (chunk d (cs sock2 buf2 mode)))
+                  ((ev-done sock2 buf2)     (chunk-done (cs sock2 buf2 mode)))
+                  ((ev-err stt sock2 buf2)  (chunk-err stt (cs sock2 buf2 mode)))))
+              ((so-dead) (chunk-err -1 (cs so-dead buf mode))))))))))
+
+(def chat-close
+  (lam (st)
+    (case st
+      ((cs sock buf mode)
+        (case sock
+          ((so-live s) (sock-close s))
+          ((so-dead) unit))))))
+
+; read the response head (status line + headers) until the CRLFCRLF separator,
+; handing back any over-read body bytes as rest -- the first SSE events may
+; ride in with the header recv, and the reservoir must keep them.
+(data HeadR ()
+  (head-ok (status I64) (rest Bytes) (1 s Sock))
+  (head-err (msg Str)))   ; transport died mid-head: no sock
+
+(def MAX-HEAD I64 65536)
+
+(def read-head (=> (1 s Sock) Bytes HeadR)
+  (lam (s acc)
+    (let ((term (find-crlfcrlf acc 0)))
+      (case (<i term 0)
+        (true
+          (case (sock-recv s 4096)
+            ((recv-r bs s2)
+              (let ((acc2 (bcat acc bs)))
+                (case (<i (blen acc2) MAX-HEAD)
+                  (true (read-head s2 acc2))
+                  (false (case (sock-close s2) (unit (head-err "headers too large")))))))
+            ((recv-closed s2) (case (sock-close s2) (unit (head-err "truncated headers"))))
+            ((recv-err m) (head-err m))))
+        (false
+          (let ((st (find-crlf acc 0)))
+            (let ((sp (find-sp acc 0 st)))
+              (head-ok (parse3 acc (+ sp 1))
+                       (bslice acc (+ term 4) (blen acc))
+                       s))))))))
+
+; format-request plus the SSE accept header. the stream flag lives in the body
+; (backend's chat-body), matching the retired shim.
+(def format-sse-request (-> Str Str I64 Str Bytes Bytes)
+  (lam (method host port path body)
+    (let ((reqline (bcat (bcat (bcat (str->bytes method) SP)
+                               (str->bytes path))
+                         (str->bytes " HTTP/1.1"))))
+      (let ((hostline (bcat (bcat (bcat (bcat (str->bytes "Host: ")
+                                               (str->bytes host))
+                                         (str->bytes ":"))
+                                   (str->bytes (i64->str port)))
+                             CRLF)))
+        (let ((headers (bcat (str->bytes "Content-Type: application/json")
+                             (bcat CRLF
+                               (bcat (str->bytes "Accept: text/event-stream")
+                                 (bcat CRLF
+                                   (bcat (str->bytes "Content-Length: ")
+                                     (bcat (str->bytes (i64->str (blen body)))
+                                       (bcat CRLF
+                                         (bcat (str->bytes "Connection: close")
+                                           (bcat CRLF CRLF)))))))))))
+          (bcat (bcat (bcat reqline CRLF) hostline) (bcat headers body)))))))
+
+(def http-2xx (-> I64 Bool)
+  (lam (s) (and (<=i 200 s) (<i s 300))))
+
+; open-stream mirrors http-request-on's shape, but stops after the head: the
+; body is streamed, not drained. non-2xx is recorded in the mode and surfaces
+; on the first chat-read as chunk-err (frozen chat-open returns only a handle).
+(def open-stream (=> (1 s Sock) Str Str I64 Str Bytes ChatStream)
+  (lam (s method host port path body)
+    (case (sock-send s (format-sse-request method host port path body))
+      ((send-r s2)
+        (case (read-head s2 (str->bytes ""))
+          ((head-ok status rest s3)
+            (case (http-2xx status)
+              (true  (cs (so-live s3) rest (m-body)))
+              (false (cs (so-live s3) rest (m-failed status)))))
+          ((head-err m) (cs so-dead (str->bytes "") (m-failed -1)))))
+      ((send-err m) (cs so-dead (str->bytes "") (m-failed -1))))))
+
+(def chat-open
+  (lam (method url body)
+    (case (parse-url url)
+      ((url-ok host port path)
+        (case (sock-connect-in host port)
+          ((conn-r s) (open-stream s method host port path body))
+          ((conn-err m) (cs so-dead (str->bytes "") (m-failed -1)))))
+      ((url-err m) (cs so-dead (str->bytes "") (m-failed -1))))))

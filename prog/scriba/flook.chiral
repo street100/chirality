@@ -1,0 +1,268 @@
+; scriba S9: flook — file browser as a typed (List FileInfo) puffer.
+; ~120 lines (target: ~120).
+;
+; Render a directory listing as a (List FileInfo) puffer. Navigate entries,
+; open files, delete, rename. Each entry shows name, size, modified time
+; rendered as an r-table. Operations manipulate FileInfo values, not
+; regex-matched substrings of ls output.
+;
+; What it replaces: flook.el (~8,000 lines). No listing switches, no omit
+; mode, no wdired. The listing IS a typed value.
+;
+; Deps: prelude, collections, scriba/puffer, scriba/file-io, scriba/render
+
+(import "prelude")
+(import "puffer")
+(import "file-io")
+(import "render")
+(import "list-utils")
+(import "kill-ring")
+
+; ─── Local helpers (inlined from collections) ──────────────────────────────
+
+(def length (-> (0 A (type 0)) (List A) I64)
+  (lam (A xs)
+    (case xs
+      (nil 0)
+      ((cons h t) (+ 1 (length A t))))))
+
+(def map-list (-> (0 A (type 0)) (0 B (type 0)) (-> A B) (List A) (List B))
+  (lam (A B f xs)
+    (case xs
+      (nil nil)
+      ((cons h t) (cons (f h) (map-list A B f t))))))
+
+; ─── FileInfo type ─────────────────────────────────────────────────────────
+
+(data FileInfo ()
+  (file-info (name Str) (size I64) (is-dir Bool) (modified I64)))
+
+; ─── Filesystem crossings (bootstrap stubs, become getdents / unlink / rename) ──
+
+(declare flook-list-dir (=> flook-list Str (List FileInfo)))
+(declare flook-do-delete (=> flook-delete Str Bool Unit))
+(declare flook-do-rename (=> flook-rename Str Str Unit))
+
+; ─── Pure list helpers ─────────────────────────────────────────────────────
+
+; file-info-path: build full path from dir + filename.
+(def file-info-path (-> Str Str Str)
+  (lam (dir name) (str-join "/" (cons dir (cons name (nil))))))
+
+; path-head: extract first index from zipper path, or 0 if nil (root).
+(def path-head (-> (List I64) I64)
+  (lam (path) (case path ((nil) 0) ((cons h t) h))))
+
+; list-replace-at: replace the element at index n with x.
+(def list-replace-at (-> (0 A (type 0)) (List A) I64 A (List A))
+  (lam (A xs n x)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (if (=i n 0) (cons x t)
+          (cons h (list-replace-at A t (- n 1) x)))))))
+
+; ─── flook-open ────────────────────────────────────────────────────────────
+
+; Open a directory: run ls, parse into (List FileInfo), create a puffer.
+; The puffer's name field holds the directory path. Carries the plain `(port)` —
+; Port is a single nullary constructor (ports.chiral:186), and content is fully in
+; memory after listing, so there is nothing to back it with.
+; (Was a bare `null-port`, a name defined NOWHERE in the tree — see the S3 note in
+; SCRIBA-STATE. flook is not in scriba-main's closure, so it never failed to link;
+; scriba-test-b1, which is, could not link at all because of it.)
+
+(def flook-open
+  (lam (dir-path)
+    (let (files (flook-list-dir dir-path))
+      (puffer 0 dir-path "(List FileInfo)"
+        (port)
+        (zipper (some files) (cons 0 (nil)))
+        false
+        (undo nil nil)
+        none
+        (kill-ring-new (some 60))))))
+
+; ─── flook-refresh ─────────────────────────────────────────────────────────
+
+; Re-read the directory. Zipper resets to first entry.
+(declare flook-refresh
+  (=> flook-list (1 p (Puffer (List FileInfo))) (Puffer (List FileInfo))))
+
+(def flook-refresh
+  (lam (p)
+    (case p
+      ((puffer id name type-name port zipper dirty u mark kr)
+        (let (new-files (flook-list-dir name))
+          (puffer id name type-name port
+            (zipper (some new-files) (cons 0 (nil)))
+            false u mark kr))))))
+
+; ─── flook-open-file ───────────────────────────────────────────────────────
+
+; Open the file at zipper focus via find-file (S7). If directory, descend.
+; If no focus (empty dir), no-op.
+(declare flook-open-file
+  (=> flook-list (1 p (Puffer (List FileInfo))) (Puffer (List FileInfo))))
+
+(def flook-open-file
+  (lam (p)
+    (case p
+      ((puffer id name type-name port zipper dirty u mark kr)
+        (case zipper
+          ((zipper focus path)
+            (case focus
+              (none p)
+              ((some files)
+                (let (idx (path-head path))
+                  (case (list-nth FileInfo files idx)
+                    (none p)
+                    ((some fi)
+                      (if (file-info-is-dir fi)
+                        ; Descend into subdirectory
+                        (let (sub-path
+                              (file-info-path name (file-info-name fi)))
+                          (let (new-files (flook-list-dir sub-path))
+                            (puffer id sub-path type-name port
+                              (zipper (some new-files) (cons 0 (nil)))
+                              true u mark kr)))
+                        ; Open file via find-file
+                        (let (full-path
+                              (file-info-path name (file-info-name fi)))
+                          (let (_ (find-file full-path))
+                            p))))))))))))))
+
+; ─── flook-delete-file ─────────────────────────────────────────────────────
+
+; Delete file at zipper focus from filesystem and in-memory list.
+; Zipper adjusts: same index unless deleted was last entry.
+(declare flook-delete-file
+  (=> flook-delete (1 p (Puffer (List FileInfo))) (Puffer (List FileInfo))))
+
+(def flook-delete-file
+  (lam (p)
+    (case p
+      ((puffer id name type-name port zipper dirty u mark kr)
+        (case zipper
+          ((zipper focus path)
+            (case focus
+              (none p)
+              ((some files)
+                (let (idx (path-head path))
+                  (case (list-nth FileInfo files idx)
+                    (none p)
+                    ((some fi)
+                      (let (full-path
+                            (file-info-path name (file-info-name fi)))
+                        (flook-do-delete full-path (file-info-is-dir fi))
+                        (let (new-files (list-remove-at FileInfo files idx))
+                          (let (len (length FileInfo new-files))
+                            (let (new-idx
+                                  (if (<i idx len) idx
+                                    (if (=i len 0) 0 (- idx 1))))
+                              (puffer id name type-name port
+                                (zipper (some new-files)
+                                        (cons new-idx (nil)))
+                                true u mark kr))))))))))))))))
+
+; ─── flook-rename-file ─────────────────────────────────────────────────────
+
+; Rename file at zipper focus. new-name comes from the minipuffer (S8).
+; Updates FileInfo in the in-memory list. Zipper stays on renamed entry.
+(declare flook-rename-file
+  (=> flook-rename (1 p (Puffer (List FileInfo))) Str (Puffer (List FileInfo))))
+
+(def flook-rename-file
+  (lam (p new-name)
+    (case p
+      ((puffer id name type-name port zipper dirty u mark kr)
+        (case zipper
+          ((zipper focus path)
+            (case focus
+              (none p)
+              ((some files)
+                (let (idx (path-head path))
+                  (case (list-nth FileInfo files idx)
+                    (none p)
+                    ((some fi)
+                      (let (old-path
+                            (file-info-path name (file-info-name fi)))
+                        (let (new-path
+                              (file-info-path name new-name))
+                          (flook-do-rename old-path new-path)
+                          (let (updated
+                                (file-info new-name
+                                  (file-info-size fi)
+                                  (file-info-is-dir fi)
+                                  (file-info-modified fi)))
+                            (let (new-files
+                                  (list-replace-at FileInfo files
+                                                   idx updated))
+                              (puffer id name type-name port
+                                (zipper (some new-files) path)
+                                true u mark kr))))))))))))))))
+
+; ─── flook-renderer ────────────────────────────────────────────────────────
+
+; Render (List FileInfo) as an r-table. Headers: Name, Size, Modified.
+; Matches renderer-fn: (-> Unit (Pair I64 I64) Rendering). The value is
+; type-erased Unit at the registry boundary but passed as (List FileInfo).
+; Pure — no ANSI emission.
+
+; Format file size: bytes → human-readable (B/K/M).
+(def fmt-size (-> I64 Str)
+  (lam (n)
+    (cond
+      ((<i n 1024)    (str-cat (i64->str n) "B"))
+      ((<i n 1048576) (str-cat (i64->str (/ n 1024)) "K"))
+      (else           (str-cat (i64->str (/ n 1048576)) "M")))))
+
+; Format modified time. Stub — returns raw epoch until DateTime lands.
+(def fmt-time (-> I64 Str)
+  (lam (t) (i64->str t)))
+
+; file-info-row: one FileInfo → one table row (List Rendering).
+(def file-info-row (-> FileInfo (List Rendering))
+  (lam (fi)
+    (cons (r-text (file-info-name fi) (file-info-is-dir fi))
+    (cons (r-text (fmt-size (file-info-size fi)) false)
+    (cons (r-text (fmt-time (file-info-modified fi)) false)
+    (nil))))))
+
+
+(def flook-renderer
+  (lam (files dims)
+    (let (headers (cons "Name" (cons "Size" (cons "Modified" (nil)))))
+      (let (data-rows (map-list FileInfo (List Rendering) file-info-row files))
+        (r-table headers data-rows)))))
+
+; ─── flook-keymap ──────────────────────────────────────────────────────────
+
+; Flook-mode keybindings. Each (Pair key-seq op-name).
+; The command loop (S3) merges with the global keymap when the current
+; puffer's type-name is "(List FileInfo)".
+;
+;   n / C-n → puffer-forward    next entry
+;   p / C-p → puffer-backward   previous entry
+;   RET     → flook-open-file   open file/dir at cursor
+;   ^       → flook-up          go to parent directory
+;   D       → flook-delete-file delete file at cursor
+;   R       → flook-rename-file rename file at cursor
+;   g       → flook-refresh     re-read directory
+;   q       → quit              close flook puffer
+;
+; Pure data — no effects.
+
+
+(def flook-keymap
+  (cons (pair "n"   "puffer-forward")
+  (cons (pair "p"   "puffer-backward")
+  (cons (pair "C-n" "puffer-forward")
+  (cons (pair "C-p" "puffer-backward")
+  (cons (pair "RET" "flook-open-file")
+  (cons (pair "^"   "flook-up")
+  (cons (pair "D"   "flook-delete-file")
+  (cons (pair "R"   "flook-rename-file")
+  (cons (pair "g"   "flook-refresh")
+  (cons (pair "q"   "quit")
+  (nil))))))))))))

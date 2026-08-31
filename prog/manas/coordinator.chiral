@@ -1,0 +1,45 @@
+; The thin coordinator loop -- the minimal end-to-end cycle, built to be RUN
+; against a real worker so the friction (input channel, streaming, transport)
+; reveals what the full cycle (N1) actually needs, rather than guessing it.
+;
+;   (model,prompt) -> retrieve+inject -> chat-stream(put per delta) -> ChatR
+;
+; Every stage is a seam where the real thing slots in later: retrieval is
+; `be-search`, the completion is `be-chat-stream` streaming to stdout via `put`,
+; and the log step (N3/Fork A) is not here yet. Deliberately no batch driver /
+; breaker -- this is one turn, run once.
+;
+; The MODEL is a caller argument, not chosen here: prompt->model selection is the
+; router seam (N2), deferred; for the thin loop the cockpit supplies the resident
+; model. (This was the first thing the real run surfaced -- a hardcoded default
+; model name that didn't match what the worker had resident.)
+
+(import "prelude")
+(import "collections")
+(import "backend")
+(import "ports")
+
+; fold retrieved hits into one context block (their contents, newline-joined).
+(def hits->context (-> (List Hit) Str)
+  (lam (hits)
+    (str-join "\n"
+      (map-list Hit Str (lam (h) (case h ((hit id c d) c))) hits))))
+
+; the messages sent to the model: retrieved context as a system turn, then the
+; user's prompt.
+(def build-messages (-> Str (List Hit) (List Msg))
+  (lam (prompt hits)
+    (cons (msg "system" (str-cat "Context:\n" (hits->context hits)))
+      (cons (msg "user" prompt) nil))))
+
+; run one cycle: retrieve context for the prompt, stream a completion to stdout
+; (one `put` per delta), return the assembled ChatR. Effectful end to end.
+; E137: thread the linear handle be-search -> be-chat-stream; the returned ChatR
+; carries the fresh handle for the caller to discharge (single-flight worker).
+(def run-cycle (=> (1 b Backend) Str Str ChatR)     ; backend, model, prompt
+  (lam (b model prompt)
+    (case (be-search b prompt 4)
+      ((search-r hits b2)
+        (be-chat-stream b2 model
+          (build-messages prompt hits)
+          (lam (d) (put d)))))))

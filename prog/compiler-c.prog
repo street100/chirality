@@ -1,0 +1,100 @@
+; compile-driver-c -- BLOB A's ENTRY: the compiler that emits C (E166, step 4).
+;
+; The compile-driver.chiral analogue. Same shape -- read source from fd 0,
+; compile the entry `compile-main`, write the result to fd 1, exit 0/1 -- with
+; one difference in what "the result" is: C text, not an ELF file. Feeding this
+; binary the ordinary compiler blob yields the compiler's own source in C,
+; which is the DDC leg (SPEC §2).
+;
+; ── why this does not import compile-all ────────────────────────────────────
+; It cannot. `compile-all` imports `compile-emit`, and `compile-emit` imports
+; `emit-x64` -> `mach-x64` + `alloc-growing`. SPEC decision 1: two fn-bearing
+; instances of one interface cannot coexist in a blob -- specialize-singleton
+; .chiral:78-84 returns `none` for a type built more than once, the projector is
+; never rewritten, and lowering dies with "extern does not lower: lambda stays
+; upper" (measured, Step 0 mutants M1/M2). So blob A is a SECOND BLOB whose
+; root is this file, and the front->back->emit chain is re-composed here over
+; `emit-c` instead of `emit-elf-m`. Everything above the emit image
+; (compile-front, compile-back, tal-reify, bytes-tal, sys-linkage) is shared
+; source, imported, not copied; the four list helpers below are the only
+; duplication, and they exist because they sit INSIDE compile-emit.chiral rather
+; than in a module under it.
+;
+; ── what is replicated from emit-elf-m, and what is NOT ─────────────────────
+; Replicated: the emit image (`native-lib` ++ `link-lib` ++ the reified object
+; fns, in that order) and H7, the E76 syscall chokepoint -- a program that
+; names an unregistered crossing is refused HERE too, because a leg that
+; accepts more than the canonical compiler is not a differential.
+; NOT replicated, deliberately, and each for a reason rather than for brevity:
+;   * H8, the per-program profile manifest. It is ~55 lines of `xw-*` walk
+;     living inside compile-emit.chiral, and copying it would be the largest
+;     duplication in this element. Its verdict is `(none)` -- no narrowing --
+;     for any source that declares no `(profile ...)`, which is what the leg's
+;     one job (compiling the compiler blob) is. Recorded as a real gap, not a
+;     no-op: a profiled source would compile through this driver that
+;     `compile-driver` would refuse.
+;   * The duplicate-label refusal (`first-dup-go`). On this target a duplicate
+;     label is a duplicate C function definition, and the C compiler rejects it
+;     by name -- the refusal is not lost, it moves into gcc.
+; Neither omission can make this leg AGREE with canonical where canonical
+; refuses; both are cases where this leg is more permissive, which G4
+; (byte-identity of the two emitted compilers) does not exercise because the
+; input it compares on declares no profile and has no duplicate labels.
+
+(import "compile-front")
+(import "compile-back")
+(import "tal-reify")
+(import "bytes-tal")
+(import "sys-linkage")
+(import "sys-check")
+(import "target-linux")
+(import "emit-c")
+
+; ---- the four helpers that live inside compile-emit.chiral --------------------
+(declare cdc-reify-all (-> (List NFn) (List TIFn)))
+(def cdc-reify-all
+  (lam (fs) (case fs (nil nil) ((cons f r) (cons (reify-fn f) (cdc-reify-all r))))))
+
+(declare cdc-app (-> (List TIFn) (List TIFn) (List TIFn)))
+(def cdc-app
+  (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (cdc-app t ys))))))
+
+(declare cdc-strs->bytes (-> (List Str) (List Bytes)))
+(def cdc-strs->bytes
+  (lam (xs) (case xs (nil nil) ((cons x r) (cons (str->bytes x) (cdc-strs->bytes r))))))
+
+; read ALL of fd into one Bytes: 64K chunks until a read returns empty (EOF).
+(def cdc-read-go (=> I64 Bytes Bytes)
+  (lam (fd acc)
+    (let (chunk (read fd 65536))
+      (case (=i (blen chunk) 0)
+        (true acc)
+        (false (cdc-read-go fd (bcat acc chunk)))))))
+(def cdc-read-all (=> I64 Bytes)
+  (lam (fd) (cdc-read-go fd (str->bytes ""))))
+
+; ---- the whole compile, to C -------------------------------------------------
+(data CCR () (cc-ok (src Bytes)) (cc-err (msg Str)))
+
+(def compile-c (=> Str Str CCR)
+  (lam (src entry)
+    (case (compile-front src entry)
+      ((fr-err m) (cc-err m))
+      ((fr-ok defs datas prims ports)
+        (case (back-program defs datas prims)
+          ((br-err m) (cc-err m))
+          ((br-ok fns lits skips)
+            (let (image (cdc-app native-lib (cdc-app link-lib (cdc-reify-all fns))))
+              (case (ck-tiprog linux-syscalls image)
+                ((sbad m) (cc-err (str-cat "E76 chokepoint REFUSED emit: " m)))
+                ((sok) (cc-ok (emit-c image (cdc-strs->bytes lits))))))))))))
+
+; The emitted unit has no `main` and no entry stub: the shim's `_start` calls
+; `long m_entry(void)`, supplied at link time as
+; `-Wl,--defsym,m_entry=m_compile_Dmain` (c-mangle of the entry name).
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (src (bytes->str (cdc-read-all 0)))
+      (case (compile-c src "compile-main")
+        ((cc-ok c)  (do (put (bytes->str c)) 0))
+        ((cc-err m) (do (trace m) 1))))))

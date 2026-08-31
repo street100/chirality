@@ -1,0 +1,612 @@
+; E2/item-3: the compiler LOADER (chirality-side) -- the driver that turns elaborated
+; definitions into a checked Sig, using the full-ADT kernel. This is the spine
+; RUNG1-CRITICAL-PATH item 3 names: read (E1 sexp) -> elaborate (E2 surface, ->
+; Core) -> [HERE: bridge Core->Term + install into the full Sig + check] -> lower
+; -> emit. Ports scaffold/chirality/surface.py's toplevel def-handling +
+; kernel.py declare_def/finish_def, over the chirality Sig.
+;
+; This slice = the def loader (functions). Data-decl install (check_data +
+; positivity) is the next slice; the parser (sexp->Surf) + top-level form loop
+; are the front half.
+(import "surface")             ; Core / CAtom / CArm (the elaborator's output)
+(import "kernel")              ; Term / Sig / infer / check / eval-term / i->qty
+(import "collections")         ; E161: the ONE polymorphic `reverse` (no private copy)
+
+; ---- Core -> the shared kernel Term (decision #1: bridge at install) ----------
+; Near-1:1 (Core mirrors terms.py). Drops the surface-only binder NAMES (Term is
+; de-Bruijn), maps q:I64->Qty and eff:I64->Seat, and arm vars->nvars count.
+(def eff->seat (-> I64 Seat) (lam (e) (case (=i e 0) (true (s-pure)) (false (s-proc)))))
+(def op->symop (-> Str SymOp)
+  (lam (o) (case (str-eq o ">=") (true (s-ge))
+             (false (case (str-eq o ">") (true (s-gt))
+                      (false (case (str-eq o "<=") (true (s-le))
+                               (false (case (str-eq o "<") (true (s-lt)) (false (s-ne)))))))))))
+
+(declare core->term (-> Core Term))
+(declare core-list  (-> (List Core) (List Term)))
+(declare core-atoms (-> (List CAtom) (List RfAtom)))
+(declare core-arms  (-> (List CArm) (List KArm)))
+(declare core-mb    (-> (Maybe Core) (Maybe Term)))
+(def core->term
+  (lam (c)
+    (case c
+      ((c-lit-i v)             (t-lit-i v))
+      ((c-lit-s v)             (t-lit-s v))
+      ((c-var ix)              (t-var ix))
+      ((c-type l)              (t-type l))
+      ((c-pi q eff bn dom cod) (t-pi (i->qty q) (eff->seat eff) (core->term dom) (core->term cod)))
+      ((c-lam bn body)         (t-lam (core->term body)))
+      ((c-let q bn val body)   (t-let (i->qty q) (core->term val) (core->term body)))
+      ((c-ann e ty)            (t-ann (core->term e) (core->term ty)))
+      ((c-refine base atoms)   (t-refine (core->term base) (core-atoms atoms)))
+      ((c-con home name args)  (t-con home name (core-list args)))
+      ((c-tcon name args)      (t-tcon name (core-list args)))
+      ((c-primty name)         (t-primty name))
+      ((c-global name)         (t-global name))
+      ((c-prim name)           (t-prim name))
+      ((c-app fn arg)          (t-app (core->term fn) (core->term arg)))
+      ((c-case scrut arms dflt) (t-case (core->term scrut) (core-arms arms) (core-mb dflt))))))
+(def core-list  (lam (cs) (case cs (nil nil) ((cons x r) (cons (core->term x) (core-list r))))))
+(def core-atoms (lam (as) (case as (nil nil) ((cons a r) (case a ((catom op tm) (cons (r-atom (op->symop op) (core->term tm)) (core-atoms r))))))))
+(def core-arms  (lam (as) (case as (nil nil) ((cons a r) (case a ((carm cn vars body) (cons (karm cn (llen Str vars) (core->term body)) (core-arms r))))))))
+(def core-mb    (lam (m) (case m (none none) ((some c) (some (core->term c))))))
+
+; ---- the def driver (kernel.py check_def = declare_def + finish_def) -----------
+(data LoadR () (ld-ok (s Sig)) (ld-err (msg Str)))
+(data ChkR () (ok!) (bad! (msg Str)))
+
+; ---- E159: the extern declaration judgments, as a CLOSED SUM -----------------
+; Every reason an `extern` form can be refused is a member here, decided ONCE at
+; the point of decision and rendered to a message only at the ld-err boundary --
+; never a string reconstructed or compared downstream (pattern-boundary-sums).
+(data XErr ()
+  (x-redeclared  (n Str))            ; a second extern under a taken name
+  (x-not-a-type  (n Str))            ; the declared "type" is not a universe
+  (x-linear-pure (n Str) (r Str)))   ; linear RESULT r behind an all-`->` spine
+(declare x-msg (-> XErr Str))
+(def x-msg
+  (lam (e)
+    (case e
+      ((x-redeclared n) (str-cat "extern redeclared: " n))
+      ((x-not-a-type n) (str-cat "type of extern is not a type: " n))
+      ((x-linear-pure n r)
+        (str-cat "extern " (str-cat n (str-cat " returns the linear " (str-cat r
+          " through a pure `->` arrow: a minted capability must cross (`=>`), else it is never tracked at q1"))))))))
+; a top-level item: a def (name + type + body, all Core) or a data declaration
+; (already a Term-based DataDecl -- data-decl elaboration is the front half).
+(data LItem () (li-def (name Str) (ty Core) (body Core)) (li-data (decl DataDecl)))
+
+(def sig-add-global (-> Sig Str Term Term Sig)
+  (lam (s name ty body) (case s ((mk-sig g p d la ld tg pf km sh) (mk-sig (cons (pair name (pair ty body)) g) p d la ld tg pf km sh)))))
+; replace the (placeholder) BODY of an already-declared global, in place -- so a
+; forward-declared def's real body is STORED (not just checked), which the compile
+; path (sig-globals -> peel-def) needs to lower it. Type-checking is unaffected
+; (globals stay stuck neutrals; only the stored body slot changes).
+(declare set-glob-body (-> (List (Pair Str (Pair Term Term))) Str Term (List (Pair Str (Pair Term Term)))))
+(def set-glob-body (lam (g name body)
+  (case g
+    (nil nil)
+    ((cons pr rest) (case pr ((pair nm tb) (case tb ((pair ty old)
+      (case (str-eq nm name)
+        (true  (cons (pair nm (pair ty body)) rest))
+        (false (cons pr (set-glob-body rest name body))))))))))))
+(def sig-set-global-body (-> Sig Str Term Sig)
+  (lam (s name body) (case s ((mk-sig g p d la ld tg pf km sh) (mk-sig (set-glob-body g name body) p d la ld tg pf km sh)))))
+(def sig-add-data (-> Sig DataDecl Sig)
+  (lam (s d) (case s ((mk-sig g p dd la ld tg pf km sh) (mk-sig g p (cons d dd) la ld tg pf km sh)))))
+; declare_extern: install an extern name -> its type Term into `prims`.
+(def sig-add-prim (-> Sig Str Term Sig)
+  (lam (s name ty) (case s ((mk-sig g p d la ld tg pf km sh) (mk-sig g (cons (pair name ty) p) d la ld tg pf km sh)))))
+; declare_atom(linear=True): install a porttype name into the linear-atom registry.
+(def sig-add-atom (-> Sig Str Sig)
+  (lam (s name) (case s ((mk-sig g p d la ld tg pf km sh) (mk-sig g p d (cons name la) ld tg pf km sh)))))
+; mark a data type name linear (an indexed porttype: empty data, linear by decl).
+(def sig-add-linear-data (-> Sig Str Sig)
+  (lam (s name) (case s ((mk-sig g p d la ld tg pf km sh) (mk-sig g p d la (cons name ld) tg pf km sh)))))
+; H6 -- the composition manifest (surface.py's self.sig.targets / self.sig.profiles).
+; Both are ADDITIVE installs; the redeclaration judgment happens at the form
+; handler (sig-target / sig-profile), exactly as declare_extern's does.
+(def sig-add-target (-> Sig TargetDef Sig)
+  (lam (s t) (case s ((mk-sig g p d la ld tg pf km sh) (mk-sig g p d la ld (cons t tg) pf km sh)))))
+(def sig-add-profile (-> Sig Profile Sig)
+  (lam (s q) (case s ((mk-sig g p d la ld tg pf km sh) (mk-sig g p d la ld tg (cons q pf) km sh)))))
+
+; ---- E160/E161: the module coordinate, as loader state ----------------------
+; A blob is a FLAT CONCATENATION of module sources in dependency order -- the
+; compiler is pure (Str -> ELF) and never sees a file. Module identity is
+; therefore not handed to it by the filesystem; it is DECLARED in the text, and
+; the provider that flattens the modules is the one that declares it (E161).
+; Two separate questions fall out, and conflating them is what the first cut of
+; this got wrong:
+;
+;   WHOSE DEFS ARE THESE?  The extent is DECLARED, not inferred. The provider
+;   (bin/chirality-resolve.sh, scaffold/lib/resolve.chiral) emits one
+;   `(end-module "<name>")` form after each module's source, `<name>` being the
+;   resolver's basename key (E155). Extent k runs from end-marker k-1 (or BOF)
+;   to end-marker k; the authored `(module ...)` form declares the coordinate's
+;   START, so no second begin-marker is needed and no heuristic is left.
+;     sig-add-kind      a `(module ...)` form -- opens this coordinate. A
+;                       second one inside a single extent is REFUSED at the
+;                       form handler
+;                       (k-two-in-extent), never silently closed.
+;     sig-close-extent  an `(end-module ...)` form -- closes the open
+;                       coordinate UNCONDITIONALLY, and is a no-op when none is
+;                       open (which is exactly why an UNANNOTATED module
+;                       compiles as it did before, R9). The same close runs at
+;                       the end of load-source, so a source compiled without a
+;                       provider (`B1 < file`) closes its one implicit extent
+;                       rather than leaving it open forever. A close DERIVES the
+;                       coordinate's datasheet and FENCES it (cat-fenced), so it
+;                       can now REFUSE -- hence CloseR rather than a bare Sig.
+;     sig-charge        an EXPORT HEAD -- `def`, `data`, `extern` or `porttype`
+;                       -- charge the name, tagged with the head, to the open
+;                       coordinate. Nothing is charged when none is open.
+;   An `import` form installs and closes NOTHING. It used to close a coordinate
+;   whose body had begun -- a heuristic that could not see a def-less façade's
+;   boundary at all, and charged the 345 defs after lib/ports.chiral to `ports`.
+;   The declared extent replaces it; the heuristic is deleted, not tuned.
+;
+;   IS THIS DECLARED TWICE?  By NAME, not by position -- sig-kind-taken. Exact
+;   at any distance, across any number of intervening imports, and it does not
+;   care where in the module the form sits. The positional version of this
+;   judgment could not tell a façade boundary (lib/ports.chiral: imports, a
+;   a coordinate, one `data` form, and nothing else -- and `data` forms are
+;   hoisted out of the linear pass, so the loader sees two adjacent coordinate
+;   forms) from a
+;   module genuinely declaring two coordinates. The name can.
+;
+; The coordinate NAME is now VERIFIABLE: `(end-module "<n>")` carries the name
+; the provider resolved, and the close refuses when the open coordinate's name
+; differs (k-extent-name). Two names for one thing with nothing comparing them
+; is the second-source-of-truth disease this element exists to treat.
+;
+; The list is most-recent-first (like every other additive Sig install), so the
+; head IS the open row when there is one.
+(declare kinds-close (-> (List ModKind) (List ModKind)))
+(def kinds-close (lam (ks)
+  (case ks
+    (nil nil)
+    ((cons k r) (case k ((mk-modkind n c a op ds)
+      (case op
+        (false ks)
+        (true  (cons (mk-modkind n c a false ds) r)))))))))
+; the OPEN coordinate itself, if one is open -- the row a close hands to
+; build-sheet. Same single reading of the list head as kinds-open-name below,
+; which projects it to the name.
+(declare kinds-open-row (-> (List ModKind) (Maybe ModKind)))
+(def kinds-open-row (lam (ks)
+  (case ks
+    (nil none)
+    ((cons k r) (case k ((mk-modkind n c a op ds)
+      (case op (false none) (true (some k)))))))))
+
+; ---- E161: THE DERIVATION ---------------------------------------------------
+; It runs at CLOSE, and only at close. A lazy build at first query would be
+; cheaper and would reintroduce exactly the window this element exists to
+; remove: a stretch in which a record can be read while it is still half
+; derived. When the coordinate closes, the module is finished; so is its sheet.
+;
+; None of this is new analysis. `def-crosses` / `sig-prim-crosses` already read
+; the stored type, the charge list is already kept by the loader, and the three
+; derivations below are a map and two filters over it. The charge list is
+; MOST-RECENT-FIRST (every additive Sig install is), so build-sheet reverses it
+; ONCE -- with collections' polymorphic `reverse`, not a private copy -- and the
+; three derivations then read it in source order.
+
+; one charged name -> its export grain. TOTAL: every ExpHead arm is written out,
+; so a new head is a compile error here rather than a silently dropped export.
+; The `def` arm is the only one that reads anything: fn vs proc is ty-crosses
+; over the def's own arrow, taken here because the type is installed by now --
+; it could not have been known at charge time, and is not stored twice.
+(declare def->export (-> Sig (Pair Str ExpHead) Export))
+(def def->export
+  (lam (sg pr)
+    (case pr ((pair n hd)
+      (case hd
+        ((eh-def)      (case (def-crosses sg n) (true (exp n (ek-proc))) (false (exp n (ek-fn)))))
+        ((eh-data)     (exp n (ek-data)))
+        ((eh-extern)   (exp n (ek-extern)))
+        ((eh-porttype) (exp n (ek-porttype))))))))
+(declare exports-of (-> Sig (List (Pair Str ExpHead)) (List Export)))
+(def exports-of
+  (lam (sg es)
+    (case es
+      (nil nil)
+      ((cons e r) (cons (def->export sg e) (exports-of sg r))))))
+
+; crossings, in the sense the schema DECLARES: (a) BINDS -- the module's own
+; effectful externs, and nothing else. Only an `extern` charge is a candidate: a
+; def that CALLS a crossing has not bound one, and the transitive reading (b) is
+; a fold over this across imports rather than a second field. Which extern, not
+; whether: the list holds the names.
+(declare crossings-of (-> Sig (List (Pair Str ExpHead)) (List Str)))
+(def crossings-of
+  (lam (sg es)
+    (case es
+      (nil nil)
+      ((cons e r) (case e ((pair n hd)
+        (case hd
+          ((eh-extern) (case (sig-prim-crosses sg n)
+                         (true  (cons n (crossings-of sg r)))
+                         (false (crossings-of sg r))))
+          (_           (crossings-of sg r)))))))))
+
+; the linear porttypes this module MINTS. sig-latoms / sig-ldatas are
+; PROGRAM-wide; this is the per-module cut of the same fact, and it comes from
+; the charge rather than from either registry.
+(declare mints-of (-> (List (Pair Str ExpHead)) (List Str)))
+(def mints-of
+  (lam (es)
+    (case es
+      (nil nil)
+      ((cons e r) (case e ((pair n hd)
+        (case hd
+          ((eh-porttype) (cons n (mints-of r)))
+          (_             (mints-of r)))))))))
+
+; name / cat / alt are read straight off the coordinate (the authored half);
+; crossings / exports / mints are derived from its charges. A facade that
+; charges nothing gets the same six fields with empty lists -- empty is the
+; correct reading of a membrane that binds nothing outward, not a placeholder.
+(declare build-sheet (-> Sig ModKind Sheet))
+(def build-sheet
+  (lam (sg k)
+    (case k ((mk-modkind n c a op ds)
+      (let (src (reverse (Pair Str ExpHead) ds))
+        (sheet n c a (crossings-of sg src) (exports-of sg src) (mints-of src)))))))
+
+; ---- E161: THE FENCE -- the one new check ----------------------------------
+; The authored field is fenced BY the derived ones. Category A is "correctness
+; by proof"; a module that BINDS a crossing rests on evidence about a referent
+; the kernel cannot type, so crossings ==> NOT A. Nothing else is checked: the
+; other two fields have no surface production at all, so a record-vs-reality
+; mismatch is not representable there and there is nothing to detect
+; (the grammar is the check -- KErr's (k-shape) arm, parse.chiral).
+;
+; ONE-DIRECTIONAL ON PURPOSE. `(cat B)` or `(cat C)` over a module with an EMPTY
+; `crossings` is LEGAL and stays legal: lib/target-linux ships B and binds
+; nothing, lib/ports ships C and binds none of its own (its crossings live one
+; import down, and the transitive reading is a fold over this field by the
+; consumer, never a second field here). "Reaches a crossing" is evidence against
+; A; "binds none" is not evidence for A, because B and C also cover modules whose
+; admitted hole is somewhere other than an extern of their own.
+;
+; THE BLAME CHAIN IS SHORTER BY ONE COMPONENT, AND THAT IS A DECISION.
+; The retired E160 emit gate named module + DEF + crossing (kv-pure-crosses).
+; Under sense (a) -- BINDS, which is the sense the schema declares -- there is no
+; def to blame: the module binds the extern itself, so a `fn` component would
+; name nothing that exists. The message therefore names module + crossing, and
+; the regression against E160's message is intended rather than an oversight.
+; Were the field ever redefined as sense (c) (an object-code reachability
+; reading), the def would exist again and SheetErr would need the field back --
+; that is why the sense is stated here beside the message and not only upstream.
+(data SheetErr ()
+  (sh-cat-crosses (m Str) (x Str)))   ; (cat A) declared; the module binds x
+(declare sh-msg (-> SheetErr Str))
+(def sh-msg
+  (lam (e)
+    (case e
+      ((sh-cat-crosses m x)
+        (str-cat "module " (str-cat m (str-cat " declared (cat A) -- correctness by proof -- but reaches the crossing "
+          (str-cat x " (a crossing is an admitted hole; this module is B or C)"))))))))
+
+; the fence itself: a TOTAL function of the finished record. It reads only
+; fields the compiler filled, so it cannot be argued with, and it is decided
+; once -- the reason is a value in a closed sum, rendered to a message only at
+; the ld-err / step-err boundary (docs/pattern-boundary-sums.md), never a Str
+; compared downstream.
+(declare cat-fenced (-> Sheet (Maybe SheetErr)))
+(def cat-fenced
+  (lam (s)
+    (case s ((sheet nm c a xs exps ms)
+      (case c
+        ((cat-a) (case xs (nil none) ((cons x r) (some (sh-cat-crosses nm x)))))
+        (_       none))))))
+
+; ---- E161: closing a coordinate is now a JUDGMENT, so it needs an outcome ----
+; `sig-close-extent` used to be `(-> Sig Sig)` -- a close could not fail, so it
+; could return the Sig bare. With the fence, closing a coordinate DECIDES
+; something, and a decision that can refuse cannot be reported by the shape of
+; its success. CloseR is that outcome, a closed sum in the house shape LoadR /
+; StepR / BatchR already have, and it carries the SheetErr VALUE rather than a
+; rendered message: the loader has no business holding a Str it would have to
+; re-read. Every caller cases on it and renders `sh-msg` exactly where it already
+; renders `k-msg` -- at its own ld-err / step-err boundary.
+(data CloseR ()
+  (close-ok  (s Sig))
+  (close-err (e SheetErr)))
+
+; close ONE coordinate: derive its sheet, fence the authored letter against the
+; derived facts, and either land the finished record or refuse. `km2` is the
+; coordinate list the caller wants left behind, which is the only thing the two
+; close paths disagree about -- the derivation and the fence are shared, so a
+; fence wired to one path and not the other is not expressible here.
+(declare close-sheet (-> Sig ModKind (List ModKind) CloseR))
+(def close-sheet
+  (lam (s k km2)
+    (case s ((mk-sig g p d la ld tg pf km sh)
+      (let (rec (build-sheet s k))
+        (case (cat-fenced rec)
+          ((some e) (close-err e))
+          (none     (close-ok (mk-sig g p d la ld tg pf km2 (cons rec sh))))))))))
+
+; a `(module ...)` form: open the new coordinate. The close is defensive only --
+; a second coordinate while another is open is refused upstream
+; (k-two-in-extent), so under a declared extent there is never one to close.
+; It still builds -- and now fences -- the closed row's sheet, because "the
+; record is finished when the coordinate is" must hold on every path that closes
+; one, not on the usual one.
+(def sig-add-kind (-> Sig ModKind CloseR)
+  (lam (s k) (case s ((mk-sig g p d la ld tg pf km sh)
+    (case (kinds-open-row km)
+      (none      (close-ok (mk-sig g p d la ld tg pf (cons k km) sh)))
+      ((some k0) (close-sheet s k0 (cons k (kinds-close km)))))))))
+; an `(end-module "<n>")` form, and the end of a source: close the open
+; coordinate unconditionally and land its finished datasheet -- or refuse it. A
+; no-op when nothing is open, which is R9 -- an unannotated extent closes
+; nothing, charges nobody, produces no sheet at all, and so cannot be fenced.
+(def sig-close-extent (-> Sig CloseR)
+  (lam (s) (case s ((mk-sig g p d la ld tg pf km sh)
+    (case (kinds-open-row km)
+      (none (close-ok s))
+      ((some k) (close-sheet s k (kinds-close km))))))))
+; the NAME of the open coordinate, if one is open -- kinds-open-row projected to
+; its name, not a second walk of the list. The extent-name check (k-extent-name)
+; and the two-in-one-extent refusal (k-two-in-extent) are both decided from this
+; one reading.
+(declare kinds-open-name (-> (List ModKind) (Maybe Str)))
+(def kinds-open-name (lam (ks)
+  (case (kinds-open-row ks)
+    (none none)
+    ((some k) (case k ((mk-modkind n c a op ds) (some n)))))))
+(def sig-open-kind (-> Sig (Maybe Str))
+  (lam (s) (kinds-open-name (sig-kinds s))))
+; E161 -- charge ONE exported name, with the HEAD that exported it, to the open
+; coordinate. Nothing is charged when none is open (R9). The head is a closed
+; sum decided at the dispatch site (ExpHead, kernel.chiral) rather than a Str
+; compared later; `ek-fn` vs `ek-proc` is NOT decided here -- that is a reading
+; of the def's arrow and belongs to the derivation, not to the charge.
+(declare kinds-charge (-> (List ModKind) Str ExpHead (List ModKind)))
+(def kinds-charge (lam (ks name hd)
+  (case ks
+    (nil nil)
+    ((cons k r) (case k ((mk-modkind n c a op ds)
+      (case op
+        (false ks)                                 ; closed: this name is not its
+        (true  (cons (mk-modkind n c a op (cons (pair name hd) ds)) r)))))))))
+(def sig-charge (-> Sig Str ExpHead Sig)
+  (lam (s name hd) (case s ((mk-sig g p d la ld tg pf km sh)
+    (mk-sig g p d la ld tg pf (kinds-charge km name hd) sh)))))
+; has this coordinate NAME already been declared anywhere in this source?
+(declare kinds-taken (-> (List ModKind) Str Bool))
+(def kinds-taken (lam (ks name)
+  (case ks
+    (nil false)
+    ((cons k r) (case k ((mk-modkind n c a op ds)
+      (case (str-eq n name) (true true) (false (kinds-taken r name)))))))))
+(def sig-kind-taken (-> Sig Str Bool)
+  (lam (s name) (kinds-taken (sig-kinds s) name)))
+
+; declare_def: the type must be a universe; then (visible for recursion) install
+; name:ty, and finish_def: check the body against the declared type.
+(def load-def (-> Sig Str Core Core LoadR)
+  (lam (s name tyc bodyc)
+    (let (tyt (core->term tyc))
+      (case (infer s (ctx-nil) tyt)
+        ((tc-err m) (ld-err m))
+        ((tc-ok tty tu)
+          (case tty
+            ((v-type l)
+              (let (bodyt (core->term bodyc))
+                (let (s2 (sig-add-global s name tyt bodyt))
+                  (case (check s2 (ctx-nil) bodyt (eval-term nil tyt))
+                    ((ck-err m) (ld-err m))
+                    ((ck-ok u)  (ld-ok s2))))))
+            (_ (ld-err "definition type is not a type"))))))))
+
+; ---- the forward-declaration split (kernel.py declare_def / finish_def) --------
+; Real chirality source (kernel.chiral included) uses (declare name ty) + a later
+; (def name body) for MUTUAL RECURSION: `declare` installs name:ty so a later
+; def body can forward-reference it; the body-only `def` completes it against the
+; already-declared type. `load-def` above (the 4-arg atomic (def name ty body))
+; is declare+check fused for the non-forward-declared case and is unchanged.
+;
+; load-declare = kernel.py declare_def: the type must be a universe, then install
+; name:ty. The stored BODY slot is a PLACEHOLDER `(t-type 0)`: only the stored
+; TYPE drives type-checking (t-global evaluates to a stuck neutral -- kernel.chiral
+; eval-term :358 -- never unfolding the body, and infer-global reads only the
+; type), and the eval-global-unfold that would consume the body is not built. A
+; later load-finish checks the real body but need not overwrite the placeholder.
+(def load-declare (-> Sig Str Core LoadR)
+  (lam (s name tyc)
+    (let (tyt (core->term tyc))
+      (case (infer s (ctx-nil) tyt)
+        ((tc-err m) (ld-err m))
+        ((tc-ok tty tu)
+          (case tty
+            ((v-type l) (ld-ok (sig-add-global s name tyt (t-type 0))))
+            (_ (ld-err "declared type is not a type"))))))))
+
+; load-finish = kernel.py finish_def: the name must already be declared -- look
+; its declared type Term up (error if absent: the (def name body) form REQUIRES a
+; prior (declare name ty)), then check the body against it. The Sig is returned
+; unchanged (the declared type already carries the checking contract; the stored
+; placeholder body is irrelevant to checking, per load-declare's note).
+(def load-finish (-> Sig Str Core LoadR)
+  (lam (s name bodyc)
+    (case (sig-global-ty s name)
+      (none (ld-err (str-cat "def body with no prior declare: " name)))
+      ((some tyt)
+        (let (bodyt (core->term bodyc))
+          (case (check s (ctx-nil) bodyt (eval-term nil tyt))
+            ((ck-err m) (ld-err m))
+            ((ck-ok u)  (ld-ok (sig-set-global-body s name bodyt)))))))))
+
+; ---- the extern driver (kernel.py declare_extern) -----------------------------
+; the declared "type" must be a universe; then install name:type into `prims`.
+; A later (prim name)/bare-name reference resolves to t-prim and infer-prim reads
+; this row. Redeclaration is an error (kernel.py: extern redeclared).
+;
+; E159 -- the linear-result rule. A linear `porttype`'s whole protection is that
+; its inhabitants are tracked at q1. Only a CROSSING puts a minted value into
+; that context; a pure `->` spine hands the capability back unrestricted, so it
+; is freely duplicable and freely droppable and the porttype protects nothing.
+; So: if the RESULT of the Pi spine is linear, at least one arrow must be `=>`.
+; The judgment is on the whole spine (ty-crosses), not on the outermost arrow,
+; because a curried mint like pool-write's `(-> (0 n I64) (=> ... (Pool n)))`
+; erases its q0 index purely and still crosses where it matters.
+; SCOPE: this is the TYPE-LEVEL discipline. At rung 1 an Fd is a raw integer at
+; runtime, and this adds no machine authority over it.
+(declare load-extern-linear (-> Sig Str Term LoadR))
+(def load-extern (-> Sig Str Core LoadR)
+  (lam (s name tyc)
+    (case (sig-prim-ty s name)
+      ((some x) (ld-err (x-msg (x-redeclared name))))
+      (none
+        (let (tyt (core->term tyc))
+          (case (infer s (ctx-nil) tyt)
+            ((tc-err m) (ld-err m))
+            ((tc-ok tty tu)
+              (case tty
+                ((v-type l) (load-extern-linear s name tyt))
+                (_ (ld-err (x-msg (x-not-a-type name))))))))))))
+(def load-extern-linear
+  (lam (s name tyt)
+    (case (ty-result-linear s tyt)
+      (none (ld-ok (sig-add-prim s name tyt)))
+      ((some r)
+        (case (ty-crosses tyt)
+          (true  (ld-ok (sig-add-prim s name tyt)))
+          (false (ld-err (x-msg (x-linear-pure name r)))))))))
+
+; ---- the atom driver (kernel.py declare_atom, linear=True) ---------------------
+; a (porttype Name) opaque linear atom: an opaque type constant recorded in the
+; linear registry so is-linear judges its inhabitants linear. Redeclaration (or a
+; clash with a core atom) is an error (kernel.py: atom type redeclared).
+(def atom-taken? (-> Sig Str Bool)
+  (lam (s name)
+    (case (name-in name (cons "I64" (cons "Str" (cons "Bytes" nil))))
+      (true true)
+      (false (name-in name (sig-latoms s))))))
+(def load-atom (-> Sig Str LoadR)
+  (lam (s name)
+    (case (atom-taken? s name)
+      (true  (ld-err (str-cat "atom type redeclared: " name)))
+      (false (ld-ok (sig-add-atom s name))))))
+
+; ---- the data driver (kernel.py check_data): params + fields are types, every
+; field strictly positive in the type, linear-kind judged where concrete --------
+(def linear-bad? (-> Sig I64 Value Bool)
+  (lam (s q v) (case (=i q 1) (true false) (false (is-linear s v)))))
+; build the param ctx (each param bound at q0) -- fields see the params as vars.
+(declare params-ctx (-> Ctx (List Term) Ctx))
+(def params-ctx
+  (lam (ctx params) (case params (nil ctx)
+    ((cons pk rest) (params-ctx (ctx-bind (q0) (eval-term (env-of ctx) pk) ctx) rest)))))
+(declare check-dparams (-> Sig Ctx (List Term) ChkR))
+(def check-dparams
+  (lam (s ctx params)
+    (case params
+      (nil (ok!))
+      ((cons pk rest)
+        (case (infer s ctx pk)
+          ((tc-err m) (bad! m))
+          ((tc-ok pty pu) (case pty
+            ((v-type l) (check-dparams s (ctx-bind (q0) (eval-term (env-of ctx) pk) ctx) rest))
+            (_ (bad! "data parameter is not a type")))))))))
+(declare check-dfields (-> Sig Ctx Str (List (Pair Str (List SP))) (List Field) ChkR))
+(def check-dfields
+  (lam (s pctx dn spc fields)
+    (case fields
+      (nil (ok!))
+      ((cons f rest) (case f ((field q fname fty)
+        (case (infer s pctx fty)
+          ((tc-err m) (bad! m))
+          ((tc-ok fty-ty fu) (case fty-ty
+            ((v-type l)
+              (case (walk spc dn (pt-name dn) 0 fty)          ; strict positivity in dn
+                ((pos-bad r) (bad! (str-cat "not strictly positive: " fname)))
+                ((pos-ok)
+                  (case (linear-bad? s q (eval-term (env-of pctx) fty))
+                    (true  (bad! (str-cat "linear field declared non-1: " fname)))
+                    (false (check-dfields s pctx dn spc rest))))))
+            (_ (bad! "field type is not a type")))))))))))
+(declare check-dctors (-> Sig Ctx Str (List (Pair Str (List SP))) (List Ctor) ChkR))
+(def check-dctors
+  (lam (s pctx dn spc ctors)
+    (case ctors
+      (nil (ok!))
+      ((cons c rest) (case c ((ctor cn fields)
+        (case (check-dfields s pctx dn spc fields)
+          ((bad! m) (bad! m))
+          ((ok!)    (check-dctors s pctx dn spc rest)))))))))
+; the per-data sp-cache the positivity walk consults for nested occurrences.
+(declare sp-cache-of (-> (List DataDecl) (List (Pair Str (List SP)))))
+(declare sp-cache-go (-> (List (Pair Str (List SP))) (List DataDecl) (List (Pair Str (List SP)))))
+(def sp-cache-of (lam (datas) (sp-cache-go nil datas)))
+(def sp-cache-go
+  (lam (acc datas) (case datas (nil acc)
+    ((cons d rest) (case d ((data-decl dn ps cs) (sp-cache-go (cons (pair dn (compute-sp acc d)) acc) rest)))))))
+
+(def load-data (-> Sig DataDecl LoadR)
+  (lam (s decl)
+    (case decl ((data-decl dn params ctors)
+      (case (sig-data s dn)
+        ((some d) (ld-err (str-cat "data redeclared: " dn)))
+        (none
+          (case (check-dparams s (ctx-nil) params)
+            ((bad! m) (ld-err m))
+            ((ok!)
+              (let (s2 (sig-add-data s decl))                 ; visible to its own fields
+                (case (check-dctors s2 (params-ctx (ctx-nil) params) dn (sp-cache-of (sig-datas s2)) ctors)
+                  ((bad! m) (ld-err m))
+                  ((ok!)    (ld-ok s2))))))))))))
+
+; MUTUALLY-RECURSIVE data (mirrors Python check_data_group): add EVERY decl first
+; so cross-member field references + positivity see the complete group, then check
+; each member's params + ctors against the full sig. `Surf` <-> `SBind` and friends
+; need this -- the single-decl load-data would hit "unknown name" on the forward ref.
+(declare grp-add   (-> Sig (List DataDecl) LoadR))
+(def grp-add
+  (lam (s decls)
+    (case decls
+      (nil (ld-ok s))
+      ((cons d rest) (case d ((data-decl dn params ctors)
+        (case (sig-data s dn)
+          ((some x) (ld-err (str-cat "data redeclared: " dn)))
+          (none     (grp-add (sig-add-data s d) rest)))))))))
+(declare grp-check (-> Sig (List DataDecl) ChkR))
+(def grp-check
+  (lam (s decls)
+    (case decls
+      (nil (ok!))
+      ((cons d rest) (case d ((data-decl dn params ctors)
+        (case (check-dparams s (ctx-nil) params)
+          ((bad! m) (bad! m))
+          ((ok!)
+            (case (check-dctors s (params-ctx (ctx-nil) params) dn (sp-cache-of (sig-datas s)) ctors)
+              ((bad! m) (bad! m))
+              ((ok!)    (grp-check s rest)))))))))))
+(def load-data-group (-> Sig (List DataDecl) LoadR)
+  (lam (s decls)
+    (case (grp-add s decls)
+      ((ld-err m) (ld-err m))
+      ((ld-ok s2)
+        (case (grp-check s2 decls)
+          ((bad! m) (ld-err m))
+          ((ok!)    (ld-ok s2)))))))
+
+; ---- the unit loop: process defs + data decls in order -------------------------
+(declare load-items (-> Sig (List LItem) LoadR))
+(def load-items
+  (lam (s items)
+    (case items
+      (nil (ld-ok s))
+      ((cons it rest) (case it
+        ((li-def name tyc bodyc) (case (load-def s name tyc bodyc)
+                                   ((ld-err m) (ld-err m)) ((ld-ok s2) (load-items s2 rest))))
+        ((li-data decl)          (case (load-data s decl)
+                                   ((ld-err m) (ld-err m)) ((ld-ok s2) (load-items s2 rest)))))))))
+
+(def empty-sig Sig (mk-sig nil nil nil nil nil nil nil nil nil))
+(def load-unit (-> (List LItem) LoadR) (lam (items) (load-items empty-sig items)))

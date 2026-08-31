@@ -1,0 +1,62 @@
+; tal-reify: the second half of the erasure join -- the neutral erased normal
+; form (lib/erased-nf.chiral) -> the executable tal-ir the x86-64 emitter
+; consumes (lib/emit-core.chiral walks exactly these TInstr/TCode/TIFn shapes).
+;
+; This module imports tal-ir; lib/tal-erase.chiral imports tal-ssa. They CANNOT
+; be one module (tal-ssa and tal-ir reuse the constructor names TIFn/ti-fn/ti-ret/
+; ti-tcase, and chirality has no selective import -- see lib/tal-erase.chiral). The
+; neutral NFn is the collision-free wire between them, so all the real erasure
+; work lives in tal-erase and reify is a total 1:1 rebuild. The full erasure is
+; `reify-fn . erase-fn : tal-ssa.TIFn -> tal-ir.TIFn`; a lowered function then
+; feeds emit-core with no further conversion.
+(import "prelude")
+(import "tal-ir")
+(import "erased-nf")
+
+(declare reify-instr    (-> NInstr TInstr))
+(declare reify-code     (-> NCode TCode))
+(declare reify-branches (-> (List (Pair (Pair I64 (List I64)) NCode))
+                            (List (Pair (Pair I64 (List I64)) TCode))))
+(declare reify-dflt     (-> (Maybe NCode) (Maybe TCode)))
+(declare reify-fn       (-> NFn TIFn))
+(declare reify-prog     (-> (List NFn) (List TIFn)))
+
+(def reify-instr (lam (i)
+  (case i
+    ((n-const dst val)        (ti-const dst val))
+    ((en-prim  dst op a b)     (ti-prim dst op a b))
+    ((n-con   dst tag)        (ti-con dst tag))
+    ((n-cona  dst tag fields) (ti-cona dst tag fields))
+    ((n-call  dst fname args) (ti-call dst fname args))
+    ((n-lit   dst lit)        (ti-lit dst lit))
+    ((n-bnew  dst len)        (ti-bnew dst len))
+    ((n-bget  dst ptr idx)    (ti-bget dst ptr idx))
+    ((n-bput  ptr idx val)    (ti-bput ptr idx val))
+    ((n-blen  dst src)        (ti-blen dst src)))))
+
+(def reify-code (lam (c)
+  (case c
+    ((n-seq i rest)            (t-seq (reify-instr i) (reify-code rest)))
+    ((n-ret src)               (ti-ret src))
+    ((n-case src boxed brs df) (ti-tcase src boxed (reify-branches brs) (reify-dflt df))))))
+
+(def reify-branches (lam (brs)
+  (case brs
+    (nil nil)
+    ((cons b rest) (case b ((pair hdr code)
+      (case hdr ((pair tag binds)
+        (cons (pair (pair tag binds) (reify-code code)) (reify-branches rest))))))))))
+
+(def reify-dflt (lam (d)
+  (case d
+    (none (none))
+    ((some c) (some (reify-code c))))))
+
+(def reify-fn (lam (f)
+  (case f ((n-fn name nparams nregs code)
+    (ti-fn name nparams nregs (reify-code code))))))
+
+(def reify-prog (lam (fns)
+  (case fns
+    (nil nil)
+    ((cons f rest) (cons (reify-fn f) (reify-prog rest))))))

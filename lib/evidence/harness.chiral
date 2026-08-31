@@ -1,0 +1,28 @@
+; harness -- the chirality test orchestrator.
+; Spawns the native test-runner and Python unittest suite via proc-spawn.
+; Runs through the Python interpreter for now.
+
+(import "prelude")
+(import "ports")
+(import "proc")
+
+(declare run-python-suite (=> Unit I64))
+(def run-python-suite
+  (lam (u)
+    (case (proc-spawn (cons "python3" (cons "-m" (cons "unittest" (cons "discover" (cons "-s" (cons "tests" (cons "-p" (cons "*.py" nil)))))))))
+      ((sp-err e) (- 0 1))
+      ((sp-ok c)
+        (case c
+          ((child r out)
+            (case (wait r)
+              ((exited code) code)
+              ((signaled sg) (- 0 1)))))))))
+
+(def harness-main (=> I64 I64)
+  (lam (n)
+    (do (put "=== chirality harness ===\n")
+      (do (put "python suite: ")
+        (let (rc (run-python-suite unit))
+          (case (=i rc 0)
+            (true (do (put "PASS\n") 0))
+            (false (do (put "FAIL\n") 1))))))))

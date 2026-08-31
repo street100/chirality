@@ -1,0 +1,137 @@
+; E02 (row-inference slice) -- the effect-row inference: the monotone call-graph
+; closure producing def_rows. Ports surface.py `_infer_row` (:113); surface.py is
+; the differential oracle. This is the ROW HALF of the sig-driver -- the pure
+; derivation of the row E70's floor gate + preserve-check (lib/eff-lower.chiral)
+; consume as a given. SPEC: .planning/specs/E02-row-inference-SPEC.md.
+;
+; The two loader-seam inputs -- prim_is_port (the crossing externs) and the
+; syntactic call graph -- plus the already-final rows of earlier globals, arrive
+; as a GIVEN RowSig (E39 row inference lives in the deferred E2-loader seam; the
+; test bridges a real loaded sig into RowSig, as E69 slice-3 bridges into SigV).
+; Building RowSig (elab call-recording + kernel port classification) is a sibling
+; slice. Pure. The seen-set closure is single-pass -- for a mutual SCC f<->g the
+; transitive closure already yields the shared row (no iteration; SPEC dec #3).
+
+(import "prelude")
+(import "effects")   ; row-join (dedup union), mem-str
+(import "string-utils")   ; E151b: the owner of str-cmp (and, via collections, of Ord)
+(import "collections")   ; E156: list-sort (E152), list-dedup-adj, Ord
+
+; str-cmp (byte-lexicographic Str order) used to be inlined here to keep this a
+; lean leaf -- ty-cmp, its old home, drags in data.chiral, which clashes with
+; closconv when both are co-loaded by the sig-driver. E151b retires the copy:
+; string-utils (-> collections -> prelude) is the owner and reintroduces no such
+; clash; measured against the sig-driver blob.
+
+; ================================================================ the sig view
+(data RowSig ()
+  (rowsig (ports   (List Str))                        ; prim_is_port (crossings)
+          (calls   (List (Pair Str (List Str))))      ; the syntactic call graph
+          (stamped (List (Pair Str (List Str))))))    ; def_rows of final globals
+
+; field reads (chirality has no auto-accessors -- each is a case-destructure).
+(def rowsig-ports   (-> RowSig (List Str))                     (lam (sg) (case sg ((rowsig p c s) p))))
+(def rowsig-calls   (-> RowSig (List (Pair Str (List Str))))   (lam (sg) (case sg ((rowsig p c s) c))))
+(def rowsig-stamped (-> RowSig (List (Pair Str (List Str))))   (lam (sg) (case sg ((rowsig p c s) s))))
+
+; assoc-row: look up a name in a (name -> row) assoc-list.
+(declare assoc-row (-> (List (Pair Str (List Str))) Str (Maybe (List Str))))
+(def assoc-row
+  (lam (ps k)
+    (case ps
+      (nil none)
+      ((cons pr r)
+        (case pr
+          ((pair name row)
+            (case (str-eq k name) (true (some row)) (false (assoc-row r k)))))))))
+
+; callees: calls[n], or nil.
+(def callees (-> RowSig Str (List Str))
+  (lam (sg n) (case (assoc-row (rowsig-calls sg) n) (none nil) ((some cs) cs))))
+
+; stamped-row: stamped[n], but ONLY when n != name (the _infer_row guard that
+; stops a def short-circuiting on its own half-built row -- self-recursion must
+; expand to callees, not read a leaf).
+(def stamped-row (-> RowSig Str Str (Maybe (List Str)))
+  (lam (sg n name)
+    (case (str-eq n name)
+      (true none)
+      (false (assoc-row (rowsig-stamped sg) n)))))
+
+; ================================================================ helpers
+(declare app-str (-> (List Str) (List Str) (List Str)))
+(def app-str (lam (a b) (case a (nil b) ((cons x r) (cons x (app-str r b))))))
+
+(declare len-str (-> (List Str) I64))
+(def len-str (lam (xs) (case xs (nil 0) ((cons y r) (+ 1 (len-str r))))))
+
+; node-count: a finite over-approximation of the reachable node set -- the fuel
+; bound. Every non-skip step decrements fuel; the stack empties (nil) well before
+; fuel does, so fuel is the termination measure, not a truncation risk. A visited
+; node is pushed at most once, so total steps <= 2 + |ports| + sum |callees|.
+(declare sum-callee-lens (-> (List (Pair Str (List Str))) I64))
+(def sum-callee-lens
+  (lam (ps)
+    (case ps
+      (nil 0)
+      ((cons pr r)
+        (case pr ((pair nm cs) (+ (+ 1 (len-str cs)) (sum-callee-lens r))))))))
+
+(def node-count (-> RowSig I64)
+  (lam (sg) (+ 2 (+ (len-str (rowsig-ports sg)) (sum-callee-lens (rowsig-calls sg))))))
+
+; ================================================================ row-of
+; the canonical normal form: discard DYN ("*"), sort byte-lex, dedup. A total
+; canonical form -> order-independent equality (the determinism property).
+(declare drop-dyn (-> (List Str) (List Str)))
+(def drop-dyn
+  (lam (xs)
+    (case xs
+      (nil nil)
+      ((cons x r)
+        (case (str-eq x "*") (true (drop-dyn r)) (false (cons x (drop-dyn r))))))))
+
+; E156: row-of is the COMPOSITION of two owned ops. It used to be
+; (sort-dedup (drop-dyn xs)) -- a private fused insertion sort (ins-sorted /
+; sort-dedup) whose dedup rule nobody had chosen: it kept the LAST of each
+; (eq) run, purely as an accident of sorting the tail before inserting the
+; head. Both are DELETED here, not left dead; row-of was their only caller.
+; Same result for str-cmp, whose (eq) implies value equality on Str -- but now
+; it is a stated rule (keep FIRST) owned by collections, not an emergent one.
+(def row-of (-> (List Str) (List Str))
+  (lam (xs)
+    (list-dedup-adj Str str-cmp
+      (list-sort Str str-cmp (drop-dyn xs)))))
+
+; ================================================================ the closure
+; irow: the seen-bounded worklist (single function -- fuel decreases on every
+; recursive call, so it terminates by that numeric measure, E11). Classify the
+; popped name: a PORT contributes itself (leaf); an already-final STAMPED global
+; contributes its row (leaf); else expand to its syntactic callees.
+(declare irow (-> RowSig Str I64 (List Str) (List Str) (List Str) (List Str)))
+(def irow
+  (lam (sg name fuel stack seen names)
+    (case (<i 0 fuel)
+      (false names)                                     ; bound reached (>= steps): done
+      (true
+        (case stack
+          (nil names)
+          ((cons n rest)
+            (case (mem-str n seen)
+              (true (irow sg name (- fuel 1) rest seen names))            ; already visited
+              (false
+                (case (mem-str n (rowsig-ports sg))
+                  (true (irow sg name (- fuel 1) rest (cons n seen)       ; port leaf
+                              (row-join (cons n nil) names)))
+                  (false
+                    (case (stamped-row sg n name)
+                      ((some r) (irow sg name (- fuel 1) rest (cons n seen)  ; stamped leaf
+                                      (row-join r names)))
+                      (none (irow sg name (- fuel 1)                         ; expand callees
+                                  (app-str (callees sg n) rest) (cons n seen) names)))))))))))))
+
+; infer-row: the def's canonical effect row. Seed the worklist with the name,
+; run the closure, canonicalize.
+(def infer-row (-> RowSig Str (List Str))
+  (lam (sg name)
+    (row-of (irow sg name (node-count sg) (cons name nil) nil nil))))

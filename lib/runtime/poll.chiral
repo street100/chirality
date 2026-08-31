@@ -1,0 +1,92 @@
+; T3: variable-length poll — pure surface builder + scanner over N fds.
+; Rides the existing nb-sys-poll-t TAL crossing (nr 7, already registered).
+; The fixed-2 poll2/Poll2R/nb-pollfd-fill-t path is untouched (D0, D4).
+; Consumer: T9 (mux event loop).
+
+(import "prelude")
+(import "collections")
+(import "bytes-tal")
+(import "ports/sock")            ; nb-poll: this module CALLS it at :75 and never
+                                 ; declared it -- it relied on the consumer importing
+                                 ; `ports` FIRST, so `chirality_blob <root>` failed with
+                                 ; `unknown name nb-poll` whenever the DFS reached
+                                 ; poll before ports. Same undeclared-dependency class
+                                 ; as compile-all.chiral. Declared 2026-08-22.
+
+; boundary sums: no sentinel values, no raw I64 masks downstream
+(data Cond () (c-in) (c-hup) (c-err))
+(data ReadyFd () (ready (fd I64) (cond Cond)))
+
+(data PollR ()
+  (poll-ready (fds (List ReadyFd)))
+  (poll-timeout)
+  (poll-err (errno I64)))
+
+; bit-test via pure arithmetic (D2): m divided by f shifts right by log2(f),
+; then mod 2 checks the LSB. Works for power-of-2 flag values like POLLERR=8,
+; POLLHUP=16, POLLNVAL=32. No new TAL prim needed.
+(def bit? (-> I64 I64 Bool)
+  (lam (m f) (=i (% (/ m f) 2) 1)))
+
+; decode revents low byte into Cond: err > hup > in priority (D3).
+(def decode-revents (-> I64 Cond)
+  (lam (rv)
+    (case (or (bit? rv 8) (bit? rv 32))
+      (true  (c-err))
+      (false (case (bit? rv 16)
+               (true  (c-hup))
+               (false (c-in)))))))
+
+; PURE builder: pack an 8N-byte pollfd cell from (List I64).
+; Structural recursion on fds = total.
+(declare fill-fds (-> (List I64) Bytes I64 Bytes))    ; single-pass loader: forward decl
+(def build-pollfds (-> (List I64) Bytes)
+  (lam (fds) (fill-fds fds (cell-new (* 8 (length I64 fds))) 0)))
+
+(def fill-fds
+  (lam (fds cell i)
+    (case fds
+      (nil cell)
+      ((cons fd rest)
+        (let ((off (* 8 i))
+              (c1  (bput-u32-le cell off fd)))
+          (fill-fds rest (bput-u8 c1 (+ off 4) 1) (+ i 1)))))))
+
+; PURE scanner: read ready fds from the pollfd cell, decode revents once.
+; Termination by numeric measure (n - i); accumulator reversed once.
+(declare scan-go (-> Bytes I64 I64 (List ReadyFd) (List ReadyFd)))  ; forward decl
+(def scan-ready (-> Bytes I64 (List ReadyFd))
+  (lam (cell n) (scan-go cell n 0 nil)))
+
+; NOTE: no type on this def -- it is already given by the (declare) above.
+; Repeating it emitted the label TWICE ("duplicate label (an object def
+; collides with the linked runtime): scan-go"), which stayed latent only
+; because poll.chiral never compiled: it called nb-poll without declaring
+; ports/sock, so every build died earlier with `unknown name nb-poll`.
+(def scan-go
+  (lam (cell n i acc)
+    (case (=i i n)
+      (true  (reverse ReadyFd acc))
+      (false
+        (let ((off (* 8 i))
+              (fd  (bget-u32-le cell off))
+              (rv  (bget cell (+ off 6))))
+          (case (=i rv 0)
+            (true  (scan-go cell n (+ i 1) acc))
+            (false (scan-go cell n (+ i 1)
+                     (cons (ready fd (decode-revents rv)) acc)))))))))
+
+; the driver: build (pure) -> poll (extern) -> scan (pure).
+; Only nb-poll crosses; everything else is provably pure.
+(declare poll-fds (=> (List I64) I64 PollR))
+(def poll-fds
+  (lam (fds timeout)
+    (let ((n    (length I64 fds))
+          (cell (build-pollfds fds))
+          (rc   (nb-poll cell n timeout)))
+      (case (<i rc 0)
+        (true  (poll-err (- 0 rc)))
+        (false
+          (case (=i rc 0)
+            (true  (poll-timeout))
+            (false (poll-ready (scan-ready cell n)))))))))

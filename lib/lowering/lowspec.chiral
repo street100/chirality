@@ -1,0 +1,70 @@
+; ===========================================================================
+; lib/lowspec.chiral  --  the NEUTRAL "lowerable spec" transport ADT.
+;
+; WHY THIS MODULE EXISTS (a real structural finding, same shape as
+; lib/erased-nf.chiral): the source->native pipeline crosses THREE colliding
+; namespaces. The front half (lib/parse.chiral -> lib/loader.chiral -> lib/kernel.
+; chirality) speaks the kernel `Term` (whose `t-case` constructor is ALSO a tal-ssa
+; terminator name), so it cannot share a Sig with the lowering half
+; (lib/lower.chiral -> lib/tal-ssa.chiral). chirality has a flat global namespace and
+; whole-file `import`, so `kernel` + `tal-ssa` in one module is a hard load error
+; (`data Term redeclared`, verified). The check->lower seam therefore CANNOT be
+; one module -- exactly like the erasure seam.
+;
+; This module is the neutral joint: a type-peeled, name-dropped view of ONE
+; lowerable def -- its parameter/return tal types (NTalTy) and its de-Bruijn body
+; (NCore, structurally the lowerable fragment of both the kernel Term and
+; lib/lower.chiral's Core). It uses only prelude types and `n`-prefixed
+; constructors, so it collides with neither the `kernel` image nor the `lower`
+; image and imports cleanly into both. The front bridge (lib/compile-front.chiral,
+; in the kernel image) produces an NDef from a checked Sig; the back bridge
+; (lib/compile-back.chiral, in the lower image) reconstructs lower.Core + TalTy
+; from it and drives compile-fn. An NDef con-value passes between the two RTs.
+; ===========================================================================
+
+(import "prelude")
+
+; a lowered tal type: the ground fragment ttype accepts (I64/Str/Bytes/a data
+; type over lowered args). A non-ground type never reaches here (the front
+; bridge rejects the def before building an NDef).
+(data NTalTy ()
+  (nt-i64) (nt-str) (nt-bytes)
+  (nt-word)                                  ; B1: the erased uniform word (-> tt-word)
+  (nt-data (dn Str) (targs (List NTalTy))))
+
+; the de-Bruijn body, the lowerable fragment shared by kernel Term and lower.Core
+; (same constructor SHAPES, neutral tags). Binder names are already dropped
+; (Term is de-Bruijn); `q` is the quantity CODE (0/1/2=w), matching lower.Core.
+(data NCore ()
+  (nc-var    (ix I64))
+  (nc-global (n Str))
+  (nc-prim   (n Str))
+  (nc-lit-i  (v I64))
+  (nc-lit-s  (v Str))
+  (nc-ann    (e NCore))
+  (nc-lam    (body NCore))
+  (nc-con    (dn Str) (cn Str) (args (List NCore)))
+  (nc-let    (q I64) (val NCore) (body NCore))
+  (nc-app    (fn NCore) (arg NCore))
+  (nc-case   (scrut NCore) (arms (List NArm)) (dflt (Maybe NCore))))
+(data NArm () (narm (cn Str) (nvars I64) (body NCore)))
+
+; one peeled def: what the back bridge needs to call compile-fn. `erased` (B1) is
+; the list of q=0 binder positions (over ALL binders, in order) dropped from
+; `params`; compile-fn gives each a placeholder register so de Bruijn stays
+; aligned. Erased call-args are already dropped in the body at peel time.
+(data NDef () (ndef (name Str) (params (List NTalTy)) (ret NTalTy)
+                    (erased (List I64)) (body NCore)))
+
+; a neutral, name-dropped view of ONE data declaration -- the transport for the
+; DData env erase-fn/compile-fn need (tag + boxing oracle + constructor field
+; types). Kernel `DataDecl` (front image) and tal-ssa `DData` (lower image) are
+; distinct colliding types; this `n`-prefixed form crosses between them. Type
+; parameters are dropped (the lowered floor is monomorphic-ground); the field
+; types are already lowered to NTalTy.
+; a pure extern's tal signature -- the transport for the compile env's prim
+; table (so a def calling `blen`/`bget`/... resolves). Effectful ports omitted.
+(data NPrim () (nprim (name Str) (params (List NTalTy)) (ret NTalTy)))
+
+(data NDCtor () (ndctor (cn Str) (ftys (List NTalTy))))
+(data NData  () (ndata (dn Str) (ctors (List NDCtor))))

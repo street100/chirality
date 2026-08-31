@@ -1,0 +1,108 @@
+; E02/E51 (sig-driver input layer) -- the last given-input derivations E70's floor
+; check + row-inference consume, ported from their Python originals. Each is a
+; pure derivation over a chirality representation of the loaded signature; together
+; they turn eff-lower.chiral's + row-infer.chiral's "given" inputs (ports / bound /
+; def_rows-via-calls) into chirality-derived data. Group A of the sig-driver.
+;
+;   prim-is-port    <- kernel.py declare_extern is_port (:605-611)
+;   bound-crossings <- lower.py _bound_crossings (:113)
+;   scan-calls      <- surface.py _scan_unit (:98) -- the syntactic call graph
+;
+; The Python originals are the differential oracles.
+
+(import "prelude")
+(import "closconv")     ; pi-effs (the Pi-spine eff flags, already oracle-verified) + Core
+(import "sexp")         ; Sexp (s-list / s-sym / s-i64 / s-str)
+(import "sys-linkage")  ; SysBinding (bind-sys ...)
+
+(declare sapp (-> (List Str) (List Str) (List Str)))
+(def sapp (lam (a b) (case a (nil b) ((cons x r) (cons x (sapp r b))))))
+
+; ================================================================ prim-is-port
+; An extern crosses iff ANY arrow in its type is effectful -- kernel's is_port,
+; the OR over the Pi-spine eff flags. Reuses closconv's pi-effs (the per-arrow
+; eff-flag vector, differential-verified in the E69 suite).
+(declare any-nonzero (-> (List I64) Bool))
+(def any-nonzero
+  (lam (xs)
+    (case xs
+      (nil false)
+      ((cons x r) (case (=i x 0) (true (any-nonzero r)) (false true))))))
+
+(def prim-is-port (-> Core Bool)
+  (lam (t) (any-nonzero (pi-effs t))))
+
+; ================================================================ bound-crossings
+; The E51-bound port names -- the extern-name of each bind-sys in sys-bindings
+; (lower.py _bound_crossings walks the same con-list). These are the crossings
+; whose syscall path exists, so the ones E70 may open the => gate for.
+(declare bound-crossings (-> (List SysBinding) (List Str)))
+(def bound-crossings
+  (lam (bs)
+    (case bs
+      (nil nil)
+      ((cons b r) (case b ((bind-sys ext wrap) (cons ext (bound-crossings r))))))))
+
+; ================================================================ scan-calls
+; The syntactic call graph: for each (def NAME ... BODY) form, the set of every
+; symbol appearing in BODY (surface.py _scan_unit -- an over-approximation;
+; _infer_row only follows the ports/globals among them). scan-syms collects the
+; s-sym names of a Sexp; def-form? pulls (name, syms-of-body) from a def form.
+(declare scan-syms      (-> Sexp (List Str)))
+(declare scan-syms-list (-> (List Sexp) (List Str)))
+(def scan-syms
+  (lam (s)
+    (case s
+      ((s-sym nm)      (cons nm nil))
+      ((s-list items)  (scan-syms-list items))
+      (_ nil))))                                  ; s-i64 / s-str: no symbol
+(def scan-syms-list
+  (lam (ss)
+    (case ss
+      (nil nil)
+      ((cons x r) (sapp (scan-syms x) (scan-syms-list r))))))
+
+; last item of a form = its body (_scan_unit's form[-1]).
+(declare last-sexp (-> (List Sexp) Sexp))
+(def last-sexp
+  (lam (xs)
+    (case xs
+      (nil (s-list nil))
+      ((cons x r) (case r (nil x) (_ (last-sexp r)))))))
+
+; a (def NAME ... BODY) form (>= 3 items, head "def", 2nd an s-sym) -> its
+; (name, body-syms); anything else -> none.
+(declare def-form? (-> Sexp (Maybe (Pair Str (List Str)))))
+(def def-form?
+  (lam (f)
+    (case f
+      ((s-list items)
+        (case items
+          (nil none)
+          ((cons h rest)
+            (case h
+              ((s-sym hn)
+                (case (str-eq hn "def")
+                  (false none)
+                  (true
+                    (case rest                              ; rest = name : more...
+                      (nil none)
+                      ((cons nm-s more)
+                        (case more                          ; require >= 3 items total
+                          (nil none)                        ; (def name) alone: skip
+                          (_ (case nm-s
+                               ((s-sym name)
+                                 (some (pair name (scan-syms (last-sexp items)))))
+                               (_ none)))))))))
+              (_ none)))))
+      (_ none))))
+
+(declare scan-calls (-> (List Sexp) (List (Pair Str (List Str)))))
+(def scan-calls
+  (lam (forms)
+    (case forms
+      (nil nil)
+      ((cons f r)
+        (case (def-form? f)
+          ((some pr) (cons pr (scan-calls r)))
+          (none (scan-calls r)))))))

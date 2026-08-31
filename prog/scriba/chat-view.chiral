@@ -1,0 +1,197 @@
+; scriba CHAT-VIEW — the chatter's top-level mode as a VALUE.
+;
+; CHAT was the odd one out among scriba's top-level modes. PIPELINE rides in `vm-manas (ol
+; Outline)`, RUN in `vm-runview (rv RunView)`; each carries its state inside the variant, so its
+; dispatch reads it and the resize arm re-renders it. CHAT carried NOTHING: the transcript lived
+; in a private recursion inside `chatter-chat-loop`, `vm-chat` was an inert arm that beeped, a
+; resize could not repaint, and there was no way to scroll. This module gives CHAT the same shape
+; as its peers — `ChatView` is the state, and every rendering decision here is pure.
+;
+; It also fixes two things that made the DC-4b structure unreadable in practice:
+;   · a reply or a lane row was ONE `r-text`, so a 400-character answer ran off the frame; and a
+;     fused reply CONTAINS newlines (fuse-branch joins lanes with "\n"), which went into the
+;     terminal raw and corrupted the frame. Rows are now split on "\n" and word-wrapped to width.
+;   · the whole transcript was rendered every repaint, so a long chat pushed itself off-screen
+;     with no way back. The view keeps a scroll offset measured BACKWARD from the bottom, so 0 =
+;     pinned to the newest (what you want while talking) and j/k walks back through history.
+;
+; PURE (->) throughout: no Backend, no crossing. The effectful shell (compose, dispatch) stays in
+; command-loop.chiral, exactly as manas-runview keeps its driver there.
+
+(import "prelude")                 ; Str, Bool, I64, List, Pair, cons, nil, or, str-cat, str-len, str-sub, str-find, str-eq, =i, <i, <=i, +, -, case
+(import "collections")             ; append  (row-list concatenation)
+(import "render")                  ; Rendering (+ r-text/r-face/r-lines)
+(import "manas/chatter/turn")      ; Lane (+ lane-label/after/audit/reply) — the turn's own structure (DC-4b)
+(import "manas/chatter/router")    ; ConvState (+ conv-empty)
+
+; ─── the state ───────────────────────────────────────────────────────────────
+; One transcript row: what you said, the turn's tag ("analyze" / "compound(2)"), the fused reply,
+; and the LANES it ran (nil for a one-shot turn, so a plain chat renders exactly as before).
+(data Exchange () (exchange (you Str) (tag Str) (reply Str) (lanes (List Lane))))
+
+; The CHAT mode's whole state: the transcript (oldest first), the conversation memory threaded
+; across turns (C6a), and the scroll offset in ROWS BACK FROM THE BOTTOM (0 = newest visible).
+(data ChatView () (chat-view (xs (List Exchange)) (cs ConvState) (scroll I64)))
+(def cv-xs     (-> ChatView (List Exchange)) (lam (v) (case v ((chat-view xs cs sc) xs))))
+(def cv-cs     (-> ChatView ConvState)       (lam (v) (case v ((chat-view xs cs sc) cs))))
+(def cv-scroll (-> ChatView I64)             (lam (v) (case v ((chat-view xs cs sc) sc))))
+(def cv-empty ChatView (chat-view nil (conv-empty) 0))
+
+; append one exchange at the END (chronological) and pin the view back to the newest row.
+(declare xchg-append (-> (List Exchange) Exchange (List Exchange)))
+(def xchg-append
+  (lam (xs x)
+    (case xs
+      (nil (cons x nil))
+      ((cons h t) (cons h (xchg-append t x))))))
+(def cv-add (-> ChatView Exchange ConvState ChatView)
+  (lam (v x cs2) (chat-view (xchg-append (cv-xs v) x) cs2 0)))
+
+; scroll BACK (older) / FORWARD (newer), clamped at 0; the upper clamp is applied at render time
+; against the real row count, so this stays pure and total without knowing the frame.
+(def cv-back (-> ChatView I64 ChatView)
+  (lam (v n) (chat-view (cv-xs v) (cv-cs v) (+ (cv-scroll v) n))))
+(def cv-fwd (-> ChatView I64 ChatView)
+  (lam (v n)
+    (let ((s (- (cv-scroll v) n)))
+      (chat-view (cv-xs v) (cv-cs v) (case (<i s 0) (true 0) (false s))))))
+
+; ─── text -> frame rows ──────────────────────────────────────────────────────
+; the last space at or before `w` (so a wrap lands on a word boundary), or -1 if there is none.
+(declare last-space-go (-> Str I64 I64 I64 I64))
+(def last-space-go
+  (lam (s i w best)
+    (case (or (=i i (str-len s)) (<i w i))
+      (true best)
+      (false
+        (last-space-go s (+ i 1) w
+          (case (str-eq (str-sub s i (+ i 1)) " ") (true i) (false best)))))))
+(def last-space-before (-> Str I64 I64) (lam (s w) (last-space-go s 0 w (- 0 1))))
+
+; drop leading spaces (the wrap point's own space must not open the next row).
+(declare drop-sp (-> Str Str))
+(def drop-sp
+  (lam (s)
+    (case (=i (str-len s) 0)
+      (true s)
+      (false (case (str-eq (str-sub s 0 1) " ")
+               (true (drop-sp (str-sub s 1 (str-len s))))
+               (false s))))))
+
+; word-wrap ONE newline-free segment to width w. A segment with no space inside the width is
+; hard-broken (a URL, a JSON blob) rather than allowed to run off the frame. `fuel` bounds the
+; recursion by the string length, so totality needs no measure argument.
+(declare wrap-go (-> Str I64 I64 (List Str)))
+(def wrap-go
+  (lam (s w fuel)
+    (case (or (<=i fuel 0) (<=i (str-len s) w))
+      (true (cons s nil))
+      (false
+        (let ((sp (last-space-before s w)))
+          (let ((k (case (<=i sp 0) (true w) (false sp))))
+            (cons (str-sub s 0 k)
+                  (wrap-go (drop-sp (str-sub s k (str-len s))) w (- fuel 1)))))))))
+
+; split on "\n" FIRST (a fused reply carries real newlines — those must become rows, never raw
+; bytes in the frame), then wrap each segment. w <= 0 -> the text unsplit (a degenerate frame).
+(declare split-nl-go (-> Str (List Str)))
+(def split-nl-go
+  (lam (s)
+    (let ((i (str-find s "\n")))
+      (case (<i i 0)
+        (true (cons s nil))
+        (false (cons (str-sub s 0 i) (split-nl-go (str-sub s (+ i 1) (str-len s)))))))))
+(declare wrap-each (-> (List Str) I64 (List Str)))
+(def wrap-each
+  (lam (segs w)
+    (case segs
+      (nil nil)
+      ((cons seg rest) (append Str (wrap-go seg w (str-len seg)) (wrap-each rest w))))))
+(def text-rows (-> Str I64 (List Str))
+  (lam (s w)
+    (case (<=i w 0)
+      (true (cons s nil))
+      (false (wrap-each (split-nl-go s) w)))))
+
+; ─── the transcript rows ─────────────────────────────────────────────────────
+; a wrapped block of rows under one face; the FIRST row carries `lead`, continuations are indented
+; to line up under it, so a wrapped answer still reads as one block.
+(declare faced-rows (-> Str Str Str (List Str) Bool (List Rendering)))
+(def faced-rows
+  (lam (face lead indent rows first)
+    (case rows
+      (nil nil)
+      ((cons r rest)
+        (cons (r-face face (r-text (str-cat (case first (true lead) (false indent)) r) false))
+              (faced-rows face lead indent rest false))))))
+
+; one lane: "· <intent> ⇠ <dep>  [audit: <word>]" then its own answer, wrapped and indented.
+(declare lane-rows (-> (List Lane) I64 (List Rendering)))
+(def lane-rows
+  (lam (ls w)
+    (case ls
+      (nil nil)
+      ((cons l rest)
+        (let ((head (str-cat "    · " (str-cat (lane-label l)
+                      (str-cat (case (str-eq (lane-after l) "")
+                                 (true "")
+                                 (false (str-cat " ⇠ " (lane-after l))))
+                        (str-cat "  [audit: " (str-cat (lane-audit l) "]")))))))
+          (append Rendering
+            (cons (r-face "manas-header" (r-text head false))
+                  (faced-rows "manas-field" "        " "        " (text-rows (lane-reply l) (- w 8)) true))
+            (lane-rows rest w)))))))
+
+(declare exchange-rows (-> (List Exchange) I64 (List Rendering)))
+(def exchange-rows
+  (lam (xs w)
+    (case xs
+      (nil nil)
+      ((cons x rest)
+        (case x
+          ((exchange you tag reply lanes)
+            (append Rendering
+              (append Rendering
+                (faced-rows "manas-header" "you → " "      " (text-rows you (- w 6)) true)
+                (append Rendering
+                  (faced-rows "manas-field" (str-cat tag " → ") "      " (text-rows reply (- w 8)) true)
+                  (lane-rows lanes w)))
+              (cons (r-text "" false) (exchange-rows rest w)))))))))
+
+; ─── the scrolled window ─────────────────────────────────────────────────────
+(declare rows-len (-> (List Rendering) I64))
+(def rows-len (lam (rs) (case rs (nil 0) ((cons h t) (+ 1 (rows-len t))))))
+(declare rows-drop (-> (List Rendering) I64 (List Rendering)))
+(def rows-drop
+  (lam (rs n)
+    (case (<=i n 0)
+      (true rs)
+      (false (case rs (nil nil) ((cons h t) (rows-drop t (- n 1))))))))
+(declare rows-take (-> (List Rendering) I64 (List Rendering)))
+(def rows-take
+  (lam (rs n)
+    (case (<=i n 0)
+      (true nil)
+      (false (case rs (nil nil) ((cons h t) (cons h (rows-take t (- n 1)))))))))
+
+; the visible slice: `scroll` rows back from the bottom, `h` rows tall, both clamped to what
+; exists — so scrolling past either end parks at that end instead of blanking the frame.
+(def rows-window (-> (List Rendering) I64 I64 (List Rendering))
+  (lam (rs h sc)
+    (let ((total (rows-len rs)))
+      (let ((back (case (<i (- total h) sc) (true (case (<i (- total h) 0) (true 0) (false (- total h)))) (false sc))))
+        (let ((end (- total back)))
+          (let ((start (case (<i (- end h) 0) (true 0) (false (- end h)))))
+            (rows-take (rows-drop rs start) h)))))))
+
+; chat-render : the whole CHAT frame. Two rows go to the header + blank and one to the status
+; line, so the transcript gets (h - 3). A wider frame re-wraps automatically because every row is
+; computed from `dims` at render time — which is exactly why the resize arm can now repaint.
+(def chat-render (-> ChatView (Pair I64 I64) Rendering)
+  (lam (v dims)
+    (case dims
+      ((pair h w)
+        (r-lines
+          (cons (r-face "manas-header" (r-text "CHAT   i:compose   j/k:scroll   ESC:normal" true))
+          (cons (r-text "" false)
+            (rows-window (exchange-rows (cv-xs v) w) (- h 3) (cv-scroll v)))))))))

@@ -1,0 +1,112 @@
+; The sys-linkage: the binding seam that routes an effectful extern through a
+; hand-tal wrapper over the sys crossings, instead of a CPython callable in
+; `impl_ports.py` (E51 -- the true self-host gate). The typed face
+; (lib/ports.chiral) is UNCHANGED; only the transport behind an extern moves.
+;
+; Each wrapper is a tal function (executed by the reference tal machine, the
+; same drop that performs the real syscall). Dispatch is one decision: an
+; extern named in `sys-bindings` mints its wrapper (a tal function) instead of
+; a `pap` over IMPLS -- CPython leaves the crossing path. The runtime marshals
+; the extern's declared arguments into the tal calling convention (a Str
+; becomes its utf-8 byte cell) and re-seats `bridge.verify` on the wrapper's
+; return, so the inbound membrane holds across the swap.
+;
+; v1 binds the three ambient writers (Decision 5: bind only crossings whose
+; full path exists today; the fd-level face is a phantom, sockets/poll/spawn
+; are lane A). Each returns `Unit` -- information-free, so no errno-as-value
+; sum is folded here; the per-family sums (Decisions 2a/2b) are the convention
+; the first error-carrying crossing (E29 sockets) follows.
+
+(import "prelude")
+(import "tal-ir")
+(import "sys-tal")        ; the hand-tal crossings: nb-sys-write-t, ...
+(import "target-linux")   ; the swappable permitted set + the E76 chokepoint (via sys-check)
+(import "crossing-wraps")
+(import "sys-tal")  ; the single crossing->wrapper authority (also seen by erase)
+
+; put -> stdout (fd 1), no trailing newline. Wraps nb-sys-write-t; the raw
+; byte count returns (the seam discards it and yields the declared Unit).
+(def wrap-put-t TIFn
+  (ti-fn "wrap-put" 1 3
+    (t-seq (ti-const 1 1)                                   ; fd = stdout
+    (t-seq (ti-call 2 "nb-sys-write" (cons 1 (cons 0 nil))) ; write(1, bytes)
+      (ti-ret 2)))))
+
+; print -> stdout with a trailing newline. Two writes (payload then "\n"): a
+; pipe reader reassembles byte-identical output to `_print`'s `s + "\n"`; the
+; extra crossing is cost, not an observable. The newline cell is built fresh
+; (ti-bnew/ti-bput), no native-lib dependency.
+(def wrap-print-t TIFn
+  (ti-fn "wrap-print" 1 8
+    (t-seq (ti-const 1 1)                                   ; fd = stdout
+    (t-seq (ti-call 2 "nb-sys-write" (cons 1 (cons 0 nil))) ; write(1, payload)
+    (t-seq (ti-const 3 1)                                   ; newline cell len
+    (t-seq (ti-bnew 4 3)                                    ; fresh 1-byte cell
+    (t-seq (ti-const 5 0)                                   ; idx 0
+    (t-seq (ti-const 6 10)                                  ; '\n'
+    (t-seq (ti-bput 4 5 6)                                  ; cell[0] = '\n'
+    (t-seq (ti-call 7 "nb-sys-write" (cons 1 (cons 4 nil))) ; write(1, "\n")
+      (ti-ret 7)))))))))))
+
+; trace -> stderr (fd 2) with a trailing newline. Same shape as wrap-print-t on
+; fd 2, matching `_trace`'s `s + "\n"` to stderr.
+(def wrap-trace-t TIFn
+  (ti-fn "wrap-trace" 1 8
+    (t-seq (ti-const 1 2)                                   ; fd = stderr
+    (t-seq (ti-call 2 "nb-sys-write" (cons 1 (cons 0 nil))) ; write(2, payload)
+    (t-seq (ti-const 3 1)
+    (t-seq (ti-bnew 4 3)
+    (t-seq (ti-const 5 0)
+    (t-seq (ti-const 6 10)
+    (t-seq (ti-bput 4 5 6)
+    (t-seq (ti-call 7 "nb-sys-write" (cons 1 (cons 4 nil))) ; write(2, "\n")
+      (ti-ret 7)))))))))))
+
+; halt -> the fatal alarm: write the message to stderr (fd 2), then
+; exit_group with a nonzero status. Unlike the ambient writers, halt NEVER
+; returns (its typed result is the polymorphic A -- a never-return), so the
+; exit_group is the last crossing and the ti-ret is the checker's sentinel,
+; unreachable at runtime (the nb-sys-exit-group-t precedent). Binding halt opens
+; the E70 `=>` gate for every emit-core def whose only crossing is halt
+; (emit-code/assemble/resolve/materialize -- the fatal-error path).
+(def wrap-halt-t TIFn
+  (ti-fn "wrap-halt" 1 5
+    (t-seq (ti-const 1 2)                                   ; fd = stderr
+    (t-seq (ti-call 2 "nb-sys-write" (cons 1 (cons 0 nil))) ; write(2, message)
+    (t-seq (ti-const 3 1)                                   ; fatal exit status
+    (t-seq (ti-call 4 "nb-sys-exit-group" (cons 3 nil))     ; exit_group(1); no return
+      (ti-ret 4)))))))
+
+; The linkage table -- itself chirality data. Link-at-load walks it; an extern
+; bound here mints its wrapper (a tal function) instead of a Python `pap`.
+; Grows with lane A (sockets/poll/fd-passing/spawn); an unbound effectful
+; extern still falls back to IMPLS during the migration window.
+(data SysBinding ()
+  (bind-sys (extern-name Str) (wrapper Str)))
+
+; sys-bindings is DERIVED from crossing-wraps (the single authority the erase
+; image also reads) -- so the erase-side routing and the linkage-side binding
+; table cannot drift.
+(declare cw->binds (-> (List (Pair Str Str)) (List SysBinding)))
+(def cw->binds (lam (cw)
+  (case cw (nil nil) ((cons p r) (case p ((pair k v) (cons (bind-sys k v) (cw->binds r))))))))
+(def sys-bindings (List SysBinding) (cw->binds crossing-wraps))
+
+; link-lib: everything the emit path appends so an effectful program RUNS native
+; -- the E51 wrappers (wrap-*) + the raw crossings (sys-lib, incl. nb-sys-read-t).
+; native-lib (the pure byte runtime) is appended separately by emit-elf.
+(def link-lib (List TIFn)
+  (cons wrap-put-t (cons wrap-print-t (cons wrap-trace-t (cons wrap-halt-t sys-lib)))))
+
+; E76 -- the chokepoint applied to the crossing library ALONE. Every ti-sys in
+; sys-lib must be registered in the (swappable) Linux permitted set with a
+; matching number; an unregistered crossing or a re-pointed number is `sbad`.
+;
+; H7: this value is NOT the enforcement. It is the sys-lib slice of the verdict,
+; kept because the python oracle asserts it as a unit fact
+; (tests/test_e76_chokepoint.py). The LOAD-BEARING gate is compile-emit.chiral's
+; `emit-elf-m`, which runs the same `ck-tiprog` over the WHOLE emitted image
+; (byte runtime + link-lib + the object program's own reified code) and REFUSES
+; to produce bytes on `sbad`. A verdict nothing consults is not a gate, which is
+; exactly what this def was for its whole life before H7.
+(def checked-sys-lib SysR (ck-tiprog linux-syscalls sys-lib))

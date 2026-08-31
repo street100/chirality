@@ -1,0 +1,64 @@
+; scriba S12: completion — pure prefix-matching over candidate lists.
+; Deps: prelude (Str, Bool, List, Maybe, I64)
+(import "prelude")
+
+; Check if candidate starts with prefix.
+; str-sub clamps out-of-bounds indices, so a longer prefix automatically
+; yields false — the clamped candidate is shorter and won't match.
+(def complete-prefix (-> Str Str Bool)
+  (lam (prefix candidate)
+    (str-eq (str-sub candidate 0 (str-len prefix)) prefix)))
+
+; ---- helpers for longest-common-prefix ----
+
+(def trim-ix (-> Str Str I64 I64 Str)
+  (lam (prefix s limit i)
+    (case (=i i limit)
+      (true (str-sub prefix 0 i))
+      (false
+        (case (str-eq (str-sub prefix i (+ i 1)) (str-sub s i (+ i 1)))
+          (true (trim-ix prefix s limit (+ i 1)))
+          (false (str-sub prefix 0 i)))))))
+
+(def trim-to-match (-> Str Str Str)
+  (lam (prefix s)
+    (let ((limit (min (str-len prefix) (str-len s))))
+      (trim-ix prefix s limit 0))))
+
+(def lcp-fold (-> Str (List Str) Str)
+  (lam (prefix strs)
+    (case strs
+      (nil prefix)
+      ((cons hd tl)
+        (lcp-fold (trim-to-match prefix hd) tl)))))
+
+; Longest prefix shared by all strings in the list.
+; Returns none for empty list, (some prefix) otherwise.
+; (some "") means the strings share no common prefix.
+(def longest-common-prefix (-> (List Str) (Maybe Str))
+  (lam (strs)
+    (case strs
+      (nil none)
+      ((cons first rest)
+        (some (lcp-fold first rest))))))
+
+; Filter candidates by prefix, preserving input order.
+; Empty prefix returns all candidates.
+(def complete (-> Str (List Str) (List Str))
+  (lam (prefix candidates)
+    (case candidates
+      (nil nil)
+      ((cons hd tl)
+        (case (complete-prefix prefix hd)
+          (true (cons hd (complete prefix tl)))
+          (false (complete prefix tl)))))))
+
+; Exact needle-in-candidates check. nil is not a match.
+(def complete-exact (-> Str (List Str) Bool)
+  (lam (needle candidates)
+    (case candidates
+      (nil false)
+      ((cons hd tl)
+        (case (str-eq needle hd)
+          (true true)
+          (false (complete-exact needle tl)))))))

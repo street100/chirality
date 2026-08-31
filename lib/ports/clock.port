@@ -1,0 +1,40 @@
+; ports/clock — time and environment caps.
+;
+; E32: time reified as capabilities. Clock and Timer are SPLIT on purpose
+; (decision #4, 2026-07-27): time-mono reads the trusted monotonic anchor
+; (evidence infrastructure), sleep-ms is a deadline-wait (runtime
+; territory) -- one cap would re-fuse the two senses of time. The result
+; sums thread the cap back linearly (the RecvR pattern); there is no wall
+; clock (CLOCK_REALTIME is B-untrusted time, freshness-verify's).
+;
+; Env rides along here because it is the same SHAPE: an ambient reader
+; reified as a linear cap whose every read threads the cap back. It is not
+; time, and if a fourth ambient-reader cap ever lands this registry is the
+; one that should be renamed, not the one Env should leave.
+
+(import "prelude")
+
+(porttype Clock)
+(porttype Timer)
+(porttype Env)
+
+(data TimeR ()
+  (time-r (ms I64) (1 c Clock))
+  (time-err (errno I64) (1 c Clock)))
+(data SleepR ()
+  (slept (1 t Timer))
+  (interrupted (remaining-ms I64) (1 t Timer))
+  (sleep-err (errno I64) (1 t Timer)))
+(data EnvR ()
+  (env-r (v Str) (1 e Env))
+  (env-none (1 e Env)))
+
+(extern time-mono (=> (1 c Clock) TimeR))          ; monotonic ms
+(extern sleep-ms (=> (1 t Timer) I64 SleepR))      ; block for n ms
+(extern env-view (=> (1 e Env) Str EnvR))          ; keyed read-only view
+; INTERIM ambient acquisition/disposal for the Env cap (the sock-connect
+; precedent: ports enter via crossings). Deleted when profile-hands-caps
+; lands and main receives its Env from the profile; env-view is untouched
+; by that move -- callers already thread the cap through the EnvR sum.
+(extern env-open (=> Unit Env))
+(extern env-close (=> (1 e Env) Unit))

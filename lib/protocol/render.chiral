@@ -1,0 +1,492 @@
+(import "prelude")
+(import "ports")
+
+; ─── Data declarations ───
+
+(data Rendering ()
+  (r-text   (content Str) (bold Bool))
+  (r-table  (headers (List Str)) (rows (List (List Rendering))))
+  (r-section (title Str) (collapsed Bool) (body Rendering))
+  (r-stream (source-id Str))
+  (r-tree   (children (List Rendering)) (selected Rendering))
+  (r-lines  (children (List Rendering)))
+  (r-hole   (label Str))
+  (r-face   (face Str) (body Rendering)))
+
+(data RendererFn ()
+  (rf (fn (-> Str (Pair I64 I64) I64 Rendering))))
+
+(data Face ()
+  (face (name Str) (fg I64) (bg I64) (attrs I64)))
+
+; A mode binds a port-kind to its view: the renderer that actually renders the
+; buffer content, plus the face set that renderer emits.
+(data Mode ()
+  (mode (renderer RendererFn) (faces (List (Pair Str Face)))))
+
+(data Diff ()
+  (diff-same)
+  (diff-changed (node Rendering)))
+
+; ─── Forward declares — all type signatures before any def body ───
+
+(declare lookup-mode
+  (-> (List (Pair Str Mode)) Str (Maybe Mode)))
+
+(declare register-mode
+  (-> (List (Pair Str Mode)) Str Mode (List (Pair Str Mode))))
+
+(declare lookup-face (-> (List (Pair Str Face)) Str Face))
+
+(declare sgr-code (-> I64 Str))
+
+(declare face-sgr (-> Face Str))
+
+(declare bool-eq (-> Bool Bool Bool))
+
+(declare list-all-eq-str (-> (List Str) (List Str) Bool))
+
+(declare diff-node (-> Rendering Rendering Diff))
+
+(declare list-all-diff-same (-> (List Rendering) (List Rendering) Bool))
+
+(declare rnd-append-list (-> (List Rendering) (List Rendering) (List Rendering)))
+
+(declare rnd-flatten-rows (-> (List (List Rendering)) (List Rendering) (List Rendering)))
+
+(declare rnd-diff-table (-> (List Str) (List Str) (List Rendering) (List Rendering) Rendering Diff))
+
+(declare rnd-diff-tree (-> Rendering Rendering (List Rendering) (List Rendering) Rendering Diff))
+
+(declare ansi-goto (-> I64 I64 Str))
+
+(declare render-to-ansi
+  (=> Rendering (Pair I64 I64) (Maybe Rendering)
+      I64 I64 I64 I64 Unit))
+
+(declare render-table (=> (List Str) (List (List Rendering)) (Pair I64 I64) I64 I64 Unit))
+
+(declare rnd-emit-headers (=> (List Str) I64 I64 Unit))
+
+(declare rnd-emit-rows (=> (List (List Rendering)) (Pair I64 I64) I64 I64 Unit))
+
+(declare rnd-emit-one-row (=> (List Rendering) (Pair I64 I64) I64 I64 Unit))
+
+(declare render-section (=> Str Bool Rendering (Pair I64 I64) I64 I64 I64 I64 Unit))
+
+(declare rnd-is-selected (-> Rendering Rendering Bool))
+
+(declare render-tree (=> (List Rendering) Rendering (Pair I64 I64) I64 I64 I64 I64 Unit))
+
+(declare render-lines (=> (List Rendering) (Pair I64 I64) I64 I64 I64 I64 Unit))
+
+(declare render-to-ansi-full (=> Rendering (Pair I64 I64) Unit))
+
+(declare render-to-ansi-delta (=> Rendering Rendering (Pair I64 I64) Unit))
+
+; ─── Renderer registry (pure) — inline alist lookup, no collections import ───
+
+(def lookup-mode
+  (lam (reg name)
+    (case reg
+      (nil none)
+      ((cons h rest)
+        (case h
+          ((pair k v)
+            (case (str-eq k name)
+              (true (some v))
+              (false (lookup-mode rest name)))))))))
+
+(def register-mode
+  (lam (reg type-name m)
+    (cons (pair type-name m) reg)))
+
+; ─── Face registry (pure) ─────────────────────────────────────────────────
+
+; The default face table. fg/bg are SGR color indices 0-7, -1 = default.
+; attrs is a bitmask: 1 = bold, 2 = underline, 4 = italic.
+(def default-faces (List (Pair Str Face))
+  (cons (pair "default" (face "default" -1 -1 0))
+  (cons (pair "comment" (face "comment" 2 -1 0))
+  (cons (pair "keyword" (face "keyword" 1 -1 1))
+  (cons (pair "string"  (face "string" 3 -1 0))
+  (cons (pair "error"   (face "error" 1 -1 2))
+  (cons (pair "manas-tag"    (face "manas-tag"    1 -1 1))
+  (cons (pair "manas-field"  (face "manas-field"  4 -1 1))
+  (cons (pair "manas-header" (face "manas-header" 7 -1 1))
+  ; S15 run-view: a good expert row (green) and a failed / routing-failure row (red).
+  (cons (pair "manas-ok"   (face "manas-ok"   2 -1 1))
+  (cons (pair "manas-bad"  (face "manas-bad"  1 -1 2))
+  ; N1 outline: the navigable cursor row — reverse video (attr bit 8 = SGR 7).
+  (cons (pair "manas-cursor" (face "manas-cursor" -1 -1 8))
+  nil))))))))))))
+
+(def lookup-face
+  (lam (reg name)
+    (case reg
+      (nil (face name -1 -1 0))
+      ((cons h rest)
+        (case h
+          ((pair k v)
+            (case (str-eq k name)
+              (true v)
+              (false (lookup-face rest name)))))))))
+
+; ESC = byte 27. chirality string escapes are only \n \t \" \\ (any other \X is the
+; literal byte X), so there is no \x1b escape — build the escape byte explicitly.
+(def ansi-esc Str (bytes->str (bslice (pack-u32 27) 0 1)))
+
+; One SGR parameter code: ESC[<n>m.
+(def sgr-code
+  (lam (n)
+    (str-cat (str-cat (str-cat ansi-esc "[") (i64->str n)) "m")))
+
+; Build the full SGR prefix for a face (attr codes, then fg, then bg).
+; attrs bitmask: 1 = bold, 2 = underline, 4 = italic, 8 = reverse video (SGR 7 —
+; the cursor/selection highlight; reverse renders on any terminal and is visible
+; in the raw byte stream as ESC[7m regardless of the palette).
+(def face-sgr
+  (lam (f)
+    (case f
+      ((face name fg bg attrs)
+        (let ((b (case (=i (band attrs 1) 1) (true (sgr-code 1)) (false ""))))
+          (let ((u (case (=i (band attrs 2) 2) (true (sgr-code 4)) (false ""))))
+            (let ((i (case (=i (band attrs 4) 4) (true (sgr-code 3)) (false ""))))
+              (let ((rv (case (=i (band attrs 8) 8) (true (sgr-code 7)) (false ""))))
+                (let ((fc (case (<i fg 0) (true "") (false (sgr-code (+ 30 fg))))))
+                  (let ((bc (case (<i bg 0) (true "") (false (sgr-code (+ 40 bg))))))
+                    (str-cat b (str-cat u (str-cat i (str-cat rv (str-cat fc bc)))))))))))))))
+
+; ─── Pure helpers ───
+
+(def bool-eq
+  (lam (a b)
+    (case a
+      (true (case b (true true) (false false)))
+      (false (case b (true false) (false true))))))
+
+(def list-all-eq-str
+  (lam (a b)
+    (case a
+      (nil (case b (nil true) (_ false)))
+      ((cons ha ta)
+        (case b
+          (nil false)
+          ((cons hb tb)
+            (and (str-eq ha hb) (list-all-eq-str ta tb))))))))
+
+(def rnd-append-list
+  (lam (xs acc)
+    (case xs
+      (nil acc)
+      ((cons h t) (rnd-append-list t (cons h acc))))))
+
+(def rnd-flatten-rows
+  (lam (rows acc)
+    (case rows
+      (nil acc)
+      ((cons row rest)
+        (rnd-flatten-rows rest (rnd-append-list row acc))))))
+
+(def list-all-diff-same
+  (lam (xs ys)
+    (case xs
+      (nil (case ys (nil true) (_ false)))
+      ((cons hx tx)
+        (case ys
+          (nil false)
+          ((cons hy ty)
+            (case (diff-node hx hy)
+              (diff-same (list-all-diff-same tx ty))
+              (_ false))))))))
+
+(def rnd-diff-table
+  (lam (h1 h2 rows1f rows2f new-node)
+    (case (list-all-eq-str h1 h2)
+      (true
+        (case (list-all-diff-same rows1f rows2f)
+          (true diff-same)
+          (false (diff-changed new-node))))
+      (false (diff-changed new-node)))))
+
+(def rnd-diff-tree
+  (lam (s1 s2 ch1f ch2f new-node)
+    (case (diff-node s1 s2)
+      (diff-same
+        (case (list-all-diff-same ch1f ch2f)
+          (true diff-same)
+          (false (diff-changed new-node))))
+      (_ (diff-changed new-node)))))
+
+; ─── diff-node — structural Rendering comparison ───
+
+(def diff-node
+  (lam (old new)
+    (case old
+      ((r-text s1 b1)
+        (case new
+          ((r-text s2 b2)
+            (case (and (str-eq s1 s2) (bool-eq b1 b2))
+              (true diff-same)
+              (false (diff-changed new))))
+          (_ (diff-changed new))))
+      ((r-table h1 rows1)
+        (case new
+          ((r-table h2 rows2)
+            (let ((f1 (rnd-flatten-rows rows1 nil)))
+              (let ((f2 (rnd-flatten-rows rows2 nil)))
+                (rnd-diff-table h1 h2 f1 f2 new))))
+          (_ (diff-changed new))))
+      ((r-section t1 c1 b1)
+        (case new
+          ((r-section t2 c2 b2)
+            (case (and (str-eq t1 t2) (bool-eq c1 c2))
+              (true (diff-node b1 b2))
+              (false (diff-changed new))))
+          (_ (diff-changed new))))
+      ((r-stream _)
+        (case new
+          ((r-stream _) (diff-changed new))
+          (_ (diff-changed new))))
+      ((r-tree ch1 s1)
+        (case new
+          ((r-tree ch2 s2)
+            (rnd-diff-tree s1 s2 ch1 ch2 new))
+          (_ (diff-changed new))))
+      ((r-lines ch1)
+        (case new
+          ((r-lines ch2)
+            (case (list-all-diff-same ch1 ch2)
+              (true diff-same)
+              (false (diff-changed new))))
+          (_ (diff-changed new))))
+      ((r-face f1 b1)
+        (case new
+          ((r-face f2 b2)
+            (case (str-eq f1 f2)
+              (true (diff-node b1 b2))
+              (false (diff-changed new))))
+          (_ (diff-changed new))))
+      ((r-hole l1)
+        (case new
+          ((r-hole l2)
+            (case (str-eq l1 l2)
+              (true diff-same)
+              (false (diff-changed new))))
+          (_ (diff-changed new)))))))
+
+; ─── ANSI helpers (pure) ───
+
+(def ansi-clear      Str (str-cat ansi-esc "[2J"))
+(def ansi-home       Str (str-cat ansi-esc "[H"))
+(def ansi-reset      Str (str-cat ansi-esc "[0m"))
+(def ansi-red        Str (str-cat ansi-esc "[31m"))
+(def ansi-bold       Str (str-cat ansi-esc "[1m"))
+(def ansi-underline  Str (str-cat ansi-esc "[4m"))
+(def ansi-inverse    Str (str-cat ansi-esc "[7m"))
+(def ansi-clear-line Str (str-cat ansi-esc "[K"))
+; Disable/enable terminal auto-wrap (DECAWM). With wrap ON, a line longer than
+; the terminal width wraps in the terminal and the next line's ansi-goto
+; overwrites the wrapped tail, garbling the display. With wrap OFF the terminal
+; clips the overflow at the right edge, so per-line ansi-goto rendering stays
+; aligned. Emitted once at startup and restored on exit.
+(def ansi-nowrap     Str (str-cat ansi-esc "[?7l"))
+(def ansi-wrap       Str (str-cat ansi-esc "[?7h"))
+; Alternate screen buffer (what vim/less/htop use): switch to a blank private
+; screen on entry, switch back on exit so the terminal restores exactly what was
+; there before scriba launched — no leftover editor frame, no trailing % from a
+; mashed shell prompt.
+(def ansi-altscreen-on  Str (str-cat ansi-esc "[?1049h"))
+(def ansi-altscreen-off Str (str-cat ansi-esc "[?1049l"))
+
+(def ansi-goto
+  (lam (row col)
+    (str-cat (str-cat (str-cat (str-cat ansi-esc "[") (i64->str row)) ";")
+             (str-cat (i64->str col) "H"))))
+
+; ─── cursor geometry (pure) ────────────────────────────────────────────────
+
+; Walk the buffer prefix text[0:limit], tracking the 1-indexed terminal
+; (row, col) for the visible block. Row starts at 1, col at 1; a '\n' (byte 10)
+; advances the row and resets col to 1, any other char advances col.
+; Walks BYTES via bget (O(1), no per-char allocation) — the previous version
+; did `(str-sub s i (+ i 1))` per char, allocating a 1-char string O(offset)
+; times, which dominated movement latency on large files.
+(def crc-walk (-> Bytes I64 I64 I64 I64 (Pair I64 I64))
+  (lam (bs i row col limit)
+    (case (<i i limit)
+      (true
+        (case (=i (bget bs i) 10)
+          (true (crc-walk bs (+ i 1) (+ row 1) 1 limit))
+          (false (crc-walk bs (+ i 1) row (+ col 1) limit))))
+      (false (pair row col)))))
+
+; cursor-row-col : (text, offset) -> 1-indexed (row, col) for ansi-goto.
+;
+; KNOWN LIMITATION (do not half-fix): this counts raw characters, not terminal
+; columns. A line longer than the terminal width wraps on screen but the block
+; is computed as if it did not, so the cursor desyncs past the first wrapped
+; line. Fixing it needs a cell-grid renderer (the dropped vt-core/grid work),
+; not a column clamp here.
+(def cursor-row-col (-> Str I64 (Pair I64 I64))
+  (lam (text offset)
+    (crc-walk (str->bytes (str-sub text 0 offset)) 0 1 1 offset)))
+
+; rows from dims (Pair rows cols).
+(def rd-rows (-> (Pair I64 I64) I64)
+  (lam (d)
+    (case d
+      ((pair rows cols) rows))))
+
+; ─── rnd-is-selected (pure) — defined before render-tree which calls it ───
+
+(def rnd-is-selected
+  (lam (child selected)
+    (case (diff-node child selected)
+      (diff-same true)
+      (_ false))))
+
+; ─── Effectful render helpers ───
+
+(def rnd-emit-headers
+  (lam (hs r c)
+    (case hs
+      (nil unit)
+      ((cons h rest)
+        (let ((_ (put (ansi-goto r c))))
+          (let ((_ (put ansi-bold)))
+            (let ((_ (put h)))
+              (let ((_ (put ansi-reset)))
+                (rnd-emit-headers rest r (+ c (+ (str-len h) 2)))))))))))
+
+(def rnd-emit-one-row
+  (lam (cells dims row col)
+    (case cells
+      (nil unit)
+      ((cons cell rest)
+        (let ((_ (render-to-ansi cell dims none row col row col)))
+          (rnd-emit-one-row rest dims row (+ col 16)))))))
+
+(def rnd-emit-rows
+  (lam (rows dims row col)
+    (case rows
+      (nil unit)
+      ((cons row-cells rest)
+        (let ((_ (rnd-emit-one-row row-cells dims row col)))
+          (rnd-emit-rows rest dims (+ row 1) col))))))
+
+(def render-table
+  (lam (headers rows dims row col)
+    (let ((_ (rnd-emit-headers headers row col)))
+      (rnd-emit-rows rows dims (+ row 2) col))))
+
+(def render-section
+  (lam (title collapsed body dims row col drow dcol)
+    (let ((_ (put ansi-bold)))
+      (let ((_ (put title)))
+        (let ((_ (case collapsed (true (put " [+]")) (false (put "")))))
+          (let ((_ (put ansi-reset)))
+            (case collapsed
+              (true unit)
+              (false
+                (render-to-ansi body dims none (+ row 1) (+ col 2) drow dcol)))))))))
+
+(def render-tree
+  (lam (children selected dims row col drow dcol)
+    (case children
+      (nil unit)
+      ((cons child rest)
+        (let ((is-sel (rnd-is-selected child selected)))
+          (let ((_ (case is-sel (true (put ansi-bold)) (false unit))))
+            (let ((_ (render-to-ansi child dims none row (+ col 2) drow dcol)))
+              (let ((_ (case is-sel (true (put ansi-reset)) (false unit))))
+                (render-tree rest selected dims (+ row 1) col drow dcol)))))))))
+
+; render-lines: vertical flat list — each child on its own row at the SAME
+; column (no +2 tree indentation). The text-buffer primitive: buffer rows are
+; siblings, not nested children, so a chirality buffer renders at column 1 and the
+; cursor block (computed from the raw text offset) tracks it one-for-one.
+(def render-lines
+  (lam (children dims row col drow dcol)
+    (case children
+      (nil unit)
+      ((cons child rest)
+        (let ((_ (render-to-ansi child dims none row col drow dcol)))
+          (render-lines rest dims (+ row 1) col drow dcol))))))
+
+; ─── render-to-ansi — recursive tree walk with ANSI emission ───
+
+; Is row within the content viewport (1..rows-1; the last row is the status bar)?
+(def rd-in-view (-> (Pair I64 I64) I64 Bool)
+  (lam (dims row)
+    (and (<=i 1 row) (<=i row (- (rd-rows dims) 1)))))
+
+(def render-to-ansi
+  (lam (node dims prev row col drow dcol)
+    ; Containers (r-lines / r-tree) recurse WITHOUT clipping and WITHOUT an
+    ; ansi-goto: they do not draw at their own row, and with scroll their row is
+    ; the scrolled-offset (possibly negative), so clipping the container would
+    ; clip the whole subtree. Leaf/drawing nodes clip themselves via rd-in-view.
+    (case node
+      ((r-lines children)
+        (render-lines children dims row col drow dcol))
+      ((r-tree children selected)
+        (render-tree children selected dims row col drow dcol))
+      ((r-text content bold)
+        (case (rd-in-view dims row)
+          (false unit)
+          (true
+            (let ((_ (put (ansi-goto row col))))
+              (let ((_ (case bold (true (put ansi-bold)) (false unit))))
+                (let ((_ (put content)))
+                  (put ansi-reset)))))))
+      ((r-table headers rows)
+        (case (rd-in-view dims row)
+          (false unit)
+          (true (render-table headers rows dims row col))))
+      ((r-section title collapsed body)
+        (case (rd-in-view dims row)
+          (false unit)
+          (true (render-section title collapsed body dims row col drow dcol))))
+      ((r-stream source-id)
+        (case (rd-in-view dims row)
+          (false unit)
+          (true
+            (let ((_ (put (ansi-goto row col))))
+              (let ((_ (put ansi-bold)))
+                (let ((_ (put "[")))
+                  (let ((_ (put source-id)))
+                    (let ((_ (put " — live stream]")))
+                      (put ansi-reset)))))))))
+      ((r-hole label)
+        (case (rd-in-view dims row)
+          (false unit)
+          (true
+            (let ((_ (put (ansi-goto row col))))
+              (let ((_ (put "<?>")))
+                (let ((_ (put label)))
+                  (put "")))))))
+      ((r-face face-name body)
+        (case (rd-in-view dims row)
+          (false unit)
+          (true
+            (let ((prefix (face-sgr (lookup-face default-faces face-name))))
+              (let ((_ (put prefix)))
+                (let ((_ (render-to-ansi body dims none row col drow dcol)))
+                  (put ansi-reset))))))))))
+
+; ─── render-to-ansi-full — clear screen, render from (1,1) ───
+
+(def render-to-ansi-full
+  (lam (tree dims)
+    (let ((_ (put ansi-clear)))
+      (let ((_ (put ansi-home)))
+        (render-to-ansi tree dims none 1 1 1 1)))))
+
+; ─── render-to-ansi-delta — Phase 1: full-reset re-render ───
+
+(def render-to-ansi-delta
+  (lam (prev new dims)
+    (case (diff-node prev new)
+      (diff-same unit)
+      ((diff-changed _) (render-to-ansi-full new dims)))))

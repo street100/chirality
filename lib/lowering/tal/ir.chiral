@@ -1,0 +1,49 @@
+; tal, as chirality data: the IR the chirality-written emitter consumes.
+; This mirrors the executable subset of scaffold/chirality/tal.py. Milestone 1
+; was heap-free: i64 arithmetic and comparison, nullary-constructor data as
+; an immediate tag, calls, case, recursion. Milestone 2 spends the memory
+; decision (the region discipline of memory-model.md, at the metal): data
+; with fields is BOXED -- a pointer to a bump-allocated cell [tag][field...]
+; in an arena -- while I64 and all-nullary "enum" data stay immediate words.
+; The representation is static: tal is typed, so no runtime tagging exists.
+; Constructor names arrive as tag numbers (declaration order); only function
+; names survive as strings, because they become labels.
+
+(import "prelude")
+
+; Milestone 3 adds variable-length data: a Bytes/Str value is one word, a
+; pointer to a [len][payload...] cell in the same arena. ti-lit references a
+; string/bytes literal by index into the batch's literal table (interned by
+; the shuttle, placed in a data section after the code); the b* instructions
+; are the byte-cell floor vocabulary the chirality-authored byte library uses.
+(data TInstr ()
+  (ti-const (dst I64) (val I64))                 ; dst := literal i64
+  (ti-prim (dst I64) (op Op) (a I64) (b I64))    ; dst := a op b (binary prims)
+  (ti-con (dst I64) (tag I64))                   ; dst := enum constructor, immediate tag
+  (ti-cona (dst I64) (tag I64) (fields (List I64))) ; dst := pointer to fresh cell [tag][fields]
+  (ti-call (dst I64) (fname Str) (args (List I64)))
+  (ti-lit (dst I64) (lit I64))                   ; dst := pointer to literal cell #lit
+  (ti-bnew (dst I64) (len I64))                  ; dst := fresh byte cell, length from slot
+  (ti-bget (dst I64) (ptr I64) (idx I64))        ; dst := one byte of the cell
+  (ti-bput (ptr I64) (idx I64) (val I64))        ; initialization write into a fresh cell
+  (ti-blen (dst I64) (src I64))                  ; dst := cell length
+  ; the sys face (milestone 4): tal's C category in miniature. Effectful and
+  ; unsafe-adjacent by construction; never produced by lowering pure code,
+  ; only by hand-authored tal (lib/sys-tal.chiral).
+  (ti-sys (dst I64) (nr I64) (args (List I64)))  ; dst := linux syscall nr(args)
+  (ti-bptr (dst I64) (src I64)))                 ; dst := payload address of a byte cell
+
+; a block is a chain of instructions ending in ret or case; branches carry
+; the constructor tag, the slots its fields bind into (empty for enums), and
+; their own block. boxed says whether the scrutinee is a cell pointer (tag at
+; [ptr]) or an immediate tag. one recursive type, no mutual data: a branch is
+; ((tag, binds), code) as nested pairs.
+(data TCode ()
+  (t-seq (i TInstr) (rest TCode))
+  (ti-ret (src I64))
+  (ti-tcase (src I64) (boxed Bool)
+          (branches (List (Pair (Pair I64 (List I64)) TCode)))
+          (dflt (Maybe TCode))))
+
+(data TIFn ()
+  (ti-fn (name Str) (nparams I64) (nregs I64) (code TCode)))
