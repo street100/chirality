@@ -35,9 +35,9 @@ is **complete**; that tree is reference only now.
 | fixtures | `tools/test/samples/` 98 files |
 | docs | 230, sorted by role; `.planning/` 259, **untracked by design** |
 | record | `.planning/MIGRATION-MAP.tsv`, 869 rows; `tools/test/map-integrity.sh` checks every `new_path` exists |
-| lint | `python3 tools/ledger-lint/ledger-lint.py` → **clean**, 19 checks (H and M VACUOUS by decision) |
+| lint | `python3 tools/ledger-lint/ledger-lint.py` → **exits 1**, 19 checks (H and M VACUOUS by decision). The one FAIL is check I: `docs/definitions/FRONTIER.md` is stale because `frontier.py:62` globs `docs/decisions/decision-*.md` and the other agent's untracked note is in that glob. Do **not** run `frontier condense` to clear it; that bakes their in-flight file into the digest. It clears when their work lands |
 | licence | **AGPL-3.0-or-later** + `LICENSE.EXCEPTION.md`; `docs/decisions/decision-license.md` |
-| python | 14 files / 4,629 LOC. Target is zero. `.planning/ZERO-PYTHON-SCOPE.md` |
+| python | 14 files / 4,654 LOC, re-measured 2026-08-31. Target is zero, **absolute** (author call this session). `.planning/ZERO-PYTHON-SCOPE.md` |
 
 ### Verified, not asserted
 
@@ -70,14 +70,32 @@ is **complete**; that tree is reference only now.
 9. **The four rungs measure reach, not substrate**: SEEDED = nothing calls it,
    IMPLEMENTED = reached but ungated, ENFORCED = gated.
 
-## Blocked on the author: these do not move without an answer
+## ⚑ SCOPE, set by the author 2026-08-31: self-hosting only
+
+The ownership and trust model is a **separate track, deferred**: the
+re-bootstrap climb, DDC, the secure datum model, the register root, the cascade.
+Do not pull any of it into current work, and do not audit its documents. What is
+in scope is the language compiling and checking itself, and being good enough to
+write its own tooling (zero Python).
+
+## Answered this session, no longer blocking
 
 | | |
 |---|---|
-| datum model threat split | DMA **write** is in scope and CPU code execution is out; on no-IOMMU hardware write subsumes execution. The read-only half is sound and needs nothing |
-| two bootstrap documents | `docs/definitions/bootstrap.md` (106 L, the four-stage climb) and `bootstrap-sequence.md` (55 L). One concept or two? Auditing either is wasted first |
-| `refs/gen-*.py`, 502 LOC | The OURS baselines. Their function is to **not** be chirality. Porting destroys them; deleting leaves four examples with no comparison. Two of four are executed, not just read |
-| the hash shape | `frontier` needs staleness detection, `scriba-edit-smoke` digests screen state. Neither needs collision resistance. A few lines over `bget`, or a real element? |
+| `refs/gen-*.py`, 502 LOC | **Zero Python is absolute.** Not "zero Python chirality is built from". Drop everything not required, then catalog what must be built to replace the rest with chirality forms. Renaming to `.py.txt` was rejected as a dodge. ⚑ These four are sliced into pipeline bundles by `pack` as the OURS baselines, so deleting them costs four worked examples their comparison. Decide that before the deletion |
+| the hash shape | **A small pure function**, a deterministic digest over `bget`. No element, no ledger row. The LEDGER's CRY category stays reserved and empty |
+
+## Deferred with the ownership model, not answered
+
+| | |
+|---|---|
+| datum model threat split | DMA **write** is in scope and CPU code execution is out; on no-IOMMU hardware write subsumes execution. Ownership track |
+| two bootstrap documents | `docs/definitions/bootstrap.md` (106 L) is the re-bootstrap climb; `bootstrap-sequence.md` (55 L) is the runtime on-ramp and says of itself "nothing here is built yet". Verified as **two unrelated concepts sharing a word**. Both ownership track. ⚑ `bootstrap.md` cites three paths that are all stale post-hoist: `scaffold/lib/climb.chiral`, `examples/refs/`, and `docs/tal-spec.md` (four times, as "the golden object"; it is `docs/definitions/tal-spec.md`) |
+
+## Still blocked on the author, in scope
+
+| | |
+|---|---|
 | Principle 1 has no Honest limit | The broadest claim in the file, the only one without one |
 | P5's present tense | "a split value whose only exit is a guarded combine-process" : CONFORMANCE-MAP calls it vapor beyond the seed |
 | P3 vs open-edges | P3's limit says the membrane's inward reach is open; `open-edges` records it largely answered |
@@ -85,20 +103,34 @@ is **complete**; that tree is reference only now.
 
 ## Queue: dispatchable, one agent at a time
 
-1. **`let`-bound case join.** `(let (m (case (<i a b) (true a) (false b))) m)` is
-   refused, so `min` is unwritable if you name the result. Fix the join, or widen
-   the bound result to the declared type. Plus `jg-refine-unproved` reports no
-   term, no line and no refinement.
+1. **`let`-bound case, diagnosed 2026-08-31. The join hypothesis is REFUTED.**
+   There is no join: the verdict depends on **source arm order**, and a join is
+   commutative. It is first-arm-wins. A branch-local assumption from the narrow
+   hook escapes as the case's inferred result type, and later arms must entail an
+   assumption false in them. Refusal at `kernel.chiral:1440`. `let` is the trigger
+   because `check-let` (`kernel.chiral:983`) is the only construct that drops into
+   infer mode. **Fix (b), widening, is unsound** and the finding carries the
+   counterexample. Three coherent shapes remain, so this **needs a blueprint**:
+   run the pipeline, mint **E174** in the change that fixes it.
    `.planning/FINDING-let-bound-case-refinement-2026-08-31.md`
 2. **`str-sub`'s second half.** `end > len` reads past the buffer.
    ⚑ `str-starts-with` currently depends on that read returning differing bytes.
-3. **Three ROUND-OFF OWED flags** in `status-ledger`: E171 re-scoped against a
-   floor that no longer exists · totality must wire termination or drop its third
-   pillar · secret custody says "runs" and only type-checks.
+3. ~~Three ROUND-OFF OWED flags in `status-ledger`.~~ **Discharged 2026-08-31**
+   (`16f939a`), all three verified by grep first. E171 re-scoped: the seams are
+   already in the tree and already generalized, so what it owes is the **caller**.
+   Termination is **SEEDED**, a built classifier nothing imports; wiring it is
+   E11's remaining work. Secret custody type-checks and lowers with no referent,
+   the same shape as `http-request` and `backend-open`.
 4. **Zero-python**, sized per file in `.planning/ZERO-PYTHON-SCOPE.md`. The order
    is forced by the measurement: **E173 matcher** (141 sites, 13 of 14 files),
-   then **E148** `getdents64` (22), then **E150** argv (20). Wave 0 is done:
-   `prog/prose-lint.prog` and `prog/paren-audit.prog` replace their Python.
+   then **E148** `getdents64` (22), then **E150** argv (20).
+   ⚑ **Wave 0 is NOT done**, contrary to what this file said before. Wave 0 is
+   two files. `prog/paren-audit.prog` exists but `tools/paren-audit/paren-audit.py`
+   is still on disk at 154 LOC and their equivalence is **unverified**;
+   `tools/scriba-run-smoke/scriba-run-smoke.py` (51 LOC) was never ported at all.
+   `prose-lint` had no `.py` left to replace, so citing it as wave-0 evidence
+   inflated the claim. E173 has a drafted worked example
+   (`docs/examples/E173-total-matcher.md`), audit gate not yet run.
 5. **Audit queue**, `.planning/DOC-AUDIT-QUEUE.md`. Done: PRINCIPLES, status-ledger.
    Next: MAP, LAYOUT, README, HANDOFF, then the design base.
 6. **E158 into E146**, the pretty-printer chain. Untouched all session.
@@ -121,3 +153,23 @@ whose `j > len` half is open · two carried from the old tree (captured closures
   `TIFn`; 180 occurrences invisible. Fixing it changes what the tool measures.
 - `prog/prose-lint.prog` is missing `not-but`, `parallel-no` and code-skipping,
   and **prints them as NOT-CHECKED every run**. They want E173.
+- **`lib/typing/effects.chiral:1-6` still says "effects.py stays the oracle."**
+  The oracle is CUT. `lib/` was off-limits during the round-off pass because the
+  other agent holds the resolver; fix it on the next `lib/` slice.
+- **`.planning/LEDGER.md:86` files E11 as `built`** while its classifier is
+  imported by nothing. `:95` (E12) and `:103` (E171) still cite
+  `scaffold/chirality/effects.py` and `scaffold/lib/effects.chiral`.
+- **~40 `docs/examples/E*.md` carry `ours_source: scaffold/…`** paths that no
+  longer exist. Frozen-rationale tier, so a bulk rewrite is its own call.
+- **`.planning/USER-LAYER-GAP.md` §6** names four pre-rename tool scripts and
+  LOC counts (1033/650/636/619/313) against live (1128/651/831/620/330), and a
+  total of "3,251 L of Python" against a measured 4,654.
+- **`ledger-lint` check H is VACUOUS** because it verified `_CHEATSHEET.md`
+  against the deleted `refine.py`. After the 2026-08-31 cheatsheet repoint it can
+  aim at `lib/typing/refine.chiral:11` and `lib/module/loader.chiral:20`, both
+  live. That is a measured repoint rather than a guess, so it is now allowed.
+- **`op->symop` falls through to `s-ne` for any unrecognized token**, so `!=` is
+  never refused; it silently reads as `<>`. Measured during the cheatsheet fix.
+- **`CLAUDE.md`'s ⚑ saying `ledger-lint` is "partly blocked, 7 of 14 inputs are
+  path mismatches" is stale.** That repoint landed; the mismatch count is 0. The
+  file is gitignored, so fix it in place.
