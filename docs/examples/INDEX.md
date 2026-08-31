@@ -131,4 +131,4 @@ draft invalidated by a later design decision (see the dated PLAN file).
 | E170 | **The corpus lands on the floor — the 709-function migration E168 exists to receive** | BUILD-PROPER | OURS | audited | [E170-corpus-migration.md](E170-corpus-migration.md) · [SPEC](../../.planning/specs/E170-corpus-migration-SPEC.md) |
 | U13 | **The renderer takes the typed value, not `Str`** | SURFACE-D | EXTERNAL | drafted | [U13-typed-document-seam.md](U13-typed-document-seam.md) |
 | E172 | **Semantic file extensions, and the source tree by altitude** | BUILD-PROPER | OURS/IMPL | drafted | [E172-file-kinds.md](E172-file-kinds.md) |
-| E158 | **`Doc` — the structured formatter; printf's template split from its flatten** | BUILD-PROPER | OURS/PAPER | specced | [E158-doc-formatter.md](E158-doc-formatter.md) · [SPEC](../../.planning/specs/E158-doc-formatter-SPEC.md) |
+| E158 | **`Doc` — the structured formatter; printf's template split from its flatten** | BUILD-PROPER | OURS/PAPER | audited | [E158-doc-formatter.md](E158-doc-formatter.md) · [SPEC](../../.planning/specs/E158-doc-formatter-SPEC.md) |
