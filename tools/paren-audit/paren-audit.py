@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Paren audit for metis source files.
+"""Paren audit for chirality source files.
 
 Scans for (def and (declare boundaries at top level, counts parentheses
 per function body, reports deltas. Finds exactly where a miscount lives:

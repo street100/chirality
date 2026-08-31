@@ -1,20 +1,42 @@
-# Claude Code working artifacts
+# ── Claude Code working artifacts ────────────────────────────────────────────
 .claude/
 .claude-*/
 **/CLAUDE.md
 *.orig
 *.rej
 
-# transient build outputs.  bin/chirality-bin is COMMITTED on purpose --
-# the source tree and recompile harness ship with it, so a fresh checkout
-# can rebuild and byte-compare rather than trust it.
+# ── build outputs ────────────────────────────────────────────────────────────
+# bin/chirality-bin is COMMITTED on purpose: the source tree and the recompile
+# harness ship with it, so a fresh checkout rebuilds and byte-compares rather
+# than trusting it. Everything else a build writes is transient.
 *.blob
 *.elf
-/C1
-/C2
+*.new
+*.o
 /blob
+/build/
+/C[0-9]
+/D[0-9]
 
-# editor / OS
+# `chirality compile FILE` with no -o writes an extensionless ELF beside its
+# source. There is no glob for "filename without a dot" that would not also
+# swallow a source file the day LAYOUT mints a sixth extension, and a source
+# file silently untracked is worse than an artifact silently committed. So they
+# are not ignored: pass `-o build/<name>`, or delete the artifact.
+
+# ── Python, and only while tools/ still has any ──────────────────────────────
+# Route step 1 replaces the 9 tools with chirality programs and deletes tools/.
+# These three lines leave with it. Target: zero Python in the repo.
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ── editor / OS ──────────────────────────────────────────────────────────────
 *~
 *.swp
+*.swo
 .DS_Store
+.idea/
+.vscode/
+.direnv/
+.venv/

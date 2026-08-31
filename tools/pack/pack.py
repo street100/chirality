@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""metis-pack — assemble the ENTIRE worked-example input bundle for one catalog
+"""pack — assemble the ENTIRE worked-example input bundle for one catalog
 element in ONE command, and scaffold its artifact + INDEX row.
 
 Why this exists: the worked-example pre-run's cost is dominated not by file
 *sizes* but by the number of model-driven tool calls — every grep/read turn
 re-bills the whole accumulated context. This script does the deterministic
-foraging (catalog row, OURS source slices, metis reference, template) as a
+foraging (catalog row, OURS source slices, chirality reference, template) as a
 single Bash turn, so the agent goes from ~17 tool calls to ~3.
 
 Usage:
@@ -82,9 +82,9 @@ SOURCES = {
     "E": dict(
         path=CATALOG, header="| E#", kind=_kind_E,
         row=lambda eid: rf"\|\s*{eid}\s*\|",
-        tick_cols=(1, 2), py_roots=("scaffold/metis",),
+        tick_cols=(1, 2), py_roots=("scaffold/chirality",),
         # the catalog names its baseline IN the row (`terms.py`), always under
-        # scaffold/metis/ — the historical shape, kept exactly.
+        # scaffold/chirality/ — the historical shape, kept exactly.
         section_baselines={}, derive_refclass=False,
     ),
     "U": dict(
@@ -92,7 +92,7 @@ SOURCES = {
         row=lambda eid: rf"\|\s*\*{{0,2}}{eid}\*{{0,2}}\s*\|",
         # Element + Note carry the prose; State/Gate are backticked STATUS
         # words (`design`, `blocked`) and would be read as symbol names.
-        tick_cols=(1, 4), py_roots=("", "bin", "scaffold/metis"),
+        tick_cols=(1, 4), py_roots=("", "bin", "scaffold/chirality"),
         # §6 (the KB surface) is the one place where the conventional baseline is
         # OURS and in-tree: this repo's KB is run by these four tools, and they
         # are the specification the row refracts. §4/§5/§7 have NO in-tree
@@ -104,7 +104,7 @@ SOURCES = {
     "S": dict(
         path=SCRIBADOC, header="| S#", kind=_kind_S,
         row=lambda eid: rf"\|\s*\*{{0,2}}{eid}\*{{0,2}}\s*\|",
-        tick_cols=(1, 4), py_roots=("", "bin", "scaffold/metis"),
+        tick_cols=(1, 4), py_roots=("", "bin", "scaffold/chirality"),
         section_baselines={}, derive_refclass=True,
     ),
 }
@@ -140,7 +140,7 @@ def short_title(cell: str) -> str:
     Rule: the leading bold run if the cell opens with one (the house style —
     `**Diagnostics as typed values.** …`), else the first sentence-or-clause
     boundary, then a word-boundary cap. Markup is preserved, unlike
-    metis-frontier's `first_sentence`, because a title like `` `tal-c` `` reads
+    frontier's `first_sentence`, because a title like `` `tal-c` `` reads
     wrong without its code span.
     """
     cell = cell.strip()
@@ -206,12 +206,12 @@ def conf_rows(eid):
 
 def target_outlines(text):
     """Structural outlines of every scaffold/lib file named in the text."""
-    paths = sorted(set(re.findall(r"(?:scaffold|lib)/[A-Za-z0-9_/.-]*\.(?:py|metis)", text)))
+    paths = sorted(set(re.findall(r"(?:scaffold|lib)/[A-Za-z0-9_/.-]*\.(?:py|chirality)", text)))
     sec = []
     for rel in paths:
         p = os.path.join(ROOT, rel)
         if not os.path.exists(p) and not rel.startswith("scaffold/"):
-            alt = os.path.join(ROOT, "scaffold", rel)  # examples say lib/x.metis; libs live in scaffold/lib/
+            alt = os.path.join(ROOT, "scaffold", rel)  # examples say lib/x.chiral; libs live in scaffold/lib/
             if os.path.exists(alt):
                 p, rel = alt, "scaffold/" + rel
         if not os.path.exists(p):
@@ -354,7 +354,7 @@ def kb_slices(eid, seed_texts):
             add(os.path.relpath(f, ROOT))
 
     bases = sorted({os.path.basename(b) for b in
-                    re.findall(r"`([A-Za-z0-9_./-]+\.(?:py|metis))`", seed)})
+                    re.findall(r"`([A-Za-z0-9_./-]+\.(?:py|chirality))`", seed)})
     base_pats = [re.compile(rf"\b{re.escape(b)}\b") for b in bases]
     caveat = ("Slices are E#/file-anchored; an E-RANGE in a note (e.g. E30–E33) "
               "will not match an interior number — grep the named note if a "
@@ -368,7 +368,7 @@ def kb_slices(eid, seed_texts):
 EX_CHARTER = """## 0. Audit charter — EXAMPLE level (the pre-spec gate)
 Verify the drafted example against this bundle. Your ONLY write surface is the
 example file itself. Checks, in order:
-1. **Phantom-feature check** — every "metis needs/lacks X" claim vs the bank
+1. **Phantom-feature check** — every "chirality needs/lacks X" claim vs the bank
    slices: is X already refracted into built shards? (the cardinal error here)
 2. **Settled-decision conformance** — §4 claims vs the sliced decision notes
    and banks; nothing may re-argue a settled decision.
@@ -426,7 +426,7 @@ def audit_mode(eid, tag, title, row, row_kind, level):
         body, notes, caveat = kb_slices(eid, [ex])
         out.append(f"## 4. KB slices — {len(notes)} notes resolved from the example's "
                    f"anchors\n{caveat}\n\n{body}")
-        out.append("## 5. metis idioms & vocabulary (syntax-legality reference)\n"
+        out.append("## 5. chirality idioms & vocabulary (syntax-legality reference)\n"
                    + open(CHEAT).read().strip())
     else:
         if not os.path.exists(spec_path):
@@ -712,7 +712,7 @@ def main():
         ours_label = (", ".join(r for r, _ in baselines) if baselines
                       else "EXTERNAL (no in-tree baseline — research the comparator)")
     else:
-        ours_label = ("scaffold/metis/" + pyfile) if pyfile else "(none — design from spec)"
+        ours_label = ("scaffold/chirality/" + pyfile) if pyfile else "(none — design from spec)"
 
     out = [f"# INPUT BUNDLE — {cat_label(eid)}: {title}",
            "Read THIS ONLY. Everything you need to write the artifact is below. "
@@ -725,12 +725,12 @@ def main():
     # OURS baseline: whole file if small, else slices around named symbols + head
     if not src["derive_refclass"]:
         if pyfile:
-            p = os.path.join(ROOT, "scaffold/metis", pyfile)
+            p = os.path.join(ROOT, "scaffold/chirality", pyfile)
             if os.path.exists(p):
-                head, code = ours_block(f"scaffold/metis/{pyfile}", p, syms)
+                head, code = ours_block(f"scaffold/chirality/{pyfile}", p, syms)
                 out.append(f"## 3. OURS baseline — {head}\n{code}")
             else:
-                out.append(f"## 3. OURS baseline — scaffold/metis/{pyfile} NOT FOUND (grep the tree)")
+                out.append(f"## 3. OURS baseline — scaffold/chirality/{pyfile} NOT FOUND (grep the tree)")
         else:
             out.append("## 3. OURS baseline — none named (BUILD-PROPER: design from the reference/spec)")
     elif not baselines:
@@ -761,7 +761,7 @@ def main():
                    f"resolve in-tree (the {row_sec} baseline this row refracts)\n"
                    + "\n\n".join(blocks))
 
-    out.append("## 4. metis idioms & vocabulary (use INSTEAD of glossary/PRINCIPLES/lib)\n"
+    out.append("## 4. chirality idioms & vocabulary (use INSTEAD of glossary/PRINCIPLES/lib)\n"
                + open(CHEAT).read().strip())
     out.append("## 5. Next\nYour artifact is scaffolded (frontmatter filled) at "
                f"`examples/{tag}-{slug}.md` with the six section headers. Open THAT file "
@@ -782,7 +782,7 @@ def main():
             repl = {"E<NN>": tag, "<slug>": slug, "<human title>": hd,
                     "SELF-HOST | REPLACE-CRUTCH | BUILD-PROPER": row_kind,
                     "OURS | SPEC | PAPER | IMPL": refclass,
-                    "scaffold/metis/<file>.py": ("scaffold/metis/" + pyfile) if pyfile else "(none)",
+                    "scaffold/chirality/<file>.py": ("scaffold/chirality/" + pyfile) if pyfile else "(none)",
                     "<YYYY-MM-DD>": today}
             for a, b in repl.items():
                 t = t.replace(a, b)

@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Pull the canonical x86-64 syscall table and map it against metis's
+"""Pull the canonical x86-64 syscall table and map it against chirality's
 self-hosted floor. Deterministic: parses the kernel header (nr -> name),
 classifies each syscall into a family, and joins against the built tal
-crossings (lib/sys-tal.metis) + the typed face (lib/ports.metis) + the
+crossings (lib/sys-tal.chiral) + the typed face (lib/ports.chiral) + the
 host referents (impl_ports.py). The output is the coverage ledger --
-which syscalls metis crosses natively, which are faced-but-host-bound, and
+which syscalls chirality crosses natively, which are faced-but-host-bound, and
 which are UNMODELED (see below).
 
 Honest framing (do not overstate coverage): the built crossings are the
-syscalls a metis program *performs*, hand-written so far. They are NOT a
+syscalls a chirality program *performs*, hand-written so far. They are NOT a
 closed governance surface. Today `ti-sys` carries an arbitrary numeric
 immediate -- the floor can emit ANY syscall number; the only gate is the
 `nb-sys-*` naming discipline, not the model (RUNG-2-MAP WATCH-4). So an
 UNMODELED syscall is an UNGOVERNED path on rung 1, exactly the seccomp-hole
-P1 names -- not a call metis has decided it "never needs." Closing the
+P1 names -- not a call chirality has decided it "never needs." Closing the
 surface (a default-deny gate keyed to the typed crossing set) is unbuilt
 P1 work, and how much of the surface to model is an author decision, NOT
 resolved by this script.
@@ -113,7 +113,7 @@ def _read(path):
         return f.read()
 
 
-def metis_layers():
+def chirality_layers():
     """The three built layers, by syscall nr where derivable.
     Returns (crossings_by_nr, faced_syscall_names, referent_names)."""
     tal = _read("lib/lowering/tal/sys.chiral")
@@ -127,7 +127,7 @@ def metis_layers():
         if nrm:
             crossings[int(nrm.group(1))] = name
     # ⚑ THE REFERENT LAYER IS GONE. In the old tree this read
-    # scaffold/metis/impl_ports.py -- the Python oracle's @impl registry. The
+    # scaffold/chirality/impl_ports.py -- the Python oracle's @impl registry. The
     # Python oracle is CUT by author decision, so there is no referent set to
     # read and the column is EMPTY rather than guessed. It is not that every
     # crossing lost its referent; it is that this tool can no longer see one.
@@ -157,7 +157,7 @@ FACE_TO_SYSCALL = {
 
 def build_rows():
     table, header = read_header()
-    crossings, referents = metis_layers()
+    crossings, referents = chirality_layers()
     faced_syscalls = {}  # syscall name -> [face externs that reach it]
     for face, calls in FACE_TO_SYSCALL.items():
         for c in calls:

@@ -352,7 +352,7 @@
 ; of its construction sites read `(tc-err (lin-msg (lin-let q)))`, building the
 ; sum and destroying it in one expression, for exactly the reason XErr did: the
 ; container's field was Str. Its two arms are now two SUBJECTS of one evidence
-; shape in diag.metis -- `(r-linear (subj-let-binder) q)` / `(r-linear
+; shape in diag.chiral -- `(r-linear (subj-let-binder) q)` / `(r-linear
 ; (subj-pi-binder) q)` -- and `lin-msg` is `dg-linear-msg`, at the rendering
 ; boundary instead of fused into the detection. The rule is unchanged.
 ; is binding a value of type `v` at quantity `q` a linearity violation?
@@ -404,9 +404,9 @@
 (data Ctx () (ctx-nil) (ctx-bind (q Qty) (ty Value) (rest Ctx)))
 ; E157 -- the payload is a Reason, not a sentence. These six re-wrap each
 ; other's payload verbatim (`((ck-err m) (tc-err m))` and 40-odd twins), so they
-; are ONE forced closure with loader.metis's LoadR/ChkR: widen one and the rest
+; are ONE forced closure with loader.chiral's LoadR/ChkR: widen one and the rest
 ; must follow or the re-wrap is a type error. Rendering happens once, at the
-; module boundary, through diag.metis's dg-msg.
+; module boundary, through diag.chiral's dg-msg.
 (data TcR () (tc-ok (ty Value) (use (List Qty))) (tc-err (why Reason)))   ; infer
 (data CkR () (ck-ok (use (List Qty)))            (ck-err (why Reason)))   ; check
 ; E04 slice 4b: instantiated field types + usage-accumulating loops (con/case)

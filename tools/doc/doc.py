@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""metis-doc — doc-keyed audit bundles + doc scaffolding, the doc-tier sibling
-of metis-pack (which is element-keyed).
+"""doc — doc-keyed audit bundles + doc scaffolding, the doc-tier sibling
+of pack (which is element-keyed).
 
 The docs tier encodes its claims in machine-readable shapes: bank shard headers
 carry **STATE (E#s)**, line evidence is cited as `file.py:NN` or `file` … `:NN`,
@@ -59,7 +59,7 @@ def resolve_doc(name):
 
 
 def find_src(tok):
-    for base in ("", "scaffold", "scaffold/metis", "scaffold/lib"):
+    for base in ("", "scaffold", "scaffold/chirality", "scaffold/lib"):
         p = os.path.join(ROOT, base, tok)
         if os.path.isfile(p):
             return p
@@ -110,7 +110,7 @@ def evidence_slices(text):
     for ln in text.splitlines():
         for span in re.findall(r"`([^`]+)`", ln):
             span = span.strip()
-            pm = re.match(r"([A-Za-z0-9_/.-]+\.(?:py|metis))"
+            pm = re.match(r"([A-Za-z0-9_/.-]+\.(?:py|chirality))"
                           r"(?::(\d+)(?:[–-](\d+))?)?$", span)
             lo = hi = None
             if pm:
@@ -236,7 +236,7 @@ updated: {today}
 
 ---
 
-## 1. The concept in metis
+## 1. The concept in chirality
 
 **The one-sentence truth.** <…>
 
@@ -263,7 +263,7 @@ updated: {today}
 
 ---
 
-## 4. Native → metis translation (the misfire → the correction)
+## 4. Native → chirality translation (the misfire → the correction)
 
 - **"You need a <monolith>."** → Correction: <…>
 

@@ -36,7 +36,7 @@ CHIR="$REPO/bin/chirality"
 # CHIRALITY_COMPILE overrides both -- one exported variable must put a chosen compiler
 # under the WHOLE suite, not just run-native.sh's own inline phases. E166's
 # admission gate (G3) exports it; until 2026-08-25 this script ignored it and
-# silently ran under B1 while the gate reported it as metisc-c coverage. Same
+# silently ran under B1 while the gate reported it as chirality-bin-c coverage. Same
 # resolution order as run-native.sh -- keep the two in step.
 CC="${CHIRALITY_COMPILE:-}"
 if [ -z "$CC" ]; then
@@ -84,7 +84,7 @@ admit() {
 }
 
 # ---- runs <desc> <want-exit> <src> -------------------------------------------
-# a real program over the real `ports` registry, compiled through `metis compile`
+# a real program over the real `ports` registry, compiled through `chirality compile`
 # (so imports resolve) and RUN. This is the end-to-end control: the discipline
 # must still let a correct capability lifecycle through to machine code.
 runs() {

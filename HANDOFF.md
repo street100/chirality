@@ -112,14 +112,22 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
   ⚑ Both new types are **one law, two carriers**: a declared form → a derived codec →
   a round-trip gate. `.manifest` round-trips against metis source, `.protocol` against
   bytes.
-- The element catalog has **not** migrated. `.planning/SELF-IMPLEMENT-CATALOG.md` and
-  `LEDGER.md` are still only in the old repo, and every tool that reads them
-  (`ledger-lint`, `pack`, `frontier`, `capture`, `doc`) reports exactly what it needs
-  in its `MIGRATION-NOTES.md`. **None was repointed at a guess** — a linter aimed at a
-  guess passes by looking at nothing.
-- `docs/{examples,definitions,elements}/` exist and are empty. Element status must be
-  **derived** from a build-state authority, never hand-written: ~171 hand-maintained
-  status lines is the rot the old tree's lint checks exist to catch.
+- ~~The element catalog~~ **HOISTED** (slice 7). `.planning/` is here whole, catalog and
+  `LEDGER.md` included. `ledger-lint` went from **14 of 14 inputs missing to 7**, and
+  the remaining 7 are *path* mismatches, not absences: `docs/status-ledger.md`,
+  `open-edges.md` and `FRONTIER.md` are under `docs/definitions/` now, `examples/` is
+  `docs/examples/`, and `scaffold/` is `lib/` + `prog/`. The first six are a mechanical
+  repoint. The seventh is not: checks G/R read line citations of the form
+  `scaffold/lib/x.metis:123`, and both the path and the line moved, so repointing that
+  one produces confident nonsense. **Still not repointed at a guess** — but the guesses
+  are gone, so this is now a small measured job.
+- `docs/elements/` is the one doc dir still empty, and stays empty until something
+  **derives** it from a build-state authority. ~171 hand-maintained status lines is the
+  rot the old tree's lint checks exist to catch.
+- 184 wikilinks across `docs/` do not resolve. That is **exactly the old repo's count**
+  on the same file set (129 distinct slugs, byte-for-byte the same list), so the hoist
+  broke none of them. They are pre-existing, and mostly `[[E##]]` element refs that want
+  `docs/elements/` to exist.
 - `make-public` for the new remote (new repo; the old link redirects).
 
 ## Known-wrong, small

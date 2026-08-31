@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""metis-frontier — the growth/orientation sibling of metis-pack (elements) and
-metis-doc (doc audits). Two deterministic subcommands, no LLM in any path:
+"""frontier — the growth/orientation sibling of pack (elements) and
+doc (doc audits). Two deterministic subcommands, no LLM in any path:
 
     condense   EXTRACT a rot-proof "where things stand" digest to docs/FRONTIER.md
     route      given a topic/claim, rank its home(s) in the ecosystem (or say
@@ -525,7 +525,7 @@ def route(query: str, porcelain: bool = False) -> None:
     strong = [r for r in scored if r[0] >= THRESHOLD and r[3] >= SPECIFICITY_FLOOR]
 
     if porcelain:
-        # machine contract for metis-capture: <score>\t<kind>:<id>\t<why>.
+        # machine contract for capture: <score>\t<kind>:<id>\t<why>.
         # kinds mapped to capture's vocab {node,decision,bank,edge,catalog,new};
         # an explicit 'new' line lets the caller tell genuinely-new from a dead
         # seam (empty output would trip its fallback).
@@ -595,7 +595,7 @@ def bundle(topic: str | None = None) -> None:
     text, fresh = _fresh_digest()
     if not fresh:
         print("<!-- NOTE: docs/FRONTIER.md was stale or missing; the digest "
-              "below was rebuilt in-memory. Run `metis-frontier condense` to "
+              "below was rebuilt in-memory. Run `frontier condense` to "
               "update the file. -->\n")
     print(text.rstrip())
     print("\n## Start here — orientation entry points\n")
@@ -607,7 +607,7 @@ def bundle(topic: str | None = None) -> None:
             head = first_heading(f.read())
         print(f"- `{rel}`" + (f" — {head}" if head else ""))
     print("\nDepth tier: docs/banks/ (read a concept's bank before naming a "
-          "gap). Element pipeline: metis-pack. Doc audits: metis-doc.")
+          "gap). Element pipeline: pack. Doc audits: doc.")
     if topic:
         print(f"\n## Topic focus — {topic!r}\n")
         route(topic)

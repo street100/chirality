@@ -89,7 +89,28 @@ lib/
 prog/          what chirality ships, as distinct from what it is
 tools/         one folder per tool
 docs/
-  examples/    one entry per code example
-  definitions/ one entry per named concept, plus a dictionary map
-  elements/    one entry per element: status, relationships, explanation
+  index.md         the hub. Notes link by [[slug]], never by path, so a note
+                   moves between roles without touching a single link.
+  definitions/     one entry per named concept
+  decisions/       one settled decision per entry, carrying its reason
+  modules/         the module map, the module groups, the views
+  banks/           the depth tier: one concept refracted into shards + homes
+  examples/        one entry per code example
+  elements/        one entry per element: status, relationships, explanation
+  implementation/  the source tree described, as distinct from specified
+  benchmarks/      measurements, with their dates
+.planning/         specs, audits, handoffs, captures, the element catalog
 ```
+
+## The doc tier sorts by role too
+
+Source is individuated by kind (the extension) and placed by role (the
+directory). Docs have one axis: a doc has no extension worth reading, so the
+directory carries all of it. `decisions/` is not `definitions/` because a
+decision is answerable and a definition is not; `banks/` is not `modules/`
+because a bank is the refraction of one concept across many homes while a
+module note describes one home.
+
+`elements/` is empty and stays empty until something derives it. Element status
+must come from a build-state authority. The old tree kept ~171 status lines by
+hand and grew the lint checks that exist to catch them drifting.

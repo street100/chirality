@@ -54,13 +54,13 @@
 
 ; ---- the def driver (kernel.py check_def = declare_def + finish_def) -----------
 ; E157 -- the payload is a Reason. These two close the checker's forced closure
-; (kernel.metis's TcR/CkR/FtR/UR/CaseR/EscR): `((tc-err m) (ld-err m))` re-wraps
+; (kernel.chiral's TcR/CkR/FtR/UR/CaseR/EscR): `((tc-err m) (ld-err m))` re-wraps
 ; a kernel payload into a loader one verbatim, so the eight field types are one
-; unit. Rendering happens at the module boundary, through diag.metis's dg-msg.
+; unit. Rendering happens at the module boundary, through diag.chiral's dg-msg.
 (data LoadR () (ld-ok (s Sig)) (ld-err (why Reason)))
 (data ChkR () (ok!) (bad! (why Reason)))
 
-; ---- E159's XErr, RETIRED into diag.metis's Reason (E157 decision 3) ---------
+; ---- E159's XErr, RETIRED into diag.chiral's Reason (E157 decision 3) ---------
 ; Its header stated the right intent -- "decided ONCE at the point of decision and
 ; rendered to a message only at the ld-err boundary" -- and its three call sites
 ; then applied `x-msg` AT the decision, because LoadR's field was Str. They map

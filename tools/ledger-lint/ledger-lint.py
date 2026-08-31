@@ -3,7 +3,7 @@
 
 Fable audit C6/F3/F4: the status ledger, principle citations, and MAP counts
 are maintained by discipline, not substrate, so they rot silently (the exact
-failure metis exists to eliminate, one level up). This is the mechanizable core
+failure chirality exists to eliminate, one level up). This is the mechanizable core
 of the fix: cross-check the claims that rotted against the tree.
 
 Checks (each independent; any failure -> exit 1):
@@ -34,7 +34,7 @@ WORDS = {"one":1,"two":2,"three":3,"four":4,"five":5,"six":6,"seven":7,
 
 # a code span is a file path if it carries a dir sep or a known extension
 PATHISH = re.compile(r"`([^`]+)`")
-EXTS = (".py", ".metis", ".md")
+EXTS = (".py", ".chiral", ".md")
 
 
 def is_pathish(tok: str) -> bool:
@@ -45,7 +45,7 @@ def is_pathish(tok: str) -> bool:
 
 
 # basename index of the tree (built once) — the ledger cites files by bare
-# basename ("kernel.py") as shorthand for their real location ("metis/kernel.py").
+# basename ("kernel.py") as shorthand for their real location ("chirality/kernel.py").
 _BASENAMES: set[str] | None = None
 
 
@@ -71,7 +71,7 @@ def check_a() -> list[str]:
     text = led.read_text()
     for m in PATHISH.finditer(text):
         raw = m.group(1)
-        # split compound evidence cells: "metis/native.py, lib/mach-x64.metis"
+        # split compound evidence cells: "chirality/native.py, lib/mach-x64.chiral"
         for tok in re.split(r"[;,]", raw):
             tok = tok.strip()
             # strip trailing prose like "(no LLVM)" and globs like tests/test_*
@@ -279,7 +279,7 @@ def check_f() -> list[str]:
 
 
 def _find_src(tok: str):
-    for base in (ROOT, SCAFFOLD, SCAFFOLD / "metis", SCAFFOLD / "lib"):
+    for base in (ROOT, SCAFFOLD, SCAFFOLD / "chirality", SCAFFOLD / "lib"):
         p = base / tok
         if p.is_file():
             return p
@@ -288,7 +288,7 @@ def _find_src(tok: str):
 
 def check_g() -> list[str]:
     """Line-numbered code citations in docs still fit the file. Handles the
-    banks' detached convention: `ports.metis` … (`:19`) — a bare `:NN` span
+    banks' detached convention: `ports.chiral` … (`:19`) — a bare `:NN` span
     resolves against the last file span seen. Unresolvable files are skipped
     (naming an unbuilt file in residue is legitimate)."""
     errs: list[str] = []
@@ -305,7 +305,7 @@ def check_g() -> list[str]:
         for i, ln in enumerate(f.read_text().splitlines(), 1):
             for span in re.findall(r"`([^`]+)`", ln):
                 span = span.strip()
-                pm = re.match(r"([A-Za-z0-9_/.-]+\.(?:py|metis))"
+                pm = re.match(r"([A-Za-z0-9_/.-]+\.(?:py|chirality))"
                               r"(?::(\d+)(?:[–-](\d+))?)?$", span)
                 if pm:
                     p = _find_src(pm.group(1))
@@ -325,14 +325,14 @@ def check_g() -> list[str]:
 
 
 def _defines(p, name: str) -> list[int]:
-    """Line numbers at which source file `p` DEFINES `name`. metis top-level
+    """Line numbers at which source file `p` DEFINES `name`. chirality top-level
     forms only bind at column 0 — `(def x ...)`, `(data X ...)`, `(porttype X)`
     — so anchoring the pattern at `^(` keeps a nested *use* from reading as a
     definition. Python: a `def`/`class` at any indent, or a module-level
     binding."""
     out: list[int] = []
     n = re.escape(name)
-    if p.suffix == ".metis":
+    if p.suffix == ".chiral":
         pat = re.compile(rf"^\([A-Za-z][A-Za-z0-9_-]*\s+{n}(?![A-Za-z0-9_?!*<>=+-])")
     else:
         pat = re.compile(rf"^\s*(?:def|class)\s+{n}\b|^{n}\s*[:=]")
@@ -347,7 +347,7 @@ def check_r() -> list[str]:
 
     Check G reads as "line citations are cross-checked against live files" and
     is in fact a BOUNDS test: it fires only when a citation runs off the end of
-    the file. `docs/banks/verification.md` carried `ddc.metis:127` and `:129`
+    the file. `docs/banks/verification.md` carried `ddc.chiral:127` and `:129`
     for `ddc-legc` and `ddc-verdict-code`, which live at 162 and 185 — both
     numbers sit comfortably inside a 191-line file, so G passed them, and both
     were stale before the run that finally noticed. Content was never consulted.
@@ -375,7 +375,7 @@ def check_r() -> list[str]:
     """
     errs: list[str] = []
     ident = re.compile(r"^[A-Za-z_][A-Za-z0-9_?!*<>=+-]*$")
-    cite = re.compile(r"([A-Za-z0-9_/.-]+\.(?:py|metis))(?::(\d+))?$")
+    cite = re.compile(r"([A-Za-z0-9_/.-]+\.(?:py|chirality))(?::(\d+))?$")
     bare = re.compile(r":(\d+)$")
 
     for f in (sorted((ROOT / "docs").glob("*.md"))
@@ -419,7 +419,7 @@ def check_h() -> list[str]:
     the reference every pre-run copies syntax from must not teach illegal ops."""
     errs: list[str] = []
     cheat = ROOT / "examples" / "_CHEATSHEET.md"
-    rf = SCAFFOLD / "metis" / "refine.py"
+    rf = SCAFFOLD / "chirality" / "refine.py"
     if not (cheat.exists() and rf.exists()):
         return errs
     m = re.search(r"_OPS\s*=\s*\(([^)]*)\)", rf.read_text())
@@ -443,7 +443,7 @@ def _load_frontier():
     path = ROOT / "bin" / "tools/frontier/frontier.py"
     if not path.exists():
         return None
-    spec = importlib.util.spec_from_file_location("metis_frontier", path)
+    spec = importlib.util.spec_from_file_location("chirality_frontier", path)
     if spec is None or spec.loader is None:
         return None
     mod = importlib.util.module_from_spec(spec)
@@ -577,15 +577,15 @@ def check_k() -> list[str]:
 # exact name with the already-prefixed variants `ar-str-cmp` (asm-reloc:79) and
 # `cb-str-cmp` (compile-back:128) — so the ratchet was SLACK BY ONE and would have
 # let a new duplicate through. There are 5 ad-hoc comparators; 3 share the name.
-# data Ord in 4 (collections, row-infer, ty-cmp + TUI/samples/collections.metis).
+# data Ord in 4 (collections, row-infer, ty-cmp + TUI/samples/collections.chiral).
 # The 4th Ord is an A3 duplicate-module copy, so E155 removes it and E151b takes the
 # rest to 1 — the two ratchets overlap by one file, which is honest, not double-count.
 # (The Ord baseline was written as 3 from a scaffold/lib-only grep; this check caught
 #  that the moment it ran — the reason a ratchet beats a prose claim.)
 # E151b Step 6 pins the other three retired names at their post-change count of 1.
 # The trailing space in each pattern makes it an EXACT-NAME match: the prefix-dodged
-# clones `gate-contains` (manas/core/gate.metis), `str-has` (manas/core/stop.metis)
-# and the second `str-has` (manas/core/flow.metis) are deliberately NOT counted —
+# clones `gate-contains` (manas/core/gate.chiral), `str-has` (manas/core/stop.chiral)
+# and the second `str-has` (manas/core/flow.chiral) are deliberately NOT counted —
 # they are different names, they belong to E154, and a pattern that caught them would
 # be pinning work this element does not do.
 OWNERSHIP_BASELINE = {r"^\(def str-cmp ": 1, r"^\(data Ord \(\)": 2,
@@ -597,8 +597,8 @@ def check_l() -> list[str]:
     owning module; N must never grow. Lower the baseline when an element retires
     copies — see LEDGER VAL/E151."""
     errs: list[str] = []
-    srcs = [f for f in list((ROOT / "scaffold" / "lib").rglob("*.metis"))
-            + list((ROOT / "TUI").rglob("*.metis"))
+    srcs = [f for f in list((ROOT / "scaffold" / "lib").rglob("*.chiral"))
+            + list((ROOT / "TUI").rglob("*.chiral"))
             if "/scaffold/lib/scriba/" not in str(f)]   # symlink to TUI/scriba, same files
     for pat, baseline in OWNERSHIP_BASELINE.items():
         rx = re.compile(pat, re.M)
@@ -621,7 +621,7 @@ def check_l() -> list[str]:
 # at all, and nothing to reconcile. The lesson: check the simplest direct observation
 # (ls -l) before reasoning from indirect evidence (inodes, mutation experiments).
 #
-# What survives for E155: `resolve.metis` takes ONE libdir, which is WHY the symlinks
+# What survives for E155: `resolve.chiral` takes ONE libdir, which is WHY the symlinks
 # exist; and its "first occurrence wins" dedup silently drops a module, a P1 hole.
 # The check therefore guards the arrangement rather than hunting for divergence.
 
@@ -632,8 +632,8 @@ def check_m() -> list[str]:
     foundation — that is the failure this guards, and it cannot happen by editing,
     only by someone replacing a link with a file."""
     errs: list[str] = []
-    lib = {f.stem: f for f in (ROOT / "scaffold" / "lib").glob("*.metis")}
-    for f in sorted((ROOT / "TUI").rglob("*.metis")):
+    lib = {f.stem: f for f in (ROOT / "scaffold" / "lib").glob("*.chiral")}
+    for f in sorted((ROOT / "TUI").rglob("*.chiral")):
         src = lib.get(f.stem)
         if src and src.resolve() != f.resolve():
             errs.append(f"[M] {f.relative_to(ROOT)} and {src.relative_to(ROOT)} share a "
@@ -680,23 +680,23 @@ def check_o() -> list[str]:
 def check_p() -> list[str]:
     """P. The suite-wide compiler override is TOTAL (added 2026-08-25).
 
-    E166's admission gate (G3) works by exporting METISC_BIN and running the
-    whole native suite, so that "the suite ran under metisc-c" is a claim about
+    E166's admission gate (G3) works by exporting CHIRALITY_BIN and running the
+    whole native suite, so that "the suite ran under chirality-bin-c" is a claim about
     every phase. It was not. Five sub-scripts re-derived the compiler from
-    bin/metisc -> scaffold/build/B1 and ignored the override, and two more went
-    through bin/metis, which had its own resolution -- so seven of eleven phases
-    ran under B1 while the gate counted their assertions as metisc-c coverage.
+    bin/chirality-bin -> scaffold/build/B1 and ignored the override, and two more went
+    through bin/chirality, which had its own resolution -- so seven of eleven phases
+    ran under B1 while the gate counted their assertions as chirality-bin-c coverage.
     Mechanized because a convention only some scripts honour is precisely the
     kind of thing that rots back, one new test script at a time.
 
     The rule: a suite script that names `scaffold/build/B1` as a compiler
-    candidate must also consult `METISC_BIN`. A script that reaches the compiler
-    THROUGH bin/metis names no candidate of its own and needs nothing; bin/metis
+    candidate must also consult `CHIRALITY_BIN`. A script that reaches the compiler
+    THROUGH bin/chirality names no candidate of its own and needs nothing; bin/chirality
     itself is checked here by name, because it is what makes those phases
     overridable at all.
     """
     errs: list[str] = []
-    files = sorted((ROOT / "scaffold" / "tests").glob("*.sh")) + [ROOT / "bin" / "metis"]
+    files = sorted((ROOT / "scaffold" / "tests").glob("*.sh")) + [ROOT / "bin" / "chirality"]
     for f in files:
         if not f.exists():
             errs.append(f"[P] {f.relative_to(ROOT)} missing — four suite phases reach the "
@@ -705,9 +705,9 @@ def check_p() -> list[str]:
         text = f.read_text()
         if "scaffold/build/B1" not in text:
             continue
-        if "METISC_BIN" not in text:
+        if "CHIRALITY_BIN" not in text:
             errs.append(f"[P] {f.relative_to(ROOT).as_posix()} resolves a compiler (it names "
-                        f"scaffold/build/B1) but never consults METISC_BIN — an exported "
+                        f"scaffold/build/B1) but never consults CHIRALITY_BIN — an exported "
                         f"override would skip it, and E166's admission claim narrows without "
                         f"saying so")
     return errs
@@ -898,13 +898,13 @@ def check_s() -> list[str]:
     """S. A rank-2 anchor's PATH is a property of git, not of a run (2026-08-25).
 
     `oid-prov` ranks every `or-fixed` 2 regardless of the path
-    (test-floor.metis), so a file the harness wrote thirty seconds ago launders
+    (test-floor.chiral), so a file the harness wrote thirty seconds ago launders
     itself to "a fixed committed artifact, or a reference outside BOTH legs" --
     the rank that caught E161 G0. E170 W0.3 closed the half a type can see (the
     `or-fixed` arm now OPENS the path and compares the digest). This is the half
     it cannot: clauses 1-3 of the admission test
     (docs/testing-floors.md:246-252) are properties of the REPOSITORY -- tracked,
-    not matched by .gitignore, digest argument non-empty -- and no value in metis
+    not matched by .gitignore, digest argument non-empty -- and no value in chirality
     can observe them. `pv-fixed` is worse than `or-fixed`: it is an `ExProv`, and
     NOTHING opens it, before or after W0.3. This check is its only mechanical
     substitute.
@@ -938,7 +938,7 @@ def check_s() -> list[str]:
         return subprocess.run(["git", "check-ignore", "-q", rel],
                               cwd=ROOT, capture_output=True).returncode == 0
 
-    for f in sorted(SCAFFOLD.rglob("*.metis")):
+    for f in sorted(SCAFFOLD.rglob("*.chiral")):
         if f.is_symlink():
             continue
         rel_src = f.relative_to(ROOT).as_posix()
@@ -1035,7 +1035,7 @@ def preflight() -> int:
         print(f"  MISSING  {p:<40s} {why}")
     print("\nThis is the doc tier, and this tree does not have one yet: docs/ is")
     print("examples/ definitions/ elements/, all empty. Two of the inputs above are")
-    print("gone BY DECISION rather than unmapped -- scaffold/metis/{kernel,refine}.py,")
+    print("gone BY DECISION rather than unmapped -- scaffold/chirality/{kernel,refine}.py,")
     print("the Python oracle that check H's cheatsheet ops are verified against.")
     print("See tools/ledger-lint/MIGRATION-NOTES.md. Nothing was checked; this is")
     print("exit 2, not a clean run.")

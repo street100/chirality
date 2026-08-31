@@ -28,7 +28,7 @@ CHIR="$REPO/bin/chirality"
 # CHIRALITY_COMPILE overrides both -- one exported variable must put a chosen compiler
 # under the WHOLE suite, not just run-native.sh's own inline phases. E166's
 # admission gate (G3) exports it; until 2026-08-25 this script ignored it and
-# silently ran under B1 while the gate reported it as metisc-c coverage. Same
+# silently ran under B1 while the gate reported it as chirality-bin-c coverage. Same
 # resolution order as run-native.sh -- keep the two in step.
 CC="${CHIRALITY_COMPILE:-}"
 if [ -z "$CC" ]; then
@@ -43,7 +43,7 @@ pass=0; fail=0
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 ulimit -s unlimited
 
-# ---- H8 harness: compile a source with `metis compile`, then RUN the result ---
+# ---- H8 harness: compile a source with `chirality compile`, then RUN the result ---
 # want-exit is the COMPILER's exit (0 = emitted, 1 = refused); want-run, when
 # given, is what the emitted program must exit with.
 prof() {

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""metis-capture — turn a marked exploration note into scaffolded canonical
-artifacts, the growth-tier sibling of metis-doc (which audits) and metis-pack
+"""capture — turn a marked exploration note into scaffolded canonical
+artifacts, the growth-tier sibling of doc (which audits) and pack
 (which drives the element pipeline).
 
 The problem it ends: crystallising an exploration (a `VISION-*` note) into canon
@@ -10,7 +10,7 @@ the wrong home. capture does the deterministic half: for each section/claim it
 ROUTES the claim to its home(s) and SCAFFOLDS the target, pre-seeded with the
 source claim (verbatim) + the authority it must be checked against (the authority
 gradient: code > CONFORMANCE-MAP/INDEX > decision > bank > note). It scaffolds; a
-human/LLM fills — exactly as `metis-doc new-bank` scaffolds and `worked-example`
+human/LLM fills — exactly as `doc new-bank` scaffolds and `worked-example`
 fills.
 
 Hard rules (mirroring the toolchain philosophy):
@@ -71,7 +71,7 @@ they he she them us not no nor so if then than too very can will would should co
 what which who whom where when why how all any both each few more most other some
 such only own same over under again further about against between through during
 before after above below up down out off only just also now here there one two
-three four five per via vs metis need needs lacks lack real new absent designed
+three four five per via vs chirality need needs lacks lack real new absent designed
 split does doing done thing things form shape state note only already still open
 """.split())
 
@@ -394,7 +394,7 @@ def placement(kind, nid):
     if kind == "bank":
         if os.path.exists(os.path.join(ROOT, f"docs/banks/{nid}.md")):
             return f"edit-stub: refract into the existing docs/banks/{nid}.md shards."
-        return "new bank: created in place by `metis-doc new-bank`; fill the shards."
+        return "new bank: created in place by `doc new-bank`; fill the shards."
     if kind == "edge":
         return (f"edge insertion: extend edge {nid} in docs/open-edges.md, or add "
                 "a new numbered edge if the claim opens a genuinely new boundary "
@@ -434,7 +434,7 @@ def slugify_note(path):
 
 
 def new_bank_inplace(nid, enums):
-    """Reuse metis-doc new-bank (in place) + append the banks/INDEX row so lint
+    """Reuse doc new-bank (in place) + append the banks/INDEX row so lint
     stays green. Returns a status line for the report."""
     dest = os.path.join(ROOT, "docs/banks", f"{nid}.md")
     if os.path.exists(dest):
