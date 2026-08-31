@@ -37,9 +37,9 @@ import glob, os, re, sys, datetime
 # tools/<name>/<name>.py -> the tree root is THREE levels up, not two.
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CATALOG = os.path.join(ROOT, ".planning/SELF-IMPLEMENT-CATALOG.md")
-TEMPLATE = os.path.join(ROOT, "examples/_TEMPLATE.md")
-CHEAT = os.path.join(ROOT, "examples/_CHEATSHEET.md")
-INDEX = os.path.join(ROOT, "examples/INDEX.md")
+TEMPLATE = os.path.join(ROOT, "docs/examples/_TEMPLATE.md")
+CHEAT = os.path.join(ROOT, "docs/examples/_CHEATSHEET.md")
+INDEX = os.path.join(ROOT, "docs/examples/INDEX.md")
 CONFMAP = os.path.join(ROOT, ".planning/audit/CONFORMANCE-MAP.md")
 SPECDIR = os.path.join(ROOT, ".planning/specs")
 SPEC_TEMPLATE = os.path.join(SPECDIR, "_TEMPLATE.md")
@@ -176,7 +176,7 @@ def examples_for(tag):
     slug. The pipeline artifact is the one the INDEX row links, so ask the INDEX
     first and fall back to the glob only when no row names a file.
     """
-    exs = sorted(glob.glob(os.path.join(ROOT, "examples", f"{tag}-*.md")))
+    exs = sorted(glob.glob(os.path.join(ROOT, "docs", "examples", f"{tag}-*.md")))
     named = None
     if os.path.exists(INDEX):
         rx = re.compile(r"\((%s-[^)]+\.md)\)" % re.escape(tag))
@@ -185,7 +185,7 @@ def examples_for(tag):
             if len(cells) > 2 and cells[1].strip() == tag:
                 m = rx.search(line)
                 if m:
-                    named = os.path.join(ROOT, "examples", m.group(1))
+                    named = os.path.join(ROOT, "docs", "examples", m.group(1))
                 break
     if named and named in exs:
         exs.remove(named)
@@ -435,7 +435,7 @@ def audit_mode(eid, tag, title, row, row_kind, level):
         out.append(f"## 2. ARTIFACT UNDER AUDIT — .planning/specs/{tag}-{slug}-SPEC.md"
                    f"\n\n{sp.strip()}")
         out.append(f"## 3. Its example (the rationale it must not contradict) — "
-                   f"examples/{tag}-{slug}.md\n\n{ex.strip()}")
+                   f"docs/examples/{tag}-{slug}.md\n\n{ex.strip()}")
         hits = conf_rows(eid)
         out.append(f"## 4. Conformance-map rows naming {eid} (build-state authority)\n"
                    + ("\n".join(hits) if hits else "(none — postdates the map snapshot)"))
@@ -452,7 +452,7 @@ def audit_mode(eid, tag, title, row, row_kind, level):
 def kb_mode(eid, tag, title):
     """Standalone scoped-kb fetch: slices seeded from whatever artifacts exist."""
     seeds, names = [], []
-    for p in sorted(glob.glob(os.path.join(ROOT, "examples", f"{tag}-*.md"))) + \
+    for p in sorted(glob.glob(os.path.join(ROOT, "docs", "examples", f"{tag}-*.md"))) + \
              sorted(glob.glob(os.path.join(SPECDIR, f"{tag}-*-SPEC.md"))):
         seeds.append(open(p).read())
         names.append(os.path.relpath(p, ROOT))
@@ -764,14 +764,14 @@ def main():
     out.append("## 4. chirality idioms & vocabulary (use INSTEAD of glossary/PRINCIPLES/lib)\n"
                + open(CHEAT).read().strip())
     out.append("## 5. Next\nYour artifact is scaffolded (frontmatter filled) at "
-               f"`examples/{tag}-{slug}.md` with the six section headers. Open THAT file "
+               f"`docs/examples/{tag}-{slug}.md` with the six section headers. Open THAT file "
                "and fill sections 1–6. Do not re-read the template — it is already in your file.")
 
     print("\n\n".join(out))
 
     # ---- scaffold the artifact + INDEX row (only when a slug is given) ----
     if slug:
-        dest = os.path.join(ROOT, "examples", f"{tag}-{slug}.md")
+        dest = os.path.join(ROOT, "docs", "examples", f"{tag}-{slug}.md")
         today = datetime.date.today().isoformat()
         if os.path.exists(dest):
             print(f"\n[scaffold] {tag}-{slug}.md already exists — left as-is", file=sys.stderr)

@@ -177,7 +177,7 @@ def link_heads(text, self_rel):
             continue
         seen.add(name)
         m = re.match(r"E(\d+)(?:-|$)", name)
-        cands = [os.path.join(ROOT, "examples", os.path.basename(g)) for g in
+        cands = [os.path.join(ROOT, "docs", "examples", os.path.basename(g)) for g in
                  glob.glob(os.path.join(ROOT, "docs/examples", f"E{int(m.group(1)):02d}-*.md"))] \
             if m else [os.path.join(ROOT, d, f"{name}.md")
                        for d in DOC_ROLES + (".planning", "")]

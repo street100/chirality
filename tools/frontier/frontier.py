@@ -225,7 +225,7 @@ def spec_blocker(text: str) -> str:
 
 
 def parse_index_pipeline() -> list[tuple[str, int]]:
-    """examples/INDEX.md status column, counted. Status cells may carry a
+    """docs/examples/INDEX.md status column, counted. Status cells may carry a
     parenthetical ('drafted (reworked …)') — the bucket is the first word."""
     counts: Counter[str] = Counter()
     for ln in read("docs/examples/INDEX.md").splitlines():
