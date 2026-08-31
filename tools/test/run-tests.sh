@@ -3,8 +3,10 @@
 # bin/chirality-bin and nothing else compiles anything.
 #
 # Ported from the old tree's scaffold/tests/run-native.sh (12 phases).  SEVEN
-# phases run here; the five that do not are named below with the reason, because
-# a phase that silently vanishes is a gate that reports ok forever.
+# of those run here; the five that do not are named below with the reason,
+# because a phase that silently vanishes is a gate that reports ok forever.
+# Phase 13 is new here -- it has no old-tree number to inherit, and reusing 8-12
+# would have overwritten a name that is still owed.
 #
 #   1  inline behavioral          PORTED  -- source strings -> compile + run
 #   2  the test-runner            PORTED  -- rebuilt from source, then run
@@ -18,6 +20,7 @@
 #  10  external-compiler C leg    DROPPED    -- external judgment cut, by decision
 #  11  resolver + build state     NOT PORTED -- see MIGRATION-NOTES.md
 #  12  the test floor (E168)      NOT PORTED -- needs scaffold/tests/samples/
+#  13  typed diagnostics (E157)  NEW HERE   -- tools/test/diag.sh
 #
 # Each case's expected value comes from what the program MEANS, never from a
 # golden capture of chirality's own output.
@@ -138,15 +141,15 @@ run_phase 6 "linear mint discipline (E159 binder + arrow)"     linear-mint.sh
 # ones listed by name and reason.  A root that starts failing is caught; a KNOWN
 # one that starts PASSING is also reported, so the list cannot rot silently.
 #
-#   scriba-* flow-view-test : import manas/core/*, manas/chatter/*,
-#                             manas/pipeline/*, manas/profile/* -- the manas
-#                             subtree is NOT migrated (separate slice); only
-#                             prog/manas/{backend,coordinator,fsm,manas} are here
 #   t5_utf8 t5_vt_parser    : pre-existing TUI breakage, carried over from the
 #   t6_apc_roundtrip          old tree's own KNOWN_FAIL list
+#
+# The six scriba-* / flow-view-test roots left this list when the manas subtree
+# landed (slice 4).  They were never broken -- they imported twelve manas keys
+# that resolved to nothing.  Nothing in them was edited to fix it.
 echo
 echo "=== Phase 7: downstream roots compile (the apps lib/ can break) ==="
-KNOWN_FAIL=" scriba-main.prog scriba-manas-test.prog scriba-runview-test.prog scriba-runview-stream-test.prog scriba-test-b1.prog flow-view-test.prog t5_utf8.prog t5_vt_parser.prog t6_apc_roundtrip.prog "
+KNOWN_FAIL=" t5_utf8.prog t5_vt_parser.prog t6_apc_roundtrip.prog "
 r_pass=0; r_fail=0; r_skip=0; r_newpass=0
 ALL_ROOTS="$( cd "$REPO" && grep -rl '^(def compile-main' lib prog 2>/dev/null \
                 | while read -r x; do [ -L "$x" ] || echo "$x"; done | sort )"
@@ -174,6 +177,15 @@ echo "downstream roots: $r_pass compiled, $r_fail failed, $r_skip known/negative
 
 tally "$r_pass" "$r_fail"
 
+# ---- Phase 13: typed diagnostics (E157) --------------------------------------
+# Not an old-tree phase: E157 landed after the migration.  The reason it needs a
+# phase of its own is that the element changes NO message -- every string the
+# compiler emits after it is a string it emitted before -- so its gate is the
+# EVIDENCE (both sides of a redeclare, declared-vs-observed) plus seven named
+# mutants that must make the fixture go red.  It also carries the first
+# assertion anywhere on "let binder usage mismatch".
+run_phase 13 "typed diagnostics (E157 Reason closure)"         diag.sh
+
 echo
 echo "=== not ported from the old suite (named, not hidden) ==="
 echo "  Phase 8  module datasheet (E161)      -- 808 lines of fixtures on old-tree module keys; see tools/test/MIGRATION-NOTES.md"
@@ -183,12 +195,12 @@ echo "  Phase 11 resolver + build state       -- old basename-collision class is
 echo "  Phase 12 the test floor (E168)        -- needs scaffold/tests/samples/e168_*, e170_*; fixtures tree NOT migrated"
 
 # The assertion count, summed from the phases that report one:
-#   Phase 1 inline behavioral · Phases 3-6 sub-script tallies · Phase 7 roots.
+#   Phase 1 inline behavioral · Phases 3-6 + 13 sub-script tallies · Phase 7 roots.
 # Phase 2's own checks are counted by the test-runner binary itself, which
 # prints its rank and check count on its own line above and gates by exit code.
 echo
 echo "assertions: $((tot_pass + inline_pass)) passed, $((tot_fail + inline_fail)) failed"
-echo "  (Phase 1 inline $inline_pass/$((inline_pass+inline_fail)) · Phases 3-6 + Phase 7 roots: $tot_pass passed, $tot_fail failed)"
+echo "  (Phase 1 inline $inline_pass/$((inline_pass+inline_fail)) · Phases 3-6, 13 + Phase 7 roots: $tot_pass passed, $tot_fail failed)"
 echo "  Phase 2: the test-runner reports its own checks above and gates by exit code."
 
 echo

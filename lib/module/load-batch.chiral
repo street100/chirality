@@ -18,6 +18,7 @@
 ; Used by: compile-front.chiral — replaces `(load-source src)` with
 ;          `(load-source-batched src)`.
 
+(import "typing/diag")    ; E157: r-relayed -- this module is INGRESS, never an originator
 (import "surface/parse")   ; load-source, load-form, install-porttypes, read-all-str,
                    ; sig-close-extent + CloseR + sh-msg (via loader),
                    ; Sexp, SrcSt, StepR, SEnv, base-senv, empty-sig (via loader),
@@ -77,9 +78,9 @@
 (def rest-batched
   (lam (sig env forms cap)
     (case (rest-forms-capped sig env forms cap)
-      ((batch-err m) (ld-err m))
+      ((batch-err m) (ld-err (r-relayed (rl-batch) m)))
       ((batch-done sig2) (case (sig-close-extent sig2)
-                           ((close-err e) (ld-err (sh-msg e)))
+                           ((close-err e) (ld-err (r-relayed (rl-shape) (sh-msg e))))
                            ((close-ok sc) (ld-ok sc))))
       ((batch-more sig2 env2 pending steps)
         (rest-batched sig2 env2 pending cap)))))
@@ -96,17 +97,17 @@
 (def load-source-batched
   (lam (src)
     (case (read-all-str src)
-      ((a-err m p) (ld-err (str-cat "parse: " m)))
+      ((a-err m p) (ld-err (r-relayed (rl-reader) m)))
       ((a-ok forms)
         ; Phase 1: porttypes (few — bounded by distinct porttype declarations)
         (case (install-porttypes (sst empty-sig base-senv) (collect-porttype forms))
-          ((step-err m) (ld-err m))
+          ((step-err m) (ld-err (r-relayed (rl-step) m)))
           ((step-ok stpt) (case stpt ((sst sigpt envpt)
             ; Phase 2: data group (few — bounded by distinct data declarations)
             (let (dforms (collect-data forms))
               (let (envd (senv-add-datanames envpt dforms))
                 (case (elab-all-data envd dforms)
-                  ((p-err m) (ld-err (str-cat "data-group: " m)))
+                  ((p-err m) (ld-err (r-relayed (rl-parse) m)))
                   ((p-ok decls)
                     (case (load-data-group sigpt decls)
                       ((ld-err m) (ld-err m))

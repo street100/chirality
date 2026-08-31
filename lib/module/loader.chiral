@@ -11,6 +11,7 @@
 (import "surface/surface")             ; Core / CAtom / CArm (the elaborator's output)
 (import "typing/kernel")              ; Term / Sig / infer / check / eval-term / i->qty
 (import "prelude/collections")         ; E161: the ONE polymorphic `reverse` (no private copy)
+(import "typing/diag")                 ; E157: Reason -- ld-err/bad! carry a VALUE, not a sentence
 
 ; ---- Core -> the shared kernel Term (decision #1: bridge at install) ----------
 ; Near-1:1 (Core mirrors terms.py). Drops the surface-only binder NAMES (Term is
@@ -52,26 +53,21 @@
 (def core-mb    (lam (m) (case m (none none) ((some c) (some (core->term c))))))
 
 ; ---- the def driver (kernel.py check_def = declare_def + finish_def) -----------
-(data LoadR () (ld-ok (s Sig)) (ld-err (msg Str)))
-(data ChkR () (ok!) (bad! (msg Str)))
+; E157 -- the payload is a Reason. These two close the checker's forced closure
+; (kernel.metis's TcR/CkR/FtR/UR/CaseR/EscR): `((tc-err m) (ld-err m))` re-wraps
+; a kernel payload into a loader one verbatim, so the eight field types are one
+; unit. Rendering happens at the module boundary, through diag.metis's dg-msg.
+(data LoadR () (ld-ok (s Sig)) (ld-err (why Reason)))
+(data ChkR () (ok!) (bad! (why Reason)))
 
-; ---- E159: the extern declaration judgments, as a CLOSED SUM -----------------
-; Every reason an `extern` form can be refused is a member here, decided ONCE at
-; the point of decision and rendered to a message only at the ld-err boundary --
-; never a string reconstructed or compared downstream (pattern-boundary-sums).
-(data XErr ()
-  (x-redeclared  (n Str))            ; a second extern under a taken name
-  (x-not-a-type  (n Str))            ; the declared "type" is not a universe
-  (x-linear-pure (n Str) (r Str)))   ; linear RESULT r behind an all-`->` spine
-(declare x-msg (-> XErr Str))
-(def x-msg
-  (lam (e)
-    (case e
-      ((x-redeclared n) (str-cat "extern redeclared: " n))
-      ((x-not-a-type n) (str-cat "type of extern is not a type: " n))
-      ((x-linear-pure n r)
-        (str-cat "extern " (str-cat n (str-cat " returns the linear " (str-cat r
-          " through a pure `->` arrow: a minted capability must cross (`=>`), else it is never tracked at q1"))))))))
+; ---- E159's XErr, RETIRED into diag.metis's Reason (E157 decision 3) ---------
+; Its header stated the right intent -- "decided ONCE at the point of decision and
+; rendered to a message only at the ld-err boundary" -- and its three call sites
+; then applied `x-msg` AT the decision, because LoadR's field was Str. They map
+; exactly: x-redeclared -> (r-redeclared (subj-extern n) incumbent newcomer),
+; which now carries BOTH declarations rather than only the name; x-not-a-type ->
+; (r-judged (subj-extern n) (jg-extern-nontype)); x-linear-pure -> (r-arrow
+; (subj-extern n) r). Two taxonomies for one job was the ownership defect.
 ; a top-level item: a def (name + type + body, all Core) or a data declaration
 ; (already a Term-based DataDecl -- data-decl elaboration is the front half).
 (data LItem () (li-def (name Str) (ty Core) (body Core)) (li-data (decl DataDecl)))
@@ -402,7 +398,7 @@
                   (case (check s2 (ctx-nil) bodyt (eval-term nil tyt))
                     ((ck-err m) (ld-err m))
                     ((ck-ok u)  (ld-ok s2))))))
-            (_ (ld-err "definition type is not a type"))))))))
+            (_ (ld-err (r-judged (subj-def name) (jg-def-ty-nontype))))))))))
 
 ; ---- the forward-declaration split (kernel.py declare_def / finish_def) --------
 ; Real chirality source (kernel.chiral included) uses (declare name ty) + a later
@@ -425,7 +421,7 @@
         ((tc-ok tty tu)
           (case tty
             ((v-type l) (ld-ok (sig-add-global s name tyt (t-type 0))))
-            (_ (ld-err "declared type is not a type"))))))))
+            (_ (ld-err (r-judged (subj-def name) (jg-declare-ty-nontype))))))))))
 
 ; load-finish = kernel.py finish_def: the name must already be declared -- look
 ; its declared type Term up (error if absent: the (def name body) form REQUIRES a
@@ -435,7 +431,7 @@
 (def load-finish (-> Sig Str Core LoadR)
   (lam (s name bodyc)
     (case (sig-global-ty s name)
-      (none (ld-err (str-cat "def body with no prior declare: " name)))
+      (none (ld-err (r-judged (subj-def name) (jg-no-prior-declare))))
       ((some tyt)
         (let (bodyt (core->term bodyc))
           (case (check s (ctx-nil) bodyt (eval-term nil tyt))
@@ -461,7 +457,7 @@
 (def load-extern (-> Sig Str Core LoadR)
   (lam (s name tyc)
     (case (sig-prim-ty s name)
-      ((some x) (ld-err (x-msg (x-redeclared name))))
+      ((some x) (ld-err (r-redeclared (subj-extern name) (dc-ty x) (dc-ty (core->term tyc)))))
       (none
         (let (tyt (core->term tyc))
           (case (infer s (ctx-nil) tyt)
@@ -469,7 +465,7 @@
             ((tc-ok tty tu)
               (case tty
                 ((v-type l) (load-extern-linear s name tyt))
-                (_ (ld-err (x-msg (x-not-a-type name))))))))))))
+                (_ (ld-err (r-judged (subj-extern name) (jg-extern-nontype))))))))))))
 (def load-extern-linear
   (lam (s name tyt)
     (case (ty-result-linear s tyt)
@@ -477,7 +473,7 @@
       ((some r)
         (case (ty-crosses tyt)
           (true  (ld-ok (sig-add-prim s name tyt)))
-          (false (ld-err (x-msg (x-linear-pure name r)))))))))
+          (false (ld-err (r-arrow (subj-extern name) r))))))))
 
 ; ---- the atom driver (kernel.py declare_atom, linear=True) ---------------------
 ; a (porttype Name) opaque linear atom: an opaque type constant recorded in the
@@ -491,7 +487,7 @@
 (def load-atom (-> Sig Str LoadR)
   (lam (s name)
     (case (atom-taken? s name)
-      (true  (ld-err (str-cat "atom type redeclared: " name)))
+      (true  (ld-err (r-redeclared (subj-atom name) (dc-none) (dc-none))))
       (false (ld-ok (sig-add-atom s name))))))
 
 ; ---- the data driver (kernel.py check_data): params + fields are types, every
@@ -513,7 +509,7 @@
           ((tc-err m) (bad! m))
           ((tc-ok pty pu) (case pty
             ((v-type l) (check-dparams s (ctx-bind (q0) (eval-term (env-of ctx) pk) ctx) rest))
-            (_ (bad! "data parameter is not a type")))))))))
+            (_ (bad! (r-judged (subj-none) (jg-dparam-nontype)))))))))))
 (declare check-dfields (-> Sig Ctx Str (List (Pair Str (List SP))) (List Field) ChkR))
 (def check-dfields
   (lam (s pctx dn spc fields)
@@ -525,12 +521,12 @@
           ((tc-ok fty-ty fu) (case fty-ty
             ((v-type l)
               (case (walk spc dn (pt-name dn) 0 fty)          ; strict positivity in dn
-                ((pos-bad r) (bad! (str-cat "not strictly positive: " fname)))
+                ((pos-bad r) (bad! (r-judged (subj-field fname) (jg-not-positive))))
                 ((pos-ok)
                   (case (linear-bad? s q (eval-term (env-of pctx) fty))
-                    (true  (bad! (str-cat "linear field declared non-1: " fname)))
+                    (true  (bad! (r-judged (subj-field fname) (jg-linear-field-decl))))
                     (false (check-dfields s pctx dn spc rest))))))
-            (_ (bad! "field type is not a type")))))))))))
+            (_ (bad! (r-judged (subj-none) (jg-field-nontype)))))))))))))
 (declare check-dctors (-> Sig Ctx Str (List (Pair Str (List SP))) (List Ctor) ChkR))
 (def check-dctors
   (lam (s pctx dn spc ctors)
@@ -552,7 +548,7 @@
   (lam (s decl)
     (case decl ((data-decl dn params ctors)
       (case (sig-data s dn)
-        ((some d) (ld-err (str-cat "data redeclared: " dn)))
+        ((some d) (ld-err (r-redeclared (subj-data dn) (dc-data d) (dc-data decl))))
         (none
           (case (check-dparams s (ctx-nil) params)
             ((bad! m) (ld-err m))
@@ -573,7 +569,7 @@
       (nil (ld-ok s))
       ((cons d rest) (case d ((data-decl dn params ctors)
         (case (sig-data s dn)
-          ((some x) (ld-err (str-cat "data redeclared: " dn)))
+          ((some x) (ld-err (r-redeclared (subj-data dn) (dc-data x) (dc-data d))))
           (none     (grp-add (sig-add-data s d) rest)))))))))
 (declare grp-check (-> Sig (List DataDecl) ChkR))
 (def grp-check

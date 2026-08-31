@@ -21,6 +21,7 @@
 ; exhaustion and is RESERVED (conv is not fuel-threaded in this build, matching E3:
 ; the core is not asserted (total)); wiring the fuel bound is the follow-on.
 (import "typing/kernel")         ; Term / Ctx / TcR + infer + ctx-nil (E3/E4)
+(import "typing/diag")          ; E157: TcR carries a Reason; the verdict wants text
 
 ; ---- kernel-spec, as data: the demanded statement (an audited artifact) -------
 (data JForm () (j-check) (j-infer) (j-conv) (j-usage) (j-data) (j-membrane))
@@ -56,4 +57,4 @@
     (false (v-wrong-carrier (spec-cver sp) (cert-cver c)))
     (true (case (infer (mk-sig nil nil nil nil nil nil nil nil nil) (ctx-nil) (cert-tm c))  ; closed-core cert: empty Sig
       ((tc-ok ty use) (v-accepted))
-      ((tc-err msg)   (v-rejected msg "")))))))
+      ((tc-err msg)   (v-rejected (dg-msg msg) "")))))))

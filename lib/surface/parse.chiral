@@ -42,6 +42,7 @@
 (import "surface/sexp")                ; Sexp / read-all-str / AllR (E1 reader)
 (import "surface/surface")             ; Surf + sub-types, SEnv/senv, elab, PR/p-ok/p-err
 (import "module/loader")              ; core->term, load-def, load-data, LoadR, empty-sig
+(import "typing/diag")                 ; E157: dg-msg at the 7 EGRESS sites, r-relayed at the 4 INGRESS ones
 
 ; ================= small classifiers over Sexp =================================
 
@@ -576,7 +577,7 @@
                   (case (elab env2 nil bodysurf) ((p-err m) (step-err m))
                     ((p-ok bodycore)
                       (case (load-def sig name tycore bodycore)
-                        ((ld-err m) (step-err m))
+                        ((ld-err m) (step-err (dg-msg m)))
                         ; E160/E161: charge the name, tagged with the head that
                         ; exported it, to the module's open coordinate (a no-op
                         ; when none is open -- unannotated modules untouched).
@@ -593,7 +594,7 @@
         (case (elab env nil bodysurf) ((p-err m) (step-err m))
           ((p-ok bodycore)
             (case (load-finish sig name bodycore)
-              ((ld-err m) (step-err m))
+              ((ld-err m) (step-err (dg-msg m)))
               ((ld-ok sig2) (step-ok (sst (sig-charge sig2 name (eh-def)) env))))))))))
 
 ; (declare name ty): forward declaration for mutual recursion -- install name:ty
@@ -616,7 +617,7 @@
                            (case (elab env nil tysurf) ((p-err m) (step-err m))
                              ((p-ok tycore)
                                (case (load-declare sig name tycore)
-                                 ((ld-err m) (step-err m))
+                                 ((ld-err m) (step-err (dg-msg m)))
                                  ((ld-ok sig2) (step-ok (sst sig2 (senv-add-global env name))))))))))
                   (_ (step-err "(declare name ty (measure ...)) -- measure attribute DEFERRED"))))
               (nil (step-err "(declare name ty)"))))
@@ -669,7 +670,7 @@
                            (case (elab env nil tysurf) ((p-err m) (step-err m))
                              ((p-ok tycore)
                                (case (load-extern sig name tycore)
-                                 ((ld-err m) (step-err m))
+                                 ((ld-err m) (step-err (dg-msg m)))
                                  ; E161: an extern is an export head -- charge it.
                                  ((ld-ok sig2) (step-ok (sst (sig-charge sig2 name (eh-extern))
                                                              (senv-add-prim env name))))))))))
@@ -692,7 +693,7 @@
           ((s-sym name)
             (case r1
               (nil (case (load-atom sig name)
-                     ((ld-err m) (step-err m))
+                     ((ld-err m) (step-err (dg-msg m)))
                      ((ld-ok sig2) (step-ok (sst sig2 (senv-add-atom env name))))))
               ; indexed `(porttype Name (n ty)...)`: a value-indexed linear port =
               ; EMPTY data with the index params, marked linear (mirrors surface.py
@@ -701,7 +702,7 @@
                    ((p-err m) (step-err m))
                    ((p-ok pr) (case pr ((pair params fctx)
                      (case (load-data sig (data-decl name params nil))
-                       ((ld-err m) (step-err m))
+                       ((ld-err m) (step-err (dg-msg m)))
                        ((ld-ok sig2)
                          (step-ok (sst (sig-add-linear-data sig2 name)
                                        (senv-add-data env name))))))))))))
@@ -804,7 +805,7 @@
                                           ((p-ok tycore)
                                             (let (tyt (core->term tycore))
                                               (case (infer sig (ctx-nil) tyt)
-                                                ((tc-err m) (mf-bad (mf-elab m)))
+                                                ((tc-err m) (mf-bad (mf-elab (dg-msg m))))
                                                 ((tc-ok tty tu)
                                                   (case tty
                                                     ((v-type l) (mf-ok (pair dn tyt)))
@@ -1312,7 +1313,7 @@
       (nil (case st ((sst sig env) (ld-ok sig))))
       ((cons f rest)
         (case (load-form st f)
-          ((step-err m) (ld-err m))
+          ((step-err m) (ld-err (r-relayed (rl-step) m)))
           ((step-ok st2) (load-forms st2 rest)))))))
 
 ; ---- A1d.1: data-group loading (mutually-recursive data) --------------------
@@ -1430,17 +1431,17 @@
 (def load-source (-> Str LoadR)
   (lam (src)
     (case (read-all-str src)
-      ((a-err m p) (ld-err (str-cat "parse: " m)))
+      ((a-err m p) (ld-err (r-relayed (rl-reader) m)))
       ((a-ok forms)
         ; 1. porttype atoms first (data may reference them),
         (case (install-porttypes (sst empty-sig base-senv) (collect-porttype forms))
-          ((step-err m) (ld-err m))
+          ((step-err m) (ld-err (r-relayed (rl-step) m)))
           ((step-ok stpt) (case stpt ((sst sigpt envpt)
             ; 2. the whole data group (mutual recursion), then
             (let (dforms (collect-data forms))
               (let (envd (senv-add-datanames envpt dforms))
                 (case (elab-all-data envd dforms)
-                  ((p-err m) (ld-err (str-cat "data-group: " m)))
+                  ((p-err m) (ld-err (r-relayed (rl-parse) m)))
                   ((p-ok decls)
                     (case (load-data-group sigpt decls)
                       ((ld-err m) (ld-err m))
@@ -1461,5 +1462,5 @@
                           ((ld-err m) (ld-err m))
                           ((ld-ok sigf)
                             (case (sig-close-extent sigf)
-                              ((close-err e) (ld-err (sh-msg e)))
+                              ((close-err e) (ld-err (r-relayed (rl-shape) (sh-msg e))))
                               ((close-ok sc) (ld-ok sc)))))))))))))))))))

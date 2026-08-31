@@ -1,0 +1,469 @@
+; diag.chiral -- E157: the compiler's diagnostics as typed VALUES.
+;
+; THE DEFECT THIS REMOVES. The checker/loader outcome sums were always right --
+; `(tc-ok ...)`/`(tc-err ...)` is errors-as-values, no exceptions. The PAYLOAD was
+; not: `(tc-err (msg Str))` makes the reason a sentence, so a taxonomy cannot
+; survive its own construction site. E159's `XErr` is the proof -- a correct
+; closed sum, built and collapsed by `x-msg` in ONE expression, three times, only
+; because `LoadR`'s field was `Str`. Widen the field and the sum survives.
+; (pattern-boundary-sums: a Str that encodes which-of-N is a sum wearing a
+; disguise; error-and-alarm: diagnostic BY CONSTRUCTION.)
+;
+; THE TAXONOMY RULE (from the worked example, and it is checkable at review):
+; ONE `Reason` constructor per EVIDENCE SHAPE, never per message. What a reason
+; is ABOUT varies far more than what it CARRIES, so the varying part is a
+; separate `Subject`, and the judgments whose only evidence IS their subject
+; share one arm (`r-judged`) over a closed `Judg` code. `Judg` is a sum and not
+; a Str precisely because it is which-of-N: adding a judgment is then a compile
+; error in this file's renderer, never a silently-accepted new string.
+;
+; ACCESSOR-FUNCTION PATTERN (inherited from lowering/skip-diag.chiral, E97):
+; every `case` on Reason/Subject/Judg/Decl/Relay lives inside a small accessor
+; def here, as the direct body of a `lam`. Callers CONSTRUCT these values and
+; never pattern-match them inside a case arm -- that nesting triggers a real
+; compiler "unknown name" bug. This is not optional and any new diagnostic sum
+; inherits it.
+;
+; E154 (flat emitted-label namespace): every internal here is `dg-` prefixed, and
+; the type/constructor names were censused against every source file in lib/ and
+; prog/ before commit. Two co-blobbed modules cannot define the same emitted
+; label.
+;
+; WHY typing/. LAYOUT.md: the extension is the kind, the directory is the ROLE.
+; Every one of `Judg`'s 38 arms is a judgment the checker refused to make, and
+; the evidence the other arms carry is `Term`, `Qty` and `DataDecl` -- so this is
+; "every check on a type", stated from the refusal side. Its two importers are
+; `typing/kernel` (the checker, 37 originating sites) and `module/loader` (its
+; driver, 13). It is language-implementation-only, which is `typing`'s tier. It
+; is NOT a topic bucket: "diagnostics" is subject matter, and subject matter is
+; neither the extension nor the directory.
+;
+; NO POSITIONS. `Site` was designed for this element and then dropped, measured:
+; `Core` has 16 constructors and zero positions, `DataDecl`/`Ctor`/`LItem` none.
+; Positions live only in the reader (surface/sexp.chiral) and die at the reader->
+; elaborator boundary. Threading them is a separate, unminted element. What a
+; redeclare carries instead is the INCUMBENT DECLARATION itself -- strictly more
+; than the name, and honest about what the compiler actually knows.
+;
+; RENDERING IS A LATER, PLURAL CHOICE. `dg-msg : (-> Reason Str)` is the plain-
+; text exit and is deliberately no prettier than the strings it replaced: every
+; message this file produces is byte-for-byte a message the compiler already
+; produced. E158's `Doc` joins it as a sibling; it does not replace it.
+
+(import "prelude/prelude")
+(import "typing/qtt")          ; Qty -- r-usage / r-linear carry real quantities
+(import "surface/syntax")      ; Term -- r-mismatch carries expected/actual as TERMS
+(import "surface/data")        ; DataDecl + llen -- r-redeclared carries declarations
+(import "lowering/skip-diag")  ; SkRec -- r-skipped JOINS E97's chain, never copies it
+
+; ---- WHERE a relayed reason came from ---------------------------------------
+; The closure of eight containers (TcR/CkR/FtR/UR/CaseR/EscR/LoadR/ChkR) meets
+; the outside world at exactly one shape of site: a layer BELOW the checker --
+; the reader, the batch driver, the per-form step driver -- hands up a diagnostic
+; it owns. `Relay` names WHICH layer. It is a closed sum and not a Str for the
+; same reason `Judg` is: it is which-of-N over an enumerated set. An originating
+; detection site must NEVER build an `r-relayed`; every one of them knows its own
+; reason. `r-relayed` outside the enumerated ingress lines is the failure this
+; type exists to make visible.
+(data Relay ()
+  (rl-batch)      ; BatchR / batch-err  -- load-batch's own outcome sum
+  (rl-step)       ; StepR  / step-err   -- surface/parse.chiral's per-form driver
+  (rl-parse)      ; p-err               -- the elaborator, on the data-group path
+  (rl-reader)     ; a-err               -- the reader (read-all), byte offsets and all
+  (rl-shape))     ; close-err / ShErr   -- the module-shape (E161) checker
+
+; ---- WHAT the judgment is about ---------------------------------------------
+; The axis that varies most, and the reason `Reason` stays small: a new judged
+; category costs an arm HERE, not there.
+(data Subject ()
+  (subj-none)                    ; a judgment about a term form, with no name
+  (subj-data   (n Str))
+  (subj-ctor   (n Str))
+  (subj-extern (n Str))
+  (subj-prim   (n Str))
+  (subj-def    (n Str))
+  (subj-atom   (n Str))
+  (subj-field  (n Str))
+  (subj-lam-binder)              ; a lambda's own binder (strip-binder)
+  (subj-let-binder)              ; a let binder (close-binder / the E159 let rule)
+  (subj-pi-binder)               ; a Pi domain binder (the E159 formation rule)
+  (subj-field-binder))           ; a case branch's field binder (check-binders)
+
+; ---- WHICH judgment refused, where the subject IS the whole evidence --------
+; These are the checks whose only evidence is the form they refused. That is a
+; true statement about them, not a shortfall: `case scrutinee has a non-data
+; type` knows nothing the subject does not already say. Closed and exhaustively
+; cased below, so a new judgment breaks the renderer loudly.
+(data Judg ()
+  (jg-var-range)          (jg-infer-lam)        (jg-pi-dom)
+  (jg-pi-cod)             (jg-apply-nonfn)      (jg-ann-nontype)
+  (jg-lam-nonfn)          (jg-tcon-arity)       (jg-ctor-arity)
+  (jg-esc-binders)        (jg-dup-branch)       (jg-branch-nonctor)
+  (jg-branch-arity)       (jg-scrut-unknown)    (jg-scrut-nondata)
+  (jg-nonexhaustive)      (jg-empty-case)       (jg-refine-i64)
+  (jg-refine-base)        (jg-refine-opnd-i64)  (jg-refine-opnd-form)
+  (jg-refine-unproved)    (jg-linear-field)     (jg-tparam-arity)
+  (jg-type-as-value)      (jg-not-a-ctor)       (jg-ctor-other-data)
+  (jg-ctor-nondata)       (jg-ctor-infer-params) (jg-ctor-arg-arity)
+  (jg-def-ty-nontype)     (jg-declare-ty-nontype) (jg-no-prior-declare)
+  (jg-extern-nontype)     (jg-dparam-nontype)   (jg-not-positive)
+  (jg-linear-field-decl)  (jg-field-nontype))
+
+; ---- a DECLARATION, as the loader knows one ---------------------------------
+; What a redeclare's two sides actually are. A data redeclare has two full
+; DataDecls in hand; an extern redeclare has two type Terms; an atom is a bare
+; name in a registry and genuinely has no declaration value -- `dc-none` says so
+; instead of inventing one.
+(data Decl () (dc-none) (dc-data (d DataDecl)) (dc-ty (t Term)))
+
+; ---- WHY it failed: one constructor per EVIDENCE SHAPE ----------------------
+(data Reason ()
+  ; a taken name, with BOTH declarations -- the evidence str-cat destroyed
+  (r-redeclared (what Subject) (incumbent Decl) (newcomer Decl))
+  ; a shape disagreement, expected vs actual as TERMS, not as rendered text
+  (r-mismatch   (what Subject) (expected Term) (actual Term))
+  ; a usage disagreement: what a binder promised vs what it did
+  (r-usage      (what Subject) (declared Qty) (observed Qty))
+  ; E159's linear-binder rule: a linear value coming to rest at q != 1
+  (r-linear     (what Subject) (q Qty))
+  ; E159's x-linear-pure: a linear RESULT behind an all-`->` spine
+  (r-arrow      (what Subject) (result Str))
+  ; a name with no binding -- the Subject says which namespace was searched
+  (r-unbound    (what Subject))
+  ; a lowering skip/prune -- E97's chain JOINED here, never copied
+  (r-skipped    (chain (List SkRec)))
+  ; a judgment whose only evidence is its subject (see Judg)
+  (r-judged     (what Subject) (jg Judg))
+  ; a diagnostic OWNED by a layer below the checker, handed up at an ingress site
+  (r-relayed    (from Relay) (msg Str)))
+
+; ============================================================ accessors =======
+
+(declare dg-reason-tag (-> Reason Str))
+(def dg-reason-tag
+  (lam (r)
+    (case r
+      ((r-redeclared w i nw) "redeclared")
+      ((r-mismatch   w e a)  "mismatch")
+      ((r-usage      w d o)  "usage")
+      ((r-linear     w q)    "linear")
+      ((r-arrow      w x)    "arrow")
+      ((r-unbound    w)      "unbound")
+      ((r-skipped    c)      "skipped")
+      ((r-judged     w j)    "judged")
+      ((r-relayed    f m)    "relayed"))))
+
+(declare dg-subject-name (-> Subject Str))
+(def dg-subject-name
+  (lam (s)
+    (case s
+      ((subj-none)         "")
+      ((subj-data   n)     n)
+      ((subj-ctor   n)     n)
+      ((subj-extern n)     n)
+      ((subj-prim   n)     n)
+      ((subj-def    n)     n)
+      ((subj-atom   n)     n)
+      ((subj-field  n)     n)
+      ((subj-lam-binder)   "")
+      ((subj-let-binder)   "")
+      ((subj-pi-binder)    "")
+      ((subj-field-binder) ""))))
+
+(declare dg-subject-tag (-> Subject Str))
+(def dg-subject-tag
+  (lam (s)
+    (case s
+      ((subj-none)         "none")
+      ((subj-data   n)     "data")
+      ((subj-ctor   n)     "ctor")
+      ((subj-extern n)     "extern")
+      ((subj-prim   n)     "prim")
+      ((subj-def    n)     "def")
+      ((subj-atom   n)     "atom")
+      ((subj-field  n)     "field")
+      ((subj-lam-binder)   "lam-binder")
+      ((subj-let-binder)   "let-binder")
+      ((subj-pi-binder)    "pi-binder")
+      ((subj-field-binder) "field-binder"))))
+
+(declare dg-subject (-> Reason Subject))
+(def dg-subject
+  (lam (r)
+    (case r
+      ((r-redeclared w i nw) w)
+      ((r-mismatch   w e a)  w)
+      ((r-usage      w d o)  w)
+      ((r-linear     w q)    w)
+      ((r-arrow      w x)    w)
+      ((r-unbound    w)      w)
+      ((r-skipped    c)      (subj-none))
+      ((r-judged     w j)    w)
+      ((r-relayed    f m)    (subj-none)))))
+
+; the two sides of a redeclare, as VALUES. `r-redeclared` cannot be built without
+; both, so a caller can always ask -- which is the whole point of the element.
+(declare dg-incumbent (-> Reason Decl))
+(def dg-incumbent
+  (lam (r)
+    (case r
+      ((r-redeclared w i nw) i)
+      ((r-mismatch   w e a)  (dc-none))
+      ((r-usage      w d o)  (dc-none))
+      ((r-linear     w q)    (dc-none))
+      ((r-arrow      w x)    (dc-none))
+      ((r-unbound    w)      (dc-none))
+      ((r-skipped    c)      (dc-none))
+      ((r-judged     w j)    (dc-none))
+      ((r-relayed    f m)    (dc-none)))))
+
+(declare dg-newcomer (-> Reason Decl))
+(def dg-newcomer
+  (lam (r)
+    (case r
+      ((r-redeclared w i nw) nw)
+      ((r-mismatch   w e a)  (dc-none))
+      ((r-usage      w d o)  (dc-none))
+      ((r-linear     w q)    (dc-none))
+      ((r-arrow      w x)    (dc-none))
+      ((r-unbound    w)      (dc-none))
+      ((r-skipped    c)      (dc-none))
+      ((r-judged     w j)    (dc-none))
+      ((r-relayed    f m)    (dc-none)))))
+
+(declare dg-decl-kind (-> Decl Str))
+(def dg-decl-kind
+  (lam (d) (case d ((dc-none) "none") ((dc-data x) "data") ((dc-ty t) "type"))))
+
+(declare dg-dd-name (-> DataDecl Str))
+(def dg-dd-name (lam (d) (case d ((data-decl dn ps cs) dn))))
+
+(declare dg-decl-name (-> Decl Str))
+(def dg-decl-name
+  (lam (d) (case d ((dc-none) "") ((dc-data x) (dg-dd-name x)) ((dc-ty t) ""))))
+
+; how many constructors a declaration has -- the cheap observable that lets a
+; caller (and the gate) see that the two sides of a redeclare really DIFFER.
+(declare dg-dd-arity (-> DataDecl I64))
+(def dg-dd-arity (lam (d) (case d ((data-decl dn ps cs) (llen Ctor cs)))))
+
+(declare dg-decl-arity (-> Decl I64))
+(def dg-decl-arity
+  (lam (d) (case d ((dc-none) (- 0 1)) ((dc-data x) (dg-dd-arity x)) ((dc-ty t) 0))))
+
+; the quantities a usage/linear reason carries. (qw) for the arms that carry
+; none: a quantity is not an error code, and no caller reads it off those arms.
+(declare dg-declared (-> Reason Qty))
+(def dg-declared
+  (lam (r)
+    (case r
+      ((r-redeclared w i nw) (qw))
+      ((r-mismatch   w e a)  (qw))
+      ((r-usage      w d o)  d)
+      ((r-linear     w q)    q)
+      ((r-arrow      w x)    (qw))
+      ((r-unbound    w)      (qw))
+      ((r-skipped    c)      (qw))
+      ((r-judged     w j)    (qw))
+      ((r-relayed    f m)    (qw)))))
+
+(declare dg-observed (-> Reason Qty))
+(def dg-observed
+  (lam (r)
+    (case r
+      ((r-redeclared w i nw) (qw))
+      ((r-mismatch   w e a)  (qw))
+      ((r-usage      w d o)  o)
+      ((r-linear     w q)    (q1))
+      ((r-arrow      w x)    (qw))
+      ((r-unbound    w)      (qw))
+      ((r-skipped    c)      (qw))
+      ((r-judged     w j)    (qw))
+      ((r-relayed    f m)    (qw)))))
+
+(declare dg-qty-name (-> Qty Str))
+(def dg-qty-name (lam (q) (case q ((q0) "0") ((q1) "1") ((qw) "omega"))))
+
+(declare dg-relay-tag (-> Relay Str))
+(def dg-relay-tag
+  (lam (f)
+    (case f
+      ((rl-batch)  "batch")
+      ((rl-step)   "step")
+      ((rl-parse)  "parse")
+      ((rl-reader) "reader")
+      ((rl-shape)  "shape"))))
+
+; ============================================================ rendering =======
+; The ONE place a reason becomes text. Every string below is byte-for-byte the
+; string the corresponding detection site used to build with str-cat -- E157
+; introduces no new diagnostic and changes no wording.
+
+(declare dg-msg (-> Reason Str))
+(declare dg-redeclared-msg (-> Subject Str))
+(declare dg-mismatch-msg   (-> Subject Str))
+(declare dg-usage-msg      (-> Subject Str))
+(declare dg-linear-msg     (-> Subject Qty Str))
+(declare dg-arrow-msg      (-> Subject Str Str))
+(declare dg-unbound-msg    (-> Subject Str))
+(declare dg-judg-msg       (-> Subject Judg Str))
+(declare dg-relay-msg      (-> Relay Str Str))
+(declare dg-chain-msg      (-> (List SkRec) Str))
+
+; NO `_` arm, on purpose: a new Reason constructor must break every renderer
+; loudly. A catch-all here is exactly the silent fallback this element removes.
+(def dg-msg
+  (lam (r)
+    (case r
+      ((r-redeclared w i nw) (dg-redeclared-msg w))
+      ((r-mismatch   w e a)  (dg-mismatch-msg w))
+      ((r-usage      w d o)  (dg-usage-msg w))
+      ((r-linear     w q)    (dg-linear-msg w q))
+      ((r-arrow      w x)    (dg-arrow-msg w x))
+      ((r-unbound    w)      (dg-unbound-msg w))
+      ((r-skipped    c)      (dg-chain-msg c))
+      ((r-judged     w j)    (dg-judg-msg w j))
+      ((r-relayed    f m)    (dg-relay-msg f m)))))
+
+(def dg-redeclared-msg
+  (lam (w)
+    (case w
+      ((subj-data   n)     (str-cat "data redeclared: " n))
+      ((subj-extern n)     (str-cat "extern redeclared: " n))
+      ((subj-atom   n)     (str-cat "atom type redeclared: " n))
+      ((subj-ctor   n)     (str-cat "constructor redeclared: " n))
+      ((subj-prim   n)     (str-cat "extern redeclared: " n))
+      ((subj-def    n)     (str-cat "definition redeclared: " n))
+      ((subj-field  n)     (str-cat "field redeclared: " n))
+      ((subj-none)         "redeclared")
+      ((subj-lam-binder)   "redeclared")
+      ((subj-let-binder)   "redeclared")
+      ((subj-pi-binder)    "redeclared")
+      ((subj-field-binder) "redeclared"))))
+
+; the checker's one subtyping refusal. `subsume` had `got` and `want` in hand and
+; said only "type mismatch"; the terms now ride along even though this exit does
+; not print them -- E158 is what prints them.
+(def dg-mismatch-msg (lam (w) "type mismatch"))
+
+(def dg-usage-msg
+  (lam (w)
+    (case w
+      ((subj-lam-binder)   "linear binder usage mismatch")
+      ((subj-let-binder)   "let binder usage mismatch")
+      ((subj-field-binder) "field binder usage mismatch")
+      ((subj-none)         "binder usage mismatch")
+      ((subj-data   n)     "binder usage mismatch")
+      ((subj-ctor   n)     "binder usage mismatch")
+      ((subj-extern n)     "binder usage mismatch")
+      ((subj-prim   n)     "binder usage mismatch")
+      ((subj-def    n)     "binder usage mismatch")
+      ((subj-atom   n)     "binder usage mismatch")
+      ((subj-field  n)     "binder usage mismatch")
+      ((subj-pi-binder)    "binder usage mismatch"))))
+
+; E159's LinErr, retired into the taxonomy it was always trying to be. lin-let
+; and lin-pi are now two SUBJECTS of one evidence shape (a quantity), not a
+; separate sum flattened by `lin-msg` in the same breath it was built.
+(def dg-linear-msg
+  (lam (w q)
+    (case w
+      ((subj-pi-binder)
+        (str-cat "function parameter of a linear type at quantity "
+          (str-cat (dg-qty-name q) " -- a linear parameter must be declared (1 x T)")))
+      ((subj-let-binder)
+        (str-cat "let binds a linear value at quantity "
+          (str-cat (dg-qty-name q) " -- a linear value must be bound at 1")))
+      ((subj-lam-binder)
+        (str-cat "let binds a linear value at quantity "
+          (str-cat (dg-qty-name q) " -- a linear value must be bound at 1")))
+      ((subj-field-binder)
+        (str-cat "let binds a linear value at quantity "
+          (str-cat (dg-qty-name q) " -- a linear value must be bound at 1")))
+      ((subj-none)     (str-cat "linear value bound at quantity " (dg-qty-name q)))
+      ((subj-data   n) (str-cat "linear value bound at quantity " (dg-qty-name q)))
+      ((subj-ctor   n) (str-cat "linear value bound at quantity " (dg-qty-name q)))
+      ((subj-extern n) (str-cat "linear value bound at quantity " (dg-qty-name q)))
+      ((subj-prim   n) (str-cat "linear value bound at quantity " (dg-qty-name q)))
+      ((subj-def    n) (str-cat "linear value bound at quantity " (dg-qty-name q)))
+      ((subj-atom   n) (str-cat "linear value bound at quantity " (dg-qty-name q)))
+      ((subj-field  n) (str-cat "linear value bound at quantity " (dg-qty-name q))))))
+
+(def dg-arrow-msg
+  (lam (w x)
+    (str-cat "extern " (str-cat (dg-subject-name w) (str-cat " returns the linear " (str-cat x
+      " through a pure `->` arrow: a minted capability must cross (`=>`), else it is never tracked at q1"))))))
+
+(def dg-unbound-msg
+  (lam (w)
+    (case w
+      ((subj-def    n)     (str-cat "unknown global " n))
+      ((subj-prim   n)     (str-cat "unknown prim " n))
+      ((subj-data   n)     (str-cat "unknown data type " n))
+      ((subj-ctor   n)     (str-cat "unknown constructor " n))
+      ((subj-extern n)     (str-cat "unknown extern " n))
+      ((subj-atom   n)     (str-cat "unknown atom type " n))
+      ((subj-field  n)     (str-cat "unknown field " n))
+      ((subj-none)         "unknown name")
+      ((subj-lam-binder)   "unknown name")
+      ((subj-let-binder)   "unknown name")
+      ((subj-pi-binder)    "unknown name")
+      ((subj-field-binder) "unknown name"))))
+
+(def dg-chain-msg (lam (c) (format-blame "" c)))
+
+; the judgments whose only evidence is their subject. Exhaustive over Judg by
+; construction: adding an arm above without adding it here does not compile.
+(def dg-judg-msg
+  (lam (w j)
+    (let (n (dg-subject-name w))
+      (case j
+        ((jg-var-range)         "variable index out of range")
+        ((jg-infer-lam)         "cannot infer an un-annotated lambda")
+        ((jg-pi-dom)            "pi domain is not a type")
+        ((jg-pi-cod)            "pi codomain is not a type")
+        ((jg-apply-nonfn)       "cannot apply a non-function")
+        ((jg-ann-nontype)       "annotation is not a type")
+        ((jg-lam-nonfn)         "lambda checked against a non-function type")
+        ((jg-tcon-arity)        "tcon arity")
+        ((jg-ctor-arity)        "constructor arity")
+        ((jg-esc-binders)       "case branch type mentions branch binders")
+        ((jg-dup-branch)        "duplicate case branch")
+        ((jg-branch-nonctor)    "branch names a non-constructor")
+        ((jg-branch-arity)      "branch binds the wrong number of names")
+        ((jg-scrut-unknown)     "unknown data type in case scrutinee")
+        ((jg-scrut-nondata)     "case scrutinee has a non-data type")
+        ((jg-nonexhaustive)     "non-exhaustive case")
+        ((jg-empty-case)        "empty case")
+        ((jg-refine-i64)        "scaffold refinements are over I64 only")
+        ((jg-refine-base)       "refinement base is not a type")
+        ((jg-refine-opnd-i64)   "refinement operand must be an I64")
+        ((jg-refine-opnd-form)  "refinement operand must be a constant or a bare variable")
+        ((jg-refine-unproved)   "cannot prove refinement")
+        ((jg-linear-field)      (str-cat "linear field " n))
+        ((jg-tparam-arity)      (str-cat n " wrong number of type parameters"))
+        ((jg-type-as-value)     (str-cat n " is a type; a non-type was expected"))
+        ((jg-not-a-ctor)        (str-cat n " is not a constructor of this type"))
+        ((jg-ctor-other-data)   (str-cat n " checked against a different data type"))
+        ((jg-ctor-nondata)      (str-cat n " checked against a non-data type"))
+        ((jg-ctor-infer-params) (str-cat "cannot infer type parameters of " n))
+        ((jg-ctor-arg-arity)    (str-cat n " wrong number of arguments"))
+        ((jg-def-ty-nontype)    "definition type is not a type")
+        ((jg-declare-ty-nontype) "declared type is not a type")
+        ((jg-no-prior-declare)  (str-cat "def body with no prior declare: " n))
+        ((jg-extern-nontype)    (str-cat "type of extern is not a type: " n))
+        ((jg-dparam-nontype)    "data parameter is not a type")
+        ((jg-not-positive)      (str-cat "not strictly positive: " n))
+        ((jg-linear-field-decl) (str-cat "linear field declared non-1: " n))
+        ((jg-field-nontype)     "field type is not a type")))))
+
+; the ingress prefixes. They are a property of WHICH layer relayed, so they are
+; read off the Relay tag here instead of being str-cat'd at six call sites.
+(def dg-relay-msg
+  (lam (f m)
+    (case f
+      ((rl-batch)  m)
+      ((rl-step)   m)
+      ((rl-parse)  (str-cat "data-group: " m))
+      ((rl-reader) (str-cat "parse: " m))
+      ((rl-shape)  m))))

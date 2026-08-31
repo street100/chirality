@@ -20,6 +20,7 @@
 (import "lowering/upper/specialize-singleton") ; specialize-singletons: monomorphize a singleton vtable (Mach) -- BEFORE closconv
 (import "lowering/upper/closconv-driver")     ; closconv-sig: defunctionalize HO defs before peel
 (import "lowering/lowspec")             ; NTalTy / NCore / NArm / NDef
+(import "typing/diag")                  ; E157: dg-msg -- the front entry is EGRESS
 
 ; Qty -> the I64 quantity code lower.Core uses (inverse of kernel i->qty).
 (def qty->i (-> Qty I64) (lam (q) (case q ((q0) 0) ((q1) 1) ((qw) 2))))
@@ -325,5 +326,5 @@
 (def compile-front (-> Str Str FR)
   (lam (src name)
     (case (load-source-batched src)
-      ((ld-err m)  (fr-err (str-cat "load: " m)))
+      ((ld-err m)  (fr-err (str-cat "load: " (dg-msg m))))
       ((ld-ok sig) (bridge-sig (closconv-sig (specialize-singletons sig)) name)))))

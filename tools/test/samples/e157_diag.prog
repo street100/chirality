@@ -1,0 +1,126 @@
+; e157_diag.prog — the E157 typed-diagnostics runtime gate.
+;
+; E157 widens the eight containers of the checker/loader error closure
+; (TcR/CkR/FtR/UR/CaseR/EscR in typing/kernel.chiral, LoadR/ChkR in
+; module/loader.chiral) so their payload is a closed `Reason` VALUE instead of a
+; `str-cat`'d sentence.
+; `XErr` (E159) and `LinErr` retire into it; `dg-msg` renders it once, at the
+; module boundary, byte-for-byte as before.
+;
+; ⚑ WHY A TEXT-ONLY TEST CANNOT BE THE GATE. Every message this element produces
+; is a message the compiler already produced, so a fixture that only compares
+; strings passes IDENTICALLY with the evidence thrown away — which is exactly
+; the state E157 exists to end, and exactly the E156 lesson (a gate fixture can
+; be blind to its own mutant). The teeth are the EVIDENCE block below: a
+; redeclare must hand back BOTH declarations and they must DIFFER; a usage
+; refusal must hand back declared and observed and they must DIFFER. Those rows
+; fail under the named mutants in tools/test/diag.sh; the text rows do not.
+;
+; Exit 0 iff ALL correct; else the 1-based number of the first failing case.
+(import "typing/diag")
+
+; ── a whole-list first-failure reducer (the e152/e156 convention) ────────────
+(def dgt-first-bad (-> (List Bool) I64 I64)
+  (lam (bs k)
+    (case bs
+      (nil 0)
+      ((cons b rest)
+        (case b
+          (false k)
+          (true (dgt-first-bad rest (+ k 1))))))))
+
+; ── two DIFFERENT declarations of one name: the shape a redeclare really has ──
+; `Box` with one constructor, and `Box` with two. The loader binds exactly this
+; pair in module/loader.chiral's load-data (`d` incumbent, `decl` newcomer) and used to drop
+; both into "data redeclared: Box".
+(def dgt-box1 DataDecl
+  (data-decl "Box" nil (cons (ctor "mk" (cons (field 2 "v" (t-primty "I64")) nil)) nil)))
+(def dgt-box2 DataDecl
+  (data-decl "Box" nil
+    (cons (ctor "mk"   (cons (field 2 "v" (t-primty "I64")) nil))
+    (cons (ctor "mk2"  (cons (field 2 "w" (t-primty "I64")) nil)) nil))))
+
+(def dgt-redecl Reason
+  (r-redeclared (subj-data "Box") (dc-data dgt-box1) (dc-data dgt-box2)))
+
+; ── the usage refusal: declared 1, observed omega (a linear cap used twice) ───
+(def dgt-usage Reason (r-usage (subj-lam-binder) (q1) (qw)))
+(def dgt-letusage Reason (r-usage (subj-let-binder) (q0) (q1)))
+
+; ── one value of EVERY Reason arm, so the exhaustiveness row is real ─────────
+(def dgt-all (-> I64 (List Str))
+  (lam (n)
+    (cons (dg-reason-tag dgt-redecl)
+    (cons (dg-reason-tag (r-mismatch (subj-none) (t-primty "I64") (t-primty "Str")))
+    (cons (dg-reason-tag dgt-usage)
+    (cons (dg-reason-tag (r-linear (subj-let-binder) (qw)))
+    (cons (dg-reason-tag (r-arrow (subj-extern "mint") "Cap"))
+    (cons (dg-reason-tag (r-unbound (subj-def "nosuch")))
+    (cons (dg-reason-tag (r-skipped nil))
+    (cons (dg-reason-tag (r-judged (subj-none) (jg-empty-case)))
+    (cons (dg-reason-tag (r-relayed (rl-step) "x"))
+      nil)))))))))))
+
+(def dgt-join (-> (List Str) Str)
+  (lam (xs) (case xs (nil "") ((cons x r) (str-cat x (str-cat "," (dgt-join r)))))))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (dgt-first-bad
+      (cons ; 1..8  TEXT PRESERVATION — the exact strings the sites used to build
+        (str-eq (dg-msg dgt-usage) "linear binder usage mismatch")
+      (cons
+        (str-eq (dg-msg dgt-letusage) "let binder usage mismatch")
+      (cons
+        (str-eq (dg-msg (r-usage (subj-field-binder) (q1) (qw))) "field binder usage mismatch")
+      (cons
+        (str-eq (dg-msg dgt-redecl) "data redeclared: Box")
+      (cons
+        (str-eq (dg-msg (r-redeclared (subj-extern "foo") (dc-none) (dc-none)))
+                "extern redeclared: foo")
+      (cons
+        (str-eq (dg-msg (r-unbound (subj-def "nosuch"))) "unknown global nosuch")
+      (cons
+        (str-eq (dg-msg (r-judged (subj-none) (jg-nonexhaustive))) "non-exhaustive case")
+      (cons
+        (str-eq (dg-msg (r-judged (subj-field "c") (jg-linear-field-decl)))
+                "linear field declared non-1: c")
+      (cons ; 9..10  the two retired sums render EXACTLY as they used to
+        (str-eq (dg-msg (r-linear (subj-let-binder) (qw)))
+                "let binds a linear value at quantity omega -- a linear value must be bound at 1")
+      (cons
+        (str-eq (dg-msg (r-arrow (subj-extern "mint") "Cap"))
+                "extern mint returns the linear Cap through a pure `->` arrow: a minted capability must cross (`=>`), else it is never tracked at q1")
+      (cons ; 11..12  the INGRESS prefixes are a property of the relaying LAYER
+        (str-eq (dg-msg (r-relayed (rl-reader) "unclosed (")) "parse: unclosed (")
+      (cons
+        (str-eq (dg-msg (r-relayed (rl-parse) "bad")) "data-group: bad")
+      (cons ; ⚑ 13..16  EVIDENCE SURVIVAL — the rows a text-only fixture is blind to
+            ; 13: a redeclare hands back BOTH declarations, and they are declarations
+        (str-eq (str-cat (dg-decl-kind (dg-incumbent dgt-redecl))
+                         (dg-decl-kind (dg-newcomer dgt-redecl))) "datadata")
+      (cons ; 14: ...and they DIFFER. One ctor vs two. Dropping either side, or
+            ;     aliasing them, makes this false while every text row above passes.
+        (=i (- (dg-decl-arity (dg-newcomer dgt-redecl))
+               (dg-decl-arity (dg-incumbent dgt-redecl))) 1)
+      (cons ; 15: both sides name the type they are about
+        (str-eq (str-cat (dg-decl-name (dg-incumbent dgt-redecl))
+                         (dg-decl-name (dg-newcomer dgt-redecl))) "BoxBox")
+      (cons ; 16: a usage refusal carries declared AND observed, and they DIFFER
+        (str-eq (str-cat (dg-qty-name (dg-declared dgt-usage))
+                         (str-cat "/" (dg-qty-name (dg-observed dgt-usage)))) "1/omega")
+      (cons ; 17: the let-binder twin carries its own pair (declared 0, observed 1)
+        (str-eq (str-cat (dg-qty-name (dg-declared dgt-letusage))
+                         (str-cat "/" (dg-qty-name (dg-observed dgt-letusage)))) "0/1")
+      (cons ; 18: E159's linear rule keeps the offending quantity as a Qty
+        (str-eq (dg-qty-name (dg-declared (r-linear (subj-pi-binder) (q0)))) "0")
+      (cons ; 19  EXHAUSTIVENESS — one value of every Reason arm, each its own tag
+        (str-eq (dgt-join (dgt-all 0))
+                "redeclared,mismatch,usage,linear,arrow,unbound,skipped,judged,relayed,")
+      (cons ; 20  the Subject axis is readable off a reason, not re-parsed from text
+        (str-eq (str-cat (dg-subject-tag (dg-subject dgt-redecl))
+                         (str-cat "/" (dg-subject-name (dg-subject dgt-redecl)))) "data/Box")
+      (cons ; 21  and the Relay axis likewise
+        (str-eq (dg-relay-tag (rl-shape)) "shape")
+        nil)))))))))))))))))))))
+      1)))

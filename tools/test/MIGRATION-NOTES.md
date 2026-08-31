@@ -16,6 +16,36 @@ Entry point: `bin/chirality test` → `tools/test/run-tests.sh`.
 | 6 linear mint (E159) | `test-linear-mint.sh` | `linear-mint.sh` | 21 |
 | 7 downstream roots compile | `run-native.sh` inline | `run-tests.sh` inline | 11 roots |
 
+## New here — Phase 13, typed diagnostics (E157)
+
+| phase | source | here | assertions |
+|---|---|---|---|
+| 13 typed diagnostics (E157) | old tree's `test-diag.sh` | `diag.sh` + `samples/e157_diag.prog` | 30 |
+
+E157 landed in the old tree after the migration snapshot, so it has **no old-tree
+phase number to inherit**. It is 13 rather than 8: 8–12 are names still owed, and
+reusing one would have made an unported gate look ported.
+
+Two things changed in the port beyond the mechanical rewrites:
+
+- **`tools/test/samples/`, not `prog/samples/`.** The fixture is a `.prog` (it
+  defines an entry), but it is consumed by *this gate*, not by a shipped program.
+  `prog/samples/`'s six fixtures are read **by path at runtime** by
+  `prog/test-runner.prog`, which is shipped, so they must sit inside the shipped
+  tree. This one must not. It is therefore also outside Phase 7's root sweep
+  (`lib prog`), so E157's assertions are counted once, by E157's own phase.
+- **G6's name census is shell, not Python.** The old `test-diag.sh` walked the
+  tree in an inline `python3` heredoc. Here the names are read out of
+  `lib/typing/diag.chiral` itself — so a new arm is censused without editing the
+  script — and searched with `grep -R`, **not** `grep -r`, which does not follow
+  symlinks and would let a skipped file read as a clean census.
+
+`probe-main.metis` is in the old tree's E157 commit and is **not** ported: it is
+`scaffold/tools/probe-main.metis`, a compiler-debug probe with zero rows in
+`MIGRATION-MAP.tsv` and no counterpart here. Its one-line change
+(`(trace m)` → `(trace (dg-msg m))`) has nothing to apply to; if the probe is ever
+migrated it carries that line with it.
+
 The port was mechanical: `bin/metis` → `bin/chirality`, `metis_blob*` →
 `chirality_blob*`, `$REPO/scaffold/lib` → the `lib:prog` search path,
 `bin/metisc`/`scaffold/build/B1` → `bin/chirality-bin`, `METISC_BIN` →

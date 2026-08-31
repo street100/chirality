@@ -18,6 +18,7 @@
 (import "typing/refine")              ; Constraint + entails/is-empty/satisfies/c-* (VRefine, E04 #6)
 (import "surface/syntax")              ; the shared full-ADT Term + KArm + Seat (leaf; E04 decision #7)
 (import "surface/data")                ; DataDecl (Sig.datas + the con/case arms reuse E6/E7)
+(import "typing/diag")                 ; E157: Reason -- the six err arms below carry a VALUE
 
 ; ---- semantics: values / closures / neutrals (Value <-> Clos mutual) ---------
 (data Value ()
@@ -347,18 +348,13 @@
 ; value can come to rest, not just inside a constructor.
 ; SCOPE: this is the TYPE-LEVEL discipline. At rung 1 an Fd is a raw integer at
 ; runtime and this adds no machine authority over it.
-(data LinErr ()
-  (lin-let (q Qty))                  ; a let binding a linear value at q != 1
-  (lin-pi  (q Qty)))                 ; a Pi domain that is linear at q != 1
-(def qty-name (-> Qty Str) (lam (q) (case q ((q0) "0") ((q1) "1") ((qw) "omega"))))
-(declare lin-msg (-> LinErr Str))
-(def lin-msg
-  (lam (e)
-    (case e
-      ((lin-let q) (str-cat "let binds a linear value at quantity "
-                     (str-cat (qty-name q) " -- a linear value must be bound at 1")))
-      ((lin-pi q)  (str-cat "function parameter of a linear type at quantity "
-                     (str-cat (qty-name q) " -- a linear parameter must be declared (1 x T)"))))))
+; E157: LinErr RETIRED. It was a third typed sum flattened at birth -- all three
+; of its construction sites read `(tc-err (lin-msg (lin-let q)))`, building the
+; sum and destroying it in one expression, for exactly the reason XErr did: the
+; container's field was Str. Its two arms are now two SUBJECTS of one evidence
+; shape in diag.metis -- `(r-linear (subj-let-binder) q)` / `(r-linear
+; (subj-pi-binder) q)` -- and `lin-msg` is `dg-linear-msg`, at the rendering
+; boundary instead of fused into the detection. The rule is unchanged.
 ; is binding a value of type `v` at quantity `q` a linearity violation?
 ; Mirrors the loader's linear-bad? over a data field, on the same is-linear.
 (def linear-binder-bad (-> Sig Qty Value Bool)
@@ -406,15 +402,20 @@
 
 ; ---- checking context + errors-as-values result sums -------------------------
 (data Ctx () (ctx-nil) (ctx-bind (q Qty) (ty Value) (rest Ctx)))
-(data TcR () (tc-ok (ty Value) (use (List Qty))) (tc-err (msg Str)))   ; infer
-(data CkR () (ck-ok (use (List Qty)))            (ck-err (msg Str)))   ; check
+; E157 -- the payload is a Reason, not a sentence. These six re-wrap each
+; other's payload verbatim (`((ck-err m) (tc-err m))` and 40-odd twins), so they
+; are ONE forced closure with loader.metis's LoadR/ChkR: widen one and the rest
+; must follow or the re-wrap is a type error. Rendering happens once, at the
+; module boundary, through diag.metis's dg-msg.
+(data TcR () (tc-ok (ty Value) (use (List Qty))) (tc-err (why Reason)))   ; infer
+(data CkR () (ck-ok (use (List Qty)))            (ck-err (why Reason)))   ; check
 ; E04 slice 4b: instantiated field types + usage-accumulating loops (con/case)
-(data FtR () (ft-ok (fts (List (Pair Qty Value)))) (ft-err (msg Str)))
-(data UR  () (u-ok (u (List Qty)))                 (u-err (msg Str)))
+(data FtR () (ft-ok (fts (List (Pair Qty Value)))) (ft-err (why Reason)))
+(data UR  () (u-ok (u (List Qty)))                 (u-err (why Reason)))
 ; E04 slice 4b-ii: the case arm's threaded state + escapes result
 (data CaseSt () (cst (rty (Maybe Value)) (joined (Maybe (List Qty))) (covered (List Str))))
-(data CaseR  () (cr-ok (st CaseSt)) (cr-err (msg Str)))
-(data EscR   () (esc-ok (v Value)) (esc-err (msg Str)))
+(data CaseR  () (cr-ok (st CaseSt)) (cr-err (why Reason)))
+(data EscR   () (esc-ok (v Value)) (esc-err (why Reason)))
 ; E04 #6 R3: a comparison operand for the narrow hook (a constant or a bare var)
 (data OperR () (o-const (k I64)) (o-var (ix I64)) (o-nope))
 
@@ -609,7 +610,7 @@
 (def ctx-lookup (-> Ctx I64 TcR)
   (lam (c ix)
     (case (in-range c ix)
-      (false (tc-err "variable index out of range"))
+      (false (tc-err (r-judged (subj-none) (jg-var-range))))
       (true  (tc-ok (ctx-ty c ix) (u-one (ctx-len c) ix))))))
 
 ; the evaluation env of a ctx: a neutral per binding. Front (newest) binding is
@@ -633,7 +634,7 @@
   (lam (u q)
     (case (qfits (last-qty u) q)
       (true  (ck-ok (drop-last u)))
-      (false (ck-err "linear binder usage mismatch")))))
+      (false (ck-err (r-usage (subj-lam-binder) q (last-qty u)))))))
 
 ; close a let binder (kernel.py close_binder): audit the let-bound variable's own
 ; usage (the newest = last entry of the body vector ub) against its declared q,
@@ -645,7 +646,7 @@
   (lam (ub q uv)
     (case (qfits (last-qty ub) q)
       (true  (ck-ok (uadd (drop-last ub) (uscale q uv))))
-      (false (ck-err "let binder usage mismatch")))))
+      (false (ck-err (r-usage (subj-let-binder) q (last-qty ub)))))))
 
 ; ============================================================ E3: the NbE core
 ; ---- E04 slice-2 eval helpers ------------------------------------------------
@@ -821,7 +822,7 @@
       ((t-var ix)         (ctx-lookup c ix))
       ((t-type l)         (tc-ok (v-type (+ l 1)) (uzero (ctx-len c))))
       ((t-pi q s dom cod) (infer-pi sig c q dom cod))
-      ((t-lam b)          (tc-err "cannot infer an un-annotated lambda"))
+      ((t-lam b)          (tc-err (r-judged (subj-none) (jg-infer-lam))))
       ((t-app f a)        (infer-app sig c f a))
       ((t-let q v b)      (infer-let sig c q v b))
       ((t-ann tm ty)      (infer-ann sig c tm ty))
@@ -840,12 +841,12 @@
 (def infer-global
   (lam (sig c n)
     (case (sig-global-ty sig n)
-      (none (tc-err (str-cat "unknown global " n)))
+      (none (tc-err (r-unbound (subj-def n))))
       ((some ty) (tc-ok (eval-term nil ty) (uzero (ctx-len c)))))))
 (def infer-prim
   (lam (sig c n)
     (case (sig-prim-ty sig n)
-      (none (tc-err (str-cat "unknown prim " n)))
+      (none (tc-err (r-unbound (subj-prim n))))
       ((some ty) (tc-ok (eval-term nil ty) (uzero (ctx-len c)))))))
 
 ; Pi formation: dom must be a type; bind it (at q0 -- formation), cod must be a
@@ -857,14 +858,14 @@
       ((tc-ok dty du)
         (case dty
           ((v-type l1) (infer-pi-lin sig c q l1 dom cod))
-          (_ (tc-err "pi domain is not a type")))))))
+          (_ (tc-err (r-judged (subj-none) (jg-pi-dom)))))))))
 ; E159: a linear DOMAIN pins the binder's quantity to 1 -- the same judgment the
 ; let arm makes, at the other place a linear value comes to rest. Formation-time,
 ; so an omega-quantified linear parameter is not even a writable TYPE.
 (def infer-pi-lin
   (lam (sig c q l1 dom cod)
     (case (linear-binder-bad sig q (eval-term (env-of c) dom))
-      (true  (tc-err (lin-msg (lin-pi q))))
+      (true  (tc-err (r-linear (subj-pi-binder) q)))
       (false (infer-pi2 sig c l1 dom cod)))))
 (def infer-pi2
   (lam (sig c l1 dom cod)
@@ -873,7 +874,7 @@
       ((tc-ok cty cu)
         (case cty
           ((v-type l2) (tc-ok (v-type (max-lvl l1 l2)) (uzero (ctx-len c))))
-          (_ (tc-err "pi codomain is not a type")))))))
+          (_ (tc-err (r-judged (subj-none) (jg-pi-cod)))))))))
 
 ; application: f must infer to a Pi; check the arg against the domain; usage is
 ; u_f + q * u_a (the QTT app rule); result type is the codomain at the arg.
@@ -890,7 +891,7 @@
           ((ck-err m) (tc-err m))
           ((ck-ok au) (tc-ok (clos-apply cod (eval-term (env-of c) a))
                              (uadd fu (uscale q au))))))
-      (_ (tc-err "cannot apply a non-function")))))
+      (_ (tc-err (r-judged (subj-none) (jg-apply-nonfn)))))))
 
 ; let (infer mode): infer the val's type + usage in the outer ctx, bind it at q,
 ; infer the body in the extended ctx, then close the binder (audit its usage vs q,
@@ -904,7 +905,7 @@
 (def infer-let2
   (lam (sig c q v b vty uv)
     (case (linear-binder-bad sig q vty)                   ; E159: q must be 1
-      (true (tc-err (lin-msg (lin-let q))))
+      (true (tc-err (r-linear (subj-let-binder) q)))
       (false (infer-let3 sig c q v b vty uv)))))
 (def infer-let3
   (lam (sig c q v b vty uv)
@@ -928,7 +929,7 @@
         (case (check sig c tm (eval-term (env-of c) ty))
           ((ck-err m) (tc-err m))
           ((ck-ok u) (tc-ok (eval-term (env-of c) ty) u))))
-      (_ (tc-err "annotation is not a type")))))
+      (_ (tc-err (r-judged (subj-none) (jg-ann-nontype)))))))
 
 ; check: if the EXPECTED type is a refinement, route to check-against (refine.py
 ; _check_against, a check_hook that fires on the expected value form) -- else the
@@ -947,7 +948,7 @@
             (case (check sig (ctx-bind qp dom c) b (clos-apply cod (fresh (ctx-len c))))
               ((ck-err m) (ck-err m))
               ((ck-ok ub) (strip-binder ub qp))))
-          (_ (ck-err "lambda checked against a non-function type"))))
+          (_ (ck-err (r-judged (subj-none) (jg-lam-nonfn))))))
       ((t-var ix)     (subsume sig c t want))
       ((t-type l)     (subsume sig c t want))
       ((t-pi q s d k) (subsume sig c t want))
@@ -970,7 +971,9 @@
       ((tc-ok got use)
         (case (subtype (ctx-len c) got want)
           (true  (ck-ok use))
-          (false (ck-err "type mismatch")))))))
+          (false (ck-err (r-mismatch (subj-none)
+                           (quote-val (ctx-len c) want)
+                           (quote-val (ctx-len c) got)))))))))
 
 ; let (check mode): infer the val, bind at q, CHECK the body against the expected
 ; type (routing through `check` so an expected refinement still fires), then close
@@ -983,7 +986,7 @@
 (def check-let2
   (lam (sig c q v b want vty uv)
     (case (linear-binder-bad sig q vty)                   ; E159: q must be 1
-      (true (ck-err (lin-msg (lin-let q))))
+      (true (ck-err (r-linear (subj-let-binder) q)))
       (false (check-let3 sig c q v b want vty uv)))))
 (def check-let3
   (lam (sig c q v b want vty uv)
@@ -1022,7 +1025,7 @@
         (case f ((field q fname fty)
           (let (ftyv (eval-term env fty))
             (case (and (not (=i q 1)) (is-linear sig ftyv))  ; q!=1 AND linear
-              (true  (ft-err (str-cat "linear field " fname)))
+              (true  (ft-err (r-judged (subj-field fname) (jg-linear-field))))
               (false (case (ctor-field-types sig env rest)
                        ((ft-err m)   (ft-err m))
                        ((ft-ok more) (ft-ok (cons (pair (i->qty q) ftyv) more)))))))))))))
@@ -1033,10 +1036,10 @@
 (def check-tcon
   (lam (sig c dn args expected)
     (case (sig-data sig dn)
-      (none (tc-err (str-cat "unknown data type " dn)))
+      (none (tc-err (r-unbound (subj-data dn))))
       ((some decl)
         (case (=i (llen Term args) (llen Term (decl-params decl)))
-          (false (tc-err (str-cat dn " wrong number of type parameters")))
+          (false (tc-err (r-judged (subj-data dn) (jg-tparam-arity))))
           (true  (check-tparams sig c (decl-params decl) args nil expected dn)))))))
 (def check-tparams
   (lam (sig c params args env expected dn)
@@ -1044,7 +1047,7 @@
       (nil (finish-tcon sig c expected dn))
       ((cons pk prest)
         (case args
-          (nil (tc-err "tcon arity"))
+          (nil (tc-err (r-judged (subj-none) (jg-tcon-arity))))
           ((cons arg arest)
             (case (check sig c arg (eval-term env pk))       ; arg : param kind
               ((ck-err m) (tc-err m))
@@ -1056,7 +1059,7 @@
       (none (tc-ok (v-type 0) (uzero (ctx-len c))))
       ((some e) (case (subtype (ctx-len c) (v-type 0) e)
                   (true  (tc-ok (v-type 0) (uzero (ctx-len c))))
-                  (false (tc-err (str-cat dn " is a type; a non-type was expected"))))))))
+                  (false (tc-err (r-judged (subj-data dn) (jg-type-as-value)))))))))
 
 ; _check_con: a constructor. targs come from the expected VTCon, else are solved
 ; from the args (bare-param occurrences); then each arg checks against its
@@ -1064,10 +1067,10 @@
 (def check-con
   (lam (sig c dn cn args expected)
     (case (sig-data sig dn)
-      (none (tc-err (str-cat "unknown data type " dn)))
+      (none (tc-err (r-unbound (subj-data dn))))
       ((some decl)
         (case (ctor-fields decl cn)
-          (none (tc-err (str-cat cn " is not a constructor of this type")))
+          (none (tc-err (r-judged (subj-ctor cn) (jg-not-a-ctor))))
           ((some fields) (con-with-targs sig c dn cn args expected decl fields)))))))
 (def con-with-targs
   (lam (sig c dn cn args expected decl fields)
@@ -1077,13 +1080,13 @@
           ((v-tcon dn2 targs)
             (case (str-eq dn dn2)
               (true  (con-check sig c dn cn args targs fields))
-              (false (tc-err (str-cat cn " checked against a different data type")))))
-          (_ (tc-err (str-cat cn " checked against a non-data type")))))
+              (false (tc-err (r-judged (subj-ctor cn) (jg-ctor-other-data))))))
+          (_ (tc-err (r-judged (subj-ctor cn) (jg-ctor-nondata))))))
       (none
         (case (=i (llen Term (decl-params decl)) 0)
           (true  (con-check sig c dn cn args nil fields))
           (false (case (solve-con-params sig c (llen Term (decl-params decl)) fields args)
-                   (none (tc-err (str-cat "cannot infer type parameters of " cn)))
+                   (none (tc-err (r-judged (subj-ctor cn) (jg-ctor-infer-params))))
                    ((some targs) (con-check sig c dn cn args targs fields)))))))))
 (def con-check
   (lam (sig c dn cn args targs fields)
@@ -1091,7 +1094,7 @@
       ((ft-err m) (tc-err m))
       ((ft-ok fts)
         (case (=i (llen Term args) (llen Field fields))
-          (false (tc-err (str-cat cn " wrong number of arguments")))
+          (false (tc-err (r-judged (subj-ctor cn) (jg-ctor-arg-arity))))
           (true  (case (check-con-args sig c args fts (uzero (ctx-len c)))
                    ((u-err m) (tc-err m))
                    ((u-ok u)  (tc-ok (v-tcon dn targs) u)))))))))
@@ -1101,7 +1104,7 @@
       (nil (u-ok acc))
       ((cons arg arest)
         (case fts
-          (nil (u-err "constructor arity"))
+          (nil (u-err (r-judged (subj-none) (jg-ctor-arity))))
           ((cons ft frest)
             (case ft ((pair q ftyv)
               (case (check sig c arg ftyv)
@@ -1178,7 +1181,7 @@
       ((cons ft rest)
         (case ft ((pair q ty)
           (case (qfits (nth-qty ub (+ n i)) q)
-            (false (u-err "field binder usage mismatch"))
+            (false (u-err (r-usage (subj-field-binder) q (nth-qty ub (+ n i)))))
             (true  (check-binders ub n (+ i 1) rest)))))))))
 
 ; uses-below / shift-close over the kernel Term (data.py uses_below / shift_close),
@@ -1244,7 +1247,7 @@
     (let (nb (- (ctx-len inner) (ctx-len outer)))
       (let (term (quote-val (ctx-len inner) tyv))
         (case (ub-at nb 0 term)
-          (true  (esc-err "case branch type mentions branch binders"))
+          (true  (esc-err (r-judged (subj-none) (jg-esc-binders))))
           (false (esc-ok (eval-term (env-of outer) (sc-at nb 0 term)))))))))
 
 ; the per-branch fold, threading (result_ty, joined-usage, covered-set) as CaseSt.
@@ -1256,9 +1259,9 @@
         (case a ((karm cn nvars body)
           (case st ((cst rty joined covered)
             (case (name-in cn covered)
-              (true (cr-err "duplicate case branch"))
+              (true (cr-err (r-judged (subj-ctor cn) (jg-dup-branch))))
               (false (case (ctor-fields decl cn)
-                       (none (cr-err "branch names a non-constructor"))
+                       (none (cr-err (r-judged (subj-ctor cn) (jg-branch-nonctor))))
                        ((some fields) (proc-branch sig c decl targs scrut rest cn nvars body fields rty joined covered)))))))))))))
 (def proc-branch
   (lam (sig c decl targs scrut rest cn nvars body fields rty joined covered)
@@ -1266,7 +1269,7 @@
       ((ft-err m) (cr-err m))
       ((ft-ok fts)
         (case (=i nvars (llen Field fields))
-          (false (cr-err "branch binds the wrong number of names"))
+          (false (cr-err (r-judged (subj-ctor cn) (jg-branch-arity))))
           (true  (proc-branch2 sig c decl targs scrut rest cn nvars body fts rty joined covered)))))))
 ; proc-branch2: NARROW the outer ctx from the guard (refine.py runs narrow_hooks
 ; on the ctx BEFORE binding fields), then bind fields; length refs stay on the
@@ -1301,21 +1304,21 @@
         (case sty
           ((v-tcon dname targs)
             (case (sig-data sig dname)
-              (none (tc-err "unknown data type in case scrutinee"))
+              (none (tc-err (r-judged (subj-data dname) (jg-scrut-unknown))))
               ((some decl)
                 (case (case-branches sig c decl targs scrut arms (cst expected none nil))
                   ((cr-err m) (tc-err m))
                   ((cr-ok st) (finish-case sig c decl dflt us st))))))
-          (_ (tc-err "case scrutinee has a non-data type")))))))
+          (_ (tc-err (r-judged (subj-none) (jg-scrut-nondata)))))))))
 (def finish-case
   (lam (sig c decl dflt us st)
     (case st ((cst rty joined covered)
       (case dflt
         ((some d) (case-with-default sig c rty joined us d))
         (none (case (all-covered? decl covered)
-                (false (tc-err "non-exhaustive case"))
+                (false (tc-err (r-judged (subj-none) (jg-nonexhaustive))))
                 (true  (case rty
-                         (none (tc-err "empty case"))
+                         (none (tc-err (r-judged (subj-none) (jg-empty-case))))
                          ((some rt) (finish-join rt joined us)))))))))))
 (def case-with-default
   (lam (sig c rty joined us d)
@@ -1327,7 +1330,7 @@
                    ((ck-err m) (tc-err m))
                    ((ck-ok ud) (finish-join rt (case joined (none (some ud)) ((some j) (some (ujoin j ud)))) us)))))))
 (def finish-join
-  (lam (rt mj us) (case mj (none (tc-err "empty case")) ((some j) (tc-ok rt (uadd us j))))))
+  (lam (rt mj us) (case mj (none (tc-err (r-judged (subj-none) (jg-empty-case)))) ((some j) (tc-ok rt (uadd us j))))))
 
 ; ============================================ E04 decision #6: VRefine internals
 ; Ports refine.py _eval_refine / _check_refine / _check_against / _subtype / _conv
@@ -1399,9 +1402,9 @@
             (case (eval-term (env-of c) base)
               ((v-primty n) (case (str-eq n "I64")
                               (true  (check-ratoms sig c atoms))
-                              (false (tc-err "scaffold refinements are over I64 only"))))
-              (_ (tc-err "scaffold refinements are over I64 only"))))
-          (_ (tc-err "refinement base is not a type")))))))
+                              (false (tc-err (r-judged (subj-none) (jg-refine-i64))))))
+              (_ (tc-err (r-judged (subj-none) (jg-refine-i64))))))
+          (_ (tc-err (r-judged (subj-none) (jg-refine-base)))))))))
 (def check-ratoms
   (lam (sig c atoms)
     (case atoms
@@ -1411,9 +1414,9 @@
           ((tc-err m) (tc-err m))
           ((tc-ok oty ou)
             (case (obase-i64? oty)
-              (false (tc-err "refinement operand must be an I64"))
+              (false (tc-err (r-judged (subj-none) (jg-refine-opnd-i64))))
               (true (case (operand-ok? (eval-term (env-of c) operand))
-                      (false (tc-err "refinement operand must be a constant or a bare variable"))
+                      (false (tc-err (r-judged (subj-none) (jg-refine-opnd-form))))
                       (true  (check-ratoms sig c rest)))))))))))))
 
 ; check against a refinement (refine.py _check_against): a base value that either
@@ -1433,8 +1436,8 @@
             (case (refine-entails? ity cns)
               (true (ck-ok u))
               (false (case (unann-lit t)
-                       ((some k) (case (satisfies cns k) (true (ck-ok u)) (false (ck-err "cannot prove refinement"))))
-                       (none (ck-err "cannot prove refinement")))))))))))
+                       ((some k) (case (satisfies cns k) (true (ck-ok u)) (false (ck-err (r-judged (subj-none) (jg-refine-unproved))))))
+                       (none (ck-err (r-judged (subj-none) (jg-refine-unproved)))))))))))))
 
 ; ============================================ E04 #6 R3: the narrow hook (case)
 ; Ports refine.py _narrow: when a case scrutinee is a comparison of a variable
