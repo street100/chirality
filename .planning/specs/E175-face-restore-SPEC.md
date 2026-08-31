@@ -707,3 +707,48 @@ cannot be reading two different fixtures.
   why a magic `"default"` is refused) · [[E112-apc-sidechannel]] (the codec that
   carries the face **name** and is therefore untouched). Elements: **E174** ·
   **E158** · **E157** · **E177** · **E178** · **E179** · **E180** · **E112**.
+
+
+---
+
+## Author decision on decision 14 (2026-08-31) — RESOLVED, option (i), nothing minted
+
+**`-1` means *no opinion*. §4's choice stands, and it is a complete answer rather
+than a stopgap.**
+
+**(iii) is refused outright.** Treating the literal name `"default"` as
+reset-to-plain is a magic string deciding behaviour — a `Str` carrying a
+which-of-N, which `pattern-boundary-sums` exists to forbid. This arc has already
+refused that move twice (SGR-in-`r-text` for E174, `from Str` on `r-relayed` for
+E158). Refusing it a third time is consistency, not caution.
+
+**(i) is chosen because it is coherent, not because it is cheap.** Under delta
+semantics "unset" meaning *inherit* is the same rule CSS settled on, and it is
+what `face-sgr` already implements — the open has always been a delta. Option (i)
+is therefore not a compromise: it is naming the semantics the emitter already
+has, which is exactly what this element does at the close.
+
+**(ii) — a fourth `Face` field carrying an attrs clear-mask — is NOT minted, on
+purpose, and this is the interesting half.** The deferral rule forbids naming
+follow-on work without a row; it does not require inventing rows for capabilities
+nobody has asked for. "A face can say *not bold*" is a **new requirement**, not
+residue of this change: no consumer nests today, none has wanted to un-set an
+attribute, and E175 does not make anything worse in that direction — before it,
+the close reset everything, so "not bold" was reachable only by accident and only
+at the cost of the bug being fixed here. **Requirements are not residue.** Minting
+a row for it would be a phantom in the other direction: a tracked obligation
+nobody incurred, which is its own kind of dishonesty in a ledger.
+
+**The genuinely defective half already has a home.** "`"default"` and a typo'd
+name are indistinguishable" is *not* about `-1` — it is `lookup-face`
+synthesizing a face for an unknown name instead of failing, which is **E179**
+(minted). Splitting the question that way is what makes (i) safe: the part that
+is a defect is tracked, and the part that is a wish is not pretended to be one.
+
+**Correction owed to my own brief, recorded because it was load-bearing:** I told
+the spec run that option (ii) "would ripple into `apc.chiral`'s codec". It would
+not. `apc.chiral` encodes and decodes the `r-face` constructor's first field — a
+`Str` face **name** (`:115`, `:276`) — and never a `Face`. The `(face …)`
+constructor is applied at 11 sites, all inside `render.chiral`. The real blast
+radius is one module. I inflated the cost of the option I then declined; the
+decision above does not rest on that cost, and stands without it.
