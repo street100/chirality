@@ -24,6 +24,8 @@
 #  14  layout algebra (E158)     NEW HERE   -- tools/test/doc.sh
 #  15  horizontal composition    NEW HERE   -- tools/test/row.sh
 #      (E174 r-row + rnd-cols)
+#  16  ambient face restore      NEW HERE   -- tools/test/face.sh
+#      (E175 face-join + rnd-restore)
 #
 # Each case's expected value comes from what the program MEANS, never from a
 # golden capture of chirality's own output.
@@ -219,6 +221,22 @@ run_phase 14 "layout algebra (E158 Doc)"                       doc.sh
 # row.sh is a shape assertion: every one of them renders through
 # `render-to-ansi` and reads the emitted byte stream back as a cell map.
 run_phase 15 "horizontal composition (E174 r-row + rnd-cols)"  row.sh
+
+# ---- Phase 16: the ambient face (E175) --------------------------------------
+# 16 for the reason 15 was 15: 8-12 are names still owed to unported old-tree
+# phases.  E175 makes a face survive its body -- the emitter opened a face as a
+# DELTA and closed it as a full `\e[0m` REPLACEMENT, so a faced node's SIBLING
+# lost the enclosing face.  The defect is NOT nesting and the fix is NOT a face
+# stack in the `r-face` arm: the killing reset is `r-text`'s, and five of the
+# six close sites are ad-hoc `ansi-bold` the registry does not know about.
+#
+# ⚑ Its gate needs BOTH kinds of row, and that is the interesting part.  The
+# live consumers are SCREEN-identical but NOT byte-identical -- a close now
+# restores the ambient, so the stream gains bytes while every painted cell
+# stays put -- so G1-G4 grade a CELL MAP carrying the SGR register set.  But a
+# trailing SGR paints no cell, so G5 and G6 grade RAW BYTES: under M7 the cell
+# map is byte-for-byte identical while the stream gains 13.
+run_phase 16 "ambient face restore (E175 face-join + rnd-restore)"  face.sh
 
 echo
 echo "=== not ported from the old suite (named, not hidden) ==="

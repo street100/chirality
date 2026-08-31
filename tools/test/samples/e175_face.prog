@@ -1,0 +1,116 @@
+; e175_face.prog — E175's EMISSION fixture. The Phase 16 value half.
+;
+; ⚑ ONE fixture, spelled ONCE, read by BOTH kinds of row. E175 has two kinds of
+; defect and they are visible in different places: a face that fails to survive
+; its body is visible on the SCREEN (G1–G4, graded as a cell map with the SGR
+; register set per painted cell), while a close that emits the wrong BYTES where
+; nothing is painted is invisible to any cell map at all (G5, G6). Both rows
+; read this one program's stdout, so a cell map and a byte string here can never
+; be describing two different trees.
+;
+; ⚑ THIS FIXTURE CANNOT COMPILE AGAINST THE PRE-E175 TREE, and that is not an
+; oversight. `fz-at` calls `render-to-ansi` with EIGHT arguments and declares a
+; `Unit` result, so its "before" state comes from MUTANTS (tools/test/face.sh's
+; mutlib, which reverts one close in a scratch lib/) rather than from git
+; history — which is stronger, because a mutant is re-run on every future suite
+; run and a git tag is not.
+;
+; ⚑ Every shape below draws through `render-to-ansi` with an EXPLICIT
+; `rnd-face-plain` seed rather than through `render-to-ansi-full`, so no
+; ansi-clear/ansi-home resets the map mid-stream and every emitted byte belongs
+; to a shape named here.
+;
+; The row allocation, which face.sh's expectations are written against:
+;
+;    3      G2   the defect through r-row      — (3,3),(3,4) must carry the face
+;    7,8    G3   the same defect through r-lines, which PREDATES r-face
+;   11–20   G1   the LIVE shape at depth 0, five faces x bold/plain — a NO-OP
+;                row: this map must equal the pre-E175 golden exactly
+;   25      G4a  the JOIN, inner face with a fg opinion    (comment, fg 2)
+;   27      G4b  the JOIN, inner face with NO fg opinion   (manas-cursor, -1)
+;   31,32   G6   r-hole's control, and the last thing emitted — so the stream's
+;                final four bytes are the depth-0 close G5 reads
+;
+; ⚑ G1's trailing UNFACED sibling is load-bearing, not decoration. Measured at
+; the SPEC audit: on the solo shape (r-face "keyword" (r-text "ab" false)) both
+; M1 and M2 produce cell maps byte-for-byte identical to the fixed tree's,
+; because nothing is painted after the faced leaf for a wrong restore to touch.
+; Without the sibling the row is self-matching.
+;
+; ⚑ G4 needs TWO leaves inside the inner face. `face-join` feeds `rnd-restore`
+; and nothing else — an open is always `face-sgr` of the LOOKED-UP face, never
+; the join — so the only cell that reads a join is the leaf AFTER another leaf
+; inside the same inner face. An inner face with one leaf grades nothing.
+
+(import "prelude/prelude")
+(import "protocol/render")
+
+(def fz-dims (Pair I64 I64) (pair 130 200))
+
+; Draw one node at (rw, 1), seeded with the depth-0 ambient. EIGHT arguments.
+(declare fz-at (=> Rendering I64 Unit))
+(def fz-at (lam (nd rw) (render-to-ansi nd fz-dims none rw 1 rw 1 rnd-face-plain)))
+
+; G1's live shape: a faced leaf followed by an UNFACED sibling on the same row.
+; This is what all fourteen live r-face sites in the tree actually build, at
+; depth 0, and E175 must not move a single cell of it.
+(declare fz-live (-> Str Bool Rendering))
+(def fz-live
+  (lam (nm bd)
+    (r-row (cons (r-face nm (r-text "ab" bd))
+           (cons (r-text "cd" false) nil)))))
+
+; G2 — the defect itself. The killing reset is r-text's, not r-face's.
+(def fz-g2 Rendering
+  (r-face "keyword"
+    (r-row (cons (r-text "ab" false) (cons (r-text "cd" false) nil)))))
+
+; G3 — the same defect with no r-row anywhere. r-lines predates r-face in the
+; sum, so this proves the defect is older than E174 and outlives it.
+(def fz-g3 Rendering
+  (r-face "keyword"
+    (r-lines (cons (r-text "ab" false) (cons (r-text "cd" false) nil)))))
+
+; G4a — inner face STATES a foreground (comment, fg 2). The attrs rule and the
+; "inner's colour wins" rule are both live here.
+(def fz-g4a Rendering
+  (r-face "keyword"
+    (r-row (cons (r-face "comment"
+                   (r-row (cons (r-text "xy" false) (cons (r-text "zw" false) nil))))
+           (cons (r-text "pq" false) nil)))))
+
+; G4b — inner face has NO foreground opinion (manas-cursor, -1 -1 8), so the
+; outer's must be inherited. Without this shape M6 (join-keeps-the-inner-fg)
+; leaves G4a completely unchanged and convicts nothing.
+(def fz-g4b Rendering
+  (r-face "keyword"
+    (r-row (cons (r-face "manas-cursor"
+                   (r-row (cons (r-text "xy" false) (cons (r-text "zw" false) nil))))
+           (cons (r-text "pq" false) nil)))))
+
+; G6 — r-hole emits NO SGR and closes with (put ""). E175 does not touch it: it
+; is E174's residue and it is the control that shows this element was not a
+; blanket sed. Emitted LAST, so the outer close is the final thing in the
+; stream and G5 can read the depth-0 restore off the tail.
+(def fz-g6 Rendering
+  (r-face "keyword"
+    (r-lines (cons (r-hole "h") (cons (r-text "ab" false) nil)))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((_ (fz-at fz-g2   3)))
+    (let ((_ (fz-at fz-g3   7)))
+    (let ((_ (fz-at (fz-live "keyword"      false) 11)))
+    (let ((_ (fz-at (fz-live "keyword"      true ) 12)))
+    (let ((_ (fz-at (fz-live "comment"      false) 13)))
+    (let ((_ (fz-at (fz-live "comment"      true ) 14)))
+    (let ((_ (fz-at (fz-live "manas-header" false) 15)))
+    (let ((_ (fz-at (fz-live "manas-header" true ) 16)))
+    (let ((_ (fz-at (fz-live "manas-ok"     false) 17)))
+    (let ((_ (fz-at (fz-live "manas-ok"     true ) 18)))
+    (let ((_ (fz-at (fz-live "manas-bad"    false) 19)))
+    (let ((_ (fz-at (fz-live "manas-bad"    true ) 20)))
+    (let ((_ (fz-at fz-g4a 25)))
+    (let ((_ (fz-at fz-g4b 27)))
+    (let ((_ (fz-at fz-g6  31)))
+      0)))))))))))))))))

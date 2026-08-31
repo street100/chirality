@@ -16,13 +16,14 @@ Entry point: `bin/chirality test` → `tools/test/run-tests.sh`.
 | 6 linear mint (E159) | `test-linear-mint.sh` | `linear-mint.sh` | 21 |
 | 7 downstream roots compile | `run-native.sh` inline | `run-tests.sh` inline | 11 roots |
 
-## New here — Phases 13, 14 and 15
+## New here — Phases 13, 14, 15 and 16
 
 | phase | source | here | assertions |
 |---|---|---|---|
 | 13 typed diagnostics (E157) | old tree's `test-diag.sh` | `diag.sh` + `samples/e157_diag.prog` | 30 |
 | 14 layout algebra (E158) | none — written here | `doc.sh` + `samples/e158_doc.prog` | 26 |
 | 15 horizontal composition (E174) | none — written here | `row.sh` + `samples/e174_row.prog` | 41 |
+| 16 ambient face restore (E175) | none — written here | `face.sh` + `samples/e175_face.prog` | 38 |
 
 E157 landed in the old tree after the migration snapshot, so it has **no old-tree
 phase number to inherit**. It is 13 rather than 8: 8–12 are names still owed, and
