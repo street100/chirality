@@ -177,11 +177,15 @@
   (lam (i) (str-cat "\n" (str-pad "" i " "))))
 
 ; ---- EXIT 1 of 3: characters, at a width the CALLER chose -------------------
-; The other two exits are named and deliberately absent. `doc->rendering` is
-; E158 commit 4, blocked on E174 (`Rendering` has no horizontal composition
-; constructor) and E175 (nested `r-face` resets rather than restores).
-; `doc->json` has no consumer, and building an unconsumed exit is the
-; "built but unadopted" trap this repo has logged four times.
+; `doc->rendering` -- exit 2, the screen tree -- is BUILT, and it is NOT here:
+; it lives in `lib/protocol/render-doc.chiral` (E158 commit 4), because it needs
+; `protocol/render` and `prelude/` may not depend on `protocol/`. It landed once
+; E174 gave `Rendering` horizontal composition (`r-row` + `rnd-cols`) and E175
+; made a face's CLOSE restore the ambient instead of resetting -- the two
+; obstructions that made "correct for nested tags" unrepresentable rather than
+; merely hard. `doc->json` -- exit 3 -- has no consumer and is still absent,
+; because building an unconsumed exit is the "built but unadopted" trap this
+; repo has logged four times.
 (declare doc->str (-> I64 Doc Str))
 (def doc->str
   (lam (w d)

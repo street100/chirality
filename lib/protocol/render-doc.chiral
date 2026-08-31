@@ -1,0 +1,258 @@
+; lib/protocol/render-doc.chiral -- E158 commit 4: `doc->rendering`.
+;
+; THE THIRD EXIT. `Doc` is a template; a width is an argument to the EXIT, never
+; a field of the value. `doc->str` (lib/prelude/doc.chiral) flattens to
+; characters; this flattens to `Rendering`, the screen tree. `doc->json` is
+; still absent and still deliberately so: it has no consumer.
+;
+; ⚑ `Doc` DOES NOT UNIFY WITH `Rendering` (E158 SPEC decision 3). This file
+; CONVERTS. `Rendering`'s four interaction-carrying constructors (r-section
+; collapsed, r-stream source-id, r-tree selected, r-hole) have no image in `Doc`
+; and must not acquire one; `Doc`'s width has no image in `Rendering` and must
+; not acquire one either. The conversion is one-way and it is a function.
+;
+; WHY protocol/ AND NOT typing/. LAYOUT.md's tiers: `protocol` is universal,
+; `typing` is lang-impl-only. A display exit that `typing/diag` could reach but
+; `prog/scriba` could not would be the altitude error, so the exit lives here
+; and `prelude/doc` stays under both.
+;
+; ⚑ WHAT THIS FILE IS NOT IN. Nothing imports it, and in particular
+; `lib/typing/diag.chiral` does not: `prelude/doc` is inside
+; `prog/compiler.prog`'s blob and `protocol/render` is NOT (measured -- the
+; compiler blob contains two occurrences of the string `protocol/render`, both
+; of them comments in `prelude/doc.chiral`). So this file changes no blob, and
+; the self-hosting `cmp` obligation does not fire for it. Phase 17's G10 is that
+; measurement as a checked row, with a mutant that puts the import in and
+; watches the row go red -- because "outside the closure" is exactly the kind of
+; claim that is true when written and false three commits later.
+;
+; ─── THE TWO THINGS THAT HAD TO EXIST FIRST ─────────────────────────────────
+;
+; E174 -- `r-row`, and `rnd-cols`. A rendered `Doc` line mixes a tagged span
+; with untagged material on the SAME output line, and before E174 `Rendering`
+; had no horizontal composition at all: `r-lines` steps the row, `r-face` does
+; not move the cursor, and `r-table` is a fixed 16-column grid. The line was
+; unrepresentable, not merely awkward.
+;
+; E175 -- the close RESTORES the ambient. `r-face` opens with a DELTA and used
+; to close with a full `\e[0m`, so an inner face's close cleared the outer's
+; attributes and everything after it on the line rendered unfaced. That is
+; precisely the shape a nested `d-tag` produces here, and it is why FLAG C --
+; "it ships correct for nested tags or it does not land" -- could not be met by
+; a face-name stack in this file alone.
+;
+; ─── ONE FACE NODE PER TAG NODE, NOT PER SEGMENT ────────────────────────────
+;
+; ⚑ THIS IS THE DESIGN DECISION OF THE COMMIT, and the shortcut it refuses is
+; not the one FLAG C named. The cheap conversion carries the tag stack down the
+; walk and re-wraps EVERY EMITTED LEAF in its whole stack:
+;
+;     r-row [ r-face kw (r-text "ab") ,
+;             r-face kw (r-face cm (r-text "cd")) ,
+;             r-face kw (r-text "ef") ]
+;
+; That is screen-correct. It is also the E158 defect one layer down: it takes a
+; structure -- the tag TREE -- and smears it across the leaves, which is what
+; `str-cat`-at-the-construction-site does to a document. And it is quietly
+; self-defeating as a test subject: because every leaf re-opens its own faces,
+; no `r-face` in its output ever wraps more than one painted node, so E175 is
+; NEVER EXERCISED and a gate over it would pass on the pre-E175 emitter.
+; Measured before it was written, not after.
+;
+; What this file builds instead is the TREE:
+;
+;     r-face kw (r-row [ r-text "ab" , r-face cm (r-row [r-text "cd"]) ,
+;                        r-text "ef" ])
+;
+; -- one `r-face` per `d-tag` occurrence per line, exactly the `d-tag` -> `r-face`
+; rule of the ledger row. Here "ef" is painted AFTER an inner face closed, with
+; nothing re-opening the outer, so it reads the ambient the close restored: this
+; output is correct on E175's emitter and WRONG on the one before it, which is
+; what makes the dependency real rather than asserted.
+;
+; RESIDUE, named: two ADJACENT tags of the SAME NAME at the same depth coalesce
+; into one `r-face` (the grouping keys on the name, the only thing a `d-tag`
+; carries). Screen-identical -- `rnd-cols` is the sum either way and the SGR
+; register set per painted cell is unchanged -- and stated here rather than
+; discovered later.
+;
+; ─── THE WALK IS RE-RUN, AND THE GATE PINS THE TWO TOGETHER ─────────────────
+;
+; `doc-best` accumulates `(List Str)`; it cannot also accumulate line structure
+; and a tag stack. So the Lindig walk is re-run here over a frame that carries
+; the tag stack. That is a duplicated decision procedure, which is a real
+; divergence risk, and it is answered by making the agreement a LAW the gate
+; checks rather than a convention: Phase 17's G1 reads the text back out of
+; `doc->rendering w d` and requires it to equal `doc->str w d` at every width.
+;
+; The ONE decision point -- `d-group`'s fits test -- is NOT re-implemented. It
+; calls `prelude/doc`'s own `doc-fits`, over a stripped copy of the worklist, so
+; there is one definition of "fits" in the tree and not two. `rdc-strip` is the
+; cost of that: O(depth) per group, paid to keep a single authority.
+;
+; ⚑ TOTALITY: AN ARGUMENT, NOT A CERTIFICATE -- as in `prelude/doc`, and for the
+; same reason (E11's classifier is single-function; mutual recursion is E50, not
+; built). `rdc-best`/`rdc-line`/`rdc-break` inherit `doc-best`'s measure: every
+; pop pushes only strict subterms. `rdc-tree`/`rdc-take` decrease
+; lexicographically on (segments remaining, total tag depth) -- `rdc-take`
+; always consumes at least the head it was called on, so `after` is strictly
+; shorter, and the group it returns has one tag stripped from every member.
+; PROSE. The gate does not certify it and does not claim to.
+
+(import "prelude/prelude")         ; Str, List, Bool, I64, Pair, str-eq, str-len
+(import "prelude/list")            ; reverse, append -- ERASED first param
+(import "prelude/string")          ; str-pad, for the break indent
+(import "prelude/doc")             ; Doc, Brk, DMode, Frame, doc-fits
+(import "protocol/render")         ; Rendering, r-row, r-face, r-lines, r-text
+
+; ⚑ No `(module ...)` coordinate: 0 of protocol/'s 8 files carry one and
+; prelude/'s 8 of 8 do (E158 SPEC decision 14). Following the directory is not
+; an omission.
+
+; ---- the walk's frame: Lindig's, plus the tag stack ------------------------
+; `tags` is OUTERMOST-FIRST, because that is the order the tree is built in and
+; a list that has to be reversed at every use is a wrong representation.
+(data RdcFrame () (rdcf (indent I64) (dmode DMode) (doc Doc) (tags (List Str))))
+
+; ---- one emitted run of characters, with the tags that were open ------------
+; The intermediate the walk produces and the tree-builder consumes. It exists
+; because a Lindig worklist is FLAT and a `Rendering` is not; the conversion
+; between those two shapes is this type.
+(data RdcSeg () (rdcs (tags (List Str)) (text Str)))
+
+(declare rdc-strip  (-> (List RdcFrame) (List Frame)))
+(declare rdc-best   (-> I64 I64 (List RdcFrame) (List RdcSeg) (List Rendering) (List Rendering)))
+(declare rdc-line   (-> I64 I64 I64 DMode Brk (List Str) (List RdcFrame) (List RdcSeg) (List Rendering) (List Rendering)))
+(declare rdc-break  (-> I64 I64 (List RdcFrame) (List RdcSeg) (List Rendering) (List Rendering)))
+(declare rdc-flush  (-> (List RdcSeg) (List Rendering) (List Rendering)))
+(declare rdc-indent (-> I64 (List RdcSeg)))
+(declare rdc-take   (-> Str (List RdcSeg) (List RdcSeg) (Pair (List RdcSeg) (List RdcSeg))))
+(declare rdc-tree   (-> (List RdcSeg) (List Rendering)))
+(declare doc->rendering (-> I64 Doc Rendering))
+
+; ---- the group probe reuses prelude/doc's `doc-fits`, it does not re-decide --
+; Drop the tag stack: `doc-fits` measures WIDTH, and a tag is zero width, so the
+; stripped worklist is the same question `doc-best` asks. One definition of
+; "fits" in the tree.
+(def rdc-strip
+  (lam (fs)
+    (case fs
+      (nil nil)
+      ((cons f rest)
+        (case f
+          ((rdcf i md d tg) (cons (dfr i md d) (rdc-strip rest))))))))
+
+; ---- the walk ---------------------------------------------------------------
+; `cur` is the current line's segments in REVERSE; `lines` is the finished rows
+; in REVERSE. Arm for arm this is `doc-best` with `(List Str)` replaced by those
+; two accumulators and `tags` threaded; the ONE arm that decides anything is
+; `d-group`, and it delegates.
+(def rdc-best
+  (lam (w k fs cur lines)
+    (case fs
+      ; the worklist is empty: the line in hand is the last row.
+      (nil (rdc-flush cur lines))
+      ((cons f rest)
+        (case f
+          ((rdcf i md d tg)
+            (case d
+              ((d-text s)   (rdc-best w (+ k (str-len s)) rest (cons (rdcs tg s) cur) lines))
+              ((d-cat l r)  (rdc-best w k (cons (rdcf i md l tg) (cons (rdcf i md r tg) rest)) cur lines))
+              ((d-nest j b) (rdc-best w k (cons (rdcf (+ i j) md b tg) rest) cur lines))
+              ; ⚑ THE `d-tag` -> `r-face` RULE, and the only place the stack grows.
+              ; `append` and not `cons`: outermost-first, so `rdc-tree` peels the
+              ; OUTER face first and the nesting comes out in the order the
+              ; document wrote it.
+              ((d-tag n b)  (rdc-best w k (cons (rdcf i md b (append Str tg (cons n nil))) rest) cur lines))
+              ((d-line b)   (rdc-line w k i md b tg rest cur lines))
+              ((d-group b)
+                (case (doc-fits (- w k) (cons (dfr i (m-flat) b) (rdc-strip rest)))
+                  (true  (rdc-best w k (cons (rdcf i (m-flat) b tg) rest) cur lines))
+                  (false (rdc-best w k (cons (rdcf i (m-brk)  b tg) rest) cur lines)))))))))))
+
+; A break resolves by (mode, kind), exactly as `dc-line` does. A FLAT space is a
+; segment carrying the tags that were open -- it is content on this line. A
+; BROKEN break is a new row, and the `(m-flat, brk-hard)` arm is written and it
+; breaks, for the reason `dc-line`'s is: a total function does not halt on
+; "can't happen".
+(def rdc-line
+  (lam (w k i md b tg rest cur lines)
+    (case md
+      ((m-flat)
+        (case b
+          ((brk-soft)  (rdc-best w k rest cur lines))
+          ((brk-space) (rdc-best w (+ k 1) rest (cons (rdcs tg " ") cur) lines))
+          ((brk-hard)  (rdc-break w i rest cur lines))))
+      ((m-brk) (rdc-break w i rest cur lines)))))
+
+; ⚑ THE NEWLINE IS A ROW BOUNDARY, NOT A CHARACTER. `doc->str` writes "\n" plus
+; the indent into the string; here the "\n" becomes the step from one `r-lines`
+; child to the next and the indent becomes a leading UNTAGGED segment. Column
+; position on the screen therefore equals codepoint offset within the line of
+; `doc->str`, which is what Phase 17's G5 reads off the emitted bytes.
+(def rdc-break
+  (lam (w i rest cur lines)
+    (rdc-best w i rest (rdc-indent i) (rdc-flush cur lines))))
+
+(def rdc-flush
+  (lam (cur lines)
+    (cons (r-row (rdc-tree (reverse RdcSeg cur))) lines)))
+
+; The break indent, as spaces -- `str-pad` returns its subject unchanged when
+; the target width is <= its length, so i = 0 yields "" and this returns the
+; EMPTY segment list rather than a zero-width node. UNTAGGED on purpose: indent
+; is whitespace between the margin and the content, and facing it would paint a
+; background colour across a gutter no `d-tag` covers.
+(def rdc-indent
+  (lam (i)
+    (case (<i 0 i)
+      (true (cons (rdcs nil (str-pad "" i " ")) nil))
+      (false nil))))
+
+; ---- flat tagged segments -> the nested face tree ---------------------------
+; `rdc-take t segs acc` peels the longest PREFIX of `segs` whose outermost tag
+; is `t`, stripping that tag from each member as it goes, and returns
+; (the group, the rest). It always consumes the head it was called on, so `rest`
+; is strictly shorter than `segs` -- which is the whole termination argument for
+; `rdc-tree`.
+(def rdc-take
+  (lam (t segs acc)
+    (case segs
+      (nil (pair (reverse RdcSeg acc) nil))
+      ((cons s rest)
+        (case s
+          ((rdcs tags txt)
+            (case tags
+              (nil (pair (reverse RdcSeg acc) segs))
+              ((cons t2 ts)
+                (case (str-eq t t2)
+                  (true  (rdc-take t rest (cons (rdcs ts txt) acc)))
+                  (false (pair (reverse RdcSeg acc) segs)))))))))))
+
+; ONE `r-face` per tag occurrence per line. A segment with no tags left is the
+; leaf. `bold` is `false` at every leaf: boldness is a FACE attribute here
+; (`face-sgr` emits SGR 1 for attrs bit 1), and a second, ad-hoc bold channel
+; beside the registry is E179's defect, not a thing to add more of.
+(def rdc-tree
+  (lam (segs)
+    (case segs
+      (nil nil)
+      ((cons s rest)
+        (case s
+          ((rdcs tags txt)
+            (case tags
+              (nil (cons (r-text txt false) (rdc-tree rest)))
+              ((cons t ts)
+                (case (rdc-take t segs nil)
+                  ((pair grp after)
+                    (cons (r-face t (r-row (rdc-tree grp))) (rdc-tree after))))))))))))
+
+; ---- EXIT 3 of 3: the screen tree, at a width the CALLER chose ---------------
+; The rows come off the walk in reverse, as the segments within a row do.
+; `(reverse Rendering ...)` -- the erased type argument written out, as
+; `prelude/list:33` requires.
+(def doc->rendering
+  (lam (w d)
+    (r-lines
+      (reverse Rendering
+        (rdc-best w 0 (cons (rdcf 0 (m-brk) d nil) nil) nil nil)))))
