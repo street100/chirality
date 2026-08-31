@@ -1,0 +1,290 @@
+; ==================================================== manas Chatter — DC-2a the SEMANTIC DIVIDER
+; The turn's FIRST stage (CHATTER-FLOW-MAP §DIVIDE): message -> `List Chunk`, each an independent
+; sub-request. Today a turn treats the whole message as ONE ask (C6b's `split-conjunctions` splits
+; only on sequencing words and yields bare strings, not typed sub-requests) — so there is no real
+; divide, and nothing downstream can fan over chunks. This module is that divide.
+;
+; CODE-PRIOR, port-second (the standing posture, MIX-MAP M2):
+;   1. the STRUCTURAL divider (code) reads the structure the message already carries —
+;      sequencing markers (" and then " / " then " / "; ") and parallel markers (", and " /
+;      " also " / " plus "), plus the ":" that introduces a payload;
+;   2. the semantic-divider PORT (model) opens ONLY for the residue — a message the structural
+;      pass could not divide at all. Structure present => the port stays SHUT (no model call,
+;      no latency, no 0.5b coin-flip on something code already knows).
+;   3. either way the result is the SAME closed value (`Divided`), carrying HOW it was divided.
+;
+; DEPS are read off the marker, not guessed: a SEQUENCING marker means the parts are ordered, so
+; every chunk of group g waits on ALL of group g-1 (a barrier); a PARALLEL marker means siblings
+; are independent (deps nil). That is a structural fact the words carry — exactly the kind of
+; thing code decides better than a tiny model.
+;
+; PURE except `divide` itself, which may dial the port (it takes an ENDPOINT Str and opens/closes
+; its OWN backend inline, E137 — mirroring plan-message; no linear value escapes).
+;
+; Build+run the unit gate:
+;   chirality run prog/manas/chatter/divide-test.prog
+
+(import "prelude/prelude")                 ; Maybe, some, none, List, cons, nil, Pair, pair, Bool, and, or, not, case, str-cat, str-eq, str-len, str-sub, str-find, =i, <i, <=i, +, -, do
+(import "prelude/collections")             ; append
+(import "manas/core/flow")         ; str-trim, str-has, str-nonempty, parse-perspectives, persp-question  (the LENIENT list parser, reused)
+(import "manas/chatter/router")    ; Intent (+ ctors), route-message, str-lower, conj-markers, nonspace-count (the clarify threshold, reused as the port floor)
+(import "manas/backend")                 ; Backend (E137 linear porttype), backend-open/backend-close, be-chat, msg, ChatR (chat-ok/chat-bad)
+
+; ------------------------------------------------------------------- Origin : HOW a chunk was cut
+; A closed sum (boundary-sums): the provenance is a VALUE, so a later stage (scheduling, context
+; attenuation, scriba's plan view) can reason about it instead of re-deriving it.
+;   org-structural — the code divider cut it out of the message's own structure.
+;   org-model      — the semantic-divider PORT produced it (the residue path).
+;   org-whole      — nothing divided it: the whole message is one chunk (the honest floor).
+(data Origin () (org-structural) (org-model) (org-whole))
+
+(def origin-name (-> Origin Str)
+  (lam (o) (case o ((org-structural) "structural") ((org-model) "model") ((org-whole) "whole"))))
+
+; ------------------------------------------------------------------- Chunk : one typed sub-request
+; `text` is the ASK; `data` is the PAYLOAD it carries (what followed the ":" — the claims to sort,
+; the code to test). Splitting them is what lets DC-4a grant a specialist its chunk's data and
+; NOTHING else. `intent` is the chunk's OWN route (a compound message's parts genuinely differ).
+; `deps` are indices into the chunk list — the chunks that must finish first.
+(data Chunk ()
+  (mk-chunk (text Str) (data Str) (intent Intent) (deps (List I64)) (origin Origin)))
+
+(def chunk-text   (-> Chunk Str)        (lam (c) (case c ((mk-chunk t d i ds o) t))))
+(def chunk-data   (-> Chunk Str)        (lam (c) (case c ((mk-chunk t d i ds o) d))))
+(def chunk-intent (-> Chunk Intent)     (lam (c) (case c ((mk-chunk t d i ds o) i))))
+(def chunk-deps   (-> Chunk (List I64)) (lam (c) (case c ((mk-chunk t d i ds o) ds))))
+(def chunk-origin (-> Chunk Origin)     (lam (c) (case c ((mk-chunk t d i ds o) o))))
+
+; Divided : the divider's closed egress — the chunks + how they were obtained. ONE value for all
+; three paths, so the caller cases it totally and never re-inspects the message.
+(data Divided () (divided (chunks (List Chunk)) (via Origin)))
+(def divided-chunks (-> Divided (List Chunk)) (lam (d) (case d ((divided cs v) cs))))
+(def divided-via    (-> Divided Origin)       (lam (d) (case d ((divided cs v) v))))
+
+(declare chunk-count (-> (List Chunk) I64))
+(def chunk-count (lam (cs) (case cs (nil 0) ((cons h t) (+ 1 (chunk-count t))))))
+
+; ------------------------------------------------------------------- the marker vocabularies
+; SEQUENCING is router's `conj-markers` (" and then " / " then " / " after that " / "; " / ";") —
+; reused, not re-declared, so C6b's turn-seq and this divider cut at exactly the same seams.
+; PARALLEL markers are comma- or word-anchored so they cannot fire inside a sequencing marker
+; (there is no bare " and ": "black and white" must not split, and ", and then " must be cut by
+; the SEQUENCING pass first — which it is, because parallel splitting runs on the groups AFTER).
+(def par-markers (List Str)
+  (cons ", and " (cons " and also " (cons " also " (cons " plus " (cons ", plus " nil))))))
+
+; earliest-marker : (index, length) of the EARLIEST-occurring marker in `hay`, or (-1, 0).
+; OVERLAP RULE: when two matches overlap the LONGER one wins, whichever starts first. Without it
+; ", and " (index i) would beat " and also " (index i+1) on "…doc, and also write…" and leave the
+; word "also" glued to the second chunk. Non-overlapping matches are decided by index alone.
+(def spans-overlap (-> I64 I64 I64 I64 Bool)
+  (lam (i len bi blen) (and (<i i (+ bi blen)) (<i bi (+ i len)))))
+
+(declare earliest-go (-> Str (List Str) I64 I64 (Pair I64 I64)))
+(def earliest-go
+  (lam (hay ms best-i best-len)
+    (case ms
+      (nil (pair best-i best-len))
+      ((cons m rest)
+        (let ((i (str-find hay m)))
+          (case (<i i 0)
+            (true (earliest-go hay rest best-i best-len))
+            (false
+              (let ((len (str-len m)))
+                (case (<i best-i 0)
+                  (true (earliest-go hay rest i len))
+                  (false
+                    (case (spans-overlap i len best-i best-len)
+                      (true  (case (<i best-len len)                 ; overlapping -> the LONGER wins
+                               (true  (earliest-go hay rest i len))
+                               (false (earliest-go hay rest best-i best-len))))
+                      (false (case (<i i best-i)                     ; disjoint -> the EARLIER wins
+                               (true  (earliest-go hay rest i len))
+                               (false (earliest-go hay rest best-i best-len)))))))))))))))
+(def earliest-marker (-> Str (List Str) (Pair I64 I64))
+  (lam (hay ms) (earliest-go hay ms (- 0 1) 0)))
+
+; split-on : cut `s` at every marker in `ms`. NO marker -> a ONE-element list (the common case).
+; Markers are matched on the ASCII-LOWERCASED copy (so "X AND THEN Y" splits) and str-sub'd out of
+; the ORIGINAL (lowercasing is length-preserving, so the index transfers). `fuel` = the initial
+; str-len, a strict upper bound on the number of cuts, so totality needs no measure recursion.
+; str-sub is (START END) END-EXCLUSIVE throughout; every END is a real index.
+(declare split-on-go (-> Str (List Str) I64 (List Str)))
+(def split-on-go
+  (lam (s ms fuel)
+    (case (<=i fuel 0)
+      (true (cons s nil))
+      (false
+        (case (earliest-marker (str-lower s) ms)
+          ((pair i len)
+            (case (<i i 0)
+              (true (cons s nil))
+              (false
+                (cons (str-sub s 0 i)
+                      (split-on-go (str-sub s (+ i len) (str-len s)) ms (- fuel 1)))))))))))
+(def split-on (-> Str (List Str) (List Str))
+  (lam (s ms) (split-on-go s ms (str-len s))))
+
+; ------------------------------------------------------------------- trimming
+; a part keeps its casing but loses surrounding whitespace and the punctuation the cut left behind
+; (", and then " leaves the comma on the prefix). PURE, TOTAL: str-sub is (START END), and the
+; empty-string guard fires before any index is taken.
+(def is-trailing-punct (-> Str Bool)
+  (lam (c) (or (str-eq c ",") (or (str-eq c ";") (or (str-eq c ".") (str-eq c ":"))))))
+(declare trim-punct (-> Str Str))
+(def trim-punct
+  (lam (s)
+    (let ((t (str-trim s)))
+      (case (=i (str-len t) 0)
+        (true t)
+        (false
+          (case (is-trailing-punct (str-sub t (- (str-len t) 1) (str-len t)))
+            (true  (trim-punct (str-sub t 0 (- (str-len t) 1))))
+            (false t)))))))
+
+; ------------------------------------------------------------------- ask/payload split
+; A ":" in a chat message overwhelmingly introduces the PAYLOAD ("sort these claims: (a)… (b)…").
+; Cut at the FIRST ":" whose remainder is non-empty after trimming: text = the ask, data = the
+; payload. No colon (or nothing after it) -> the whole part is the ask and data is "" (honest —
+; an absent payload is empty, never a fabricated one).
+(def split-payload (-> Str (Pair Str Str))
+  (lam (s)
+    (let ((i (str-find s ":")))
+      (case (<i i 0)
+        (true (pair (trim-punct s) ""))
+        (false
+          (let ((rest (str-trim (str-sub s (+ i 1) (str-len s)))))
+            (case (=i (str-len rest) 0)
+              (true (pair (trim-punct s) ""))
+              (false (pair (trim-punct (str-sub s 0 i)) rest)))))))))
+
+; ------------------------------------------------------------------- the STRUCTURAL divider
+; group -> its independent sibling chunks. `deps` is the SAME incoming barrier for every sibling
+; (they are parallel to each other, all waiting on the previous group). An empty part is DROPPED,
+; never emitted as a blank sub-request.
+(declare siblings-go (-> (List Str) (List I64) (List Chunk)))
+(def siblings-go
+  (lam (parts deps)
+    (case parts
+      (nil nil)
+      ((cons p rest)
+        (case (split-payload p)
+          ((pair text data)
+            (case (=i (str-len text) 0)
+              (true (siblings-go rest deps))
+              (false
+                (cons (mk-chunk text data (route-message (str-cat text (str-cat " " data))) deps (org-structural))
+                      (siblings-go rest deps))))))))))
+
+; indices [base, base+n) — the barrier the NEXT group waits on.
+(declare index-range (-> I64 I64 (List I64)))
+(def index-range
+  (lam (base n)
+    (case (<=i n 0)
+      (true nil)
+      (false (cons base (index-range (+ base 1) (- n 1)))))))
+
+; groups -> the flat chunk list. Group g's chunks all carry deps = the indices of group g-1 (a
+; BARRIER: an ordered message means the later ask genuinely needs the earlier one's result).
+; `base` is the running index of the first chunk of the current group.
+(declare groups-go (-> (List Str) (List I64) I64 (List Chunk)))
+(def groups-go
+  (lam (groups deps base)
+    (case groups
+      (nil nil)
+      ((cons g rest)
+        (let ((sibs (siblings-go (split-on g par-markers) deps)))
+          (let ((n (chunk-count sibs)))
+            (append Chunk sibs (groups-go rest (index-range base n) (+ base n)))))))))
+
+; divide-code : the structural pass. PURE, TOTAL, mesh-free. A message with no usable content
+; yields the EMPTY list — honestly "nothing to ask", never a blank chunk. (turn already answers a
+; too-thin message with in-clarify; the divider does not invent an ask to fill the gap.)
+(def divide-code (-> Str (List Chunk))
+  (lam (message) (groups-go (split-on message conj-markers) nil 0)))
+
+; structured? : did the message carry structure the code pass could read? TRUE iff it produced
+; more than one chunk, or the single chunk has a payload. This is the PORT GATE — the model is
+; dialed only when this is false (CHATTER-FLOW-MAP: "open the port only for the residue").
+(def structured? (-> (List Chunk) Bool)
+  (lam (cs)
+    (case cs
+      (nil false)
+      ((cons c rest)
+        (case rest
+          ((cons x xs) true)
+          (nil (str-nonempty (chunk-data c))))))))
+
+; ------------------------------------------------------------------- the semantic-divider PORT
+; The residue path: a message with no structural seam may still hold several asks ("tell me what
+; caused the outage and whether we should roll back" — no marker code can trust). The port asks
+; the model for one sub-request per line and parses the reply LENIENTLY with the SAME parser the
+; perspectivist uses (parse-perspectives: JSON array preferred, one-per-line fallback) — composing
+; the existing lenient boundary parser rather than writing a second one.
+(def divide-prompt (-> Str Str)
+  (lam (message)
+    (str-cat "Split this request into its independent sub-requests. Return ONE sub-request per line, no numbering and no other prose. If it is really a single request, return it unchanged as one line.\n\nRequest: "
+             message)))
+
+; port-worth-it? : the LATENCY gate, measured not guessed. The port costs ~10s on qwen3:4b and,
+; because Ollama keeps exactly ONE model resident (DC-0a), a turn that dials it crosses the
+; resident slot an EXTRA time (divide 4b -> skills 0.5b -> synth 4b). So it opens only for a
+; message that could plausibly hold more than one ask: at least `port-min-chars` bytes of it, and
+; at least router's own clarify threshold of real content. A short question ("what is a monad in
+; functional programming", 41 bytes) is answered by the code pass as ONE chunk without ever
+; dialing — which is the right answer anyway, reached for free.
+(def port-min-chars I64 60)
+(def port-worth-it? (-> Str Bool)
+  (lam (message)
+    (and (<=i port-min-chars (str-len message))
+         (<=i 3 (nonspace-count message)))))
+
+; the divider model. The 0.5b is a coin-flip at this (DC-0a), and the port fires at most ONCE per
+; turn, so it rides the ORCHESTRATOR's tier — the same constant O6 bumped the planner/synth to.
+(def divide-model Str "qwen3:4b")
+
+; texts -> chunks (all independent, org-model). Empty texts are dropped.
+(declare model-chunks (-> (List Str) (List Chunk)))
+(def model-chunks
+  (lam (ts)
+    (case ts
+      (nil nil)
+      ((cons t rest)
+        (let ((tt (str-trim t)))
+          (case (=i (str-len tt) 0)
+            (true (model-chunks rest))
+            (false
+              (case (split-payload tt)
+                ((pair text data)
+                  (case (=i (str-len text) 0)
+                    (true (model-chunks rest))
+                    (false (cons (mk-chunk text data (route-message tt) nil (org-model))
+                                 (model-chunks rest))))))))))))) 
+
+(declare persp-texts (-> (List Perspective) (List Str)))
+(def persp-texts
+  (lam (ps) (case ps (nil nil) ((cons p rest) (cons (persp-question p) (persp-texts rest))))))
+
+; ------------------------------------------------------------------- divide : the DC-2a entry
+; endpoint + message -> Divided. CODE FIRST; the port opens only for the residue, and only ever
+; ADDS chunks — if it comes back with one line (or nothing, or the mesh is down) the result is the
+; honest whole-message chunk, never a worse division than the code pass produced.
+; E137: the backend is opened INLINE into be-chat and closed on both arms; no linear value escapes.
+(def divide (=> Str Str Divided)
+  (lam (endpoint message)
+    (let ((coded (divide-code message)))
+      (case (or (structured? coded) (not (port-worth-it? message)))
+        ; structure present -> the port stays SHUT; otherwise it opens only if the message is even
+        ; a candidate for holding several asks (see port-worth-it?).
+        (true (divided coded (case (structured? coded) (true (org-structural)) (false (org-whole)))))
+        (false
+          (case (be-chat (backend-open endpoint) divide-model
+                  (cons (msg "user" (divide-prompt message)) nil))
+            ((chat-ok t b2)
+              (do (backend-close b2)
+                (let ((mc (model-chunks (persp-texts (parse-perspectives t)))))
+                  (case (<=i (chunk-count mc) 1)
+                    (true  (divided coded (org-whole)))  ; the model saw one ask too -> the code chunk
+                    (false (divided mc (org-model)))))))
+            ((chat-bad s r b2)
+              (do (backend-close b2) (divided coded (org-whole))))))))))  ; mesh down -> honest floor

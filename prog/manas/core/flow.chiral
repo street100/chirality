@@ -1,0 +1,1373 @@
+; ==================================================== manas Flow — typed recursive composition
+; MANAS-L0 slice 1 (MANAS-L0-SPEC §0.5/§1/§7.1). A recursive, TYPED composition
+; type `Flow` so skills compose "whatever with whatever" WITHIN a type system. The
+; guarantee is the pure compositional checker `flow-ty : Flow -> (Maybe Arrow)`:
+; a Flow is well-formed IFF flow-ty returns `some`, and any Flow nests in any
+; composite iff flow-ty approves. STRICTLY ADDITIVE — the flat `Pipeline` (and
+; everything typed against it: scriba outline, persist) is UNTOUCHED; the legacy
+; flat pipeline is LIFTED into a Flow by `pipeline->flow`. run-flow's flow-gate
+; case delegates to the EXISTING run-pipeline path with ZERO divergence (there is
+; ONE run implementation — run-pipeline itself), so doc-refine conformance holds
+; by construction. flow-chain/fan (slice 2) + flow-branch (slice 3, THIS) are now
+; ACTUATED: a branch runs its perspectivist, parses the emitted perspectives, runs
+; the per-perspective sub-flow ONCE PER perspective (recursively via run-flow), then
+; runs its backtrack (consolidate + audit) on the collected individuals — so any
+; Flow nests in any composite at every level. flow-ty is implemented FULLY for
+; EVERY case (the composability guarantee is slice 1). Slice 5 (THIS) adds the
+; tiny-step DISCIPLINE: lint-expert/lint-pool statically flag a leaf that isn't a
+; tiny step (big/conjoined question, thin context), and manifest-all-green? is the
+; TINY-MODEL-GREEN acceptance gate — a composition passes IFF every leaf ran green
+; on the 0.5b (no typed-seam refine-fail routing + every call parsed-ok).
+
+(import "prelude/prelude")                 ; Maybe, some, none, Bool, true, false, =i, <i, <=i, +, -, and, or, not, str-len, str-find, str-sub, str-cat, List, Pair, pair, case
+(import "prelude/collections")             ; append  (flat manifest/raws concat for chain + fan + branch)
+(import "prelude/string")            ; str-trim (E151b: the owner, no longer a local copy)
+(import "protocol/json")                    ; json-parse-str, Json (j-arr), obj-get, as-str  (lenient perspective parse)
+(import "manas/core/types")        ; Pipeline, GateRule, Expert, Config, ExpertOutcome (+ ctors), RunManifest, ExpertCall, Finding, RawCall, combiner-ok, StopPolicy (stop-single/stop-capped/stop-until-dry)
+(import "manas/core/bind")         ; bind-config  (bind-ok / bind-miss)
+(import "manas/backend")                 ; Backend (E137 linear porttype)
+(import "manas/pipeline/plan")     ; find-expert, exp-id, exp-slot, cfg-id, bnd-model, bnd-ctx, mk-call, empty-manifest, yield-of
+(import "manas/pipeline/runner")   ; run-pipeline, call-expert, call-combiner, ret-json-findings, CallR (call-r), CombR (comb-r), RunR (run-r)
+
+; ------------------------------------------------------------------- Ty : payload types
+; A small CLOSED, EXTENSIBLE sum of the types that flow BETWEEN tiny steps. ty-text
+; is the opaque escape hatch (any not-yet-modelled payload). Ty-compatibility starts
+; as structural EQUALITY (subtyping is a later, additive refinement — §0.5).
+(data Ty ()
+  (ty-doc) (ty-span) (ty-findings) (ty-patch) (ty-verdict)
+  (ty-perspectives) (ty-part) (ty-text))
+
+; ------------------------------------------------------------------- Arrow : a typed edge
+(data Arrow () (arrow (dom Ty) (cod Ty)))
+(def arrow-dom (-> Arrow Ty) (lam (a) (case a ((arrow d c) d))))
+(def arrow-cod (-> Arrow Ty) (lam (a) (case a ((arrow d c) c))))
+
+; ty-eq : structural equality on Ty (the compatibility relation). All Ty ctors are
+; nullary, so equality = same constructor: rank each to an I64 tag and compare.
+(def ty-tag (-> Ty I64)
+  (lam (t) (case t
+    (ty-doc 0) (ty-span 1) (ty-findings 2) (ty-patch 3) (ty-verdict 4)
+    (ty-perspectives 5) (ty-part 6) (ty-text 7))))
+(def ty-eq (-> Ty Ty Bool) (lam (a b) (=i (ty-tag a) (ty-tag b))))
+
+; ------------------------------------------------------------------- Flow : the fractal tree
+; The recursive composition tree. A leaf is a tiny step. SELF-TYPING: a node that
+; references an Expert/combiner BY ID (untyped in L0) carries EXPLICIT arrow fields;
+; a node that composes Flow CHILDREN derives its arrow from them.
+;   flow-step   LEAF — refs an expert by id, so carries its own (in,out) arrow.
+;   flow-gate   today's GATE — refs experts by id, so carries (in,out); the flat
+;               Pipeline lifts into exactly this (pipeline->flow).
+;   flow-fan    parallel on ONE shared input; children share a derived dom; combiner
+;               is by-id (untyped) so the merged out-ty is carried.
+;   flow-chain  fully derived (output -> next input).
+;   flow-branch perspectivist (by id: A -> ty-perspectives) so A is carried as in-ty;
+;               per-perspective + backtrack are Flows (arrows derived); the branch's
+;               output B = the backtrack's cod (derived). No product type in L0, so
+;               per-perspective's dom is left opaque (honest residue — §0.5).
+; ------------------------------------------------------------------- PureFn : a code step's transform
+; The DECISION half of a refined thought. A tiny model is reliable at TEXT-UNDERSTANDING
+; (read a span -> a fact) but a coin-flip at SYMBOL-MANIPULATION (match/select/map a fact
+; -> a verdict) — routing the latter through a 0.5b reintroduces the reasoning failure you
+; decomposed away. So the verdict must run as CODE, not a model call. PureFn is the closed
+; sum of the deterministic transforms a flow-pure step can carry — a value (so the SG1 codec
+; stays total; boundary-as-closed-sum, docs/pattern-boundary-sums.md), NOT an opaque closure.
+;   pf-has-any : if the input text contains ANY needle, emit the yes-kind verdict, else the
+;                no-kind verdict — the general "presence of a marker -> binary classification"
+;                combinator (e.g. citation markers present -> evidence, else speculation). The
+;                MODEL isolates the span to judge; the CODE (this) applies the rubric, always
+;                correctly. Extend by ADDING constructors (additive — a stricter/other decider
+;                only widens the vocabulary).
+;   pf-tally     : count two markers in the input and emit a two-track findings summary — the
+;                  CODE consolidation (sort per-item verdicts into evidence/speculation tracks by
+;                  counting, never a model combiner call).
+;   pf-all-present: verdict yes-kind iff EVERY needle is present, else no-kind — the CODE audit
+;                  invariant (a deterministic partition cannot miscategorize, so the audit degrades
+;                  to a structural check that both tracks were produced).
+;   pf-collect-angles: the CODE COMBINER — split the branch's joined per-angle individuals
+;                  (join-individuals' "\n\n---\n\n" rule) into chunks and emit ONE finding per
+;                  non-empty chunk, tracked `angle-<n>`. A 0.5b combiner asked to "synthesize,
+;                  tracked by angle, as {kind,target,body}" HALLUCINATES the schema (measured:
+;                  `[{"answerContent":…}]`, fenced) so the egress parse floors; STRUCTURING an
+;                  already-joined list is symbol-manipulation, not text-understanding, so it is
+;                  code. Each chunk is UNWRAPPED first (unwrap-chunk): the runner forces every leaf
+;                  to answer in JSON, so a per-angle yield is usually a fenced JSON array even
+;                  though its out-ty is a prose type — the body text is the answer, the wrapper is
+;                  an artifact. Input with nothing to collect -> "" (the ty-findings seam refine-FAILS
+;                  => a visible failure, never a fabricated answer — pf-line-after's discipline).
+;   pf-line-after: extract the text after `marker` up to the next newline — a PURE extraction of
+;                  an ALREADY-isolated span (the perspectivist put the item in the injected
+;                  "Perspective: <item>" line; pulling it is a string op, not a model call — so it
+;                  cannot fail the way a 0.5b re-extraction did). Marker absent -> empty string,
+;                  which refine-FAILS the ty-text seam => the chain routes NON-green (a visible
+;                  failure, never a silent default to a verdict).
+(data PureFn ()
+  (pf-has-any     (needles (List Str)) (yes-kind Str) (no-kind Str))
+  (pf-tally       (needle-a Str) (needle-b Str) (label-a Str) (label-b Str))
+  (pf-all-present (needles (List Str)) (yes-kind Str) (no-kind Str))
+  (pf-line-after  (marker Str))
+  (pf-collect-angles (kind Str))
+  ; pf-split-numbered — the DETERMINISTIC perspectivist: split a numbered-list document into its
+  ; items (one per line), so flow-branch-pure needs no model. Splitting a delimited list is a
+  ; string op, not text-understanding — the refinement pass reaching the perspectivist itself.
+  (pf-split-numbered))
+
+(data Flow ()
+  (flow-step   (expert-id Str) (in-ty Ty) (out-ty Ty))
+  (flow-gate   (rules (List GateRule)) (combiner Str) (in-ty Ty) (out-ty Ty))
+  (flow-fan    (steps (List Flow)) (combiner Str) (out-ty Ty))
+  (flow-chain  (steps (List Flow)))
+  (flow-branch (perspectivist Str) (in-ty Ty) (per-perspective Flow) (backtrack Flow))
+  ; flow-pure — a DETERMINISTIC code step (no model, no backend): applies its PureFn to the
+  ; incoming payload and yields the verdict. Carries its own (in,out) arrow like flow-step.
+  (flow-pure   (fn PureFn) (in-ty Ty) (out-ty Ty))
+  ; flow-branch-pure — a branch whose PERSPECTIVIST is a PureFn (deterministic split), not a model
+  ; expert. Same shape as flow-branch otherwise (per-perspective + backtrack are Flows). For
+  ; STRUCTURED input (a delimited list) the split is code, so the whole branch can be model-free;
+  ; flow-branch (model perspectivist) stays for genuinely-unstructured input.
+  (flow-branch-pure (splitter PureFn) (in-ty Ty) (per-perspective Flow) (backtrack Flow)))
+
+; ------------------------------------------------------------------- flow-ty : the checker
+; PURE, TOTAL over every Flow case — the composability guarantee. Returns the Flow's
+; typed arrow, or `none` if the composition is ill-typed. flow-ty is recursive
+; (children are Flows), so forward-declare it; the fold/check helpers close over it.
+(declare flow-ty (-> Flow (Maybe Arrow)))
+
+; chain fold: cod(fᵢ) must ty-eq dom(fᵢ₊₁); the composed arrow is (dom f₀, cod f_last).
+; `acc` is the arrow so far (dom pinned to f₀'s dom, cod advancing).
+(declare chain-from (-> Arrow (List Flow) (Maybe Arrow)))
+(def chain-from
+  (lam (acc rest)
+    (case rest
+      (nil (some acc))
+      ((cons f fs)
+        (case (flow-ty f)
+          (none none)
+          ((some ar)
+            (case (ty-eq (arrow-cod acc) (arrow-dom ar))
+              (false none)
+              (true (chain-from (arrow (arrow-dom acc) (arrow-cod ar)) fs)))))))))
+
+(def chain-ty (-> (List Flow) (Maybe Arrow))
+  (lam (steps)
+    (case steps
+      (nil none)                                 ; empty chain -> none
+      ((cons f fs)
+        (case (flow-ty f)
+          (none none)
+          ((some ar) (chain-from ar fs)))))))
+
+; fan check: every remaining child must type-check AND share the pinned dom `a`.
+(declare fan-check (-> Ty (List Flow) Bool))
+(def fan-check
+  (lam (a rest)
+    (case rest
+      (nil true)
+      ((cons f fs)
+        (case (flow-ty f)
+          (none false)
+          ((some ar)
+            (case (ty-eq (arrow-dom ar) a)
+              (false false)
+              (true (fan-check a fs)))))))))
+
+; fan: all children share ONE dom A (the first child's), combiner (by id) -> out.
+(def fan-ty (-> (List Flow) Ty (Maybe Arrow))
+  (lam (steps out)
+    (case steps
+      (nil none)                                 ; empty fan -> none
+      ((cons f fs)
+        (case (flow-ty f)
+          (none none)
+          ((some ar)
+            (case (fan-check (arrow-dom ar) fs)
+              (false none)
+              (true (some (arrow (arrow-dom ar) out))))))))))
+
+(def flow-ty
+  (lam (f)
+    (case f
+      ((flow-step e i o)      (some (arrow i o)))     ; leaf carries its arrow
+      ((flow-pure fn i o)     (some (arrow i o)))     ; code step carries its arrow (like a leaf)
+      ((flow-gate rls c i o)  (some (arrow i o)))     ; gate carries its arrow
+      ((flow-chain steps)     (chain-ty steps))       ; derived: fold, compat at each seam
+      ((flow-fan steps c out) (fan-ty steps out))     ; derived dom, carried cod
+      ((flow-branch p a pp bt)                        ; A carried; B = backtrack's cod
+        (case (flow-ty pp)
+          (none none)
+          ((some pa)
+            (case (flow-ty bt)
+              (none none)
+              ((some barr) (some (arrow a (arrow-cod barr))))))))
+      ((flow-branch-pure sp a pp bt)                  ; same derivation, pure perspectivist
+        (case (flow-ty pp)
+          (none none)
+          ((some pa)
+            (case (flow-ty bt)
+              (none none)
+              ((some barr) (some (arrow a (arrow-cod barr)))))))))))
+
+; ------------------------------------------------------------------- pipeline->flow : the lift
+; A flat Pipeline -> the degenerate Flow (its whole GATE as ONE flow-gate). doc-refine's
+; experts read a doc and return findings; its combiner returns a doc — so the gate's
+; arrow is ty-doc -> ty-doc. Pipeline itself is UNCHANGED (purely additive).
+(def pipeline->flow (-> Pipeline Flow)
+  (lam (p)
+    (case p
+      ((pipeline id whn g o eids cmb stp yd)
+        (flow-gate g cmb ty-doc ty-doc)))))
+
+; ------------------------------------------------------------------- run-flow : the interpreter
+; run-flow's arg surface MIRRORS run-pipeline (runner.chiral:176) plus a leading Flow.
+; The linear Backend (E137, `(1 b Backend)`) is threaded/moved exactly once per path.
+;   flow-gate  -> delegate straight to run-pipeline: ONE run implementation, so the
+;                doc-refine manifest is byte-identical to run-pipeline's (CONFORM holds
+;                by construction). The lifted gate came FROM a Pipeline in `pipes`, and
+;                run-flow receives the same (req, pipes, pool, config, doc, extra), so
+;                run-pipeline reproduces the exact path. (A hand-authored flow-gate NOT
+;                backed by a pipeline in `pipes` would plan-no-route — slice-1 scope.)
+;   flow-step  -> resolve the expert (by id, in pool) + its slot's model (bind-config),
+;                one call-expert, wrapped in a one-call manifest. b threaded via CallR.
+;   flow-chain -> sequential output->input (slice 2): run f1 on doc, REFINE its yield
+;                against f1's out-ty at the seam, feed the refined text as f2's input,
+;                thread b1->b2->... linearly, concat each sub-manifest's calls + raws
+;                FLAT. A refine=false at any seam is a TYPED ERROR — stop, honest
+;                empty-manifest RunR ("flow-refine-fail:<ty>"), never a silent continue.
+;   flow-fan   -> same doc to every child (slice 2): "parallel" = independent inputs run
+;                sequentially (chirality is single-threaded), each yield wrapped as a Finding,
+;                the by-id combiner merges them; concat sub-manifests + the combiner call.
+;   flow-branch -> run the perspectivist -> refine ty-perspectives -> parse-perspectives
+;                (JSON array preferred, one-per-line fallback) -> run the per-perspective
+;                sub-flow ONCE PER perspective (recursion via run-flow, question injected
+;                into doc+extra), collect the individuals -> run the backtrack (consolidate
+;                + audit) on the joined individuals. manifest = perspectivist call :: the
+;                per-perspective calls ++ the backtrack calls (FLAT). b threaded/moved once
+;                per path. No perspectivist / refine-fail / no-perspectives = honest error RunR.
+(def outcome-yield (-> ExpertOutcome Str)
+  (lam (oc) (case oc ((expert-ok fs raw) raw) ((expert-bad raw reason) raw))))
+
+; a one-call manifest for a flow-step leaf (no combiner ran; synthesize a trivial
+; combiner-ok accepting the single expert so mk-call's accepted-into-merge is true).
+(def step-manifest (-> Str Config (List Binding) Expert ExpertOutcome RunManifest)
+  (lam (req config bindings e oc)
+    (run-manifest "" req "" "" "flow-step" "flow-step" "step"
+      (cons (exp-id e) nil) (cfg-id config) bindings nil
+      (cons (mk-call e bindings oc
+              (combiner-ok (outcome-yield oc) (cons (exp-id e) nil) (outcome-yield oc)))
+            nil)
+      nil (outcome-yield oc) "")))
+
+; ------------------------------------------------------------------- refine : the typed seam
+; When output crosses a seam it is VALIDATED against the declared out-Ty BEFORE the
+; next step sees it — that is what makes a tiny-model output safe (a malformed output
+; is caught immediately, not five steps later). refine is the per-Ty well-formedness
+; predicate. The validators are MINIMAL / LENIENT for now — ty-doc/ty-text/most Ty =
+; non-empty; ty-findings looks like the findings shape (a JSON array or a "kind" key).
+; They SHARPEN over time, purely ADDITIVELY (a stricter validator only rejects more).
+(def str-nonempty (-> Str Bool) (lam (s) (<i 0 (str-len s))))
+(def str-has (-> Str Str Bool) (lam (h n) (<=i 0 (str-find h n))))
+
+; NAMED refine-ok, not `refine` — `refine` is the reserved refinement-type special
+; form in the surface parser (parse.chiral:187), so it cannot be a def/call head.
+; SHARPENED (Audit #4): types with STRUCTURE get a structural check so a mistyped step (esp. a
+; flow-pure claiming a structured out-ty but producing free prose) refine-FAILS at the seam, not
+; just statically. A verdict/finding/part is JSON-shaped in this codebase (the runner asks every
+; leaf for a JSON array of {kind,target,body}; pure verdicts are [{"kind":...}]). The genuinely
+; OPAQUE text types (ty-doc/ty-text/ty-span) stay non-empty — any text is a valid value, nothing
+; to sharpen. ty-perspectives stays lenient (dual-format: a JSON array OR one item per line).
+; ty-patch stays non-empty (diff formats vary).
+(def json-ish (-> Str Bool)
+  (lam (out) (and (str-nonempty out) (or (str-has out "[") (or (str-has out "{") (str-has out "kind"))))))
+(def refine-ok (-> Ty Str Bool)
+  (lam (t out)
+    (case t
+      (ty-doc          (str-nonempty out))
+      (ty-span         (str-nonempty out))
+      (ty-findings     (and (str-nonempty out)
+                            (or (str-has out "[") (str-has out "kind"))))
+      (ty-patch        (str-nonempty out))
+      (ty-verdict      (json-ish out))            ; a verdict is findings-shaped: [{"kind":...}]
+      (ty-perspectives (str-nonempty out))
+      (ty-part         (json-ish out))            ; a tool part is a JSON object/array
+      (ty-text         (str-nonempty out)))))
+
+; ------------------------------------------------------- the ASK that pairs with refine-ok
+; For each Ty, the instruction appended to a leaf's prompt by call-expert (runner.chiral).
+; THE INVARIANT: ask for exactly what the seam will ACCEPT. It lives HERE, beside
+; refine-ok, because the two are one contract read in opposite directions — the ask and
+; its validator sitting apart is exactly how they drifted: the runner used to append the
+; JSON-findings ask to EVERY leaf, including the ty-text/ty-doc/ty-span/ty-patch leaves
+; whose seam wants PROSE (research-investigate is declared ty-text precisely because "a
+; free reasoning move is PROSE", and was then ordered to answer in JSON). The half-
+; complying JSON that came back — fenced, invalid, off-contract keys — is what
+; strip-fence / unwrap-chunk / bodies-scan downstream exist to undo.
+;   JSON-shaped (ty-findings / ty-verdict / ty-part) -> ret-json-findings, the SINGLE
+;     definition of that ask (runner.chiral, beside parse-findings which reads it back).
+;   ty-perspectives -> the same JSON ask: parse-perspectives DOCUMENTS a JSON array of
+;     objects as the preferred shape, one-per-line as its fallback.
+;   prose (ty-doc / ty-span / ty-text) -> plain prose; refine-ok wants only non-empty.
+;   ty-patch -> the diff text alone (refine-ok stays lenient: diff formats vary).
+(def ret-prose Str
+  "\n\nAnswer in plain prose. Do NOT return JSON and do NOT wrap the answer in a code fence.")
+(def ret-patch Str
+  "\n\nReturn ONLY the patch text (a unified diff). No JSON, no commentary, no code fence.")
+(def ty-return-instruction (-> Ty Str)
+  (lam (t)
+    (case t
+      (ty-doc          ret-prose)
+      (ty-span         ret-prose)
+      (ty-findings     ret-json-findings)
+      (ty-patch        ret-patch)
+      (ty-verdict      ret-json-findings)
+      (ty-perspectives ret-json-findings)
+      (ty-part         ret-json-findings)
+      (ty-text         ret-prose))))
+
+; the Ty's routing name (for the honest error routing string on a refine-fail seam).
+(def ty-name (-> Ty Str)
+  (lam (t) (case t
+    (ty-doc "ty-doc") (ty-span "ty-span") (ty-findings "ty-findings")
+    (ty-patch "ty-patch") (ty-verdict "ty-verdict") (ty-perspectives "ty-perspectives")
+    (ty-part "ty-part") (ty-text "ty-text"))))
+
+; ------------------------------------------------------------------- run-pure : the code-step interpreter
+; PURE, TOTAL over PureFn — the deterministic verdict logic that a flow-pure step runs
+; INSTEAD of a model call. No backend, no mesh: unit-testable offline. pure-has-any scans
+; the input for any needle; run-pure maps the presence to a yes/no verdict rendered as a
+; findings-array (so it refine-oks ty-verdict at the seam and consolidate can read it).
+(declare pure-has-any (-> (List Str) Str Bool))
+(def pure-has-any
+  (lam (needles input)
+    (case needles
+      (nil false)
+      ((cons n rest)
+        (case (str-has input n)
+          (true true)
+          (false (pure-has-any rest input)))))))
+
+; all needles present?
+(declare pure-all-present (-> (List Str) Str Bool))
+(def pure-all-present
+  (lam (needles input)
+    (case needles
+      (nil true)
+      ((cons n rest)
+        (case (str-has input n)
+          (false false)
+          (true (pure-all-present rest input)))))))
+
+; count non-overlapping occurrences of `needle` in `hay` from index `i` (str-find-from is the
+; prim; a match advances the cursor past the needle so counts never overlap).
+(declare pure-count (-> Str Str I64 I64))
+(def pure-count
+  (lam (hay needle i)
+    (case (=i (str-len needle) 0)          ; empty needle would never advance -> guard (Audit F3)
+      (true 0)
+      (false (let ((j (str-find-from hay needle i)))
+        (case (<i j 0)
+          (true 0)
+          (false (+ 1 (pure-count hay needle (+ j (str-len needle)))))))))))
+
+; a one-item findings verdict of the given kind.
+(def pure-verdict (-> Str Str)
+  (lam (k) (str-cat "[{\"kind\":\"" (str-cat k "\",\"target\":\"code-decided\",\"body\":\"marker-scan verdict\"}]"))))
+
+; extract the text after `marker` up to the next newline (or end). Marker absent -> "" (empty,
+; so the seam refine-fails => visible failure, not a silent verdict). str-sub is (str START END).
+(def pure-line-after (-> Str Str Str)
+  (lam (marker input)
+    (let ((mi (str-find input marker)))
+      (case (<i mi 0)
+        (true "")
+        (false
+          (let ((start (+ mi (str-len marker))))
+            (let ((rest (str-sub input start (str-len input))))
+              (let ((nl (str-find rest "\n")))
+                (case (<i nl 0)
+                  (true rest)
+                  (false (str-sub rest 0 nl)))))))))))
+
+; pure-split-numbered (defined after split-nl/str-trim, below) — the DETERMINISTIC perspectivist:
+; splitting a delimited list is a string op, not text-understanding, so it needs no model.
+(declare pure-split-numbered (-> Str Str))
+
+; pure-collect-angles (defined after str-trim, below) — the DETERMINISTIC combiner: the joined
+; per-angle individuals -> a findings array, one entry per angle. (kind, input) -> findings JSON.
+(declare pure-collect-angles (-> Str Str Str))
+
+(def run-pure (-> PureFn Str Str)
+  (lam (fn input)
+    (case fn
+      ((pf-split-numbered) (pure-split-numbered input))
+      ((pf-has-any needles yk nk)
+        (pure-verdict (case (pure-has-any needles input) (true yk) (false nk))))
+      ((pf-all-present needles yk nk)
+        (pure-verdict (case (pure-all-present needles input) (true yk) (false nk))))
+      ((pf-line-after marker)
+        (pure-line-after marker input))
+      ((pf-collect-angles kind)
+        (pure-collect-angles kind input))
+      ((pf-tally na nb la lb)
+        (let ((ca (pure-count input na 0)))
+          (let ((cb (pure-count input nb 0)))
+            (str-cat "[{\"kind\":\"" (str-cat la
+              (str-cat "\",\"target\":\"consolidated\",\"body\":\"count=" (str-cat (i64->str ca)
+              (str-cat "\"},{\"kind\":\"" (str-cat lb
+              (str-cat "\",\"target\":\"consolidated\",\"body\":\"count=" (str-cat (i64->str cb) "\"}]"))))))))))))))
+
+; ------------------------------------------------------------------- Perspective + the lenient parse
+; A perspective the perspectivist EMITS: one small `question` (a distinct review angle)
+; + the extra context keys it additionally `sees`. Lives HERE, not in core/types — L0
+; slice 3, purely additive, so the shared type model (doc-refine's pool/config) stays
+; pristine and its CONFORM golden holds.
+(data Perspective ()
+  (perspective (question Str) (sees-extra (List Str))))
+(def persp-question (-> Perspective Str) (lam (p) (case p ((perspective q se) q))))
+(def persp-sees (-> Perspective (List Str)) (lam (p) (case p ((perspective q se) se))))
+
+; parse-perspectives : the LENIENT perspectivist-output parser. The perspectivist is
+; run through call-expert (runner.chiral) with the ty-perspectives ask, which IS the
+; JSON one (ty-return-instruction -> ret-json-findings: "Return ONLY a JSON array of
+; {kind,target,body} objects") — so the natural runtime shape is a JSON array, ONE
+; object per perspective (question = body, else target). A tiny model often misses
+; the JSON shape, so the FALLBACK is one perspective per NON-EMPTY line (whitespace-
+; trimmed, blank lines dropped). Empty / unusable input -> the empty list (an honest
+; "no perspectives" — the branch turns that into a typed-error RunR, never a fake).
+; DOCUMENTED FORMAT: JSON array of objects (preferred) OR one perspective per line.
+;
+; whitespace trimming for the line fallback is IMPORTED from string-utils, the
+; owner (E151b). The local cr-str / pp-is-ws / trim-left / trim-right / str-trim
+; block that used to live here is RETIRED, cr-str included — it had exactly two
+; occurrences, its own def and the pp-is-ws body, both of which went with it.
+; ⚠ CR/LF NOTE (bug fixed 2026-08-21) — PRESERVED BY CONSTRUCTION: the chirality
+; reader's escape set is `\n \t \" \\` ONLY (sexp.chiral:179 — "any other \X ->
+; literal byte X"), so the string literal "\r" is the LETTER 'r', NOT a carriage
+; return. The predicate here used to compare against it, which made str-trim strip
+; leading/trailing **r's** — "write a test for the parser" trimmed to "…parse".
+; The owner's su-is-ws (string-utils.chiral) compares CODEPOINTS — exactly
+; {32 space, 9 tab, 13 CR, 10 LF} — so it never sees a literal "\r" at all, and
+; the set is the identical four bytes this block matched. flow-test.prog's
+; "must not eat trailing r's" regression therefore still holds.
+
+
+; split a string into lines at each "\n" (str-find returns -1 when absent).
+(declare split-nl (-> Str (List Str)))
+(def split-nl
+  (lam (s)
+    (let ((i (str-find s "\n")))
+      (case (<i i 0)
+        (true (cons s nil))
+        (false (cons (str-sub s 0 i)
+                     (split-nl (str-sub s (+ i 1) (str-len s)))))))))
+
+; ---- pure structural perspectivist: split a numbered-list document into its items ----
+; is this 1-char string a digit?
+(def is-digit? (-> Str Bool)
+  (lam (c) (or (str-eq c "0") (or (str-eq c "1") (or (str-eq c "2") (or (str-eq c "3")
+           (or (str-eq c "4") (or (str-eq c "5") (or (str-eq c "6") (or (str-eq c "7")
+           (or (str-eq c "8") (str-eq c "9"))))))))))))
+; is every char of s a digit? (empty -> false). str-sub is (str START END).
+(declare all-digits-go (-> Str I64 Bool))
+(def all-digits-go
+  (lam (s i)
+    (case (=i i (str-len s))
+      (true true)
+      (false (case (is-digit? (str-sub s i (+ i 1)))
+               (false false)
+               (true (all-digits-go s (+ i 1))))))))
+(def all-digits? (-> Str Bool)
+  (lam (s) (case (=i (str-len s) 0) (true false) (false (all-digits-go s 0)))))
+; a numbered item line "N. text" -> (some "text"); else none. Requires the segment BEFORE the
+; first ". " to be ALL digits — so "1)"/"1.text"/prose-starting-with-a-digit ("3 approaches
+; exist. Consider X") are cleanly REJECTED, not mis-split at a ". " inside the body. (Audit F1.)
+(def numbered-item (-> Str (Maybe Str))
+  (lam (t)
+    (let ((di (str-find t ". ")))
+      (case (<i di 0)
+        (true none)
+        (false (case (all-digits? (str-sub t 0 di))
+                 (false none)
+                 (true (some (str-sub t (+ di 2) (str-len t))))))))))
+(declare pure-split-go (-> (List Str) Str))
+(def pure-split-go
+  (lam (lines)
+    (case lines
+      (nil "")
+      ((cons l rest)
+        (case (numbered-item (str-trim l))
+          (none (pure-split-go rest))
+          ((some item)
+            (let ((more (pure-split-go rest)))
+              (case (=i (str-len more) 0)
+                (true item)
+                (false (str-cat item (str-cat "\n" more)))))))))))
+(def pure-split-numbered (lam (doc) (pure-split-go (split-nl doc))))
+
+; lines -> perspectives: each trimmed non-empty line becomes one perspective.
+(declare lines->perspectives (-> (List Str) (List Perspective)))
+(def lines->perspectives
+  (lam (ls)
+    (case ls
+      (nil nil)
+      ((cons l rest)
+        (let ((t (str-trim l)))
+          (case (=i (str-len t) 0)
+            (true (lines->perspectives rest))
+            (false (cons (perspective t nil) (lines->perspectives rest)))))))))
+
+; the JSON-array path: one object -> one perspective (body, else target); drop empties.
+(def pj-str (-> Json Str Str)
+  (lam (j k)
+    (case (obj-get j k)
+      (none "")
+      ((some v) (case (as-str v) (none "") ((some s) s))))))
+(def persp-text-of (-> Json Str)
+  (lam (j)
+    (let ((b (pj-str j "body")))
+      (case (=i (str-len b) 0)
+        (true (pj-str j "target"))
+        (false b)))))
+; the string elements of a JSON array field (absent / not an array / non-string elements -> nil).
+; This is what makes the `sees` channel REACHABLE: until DC-4a a Perspective's sees-extra was
+; hardcoded `nil` on both parse paths, so a perspectivist had no way to declare what it needed and
+; `attenuate` would have had nothing to act on.
+(declare json-strs-of (-> (List Json) (List Str)))
+(def json-strs-of
+  (lam (js)
+    (case js
+      (nil nil)
+      ((cons h t)
+        (case (as-str h)
+          (none (json-strs-of t))
+          ((some v) (cons v (json-strs-of t))))))))
+(def pj-strs (-> Json Str (List Str))
+  (lam (j k)
+    (case (obj-get j k)
+      (none nil)
+      ((some v) (case (as-arr v) (none nil) ((some items) (json-strs-of items)))))))
+
+(declare jarr->perspectives (-> (List Json) (List Perspective)))
+(def jarr->perspectives
+  (lam (items)
+    (case items
+      (nil nil)
+      ((cons j rest)
+        (let ((q (persp-text-of j)))
+          (case (=i (str-len q) 0)
+            (true (jarr->perspectives rest))
+            (false (cons (perspective q (pj-strs j "sees")) (jarr->perspectives rest)))))))))
+
+; ------------------------------------------------------------------- strip-fence + unwrap-chunk
+; strip-fence : remove a ```json / ``` code-fence wrapper if present. A 0.5b routinely FENCES its
+; JSON, which breaks json-parse-str; strip from the first newline after the opening fence to the
+; closing fence. No fence -> unchanged. PURE, TOTAL. str-sub is (START END) END-EXCLUSIVE; every
+; START is guarded < str-len via the find results. (Lives here, not in chatter/egress, because the
+; code combiner below needs it too and core cannot import chatter.)
+(def strip-fence (-> Str Str)
+  (lam (s)
+    (let ((i (str-find s "```")))
+      (case (<i i 0)
+        (true s)
+        (false
+          (let ((nl (str-find-from s "\n" i)))
+            (case (<i nl 0)
+              (true s)
+              (false
+                (let ((start (+ nl 1)))
+                  (let ((close (str-find-from s "```" start)))
+                    (case (<i close 0)
+                      (true (str-sub s start (str-len s)))
+                      (false (str-sub s start close)))))))))))))
+
+; obj-strs : every STRING field value of a JSON object, in field order, joined "; ". The last
+; resort for an object that answered off-contract — see json-item-text.
+(declare fields-strs (-> (List (Pair Str Json)) Str))
+(def fields-strs
+  (lam (fs)
+    (case fs
+      (nil "")
+      ((cons f rest)
+        (case f
+          ((pair k v)
+            (let ((r (fields-strs rest)))
+              (case (as-str v)
+                (none r)
+                ((some sv)
+                  (case (=i (str-len sv) 0)
+                    (true r)
+                    (false (case (=i (str-len r) 0)
+                             (true sv)
+                             (false (str-cat sv (str-cat "; " r)))))))))))))))
+(def obj-strs (-> Json Str)
+  (lam (j) (case j ((j-obj fs) (fields-strs fs)) (_ ""))))
+
+; json-item-text : one array element's text, in order of how much the model honoured the contract:
+;   1. an OBJECT's "body" (else "target") — the {kind,target,body} contract the runner asks for;
+;   2. a bare STRING element as itself (a 0.5b often answers `["high","..."]`);
+;   3. ANY object's string field values, joined — the measured residue: a 0.5b answers with
+;      `[{"text":"…","reason":"…"}]`, a well-formed JSON object that simply is not the contract.
+;      Before this rung that object fell through to VERBATIM and the raw JSON landed in the user's
+;      reply (seen live in the scriba transcript: `text": "\"postgresql\" offers…`). The words are
+;      the answer; the scaffolding never is.
+(def json-item-text (-> Json Str)
+  (lam (it)
+    (let ((b (persp-text-of it)))
+      (case (=i (str-len b) 0)
+        (true (case (as-str it)
+                ((some v) v)
+                (none (obj-strs it))))
+        (false b)))))
+
+; json-bodies-of : the text of every element in a JSON array, joined "; " — dropping elements that
+; do not SAY anything, by the same one-word rule the chunk level uses (says-something?, defined
+; below). The chunk-level check alone was not enough: measured live, one angle answered with a
+; whole ARRAY of bare tokens plus one real sentence — `["80%","high","medium","logical reasoning /
+; inference", "<the actual finding>"]` — which joins into a multi-token string and therefore
+; sailed through the outer check. The noise is inside the chunk, so the filter has to be too.
+(declare json-bodies-of (-> (List Json) Str))
+(def json-bodies-of
+  (lam (items)
+    (case items
+      (nil "")
+      ((cons it rest)
+        (let ((b (let ((t (json-item-text it)))
+                   (case (str-has t " ") (true t) (false "")))))
+          (let ((r (json-bodies-of rest)))
+            (case (=i (str-len b) 0)
+              (true r)
+              (false (case (=i (str-len r) 0)
+                (true b)
+                (false (str-cat b (str-cat "; " r))))))))))))
+
+; ---- the RECOVERY scan: a 0.5b routinely emits INVALID JSON (measured: unescaped quotes inside a
+; body string, e.g. `"pure" ("immutable")`), so json-parse-str returns none on text that is
+; obviously a findings object. Rather than dump the blob as prose, SCAN out every "body" value:
+; from each `"body"` key, past its `:`, take the text between the opening quote and the LAST quote
+; before the object's closing `}`. Pragmatic recovery, NOT a JSON parser (same posture as
+; parse-findings' bracket-line recovery). Nothing recoverable -> "" and the caller keeps the chunk.
+(declare last-quote-go (-> Str I64 I64 I64 I64))
+(def last-quote-go
+  (lam (s i endi best)
+    (let ((j (str-find-from s "\"" i)))
+      (case (or (<i j 0) (<=i endi j))
+        (true best)
+        (false (last-quote-go s (+ j 1) endi j))))))
+
+; the body value starting at the `"body"` key found at `bi`, plus where to resume (-1 = give up).
+(declare bodies-scan-go (-> Str I64 Str Str))
+(def bodies-scan-go
+  (lam (s i acc)
+    (let ((bi (str-find-from s "\"body\"" i)))
+      (case (<i bi 0)
+        (true acc)
+        (false
+          (let ((ci (str-find-from s ":" (+ bi 6))))
+            (case (<i ci 0)
+              (true acc)
+              (false
+                (let ((q1 (str-find-from s "\"" (+ ci 1))))
+                  (case (<i q1 0)
+                    (true acc)
+                    (false
+                      (let ((br (str-find-from s "}" (+ q1 1))))
+                        (let ((endi (case (<i br 0) (true (str-len s)) (false br))))
+                          (let ((q2 (last-quote-go s (+ q1 1) endi (- 0 1))))
+                            (case (<i q2 0)
+                              (true acc)
+                              (false
+                                (let ((v (str-trim (str-sub s (+ q1 1) q2))))
+                                  (let ((acc2 (case (=i (str-len v) 0)
+                                                (true acc)
+                                                (false (case (=i (str-len acc) 0)
+                                                  (true v)
+                                                  (false (str-cat acc (str-cat "; " v))))))))
+                                    (bodies-scan-go s (+ q2 1) acc2)))))))))))))))))))
+(def bodies-scan (-> Str Str) (lam (s) (bodies-scan-go s 0 "")))
+
+; unwrap-chunk : a per-angle individual -> its PROSE. HISTORY: call-expert used to append "Return
+; ONLY a JSON array of {kind,target,body}" to EVERY leaf prompt, so a per-angle yield came back as a
+; (often FENCED) JSON array even though its declared out-ty is a prose type, and collecting those
+; raw dumped JSON into the reply. ty-return-instruction now asks a prose leaf for prose, so this is
+; a LENIENCY NET over a model that answers JSON anyway, not the load-bearing repair it was — keep
+; it until the residue is RE-MEASURED (CHATTER-ANSWER-QUALITY "Do NOT add another filter"), then
+; decide. Shape unchanged: fence-strip, parse, take the objects' body text. Unparseable
+; / bodiless -> the chunk VERBATIM (lenient, exactly like parse-perspectives: never drop content
+; because it did not match the expected shape). PURE, TOTAL.
+(def unwrap-chunk (-> Str Str)
+  (lam (chunk)
+    (case (json-parse-str (strip-fence chunk))
+      (none (let ((b (bodies-scan chunk)))            ; INVALID JSON -> the recovery scan
+              (case (=i (str-len b) 0) (true chunk) (false b))))
+      ((some j)
+        (case (as-arr j)
+          ((some items)
+            (case items
+              (nil "")                                  ; an EMPTY array said nothing — drop the angle
+              ((cons x xs)
+                (let ((b (json-bodies-of items)))
+                  (case (=i (str-len b) 0) (true chunk) (false b))))))
+          (none
+            (let ((b (persp-text-of j)))
+              (case (=i (str-len b) 0) (true chunk) (false b)))))))))
+
+; ----------------------------------------------------- pure-collect-angles : the CODE combiner
+; The branch hands its backtrack `join-individuals indiv` — the per-angle yields separated by the
+; "\n\n---\n\n" rule. This splits on that rule and renders ONE {kind,target,body} finding per
+; non-empty chunk (target = "angle-<n>", 1-based, in branch order). Bodies are JSON-QUOTED (the
+; json.chiral escaper) because a chunk is MODEL PROSE — an unescaped quote or newline in it would
+; corrupt the array the egress parser then reads back.
+(def angle-rule Str "\n\n---\n\n")
+
+; split on the rule (TOTAL; rule absent -> the whole input as one chunk).
+(declare split-rule (-> Str (List Str)))
+(def split-rule
+  (lam (s)
+    (let ((j (str-find s angle-rule)))
+      (case (<i j 0)
+        (true (cons s nil))
+        (false (cons (str-sub s 0 j)
+                     (split-rule (str-sub s (+ j (str-len angle-rule)) (str-len s)))))))))
+
+; a collected chunk must SAY something. A single bare token is a label, not a finding: the 0.5b
+; per-angle steps routinely yield just "high" (the confidence word without the finding its `emits`
+; asks for) or "perspective" (the angle's own label echoed back), and the combiner used to collect
+; those as bodies — so a live answer ended "…; perspective; Can types be implemented without
+; monads?; high". A finding has to be more than one word. Measured, not guessed; and it is
+; content-shaped rather than a word-list, so it does not need maintaining per model or per skill.
+(def says-something? (-> Str Bool)
+  (lam (t) (str-has t " ")))
+
+; chunks -> the comma-joined finding objects. Empty and single-token chunks are DROPPED (never a
+; blank or label-only angle), so `n` (the 1-based number of the NEXT emitted finding) advances
+; only on emit; `lead` suppresses the leading comma on the first one.
+(declare render-angles (-> Str (List Str) I64 Bool Str))
+(def render-angles
+  (lam (kind cs n lead)
+    (case cs
+      (nil "")
+      ((cons c rest)
+        (let ((t (unwrap-chunk (str-trim c))))
+          (case (not (says-something? t))
+            (true (render-angles kind rest n lead))
+            (false
+              (let ((obj (str-cat "{\"kind\":" (str-cat (json-quote kind)
+                         (str-cat ",\"target\":\"angle-" (str-cat (i64->str n)
+                         (str-cat "\",\"body\":" (str-cat (json-quote t) "}"))))))))
+                (str-cat (case lead (true "") (false ","))
+                         (str-cat obj (render-angles kind rest (+ n 1) false)))))))))))
+
+; nothing collectable -> "" so the ty-findings seam refine-FAILS (a visible failure), never "[]"
+; passed off as an answer.
+(def pure-collect-angles
+  (lam (kind input)
+    (let ((body (render-angles kind (split-rule input) 1 true)))
+      (case (=i (str-len body) 0)
+        (true "")
+        (false (str-cat "[" (str-cat body "]")))))))
+
+
+; ---- robust field recovery: pull item text from MALFORMED / multi-line JSON-ish output ----
+; A 0.5b routinely emits a multi-line JSON array with a missing brace; json-parse-str then fails
+; and the naive line fallback shreds the array into one junk "perspective" per line (```json, [,
+; ], }, "kind"-enum values). Instead, scan the RAW text for the value of each "target"/"body" key
+; — that recovers the real item strings and skips the structural scaffolding (no target/body on a
+; bracket line). Pragmatic recovery, not a JSON parser: no escaped-quote handling (item text has
+; none). next-field finds the next `"key" ... : ... "value"` at/after `from`, tolerant of
+; arbitrary whitespace/newlines between key, colon and the value's opening quote.
+(declare next-field (-> Str Str I64 (Maybe (Pair Str I64))))
+(def next-field
+  (lam (hay key from)
+    (let ((ki (str-find-from hay key from)))
+      (case (<i ki 0)
+        (true none)
+        (false
+          (let ((ci (str-find-from hay ":" (+ ki (str-len key)))))
+            (case (<i ci 0)
+              (true none)
+              (false
+                (let ((q1 (str-find-from hay "\"" (+ ci 1))))
+                  (case (<i q1 0)
+                    (true none)
+                    (false
+                      (let ((q2 (str-find-from hay "\"" (+ q1 1))))
+                        (case (<i q2 0)
+                          (true none)
+                          (false (some (pair (str-sub hay (+ q1 1) q2) (+ q2 1)))))))))))))))))
+(declare recover-key (-> Str Str I64 (List Str)))
+(def recover-key
+  (lam (hay key from)
+    (case (next-field hay key from)
+      (none nil)
+      ((some p) (case p ((pair v nxt) (cons v (recover-key hay key nxt))))))))
+; a recovered value that LOOKS like a real flagged item: non-empty AND contains a space. A
+; malformed model JSON carries both real item sentences ("the 2019 benchmark ...") AND field
+; enum/id values ("prior_pass_flags", "image-file", "sentence-group") in target/body; the enums
+; are single tokens. Requiring a space drops the enum junk from the best-effort recovery (Audit
+; F4) so it isn't promoted to a real perspective + given a confident verdict downstream. Recovery
+; is a MALFORMED-json fallback only; the clean JSON path (jarr->perspectives) and the line path
+; (lines-clean) are unaffected, so single-word angles ("definitions") on those paths still work.
+(def item-ish? (-> Str Bool) (lam (t) (and (str-nonempty t) (str-has t " "))))
+(declare vals->perspectives (-> (List Str) (List Perspective)))
+(def vals->perspectives
+  (lam (vs)
+    (case vs
+      (nil nil)
+      ((cons v rest)
+        (let ((t (str-trim v)))
+          (case (item-ish? t)
+            (false (vals->perspectives rest))
+            (true (cons (perspective t nil) (vals->perspectives rest)))))))))
+; prefer target values (the runner's schema puts item text there), else body values.
+(def recover-perspectives (-> Str (List Perspective))
+  (lam (s)
+    (let ((tgts (vals->perspectives (recover-key s "\"target\"" 0))))
+      (case tgts
+        (nil (vals->perspectives (recover-key s "\"body\"" 0)))
+        ((cons h t) (cons h t))))))
+; a line that is only JSON scaffolding / punctuation — never a real item.
+(def is-structural? (-> Str Bool)
+  (lam (line)
+    (let ((t (str-trim line)))
+      (or (=i (str-len t) 0)
+      (or (str-eq t "[") (or (str-eq t "]") (or (str-eq t "{") (or (str-eq t "}")
+      (or (str-eq t ",") (or (str-eq t "```") (str-eq t "```json")))))))))))
+; last-resort line fallback that SKIPS structural lines (never shreds a JSON array into junk).
+(declare lines-clean->perspectives (-> (List Str) (List Perspective)))
+(def lines-clean->perspectives
+  (lam (ls)
+    (case ls
+      (nil nil)
+      ((cons l rest)
+        (case (is-structural? l)
+          (true (lines-clean->perspectives rest))
+          (false (cons (perspective (str-trim l) nil) (lines-clean->perspectives rest))))))))
+; malformed/non-JSON -> recover fields, else clean lines.
+(def pp-recover-or-lines (-> Str (List Perspective))
+  (lam (s)
+    (case (recover-perspectives s)
+      (nil (lines-clean->perspectives (split-nl s)))
+      ((cons h t) (cons h t)))))
+
+(def parse-perspectives (-> Str (List Perspective))
+  (lam (s)
+    (case (json-parse-str s)
+      (none (pp-recover-or-lines s))                      ; not JSON -> recover fields / clean lines
+      ((some j)
+        (case j
+          ((j-arr items)
+            (case (jarr->perspectives items)
+              (nil (pp-recover-or-lines s))               ; JSON array, no usable objs -> recover
+              ((cons h t) (cons h t))))
+          (_ (pp-recover-or-lines s)))))))                ; JSON but not an array -> recover
+
+; ------------------------------------------------------------------- flow-out-ty : a step's cod
+; The out-Ty a Flow produces (the value refined at the seam AFTER it). Mirrors flow-ty's
+; cod without the Maybe wrapper: leaf/gate/fan carry it; chain = its last step's cod;
+; branch = the backtrack's cod. Mutually recursive with last-out-ty (chain) → forward-declare.
+(declare flow-out-ty (-> Flow Ty))
+(declare last-out-ty (-> (List Flow) Ty))
+(def last-out-ty
+  (lam (fs)
+    (case fs
+      (nil ty-text)                               ; empty — opaque default (unreached on the refine path)
+      ((cons f rest)
+        (case rest
+          (nil (flow-out-ty f))
+          ((cons g gs) (last-out-ty rest)))))))
+(def flow-out-ty
+  (lam (f)
+    (case f
+      ((flow-step e i o)      o)
+      ((flow-pure fn i o)     o)
+      ((flow-gate rls c i o)  o)
+      ((flow-fan steps c out) out)
+      ((flow-chain steps)     (last-out-ty steps))
+      ((flow-branch p a pp bt) (flow-out-ty bt))
+      ((flow-branch-pure sp a pp bt) (flow-out-ty bt)))))
+
+; ------------------------------------------------------------------- manifest concat helpers
+; The expert-calls list inside a RunManifest (the 12th of 15 golden fields).
+(def manifest-calls (-> RunManifest (List ExpertCall))
+  (lam (m) (case m
+    ((run-manifest ri rq dp ap pid pc rd fe cid cb ccu ec cp fy ga) ec))))
+; a RunManifest carrying a FLAT concat of sub-flow calls (no RunManifest type change —
+; the tree shape is slice 3's job). routing/id fields tag the composite; nothing fired
+; at THIS level, so fired-expert-ids/config are empty.
+(def calls-manifest (-> Str Str (List ExpertCall) Str RunManifest)
+  (lam (req routing calls yield)
+    (run-manifest "" req "" "" routing routing routing nil "" nil nil calls nil yield "")))
+
+; a synthesized ExpertCall recording the FAN combiner call (concat'd after the children).
+(def combiner-ecall (-> Expert (List Binding) CombinerOutcome ExpertCall)
+  (lam (ce binds oc)
+    (expert-call (exp-id ce) (exp-slot ce) (bnd-model binds (exp-slot ce)) (bnd-ctx binds (exp-slot ce))
+      "" "" (case oc ((combiner-ok y a r) true) ((combiner-bad r rs) false)) true 0)))
+
+; a per-child id for the combiner's fired-ids list (a leaf's expert-id, else a tag).
+(def flow-id (-> Flow Str)
+  (lam (f) (case f
+    ((flow-step e i o)       e)
+    ((flow-pure fn i o)      "flow-pure")
+    ((flow-gate rls c i o)   c)
+    ((flow-fan steps c out)  c)
+    ((flow-chain steps)      "chain")
+    ((flow-branch p a pp bt) p)
+    ((flow-branch-pure sp a pp bt) "flow-branch-pure"))))
+(declare fan-ids (-> (List Flow) (List Str)))
+(def fan-ids
+  (lam (fs) (case fs
+    (nil nil)
+    ((cons f rest) (cons (flow-id f) (fan-ids rest))))))
+
+; ------------------------------------------------------------------- stop-continue? : the loop decision
+; PURE, TOTAL over StopPolicy — decides whether run-flow-stop runs ANOTHER iteration
+; (MANAS-L0-SPEC §7.4). Args (policy iter prev-output cur-output); iter is 0-based (iter 0
+; is the first / only pass). The cap lives INSIDE the policy — no magic constant. The DRY
+; SIGNAL for stop-until-dry is OUTPUT STABILIZATION: when an iteration's output stops
+; CHANGING (cur == prev), the findings are dry, so stop. Model-agnostic by construction —
+; the loop reads the emitted output, never a tiny model's "I'm dry" self-report.
+;   stop-single      -> false always (one pass; iter 0 is the only run).
+;   stop-capped n    -> continue while we have run FEWER than n iterations.
+;   stop-until-dry n -> capped at n AND only while the output keeps CHANGING (cur != prev).
+; PURE (->) → unit-testable offline (no mesh); the effect membrane proves it never crosses
+; the backend seam, so the loop's stop decision is a value, not a side effect.
+(def stop-continue? (-> StopPolicy I64 Str Str Bool)
+  (lam (policy iter prev cur)
+    (case policy
+      (stop-single         false)
+      ((stop-capped n)     (<i (+ iter 1) n))
+      ((stop-until-dry n)  (and (<i (+ iter 1) n) (not (str-eq cur prev)))))))
+
+; ------------------------------------------------------------------- the recursive engine
+; run-flow is mutually recursive with chain-run/fan-run (a child of a chain/fan is itself
+; a Flow), so forward-declare it. The linear Backend rides its own carrier and is
+; moved EXACTLY once per path (E137 — B1 enforces it structurally).
+(declare run-flow
+  (=> (1 b Backend) Flow Str (List Pipeline) (List Expert) Config Str (List (Pair Str Str)) RunR))
+
+; chain-run: fold the steps left-to-right. `input` is the current text (doc, then each
+; refined yield). At each step: run the child on `input`, REFINE its yield against the
+; child's out-ty — false => stop with a typed-error RunR (threading b out); true => the
+; refined yield becomes the next input, calls + raws concat FLAT. nil => the last yield +
+; the composite manifest. b threaded linearly the whole way.
+(declare chain-run
+  (=> (1 b Backend) (List Flow) Str Str (List Pipeline) (List Expert) Config (List (Pair Str Str))
+      (List ExpertCall) (List RawCall) Str RunR))
+(def chain-run
+  (lam (b steps input req pipes pool config extra acc-calls acc-raws last-yield)
+    (case steps
+      (nil (run-r last-yield (calls-manifest req "flow-chain" acc-calls last-yield) acc-raws b))
+      ((cons f fs)
+        (case (run-flow b f req pipes pool config input extra)
+          ((run-r y m raws b2)
+            (case (refine-ok (flow-out-ty f) y)
+              (false (run-r "" (empty-manifest req (str-cat "flow-refine-fail:" (ty-name (flow-out-ty f))))
+                            (append RawCall acc-raws raws) b2))
+              (true (chain-run b2 fs y req pipes pool config extra
+                               (append ExpertCall acc-calls (manifest-calls m))
+                               (append RawCall acc-raws raws) y)))))))))
+
+; fan-run: run EVERY child on the SAME doc (independent inputs, sequential execution),
+; threading b linearly; accumulate each yield as a Finding + concat calls + raws FLAT.
+(data FanFold ()
+  (fan-fold (findings (List Finding)) (calls (List ExpertCall)) (raws (List RawCall)) (1 b Backend)))
+(declare fan-run
+  (=> (1 b Backend) (List Flow) Str Str (List Pipeline) (List Expert) Config (List (Pair Str Str))
+      (List Finding) (List ExpertCall) (List RawCall) FanFold))
+(def fan-run
+  (lam (b steps doc req pipes pool config extra facc cacc racc)
+    (case steps
+      (nil (fan-fold facc cacc racc b))
+      ((cons f fs)
+        (case (run-flow b f req pipes pool config doc extra)
+          ((run-r y m raws b2)
+            (fan-run b2 fs doc req pipes pool config extra
+              (append Finding facc (cons (finding "fan-branch" "" y) nil))
+              (append ExpertCall cacc (manifest-calls m))
+              (append RawCall racc raws))))))))
+
+; ------------------------------------------------------------------- flow-branch helpers
+; a one-call ExpertCall for a leaf that ran via call-expert directly (perspectivist):
+; synthesize a trivial combiner-ok accepting the single expert (accepted-into-merge true).
+(def leaf-ecall (-> Expert (List Binding) ExpertOutcome ExpertCall)
+  (lam (e binds oc)
+    (mk-call e binds oc
+      (combiner-ok (outcome-yield oc) (cons (exp-id e) nil) (outcome-yield oc)))))
+
+; ------------------------------------------------------------------- DC-4a : the child's SLICE
+; A fractal child used to receive its parent's WHOLE `extra` plus a tagged copy of the key NAMES
+; its perspective asked for — i.e. a superset, and the names without the values. `extra` is
+; rendered verbatim into every leaf prompt (assemble.chiral's "# Extra"), so "the child sees at
+; least everything the parent saw" is the opposite of what a fractal decomposition wants.
+; The rule now: a perspective that DECLARES what it needs is granted EXACTLY those keys — a strict
+; SUBSET of the parent's grant, min-privilege by construction; a perspective that declares nothing
+; inherits the parent's grant unchanged. Since `parse-perspectives` only began populating `sees`
+; in this same change, nothing already-running narrows by surprise: the declaration is opt-in and
+; the default is the previous behavior exactly.
+(declare key-in (-> (List Str) Str Bool))
+(def key-in
+  (lam (ks k)
+    (case ks
+      (nil false)
+      ((cons x rest) (case (str-eq x k) (true true) (false (key-in rest k)))))))
+
+(declare filter-keys (-> (List Str) (List (Pair Str Str)) (List (Pair Str Str))))
+(def filter-keys
+  (lam (ks extra)
+    (case extra
+      (nil nil)
+      ((cons pr rest)
+        (case pr
+          ((pair k v)
+            (case (key-in ks k)
+              (true  (cons (pair k v) (filter-keys ks rest)))
+              (false (filter-keys ks rest)))))))))
+
+(def attenuate (-> (List Str) (List (Pair Str Str)) (List (Pair Str Str)))
+  (lam (keys extra)
+    (case keys
+      (nil extra)                          ; declared nothing -> inherit (unchanged behavior)
+      ((cons k ks) (filter-keys keys extra)))))  ; declared -> EXACTLY those keys
+
+; the collected per-perspective individuals -> one structured text for the backtrack's
+; input (each individual separated by a rule).
+(declare join-individuals (-> (List Str) Str))
+(def join-individuals
+  (lam (xs)
+    (case xs
+      (nil "")
+      ((cons h t)
+        (case t
+          (nil h)
+          ((cons g gs) (str-cat h (str-cat "\n\n---\n\n" (join-individuals t)))))))))
+
+; perspective-failed? : a per-perspective sub-run FAILED and must NOT be silently
+; swallowed. A CLEAN per-perspective run fires >=1 call; a refine-fail / no-expert /
+; unbound / empty-chain / no-perspectives sub-run returns an empty-manifest (zero
+; calls) with an error-marked routing. Failed IFF zero calls OR routing carries an
+; error marker. (Routing field `rd` read inline — manifest-routing itself is defined
+; below in slice 5, so we destructure the RunManifest here rather than forward-ref it.)
+(def perspective-failed? (-> RunManifest Bool)
+  (lam (m)
+    (or (case (manifest-calls m) (nil true) ((cons c cs) false))
+    (case m
+      ((run-manifest ri rq dp ap pid pc rd fe cid cb ccu ec cp fy ga)
+        (or (str-has rd "flow-refine-fail")
+        (or (str-has rd "no-expert")
+        (or (str-has rd "unbound")
+        (or (str-has rd "flow-chain-empty")
+            (str-has rd "no-perspectives"))))))))))
+
+; ------------------------------------------------------------------- the MODEL fan's cap
+; A perspectivist is a MODEL, and a model's list length is not a fact — it is a spend. Measured:
+; `deep-expand`, whose lens asks for "3-5 specific questions", returned EIGHTEEN, and because each
+; perspective drives a whole sub-flow that turned one ask into 117 calls. A polite number in a
+; prompt is not a bound; this is.
+;
+; The cap applies to `flow-branch` (a MODEL perspectivist) and NOT to `flow-branch-pure`, and the
+; distinction is the point: a pure splitter's count comes from the USER'S DATA — evidence-sift
+; fans over the claims you asked it to sort, and silently dropping the 7th claim would be a
+; correctness bug. You bound what a model may spend, never what the user's input implies.
+;
+; Perspectives past the cap are DROPPED, not merged: a model that ignored "3-5" is not carrying
+; signal in items 7..18, and pretending otherwise would cost the same 7 calls each to find out.
+(def max-model-perspectives I64 6)
+(declare take-perspectives (-> (List Perspective) I64 (List Perspective)))
+(def take-perspectives
+  (lam (ps k)
+    (case (<=i k 0)
+      (true nil)
+      (false (case ps (nil nil) ((cons h t) (cons h (take-perspectives t (- k 1)))))))))
+
+; branch-run: run the per-perspective sub-flow ONCE PER perspective (recursively via
+; run-flow), injecting the perspective's question into the doc AND as an extra pair
+; (+ its sees-extra keys). Thread the linear Backend sequentially through every
+; perspective; accumulate each yield (an "individual") + FLAT-concat calls + raws.
+; `dropped` accumulates (OR across perspectives) whether ANY angle failed — so the
+; branch never silently swallows a dropped angle (the composite routing goes honest).
+(data BranchFold ()
+  (branch-fold (individuals (List Str)) (calls (List ExpertCall)) (raws (List RawCall)) (dropped Bool) (1 b Backend)))
+(declare branch-run
+  (=> (1 b Backend) (List Perspective) Flow Str Str (List Pipeline) (List Expert) Config (List (Pair Str Str))
+      (List Str) (List ExpertCall) (List RawCall) Bool BranchFold))
+(def branch-run
+  (lam (b persps pp doc req pipes pool config extra iacc cacc racc dacc)
+    (case persps
+      (nil (branch-fold iacc cacc racc dacc b))
+      ((cons ps rest)
+        (let ((q (persp-question ps)))
+          (let ((pdoc (str-cat "Perspective: " (str-cat q (str-cat "\n\n" doc)))))
+            (let ((pextra (cons (pair "perspective" q)
+                                (attenuate (persp-sees ps) extra))))
+              (case (run-flow b pp req pipes pool config pdoc pextra)
+                ((run-r y m raws b2)
+                  (branch-run b2 rest pp doc req pipes pool config extra
+                    (append Str iacc (cons y nil))
+                    (append ExpertCall cacc (manifest-calls m))
+                    (append RawCall racc raws)
+                    (or dacc (perspective-failed? m))))))))))))
+
+(def run-flow
+  (lam (b flow req pipes pool config doc extra)
+    (case flow
+      ((flow-gate rls comb ity oty)
+        (run-pipeline b req pipes pool config doc extra))
+      ((flow-pure fn ity oty)
+        ; a DETERMINISTIC code step: apply the PureFn to the incoming doc, yield the verdict.
+        ; No model, no backend touch — b threads through unchanged. Synthesize ONE green
+        ; ExpertCall (parsed-ok=true — code cannot refine-fail its bound model) + one RawCall
+        ; (prompt = the input span, response = the code verdict) so the call-count invariant
+        ; (1+2N+2) and manifest-all-green? both hold with the model steps.
+        (let ((out (run-pure fn doc)))
+          (run-r out
+            (calls-manifest req "flow-pure"
+              (cons (expert-call "flow-pure" "pure" "code" 0 "" "" true true 0) nil) out)
+            (cons (raw-call "flow-pure" "pure" "code" doc out) nil) b)))
+      ((flow-step eid ity oty)
+        (case (find-expert eid pool)
+          (none (run-r "" (empty-manifest req "flow-step-no-expert") nil b))
+          ((some e)
+            (case (bind-config config (cons (exp-slot e) nil))
+              ((bind-miss missing cid) (run-r "" (empty-manifest req "flow-step-unbound") nil b))
+              ((bind-ok bindings)
+                (case (call-expert b e doc extra (bnd-model bindings (exp-slot e))
+                                   (ty-return-instruction oty))
+                  ((call-r oc raw b2)
+                    (run-r (outcome-yield oc) (step-manifest req config bindings e oc)
+                           (cons raw nil) b2))))))))
+      ((flow-chain steps)
+        (case steps
+          (nil (run-r "" (empty-manifest req "flow-chain-empty") nil b))
+          (_   (chain-run b steps doc req pipes pool config extra nil nil ""))))
+      ((flow-fan steps comb oty)
+        (case steps
+          (nil (run-r "" (empty-manifest req "flow-fan-empty") nil b))
+          (_   (case (find-expert comb pool)
+                 (none (run-r "" (empty-manifest req "flow-fan-no-combiner") nil b))
+                 ((some ce)
+                   (case (bind-config config (cons (exp-slot ce) nil))
+                     ((bind-miss missing cid) (run-r "" (empty-manifest req "flow-fan-unbound") nil b))
+                     ((bind-ok cbinds)
+                       (case (fan-run b steps doc req pipes pool config extra nil nil nil)
+                         ((fan-fold fnds calls raws b2)
+                           (case (call-combiner b2 ce fnds (fan-ids steps) (bnd-model cbinds (exp-slot ce)))
+                             ((comb-r comb-oc b3)
+                               (run-r (yield-of comb-oc)
+                                      (calls-manifest req "flow-fan"
+                                        (append ExpertCall calls (cons (combiner-ecall ce cbinds comb-oc) nil))
+                                        (yield-of comb-oc))
+                                      raws b3))))))))))))
+      ((flow-branch-pure sp a pp bt)
+        ; PURE perspectivist: split the doc deterministically (no model), parse, then the SAME
+        ; per-perspective recursion + backtrack as flow-branch. b threads straight into branch-run
+        ; (no perspectivist call consumed it). Synthesize one green pure call/raw for the split.
+        (let ((psout (run-pure sp doc)))
+          (case (parse-perspectives psout)
+            (nil (run-r "" (empty-manifest req "flow-branch-pure-no-perspectives")
+                        (cons (raw-call "flow-branch-pure" "pure" "code" doc psout) nil) b))
+            ((cons ph pt)
+              (case (branch-run b (cons ph pt) pp doc req pipes pool config extra nil nil nil false)
+                ((branch-fold indiv pcalls praws dropped b3)
+                  (case (run-flow b3 bt req pipes pool config (join-individuals indiv) extra)
+                    ((run-r by bm braws b4)
+                      (run-r by
+                        (calls-manifest req
+                          (case dropped (true "flow-refine-fail:branch-drop") (false "flow-branch-pure"))
+                          (cons (expert-call "flow-branch-pure" "pure" "code" 0 "" "" true true 0)
+                                (append ExpertCall pcalls (manifest-calls bm)))
+                          by)
+                        (cons (raw-call "flow-branch-pure" "pure" "code" doc psout)
+                              (append RawCall praws braws))
+                        b4)))))))))
+      ((flow-branch p a pp bt)
+        ; 1. run the perspectivist (by id, on its slot's model); its output must
+        ;    refine-ok ty-perspectives, then parse into >=1 Perspective (else honest error).
+        (case (find-expert p pool)
+          (none (run-r "" (empty-manifest req "flow-branch-no-perspectivist") nil b))
+          ((some pe)
+            (case (bind-config config (cons (exp-slot pe) nil))
+              ((bind-miss missing cid) (run-r "" (empty-manifest req "flow-branch-unbound") nil b))
+              ((bind-ok pbinds)
+                (case (call-expert b pe doc extra (bnd-model pbinds (exp-slot pe))
+                                   (ty-return-instruction ty-perspectives))
+                  ((call-r poc praw b2)
+                    (case (refine-ok ty-perspectives (outcome-yield poc))
+                      (false (run-r "" (empty-manifest req "flow-branch-refine-fail")
+                                    (cons praw nil) b2))
+                      (true
+                        (case (parse-perspectives (outcome-yield poc))
+                          (nil (run-r "" (empty-manifest req "flow-branch-no-perspectives")
+                                      (cons praw nil) b2))
+                          ; 2. run pp ONCE PER perspective (recursion), threading b linearly —
+                          ;    over at most `max-model-perspectives` of them, because this
+                          ;    perspectivist is a MODEL and its list length is a spend, not a fact.
+                          ((cons ph pt)
+                            (case (branch-run b2 (take-perspectives (cons ph pt) max-model-perspectives)
+                                              pp doc req pipes pool config extra nil nil nil false)
+                              ((branch-fold indiv pcalls praws dropped b3)
+                                ; 3. run the backtrack (consolidate + audit) on the individuals.
+                                (case (run-flow b3 bt req pipes pool config
+                                        (join-individuals indiv) extra)
+                                  ((run-r by bm braws b4)
+                                    ; manifest = perspectivist call :: per-perspective calls ++ backtrack calls (FLAT).
+                                    ; if ANY per-perspective angle was DROPPED, the composite routing goes honest
+                                    ; ("flow-refine-fail:branch-drop") so manifest-all-green? already reads false —
+                                    ; the dropped angle is never silently swallowed. Output still produced (no halt).
+                                    (run-r by
+                                      (calls-manifest req
+                                        (case dropped (true "flow-refine-fail:branch-drop") (false "flow-branch"))
+                                        (cons (leaf-ecall pe pbinds poc)
+                                              (append ExpertCall pcalls (manifest-calls bm)))
+                                        by)
+                                      (cons praw (append RawCall praws braws))
+                                      b4)))))))))))))))))))
+
+; ------------------------------------------------------------------- run-flow-stop : the STOP loop
+; The effectful loop that makes StopPolicy live (MANAS-L0-SPEC §6/§7.4). run-flow runs a
+; Flow ONCE; run-flow-stop runs it REPEATEDLY, feeding each iteration's yield forward as
+; the NEXT iteration's input, until stop-continue? says halt. Purely ADDITIVE — run-flow
+; and every existing case are untouched; StopPolicy was inert before this.
+;   feed-forward : iteration k+1's input = iteration k's output (findings converge across
+;                  passes; until-dry watches that convergence via output stabilization).
+;   backend      : the q1 linear Backend rides through EVERY iteration and is moved EXACTLY
+;                  once per path (E137 — B1 enforces it structurally; b -> b2 -> ... -> out).
+;   manifest     : each iteration's calls + raws concat FLAT into ONE composite "flow-stop"
+;                  RunManifest (no RunManifest type change — the tree shape is later work).
+;   TERMINATION  : ALWAYS terminates. Every policy is cap-bounded — stop-single = 1 pass;
+;                  stop-capped/stop-until-dry are bounded by n (stop-continue? goes false
+;                  once (+ iter 1) reaches n). The cap IS the bound; even until-dry is capped.
+; run-flow-stop-loop threads the iteration counter + the FLAT call/raw accumulators.
+(declare run-flow-stop-loop
+  (=> (1 b Backend) Flow StopPolicy Str (List Pipeline) (List Expert) Config
+      (List (Pair Str Str)) I64 Str (List ExpertCall) (List RawCall) RunR))
+(def run-flow-stop-loop
+  (lam (b flow policy req pipes pool config extra iter input acc-calls acc-raws)
+    (case (run-flow b flow req pipes pool config input extra)
+      ((run-r y m raws b2)
+        (case (stop-continue? policy iter input y)
+          ; halt: return the LAST yield + the composite (all iterations') manifest + raws.
+          (false (run-r y
+                   (calls-manifest req "flow-stop"
+                     (append ExpertCall acc-calls (manifest-calls m)) y)
+                   (append RawCall acc-raws raws) b2))
+          ; iterate: feed y forward as the next input, iter+1, accumulate calls + raws.
+          (true (run-flow-stop-loop b2 flow policy req pipes pool config extra
+                  (+ iter 1) y
+                  (append ExpertCall acc-calls (manifest-calls m))
+                  (append RawCall acc-raws raws))))))))
+
+(def run-flow-stop
+  (=> (1 b Backend) Flow StopPolicy Str (List Pipeline) (List Expert) Config Str (List (Pair Str Str)) RunR)
+  (lam (b flow policy req pipes pool config input extra)
+    (run-flow-stop-loop b flow policy req pipes pool config extra 0 input nil nil)))
+
+; ================================================================= slice 5 — the tiny-step discipline
+; TWO mechanisms operationalize "no big questions" + the north star "decompose so
+; hard that TINY models suffice" (MANAS-L0-SPEC §0/§4):
+;   (1) a STATIC lint (lint-expert / lint-pool) — flags a leaf that isn't a tiny
+;       step (a big/conjoined question, or thin context), BEFORE any run. Advisory.
+;   (2) a RUNTIME acceptance gate (manifest-all-green?) — a composition PASSES only
+;       if every leaf ran GREEN on the 0.5b smoke-local model.
+; Both operate on VALUES (the Expert record / the RunManifest), NOT on parsed source
+; — more robust than a python source-parser, and inside the type system.
+
+; ------------------------------------------------------------------- Expert accessors (for the lint)
+; E133's Expert has no accessors; the lint needs LENS + SEES. (expert id lens sees
+; returns slot tools). Named lint-lens/lint-sees (exp-id/exp-slot live in plan).
+(def lint-lens (-> Expert Str)
+  (lam (e) (case e ((expert id lens sees returns slot tools) lens))))
+(def lint-sees (-> Expert Str)
+  (lam (e) (case e ((expert id lens sees returns slot tools) sees))))
+
+; cons `s` onto `rest` iff the flag `c` fires (the lint accumulates FLAG strings).
+(def cons-if (-> Bool Str (List Str) (List Str))
+  (lam (c s rest) (case c (true (cons s rest)) (false rest))))
+
+; a lens that CONJOINS asks — a tiny step asks ONE thing, so any of these substrings
+; means "multiple questions welded into one leaf" (the classic big-question smell).
+(def lens-has-conj (-> Str Bool)
+  (lam (lens)
+    (or (str-has lens " and ")
+    (or (str-has lens " then ")
+    (or (str-has lens " & ")
+        (str-has lens ";"))))))
+
+; the length past which a lens is "too long" to be one small ask. A single tiny
+; question is one short clause; 160 chars is generous headroom for a real question
+; (doc-refine's tightest lenses are ~50 chars) — past it, the leaf is carrying
+; multiple asks or too much scope. Tunable; a stricter (smaller) bound only flags MORE.
+(def lint-max-lens I64 160)
+
+; lint-expert : the FLAG list for ONE Expert. Empty = a well-formed tiny step.
+; Flags: lens-conjunction (multiple asks), lens-too-long (too big), sees-empty
+; (no context on all sides). ADVISORY — flags inform the author, they don't block.
+(def lint-expert (-> Expert (List Str))
+  (lam (e)
+    (let ((lens (lint-lens e)))
+      (let ((sees (lint-sees e)))
+        (cons-if (lens-has-conj lens)            "lens-conjunction"
+        (cons-if (<i lint-max-lens (str-len lens)) "lens-too-long"
+        (cons-if (str-eq sees "")                "sees-empty"
+          nil)))))))
+
+; lint-pool : (expert-id -> its flags) for a whole pool — the advisory worklist.
+(declare lint-pool (-> (List Expert) (List (Pair Str (List Str)))))
+(def lint-pool
+  (lam (pool)
+    (case pool
+      (nil nil)
+      ((cons e rest) (cons (pair (exp-id e) (lint-expert e)) (lint-pool rest))))))
+
+; ------------------------------------------------------------------- manifest-all-green? — the acceptance gate
+; TINY-MODEL-GREEN (MANAS-L0-SPEC §0): a composition passes IFF every leaf ran GREEN
+; on the 0.5b. A RunManifest is all-green IFF neither non-green signal the engine
+; emits is present:
+;   (a) the TYPED-SEAM rejection — a chain leaf whose yield failed refine-ok against
+;       its declared out-ty routes as "flow-refine-fail:<ty>" with an empty call list
+;       (chain-run, above). That is exactly an UNDER-DECOMPOSED step (the tiny model
+;       could not satisfy the leaf's typed return), so it is NON-green — even though
+;       its (empty) call list is trivially all-parsed-ok. We detect it on routing.
+;   (b) a CALL that did not succeed on its bound model — parsed-ok=false (runner.chiral:
+;       parsed_ok means "the be-chat call succeeded", so false = the leaf could not run
+;       on its assigned model). ANY such call = NON-green.
+; A genuinely EMPTY manifest (no failure routing, no calls) is all-green — nothing failed.
+(def manifest-routing (-> RunManifest Str)
+  (lam (m) (case m
+    ((run-manifest ri rq dp ap pid pc rd fe cid cb ccu ec cp fy ga) rd))))
+(def ecall-green? (-> ExpertCall Bool)
+  (lam (c) (case c
+    ((expert-call eid slot bm nc ps rs pok aim dm) pok))))
+(declare all-calls-green? (-> (List ExpertCall) Bool))
+(def all-calls-green?
+  (lam (cs)
+    (case cs
+      (nil true)
+      ((cons c rest)
+        (case (ecall-green? c)
+          (false false)
+          (true (all-calls-green? rest)))))))
+; routing-error? : the routing string names ANY structural failure the engine emits — not just
+; a chain-seam refine-fail, but ALSO a top-level abort that produced an empty manifest (no
+; perspectivist/expert/combiner resolved, unbound slot, empty chain/fan, no perspectives). Those
+; carry a *nil* call list, so all-calls-green? would trivially pass — the gate MUST treat them as
+; NON-green (else a run that produced zero output reads green). Markers chosen as substrings so
+; one covers a family (no-perspectiv = no-perspectives + no-perspectivist; empty = chain/fan; and
+; success routings — flow-branch/fan/pure/chain/step — contain none of them).
+(def routing-error? (-> Str Bool)
+  (lam (rd)
+    (or (str-has rd "flow-refine-fail")
+    (or (str-has rd "no-perspectiv")
+    (or (str-has rd "no-expert")
+    (or (str-has rd "no-combiner")
+    (or (str-has rd "unbound")
+        (str-has rd "empty"))))))))
+(def manifest-all-green? (-> RunManifest Bool)
+  (lam (m)
+    (case (routing-error? (manifest-routing m))              ; (a) ANY structural failure routing
+      (true false)
+      (false (case (manifest-calls m)
+               ; (b) ZERO calls = nothing ran = NOT green. A successful composition always fires
+               ; >=1 leaf; a structural abort (even one MASKED by a run-flow-stop composite whose
+               ; own routing is "flow-stop") produces an empty call list. (Audit F1 — empirically
+               ; a non-numbered doc read green before this: 0 calls yet true.)
+               (nil false)
+               ((cons c cs) (all-calls-green? (manifest-calls m))))))))  ; (c) every leaf's call green

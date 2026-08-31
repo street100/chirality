@@ -1,0 +1,187 @@
+; ==================================================== manas run-loop PURE spine
+; E138, Waves 3–4 (METIS-PORT-SPEC §1/§4). The functional core of the multi-agent
+; run loop: two pure (->) decisions.
+;   plan-run          — WHO fires + on WHAT model: match (E136) -> gate (E134) ->
+;                       bind (E135), each failure a PlanOutcome VARIANT (boundary
+;                       sum, never an exception). This is the whole routing
+;                       decision; the membrane PROVES it crosses no backend seam,
+;                       so no model call (hallucination) can steer which experts
+;                       fire.
+;   assemble-manifest — the fired experts + their ALREADY-OBTAINED outcomes + the
+;                       combiner outcome -> the typed RunManifest run record.
+; Both -> . NO backend import — this leaf links nothing, so the spine test
+; (e138_spine.chiral) is a pure blob needing no HTTP linkage: the functional-core /
+; imperative-shell split is a MODULE boundary (SPEC decision #1), mirroring
+; manas.chiral's cycle-step/run-recorded (pure) vs run-batch (effectful).
+; map-list does NOT lower in an isolated leaf blob on branch e106 (E134's FLAG),
+; so every list build is foldl/filter/find/append. No float; exhaustive case.
+; Types (Expert/Binding/Config/Pipeline/ExpertOutcome/CombinerOutcome/Finding/
+; ExpertCall/RunManifest/GateRule/GateDecision/PipelineMatch/BindResult) are E133.
+
+(import "prelude/prelude")             ; str-eq, str-cat, i64->str, cond, List, Pair, Maybe, Bool
+(import "prelude/collections")         ; foldl, filter, find, append, reverse
+(import "manas/core/types")    ; the record types + PlanOutcome's field types
+(import "manas/core/match")    ; match-pipeline, pipeline-id  (match-found/none/tied)
+(import "manas/core/gate")     ; run-gate, dedup-str, elem-str  (gate-fired/no-match)
+(import "manas/core/bind")     ; bind-config  (bind-ok/bind-miss)
+
+; ----------------------------------------------------------------- the plan value
+; PlanOutcome: WHO fires + on WHAT model, or a routing-failure VALUE. Every failure
+; the run can hit before touching the network is its own variant — the caller cases
+; totally, never gets an exception (boundary-sums directive). plan-ok carries the
+; fired Expert values (id+slot for the manifest), the resolved combiner Expert, and
+; the bindings (slot->model) the fan-out actuates on.
+(data PlanOutcome ()
+  (plan-ok       (pipeline-id Str) (config-id Str) (routing Str)
+                 (fired (List Expert)) (combiner Expert) (bindings (List Binding)))
+  (plan-no-route (listing (List (Pair Str Str))))        ; match failed / tied
+  (plan-no-fire  (reason Str))                            ; gate fired nothing
+  (plan-unbound  (missing (List Str)) (config-id Str)))   ; a needed slot is unbound
+
+; ----------------------------------------------------------------- private accessors
+; Named to NOT collide with the pool/profile accessors this module sits beside in a
+; combined blob (doc-refine's expert-id/expert-slot-of/pipeline-gate; profiles'
+; config-id; the test's binding-model). dedup-str/elem-str/pipeline-id are IMPORTED,
+; never redefined. (SPEC decision #8; E140's duplicate-label FLAG.)
+(def exp-id   (-> Expert Str) (lam (e) (case e ((expert id lens sees returns slot tools) id))))
+(def exp-slot (-> Expert Str) (lam (e) (case e ((expert id lens sees returns slot tools) slot))))
+(def cfg-id   (-> Config Str) (lam (c) (case c ((config id binds) id))))
+(def pipe-gate     (-> Pipeline (List GateRule)) (lam (p) (case p ((pipeline id whn g o eids cmb stp yd) g))))
+(def pipe-combiner (-> Pipeline Str)             (lam (p) (case p ((pipeline id whn g o eids cmb stp yd) cmb))))
+
+; find an Expert by id in a pool (Maybe — a miss is a VALUE).
+(def find-expert (-> Str (List Expert) (Maybe Expert))
+  (lam (want pool) (find Expert (lam (e) (str-eq (exp-id e) want)) pool)))
+
+; the model / num-ctx bound to a slot ("" / 0 if the slot is absent — by
+; construction it is present in plan-ok's bindings, these defaults are total-guards).
+(def bnd-model (-> (List Binding) Str Str)
+  (lam (bs slot)
+    (case (find Binding (lam (b) (case b ((binding s m n) (str-eq s slot)))) bs)
+      (none "")
+      ((some b) (case b ((binding s m n) m))))))
+(def bnd-ctx (-> (List Binding) Str I64)
+  (lam (bs slot)
+    (case (find Binding (lam (b) (case b ((binding s m n) (str-eq s slot)))) bs)
+      (none 0)
+      ((some b) (case b ((binding s m n) n))))))
+
+; fired ids -> the Expert values (drop unknown ids); the ids of a fired-expert list;
+; the deduped slots a fired-expert list needs (foldl+append, not map-list).
+(def fired-experts-of (-> (List Str) (List Expert) (List Expert))
+  (lam (ids pool)
+    (foldl Str (List Expert)
+      (lam (acc id)
+        (case (find-expert id pool)
+          ((some e) (append Expert acc (cons e nil)))
+          (none acc)))
+      nil ids)))
+
+(def ids-of-experts (-> (List Expert) (List Str))
+  (lam (exps)
+    (foldl Expert (List Str)
+      (lam (acc e) (append Str acc (cons (exp-id e) nil)))
+      nil exps)))
+
+(def slots-of (-> (List Expert) (List Str))
+  (lam (exps)
+    (foldl Expert (List Str)
+      (lam (acc e) (append Str acc (cons (exp-slot e) nil)))
+      nil exps)))
+
+; ----------------------------------------------------------------- plan-run
+; the pure routing decision. match -> gate -> bind; each failure a PlanOutcome
+; variant. The bind set is the fired experts' deduped slots PLUS the combiner's slot
+; (so run-pipeline can resolve the combiner's model from the same bindings). PURE:
+; the membrane proves no crossing.
+(def plan-run (-> Str (List Pipeline) (List Expert) Config Str (List (Pair Str Str)) PlanOutcome)
+  (lam (req pipes pool config doc extra)
+    (case (match-pipeline req pipes)
+      ((match-none listing)     (plan-no-route listing))
+      ((match-tied ids listing) (plan-no-route listing))
+      ((match-found p w)
+        (case (run-gate (pipe-gate p) doc extra)
+          ((gate-no-match r) (plan-no-fire r))
+          ((gate-fired ids reason)
+            (let ((fired (fired-experts-of ids pool))
+                  (comb  (case (find-expert (pipe-combiner p) pool)
+                           ((some e) e)
+                           (none (expert (pipe-combiner p) "" "" "" "combiner" nil)))))
+              (let ((slots (dedup-str (append Str (slots-of fired) (cons (exp-slot comb) nil)))))
+                (case (bind-config config slots)
+                  ((bind-miss missing cid) (plan-unbound missing cid))
+                  ((bind-ok bindings)
+                    (plan-ok (pipeline-id p) (cfg-id config) reason fired comb bindings)))))))))))
+
+; ----------------------------------------------------------------- assemble-manifest
+; build one ExpertCall from a fired expert + its outcome + the combiner outcome:
+; slot -> bound-model/num-ctx from the bindings; parsed-ok from the outcome; accepted
+; from whether the combiner accepted this id. shas/durations are "" / 0 (first cut).
+(def parsed-ok-of (-> ExpertOutcome Bool)
+  (lam (oc) (case oc ((expert-ok fs raw) true) ((expert-bad raw reason) false))))
+
+(def accepted-of (-> Str CombinerOutcome Bool)
+  (lam (id oc) (case oc
+                 ((combiner-ok y a r) (elem-str id a))
+                 ((combiner-bad r reason) false))))
+
+(def mk-call (-> Expert (List Binding) ExpertOutcome CombinerOutcome ExpertCall)
+  (lam (e bindings oc comb-oc)
+    (let ((slot (exp-slot e)))
+      (expert-call
+        (exp-id e)                     ; expert-id
+        slot                           ; slot
+        (bnd-model bindings slot)      ; bound-model
+        (bnd-ctx bindings slot)        ; num-ctx
+        ""                             ; prompt-sha256   (first cut)
+        ""                             ; response-sha256 (first cut)
+        (parsed-ok-of oc)              ; parsed-ok
+        (accepted-of (exp-id e) comb-oc); accepted-into-merge
+        0))))                          ; duration-ms     (first cut)
+
+; zip the fired experts with their parallel outcomes into ExpertCalls (structural
+; lockstep recursion; equal lengths by construction — one outcome per fired expert).
+(declare build-calls (-> (List Expert) (List Binding) (List ExpertOutcome) CombinerOutcome (List ExpertCall)))
+(def build-calls
+  (lam (exps bindings outcomes comb-oc)
+    (case exps
+      (nil nil)
+      ((cons e erest)
+        (case outcomes
+          (nil nil)                    ; length-mismatch guard (total)
+          ((cons oc orest)
+            (cons (mk-call e bindings oc comb-oc)
+                  (build-calls erest bindings orest comb-oc))))))))
+
+; the combiner's yield (or "" on a combiner failure).
+(def yield-of (-> CombinerOutcome Str)
+  (lam (oc) (case oc ((combiner-ok y a r) y) ((combiner-bad r reason) ""))))
+
+; assemble-manifest: the fired experts + their outcomes + the combiner outcome ->
+; the typed RunManifest (15 golden fields; run-id/doc-path/artifact-path/
+; generated-at "" and context-chunks-used/combiner-patches nil for the first cut —
+; the golden compares STRUCTURE, SPEC decision #3). PURE.
+(def assemble-manifest
+  (-> Str Str Str Str (List Expert) (List Binding) (List ExpertOutcome) CombinerOutcome RunManifest)
+  (lam (req pid cid routing fired bindings outcomes comb-oc)
+    (run-manifest
+      ""                                            ; run-id
+      req                                           ; request
+      ""                                            ; doc-path
+      ""                                            ; artifact-path
+      pid                                           ; pipeline-id
+      pid                                           ; pipeline-choice
+      routing                                       ; routing-decision
+      (ids-of-experts fired)                        ; fired-expert-ids
+      cid                                           ; config-id
+      bindings                                      ; config-binds
+      nil                                           ; context-chunks-used
+      (build-calls fired bindings outcomes comb-oc) ; expert-calls
+      nil                                           ; combiner-patches
+      (yield-of comb-oc)                            ; final-yield
+      "")))                                         ; generated-at
+
+; empty-manifest: the run record for a routing-failure path (nothing fired). PURE.
+(def empty-manifest (-> Str Str RunManifest)
+  (lam (req routing)
+    (run-manifest "" req "" "" "" "" routing nil "" nil nil nil nil "" "")))

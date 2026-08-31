@@ -1,0 +1,417 @@
+; ==================================================== manas Chatter — DC-1b the EGRESS CONTRACT
+; F1's real bug (CHATTER-DC-EGRESS-CONTRACT.md): verbalize reads `manifest-final-yield` — the
+; AUDIT VERDICT — while the actual answer is the COMBINER's `ty-findings` one step upstream. This
+; module is the fix's SPINE: a closed `SkillEgress` (the parsed substance + a closed `Audit`
+; verdict) that a skill's boundary output is parsed INTO, so verbalize reads a TYPED value, never
+; freeform JSON. Mirrors parse-perspectives (flow.chiral): a model emits freeform text; a LENIENT
+; parser turns it into a closed value.
+;
+; SLICE 5 (current): every model skill's substance is a CODE combiner (a flow-pure pf-collect-angles,
+; DC-1b slice 4), whose raw carries slot "pure" — NOT "combiner". `substance-raw` addresses both
+; shapes (model combiner by slot, code combiner by slot+marker), so the parse is one path for all
+; five skills. Per-skill verdict word lists + lead sentences live beside their verbalizers below.
+;
+; SLICE 1 (history) — the BASELINE: evidence-sift-refined's rich two-track sentence, re-expressed
+; THROUGH SkillEgress, byte-identical to the pre-DC-1b verbalize-analyze. It proves the TYPE + the
+; parse carry the known-good result before the model skills (slices 2–5) exercise the general
+; slot=="combiner" parse. The evidence-sift-refined combiner is FLOW-PURE (slot "pure", not
+; "combiner"), so its substance is addressed by the "evidence-track" CONTENT marker (find-track-raw),
+; NOT by slot — the model-skill slot extractors (find-slot-raw / find-last-slot-raw) are introduced
+; here for slices 2–5 but not yet wired.
+;
+; PURE, TOTAL, mesh-free. No Backend, no run — parses an already-collected (List RawCall).
+
+(import "prelude/prelude")                 ; Maybe, some, none, List, cons, nil, Pair, Str, Bool, and, case, str-cat, str-eq, str-len, str-sub, str-find, str-find-from, =i, <i, +, -
+(import "manas/core/types")        ; Finding (+ finding : kind/target/body), RawCall (+ raw-call)
+(import "manas/core/flow")         ; is-digit?, str-has, strip-fence (the ```-fence stripper now lives in core, shared with pf-collect-angles)
+(import "protocol/json")                    ; json-parse-str, Json (j-arr/j-obj/j-str), obj-get, as-str, as-arr  (model-skill combiner parse)
+
+; ------------------------------------------------------------------- the closed egress sum
+; Audit: the parsed verdict — a CLOSED sum (boundary-sums pattern), not a Str. The good arm, the
+; flagged arm (each carrying the one-reason tail), and an honest absence when the auditor raw was
+; missing/unparseable. Per-skill word→arm mapping lives in the parser, not the type.
+(data Audit ()
+  (audit-ok    (reason Str))
+  (audit-flag  (reason Str))
+  (audit-absent))
+
+; SkillEgress: the substance (the combiner's findings) + the audit verdict. verbalize reads THIS,
+; not manifest-final-yield. Reuses core/types' Finding (kind/target/body) — the triple the runner
+; already asks every leaf to emit.
+(data SkillEgress ()
+  (egress (findings (List Finding)) (verdict Audit)))
+
+(def egress-findings (-> SkillEgress (List Finding)) (lam (e) (case e ((egress fs v) fs))))
+(def egress-verdict  (-> SkillEgress Audit)          (lam (e) (case e ((egress fs v) v))))
+
+; ------------------------------------------------------------------- RawCall extractors (by slot)
+; find-slot-raw : the FIRST RawCall whose slot == `s` (the combiner substance for model skills).
+; find-last-slot-raw : the LAST such (the FINAL auditor's verdict — a fractal fires the auditor slot
+; twice: per-item + the recommendation audit; the verdict is the LAST). Both return Maybe (honest
+; absence). Introduced for slices 2–5; evidence-sift (slice 1) uses the content-marker path below.
+(declare find-slot-raw (-> (List RawCall) Str (Maybe Str)))
+(def find-slot-raw
+  (lam (raws s)
+    (case raws
+      (nil none)
+      ((cons r rest)
+        (case r
+          ((raw-call e sl m p rp)
+            (case (str-eq sl s) (true (some rp)) (false (find-slot-raw rest s)))))))))
+
+(declare find-last-slot-go (-> (List RawCall) Str (Maybe Str) (Maybe Str)))
+(def find-last-slot-go
+  (lam (raws s best)
+    (case raws
+      (nil best)
+      ((cons r rest)
+        (case r
+          ((raw-call e sl m p rp)
+            (case (str-eq sl s)
+              (true  (find-last-slot-go rest s (some rp)))
+              (false (find-last-slot-go rest s best)))))))))
+(def find-last-slot-raw (-> (List RawCall) Str (Maybe Str))
+  (lam (raws s) (find-last-slot-go raws s none)))
+
+; ------------------------------------------------------------------- the two-track tally helpers (MOVED from turn.chiral)
+; digit-run-go : the maximal DIGIT run from index i. str-sub is (START END) END-EXCLUSIVE — START=i,
+; END=i+1 reads ONE char, always in-bounds (the i=str-len guard fires first). No length-as-END.
+(declare digit-run-go (-> Str I64 Str Str))
+(def digit-run-go
+  (lam (s i acc)
+    (case (=i i (str-len s))
+      (true acc)
+      (false
+        (let ((c (str-sub s i (+ i 1))))
+          (case (is-digit? c)
+            (true (digit-run-go s (+ i 1) (str-cat acc c)))
+            (false acc)))))))
+
+; count-after-marker : find `marker` in hay, then the first "count=" AFTER it, then the digit run.
+; Any link missing -> none (honest absence, never a segfault).
+(def count-after-marker (-> Str Str (Maybe Str))
+  (lam (hay marker)
+    (let ((mi (str-find hay marker)))
+      (case (<i mi 0)
+        (true none)
+        (false
+          (let ((ci (str-find-from hay "count=" (+ mi (str-len marker)))))
+            (case (<i ci 0)
+              (true none)
+              (false
+                (let ((d (digit-run-go hay (+ ci (str-len "count=")) "")))
+                  (case (=i (str-len d) 0)
+                    (true none)
+                    (false (some d))))))))))))
+
+; find-track-raw : the first RawCall carrying the consolidate tally (contains "evidence-track").
+(declare find-track-raw (-> (List RawCall) (Maybe Str)))
+(def find-track-raw
+  (lam (raws)
+    (case raws
+      (nil none)
+      ((cons r rest)
+        (case r
+          ((raw-call e s m p rp)
+            (case (str-has rp "evidence-track")
+              (true (some rp))
+              (false (find-track-raw rest)))))))))
+
+; ------------------------------------------------------------------- audit-of-raws : the well-formed/malformed scan
+; evidence-sift-refined's audit (pf-all-present) emits "well-formed" | "malformed" as content (it is
+; ALSO flow-pure, so not slot-addressable). Scan the raws for it. Absent -> audit-absent (honest).
+(declare audit-of-raws (-> (List RawCall) Audit))
+(def audit-of-raws
+  (lam (raws)
+    (case raws
+      (nil (audit-absent))
+      ((cons r rest)
+        (case r
+          ((raw-call e s m p rp)
+            (case (str-has rp "well-formed")
+              (true (audit-ok "well-formed"))
+              (false (case (str-has rp "malformed")
+                (true (audit-flag "malformed"))
+                (false (audit-of-raws rest)))))))))))
+
+; ------------------------------------------------------------------- parse-egress-esift : the evidence-sift boundary parse
+; The tally raw -> two Findings (kind "evidence"/"speculation", body = the count). Any extraction gap
+; -> nil findings (render falls to the honest generic line, byte-identical to the old fallback). The
+; verdict is scanned separately (audit-of-raws). PURE, TOTAL.
+(def parse-egress-esift (-> (List RawCall) SkillEgress)
+  (lam (raws)
+    (case (find-track-raw raws)
+      (none (egress nil (audit-of-raws raws)))
+      ((some rp)
+        (case (count-after-marker rp "evidence-track")
+          (none (egress nil (audit-of-raws raws)))
+          ((some ev)
+            (case (count-after-marker rp "speculation-track")
+              (none (egress nil (audit-of-raws raws)))
+              ((some sp)
+                (egress
+                  (cons (finding "evidence" "" ev)
+                  (cons (finding "speculation" "" sp) nil))
+                  (audit-of-raws raws))))))))))
+
+; ------------------------------------------------------------------- render-analyze : the byte-exact two-track sentence
+; Pull the evidence + speculation counts BACK out of the parsed findings and template EXACTLY the
+; sentence the pre-DC-1b verbalize-analyze produced (no audit tag — slice 1 is byte-identical; the
+; per-skill verdict framing is slices 2–5). Any missing kind -> the honest generic fallback.
+(declare finding-body-of (-> (List Finding) Str (Maybe Str)))
+(def finding-body-of
+  (lam (fs k)
+    (case fs
+      (nil none)
+      ((cons f rest)
+        (case f
+          ((finding fk ft fb)
+            (case (str-eq fk k) (true (some fb)) (false (finding-body-of rest k)))))))))
+
+(def render-analyze (-> SkillEgress Str)
+  (lam (e)
+    (case (finding-body-of (egress-findings e) "evidence")
+      (none "The analyze pipeline ran.")
+      ((some ev)
+        (case (finding-body-of (egress-findings e) "speculation")
+          (none "The analyze pipeline ran.")
+          ((some sp)
+            (str-cat "I sorted the flagged items: " (str-cat ev
+              (str-cat " supported by evidence, " (str-cat sp
+                " held as speculation."))))))))))
+
+; ==================================================== DC-1b slices 2-5 — the GENERAL model-skill parse
+; The model fractal skills (research/decision/doc-edit/code-test) all share the shape
+; perspectivist -> (reasoner->auditor) -> combiner->auditor. Their SUBSTANCE is the COMBINER slot's
+; ty-findings (a JSON array of {kind,target,body}); their VERDICT is the LAST auditor slot. parse-egress
+; addresses both BY SLOT (find-slot-raw / find-last-slot-raw) — unlike evidence-sift's flow-pure tally.
+
+; obj-str : the string value of field k in a JSON object (or "" absent). Mirrors flow.chiral's field-get.
+(def obj-str (-> Json Str Str)
+  (lam (j k)
+    (case (obj-get j k)
+      (none "")
+      ((some v) (case (as-str v) (none "") ((some s) s))))))
+
+; jarr->findings : one {kind,target,body} JSON object -> one Finding (reuses the runner's triple).
+(declare jarr->findings (-> (List Json) (List Finding)))
+(def jarr->findings
+  (lam (items)
+    (case items
+      (nil nil)
+      ((cons it rest)
+        (cons (finding (obj-str it "kind") (obj-str it "target") (obj-str it "body"))
+              (jarr->findings rest))))))
+
+; find-slot-marked-raw : the FIRST RawCall whose slot == `s` AND whose response contains `marker`.
+; A flow-pure step's raw is ALWAYS slot "pure" (flow.chiral), so a skill with several code steps
+; has several "pure" raws — the marker says WHICH one is the combiner. Structural + total.
+(declare find-slot-marked-raw (-> (List RawCall) Str Str (Maybe Str)))
+(def find-slot-marked-raw
+  (lam (raws s marker)
+    (case raws
+      (nil none)
+      ((cons r rest)
+        (case r
+          ((raw-call e sl m p rp)
+            (case (and (str-eq sl s) (str-has rp marker))
+              (true (some rp))
+              (false (find-slot-marked-raw rest s marker)))))))))
+
+; the marker pf-collect-angles always stamps into its findings array (flow.chiral's
+; pure-collect-angles renders target="angle-<n>" for every angle).
+(def collect-marker Str "\"target\":\"angle-")
+
+; substance-raw : the combiner's raw, whichever KIND of combiner the skill carries.
+;   (a) a MODEL combiner -> slot "combiner" (runner.chiral's exp-slot). Kept for any skill that
+;       still runs one; DC-1b slice 4 left none of the five on this path.
+;   (b) a CODE combiner (flow-pure pf-collect-angles, DC-1b slice 4) -> slot "pure" + the marker.
+; Neither -> none (honest absence; the render floor covers it).
+(def substance-raw (-> (List RawCall) (Maybe Str))
+  (lam (raws)
+    (case (find-slot-raw raws "combiner")
+      ((some rp) (some rp))
+      (none (find-slot-marked-raw raws "pure" collect-marker)))))
+
+; combiner-findings : the combiner's JSON array -> (List Finding). Fence-stripped first (0.5b
+; fences its JSON). Missing slot / malformed JSON / non-array -> nil (honest absence; the render floor
+; covers it). Mirrors parse-perspectives' lenient JSON path. NOTE (live finding 2026-08-20): a 0.5b
+; combiner ALSO routinely HALLUCINATES the schema (emits {answerContent:{...}} etc., NOT the
+; {kind,target,body} contract), so fence-stripping alone does not guarantee usable findings — that is
+; a MODEL-reliability problem (flagged), not a parser one.
+(def combiner-findings (-> (List RawCall) (List Finding))
+  (lam (raws)
+    (case (substance-raw raws)
+      (none nil)
+      ((some rp)
+        (case (json-parse-str (strip-fence rp))
+          (none nil)
+          ((some j) (case (as-arr j) (none nil) ((some items) (jarr->findings items)))))))))
+
+; first-match : the first word in `words` that is a substring of `raw` (else none).
+(declare first-match (-> Str (List Str) (Maybe Str)))
+(def first-match
+  (lam (raw words)
+    (case words
+      (nil none)
+      ((cons w rest) (case (str-has raw w) (true (some w)) (false (first-match raw rest)))))))
+
+; classify-verdict : the auditor raw -> Audit. FLAG words are checked FIRST (so "incomplete" never
+; reads as the good "complete"); then the good words; neither -> audit-absent. The matched word is
+; carried as the reason (so the tag names the actual verdict). Per-skill word lists live in the
+; skill wrappers below (the DC-0b ratified table).
+(def classify-verdict (-> Str (List Str) (List Str) Audit)
+  (lam (raw flags goods)
+    (case (first-match raw flags)
+      ((some w) (audit-flag w))
+      (none (case (first-match raw goods)
+        ((some w) (audit-ok w))
+        (none (audit-absent)))))))
+
+; parse-egress : the GENERAL model-skill boundary parse — combiner substance + LAST-auditor verdict.
+(def parse-egress (-> (List RawCall) (List Str) (List Str) SkillEgress)
+  (lam (raws flags goods)
+    (egress (combiner-findings raws)
+      (case (find-last-slot-raw raws "auditor")
+        (none (audit-absent))
+        ((some r) (classify-verdict r flags goods))))))
+
+; join-bodies : the finding bodies joined "; " (empties skipped). The synthesized answer as prose.
+(declare join-bodies (-> (List Finding) Str))
+(def join-bodies
+  (lam (fs)
+    (case fs
+      (nil "")
+      ((cons f rest)
+        (case f
+          ((finding k t b)
+            (let ((jr (join-bodies rest)))
+              (case (str-eq b "")
+                (true jr)
+                (false (case (str-eq jr "") (true b) (false (str-cat b (str-cat "; " jr)))))))))))))
+
+; audit-tag : " (audit: <word>)" for ok/flag (the matched verdict word), "" for absent.
+(def audit-tag (-> Audit Str)
+  (lam (a)
+    (case a
+      ((audit-ok w)   (str-cat " (audit: " (str-cat w ")")))
+      ((audit-flag w) (str-cat " (audit: " (str-cat w ")")))
+      ((audit-absent) ""))))
+
+; render-egress : lead-in + the joined answer + the audit tag. Empty findings -> an honest floor
+; (never freeform JSON, never a crash). The per-skill `lead` is the ratified sentence skeleton.
+(def render-egress (-> Str SkillEgress Str)
+  (lam (lead e)
+    (case (egress-findings e)
+      (nil (str-cat "The pipeline ran but produced no structured answer." (audit-tag (egress-verdict e))))
+      ((cons x xs) (str-cat lead (str-cat (join-bodies (egress-findings e)) (audit-tag (egress-verdict e))))))))
+
+; ---------------------------------------------------------- research (slice 2)
+; verdict words (DC-0b ratified): complete -> audit-ok, has-gaps -> audit-flag. Skeleton (call-5):
+; "Here's what I found: <answer parts>. (audit: complete)".
+(def research-flags (List Str) (cons "has-gaps" nil))
+(def research-goods (List Str) (cons "complete" nil))
+(def verbalize-research (-> (List RawCall) Str)
+  (lam (raws) (render-egress "Here's what I found: " (parse-egress raws research-flags research-goods))))
+
+; ---------------------------------------------------------- decision / doc-edit / code-test (slice 5)
+; The DC-0b table's verdict words, one list per skill; the LEAD is this skill's ratified sentence
+; skeleton (D1 call 5: framing lives next to the code that emits it). FLAG words are matched first,
+; so "has-gaps" can never read as "sound" and "gap" can never read as "clean".
+(def decision-flags (List Str) (cons "has-gaps" nil))
+(def decision-goods (List Str) (cons "sound" nil))
+(def verbalize-decision (-> (List RawCall) Str)
+  (lam (raws) (render-egress "Here's my recommendation: " (parse-egress raws decision-flags decision-goods))))
+
+(def doc-edit-flags (List Str) (cons "issue" nil))
+(def doc-edit-goods (List Str) (cons "clean" nil))
+(def verbalize-doc-edit (-> (List RawCall) Str)
+  (lam (raws) (render-egress "Here are the edits I'd make: " (parse-egress raws doc-edit-flags doc-edit-goods))))
+
+(def code-test-flags (List Str) (cons "gap" (cons "redundant" nil)))
+(def code-test-goods (List Str) (cons "clean" nil))
+(def verbalize-code-test (-> (List RawCall) Str)
+  (lam (raws) (render-egress "Here are the tests I'd add: " (parse-egress raws code-test-flags code-test-goods))))
+
+; ==================================================== DC-3b — the SKILL-KEYED egress seam
+; Until now each skill's parse and its render were welded together in one `verbalize-<skill>` line,
+; so the STRUCTURE existed only for the instant it took to make a sentence. The consolidator
+; (turn.chiral's branch) needs the structure itself — findings and audit verdicts per lane — so the
+; two halves are split here: `skill-egress` PARSES, `render-skill` RENDERS, and verbalizing is
+; their composition. Both are PURE, TOTAL and exhaustive over the skill registry, with an honest
+; empty egress for a name that carries no parser.
+
+; skill-egress : the boundary parse, keyed by the skill that RAN. evidence-sift(-refined) is the
+; code path (content-marker tally); the four model skills share parse-egress with their own
+; DC-0b verdict words.
+(def skill-egress (-> Str (List RawCall) SkillEgress)
+  (lam (sk raws)
+    (case (str-eq sk "evidence-sift-refined")
+      (true (parse-egress-esift raws))
+      (false (case (str-eq sk "evidence-sift")
+        (true (parse-egress-esift raws))
+        (false (case (or (str-eq sk "research") (str-eq sk "deep-research"))
+          (true (parse-egress raws research-flags research-goods))
+          (false (case (str-eq sk "decision")
+            (true (parse-egress raws decision-flags decision-goods))
+            (false (case (str-eq sk "doc-edit")
+              (true (parse-egress raws doc-edit-flags doc-edit-goods))
+              (false (case (str-eq sk "code-test")
+                (true (parse-egress raws code-test-flags code-test-goods))
+                (false (egress nil (audit-absent)))))))))))))))) ; unknown skill -> honest empty
+
+; render-skill : the prose, keyed by the same name. evidence-sift keeps its byte-exact two-track
+; sentence; the four model skills get their ratified lead. An unknown name renders "" so the
+; caller can fall back to its own framing.
+(def render-skill (-> Str SkillEgress Str)
+  (lam (sk e)
+    (case (str-eq sk "evidence-sift-refined")
+      (true (render-analyze e))
+      (false (case (str-eq sk "evidence-sift")
+        (true (render-analyze e))
+        (false (case (str-eq sk "deep-research")
+          ; R4: same egress SHAPE as research (findings + complete|has-gaps), different frame —
+          ; the findings here are one per QUESTION the ask was expanded into, not one per angle.
+          (true (render-egress "Here's what I found, question by question: " e))
+        (false (case (str-eq sk "research")
+          (true (render-egress "Here's what I found: " e))
+          (false (case (str-eq sk "decision")
+            (true (render-egress "Here's my recommendation: " e))
+            (false (case (str-eq sk "doc-edit")
+              (true (render-egress "Here are the edits I'd make: " e))
+              (false (case (str-eq sk "code-test")
+                (true (render-egress "Here are the tests I'd add: " e))
+                (false ""))))))))))))))))
+
+; ---------------------------------------------------------- Audit probes (for the consolidator)
+(def audit-word (-> Audit Str)
+  (lam (a) (case a ((audit-ok w) w) ((audit-flag w) w) ((audit-absent) ""))))
+(def audit-clean? (-> Audit Bool)
+  (lam (a) (case a ((audit-ok w) true) ((audit-flag w) false) ((audit-absent) false))))
+
+; egress-brief : the STRUCTURE as text, for the synth prompt — every finding as kind/target/body
+; plus the verdict word. This is what the consolidator reads INSTEAD of re-reading a rendered
+; sentence: the model fusing two lanes can then see that one of them was flagged, and which
+; finding carried which claim. PURE, TOTAL; an empty egress says so rather than going silent.
+(declare findings-brief (-> (List Finding) Str))
+(def findings-brief
+  (lam (fs)
+    (case fs
+      (nil "")
+      ((cons f rest)
+        (case f
+          ((finding k t b)
+            (let ((head (str-cat "    - " (str-cat k
+                          (case (str-eq t "") (true "") (false (str-cat " (" (str-cat t ")"))))))))
+              (str-cat head (str-cat ": " (str-cat b (str-cat "\n" (findings-brief rest))))))))))))
+
+(def egress-brief (-> SkillEgress Str)
+  (lam (e)
+    (let ((fb (findings-brief (egress-findings e))))
+      (let ((body (case (str-eq fb "") (true "    (no structured findings)\n") (false fb))))
+        (str-cat body
+          (case (egress-verdict e)
+            ((audit-ok w)   (str-cat "    audit: " (str-cat w " (clean)\n")))
+            ((audit-flag w) (str-cat "    audit: " (str-cat w " (FLAGGED)\n")))
+            ((audit-absent) "    audit: none recorded\n")))))))
+

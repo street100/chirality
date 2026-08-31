@@ -1,0 +1,845 @@
+; ==================================================== manas Chatter — C2 the TURN LOOP
+; C1 (router.chiral) is the PURE classifier: a message -> Intent -> (Maybe skill-name).
+; C2 ties routing to EXECUTION: a message -> route -> dispatch to the routed skill's Flow
+; (run it on the mesh) -> a response. The no-skill intents (social / clarify / unknown)
+; get PURE templated responses — no Flow, no backend call beyond discharging the handle.
+;
+; C3 (verbalize-run, below) synthesizes CONVERSATIONAL prose from the run's result — pure,
+; deterministic, no model — and does NOT touch scriba.
+;
+; LINEAR BACKEND (E137): `turn`/`execute-plan` OWN the handle's lifecycle. O4a pushes the
+; backend-OPENING DOWN into `execute-plan`: it now takes the ENDPOINT (Str), not a pre-opened
+; handle, and opens a FRESH backend PER skill run INTERNALLY (mirroring turn-seq-go's per-part
+; `(backend-open endpoint)` idiom). Each opened handle is moved EXACTLY ONCE, INLINED straight
+; into its consuming run-skill-turn call, and the returned RunR handle is closed on that arm:
+;   - plan-single : ONE `(backend-open endpoint)` inlined into run-skill-turn; the returned b2
+;                   closed here, then verbalize-run — BYTE-IDENTICAL to O2 (the handle is just
+;                   opened one line later, inside execute-plan, instead of passed in).
+;   - plan-reply  : NO backend opened at all — the templated reply needs no run, and there is no
+;                   handle to discharge (the endpoint is a plain Str, not a linear resource).
+;   - plan-chain  : K skills -> K FRESH backends, one opened+closed PER step (chain-go), never a
+;                   handle reused across steps; ConvState threaded step->step (each step SEES the
+;                   prior via conv->extra); replies tagged per skill + combined into one string.
+;   - plan-fan    : O4b — run N skills INDEPENDENTLY on the ORIGINAL message (fan-collect: a FRESH
+;                   backend per skill, NOT threaded between them — unlike a chain), DROP any non-green
+;                   sub-run (manifest-all-green?), then FUSE the survivors into ONE reply. Fusion is a
+;                   MODEL synthesizer (fan-synth: one more fresh backend -> be-chat) as the primary,
+;                   richer path; on transport failure / unreachable mesh (or an empty model reply) it
+;                   FALLS BACK to fuse-template (a pure, total, labeled join). The fallback is the
+;                   honest degradation path AND the deterministic offline-testable leg.
+; So `turn : (=> Str ConvState Str Str)` takes the endpoint + returns a plain Str (no linear value
+; escapes). This is the O4a SEAM REFACTOR: because turn/execute-plan open their own backend(s),
+; a chain of K skills works (was impossible when ONE handle was passed in). turn-seq's signature
+; is UNCHANGED, so scriba (which calls only turn-seq) is untouched; only turn-seq-go's inner call
+; changes to hand `turn` the endpoint instead of a pre-opened handle.
+
+(import "prelude/prelude")                 ; Maybe, some, none, case, str-cat, do, unit, Unit, Str, Pair
+(import "prelude/collections")             ; append  (DC-4a: building a chunk's explicit grant)
+(import "manas/core/types")        ; StopPolicy (stop-single), RunManifest (run-manifest), Config
+(import "manas/pipeline/plan")     ; empty-manifest  (for the unreachable no-entry path)
+(import "manas/pipeline/runner")   ; RunR (run-r)
+(import "manas/core/flow")         ; run-flow-stop, manifest-all-green?, Flow
+(import "manas/chatter/router")    ; Intent (+ ctors), route-message, ConvState (+ ctors), resolve-intent, conv->extra; C6b: split-conjunctions, intent-name; DC-3a: Routed (+ ctors), routed-of — the M2 escalation ladder
+(import "manas/chatter/orchestrate"); O2: Plan (+ ctors plan-single/chain/fan/reply), intent->plan, plan-of-intent; O5: parse-plan (lenient model-reply -> Plan). orchestrate does NOT import turn -> no cycle.
+(import "manas/chatter/divide")     ; DC-2a: divide (code-prior + the residue port), divide-code, Chunk (+ accessors), Divided (+ accessors)
+(import "manas/chatter/egress")     ; DC-1b: SkillEgress, parse-egress-esift, render-analyze (evidence-sift baseline); parse-egress + the four per-skill verbalizers (verbalize-research/decision/doc-edit/code-test, slices 2-5). egress does NOT import turn -> no cycle.
+(import "manas/profile/skills")    ; skill-by-name, all-skills, skill-entry-flow/config/pool
+(import "manas/backend")                 ; Backend (E137 linear porttype), backend-close; O4b: be-chat, Msg/msg, ChatR (chat-ok/chat-bad)
+
+; O2 note: `no-skill-reply` (the pre-O2 templated fallback) is REMOVED. Its social / clarify
+; templates now live in orchestrate.chiral (social-reply / clarify-reply), carried through a
+; plan-reply value — the single source of truth. `unknown` no longer gets a template: O1 maps
+; it to plan-single "research" (attempt an answer, not a dead-end).
+
+; ------------------------------------------------------------------- verbalize-run : C3 the PROSE SYNTHESIZER
+; PURE, TOTAL, DETERMINISTIC — no model. Per the refinement thesis, turning a pipeline's
+; structured result into a conversational sentence is TEMPLATING over EXTRACTED FACTS (code),
+; not text-generation. verbalize-run frames per Intent: it pulls facts out of the run
+; (the tally raw for analyze; the final yield otherwise) and drops them into a fixed sentence
+; skeleton. It never crashes (all extraction returns Maybe, every failure falls to an honest
+; generic line) and never emits raw JSON.
+(def manifest-final-yield (-> RunManifest Str)
+  (lam (m) (case m
+    ((run-manifest ri rq dp ap pid pc rd fe cid cb ccu ec cp fy ga) fy))))
+
+; verbalize-analyze : the evidence-sift frame — DC-1b: now routed THROUGH the egress contract.
+; parse-egress-esift pulls the two-track tally into a SkillEgress (the counts as Findings + the
+; well-formed/malformed Audit); render-analyze templates the byte-IDENTICAL sentence (no audit tag —
+; slice 1 is the baseline; per-skill verdict framing is slices 2–5). The tally helpers moved to
+; egress.chiral. Any extraction gap -> the generic analyze fallback, exactly as before.
+(def verbalize-analyze (-> (List RawCall) Str)
+  (lam (raws) (render-analyze (parse-egress-esift raws))))
+
+; a yield that still looks like a JSON findings array — don't dump it as prose.
+(def looks-jsonish? (-> Str Bool)
+  (lam (s) (or (str-has s "[{") (str-has s "kind"))))
+
+; verbalize-generic : the light frame for decide / factual / transform (C3 keeps these generic —
+; honest limitation, richer per-intent framing is future work). Strip raw-JSON ugliness: if the
+; yield reads like a findings array, just name what ran; otherwise fold the plain yield in.
+(def verbalize-generic (-> Intent RunManifest Str)
+  (lam (intent m)
+    (let ((fy (manifest-final-yield m)))
+      (case (=i (str-len fy) 0)
+        (true (str-cat "The " (str-cat (intent-name intent) " pipeline ran.")))
+        (false
+          (case (looks-jsonish? fy)
+            (true (str-cat "Here's what the " (str-cat (intent-name intent) " pipeline produced.")))
+            (false (str-cat "Here's what the " (str-cat (intent-name intent)
+                     (str-cat " pipeline produced: " fy))))))))))
+
+; verbalize-run : the C3 entry — dispatch on Intent. Exhaustive over all seven ctors (only the
+; four skill intents are ever reached, since verbalize-run runs only on the skill path).
+(def verbalize-run (-> Intent RunManifest (List RawCall) Str)
+  (lam (intent m raws)
+    (case intent
+      (in-analyze   (verbalize-analyze raws))
+      (in-decide    (verbalize-generic intent m))
+      (in-factual   (verbalize-research raws))     ; DC-1b slice 2: research through the egress contract
+      (in-transform (verbalize-generic intent m))
+      (in-social    (verbalize-generic intent m))
+      (in-clarify   (verbalize-generic intent m))
+      (in-unknown   (verbalize-generic intent m)))))
+
+; ------------------------------------------------------------------- run-skill-turn : route -> dispatch -> run
+; Resolve the skill NAME in all-skills, then run its Flow (with its Config + Expert pool)
+; over the MESSAGE as the input, one pass (stop-single). The passed Backend is THREADED
+; into run-flow-stop, which consumes it and returns a fresh handle inside the RunR — the
+; CALLER (turn) closes that. skill-by-name = none is an internal error (route-message only
+; yields names that exist in the registry), handled totally with an honest empty-manifest
+; RunR that threads the untouched backend straight back out (moved exactly once).
+(def run-skill-turn
+  (=> (1 b Backend) Str Str (List (Pair Str Str)) RunR)
+  (lam (b skill-name message extra)
+    (case (skill-by-name skill-name all-skills)
+      (none (run-r "" (empty-manifest (str-cat "chat: " skill-name) "chat-skill-missing") nil b))
+      ((some se)
+        (run-flow-stop b (skill-entry-flow se) (stop-single)
+          (str-cat "chat: " skill-name) nil (skill-entry-pool se) (skill-entry-config se)
+          message extra)))))
+
+; ------------------------------------------------------------------- skill->intent : the reverse route table (for chain framing)
+; A chain STEP carries a skill NAME, not an Intent — but verbalize-run frames per Intent (analyze
+; gets the rich two-track sentence; the rest a generic frame). So map the skill name BACK to the
+; Intent that routes to it (the inverse of orchestrate's intent->plan) to pick the right frame.
+; PURE, TOTAL — an unrecognized name falls to in-unknown (a generic frame), never a crash. This is
+; the simplest total per-skill framing: it reuses verbalize-run unchanged rather than inventing a
+; skill-keyed verbalizer, and keeps evidence-sift(-refined)'s rich sorted-items sentence in a chain.
+(def skill->intent (-> Str Intent)
+  (lam (s)
+    (case (str-eq s "evidence-sift")
+      (true (in-analyze))
+      (false (case (str-eq s "evidence-sift-refined")
+        (true (in-analyze))
+        (false (case (str-eq s "decision")
+          (true (in-decide))
+          (false (case (str-eq s "doc-edit")
+            (true (in-transform))
+            (false (case (str-eq s "research")
+              (true (in-factual))
+              (false (in-unknown)))))))))))))
+
+; ------------------------------------------------------------------- verbalize-skill : DC-1b slice 5, framing by SKILL
+; verbalize-run frames by INTENT, but a Plan carries a skill NAME and the two are no longer 1:1:
+; `code-test` sits on the plannable menu with NO intent routing to it, and the MODEL planner (O5)
+; may name any menu skill regardless of the resolved intent — so intent-keyed framing could dress a
+; code-test run in doc-edit's words. Framing is keyed on the skill that ACTUALLY ran; each skill's
+; verdict word list + lead sentence live with it in egress.chiral. Unrecognized name -> the intent
+; path (skill->intent -> verbalize-run), which is total. PURE.
+; DC-3b: this is now `render-skill ∘ skill-egress` — the SAME parse the consolidator reads, so a
+; lane's prose and its structure can never disagree. An unknown skill renders "" and falls to the
+; intent framing (total).
+(def verbalize-skill (-> Str RunManifest (List RawCall) Str)
+  (lam (sk m raws)
+    (let ((out (render-skill sk (skill-egress sk raws))))
+      (case (str-eq out "")
+        (true (verbalize-run (skill->intent sk) m raws))
+        (false out)))))
+
+
+; ------------------------------------------------------------------- chain-go : the O4a plan-chain fold
+; Run the skill list SEQUENTIALLY: for each skill, open a FRESH backend INLINED into run-skill-turn
+; over the SAME message + the current ConvState's extra (so step N+1 SEES step N via conv->extra),
+; close the returned handle, verbalize with the skill's own Intent (skill->intent), tag the line
+; with the skill name, and thread ConvState forward (conv-update) before recursing. Self-recursive
+; over the skill list (structural, mirrors turn-seq-go) — NO linear arg threaded through recursion,
+; because each step opens + closes its OWN backend (E137: each `(backend-open endpoint)` moved once,
+; inline into its run-skill-turn; never reused across steps). `endpoint` is a plain Str.
+(def chain-go
+  (=> Str (List Str) ConvState Str Str Str)
+  (lam (endpoint skills cs message acc)
+    (case skills
+      (nil acc)
+      ((cons sk rest)
+        (case (run-skill-turn (backend-open endpoint) sk message (conv->extra cs))
+          ((run-r y m raws b2)
+            (do (backend-close b2)
+              (let ((sk-intent (skill->intent sk)))
+                (let ((resp (verbalize-skill sk m raws)))
+                  (let ((line (str-cat sk (str-cat ": " resp))))
+                    (let ((acc2 (case (str-eq acc "")
+                                  (true line)
+                                  (false (str-cat acc (str-cat "\n" line))))))
+                      (let ((cs2 (conv-update cs sk-intent message resp)))
+                        (chain-go endpoint rest cs2 message acc2)))))))))))))
+
+; ==================================================== O4b — plan-fan: fan-collect + the synthesizer
+; A fan runs N skills INDEPENDENTLY on the ORIGINAL message and FUSES the survivors into one reply.
+; It is NOT a chain: no output feeds the next, ConvState is NOT threaded step->step (every skill sees
+; the SAME prior context via conv->extra). Three factored pieces so the mesh-gated synth is isolated
+; from the deterministic, offline-testable collect + template:
+;   fan-collect  — run each skill (fresh backend, E137), DROP a non-green sub-run, keep survivors.
+;   fuse-template — PURE, total labeled join. The FALLBACK (mesh unreachable / failed synth).
+;   fan-synth    — the primary MODEL synthesizer; be-chat, fall back to fuse-template on any failure.
+
+; the orchestrator's model (O6): bumped 0.5b -> qwen3:4b — the smallest RELIABLE planner pick on
+; the mesh (live probe: 4/4 vs the 0.5b's SYSTEMATIC miss, which branch/consolidate can't cure).
+; ONE shared constant so the be-chat PLANNER (plan-message) and the fan SYNTHESIZER (fan-synth) both
+; move to qwen3:4b — a bigger model fuses better too (intended). NOTE: qwen3 is a THINKING model;
+; ollama returns reasoning in a SEPARATE field so be-chat's `content` is clean, but parse-plan
+; (orchestrate.chiral) strips an inline <think>…</think> block anyway so parsing is format-agnostic.
+; SCOPE: this bumps the ORCHESTRATOR's OWN calls only — the 6 skills still run their Config models
+; (skill OUTPUT quality is a SEPARATE bump that touches the MoE golden; not this slice).
+(def synth-model Str "qwen3:4b")
+
+; ------------------------------------------------------------------- fan-collect : run N skills, DROP the failures
+; For each skill: open a FRESH backend INLINED into run-skill-turn over the SAME message + the SAME
+; ConvState's extra (fan is independent — cs is NOT conv-update'd between skills), close the returned
+; handle, and KEEP the (skill-name, verbalized-output) pair ONLY when the sub-run is green
+; (manifest-all-green?). A non-green / missing-skill sub-run (empty-manifest, zero calls -> NOT green)
+; is DROPPED, never a crash. Self-recursive over the skill list (structural, mirrors chain-go) — NO
+; linear arg threaded through recursion, because each step opens + closes its OWN backend (E137: each
+; `(backend-open endpoint)` moved once, inline into its run-skill-turn; never reused across skills).
+; MESH-FREE for a model-free skill (evidence-sift-refined never dials the wire).
+(declare fan-collect (=> Str (List Str) ConvState Str (List (Pair Str Str))))
+(def fan-collect
+  (lam (endpoint skills cs message)
+    (case skills
+      (nil nil)
+      ((cons sk rest)
+        (case (run-skill-turn (backend-open endpoint) sk message (conv->extra cs))
+          ((run-r y m raws b2)
+            (do (backend-close b2)
+              (case (manifest-all-green? m)
+                (false (fan-collect endpoint rest cs message))     ; DROP a failed/missing sub-run
+                (true
+                  (let ((resp (verbalize-skill sk m raws)))
+                    (cons (pair sk resp) (fan-collect endpoint rest cs message))))))))))))
+
+; ------------------------------------------------------------------- fuse-template : the PURE fallback fusion
+; PURE, TOTAL: join the labeled survivor outputs into ONE reply naming each source
+; ("From <skill>: <out>", newline-separated). This is the honest degradation path used whenever the
+; model synth cannot run (unreachable mesh / transport failure / empty model reply) AND the
+; deterministic offline-testable leg. Empty survivor list -> an honest, non-empty floor line.
+(declare fuse-go (-> (List (Pair Str Str)) Str Str))
+(def fuse-go
+  (lam (survivors acc)
+    (case survivors
+      (nil acc)
+      ((cons pr rest)
+        (case pr
+          ((pair nm out)
+            (let ((line (str-cat "From " (str-cat nm (str-cat ": " out)))))
+              (let ((acc2 (case (str-eq acc "")
+                            (true line)
+                            (false (str-cat acc (str-cat "\n" line))))))
+                (fuse-go rest acc2)))))))))
+(def fuse-template (-> (List (Pair Str Str)) Str)
+  (lam (survivors)
+    (case survivors
+      (nil "I didn't get any usable results to combine.")
+      ((cons p rest) (fuse-go survivors "")))))
+
+; ------------------------------------------------------------------- synth-prompt : the model synth prompt (PURE)
+; Assemble the labeled survivor outputs (reusing fuse-template as the body) under the plan-fan `synth`
+; instruction. The `synth` field of plan-fan IS this lead instruction/hint; an empty hint falls to a
+; sensible default. This is the model's INPUT — deterministic + inspectable independent of the wire.
+(def synth-prompt (-> (List (Pair Str Str)) Str Str)
+  (lam (survivors hint)
+    (let ((instr (case (str-eq hint "")
+                   (true  "Combine the following pipeline outputs into one clear, non-repetitive answer.")
+                   (false hint))))
+      (str-cat instr (str-cat "\n\n" (str-cat (fuse-template survivors)
+        "\n\nWrite a single combined reply."))))))
+
+; ------------------------------------------------------------------- fan-synth : the MODEL synthesizer (primary), fuse-template FALLBACK
+; The primary fusion path: open ONE fresh backend, be-chat the synth prompt on the 0.5b, return the
+; model prose. FALL BACK to fuse-template whenever the model can't be reached (chat-bad — a transport
+; failure / unreachable mesh arrives here as a negative status, NOT a crash) OR the model returns an
+; empty reply. Zero survivors short-circuits to the template with NO model call. E137: the one
+; `(backend-open endpoint)` is moved EXACTLY ONCE, inlined into be-chat; its returned handle b2 is
+; closed on BOTH ChatR arms. NOTE: the model-prose leg needs the mesh (egress-blocked in-sandbox), so
+; in-sandbox this ALWAYS lands on the fuse-template fallback — the degradation path IS the tested leg.
+; synth-with : the shared SYNTH CALL — one fresh backend, one be-chat on the orchestrator tier,
+; and `fallback` returned on every failure path (unreachable mesh, transport error, empty reply).
+; Factored out at DC-3b so the O4b skill fan and the DC-2b chunk branch fuse through ONE piece of
+; wire code and differ only in the PROMPT they build. E137: the handle is moved exactly once,
+; inline into be-chat, and closed on both ChatR arms.
+(def synth-with (=> Str Str Str Str)
+  (lam (endpoint prompt fallback)
+    (case (be-chat (backend-open endpoint) synth-model (cons (msg "user" prompt) nil))
+      ((chat-ok t b2)
+        (do (backend-close b2)
+          (case (str-nonempty t) (true t) (false fallback))))
+      ((chat-bad st r b2) (do (backend-close b2) fallback)))))
+
+(def fan-synth (=> Str (List (Pair Str Str)) Str Str)
+  (lam (endpoint survivors hint)
+    (case survivors
+      (nil (fuse-template survivors))               ; nothing to fuse -> honest floor, no model call
+      ((cons x xs) (synth-with endpoint (synth-prompt survivors hint) (fuse-template survivors))))))
+
+; ------------------------------------------------------------------- execute-plan : the Plan EXECUTOR (O4a: endpoint-threaded)
+; A ConvState + the resolved Intent + a Plan + the message + the ENDPOINT (Str) -> a response Str.
+; EXHAUSTIVE over the Plan sum; each arm opens its OWN backend(s) as needed and consumes EACH
+; EXACTLY ONCE (E137). O4a moved backend-opening DOWN here so a plan-chain of K skills can open K
+; handles (was impossible when a single pre-opened handle was passed in):
+;   plan-single : ONE `(backend-open endpoint)` inlined into run-skill-turn (-> run-flow-stop), the
+;                 returned b2 closed here — BYTE-IDENTICAL to O2 (handle opened one line later).
+;   plan-reply  : NO backend opened — return the template text carried in the Plan (orchestrate's
+;                 social-reply / clarify-reply). The honest floor, no run, nothing to discharge.
+;   plan-chain  : chain-go — K skills, a FRESH backend per step, ConvState threaded, tagged lines.
+;   plan-fan    : fan-collect (N skills, a FRESH backend each, failures DROPPED) then fan-synth
+;                 (MODEL synth, falling back to fuse-template when the mesh is unreachable). K+1 fresh
+;                 backends max, each opened+consumed EXACTLY once (E137).
+; The Intent arg is now vestigial for framing — DC-1b slice 5 frames by the SKILL that ran
+; (verbalize-skill), for plan-single exactly as for chain/fan steps. It stays in the signature
+; because turn threads it for ConvState memory (conv-update), not for prose.
+(def execute-plan
+  (=> Str ConvState Intent Plan Str Str)
+  (lam (endpoint cs intent plan message)
+    (case plan
+      ((plan-single skill)
+        (case (run-skill-turn (backend-open endpoint) skill message (conv->extra cs))
+          ((run-r y m raws b2) (do (backend-close b2) (verbalize-skill skill m raws)))))
+      ((plan-reply text)      text)
+      ((plan-chain skills)    (chain-go endpoint skills cs message ""))
+      ((plan-fan skills syn)
+        (fan-synth endpoint (fan-collect endpoint skills cs message) syn)))))
+
+; ==================================================== O5 — plan-message : the MODEL planner
+; The corrected chatter model: instead of the STATIC intent->plan map deciding the handling skill,
+; the 0.5b READS the message + the skill menu (plannable-skills, O3) and PICKS the skill(s); the
+; free-text reply is parsed leniently (parse-plan, orchestrate) into a Plan. The O1 pure planner
+; (plan-of-intent) is the PRIOR/FALLBACK — used when the model names NO valid menu skill (parse-plan
+; falls back internally) OR the mesh call fails / returns empty (handled here). This is a BOUNDED
+; pick from the 6-skill menu, NOT a big-understanding ask (CHATTER-ORCHESTRATOR-SCOPE §1). The model
+; is still only reached to PLAN over reliable units, with a code fallback (refinement thesis).
+;
+; menu-lines : the plannable-skills menu as "- <name> - <desc>" lines (PURE; ASCII-safe separator).
+(declare menu-lines (-> (List (Pair Str Str)) Str))
+(def menu-lines
+  (lam (ps)
+    (case ps
+      (nil "")
+      ((cons p rest)
+        (case p
+          ((pair nm ds)
+            (str-cat "- " (str-cat nm (str-cat " - " (str-cat ds (str-cat "\n" (menu-lines rest))))))))))))
+
+; plan-prompt : the planner instruction — the menu + the message + a name-the-skills directive. PURE.
+(def plan-prompt (-> Str Str)
+  (lam (message)
+    (str-cat "You route a user message to the right skill(s). Available skills:\n"
+      (str-cat (menu-lines plannable-skills)
+        (str-cat "\nUser message: " (str-cat message
+          "\nReply with ONLY the name(s) of the skill(s) that best handle this message."))))))
+
+; plan-message : endpoint + ConvState + message -> Plan. Open ONE FRESH backend, be-chat the planner
+; prompt on the 0.5b (synth-model, the same primitive + model O4b's synth uses), parse the reply into
+; a Plan (parse-plan, which itself falls back to plan-of-intent when the reply names no menu skill).
+; On chat-bad (unreachable mesh / transport failure -> a negative status, NOT a crash) OR an empty
+; reply, FALL BACK to the O1 pure planner. E137: the one `(backend-open endpoint)` is moved EXACTLY
+; ONCE, inlined into be-chat; its returned handle b2 is closed on BOTH ChatR arms. This adds ONE
+; backend per turn (the planning call) on top of execution — fresh + discharged, per E137.
+(def plan-message (=> Str ConvState Str Plan)
+  (lam (endpoint cs message)
+    (case (be-chat (backend-open endpoint) synth-model
+            (cons (msg "user" (plan-prompt message)) nil))
+      ((chat-ok t b2)
+        (do (backend-close b2)
+          (case (str-nonempty t)
+            (true  (parse-plan t cs message))          ; the model picked -> parse leniently into a Plan
+            (false (plan-of-intent cs message)))))      ; empty model reply -> pure planner fallback
+      ((chat-bad s r b2)
+        (do (backend-close b2) (plan-of-intent cs message)))))) ; unreachable mesh -> pure planner fallback
+
+; ------------------------------------------------------------------- turn : the C2 entry (C6a: + ConvState; O4a: endpoint; O5: model planner)
+; A ConvState (conversation memory) + a message + the ENDPOINT (Str) -> a response Str. Resolve the
+; Intent ONCE (resolve-intent — a bare follow-up REUSES the prior turn's Intent instead of routing
+; blind, C6a) for the verbalize framing, then let the MODEL PLANNER pick the Plan (plan-message ->
+; parse-plan -> plan-of-intent fallback, O5) instead of the static intent->plan map, and hand both to
+; execute-plan, which opens its OWN backend(s) per skill run (O4a seam). conv->extra serializes the
+; memory into the routed Flow's `extra`/`sees` slot (inside execute-plan) so the Flow's leaves SEE
+; prior context. Routing/parsing is PURE; the model is reached to PLAN (bounded pick) and inside a
+; routed skill's Flow. The signature (endpoint Str, O4a) is unchanged — turn-seq-go passes the
+; endpoint; scriba calls only turn-seq so it is untouched. O5 adds ONE planning backend per turn
+; (plan-message) on top of execution — fresh + E137. The caller folds intent + reply back into
+; ConvState for the next message.
+; O6 FAST-PATH (refinement thesis): social / clarify are the intents CODE classifies RELIABLY (a
+; greeting / a too-thin message), so they SKIP the model planner and take the O1 pure plan directly
+; (plan-of-intent -> plan-reply). WHY it's needed now: with the qwen3:4b bump the planner became
+; capable enough to (non-deterministically) name skills for a bare "hello", turning a greeting into a
+; plan-fan synth — the social template stopped painting live (the model-primary posture's cost surfaced
+; by the smarter model; at a DEAD endpoint the fallback hid it, so the deterministic suite never saw
+; it). Gating the two code-reliable intents in code restores the crisp social/clarify floor AND is
+; deterministic + mesh-free on those paths (no backend dialed). The five TASK intents (analyze/decide/
+; transform/factual/unknown) still go through the MODEL planner — the genuinely-uncertain picks where
+; the bigger model earns its keep. The broader posture (model-primary vs pure-prior for TASK intents)
+; stays the author's deferred call (CHATTER-ORCHESTRATOR-SCOPE §6); this only fast-paths the two the
+; code already routes with certainty (mirroring intent->plan's social/clarify -> plan-reply arms).
+; DC-3a — the ladder, applied. `routed-of` (router.chiral) says whether CODE was sure; only the
+; residue reaches `plan-message`. O6's social/clarify fast-path was this rule applied to the two
+; intents it was already obvious for; D2 (code-prior) extends it to every intent a marker decides,
+; which is all of them except the honest catch-all.
+; R4 — DEPTH is a second code-decided axis, orthogonal to intent. `intent->plan` maps an intent to
+; ONE skill and cannot see the message, so it cannot tell "what is a monad" (answer it) from "some
+; different ways type theory developed" (expand it). `wants-depth?` reads the multiplicity markers
+; the user actually typed and upgrades a factual ask to the FRACTAL skill. Still code-prior: a
+; marker match, not a judgement, and it only ever fires on `factual` — the intent whose skill has
+; a deeper variant.
+(def assign-plan (=> Str ConvState Str Plan)
+  (lam (endpoint cs message)
+    (case (routed-of cs message)
+      ((routed-sure i)
+        (case i
+          (in-factual (case (wants-depth? message)
+                        (true  (plan-single "deep-research"))   ; a survey: expand, then research each
+                        (false (intent->plan i))))              ; one question: one answer
+          (_ (intent->plan i))))                                ; code decided — do not ask
+      ((routed-residue)
+        ; A depth marker on a RESIDUE ask is not residue at all. Measured: "Tell me some different
+        ; perspectives on type theory" carries no factual marker, so the intent table has nothing
+        ; to say — but "some different perspectives" says plainly that the answer is plural, and
+        ; that is better evidence than a planner guess. Code takes the rung back.
+        (case (wants-depth? message)
+          (true  (plan-single "deep-research"))
+          (false (plan-message endpoint cs message))))))) ; nothing fired at all — the model earns it
+
+(def turn
+  (=> Str ConvState Str Str)
+  (lam (endpoint cs message)
+    (let ((intent (resolve-intent cs message)))
+      (execute-plan endpoint cs intent (assign-plan endpoint cs message) message))))
+
+; ==================================================== DC-2b — the TURN IS A BRANCH over chunks
+; C6b ran a compound message as a syntactic CHAIN: `split-conjunctions` cut it into strings, each
+; string went through `turn` in sequence, and the replies were concatenated with an intent tag.
+; That is not a divide — every part re-entered the WHOLE turn (its own model planner call), the
+; parts were forced sequential whether or not they depended on each other, and "consolidation" was
+; string concatenation.
+;
+; DC-2b replaces it with the branch the FLOW-MAP describes: DIVIDE (the DC-2a divider — typed
+; Chunks with their own intent, payload and deps) -> ASSIGN (one code-decided specialist per chunk)
+; -> run -> CONSOLIDATE (fan-synth, the O4b fusion, with fuse-template as the offline fallback).
+;
+; THE DEP RULE IS THE CONTEXT GRANT — the part worth reading twice. A chunk with `deps` follows
+; something, so it runs against the RUNNING ConvState and sees what its predecessors produced. An
+; INDEPENDENT chunk runs against the ENTRY ConvState: it must NOT see a sibling's result, because
+; that is exactly the bleed a fan is supposed to prevent (CHATTER-FLOW-MAP §context grants). So
+; the marker the user typed (" and then " vs ", and also ") decides both the ordering AND the
+; visibility — no heuristic, no model call.
+
+; chunk-message : what the specialist actually sees — its ask plus its OWN payload, and nothing
+; else. A sibling chunk's data never appears here. (DC-4a will attenuate the `extra` grant too;
+; today the message-level attenuation is already real.)
+(def chunk-message (-> Chunk Str)
+  (lam (c)
+    (case (str-eq (chunk-data c) "")
+      (true (chunk-text c))
+      (false (str-cat (chunk-text c) (str-cat "\n\n" (chunk-data c)))))))
+
+; chunk-intent-in : an INDEPENDENT chunk keeps the intent the divider routed context-free. A
+; DEPENDENT chunk re-resolves through the running ConvState — C6a's follow-up rule applied per
+; chunk, so "... and then what about the second one?" reuses its predecessor's intent instead of
+; falling to in-unknown.
+(def chunk-intent-in (-> ConvState Chunk Intent)
+  (lam (cs c)
+    (case (chunk-deps c)
+      (nil (chunk-intent c))
+      ((cons d ds) (resolve-intent cs (chunk-text c))))))
+
+; ==================================================== DC-3b — CONSOLIDATE on the structured egress
+; DC-2b fused the chunks' rendered PROSE: each lane made a sentence and the consolidator re-read
+; sentences. The structure existed for one instant and was thrown away at the chunk boundary. Here
+; the branch carries the parsed `SkillEgress` (findings + the closed Audit verdict) all the way to
+; the consolidator, so the fusion reasons over findings and verdicts instead of over prose.
+;
+; Two consequences that are the point of the slice:
+;   1. the MODEL synth prompt now lists each lane's findings (kind/target/body) and its audit word,
+;      so it can weigh a flagged lane against a clean one instead of blending two paragraphs;
+;   2. the PURE fallback names any lane whose audit was FLAGGED or ABSENT. Before, a degraded lane
+;      was fused as if it were clean — the reply looked equally confident either way. It no longer
+;      does, offline as well as online.
+
+(data ChunkOut () (chunk-out (label Str) (reply Str) (eg SkillEgress)))
+(def cout-label (-> ChunkOut Str)         (lam (o) (case o ((chunk-out l r e) l))))
+(def cout-reply (-> ChunkOut Str)         (lam (o) (case o ((chunk-out l r e) r))))
+(def cout-eg    (-> ChunkOut SkillEgress) (lam (o) (case o ((chunk-out l r e) e))))
+
+; run-chunk : one chunk -> its reply AND its structure. This is why the branch cannot just call
+; execute-plan: execute-plan returns a Str, and a Str is exactly the thing DC-3b refuses to
+; consolidate over. The plan-single arm runs the skill directly so the raws survive the call; the
+; template and (unreachable today, but the case must be total) composite arms defer to
+; execute-plan and carry an honest empty egress.
+; E137: the one `(backend-open endpoint)` is moved exactly once, inline into run-skill-turn, and
+; the returned handle is closed here.
+; F3: a lane is labelled by the SPECIALIST that ran it, not by the intent that routed it. The
+; intent is a routing fact; for a residue chunk it is literally `unknown`, which told the reader
+; nothing (a live transcript showed two lanes both labelled `unknown` — they were both `research`).
+; A plan-reply has no specialist, so it keeps the intent name, which is the truth there.
+(def run-chunk (=> Str ConvState (List (Pair Str Str)) Intent Str ChunkOut)
+  (lam (endpoint cs grant intent m)
+    ; DC-3a: the SAME ladder per chunk. A chunk whose intent a marker decided is assigned by code;
+    ; a chunk that lands on the catch-all is exactly the residue the model planner is for. Dividing
+    ; narrows most parts into code's reach — this is what happens to the ones it does not.
+    (case (case intent
+            (in-unknown (plan-message endpoint cs m))
+            (in-social    (intent->plan intent))
+            (in-clarify   (intent->plan intent))
+            (in-analyze   (intent->plan intent))
+            (in-decide    (intent->plan intent))
+            (in-transform (intent->plan intent))
+            (in-factual   (intent->plan intent)))
+      ((plan-single skill)
+        (case (run-skill-turn (backend-open endpoint) skill m grant)
+          ((run-r y mf raws b2)
+            (do (backend-close b2)
+              (let ((e (skill-egress skill raws)))
+                (let ((out (render-skill skill e)))
+                  (chunk-out skill
+                             (case (str-eq out "") (true (verbalize-run intent mf raws)) (false out))
+                             e)))))))
+      ((plan-reply text) (chunk-out (intent-name intent) text (egress nil (audit-absent))))
+      ((plan-chain ss)   (chunk-out (intent-name intent)
+                                    (execute-plan endpoint cs intent (plan-chain ss) m)
+                                    (egress nil (audit-absent))))
+      ((plan-fan ss syn) (chunk-out (intent-name intent)
+                                    (execute-plan endpoint cs intent (plan-fan ss syn) m)
+                                    (egress nil (audit-absent)))))))
+
+; ---------------------------------------------------------- the fusion, PURE leg
+; the labeled prose join (mirrors fuse-template, over ChunkOuts).
+(declare fuse-lines (-> (List ChunkOut) Str Str))
+(def fuse-lines
+  (lam (os acc)
+    (case os
+      (nil acc)
+      ((cons o rest)
+        (let ((line (str-cat "From " (str-cat (cout-label o) (str-cat ": " (cout-reply o))))))
+          (fuse-lines rest (case (str-eq acc "") (true line) (false (str-cat acc (str-cat "\n" line))))))))))
+
+; the labels of every lane whose audit was NOT clean (flagged, or never recorded).
+(declare degraded-go (-> (List ChunkOut) Str Str))
+(def degraded-go
+  (lam (os acc)
+    (case os
+      (nil acc)
+      ((cons o rest)
+        (case (audit-clean? (egress-verdict (cout-eg o)))
+          (true (degraded-go rest acc))
+          (false (degraded-go rest
+                   (case (str-eq acc "") (true (cout-label o)) (false (str-cat acc (str-cat ", " (cout-label o))))))))))))
+
+(def fuse-branch (-> (List ChunkOut) Str)
+  (lam (os)
+    (case os
+      (nil "I didn't get any usable results to combine.")
+      ((cons x xs)
+        (let ((body (fuse-lines os "")))
+          (let ((deg (degraded-go os "")))
+            (case (str-eq deg "")
+              (true body)
+              (false (str-cat body (str-cat "\n(unverified: " (str-cat deg ")")))))))))))
+
+; ---------------------------------------------------------- the fusion, MODEL leg
+; the synth prompt reads the STRUCTURE, not the prose: one block per lane listing its findings and
+; its audit word. That is the whole DC-3b delta on this side.
+(declare briefs-go (-> (List ChunkOut) Str))
+(def briefs-go
+  (lam (os)
+    (case os
+      (nil "")
+      ((cons o rest)
+        (str-cat "  lane " (str-cat (cout-label o)
+          (str-cat ":\n" (str-cat (egress-brief (cout-eg o)) (briefs-go rest)))))))))
+
+(def branch-synth-prompt (-> (List ChunkOut) Str)
+  (lam (os)
+    (str-cat "Answer the user's whole message in ONE clear reply.\n\nIt was divided into sub-requests, each handled by its own specialist. Each lane's findings are below; use them as your material and write the answer itself. Mention a lane's audit ONLY if it was FLAGGED or produced no findings, and then in at most one short clause — the answer is the point, not the bookkeeping.\n\n"
+      (str-cat (briefs-go os) "\nWrite the single combined reply now."))))
+
+; branch-synth : model synth over the structure, PURE fusion as the fallback — the same shape (and
+; the same `synth-with` wire code) as O4b's fan-synth, differing only in the prompt it builds.
+; did ANY lane produce structure? If not there is nothing to synthesize FROM: a model handed an
+; empty brief can only paraphrase the bookkeeping ("both lanes had no findings"), which is worse
+; than the honest floor and costs a call to say. Observed live — this guard is the fix.
+(declare any-findings? (-> (List ChunkOut) Bool))
+(def any-findings?
+  (lam (os)
+    (case os
+      (nil false)
+      ((cons o rest)
+        (case (egress-findings (cout-eg o))
+          ((cons f fs) true)
+          (nil (any-findings? rest)))))))
+
+(def branch-synth (=> Str (List ChunkOut) Str)
+  (lam (endpoint os)
+    (case os
+      (nil (fuse-branch os))                        ; nothing to fuse -> honest floor, no model call
+      ((cons x xs)
+        (case (any-findings? os)
+          (false (fuse-branch os))                  ; no lane has structure -> the honest floor, no call
+          (true  (synth-with endpoint (branch-synth-prompt os) (fuse-branch os))))))))
+
+; ==================================================== DC-4a — the per-specialist CONTEXT GRANT
+; DC-2b let the dep rule pick WHICH ConvState a chunk ran against, which was the right shape at the
+; wrong grain: a dependent chunk inherited the whole running state, so `prior-message`/`prior-reply`
+; became its SIBLING's message and full rendered prose — and the turn's real conversation history
+; was clobbered by it. `extra` is rendered verbatim into EVERY leaf prompt (assemble.chiral's
+; "# Extra"), so that was a genuine bleed, not a bookkeeping detail.
+;
+; DC-4a splits the two things DC-2b had fused:
+;   ROUTE on the running state — a dependent chunk still resolves its intent through what came
+;     before it (C6a's follow-up rule; that is a decision, and decisions may look at history);
+;   SEE only an EXPLICIT grant — the ENTRY conversation (the user's own prior turn, which belongs
+;     to the whole turn) plus, for each dep, that dep's TYPED result and nothing else.
+; A dep is granted `egress-brief` — findings and audit verdict — NOT its rendered prose and NOT
+; its payload, exactly as CHATTER-FLOW-MAP specifies (grant(dec) = { prior: ⟨esr.egress⟩ }).
+; An INDEPENDENT chunk gets no sibling key at all: min-privilege by construction, no filter to
+; forget to apply.
+
+(declare nth-out (-> (List ChunkOut) I64 (Maybe ChunkOut)))
+(def nth-out
+  (lam (os i)
+    (case os
+      (nil none)
+      ((cons h t) (case (=i i 0) (true (some h)) (false (nth-out t (- i 1))))))))
+
+; each dep index -> one "prior_<label>" pair carrying that lane's STRUCTURE. A dep index with no
+; result (impossible by construction — deps always point backwards — but total anyway) is skipped.
+(declare dep-grants (-> (List I64) (List ChunkOut) (List (Pair Str Str))))
+(def dep-grants
+  (lam (ds os)
+    (case ds
+      (nil nil)
+      ((cons d rest)
+        (case (nth-out os d)
+          (none (dep-grants rest os))
+          ((some o) (cons (pair (str-cat "prior_" (cout-label o)) (egress-brief (cout-eg o)))
+                          (dep-grants rest os))))))))
+
+; grant-for : the whole of what one chunk's specialist may see, built explicitly. PURE, TOTAL.
+(def grant-for (-> ConvState (List I64) (List ChunkOut) (List (Pair Str Str)))
+  (lam (entry-cs deps outs)
+    (append (Pair Str Str) (conv->extra entry-cs) (dep-grants deps outs))))
+
+; branch-go : run the chunks IN ORDER (the divider emits them topologically — group g follows
+; g-1), ROUTING each through the state its deps entitle it to and GRANTING it exactly the context
+; above. ASSIGN is the PURE prior (`intent->plan`): ONE code-decided pick per chunk, not N
+; model-planner calls — the whole point of dividing is that each part is now narrow enough for
+; code to route. `done` accumulates the finished lanes IN INDEX ORDER so a dep index resolves.
+; Returns the final ConvState (every chunk folded in, so the turn count equals the chunk count).
+; E137: nothing linear is threaded here — each run opens and closes its own backend.
+(declare branch-go (=> Str (List Chunk) ConvState ConvState (List ChunkOut) (=> Str Unit) I64 I64 (Pair ConvState (List ChunkOut))))
+(def branch-go
+  (lam (endpoint chunks entry-cs run-cs done on-step k n)
+    (case chunks
+      (nil (pair run-cs done))
+      ((cons c rest)
+        (let ((route-cs (case (chunk-deps c) (nil entry-cs) ((cons d ds) run-cs))))
+          (let ((i (chunk-intent-in route-cs c)))
+            (let ((m (chunk-message c)))
+              (let ((_ (on-step (str-cat "lane " (str-cat (i64->str k)
+                                 (str-cat "/" (str-cat (i64->str n)
+                                   (str-cat "  " (str-cat (intent-name i) " ...")))))))))
+                (let ((o (run-chunk endpoint entry-cs (grant-for entry-cs (chunk-deps c) done) i m)))
+                  (let ((_ (on-step (str-cat "lane " (str-cat (i64->str k)
+                                     (str-cat "/" (str-cat (i64->str n)
+                                       (str-cat "  " (str-cat (cout-label o) " done")))))))))
+                    (branch-go endpoint rest entry-cs (conv-update run-cs i m (cout-reply o))
+                               (append ChunkOut done (cons o nil)) on-step (+ k 1) n)))))))))))
+
+; ==================================================== DC-4b — the TURN VIEW (what scriba renders)
+; The transcript showed a flat (you, tag, reply) row: the turn's whole structure — that it was
+; divided at all, which lane handled which ask, which lane waited on which, what each lane's audit
+; said — existed only inside `turn-seq` and died there. `TurnView` is that structure as a VALUE,
+; returned beside the reply, so the TUI displays what happened instead of re-deriving it (and so a
+; later surface — a log, a test, a different front end — reads the same value).
+; A ONE-CHUNK turn has NO lanes: the view is exactly the old flat row, so a plain chat is
+; visually unchanged and structure appears only when the turn actually branched.
+(data Lane () (lane (label Str) (after Str) (audit Str) (reply Str)))
+(def lane-label (-> Lane Str) (lam (l) (case l ((lane a b c d) a))))
+(def lane-after (-> Lane Str) (lam (l) (case l ((lane a b c d) b))))
+(def lane-audit (-> Lane Str) (lam (l) (case l ((lane a b c d) c))))
+(def lane-reply (-> Lane Str) (lam (l) (case l ((lane a b c d) d))))
+
+(data TurnView () (turn-view (tag Str) (lanes (List Lane)) (reply Str)))
+(def view-tag   (-> TurnView Str)         (lam (v) (case v ((turn-view t ls r) t))))
+(def view-lanes (-> TurnView (List Lane)) (lam (v) (case v ((turn-view t ls r) ls))))
+(def view-reply (-> TurnView Str)         (lam (v) (case v ((turn-view t ls r) r))))
+
+; the dep indices of one chunk -> "after <label>, <label>" (or "" when independent).
+(declare after-of (-> (List I64) (List ChunkOut) Str))
+(def after-of
+  (lam (ds os)
+    (case ds
+      (nil "")
+      ((cons d rest)
+        (case (nth-out os d)
+          (none (after-of rest os))
+          ((some o)
+            (let ((tl (after-of rest os)))
+              (case (str-eq tl "")
+                (true (cout-label o))
+                (false (str-cat (cout-label o) (str-cat ", " tl)))))))))))
+
+; zip the chunks with their results into display lanes. Both lists are in index order and the
+; same length by construction (branch-go appends one ChunkOut per chunk); a mismatch simply ends
+; the list rather than faking a row.
+(declare lanes-of (-> (List Chunk) (List ChunkOut) (List ChunkOut) (List Lane)))
+(def lanes-of
+  (lam (chunks outs all)
+    (case chunks
+      (nil nil)
+      ((cons c crest)
+        (case outs
+          (nil nil)
+          ((cons o orest)
+            (cons (lane (cout-label o)
+                        (after-of (chunk-deps c) all)
+                        (let ((w (audit-word (egress-verdict (cout-eg o)))))
+                          (case (str-eq w "") (true "-") (false w)))
+                        (cout-reply o))
+                  (lanes-of crest orest all))))))))
+
+(def compound-tag (-> (List Chunk) Str)
+  (lam (chunks) (str-cat "compound(" (str-cat (i64->str (chunk-count chunks)) ")"))))
+
+; ------------------------------------------------------------------- F2 : one specialist is not a division
+; MEASURED (a live transcript): "Tell me some different perspectives on type theory and ways it
+; manifests in programming" — ONE coherent question, no marker in it, so the code pass correctly
+; produced ONE chunk. The semantic port then fired (87 chars, unstructured) and sliced it into two
+; overlapping halves, which BOTH routed to `research`. The user got the same sludge twice, each
+; time from a narrower view, then a synth that fused two paraphrases of one answer.
+;
+; The rule that kills it, and only it: **a division whose chunks all reach the SAME specialist is
+; not a division** — it is slicing, and a specialist answers the whole question better than its
+; fragments (it is exactly the context the fragments are missing). Collapse to the original
+; message. Chunks that reach DIFFERENT specialists are a real division and are untouched, which is
+; the whole point of dividing in the first place.
+;
+; SCOPE — it applies ONLY to a division the MODEL PORT invented (`org-model`), never to one the
+; user actually wrote. That is the code-prior posture again: a marker the user typed is EVIDENCE
+; that they asked two things; the port's split is a GUESS. The turn-test fixture is exactly why
+; the distinction matters — "sort these flags … and then what about the second one?" is two
+; chunks that both reach evidence-sift-refined, but the user wrote " and then ", and the second
+; part is a genuine follow-up ABOUT the first's result. Collapsing that would answer the sort and
+; silently drop the follow-up. Same-specialist is only evidence of over-slicing when nothing but
+; the model claimed there was a seam.
+;
+; The scoping also makes the check EXACT rather than approximate: port-produced chunks always
+; carry `deps = nil`, so every one of them routes against the entry state — which is the state
+; this check has. (A structural chunk's intent can depend on its predecessor's, via C6a reuse, and
+; that is not knowable before the run; the rule never has to guess it because it never applies.)
+(def chunk-skill-prior (-> ConvState Chunk Str)
+  (lam (cs c)
+    (case (intent->plan (chunk-intent-in cs c))
+      ((plan-single sk)  sk)
+      ((plan-reply t)    "reply")
+      ((plan-chain ss)   "chain")
+      ((plan-fan ss syn) "fan"))))
+
+(declare all-same-skill (-> ConvState (List Chunk) Str Bool))
+(def all-same-skill
+  (lam (cs chunks first)
+    (case chunks
+      (nil true)
+      ((cons c rest)
+        (case (str-eq (chunk-skill-prior cs c) first)
+          (false false)
+          (true (all-same-skill cs rest first)))))))
+
+; one-specialist? : every chunk lands on the same specialist (so dividing bought nothing).
+(def one-specialist? (-> ConvState (List Chunk) Bool)
+  (lam (cs chunks)
+    (case chunks
+      (nil true)
+      ((cons c rest) (all-same-skill cs rest (chunk-skill-prior cs c))))))
+
+; turn-seq-view : the entry that KEEPS the structure. turn-seq (below) is its projection to the
+; reply, so the old signature — and every caller of it — is untouched.
+; F5 — a ONE-LANE turn reports its specialist too. It used to run through `turn`, which returns
+; only prose, so the tag fell back to the INTENT — and for a residue message that intent is
+; literally `unknown`, which is what a live transcript showed above the answer. `run-chunk` does
+; the same ladder and the same work but hands back the ChunkOut, so the tag can name the skill
+; that actually answered. The reply is unchanged: both paths assign via the ladder, run the skill
+; with `conv->extra`, and render through `render-skill`.
+(def single-turn (=> Str ConvState Str (=> Str Unit) (Pair ConvState TurnView))
+  (lam (endpoint cs message on-step)
+    (let ((i (resolve-intent cs message)))
+      (let ((_ (on-step (str-cat (intent-name i) " ..."))))
+        (let ((o (run-chunk endpoint cs (conv->extra cs) i message)))
+          (let ((_ (on-step (str-cat (cout-label o) " done"))))
+            (pair (conv-update cs i message (cout-reply o))
+                  (turn-view (cout-label o) nil (cout-reply o)))))))))
+
+; F1 — the PROGRESS HOOK. A turn blocks for as long as the mesh takes (the divider port alone is
+; ~10s on qwen3:4b, then one run per lane, then the synth), and the frame showed nothing the whole
+; time: no way to tell a slow turn from a hung one. `on-step` is called with a short human line at
+; each stage boundary, exactly as `call-expert-stream` takes an `on-delta` (S17) — the caller
+; decides what to do with it, so the TUI paints a status line and every other caller passes a
+; no-op and is byte-identical to before.
+(def turn-seq-view-on (=> Str ConvState Str (=> Str Unit) (Pair ConvState TurnView))
+  (lam (endpoint cs message on-step)
+    (let ((_ (on-step "dividing ...")))
+      (let ((d (divide endpoint message)))
+      (let ((port-divided? (case (divided-via d) ((org-model) true) ((org-structural) false) ((org-whole) false))))
+      (let ((chunks (divided-chunks d)))
+        (case chunks
+          (nil (let ((_ (on-step "clarifying ...")))
+                 (let ((resp (turn endpoint cs message)))
+                   (pair (conv-update cs (resolve-intent cs message) message resp)
+                         (turn-view (intent-name (resolve-intent cs message)) nil resp)))))
+          ; (0 chunks = nothing to ask; `turn` answers with the clarify template, and the tag is
+          ;  the intent because there is no specialist to name.)
+          ((cons c rest)
+            (case rest
+              (nil (single-turn endpoint cs message on-step))
+              ((cons q more)
+                (case (and port-divided? (one-specialist? cs (cons c rest)))
+                  ; F2: the PORT invented a seam and every part lands on one specialist — not a
+                  ; division, a slicing. Answer the WHOLE message with that specialist instead.
+                  (true (single-turn endpoint cs message on-step))
+                  (false
+                (let ((cks (cons c rest)))
+                  (let ((n (chunk-count cks)))
+                    (let ((_ (on-step (str-cat "divided into " (str-cat (i64->str n) " lanes")))))
+                      (case (branch-go endpoint cks cs cs nil on-step 1 n)
+                        ((pair cs2 outs)
+                          (let ((_ (on-step (str-cat "consolidating " (str-cat (i64->str n) " lanes ...")))))
+                            (pair cs2 (turn-view (compound-tag cks)
+                                                 (lanes-of cks outs outs)
+                                                 (branch-synth endpoint outs)))))))))))))))))))))
+
+(def turn-noop (=> Str Unit) (lam (m) unit))
+(def turn-seq-view (=> Str ConvState Str (Pair ConvState TurnView))
+  (lam (endpoint cs message) (turn-seq-view-on endpoint cs message turn-noop)))
+
+; turn-seq : the entry scriba calls (signature UNCHANGED, so the TUI is untouched). Divide first;
+; then
+;   0 chunks — nothing to ask (an empty/thin message): the old single path, which answers with the
+;              clarify template. The divider never invents an ask to fill the gap.
+;   1 chunk  — the common case: `turn` on the ORIGINAL message, BYTE-IDENTICAL to before DC-2b
+;              (the chunk's trimmed text is NOT substituted — a one-ask turn must not shift).
+;   N chunks — the branch.
+(def turn-seq (=> Str ConvState Str (Pair ConvState Str))
+  (lam (endpoint cs message)
+    (case (turn-seq-view endpoint cs message)
+      ((pair cs2 v) (pair cs2 (view-reply v))))))
+
+; NOTE (DC-scriba): `chat-tag` is gone. It re-derived a display tag from the message, which was
+; only ever needed because the turn returned prose and the caller had to guess what had happened.
+; `turn-seq-view` now returns the tag it actually used (`view-tag`), so scriba reads the truth
+; instead of recomputing a guess — and there is no second implementation to drift.

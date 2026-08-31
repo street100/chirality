@@ -1,0 +1,69 @@
+; builder-test.prog — SG4 PURE gate for the accept-gate (the safety wall). Mesh-free.
+;
+; Proves the decode->type-check wall (builder.chiral) admits ONLY a well-formed, well-typed
+; Flow and rejects everything else — the safety proof:
+;   (1) ACCEPT     — a known-good Flow g (a chain of two steps with ALIGNED arrows,
+;       ty-doc->ty-findings then ty-findings->ty-patch); s = json-show (flow->json g);
+;       accept-gate s = (some _) AND flow-ty of the result = some. The admit path.
+;   (2) REJECT bad JSON   — accept-gate "{not valid json" = none (json-parse-str fails).
+;   (3) REJECT unknown kind — accept-gate "{\"kind\":\"bogus\"}" = none (json->flow fails).
+;   (4) REJECT ILL-TYPED  — a chain of two steps whose arrows DON'T compose
+;       (ty-doc->ty-findings then ty-doc->ty-patch: cod ty-findings != dom ty-doc);
+;       json-show (flow->json it) is STRUCTURALLY VALID JSON (decodes fine) but flow-ty
+;       REJECTS it — accept-gate = none. THE key safety proof: the type-checker catches an
+;       ill-typed Flow that decoded cleanly, so a bad composition never enters the library.
+; compile-main returns 0 iff every assertion passes (exit 0).
+;
+; Build+run (fast — links builder's flow/backend closure but never CALLS the backend; the
+; gate under test is pure, so mesh-free at runtime):
+;   chirality run prog/manas/core/builder-test.prog
+
+(import "prelude/prelude")                 ; Bool, Unit, unit, and, some, none, case, cons, nil
+(import "protocol/json")                    ; json-show
+(import "manas/core/flow")         ; Flow (flow-chain/flow-step), Ty (ty-doc/ty-findings/ty-patch), flow-ty
+(import "manas/core/flow-persist") ; flow->json  (encode the fixtures to the strings the gate reads)
+(import "manas/core/builder")      ; accept-gate  (the wall under test)
+
+; ─── fixtures ────────────────────────────────────────────────────────────────
+; good-flow : arrows compose (ty-doc -> ty-findings -> ty-patch) — flow-ty = some.
+(def good-flow Flow
+  (flow-chain (cons (flow-step "s1" ty-doc      ty-findings)
+              (cons (flow-step "s2" ty-findings ty-patch) nil))))
+
+; illtyped-flow : STRUCTURALLY valid, but the seam DOESN'T compose (cod ty-findings of s1
+; != dom ty-doc of s2) — decodes fine, flow-ty = none. The safety-proof fixture.
+(def illtyped-flow Flow
+  (flow-chain (cons (flow-step "s1" ty-doc ty-findings)
+              (cons (flow-step "s2" ty-doc ty-patch) nil))))
+
+(def flow-json-str (-> Flow Str) (lam (f) (json-show (flow->json f))))
+
+; ─── (1) ACCEPT a known-good Flow: gate = some AND the result type-checks ──────
+(def accept-good-ok (-> Unit Bool)
+  (lam (_)
+    (case (accept-gate (flow-json-str good-flow))
+      (none false)
+      ((some f)
+        (case (flow-ty f) (none false) ((some ar) true))))))
+
+; ─── (2) REJECT malformed JSON ────────────────────────────────────────────────
+(def reject-badjson-ok (-> Unit Bool)
+  (lam (_) (case (accept-gate "{not valid json") (none true) ((some f) false))))
+
+; ─── (3) REJECT unknown kind ──────────────────────────────────────────────────
+(def reject-bogus-ok (-> Unit Bool)
+  (lam (_) (case (accept-gate "{\"kind\":\"bogus\"}") (none true) ((some f) false))))
+
+; ─── (4) REJECT an ILL-TYPED (but structurally valid) Flow — THE safety proof ──
+(def reject-illtyped-ok (-> Unit Bool)
+  (lam (_) (case (accept-gate (flow-json-str illtyped-flow)) (none true) ((some f) false))))
+
+; ─── entry: 0 iff accept-good AND all three rejects pass ──────────────────────
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (and (accept-good-ok unit)
+          (and (reject-badjson-ok unit)
+          (and (reject-bogus-ok unit)
+               (reject-illtyped-ok unit))))
+      (true 0)
+      (false 1))))

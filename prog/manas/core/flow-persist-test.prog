@@ -1,0 +1,113 @@
+; flow-persist-test.prog — SG1 round-trip unit gate for the recursive Flow codec.
+;
+; Proves encode->show->parse->decode->encode is a FIXPOINT over a hand-built NESTED
+; Flow that exercises EVERY node type + recursion (branch over a chain that contains a
+; fan of steps; backtrack over a chain containing a gate + a step). String-level
+; fixpoint (avoids needing a structural eq on Flow). Plus NEGATIVE tests: malformed
+; JSON (missing "kind" / unknown kind / a child missing a required field) decodes to
+; `none`, never a silent default. Pure — no PTY, no network, no fork. compile-main
+; returns 0 iff every assertion passes (exit 0).
+;
+; Build+run (fast — links flow's backend/runner closure but never CALLS it; the codec
+; under test is pure, so mesh-free at runtime):
+;   chirality run prog/manas/core/flow-persist-test.prog
+
+(import "prelude/prelude")               ; Bool, Unit, and, some, none, case, unit, str-eq, cons, nil
+(import "protocol/json")                  ; Json (+ ctors j-str/j-obj/j-arr), json-show, json-parse-str, pair
+(import "manas/core/types")      ; GateRule (+ gate-rule ctor)
+(import "manas/core/flow")       ; Ty (+ ctors), Flow (+ ctors)
+(import "manas/core/flow-persist"); flow->json, json->flow  (the codec under test)
+
+; ─── the NESTED Flow fixture: branch { per-perspective: chain[step, fan[step,step]],
+;     backtrack: chain[gate, step] } — exercises step/fan/chain/gate/branch + recursion.
+
+(def per-persp Flow
+  (flow-chain
+    (cons (flow-step "reader" ty-doc ty-findings)
+    (cons (flow-fan (cons (flow-step "accuracy" ty-findings ty-verdict)
+                    (cons (flow-step "style"    ty-findings ty-verdict) nil))
+                    "merge-verdicts" ty-verdict)
+          nil))))
+
+(def back-track Flow
+  (flow-chain
+    (cons (flow-gate (cons (gate-rule "always" (cons "a" (cons "b" nil))) nil)
+                     "consolidate" ty-verdict ty-patch)
+    (cons (flow-step "audit" ty-patch ty-doc) nil))))
+
+(def nested-flow Flow
+  (flow-branch "perspectivist" ty-doc per-persp back-track))
+
+; ─── new-constructor fixture (Audit #3 coverage gap): flow-branch-pure + flow-pure + ALL 6
+;     PureFns (split-numbered / line-after / has-any / tally / all-present / collect-angles).
+;     Round-trips too.
+(def nc-per-persp Flow
+  (flow-chain
+    (cons (flow-pure (pf-line-after "Perspective: ") ty-doc ty-text)
+    (cons (flow-pure (pf-has-any (cons "cite" (cons "table" nil)) "evidence" "speculation") ty-text ty-verdict) nil))))
+(def nc-back-track Flow
+  (flow-chain
+    (cons (flow-pure (pf-tally "evidence" "speculation" "e-track" "s-track") ty-verdict ty-findings)
+    (cons (flow-pure (pf-all-present (cons "e-track" (cons "s-track" nil)) "well-formed" "malformed") ty-findings ty-verdict) nil))))
+(def newctor-flow Flow
+  (flow-branch-pure (pf-split-numbered) ty-doc nc-per-persp nc-back-track))
+
+; the CODE-COMBINER backtrack shape (DC-1b slice 3): collect the joined per-angle individuals
+; into findings, then audit them structurally. Round-trips through the codec like the rest.
+(def collect-flow Flow
+  (flow-chain
+    (cons (flow-pure (pf-collect-angles "angle") ty-verdict ty-findings)
+    (cons (flow-pure (pf-all-present (cons "angle" nil) "complete" "has-gaps") ty-findings ty-verdict) nil))))
+
+; ─── round-trip invariant: encode -> show -> parse -> decode -> encode is a fixpoint
+
+(def flow-rt (-> Flow Bool)
+  (lam (f)
+    (let ((s1 (json-show (flow->json f))))
+      (case (json-parse-str s1)
+        (none false)                                   ; must parse
+        ((some jv)
+          (case (json->flow jv)
+            (none false)                               ; must decode (some, not none)
+            ((some f2) (str-eq s1 (json-show (flow->json f2))))))))))
+
+; ─── negative tests: malformed JSON decodes to `none` (rejects, never defaults) ─
+
+; (1) a Flow object missing the required "kind" key.
+(def bad-no-kind Json
+  (j-obj (cons (pair "expert-id" (j-str "x")) nil)))
+
+; (2) an unknown "kind" tag.
+(def bad-unknown-kind Json
+  (j-obj (cons (pair "kind" (j-str "wat")) nil)))
+
+; (3) a chain whose child step is missing the required "out-ty" — the child's
+;     json->flow returns none, and jsons->flows fails the whole decode (fail-if-any).
+(def bad-child Json
+  (j-obj (cons (pair "kind" (j-str "chain"))
+          (cons (pair "steps"
+            (j-arr (cons (j-obj (cons (pair "kind" (j-str "step"))
+                                 (cons (pair "expert-id" (j-str "x"))
+                                 (cons (pair "in-ty" (j-str "ty-doc")) nil))))
+                         nil)))
+                nil))))
+
+(def neg-no-kind-ok (-> Unit Bool)
+  (lam (_) (case (json->flow bad-no-kind) (none true) ((some f) false))))
+
+(def neg-unknown-kind-ok (-> Unit Bool)
+  (lam (_) (case (json->flow bad-unknown-kind) (none true) ((some f) false))))
+
+(def neg-child-ok (-> Unit Bool)
+  (lam (_) (case (json->flow bad-child) (none true) ((some f) false))))
+
+; ─── entry: 0 iff the nested round-trip + every negative test passes ─────────────
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (and (flow-rt nested-flow)
+          (and (flow-rt newctor-flow)                        ; new constructors round-trip (Audit #3)
+          (and (flow-rt collect-flow)                        ; pf-collect-angles round-trips (DC-1b)
+               (and (and (neg-no-kind-ok unit) (neg-unknown-kind-ok unit))
+                    (neg-child-ok unit)))))
+      (true 0)
+      (false 1))))

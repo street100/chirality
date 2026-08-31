@@ -1,0 +1,77 @@
+; ============================================================ manas run-record log
+; E139, N3 (METIS-PORT-SPEC §1, the "be-log" row). Ship a completed run's RunManifest
+; to the manas WORKER so every orchestration run is persisted. The functional-core /
+; imperative-shell split (E138): the PURE serializers (interaction-json /
+; expert-call-json) live in contract/manifest.chiral; this module is the thin
+; EFFECTFUL shell that POSTs their bytes.
+;
+; WORKER TARGET, not the model Backend. The worker is a SEPARATE service from the
+; model endpoint (worker :8080 vs model :11434) and a fire-and-forget log SINK: N+1
+; independent POSTs, order-free, failures swallowed. So it is NOT the E137 linear
+; Backend porttype (that discipline exists because the MODEL is single-flight — one
+; in-flight chat, a handle that must not be duplicated or dropped). A log sink has no
+; such invariant, so threading a q1 handle through the fan-out would be ceremony with
+; zero constrained behavior (P6). be-log takes a plain worker-base Str and issues its
+; POSTs through http-request directly — the model Backend is never touched here.
+;
+; be-log : (=> Str Str RunManifest (List RawCall) Unit) — (worker-base, run-key,
+;   manifest, raws). Fires one LOG-01 /internal/log interaction row + one LEARN-01
+;   /internal/log/expert row per fired expert. run-key is used for BOTH the interactions
+;   session_id and the expert_calls run_id (one smoke run == one session; run_log.py keys
+;   interactions by session and expert_calls by run — a single caller key makes both rows
+;   queryable). FIRE-AND-FORGET: each POST's HttpR is cased and discarded to Unit, so a
+;   failed log POST (worker down, 5xx, transport error) NEVER aborts a completed run.
+;
+; REAL CORPUS TEXT: the worker's LEARN-01 `prompt` / `raw_response` are RAW-TEXT
+; training-corpus columns. They are filled from the run's (List RawCall) — the actual
+; SEES prompt sent + the model's raw response, captured in the run loop (runner.chiral)
+; and threaded out beside the manifest (GRunR.raws). The manifest's ExpertCall stays
+; DIGEST-ONLY (core/types.chiral prompt-sha256/response-sha256, bounded-manifest by
+; design — E141 golden round-trip untouched); parsed_ok / accepted_into_merge /
+; duration_ms come from it, prompt / raw_response from the parallel RawCall. LOG-01 is
+; unaffected: it carries the real final_yield.
+
+(import "prelude/prelude")                 ; str-cat, str->bytes
+(import "protocol/http")                    ; http-request, HttpR (http-r)
+(import "protocol/json")                    ; json-show
+(import "manas/core/types")        ; RunManifest, ExpertCall, RawCall
+(import "manas/contract/manifest") ; interaction-json, expert-call-json, manifest-expert-calls
+
+; POST one LOG-01 interactions row. Fire-and-forget: the HttpR is discarded to Unit.
+(def log-interaction (=> Str Str RunManifest Unit)
+  (lam (wbase sid m)
+    (case (http-request "POST" (str-cat wbase "/internal/log")
+            (str->bytes (json-show (interaction-json sid m))))
+      ((http-r st body) unit))))
+
+; POST one LEARN-01 expert_calls row (an ExpertCall zipped with its parallel RawCall:
+; digest-record parsed/accepted/duration + raw prompt/response text). Fire-and-forget.
+(def log-expert-row (=> Str Str ExpertCall RawCall Unit)
+  (lam (wbase rk ec rc)
+    (case (http-request "POST" (str-cat wbase "/internal/log/expert")
+            (str->bytes (json-show (expert-call-json rk ec rc))))
+      ((http-r st body) unit))))
+
+; fan out one LEARN-01 POST per fired expert, walking the ExpertCalls and RawCalls in
+; lockstep (equal lengths + fired order by construction — both are one-per-fired-expert;
+; nil guards keep it total). Each POST in its own body, mirroring runner.chiral's
+; fan-experts effect discipline.
+(declare log-expert-rows (=> Str Str (List ExpertCall) (List RawCall) Unit))
+(def log-expert-rows
+  (lam (wbase rk cs rs)
+    (case cs
+      (nil unit)
+      ((cons c crest)
+        (case rs
+          (nil unit)
+          ((cons r rrest)
+            (do (log-expert-row wbase rk c r)
+                (log-expert-rows wbase rk crest rrest))))))))
+
+; be-log: the whole persistence step — one interactions row + N expert_calls rows (the
+; real training corpus, prompt/response from raws). Row: (http-request) x (1 + N).
+; Returns Unit; a completed run is never aborted by it.
+(def be-log (=> Str Str RunManifest (List RawCall) Unit)
+  (lam (wbase rk m raws)
+    (do (log-interaction wbase rk m)
+        (log-expert-rows wbase rk (manifest-expert-calls m) raws))))

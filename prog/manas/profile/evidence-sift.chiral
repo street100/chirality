@@ -1,0 +1,158 @@
+; ============================================ manas evidence-sift — a FRACTAL template (T3)
+; T3 of the TEMPLATE LIBRARY (MANAS-SKILL-GROWER.md L249) and its KEY primitive: a
+; hand-authored fractal skill that SEPARATES solid EVIDENCE from a prior cheap pass's
+; "possibly-relevant" SPECULATION into TWO SEPARATE TRACKS — at a reference level —
+; WITHOUT merging or discarding either. A cheap 0.5b pass throws off lots of "maybe
+; relevant" noise; this skill sifts the real evidence out of the speculation so a valid
+; thought can be built from cheap noisy passes. It is the audit/backtrack pattern
+; promoted into its own reusable skill.
+;
+; Built at the NARROW-LINE-OF-THOUGHT grain — one focused reasoning move per leaf (not a
+; token, not a multi-part question), sized for a 0.5b. Every expert is a read-only
+; PRODUCER of a reasoning move / a classification / a two-track split / a verdict, so the
+; whole fractal runs tiny-model-green.
+;
+; The shape (the fractal pair, MANAS-SKILL-GROWER L18):
+;   evidence-sift-flow = flow-branch
+;     perspectivist  "reason the distinct flagged items/claims needing evidence-vs-speculation sorting"
+;                                                                        -> ty-perspectives
+;     in-ty          ty-doc                                             ; the text arrives as a doc
+;     per-perspective = flow-chain [                                    ; ONE sub-pipeline per flagged item
+;        evidence-sift-reasoner  "is THIS item supported evidence or a speculative association? reason it" -> ty-text  (reasoner)
+;        evidence-sift-classify  "classify it as evidence or speculation, with one reason"                 -> ty-verdict (auditor)
+;     ]
+;     backtrack = flow-chain [                                          ; two-track consolidation + boundary audit
+;        evidence-sift-consolidate "sort these into two separate tracks, evidence versus held-speculation" -> ty-findings (combiner)
+;        evidence-sift-audit       "audit the split: reference level applied consistently? any miscategorized?" -> ty-verdict (auditor)
+;     ]
+; flow-ty derives the whole arrow: evidence-sift-flow : ty-doc -> ty-verdict (the backtrack's cod).
+;
+; The TWO SEPARATE TRACKS are the point: the combiner sorts each per-item verdict into an
+; EVIDENCE list and a HELD-SPECULATION list (never merged, never dropped) as ty-findings
+; (a structured two-list shape — the runner already asks every leaf for a JSON array of
+; {kind,target,body}, so a "sort into two lists" ask lands JSON-ish and passes ty-findings'
+; strict validator). The auditor then checks the BOUNDARY: was the reference level applied
+; consistently, is anything miscategorized.
+;
+; STRICTLY ADDITIVE — parallel to code-test.chiral / doc-edit.chiral; code-test / doc-edit /
+; doc-refine / profiles / flow / skill are UNTOUCHED. Only new defs live here
+; (evidence-sift.chiral) + evidence-sift-test.prog + a live sample. Every `lens` is ONE
+; small ask (no " and " / " then " / ";" / " & ", <=160 chars, non-empty `sees`) so
+; lint-expert returns nil for each — one narrow line of thought per leaf.
+;
+; Composes:
+;   types.chiral  — Expert (+ ctor), Config, Binding (the run surface; imported, never redefined).
+;   flow.chiral   — Flow ctors (flow-branch/flow-chain/flow-step) + Ty ctors (ty-doc/ty-text/
+;                  ty-findings/ty-verdict/ty-perspectives). The fractal is a VALUE built from these.
+
+(import "prelude/prelude")               ; List, cons, nil
+(import "manas/core/types")      ; Expert (expert id lens sees returns slot tools), Config, Binding
+(import "manas/core/flow")       ; Flow (flow-branch/flow-chain/flow-step), Ty (ty-doc/ty-text/ty-findings/ty-verdict/ty-perspectives)
+
+; ---------------------------------------------------------- the tiny-step experts
+; Each (expert id lens sees returns slot tools). LENS is ONE narrow reasoning move
+; (lint-clean); SEES is rich context; TOOLS is least-privilege (read only — sorting
+; evidence from speculation never writes). Ids are unique across the closure (prefixed
+; "evidence-sift-" — no collision with code-test's / doc-edit's pools).
+
+; perspectivist ⊕ : emit the flagged items the branch fans over (one sub-pipeline each).
+; A prior cheap pass flagged many "possibly-relevant" fragments; this names the distinct
+; items that need evidence-vs-speculation sorting, one per angle.
+(def evidence-sift-perspectivist Expert
+  (expert "evidence-sift-perspectivist"
+    "reason the distinct flagged items or claims in this text that need evidence-vs-speculation sorting"
+    "{ text, prior_pass_flags }"
+    "objects, each {kind:\"angle\", body:\"<the flagged item to sort>\"}"
+    "perspectivist"
+    (cons "read" nil)))
+
+; reasoner : for THE item in hand, reason whether it is supported evidence at the reference
+; level or a speculative association (a single narrow move). out-ty is ty-text (a free
+; reasoning move is PROSE) — NOT ty-findings. ty-findings' seam validator (refine-ok)
+; demands a JSON-ish shape ("[" or "kind"); a 0.5b's prose reasoning intermittently lacks
+; it, refine-failing the seam, and the branch SILENTLY SWALLOWS that per-item chain
+; (empty-manifest, routing lost) — so the item vanishes while manifest-all-green? still
+; reads true off the composite. Typing this narrow reasoning ty-text (lenient non-empty,
+; code-test/doc-edit's proven-green seam) keeps every item on its own track.
+(def evidence-sift-reasoner Expert
+  (expert "evidence-sift-reasoner"
+    "is THIS item supported evidence at the reference level, or a speculative association? reason it"
+    "{ text, item, reference_level }"
+    "a short reasoning: is this item supported evidence or a speculative association, plus why"
+    "reasoner"
+    (cons "read" nil)))
+
+; auditor ⊕ : classify the item from that reasoning — evidence or speculation — with the
+; reason. A per-item verdict (a classification is a judgment, so it rides the auditor slot).
+(def evidence-sift-classify Expert
+  (expert "evidence-sift-classify"
+    "classify it as evidence or speculation, with one reason"
+    "{ item, reasoning, reference_level }"
+    "verdict: evidence|speculation + one reason"
+    "auditor"
+    (cons "read" nil)))
+
+; combiner : sort the per-item verdicts into TWO SEPARATE TRACKS — an evidence list and a
+; held-speculation list — WITHOUT merging or discarding either (the backtrack's step 1).
+; out-ty ty-findings: a structured two-list shape (the runner asks every leaf for a JSON
+; array of {kind,target,body}, so this "sort into two lists" ask lands JSON-ish + passes
+; ty-findings' strict validator — the honest gate flags it if a 0.5b returns bare prose).
+(def evidence-sift-consolidate Expert
+  (expert "evidence-sift-consolidate"
+    "sort these into two separate tracks, evidence versus held-speculation"
+    "{ per_item_verdicts }"
+    "two tracks: an evidence list, plus a held-speculation list (neither merged nor dropped)"
+    "combiner"
+    (cons "read" nil)))
+
+; auditor ⊕ : audit the BOUNDARY of the split — was the reference level applied
+; consistently across the items, is anything miscategorized between the two tracks?
+(def evidence-sift-audit Expert
+  (expert "evidence-sift-audit"
+    "audit the split: was the reference level applied consistently? any miscategorized?"
+    "{ evidence_track, held_speculation_track, reference_level }"
+    "verdict: consistent|miscategorized + one reason"
+    "auditor"
+    (cons "read" nil)))
+
+; the pool: the 5 tiny-step experts evidence-sift fires, in declaration order.
+(def evidence-sift-pool (List Expert)
+  (cons evidence-sift-perspectivist
+  (cons evidence-sift-reasoner
+  (cons evidence-sift-classify
+  (cons evidence-sift-consolidate
+  (cons evidence-sift-audit nil))))))
+
+; ---------------------------------------------------------- the fractal Flow
+; per-perspective : a 2-step chain run ONCE PER flagged item — reason evidence-vs-speculation,
+; then classify it. dom = ty-doc (the item-injected text), seam ty-text (the reasoning move is
+; prose; see evidence-sift-reasoner), cod = ty-verdict. Type-checks: cod(reasoner)=ty-text ==
+; dom(classify)=ty-text.
+(def evidence-sift-per-perspective Flow
+  (flow-chain (cons (flow-step "evidence-sift-reasoner" ty-doc  ty-text)
+              (cons (flow-step "evidence-sift-classify" ty-text ty-verdict) nil))))
+
+; backtrack : sort the per-item verdicts into two tracks -> audit the boundary. dom =
+; ty-verdict (the joined per-item verdicts), seam ty-findings (the two-track split), cod =
+; ty-verdict. Type-checks: cod(consolidate)=ty-findings == dom(audit)=ty-findings.
+(def evidence-sift-backtrack Flow
+  (flow-chain (cons (flow-step "evidence-sift-consolidate" ty-verdict  ty-findings)
+              (cons (flow-step "evidence-sift-audit"       ty-findings ty-verdict) nil))))
+
+; evidence-sift-flow : the fractal. flow-ty derives (arrow ty-doc <backtrack-cod=ty-verdict>).
+(def evidence-sift-flow Flow
+  (flow-branch "evidence-sift-perspectivist" ty-doc
+    evidence-sift-per-perspective
+    evidence-sift-backtrack))
+
+; ---------------------------------------------------------- the tiny-model Config
+; binds EVERY slot evidence-sift-pool uses (perspectivist / reasoner / auditor / combiner) to
+; the 0.5b smoke tier — the whole fractal runs on the tiny model. Additive Config; the four
+; shared profiles (profiles.chiral) are UNTOUCHED. Selecting THIS config IS the model choice.
+; auditor is bound once and used twice (the per-item classify + the boundary audit).
+(def evidence-sift-config Config
+  (config "evidence-sift-smoke"
+    (cons (binding "perspectivist" "qwen2.5:0.5b" 16384)
+    (cons (binding "reasoner"      "qwen2.5:0.5b" 16384)
+    (cons (binding "auditor"       "qwen2.5:0.5b" 16384)
+    (cons (binding "combiner"      "qwen2.5:0.5b" 16384) nil))))))

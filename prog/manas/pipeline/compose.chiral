@@ -1,0 +1,71 @@
+; ============================================ manas compose (selection-time bind)
+; S16. The PURE compose core: pick an EXISTING Pipeline + a Config, and pre-flight
+; the pair with E135's bind-config BEFORE any network. `pipeline-slots` is the
+; conservative selection-time analog of plan-run's runtime bind (plan.chiral:110) —
+; the doc being refined isn't chosen at pick time, so it binds every DECLARED slot
+; (combiner ++ each declared expert-id), a SUPERSET of any GATE (E134) outcome: a
+; bind-ok here is SUFFICIENT for any run of this pipeline (the runtime plan-run bind
+; is the exact backstop). `compose-preflight` returns E135's own BindResult
+; unchanged — a bind-miss is a VALUE the caller cases, never a KeyError. PURE (->)
+; throughout — the membrane PROVES the pre-flight crosses no be-chat. Types
+; (Pipeline/Expert/Config/BindResult) are E133 — imported, never redefined.
+
+(import "prelude/prelude")                 ; Str, Bool, List, Maybe, str-eq, cons, nil, some, none
+(import "manas/core/types")        ; Pipeline, Expert, Config, BindResult
+(import "manas/core/bind")         ; bind-config
+(import "manas/core/gate")         ; dedup-str
+(import "manas/core/match")        ; pipeline-id
+(import "manas/profile/profiles")  ; all-profiles, config-id
+(import "manas/profile/doc-refine"); doc-refine-pipeline, expert-pool, expert-by-id, expert-slot-of
+
+; ---------------------------------------------------------- conservative slot set
+; each declared id -> the slot it binds (dangling id -> dropped, total). Explicit
+; structural recursion, not `map` — map-list does not lower in an isolated leaf blob
+; on this branch (bind.chiral:49 / E134 finding), so this mirrors bind-config's form.
+(def ids-slots (-> (List Str) (List Expert) (List Str))
+  (lam (ids pool)
+    (case ids
+      (nil nil)
+      ((cons id rest)
+        (case (expert-by-id id pool)
+          ((some e) (cons (expert-slot-of e) (ids-slots rest pool)))
+          (none     (ids-slots rest pool)))))))
+
+; the pipeline's needed slots: combiner ++ every declared expert-id, deduped. A
+; superset of any GATE-fired subset (the doc isn't chosen yet — §5).
+(def pipeline-slots (-> Pipeline (List Expert) (List Str))
+  (lam (p pool)
+    (case p
+      ((pipeline id whn g o eids cmb stp yd)
+        (dedup-str (ids-slots (cons cmb eids) pool))))))
+
+; ---------------------------------------------------------- the pure pre-flight
+; bind-config over the conservative slot set. bind-ok (bindings) when the config
+; covers every slot the pipeline needs; bind-miss (missing-slots config-id) when it
+; does not — a VALUE, computed BEFORE the effect. The gate between "configured" and
+; "runnable". Returns E135's BindResult unchanged (no new sum).
+(def compose-preflight (-> Pipeline Config (List Expert) BindResult)
+  (lam (pipe config pool)
+    (bind-config config (pipeline-slots pipe pool))))
+
+; ---------------------------------------------------------- the pickable registries
+; the pipeline registry, the analog of all-profiles (profiles.chiral:51). One entry
+; today; grows as pipelines are minted (a 1-choice picker, honest not a phantom).
+(def all-pipelines (List Pipeline)
+  (cons doc-refine-pipeline nil))
+
+; id -> value, the analog of profile-by-id (profiles.chiral:60). A miss is a VALUE.
+(def pipeline-by-id (-> Str (List Pipeline) (Maybe Pipeline))
+  (lam (want ps)
+    (case ps
+      (nil none)
+      ((cons p rest)
+        (case (str-eq (pipeline-id p) want)
+          (true  (some p))
+          (false (pipeline-by-id want rest)))))))
+
+; candidate-id lists for the two minipuffer prompts (explicit recursion, see above).
+(def pipeline-ids (-> (List Pipeline) (List Str))
+  (lam (ps) (case ps (nil nil) ((cons p rest) (cons (pipeline-id p) (pipeline-ids rest))))))
+(def config-ids (-> (List Config) (List Str))
+  (lam (cs) (case cs (nil nil) ((cons c rest) (cons (config-id c) (config-ids rest))))))

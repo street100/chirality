@@ -1,0 +1,88 @@
+; deep-research-test.prog — PURE unit gate for the FRACTAL skill (deep-research.chiral).
+;
+; Mesh-free. Proves the composition, which is the whole claim of this skill:
+;   (1) flow-ty deep-research-flow = (some (arrow ty-doc ty-verdict)) — the NESTED branch (a branch
+;       whose per-perspective is itself a branch) type-checks end to end. PRINTS the arrow.
+;   (2) the nested level really is the full research fractal: research-answer-flow's arrow is
+;       ty-doc -> ty-findings, so what each question hands back is MATERIAL, not a verdict.
+;   (3) the pool CLOSES over the nested flow — every expert id the composite fires is findable in
+;       one flat pool (find-expert is a flat lookup, so a missing inner expert would fail only at
+;       RUN time, on the mesh, N calls deep; this catches it offline).
+;   (4) lint-pool = 0 flags: the two experts this level adds are narrow tiny steps like the rest.
+;
+; Build+run:
+;   chirality run prog/manas/profile/deep-research-test.prog
+
+(import "prelude/prelude")
+(import "manas/core/types")            ; Expert (exp-id)
+(import "manas/core/flow")             ; flow-ty, arrow-dom/cod, ty-name, ty-eq, ty-doc, ty-verdict, ty-findings, lint-pool, find-expert
+(import "manas/profile/deep-research") ; deep-research-flow, deep-research-pool
+(import "manas/profile/research")      ; research-answer-flow
+(import "ports/ports")                       ; put
+
+(def bool->str (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
+
+; ─── (1) the NESTED branch type-checks ──────────────────────────────────────────
+(def nested-arrow-ok (=> Unit Bool)
+  (lam (_)
+    (case (flow-ty deep-research-flow)
+      (none (do (put "flow-ty deep-research-flow: none (ILL-TYPED)\n") false))
+      ((some ar)
+        (do (put (str-cat "flow-ty deep-research-flow: "
+                   (str-cat (ty-name (arrow-dom ar))
+                     (str-cat " -> " (str-cat (ty-name (arrow-cod ar)) "  (branch over a branch)\n")))))
+            (and (ty-eq (arrow-dom ar) ty-doc)
+                 (ty-eq (arrow-cod ar) ty-verdict)))))))
+
+; ─── (2) each question hands back MATERIAL, not a verdict ───────────────────────
+(def inner-yields-material-ok (-> Unit Bool)
+  (lam (_)
+    (case (flow-ty research-answer-flow)
+      (none false)
+      ((some ar) (and (ty-eq (arrow-dom ar) ty-doc) (ty-eq (arrow-cod ar) ty-findings))))))
+
+; ─── (3) the pool CLOSES over the nested flow ───────────────────────────────────
+; find-expert is a flat by-id lookup over ONE pool, so an inner expert missing from the outer
+; pool fails at RUN time, on the mesh, several calls deep. Check it offline instead.
+(declare all-present (-> (List Str) Bool))
+(def all-present
+  (lam (ids)
+    (case ids
+      (nil true)
+      ((cons i rest)
+        (case (find-expert i deep-research-pool)
+          (none false)
+          ((some e) (all-present rest)))))))
+
+(def pool-closed-ok (-> Unit Bool)
+  (lam (_)
+    (all-present (cons "deep-expand"
+                 (cons "research-perspectivist"
+                 (cons "research-investigate"
+                 (cons "research-assess"
+                 (cons "deep-audit" nil))))))))
+
+; ─── (4) lint: the added experts are narrow tiny steps ──────────────────────────
+(declare flags-len (-> (List Str) I64))
+(def flags-len (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (flags-len t))))))
+(declare pool-flags (-> (List (Pair Str (List Str))) I64))
+(def pool-flags
+  (lam (rows)
+    (case rows
+      (nil 0)
+      ((cons p rest) (case p ((pair id fl) (+ (flags-len fl) (pool-flags rest))))))))
+(def lint-ok (=> Unit Bool)
+  (lam (_)
+    (let ((n (pool-flags (lint-pool deep-research-pool))))
+      (do (put (str-cat "lint-pool deep-research-pool total flags: " (str-cat (i64->str n) "\n")))
+          (=i n 0)))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (do (put (str-cat "inner yields findings (not a verdict): " (str-cat (bool->str (inner-yields-material-ok unit)) "\n")))
+    (do (put (str-cat "pool closes over the nested flow     : " (str-cat (bool->str (pool-closed-ok unit)) "\n")))
+    (case (and (nested-arrow-ok unit)
+          (and (inner-yields-material-ok unit)
+          (and (pool-closed-ok unit) (lint-ok unit))))
+      (true  (do (put "deep-research PURE gate: PASS\n") 0))
+      (false (do (put "deep-research PURE gate: FAIL\n") 1)))))))

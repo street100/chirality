@@ -1,0 +1,214 @@
+; ==================================================== manas Skill — duplicate + specialize (SG2)
+; SG2 of the skill-grower (MANAS-SKILL-GROWER.md L3): the REUSE ENGINE on top of the
+; typed recursive Flow (SG1 = flow-persist). A Skill is a NAMED, persistable unit of
+; orchestration; SPECIALIZE = CONTEXT INJECTION (not agent-swapping). A specialized
+; skill is a thin (base, context) reference; running it injects the context into every
+; tiny step's prompt via the `extra` channel that already reaches the model (call-expert
+; -> assemble-prompt folds `extra` into the "# Extra" prompt section, runner.chiral /
+; assemble.chiral). Specialization NARROWS the questions for a context without touching
+; any expert, and it COMPOSES: specialize a specialization and the contexts ACCUMULATE.
+;
+; STRICTLY ADDITIVE — flow.chiral / flow-persist.chiral / types.chiral / runner.chiral are
+; UNTOUCHED; only new defs live here (skill.chiral) + skill-test.prog + a live sample.
+;
+; Composes:
+;   flow.chiral          — Flow, run-flow-stop (the STOP-loop interpreter the run rides).
+;   flow-persist.chiral  — flow->json / json->flow (reused verbatim for the base flow field).
+;   types.chiral         — StopPolicy (+ ctors), Pipeline, Expert, Config (the run surface).
+;   runner.chiral        — RunR (run-r), the run result carrier (yield + manifest + raws + b).
+;   plan.chiral          — empty-manifest (the honest error manifest for an unresolved skill).
+;   json.chiral          — Json tree + obj-get / as-str / as-int (the Skill + StopPolicy codec).
+
+(import "prelude/prelude")                 ; Bool, Str, I64, List, Pair, Maybe, some, none, cons, nil, pair, case, cond, and, str-eq, str-cat, i64->str, +, -, <=i
+(import "prelude/collections")             ; append  (context accumulation + extra concat)
+(import "protocol/json")                    ; Json (+ j-obj/j-str), obj-get, as-str
+(import "manas/core/types")        ; StopPolicy (stop-single/stop-capped/stop-until-dry), Pipeline, Expert, Config
+(import "manas/core/flow")         ; Flow, run-flow-stop
+(import "manas/core/flow-persist") ; flow->json, json->flow  (the base flow codec — reused, not reinvented)
+(import "manas/pipeline/plan")     ; empty-manifest  (the honest error RunManifest)
+(import "manas/pipeline/persist")  ; stop->json / json->stop  (P1's StopPolicy codec — reused, not reinvented)
+(import "manas/pipeline/runner")   ; RunR (run-r)
+(import "manas/backend")                 ; Backend (E137 linear porttype)
+
+; ------------------------------------------------------------------- Skill : base | specialization
+; A base skill CARRIES its Flow + its StopPolicy (so run-skill knows the loop policy).
+; A specialization is a THIN reference: a base name + ONE context string. Specializations
+; nest (a spec's base may itself be a spec) — the contexts accumulate on resolution.
+(data Skill ()
+  (skill-base (name Str) (flow Flow) (stop StopPolicy))
+  (skill-spec (name Str) (base Str) (context Str)))
+
+; ------------------------------------------------------------------- names + lookup
+(def skill-name (-> Skill Str)
+  (lam (s) (case s
+    ((skill-base n f st) n)
+    ((skill-spec n b c)  n))))
+
+(declare skill-by-name (-> Str (List Skill) (Maybe Skill)))
+(def skill-by-name
+  (lam (want lib)
+    (case lib
+      (nil none)
+      ((cons h t)
+        (case (str-eq (skill-name h) want)
+          (true (some h))
+          (false (skill-by-name want t)))))))
+
+; skill-count : the library size — used purely as the resolution fuel bound below.
+(declare skill-count (-> (List Skill) I64))
+(def skill-count
+  (lam (lib) (case lib (nil 0) ((cons h t) (+ 1 (skill-count t))))))
+
+; ------------------------------------------------------------------- resolve-skill : follow the base chain
+; A skill-spec resolves its `base` (recursively) and APPENDS its own context to the
+; accumulated list. DOCUMENTED ORDER: the list is ordered BASE-INWARD-TO-OUTWARD —
+; the specialization NEAREST the base contributes context-0, and each further (more
+; specific / outer) specialization APPENDS after it, so the OUTERMOST spec's context
+; is present as the LAST element. Example: for
+;   [ skill-base "b", skill-spec "s1" base "b" ctx "ctxA", skill-spec "s2" base "s1" ctx "ctxB" ]
+; resolve-skill "s2" = some (b's Flow, b's StopPolicy, ["ctxA", "ctxB"]).
+; Returns the base Flow, its StopPolicy, and the ordered contexts. TOTAL — the recursion
+; is FUEL-BOUNDED by the library size: any base chain longer than the number of skills
+; must repeat a skill (a CYCLE), so fuel <= 0 => `none` (never a hang). A missing base
+; => `none` (skill-by-name miss). The outermost call seeds fuel = skill-count + 1.
+(declare resolve-fuel
+  (-> I64 Str (List Skill) (Maybe (Pair Flow (Pair StopPolicy (List Str))))))
+(def resolve-fuel
+  (lam (fuel name lib)
+    (case (<=i fuel 0)
+      (true none)                                  ; fuel exhausted => a cycle => honest none
+      (false
+        (case (skill-by-name name lib)
+          (none none)                              ; missing base => none
+          ((some s)
+            (case s
+              ((skill-base n f st) (some (pair f (pair st nil))))
+              ((skill-spec n b c)
+                (case (resolve-fuel (- fuel 1) b lib)
+                  (none none)
+                  ((some r)
+                    (case r
+                      ((pair fl rest)
+                        (case rest
+                          ((pair st ctxs)
+                            (some (pair fl (pair st (append Str ctxs (cons c nil)))))))))))))))))))
+
+(def resolve-skill (-> Str (List Skill) (Maybe (Pair Flow (Pair StopPolicy (List Str)))))
+  (lam (name lib) (resolve-fuel (+ (skill-count lib) 1) name lib)))
+
+; ------------------------------------------------------------------- duplicate + specialize
+; duplicate-skill : clone a skill UNDER A NEW NAME. A base clones its flow + stop; a
+; specialization clones its base ref + context. Same content, new name.
+(def duplicate-skill (-> Skill Str Skill)
+  (lam (s newname)
+    (case s
+      ((skill-base n f st) (skill-base newname f st))
+      ((skill-spec n b c)  (skill-spec newname b c)))))
+
+; specialize-skill : (base-name new-name context) -> a NEW specialization referencing
+; the base by name + one context. Composes — the base-name may itself name a spec.
+(def specialize-skill (-> Str Str Str Skill)
+  (lam (base-name new-name context)
+    (skill-spec new-name base-name context)))
+
+; ------------------------------------------------------------------- run-skill : resolve then inject
+; ctx-pairs : the ordered contexts -> the extra pairs (context-0, context-1, …) that
+; ride in the `extra` channel. Each becomes one "context-N: <ctx>" line in every tiny
+; step's prompt (assemble-prompt's "# Extra" section) — so the context reaches the model.
+(declare ctx-pairs (-> (List Str) I64 (List (Pair Str Str))))
+(def ctx-pairs
+  (lam (ctxs i)
+    (case ctxs
+      (nil nil)
+      ((cons c rest)
+        (cons (pair (str-cat "context-" (i64->str i)) c)
+              (ctx-pairs rest (+ i 1)))))))
+
+; run-skill : resolve the named skill, inject its contexts, run the base Flow under its
+; StopPolicy. An unresolved skill (missing / cyclic) is an HONEST error RunR carrying an
+; empty-manifest routed "skill-unresolved" — a VALUE, never a halt. On success the
+; accumulated contexts are appended to `extra` (as context-N pairs) and threaded into
+; run-flow-stop, which folds them into every step's prompt via call-expert. The q1 linear
+; Backend is threaded/moved EXACTLY once (E137 — B1 enforces it) straight into run-flow-stop.
+(def run-skill
+  (=> (1 b Backend) Str (List Skill) Str (List Pipeline) (List Expert) Config Str (List (Pair Str Str)) RunR)
+  (lam (b name skills req pipes pool config doc extra)
+    (case (resolve-skill name skills)
+      (none (run-r "" (empty-manifest req "skill-unresolved") nil b))
+      ((some r)
+        (case r
+          ((pair flow rest)
+            (case rest
+              ((pair stop ctxs)
+                (run-flow-stop b flow stop req pipes pool config doc
+                  (append (Pair Str Str) extra (ctx-pairs ctxs 0)))))))))))
+
+; ------------------------------------------------------------------- Skill codec (TOTAL)
+; skill->json / json->skill reuse SG1's flow->json / json->flow for the base flow field,
+; and P1's stop->json / json->stop (manas/pipeline/persist) for the StopPolicy field —
+; {"kind":"single"} | {"kind":"capped","cap":N} | {"kind":"until-dry","cap":N}.
+; Schema, keyed by "kind":
+;   skill-base -> {"kind":"skill-base","name":Str,"flow":<flow>,"stop":<stop>}
+;   skill-spec -> {"kind":"skill-spec","name":Str,"base":Str,"context":Str}
+; TOTAL: any missing key / wrong variant / unknown kind / child-decode-none => none.
+(def skill->json (-> Skill Json)
+  (lam (s)
+    (case s
+      ((skill-base n f st)
+        (j-obj (cons (pair "kind" (j-str "skill-base"))
+                (cons (pair "name" (j-str n))
+                (cons (pair "flow" (flow->json f))
+                (cons (pair "stop" (stop->json st)) nil))))))
+      ((skill-spec n b c)
+        (j-obj (cons (pair "kind" (j-str "skill-spec"))
+                (cons (pair "name" (j-str n))
+                (cons (pair "base" (j-str b))
+                (cons (pair "context" (j-str c)) nil)))))))))
+
+(def decode-skill-base (-> Json (Maybe Skill))
+  (lam (j)
+    (case (obj-get j "name")
+      (none none)
+      ((some nj) (case (as-str nj)
+        (none none)
+        ((some n)
+          (case (obj-get j "flow")
+            (none none)
+            ((some fj) (case (json->flow fj)
+              (none none)
+              ((some f)
+                (case (obj-get j "stop")
+                  (none none)
+                  ((some sj) (case (json->stop sj)
+                    (none none)
+                    ((some st) (some (skill-base n f st))))))))))))))))
+
+(def decode-skill-spec (-> Json (Maybe Skill))
+  (lam (j)
+    (case (obj-get j "name")
+      (none none)
+      ((some nj) (case (as-str nj)
+        (none none)
+        ((some n)
+          (case (obj-get j "base")
+            (none none)
+            ((some bj) (case (as-str bj)
+              (none none)
+              ((some b)
+                (case (obj-get j "context")
+                  (none none)
+                  ((some cj) (case (as-str cj)
+                    (none none)
+                    ((some c) (some (skill-spec n b c))))))))))))))))
+
+(def json->skill (-> Json (Maybe Skill))
+  (lam (j)
+    (case (obj-get j "kind")
+      (none none)
+      ((some kj) (case (as-str kj)
+        (none none)
+        ((some kind)
+          (cond
+            ((str-eq kind "skill-base") (decode-skill-base j))
+            ((str-eq kind "skill-spec") (decode-skill-spec j))
+            (else none))))))))

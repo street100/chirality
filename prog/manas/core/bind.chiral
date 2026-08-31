@@ -1,0 +1,69 @@
+; ============================================================ manas config binding
+; E135, Wave 2 (METIS-PORT-SPEC §6). The "add backends" seam: resolve the SLOTS a
+; run needs against a Config profile, returning a BindResult. PURE (->) — a slot
+; lookup is a list scan, never a crossing; the membrane PROVES no network call.
+; A missing slot is a bind-miss VALUE (the caller cases), not a KeyError. num-ctx
+; is an I64 field of Binding (the float wall). Types (Binding/Config/BindResult)
+; are E133 — imported, never redefined.
+;
+; SIGNATURE (SPEC decision #1): bind-config takes the deduped slots-needed DIRECTLY
+; (-> Config (List Str) BindResult), not the fired-expert-ids of METIS-PORT-SPEC §6
+; — the Expert pool (E140) is not built, so E135 cannot map expert -> slot.
+; Extracting the deduped slot list from each fired Expert's `slot` field is E138's
+; job (the runner). This keeps bind-config a self-contained, pure slot resolver.
+
+(import "prelude/prelude")             ; str-eq, cond, List, Pair, Bool, Maybe
+(import "prelude/collections")         ; find, filter, foldl, append
+(import "manas/core/types")    ; Binding (binding slot model num-ctx), Config, BindResult
+
+; ------------------------------------------------------------- binding accessor
+; the SLOT a binding resolves. Pattern-match the single ctor; pure. model/num-ctx
+; are ignored here (only the slot key matters for lookup).
+(def binding-slot (-> Binding Str)
+  (lam (b) (case b ((binding s m n) s))))
+
+; ----------------------------------------------------------------- slot lookup
+; find the Binding for `slot` in a config's bind list. `find` returns
+; (Maybe Binding): (some b) when a binding's slot key matches, else none.
+; Pure linear scan; str-eq compares slot keys.
+(def lookup-binding (-> (List Binding) Str (Maybe Binding))
+  (lam (binds slot)
+    (find Binding
+      (lam (b) (str-eq (binding-slot b) slot))
+      binds)))
+
+; is `slot` UNbound in this bind list? none -> missing (true). Used by filter to
+; collect the missing slots for a bind-miss.
+(def slot-missing? (-> (List Binding) Str Bool)
+  (lam (binds slot)
+    (case (lookup-binding binds slot)
+      (none true)
+      ((some b) false))))
+
+; ----------------------------------------------------------------- bind-config
+; bind-config: resolve the deduped slots a run needs against a Config profile.
+; Pure (->). Two passes: (1) filter the needed slots to those the config does NOT
+; bind; (2) if any are missing -> bind-miss (carrying the missing slots + the
+; config id, a VALUE the caller handles); else bind-ok with the resolved Bindings.
+; The bindings are accumulated with foldl+append (map-list does not lower in an
+; isolated leaf blob on this branch — E134's finding; SPEC decision #4); in the ok
+; branch every lookup is (some b) by construction (the missing set was empty), so
+; the (none acc) arm is unreachable and preserves the accumulator.
+(def bind-config (-> Config (List Str) BindResult)
+  (lam (config slots-needed)
+    (case config
+      ((config cid binds)
+        (let ((missing
+                (filter Str
+                  (lam (slot) (slot-missing? binds slot))
+                  slots-needed)))
+          (case missing
+            ((cons h t) (bind-miss missing cid))
+            (nil
+              (bind-ok
+                (foldl Str (List Binding)
+                  (lam (acc slot)
+                    (case (lookup-binding binds slot)
+                      ((some b) (append Binding acc (cons b nil)))
+                      (none acc)))
+                  nil slots-needed)))))))))

@@ -1,0 +1,152 @@
+; egress-test.prog — DC-1b slice 1 gate for the EGRESS CONTRACT. PURE, mesh-free, exit 0.
+;
+; Four proofs over canned RawCall lists (no Backend, no run — the parser is a value transform):
+;   (1) parse-egress-esift on a two-track tally -> a SkillEgress with the RIGHT two Findings
+;       (evidence=2, speculation=2) + an audit-ok "well-formed" verdict.
+;   (2) render-analyze on that egress -> the BYTE-EXACT pre-DC-1b sentence (the baseline: no audit tag).
+;   (3) FALLBACK — parse-egress-esift on raws with NO tally -> nil findings -> render-analyze ->
+;       the honest generic line (byte-identical to the old extraction-gap fallback).
+;   (4) find-slot-raw / find-last-slot-raw (the model-skill extractors, slices 2-5) address the
+;       combiner substance + the LAST auditor verdict by slot on a canned model-skill raws list.
+;
+; Build+run (deterministic, no mesh):
+;   chirality run prog/manas/chatter/egress-test.prog
+
+(import "prelude/prelude")                 ; Bool, Unit, unit, and, not, case, str-eq, str-cat, do, some, none, cons, nil, =i, +
+(import "manas/core/flow")         ; str-has
+(import "manas/core/types")        ; Finding (+ finding), RawCall (+ raw-call)
+(import "manas/chatter/egress")    ; SkillEgress, Audit (+ ctors), parse-egress-esift, render-analyze, egress-findings, egress-verdict, find-slot-raw, find-last-slot-raw
+(import "ports/ports")                   ; put
+
+(def bool->str (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
+(def maybe-or (-> (Maybe Str) Str Str) (lam (m d) (case m (none d) ((some s) s))))
+
+; ─── canned raws: the evidence-sift-refined tally + audit (both flow-pure) ────────
+(def tally-raw RawCall (raw-call "flow-branch-pure" "pure" "code" "" "evidence-track count=2 | speculation-track count=2"))
+(def wf-raw    RawCall (raw-call "flow-pure" "pure" "code" "" "well-formed"))
+(def esift-raws (List RawCall) (cons tally-raw (cons wf-raw nil)))
+
+; length of a Finding list.
+(declare flen (-> (List Finding) I64))
+(def flen (lam (fs) (case fs (nil 0) ((cons h t) (+ 1 (flen t))))))
+; is the verdict audit-ok?
+(def is-ok? (-> Audit Bool) (lam (a) (case a ((audit-ok r) true) ((audit-flag r) false) ((audit-absent) false))))
+
+; ─── (1) parse-egress-esift on the tally -> two Findings + an ok verdict ──────────
+; (the exact "2"/"2" body values are asserted through render-ok's byte-exact sentence.)
+(def esift-parse-ok (-> Unit Bool)
+  (lam (_)
+    (let ((e (parse-egress-esift esift-raws)))
+      (and (=i (flen (egress-findings e)) 2) (is-ok? (egress-verdict e))))))
+
+; ─── (2) render-analyze -> BYTE-EXACT sentence (the baseline) ─────────────────────
+(def exp-analyze Str "I sorted the flagged items: 2 supported by evidence, 2 held as speculation.")
+(def render-ok (-> Unit Bool)
+  (lam (_) (str-eq (render-analyze (parse-egress-esift esift-raws)) exp-analyze)))
+
+; ─── (3) FALLBACK — no tally raw -> nil findings -> the generic line ──────────────
+(def no-tally-raws (List RawCall) (cons (raw-call "x" "pure" "code" "" "nothing useful here") nil))
+(def fallback-ok (-> Unit Bool)
+  (lam (_) (str-eq (render-analyze (parse-egress-esift no-tally-raws)) "The analyze pipeline ran.")))
+
+; ─── (4) find-slot-raw / find-last-slot-raw on a model-skill raws list ────────────
+; combiner substance + TWO auditor calls (per-item + final); the verdict is the LAST auditor.
+(def combiner-raw RawCall (raw-call "research-synthesize" "combiner" "qwen2.5:0.5b" "" "[{\"kind\":\"answer\",\"target\":\"defs\",\"body\":\"a monad is a monoid\"}]"))
+(def auditor1-raw RawCall (raw-call "research-assess"     "auditor"  "qwen2.5:0.5b" "" "high confidence + supported"))
+(def auditor2-raw RawCall (raw-call "research-audit"      "auditor"  "qwen2.5:0.5b" "" "complete + no gaps"))
+(def model-raws (List RawCall) (cons combiner-raw (cons auditor1-raw (cons auditor2-raw nil))))
+(def slot-ok (-> Unit Bool)
+  (lam (_)
+    (and (str-has (maybe-or (find-slot-raw model-raws "combiner") "") "a monad is a monoid")
+    (and (str-eq  (maybe-or (find-last-slot-raw model-raws "auditor") "") "complete + no gaps")
+         (str-eq  (maybe-or (find-slot-raw model-raws "no-such-slot") "MISS") "MISS")))))
+
+; ─── (5) DC-1b slice 2 — research through the GENERAL model-skill parse ───────────
+; Canned research raws: a combiner (JSON {kind,target,body} array, slot "combiner") + a per-angle
+; auditor + a FINAL auditor. verbalize-research reads the combiner substance + the LAST auditor
+; verdict and templates "Here's what I found: <bodies>; ... (audit: <word>)". Three cases:
+;   (a) complete verdict -> audit-ok "complete" tag, bodies joined "; " in order;
+;   (b) has-gaps verdict -> audit-flag "has-gaps" tag (flag checked before good);
+;   (c) empty raws -> the honest no-structured-answer floor (no crash, no JSON).
+(def r-combiner RawCall (raw-call "research-synthesize" "combiner" "qwen2.5:0.5b" ""
+  "[{\"kind\":\"answer\",\"target\":\"def\",\"body\":\"a monad is a monoid\"},{\"kind\":\"answer\",\"target\":\"use\",\"body\":\"sequences effects\"}]"))
+(def r-audit1 RawCall (raw-call "research-assess" "auditor" "qwen2.5:0.5b" "" "high confidence + supported"))
+(def r-audit-ok   RawCall (raw-call "research-audit" "auditor" "qwen2.5:0.5b" "" "complete + no gaps"))
+(def r-audit-gaps RawCall (raw-call "research-audit" "auditor" "qwen2.5:0.5b" "" "has-gaps: prior-art thin"))
+; a FENCED combiner (```json wrapper) — the 0.5b's routine format; strip-fence must recover it.
+(def r-combiner-fenced RawCall (raw-call "research-synthesize" "combiner" "qwen2.5:0.5b" ""
+  "```json\n[{\"kind\":\"answer\",\"target\":\"def\",\"body\":\"a monad is a monoid\"},{\"kind\":\"answer\",\"target\":\"use\",\"body\":\"sequences effects\"}]\n```"))
+(def research-raws-ok     (List RawCall) (cons r-combiner (cons r-audit1 (cons r-audit-ok nil))))
+(def research-raws-gaps   (List RawCall) (cons r-combiner (cons r-audit1 (cons r-audit-gaps nil))))
+(def research-raws-fenced (List RawCall) (cons r-combiner-fenced (cons r-audit1 (cons r-audit-ok nil))))
+(def exp-research Str "Here's what I found: a monad is a monoid; sequences effects (audit: complete)")
+(def exp-research-gaps Str "Here's what I found: a monad is a monoid; sequences effects (audit: has-gaps)")
+(def exp-floor Str "The pipeline ran but produced no structured answer.")
+(def research-ok (-> Unit Bool)
+  (lam (_)
+    (and (str-eq (verbalize-research research-raws-ok) exp-research)
+    (and (str-eq (verbalize-research research-raws-gaps) exp-research-gaps)
+    (and (str-eq (verbalize-research research-raws-fenced) exp-research)  ; strip-fence recovers fenced JSON
+         (str-eq (verbalize-research nil) exp-floor))))))
+
+
+; ─── (6) DC-1b slice 5 — the CODE-combiner shape (what slice 4 actually produces) ─
+; After slice 4 every model skill's combiner is a `flow-pure pf-collect-angles`, so its raw carries
+; slot "pure" (NOT "combiner") and its response is the findings array pure-collect-angles renders.
+; substance-raw must find it by slot+marker, past a DECOY "pure" raw that carries no marker, and
+; each per-skill verbalizer must frame it with its OWN lead + verdict words.
+(def decoy-pure RawCall (raw-call "flow-branch-pure" "pure" "code" "" "1. angle one\n2. angle two"))
+
+(def cc-research RawCall (raw-call "flow-pure" "pure" "code" ""
+  "[{\"kind\":\"angle\",\"target\":\"angle-1\",\"body\":\"defs: a monad is a monoid\"},{\"kind\":\"angle\",\"target\":\"angle-2\",\"body\":\"use: sequences effects\"}]"))
+(def cc-decision RawCall (raw-call "flow-pure" "pure" "code" ""
+  "[{\"kind\":\"criterion\",\"target\":\"angle-1\",\"body\":\"cost: option B wins\"},{\"kind\":\"criterion\",\"target\":\"angle-2\",\"body\":\"risk: option A wins\"}]"))
+(def cc-doc-edit RawCall (raw-call "flow-pure" "pure" "code" ""
+  "[{\"kind\":\"edit\",\"target\":\"angle-1\",\"body\":\"tighten the opening paragraph\"}]"))
+(def cc-code-test RawCall (raw-call "flow-pure" "pure" "code" ""
+  "[{\"kind\":\"test\",\"target\":\"angle-1\",\"body\":\"test the empty-input path\"}]"))
+
+(def a-complete RawCall (raw-call "research-audit"  "auditor" "qwen2.5:0.5b" "" "complete + no gaps"))
+(def a-sound    RawCall (raw-call "decision-audit"  "auditor" "qwen2.5:0.5b" "" "sound + backed by the scores"))
+(def a-hasgaps  RawCall (raw-call "decision-audit"  "auditor" "qwen2.5:0.5b" "" "has-gaps: cost criterion ignored"))
+(def a-clean    RawCall (raw-call "doc-edit-audit"  "auditor" "qwen2.5:0.5b" "" "clean + no contradiction"))
+(def a-issue    RawCall (raw-call "doc-edit-audit"  "auditor" "qwen2.5:0.5b" "" "issue: two edits contradict"))
+(def a-ctclean  RawCall (raw-call "code-test-audit" "auditor" "qwen2.5:0.5b" "" "clean + coverage complete"))
+(def a-ctgap    RawCall (raw-call "code-test-audit" "auditor" "qwen2.5:0.5b" "" "gap: no error-path test"))
+
+(def code-raws (-> RawCall RawCall (List RawCall))
+  (lam (comb aud) (cons decoy-pure (cons comb (cons r-audit1 (cons aud nil))))))
+
+(def code-combiner-ok (-> Unit Bool)
+  (lam (_)
+    (and (str-eq (verbalize-research (code-raws cc-research a-complete))
+                 "Here's what I found: defs: a monad is a monoid; use: sequences effects (audit: complete)")
+    (and (str-eq (verbalize-decision (code-raws cc-decision a-sound))
+                 "Here's my recommendation: cost: option B wins; risk: option A wins (audit: sound)")
+    (and (str-eq (verbalize-decision (code-raws cc-decision a-hasgaps))
+                 "Here's my recommendation: cost: option B wins; risk: option A wins (audit: has-gaps)")
+    (and (str-eq (verbalize-doc-edit (code-raws cc-doc-edit a-clean))
+                 "Here are the edits I'd make: tighten the opening paragraph (audit: clean)")
+    (and (str-eq (verbalize-doc-edit (code-raws cc-doc-edit a-issue))
+                 "Here are the edits I'd make: tighten the opening paragraph (audit: issue)")
+    (and (str-eq (verbalize-code-test (code-raws cc-code-test a-ctclean))
+                 "Here are the tests I'd add: test the empty-input path (audit: clean)")
+    (and (str-eq (verbalize-code-test (code-raws cc-code-test a-ctgap))
+                 "Here are the tests I'd add: test the empty-input path (audit: gap)")
+    ; the DECOY alone (no marker) -> no substance -> the honest floor, STILL carrying the verdict
+    ; it did find (the floor reports the audit; it does not pretend there was no run)
+         (str-eq (verbalize-research (cons decoy-pure (cons a-complete nil)))
+                 (str-cat exp-floor " (audit: complete)")))))))))))
+
+; ─── entry: 0 iff all proofs pass ────────────────────────────────────────────────
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (do (put (str-cat "EGRESS parse (2 findings + ok verdict): " (str-cat (bool->str (esift-parse-ok unit)) "\n")))
+    (do (put (str-cat "EGRESS render (byte-exact sentence)   : " (str-cat (bool->str (render-ok unit)) "\n")))
+    (do (put (str-cat "EGRESS fallback (no tally -> generic) : " (str-cat (bool->str (fallback-ok unit)) "\n")))
+    (do (put (str-cat "EGRESS slot extractors (combiner/last): " (str-cat (bool->str (slot-ok unit)) "\n")))
+    (do (put (str-cat "EGRESS research (combiner+verdict)    : " (str-cat (bool->str (research-ok unit)) "\n")))
+    (do (put (str-cat "EGRESS code-combiner (4 skills, slice 5): " (str-cat (bool->str (code-combiner-ok unit)) "\n")))
+    (case (and (esift-parse-ok unit) (and (render-ok unit) (and (fallback-ok unit) (and (slot-ok unit) (and (research-ok unit) (code-combiner-ok unit))))))
+      (true  (do (put "DC-1b egress contract gate: PASS\n") 0))
+      (false (do (put "DC-1b egress contract gate: FAIL\n") 1)))))))))))

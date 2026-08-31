@@ -1,0 +1,97 @@
+; ==================================================== manas SKILL — deep-research (the FRACTAL one)
+; The complaint this exists for, stated plainly: asking `research` a broad question sends it to ONE
+; specialist and gets ONE response back. Its internal fan is over FRAMINGS of the question the user
+; typed (definitions / prior-art / counter-evidence / open-questions), each answered by a single
+; 0.5b reasoner call — 9 calls, one pass, no depth. A broad ask does not need four angles on itself;
+; it needs to be EXPANDED into several specific questions, each RESEARCHED properly, and the results
+; CONSOLIDATED.
+;
+; That is divide→fan→consolidate one level down, which CHATTER-FLOW-MAP always said a specialist
+; could be ("a specialist MAY itself be divide→fan→consolidate (FRACTAL)") and which nothing had
+; built. It needs NO new engine: `flow-branch`'s per-perspective is a Flow, `branch-run` calls
+; `run-flow` on it recursively, and `run-flow` handles `flow-branch` — so a branch whose
+; per-perspective IS a branch already works. flow-ty type-checks the nesting (probed before this
+; was written); the only piece that had to be built first was R1's `research-answer-flow`, whose
+; yield is the ANSWER rather than the audit verdict, so the parent has material to consolidate.
+;
+;   deep-research-flow = flow-branch
+;     perspectivist  deep-expand  "expand into specific, separately answerable questions"  -> ty-perspectives
+;     in-ty          ty-doc
+;     per-perspective  research-answer-flow      ; ← the WHOLE research fractal, once per question:
+;                                                ;   its own angles, its own per-angle reasoning,
+;                                                ;   its own code combiner. This is the depth.
+;     backtrack = flow-chain [
+;        flow-pure (pf-collect-angles "question")  ; CODE consolidation across questions
+;        deep-audit  "did the answer cover every question it raised?"       -> ty-verdict (auditor)
+;     ]
+;
+; COST (DC-0a's constraint — the fan must stay on ONE model to stay warm): 1 + N*(1+2M) + 1 calls,
+; all on the 0.5b tier. Three questions over three angles = 23 calls, versus research's 9 — and
+; warm calls are ~0.13s, so the depth is bought with seconds, not with a model reload. The one
+; thing that would break that is putting the expander on a different tier; it stays on 0.5b with
+; the rest, and the EXPANSION is a small structured ask (list the questions), not a reasoning one.
+;
+; STRICTLY ADDITIVE — research / research-flow / its Config and pool are untouched, so the shallow
+; single-question path is unchanged and its golden is unmoved.
+
+(import "prelude/prelude")
+(import "manas/core/types")      ; Expert (+ expert ctor), Config (+ config/binding)
+(import "manas/core/flow")       ; Flow (flow-branch/flow-chain/flow-step/flow-pure), PureFn (pf-collect-angles), Ty
+(import "manas/profile/research"); research-answer-flow (R1) + the experts it fires
+
+; ---------------------------------------------------------- the two experts this level adds
+; perspectivist ⊕ : the EXPANSION. Not "angles on the question" (that is what the inner fractal
+; does) but distinct, separately answerable QUESTIONS whose answers together answer the ask. The
+; lens says `specific` and `separately answerable` because the failure mode is restating the ask
+; in four voices — which is exactly what the shallow path did.
+(def deep-expand Expert
+  (expert "deep-expand"
+    "expand this into 3-5 specific, separately answerable questions whose answers together answer it"
+    "{ question, context }"
+    "objects, each {kind:\"question\", body:\"<one specific question>\"}"
+    "perspectivist"
+    (cons "read" nil)))
+
+; auditor ⊕ : the ONE audit, over the consolidated whole — the only place with every question in
+; view. Its verdict words are research's (complete | has-gaps), so the egress contract needs no new
+; vocabulary and `verbalize` can read this skill with research's parser.
+(def deep-audit Expert
+  (expert "deep-audit"
+    "audit the combined answer: is any question it raised left unanswered?"
+    "{ answer, questions }"
+    "verdict: complete|has-gaps + one reason"
+    "auditor"
+    (cons "read" nil)))
+
+; the pool: this level's two experts PLUS every expert the nested fractal fires. `find-expert` is
+; a flat lookup by id over one pool, so a nested Flow's leaves must be findable here — that is the
+; whole cost of nesting, and it is a list append.
+(def deep-research-pool (List Expert)
+  (cons deep-expand
+  (cons research-perspectivist
+  (cons research-investigate
+  (cons research-assess
+  (cons deep-audit nil))))))
+
+; ---------------------------------------------------------- the fractal Flow
+; backtrack : COLLECT across questions (code) -> audit the whole (model). dom = ty-findings (each
+; per-question yield IS a findings array — R1), seam ty-findings, cod = ty-verdict.
+(def deep-research-backtrack Flow
+  (flow-chain (cons (flow-pure (pf-collect-angles "question") ty-findings ty-findings)
+              (cons (flow-step "deep-audit"                   ty-findings ty-verdict) nil))))
+
+; deep-research-flow : the fractal. flow-ty derives (arrow ty-doc ty-verdict).
+(def deep-research-flow Flow
+  (flow-branch "deep-expand" ty-doc
+    research-answer-flow
+    deep-research-backtrack))
+
+; ---------------------------------------------------------- the tiny-model Config
+; ONE model for every slot, deliberately: DC-0a measured that Ollama keeps exactly one model
+; resident, so a fan that crosses tiers pays a full reload per crossing. A 23-call fan is only
+; affordable while every call stays warm on the same model.
+(def deep-research-config Config
+  (config "deep-research-smoke"
+    (cons (binding "perspectivist" "qwen2.5:0.5b" 16384)
+    (cons (binding "reasoner"      "qwen2.5:0.5b" 16384)
+    (cons (binding "auditor"       "qwen2.5:0.5b" 16384) nil)))))

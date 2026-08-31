@@ -1,0 +1,124 @@
+; orchestrate-test.prog — the O1 gate. PURE (mesh-free), DETERMINISTIC, exit 0.
+;
+; O1's whole claim is "every message yields a Plan — no dead-end." This test proves it two ways:
+;   (1) intent->plan over ALL SEVEN Intent ctors directly (enumeration, no router coupling):
+;       each skill intent -> plan-single with the RIGHT skill name; unknown -> plan-single
+;       "research" (attempt, NOT a template); social/clarify -> plan-reply with NON-EMPTY text.
+;       No Intent produces an empty/absent/dead-end plan.
+;   (2) plan-of-intent wiring — from an actual message through resolve-intent (conv-empty):
+;       "sort these..." -> plan-single "evidence-sift-refined" (DC-1a); "hello there" -> a non-empty plan-reply.
+; No PTY, no network, no fork, no Backend. compile-main returns 0 IFF every assertion holds.
+;
+; Build+run (deterministic, no mesh):
+;   chirality run prog/manas/chatter/orchestrate-test.prog
+
+(import "prelude/prelude")                  ; Bool, Unit, unit, and, not, case, str-eq, str-cat, do
+(import "manas/chatter/router")     ; Intent (+ ctors), ConvState (+ conv-empty)
+(import "manas/chatter/orchestrate"); Plan (+ ctors), intent->plan, plan-of-intent, plan-tag; O5: parse-plan
+(import "ports/ports")                    ; put (stdout only — mesh-free)
+
+(def bool->str (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
+
+; ─── plan accessors for assertions ───────────────────────────────────────────────
+; a plan-single naming exactly `name`? (any other shape = false)
+(def single-is? (-> Plan Str Bool)
+  (lam (p name)
+    (case p
+      ((plan-single s)   (str-eq s name))
+      ((plan-chain ss)   false)
+      ((plan-fan ss syn) false)
+      ((plan-reply t)    false))))
+
+; a plan-reply with NON-EMPTY text? (a real reply, not a dead-end; any other shape = false)
+(def reply-nonempty? (-> Plan Bool)
+  (lam (p)
+    (case p
+      ((plan-single s)   false)
+      ((plan-chain ss)   false)
+      ((plan-fan ss syn) false)
+      ((plan-reply t)    (not (str-eq t ""))))))
+
+; ─── (1) intent->plan over ALL SEVEN Intents — every Intent yields a non-dead-end Plan ──
+(def by-intent-ok (-> Unit Bool)
+  (lam (_)
+    (and (single-is?     (intent->plan (in-analyze))   "evidence-sift-refined") ; DC-1a
+    (and (single-is?     (intent->plan (in-decide))    "decision")
+    (and (single-is?     (intent->plan (in-transform)) "doc-edit")
+    (and (single-is?     (intent->plan (in-factual))   "research")
+    (and (single-is?     (intent->plan (in-unknown))   "research")   ; unknown ATTEMPTS research — no dead-end
+    (and (reply-nonempty? (intent->plan (in-social)))
+         (reply-nonempty? (intent->plan (in-clarify)))))))))))
+
+; ─── (2) plan-of-intent wiring — a real message routed through resolve-intent (conv-empty) ──
+(def msg-analyze Str "sort these flagged items: 1. a benchmark result 2. a hunch about erlang")
+(def msg-social  Str "hello there, thanks!")
+(def wiring-ok (-> Unit Bool)
+  (lam (_)
+    (and (single-is?     (plan-of-intent (conv-empty) msg-analyze) "evidence-sift-refined") ; DC-1a
+         (reply-nonempty? (plan-of-intent (conv-empty) msg-social)))))
+
+; ─── (3) O5 parse-plan — lenient model-reply -> Plan (PURE, canned strings) ──────
+; The deterministic committed half of O5: the parser on CANNED model outputs (the live
+; model-picks-a-plan behavior is verified + REPORTED off the mesh, not asserted byte-exact).
+;   name present     -> plan-single that name;
+;   two names present -> plan-fan naming BOTH (menu order: research before decision);
+;   NO menu name     -> FALLBACK == plan-of-intent for that message (plan-tag equality).
+(declare lst-has (-> (List Str) Str Bool))
+(def lst-has
+  (lam (xs nm)
+    (case xs (nil false) ((cons h t) (case (str-eq h nm) (true true) (false (lst-has t nm)))))))
+(def plan-fan-skills (-> Plan (List Str))
+  (lam (p)
+    (case p
+      ((plan-single s)   nil)
+      ((plan-chain ss)   nil)
+      ((plan-fan ss syn) ss)
+      ((plan-reply t)    nil))))
+
+(def parse-plan-ok (-> Unit Bool)
+  (lam (_)
+    (and (single-is? (parse-plan "let's use evidence-sift-refined for this" (conv-empty) msg-analyze) "evidence-sift-refined") ; DC-1a: menu names the refined sift
+    (and (str-eq (plan-tag (parse-plan "you want research and decision here" (conv-empty) msg-analyze)) "fan")
+    (and (lst-has (plan-fan-skills (parse-plan "you want research and decision here" (conv-empty) msg-analyze)) "research")
+    (and (lst-has (plan-fan-skills (parse-plan "you want research and decision here" (conv-empty) msg-analyze)) "decision")
+    ; NO menu name -> FALLBACK equals the O1 pure planner for that message (never a dead-end):
+    (str-eq (plan-tag (parse-plan "I don't know what you mean" (conv-empty) msg-analyze))
+            (plan-tag (plan-of-intent (conv-empty) msg-analyze)))))))))
+
+; ─── (4) O6 think-robust parse — a <think> block that names OTHER skills must NOT trip the fan rule ──
+; qwen3:4b is a thinking model. A reasoning block mentioning doc-edit/research/decision, followed by a
+; SINGLE final answer, must parse to that final answer ALONE — scan only the text AFTER the last
+; </think>. A plain reply (no tag) still parses as before; a two-name FINAL answer still fans.
+(def think-parse-ok (-> Unit Bool)
+  (lam (_)
+    (and (single-is? (parse-plan "<think>maybe doc-edit or research or decision...</think>\nevidence-sift-refined"
+                                 (conv-empty) msg-analyze) "evidence-sift-refined")
+    (and (single-is? (parse-plan "evidence-sift-refined" (conv-empty) msg-analyze) "evidence-sift-refined")
+    (and (str-eq (plan-tag (parse-plan "<think>hmm...</think>\nresearch and decision" (conv-empty) msg-analyze)) "fan")
+    ; think block naming skills but NO name in the final answer -> FALLBACK (not a fan off the think text):
+    (str-eq (plan-tag (parse-plan "<think>could be research or decision</think>\nnot sure, sorry" (conv-empty) msg-analyze))
+            (plan-tag (plan-of-intent (conv-empty) msg-analyze))))))))
+
+; ─── print each Intent's plan tag (for eyeballing) ───────────────────────────────
+(def show-plan (=> Intent Unit)
+  (lam (i)
+    (put (str-cat "  " (str-cat (plan-tag (intent->plan i)) "\n")))))
+
+; ─── entry: 0 iff every assertion holds (prints the plans first) ─────────────────
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (do (put "-- chatter orchestrate O1: Intent -> Plan (no dead-end) --\n")
+    (do (show-plan (in-analyze))
+    (do (show-plan (in-decide))
+    (do (show-plan (in-transform))
+    (do (show-plan (in-factual))
+    (do (show-plan (in-unknown))
+    (do (show-plan (in-social))
+    (do (show-plan (in-clarify))
+    (do (put (str-cat "by-intent (all 7 -> non-dead-end plan): " (str-cat (bool->str (by-intent-ok unit)) "\n")))
+    (do (put (str-cat "wiring (plan-of-intent via resolve): "     (str-cat (bool->str (wiring-ok unit)) "\n")))
+    (do (put (str-cat "O5 parse-plan (single / fan / fallback): " (str-cat (bool->str (parse-plan-ok unit)) "\n")))
+    (do (put (str-cat "O6 think-robust parse (final answer only): " (str-cat (bool->str (think-parse-ok unit)) "\n")))
+    (case (and (by-intent-ok unit) (and (wiring-ok unit) (and (parse-plan-ok unit) (think-parse-ok unit))))
+      (true  (do (put "O1+O5+O6 planner gate: PASS\n") 0))
+      (false (do (put "O1+O5+O6 planner gate: FAIL\n") 1)))))))))))))))))
