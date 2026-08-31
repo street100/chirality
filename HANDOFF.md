@@ -17,7 +17,7 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
 | tests | `bin/chirality test` → **142 assertions, 0 failed**, 7 of 12 old phases ported + Phase 13 (E157), new here |
 | tools | `tools/` — 9 Python tools carried as-is, each with `MIGRATION-NOTES.md` |
 | docs | 226 files, sorted by role (`LAYOUT.md`); `.planning/` 245, catalog + LEDGER included |
-| record | `MIGRATION-MAP.tsv`, 677 rows, every `new_path` verified to exist |
+| record | `.planning/MIGRATION-MAP.tsv`, 677 rows, every `new_path` verified to exist |
 
 ### Verified, not asserted
 
@@ -76,7 +76,7 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
   exist. They are E163's first candidates.
 - samples / demo / fixtures (~204 files). ⚑ `prog/samples/` currently holds **six
   files recreated by judgment** — Phase 2's manifest named them and
-  `MIGRATION-MAP.tsv` has zero rows for `scaffold/samples/`. They move if this slice
+  `.planning/MIGRATION-MAP.tsv` has zero rows for `scaffold/samples/`. They move if this slice
   picks another home.
 - ~~`collections`~~ **DONE** (slice 5) — split into `prelude/{ord,list,maybe,alist,map,set}`,
   with `str-join` moved to `prelude/string`. Two past the four named: `maybe` because
