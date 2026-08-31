@@ -1,0 +1,21 @@
+# Language detection for Gitea (go-enry).
+#
+# enry has none of chirality's five extensions in its index, so it guessed from
+# the s-expression syntax and labelled the repo "Schema". These lines declare
+# them. linguist-detectable makes the override count toward the stats bar.
+# Gitea will show "Chirality" with no colour swatch, since enry has no colour
+# registered for the name.
+*.chiral    linguist-language=Chirality linguist-detectable=true
+*.prog      linguist-language=Chirality linguist-detectable=true
+*.port      linguist-language=Chirality linguist-detectable=true
+*.profile   linguist-language=Chirality linguist-detectable=true
+*.manifest  linguist-language=Chirality linguist-detectable=true
+
+# Committed build artifact. Marked generated so it stays out of diffs and stats.
+bin/chirality-bin  binary linguist-generated=true
+
+# A record of the migration.
+MIGRATION-MAP.tsv  linguist-generated=true
+
+# tools/ still counts as Python. Route step 1 replaces it with chirality
+# programs and deletes it, so leaving it visible keeps the debt on the bar.
