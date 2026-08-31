@@ -131,3 +131,4 @@ draft invalidated by a later design decision (see the dated PLAN file).
 | E170 | **The corpus lands on the floor — the 709-function migration E168 exists to receive** | BUILD-PROPER | OURS | audited | [E170-corpus-migration.md](E170-corpus-migration.md) · [SPEC](../../.planning/specs/E170-corpus-migration-SPEC.md) |
 | U13 | **The renderer takes the typed value, not `Str`** | SURFACE-D | EXTERNAL | drafted | [U13-typed-document-seam.md](U13-typed-document-seam.md) |
 | E172 | **Semantic file extensions, and the source tree by altitude** | BUILD-PROPER | OURS/IMPL | drafted | [E172-file-kinds.md](E172-file-kinds.md) |
+| E173 | **A total matcher over `Str`** | BUILD-PROPER | PAPER/IMPL | drafted | [E173-total-matcher.md](E173-total-matcher.md) |
