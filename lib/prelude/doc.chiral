@@ -1,0 +1,222 @@
+; lib/prelude/doc.chiral -- E158: the layout algebra.
+;
+; THE DEFECT THIS REMOVES. Every formatter in this tree flattens at the
+; CONSTRUCTION site, and once flattened the structure is gone for good:
+; `prog/manas/core/assemble.chiral:52-57` builds a six-section prompt as a
+; str-cat nest closing `))))))))))`, and `lib/typing/pretty.chiral` produces
+; characters at every step. `Doc` is the same move E157 made one layer up --
+; E157 widened the error PAYLOAD from `Str` to a closed `Reason` carrying
+; evidence; E158 widens the RENDERING from `Str` to a closed `Doc` carrying
+; structure. A width is an argument to the EXIT, never a field of the value.
+;
+; WHY prelude/. LAYOUT.md: the extension is the kind, the directory is the ROLE.
+; `Doc` depends on nothing but Str/List/I64 and is needed by `typing/` (the
+; diagnostics renderer), by `protocol/` (the display exit) and by `prog/`. That
+; is "the base shelf over the extern floor". It is emphatically NOT a
+; `formatting/` bucket: formatting is subject matter, and subject matter is
+; neither the extension nor the directory.
+;
+; PURE THROUGHOUT. Every signature below is `->`. A formatter provably crosses
+; no port; choosing a width is not a crossing, and WRITING the result is, at a
+; port the caller already holds.
+;
+; ⚑ TOTALITY: AN ARGUMENT, NOT A CERTIFICATE. Lindig's worklist has a real
+; measure -- the total `Doc`-node count across the frame list strictly decreases
+; at every step, because each pop pushes only STRICT SUBTERMS of the doc it
+; popped: `d-cat` pops `1+|l|+|r|` and pushes `|l|+|r|`; `d-nest`/`d-tag`/
+; `d-group` pop `1+|b|` and push `|b|`; `d-text` and `d-line` pop a leaf and
+; push nothing. `doc-fits` carries its OWN worklist, so `doc-best`'s measure is
+; unaffected by the group probe. There is no fuel parameter and no unbounded
+; loop.
+;   BUT THE CHECKER CANNOT SEE IT, and this file does not pretend otherwise.
+; `typing/totality.chiral` is E11, the SINGLE-FUNCTION classifier: it sees
+; "structural (a case-bound field) or numeric (a parameter stepped toward a
+; constant bound a guard proves)" (`totality.chiral:387`) and its header scopes
+; mutual recursion out to E50, whose catalog row reads `not built; totality
+; gap`. `doc-fits`<->`doc-fits-frame` and `doc-best`<->`dc-line` are two
+; mutually-recursive pairs over a worklist that GROWS at `d-cat`. So the measure
+; above is PROSE. E158's gate (tools/test/doc.sh, Phase 14) does not certify it
+; and does not claim to. E158 is a natural first CLIENT for E50, not evidence
+; that E50 is covered.
+;
+; E154 (flat emitted-label namespace): every name this file introduces was
+; censused with `grep -R` across lib/ prog/ tools/ before commit, and the gate's
+; G6 re-runs that census from this file's own text. Two names moved for it:
+; `fits` -> `doc-fits` (`const-fits?`, lowering/tal/check.chiral:113, occupies
+; the concept in the same blob) and the `Frame` constructor `fr` -> `dfr`
+; (`fr-ok`/`fr-err`, lowering/compile-front.chiral:292). `Mode` -> `DMode` for
+; the same reason: `protocol/render.chiral:24` already declares one.
+
+(import "prelude/prelude")         ; Str, List, Bool, I64, str-cat, str-len
+(import "prelude/list")            ; reverse -- note the ERASED param: (reverse Str xs)
+(import "prelude/string")          ; str-join, str-pad
+
+; E161: all pure, category A. The port-set half is DERIVED on this module's
+; datasheet from what it binds, and this module binds no extern at all, so its
+; `crossings` is empty by derivation.
+(module prelude/doc (cat A) (alt upper))
+
+; ---- what a break BECOMES when its group fits on one line -------------------
+; A break is which-of-three, so it is a SUM and not a Str tag or an I64 flag
+; (pattern-boundary-sums). `brk-hard` is the one that cannot flatten:
+; `doc-fits` returns false the moment it meets one in flat mode, so a group
+; containing a hard break always breaks. That refusal is what makes the
+; (m-flat, brk-hard) arm of `dc-line` unreachable in practice.
+(data Brk ()
+  (brk-soft)       ; flat => ""      -- a break point with no separator
+  (brk-space)      ; flat => " "     -- Wadler's LINE
+  (brk-hard))      ; never flattens
+
+; ---- the algebra ------------------------------------------------------------
+; SIX constructors, and the one that is NOT here is the point: there is no
+; `d-union`. Wadler's `<|>` carries a side condition (both branches flatten to
+; the same text; the left's first line is no shorter) that the type cannot
+; state, so every hand-built union is a latent bug. `d-group` IS
+; `union (flatten body) body` -- the only union anyone can write is the correct
+; one. The invariant is pushed into the substrate, not documented beside it.
+(data Doc ()
+  (d-text  (s Str))                ; ATOMIC -- never split. A token stays whole.
+  (d-cat   (l Doc) (r Doc))        ; juxtaposition; (d-text "") is the unit
+  (d-line  (b Brk))                ; the ONLY place a line may be introduced
+  (d-nest  (i I64) (body Doc))     ; +i on the indent of every break inside
+  (d-group (body Doc))             ; flat if it fits, broken otherwise
+  (d-tag   (name Str) (body Doc))) ; a semantic role: zero width, zero text.
+                                   ; `Str` here is a FACE-REGISTRY KEY -- the
+                                   ; open set protocol/render's `lookup-face`
+                                   ; already indexes -- not a which-of-N, so it
+                                   ; is correctly not a sum.
+
+; ---- the strict renderer (Lindig, *Strictly Pretty*, 2000) ------------------
+; Wadler's `best`/`fits` pair needs LAZINESS: it produces a stream a consumer
+; walks only as far as the next break. Chirality is strict, so that formulation
+; has no meaning here. Lindig's is an explicit worklist of (indent, mode, doc)
+; frames, which is what a strict language can actually run -- and it is the
+; form whose measure is legible (see the header).
+(data DMode () (m-flat) (m-brk))
+(data Frame () (dfr (indent I64) (dmode DMode) (doc Doc)))
+
+; ---- does the worklist reach its next break within `r` columns? -------------
+(declare doc-fits (-> I64 (List Frame) Bool))
+(declare doc-fits-frame (-> I64 I64 DMode Doc (List Frame) Bool))
+
+(def doc-fits
+  (lam (r fs)
+    (case (<i r 0)
+      (true false)
+      (false
+        (case fs
+          (nil true)
+          ((cons f rest)
+            (case f
+              ((dfr i md d) (doc-fits-frame r i md d rest)))))))))
+
+; d-text shrinks r · brk-soft costs 0 · brk-space costs 1 · brk-hard => FALSE
+; · d-cat/d-nest/d-group/d-tag descend · a frame already in m-brk whose doc is a
+; d-line => true (the line ends there, so what follows cannot overflow it).
+(def doc-fits-frame
+  (lam (r i md d rest)
+    (case d
+      ((d-text s)   (doc-fits (- r (str-len s)) rest))
+      ((d-cat l rr) (doc-fits r (cons (dfr i md l) (cons (dfr i md rr) rest))))
+      ((d-nest j b) (doc-fits r (cons (dfr (+ i j) md b) rest)))
+      ((d-group b)  (doc-fits r (cons (dfr i (m-flat) b) rest)))
+      ((d-tag n b)  (doc-fits r (cons (dfr i md b) rest)))
+      ((d-line b)
+        (case md
+          ((m-brk) true)
+          ((m-flat)
+            (case b
+              ((brk-soft)  (doc-fits r rest))
+              ((brk-space) (doc-fits (- r 1) rest))
+              ((brk-hard)  false))))))))
+
+; ---- the renderer proper ----------------------------------------------------
+; `acc` is the output in REVERSE (the corpus idiom: build reversed, flip once at
+; the end). `k` is the current column.
+(declare doc-best (-> I64 I64 (List Frame) (List Str) (List Str)))
+(declare dc-line (-> I64 I64 I64 DMode Brk (List Frame) (List Str) (List Str)))
+(declare nl-indent (-> I64 Str))
+
+(def doc-best
+  (lam (w k fs acc)
+    (case fs
+      (nil acc)
+      ((cons f rest)
+        (case f
+          ((dfr i md d)
+            (case d
+              ((d-text s)   (doc-best w (+ k (str-len s)) rest (cons s acc)))
+              ((d-cat l r)  (doc-best w k (cons (dfr i md l) (cons (dfr i md r) rest)) acc))
+              ((d-nest j b) (doc-best w k (cons (dfr (+ i j) md b) rest) acc))
+              ((d-tag n b)  (doc-best w k (cons (dfr i md b) rest) acc))   ; zero width
+              ((d-line b)   (dc-line w k i md b rest acc))
+              ; THE ONE DECISION POINT IN THE WHOLE ELEMENT.
+              ((d-group b)
+                (case (doc-fits (- w k) (cons (dfr i (m-flat) b) rest))
+                  (true  (doc-best w k (cons (dfr i (m-flat) b) rest) acc))
+                  (false (doc-best w k (cons (dfr i (m-brk)  b) rest) acc)))))))))))
+
+; a break resolves by (mode, kind). Broken => newline + the frame's own indent.
+; The (m-flat, brk-hard) arm is unreachable in practice -- `doc-fits` refuses to
+; flatten a group containing a hard break -- but it is WRITTEN, and it breaks,
+; because a total function does not get to halt on "can't happen".
+(def dc-line
+  (lam (w k i md b rest acc)
+    (case md
+      ((m-flat)
+        (case b
+          ((brk-soft)  (doc-best w k rest acc))
+          ((brk-space) (doc-best w (+ k 1) rest (cons " " acc)))
+          ((brk-hard)  (doc-best w i rest (cons (nl-indent i) acc)))))
+      ((m-brk) (doc-best w i rest (cons (nl-indent i) acc))))))
+
+; "\n" + i spaces. `str-pad` (prelude/string:209) returns its subject unchanged
+; when the target width is <= its length, so i = 0 is correct without a guard --
+; no new primitive is minted for this.
+(def nl-indent
+  (lam (i) (str-cat "\n" (str-pad "" i " "))))
+
+; ---- EXIT 1 of 3: characters, at a width the CALLER chose -------------------
+; The other two exits are named and deliberately absent. `doc->rendering` is
+; E158 commit 4, blocked on E174 (`Rendering` has no horizontal composition
+; constructor) and E175 (nested `r-face` resets rather than restores).
+; `doc->json` has no consumer, and building an unconsumed exit is the
+; "built but unadopted" trap this repo has logged four times.
+(declare doc->str (-> I64 Doc Str))
+(def doc->str
+  (lam (w d)
+    (str-join "" (reverse Str (doc-best w 0 (cons (dfr 0 (m-brk) d) nil) nil)))))
+
+; ---- the anti-str-cat helpers (what callers actually reach for) --------------
+(declare doc-concat    (-> (List Doc) Doc))
+(declare doc-punctuate (-> Doc (List Doc) Doc))
+(declare doc-words     (-> (List Str) Doc))
+
+; d-cat over a list; the empty document is (d-text ""), d-cat's unit.
+(def doc-concat
+  (lam (ds)
+    (case ds
+      (nil (d-text ""))
+      ((cons d rest) (d-cat d (doc-concat rest))))))
+
+; `sep` BETWEEN the elements, never after the last -- str-join's shape, over
+; documents instead of characters.
+(def doc-punctuate
+  (lam (sep ds)
+    (case ds
+      (nil (d-text ""))
+      ((cons d rest)
+        (case rest
+          (nil d)
+          ((cons d2 r2) (d-cat d (d-cat sep (doc-punctuate sep rest)))))))))
+
+; texts joined by a soft space break: the shape a paragraph of words has.
+(def doc-words
+  (lam (ss)
+    (case ss
+      (nil (d-text ""))
+      ((cons s rest)
+        (case rest
+          (nil (d-text s))
+          ((cons s2 r2)
+            (d-cat (d-text s) (d-cat (d-line (brk-space)) (doc-words rest)))))))))
