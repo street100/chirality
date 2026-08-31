@@ -41,6 +41,17 @@ This is the P4 move: the bad states are **unrepresentable** rather than detected
 earlier draft of this file made ambiguity a new named error and had the resolver
 probing all five — both were solving problems the partition removes.
 
+## The two binaries
+
+`bin/chirality` — the CLI front door (`compile` · `run` · `check` · `test`).
+`bin/chirality-compile` — the compiler: a blob on stdin, an ELF on stdout.
+
+⚑ **No `-c` suffix.** `metisc`/`rustc`/`javac` name a *mechanism* and exist because a
+flat `$PATH` had to distinguish the language from its compiler. Here `prog/` makes that
+distinction structurally, and this tree's rule is **name the type, not the mechanism** —
+so the compiler is spelled out. `chiralc` would also have been built from the adjective
+while the language is `chirality`.
+
 ## Tiers
 
 **Universal** — recurs in any chirality program: `prog` · `ports` · `capability` ·
