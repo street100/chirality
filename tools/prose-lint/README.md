@@ -3,8 +3,25 @@
 The doc tier's prose sorter. `ledger-lint` checks whether a document's *claims*
 match the tree. This checks whether it *reads* like a person wrote it.
 
-Shell, no Python. Route step 1 exists to take Python out of this tree, so a tool
-added now should not grow what that step has to remove.
+**The checks now live in `prog/prose-lint.prog`, in chirality.** "Shell, not
+Python" was the wrong bar: route step 1 says *replace the tools with chirality
+programs*, and shell is no more chirality than Python is.
+
+What the language could not do was **enumerate a directory**. That is E148
+(`getdents64` + `stat`), not built, and the catalog names three standing
+workarounds already waiting on it. This tool is the fourth, which is worth
+counting rather than hiding, because the count of workarounds is E148's
+justification.
+
+Everything else was already there: `slurp-fd` reads a file, `str-find-from` is a
+primitive so the scan recurses once per match, and `str-len` / `str-sub` /
+`str-cat` / `i64->str` cover the rest. The program takes its path list on stdin,
+which is the tree's existing idiom (`chirality-bin < blob`, `wield.prog`). When
+E148 lands, the `find` in front of the pipe is the only thing that goes away.
+
+This shell script remains the front end: ranking, the baseline, `--regress`,
+per-line output, and code-skipping. Those are ordinary work to move across, not
+blocked on anything.
 
 ## Why these checks
 
