@@ -1,7 +1,7 @@
 # chirality — design principles
 
 What chirality commits to, and why. The semantics and type system in
-`02-language-design/` have to satisfy these. If a choice there contradicts one of
+`.planning/projects/02-language-design.md` have to satisfy these. If a choice there contradicts one of
 these, the choice is wrong, or the principle is, in which case change it here
 first, on purpose.
 
@@ -92,6 +92,21 @@ The one leak, which is why time and space are ports too: interior compute still
 spends time and memory, so non-termination and unbounded allocation affect the
 world by *running* rather than by calling. They sit on the membrane next to I/O,
 not implicit in the interior.
+
+**What this makes programming.** Read forward rather than as a restriction:
+**programming in chirality is coordinating port boundaries and writing the logic
+that produces their inputs.** The boundaries are the program's shape. Everything
+else is the computation that feeds them, and it is free precisely because it is
+not the shape.
+
+That is the working outlook, and it decides things. A directory named for a
+subject rather than for boundaries is a category error: `lib/ports/` holds files
+that *declare* a crossing and nothing else, and three modules that merely
+computed over crossings moved out on 2026-08-31 because being *about* ports is
+subject matter. A module's interface is the boundaries it names; a design
+question is answered by asking which boundary it moves. Time and space stop
+reading as an exception bolted onto I/O and read as what they are: the boundary
+with the substrate you are running on.
 
 Honest limit: "closed and named" is only as complete as the channel model.
 Timing, cache pressure, and speculation are effects on the world with no explicit
@@ -218,7 +233,7 @@ check B flags P6/P7 in any doc dated after the condensation.)
 
 ---
 
-## Open edges (resolve in 02)
+## Open edges (resolve in the language-design project)
 
 - **Non-process boundary** (1 vs 5): where pure description ends and untypeable
   substrate begins, and whether type-level computation counts as a process.

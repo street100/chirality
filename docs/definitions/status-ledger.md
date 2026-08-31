@@ -46,18 +46,39 @@ status banner pointing here.
 
 ## The four rungs
 
-- **DESIGNED** — the note describes it; no code realizes it.
-- **SEEDED** — a partial, stub, or single-case realization exists in the scaffold.
-- **IMPLEMENTED** — it works in the scaffold, on the Python/host substrate.
-- **ENFORCED** — it is structurally guaranteed (kernel- or checker-checked), not
-  merely present.
+**Redefined 2026-08-31.** They used to measure which *substrate* ran a thing:
+IMPLEMENTED meant "works on the Python/host substrate", and the TCB was named as
+CPython plus the Linux syscall surface. That question is settled — CPython is off
+the compile path and off the check path, and the self-hosting fixpoint holds — so
+a rung defined by it measures nothing.
 
-The rungs are orthogonal to correctness. ENFORCED is the strongest claim; an
-IMPLEMENTED property runs but rests on trusted host code (the current TCB —
-CPython and the Linux syscall surface, see [[trust-boundary]]); a SEEDED one is a
-slice; DESIGNED is intent. On the host substrate, even an ENFORCED property is *enforced against a
-well-behaved program, not an adversary at the Python level* — enforcement in the
-adversarial sense arrives with self-hosting.
+What the rungs measure now is **reach**: whether the built thing is actually
+arrived at by a shipping path, and whether anything fails when you break it.
+That is the distinction preserve-check and W^X were both filed on the wrong side
+of.
+
+- **DESIGNED** — the note describes it; no code realizes it.
+- **SEEDED** — code exists and **nothing reaches it**. A partial, a stub, or a
+  complete implementation that no shipping path calls. Built is not adopted.
+- **IMPLEMENTED** — reached by a shipping path and it works, but **no gate fails
+  if you break it**. It is load-bearing and unprotected.
+- **ENFORCED** — structurally guaranteed and **gated**: a check in the kernel,
+  the loader or the suite fails when the property stops holding. Breaking it
+  turns something red.
+
+The rungs are orthogonal to correctness, and the ladder is about exposure rather
+than quality. A SEEDED thing may be perfect and simply uncalled; an ENFORCED one
+may be crude and merely defended.
+
+**The TCB is `bin/chirality-bin` and the Linux syscall surface** ([[trust-boundary]]).
+The compiler is the maximal-authority process and it compiles itself, which is
+the trusting-trust circularity `.planning/projects/02-language-design.md` and
+[[certificate-discipline]] own. CPython is no longer in it.
+
+⚑ **What ENFORCED still does not mean.** A gate defends against a mistake, not
+against an adversary who controls the source. The three semantically distinct
+judgment cores that would make agreement adversarial are **unbuilt** (HANDOFF
+decision 5), so every rung on this page is enforcement against error.
 
 ## Built — ENFORCED
 
@@ -69,7 +90,7 @@ adversarial sense arrives with self-hosting.
 | Strict positivity of datatypes | `lib/surface/data.chiral` — the E7 walk (`walk`/`walk-args`/`ctors-ok?`) with the per-param strict-positivity cache `compute-sp`, called live from `lib/module/loader.chiral` at data install. Verified 2026-08-31: a datatype with a negative recursive occurrence is refused, `not strictly positive` |
 | Floor agreement of the arithmetic prims (by collapse) | `lib/lowering/upper/optimize.chiral` `fold-prim`/`fold-cmp` and `lib/lowering/tal/eval.chiral` `eval-prim` both compute on chirality's own I64 `+ - * / %`, so the constant folder and the reference machine cannot disagree by construction; see [[floor-agreement]]. ⚑ The collapse is now at the *primitive*, not at an import — the two are separate dispatch chains over one set of prims, and test_optimize.py / test_native.py, which pinned the agreement, are CUT (Python oracle) |
 
-## Built — IMPLEMENTED (works, on the host substrate)
+## Built — IMPLEMENTED (reached by a shipping path, no gate defends it)
 
 | Claim | Evidence |
 |---|---|
@@ -86,17 +107,17 @@ adversarial sense arrives with self-hosting.
 | Sys-face syscall crossings + self-hosted arena (E21) | `lib/lowering/tal/sys.chiral`: write / read / lseek / memfd_create / ftruncate / mmap / munmap, and — since E28, contrary to this row's old parenthetical — `nb-sys-mprotect-t` and `nb-sys-close-t` too, alongside the socket, pty, poll, fork/exec and clock crossings; routed by `lib/lowering/tal/crossing-wraps.chiral` and `lib/lowering/tal/sys-linkage.chiral`. chirality sizes+maps its own anonymous file, byte-roundtrips, unmaps. ⚑ "differentially tested" meant the CPython differential, which is CUT |
 | Orchestration substrate (json, http+SSE, backend iface, fsm, manas coordinator) | `lib/protocol/json.chiral`, `lib/protocol/http.chiral`, `prog/manas/backend.chiral`, `prog/manas/fsm.chiral`, `prog/manas/coordinator.chiral`; the roots under `prog/manas/` are swept compile-only by `tools/test/run-tests.sh` Phase 7. E51 linkage to the self-hosted sys-face is still open. ⚑ The `test_http` / `test_manas` / `test_backend*` suites are CUT (Python oracle), and so is the CPython transport they ran over: `http-request` and `backend-open` have no entry in `lib/lowering/tal/crossing-wraps.chiral`, so this substrate type-checks and lowers but has no referent to run against |
 
-## Built — SEEDED (a slice exists)
+## Built — SEEDED (code exists, nothing reaches it)
 
 | Claim | What exists / what does not | Evidence |
 |---|---|---|
 | Refinement types | I64 conjunction of atoms over a **constant or a bare in-scope variable** (`v < n`), with **path-sensitivity** for both (a comparison-guarded branch learns the bound it proves — `_narrow`/`sig.narrow_hooks`); a symbolic bound collapses to a constant on instantiation (Pi re-evaluation), keeping subtyping sound; constant part sound+complete, symbolic part sound (syntactic entailment, no arithmetic between variables); only arithmetic-expression bounds (`v<n+1`) remain out | `lib/typing/refine.chiral` — `Constraint`, `entails`, `is-empty`, and the `narrow` atom-selection hook; `lib/surface/syntax.chiral` carries the `t-refine` former and `RfAtom`, whose operand is a `Term`, so shift/uses traverse it; `lib/typing/kernel.chiral` holds the `v-refine` value, `subtype`/`subtype-into`, and the case-guard path-sensitivity hook (`narrow-branch`/`narrow-side`/`ctx-narrow`). ⚑ test_refine.py, with TestPathSensitivity and TestSymbolicRefinement, is CUT (Python oracle) and no phase exercises the refinement fragment. Note also that kernel.chiral's own narrow-seam comment still says the chirality kernel `Value` has no `v-refine` form; it has one |
-| Effects | one coarse pure/process bit at 3 judgment points — ⚑ **and those 3 points are in the Python oracle only (measured 2026-08-25)**: `bin/chirality-bin` compiles and RUNS a `->` def that calls an `=>` one, and the crossing really happens, so the bit is carried natively and refused nowhere ([[banks/effect-and-alarm]] §5d; the gate is E171). The two-facet effect algebra (possession + exercise, edge 16) is settled on paper — [[decision-effect-facets]] — and unbuilt | `lib/typing/effects.chiral` — the E12 membrane, generalized to set-containment: `on-apply-ok`, `erased-allow`, `on-binder-ok`, plus `row-sub`/`row-join`. ⚑ Those three refusing rules have **no caller anywhere in the tree**: the module's only importers, `lib/typing/row-infer.chiral` and `lib/lowering/upper/eff-lower.chiral`, take `row-join`/`row-sub`/`mem-str` and nothing else. effects.py, which the claim column names as the one place the seams existed, is CUT — so the bit is now carried and refused nowhere at all |
-| Totality | all three pillars built — strict positivity, case coverage, and termination ([[totality]]); the termination check proves **structural** (a case-bound field shrinks) *and* **numeric measure** (a parameter stepped toward a bound a guard proves — a constant with wraparound excluded, or a *variable* `n` with `±1` step and `n` unchanged) recursion — `row-bytes`, every constant-guarded counting loop, and variable-bounded loops prove; it *classifies* (records `sig.totality`), not yet globally *enforced* — unprovable recursion (non-unit-symbolic/lexicographic/mutual) type-checks unless `sig.require_total` or a profile's `(total)` clause | Two pillars are live and refuse: positivity via `lib/surface/data.chiral` + `lib/module/loader.chiral` (`not strictly positive`) and case coverage via `lib/typing/kernel.chiral` + `lib/typing/diag.chiral` (`non-exhaustive case`). **Termination is neither enforced nor classified in the built compiler**: `lib/typing/totality.chiral`, the E11 structural + numeric-measure classifier, is imported by nothing, and `lib/surface/parse.chiral` says in its own header that the `(total)` profile clause is parsed, judged and stored with enforcement elsewhere — measured 2026-08-31, a profile carrying `(total)` over an unguarded self-call checks OK. `prog/demo/verify-total.chiral` is the demo (its own header still invokes the retired `python3 -m chirality verify`); `tools/test/profile-target.sh` gates the clause's *parse*, not its proof. test_kernel.py's TestTermination and TestTotalityProfile are CUT (Python oracle) |
+| Effects | one coarse pure/process bit at 3 judgment points — ⚑ **and those 3 points are in the Python oracle only (measured 2026-08-25)**: `bin/chirality-bin` compiles and RUNS a `->` def that calls an `=>` one, and the crossing really happens, so the bit is carried natively and refused nowhere ([[banks/effect-and-alarm]] §5d; the gate is E171). The two-facet effect algebra (possession + exercise, edge 16) is settled on paper — [[decision-effect-facets]] — and unbuilt | `lib/typing/effects.chiral` — the E12 membrane, generalized to set-containment: `on-apply-ok`, `erased-allow`, `on-binder-ok`, plus `row-sub`/`row-join`. ⚑ Those three refusing rules have **no caller anywhere in the tree**: the module's only importers, `lib/typing/row-infer.chiral` and `lib/lowering/upper/eff-lower.chiral`, take `row-join`/`row-sub`/`mem-str` and nothing else. effects.py, which the claim column names as the one place the seams existed, is CUT — so the bit is now carried and refused nowhere at all  ⚑ **ROUND-OFF OWED, 2026-08-31.** The claim below says the seams are "in the Python oracle only". The oracle is deleted, so they are now in NO tree: `lib/typing/effects.chiral` holds them and its only importers take `row-join`/`row-sub`. **E171 needs re-scoping** against a floor that no longer exists.|
+| Totality | all three pillars built — strict positivity, case coverage, and termination ([[totality]]); the termination check proves **structural** (a case-bound field shrinks) *and* **numeric measure** (a parameter stepped toward a bound a guard proves — a constant with wraparound excluded, or a *variable* `n` with `±1` step and `n` unchanged) recursion — `row-bytes`, every constant-guarded counting loop, and variable-bounded loops prove; it *classifies* (records `sig.totality`), not yet globally *enforced* — unprovable recursion (non-unit-symbolic/lexicographic/mutual) type-checks unless `sig.require_total` or a profile's `(total)` clause | Two pillars are live and refuse: positivity via `lib/surface/data.chiral` + `lib/module/loader.chiral` (`not strictly positive`) and case coverage via `lib/typing/kernel.chiral` + `lib/typing/diag.chiral` (`non-exhaustive case`). **Termination is neither enforced nor classified in the built compiler**: `lib/typing/totality.chiral`, the E11 structural + numeric-measure classifier, is imported by nothing, and `lib/surface/parse.chiral` says in its own header that the `(total)` profile clause is parsed, judged and stored with enforcement elsewhere — measured 2026-08-31, a profile carrying `(total)` over an unguarded self-call checks OK. `prog/demo/verify-total.chiral` is the demo (its own header still invokes the retired `python3 -m chirality verify`); `tools/test/profile-target.sh` gates the clause's *parse*, not its proof. test_kernel.py's TestTermination and TestTotalityProfile are CUT (Python oracle)  ⚑ **ROUND-OFF OWED, 2026-08-31.** The claim below opens "all three pillars built". Positivity and coverage refuse live; **termination does neither** — `lib/typing/totality.chiral` is imported by nothing. Either wire it or drop the third pillar from the claim.|
 | Syscall gating | `sysface` confinement mark + no surface path to `sys`; **not** a numeric allowlist (the number is an arbitrary immediate) | `lib/lowering/tal/sys-check.chiral` — the E76 default-deny chokepoint — over the swappable permitted set in `lib/lowering/tal/target-linux.manifest`; the refusal itself is in `emit-elf-m`, `lib/lowering/compile-emit.chiral`. Gated by `tools/test/syscall-manifest.sh` (Phase 5), which poisons the registry inside the compiler's own blob and shows the compiler built from it refuses to emit |
 | Broker | spawn / teardown / link-at-load only; grant / revoke / audit not built | Spawn and teardown: `lib/runtime/proc.chiral` (E33 `proc-spawn`, one return with a linear `Reap` obligation) and `lib/runtime/supervisor.chiral` (E42 supervised loop). Link-at-load: `load-extern`/`load-extern-linear` in `lib/module/loader.chiral`, with the crossing→wrapper table in `lib/lowering/tal/crossing-wraps.chiral`. grant / revoke / audit: no code |
 | Staging | `spawn` + link-at-load, ad hoc; the binding-time *modality* is designed | The same two sites as Broker: `lib/runtime/proc.chiral` and `load-extern` in `lib/module/loader.chiral`. Nothing represents binding time in a type |
-| Secret custody (first slice of [[modules-custody]]) | **type-level** discipline only: opaque linear `Secret`, single greppable guarded exit — runs. Host-copy hygiene partial (`secret-reveal` returns immutable `bytes` it cannot zero); memory custody absent. Redundancy / datum-policy not built | `lib/capability/secret.chiral` — `porttype Secret` with `secret-seal` / `secret-reveal` / `secret-wipe` and the `send-revealed` legal path; `prog/demo/passman-min.chiral` type-checks under `chirality check` (verified 2026-08-31). ⚑ The impl_ports.py referent is CUT and none of the three externs appears in `lib/lowering/tal/crossing-wraps.chiral`, so the discipline is checkable but nothing executes it. test_secret.py is CUT; `tools/test/samples/e170_reject_secret_leak.prog` is a fixture with no runner — Phase 12 is not ported |
+| Secret custody (first slice of [[modules-custody]]) | **type-level** discipline only: opaque linear `Secret`, single greppable guarded exit — runs. Host-copy hygiene partial (`secret-reveal` returns immutable `bytes` it cannot zero); memory custody absent. Redundancy / datum-policy not built | `lib/capability/secret.chiral` — `porttype Secret` with `secret-seal` / `secret-reveal` / `secret-wipe` and the `send-revealed` legal path; `prog/demo/passman-min.chiral` type-checks under `chirality check` (verified 2026-08-31). ⚑ The impl_ports.py referent is CUT and none of the three externs appears in `lib/lowering/tal/crossing-wraps.chiral`, so the discipline is checkable but nothing executes it. test_secret.py is CUT; `tools/test/samples/e170_reject_secret_leak.prog` is a fixture with no runner — Phase 12 is not ported  ⚑ **ROUND-OFF OWED, 2026-08-31.** The claim says it **runs**. It type-checks. `secret-seal`/`secret-reveal`/`secret-wipe` have no entry in `lib/lowering/tal/crossing-wraps.chiral`, so nothing executes it. Same shape as `http-request` and `backend-open`.|
 | **preserve-check** *(demoted from ENFORCED 2026-08-31: built, unadopted)* (lowering *and* optimizer re-check at the floor) | `lib/lowering/tal/check.chiral` is the independent floor judgment (`ck-fn`/`ck-prog`) and `lib/lowering/upper/optimize.chiral` `re-check` is the one caller — its `chk-ok` cannot be formed without it. ⚑ **Neither runs in the shipping compile.** `lib/lowering/upper/lower.chiral` does not import `lib/lowering/tal/check.chiral` and calls no `ck-fn`; nothing in `lib/` or `prog/` imports `lib/lowering/upper/optimize.chiral` at all. test_optimize.py is CUT (Python oracle) and no phase replaces it |
 
 ## DESIGNED — docs only, no code

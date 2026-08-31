@@ -56,6 +56,10 @@ and `emit` twice. Taking the path as the key means:
 
 ## `ports/` holds declarations, not code about ports
 
+This is PRINCIPLES §3 applied to the tree. Programming here is coordinating
+port boundaries and writing the logic that produces their inputs, so a
+directory can name the declaration of a boundary. It cannot name a subject.
+
 A file belongs in `ports/` iff it declares a crossing: an `extern` whose
 implementation is bound at link time, or a `porttype` minting an opaque linear
 atom. That is the same structural test the `.port` extension already carries,

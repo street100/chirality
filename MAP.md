@@ -93,7 +93,7 @@ node you hold a port to, so distribution is native. See
 
 ## The long road
 
-The umbrella GSD project is in [.planning/PROJECT.md](.planning/PROJECT.md); the
+The three project files are in [.planning/projects/](.planning/projects/); the
 developmental stages are in [.planning/ROADMAP.md](.planning/ROADMAP.md). The
 short version, from here outward: resolve the load bearing open edges, build the
 QTT kernel, the typed core, the lowering floor, staging and generation, the
@@ -134,11 +134,11 @@ headless against protocol mocks; on a real niri session:
 
 Each is its own GSD project under the umbrella.
 
-- [01-bhumi-context](.planning/PROJECT.md) — what the bhumi tool
+- [01-bhumi-context](.planning/projects/01-bhumi-context.md) — what the bhumi tool
   family needs the language to express.
-- [02-language-design](.planning/PROJECT.md) — the language
+- [02-language-design](.planning/projects/02-language-design.md) — the language
   itself. The `docs/` base is its working output.
-- [03-development-approach](.planning/PROJECT.md) — how
+- [03-development-approach](.planning/projects/03-development-approach.md) — how
   chirality gets built and how bhumi reimplements under it.
 
 Information flows 01 to 02 to 03, with backflow. See the umbrella project for the
