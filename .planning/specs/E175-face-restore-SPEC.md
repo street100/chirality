@@ -4,7 +4,7 @@ slug: face-restore
 title: **A face survives its body** — the ANSI renderer carries the ambient face and restores it, instead of full-resetting at every close
 kind: BUILD-PROPER
 example: docs/examples/E175-face-restore.md
-status: specced
+status: audited
 updated: 2026-08-31
 ---
 
@@ -41,8 +41,8 @@ updated: 2026-08-31
   **`rnd-face-plain`** (`Face`, the default ambient), and **`rnd-restore`**
   (`(=> Face Unit)`, the **one** new emitter and the only place `ansi-reset` may
   still be spelled inside the tree walk). Nine walker signatures gain **one
-  trailing `Face`**; **21 call sites** inside that one file gain an eighth
-  argument (19 pass `amb` through unchanged, `:720` passes `(face-join amb f)`,
+  trailing `Face`**; **21 call sites** inside that one file gain a trailing
+  `Face` argument (19 pass `amb` through unchanged, `:720` passes `(face-join amb f)`,
   and `:729` seeds `rnd-face-plain`); and **six closes** — `:569, 610, 624, 687,
   705, 721` — stop emitting `(put ansi-reset)` and start emitting
   `(rnd-restore amb)`. `tools/test/row.sh` gains the seed on its three
@@ -93,7 +93,7 @@ updated: 2026-08-31
   - **E177 (display width) and E178 (`r-table`'s two layouts).** Minted
     (`:441`, `:442`). Both live in `render.chiral`; E175 touches neither.
   - **`rnd-cols` and every number in it.** SGR bytes paint no cell, so
-    `rnd-cols`'s `r-face` arm (`:513`) is `(rnd-cols body)` before and after.
+    `rnd-cols`'s `r-face` arm (`:515`) is `(rnd-cols body)` before and after.
     This is **checked, not asserted**: `row.sh`'s screen reducer discards
     `ESC[…m` by construction, and Phase 15 was **run green (41/41) against the
     fixed tree** (§6 RUN 6).
@@ -157,7 +157,7 @@ updated: 2026-08-31
     case (`:163`) **synthesizes** `(face name -1 -1 0)`. `face-sgr` declared
     `:61` / defined `:184-195`: six conditional emits, each producing `""` when
     its bit is clear, and `""` for `fg`/`bg` `< 0`. `default-faces` `:144-158`,
-    twelve rows; `"default"` is `(face "default" -1 -1 0)` (`:145`),
+    **eleven** rows (audit: counted, not twelve); `"default"` is `(face "default" -1 -1 0)` (`:145`),
     `"keyword"` `(1 -1 1)` (`:147`), `"comment"` `(2 -1 0)` (`:146`),
     `"error"` `(1 -1 2)` (`:149`), `"manas-cursor"` `(-1 -1 8)` (`:157`).
     `ansi-reset` `:325`, `ansi-bold` `:327`.
@@ -174,11 +174,12 @@ updated: 2026-08-31
     `:729` (`render-to-ansi-full`'s, the **seed**).
   - **`tools/test/row.sh` (E174, Phase 15, 41 assertions)** — the shape
     `face.sh` mirrors: `ok`/`bad` counters, `build_run` (`:88`), **`build_out`**
-    (`:100`, the stdout-capturing helper `doc.sh` lacks), `mutlib` (`:123-138`,
+    (`:103`, the stdout-capturing helper `doc.sh` lacks), `mutlib` (`:125-136`,
     which copies `lib/`, seds it, and **reports a stale pattern rather than
-    passing silently**), the `SCREEN_AWK` cell reducer (`:151-176`) whose
-    `ESC[<p>m` case is a **documented no-op**, `cell_at`/`band_stat` (`:183-188`),
-    the sha256 `pin` helper (`:650-654`) and the `reg()` registration device
+    passing silently** — the `cmp -s` guard is `:132-134`), the `SCREEN_AWK` cell
+    reducer (`:152-177`) whose `ESC[<p>m` case is a **documented no-op**,
+    `cell_at`/`band_stat` (`:183-188`), the sha256 `pin` helper (`:645-650`, its
+    four calls at `:651-654`) and the `reg()` registration device
     (`:676`) that greps `run-tests.sh` — **a different file from the script doing
     the grep**.
   - **`tools/test/diag.sh` (E157, Phase 13, 30)** and **`tools/test/doc.sh`
@@ -296,8 +297,12 @@ updated: 2026-08-31
 Rows 1–5 are **BINDING from upstream** — the corrections the catalog and ledger
 rows now carry, and the calls the example makes on repaired grounds. Rows 6–13
 are new to the spec run, each closed by the measurement that decides it. **Row
-14 is the single NEEDS-AUTHOR item**, carried verbatim below the table with its
-blast radius corrected by measurement.
+14 was the single NEEDS-AUTHOR item and is now ANSWERED** — the author resolved
+it on 2026-08-31 (`6a5ffa2`, appended verbatim at the foot of this file):
+**option (i), `-1` means *no opinion*; (iii) refused as a magic string; (ii) — a
+fourth `Face` field carrying an attrs clear-mask — deliberately NOT minted.** The
+question is kept below the table as the record of what was asked; the
+disposition is the author's.
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
@@ -308,17 +313,20 @@ blast radius corrected by measurement.
 | 5 | Is depth 0 special-cased? | **BINDING — NO. The general rule IS the base case** | `face-sgr (face "default" -1 -1 0)` is `""` (measured: probe A's tail is exactly `@[0m@[0m`), so `(rnd-restore rnd-face-plain)` emits exactly `\e[0m`. Confirmed on the fixed tree: its **final four bytes are `27 91 48 109`** and nothing else. No `(case depth (0 …))`, no bottom-of-stack sentinel — which is the difference between an invariant and a guard. |
 | 6 | Does `render-to-ansi-delta` need its own seed? | **RESOLVED — NO, and the example says otherwise** | `render-to-ansi-delta` (`:733-737`) is `(case (diff-node prev new) (diff-same unit) ((diff-changed _) (render-to-ansi-full new dims)))` — it goes **through `render-to-ansi-full`**, which seeds. There is **exactly ONE seed site, `:729`.** The example's §6 lists "two seeds in `render-to-ansi-full` (`:725`) and … `render-to-ansi-delta` (`:733`)"; `:725` is the `def` line, not the call, and `-delta` needs nothing. Corrected. |
 | 7 | Is the dead `prev : (Maybe Rendering)` slot reused for the ambient, or deleted? | **RESOLVED — NEITHER** | Repurposing a parameter to a type it was not declared for is exactly the "a `Str` carries which-of-N" flattening this repo removes elsewhere (`pattern-boundary-sums`). Deleting it is right, unrelated, and doing it **inside E175 would make §5's G1 cell-map row grade two changes at once**. It stays: declared `:99`, passed `none` at all seven internal call sites, bound once at `:666` and read nowhere. Not deferred to a number, because it is not an element. |
-| 8 | What exactly does `tools/test/row.sh` need? | **RESOLVED — FOUR edits, not three. ⚑ The example named three and they contradicted its own G8** | `:236`, `:241` and `:305` call `render-to-ansi` with **seven** arguments and gain the trailing `rnd-face-plain` seed — the example has this right. **It missed the fourth:** `:595` is M10's `sed` expression, and it matches `render-section`'s body line **verbatim**, ending `drow dcol))))))))))$`. E175 rewrites that line to `… drow dcol amb))))))))))`, the pattern goes stale, and `mutlib`'s own guard (`:134-137`, *"the mutation did not change …"*) fires — **Phase 15 goes RED because the fix worked.** Both halves of `:595`'s pattern gain ` amb`. **Measured: with exactly those four edits, `row.sh` reports `41 passed, 0 failed` and the whole suite reports `211 passed, 0 failed` against the fixed `lib/`.** |
+| 8 | What exactly does `tools/test/row.sh` need? | **RESOLVED — FOUR edits, not three. ⚑ The example named three and they contradicted its own G8** | `:236`, `:241` and `:305` call `render-to-ansi` with **seven** arguments and gain the trailing `rnd-face-plain` seed — the example has this right. **It missed the fourth:** `:595` is M10's `sed` expression, and it matches `render-section`'s body line **verbatim**, ending `drow dcol))))))))))$`. E175 rewrites that line to `… drow dcol amb))))))))))` and the pattern goes stale — **Phase 15 goes RED because the fix worked.** Both halves of `:595`'s pattern gain ` amb`. ⚑ **The MECHANISM stated here was wrong, and the audit corrected it by running it.** It is *not* `mutlib`'s stale-pattern guard: M10 passes `mutlib` **two** expressions and the first (`:594`, the `ansi-goto` delete) still applies, so `cmp -s` sees a changed file and the guard **passes**. The stale second expression simply no-ops, leaving M10's paren re-balance undone, so the mutant `lib/` **fails to compile** and M10's two rows report *"the mutant G5 probe did not build"* / *"the mutant layout probes did not build"*. **Measured with the other three edits in place and this one omitted: `horizontal composition (E174): 39 passed, 2 failed`.** The conclusion and the required edit are unchanged; the failure an implement run will actually see is a compile failure, not a guard message. **Measured: with exactly those four edits, `row.sh` reports `41 passed, 0 failed` and the whole suite reports `211 passed, 0 failed` against the fixed `lib/`.** |
 | 9 | Do `diag.sh`, `doc.sh` or any `prog/` file change? | **RESOLVED — NO, all of them, and it is measured rather than argued** | `diag.sh` and `doc.sh` name `render-to-ansi` **nowhere** (`grep`), and `doc.sh` carries sha256 pins that would move if they did. `prog/` has **41** `render-to-ansi-full` call sites, **0** `-delta`, and **0** bare `render-to-ansi` — verified by compiling `scriba-main.prog`, `t6_apc_roundtrip.prog` and `prog/compiler.prog` against the fixed `lib/` with **no `prog/` edit at all**: three OK. The two `put ansi-reset` sites at `command-loop:478,1546` run at depth 0 outside the tree walk and **must not be touched**. |
 | 10 | Which phase number for the gate? | **RESOLVED — 16** | `run-tests.sh:10-27` and `tools/test/MIGRATION-NOTES.md:19-31` record **8–12 as names still owed** to unported old-tree phases; reusing one would make an unported gate look ported. E157 took 13, E158 took 14, **E174 took 15**, so **E175 takes 16**. Registration is a **required line**: an unregistered `face.sh` is a gate that never runs, and §5 makes the registration a checked row with a mutant. |
 | 11 | Cell map, byte diff, or both? | **RESOLVED — CELL MAP for G1–G4, RAW BYTES for G5 and G6, and the split is forced** | Byte-identity is **false** (§2), so no row may assert it. But a **trailing SGR paints no cell**, so a tracking reducer cannot see G5's depth-0 tail or G6's `r-hole` close at all: measured, the `r-hole` mutant produces a **cell map identical to the fixed tree's** while the raw stream gains `@[0m@[1m@[31m` between `<?>h` and `@[8;1H`. A gate that graded G6 on the cell map would be grading nothing. |
 | 12 | How does the SGR-tracking reducer model state? | **RESOLVED — fg and bg are single-valued REGISTERS; attribute codes are flags; `0` clears all. ⚑ A naive set-union reducer gets the example's own numbers wrong** | Measured both ways. Under a set-union model, G4 shape (a)'s first leaf reads `{1,31,32}` — the outer's `31` never leaves the set when the inner emits `32`. The example's expected `{1,32}` only comes out with fg as a register (`30-37` set it, `39` clears it; `40-47`/`49` likewise for bg). The reducer is `row.sh`'s `SCREEN_AWK` with the `ESC[<p>m` no-op replaced by this model, emitting **`row col bytes sgrset`**. |
 | 13 | Does the fixpoint obligation fire? | **RESOLVED — NO, measured** | `prog/compiler.prog`'s blob is 16 161 lines with **zero** occurrences of `render-to-ansi`, `r-text`, `face-sgr` or `ansi-reset`, and its one `r-face` hit (blob `:2176`) is a **comment** carried in from `lib/prelude/doc.chiral:182`. `protocol/render` is outside the closure. No `C1`, no promotion, no `cmp`. Trip condition in §4. |
-| 14 | What does `-1` mean once faces are deltas? | **NEEDS-AUTHOR — see below. NOT resolved here, and NOT parked on a phantom** | Verbatim below the table. |
+| 14 | What does `-1` mean once faces are deltas? | **RESOLVED by the AUTHOR, 2026-08-31 (`6a5ffa2`) — option (i)** | Raised as NEEDS-AUTHOR by the spec run and answered in the appended block at the foot of this file, which is binding. **`-1` means *no opinion*, which is the semantics `face-sgr`'s open already implements** — so §4's choice is a naming of the existing rule, not a stopgap. **(iii)** — the literal name `"default"` as reset-to-plain — is **refused**: a `Str` carrying a which-of-N, the move `pattern-boundary-sums` forbids and this arc has already refused twice (SGR-in-`r-text` for E174, `from Str` on `r-relayed` for E158). **(ii)** — a fourth `Face` field with an attrs clear-mask — is **deliberately NOT minted**: a face that can say *not bold* is a new requirement, not residue E175 incurs, and requirements are not residue. The genuinely defective half — `"default"` and a typo being indistinguishable — is **E179**'s (`lookup-face` synthesizing for an unknown name), already minted. |
 | 15 | The five ad-hoc `ansi-bold` faces, and `lookup-face` synthesizing for an unknown name | **DEFERRED to E179 — MINTED (`SELF-IMPLEMENT-CATALOG.md:443`, `LEDGER.md:298`)** | E175 fixes their **closes** and leaves them ad-hoc. Turning them into registry faces changes what those five draw and touches `r-text`'s constructor — a different element with different consumers. |
 | 16 | The redraw hazard E175 creates | **DEFERRED to E180 — MINTED (`SELF-IMPLEMENT-CATALOG.md:444`, `LEDGER.md:299`)** | E175 makes a node's SGR a function of its **ancestors**, while `diff-node`'s `r-face` arm (`:306`) recurses into the body when the names match and hands back the *body's* `Diff` — a `diff-changed` payload that escapes a face carries no face. Unreachable today because `render-to-ansi-delta` is a full redraw (`:733-737`). ⚑ This is **E175's own residue**, not an inherited defect: before E175 an escaped payload rendered unfaced like everything else. |
 
-### ⚑ NEEDS-AUTHOR — carried verbatim, not resolved by this SPEC
+### ⚑ Decision 14, as the spec run raised it — ANSWERED 2026-08-31 (`6a5ffa2`)
+
+> **Kept verbatim as the record of the question.** The answer is the author's
+> appended block at the foot of this file, and it is binding: **option (i)**.
 
 > **Under delta semantics a face cannot turn anything off, and `"default"` stops
 > meaning "plain".** `face-sgr (face "default" -1 -1 0)` is `""`, so
@@ -338,15 +346,21 @@ is wrong and a wrong blast radius makes an author's call harder, not easier.**
 The brief states that an attrs clear-mask "would ripple into `apc.chiral`'s
 codec". Measured: it would **not**. `apc.chiral` encodes and decodes the `r-face`
 constructor's **first field, which is a `Str` face NAME** (`:115`, `:276`), never
-a `Face` value. The `(face …)` constructor is applied at **11 sites, all inside
-`lib/protocol/render.chiral`**; `prog/scriba/init-loader.chiral:149,152,243` name
+a `Face` value. The `(face …)` constructor is applied at **twelve sites, all inside
+`lib/protocol/render.chiral`** — `default-faces`' eleven rows (`:145-157`) plus
+`lookup-face`'s `nil` synthesis (`:163`); ⚑ **the spec run's "11" and its
+"twelve rows" were each off by one in opposite directions and cancelled, and the
+audit counted both** (`prog/scriba/chat-view.chiral:121`'s `(lam (face …)` is a
+binder, not a construction, and is the only near-miss tree-wide); `prog/scriba/init-loader.chiral:149,152,243` name
 the *type* `Face` but build their entries through `lookup-face`, so a fourth
 field would not touch them either. **The real blast radius of option (ii) is
-`render.chiral` alone** — `default-faces`' twelve rows, `lookup-face`,
+`render.chiral` alone** — `default-faces`' eleven rows, `lookup-face`,
 `face-sgr`, and `face-join`. That makes (ii) cheaper than the brief implies; it
-does not make the choice this SPEC's to make, and the disposition stands as
-NEEDS-AUTHOR. If the author picks (ii), it needs a minted row before any code
-moves, per the deferral rule.
+does not make the choice this SPEC's to make. **The author has since chosen —
+option (i) — and declined to mint (ii)**; see the appended block. (The audit
+recounted the two figures in this paragraph: **eleven** `default-faces` rows and
+**twelve** `(face …)` applications, all in `render.chiral`. Both were off by one
+in opposite directions, and the conclusion — one module — is unaffected.)
 
 **No other item on this element is author-tier, and no deferral above rests on a
 phantom: E177, E178, E179 and E180 all have catalog and ledger rows today.**
@@ -381,6 +395,14 @@ phantom: E177, E178, E179 and E180 all have catalog and ledger rows today.**
   (`tools/test/MIGRATION-NOTES.md:68`). Measured this session: `face-join`,
   `rnd-face-plain` and `rnd-restore` have **zero occurrences of any kind** across
   `lib prog tools`. **Re-run it, do not trust it.**
+- **⚑ ANY scratch tree a `mutlib`-shaped harness runs against MUST be a real
+  directory copy of `lib/`, never a symlink.** This is an obligation on the
+  implement run, not a war story: `mutlib`'s `cp -a "$REPO/lib" "$MUTLIB"`
+  copies a **symlink** as a symlink, so every subsequent `sed -i` writes
+  **through it into the tree under test**. It cost the spec run nineteen phantom
+  failures, including a `Rendering` that had silently grown a tenth constructor
+  (§6). Check it explicitly — `[ -L "$SCRATCH/lib" ] && exit 1` — before
+  believing any suite number measured outside the repo.
 - **E157's, E158's and E174's gates must not regress.** `diag.sh`,
   `samples/e157_diag.prog`, `doc.sh` and `samples/e158_doc.prog` are
   **byte-unchanged**; `samples/e174_row.prog` is **byte-unchanged**;
@@ -398,8 +420,16 @@ phantom: E177, E178, E179 and E180 all have catalog and ledger rows today.**
 - **Change:**
   - Three new names beside the face block. `(declare face-join (-> Face Face
     Face))` and `(declare rnd-restore (=> Face Unit))` after `face-sgr`'s declare
-    (`:61`); the three `def`s after `face-sgr`'s body (`:195`) and before
-    `rnd-emit-headers`:
+    (`:61`); the three `def`s **after the `ansi-*` string block (`:323-330`)** and
+    before `rnd-emit-headers`. ⚑ **The placement is forced, and this SPEC's own
+    first instruction — "after `face-sgr`'s body (`:195`)" — DOES NOT COMPILE**
+    (audit, measured): `ansi-reset` is a bare `(def ansi-reset Str …)` at `:325`
+    **with no `declare`**, so a `rnd-restore` written above it forward-references
+    an undeclared name and the module fails with **`load: unknown name
+    ansi-reset`**. `rnd-restore`'s own `declare` at `:62` declares *`rnd-restore`*,
+    not `ansi-reset`. `face-join` and `rnd-face-plain` carry no such constraint;
+    keeping the three together below `ansi-reset` is the shape that was built,
+    compiled and run:
     - **`face-join`** — attrs `(bor oat iat)`; `fg`/`bg` take the inner's when
       `>= 0`, the outer's otherwise; the joined face's **name is the inner's**,
       because nothing reads it and carrying the outer's would make a debug print
@@ -422,9 +452,18 @@ phantom: E177, E178, E179 and E180 all have catalog and ledger rows today.**
     `render-to-ansi-delta` (`:121`) **do not move**.
   - **Nine `lam` binders** gain a trailing `amb`, at `:562, 573, 581, 589, 594,
     617, 632, 651, 666`.
-  - **21 call sites** gain an eighth argument: `amb` at `:570, 577, 578, 585,
-    586, 590, 591, 614, 623, 625, 636, 637, 655, 656, 673, 675, 679, 691, 695`;
-    **`(face-join amb f)`** at `:720`; **`rnd-face-plain`** at `:729`.
+  - **21 call sites** gain a trailing `Face` argument: `amb` at `:570, 577, 578,
+    585, 586, 590, 591, 614, 623, 625, 636, 637, 655, 656, 673, 675, 679, 691,
+    695`; **`(face-join amb f)`** at `:720`; **`rnd-face-plain`** at `:729`.
+    ⚑ **Two of the nineteen do not take the argument at end-of-line, and inserting
+    it before the closing paren run is wrong** (audit, hit while building this):
+    `:570` ends `… (+ c (+ (str-len h) rnd-header-gutter)))))))))))` and `:578`
+    ends `… (+ col rnd-table-cell)))))))` — the trailing run closes the `(+ …)`
+    forms first, so `amb` must land **after** the arithmetic's own `)`, as
+    `… rnd-header-gutter)) amb)` and `… rnd-table-cell) amb)`. A blanket
+    end-of-line insertion puts `amb` inside the `(+ …)`, which type-checks as an
+    `I64` argument count error or shifts the paren balance; the failure surfaces
+    far away as `load: parse: unexpected )`.
   - **The `r-face` arm** (`:718-721`) rebinds `prefix` as the looked-up **face**
     rather than its SGR, so the join has a `Face` to work with:
     `(let ((f (lookup-face default-faces face-name))) (let ((_ (put (face-sgr
@@ -480,12 +519,13 @@ phantom: E177, E178, E179 and E180 all have catalog and ledger rows today.**
 - **Change:** E175's catalog and ledger rows flip `design → built` with the
   measured landing note (three names, nine signatures, 21 call sites, six closes,
   Phase 16's script and count, and the residue: E179, E180). The INDEX row flips
-  `specced → implemented`. **⚑ And one stale clause is corrected in the same
-  edit:** `docs/examples/INDEX.md:136` still reads *"only the CLOSE changes and
-  every live consumer's bytes are unchanged"* — the byte-identity claim the
-  example audit withdrew from the catalog and ledger rows (`3d3e931`) but did not
-  strip from the INDEX. It becomes *"only the CLOSE changes and every live
-  consumer's SCREEN is unchanged"*.
+  `specced → implemented`. **⚑ The stale byte-identity clause this SPEC promised
+  to correct here is ALREADY CORRECTED — do not go looking for it** (audit,
+  measured): `docs/examples/INDEX.md:136` reads *"only the CLOSE changes and every
+  live consumer's SCREEN is unchanged"* today, fixed by **this SPEC's own commit
+  `d853c62`**, whose message says so in as many words. An implement run that hunts
+  for the `bytes` wording finds a stale pattern — the same class of trap as
+  `row.sh:595`, one document up.
 
 **Not in this element, and each already has a MINTED home — no deferral here
 rests on a phantom:** **E179** (`SELF-IMPLEMENT-CATALOG.md:443`,
@@ -537,14 +577,14 @@ face (**E180**, which this element *creates* and which is unreachable today).
 
 | row | assertion | named mutant that must convict |
 |---|---|---|
-| **G1 — NO-OP where the tree already works, ON THE SCREEN** | The live shape at depth 0 — `(r-row [(r-face f (r-text "ab" b)) (r-text "cd" false)])`, over the faces the fourteen live sites actually use (`keyword`, `comment`, `manas-header`, `manas-ok`, `manas-bad`), bold and plain — reduces to a cell map **identical to the pre-E175 golden pinned literally in the script**. Measured golden for `keyword`: `5 1 a {1,31}` · `5 2 b {1,31}` · `5 3 c {}` · `5 4 d {}`. ⚑ **The byte streams are NOT identical and no row may assert that they are** (§2). ⚑ **The trailing unfaced sibling is not decoration**: without a cell painted *after* the faced node, both mutants below paint nothing different and the row is self-matching. | **M1 `plain-seed-is-bold`** — `rnd-face-plain` becomes `(face "default" -1 -1 1)`. **RUN: `5 3 c` and `5 4 d` go `{}` → `{1}`.** · **M2 `restore-forgets-the-reset`** — `rnd-restore`'s body drops `str-cat ansi-reset`. **RUN: every cell after the first faced leaf inherits it — `{}` → `{1,7,31}` across the whole probe.** |
+| **G1 — NO-OP where the tree already works, ON THE SCREEN** | The live shape at depth 0 — `(r-row [(r-face f (r-text "ab" b)) (r-text "cd" false)])`, over the faces the fourteen live sites actually use (`keyword`, `comment`, `manas-header`, `manas-ok`, `manas-bad`), bold and plain — reduces to a cell map **identical to the pre-E175 golden pinned literally in the script**. Measured golden for `keyword`: `5 1 a {1,31}` · `5 2 b {1,31}` · `5 3 c {}` · `5 4 d {}`. ⚑ **The byte streams are NOT identical and no row may assert that they are** (§2). ⚑ **The trailing unfaced sibling is not decoration**: without a cell painted *after* the faced node, both mutants below paint nothing different and the row is self-matching. | **M1 `plain-seed-is-bold`** — `rnd-face-plain` becomes `(face "default" -1 -1 1)`. **RUN: `5 3 c` and `5 4 d` go `{}` → `{1}`.** · **M2 `restore-forgets-the-reset`** — `rnd-restore`'s body drops `str-cat ansi-reset`. **RUN: every cell after the first faced leaf inherits it — `{}` → `{1,7,31}` across the whole probe.** ⚑ Audit, re-run: `7` can only come from a reverse-video face (`manas-cursor`), which is **not** in this row's stated face list — on a `keyword`-only probe the conviction is `{}` → `{1,31}`. The row keeps its teeth either way; **pin the set the gate's own probe emits, not this literal.** |
 | **G2 — the defect itself, through `r-row`** | `(r-face "keyword" (r-row [(r-text "ab") (r-text "cd")]))` at row 3: cells `(3,3)` and `(3,4)` carry `{1,31}`. **Today they carry `{}`.** | **M3 `text-close-resets`** — `r-text`'s close reverts to `(put ansi-reset)`. **RUN: `(3,3)`/`(3,4)` go `{1,31}` → `{}`.** ⚑ Note what this mutant proves: it **passes** any fix scoped to the `r-face` arm, which is §1's whole point. |
 | **G3 — the same defect without `r-row`, through `r-lines`** | `(r-face "keyword" (r-lines [(r-text "ab") (r-text "cd")]))` at rows 7/8: cells `(8,1)` and `(8,2)` carry `{1,31}`. Proves the fix predates and outlives E174. | **M3**, the same mutant. **RUN: `(8,1)`/`(8,2)` go `{1,31}` → `{}` in the same pass.** |
 | **G4 — the JOIN, and it needs TWO shapes each with a TWO-leaf inner face** | ⚑ `face-join` feeds `rnd-restore` and **nothing else** — an open is always `face-sgr` of the *looked-up* face, never the join. So the only cell that reads a join is **the leaf after another leaf inside the same inner face**; the first leaf is painted straight off the two opens and carries the right set on the **unfixed** tree too. **An inner face with one leaf grades nothing.** Two shapes, because the fg rule and the attrs rule are convicted by different inner faces. **(a)** `(r-face "keyword" (r-row [(r-face "comment" (r-row [(r-text "xy") (r-text "zw")])) (r-text "pq")]))` — `x,y,z,w` = `{1,32}`, `p,q` = `{1,31}`. **(b)** the same with `manas-cursor (-1 -1 8)`, an inner face with **no fg opinion** — `x,y,z,w` = `{1,7,31}`, `p,q` = `{1,31}`. Unfixed, `z,w,p,q` are `{}` in both. All four maps measured. | **M4 `join-drops-the-attrs`** — `(bor oat iat)` → `oat`. **RUN: (a) `z,w`→`{32}`, `p,q`→`{31}`; (b) `z,w`→`{31}`, `p,q`→`{31}`.** · **M5 `join-keeps-the-outer-fg`** — the colour rule → `ofg`. **RUN: (a) `z,w`,`p,q`→`{1}`; (b) `z,w`→`{1,7}`, `p,q`→`{1}`.** · **M6 `join-keeps-the-inner-fg`** — the colour rule → `ifg`. **RUN: shape (a) is COMPLETELY UNCHANGED and only (b) convicts, `z,w`→`{1,7}` — which is why shape (b) is not optional.** |
 | **G5 — depth 0 emits exactly `\e[0m`** | ⚑ **Raw bytes, not the cell map**: a trailing SGR paints no cell, so the tracking reducer cannot see this row at all. The stream's final four bytes are exactly **`27 91 48 109`** — no trailing `\e[m`, no doubled parameters, nothing after. Measured on the fixed tree. | **M1 `plain-seed-is-bold`**, read here as bytes rather than cells: the tail becomes `27 91 48 109 27 91 49 109`. **RUN** (the same mutant tree as G1). |
 | **G6 — `r-hole` is unchanged** | ⚑ **Raw bytes, and this row exists BECAUSE the cell map cannot see it.** In `(r-face "keyword" (r-lines [(r-hole "h") (r-text "ab")]))`, the bytes between `<?>h` and the next `ESC[<r>;<c>H` number **zero**. The control that shows the edit was not a blanket `sed`. | **M7 `hole-restores-too`** — `r-hole`'s `(put "")` becomes `(rnd-restore amb)`. **RUN, and the finding under it is the row's justification: the CELL MAP IS BYTE-FOR-BYTE IDENTICAL under this mutant** (because the restore there re-asserts the face already on), while the raw stream gains `@[0m@[1m@[31m` in that gap. A cell-map-only gate would call this element done. |
 | **G7 — the neighbouring gates hold** | **(a)** sha256 pins on **five** files: `tools/test/diag.sh`, `samples/e157_diag.prog`, `tools/test/doc.sh`, `samples/e158_doc.prog` and **`samples/e174_row.prog`** — E175 touches none of them. ⚑ **`row.sh` itself is deliberately NOT pinned**, because E175 edits it (decision 8); what stands in for a pin is (c). **(b)** Phases 13, 14, 15 **and 16** are registered in `run-tests.sh` — **four rows**, asserted `row.sh`'s way (`reg() { grep -cE "^run_phase $1 .* $2\$" "$3"; }` run against `run-tests.sh`, **a different file from the script doing the grep**, which is what makes a registration row unable to match its own source). **(c)** **No seven-argument `render-to-ansi` call survives anywhere under `tools/`** — the arity check that replaces `row.sh`'s missing pin. | **M8 `move-a-pinned-gate`** — append one line to a **copy** of each of the five pinned files; **every** pin must move (pinning four while exercising one is the same hole one file smaller). · **M9 `unregister-the-phase`** — delete all four `run_phase` lines from a copy of `run-tests.sh`; every registration row must notice. Both are `row.sh`'s own devices, green in the live suite today (`:655-690`). · **M12 `a-seven-arg-caller`** (below) is what reddens (c). |
-| **G8 — the nine signatures moved TOGETHER** | **Behavioural, not grep.** Three separate compiles, each on a copied `lib/` with one thing changed and nothing else. **(i)** Drop `Face` from **one** walker's `declare` → `protocol/render` must FAIL. **(ii)** Drop `amb` from **one** walker's `lam` binder → `protocol/render` must FAIL. **(iii)** A **seven-argument** caller — the pre-E175 `row.sh:236` shape — must FAIL. The arity is the coverage check here, the way the closed sum is `row.sh`'s. | **M10 `declare-drops-the-face`** — **RUN: `load: lambda checked against a non-function type`.** · **M11 `binder-drops-the-amb`** — **RUN: `load: unknown name amb`.** · **M12 `a-seven-arg-caller`** — **RUN: `load: type mismatch`.** All three convict, and each with a *different* message, so a row cannot pass by reading the wrong failure. |
+| **G8 — the nine signatures moved TOGETHER** | **Behavioural, not grep.** Three separate compiles, each on a copied `lib/` with one thing changed and nothing else. **(i)** Drop `Face` from **one** walker's `declare` → `protocol/render` must FAIL. **(ii)** Drop `amb` from **one** walker's `lam` binder → `protocol/render` must FAIL. **(iii)** A **seven-argument** caller **carrying its declared result type** — the pre-E175 `row.sh:236` shape, i.e. `(declare ez-alone (=> Rendering I64 Unit))` beside `(def ez-alone (lam (nd rw) (render-to-ansi nd ez-dims none rw 1 rw 1)))` — must FAIL. The arity is the coverage check here, the way the closed sum is `row.sh`'s. ⚑ **The `declare` is load-bearing and the row is TOOTHLESS without it** (audit, measured): chirality is curried, so a bare seven-argument call bound to `_` in a `let` is a **partial application of type `(=> Face Unit)`** and **compiles clean** — `chirality check` returns OK on it. The mismatch is detectable only where a declared `Unit` result contradicts a function type. Write M12 as the declared shape or G8(iii) exercises nothing. | **M10 `declare-drops-the-face`** — **RUN: `load: lambda checked against a non-function type`.** · **M11 `binder-drops-the-amb`** — **RUN: `load: unknown name amb`.** · **M12 `a-seven-arg-caller`** (the **declared** shape — see (iii)) — **RUN: `load: type mismatch`.** All three convict, and each with a *different* message, so a row cannot pass by reading the wrong failure. |
 
 **Registration:**
 `run_phase 16 "ambient face restore (E175 face-join + rnd-restore)"  face.sh`
@@ -602,8 +642,11 @@ cannot be reading two different fixtures.
   5. **The NEEDS-AUTHOR item's blast radius is smaller than the brief says.** An
      attrs clear-mask on `Face` would **not** ripple into `apc.chiral` — the
      codec transports the face **name**, a `Str` (`:115`, `:276`). The `(face …)`
-     constructor is applied at **11 sites, all inside `render.chiral`**.
-     **§3, the NEEDS-AUTHOR block.**
+     constructor is applied at **twelve sites, all inside `render.chiral`** —
+     `default-faces`' eleven rows plus `lookup-face`'s `nil` synthesis (`:163`);
+     the spec run said 11 and the audit recounted. **All twelve are in one
+     module, which is the load-bearing half and is unaffected. §3, the
+     NEEDS-AUTHOR block.**
   6. **`docs/examples/INDEX.md:136` still carries the withdrawn byte-identity
      claim.** The example audit stripped it from the catalog and ledger rows
      (`3d3e931`) and from the example's own body, but the INDEX row still reads
@@ -646,7 +689,10 @@ cannot be reading two different fixtures.
   6. **Ten mutants were executed**, each against a copied `lib/` with one change:
      **M1** `plain-seed-is-bold` (G1 cells → `{1}`; G5's tail gains `27 91 49
      109`) · **M2** `restore-forgets-the-reset` (SGR leaks across the whole
-     stream) · **M3** `text-close-resets` (G2's `(3,3)`,`(3,4)` and G3's
+     stream; ⚑ audit: the `{1,7,31}` G1's row quotes is the *combined* probe
+     stream, which carries a reverse-video face — re-run on a `keyword`-only
+     shape the conviction is `{}` → `{1,31}`. The row must pin the set ITS OWN
+     probe emits) · **M3** `text-close-resets` (G2's `(3,3)`,`(3,4)` and G3's
      `(8,1)`,`(8,2)` → `{}`; G4's `z,w` → `{}`) · **M4** `join-drops-the-attrs` ·
      **M5** `join-keeps-the-outer-fg` · **M6** `join-keeps-the-inner-fg`
      (**shape (a) unchanged, only (b) convicts** — the reason G4 has two shapes)
@@ -674,13 +720,34 @@ cannot be reading two different fixtures.
   - **Face-aware incremental redraw** — **E180** (`:444`, `LEDGER.md:299`),
     minted `3d3e931`. **E175 creates it**; it is unreachable today because
     `render-to-ansi-delta` (`:733-737`) is a full redraw.
-  - **An attrs clear-mask on `Face`** — the NEEDS-AUTHOR item's option (ii).
-    **Recorded, not deferred: there is no row and this SPEC does not mint one**,
-    because minting a row for a shape the author has not chosen is the phantom in
+  - **An attrs clear-mask on `Face`** — decision 14's option (ii). **Recorded,
+    not deferred: there is no row, and the AUTHOR has ruled that none is minted**
+    (`6a5ffa2`) — a face that can say *not bold* is a new requirement, not
+    residue E175 incurs. ⚑ **The audit second-guessed that call and agrees, with
+    one measurement the ruling did not need but is stronger for:** the *open* has
+    always been a delta — `face-sgr (face "default" -1 -1 0)` is `""` — so the
+    body of a `"default"` face inside a `keyword` renders bold **today**, before
+    E175. E175 changes only the CLOSE, where it removes an *accidental* clear
+    that nothing in the tree relies on (14 live `r-face` sites, all single-leaf,
+    none nesting, and no `"default"` construction outside `default-faces`). The
+    inability of a face to turn an attribute off is therefore **pre-existing and
+    unchanged**, not incurred here. Minting a row for it would be a phantom in
     the other direction.
   - **Deleting the dead `prev` slot** — real, unrelated, and doing it inside E175
     would make G1 grade two changes at once (decision 7). Not an element.
   - **`r-hole`'s dead `(put "")`** (`:713`) — E174's residue, and E175's control.
+  - **⚑ A stale E175 claim in LIVE SOURCE, found by the audit and recorded with
+    its cost.** `lib/prelude/doc.chiral:182` reads *"E175 (nested `r-face` resets
+    rather than restores)"* — the **withdrawn nesting framing**, in the same
+    comment that names E158 commit 4 as blocked on E174 and E175. It is also the
+    lone `r-face` hit this SPEC cites at blob `:2176`, which is exactly how the
+    audit found it. **The cost is measured and it is why this is recorded rather
+    than folded into commit 3:** `lib/prelude/doc.chiral` **IS** inside
+    `prog/compiler.prog`'s import closure (that is why the comment reaches the
+    blob at all), so editing it — comment or not — changes compiler source and
+    **trips the self-host obligation decision 13 says does not fire.** Correcting
+    one stale sentence would turn a no-fixpoint element into a fixpoint element.
+    Named here so it is neither missed nor smuggled in.
   - **Display width (E177)** and **`r-table`'s two layouts (E178)** — both
     minted, both in `render.chiral`, neither touched.
 
@@ -752,3 +819,127 @@ not. `apc.chiral` encodes and decodes the `r-face` constructor's first field —
 constructor is applied at 11 sites, all inside `render.chiral`. The real blast
 radius is one module. I inflated the cost of the option I then declined; the
 decision above does not rest on that cost, and stands without it.
+
+
+---
+
+## SPEC audit (2026-08-31) — the implement-ready gate
+
+**Verdict: PASS.** Charter run by hand in `/workspace/chirality-verify` @ `e158-doc`
+(`6a5ffa2`); `tools/pack/pack.py` still probes `examples/` and was **not**
+repointed. Findings applied in place above are marked *(audit …)* at the point of
+the claim; nothing author-tier was resolved.
+
+### ⚑ The "BUILT AND RUN" claim HOLDS — independently re-run, not read
+
+The audit rebuilt the whole §4 change from this file's own instructions into a
+**real-directory** copy of `bin lib prog tools` outside the repo, applied the four
+`row.sh` edits, and ran the suite. What it measured:
+
+- **`assertions: 211 passed, 0 failed`, `chirality test: gate PASSED`, exit 0.**
+  Phase 13 `30`, Phase 14 `26`, **Phase 15 `41 passed, 0 failed`**.
+- `chirality check` **OK** on `lib/protocol/render.chiral` and, unchanged,
+  `lib/protocol/apc.chiral`.
+- `prog/scriba/scriba-main.prog`, `prog/scriba/samples/t6_apc_roundtrip.prog` and
+  `prog/compiler.prog` — **all three OK, unedited**.
+- `row.sh`'s census: **73 → 76** names, each defined once tree-wide.
+- The four-node probe reproduces §2's byte string **exactly**, including
+  `@[1m@[31m@[4m@[31m@[5;1Hxy@[0m@[0m@[5;3Hzw@[0m@[0m` for node C.
+- §2's before/after cell map reproduces **cell for cell and set for set** — six
+  cells move, the six the defect loses, and nothing else.
+- The fixed stream's **final four bytes are `27 91 48 109`** (G5).
+- **G4's four maps are exact**: fixed (a) `x,y,z,w {1,32}` / `p,q {1,31}`, (b)
+  `x,y,z,w {1,7,31}` / `p,q {1,31}`; unfixed `z,w,p,q {}` in both.
+- **The `row.sh:595` trap is real.** With the other three edits in place and this
+  one omitted, Phase 15 reports **`39 passed, 2 failed`** — the fix reddens the
+  gate. (⚑ by a different mechanism than the SPEC stated; corrected at decision 8.)
+- **Mutants re-run and convicting exactly as logged:** M1 (`{}`→`{1}`, and the
+  tail gains `27 91 49 109`) · M3 (G2 `(3,3)/(3,4)` and G3 `(8,1)/(8,2)` →`{}`;
+  G4's `z,w`→`{}`) · M4 ((a) `z,w {32}`, `p,q {31}`; (b) `z,w {31}`, `p,q {31}`)
+  · M5 ((a) `{1}`; (b) `z,w {1,7}`, `p,q {1}`) · M6 (**shape (a) COMPLETELY
+  unchanged**, (b) `z,w {1,7}`) · M7 (**cell map byte-for-byte identical**, raw
+  stream gains `@[0m@[1m@[31m` between `<?>h` and `@[8;1H`) · M10
+  (`load: lambda checked against a non-function type`) · M11 (`load: unknown name
+  amb`) · M12 (`load: type mismatch`, *with the declared shape* — see G8(iii)).
+  M2 convicts (SGR leaks past cells that must be `{}`) with a probe-dependent set.
+  M8 and M9 were observed **green in the live suite** rather than re-derived.
+- **G1's trailing unfaced sibling is load-bearing, checked by removing it:** on
+  the solo shape `(r-face "keyword" (r-text "ab" false))` both M1 and M2 produce
+  cell maps **byte-for-byte identical** to the fixed tree. The row would be
+  self-matching without it.
+- **Decision 13 stands, re-measured:** `prog/compiler.prog`'s blob is **16 161**
+  lines with **zero** `render-to-ansi` / `r-text` / `face-sgr` / `ansi-reset`, its
+  lone `r-face` hit at blob `:2176` a comment from `lib/prelude/doc.chiral:182`.
+  No `C1`, no promotion, no `cmp`.
+- Also re-derived: **14** live `r-face` sites (and the two test files only *match*)
+  · **41** real `render-to-ansi-full` applications in `prog/`, **0** `-delta`
+  (its one textual hit is a comment at `command-loop.chiral:12`), **0** bare ·
+  `diag.sh`/`doc.sh` name `render-to-ansi` **nowhere** · `face-join`,
+  `rnd-face-plain`, `rnd-restore` at **zero** occurrences across `lib prog tools`
+  · `CONFORMANCE-MAP` **0** rows for E174–E180 · E177/E178/E179/E180 carry catalog
+  **and** ledger rows at the cited lines · Phase **16** free.
+
+### FIXes applied above
+
+1. **§4 commit 1's placement does not compile.** "the three `def`s after
+   `face-sgr`'s body (`:195`)" fails with **`load: unknown name ansi-reset`** —
+   `ansi-reset` is an undeclared `def` at `:325`. Tightened to *after the `ansi-*`
+   block (`:323-330`)*, with the measurement.
+2. **§3 decision 8's mechanism.** Not `mutlib`'s stale-pattern guard (M10's first
+   sed still applies, so `cmp -s` passes) — the mutant `lib/` fails to **compile**.
+   Conclusion and required edit unchanged; measured `39 passed, 2 failed`.
+3. **§5 G8(iii) / M12 was toothless as written.** A bare seven-argument call bound
+   to `_` is a **partial application** and compiles clean; only the declared
+   `row.sh:236` shape yields `load: type mismatch`. Row now names the `declare`.
+4. `rnd-cols`'s `r-face` arm is **`:515`**, not `:513`.
+5. `default-faces` has **eleven** rows, not twelve.
+6. `(face …)` is applied at **twelve** sites, not eleven (the eleven rows plus
+   `lookup-face`'s `nil` synthesis at `:163`) — all in `render.chiral`.
+7. `row.sh` helper citations: `build_out` **`:103`**, `mutlib` **`:125-136`** with
+   its guard at **`:132-134`**, `SCREEN_AWK` **`:152-177`**, `pin` **`:645-650`**
+   (calls `:651-654`).
+8. **§4 commit 3's INDEX correction is already done** — `d853c62`, this SPEC's own
+   commit, already replaced *bytes* with *SCREEN* at `docs/examples/INDEX.md:136`.
+   Left as an instruction it is a stale pattern one document up.
+9. §1's and §4's "gain an **eighth** argument" is true only of
+   `render-to-ansi`'s callers (`rnd-emit-headers` gains a fourth, `render-table`
+   a sixth, …); now "a trailing `Face` argument". §4 also now names the two call
+   sites — `:570` and `:578` — where the new argument does **not** go at
+   end-of-line, which is a paren-balance trap the audit hit while building it.
+10. **The symlink trap is now an OBLIGATION in §4's standing rules**, not a war
+    story in §6, with the explicit `[ -L "$SCRATCH/lib" ]` check.
+11. §6's M2 conviction `{}` → `{1,7,31}` is probe-dependent (`7` needs a
+    reverse-video face, which G1's face list does not carry); qualified.
+12. **A stale E175 claim in live source** — `lib/prelude/doc.chiral:182` still
+    says *"nested `r-face` resets rather than restores"* — recorded in §6 **with
+    its measured cost**: that file IS inside `prog/compiler.prog`'s closure, so
+    correcting it inside E175 trips the fixpoint decision 13 says does not fire.
+13. **Decision 14's disposition updated** to the author's ruling (`6a5ffa2`).
+
+### FLAG — author-tier, surfaced verbatim, not resolved
+
+> **FLAG A — the two miscounts also appear inside the author's own appended
+> decision block, which this audit will not edit.** That block reads: *"The
+> `(face …)` constructor is applied at 11 sites, all inside `render.chiral`."*
+> Measured at the audit: **twelve** — `default-faces`' eleven rows (`:145-157`)
+> plus `lookup-face`'s `nil` synthesis (`:163`). The load-bearing half, *all
+> inside `render.chiral`*, is correct, and the ruling explicitly does not rest on
+> the cost, so nothing about the decision changes. The author's text is the
+> author's to amend.
+
+### On decision 14's option (ii) — the audit was asked to second-guess it, and it agrees
+
+**(ii) is not residue E175 incurs.** The ruling's own argument is right, and one
+measurement makes it stronger than it needed to be: the **open has always been a
+delta** — `face-sgr (face "default" -1 -1 0)` is `""` — so the *body* of a
+`"default"` face nested inside a `keyword` renders bold **today**, before E175.
+The inability of a face to turn an attribute off inside its own body is therefore
+**pre-existing and untouched by this element**. What E175 changes is the CLOSE,
+and there it removes an *accidental* clear that nothing relies on: the census is
+14 live `r-face` sites, every one a single `r-text`, none nesting, and no `(face
+…)` construction anywhere outside `default-faces` and `lookup-face`. A face that
+can say *not bold* is a capability nobody has asked for and nothing exercises —
+**a requirement, not residue**, and minting a row for it would be the phantom in
+the other direction. The split the ruling makes is also the right one: the half
+that IS a defect — an unknown name and `"default"` being indistinguishable — is
+`lookup-face` synthesizing rather than failing, which is **E179**, minted.
