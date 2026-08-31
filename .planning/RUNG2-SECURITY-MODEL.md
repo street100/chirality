@@ -1,7 +1,7 @@
 # Rung-2 capability & security model — invariants, posture, ceremony
 
 > Companion to `.planning/RUNG2-MICROVM-MAP.md` (the build map: drivers + programs)
-> and `SECURE-DATUM-MODEL.md` (the CPU+RAM threat model). **This doc is the
+> and `docs/definitions/secure-datum-model.md` (the CPU+RAM threat model). **This doc is the
 > authority/security architecture** that constrains *how* the rung-2 substrate is
 > built: what is invariant, what is configurable, how blast radius is bounded, and
 > how legitimate change happens. **Seated, not scheduled.** Where it cites unbuilt
@@ -10,7 +10,7 @@
 > Provenance: worked out in the 2026-08-10 design session. Grounds on
 > `node-architecture.md`, `permission-model.md`, `decision-effect-facets.md`,
 > `decision-reflective-floor.md`, `decision-deployment-custody.md`,
-> `decision-profiles.md`, `axis-typeability.md`, `SECURE-DATUM-MODEL.md`.
+> `decision-profiles.md`, `axis-typeability.md`, `docs/definitions/secure-datum-model.md`.
 
 ---
 

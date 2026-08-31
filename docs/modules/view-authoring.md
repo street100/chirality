@@ -88,7 +88,7 @@ confidential, register keyed, integrity by MAC or Merkle, versioned, clear
 window bound, refresh interval, split k of n, constant time, and `datum-policy`
 weaves the mechanism: derive in register, decrypt into a bounded window, verify
 against the root, re-encrypt, relocate. You name the policy, not the ceremony.
-See [[modules-custody]] and [SECURE-DATUM-MODEL](../../SECURE-DATUM-MODEL.md).
+See [[modules-custody]] and [SECURE-DATUM-MODEL](../definitions/secure-datum-model.md).
 The stronger shortcut is not settled: whether a classification carried in the
 type auto selects the minimum tier, so forgetting to split a secret is a type
 error rather than an oversight, is edge 4 in [[open-edges]]. Hardware is not a

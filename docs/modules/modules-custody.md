@@ -43,7 +43,7 @@ weaves (information flow, taint, constant time) live in A, in
 [[modules-security]]. The mechanism it produces is C.
 
 The secure datum model is the threat model and layer stack this implements. See
-[SECURE-DATUM-MODEL](../../SECURE-DATUM-MODEL.md). The register root it derives from
+[SECURE-DATUM-MODEL](../definitions/secure-datum-model.md). The register root it derives from
 is a B module; see [[modules-substrate]].
 
 ## Why these are C and not A

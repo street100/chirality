@@ -53,7 +53,7 @@ The type level B mark is checked above the typed assembly floor on every target.
 Where the hardware exists, the CHERI floor enforces the same mark in silicon as
 an additive layer, so the membrane declared in the signature is also real at the
 metal. The mark holds with or without that hardware. See [[modules-lowering]] and
-[SECURE-DATUM-MODEL](../../SECURE-DATUM-MODEL.md).
+[SECURE-DATUM-MODEL](secure-datum-model.md).
 
 ## Note on the dumps
 

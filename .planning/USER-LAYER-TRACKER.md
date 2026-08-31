@@ -263,7 +263,7 @@ schema-conformant page.
    the move.
 
 **Debris to clear in the same pass** (measured 2026-08-30): `MAP.md` tells the
-reader to read `PERSONA.md`, which is not in the public repo · `sys-tal.chiral`
+reader to read `.planning/PERSONA.md`, which is not in the public repo · `sys-tal.chiral`
 exists at the root **and** at `scaffold/lib/sys-tal.chiral` · `E91-host-scale.sh`
 is a one-off stress script at the root · the mirror's `bin/` carries five ~1 MB
 `chirality-bin.*` binaries · `scaffold/lib/agent/` is an empty named home.

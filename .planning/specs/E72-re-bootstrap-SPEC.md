@@ -28,7 +28,7 @@ updated: 2026-08-02
      `Stage` (the climb steps 0–4, each with what it does + what checks it),
      `Breaker` (the chain-breakers, each pinned to a named obligation). Total,
      pure, loads clean — the shape a future `chirality climb --verify` consumes.
-  2. `BOOTSTRAP.md` (NEW) — the human-facing climb instructions (the manifest in
+  2. `docs/definitions/bootstrap.md` (NEW) — the human-facing climb instructions (the manifest in
      prose): from "any Linux box + any language" back to native self-checked
      chirality, no trusted binary anywhere.
   3. The **ship-list** definition — which artifacts the packaged form carries
@@ -61,7 +61,7 @@ updated: 2026-08-02
     unexplained constants); the ownership-story precedent already in the tree.
   - `.planning/SELF-HOST-PLAN.md` — ownership requirements 1–2 (the spec this
     makes checkable).
-- **True delta:** the two new files (`lib/climb.chiral`, `BOOTSTRAP.md`) + the
+- **True delta:** the two new files (`lib/climb.chiral`, `docs/definitions/bootstrap.md`) + the
   ship-list. The manifest *describes* a climb whose stages are built by other
   elements; E72 owns the description + its checkability, not the stages.
 
@@ -88,8 +88,8 @@ E53 + determinism debts), tracked in §6 — not decisions.
   prior-stage output, never a shipped binary). Total, pure, loads clean.
 - **Size:** ~M.
 
-### Step 2 — `BOOTSTRAP.md`: the prose climb
-- **Target:** `BOOTSTRAP.md` (NEW, repo root).
+### Step 2 — `docs/definitions/bootstrap.md`: the prose climb
+- **Target:** `docs/definitions/bootstrap.md` (NEW, repo root).
 - **Change:** the human-facing instructions — the five stages in prose, the two
   trust roots (audited prose + the human reading it), the ref-bank re-derivation
   step. Points at `docs/tal-spec.md` (E71) as the weekend-leg source.
@@ -114,7 +114,7 @@ E53 + determinism debts), tracked in §6 — not decisions.
 
 - **Golden behavior (now):** `lib/climb.chiral` loads, is total/pure, and its
   manifest faithfully enumerates the stages + breakers (each breaker pinned to a
-  real obligation on a named element). `BOOTSTRAP.md` prose matches the manifest
+  real obligation on a named element). `docs/definitions/bootstrap.md` prose matches the manifest
   data.
 - **Golden behavior (the ownership claim, gated):** a fresh party with no chirality
   binary completes stages 1–4 and every check passes; a deliberately-corrupted
@@ -123,7 +123,7 @@ E53 + determinism debts), tracked in §6 — not decisions.
   claim. Lands when the cluster gates clear (§6).
 - **Tests to add (`scaffold/tests/test_climb.py`, NEW):**
   1. **Load + totality:** `lib/climb.chiral` elaborates; `climb`/`breakers` total.
-  2. **Manifest ↔ prose:** the stages/breakers in the data match `BOOTSTRAP.md`
+  2. **Manifest ↔ prose:** the stages/breakers in the data match `docs/definitions/bootstrap.md`
      (a structural check that the two forms agree).
   3. **Breaker coverage:** every `Breaker` names an element/obligation that
      exists in the plan (no dangling pin).

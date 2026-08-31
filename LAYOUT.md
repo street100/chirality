@@ -88,6 +88,9 @@ lib/
   evidence/    cross-checked truth
 prog/          what chirality ships, as distinct from what it is
 tools/         one folder per tool
+/                  README.md · PRINCIPLES.md · LAYOUT.md · HANDOFF.md, and
+                   nothing else. A document at root is one a stranger or a tool
+                   opens first; everything else sorts into a tier below.
 docs/
   index.md         the hub. Notes link by [[slug]], never by path, so a note
                    moves between roles without touching a single link.

@@ -25,7 +25,7 @@ The machine starts. The master secret is established in registers at boot, a
 passphrase turned into a key schedule computed in register and never written to
 RAM (TRESOR style). This is the base of all trust, the one location the in scope
 threat cannot reach. See `register-root` in [[modules-substrate]] and
-[SECURE-DATUM-MODEL](../../SECURE-DATUM-MODEL.md).
+[SECURE-DATUM-MODEL](secure-datum-model.md).
 
 Honest limit: this is the pre-IOMMU boot window, where DMA is wide open. The
 CPU and RAM only model does not cover it; closing it needs measured boot. The

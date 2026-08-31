@@ -1,7 +1,7 @@
 # chirality — project map
 
 Read this first to orient. It is the layout of the whole project on one screen,
-with links into the detail. For how to work here, read `PERSONA.md` (internal
+with links into the detail. For how to work here, read `.planning/PERSONA.md` (internal
 working doc; not part of the public mirror).
 
 Draft, 2026-06-16; scaffold running since 2026-07-05. Developmental.
@@ -17,12 +17,21 @@ checkable. See [PRINCIPLES.md](PRINCIPLES.md).
 
 ## The spine (root, locked, plain markdown)
 
-- [PRINCIPLES.md](PRINCIPLES.md) — five principles, one thesis (condensed from
-  seven 2026-07-20; a crosswalk in the doc keeps old P1–P7 citations resolving).
-- [SECURE-DATUM-MODEL.md](SECURE-DATUM-MODEL.md) — CPU and RAM only defense
-  against peripheral DMA; register root, derive not store.
-- `PERSONA.md` — how to work here (internal; not in the public mirror).
+Root holds four documents and nothing else. Everything that used to float there
+was sorted on 2026-08-31 into the tier it belongs to.
+
+- [README.md](README.md): the public front door.
+- [PRINCIPLES.md](PRINCIPLES.md): five principles, one thesis (condensed from
+  seven 2026-07-20; a crosswalk in the doc keeps old P1-P7 citations resolving).
+- [LAYOUT.md](LAYOUT.md): the tree contract. Extensions, module key, doc roles.
+- [HANDOFF.md](HANDOFF.md): state and route. Where a session starts.
 - This map.
+
+Moved out, and where they went:
+[secure-datum-model](docs/definitions/secure-datum-model.md) and
+[bootstrap](docs/definitions/bootstrap.md) are named concepts, so they are notes
+in the design base. `.planning/PERSONA.md` and `.planning/UMBRELLA.md` are
+internal working documents, and `.planning/MIGRATION-MAP.tsv` is a record.
 
 ## The design base (docs/, linked notes)
 

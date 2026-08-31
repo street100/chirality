@@ -23,7 +23,7 @@ holds evidence about rather than proof of.
 Peripherals that write host memory directly, past every type and capability
 check. The core threat in the secure datum model. A device can read and write
 physical memory no matter what the program does, so software cannot prevent it;
-it can only raise the cost. See [SECURE-DATUM-MODEL](../../SECURE-DATUM-MODEL.md).
+it can only raise the cost. See [SECURE-DATUM-MODEL](../definitions/secure-datum-model.md).
 
 ## foreign
 

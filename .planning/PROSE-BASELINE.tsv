@@ -300,6 +300,7 @@ density	hits	lines	file
 14.90	38	255	docs/examples/E156-sort-adopt.md
 14.88	32	215	.planning/SCAFFOLD-NEXT.md
 14.76	31	210	docs/examples/E104-pty-crossings.md
+14.71	15	102	.planning/DOC-AUDIT-QUEUE.md
 14.69	31	211	docs/examples/E76-tal-check-chokepoint-port.md
 14.67	27	184	docs/examples/E14-pretty-printer.md
 14.62	19	130	docs/definitions/permission-model.md
@@ -358,7 +359,6 @@ density	hits	lines	file
 11.68	32	274	docs/examples/E125-sock-use.md
 11.67	14	120	docs/benchmarks/growing-allocator-scale.md
 11.59	8	69	docs/examples/_TEMPLATE.md
-11.46	18	157	MAP.md
 11.44	23	201	docs/examples/E08-linear-kinds.md
 11.42	37	324	.planning/PREGEN-MOMENTS.md
 11.37	29	255	docs/examples/E111-cell-store.md
@@ -391,6 +391,7 @@ density	hits	lines	file
 9.95	21	211	docs/examples/E33-process-spawn.md
 9.84	12	122	docs/decisions/decision-split-checker.md
 9.80	5	51	docs/modules/modules-substrate.md
+9.71	10	103	.planning/FINDING-datum-model-write-adversary-2026-08-31.md
 9.68	24	248	PRINCIPLES.md
 9.63	26	270	docs/examples/E09-refinement.md
 9.58	30	313	docs/examples/E140-profiles-docrefine.md
@@ -399,6 +400,7 @@ density	hits	lines	file
 9.45	31	328	docs/examples/E138-run-loop.md
 9.38	3	32	docs/definitions/insp-erlang-beam.md
 9.13	21	230	docs/examples/E139-be-log.md
+9.04	15	166	MAP.md
 9.03	13	144	docs/modules/view-runtime.md
 9.02	11	122	docs/definitions/glossary.md
 8.84	29	328	docs/examples/E94-form-type-capacity.md
@@ -410,7 +412,7 @@ density	hits	lines	file
 8.40	22	262	.planning/FORK-C-UNROLLED.md
 8.40	10	119	docs/definitions/joining-law.md
 8.11	21	259	docs/examples/E03-nbe-normalize.md
-8.00	6	75	PERSONA.md
+8.00	6	75	.planning/PERSONA.md
 7.98	15	188	docs/examples/E27-dict-set-to-maps.md
 7.79	18	231	docs/examples/E97-skip-chain-diagnostics.md
 7.75	30	387	docs/examples/E92-effect-chain-decoupling.md
@@ -446,13 +448,13 @@ density	hits	lines	file
 4.73	13	275	.planning/scriba-examples/S13-vim-modes.md
 4.56	15	329	docs/examples/E102-sexp-enhancements.md
 4.41	3	68	docs/modules/modules-bridges.md
-4.31	5	116	LAYOUT.md
 4.29	3	70	docs/modules/modules-lowering.md
 4.24	5	118	docs/definitions/relations.md
+4.20	5	119	LAYOUT.md
 4.12	4	97	docs/modules/module-map.md
 4.03	6	149	.planning/specs/S13-vim-modes-SPEC.md
 3.88	10	258	.planning/CHATTER-QUALITY-DIAGNOSIS.md
-3.80	6	158	SECURE-DATUM-MODEL.md
+3.80	6	158	docs/definitions/secure-datum-model.md
 3.77	2	53	docs/modules/modules-custody.md
 3.77	2	53	docs/decisions/decision-b-in-type.md
 3.64	2	55	docs/definitions/bootstrap-sequence.md
@@ -466,7 +468,7 @@ density	hits	lines	file
 2.74	2	73	docs/definitions/splitting-law.md
 2.50	1	40	docs/definitions/thesis.md
 2.33	1	43	docs/examples/refs/ref-poll.md
-1.89	2	106	BOOTSTRAP.md
+1.89	2	106	docs/definitions/bootstrap.md
 1.80	2	111	CLAUDE.md
 1.75	6	343	docs/examples/E131-sse-stream.md
 1.63	4	246	docs/definitions/syscall-map.md

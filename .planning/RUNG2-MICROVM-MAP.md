@@ -415,4 +415,4 @@ exist yet** and would need to be created for this arc:
 Existing homes to extend, not reinvent: **E42** (supervisor), **E80** (cap
 grant to main), **E34** (boot image), **E81** (Alloc seam), **E103/E105/E98**
 (terminal/IO shapes), the **`chirality-bare` profile** (composition), and
-**`SECURE-DATUM-MODEL.md` + `decision-reflective-floor.md`** (the security spine).
+**`docs/definitions/secure-datum-model.md` + `decision-reflective-floor.md`** (the security spine).

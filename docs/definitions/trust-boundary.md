@@ -132,7 +132,7 @@ honest security statement changes between them, but is not complete at rung 1:
   (TRESOR-style key schedule; [[bootstrap-sequence]], [[modules-substrate]]),
   critical sections, and CHERI bounds move the secret root and the physical
   guarantees off "the OS will not let it" onto silicon — the full
-  [SECURE-DATUM-MODEL](../../SECURE-DATUM-MODEL.md) story. Rung 2 **completes
+  [SECURE-DATUM-MODEL](secure-datum-model.md) story. Rung 2 **completes
   sovereignty**.
 
 So even a fully self-hosted rung-1 chirality must still state secret custody as
@@ -141,7 +141,7 @@ OS-trusted, not enforced; only rung 2 closes that gap. The ladder's home is
 
 ## Relationship to the other trust notes
 
-- [SECURE-DATUM-MODEL](../../SECURE-DATUM-MODEL.md) is the *threat model and target
+- [SECURE-DATUM-MODEL](secure-datum-model.md) is the *threat model and target
   layer stack* — what the finished system defends against. This note is the
   *current* base, far below it.
 - [[permission-model]] is the *design* of authority; its status banner records

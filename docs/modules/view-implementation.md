@@ -153,4 +153,4 @@ cross-side ratios only ([[decision-backend]],
 The dumps' own speedup multipliers remain fabricated — the benchmark did not test
 them — and their LOC budgets are rejected outright as estimate theater for a
 language that does not exist ([[dump-integration]]). See
-[SECURE-DATUM-MODEL](../../SECURE-DATUM-MODEL.md).
+[SECURE-DATUM-MODEL](../definitions/secure-datum-model.md).

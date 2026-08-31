@@ -170,7 +170,7 @@ leak to a socket), `tomodachi` (effect-gated behavior pack), `wl-client`
 | design docs | [`docs/`](docs/): start at [`docs/index.md`](docs/index.md) |
 | benchmarks | [`docs/benchmarks/`](docs/benchmarks/): native codegen vs `gcc -O2` + growing-allocator scale |
 | worked examples | [`examples/`](examples/), indexed in [`examples/INDEX.md`](docs/examples/INDEX.md) |
-| threat model | [`SECURE-DATUM-MODEL.md`](SECURE-DATUM-MODEL.md) |
+| threat model | [`docs/definitions/secure-datum-model.md`](docs/definitions/secure-datum-model.md) |
 | principles | [`PRINCIPLES.md`](PRINCIPLES.md) |
 | project map | [`MAP.md`](MAP.md) |
 

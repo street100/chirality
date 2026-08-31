@@ -42,7 +42,7 @@ spot-checked its defect-ledger claims against code where load-bearing);
 `view-*` and `insp-*` notes (self-declared derivative: "the notes win on
 conflict"); the bodies of the worked examples other than the INDEX (pre-runs,
 not claims); the three sibling-project `.planning/` trees (stale per the repo's
-own editing note); `SECURE-DATUM-MODEL.md` beyond orientation (it is a target
+own editing note); `docs/definitions/secure-datum-model.md` beyond orientation (it is a target
 threat model, and `trust-boundary.md` already concedes the full distance to it,
 so auditing it against code would re-derive a conceded gap).
 

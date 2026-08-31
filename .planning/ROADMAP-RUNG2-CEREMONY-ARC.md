@@ -156,7 +156,7 @@ covering:
 - `RUNG2-MICROVM-MAP.md` — the concrete libkrun realization: boot stages
   (P1–P7), drivers (D0–D5), first-time setup + manifest (§5.5), boot-chain
   integrity (§5.6).
-- `SECURE-DATUM-MODEL.md` — the threat model and per-datum security
+- `docs/definitions/secure-datum-model.md` — the threat model and per-datum security
   disciplines: register-root, split/refresh, moving-target, clear-window,
   chaff, robust-shares.
 - `decision-deployment-custody.md` — the "acquire→stage→certify" pattern; the

@@ -5,7 +5,7 @@ place, each with its catalog/docs home and build-state, THEN back-check the
 rung-1 goals against it — so rung 1 is provably building *toward* rung 2 and
 not into a corner. Authorities: `SELF-HOST-PLAN.md` (the ladder),
 `docs/trust-boundary.md` (what each rung converts, C8),
-`SECURE-DATUM-MODEL.md` (the rung-2 threat model),
+`docs/definitions/secure-datum-model.md` (the rung-2 threat model),
 `docs/decision-deployment-custody.md` (key-level rung split), the catalog
 (`SELF-IMPLEMENT-CATALOG.md` §VII trust lane), `docs/time-and-clocks.md`
 (edges 19/20). This map ADDS no elements and settles no decisions — absences

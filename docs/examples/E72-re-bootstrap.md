@@ -179,7 +179,7 @@ the shape a `chirality climb --verify` command would consume.
 
 ## 6. Use / modify notes
 
-- **Lands in:** a `BOOTSTRAP.md` (the human-facing climb instructions — the
+- **Lands in:** a `docs/definitions/bootstrap.md` (the human-facing climb instructions — the
   manifest above in prose) + `lib/climb.chiral` (the checkable manifest data) +
   the ship-list wired into whatever packaging stage 9 ends with. Gated on:
   E71 ratified (spec-as-golden — E72 is that decision's strongest argument),
