@@ -1,5 +1,6 @@
 (import "prelude/prelude")
 (import "ports/ports")
+(import "protocol/utf8")
 
 ; ─── Data declarations ───
 
@@ -59,6 +60,20 @@
 (declare rnd-diff-tree (-> Rendering Rendering (List Rendering) (List Rendering) Rendering Diff))
 
 (declare ansi-goto (-> I64 I64 Str))
+
+; ─── E174: the width function (pure) — declares ───
+
+(declare cp-count (-> (List I64) I64 I64))
+
+(declare str-cols (-> Str I64))
+
+(declare rnd-cols (-> Rendering I64))
+
+(declare rnd-cols-max (-> (List Rendering) I64 I64))
+
+(declare rnd-hdr-cols (-> (List Str) I64 I64))
+
+(declare rnd-row-cells (-> (List (List Rendering)) I64 I64 I64))
 
 (declare render-to-ansi
   (=> Rendering (Pair I64 I64) (Maybe Rendering)
@@ -304,6 +319,162 @@
     (str-cat (str-cat (str-cat (str-cat ansi-esc "[") (i64->str row)) ";")
              (str-cat (i64->str col) "H"))))
 
+; ─── E174: the eight layout constants, read by BOTH the emitter and rnd-cols ─
+;
+; Every one of these was a bare literal inside an emitter: the 2 at
+; render-section's body indent, the 2 at render-tree's child indent, the 16 at
+; rnd-emit-one-row's cell step, the 2 at rnd-emit-headers' gutter, and the four
+; decoration strings render-to-ansi prints around a node's own content.
+;
+; Two literals that must agree across a function boundary is a bolted-on
+; invariant; ONE `def` read by both sides is the substrate version. The emitters
+; below are edited to read these names — hoisting the constant without
+; repointing its emitter buys nothing, and Phase 15's M11 is the row that proves
+; the two readers are wired to one definition.
+(def rnd-tree-indent     I64 2)
+(def rnd-section-indent  I64 2)
+(def rnd-table-cell      I64 16)
+(def rnd-header-gutter   I64 2)
+(def rnd-collapsed-mark  Str " [+]")
+(def rnd-hole-mark       Str "<?>")
+(def rnd-stream-open     Str "[")
+(def rnd-stream-close    Str " — live stream]")
+
+; ─── E174: str-cols — a Str's width in TERMINAL COLUMNS ─────────────────────
+;
+; THE UNIT IS IN THE NAME, deliberately. `str-len` counts BYTES (it lowers to
+; nb-blen); this module's own `" — live stream]"` is 17 bytes and 15 columns, so
+; a byte count is a measured wrong answer for the one non-ASCII literal the
+; module already owns.
+;
+; The body counts CODEPOINTS, via protocol/utf8's decoder. That is strictly
+; better than bytes and it is still not the final answer:
+;   · CJK / full-width codepoints occupy 2 cells, counted here as 1;
+;   · combining marks and ZWJ occupy 0 cells, counted here as 1;
+;   · U+2014 (the em dash above) is East-Asian AMBIGUOUS — 1 column narrow,
+;     2 in CJK-legacy — the one class where wcwidth implementations legitimately
+;     disagree, so the table has to take a stance rather than copy one.
+; The wide-cell table is E177, with E174 as its first consumer: E177 changes the
+; BODY of this function. The seam and the signature do not move.
+;
+; Cost, stated: O(n) per call where str-len was O(1), once per node per render.
+(def cp-count
+  (lam (cps acc)
+    (case cps
+      (nil acc)
+      ((cons c t) (cp-count t (+ acc 1))))))
+
+(def str-cols
+  (lam (s) (cp-count (decode-utf8 (str->bytes s)) 0)))
+
+; ─── E174: rnd-cols — the per-node advance width ────────────────────────────
+;
+; ⚑ THE ELEMENT IS THIS, not the constructor. `r-row` lays its children left to
+; right, so it must know how far each child advances the column. Nothing in
+; `Rendering` ever had to answer that: r-lines steps the row and HOLDS the
+; column, r-table uses a hardcoded grid, r-face does not move the cursor at all.
+;
+;   rnd-cols n  =  the number of terminal columns n advances the cursor by,
+;                  measured from n's own `col`.
+;
+; It is an ADVANCE, and for a node that occupies several rows it is the widest
+; of them — the only number under which `r-row` can place a stacked child beside
+; something else without the two overlapping.
+;
+; ⚑ PRECONDITION, and it is a precondition rather than an imprecision: NOTHING
+; IN `Rendering` REFLOWS. No constructor carries a width field, render-to-ansi
+; clips by ROW (rd-in-view, below — `col` does not appear in it) and never wraps
+; by column, and ansi-nowrap turns the terminal's own wrapping off. So one `I64`
+; is the whole answer. If a wrapping constructor ever lands, THIS SIGNATURE IS
+; WRONG rather than merely imprecise, and a min/max measurement pair replaces it.
+;
+; Every arm is DERIVED from what the emitter below actually draws, through the
+; eight shared constants — never re-spelled here. No `_` arm: a new constructor
+; must break this function, which is the entire reason the cost of adding one is
+; knowable.
+(def rnd-cols-max
+  (lam (xs acc)
+    (case xs
+      (nil acc)
+      ((cons h t) (rnd-cols-max t (max acc (rnd-cols h)))))))
+
+; rnd-emit-headers puts header h at c and then advances c by str-len h PLUS the
+; gutter — including after the LAST header, whose advance the nil case consumes
+; and nothing is ever drawn in. So the header row's advance is
+; Σ widths + gutter × (n−1): n−1 gutters, not n. Folding n would bake a trailing
+; two-column separator into a width function whose own rule is that a row has no
+; implicit separator.
+;
+; RESIDUE, named rather than smoothed over: the emitter advances by `str-len`
+; (bytes) while this counts columns. They agree for every header the tree
+; actually produces (ASCII), and the disagreement is E177's unit story, not a
+; second definition here.
+(def rnd-hdr-cols
+  (lam (hs acc)
+    (case hs
+      (nil acc)
+      ((cons h t)
+        (case t
+          (nil (+ acc (str-cols h)))
+          ((cons h2 t2)
+            (rnd-hdr-cols t (+ acc (+ (str-cols h) rnd-header-gutter)))))))))
+
+; The widest row's CELL COUNT. `cur` counts the row being walked, `best` is the
+; max so far; a row ends when its cell list runs out. (Three arguments, where
+; the SPEC wrote two: counting cells per row and maxing across rows needs two
+; accumulators, and a second top-level helper would have been an eighteenth name
+; for the census to carry.)
+(def rnd-row-cells
+  (lam (rows cur best)
+    (case rows
+      (nil (max best cur))
+      ((cons cells rest)
+        (case cells
+          (nil (rnd-row-cells rest 0 (max best cur)))
+          ((cons c cs) (rnd-row-cells (cons cs rest) (+ cur 1) best)))))))
+
+(def rnd-cols
+  (lam (node)
+    (case node
+      ; the leaf: its own content, and bold is SGR, which paints no cell.
+      ((r-text content bold) (str-cols content))
+      ; ⚑ DEFINED against the GRID, not derived from the content. rnd-emit-headers
+      ; advances by content + gutter; rnd-emit-one-row advances by a fixed
+      ; rnd-table-cell and ignores the content entirely. The same r-table value
+      ; therefore has two column layouts, which is a measured defect and is E178.
+      ; The grid is what a body cell actually obeys, so the grid is the answer
+      ; here; E178 owns the fix, and Phase 15's table row is narrowed to the
+      ; region where the two agree and says so.
+      ((r-table headers rows)
+        (max (rnd-hdr-cols headers 0)
+             (* rnd-table-cell (rnd-row-cells rows 0 0))))
+      ; collapsed: the title and the fold mark, on one row. Open: the title, and
+      ; the body indented one level under it — the wider of the two.
+      ((r-section title collapsed body)
+        (case collapsed
+          (true  (+ (str-cols title) (str-cols rnd-collapsed-mark)))
+          (false (max (str-cols title) (+ rnd-section-indent (rnd-cols body))))))
+      ; A stream RESERVES NOTHING for content it does not carry: the emitter
+      ; draws a fixed placeholder, so the width is derived like every other arm.
+      ; A renderer that one day draws live content in place would need a declared
+      ; reservation FIELD on the constructor — a change to the constructor.
+      ((r-stream source-id)
+        (+ (str-cols rnd-stream-open)
+           (+ (str-cols source-id) (str-cols rnd-stream-close))))
+      ; render-tree indents EVERY child by rnd-tree-indent — but draws nothing at
+      ; all for nil, so an empty tree advances 0 and not a bare indent.
+      ((r-tree children selected)
+        (case children
+          (nil 0)
+          ((cons c cs) (+ rnd-tree-indent (rnd-cols-max children 0)))))
+      ; a vertical stack is as wide as its widest row.
+      ((r-lines children) (rnd-cols-max children 0))
+      ((r-hole label) (+ (str-cols rnd-hole-mark) (str-cols label)))
+      ; SGR bytes are NON-PRINTING, so a face occupies exactly its body — and
+      ; this arm is invariant under E175 (nested faces restoring the outer face
+      ; instead of resetting): no E175 fix changes one number in this function.
+      ((r-face face-name body) (rnd-cols body)))))
+
 ; ─── cursor geometry (pure) ────────────────────────────────────────────────
 
 ; Walk the buffer prefix text[0:limit], tracking the 1-indexed terminal
@@ -357,7 +528,7 @@
           (let ((_ (put ansi-bold)))
             (let ((_ (put h)))
               (let ((_ (put ansi-reset)))
-                (rnd-emit-headers rest r (+ c (+ (str-len h) 2)))))))))))
+                (rnd-emit-headers rest r (+ c (+ (str-len h) rnd-header-gutter)))))))))))
 
 (def rnd-emit-one-row
   (lam (cells dims row col)
@@ -365,7 +536,7 @@
       (nil unit)
       ((cons cell rest)
         (let ((_ (render-to-ansi cell dims none row col row col)))
-          (rnd-emit-one-row rest dims row (+ col 16)))))))
+          (rnd-emit-one-row rest dims row (+ col rnd-table-cell)))))))
 
 (def rnd-emit-rows
   (lam (rows dims row col)
@@ -384,12 +555,12 @@
   (lam (title collapsed body dims row col drow dcol)
     (let ((_ (put ansi-bold)))
       (let ((_ (put title)))
-        (let ((_ (case collapsed (true (put " [+]")) (false (put "")))))
+        (let ((_ (case collapsed (true (put rnd-collapsed-mark)) (false (put "")))))
           (let ((_ (put ansi-reset)))
             (case collapsed
               (true unit)
               (false
-                (render-to-ansi body dims none (+ row 1) (+ col 2) drow dcol)))))))))
+                (render-to-ansi body dims none (+ row 1) (+ col rnd-section-indent) drow dcol)))))))))
 
 (def render-tree
   (lam (children selected dims row col drow dcol)
@@ -398,7 +569,7 @@
       ((cons child rest)
         (let ((is-sel (rnd-is-selected child selected)))
           (let ((_ (case is-sel (true (put ansi-bold)) (false unit))))
-            (let ((_ (render-to-ansi child dims none row (+ col 2) drow dcol)))
+            (let ((_ (render-to-ansi child dims none row (+ col rnd-tree-indent) drow dcol)))
               (let ((_ (case is-sel (true (put ansi-reset)) (false unit))))
                 (render-tree rest selected dims (+ row 1) col drow dcol)))))))))
 
@@ -454,16 +625,16 @@
           (true
             (let ((_ (put (ansi-goto row col))))
               (let ((_ (put ansi-bold)))
-                (let ((_ (put "[")))
+                (let ((_ (put rnd-stream-open)))
                   (let ((_ (put source-id)))
-                    (let ((_ (put " — live stream]")))
+                    (let ((_ (put rnd-stream-close)))
                       (put ansi-reset)))))))))
       ((r-hole label)
         (case (rd-in-view dims row)
           (false unit)
           (true
             (let ((_ (put (ansi-goto row col))))
-              (let ((_ (put "<?>")))
+              (let ((_ (put rnd-hole-mark)))
                 (let ((_ (put label)))
                   (put "")))))))
       ((r-face face-name body)
