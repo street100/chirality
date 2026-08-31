@@ -2,8 +2,14 @@
 .claude/
 .claude-*/
 **/CLAUDE.md
+.scratch/
 *.orig
 *.rej
+
+# ── the planning tier is NOT tracked ─────────────────────────────────────────
+# `.planning/` is private working material: the element catalog, LEDGER, specs,
+# audits, handoffs, findings, captures. It stays on disk and out of git.
+.planning/
 
 # ── build outputs ────────────────────────────────────────────────────────────
 # bin/chirality-bin is COMMITTED on purpose: the source tree and the recompile
