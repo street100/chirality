@@ -98,10 +98,21 @@ def frontmatter_date(text: str) -> date | None:
     return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
 
 
+# ── the doc tier is RECURSIVE as of the 2026-08-31 role sort ─────────────────
+# Docs live in docs/{definitions,decisions,modules,banks,implementation,
+# benchmarks,examples,elements}/ now. Every check below that meant "every doc"
+# was spelled (ROOT/"docs").glob("*.md"), which after the sort is one file:
+# docs/index.md. Found by the PRINCIPLES.md audit, 2026-08-31, with a live
+# miss: docs/banks/evidence-and-split.md is dated 2026-08-24, cites P6 and P7,
+# and check B did not see it.
+def doc_tier(pattern: str = "*.md"):
+    """Every markdown doc under docs/, at any depth, sorted and deduped."""
+    return sorted(set((ROOT / "docs").rglob(pattern)))
+
 def check_b() -> list[str]:
     """No P6/P7 in docs updated after the condensation."""
     errs: list[str] = []
-    for md in sorted((ROOT / "docs").glob("*.md")):
+    for md in doc_tier():
         text = md.read_text()
         d = frontmatter_date(text)
         if d is None or d <= CONDENSATION:
@@ -122,7 +133,7 @@ def check_c() -> list[str]:
     errs: list[str] = []
     mapmd = (ROOT / "MAP.md").read_text()
 
-    n_decisions = len(list((ROOT / "docs").glob("decision-*.md")))
+    n_decisions = len(doc_tier("decision-*.md"))
     m = re.search(r"`docs/decision-\*`\s*\((\w+)\s+notes?\)", mapmd)
     if not m:
         errs.append("[C] MAP.md no '(N notes)' claim for docs/decision-*")
@@ -243,20 +254,20 @@ def check_f() -> list[str]:
         m = re.match(r"E(\d+)(?:-|$)", name)
         if m:
             n = int(m.group(1))
-            return bool(list((ROOT / "examples").glob(f"E{n:02d}-*.md"))) \
+            return bool(list((ROOT / "docs" / "examples").glob(f"E{n:02d}-*.md"))) \
                 or n in catalog_ids
-        return any((base / f"{name}.md").exists()
-                   for base in (ROOT / "docs", ROOT / "docs" / "banks",
-                                ROOT / "examples", ROOT / ".planning", ROOT))
+        # a [[slug]] resolves against the whole doc tier, not two dirs of it
+        return (any(p.stem == name for p in doc_tier())
+                or (ROOT / ".planning" / f"{name}.md").exists()
+                or (ROOT / f"{name}.md").exists())
 
     def linkish(f, name: str) -> bool:
         if f.parent.name != "examples":
             return True
         return bool(re.match(r"E\d+", name)) or "/" in name or "-" in name
 
-    files = (sorted((ROOT / "docs").glob("*.md"))
-             + sorted((ROOT / "docs" / "banks").glob("*.md"))
-             + sorted((ROOT / "examples").glob("*.md")))
+    files = (doc_tier()
+             + sorted((ROOT / "docs" / "examples").glob("*.md")))
     for f in files:
         text = f.read_text()
         # a [[link]] in a code span is mention, not link; blank same-length to keep offsets
@@ -299,8 +310,7 @@ def check_g() -> list[str]:
             nlines[p] = len(p.read_text().splitlines())
         return nlines[p]
 
-    for f in (sorted((ROOT / "docs").glob("*.md"))
-              + sorted((ROOT / "docs" / "banks").glob("*.md"))):
+    for f in doc_tier():
         ctx = None
         for i, ln in enumerate(f.read_text().splitlines(), 1):
             for span in re.findall(r"`([^`]+)`", ln):
@@ -378,8 +388,7 @@ def check_r() -> list[str]:
     cite = re.compile(r"([A-Za-z0-9_/.-]+\.(?:py|chirality))(?::(\d+))?$")
     bare = re.compile(r":(\d+)$")
 
-    for f in (sorted((ROOT / "docs").glob("*.md"))
-              + sorted((ROOT / "docs" / "banks").glob("*.md"))):
+    for f in doc_tier():
         ctx = None
         for i, ln in enumerate(f.read_text().splitlines(), 1):
             spans = [(m.start(), m.end(), m.group(1).strip())
