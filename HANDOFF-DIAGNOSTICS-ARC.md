@@ -205,7 +205,7 @@ carry-forward.
 
 ## Residue minted along the way (rows exist; none are merge blockers)
 
-`E173` arity judgments carry their arity · `E176` **`str-sub` is unclamped and
+`E182` arity judgments carry their arity · `E176` **`str-sub` is unclamped and
 segfaults** — a prose comment asserted the safety and `str-starts-with` was built on
 it, 131 call sites · `E177` display-width table (wide cells; the hard part is the
 *ambiguous* class, not the table) · `E178` `r-table` per-column widths — E174's

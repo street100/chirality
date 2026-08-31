@@ -613,12 +613,12 @@ invisible to whoever implements E146. Per-type siblings, not one generic
 `config->source w = doc->str w . config->doc` stays as a thin wrapper, so no
 existing caller breaks.
 
-**FLAG B — the `Judg` arity residue: MINTED as E173.** The example was right to
+**FLAG B — the `Judg` arity residue: MINTED as E182.** The example was right to
 refuse a phantom dep, but wrong that E157's row is a home: **E157 is DONE, and a
 completed element's row is a record, not a worklist.** Parking it there tracks
 nothing, which is the same "it evaporates if it isn't written where it lives"
 failure that made E157's own two bonus finds into decision rows before dispatch.
-`E173 — the arity judgments carry their arity` now has a catalog row and a ledger
+`E182 — the arity judgments carry their arity` now has a catalog row and a ledger
 row. It is not E158's work and does not gate this element.
 
 **FLAG C — a knowingly-wrong `doc->rendering`: REFUSED. It stays in E158 and it
