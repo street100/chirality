@@ -142,15 +142,26 @@ run_phase 6 "linear mint discipline (E159 binder + arrow)"     linear-mint.sh
 # ones listed by name and reason.  A root that starts failing is caught; a KNOWN
 # one that starts PASSING is also reported, so the list cannot rot silently.
 #
-#   t5_utf8 t5_vt_parser    : pre-existing TUI breakage, carried over from the
-#   t6_apc_roundtrip          old tree's own KNOWN_FAIL list
+#   t5_utf8  : an UNPORTED OLD-TREE ROOT.  It carries ZERO `(import ...)` lines
+#              -- its header still reads "Build: prelude + TUI/vt-core/utf8.chiral
+#              + this file" -- so nothing resolves into its blob and `Unit`
+#              (lib/prelude/prelude.chiral) is simply absent.  A migration gap,
+#              not a codec one, and no `enc` fix can move it.
+#
+# t5_vt_parser and t6_apc_roundtrip LEFT this list in E174.  The old comment
+# called all three "pre-existing TUI breakage"; two of them were nothing of the
+# kind.  They were `load: non-exhaustive case` out of lib/protocol/apc.chiral's
+# `enc`, which had been left six-of-eight when `r-lines` and `r-face` joined the
+# `Rendering` sum -- t5_vt_parser reached it through vt-parser.chiral's
+# `(import "protocol/apc")`.  E174 repaired the codec on both sides, so both
+# roots compile and run to their own exit-42 all-passed sentinel.
 #
 # The six scriba-* / flow-view-test roots left this list when the manas subtree
 # landed (slice 4).  They were never broken -- they imported twelve manas keys
 # that resolved to nothing.  Nothing in them was edited to fix it.
 echo
 echo "=== Phase 7: downstream roots compile (the apps lib/ can break) ==="
-KNOWN_FAIL=" t5_utf8.prog t5_vt_parser.prog t6_apc_roundtrip.prog "
+KNOWN_FAIL=" t5_utf8.prog "
 r_pass=0; r_fail=0; r_skip=0; r_newpass=0
 ALL_ROOTS="$( cd "$REPO" && grep -rl '^(def compile-main' lib prog 2>/dev/null \
                 | while read -r x; do [ -L "$x" ] || echo "$x"; done | sort )"

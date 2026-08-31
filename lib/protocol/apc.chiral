@@ -84,7 +84,7 @@
 (def enc-rows       (lam (xs) (str-cat (str-cat (i64->str (list-len-rows xs)) ";") (enc-rows-body xs))))
 
 ; ─── ENCODE: Rendering subtree → printable payload (pure `->`) ──────────────────
-;     tags: t=text  s=section  S=stream  h=hole  T=table  r=tree
+;     tags: t=text  s=section  S=stream  h=hole  T=table  r=tree  L=lines  F=face  R=row
 ;     s / h carry a leading block-id field (content-hash address).
 (def enc (lam (r)
   (case r
@@ -101,7 +101,21 @@
     ((r-tree children selected)
       (str-cat "r" (str-cat (enc-rends children) (enc selected))))
     ((r-hole label)
-      (str-cat "h" (str-cat (enc-str (block-id r)) (enc-str label)))))))
+      (str-cat "h" (str-cat (enc-str (block-id r)) (enc-str label))))
+    ; ─── E174 — the three arms the codec was missing. `r-lines` and `r-face`
+    ;     were added to the sum and this function was never updated, which is
+    ;     the exact failure that left `load: non-exhaustive case` standing here
+    ;     and dragged two sample roots red with it. `r-row` is the third.
+    ;     Tags L / F / R continue the scheme and are graphic ASCII, which the
+    ;     APC envelope rule above requires. ⚑ The wire format has NO version
+    ;     field, by its own design: a newer frame is a `p-err "bad tag ..."`
+    ;     VALUE to an older decoder, never a crash.
+    ((r-lines children)
+      (str-cat "L" (enc-rends children)))
+    ((r-face f body)
+      (str-cat "F" (str-cat (enc-str f) (enc body))))
+    ((r-row children)
+      (str-cat "R" (enc-rends children))))))
 
 (def enc-frame (lam (r) (str-cat (apc-intro unit) (str-cat (enc r) (apc-st unit)))))
 
@@ -245,6 +259,26 @@
             (case (dec src p2)
               ((p-ok selected p3) (p-ok (r-tree children selected) p3))
               ((p-err m p) (p-err m p))))
+          ((rl-err m p) (p-err m p))))
+      ; ─── E174 — the matching decode branches. ⚑ THESE ARE INVISIBLE TO THE
+      ;     COMPILER: this is a `cond` on a tag Str ending in `else`, not a case
+      ;     over the closed sum, so a forgotten decode arm is a runtime `p-err`
+      ;     rather than a compile error. That asymmetry is why Phase 15 grades
+      ;     the codec by ROUND-TRIP (G2 / mutant M7) and not by coverage.
+      ((str-eq tag "L")
+        (case (dec-rends src (+ pos 1))
+          ((rl-ok children p2) (p-ok (r-lines children) p2))
+          ((rl-err m p) (p-err m p))))
+      ((str-eq tag "F")
+        (case (dec-str src (+ pos 1))
+          ((s-ok f p1)
+            (case (dec src p1)                      ; the body recurses
+              ((p-ok body p2) (p-ok (r-face f body) p2))
+              ((p-err m p) (p-err m p))))
+          ((s-err m p) (p-err m p))))
+      ((str-eq tag "R")
+        (case (dec-rends src (+ pos 1))
+          ((rl-ok children p2) (p-ok (r-row children) p2))
           ((rl-err m p) (p-err m p))))
       (else (p-err (str-cat "bad tag " tag) pos))))))     ; malformed = a VALUE
 
