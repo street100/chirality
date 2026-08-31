@@ -4,7 +4,7 @@ slug: doc-formatter
 title: **`Doc` — structured formatting; printf's template split from its flatten**
 kind: BUILD-PROPER
 example: docs/examples/E158-doc-formatter.md
-status: drafted
+status: audited
 updated: 2026-08-31
 ---
 
@@ -30,13 +30,14 @@ updated: 2026-08-31
   **strict Lindig worklist** renderer (`doc-fits` / `doc-best` / `dc-line`)
   behind one exit, `doc->str : (-> I64 Doc Str)`. `lib/typing/diag.chiral` gains
   `dg-doc : (-> Reason Doc)` — the **sibling** of `dg-msg`, over all **nine**
-  `Reason` arms (`diag.chiral:97`-region `Reason`, counted live: `r-redeclared`,
+  `Reason` arms (`diag.chiral:120-138`, counted live: `r-redeclared`,
   `r-mismatch`, `r-usage`, `r-linear`, `r-arrow`, `r-unbound`, `r-skipped`,
   `r-judged`, `r-relayed`). `tools/test/doc.sh` runs as **Phase 14** of
   `tools/test/run-tests.sh` and grades the element on **evidence survival**, not
   on text. `lib/protocol/render-doc.chiral` ships `doc->rendering` **correct for
-  nested tags** — *gated on NEEDS-AUTHOR-1 (§3), which is a measured obstruction
-  in `Rendering`, not a scoping doubt.*
+  nested tags** — *gated on **E174** (§3, NEEDS-AUTHOR-1 as answered), a measured
+  obstruction in `Rendering`, not a scoping doubt — and see **NEEDS-AUTHOR-2**
+  (§3), open, on whether "correct for nested tags" needs a second element.*
 
 - **Non-goals** (each with where it actually lives):
   - **`doc->json`** — named as an exit, consumed by nothing. Building an
@@ -83,13 +84,15 @@ updated: 2026-08-31
     **`dg-usage-msg`** (`:349`), **`dg-declared`** (`:256`), **`dg-observed`**
     (`:270`) — the accessors `dg-doc` reuses. `dg-usage-msg` answers **nine of
     twelve** subjects with `"binder usage mismatch"` and drops both quantities in
-    **all twelve** (`:373-390`). That is the measured hole G3 fills.
+    **all twelve** (`:349-363`; the twelve arms are `:352-363`). That is the
+    measured hole G3 fills. ⚑ *Corrected at the spec audit: `:373-390` is inside
+    `dg-linear-msg` (`:368-`), a different function.*
   - **`Judg` = 38 nullary arms** (`diag.chiral:97-110`, counted: 38 distinct
     `(jg-…)` tokens). E173's territory, stated here only so §5 does not try to
     fix it.
   - **`lib/protocol/render.chiral`.** `Rendering` = 8 constructors (`:6-14`),
     `r-face (face Str) (body Rendering)` at `:14`, `r-lines` at `:12`,
-    `lookup-face` declared `:44`. **`(data Mode ()` at `:24`** — decision 4's
+    `lookup-face` declared `:39`. **`(data Mode ()` at `:24`** — decision 4's
     citation, verified.
   - **`lib/prelude/string.chiral`** — `str-join` `:215`, **`str-pad` `:209`**
     (decision 11: this is `nl-indent`'s spaces; no new primitive).
@@ -110,7 +113,7 @@ updated: 2026-08-31
     ten-deep `str-cat` nest at **`:52-57`**, closing `))))))))))`.
     ⚑ *Correction:* the example says `:47-57`; the catalog row (`:420`) says
     `:51-56`. Measured, the def opens at 48 and the nest runs 52-57.
-  - `lib/typing/pretty.chiral` — **51 lines**, hardcodes `sp`/`parens` (`:23-24`),
+  - `lib/typing/pretty.chiral` — **51 lines**, hardcodes `sp`/`parens` (`:22-23`),
     goes straight to `Str`, and is imported by **zero** modules
     (`grep -Rn 'import "typing/pretty"' lib prog` → 0).
 
@@ -118,7 +121,9 @@ updated: 2026-08-31
 
 Rows 1-8 are **SETTLED** upstream and are carried, not reopened; each is shown
 with the citation that was re-verified for this SPEC. Rows 9-15 are new to the
-spec run. NEEDS-AUTHOR-1 is the one thing this run may not resolve.
+spec run. NEEDS-AUTHOR-1 was the one thing that run could not resolve; the
+author answered it by minting **E174** (`d16113e`) — see the block below.
+**NEEDS-AUTHOR-2**, raised at the spec audit, is open.
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
@@ -130,19 +135,30 @@ spec run. NEEDS-AUTHOR-1 is the one thing this run may not resolve.
 | 6 | Test policy for `doc->str` vs `dg-msg`? | **SETTLED (carried) — no byte-identity inheritance; verified against what `diag.sh` really asserts** | `diag.sh`'s own header (`:10-16`) refuses to call byte-identity its gate, but byte-identity **is** pinned there: G3's nine goldens compare compiler stderr with `[ "$got" = "$2" ]` (`:128-176`) and mutant **M4** (`reword-the-let-message`, one byte) must convict. That constraint is E157's, it is live, and it is what made a per-message `Judg` the cheap way out at 38 arms. **`doc->str` must not inherit it.** `dg-msg` keeps its goldens **unchanged and untouched**; `dg-doc` is graded by evidence survival only. Cross-asserting the two re-imports the exact constraint `Doc` exists to lift — so §5 **G7 makes the non-cross-assertion a checked row**, not a promise. |
 | 7 | E146's signature change — specified here? | **SETTLED (carried) — NO. Enacted on E146's row; E158 owns only the LAW** | Verified: `SELF-IMPLEMENT-CATALOG.md:411` now opens `⚑ SIGNATURE AMENDED 2026-08-31 by the E158 example audit (FLAG A, author-accepted): the five emitters return `Doc`, not `Str`.` E158's obligation is **§5 G2, width independence** — identical token sequence at every width — and nothing else. `config->source w = doc->str w . config->doc` stays as E146's thin wrapper. |
 | 8 | The `Judg` arity residue? | **SETTLED (carried) — E173, minted; does not gate E158** | Verified live: `SELF-IMPLEMENT-CATALOG.md:437` and `LEDGER.md:292` both carry `E173 — The arity judgments carry their arity`. Orthogonal to E158's cause (adding `Doc` shrinks `Judg` by zero arms) and a lever on its cure. **The hazard is real and §5 answers it:** per-message layout is cheap under `Doc`, which makes a 39th nullary arm feel free. It is not. Grading by evidence survival is the guard, because a nullary arm has no evidence to survive. |
-| 9 | Does `diag.chiral` need a new `dg-qty-name`? | **RESOLVED — NO, by measurement. Reuse the existing one** | ⚑ **This corrects the example.** Its §6 "Lands in" table lists `dg-qty-name` among the additions to `diag.chiral`. It **already exists there**: declared `:284`, defined `:285`, exactly `(-> Qty Str)`, with 14 live call sites. Adding it is a `duplicate label` **in a single file**. `dg-doc` and `dg-decl-doc` are the only new names in that file. |
+| 9 | Does `diag.chiral` need a new `dg-qty-name`? | **RESOLVED — NO, by measurement. Reuse the existing one** | ⚑ **This corrects the example.** Its §6 "Lands in" table lists `dg-qty-name` among the additions to `diag.chiral`. It **already exists there**: declared `:284`, defined `:285`, exactly `(-> Qty Str)`, with **12 call sites in `diag.chiral`** (all in `dg-linear-msg`) plus **5 in `tools/test/samples/e157_diag.prog`**. Adding it is a `duplicate label` **in a single file**. ⚑ *Corrected at the spec audit: the earlier "14" was `grep -c` on `diag.chiral`, which counts the `declare` (`:284`) and the `def` (`:285`) as call sites.* `dg-doc` and `dg-decl-doc` are the only new names in that file. |
 | 10 | Name census for every new binding (flat namespace) | **RESOLVED — census run tree-wide with `grep -R`; two renames, one confirmed-free set** | Censused across `lib` + `prog`, all four kinds: `Doc`, `Brk`, `DMode`, `Frame`, `d-text`, `d-cat`, `d-line`, `d-nest`, `d-group`, `d-tag`, `brk-soft`, `brk-space`, `brk-hard`, `m-flat`, `m-brk`, `doc-best`, `dc-line`, `nl-indent`, `doc->str`, `doc->rendering`, `doc-concat`, `doc-punctuate`, `doc-words`, `dg-doc`, `dg-decl-doc` → **all zero**. Two changes from the example's names: **(a) `fits` → `doc-fits` / `doc-fits-frame`.** No `def fits` exists, but `const-fits?` (`lib/lowering/tal/check.chiral:113`) occupies the concept **in the same blob** — `typing/diag` importing `prelude/doc` puts `prelude/doc` into the compiler blob alongside `lowering/tal/check`. A bare `fits` in a tree-flat namespace is the cheapest possible future collision. **(b) the `Frame` constructor `fr` → `dfr`.** `lib/lowering/compile-front.chiral:292` declares `(data FR () (fr-ok …) (fr-err …))`, co-blobbed with `prelude/doc` for the same reason. `fr` is free, but one keystroke from two live constructors in the same blob, and the `DMode` precedent (row 4) already establishes the `D`-prefix for a doc-local name that would otherwise be generic. The type name `Frame` stays — censused free. |
 | 11 | `nl-indent`'s spaces — new primitive? | **RESOLVED — NO. `str-pad`** | `lib/prelude/string.chiral:209`, `(-> Str I64 Str Str)`, returns `s` unchanged when `width <= (str-len s)`. So `nl-indent i = (str-cat "\n" (str-pad "" i " "))`, correct at `i = 0`. `prelude/doc` imports `prelude/string` for this and for `str-join`. |
-| 12 | What happens to `typing/pretty.chiral`? | **RESOLVED — OUT of E158, and it must not ride this gate. Verified, as the brief required** | Measured: `pretty.chiral` is **51 lines**, renders **5 of 11** formers (`t-type`/`t-var`/`t-lam`/`t-app`/`t-let`, `:47-53`), and **declares its own local 5-constructor `Term`** at `:16-21`. `lib/surface/syntax.chiral:18`'s `Term` has **16** constructors, its `t-lam` carries **no name** (de Bruijn: `(t-lam (body Term))`) and its `t-let` carries a `Qty`. So `Term -> Doc` is not a signature change: the module must first be **repointed at the real `Term`** and grown eleven arms, and only `names-snoc`/`nth-name`/`get-at` survive. It is imported by **zero** modules, so nothing regresses by leaving it. **Confirmed: a rewrite, a separate commit at minimum, and out of E158's gate.** |
+| 12 | What happens to `typing/pretty.chiral`? | **RESOLVED — OUT of E158, and it must not ride this gate. Verified, as the brief required** | Measured: `pretty.chiral` is **51 lines**, renders **5 of 16** formers (`t-type`/`t-var`/`t-lam`/`t-app`/`t-let`, `:44-51`), and **declares its own local 5-constructor `Term`** at `:15-20`. `lib/surface/syntax.chiral:18`'s `Term` has **16** constructors, its `t-lam` carries **no name** (de Bruijn: `(t-lam (body Term))`) and its `t-let` carries a `Qty`. So `Term -> Doc` is not a signature change: the module must first be **repointed at the real `Term`** and grown eleven arms, and only `names-snoc`/`nth-name`/`get-at` survive. It is imported by **zero** modules, so nothing regresses by leaving it. **Confirmed: a rewrite, a separate commit at minimum, and out of E158's gate.** |
 | 13 | Does `prelude/doc` drag new modules into the compiler blob? | **RESOLVED — no; only `prelude/doc` itself is new** | `prelude/doc` imports `prelude/prelude`, `prelude/list`, `prelude/string`. Both are already in the compiler's own import closure: `prelude/list` via `lib/module/loader.chiral` and `lib/typing/row-infer.chiral`; `prelude/string` via `lib/typing/row-infer.chiral`, `lib/typing/ty-cmp.chiral`, `lib/lowering/compile-back.chiral`. **Consequence for the BUILD RULE:** commit 1 (the algebra, imported by nobody) changes no blob at all; **commit 2** is the one that changes the compiler's own sources and therefore carries the self-host obligation (§4). |
-| 14 | `(module …)` datasheet coordinate on the new files? | **RESOLVED by local convention, measured** | 12 of 92 `.chiral` files carry one; by directory: `prelude` **8 of 8**, `typing` 1, `lowering/c` 2, `ports` 1, **`protocol` 0 of 8**. So `lib/prelude/doc.chiral` gets `(module prelude/doc (cat A) (alt upper))` — matching all eight siblings — and `lib/protocol/render-doc.chiral` gets **none**, matching all eight of its. Neither choice is invention; both follow the directory. |
+| 14 | `(module …)` datasheet coordinate on the new files? | **RESOLVED by local convention, measured** | 12 of `lib/`'s 92 `.chiral` files carry one (`prog/`'s 63 carry none); by directory: `prelude` **8 of 8**, `typing` 1, `lowering/c` 2, `ports` 1, **`protocol` 0 of 8**. So `lib/prelude/doc.chiral` gets `(module prelude/doc (cat A) (alt upper))` — matching all eight siblings — and `lib/protocol/render-doc.chiral` gets **none**, matching all eight of its. Neither choice is invention; both follow the directory. |
 | 15 | Which phase number for the gate? | **RESOLVED — 14** | `run-tests.sh:8-9` and `tools/test/MIGRATION-NOTES.md` both state that 8-12 are **names still owed** to unported old-tree phases, and that reusing one would make an unported gate look ported. E157 took 13 for that reason. E158 takes 14. And the registration is a **required line**, not a courtesy: an unregistered `doc.sh` is a gate that never runs. |
 
-### NEEDS-AUTHOR-1 — `Rendering` cannot express a multi-segment line, and that is what "correct for nested tags" requires
+### NEEDS-AUTHOR-1 — `Rendering` cannot express a multi-segment line — **ANSWERED: E174, minted `d16113e`**
 
-> **Verbatim, for the author. This is the only blocking item, it blocks commit 4
-> only, and it was found by measurement during the spec run — it is not a
-> reopening of FLAG C.**
+> **⚑ Status at the spec audit (2026-08-31): RESOLVED — this is no longer a
+> question, and no longer a blocked commit behind one.** The finding below was
+> confirmed live at the audit, line by line. Its *disposition* changed after this
+> SPEC was written: commit `d16113e` mints **E174 — `Rendering` gains horizontal
+> composition (`r-row`) + the per-node width function it needs**
+> (`.planning/SELF-IMPLEMENT-CATALOG.md:438`, `.planning/LEDGER.md:293`), taking
+> **option (A) by elimination, not preference**: (B) is refused on the standing
+> boundary-sums directive (a `Str` carrying which-of-N presentation structure is
+> the precise flattening defect E157/E158 exist to remove), and (C) was already
+> measured dead on E158's own first consumer. **Commit 4 now depends on a MINTED
+> element** (`←E158, →E158c4`) rather than sitting behind an open question, which
+> is what the repo's no-defer-without-a-cataloged-dep rule requires. The
+> measurement and the three costed options are kept verbatim below as E174's
+> rationale of record.
 >
 > FLAG C is carried as binding: **`doc->rendering` ships correct for nested tags
 > or it does not land**, scoped IN, not deferred. The mechanism the decision
@@ -159,7 +175,7 @@ spec run. NEEDS-AUTHOR-1 is the one thing this run may not resolve.
 >   `ansi-goto` of its own (`:469-475`) — it is a wrapper, not a placer.
 > - `r-text` draws at `(ansi-goto row col)` and stops (`:435-441`).
 > - The **only** horizontal composition in the whole module is `r-table`, and it
->   is a **fixed 16-column grid**: `rnd-emit-one-row` (`:364-370`) advances
+>   is a **fixed 16-column grid**: `rnd-emit-one-row` (`:362-368`) advances
 >   `(+ col 16)` per cell. It is not a flow and cannot carry a wrapped line.
 >
 > So a rendered `Doc` line that mixes a tagged span with anything else — e.g.
@@ -175,8 +191,8 @@ spec run. NEEDS-AUTHOR-1 is the one thing this run may not resolve.
 > - **(A) Extend `Rendering` with a horizontal run** — one constructor, e.g.
 >   `(r-row (children (List Rendering)))`, plus one arm in `render-to-ansi`
 >   advancing `col` by each child's rendered width, one arm in `diff-node`, and
->   an arm in every exhaustive `case` on `Rendering` tree-wide (17 files import
->   `protocol/render`). **Cost:** contradicts the example's stated
+>   an arm in every exhaustive `case` on `Rendering` tree-wide — **12 files case
+>   over the sum** (E174's measured figure; 17 import `protocol/render`). **Cost:** contradicts the example's stated
 >   "`Rendering` is not extended" (§6) — though *not* decision 3, which only
 >   forbids **unifying** `Doc` with `Rendering`. This is the option that leaves
 >   both types honest, and it is a real gap in `Rendering` independent of E158.
@@ -195,11 +211,51 @@ spec run. NEEDS-AUTHOR-1 is the one thing this run may not resolve.
 >   as above, so it would ship an exit that `dg-doc` cannot use. Recorded for
 >   completeness; not recommended.
 >
-> **Until this is answered, commit 4 does not land** — which is exactly what
-> FLAG C requires. Commits 1-3 and the whole Phase 14 gate are independent of it
-> and land regardless. **No element row is minted for this**, because a spec run
-> cannot mint one and this is not a deferral: it is a question with three
-> costed answers, waiting on the author.
+> **Commit 4 lands after E174, not before** — which is exactly what FLAG C
+> requires, now with a cataloged dependency instead of a shelf. Commits 1-3 and
+> the whole Phase 14 gate are independent of it and land regardless.
+>
+> *(Written as `NEEDS-AUTHOR-1` because a spec run cannot mint an element row.
+> The author minted E174 in `d16113e`; the row is real and this block is now a
+> pointer to it.)*
+
+### NEEDS-AUTHOR-2 — nested `r-face` does not restore the outer face, and E174 does not cover it
+
+> **Raised verbatim at the spec audit (2026-08-31). Not resolved here — the fix
+> is a choice, not a derivation.** This is a *second*, independent obstruction
+> under the same deliverable, found while confirming NEEDS-AUTHOR-1.
+>
+> §1 promises `doc->rendering` **correct for nested tags**. E174 buys horizontal
+> composition — `r-row` plus a per-node width function. It does not touch the
+> other half of "nested".
+>
+> **Measured, `lib/protocol/render.chiral`:** the `r-face` arm (`:469-476`) emits
+> `(face-sgr (lookup-face default-faces face-name))`, renders its body, then
+> emits `ansi-reset` — and `ansi-reset` is `(str-cat ansi-esc "[0m")` (`:282`), a
+> **full** SGR reset, not a restore of the enclosing face. So for
+> `r-face(outer, … r-face(inner, …) … rest …)` the inner tag's close clears the
+> outer tag's attributes and `rest` renders **unfaced**. That is exactly the
+> shape a nested `d-tag` maps to under the `d-tag`→`r-face` rule
+> (`LEDGER.md:283`), so E158's own nested-tag case is wrong on screen even after
+> `r-row` exists — and **G8** ("a two-level nested `d-tag` produces correctly
+> nested faces") is the row that would catch it.
+>
+> Three dispositions, none of them mine to take:
+>
+> - **(i) Widen E174** to include face-state restore in `render-to-ansi` — carry
+>   the enclosing face down the walk and re-emit its SGR at each inner close
+>   instead of `ansi-reset`. Keeps `d-tag`→`r-face` intact. Cost: E174's row is
+>   already written and scoped to composition; widening it changes what was
+>   minted.
+> - **(ii) Mint a separate row** for the face-stack fix, with E158 commit 4
+>   depending on both it and E174.
+> - **(iii) Narrow §1** — `doc->rendering` correct for *non-nested* tags, said in
+>   as many words, with G8 struck. This contradicts FLAG C as carried, so it is
+>   a reversal, not a scoping note.
+>
+> **Nothing in commits 1-3 or the Phase 14 gate depends on this.** Commit 4 is
+> already dependency-gated on E174; this says the dependency may be two elements,
+> not one.
 
 ## 4. Change plan (ordered, commit-sized)
 
@@ -224,11 +280,16 @@ subject matter is neither the extension nor the role.
     (d-nest (i I64) (body Doc)) (d-group (body Doc)) (d-tag (name Str) (body Doc)))`
     — **six**, and the absent seventh is the element. `d-text` is **atomic**;
     `d-tag`'s `Str` is a face-registry key over the open set `lookup-face`
-    already indexes (`render.chiral:44`), not a which-of-N, so it is correctly
+    already indexes (`render.chiral:39`), not a which-of-N, so it is correctly
     not a sum.
   - `(data DMode () (m-flat) (m-brk))` (decision 4) ·
     `(data Frame () (dfr (indent I64) (mode DMode) (doc Doc)))` (decision 10b).
   - `doc-fits : (-> I64 (List Frame) Bool)` + `doc-fits-frame` (decision 10a).
+    **`doc-fits` returns `false` on a `brk-hard` frame.** ⚑ *Added at the spec
+    audit: this is the invariant that makes the `(m-flat, brk-hard)` arm below
+    "unreachable in practice" — without it `d-group` can choose `m-flat` over a
+    body containing a hard break and the arm IS reached. The claim needed its
+    cause stated, and there is only one thing that can supply it.*
   - `doc-best : (-> I64 I64 (List Frame) (List Str) (List Str))` — the one
     decision point is the `d-group` arm; `dc-line : (-> I64 I64 I64 DMode Brk
     (List Frame) (List Str) (List Str))`. The `(m-flat, brk-hard)` arm is
@@ -280,18 +341,20 @@ subject matter is neither the extension nor the role.
   sweep, so E158's assertions are counted once, by E158's own phase.
 - **Verify:** `bin/chirality test` — Phase 14 green **and Phase 13 unchanged**.
 
-### Commit 4 — `lib/protocol/render-doc.chiral`: `doc->rendering` — **BLOCKED on NEEDS-AUTHOR-1**
+### Commit 4 — `lib/protocol/render-doc.chiral`: `doc->rendering` — **DEPENDS ON E174**
 - **Target:** `lib/protocol/render-doc.chiral` (**NEW**). No `(module …)`
   coordinate (decision 14). `(import "prelude/doc")` + `(import "protocol/render")`.
 - **Change:** `doc->rendering : (-> I64 Doc Rendering)` — a re-run of the
   `doc-best` walk carrying a **face-name stack** in the accumulator, pushed at
   `d-tag` open and popped at its close, emitting one faced node per segment per
   line. Correct for nested tags, per FLAG C.
-- **Blocked:** the emission half has no target constructor (NEEDS-AUTHOR-1).
+- **Dependency:** the emission half has no target constructor until **E174**
+  lands `r-row` + the per-node width function (`SELF-IMPLEMENT-CATALOG.md:438`,
+  `LEDGER.md:293`; NEEDS-AUTHOR-1 as answered).
   **Do not land a version that is plausibly right and quietly wrong** — that is
   precisely what FLAG C refused, and the artifact's own reasoning (four logged
   "built but unadopted" findings) cuts against it.
-- **When unblocked:** add gate rows **G8** (a two-level nested `d-tag` produces
+- **When E174 has landed:** add gate rows **G8** (a two-level nested `d-tag` produces
   correctly nested faces) and **G9** (a `d-tag` spanning a break faces **both**
   output lines) to `doc.sh`, each with its named mutant.
 
@@ -310,15 +373,15 @@ blind to its own mutant). **The fixpoint `cmp` from commit 2 is not a row here**
 
 | row | assertion | named mutant that must convict |
 |---|---|---|
-| **G1 — flat law** | `doc->str 1000000 d` equals the same document with every `d-line` replaced by its `Brk`'s flat text (`brk-soft`→`""`, `brk-space`→`" "`), for a fixture doc containing all six constructors. This is what makes `d-group` sound. | **M1 `swap-soft-and-space`** — `dc-line`'s `(m-flat)` arm emits `" "` for `brk-soft`. G1 goes red; G2 stays green (proving the two rows are not the same row). |
-| **G2 — width independence** | For `w ∈ {1, 40, 1000000}`, the **token sequence** of `doc->str w d` is identical; only breaks and leading indent differ. Asserted by stripping `"\n"` + leading spaces from each of the three outputs and comparing all three for equality. This is the law E146 consumes; E158 owns it. | **M2 `clip-d-text`** — `doc-best`'s `d-text` arm truncates `s` to the remaining width. G2 goes red. This is the mutant that proves `d-text` atomicity is *tested*, not merely asserted in a comment. |
+| **G1 — flat law** | `doc->str 1000000 d` equals the same document with every `d-line` replaced by its `Brk`'s flat text (`brk-soft`→`""`, `brk-space`→`" "`), for a fixture doc containing all six constructors. **`brk-hard` has no flat text and is excluded from the reference doc** — it breaks in either mode (§4 commit 1), so the flat law is over the non-hard `d-line`s. This is what makes `d-group` sound. | **M1 `swap-soft-and-space`** — `dc-line`'s `(m-flat)` arm emits `" "` for `brk-soft`. G1 goes red; G2 stays green (proving the two rows are not the same row). |
+| **G2 — width independence** | For `w ∈ {1, 40, 1000000}`, the **token sequence** of `doc->str w d` is identical; only breaks and leading indent differ. Asserted by **stripping every whitespace byte** from each of the three outputs and comparing all three for equality. ⚑ *Corrected at the spec audit: the earlier form — strip `"\n"` + leading spaces — goes RED on correct code, because a `brk-space` flattens to `" "` at wide width and to `"\n"`+indent at narrow, so `"a b"` and `"ab"` are compared; it also reddens under M1, destroying the G1/G2 asymmetry this table claims. Stripping all whitespace is correct for all three `Brk` arms at once, and M2 still convicts because it changes content bytes, not whitespace.* This is the law E146 consumes; E158 owns it. | **M2 `clip-d-text`** — `doc-best`'s `d-text` arm truncates `s` to the remaining width. G2 goes red. This is the mutant that proves `d-text` atomicity is *tested*, not merely asserted in a comment. |
 | **G3 — evidence survival (THE element's row)** | For each of `Reason`'s **nine** arms, `doc->str 80 (dg-doc r)` **contains every field the arm carries**. Two rows carry the thesis and are asserted explicitly: `r-redeclared` names **both** declarations and they **differ**; `r-usage` with `(q1)`/`(qw)` contains **both** `"1"` and `"omega"`. | **M3 `drop-observed`** — `dg-doc`'s `r-usage` arm stops emitting `oq`. G3 goes red. |
-| **G3c — the control that states the win** | The **same** `r-usage` value: `dg-msg r` contains **neither** `"1"` nor `"omega"` (it returns `"binder usage mismatch"` — `diag.chiral:349,373-390`, nine of twelve subjects), while `doc->str 80 (dg-doc r)` contains both. This is a *positive assertion about the baseline*, so it also fails if someone "fixes" `dg-msg` — at which point E157's goldens and this row must be reconciled deliberately, not silently. | **M3c `make-dg-msg-verbose`** — `dg-usage-msg` appends the quantities. G3c goes red **and** `diag.sh` Phase 13's G3 goldens go red. Both, which is the point. |
+| **G3c — the control that states the win** | The **same** `r-usage` value: `dg-msg r` contains **neither** `"1"` nor `"omega"` (it returns `"binder usage mismatch"` — `diag.chiral:349-363`, nine of twelve subjects), while `doc->str 80 (dg-doc r)` contains both. This is a *positive assertion about the baseline*, so it also fails if someone "fixes" `dg-msg` — at which point E157's goldens and this row must be reconciled deliberately, not silently. | **M3c `make-dg-msg-verbose`** — `dg-msg`'s `r-usage` arm (`diag.chiral:320`) appends `(dg-qty-name d)` / `(dg-qty-name o)` around the `dg-usage-msg` call. ⚑ *Corrected at the spec audit: the mutation cannot go in `dg-usage-msg`, whose type is `(-> Subject Str)` — the quantities are not in scope there; `:320` is where they are.* G3c goes red **and** `diag.sh` Phase 13's G3 goldens go red. Both, which is the point. |
 | **G4 — the group decision actually happens** | One fixture doc renders **flat** at `w = 40` (contains no `"\n"`) and **broken** at `w = 10` (contains `"\n"` and the nested indent). | **M4 `always-break`** — `doc-best`'s `d-group` arm always picks `(m-brk)`. G4 goes red; **G2 stays green**, because the token sequence is unchanged. That asymmetry is why G4 exists separately. |
 | **G5 — the sum is closed and has no union** | (a) `grep -R 'd-union' lib prog tools` → **zero hits**. (b) `Doc` has exactly six constructors, read out of `lib/prelude/doc.chiral` itself so a new arm is censused without editing the script. (c) A probe casing all six arms of `Doc` and all three of `Brk` compiles. | **M5 `add-seventh-constructor`** — append a `(d-fill (body Doc))` arm to `Doc` and nothing else. The compile of `prelude/doc` must **fail** on `doc-best`'s coverage. If it compiles, the closed sum is buying nothing. |
 | **G6 — E154 name census, tree-wide** | Every name `lib/prelude/doc.chiral` introduces is defined **exactly once** across `lib prog tools`. Names are read out of the file; the search is **`grep -R`, not `grep -r`** — `-r` does not follow symlinks and would let a skipped file read as a clean census (`tools/test/MIGRATION-NOTES.md` records this exact trap for `diag.sh` G6). | **M6 `redefine-doc-fits`** — add a second `(def doc-fits …)` in `lib/prelude/string.chiral`. G6 goes red. |
-| **G7 — the two exits are NOT cross-asserted (decision 6, made checkable)** | (a) `grep -c 'dg-msg' tools/test/doc.sh` → **0**: this gate makes no claim about `dg-msg`'s text. (b) `tools/test/diag.sh` and `tools/test/samples/e157_diag.prog` are **byte-unchanged** by this element (assert against `git diff --stat` for the E158 commits, or a committed checksum). (c) Phase 13 runs green, unchanged, in the same `bin/chirality test`. | **M7 `cross-assert`** — add one `doc->str` row to `diag.sh`'s golden list. G7(a)/(b) go red. This row is what stops `Doc` from re-importing the byte-identity constraint it exists to lift. |
-| **G8/G9 — nested and break-spanning tags** | *Deferred to commit 4 and written there.* Not a deferral to an element: they are rows of this same gate, gated on NEEDS-AUTHOR-1 and landing with the code they grade. | see §4 commit 4 |
+| **G7 — the two exits are NOT cross-asserted (decision 6, made checkable)** | (a) **No byte-equality assertion on `dg-msg` anywhere in this element**: `doc.sh` contains zero golden rows (`[ "$got" = … ]`) over a `dg-msg` value, and the fixture's only `dg-msg` reference is G3c's substring-*absence* control — so the count is pinned at **exactly the G3c control**, not at zero. ⚑ *The census pattern is assembled (`pat="dg""-msg"`) so the row does not match its own source line; the earlier form, `grep -c 'dg-msg' tools/test/doc.sh` → 0, can never hold — the grep line contains the literal — and it contradicted G3c, which must call `dg-msg` to assert anything about it. Corrected at the spec audit.* (b) `tools/test/diag.sh` and `tools/test/samples/e157_diag.prog` are **byte-unchanged** by this element, asserted against a **`sha256` pinned in `doc.sh`**. *(The `git diff --stat` alternative is dropped: once the E158 commits land, a diff against them is empty forever, so the row would report ok for the rest of time.)* (c) Phase 13 runs green, unchanged, in the same `bin/chirality test`. | **M7 `cross-assert`, both directions** — (i) add one `doc->str` golden row to `diag.sh`: **G7(b)** goes red (the checksum moves); (ii) add one `dg-msg` golden row to `doc.sh`: **G7(a)** goes red. ⚑ *Corrected at the spec audit: (i) alone does not redden (a) — it never touches `doc.sh` — so the pair is needed to give both halves teeth.* This row is what stops `Doc` from re-importing the byte-identity constraint it exists to lift. |
+| **G8/G9 — nested and break-spanning tags** | *Deferred to commit 4 and written there.* They are rows of this same gate, gated on **E174** (the minted blocker under commit 4) and landing with the code they grade. | see §4 commit 4 |
 
 **Registration:** `run_phase 14 "layout algebra (E158 Doc)" doc.sh` in
 `tools/test/run-tests.sh` beside `:187`, plus a row in `tools/test/MIGRATION-NOTES.md`'s
@@ -341,11 +404,12 @@ count (E173), any `pretty.chiral` behaviour (decision 12).
      the `str-cat` nest at **`:52-57`**.
   3. **Open question 2 / FLAG C is obstructed by the target type**, not by
      effort: `Rendering` has no horizontal composition constructor, so the
-     face-name stack is necessary but not sufficient. **NEEDS-AUTHOR-1.**
+     face-name stack is necessary but not sufficient. Raised as **NEEDS-AUTHOR-1**;
+     **answered by E174**, minted `d16113e`.
   4. Two names moved on census grounds: `fits` → `doc-fits`, `fr` → `dfr`.
      **Decision 10.**
   - **Verified correct, against the brief's "verify, don't trust":**
-    `pretty.chiral` is 51 lines, renders **5 of 11** formers, declares its **own
+    `pretty.chiral` is 51 lines, renders **5 of 16** formers, declares its **own
     local 5-constructor `Term`**, and `surface/syntax.chiral:18`'s `Term` really
     has **16** constructors. Repointing it is a rewrite. **Decision 12.**
     `render.chiral:24` really is `(data Mode ()`. `Judg` really is 38 arms.
@@ -354,8 +418,10 @@ count (E173), any `pretty.chiral` behaviour (decision 12).
 - **Deliberately unbuilt (each with a real home, none parked on a phantom):**
   - **`doc->json`** — no consumer. Not deferred to an element; it is one `case`
     over six constructors the day a consumer exists.
-  - **`doc->rendering`** — scoped IN (commit 4), blocked on **NEEDS-AUTHOR-1**,
-    landing correct or not at all.
+  - **`doc->rendering`** — scoped IN (commit 4), dependent on **E174**
+    (`SELF-IMPLEMENT-CATALOG.md:438`, `LEDGER.md:293`), landing correct or not at
+    all. **NEEDS-AUTHOR-2 (§3) is open**: nested `r-face` does not restore the
+    outer face, which E174 does not cover, so the dependency may be two elements.
   - **A totality certificate for the renderer** — **E50**
     (`SELF-IMPLEMENT-CATALOG.md:127`, `not built; totality gap`). E158 is a
     natural first client. Nothing is parked on it: the code ships and runs;
