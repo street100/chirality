@@ -5,7 +5,7 @@ title: **A face survives its body** — the ANSI renderer carries the ambient fa
 kind: BUILD-PROPER
 reference_class: OURS
 ours_source: (none — `lib/protocol/render.chiral` is the baseline)
-status: drafted
+status: reviewed
 updated: 2026-08-31
 ---
 
@@ -47,8 +47,17 @@ The honest statement of the defect is therefore:
 > wants and closes by clearing *everything*. That is correct for exactly one
 > level of styling, and the tree has never had two.
 
+**⚑ And one correction the EXAMPLE audit had to make to the example (2026-08-31,
+`e158-doc`).** The first draft said — and the catalog row, the ledger row and the
+INDEX row still say — that under the fix *"only the close changes and all 11 live
+consumers stay byte-identical"*. The audit applied §5's patch to a scratch `lib/`
+copy and re-ran the probe: the live consumers are **screen-identical, not
+byte-identical** (finding 5), the census is **14**, not 11, and `tools/test/row.sh`
+does **not** survive unedited (§6, G7). The three-part refutation above was
+re-derived independently and stands unchanged.
+
 **Still LATENT, and that is confirmed rather than assumed** (§2, finding 3): all
-eleven live `r-face` sites wrap a single `r-text`, which is the one shape that
+fourteen live `r-face` sites wrap a single `r-text`, which is the one shape that
 works. **E158 commit 4 (`doc->rendering`) is the first breaker** — and, correcting
 the brief a second time, it breaks it *without nesting*, because `dg-doc`'s tags
 are siblings (finding 4).
@@ -110,10 +119,10 @@ with E174 already landed.**
    | `r-face` arm (`:714`) | `face-sgr (lookup-face …)` | `:721` |
 
    Five of the six are **ad-hoc faces**: a hardcoded `ansi-bold` that the face
-   registry does not know about. `r-hole` (`:707`) is the exception — it emits no
+   registry does not know about. `r-hole` (`:706`) is the exception — it emits no
    SGR and closes with `(put "")`, so it needs nothing.
 
-3. **The latency claim holds, and here is the census.** Eleven live `r-face`
+3. **The latency claim holds, and here is the census.** Fourteen live `r-face`
    construction sites, every one of them `(r-face <name> (r-text …))`:
    `chat-view:125,141,195` · `command-loop:1471` · `init-loader:135,138,234` ·
    `manas-runview:74,76,101` · `manas-mode:472,473,919,1003` (four of those are
@@ -151,15 +160,38 @@ with E174 already landed.**
    (`:184`) emits `""` for every unset bit and for `fg`/`bg` `< 0`; `lookup-face`
    (`:160`) returns `(face name -1 -1 0)` for an unknown name. So
    `(str-cat ansi-reset (face-sgr default))` **is** `ansi-reset`, byte for byte —
-   which is what lets §5 handle depth 0 without a special case, and what makes the
-   fix byte-identical for all eleven live consumers. Confirmed in finding 1: A's
-   tail is exactly `@[0m@[0m`, not `@[0m@[m` or anything longer.
+   which is what lets §5 handle depth 0 without a special case. Confirmed in
+   finding 1: A's tail is exactly `@[0m@[0m`, not `@[0m@[m` or anything longer.
+
+   **⚑ It does NOT make the fix byte-identical for the live consumers, and an
+   earlier draft of this file, the catalog row and the ledger row all said it
+   did. Measured, by applying §5's patch to a scratch `lib/` copy and re-running
+   finding 1's probe:** the live shape `(r-face f (r-text …))` emits
+
+   | | bytes |
+   |---|---|
+   | before | `@[1m@[31m` `@[1;1H` `ab` `@[0m` `@[0m` |
+   | after  | `@[1m@[31m` `@[1;1H` `ab` `@[0m@[1m@[31m` `@[0m` |
+
+   because the **inner** close restores the ambient, and inside an `r-face` the
+   ambient is that face — not the plain one. Only a leaf at **depth 0** closes
+   with a bare `\e[0m`. Depth-0 identity is what finding 5 buys; the faced leaf
+   gains a redundant re-assertion that the enclosing `r-face`'s own close then
+   wipes. **What is unchanged for every live consumer is the SCREEN, not the byte
+   stream** — same painted cells, same SGR set per cell, same terminal state on
+   exit. Measured with an SGR-tracking reducer over both streams, all four probe
+   nodes, `row col byte|sgrset`: every cell A paints is identical, and the only
+   cells that move are exactly the ones the defect loses (`(3,3) (3,4) (5,3)
+   (5,4) (8,1) (8,2)`: `{}` → `{1,31}`). §6's G1 is written against that, because
+   byte-identity is not merely unproven here — it is false, and a gate row
+   asserting it could never go green.
 
 6. **`render-to-ansi` already carries a dead parameter.** `(declare
    render-to-ansi (=> Rendering (Pair I64 I64) (Maybe Rendering) I64 I64 I64 I64
-   Unit))` (`:99`) — the `(Maybe Rendering) prev`. All twelve internal call sites
-   pass `none`; no body reads it. Relevant to "where does the new state live"
-   (§4.3), and rejected there.
+   Unit))` (`:99`) — the `(Maybe Rendering) prev`. All seven internal call sites
+   (`:577,614,623,636,655,720,729`) pass `none`; no body reads it — `prev` occurs
+   exactly once in the module, as the binder at `:666`. Relevant to "where does
+   the new state live" (§4.3), and rejected there.
 
 7. **The redraw path cannot be hurt yet, and the reason is temporary.**
    `render-to-ansi-delta` (`:733`) is Phase 1: `(diff-changed _)` re-renders the
@@ -250,9 +282,15 @@ answer in this tree, and it is not a coin flip:
 - The terminal **already composes** those deltas: finding 1's `xy` is bold because
   the outer's bold was never cleared.
 - So **delta is what live consumers already see.** Choosing replacement means
-  emitting `\e[0m` before every face open, which changes the emitted bytes for
-  every one of the eleven live sites and re-litigates a rendering nobody complained
-  about.
+  emitting `\e[0m` before every face open and then the ambient's full resolved
+  SGR — strictly more bytes for the identical screen, and it couples the OPEN to
+  the ambient too, so `face-sgr` of the looked-up face would no longer be enough
+  to open a face. Delta keeps the open a function of the face alone.
+  *(Note what this argument is NOT: it is not "delta leaves the bytes alone".
+  Finding 5 measures that it does not — every faced leaf's CLOSE gains the
+  ambient's SGR under delta as well. The claim that survives is that the open is
+  byte-unchanged, the screen is unchanged, and replacement costs more bytes to
+  reach the same screen.)*
 - And it makes `face-join` a **description of the existing emitter**, not a new
   policy: attrs OR, inner's colour wins when set. Write down what the terminal
   does, then make the close agree with it. **Only the close changes.**
@@ -313,7 +351,8 @@ datasheet line (E161 adoption, out of scope). Mechanical recursion is elided wit
 
 ; The default ambient — what `render-to-ansi-full` starts from, and the reason
 ; depth 0 needs no special case. face-sgr of this is "" (measured), so
-; (rnd-restore rnd-face-plain) is byte-identical to (put ansi-reset).
+; (rnd-restore rnd-face-plain) is byte-identical to (put ansi-reset) — at DEPTH 0
+; only; see rnd-restore's own note below.
 (declare rnd-face-plain Face)
 
 ; ⚑ THE ONE NEW EMITTER, and the only place `ansi-reset` may still appear inside
@@ -346,8 +385,11 @@ datasheet line (E161 adoption, out of scope). Mechanical recursion is elided wit
 ; vocabulary for "off" (§3), the ambient is in hand either way, and this is one
 ; expression instead of six conditional off-codes that must stay in step with
 ; face-sgr's six on-codes. When `amb` is rnd-face-plain the tail is "" and this
-; emits exactly `\e[0m` — which is what makes E175 a NO-OP for every live
-; consumer (§6, gate G1).
+; emits exactly `\e[0m` — the DEPTH-0 close, byte for byte what it emits today.
+; Inside a face the tail is that face's SGR, so a faced leaf's close is LONGER
+; than today's by exactly `face-sgr amb`, which the enclosing r-face's own close
+; then wipes: same screen, more bytes. Measured — finding 5, and §6 gate G1 is
+; written against the SCREEN for that reason.
 (def rnd-restore
   (lam (amb) (put (str-cat ansi-reset (face-sgr amb)))))
 
@@ -460,15 +502,18 @@ datasheet line (E161 adoption, out of scope). Mechanical recursion is elided wit
 
 ## 6. Use / modify notes
 
-- **Lands in:** `lib/protocol/render.chiral`, and nothing else. Three new names
+- **Lands in:** `lib/protocol/render.chiral`, **and three probe programs inside
+  `tools/test/row.sh`** — see the second bullet; "nothing else" was wrong. Three new names
   (`face-join`, `rnd-face-plain`, `rnd-restore`) beside the face block; one
   trailing `Face` on nine signatures (`:99,103,105,107,109,111,115,117` and
   `render-row`'s at `:97`) and their bodies; six closes rewritten
   (`:569,610,624,687,705,721`); two seeds in `render-to-ansi-full` (`:725`) and,
   if it ever stops being a full redraw, `render-to-ansi-delta` (`:733`).
   **Not touched:** `rnd-cols` (`:473`) and its folds — E175 changes no width;
-  `diff-node` (`:223`); `lib/protocol/apc.chiral` — the codec transports the
-  *value*, and the value is unchanged; all eleven `prog/` construction sites;
+  `diff-node` (`:259`, declared `:67`); `lib/protocol/apc.chiral` — the codec
+  transports the *value*, and the value is unchanged; all fourteen `prog/`
+  construction sites — **no `prog/` file calls `render-to-ansi` at all**, only
+  `render-to-ansi-full` (41 call sites) and `-delta`, whose signatures do not move;
   `command-loop:478,1546` (finding 8).
 
 - **Conformance target — a new `tools/test/face.sh`, and every row reads the
@@ -478,17 +523,23 @@ datasheet line (E161 adoption, out of scope). Mechanical recursion is elided wit
   (its `ESC[<p>m` case is a documented no-op — that is what makes `rnd-cols`
   checkably invariant under E175), so `face.sh` carries its own reducer variant
   that tracks the SGR register set and emits **`row col bytes sgrset`** per
-  painted cell. `row.sh` stays byte-unchanged.
+  painted cell. `row.sh`'s **reducer** stays unchanged — but **`row.sh` itself
+  does not, and G7 said it did.** `tools/test/row.sh:236,241,305` call
+  `render-to-ansi` with **seven** arguments, and G8's whole point is that a
+  seven-argument call stops compiling; the two rows contradicted each other.
+  Those three probe programs gain the trailing `rnd-face-plain` seed and nothing
+  else. `diag.sh` and `doc.sh` name `render-to-ansi` nowhere and are genuinely
+  untouched.
 
   | | row | mutant that must redden it |
   |---|---|---|
-  | **G1** | **⚑ NO-OP where the tree already works.** The eleven live shapes — `(r-face f (r-text …))`, bold and plain, at depth 0 — emit a stream **byte-identical** to the pre-E175 build. Take the golden from a pristine `lib/` copy, the way `mutlib` takes a mutated one. | seed `render-to-ansi-full` with a non-plain face; or drop `str-cat ansi-reset` from `rnd-restore` |
+  | **G1** | **⚑ NO-OP where the tree already works — ON THE SCREEN, not in the bytes.** The fourteen live shapes — `(r-face f (r-text …))`, bold and plain, at depth 0, **each followed on the same row by an unfaced `r-text`** — reduce to a **cell map identical** to the pre-E175 build, `row col bytes sgrset` for every painted cell, golden taken from a pristine `lib/` copy the way `mutlib` takes a mutated one. **The byte streams are NOT identical and no row may assert that they are** (finding 5, measured: the faced leaf's close gains `face-sgr f`). The trailing unfaced sibling is not decoration — without a cell painted *after* the faced node, this row's own mutants paint nothing different and the row is self-matching. | seed `render-to-ansi-full` with a non-plain face (the trailing sibling then carries the seed's SGR); or drop `str-cat ansi-reset` from `rnd-restore` (the trailing sibling then carries `f`'s SGR) |
   | **G2** | **Finding 1B, the defect itself.** In `(r-face "keyword" (r-row [(r-text "ab") (r-text "cd")]))`, cell `(3,3)` = `c` carries SGR set `{1,31}`. Today it carries `{}`. | revert `r-text`'s close to `put ansi-reset` — and note this mutant **passes** any fix scoped to the `r-face` arm, which is the point of §1 |
   | **G3** | **Finding 1D, without `r-row`.** Same, through `r-lines`: cell `(8,1)` = `a` carries `{1,31}`. Proves the fix predates and outlives E174. | the same revert |
-  | **G4** | **Finding 1C, the join.** `(r-face "keyword" (r-row [(r-face "comment" (r-text "xy")) (r-text "zw")]))` — `keyword` is `(1 -1 1)`, `comment` is `(2 -1 0)`. `x` carries `{1,32}` (inner's fg, outer's bold survives); `z` carries `{1,31}`. | `face-join` returning `oat` instead of `(bor oat iat)` kills `x`'s `1`; returning `ofg` unconditionally makes `x` `{1,31}`; returning `ifg` unconditionally makes `z` wrong via a third level |
-  | **G5** | **Depth 0 emits exactly `\e[0m`** — no trailing `\e[m`, no doubled parameters. The literal byte tail of a depth-0 close is `27 91 48 109`. | give `rnd-face-plain` a set attr bit |
-  | **G6** | **`r-hole` is unchanged** — it opens no SGR and closes with none. The control that shows the edit was not a blanket sed. | make `r-hole` call `rnd-restore` |
-  | **G7** | **`rnd-cols` is invariant.** Every `rnd-cols` value in `row.sh`'s G4 is unchanged, and `tools/test/row.sh` passes **byte-unchanged**, as do `diag.sh` (E157) and `doc.sh` (E158). | any `rnd-cols` edit; already covered by `row.sh`'s own mutants |
+  | **G4** | **Finding 1C, the join — and it needs a bigger fixture than the brief's, measured.** ⚑ `face-join` feeds `rnd-restore` and **nothing else**; an open is always `face-sgr` of the *looked-up* face, never the join. So the only cell that reads a join is **the leaf after another leaf inside the same inner face** — the first leaf is painted straight off the two opens and carries `{1,32}` on the UNFIXED tree too. An inner face with **one** leaf grades nothing. Two shapes, because the fg rule and the attrs rule are convicted by different inner faces: **(a)** `(r-face "keyword" (r-row [(r-face "comment" (r-row [(r-text "xy") (r-text "zw")])) (r-text "pq")]))` — `keyword (1 -1 1)`, `comment (2 -1 0)` — `x,y,z,w` = `{1,32}`, `p,q` = `{1,31}`; **(b)** the same with `manas-cursor (-1 -1 8)`, an inner face with **no fg opinion** — `x,y,z,w` = `{1,7,31}`, `p,q` = `{1,31}`. Unfixed, `z,w,p,q` are `{}` in both. | measured, all three convict and each at a named cell: `oat` for `(bor oat iat)` → (a) `z,w`→`{32}`, `p,q`→`{31}`; (b) `z,w`→`{31}`; `ofg` unconditionally → (a) `z,w`,`p,q`→`{1}`; (b) `z,w`→`{1,7}`; `ifg` unconditionally → **(a) is completely unchanged** and only (b) convicts, `z,w`→`{1,7}` — which is why shape (b) is not optional |
+  | **G5** | **Depth 0 emits exactly `\e[0m`** — no trailing `\e[m`, no doubled parameters. The literal byte tail of a depth-0 close is `27 91 48 109`. ⚑ **Raw bytes, not the cell map**: a trailing SGR paints no cell, so the tracking reducer cannot see this and this row must `od` the tail. | give `rnd-face-plain` a set attr bit |
+  | **G6** | **`r-hole` is unchanged** — it opens no SGR and closes with none. The control that shows the edit was not a blanket sed. ⚑ Also **raw bytes**: `(r-face f (r-lines [(r-hole "h") (r-text …)]))` must emit `r-hole`'s `\e[0m`-free close verbatim. Under the cell map alone the mutant is invisible, because `(rnd-restore amb)` there restores the very face already on. | make `r-hole` call `rnd-restore` |
+  | **G7** | **`rnd-cols` is invariant, and the OTHER gates hold.** Every `rnd-cols` value in `row.sh`'s G4 is unchanged, and `row.sh` passes with **its three probes' only edit being the added `rnd-face-plain` seed** (`:236,241,305` — see above; the claim that row.sh is byte-unchanged was false and contradicted G8). `diag.sh` (E157) and `doc.sh` (E158) pass **byte-unchanged** — neither names `render-to-ansi`. | any `rnd-cols` edit; already covered by `row.sh`'s own mutants |
   | **G8** | **The nine signatures moved together.** `render-to-ansi` with seven arguments does not compile — the arity is the coverage check here, the way the closed sum is `row.sh`'s. | drop `amb` from one walker's declare only |
 
   Fixture placement follows E174: the probe nodes are spelled **once** and
@@ -526,14 +577,17 @@ datasheet line (E161 adoption, out of scope). Mechanical recursion is elided wit
      constructor. That is a real element and **this pre-run cannot mint one** — so
      it is named, not shelved, and not pointed at a number.
   4. **The dead `prev` parameter (finding 6)** is left in place. Deleting it is
-     right and unrelated; doing it inside E175 would make G1's byte-identity row
-     grade two changes at once.
-  5. **Does the *open* need to change too?** §4.2 says no, on the grounds that
-     delta-at-open is what live consumers already see. The alternative —
-     `\e[0m` + full resolved face at every open, the `rich` shape — is *simpler to
-     reason about* and *changes every live consumer's bytes*, which is exactly what
-     G1 is built to catch. Recorded so the spec run rejects it deliberately rather
-     than never considering it.
+     right and unrelated; doing it inside E175 would make G1's cell-map row grade
+     two changes at once.
+  5. **Does the *open* need to change too?** §4.2 says no. ⚑ The ground it used
+     to stand on — *delta leaves the live consumers' bytes alone and replacement
+     would not* — **is gone**: finding 5 measures that delta changes the close
+     bytes of every faced leaf too. What survives: the open stays a function of
+     the looked-up face **alone**, so opening a face needs no ambient in hand;
+     replacement would emit `\e[0m` plus the full resolved join at every open, i.e.
+     strictly more bytes and a second use of the join, for the identical screen.
+     Recorded so the spec run rejects it deliberately rather than never
+     considering it.
 
 - **Related:** [[E174-r-row-width]] (built; supplies the `r-row` that makes case B
   reachable a second way, and whose `rnd-cols` is provably invariant here) ·
