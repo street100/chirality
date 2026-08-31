@@ -9,28 +9,32 @@ the mechanism.
 | folder | from | state |
 |---|---|---|
 | `test/` | `scaffold/tests/run-native.sh` + its phase scripts | **runs**: `bin/chirality test`, 7 of 12 phases ported |
-| `paren-audit/` | `bin/paren-audit.py` | **runs** unchanged |
+| `paren-audit/` | `bin/paren-audit.py` | **runs** unchanged. ⚑ A chirality replacement exists, `prog/paren-audit.prog`. Equivalence against this Python is **unverified**, so the Python is still on disk and is not retired or deletable yet |
 | `syscall-map/` | `bin/syscall-map.py` | **runs**: referent column empty (Python oracle cut) |
-| `ledger-lint/` | `bin/ledger-lint.py` | refuses by name: the doc tier it lints does not exist here |
-| `pack/` | `bin/metis-pack.py` | starts; needs `.planning/` + `examples/` + the Python baseline |
+| `ledger-lint/` | `bin/ledger-lint.py` | **runs** (measured 2026-08-31): 19 checks A–S, 17 live, and 2 named VACUOUS by decision because the migration deleted their subject (H cheatsheet ops, M duplicate-module ratchet) |
+| `pack/` | `bin/metis-pack.py` | **runs** (measured 2026-08-31): `.planning/` and `docs/examples/` both resolve. The Python OURS baseline is CUT, so an E# row naming a compiler `.py` now gets a bundle that says the baseline is gone rather than a path |
 | `frontier/` | `bin/metis-frontier.py` | starts; needs the doc ecosystem |
 | `capture/` | `bin/metis-capture.py` | starts; needs `docs/banks/` + `.planning/capture/` |
 | `doc/` | `bin/metis-doc.py` | starts; needs `docs/banks/` + the CONFORMANCE-MAP |
 | `scriba-edit-smoke/` | `bin/scriba-edit-smoke.py` | starts; needs a scriba ELF (blocked on the manas slice) |
-| `scriba-run-smoke/` | `bin/scriba-run-smoke.py` | starts; needs a scriba launcher (same block) |
-| `prose-lint/` | **new here** | **runs**: the prose sorter, in shell |
+| `scriba-run-smoke/` | `bin/scriba-run-smoke.py` | starts; needs a scriba launcher (same block). **Not ported**: no chirality replacement exists, though `.planning/ZERO-PYTHON-SCOPE.md` puts it in wave 0, portable today |
+| `prose-lint/` | **new here** | the checks moved to chirality, `prog/prose-lint.prog`; `prose-lint.sh` is now the front end only (ranking, baseline, `--regress`, per-line output, code-skipping), and 3 checks print NOT-CHECKED pending E173 |
 
 Each folder carries a `MIGRATION-NOTES.md` saying exactly what it needs and what
 was deliberately not mapped. **No tool was repointed at a guess.** A linter aimed at
 a guess passes because it is looking at nothing.
 
 Slice 7 hoisted the doc tier, so the guesses are gone. `ledger-lint` went from 14 of
-14 inputs missing to 7, and those 7 are path mismatches with known answers. See
-`HANDOFF.md`. The repoint is now a small measured job rather than an author decision.
+14 inputs missing, to 7, to **0**: the 7 path mismatches were repointed at measured
+answers, and the two checks whose subject the migration deleted are named VACUOUS
+instead of counted as clean. See `HANDOFF.md`.
 
-`prose-lint/` is the one tool not carried from `bin/`. It is written in shell,
-because route step 1 exists to take Python out of this tree and a new tool should
-not add to what that step has to remove.
+`prose-lint/` is the one tool not carried from `bin/`. It began in shell, to avoid
+adding to what route step 1 has to remove. The checks then moved again, into
+`prog/prose-lint.prog`: route step 1 says *replace the tools with chirality
+programs*, and shell is no more chirality than Python is (`tools/prose-lint/README.md`).
+`prose-lint.sh` stays as the front end. Three of its checks print NOT-CHECKED until
+E173 lands a matcher.
 
 ## Not migrated, by decision
 

@@ -488,7 +488,7 @@ def _load_frontier():
 
 
 def check_i() -> list[str]:
-    """I. Frontier digest fresh. If docs/FRONTIER.md exists it must embed the
+    """I. Frontier digest fresh. If docs/definitions/FRONTIER.md exists it must embed the
     current sources hash; a frontier source that moved without a re-condense
     makes the orientation layer silently stale — the exact rot this tier fights.
     Absent digest = clean (it is optional to generate); present + stale = FAIL."""
@@ -498,14 +498,14 @@ def check_i() -> list[str]:
         return errs
     mf = _load_frontier()
     if mf is None:
-        return ["[I] docs/FRONTIER.md exists but tools/frontier/frontier.py is "
+        return ["[I] docs/definitions/FRONTIER.md exists but tools/frontier/frontier.py is "
                 "missing; cannot verify freshness"]
     embedded = mf.embedded_hash(digest.read_text(encoding="utf-8"))
     if embedded is None:
-        errs.append("[I] docs/FRONTIER.md has no sources-hash marker; "
+        errs.append("[I] docs/definitions/FRONTIER.md has no sources-hash marker; "
                     "regenerate: python3 tools/frontier/frontier.py condense")
     elif embedded != mf.sources_hash():
-        errs.append("[I] docs/FRONTIER.md is stale (a frontier source changed "
+        errs.append("[I] docs/definitions/FRONTIER.md is stale (a frontier source changed "
                     "without a re-condense); run: python3 tools/frontier/frontier.py condense")
     return errs
 

@@ -483,16 +483,32 @@ element.
 
 ### Stale paths hit while writing this
 
-- `tools/pack/pack.py:40-42` still points at `examples/_TEMPLATE.md`,
+**All three discharged 2026-08-31, in the round-off pass this list triggered.**
+Kept as written, annotated rather than deleted, per the authoring rule above.
+
+- ~~`tools/pack/pack.py:40-42` still points at `examples/_TEMPLATE.md`,
   `examples/_CHEATSHEET.md` and `examples/INDEX.md`. The live tree has them under
   `docs/examples/`, so `pack.py E<#> <slug>` fails with `FileNotFoundError` on
   `_CHEATSHEET.md`. Same rot at `:179,188,455,774`. This run used a
-  path-corrected copy in scratchpad.
-- `docs/examples/_CHEATSHEET.md` names `lib/fsm.chiral` and `lib/json.chiral` as
+  path-corrected copy in scratchpad.~~
+  ⛑ **Already false when this was written.** Commit `e85dcdd` (*pack, doc and
+  frontier point at docs/examples after the hoist*) had repointed all five sites.
+  `python3 tools/pack/pack.py E13` and `E173 --audit example` both run against
+  the real tree, 2026-08-31.
+- ~~`docs/examples/_CHEATSHEET.md` names `lib/fsm.chiral` and `lib/json.chiral` as
   the style exemplars. Neither exists; `lib/protocol/json.chiral` and
-  `lib/protocol/vt-parser.chiral` are the live equivalents.
-- The template's `ours_source` placeholder is `scaffold/chirality/<file>.py`,
-  which the hoist replaced with `lib/`.
+  `lib/protocol/vt-parser.chiral` are the live equivalents.~~
+  ⛑ **Fixed 2026-08-31** to exactly those two files, both opened and confirmed as
+  exemplars first: `vt-parser.chiral` for `data`+`case` with a reversed accumulator
+  flipped once, `json.chiral` for the parser result sum.
+- ~~The template's `ours_source` placeholder is `scaffold/chirality/<file>.py`,
+  which the hoist replaced with `lib/`.~~
+  ⛑ **Fixed 2026-08-31**, and the correction is not `lib/`: the field names a
+  *Python baseline*, and the only Python left in this tree is
+  `tools/<name>/<name>.py`. The placeholder is now that, with a frontmatter
+  comment saying the field is transitional because zero-Python deletes its
+  referent. `pack.py`'s substitution key moved with it, and its OURS resolver now
+  says a compiler `.py` is gone rather than printing a `scaffold/chirality/` path.
 
 - **Related:** [[E11-totality-checker]] (the measure that picks the algorithm),
   [[E148]] `getdents64` and [[E150]] argv (the other two zero-Python gates),
