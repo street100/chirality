@@ -60,6 +60,10 @@
 
 (declare face-sgr (-> Face Str))
 
+(declare face-join (-> Face Face Face))
+
+(declare rnd-restore (=> Face Unit))
+
 (declare bool-eq (-> Bool Bool Bool))
 
 (declare list-all-eq-str (-> (List Str) (List Str) Bool))
@@ -94,27 +98,27 @@
 
 (declare rnd-cols-sum (-> (List Rendering) I64 I64))
 
-(declare render-row (=> (List Rendering) (Pair I64 I64) I64 I64 I64 I64 Unit))
+(declare render-row (=> (List Rendering) (Pair I64 I64) I64 I64 I64 I64 Face Unit))
 
 (declare render-to-ansi
   (=> Rendering (Pair I64 I64) (Maybe Rendering)
-      I64 I64 I64 I64 Unit))
+      I64 I64 I64 I64 Face Unit))
 
-(declare render-table (=> (List Str) (List (List Rendering)) (Pair I64 I64) I64 I64 Unit))
+(declare render-table (=> (List Str) (List (List Rendering)) (Pair I64 I64) I64 I64 Face Unit))
 
-(declare rnd-emit-headers (=> (List Str) I64 I64 Unit))
+(declare rnd-emit-headers (=> (List Str) I64 I64 Face Unit))
 
-(declare rnd-emit-rows (=> (List (List Rendering)) (Pair I64 I64) I64 I64 Unit))
+(declare rnd-emit-rows (=> (List (List Rendering)) (Pair I64 I64) I64 I64 Face Unit))
 
-(declare rnd-emit-one-row (=> (List Rendering) (Pair I64 I64) I64 I64 Unit))
+(declare rnd-emit-one-row (=> (List Rendering) (Pair I64 I64) I64 I64 Face Unit))
 
-(declare render-section (=> Str Bool Rendering (Pair I64 I64) I64 I64 I64 I64 Unit))
+(declare render-section (=> Str Bool Rendering (Pair I64 I64) I64 I64 I64 I64 Face Unit))
 
 (declare rnd-is-selected (-> Rendering Rendering Bool))
 
-(declare render-tree (=> (List Rendering) Rendering (Pair I64 I64) I64 I64 I64 I64 Unit))
+(declare render-tree (=> (List Rendering) Rendering (Pair I64 I64) I64 I64 I64 I64 Face Unit))
 
-(declare render-lines (=> (List Rendering) (Pair I64 I64) I64 I64 I64 I64 Unit))
+(declare render-lines (=> (List Rendering) (Pair I64 I64) I64 I64 I64 I64 Face Unit))
 
 (declare render-to-ansi-full (=> Rendering (Pair I64 I64) Unit))
 
@@ -342,6 +346,55 @@
 (def ansi-altscreen-on  Str (str-cat ansi-esc "[?1049h"))
 (def ansi-altscreen-off Str (str-cat ansi-esc "[?1049l"))
 
+; ─── E175: the ambient face, and the close that RESTORES it ────────────────
+;
+; A face's OPEN has always been a DELTA. `face-sgr` emits only the bits that are
+; set and nothing at all for a colour of -1, so it has no vocabulary for "off"
+; and the terminal composes it over whatever is already on. The CLOSE was a
+; REPLACEMENT — an unconditional ansi-reset — so a faced node's SIBLING lost the
+; enclosing face and the emitter contradicted itself. E175 changes only the
+; close. ⚑ These three live BELOW the ansi-* block on purpose: `ansi-reset`
+; (above) is a bare `def` with no `declare`, so a `rnd-restore` written above it
+; forward-references an undeclared name and the module fails to load.
+
+; face-join — a DESCRIPTION of what the emitter ALREADY DOES, written down so
+; the close can agree with the open, NOT a new policy. Attributes accumulate
+; (the terminal never cleared the outer's bits), and a colour the inner states
+; wins while an unstated one (-1 = "no opinion") inherits the outer's. The
+; joined face's NAME is the INNER's: nothing reads it, and carrying the outer's
+; would make a debug print lie about which face is on top.
+(def face-join
+  (lam (outer inner)
+    (case outer
+      ((face oname ofg obg oat)
+        (case inner
+          ((face iname ifg ibg iat)
+            (face iname
+                  (case (<i ifg 0) (true ofg) (false ifg))
+                  (case (<i ibg 0) (true obg) (false ibg))
+                  (bor oat iat))))))))
+
+; The ambient at depth 0. ⚑ `face-sgr` of this face is "" — measured — and that
+; is what makes depth 0 fall OUT of the general rule instead of needing a case
+; for it: (rnd-restore rnd-face-plain) is (str-cat ansi-reset ""), which is
+; exactly the four bytes every close used to emit. No bottom-of-stack sentinel,
+; no (case depth (0 ...)) — the difference between an invariant and a guard.
+(def rnd-face-plain Face (face "default" -1 -1 0))
+
+; rnd-restore — the ONE new emitter, and the only place ansi-reset may be
+; spelled inside the tree walk after this element. Reset THEN REAPPLY, not six
+; per-attribute off codes: `face-sgr` has no "off" vocabulary, the ambient is in
+; hand either way, and one expression cannot drift out of step with face-sgr's
+; six on-codes the way six hand-written off-codes would.
+;
+; ⚑ A faced leaf's close is now LONGER than it was by exactly `face-sgr amb`,
+; and the enclosing r-face's own close then wipes it. The invariant this element
+; holds is therefore the SCREEN, not the byte stream — a trailing SGR paints no
+; cell — which is why Phase 16 grades a cell map and not a byte diff.
+(def rnd-restore
+  (lam (amb)
+    (put (str-cat ansi-reset (face-sgr amb)))))
+
 (def ansi-goto
   (lam (row col)
     (str-cat (str-cat (str-cat (str-cat ansi-esc "[") (i64->str row)) ";")
@@ -559,39 +612,39 @@
 ; ─── Effectful render helpers ───
 
 (def rnd-emit-headers
-  (lam (hs r c)
+  (lam (hs r c amb)
     (case hs
       (nil unit)
       ((cons h rest)
         (let ((_ (put (ansi-goto r c))))
           (let ((_ (put ansi-bold)))
             (let ((_ (put h)))
-              (let ((_ (put ansi-reset)))
-                (rnd-emit-headers rest r (+ c (+ (str-len h) rnd-header-gutter)))))))))))
+              (let ((_ (rnd-restore amb)))
+                (rnd-emit-headers rest r (+ c (+ (str-len h) rnd-header-gutter)) amb)))))))))
 
 (def rnd-emit-one-row
-  (lam (cells dims row col)
+  (lam (cells dims row col amb)
     (case cells
       (nil unit)
       ((cons cell rest)
-        (let ((_ (render-to-ansi cell dims none row col row col)))
-          (rnd-emit-one-row rest dims row (+ col rnd-table-cell)))))))
+        (let ((_ (render-to-ansi cell dims none row col row col amb)))
+          (rnd-emit-one-row rest dims row (+ col rnd-table-cell) amb))))))
 
 (def rnd-emit-rows
-  (lam (rows dims row col)
+  (lam (rows dims row col amb)
     (case rows
       (nil unit)
       ((cons row-cells rest)
-        (let ((_ (rnd-emit-one-row row-cells dims row col)))
-          (rnd-emit-rows rest dims (+ row 1) col))))))
+        (let ((_ (rnd-emit-one-row row-cells dims row col amb)))
+          (rnd-emit-rows rest dims (+ row 1) col amb))))))
 
 (def render-table
-  (lam (headers rows dims row col)
-    (let ((_ (rnd-emit-headers headers row col)))
-      (rnd-emit-rows rows dims (+ row 2) col))))
+  (lam (headers rows dims row col amb)
+    (let ((_ (rnd-emit-headers headers row col amb)))
+      (rnd-emit-rows rows dims (+ row 2) col amb))))
 
 (def render-section
-  (lam (title collapsed body dims row col drow dcol)
+  (lam (title collapsed body dims row col drow dcol amb)
     ; ⚑ E174 / FLAG A: the ansi-goto this arm has NEVER had. render-section took
     ; `row` and `col` and read neither to position itself — it read `col` once,
     ; only to indent the body — while every other drawing arm (each table
@@ -607,34 +660,34 @@
     (let ((_ (put ansi-bold)))
       (let ((_ (put title)))
         (let ((_ (case collapsed (true (put rnd-collapsed-mark)) (false (put "")))))
-          (let ((_ (put ansi-reset)))
+          (let ((_ (rnd-restore amb)))
             (case collapsed
               (true unit)
               (false
-                (render-to-ansi body dims none (+ row 1) (+ col rnd-section-indent) drow dcol))))))))))
+                (render-to-ansi body dims none (+ row 1) (+ col rnd-section-indent) drow dcol amb))))))))))
 
 (def render-tree
-  (lam (children selected dims row col drow dcol)
+  (lam (children selected dims row col drow dcol amb)
     (case children
       (nil unit)
       ((cons child rest)
         (let ((is-sel (rnd-is-selected child selected)))
           (let ((_ (case is-sel (true (put ansi-bold)) (false unit))))
-            (let ((_ (render-to-ansi child dims none row (+ col rnd-tree-indent) drow dcol)))
-              (let ((_ (case is-sel (true (put ansi-reset)) (false unit))))
-                (render-tree rest selected dims (+ row 1) col drow dcol)))))))))
+            (let ((_ (render-to-ansi child dims none row (+ col rnd-tree-indent) drow dcol amb)))
+              (let ((_ (case is-sel (true (rnd-restore amb)) (false unit))))
+                (render-tree rest selected dims (+ row 1) col drow dcol amb)))))))))
 
 ; render-lines: vertical flat list — each child on its own row at the SAME
 ; column (no +2 tree indentation). The text-buffer primitive: buffer rows are
 ; siblings, not nested children, so a chirality buffer renders at column 1 and the
 ; cursor block (computed from the raw text offset) tracks it one-for-one.
 (def render-lines
-  (lam (children dims row col drow dcol)
+  (lam (children dims row col drow dcol amb)
     (case children
       (nil unit)
       ((cons child rest)
-        (let ((_ (render-to-ansi child dims none row col drow dcol)))
-          (render-lines rest dims (+ row 1) col drow dcol))))))
+        (let ((_ (render-to-ansi child dims none row col drow dcol amb)))
+          (render-lines rest dims (+ row 1) col drow dcol amb))))))
 
 
 ; render-row: horizontal flat list — every child on the SAME row, each starting
@@ -648,12 +701,12 @@
 ; render-to-ansi below: a container's row can be the scrolled offset, so
 ; clipping here would clip the whole subtree.
 (def render-row
-  (lam (children dims row col drow dcol)
+  (lam (children dims row col drow dcol amb)
     (case children
       (nil unit)
       ((cons child rest)
-        (let ((_ (render-to-ansi child dims none row col drow dcol)))
-          (render-row rest dims row (+ col (rnd-cols child)) drow dcol))))))
+        (let ((_ (render-to-ansi child dims none row col drow dcol amb)))
+          (render-row rest dims row (+ col (rnd-cols child)) drow dcol amb))))))
 
 ; ─── render-to-ansi — recursive tree walk with ANSI emission ───
 
@@ -663,20 +716,20 @@
     (and (<=i 1 row) (<=i row (- (rd-rows dims) 1)))))
 
 (def render-to-ansi
-  (lam (node dims prev row col drow dcol)
+  (lam (node dims prev row col drow dcol amb)
     ; Containers (r-lines / r-tree) recurse WITHOUT clipping and WITHOUT an
     ; ansi-goto: they do not draw at their own row, and with scroll their row is
     ; the scrolled-offset (possibly negative), so clipping the container would
     ; clip the whole subtree. Leaf/drawing nodes clip themselves via rd-in-view.
     (case node
       ((r-lines children)
-        (render-lines children dims row col drow dcol))
+        (render-lines children dims row col drow dcol amb))
       ((r-tree children selected)
-        (render-tree children selected dims row col drow dcol))
+        (render-tree children selected dims row col drow dcol amb))
       ; r-row is a CONTAINER too: no ansi-goto of its own and no clip, for the
       ; same reason r-lines has none. The children draw, and each clips itself.
       ((r-row children)
-        (render-row children dims row col drow dcol))
+        (render-row children dims row col drow dcol amb))
       ((r-text content bold)
         (case (rd-in-view dims row)
           (false unit)
@@ -684,15 +737,15 @@
             (let ((_ (put (ansi-goto row col))))
               (let ((_ (case bold (true (put ansi-bold)) (false unit))))
                 (let ((_ (put content)))
-                  (put ansi-reset)))))))
+                  (rnd-restore amb)))))))
       ((r-table headers rows)
         (case (rd-in-view dims row)
           (false unit)
-          (true (render-table headers rows dims row col))))
+          (true (render-table headers rows dims row col amb))))
       ((r-section title collapsed body)
         (case (rd-in-view dims row)
           (false unit)
-          (true (render-section title collapsed body dims row col drow dcol))))
+          (true (render-section title collapsed body dims row col drow dcol amb))))
       ((r-stream source-id)
         (case (rd-in-view dims row)
           (false unit)
@@ -702,7 +755,7 @@
                 (let ((_ (put rnd-stream-open)))
                   (let ((_ (put source-id)))
                     (let ((_ (put rnd-stream-close)))
-                      (put ansi-reset)))))))))
+                      (rnd-restore amb)))))))))
       ((r-hole label)
         (case (rd-in-view dims row)
           (false unit)
@@ -715,10 +768,10 @@
         (case (rd-in-view dims row)
           (false unit)
           (true
-            (let ((prefix (face-sgr (lookup-face default-faces face-name))))
-              (let ((_ (put prefix)))
-                (let ((_ (render-to-ansi body dims none row col drow dcol)))
-                  (put ansi-reset))))))))))
+            (let ((f (lookup-face default-faces face-name)))
+              (let ((_ (put (face-sgr f))))
+                (let ((_ (render-to-ansi body dims none row col drow dcol (face-join amb f))))
+                  (rnd-restore amb))))))))))
 
 ; ─── render-to-ansi-full — clear screen, render from (1,1) ───
 
@@ -726,7 +779,7 @@
   (lam (tree dims)
     (let ((_ (put ansi-clear)))
       (let ((_ (put ansi-home)))
-        (render-to-ansi tree dims none 1 1 1 1)))))
+        (render-to-ansi tree dims none 1 1 1 1 rnd-face-plain)))))
 
 ; ─── render-to-ansi-delta — Phase 1: full-reset re-render ───
 

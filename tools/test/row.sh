@@ -233,12 +233,12 @@ $EZ_NODES
 (def ez-dims (Pair I64 I64) (pair 130 200))
 
 (declare ez-alone (=> Rendering I64 Unit))
-(def ez-alone (lam (nd rw) (render-to-ansi nd ez-dims none rw 1 rw 1)))
+(def ez-alone (lam (nd rw) (render-to-ansi nd ez-dims none rw 1 rw 1 rnd-face-plain)))
 
 (declare ez-withbar (=> Rendering I64 Unit))
 (def ez-withbar
   (lam (nd rw)
-    (render-to-ansi (r-row (cons nd (cons ez-bar nil))) ez-dims none rw 1 rw 1)))
+    (render-to-ansi (r-row (cons nd (cons ez-bar nil))) ez-dims none rw 1 rw 1 rnd-face-plain)))
 
 (def compile-main (=> I64 I64)
   (lam (n)
@@ -302,7 +302,7 @@ cat >"$TMP/g3.prog" <<'G3'
          nil)))))
 (def compile-main (=> I64 I64)
   (lam (n)
-    (let ((_ (render-to-ansi gz-row (pair 24 80) none 3 5 3 5)))
+    (let ((_ (render-to-ansi gz-row (pair 24 80) none 3 5 3 5 rnd-face-plain)))
       0)))
 G3
 
@@ -592,7 +592,7 @@ else bad "G5's probe did not build"; fi
 m10_revert() {  # drop render-section's ansi-goto line and re-balance its parens
   mutlib "$1" lib/protocol/render.chiral \
     '/^    (let ((_ (put (ansi-goto row col))))$/d' \
-    's|^                (render-to-ansi body dims none (+ row 1) (+ col rnd-section-indent) drow dcol))))))))))$|                (render-to-ansi body dims none (+ row 1) (+ col rnd-section-indent) drow dcol)))))))))|'
+    's|^                (render-to-ansi body dims none (+ row 1) (+ col rnd-section-indent) drow dcol amb))))))))))$|                (render-to-ansi body dims none (+ row 1) (+ col rnd-section-indent) drow dcol amb)))))))))|'
 }
 if m10_revert "M10 section-forgets-its-goto"; then
   if m10g5="$(g5_map "$MUTLIB")"; then
