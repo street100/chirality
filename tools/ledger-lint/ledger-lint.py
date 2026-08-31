@@ -25,7 +25,18 @@ from pathlib import Path
 
 # tools/<name>/<name>.py -> the tree root is THREE levels up, not two.
 ROOT = Path(__file__).resolve().parent.parent.parent
-SCAFFOLD = ROOT / "scaffold"
+# The source tree is lib/ + prog/. `SCAFFOLD` kept its name so the checks that
+# resolve a citation by trying several bases still read the same; it now points
+# at the tree root, and SRC_ROOTS is the pair a check walks when it wants "every
+# source file". Repointed 2026-08-31 against .planning/MIGRATION-MAP.tsv, which
+# records where each of the 147 originals went.
+SCAFFOLD = ROOT
+SRC_ROOTS = (ROOT / "lib", ROOT / "prog")
+
+
+def src_files(pattern: str = "*.chiral"):
+    """Every source file under lib/ and prog/, sorted."""
+    return sorted(f for r in SRC_ROOTS for f in r.rglob(pattern))
 CONDENSATION = date(2026, 7, 20)  # PRINCIPLES.md seven->five
 WORDS = {"one":1,"two":2,"three":3,"four":4,"five":5,"six":6,"seven":7,
          "eight":8,"nine":9,"ten":10,"eleven":11,"twelve":12,"thirteen":13,
@@ -64,10 +75,17 @@ def resolve(tok: str) -> bool:
     return tok in _basenames()  # bare basename: it must exist somewhere
 
 
+class Vacuous(Exception):
+    """A check whose SUBJECT no longer exists. Raised instead of returning [],
+    because an empty loop reporting `ok` is a gate that passes forever. The
+    runner prints these under their own heading, the same way the test suite
+    prints its unported phases."""
+
+
 def check_a() -> list[str]:
     """Ledger evidence paths exist."""
     errs: list[str] = []
-    led = ROOT / "docs" / "status-ledger.md"
+    led = ROOT / "docs" / "definitions" / "status-ledger.md"
     text = led.read_text()
     for m in PATHISH.finditer(text):
         raw = m.group(1)
@@ -143,7 +161,7 @@ def check_c() -> list[str]:
             errs.append(f"[C] MAP claims {m.group(1)} decision notes; "
                         f"tree has {n_decisions}")
 
-    edges = (ROOT / "docs" / "open-edges.md").read_text()
+    edges = (ROOT / "docs" / "definitions" / "open-edges.md").read_text()
     seq_block = edges.split("Sequencing questions", 1)
     if len(seq_block) == 2:
         n_seq = len(re.findall(r"^\s*\d+\.\s", seq_block[1], re.M)) or \
@@ -427,9 +445,12 @@ def check_h() -> list[str]:
     """The idioms cheatsheet's refine operators exist in refine.py's _OPS —
     the reference every pre-run copies syntax from must not teach illegal ops."""
     errs: list[str] = []
-    cheat = ROOT / "examples" / "_CHEATSHEET.md"
+    cheat = ROOT / "docs" / "examples" / "_CHEATSHEET.md"
     rf = SCAFFOLD / "chirality" / "refine.py"
-    if not (cheat.exists() and rf.exists()):
+    if not rf.exists():
+        raise Vacuous("refine.py is the Python oracle, CUT by author decision. "
+                      "Nothing verifies the cheatsheet's refine operators now.")
+    if not cheat.exists():
         return errs
     m = re.search(r"_OPS\s*=\s*\(([^)]*)\)", rf.read_text())
     ops = set(re.findall(r'"([^"]+)"', m.group(1))) if m else set()
@@ -466,7 +487,7 @@ def check_i() -> list[str]:
     makes the orientation layer silently stale — the exact rot this tier fights.
     Absent digest = clean (it is optional to generate); present + stale = FAIL."""
     errs: list[str] = []
-    digest = ROOT / "docs" / "FRONTIER.md"
+    digest = ROOT / "docs" / "definitions" / "FRONTIER.md"
     if not digest.exists():
         return errs
     mf = _load_frontier()
@@ -606,9 +627,7 @@ def check_l() -> list[str]:
     owning module; N must never grow. Lower the baseline when an element retires
     copies — see LEDGER VAL/E151."""
     errs: list[str] = []
-    srcs = [f for f in list((ROOT / "scaffold" / "lib").rglob("*.chiral"))
-            + list((ROOT / "TUI").rglob("*.chiral"))
-            if "/scaffold/lib/scriba/" not in str(f)]   # symlink to TUI/scriba, same files
+    srcs = src_files()   # the symlink web the old filter dodged no longer exists
     for pat, baseline in OWNERSHIP_BASELINE.items():
         rx = re.compile(pat, re.M)
         hits = [f for f in srcs if rx.search(f.read_text(errors="replace"))]
@@ -641,7 +660,11 @@ def check_m() -> list[str]:
     foundation — that is the failure this guards, and it cannot happen by editing,
     only by someone replacing a link with a file."""
     errs: list[str] = []
-    lib = {f.stem: f for f in (ROOT / "scaffold" / "lib").glob("*.chiral")}
+    if not (ROOT / "TUI").is_dir():
+        raise Vacuous("the scaffold/lib <-> TUI symlink web this guards was "
+                      "dissolved by the 2026-08-31 migration; 153 entries "
+                      "resolved to 147 real files and nothing is linked now.")
+    lib = {f.stem: f for f in src_files()}
     for f in sorted((ROOT / "TUI").rglob("*.chiral")):
         src = lib.get(f.stem)
         if src and src.resolve() != f.resolve():
@@ -705,7 +728,7 @@ def check_p() -> list[str]:
     overridable at all.
     """
     errs: list[str] = []
-    files = sorted((ROOT / "scaffold" / "tests").glob("*.sh")) + [ROOT / "bin" / "chirality"]
+    files = sorted((ROOT / "tools" / "test").glob("*.sh")) + [ROOT / "bin" / "chirality"]
     for f in files:
         if not f.exists():
             errs.append(f"[P] {f.relative_to(ROOT)} missing — four suite phases reach the "
@@ -812,7 +835,7 @@ def check_n() -> list[str]:
     """
     errs: list[str] = []
     ledger = ROOT / ".planning" / "LEDGER.md"
-    index = ROOT / "examples" / "INDEX.md"
+    index = ROOT / "docs" / "examples" / "INDEX.md"
     if not ledger.exists() or not index.exists():
         return errs
     # LEDGER row: | E# | category | state | ... -- the state is column 3.
@@ -947,7 +970,7 @@ def check_s() -> list[str]:
         return subprocess.run(["git", "check-ignore", "-q", rel],
                               cwd=ROOT, capture_output=True).returncode == 0
 
-    for f in sorted(SCAFFOLD.rglob("*.chiral")):
+    for f in src_files():
         if f.is_symlink():
             continue
         rel_src = f.relative_to(ROOT).as_posix()
@@ -1017,20 +1040,21 @@ def check_s() -> list[str]:
 # MIGRATION-NOTES.md. A linter repointed at a guess passes because it is looking at
 # nothing, which is the exact failure class this tool exists to catch.
 REQUIRED_INPUTS = [
-    ("docs/status-ledger.md",                 "check A -- evidence paths"),
+    ("docs/definitions/status-ledger.md",     "check A -- evidence paths"),
     ("MAP.md",                                "check C -- MAP counts"),
-    ("docs/open-edges.md",                    "check D -- banks tier"),
+    ("docs/definitions/open-edges.md",        "check D -- banks tier"),
     ("docs/banks",                            "checks D/E -- the banks tier"),
-    ("docs/FRONTIER.md",                      "check I -- frontier staleness"),
-    ("examples",                              "checks J/N -- the worked-example corpus"),
-    ("examples/INDEX.md",                     "checks J/N -- pipeline state"),
-    ("examples/_CHEATSHEET.md",               "check H -- cheatsheet ops"),
+    ("docs/definitions/FRONTIER.md",          "check I -- frontier staleness"),
+    ("docs/examples",                         "checks J/N -- the worked-example corpus"),
+    ("docs/examples/INDEX.md",                "checks J/N -- pipeline state"),
+    ("docs/examples/_CHEATSHEET.md",          "check H -- cheatsheet ops"),
     (".planning",                             "the planning tier"),
     (".planning/audit/CONFORMANCE-MAP.md",    "checks E/Q -- the build-state authority"),
     (".planning/SELF-IMPLEMENT-CATALOG.md",   "checks J/K -- element rows"),
     (".planning/LEDGER.md",                   "check J -- ledger rows"),
     (".planning/RUNG1-CHECKLIST.md",          "check O -- rung-1 python accounting"),
-    ("scaffold",                              "checks G/R -- the line citations' subject"),
+    ("lib",                                   "checks G/L/R -- the source tree"),
+    ("prog",                                  "checks G/L/R -- the source tree"),
 ]
 
 
@@ -1042,12 +1066,8 @@ def preflight() -> int:
           f"required inputs are absent under {ROOT}\n")
     for p, why in missing:
         print(f"  MISSING  {p:<40s} {why}")
-    print("\nThis is the doc tier, and this tree does not have one yet: docs/ is")
-    print("examples/ definitions/ elements/, all empty. Two of the inputs above are")
-    print("gone BY DECISION rather than unmapped -- scaffold/chirality/{kernel,refine}.py,")
-    print("the Python oracle that check H's cheatsheet ops are verified against.")
-    print("See tools/ledger-lint/MIGRATION-NOTES.md. Nothing was checked; this is")
-    print("exit 2, not a clean run.")
+    print("Nothing was checked. This is exit 2, which is not a clean run and is")
+    print("not a violation either -- see tools/ledger-lint/MIGRATION-NOTES.md.")
     return 2
 
 
@@ -1056,6 +1076,7 @@ def main() -> int:
     if rc:
         return rc
     all_errs: list[str] = []
+    vacuous: list[tuple] = []
     for name, fn in (("A evidence paths", check_a),
                      ("B principle numbers", check_b),
                      ("C MAP counts", check_c),
@@ -1075,10 +1096,19 @@ def main() -> int:
                      ("Q map live tally", check_q),
                      ("R citation lands on its symbol", check_r),
                      ("S rank-2 anchor is committed", check_s)):
-        errs = fn()
+        try:
+            errs = fn()
+        except Vacuous as v:
+            vacuous.append((name, str(v)))
+            print(f"  [VACUOUS] {name} -- subject gone, checked nothing")
+            continue
         all_errs += errs
         status = "FAIL" if errs else "ok"
         print(f"  [{status}] {name} ({len(errs)} issue(s))")
+    if vacuous:
+        print("\nchecked nothing, and named rather than counted as clean:\n")
+        for name, why in vacuous:
+            print(f"  {name}\n    {why}")
     if all_errs:
         print("\nledger-lint: violations found\n")
         for e in all_errs:

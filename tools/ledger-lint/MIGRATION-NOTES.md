@@ -53,3 +53,40 @@ and whether `docs/definitions/` replaces `docs/banks/`, is an **author decision 
 has not been made**. Rewriting the checks against a guess would produce a linter that
 passes because it is looking at nothing — the exact failure class this tool exists
 to catch. Left pointing at the old shape until the doc tier is settled.
+
+## 2026-08-31: it runs
+
+The 14 required inputs are present. Seven were path mismatches after the doc
+role sort and the source migration, and all seven had a recorded destination in
+`.planning/MIGRATION-MAP.tsv`, so this was a repoint rather than a guess:
+
+| was | now |
+|---|---|
+| `docs/status-ledger.md` | `docs/definitions/status-ledger.md` |
+| `docs/open-edges.md` | `docs/definitions/open-edges.md` |
+| `docs/FRONTIER.md` | `docs/definitions/FRONTIER.md` |
+| `examples/` | `docs/examples/` |
+| `examples/INDEX.md` | `docs/examples/INDEX.md` |
+| `examples/_CHEATSHEET.md` | `docs/examples/_CHEATSHEET.md` |
+| `scaffold/` | `lib/` + `prog/`, via `src_files()` |
+
+Checks G and R skip a citation whose file does not resolve, so pointing them at
+the live tree could not manufacture findings. Both report clean.
+
+`doc_tier()` walks `docs/` recursively. Before that, four checks globbed
+`docs/*.md`, which after the role sort was one file.
+
+**Two checks now report VACUOUS instead of ok.** Their subject is gone, and an
+empty loop returning no errors is a gate that passes forever:
+
+- **H cheatsheet ops** verified the cheatsheet's refine operators against
+  `refine.py`'s `_OPS`. That is the Python oracle, cut by author decision, so
+  nothing verifies those operators now.
+- **M duplicate-module ratchet** guarded the `scaffold/lib` to `TUI` symlink
+  web against a link being replaced by a real file. The migration dissolved
+  that web: 153 entries resolved to 147 real files.
+
+First real run: 19 checks, 12 clean, 2 vacuous, 5 failing with 152 findings.
+Those findings are the doc tier's actual state and have not been triaged. A
+large share of check A and all of check O are the Python oracle's paths, which
+are gone by the same decision that made H vacuous.
