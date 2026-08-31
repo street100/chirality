@@ -4,8 +4,9 @@ slug: r-row-width
 title: **`Rendering` gains horizontal composition (`r-row`) and the per-node width function it needs**
 kind: BUILD-PROPER
 example: docs/examples/E174-r-row-width.md
-status: specced
+status: audited
 updated: 2026-08-31
+audited: 2026-08-31
 ---
 
 # E174 SPEC — **`Rendering` gains horizontal composition (`r-row`) and the per-node width function it needs**
@@ -22,6 +23,18 @@ updated: 2026-08-31
 > citation, count and byte string below was **read or executed live on
 > 2026-08-31** in `/workspace/chirality-verify` @ `e158-doc`. Where a measurement
 > corrected the example it is called out in §6.
+>
+> **⚑ Amended by the SPEC audit gate (2026-08-31, same tree, same branch).** That
+> claim did not hold everywhere. The spec run mis-tallied the sample sweep (SIX
+> check `OK`, not seven); reported the compiler blob's *non-blank* line count as
+> its line count (**16 161** lines, 14 157 non-blank); asserted an import list
+> and a home for `Unit` that `t5_utf8.prog` does not have (it has **no imports
+> at all**); mis-cited Phase 7's `fail` increment (`:176`, not `:177`);
+> mis-attributed `doc.sh`'s assembled-pattern device to its registration rows;
+> counted the hoisted constants as seven while listing eight; and left
+> `t5_vt_parser` "not determined" when one command determines it. **All are
+> corrected in place below**, and §6 carries the audit's own RUN log — including
+> the two mutants (M5, M7) executed against scratch copies of `lib/`.
 
 ## 1. Deliverable
 
@@ -30,7 +43,7 @@ updated: 2026-08-31
   bare left-to-right juxtaposition with **no implicit separator** — and the
   measure that constructor cannot exist without:
   **`rnd-cols : (-> Rendering I64)`**, a pure per-node *advance* width with one
-  arm per constructor and **no `_`**. The seven layout constants the emitter
+  arm per constructor and **no `_`**. The **eight** layout constants the emitter
   carries as bare literals become **named `def`s with two readers**
   (`rnd-cols` and `render-to-ansi`) so the width function and the emitter cannot
   drift apart by editing one of them. `render-to-ansi` gains `render-row`;
@@ -43,7 +56,7 @@ updated: 2026-08-31
   never against a shape assertion.
 
 - **The element is the width function, not the constructor.** `r-row` is one arm
-  and six lines of emitter. `rnd-cols` is nine arms, four folds, seven hoisted
+  and six lines of emitter. `rnd-cols` is nine arms, four folds, eight hoisted
   constants and a stated precondition, and it is *a contract with*
   `render-to-ansi` rather than a property of the value — which is why §5 grades
   it by rendering and reading the cursor, not by comparing numbers to numbers.
@@ -61,16 +74,21 @@ updated: 2026-08-31
     `LEDGER.md:295`). E174 adds **zero** `str-sub` call sites: `str-cols` goes
     through `str->bytes` + `decode-utf8`, not through substring extraction.
     Named so the implement run does not import the hazard by reflex.
-  - **A wcwidth-class codepoint→cell table.** `str-cols` counts **codepoints**.
-    That is strictly better than the incumbent byte count and localises the unit
-    in one named function, and it is **still wrong** for CJK/full-width (2
-    cells), combining marks and ZWJ (0 cells). There is **no minted row** to hand
-    it to and a spec run cannot mint one → **NEEDS-AUTHOR-1** (§3).
-  - **`r-table`'s header/body layout disagreement.** Headers advance by content
-    (`render.chiral:360`), body cells on a fixed 16-column grid (`:368`) — one
-    value, two layouts, measured. E174 **surfaces** it and defines `r-table`'s
-    width against the grid; it does not fix it, and there is no minted row →
-    **NEEDS-AUTHOR-2** (§3), non-blocking.
+  - **E177 — a wcwidth-class codepoint→cell table.** Minted
+    (`SELF-IMPLEMENT-CATALOG.md:441`, `LEDGER.md:296`), with **E174 as its first
+    consumer**. `str-cols` ships counting **codepoints** — strictly better than
+    the incumbent byte count, localised in one named function whose name states
+    the unit — and it is **still wrong** for CJK/full-width (2 cells), combining
+    marks and ZWJ (0 cells). E177 changes the **body**; the seam and the
+    signature do not move. Its row records that the hard part is the **ambiguous
+    class** (U+2014), not the table. Decision 15 (§3).
+  - **E178 — `r-table`'s header/body layout disagreement.** Minted
+    (`SELF-IMPLEMENT-CATALOG.md:442`, `LEDGER.md:297`). Headers advance by
+    content (`render.chiral:360`), body cells on a fixed 16-column grid (`:368`)
+    — one value, two layouts, measured. E174 **surfaces** it and defines
+    `r-table`'s width against the grid; it does not fix it, and its table gate is
+    **deliberately narrowed** to the agreeing region. E178 exists so that
+    narrowing is a **tracked debt**. Decision 16 (§3).
   - **`doc->rendering` / E158 commit 4.** That is E158's commit
     (`E158-doc-formatter-SPEC.md` §4), which *consumes* `r-row`. E174 owns the
     target type; it does not write the producer.
@@ -95,9 +113,10 @@ updated: 2026-08-31
 
 - **Ledger / catalog state:** `LEDGER.md:293` — `E174 | render | design | … |
   ←E158, →E158c4`. `SELF-IMPLEMENT-CATALOG.md:438` — `Not built, and it is the
-  measured blocker under E158's doc->rendering.` The example is `reviewed`
-  (`docs/examples/INDEX.md:135`) and its FLAG A block is author-decided
-  (`ea218aa`).
+  measured blocker under E158's doc->rendering.` The example's INDEX row
+  (`docs/examples/INDEX.md:135`) reads `specced` and links this file — flipped by
+  hand with the SPEC commit (§6); it was `reviewed` when the spec run began. Its
+  FLAG A block is author-decided (`ea218aa`).
 
 - **⚑ The suite is GREEN today, and the number is the baseline this element must
   not move.** Measured, one run, this session:
@@ -130,30 +149,47 @@ updated: 2026-08-31
   is **green**: the sum's own two exhaustive cases are current. The **module** is
   the clean gate; the samples are downstream casualties.
 
-  Casualties, measured over all nine of `prog/scriba/samples/`: seven check `OK`;
+  Casualties, measured over all nine of `prog/scriba/samples/`: **six** check
+  `OK` (`t1`, `t2`, `t4_codec`, `t4_grid`, `t4_minimal`, `t7_pty_cap`);
   **`t6_apc_roundtrip.prog`** and **`t5_vt_parser.prog`** fail
   `load: non-exhaustive case` (the latter via `vt-parser.chiral:4`'s
   `(import "protocol/apc")`); **`t5_utf8.prog`** fails
-  `load: unknown name Unit` — **unrelated** (it imports `prelude/prelude` and
-  `protocol/utf8` only, and `Unit` comes from `ports/ports`; nothing in E174
-  touches it).
+  `load: unknown name Unit` — **unrelated, and for a reason worth stating
+  correctly: it has ZERO `(import …)` lines at all.** It is an unported old-tree
+  root (its header still reads *"Build: prelude + TUI/vt-core/utf8.chiral + this
+  file"*), so nothing resolves into its blob and `Unit` — defined at
+  `lib/prelude/prelude.chiral:17`, **not** in `ports/ports` — is simply absent.
+  Nothing in E174 touches it, and no `enc` fix can move it.
 
-  **Not promised:** `vt-parser.chiral` carries **40** `case`s and one `_`, so
-  whether it *also* holds a non-exhaustive case of its own — and therefore
-  whether `t5_vt_parser` goes green on the `enc` fix alone — **was not
-  determined**. §4 re-measures it; §5 does not assert it.
+  **⚑ Determined at the SPEC audit, and it changes commit 3's obligation.**
+  `vt-parser.chiral` carries **40** `case`s and one `_`, so whether it *also*
+  held a non-exhaustive case of its own was left open by the spec run. It was
+  then **measured**: in a scratch copy of `lib/` with `enc`'s two missing arms
+  (`r-lines`, `r-face`) added and nothing else changed,
+  `prog/scriba/samples/t5_vt_parser.prog` **compiles and runs to exit 42**
+  (its own all-passed sentinel). So `t5_vt_parser` goes green on the `enc` fix
+  alone; it holds no non-exhaustive case of its own. **Commit 3 therefore removes
+  BOTH `t6_apc_roundtrip.prog` and `t5_vt_parser.prog` from `KNOWN_FAIL`**, and
+  Phase 7 lands at `37 compiled, 0 failed, 1 known/negative, 0 newly passing`
+  (`t5_utf8` alone). Re-measure at implement time — but this is no longer an
+  open question, and leaving it "not promised" would have parked a decidable
+  one.
 
 - **⚑ Phase 7 will go RED on success unless its `KNOWN_FAIL` list moves in the
   same commit.** `tools/test/run-tests.sh:153` reads
-  `KNOWN_FAIL=" t5_utf8.prog t5_vt_parser.prog t6_apc_roundtrip.prog "`, and
-  `:164-168` reports **`NEWPASS`** and increments `fail` when a known-failing
-  root starts compiling (`[ "$r_newpass" -eq 0 ] || fail=$((fail+1))`, `:177`).
+  `KNOWN_FAIL=" t5_utf8.prog t5_vt_parser.prog t6_apc_roundtrip.prog "`;
+  `:164-168` is the known-fail branch, which at `:166-167` prints **`NEWPASS`**
+  and increments `r_newpass` when a known-failing root starts compiling; and
+  **`:176`** turns any non-zero `r_newpass` into a suite failure
+  (`[ "$r_newpass" -eq 0 ] || fail=$((fail+1))`), which `:219-222` reports as
+  `gate FAILED` and exits non-zero.
   So fixing `enc` turns Phase 7 red until `t6_apc_roundtrip.prog` (and, if it
   goes green, `t5_vt_parser.prog`) leaves the list. **The example does not
   mention this**; it is a hard obligation on commit 3. The prose above the list
-  (`:145-146`) also mis-describes both as *"pre-existing TUI breakage"* — the
-  failure is `load: non-exhaustive case` from `enc`, not a tty — and that comment
-  is corrected in the same commit.
+  (`:145-146`) also mis-describes all three as *"pre-existing TUI breakage"* — the
+  failure is `load: non-exhaustive case` from `enc` for two of them and a missing
+  import block for the third, not a tty — and that comment is corrected in the
+  same commit.
 
 - **Live code this composes with (already built — compose, do not rebuild):**
   - **`lib/protocol/render.chiral`, 492 L**, `(import "prelude/prelude")` +
@@ -197,8 +233,8 @@ updated: 2026-08-31
     §5's G2 is a **round-trip**, not a coverage check (mutant M7).
   - **`tools/test/run-tests.sh`.** `run_phase()` `:113`; registered
     3-6 at `:132-135`, **13** at `:188` (E157), **14** at `:197` (E158). The
-    header (`:19-24`) records **8-12 as names still owed** to unported old-tree
-    phases. Phase 7's root sweep is `:154-177`.
+    header (`:18-24`) records **8-12 as names still owed** (the five rows at `:18-22`) to unported old-tree
+    phases. Phase 7's root sweep is `:153-178`.
   - **`tools/test/diag.sh` (E157, 30 assertions)** and **`tools/test/doc.sh`
     (E158, 26 assertions)** + their fixtures. `doc.sh` is the shape `row.sh`
     mirrors: `ok`/`bad` counters, `build_run`, `build_err`, `refuse_msg`, the
@@ -258,7 +294,8 @@ updated: 2026-08-31
 
 - **⚑ BUILD-RULE state, measured: E174 changes NO compiler source, so the
   fixpoint does not fire.** `chirality_blob_file "lib:prog" prog/compiler.prog`
-  produces 14 157 lines and contains **zero** occurrences of `r-text` or
+  produces **16 161 lines** (14 157 of them non-blank) and contains **zero**
+  occurrences of `r-text` or
   `render-to-ansi` — `protocol/render` and `protocol/apc` are outside the
   compiler's import closure. Consequences, stated so they are not guessed at in
   §4: there is **no new compiler binary**, **no promotion**, and **no
@@ -269,13 +306,15 @@ updated: 2026-08-31
 Rows 1-4 are **BINDING from upstream** — the author's FLAG A block and the three
 standing calls the example records — and are carried, not reopened. Rows 5-8 are
 the example's open questions the audit judged **decidable**, closed here with the
-measurement that decides them. Rows 9-14 are new to the spec run. Two questions
-are genuinely author-tier and are **NEEDS-AUTHOR**, below the table; one
-recommendation (open question 5) is surfaced with its blast radius.
+measurement that decides them. Rows 9-14 are new to the spec run. **Rows 15-16
+were the spec run's two NEEDS-AUTHOR items; the author ANSWERED both and minted
+their rows (`da3e7b3`), so they are carried here as settled** — the catalog and
+the ledger outrank this file. One recommendation (open question 5) is surfaced
+with its blast radius.
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
-| 1 | Does `render-section` get its `ansi-goto` inside E174? | **BINDING — YES, inside E174. Author decision, `ea218aa`** | One line at `render.chiral:385`, wrapping `(put ansi-bold)` in `(let ((_ (put (ansi-goto row col)))) …)`. Measured (§2): `render-section` takes `row`/`col` and **never reads `col`**; `:356`, `:439`, `:455`, `:465` all position themselves, so it is the single outlier and the fix **removes** a special case. Without it, `r-row`'s whole contract — child *n* draws at `col + Σ widths` — is void for an `r-section` child no matter what `rnd-cols` returns, and §5's agreement row would be **unsatisfiable for one constructor**: a gate row that cannot fail. **It carries its own gate row** (§5 **G5**): a section rendered first-on-row must land exactly where it lands today, proving the fix is a no-op in the only configuration the tree currently produces. The screen map to pin is measured and printed in §5. |
+| 1 | Does `render-section` get its `ansi-goto` inside E174? | **BINDING — YES, inside E174. Author decision, `ea218aa`** | One line at `render.chiral:385`, wrapping `(put ansi-bold)` in `(let ((_ (put (ansi-goto row col)))) …)`. Measured (§2): `render-section` takes `row`/`col` and **never reads either to position itself** (it reads `col` exactly once, at `:392`, only to indent the body); `:356`, `:439`, `:455`, `:465` all position themselves, so it is the single outlier and the fix **removes** a special case. Without it, `r-row`'s whole contract — child *n* draws at `col + Σ widths` — is void for an `r-section` child no matter what `rnd-cols` returns, and §5's agreement row would be **unsatisfiable for one constructor**: a gate row that cannot fail. **It carries its own gate row** (§5 **G5**): a section rendered first-on-row must land exactly where it lands today, proving the fix is a no-op in the only configuration the tree currently produces. The screen map to pin is measured and printed in §5. |
 | 2 | SGR escapes inside `r-text`'s `Str`? | **BINDING — REFUSED** | A `Str` carrying which-of-N presentation structure is the precise flattening defect E157 and E158 exist to remove (`pattern-boundary-sums`), and it would make `Rendering` unsafe to re-render to any non-ANSI medium — including `apc.chiral`'s codec, which transports the value itself. The alternative, **restricting `doc->rendering`'s contract** to single-segment lines, was **measured dead on E158's own first consumer** (`dg-doc`'s `r-redeclared` arm puts a tagged head, a space and a tagged site on one line at any width where the group fits). **Horizontal composition wins by elimination, not preference.** Both are already on the catalog row (`:438`); nothing below re-argues either. |
 | 3 | Is E175 absorbed into E174? | **BINDING — NO, and the independence is a proof, not a scoping note** | SGR bytes are **non-printing**, so `rnd-cols`'s `r-face` arm is `(rnd-cols body)` under both today's `ansi-reset` and E175's restore: **`rnd-cols` is provably invariant under E175**. E174 is missing **layout**; E175 is non-nesting **SGR state** (`LEDGER.md:294`, minted). Folding them would conflate two failures with one symptom. §5's screen model ignores `ESC[…m` and **mutant M3** (`face-costs-a-column`) makes the zero-width claim a row that can fail. Order: E174, then E175; E158's G8 grades the pair. |
 | 4 | Does `r-row` carry a separator? | **BINDING — NO. Bare juxtaposition** | The two existing horizontal placers each bake a spacing constant in — `+2` at `:360`, `+16` at `:368` — and the measured consequence is one `r-table` value with two column layouts. A combinator with a baked-in gap cannot express "no gap", which is exactly what a `d-cat` of two adjacent tagged spans needs; a caller who wants a gap writes one more child, `(r-text " " false)`. One constructor, one meaning. |
@@ -283,12 +322,14 @@ recommendation (open question 5) is surfaced with its blast radius.
 | 6 | Does `r-stream` reserve space for content it does not hold (example q4)? | **RESOLVED — it reserves nothing, and this is a DEFINITION, not an open question** | Not actually open: the emitter (`:451-460`) draws a **fixed placeholder** — `"["` + `source-id` + `" — live stream]"` — so the width **is** derived from what is drawn, exactly like every other arm. `rnd-cols`'s `r-stream` arm is `(+ (str-cols rnd-stream-open) (+ (str-cols source-id) (str-cols rnd-stream-close)))`. Recorded as a **visible definition**: a stream occupies no columns for content the value does not carry. A future streaming renderer that draws real content in place makes it underivable again and would need a declared reservation *field* on the constructor — which is a change to the constructor, and would be its own row. |
 | 7 | One `I64` or a min/max pair (example q6)? | **RESOLVED — one `I64`, with the precondition written into the source** | Decidable and already decided by the module: **nothing in `Rendering` reflows.** No constructor carries a width field; `render-to-ansi` clips **by row** via `rd-in-view` (`:420`, `(and (<=i 1 row) (<=i row (- (rd-rows dims) 1)))` — `col` does not appear) and **never wraps by column**; the only wrapping is the terminal's, which `ansi-nowrap` (`:293`) turns **off**. `rich`'s `Measurement(minimum, maximum)` exists for the case chirality does not have. The signature is `(-> Rendering I64)` and its header states, in as many words, that **if a wrapping constructor ever lands this signature is wrong rather than imprecise**. |
 | 8 | Does `rnd-hdr-cols` fold *n* gutters or *n−1*? | **RESOLVED — n−1** | The emitter advances `c` by `(+ (str-len h) 2)` after **every** header including the last (`:360`), but that final advance is consumed by the `nil` case and **nothing is ever drawn in it**. The last column the header row touches is therefore `Σ lengths + 2(n−1)`. Folding *n* gutters would bake a two-column trailing separator into a width function whose own decision (row 4) is that a row has **no implicit separator** — and §5's exact-adjacency row would convict it. (The example states this correctly; it is pinned here because it is the arm most likely to be "simplified" back.) |
-| 9 | Where does the shared-constant invariant live? | **RESOLVED — seven named `def`s with TWO readers, in `render.chiral`** | This is the substance of the element. Every constant `rnd-cols` needs is today a bare literal inside an emitter: `2` at `:392` (section body indent), `2` at `:401` (tree indent), `16` at `:368` (table cell), `2` at `:360` (header gutter), `" [+]"` at `:387`, `"<?>"` at `:466`, `"["`/`" — live stream]"` at `:457`/`:459`. Two literals that must agree across a function boundary is the bolted-on invariant PRINCIPLES §5 refuses; **one `def` read by both** is the substrate version. Names censused free (§2): `rnd-section-indent`, `rnd-tree-indent`, `rnd-table-cell`, `rnd-header-gutter`, `rnd-collapsed-mark`, `rnd-hole-mark`, `rnd-stream-open`, `rnd-stream-close`. **The emitters are edited to read them** — hoisting the name without repointing the emitter buys nothing, and §5's **M11** (`tree-forgets-its-indent`) is the row that proves the two are wired to one definition. |
-| 10 | Does `protocol/render` importing `protocol/utf8` cost anything? | **RESOLVED — no. Acyclic, collision-free, and already co-blobbed once** | `utf8.chiral:1` imports `prelude/prelude` **only**, so there is no cycle. Its four names are each defined exactly once tree-wide (§2 census), so pulling it into all **17** `protocol/render` importers introduces no `duplicate label`. `vt-parser.chiral` already imports both (`:3`, `:4`), so the pair has co-blobbed in a live root since before this element. The cost that is real is **runtime**: `str-cols` is O(n) where `str-len` was O(1), once per node per render — see NEEDS-AUTHOR-1's fallback. |
-| 11 | Which module owns `str-cols`? | **RESOLVED — `lib/protocol/render.chiral`, beside its only consumer** | It is not a general string utility today: its one caller is `rnd-cols`, its unit is *terminal columns* (a display concept, not a string concept), and `lib/prelude/string.chiral` has no display dependency and should not acquire `protocol/utf8` for one function. Put it where its consumer is; **move it to `prelude/string` the day a second consumer appears**, which is a one-line move under a name that already exists. Naming it `str-cols` rather than `str-width` is deliberate: **the name states the unit**, so a later wcwidth landing (NEEDS-AUTHOR-1) is a **body change** and not a re-audit of every call site. That is the E176 lesson — a safety property in a *name and a type*, not in a comment — applied ahead of the defect. |
+| 9 | Where does the shared-constant invariant live? | **RESOLVED — EIGHT named `def`s with TWO readers, in `render.chiral`** | This is the substance of the element. Every constant `rnd-cols` needs is today a bare literal inside an emitter: `2` at `:392` (section body indent), `2` at `:401` (tree indent), `16` at `:368` (table cell), `2` at `:360` (header gutter), `" [+]"` at `:387`, `"<?>"` at `:466`, `"["`/`" — live stream]"` at `:457`/`:459`. Two literals that must agree across a function boundary is the bolted-on invariant PRINCIPLES §5 refuses; **one `def` read by both** is the substrate version. Names censused free (§2): `rnd-section-indent`, `rnd-tree-indent`, `rnd-table-cell`, `rnd-header-gutter`, `rnd-collapsed-mark`, `rnd-hole-mark`, `rnd-stream-open`, `rnd-stream-close`. **The emitters are edited to read them** — hoisting the name without repointing the emitter buys nothing, and §5's **M11** (`tree-forgets-its-indent`) is the row that proves the two are wired to one definition. |
+| 10 | Does `protocol/render` importing `protocol/utf8` cost anything? | **RESOLVED — no. Acyclic, collision-free, and already co-blobbed once** | `utf8.chiral:1` imports `prelude/prelude` **only**, so there is no cycle. Its four names are each defined exactly once tree-wide (§2 census), so pulling it into all **17** `protocol/render` importers introduces no `duplicate label`. `vt-parser.chiral` already imports both (`:3`, `:4`), so the pair has co-blobbed in a live root since before this element. The cost that is real is **runtime**: `str-cols` is O(n) where `str-len` was O(1), once per node per render — see decision 15's fallback. |
+| 11 | Which module owns `str-cols`? | **RESOLVED — `lib/protocol/render.chiral`, beside its only consumer** | It is not a general string utility today: its one caller is `rnd-cols`, its unit is *terminal columns* (a display concept, not a string concept), and `lib/prelude/string.chiral` has no display dependency and should not acquire `protocol/utf8` for one function. Put it where its consumer is; **move it to `prelude/string` the day a second consumer appears**, which is a one-line move under a name that already exists. Naming it `str-cols` rather than `str-width` is deliberate: **the name states the unit**, so E177's wcwidth landing (decision 15) is a **body change** and not a re-audit of every call site. That is the E176 lesson — a safety property in a *name and a type*, not in a comment — applied ahead of the defect. |
 | 12 | `(module protocol/render …)` datasheet line? | **RESOLVED — NO, by the directory's own convention** | Measured: `lib/prelude` carries one in **9 of 9** files (`prelude`, `list`, `string`, `alist`, `maybe`, `map`, `set`, `ord`, plus E158's `doc`); **`lib/protocol` carries one in 0 of 8**. Adding one to `render.chiral` is E161 adoption, out of scope, and against the local convention E158's decision 14 already followed in the other direction. |
 | 13 | Does the codec fix land inside E174 (example q5)? | **RECOMMEND INSIDE — surfaced with its blast radius; see the block below** | Author-tier by the example, and the recommendation is well argued: leaving a knowingly-red module behind is precisely the failure mode `enc` itself documents (`r-lines`/`r-face` shipped and left it red, and nobody traced the second red sample back to it), and three constructors of codec is smaller than a separate element's ceremony. The audit strengthens it: **G1's red→green row exists only if E174 fixes it**, and the round-trip row (G2) is the only thing that can catch a forgotten *decode* arm, since `dec`'s `cond` ends in `else`. Blast radius in the block below. |
-| 14 | Which phase number for the gate? | **RESOLVED — 15** | `run-tests.sh:19-24` and `tools/test/MIGRATION-NOTES.md` both record **8-12 as names still owed** to unported old-tree phases (module datasheet, sort adoption, the dropped C leg, resolver state, the E168 floor), and that reusing one would make an unported gate look ported. E157 took 13 for that reason, E158 took 14. **E174 takes 15.** Registration is a **required line**, not a courtesy: an unregistered `row.sh` is a gate that never runs, and §5 makes the registration itself a checked row with a mutant (M9), the way `doc.sh` does. |
+| 14 | Which phase number for the gate? | **RESOLVED — 15** | `run-tests.sh:18-22` and `tools/test/MIGRATION-NOTES.md:27` both record **8-12 as names still owed** to unported old-tree phases (module datasheet, sort adoption, the dropped C leg, resolver state, the E168 floor), and that reusing one would make an unported gate look ported. E157 took 13 for that reason, E158 took 14. **E174 takes 15.** Registration is a **required line**, not a courtesy: an unregistered `row.sh` is a gate that never runs, and §5 makes the registration itself a checked row with a mutant (M9), the way `doc.sh` does. |
+| 15 | What does `str-cols` finally mean? (example open question 1; was NEEDS-AUTHOR-1) | **RESOLVED — codepoints, shipping in E174. Author-answered, `da3e7b3`; the table is E177** | `str-cols s` = the length of `(decode-utf8 (str->bytes s))`, derivable from `utf8.chiral` today, strictly better than the incumbent byte count, and localised in one named function whose **name states the unit**. The wide-cell table is **E177** (`SELF-IMPLEMENT-CATALOG.md:441`, `LEDGER.md:296`), minted, with **E174 as its first consumer**: E177 is a body change plus a table, and **the seam and the signature do not move**. E177's row records that the hard part is the **ambiguous class** — U+2014 is East-Asian Ambiguous, the one class where `wcwidth` implementations legitimately disagree (1 column narrow, 2 CJK-legacy), so E177 must pick a stance rather than copy a table. The residue E174 ships with, named in `str-cols`'s header: CJK/full-width 2 cells, combining/ZWJ 0 cells, and an **O(n) decode per node per render** where `str-len` was O(1). **Fallback if the O(n) decode measures badly:** keep `str-cols` as the seam and make its **body** `(str-len s)` — same signature, worse body, and §5's **G4/`r-stream`** row goes red and *says so*. Deleting the seam is not available. |
+| 16 | `r-table`'s header/body layout disagreement (example open question 2; was NEEDS-AUTHOR-2) | **DEFERRED to E178. Author-answered, `da3e7b3`; out of E174, and the narrowing is a TRACKED debt** | Measured: `rnd-emit-headers` advances by `(+ (str-len h) 2)` — content-derived, 2-column gutter (`:360`); `rnd-emit-one-row` by `(+ col 16)` — a fixed grid, content ignored (`:368`). The **same `r-table` value has two column layouts** depending on which row you measure, and a header wider than 14 columns overruns its own cell. §4 answers `rnd-cols`'s `r-table` arm with **the grid** (`max (rnd-hdr-cols headers 0) (* rnd-table-cell (rnd-row-cells rows 0))`), because the grid is what a body cell actually obeys — a **defined, not derived** answer, and the only arm where that is forced by a *defect* rather than by missing information. **Consequence the gate must state and does (§5 G4):** the `r-table` row is fixtured with headers ≤ 14 columns and cells ≤ 16 and therefore **does not grade the overrun**; the script says so in as many words. The fix — per-column widths (the natural first consumer of `rnd-cols`) or deleting the header arithmetic — is **E178** (`SELF-IMPLEMENT-CATALOG.md:442`, `LEDGER.md:297`), minted *so that E174's narrowed gate is a tracked debt rather than a silent one*. |
 
 ### ⚑ Decision 13's blast radius, stated in red — read before commit 3
 
@@ -306,84 +347,54 @@ optional:
   test sees. §5 **G2** and **mutant M7** exist for exactly this.
 - **Phase 7 goes red on success** until `KNOWN_FAIL` moves (§2). This is the
   step most likely to be forgotten because it fires *because the fix worked*.
-- **`t5_vt_parser` is not promised.** Re-measure; if it goes green it leaves
-  `KNOWN_FAIL` too, if it stays red it stays on the list **with its real
-  reason written**, not with the inherited "TUI breakage" line.
+- **`t5_vt_parser` goes green too — measured at the SPEC audit** (§2). Two
+  roots, not one, leave `KNOWN_FAIL` in commit 3, and `t5_utf8` stays with its
+  real reason written (no imports at all), not with the inherited "TUI
+  breakage" line.
 - **No `_` arm anywhere.** Adding one to `enc` would "fix" the red by defeating
   the closed sum — the exact mechanism that made this element's cost knowable.
   §5 **M5** (`tenth-constructor`) is the row that proves none was added, and it
   is behavioural: a tenth constructor must make **both** `protocol/render` and
   `protocol/apc` fail to compile.
 
-### NEEDS-AUTHOR-1 — what does `str-cols` finally mean? (example open question 1)
+### ⚑ FLAG B — raised by the SPEC audit gate, author-tier, NOT resolved here
 
-> **Genuinely author-tier: this is a minting decision, and a spec run cannot mint
-> a row.** Not deferred to a phantom — named, with its cost measured.
+> **Decision 13 is labelled `RECOMMEND INSIDE`, but §4 and §5 execute it
+> unconditionally.** The example put "does the codec fix land inside E174?" on
+> the author's side of the line, and this SPEC answers it with a recommendation
+> rather than a disposition — then builds commit 3 around it, and hangs **two of
+> eight gate rows (G1, G2), two of twelve mutants outright (M6, M7), and half of
+> a third (M5's `protocol/apc` assertion) off it**. If the author moves the codec to its own
+> element, those rows leave E174 with it and the element's gate shrinks to five
+> rows; if the author confirms, decision 13 should read **RESOLVED**, not
+> **RECOMMEND**, because nothing downstream treats it as optional.
 >
-> §4 takes **codepoints**: `str-cols s = |decode-utf8 (str->bytes s)|`. That is
-> derivable from `utf8.chiral` **today**, is strictly better than the incumbent
-> byte count, and localises the unit in one named function so a later change is a
-> body change.
->
-> It is **still wrong**, and the classes are known: **CJK / full-width** (2
-> cells), **combining marks and ZWJ sequences** (0 cells), and it costs an
-> **O(n) decode per node per render** where `str-len` was O(1). The correct
-> answer is a wcwidth-class codepoint→cell table, which `utf8.chiral:15`
-> anticipates by name — *"the T4 wide-cell width computation"* — and which
-> **nothing in this tree builds**.
->
-> **⚑ Nuance the author should have before deciding, added at the example
-> audit.** The proof case E174 leans on — `render.chiral`'s own
-> `" — live stream]"`, **17 bytes / 15 columns** — turns on **U+2014 EM DASH**,
-> which is East-Asian **Ambiguous**. Ambiguous is the one width class where
-> real `wcwidth` implementations legitimately **disagree**: 1 column in a
-> narrow/Western locale, 2 in a CJK-legacy one. **"15 columns" is right for
-> narrow-ambiguous rendering** — which is what every consumer in this tree
-> targets — and it would be **16** under a CJK-ambiguous-wide terminal. So the
-> module's counterexample to its own arithmetic is real (byte count is wrong by
-> two either way), but it is **not** the case that settles the width table; a
-> wide-cell element must decide the ambiguous class explicitly rather than
-> inherit it from this example.
->
-> ***The author's call:*** **mint a wide-cell-width element** (and E174's
-> `str-cols` becomes its first consumer, unchanged in signature), **or accept
-> codepoints and say so on E174's row.** Either way `str-cols` is the seam and
-> the signature does not move.
->
-> **Fallback, if the O(n) decode measures badly:** keep `str-cols` as the seam
-> and make its **body** `(str-len s)` — same signature, worse body, and §5's
-> **G4/`r-stream`** row goes red and *says so*, which is the honest outcome.
-> Deleting the seam is not available.
+> The audit does not resolve it: a spec run may not decide the element's scope,
+> and neither may its audit. **The recommendation is well argued and the audit
+> found no reason against it** — leaving a knowingly-red module behind is the
+> failure `enc` itself documents, and G1's red→green row was verified real
+> (§6). This is a request for the label to be made honest, not for the plan to
+> change.
 
-### NEEDS-AUTHOR-2 — `r-table`'s header/body layout disagreement (example open question 2)
+### ⚑ Both of the spec run's NEEDS-AUTHOR items are ANSWERED and MINTED (`da3e7b3`)
 
-> **Genuinely author-tier, and non-blocking.** *Out of E174* is decided; **which
-> fix** is not, and there is **no minted row** to hand it to.
->
-> Measured: `rnd-emit-headers` advances by `(+ (str-len h) 2)` — content-derived,
-> 2-column gutter (`:360`); `rnd-emit-one-row` advances by `(+ col 16)` — a fixed
-> grid, content ignored (`:368`). **The same `r-table` value therefore has two
-> different column layouts depending on which row you measure**, and a header
-> wider than 14 columns overruns its own cell.
->
-> §4 answers `rnd-cols`'s `r-table` arm with **the grid**
-> (`max (rnd-hdr-cols headers 0) (* rnd-table-cell (rnd-row-cells rows 0))`),
-> because the grid is what a body cell actually obeys — so `headers` is the half
-> that is already wrong on screen. This is a **defined, not derived** answer, and
-> it is the only arm where that is forced by a *defect* rather than by missing
-> information. It is recorded, not silently averaged.
->
-> **Consequence the gate must state and does (§5 G4):** the `r-table` agreement
-> row uses a fixture whose headers are ≤ 14 columns and whose cells are ≤ 16, and
-> it therefore **does not** grade the overrun case. A row that cannot pass on the
-> overrun is a row with no teeth there; the honest move is to fixture inside the
-> agreeing region and say in the script what is not covered.
->
-> Two candidate fixes, neither in E174: give `r-table` **real per-column widths**
-> (a per-column measure fold — a genuine feature, and the natural first consumer
-> of `rnd-cols`), or **delete the header gutter arithmetic** and put headers on
-> the same grid. ***The author's call, and it needs a row before any work is
-> parked on it.***
+This SPEC was written with two open author-tier questions. Both were decided and
+given catalog + ledger rows in the same commit, so **neither is open and neither
+is parked on a phantom**:
+
+- **`str-cols` means codepoints, and it ships in E174** (decision 15). The
+  wide-cell table is **E177** — `SELF-IMPLEMENT-CATALOG.md:441`,
+  `LEDGER.md:296` — with E174 as its first consumer and the ambiguous class
+  (U+2014) named as the real decision. The seam and the signature do not move,
+  so E177 is a body change.
+- **`r-table`'s header/body disagreement is out of E174** (decision 16),
+  deferred to **E178** — `SELF-IMPLEMENT-CATALOG.md:442`, `LEDGER.md:297`.
+  E174's table gate stays **deliberately narrowed** to the agreeing region
+  (headers ≤ 14 columns, cells ≤ 16) and **must say so in the script**; E178
+  exists so that narrowing is a tracked debt.
+
+There is no remaining NEEDS-AUTHOR item on this element. The deferral rule is
+satisfied: every follow-on named below has a minted row.
 
 ## 4. Change plan (ordered, commit-sized)
 
@@ -394,7 +405,7 @@ optional:
   replaces itself in place.
 - **The fixpoint obligation does NOT fire on this element, and the reason is
   measured, not assumed** (§2): `protocol/render` and `protocol/apc` are outside
-  `prog/compiler.prog`'s import closure — its 14 157-line blob contains zero
+  `prog/compiler.prog`'s import closure — its 16 161-line blob contains zero
   occurrences of `r-text` or `render-to-ansi`. So there is **no `C1`, no
   promotion, and no `cmp`**. **Trip condition, stated so it is not missed:** if
   an implement run finds itself rebuilding `bin/chirality-bin`, the closure has
@@ -426,7 +437,9 @@ optional:
 - **Change:**
   - `(import "protocol/utf8")` added beside the existing two (decision 10). No
     `(module …)` line (decision 12).
-  - The **seven** layout constants as named `def`s (decision 9):
+  - The **eight** layout constants as named `def`s (decision 9 -- the count is
+    EIGHT, one per bare literal the emitters carry; the name list below has
+    always had eight entries):
     `rnd-tree-indent 2` · `rnd-section-indent 2` · `rnd-table-cell 16` ·
     `rnd-header-gutter 2` · `rnd-collapsed-mark " [+]"` · `rnd-hole-mark "<?>"` ·
     `rnd-stream-open "["` · `rnd-stream-close " — live stream]"`.
@@ -439,8 +452,8 @@ optional:
     `cp-count : (-> (List I64) I64 I64)` a three-line accumulator walk in the
     module's existing style (cf. `rnd-append-list`). Header comment states the
     **unit is terminal columns**, that the body counts **codepoints**, and names
-    the residue (CJK 2 cells, combining 0 cells, U+2014 ambiguous) —
-    NEEDS-AUTHOR-1.
+    the residue (CJK 2 cells, combining 0 cells, U+2014 ambiguous) and
+    **points at E177**, which owns the table (decision 15).
   - `rnd-cols : (-> Rendering I64)` over the **eight** current constructors, plus
     `rnd-cols-max`, `rnd-hdr-cols` (**n−1 gutters**, decision 8) and
     `rnd-row-cells`. **No `_` arm.** Header comment carries the precondition from
@@ -496,16 +509,19 @@ optional:
   - **`KNOWN_FAIL` (`run-tests.sh:153`) is updated to exactly the still-failing
     set**, and the prose above it (`:145-146`) is corrected: `t6_apc_roundtrip`
     and `t5_vt_parser` were **not** "pre-existing TUI breakage" — they were
-    `load: non-exhaustive case` from `enc`. `t5_utf8` stays, with its real
-    reason (`load: unknown name Unit`, unrelated to this element).
+    `load: non-exhaustive case` from `enc`, and **both leave the list** (§2).
+    `t5_utf8` stays, with its real reason: it carries **zero `(import …)`
+    lines** — an unported old-tree root — so `load: unknown name Unit` is a
+    migration gap, not a codec one, and no `enc` fix can move it.
 - **Verify — the red→green measurement, and it is the point of the commit:**
   - `./bin/chirality check lib/protocol/apc.chiral` → **OK** (FAILED today).
   - `./bin/chirality check prog/scriba/samples/t6_apc_roundtrip.prog` → **OK**.
-  - `./bin/chirality check prog/scriba/samples/t5_vt_parser.prog` →
-    **re-measure and record the result.** Green ⇒ it leaves `KNOWN_FAIL`. Still
-    red ⇒ it stays, with the *newly measured* reason written beside it. **Not
-    promised either way** (§2).
-  - `./bin/chirality test` → Phase 7 reports `0 newly passing` again, now over a
+  - `./bin/chirality check prog/scriba/samples/t5_vt_parser.prog` → **OK**.
+    Measured at the SPEC audit against a scratch `lib/` carrying only `enc`'s
+    missing arms: it compiles and runs to **exit 42**, its own all-passed
+    sentinel. It leaves `KNOWN_FAIL` with `t6_apc_roundtrip`.
+  - `./bin/chirality test` → Phase 7 reports **`37 compiled, 0 failed, 1
+    known/negative, 0 newly passing`** — `0 newly passing` again, now over a
     smaller `KNOWN_FAIL`; Phases 13 and 14 unchanged.
 
 ### Commit 4 — the gate: `tools/test/row.sh` + fixture + registration
@@ -528,14 +544,19 @@ optional:
   Phase 7's `lib prog` root sweep, so E174's assertions are counted once, by
   E174's own phase.
 - **Verify:** `./bin/chirality test` — **Phase 15 green, Phases 13 and 14
-  unchanged, Phase 7 at `0 newly passing`, and the suite total ≥ 168 + Phase 15's
-  count with 0 failed.**
+  unchanged at 30 and 26, Phase 7 at `37 compiled, 0 failed, 1 known/negative,
+  0 newly passing`, and the suite total at exactly `170 + <Phase 15's count>
+  passed, 0 failed`.** The 170 is not a guess: `run_phase` tallies each
+  sub-script's `N passed, M failed` line (`:122-126`) and `:179` tallies
+  Phase 7's `r_pass`, so commit 3 moving two roots out of `KNOWN_FAIL` takes the
+  today-measured 168 to 170 **before** Phase 15 adds its own.
 
-**Not in this element, and each already has a home:** E175
-(`SELF-IMPLEMENT-CATALOG.md:439`) · E176 (`:440`) · E158 commit 4
-(`E158-doc-formatter-SPEC.md` §4) · the wide-cell width table (**no row** —
-NEEDS-AUTHOR-1) · `r-table`'s per-column widths (**no row** — NEEDS-AUTHOR-2) ·
-E161's datasheet line (decision 12).
+**Not in this element, and each already has a MINTED home — no deferral here
+rests on a phantom:** E175 (`SELF-IMPLEMENT-CATALOG.md:439`) · E176 (`:440`) ·
+**E177**, the wide-cell width table (`:441`, decision 15) · **E178**,
+`r-table`'s per-column widths (`:442`, decision 16) · E158 commit 4
+(`E158-doc-formatter-SPEC.md` §4, `### Commit 4`) · E161's datasheet line
+(decision 12).
 
 ## 5. Conformance gate — `tools/test/row.sh`, Phase 15
 
@@ -575,8 +596,8 @@ The reducer's rules, and each is load-bearing:
 reducer advances **one column per codepoint**, which is the **same unit**
 `str-cols` uses. So Phase 15 grades **agreement between `rnd-cols` and the
 emitter**, which is the invariant E174 introduces and the one that can silently
-rot. It does **not** grade agreement with a real terminal — that is
-NEEDS-AUTHOR-1, and a wcwidth landing must move the reducer and `str-cols`
+rot. It does **not** grade agreement with a real terminal — that is **E177**
+(decision 15), and E177's landing must move the reducer and `str-cols`
 **together**.
 
 | row | assertion | named mutant that must convict |
@@ -584,11 +605,11 @@ NEEDS-AUTHOR-1, and a wcwidth landing must move the reducer and `str-cols`
 | **G1 — the red module goes green** | `./bin/chirality check lib/protocol/apc.chiral` exits **0**. Measured **FAILED / `load: non-exhaustive case`** before this element, so the row can fail and did. Companions: `t6_apc_roundtrip.prog` checks **OK**; `render.chiral` still checks OK; `t5_utf8.prog` still fails on `unknown name Unit` (**the control that keeps the row specific** — an unrelated red stays red, so G1 is not reading a tree-wide state). | **M6 `drop-the-enc-arm`** — delete `enc`'s `r-row` arm in a copied `lib/`. `check lib/protocol/apc.chiral` must go back to `load: non-exhaustive case`. |
 | **G2 — the codec ROUND-TRIPS all nine, including the three the compiler cannot see** | In the fixture: for each of the nine constructors (and one nested `r-row` inside an `r-face` inside an `r-row`), `str-eq (enc r) (enc (unwrap (dec-frame (enc-frame r))))` is **true**. Equality is asserted on the **encoding**, not via `diff-node` — measured reason: `diff-node`'s `r-stream` arm (`render.chiral:247-250`) returns `diff-changed` even for two identical streams, so it is not an equality oracle. **This row exists because `dec` ends in `(else (p-err …))` (`apc.chiral:249`): a forgotten decode arm is a runtime value, not a compile error.** | **M7 `drop-the-dec-arm`** — change `dec`'s `"R"` tag test to `"Z"`. **Both `protocol/render` and `protocol/apc` still COMPILE** (that is the finding), and G2 must go red at the `r-row` case. A gate that only ran G1 would call this element done. |
 | **G3 — the row is a row (the emitter, three segments, one line)** | `render-to-ansi (r-row [ (r-face "diag-head" (r-text "a" false)), (r-text " " false), (r-face "diag-site" (r-text "bb" false)) ]) dims none 3 5 3 5`, through `screen()`, paints exactly: `3 5 a` · `3 6 ' '` · `3 7 b` · `3 8 b`, and **nothing on any other row**. This is E158's `dg-doc` `r-redeclared` shape — the forcing consumer — reduced to four cells. | **M1 `text-off-by-one`** — `rnd-cols`'s `r-text` arm becomes `(+ 1 (str-cols content))`. The segments land at 5, 7, 9. G3 red. |
-| **G4 — widths agree with the emitter, per constructor, by EXACT ADJACENCY** | For each of the nine constructors `N`: render `(r-row [N, (r-text "|" false)])` at (1,1) through `screen()`, and assert **(a)** the `\|` is painted at column `1 + rnd-cols(N)` on row 1, and **(b)** **no cell painted by `N`**, on **any** row it touches, is at a column ≥ `1 + rnd-cols(N)`. (b) is the non-circular half: (a) alone is `render-row` agreeing with itself. Together they say the advance is **exactly** the extent — one column too many leaves a gap, one too few overwrites. **⚑ Two scope statements the script makes in as many words:** the `r-table` case is fixtured with headers ≤ 14 columns and cells ≤ 16, so it **does not** grade the measured header/body overrun (NEEDS-AUTHOR-2); and the `r-section` case is the one FLAG A's fix makes satisfiable at all — before it, `render-section` ignored `col` and (b) could not hold for a non-first child. | **M2 `bytes-not-columns`** — `str-cols`'s body becomes `(str-len s)`. **Only the `r-stream` case reddens**, because `" — live stream]"` is 17 bytes / 15 columns — the module's own counterexample, now a convicting test. · **M3 `face-costs-a-column`** — `r-face` arm becomes `(+ 1 (rnd-cols body))`; the `r-face` case reddens, which is what makes "SGR is zero-width, so E175 changes no number" a *checked* claim (decision 3). · **M11 `tree-forgets-its-indent`** — `r-tree` arm drops `rnd-tree-indent`; the `r-tree` case reddens, proving the hoisted constant is wired to **both** readers (decision 9). · **M4 `row-uses-max`** — `rnd-cols-sum` folds `max` instead of `+`; the nested-`r-row` case reddens. |
+| **G4 — widths agree with the emitter, per constructor, by EXACT ADJACENCY** | For each of the nine constructors `N`: render `(r-row [N, (r-text "|" false)])` at (1,1) through `screen()`, and assert **(a)** the `\|` is painted at column `1 + rnd-cols(N)` on row 1, and **(b)** **no cell painted by `N`**, on **any** row it touches, is at a column ≥ `1 + rnd-cols(N)`. (b) is the non-circular half: (a) alone is `render-row` agreeing with itself. Together they say the advance is **exactly** the extent — one column too many leaves a gap, one too few overwrites. **⚑ Two scope statements the script makes in as many words:** the `r-table` case is fixtured with headers ≤ 14 columns and cells ≤ 16, so it **does not** grade the measured header/body overrun (**E178**, decision 16 — the script NAMES the element, so the narrowing is traceable to a minted row); and the `r-section` case is the one FLAG A's fix makes satisfiable at all — before it, `render-section` ignored `col` and (b) could not hold for a non-first child. | **M2 `bytes-not-columns`** — `str-cols`'s body becomes `(str-len s)`. **Only the `r-stream` case reddens**, because `" — live stream]"` is 17 bytes / 15 columns — the module's own counterexample, now a convicting test. · **M3 `face-costs-a-column`** — `r-face` arm becomes `(+ 1 (rnd-cols body))`; the `r-face` case reddens, which is what makes "SGR is zero-width, so E175 changes no number" a *checked* claim (decision 3). · **M11 `tree-forgets-its-indent`** — `r-tree` arm drops `rnd-tree-indent`; the `r-tree` case reddens, proving the hoisted constant is wired to **both** readers (decision 9). · **M4 `row-uses-max`** — `rnd-cols-sum` folds `max` instead of `+`; the nested-`r-row` case reddens. |
 | **G5 — FLAG A's own row: the fix is a NO-OP where the tree already worked** | `render-to-ansi-full (r-section "Sec" false (r-text "body" false)) (24,80)`, through `screen()`, paints **exactly** `1 1 S` · `1 2 e` · `1 3 c` · `2 3 b` · `2 4 o` · `2 5 d` · `2 6 y` — the **measured** map of today's tree, pinned before the change. (Today's raw stream, captured this session: `ESC[2J ESC[H ESC[1m S e c ESC[0m ESC[2;3H b o d y ESC[0m`; after the fix an `ESC[1;1H` appears before `ESC[1m` and the **map is identical**.) A section rendered first-on-row lands exactly where it lands today. | **M10 `section-forgets-its-goto`** — revert `render-section`'s new `ansi-goto`. **Two-sided, and both sides are asserted:** G5 must stay **GREEN** (that is the no-op proof — a section first-on-row is unaffected), and **G4's `r-section` case must go RED** (a section as a *non-first* child draws at the ambient cursor). A mutant that reddens both would mean the fix was not a no-op; one that reddens neither would mean it was never load-bearing. |
 | **G6 — the sum is closed, and no `_` absorbs the new arm** | **Behavioural, not grep.** Append a tenth constructor `(r-fill (body Rendering))` to `Rendering` in a copied `lib/` and change **nothing else**: the compile of **`protocol/render` must FAIL** (`diff-node` and `render-to-ansi`) **and** the compile of **`protocol/apc` must FAIL** (`enc`). Both, separately asserted. If either compiles, a catch-all was added and the closed sum is buying nothing — which is the entire cost argument for this element. | **M5 `tenth-constructor`** is the row (it is run as the assertion, not beside it). Its own failure mode is a stale pattern, so `mutant()`'s existing `cmp -s` guard — *"the mutation did not change the file"* — applies. |
-| **G7 — E157's and E158's gates are byte-unchanged, and still run** | (a) `sha256` pins, in `row.sh`, on **four** files: `tools/test/diag.sh`, `tools/test/samples/e157_diag.prog`, `tools/test/doc.sh`, `tools/test/samples/e158_doc.prog`. (b) Phase 13 **and** Phase 14 are still registered in `run-tests.sh` — asserted with the **assembled-pattern** device `doc.sh` already uses (`UN='(d-''union'`, `:291`), so the row cannot match its own source line. (c) Both run green, unchanged, in the same `bin/chirality test`: **30** and **26** assertions. | **M8 `move-e158s-gate`** — append one blank line to `tools/test/doc.sh` in a copy; the pin must move and G7(a) go red. · **M9 `unregister-the-phase`** — delete the `run_phase 15` line; the registration row must go red. **Both mutants are RUN**, because an unregistered gate reports ok forever and a pin nobody tested is a pin nobody has. |
-| **G8 — name census, tree-wide** | Every name `lib/protocol/render.chiral` introduces is defined **exactly once** across `lib prog tools`. Names are **read out of the file** so a new binding is censused without editing the script, and the search is **`grep -R`, not `grep -r`** — `-r` does not follow symlinks (`MIGRATION-NOTES.md` records this exact trap). | **M12 `redefine-rnd-cols`** — add a second `(def rnd-cols …)` in `lib/prelude/string.chiral`. G8 red. |
+| **G7 — E157's and E158's gates are byte-unchanged, and still run** | (a) `sha256` pins, in `row.sh`, on **four** files: `tools/test/diag.sh`, `tools/test/samples/e157_diag.prog`, `tools/test/doc.sh`, `tools/test/samples/e158_doc.prog`. (b) Phase 13, Phase 14 **and Phase 15 itself** are registered in `run-tests.sh` — **three rows, not two** (⚑ corrected at the SPEC audit: M9 deletes the `run_phase 15` line, so without a Phase-15 row there is nothing for M9 to redden, and `doc.sh`'s precedent is to assert both the gate it pins *and its own*, `:455-458`). Asserted the way `doc.sh` actually asserts them (`:453-458`): `reg() { grep -cE "^run_phase $1 .* $2\$" "$3"; }` run against **`run-tests.sh`, a different file from the script doing the grep** — that, not an assembled pattern, is what makes a registration row unable to match its own source. (⚑ Corrected at the SPEC audit: the assembled-pattern device (`UN='(d-''union'`, `:291`; `PAT="dg""-msg"`, `:400`) is `doc.sh`'s device for the **tree-wide census** rows, which do read `tools/`; it is not used on, and is not what protects, the registration rows.) (c) Both run green, unchanged, in the same `bin/chirality test`: **30** and **26** assertions. | **M8 `move-e158s-gate`** — append one blank line to `tools/test/doc.sh` in a copy; the pin must move and G7(a) go red. · **M9 `unregister-the-phase`** — delete the `run_phase 15` line; the registration row must go red. **Both mutants are RUN**, because an unregistered gate reports ok forever and a pin nobody tested is a pin nobody has. |
+| **G8 — name census, tree-wide** | Every name `lib/protocol/render.chiral` introduces is defined **exactly once** across `lib prog tools`. Names are **read out of the file** so a new binding is censused without editing the script, and the search is **`grep -R`, not `grep -r`** — `-r` does not follow symlinks (`MIGRATION-NOTES.md:51-52` records this exact trap). **⚑ This is the one row genuinely at self-match risk, and the device that removes it is `doc.sh`'s, copied exactly (`doc.sh:367-380`, the `census()` helper): the census pattern is `^\((def\|data\|declare) NAME[[:space:]]` — anchored at column 0 — and M12's mutation is written as a `printf … >>` line, so `row.sh`'s own source can never satisfy the anchor.** Censusing `tools/` while spelling a `(def …)` at the start of a line in the script is exactly how a census row becomes unfalsifiable, in either direction. | **M12 `redefine-rnd-cols`** — append a second `(def rnd-cols …)` to `lib/prelude/string.chiral` in a copied `lib/`; the census must report the duplicate. G8 red. |
 
 **Registration:**
 `run_phase 15 "horizontal composition (E174 r-row + rnd-cols)"  row.sh` beside
@@ -598,9 +619,11 @@ NEEDS-AUTHOR-1, and a wcwidth landing must move the reducer and `str-cols`
 
 **Not gate rows, deliberately:** any fixpoint `cmp` (§4 — it does not fire here,
 and stability is not correctness) · agreement with a real terminal's wcwidth
-(NEEDS-AUTHOR-1) · `r-table`'s overrun case (NEEDS-AUTHOR-2) · nested-`r-face`
-SGR restoration (**E175** — E158's G8 grades that) · any assertion that
-`t5_vt_parser` goes green (**not promised**, §2) · any `dg-msg` or `doc->str`
+(**E177**) · `r-table`'s overrun case (**E178**) · nested-`r-face`
+SGR restoration (**E175** — E158's G8 grades that) · a duplicate row asserting
+`t5_vt_parser` goes green (measured green, §2, and **Phase 7's own `KNOWN_FAIL`
+accounting is what grades it** — a second row here would grade it twice) ·
+any `dg-msg` or `doc->str`
 byte-identity row (E157 and E158 own those, and G7 is what keeps them out).
 
 ## 6. Residue & links
@@ -608,8 +631,9 @@ byte-identity row (E157 and E158 own those, and G7 is what keeps them out).
 - **Corrections this SPEC applies to the example** (a spec run does not edit the
   example; the fixes are in §2/§3/§5):
   1. **⚑ Phase 7 goes RED on success.** `run-tests.sh:153`'s `KNOWN_FAIL` holds
-     `t6_apc_roundtrip.prog`, and `:164-177` reports **`NEWPASS`** and increments
-     `fail` when a known-failing root starts compiling. The example's gate 1
+     `t6_apc_roundtrip.prog`; `:166-167` prints **`NEWPASS`** and increments
+     `r_newpass` when a known-failing root starts compiling, and `:176` turns a
+     non-zero `r_newpass` into a suite `fail`. The example's gate 1
      ("the red sample goes green") is therefore **incomplete** — it is green only
      if `KNOWN_FAIL` moves in the same commit. **§4 commit 3.**
   2. **⚑ The decode side is not a closed sum.** `apc.chiral:249`'s `dec` ends in
@@ -630,7 +654,8 @@ byte-identity row (E157 and E158 own those, and G7 is what keeps them out).
      `od -c`; **15 columns is right for narrow-ambiguous rendering**, and U+2014
      is East-Asian **Ambiguous** — the one class where `wcwidth`
      implementations legitimately disagree. It proves byte-count is wrong; it
-     does not settle the width table. **NEEDS-AUTHOR-1.**
+     does not settle the width table — which is why the table is **E177**, and
+     why E177's row makes the *ambiguous class*, not the table, the decision.
   6. **Open question 3 (multi-row child) is not parked** — it collapses to option
      (i) plus a sentence, which the example's own §5 code already does.
      **RESOLVED, decision 5.** **Open question 4 (`r-stream` reserves nothing)
@@ -647,7 +672,8 @@ byte-identity row (E157 and E158 own those, and G7 is what keeps them out).
     constructor, **5** case, **exactly 1** with an exhaustive case that breaks,
     twice (`:223`, `:424`, 8 arms each) · all three `.prog` matchers go through
     `(_ …)` · `t5_vt_parser` is red via `vt-parser.chiral:4` and `t5_utf8` is red
-    for an unrelated reason (`unknown name Unit`) · **no width function exists
+    for an unrelated reason — it carries **no imports at all** (`unknown name
+    Unit`; `Unit` lives at `lib/prelude/prelude.chiral:17`) · **no width function exists
     anywhere** in `lib/` or `prog/`; `utf8` is a decoder only · `" — live
     stream]"` is **17 bytes / 15 codepoints** (`od -c`) · `render-section`
     really emits **no** `ansi-goto` (measured by running it) · `rnd-hdr-cols`
@@ -656,12 +682,53 @@ byte-identity row (E157 and E158 own those, and G7 is what keeps them out).
     collision-free · `protocol/render` is **outside the compiler's blob**, so
     no fixpoint fires · the suite is **168 assertions, 0 failed, exit 0** today.
 
+- **⚑ Re-measured at the SPEC audit gate (2026-08-31, `/workspace/chirality-verify`
+  @ `e158-doc`) — the rows that were RUN, not read:**
+  1. **G1's red→green is real.** A scratch copy of `lib/` with only `enc`'s two
+     missing arms (`r-lines`, `r-face`) added takes
+     `lib/protocol/apc.chiral` from `load: non-exhaustive case` to **OK**.
+     `t6_apc_roundtrip.prog` then compiles and runs to **exit 42** (all nine of
+     its own sub-tests pass), and `t5_vt_parser.prog` to **exit 42** as well.
+  2. **M5 `tenth-constructor` convicts, behaviourally, on BOTH modules.**
+     Appending `(r-fill (body Rendering))` to `Rendering` in a copied `lib/` and
+     changing nothing else: `protocol/render` → `load: non-exhaustive case`,
+     `protocol/apc` → `load: non-exhaustive case`. G6 is not a grep.
+  3. **M7 `drop-the-dec-arm` convicts, and the finding under it is real.** On the
+     green scratch tree, changing `dec`'s `"r"` tag test to `"Z"` leaves **both**
+     `protocol/render` and `protocol/apc` compiling **clean** — and drops
+     `t6_apc_roundtrip` from exit 42 to **exit 254** (`-2`, its `r-tree`
+     round-trip case). The decode side really is invisible to the compiler, and
+     the round-trip really is what sees it.
+  4. **G5's golden byte map re-derived, byte for byte.** A probe compiled with
+     `bin/chirality-bin` and run: `render-to-ansi-full (r-section "Sec" false
+     (r-text "body" false)) (pair 24 80)` emits exactly
+     `ESC[2J ESC[H ESC[1m S e c ESC[0m ESC[2;3H b o d y ESC[0m` — no `ansi-goto`
+     before the title. Cell map `1 1 S · 1 2 e · 1 3 c · 2 3 b · 2 4 o · 2 5 d ·
+     2 6 y`, as §5 G5 pins it.
+  5. **The `screen()` reducer's probe re-derived.**
+     `render-to-ansi (r-text "ab" false) (pair 24 80) none 3 5 3 5` emits exactly
+     `ESC[3;5H a b ESC[0m`. `doc.sh`'s `build_run` (`:63-73`) does discard
+     stdout, so the helper really is the one piece that does not already exist.
+  6. **Baseline re-run, whole suite:** `168 passed, 0 failed`, `gate PASSED`,
+     exit 0; Phase 7 `35 compiled, 0 failed, 3 known/negative, 0 newly passing`;
+     Phase 13 `30 passed, 0 failed`; Phase 14 `26 passed, 0 failed` — so E157's
+     and E158's sha256 pins are green and their gates are byte-unchanged.
+  7. **Counts re-run:** 17 importers · 13 constructor-naming files · 5 files
+     `case` over the sum · exactly 1 with an exhaustive case that breaks
+     (`render.chiral`, twice, 8 arms each at `:223` and `:424`) · all 17 new
+     names have **zero** defining occurrences (16 have zero of any kind; `r-row`
+     has 16 substring hits, none a binding) · `" — live stream]"` is 17 bytes /
+     15 codepoints · `lib/prelude` 9-of-9 and `lib/protocol` 0-of-8 on
+     `(module …)` · `CONFORMANCE-MAP.md` has 0 hits for E157/E158/E174/E175/E176.
+
 - **Deliberately unbuilt (each named, none parked on a phantom):**
-  - **A wide-cell (wcwidth) width table** — **no minted row**, and a spec run
-    cannot mint one. **NEEDS-AUTHOR-1**; `utf8.chiral:15` anticipates it by name.
-  - **`r-table`'s per-column widths / the header-gutter deletion** — **no minted
-    row**. **NEEDS-AUTHOR-2**, non-blocking; `rnd-cols`'s `r-table` arm is
-    *defined* against the grid and says so.
+  - **A wide-cell (wcwidth) width table** — **E177**
+    (`SELF-IMPLEMENT-CATALOG.md:441`, `LEDGER.md:296`), minted `da3e7b3`, with
+    E174 as its first consumer; `utf8.chiral:15` anticipates it by name.
+  - **`r-table`'s per-column widths / the header-gutter deletion** — **E178**
+    (`SELF-IMPLEMENT-CATALOG.md:442`, `LEDGER.md:297`), minted `da3e7b3`,
+    non-blocking; `rnd-cols`'s `r-table` arm is *defined* against the grid and
+    says so, and the narrowed gate names E178.
   - **Nested-`r-face` SGR restoration** — **E175**
     (`SELF-IMPLEMENT-CATALOG.md:439`, `LEDGER.md:294`), minted. Orthogonal:
     `rnd-cols` is provably invariant under it, and §5's M3 checks that.
