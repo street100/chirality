@@ -11,7 +11,7 @@ out to the shape the `E172` name map settled, with the language renamed from met
 | `.prog` | program — has an entry, never an import target | defines the entry symbol |
 | `.port` | port registry — mints capability types; where authority enters | declarations only, **zero lambdas**, ≥1 extern/porttype |
 | `.profile` | profile — a named frozen port set | zero lambdas, zero externs, names a module set |
-| `.manifest` | manifest — pure data; the replacement for JSON/TOML config | zero lambdas, zero externs |
+| `.manifest` | manifest — pure data; the replacement for JSON/TOML config | **DECLARED, not derived** — see below |
 
 **Extension = type. Directory = role.** Subject matter goes in neither — a module is
 individuated by its type, not its topic, so there is no `stdlib/`, no `compiler/`.
@@ -40,6 +40,41 @@ Two of the five kinds are **not import targets**, by definition rather than by r
 This is the P4 move: the bad states are **unrepresentable** rather than detected. An
 earlier draft of this file made ambiguity a new named error and had the resolver
 probing all five — both were solving problems the partition removes.
+
+## `.manifest` is declared, and the module key is the path
+
+**`.manifest` cannot be sniffed.** The working shape is crisp — *a module whose every
+`def` body is a literal value: constructor applications and literals, no `lam`, no
+computation* — and `target-linux` (one def, a list of `(sys-row "nb-sys-openat" 257)`)
+and `climb` (*"this file is that chain as data"*) both satisfy it. But it is a property
+of **term structure, not of lines**, so a resolver grep cannot see it; only the loader,
+which has the terms, can. A first attempt at a line-based test caught nine files, of
+which two were manifests: the other seven were ADT-declaration modules (`(data …)` with
+no defs) and `sys-tal`.
+
+So the kind is **declared in the file and checked by the loader**, exactly as `.prog` is
+a checked projection of `compile-main`. `E163` owns the declared form — and
+⚑ **`sys-tal` is evidence for it, not a counter-example**: its 64 defs are `(t-seq …)` /
+`(ti-ret …)` constructor applications, i.e. hand-authored tal functions *written as
+data*, which genuinely satisfies the working shape. Whether "a program in another
+language, as data" is a manifest or needs a further clause is E163's question.
+
+## The module key is the ROOT-RELATIVE PATH
+
+`(import "lowering/x64/mach")`, not `(import "mach")`.
+
+Forced by measurement: dropping the affix a directory now carries yields **`mach` four
+times** (`lowering/mach|x64|c|listing/`) and **`emit` twice**. Both resolvers previously
+keyed on the post-slash basename, which makes those ambiguous.
+
+The alternative was to keep affixes on exactly those six files — reintroducing the
+redundancy this tree removed, inconsistently, only where forced. Taking the path as the
+key instead means:
+
+- **the directory is load-bearing rather than decorative** — it *is* the identity;
+- the basename-collision class becomes **unreachable** rather than merely named. The old
+  tree's collision error exists because `ports/proc` and `proc` were the same key; here
+  they cannot be.
 
 ## The two binaries
 
