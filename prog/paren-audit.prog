@@ -1,0 +1,244 @@
+; paren-audit -- per-form parenthesis balance for chirality source, in chirality.
+;
+; Reads a NEWLINE-SEPARATED LIST OF PATHS on stdin, the same shape
+; prog/prose-lint.prog uses and for the same reason: directory enumeration is
+; E148 and is not built, so the caller hands over the list.
+;
+;   find lib prog -name '*.chiral' | chirality run prog/paren-audit.prog
+;   echo lib/typing/kernel.chiral   | chirality run prog/paren-audit.prog
+;
+; Port of tools/paren-audit/paren-audit.py (154 LOC), wave 0 of
+; .planning/ZERO-PYTHON-SCOPE.md: buildable with no new element, because its
+; two regexes match the literal prefixes `def` and `declare`.
+;
+; ── Why line-at-a-time ──────────────────────────────────────────────────────
+;
+; The Python original is a character state machine over the whole file. Done
+; directly that is one recursive frame per byte, and the largest source here is
+; prog/scriba/command-loop.chiral at 2545 lines with 9721 parens. Folding over
+; LINES and scanning within a line bounds both recursions independently: 2545
+; deep on the outer, 2197 (the longest line) on the inner.
+;
+; ── What it reports ─────────────────────────────────────────────────────────
+;
+;   <path> <TAB> <kind> <TAB> <name> <TAB> <start> <TAB> opens <TAB> closes <TAB> delta
+; for every form whose delta is not zero, then a file row:
+;   <path> <TAB> FILE <TAB> depth <TAB> <n>
+; when the file's own depth does not end at zero. A balanced file prints one
+; OK row, so silence never means "did not look".
+
+(import "prelude/prelude")            ; str-len, str-sub, str-cat, i64->str, bget, and/or/not
+(import "prelude/list")               ; length, reverse, append
+(import "prelude/string")             ; str-split, str-starts-with
+(import "ports/ports")                ; put
+(import "lowering/compile-all")       ; read-fd-all
+
+(extern openat (=> Bytes I64))
+
+(def nul-byte Bytes (bslice (pack-u32 0) 0 1))
+
+; ── the form under the cursor, and the scan state ───────────────────────────
+
+(data PaFrm ()
+  (frm (kind Str) (name Str) (start I64) (opens I64) (closes I64)))
+
+; depth: paren nesting. instr: inside a "string". cur: the form being counted,
+; or a frm with an empty kind when there is none. out: finished forms, reverse
+; order. mind: the lowest depth seen, which catches a file that closes too far.
+(data PaSt ()
+  (pa-st (depth I64) (instr Bool) (cur PaFrm) (out (List PaFrm)) (mind I64)))
+
+(def no-frm PaFrm (frm "" "" 0 0 0))
+
+(def has-frm (-> PaFrm Bool)
+  (lam (f) (case f ((frm k n s o c) (not (str-eq k ""))))))
+
+; ── character classes, by byte ──────────────────────────────────────────────
+
+(def is-space (-> I64 Bool)
+  (lam (c) (or (=i c 32) (or (=i c 9) (or (=i c 13) (=i c 10))))))
+
+; a name ends at whitespace, a paren, a quote or a comment
+(def name-end (-> I64 Bool)
+  (lam (c) (or (is-space c) (or (=i c 40) (or (=i c 41) (or (=i c 34) (=i c 59)))))))
+
+; ── reading the head of a form: `(def foo` / `(declare foo` ────────────────
+
+; the name starting at i, up to the first terminator
+(def name-at (-> Str I64 I64 Str)
+  (lam (s i n)
+    (case (<i i n)
+      (false "")
+      (true
+        (let (c (bget (str->bytes (str-sub s i (+ i 1))) 0))
+          (case (name-end c)
+            (true "")
+            (false (str-cat (str-sub s i (+ i 1)) (name-at s (+ i 1) n)))))))))
+
+; skip spaces from i
+(def skip-sp (-> Str I64 I64 I64)
+  (lam (s i n)
+    (case (<i i n)
+      (false i)
+      (true
+        (let (c (bget (str->bytes (str-sub s i (+ i 1))) 0))
+          (case (is-space c)
+            (true (skip-sp s (+ i 1) n))
+            (false i)))))))
+
+; at an open paren that just took depth to 1: is this `def` or `declare`, and
+; if so what is it called? Returns a frm, or no-frm.
+(def head-at (-> Str I64 I64 I64 PaFrm)
+  (lam (s i n line)
+    (let (rest (str-sub s (+ i 1) n))
+      (case (str-starts-with "declare" rest)
+        (true (let (j (skip-sp s (+ i 8) n)) (frm "declare" (name-at s j n) line 1 0)))
+        (false
+          (case (str-starts-with "def" rest)
+            (true (let (j (skip-sp s (+ i 4) n)) (frm "def" (name-at s j n) line 1 0)))
+            (false no-frm)))))))
+
+; ── the scan ────────────────────────────────────────────────────────────────
+
+; ⚑ WORKAROUND. `(let (m (case (<i a b) (true a) (false b))) ...)` is refused
+; with `load: cannot prove refinement`; the same case binds fine when it comes
+; back from a call. Minimal reproducer and the four conditions that trigger it
+; are in .planning/FINDING-let-bound-case-refinement-2026-08-31.md. Delete this
+; and inline it when the join is fixed.
+(def pa-min (-> I64 I64 I64)
+  (lam (a b) (case (<i a b) (true a) (false b))))
+
+(def bump-open (-> PaFrm PaFrm)
+  (lam (f) (case f ((frm k n s o c) (frm k n s (+ o 1) c)))))
+
+(def bump-close (-> PaFrm PaFrm)
+  (lam (f) (case f ((frm k n s o c) (frm k n s o (+ c 1))))))
+
+; One function, not a mutually recursive pair. The guard and the step were
+; split for readability and the split cost a `(declare ...)`; a declare beside
+; its own def emits the label twice here, which the loader calls a duplicate
+; against the linked runtime. Merged, there is nothing to forward-declare.
+;
+; Structural on the remaining line: every branch advances `i`, so `n - i`
+; strictly decreases and the recursion is well-founded on a line at most 2197
+; bytes long.
+(def pa-scan (-> Str Bytes I64 I64 I64 PaSt PaSt)
+  (lam (s b i n line stt)
+    (case (<i i n)
+      (false stt)
+      (true
+        (case stt
+          ((pa-st depth instr cur out mind)
+            (let (c (bget b i))
+              (case instr
+                (true
+                  (case (=i c 92)
+                    (true  (pa-scan s b (+ i 2) n line stt))
+                    (false
+                      (case (=i c 34)
+                        (true  (pa-scan s b (+ i 1) n line (pa-st depth false cur out mind)))
+                        (false (pa-scan s b (+ i 1) n line stt))))))
+                (false
+                  (case (=i c 59)
+                    (true stt)
+                    (false
+                      (case (=i c 34)
+                        (true (pa-scan s b (+ i 1) n line (pa-st depth true cur out mind)))
+                        (false
+                          (case (=i c 40)
+                            (true
+                              (let (d1 (+ depth 1))
+                                (case (and (=i d1 1) (not (has-frm cur)))
+                                  (true (pa-scan s b (+ i 1) n line
+                                          (pa-st d1 false (head-at s i n line) out mind)))
+                                  (false
+                                    (let (cur1 (case (has-frm cur) (true (bump-open cur)) (false cur)))
+                                      (pa-scan s b (+ i 1) n line (pa-st d1 false cur1 out mind)))))))
+                            (false
+                              (case (=i c 41)
+                                (true
+                                  (let (d1 (- depth 1))
+                                    (let (m1 (pa-min d1 mind))
+                                      (case (has-frm cur)
+                                        (false (pa-scan s b (+ i 1) n line (pa-st d1 false cur out m1)))
+                                        (true
+                                          (let (cur1 (bump-close cur))
+                                            (case (=i d1 0)
+                                              (true  (pa-scan s b (+ i 1) n line
+                                                       (pa-st d1 false no-frm (cons cur1 out) m1)))
+                                              (false (pa-scan s b (+ i 1) n line
+                                                       (pa-st d1 false cur1 out m1))))))))))
+                                (false (pa-scan s b (+ i 1) n line stt))))))))))))))))))
+
+(def pa-scan-lines (-> (List Str) I64 PaSt PaSt)
+  (lam (ls line stt)
+    (case ls
+      (nil stt)
+      ((cons h t)
+        (let (b (str->bytes h))
+          (pa-scan-lines t (+ line 1) (pa-scan h b 0 (blen b) line stt)))))))
+
+; ── reporting ───────────────────────────────────────────────────────────────
+
+(def tsv (-> Str Str Str)
+  (lam (a b) (str-cat a (str-cat "\t" b))))
+
+(def row-frm (=> Str PaFrm I64)
+  (lam (path f)
+    (case f
+      ((frm k n s o c)
+        (let (d (- o c))
+          (case (=i d 0)
+            (true 0)
+            (false
+              (let (l1 (tsv path k))
+                (let (l2 (tsv l1 n))
+                  (let (l3 (tsv l2 (i64->str s)))
+                    (let (l4 (tsv l3 (i64->str o)))
+                      (let (l5 (tsv l4 (i64->str c)))
+                        (let (l6 (tsv l5 (i64->str d)))
+                          (do (put (str-cat l6 "\n")) 1))))))))))))))
+
+(def rows (=> Str (List PaFrm) I64)
+  (lam (path fs)
+    (case fs
+      (nil 0)
+      ((cons h t) (+ (row-frm path h) (rows path t))))))
+
+(def do-file (=> Str I64)
+  (lam (path)
+    (case (=i (str-len path) 0)
+      (true 0)
+      (false
+        (let (fd (openat (bcat (str->bytes path) nul-byte)))
+          (case (<i fd 0)
+            (true (do (put (str-cat path "\tUNREADABLE\n")) 1))
+            (false
+              (let (body (bytes->str (read-fd-all fd)))
+                (let (end (pa-scan-lines (str-split "\n" body) 1 (pa-st 0 false no-frm nil 0)))
+                  (case end
+                    ((pa-st depth instr cur out mind)
+                      ; a form still open at EOF counts, and so does the file's own depth
+                      (let (all (case (has-frm cur) (true (cons cur out)) (false out)))
+                        (let (bad (rows path (reverse PaFrm all)))
+                          (case (and (=i depth 0) (=i bad 0))
+                            (true  (do (put (str-cat path "\tOK\n")) 0))
+                            (false
+                              (case (=i depth 0)
+                                (true bad)
+                                (false
+                                  (do (put (str-cat path (str-cat "\tFILE\tdepth\t"
+                                            (str-cat (i64->str depth) "\n"))))
+                                    (+ bad 1)))))))))))))))))))
+
+(def do-files (=> (List Str) I64)
+  (lam (ps)
+    (case ps
+      (nil 0)
+      ((cons h t) (+ (do-file h) (do-files t))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (paths (str-split "\n" (bytes->str (read-fd-all 0))))
+      (let (bad (do-files paths))
+        (case (=i bad 0) (true 0) (false 1))))))
