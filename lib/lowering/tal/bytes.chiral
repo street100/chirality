@@ -125,15 +125,40 @@
     (t-seq (ti-call 8 "nb-copy" (cons 7 (cons 1 (cons 2 (cons 6 (cons 3 nil))))))
       (ti-ret 8))))))))))
 
-; slice [i, j): requires 0 <= i <= j <= len (in-range at all demo call sites;
-; out-of-range faults instead of clamping -- the honest alarm)
+; slice [i, j): an INVERTED range (j < i) yields the EMPTY slice instead of
+; handing a negative length to the allocator -- the length is clamped at zero
+; by a branch, not by arithmetic (op-lti's result is a Bool, so it cannot be
+; multiplied into the length). j > len still faults: that is the other half of
+; the range finding, and str-starts-with currently depends on it.
+;
+; THE ARM TAGS ARE INVERTED RELATIVE TO C, and that is the whole trap here.
+; Bool at this floor is the enum tag 0=true 1=false (see the file header), so
+; the tag-0 arm of a `ti-tcase` on a comparison is the arm where the comparison
+; HOLDS. Reading tag 0 as "false" and swapping these two bodies type-checks, and
+; it is invisible for two generations: gen1 still RUNS the old runtime, gen2 is
+; emitted by a working gen1, and only gen3 -- the first compile whose own
+; nb-bslice is the new one -- collapses (every slice returns empty, so the
+; parser sees empty tokens: `load: unsupported toplevel form`, 0 bytes out).
+; Measured, not guessed: the swap reproduces exactly that. Any edit here must
+; be built to GEN3 and gen2 compared to gen3; "the new compiler builds" is not
+; evidence. What is NOT a constraint, also measured: the arms may reuse one
+; another's register numbers, and an arm may read a register bound before the
+; tcase (r3 here).
 (def nb-bslice-t TIFn
-  (ti-fn "nb-bslice" 3 7
-    (t-seq (ti-prim 3 (op-sub) 2 1)
-    (t-seq (ti-bnew 4 3)
-    (t-seq (ti-const 5 0)
-    (t-seq (ti-call 6 "nb-copy" (cons 4 (cons 0 (cons 5 (cons 1 (cons 3 nil))))))
-      (ti-ret 6)))))))
+  (ti-fn "nb-bslice" 3 9
+    (t-seq (ti-const 3 0)
+    (t-seq (ti-prim 4 (op-lti) 2 1)                 ; j < i ?  (true = tag 0)
+      (ti-tcase 4 false
+        (cons (pair (pair 0 nil)
+          (t-seq (ti-bnew 5 3)                      ; inverted: the empty slice
+            (ti-ret 5)))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-prim 6 (op-sub) 2 1)
+          (t-seq (ti-bnew 7 6)
+          (t-seq (ti-call 8 "nb-copy" (cons 7 (cons 0 (cons 3 (cons 1 (cons 6 nil))))))
+            (ti-ret 8)))))
+        nil))
+        none)))))
 
 (def nb-rep-go-t TIFn
   (ti-fn "nb-rep-go" 5 12
