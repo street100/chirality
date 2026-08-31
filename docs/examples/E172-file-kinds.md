@@ -440,7 +440,7 @@ scaffold/lib/upper/…                                    ; everything else
 - **Related:** [[E160-module-coordinate]] · [[E161-module-datasheet]] ·
   [[E155-basename-collision]] · [[E163-manifest]] (owns the manifest choice —
   untouched here) · [[axis-altitude]] · [[banks/module]] ·
-  [[docs/pattern-boundary-sums]] · [[U15]] (`TUI/scriba/file-io.chiral:99`
+  [[pattern-boundary-sums]] · [[U15]] (`TUI/scriba/file-io.chiral:99`
   `mode-from-path` — the same extension→kind binding, one tier down, already
   shipped).
 

@@ -152,7 +152,8 @@ def check_c() -> list[str]:
     mapmd = (ROOT / "MAP.md").read_text()
 
     n_decisions = len(doc_tier("decision-*.md"))
-    m = re.search(r"`docs/decision-\*`\s*\((\w+)\s+notes?\)", mapmd)
+    # accepts the pre-role-sort `docs/decision-*` and the current `docs/decisions/`
+    m = re.search(r"`docs/decisions?(?:/|-\*)`\s*\((\w+)\s+notes?\)", mapmd)
     if not m:
         errs.append("[C] MAP.md no '(N notes)' claim for docs/decision-*")
     else:
@@ -274,9 +275,14 @@ def check_f() -> list[str]:
             n = int(m.group(1))
             return bool(list((ROOT / "docs" / "examples").glob(f"E{n:02d}-*.md"))) \
                 or n in catalog_ids
-        # a [[slug]] resolves against the whole doc tier, not two dirs of it
-        return (any(p.stem == name for p in doc_tier())
-                or (ROOT / ".planning" / f"{name}.md").exists()
+        # A [[slug]] is either a bare stem ([[thesis]]) or a path relative to
+        # docs/ ([[banks/module]]). Matching stems only made every one of the
+        # 60-odd path-form bank links read as dangling.
+        docs = ROOT / "docs"
+        for f in doc_tier():
+            if f.stem == name or f.relative_to(docs).with_suffix("").as_posix() == name:
+                return True
+        return ((ROOT / ".planning" / f"{name}.md").exists()
                 or (ROOT / f"{name}.md").exists())
 
     def linkish(f, name: str) -> bool:
@@ -470,7 +476,7 @@ def _load_frontier():
     """Load tools/frontier/frontier.py (hyphenated name -> importlib) so this check
     and the digest share ONE definition of the source set + hash."""
     import importlib.util
-    path = ROOT / "bin" / "tools/frontier/frontier.py"
+    path = ROOT / "tools" / "frontier" / "frontier.py"
     if not path.exists():
         return None
     spec = importlib.util.spec_from_file_location("chirality_frontier", path)

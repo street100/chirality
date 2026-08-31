@@ -200,7 +200,7 @@ chirality each has its own principled home and its own honest build-state.
 - **What.** Zeroed-on-drop hygiene, and the register-root defense against
   peripheral DMA: derive-not-store, RAM holds only ciphertext + redundancy,
   cleartext lives in a bounded window.
-- **Home.** the custody modules ([[modules-custody]]) + [[SECURE-DATUM-MODEL]].
+- **Home.** the custody modules ([[modules-custody]]) + [[secure-datum-model]].
   The secret custody *seed* is built: opaque linear `Secret`, `seal/reveal/wipe`,
   a single greppable guarded exit (CONFORMANCE-MAP E40, CONFORMS *as far as it
   claims*).
@@ -213,7 +213,7 @@ chirality each has its own principled home and its own honest build-state.
   — "*vapor beyond the secret seed*", **E56** (2026-07-21 catalog extension; the
   CONFORMANCE-MAP row predates the assignment; adjacent E42 register-root
   supervisor). The register root (master secret in CPU
-  registers, never in RAM) is the DMA defense of [[SECURE-DATUM-MODEL]] §3 and is
+  registers, never in RAM) is the DMA defense of [[secure-datum-model]] §3 and is
   docs-only.
 
 ---
@@ -269,7 +269,7 @@ redundancy is an instance of split-provider agreement** (CONFORMANCE-MAP:
 redundantly and self-heal" refracts onto the same `Split` role
 ([[banks/evidence-and-split]]) that any unprovable-truth module requires: copies
 that must agree, mediated in one place. The register root is the *one shared
-dependency* the split independence discipline (Rule B, [[SECURE-DATUM-MODEL]] §5)
+dependency* the split independence discipline (Rule B, [[secure-datum-model]] §5)
 is allowed, because it is unreachable by DMA. Memory-custody's zeroize is thus a
 customer of evidence-and-split, not a self-contained mechanism.
 
@@ -396,7 +396,7 @@ mechanism (E9, E38, E42/custody), none from zero.
   source, links here for the shard decomposition and build-state.
 - [[decision-graded-kernel]] — space-as-a-grade vs discipline (Shard 8, C4); the
   three-way split (coeffect / property / modality).
-- [[SECURE-DATUM-MODEL]] — the register root, derive-not-store, zeroize hygiene
+- [[secure-datum-model]] — the register root, derive-not-store, zeroize hygiene
   (Shard 9, C5).
 - [[modules-custody]] — secret custody, redundancy, memory custody (Shard 9);
   the bulk that is BUILD.

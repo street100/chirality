@@ -146,7 +146,7 @@ sequencing intent.
 
 ## Settled and open
 
-- Forks settled in `docs/decision-*` (fourteen notes): additive testable profiles
+- Forks settled in `docs/decisions/` (sixteen notes): additive testable profiles
   over a frozen port set; two brokers agreeing via Adhikara; own typed backend
   with no compile to C; B in the type not the packaging; the graded/cost-kernel
   direction; the inspiration policy; the checker as a small trusted core plus
