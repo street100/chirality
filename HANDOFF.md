@@ -16,6 +16,8 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
 | resolver | `bin/chirality-resolve.sh` (shell) + `lib/module/resolve.chiral` (native), a matched pair |
 | tests | `bin/chirality test` → **142 assertions, 0 failed**, 7 of 12 old phases ported + Phase 13 (E157), new here |
 | tools | `tools/` — 9 Python tools carried as-is, each with `MIGRATION-NOTES.md` |
+| docs | 226 files, sorted by role (`LAYOUT.md`); `.planning/` 245, catalog + LEDGER included |
+| record | `MIGRATION-MAP.tsv`, 677 rows, every `new_path` verified to exist |
 
 ### Verified, not asserted
 
