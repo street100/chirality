@@ -1,0 +1,20 @@
+# Claude Code working artifacts
+.claude/
+.claude-*/
+**/CLAUDE.md
+*.orig
+*.rej
+
+# transient build outputs.  bin/chirality-bin is COMMITTED on purpose --
+# the source tree and recompile harness ship with it, so a fresh checkout
+# can rebuild and byte-compare rather than trust it.
+*.blob
+*.elf
+/C1
+/C2
+/blob
+
+# editor / OS
+*~
+*.swp
+.DS_Store
