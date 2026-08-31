@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ledger-lint — keep the honesty apparatus honest.
 
-Fable audit C6/F3/F4: the status ledger, principle citations, and MAP counts
+Fable audit C6/F3/F4: the status ledger, principle citations, and CONTENTS counts
 are maintained by discipline, not substrate, so they rot silently (the exact
 failure chirality exists to eliminate, one level up). This is the mechanizable core
 of the fix: cross-check the claims that rotted against the tree.
@@ -11,7 +11,7 @@ Checks (each independent; any failure -> exit 1):
      docs/status-ledger.md resolves under repo root or scaffold/.
   B. No stale principle numbers.    A docs/ note whose frontmatter `updated:`
      is after the 2026-07-20 condensation must not cite P6/P7 (old-scheme only).
-  C. MAP counts match the tree.     MAP's "(N notes)" for decisions and its
+  C. CONTENTS counts match tree.    CONTENTS's "(N notes)" for decisions and its
      "three sequencing questions" match docs/decision-*.md and open-edges.
 
 Run from anywhere; resolves paths relative to the repo root (this file's ../).
@@ -147,19 +147,19 @@ def check_b() -> list[str]:
 
 
 def check_c() -> list[str]:
-    """MAP decision-note count and sequencing-question count match the tree."""
+    """CONTENTS decision-note count and sequencing-question count match the tree."""
     errs: list[str] = []
-    mapmd = (ROOT / "MAP.md").read_text()
+    mapmd = (ROOT / "CONTENTS.md").read_text()
 
     n_decisions = len(doc_tier("decision-*.md"))
     # accepts the pre-role-sort `docs/decision-*` and the current `docs/decisions/`
     m = re.search(r"`docs/decisions?(?:/|-\*)`\s*\((\w+)\s+notes?\)", mapmd)
     if not m:
-        errs.append("[C] MAP.md no '(N notes)' claim for docs/decision-*")
+        errs.append("[C] CONTENTS.md no '(N notes)' claim for docs/decision-*")
     else:
         claimed = WORDS.get(m.group(1).lower())
         if claimed != n_decisions:
-            errs.append(f"[C] MAP claims {m.group(1)} decision notes; "
+            errs.append(f"[C] CONTENTS claims {m.group(1)} decision notes; "
                         f"tree has {n_decisions}")
 
     edges = (ROOT / "docs" / "definitions" / "open-edges.md").read_text()
@@ -169,7 +169,7 @@ def check_c() -> list[str]:
                 len(re.findall(r"^-\s", seq_block[1], re.M))
         m = re.search(r"(\w+)\s+sequencing questions", mapmd)
         if m and WORDS.get(m.group(1).lower()) != n_seq:
-            errs.append(f"[C] MAP claims {m.group(1)} sequencing questions; "
+            errs.append(f"[C] CONTENTS claims {m.group(1)} sequencing questions; "
                         f"open-edges has {n_seq}")
     return errs
 
@@ -1047,7 +1047,7 @@ def check_s() -> list[str]:
 # nothing, which is the exact failure class this tool exists to catch.
 REQUIRED_INPUTS = [
     ("docs/definitions/status-ledger.md",     "check A -- evidence paths"),
-    ("MAP.md",                                "check C -- MAP counts"),
+    ("CONTENTS.md",                           "check C -- CONTENTS counts"),
     ("docs/definitions/open-edges.md",        "check D -- banks tier"),
     ("docs/banks",                            "checks D/E -- the banks tier"),
     ("docs/definitions/FRONTIER.md",          "check I -- frontier staleness"),
@@ -1085,7 +1085,7 @@ def main() -> int:
     vacuous: list[tuple] = []
     for name, fn in (("A evidence paths", check_a),
                      ("B principle numbers", check_b),
-                     ("C MAP counts", check_c),
+                     ("C CONTENTS counts", check_c),
                      ("D banks tier", check_d),
                      ("E bank claims vs map", check_e),
                      ("F link graph", check_f),

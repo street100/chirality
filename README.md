@@ -180,13 +180,13 @@ nothing proves nothing.
 | the compiler, in chirality | [`lib/lowering/compile-all.chiral`](lib/lowering/compile-all.chiral), entry [`prog/compiler.prog`](prog/compiler.prog) |
 | typed process spawn | [`lib/runtime/proc.chiral`](lib/runtime/proc.chiral) + [`process.port`](lib/ports/process.port) |
 | userland in chirality | [`lib/`](lib/): [JSON](lib/protocol/json.chiral), [HTTP](lib/protocol/http.chiral), FSMs, the [x86-64 emitter](lib/lowering/x64/emit.chiral) |
-| the tree contract: extensions, roles, the module key | [`LAYOUT.md`](LAYOUT.md) |
+| the tree contract: extensions, roles, the module key | [`MAP.md`](MAP.md) |
 | design docs | [`docs/`](docs/), starting at [`docs/index.md`](docs/index.md) |
 | benchmarks | [`docs/benchmarks/`](docs/benchmarks/) |
 | worked examples | [`docs/examples/INDEX.md`](docs/examples/INDEX.md) |
 | threat model (ownership track, deferred) | [`secure-datum-model`](docs/definitions/secure-datum-model.md) |
 | principles | [`PRINCIPLES.md`](PRINCIPLES.md) |
-| project map | [`MAP.md`](MAP.md) |
+| orientation and contents | [`CONTENTS.md`](CONTENTS.md) |
 
 ## About this repository
 
