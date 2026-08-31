@@ -20,7 +20,7 @@
 (import "prelude/prelude")
 (import "lowering/tal/ssa")
 (import "typing/erased-nf")
-(import "ports/crossing-wraps")       ; E70: the bound-crossing -> wrapper routing table
+(import "lowering/tal/crossing-wraps")       ; E70: the bound-crossing -> wrapper routing table
 
 ; ---- result carriers (errors-as-values) ------------------------------------
 (data XI  () (xi-ok  (i NInstr)) (xi-err  (reason Str)))
