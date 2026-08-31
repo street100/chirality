@@ -816,7 +816,11 @@ is a defect is tracked, and the part that is a wish is not pretended to be one.
 the spec run that option (ii) "would ripple into `apc.chiral`'s codec". It would
 not. `apc.chiral` encodes and decodes the `r-face` constructor's first field — a
 `Str` face **name** (`:115`, `:276`) — and never a `Face`. The `(face …)`
-constructor is applied at 11 sites, all inside `render.chiral`. The real blast
+constructor is applied at **twelve** sites — `default-faces`' eleven rows (`:145-157`)
+plus `lookup-face`'s `nil` synthesis (`:163`) — all inside `render.chiral`. *(11 →
+12 corrected at the spec audit, FLAG A. The load-bearing half is "all inside
+`render.chiral`", which holds; the ruling above explicitly does not rest on the
+count, and does not change.)* The real blast
 radius is one module. I inflated the cost of the option I then declined; the
 decision above does not rest on that cost, and stands without it.
 
