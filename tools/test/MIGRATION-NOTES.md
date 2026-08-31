@@ -16,15 +16,26 @@ Entry point: `bin/chirality test` → `tools/test/run-tests.sh`.
 | 6 linear mint (E159) | `test-linear-mint.sh` | `linear-mint.sh` | 21 |
 | 7 downstream roots compile | `run-native.sh` inline | `run-tests.sh` inline | 11 roots |
 
-## New here — Phase 13, typed diagnostics (E157)
+## New here — Phases 13 and 14
 
 | phase | source | here | assertions |
 |---|---|---|---|
 | 13 typed diagnostics (E157) | old tree's `test-diag.sh` | `diag.sh` + `samples/e157_diag.prog` | 30 |
+| 14 layout algebra (E158) | none — written here | `doc.sh` + `samples/e158_doc.prog` | 26 |
 
 E157 landed in the old tree after the migration snapshot, so it has **no old-tree
 phase number to inherit**. It is 13 rather than 8: 8–12 are names still owed, and
-reusing one would have made an unported gate look ported.
+reusing one would have made an unported gate look ported. E158 takes **14** for
+the same reason, and its registration line beside 13's is a *required* line, not
+a courtesy — an unregistered `doc.sh` is a gate that never runs, which `doc.sh`
+itself asserts as a row (G7c) so the registration cannot vanish silently.
+
+Phase 14 grades **evidence survival**, never byte-identity. E157's nine goldens
+pin `dg-msg` byte-for-byte and that constraint is E157's; `doc->str` must not
+inherit it, so `doc.sh` carries no golden row over the plain-text exit and pins a
+**sha256** of `diag.sh` and `samples/e157_diag.prog` to prove E158 did not move
+E157's gate. (A `git diff --stat` row would report ok for the rest of time once
+the E158 commits land, so it is deliberately not used.)
 
 Two things changed in the port beyond the mechanical rewrites:
 

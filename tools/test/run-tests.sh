@@ -5,8 +5,8 @@
 # Ported from the old tree's scaffold/tests/run-native.sh (12 phases).  SEVEN
 # of those run here; the five that do not are named below with the reason,
 # because a phase that silently vanishes is a gate that reports ok forever.
-# Phase 13 is new here -- it has no old-tree number to inherit, and reusing 8-12
-# would have overwritten a name that is still owed.
+# Phases 13 and 14 are new here -- neither has an old-tree number to inherit,
+# and reusing 8-12 would have overwritten a name that is still owed.
 #
 #   1  inline behavioral          PORTED  -- source strings -> compile + run
 #   2  the test-runner            PORTED  -- rebuilt from source, then run
@@ -21,6 +21,7 @@
 #  11  resolver + build state     NOT PORTED -- see MIGRATION-NOTES.md
 #  12  the test floor (E168)      NOT PORTED -- needs scaffold/tests/samples/
 #  13  typed diagnostics (E157)  NEW HERE   -- tools/test/diag.sh
+#  14  layout algebra (E158)     NEW HERE   -- tools/test/doc.sh
 #
 # Each case's expected value comes from what the program MEANS, never from a
 # golden capture of chirality's own output.
@@ -185,6 +186,15 @@ tally "$r_pass" "$r_fail"
 # mutants that must make the fixture go red.  It also carries the first
 # assertion anywhere on "let binder usage mismatch".
 run_phase 13 "typed diagnostics (E157 Reason closure)"         diag.sh
+
+# ---- Phase 14: layout algebra (E158) ----------------------------------------
+# Also new here.  E158 splits a formatter into a TEMPLATE (`Doc`, six
+# constructors, no `d-union`) and a FLATTEN (`doc->str`, at a width the caller
+# chose), and gives E157's `Reason` a `dg-doc` sibling beside `dg-msg`.  Its
+# gate is EVIDENCE SURVIVAL, never byte-identity: `dg-msg` keeps E157's nine
+# goldens and `doc->str` must not inherit them, which is itself a checked row
+# (G7).  8-12 are still names owed, so this is 14.
+run_phase 14 "layout algebra (E158 Doc)"                       doc.sh
 
 echo
 echo "=== not ported from the old suite (named, not hidden) ==="
