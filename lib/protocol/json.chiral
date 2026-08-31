@@ -10,7 +10,7 @@
 ; emoji) are not paired and encode their raw surrogate value. Fine for the model
 ; metadata / structural JSON the orchestrator exchanges.
 
-(import "prelude")
+(import "prelude/prelude")
 
 (data Json ()
   (j-null)

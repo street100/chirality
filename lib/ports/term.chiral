@@ -8,9 +8,9 @@
 ;   3. High-level term-raw / term-restore that scriba's command loop uses
 ;
 ; All struct packing rides bytes-tal primitives.
-(import "prelude")
-(import "ports")           ; nb-winsz-raw, nb-tcgets-raw, nb-tcsets, nb-winszw-raw externs
-(import "bytes-tal")       ; bget-u16-le, bput-u32-le, etc.
+(import "prelude/prelude")
+(import "ports/ports")           ; nb-winsz-raw, nb-tcgets-raw, nb-tcsets, nb-winszw-raw externs
+(import "lowering/tal/bytes")       ; bget-u16-le, bput-u32-le, etc.
 
 ; ── TIOCGWINSZ — terminal window size ──
 ; struct winsize { u16 ws_row, ws_col, ws_xpixel, ws_ypixel } = 8 bytes.

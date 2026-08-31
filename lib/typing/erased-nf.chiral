@@ -21,7 +21,7 @@
 ; is then a mechanical 1:1 rebuild into tal-ir. The shape here is EXACTLY the
 ; subset of tal-ir a lowered pure function can reach -- no ti-sys / ti-bptr
 ; (hand-authored sys tal only), and n-lit only for a Str/Bytes const.
-(import "prelude")
+(import "prelude/prelude")
 
 (data NInstr ()
   (n-const (dst I64) (val I64))                    ; -> ti-const

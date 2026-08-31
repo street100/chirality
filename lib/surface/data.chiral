@@ -13,8 +13,8 @@
 ; standalone `Ty` skeleton is kept below ONLY because ty-cmp.chiral (D-1 order)
 ; still imports it; it no longer types any Field/DataDecl (residue: move ty-cmp to
 ; a Term/Value order for the fixpoint seen-set).
-(import "prelude")
-(import "syntax")                          ; the shared full-ADT Term (E04 decision #7)
+(import "prelude/prelude")
+(import "surface/syntax")                          ; the shared full-ADT Term (E04 decision #7)
 
 ; ---- vestigial Ty skeleton (kept for ty-cmp.chiral only; not a field type now) --
 (data Ty ()

@@ -1,4 +1,4 @@
-(import "prelude")     ; I64, Bool, List, Pair, Bytes + bget/blen/band/bor/shl
+(import "prelude/prelude")     ; I64, Bool, List, Pair, Bytes + bget/blen/band/bor/shl
 
 ; ─── utf8.chiral — a pure UTF-8 decoder (RFC 3629), the vt-core NEED ──────────────
 ;

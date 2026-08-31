@@ -12,12 +12,12 @@
 ; CANNOT import "kernel" (TalTerm collision) -- hence the NDef hop from the front.
 ; ===========================================================================
 
-(import "lower")               ; LCore / LCArm / TalTy / CEnv / TalSig / compile-fn
-(import "tal-erase")           ; erase-fn : (List DData) TFn -> XF ; NFn
-(import "lowspec")             ; NTalTy / NCore / NArm / NDef
-(import "collections")         ; E27 Map: tree-set literal dedup
-(import "string-utils")
-(import "skip-diag")           ; E97: SkReason/SkRec + format-blame (single decl home)
+(import "lowering/upper/lower")               ; LCore / LCArm / TalTy / CEnv / TalSig / compile-fn
+(import "lowering/tal/erase")           ; erase-fn : (List DData) TFn -> XF ; NFn
+(import "lowering/lowspec")             ; NTalTy / NCore / NArm / NDef
+(import "prelude/collections")         ; E27 Map: tree-set literal dedup
+(import "prelude/string")
+(import "lowering/skip-diag")           ; E97: SkReason/SkRec + format-blame (single decl home)
 
 ; ---- neutral -> lower.chiral's tal type ----------------------------------------
 (declare ntalty->talty      (-> NTalTy TalTy))

@@ -1,6 +1,6 @@
 ; T1 behavioral test — simple crossings (setsid + dup2)
-(import "prelude")
-(import "ports")
+(import "prelude/prelude")
+(import "ports/ports")
 
 (declare test-setsid (=> Unit I64))
 (def test-setsid (lam (_)

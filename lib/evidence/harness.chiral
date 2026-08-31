@@ -2,9 +2,9 @@
 ; Spawns the native test-runner and Python unittest suite via proc-spawn.
 ; Runs through the Python interpreter for now.
 
-(import "prelude")
-(import "ports")
-(import "proc")
+(import "prelude/prelude")
+(import "ports/ports")
+(import "runtime/proc")
 
 (declare run-python-suite (=> Unit I64))
 (def run-python-suite

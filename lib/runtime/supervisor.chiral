@@ -22,9 +22,9 @@
 ; (`fire-earliest`/`supervise-step`/`supervise`) typecheck but do not emit native —
 ; the pure spine + the `apply-kont` decision are what run.
 
-(import "poll")        ; poll-fds, PollR, ReadyFd, Cond
-(import "ports")       ; Clock, time-mono, TimeR   (E32 split)
-(import "lincoll")     ; SockVec, sv-detach-at, mux-step   (E106)
+(import "runtime/poll")        ; poll-fds, PollR, ReadyFd, Cond
+(import "ports/ports")       ; Clock, time-mono, TimeR   (E32 split)
+(import "capability/lincoll")     ; SockVec, sv-detach-at, mux-step   (E106)
 
 ; ── alarms as data on the membrane ────────────────────────────────────────────
 ; recoverable-vs-fatal is the CONSTRUCTOR OFFERING (effect-and-alarm Shard 5):

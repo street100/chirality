@@ -19,9 +19,9 @@
 ; passed IN as data rather than co-imported. Net: with sig-derive's derivations,
 ; chirality produces every input eff-lower's gate/check needs -- no "given" inputs.
 
-(import "prelude")
-(import "row-infer")    ; RowSig, infer-row, assoc-row
-(import "eff-lower")    ; eff-gate/EffGate, row-check/RowCheckR, Block
+(import "prelude/prelude")
+(import "typing/row-infer")    ; RowSig, infer-row, assoc-row
+(import "lowering/upper/eff-lower")    ; eff-gate/EffGate, row-check/RowCheckR, Block
 
 ; ================================================================ EffSig
 ;   ports : port crossings (prim_is_port)   bound : E51-bound crossings

@@ -38,12 +38,12 @@
 ;     (page alignment for mprotect) and C alignment is the C compiler's job.
 ;     It is still `case`d exhaustively -- coverage-checked, not defaulted.
 
-(import "prelude")
-(import "collections")
-(import "string-utils")
-(import "asm-reloc")
+(import "prelude/prelude")
+(import "prelude/collections")
+(import "prelude/string")
+(import "lowering/mach/asm-reloc")
 
-(module c-assemble (cat A) (alt upper))
+(module lowering/c/assemble (cat A) (alt upper))
 
 ; ── CLbl: what a label IS, decided once at the boundary ─────────────────────
 ; c-lit carries the literal's INDEX, not its name: emit-core mints literal

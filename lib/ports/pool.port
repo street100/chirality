@@ -7,7 +7,7 @@
 ; Depends on ports/fd: a pool's backing memfd comes back as a linear Fd, so
 ; PoolR cannot be stated without the descriptor cap.
 
-(import "prelude")
+(import "prelude/prelude")
 (import "ports/fd")
 
 (porttype Pool (n I64))

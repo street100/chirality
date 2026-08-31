@@ -7,8 +7,8 @@
 ; instance, but nothing here knows about HTTP or manas. This is the reusable
 ; control spine the profile layer stands on.
 
-(import "prelude")
-(import "collections")
+(import "prelude/prelude")
+(import "prelude/collections")
 
 ; The result of one transition. Two constructors, so a machine cannot forget to
 ; say whether it is done: continue, or halt.

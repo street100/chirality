@@ -22,7 +22,7 @@
 ; from it and drives compile-fn. An NDef con-value passes between the two RTs.
 ; ===========================================================================
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; a lowered tal type: the ground fragment ttype accepts (I64/Str/Bytes/a data
 ; type over lowered args). A non-ground type never reaches here (the front

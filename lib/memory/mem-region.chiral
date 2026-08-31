@@ -16,8 +16,8 @@
 ; dropped exactly once and the whole arena frees as a unit. Every operation
 ; that reads the arena hands it back; you cannot peek without threading.
 
-(import "prelude")
-(import "ports")
+(import "prelude/prelude")
+(import "ports/ports")
 
 ; the arena: the linear pool, its runtime capacity witness, and bytes used
 (data Region ((n I64))

@@ -5,8 +5,8 @@
 ; types are Term (E04 decision #7 / RUNG1-CRITICAL-PATH item 1). terms.chiral
 ; (E13) stays the closed-core differential artifact; THIS is the live full-ADT
 ; Term the kernel owns via import.
-(import "qtt")                 ; Qty (t-pi carries the binder quantity)
-(import "refine")              ; SymOp (the refinement op enum) for t-refine's atoms
+(import "typing/qtt")                 ; Qty (t-pi carries the binder quantity)
+(import "typing/refine")              ; SymOp (the refinement op enum) for t-refine's atoms
 
 ; ---- the effect seat: concrete 2-point instance, compared by equality only ---
 (data Seat () (s-pure) (s-proc))

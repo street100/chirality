@@ -6,7 +6,7 @@
 ;
 ; Scope (SPEC decision #4): plain -?[0-9]+ integers, where the int/symbol split
 ; matches str->i64 exactly; exotic int() spellings (+5, 1_000) are excluded.
-(import "collections")            ; brings prelude transitively + `reverse`
+(import "prelude/collections")            ; brings prelude transitively + `reverse`
 
 ; ---- the surface tree the elaborator (E2) consumes ---------------------
 (data Sexp ()

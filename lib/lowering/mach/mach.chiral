@@ -20,8 +20,8 @@
 ; syscall) and bpr (payload address of a byte cell). Only hand-authored tal
 ; reaches these; lowered pure code has no surface path to them.
 
-(import "prelude")
-(import "asm-reloc")
+(import "prelude/prelude")
+(import "lowering/mach/asm-reloc")
 
 (data Mach ()
   (mach

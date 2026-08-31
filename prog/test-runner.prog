@@ -25,7 +25,7 @@
 ; is named `compile-main`, the one symbol the driver compiles, so self-wield,
 ; chirality-compile and this runner are all built the same way, by chirality.
 
-(import "test-floor")
+(import "evidence/test-floor")
 
 ; one example: its source path + the exit code it must produce. The path is the
 ; sample's, relative to the REPO ROOT -- Phase 2 runs this binary from there as of

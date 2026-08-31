@@ -6,7 +6,7 @@
 ; Numbers are the canonical unistd_64.h values, mirroring the oracle
 ; scaffold/chirality/tal.py SYSCALL_TABLE. Adding a crossing = one row here + its
 ; nb-sys-* def; a profile later narrows this to a permitted SUBSET (E76 remainder).
-(import "sys-check")
+(import "lowering/tal/sys-check")
 
 ; E161: "Pure B-referent data" (line 1) as a coordinate. B because this file's
 ; correctness rests on an admitted hole the language cannot type -- the claim
@@ -15,7 +15,7 @@
 ; NOT a restatement of that letter and is no longer written at all: the datasheet
 ; derives it, and it comes out empty, which says exactly the interesting thing --
 ; this module DESCRIBES every crossing there is and binds none of them.
-(module target-linux (cat B) (alt upper))
+(module lowering/tal/target-linux (cat B) (alt upper))
 
 (def linux-syscalls SysReg
   (sys-reg

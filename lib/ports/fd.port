@@ -11,7 +11,7 @@
 ; unconditionally at compile-emit.chiral:189, so importing one registry or all
 ; nine costs exactly the same bytes.
 
-(import "prelude")
+(import "prelude/prelude")
 
 (porttype Fd)
 

@@ -8,11 +8,11 @@
 ; Deps: prelude (Str, Bool, I64, List, Maybe, bytes->str, bslice, pack-u32)
 ;       ports   (Key, KeySeq, keyseq, k-char)
 
-(import "prelude")
-(import "ports")
-(import "manas-mode")     ; ManasDoc — the open library value rides in vm-manas (S14)
-(import "manas-runview")  ; RunView — the in-flight/finished run rides in vm-runview (S15)
-(import "chat-view")      ; ChatView — the transcript + memory + scroll ride in vm-chat (DC-scriba)
+(import "prelude/prelude")
+(import "ports/ports")
+(import "scriba/manas-mode")     ; ManasDoc — the open library value rides in vm-manas (S14)
+(import "scriba/manas-runview")  ; RunView — the in-flight/finished run rides in vm-runview (S15)
+(import "scriba/chat-view")      ; ChatView — the transcript + memory + scroll ride in vm-chat (DC-scriba)
 
 ; ─── Mode sum ──────────────────────────────────────────────────────────────
 

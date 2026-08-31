@@ -11,7 +11,7 @@
 ; IRs join by ERASURE (drop the `ty` annotations, flatten Block/TalTerm into the
 ; TCode seq). This module is the annotated form the preserve-and-recheck floor
 ; is stated over. Keep the two separate: same names, different meanings.
-(import "prelude")
+(import "prelude/prelude")
 
 ; a tal type: the ground prims + a (possibly parameterized) data type.
 ; tt-word (B1/B2): the uniform erased one-word type -- the tal type of a value

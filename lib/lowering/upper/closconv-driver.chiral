@@ -20,8 +20,8 @@
 ; closconv (surface); the only name clash was closconv's `llen`, now `cc-llen`.
 ; ===========================================================================
 
-(import "loader")     ; Sig / Term / DataDecl / Field / Ctor / core->term / mk-sig
-(import "closconv")   ; Core / SigV / collect / synth term-builders / rw / ...
+(import "module/loader")     ; Sig / Term / DataDecl / Field / Ctor / core->term / mk-sig
+(import "lowering/upper/closconv")   ; Core / SigV / collect / synth term-builders / rw / ...
 
 ; ---------------------------------------------------------------- term -> core
 ; The inverse of loader's core->term (near-identity; Term is de-Bruijn so binder

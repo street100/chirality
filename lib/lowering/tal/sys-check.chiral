@@ -11,8 +11,8 @@
 ; The permitted set is the SWAPPABLE lib/target-linux.chiral SysReg value; this
 ; file holds ZERO Linux numbers (the rule is chirality-permanent, the table is Linux
 ; data -- WATCH-2/WATCH-3). A rung-2 backend swaps target-linux alone.
-(import "prelude")
-(import "tal-ir")
+(import "prelude/prelude")
+(import "lowering/tal/ir")
 
 (data SysRow () (sys-row (name Str) (num I64)))
 (data SysReg () (sys-reg (rows (List SysRow))))

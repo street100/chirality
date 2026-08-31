@@ -15,10 +15,10 @@
 ;     the backend, threads the same breaker, and stops early if it trips (so a
 ;     run against a dead worker halts instead of spinning all night).
 
-(import "prelude")
-(import "collections")
-(import "backend")
-(import "fsm")
+(import "prelude/prelude")
+(import "prelude/collections")
+(import "manas/backend")
+(import "manas/fsm")
 
 ; the result of one generation, as data the policy can branch on.
 (data Outcome () (produced (text Str)) (failed (status I64) (raw Str)))

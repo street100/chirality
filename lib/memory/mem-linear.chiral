@@ -8,8 +8,8 @@
 ; It adds nothing over lib/ports.chiral; it exists to give the discipline a name
 ; and a home, so `(memory linear)` in a profile points somewhere real.
 
-(import "prelude")
-(import "ports")
+(import "prelude/prelude")
+(import "ports/ports")
 
 ; write a byte string at an offset, threading the linear pool (bound erased)
 (def mem-put (-> (0 n I64) (=> (1 p (Pool n)) I64 Bytes (Pool n)))

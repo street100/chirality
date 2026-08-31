@@ -1,7 +1,7 @@
 ; T5 conformance test — exit 42 on pass
-(import "prelude")
-(import "grid")
-(import "vt-parser")
+(import "prelude/prelude")
+(import "protocol/grid")
+(import "protocol/vt-parser")
 
 (declare compile-main (-> Unit I64))
 (declare mkbyte (-> I64 Bytes))

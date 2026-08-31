@@ -13,7 +13,7 @@
 ; undo/redo on empty stack no-ops, search-not-found returns none,
 ; yank on empty ring returns zipper unchanged.
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; ─── Local helpers (inlined from collections) ──────────────────────────────
 

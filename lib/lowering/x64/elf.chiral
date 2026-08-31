@@ -10,7 +10,7 @@
 ; file is the E51 crossing (the CLI), not this file's concern.
 ; ===========================================================================
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; bytes floor: bcat + pack-u16/pack-u32 (LE) are prelude externs; there is NO
 ; pack-u64 today — composed here from two u32 halves. No shift ops exist in the

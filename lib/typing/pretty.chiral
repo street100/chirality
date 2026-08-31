@@ -4,13 +4,13 @@
 ; is a compile error. nth-name's "#i" fallback keeps it total over any index,
 ; in-scope or not. Renders the core former subset (Type/Var/Lam/App/Let); the
 ; rest (Pi/TCon/Con/Refine/Case/Global) are the same walk, more arms.
-(import "prelude")
+(import "prelude/prelude")
 
 ; E161: "a display function provably crosses no port" was the prose above; this
 ; is the same sentence where something derives it. The port-set half is not
 ; written here any more -- the datasheet reads it off this module's own
 ; bindings, and there are none to bind.
-(module pretty (cat A) (alt upper))
+(module typing/pretty (cat A) (alt upper))
 
 (data Term ()
   (t-type (n I64))

@@ -17,10 +17,10 @@
 ; lib/tal-reify.chiral (imports tal-ir) rebuilds tal-ir.TFn from NFn 1:1. The
 ; erasure is `reify-fn . erase-fn`. Pure, total, errors-as-values (a construct
 ; outside the native subset returns an xf-err reason, never a raise).
-(import "prelude")
-(import "tal-ssa")
-(import "erased-nf")
-(import "crossing-wraps")       ; E70: the bound-crossing -> wrapper routing table
+(import "prelude/prelude")
+(import "lowering/tal/ssa")
+(import "typing/erased-nf")
+(import "ports/crossing-wraps")       ; E70: the bound-crossing -> wrapper routing table
 
 ; ---- result carriers (errors-as-values) ------------------------------------
 (data XI  () (xi-ok  (i NInstr)) (xi-err  (reason Str)))

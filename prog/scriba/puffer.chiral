@@ -1,9 +1,9 @@
 ; puffer — S1 scriba primitive: the port-buffer.
 ; Typed lens over a port with a zipper cursor.
 ; Implemented from audited SPEC: .planning/specs/S1-puffer-SPEC.md
-(import "prelude")
-(import "ports")
-(import "kill-ring")
+(import "prelude/prelude")
+(import "ports/ports")
+(import "scriba/kill-ring")
 
 ; ─── (2026-08-22) The inlined collection helpers are GONE.
 ; They were `puf-rev-onto`/`puf-reverse`/`puf-length`, carrying the note
@@ -11,7 +11,7 @@
 ;   1. E147 (built 2026-08-16) fixed the higher-order-capture defunctionalization
 ;      class the note meant; its own runtime gate is `(alist-get Str Str str-eqf)`.
 ;   2. Independently, all three were DEAD — self-referential only, zero callers
-;      anywhere in the tree. No `(import "collections")` is needed to replace them.
+;      anywhere in the tree. No `(import "prelude/collections")` is needed to replace them.
 ; Altitude note (`.planning/BUILD-ORDER.md` A1/A2): this is one instance of the
 ; clone-instead-of-import pattern. The rest are E151/E152/E154.
 

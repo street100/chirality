@@ -4,9 +4,9 @@
 ; Why the split. `compile-main` is the one symbol the native driver compiles, so
 ; a module that defines it cannot be imported by a program that has an entry of
 ; its own -- the blob carries two `compile-main` labels and B1 refuses with
-; `duplicate label`. Five modules in scaffold/lib define one. resolve.chiral was
+; `duplicate label`. Five modules in lib define one. resolve.chiral was
 ; among them, which made "import the resolver" unavailable to every root; the
-; first caller that needed it is scaffold/lib/test-floor.chiral, whose `observe`
+; first caller that needed it is lib/test-floor.chiral, whose `observe`
 ; must resolve a root's imports before compiling it.
 ;
 ; The precedent is the tree's own and predates this: compile-all.chiral (library)
@@ -14,10 +14,10 @@
 ; compile-all.chiral states the rule in its own header.
 ;
 ; Usage is unchanged -- this is the file you compile to get `resolve`:
-;   printf -- '-L scaffold/lib\nscriba/scriba-main\n' | ./resolve > blob.chiral
+;   printf -- '-L lib\nscriba/scriba-main\n' | ./resolve > blob.chiral
 ;   B1 < blob.chiral > program.elf
 
-(import "resolve")
+(import "module/resolve")
 
 ; ── stdin protocol ──
 ;
@@ -26,7 +26,7 @@
 ;   -L <dir>     append <dir> to the module search path (repeatable, in order)
 ;   <module>     the root module to bundle (the first such line wins)
 ;
-; With no -L line the search path is the single default root `scaffold/lib`,
+; With no -L line the search path is the single default root `lib`,
 ; so `echo scriba/scriba-main | resolve` behaves exactly as before. Directives
 ; are classified ONCE into a closed sum (docs/pattern-boundary-sums.md); no
 ; downstream code re-sniffs the prefix.
@@ -80,11 +80,12 @@
               (true  (parse-args rest roots n))
               (false (parse-args rest roots root)))))))))
 
-; default-roots: an empty search path means the built-in default.
+; default-roots: an empty search path means the built-in default -- `lib`
+; then `prog`, the tree's two roots, in that order (lib shadows prog).
 (def default-roots (-> (List Str) (List Str))
   (lam (roots)
     (case roots
-      (nil (cons "scaffold/lib" nil))
+      (nil (cons "lib" (cons "prog" nil)))
       ((cons a b) (cons a b)))))
 
 ; the ENTRY. Named `compile-main` because that is the one symbol the native

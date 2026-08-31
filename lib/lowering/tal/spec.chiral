@@ -19,7 +19,7 @@
 ; minimal / exemplar-driven (§3 #4) — each new entry extends it as needed.
 ; ===========================================================================
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; ---- the spec's vocabulary ------------------------------------------------
 ; An observable is what floor agreement compares: the returned value, a fatal

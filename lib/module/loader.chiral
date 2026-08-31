@@ -8,9 +8,9 @@
 ; This slice = the def loader (functions). Data-decl install (check_data +
 ; positivity) is the next slice; the parser (sexp->Surf) + top-level form loop
 ; are the front half.
-(import "surface")             ; Core / CAtom / CArm (the elaborator's output)
-(import "kernel")              ; Term / Sig / infer / check / eval-term / i->qty
-(import "collections")         ; E161: the ONE polymorphic `reverse` (no private copy)
+(import "surface/surface")             ; Core / CAtom / CArm (the elaborator's output)
+(import "typing/kernel")              ; Term / Sig / infer / check / eval-term / i->qty
+(import "prelude/collections")         ; E161: the ONE polymorphic `reverse` (no private copy)
 
 ; ---- Core -> the shared kernel Term (decision #1: bridge at install) ----------
 ; Near-1:1 (Core mirrors terms.py). Drops the surface-only binder NAMES (Term is

@@ -10,9 +10,9 @@
 ; (self-wield, test-runner) failed with `load: unknown name compile-front`.
 ; The co-load ORDER note above still holds -- these imports express the same
 ; order the six roots did by hand.
-(import "compile-front")
-(import "compile-back")
-(import "compile-emit")
+(import "lowering/compile-front")
+(import "lowering/compile-back")
+(import "lowering/compile-emit")
 
 (data CAllR () (ca-ok (elf Bytes)) (ca-err (msg Str)))
 (def compile-all (=> Str Str CAllR)

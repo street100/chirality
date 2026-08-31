@@ -17,9 +17,9 @@
 ;       ports (Key, KeySeq, Keymap constructors + put extern)
 ;       scriba/completion (complete, complete-exact, longest-common-prefix)
 
-(import "prelude")
-(import "ports")        ; Key, KeySeq, Keymap constructors + put
-(import "completion")   ; complete, complete-exact, longest-common-prefix
+(import "prelude/prelude")
+(import "ports/ports")        ; Key, KeySeq, Keymap constructors + put
+(import "scriba/completion")   ; complete, complete-exact, longest-common-prefix
 
 ; ─── Prompt kind ─────────────────────────────────────────────────
 

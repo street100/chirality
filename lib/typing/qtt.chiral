@@ -8,7 +8,7 @@
 ; enrichment (usage x time x space x info-flow, frozen width) replaces THIS data
 ; type + ops; the vector algebra below is untouched. That parametricity is the
 ; point of the port's shape.
-(import "prelude")
+(import "prelude/prelude")
 
 ; ---- the grade set: today's instance -----------------------------------
 (data Qty () (q0) (q1) (qw))

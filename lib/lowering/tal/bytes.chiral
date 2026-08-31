@@ -16,8 +16,8 @@
 ; with the host on non-negative operands; string indices are byte indices
 ; (UTF-8), which coincides with the host on ASCII.
 
-(import "prelude")
-(import "tal-ir")
+(import "prelude/prelude")
+(import "lowering/tal/ir")
 
 ; identity: str->bytes and bytes->str are free at the floor
 (def nb-id-t TIFn (ti-fn "nb-id" 1 1 (ti-ret 0)))

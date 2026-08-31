@@ -18,9 +18,9 @@
 ; text-zipper->zipper recomputes the offset from the LineCtx split. This is
 ; what makes navigation stick and self-insert land at the moved cursor.
 
-(import "prelude")
-(import "puffer")
-(import "str-edit")
+(import "prelude/prelude")
+(import "scriba/puffer")
+(import "scriba/str-edit")
 
 ; zb-cursor-offset : (List Str) Str -> I64
 ; Flat-text character offset of the cursor, computed from the LineCtx split:

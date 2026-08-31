@@ -5,7 +5,7 @@
 ; structural. Pure, total. refine.py stays the oracle; this PROVIDES
 ; entails/Constraint to E10 (occurrence typing). Kernel untouched.
 ; Non-goal: the full-predicate REFACTOR (solver, inter-variable arith) -> E41.
-(import "prelude")
+(import "prelude/prelude")
 
 ; the five predicate operators (refine.py _OPS): >= > <= < <>
 (data SymOp () (s-ge) (s-gt) (s-le) (s-lt) (s-ne))

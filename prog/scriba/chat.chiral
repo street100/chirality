@@ -18,8 +18,8 @@
 ;
 ; Deps: prelude, puffer (Puffer, puffer-value, Zipper), manas/chatter/{turn,router}.
 
-(import "prelude")
-(import "puffer")
+(import "prelude/prelude")
+(import "scriba/puffer")
 (import "manas/chatter/turn")      ; turn-seq — the ROUTED entry (replaces the single-model agent call)
 (import "manas/chatter/router")    ; ConvState (conv-empty) — a send is one-shot, so it starts from empty memory
 

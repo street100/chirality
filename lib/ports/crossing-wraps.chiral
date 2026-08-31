@@ -8,7 +8,7 @@
 ; INVARIANT: this must agree with lib/sys-linkage.chiral `sys-bindings` (the
 ; linkage-side authority, consulted by native.py). tests/test_effectful_lowering
 ; and test_e76 both load sys-linkage, which rebuilds sys-bindings from THIS table.
-(import "prelude")
+(import "prelude/prelude")
 
 (def crossing-wraps (List (Pair Str Str))
   (cons (pair "put"   "wrap-put")

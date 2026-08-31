@@ -13,9 +13,9 @@
 ;   cat TUI/scriba/scriba-runview-test.chiral >> blob; echo >> blob
 ;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
 
-(import "prelude")
-(import "render")                  ; Rendering (r-lines / r-face / r-text) — to dig rows
-(import "manas-runview")           ; RunView, RunPhase, RvCall, runview-render, outcome-row, phase-tag, rv-*
+(import "prelude/prelude")
+(import "protocol/render")                  ; Rendering (r-lines / r-face / r-text) — to dig rows
+(import "scriba/manas-runview")           ; RunView, RunPhase, RvCall, runview-render, outcome-row, phase-tag, rv-*
 (import "manas/core/types")        ; ExpertOutcome (expert-ok / expert-bad), RunManifest, ExpertCall, Binding
 
 ; ─── Rendering extractors (dig the tree runview-render produces) ─────────────

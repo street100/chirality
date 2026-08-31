@@ -7,9 +7,9 @@
 ; specialize-singletons refuses two of them in one blob
 ; (specialize-singleton.chiral:78-84).
 
-(import "prelude")
-(import "asm-reloc")
-(import "mach")
+(import "prelude/prelude")
+(import "lowering/mach/asm-reloc")
+(import "lowering/mach/mach")
 
 (data Alloc ()
   (alloc

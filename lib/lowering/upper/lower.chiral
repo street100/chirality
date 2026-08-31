@@ -14,11 +14,11 @@
 ; _peel) -> effectful (E70 stays-upper) -> quantified binder (0/1 upper) -> a type
 ; that does not lower (ttype = none). Narrow eligibility (pure, non-dependent,
 ; ground) is the honest scaffold slice; widening (closures/HO) is separate work.
-(import "prelude")
+(import "prelude/prelude")
 ; the shared typed SSA tal IR (TalTy / Instr / Block / TalTerm / Branch / TFn /
 ; TalSig + the DCtor/DData/CEnv env) lowering EMITS -- one definition, so an
 ; emitted TFn feeds tal-check's ck-prog and tal-eval directly, no conversion.
-(import "tal-ssa")
+(import "lowering/tal/ssa")
 
 ; the upper-type slice ttype reads: a ground prim, a data tcon, an erased type
 ; variable (a neutral, from a dropped q=0 binder -> a uniform word, B1), else

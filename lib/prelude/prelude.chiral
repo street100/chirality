@@ -12,7 +12,7 @@
 ; prelude has no imports, so the coordinate opens at the very top of the blob.
 ; The name is the declaration's identity -- what makes a redeclaration decidable
 ; in a flat blob; it is checked against the extent marker the provider emits.
-(module prelude (cat A) (alt upper))
+(module prelude/prelude (cat A) (alt upper))
 
 (data Unit () (unit))
 (data Bool () (true) (false))

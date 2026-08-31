@@ -9,7 +9,7 @@
 ; Follows .planning/specs/E33-process-spawn-SPEC.md (audited 2026-07-27)
 ; and examples/E33-process-spawn.md (drafted).
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; ---- typed surface -----------------------------------------------------------
 

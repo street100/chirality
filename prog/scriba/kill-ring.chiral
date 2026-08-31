@@ -7,7 +7,7 @@
 ;
 ; Deps: prelude (Str, I64, Bool, List, Maybe)
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; ---------------------------------------------------------------- Type
 

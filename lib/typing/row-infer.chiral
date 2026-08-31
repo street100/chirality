@@ -12,10 +12,10 @@
 ; slice. Pure. The seen-set closure is single-pass -- for a mutual SCC f<->g the
 ; transitive closure already yields the shared row (no iteration; SPEC dec #3).
 
-(import "prelude")
-(import "effects")   ; row-join (dedup union), mem-str
-(import "string-utils")   ; E151b: the owner of str-cmp (and, via collections, of Ord)
-(import "collections")   ; E156: list-sort (E152), list-dedup-adj, Ord
+(import "prelude/prelude")
+(import "typing/effects")   ; row-join (dedup union), mem-str
+(import "prelude/string")   ; E151b: the owner of str-cmp (and, via collections, of Ord)
+(import "prelude/collections")   ; E156: list-sort (E152), list-dedup-adj, Ord
 
 ; str-cmp (byte-lexicographic Str order) used to be inlined here to keep this a
 ; lean leaf -- ty-cmp, its old home, drags in data.chiral, which clashes with

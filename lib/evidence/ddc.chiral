@@ -21,7 +21,7 @@
 ; authority. The authority is this file, and its teeth are
 ; `scaffold/tests/samples/e166_ddc_legc.chiral`, a program that runs.
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; ---- provenance: declared, checked, never assumed (split-role) ----------
 ; Axes are the named ones; disjointness is checked on the axes the threat

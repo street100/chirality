@@ -10,10 +10,10 @@
 ; the render is a pure Rendering builder. Strictly ADDITIVE — manas/core/flow and
 ; manas-mode are untouched; only new defs live here.
 
-(import "prelude")            ; Str, I64, List, cons, nil, str-cat, case, +, *, <i
-(import "collections")        ; append  (flat concat of a branch's two sub-flows)
-(import "render")             ; Rendering (+ r-lines)
-(import "manas-mode")         ; OutlineNode (onode), Focus (foc-field), mf-row, mh-row, spaces
+(import "prelude/prelude")            ; Str, I64, List, cons, nil, str-cat, case, +, *, <i
+(import "prelude/collections")        ; append  (flat concat of a branch's two sub-flows)
+(import "protocol/render")             ; Rendering (+ r-lines)
+(import "scriba/manas-mode")         ; OutlineNode (onode), Focus (foc-field), mf-row, mh-row, spaces
 (import "manas/core/flow")    ; Flow (+ 5 ctors), Ty
 
 ; A flow node: a depth + a display label. focus = a harmless placeholder — SG6 is

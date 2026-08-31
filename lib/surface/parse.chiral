@@ -39,9 +39,9 @@
 ;     (a clear step-err): import (needs the file-reading sys face -- the next
 ;     slice), the (declare name ty (measure ...)) attribute, and the INDEXED
 ;     (porttype Name (idx ty)...) form.
-(import "sexp")                ; Sexp / read-all-str / AllR (E1 reader)
-(import "surface")             ; Surf + sub-types, SEnv/senv, elab, PR/p-ok/p-err
-(import "loader")              ; core->term, load-def, load-data, LoadR, empty-sig
+(import "surface/sexp")                ; Sexp / read-all-str / AllR (E1 reader)
+(import "surface/surface")             ; Surf + sub-types, SEnv/senv, elab, PR/p-ok/p-err
+(import "module/loader")              ; core->term, load-def, load-data, LoadR, empty-sig
 
 ; ================= small classifiers over Sexp =================================
 

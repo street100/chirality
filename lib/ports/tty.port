@@ -8,7 +8,7 @@
 ; this port's output, and typing it anywhere else would leave the crossing
 ; returning raw Bytes with its meaning declared elsewhere.
 
-(import "prelude")
+(import "prelude/prelude")
 
 (data Key ()
   (k-char      (code I64))

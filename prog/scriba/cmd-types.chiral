@@ -1,9 +1,9 @@
 ; scriba S3 types — ScribaOp, RenderResult, registries, render-puffer bridge.
 ; Collections import removed — lookup-scribaop inlined to avoid B1 label issue.
-(import "prelude")
-(import "puffer")
-(import "keymap")
-(import "render")
+(import "prelude/prelude")
+(import "scriba/puffer")
+(import "scriba/keymap")
+(import "protocol/render")
 
 ; ─── Op type ───────────────────────────────────────────────────────────────
 

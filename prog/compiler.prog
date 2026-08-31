@@ -10,7 +10,7 @@
 ; stdout (fd 1). Exit 0 on success, 1 on a compile error (message to stderr). This
 ; is what lowers to the standalone compiler binary; the fixpoint runs it on the
 ; compiler's own source.
-(import "compile-all")
+(import "lowering/compile-all")
 
 (def compile-main (=> I64 I64)
   (lam (n)

@@ -12,29 +12,29 @@
 ;       scriba/render.chiral (Rendering, renderer-fn, render-to-ansi-full, render-to-ansi-delta,
 ;                             ansi-clear, ansi-home, lookup-renderer, r-hole)
 
-(import "prelude")
-(import "ports")
-(import "term")
-(import "key-parser")
-(import "keymap")
-(import "puffer")
-(import "render")
-(import "cmd-types")
-(import "editor-state")            ; S18 — Scriba: km/puf/chat/dims/scroll/msg/rendering/renderers/ops/mode/pending as ONE value
-(import "dispatch")
-(import "file-io")
-(import "chat")
-(import "str-edit")
-(import "zipper-bridge")
-(import "minipuffer")
-(import "vim-mode")
-(import "bytes-tal")
+(import "prelude/prelude")
+(import "ports/ports")
+(import "ports/term")
+(import "scriba/key-parser")
+(import "scriba/keymap")
+(import "scriba/puffer")
+(import "protocol/render")
+(import "scriba/cmd-types")
+(import "scriba/editor-state")            ; S18 — Scriba: km/puf/chat/dims/scroll/msg/rendering/renderers/ops/mode/pending as ONE value
+(import "scriba/dispatch")
+(import "scriba/file-io")
+(import "scriba/chat")
+(import "scriba/str-edit")
+(import "scriba/zipper-bridge")
+(import "scriba/minipuffer")
+(import "scriba/vim-mode")
+(import "lowering/tal/bytes")
 (import "manas/pipeline/compose")  ; S16 — compose-preflight, all-pipelines, pipeline-by-id, pipeline-ids, config-ids
 (import "manas/core/flow-persist")  ; SG6 — json->flow (SG1's total Flow decoder)
-(import "flow-view")                ; SG6 — flow-outline-nodes, flow-view-render (render a saved Flow, read-only)
+(import "scriba/flow-view")                ; SG6 — flow-outline-nodes, flow-view-render (render a saved Flow, read-only)
 (import "manas/profile/skills")     ; the SKILL REGISTRY — all-skills, skill-names, skill-by-name, all-skill-configs
 (import "manas/chatter/turn")       ; C4 — turn, the general-chatter entry; C6b — turn-seq; DC-4b — turn-seq-view + TurnView/Lane (the turn's structure, surfaced)
-(import "chat-view")                ; ChatView (+ cv-*), Exchange, chat-render — CHAT's state and its pure renderer
+(import "scriba/chat-view")                ; ChatView (+ cv-*), Exchange, chat-render — CHAT's state and its pure renderer
 (import "manas/chatter/router")     ; C5 — route-message + intent-name (per-turn intent TAG); C6a — ConvState (+ conv-empty), resolve-intent, conv-update
 
 ; ─── R6 forward declares ────────────────────────────────────────────────────

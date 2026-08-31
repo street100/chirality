@@ -13,8 +13,8 @@
 ;   cat TUI/scriba/scriba-manas-test.chiral >> blob; echo >> blob
 ;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
 
-(import "prelude")
-(import "manas-mode")             ; ManasDoc, ManasEdit, apply-edit, gate-has?
+(import "prelude/prelude")
+(import "scriba/manas-mode")             ; ManasDoc, ManasEdit, apply-edit, gate-has?
 (import "manas/core/types")       ; Config, Binding, GateRule, Order, StopPolicy, Pipeline
 (import "manas/profile/profiles") ; smoke-local-config, config-id
 (import "manas/profile/doc-refine"); doc-refine-pipeline, pipeline-gate

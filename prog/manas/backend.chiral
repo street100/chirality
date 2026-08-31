@@ -16,10 +16,10 @@
 ;   POST /internal/search      {query, k}          -> [{chunk_id, content, distance}]
 ; (train-start/status are documented-not-built on the worker; add when they land.)
 
-(import "prelude")
-(import "collections")
-(import "http")
-(import "json")
+(import "prelude/prelude")
+(import "prelude/collections")
+(import "protocol/http")
+(import "protocol/json")
 
 ; E137: Backend is a LINEAR porttype (a q1 str-handle carried by the E144 nt-str
 ; carrier), not a plain copyable/droppable `data`. backend-open mints a fresh q1

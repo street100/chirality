@@ -20,7 +20,7 @@
 ; in trusted code -- SN is a P5 claim in kernel-spec). v-fuel names conversion
 ; exhaustion and is RESERVED (conv is not fuel-threaded in this build, matching E3:
 ; the core is not asserted (total)); wiring the fuel bound is the follow-on.
-(import "kernel")         ; Term / Ctx / TcR + infer + ctx-nil (E3/E4)
+(import "typing/kernel")         ; Term / Ctx / TcR + infer + ctx-nil (E3/E4)
 
 ; ---- kernel-spec, as data: the demanded statement (an audited artifact) -------
 (data JForm () (j-check) (j-infer) (j-conv) (j-usage) (j-data) (j-membrane))

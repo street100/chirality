@@ -3,9 +3,9 @@
 ; ~85 lines. v2 audit: CLEAN PASS — 0 blocking FLAGs.
 ; Bytes is opaque in prelude — access via bget/blen, never case-match.
 
-(import "prelude")       ; I64, Str, Bool, List, Maybe, Pair, Bytes + bget/blen
+(import "prelude/prelude")       ; I64, Str, Bool, List, Maybe, Pair, Bytes + bget/blen
 ; reverse inlined — collections import removed for B1 label compatibility
-(import "ports")         ; Key type
+(import "ports/ports")         ; Key type
 
 ; Local reverse — avoids collections import for B1 compatibility
 (def rev-onto-params (-> (List I64) (List I64) (List I64))

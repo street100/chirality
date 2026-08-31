@@ -14,10 +14,10 @@
 ;   seat= only); the effect-row allow_eff threading + membrane seams
 ;   (on_apply/on_binder/erased_allow) -> E12; subtype's Pi row-subsumption ->
 ;   E39; globals/prims, data values, let, literals -> E6/full-ADT assembly.
-(import "qtt")                 ; brings prelude + Qty (q0/q1/qw) + uzero/uadd/uscale/qfits
-(import "refine")              ; Constraint + entails/is-empty/satisfies/c-* (VRefine, E04 #6)
-(import "syntax")              ; the shared full-ADT Term + KArm + Seat (leaf; E04 decision #7)
-(import "data")                ; DataDecl (Sig.datas + the con/case arms reuse E6/E7)
+(import "typing/qtt")                 ; brings prelude + Qty (q0/q1/qw) + uzero/uadd/uscale/qfits
+(import "typing/refine")              ; Constraint + entails/is-empty/satisfies/c-* (VRefine, E04 #6)
+(import "surface/syntax")              ; the shared full-ADT Term + KArm + Seat (leaf; E04 decision #7)
+(import "surface/data")                ; DataDecl (Sig.datas + the con/case arms reuse E6/E7)
 
 ; ---- semantics: values / closures / neutrals (Value <-> Clos mutual) ---------
 (data Value ()

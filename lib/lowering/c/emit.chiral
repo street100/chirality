@@ -44,11 +44,11 @@
 ; is a projection of the input, not a second source of truth, and it is
 ; computed from `fns` here rather than recovered from the stream.
 
-(import "emit-core")
-(import "mach-c")
-(import "alloc")
-(import "alloc-fixed")
-(import "c-assemble")
+(import "lowering/mach/emit-core")
+(import "lowering/c/mach")
+(import "memory/alloc")
+(import "memory/alloc-fixed")
+(import "lowering/c/assemble")
 
 (def ec-fn-name (-> TIFn Str)
   (lam (f) (case f ((ti-fn nm np nr code) nm))))

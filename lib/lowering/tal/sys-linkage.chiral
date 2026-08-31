@@ -17,12 +17,12 @@
 ; sum is folded here; the per-family sums (Decisions 2a/2b) are the convention
 ; the first error-carrying crossing (E29 sockets) follows.
 
-(import "prelude")
-(import "tal-ir")
-(import "sys-tal")        ; the hand-tal crossings: nb-sys-write-t, ...
-(import "target-linux")   ; the swappable permitted set + the E76 chokepoint (via sys-check)
-(import "crossing-wraps")
-(import "sys-tal")  ; the single crossing->wrapper authority (also seen by erase)
+(import "prelude/prelude")
+(import "lowering/tal/ir")
+(import "lowering/tal/sys")        ; the hand-tal crossings: nb-sys-write-t, ...
+(import "lowering/tal/target-linux")   ; the swappable permitted set + the E76 chokepoint (via sys-check)
+(import "ports/crossing-wraps")
+(import "lowering/tal/sys")  ; the single crossing->wrapper authority (also seen by erase)
 
 ; put -> stdout (fd 1), no trailing newline. Wraps nb-sys-write-t; the raw
 ; byte count returns (the seam discards it and yields the declared Unit).

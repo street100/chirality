@@ -5,7 +5,7 @@
 ; why they are not in ports/fd: a module that only needs to say something does
 ; not need to be able to name fd 7.
 
-(import "prelude")
+(import "prelude/prelude")
 
 (extern print (=> Str Unit))
 (extern put (=> Str Unit))             ; write to stdout with NO trailing newline

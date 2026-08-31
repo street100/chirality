@@ -22,7 +22,7 @@
 ; way E16 shipped its partition slice before the SSA-emission driver.
 ;
 ; closconv.py stays the golden oracle until the chirality kernel drives conversion.
-(import "surface")
+(import "surface/surface")
 
 ; ---------------------------------------------------------------- small helpers
 

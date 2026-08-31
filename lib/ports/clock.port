@@ -12,7 +12,7 @@
 ; time, and if a fourth ambient-reader cap ever lands this registry is the
 ; one that should be renamed, not the one Env should leave.
 
-(import "prelude")
+(import "prelude/prelude")
 
 (porttype Clock)
 (porttype Timer)

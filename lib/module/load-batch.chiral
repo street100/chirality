@@ -18,7 +18,7 @@
 ; Used by: compile-front.chiral — replaces `(load-source src)` with
 ;          `(load-source-batched src)`.
 
-(import "parse")   ; load-source, load-form, install-porttypes, read-all-str,
+(import "surface/parse")   ; load-source, load-form, install-porttypes, read-all-str,
                    ; sig-close-extent + CloseR + sh-msg (via loader),
                    ; Sexp, SrcSt, StepR, SEnv, base-senv, empty-sig (via loader),
                    ; collect-porttype, collect-data,

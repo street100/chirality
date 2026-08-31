@@ -1,6 +1,6 @@
 ; scriba S12: completion — pure prefix-matching over candidate lists.
 ; Deps: prelude (Str, Bool, List, Maybe, I64)
-(import "prelude")
+(import "prelude/prelude")
 
 ; Check if candidate starts with prefix.
 ; str-sub clamps out-of-bounds indices, so a longer prefix automatically

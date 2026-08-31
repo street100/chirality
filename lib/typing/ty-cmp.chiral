@@ -11,8 +11,8 @@
 ; `ty-cmp : (-> Ty Ty Ord)` is a total order usable as an E27 ordered-map / seen-set
 ; key (the D-1 deliverable). Strings compare BYTE-LEXICOGRAPHICALLY via str->bytes +
 ; bget (no bcmp primitive needed -- composed from the existing byte face). PURE, total.
-(import "data")            ; the Ty ADT (ty-var/ty-tcon/ty-pi/ty-app/ty-i64) + prelude bytes ops
-(import "string-utils")   ; E151b: the owner of str-cmp (and, via collections, of Ord)
+(import "surface/data")            ; the Ty ADT (ty-var/ty-tcon/ty-pi/ty-app/ty-i64) + prelude bytes ops
+(import "prelude/string")   ; E151b: the owner of str-cmp (and, via collections, of Ord)
 
 (def cmp-i64 (-> I64 I64 Ord)
   (lam (x y) (case (<i x y) (true (lt)) (false (case (<i y x) (true (gt)) (false (eq)))))))

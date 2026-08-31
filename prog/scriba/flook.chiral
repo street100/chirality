@@ -11,12 +11,12 @@
 ;
 ; Deps: prelude, collections, scriba/puffer, scriba/file-io, scriba/render
 
-(import "prelude")
-(import "puffer")
-(import "file-io")
-(import "render")
-(import "list-utils")
-(import "kill-ring")
+(import "prelude/prelude")
+(import "scriba/puffer")
+(import "scriba/file-io")
+(import "protocol/render")
+(import "scriba/list-utils")
+(import "scriba/kill-ring")
 
 ; ─── Local helpers (inlined from collections) ──────────────────────────────
 

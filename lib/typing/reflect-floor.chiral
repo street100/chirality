@@ -14,7 +14,7 @@
 ; is not -- the seam stand-ins (Former/Rules/VHook) are OPAQUE, so a SigB cannot be
 ; fabricated from a Frozen (no constructor path). The Python Sig stays interim
 ; discipline (decision #1); this is the constraint the kernel-core port must carry.
-(import "prelude")
+(import "prelude/prelude")
 
 ; opaque seam stand-ins: no user constructor, so a membrane/hook cannot be
 ; fabricated -- which is what makes a writeback (Frozen -> SigB) undefinable.

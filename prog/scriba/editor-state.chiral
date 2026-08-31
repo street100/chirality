@@ -38,12 +38,12 @@
 ; manas-mode, manas-runview or chat-view imports dispatch, command-loop or
 ; editor-state.
 
-(import "prelude")                ; Maybe, Pair, I64, Str
-(import "puffer")                 ; (Puffer Str)
-(import "keymap")                 ; Keymap
-(import "render")                 ; Rendering, Mode
-(import "cmd-types")              ; ScribaOp
-(import "vim-mode")               ; VimMode, Pending
+(import "prelude/prelude")                ; Maybe, Pair, I64, Str
+(import "scriba/puffer")                 ; (Puffer Str)
+(import "scriba/keymap")                 ; Keymap
+(import "protocol/render")                 ; Rendering, Mode
+(import "scriba/cmd-types")              ; ScribaOp
+(import "scriba/vim-mode")               ; VimMode, Pending
 
 ; ─── the record ─────────────────────────────────────────────────────────────
 ;

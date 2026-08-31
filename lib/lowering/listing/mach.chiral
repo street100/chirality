@@ -7,10 +7,10 @@
 ; Each op renders one line into an a-bytes chunk; relocations render a symbolic
 ; reference whose encoder ignores the displacement (this target does not run).
 
-(import "prelude")
-(import "ports")
-(import "asm-reloc")
-(import "mach")
+(import "prelude/prelude")
+(import "ports/ports")
+(import "lowering/mach/asm-reloc")
+(import "lowering/mach/mach")
 
 (def line (-> Str (List Asm))
   (lam (s) (one-b (str->bytes (str-cat s "\n")))))

@@ -3,8 +3,8 @@
 ; needs a heap). init-heap and arena-grow are chirality functions that wrap the
 ; raw mmap/mremap externs with error checking and typed return values.
 ; arena-grow is called by the bump allocator when cursor >= heapend.
-(import "prelude")
-(import "ports")          ; mmap, mremap externs
+(import "prelude/prelude")
+(import "ports/ports")          ; mmap, mremap externs
 
 ; ── syscall constants ──
 (def PROT-RW     I64 3)              ; PROT_READ | PROT_WRITE

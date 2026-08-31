@@ -6,8 +6,8 @@
 ; followable by a theorem, where a grown one is not. The reasoning lives in
 ; docs/banks/verification.md Shard 8b; this line only records the category.
 
-(import "alloc")
-(import "mach")
+(import "memory/alloc")
+(import "lowering/mach/mach")
 
 ; bare global refs — same pattern as alloc-growing (mach-galo/mach-gbnw), but
 ; the NON-growing arms. mach-alo/mach-bnw are

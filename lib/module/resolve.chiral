@@ -1,38 +1,47 @@
-; resolve.metis — multi-module import resolver, metis-native.
-; E87: replaces metis-resolve.sh. Reads one root module, follows (import "...")
-; transitively, concatenates in dependency order with basename deduplication.
+; resolve.chiral — multi-module import resolver, chirality-native.
+; E87: replaces bin/chirality-resolve.sh. Reads one root module, follows
+; (import "...") transitively, concatenates in dependency order with dedup.
 ; Zero Python. Zero shell.
 ;
 ; Search path (E155): the resolver takes a LIST of roots, not one libdir. An
-; import is looked for under <importer-dir> in every root, in order, then under
-; the bare name in every root, in order; first hit wins, so an earlier root
-; shadows a later one. The importer-directory leg is what lets scriba's
-; subdirectory modules import their siblings, and matches the shell resolver.
+; import names a ROOT-RELATIVE PATH, so it is looked for under each root in
+; order and the first root that holds it wins -- an earlier root shadows a
+; later one. There is NO importer-directory leg: the key IS the path, so a
+; sibling is named by its path like anything else, and a second probing leg
+; would be a second way to spell one module.
+;
+; Extensions. Three of the five kinds are IMPORTABLE and exactly those three are
+; probed, in this order: `.chiral` (module), `.port` (port registry),
+; `.manifest` (data). `.prog` and `.profile` are NOT import targets -- an entry
+; cannot be imported (two entries in one blob is `duplicate label`) and a
+; profile names a module set the build consumes -- so they are never probed, and
+; `(import "prog/compiler")` is a not-found. Keep this list byte-for-byte in step
+; with bin/chirality-resolve.sh: the two providers are pinned against each other.
 ;
 ; This file is a LIBRARY. The `compile-main` entry and the stdin protocol it
-; parses live in scaffold/lib/resolve-driver.metis, which is the file you
-; compile to get a `resolve` binary; the split (2026-08-25, E170 W0.1) is what
-; lets a program with an entry of its own IMPORT the resolver. Usage is
-; unchanged:
-;   printf -- '-L scaffold/lib\nscriba/scriba-main\n' | ./resolve > blob.metis
-;   B1 < blob.metis > program.elf
-; With no -L line the search path is the single default root `scaffold/lib`:
-;   echo scriba/scriba-main | ./resolve > blob.metis
+; parses live in prog/resolve.prog, which is the file you compile to get a
+; `resolve` binary; the split (2026-08-25, E170 W0.1) is what lets a program
+; with an entry of its own IMPORT the resolver. Usage:
+;   printf -- '-L lib\n-L prog\nscriba/scriba-main\n' | ./resolve > blob.chiral
+;   chirality-compile < blob.chiral > program.elf
+; With no -L line the search path is the default roots `lib` then `prog`:
+;   echo scriba/scriba-main | ./resolve > blob.chiral
 ;
-; Module identity (E155). A module's KEY is its basename: `ports/proc` and
-; `proc` are one key, `proc`. First-occurrence-wins on that key would SILENTLY
-; DROP one of two distinct modules, so the key is paired with an IDENTITY --
-; here the module's source text, the only identity this substrate can read
-; (there is no realpath/stat crossing, and `scaffold/lib/scriba/prelude.metis`
-; is a symlink to `scaffold/lib/prelude.metis`, so a path string is not an
-; identity). Same key + same source = a re-import: deduped, and that dedup is
-; what terminates the DFS on cycles and diamonds. Same key + DIFFERENT source =
-; a collision, and a collision is a NAMED ERROR (`re-collision`), never a drop.
-; `bin/metis-resolve.sh` implements the same rule (canonical path, then bytes).
-
-(import "prelude")
-(import "ports")          ; read, close, fd-write
-(import "sexp")           ; read-all-str, Sexp, AllR
+; Module identity. A module's KEY is its ROOT-RELATIVE PATH -- `ports/process`
+; and `runtime/proc` are two keys, and `lowering/mach/mach`, `lowering/x64/mach`
+; and `lowering/c/mach` are three. The directory is the identity, not decoration,
+; which is what makes the old basename-collision class UNREACHABLE rather than
+; merely named: two different modules cannot claim one key. Resolution is
+; deterministic per key, so the same key seen again IS the same module: deduped,
+; and that dedup is what terminates the DFS on cycles and diamonds.
+;
+; What a path CAN still do is exist under two importable extensions in one root
+; (`x.chiral` beside `x.port`): one key, two identities. That is a NAMED ERROR
+; (`re-ext-collision`), never a silent pick. bin/chirality-resolve.sh implements
+; the same rule.
+(import "prelude/prelude")
+(import "ports/ports")          ; read, close, fd-write
+(import "surface/sexp")           ; read-all-str, Sexp, AllR
 
 ; openat: open a file by NUL-terminated Bytes path → fd (or negative errno).
 ; Declared here instead of importing self-wield to avoid pulling in compile-all.
@@ -43,38 +52,11 @@
 
 (def nul-byte Bytes (bslice (pack-u32 0) 0 1))
 
-; dir-of: extract the directory portion of a module path.
-; "scriba/scriba-main" -> "scriba", "prelude" -> "", "" -> ""
-(def dir-of (-> Str Str)
-  (lam (s)
-    (let (idx (str-find s "/"))
-      (case (<i idx 0)
-        (true "")
-        (false (str-sub s 0 idx))))))
-
-; last-slash: index of the LAST "/" in s, or -1. Scans forward with
-; str-find-from, keeping the newest hit; `from` strictly increases, so total.
-(def last-slash (-> Str I64 I64 I64)
-  (lam (s from best)
-    (let (i (str-find-from s "/" from))
-      (case (<i i 0)
-        (true  best)
-        (false (last-slash s (+ i 1) i))))))
-
-; base-of: the module KEY -- everything after the last "/".
-; "ports/proc" -> "proc", "proc" -> "proc", "a/b/c" -> "c"
-(def base-of (-> Str Str)
-  (lam (s)
-    (let (i (last-slash s 0 (- 0 1)))
-      (case (<i i 0)
-        (true  s)
-        (false (str-sub s (+ i 1) (str-len s)))))))
-
 ; slurp-fd: read an open fd into one Bytes. 64KB chunks until EOF.
 ;
 ; NOT named `read-fd-all`, and the rename is load-bearing rather than taste:
-; compile-all.metis:47 defines a `read-fd-all` of its own, and as of E170 W0.2
-; this module and that one meet in ONE blob (test-floor.metis imports both), where
+; compile-all.chiral:47 defines a `read-fd-all` of its own, and as of E170 W0.2
+; this module and that one meet in ONE blob (lib/evidence/test-floor.chiral imports both), where
 ; two defs of one name is `duplicate label`. The resolver copy is the one that
 ; moved because compile-all is in the compiler own import closure and this one
 ; is not -- renaming there would put a self-host fixpoint check on a rename.
@@ -124,7 +106,8 @@
 
 ; ── Pure core: dependency-ordered walk with dedup ──
 
-; A resolved module: its KEY (basename), the path it resolved to, source text.
+; A resolved module: its KEY (the root-relative path), the file it resolved
+; to (key + extension), and its source text.
 (data Mod ()
   (mod (name Str) (path Str) (src Str)))
 
@@ -132,8 +115,11 @@
 (data ResErr ()
   (re-not-found (name Str) (from Str))
   (re-read-err  (path Str))
-  ; E155: two DIFFERENT modules claimed one basename. Named, not dropped.
-  (re-collision (base Str) (path-a Str) (path-b Str)))
+  ; The key is the root-relative PATH, so two DIFFERENT modules can no longer
+  ; claim one key -- that collision class is unreachable, not merely named. What
+  ; a path CAN still do is exist under two IMPORTABLE extensions in one root
+  ; (`x.chiral` beside `x.port`): one key, two identities. Named, never dropped.
+  (re-ext-collision (key Str) (path-a Str) (path-b Str)))
 
 ; Per-module resolution result.
 (data ModR ()
@@ -207,60 +193,84 @@
 
 ; ── Effectful driver ──
 
-; open-at-root: attempt to open <root>/<subdir>/<name>.metis. fd, or negative.
-(def open-at-root (=> Str Str Str I64)
-  (lam (root subdir name)
-    (let (fname (str-cat name ".metis"))
-      (let (full
-            (case (str-eq subdir "")
-              (true (str-cat root (str-cat "/" fname)))
-              (false (str-cat root
-                       (str-cat "/" (str-cat subdir (str-cat "/" fname)))))))
-        (openat (bcat (str->bytes full) nul-byte))))))
+; open-ext: attempt to open <root>/<name><ext>. fd, or negative.
+(def open-ext (=> Str Str Str I64)
+  (lam (root name ext)
+    (let (full (str-cat root (str-cat "/" (str-cat name ext))))
+      (openat (bcat (str->bytes full) nul-byte)))))
+
+; close-if: close an fd that was actually opened. A negative fd is a miss, not
+; a descriptor, and closing it would be closing whatever -errno happens to name.
+(def close-if (=> I64 Unit)
+  (lam (fd)
+    (case (<i fd 0)
+      (true  (unit))
+      (false (close fd)))))
 
 ; The outcome of a search-path probe: a closed sum, not a sentinel fd.
 (data OpenR ()
-  (open-hit  (rel Str) (fd I64))
-  (open-miss))
+  (open-hit   (rel Str) (fd I64))
+  (open-miss)
+  ; one key, two importable extensions under ONE root -- see re-ext-collision.
+  (open-ambig (path-a Str) (path-b Str)))
 
-; try-roots: probe <root>/<subdir>/<name>.metis for each search root IN ORDER.
-; First hit wins — that is what makes a multi-root search path a search path
-; (an earlier root shadows a later one) rather than a collision.
-(def try-roots (=> (List Str) Str Str OpenR)
-  (lam (roots subdir name)
+; try-exts: probe <root>/<name> under the three IMPORTABLE extensions.
+; Exactly one hit is a hit; two is the named ambiguity; none is a miss. Every fd
+; this opens is either returned in the hit or closed here.
+(def try-exts (=> Str Str OpenR)
+  (lam (root name)
+    (let (fc (open-ext root name ".chiral"))
+      (let (fp (open-ext root name ".port"))
+        (let (fm (open-ext root name ".manifest"))
+          (case (<i fc 0)
+            (false
+              (case (<i fp 0)
+                (false (let (_ (close-if fc)) (let (_ (close-if fp)) (let (_ (close-if fm))
+                         (open-ambig (str-cat name ".chiral") (str-cat name ".port"))))))
+                (true
+                  (case (<i fm 0)
+                    (false (let (_ (close-if fc)) (let (_ (close-if fm))
+                             (open-ambig (str-cat name ".chiral") (str-cat name ".manifest")))))
+                    (true (open-hit (str-cat name ".chiral") fc))))))
+            (true
+              (case (<i fp 0)
+                (false
+                  (case (<i fm 0)
+                    (false (let (_ (close-if fp)) (let (_ (close-if fm))
+                             (open-ambig (str-cat name ".port") (str-cat name ".manifest")))))
+                    (true (open-hit (str-cat name ".port") fp))))
+                (true
+                  (case (<i fm 0)
+                    (false (open-hit (str-cat name ".manifest") fm))
+                    (true (open-miss))))))))))))
+
+; try-roots: probe <root>/<name>.{chiral,port,manifest} for each search root IN
+; ORDER. First root that holds the key wins -- that is what makes a multi-root
+; search path a search path (an earlier root shadows a later one) rather than a
+; collision. An ambiguity inside ONE root is not shadowable and stops the walk.
+(def try-roots (=> (List Str) Str OpenR)
+  (lam (roots name)
     (case roots
       (nil (open-miss))
       ((cons r rest)
-        (let (fd (open-at-root r subdir name))
-          (case (<i fd 0)
-            (true  (try-roots rest subdir name))
-            (false (open-hit
-                     (case (str-eq subdir "")
-                       (true name)
-                       (false (str-cat subdir (str-cat "/" name))))
-                     fd))))))))
+        (case (try-exts r name)
+          ((open-miss)        (try-roots rest name))
+          ((open-hit rel fd)  (open-hit rel fd))
+          ((open-ambig a b)   (open-ambig a b)))))))
 
-; resolve-mod: read one module source from the filesystem.
-; Tries the importer's directory under every search root first, then the bare
-; name under every search root. Returns the module's KEY (basename) plus the
-; path it resolved to and its source.
+; resolve-mod: read one module source from the filesystem. The module's KEY is
+; the name as written in the import -- the root-relative path -- so there is
+; nothing to derive and no second spelling to reconcile.
 (def resolve-mod (=> (List Str) Str Str ModR)
   (lam (roots name from-name)
-    (let (from-dir (dir-of from-name))
-      (let (hit
-            (case (str-eq from-dir "")
-              (true (try-roots roots "" name))
-              (false
-                (case (try-roots roots from-dir name)
-                  ((open-miss)       (try-roots roots "" name))
-                  ((open-hit rel fd) (open-hit rel fd))))))
-        (case hit
-          ((open-miss) (mod-err (re-not-found name from-name)))
-          ((open-hit rel fd)
-            (let (src-bytes (slurp-fd fd))
-              (let (_ (close fd))
-                (let (src (bytes->str src-bytes))
-                  (mod-ok (mod (base-of name) rel src)))))))))))
+    (case (try-roots roots name)
+      ((open-miss)      (mod-err (re-not-found name from-name)))
+      ((open-ambig a b) (mod-err (re-ext-collision name a b)))
+      ((open-hit rel fd)
+        (let (src-bytes (slurp-fd fd))
+          (let (_ (close fd))
+            (let (src (bytes->str src-bytes))
+              (mod-ok (mod name rel src)))))))))
 
 ; resolve-all: recursively resolve a root module and all its transitive imports.
 ; Forward-declared for mutual recursion with resolve-all-list.
@@ -271,30 +281,23 @@
 
 (def resolve-all
   (lam (roots root-name from-name seen acc)
-    (case (resolve-mod roots root-name from-name)
-      ((mod-err e)
-        ; Unresolvable from HERE. If the key is already in the blob the module
-        ; was reached from another importer directory — still a re-import, not
-        ; a miss. Only an unseen key is a genuine not-found.
-        (case (lookup-mod seen (base-of root-name))
-          ((some _) (res-ok seen acc))
-          ((none)   (res-err e))))
-      ((mod-ok mod)
-        (case mod ((mod mod-base mod-path mod-src)
-          (case (lookup-mod seen mod-base)
-            ; Key already claimed — same source is a re-import, different
-            ; source is the collision this element exists to refuse.
-            ((some prev)
-              (case prev ((mod _ prev-path prev-src)
-                (case (str-eq prev-src mod-src)
-                  (true  (res-ok seen acc))
-                  (false (res-err (re-collision mod-base prev-path mod-path)))))))
-            ((none)
+    (case (lookup-mod seen root-name)
+      ; Key already claimed. The key is the root-relative PATH and resolution is
+      ; deterministic per key, so a repeat key IS the same module: a re-import,
+      ; deduped. That dedup is what terminates the DFS on cycles and diamonds,
+      ; and it must stay. (It is checked BEFORE the open, so a diamond costs one
+      ; read of its shared vertex rather than one per edge into it.)
+      ((some _) (res-ok seen acc))
+      ((none)
+        (case (resolve-mod roots root-name from-name)
+          ((mod-err e) (res-err e))
+          ((mod-ok mod)
+            (case mod ((mod mod-key mod-path mod-src)
               (let (seen2 (cons mod seen))
                 (let (deps (parse-imports mod-src))
                   ; Resolve deps first, then cons this module onto the FRONT.
                   ; This accumulates the list in reverse dependency order
-                  ; (dependents before their deps) — the standard cons-accumulate
+                  ; (dependents before their deps) -- the standard cons-accumulate
                   ; idiom. `bundle` applies the single terminal `rev-mods` so the
                   ; emitted blob is dependency-first (deps before dependents),
                   ; which the single-pass loader requires.
@@ -331,11 +334,12 @@
 ; destroyed: the provider knows every boundary and the compiler, being pure
 ; (Str -> ELF), sees none of them. So the boundary is written down here, as one
 ; `(end-module "<name>")` form after each module's source, naming that module's
-; KEY -- `Mod`'s `name` field, which resolve-mod already fills with `base-of`,
-; the same E155 basename the dedup uses. Downstream, the loader closes the
-; module's coordinate at that form instead of guessing from an `import`.
+; KEY -- `Mod`'s `name` field, which is the root-relative path the import named.
+; Downstream, the loader closes the module's coordinate at that form instead of
+; guessing from an `import`, and a file's own `(module <path> ...)` coordinate is
+; checked against it.
 ;
-; Keep this byte-for-byte identical to bin/metis-resolve.sh's emit loop: the two
+; Keep this byte-for-byte identical to bin/chirality-resolve.sh's emit loop: the two
 ; providers are pinned against each other AND against a fixed expected blob,
 ; because two providers agreeing on the same wrong marker is a failure a
 ; differential alone cannot see.
@@ -365,15 +369,15 @@
       ((res-ok _ mods)
         (bundle-ok (concat-mods (rev-mods mods nil)))))))
 
-; bundle-src: the ARBITRARY-PATH ROOT case -- bin/metis-resolve.sh's
-; `metis_blob_file`, in metis. `bundle` above takes a MODULE NAME and finds it on
+; bundle-src: the ARBITRARY-PATH ROOT case -- bin/chirality-resolve.sh's
+; `chirality_blob_file`, in chirality. `bundle` above takes a MODULE NAME and finds it on
 ; the search path; a caller holding a file that is not a module of any search root
-; (a test root under scaffold/samples/, a fixture in a mktemp dir) has no module
+; (a test root under samples/, a fixture in a mktemp dir) has no module
 ; key to offer, so it hands over the root's SOURCE and this resolves the imports
 ; that source declares.
 ;
 ; The root is appended LAST and gets NO `(end-module ...)` marker, byte-for-byte
-; as the shell provider does it and for the reason metis_blob_file states in its
+; as the shell provider does it and for the reason chirality_blob_file states in its
 ; own words: a file at an arbitrary path has no resolver key, so naming its extent
 ; after its filename would make E161's coordinate/extent check compare a declared
 ; coordinate against a mktemp name. Its one trailing extent runs to EOF.
@@ -384,8 +388,8 @@
 ; resolved. A path-taking bundler would collapse both into one error arm, and
 ; "the file was not there" is not what "the imports did not resolve" means.
 ;
-; Deps are resolved with an EMPTY importer directory, matching metis_blob_file's
-; `metis_blob "$libdir" $deps`: the root is not on the search path, so there is no
+; Deps are resolved with an EMPTY importer directory, matching chirality_blob_file's
+; `chirality_blob "$rootspec" $deps`: the root is not on the search path, so there is no
 ; importer-directory leg to try for it.
 (def bundle-src (=> (List Str) Str BundleR)
   (lam (roots src)
@@ -398,12 +402,12 @@
 ; ── The library ENDS here ──
 ;
 ; The stdin protocol, its parser and the `compile-main` entry moved to
-; scaffold/lib/resolve-driver.metis on 2026-08-25 (E170 W0.1). Reason: five
-; modules define `compile-main` (`grep -ln "def compile-main" scaffold/lib/*.metis`),
+; prog/resolve.prog on 2026-08-25 (E170 W0.1). Reason: five
+; modules define `compile-main` (`grep -ln "def compile-main" prog/*.prog`),
 ; so any program that IMPORTS this file collides on the entry symbol at its own
-; root. scaffold/lib/test-floor.metis is the first such importer -- `observe`
+; root. lib/evidence/test-floor.chiral is the first such importer -- `observe`
 ; resolves a root's imports through this library -- and the split is the
-; tree's own precedent, the one compile-all.metis states in its own words:
+; tree's own precedent, the one compile-all.chiral states in its own words:
 ; "A library that also defines the entry symbol makes every program embedding
 ; the compiler collide on it". Same shape as compile-all / compile-driver and
 ; closconv / closconv-driver.
@@ -419,11 +423,11 @@
         (str-cat "resolve: module not found: " (str-cat name "\n")))
       ((re-read-err path)
         (str-cat "resolve: cannot read: " (str-cat path "\n")))
-      ((re-collision base path-a path-b)
-        (str-cat "resolve: module basename collision on '"
-          (str-cat base
-            (str-cat "': already resolved "
+      ((re-ext-collision key path-a path-b)
+        (str-cat "resolve: module extension collision on '"
+          (str-cat key
+            (str-cat "': "
               (str-cat path-a
-                (str-cat ".metis, now resolving "
+                (str-cat " and "
                   (str-cat path-b
-                    ".metis -- two DIFFERENT modules cannot share a basename; rename one\n"))))))))))
+                    " both resolve it -- one key, two identities; rename one\n"))))))))))

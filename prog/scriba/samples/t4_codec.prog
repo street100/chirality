@@ -2,8 +2,8 @@
 ;   For each Color variant (default / indexed / rgb) and all six attrs, a Cell
 ;   encodes to exactly 16 bytes and decodes back to a structurally identical
 ;   Cell. Pure — no Pool needed. Exit 42 on all-pass, -1 on any mismatch.
-(import "prelude")
-(import "grid")
+(import "prelude/prelude")
+(import "protocol/grid")
 
 (declare compile-main (-> Unit I64))
 (declare booleq  (-> Bool Bool Bool))

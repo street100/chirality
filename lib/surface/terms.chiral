@@ -8,7 +8,7 @@
 ; This is syntax BENEATH judgment: it touches no port and no type. terms.py
 ; stays the bootstrap plumbing and the differential oracle until the chirality
 ; kernel (E3/E4) imports this file.
-(import "prelude")
+(import "prelude/prelude")
 
 ; The nameless core term. Each binder node opens exactly one new index for the
 ; subterm noted below; `depth` in the walkers counts how many binders crossed.

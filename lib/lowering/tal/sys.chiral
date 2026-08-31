@@ -11,8 +11,8 @@
 ; cell (ti-bptr), never the cell pointer -- the len word is chirality's, not the
 ; kernel's.
 
-(import "prelude")
-(import "tal-ir")
+(import "prelude/prelude")
+(import "lowering/tal/ir")
 
 ; write(fd, buf, len) -> bytes written (or -errno): the first native crossing
 (def nb-sys-write-t TIFn

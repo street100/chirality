@@ -17,8 +17,8 @@
 ;       manas/profile/profiles  (Config values — pulled into the blob for the loop entry)
 ;       manas/profile/doc-refine (expert-pool, expert-by-id, doc-refine-pipeline)
 
-(import "prelude")
-(import "render")
+(import "prelude/prelude")
+(import "protocol/render")
 (import "manas/core/types")
 (import "manas/profile/profiles")
 (import "manas/profile/doc-refine")

@@ -13,7 +13,7 @@
 ;
 ; Sig -> Sig, differential vs specialize.py. Operates on Term directly (no Core).
 ; ===========================================================================
-(import "loader")   ; Sig / Term / DataDecl / Field / Ctor / KArm / Qty / mk-sig / accessors
+(import "module/loader")   ; Sig / Term / DataDecl / Field / Ctor / KArm / Qty / mk-sig / accessors
 
 ; ---- Term walk: collect the `home` name of every t-con node (for the "built
 ; exactly once" count) --------------------------------------------------------

@@ -9,7 +9,7 @@
 ; minted from compile-main). Multi-module import resolution (following (import ...)
 ; across files) is the next step; this lands the openat-read-compile spine first.
 
-(import "compile-all")   ; read-fd-all, compile-all, put/trace, byte ops
+(import "lowering/compile-all")   ; read-fd-all, compile-all, put/trace, byte ops
 
 (extern openat (=> Bytes I64))   ; NUL-terminated path bytes -> fd (or negative errno)
 

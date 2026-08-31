@@ -16,7 +16,7 @@
 ;
 ; ENCODINGS pinned against the oracle: quantity q in {0,1,w} -> codes {0,1,2}
 ; (surface.py QUANTS + K.W="w"); eff bit 0/1 <-> EMPTY_SEATS/DYN_SEATS.
-(import "prelude")
+(import "prelude/prelude")
 
 ; ---- result sum: POLYMORPHIC so one type carries Core / I64 / a pair / a list
 ; (prelude has no PR; json.chiral's is local+monomorphic). errors are VALUES.

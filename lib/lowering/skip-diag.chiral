@@ -5,7 +5,7 @@
 ; This avoids the B1 "unknown name" bug triggered by nested case patterns
 ; over newly-defined data types.
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; ---- Data types ----
 (data SkReason () (sk-extern (op Str)) (sk-callee (name Str)))

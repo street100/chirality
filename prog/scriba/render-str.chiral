@@ -13,9 +13,9 @@
 ;       collections.chiral (str-join)
 ;       scriba/render.chiral (Rendering, r-text)
 
-(import "prelude")
-(import "string-utils")
-(import "render")
+(import "prelude/prelude")
+(import "prelude/string")
+(import "protocol/render")
 
 ; ─── Local helpers (inlined from collections) ──────────────────────────────
 

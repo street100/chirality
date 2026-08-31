@@ -9,8 +9,8 @@
 ;
 ; Lands in: scaffold/lib/scriba/mark-region.chiral (~80 lines)
 
-(import "prelude")
-(import "str-edit")
+(import "prelude/prelude")
+(import "scriba/str-edit")
 
 ; ---------------------------------------------------------------- Types
 

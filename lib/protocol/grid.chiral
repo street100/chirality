@@ -1,6 +1,6 @@
-(import "prelude")
-(import "bytes-tal")   ; cell-new / bput-u8 / bput-u32-le / bget-u16-le / bget-u32-le
-(import "ports")       ; Pool / pool-create / pool-write / pool-read / pool-close / fd-close
+(import "prelude/prelude")
+(import "lowering/tal/bytes")   ; cell-new / bput-u8 / bput-u32-le / bget-u16-le / bget-u32-le
+(import "ports/ports")       ; Pool / pool-create / pool-write / pool-read / pool-close / fd-close
 
 ; ─── Color: a closed sum — superset of default / 256-index / 24-bit truecolor. ─
 (data Color ()

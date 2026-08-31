@@ -26,7 +26,7 @@
 ; binary, because there is none.
 ; ===========================================================================
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; ---- what ships (stage 0): every item is text, every item is checkable -----
 (data ShipItem ()

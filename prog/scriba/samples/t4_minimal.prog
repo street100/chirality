@@ -1,8 +1,8 @@
 ; T4 minimal (E111) — a fresh linear (Grid n): right dims, cursor home.
 ; Native: grid-new mints a Pool-backed 3x3 grid, we inspect dims/cursor, then
 ; free the region. Exit 0 on pass, -1 otherwise.
-(import "prelude")
-(import "grid")
+(import "prelude/prelude")
+(import "protocol/grid")
 
 (def compile-main (=> I64 I64)
   (lam (arg)

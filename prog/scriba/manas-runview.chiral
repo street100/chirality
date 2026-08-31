@@ -18,14 +18,14 @@
 ; be-chat; true token-by-token is S17). Synchronous/blocking is accepted — the
 ; driver blocks per be-chat exactly as chat mode blocks per chat-ask (SPEC §5).
 
-(import "prelude")                     ; Str, Bool, I64, List, Pair, Maybe, str-cat, i64->str, cons, nil, some, none
-(import "render")                      ; Rendering, r-face, r-lines, r-text, render-to-ansi-full
-(import "ports")                       ; put (=> Str Unit) — the on-delta terminal-write (S17; coordinator.chiral:20)
-(import "manas-mode")                  ; mf-row, mh-row, join-comma, rrows-append  (S14 helpers, reused)
+(import "prelude/prelude")                     ; Str, Bool, I64, List, Pair, Maybe, str-cat, i64->str, cons, nil, some, none
+(import "protocol/render")                      ; Rendering, r-face, r-lines, r-text, render-to-ansi-full
+(import "ports/ports")                       ; put (=> Str Unit) — the on-delta terminal-write (S17; coordinator.chiral:20)
+(import "scriba/manas-mode")                  ; mf-row, mh-row, join-comma, rrows-append  (S14 helpers, reused)
 (import "manas/core/types")            ; ExpertOutcome, Expert, Binding, Config, Pipeline, RunManifest, CombinerOutcome
 ; --- the effectful driver's deps (commit 2) ---
-(import "collections")                 ; reverse, append
-(import "backend")                     ; backend (the Backend ctor), Backend
+(import "prelude/collections")                 ; reverse, append
+(import "manas/backend")                     ; backend (the Backend ctor), Backend
 (import "manas/pipeline/plan")         ; plan-run, PlanOutcome, assemble-manifest, ids-of-experts, bnd-model, exp-slot, yield-of
 (import "manas/pipeline/runner")       ; call-expert, call-combiner, call-expert-stream, call-combiner-stream, gather-findings (S17 twins)
 (import "manas/profile/profiles")      ; smoke-local-config  (the crafted config the sample fires)

@@ -6,10 +6,10 @@
 ;       collections.chiral (alist-get)
 ;       key-parser.chiral (Key type + 18 constructors)
 
-(import "prelude")
-(import "key-parser")
-(import "ports")
-(import "collections")
+(import "prelude/prelude")
+(import "scriba/key-parser")
+(import "ports/ports")
+(import "prelude/collections")
 
 ; --- Key equality ----------------------------------------------------------
 

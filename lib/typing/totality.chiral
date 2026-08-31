@@ -17,7 +17,7 @@
 ; a vacuous extreme bound (i <= MAX, step i+1) would "prove" a loop that wraps
 ; and never halts. num-dec-ok carries that proof in I64 arithmetic against the
 ; real I64-MAX/I64-MIN constants.
-(import "prelude")
+(import "prelude/prelude")
 
 ; ---- the slice of the term ADT the checker judges over (Term <-> Arm mutual,
 ; expressible since E79). t-var carries a de Bruijn LEVEL directly (the port

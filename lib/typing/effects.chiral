@@ -4,7 +4,7 @@
 ; the oracle. The row CARRIER (Row/Seats/row_subsumes) is E39's; here Row is a
 ; minimal names-list stand-in the same rules program against (decision #1). The
 ; membrane only GATES -- it interprets nothing.
-(import "prelude")
+(import "prelude/prelude")
 
 ; ---- the row, as a set of crossing names (E39 swaps the full carrier) --------
 (def row-empty (List Str) (the (List Str) nil))

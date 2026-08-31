@@ -5,10 +5,10 @@
 ; set: x86-64, arm64, or a listing target all reuse it unchanged. The split is
 ; the point (P4: modularity is conformance, not a switch statement).
 
-(import "prelude")
-(import "ports")
-(import "collections")
-(import "string-utils")
+(import "prelude/prelude")
+(import "ports/ports")
+(import "prelude/collections")
+(import "prelude/string")
 
 ; A relocation's encoder, DEFUNCTIONALIZED. Originally `enc : (-> I64 Bytes)`
 ; kept a-rel target-independent, but a stored function does not lower (the field

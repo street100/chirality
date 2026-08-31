@@ -20,17 +20,17 @@
 ; verdict re-derivable by a second chirality build or the Rocq leg without re-running
 ; anything.
 
-(import "prelude")
-(import "collections")
+(import "prelude/prelude")
+(import "prelude/collections")
 ; for `bytes=?`. ddc.chiral owns the tree's only byte comparator and states the
 ; rule in its own header -- one owner per rule, no second routine on this path.
 ; Its `Prov` is why the sum below is `ExProv`: the E166 DDC gate is one of the
 ; gates that will return a `Suite`, so the two live in one import closure and
 ; the shadowing that duplicate type names get away with elsewhere is unavailable.
-(import "ddc")
+(import "evidence/ddc")
 ; for `read-fd-all` / `compile-all` -- the build-and-run body `observe` and the
 ; in-tree leg of `oracle-ask` are made of, and the same one `run-one` already uses.
-(import "compile-all")
+(import "lowering/compile-all")
 ; for `bundle-src` / `res-err-msg` / `openat` / `close` / `nul-byte` (E170 W0.2).
 ; `observe` compiled ONE FILE and did no resolution, so it could observe exactly
 ; the six import-free files in scaffold/samples/ and none of the other 62 -- and a
@@ -40,7 +40,7 @@
 ; only one of them moves here -- the harness's ~35% resolver FORK cost stays
 ; refused and unowned, because `bundle-src` is an in-tree read with no
 ; bin/chirality-resolve.sh in it.
-(import "resolve")
+(import "module/resolve")
 
 ; ===========================================================================
 ; 1. PROVENANCE -- where the expected value came from, as a closed sum.
@@ -579,7 +579,7 @@
 ; happened. With the close: 100 of 100.
 ; ⚑ IT RESOLVES IMPORTS (E170 W0.2). Until then this handed the raw file bytes
 ; straight to `run-src`, which is `compile-all` on one file -- so a root with an
-; `(import "prelude")` in it came back `ob-nobuild`, and 62 of the 68 files in
+; `(import "prelude/prelude")` in it came back `ob-nobuild`, and 62 of the 68 files in
 ; scaffold/samples/ import something. The six it COULD observe are exactly
 ; test-runner.chiral's six-entry manifest, which is why E168's own adopter never
 ; met the limit.
@@ -590,7 +590,7 @@
 ; failure and reporting it as a missing file names the wrong reason -- the same
 ; class of lie the fd leak produced (see the note above).
 ;
-; The search path is `scaffold/lib`, relative to the CWD, and every root the
+; The search path is `lib` then `prog`, relative to the CWD, and every root the
 ; harness observes is run from the REPO ROOT: Phase 12's fixtures already were
 ; (test-e168-floor.sh:121-127), and Phase 2 was moved there in this same commit so
 ; there is one answer to "relative to what" rather than two.
@@ -602,7 +602,7 @@
         (false
           (let ((src (read-fd-all fd)))
             (do (close fd)
-              (case (bundle-src (cons "scaffold/lib" nil) (bytes->str src))
+              (case (bundle-src (cons "lib" (cons "prog" nil)) (bytes->str src))
                 ((bundle-err e)   (ob-nobuild (res-err-msg e) bld))
                 ((bundle-ok blob) (run-src bld (str->bytes blob)))))))))))
 

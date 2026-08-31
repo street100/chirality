@@ -8,8 +8,8 @@
 ; over mmap/mremap"). The reasoning lives in docs/banks/verification.md
 ; Shard 8b; this line only records the category.
 
-(import "alloc")
-(import "mach")
+(import "memory/alloc")
+(import "lowering/mach/mach")
 
 ; bare global refs — same pattern as alloc-fixed (mach-alo/mach-bnw).
 ; mach-galo/gbnw are (-> Mach (-> I64 I64 (List I64) (List Asm))) and

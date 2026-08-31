@@ -17,8 +17,8 @@
 ; higher-order code does not lower to native during bootstrap yet — the same
 ; status as `collections.chiral` — and `mux` is real code that must run.
 
-(import "prelude")
-(import "ports")            ; Sock, sock-recv/-send/-close, RecvR
+(import "prelude/prelude")
+(import "ports/ports")            ; Sock, sock-recv/-send/-close, RecvR
 
 ; ── the container ─────────────────────────────────────────────────────────────
 ; both fields quantity-1: the cap is held linearly, the tail is held linearly, so

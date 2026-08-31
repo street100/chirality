@@ -76,13 +76,13 @@
 ; If the self-compile stalls there, the fix is the same Bytes builder (`bcat`
 ; into a (List Bytes), flattened once) -- a measurement, not a guess.
 
-(import "prelude")
-(import "collections")
-(import "asm-reloc")
-(import "mach")
-(import "c-assemble")
+(import "prelude/prelude")
+(import "prelude/collections")
+(import "lowering/mach/asm-reloc")
+(import "lowering/mach/mach")
+(import "lowering/c/assemble")
 
-(module mach-c (cat A) (alt upper))
+(module lowering/c/mach (cat A) (alt upper))
 
 ; ── text ────────────────────────────────────────────────────────────────────
 (def mc-s3 (-> Str Str Str Str) (lam (a b c) (str-cat a (str-cat b c))))

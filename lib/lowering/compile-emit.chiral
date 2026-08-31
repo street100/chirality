@@ -11,11 +11,11 @@
 ; tal-ssa (the TIFn/ti-tcase name collision), hence it takes NFns, not SSA TFns.
 ; ===========================================================================
 
-(import "emit-x64")            ; emit : (List TIFn) (List Bytes) => (Pair Bytes offsets)
-(import "tal-reify")           ; reify-fn : NFn -> tal-ir TIFn ; NFn (erased-nf)
-(import "bytes-tal")           ; native-lib : the byte/string runtime routines
-(import "sys-linkage")         ; E70: link-lib -- the wrap-* E51 wrappers + sys-lib crossings
-(import "elf")                 ; elf-file : Bytes -> Bytes (+ pack-u16/u32/bcat/bslice)
+(import "lowering/x64/emit")            ; emit : (List TIFn) (List Bytes) => (Pair Bytes offsets)
+(import "lowering/tal/reify")           ; reify-fn : NFn -> tal-ir TIFn ; NFn (erased-nf)
+(import "lowering/tal/bytes")           ; native-lib : the byte/string runtime routines
+(import "lowering/tal/sys-linkage")         ; E70: link-lib -- the wrap-* E51 wrappers + sys-lib crossings
+(import "lowering/x64/elf")                 ; elf-file : Bytes -> Bytes (+ pack-u16/u32/bcat/bslice)
 
 ; E89: checked arena init. On mmap failure exits 1.
 ; scaffold/chirality/native.py `_entry_stub`. `e_entry` points HERE. It zeroes the

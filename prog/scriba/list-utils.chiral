@@ -7,7 +7,7 @@
 ;
 ; Deps: prelude (List, Maybe, I64, Bool, =i, -, some, none, cons, nil, case)
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; list-nth: get element at index i (0-based) in a list.
 ; Returns Maybe — none on out-of-bounds.

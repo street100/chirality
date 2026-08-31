@@ -12,8 +12,8 @@
 ;   Pure `->` throughout: the codec transports a value, it never crosses the
 ;   effect membrane. Only the Terminal port's write (E112 Step 3, gated) is `=>`.
 
-(import "prelude")
-(import "render")   ; the Rendering sum (r-text/r-table/r-section/r-stream/r-tree/r-hole)
+(import "prelude/prelude")
+(import "protocol/render")   ; the Rendering sum (r-text/r-table/r-section/r-stream/r-tree/r-hole)
 
 ; ─── parse-result sums — the cursor + a failure carried AS DATA ─────────────────
 (data PR ()  (p-ok  (v Rendering) (pos I64))              (p-err  (msg Str) (pos I64)))

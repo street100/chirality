@@ -41,14 +41,14 @@
 ; (byte-identity of the two emitted compilers) does not exercise because the
 ; input it compares on declares no profile and has no duplicate labels.
 
-(import "compile-front")
-(import "compile-back")
-(import "tal-reify")
-(import "bytes-tal")
-(import "sys-linkage")
-(import "sys-check")
-(import "target-linux")
-(import "emit-c")
+(import "lowering/compile-front")
+(import "lowering/compile-back")
+(import "lowering/tal/reify")
+(import "lowering/tal/bytes")
+(import "lowering/tal/sys-linkage")
+(import "lowering/tal/sys-check")
+(import "lowering/tal/target-linux")
+(import "lowering/c/emit")
 
 ; ---- the four helpers that live inside compile-emit.chiral --------------------
 (declare cdc-reify-all (-> (List NFn) (List TIFn)))

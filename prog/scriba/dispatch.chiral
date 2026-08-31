@@ -19,7 +19,7 @@
 ;   1. B1's effect chain threshold must be raised to handle 4+ sequential
 ;      effectful operations in a single function body, OR effect fusion
 ;      must be implemented so compound expressions count as one chain node.
-;   2. Once fixed, add (import "dispatch") to scriba-main.chiral and replace
+;   2. Once fixed, add (import "scriba/dispatch") to scriba-main.chiral and replace
 ;      the (false ...) arm of the quit check with a call to try-dispatch
 ;      (see the patch template at the bottom of this file).
 ;   3. Rebuild: chirality_blob scaffold/lib scriba/scriba-main | scaffold/build/B1
@@ -28,13 +28,13 @@
 ; It does NOT import scriba-main (avoids circular dep) — it forward-declares
 ; command-loop-inner instead.
 
-(import "prelude")
-(import "puffer")
-(import "render")
-(import "cmd-types")
-(import "keymap")
-(import "vim-mode")
-(import "editor-state")     ; S18 — Scriba, the editor state as ONE value
+(import "prelude/prelude")
+(import "scriba/puffer")
+(import "protocol/render")
+(import "scriba/cmd-types")
+(import "scriba/keymap")
+(import "scriba/vim-mode")
+(import "scriba/editor-state")     ; S18 — Scriba, the editor state as ONE value
 
 ; ─── Forward declaration ────────────────────────────────────────────────────
 ;
@@ -98,11 +98,11 @@
 ;
 ; STEP 1: Add import. Change line 4 of scriba-main.chiral from:
 ;
-;   (import "prelude")(import "ports")(import "term")(import "puffer")(import "render")(import "keymap")(import "cmd-types")(import "init-loader")
+;   (import "prelude/prelude")(import "ports/ports")(import "ports/term")(import "scriba/puffer")(import "protocol/render")(import "scriba/keymap")(import "scriba/cmd-types")(import "scriba/init-loader")
 ;
 ; To:
 ;
-;   (import "prelude")(import "ports")(import "term")(import "puffer")(import "render")(import "keymap")(import "cmd-types")(import "init-loader")(import "dispatch")
+;   (import "prelude/prelude")(import "ports/ports")(import "ports/term")(import "scriba/puffer")(import "protocol/render")(import "scriba/keymap")(import "scriba/cmd-types")(import "scriba/init-loader")(import "scriba/dispatch")
 ;
 ; STEP 2: Update command-loop-inner definition. Change from:
 ;

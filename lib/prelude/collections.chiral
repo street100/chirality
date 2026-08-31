@@ -4,13 +4,13 @@
 ; Higher-order and polymorphic, so most of it does not lower to tal, which is
 ; fine: the checker runs upper during bootstrap.
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; E161: "All pure, all category A" was the prose above; this is the checked form
 ; of it. The port-set half is no longer written: it is DERIVED on this module's
 ; datasheet from what it binds, and this module binds no extern at all, so its
 ; `crossings` is empty by derivation rather than by claim.
-(module collections (cat A) (alt upper))
+(module prelude/collections (cat A) (alt upper))
 
 (def length (-> (0 A (type 0)) (List A) I64)
   (lam (A xs)

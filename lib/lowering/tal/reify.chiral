@@ -9,9 +9,9 @@
 ; work lives in tal-erase and reify is a total 1:1 rebuild. The full erasure is
 ; `reify-fn . erase-fn : tal-ssa.TIFn -> tal-ir.TIFn`; a lowered function then
 ; feeds emit-core with no further conversion.
-(import "prelude")
-(import "tal-ir")
-(import "erased-nf")
+(import "prelude/prelude")
+(import "lowering/tal/ir")
+(import "typing/erased-nf")
 
 (declare reify-instr    (-> NInstr TInstr))
 (declare reify-code     (-> NCode TCode))

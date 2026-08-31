@@ -4,7 +4,7 @@
 ; No libwayland anywhere: the compositor is a foreign counterpart across one
 ; typed port, and this file is the port protocol's data layer.
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; one zero byte, for NUL terminators and padding
 (def zb Bytes (bslice (pack-u32 0) 0 1))

@@ -5,16 +5,16 @@
 ;
 ; Deps: prelude, ports, scriba/command-loop, scriba/keymap, scriba/render
 
-(import "prelude")
-(import "ports")
-(import "command-loop")   ; Op, register-op
-(import "keymap")         ; Keymap, KeySeq, keyseq, default-keymap, keyseq-eq
-(import "render")         ; renderer-fn, register-renderer
-(import "puffer")         ; Puffer, Zipper, push-undo, puffer-undo, puffer-redo
-(import "str-edit")       ; TextZipper movement/edit ops
-(import "zipper-bridge")  ; zipper->text-zipper, text-zipper->zipper
-(import "kill-ring")      ; KillRing, kill-ring-push, kill-ring-top
-(import "mark-region")    ; Mark, mark-at, kill-region, copy-region
+(import "prelude/prelude")
+(import "ports/ports")
+(import "scriba/command-loop")   ; Op, register-op
+(import "scriba/keymap")         ; Keymap, KeySeq, keyseq, default-keymap, keyseq-eq
+(import "protocol/render")         ; renderer-fn, register-renderer
+(import "scriba/puffer")         ; Puffer, Zipper, push-undo, puffer-undo, puffer-redo
+(import "scriba/str-edit")       ; TextZipper movement/edit ops
+(import "scriba/zipper-bridge")  ; zipper->text-zipper, text-zipper->zipper
+(import "scriba/kill-ring")      ; KillRing, kill-ring-push, kill-ring-top
+(import "scriba/mark-region")    ; Mark, mark-at, kill-region, copy-region
 
 ; ─── define-key ───────────────────────────────────────────────────────────
 

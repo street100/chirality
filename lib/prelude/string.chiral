@@ -3,13 +3,13 @@
 ; prelude doesn't give directly: prefix tests, prefix stripping, substring
 ; membership, and splitting. No host binding of their own.
 
-(import "prelude")
-(import "collections")   ; Ord = (lt)/(eq)/(gt)  [E151a: str-cmp]
+(import "prelude/prelude")
+(import "prelude/collections")   ; Ord = (lt)/(eq)/(gt)  [E151a: str-cmp]
 
 ; E161: "All category A" was the prose above; this is the checked form of it.
 ; The port-set half is derived rather than written: this module binds no extern,
 ; so its datasheet's `crossings` is empty without anyone claiming it.
-(module string-utils (cat A) (alt upper))
+(module prelude/string (cat A) (alt upper))
 
 ; does s begin with prefix? (str-sub clamps, so a too-long prefix is just false)
 (def str-starts-with (-> Str Str Bool)

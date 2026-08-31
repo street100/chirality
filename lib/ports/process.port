@@ -8,7 +8,7 @@
 ; (docs/error-and-alarm.md). Both are polymorphic so an alarm path can close
 ; what it holds and leave without faking an inhabitant of its return type.
 
-(import "prelude")
+(import "prelude/prelude")
 
 (extern exit (-> (0 A (type 0)) (=> I64 A)))
 (extern halt (-> (0 A (type 0)) (=> Str A)))

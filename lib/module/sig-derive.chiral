@@ -10,10 +10,10 @@
 ;
 ; The Python originals are the differential oracles.
 
-(import "prelude")
-(import "closconv")     ; pi-effs (the Pi-spine eff flags, already oracle-verified) + Core
-(import "sexp")         ; Sexp (s-list / s-sym / s-i64 / s-str)
-(import "sys-linkage")  ; SysBinding (bind-sys ...)
+(import "prelude/prelude")
+(import "lowering/upper/closconv")     ; pi-effs (the Pi-spine eff flags, already oracle-verified) + Core
+(import "surface/sexp")         ; Sexp (s-list / s-sym / s-i64 / s-str)
+(import "lowering/tal/sys-linkage")  ; SysBinding (bind-sys ...)
 
 (declare sapp (-> (List Str) (List Str) (List Str)))
 (def sapp (lam (a b) (case a (nil b) ((cons x r) (cons x (sapp r b))))))

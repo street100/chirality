@@ -9,7 +9,7 @@
 ; Constructor names arrive as tag numbers (declaration order); only function
 ; names survive as strings, because they become labels.
 
-(import "prelude")
+(import "prelude/prelude")
 
 ; Milestone 3 adds variable-length data: a Bytes/Str value is one word, a
 ; pointer to a [len][payload...] cell in the same arena. ti-lit references a

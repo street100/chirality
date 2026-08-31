@@ -10,15 +10,15 @@
 
 
 
-(import "prelude")
+(import "prelude/prelude")
 
-(import "ports")
+(import "ports/ports")
 
-(import "collections")
+(import "prelude/collections")
 
-(import "asm-reloc")
+(import "lowering/mach/asm-reloc")
 
-(import "mach")
+(import "lowering/mach/mach")
 
 
 

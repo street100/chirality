@@ -13,8 +13,8 @@
 ; end. Folds are BIT-IDENTICAL to runtime (chirality I64 wraps two's-complement, div is
 ; Euclidean -- same as optimize.py's wrap64/i64_div). Meaning-preserving only; no
 ; cost claim (that is E38).
-(import "prelude")
-(import "tal-check")
+(import "prelude/prelude")
+(import "lowering/tal/check")
 
 ; constant facts for folding; static-arg bindings for specialize; the check result.
 (data CVal () (cv-i (n I64)) (cv-c (cn Str)))

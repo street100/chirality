@@ -20,9 +20,9 @@
 ; native porttype-taking close; T8 = the session-loop read/adopt bindings). The
 ; raw round-trip that RUNS today is scaffold/samples/e103_pty_roundtrip.chiral
 ; (unchanged by T7). Exit 42 = the type-level path compiled.
-(import "prelude")
-(import "ports")
-(import "session")
+(import "prelude/prelude")
+(import "ports/ports")
+(import "capability/session")
 
 ; the full cap discipline, type-checked (unreachable => DCE, no native emit):
 ; acquire a master as a Pty, then thread it through the reader (read-once closes

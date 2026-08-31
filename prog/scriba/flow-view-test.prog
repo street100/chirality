@@ -12,11 +12,11 @@
 ;   cat TUI/scriba/flow-view-test.chiral >> blob; echo >> blob
 ;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
 
-(import "prelude")               ; Bool, Unit, and, some, none, case, unit, str-eq, =i, cons, nil
+(import "prelude/prelude")               ; Bool, Unit, and, some, none, case, unit, str-eq, =i, cons, nil
 (import "manas/core/types")      ; GateRule (+ gate-rule ctor)
 (import "manas/core/flow")       ; Ty (+ ctors), Flow (+ ctors)
-(import "manas-mode")            ; OutlineNode (onode)
-(import "flow-view")             ; flow-outline-nodes (under test)
+(import "scriba/manas-mode")            ; OutlineNode (onode)
+(import "scriba/flow-view")             ; flow-outline-nodes (under test)
 
 ; ─── the NESTED Flow fixture (mirrors SG3's doc-edit fractal shape) ─────────────
 ;   branch "P" {

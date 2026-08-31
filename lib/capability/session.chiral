@@ -21,9 +21,9 @@
 ; The native bindings for adopt-pty / pty-read / pty-close are E107/T8 (declared
 ; in ports.chiral, owned at declaration): this surface TYPECHECKS today; reaching
 ; a crossing native-emits only once it is registered (spec §5c).
-(import "prelude")
-(import "ports")           ; Pty, PtyAcqR, PtyReadR, adopt-pty, pty-read, pty-close, open-rw
-(import "term")            ; nb-ptunlock-w, nb-ptsno, pts-path, close, nul-byte (raw dance, untouched)
+(import "prelude/prelude")
+(import "ports/ports")           ; Pty, PtyAcqR, PtyReadR, adopt-pty, pty-read, pty-close, open-rw
+(import "ports/term")            ; nb-ptunlock-w, nb-ptsno, pts-path, close, nul-byte (raw dance, untouched)
 
 ; open-pty-cap: the raw four-step dance, only the success arm changed to MINT the
 ; master into a Pty via adopt-pty. Error arms keep the raw close (no cap was

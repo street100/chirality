@@ -9,12 +9,12 @@
 ;       scriba/keymap (KeySeq, Keymap, lookup-keymap)
 ;       scriba/key-parser (Key)
 
-(import "prelude")
-(import "string-utils")    ; str-contains (E151b: the owner, no longer a local copy)
-(import "command-loop")    ; Op, OpName, lookup-op
-(import "completion")      ; complete
-(import "keymap")          ; KeySeq, Keymap, lookup-keymap
-(import "key-parser")      ; Key
+(import "prelude/prelude")
+(import "prelude/string")    ; str-contains (E151b: the owner, no longer a local copy)
+(import "scriba/command-loop")    ; Op, OpName, lookup-op
+(import "scriba/completion")      ; complete
+(import "scriba/keymap")          ; KeySeq, Keymap, lookup-keymap
+(import "scriba/key-parser")      ; Key
 
 ; ─── Local helpers (inlined from collections) ──────────────────────────────
 

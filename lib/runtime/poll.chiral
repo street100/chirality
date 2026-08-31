@@ -3,9 +3,9 @@
 ; The fixed-2 poll2/Poll2R/nb-pollfd-fill-t path is untouched (D0, D4).
 ; Consumer: T9 (mux event loop).
 
-(import "prelude")
-(import "collections")
-(import "bytes-tal")
+(import "prelude/prelude")
+(import "prelude/collections")
+(import "lowering/tal/bytes")
 (import "ports/sock")            ; nb-poll: this module CALLS it at :75 and never
                                  ; declared it -- it relied on the consumer importing
                                  ; `ports` FIRST, so `chirality_blob <root>` failed with

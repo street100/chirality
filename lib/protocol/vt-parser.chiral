@@ -1,7 +1,7 @@
-(import "prelude")
-(import "grid")
-(import "utf8")     ; decode-utf8 : Bytes -> (List I64) codepoints (RFC 3629)
-(import "apc")      ; dec-frame / apc-intro / apc-st + the Rendering sum (E112 side-channel)
+(import "prelude/prelude")
+(import "protocol/grid")
+(import "protocol/utf8")     ; decode-utf8 : Bytes -> (List I64) codepoints (RFC 3629)
+(import "protocol/apc")      ; dec-frame / apc-intro / apc-st + the Rendering sum (E112 side-channel)
 
 ; ─── PState: one constructor per Williams VT500 state ──────────────────────────
 ;   params : finished CSI params, reversed (cons at head) — flipped once at dispatch

@@ -1,5 +1,5 @@
-(import "prelude")
-(import "ports")
+(import "prelude/prelude")
+(import "ports/ports")
 
 ; ─── Data declarations ───
 

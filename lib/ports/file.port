@@ -9,7 +9,7 @@
 ; Both return a raw fd (or -errno), not an Fd cap -- the mint is `adopt-fd` in
 ; ports/fd, kept one seam away on purpose.
 
-(import "prelude")
+(import "prelude/prelude")
 
 (extern open-rw       (=> Bytes I64))     ; openat O_RDWR|O_NOCTTY, NUL-term path -> fd | -errno
 (extern open-create   (=> Bytes I64))     ; openat O_RDWR|O_CREAT|O_TRUNC|O_NOCTTY|O_CLOEXEC, NUL-term path -> fd | -errno

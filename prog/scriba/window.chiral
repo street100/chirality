@@ -11,10 +11,10 @@
 ;        FLAG 2A: (Puffer Str) hardcoded — deliberate scoping per §5.6.
 ;        FLAG 4C: resize sibling clamps to min 1×1; total-area may drift.
 
-(import "prelude")
-(import "collections")
-(import "puffer")
-(import "list-utils")
+(import "prelude/prelude")
+(import "prelude/collections")
+(import "scriba/puffer")
+(import "scriba/list-utils")
 
 ; ---------------------------------------------------------------- Types
 

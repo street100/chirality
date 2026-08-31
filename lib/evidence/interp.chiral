@@ -18,7 +18,7 @@
 ; example names, needed to build a con VALUE so e-case has a scrutinee). The
 ; extern/port/bridge face (e-global/e-prim, pap/talf, IMPLS, bridge.verify, the E51
 ; sys path) + the linker are the DEFERRED bridge connector (decision #2).
-(import "prelude")
+(import "prelude/prelude")
 
 ; runtime values -- CLOSED sum (no fall-through the way runtime.py's tuples can; no
 ; ("erased",): a q=0 binding is erased by QTT upstream, so it cannot be represented).

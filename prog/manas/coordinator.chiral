@@ -14,10 +14,10 @@
 ; model. (This was the first thing the real run surfaced -- a hardcoded default
 ; model name that didn't match what the worker had resident.)
 
-(import "prelude")
-(import "collections")
-(import "backend")
-(import "ports")
+(import "prelude/prelude")
+(import "prelude/collections")
+(import "manas/backend")
+(import "ports/ports")
 
 ; fold retrieved hits into one context block (their contents, newline-joined).
 (def hits->context (-> (List Hit) Str)

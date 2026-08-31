@@ -4,14 +4,14 @@
 ; "scriba ok" stub. R2 lifted the fn-typed-data-field gate, so ScribaOp's
 ; op-fn field lowers via defunctionalization and try-dispatch is reachable.
 
-(import "prelude")
-(import "ports")                  ; Port (constructor `port`), put, read
-(import "term")                   ; term-raw, term-restore, tiocgwinsz
-(import "puffer")                 ; puffer-new, puffer-close
-(import "render")                 ; ansi-clear, ansi-home, render-to-ansi-full
-(import "command-loop")           ; command-loop
-(import "keymap")                 ; default-keymap
-(import "init-loader")            ; init-load, init-default
+(import "prelude/prelude")
+(import "ports/ports")                  ; Port (constructor `port`), put, read
+(import "ports/term")                   ; term-raw, term-restore, tiocgwinsz
+(import "scriba/puffer")                 ; puffer-new, puffer-close
+(import "protocol/render")                 ; ansi-clear, ansi-home, render-to-ansi-full
+(import "scriba/command-loop")           ; command-loop
+(import "scriba/keymap")                 ; default-keymap
+(import "scriba/init-loader")            ; init-load, init-default
 
 ; ── scriba-main: the binary entry point ──
 

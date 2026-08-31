@@ -9,7 +9,7 @@
 ; line-discipline ioctls on a descriptor you already have, pty owns minting the
 ; pair and wiring a child onto it.
 
-(import "prelude")
+(import "prelude/prelude")
 
 (porttype Pty)            ; T7: the pty master side, held by the emulator
 

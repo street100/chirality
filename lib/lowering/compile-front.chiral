@@ -15,11 +15,11 @@
 ; raise: errors-as-values, matching lower.py's Ineligible-as-a-partition.
 ; ===========================================================================
 
-(import "parse")               ; load-source (+ surface/loader/kernel: Sig/Term/Qty)
-(import "load-batch")           ; E94: load-source-batched (capacity-bounded loader)
-(import "specialize-singleton") ; specialize-singletons: monomorphize a singleton vtable (Mach) -- BEFORE closconv
-(import "closconv-driver")     ; closconv-sig: defunctionalize HO defs before peel
-(import "lowspec")             ; NTalTy / NCore / NArm / NDef
+(import "surface/parse")               ; load-source (+ surface/loader/kernel: Sig/Term/Qty)
+(import "module/load-batch")           ; E94: load-source-batched (capacity-bounded loader)
+(import "lowering/upper/specialize-singleton") ; specialize-singletons: monomorphize a singleton vtable (Mach) -- BEFORE closconv
+(import "lowering/upper/closconv-driver")     ; closconv-sig: defunctionalize HO defs before peel
+(import "lowering/lowspec")             ; NTalTy / NCore / NArm / NDef
 
 ; Qty -> the I64 quantity code lower.Core uses (inverse of kernel i->qty).
 (def qty->i (-> Qty I64) (lam (q) (case q ((q0) 0) ((q1) 1) ((qw) 2))))

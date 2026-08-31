@@ -16,14 +16,14 @@
 ; check only because Python ints are unbounded).
 ;
 ; This element PROVIDES ck-fn/ck-prog to E16 (lowering) and E17 (optimizer).
-(import "prelude")
+(import "prelude/prelude")
 
 ; ---- the CHECKER's typed IR is now the shared lib/tal-ssa.chiral: TalTy /
 ; Instr / Block / TalTerm / Branch / TFn / Prog / TalSig + the check env
 ; (DCtor / DData / CEnv). It mirrors tal.py's annotated tuples and is re-checked
 ; independently of the kernel. NOT lib/tal-ir.chiral (the type-ERASED executable
 ; IR the emitter consumes); the two join by erasure.
-(import "tal-ssa")
+(import "lowering/tal/ssa")
 
 ; Gamma + the verdict (errors are values).
 (data REnv () (renv-nil) (renv-cons (r I64) (t TalTy) (rest REnv)))

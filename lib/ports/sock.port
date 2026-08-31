@@ -10,7 +10,7 @@
 ; Depends on ports/fd for the Fd cap: sock-send-fd moves a descriptor across
 ; the wire, so the fd-passing shapes cannot be stated without it.
 
-(import "prelude")
+(import "prelude/prelude")
 (import "ports/fd")
 
 (porttype Sock)

@@ -6,10 +6,10 @@
 ;   six Rendering constructors; (2) block-id stability under fold, content
 ;   sensitivity, integrity; (3) the vt-parser ps-apc-string decode wiring
 ;   (act-apc-render on a good frame, act-ignore on a corrupted one).
-(import "prelude")
-(import "apc")        ; enc-frame / dec-frame / block-id / PR
-(import "render")     ; the Rendering sum + diff-node (structural equality)
-(import "vt-parser")  ; Action / step / ps-ground / decode-utf8 (the decode seam)
+(import "prelude/prelude")
+(import "protocol/apc")        ; enc-frame / dec-frame / block-id / PR
+(import "protocol/render")     ; the Rendering sum + diff-node (structural equality)
+(import "protocol/vt-parser")  ; Action / step / ps-ground / decode-utf8 (the decode seam)
 
 (declare compile-main    (-> Unit I64))
 (declare struct-eq       (-> Rendering Rendering Bool))

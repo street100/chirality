@@ -5,12 +5,12 @@
 ; heap shape decisions (a boxed value's fields bind by index at branch entry)
 ; live here; encodings live behind Mach; relocation lives in asm-reloc.
 
-(import "prelude")
-(import "collections")
-(import "asm-reloc")
-(import "mach")
-(import "alloc")
-(import "tal-ir")
+(import "prelude/prelude")
+(import "prelude/collections")
+(import "lowering/mach/asm-reloc")
+(import "lowering/mach/mach")
+(import "memory/alloc")
+(import "lowering/tal/ir")
 
 (def cat2 (-> (List Asm) (List Asm) (List Asm))
   (lam (a b) (append Asm a b)))

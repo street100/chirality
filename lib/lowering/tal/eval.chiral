@@ -16,8 +16,8 @@
 ; shared definition in lib/tal-ssa.chiral: the interpreter ignores the `ty`
 ; fields tal.py's tuple carries, so ONE value drives both the checker and this
 ; interpreter floor.
-(import "prelude")
-(import "tal-ssa")
+(import "prelude/prelude")
+(import "lowering/tal/ssa")
 
 ; runtime values: a con carries only cname + fields (tal.py stores ("con",cn,fs)
 ; -- the dname is erased at runtime); a cell is an id into the Store.

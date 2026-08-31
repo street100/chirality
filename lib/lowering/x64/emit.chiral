@@ -1,7 +1,7 @@
-(import "emit-core")
-(import "mach-x64")
-(import "alloc")
-(import "alloc-growing")
+(import "lowering/mach/emit-core")
+(import "lowering/x64/mach")
+(import "memory/alloc")
+(import "memory/alloc-growing")
 
 (def rd-truthful (-> (List Asm) (List Asm)) (lam (a) a))
 

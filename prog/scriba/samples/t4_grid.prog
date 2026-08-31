@@ -7,8 +7,8 @@
 ;
 ;   Functions stay polymorphic in the size index n (the (0 n I64) idiom the whole
 ;   linear-region substrate uses); the driver instantiates them at n=144 (=3*3*16).
-(import "prelude")
-(import "grid")
+(import "prelude/prelude")
+(import "protocol/grid")
 
 (declare compile-main (=> I64 I64))
 

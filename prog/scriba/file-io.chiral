@@ -18,10 +18,10 @@
 ;       ports  (open-rw, open-create, read, write-fd, adopt-fd, fd-close)
 ;       puffer (Puffer, Zipper, port constructor)
 
-(import "prelude")
-(import "ports")
-(import "puffer")
-(import "kill-ring")
+(import "prelude/prelude")
+(import "ports/ports")
+(import "scriba/puffer")
+(import "scriba/kill-ring")
 
 ; ---------------------------------------------------------------- helpers
 

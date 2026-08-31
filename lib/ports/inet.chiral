@@ -9,8 +9,8 @@
 ; already-packed 16-byte sockaddr_in as Bytes and returns ConnR.
 ; =====================================================================
 
-(import "prelude")
-(import "ports")
+(import "prelude/prelude")
+(import "ports/ports")
 
 ; ---- dotted-quad host: a boundary sum, parsed ONCE, pure (no crossing) ----
 
