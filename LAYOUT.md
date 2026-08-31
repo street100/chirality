@@ -16,10 +16,30 @@ out to the shape the `E172` name map settled, with the language renamed from met
 **Extension = type. Directory = role.** Subject matter goes in neither — a module is
 individuated by its type, not its topic, so there is no `stdlib/`, no `compiler/`.
 
-⚑ **Ambiguity is a named error.** With one extension a basename could not be
-ambiguous; with five it can (`foo.chiral` beside `foo.prog`). The resolver refuses it
-by name rather than picking — the same rule that makes a basename collision an error
-instead of a silent drop.
+## Importability — the partition that does the work
+
+Two of the five kinds are **not import targets**, by definition rather than by rule:
+
+| | importable | why |
+|---|---|---|
+| `.chiral` `.port` `.manifest` | **yes** | ordinary modules, port registries, and data a module reads |
+| `.prog` | **no** | an entry cannot be imported — two entries in one blob is `duplicate label`. Measured: no entry is imported anywhere in the tree |
+| `.profile` | **no** | a profile names a module set; the build consumes it, nothing imports it |
+
+**Consequences, all of them free:**
+
+- The resolver probes **three** extensions, not five, and **44% of files (the 177
+  programs) never enter the resolution space at all.**
+- **Extension ambiguity is not a new collision class.** `foo.chiral` beside
+  `foo.port` is the *existing* basename-collision rule — same key, different identity,
+  already a named error, not a silent drop. Nothing new to build.
+- `.profile`'s cosmetic clash with the shell's `~/.profile` cannot reach resolution,
+  because a profile is never resolved by name. It is an editor-highlighting concern
+  only, and the editor's mode registry is ours.
+
+This is the P4 move: the bad states are **unrepresentable** rather than detected. An
+earlier draft of this file made ambiguity a new named error and had the resolver
+probing all five — both were solving problems the partition removes.
 
 ## Tiers
 
