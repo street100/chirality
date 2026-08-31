@@ -39,7 +39,7 @@
 ;     It is still `case`d exhaustively -- coverage-checked, not defaulted.
 
 (import "prelude/prelude")
-(import "prelude/collections")
+(import "prelude/list")
 (import "prelude/string")
 (import "lowering/mach/asm-reloc")
 

@@ -1,0 +1,173 @@
+; E27: a height-balanced (AVL) persistent ordered map, keyed by an explicitly
+; supplied TOTAL comparator (-> K K Ord). Trichotomy is an exhaustive case the
+; coverage checker verifies; iteration (m-fold) is ascending by the comparator
+; regardless of insertion order. That determinism is the whole point: this order
+; is the canonical registry order the fixpoint's determinism debts pin against
+; (DETERMINISM-DEBTS D-2). Every operation is pure and structurally recursive
+; (proven total); the pre-insert map stays valid. bytes-cmp is E25-gated (no
+; byte-compare primitive yet); tyv-cmp is the assigned D-1 follow-on.
+
+(import "prelude/prelude")
+(import "prelude/ord")
+(import "prelude/maybe")
+
+; E161: all pure, all category A, in the checked form. The port-set half is not
+; written: it is DERIVED on this module's datasheet from what it binds, and this
+; module binds no extern at all, so its `crossings` is empty by derivation.
+(module prelude/map (cat A) (alt upper))
+
+(data Map ((K (type 0)) (V (type 0)))
+  (mtip)
+  (mnode (l (Map K V)) (k K) (v V) (r (Map K V)) (h I64)))
+
+(def m-empty (-> (0 K (type 0)) (0 V (type 0)) (Map K V))
+  (lam (K V) mtip))
+
+(def i64-max2 (-> I64 I64 I64)
+  (lam (a b) (cond ((<i a b) b) (else a))))
+
+(def m-height (-> (0 K (type 0)) (0 V (type 0)) (Map K V) I64)
+  (lam (K V m) (case m (mtip 0) ((mnode l k v r h) h))))
+
+; rebuild a node, recomputing its height from the (already-balanced) children
+
+(def mk-node (-> (0 K (type 0)) (0 V (type 0)) (Map K V) K V (Map K V) (Map K V))
+  (lam (K V l k v r)
+    (mnode l k v r (+ 1 (i64-max2 (m-height K V l) (m-height K V r))))))
+
+; balance factor: height(l) - height(r); AVL keeps it within [-1, 1]
+
+(def m-bal (-> (0 K (type 0)) (0 V (type 0)) (Map K V) I64)
+  (lam (K V m)
+    (case m
+      (mtip 0)
+      ((mnode l k v r h) (- (m-height K V l) (m-height K V r))))))
+
+(def rot-right (-> (0 K (type 0)) (0 V (type 0)) (Map K V) (Map K V))
+  (lam (K V m)
+    (case m
+      (mtip mtip)
+      ((mnode l k v r h)
+        (case l
+          (mtip m)
+          ((mnode ll lk lv lr lh)
+            (mk-node K V ll lk lv (mk-node K V lr k v r))))))))
+
+(def rot-left (-> (0 K (type 0)) (0 V (type 0)) (Map K V) (Map K V))
+  (lam (K V m)
+    (case m
+      (mtip mtip)
+      ((mnode l k v r h)
+        (case r
+          (mtip m)
+          ((mnode rl rk rv rr rh)
+            (mk-node K V (mk-node K V l k v rl) rk rv rr)))))))
+
+; AVL rebalance (height-balanced; noted per SPEC step 3): one single or
+; double rotation restores the invariant after one insert/delete.
+
+(def rebalance (-> (0 K (type 0)) (0 V (type 0)) (Map K V) (Map K V))
+  (lam (K V m)
+    (case m
+      (mtip mtip)
+      ((mnode l k v r h)
+        (let ((hl (m-height K V l)) (hr (m-height K V r)))
+          (cond
+            ((<i (+ hr 1) hl)                          ; left-heavy
+              (cond ((<i (m-bal K V l) 0)              ; left-right: double
+                      (rot-right K V (mk-node K V (rot-left K V l) k v r)))
+                    (else (rot-right K V (mk-node K V l k v r)))))
+            ((<i (+ hl 1) hr)                          ; right-heavy
+              (cond ((<i 0 (m-bal K V r))              ; right-left: double
+                      (rot-left K V (mk-node K V l k v (rot-right K V r))))
+                    (else (rot-left K V (mk-node K V l k v r)))))
+            (else (mk-node K V l k v r))))))))
+
+(def m-lookup (-> (0 K (type 0)) (0 V (type 0)) (-> K K Ord) K (Map K V) (Maybe V))
+  (lam (K V cmp k m)
+    (case m
+      (mtip none)
+      ((mnode l nk nv r h)
+        (let (c (cmp k nk))
+          (case c
+            (lt (m-lookup K V cmp k l))
+            (eq (some nv))
+            (gt (m-lookup K V cmp k r))))))))
+
+; last-write-wins on eq (the dict contract); the pre-insert map stays valid
+
+(def m-insert (-> (0 K (type 0)) (0 V (type 0)) (-> K K Ord) K V (Map K V) (Map K V))
+  (lam (K V cmp k v m)
+    (case m
+      (mtip (mnode mtip k v mtip 1))
+      ((mnode l nk nv r h)
+        (let (c (cmp k nk))
+          (case c
+            (lt (rebalance K V (mk-node K V (m-insert K V cmp k v l) nk nv r)))
+            (eq (mnode l k v r h))
+            (gt (rebalance K V (mk-node K V l nk nv (m-insert K V cmp k v r))))))))))
+
+; the pure insert-once primitive: a collision is a VALUE (none), not an
+; alarm -- the alarm-carrying facet is E26's, layered over this
+
+(def m-insert-new (-> (0 K (type 0)) (0 V (type 0)) (-> K K Ord) K V (Map K V)
+                      (Maybe (Map K V)))
+  (lam (K V cmp k v m)
+    (case m
+      (mtip (some (mnode mtip k v mtip 1)))
+      ((mnode l nk nv r h)
+        (let (c (cmp k nk))
+          (case c
+            (lt (maybe-map (Map K V) (Map K V)
+                  (lam (l2) (rebalance K V (mk-node K V l2 nk nv r)))
+                  (m-insert-new K V cmp k v l)))
+            (eq none)
+            (gt (maybe-map (Map K V) (Map K V)
+                  (lam (r2) (rebalance K V (mk-node K V l nk nv r2)))
+                  (m-insert-new K V cmp k v r)))))))))
+
+; pop the least entry: the delete splice's successor source
+
+(data MinR ((K (type 0)) (V (type 0)))
+  (minr-none)
+  (minr (k K) (v V) (rest (Map K V))))
+
+(def m-pop-min (-> (0 K (type 0)) (0 V (type 0)) (Map K V) (MinR K V))
+  (lam (K V m)
+    (case m
+      (mtip minr-none)
+      ((mnode l k v r h)
+        (let (pop (m-pop-min K V l))
+          (case pop
+            (minr-none (minr k v r))
+            ((minr mnk mnv rest)
+              (minr mnk mnv (rebalance K V (mk-node K V rest k v r))))))))))
+
+(def m-delete (-> (0 K (type 0)) (0 V (type 0)) (-> K K Ord) K (Map K V) (Map K V))
+  (lam (K V cmp k m)
+    (case m
+      (mtip mtip)
+      ((mnode l nk nv r h)
+        (let (c (cmp k nk))
+          (case c
+            (lt (rebalance K V (mk-node K V (m-delete K V cmp k l) nk nv r)))
+            (gt (rebalance K V (mk-node K V l nk nv (m-delete K V cmp k r))))
+            (eq (let (pop (m-pop-min K V r))
+                  (case pop
+                    (minr-none l)
+                    ((minr sk sv rest)
+                      (rebalance K V (mk-node K V l sk sv rest))))))))))))
+
+; in-order fold: ascending by the comparator -- THE deterministic iteration
+
+(def m-fold (-> (0 K (type 0)) (0 V (type 0)) (0 B (type 0))
+                (-> B K V B) B (Map K V) B)
+  (lam (K V B f z m)
+    (case m
+      (mtip z)
+      ((mnode l k v r h)
+        (m-fold K V B f (f (m-fold K V B f z l) k v) r)))))
+
+; ---- the Set surface: one core, two surfaces -----------------------------
+; Set K is spelled (Map K Unit) directly (a type-level alias def awaits the
+; real surface syntax, E49-era); the ops fix V = Unit.

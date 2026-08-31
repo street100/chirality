@@ -6,7 +6,8 @@
 ; backend/http import leaks in and this stays a pure leaf. Types (Expert) are E133.
 
 (import "prelude/prelude")             ; str-cat
-(import "prelude/collections")         ; foldl, append, str-join
+(import "prelude/list")
+(import "prelude/string")
 (import "manas/core/types")    ; Expert (expert id lens sees returns slot tools)
 
 ; one "k: v" line from an extra-input pair.

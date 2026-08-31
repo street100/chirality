@@ -15,7 +15,8 @@
 ; model name that didn't match what the worker had resident.)
 
 (import "prelude/prelude")
-(import "prelude/collections")
+(import "prelude/list")
+(import "prelude/string")
 (import "manas/backend")
 (import "ports/ports")
 

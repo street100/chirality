@@ -4,7 +4,7 @@
 ; Consumer: T9 (mux event loop).
 
 (import "prelude/prelude")
-(import "prelude/collections")
+(import "prelude/list")
 (import "lowering/tal/bytes")
 (import "ports/sock")            ; nb-poll: this module CALLS it at :75 and never
                                  ; declared it -- it relied on the consumer importing

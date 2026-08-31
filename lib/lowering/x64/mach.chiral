@@ -14,7 +14,7 @@
 
 (import "ports/ports")
 
-(import "prelude/collections")
+(import "prelude/list")
 
 (import "lowering/mach/asm-reloc")
 

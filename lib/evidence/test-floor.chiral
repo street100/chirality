@@ -21,7 +21,8 @@
 ; anything.
 
 (import "prelude/prelude")
-(import "prelude/collections")
+(import "prelude/list")
+(import "prelude/string")
 ; for `bytes=?`. ddc.chiral owns the tree's only byte comparator and states the
 ; rule in its own header -- one owner per rule, no second routine on this path.
 ; Its `Prov` is why the sum below is `ExProv`: the E166 DDC gate is one of the

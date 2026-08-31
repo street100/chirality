@@ -34,7 +34,7 @@
 ; changes to hand `turn` the endpoint instead of a pre-opened handle.
 
 (import "prelude/prelude")                 ; Maybe, some, none, case, str-cat, do, unit, Unit, Str, Pair
-(import "prelude/collections")             ; append  (DC-4a: building a chunk's explicit grant)
+(import "prelude/list")
 (import "manas/core/types")        ; StopPolicy (stop-single), RunManifest (run-manifest), Config
 (import "manas/pipeline/plan")     ; empty-manifest  (for the unreachable no-entry path)
 (import "manas/pipeline/runner")   ; RunR (run-r)

@@ -11,7 +11,7 @@
 ; manas-mode are untouched; only new defs live here.
 
 (import "prelude/prelude")            ; Str, I64, List, cons, nil, str-cat, case, +, *, <i
-(import "prelude/collections")        ; append  (flat concat of a branch's two sub-flows)
+(import "prelude/list")
 (import "protocol/render")             ; Rendering (+ r-lines)
 (import "scriba/manas-mode")         ; OutlineNode (onode), Focus (foc-field), mf-row, mh-row, spaces
 (import "manas/core/flow")    ; Flow (+ 5 ctors), Ty

@@ -25,7 +25,7 @@
 ;   chirality run prog/manas/chatter/divide-test.prog
 
 (import "prelude/prelude")                 ; Maybe, some, none, List, cons, nil, Pair, pair, Bool, and, or, not, case, str-cat, str-eq, str-len, str-sub, str-find, =i, <i, <=i, +, -, do
-(import "prelude/collections")             ; append
+(import "prelude/list")
 (import "manas/core/flow")         ; str-trim, str-has, str-nonempty, parse-perspectives, persp-question  (the LENIENT list parser, reused)
 (import "manas/chatter/router")    ; Intent (+ ctors), route-message, str-lower, conj-markers, nonspace-count (the clarify threshold, reused as the port floor)
 (import "manas/backend")                 ; Backend (E137 linear porttype), backend-open/backend-close, be-chat, msg, ChatR (chat-ok/chat-bad)

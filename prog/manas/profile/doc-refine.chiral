@@ -8,7 +8,7 @@
 ; expert ids -> slots via expert-by-id + expert-slot-of.
 
 (import "prelude/prelude")             ; str-eq, List, Maybe
-(import "prelude/collections")         ; find
+(import "prelude/list")
 (import "manas/core/types")    ; Pipeline, Expert, GateRule, Order, StopPolicy
 
 ; ---------------------------------------------------------- Expert pool accessors

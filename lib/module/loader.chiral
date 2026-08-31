@@ -10,7 +10,7 @@
 ; are the front half.
 (import "surface/surface")             ; Core / CAtom / CArm (the elaborator's output)
 (import "typing/kernel")              ; Term / Sig / infer / check / eval-term / i->qty
-(import "prelude/collections")         ; E161: the ONE polymorphic `reverse` (no private copy)
+(import "prelude/list")
 (import "typing/diag")                 ; E157: Reason -- ld-err/bad! carry a VALUE, not a sentence
 
 ; ---- Core -> the shared kernel Term (decision #1: bridge at install) ----------

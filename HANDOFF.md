@@ -10,8 +10,8 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
 
 | | |
 |---|---|
-| modules + programs | 153 (`.chiral` 116 · `.prog` 20 · `.port` 9 · `.manifest` 2) |
-| compiler | `bin/chirality-bin`, 1,102,200 B, committed (1,077,624 B before E157) |
+| modules + programs | 210 (`.chiral` 155 · `.prog` 44 · `.port` 9 · `.manifest` 2) |
+| compiler | `bin/chirality-bin`, 1,098,104 B, committed (1,102,200 B before the collections split) |
 | CLI | `bin/chirality` — `compile` · `run` · `check` · `test` |
 | resolver | `bin/chirality-resolve.sh` (shell) + `lib/module/resolve.chiral` (native), a matched pair |
 | tests | `bin/chirality test` → **142 assertions, 0 failed**, 7 of 12 old phases ported + Phase 13 (E157), new here |
@@ -19,7 +19,7 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
 
 ### Verified, not asserted
 
-- **Fixpoint**: `C1 == C2` byte-identical at 1,102,200 B (1,077,624 B before E157).
+- **Fixpoint**: `C1 == C2` byte-identical at 1,098,104 B, re-run after the split.
   ⚑ `C1` is checked **non-empty before** the `cmp` — `cmp` of two empty files passes,
   and a fixpoint is stability, never correctness.
 - **Stronger**: the old compiler and the new one emit **byte-identical code for the
@@ -65,16 +65,22 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
 ## Queue
 
 **Migration remainder**
-- `scaffold/lib/manas/**` (51 files) → `prog/manas/`. Twelve import names in nine
-  `prog/scriba/` files reach into it; they are already in path form and resolve
-  unchanged once it lands. This is what takes imports to 147/147 without staging.
+- ~~`scaffold/lib/manas/**`~~ **DONE** (slice 4) — 51 files → `prog/manas/`,
+  18 `.prog` + 33 `.chiral` by LAYOUT's structural test. All 18 gates compile and
+  run green; 707 import sites in the tree, 0 unresolved. Six scriba/flow-view roots
+  left `KNOWN_FAIL` untouched: they were only ever missing twelve manas keys.
+  ⚑ Seven `prog/manas/profile/` files are 0-`data`/all-`def`/zero-`lam`, the manifest
+  shape by LAYOUT's letter. They ship `.chiral` because E163's loader check does not
+  exist. They are E163's first candidates.
 - samples / demo / fixtures (~204 files). ⚑ `prog/samples/` currently holds **six
   files recreated by judgment** — Phase 2's manifest named them and
   `MIGRATION-MAP.tsv` has zero rows for `scaffold/samples/`. They move if this slice
   picks another home.
-- `collections` → `ord` / `list` / `map` / `set` / `alist`. Held deliberately until
-  after the fixpoint went green; **now unblocked**. Its own file declares three data
-  types; `banks/module` individuates by type.
+- ~~`collections`~~ **DONE** (slice 5) — split into `prelude/{ord,list,maybe,alist,map,set}`,
+  with `str-join` moved to `prelude/string`. Two past the four named: `maybe` because
+  `Maybe` is its own type and `str-join` because it produces a `Str`; leaving either in
+  `list` would break the rule the split is for. 49 defs moved byte-identical, 37
+  importers repointed at what they actually name. `prelude/collections` is gone as a key.
 - Coordinates: **8 of 127** files carry `(module … (cat …) (alt …))`, and **three are
   now visibly false** — `lowering/tal/target-linux`, `lowering/c/mach`,
   `lowering/c/assemble` all still claim `(alt upper)`. The restructure exposed it.

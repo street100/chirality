@@ -20,7 +20,7 @@
 ; on the 0.5b (no typed-seam refine-fail routing + every call parsed-ok).
 
 (import "prelude/prelude")                 ; Maybe, some, none, Bool, true, false, =i, <i, <=i, +, -, and, or, not, str-len, str-find, str-sub, str-cat, List, Pair, pair, case
-(import "prelude/collections")             ; append  (flat manifest/raws concat for chain + fan + branch)
+(import "prelude/list")
 (import "prelude/string")            ; str-trim (E151b: the owner, no longer a local copy)
 (import "protocol/json")                    ; json-parse-str, Json (j-arr), obj-get, as-str  (lenient perspective parse)
 (import "manas/core/types")        ; Pipeline, GateRule, Expert, Config, ExpertOutcome (+ ctors), RunManifest, ExpertCall, Finding, RawCall, combiner-ok, StopPolicy (stop-single/stop-capped/stop-until-dry)

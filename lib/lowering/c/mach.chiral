@@ -77,7 +77,7 @@
 ; into a (List Bytes), flattened once) -- a measurement, not a guess.
 
 (import "prelude/prelude")
-(import "prelude/collections")
+(import "prelude/list")
 (import "lowering/mach/asm-reloc")
 (import "lowering/mach/mach")
 (import "lowering/c/assemble")

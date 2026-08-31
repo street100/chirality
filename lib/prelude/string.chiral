@@ -4,7 +4,7 @@
 ; membership, and splitting. No host binding of their own.
 
 (import "prelude/prelude")
-(import "prelude/collections")   ; Ord = (lt)/(eq)/(gt)  [E151a: str-cmp]
+(import "prelude/ord")
 
 ; E161: "All category A" was the prose above; this is the checked form of it.
 ; The port-set half is derived rather than written: this module binds no extern,
@@ -211,3 +211,18 @@
     (case (or (<=i width (str-len s)) (=i (str-len pad) 0))
       (true s)
       (false (su-pad-go s width pad)))))
+
+(def str-join (-> Str (List Str) Str)
+  (lam (sep xs)
+    (case xs
+      (nil "")
+      ((cons h t)
+        (case t
+          (nil h)
+          ((cons h2 t2) (str-cat h (str-cat sep (str-join sep t)))))))))
+
+; association lists: the map until there is a better map.
+; keyed by a caller-supplied equality, so one alist works for Str and I64.
+; SUPERSEDED SEED (E27, 2026-07-28): the ordered Map below is the graduation
+; of alist-get/put/has -- new registries take the tree; these stay for the
+; callers that only need a tiny linear-scan map and for the migration trail.

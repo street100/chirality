@@ -7,7 +7,7 @@
 
 (import "prelude/prelude")
 (import "ports/ports")
-(import "prelude/collections")
+(import "prelude/map")
 (import "prelude/string")
 
 ; A relocation's encoder, DEFUNCTIONALIZED. Originally `enc : (-> I64 Bytes)`

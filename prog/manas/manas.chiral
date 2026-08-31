@@ -16,7 +16,7 @@
 ;     run against a dead worker halts instead of spinning all night).
 
 (import "prelude/prelude")
-(import "prelude/collections")
+(import "prelude/list")
 (import "manas/backend")
 (import "manas/fsm")
 

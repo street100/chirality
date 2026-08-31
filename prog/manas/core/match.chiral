@@ -8,7 +8,7 @@
 ; (Pipeline / PipelineMatch) are E133 — imported, never redefined.
 
 (import "prelude/prelude")             ; str-len, str-find, str-sub, <=i, <i, =i, +, cond
-(import "prelude/collections")         ; foldl, filter, append
+(import "prelude/list")
 (import "manas/core/types")    ; Pipeline, PipelineMatch (match-found/none/tied)
 (import "prelude/string")        ; str-contains (E151b: the owner, no longer a local copy)
 

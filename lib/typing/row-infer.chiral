@@ -15,7 +15,7 @@
 (import "prelude/prelude")
 (import "typing/effects")   ; row-join (dedup union), mem-str
 (import "prelude/string")   ; E151b: the owner of str-cmp (and, via collections, of Ord)
-(import "prelude/collections")   ; E156: list-sort (E152), list-dedup-adj, Ord
+(import "prelude/list")
 
 ; str-cmp (byte-lexicographic Str order) used to be inlined here to keep this a
 ; lean leaf -- ty-cmp, its old home, drags in data.chiral, which clashes with

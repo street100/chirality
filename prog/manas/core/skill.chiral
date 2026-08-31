@@ -20,7 +20,7 @@
 ;   json.chiral          — Json tree + obj-get / as-str / as-int (the Skill + StopPolicy codec).
 
 (import "prelude/prelude")                 ; Bool, Str, I64, List, Pair, Maybe, some, none, cons, nil, pair, case, cond, and, str-eq, str-cat, i64->str, +, -, <=i
-(import "prelude/collections")             ; append  (context accumulation + extra concat)
+(import "prelude/list")
 (import "protocol/json")                    ; Json (+ j-obj/j-str), obj-get, as-str
 (import "manas/core/types")        ; StopPolicy (stop-single/stop-capped/stop-until-dry), Pipeline, Expert, Config
 (import "manas/core/flow")         ; Flow, run-flow-stop

@@ -13,7 +13,7 @@
 ; job (the runner). This keeps bind-config a self-contained, pure slot resolver.
 
 (import "prelude/prelude")             ; str-eq, cond, List, Pair, Bool, Maybe
-(import "prelude/collections")         ; find, filter, foldl, append
+(import "prelude/list")
 (import "manas/core/types")    ; Binding (binding slot model num-ctx), Config, BindResult
 
 ; ------------------------------------------------------------- binding accessor

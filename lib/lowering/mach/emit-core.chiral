@@ -6,7 +6,7 @@
 ; live here; encodings live behind Mach; relocation lives in asm-reloc.
 
 (import "prelude/prelude")
-(import "prelude/collections")
+(import "prelude/list")
 (import "lowering/mach/asm-reloc")
 (import "lowering/mach/mach")
 (import "memory/alloc")

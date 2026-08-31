@@ -7,7 +7,7 @@
 ; (every slot on the one resident model) is the guaranteed-runnable proof profile.
 
 (import "prelude/prelude")             ; str-eq, List, Maybe
-(import "prelude/collections")         ; find
+(import "prelude/list")
 (import "manas/core/types")    ; Config (config id binds), Binding (binding slot model num-ctx)
 
 ; ----------------------------------------------------------------- config accessor

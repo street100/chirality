@@ -1,0 +1,46 @@
+; The Set surface: one core, two surfaces. Set K is spelled (Map K Unit)
+; directly (a type-level alias def awaits the real surface syntax, E49-era);
+; the ops fix V = Unit. Set is its own module because it is a different type to
+; the caller even though it shares prelude/map's representation.
+
+(import "prelude/prelude")
+(import "prelude/map")
+
+; E161: all pure, all category A, in the checked form. The port-set half is not
+; written: it is DERIVED on this module's datasheet from what it binds, and this
+; module binds no extern at all, so its `crossings` is empty by derivation.
+(module prelude/set (cat A) (alt upper))
+
+(def s-empty (-> (0 K (type 0)) (Map K Unit))
+  (lam (K) mtip))
+
+(def s-member (-> (0 K (type 0)) (-> K K Ord) K (Map K Unit) Bool)
+  (lam (K cmp k s)
+    (case (m-lookup K Unit cmp k s)
+      (none false)
+      ((some u) true))))
+
+(def s-add (-> (0 K (type 0)) (-> K K Ord) K (Map K Unit) (Map K Unit))
+  (lam (K cmp k s) (m-insert K Unit cmp k unit s)))
+
+(def s-add-new (-> (0 K (type 0)) (-> K K Ord) K (Map K Unit)
+                   (Maybe (Map K Unit)))
+  (lam (K cmp k s) (m-insert-new K Unit cmp k unit s)))
+
+; ------------------------------------------------- E152: List sort's owner
+; THE sorting entry point for List. Comparator-passed exactly like
+; m-lookup / m-insert: the caller supplies the TOTAL (-> A A Ord), this module
+; supplies the order-preserving machinery and nothing else -- there is no
+; ambient Ord class and no per-type sort. STABLE: elements the comparator
+; calls (eq) come out in INPUT order, which is what makes sorting composable
+; (sort by the minor key, then by the major key, and the minor order
+; survives). Pure `->`, no mutation, no loop: a top-down merge sort over
+; persistent conses, so the input list stays valid.
+;
+; Termination: ms-take / ms-drop are structural on the list; ms-sort-n's
+; measure is the numeric `n` (the length of xs) -- it recurses only under the
+; (<i n 2) guard's else branch, i.e. with n >= 2, on h = (/ n 2) and (- n h),
+; both >= 1 and both < n. ms-merge is structural on one argument per branch
+; (the two output lists' total length is the measure).
+
+; the first n elements (fewer if the list is shorter); n <= 0 gives nil

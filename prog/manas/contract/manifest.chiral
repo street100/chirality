@@ -9,7 +9,7 @@
 ; Types (RunManifest/ExpertCall/Binding) are E133 — imported, NEVER redefined.
 
 (import "prelude/prelude")             ; I64, Str, Bool, List, Pair, Maybe, str-eq, case
-(import "prelude/collections")         ; foldl, append (E139 manifest-to-json array builders)
+(import "prelude/list")
 (import "protocol/json")                ; Json, obj-get, as-str/as-int/as-bool/as-arr
 (import "manas/core/types")    ; RunManifest, ExpertCall, Binding, RawCall
 

@@ -1,0 +1,190 @@
+; List, and everything whose result is one. Over the prelude's List and Pair,
+; written in chirality. This is the library floor the self-hosted checker will
+; stand on. Higher-order and polymorphic, so most of it does not lower to tal,
+; which is fine: the checker runs upper during bootstrap.
+
+(import "prelude/prelude")
+(import "prelude/ord")
+
+; E161: all pure, all category A, in the checked form. The port-set half is not
+; written: it is DERIVED on this module's datasheet from what it binds, and this
+; module binds no extern at all, so its `crossings` is empty by derivation.
+(module prelude/list (cat A) (alt upper))
+
+
+(def length (-> (0 A (type 0)) (List A) I64)
+  (lam (A xs)
+    (case xs
+      (nil 0)
+      ((cons h t) (+ 1 (length A t))))))
+
+(def append (-> (0 A (type 0)) (List A) (List A) (List A))
+  (lam (A xs ys)
+    (case xs
+      (nil ys)
+      ((cons h t) (cons h (append A t ys))))))
+
+(def rev-onto (-> (0 A (type 0)) (List A) (List A) (List A))
+  (lam (A xs acc)
+    (case xs
+      (nil acc)
+      ((cons h t) (rev-onto A t (cons h acc))))))
+
+(def reverse (-> (0 A (type 0)) (List A) (List A))
+  (lam (A xs)
+    (rev-onto A xs nil)))
+
+(def map-list (-> (0 A (type 0)) (0 B (type 0)) (-> A B) (List A) (List B))
+  (lam (A B f xs)
+    (case xs
+      (nil nil)
+      ((cons h t) (cons (f h) (map-list A B f t))))))
+
+(def filter (-> (0 A (type 0)) (-> A Bool) (List A) (List A))
+  (lam (A p xs)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (let ((r (p h))) (cond (r (cons h (filter A p t))) (else (filter A p t))))))))
+
+(def foldl (-> (0 A (type 0)) (0 B (type 0)) (-> B A B) B (List A) B)
+  (lam (A B f z xs)
+    (case xs
+      (nil z)
+      ((cons h t) (foldl A B f (f z h) t)))))
+
+(def any-list (-> (0 A (type 0)) (-> A Bool) (List A) Bool)
+  (lam (A p xs)
+    (case xs
+      (nil false)
+      ((cons h t) (let ((r (p h))) (cond (r true) (else (any-list A p t))))))))
+
+(def head (-> (0 A (type 0)) (List A) (Maybe A))
+  (lam (A xs) (case xs (nil none) ((cons h t) (some h)))))
+
+(def cat-maybes (-> (0 A (type 0)) (List (Maybe A)) (List A))
+  (lam (A xs)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (case h
+          (none (cat-maybes A t))
+          ((some x) (cons x (cat-maybes A t))))))))
+
+(def find (-> (0 A (type 0)) (-> A Bool) (List A) (Maybe A))
+  (lam (A p xs)
+    (case xs
+      (nil none)
+      ((cons h t) (let ((r (p h))) (cond (r (some h)) (else (find A p t))))))))
+
+(def foldr (-> (0 A (type 0)) (0 B (type 0)) (-> A B B) B (List A) B)
+  (lam (A B f z xs)
+    (case xs
+      (nil z)
+      ((cons h t) (f h (foldr A B f z t))))))
+
+(def concat (-> (0 A (type 0)) (List (List A)) (List A))
+  (lam (A xss)
+    (case xss
+      (nil nil)
+      ((cons h t) (append A h (concat A t))))))
+
+; Maybe combinators: the orchestration layer threads optional lookups (config
+; keys, response fields) through these instead of open-coding case at each site.
+
+(def ms-take (-> (0 A (type 0)) I64 (List A) (List A))
+  (lam (A n xs)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (cond ((<i n 1) nil)
+              (else (cons h (ms-take A (- n 1) t))))))))
+
+; everything after the first n elements; n <= 0 gives the list unchanged
+
+(def ms-drop (-> (0 A (type 0)) I64 (List A) (List A))
+  (lam (A n xs)
+    (case xs
+      (nil nil)
+      ((cons h t)
+        (cond ((<i n 1) xs)
+              (else (ms-drop A (- n 1) t)))))))
+
+; merge two ascending runs into one ascending run. THE LEFT RUN WINS TIES:
+; (cmp y x) is consulted and only a strict (lt) takes from the right, so on
+; (eq) the left element goes first. That is exactly where stability comes
+; from -- in ms-sort-n the left run always holds the earlier input positions.
+
+(def ms-merge (-> (0 A (type 0)) (-> A A Ord) (List A) (List A) (List A))
+  (lam (A cmp xs ys)
+    (case xs
+      (nil ys)
+      ((cons x xr)
+        (case ys
+          (nil xs)
+          ((cons y yr)
+            (let ((c (cmp y x)))
+              (case c
+                (lt (cons y (ms-merge A cmp xs yr)))
+                (eq (cons x (ms-merge A cmp xr ys)))
+                (gt (cons x (ms-merge A cmp xr ys)))))))))))
+
+; sort the first `n` elements' worth of xs, where n is (length xs)
+
+(def ms-sort-n (-> (0 A (type 0)) (-> A A Ord) I64 (List A) (List A))
+  (lam (A cmp n xs)
+    (cond ((<i n 2) xs)
+          (else
+            (let ((h (/ n 2)))
+              (ms-merge A cmp
+                (ms-sort-n A cmp h (ms-take A h xs))
+                (ms-sort-n A cmp (- n h) (ms-drop A h xs))))))))
+
+(def list-sort (-> (0 A (type 0)) (-> A A Ord) (List A) (List A))
+  (lam (A cmp xs)
+    (ms-sort-n A cmp (length A xs) xs)))
+
+; ------------------------------------------------- E156: adjacent-run dedup
+; list-dedup-adj: drop every element that is (eq) to its IMMEDIATE PREDECESSOR.
+; Binder order matches list-sort exactly -- (0 A) type, comparator, list -- so
+; the two compose with no adapter and the arg-order convention E151b already
+; refused to relitigate stays put.
+;
+; CONTRACT. This is `uniq`, NOT `sort -u`: on an unsorted list it compresses
+; RUNS only. De-duplication is GLOBAL solely as the COMPOSITION with list-sort,
+; and only because a sort groups (eq) elements adjacently.
+; SURVIVOR: the FIRST element of each run. Composed after the STABLE list-sort
+; that is the earliest occurrence in INPUT order. The rule is written down here
+; because it is not observable through a comparator whose (eq) implies value
+; equality (str-cmp on Str) and IS observable through one whose (eq) does not
+; (a key projection) -- see .planning/specs/E156-sort-adopt-SPEC.md §3 D5. The
+; fused ins-sorted/sort-dedup this replaces kept the LAST, by accident of
+; recursion order, and no comment anywhere said so.
+;
+; Termination: dd-skip is structural on ys, list-dedup-adj on xs -- no fuel,
+; total by E11.
+; dd-skip: emit ys with every (eq)-to-`keep` element removed, opening a new run
+; at each survivor. `dd-` matches the `ms-` internals convention of list-sort
+; (and the flat emitted-label namespace workaround, E154). It is defined BEFORE
+; its caller: the loader resolves names in blob order, so a forward reference is
+; `load: unknown name dd-skip` -- the same reason ms-take/ms-merge precede
+; ms-sort-n above.
+(declare dd-skip (-> (0 A (type 0)) (-> A A Ord) A (List A) (List A)))
+
+(def dd-skip
+  (lam (A cmp keep ys)
+    (case ys
+      (nil nil)
+      ((cons y r)
+        (case (cmp keep y)
+          ((eq) (dd-skip A cmp keep r))                ; duplicate: DROP the later one
+          ((lt) (cons y (dd-skip A cmp y r)))          ; a new run opens at y
+          ((gt) (cons y (dd-skip A cmp y r))))))))     ; unsorted input: same move
+
+(declare list-dedup-adj (-> (0 A (type 0)) (-> A A Ord) (List A) (List A)))
+
+(def list-dedup-adj
+  (lam (A cmp xs)
+    (case xs
+      (nil nil)
+      ((cons x r) (cons x (dd-skip A cmp x r))))))     ; x survives; drop its run

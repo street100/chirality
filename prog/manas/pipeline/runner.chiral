@@ -13,7 +13,8 @@
 ; model is a deferred integration step — this module's gate is that B1 LOWERS it.
 
 (import "prelude/prelude")             ; str-cat, i64->str, List, Pair
-(import "prelude/collections")         ; foldl, append, reverse, str-join
+(import "prelude/list")
+(import "prelude/string")
 (import "manas/backend")             ; be-chat / be-chat-stream (=> … [(=> Str Unit)] ChatR), Msg, msg, ChatR
 (import "protocol/json")                ; json-parse-str, Json (j-arr), obj-get, as-str
 (import "manas/core/assemble") ; assemble-prompt

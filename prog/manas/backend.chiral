@@ -17,7 +17,8 @@
 ; (train-start/status are documented-not-built on the worker; add when they land.)
 
 (import "prelude/prelude")
-(import "prelude/collections")
+(import "prelude/list")
+(import "prelude/maybe")
 (import "protocol/http")
 (import "protocol/json")
 

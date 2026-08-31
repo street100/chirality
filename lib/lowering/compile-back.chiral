@@ -15,7 +15,7 @@
 (import "lowering/upper/lower")               ; LCore / LCArm / TalTy / CEnv / TalSig / compile-fn
 (import "lowering/tal/erase")           ; erase-fn : (List DData) TFn -> XF ; NFn
 (import "lowering/lowspec")             ; NTalTy / NCore / NArm / NDef
-(import "prelude/collections")         ; E27 Map: tree-set literal dedup
+(import "prelude/map")
 (import "prelude/string")
 (import "lowering/skip-diag")           ; E97: SkReason/SkRec + format-blame (single decl home)
 

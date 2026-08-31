@@ -12,7 +12,7 @@
 ;        FLAG 4C: resize sibling clamps to min 1×1; total-area may drift.
 
 (import "prelude/prelude")
-(import "prelude/collections")
+(import "prelude/list")
 (import "scriba/puffer")
 (import "scriba/list-utils")
 

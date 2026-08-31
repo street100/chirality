@@ -19,7 +19,7 @@
 ; ExpertCall/RunManifest/GateRule/GateDecision/PipelineMatch/BindResult) are E133.
 
 (import "prelude/prelude")             ; str-eq, str-cat, i64->str, cond, List, Pair, Maybe, Bool
-(import "prelude/collections")         ; foldl, filter, find, append, reverse
+(import "prelude/list")
 (import "manas/core/types")    ; the record types + PlanOutcome's field types
 (import "manas/core/match")    ; match-pipeline, pipeline-id  (match-found/none/tied)
 (import "manas/core/gate")     ; run-gate, dedup-str, elem-str  (gate-fired/no-match)

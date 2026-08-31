@@ -1,0 +1,52 @@
+; Association lists: the map until there is a better map. Keyed by a
+; caller-supplied equality, so one alist works for Str and I64.
+;
+; SUPERSEDED SEED (E27, 2026-07-28): prelude/map is the graduation of
+; alist-get/put/has. New registries take the tree. These stay for callers that
+; only need a tiny linear-scan map, and for the migration trail.
+
+(import "prelude/prelude")
+
+; E161: all pure, all category A, in the checked form. The port-set half is not
+; written: it is DERIVED on this module's datasheet from what it binds, and this
+; module binds no extern at all, so its `crossings` is empty by derivation.
+(module prelude/alist (cat A) (alt upper))
+
+(def alist-get (-> (0 K (type 0)) (0 V (type 0))
+                   (-> K K Bool) (List (Pair K V)) K (Maybe V))
+  (lam (K V eq xs k)
+    (case xs
+      (nil none)
+      ((cons h t)
+        (case h
+          ((pair hk hv)
+            (let ((r (eq hk k))) (cond (r (some hv)) (else (alist-get K V eq t k))))))))))
+
+(def alist-put (-> (0 K (type 0)) (0 V (type 0))
+                   (-> K K Bool) (List (Pair K V)) K V (List (Pair K V)))
+  (lam (K V eq xs k v)
+    (case xs
+      (nil (cons (pair k v) nil))
+      ((cons h t)
+        (case h
+          ((pair hk hv)
+            (let ((r (eq hk k))) (cond (r (cons (pair k v) t)) (else (cons (pair hk hv) (alist-put K V eq t k v)))))))))))
+
+(def alist-has (-> (0 K (type 0)) (0 V (type 0))
+                   (-> K K Bool) (List (Pair K V)) K Bool)
+  (lam (K V eq xs k)
+    (let (r (alist-get K V eq xs k))
+      (case r
+        (none false)
+        ((some v) true)))))
+
+; ---------------------------------------------------------------- E27: Map
+; A height-balanced (AVL) persistent ordered map, keyed by an explicitly
+; supplied TOTAL comparator (-> K K Ord). Trichotomy is an exhaustive case
+; the coverage checker verifies; iteration (m-fold) is ascending by the
+; comparator REGARDLESS of insertion order -- that determinism is the whole
+; point: this order is the canonical registry order the fixpoint's
+; determinism debts pin against (DETERMINISM-DEBTS D-2). Every operation is
+; pure and structurally recursive (proven total); the pre-insert map stays
+; valid. bytes-cmp is E25-gated (no byte-compare primitive yet); tyv-cmp is
+; the assigned D-1 follow-on.

@@ -8,7 +8,7 @@
 ; control spine the profile layer stands on.
 
 (import "prelude/prelude")
-(import "prelude/collections")
+(import "prelude/list")
 
 ; The result of one transition. Two constructors, so a machine cannot forget to
 ; say whether it is done: continue, or halt.

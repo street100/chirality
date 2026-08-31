@@ -9,7 +9,7 @@
 ; run-batch analog) can trip the circuit across runs. Structural fold -> total.
 
 (import "prelude/prelude")               ; I64, Pair, List
-(import "prelude/collections")           ; foldl, append
+(import "prelude/list")
 (import "manas/core/types")      ; RunManifest, ExpertCall, RawCall
 (import "manas/manas")                 ; cycle-step, Turn, turn, produced, failed
 (import "manas/fsm")                   ; Step, step-go, step-halt

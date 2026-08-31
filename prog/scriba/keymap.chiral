@@ -9,7 +9,7 @@
 (import "prelude/prelude")
 (import "scriba/key-parser")
 (import "ports/ports")
-(import "prelude/collections")
+(import "prelude/alist")
 
 ; --- Key equality ----------------------------------------------------------
 

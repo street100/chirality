@@ -24,7 +24,7 @@
 (import "scriba/manas-mode")                  ; mf-row, mh-row, join-comma, rrows-append  (S14 helpers, reused)
 (import "manas/core/types")            ; ExpertOutcome, Expert, Binding, Config, Pipeline, RunManifest, CombinerOutcome
 ; --- the effectful driver's deps (commit 2) ---
-(import "prelude/collections")                 ; reverse, append
+(import "prelude/list")
 (import "manas/backend")                     ; backend (the Backend ctor), Backend
 (import "manas/pipeline/plan")         ; plan-run, PlanOutcome, assemble-manifest, ids-of-experts, bnd-model, exp-slot, yield-of
 (import "manas/pipeline/runner")       ; call-expert, call-combiner, call-expert-stream, call-combiner-stream, gather-findings (S17 twins)
