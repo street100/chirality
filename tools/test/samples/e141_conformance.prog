@@ -1,0 +1,133 @@
+; e141_conformance.chiral — E141 conformance: the manas golden-manifest test oracle.
+;
+; Two halves, one exit-code oracle (exit 0 iff every assertion holds, else 1):
+;
+; A. DESERIALIZE THE REAL GOLDEN. Read orchestrator/golden/3dde…-manifest.json
+;    off disk (open-rw/read/fd-close — this half is EFFECTFUL =>), json-parse it,
+;    manifest-from-json it, and assert the extracted shape matches the real file:
+;      pipeline-id="doc-refine", config-id="smoke-local", fired-expert-ids len 2,
+;      expert-calls len 5, first call expert-id="claim-vs-source"/slot="cheap-verifier".
+;    (Proves manifest-from-json digs the ACTUAL golden correctly, not a mini.)
+;
+; B. STRUCTURAL CONFORMANCE (pure). Over synthetic manifests:
+;      self             manifest-conforms base base            => true
+;      mutated config   different config-id                    => false
+;      mutated slot     an expert-call's slot changed          => false
+;      mutated fired    different fired-expert-ids             => false
+;      mutated routing  different routing-decision             => false
+;      ignored-differ   golden vs actual agreeing on ALL stable fields but
+;                       differing in run-id/request/paths/pipeline-choice/
+;                       config-binds/chunks/patches/final-yield/generated-at AND
+;                       per-call prompt-sha256/duration-ms  => true
+;    (Proves manifest-conforms discriminates on the STABLE fields and IGNORES the
+;     non-deterministic ones — SPEC §8 "compare structure, not responses".)
+
+(import "prelude/prelude")
+(import "protocol/json")                    ; json-parse
+(import "manas/core/types")        ; RunManifest, ExpertCall, Binding
+(import "manas/contract/manifest") ; manifest-from-json + accessors
+(import "manas/contract/golden")   ; manifest-conforms
+(import "ports/ports")                   ; open-rw, read, adopt-fd, fd-close
+
+; ---------------------------------------------------------- file-read helpers (=>)
+; NUL-terminated path bytes (chirality strings have no \0 escape).
+(def e141-path-bytes (-> Str Bytes)
+  (lam (p) (bcat (str->bytes p) (bslice (pack-u32 0) 0 1))))
+
+; drain a whole fd in 64 KiB chunks; empty chunk = EOF.
+(def e141-read-all (=> I64 Bytes Bytes)
+  (lam (fd acc)
+    (let (chunk (read fd 65536))
+      (case (=i (blen chunk) 0)
+        (true acc)
+        (false (e141-read-all fd (bcat acc chunk)))))))
+
+; close a raw fd: mint the linear Fd cap, consume it exactly once.
+(def e141-close (=> I64 Unit)
+  (lam (fd) (fd-close (adopt-fd fd))))
+
+; ---------------------------------------------------------- pure list helpers
+(def len-str (-> (List Str) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (len-str t))))))
+(def len-ec (-> (List ExpertCall) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (len-ec t))))))
+(def first-ec (-> (List ExpertCall) (Maybe ExpertCall))
+  (lam (xs) (case xs (nil none) ((cons h t) (some h)))))
+
+; ---------------------------------------------------------- synthetic manifests
+; mkec: an ExpertCall fixing the STABLE fields (expert-id/slot/bound-model) +
+; the IGNORED prompt-sha/duration; the rest defaulted.
+(def mkec (-> Str Str Str Str I64 ExpertCall)
+  (lam (eid slot bm psha dur)
+    (expert-call eid slot bm 0 psha "" true true dur)))
+
+; mk: a RunManifest fixing only the STABLE fields; every IGNORED field defaulted.
+(def mk (-> Str Str Str (List Str) (List ExpertCall) RunManifest)
+  (lam (pid cid rd fei ecs)
+    (run-manifest "" "" "" "" pid "" rd fei cid
+      (the (List Binding) nil) (the (List I64) nil) ecs (the (List Str) nil) "" "")))
+
+(def fei2 (List Str) (cons "claim-vs-source" (cons "anchor-sharpen" nil)))
+(def ecA ExpertCall (mkec "claim-vs-source" "cheap-verifier" "qwen2.5:0.5b" "SHA-A" 100))
+
+(def base       RunManifest (mk "doc-refine" "smoke-local" "route" fei2 (cons ecA nil)))
+(def mut-config RunManifest (mk "doc-refine" "DIFFERENT"   "route" fei2 (cons ecA nil)))
+(def mut-slot   RunManifest
+  (mk "doc-refine" "smoke-local" "route" fei2
+      (cons (mkec "claim-vs-source" "WRONG-SLOT" "qwen2.5:0.5b" "SHA-A" 100) nil)))
+(def mut-fired  RunManifest (mk "doc-refine" "smoke-local" "route"
+                                (cons "claim-vs-source" nil) (cons ecA nil)))
+(def mut-route  RunManifest (mk "doc-refine" "smoke-local" "OTHER-ROUTE" fei2 (cons ecA nil)))
+
+; ignored-differ pair: agree on ALL stable fields, differ everywhere ignored.
+(def golden-i RunManifest
+  (run-manifest "rid-A" "req-A" "dp" "ap" "doc-refine" "pc-A" "route" fei2 "smoke-local"
+    (the (List Binding) nil) (the (List I64) nil) (cons ecA nil) (the (List Str) nil)
+    "yield-A" "ts-A"))
+(def actual-i RunManifest
+  (run-manifest "rid-B" "req-B" "dp2" "ap2" "doc-refine" "pc-B" "route" fei2 "smoke-local"
+    (cons (binding "s" "m" 1) nil) (cons 9 nil)
+    (cons (mkec "claim-vs-source" "cheap-verifier" "qwen2.5:0.5b" "SHA-B" 999) nil)
+    (cons "patch" nil) "yield-B" "ts-B"))
+
+; conformance battery (pure). Expected: self/ign true; the four mutants false.
+(def conf-ok (-> I64 Bool)
+  (lam (_)
+    (and (manifest-conforms base base)
+    (and (not (manifest-conforms base mut-config))
+    (and (not (manifest-conforms base mut-slot))
+    (and (not (manifest-conforms base mut-fired))
+    (and (not (manifest-conforms base mut-route))
+         (manifest-conforms golden-i actual-i))))))))
+
+; ---------------------------------------------------------- the golden shape check
+(def golden-shape-ok (-> RunManifest Bool)
+  (lam (m)
+    (and (str-eq (manifest-pipeline-id m) "doc-refine")
+    (and (str-eq (manifest-config-id m) "smoke-local")
+    (and (=i (len-str (manifest-fired-expert-ids m)) 2)
+    (and (=i (len-ec (manifest-expert-calls m)) 5)
+         (case (first-ec (manifest-expert-calls m))
+           (none false)
+           ((some c) (and (str-eq (ec-expert-id c) "claim-vs-source")
+                          (str-eq (ec-slot c) "cheap-verifier"))))))))))
+
+; ---------------------------------------------------------- entry (effectful)
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (fd (open-rw (e141-path-bytes
+               "/workspace/manas/orchestrator/golden/3dde39e42ec84ef0a94dd72e204d0572-manifest.json")))
+      (case (<i fd 0)
+        (true 90)                                  ; open failed
+        (false
+          (let (mbytes (e141-read-all fd (str->bytes "")))
+            (let (_ (e141-close fd))
+              (case (json-parse mbytes)
+                (none 91)                          ; JSON parse failed
+                ((some j)
+                  (case (manifest-from-json j)
+                    (none 92)                      ; deserialize failed
+                    ((some m)
+                      (case (and (golden-shape-ok m) (conf-ok 0))
+                        (true 0)
+                        (false 1)))))))))))))

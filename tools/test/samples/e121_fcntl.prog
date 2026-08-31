@@ -1,0 +1,56 @@
+; e121_fcntl.chiral — behavioral sample for E121 fcntl(F_GETFD/F_SETFD) crossing.
+; TWO legs (SPEC §5):
+;   (a) standalone round-trip through nr 72, independent of E110: open a fd,
+;       fcntl(fd, F_SETFD, FD_CLOEXEC), then fcntl(fd, F_GETFD, 0), and assert
+;       the close-on-exec bit round-tripped (`band result FD_CLOEXEC ≠ 0`). Also
+;       cross-checks the typed sugar `fd-cloexec?`. Drives the exit code.
+;         10 open failed · 11 F_SETFD failed · 12 F_GETFD failed
+;         20 bit did NOT round-trip · 21 fd-cloexec? disagreed · 42 success
+;   (b) E110 integration payoff: after open-pty yields master, observe
+;       `fd-cloexec? master`. Clear pre-E110 (open-pty opens the master without
+;       O_CLOEXEC), set once E110 lands. Present and observed; NEVER gates leg (a)'s
+;       exit — it is the conclusive gate E110's SPEC deferred, wired but not yet green.
+;
+; Verified via the resolver blob (imports resolve to prelude/ports/bytes-tal/term).
+; Requires a devpts mount (/dev/ptmx) for both legs.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "lowering/tal/bytes")
+(import "protocol/term")
+
+(def ptmx-path Bytes (bcat (str->bytes "/dev/ptmx") nul-byte))
+
+; Leg (b): observe the pty master's close-on-exec bit (clear pre-E110). Returns
+; the bit as a value; on a devpts-less host it returns -errno. Observational only.
+(def observe-master-cloexec (=> Unit I64)
+  (lam (u)
+    (case (open-pty unit)
+      ((pty-err e) e)
+      ((pty-ok master slave idx)
+        (let (bit (fd-cloexec? master))
+          (let (_ (close slave))
+            (let (_ (close master)) bit)))))))
+
+; Leg (a): standalone fcntl set→get round-trip; drives the exit code.
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (fd (open-rw ptmx-path))
+      (case (<i fd 0)
+        (true 10)
+        (false
+          (let (sr (fcntl fd F_SETFD FD_CLOEXEC))
+            (case (<i sr 0)
+              (true (let (_ (close fd)) 11))
+              (false
+                (let (gf (fcntl fd F_GETFD 0))
+                  (case (<i gf 0)
+                    (true (let (_ (close fd)) 12))
+                    (false
+                      (case (=i (band gf FD_CLOEXEC) 0)
+                        (true (let (_ (close fd)) 20))
+                        (false
+                          (case (=i (fd-cloexec? fd) FD_CLOEXEC)
+                            (false (let (_ (close fd)) 21))
+                            (true
+                              (let (_ (observe-master-cloexec unit))
+                                (let (_ (close fd)) 42)))))))))))))))))

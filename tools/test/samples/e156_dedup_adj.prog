@@ -1,0 +1,116 @@
+; e156_dedup_adj.chiral — the E156 adjacent-run-dedup runtime gate.
+;
+; E156 retires row-infer.chiral's private fused sort+dedup (ins-sorted /
+; sort-dedup) in favour of two OWNED ops composed at the call site:
+; `list-sort` (E152) and `list-dedup-adj` (E156), both in
+; lib/prelude/{ord,list,maybe,alist,map,set}.chiral.
+;
+; THE SURVIVOR RULE, written down because the fused code never was:
+; list-dedup-adj keeps the FIRST element of each (eq) run. Composed after the
+; STABLE list-sort that is the earliest occurrence in INPUT order. The
+; incumbent kept the LAST — by accident of recursion order, never on purpose.
+; Rationale: .planning/specs/E156-sort-adopt-SPEC.md §3 D5.
+;
+; ⚑ WHY A str-cmp-ONLY TEST CANNOT BE THE GATE. On Str, (eq) implies value
+; equality, so keep-first and keep-last return EQUAL lists — such a test
+; cannot fail the decision this element makes. The teeth are the
+; key-projection block below (cases 5–6): a comparator over (Pair I64 Str)
+; that sees the KEY only, where the two rules are observably different —
+; "b,a,e" (keep-first, this implementation) vs "d,c,e" (the incumbent's rule).
+;
+; And the CONTRACT: this is `uniq`, NOT `sort -u`. On an unsorted list it
+; compresses RUNS only (cases 7–8); global de-duplication is the COMPOSITION
+; with list-sort and nothing else. An implementation carrying a seen-set would
+; pass every str-cmp case and every survivor case and fail those two.
+;
+; Exit 0 iff ALL correct; else the 1-based number of the first failing case.
+(import "prelude/prelude")
+(import "prelude/string")
+(import "prelude/ord")
+(import "prelude/list")
+
+; ── rendering: a whole result list becomes one comma-joined string, so one
+; str-eq settles a case (the e152_list_sort convention).
+(def dd-t-show (-> (List Str) Str) (lam (xs) (str-join "," xs)))
+
+(def dd-t-showi (-> I64 Str) (lam (n) (i64->str n)))
+
+; ── the survivor subject: (Pair I64 Str) — an integer KEY and a distinct TAG.
+; The comparator sees the KEY only, so (eq) does NOT imply value equality and
+; "which duplicate survives" has an observable answer. Mirrors
+; e152_list_sort.chiral:151's ls-t-key, deliberately: the same fixture that
+; proves list-sort STABLE here proves list-dedup-adj keeps the FIRST.
+(def dd-t-key (-> (Pair I64 Str) (Pair I64 Str) Ord)
+  (lam (p q)
+    (case p
+      ((pair pk pv)
+        (case q
+          ((pair qk qv) (i64-cmp pk qk)))))))
+
+(def dd-t-tag (-> (Pair I64 Str) Str) (lam (p) (case p ((pair k v) v))))
+(def dd-t-fst (-> (Pair I64 Str) I64) (lam (p) (case p ((pair k v) k))))
+
+(def dd-t-tags (-> (List (Pair I64 Str)) Str)
+  (lam (ps) (str-join "," (map-list (Pair I64 Str) Str dd-t-tag ps))))
+
+(def dd-t-keys (-> (List (Pair I64 Str)) Str)
+  (lam (ps)
+    (str-join "," (map-list I64 Str dd-t-showi
+                    (map-list (Pair I64 Str) I64 dd-t-fst ps)))))
+
+; ── the fixtures ────────────────────────────────────────────────────────────
+(def dd-t-empty  (List Str) nil)
+(def dd-t-uniq   (List Str) (cons "a" (cons "b" (cons "c" nil))))
+(def dd-t-mixed  (List Str) (cons "b" (cons "a" (cons "c" (cons "a" (cons "b" nil))))))
+(def dd-t-same   (List Str) (cons "z" (cons "z" (cons "z" nil))))
+; unsorted, with the SAME element in two separate runs — the sort -u/uniq split
+(def dd-t-split  (List Str) (cons "b" (cons "b" (cons "a" (cons "b" nil)))))
+(def dd-t-nodups (List Str) (cons "a" (cons "b" (cons "a" nil))))
+
+; keys 2,1,2,1,3 with distinct tags. list-sort (stable) gives b,d,a,c,e;
+; keeping the FIRST of each key-run gives b,a,e. Keeping the LAST — the
+; incumbent's accidental rule — gives d,c,e.
+(def dd-t-pairs (List (Pair I64 Str))
+  (cons (pair 2 "a")
+  (cons (pair 1 "b")
+  (cons (pair 2 "c")
+  (cons (pair 1 "d")
+  (cons (pair 3 "e") nil))))))
+
+; ── the checks, as one flat Bool list; the first false is the exit code ─────
+(def dd-t-first-bad (-> (List Bool) I64 I64)
+  (lam (bs k)
+    (case bs
+      (nil 0)
+      ((cons b rest)
+        (case b
+          (false k)
+          (true (dd-t-first-bad rest (+ k 1))))))))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (dd-t-first-bad
+      (cons ; 1..4  G1 -- the str-cmp shapes (which CANNOT see the survivor rule)
+        (str-eq (dd-t-show (list-dedup-adj Str str-cmp dd-t-empty)) "")
+      (cons
+        (str-eq (dd-t-show (list-dedup-adj Str str-cmp dd-t-uniq)) "a,b,c")
+      (cons
+        (str-eq (dd-t-show (list-dedup-adj Str str-cmp
+                  (list-sort Str str-cmp dd-t-mixed))) "a,b,c")
+      (cons
+        (str-eq (dd-t-show (list-dedup-adj Str str-cmp
+                  (list-sort Str str-cmp dd-t-same))) "z")
+      (cons ; 5..6  G2 -- THE SURVIVOR ROW. keep-FIRST => b,a,e (keep-last => d,c,e)
+        (str-eq (dd-t-tags (list-dedup-adj (Pair I64 Str) dd-t-key
+                  (list-sort (Pair I64 Str) dd-t-key dd-t-pairs))) "b,a,e")
+      (cons
+        (str-eq (dd-t-keys (list-dedup-adj (Pair I64 Str) dd-t-key
+                  (list-sort (Pair I64 Str) dd-t-key dd-t-pairs))) "1,2,3")
+      (cons ; 7..8  G3 -- uniq, NOT sort -u: runs only, on UNSORTED input
+        (str-eq (dd-t-show (list-dedup-adj Str str-cmp dd-t-split)) "b,a,b")
+      (cons
+        (str-eq (dd-t-show (list-dedup-adj Str str-cmp dd-t-nodups)) "a,b,a")
+      (cons ; 9  purity: the input list is untouched by having been deduped
+        (str-eq (dd-t-show dd-t-mixed) "b,a,c,a,b")
+        nil)))))))))
+      1)))

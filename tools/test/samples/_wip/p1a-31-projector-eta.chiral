@@ -1,0 +1,7 @@
+; V31: p1a-26 but the projector is ETA-EXPANDED to a 2-lam chain.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare add1 (-> I64 I64)) (def add1 (lam (x) (+ x 1)))
+(declare voc-draw (-> Voc (-> I64 I64)))
+(def voc-draw (lam (v) (the (-> I64 I64) (lam (y) (case v ((voc d n) (d y)))))))
+(declare compile-main (-> Unit I64)) (def compile-main (lam (u) (- ((voc-draw (voc add1 1)) 10) 11)))

@@ -1,0 +1,23 @@
+; e126_socketpair_drain.chiral — E126 conformance: THE HERMETIC sv-drain MILESTONE.
+;
+; socketpair() returns TWO real connected native Sock caps (AF_UNIX/SOCK_STREAM)
+; with NO peer, NO listener, NO network — the property that distinguishes E126
+; from the deferred sock-connect sibling (E127). Both caps flow into a `SockVec`
+; and `sv-drain` closes each exactly once (sock-close -> nb-sys-close, E107).
+; Exit 42 = both real caps acquired and drained. Exit 1 = socketpair -errno.
+;
+; This is the run that first exercises the hand-authored `ti-cona` in
+; nb-sys-socketpair-t end-to-end (the first native crossing returning a boxed
+; port-carrying sum). It fails to compile under the OLD B1 (no `socketpair`
+; extern / no `SockPairR`), so the milestone is a true delta.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "capability/lincoll")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (socketpair unit)
+      ((sp-err m) 1)
+      ((sp-ok a b)
+        (case (sv-drain (sv-push a (sv-push b sv-nil)))
+          (unit 42))))))

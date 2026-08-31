@@ -1,0 +1,26 @@
+; E170 lane E -- MUST NOT COMPILE. Sock vs LSock: the wrong protocol state.
+;
+; The wrong implementation: send on the LISTENING socket. `Sock` and `LSock` are
+; "the same wire, different protocol state" (ports/sock.chiral:17) -- one fd, one
+; kernel object -- and sending on a listener is a protocol error, not a type
+; confusion in any structural sense.
+;
+; ⚑ WHY THE WRONGNESS IS SEMANTIC AND NOT STRUCTURAL, and this is the sharpest
+; case in the lane. `Sock` and `LSock` are BOTH nullary opaque linear atoms:
+; `(porttype Sock)` and `(porttype LSock)` declare types with identical
+; structure, identical kind, identical linearity, and no fields to disagree
+; about. There is nothing structural left for a checker to object to. The only
+; thing that can refuse this file is the two atoms' NOMINAL IDENTITY -- which is
+; the port type carrying meaning and nothing else.
+;
+; The twin is `pe-send-s` in e170_port_twin.chiral: the same body, the parameter
+; declared `(1 s Sock)`.
+;
+; want: exit 1, `load: type mismatch`
+
+(import "ports/sock")
+
+(def pe-send-s (=> (1 l LSock) Bytes SendR)
+  (lam (l bs) (sock-send l bs)))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

@@ -1,0 +1,13 @@
+; e106_reject_nonlinear_field.chiral — E106 conformance: REJECTION 4 of 4.
+;
+; A container that DECLARES a non-`1` field over a porttype is rejected at the
+; DECLARATION gate (check-dfields -> linear-bad?, loader.chiral:208-209): a linear
+; value may not inhabit an unrestricted field. `hd` here omits the quantity, so it
+; defaults to ω over the linear `Env` — the exact mistake `SockVec` avoids by
+; writing `(1 hd Sock)`. Expected B1 verdict: `load: linear field declared non-1: hd`.
+(import "prelude/prelude")
+(import "ports/ports")
+
+(data BadVec ()
+  (bv-nil)
+  (bv-cons (hd Env) (1 tl BadVec)))

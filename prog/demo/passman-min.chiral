@@ -1,0 +1,32 @@
+; demo/passman-min.chiral -- the E40 proof in miniature: a password-manager
+; fragment whose vault secret STRUCTURALLY cannot be sent to a socket.
+;
+; The whole demonstration is one word. `leak` (kept COMMENTED) hands a Secret
+; straight to sock-send; it does not compile, because sock-send wants Bytes and
+; a Secret is not Bytes and has no constructor to coerce it -- the rejection
+; happens at elaboration, before anything runs. The sanctioned path routes the
+; same secret through the single audited exit `secret-reveal` first, so the
+; plaintext appears at exactly one greppable call site, then the ordinary sink
+; accepts the Bytes.
+
+(import "prelude/prelude")
+(import "ports/ports")
+(import "capability/secret")   ; Secret, RevealR, secret-seal/reveal/wipe, send-revealed
+
+; ---- the leak that will not compile ----------------------------------------
+; Uncomment to watch the checker reject it: the second argument of sock-send is
+; Bytes, `pw` is Secret. TYPE ERROR at the sock-send site (expected Bytes, got
+; Secret), before anything runs. This is the whole NLnet Milestone-1 proof.
+;
+;   (def leak (=> (1 pw Secret) (1 s Sock) Sock)
+;     (lam (pw s) (sock-send s pw)))
+
+; ---- the sanctioned path: seal, then reveal at the one exit, then send ------
+; A vault entry arrives as plaintext bytes, is sealed into a Secret, and can
+; only reach the wire through the audited exit inside send-revealed. This shows
+; the whole custody chain end to end: the plaintext is loose Bytes for exactly
+; the two lines it takes to seal it, then it is opaque until the one reveal.
+(def unlock-and-send (=> Bytes (1 s Sock) SendR)
+  (lam (entry s)
+    (do (<- pw (secret-seal entry))       ; plaintext bytes -> opaque Secret
+        (send-revealed pw s))))           ; reveal (audited) then send

@@ -1,0 +1,679 @@
+; E170 Lane D -- THE GENERATOR. Properties QUANTIFIED over the closed `Term`
+; sum, instead of instances hand-written one per arm.
+;
+; The measurement this answers (.planning/RUNG1-CHECKLIST.md:398-470, 3c5d35c):
+; of the 312 python-checker-only test functions, 267 (85.6 %) are OUTCOME-LOCKING
+; -- they carry a literal somebody typed -- and 40 are relational, of which 33 are
+; GENERATABLE because the rule set they are about is already a closed sum in this
+; tree. The largest generatable family is 17 tests keyed to `infer`'s arms, and
+; `test_kernel_fulladt_chirality.py:248`'s `assert_infer_agrees` is that generator's
+; inner loop, hand-unrolled 12 times over a written corpus of terms.
+;
+; ⚑ WHAT CHANGES WHEN THE ORACLE GOES, stated before anything else, because it
+; is the honest limit of this file. `assert_infer_agrees` compares chirality's
+; `infer` against kernel.py's -- a SECOND PRODUCER. Nothing in-tree replaces
+; that: the Rocq leg re-founds zero of the 335 (E170 D1). What IS in-tree is
+; `infer`'s other mode. So the relation this file quantifies is
+; infer-against-CHECK, not infer-against-an-oracle, and under E168's ranks that
+; is two paths through ONE rule set concurring: implementation-derived, and it
+; would not catch a rule that is wrong in a self-consistent way. Lane E is the
+; lane that reaches correctness; this one reaches coherence, exhaustively, over
+; a sum the compiler enumerates. Saying which is which is the whole point of
+; having ranks.
+;
+; ⚑ WHAT MAKES IT A GENERATOR AND NOT SIXTEEN TESTS. `ia-tag` is an EXHAUSTIVE
+; `case` over `(data Term)`. Add a constructor and this file stops compiling
+; (coverage); delete one and check A's count moves. That is the same mechanism
+; E170 D7 already relies on for `or-python` -- "when it reaches zero occurrences
+; it is deleted from the sum and the compiler enumerates the remainder" -- and it
+; is why the family is a fold over the sum rather than a list somebody maintains.
+; Checks B, C, E, F are folds over that family: each new arm costs a witness and
+; buys four properties. Check G folds over `Qty` x `Seat` x the type witnesses.
+;
+; ⚑ FAMILY MEMBERSHIP IS NEVER DECIDED BY A RULE UNDER TEST -- the Lane C
+; discipline, carried forward. `ia-tag` is structural. `ia-vsame?` is this
+; file's OWN equality on `Value`, deliberately not `conv` and not `subtype`: a
+; negative half whose "different type" test were decided by the subtyping the
+; positive half exercises would be circular, and a vacuous `conv` would empty it.
+;
+; ⚑ AND LAWS ALONE ARE NOT ENOUGH -- measured in Lane C, where reverting `qadd`'s
+; `1+1` left every algebraic law green. Checks A/B/E/F/G are laws; C is the
+; negative half that stops "check accepts everything" from satisfying B; D is the
+; PIN -- it composes the two modes the way bidirectional typing means them:
+; the one arm `infer` refuses is exactly the arm `check` introduces, and it is
+; refused against a non-function. A `check` that always says ok fails C; an
+; `infer` whose lambda arm synthesizes fails D.
+;
+; ⚑ THE THREE RULES THIS BUYS ISOLATED COVERAGE FOR. `RUNG1-CHECKLIST.md:455-458`
+; lists `infer-pi`, `infer-app` and `infer-ann` as "combination only" -- exercised
+; by every fixture, the subject of none, so no test fails when only one of them
+; is wrong. Checks E (annotation transparency), F (application at the identity)
+; and G (Pi formation over Qty x Seat) are those three, quantified rather than
+; instanced. They are the coverage this file adds that nothing in the corpus had.
+;
+; ⚑ WHAT IT DOES NOT BUY, and this is a per-rule measurement, not a hedge. A
+; mutant that moves an ARM'S RESULT -- `t-lit-i` synthesizing Str instead of I64 --
+; moves `infer` and `check` together, so every relational check here stays GREEN
+; while an outcome lock asserting `I64` reddens. Measured; see the subsumption
+; matrix in .planning/RUNG1-CHECKLIST.md. Those locks are NOT retirable, and this
+; file does not claim them.
+;
+; ⚑ THE MUTANTS RUN, one per check that judges a LIBRARY rule. `mut-run` cannot
+; express them -- it observes the base by PATH and the mutant by SELF-CONTAINED
+; TEXT (test-floor.chiral:611-627), while breaking a checker rule means editing
+; the library the fixture resolves against -- so the falsifiers are harness-run
+; through `mutant_red` in test-e168-floor.sh, which greps this file for each
+; label below before applying the mutation the label names. Measured 2026-08-29
+; against a scratch copy of scaffold/lib; each reddens ITS OWN check and the
+; report names that check's expectation:
+;   B  kernel.chiral subsume: (true (ck-ok use)) -> (true (ck-ok (uzero (ctx-len c))))
+;   C  kernel.chiral subsume: (false (ck-err "type mismatch")) -> (false (ck-ok use))
+;   D  kernel.chiral infer: the t-lam arm synthesizes a Pi instead of refusing
+;   E  kernel.chiral infer-ann2: the annotation no longer checks the term
+;   F  kernel.chiral infer-app2: the argument is no longer checked against the domain
+;   G  kernel.chiral infer-pi2: (v-type (max-lvl l1 l2)) -> (v-type (+ 1 (max-lvl l1 l2)))
+;   H  kernel.chiral quote-val: ((v-lit-s x) (t-lit-s x)) -> ((v-lit-s x) (t-lit-i 0))
+; ⚑ D's mutant synthesizes a PI and not a mismatched type, on purpose. A t-lam
+; arm returning I64 is caught by check B first (the report would then name B, and
+; D would be riding on a check that is not it); returning the very type `check`
+; would have introduced leaves B and C green and is caught by D alone. A mutant
+; that reddens the wrong check measures the wrong thing.
+;
+; ⚑ AND THE SEVEN ARE ISOLATING, measured 2026-08-29 as a 13x4 matrix: each of
+; these seven reddens this fixture and leaves Lane C's three green, and each of
+; Lane C's six reddens its own and leaves this one green. A clean block diagonal,
+; run rather than argued. ⚑ Lane C's C2 pair is the informative zero: `qfits`'s
+; q1-arm admitting `qw` leaves this fixture GREEN, because its context binds at
+; `qw` and the linearity accounting is never the deciding case here. The
+; generator does not cover the QTT discipline and does not claim to -- that is
+; e170_qtt_semiring's row, and it stays.
+;
+; The observations are the fixture's own evaluations, so the gate is handed them
+; through `suite-main` rather than gathered by `test-main`.
+;
+; exit 0 = every check green; 1 = the floor's report on stdout names which.
+
+(import "evidence/test-floor")
+(import "typing/kernel")
+
+; ============================================================ the environment
+; One `Sig` and one `Ctx`, shared by every witness, so that a difference between
+; two arms is a difference in the ARM and not in what it was handed.
+(def ia-i64 Term (t-primty "I64"))
+(def ia-arrow Term (t-pi (qw) (s-pure) ia-i64 ia-i64))
+(def ia-ge0 (List RfAtom) (cons (r-atom (s-ge) (t-lit-i 0)) nil))
+
+(def ia-bool DataDecl
+  (data-decl "Bool" (the (List Term) nil)
+    (cons (ctor "true"  (the (List Field) nil))
+    (cons (ctor "false" (the (List Field) nil)) nil))))
+
+(def ia-sig Sig
+  (mk-sig (cons (pair "gi" (pair ia-i64 (t-lit-i 3))) nil)
+          (cons (pair "pf" ia-arrow) nil)
+          (cons ia-bool nil)
+          (the (List Str) nil) (the (List Str) nil)
+          (the (List TargetDef) nil) (the (List Profile) nil)
+          (the (List ModKind) nil) (the (List Sheet) nil)))
+
+; one binding, at qw, so `t-var 0` has something to synthesize and no arm is
+; refused for a linearity reason that has nothing to do with the arm.
+(def ia-ctx Ctx (ctx-bind (qw) (v-primty "I64") (ctx-nil)))
+(def ia-lvl I64 (ctx-len ia-ctx))
+
+; ============================================================ the family
+; ONE minimal inhabitant per constructor of `(data Term)` (syntax.chiral:18-34),
+; each typeable under `ia-sig`/`ia-ctx` -- except `t-lam`, which is the arm the
+; bidirectional discipline refuses on purpose and which check D is about.
+(def ia-case-arms (List KArm)
+  (cons (karm "true" 0 (t-lit-i 1)) (cons (karm "false" 0 (t-lit-i 2)) nil)))
+(def ia-btrue Term (t-con "Bool" "true" (the (List Term) nil)))
+
+(def ia-arms (List Term)
+  (cons (t-var 0)
+  (cons (t-type 0)
+  (cons (t-pi (qw) (s-pure) ia-i64 ia-i64)
+  (cons (t-lam (t-var 0))
+  (cons (t-app (t-prim "pf") (t-lit-i 5))
+  (cons (t-let (qw) (t-lit-i 1) (t-var 0))
+  (cons (t-ann (t-lit-i 7) ia-i64)
+  (cons (t-global "gi")
+  (cons (t-prim "pf")
+  (cons (t-primty "I64")
+  (cons (t-lit-i 5)
+  (cons (t-lit-s "s")
+  (cons ia-btrue
+  (cons (t-tcon "Bool" (the (List Term) nil))
+  (cons (t-case ia-btrue ia-case-arms (the (Maybe Term) none))
+  (cons (t-refine ia-i64 ia-ge0)
+    nil)))))))))))))))))
+
+; THE ENUMERATION OF THE SUM. Exhaustive by construction: the coverage checker
+; refuses this `case` if a constructor is added to `Term` and not answered here.
+(def ia-tag (-> Term I64)
+  (lam (t)
+    (case t
+      ((t-var i)          0)
+      ((t-type n)         1)
+      ((t-pi q s d c)     2)
+      ((t-lam b)          3)
+      ((t-app f a)        4)
+      ((t-let q v b)      5)
+      ((t-ann tm ty)      6)
+      ((t-global n)       7)
+      ((t-prim n)         8)
+      ((t-primty n)       9)
+      ((t-lit-i v)       10)
+      ((t-lit-s v)       11)
+      ((t-con dn cn a)   12)
+      ((t-tcon dn a)     13)
+      ((t-case sc ar df) 14)
+      ((t-refine b at)   15))))
+
+; ============================================================ this file's own equalities
+; ⚑ NOT `conv`, NOT `subtype`. See the header: a family whose membership were
+; decided by the rule under test makes the negative half circular, and Lane C
+; measured a vacuous-`conv` mutant that satisfies every positive law there is.
+(declare ia-vsame?     (-> Value Value Bool))
+(declare ia-vsame-args (-> (List Value) (List Value) Bool))
+(declare ia-heq?       (-> Neut Neut Bool))
+
+(def ia-heq?
+  (lam (a b)
+    (case a
+      ((n-var k)    (case b ((n-var j)    (=i k j))     (_ false)))
+      ((n-global n) (case b ((n-global m) (str-eq n m)) (_ false)))
+      ((n-prim n)   (case b ((n-prim m)   (str-eq n m)) (_ false))))))
+
+(def ia-vsame-args
+  (lam (as bs)
+    (case as
+      (nil (case bs (nil true) (_ false)))
+      ((cons x r)
+        (case bs
+          (nil false)
+          ((cons y r2) (and (ia-vsame? x y) (ia-vsame-args r r2))))))))
+
+(def ia-vsame?
+  (lam (a b)
+    (case a
+      ((v-type n)       (case b ((v-type m)       (=i n m))     (_ false)))
+      ((v-primty n)     (case b ((v-primty m)     (str-eq n m)) (_ false)))
+      ((v-lit-i x)      (case b ((v-lit-i y)      (=i x y))     (_ false)))
+      ((v-lit-s x)      (case b ((v-lit-s y)      (str-eq x y)) (_ false)))
+      ((v-ne h sp)      (case b ((v-ne h2 sp2)    (and (ia-heq? h h2) (ia-vsame-args sp sp2))) (_ false)))
+      ((v-tcon dn as)   (case b ((v-tcon en bs)   (and (str-eq dn en) (ia-vsame-args as bs))) (_ false)))
+      ((v-con dn cn as) (case b ((v-con en fn bs) (and (str-eq dn en) (and (str-eq cn fn) (ia-vsame-args as bs)))) (_ false)))
+      ((v-pi q s d c)
+        (case b
+          ((v-pi q2 s2 d2 c2)
+            (and (qeq q q2)
+              (and (seat= s s2)
+                (and (ia-vsame? d d2)
+                     (ia-vsame? (clos-apply c (fresh ia-lvl)) (clos-apply c2 (fresh ia-lvl)))))))
+          (_ false)))
+      (_ false))))
+
+; usage vectors, elementwise, by this file's own `qeq` fold
+(declare ia-useq (-> (List Qty) (List Qty) Bool))
+(def ia-useq
+  (lam (u1 u2)
+    (case u1
+      (nil (case u2 (nil true) (_ false)))
+      ((cons a r1)
+        (case u2
+          (nil false)
+          ((cons b r2) (and (qeq a b) (ia-useq r1 r2))))))))
+
+; ---- the five wants the negative halves quantify over -----------------------
+; Pairwise unrelated under `subtype`: no two of them are in a subtyping relation,
+; so "not the arm's own type" and "must be refused" cannot come apart through
+; cumulativity or refinement-forgetting. Declared here because check A's
+; anti-vacuity term reads them before checks C/E/F use them.
+(def ia-wants (List Value)
+  (cons (v-primty "I64")
+  (cons (v-primty "Str")
+  (cons (v-primty "Nope")
+  (cons (v-tcon "Bool" (the (List Value) nil))
+  (cons (v-type 0) nil))))))
+
+; ============================================================ folds
+(declare ia-count1 (-> (-> Term Bool) (List Term) I64))
+(def ia-count1
+  (lam (p ts)
+    (case ts
+      (nil 0)
+      ((cons t r) (+ (case (p t) (true 0) (false 1)) (ia-count1 p r))))))
+
+(declare ia-len (-> (List Term) I64))
+(def ia-len (lam (ts) (case ts (nil 0) ((cons t r) (+ 1 (ia-len r))))))
+
+(declare ia-count-tag (-> I64 (List Term) I64))
+(def ia-count-tag
+  (lam (k ts)
+    (case ts
+      (nil 0)
+      ((cons t r) (+ (case (=i (ia-tag t) k) (true 1) (false 0)) (ia-count-tag k r))))))
+
+; ---- A: the family really is the sum ---------------------------------------
+; Every tag 0..15 is inhabited exactly once, and the family has exactly that many
+; members. Deleting an arm from `Term` (or a witness from `ia-arms`) moves this
+; number; adding one to `Term` stops `ia-tag` compiling.
+(declare ia-cover-fails (-> I64 I64))
+(def ia-cover-fails
+  (lam (k)
+    (case (<i k 0)
+      (true 0)
+      (false (+ (case (=i (ia-count-tag k ia-arms) 1) (true 0) (false 1))
+                (ia-cover-fails (- k 1)))))))
+
+; ...and the negative halves below are NOT vacuous. A refusal quantified over an
+; empty family passes over nothing (Lane C's C3 row exists for exactly this), so
+; the extent is asserted rather than described: every arm that synthesizes must
+; exercise at least 4 of the 5 wants -- at most one want can be its own type.
+; Measured 2026-08-29: 62 refusals per negative half, 13 arms trying 4 and 2
+; trying 5. ⚑ This check and the coverage above are STRUCTURAL guards on the
+; fixture's own family, not on a library rule, so neither has a `mutant_red` row:
+; their falsifiers are a compile error (add a Term constructor) and a fixture
+; edit (drop a witness or a want). Both were run out of band and are recorded in
+; the subsumption matrix; saying so is cheaper than implying a mutant exists.
+(declare ia-tried-row (-> Value (List Value) I64))
+(def ia-tried-row
+  (lam (ty ws)
+    (case ws
+      (nil 0)
+      ((cons w r) (+ (case (ia-vsame? ty w) (true 0) (false 1)) (ia-tried-row ty r))))))
+(declare ia-vacuous (-> (List Term) I64))
+(def ia-vacuous
+  (lam (ts)
+    (case ts
+      (nil 0)
+      ((cons t r)
+        (+ (case (infer ia-sig ia-ctx t)
+             ((tc-err m) 0)
+             ((tc-ok ty u) (case (<=i 4 (ia-tried-row ty ia-wants)) (true 0) (false 1))))
+           (ia-vacuous r))))))
+
+(def ia-family-fails (-> I64 I64)
+  (lam (n)
+    (+ (ia-cover-fails 15)
+      (+ (case (=i (ia-len ia-arms) 16) (true 0) (false 1))
+         (ia-vacuous ia-arms)))))
+
+; ---- B: the two modes agree, on type AND on usage --------------------------
+; The generated `assert_infer_agrees`: for every arm the fixture can synthesize,
+; re-checking the term against its own synthesized type must succeed with the
+; same usage vector. `t-lam` synthesizes nothing and is judged by D.
+(def ia-coheres? (-> Term Bool)
+  (lam (t)
+    (case (infer ia-sig ia-ctx t)
+      ((tc-err m) true)
+      ((tc-ok ty u)
+        (case (check ia-sig ia-ctx t ty)
+          ((ck-err m) false)
+          ((ck-ok u2) (ia-useq u u2)))))))
+
+; ---- C: the negative half ---------------------------------------------------
+; Without this, a `check` that returns `ck-ok` unconditionally satisfies B for
+; every arm. Five pairwise-unrelated wants; each arm is checked against every one
+; that is not its own synthesized type (decided by `ia-vsame?`, above), and every
+; one of those must be REFUSED.
+(declare ia-neg-row (-> Term Value (List Value) I64))
+(def ia-neg-row
+  (lam (t ty ws)
+    (case ws
+      (nil 0)
+      ((cons w r)
+        (+ (case (ia-vsame? ty w)
+             (true 0)
+             (false (case (check ia-sig ia-ctx t w) ((ck-ok u) 1) ((ck-err m) 0))))
+           (ia-neg-row t ty r))))))
+
+(declare ia-neg-count (-> (List Term) I64))
+(def ia-neg-count
+  (lam (ts)
+    (case ts
+      (nil 0)
+      ((cons t r)
+        (+ (case (infer ia-sig ia-ctx t)
+             ((tc-err m) 0)
+             ((tc-ok ty u) (ia-neg-row t ty ia-wants)))
+           (ia-neg-count r))))))
+
+; ---- D: THE PIN -- the mode switch ------------------------------------------
+; A law suite alone re-founds nothing (Lane C, measured). This composes the two
+; modes the way bidirectional typing MEANS them rather than restating either:
+; exactly one arm of the sum is un-synthesizable, it is `t-lam`, and that same
+; arm is the one `check` introduces against a function type and refuses against
+; anything else. An `infer` whose lambda arm synthesizes fails the first two; a
+; `check-body` that drops the `v-pi` discrimination fails the fourth.
+(declare ia-err-count (-> (List Term) I64))
+(def ia-err-count
+  (lam (ts)
+    (case ts
+      (nil 0)
+      ((cons t r) (+ (case (infer ia-sig ia-ctx t) ((tc-err m) 1) ((tc-ok ty u) 0))
+                     (ia-err-count r))))))
+(declare ia-err-tagsum (-> (List Term) I64))
+(def ia-err-tagsum
+  (lam (ts)
+    (case ts
+      (nil 0)
+      ((cons t r) (+ (case (infer ia-sig ia-ctx t) ((tc-err m) (ia-tag t)) ((tc-ok ty u) 0))
+                     (ia-err-tagsum r))))))
+
+(def ia-lam Term (t-lam (t-var 0)))
+(def ia-arrow-v Value (eval-term nil ia-arrow))
+
+(def ia-mode-fails (-> I64 I64)
+  (lam (n)
+    ; exactly one arm of the sum cannot be synthesized
+    (+ (case (=i (ia-err-count ia-arms) 1) (true 0) (false 1))
+      ; and it is the lambda -- tag 3, decided by ia-tag and not by the message
+      (+ (case (=i (ia-err-tagsum ia-arms) 3) (true 0) (false 1))
+        ; the arm infer refuses is the arm check INTRODUCES, against a function
+        (+ (case (check ia-sig ia-ctx ia-lam ia-arrow-v) ((ck-ok u) 0) ((ck-err m) 1))
+          ; and it is refused against a non-function -- the discrimination is
+          ; what makes the acceptance mean something
+          (+ (case (check ia-sig ia-ctx ia-lam (v-primty "I64")) ((ck-ok u) 1) ((ck-err m) 0))
+            ; and `infer` still refuses it in the presence of that success
+            (case (infer ia-sig ia-ctx ia-lam) ((tc-err m) 0) ((tc-ok ty u) 1))))))))
+
+; ---- E: annotation transparency (infer-ann), generated ---------------------
+; `the T t` synthesizes T whenever t does, for every arm of the sum: annotating a
+; term with the type it already has changes neither the type nor the usage. And
+; annotating it with a type it does not have is refused.
+(def ia-ann-ok? (-> Term Bool)
+  (lam (t)
+    (case (infer ia-sig ia-ctx t)
+      ((tc-err m) true)
+      ((tc-ok ty u)
+        (case (infer ia-sig ia-ctx (t-ann t (quote-val ia-lvl ty)))
+          ((tc-err m2) false)
+          ((tc-ok ty2 u2) (and (ia-vsame? ty ty2) (ia-useq u u2))))))))
+
+(declare ia-annneg-row (-> Term Value (List Value) I64))
+(def ia-annneg-row
+  (lam (t ty ws)
+    (case ws
+      (nil 0)
+      ((cons w r)
+        (+ (case (ia-vsame? ty w)
+             (true 0)
+             (false (case (infer ia-sig ia-ctx (t-ann t (quote-val ia-lvl w)))
+                      ((tc-ok ty2 u2) 1) ((tc-err m) 0))))
+           (ia-annneg-row t ty r))))))
+
+(declare ia-ann-fails (-> (List Term) I64))
+(def ia-ann-fails
+  (lam (ts)
+    (case ts
+      (nil 0)
+      ((cons t r)
+        (+ (case (ia-ann-ok? t) (true 0) (false 1))
+           (+ (case (infer ia-sig ia-ctx t)
+                ((tc-err m) 0)
+                ((tc-ok ty u) (ia-annneg-row t ty ia-wants)))
+              (ia-ann-fails r)))))))
+
+; ---- F: application at the identity (infer-app), generated -----------------
+; For every arm the fixture can synthesize at T, applying the identity function
+; AT T to it synthesizes T; applying an identity at any other type is refused.
+; This is `infer-app` driven as a subject rather than used as a tool.
+; ⚑ The usage vector is deliberately NOT compared here: `infer-app` returns
+; `uadd fu (uscale q ua)` and the identity is bound at `qw`, so the argument's
+; usage is scaled on purpose. Comparing it would assert the scaling is absent.
+(def ia-id-at (-> Term Term)
+  (lam (tt) (t-ann (t-lam (t-var 0)) (t-pi (qw) (s-pure) tt tt))))
+
+(def ia-app-ok? (-> Term Bool)
+  (lam (t)
+    (case (infer ia-sig ia-ctx t)
+      ((tc-err m) true)
+      ((tc-ok ty u)
+        (case (infer ia-sig ia-ctx (t-app (ia-id-at (quote-val ia-lvl ty)) t))
+          ((tc-err m2) false)
+          ((tc-ok ty2 u2) (ia-vsame? ty ty2)))))))
+
+(declare ia-appneg-row (-> Term Value (List Value) I64))
+(def ia-appneg-row
+  (lam (t ty ws)
+    (case ws
+      (nil 0)
+      ((cons w r)
+        (+ (case (ia-vsame? ty w)
+             (true 0)
+             (false (case (infer ia-sig ia-ctx (t-app (ia-id-at (quote-val ia-lvl w)) t))
+                      ((tc-ok ty2 u2) 1) ((tc-err m) 0))))
+           (ia-appneg-row t ty r))))))
+
+(declare ia-app-fails (-> (List Term) I64))
+(def ia-app-fails
+  (lam (ts)
+    (case ts
+      (nil 0)
+      ((cons t r)
+        (+ (case (ia-app-ok? t) (true 0) (false 1))
+           (+ (case (infer ia-sig ia-ctx t)
+                ((tc-err m) 0)
+                ((tc-ok ty u) (ia-appneg-row t ty ia-wants)))
+              (ia-app-fails r)))))))
+
+; ---- G: Pi formation (infer-pi) over Qty x Seat -----------------------------
+; Forming a function type over a type A lands in A's own universe, for EVERY
+; quantity and EVERY seat: the quantity and the seat are carried, not consulted,
+; at formation. Quantified over both closed sums (3 x 2) and the five type
+; witnesses drawn from the arm family. The refusals are the other half: a domain
+; that is not a type, and a codomain that is not a type, at every q and seat.
+(def ia-qtys (List Qty) (cons (q0) (cons (q1) (cons (qw) nil))))
+(def ia-seats (List Seat) (cons (s-pure) (cons (s-proc) nil)))
+(def ia-tys (List Term)
+  (cons ia-i64
+  (cons (t-type 0)
+  (cons ia-arrow
+  (cons (t-tcon "Bool" (the (List Term) nil))
+  (cons (t-refine ia-i64 ia-ge0) nil))))))
+
+(def ia-pi-law? (-> Qty Seat Term Bool)
+  (lam (q s a)
+    (case (infer ia-sig ia-ctx a)
+      ((tc-err m) false)
+      ((tc-ok aty au)
+        (case (infer ia-sig ia-ctx (t-pi q s a a))
+          ((tc-err m2) false)
+          ((tc-ok pty pu) (ia-vsame? aty pty)))))))
+
+(def ia-pi-neg? (-> Qty Seat Bool)
+  (lam (q s)
+    (and (case (infer ia-sig ia-ctx (t-pi q s (t-lit-i 5) ia-i64)) ((tc-err m) true) ((tc-ok ty u) false))
+         (case (infer ia-sig ia-ctx (t-pi q s ia-i64 (t-lit-i 5))) ((tc-err m) true) ((tc-ok ty u) false)))))
+
+(declare ia-pi-row (-> Qty Seat (List Term) I64))
+(def ia-pi-row
+  (lam (q s as)
+    (case as
+      (nil 0)
+      ((cons a r) (+ (case (ia-pi-law? q s a) (true 0) (false 1)) (ia-pi-row q s r))))))
+(declare ia-pi-seats (-> Qty (List Seat) I64))
+(def ia-pi-seats
+  (lam (q ss)
+    (case ss
+      (nil 0)
+      ((cons s r) (+ (+ (ia-pi-row q s ia-tys)
+                        (case (ia-pi-neg? q s) (true 0) (false 1)))
+                     (ia-pi-seats q r))))))
+(declare ia-pi-fails (-> (List Qty) I64))
+(def ia-pi-fails
+  (lam (qs)
+    (case qs
+      (nil 0)
+      ((cons q r) (+ (ia-pi-seats q ia-seats) (ia-pi-fails r))))))
+
+
+; ---- H: the NbE round-trip, over the same sum ------------------------------
+; The corpus's B4 family is "f o g = id" pairs, 7 tests, and eval/quote is the
+; one whose sum is `Term` -- so it folds over the family already built rather
+; than needing a second one. Three terms, and the third is the PIN:
+;   (1) normalization is IDEMPOTENT -- a normal form is normal, which is the
+;       round-trip stated where it is actually true (`quote (eval t) = t` is
+;       false for every reducible arm, and a test asserting it would be
+;       asserting the absence of reduction);
+;   (2) it is not the identity -- at least three arms MOVE, so (1) is not the
+;       trivial law about a function that does nothing;
+;   (3) SUBJECT REDUCTION: the normal form synthesizes the same type as the
+;       term. This is the pin, in the Lane C sense: (1) and (2) are algebra
+;       about eval/quote and hold for any confluent rewriting; (3) is what
+;       normalization MEANS to a checker, and it is the only one of the three
+;       that composes NbE with the judgment.
+; ⚑ Decided by this file's own structural `ia-tsame?`, NOT by `conv`: `conv` is
+; the rule Lane C's C1 fixture is about, a vacuous `conv` satisfies every
+; positive law there is, and a round-trip judged by it would be circular.
+(declare ia-tsame?   (-> Term Term Bool))
+(declare ia-tsames   (-> (List Term) (List Term) Bool))
+(declare ia-tsame-mb (-> (Maybe Term) (Maybe Term) Bool))
+(declare ia-tsame-ka (-> (List KArm) (List KArm) Bool))
+(declare ia-tsame-ra (-> (List RfAtom) (List RfAtom) Bool))
+
+(def ia-opix (-> SymOp I64)
+  (lam (o) (case o ((s-ge) 0) ((s-gt) 1) ((s-le) 2) ((s-lt) 3) ((s-ne) 4))))
+
+(def ia-tsames
+  (lam (as bs)
+    (case as
+      (nil (case bs (nil true) (_ false)))
+      ((cons x r) (case bs (nil false) ((cons y r2) (and (ia-tsame? x y) (ia-tsames r r2))))))))
+(def ia-tsame-mb
+  (lam (a b)
+    (case a
+      (none (case b (none true) (_ false)))
+      ((some x) (case b ((some y) (ia-tsame? x y)) (_ false))))))
+(def ia-tsame-ka
+  (lam (as bs)
+    (case as
+      (nil (case bs (nil true) (_ false)))
+      ((cons x r)
+        (case bs
+          (nil false)
+          ((cons y r2)
+            (case x ((karm cn nv bd)
+              (case y ((karm cn2 nv2 bd2)
+                (and (str-eq cn cn2) (and (=i nv nv2) (and (ia-tsame? bd bd2) (ia-tsame-ka r r2)))))))))))))) 
+(def ia-tsame-ra
+  (lam (as bs)
+    (case as
+      (nil (case bs (nil true) (_ false)))
+      ((cons x r)
+        (case bs
+          (nil false)
+          ((cons y r2)
+            (case x ((r-atom o t)
+              (case y ((r-atom o2 t2)
+                (and (=i (ia-opix o) (ia-opix o2)) (and (ia-tsame? t t2) (ia-tsame-ra r r2))))))))))))) 
+
+(def ia-tsame?
+  (lam (a b)
+    (case a
+      ((t-var i)      (case b ((t-var j)      (=i i j))     (_ false)))
+      ((t-type n)     (case b ((t-type m)     (=i n m))     (_ false)))
+      ((t-lam bd)     (case b ((t-lam bd2)    (ia-tsame? bd bd2)) (_ false)))
+      ((t-global n)   (case b ((t-global m)   (str-eq n m)) (_ false)))
+      ((t-prim n)     (case b ((t-prim m)     (str-eq n m)) (_ false)))
+      ((t-primty n)   (case b ((t-primty m)   (str-eq n m)) (_ false)))
+      ((t-lit-i v)    (case b ((t-lit-i w)    (=i v w))     (_ false)))
+      ((t-lit-s v)    (case b ((t-lit-s w)    (str-eq v w)) (_ false)))
+      ((t-app f x)    (case b ((t-app g y)    (and (ia-tsame? f g) (ia-tsame? x y))) (_ false)))
+      ((t-pi q s d c) (case b ((t-pi q2 s2 d2 c2)
+                                (and (qeq q q2) (and (seat= s s2) (and (ia-tsame? d d2) (ia-tsame? c c2)))))
+                        (_ false)))
+      ((t-let q v bd) (case b ((t-let q2 v2 bd2)
+                                (and (qeq q q2) (and (ia-tsame? v v2) (ia-tsame? bd bd2))))
+                        (_ false)))
+      ((t-ann tm ty)  (case b ((t-ann tm2 ty2) (and (ia-tsame? tm tm2) (ia-tsame? ty ty2))) (_ false)))
+      ((t-con dn cn as) (case b ((t-con en fn bs) (and (str-eq dn en) (and (str-eq cn fn) (ia-tsames as bs)))) (_ false)))
+      ((t-tcon dn as) (case b ((t-tcon en bs)  (and (str-eq dn en) (ia-tsames as bs))) (_ false)))
+      ((t-case sc ar df) (case b ((t-case sc2 ar2 df2)
+                                   (and (ia-tsame? sc sc2) (and (ia-tsame-ka ar ar2) (ia-tsame-mb df df2))))
+                           (_ false)))
+      ((t-refine bs at) (case b ((t-refine bs2 at2) (and (ia-tsame? bs bs2) (ia-tsame-ra at at2))) (_ false))))))
+
+; normalization IN THE FIXTURE'S CONTEXT: `normalize` evaluates in the empty
+; environment and cannot reach `t-var 0`, so the family's variable arm would be
+; judged on a stuck read rather than on a binding.
+(def ia-nf (-> Term Term)
+  (lam (t) (quote-val ia-lvl (eval-term (env-of ia-ctx) t))))
+
+(def ia-idem? (-> Term Bool) (lam (t) (ia-tsame? (ia-nf (ia-nf t)) (ia-nf t))))
+
+(declare ia-moved (-> (List Term) I64))
+(def ia-moved
+  (lam (ts)
+    (case ts
+      (nil 0)
+      ((cons t r) (+ (case (ia-tsame? (ia-nf t) t) (true 0) (false 1)) (ia-moved r))))))
+
+(def ia-subject? (-> Term Bool)
+  (lam (t)
+    (case (infer ia-sig ia-ctx t)
+      ((tc-err m) true)
+      ((tc-ok ty u)
+        (case (infer ia-sig ia-ctx (ia-nf t))
+          ((tc-err m2) false)
+          ((tc-ok ty2 u2) (ia-vsame? ty ty2)))))))
+
+(def ia-nbe-fails (-> I64 I64)
+  (lam (n)
+    (+ (ia-count1 ia-idem? ia-arms)
+      (+ (case (<=i 3 (ia-moved ia-arms)) (true 0) (false 1))   ; measured: exactly 3
+         (ia-count1 ia-subject? ia-arms)))))
+
+; ===========================================================================
+; the gate. Every expectation is rank 3 (`pv-meaning`) -- a law written down
+; before it was run -- and the gate carries no differential, so no rank floor
+; applies and none is claimed.
+; ===========================================================================
+(def ia-checks (List Expect)
+  (cons (ex (obk-given "the family IS the closed Term sum -- every one of the 16 constructors inhabited exactly once, ia-tag's exhaustive case making a 17th a compile error rather than a silent gap -- and the negative halves below are non-vacuous: every synthesizing arm exercises at least 4 of the 5 wants")
+            (ob-int 0) (pv-meaning "a property quantified over a sum is only quantified over it if the enumeration is the compiler's and not a list somebody maintains"))
+  (cons (ex (obk-given "the two modes agree on every arm: re-checking a term against the type it synthesized succeeds, with the SAME usage vector")
+            (ob-int 0) (pv-meaning "bidirectional typing has one rule set read two ways; a term that synthesizes T must check at T, and the QTT accounting must not depend on which way it was read -- this is assert_infer_agrees with check as the second producer instead of the oracle"))
+  (cons (ex (obk-given "and check REFUSES every want that is not the arm's own synthesized type -- 5 pairwise-unrelated wants, minus the arm's own, over all 16 arms")
+            (ob-int 0) (pv-meaning "a check that returns ok unconditionally satisfies the agreement law for every arm there is; the negative half is the only thing that can tell agreement from acceptance"))
+  (cons (ex (obk-given "THE PIN: exactly ONE arm of the sum cannot be synthesized, it is t-lam, and that same arm is the one check INTRODUCES against a function type and refuses against a non-function")
+            (ob-int 0) (pv-meaning "the mode switch is what bidirectional typing means: the un-annotated lambda is not an unsupported case, it is the arm whose type comes from the checking direction, and a rule set where infer synthesized it would satisfy every agreement law above"))
+  (cons (ex (obk-given "annotation transparency (infer-ann): (the T t) synthesizes T with t's usage for every arm that synthesizes T, and annotating with any other type is refused")
+            (ob-int 0) (pv-meaning "an annotation is a mode switch and not a computation: it must move nothing when it agrees and refuse when it does not -- infer-ann is used as a tool by dozens of fixtures and was the subject of none"))
+  (cons (ex (obk-given "application at the identity (infer-app): applying the identity AT T to a term of type T synthesizes T for every arm, and applying an identity at any other type is refused")
+            (ob-int 0) (pv-meaning "the application rule instantiates the codomain at the argument and checks the argument against the domain; driving it at the identity makes both halves observable per arm instead of only in combination"))
+  (cons (ex (obk-given "Pi formation (infer-pi) over the closed Qty x Seat sums: (Pi q s A A) lands in A's own universe for all 3 quantities and both seats and all 5 type witnesses, and a non-type domain or codomain is refused at every one of the 6 combinations")
+            (ob-int 0) (pv-meaning "quantity and seat are CARRIED by a Pi, not consulted at its formation; the universe is the max of the two halves, and formation is where 'is a type' is decided"))
+  (cons (ex (obk-given "the NbE round-trip over the same sum: normalization is idempotent on every arm, it is NOT the identity (at least three arms reduce), and the normal form synthesizes the SAME type as the term")
+            (ob-int 0) (pv-meaning "quote-after-eval is a retraction onto normal forms, so the round-trip law that is actually true is idempotence, not quote(eval t)=t; and subject reduction is what normalization means to a checker rather than to a rewriting system"))
+    nil)))))))))
+
+; ⚑ THE WRITTEN CLAIM, and test-e168-floor.sh greps this file for this exact
+; label before running the mutation it names. A hand-written MutRun is a claim,
+; not evidence (test-floor.chiral:517-520); the harness is what makes it evidence.
+(def ia-adequacy MutRun
+  (mu-killed "lib/typing/kernel.chiral infer: the t-lam arm synthesizes a Pi instead of refusing"
+             (ob-int 0) (ob-int 1)))
+
+(def ia-suite (List Suite)
+  (cons (suite "infer over the closed Term sum"
+          (cons (gate "the generator over the Term sum: coverage, mode agreement, its negative half, the mode-switch pin, infer-ann / infer-app / infer-pi quantified, and the NbE round-trip"
+                  ia-checks (the (List DiffExpect) nil) ia-adequacy)
+            nil))
+    nil))
+
+(def ia-obs (List (List Obs))
+  (cons (cons (ob-int (ia-family-fails 0))
+        (cons (ob-int (ia-count1 ia-coheres? ia-arms))
+        (cons (ob-int (ia-neg-count ia-arms))
+        (cons (ob-int (ia-mode-fails 0))
+        (cons (ob-int (ia-ann-fails ia-arms))
+        (cons (ob-int (ia-app-fails ia-arms))
+        (cons (ob-int (ia-pi-fails ia-qtys))
+        (cons (ob-int (ia-nbe-fails 0)) nil))))))))
+    nil))
+
+(def compile-main (=> I64 I64)
+  (lam (n) (suite-main ia-suite ia-obs)))

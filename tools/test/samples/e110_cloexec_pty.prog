@@ -1,0 +1,32 @@
+; e110_cloexec_pty.chiral — conclusive behavioral gate for E110 (O_CLOEXEC on the
+; pty path). E110 flips nb-sys-open-rw's open flags 258 (O_RDWR|O_NOCTTY) ->
+; 524546 (O_RDWR|O_NOCTTY|O_CLOEXEC=0x80102), so every fd from open-rw — the pty
+; master and slave among them — is opened close-on-exec.
+;
+; This sample opens the pty master via open-pty (which threads the flipped
+; open-rw) and reads the kernel's ACTUAL fd flags via the E121 fcntl crossing:
+;   fd-cloexec? master  ==  (band (fcntl master F_GETFD 0) FD_CLOEXEC)
+; A SET bit (FD_CLOEXEC = 1) proves the kernel applied O_CLOEXEC — not merely that
+; it was requested. Pre-E110 the bit is CLEAR (exit 30); post-E110 it is SET.
+;   42 = FD_CLOEXEC set on the master (the E110 payoff)
+;   30 = master opened but FD_CLOEXEC clear (flip not in effect)
+;   <0 = open-pty failed (-errno; devpts-less host — the gate is skipped there)
+;
+; Verified via the resolver blob (imports resolve to prelude/ports/bytes-tal/term).
+; Requires a devpts mount (/dev/ptmx).
+(import "prelude/prelude")
+(import "ports/ports")
+(import "lowering/tal/bytes")
+(import "protocol/term")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (open-pty unit)
+      ((pty-err e) e)
+      ((pty-ok master slave idx)
+        (let (bit (fd-cloexec? master))
+          (let (_ (close slave))
+            (let (_ (close master))
+              (case (=i bit FD_CLOEXEC)
+                (true 42)
+                (false 30)))))))))

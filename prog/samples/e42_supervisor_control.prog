@@ -1,0 +1,63 @@
+; e42_supervisor_control.chiral — E42 conformance: THE BEHAVIORAL CONTROL (exit 42).
+;
+; The RUNNING proof of the alarm core. Everything here is the PURE spine of
+; supervisor.chiral (earliest / wait-ms / remove-rid / apply-kont) — no membrane
+; crossing — so it lowers to native and runs. It demonstrates SPEC §5's behavior
+; WITHOUT the unbound `notify` crossing by feeding `apply-kont` a `KontMsg`
+; constructed directly (exactly the value `fire-earliest` reads back from notify):
+;
+;   1. ALARM FIRES  — a near-deadline alarm makes `wait-ms s now` return 0
+;                     (already due → poll would return poll-timeout → fire).
+;   2. K-RESUME re-arms FORWARD — apply-kont s now r (k-resume dt) puts an alarm at
+;                     now+dt for r and drops the old one (earliest sees now+dt).
+;   3. K-CANCEL drops — apply-kont s now r (k-cancel) removes r (earliest no longer
+;                     sees r; here the set empties → due-none).
+;   4. the pure registry is provably `->` (it compiled into the native entry).
+;
+; exit 42 = all four checks held · else a per-check failure code (10/20/30/40).
+
+(import "runtime/poll")
+(import "ports/ports")
+(import "capability/lincoll")
+(import "runtime/supervisor")
+
+; a two-alarm set: rid 7 due soon (deadline 100), rid 9 later (deadline 500).
+(def sample-set AlarmSet
+  (as-cons (alarm 100 7) (as-cons (alarm 500 9) as-nil)))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    ; ── check 1: at now=100 the rid-7 alarm is due → wait-ms = 0 (fire now) ──────
+    (case (=i (wait-ms sample-set 100) 0)
+      (false 10)
+      (true
+        ; and at now=40, rid-7 is 60ms away → wait-ms = 60 (block that long)
+        (case (=i (wait-ms sample-set 40) 60)
+          (false 10)
+          (true
+            ; ── check 2: k-resume dt=1000 at now=100 re-arms rid-7 FORWARD to 1100.
+            ; earliest of the re-armed set is now rid-9 @500 (7 moved past it).
+            (case (earliest (apply-kont sample-set 100 7 (k-resume 1000)))
+              (due-none 20)
+              ((due md mr)
+                (case (=i md 500)
+                  (false 20)
+                  (true
+                    ; the re-armed rid-7 is still present at 1100 (not dropped):
+                    (case (earliest (apply-kont (as-cons (alarm 100 7) as-nil)
+                                                100 7 (k-resume 1000)))
+                      (due-none 20)
+                      ((due md2 mr2)
+                        (case (=i md2 1100)
+                          (false 20)
+                          (true
+                            ; ── check 3: k-cancel drops rid-7; earliest → due-none.
+                            (case (earliest (apply-kont (as-cons (alarm 100 7) as-nil)
+                                                        100 7 (k-cancel)))
+                              ((due cd cr) 30)          ; still present ⇒ cancel failed
+                              (due-none
+                                ; ── check 4: remove-rid on the empty set is a no-op,
+                                ; earliest of nil is due-none (registry is total/pure).
+                                (case (earliest (remove-rid as-nil 7))
+                                  ((due xd xr) 40)
+                                  (due-none 42))))))))))))))))))  ; all four held

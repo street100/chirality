@@ -4,7 +4,11 @@ slug: <slug>
 title: <human title>
 kind: SELF-HOST | REPLACE-CRUTCH | BUILD-PROPER
 reference_class: OURS | SPEC | PAPER | IMPL
-ours_source: scaffold/chirality/<file>.py
+# ours_source is TRANSITIONAL: the zero-Python route deletes every .py in
+# this tree, so this field's referent is going away. Keep the field. It
+# records what the example was written against, and a chirality baseline
+# (lib/<name>.chiral, prog/<name>.prog) or `(none)` is equally legal.
+ours_source: tools/<name>/<name>.py
 status: drafted
 updated: <YYYY-MM-DD>
 ---
@@ -63,7 +67,8 @@ The clear-cut example — real chirality surface syntax, copy-and-modify ready.
 
 ## 6. Use / modify notes
 
-- **Lands in:** <the `scaffold/…` file this becomes, or `lib/<name>.chiral`>.
+- **Lands in:** <the file this becomes: `lib/<name>.chiral` for a module,
+  `prog/<name>.prog` for an entry point>.
 - **Conformance target:** <the golden behavior it must reproduce to be correct>.
 - **Open questions:** <the unresolved bits a real implementation must decide>.
 - **Related:** [[E<NN>-<slug>]] … <linked elements>.

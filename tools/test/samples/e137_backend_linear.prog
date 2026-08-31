@@ -1,0 +1,27 @@
+; e137_backend_linear.chiral — leaf gate for E137 (Backend as a linear porttype).
+; Hermetic (no network): exercises the linear THREADING discipline of the real
+; backend.chiral module — backend-open mints a q1 handle, be-peek launders it
+; (base beside a fresh q1 handle, twice in a chain), and backend-close discharges
+; it via be-base. If ANY be-* body in backend.chiral broke linearity, importing the
+; module would fail to lower, so a clean compile here validates the whole module's
+; q1 threading; the run confirms the peeled base round-trips.
+;
+; Exit: 42 = the chained be-peek bases both equal the original URL; 20 = mismatch.
+(import "prelude/prelude")
+(import "manas/backend")
+
+; be-peek b -> (base1 . b2); be-peek b2 -> (base2 . b3); use both bases (qw) while
+; threading b2->b3 (q1) exactly once each, then discharge b3 via backend-close.
+(def leaf (=> (1 b Backend) Str)
+  (lam (b)
+    (case (be-peek b)
+      ((be-peek-r base1 b2)
+        (case (be-peek b2)
+          ((be-peek-r base2 b3)
+            (do (backend-close b3)              ; discharge in a do-sequence
+                (str-cat base1 base2))))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (str-eq (leaf (backend-open "http://h:1")) "http://h:1http://h:1")
+      (true 42) (false 20))))

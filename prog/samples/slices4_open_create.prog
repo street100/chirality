@@ -1,0 +1,14 @@
+; slices4_open_create.chiral -- SCRIBA-SLICES 4: native open-create crossing test.
+; Exit 42 = create+truncate pass; 10/11 = create open/write fail; 20/21 = truncate open/write fail.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "lowering/tal/bytes")
+(import "protocol/term")
+
+(def oc-nul-byte Bytes (bslice (pack-u32 0) 0 1))
+
+(def oc-create-new (=> I64 I64) (lam (x) (let ((fd (open-create (bcat (str->bytes "/tmp/chirality-oc-new.txt") (bslice (pack-u32 0) 0 1))))) (case (<i fd 0) (true 10) (false (let ((n (write-fd fd (str->bytes "hello")))) (let ((_ (close fd))) (case (=i n 5) (false 11) (true 0)))))))))
+
+(def oc-truncate-existing (=> I64 I64) (lam (x) (let ((fd (open-create (bcat (str->bytes "/tmp/chirality-oc-trunc.txt") (bslice (pack-u32 0) 0 1))))) (case (<i fd 0) (true 20) (false (let ((n (write-fd fd (str->bytes "hi")))) (let ((_ (close fd))) (case (=i n 2) (false 21) (true 0)))))))))
+
+(def compile-main (=> I64 I64) (lam (n) (let ((rc1 (oc-create-new 0))) (case (=i rc1 0) (false rc1) (true (let ((rc2 (oc-truncate-existing 0))) (case (=i rc2 0) (false rc2) (true 42))))))))

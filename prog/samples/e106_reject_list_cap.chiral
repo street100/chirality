@@ -1,0 +1,12 @@
+; e106_reject_list_cap.chiral — E106 conformance: REJECTION 1 of 4.
+;
+; Storing a linear cap (an `Env` porttype) in the UNRESTRICTED `List` is rejected
+; by construction: `List`'s `hd` field is `(hd A)` (quantity ω, prelude.chiral:19),
+; and an unrestricted field could be dropped or duplicated — which would drop or
+; double-close the cap. This is WHY E106 builds a `1`-fielded `SockVec` instead
+; of reusing `List`. Expected B1 verdict: `load: linear field hd`.
+(import "prelude/prelude")
+(import "ports/ports")
+
+(def bad (-> (1 a Env) (List Env))
+  (lam (a) (cons a nil)))

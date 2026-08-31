@@ -23,7 +23,7 @@
 ; a crossing native-emits only once it is registered (spec §5c).
 (import "prelude/prelude")
 (import "ports/ports")           ; Pty, PtyAcqR, PtyReadR, adopt-pty, pty-read, pty-close, open-rw
-(import "ports/term")            ; nb-ptunlock-w, nb-ptsno, pts-path, close, nul-byte (raw dance, untouched)
+(import "protocol/term")            ; nb-ptunlock-w, nb-ptsno, pts-path, close, nul-byte (raw dance, untouched)
 
 ; open-pty-cap: the raw four-step dance, only the success arm changed to MINT the
 ; master into a Pty via adopt-pty. Error arms keep the raw close (no cap was

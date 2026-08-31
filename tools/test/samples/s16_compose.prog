@@ -1,0 +1,57 @@
+; s16_compose.chiral — S16 conformance: the PURE compose pre-flight over shipped values.
+;   T1 — pipeline-slots doc-refine-pipeline expert-pool = {combiner, cheap-verifier,
+;        reasoner} (length 3, all three members) — the conservative declared-slot set.
+;   T2 — compose-preflight doc-refine-pipeline smoke-local-config expert-pool =>
+;        bind-ok with 3 bindings (a covering config — the smoke-local proof).
+;   T3 — compose-preflight doc-refine-pipeline verifier-only expert-pool =>
+;        bind-miss carrying reasoner AND combiner + config-id "verifier-only".
+; Exit-code test (no print): exits 0 iff all three assertions hold, else 1. PURE —
+; no PTY, no network, no fork. compose-preflight is -> so the membrane already
+; PROVES no network call; this checks the RESOLUTION. Mirrors e135_bind.chiral.
+
+(import "prelude/prelude")                   ; str-eq, =i, +, and, cond, List, Bool
+(import "manas/pipeline/compose")    ; compose-preflight, pipeline-slots
+(import "manas/core/types")          ; BindResult (bind-ok/bind-miss), Config, Binding
+(import "manas/profile/profiles")    ; smoke-local-config
+(import "manas/profile/doc-refine")  ; doc-refine-pipeline, expert-pool
+
+; length of a (List Str)
+(def len-str (-> (List Str) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (len-str t))))))
+
+; length of a (List Binding)
+(def len-binds (-> (List Binding) I64)
+  (lam (bs) (case bs (nil 0) ((cons h t) (+ 1 (len-binds t))))))
+
+; membership of an id in a (List Str)
+(def mem-str (-> Str (List Str) Bool)
+  (lam (x xs)
+    (case xs
+      (nil false)
+      ((cons h t) (cond ((str-eq h x) true) (else (mem-str x t)))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((slots (pipeline-slots doc-refine-pipeline expert-pool))
+          (vonly
+            (config "verifier-only"
+              (cons (binding "cheap-verifier" "qwen2.5:0.5b" 8192) nil))))
+      (let ((t1
+              (and (=i (len-str slots) 3)
+                   (and (mem-str "combiner" slots)
+                        (and (mem-str "cheap-verifier" slots)
+                             (mem-str "reasoner" slots)))))
+            (t2
+              (case (compose-preflight doc-refine-pipeline smoke-local-config expert-pool)
+                ((bind-miss ms cid) false)
+                ((bind-ok bs) (=i (len-binds bs) 3))))
+            (t3
+              (case (compose-preflight doc-refine-pipeline vonly expert-pool)
+                ((bind-ok bs) false)
+                ((bind-miss ms cid)
+                  (and (mem-str "reasoner" ms)
+                       (and (mem-str "combiner" ms)
+                            (str-eq cid "verifier-only")))))))
+        (case (and t1 (and t2 t3))
+          (true 0)
+          (false 1))))))

@@ -1,0 +1,41 @@
+; e145_be_peek_roundtrip.chiral — behavioral sample for E145 `be-peek`, the
+; laundering peel for LINEAR str-porttypes. Backend is modelled as a str-porttype
+; (the E144 nt-str carrier + the porttype linear discipline E137 will adopt):
+; backend-open reinterprets a Str pointer AS a linear q1 Backend handle, and the
+; handle IS the base string at runtime.
+;
+; `launder` be-peeks a linear (q1) handle to get `(be-peek-r base1 b2)` — the base
+; string `base1` (unrestricted, qw) BESIDE a fresh q1 handle `b2` — then USES base1
+; in a qw op (str-len) WHILE threading b2 onward, discharging b2 via be-base at the
+; result position. This COMPILES only because a `case` binds base1 and b2 as two
+; separate binders (a case does NOT scale its scrutinee's usage): base1 is qw and
+; the handle stays q1. The plain E144 peel cannot do this — using `(be-base b)` in
+; any qw position scales the q1 handle to qw ("linear binder usage mismatch").
+;
+; Exit: 42 = the laundered/round-tripped base equals the original; 20 = mismatch.
+;
+; DISCRIMINATING: a pre-E145 compiler has no `nb-be-peek` (bytes-tal.chiral) and no
+; "be-peek" prim2lib row (tal-erase.chiral), so this program does not lower/link.
+;
+; Resolver-compiled (imports resolve to prelude), like e125_sock_roundtrip.chiral —
+; not the import-less phase-2 test-runner.
+(import "prelude/prelude")
+
+(porttype Backend)
+(extern backend-open (=> Str Backend))   ; E159: a linear result must be minted by a crossing
+(extern be-base (-> (1 b Backend) Str))
+(data BePeekR () (be-peek-r (base Str) (1 b Backend)))
+(extern be-peek (-> (1 b Backend) BePeekR))
+
+(def launder (-> (1 b Backend) Str)
+  (lam (b)
+    (case (be-peek b)
+      ((be-peek-r base1 b2)
+        (case (=i (str-len base1) 10)     ; USE base1 (qw) simultaneously with...
+          (true  (be-base b2))            ; ...threading + discharging b2 (q1)
+          (false (be-base b2)))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (str-eq (launder (backend-open "http://h:1")) "http://h:1")
+      (true 42) (false 20))))

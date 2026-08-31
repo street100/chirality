@@ -1,0 +1,23 @@
+; E42 negative: the alarm registry `earliest` is provably PURE (`-> AlarmSet DueR`).
+; The `->`/`=>` membrane is TYPE IDENTITY (E12 CONFORMS): a `=>` variant of the
+; registry CANNOT satisfy a context that requires the pure `->` type. So declaring
+; the spine `=>` and using it where `->` is demanded is a `load: type mismatch`.
+(import "runtime/poll")
+(import "ports/ports")
+(import "capability/lincoll")
+(import "runtime/supervisor")
+
+; a consumer that REQUIRES the pure registry type (-> AlarmSet DueR):
+(def needs-pure (-> (-> AlarmSet DueR) AlarmSet DueR)
+  (lam (f s) (f s)))
+
+; a `=>` (process) variant of the registry — the WRONG effect for a pure spine:
+(def earliest-proc (=> AlarmSet DueR)
+  (lam (s) (earliest s)))
+
+; passing the `=>` variant where the `->` type is required -> rejected (type identity):
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (needs-pure earliest-proc as-nil)
+      (due-none 0)
+      ((due m r) m))))

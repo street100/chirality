@@ -1,0 +1,53 @@
+; The sensor's shared core: watch a niri stream, run the behavior pack,
+; speak mood-name lines to a peer port. Used by node-sensor (which offers a
+; listening door) and by duo (which stages its own renderer with spawn).
+
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/wire")
+(import "demo/mood")
+(import "demo/behavior")
+
+; forward every complete niri line's mood change to the peer
+(data FwdR () (fwd-r (1 peer Sock) (nbuf Str) (mood Mood)))
+
+(def fwd-lines (=> (1 peer Sock) Str Mood FwdR)
+  (lam (peer buf m)
+    (case (line1 buf)
+      ((lsplit ml rest)
+        (case ml
+          (none (the FwdR (fwd-r peer rest m)))
+          ((some line)
+            (let (name (ev-name line))
+              (case (or (str-eq name "Ok") (str-eq name ""))
+                (true (fwd-lines peer rest m))
+                (false
+                  (let (m2 (on-event name m))
+                    (case (mood-eq m2 m)
+                      (true (fwd-lines peer rest m2))
+                      (false
+                        (case (sock-send peer
+                                (str->bytes (str-cat (mood-name m2) "\n")))
+                          ((send-r peer2) (fwd-lines peer2 rest m2))
+                          ((send-err em)
+                            (halt FwdR (str-cat "sensor: send failed: " em))))))))))))))))
+
+(data SSt () (sst (1 ni Sock) (1 peer Sock) (nbuf Str) (mood Mood)))
+
+(def sloop (=> (1 s SSt) Unit)
+  (lam (s0)
+    (case s0
+      ((sst ni peer nbuf m)
+        (case (sock-recv ni 4096)
+          ((recv-closed ni2)
+            (do (trace "sensor: niri stream ended")
+                (sock-close ni2) (sock-close peer)
+                (exit Unit 0)))
+          ((recv-err em)
+            (do (trace (str-cat "sensor: niri recv failed: " em))
+                (sock-close peer)
+                (exit Unit 1)))
+          ((recv-r chunk ni2)
+            (case (fwd-lines peer (str-cat nbuf (bytes->str chunk)) m)
+              ((fwd-r peer2 nbuf2 m2)
+                (sloop (the SSt (sst ni2 peer2 nbuf2 m2)))))))))))

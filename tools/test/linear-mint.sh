@@ -236,5 +236,133 @@ runs "adopt-fd twice: two separate caps, each discharged once" 42 \
                (do (fd-close a) (do (fd-close b) 42))))))'
 
 echo
+echo "=== E159 E: the case merge -- divergent linear use across arms saturates ==="
+# The fourth place a linear value comes to rest, and the one this file did not
+# cover until 2026-08-31. A `case` computes a usage vector per arm and MERGES
+# them with `qjoin` (typing/qtt.chiral:30-36): using a cap in one arm and not the
+# other is neither "used once" nor "unused", so the merge saturates to omega and
+# the binder audit then refuses it against a declared 1. Without that saturation
+# a capability is discharged on one branch and leaked on the other, and the
+# program type-checks.
+#
+# ⚑ FOUND BY MUTATION, NOT BY READING. `tools/test/mutant.sh`'s matrix ran a
+# mutant that stops the merge saturating, and it SURVIVED ALL FIVE PHASE
+# SCRIPTS -- the rule had no coverage anywhere in the suite. These rows are the
+# re-founding, and the run that produced them is what says they are needed.
+#
+# ⚑ TWO MUTANTS, NOT ONE, AND THAT IS THE POINT OF THE MIRROR ROW. `qjoin` is a
+# table with two independent non-trivial arms, `qjoin q1 q0` and `qjoin q0 q1`,
+# and a mutant weakening one leaves the other saturating. Measured: with the q1
+# arm weakened E1 and E6 go red and E2 stays GREEN; with the q0 arm weakened E2
+# goes red and E1 and E6 stay green. A clean 2x2 diagonal, so neither row is
+# redundant and neither mutant alone establishes the rule. The mirror row exists
+# because arm order is not a symmetry the table gives you for free.
+#
+# The controls ship beside the refusals because a refusal check has a way to
+# pass vacuously that an outcome lock does not: refuse everything. E3 and E5 are
+# the direction controls, and both are ADMITTED by the real compiler.
+#
+# ⚑ AND THE MESSAGE GUARD IS WHAT CONVICTS, NOT THE EXIT CODE. Under the q1-arm
+# mutant E1 is ADMITTED BY THE JUDGMENT and then dies later at lowering, because
+# these toy porttypes have no lowering rows -- so the compiler still exits
+# non-zero and a refusal check reading only the exit status would score it
+# GREEN. `refuse` greps the reason, and that is the only thing standing between
+# this row and a mutant it cannot see. It is the same shape as the `admit`
+# helper's `load:` guard, from the other side.
+
+refuse "case merge: a q1 cap burned in ONE arm only" \
+  "let binder usage mismatch" \
+  "${CAP}(extern mint (=> I64 Cap))
+(data B () (bt) (bf))
+(def compile-main (=> I64 I64)
+  (lam (n) (let ((1 c (mint 9)))
+    (case (bt) ((bt) (case (burn c) ((unit) 42))) ((bf) 0)))))"
+
+refuse "case merge: the MIRROR, burned in the other arm" \
+  "let binder usage mismatch" \
+  "${CAP}(extern mint (=> I64 Cap))
+(data B () (bt) (bf))
+(def compile-main (=> I64 I64)
+  (lam (n) (let ((1 c (mint 9)))
+    (case (bt) ((bt) 0) ((bf) (case (burn c) ((unit) 42)))))))"
+
+admit "case merge: burned in BOTH arms -- the correct lifecycle" \
+  "${CAP}(extern mint (=> I64 Cap))
+(data B () (bt) (bf))
+(def compile-main (=> I64 I64)
+  (lam (n) (let ((1 c (mint 9)))
+    (case (bt) ((bt) (case (burn c) ((unit) 42))) ((bf) (case (burn c) ((unit) 7)))))))"
+
+# Refused by the LEAK half of the same audit rather than by saturation: both
+# arms compute q0, so the merge is q0 and it is the declared 1 that rejects it.
+# It is a control on the row above, not a second saturation case, and both
+# qjoin mutants leave it red -- which is exactly why it cannot stand in for E1.
+refuse "case merge: burned in NEITHER arm (the leak half)" \
+  "let binder usage mismatch" \
+  "${CAP}(extern mint (=> I64 Cap))
+(data B () (bt) (bf))
+(def compile-main (=> I64 I64)
+  (lam (n) (let ((1 c (mint 9))) (case (bt) ((bt) 0) ((bf) 1)))))"
+
+admit "case merge: a NON-linear value in one arm only is untouched" \
+  "${CAP}(data B () (bt) (bf))
+(def compile-main (=> I64 I64)
+  (lam (n) (let ((v 5)) (case (bt) ((bt) v) ((bf) 0)))))"
+
+# The same merge one binder up: the cap arrives as a q1 PARAMETER, so the audit
+# is strip-binder rather than close-binder and the message differs. Under the
+# q1-arm mutant this one is admitted with no diagnostic at all.
+refuse "case merge across a pi binder: (1 c Cap) in one arm" \
+  "linear binder usage mismatch" \
+  "${CAP}(data B () (bt) (bf))
+(def sink (=> (1 c Cap) I64)
+  (lam (c) (case (bt) ((bt) (case (burn c) ((unit) 42))) ((bf) 0))))
+(def compile-main (=> I64 I64) (lam (n) 0))"
+
+echo
+echo "=== E159 F: the ERASED binder -- quantity 0 means zero uses, and is checked ==="
+# `qfits`'s q0 arm (typing/qtt.chiral:44): a binder declared at quantity 0 is erased,
+# so any use of it is a mismatch. Section B already has two rows with ZERO in the name
+# and they do NOT reach this arm: their values are linear `porttype`s, refused earlier
+# by a dedicated "let binds a linear value at quantity 0" check that fires before
+# `qfits` is consulted. They read as q0 coverage and are not.
+#
+# ⚑ MEASURED, NOT REASONED. tools/test/mutant.sh's `qfits-q0-accepts-all` weakens
+# exactly this arm. Before these rows it was convicted by ONE phase in the whole
+# suite, diag.sh, and only incidentally: an `e157_diag` case happens to trip over it,
+# so the erased-quantity discipline was resting on a fixture about diagnostics.
+#
+# The values here are plain `I64` on purpose. A non-linear type is what routes the
+# judgment past the linear pre-check and into `qfits` itself, which is the whole
+# reason these rows exist and section B's do not serve.
+#
+# Three arrivals at the arm, because `qfits` is asked a different question by each:
+# used once is qfits(q1,q0), used twice is qfits(qw,q0), and the pi binder reaches it
+# through strip-binder rather than close-binder and so carries a different message.
+
+refuse "erased let: (0 x 5) used once" \
+  "let binder usage mismatch" \
+  '(def compile-main (-> I64 I64) (lam (n) (let ((0 x 5)) x)))'
+
+refuse "erased let: (0 x 5) used TWICE" \
+  "let binder usage mismatch" \
+  '(def pick (-> I64 I64 I64) (lam (a b) a))
+(def compile-main (-> I64 I64) (lam (n) (let ((0 x 5)) (pick x x))))'
+
+refuse "erased pi param: (0 n I64) used in the body" \
+  "linear binder usage mismatch" \
+  '(def f (-> (0 n I64) I64) (lam (n) n))
+(def compile-main (-> I64 I64) (lam (m) (f 3)))'
+
+# The direction controls. Erasure must ADMIT the zero-use cases, or the three rows
+# above are satisfied by a checker that refuses every q0 binder outright.
+admit "erased let: (0 x 5) never used -- erasure works" \
+  '(def compile-main (-> I64 I64) (lam (n) (let ((0 x 5)) 7)))'
+
+admit "erased pi param: (0 n I64) never used -- erasure works" \
+  '(def f (-> (0 n I64) I64) (lam (n) 7))
+(def compile-main (-> I64 I64) (lam (m) (f 3)))'
+
+echo
 echo "linear mint (E159): $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

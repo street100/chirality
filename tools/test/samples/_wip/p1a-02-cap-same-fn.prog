@@ -1,0 +1,5 @@
+; V2: capture a parameter; build AND consume in the SAME function.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (let ((k 1)) (case (voc (lam (x) (+ x k)) 1) ((voc d n) (- (d 10) 11))))))

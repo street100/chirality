@@ -1,0 +1,9 @@
+; V28: the capture is a STRING (a real document payload), not an I64.
+(import "prelude/prelude")
+(data Buf () (bufv (b-len (-> Unit I64)) (b-txt (-> Unit Str))))
+(declare mk-buf (-> Str Buf))
+(def mk-buf (lam (s) (bufv (the (-> Unit I64) (lam (u) (str-len s)))
+                           (the (-> Unit Str) (lam (u) s)))))
+(declare blen (-> Buf I64)) (def blen (lam (v) (case v ((bufv l t) (l unit)))))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (- (blen (mk-buf "hello")) 5)))

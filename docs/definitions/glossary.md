@@ -90,7 +90,7 @@ see the depth-tier banks in [[banks/INDEX]] (`module`, `profile`, `runtime`,
   [[modules-broker]].
 - register root. The master secret held only in CPU registers, never written to
   RAM. The runtime root of trust against DMA. See [[modules-substrate]] and
-  [SECURE-DATUM-MODEL](../../SECURE-DATUM-MODEL.md).
+  [SECURE-DATUM-MODEL](secure-datum-model.md).
 - CHERI floor. Optional hardware enforcement of the B type mark down to silicon.
   Additive, not required. See [[modules-lowering]].
 - live environment. The first large application: a live, self-modifying

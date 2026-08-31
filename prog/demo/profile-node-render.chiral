@@ -1,0 +1,18 @@
+; Renderer node profile. The frozen set excludes listening: this runtime can
+; hold a port to a node someone else offers, and draw; it cannot offer one,
+; and it knows no behavior (no on-event requirement, none imported).
+
+(import "demo/node-render")
+
+(target node-render
+  (require main (=> Unit Unit))
+  (require node-main (=> (1 peer Sock) Unit))   ; the staged entry crossing
+  (require draw (-> (0 n I64) (=> (1 p (Pool n)) Mood (Pool n))))
+  (require mood-parse (-> Str Mood)))
+
+(profile node-render
+  (ports sock-connect sock-send sock-send-fd sock-recv sock-close poll2
+         pool-create pool-write pool-close fd-close
+         trace env-open env-view env-close exit halt)
+  (target node-render)
+  (memory linear))

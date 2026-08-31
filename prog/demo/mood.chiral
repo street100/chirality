@@ -1,0 +1,39 @@
+; The creature's mood: the one shared type between the behavior pack and the
+; renderer. Fixed contract; packs and sprites both import this.
+
+(import "prelude/prelude")
+
+(data Mood ()
+  (m-idle)
+  (m-happy)
+  (m-alarmed)
+  (m-sleep))
+
+(def mood-eq (-> Mood Mood Bool)
+  (lam (a b)
+    (case a
+      (m-idle (case b (m-idle true) (_ false)))
+      (m-happy (case b (m-happy true) (_ false)))
+      (m-alarmed (case b (m-alarmed true) (_ false)))
+      (m-sleep (case b (m-sleep true) (_ false))))))
+
+; the mood wire: how a mood crosses between nodes, one name per line
+(def mood-name (-> Mood Str)
+  (lam (m)
+    (case m
+      (m-idle "idle")
+      (m-happy "happy")
+      (m-alarmed "alarmed")
+      (m-sleep "sleep"))))
+
+(def mood-parse (-> Str Mood)
+  (lam (s)
+    (case (str-eq s "happy")
+      (true m-happy)
+      (false
+        (case (str-eq s "alarmed")
+          (true m-alarmed)
+          (false
+            (case (str-eq s "sleep")
+              (true m-sleep)
+              (false m-idle))))))))

@@ -1,0 +1,86 @@
+; manas-skill-live.chiral -- SG2 LIVE gate: specialize = CONTEXT INJECTION reaches the model.
+;
+; Actuates specialize-skill + run-skill against the mesh (100.64.0.5:11434) on the 0.5b
+; `smoke-local` model. The claim SG2 must prove LIVE: a specialization's context rides the
+; `extra` channel into EVERY tiny step's prompt (assemble-prompt's "# Extra" section), so
+; it actually reaches the model.
+;
+; The library: a base "docref" = (skill-base "docref" (pipeline->flow doc-refine-pipeline)
+; (stop-single)) + a specialization "docref-api" = specialize-skill "docref" "docref-api"
+; "CONTEXT-MARKER-XYZ". run-skill "docref-api" resolves the base flow, injects the context
+; as (context-0 . "CONTEXT-MARKER-XYZ") into `extra`, and runs the doc-refine pipeline. We
+; then GREP the run's raws (the actual SEES prompts sent to the model) for the marker:
+; present => the specialization reached the model.
+;
+; Backend is a q1 linear handle: opened once, threaded through the run, discharged with
+; backend-close (moved exactly once -- B1 enforces it).
+;
+; Exit 0 iff CONTEXT-MARKER-XYZ is found in at least one sent prompt. Non-zero otherwise.
+; If the mesh is down, be-chat returns chat-bad but the PROMPT WAS STILL ASSEMBLED + captured
+; in the RawCall, so the marker is present regardless -- the injection is what is proven here.
+;
+; Build (closure = skill + doc-refine + profiles + ports; append the sys leaves):
+;   . bin/chirality-resolve.sh
+;   chirality_blob "lib:prog" manas/core/skill manas/profile/doc-refine manas/profile/profiles ports > blob
+;   cat scaffold/samples/manas-skill-live.chiral >> blob; echo >> blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
+;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
+(import "prelude/prelude")                  ; str-cat, i64->str, +, case, do, let, and
+(import "manas/backend")                  ; backend-open / backend-close (E137 linear porttype)
+(import "manas/core/flow")          ; pipeline->flow, str-has
+(import "manas/core/types")         ; StopPolicy (stop-single), RawCall, RunManifest
+(import "manas/core/skill")         ; Skill (skill-base), specialize-skill, run-skill
+(import "manas/profile/doc-refine") ; doc-refine-pipeline, expert-pool
+(import "manas/profile/profiles")   ; smoke-local-config
+(import "ports/ports")                    ; put
+
+; ---------------------------------------------------------- the run inputs (small -- tiny-model friendly)
+; crafted so all four doc-refine GATE rules fire (path + fenced block + "Example"; extra
+; carries spec + sibling_docs keys) -- so multiple experts run, each with the injected context.
+(def the-doc Str
+  "# widget config\n\nThe loader reads `/etc/widget/config.toml` at boot.\n\n```\nwidget --start\n```\n\nExample: `widget --start` brings the service up.\n")
+(def the-extra (List (Pair Str Str))
+  (cons (pair "spec" "docs/widget-SPEC.md")
+  (cons (pair "sibling_docs" "docs/widget-overview.md")
+        nil)))
+
+; ---------------------------------------------------------- the skill library
+; base "docref" lifts the doc-refine pipeline into a Flow (run-flow's flow-gate arm
+; delegates to run-pipeline); "docref-api" specializes it with the marker context.
+(def docref-base Skill
+  (skill-base "docref" (pipeline->flow doc-refine-pipeline) (stop-single)))
+(def docref-api Skill
+  (specialize-skill "docref" "docref-api" "CONTEXT-MARKER-XYZ"))
+(def library (List Skill)
+  (cons docref-base (cons docref-api nil)))
+
+; ---------------------------------------------------------- evidence: grep raws' prompts for the marker
+(def raw-prompt (-> RawCall Str) (lam (r) (case r ((raw-call e s m p rp) p))))
+(def bool->str (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
+(declare rawlen (-> (List RawCall) I64))
+(def rawlen (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (rawlen t))))))
+(declare any-prompt-has (-> (List RawCall) Str Bool))
+(def any-prompt-has
+  (lam (raws marker)
+    (case raws
+      (nil false)
+      ((cons r rest)
+        (case (str-has (raw-prompt r) marker)
+          (true true)
+          (false (any-prompt-has rest marker)))))))
+
+; ---------------------------------------------------------- entry (effectful)
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (run-skill (backend-open "http://100.64.0.5:11434")
+             "docref-api" library
+             "refine this doc: check it against reality, sharpen anchors, complete its examples"
+             (cons doc-refine-pipeline nil) expert-pool smoke-local-config
+             the-doc the-extra)
+      ((run-r y m raws b2)
+        (do (backend-close b2)
+          (let ((found (any-prompt-has raws "CONTEXT-MARKER-XYZ")))
+            (do (put (str-cat "raws captured (prompts sent): " (str-cat (i64->str (rawlen raws)) "\n")))
+            (do (put (str-cat "CONTEXT-MARKER-XYZ present in a sent prompt: " (str-cat (bool->str found) "\n")))
+                (case found (true 0) (false 1))))))))))

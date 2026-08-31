@@ -6,7 +6,7 @@
 
 (import "prelude/prelude")
 (import "ports/ports")                  ; Port (constructor `port`), put, read
-(import "ports/term")                   ; term-raw, term-restore, tiocgwinsz
+(import "protocol/term")                   ; term-raw, term-restore, tiocgwinsz
 (import "scriba/puffer")                 ; puffer-new, puffer-close
 (import "protocol/render")                 ; ansi-clear, ansi-home, render-to-ansi-full
 (import "scriba/command-loop")           ; command-loop

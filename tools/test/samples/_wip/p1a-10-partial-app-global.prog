@@ -1,0 +1,9 @@
+; V10: capture via PARTIAL APPLICATION of a named curried global, stored in the record.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare add-k (-> I64 I64 I64))
+(def add-k (lam (k x) (+ x k)))
+(declare mk-a (-> I64 Voc))
+(def mk-a (lam (k) (voc (add-k k) 1)))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (- (case (mk-a 1) ((voc d n) (d 10))) 11)))

@@ -1,0 +1,54 @@
+; E168 Phase 12, G3 -- E166 G3 re-expressed on the floor.
+;
+; The historical shape: the `m_mul` mutant objdumped IDENTICALLY to the base, so
+; the row that named it could not have failed. Two equal observations are not
+; evidence that anything was falsified; they are evidence that the mutant was
+; not a mutant. `mut-run` decides it with `obs-cmp` and yields `mu-survived`,
+; which `gate-verdict` then scores RED.
+;
+; ⚑ E166 G3 is the rule FOLLOWED, not a gate that shipped broken. The identity
+; was measured at design time and the row shipped a value-changing mutant
+; instead (.planning/specs/E166-mach-c-SPEC.md:556: "naming it here would have
+; been a mutant that could never fail"). What is re-expressed here is the SHAPE
+; that was caught by hand -- on the floor a type catches it.
+;
+; This one CROSSES: it mints one `Builder`, builds and runs FOUR programs
+; through it (a base and a mutant, twice), and discharges it in every leaf. The
+; type says how many programs this fixture built.
+;
+; Paths are REPO-ROOT-relative (prog/samples/exit42.chiral, the same file
+; Phase 2 walks) and this program is run from the repo root. Two phases execute
+; it -- Phase 12 and E166's F3 behavioural differential -- and a cwd-relative
+; path would make its answer depend on which one called it.
+;
+; exit 0 = both cases hold; 1 = an identical mutant was scored as killed;
+; 2 = a genuinely different mutant was scored as survived; 3/4 = a build failed,
+; so nothing was measured.
+
+(import "evidence/test-floor")
+
+; same meaning, different text: routing 42 through an identity function is still
+; 42, so the observation is equal and the "mutant" falsified nothing. (Arithmetic
+; is not available here -- these sources are compiled STANDALONE, exactly as the
+; samples are, and `+` lives in prelude.)
+(def same-src Bytes (str->bytes "(def id42 (-> I64 I64) (lam (x) x)) (def main (-> I64 I64) (lam (n) (id42 42)))"))
+
+; the control: a mutant that really does change the behaviour.
+(def diff-src Bytes (str->bytes "(def main (-> I64 I64) (lam (n) 41))"))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (mut-run (builder "B1") "prog/samples/exit42.chiral"
+                   (mutant "42 routed through an identity fn -- same meaning" same-src))
+      ((mu-unbuilt why b2) (case b2 ((builder v) 3)))
+      ((mu-ok r1 b2)
+        (case r1
+          ((mu-killed l bs mu) (case b2 ((builder v) 1)))
+          ((mu-survived l o)
+            (case (mut-run b2 "prog/samples/exit42.chiral"
+                           (mutant "41 instead of 42 -- a real mutant" diff-src))
+              ((mu-unbuilt why2 b3) (case b3 ((builder v) 4)))
+              ((mu-ok r2 b3)
+                (case r2
+                  ((mu-survived l2 o2)     (case b3 ((builder v) 2)))
+                  ((mu-killed l2 bs2 mu2)  (case b3 ((builder v) 0))))))))))))

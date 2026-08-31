@@ -1,0 +1,15 @@
+; e126_reject_drop.chiral — E126 conformance: NEGATIVE (drop one of the pair).
+;
+; socketpair returns two linear `1`-bound Sock caps (sp-ok a b). This arm closes
+; `a` but never consumes `b`: the linear checker must reject the leaked cap.
+; Expected B1 verdict: a linearity error (unconsumed `1`-binder), compile exit 1.
+(import "prelude/prelude")
+(import "ports/ports")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (socketpair unit)
+      ((sp-err m) 1)
+      ((sp-ok a b)
+        (case (sock-close a)          ; b is bound but never consumed -> leaked
+          (unit 42))))))

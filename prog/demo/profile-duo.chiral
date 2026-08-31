@@ -1,0 +1,16 @@
+; The duo profile. spawn is in the frozen port set: staging a runtime is a
+; crossing like any other, and a profile that omits it cannot create
+; runtimes. Note there is still no pool and no fd-passing here; the renderer
+; this profile stages draws under its own profile, not this one.
+
+(import "demo/duo")
+
+(target duo
+  (require main (=> Unit Unit))
+  (require on-event (-> Str Mood Mood))
+  (require mood-name (-> Mood Str)))
+
+(profile duo
+  (ports spawn sock-connect sock-send sock-recv sock-close
+         trace env-open env-view env-close exit halt)
+  (target duo))

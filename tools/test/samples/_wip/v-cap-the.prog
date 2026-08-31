@@ -1,0 +1,7 @@
+; CAPTURES k, same ctor position, wrapped in (the ...). My theory says this refuses.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare mk (-> I64 Voc))
+(def mk (lam (k) (voc (the (-> I64 I64) (lam (x) (+ x k))) 2)))   ; <- captures k
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (- (case (mk 5) ((voc d n) (d 10))) 15)))

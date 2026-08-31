@@ -1,0 +1,239 @@
+; E170 Phase 12 -- RE-FOUNDING THE QTT SEMIRING TABLES, which today have no
+; isolated coverage outside the leg E170 deletes.
+;
+; The finding (.planning/RUNG1-CHECKLIST.md:453, measured 2026-08-26 at 3c5d35c):
+; `grep -ln "qadd\|qfits\|qmul" scaffold/tests/*.py` finds ONE file,
+; `test_qtt_selfhost.py`, and it is a differential -- so `qadd`/`qmul`/`qjoin`/
+; `qfits` are covered only inside the 335 assertions E170 deletes, and E170 D1
+; records that the Rocq leg re-founds zero of them today. Every quantity
+; judgment in the checker is these four tables; nothing else would fail if one
+; entry were wrong.
+;
+; ⚑ WHY LAWS AND NOT A TRANSCRIBED TABLE. Asserting `(qadd (q1) (q1))` is `(qw)`
+; nine times over is the table copied into a second file: it encodes the
+; implementation exactly as faithfully as the oracle did, and rewriting the
+; semiring would require rewriting the test in the same edit. The laws below are
+; RELATIONAL -- commutativity, associativity, identity, annihilation,
+; distribution, idempotence, and the partial order `qfits` induces -- stated
+; between runs of the ops rather than about any one entry, and QUANTIFIED over
+; the whole of `Qty`: 3 singles, 9 pairs, 27 triples, exhaustive because the sum
+; is closed and `(data Qty () (q0) (q1) (qw))` is three arms.
+;
+; ⚑ AND WHY LAWS ARE NOT ENOUGH, which is the half that had to be built rather
+; than assumed. A wrong-but-consistent table satisfies every law here. MEASURED,
+; 2026-08-26: with `qadd`'s `1+1` saturation reverted to `(q1)` -- the single
+; entry that makes linearity linear -- checks A THROUGH E ALL STAY GREEN,
+; because `q1` is still a commutative associative unit-and-absorption-respecting
+; table. Only check F, which pins the tables to what QTT MEANS here, goes red.
+; A law suite alone would have re-founded nothing; that measurement is why F
+; exists and why it is written as a use-site fact rather than a table entry.
+;
+; ⚑ THE MUTANTS RUN. `mut-run` cannot build them -- it observes the base by PATH
+; and the mutant by SELF-CONTAINED TEXT (test-floor.chiral:611-627) -- so both are
+; harness-run against a scratch copy of scaffold/lib, and the first one's label
+; is the `MutRun` below, which test-e168-floor.sh greps this file for so the
+; written claim cannot drift from the mutation it names.
+;   (i)  qtt.chiral qadd: 1+1 saturates ((q1) (qw)) -> ((q1) (q1)). Measured:
+;        exit 1, check F "want int 0, got int 1", with A-E ALL GREEN (the report
+;        stops at the first failure and the pin is the sixth check) -- the case
+;        above.
+;   (ii) qtt.chiral qfits: the (q1)-declared arm admits (qw). Measured: exit 1,
+;        check D "want int 0, got int 3" -- antisymmetry breaks on three pairs.
+;        So the law half is armed too, and the two mutants between them show the
+;        two halves are not redundant.
+;
+; ⚑ AND THEY ARE ISOLATING, measured 2026-08-26 as a 6x3 matrix over the three
+; fixtures this lane adds: each mutant reddens its own fixture and leaves the
+; other two green -- a clean diagonal, which is how "isolated" is established
+; here rather than asserted.
+;
+; The observations are the fixture's own evaluations, so the gate is HANDED them
+; through `suite-main`; `observe-exs` cannot gather an `obk-given` and says so.
+;
+; exit 0 = every check green; 1 = the floor's report on stdout names which.
+
+(import "evidence/test-floor")
+(import "typing/qtt")
+
+; the whole of the grade set. Three arms, enumerated once; every fold below is
+; exhaustive over this list and over nothing else.
+(def qsr-qty (List Qty) (cons (q0) (cons (q1) (cons (qw) nil))))
+
+(def qsr-beq (-> Bool Bool Bool)
+  (lam (a b) (case a (true b) (false (not b)))))
+
+; ---- the folds: a FAILURE COUNT over 3 / 9 / 27 tuples ---------------------
+(declare qsr-all1 (-> (-> Qty Bool) (List Qty) I64))
+(def qsr-all1
+  (lam (p as)
+    (case as
+      (nil 0)
+      ((cons a r) (+ (case (p a) (true 0) (false 1)) (qsr-all1 p r))))))
+
+(declare qsr-row2 (-> (-> Qty Qty Bool) Qty (List Qty) I64))
+(def qsr-row2
+  (lam (p a bs)
+    (case bs
+      (nil 0)
+      ((cons b r) (+ (case (p a b) (true 0) (false 1)) (qsr-row2 p a r))))))
+
+(declare qsr-all2 (-> (-> Qty Qty Bool) (List Qty) I64))
+(def qsr-all2
+  (lam (p as)
+    (case as
+      (nil 0)
+      ((cons a r) (+ (qsr-row2 p a qsr-qty) (qsr-all2 p r))))))
+
+; the triple fold: 27 tuples. Written as three explicit loops rather than as
+; the pair fold under a partial application -- `(qsr-all2 (p a) qsr-qty)` is a
+; partially applied THREE-argument function value, and B1 refuses it
+; (`extern does not lower: reference stays upper`, measured 2026-08-26). The
+; three-level shape is what lowers, and saying why here is cheaper than
+; rediscovering it.
+(declare qsr-row3b (-> (-> Qty Qty Qty Bool) Qty Qty (List Qty) I64))
+(def qsr-row3b
+  (lam (p a b cs)
+    (case cs
+      (nil 0)
+      ((cons c r) (+ (case (p a b c) (true 0) (false 1)) (qsr-row3b p a b r))))))
+
+(declare qsr-row3a (-> (-> Qty Qty Qty Bool) Qty (List Qty) I64))
+(def qsr-row3a
+  (lam (p a bs)
+    (case bs
+      (nil 0)
+      ((cons b r) (+ (qsr-row3b p a b qsr-qty) (qsr-row3a p a r))))))
+
+(declare qsr-all3 (-> (-> Qty Qty Qty Bool) (List Qty) I64))
+(def qsr-all3
+  (lam (p as)
+    (case as
+      (nil 0)
+      ((cons a r) (+ (qsr-row3a p a qsr-qty) (qsr-all3 p r))))))
+
+; ---- A: qadd is a commutative monoid with q0 as identity and qw absorbing ---
+(def qsr-add-comm  (-> Qty Qty Bool)     (lam (a b)   (qeq (qadd a b) (qadd b a))))
+(def qsr-add-assoc (-> Qty Qty Qty Bool) (lam (a b c) (qeq (qadd (qadd a b) c) (qadd a (qadd b c)))))
+(def qsr-add-id    (-> Qty Bool)         (lam (a)     (and (qeq (qadd (q0) a) a) (qeq (qadd a (q0)) a))))
+(def qsr-add-top   (-> Qty Bool)         (lam (a)     (and (qeq (qadd (qw) a) (qw)) (qeq (qadd a (qw)) (qw)))))
+
+; ---- B: qmul is a commutative monoid with q1 as unit, q0 annihilating, and it
+;         distributes over qadd -- i.e. the two tables really are a semiring ----
+(def qsr-mul-comm  (-> Qty Qty Bool)     (lam (a b)   (qeq (qmul a b) (qmul b a))))
+(def qsr-mul-assoc (-> Qty Qty Qty Bool) (lam (a b c) (qeq (qmul (qmul a b) c) (qmul a (qmul b c)))))
+(def qsr-mul-unit  (-> Qty Bool)         (lam (a)     (and (qeq (qmul (q1) a) a) (qeq (qmul a (q1)) a))))
+(def qsr-mul-zero  (-> Qty Bool)         (lam (a)     (and (qeq (qmul (q0) a) (q0)) (qeq (qmul a (q0)) (q0)))))
+(def qsr-distrib   (-> Qty Qty Qty Bool)
+  (lam (a b c) (qeq (qmul a (qadd b c)) (qadd (qmul a b) (qmul a c)))))
+
+; ---- C: qjoin is the branch merge -- idempotent, commutative, associative,
+;         and it saturates to qw on ANY disagreement -------------------------
+(def qsr-join-idem  (-> Qty Bool)         (lam (a)     (qeq (qjoin a a) a)))
+(def qsr-join-comm  (-> Qty Qty Bool)     (lam (a b)   (qeq (qjoin a b) (qjoin b a))))
+(def qsr-join-assoc (-> Qty Qty Qty Bool) (lam (a b c) (qeq (qjoin (qjoin a b) c) (qjoin a (qjoin b c)))))
+(def qsr-join-sat   (-> Qty Qty Bool)
+  (lam (a b) (case (qeq a b) (true true) (false (qeq (qjoin a b) (qw))))))
+
+; ---- D: the ORDER qfits induces is a partial order with qw as its top ------
+(def qsr-fits-refl (-> Qty Bool)     (lam (a)   (qfits a a)))
+(def qsr-fits-top  (-> Qty Bool)     (lam (a)   (qfits a (qw))))
+(def qsr-fits-anti (-> Qty Qty Bool)
+  (lam (a b) (case (and (qfits a b) (qfits b a)) (false true) (true (qeq a b)))))
+(def qsr-fits-trans (-> Qty Qty Qty Bool)
+  (lam (a b c) (case (and (qfits a b) (qfits b c)) (false true) (true (qfits a c)))))
+
+; ---- E: an exact declaration admits ONLY itself ----------------------------
+; The first half of the pin. Check D says `qfits` induces A partial order; it
+; does not say WHICH, and a poset is not a linearity discipline. This names it:
+; `qw` is the only permissive declaration, and every other declared quantity is
+; exact, so `qfits computed declared` must be exactly `computed = declared`.
+; That is what makes q0 mean erased and q1 mean once. ⚑ It is a stronger
+; statement than D but not a substitute for F, and the two mutants measure the
+; difference: qfits's q1-arm admitting qw breaks both D and E, while qadd's
+; `1+1` reverting to `(q1)` leaves BOTH green -- neither says anything about
+; what the semiring hands the fits check.
+(def qsr-exact (-> Qty Qty Bool)
+  (lam (computed declared)
+    (case (qeq declared (qw))
+      (true true)
+      (false (qsr-beq (qfits computed declared) (qeq computed declared))))))
+
+; ---- F: the pin -- the semiring FEEDS the fits check ------------------------
+; ⚑ This is the check the qadd mutant is caught by and the four law checks are
+; not. Each line is a use-site fact about the checker's own accounting, stated
+; as a composition of two tables rather than as an entry in either: what `qadd`
+; computes for two linear uses must not fit a `(q1)` declaration, what `qjoin`
+; computes for a binder used in one branch only must not fit one either, and
+; what `qmul` computes in an erased position must fit `(q0)`. A table that
+; breaks any of these is internally consistent and is not QTT.
+(def qsr-pin-fails (-> I64 I64)
+  (lam (n)
+    ; used twice does not fit a linear declaration
+    (+ (case (qfits (qadd (q1) (q1)) (q1))  (true 1) (false 0))
+      ; one branch only does not fit one either
+      (+ (case (qfits (qjoin (q1) (q0)) (q1)) (true 1) (false 0))
+        ; an erased position scales the use to q0, and that DOES fit
+        (+ (case (qfits (qmul (q0) (q1)) (q0)) (true 0) (false 1))
+          ; and two uses DO fit a qw declaration -- the refusals above are not
+          ; qfits refusing everything
+          (+ (case (qfits (qadd (q1) (q1)) (qw)) (true 0) (false 1))
+            ; a w-scaled use does not fit a linear declaration
+            (case (qfits (qmul (qw) (q1)) (q1)) (true 1) (false 0))))))))
+
+; ===========================================================================
+; the gate. Six expectations, all rank 3 (`pv-meaning`), no differential.
+; ===========================================================================
+(def qsr-checks (List Expect)
+  (cons (ex (obk-given "qadd is a commutative monoid over Qty with q0 as its identity and qw absorbing")
+            (ob-int 0) (pv-meaning "addition of quantities is order-independent and associative; using a binder zero more times changes nothing and w-many times saturates"))
+  (cons (ex (obk-given "qmul is a commutative monoid with q1 as unit and q0 annihilating, and it distributes over qadd")
+            (ob-int 0) (pv-meaning "scaling a usage by a quantity is a semiring multiplication: scaling by 1 is identity, by 0 erases, and scaling a sum is the sum of the scalings"))
+  (cons (ex (obk-given "qjoin is idempotent, commutative, associative, and saturates to qw on any disagreement")
+            (ob-int 0) (pv-meaning "merging two branches that used a binder the same way keeps that usage; any divergence is no longer a known count, which is what qw means"))
+  (cons (ex (obk-given "the order qfits induces is a partial order over Qty with qw as its top")
+            (ob-int 0) (pv-meaning "computed-fits-declared is reflexive, transitive and antisymmetric, and w admits everything"))
+  (cons (ex (obk-given "an exact declaration admits ONLY itself: for every declared quantity other than qw, qfits holds exactly when the computed quantity is equal to it")
+            (ob-int 0) (pv-meaning "q0 means erased and q1 means exactly once; a declaration that admitted a different count would be a declaration of nothing"))
+  (cons (ex (obk-given "THE PIN: the semiring feeds the fits check -- two linear uses do not fit a q1 declaration, a binder used in one branch only does not fit one, and an erased position fits q0")
+            (ob-int 0) (pv-meaning "the tables are not free-standing algebra: qadd/qjoin compute what a body USED and qfits judges it against what the binder DECLARED, so the composition is where the tables mean something"))
+    nil)))))))
+
+; ⚑ THE WRITTEN CLAIM. test-e168-floor.sh greps this file for this exact label
+; before it runs the mutation the label names -- a hand-written MutRun is a
+; claim and not evidence (test-floor.chiral:517-520), and the harness is what
+; makes it one.
+(def qsr-adequacy MutRun
+  (mu-killed "lib/typing/qtt.chiral qadd: 1+1 saturates ((q1) (qw)) -> ((q1) (q1))"
+             (ob-int 0) (ob-int 1)))
+
+(def qsr-suite (List Suite)
+  (cons (suite "the QTT semiring"
+          (cons (gate "qadd / qmul / qjoin / qfits -- the laws and the pin"
+                  qsr-checks (the (List DiffExpect) nil) qsr-adequacy)
+            nil))
+    nil))
+
+(def qsr-obs (List (List Obs))
+  (cons (cons (ob-int (+ (qsr-all2 qsr-add-comm qsr-qty)
+                      (+ (qsr-all3 qsr-add-assoc qsr-qty)
+                      (+ (qsr-all1 qsr-add-id qsr-qty)
+                         (qsr-all1 qsr-add-top qsr-qty)))))
+        (cons (ob-int (+ (qsr-all2 qsr-mul-comm qsr-qty)
+                      (+ (qsr-all3 qsr-mul-assoc qsr-qty)
+                      (+ (qsr-all1 qsr-mul-unit qsr-qty)
+                      (+ (qsr-all1 qsr-mul-zero qsr-qty)
+                         (qsr-all3 qsr-distrib qsr-qty))))))
+        (cons (ob-int (+ (qsr-all1 qsr-join-idem qsr-qty)
+                      (+ (qsr-all2 qsr-join-comm qsr-qty)
+                      (+ (qsr-all3 qsr-join-assoc qsr-qty)
+                         (qsr-all2 qsr-join-sat qsr-qty)))))
+        (cons (ob-int (+ (qsr-all1 qsr-fits-refl qsr-qty)
+                      (+ (qsr-all1 qsr-fits-top qsr-qty)
+                      (+ (qsr-all2 qsr-fits-anti qsr-qty)
+                         (qsr-all3 qsr-fits-trans qsr-qty)))))
+        (cons (ob-int (qsr-all2 qsr-exact qsr-qty))
+        (cons (ob-int (qsr-pin-fails 0)) nil))))))
+    nil))
+
+(def compile-main (=> I64 I64)
+  (lam (n) (suite-main qsr-suite qsr-obs)))

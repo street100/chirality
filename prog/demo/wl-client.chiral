@@ -1,0 +1,217 @@
+; The Wayland client module: everything a node needs to put pixels on screen
+; through one typed socket port. No libwayland; the compositor is a foreign
+; counterpart across the port (G7) and this file is the client half of the
+; port protocol. Used by the single-runtime tomodachi and by the renderer
+; node of the two-node split.
+;
+; Wire object ids: 1 display, 2 registry, 3 sync callback, 4 compositor,
+; 5 shm, 6 layer-shell, 7 surface, 8 layer surface, 9 pool, 10 buffer.
+
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/wire")
+(import "demo/mood")
+(import "demo/sprites")
+
+; draw the mood into the pool and tell the compositor: attach, damage, commit
+(data WPR () (wpr (1 wl Sock) (1 pl (Pool 16384))))
+
+(def draw-commit (=> (1 wl Sock) (1 pl (Pool 16384)) Mood WPR)
+  (lam (wl pl m)
+    (let (1 pl2 (draw 16384 pl m))
+      (case (sock-send wl
+              (bcat (wenc 7 1 (bcat (pack-u32 10) (bcat (pack-u32 0) (pack-u32 0))))
+                    (bcat (wenc 7 2 (bcat (pack-u32 0) (bcat (pack-u32 0)
+                                    (bcat (pack-u32 64) (pack-u32 64)))))
+                          (wenc 7 6 (str->bytes "")))))
+        ((send-r wl2) (the WPR (wpr wl2 pl2)))
+        ((send-err em)
+          (do (pool-close 16384 pl2)
+              (halt WPR (str-cat "wl-client: commit send failed: " em))))))))
+
+; handle every complete wayland message in the buffer.
+; configure -> ack and redraw; closed -> clean exit; error -> halt with detail.
+(data WPB () (wpb (1 wl Sock) (1 pl (Pool 16384)) (buf Bytes)))
+
+(def on-wl-msgs (=> (1 wl Sock) (1 pl (Pool 16384)) Bytes Mood WPB)
+  (lam (wl pl buf m)
+    (case (wsplit1 buf)
+      ((wsplit mm rest)
+        (case mm
+          (none (the WPB (wpb wl pl rest)))
+          ((some msg)
+            (case msg
+              ((wmsg obj op body)
+                (case (and (=i obj 8) (=i op 0))
+                  (true
+                    (case (sock-send wl (wenc 8 6 (pack-u32 (unpack-u32 body 0))))
+                      ((send-err em)
+                        (do (pool-close 16384 pl)
+                            (halt WPB (str-cat "wl-client: ack send failed: " em))))
+                      ((send-r wl2)
+                        (case (draw-commit wl2 pl m)
+                          ((wpr wl3 pl2) (on-wl-msgs wl3 pl2 rest m))))))
+                  (false
+                    (case (and (=i obj 8) (=i op 1))
+                      (true
+                        (do (sock-close wl) (pool-close 16384 pl)
+                            (trace "wl-client: layer surface closed by compositor")
+                            (exit WPB 0)))
+                      (false
+                        (case (and (=i obj 1) (=i op 0))
+                          (true
+                            (do (sock-close wl) (pool-close 16384 pl)
+                                (halt WPB (str-cat "wayland protocol error: " (err-msg body)))))
+                          (false (on-wl-msgs wl pl rest m)))))))))))))))
+
+; phase A: read registry globals until the sync callback fires
+(data G3 () (g3 (cn I64) (sn I64) (ln I64)))
+(data EnumR () (enum-r (1 wl Sock) (g G3) (buf Bytes)))
+
+(def g3-set (-> G3 Str I64 G3)
+  (lam (g iface name)
+    (case g
+      ((g3 c s l)
+        (case (str-eq iface "wl_compositor")
+          (true (the G3 (g3 name s l)))
+          (false
+            (case (str-eq iface "wl_shm")
+              (true (the G3 (g3 c name l)))
+              (false
+                (case (str-eq iface "zwlr_layer_shell_v1")
+                  (true (the G3 (g3 c s name)))
+                  (false (the G3 (g3 c s l))))))))))))
+
+(def enum-globals (=> (1 wl Sock) Bytes G3 EnumR)
+  (lam (wl buf g)
+    (case (wsplit1 buf)
+      ((wsplit mm rest)
+        (case mm
+          (none
+            (case (sock-recv wl 4096)
+              ((recv-closed wl2)
+                (do (sock-close wl2)
+                    (halt EnumR "wayland closed during init")))
+              ((recv-err em)
+                (halt EnumR (str-cat "wayland recv failed during init: " em)))
+              ((recv-r chunk wl2)
+                (enum-globals wl2 (bcat rest chunk) g))))
+          ((some msg)
+            (case msg
+              ((wmsg obj op body)
+                (case (and (=i obj 2) (=i op 0))
+                  (true (enum-globals wl rest (g3-set g (glob-iface body) (glob-name body))))
+                  (false
+                    (case (and (=i obj 3) (=i op 0))
+                      (true (the EnumR (enum-r wl g rest)))     ; sync done
+                      (false
+                        (case (and (=i obj 1) (=i op 0))
+                          (true
+                            (do (sock-close wl)
+                                (halt EnumR (str-cat "wayland error during init: " (err-msg body)))))
+                          (false (enum-globals wl rest g)))))))))))))))
+
+; phase C: wait for the first layer-surface configure, remember its serial
+(data CfgR () (cfg-r (1 wl Sock) (buf Bytes) (serial I64)))
+
+(def await-configure (=> (1 wl Sock) Bytes CfgR)
+  (lam (wl buf)
+    (case (wsplit1 buf)
+      ((wsplit mm rest)
+        (case mm
+          (none
+            (case (sock-recv wl 4096)
+              ((recv-closed wl2)
+                (do (sock-close wl2)
+                    (halt CfgR "wayland closed before configure")))
+              ((recv-err em)
+                (halt CfgR (str-cat "wayland recv failed before configure: " em)))
+              ((recv-r chunk wl2)
+                (await-configure wl2 (bcat rest chunk)))))
+          ((some msg)
+            (case msg
+              ((wmsg obj op body)
+                (case (and (=i obj 8) (=i op 0))
+                  (true (the CfgR (cfg-r wl rest (unpack-u32 body 0))))
+                  (false
+                    (case (and (=i obj 1) (=i op 0))
+                      (true
+                        (do (sock-close wl)
+                            (halt CfgR (str-cat "wayland error before configure: " (err-msg body)))))
+                      (false (await-configure wl rest)))))))))))))
+
+(def wl-path (=> Unit Str)
+  (lam (u)
+    (let (1 e0 (env-open unit))
+      (case (env-view e0 "WAYLAND_DISPLAY")
+        ((env-none e1) (do (env-close e1) (halt Str "WAYLAND_DISPLAY not set")))
+        ((env-r wd e1)
+          (case (str-eq (str-sub wd 0 1) "/")
+            (true (do (env-close e1) wd))
+            (false
+              (case (env-view e1 "XDG_RUNTIME_DIR")
+                ((env-none e2) (do (env-close e2) (halt Str "XDG_RUNTIME_DIR not set")))
+                ((env-r rd e2)
+                  (do (env-close e2) (str-cat rd (str-cat "/" wd))))))))))))
+
+; the whole client brought up: connect, enumerate, bind, surface, first frame
+; (drawn with the mood the caller hands in; this module knows no behavior)
+(data WlUp () (wl-up (1 wl Sock) (1 pl (Pool 16384)) (buf Bytes)))
+
+(def wl-init (=> Mood WlUp)
+  (lam (m0)
+    (case (sock-connect (wl-path unit))
+      ((conn-err em) (halt WlUp (str-cat "wayland connect failed: " em)))
+      ((conn-r wl0)
+        (case (sock-send wl0 (bcat (wenc 1 1 (pack-u32 2))
+                                   (wenc 1 0 (pack-u32 3))))
+          ((send-err em) (halt WlUp (str-cat "wayland init send failed: " em)))
+          ((send-r wl1)
+            (case (enum-globals wl1 (str->bytes "") (the G3 (g3 -1 -1 -1)))
+              ((enum-r wl2 g buf0)
+                (case g
+                  ((g3 cn sn ln)
+                    (case (or (<i cn 0) (or (<i sn 0) (<i ln 0)))
+                      (true
+                        (do (sock-close wl2)
+                            (halt WlUp "compositor lacks wl_compositor/wl_shm/zwlr_layer_shell_v1")))
+                      (false
+                        (case (sock-send wl2 (bcat
+                               (wenc 2 0 (wbind cn "wl_compositor" 1 4))
+                               (bcat (wenc 2 0 (wbind sn "wl_shm" 1 5))
+                               (bcat (wenc 2 0 (wbind ln "zwlr_layer_shell_v1" 1 6))
+                               (bcat (wenc 4 0 (pack-u32 7))
+                               (bcat (wenc 6 0 (bcat (pack-u32 8) (bcat (pack-u32 7)
+                                               (bcat (pack-u32 0) (bcat (pack-u32 3)
+                                               (wstr "chirality-tomodachi"))))))
+                               (bcat (wenc 8 0 (bcat (pack-u32 64) (pack-u32 64)))
+                               (bcat (wenc 8 1 (pack-u32 10))            ; anchor bottom|right
+                               (bcat (wenc 8 3 (bcat (pack-u32 0) (bcat (pack-u32 24)
+                                               (bcat (pack-u32 24) (pack-u32 0)))))
+                                     (wenc 7 6 (str->bytes "")))))))))))
+                          ((send-err em) (halt WlUp (str-cat "wayland bind send failed: " em)))
+                          ((send-r wl3)
+                            (case (await-configure wl3 buf0)
+                              ((cfg-r wl4 buf1 serial)
+                                (case (sock-send wl4 (wenc 8 6 (pack-u32 serial)))
+                                  ((send-err em) (halt WlUp (str-cat "wayland ack send failed: " em)))
+                                  ((send-r wl5)
+                                    (case (pool-create 16384)
+                                      ((pool-r pl fd)
+                                        (case (sock-send-fd wl5
+                                               (wenc 5 0 (bcat (pack-u32 9) (pack-u32 16384))) fd)
+                                          ((sfd-err errno wl6 fd2)
+                                            (do (sock-close wl6) (fd-close fd2) (pool-close 16384 pl)
+                                                (halt WlUp "wayland: pool fd-passing failed")))
+                                          ((sfd-ok wl6)
+                                            (case (sock-send wl6
+                                                   (wenc 9 0 (bcat (pack-u32 10) (bcat (pack-u32 0)
+                                                             (bcat (pack-u32 64) (bcat (pack-u32 64)
+                                                             (bcat (pack-u32 256) (pack-u32 0))))))))
+                                              ((send-err em)
+                                                (do (pool-close 16384 pl)
+                                                    (halt WlUp (str-cat "wayland buffer send failed: " em))))
+                                              ((send-r wl7)
+                                                (case (draw-commit wl7 pl m0)
+                                                  ((wpr wl8 pl2)
+                                                    (the WlUp (wl-up wl8 pl2 buf1))))))))))))))))))))))))))))

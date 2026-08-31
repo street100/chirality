@@ -72,8 +72,11 @@ that one fact — do not read those files in full. -->
 ## Refinement types
 - `(refine I64 (>= 0) (< 64))` — an I64 with proven bounds; `(refine I64 (<> 0))`
   — a nonzero divisor. Predicates are decided by the refinement engine (E9).
-  The legal operators are exactly `>=` `>` `<=` `<` `<>` (refine.py `_OPS`);
-  there is no `/=` or `!=`.
+  The legal operators are exactly `>=` `>` `<=` `<` `<>` (`SymOp`,
+  `lib/typing/refine.chiral:11`; the spelling map is `op->symop`,
+  `lib/module/loader.chiral:20`). Write no `/=` or `!=`: neither is a
+  legal spelling, and neither is refused either. `op->symop` falls through to
+  `s-ne` for every unrecognized token, so a typo reads as `<>` in silence.
 
 ## The floor: I64 + Bytes, no floats
 - **No floats cross the seam.** Everything numeric is `I64` (two's-complement,
@@ -93,7 +96,7 @@ that one fact — do not read those files in full. -->
 - **REPLACE-CRUTCH** — a CPython/ctypes/libc convenience to shed.
 - **BUILD-PROPER** — a designed feature not yet built.
 
-## Style: real snippets read like `lib/fsm.chiral` / `lib/json.chiral`
+## Style: real snippets read like `lib/protocol/vt-parser.chiral` / `lib/protocol/json.chiral`
 - `data`+`case` state machines, QTT-erased type params, `->` throughout,
   result sums for parsers, structural recursion with a reversed accumulator
   flipped once. Keep the snippet a **skeleton** (declare the helpers, define the

@@ -1,0 +1,76 @@
+; The creature, as data. 16x16 pixel art scaled 4x into a 64x64 ARGB8888
+; buffer (1024 bytes per scaled row: 64 px * 4 bytes * 4 duplicated scanlines / 4).
+; Rows are strings; the palette maps a character to one pixel.
+
+(import "demo/mood")
+(import "prelude/prelude")
+(import "ports/ports")
+
+; one pixel, ARGB8888 little-endian: B G R A in memory, alpha 255
+(def px (-> I64 I64 I64 Bytes)
+  (lam (r g b)
+    (bcat (pack-u16 (+ b (* g 256)))
+          (pack-u16 (+ r (* 255 256))))))
+
+(def cpx (-> Str Bytes)
+  (lam (c)
+    (case (str-eq c "#") (true (px 126 200 160))    ; mint body
+      (false (case (str-eq c "@") (true (px 40 44 52))    ; dark
+        (false (case (str-eq c "o") (true (px 240 240 240))  ; white
+          (false (case (str-eq c "+") (true (px 235 120 140))  ; pink
+            (false (case (str-eq c "=") (true (px 60 70 90))     ; closed eye
+              (false (pack-u32 0)))))))))))))       ; transparent
+
+; shared rows
+(def rr-blank Str "................")
+(def rr-crown Str "....########....")
+(def rr-upper Str "..############..")
+(def rr-full  Str ".##############.")
+(def rr-lower Str "..############..")
+(def rr-taper Str "...##########...")
+(def rr-feet  Str "...###....###...")
+
+; mood rows
+(def rr-eyes-open  Str ".###@@####@@###.")
+(def rr-eyes-wide  Str ".##@@@####@@@##.")
+(def rr-eyes-shut  Str ".###==####==###.")
+(def rr-blush      Str ".#+##########+#.")
+(def rr-mouth-dot  Str ".######@@######.")
+(def rr-smile-a    Str ".####++++++####.")
+(def rr-smile-b    Str ".#####++++#####.")
+(def rr-gasp-a     Str ".#####@oo@#####.")
+(def rr-gasp-b     Str ".#####@@@@#####.")
+
+(def rows (-> Mood (List Str))
+  (lam (m)
+    (the (List Str)
+      (cons rr-blank (cons rr-blank (cons rr-crown (cons rr-upper
+      (cons rr-full (cons rr-full
+      (cons (case m (m-alarmed rr-eyes-wide) (m-sleep rr-eyes-shut) (_ rr-eyes-open))
+      (cons (case m (m-alarmed rr-eyes-wide) (m-happy rr-blush) (_ rr-full))
+      (cons rr-full
+      (cons (case m (m-happy rr-smile-a) (m-alarmed rr-gasp-a) (m-idle rr-mouth-dot) (m-sleep rr-full))
+      (cons (case m (m-happy rr-smile-b) (m-alarmed rr-gasp-b) (_ rr-full))
+      (cons rr-full (cons rr-lower (cons rr-taper (cons rr-feet
+      (cons rr-blank (the (List Str) nil))))))))))))))))))))
+
+; one 16-char row -> 256 bytes of pixels (each char becomes 4 px)
+(def row-bytes (-> Str I64 Bytes)
+  (lam (row i)
+    (case (<=i 16 i)
+      (true (str->bytes ""))
+      (false (bcat (brepeat (cpx (str-sub row i (+ i 1))) 4)
+                   (row-bytes row (+ i 1)))))))
+
+; generic over the pool bound: n exists only in types (quantity 0)
+(def draw-rows (-> (0 n I64) (=> (1 p (Pool n)) (List Str) I64 (Pool n)))
+  (lam (n p rs y)
+    (case rs
+      (nil p)
+      ((cons r rest)
+        (draw-rows n (pool-write n p (* y 1024) (brepeat (row-bytes r 0) 4))
+                   rest (+ y 1))))))
+
+; render a mood into the pool
+(def draw (-> (0 n I64) (=> (1 p (Pool n)) Mood (Pool n)))
+  (lam (n p m) (draw-rows n p (rows m) 0)))

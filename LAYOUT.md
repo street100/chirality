@@ -54,6 +54,37 @@ and `emit` twice. Taking the path as the key means:
 - basename collision is unreachable rather than named. `ports/proc` and `proc` were
   the same key in the old tree; here they cannot be.
 
+## `ports/` holds declarations, not code about ports
+
+This is PRINCIPLES §3 applied to the tree. Programming here is coordinating
+port boundaries and writing the logic that produces their inputs, so a
+directory can name the declaration of a boundary. It cannot name a subject.
+
+A file belongs in `ports/` iff it declares a crossing: an `extern` whose
+implementation is bound at link time, or a `porttype` minting an opaque linear
+atom. That is the same structural test the `.port` extension already carries,
+pointed at the directory.
+
+Being *about* ports does not qualify, and on 2026-08-31 three files were in
+`ports/` for exactly that reason. Each moved to the directory its own importers
+already named:
+
+| file | went to | because |
+|---|---|---|
+| `crossing-wraps` | `lowering/tal/` | both importers are `lowering/tal`, and its header says it is a leaf to dodge a tal-ir collision |
+| `inet` | `protocol/` | its only importer is `protocol/http` |
+| `term` | `protocol/` | 29 defs of terminal logic beside `vt-parser`, `apc`, `grid`, `render` |
+
+None of the three declared a crossing. All three computed over crossings
+declared elsewhere, which is what every other module in the tree does.
+
+`ports/ports.chiral` declares nothing either and stays: it is the façade that
+imports the nine registries, so `(import "ports/ports")` still names the whole
+floor. That is a re-export, not a module about ports.
+
+⚑ Nothing checks this. The rule is structural and could be a gate; today it is
+prose, and prose is how the three got there.
+
 ## The two binaries
 
 - `bin/chirality` is the CLI front door: `compile`, `run`, `check`, `test`.
@@ -80,7 +111,7 @@ lib/
     mach/      the frozen contract and target-independent codegen
     x64/  c/  listing/      one directory per target
     ...        a new target lands in one new directory; nothing else moves
-  ports/       the crossings themselves
+  ports/       where a crossing is DECLARED. Nothing else.
   capability/  what a held port is
   memory/      space as a port
   runtime/     running things
@@ -88,6 +119,9 @@ lib/
   evidence/    cross-checked truth
 prog/          what chirality ships, as distinct from what it is
 tools/         one folder per tool
+/                  README.md · PRINCIPLES.md · LAYOUT.md · HANDOFF.md, and
+                   nothing else. A document at root is one a stranger or a tool
+                   opens first; everything else sorts into a tier below.
 docs/
   index.md         the hub. Notes link by [[slug]], never by path, so a note
                    moves between roles without touching a single link.

@@ -1,0 +1,7 @@
+; V39: extract the closure into a LET binding, then apply it -- is it a value?
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare mk-a (-> I64 Voc)) (def mk-a (lam (k) (voc (the (-> I64 I64) (lam (x) (+ x k))) 1)))
+(declare use2 (-> Voc I64))
+(def use2 (lam (v) (case v ((voc d n) (let ((f d)) (+ (f 10) (f 20)))))))
+(declare compile-main (-> Unit I64)) (def compile-main (lam (u) (- (use2 (mk-a 1)) 32)))

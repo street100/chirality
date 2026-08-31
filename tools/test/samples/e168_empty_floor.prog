@@ -1,0 +1,107 @@
+; E168 Phase 12, G10 -- THE FLOOR'S OWN ENTRY, MADE TO FAIL.
+;
+; Three fail-open shapes shipped with the floor, all at the point where a caller
+; hands it nothing, and all measured on 2026-08-25:
+;
+;   (gate "x" nil nil killed)  ->  g-green, "0 checks, weakest rank 0"
+;   all-green? nil             ->  true
+;   test-main nil              ->  exit 0, empty report
+;
+; The rank floor only guarded the `diffs`-non-empty branch, so a gate that
+; asserts NOTHING was the strongest thing the fold could say about it; commit
+; 28eb06f's own subject ("an empty checks list is not a strong one") was false
+; everywhere outside the differential branch. `all-green?` folded "no gate left
+; to check" and "no gate reported" onto one base case. And test-runner.chiral
+; had to route around the third one locally, which is what proved the hole
+; belonged to the library.
+;
+; Every case ships beside its CONTROL, so a red here cannot be a red for any
+; other reason: the empty gate is paired with the same gate carrying one check,
+; `all-green? nil` with a one-green-verdict list, and `test-main nil` with a
+; suite that really does pass. Without the controls this fixture would pass for
+; a floor that simply reddened everything.
+;
+; Case 5 is the DIAGNOSTIC regression, asserted by exact text: a failing gate
+; must name WHICH expectation failed. `obk-show` had zero callers and
+; `gate-line` never rendered the key, so a six-sample gate printed `FAIL samples
+; -- want exit 42, got exit 41` and left the reader to guess. Rendering is not
+; the deciding value anywhere in this file (§2's rule) -- but "the report names
+; the sample" is a claim ABOUT the rendering, and text is the only way to check
+; it.
+;
+; It CROSSES: cases 6 and 7 run `test-main`, which builds and runs
+; prog/samples/exit42.chiral. Paths are REPO-ROOT-relative and this program
+; is run from the repo root by both phases that execute it (Phase 12 and E166's
+; F3 differential), so neither can get a different answer.
+;
+; exit 0 = all seven; otherwise the number of the first failing case.
+
+(import "evidence/test-floor")
+
+; adequacy is not what is under test, so every gate here carries a mutant that
+; was built, run and killed -- clause 1 must not be what reddens any of them.
+(def killed MutRun (mu-killed "a mutant that ran and died" (ob-exit 42) (ob-exit 41)))
+
+(def empty-gate Gate
+  (gate "asserts nothing" (the (List Expect) nil) (the (List DiffExpect) nil) killed))
+
+; THE CONTROL for the empty gate: one sound rank-3 check, one matching
+; observation. Same name, same mutant, same shape -- only the emptiness differs.
+(def anchor Expect
+  (ex (obk-root "prog/samples/exit42.chiral") (ob-exit 42)
+      (pv-meaning "exit42.chiral means 42")))
+
+(def one-gate Gate
+  (gate "one check" (cons anchor nil) (the (List DiffExpect) nil) killed))
+
+(def one-obs (List Obs) (cons (ob-exit 42) nil))
+
+; case 5's gate: three checks, and the SECOND one fails. The report must name
+; it by path, not just report the mismatch.
+(def c1 Expect (ex (obk-root "prog/samples/exit42.chiral")  (ob-exit 42) (pv-meaning "exit42.chiral means 42")))
+(def c2 Expect (ex (obk-root "prog/samples/exit7.chiral")   (ob-exit 7)  (pv-meaning "exit7.chiral means 7")))
+(def c3 Expect (ex (obk-root "prog/samples/enum-tag.chiral") (ob-exit 5) (pv-meaning "enum-tag.chiral means 5")))
+
+(def three-gate Gate
+  (gate "samples" (cons c1 (cons c2 (cons c3 nil))) (the (List DiffExpect) nil) killed))
+
+(def three-obs (List Obs) (cons (ob-exit 42) (cons (ob-exit 41) (cons (ob-exit 5) nil))))
+
+(def want-line Str "FAIL samples -- prog/samples/exit7.chiral: want exit 7, got exit 41\n")
+
+; case 7's control: a suite that really passes, so case 6's exit 1 comes from
+; the emptiness and not from `test-main` being red about everything.
+(def green-suite Suite (suite "the control" (cons one-gate nil)))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    ; 1. a gate that asserts nothing is not a green gate ...
+    (case (gate-verdict empty-gate (the (List Obs) nil))
+      ((g-green nm c w) 1)
+      ((g-red nm why)   2)
+      ((g-inadequate nm why)
+        ; 2. ... and the same gate with one check still is.
+        (case (gate-verdict one-gate one-obs)
+          ((g-red nm2 w2)        3)
+          ((g-inadequate nm2 w2) 4)
+          ((g-green nm2 c2 w2)
+            ; 3. an empty verdict list is not a passing run ...
+            (case (all-green? (the (List GateR) nil))
+              (true 5)
+              (false
+                ; 4. ... and a one-green-verdict list still is.
+                (case (all-green? (cons (gate-verdict one-gate one-obs) nil))
+                  (false 6)
+                  (true
+                    ; 5. a failing gate NAMES the expectation that failed.
+                    (case (str-eq (gate-line (gate-verdict three-gate three-obs)) want-line)
+                      (false 7)
+                      (true
+                        ; 6. an empty suite list must not exit 0 ...
+                        (case (=i (test-main (the (List Suite) nil)) 0)
+                          (true 8)
+                          (false
+                            ; 7. ... and a suite that passes must.
+                            (case (=i (test-main (cons green-suite nil)) 0)
+                              (false 9)
+                              (true  0))))))))))))))))

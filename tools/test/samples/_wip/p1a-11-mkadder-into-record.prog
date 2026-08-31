@@ -1,0 +1,9 @@
+; V11: closure produced by a named global returning a lam, then stored.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare mk-adder (-> I64 (-> I64 I64)))
+(def mk-adder (lam (k) (lam (x) (+ x k))))
+(declare mk-a (-> I64 Voc))
+(def mk-a (lam (k) (voc (mk-adder k) 1)))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (- (case (mk-a 1) ((voc d n) (d 10))) 11)))

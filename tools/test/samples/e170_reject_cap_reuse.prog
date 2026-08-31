@@ -1,0 +1,32 @@
+; E170 lane E -- MUST NOT COMPILE. Sock: the cap is re-used.
+;
+; The wrong implementation: after a successful send, send AGAIN on the ORIGINAL
+; handle instead of the one the result sum threaded back. That is a program a
+; developer writes -- `s` is in scope, it is the socket, and in a language
+; without linear types this is the correct code. Two sends on one socket is not
+; a shape error: the twin `pe-send-2` in e170_port_twin.chiral does exactly two
+; sends and compiles.
+;
+; ⚑ WHY THE WRONGNESS IS SEMANTIC AND NOT STRUCTURAL. The twin and this file
+; differ by ONE IDENTIFIER -- `s2` in the `send-r` arm becomes `s`. Same import,
+; same declared type, same arity, same constructors, same number of crossings.
+; Nothing structural distinguishes them, so whatever refuses this refuses it for
+; what it MEANS.
+;
+; ⚑ WHICH HALF THE CHECKER NAMES. Re-using `s` also leaves `s2` unconsumed, and
+; the checker reports the arm binder first -- `field binder usage mismatch`
+; rather than `linear binder usage mismatch`. Both halves are the same
+; conservation rule and the message asserted here is the one the compiler
+; actually emits; asserting the other would be asserting a wish.
+;
+; want: exit 1, `load: field binder usage mismatch`
+
+(import "ports/sock")
+
+(def pe-send-2 (=> (1 s Sock) Bytes SendR)
+  (lam (s bs)
+    (case (sock-send s bs)
+      ((send-r s2)  (sock-send s bs))
+      ((send-err m) (send-err m)))))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

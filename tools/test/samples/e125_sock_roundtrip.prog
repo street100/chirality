@@ -1,0 +1,43 @@
+; e125_sock_roundtrip.chiral — behavioral sample for E125 native sock-send/sock-recv.
+; A hermetic, in-process round-trip over an AF_UNIX SOCK_STREAM socketpair (E126):
+; no peer, no listener, no network. Drives the exit code stepwise so a wrong
+; lowering surfaces as a distinct code:
+;   socketpair failed                         -> 10
+;   sock-send returned send-err               -> 11
+;   sock-recv returned recv-err               -> 12
+;   sock-recv returned recv-closed (0 bytes)  -> 13
+;   payload mismatch (bytes->str bs != "hi")  -> 20
+;   full success                              -> 42
+; Each Sock cap is threaded linearly: socketpair -> (a b); sock-send consumes a,
+; re-threads a2 in send-r; sock-recv consumes b, re-threads b2 in recv-r; both
+; are then consumed exactly once by sock-close.
+;
+; DISCRIMINATING: the pre-E125 compiler has no crossing-wraps row for sock-send /
+; sock-recv, so this program does not compile/link under the old B1.
+;
+; Verified via the resolver blob (imports resolve to prelude/ports/bytes-tal),
+; like e104_pty.chiral — not the import-less phase-2 test-runner.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "lowering/tal/bytes")
+
+; Effectful sequencing with live linear caps uses (case (effect) (unit ...)),
+; not (let (_ (effect)) ...): the E124 use-cap idiom (e124_adopt_roundtrip.chiral)
+; — the linear checker threads the usage context through the unit-case, and each
+; Sock is consumed exactly once on every path.
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (socketpair unit)
+      ((sp-err m) 10)
+      ((sp-ok a b)
+        (case (sock-send a (str->bytes "hi"))
+          ((send-err m) (case (sock-close b) (unit 11)))
+          ((send-r a2)
+            (case (sock-recv b 8)
+              ((recv-err m) (case (sock-close a2) (unit 12)))
+              ((recv-closed b2)
+                (case (sock-close a2) (unit (case (sock-close b2) (unit 13)))))
+              ((recv-r bs b2)
+                (case (str-eq (bytes->str bs) "hi")
+                  (false (case (sock-close a2) (unit (case (sock-close b2) (unit 20)))))
+                  (true  (case (sock-close a2) (unit (case (sock-close b2) (unit 42))))))))))))))

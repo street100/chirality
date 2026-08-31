@@ -1,0 +1,66 @@
+; e134_gate.chiral — E134 conformance: the manas GATE / N2 router (pure ->).
+;
+; Builds the doc-refine GATE ruleset (orchestration/processes.md) as a
+; (List GateRule) and drives run-gate on two inputs:
+;   case a — a doc with a fenced ```code``` block + a "foo/bar" path, extra-inputs
+;            carrying "spec"  -> gate-fired, ids ⊇ {claim-vs-source, anchor-sharpen,
+;            coverage-vs-spec}  (has-code-or-paths + has-spec fire; no siblings, no
+;            "example" in the doc, so those two rules stay silent — SPARSE).
+;   case b — a plain-prose doc, no extra-inputs  -> gate-no-match.
+; Prints PASS/FAIL per case; exits 0 iff both pass, else 1. run-gate is -> so the
+; membrane already PROVES no backend call — this test checks the ROUTING decision.
+
+(import "prelude/prelude")
+(import "manas/core/gate")     ; run-gate, GateRule, GateDecision (via types)
+(import "ports/ports")               ; print (=> Str Unit)
+
+; membership of an id in a (List Str)
+(def mem (-> Str (List Str) Bool)
+  (lam (x xs)
+    (case xs
+      (nil false)
+      ((cons h t)
+        (cond ((str-eq h x) true)
+              (else (mem x t)))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((rules
+            (cons (gate-rule "cites-code-or-paths"
+                    (cons "claim-vs-source" (cons "anchor-sharpen" nil)))
+            (cons (gate-rule "maps-to-spec-or-reqs"
+                    (cons "coverage-vs-spec" nil))
+            (cons (gate-rule "coupled-to-sibling-docs"
+                    (cons "cross-doc-drift" nil))
+            (cons (gate-rule "carries-examples"
+                    (cons "example-completeness" (cons "example-organization" nil)))
+                  nil)))))
+          (doc-a "intro ```lang\ncode\n``` see foo/bar for the module")
+          (extra-a (cons (pair "spec" "the-spec-body") nil))
+          (doc-b "just some plain prose about ideas and design")
+          (extra-b (the (List (Pair Str Str)) nil)))
+      (let ((pass-a
+              (case (run-gate rules doc-a extra-a)
+                ((gate-no-match r) false)
+                ((gate-fired ids reason)
+                  (and (mem "claim-vs-source" ids)
+                       (and (mem "anchor-sharpen" ids)
+                            (mem "coverage-vs-spec" ids))))))
+            (pass-b
+              (case (run-gate rules doc-b extra-b)
+                ((gate-no-match r) true)
+                ((gate-fired ids reason) false))))
+        (case pass-a
+          (false
+            (case (print "FAIL case-a: expected claim-vs-source+anchor-sharpen+coverage-vs-spec")
+              (unit 1)))
+          (true
+            (case (print "PASS case-a: code+path+spec -> claim-vs-source, anchor-sharpen, coverage-vs-spec")
+              (unit
+                (case pass-b
+                  (false
+                    (case (print "FAIL case-b: plain prose did not gate-no-match")
+                      (unit 1)))
+                  (true
+                    (case (print "PASS case-b: plain prose -> gate-no-match")
+                      (unit 0))))))))))))

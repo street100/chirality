@@ -35,7 +35,7 @@ updated: 2026-08-24
 
 **Vocabulary definition ([[vocabulary]]).** Evidence *is* "cross-checked truth
 about substrate (redundancy, verifiable split, MAC, attestation, reconciliation).
-The bridge turns substrate into evidence a typed process can check (P6)." It *is
+The bridge turns substrate into evidence a typed process can check (P5)." It *is
 not* "proof. It is what you fall back on when proof runs out."
 
 Sharpened into the load-bearing claims:
@@ -156,7 +156,7 @@ seeded, the rest are DESIGNED.**
   integrity — "looks like C but delivers only A's secrecy"); **T3** verifiable split
   = C. The shares/replicas themselves live in B. "Do what you can, named" — a truth
   wears its tier so no one is fooled about where trust rests.
-- **Home.** [[axis-typeability]] (the ladder *is* the axis) + P7.
+- **Home.** [[axis-typeability]] (the ladder *is* the axis) + P5 (the tiering, which is P5's operational detail).
 - **Build-state.** The *ladder* is settled design law. Its *instances* per build:
   **T0 is built** (the kernel judgment, E3–E5, [[banks/module]] Shard 1). **T1
   copies-compared is partially built as a development discipline** — differential

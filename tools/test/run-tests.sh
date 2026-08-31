@@ -16,10 +16,10 @@
 #   6  linear mint discipline     PORTED  -- tools/test/linear-mint.sh
 #   7  downstream roots compile   PORTED  -- inline sweep, below
 #   8  module datasheet (E161)    NOT PORTED -- see MIGRATION-NOTES.md
-#   9  sort adoption (E156)       NOT PORTED -- needs scaffold/tests/samples/
+#   9  sort adoption (E156)       NOT PORTED -- fixtures landed slice 8; script owed
 #  10  external-compiler C leg    DROPPED    -- external judgment cut, by decision
 #  11  resolver + build state     NOT PORTED -- see MIGRATION-NOTES.md
-#  12  the test floor (E168)      NOT PORTED -- needs scaffold/tests/samples/
+#  12  the test floor (E168)      NOT PORTED -- fixtures landed slice 8; script owed
 #  13  typed diagnostics (E157)  NEW HERE   -- tools/test/diag.sh
 #  14  layout algebra (E158)     NEW HERE   -- tools/test/doc.sh
 #  15  horizontal composition    NEW HERE   -- tools/test/row.sh
@@ -148,26 +148,23 @@ run_phase 6 "linear mint discipline (E159 binder + arrow)"     linear-mint.sh
 # ones listed by name and reason.  A root that starts failing is caught; a KNOWN
 # one that starts PASSING is also reported, so the list cannot rot silently.
 #
-#   t5_utf8  : an UNPORTED OLD-TREE ROOT.  It carries ZERO `(import ...)` lines
-#              -- its header still reads "Build: prelude + TUI/vt-core/utf8.chiral
-#              + this file" -- so nothing resolves into its blob and `Unit`
-#              (lib/prelude/prelude.chiral) is simply absent.  A migration gap,
-#              not a codec one, and no `enc` fix can move it.
-#
-# t5_vt_parser and t6_apc_roundtrip LEFT this list in E174.  The old comment
-# called all three "pre-existing TUI breakage"; two of them were nothing of the
-# kind.  They were `load: non-exhaustive case` out of lib/protocol/apc.chiral's
-# `enc`, which had been left six-of-eight when `r-lines` and `r-face` joined the
-# `Rendering` sum -- t5_vt_parser reached it through vt-parser.chiral's
-# `(import "protocol/apc")`.  E174 repaired the codec on both sides, so both
-# roots compile and run to their own exit-42 all-passed sentinel.
+#   t5_utf8 t5_vt_parser    : pre-existing TUI breakage, carried over from the
+#   t6_apc_roundtrip          old tree's own KNOWN_FAIL list
+#   _recurse-ceiling        : a diagnostic that is SUPPOSED to fail. Its header
+#                             says so: "increment N until B1 produces a runnable
+#                             ELF that segfaults or B1 itself fails". It probes
+#                             the native recursion ceiling by breaking.
+#   e42_supervisor_accept   : binds `sock-connect`, which LEDGER E127 marks
+#                             DEFERRED -- "needs a live peer; not the hermetic
+#                             milestone". The wrapper is registered in
+#                             crossing-wraps; the extern does not lower.
 #
 # The six scriba-* / flow-view-test roots left this list when the manas subtree
 # landed (slice 4).  They were never broken -- they imported twelve manas keys
 # that resolved to nothing.  Nothing in them was edited to fix it.
 echo
 echo "=== Phase 7: downstream roots compile (the apps lib/ can break) ==="
-KNOWN_FAIL=" t5_utf8.prog "
+KNOWN_FAIL=" t5_utf8.prog _recurse-ceiling.prog e42_supervisor_accept.prog "
 r_pass=0; r_fail=0; r_skip=0; r_newpass=0
 ALL_ROOTS="$( cd "$REPO" && grep -rl '^(def compile-main' lib prog 2>/dev/null \
                 | while read -r x; do [ -L "$x" ] || echo "$x"; done | sort )"
@@ -193,7 +190,15 @@ echo "downstream roots: $r_pass compiled, $r_fail failed, $r_skip known/negative
 [ "$r_newpass" -eq 0 ] || fail=$((fail+1))
 [ "$r_fail" -eq 0 ] || fail=$((fail+1))
 
-tally "$r_pass" "$r_fail"
+# ⚑ NOT TALLIED INTO THE ASSERTION COUNT, and that is the correction.  These rows
+# were `tally "$r_pass" "$r_fail"` until 2026-08-31, which folded them into the same
+# headline number as E157's mutant-convicted goldens.  At that point 36 of the 149
+# reported assertions -- a quarter of the number -- were "the compiler exited 0 on
+# this file".  A compile carries NO expected value: nothing here says what any root
+# MEANS, only that producing it did not fail, so it cannot be ranked on the
+# provenance ladder at all and averaging it with rows that can overstates the suite.
+# It stays a gate (a failing root still fails the run, above); it stops being an
+# assertion.  Reported on its own line, in its own units.
 
 # ---- Phase 13: typed diagnostics (E157) --------------------------------------
 # Not an old-tree phase: E157 landed after the migration.  The reason it needs a
@@ -259,10 +264,10 @@ run_phase 17 "doc->rendering (E158 commit 4)"                      render-doc.sh
 echo
 echo "=== not ported from the old suite (named, not hidden) ==="
 echo "  Phase 8  module datasheet (E161)      -- 808 lines of fixtures on old-tree module keys; see tools/test/MIGRATION-NOTES.md"
-echo "  Phase 9  sort adoption (E156)         -- needs scaffold/tests/samples/{e151,e152,e156}; fixtures tree NOT migrated"
+echo "  Phase 9  sort adoption (E156)         -- fixtures ARE here now (tools/test/samples/e15{1,2,6}_*.prog, slice 8); the phase SCRIPT is not ported"
 echo "  Phase 10 external-compiler C leg      -- DROPPED: external judgment cut by author decision"
 echo "  Phase 11 resolver + build state       -- old basename-collision class is unreachable here; no committed blob artifact to cmp against"
-echo "  Phase 12 the test floor (E168)        -- needs scaffold/tests/samples/e168_*, e170_*; fixtures tree NOT migrated"
+echo "  Phase 12 the test floor (E168)        -- fixtures ARE here now (tools/test/samples/e168_*, e170_*, slice 8); the phase SCRIPT and its mutant machinery are not ported"
 
 # The assertion count, summed from the phases that report one:
 #   Phase 1 inline behavioral · Phases 3-6 + 13 sub-script tallies · Phase 7 roots.
@@ -270,8 +275,11 @@ echo "  Phase 12 the test floor (E168)        -- needs scaffold/tests/samples/e1
 # prints its rank and check count on its own line above and gates by exit code.
 echo
 echo "assertions: $((tot_pass + inline_pass)) passed, $((tot_fail + inline_fail)) failed"
-echo "  (Phase 1 inline $inline_pass/$((inline_pass+inline_fail)) · Phases 3-6, 13 + Phase 7 roots: $tot_pass passed, $tot_fail failed)"
+echo "  (Phase 1 inline $inline_pass/$((inline_pass+inline_fail)) · Phases 3-6, 13 sub-script tallies: $tot_pass passed, $tot_fail failed)"
 echo "  Phase 2: the test-runner reports its own checks above and gates by exit code."
+echo "compile-only: $r_pass roots built, $r_fail failed -- gates, but asserts nothing"
+echo "  A root that compiles has no expected value and no provenance rank.  It is"
+echo "  reported here rather than added above so the assertion count means one thing."
 
 echo
 if [ "$fail" -eq 0 ]; then

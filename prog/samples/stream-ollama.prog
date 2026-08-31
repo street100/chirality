@@ -1,0 +1,29 @@
+; stream-ollama.chiral -- chirality-only streaming smoke test against a local/mesh
+; OpenAI-compatible endpoint (shredtower ollama on the tailnet).
+; chat-open (native, E131) -> chat-read loop -> put each delta -> close.
+; exit 0 on clean [DONE]; exit 1 on any chunk-err.
+; NOT a hermetic gate sample: it needs the endpoint up (Tailscale to 100.64.0.5).
+; Compile: chirality_blob "lib:prog" prelude ports http, append this file, B1.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/http")
+
+(def req-body Str
+  "{\"model\":\"qwen2.5:0.5b\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hello in exactly three words\"}],\"stream\":true}")
+
+(def chat-loop (=> (1 st ChatStream) I64)
+  (lam (st)
+    (case (chat-read st)
+      ((chunk d s2)
+        (case (put d)
+          (unit (chat-loop s2))))
+      ((chunk-done s2)
+        (case (chat-close s2)
+          (unit 0)))
+      ((chunk-err status s2)
+        (case (chat-close s2)
+          (unit 1))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (chat-loop (chat-open "POST" "http://100.64.0.5:11434/v1/chat/completions" (str->bytes req-body)))))

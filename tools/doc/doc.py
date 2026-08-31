@@ -23,7 +23,7 @@ import glob, os, re, subprocess, sys, datetime
 # tools/<name>/<name>.py -> the tree root is THREE levels up, not two.
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CONFMAP = os.path.join(ROOT, ".planning/audit/CONFORMANCE-MAP.md")
-EXINDEX = os.path.join(ROOT, "examples/INDEX.md")
+EXINDEX = os.path.join(ROOT, "docs/examples/INDEX.md")
 
 CHARTER = """## 0. Doc-audit charter
 Write surface: THIS doc only. Authority gradient — every fix runs toward what
@@ -49,17 +49,33 @@ def die(m):
     sys.exit(1)
 
 
+# The doc tier sorts by ROLE as of 2026-08-31 (LAYOUT.md), so a note that used
+# to sit at docs/<name>.md now sits under one of these. Order is deliberate:
+# the literal path first, then the roles most notes live in. This is a repoint
+# to KNOWN destinations, not a guess -- .planning/MIGRATION-MAP.tsv records
+# where every one of them went.
+DOC_ROLES = ("docs", "docs/definitions", "docs/decisions", "docs/modules",
+             "docs/banks", "docs/implementation", "docs/benchmarks",
+             "docs/examples", "docs/elements")
+
 def resolve_doc(name):
-    for c in (name, f"docs/{name}.md", f"docs/banks/{name}.md", f"docs/{name}",
-              f"{name}.md"):
+    cands = [name, f"{name}.md", f"docs/{name}"]
+    cands += [f"{d}/{name}.md" for d in DOC_ROLES]
+    for c in cands:
         p = os.path.join(ROOT, c)
         if os.path.isfile(p):
             return os.path.relpath(p, ROOT)
-    die(f"no doc found for '{name}' (tried docs/, docs/banks/, literal path)")
+    die(f"no doc found for {name!r} (tried the literal path and "
+        + ", ".join(DOC_ROLES) + ")")
 
 
 def find_src(tok):
-    for base in ("", "scaffold", "scaffold/chirality", "scaffold/lib"):
+    # The source tree is lib/ + prog/ here; the old scaffold/ bases are kept so a
+    # citation written against the old tree still resolves by basename. A miss
+    # returns None and the caller prints the citation unresolved, which is the
+    # honest outcome: the audit charter's check 2 then decides whether the
+    # citation or the claim is the thing that drifted.
+    for base in ("", "lib", "prog", "scaffold", "scaffold/chirality", "scaffold/lib"):
         p = os.path.join(ROOT, base, tok)
         if os.path.isfile(p):
             return p
@@ -161,10 +177,10 @@ def link_heads(text, self_rel):
             continue
         seen.add(name)
         m = re.match(r"E(\d+)(?:-|$)", name)
-        cands = [os.path.join(ROOT, "examples", os.path.basename(g)) for g in
-                 glob.glob(os.path.join(ROOT, "examples", f"E{int(m.group(1)):02d}-*.md"))] \
+        cands = [os.path.join(ROOT, "docs", "examples", os.path.basename(g)) for g in
+                 glob.glob(os.path.join(ROOT, "docs/examples", f"E{int(m.group(1)):02d}-*.md"))] \
             if m else [os.path.join(ROOT, d, f"{name}.md")
-                       for d in ("docs", "docs/banks", "examples", ".planning", "")]
+                       for d in DOC_ROLES + (".planning", "")]
         p = next((c for c in cands if os.path.isfile(c)), None)
         rel = os.path.relpath(p, ROOT) if p else None
         if p is None or rel == self_rel:

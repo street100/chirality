@@ -1,0 +1,9 @@
+(import "prelude/prelude")
+(import "ports/ports")
+
+(def main (=> Unit Unit)
+  (lam (u)
+    (do (put "alpha ")
+        (print "beta")
+        (trace "gamma")
+        unit)))

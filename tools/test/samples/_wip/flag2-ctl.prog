@@ -1,0 +1,17 @@
+; CONTROL A -- same record, N instances in lams, consumed by INLINE CASE only -- an N-instance VOCABULARY record (built inside lams) that
+; ALSO has a projector global. The example claimed this converts it to the
+; dictionary shape and stops the blob lowering. Does it?
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+
+
+(declare mk-a (-> I64 Voc))
+(def mk-a (lam (k) (voc (lam (x) (+ x k)) 1)))    ; instance 1, inside a lam
+(declare mk-b (-> I64 Voc))
+(def mk-b (lam (k) (voc (lam (x) (* x k)) 2)))    ; instance 2, inside a lam
+(declare mk-c (-> I64 Voc))
+(def mk-c (lam (k) (voc (lam (x) (- x k)) 3)))    ; instance 3
+
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u)
+  (- (+ (case (mk-a 1) ((voc d n) (d 10))) (+ (case (mk-b 2) ((voc d n) (d 10))) (case (mk-c 5) ((voc d n) (d 10))))) 36)))

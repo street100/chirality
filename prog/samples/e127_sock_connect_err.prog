@@ -1,0 +1,25 @@
+; e127_sock_connect_err.chiral — E127 conformance: the connect-ERROR path.
+;
+; sock-connect runs socket(AF_UNIX, SOCK_STREAM) then connect() to a pathname
+; socket that does NOT exist. socket() succeeds (fd >= 0); connect() returns
+; -ENOENT; the fused nb-sock-connect body closes the fd (else leak) and assembles
+; (conn-err msg) via ti-cona. Exit 42 = the conn-err arm reached: both syscalls
+; ran on-target, the -errno decode fired, the ConnR sum was built and cased.
+;
+; The conn-r SUCCESS arm is compiled but UNREACHED here (no live listener — the
+; server side sock-listen/sock-accept is deferred). It MUST be present: QTT
+; requires the linear Sock bound by conn-r to be consumed (sock-close, E107), so
+; a missing arm fails the checker, not just coverage.
+;
+; Discriminating: the OLD B1 (no crossing-wraps `sock-connect` row) cannot resolve
+; the crossing, so it fails to compile this at all.
+(import "prelude/prelude")
+(import "ports/ports")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (sock-connect "/nonexistent/path")
+      ((conn-err m) 42)
+      ((conn-r s)
+        (case (sock-close s)
+          (unit 0))))))

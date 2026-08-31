@@ -25,7 +25,18 @@ from pathlib import Path
 
 # tools/<name>/<name>.py -> the tree root is THREE levels up, not two.
 ROOT = Path(__file__).resolve().parent.parent.parent
-SCAFFOLD = ROOT / "scaffold"
+# The source tree is lib/ + prog/. `SCAFFOLD` kept its name so the checks that
+# resolve a citation by trying several bases still read the same; it now points
+# at the tree root, and SRC_ROOTS is the pair a check walks when it wants "every
+# source file". Repointed 2026-08-31 against .planning/MIGRATION-MAP.tsv, which
+# records where each of the 147 originals went.
+SCAFFOLD = ROOT
+SRC_ROOTS = (ROOT / "lib", ROOT / "prog")
+
+
+def src_files(pattern: str = "*.chiral"):
+    """Every source file under lib/ and prog/, sorted."""
+    return sorted(f for r in SRC_ROOTS for f in r.rglob(pattern))
 CONDENSATION = date(2026, 7, 20)  # PRINCIPLES.md seven->five
 WORDS = {"one":1,"two":2,"three":3,"four":4,"five":5,"six":6,"seven":7,
          "eight":8,"nine":9,"ten":10,"eleven":11,"twelve":12,"thirteen":13,
@@ -64,10 +75,17 @@ def resolve(tok: str) -> bool:
     return tok in _basenames()  # bare basename: it must exist somewhere
 
 
+class Vacuous(Exception):
+    """A check whose SUBJECT no longer exists. Raised instead of returning [],
+    because an empty loop reporting `ok` is a gate that passes forever. The
+    runner prints these under their own heading, the same way the test suite
+    prints its unported phases."""
+
+
 def check_a() -> list[str]:
     """Ledger evidence paths exist."""
     errs: list[str] = []
-    led = ROOT / "docs" / "status-ledger.md"
+    led = ROOT / "docs" / "definitions" / "status-ledger.md"
     text = led.read_text()
     for m in PATHISH.finditer(text):
         raw = m.group(1)
@@ -98,10 +116,21 @@ def frontmatter_date(text: str) -> date | None:
     return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
 
 
+# ── the doc tier is RECURSIVE as of the 2026-08-31 role sort ─────────────────
+# Docs live in docs/{definitions,decisions,modules,banks,implementation,
+# benchmarks,examples,elements}/ now. Every check below that meant "every doc"
+# was spelled (ROOT/"docs").glob("*.md"), which after the sort is one file:
+# docs/index.md. Found by the PRINCIPLES.md audit, 2026-08-31, with a live
+# miss: docs/banks/evidence-and-split.md is dated 2026-08-24, cites P6 and P7,
+# and check B did not see it.
+def doc_tier(pattern: str = "*.md"):
+    """Every markdown doc under docs/, at any depth, sorted and deduped."""
+    return sorted(set((ROOT / "docs").rglob(pattern)))
+
 def check_b() -> list[str]:
     """No P6/P7 in docs updated after the condensation."""
     errs: list[str] = []
-    for md in sorted((ROOT / "docs").glob("*.md")):
+    for md in doc_tier():
         text = md.read_text()
         d = frontmatter_date(text)
         if d is None or d <= CONDENSATION:
@@ -122,8 +151,9 @@ def check_c() -> list[str]:
     errs: list[str] = []
     mapmd = (ROOT / "MAP.md").read_text()
 
-    n_decisions = len(list((ROOT / "docs").glob("decision-*.md")))
-    m = re.search(r"`docs/decision-\*`\s*\((\w+)\s+notes?\)", mapmd)
+    n_decisions = len(doc_tier("decision-*.md"))
+    # accepts the pre-role-sort `docs/decision-*` and the current `docs/decisions/`
+    m = re.search(r"`docs/decisions?(?:/|-\*)`\s*\((\w+)\s+notes?\)", mapmd)
     if not m:
         errs.append("[C] MAP.md no '(N notes)' claim for docs/decision-*")
     else:
@@ -132,7 +162,7 @@ def check_c() -> list[str]:
             errs.append(f"[C] MAP claims {m.group(1)} decision notes; "
                         f"tree has {n_decisions}")
 
-    edges = (ROOT / "docs" / "open-edges.md").read_text()
+    edges = (ROOT / "docs" / "definitions" / "open-edges.md").read_text()
     seq_block = edges.split("Sequencing questions", 1)
     if len(seq_block) == 2:
         n_seq = len(re.findall(r"^\s*\d+\.\s", seq_block[1], re.M)) or \
@@ -243,20 +273,25 @@ def check_f() -> list[str]:
         m = re.match(r"E(\d+)(?:-|$)", name)
         if m:
             n = int(m.group(1))
-            return bool(list((ROOT / "examples").glob(f"E{n:02d}-*.md"))) \
+            return bool(list((ROOT / "docs" / "examples").glob(f"E{n:02d}-*.md"))) \
                 or n in catalog_ids
-        return any((base / f"{name}.md").exists()
-                   for base in (ROOT / "docs", ROOT / "docs" / "banks",
-                                ROOT / "examples", ROOT / ".planning", ROOT))
+        # A [[slug]] is either a bare stem ([[thesis]]) or a path relative to
+        # docs/ ([[banks/module]]). Matching stems only made every one of the
+        # 60-odd path-form bank links read as dangling.
+        docs = ROOT / "docs"
+        for f in doc_tier():
+            if f.stem == name or f.relative_to(docs).with_suffix("").as_posix() == name:
+                return True
+        return ((ROOT / ".planning" / f"{name}.md").exists()
+                or (ROOT / f"{name}.md").exists())
 
     def linkish(f, name: str) -> bool:
         if f.parent.name != "examples":
             return True
         return bool(re.match(r"E\d+", name)) or "/" in name or "-" in name
 
-    files = (sorted((ROOT / "docs").glob("*.md"))
-             + sorted((ROOT / "docs" / "banks").glob("*.md"))
-             + sorted((ROOT / "examples").glob("*.md")))
+    files = (doc_tier()
+             + sorted((ROOT / "docs" / "examples").glob("*.md")))
     for f in files:
         text = f.read_text()
         # a [[link]] in a code span is mention, not link; blank same-length to keep offsets
@@ -299,8 +334,7 @@ def check_g() -> list[str]:
             nlines[p] = len(p.read_text().splitlines())
         return nlines[p]
 
-    for f in (sorted((ROOT / "docs").glob("*.md"))
-              + sorted((ROOT / "docs" / "banks").glob("*.md"))):
+    for f in doc_tier():
         ctx = None
         for i, ln in enumerate(f.read_text().splitlines(), 1):
             for span in re.findall(r"`([^`]+)`", ln):
@@ -378,8 +412,7 @@ def check_r() -> list[str]:
     cite = re.compile(r"([A-Za-z0-9_/.-]+\.(?:py|chirality))(?::(\d+))?$")
     bare = re.compile(r":(\d+)$")
 
-    for f in (sorted((ROOT / "docs").glob("*.md"))
-              + sorted((ROOT / "docs" / "banks").glob("*.md"))):
+    for f in doc_tier():
         ctx = None
         for i, ln in enumerate(f.read_text().splitlines(), 1):
             spans = [(m.start(), m.end(), m.group(1).strip())
@@ -418,9 +451,12 @@ def check_h() -> list[str]:
     """The idioms cheatsheet's refine operators exist in refine.py's _OPS —
     the reference every pre-run copies syntax from must not teach illegal ops."""
     errs: list[str] = []
-    cheat = ROOT / "examples" / "_CHEATSHEET.md"
+    cheat = ROOT / "docs" / "examples" / "_CHEATSHEET.md"
     rf = SCAFFOLD / "chirality" / "refine.py"
-    if not (cheat.exists() and rf.exists()):
+    if not rf.exists():
+        raise Vacuous("refine.py is the Python oracle, CUT by author decision. "
+                      "Nothing verifies the cheatsheet's refine operators now.")
+    if not cheat.exists():
         return errs
     m = re.search(r"_OPS\s*=\s*\(([^)]*)\)", rf.read_text())
     ops = set(re.findall(r'"([^"]+)"', m.group(1))) if m else set()
@@ -440,7 +476,7 @@ def _load_frontier():
     """Load tools/frontier/frontier.py (hyphenated name -> importlib) so this check
     and the digest share ONE definition of the source set + hash."""
     import importlib.util
-    path = ROOT / "bin" / "tools/frontier/frontier.py"
+    path = ROOT / "tools" / "frontier" / "frontier.py"
     if not path.exists():
         return None
     spec = importlib.util.spec_from_file_location("chirality_frontier", path)
@@ -452,24 +488,24 @@ def _load_frontier():
 
 
 def check_i() -> list[str]:
-    """I. Frontier digest fresh. If docs/FRONTIER.md exists it must embed the
+    """I. Frontier digest fresh. If docs/definitions/FRONTIER.md exists it must embed the
     current sources hash; a frontier source that moved without a re-condense
     makes the orientation layer silently stale — the exact rot this tier fights.
     Absent digest = clean (it is optional to generate); present + stale = FAIL."""
     errs: list[str] = []
-    digest = ROOT / "docs" / "FRONTIER.md"
+    digest = ROOT / "docs" / "definitions" / "FRONTIER.md"
     if not digest.exists():
         return errs
     mf = _load_frontier()
     if mf is None:
-        return ["[I] docs/FRONTIER.md exists but tools/frontier/frontier.py is "
+        return ["[I] docs/definitions/FRONTIER.md exists but tools/frontier/frontier.py is "
                 "missing; cannot verify freshness"]
     embedded = mf.embedded_hash(digest.read_text(encoding="utf-8"))
     if embedded is None:
-        errs.append("[I] docs/FRONTIER.md has no sources-hash marker; "
+        errs.append("[I] docs/definitions/FRONTIER.md has no sources-hash marker; "
                     "regenerate: python3 tools/frontier/frontier.py condense")
     elif embedded != mf.sources_hash():
-        errs.append("[I] docs/FRONTIER.md is stale (a frontier source changed "
+        errs.append("[I] docs/definitions/FRONTIER.md is stale (a frontier source changed "
                     "without a re-condense); run: python3 tools/frontier/frontier.py condense")
     return errs
 
@@ -597,9 +633,7 @@ def check_l() -> list[str]:
     owning module; N must never grow. Lower the baseline when an element retires
     copies — see LEDGER VAL/E151."""
     errs: list[str] = []
-    srcs = [f for f in list((ROOT / "scaffold" / "lib").rglob("*.chiral"))
-            + list((ROOT / "TUI").rglob("*.chiral"))
-            if "/scaffold/lib/scriba/" not in str(f)]   # symlink to TUI/scriba, same files
+    srcs = src_files()   # the symlink web the old filter dodged no longer exists
     for pat, baseline in OWNERSHIP_BASELINE.items():
         rx = re.compile(pat, re.M)
         hits = [f for f in srcs if rx.search(f.read_text(errors="replace"))]
@@ -632,7 +666,11 @@ def check_m() -> list[str]:
     foundation — that is the failure this guards, and it cannot happen by editing,
     only by someone replacing a link with a file."""
     errs: list[str] = []
-    lib = {f.stem: f for f in (ROOT / "scaffold" / "lib").glob("*.chiral")}
+    if not (ROOT / "TUI").is_dir():
+        raise Vacuous("the scaffold/lib <-> TUI symlink web this guards was "
+                      "dissolved by the 2026-08-31 migration; 153 entries "
+                      "resolved to 147 real files and nothing is linked now.")
+    lib = {f.stem: f for f in src_files()}
     for f in sorted((ROOT / "TUI").rglob("*.chiral")):
         src = lib.get(f.stem)
         if src and src.resolve() != f.resolve():
@@ -696,7 +734,7 @@ def check_p() -> list[str]:
     overridable at all.
     """
     errs: list[str] = []
-    files = sorted((ROOT / "scaffold" / "tests").glob("*.sh")) + [ROOT / "bin" / "chirality"]
+    files = sorted((ROOT / "tools" / "test").glob("*.sh")) + [ROOT / "bin" / "chirality"]
     for f in files:
         if not f.exists():
             errs.append(f"[P] {f.relative_to(ROOT)} missing — four suite phases reach the "
@@ -803,7 +841,7 @@ def check_n() -> list[str]:
     """
     errs: list[str] = []
     ledger = ROOT / ".planning" / "LEDGER.md"
-    index = ROOT / "examples" / "INDEX.md"
+    index = ROOT / "docs" / "examples" / "INDEX.md"
     if not ledger.exists() or not index.exists():
         return errs
     # LEDGER row: | E# | category | state | ... -- the state is column 3.
@@ -938,7 +976,7 @@ def check_s() -> list[str]:
         return subprocess.run(["git", "check-ignore", "-q", rel],
                               cwd=ROOT, capture_output=True).returncode == 0
 
-    for f in sorted(SCAFFOLD.rglob("*.chiral")):
+    for f in src_files():
         if f.is_symlink():
             continue
         rel_src = f.relative_to(ROOT).as_posix()
@@ -1008,20 +1046,21 @@ def check_s() -> list[str]:
 # MIGRATION-NOTES.md. A linter repointed at a guess passes because it is looking at
 # nothing, which is the exact failure class this tool exists to catch.
 REQUIRED_INPUTS = [
-    ("docs/status-ledger.md",                 "check A -- evidence paths"),
+    ("docs/definitions/status-ledger.md",     "check A -- evidence paths"),
     ("MAP.md",                                "check C -- MAP counts"),
-    ("docs/open-edges.md",                    "check D -- banks tier"),
+    ("docs/definitions/open-edges.md",        "check D -- banks tier"),
     ("docs/banks",                            "checks D/E -- the banks tier"),
-    ("docs/FRONTIER.md",                      "check I -- frontier staleness"),
-    ("examples",                              "checks J/N -- the worked-example corpus"),
-    ("examples/INDEX.md",                     "checks J/N -- pipeline state"),
-    ("examples/_CHEATSHEET.md",               "check H -- cheatsheet ops"),
+    ("docs/definitions/FRONTIER.md",          "check I -- frontier staleness"),
+    ("docs/examples",                         "checks J/N -- the worked-example corpus"),
+    ("docs/examples/INDEX.md",                "checks J/N -- pipeline state"),
+    ("docs/examples/_CHEATSHEET.md",          "check H -- cheatsheet ops"),
     (".planning",                             "the planning tier"),
     (".planning/audit/CONFORMANCE-MAP.md",    "checks E/Q -- the build-state authority"),
     (".planning/SELF-IMPLEMENT-CATALOG.md",   "checks J/K -- element rows"),
     (".planning/LEDGER.md",                   "check J -- ledger rows"),
     (".planning/RUNG1-CHECKLIST.md",          "check O -- rung-1 python accounting"),
-    ("scaffold",                              "checks G/R -- the line citations' subject"),
+    ("lib",                                   "checks G/L/R -- the source tree"),
+    ("prog",                                  "checks G/L/R -- the source tree"),
 ]
 
 
@@ -1033,12 +1072,8 @@ def preflight() -> int:
           f"required inputs are absent under {ROOT}\n")
     for p, why in missing:
         print(f"  MISSING  {p:<40s} {why}")
-    print("\nThis is the doc tier, and this tree does not have one yet: docs/ is")
-    print("examples/ definitions/ elements/, all empty. Two of the inputs above are")
-    print("gone BY DECISION rather than unmapped -- scaffold/chirality/{kernel,refine}.py,")
-    print("the Python oracle that check H's cheatsheet ops are verified against.")
-    print("See tools/ledger-lint/MIGRATION-NOTES.md. Nothing was checked; this is")
-    print("exit 2, not a clean run.")
+    print("Nothing was checked. This is exit 2, which is not a clean run and is")
+    print("not a violation either -- see tools/ledger-lint/MIGRATION-NOTES.md.")
     return 2
 
 
@@ -1047,6 +1082,7 @@ def main() -> int:
     if rc:
         return rc
     all_errs: list[str] = []
+    vacuous: list[tuple] = []
     for name, fn in (("A evidence paths", check_a),
                      ("B principle numbers", check_b),
                      ("C MAP counts", check_c),
@@ -1066,10 +1102,19 @@ def main() -> int:
                      ("Q map live tally", check_q),
                      ("R citation lands on its symbol", check_r),
                      ("S rank-2 anchor is committed", check_s)):
-        errs = fn()
+        try:
+            errs = fn()
+        except Vacuous as v:
+            vacuous.append((name, str(v)))
+            print(f"  [VACUOUS] {name} -- subject gone, checked nothing")
+            continue
         all_errs += errs
         status = "FAIL" if errs else "ok"
         print(f"  [{status}] {name} ({len(errs)} issue(s))")
+    if vacuous:
+        print("\nchecked nothing, and named rather than counted as clean:\n")
+        for name, why in vacuous:
+            print(f"  {name}\n    {why}")
     if all_errs:
         print("\nledger-lint: violations found\n")
         for e in all_errs:

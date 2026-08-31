@@ -1,0 +1,142 @@
+; e166_c_assemble.chiral — the E166 step-1 C-mode-assembler runtime gate.
+;
+; lib/lowering/c/assemble.chiral is a shelf module: nothing in a shipping blob
+; links it until emit-c.chiral arrives (E166 step 4), so the self-host fixpoint
+; CANNOT see a bug in it — a wrong c-mangle byte-reproduces the compiler
+; cleanly. This checks RESULTS at runtime. Exit 0 iff ALL correct; else the
+; 1-based number of the first failing case.
+;
+; ⚑ WHAT THE TEETH ARE. c-mangle's contract is INJECTIVITY, not "produces an
+; identifier": two chirality names colliding into one C identifier is a silently
+; miscompiled leg, strictly worse than no leg. So cases 1–12 are built around
+; the pairs a naive scheme collides —
+;   `a-b` vs `a_b`     : the pair that `-`→`_` collides (SPEC decision 6)
+;   `a>b` vs `a_x3eb`  : the pair the hex fallback would collide if `_` were
+;                        not itself escaped
+; — and every one of them is asserted DISTINCT, not merely well-formed.
+;
+; Cases 13–19 pin the boundary sum: c-classify decides fn / local / lit ONCE,
+; against the emitted-function-name list, so no arm downstream string-sniffs a
+; name. The fn list WINS over the `$lit` shape (case 19) — membership is the
+; primary axis, the name shape only the fallback.
+;
+; Cases 20–27 pin c-assemble itself: a-align emits nothing (decision 8),
+; a-bytes passes through verbatim, and each CLbl arm renders its own C frame.
+(import "prelude/prelude")
+(import "prelude/string")
+(import "lowering/mach/asm-reloc")
+(import "lowering/c/assemble")
+
+; ── helpers ─────────────────────────────────────────────────────────────────
+; CLbl is a closed sum with payloads, so equality is an exhaustive nested case.
+(def ca-t-eq (-> CLbl CLbl Bool)
+  (lam (a b)
+    (case a
+      ((c-fn n)    (case b ((c-fn m) (str-eq n m)) ((c-local m) false) ((c-lit j) false)))
+      ((c-local n) (case b ((c-fn m) false) ((c-local m) (str-eq n m)) ((c-lit j) false)))
+      ((c-lit i)   (case b ((c-fn m) false) ((c-local m) false) ((c-lit j) (=i i j)))))))
+
+(def ca-t-run (-> (List Str) (List Asm) Str)
+  (lam (fns xs) (bytes->str (c-assemble fns xs))))
+
+(def ca-t-b (-> Str Asm) (lam (s) (a-bytes (str->bytes s))))
+
+(def ca-t-nofns (List Str) (the (List Str) nil))
+(def ca-t-fns   (List Str) (cons "main" (cons "helper" (the (List Str) nil))))
+(def ca-t-litfn (List Str) (cons "$lit9" (the (List Str) nil)))
+
+; ── the checks, as one flat Bool list; the first false is the exit code ─────
+(def ca-t-first-bad (-> (List Bool) I64 I64)
+  (lam (bs k)
+    (case bs
+      (nil 0)
+      ((cons b rest)
+        (case b
+          (false k)
+          (true (ca-t-first-bad rest (+ k 1))))))))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (ca-t-first-bad
+      (cons ; 1..3  THE adversarial pair: `-`→`_` would collide these
+        (str-eq (c-mangle "a-b") "m_a_Db")
+      (cons
+        (str-eq (c-mangle "a_b") "m_a_Ub")
+      (cons
+        (not (str-eq (c-mangle "a-b") (c-mangle "a_b")))
+      (cons ; 4..6  $ (closconv.chiral:1097-1098 mints $clo0 / $apply0)
+        (str-eq (c-mangle "$clo0") "m__Sclo0")
+      (cons
+        (str-eq (c-mangle "$apply0") "m__Sapply0")
+      (cons
+        (not (str-eq (c-mangle "$clo0") (c-mangle "_Sclo0")))
+      (cons ; 7..8  several dashes, and a real compiler root name
+        (str-eq (c-mangle "a-b-c") "m_a_Db_Dc")
+      (cons
+        (str-eq (c-mangle "compile-main") "m_compile_Dmain")
+      (cons ; 9..12  the hex fallback: `>` (0x3e) is live in asm-reloc's offs->tree
+        (str-eq (c-mangle "offs->tree") "m_offs_D_x3etree")
+      (cons
+        (str-eq (c-mangle "bytes=?") "m_bytes_x3d_x3f")
+      (cons
+        (not (str-eq (c-mangle "a>b") (c-mangle "a_x3eb")))   ; escaping the escape
+      (cons
+        (str-eq (c-mangle "") "m_")                            ; total on the empty name
+      (cons ; 13..19  c-classify — the boundary sum, decided once
+        (ca-t-eq (c-classify ca-t-fns "main") (c-fn "main"))
+      (cons
+        (ca-t-eq (c-classify ca-t-fns "helper") (c-fn "helper"))
+      (cons
+        (ca-t-eq (c-classify ca-t-fns "$skip3") (c-local "$skip3"))  ; not in the list
+      (cons
+        (ca-t-eq (c-classify ca-t-fns "$lit7") (c-lit 7))
+      (cons
+        (ca-t-eq (c-classify ca-t-fns "lit7") (c-local "lit7"))      ; no $ prefix
+      (cons
+        (ca-t-eq (c-classify ca-t-fns "$litx") (c-local "$litx"))    ; tail not digits
+      (cons
+        (ca-t-eq (c-classify ca-t-litfn "$lit9") (c-fn "$lit9"))     ; fn list WINS
+      (cons ; 20..21  a-align emits NOTHING (decision 8); a-bytes passes through
+        (str-eq (ca-t-run ca-t-nofns
+                  (cons (a-align 4096) (the (List Asm) nil))) "")
+      (cons
+        (str-eq (ca-t-run ca-t-nofns
+                  (cons (ca-t-b "hi")
+                    (cons (a-align 4096)
+                      (cons (ca-t-b "yo") (the (List Asm) nil))))) "hiyo")
+      (cons ; 22..24  each CLbl arm's C frame
+        (str-eq (ca-t-run ca-t-fns
+                  (cons (a-label "main")
+                    (cons (ca-t-b "return 42;\n") (the (List Asm) nil))))
+                "long m_main(void) {\nreturn 42;\n}\n\n")
+      (cons
+        (str-eq (ca-t-run ca-t-fns
+                  (cons (a-label "main")
+                    (cons (a-label "$skip3")
+                      (cons (ca-t-b "return 0;\n") (the (List Asm) nil)))))
+                "long m_main(void) {\nm__Sskip3: ;\nreturn 0;\n}\n\n")
+      (cons
+        (str-eq (ca-t-run ca-t-nofns
+                  (cons (a-label "$lit0")
+                    (cons (ca-t-b "{65,66};\n") (the (List Asm) nil))))
+                "\nunsigned char m__Slit0[] = {65,66};\n")
+      (cons ; 25  a second fn label closes the first
+        (str-eq (ca-t-run ca-t-fns
+                  (cons (a-label "main")
+                    (cons (ca-t-b "a;\n")
+                      (cons (a-label "helper")
+                        (cons (ca-t-b "b;\n") (the (List Asm) nil))))))
+                "long m_main(void) {\na;\n}\n\nlong m_helper(void) {\nb;\n}\n\n")
+      (cons ; 26..27  a-rel contributes ONLY its name, to the prologue
+        (str-eq (ca-t-run ca-t-fns
+                  (cons (a-rel 0 e-noenc "helper")
+                    (cons (a-label "main")
+                      (cons (ca-t-b "helper();\n") (the (List Asm) nil)))))
+                "long m_helper(void);\nlong m_main(void) {\nhelper();\n}\n\n")
+      (cons ; a local jump target needs no declaration; a literal cell does
+        (str-eq (ca-t-run ca-t-fns
+                  (cons (a-rel 0 e-noenc "$skip3")
+                    (cons (a-rel 0 e-noenc "$lit4") (the (List Asm) nil))))
+                "extern unsigned char m__Slit4[];\n")
+        nil)))))))))))))))))))))))))))
+      1)))

@@ -1,0 +1,78 @@
+; E170 lane E, THE COMPILING TWIN -- the minimal-pair base for every refusal
+; this lane asserts.
+;
+; Lane E's operational test is: a port type carries meaning IFF there exists a
+; WRONG implementation satisfying its shape that the type rejects. The load-
+; bearing half is "satisfying its shape": a wrong implementation refused for an
+; unrelated reason -- a typo, a wrong arity, a constructor that does not exist --
+; proves nothing about the port type, and this tree has shipped four gates that
+; could not fail (docs/testing-floors.md:181-214) for want of exactly that care.
+;
+; So every refusal fixture in this lane is a MINIMAL PAIR against a definition
+; in THIS file: same imports, same declared type, same arity, every name bound,
+; every constructor real. What differs is the body's MEANING -- in three of the
+; six, a single identifier or a single literal. If the negative were refused for
+; a structural reason, its twin here would be refused for the same one, and this
+; fixture would not compile.
+;
+; The six twins, each named by the fixture it pairs with:
+;   pe-send-2      <- e170_reject_cap_reuse   (s2 -> s: the cap threaded on,
+;                                              against the cap re-used)
+;   pe-send-abort  <- e170_reject_cap_lost    (the abort path DISCHARGES the cap
+;                                              before reporting the error)
+;   pe-send-s      <- e170_reject_port_swap   (Sock -> LSock in the parameter:
+;                                              two nullary opaque linear atoms,
+;                                              structurally identical, so only
+;                                              their NAMES can refuse it)
+;   pe-recv-1      <- e170_reject_recv_zero   (1 -> 0: one literal, and the port
+;                                              type's refinement is the only
+;                                              thing that can tell them apart)
+;   pe-pool-16     <- e170_reject_pool_size   (the index in the port type: (Pool
+;                                              16384) against (Pool 4096), same
+;                                              porttype, same shape)
+;   pe-secret-out  <- e170_reject_secret_leak (the audited exit, against handing
+;                                              the sealed handle straight to a
+;                                              socket)
+;
+; Nothing here CROSSES at runtime: every def is a typed implementation whose
+; acceptance at LOAD is the measurement, and `compile-main` returns 0 without
+; calling any of them. A fixture that opened a socket would be measuring the
+; host, not the type.
+;
+; exit 0 = the twins all typecheck. There are no runtime cases.
+
+(import "ports/sock")
+(import "ports/pool")
+(import "capability/secret")
+
+; ---- Sock: the cap threaded on, and the abort path that discharges it -------
+(def pe-send-2 (=> (1 s Sock) Bytes SendR)
+  (lam (s bs)
+    (case (sock-send s bs)
+      ((send-r s2)  (sock-send s2 bs))
+      ((send-err m) (send-err m)))))
+
+(def pe-send-abort (=> (1 s Sock) Bytes SendR)
+  (lam (s bs) (case (sock-close s) ((unit) (send-err "not sent")))))
+
+; ---- Sock vs LSock: the parameter that IS a Sock ---------------------------
+(def pe-send-s (=> (1 s Sock) Bytes SendR)
+  (lam (s bs) (sock-send s bs)))
+
+; ---- the refined length argument, at a value the refinement admits ---------
+(def pe-recv-1 (=> (1 s Sock) RecvR)
+  (lam (s) (sock-recv s 1)))
+
+; ---- the pool index: the consumer and a producer at the SAME size ----------
+(declare pe-use-16 (=> (1 p (Pool 16384)) Unit))
+(def pe-use-16 (lam (p) (pool-close 16384 p)))
+
+(def pe-pool-16 (=> (1 p (Pool 16384)) Unit)
+  (lam (p) (pe-use-16 p)))
+
+; ---- Secret: the one audited exit ------------------------------------------
+(def pe-secret-out (=> (1 pw Secret) (1 s Sock) SendR)
+  (lam (pw s)
+    (case (secret-reveal pw) ((reveal-r bs) (sock-send s bs)))))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

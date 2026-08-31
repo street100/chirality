@@ -1,0 +1,23 @@
+; E170 lane E -- MUST NOT COMPILE. Sock: a receive of zero bytes.
+;
+; The wrong implementation: ask the socket for 0 bytes. `read(2)` with count 0
+; returns 0 and is indistinguishable from end-of-stream, so a zero-length recv
+; is a live bug class in C, not a made-up one -- and here the port's own type
+; carries the bound: `sock-recv : (=> (1 s Sock) (refine I64 (> 0)) RecvR)`
+; (ports/sock.chiral:69).
+;
+; ⚑ WHY THE WRONGNESS IS SEMANTIC AND NOT STRUCTURAL. The twin `pe-recv-1` in
+; e170_port_twin.chiral is this file with ONE LITERAL changed, `1` for `0`. Both
+; are `I64` literals; nothing structural separates them. What refuses this file
+; is the REFINEMENT in the port's type deciding a proposition about a value --
+; the only negative in the lane whose refusal is about the payload of a crossing
+; rather than about custody of the capability.
+;
+; want: exit 1, `load: cannot prove refinement`
+
+(import "ports/sock")
+
+(def pe-recv-1 (=> (1 s Sock) RecvR)
+  (lam (s) (sock-recv s 0)))
+
+(def compile-main (-> I64 I64) (lam (n) 0))

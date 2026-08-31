@@ -1,0 +1,165 @@
+; e152_list_sort.chiral — the E152 List-sort-has-an-owner runtime gate.
+;
+; E152 adds `list-sort` (plus the `ms-`-prefixed internals ms-take / ms-drop /
+; ms-merge / ms-sort-n — the E154 flat-emitted-label-namespace guard) to
+; lib/prelude/{ord,list,maybe,alist,map,set}.chiral: THE comparator-passed, stable, pure merge
+; sort on List. Before this the only sort in the tree was `ins-sorted`, an
+; insertion sort private to row-infer.chiral.
+;
+; Nothing in a shipping blob calls list-sort yet, so the self-host fixpoint
+; CANNOT catch a bug here: a wrong merge byte-reproduces the compiler cleanly.
+; So this checks RESULTS at runtime — each case asserts the RIGHT answer.
+; Exit 0 iff ALL correct; else the 1-based number of the first failing case.
+;
+; Coverage: empty / singleton / two-element (both orders) / already-sorted /
+; reverse-sorted / duplicates / all-equal / negatives / odd length / a 12
+; element list that forces several merge levels; a DESCENDING comparator to
+; prove the comparator is really consulted and not an ambient I64 order; the
+; input list left unchanged (purity); and STABILITY — pairs sorted on the
+; first component only, asserting equal-key elements keep their INPUT order,
+; under both the ascending and the descending comparator. Stability is the
+; assertion that actually distinguishes a stable merge sort from any other.
+(import "prelude/prelude")
+(import "prelude/ord")
+(import "prelude/list")
+(import "prelude/string")
+
+; ── rendering: a list becomes one comma-joined string, so a whole result is
+; one str-eq. i64->str is a prim, so it needs a global wrapper to be passed
+; first-class (the str-eqf convention in prelude).
+(def ls-t-showi (-> I64 Str) (lam (n) (i64->str n)))
+
+(def ls-t-show (-> (List I64) Str)
+  (lam (xs) (str-join "," (map-list I64 Str ls-t-showi xs))))
+
+; ── the two comparators. Ascending is the module's own i64-cmp; descending is
+; its argument flip — nothing about list-sort knows which is "natural".
+(def ls-t-desc (-> I64 I64 Ord) (lam (a b) (i64-cmp b a)))
+
+; ── the stability subject: (Pair I64 Str) — an integer KEY and a distinct TAG.
+; The comparator sees the key ONLY, so every tag order the sort produces among
+; equal keys is a free choice; a stable sort has exactly one right answer.
+(def ls-t-key (-> (Pair I64 Str) (Pair I64 Str) Ord)
+  (lam (p q)
+    (case p
+      ((pair pk pv)
+        (case q
+          ((pair qk qv) (i64-cmp pk qk)))))))
+
+(def ls-t-key-desc (-> (Pair I64 Str) (Pair I64 Str) Ord)
+  (lam (p q)
+    (case p
+      ((pair pk pv)
+        (case q
+          ((pair qk qv) (i64-cmp qk pk)))))))
+
+(def ls-t-tag (-> (Pair I64 Str) Str) (lam (p) (case p ((pair k v) v))))
+(def ls-t-fst (-> (Pair I64 Str) I64) (lam (p) (case p ((pair k v) k))))
+
+(def ls-t-tags (-> (List (Pair I64 Str)) Str)
+  (lam (ps) (str-join "," (map-list (Pair I64 Str) Str ls-t-tag ps))))
+
+(def ls-t-keys (-> (List (Pair I64 Str)) Str)
+  (lam (ps)
+    (str-join "," (map-list I64 Str ls-t-showi
+                    (map-list (Pair I64 Str) I64 ls-t-fst ps)))))
+
+; ── the fixtures ────────────────────────────────────────────────────────────
+(def ls-t-empty (List I64) nil)
+(def ls-t-one   (List I64) (cons 7 nil))
+(def ls-t-sorted (List I64) (cons 1 (cons 2 (cons 3 (cons 4 (cons 5 nil))))))
+(def ls-t-rev    (List I64) (cons 5 (cons 4 (cons 3 (cons 2 (cons 1 nil))))))
+(def ls-t-dups   (List I64) (cons 3 (cons 1 (cons 3 (cons 2 (cons 1 nil))))))
+(def ls-t-same   (List I64) (cons 4 (cons 4 (cons 4 (cons 4 nil)))))
+(def ls-t-neg    (List I64) (cons 0 (cons (- 0 3) (cons 5 (cons (- 0 10) (cons 2 nil))))))
+(def ls-t-odd    (List I64) (cons 5 (cons 3 (cons 8 (cons 1 (cons 9 (cons 2 (cons 7 nil))))))))
+; 12 elements: deep enough that the merge tree has four levels
+(def ls-t-big (List I64)
+  (cons 12 (cons 5 (cons 9 (cons 1 (cons 7 (cons 3
+    (cons 11 (cons 2 (cons 8 (cons 6 (cons 10 (cons 4 nil)))))))))))))
+
+; keys 2,1,2,1,2 with distinct tags: ascending-stable = b,d then a,c,e
+(def ls-t-pairs (List (Pair I64 Str))
+  (cons (pair 2 "a")
+  (cons (pair 1 "b")
+  (cons (pair 2 "c")
+  (cons (pair 1 "d")
+  (cons (pair 2 "e") nil))))))
+
+; every key equal: a stable sort is the IDENTITY here
+(def ls-t-flat (List (Pair I64 Str))
+  (cons (pair 1 "a") (cons (pair 1 "b") (cons (pair 1 "c") (cons (pair 1 "d") nil)))))
+
+; 8 pairs over 3 keys — long enough that ties must survive cross-run merges
+(def ls-t-pairs8 (List (Pair I64 Str))
+  (cons (pair 3 "p")
+  (cons (pair 1 "q")
+  (cons (pair 2 "r")
+  (cons (pair 1 "s")
+  (cons (pair 3 "t")
+  (cons (pair 2 "u")
+  (cons (pair 1 "v")
+  (cons (pair 3 "w") nil)))))))))
+
+; ── the checks, as one flat Bool list; the first false is the exit code ─────
+(def ls-t-first-bad (-> (List Bool) I64 I64)
+  (lam (bs k)
+    (case bs
+      (nil 0)
+      ((cons b rest)
+        (case b
+          (false k)
+          (true (ls-t-first-bad rest (+ k 1))))))))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (ls-t-first-bad
+      (cons ; 1..10  ascending i64-cmp over the shapes
+        (str-eq (ls-t-show (list-sort I64 i64-cmp ls-t-empty)) "")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 i64-cmp ls-t-one)) "7")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 i64-cmp (cons 2 (cons 1 nil)))) "1,2")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 i64-cmp (cons 1 (cons 2 nil)))) "1,2")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 i64-cmp ls-t-sorted)) "1,2,3,4,5")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 i64-cmp ls-t-rev)) "1,2,3,4,5")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 i64-cmp ls-t-dups)) "1,1,2,3,3")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 i64-cmp ls-t-same)) "4,4,4,4")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 i64-cmp ls-t-neg)) "-10,-3,0,2,5")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 i64-cmp ls-t-odd)) "1,2,3,5,7,8,9")
+      (cons ; 11..12  a 12-element list, and length is preserved (nothing dropped)
+        (str-eq (ls-t-show (list-sort I64 i64-cmp ls-t-big))
+                "1,2,3,4,5,6,7,8,9,10,11,12")
+      (cons
+        (=i (length I64 (list-sort I64 i64-cmp ls-t-dups)) 5)
+      (cons ; 13..16  the comparator is really consulted: descending
+        (str-eq (ls-t-show (list-sort I64 ls-t-desc ls-t-odd)) "9,8,7,5,3,2,1")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 ls-t-desc ls-t-rev)) "5,4,3,2,1")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 ls-t-desc ls-t-dups)) "3,3,2,1,1")
+      (cons
+        (str-eq (ls-t-show (list-sort I64 ls-t-desc ls-t-empty)) "")
+      (cons ; 17  purity: the input list is untouched by having been sorted
+        (str-eq (ls-t-show ls-t-rev) "5,4,3,2,1")
+      (cons ; 18..22  STABILITY — the comparator sees the key only
+        (str-eq (ls-t-tags (list-sort (Pair I64 Str) ls-t-key ls-t-pairs)) "b,d,a,c,e")
+      (cons
+        (str-eq (ls-t-keys (list-sort (Pair I64 Str) ls-t-key ls-t-pairs)) "1,1,2,2,2")
+      (cons
+        (str-eq (ls-t-tags (list-sort (Pair I64 Str) ls-t-key ls-t-flat)) "a,b,c,d")
+      (cons
+        (str-eq (ls-t-tags (list-sort (Pair I64 Str) ls-t-key ls-t-pairs8))
+                "q,s,v,r,u,p,t,w")
+      (cons ; stable under the FLIPPED comparator too: keys descend, ties don't
+        (str-eq (ls-t-tags (list-sort (Pair I64 Str) ls-t-key-desc ls-t-pairs8))
+                "p,t,w,r,u,q,s,v")
+        nil))))))))))))))))))))))
+      1)))

@@ -1,0 +1,57 @@
+; e131_sse_framing.chiral -- E131 conformance gate: pure SSE framing golden.
+; Hermetic, deterministic, no socket. Drives scan-event -> classify-payload over
+; hardcoded Bytes and asserts the framing + classification cases: OpenAI and
+; Ollama content shapes both yield the delta; role-only and keepalive frames
+; skip; [DONE] ends; mid-stream error and non-JSON both fail; multi-line data
+; joins. Exit 0 iff all hold, 1 on any mismatch.
+(import "prelude/prelude")
+(import "protocol/http")
+
+; classify the payload of one canned frame
+(def classify-frame (-> Bytes (Maybe FrameKind))
+  (lam (buf)
+    (case (scan-event buf)
+      ((fs-event p r) (some (classify-payload p)))
+      ((fs-need) none))))
+
+; the joined payload of one canned frame (for the multi-line join check)
+(def event-payload (-> Bytes (Maybe Bytes))
+  (lam (buf)
+    (case (scan-event buf)
+      ((fs-event p r) (some p))
+      ((fs-need) none))))
+
+(def kind-data (-> FrameKind Str Bool)
+  (lam (k d) (case k ((fk-data dd) (str-eq dd d)) (_ false))))
+
+(def kind-skip (-> FrameKind Bool)
+  (lam (k) (case k ((fk-skip) true) (_ false))))
+
+(def kind-done (-> FrameKind Bool)
+  (lam (k) (case k ((fk-done) true) (_ false))))
+
+(def kind-err (-> FrameKind Bool)
+  (lam (k) (case k ((fk-err st) (=i st -1)) (_ false))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((t1 (case (classify-frame (str->bytes "data: {\"message\":{\"content\":\"hello\"}}\n\n"))
+                ((some k) (kind-data k "hello")) (none false)))
+          (t2 (case (classify-frame (str->bytes "data: {\"choices\":[{\"delta\":{\"content\":\"hi\"}}]}\n\n"))
+                ((some k) (kind-data k "hi")) (none false)))
+          (t3 (case (classify-frame (str->bytes "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\n"))
+                ((some k) (kind-skip k)) (none false)))
+          (t4 (case (classify-frame (str->bytes ": keepalive\n\n"))
+                ((some k) (kind-skip k)) (none false)))
+          (t5 (case (classify-frame (str->bytes "data: [DONE]\n\n"))
+                ((some k) (kind-done k)) (none false)))
+          (t6 (case (classify-frame (str->bytes "data: {\"error\":{\"message\":\"boom\"}}\n\n"))
+                ((some k) (kind-err k)) (none false)))
+          (t7 (case (classify-frame (str->bytes "data: not-json\n\n"))
+                ((some k) (kind-err k)) (none false)))
+          (t8 (case (event-payload (str->bytes "data: a\ndata: b\n\n"))
+                ((some p) (str-eq (bytes->str p) "a\nb")) (none false))))
+      (case (and (and (and t1 t2) (and t3 t4))
+                 (and (and t5 t6) (and t7 t8)))
+        (true 0)
+        (false 1)))))

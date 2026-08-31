@@ -471,9 +471,9 @@ echo "=== E158c4 G8: the four existing gates are byte-unchanged, and Phase 17 ru
 # reword one of them and leave this gate's expectations describing a file that
 # no longer exists.
 PINS="f50f2ff82f533b13f1eadc23edb69ffde30511ea26796b60f1bddb9a468808fe  diag.sh
-3c6e8a2f64e6033669f77155bb5a8a77125af36d803fa73fbc583f4b059d6fff  doc.sh
-59aa9a7ca782f77a05693a853a0ae2825480c438007018855ca96d02604ae88f  row.sh
-46c16595c22918b632bdf7070c97f3195b4915696c6e20fc114510191341b0a9  face.sh"
+d4feea4ae7a95c66b9e7cb854f5306096682d22ad786968a14023df9ac8e5686  doc.sh
+00aa631da299a711fc611c32324ffa9da56b5225995c3dc52e5fd62f10efc0b4  row.sh
+7733277092446b7a0a6a34307b73af01c91d8e79d9345de964bc715e4d52b07c  face.sh"
 pin_check() {  # pin_check DIR -> "" when every pin matches, else the offenders
   local dir="$1" n h
   echo "$PINS" | while read -r h n; do

@@ -1,0 +1,44 @@
+; e42_supervisor_accept.chiral — E42 conformance: THE ACCEPT (checker leg).
+;
+; Forces the checker to verify the FULL supervised loop: it CALLS `supervise-step`,
+; which multiplexes {poll-ready → dispatch-one → mux-step (service ONE),
+; poll-timeout → fire-earliest, poll-err/time-err → tick unchanged} and threads the
+; linear `SockVec` + `Clock` cap on EVERY arm. The returned `Tick` is unpacked and
+; both linear caps are consumed exactly once — so no arm may drop or alias a cap or
+; the linear checker rejects the whole thing.
+;
+; It PASSES the linear + effect checker but does NOT emit native: `notify`,
+; `time-mono`, and `mux-step`'s `sock-recv` are membrane crossings with no rung-1
+; lowering (same status as e106_sockvec_accept). So B1's only complaint is the
+; emit-stage `no emitted label for entry compile-main` — NOT a `load:` linear
+; rejection. Reaching emit == the checker accepted the whole loop shape.
+;
+; The RUNNING behavioral proof (alarm fires / re-arm / cancel, exit 42) is the pure
+; sibling e42_supervisor_control.chiral; here we prove the loop TYPES.
+
+(import "runtime/poll")
+(import "ports/ports")
+(import "capability/lincoll")
+(import "runtime/supervisor")
+
+; Clock acquisition/disposal stubs — no rung-1 referent yet (ports has no
+; clock-open; this sample never runs, it only type-checks the loop). Mirrors
+; e106_drain_control.chiral declaring its own crossings locally.
+(extern clock-open  (=> Unit Clock))
+(extern clock-close (=> (1 c Clock) Unit))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (sock-connect "a")
+      ((conn-err e) 1)
+      ((conn-r s0)
+        ; one supervised tick over a pool holding s0, one held fd, a near-deadline
+        ; alarm, and a fresh Clock. The Tick threads the SockVec + Clock back — we
+        ; drain the pool and close the clock, consuming each linear cap once.
+        (case (supervise-step (sv-push s0 sv-nil)
+                              (cons 0 nil)
+                              (as-cons (alarm 5 7) as-nil)
+                              (clock-open unit))
+          ((tick caps2 s2 c2)
+            (case (sv-drain caps2)
+              (unit (case (clock-close c2) (unit 0))))))))))

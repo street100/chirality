@@ -1,0 +1,10 @@
+; V35: behavioural check -- projector over TWO different record constants.
+; exit 0 only if dispatch is real: (add1 10)=11 and (dbl 10)=20 -> 31-31=0.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare add1 (-> I64 I64)) (def add1 (lam (x) (+ x 1)))
+(declare dbl  (-> I64 I64)) (def dbl  (lam (x) (* x 2)))
+(declare voc-draw (-> Voc (-> I64 I64))) (def voc-draw (lam (v) (case v ((voc d n) d))))
+(declare va Voc) (def va (voc add1 1))
+(declare vb Voc) (def vb (voc dbl 2))
+(declare compile-main (-> Unit I64)) (def compile-main (lam (u) (- (+ ((voc-draw va) 10) ((voc-draw vb) 10)) 31)))

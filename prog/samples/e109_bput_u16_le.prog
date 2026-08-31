@@ -1,0 +1,45 @@
+; e109_bput_u16_le.chiral — E109 behavioral gate for bput-u16-le (little-endian
+; u16 writer, the inverse of bget-u16-le and the u16 mirror of bput-u32-le).
+;
+; A round trip at offset 0 alone is NOT sufficient (it survives a suffix
+; off-by-one and is byte-order-blind), so this asserts the FULL golden behavior
+; at a NONZERO offset, plus the i==j boundary:
+;   cell c = "ABCDEFGH"  (bytes 0x41..0x48), write 258 (= 0x0102) at offset 2.
+;   1. raw low  byte: (bget r 2) = 0x02   — placement at off + LE byte order
+;   2. raw high byte: (bget r 3) = 0x01
+;   3. length preserved: (blen r) = 8            — catches a suffix off-by-one
+;   4. neighbor below off untouched: (bget r 1) = 0x42 (66)
+;   5. neighbor at/above off+2 untouched: (bget r 4) = 0x45 (69)
+;   6. round-trip witness: (bget-u16-le r 2) = 258
+;   7. i==j boundary: write last two bytes of a 2-byte cell (off+2 == blen),
+;      (bput-u16-le c2 0 258) yields no fault; length 2, bytes [0x02,0x01].
+; Exit 42 iff all hold; otherwise the first failing check's marker
+; (10/20/30/40/50/60/70/80) names the offending assertion.
+(import "prelude/prelude")
+(import "lowering/tal/bytes")
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (let (c (str->bytes "ABCDEFGH"))
+    (let (r (bput-u16-le c 2 258))
+    (let (c2 (str->bytes "XY"))
+    (let (r2 (bput-u16-le c2 0 258))
+      (case (=i (bget r 2) 2)
+        (false 10)
+        (true (case (=i (bget r 3) 1)
+          (false 20)
+          (true (case (=i (blen r) 8)
+            (false 30)
+            (true (case (=i (bget r 1) 66)
+              (false 40)
+              (true (case (=i (bget r 4) 69)
+                (false 50)
+                (true (case (=i (bget-u16-le r 2) 258)
+                  (false 60)
+                  (true (case (=i (blen r2) 2)
+                    (false 70)
+                    (true (case (=i (bget r2 0) 2)
+                      (false 80)
+                      (true (case (=i (bget r2 1) 1)
+                        (false 80)
+                        (true 42))))))))))))))))))))))))

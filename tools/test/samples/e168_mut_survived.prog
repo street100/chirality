@@ -1,0 +1,45 @@
+; E168 Phase 12, G2 -- E156 G4 re-expressed on the floor.
+;
+; The historical defect: `list-sort` was DELETED from row-infer and the E156
+; gate still reported 14/14. Every check it had was sound; what it lacked was
+; any evidence that the checks could fail. On this floor that is not a matter of
+; discipline -- `gate-verdict`'s FIRST arm scores a surviving mutant
+; `g-inadequate` BEFORE a single check runs, so a gate whose checks all pass and
+; whose mutant survived is RED, and the order of those two arms is the contract.
+;
+; Pure: no crossing, no cap. This fixture judges the fold, and the fold is the
+; part that shipped wrong.
+;
+; exit 0 = both cases hold; otherwise the number of the first failing case.
+
+(import "evidence/test-floor")
+
+; a check that PASSES against the observation below -- the gate is not red for
+; want of a good expectation.
+(def sound-check Expect
+  (ex (obk-root "prog/samples/exit42.chiral") (ob-exit 42) (pv-meaning "exit42.chiral means 42")))
+
+(def got (List Obs) (cons (ob-exit 42) nil))
+
+; case 1: the mutant SURVIVED. E156 G4 verbatim -- `list-sort` deleted, every
+; check still green.
+(def survived Gate
+  (gate "row-infer sorts" (cons sound-check nil) (the (List DiffExpect) nil)
+    (mu-survived "list-sort deleted from row-of" (ob-exit 42))))
+
+; case 2: THE CONTROL. The same gate with a mutant that was killed is green, so
+; case 1's red comes from the survival and not from anything else about the gate.
+(def killed Gate
+  (gate "row-infer sorts" (cons sound-check nil) (the (List DiffExpect) nil)
+    (mu-killed "list-sort deleted from row-of" (ob-exit 42) (ob-exit 41))))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (case (gate-verdict survived got)
+      ((g-green nm c w)  1)
+      ((g-red nm why)    1)
+      ((g-inadequate nm lb)
+        (case (gate-verdict killed got)
+          ((g-red nm2 why2)      2)
+          ((g-inadequate nm2 l2) 2)
+          ((g-green nm2 c2 w2)   0))))))

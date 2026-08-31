@@ -1,0 +1,21 @@
+; e130_http_get.chiral — E130 conformance: a real non-streaming GET round-trip.
+;
+; http-request "GET" "http://100.64.0.5:11434/v1/models" reaches the mesh
+; ollama endpoint (reachable as of this session) over a native AF_INET socket:
+; parse-url -> sock-connect-in -> format-request -> sock-send -> recv-all ->
+; parse-response -> sock-close. Zero CPython in the model path.
+; Exit 42 = status 200 with a non-empty JSON body. CONFIRMING, non-hermetic.
+;   1 = status != 200 or empty body (golden-check deferral if the endpoint is
+;       unreachable — report honestly, do not gate on it).
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/inet")
+(import "protocol/http")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (http-request "GET" "http://100.64.0.5:11434/v1/models" (str->bytes ""))
+      ((http-r status body)
+        (case (and (=i status 200) (<i 0 (blen body)))
+          (true 42)
+          (false 1))))))

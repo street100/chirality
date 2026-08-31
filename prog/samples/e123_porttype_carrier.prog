@@ -1,0 +1,43 @@
+; e123_porttype_carrier.chiral — E123 conformance: the porttype-carrier ISOLATION.
+;
+; Proves E123's ONE change: a def whose argument/return is a handle porttype now
+; PEELS and lowers to native machine code, instead of being silently dropped at
+; the front peel (term->ntalty). It is deliberately DISCRIMINATING:
+;
+;   - OLD B1 (pre-E123): `Fd` is a `t-primty "Fd"` that term->ntalty maps to
+;     (none) -> the porttype-typed defs drop -> the entry has no callee label ->
+;     B1 fails at emit with `no emitted label for entry compile-main` (exit 1).
+;   - NEW B1 (post-E123): `Fd` -> nt-i64 (the erased fd word) -> the defs peel,
+;     the crossings lower via crossing-wraps, the ELF runs -> exit 42.
+;
+; It touches ONLY committed crossings: `open-rw` (-> nb-sys-open-rw) and `close`
+; (-> nb-sys-close), both in crossing-wraps.chiral at HEAD. It does NOT use
+; E107's uncommitted `fd-close`/`sock-close` rows — the crossing table routes by
+; NAME, so re-typing the committed `open-rw`/`close` over a local `Fd` porttype
+; exercises E123's carrier peel with zero dependency on E107.
+;
+; The `Fd` porttype is declared locally (not `(import "ports/ports")`) so its carrier
+; is the ONLY thing under test and the two crossings can be typed over it.
+(import "prelude/prelude")
+
+(porttype Fd)                          ; opaque linear atom -> t-primty "Fd"
+
+; open-rw returns the fd typed as the Fd cap; close CONSUMES the linear Fd.
+; Same crossing NAMES as the raw-fd floor -> same nb-sys-* bodies; only the
+; surface TYPE is the porttype, so term->ntalty("Fd") is what must resolve.
+(extern open-rw (=> Bytes Fd))         ; "open-rw" -> nb-sys-open-rw : path -> fd
+(extern close   (=> (1 f Fd) Unit))    ; "close"   -> nb-sys-close  : consume fd
+
+; NUL-terminated /dev/null path (same construction as the E106 drain control).
+(def devnull Bytes (bcat (str->bytes "/dev/null") (bslice (pack-u32 0) 0 1)))
+
+; consume the linear Fd cap exactly once via the close crossing, yield 42.
+(def use-cap (=> (1 f Fd) I64)
+  (lam (f)
+    (case (close f)
+      (unit 42))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((1 f (open-rw devnull)))      ; f : Fd, q1 (E159: linear binds at 1)
+      (use-cap f))))

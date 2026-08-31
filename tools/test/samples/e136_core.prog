@@ -1,0 +1,72 @@
+; e136_core.chiral — E136 conformance: the manas pure-core remainder (all pure ->).
+;
+; Exercises match-pipeline (WHEN keyword-overlap routing), assemble-prompt (pure
+; prompt building) and the stop pair (overflow-guard + stop-policy). Pure exit
+; code — NO print/ports import (so the leaf blob needs no linkage libs): computes
+; every assertion as a Bool, ANDs them, exits 0 iff all pass, else 1.
+;
+; Pipelines carry the REAL WHEN texts from manas/orchestration/processes.md:
+;   doc-refine = "a doc must be checked against reality, sharpened, and its
+;                 examples completed/organized"   (line 191)
+;   research   = "a topic must be researched with cited sources before a spec
+;                 or decision"                     (line 277)
+
+(import "prelude/prelude")
+(import "manas/core/types")
+(import "manas/core/match")     ; match-pipeline, pipeline-id, str-contains
+(import "manas/core/assemble")  ; assemble-prompt
+(import "manas/core/stop")      ; overflow-guard, stop-policy
+
+; a Pipeline with only id + WHEN populated (gate/experts empty, single-pass).
+(def mk (-> Str Str Pipeline)
+  (lam (id whn)
+    (pipeline id whn (the (List GateRule) nil) order-fan-out
+              (the (List Str) nil) "combiner" stop-single "yield")))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((ps  (cons (mk "doc-refine"
+                      "a doc must be checked against reality, sharpened, and its examples completed/organized")
+                (cons (mk "research"
+                      "a topic must be researched with cited sources before a spec or decision")
+                      nil)))
+          ; two identical-WHEN pipelines -> a top-score tie
+          (ps2 (cons (mk "alt-a" "alpha beta gamma delta epsilon")
+                (cons (mk "alt-b" "alpha beta gamma delta epsilon")
+                      nil)))
+          (ex  (expert "anchor-sharpen" "sharpen the anchors" "the doc + its claims"
+                       "a sharpened doc" "reasoner" (the (List Str) nil))))
+      ; a >4000-char prompt: double a ~100-char base six times (~6400 chars).
+      (let ((b0 "the quick brown fox jumps over the lazy dog while padding out this base line to a hundred plus ch"))
+        (let ((b1 (str-cat b0 b0)))
+        (let ((b2 (str-cat b1 b1)))
+        (let ((b3 (str-cat b2 b2)))
+        (let ((b4 (str-cat b3 b3)))
+        (let ((b5 (str-cat b4 b4)))
+        (let ((big (str-cat b5 b5)))    ; ~6400 chars -> /4 ~1600 >= 1000
+          (let ((a1 (case (match-pipeline "refine this doc against reality and sharpen it" ps)
+                      ((match-found p mw) (str-eq (pipeline-id p) "doc-refine"))
+                      ((match-none l) false)
+                      ((match-tied t l) false)))
+                (a2 (case (match-pipeline "asdfqwer zxcvbnm" ps)
+                      ((match-found p mw) false)
+                      ((match-none l) true)
+                      ((match-tied t l) false)))
+                (a3 (case (match-pipeline "alpha beta" ps2)
+                      ((match-found p mw) false)
+                      ((match-none l) false)
+                      ((match-tied t l) true)))
+                (a4 (overflow-guard big 1000))
+                (a5 (not (overflow-guard "short" 1000)))
+                (a6 (stop-policy "anchor-sharpen" 1))
+                (a7 (not (stop-policy "anchor-sharpen" 3)))
+                (a8 (not (stop-policy "claim-vs-source" 1)))
+                (a9 (str-contains
+                      (assemble-prompt ex "the doc" (the (List (Pair Str Str)) nil) (cons "ctx" nil))
+                      "the doc")))
+            (let ((allpass
+                    (and a1 (and a2 (and a3 (and a4 (and a5
+                    (and a6 (and a7 (and a8 a9))))))))))
+              (case allpass
+                (true 0)
+                (false 1))))))))))))))

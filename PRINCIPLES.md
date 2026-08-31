@@ -1,7 +1,7 @@
 # chirality — design principles
 
 What chirality commits to, and why. The semantics and type system in
-`02-language-design/` have to satisfy these. If a choice there contradicts one of
+`.planning/projects/02-language-design.md` have to satisfy these. If a choice there contradicts one of
 these, the choice is wrong, or the principle is, in which case change it here
 first, on purpose.
 
@@ -10,9 +10,10 @@ language the OS gets written in.
 
 These are the architecture principles, what the language governs. The
 reader's-side principles, how it presents to a human, live in
-[docs/design-principles.md](docs/definitions/design-principles.md). Regularity is the bridge:
-"the safe path is the cheap path" (P4) and "make the language behave as it looks"
-are the same commitment from the writer's side here and the reader's side there.
+[docs/definitions/design-principles.md](docs/definitions/design-principles.md).
+Regularity is the bridge: "the safe path is the cheap path" (P4) and "make the
+language behave as it looks" are the same commitment from the writer's side here
+and the reader's side there.
 
 Draft, 2026-06-14. Condensed seven to five on 2026-07-20: an adversarial review
 found the old P4 (inert interior) and P7 (tiering) carried no weight independent
@@ -39,10 +40,11 @@ gated shut. The reflective floor is the case that forces the distinction: the
 language must be able to *express* its own capability kernel, yet that kernel is
 not *reconfigurable from within* the running language, which is what stops
 self-modifying code from forging authority through it. The line was drawn
-2026-07-27 (`docs/decision-reflective-floor.md`): the judgment — kernel-spec +
-kernel-core — is staged-in and frozen at staging completion, changed only by
-certified succession; everything above it is freely reflectable because it is
-re-checked. In-place judgment mutation is forbidden as *unsound*, not as policy.
+2026-07-27 (`docs/decisions/decision-reflective-floor.md`): the judgment —
+kernel-spec + kernel-core — is staged-in and frozen at staging completion,
+changed only by certified succession; everything above it is freely reflectable
+because it is re-checked. In-place judgment mutation is forbidden as *unsound*,
+not as policy.
 
 Example: a sandbox that blocks the syscalls it knows about, running on a kernel
 with syscalls it does not model, has a hole at exactly the calls it forgot. A
@@ -90,6 +92,21 @@ The one leak, which is why time and space are ports too: interior compute still
 spends time and memory, so non-termination and unbounded allocation affect the
 world by *running* rather than by calling. They sit on the membrane next to I/O,
 not implicit in the interior.
+
+**What this makes programming.** Read forward rather than as a restriction:
+**programming in chirality is coordinating port boundaries and writing the logic
+that produces their inputs.** The boundaries are the program's shape. Everything
+else is the computation that feeds them, and it is free precisely because it is
+not the shape.
+
+That is the working outlook, and it decides things. A directory named for a
+subject rather than for boundaries is a category error: `lib/ports/` holds files
+that *declare* a crossing and nothing else, and three modules that merely
+computed over crossings moved out on 2026-08-31 because being *about* ports is
+subject matter. A module's interface is the boundaries it names; a design
+question is answered by asking which boundary it moves. Time and space stop
+reading as an exception bolted onto I/O and read as what they are: the boundary
+with the substrate you are running on.
 
 Honest limit: "closed and named" is only as complete as the channel model.
 Timing, cache pressure, and speculation are effects on the world with no explicit
@@ -177,7 +194,7 @@ resources force a lower rung, the shortfall is a visible fact in the type, not a
 silent hole. Proprietary and un-auditable components are seated at their honest rung
 and contained at the floor (their port set) rather than pretended away. Spend the
 strong rungs where they are load-bearing; floor the rest on purpose. See
-`docs/split-role.md`.
+`docs/definitions/split-role.md`.
 
 Honest limit: "zeroed on drop" is a language-semantics promise the machine can
 break, through register spills, compiler-introduced copies, swap, and dead-store
@@ -202,7 +219,7 @@ Convention during the rename window: a doc **written or updated after the
 current usage, so it needs no crosswalk. The crosswalk resolves *pre-condensation*
 citations only. Since P6 and P7 exist solely in the old scheme, a citation of P6 or
 P7 is always old; P1–P5 in a post-condensation doc are always new. (The ledger-lint
-flags P6/P7 in any doc dated after the condensation.)
+check B flags P6/P7 in any doc dated after the condensation.)
 
 | Old | New | Fate |
 |---|---|---|
@@ -216,26 +233,40 @@ flags P6/P7 in any doc dated after the condensation.)
 
 ---
 
-## Open edges (resolve in 02)
+## Open edges (resolve in the language-design project)
 
 - **Non-process boundary** (1 vs 5): where pure description ends and untypeable
   substrate begins, and whether type-level computation counts as a process.
+  **Shaped 2026-07-25** (`docs/definitions/open-edges.md`, edge 1): the boundary is
+  the membrane already drawn — B is a small named set of holes reached through the
+  bridge, and type-level computation performs no crossing, so it is description,
+  not process. Residue: whether a check-time call to an untyped oracle puts a
+  crossing into the elaboration's own effect row.
 - **How far the membrane reaches inward** (3): I/O for sure, time and space
   necessarily; termination, information flow, covert channels. Grade them or scope
-  them out on purpose.
+  them out on purpose. **Largely answered**
+  (`docs/decisions/decision-graded-kernel.md`,
+  `docs/decisions/decision-effect-facets.md`; the info-flow seat shaped
+  2026-07-25):
+  crossings are the effect row, spends are grades, partiality is the mark, and
+  information flow holds a reserved lattice-valued grade seat, with
+  non-interference a typed proof over that grade rather than the grade itself.
+  Residue: the concrete secrecy lattice and its declassification rule, and a
+  declassifying crossing's interaction with the effect row.
 - **The cost gradient's mechanism** (2, 4) — **settled**
-  (`docs/decision-graded-kernel.md`, 2026-07-05; amended by
-  `docs/decision-effect-facets.md`, 2026-07-21): a parametric coeffect semiring
-  enriching QTT's grades; totality a property beside them; staging a modality.
+  (`docs/decisions/decision-graded-kernel.md`, 2026-07-05; amended by
+  `docs/decisions/decision-effect-facets.md`, 2026-07-21): a parametric coeffect
+  semiring enriching QTT's grades; totality a property beside them; staging a modality.
   The mediator's-own-budget clause remains open inside edge 3's residue.
 - **What picks a value's default tier** (5): a per-value annotation, or a
   classification carried in the type that auto-selects the minimum rung, so
   forgetting to split a secret is a type error. Resolved in direction,
   broadened (edge 4); not settled.
 - **The reflective floor** (1) — **settled**
-  (`docs/decision-reflective-floor.md`, 2026-07-27): the judgment is frozen at
+  (`docs/decisions/decision-reflective-floor.md`, 2026-07-27): the judgment is frozen at
   staging completion, changed only by certified succession; the line sits at
-  the provable boundary (what the trusted core cannot certify from inside).
+  the provable boundary (what the trusted core cannot certify from inside). Still
+  owed: state handover across relaunch, and staging economics (unmeasured).
 - **Govern the mediator, resolved structurally not as a principle.** If the
   port-check is the type-check (3), the checker is the maximal-authority process,
   and self-hosting makes its trust circular (trusting-trust). The answer is not a
@@ -243,6 +274,7 @@ flags P6/P7 in any doc dated after the condensation.)
   cannot prove *itself* but can be proven against an external spec, so it is a small
   trusted core that re-checks untrusted producers' certificates (the LCF / de Bruijn
   discipline), the trusted base shrunk to the audited spec plus that small core. See
-  `docs/decision-split-checker.md` and `docs/certificate-discipline.md`. Agreement
-  across independent sources is reserved for the genuinely-unprovable residue
-  (`docs/split-role.md`).
+  `docs/decisions/decision-split-checker.md` and
+  `docs/definitions/certificate-discipline.md`. Agreement across independent
+  sources is reserved for the genuinely-unprovable residue
+  (`docs/definitions/split-role.md`).

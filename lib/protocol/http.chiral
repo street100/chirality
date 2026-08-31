@@ -12,7 +12,7 @@
 
 (import "prelude/prelude")
 (import "ports/ports")     ; Sock, ConnR, SendR, RecvR, sock-send/-recv/-close
-(import "ports/inet")      ; sock-connect-in, parse-quad, byte (E129)
+(import "protocol/inet")      ; sock-connect-in, parse-quad, byte (E129)
 (import "protocol/json")     ; json-parse, Json (j-obj/j-str), obj-get, alist-find
 
 ; status: the HTTP status code (or -1 on a transport failure). body: raw bytes.

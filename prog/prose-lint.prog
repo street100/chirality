@@ -1,0 +1,189 @@
+; prose-lint -- the doc tier's prose sorter, in chirality.
+;
+; Reads a NEWLINE-SEPARATED LIST OF PATHS on stdin, opens each, counts the tics
+; that make a document read as machine-written, and writes one
+; `path <TAB> check <TAB> count` row per nonzero check plus a TOTAL line.
+;
+;   find docs .planning -name '*.md' | chirality run prog/prose-lint.prog
+;
+; ── Why stdin and not a directory walk ──────────────────────────────────────
+;
+; Enumeration is the ONE piece of this tool the language cannot express today.
+; `getdents64` is E148, not built, and the catalog already names three standing
+; workarounds waiting on it (scriba's flook, the manas setup index.json, and
+; test-runner's bundled manifest). This makes four, and that is worth writing
+; down rather than hiding: the count of workarounds IS E148's justification.
+;
+; Reading a path list on stdin is the tree's existing idiom, not a new one --
+; `chirality-bin < blob`, and `wield.prog` reads a path on stdin the same way.
+; It needs zero new crossings. When E148 lands, the `find` in front of the pipe
+; is the only thing that goes away; nothing in this file changes.
+;
+; ── Byte scanning, and why the recursion is safe ────────────────────────────
+;
+; `str-find-from` is a PRIMITIVE (nb-bfind-from at the tal floor), so the scan
+; recurses once per MATCH, never once per byte. The deepest file in the corpus
+; is 160KB with ~500 hits, so this is a few hundred frames rather than 160,000.
+
+(import "prelude/prelude")            ; str-len, str-sub, str-find-from, str-cat, i64->str
+(import "prelude/list")               ; foldl, length
+(import "prelude/string")             ; str-split
+(import "ports/ports")                ; put
+(import "lowering/compile-all")       ; read-fd-all, byte ops
+
+(extern openat (=> Bytes I64))        ; NUL-terminated path bytes -> fd, or negative errno
+
+(def nul-byte Bytes (bslice (pack-u32 0) 0 1))
+
+; ── counting ────────────────────────────────────────────────────────────────
+
+; is the byte at `i` a lowercase ascii letter? Out of range counts as false, so
+; a needle at end-of-file cannot read past it.
+;
+; Compares the BYTE, not `str-cmp`: str-cmp returns Ord (prelude/ord), and Ord
+; is not an I64, so `(<=i 0 (str-cmp ...))` does not type. A multibyte lead byte
+; is >= 194 and fails the range, which is the answer we want anyway.
+(def lc-at? (-> Str I64 Bool)
+  (lam (s i)
+    (case (<i i (str-len s))
+      (false false)
+      (true
+        (let (c (bget (str->bytes (str-sub s i (+ i 1))) 0))
+          (and (<=i 97 c) (<=i c 122)))))))
+
+; count occurrences of `needle` in `hay` at or after `from`.
+; Structural on the remaining haystack: every step advances past the match it
+; just found, so `from` strictly increases and the recursion is well-founded.
+(def count-go (-> Str Str I64 I64)
+  (lam (hay needle from)
+    (let (i (str-find-from hay needle from))
+      (case (<i i 0)
+        (true 0)
+        (false (+ 1 (count-go hay needle (+ i (str-len needle)))))))))
+
+(def count-lit (-> Str Str I64)
+  (lam (hay needle) (count-go hay needle 0)))
+
+; the same, but only where the character AFTER the needle is lowercase. This is
+; what makes ", not " match ", not yet" and skip ", not." -- the regex the shell
+; version spells `, not [a-z]`.
+(def count-lc-go (-> Str Str I64 I64)
+  (lam (hay needle from)
+    (let (i (str-find-from hay needle from))
+      (case (<i i 0)
+        (true 0)
+        (false
+          (let (nxt (+ i (str-len needle)))
+            (case (lc-at? hay nxt)
+              (true  (+ 1 (count-lc-go hay needle nxt)))
+              (false (count-lc-go hay needle nxt)))))))))
+
+(def count-lc (-> Str Str I64)
+  (lam (hay needle) (count-lc-go hay needle 0)))
+
+; sum a list of needles under one counter
+(def sum-lit (-> Str (List Str) I64)
+  (lam (hay ns)
+    (case ns
+      (nil 0)
+      ((cons h t) (+ (count-lit hay h) (sum-lit hay t))))))
+
+(def sum-lc (-> Str (List Str) I64)
+  (lam (hay ns)
+    (case ns
+      (nil 0)
+      ((cons h t) (+ (count-lc hay h) (sum-lc hay t))))))
+
+; ── the checks ──────────────────────────────────────────────────────────────
+; Measured against this corpus before they were written: the generic slop word
+; list scored ~0 here (delve 0, tapestry 0, seamless 0, Furthermore 0) while the
+; structural tics scored in the thousands. `robust` and `leverage` DID score and
+; are deliberately absent: they are technical here (`robust-shares` is a T3 rung,
+; "highest-leverage row" is a noun), and a linter you learn to ignore is worse
+; than none.
+
+(def n-antithesis (List Str)
+  (cons ", not " (cons ", never " (cons ", rather than " nil))))
+
+(def n-copula (List Str)
+  (cons "is not " (cons "are not " (cons "was not " (cons "were not " nil)))))
+
+(def n-slop (List Str)
+  (cons "delve" (cons "Delve" (cons "tapestry" (cons "Tapestry"
+  (cons "seamless" (cons "Seamless" (cons "showcase" (cons "Showcase"
+  (cons "testament to" (cons "plethora" (cons "myriad" (cons "pivotal" nil)))))))))))))
+
+(def n-throat (List Str)
+  (cons "worth noting" (cons "important to note" (cons "in essence" (cons "In essence"
+  (cons "at its core" (cons "At its core" (cons "in other words" (cons "In other words" nil)))))))))
+
+(def n-connective (List Str)
+  (cons "Furthermore" (cons "Moreover" (cons "Additionally," nil))))
+
+; ── reporting ───────────────────────────────────────────────────────────────
+
+; join three fields into one tab-separated line. Built by sequential `let`s
+; rather than nested `str-cat`s: the paren depth stays at one per line, which is
+; the difference between a balance you can see and one you have to count.
+(def tsv3 (-> Str Str Str Str)
+  (lam (a b c)
+    (let (x (str-cat a "\t"))
+      (let (y (str-cat x b))
+        (let (z (str-cat y "\t"))
+          (let (w (str-cat z c))
+            (str-cat w "\n")))))))
+
+(def row (=> Str Str I64 Unit)
+  (lam (path name n)
+    (case (=i n 0)
+      (true unit)
+      (false (put (tsv3 path name (i64->str n)))))))
+
+; scan one already-read document, emit its rows, return its hit total
+(def scan-doc (=> Str Str I64)
+  (lam (path body)
+    (let (em (count-lit body "—"))
+      (let (anti (sum-lc body n-antithesis))
+        (let (cop (sum-lc body n-copula))
+          (let (slop (sum-lit body n-slop))
+            (let (thr (sum-lit body n-throat))
+              (let (conn (sum-lit body n-connective))
+                (do (row path "em-dash" em)
+                  (do (row path "antithesis" anti)
+                    (do (row path "copula-negation" cop)
+                      (do (row path "slop-word" slop)
+                        (do (row path "throat-clearing" thr)
+                          (do (row path "connective" conn)
+                            (+ em (+ anti (+ cop (+ slop (+ thr conn)))))))))))))))))))
+
+; open a path, read it, scan it. A path that will not open is REPORTED, never
+; skipped silently: a file the linter could not read is not a clean file.
+(def do-path (=> Str I64)
+  (lam (path)
+    (case (=i (str-len path) 0)
+      (true 0)
+      (false
+        (let (fd (openat (bcat (str->bytes path) nul-byte)))
+          (case (<i fd 0)
+            (true (do (put (tsv3 path "UNREADABLE" "1")) 0))
+            (false (scan-doc path (bytes->str (read-fd-all fd))))))))))
+
+(def do-paths (=> (List Str) I64)
+  (lam (ps)
+    (case ps
+      (nil 0)
+      ((cons h t) (+ (do-path h) (do-paths t))))))
+
+; The three checks the shell version has that this one does not are PRINTED by
+; name every run. A check that silently vanishes is a gate that reports ok
+; forever, which is the same rule the test runner follows for its 5 unported
+; phases.
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (paths (str-split "\n" (bytes->str (read-fd-all 0))))
+      (let (total (do-paths paths))
+        (do (put (tsv3 "TOTAL" "hits" (i64->str total)))
+          (do (put (tsv3 "NOT-CHECKED" "not-but" "needs a regex; 1 hit at baseline"))
+            (do (put (tsv3 "NOT-CHECKED" "parallel-no" "needs a regex; 88 at baseline"))
+              (do (put (tsv3 "NOT-CHECKED" "code-skipping" "fenced blocks not excluded here"))
+                0))))))))

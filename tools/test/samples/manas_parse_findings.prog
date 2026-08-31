@@ -1,0 +1,51 @@
+; manas_parse_findings.chiral — parse-findings unit test (deterministic, NO network).
+;
+; Drives runner.chiral's PURE parse-findings on two canned strings:
+;   1. a JSON array of two {kind,target,body} objects -> 2 structured Findings
+;      with the exact field values;
+;   2. a non-JSON string ("not json") -> the ONE raw fallback finding
+;      (finding "raw" "" "not json").
+; Computes every assertion as a Bool, ANDs them, exits 0 iff all pass else 1.
+; parse-findings is -> (pure), so no be-chat crossing runs — the model response is
+; supplied literally. (This is the first-class deliverable for the structured-
+; findings fix; the LIVE path is exercised by manas-run/manas-run-conform.)
+
+(import "prelude/prelude")                  ; str-eq, =i, and, +, List, Bool
+(import "manas/core/types")         ; Finding (finding kind target body)
+(import "manas/pipeline/runner")    ; parse-findings
+
+; ------------------------------------------------------------- finding accessors
+(def f-kind   (-> Finding Str) (lam (f) (case f ((finding k tg bd) k))))
+(def f-target (-> Finding Str) (lam (f) (case f ((finding k tg bd) tg))))
+(def f-body   (-> Finding Str) (lam (f) (case f ((finding k tg bd) bd))))
+
+(def llen (-> (List Finding) I64)
+  (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (llen t))))))
+
+(def fst-f (-> (List Finding) Finding)
+  (lam (xs) (case xs ((cons h t) h) (nil (finding "" "" "")))))
+(def snd-f (-> (List Finding) Finding)
+  (lam (xs) (case xs ((cons h t) (fst-f t)) (nil (finding "" "" "")))))
+
+(def canned Str
+  "[{\"kind\":\"exists\",\"target\":\"/etc/x\",\"body\":\"ok\"},{\"kind\":\"missing\",\"target\":\"y\",\"body\":\"absent\"}]")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((fs (parse-findings canned))
+          (fb (parse-findings "not json")))
+      (let ((n2   (=i (llen fs) 2))
+            (k0   (str-eq (f-kind   (fst-f fs)) "exists"))
+            (t0   (str-eq (f-target (fst-f fs)) "/etc/x"))
+            (b0   (str-eq (f-body   (fst-f fs)) "ok"))
+            (k1   (str-eq (f-kind   (snd-f fs)) "missing"))
+            (t1   (str-eq (f-target (snd-f fs)) "y"))
+            (b1   (str-eq (f-body   (snd-f fs)) "absent"))
+            (fbn  (=i (llen fb) 1))
+            (fbk  (str-eq (f-kind (fst-f fb)) "raw"))
+            (fbt  (str-eq (f-target (fst-f fb)) ""))
+            (fbb  (str-eq (f-body (fst-f fb)) "not json")))
+        (case (and n2 (and k0 (and t0 (and b0 (and k1 (and t1 (and b1
+              (and fbn (and fbk (and fbt fbb))))))))))
+          (true 0)
+          (false 1))))))

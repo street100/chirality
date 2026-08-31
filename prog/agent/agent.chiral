@@ -1,0 +1,452 @@
+; agent.chiral — A4: the Pi-minimal tool-call loop.
+;
+; Drives an OpenAI-compatible endpoint over the already-native http-request
+; (E130): sends a tiny system prompt + 4 tool schemas (read/write/edit/bash),
+; parses the model's tool_call from the JSON response, dispatches to the
+; already-built fs-read/fs-write/fs-edit (agent/tools-fs.chiral, A1) and a bash
+; tool over the raw-proc-spawn/wait crossings (the A2 nb-run-cmd/nb-wait TAL),
+; appends the tool result, and loops until the model returns a final answer
+; (content, no tool call).
+;
+; Builds its OWN request body (carrying the `tools` array, parsing
+; `tool_calls`) directly over http-request + json.chiral. backend.chiral's
+; be-chat is the non-tool reference and is NOT used here, so no map-list /
+; fn-param-over-a-recursive-type crosses the seam (the E100 residual).
+; Explicit recursion throughout; no collections import, no maybe-then/map-list.
+
+(import "prelude/prelude")
+(import "protocol/http")
+(import "protocol/json")
+(import "agent/tools-fs")
+
+; ---- native process spawn (the bash tool substrate, A2 shape) -------------
+; The raw-proc-spawn / wait externs route to nb-run-cmd / nb-wait (crossing-wraps,
+; E33-A2). Declared here (NOT via an import of proc.chiral) because tools-fs.chiral
+; and proc.chiral both define a `nul-byte` global; importing both collides in the
+; blob. Same data shape, same constructor order, so the native layout matches.
+(data SpawnErr ()
+  (se-nomem)
+  (se-noexec (errno I64))
+  (se-badargv))
+
+(data Reap ()
+  (reap (pid I64) (code I64)))
+
+(data Child ()
+  (child (1 reap Reap) (io Bytes)))
+
+(data SpawnRes ()
+  (sp-ok  (1 c Child))
+  (sp-err (e SpawnErr)))
+
+(data ExitStatus ()
+  (exited   (code I64))
+  (signaled (sig I64)))
+
+(extern raw-proc-spawn (=> Bytes SpawnRes))
+(extern wait (=> (1 reap Reap) ExitStatus))
+
+; NUL-frame each argv string into one pkt (no validation: argv is fixed here)
+(def ag-nul Bytes (bslice (pack-u32 0) 0 1))
+
+(def ag-pkt (-> (List Str) Bytes)
+  (lam (xs)
+    (case xs
+      (nil (str->bytes ""))
+      ((cons s r)
+        (bcat (bcat (str->bytes s) ag-nul) (ag-pkt r))))))
+
+; run a shell command, capture stdout; (some out) on exit 0, none otherwise
+(declare ag-bash (=> Str (Maybe Bytes)))
+(def ag-bash
+  (lam (cmd)
+    (case (raw-proc-spawn (ag-pkt (cons "/bin/sh" (cons "-c" (cons cmd nil)))))
+      ((sp-err e) none)
+      ((sp-ok c)
+        (case c
+          ((child r out)
+            (case (wait r)
+              ((exited code)
+                (case (=i code 0) (true (some out)) (false none)))
+              ((signaled sg) none))))))))
+
+; ---- tiny system prompt -----------------------------------------------------
+
+(def system-prompt Str
+  "You are a coding agent. Use tools to read, write, and edit files and run commands. Report results concisely.")
+
+; ---- JSON field-list helpers (flatten the deep object nesting) --------------
+
+(def fld1 (-> Str Json (List (Pair Str Json)))
+  (lam (k v) (cons (pair k v) nil)))
+
+(def fld2 (-> Str Json Str Json (List (Pair Str Json)))
+  (lam (k1 v1 k2 v2) (cons (pair k1 v1) (cons (pair k2 v2) nil))))
+
+(def fld3 (-> Str Json Str Json Str Json (List (Pair Str Json)))
+  (lam (k1 v1 k2 v2 k3 v3)
+    (cons (pair k1 v1) (cons (pair k2 v2) (cons (pair k3 v3) nil)))))
+
+(def fld4 (-> Str Json Str Json Str Json Str Json (List (Pair Str Json)))
+  (lam (k1 v1 k2 v2 k3 v3 k4 v4)
+    (cons (pair k1 v1)
+      (cons (pair k2 v2)
+        (cons (pair k3 v3) (cons (pair k4 v4) nil))))))
+
+(def solo (-> Json (List Json))
+  (lam (x) (cons x nil)))
+
+; ---- the 4 tool schemas (pure Json data) ------------------------------------
+
+(def prop-str (-> Str Str Json)
+  (lam (n d)
+    (j-obj (fld2 "type" (j-str "string") "description" (j-str d)))))
+
+(def params1 (-> Str Str Json)
+  (lam (n d)
+    (j-obj (fld3 "type" (j-str "object")
+                 "properties" (j-obj (fld1 n (prop-str n d)))
+                 "required" (j-arr (solo (j-str n)))))))
+
+(def params2 (-> Str Str Str Str Json)
+  (lam (n1 d1 n2 d2)
+    (j-obj (fld3 "type" (j-str "object")
+                 "properties" (j-obj (fld2 n1 (prop-str n1 d1) n2 (prop-str n2 d2)))
+                 "required" (j-arr (cons (j-str n1) (cons (j-str n2) nil)))))))
+
+(def params3 (-> Str Str Str Str Str Str Json)
+  (lam (n1 d1 n2 d2 n3 d3)
+    (j-obj (fld3 "type" (j-str "object")
+                 "properties" (j-obj (fld3 n1 (prop-str n1 d1)
+                                            n2 (prop-str n2 d2)
+                                            n3 (prop-str n3 d3)))
+                 "required" (j-arr (cons (j-str n1)
+                                          (cons (j-str n2) (cons (j-str n3) nil))))))))
+
+(def fn-obj (-> Str Str Json Json)
+  (lam (name desc params)
+    (j-obj (fld3 "name" (j-str name) "description" (j-str desc) "parameters" params))))
+
+(def tool-obj (-> Str Str Json Json)
+  (lam (name desc params)
+    (j-obj (fld2 "type" (j-str "function") "function" (fn-obj name desc params)))))
+
+(def tools-json Json
+  (j-arr
+    (cons (tool-obj "read" "Read a file and return its contents."
+            (params1 "path" "The absolute path of the file to read."))
+      (cons (tool-obj "write" "Write content to a file, creating it if it does not exist."
+              (params2 "path" "The absolute path of the file to write."
+                       "content" "The full content to write to the file."))
+        (cons (tool-obj "edit" "Replace the first occurrence of a needle with a replacement in a file."
+                (params3 "path" "The absolute path of the file to edit."
+                         "needle" "The exact substring to find."
+                         "repl" "The string to replace it with."))
+          (cons (tool-obj "bash" "Run a shell command and return its stdout."
+                  (params1 "command" "The shell command to run."))
+            nil))))))
+
+; ---- message JSON (role/content + the assistant tool_call + tool result) ----
+
+(def m-json (-> Str Str Json)
+  (lam (role content)
+    (j-obj (fld2 "role" (j-str role) "content" (j-str content)))))
+
+; one tool_call item: {id, type:function, function:{name, arguments}}
+(def toolcall-item (-> Str Str Str Json)
+  (lam (id name args)
+    (j-obj (fld3 "id" (j-str id)
+                 "type" (j-str "function")
+                 "function" (j-obj (fld2 "name" (j-str name) "arguments" (j-str args)))))))
+
+; {role:assistant, content:null, tool_calls:[...]}
+(def toolcall-msg (-> Str Str Str Json)
+  (lam (id name args)
+    (j-obj (fld3 "role" (j-str "assistant")
+                 "content" j-null
+                 "tool_calls" (j-arr (solo (toolcall-item id name args)))))))
+
+; {role:tool, tool_call_id:id, content:result}
+(def tool-msg (-> Str Str Json)
+  (lam (id content)
+    (j-obj (fld3 "role" (j-str "tool")
+                 "tool_call_id" (j-str id)
+                 "content" (j-str content)))))
+
+; ---- message list plumbing (reverse order internally, reversed once on send) -
+
+(def rev-json (-> (List Json) (List Json) (List Json))
+  (lam (xs acc)
+    (case xs
+      (nil acc)
+      ((cons h t) (rev-json t (cons h acc))))))
+
+(def initial-msgs (-> Str (List Json))
+  (lam (prompt)
+    (cons (m-json "user" prompt)
+      (cons (m-json "system" system-prompt) nil))))
+
+(def append-turn (-> (List Json) Str Str Str Str (List Json))
+  (lam (msgs id name args res)
+    (cons (tool-msg id res)
+      (cons (toolcall-msg id name args) msgs))))
+
+; {model, messages:[...], tools:[...], stream:false}
+(def request-body (-> Str (List Json) Bytes)
+  (lam (model msgs)
+    (str->bytes
+      (json-show
+        (j-obj (fld4 "model" (j-str model)
+                     "messages" (j-arr (rev-json msgs nil))
+                     "tools" tools-json
+                     "stream" (j-bool false)))))))
+
+; ---- response digging (explicit nested case, no map-list/maybe-then) --------
+
+; agent-ok2xx: private to this module (renamed from ok2xx to avoid a duplicate
+; top-level def when backend.chiral — which defines its own identical ok2xx — is
+; pulled into the same blob via the manas run-view engine, S15).
+(def agent-ok2xx (-> I64 Bool)
+  (lam (s) (and (<=i 200 s) (<i s 300))))
+
+(def first-json (-> (List Json) (Maybe Json))
+  (lam (xs)
+    (case xs
+      (nil none)
+      ((cons h t) (some h)))))
+
+; choices[0].message
+(def choice-message (-> Json (Maybe Json))
+  (lam (jv)
+    (case (obj-get jv "choices")
+      (none none)
+      ((some ch)
+        (case (as-arr ch)
+          (none none)
+          ((some items)
+            (case (first-json items)
+              (none none)
+              ((some fst) (obj-get fst "message")))))))))
+
+; message.content, if a string
+(def am-message-content (-> Json (Maybe Str))
+  (lam (m)
+    (case (obj-get m "content")
+      (none none)
+      ((some c) (as-str c)))))
+
+; message.tool_calls[0]
+(def first-toolcall (-> Json (Maybe Json))
+  (lam (m)
+    (case (obj-get m "tool_calls")
+      (none none)
+      ((some tcs)
+        (case (as-arr tcs)
+          (none none)
+          ((some items) (first-json items)))))))
+
+(def tc-id-or (-> Json Str)
+  (lam (tc)
+    (case (obj-get tc "id")
+      (none "0")
+      ((some i)
+        (case (as-str i)
+          (none "0")
+          ((some id) id))))))
+
+(def tc-name (-> Json (Maybe Str))
+  (lam (tc)
+    (case (obj-get tc "function")
+      (none none)
+      ((some fn)
+        (case (obj-get fn "name")
+          (none none)
+          ((some n) (as-str n)))))))
+
+(def tc-args (-> Json (Maybe Str))
+  (lam (tc)
+    (case (obj-get tc "function")
+      (none none)
+      ((some fn)
+        (case (obj-get fn "arguments")
+          (none none)
+          ((some a) (as-str a)))))))
+
+; a tool call, parsed out of the response
+(data Call () (call (id Str) (name Str) (args Str)))
+
+; one model turn: a final answer, a tool call to dispatch, or a parse miss
+(data Turn ()
+  (turn-msg  (content Str))
+  (turn-call (c Call))
+  (turn-err))
+
+; tool_calls checked FIRST: an empty/nil content beside a tool call is not an answer
+(def parse-turn (-> Json Turn)
+  (lam (jv)
+    (case (choice-message jv)
+      (none (turn-err))
+      ((some m)
+        (case (first-toolcall m)
+          ((some tc)
+            (case (tc-name tc)
+              (none (turn-err))
+              ((some nm)
+                (case (tc-args tc)
+                  (none (turn-err))
+                  ((some ag) (turn-call (call (tc-id-or tc) nm ag)))))))
+          (none
+            (case (am-message-content m)
+              ((some c) (turn-msg c))
+              (none (turn-err)))))))))
+
+; ---- tool dispatch ----------------------------------------------------------
+
+; extract one string arg from the tool_call's JSON-encoded arguments string
+(def arg-get (-> Str Str (Maybe Str))
+  (lam (args key)
+    (case (json-parse (str->bytes args))
+      (none none)
+      ((some jv)
+        (case (obj-get jv key)
+          (none none)
+          ((some v) (as-str v)))))))
+
+(def fsr->str (-> FsR Str)
+  (lam (r)
+    (case r
+      ((fs-ok v) v)
+      ((fs-err m) (str-cat "error: " m)))))
+
+(declare do-read (=> Str Str))
+(def do-read
+  (lam (args)
+    (case (arg-get args "path")
+      (none "error: missing path")
+      ((some path) (fsr->str (fs-read path))))))
+
+(declare do-write (=> Str Str))
+(def do-write
+  (lam (args)
+    (case (arg-get args "path")
+      (none "error: missing path")
+      ((some path)
+        (case (arg-get args "content")
+          (none "error: missing content")
+          ((some content) (fsr->str (fs-write path content))))))))
+
+(declare do-edit (=> Str Str))
+(def do-edit
+  (lam (args)
+    (case (arg-get args "path")
+      (none "error: missing path")
+      ((some path)
+        (case (arg-get args "needle")
+          (none "error: missing needle")
+          ((some needle)
+            (case (arg-get args "repl")
+              (none "error: missing repl")
+              ((some repl) (fsr->str (fs-edit path needle repl))))))))))
+
+(declare do-bash (=> Str Str))
+(def do-bash
+  (lam (args)
+    (case (arg-get args "command")
+      (none "error: missing command")
+      ((some command)
+        (case (ag-bash command)
+          (none "error")
+          ((some out) (bytes->str out)))))))
+
+(declare dispatch-tool (=> Str Str Str))
+(def dispatch-tool
+  (lam (name args)
+    (case (str-eq name "read")
+      (true (do-read args))
+      (false
+        (case (str-eq name "write")
+          (true (do-write args))
+          (false
+            (case (str-eq name "edit")
+              (true (do-edit args))
+              (false
+                (case (str-eq name "bash")
+                  (true (do-bash args))
+                  (false (str-cat "error: unknown tool " name)))))))))))
+
+; ---- the loop ---------------------------------------------------------------
+
+; A readable one-line summary of a tool call for the chat transcript:
+; "> bash: echo i2-hello", "> read: /tmp/x", etc. The single meaningful arg is
+; extracted from the raw JSON arguments string (the same arg-get the dispatch
+; path uses); an absent arg renders as "?".
+(def arg-or (-> Str Str Str Str)
+  (lam (args key fallback)
+    (case (arg-get args key)
+      (none fallback)
+      ((some v) v))))
+
+(def tc-line (-> Str Str Str)
+  (lam (name args)
+    (case (str-eq name "bash")
+      (true (str-cat "> bash: " (arg-or args "command" "?")))
+      (false
+        (case (str-eq name "read")
+          (true (str-cat "> read: " (arg-or args "path" "?")))
+          (false
+            (case (str-eq name "write")
+              (true (str-cat "> write: " (arg-or args "path" "?")))
+              (false
+                (case (str-eq name "edit")
+                  (true (str-cat "> edit: " (arg-or args "path" "?")))
+                  (false (str-cat "> " name)))))))))))
+
+; loop returns (Pair Str Str): (final-answer, full-transcript). The transcript
+; is the accumulated tool-call activity ("> tool: arg" + result, a blank line
+; between turns) followed by the final answer. agent-run keeps its old face by
+; returning only the answer half; agent-run-transcript returns the whole thing.
+(declare loop (=> Str Str (List Json) I64 (Pair Str Str)))
+(def loop
+  (lam (base model msgs budget)
+    (case (<=i budget 0)
+      (true (pair "error: step budget exhausted" "error: step budget exhausted"))
+      (false
+        (case (http-request "POST" (str-cat base "/v1/chat/completions")
+                (request-body model msgs))
+          ((http-r st body)
+            (case (agent-ok2xx st)
+              (false
+                (let (err (str-cat "error: http status " (i64->str st)))
+                  (pair err err)))
+              (true
+                (case (json-parse body)
+                  (none (pair "error: response is not JSON" "error: response is not JSON"))
+                  ((some jv)
+                    (case (parse-turn jv)
+                      ((turn-msg c)
+                        (case (str-eq c "")
+                          (true (loop base model msgs (- budget 1)))
+                          (false (pair c c))))
+                      ((turn-call tc)
+                        (case tc
+                          ((call id name args)
+                            (let (res (dispatch-tool name args))
+                              (let (rest (loop base model (append-turn msgs id name args res) (- budget 1)))
+                                (case rest
+                                  ((pair ans t)
+                                    (pair ans (str-cat (str-cat (str-cat (str-cat (tc-line name args) "\n") res) "\n") t)))))))))
+                      (turn-err (pair "error: no content or tool call" "error: no content or tool call")))))))))))))
+
+(declare agent-run (=> Str Str Str I64 Str))
+(def agent-run
+  (lam (base model prompt budget)
+    (let (r (loop base model (initial-msgs prompt) budget))
+      (case r
+        ((pair a _) a)))))
+
+(declare agent-run-transcript (=> Str Str Str I64 Str))
+(def agent-run-transcript
+  (lam (base model prompt budget)
+    (let (r (loop base model (initial-msgs prompt) budget))
+      (case r
+        ((pair _ t) t)))))

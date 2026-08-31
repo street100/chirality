@@ -364,13 +364,22 @@ echo "=== E158 G6: E154 -- every lib/prelude/doc.chiral name is defined exactly 
 } | sort -u >"$TMP/dnames.txt"
 ndnames="$(grep -c . "$TMP/dnames.txt")"
 
+# SCOPE (2026-08-31, at the master merge): `_wip/` is excluded, and this is a
+# CORRECTION of the row's scope, not a weakening of it. The claim G6 makes is
+# E154's: two modules that can land in ONE BLOB cannot define the same name. A
+# `_wip/` sample is in no blob -- no gate script compiles that directory, and the
+# file that collided here (`p1a-24-buffer-as-object.prog`, its own `data Doc`)
+# imports `prelude/prelude` and never `prelude/doc`, so the two can never meet.
+# Censusing it made the row report a name clash that cannot occur.
+# ⚑ If `_wip/` ever becomes buildable, this exclusion must go with it.
 census() {  # census LIBDIR -> the DEFINING duplicate occurrences, one per line
   local lib="$1" out="$TMP/dd.$$"
   : >"$out"
   while read -r n; do
     [ -n "$n" ] || continue
     ( cd "$REPO" && grep -RIn -E "^\((def|data|declare) ${n}[[:space:]]" "$lib" prog tools 2>/dev/null \
-        | grep -v '/prelude/doc\.chiral:' ) >>"$out" || true
+        | grep -v '/prelude/doc\.chiral:' \
+        | grep -v '/samples/_wip/' ) >>"$out" || true
   done <"$TMP/dnames.txt"
   sort -u "$out"
   rm -f "$out"

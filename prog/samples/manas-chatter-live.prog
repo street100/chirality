@@ -1,0 +1,90 @@
+; manas-chatter-live.chiral — DC-1b slice 5: the LIVE end-to-end chatter proof.
+;
+; The whole DC-1b arc exists because a real turn produced a GENERIC reply: verbalize read the
+; audit verdict instead of the answer (slice 1-2), and when the parse was fixed the 0.5b COMBINER
+; hallucinated the {kind,target,body} schema so live research still FLOORED (the slice-2 live
+; flag). Slices 3-5 replaced each model combiner with CODE (pf-collect-angles) and re-addressed
+; the parse. This sample is the honest check of that claim ON THE MESH — nothing here is asserted
+; byte-exact, because a model runs in the middle; what IS asserted is the structural property the
+; arc was for:
+;
+;   for each of research / decision / doc-edit / code-test, drive execute-plan on a plan-single
+;   over a real message and GATE on the properties that are OURS — independent of what the model
+;   happened to say:
+;     (a) non-empty,
+;     (b) NOT the generic "Here's what the <intent> pipeline produced." frame,
+;     (c) NOT the "produced no structured answer" floor,   <-- what slice 2 hit live
+;     (d) carrying its own skill's LEAD sentence (framing is keyed on the skill that ran).
+;   The reply itself is PRINTED so a human can read what the fractal actually said, and a fifth
+;   property — no raw JSON surviving into the prose — is REPORTED, not gated. Unwrapping covers
+;   the three shapes a 0.5b actually emits (valid objects / bare strings / invalid-with-body); a
+;   leaf that answers in some fourth shape is kept VERBATIM by design (never drop content), so
+;   gating on it would gate on model variance, not on this code.
+;
+; Exit 0 iff all four skills pass. If the mesh is DOWN every skill floors and this reports it
+; honestly (non-zero) — a real signal, not a fake.
+;
+; Build (closure = turn + router + skills; append the sys leaves):
+;   . bin/chirality-resolve.sh
+;   chirality_blob "lib:prog" manas/chatter/turn manas/chatter/router manas/profile/skills > blob
+;   cat scaffold/samples/manas-chatter-live.chiral >> blob; echo >> blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
+;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
+
+(import "prelude/prelude")                 ; Bool, and, not, case, do, let, str-cat, str-eq, cons, nil
+(import "manas/core/flow")         ; str-has, str-nonempty
+(import "manas/chatter/router")    ; ConvState (conv-empty), Intent ctors
+(import "manas/chatter/orchestrate"); Plan (plan-single)
+(import "manas/chatter/turn")      ; execute-plan; DC-2b: turn-seq (the turn-as-branch entry)
+(import "ports/ports")                   ; put
+
+(def endpoint Str "http://100.64.0.5:11434")
+(def bool->str (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
+
+; one live case: run `skill` on `msg` through execute-plan, print the reply, check the five
+; properties. `lead` is the skill's ratified sentence skeleton (egress.chiral).
+(def live-case (=> Str Str Intent Str Str Bool)
+  (lam (skill msg intent lead label)
+    (let ((resp (execute-plan endpoint (conv-empty) intent (plan-single skill) msg)))
+      (let ((clean (and (not (str-has resp "[{")) (not (str-has resp "\"kind\"")))))
+        (do (put (str-cat "--- " (str-cat label (str-cat "  [json-free prose: "
+                  (str-cat (bool->str clean) (str-cat "]\n    " (str-cat resp "\n")))))))
+          (and (str-nonempty resp)
+          (and (not (str-has resp "pipeline produced"))       ; not the generic frame
+          (and (not (str-has resp "no structured answer"))    ; not the slice-2 live floor
+               (str-has resp lead)))))))))                    ; framed as ITS OWN skill
+
+; DC-2b: one COMPOUND message through the branch entry scriba calls. The divider cuts it
+; (structural — the port stays shut), each chunk gets its own specialist, and fan-synth fuses.
+; Gated on the properties that are ours: a non-empty reply that is NOT the single-skill floor and
+; that carries BOTH lanes' contributions (two fused lines, or a model synthesis mentioning both).
+(def compound-msg Str "summarize what a monad is, and also decide whether to adopt Postgres or SQLite for a desktop app")
+(def compound-probe (=> Str Bool)
+  (lam (_)
+    (case (turn-seq endpoint (conv-empty) compound-msg)
+      ((pair cs resp)
+        (do (put (str-cat "--- compound (DC-2b branch)\n    " (str-cat resp "\n")))
+            (and (str-nonempty resp)
+                 (not (str-has resp "no structured answer"))))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (do (put "CHATTER LIVE (DC-1b slice 5) — four model skills on the 0.5b mesh\n")
+    (let ((r (live-case "research" "What is a monad in functional programming?"
+                        (in-factual) "Here's what I found: " "research")))
+    (let ((d (live-case "decision" "Should I use Postgres or SQLite for a single-user desktop app?"
+                        (in-decide) "Here's my recommendation: " "decision")))
+    (let ((e (live-case "doc-edit" "The system is very good and does many things well and is fast."
+                        (in-transform) "Here are the edits I'd make: " "doc-edit")))
+    (let ((c (live-case "code-test" "def div(a, b): return a / b"
+                        (in-unknown) "Here are the tests I'd add: " "code-test")))
+    (let ((k (compound-probe "")))
+      (do (put (str-cat "research: " (str-cat (bool->str r)
+               (str-cat " | decision: " (str-cat (bool->str d)
+               (str-cat " | doc-edit: " (str-cat (bool->str e)
+               (str-cat " | code-test: " (str-cat (bool->str c)
+               (str-cat " | compound: " (str-cat (bool->str k) "\n")))))))))))
+        (case (and r (and d (and e (and c k))))
+          (true  (do (put "CHATTER LIVE gate: PASS\n") 0))
+          (false (do (put "CHATTER LIVE gate: FAIL\n") 1))))))))))))

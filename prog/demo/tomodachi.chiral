@@ -1,0 +1,129 @@
+; tomodachi: a desktop companion for a Wayland session, the target in
+; docs/target-tomodachi.md run on the scaffold. Single-runtime form: one node
+; holding both the compositor port and the niri port. The two-node form is
+; node-sensor.chiral plus node-render.chiral.
+;
+; Ports held: one Wayland socket, one niri IPC socket, one shm pool. All
+; linear: every code path below must move each of them exactly once. No wall
+; clock is read anywhere; the only time is the poll deadline.
+
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/wire")
+(import "demo/mood")
+(import "demo/behavior")
+(import "demo/sprites")
+(import "demo/wl-client")
+
+; close everything, say why, leave with a code (0 = clean end)
+(def die (=> (1 wl Sock) (1 ni Sock) (1 pl (Pool 16384)) Str I64 Unit)
+  (lam (wl ni pl msg code)
+    (do (trace msg)
+        (sock-close wl) (sock-close ni) (pool-close 16384 pl)
+        (exit Unit code))))
+
+; handle every complete niri line: event name -> behavior pack -> redraw,
+; but only when the mood actually changed (the idle economy of the target)
+(data NLR () (nlr (1 wl Sock) (1 pl (Pool 16384)) (nbuf Str) (mood Mood)))
+
+(def on-ni-lines (=> (1 wl Sock) (1 pl (Pool 16384)) Str Mood NLR)
+  (lam (wl pl buf m)
+    (case (line1 buf)
+      ((lsplit ml rest)
+        (case ml
+          (none (the NLR (nlr wl pl rest m)))
+          ((some line)
+            (let (name (ev-name line))
+              (case (or (str-eq name "Ok") (str-eq name ""))
+                (true (on-ni-lines wl pl rest m))   ; handshake reply, noise
+                (false
+                  (let (m2 (on-event name m))
+                    (case (mood-eq m2 m)
+                      (true (on-ni-lines wl pl rest m2))
+                      (false
+                        (case (draw-commit wl pl m2)
+                          ((wpr wl2 pl2) (on-ni-lines wl2 pl2 rest m2)))))))))))))))
+
+(data St () (st (1 wl Sock) (1 ni Sock) (1 pl (Pool 16384))
+                (wbuf Bytes) (nbuf Str) (mood Mood) (ims I64)))
+
+; asleep: block forever until an event. awake: idle deadline arms the on-idle
+; counter effect. this is the idle bound of target-tomodachi: no polling.
+(def idle-ms (-> Mood I64 I64)
+  (lam (m ims) (case m (m-sleep -1) (_ ims))))
+
+(def loop (=> (1 s St) Unit)
+  (lam (s0)
+    (case s0
+      ((st wl ni pl wbuf nbuf m ims)
+        (case (poll2 wl ni (idle-ms m ims))
+          ((poll2-r idx wl2 ni2)
+            (case (=i idx -1)
+              (true  ; deadline expired: the behavior pack decides the idle mood
+                (let (m2 (on-idle m))
+                  (case (mood-eq m2 m)
+                    (true (loop (the St (st wl2 ni2 pl wbuf nbuf m2 ims))))
+                    (false
+                      (case (draw-commit wl2 pl m2)
+                        ((wpr wl3 pl2)
+                          (loop (the St (st wl3 ni2 pl2 wbuf nbuf m2 ims)))))))))
+              (false
+                (case (=i idx 0)
+                  (true  ; wayland readable
+                    (case (sock-recv wl2 4096)
+                      ((recv-closed wl3)
+                        (die wl3 ni2 pl "tomodachi: wayland closed" 1))
+                      ((recv-err em)
+                        (do (trace (str-cat "tomodachi: wayland recv failed: " em))
+                            (sock-close ni2) (pool-close 16384 pl)
+                            (exit Unit 1)))
+                      ((recv-r chunk wl3)
+                        (case (on-wl-msgs wl3 pl (bcat wbuf chunk) m)
+                          ((wpb wl4 pl2 wbuf2)
+                            (loop (the St (st wl4 ni2 pl2 wbuf2 nbuf m ims))))))))
+                  (false ; niri readable
+                    (case (sock-recv ni2 4096)
+                      ((recv-closed ni3)
+                        (die wl2 ni3 pl "tomodachi: niri stream ended" 0))
+                      ((recv-err em)
+                        (do (trace (str-cat "tomodachi: niri recv failed: " em))
+                            (sock-close wl2) (pool-close 16384 pl)
+                            (exit Unit 1)))
+                      ((recv-r chunk ni3)
+                        (case (on-ni-lines wl2 pl (str-cat nbuf (bytes->str chunk)) m)
+                          ((nlr wl3 pl2 nbuf2 m2)
+                            (loop (the St (st wl3 ni3 pl2 wbuf nbuf2 m2 ims)))))))))))))))))
+
+; connect to niri and finish bring-up (shared tail of init's two idle-ms arms)
+(def init-conn (=> (1 wl Sock) (1 pl (Pool 16384)) Bytes Str I64 St)
+  (lam (wl pl buf np ims)
+    (case (sock-connect np)
+      ((conn-err em)
+        (do (sock-close wl) (pool-close 16384 pl)
+            (halt St (str-cat "tomodachi: niri connect failed: " em))))
+      ((conn-r ni0)
+        (case (sock-send ni0 (str->bytes "\"EventStream\"\n"))
+          ((send-err em)
+            (do (sock-close wl) (pool-close 16384 pl)
+                (halt St (str-cat "tomodachi: niri send failed: " em))))
+          ((send-r ni1)
+            (the St (st wl ni1 pl buf "" boot-mood ims))))))))
+
+(def init (=> Unit St)
+  (lam (u)
+    (case (wl-init boot-mood)
+      ((wl-up wl pl buf)
+        (let (1 e0 (env-open unit))
+          (case (env-view e0 "NIRI_SOCKET")
+            ((env-none e1)
+              (do (env-close e1) (sock-close wl) (pool-close 16384 pl)
+                  (halt St "NIRI_SOCKET not set")))
+            ((env-r np e1)
+              (case (env-view e1 "MET_IDLE_MS")
+                ((env-none e2)
+                  (do (env-close e2) (init-conn wl pl buf np idle-after)))
+                ((env-r es e2)
+                  (do (env-close e2) (init-conn wl pl buf np (str->i64 es))))))))))))
+
+(def main (=> Unit Unit)
+  (lam (u) (loop (init u))))

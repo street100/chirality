@@ -1,0 +1,29 @@
+; The behavior pack: the user-swappable module. Edit this file to customize
+; how the creature reacts to your compositor; the checker holds you to the
+; signature. Every arrow here is pure (->): a behavior pack computes moods and
+; cannot perform any port operation, so a malicious pack can sulk but not spy.
+; Event names are niri IPC event stream keys (WorkspaceActivated, WindowClosed,
+; WindowOpenedOrChanged, WindowFocusChanged, ...).
+
+(import "prelude/prelude")
+(import "demo/mood")
+
+(def boot-mood Mood m-idle)
+
+; how long without events before on-idle fires, milliseconds
+(def idle-after I64 10000)
+
+(def on-event (-> Str Mood Mood)
+  (lam (ev cur)
+    (case (str-eq ev "WorkspaceActivated")
+      (true m-happy)
+      (false
+        (case (str-eq ev "WindowOpenedOrChanged")
+          (true m-happy)
+          (false
+            (case (str-eq ev "WindowClosed")
+              (true m-alarmed)
+              (false m-idle))))))))    ; any other activity wakes it up
+
+(def on-idle (-> Mood Mood)
+  (lam (cur) m-sleep))

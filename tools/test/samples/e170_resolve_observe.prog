@@ -1,0 +1,93 @@
+; E170 Phase 12, G1 -- THE FLOOR OBSERVES A ROOT WITH IMPORTS.
+;
+; The defect this closes: `observe` handed a root's raw bytes to `compile-all`
+; with no resolution step, so a file carrying `(import "prelude/prelude")` came back
+; `ob-nobuild`. 62 of the 68 files in prog/samples/ import something, and the
+; six that do not are EXACTLY test-runner.chiral's manifest -- which is why E168's
+; own adopter never met the limit, and why it becomes a defect at E170's first
+; imported root rather than earlier.
+;
+; The row is only evidence if the import is LOAD-BEARING, so case 2 is the
+; negative control and it runs FIRST: `observe-unresolved` below is `observe`'s
+; own pre-W0.2 body, verbatim, and the same file through it must NOT build. If it
+; does, the subject imports something it does not use and nothing here is a test
+; of resolution.
+;
+; Paths are REPO-ROOT-relative and this program is run from the repo root (Phase
+; 12 and E166's F3 differential both run it from there), which is also the
+; directory `observe`'s own `scaffold/lib` search root is relative to.
+;
+; exit 0 = every case; 1..7 = the numbered case that failed:
+;   1  the root is not there at all
+;   2  the root builds UNRESOLVED -- the import is not load-bearing, no evidence
+;   3  the root vanished between the two observations
+;   4  RESOLVED it still does not build -- W0.2 reverted, the gate's own subject
+;   5  it builds and runs, but not to 42
+;   6  the adequacy mutant never built, so nothing was measured
+;   7  the gate did not come back green through the floor's own entry
+;   8,9 the `ob-nomatch` arm E170 W0.3 added to `ObsR`. Neither can fire: only
+;       `oracle-ask`'s `or-fixed` arm produces one, and neither observer here is
+;       an oracle ask. They are the compiler enumerating a new constructor.
+
+(import "evidence/test-floor")
+
+(def root Str "prog/samples/e170_imported_root.chiral")
+
+; `observe`'s body BEFORE W0.2: open the path, hand the raw bytes to `run-src`.
+; Kept here rather than described, because the mutant this row names is "revert
+; W0.2" and a description is not a thing that runs.
+(def observe-unresolved (=> (1 bld Builder) Str ObsR)
+  (lam (bld path)
+    (let ((fd (openat (bcat (str->bytes path) nul-byte))))
+      (case (<i fd 0)
+        (true  (ob-nofile path bld))
+        (false
+          (let ((src (read-fd-all fd)))
+            (do (close fd) (run-src bld src))))))))
+
+; THE ADEQUACY MUTANT -- test-runner.chiral:64's idiom: the same meaning, one
+; digit off. It is import-free on purpose, because `mut-run` observes the base by
+; PATH (through `observe`, which resolves) and the mutant by self-contained TEXT
+; (through `run-src`, which does not). A mutant that needed resolution would be
+; asking the wrong half of the floor.
+(def mutant-src Str "(def main (-> I64 I64) (lam (n) 41))")
+
+(def adequacy Mutant
+  (mutant "the imported root returns 41 instead of 42" (str->bytes mutant-src)))
+
+; rank 3 -- `pv-meaning`. The want is what the file's own `main` says it means,
+; written down by hand before anything ran; the .chiral file is the INPUT, not a
+; committed artifact with a digest, so it is not rank 2.
+(def imported-suite (-> MutRun Suite)
+  (lam (mr)
+    (suite "E170 W0.2 -- a root with imports"
+      (cons (gate "the floor resolves imports"
+              (cons (ex (obk-root root) (ob-exit 42)
+                      (pv-meaning "the file's own main returns 42")) nil)
+              (the (List DiffExpect) nil)
+              mr)
+        nil))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (observe-unresolved (builder "B1") root)
+      ((ob-nofile p b1) (case b1 ((builder v) 1)))
+      ((ob-nomatch p b1) (case b1 ((builder v) 8)))
+      ((ob-ok o0 b1)    (case b1 ((builder v) 2)))
+      ((ob-nobuild w b1)
+        (case (observe b1 root)
+          ((ob-nofile p b2)   (case b2 ((builder v) 3)))
+          ((ob-nomatch p b2)  (case b2 ((builder v) 9)))
+          ((ob-nobuild w2 b2) (case b2 ((builder v) 4)))
+          ((ob-ok o b2)
+            (case (obs-cmp (ob-exit 42) o)
+              ((ck-fail g w3) (case b2 ((builder v) 5)))
+              ((ck-pass)
+                (case (mut-run b2 root adequacy)
+                  ((mu-unbuilt why b3) (case b3 ((builder v) 6)))
+                  ((mu-ok mr b3)
+                    (case b3
+                      ((builder v)
+                        (case (=i (test-main (cons (imported-suite mr) nil)) 0)
+                          (true  0)
+                          (false 7))))))))))))))

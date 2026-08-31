@@ -1,0 +1,27 @@
+; t1_child_ctty.chiral — the CHILD half of the T1 behavioral test.
+; Exec'd INSIDE a fresh pty by nb-spawn-in-pty, AFTER the driver's login_tty
+; sequence (setsid -> TIOCSCTTY -> dup2 0/1/2). It ALWAYS writes one marker byte
+; to fd 1 (which dup2 wired onto the pty slave, so it always reaches the parent's
+; master end if the child ran at all). The byte VALUE reports the controlling-
+; terminal check: it opens "/dev/tty" (the kernel synonym for the controlling
+; terminal, resolvable only if TIOCSCTTY succeeded after setsid):
+;   'Z' (0x5A/90) — /dev/tty opened  => the pts IS our controlling terminal
+;   'X' (0x58/88) — /dev/tty failed  => child ran + dup2 wired, but no ctty
+; Exit 42 on the ctty path, 1 otherwise.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "lowering/tal/bytes")
+(import "protocol/term")
+
+(def marker-ok Bytes (bslice (pack-u32 90) 0 1))         ; 'Z' — ctty acquired
+(def marker-no Bytes (bslice (pack-u32 88) 0 1))         ; 'X' — ran, no ctty
+(def devtty Bytes (bcat (str->bytes "/dev/tty") nul-byte))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (fd (open-rw devtty))
+      (case (<i fd 0)
+        (true  (let (_ (write-fd 1 marker-no)) 1))
+        (false
+          (let (_ (close fd))
+            (let (_ (write-fd 1 marker-ok)) 42)))))))

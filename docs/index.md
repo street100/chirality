@@ -19,10 +19,10 @@ linked notes, one idea per note. Read the hub notes first, then follow links.
 - Links inside the prose use `[[slug]]`, where the slug is the filename without
   `.md`. So `[[axis-typeability]]` means `docs/axis-typeability.md`.
 - The root holds the locked spine: [PRINCIPLES](../PRINCIPLES.md) and
-  [SECURE-DATUM-MODEL](../SECURE-DATUM-MODEL.md). The notes here refine and
+  [SECURE-DATUM-MODEL](definitions/secure-datum-model.md). The notes here refine and
   apply that spine. They do not restate it.
 - For orientation above this base, read [MAP](../MAP.md) (the whole project) and
-  [PERSONA](../PERSONA.md) (how to work here). The long road is in
+  [PERSONA](../.planning/PERSONA.md) (how to work here). The long road is in
   [.planning/ROADMAP.md](../.planning/ROADMAP.md).
 
 ## Reading order

@@ -1,0 +1,71 @@
+; e103_termios_raw.chiral — pure native unit sample for E103 (no tty).
+; Builds the SPEC's exact 60-byte cooked termios cell, runs termios-set-raw,
+; and asserts the exact cfmakeraw output: the four flag-words, VMIN@23=1,
+; VTIME@22=0, and the untouched neighbor bytes @21/@24. Proves the mask math
+; and offsets without any terminal — the "mask half" of the E103 gate.
+;
+; Exit code: 42 on full match (the repo's success sentinel — distinguishes a
+; real match from a silent 0-default). On mismatch, the FIRST failing field's
+; index (1..8) so a failure names the field:
+;   1=c_iflag@0  2=c_oflag@4  3=c_cflag@8  4=c_lflag@12
+;   5=nbr@21     6=VTIME@22   7=VMIN@23    8=nbr@24
+;
+; Step 4 of the E103 SPEC (the pty behavioral test) is DEFERRED pending a
+; surface write-to-arbitrary-fd crossing (candidate E105); see BUGS-AND-GAPS.md.
+(import "prelude/prelude")
+(import "lowering/tal/bytes")       ; cell-new, bget-u32-le, bput-u32-le, bput-u8
+(import "protocol/term")            ; termios-set-raw
+
+; the SPEC's cooked input cell (60 bytes): flag-words + c_cc neighbors
+(def e103-cooked Bytes
+  (bput-u8
+    (bput-u8
+      (bput-u8
+        (bput-u8
+          (bput-u32-le
+            (bput-u32-le
+              (bput-u32-le
+                (bput-u32-le (cell-new 60)
+                  0  17664)                 ; c_iflag = 0x00004500 (IUTF8|ICRNL|IXON)
+                4  5)                        ; c_oflag = 0x00000005 (OPOST|ONLCR)
+              8  416)                        ; c_cflag = 0x000001A0 (PARENB|CS6|CREAD)
+            12 32827)                        ; c_lflag = 0x0000803B (IEXTEN|ISIG|ECHOK|ECHOE|ECHO|ICANON)
+          21 170)                            ; c_cc[21] neighbor = 0xAA
+        22 0)                                ; VTIME input = 0x00
+      23 4)                                  ; VMIN  input = 0x04
+    24 187))                                 ; c_cc[24] neighbor = 0xBB
+
+; field-8: @24 neighbor intact
+(def e103-f8 (-> Bytes I64)
+  (lam (out) (case (=i (bget out 24) 187) (true 42) (false 8))))
+
+; field-7: VMIN@23 == 1
+(def e103-f7 (-> Bytes I64)
+  (lam (out) (case (=i (bget out 23) 1) (true (e103-f8 out)) (false 7))))
+
+; field-6: VTIME@22 == 0
+(def e103-f6 (-> Bytes I64)
+  (lam (out) (case (=i (bget out 22) 0) (true (e103-f7 out)) (false 6))))
+
+; field-5: @21 neighbor intact
+(def e103-f5 (-> Bytes I64)
+  (lam (out) (case (=i (bget out 21) 170) (true (e103-f6 out)) (false 5))))
+
+; field-4: c_lflag@12 == 0x30
+(def e103-f4 (-> Bytes I64)
+  (lam (out) (case (=i (bget-u32-le out 12) 48) (true (e103-f5 out)) (false 4))))
+
+; field-3: c_cflag@8 == 0xB0
+(def e103-f3 (-> Bytes I64)
+  (lam (out) (case (=i (bget-u32-le out 8) 176) (true (e103-f4 out)) (false 3))))
+
+; field-2: c_oflag@4 == 0x4
+(def e103-f2 (-> Bytes I64)
+  (lam (out) (case (=i (bget-u32-le out 4) 4) (true (e103-f3 out)) (false 2))))
+
+; field-1: c_iflag@0 == 0x4000
+(def e103-f1 (-> Bytes I64)
+  (lam (out) (case (=i (bget-u32-le out 0) 16384) (true (e103-f2 out)) (false 1))))
+
+(def compile-main (=> I64 I64)
+  (lam (n) (e103-f1 (termios-set-raw e103-cooked))))

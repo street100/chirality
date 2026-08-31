@@ -1,0 +1,6 @@
+; V21: ONE capturing `the`-lam instance + the projector global.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare voc-draw (-> Voc (-> I64 I64))) (def voc-draw (lam (v) (case v ((voc d n) d))))
+(declare mk-a (-> I64 Voc)) (def mk-a (lam (k) (voc (the (-> I64 I64) (lam (x) (+ x k))) 1)))
+(declare compile-main (-> Unit I64)) (def compile-main (lam (u) (- ((voc-draw (mk-a 1)) 10) 11)))

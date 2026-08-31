@@ -1,0 +1,14 @@
+; The headless profile: same behavior modules as the tomodachi, a two-port
+; frozen set. A second runtime from the same module base is what
+; "configurable profiles" means at this scale.
+
+(import "demo/headless")
+
+(target headless
+  (require main (=> Unit Unit))
+  (require on-event (-> Str Mood Mood))
+  (require mood-name (-> Mood Str)))
+
+(profile headless
+  (ports print env-open env-view env-close)
+  (target headless))

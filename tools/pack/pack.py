@@ -37,9 +37,9 @@ import glob, os, re, sys, datetime
 # tools/<name>/<name>.py -> the tree root is THREE levels up, not two.
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CATALOG = os.path.join(ROOT, ".planning/SELF-IMPLEMENT-CATALOG.md")
-TEMPLATE = os.path.join(ROOT, "examples/_TEMPLATE.md")
-CHEAT = os.path.join(ROOT, "examples/_CHEATSHEET.md")
-INDEX = os.path.join(ROOT, "examples/INDEX.md")
+TEMPLATE = os.path.join(ROOT, "docs/examples/_TEMPLATE.md")
+CHEAT = os.path.join(ROOT, "docs/examples/_CHEATSHEET.md")
+INDEX = os.path.join(ROOT, "docs/examples/INDEX.md")
 CONFMAP = os.path.join(ROOT, ".planning/audit/CONFORMANCE-MAP.md")
 SPECDIR = os.path.join(ROOT, ".planning/specs")
 SPEC_TEMPLATE = os.path.join(SPECDIR, "_TEMPLATE.md")
@@ -82,9 +82,12 @@ SOURCES = {
     "E": dict(
         path=CATALOG, header="| E#", kind=_kind_E,
         row=lambda eid: rf"\|\s*{eid}\s*\|",
-        tick_cols=(1, 2), py_roots=("scaffold/chirality",),
-        # the catalog names its baseline IN the row (`terms.py`), always under
-        # scaffold/chirality/ — the historical shape, kept exactly.
+        tick_cols=(1, 2), py_roots=("tools/*",),
+        # the catalog names its baseline IN the row (`terms.py`), bare. Those bare
+        # names were the compiler oracle under scaffold/chirality/, which is CUT;
+        # the only Python left in this tree is tools/<name>/<name>.py, so `*` in a
+        # root expands to the candidate's own stem. A compiler .py resolves nowhere
+        # now, and the bundle says so rather than printing a path that cannot exist.
         section_baselines={}, derive_refclass=False,
     ),
     "U": dict(
@@ -92,7 +95,7 @@ SOURCES = {
         row=lambda eid: rf"\|\s*\*{{0,2}}{eid}\*{{0,2}}\s*\|",
         # Element + Note carry the prose; State/Gate are backticked STATUS
         # words (`design`, `blocked`) and would be read as symbol names.
-        tick_cols=(1, 4), py_roots=("", "bin", "scaffold/chirality"),
+        tick_cols=(1, 4), py_roots=("", "bin", "tools/*"),
         # §6 (the KB surface) is the one place where the conventional baseline is
         # OURS and in-tree: this repo's KB is run by these four tools, and they
         # are the specification the row refracts. §4/§5/§7 have NO in-tree
@@ -104,7 +107,7 @@ SOURCES = {
     "S": dict(
         path=SCRIBADOC, header="| S#", kind=_kind_S,
         row=lambda eid: rf"\|\s*\*{{0,2}}{eid}\*{{0,2}}\s*\|",
-        tick_cols=(1, 4), py_roots=("", "bin", "scaffold/chirality"),
+        tick_cols=(1, 4), py_roots=("", "bin", "tools/*"),
         section_baselines={}, derive_refclass=True,
     ),
 }
@@ -176,7 +179,7 @@ def examples_for(tag):
     slug. The pipeline artifact is the one the INDEX row links, so ask the INDEX
     first and fall back to the glob only when no row names a file.
     """
-    exs = sorted(glob.glob(os.path.join(ROOT, "examples", f"{tag}-*.md")))
+    exs = sorted(glob.glob(os.path.join(ROOT, "docs", "examples", f"{tag}-*.md")))
     named = None
     if os.path.exists(INDEX):
         rx = re.compile(r"\((%s-[^)]+\.md)\)" % re.escape(tag))
@@ -185,7 +188,7 @@ def examples_for(tag):
             if len(cells) > 2 and cells[1].strip() == tag:
                 m = rx.search(line)
                 if m:
-                    named = os.path.join(ROOT, "examples", m.group(1))
+                    named = os.path.join(ROOT, "docs", "examples", m.group(1))
                 break
     if named and named in exs:
         exs.remove(named)
@@ -204,16 +207,29 @@ def conf_rows(eid):
             if ln.startswith("|") and re.search(rf"\b{eid}\b", ln)]
 
 
+def resolve_py(cand, roots):
+    """(relpath, abspath-or-None) for ONE baseline .py. The oracle root
+    scaffold/chirality/ is CUT; the only Python left is tools/<name>/<name>.py,
+    so a root of `tools/*` expands with the candidate's own stem. Unresolved
+    returns the first root's spelling and None, so the caller can name what it
+    looked for."""
+    stem = os.path.splitext(os.path.basename(cand))[0]
+    for r in roots:
+        rel = os.path.join(r.replace("*", stem), cand) if r else cand
+        if os.path.exists(os.path.join(ROOT, rel)):
+            return rel, os.path.join(ROOT, rel)
+    first = roots[0].replace("*", stem) if roots else ""
+    return (os.path.join(first, cand) if first else cand), None
+
+
 def target_outlines(text):
-    """Structural outlines of every scaffold/lib file named in the text."""
-    paths = sorted(set(re.findall(r"(?:scaffold|lib)/[A-Za-z0-9_/.-]*\.(?:py|chirality)", text)))
+    """Structural outlines of every in-tree source file named in the text.
+    Extensions are the post-rename set: .chiral module, .prog entry, .py tool."""
+    paths = sorted(set(re.findall(
+        r"(?:lib|prog|tools)/[A-Za-z0-9_/.-]*\.(?:py|chiral|prog)", text)))
     sec = []
     for rel in paths:
         p = os.path.join(ROOT, rel)
-        if not os.path.exists(p) and not rel.startswith("scaffold/"):
-            alt = os.path.join(ROOT, "scaffold", rel)  # examples say lib/x.chiral; libs live in scaffold/lib/
-            if os.path.exists(alt):
-                p, rel = alt, "scaffold/" + rel
         if not os.path.exists(p):
             sec.append(f"### {rel} — NEW FILE (does not exist yet)")
             continue
@@ -251,10 +267,16 @@ def ours_block(rel, path, syms):
 
 
 def test_baseline():
-    tfiles = sorted(glob.glob(os.path.join(ROOT, "scaffold/tests/test_*.py")))
-    n = sum(len(re.findall(r"^\s*def test_", open(f).read(), re.M)) for f in tfiles)
-    return (f"{n} test functions across {len(tfiles)} files in scaffold/tests/\n"
-            + " ".join(os.path.basename(f) for f in tfiles))
+    """There is no test-function baseline any more. The Python oracle suite
+    (scaffold/tests/test_*.py) went with external judgment, so quoting a count
+    here would quote zero and read as a measurement."""
+    sh = "tools/test/run-tests.sh"
+    if not os.path.exists(os.path.join(ROOT, sh)):
+        return f"NO TEST FLOOR: {sh} is missing from this tree."
+    return ("The Python oracle suite (scaffold/tests/test_*.py) is CUT, so there is no "
+            f"test-function count to quote. The gating floor is {sh}, which prints its "
+            "unported phases by name and reason on every run. Your green line is a phase "
+            "there. No pytest function will do.")
 
 
 # ---------------------------------------------------------------- kb slicing
@@ -354,7 +376,7 @@ def kb_slices(eid, seed_texts):
             add(os.path.relpath(f, ROOT))
 
     bases = sorted({os.path.basename(b) for b in
-                    re.findall(r"`([A-Za-z0-9_./-]+\.(?:py|chirality))`", seed)})
+                    re.findall(r"`([A-Za-z0-9_./-]+\.(?:py|chiral|prog))`", seed)})
     base_pats = [re.compile(rf"\b{re.escape(b)}\b") for b in bases]
     caveat = ("Slices are E#/file-anchored; an E-RANGE in a note (e.g. E30–E33) "
               "will not match an interior number — grep the named note if a "
@@ -435,13 +457,13 @@ def audit_mode(eid, tag, title, row, row_kind, level):
         out.append(f"## 2. ARTIFACT UNDER AUDIT — .planning/specs/{tag}-{slug}-SPEC.md"
                    f"\n\n{sp.strip()}")
         out.append(f"## 3. Its example (the rationale it must not contradict) — "
-                   f"examples/{tag}-{slug}.md\n\n{ex.strip()}")
+                   f"docs/examples/{tag}-{slug}.md\n\n{ex.strip()}")
         hits = conf_rows(eid)
         out.append(f"## 4. Conformance-map rows naming {eid} (build-state authority)\n"
                    + ("\n".join(hits) if hits else "(none — postdates the map snapshot)"))
         sec = target_outlines(sp + "\n" + ex)
         out.append("## 5. Live targets (outlines)\n"
-                   + ("\n\n".join(sec) or "(no scaffold/lib paths named)"))
+                   + ("\n\n".join(sec) or "(no lib/, prog/ or tools/ paths named)"))
         out.append("## 6. Test baseline\n" + test_baseline())
         body, notes, caveat = kb_slices(eid, [sp, ex])
         out.append(f"## 7. KB slices — {len(notes)} notes; every RESOLVED citation "
@@ -452,7 +474,7 @@ def audit_mode(eid, tag, title, row, row_kind, level):
 def kb_mode(eid, tag, title):
     """Standalone scoped-kb fetch: slices seeded from whatever artifacts exist."""
     seeds, names = [], []
-    for p in sorted(glob.glob(os.path.join(ROOT, "examples", f"{tag}-*.md"))) + \
+    for p in sorted(glob.glob(os.path.join(ROOT, "docs", "examples", f"{tag}-*.md"))) + \
              sorted(glob.glob(os.path.join(SPECDIR, f"{tag}-*-SPEC.md"))):
         seeds.append(open(p).read())
         names.append(os.path.relpath(p, ROOT))
@@ -519,7 +541,7 @@ def spec_mode(eid, tag, title, row, row_kind, no_index):
                   else f"(none — {eid} postdates the map snapshot; treat as BUILD)"))
     sec = target_outlines(ex)
     out.append("## 4. Live targets (outlines)\n"
-               + ("\n\n".join(sec) or "(no scaffold/lib paths named in the example)"))
+               + ("\n\n".join(sec) or "(no lib/, prog/ or tools/ paths named in the example)"))
     out.append("## 5. Test baseline — your §5 green line starts here\n" + test_baseline())
 
     out.append("## 6. Next\nYour SPEC is scaffolded (frontmatter filled) at "
@@ -701,18 +723,16 @@ def main():
     baselines = []                       # [(relpath, abspath-or-None)]
     if src["derive_refclass"]:
         for cand in ([pyfile] if pyfile else src["section_baselines"].get(row_sec, [])):
-            found = None
-            for r in src["py_roots"]:
-                q = os.path.join(ROOT, r, cand) if r else os.path.join(ROOT, cand)
-                if os.path.exists(q):
-                    found = q
-                    break
-            baselines.append((os.path.relpath(found, ROOT) if found else cand, found))
+            baselines.append(resolve_py(cand, src["py_roots"]))
         refclass = "OURS" if any(f for _, f in baselines) else "EXTERNAL"
         ours_label = (", ".join(r for r, _ in baselines) if baselines
                       else "EXTERNAL (no in-tree baseline — research the comparator)")
     else:
-        ours_label = ("scaffold/chirality/" + pyfile) if pyfile else "(none — design from spec)"
+        if pyfile:
+            _rel, _found = resolve_py(pyfile, src["py_roots"])
+            ours_label = _rel if _found else f"{pyfile} — NOT IN TREE (the oracle is CUT)"
+        else:
+            ours_label = "(none — design from spec)"
 
     out = [f"# INPUT BUNDLE — {cat_label(eid)}: {title}",
            "Read THIS ONLY. Everything you need to write the artifact is below. "
@@ -725,12 +745,16 @@ def main():
     # OURS baseline: whole file if small, else slices around named symbols + head
     if not src["derive_refclass"]:
         if pyfile:
-            p = os.path.join(ROOT, "scaffold/chirality", pyfile)
-            if os.path.exists(p):
-                head, code = ours_block(f"scaffold/chirality/{pyfile}", p, syms)
+            rel, p = resolve_py(pyfile, src["py_roots"])
+            if p:
+                head, code = ours_block(rel, p, syms)
                 out.append(f"## 3. OURS baseline — {head}\n{code}")
             else:
-                out.append(f"## 3. OURS baseline — scaffold/chirality/{pyfile} NOT FOUND (grep the tree)")
+                out.append(f"## 3. OURS baseline — {pyfile} NOT IN TREE. The compiler "
+                           "oracle (scaffold/chirality/) is CUT, so a catalog row naming "
+                           "one of its files has no in-tree baseline left. Write the OURS "
+                           "section from the reference class and say the baseline is gone. "
+                           "Do not invent a file.")
         else:
             out.append("## 3. OURS baseline — none named (BUILD-PROPER: design from the reference/spec)")
     elif not baselines:
@@ -764,14 +788,14 @@ def main():
     out.append("## 4. chirality idioms & vocabulary (use INSTEAD of glossary/PRINCIPLES/lib)\n"
                + open(CHEAT).read().strip())
     out.append("## 5. Next\nYour artifact is scaffolded (frontmatter filled) at "
-               f"`examples/{tag}-{slug}.md` with the six section headers. Open THAT file "
+               f"`docs/examples/{tag}-{slug}.md` with the six section headers. Open THAT file "
                "and fill sections 1–6. Do not re-read the template — it is already in your file.")
 
     print("\n\n".join(out))
 
     # ---- scaffold the artifact + INDEX row (only when a slug is given) ----
     if slug:
-        dest = os.path.join(ROOT, "examples", f"{tag}-{slug}.md")
+        dest = os.path.join(ROOT, "docs", "examples", f"{tag}-{slug}.md")
         today = datetime.date.today().isoformat()
         if os.path.exists(dest):
             print(f"\n[scaffold] {tag}-{slug}.md already exists — left as-is", file=sys.stderr)
@@ -782,7 +806,8 @@ def main():
             repl = {"E<NN>": tag, "<slug>": slug, "<human title>": hd,
                     "SELF-HOST | REPLACE-CRUTCH | BUILD-PROPER": row_kind,
                     "OURS | SPEC | PAPER | IMPL": refclass,
-                    "scaffold/chirality/<file>.py": ("scaffold/chirality/" + pyfile) if pyfile else "(none)",
+                    "tools/<name>/<name>.py": (resolve_py(pyfile, src["py_roots"])[0]
+                                               if pyfile else "(none)"),
                     "<YYYY-MM-DD>": today}
             for a, b in repl.items():
                 t = t.replace(a, b)

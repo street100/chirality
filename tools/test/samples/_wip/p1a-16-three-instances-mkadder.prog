@@ -1,0 +1,15 @@
+; V16: the FULL D-U7 shape -- 3 distinct capturing instances via named producers,
+; a projector global, consumed across a boundary.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare voc-draw (-> Voc (-> I64 I64)))
+(def voc-draw (lam (v) (case v ((voc d n) d))))
+(declare adder (-> I64 (-> I64 I64)))  (def adder (lam (k) (lam (x) (+ x k))))
+(declare muler (-> I64 (-> I64 I64)))  (def muler (lam (k) (lam (x) (* x k))))
+(declare suber (-> I64 (-> I64 I64)))  (def suber (lam (k) (lam (x) (- x k))))
+(declare mk-a (-> I64 Voc)) (def mk-a (lam (k) (voc (adder k) 1)))
+(declare mk-b (-> I64 Voc)) (def mk-b (lam (k) (voc (muler k) 2)))
+(declare mk-c (-> I64 Voc)) (def mk-c (lam (k) (voc (suber k) 3)))
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u)
+  (- (+ ((voc-draw (mk-a 1)) 10) (+ ((voc-draw (mk-b 2)) 10) ((voc-draw (mk-c 5)) 10))) 36)))

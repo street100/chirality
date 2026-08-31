@@ -1,0 +1,45 @@
+; e104_pty.chiral — behavioral sample for E104 native pty acquisition crossings.
+; Runs the four-step acquisition dance STEPWISE (each failing step maps to its
+; own exit code) so a wrong ioctl request constant surfaces as a step failure:
+;   open /dev/ptmx (open-rw, O_RDWR|O_NOCTTY)   fail -> 10
+;   unlock the slave (TIOCSPTLCK, int 0)        fail -> 11
+;   read the slave index (TIOCGPTN)             fail -> 12
+;   open the slave /dev/pts/N (open-rw)          fail -> 13
+; On full success it puts the slave into raw mode via E99 term-raw (demonstrating
+; E99 ∘ E104 compose), closes both fds, and exits 42.
+;
+; NOTE (vs SPEC §5): the byte round-trip write(master)->read(slave) is omitted —
+; the repo has no surface write-to-arbitrary-fd crossing (only put -> stdout), and
+; adding one exceeds E104's three-crossing scope. A successful slave open at the
+; kernel-reported /dev/pts/N (only reachable if TIOCGPTN returned a real, unlocked
+; index) already validates all three new crossing constants end to end.
+;
+; Verified via the resolver blob (imports resolve to prelude/ports/bytes-tal/term),
+; not the standalone phase-2 test-runner (which compiles single files without
+; import resolution). Requires a devpts mount (/dev/ptmx).
+(import "prelude/prelude")
+(import "ports/ports")
+(import "lowering/tal/bytes")
+(import "protocol/term")
+
+(def ptmx-path Bytes (bcat (str->bytes "/dev/ptmx") nul-byte))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (master (open-rw ptmx-path))
+      (case (<i master 0)
+        (true 10)
+        (false
+          (case (nb-ptunlock-w master)
+            ((unlock-err e) (let (_ (close master)) 11))
+            ((unlock-ok)
+              (case (nb-ptsno master)
+                ((ptn-err e) (let (_ (close master)) 12))
+                ((ptn-ok idx)
+                  (let (slave (open-rw (bcat (str->bytes (pts-path idx)) nul-byte)))
+                    (case (<i slave 0)
+                      (true (let (_ (close master)) 13))
+                      (false
+                        (let (_ (term-raw slave))
+                          (let (_ (close slave))
+                            (let (_ (close master)) 42)))))))))))))))

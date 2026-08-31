@@ -1,0 +1,7 @@
+; ZERO captures, bare lam in CONSTRUCTOR argument position. My theory says this lowers.
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+(declare mk (-> I64 Voc))
+(def mk (lam (j) (voc (lam (x) (+ x 1)) j)))     ; <- no capture of j in the lam
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u) (- (case (mk 7) ((voc d n) (d 10))) 11)))

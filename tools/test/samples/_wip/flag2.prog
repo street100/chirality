@@ -1,0 +1,19 @@
+; FLAG 2 falsifier -- an N-instance VOCABULARY record (built inside lams) that
+; ALSO has a projector global. The example claimed this converts it to the
+; dictionary shape and stops the blob lowering. Does it?
+(import "prelude/prelude")
+(data Voc () (voc (draw (-> I64 I64)) (n I64)))
+
+(def voc-draw (-> Voc (-> I64 I64))        ; <-- THE PROJECTOR GLOBAL
+  (lam (v) (case v ((voc d n) d))))
+
+(declare mk-a (-> I64 Voc))
+(def mk-a (lam (k) (voc (lam (x) (+ x k)) 1)))    ; instance 1, inside a lam
+(declare mk-b (-> I64 Voc))
+(def mk-b (lam (k) (voc (lam (x) (* x k)) 2)))    ; instance 2, inside a lam
+(declare mk-c (-> I64 Voc))
+(def mk-c (lam (k) (voc (lam (x) (- x k)) 3)))    ; instance 3
+
+(declare compile-main (-> Unit I64))
+(def compile-main (lam (u)
+  (- (+ ((voc-draw (mk-a 1)) 10) (+ ((voc-draw (mk-b 2)) 10) ((voc-draw (mk-c 5)) 10))) 36)))

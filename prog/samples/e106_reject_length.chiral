@@ -1,0 +1,15 @@
+; e106_reject_length.chiral — E106 conformance: REJECTION 2 of 4.
+;
+; The unrestricted `length`/`count` idiom — take the container, read a number,
+; and DISCARD the container ("how many do I hold" as a free borrow) — is rejected
+; over a linear container: the binder `v` is declared quantity `1` (linear, holds
+; N caps) but the body drops it, leaking every cap. This is precisely why
+; `sv-count` threads the vector back inside `CountR` instead of returning a bare
+; `I64`. The dropped LAMBDA binder trips strip-binder (kernel.chiral:313).
+; Expected B1 verdict: `load: linear binder usage mismatch`.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "capability/lincoll")
+
+(def bad-count (-> (1 v SockVec) I64)
+  (lam (v) 0))   ; v (the linear vector) dropped: a free count that leaks the caps

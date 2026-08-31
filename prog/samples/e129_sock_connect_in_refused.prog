@@ -1,0 +1,33 @@
+; e129_sock_connect_in_refused.chiral — E129 conformance: the AF_INET connect-ERROR path.
+;
+; sock-connect-in runs parse-quad (pure) -> pack-sa-in (pure, big-endian port)
+; -> nb-sock-connect-in (the fused socket(2,1,0)+connect crossing) against
+; 127.0.0.1:1 — a closed port, so connect() returns -ECONNREFUSED. The fused
+; TAL body closes the fd (else leak) and assembles (conn-err "") via ti-cona.
+; Exit 42 = the conn-err arm reached: socket + connect + errno decode all ran
+; natively on-target, and the ConnR sum was built and cased. HERMETIC (no peer,
+; no listener, no network — port 1 is closed on this host).
+;
+; The conn-r SUCCESS arm is compiled but UNREACHED here (chirality has no listener
+; yet — sock-listen/sock-accept are deferred). It MUST be present: QTT requires
+; the linear Sock bound by conn-r to be consumed (sock-close, E107), so a
+; missing arm fails the checker, not just coverage.
+;
+; LINEAR DISCIPLINE: every arm of the ConnR case consumes every live cap. The
+; conn-err arm carries only a Str (no cap to thread — the fd is already closed
+; inside the crossing). The conn-r arm owes the Sock and discharges it with
+; sock-close. This is the same shape as e127_sock_connect_err.chiral.
+;
+; DISCRIMINATING: the OLD B1 (pre-E129) has no crossing-wraps row for
+; nb-sock-connect-in and no inet.chiral surface, so it cannot compile this at all.
+(import "prelude/prelude")
+(import "ports/ports")
+(import "protocol/inet")
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (sock-connect-in "127.0.0.1" 1)
+      ((conn-err m) 42)
+      ((conn-r s)
+        (case (sock-close s)
+          (unit 0))))))

@@ -1,0 +1,62 @@
+; E168 Phase 12, G6 -- THE POSITIVE CONTROL for the three refusal fixtures.
+;
+; Without this, `e168_reject_nocap` / `e168_reject_cap_drop` /
+; `e168_reject_port_twice` exiting 1 could be any compile error at all -- the
+; E159 false-control lesson, where a "refusal" gate was pinned by a program that
+; would not have compiled either way. This file threads the linear discipline
+; CORRECTLY and runs: one `Builder` minted, two observations and one oracle ask
+; performed through it, one `Oracle` asked (which spends it) and one dropped, and
+; the cap discharged in every leaf.
+;
+; ⚑ What the cap does NOT buy, so no reader takes the twin for more than it is:
+; a `->` def can construct a `(builder …)` from nothing and call the cap-taking
+; observer anyway. Forgery is open; `Builder` is a threading obligation the
+; checker enforces, not an unforgeable token. That is DETECTION, and prevention
+; is E171's or E80's.
+;
+; Paths are REPO-ROOT-relative and this program is run from the repo root: two
+; phases execute it (Phase 12 and E166's F3 differential), and a cwd-relative
+; path would make its answer depend on which one called it.
+;
+; exit 0 = the whole chain; 1..6 = a build or a file was missing so nothing was
+; measured; 7..9 = an observation was not what the program means; 10..12 = the
+; `ob-nomatch` arm E170 W0.3 added to `ObsR`. None of the three can fire here --
+; only `oracle-ask`'s `or-fixed` arm produces one and neither port in this chain
+; is an `or-fixed` -- so they are the compiler enumerating a new constructor at
+; every consumer, which is what a closed sum with no default arm is FOR.
+
+(import "evidence/test-floor")
+
+(def five-src Bytes (str->bytes "(def main (-> I64 I64) (lam (n) 5))"))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    ; the port that is refused before it is asked is still SPENT -- pure, no
+    ; syscall, matching backend-close's own precedent.
+    (do (oracle-drop (oracle (or-rocq)))
+      (case (observe (builder "B1") "prog/samples/exit42.chiral")
+        ((ob-nofile p b2)  (case b2 ((builder v) 1)))
+        ((ob-nomatch p b2) (case b2 ((builder v) 10)))
+        ((ob-nobuild w b2) (case b2 ((builder v) 2)))
+        ((ob-ok o1 b2)
+          (case (observe b2 "prog/samples/exit7.chiral")
+            ((ob-nofile p b3)  (case b3 ((builder v) 3)))
+            ((ob-nomatch p b3) (case b3 ((builder v) 11)))
+            ((ob-nobuild w b3) (case b3 ((builder v) 4)))
+            ((ob-ok o2 b3)
+              (case (oracle-ask b3 (oracle (or-native "an in-tree leg")) five-src)
+                ((ob-nofile p b4)  (case b4 ((builder v) 5)))
+                ((ob-nomatch p b4) (case b4 ((builder v) 12)))
+                ((ob-nobuild w b4) (case b4 ((builder v) 6)))
+                ((ob-ok o3 b4)
+                  (case b4
+                    ((builder v)
+                      (case (obs-cmp (ob-exit 42) o1)
+                        ((ck-fail g1 w1) 7)
+                        ((ck-pass)
+                          (case (obs-cmp (ob-exit 7) o2)
+                            ((ck-fail g2 w2) 8)
+                            ((ck-pass)
+                              (case (obs-cmp (ob-exit 5) o3)
+                                ((ck-fail g3 w3) 9)
+                                ((ck-pass)       0)))))))))))))))))
