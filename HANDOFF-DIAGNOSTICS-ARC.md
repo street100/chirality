@@ -1,8 +1,10 @@
 # Diagnostics arc — handoff (2026-08-31)
 
 **Self-contained.** A fresh session should be able to resume from this file alone.
-Stopped because a spend limit killed the E175 implement agent mid-run; the session
-limit resets 5:40pm America/New_York.
+**Updated 2026-08-31 after E175 landed** (`dbdc0a7`, `6614d34`, `aa9bd5c`) — the
+spend limit that killed the E175 implement agent mid-run is history; the partial
+attempt in `stash@{0}` has been applied, verified and committed, and the stash
+entry can be dropped.
 
 ## Where everything lives
 
@@ -24,27 +26,38 @@ limit resets 5:40pm America/New_York.
 | **E157** typed diagnostics | **BUILT**, ported into chirality. Phase 13, 30 assertions |
 | **E158** `Doc` commits 1–3 | **BUILT**. Phase 14, 26 assertions |
 | **E174** `r-row` + width fn | **BUILT**. Phase 15, 41 assertions. Turned the tree green (`apc.chiral` was already red) |
-| **E175** face restore | **example ✅ → audit ✅ → SPEC ✅ → audit ✅ → implement ⬜ NOT DONE** |
-| **E158 commit 4** `doc->rendering` | **BLOCKED** on E175. Never started |
+| **E175** face restore | **BUILT** 2026-08-31. Phase 16, 38 assertions, 13 mutants |
+| **E158 commit 4** `doc->rendering` | **UNBLOCKED** — both gating elements are now built. Never started |
 
-Suite at the last green measurement: **211 assertions, 0 failed, 10 phases, exit 0.**
+Suite: **249 assertions, 0 failed, 11 phases, exit 0** (211 → 249; the delta is
+Phase 16's 38, and Phases 13/14/15 are unchanged at 30/26/41).
 
 ## ⚑ The one next action
 
-**Implement E175** from `.planning/specs/E175-face-restore-SPEC.md` (status
-`audited`). This is a **transcription-with-verification job, not a discovery job**:
-the SPEC run *and* the SPEC audit each independently built and ran the entire
-change in scratch trees, both reaching **211/0, gate PASSED, Phase 15 41/0**, with
-`scriba-main.prog`, `t6_apc_roundtrip.prog` and `prog/compiler.prog` compiling
-unedited. §6 logs the mutant output. Re-derive, don't trust — but expect it to work.
+**E158 commit 4** — `doc->rendering`, `lib/protocol/render-doc.chiral`. Both of
+its gating elements (E174 horizontal composition, E175 the close) are now built.
+FLAG C stands: **it ships correct for sibling tags or it does not land.**
 
-**There is a partial attempt in `git stash@{0}`**, labelled
-`E175 PARTIAL, UNVERIFIED, UNGATED`: edits to `lib/protocol/render.chiral` and
-`tools/test/row.sh` from the killed agent, **never compiled or tested**. Diff it
-against the SPEC and take only what the SPEC endorses; the SPEC wins any conflict.
-(`stash@{1}` is the earlier `E174 premature` attempt, superseded — E174 is built.)
+### E175, as landed (2026-08-31)
 
-## Traps that will bite the implement run — all measured
+`stash@{0}`'s partial was **SPEC-conformant** and was applied unchanged after a
+line-by-line check against §4 — three `def`s below the `ansi-*` block, nine
+signatures, nine `lam` binders, 21 call sites (including the two paren traps at
+`:570`/`:578` placed correctly), six closes, `r-hole` untouched, `-delta`
+untouched, and all four `row.sh` edits. It had never been compiled; it compiled
+first try. `stash@{1}` (superseded E174) is still there and is still ignorable.
+
+What was built on top of it: `tools/test/samples/e175_face.prog` (one fixture,
+read by both the cell-map rows and the raw-byte rows) and `tools/test/face.sh`
+(Phase 16), registered in `run-tests.sh` and `MIGRATION-NOTES.md`.
+
+**Every trap in the list below fired or was avoided exactly as recorded**, and
+the `row.sh:595` one was re-measured rather than trusted: reverting *only* that
+edit gives `39 passed, 2 failed` with the message *"the mutant G5 probe did not
+build"* — the audit's corrected mechanism (a compile failure, not the
+stale-pattern guard), confirmed.
+
+## Traps that bit — or would have — all measured
 
 1. **`row.sh` needs FOUR edits.** `row.sh:595` is mutant M10's `sed` expression,
    matching `render-section`'s body line **verbatim** (ends `drow dcol))))))))))$`).
@@ -97,14 +110,9 @@ against the SPEC and take only what the SPEC endorses; the SPEC wins any conflic
   `row.sh` *does* change. Gate registers as **Phase 16** (`tools/test/face.sh`);
   8–12 are names still owed, 13/14/15 taken.
 
-## After E175
+## After E158 commit 4
 
-**E158 commit 4** — `doc->rendering`, `lib/protocol/render-doc.chiral`. It was
-blocked on E174 (missing horizontal composition) and E175 (the close). Both will
-then be built. FLAG C stands: **it ships correct for nested tags or it does not
-land** — a knowingly-wrong first commit was refused.
-
-Then **rebase `e158-doc` onto master and merge.** Master has moved several times;
+**Rebase `e158-doc` onto master and merge.** Master has moved several times;
 the branch is currently based on `cdee302`. E158 has been independently mergeable
 since `9364c5e` if the rest needs to wait.
 
