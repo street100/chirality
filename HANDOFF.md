@@ -81,9 +81,14 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
   `Maybe` is its own type and `str-join` because it produces a `Str`; leaving either in
   `list` would break the rule the split is for. 49 defs moved byte-identical, 37
   importers repointed at what they actually name. `prelude/collections` is gone as a key.
-- Coordinates: **8 of 127** files carry `(module … (cat …) (alt …))`, and **three are
-  now visibly false** — `lowering/tal/target-linux`, `lowering/c/mach`,
-  `lowering/c/assemble` all still claim `(alt upper)`. The restructure exposed it.
+- ~~Coordinates~~ **DONE** (slice 6) — the three false ones corrected against
+  `docs/axis-altitude.md` and `docs/modules-lowering.md` in the old repo:
+  `lowering/tal/target-linux` → `(alt tal)`, `lowering/c/mach` and
+  `lowering/c/assemble` → `(alt metal)` ("the codegen below tal is the Mach path",
+  modules-lowering L65). These are the tree's first non-`upper` coordinates, so
+  there was no in-tree precedent to copy; overrule them if the axis reads otherwise.
+  13 of 164 modules now carry a coordinate, up from 8 of 127 because the collections
+  split carried its `(cat A) (alt upper)` onto each piece.
 
 **Then**
 - ~~`E157`~~ **DONE** — ported from the old tree, `lib/typing/diag.chiral`. The eight

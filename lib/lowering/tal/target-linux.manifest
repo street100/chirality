@@ -15,7 +15,7 @@
 ; NOT a restatement of that letter and is no longer written at all: the datasheet
 ; derives it, and it comes out empty, which says exactly the interesting thing --
 ; this module DESCRIBES every crossing there is and binds none of them.
-(module lowering/tal/target-linux (cat B) (alt upper))
+(module lowering/tal/target-linux (cat B) (alt tal))
 
 (def linux-syscalls SysReg
   (sys-reg

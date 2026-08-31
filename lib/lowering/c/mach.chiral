@@ -82,7 +82,7 @@
 (import "lowering/mach/mach")
 (import "lowering/c/assemble")
 
-(module lowering/c/mach (cat A) (alt upper))
+(module lowering/c/mach (cat A) (alt metal))
 
 ; ── text ────────────────────────────────────────────────────────────────────
 (def mc-s3 (-> Str Str Str Str) (lam (a b c) (str-cat a (str-cat b c))))

@@ -43,7 +43,7 @@
 (import "prelude/string")
 (import "lowering/mach/asm-reloc")
 
-(module lowering/c/assemble (cat A) (alt upper))
+(module lowering/c/assemble (cat A) (alt metal))
 
 ; ── CLbl: what a label IS, decided once at the boundary ─────────────────────
 ; c-lit carries the literal's INDEX, not its name: emit-core mints literal
