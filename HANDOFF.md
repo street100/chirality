@@ -11,15 +11,17 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
 | | |
 |---|---|
 | modules + programs | 153 (`.chiral` 116 · `.prog` 20 · `.port` 9 · `.manifest` 2) |
-| compiler | `bin/chirality-bin`, 1,077,624 B, committed |
+| compiler | `bin/chirality-bin`, 1,102,200 B, committed (1,077,624 B before E157) |
 | CLI | `bin/chirality` — `compile` · `run` · `check` · `test` |
 | resolver | `bin/chirality-resolve.sh` (shell) + `lib/module/resolve.chiral` (native), a matched pair |
-| tests | `bin/chirality test` → **88 assertions, 0 failed**, 7 of 12 old phases ported |
+| tests | `bin/chirality test` → **142 assertions, 0 failed**, 7 of 12 old phases ported + Phase 13 (E157), new here |
 | tools | `tools/` — 9 Python tools carried as-is, each with `MIGRATION-NOTES.md` |
 
 ### Verified, not asserted
 
-- **Fixpoint**: `C1 == C2` byte-identical at 1,077,624 B.
+- **Fixpoint**: `C1 == C2` byte-identical at 1,102,200 B (1,077,624 B before E157).
+  ⚑ `C1` is checked **non-empty before** the `cmp` — `cmp` of two empty files passes,
+  and a fixpoint is stability, never correctness.
 - **Stronger**: the old compiler and the new one emit **byte-identical code for the
   same source**. 147 files moved, 355 extensions rewritten, every module key changed —
   and no emitted code changed. That is a rank-2 differential (a fixed committed
@@ -78,10 +80,19 @@ A working, self-hosting language at `/workspace/chirality`. Migrated out of
   `lowering/c/assemble` all still claim `(alt upper)`. The restructure exposed it.
 
 **Then**
-- `E157 → E158 → E146` — the pretty-printer chain. Highest leverage item left: it is
-  the diagnostics work in route step 2 *and* the prerequisite for both new file types.
-  `typing/pretty.chiral` is half-finished (6 of 11 formers) and imported by nobody
-  because it is `Term -> Str`, flattening at every step.
+- ~~`E157`~~ **DONE** — ported from the old tree, `lib/typing/diag.chiral`. The eight
+  containers of the checker/loader error closure carry a closed `Reason`; `XErr`
+  (E159) and `LinErr` retired into it; `dg-msg` renders once at the module boundary.
+  Gate: `tools/test/diag.sh` + `tools/test/samples/e157_diag.prog`, Phase 13, 30
+  assertions, seven named mutants all convicting. Every message is byte-for-byte
+  what it was — which is exactly why the text rows cannot be the gate and the
+  evidence rows are.
+- `E158 → E146` — the rest of the pretty-printer chain. Highest leverage item left:
+  it is the diagnostics work in route step 2 *and* the prerequisite for both new file
+  types. `typing/pretty.chiral` is half-finished (6 of 11 formers) and imported by
+  nobody because it is `Term -> Str`, flattening at every step. **E158 now has a
+  concrete consumer to render**: `Reason`, and `dg-msg` is the sibling it joins
+  rather than replaces.
 - **`.protocol` needs minting.** Justification measured: 1,891 lines / 177 defs /
   122 byte-ops across five hand-written codecs (`http` 780 · `vt-parser` 402 ·
   `json` 361 · `apc` 252 · `wire` 96).
