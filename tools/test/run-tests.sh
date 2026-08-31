@@ -23,7 +23,7 @@
 #  13  typed diagnostics (E157)  NEW HERE   -- tools/test/diag.sh
 #  14  layout algebra (E158)     NEW HERE   -- tools/test/doc.sh
 #  15  horizontal composition    NEW HERE   -- tools/test/row.sh
-#     (E174)
+#      (E174 r-row + rnd-cols)
 #
 # Each case's expected value comes from what the program MEANS, never from a
 # golden capture of chirality's own output.
