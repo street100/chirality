@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tools/test/run-tests.sh -- the gating floor.  Zero Python; the compiler is
-# bin/chirality-compile and nothing else compiles anything.
+# bin/chirality-bin and nothing else compiles anything.
 #
 # Ported from the old tree's scaffold/tests/run-native.sh (12 phases).  SEVEN
 # phases run here; the five that do not are named below with the reason, because
@@ -27,7 +27,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 
 CC="${CHIRALITY_COMPILE:-}"
-[ -n "$CC" ] || CC="$REPO/bin/chirality-compile"
+[ -n "$CC" ] || CC="$REPO/bin/chirality-bin"
 [ -x "$CC" ] || { echo "no compiler at $CC"; exit 2; }
 echo "compiler: $CC ($(wc -c <"$CC") bytes)"
 

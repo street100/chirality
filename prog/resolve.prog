@@ -89,7 +89,7 @@
       ((cons a b) (cons a b)))))
 
 ; the ENTRY. Named `compile-main` because that is the one symbol the native
-; driver compiles -- the same convention self-wield, test-runner and chirality-compile
+; driver compiles -- the same convention self-wield, test-runner and chirality-bin
 ; itself follow.
 (def compile-main (=> I64 I64)
   (lam (_)

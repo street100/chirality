@@ -5,7 +5,7 @@
 ; wrapper `bin/chirality` -- the filesystem source provider, in the language.
 ;
 ; Mint the native wielder by compiling this with B1 -- the entry is `compile-main`,
-; the one symbol the driver compiles, so no interpreter and no shim (like chirality-compile is
+; the one symbol the driver compiles, so no interpreter and no shim (like chirality-bin is
 ; minted from compile-main). Multi-module import resolution (following (import ...)
 ; across files) is the next step; this lands the openat-read-compile spine first.
 
@@ -30,7 +30,7 @@
 ; entry: named `compile-main` -- the entry symbol the native driver compiles, the
 ; same convention resolve-driver.chiral and test-runner.chiral follow. Before
 ; compile-all.chiral stopped defining the entry itself, blobbing this root picked
-; up the COMPILER's driver instead and silently produced chirality-compile, not the wielder.
+; up the COMPILER's driver instead and silently produced chirality-bin, not the wielder.
 (def compile-main (=> I64 I64)
   (lam (n)
     (let (path (rstrip-nl (read-fd-all 0)))

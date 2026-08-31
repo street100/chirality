@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # chirality -- the CLI front door.  Auto-detects the tree root, dispatches
-# subcommands.  No dependencies except bash and bin/chirality-compile.
+# subcommands.  No dependencies except bash and bin/chirality-bin.
 #
 # Install:  ln -s "$PWD/bin/chirality" ~/.local/bin/chirality
 #           chirality help
@@ -18,7 +18,7 @@
 # that dispatches to a floor this tree does not have is a gate that cannot fail.
 #
 # Environment:
-#   CHIRALITY_COMPILE   compile with THIS binary instead of bin/chirality-compile.
+#   CHIRALITY_COMPILE   compile with THIS binary instead of bin/chirality-bin.
 #                       One export really does put a chosen compiler under the
 #                       whole suite -- `test` reaches the compiler through here.
 set -uo pipefail
@@ -54,7 +54,7 @@ fi
 
 _compiler() {
   if [ -n "${CHIRALITY_COMPILE:-}" ]; then echo "$CHIRALITY_COMPILE"; return; fi
-  [ -x "$ROOT/bin/chirality-compile" ] && { echo "$ROOT/bin/chirality-compile"; return; }
+  [ -x "$ROOT/bin/chirality-bin" ] && { echo "$ROOT/bin/chirality-bin"; return; }
   echo ""; return 1
 }
 CC="$(_compiler)"
@@ -62,12 +62,12 @@ CC="$(_compiler)"
 _need_compiler() {
   if [ -z "$CC" ]; then
     cat >&2 <<EOF
-chirality: compiler not found at $ROOT/bin/chirality-compile
+chirality: compiler not found at $ROOT/bin/chirality-bin
 
   The existing compiler builds the next one -- nothing replaces itself in place:
     . bin/chirality-resolve.sh
     chirality_blob_file "lib:prog" prog/compiler.prog > /tmp/blob.chiral
-    (ulimit -s unlimited; bin/chirality-compile < /tmp/blob.chiral > chirality-compile.new)
+    (ulimit -s unlimited; bin/chirality-bin < /tmp/blob.chiral > chirality-bin.new)
 EOF
     return 1
   fi
@@ -203,7 +203,7 @@ search path: lib:prog.  Importable extensions: .chiral .port .manifest --
 .prog and .profile are not import targets.
 
 environment:
-  CHIRALITY_COMPILE   use this compiler binary instead of bin/chirality-compile
+  CHIRALITY_COMPILE   use this compiler binary instead of bin/chirality-bin
 EOF
 }
 

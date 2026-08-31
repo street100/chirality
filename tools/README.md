@@ -37,4 +37,4 @@ external-leg shell scripts are absent.
 `bin/chirality-resolve.sh` is the **source provider the build sources**, and
 `bin/chirality` is the CLI front door. Both stay in `bin/`.
 
-Python compiles nothing here. The compiler is `bin/chirality-compile`.
+Python compiles nothing here. The compiler is `bin/chirality-bin`.

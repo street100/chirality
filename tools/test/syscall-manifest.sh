@@ -32,11 +32,11 @@ CHIR="$REPO/bin/chirality"
 # resolution order as run-native.sh -- keep the two in step.
 CC="${CHIRALITY_COMPILE:-}"
 if [ -z "$CC" ]; then
-  for c in "$REPO/bin/chirality-compile"; do
+  for c in "$REPO/bin/chirality-bin"; do
     [ -x "$c" ] && { CC="$c"; break; }
   done
 fi
-[ -n "$CC" ] || { echo "no compiler found (bin/chirality-compile)"; exit 2; }
+[ -n "$CC" ] || { echo "no compiler found (bin/chirality-bin)"; exit 2; }
 . "$REPO/bin/chirality-resolve.sh"
 
 pass=0; fail=0

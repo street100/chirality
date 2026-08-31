@@ -18,7 +18,7 @@ Entry point: `bin/chirality test` → `tools/test/run-tests.sh`.
 
 The port was mechanical: `bin/metis` → `bin/chirality`, `metis_blob*` →
 `chirality_blob*`, `$REPO/scaffold/lib` → the `lib:prog` search path,
-`bin/metisc`/`scaffold/build/B1` → `bin/chirality-compile`, `METISC_BIN` →
+`bin/metisc`/`scaffold/build/B1` → `bin/chirality-bin`, `METISC_BIN` →
 `CHIRALITY_COMPILE`, `.metis` → `.chiral`, and the import keys the fixtures use
 rewritten to root-relative form (`(import "ports")` → `(import "ports/ports")`,
 `"prelude"` → `"prelude/prelude"`, `"collections"` → `"prelude/collections"`,
@@ -61,7 +61,7 @@ live collision class is now `module extension collision` (`x.chiral` beside
 (b) The negative control re-resolves the compiler blob and `cmp`s it against a
 committed `scaffold/build/blob.metis`. This tree commits no blob artifact, so there
 is nothing to compare against. The equivalent guarantee here is the fixpoint
-(`bin/chirality-compile < blob > C1; ./C1 < blob > C2; cmp C1 C2`), which is run by
+(`bin/chirality-bin < blob > C1; ./C1 < blob > C2; cmp C1 C2`), which is run by
 hand and is not yet a phase.
 
 **Phase 12 — the test floor (E168/E170).** `test-e168-floor.sh`, 677 lines. Needs

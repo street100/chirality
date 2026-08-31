@@ -23,7 +23,7 @@
 ; Manifest-driven still (a bundled list); directory auto-discovery (getdents) is
 ; the next crossing. Minted native with B1 from an unmodified blob -- the entry
 ; is named `compile-main`, the one symbol the driver compiles, so self-wield,
-; chirality-compile and this runner are all built the same way, by chirality.
+; chirality-bin and this runner are all built the same way, by chirality.
 
 (import "evidence/test-floor")
 

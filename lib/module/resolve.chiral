@@ -23,7 +23,7 @@
 ; `resolve` binary; the split (2026-08-25, E170 W0.1) is what lets a program
 ; with an entry of its own IMPORT the resolver. Usage:
 ;   printf -- '-L lib\n-L prog\nscriba/scriba-main\n' | ./resolve > blob.chiral
-;   chirality-compile < blob.chiral > program.elf
+;   chirality-bin < blob.chiral > program.elf
 ; With no -L line the search path is the default roots `lib` then `prog`:
 ;   echo scriba/scriba-main | ./resolve > blob.chiral
 ;
