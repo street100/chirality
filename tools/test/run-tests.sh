@@ -5,8 +5,8 @@
 # Ported from the old tree's scaffold/tests/run-native.sh (12 phases).  SEVEN
 # of those run here; the five that do not are named below with the reason,
 # because a phase that silently vanishes is a gate that reports ok forever.
-# Phases 13 and 14 are new here -- neither has an old-tree number to inherit,
-# and reusing 8-12 would have overwritten a name that is still owed.
+# Phases 13-17 are new here -- none has an old-tree number to inherit, and
+# reusing 8-12 would have overwritten a name that is still owed.
 #
 #   1  inline behavioral          PORTED  -- source strings -> compile + run
 #   2  the test-runner            PORTED  -- rebuilt from source, then run
@@ -26,6 +26,8 @@
 #      (E174 r-row + rnd-cols)
 #  16  ambient face restore      NEW HERE   -- tools/test/face.sh
 #      (E175 face-join + rnd-restore)
+#  17  doc->rendering            NEW HERE   -- tools/test/render-doc.sh
+#      (E158 commit 4)
 #
 # Each case's expected value comes from what the program MEANS, never from a
 # golden capture of chirality's own output.
@@ -237,6 +239,22 @@ run_phase 15 "horizontal composition (E174 r-row + rnd-cols)"  row.sh
 # trailing SGR paints no cell, so G5 and G6 grade RAW BYTES: under M7 the cell
 # map is byte-for-byte identical while the stream gains 13.
 run_phase 16 "ambient face restore (E175 face-join + rnd-restore)"  face.sh
+
+# ---- Phase 17: doc->rendering (E158 commit 4) --------------------------------
+# 17 for the reason 16 was 16.  E158's second exit: `Doc` does not unify with
+# `Rendering`, it CONVERTS, and the rule is `d-tag` -> `r-face`.  It could not
+# land before E174 (a rendered `Doc` line mixes a tagged span with untagged
+# material and `Rendering` had no horizontal composition at all) or before E175
+# (an inner face's close cleared the outer's attributes).
+#
+# ⚑ Its gate needs BOTH kinds of row for a reason the element itself supplies.
+# The cheap conversion re-wraps every emitted LEAF in its whole tag stack --
+# screen-correct, and MEASURED to produce an identical cell map on the pre-E175
+# emitter, because no `r-face` in its output ever wraps more than one painted
+# node.  The implementation builds the face TREE instead, so M4 (E175 reverted)
+# actually convicts.  Every mutant here pins the FULL fifteen-row verdict line,
+# not merely "a row went red".
+run_phase 17 "doc->rendering (E158 commit 4)"                      render-doc.sh
 
 echo
 echo "=== not ported from the old suite (named, not hidden) ==="

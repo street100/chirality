@@ -16,7 +16,7 @@ Entry point: `bin/chirality test` → `tools/test/run-tests.sh`.
 | 6 linear mint (E159) | `test-linear-mint.sh` | `linear-mint.sh` | 21 |
 | 7 downstream roots compile | `run-native.sh` inline | `run-tests.sh` inline | 11 roots |
 
-## New here — Phases 13, 14, 15 and 16
+## New here — Phases 13, 14, 15, 16 and 17
 
 | phase | source | here | assertions |
 |---|---|---|---|
@@ -24,6 +24,7 @@ Entry point: `bin/chirality test` → `tools/test/run-tests.sh`.
 | 14 layout algebra (E158) | none — written here | `doc.sh` + `samples/e158_doc.prog` | 26 |
 | 15 horizontal composition (E174) | none — written here | `row.sh` + `samples/e174_row.prog` | 41 |
 | 16 ambient face restore (E175) | none — written here | `face.sh` + `samples/e175_face.prog` | 38 |
+| 17 `doc->rendering` (E158 c4) | none — written here | `render-doc.sh` + `samples/e158_render.prog` | 19 |
 
 E157 landed in the old tree after the migration snapshot, so it has **no old-tree
 phase number to inherit**. It is 13 rather than 8: 8–12 are names still owed, and
@@ -46,6 +47,23 @@ counts in. So Phase 15 grades agreement between the width function and the
 emitter, **not** agreement with a real terminal: CJK is two cells and combining
 marks are none. That is **E177**, and E177's landing must move `str-cols` and
 this reducer together.
+
+**Phase 17 (E158 commit 4)** takes 17 for the reason 16 took 16, and it is a
+*new* phase rather than two rows added to `doc.sh` because the four existing
+gate scripts must stay byte-unchanged — `doc.sh` carries sha256 pins over
+`diag.sh`, and `render-doc.sh` now carries pins over all four. Its shape is the
+finding that produced it: the cheap `doc->rendering` re-wraps every emitted
+*leaf* in its whole tag stack, which is screen-correct and was **measured** to
+produce a cell map byte-for-byte identical on the pre-E175 emitter — so a gate
+over that design would have passed on the broken emitter and reported E175 as an
+unused dependency. Building the face *tree* instead (one `r-face` per `d-tag`
+occurrence per line) is what makes M4 (E175 reverted) convict. Every mutant here
+pins the **full fifteen-row verdict line**, not merely "a row went red", so a
+mutant that reddens a row it was not paired with fails the same assertion as one
+that reddens nothing. `render-doc.sh` copies `face.sh`'s SGR reducer verbatim —
+there is no shell-library tier under `tools/test/` and sourcing a sibling gate
+would *run* it — and pins the copy byte-identical rather than asking a reader to
+believe it.
 
 Phase 14 grades **evidence survival**, never byte-identity. E157's nine goldens
 pin `dg-msg` byte-for-byte and that constraint is E157's; `doc->str` must not

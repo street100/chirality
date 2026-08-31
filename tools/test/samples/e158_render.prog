@@ -1,0 +1,188 @@
+; e158_render.prog — E158 commit 4's fixture. The Phase 17 value half.
+;
+; ⚑ ONE fixture, ONE spelling of the document, read by BOTH kinds of row —
+; because the two claims Phase 17 makes are about the same tree and a second
+; copy of the document is a way for them to stop being about the same tree.
+;
+;   · the STRING half: `doc->rendering w d` must carry exactly the characters
+;     `doc->str w d` carries, at every width. `doc->rendering` re-runs the
+;     Lindig walk (`doc-best` accumulates a `(List Str)` and cannot also carry
+;     line structure and a tag stack), so the two walks CAN drift. This is the
+;     law that says they have not.
+;   · the SCREEN half: the last field is the same document rendered through
+;     `render-to-ansi`, so the gate can read the SGR register set off each
+;     painted cell. A face that fails to survive its body is invisible to the
+;     string half and a lost character is invisible to the cell map.
+;
+; ⚑ THIS PROGRAM MAKES NO ASSERTION AND ALWAYS EXITS 0. It PRINTS the values;
+; the comparisons are the gate's, in bash. A fixture that grades itself can be
+; wrong in the same direction twice, and — measured cost in this arc — a fixture
+; that exits with its first failing case MASKS every later row from every
+; mutant. Fields are separated by a single byte 1 (SOH), which no field can
+; contain: the alphabet below is ASCII letters, spaces and newlines.
+;
+;   1,2    doc->str 8    / read back from doc->rendering 8      (rq-doc)
+;   3,4    doc->str 1000 / read back from doc->rendering 1000   (rq-doc)
+;   5,6    doc->str 1    / read back from doc->rendering 1      (rq-doc)
+;   7,8    doc->str 6    / read back from doc->rendering 6      (rq-doc2)
+;   9,10   doc->str 1000 / read back from doc->rendering 1000   (rq-doc2)
+;   11     the ROW COUNT of doc->rendering 8 rq-doc
+;   12     the face names of doc->rendering 8    rq-doc, DFS pre-order, "/"
+;   13     the face names of doc->rendering 1000 rq-doc, DFS pre-order, "/"
+;   14     rq-doc rendered through render-to-ansi at (1,1), depth-0 ambient
+;
+; ⚑ `rq-text` is an INDEPENDENT READER, deliberately not `doc->str`: it walks
+; the `Rendering` and knows nothing about `Doc`. Its arms for the seven
+; constructors `doc->rendering` never emits return a LOUD marker rather than "",
+; because a silent "" is how an unexpected constructor passes an equality row.
+;
+; ⚑ The document is built so that every claim has something to grade:
+;   · `keyword` wraps `ab`, an INNER `comment` tag, and then `ef` — so `ef` is
+;     painted AFTER an inner face closed with nothing re-opening the outer.
+;     That cell is E175's, and it is the whole of FLAG C.
+;   · a `brk-hard` guarantees a second row at EVERY width, so the row-count row
+;     is not an artifact of the width.
+;   · the `error` group spans a `brk-space` under `d-nest 2`, so at a narrow
+;     width one tag faces TWO output rows and the second one carries an
+;     UNTAGGED indent before the faced text.
+;   · at w=1000 the same group is FLAT, so fields 3 and 1 differ — which the
+;     gate asserts, because a width-independence law over a document that
+;     renders identically at every width grades nothing.
+
+(import "prelude/prelude")
+(import "prelude/list")
+(import "prelude/string")
+(import "ports/ports")
+(import "prelude/doc")
+(import "protocol/render")
+(import "protocol/render-doc")
+
+(def rq-mark Str (bytes->str (bslice (pack-u32 1) 0 1)))
+(def rq-dims (Pair I64 I64) (pair 130 200))
+
+; ---- the documents ---------------------------------------------------------
+; keyword ⊃ { "ab", comment ⊃ "cd", "ef" } · hard break · nest 2 ⊃ error ⊃
+; group { "ghij" ␣ "klmn" }
+(def rq-doc Doc
+  (d-cat
+    (d-tag "keyword"
+      (doc-concat (cons (d-text "ab")
+                  (cons (d-tag "comment" (d-text "cd"))
+                  (cons (d-text "ef") nil)))))
+    (d-cat (d-line (brk-hard))
+      (d-nest 2
+        (d-tag "error"
+          (d-group (doc-concat (cons (d-text "ghij")
+                               (cons (d-line (brk-space))
+                               (cons (d-text "klmn") nil))))))))))
+
+; brk-SOFT under a nest, with a tag that only appears after the first break.
+; brk-soft flattens to "" and breaks to newline+indent, so this is the arm
+; rq-doc does not reach.
+(def rq-doc2 Doc
+  (d-group
+    (d-nest 4
+      (doc-concat (cons (d-text "wxyz")
+                  (cons (d-line (brk-soft))
+                  (cons (d-tag "string" (d-text "0123"))
+                  (cons (d-line (brk-soft))
+                  (cons (d-text "456") nil)))))))))
+
+; ---- the independent reader: Rendering -> Str ------------------------------
+(declare rq-text      (-> Rendering Str))
+(declare rq-cat-txt   (-> (List Rendering) Str Str))
+(declare rq-lines-txt (-> (List Rendering) Bool Str Str))
+
+(def rq-text
+  (lam (nd)
+    (case nd
+      ((r-text content bold)        content)
+      ((r-row children)             (rq-cat-txt children ""))
+      ((r-lines children)           (rq-lines-txt children true ""))
+      ((r-face face-name body)      (rq-text body))
+      ; NEVER emitted by doc->rendering. Loud, not empty.
+      ((r-table headers rows)       "<UNEXPECTED r-table>")
+      ((r-section title col body)   "<UNEXPECTED r-section>")
+      ((r-stream source-id)         "<UNEXPECTED r-stream>")
+      ((r-tree children selected)   "<UNEXPECTED r-tree>")
+      ((r-hole label)               "<UNEXPECTED r-hole>"))))
+
+(def rq-cat-txt
+  (lam (cs acc)
+    (case cs
+      (nil acc)
+      ((cons c t) (rq-cat-txt t (str-cat acc (rq-text c)))))))
+
+; the ROW BOUNDARY is what `doc->str` writes as "\n": r-lines children are rows.
+(def rq-lines-txt
+  (lam (cs first acc)
+    (case cs
+      (nil acc)
+      ((cons c t)
+        (rq-lines-txt t false
+          (case first
+            (true  (str-cat acc (rq-text c)))
+            (false (str-cat acc (str-cat "\n" (rq-text c))))))))))
+
+; ---- the shape readers -----------------------------------------------------
+; -1 when the top node is not an r-lines at all, so a wrong top constructor
+; cannot read as a plausible row count.
+(def rq-rows (-> Rendering I64)
+  (lam (nd)
+    (case nd
+      ((r-lines children) (length Rendering children))
+      (_ -1))))
+
+(declare rq-faces      (-> Rendering (List Str)))
+(declare rq-faces-list (-> (List Rendering) (List Str)))
+
+; DFS PRE-ORDER, and pre-order is the point: a face's name is emitted BEFORE
+; its body's, so "keyword/comment" states that comment is INSIDE keyword and
+; not beside it.
+(def rq-faces
+  (lam (nd)
+    (case nd
+      ((r-face face-name body)      (cons face-name (rq-faces body)))
+      ((r-row children)             (rq-faces-list children))
+      ((r-lines children)           (rq-faces-list children))
+      ((r-text content bold)        nil)
+      ((r-table headers rows)       nil)
+      ((r-section title col body)   nil)
+      ((r-stream source-id)         nil)
+      ((r-tree children selected)   nil)
+      ((r-hole label)               nil))))
+
+(def rq-faces-list
+  (lam (cs)
+    (case cs
+      (nil nil)
+      ((cons c t) (append Str (rq-faces c) (rq-faces-list t))))))
+
+; ---- the stream ------------------------------------------------------------
+(declare rq-pair (=> I64 Doc Unit))
+(def rq-pair
+  (lam (w d)
+    (let ((_ (put (doc->str w d))))
+      (let ((_ (put rq-mark)))
+        (let ((_ (put (rq-text (doc->rendering w d)))))
+          (put rq-mark))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((_ (rq-pair 8    rq-doc)))
+    (let ((_ (rq-pair 1000 rq-doc)))
+    (let ((_ (rq-pair 1    rq-doc)))
+    (let ((_ (rq-pair 6    rq-doc2)))
+    (let ((_ (rq-pair 1000 rq-doc2)))
+    (let ((_ (put (i64->str (rq-rows (doc->rendering 8 rq-doc))))))
+    (let ((_ (put rq-mark)))
+    (let ((_ (put (str-join "/" (rq-faces (doc->rendering 8 rq-doc))))))
+    (let ((_ (put rq-mark)))
+    (let ((_ (put (str-join "/" (rq-faces (doc->rendering 1000 rq-doc))))))
+    (let ((_ (put rq-mark)))
+    ; ⚑ ONE LINE, and it must stay one line: Phase 16's G7(c) scans tools/ for
+    ; `render-to-ansi` applications and counts their TOP-LEVEL arguments with a
+    ; LINE-BASED awk. Split across two lines this call reads as UNTERMINATED and
+    ; turns a neighbouring gate red. Measured — it did.
+    (let ((_ (render-to-ansi (doc->rendering 8 rq-doc) rq-dims none 1 1 1 1 rnd-face-plain)))
+      0))))))))))))))
