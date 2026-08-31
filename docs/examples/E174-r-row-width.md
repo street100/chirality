@@ -61,7 +61,7 @@ catalog row.**
 1. **The catalog's blast-radius figure is wrong, and the truth is more
    interesting.** `.planning/SELF-IMPLEMENT-CATALOG.md:438` says *"12 files case
    over it"*. Measured: **17 files import `protocol/render`** (that figure is
-   right), **13 files name a `Rendering` constructor**, but only **four actually
+   right), **13 files name a `Rendering` constructor**, but only **five actually
    `case` over the sum** —
 
    | file | how it matches | breaks on a 9th arm? |
@@ -70,12 +70,18 @@ catalog row.**
    | `lib/protocol/apc.chiral` | `enc` (:89) 6 arms, no `_`; `block-id` (:127) 2 arms **+ `_`** | **already broken — see finding 2** |
    | `prog/scriba/scriba-runview-test.prog` | 3 cases, every one ending `(_ …)` | no |
    | `prog/scriba/scriba-runview-stream-test.prog` | same 3 cases | no |
+   | `prog/scriba/samples/t6_apc_roundtrip.prog` | constructs throughout, **and** cases once at `:82` — `(case r ((r-stream sid) …) (_ -4))` | no |
 
-   The other nine files (`chat-view`, `command-loop`, `flook`, `flow-view`,
-   `init-loader`, `manas-mode`, `manas-runview`, `render-str`, `t6_apc_roundtrip`)
+   The other eight files (`chat-view`, `command-loop`, `flook`, `flow-view`,
+   `init-loader`, `manas-mode`, `manas-runview`, `render-str`)
    **only construct**. Construction is unaffected by a new arm. So the real cost is
    **two exhaustive cases in one file**, plus the pre-existing breakage below —
    not twelve.
+
+   *(Audit correction, 2026-08-31: the draft put `t6_apc_roundtrip` in the
+   only-construct bucket and counted four casing files. It cases once, at `:82`,
+   through a `(_ -4)` default — so the count is five and the conclusion is
+   unchanged.)*
 
 2. **⚑ The tree already carries an un-updated case over `Rendering`, and it
    already fails the coverage check.** Measured, one command:
@@ -93,19 +99,45 @@ catalog row.**
    diagnosis is specific: `scriba-runview-test.prog` and `scriba-test-b1.prog` both
    import `protocol/render` and both `check` **OK**.
 
+   **The check runs on a module directly, which is the cleaner gate** (audit
+   addition, 2026-08-31 — the sample only reaches `enc` through its import DAG):
+
+   ```
+   $ ./bin/chirality check lib/protocol/apc.chiral
+   chirality check: lib/protocol/apc.chiral FAILED (exit 1)
+   load: non-exhaustive case
+   $ ./bin/chirality check lib/protocol/render.chiral
+   chirality check: lib/protocol/render.chiral OK
+   ```
+
+   `render.chiral` itself is green — the sum's own two exhaustive cases are up to
+   date; it is only the codec that lagged.
+
+   **And the red reaches a second sample.** `lib/protocol/vt-parser.chiral:4`
+   imports `protocol/apc`, so `prog/scriba/samples/t5_vt_parser.prog` fails with
+   the identical `load: non-exhaustive case`. Measured across
+   `prog/scriba/samples/`: seven of nine `check` OK, `t6_apc_roundtrip` and
+   `t5_vt_parser` fail on non-exhaustive case, and `t5_utf8` fails on an
+   unrelated `load: unknown name Unit`. **Not isolated:** `vt-parser.chiral` has
+   40 `case`s and one `_`, so whether it *also* carries a non-exhaustive case of
+   its own — and therefore whether it goes green on the `enc` fix alone — was not
+   determined. Treat `lib/protocol/apc.chiral` as the gate and `t5_vt_parser` as
+   a bonus to be re-measured, not promised.
+
    This is the single most useful fact in the pre-run, and it cuts both ways:
    - **the closed sum works.** Coverage *is* enforced (`kernel.chiral:1319`
      `jg-nonexhaustive`, via `all-covered?`), the compile error *is* real, and the
      cost of adding an arm *is* knowable — the catalog's claim is sound in
      mechanism even though its count is wrong.
    - **and the previous constructor addition shipped anyway**, leaving a red
-     sample in the tree. "It will be a compile error" is only a cost control if
+     module in the tree — and, through `vt-parser`, a second red sample nobody
+     traced back to it. "It will be a compile error" is only a cost control if
      someone is compiling that file. E174 must therefore either fix `enc` or state
      in writing that it leaves it red — §6 takes the first.
 
 3. **The forcing consumer is confirmed, and it is one arm deep.** `dg-doc`
    (`lib/typing/diag.chiral:510`) — E158's `(-> Reason Doc)` — has this shape in its
-   very first arm, `r-redeclared` (`:519-528`):
+   very first arm, `r-redeclared` (`:516-528`):
 
    ```chirality
    (d-group (d-cat (d-tag "diag-head" …head text…)
@@ -161,6 +193,24 @@ catalog row.**
    the question entirely — a `Doc` is text with no placement, so its width is a
    fold over string lengths. **`Rendering` is the hard case precisely because it
    places.**
+
+8. **⚑ Added at the example audit, 2026-08-31 — `render-section` never issues an
+   `ansi-goto`, so one constructor ignores `col` outright.** Every other drawing
+   arm opens with `(put (ansi-goto row col))` — `r-text` (`:439`), `r-stream`
+   (`:455`), `r-hole` (`:465`), and each table header (`:356`). `render-section`
+   (`:383-392`) opens with `(put ansi-bold)` and then `(put title)`: **the title
+   lands wherever the previous `put` left the cursor.** It reaches the right place
+   today only because a section is in practice the first thing drawn on its row.
+
+   This is the same class of defect as finding 4 and it bites E174 harder: it is
+   not that `rnd-cols`'s `r-section` answer is the wrong *number* — the number is
+   derivable and §5 derives it — but that an `r-section` placed as a **non-first
+   child of an `r-row`** will draw at the ambient cursor no matter what number the
+   width function returns. `render-row` advancing `col` correctly is not enough
+   when the callee never reads `col`. So §6's gate 4 ("widths agree with the
+   emitter") is **unsatisfiable for `r-section` as the tree stands**, and gate 3
+   must be read as covering the arms that do honour `col`. Disposition is §6 open
+   question 7.
 
 ## 3. Conventional (other-language) approach
 
@@ -344,7 +394,11 @@ what is written out is what a later run must get *right*, not what it must type.
       ; The constant is READ, not repeated — that is the point of the defs above.
       ((r-tree children selected) (+ rnd-tree-indent (rnd-cols-max children 0)))
 
-      ; ── DERIVED, and `collapsed` is genuinely load-bearing (:383-392):
+      ; ── DERIVED, and `collapsed` is genuinely load-bearing (:383-392).
+      ; ⚑ The NUMBER is derivable; the PLACEMENT is not honoured — render-section
+      ; issues no ansi-goto (finding 8), so an r-section that is not the first
+      ; child of an r-row draws its title at the ambient cursor whatever this
+      ; returns. §6 open question 7.
       ;   collapsed -> title + " [+]" and the body is NOT DRAWN AT ALL;
       ;   open      -> the head, or the body indented by 2, whichever is wider.
       ((r-section title collapsed body)
@@ -365,7 +419,7 @@ what is written out is what a later run must get *right*, not what it must type.
         (+ (str-cols rnd-stream-open)
            (+ (str-cols source-id) (str-cols rnd-stream-close))))
 
-      ; ── DERIVED: the arm draws "<?>" then the label (:461-467). (Its third
+      ; ── DERIVED: the arm draws "<?>" then the label (:461-468). (Its third
       ; `put` is (put "") — dead, and left alone: deleting it is not E174.)
       ((r-hole label) (+ (str-cols rnd-hole-mark) (str-cols label)))
 
@@ -382,13 +436,19 @@ what is written out is what a later run must get *right*, not what it must type.
 
 (def rnd-cols-sum (lam (xs acc) (case xs (nil acc) ((cons h t) (rnd-cols-sum t (+ acc (rnd-cols h)))))))
 (def rnd-cols-max (lam (xs acc) (case xs (nil acc) ((cons h t) (rnd-cols-max t (max acc (rnd-cols h)))))))
-; … rnd-hdr-cols folds (+ (str-cols h) rnd-header-gutter); rnd-row-cells folds
-;   max over each row's LENGTH. Both are three-line accumulator walks in this
-;   module's existing style (cf. rnd-append-list :178).
+; … rnd-hdr-cols folds (str-cols h) for every header plus rnd-header-gutter
+;   BETWEEN them — n-1 gutters, not n. The emitter advances c by (str-len h)+2
+;   after each header INCLUDING the last (:360), but that final advance is
+;   consumed by the nil case and nothing is ever drawn in it, so the last column
+;   the header row touches is (Σ lengths) + 2(n-1). Folding n gutters would bake
+;   a two-column trailing separator into a width function whose own §4.2 decision
+;   is that r-row has NO implicit separator. (Corrected at the example audit.)
+;   rnd-row-cells folds max over each row's LENGTH. Both are three-line
+;   accumulator walks in this module's existing style (cf. rnd-append-list :178).
 
 ; ─── render-to-ansi gains its arm, and it is six lines ────────────────────
 ; A container, so it follows r-lines/r-tree: no ansi-goto of its own and no
-; rd-in-view clip — the leaves clip themselves (the comment at :425 says why).
+; rd-in-view clip — the leaves clip themselves (the comment at :426 says why).
 (declare render-row (=> (List Rendering) (Pair I64 I64) I64 I64 I64 I64 Unit))
 
 (def render-row
@@ -442,8 +502,10 @@ what is written out is what a later run must get *right*, not what it must type.
   `str-cols` + `rnd-cols` + its four folds, the `render-to-ansi` arm (`:424`), the
   `diff-node` arm (`:223`), and a new `(import "protocol/utf8")`. Secondarily
   `lib/protocol/apc.chiral` (`enc` at `:89`, plus decode) — see open question 5.
-  Nothing in `prog/` needs touching: the nine constructor-naming files there only
-  construct, and the two `.prog` tests match through `(_ …)` arms.
+  Nothing in `prog/` needs touching: the eight only-constructing files are
+  unaffected by a new arm, and all three `.prog` files that do case
+  (`scriba-runview-test`, `scriba-runview-stream-test`, `t6_apc_roundtrip:82`)
+  match through `(_ …)` arms.
 
 - **Conformance target.** Four gates, all cheap and all with a mutant available:
   1. **The red sample goes green.** `./bin/chirality check
@@ -463,7 +525,10 @@ what is written out is what a later run must get *right*, not what it must type.
      emitter *actually leaves the cursor at* equals `rnd-cols` of that node. This
      is the invariant §1 says is bolted on, so it must be a *test*, not a comment
      — and it is the row that catches a future edit to `render-tree` that forgets
-     `rnd-tree-indent`.
+     `rnd-tree-indent`. **`r-section` cannot pass this row as the tree stands**
+     (finding 8: `render-section` emits no `ansi-goto`, so where it leaves the
+     cursor is a function of what was drawn before it, not of `col`). Either the
+     gate excludes `r-section` and says why, or open question 7 is answered first.
 
 - **Open questions — the honest residue. None of these is deferred to an element
   that does not exist; where a follow-on would be needed I say so and stop.**
@@ -514,19 +579,37 @@ what is written out is what a later run must get *right*, not what it must type.
      pair. §5 argues one number is honest *because nothing wraps*. If wrapping ever
      enters `Rendering`, this signature is wrong rather than imprecise — worth one
      sentence in the spec so a later reader knows it was considered.
+  7. **⚑ Does E174 give `render-section` its `ansi-goto`?** (Added at the example
+     audit.) Finding 8: it is the one drawing arm that never positions itself, so
+     `r-row`'s whole contract — child *n* draws at `col + Σ widths` — is void for
+     an `r-section` child. One `(put (ansi-goto row col))` at `render.chiral:385`
+     is the whole fix and it is smaller than the `enc` repair E174 already takes
+     on (open question 5). **Against:** it is a pre-existing defect, not E174's,
+     and it changes what a bare `render-to-ansi` of an `r-section` puts on the
+     wire, which is a behaviour every existing caller currently gets away with.
+     There is no minted row to hand it to. *The author's call: fix it inside E174,
+     or scope `r-row` to exclude `r-section` children in writing.*
 
 - **Where E174 and E175 do meet — one place, and it is not the arithmetic.**
   Faces are zero-width, so no E175 fix changes any number in `rnd-cols`. But
   `render-row` draws sibling *after* sibling on one line, which is exactly the
   arrangement in which E175's full `ansi-reset` becomes visible: an `r-row` whose
   first child is an `r-face` currently resets SGR before the second child draws, so
-  a row nested inside an outer face renders its tail unfaced. **E174 makes E175
-  observable at one level of nesting instead of two** — order them E174 then E175,
-  and E158's G8 gate grades the pair.
+  a row nested inside an outer face renders its tail unfaced. **E174 does not lower
+  the nesting depth at which E175 bites — that is two `r-face`s either way.**
+  (Audit correction: the draft said "one level of nesting instead of two", which
+  its own next clause contradicts and which `r-lines` already refutes —
+  `r-face(outer, r-lines(r-face(inner, …), rest))` exhibits the identical
+  two-deep unfaced tail today, `render-lines:409` holding `col` while `r-face:469`
+  emits the full reset.) What E174 changes is *where* the defect shows: from
+  across rows, where a lost face reads as a styling glitch, to **within one line**,
+  where it lands mid-sentence in a diagnostic — which is precisely the output
+  E158 commit 4 produces. Order them E174 then E175, and E158's G8 gate grades the
+  pair.
 
 - **Contradiction to record.** `.planning/SELF-IMPLEMENT-CATALOG.md:438` and
   `.planning/LEDGER.md:293` both state *"12 files case over it"*. Measured (finding
-  1): 17 import, 13 name a constructor, **4 case, and only 1 has an exhaustive case
+  1): 17 import, 13 name a constructor, **5 case, and only 1 has an exhaustive case
   that breaks**. The catalog figure appears to be a count of constructor-naming
   files other than `render.chiral` itself (exactly 12), which is a different and
   much larger set than "cases over". The mechanism the row describes is right; the
