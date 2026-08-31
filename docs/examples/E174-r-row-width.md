@@ -623,3 +623,50 @@ what is written out is what a later run must get *right*, not what it must type.
   E176 (`str-sub` unclamped, `LEDGER.md:295` — the same
   property-asserted-in-prose-not-in-a-type shape that `str-cols` is written to
   avoid) · [[E112-apc-sidechannel]] (the codec that must learn the new arm).
+
+---
+
+## Author decision on FLAG A (2026-08-31)
+
+**`render-section` gets its `ansi-goto`, inside E174.** Option (a).
+
+**Measured first.** `render-section` (`render.chiral:383-392`) takes `row` and
+`col` as parameters and **never reads `col`** — it opens `(put ansi-bold)` then
+`(put title)`, so the title lands wherever the previous `put` left the cursor,
+and `col` survives only as `(+ col 2)` handed to the body. Every other drawing
+arm opens with `(put (ansi-goto …))`: `:356` (table headers), `:439` (`r-text`),
+`:455` (`r-stream`), `:465` (`r-hole`). **`render-section` is the single
+outlier**, and it is correct today only because a section happens to be first on
+its row.
+
+**Why inside E174 rather than excluded or deferred:**
+
+1. **The alternative restricts the type to dodge a renderer bug.** Writing "an
+   `r-row` may not contain an `r-section`" makes the sum unable to express
+   something legitimate, and it is the same shape as the *restrict-the-contract*
+   option already refused for E158 — which was measured to fail on its own first
+   consumer. A type narrowed around a defect outlives the defect.
+2. **Gate 4 would otherwise be unsatisfiable.** §6's "widths agree with the
+   emitter" cannot hold for `r-section` while the emitter ignores `col`: a gate
+   that *cannot* pass for one constructor is a gate with no teeth there. This
+   session has already found **four** gate rows that could never fail; shipping a
+   fifth knowingly is not available.
+3. **E174 already takes on the larger repair.** The `apc.chiral` `enc` fix — a
+   codec, a wire format, two red samples — is E174's red→green gate. Accepting
+   that and refusing a one-line positioning fix in the same module is
+   inconsistent about what "in scope" means.
+4. **It removes a special case rather than adding one.** After the change every
+   drawing arm positions itself the same way. That is a smaller renderer, not a
+   bigger one.
+
+**The cost, stated honestly:** this changes what a bare `render-to-ansi` of an
+`r-section` puts on the wire — it will now emit a positioning sequence it did not
+emit before. That is a *correction* (the section lands where it was told rather
+than where the cursor drifted), but it is a behaviour change and needs its own
+gate row: **a section rendered first-on-row must land exactly where it lands
+today**, so the fix is proved to be a no-op in the only configuration the tree
+currently produces.
+
+**Not minted, deliberately.** This is one line in a module E174 already edits,
+under a gate E174 already owns. Minting a row for it would be the ceremony the
+deferral rule exists to prevent, not the tracking it exists to guarantee.
