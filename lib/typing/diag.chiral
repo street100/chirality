@@ -55,6 +55,7 @@
 (import "surface/syntax")      ; Term -- r-mismatch carries expected/actual as TERMS
 (import "surface/data")        ; DataDecl + llen -- r-redeclared carries declarations
 (import "lowering/skip-diag")  ; SkRec -- r-skipped JOINS E97's chain, never copies it
+(import "prelude/doc")         ; Doc -- E158's layout algebra, the sibling exit
 
 ; ---- WHERE a relayed reason came from ---------------------------------------
 ; The closure of eight containers (TcR/CkR/FtR/UR/CaseR/EscR/LoadR/ChkR) meets
@@ -467,3 +468,237 @@
       ((rl-parse)  (str-cat "data-group: " m))
       ((rl-reader) (str-cat "parse: " m))
       ((rl-shape)  m))))
+
+; ======================================================== the Doc sibling =====
+; E158. `dg-doc : (-> Reason Doc)` is the SIBLING of `dg-msg`, not its
+; replacement -- the E157 header said so in as many words and this is the code
+; that keeps the promise. `dg-msg` above is not touched by E158: not one line,
+; and its nine goldens in tools/test/diag.sh are E157's, unchanged.
+;
+; WHAT IS ABSENT IS THE ELEMENT: not one `str-cat` below. `dg-msg` had to choose
+; ONE sentence and throw the rest of the evidence away -- `dg-usage-msg` answers
+; nine of its twelve subjects with the same three words and drops BOTH
+; quantities in all twelve, though `Qty` is (q0)/(q1)/(qw) and they would have
+; fit. A `Doc` does not have to choose: it records the structure and lets
+; whoever knows the medium and the width flatten it.
+;
+; The ACCESSOR-FUNCTION PATTERN is inherited, not re-decided: every `case` here
+; is the direct body of a `lam`, and callers construct rather than match.
+;
+; ⚑ `dg-qty-name` is REUSED, not added -- it has been at :284/:285 since E157
+; with twelve call sites in this file. Defining it again is a duplicate label in
+; a single file.
+;
+; ⚑ Three helpers, not the one the SPEC named. `dg-decl-doc` was foreseen;
+; `dg-term-tag` and `dg-chain-doc` were not, and they are not optional:
+; `r-mismatch` carries two `Term`s and there is NO Term renderer anywhere this
+; file can reach (`typing/pretty.chiral` declares its own local 5-constructor
+; `Term` and is imported by zero modules), while `r-skipped` carries E97's chain
+; and rendering it as one `d-text` of `dg-chain-msg` would put a flattened
+; string back inside the value E158 exists to keep structured. `dg-term-tag` is
+; a FLAT one-level accessor in this file's own style -- a former tag plus its
+; name payload -- and deliberately not a recursive pretty-printer: repointing
+; `typing/pretty.chiral` at the real 16-constructor `Term` is a rewrite and is
+; out of E158 (SPEC decision 12).
+
+(declare dg-doc       (-> Reason Doc))
+(declare dg-decl-doc  (-> Str Decl Doc))
+(declare dg-term-tag  (-> Term Str))
+(declare dg-chain-doc (-> (List SkRec) Doc))
+
+; NO `_` arm here either: a new Reason constructor must break BOTH renderers.
+(def dg-doc
+  (lam (r)
+    (case r
+      ; ---- the arm dg-msg structurally cannot serve. Both declarations are in
+      ; hand, and a Doc can put them on their own indented lines instead of
+      ; naming one and discarding the other.
+      ((r-redeclared w i nw)
+        (d-group
+          (d-cat
+            (d-tag "diag-head"
+              (doc-concat (cons (d-text (dg-subject-tag w))
+                          (cons (d-text " redeclared: ")
+                          (cons (d-text (dg-subject-name w)) nil)))))
+            (d-nest 2
+              (doc-concat
+                (cons (d-line (brk-space))
+                (cons (d-tag "diag-site" (dg-decl-doc "declared" i))
+                (cons (d-line (brk-space))
+                (cons (d-tag "diag-site" (dg-decl-doc "and" nw)) nil)))))))))
+
+      ; ---- `subsume` had `got` and `want` in hand and said only "type
+      ; mismatch". E157 made the terms ride along; this is what prints them.
+      ((r-mismatch w e a)
+        (d-group
+          (d-cat
+            (d-tag "diag-head"
+              (doc-concat (cons (d-text (dg-mismatch-msg w))
+                          (cons (d-text " (")
+                          (cons (d-text (dg-subject-tag w))
+                          (cons (d-text ")") nil))))))
+            (d-nest 2
+              (doc-concat
+                (cons (d-line (brk-space))
+                (cons (d-tag "diag-site" (d-text "expected "))
+                (cons (d-text (dg-term-tag e))
+                (cons (d-line (brk-space))
+                (cons (d-tag "diag-site" (d-text "actual "))
+                (cons (d-text (dg-term-tag a)) nil)))))))))))
+
+      ; ---- the arm that MEASURES the win. dg-usage-msg collapses nine of its
+      ; twelve subjects into one sentence and drops both quantities; the subject
+      ; tag and both quantities survive here.
+      ((r-usage w dq oq)
+        (d-group
+          (d-cat
+            (d-tag "diag-head"
+              (doc-concat (cons (d-text (dg-usage-msg w))
+                          (cons (d-text " (")
+                          (cons (d-text (dg-subject-tag w))
+                          (cons (d-text ")") nil))))))
+            (d-nest 2
+              (doc-concat
+                (cons (d-line (brk-space))
+                (cons (d-text "declared ")
+                (cons (d-text (dg-qty-name dq))
+                (cons (d-line (brk-space))
+                (cons (d-text "used ")
+                (cons (d-text (dg-qty-name oq)) nil)))))))))))
+
+      ; ---- E159's linear rule: the offending quantity stays a Qty all the way
+      ((r-linear w q)
+        (d-group
+          (d-cat
+            (d-tag "diag-head" (d-text (dg-linear-msg w q)))
+            (d-nest 2
+              (doc-concat
+                (cons (d-line (brk-space))
+                (cons (d-text "subject ")
+                (cons (d-text (dg-subject-tag w))
+                (cons (d-line (brk-space))
+                (cons (d-text "quantity ")
+                (cons (d-text (dg-qty-name q)) nil)))))))))))
+
+      ; ---- E159's x-linear-pure: the extern and the linear result it returns
+      ((r-arrow w x)
+        (d-group
+          (d-cat
+            (d-tag "diag-head" (d-text (dg-arrow-msg w x)))
+            (d-nest 2
+              (doc-concat
+                (cons (d-line (brk-space))
+                (cons (d-text "extern ")
+                (cons (d-text (dg-subject-name w))
+                (cons (d-line (brk-space))
+                (cons (d-text "result ")
+                (cons (d-text x) nil)))))))))))
+
+      ; ---- the Subject says which namespace was searched; it survives here
+      ((r-unbound w)
+        (d-group
+          (d-cat
+            (d-tag "diag-head" (d-text (dg-unbound-msg w)))
+            (d-nest 2
+              (doc-concat
+                (cons (d-line (brk-space))
+                (cons (d-text "in the ")
+                (cons (d-text (dg-subject-tag w))
+                (cons (d-text " namespace")
+                (cons (d-text " as ")
+                (cons (d-text (dg-subject-name w)) nil)))))))))))
+
+      ; ---- E97's chain, JOINED not copied: one frame per line, and the layout
+      ; of those lines is now the renderer's decision rather than the site's.
+      ((r-skipped c)
+        (d-group
+          (d-cat
+            (d-tag "diag-head" (d-text "lowering skipped"))
+            (d-nest 2 (d-cat (d-line (brk-space)) (dg-chain-doc c))))))
+
+      ; ---- a judgment whose only evidence is its subject. That the subject is
+      ; ALL of it is a true statement about these checks, not a shortfall.
+      ((r-judged w j)
+        (d-group
+          (d-cat
+            (d-tag "diag-head" (d-text (dg-judg-msg w j)))
+            (d-nest 2
+              (doc-concat
+                (cons (d-line (brk-space))
+                (cons (d-text "subject ")
+                (cons (d-text (dg-subject-tag w))
+                (cons (d-text " ")
+                (cons (d-text (dg-subject-name w)) nil))))))))))
+
+      ; ---- WHICH layer relayed is a closed sum, and it reaches the output
+      ((r-relayed f m)
+        (d-group
+          (d-cat
+            (d-tag "diag-head" (d-text (dg-relay-msg f m)))
+            (d-nest 2
+              (doc-concat
+                (cons (d-line (brk-space))
+                (cons (d-text "relayed by ")
+                (cons (d-text (dg-relay-tag f)) nil)))))))))))
+
+; one side of a redeclare, labelled. `dc-none` says so rather than inventing a
+; declaration; `dc-data` carries the constructor count, which is the cheap
+; observable that lets a reader SEE the two sides differ.
+(def dg-decl-doc
+  (lam (lbl d)
+    (case d
+      ((dc-none)
+        (doc-concat (cons (d-text lbl)
+                    (cons (d-text " (no declaration value)") nil))))
+      ((dc-data x)
+        (doc-concat (cons (d-text lbl)
+                    (cons (d-text " data ")
+                    (cons (d-text (dg-dd-name x))
+                    (cons (d-text " with ")
+                    (cons (d-text (i64->str (dg-dd-arity x)))
+                    (cons (d-text " ctor(s)") nil))))))))
+      ((dc-ty t)
+        (doc-concat (cons (d-text lbl)
+                    (cons (d-text " type ")
+                    (cons (d-text (dg-term-tag t)) nil))))))))
+
+; a Term's FORMER, plus whatever name or literal it carries. One level, no
+; recursion: this is an accessor in the shape of dg-subject-tag, not a printer.
+; The recursive Term -> Doc printer is typing/pretty.chiral's rewrite (E158
+; SPEC decision 12), which is out of this element.
+(def dg-term-tag
+  (lam (t)
+    (case t
+      ((t-var  i)         (str-cat "var#" (i64->str i)))
+      ((t-type n)         (str-cat "type" (i64->str n)))
+      ((t-pi q s dm cd)   "a function type")
+      ((t-lam bd)         "a lambda")
+      ((t-app f a)        "an application")
+      ((t-let q v bd)     "a let")
+      ((t-ann tm ty)      "an annotation")
+      ((t-global n)       n)
+      ((t-prim n)         n)
+      ((t-primty n)       n)
+      ((t-lit-i v)        (i64->str v))
+      ((t-lit-s v)        v)
+      ((t-con dn cn args) cn)
+      ((t-tcon dn args)   dn)
+      ((t-case sc ar df)  "a case")
+      ((t-refine bs ats)  "a refinement type"))))
+
+; E97's blame chain, one frame per HARD line -- the frames were always separate
+; and format-blame's arrows were the flattening.
+(def dg-chain-doc
+  (lam (c)
+    (case c
+      (nil (d-text "(no frames)"))
+      ((cons s rest)
+        (d-cat
+          (doc-concat (cons (d-text (skrec-name s))
+                      (cons (d-text " <- ")
+                      (cons (d-text (skwhy-tag (skrec-why s)))
+                      (cons (d-text " ")
+                      (cons (d-text (skwhy-name (skrec-why s))) nil))))))
+          (case rest
+            (nil (d-text ""))
+            ((cons s2 r2) (d-cat (d-line (brk-hard)) (dg-chain-doc rest)))))))))
