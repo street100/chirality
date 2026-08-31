@@ -1,0 +1,2 @@
+(def helper (-> I64 I64) (lam (x) x))
+(def main (-> I64 I64) (lam (n) (helper 42)))

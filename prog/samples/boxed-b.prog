@@ -1,0 +1,2 @@
+(data Box () (box (a I64) (b I64)))
+(def main (-> I64 I64) (lam (n) (case (box 40 2) ((box a b) b))))

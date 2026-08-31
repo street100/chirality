@@ -1,0 +1,2 @@
+(data C () (red) (grn))
+(def main (-> I64 I64) (lam (n) (case (grn) ((red) 0) ((grn) 5))))

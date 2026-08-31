@@ -1,0 +1,220 @@
+#!/usr/bin/env bash
+# chirality -- the CLI front door.  Auto-detects the tree root, dispatches
+# subcommands.  No dependencies except bash and bin/chirality-compile.
+#
+# Install:  ln -s "$PWD/bin/chirality" ~/.local/bin/chirality
+#           chirality help
+#
+# Subcommands:
+#   compile FILE   compile a source file to an ELF
+#   run     FILE   compile + execute
+#   check   FILE   type-check (compile and throw the ELF away)
+#   test           build prog/test-runner.prog from source and run it
+#   help
+#
+# ⚑ There is no `test-rocq` and no `test-python`.  External judgment (the Rocq
+# leg, the CompCert/DDC C leg, the Python oracle suite) is CUT by author
+# decision; three semantically distinct judgment cores replace it.  A subcommand
+# that dispatches to a floor this tree does not have is a gate that cannot fail.
+#
+# Environment:
+#   CHIRALITY_COMPILE   compile with THIS binary instead of bin/chirality-compile.
+#                       One export really does put a chosen compiler under the
+#                       whole suite -- `test` reaches the compiler through here.
+set -uo pipefail
+
+# ---- auto-detect the tree root ----------------------------------------------
+_find_root() {
+  local script_dir
+  script_dir="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")" && pwd)"
+  if [ -f "$script_dir/chirality" ]; then
+    (cd "$script_dir/.." && pwd); return
+  fi
+  echo "chirality: can't find the tree root from $0" >&2
+  exit 1
+}
+
+ROOT="$(_find_root)"
+ORIG_DIR="${ORIG_DIR:-$PWD}"
+
+# The module search path.  Two roots: `lib` (the importable tree) and `prog`
+# (what chirality ships).  The KEY is the ROOT-RELATIVE PATH -- LAYOUT.md.
+ROOTSPEC="$ROOT/lib:$ROOT/prog"
+
+# the filesystem source provider (pure shell, zero Python): chirality_blob,
+# chirality_blob_file, chirality_imports.  See bin/chirality-resolve.sh.
+RESOLVER="$ROOT/bin/chirality-resolve.sh"
+if [ ! -f "$RESOLVER" ]; then
+  echo "chirality: source provider missing at $RESOLVER" >&2
+  echo "  a tree without a resolver cannot build a compilation unit" >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+. "$RESOLVER"
+
+_compiler() {
+  if [ -n "${CHIRALITY_COMPILE:-}" ]; then echo "$CHIRALITY_COMPILE"; return; fi
+  [ -x "$ROOT/bin/chirality-compile" ] && { echo "$ROOT/bin/chirality-compile"; return; }
+  echo ""; return 1
+}
+CC="$(_compiler)"
+
+_need_compiler() {
+  if [ -z "$CC" ]; then
+    cat >&2 <<EOF
+chirality: compiler not found at $ROOT/bin/chirality-compile
+
+  The existing compiler builds the next one -- nothing replaces itself in place:
+    . bin/chirality-resolve.sh
+    chirality_blob_file "lib:prog" prog/compiler.prog > /tmp/blob.chiral
+    (ulimit -s unlimited; bin/chirality-compile < /tmp/blob.chiral > chirality-compile.new)
+EOF
+    return 1
+  fi
+  return 0
+}
+
+_abs() {
+  case "$1" in
+    /*) echo "$1" ;;
+    *)  echo "$ORIG_DIR/$1" ;;
+  esac
+}
+
+# ---- the compilation unit: resolve imports, name the entry -------------------
+# The compiler takes ONE flat source blob on stdin; a subcommand takes a FILE.
+# Bridging the two is exactly the source provider's job -- never Python.
+#
+# The entry symbol is FIXED at `compile-main`: prog/compiler.prog calls
+# `(compile-all src "compile-main")` and nothing else.  `--entry NAME` is
+# honoured by APPENDING an alias; the source is never rewritten.
+_blob_for() {
+  local src="$1" entry="$2"
+  chirality_blob_file "$ROOTSPEC" "$src" || return 1
+  if [ "$entry" != "compile-main" ]; then
+    printf '(def compile-main (=> I64 I64) (lam (chirality-entry-arg) (%s chirality-entry-arg)))\n' "$entry"
+  fi
+}
+
+cmd_compile() {
+  if [ $# -lt 1 ]; then
+    echo "usage: chirality compile <file> [--entry name] [-o out]" >&2
+    echo "  the entry defaults to compile-main; --entry NAME aliases NAME to it" >&2
+    return 1
+  fi
+  _need_compiler || return 1
+  local entry="compile-main" src="" out=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --entry) entry="$2"; shift 2;;
+      -o)      out="$2"; shift 2;;
+      *)       src="$1"; shift;;
+    esac
+  done
+  src="$(_abs "$src")"
+  [ -f "$src" ] || { echo "chirality compile: $src not found" >&2; return 1; }
+  [ -n "$out" ] || out="${src%.*}"
+  out="$(_abs "$out")"
+  local blob err rc=0
+  blob="$(mktemp)"; err="$(mktemp)"
+  if ! _blob_for "$src" "$entry" >"$blob" 2>"$err"; then
+    echo "chirality compile: could not resolve $src" >&2
+    cat "$err" >&2; rm -f "$blob" "$err"; return 1
+  fi
+  ( ulimit -s unlimited; "$CC" <"$blob" >"$out" 2>"$err" ) || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "chirality compile: failed (exit $rc):" >&2
+    head -c 600 "$err" >&2; echo >&2
+    rm -f "$blob" "$err"; return "$rc"
+  fi
+  rm -f "$blob" "$err"
+  chmod +x "$out"
+  echo "chirality: $src -> $out ($(wc -c <"$out") bytes, entry: $entry)"
+}
+
+cmd_run() {
+  if [ $# -lt 1 ]; then
+    echo "usage: chirality run <file> [--entry name] [args...]" >&2
+    return 1
+  fi
+  local elf; elf="$(mktemp)"
+  local -a cargs=("$1"); shift
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --entry) cargs+=("--entry" "$2"); shift 2;;
+      *) break;;
+    esac
+  done
+  cmd_compile "${cargs[@]}" -o "$elf" >/dev/null || { rm -f "$elf"; return 1; }
+  ( ulimit -s unlimited; "$elf" "$@" )
+  local rc=$?
+  rm -f "$elf"
+  return $rc
+}
+
+# ---- check: type-check with the compiler ------------------------------------
+# The compiler type-checks: loading refuses e.g. `load: linear binder usage
+# mismatch`.  So checking is compiling and throwing the ELF away -- the same
+# front end, no second implementation to drift.  A file that defines no entry
+# gets a trivial one appended; the loader has already checked every def by then.
+cmd_check() {
+  if [ $# -lt 1 ]; then echo "usage: chirality check <file>" >&2; return 1; fi
+  _need_compiler || return 1
+  local path; path="$(_abs "$1")"
+  [ -f "$path" ] || { echo "chirality check: $path not found" >&2; return 1; }
+  local blob err rc=0
+  blob="$(mktemp)"; err="$(mktemp)"
+  if ! _blob_for "$path" "compile-main" >"$blob" 2>"$err"; then
+    echo "chirality check: could not resolve $path" >&2
+    cat "$err" >&2; rm -f "$blob" "$err"; return 1
+  fi
+  grep -q '(def compile-main' "$blob" || \
+    printf '(def compile-main (=> I64 I64) (lam (chirality-check-arg) 0))\n' >>"$blob"
+  ( ulimit -s unlimited; "$CC" <"$blob" >/dev/null 2>"$err" ) || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    rm -f "$blob" "$err"; echo "chirality check: $1 OK"; return 0
+  fi
+  echo "chirality check: $1 FAILED (exit $rc)" >&2
+  cat "$err" >&2; rm -f "$blob" "$err"; return "$rc"
+}
+
+cmd_test() { exec bash "$ROOT/tools/test/run-tests.sh" "$@"; }
+
+cmd_help() {
+  cat <<EOF
+chirality -- the CLI front door.
+
+usage: chirality <subcommand> [args]
+
+subcommands:
+  compile FILE    compile a source file to a native ELF
+  run     FILE    compile + run
+  check   FILE    type-check (compile, discard the ELF)
+  test            build prog/test-runner.prog from source, then run it
+  help            this message
+
+the entry point:
+  a root program's entry must be named compile-main -- the one symbol the
+  compiler's driver compiles.  --entry NAME appends an alias; your source is
+  never rewritten.
+
+the module key is the ROOT-RELATIVE PATH: (import "lowering/x64/mach").
+search path: lib:prog.  Importable extensions: .chiral .port .manifest --
+.prog and .profile are not import targets.
+
+environment:
+  CHIRALITY_COMPILE   use this compiler binary instead of bin/chirality-compile
+EOF
+}
+
+case "${1:-help}" in
+  compile) shift; cmd_compile "$@";;
+  run)     shift; cmd_run "$@";;
+  check)   shift; cmd_check "$@";;
+  test)    shift; cmd_test "$@";;
+  help|--help|-h) cmd_help;;
+  *)
+    echo "chirality: unknown subcommand '${1:-}'" >&2
+    echo "try: chirality help" >&2
+    exit 1;;
+esac
