@@ -16,12 +16,13 @@ Entry point: `bin/chirality test` → `tools/test/run-tests.sh`.
 | 6 linear mint (E159) | `test-linear-mint.sh` | `linear-mint.sh` | 21 |
 | 7 downstream roots compile | `run-native.sh` inline | `run-tests.sh` inline | 11 roots |
 
-## New here — Phases 13 and 14
+## New here — Phases 13, 14 and 15
 
 | phase | source | here | assertions |
 |---|---|---|---|
 | 13 typed diagnostics (E157) | old tree's `test-diag.sh` | `diag.sh` + `samples/e157_diag.prog` | 30 |
 | 14 layout algebra (E158) | none — written here | `doc.sh` + `samples/e158_doc.prog` | 26 |
+| 15 horizontal composition (E174) | none — written here | `row.sh` + `samples/e174_row.prog` | 41 |
 
 E157 landed in the old tree after the migration snapshot, so it has **no old-tree
 phase number to inherit**. It is 13 rather than 8: 8–12 are names still owed, and
@@ -29,6 +30,21 @@ reusing one would have made an unported gate look ported. E158 takes **14** for
 the same reason, and its registration line beside 13's is a *required* line, not
 a courtesy — an unregistered `doc.sh` is a gate that never runs, which `doc.sh`
 itself asserts as a row (G7c) so the registration cannot vanish silently.
+
+**Phase 15 (E174)** takes 15 for the same reason, and its gate is the first here
+that reads the *emitted byte stream*: `doc.sh`'s `build_run` discards stdout, and
+E174's whole invariant is that `rnd-cols` and `render-to-ansi` agree, which only
+the bytes can show. `row.sh` adds a **screen reducer** (`od` + `awk`, zero
+Python) that turns ANSI output into a cell map — one `row col bytes` line per
+painted cell, SGR ignored because it paints none — and every layout row is an
+assertion about that map. It pins E158's pair by sha256 the way `doc.sh` pins
+E157's, so each element's gate is held by the next one.
+
+⚑ The reducer advances **one column per codepoint**, the same unit `str-cols`
+counts in. So Phase 15 grades agreement between the width function and the
+emitter, **not** agreement with a real terminal: CJK is two cells and combining
+marks are none. That is **E177**, and E177's landing must move `str-cols` and
+this reducer together.
 
 Phase 14 grades **evidence survival**, never byte-identity. E157's nine goldens
 pin `dg-msg` byte-for-byte and that constraint is E157's; `doc->str` must not
@@ -113,16 +129,28 @@ line-exact mutation targets are old-tree; the fixtures tree is not migrated.
 
 ## Phase 7's known-fail list
 
-9 roots are known-failing and are listed by name in `run-tests.sh`. A known-failing
-root that starts *passing* is reported (`NEWPASS`) and fails the gate, so the list
-cannot rot silently.
+**One** root is known-failing and is listed by name in `run-tests.sh`. A
+known-failing root that starts *passing* is reported (`NEWPASS`) and fails the
+gate, so the list cannot rot silently.
 
-- `scriba-main.prog`, `scriba-manas-test.prog`, `scriba-runview-test.prog`,
-  `scriba-runview-stream-test.prog`, `scriba-test-b1.prog`, `flow-view-test.prog`
-  — import `manas/core/*`, `manas/chatter/*`, `manas/pipeline/*`, `manas/profile/*`;
-  only `prog/manas/{backend,coordinator,fsm,manas}` were migrated. Separate slice.
-- `t5_utf8.prog`, `t5_vt_parser.prog`, `t6_apc_roundtrip.prog` — pre-existing TUI
-  breakage, carried over verbatim from the old tree's own KNOWN_FAIL list.
+- `t5_utf8.prog` — an unported old-tree root carrying **zero** `(import …)` lines,
+  so `Unit` never resolves. A migration gap, not a codec one, and no `enc` fix
+  can move it.
+
+Two departures, both already recorded beside the list in `run-tests.sh`:
+
+- the six `scriba-*` / `flow-view-test` roots left when the manas subtree landed
+  (slice 4). They were never broken — they imported twelve manas keys that
+  resolved to nothing, and nothing in them was edited to fix it.
+- `t5_vt_parser.prog` and `t6_apc_roundtrip.prog` **left in E174.** The old note
+  called all three remaining entries "pre-existing TUI breakage"; two of them
+  were nothing of the kind. They were `load: non-exhaustive case` out of
+  `lib/protocol/apc.chiral`'s `enc`, left six-of-eight when `r-lines` and
+  `r-face` joined the `Rendering` sum — `t5_vt_parser` reaching it through
+  `vt-parser.chiral`'s `(import "protocol/apc")`. E174 repaired the codec on both
+  sides and both roots now run to their own exit-42 sentinel. **The list moved in
+  the same commit as the fix**, because Phase 7 goes red *on success*: a
+  known-failing root that starts compiling is a `NEWPASS` and a gate failure.
 
 ## The six samples under `prog/samples/`
 

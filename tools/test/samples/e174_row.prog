@@ -1,0 +1,77 @@
+; e174_row.prog — E174's CODEC ROUND-TRIP fixture. The Phase 15 value half.
+;
+; ⚑ WHY A ROUND-TRIP AND NOT A COVERAGE CHECK. lib/protocol/apc.chiral's `enc`
+; is a `case` over the closed `Rendering` sum, so a missing ENCODE arm is
+; `load: non-exhaustive case` and the compiler finds it. Its `dec` is a `cond`
+; on a tag `Str` ending in `(else (p-err ...))` — so a missing DECODE arm is a
+; runtime VALUE and the compiler finds nothing. Half of E174's codec repair is
+; therefore invisible to every compile in this tree, and only a round-trip sees
+; it. tools/test/row.sh's mutant M7 makes that a checked claim: it drops one
+; decode branch, both modules still compile clean, and this fixture must still
+; convict.
+;
+; ⚑ EQUALITY IS ASSERTED ON THE ENCODING, never through `diff-node`. Measured:
+; diff-node's r-stream arm returns `diff-changed` for two IDENTICAL streams
+; (lib/protocol/render.chiral), so it is not an equality oracle and a fixture
+; leaning on it would report a difference that is not there.
+;
+; The exit code is 0, or the 1-based number of the FIRST failing case — which
+; is what lets each mutant in row.sh convict at a NAMED row rather than merely
+; "somewhere". The case order follows the sum's own declaration order, with the
+; two E174 cases (bare r-row, then r-row nested inside an r-face inside an
+; r-row) last.
+;
+;   1 r-text   2 r-table   3 r-section   4 r-stream   5 r-tree
+;   6 r-lines  7 r-hole    8 r-face      9 r-row     10 r-row nested
+
+(import "prelude/prelude")
+(import "protocol/render")
+(import "protocol/apc")
+
+(declare rz-rt (-> Rendering Rendering))
+(declare rz-ok (-> Rendering Bool))
+
+; encode to a frame, decode it back, and hand back the Rendering. A decode
+; FAILURE is a value here too: it becomes a hole whose label no case builds, so
+; the encoding comparison below cannot accidentally match it.
+(def rz-rt
+  (lam (r)
+    (case (dec-frame (enc-frame r))
+      ((p-ok v pos)    v)
+      ((p-err msg pos) (r-hole "e174 round-trip decode failed")))))
+
+(def rz-ok (lam (r) (str-eq (enc r) (enc (rz-rt r)))))
+
+(def rz-cells (List Rendering)
+  (cons (r-text "1" false) (cons (r-text "ab" false) nil)))
+
+(def rz-kids (List Rendering)
+  (cons (r-text "a" false) (cons (r-text "bbbb" false) nil)))
+
+(def rz-c1  Rendering (r-text "abc" true))
+(def rz-c2  Rendering (r-table (cons "id" (cons "nm" nil)) (cons rz-cells nil)))
+(def rz-c3  Rendering (r-section "Sec" false (r-text "body" false)))
+(def rz-c4  Rendering (r-stream "log1"))
+(def rz-c5  Rendering (r-tree rz-kids (r-text "a" false)))
+(def rz-c6  Rendering (r-lines rz-kids))
+(def rz-c7  Rendering (r-hole "h"))
+(def rz-c8  Rendering (r-face "keyword" (r-text "ab" false)))
+(def rz-c9  Rendering (r-row (cons (r-text "a" false) (cons (r-text "bb" false) nil))))
+(def rz-c10 Rendering
+  (r-row (cons (r-face "keyword"
+                 (r-row (cons (r-text "x" false) (cons (r-text "y" false) nil))))
+         (cons (r-text "z" false) nil))))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (case (rz-ok rz-c1)  (false 1)  (true
+    (case (rz-ok rz-c2)  (false 2)  (true
+    (case (rz-ok rz-c3)  (false 3)  (true
+    (case (rz-ok rz-c4)  (false 4)  (true
+    (case (rz-ok rz-c5)  (false 5)  (true
+    (case (rz-ok rz-c6)  (false 6)  (true
+    (case (rz-ok rz-c7)  (false 7)  (true
+    (case (rz-ok rz-c8)  (false 8)  (true
+    (case (rz-ok rz-c9)  (false 9)  (true
+    (case (rz-ok rz-c10) (false 10) (true
+      0))))))))))))))))))))))

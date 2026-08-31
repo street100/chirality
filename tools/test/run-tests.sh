@@ -22,6 +22,8 @@
 #  12  the test floor (E168)      NOT PORTED -- needs scaffold/tests/samples/
 #  13  typed diagnostics (E157)  NEW HERE   -- tools/test/diag.sh
 #  14  layout algebra (E158)     NEW HERE   -- tools/test/doc.sh
+#  15  horizontal composition    NEW HERE   -- tools/test/row.sh
+#     (E174)
 #
 # Each case's expected value comes from what the program MEANS, never from a
 # golden capture of chirality's own output.
@@ -206,6 +208,17 @@ run_phase 13 "typed diagnostics (E157 Reason closure)"         diag.sh
 # goldens and `doc->str` must not inherit them, which is itself a checked row
 # (G7).  8-12 are still names owed, so this is 14.
 run_phase 14 "layout algebra (E158 Doc)"                       doc.sh
+
+# ---- Phase 15: horizontal composition (E174) --------------------------------
+# Also new here, and 15 for the reason 14 was 14: 8-12 are names still owed to
+# unported old-tree phases, and reusing one would make an unported gate look
+# ported.  E174 gives `Rendering` its first horizontal combinator -- but `r-row`
+# is one arm and six lines of emitter, and the ELEMENT is `rnd-cols`, the
+# per-node advance width that laying children left to right requires.  A width
+# function is exactly the thing that looks right and is off by one, so no row in
+# row.sh is a shape assertion: every one of them renders through
+# `render-to-ansi` and reads the emitted byte stream back as a cell map.
+run_phase 15 "horizontal composition (E174 r-row + rnd-cols)"  row.sh
 
 echo
 echo "=== not ported from the old suite (named, not hidden) ==="
