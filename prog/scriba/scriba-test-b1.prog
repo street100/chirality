@@ -1,7 +1,7 @@
 ; scriba-test-b1.chiral — 5 gate tests for scriba B1 compilation
 ; Run: chirality_blob scaffold/lib scriba/scriba-test-b1 | scaffold/build/B1
 
-(import "prelude/prelude")(import "prelude/list")(import "prelude/alist")(import "ports/ports")(import "ports/term")(import "scriba/puffer")(import "protocol/render")(import "scriba/command-loop")(import "scriba/keymap")(import "scriba/init-loader")
+(import "prelude/prelude")(import "prelude/list")(import "prelude/alist")(import "ports/ports")(import "protocol/term")(import "scriba/puffer")(import "protocol/render")(import "scriba/command-loop")(import "scriba/keymap")(import "scriba/init-loader")
 
 ; ── TEST 1: find (1 type param + fn param) — must pass ──
 (def test1-find (=> I64 (Maybe I64))

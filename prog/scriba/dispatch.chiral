@@ -98,11 +98,11 @@
 ;
 ; STEP 1: Add import. Change line 4 of scriba-main.chiral from:
 ;
-;   (import "prelude/prelude")(import "ports/ports")(import "ports/term")(import "scriba/puffer")(import "protocol/render")(import "scriba/keymap")(import "scriba/cmd-types")(import "scriba/init-loader")
+;   (import "prelude/prelude")(import "ports/ports")(import "protocol/term")(import "scriba/puffer")(import "protocol/render")(import "scriba/keymap")(import "scriba/cmd-types")(import "scriba/init-loader")
 ;
 ; To:
 ;
-;   (import "prelude/prelude")(import "ports/ports")(import "ports/term")(import "scriba/puffer")(import "protocol/render")(import "scriba/keymap")(import "scriba/cmd-types")(import "scriba/init-loader")(import "scriba/dispatch")
+;   (import "prelude/prelude")(import "ports/ports")(import "protocol/term")(import "scriba/puffer")(import "protocol/render")(import "scriba/keymap")(import "scriba/cmd-types")(import "scriba/init-loader")(import "scriba/dispatch")
 ;
 ; STEP 2: Update command-loop-inner definition. Change from:
 ;

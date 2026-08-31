@@ -14,7 +14,7 @@
 
 (import "prelude/prelude")
 (import "ports/ports")
-(import "ports/term")
+(import "protocol/term")
 (import "scriba/key-parser")
 (import "scriba/keymap")
 (import "scriba/puffer")
