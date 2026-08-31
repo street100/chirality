@@ -182,8 +182,21 @@ reference paths that are missing here. That is the filter at work.
 
 ## License
 
-Business Source License 1.1, see [LICENSE.md](LICENSE.md). Use it for
-anything, including commercially and in production: build and sell your own
-software with it, run it internally, support it and teach it for pay. What
-needs a commercial license: selling chirality itself or a derivative as a
-product, or offering it as a hosted or managed service. Free forever.
+[AGPL-3.0-or-later](LICENSE.md), with a
+[runtime exception](LICENSE.EXCEPTION.md).
+
+**Programs you compile with chirality are yours.** The compiler emits parts of
+itself into every binary it produces, so the exception lifts the copyleft from
+your program. Build it, sell it, ship it closed. The exception stops only at a
+work that is itself a chirality compiler.
+
+**Changes to chirality are not.** Modify the compiler and convey it, or run it
+as a service, and AGPL section 13 asks for your source back.
+
+This replaced Business Source License 1.1 on 2026-08-31. BUSL forbade selling
+chirality as a product or hosting it as a service, and no OSI-approved license
+can carry that clause: the Open Source Definition forbids restricting fields of
+endeavor. AGPL substitutes the nearest achievable thing, which is that a
+competitor may do it and must publish their source.
+[decision-license](docs/decisions/decision-license.md) has the full reasoning
+and the honest limits.

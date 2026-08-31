@@ -621,7 +621,7 @@ would have shipped green had it not been run.
    stands.** The INRIA non-commercial licence restricts **use of CompCert**, not
    the output of a program CompCert compiled, and carries no output restriction.
    A one-off `ccomp` comparison against `gcc` is *evaluation*, which the licence
-   permits; chirality's own BUSL-1.1 is untouched by it. The one standing rule is
+   permits; chirality's own AGPL-3.0-or-later is untouched by it. The one standing rule is
    distribution: **never ship a CompCert-built artifact.** So the CompCert half of
    the C-leg argument is no longer contingent on a licence question.
 
