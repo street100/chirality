@@ -2,13 +2,13 @@
 name: worked-example
 description: >-
   Pre-run for chirality self-implementation. Turn ONE catalog element (E#) into ONE
-  documented, conventional-vs-chirality worked example — scoped, researched, and
+  documented, conventional-vs-chirality worked example: scoped, researched, and
   ready to copy-and-modify into a real implementation. Use before implementing
   any element from docs/elements/catalog.md, or when asked to
   "produce a worked example", "scope an element", or "do a pre-run".
 ---
 
-# worked-example — the chirality pre-run pipeline
+# worked-example: the chirality pre-run pipeline
 
 Produce exactly **one** documented example per run, then **stop**. Contrast the
 conventional (other-language) approach against the chirality idea and leave a
@@ -30,26 +30,27 @@ requires choosing between shapes the codebase does not already settle.
 ## Hard rule: one run = one element = one artifact
 
 Exactly one `E#`. Touch nothing under `lib/` or `prog/`. End by naming the
-single suggested next element, then **STOP** — do not roll into it or start
+single suggested next element, then **STOP**: do not roll into it or start
 implementing. A second element or a source edit is the failure this prevents.
 
 ## Cadence is serial
 
-One stage at a time, one agent at a time. Not a batch, not a wave, not three.
+One stage at a time, one agent at a time. The decision spells out what that
+excludes: a batch, a wave, three.
 `docs/decisions/decision-dispatch-cadence.md` is the authority and it overrides
 every parallel-waves protocol in this tree, this file included. So there is no
 `--no-index`, no orchestrator-appends-rows, and no `PLAN-<date>.md`: each run
 updates its own INDEX row, because nothing races it.
 
-## Step 1 — get the input bundle (ONE command)
+## Step 1: get the input bundle (ONE command)
 
 ```
 python3 tools/pack/pack.py E<#> <slug>
 ```
 
-This prints your **entire** input bundle — the catalog legend + your element row
-from `docs/elements/catalog.md`, and the chirality idioms/vocabulary reference —
-and **scaffolds** `docs/examples/E<NN>-<slug>.md` (frontmatter filled, six
+This prints your **entire** input bundle: the catalog legend, your element row
+from `docs/elements/catalog.md`, and the chirality idioms/vocabulary reference.
+It also **scaffolds** `docs/examples/E<NN>-<slug>.md` (frontmatter filled, six
 section headers ready) plus its `docs/examples/INDEX.md` row.
 
 The **OURS Python baseline is CUT.** The old oracle tree is gone by decision, so
@@ -58,31 +59,31 @@ language and your own knowledge. The bundle says so where the baseline used to
 print. Do not go looking for it.
 
 **Read that bundle output and nothing else.** The reference section replaces the
-glossary / PRINCIPLES / lib-style files — do not read those, and do not read
+glossary, PRINCIPLES and the lib-style files. Do not read those, and do not read
 sibling `docs/examples/E*.md`. If (and only if) you need one specific fact the
 bundle lacks, `grep` for just that fact.
 
 `.planning/` is untracked scratch that forks per worktree. Do not cite it and do
 not write an artifact into it.
 
-## Step 2 — fill the scaffolded artifact (six sections, in order)
+## Step 2: fill the scaffolded artifact (six sections, in order)
 
 Edit `docs/examples/E<NN>-<slug>.md`, sections top to bottom:
 
-1. **Scope** — what the element is + why chirality needs its own (its kind).
-2. **Research** — reference class + the 2–4 load-bearing findings. Cite, don't
+1. **Scope**: what the element is + why chirality needs its own (its kind).
+2. **Research**: reference class + the 2–4 load-bearing findings. Cite, don't
    transcribe; use your own knowledge for PAPER/IMPL/SPEC. Do not web-fetch.
-3. **Conventional (other-language) approach** — a named language: a short
+3. **Conventional (other-language) approach**: a named language: a short
    snippet + the assumptions it bakes in (untyped effects, ambient allocation,
    floats, partiality…).
-4. **The chirality idea** — how chirality's model reframes it (QTT/usage, `->` vs `=>`
+4. **The chirality idea**: how chirality's model reframes it (QTT/usage, `->` vs `=>`
    membrane, ports/capabilities, categories A/B/C, refinement, totality, the
    float→I64 wall). Say what chirality makes *impossible* here.
-5. **Chirality example (fleshed)** — a concrete, commented snippet in **real surface
-   syntax** (not pseudocode) — the thing a later run copies — plus **Knobs to
-   modify** and **Deliberately omitted**. Keep it a skeleton; elide mechanical
+5. **Chirality example (fleshed)**: a concrete, commented snippet in **real surface
+   syntax** rather than pseudocode: the thing a later run copies, plus **Knobs
+   to modify** and **Deliberately omitted**. Keep it a skeleton; elide mechanical
    loops with `; …`.
-6. **Use / modify notes** — the `lib/` or `prog/` file it lands in, the
+6. **Use / modify notes**: the `lib/` or `prog/` file it lands in, the
    conformance target (golden behavior to reproduce), open questions, `[[links]]`.
 
 Before you name a gap in §1 or §4, read the concept's bank: `docs/banks/INDEX.md`
@@ -90,7 +91,7 @@ holds eleven. A feature that is one thing elsewhere is here a sum of shards, eac
 in its own home, usually mostly built. Naming a phantom feature is the cardinal
 working error in this repository.
 
-Never defer to an `E#` that is not already minted. If you name a follow-on,
+Every `E#` you defer to must already be minted. If you name a follow-on,
 mint its catalog row and its ledger row in the same change, or write `UNASSIGNED`
 and stop.
 
