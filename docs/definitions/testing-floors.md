@@ -3,10 +3,27 @@ node: testing-floors
 layer: foundation
 related: [floor-agreement, certificate-discipline, axis-altitude, decision-backend, modules-lowering, decision-split-checker, split-role, status-ledger, trust-boundary, open-edges]
 status: draft
-updated: 2026-08-25
+updated: 2026-09-01
 ---
 
 # Testing floors — the contract during the Python-oracle retirement
+
+> **⚑ THE `Mach`→C LEG IS DROPPED, 2026-09-01** (`d8bcec5`, `d0c5dd5`).
+> `lib/lowering/c/{mach,assemble,emit}.chiral`, `prog/compiler-c.prog` and the
+> four `e166_*` fixtures are gone. Every claim below that the leg is built,
+> admitted, registered or running is **historical**, and dated as such where it
+> stands. The reason is the criterion, not the leg's quality: it shared
+> `compile-front` and `compile-back` whole with the canonical instance and
+> differed only at emit, which makes it a second **target** under one
+> formulation. Self-verification here goes through N semantically distinct
+> judgment cores that must agree, and `CLAUDE.md` says why a second encoding of
+> one rule set buys nothing. See [[decision-self-verification]].
+>
+> **What the drop does NOT retract.** Rules 1, 2 and 3 below, the run-the-mutant
+> rule, and the expectation-provenance ranking were all paid for by E166 and all
+> still bind. A rule learned from a leg outlives the leg. What is retracted is
+> only the coverage: the `Mach` ops row of the map below has **no** instrument
+> now, in-house or external, and nothing else moved in to take it.
 
 chirality is tested by **multiple independent floors** (see `floor-agreement.md`).
 Removing the Python oracle is a rung-1 *milestone goal*, **not** a mechanical
@@ -49,7 +66,7 @@ this file, and every gate row anywhere, must agree with it.
 |---|---|---|---|
 | upper → tal | `lower.chiral` 407 | `interp` vs `tal-eval` (**not built** — E169) | Rocq-verified **`preserve-check`** (E169's external half) |
 | tal → `Mach` ops | `emit-core.chiral` 573 | `tal-eval` vs a native run | **tal→C leg** (E167) |
-| `Mach` ops → machine | `mach-x64.chiral` **1,737** | — | **`Mach`→C leg (E166) — BUILT, ADMITTED, AND RUNNING 2026-08-24.** `mach-c` + `gcc-12`; registered as `ddc-legc` (`ddc.chiral:162`), disjoint from `ddc-leg0` on the toolchain axis. `bash scaffold/tests/ddc-c-leg.sh` = 10 gates green: **admission** — the native suite run under `chirality-bin-c`, **154 ok / 0 FAIL / 82 roots compiled, exit 0** (re-measured 2026-08-25) — and **conviction** — `chirality-bin-c < blob` and `B1 < blob` byte-identical at 1,077,624 B. Gated as Phase 10 of the native suite. ⚑ **Its differential's corpus is SCOPED BY MARKER since 2026-08-26** — 25 samples swept through the C leg, 17 test-floor fixtures tabled `floor` and judged by Phase 12 instead, each row checked against the judge; what the leg covers is unchanged and Rule 3's amendment below states what it deliberately does not. ⚑ **The "135 ok" this row used to carry was a false attribution, not a stale count.** `CHIRALITY_BIN` was honoured by `run-native.sh`'s own inline phases only, so of those 135 rows exactly **6** (Phase 1) ran under `chirality-bin-c` and **129** (Phases 3/4/5/6/8/9) ran under `B1` while being reported as C-leg coverage; Phase 7's 82 root compiles were genuine, being inline. The five sub-scripts and `bin/chirality` now resolve `CHIRALITY_BIN` first (`ce593c4`), `ledger-lint` check P keeps it total, and the re-run put **148 assertions under the C-built compiler that had never once run under it — all green, nothing diverged**. |
+| `Mach` ops → machine | `mach-x64.chiral` **1,737** | — | **`Mach`→C leg (E166) — BUILT 2026-08-24, DROPPED 2026-09-01. The rest of this cell is the record of what it did while it stood; the row has no live instrument now.** `mach-c` + `gcc-12`; registered as `ddc-legc` (`ddc.chiral:162`), disjoint from `ddc-leg0` on the toolchain axis. `bash scaffold/tests/ddc-c-leg.sh` = 10 gates green: **admission** — the native suite run under `chirality-bin-c`, **154 ok / 0 FAIL / 82 roots compiled, exit 0** (re-measured 2026-08-25) — and **conviction** — `chirality-bin-c < blob` and `B1 < blob` byte-identical at 1,077,624 B. Gated as Phase 10 of the native suite. ⚑ **Its differential's corpus is SCOPED BY MARKER since 2026-08-26** — 25 samples swept through the C leg, 17 test-floor fixtures tabled `floor` and judged by Phase 12 instead, each row checked against the judge; what the leg covers is unchanged and Rule 3's amendment below states what it deliberately does not. ⚑ **The "135 ok" this row used to carry was a false attribution, not a stale count.** `CHIRALITY_BIN` was honoured by `run-native.sh`'s own inline phases only, so of those 135 rows exactly **6** (Phase 1) ran under `chirality-bin-c` and **129** (Phases 3/4/5/6/8/9) ran under `B1` while being reported as C-leg coverage; Phase 7's 82 root compiles were genuine, being inline. The five sub-scripts and `bin/chirality` now resolve `CHIRALITY_BIN` first (`ce593c4`), `ledger-lint` check P keeps it total, and the re-run put **148 assertions under the C-built compiler that had never once run under it — all green, nothing diverged**. |
 | the checker | — | — | **Rocq spec** (the `rocq/` floor; `rocq/README.md:81` — *"checker soundness is the next slice"*) |
 
 Two rules generate that map. They are stated as rules because reading them off
@@ -67,7 +84,7 @@ smaller than what it tests.** The ratio is the whole economics:
 
 | leg | new code | covers | ratio | verdict |
 |---|---|---|---|---|
-| `mach-c` (E166) — **built** | 403 raw / **190 code** | `mach-x64` 1,737 raw / **620 code** | **1:4.3 raw · 1:3.3 code** | ✓ |
+| `mach-c` (E166) — **built, then dropped 2026-09-01** | 403 raw / **190 code** | `mach-x64` 1,737 raw / **620 code** | **1:4.3 raw · 1:3.3 code** | ✓ |
 | `tal-c` (E167) — estimate | ~200–400 raw | 2,310 raw | ~1:6 – 1:11 | ✓ |
 | upper→C — estimate | ~2,000 raw | ~2,700 raw | ~1:1.3 | ✗ |
 
@@ -94,7 +111,7 @@ half, Rocq covers the proof-ward half, and they meet at tal** — which is what
 to tal and checked the whole way (`preserve-check`) … tal is the floor and it is
 typed. Below tal is the single trusted drop to the metal."*).
 
-**What the built leg buys, stated so it is not oversold.** `ddc-legc` records
+**What the built leg bought, stated so it was not oversold** (past tense since 2026-09-01). `ddc-legc` recorded
 `("c" "gcc-12" "shred" 2026)` against `ddc-leg0`'s `("chirality" "chirality-native"
 "shred" 2026)`: what that differs on is **toolchain**, which is the axis a
 trusting-trust attack lives on. It is **not** a smaller trusted base — gcc
@@ -122,7 +139,9 @@ cost, since the "one constant" story is the one to bury:
   beside `ddc-legc`, each naming a toolchain that actually built something. ⚑
   **They are not two legs**: `leg2-disjoint?` needs both axes to differ and they
   share `"c"`, so a quorum is leg 0 plus *exactly one*. Asserted by cases 17–20
-  of `scaffold/tests/samples/e166_ddc_legc.chiral`.
+  of `scaffold/tests/samples/e166_ddc_legc.chiral`. ⚑ That fixture is **deleted**
+  (2026-09-01, `d0c5dd5`). `ddc-legc` and `ddc-legcc` are still defined in
+  `lib/evidence/ddc.chiral`, and now nothing asserts anything about either.
 - **Two files, one trusted drop.** The size check is the **sum**: 89 C code
   lines + 27 asm code lines = **116**, against the SPEC's ~150. Moving code
   across a file boundary must not shrink the number that measures how much we
@@ -132,7 +151,8 @@ cost, since the "one constant" story is the one to bury:
 
 ### Rule 3 — a conforming-target gate must be BEHAVIOURAL, not textual
 
-E166 paid for this rule and it belongs beside the other two. `mach-c`'s first
+E166 paid for this rule and it belongs beside the other two. The leg is gone as of
+2026-09-01; the rule it bought is not, and applies to the next conforming target. `mach-c`'s first
 gate was **68 assertions over each arm's emitted C text**, and it passed while
 three of those assertions were *pinning a defect*: `true` is tag 0, so a
 comparison materialized as a value must yield the tag, and `op-eqi` rendering
@@ -140,7 +160,8 @@ comparison materialized as a value must yield the tag, and `op-eqi` rendering
 Nothing observed the runtime behaviour of the *composition* until the whole
 compiler was built and run, two sessions later.
 
-The answer is **F3**, the behavioural differential: the programs in
+The answer was **F3**, the behavioural differential (dropped with the leg on
+2026-09-01; what follows is what it measured while it ran): the programs in
 `scaffold/tests/samples/` (**25 rows swept**, each carrying the exit code its own
 header documents, so agreement alone cannot pass it — Rule 1's lesson from E161
 G0) compiled through both legs and compared on what it *does*. Re-inverting
