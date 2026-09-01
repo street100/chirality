@@ -260,3 +260,127 @@ repaired gates still cannot see, and what they saw once they could.
 - evidence: `tools/ledger-lint/ledger-lint.py:51`, `:71`, `docs/definitions/status-ledger.md:52`, `:54`
 - checked:  2026-09-01
 - element:  UNASSIGNED
+
+## What the compiler claims to enforce and does not
+
+Measured 2026-09-01 by writing a program that should be refused and running it.
+Every row below was reproduced; none rests on a document. The method is the
+importer count first, then a repro: a module with zero importers cannot refuse
+anything, and in five of these rows that one number predicted the result.
+
+### BA-24 a pure `->` function performs an effect and is accepted
+
+- state:    OPEN
+- claim:    `PRINCIPLES.md:62` "One atom with no exemptions" and `:89` "the port-check is the type-check". The membrane separates pure `->` from effectful `=>`.
+- measured: `(declare pure-syscall (-> I64 Unit))` whose body calls `put` (declared `(extern put (=> Str Unit))` in `lib/ports/stdio.port:11`) passes `chirality check` and writes to stdout when run. A three-deep all-`->` chain does the same. What the arrow does enforce is nominal type identity: passing an `=>` value where `->` is demanded is `load: type mismatch`. So the arrow is a type tag, not a membrane. `typing/effects.chiral` holds three refusing rules; its two importers are both dead through `lib/module/sig-driver.chiral`, which has zero importers, and `typing/effects` is not in the 58-module compiler closure. README, `status-ledger` and `docs/banks/effect-and-alarm.md` disclose this accurately; `PRINCIPLES.md` does not.
+- evidence: `lib/typing/effects.chiral`, `lib/module/sig-driver.chiral`, `lib/ports/stdio.port:11`, `PRINCIPLES.md:62`, `:89`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### BA-25 termination checking never runs
+
+- state:    OPEN
+- claim:    `docs/definitions/totality.md` states that the checker refuses a divergent definition, and names the single-function spin loop as the example it refuses.
+- measured: `lib/typing/totality.chiral` has zero importers. `(def spin (lam (n) (spin n)))` passes `chirality check`, compiles, and does not halt. E50's defining syntax is refused by the parser by name: `(declare f ty (measure structural 0))` gives `load: (declare name ty (measure ...)) -- measure attribute DEFERRED`. The feature has no front door. E50's `built` state was true of the Python oracle (`data.py _check_recgroup`), which was evicted; the state outlived its subject. `status-ledger.md:156` is correct and `docs/definitions/totality.md:97-104`, `:164-168` contradict it, stating that mutual and lexicographic recursion prove via syntax the parser rejects.
+- evidence: `lib/typing/totality.chiral:11-12`, `lib/surface/parse.chiral:622`, `docs/definitions/totality.md:97-104`, `:164-168`, `docs/definitions/status-ledger.md:156`
+- checked:  2026-09-01
+- element:  E50
+
+### BA-26 the TAL floor check is unreachable from the compile path
+
+- state:    OPEN
+- claim:    the tree lowers through typed assembly before machine code.
+- measured: code does pass through TAL IR: `compile-emit` imports `lowering/tal/reify` and `lowering/x64/emit`. The check on that IR does not run. `ck-prog` and `ck-block` have zero callers. `ck-fn`'s only caller is `re-check` at `lib/lowering/upper/optimize.chiral:250`, and `optimize.chiral` has zero importers, so the one call site is unreachable. The compile path is `compile-front` then `compile-back` then `compile-emit`, and none of the three references a tal check.
+- evidence: `lib/lowering/tal/check.chiral:223`, `:233`, `:242`, `lib/lowering/upper/optimize.chiral:250`, `lib/lowering/compile-emit.chiral:14-18`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### BA-27 strict positivity accepts a nullary mutual cycle
+
+- state:    OPEN
+- claim:    strict positivity is enforced; the row reads `Built - ENFORCED`.
+- measured: two mutually-referencing nullary datatypes are accepted, compile, and diverge at run time. The variance walk at `lib/surface/data.chiral:270`, `:284` recurses into a type constructor's arguments only, and a nullary type constructor has none, so the negative occurrence is never visited. This is a false ENFORCED row rather than a stale one: the check runs and returns the wrong answer.
+- evidence: `lib/surface/data.chiral:247-294`, `:270`, `:284`
+- checked:  2026-09-01
+- element:  E07
+
+### BA-28 refinement bounds wrap at the I64 extremes
+
+- state:    OPEN
+- claim:    a refinement that cannot be inhabited is refused.
+- measured: `(def bad (refine I64 (> 9223372036854775807)) 0)` passes `chirality check`. The same file at `9223372036854775806` and at `10` both give `load: cannot prove refinement`, so the gate is armed and only the extreme escapes. `c-atom` builds `s-gt` as `(max-lo lo (+ k 1))` and `s-lt` as `(min-hi hi (- k 1))`; at `I64_MAX` the `+1` wraps to `I64_MIN` and the bound inverts to TOP. The non-adjusting operators `>=` and `<=` are correct at the same extremes. A contradictory `{v > MAX and v < MIN}` compiles, links and runs. `.planning/audit/AUDIT-MAP.md` records this as D1, "UNSOUND if ported naively, open, no current bug"; the port happened without the guard, so the last clause is false. E11 ported the same arithmetic with the guard (`lib/typing/totality.chiral:257`, `:262`), so the obligation was written once, into the other element's contract.
+- evidence: `lib/typing/refine.chiral:118`, `:120`, `lib/typing/kernel.chiral:1349`, `:1488`, `lib/typing/totality.chiral:257`, `:262`
+- checked:  2026-09-01
+- element:  E09
+
+### BA-29 profile requirements are not checked against providers
+
+- state:    OPEN
+- claim:    a profile is a frozen conformance contract; `MAP.md` sorts `.profile` as a kind and `docs/banks/profile.md` describes requirement checking.
+- measured: `(target T (require run (-> I64 I64)))` with `run` absent, and the same with `run` present at the wrong type, both pass `chirality check` and emit an ELF. The conformance judgment (requirement to provider subtype) lived in `surface.py`, which was cut with the Python oracle; no chirality successor exists, and there is no ledger row or element number for one. Test phase 4's 31 assertions exercise the manifest grammar, not the judgment. Distinct from BA-10, which records that `.profile` has no instance.
+- evidence: `docs/banks/profile.md`, `MAP.md:5`, test phase 4
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### BA-30 the file kind is never checked
+
+- state:    OPEN
+- claim:    `MAP.md:5` "the resolver checks it" and `:37-40` the kind is "checked by the loader". The extension is the kind.
+- measured: a `.port` file containing a lambda compiles. A `.manifest` file with a computed body compiles and runs. Neither the resolver nor the loader has an implementation of a kind check. The argument that a large fraction of the tree never enters the resolution space, so the bad state is unrepresentable, rests on this check existing.
+- evidence: `MAP.md:5`, `:37-40`, `bin/chirality-resolve.sh`, `lib/module/loader.chiral`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### BA-31 a bank refutes a real gap with a command that does not exist
+
+- state:    OPEN
+- claim:    `docs/banks/profile.md:246` cites `chirality verify` to argue that the profile conformance gap is already covered.
+- measured: `bin/chirality` offers `compile`, `run`, `check`, `test`, `help`. There is no `verify`. It is cited in 14 places, four of them under `docs/banks/`. The banks are the repo's mandated pre-flight read: CLAUDE.md requires reading a feature's bank before naming a gap, because naming a phantom is the cardinal error here. This row is that rule inverted, a phantom command used to dismiss a gap that BA-29 shows is real. `docs/definitions/testing-floors.md` is dated 2026-09-01 and lists `chirality test-native` and `chirality test-rocq` as GATING floors; neither exists and there is no `rocq/` directory. Overlaps BA-08, which records the floors table; this row is about the bank.
+- evidence: `docs/banks/profile.md:246`, `bin/chirality`, `docs/definitions/testing-floors.md`
+- checked:  2026-09-01
+- element:  none
+
+### BA-32 23 reject fixtures are skipped rather than asserted
+
+- state:    OPEN
+- claim:    the suite reports 303 assertions, 0 failed, and the `*_reject_*` fixtures exist to prove the compiler refuses what it should refuse.
+- measured: `tools/test/run-tests.sh:174` reads `case "$rb" in *_reject_*) continue`, so phase 7 skips every reject root instead of asserting that it fails. All 23 were run by hand and all 23 still reject, so this is 23 assertions behind one `continue` rather than a defect in the compiler. Separately, 47 of the 53 fixtures under `tools/test/samples/` are referenced by no script at all; `run-tests.sh:18-24` records phases 8, 9, 11 and 12 as `NOT PORTED -- script owed`.
+- evidence: `tools/test/run-tests.sh:174`, `:18-24`, `tools/test/samples/`
+- checked:  2026-09-01
+- element:  none
+
+### BA-33 33 of 50 port crossings take no capability
+
+- state:    OPEN
+- claim:    every crossing is capability-mediated.
+- measured: 33 of the 50 `extern` declarations under `lib/ports/` take no capability argument. `write-fd 1 <bytes>` writes to stdout while holding nothing. `mmap`, `mprotect`, `signal`, `socketpair` and `open-rw` are in the same list. The ports floor is a naming and routing boundary, which BA-12 records from the byte-cost side; this row is the authority side.
+- evidence: `lib/ports/*.port`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### BA-34 `Clock` and `Timer` are uninhabited
+
+- state:    OPEN
+- claim:    `lib/ports/clock.port` types a clock discipline.
+- measured: every extern in the port consumes a `Clock` or `Timer` and none produces one, and the port types have no constructor, so no program can obtain either. `lib/runtime/supervisor.chiral` is uncallable for the same reason. The discipline is vacuously satisfied: it cannot be violated because it cannot be used.
+- evidence: `lib/ports/clock.port`, `lib/runtime/supervisor.chiral`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### BA-35 `str-sub` reads past the end of its string and reports the read length
+
+- state:    OPEN
+- claim:    indexing is bounds-checked. `lib/prelude/string.chiral:14` asserts in a comment that "str-sub clamps, so a too-long prefix is just false", and `starts-with?` at `:17` is written against that clamp.
+- measured: `str-sub : (-> Str I64 I64 Str)` is `(s start end)`, half-open, and does not clamp. `(str-len (str-sub "abc" 0 99))` returns `99`: a three-character source yields a ninety-nine-character result, so the primitive reads past the end of the buffer and reports the out-of-range length as the string's length. The comment at `:14` is false and `starts-with?` rests on it. `.planning/FINDING-str-sub-range-2026-08-31.md:12` additionally records `(str-len (str-sub "abc" 2 1))` as SIGSEGV exit 139; that half did NOT reproduce on the current `bin/chirality-bin` (exit 0), so either the finding predates a change or the crash needs a condition the one-liner does not supply. Only the unbounded read is carried here as measured. E176 owns `str-sub` range discipline per `LANES.md`.
+- evidence: `lib/prelude/prelude.chiral:80`, `lib/prelude/string.chiral:14`, `:17`, `.planning/FINDING-str-sub-range-2026-08-31.md:12`
+- checked:  2026-09-01
+- element:  E176
+
+### BA-36 ledger-lint exits 0 while three checks fail
+
+- state:    OPEN
+- claim:    `README.md:63` says `ledger-lint` exits 1. CLAUDE.md says the count of path mismatches is 0.
+- measured: the run prints `[FAIL]` for A, I and T and `[VACUOUS]` for H and M, and exits 0. So a caller gating on the exit status sees a pass. Both documents are wrong and in opposite directions: the README describes a failing exit the tool does not produce, and CLAUDE.md describes a clean count the tool contradicts. Check A's own defect is BA-23.
+- evidence: `python3 tools/ledger-lint/ledger-lint.py`, `README.md:63`, `CLAUDE.md`
+- checked:  2026-09-01
+- element:  none
