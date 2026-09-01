@@ -36,8 +36,11 @@ cannot be bypassed.
   everything above it. Trust does not extend even to the compiler.
 
 What a conventional language ships as one monolithic feature, chirality splits
-into pieces like these, each living at the boundary that enforces it. Those are
-the boundaries by design. **Status**, below, says which of them run today.
+into pieces like these, each living at the boundary that enforces it. That is the
+design. **Not all of it runs.** Two of the five above — the typed-assembly
+re-check and the return-side verification — are built and unreached today, and
+the effect membrane carries its bit without refusing on it. **Status** and
+**Honest limits**, below, say which is which, per claim.
 
 ## Status
 
@@ -53,8 +56,8 @@ LOC, measured 2026-09-01: nine under `tools/`, four generators under
 rule is that the compiler compiles everything.
 
 `bin/chirality test` reports **303 assertions passed, 0 failed**, plus 87
-compile-only roots that gate and assert nothing. 5 of the old suite's 12 phases
-are unported; the run prints each by name and reason, every time.
+compile-only roots that gate and assert nothing. It runs 13 phases; 4 more are
+unported and the run prints each by name and reason, every time.
 
 What is real versus designed is tracked in
 [status-ledger](docs/definitions/status-ledger.md) and
@@ -73,6 +76,20 @@ What is real versus designed is tracked in
   checker nor the optimizer's re-check runs in the shipping compile.
 - Inbound entry-point verification is **cut**, and it has no successor in this
   tree. The declaration side is built; the return-side check is absent.
+- **Termination checking does not run.** `lib/typing/totality.chiral` has zero
+  importers. `(def spin (lam (n) (spin n)))` type-checks, compiles, and never
+  halts. The `(measure ...)` syntax the checker needs is refused by the parser by
+  name.
+- **Refinement types are unsound at the I64 extremes.** `c-atom` builds a strict
+  bound by adjusting the literal by one, and at `I64_MAX` that wraps: `(refine
+  I64 (> 9223372036854775807))` accepts `0`. One step off the extreme, and the
+  non-adjusting `>=`/`<=`, are correct. The demo below is real; this is its hole.
+- **Strict positivity accepts a nullary mutual cycle.** The variance walk
+  recurses into a type constructor's arguments, and a nullary one has none, so
+  two mutually-referencing nullary datatypes compile and diverge.
+- **Profiles are configuration, not conformance.** A `(require ...)` whose
+  provider is missing, or present at the wrong type, checks OK and emits an ELF.
+  The judgment that checked it died with the Python oracle and has no successor.
 - **External judgment is cut**: the Rocq leg, the CompCert leg, the Python
   oracle. What replaces them is three semantically distinct judgment cores that
   must agree, and that is **unbuilt**. So every rung in the ledger is
@@ -118,8 +135,8 @@ The four subcommands are `compile`, `run`, `check` and `test`.
 ```
 # the suite: one command, zero Python
 $ chirality test
-  → assertions: 118 passed, 0 failed
-  → compile-only: 86 roots built, 0 failed
+  → assertions: 303 passed, 0 failed
+  → compile-only: 87 roots built, 0 failed
   → chirality test: gate PASSED
 
 # source to a native ELF, compiled and run
@@ -156,7 +173,7 @@ calls an `=>` one. That gate is E171.
 
 Bigger programs live in `prog/demo/`: `passman-min` (a secret has no structural
 path to a socket), `tomodachi` (an effect-gated behavior pack), `wl-client`
-(the Wayland wire codec). `prog/samples/` holds 69 small programs the suite
+(the Wayland wire codec). `prog/samples/` holds 56 small programs the suite
 sweeps.
 
 ### Rebuilding the compiler
