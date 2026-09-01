@@ -22,10 +22,12 @@ updated: 2026-09-01
 > ⚑ **External judgment is CUT** — author decision, `HANDOFF.md` decision 5: the
 > Rocq port, CompCert, and the Python oracle are all gone. `bin/chirality` has no
 > `test-rocq` and no `test-python`, and `tools/test/run-tests.sh` lists Phase 10,
-> the external-compiler C leg, as **DROPPED**. E166's `Mach`→C leg is built
-> (`lib/lowering/c/mach.chiral`, `lib/lowering/c/assemble.chiral`,
-> `lib/lowering/c/emit.chiral`, `prog/compiler-c.prog`) but nothing gates on it
-> here. What replaces external judgment is **three semantically distinct judgment
+> the external-compiler C leg, as **DROPPED**. E166's `Mach`→C leg is **dropped
+> too, 2026-09-01** (`d8bcec5`, `d0c5dd5`), with its four fixtures. It shared
+> `compile-front` and `compile-back` whole and differed only at emit, so it was a
+> second **target** under one formulation. The criterion below is *different
+> formulations*, and a second target satisfies none of it. What replaces external
+> judgment is **three semantically distinct judgment
 > cores that must agree** — different formulations, not three encodings of one
 > rule set — and that is unbuilt. The gating floor is `tools/test/run-tests.sh`:
 > 7 of the old tree's 12 phases ported, plus Phase 13, with the 5 unported phases
