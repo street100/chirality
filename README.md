@@ -1,15 +1,15 @@
 # chirality
 
-*common-sense, the language.*
+A dependently typed language that compiles and checks itself. One language covers
+the compiler, the checker, the emitter, the runtime, the tooling and the data.
 
-chirality takes zero trust as far as it will go. Almost nothing is trusted by
-position: every claim is checked where it enters, and the check is carried to
-the lowest level reachable. What a conventional language ships as one monolithic
-feature, this splits into pieces that each live at the boundary enforcing them.
+What a conventional language ships as one monolithic feature, this splits into
+pieces that each live at the boundary enforcing them. Every claim is checked
+where it enters, and the check is carried as far down as it reaches.
 
 **Self-hosting since 2026-08-05.** The compiler is written in chirality and
-compiles itself to a byte-identical copy. No Python runs in the compile, check
-or run path.
+compiles itself to a byte-identical copy. No Python runs in the compile, check,
+run or test path.
 
 ## Start here
 
@@ -21,6 +21,54 @@ or run path.
 | asking what actually works | [What is real](#what-is-real), then [status-ledger](docs/definitions/status-ledger.md) |
 | reading the design | [`docs/index.md`](docs/index.md), the hub of a linked note base |
 | about to change something | [working-discipline](docs/definitions/working-discipline.md), then the arc in [`docs/arcs/`](docs/arcs/) that owns the work |
+
+## Questions
+
+**What bugs could a language inherently remove? Could debugging become purely
+about logical bugs?**
+Every non-logic failure is a class. A class can be given a way to be said, and
+once it can be said the checker can refuse it. Work through the classes until
+what is left is you reasoning wrong. Six categories and their current state are
+in [bug-classes](docs/definitions/bug-classes.md). The residue is whether your
+specification says what you meant, and intent stays outside the checker.
+
+**Why does one working stack need half a dozen languages that share nothing?**
+The file extension carries the kind. `.chiral` is a module, `.prog` an entry
+point, `.port` a registry that mints capability types, `.profile` a frozen port
+set, `.manifest` data. Config stops being a second language.
+
+**Could escape hatches like `unsafe`, `any` and raw casts be checked routes?**
+Declare the dangerous thing as a crossing with a type. A registry mints the
+capability, the crossing is named, and a program that calls a crossing its
+profile froze out is refused at emit. Nothing gets an exemption from the type, so
+there is no hatch to reach for.
+
+**Does a language with strong opinions have to fight you?**
+Make the well-behaved shape the low-ceremony one. An empty signature is the light
+base case, and every effect and every unit of fuel makes a type heavier. The
+risky shape is the one you opt into out loud.
+
+**Why is it so hard to see what a program can actually do?**
+Enumerating what a program outputs is undecidable. Enumerating how it can reach
+outside itself is finite. Those crossings are closed and named, so a module's
+reach is the set of boundaries it declares. Time and memory are crossings too,
+which is how a regex that pins a core stops reading as harmless.
+
+**What is the smallest thing you would have to trust to trust the whole
+language?**
+A judgement core of 1,823 lines: `kernel`, `kernel-core`, `qtt` and `refine`.
+Everything above it is text that core checked, and the surface elaborates down
+into a small calculus before checking, so convenience syntax has nothing left to
+smuggle. The rest of the tree is 50,927 lines across 299 files.
+
+**Does proof have to be costly? Does proof have to be slow?**
+Proof runs at compile time. Quantity-0 binders are erased before runtime and
+types are erased before emission, so the checking does not ride along. Measured
+against C on three micro-kernels: 2 to 6 times faster than `gcc -O0`, and 1.37 to
+8.4 times behind `gcc -O2`.
+
+⚑ That same erasure is why the typed-assembly preserve check never runs. The
+claim and its limit are the same mechanism, and both are below.
 
 ## Try it
 
@@ -68,7 +116,7 @@ calls an `=>` one. That gate is element E171, unbuilt.
 
 Bigger programs are in `prog/demo/`: `passman-min` (a secret has no structural
 path to a socket), `tomodachi` (an effect-gated behavior pack), `wl-client` (the
-Wayland wire codec). `prog/samples/` holds 69 small programs the suite sweeps.
+Wayland wire codec). `prog/samples/` holds 56 small programs the suite sweeps.
 
 ## The idea
 
@@ -118,12 +166,28 @@ Measured 2026-09-01, in this tree.
 | | |
 |---|---|
 | self-hosting fixpoint | a 772,967-byte blob in, a 1,147,256-byte ELF out, and that ELF compiles the same blob to itself. Generation one, and it equals the committed `bin/chirality-bin` byte for byte |
-| suite | **303 assertions passed, 0 failed**, plus 87 compile-only roots that gate and assert nothing. 5 of the old suite's 12 phases are unported and the run names each one, every time |
+| suite | **303 assertions passed, 0 failed**, plus 87 compile-only roots that gate and assert nothing. It runs 13 phases; 4 more are unported and the run names each one, every time |
 | Python | 14 files, 4,829 LOC: nine under `tools/`, four generators under `docs/examples/refs/`, one fixture under `.planning/`. None on the compile, check or run path. The target is zero |
 
 What is real against what is designed is tracked on four rungs in
 [status-ledger](docs/definitions/status-ledger.md), with the source tree
 described in [`docs/implementation/`](docs/implementation/README.md).
+
+### Claims, state, limit, proposal
+
+The gap between a claim and its state is the interesting part, so it is a column
+rather than a footnote.
+
+| claim | state today | limit | proposal |
+|---|---|---|---|
+| everything lowers to typed assembly | eligible defs lower to typed SSA in every compile | types are erased before emit; `ck-prog` and `ck-block` have 0 callers and `ck-fn`'s only caller sits in a module with 0 importers | measure the lowered/skipped ratio, build E70, wire `ck-fn` |
+| every unit is a process with a type | the pure/process bit is carried through the front end | the three refusing rules have no live caller; a `->` body calling an `=>` crossing is accepted and runs | E171 |
+| cost is in the type | QTT and refinement run in the checker | `totality.chiral` has 0 importers; refinement bounds wrap at the I64 extremes | wire E11, guard `c-atom`, or drop termination from the claim |
+| crossings are named and closed | 9 port registries, the facade has 108 importers | timing, cache pressure and speculation have no port; 33 of 50 crossings take no capability | name it open |
+| data at boundaries is declared | `.port` and `.manifest` are kinds the tree sorts by | the kind is never checked, and a profile requirement never meets its provider | E163, and a conformance judgment to replace the one cut with the oracle |
+| data is well formed | the positivity walk runs on every data declaration | it recurses into a constructor's arguments, so two mutually referencing nullary types pass and diverge | fix the walk in `surface/data.chiral` |
+| readable and self-hosting | self-hosts, fixpoint at generation one | 14 Python files in tooling; the kernel and runtime notes are design | E173, E148, E150 |
+| judgment frozen, the rest re-checkable | `reflect-floor` and `kernel-core` are written | 0 importers each | wire them, or mark them seeded |
 
 ### ⚑ Honest limits
 
@@ -132,6 +196,19 @@ described in [`docs/implementation/`](docs/implementation/README.md).
   file they name. Lint fails.
 - The effect membrane's three refusing rules are in the tree and **nothing calls
   them**. The bit is carried; the gate is E171, unbuilt.
+- **Termination checking does not run.** `lib/typing/totality.chiral` has zero
+  importers, and `(def spin (lam (n) (spin n)))` type-checks, compiles and never
+  halts. The `(measure ...)` syntax the checker needs is refused by the parser.
+- **Refinement types are unsound at the I64 extremes.** A strict bound is built by
+  adjusting the literal by one, and at `I64_MAX` that wraps, so
+  `(refine I64 (> 9223372036854775807))` accepts `0`. One step off the extreme is
+  correct, and so are the non-adjusting `>=` and `<=`. The refinement demo above
+  is real; this is its hole.
+- **Strict positivity accepts a nullary mutual cycle**, for the reason in the
+  table above.
+- **A profile declares a requirement and nothing checks it.** A `(require ...)`
+  whose provider is missing, or present at the wrong type, checks OK and emits an
+  ELF. The judgment that checked it went with the Python oracle.
 - The typed-assembly floor is built and **unadopted**. Neither the floor checker
   nor the optimizer's re-check runs in the shipping compile.
 - Inbound entry-point verification is **cut**, with no successor in this tree.
