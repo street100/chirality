@@ -4,10 +4,37 @@ layer: bank
 tier: depth
 related: [testing-floors, floor-agreement, certificate-discipline, split-role, decision-split-checker, axis-altitude, modules-lowering, trust-boundary, status-ledger, banks/evidence-and-split, open-edges]
 status: draft
-updated: 2026-08-24
+updated: 2026-09-01
 ---
 
 # Bank: verification
+
+> **⚑ THE C LEGS ARE DROPPED, 2026-09-01** (`d8bcec5`, `d0c5dd5`).
+> `lib/lowering/c/{mach,assemble,emit}.chiral`, `prog/compiler-c.prog` and the
+> four `e166_*` fixtures are deleted. Shard 8 below, §5 item 8, and every gate
+> count, ratio and mutant result attached to `mach-c` are the **record of a leg
+> that ran**, kept because a bank's job is the refraction and its history, and
+> dated in place. They are not claims about today's tree.
+>
+> The reason is the criterion. The leg shared `compile-front` and `compile-back`
+> whole with the canonical instance and differed only at emit, which makes it a
+> second **target** under one formulation, not a second formulation. Verification
+> here goes through N semantically distinct judgment cores that must agree; three
+> encodings of one rule set would be worth nothing, and one encoding emitted
+> twice is less than that. See [[decision-self-verification]].
+>
+> **Three consequences this bank has to carry.** (1) `ddc-leg0` has **no**
+> disjoint partner in the tree now, so Shard 4's *"DISCHARGED 2026-08-24"* is
+> re-opened by the drop and the DDC quorum floor is unmet again. (2) `ddc.chiral`
+> keeps `ddc-legc`, `ddc-legcc`, `ddc-fold`, `ddc-legs`, `ddc-compare`,
+> `ddc-verdict-code` and `DdcR`, and **nothing calls or asserts any of them**;
+> the file stays reachable only because `test-floor.chiral:31` imports it for
+> `bytes=?`. (3) `lib/memory/alloc-fixed.chiral` lost its only importer with the
+> C-leg blob. See [[open-edges]] for both.
+>
+> **What the drop does NOT retract.** Rules 1, 2 and 3, the adequacy limits in
+> §5, and the mutants that were actually run. Those are findings about
+> differentials in general and survive the leg that produced them.
 
 > **What a bank is.** The depth tier under the thin relational notes in
 > `docs/`. A bank holds the full *refraction* of ONE concept: what it is, the
@@ -155,6 +182,10 @@ suite, not a number, and not the fixpoint.
   **without Python**, and S12's ordering constraint — *admit the replacement
   before deleting the incumbent* — is satisfied for the DDC half of the
   retirement. It is not satisfied for the rest of Shard 5's dependents (§3 C6).
+  ⚑ **RE-OPENED 2026-09-01.** The C leg is dropped, so `ddc-leg0`'s only disjoint
+  partner in the tree is gone again and the floor of two disjoint legs is unmet.
+  Nothing asserts the 36 quorum cases either: `e166_ddc_legc` was deleted with
+  the leg.
   ⚑ **What is registered is the leg, not yet the pairing.** `ddc-verdict-code`
   (`ddc.chiral:185`; the `:129` this note carried was stale before the fix too)
   still composes `ddc-leg0` with `ddc-leg1` — disjoint on both axes, so it
@@ -240,11 +271,13 @@ suite, not a number, and not the fixpoint.
   membrane hole this exposed is [[banks/effect-and-alarm]] §5d, minted as
   **E171**.
 
-### Shard 8 — the C legs · **`mach-c` BUILT, ADMITTED, REGISTERED (E166, 2026-08-24) · `tal-c` DESIGN (E167)**
+### Shard 8 — the C legs · **`mach-c` BUILT 2026-08-24, DROPPED 2026-09-01 (E166) · `tal-c` DESIGN (E167)**
 
-> The two halves of this shard are no longer in the same build-state and must
-> not be quoted as one. `mach-c` is built, gated and registered in `ddc.chiral`;
-> `tal-c` is a catalog row and nothing else.
+> ⚑ **The whole of this shard below is historical as of 2026-09-01.** `mach-c`
+> was built, gated and registered, and is now deleted; `tal-c` is a catalog row
+> and nothing else, and was never built. Nothing in this shard describes a file
+> that is on disk today except `ddc-legc` and `ddc-legcc`, which survive in
+> `lib/evidence/ddc.chiral` with no caller.
 
 - **What.** Additional conforming backend instances that emit C-as-portable-
   assembly, compiled by an *external* compiler — **both gcc 12.2.0 and CompCert
@@ -398,6 +431,10 @@ suite, not a number, and not the fixpoint.
   not lower: lambda stays upper`). The C-leg blob imports `alloc-fixed` and not
   `alloc-growing`, so there is **no growing allocator present to wire by
   mistake**. The invariant is the module graph, not a check over it.
+  ⚑ **2026-09-01: that blob is gone, and it was `alloc-fixed`'s only importer.**
+  The module stays on purpose, as the choice a future program makes against
+  `alloc-growing`, and no gate compiles it any more. [[open-edges]] records it so
+  a cleanup pass does not read zero importers as dead code.
 - **⚑ The mistake worth keeping.** E166's SPEC first proposed indexing `Alloc` by
   a `MemCat` tag so `emit-c` could *demand* a provable allocator — a type error
   instead of a paragraph. Two things killed it, in order: the language cannot
@@ -681,6 +718,13 @@ would have shipped green had it not been run.
    `ddc-leg0` with `ddc-leg1`, the Python one. The quorum *can* be met without
    Python; the one function that hardcodes a pairing does not yet do so. Naming it
    here so the discharge in Shard 4 is not read as more than it is.
+
+   ⚑ **SUPERSEDED 2026-09-01.** The leg is dropped, so this item is no longer a
+   small BUILD. `ddc-verdict-code` still composes leg 0 with the Python leg 1,
+   and now **neither leg it names exists as a running thing** and no caller
+   consults it. The successor item is in [[open-edges]]: `ddc.chiral` is the
+   referee for a quorum of judgment cores, and its `Prov` has no formulation
+   axis to referee on.
 
 ---
 
