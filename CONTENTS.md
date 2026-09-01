@@ -159,7 +159,7 @@ sequencing intent.
 
 ## Settled and open
 
-- Forks settled in `docs/decisions/` (sixteen notes): additive testable profiles
+- Forks settled in `docs/decisions/` (seventeen notes): additive testable profiles
   over a frozen port set; two brokers agreeing via Adhikara; own typed backend
   with no compile to C; B in the type not the packaging; the graded/cost-kernel
   direction; the inspiration policy; the checker as a small trusted core plus
@@ -167,7 +167,8 @@ sequencing intent.
   (possession + exercise) with alarms as crossings; deployment/custody as a
   per-instance decentralized translation of centralized product instincts; and the
   reflective floor as a frozen judgment changed only by certified succession; and
-  the user layer extending in chirality, live, above that same frozen kernel line.
+  the user layer extending in chirality, live, above that same frozen kernel line;
+  and dispatch cadence as serial, one stage and one agent at a time.
 - Open work: the unresolved seams enumerated in
   [docs/open-edges.md](docs/definitions/open-edges.md), with three sequencing questions not
   yet committed.

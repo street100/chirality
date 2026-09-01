@@ -90,7 +90,9 @@ allocator at scale; the native suite's own wall clock), see
   core plus untrusted certificate producers, not a quorum),
   [[decision-bridge-elaborator]] (one general bridge, parameterized by evidence
   elements), [[decision-effect-facets]] (effects: possession and exercise, two
-  facets joined by construction; alarms are crossings)
+  facets joined by construction; alarms are crossings),
+  [[decision-dispatch-cadence]] (how work here is dispatched: serial, one stage
+  and one agent at a time)
 - Trust discipline: [[certificate-discipline]] (trusted checker, untrusted producers
   — how a socket checks what plugs into it: re-run the work, do not spot-check) and
   [[split-role]] (where proof runs out, the split as a tiered substrate-provided role
