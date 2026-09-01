@@ -190,6 +190,11 @@ thing, and the tradeoff the reader is bracing for is not the one they get.
     Q4  the fight comes from a denylist. There is no denylist here, so the
         argument that produces the fight never starts.
 
+An earlier pass read the same defect as phrasing and proposed new opening
+sentences for four of the drafts. The imperative was a symptom: the sentence
+reached for an instruction because it had no position to open with and no table
+to put the state in.
+
 The hedge is load bearing. "Not usually" rather than "no" is what lets the state
 table underneath read as part of the answer instead of a walk-back.
 
@@ -205,21 +210,6 @@ cleanly. Q6 (the smallest thing you would have to trust) carries no premise to
 overturn; it is a real question with a number for an answer, and Q2 may be the
 same. If the questions split into "dismantles an assumption" and "just answers",
 the shape is not uniform and that is worth stating rather than forcing.
-
-### The earlier angle pass, superseded
-
-An earlier read of the same defect called it phrasing: four drafts opened in the
-designer's imperative ("Make X the Y", "Declare the dangerous thing as Z") or on
-a theory premise ("Enumerating what a program outputs is undecidable"), where
-the three that read straight opened on a fact. That pass proposed replacement
-opening sentences for Q1, Q3, Q4 and Q5.
-
-Superseded by the three-part shape above. The imperative was a symptom: the
-sentence reached for an instruction because it had no position to open with and
-no table to put the state in. Fixing openings alone would have left the answers
-still unable to say what holds. The proposed openings are dropped rather than
-kept, because a per-question draft belongs in the drafts list below and having
-two of them in two places is what caused this.
 
 ### The standing drafts, verbatim
 
@@ -261,10 +251,6 @@ Q2 through Q7 below are the standing drafts.
 
 **Q4. Does a language with strong opinions have to fight you?**
 
-Rewritten 2026-09-01, first of the seven to take the three-part shape. The
-earlier draft opened "Make the well-behaved shape the low-ceremony one", and its
-claim that functions are total by default is not true of the tree.
-
 > Not really. What makes an opinionated language hard is the amount you have to
 > hold in your head. Strong typing already exists to mechanically exclude
 > categories of failure, and that part is not in dispute. What chirality leans on
@@ -289,17 +275,6 @@ claim that functions are total by default is not true of the tree.
 >
 > Where the checker is wired the load is off you. Where it is not, the shape is
 > light because nothing is weighing it.
-
-⚑ Measured 2026-09-01. Broke `is-space` in a copy of `prog/paren-audit.prog` and
-ran it: `def is-space 58 390 389 1`, then `FILE depth 1`. The counts run to end
-of file because an unclosed form swallows the rest, so the first bad form is
-reported rather than the last. Neither implementation has a write path.
-
-⚑ Open: the table may be two. The four typing rows answer what the checker
-demands of you; the paren-audit rows answer how far the extension claim reaches.
-
-⚑ `docs/definitions/bug-classes.md` does not exist yet, so any class-coverage
-count cited from this answer points at the draft further down this file.
 
 **Q5. Why is it so hard to see what a program can actually do?**
 
@@ -358,6 +333,8 @@ file counts are unaffected and stand.
 | `totality.chiral` importers | 0 | grep |
 | capability modules | `lincoll`, `secret`, `session` | ls |
 | port registries | 9 `.port` files | ls |
+| `paren-audit` on a broken form | `def is-space 58 390 389 1`, then `FILE depth 1` | broke `is-space` in a copy of `prog/paren-audit.prog` and ran it |
+| `paren-audit` write path | none, in either implementation | grep |
 
 ## The judgment vocabulary: ground truth for what refuses
 
@@ -489,6 +466,11 @@ Added 2026-09-01:
   repoint each goal to the home that now carries the rule?
 - **Does the goals table live in the README**, or does section 4 already cover it?
 - **Thesis in the README in full, or one line plus a link?**
+- **Does an answer's state table cover one thing or two?** Q4's has four typing
+  rows answering what the checker demands of you, and two paren-audit rows
+  answering how far the extension claim reaches.
+- **`docs/definitions/bug-classes.md` does not exist.** Any answer citing class
+  coverage is citing the draft in this file.
 
 ## Wiring sweep, 2026-09-01
 
