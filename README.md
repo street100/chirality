@@ -3,124 +3,24 @@
 *common-sense, the language.*
 
 chirality takes zero trust as far as it will go. Almost nothing is trusted by
-position. Every claim is checked where it enters, and the check is carried to
-the lowest level reachable.
+position: every claim is checked where it enters, and the check is carried to
+the lowest level reachable. What a conventional language ships as one monolithic
+feature, this splits into pieces that each live at the boundary enforcing them.
 
-The makeup is a set of modules that sit at boundaries, so their guarantees
-cannot be bypassed.
+**Self-hosting since 2026-08-05.** The compiler is written in chirality and
+compiles itself to a byte-identical copy. No Python runs in the compile, check
+or run path.
 
-- A **minimal judgement core** is the sole authority on what is possible. It
-  decides, from the modules run against it, what may happen at compile time.
-  Modules add rules and cannot route around them. It is small enough for a
-  human to read in full.
+## Start here
 
-- The language you write is **not the language that is trusted**. Surface code
-  is elaborated down into a small core calculus, and the judgement core checks
-  the result of that elaboration. Convenience syntax cannot smuggle anything
-  past checking, because by then it no longer exists.
-
-- Typing is **quantitative** (QTT, in the Atkey-McBride line). Every binder
-  carries a usage annotation from the 0/1/ω semiring. 0 is erased from runtime
-  and may still appear in types. 1 must be consumed exactly once. ω is
-  unrestricted. One judgement unifies dependency and linearity, so runtime
-  resources like handles, capabilities and secrets get exact-use enforcement
-  from the core rules, with no bolted-on linearity checker.
-
-- Every value going from code to something happening in the world crosses a
-  **declared, typed entry point**, and everything coming back is verified
-  against its declared type at the moment of return. An outside component that
-  lies produces a typed error at the boundary, and no corruption downstream.
-
-- Beneath the compiler sits a **floor of typed assembly**. Compiled output is
-  re-checked there, instruction by instruction, by a checker independent of
-  everything above it. Trust does not extend even to the compiler.
-
-What a conventional language ships as one monolithic feature, chirality splits
-into pieces like these, each living at the boundary that enforces it. That is the
-design. **Not all of it runs.** Two of the five above — the typed-assembly
-re-check and the return-side verification — are built and unreached today, and
-the effect membrane carries its bit without refusing on it. **Status** and
-**Honest limits**, below, say which is which, per claim.
-
-## Status
-
-**Self-hosting since 2026-08-05.** The compiler compiles its own source to a
-byte-identical copy of itself. Measured 2026-09-01: a 772,967-byte blob goes in
-and a 1,147,256-byte ELF comes out, that ELF compiles the same blob to itself,
-and the result equals the committed `bin/chirality-bin` byte for byte. The
-fixpoint holds at generation one.
-
-No Python runs in the compile, check or run path. 14 Python files remain, 4,829
-LOC, measured 2026-09-01: nine under `tools/`, four generators under
-`docs/examples/refs/`, one fixture under `.planning/`. The target is zero. The
-rule is that the compiler compiles everything.
-
-`bin/chirality test` reports **303 assertions passed, 0 failed**, plus 87
-compile-only roots that gate and assert nothing. It runs 13 phases; 4 more are
-unported and the run prints each by name and reason, every time.
-
-What is real versus designed is tracked in
-[status-ledger](docs/definitions/status-ledger.md) and
-[docs/implementation/](docs/implementation/README.md).
-
-### ⚑ Honest limits
-
-- `python3 tools/ledger-lint/ledger-lint.py` **exits 1** today with 249
-  findings across nine of its twenty checks (A, B, C, F, G, I, N, R, T). 130 of
-  them are line citations in the corpus that no longer fit the file they name.
-  Lint fails.
-- The effect membrane's three refusing rules are in the tree and **nothing
-  calls them**. A `->` body that reaches an `=>` one is refused nowhere. The
-  bit is carried; the gate is element E171, unbuilt.
-- The typed-assembly floor is built and **unadopted**. Neither the floor
-  checker nor the optimizer's re-check runs in the shipping compile.
-- Inbound entry-point verification is **cut**, and it has no successor in this
-  tree. The declaration side is built; the return-side check is absent.
-- **Termination checking does not run.** `lib/typing/totality.chiral` has zero
-  importers. `(def spin (lam (n) (spin n)))` type-checks, compiles, and never
-  halts. The `(measure ...)` syntax the checker needs is refused by the parser by
-  name.
-- **Refinement types are unsound at the I64 extremes.** `c-atom` builds a strict
-  bound by adjusting the literal by one, and at `I64_MAX` that wraps: `(refine
-  I64 (> 9223372036854775807))` accepts `0`. One step off the extreme, and the
-  non-adjusting `>=`/`<=`, are correct. The demo below is real; this is its hole.
-- **Strict positivity accepts a nullary mutual cycle.** The variance walk
-  recurses into a type constructor's arguments, and a nullary one has none, so
-  two mutually-referencing nullary datatypes compile and diverge.
-- **Profiles are configuration, not conformance.** A `(require ...)` whose
-  provider is missing, or present at the wrong type, checks OK and emits an ELF.
-  The judgment that checked it died with the Python oracle and has no successor.
-- **External judgment is cut**: the Rocq leg, the CompCert leg, the Python
-  oracle. What replaces them is three semantically distinct judgment cores that
-  must agree, and that is **unbuilt**. So every rung in the ledger is
-  enforcement against error. An adversary who controls the source is out of
-  its reach.
-
-### Scope
-
-Current work is **self-hosting only**: the language compiling and checking
-itself, and being good enough to write its own tooling. The ownership and trust
-model is a separate track, **deferred** from this one and built in its own
-lane: the re-bootstrap climb, DDC, the
-[secure datum model](docs/definitions/secure-datum-model.md), the register
-root, the cascade.
-
-### Measured performance
-
-Narrow and dated: [RESULTS-2026-08-01](docs/benchmarks/RESULTS-2026-08-01.md).
-On three micro-kernels, chirality-emitted x86-64 ran **2–6× faster than gcc
--O0** and **1.37×–8.4× behind gcc -O2**, the honest optimized-C reference.
-Cross-side ratios only: absolute times do not travel off the measurement guest.
-
-⚑ The benchmark harness was Python and did not come across in the doc hoist, so
-these numbers cannot be re-measured in this tree today. They stand as a dated
-record.
-
-The remaining gap is attributed pass by pass, and part of the optimizer is
-*trait-native* rather than borrowed: transforms licensed by facts the checker
-proves. Totality-licensed compile-time evaluation, refinement and constant
-guard elision, dense-tag tables, Euclidean strength reduction. See
-[TRAIT-OPTS](docs/benchmarks/TRAIT-OPTS.md).
+| you are | go to |
+|---|---|
+| deciding whether this is interesting | [The idea](#the-idea), then [`PRINCIPLES.md`](PRINCIPLES.md) |
+| wanting to run it | [Try it](#try-it) |
+| reading the source | [The tree](#the-tree), then [`MAP.md`](MAP.md) for the contract it follows |
+| asking what actually works | [What is real](#what-is-real), then [status-ledger](docs/definitions/status-ledger.md) |
+| reading the design | [`docs/index.md`](docs/index.md), the hub of a linked note base |
+| about to change something | [working-discipline](docs/definitions/working-discipline.md), then the arc in [`docs/arcs/`](docs/arcs/) that owns the work |
 
 ## Try it
 
@@ -130,7 +30,7 @@ cd chirality
 ln -s "$PWD/bin/chirality" ~/.local/bin/chirality
 ```
 
-The four subcommands are `compile`, `run`, `check` and `test`.
+Four subcommands: `compile`, `run`, `check`, `test`.
 
 ```
 # the suite: one command, zero Python
@@ -146,39 +46,149 @@ $ chirality run hello.chiral --entry main
 ```
 
 `chirality check` is the compiler's own front end with the ELF thrown away. One
-front end, so there is no second checker to drift. Each demo below is a file of
-two to four lines. Open it and see exactly what was checked.
+front end, so there is no second checker to drift. Each demo is a file of two to
+four lines. Open it and see exactly what was checked.
 
 ```
-# refinement types: an out-of-range value is a compile error
-$ chirality check prog/demo/_ref.chiral
-  → load: cannot prove refinement   # exit 1
-$ chirality check prog/demo/_ref2.chiral
+$ chirality check prog/demo/_ref.chiral      # refinement: out of range
+  → load: cannot prove refinement            # exit 1
+$ chirality check prog/demo/_ref2.chiral     # the same program, in range
   → chirality check: prog/demo/_ref2.chiral OK
-
-# arity: a two-argument type given a one-argument lambda
-$ chirality check prog/demo/_type.chiral
-  → load: type mismatch             # exit 1
-
-# the effect membrane: the `=>` crossing rides in the type
-$ chirality check prog/demo/_eff.chiral
-  → load: type mismatch             # exit 1
+$ chirality check prog/demo/_type.chiral     # arity: 2-arg type, 1-arg lambda
+  → load: type mismatch                      # exit 1
+$ chirality check prog/demo/_eff.chiral      # the `=>` crossing rides in the type
+  → load: type mismatch                      # exit 1
 ```
 
-⚑ Honest scope on `_eff.chiral`, measured 2026-08-25. The refusal is an
+⚑ Honest scope on `_eff.chiral`, measured 2026-08-25. That refusal is an
 **argument** mismatch: `put : (=> Str Unit)` handed an I64. Repair it to
 `(put "x")` under the same `(-> I64 Unit)` signature and it compiles and prints.
 The compiler carries the `->`/`=>` bit and does not yet refuse a `->` body that
-calls an `=>` one. That gate is E171.
+calls an `=>` one. That gate is element E171, unbuilt.
 
-Bigger programs live in `prog/demo/`: `passman-min` (a secret has no structural
-path to a socket), `tomodachi` (an effect-gated behavior pack), `wl-client`
-(the Wayland wire codec). `prog/samples/` holds 56 small programs the suite
-sweeps.
+Bigger programs are in `prog/demo/`: `passman-min` (a secret has no structural
+path to a socket), `tomodachi` (an effect-gated behavior pack), `wl-client` (the
+Wayland wire codec). `prog/samples/` holds 69 small programs the suite sweeps.
 
-### Rebuilding the compiler
+## The idea
+
+Five claims. Each says where it lives and whether it runs today, because the
+gap between the two is the interesting part.
+
+**A minimal judgement core is the sole authority on what is possible.** It
+decides, from the modules run against it, what may happen at compile time.
+Modules add rules and cannot route around them. Small enough for a human to read
+in full.
+→ [`lib/typing/kernel.chiral`](lib/typing/kernel.chiral). ENFORCED, reached by
+every compile, gated by Phase 3.
+
+**The language you write is not the language that is trusted.** Surface code
+elaborates down into a small core calculus and the judgement core checks the
+result. Convenience syntax cannot smuggle anything past checking, because by
+then it no longer exists.
+→ [`lib/surface/`](lib/surface/) into the kernel, via
+[`lib/module/loader.chiral`](lib/module/loader.chiral). On the compile path.
+
+**Typing is quantitative** (QTT, in the Atkey-McBride line). Every binder
+carries a usage annotation from the 0/1/ω semiring. 0 is erased from runtime and
+may still appear in types, 1 must be consumed exactly once, ω is unrestricted.
+One judgement unifies dependency and linearity, so handles, capabilities and
+secrets get exact-use enforcement from the core rules with no bolted-on linearity
+checker.
+→ [`lib/typing/qtt.chiral`](lib/typing/qtt.chiral). ENFORCED: the suite rejects
+used-twice and dropped linear binders by name.
+
+**Every value crossing into the world crosses a declared, typed entry point.**
+An outside component that lies produces a typed error at the boundary and no
+corruption downstream.
+→ [`lib/ports/`](lib/ports/), nine registries behind
+[`ports.chiral`](lib/ports/ports.chiral). The declaration side is built. The
+return-side check is **cut** and has no successor here.
+
+**Beneath the compiler sits a floor of typed assembly**, where output is
+re-checked instruction by instruction by a checker independent of everything
+above it. Trust does not extend even to the compiler.
+→ [`lib/lowering/tal/check.chiral`](lib/lowering/tal/check.chiral). Built and
+**unadopted**: it does not run in the shipping compile.
+
+## What is real
+
+Measured 2026-09-01, in this tree.
+
+| | |
+|---|---|
+| self-hosting fixpoint | a 772,967-byte blob in, a 1,147,256-byte ELF out, and that ELF compiles the same blob to itself. Generation one, and it equals the committed `bin/chirality-bin` byte for byte |
+| suite | **303 assertions passed, 0 failed**, plus 87 compile-only roots that gate and assert nothing. 5 of the old suite's 12 phases are unported and the run names each one, every time |
+| Python | 14 files, 4,829 LOC: nine under `tools/`, four generators under `docs/examples/refs/`, one fixture under `.planning/`. None on the compile, check or run path. The target is zero |
+
+What is real against what is designed is tracked on four rungs in
+[status-ledger](docs/definitions/status-ledger.md), with the source tree
+described in [`docs/implementation/`](docs/implementation/README.md).
+
+### ⚑ Honest limits
+
+- `python3 tools/ledger-lint/ledger-lint.py` **exits 1** today with 249 findings
+  across nine of its twenty checks. 130 are line citations that no longer fit the
+  file they name. Lint fails.
+- The effect membrane's three refusing rules are in the tree and **nothing calls
+  them**. The bit is carried; the gate is E171, unbuilt.
+- The typed-assembly floor is built and **unadopted**. Neither the floor checker
+  nor the optimizer's re-check runs in the shipping compile.
+- Inbound entry-point verification is **cut**, with no successor in this tree.
+- **External judgment is cut**: the Rocq leg, the CompCert leg, the Python
+  oracle. What replaces them is three semantically distinct judgment cores that
+  must agree, and that is **unbuilt**. So every rung in the ledger is enforcement
+  against error. An adversary who controls the source is out of its reach.
+
+### Scope
+
+Current work is **self-hosting only**: the language compiling and checking
+itself, and being good enough to write its own tooling. The ownership and trust
+model is a separate track, **deferred** and built in its own lane: the
+re-bootstrap climb, DDC, the
+[secure datum model](docs/definitions/secure-datum-model.md), the register root,
+the cascade. [decision-scope](docs/decisions/decision-scope.md) holds the line.
+
+## The tree
+
+The extension is the file's kind and the directory is its role. Subject matter
+is neither, so there is no `stdlib/` and no `compiler/`.
+[`MAP.md`](MAP.md) is the contract.
+
+| | |
+|---|---|
+| [`lib/`](lib/) | 100 modules. `prelude` `typing` `surface` `module` `lowering` `ports` `capability` `memory` `runtime` `protocol` `evidence` |
+| [`prog/`](prog/) | what chirality ships, as distinct from what it is. 96 programs, plus `demo/` `samples/` `scriba/` `manas/` `agent/` |
+| [`bin/`](bin/) | `chirality` is the CLI front door. `chirality-bin` is the compiler: a blob on stdin, an ELF on stdout |
+| [`tools/`](tools/) | one folder per tool. Nine of them are the Python still being replaced |
+| [`docs/`](docs/) | the design base and the element pipeline |
+| [`records/`](records/) | what we measured about ourselves |
+| `.planning/` | the agent tier: navigation, protocol, queues |
+
+### Reading the documentation
+
+`docs/` is a linked note base, one idea per note, entered at
+[`docs/index.md`](docs/index.md) and linked by `[[slug]]` rather than by path.
+
+| tier | holds |
+|---|---|
+| [`definitions/`](docs/definitions/) | one entry per named concept, 49 of them |
+| [`decisions/`](docs/decisions/) | one settled fork per entry, carrying its reason |
+| [`banks/`](docs/banks/) | the depth tier: one concept refracted into its shards and their homes |
+| [`goals/`](docs/goals/) and [`arcs/`](docs/arcs/) | seven goals, and the arc of elements serving each. An arc file carries its own resume state |
+| [`elements/`](docs/elements/) | the catalog, the ledger, and one SPEC per element |
+| [`examples/`](docs/examples/) | one worked example per element, conventional approach beside the chirality one |
+| [`records/`](records/) | a claim beside its measurement, with a state and a date |
+
+Two documents are written for an agent rather than a person and both are
+tracked: [`CLAUDE.md`](CLAUDE.md) and [`.planning/README.md`](.planning/README.md),
+which maps tone, placement, workflow and dispatch.
+[decision-ai-tier](docs/decisions/decision-ai-tier.md) draws that line.
+
+## Rebuilding the compiler
 
 The existing binary builds the next one. Nothing replaces itself in place.
+[working-discipline](docs/definitions/working-discipline.md) is the full rule.
 
 ```
 . bin/chirality-resolve.sh
@@ -188,42 +198,30 @@ chirality_blob_file "lib:prog" prog/compiler.prog > /tmp/blob.chiral
 ```
 
 The `-s` test is load-bearing: two empty files compare equal, and a fixpoint on
-nothing proves nothing.
+nothing proves nothing. A fixpoint also shows stability and says nothing about
+correctness, since a compiler can reproduce itself while being wrong the same
+way twice.
 
-## Where to look
+## Measured performance
 
-| What | Where |
-|---|---|
-| judgement core (QTT) | [`lib/typing/kernel.chiral`](lib/typing/kernel.chiral) + [`qtt.chiral`](lib/typing/qtt.chiral) |
-| effect membrane (`->` vs `=>`): carried, **refused nowhere** (E171) | [`lib/typing/effects.chiral`](lib/typing/effects.chiral) (the three seams) + demo [`_eff.chiral`](prog/demo/_eff.chiral) |
-| refinement types | [`lib/typing/refine.chiral`](lib/typing/refine.chiral) + demo [`_ref.chiral`](prog/demo/_ref.chiral) |
-| typed assembly floor, **built and unadopted** | [`lib/lowering/tal/check.chiral`](lib/lowering/tal/check.chiral) |
-| where a crossing is declared | [`lib/ports/`](lib/ports/): 9 registries behind [`ports.chiral`](lib/ports/ports.chiral) |
-| the compiler, in chirality | [`lib/lowering/compile-all.chiral`](lib/lowering/compile-all.chiral), entry [`prog/compiler.prog`](prog/compiler.prog) |
-| typed process spawn | [`lib/runtime/proc.chiral`](lib/runtime/proc.chiral) + [`process.port`](lib/ports/process.port) |
-| userland in chirality | [`lib/`](lib/): [JSON](lib/protocol/json.chiral), [HTTP](lib/protocol/http.chiral), FSMs, the [x86-64 emitter](lib/lowering/x64/emit.chiral) |
-| the tree contract: extensions, roles, the module key | [`MAP.md`](MAP.md) |
-| the work contract: build rule, deferral rule, commits, reporting | [`working-discipline`](docs/definitions/working-discipline.md) |
-| the agent tier: tone, placement, workflow, dispatch | [`.planning/README.md`](.planning/README.md) |
-| design docs | [`docs/`](docs/), starting at [`docs/index.md`](docs/index.md) |
-| benchmarks | [`docs/benchmarks/`](docs/benchmarks/) |
-| worked examples | [`docs/examples/INDEX.md`](docs/examples/INDEX.md) |
-| threat model (ownership track, deferred) | [`secure-datum-model`](docs/definitions/secure-datum-model.md) |
-| principles | [`PRINCIPLES.md`](PRINCIPLES.md) |
-| orientation and contents | [`CONTENTS.md`](CONTENTS.md) |
+Narrow and dated: [RESULTS-2026-08-01](docs/benchmarks/RESULTS-2026-08-01.md).
+On three micro-kernels, chirality-emitted x86-64 ran **2 to 6 times faster than
+gcc -O0** and **1.37 to 8.4 times behind gcc -O2**, the honest optimized-C
+reference. Cross-side ratios only: absolute times do not travel off the
+measurement guest.
+
+⚑ The benchmark harness was Python and did not survive the doc hoist, so these
+numbers cannot be re-measured in this tree today. They stand as a dated record.
+
+The remaining gap is attributed pass by pass, and part of the optimizer is
+*trait-native*: transforms licensed by facts the checker proves. Totality-licensed
+compile-time evaluation, refinement and constant guard elision, dense-tag tables,
+Euclidean strength reduction. See [TRAIT-OPTS](docs/benchmarks/TRAIT-OPTS.md).
 
 ## About this repository
 
 This is the public mirror of a private working repo, and some older commits
 reference paths that are missing here. That is a history filter at work.
-
-Two tiers are tracked and both ship. `docs/` and `records/` are written for a
-human reader. `.planning/`, `CLAUDE.md` and `.claude/skills/` are written for an
-agent working the tree: navigation, protocol, queues, handoffs. They were
-gitignored until 2026-09-01, which meant a rule could live only in a worktree
-and vanish from a fresh clone.
-[decision-ai-tier](docs/decisions/decision-ai-tier.md) has the reasoning, and
-`.planning/README.md` maps that tier.
 
 ## License
 
