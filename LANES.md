@@ -86,9 +86,22 @@ Lane-A gates.
 
 **Neither writes these, and in each case something fails if they do:**
 `lib/prelude/doc.chiral` — the two seventh-constructor mutants above ·
-`bin/chirality-bin` — the BUILD RULE governs it (build-new → test → promote,
-nothing replaces itself in place), and a mismatched binary/blob pair produces the
-inverted "the binary is stale" diagnosis this repo has already been caught by ·
+`bin/chirality-bin` — **⚑ clarified 2026-08-31, because as first written this
+contradicted the very rule it cited.** What is forbidden is **hand-editing it, or
+replacing it in place**. What is *required*, of a lane whose deliverable **enters
+the compiler's closure**, is to promote it — build-new → test → promote, with the
+fixpoint verified and `C` checked non-zero before every `cmp`. E181 is the first
+element in this arc whose deliverable enters the blob, so E181 promotes; E174,
+E175 and E158-c4 measured *outside* the closure and correctly did not.
+**Two obligations come with promoting:** (a) a **precondition** — on the
+unmodified tree, `B1(blob)` must already equal `bin/chirality-bin`, so a
+staleness inherited from a merge is caught as a merge's and not blamed on the
+element (this arc nearly convicted E181 of exactly that: the binary was two
+generations stale, `C1 ≠ C2`, `C2 = C3`, and promoting `C1` would have installed
+a binary that does not reproduce itself); and (b) **tell the other lane the moment
+it lands** — any measurement they took against the old binary was taken against a
+different compiler. A mismatched binary/blob pair produces the inverted "the
+binary is stale" diagnosis this repo has already been caught by ·
 **another lane's gate script** — every gate **sha256-pins its neighbours**, and
 those pins are checked rows with their own `move-a-pinned-gate` mutants, so
 touching one reddens the other lane's phase on the next run. Converging a pin
