@@ -3,7 +3,7 @@ node: open-edges
 layer: open
 related: [index, relations, splitting-law, joining-law, modules-broker, modules-lowering, modules-staging, permission-model, live-environment, resolution-patterns]
 status: open
-updated: 2026-07-27
+updated: 2026-09-01
 ---
 
 # Open edges
@@ -645,6 +645,69 @@ quorum of the bridge ([[category-bridge]], P5), its independence domains are the
 separate typed modules the shares live in, and what picks the tier is edge 4. Nothing
 homeless. Permission is a set of processes agreeing on a crossing, which is the bridge
 connector's verify; no new mechanism, no owner.
+
+## From the C-backend drop (2026-09-01)
+
+Two edges opened by `d8bcec5` and `d0c5dd5`, which deleted
+`lib/lowering/c/{mach,assemble,emit}.chiral`, `prog/compiler-c.prog` and the four
+`e166_*` fixtures. ⚑ **Neither edge has an element number, deliberately.** The
+author has assigned none, and the deferral rule forbids naming an `E#` that is not
+already minted. Mint one in the change that closes the edge.
+
+21. **Where `lib/evidence/ddc.chiral` points now.** [[decision-self-verification]]
+    §0 moved DDC off the self-verification route: self-verification is N
+    semantically distinct judgment cores that must agree, on the criterion of
+    different FORMULATIONS, and DDC answers the trusting-trust axiom instead,
+    which `HANDOFF.md`'s SCOPE defers to the ownership-and-trust track. The file
+    keeps a real job in the new scheme: it is the **referee**, the thing that
+    adjudicates whether independently produced answers form a quorum and agree.
+    Nothing else in the tree does that.
+
+    **What transfers.** Verdicts as values, so a caller cannot read a divergence as
+    a pass. A divergence that names WHICH two legs disagreed. A quorum gate that
+    fires before any byte is read. And the file's own ⚑, which is the argument the
+    new scheme needs verbatim: *agreement is not a quorum, because two runs of the
+    SAME compiler agree with each other by construction.*
+
+    **What does not transfer, and it is the substance of the edge.**
+    - `leg2-disjoint?` demands that both `language` and `toolchain` differ. Three
+      judgment cores are all chirality, all chirality-native, so **every** quorum
+      would come back `ddc-bad-quorum "provenance not pairwise disjoint"`. The
+      predicate is right for the threat it was written against and wrong for this
+      one.
+    - `Prov` has no FORMULATION axis. Its four fields are language, toolchain,
+      author and epoch. The threat has changed from a backdoored toolchain to a
+      shared mistake in how the rule set was encoded, and no field of `Prov`
+      records how a core encodes the rules.
+    - `ddc-fold` compares BYTES. Different formulations of one judgment agree on a
+      **VERDICT**, and their byte-level outputs have no reason to match. The
+      comparator is the wrong comparator for the new subject.
+
+    ⚑ **And it currently gates nothing.** After the drop, `ddc-fold`, `ddc-legs`,
+    `ddc-compare`, `ddc-verdict-code`, `ddc-leg0`, `ddc-leg1`, `ddc-legc`,
+    `ddc-legcc` and `DdcR` have **zero callers and zero assertions**;
+    `e166_ddc_legc.prog` was their only exercise. The file stays reachable only
+    because `lib/evidence/test-floor.chiral:31` imports it for `bytes=?`. **A
+    verdict nothing consults is not a gate**, which is the failure this tree names
+    repeatedly ([[testing-floors]] Rule 3 and its run-the-mutant rule,
+    [[banks/verification]] §5), and it now applies to the file that owns the
+    concept. Say it rather than let the module read as coverage.
+
+22. **`lib/memory/alloc-fixed.chiral` is at zero importers, and that is
+    DELIBERATE.** The C-leg blob was its only importer and went with the drop. The
+    module stays by author decision: the two allocators exist so a future metis
+    program can take `alloc-fixed` or `alloc-growing` as it needs, which is the
+    entire reason `alloc.chiral` is an interface record with the instances beside
+    it ([[banks/verification]] Shard 8b). Recorded here because an unexplained
+    zero-importer module is exactly what a cleanup pass deletes as dead code, and
+    the reason it is kept lives nowhere the deleter would look.
+
+    **What is genuinely open, as distinct from the record above:** no gate compiles
+    it any more. It left the compile-only root set with the C-leg blob (roots went
+    88 to 87), so nothing catches it rotting against `Alloc`'s five accessors. The
+    edge is whether the fixed allocator gets a root of its own, an
+    interface-conformance check like the one the 37-field `Mach` gets from having
+    two instances, or a stated acceptance that it rots until someone needs it.
 
 ## Sequencing questions, not yet committed
 
