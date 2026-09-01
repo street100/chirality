@@ -1,47 +1,162 @@
 ---
 node: arc-text-tools
 layer: navigation
-related: [arcs/README, goals/self-tooling, arcs/zero-python-arc, arcs/diagnostics-arc, records/baseline-alignment, index]
+related: [arcs/README, goals/self-tooling, arcs/zero-python-arc, arcs/binary-split-arc, records/baseline-alignment, index]
 status: current
 updated: 2026-09-01
 ---
 
-# Arc: text tools as packable features
+# Arc: the text primitives
 
 - goal: [[goals/self-tooling]]
 - reserved element block: **none**. New rows write `UNASSIGNED`.
-- serves: [[arcs/zero-python-arc]] (the tools it replaces), [[arcs/diagnostics-arc]]
-  (the render half it shares)
+- serves: [[arcs/zero-python-arc]] (the nine tools it replaces),
+  [[arcs/binary-split-arc]] (what a tool binary carries)
 
-## The shape
+## The bet
 
-Not nine programs. A set of **tiny pure features**, each one an arrow between two
-payload types, that a config packs into a set. `grep`, `fzf`, `cut`, `sort`,
-`uniq`, `diff`, `wc` are not tools here; they are compositions of these features,
-and a tool is a named pack plus an entry.
+**Four primitives, not a tool set.** The classic text tools are compositions of a
+very small number of operations, and this repo already has most of them. The work
+is to find the smallest set that gives full coverage, not to port `grep`.
 
-This is why the arc exists separately from [[arcs/zero-python-arc]]: that arc
-tracks the nine Python files leaving, this one tracks the floor they leave onto.
-A feature lands once and every tool downstream gets it.
+The test of the bet is the coverage table below: if a classic tool is not a short
+composition of things in this repo, the primitive set is wrong.
 
-Each feature is pure `->`, so it is a `flow-pure` step in
-`prog/manas/core/flow.chiral` and needs no backend. The composition is checked by
-`flow-ty` before anything runs.
+## Coverage — what the primitives have to yield
+
+| classic tool | composition | status |
+|---|---|---|
+| `grep` | `find-all` + `filter` | needs P1 |
+| `grep -c` | `find-all` + `length` | needs P1 |
+| `cut`, capture groups | `find-all` → spans → `str-sub` | needs P1 |
+| `sed s///` | `find-all` + `str-replace` over spans | needs P1 |
+| `tr` | `map-list` over bytes | **built** |
+| `sort` | `list-sort` with a caller's comparator | **built**, E152 |
+| `uniq` | `list-dedup-adj` | **built**, E156 |
+| `wc` | `foldl` | **built** |
+| `head`, `tail` | `ms-take`, `ms-drop` | **built** |
+| `fzf` | subsequence pattern + P2 score + `list-sort` | needs P1, P2 |
+| `diff` | P3 | needs P3 |
+| `comm`, `join` | P3, or a sorted merge | needs P3 |
+| `column`, `fmt` | `Doc` + `r-row` | **built**, E158/E174 |
+| `jq` | `protocol/json` | **built** |
+| citation checking | `find-all` + P4 addresses | needs P1, P4 |
+
+Two results fall out of writing this table:
+
+**`tr` and case-folding need no primitive.** A byte-class map is `map-list` over
+`Bytes`, and `str-replace` covers the literal case. An earlier draft of this arc
+listed a byte map as owed; it is not.
+
+**Fuzzy matching needs no matcher of its own.** A subsequence test is the pattern
+`.*n.*e.*e.*d.*l.*e.*` under P1. What fzf actually needs beyond P1 is the *score*,
+because `list-sort` already takes the caller's comparator. That is P2, and it is
+small.
+
+## The primitives, as elements
+
+An arc is a group of elements and each of these is one element. Four are the text
+floor; two are enablers this arc depends on but does not own.
+
+### P1 — the matcher, returning spans · **E173**, minted, `design`
+
+`find-all : Ctx -> Pat -> Bytes -> (List Span)`.
+
+Already drafted at `docs/examples/E173-total-matcher.md` as an **Antimirov
+partial-derivative** matcher: `pd` returns the residual set, `step-set` advances
+it, `accepts` decides, and `run-from : Bytes -> I64 -> I64 -> (List Pat) -> I64
+-> I64` already returns *the end offset, or -1*. So the drafted design is span
+-shaped at the bottom; what is owed above it is the all-matches enumeration.
+
+**It returning spans rather than `Bool` is what makes it one primitive instead of
+four.** A span answers "does it match", "where", "what did it capture" and "how
+many" with one pass. Six rows of the coverage table collapse onto it.
+
+State: worked example drafted, **no spec, audit gate not run**.
+
+### P2 — match score · `UNASSIGNED`
+
+`score : Pat -> Str -> I64`, pure, total.
+
+The whole remaining gap between `completion.chiral` (64 lines, prefix-only) and
+ranked select, because `list-sort` already takes the comparator. Small.
+
+### P3 — edit script over two sequences · `UNASSIGNED`
+
+`diff : (-> (0 A) (-> A A Bool) (List A) (List A) (List Edit))`.
+
+Generic in the element type, so it serves lines, spans, rows and records.
+Yields `diff`, `comm` and `join`, and it is what makes reviewing a patch and
+appending to a `-record.md` mechanical rather than manual.
+
+### P4 — the stable address · `UNASSIGNED`
+
+A payload type plus the discipline that mints an id and preserves it across an
+edit. **Not merely a missing function**, which is why it is last and hardest.
+
+`prog/manas/core/flow.chiral` has `ty-span`, and a span is a *position*.
+Positions rot the way line numbers rot, and that rot is four rows in
+[[records/baseline-alignment]] already: BA-13, BA-20 (294 citations naming a path
+that does not exist), BA-21 (161 bare `:NN` spans with no subject a check can
+name), BA-22.
+
+A working scheme exists in this repo by hand — [[records/README]]'s row ids, with
+the invariant written down: *"Never renumber a row that already exists. Its ID is
+cited elsewhere."* That is an address, and it wants to be a type.
+
+The render half is already built: `Doc`'s `d-tag` carries a semantic role at zero
+width and zero text.
+
+### Enablers this arc depends on and does not own
+
+- **E148** `getdents64`, the corpus walk. Minted, `design`, no example, no spec.
+  `flook.chiral` holds 264 inert lines waiting for it.
+- **E150** `argv`. Minted, `design`; example and spec exist and the capability is
+  proven by a 15-line probe over `/proc/self/cmdline`.
+
+A content digest is owed by [[arcs/zero-python-arc]] (3 call sites, 2 files) and
+is **not** a text primitive; it is provenance. It stays that arc's author call.
+
+## How this is actually used
+
+Three layers, and only the third is a packaging choice.
+
+**1. A feature is a module.** `lib/text/*`, imported the way `prelude/string` is.
+Inside a chirality program a primitive is an import and nothing more. This is not
+a decision; it is how the module key works.
+
+**2. A tool is an entry.** `MAP.md`: *"a `.prog` defines an entry, and two entries
+in one blob is a duplicate label."* One entry per blob is structural, so a tool is
+a `.prog`.
+
+**3. One entry or many is a packaging decision, and it is cheap either way.**
+
+- **Many:** one tiny `.prog` per tool. [[arcs/binary-split-arc]] measured the
+  tools tier at **6 modules, 27,222 bytes** against the 780 KB a tool costs today
+  by importing `lowering/compile-all` for a ten-line fd reader. A per-tool binary
+  over the text tier is in that range.
+- **One:** a single entry dispatching on `argv`. `bin/chirality` already does
+  exactly this for `compile | run | check | test | help`, so the precedent is in
+  the tree.
+
+The measured cost says there is no bundling pressure. A multi-call entry needs
+E150 anyway, and E150 is needed regardless. **So the library is the artifact and
+the entry shape can change later without touching a primitive.** This arc does not
+settle it, and does not need to.
 
 ## REQUIREMENTS
 
-1. **Every feature is total.** A feature whose cost is not bounded in its input
-   cannot be typed here, per `PRINCIPLES.md` §2. This is the requirement that
-   picks the algorithm, see *Why the constraint helps* below.
-2. **Every feature is pure `->`.** No feature reads a file or a directory. Corpus
-   access is the caller's, which is what makes a feature testable without a
-   fixture tree.
-3. **Every feature is reachable from a pack, not only from a call site.** A
-   feature no config can name is a library function, not a feature.
+1. **Every primitive is total.** A primitive whose cost is not bounded in its
+   input cannot be typed here, per `PRINCIPLES.md` §2.
+2. **Every primitive is pure `->`.** None reads a file or a directory. Corpus
+   access is the caller's, which is what makes each testable without a fixture
+   tree, and what makes each a `flow-pure` step in `manas/core/flow.chiral`.
+3. **The coverage table holds.** Every row is a short composition, or the
+   primitive set is wrong and this arc changes rather than the table.
 4. **Each replacement is verified against the tool it replaces on the same
    inputs**, inherited from [[arcs/zero-python-arc]] requirement 3.
 
-## Why the constraint helps rather than costs
+## Why the constraint picks the algorithm
 
 `.planning/PRIMITIVES-FOR-NATIVE-TOOLS.md`, measured from writing `prose-lint`:
 
@@ -49,114 +164,30 @@ Each feature is pure `->`, so it is a `flow-pure` step in
 > would do. That is why the native version is 2.4x slower than the awk one. **The
 > algorithm is the cost, not the compiled code.**
 
-and the constraint that follows:
+and:
 
 > A backtracking regex engine has unbounded cost, and P2 says a process's cost is
 > its type. The shape that fits is a **total matcher with a bounded arrow**.
 
 A backtracking matcher cannot be typed here, so it cannot be written. What can be
-typed is a one-pass automaton whose cost is linear in the input and independent of
-the pattern count, and that is also the fast one. The language's constraint and
-the performance win select the same algorithm. That is the argument for building
-these here rather than shelling out, and it is measurable rather than aesthetic.
-
-## The floor that already exists
-
-Do not rebuild these.
-
-| feature | provided by | element |
-|---|---|---|
-| read a file by path, read stdin | `openat` → `read-fd-all` | built |
-| write a file, write stdout | `open-create` + `write-fd`, `put`/`print` | E105 |
-| literal search, one needle | `str-find`, `str-find-from` (extern) | built |
-| slice, length, concat | `str-sub`, `str-len`, `str-cat` (extern) | built |
-| split on a separator | `str-split` | built |
-| trim, pad, join, replace, case-fold | `prelude/string` | built |
-| compare two strings | `str-cmp` | E151 |
-| sort with a caller's comparator | `list-sort` | E152 |
-| dedup adjacent | `list-dedup-adj` | E156 |
-| take, drop, map, filter, fold, find | `prelude/list` | built |
-| ordered map and set | `prelude/map`, `prelude/set` | E27 |
-| layout: text, cat, line, nest, group, tag | `Doc` — `prelude/doc.chiral` | E158 |
-| horizontal composition, tables | `Rendering` + `r-row` | E174 |
-| print a chirality `Term` | `surface/pretty` | E181 |
-| UTF-8 | `protocol/utf8` | built |
-| JSON | `protocol/json` | built |
-
-`Doc`'s `d-tag` carries a semantic role at **zero width and zero text**. That is
-the render-side half of addressing, and it is already built.
-
-## Minted, owed, and blocking
-
-| element | feature | state | blocks |
-|---|---|---|---|
-| E173 | multi-pattern matcher, one pass, bounded | design. Example drafted, **no spec**, audit not run | everything below the line; 142 Python call sites |
-| E148 | directory walk, `getdents64` | design. **No example, no spec** | every corpus tool; `flook.chiral` has 264 inert lines |
-| E150 | `argv` | design. Example **and** spec exist; capability proven by a 15-line probe | pack selection at runtime |
-| E176 | `str-sub` range discipline | design | correctness of every slice; BA-35 |
-
-E173 is the keystone twice over: it is the fix for the 2.4x, and it is the
-general operation that would open `PureFn`'s closed sum of six constructors.
-
-## Owed, unminted — the author call
-
-Five features with no element. Per `CLAUDE.md`'s deferral rule none is named as a
-number anywhere until minted, and this arc holds no reserved block.
-
-| feature | arrow | why it is owed |
-|---|---|---|
-| **subsequence predicate** | `Str -> Str -> Bool` | fuzzy select's core test. `completion.chiral` is 64 lines and prefix-only |
-| **match score** | `Str -> Str -> I64` | ranking. `list-sort` already takes the comparator, so this is the whole remaining gap between prefix completion and fzf |
-| **stable address** | a `Ty`, not a position | the one that matters. See below |
-| **line diff / LCS** | `(List Str) -> (List Str) -> (List Edit)` | reviewing a patch, and the `-record.md` append discipline |
-| **content digest** | `Bytes -> Str` | 3 call sites, 2 files. Named as an author call in [[arcs/zero-python-arc]] and still unminted |
-
-### Addressing is the one that is not just a missing function
-
-`prog/manas/core/flow.chiral` has `ty-span`, and a span is a **position**.
-Positions rot exactly the way line numbers rot, and that rot is already four
-rows in [[records/baseline-alignment]]: BA-13, BA-20 (294 citations naming a path
-that does not exist), BA-21 (161 bare `:NN` spans with no subject a check can
-name), BA-22.
-
-A working stable-address scheme already exists in this repo, by hand:
-[[records/README]]'s row IDs, with the invariant written down — *"Never renumber a
-row that already exists. Its ID is cited elsewhere."* That is an address, and it
-wants to be a type rather than a convention.
-
-The output half is built (`Doc`'s `d-tag`). What is missing is the payload type
-and the discipline that mints and preserves an id across an edit.
-
-## What packing means, and what it needs
-
-A pack is a named set of features. `MAP.md` already documents `.profile` as *"a
-named frozen port set … which the build consumes and nothing imports"*, and
-[[arcs/binary-split-arc]] measures what packing buys: a text tool that imports
-`lowering/compile-all` for a ten-line fd reader carries 780 KB, where a tools tier
-resolves to 27,222 bytes.
-
-Two open questions this arc does not settle:
-
-1. **Where a pack is declared.** `.profile` is documented with zero instances and
-   no consumer (BA-10), while `prog/manas/profile/` holds nine working profiles
-   written as `.chiral` values. The author has said `.chiral` is fine for now.
-2. **Whether patterns are fixed at pack time or accepted at run time.** A pack of
-   literal needles is fully bounded and checkable at compile time; runtime
-   patterns are bounded per pattern but the set is dynamic. This changes E173's
-   type and belongs in its spec.
+typed is a one-pass automaton, linear in the input and independent of the pattern
+count, which is also the fast one. E173's drafted partial-derivative design is
+that shape. The constraint and the performance win select the same algorithm.
 
 ## Resume state
 
-Nothing is in flight. The order is forced by the dependency, not by preference:
+Order is forced by dependency, not preference.
 
-1. **E173** — needs the pipeline run: worked example exists, spec does not, audit
-   not run. Its fork is question 2 above.
-2. **E148** — needs a worked example first; nothing exists.
-3. **subsequence + score** — small, and unblocked by either. Two pure functions
-   that turn `completion.chiral` from prefix-only into ranked select. The cheapest
-   real progress in this arc.
-4. **addressing** — wants a decision before an example, because it changes `Ty`.
+1. **P2 score** — unblocked by anything, small, and turns prefix completion into
+   ranked select. Cheapest real progress in the arc.
+2. **P1 / E173** — needs the pipeline: example exists, spec does not, audit not
+   run. Its open fork belongs in that spec: are patterns fixed at pack time, fully
+   bounded and checkable at compile time, or accepted at run time, bounded per
+   pattern with a dynamic set? That changes the type.
+3. **P3 diff** — independent of P1; can run in parallel with it on another day.
+4. **P4 addressing** — wants a decision before an example, because it changes a
+   payload type that `Flow` already uses.
 
 **Owed from the author:** a reserved element block, or a ruling that this arc
-mints into an existing one. Until then the five features above stay unnumbered and
-this arc cannot schedule them.
+mints into an existing one. Until then P2, P3 and P4 stay unnumbered and cannot
+be scheduled.
