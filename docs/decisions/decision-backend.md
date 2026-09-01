@@ -3,7 +3,7 @@ node: decision-backend
 layer: decision
 related: [modules-lowering, axis-altitude, modules-staging, dump-integration, floor-agreement, status-ledger]
 status: settled
-updated: 2026-08-01
+updated: 2026-09-01
 ---
 
 # Decision: own typed backend, no compile to C
@@ -16,18 +16,28 @@ updated: 2026-08-01
 > mechanism is already in place — `mach.chiral` is a 137-line record of backend
 > operations and `mach-listing.chiral` is a second conforming `Mach` whose own
 > header says it "exists to prove emit-core is genuinely target-independent".
-> A C-emitting third target is that same seam used again. It was **E166**, and
-> **it is now built** (2026-08-24): `mach-c.chiral` inhabits all 37 `Mach` fields,
-> gcc compiles what it emits, and the resulting compiler is admitted by
-> conformance and convicted by bit-identity — its purpose being the
-> diverse-double-compilation leg (E53) that Python's retirement would otherwise
-> leave with only one leg. The build **does not touch this fork**: the canonical
-> instance still lowers through the typed assembly floor to `mach-x64`, and the
-> C target exists only inside the verification leg. What this note still forbids,
-> unchanged: the canonical instance compiling *through* C or depending on an
-> external codegen library. See [[testing-floors]] and [[banks/verification]]
-> Shard 8 for what the leg does and does not buy — disjoint provenance, not a
-> smaller trusted base.
+> A C-emitting third target is that same seam used again. It was **E166**, it was
+> **built 2026-08-24**, and it was **dropped 2026-09-01** (`d8bcec5`, `d0c5dd5`).
+> While it stood, `mach-c.chiral` inhabited all 37 `Mach` fields, gcc compiled
+> what it emitted, and the resulting compiler was admitted by conformance and
+> convicted by bit-identity; its purpose was the diverse-double-compilation leg
+> (E53) that Python's retirement would otherwise leave with only one leg. The
+> build never touched this fork: the canonical instance still lowers through the
+> typed assembly floor to `mach-x64`. What this note forbids is unchanged, and
+> was never at issue: the canonical instance compiling *through* C, or depending
+> on an external codegen library.
+>
+> ⚑ **Why it was dropped, 2026-09-01.** The leg shared `compile-front` and
+> `compile-back` whole with the canonical instance and differed only at emit. That
+> makes it a second **target** under one formulation, and self-verification here
+> goes through N semantically distinct judgment cores that must agree. `CLAUDE.md`
+> states the criterion: *"three encodings of one rule set would be worth nothing"*.
+> A second target is one encoding emitted twice, which is less than that. The
+> `Mach` seam itself is untouched and still has two instances, `lowering/x64/mach`
+> and `lowering/listing/mach`, so the 37-field contract is still held to by
+> something other than its only user. See [[decision-self-verification]] for the
+> route that replaces the leg, and [[testing-floors]] and [[banks/verification]]
+> Shard 8 for what the leg bought while it ran.
 
 ## The contradiction
 

@@ -47,8 +47,9 @@ further clause. `sys-tal` is the case, its 64 defs being `(t-seq ...)` and
 
 Write `(import "lowering/x64/mach")`, not `(import "mach")`.
 
-On the basename alone, `mach` resolves four ways (`lowering/mach|x64|c|listing/`)
-and `emit` twice. Taking the path as the key means:
+On the basename alone, `mach` resolves three ways (`lowering/mach|x64|listing/`).
+It was four, and `emit` resolved twice, until the C target was dropped on
+2026-09-01. Taking the path as the key means:
 
 - the directory is the identity, not decoration;
 - basename collision is unreachable rather than named. `ports/proc` and `proc` were
@@ -109,7 +110,7 @@ lib/
     upper/     upper to tal
     tal/       the typed-assembly floor
     mach/      the frozen contract and target-independent codegen
-    x64/  c/  listing/      one directory per target
+    x64/  listing/        one directory per target
     ...        a new target lands in one new directory; nothing else moves
   ports/       where a crossing is DECLARED. Nothing else.
   capability/  what a held port is
