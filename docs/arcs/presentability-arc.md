@@ -78,6 +78,34 @@ directly: BA-24
 (`PRINCIPLES.md`), BA-30 (`MAP.md:5`, `:37-40`), BA-31 (`docs/banks/profile.md`
 and `docs/definitions/testing-floors.md`), BA-36 (`README.md:63`, `CLAUDE.md`).
 
+## Working queues, and why there are two of them
+
+Both are untracked author directives opened 2026-08-31, and they are deliberately
+**not** merged into each other or into this file. `.gitignore:12` excludes
+`.planning/`, so neither survives a fresh clone and this arc does. A finding that
+a second reader needs goes to `records/`, not to either queue.
+
+| file | what it does | what it is not |
+|---|---|---|
+| `.planning/DOC-AUDIT-QUEUE.md` | per-document audit against the authority gradient: build-state truth, line-evidence truth, settled-decision conformance, graph integrity, refraction honesty, plus goal / limits / structure | not a prose pass |
+| `.planning/DOC-CLEANUP-PASS.md` | cut dead references, cut excess, de-complicate the prose, gated on `tools/prose-lint/prose-lint.sh --regress` | not a claim check |
+
+Both run **serial, one document and one agent at a time**, by standing user
+directive.
+
+Two facts from those queues that a reader needs and that would otherwise be lost
+with them:
+
+- **Deferred is not deleted.** The ownership-and-trust track documents stay and
+  their content stays. They are only required to be honestly marked unbuilt. See
+  [[goals/ownership-and-trust]].
+- **The two bootstrap documents are an unresolved author call.**
+  [[bootstrap]] is the re-bootstrap climb with its four stages and gates;
+  [[bootstrap-sequence]] is a foundation note. Both landed in `definitions/` from
+  different places in the old tree. Whether they are one concept or two has not
+  been decided, and auditing either is worthless until it is. This is a
+  requirement-4 item that no element covers.
+
 ## Scope
 
 [[goals/presentability]]'s outside-reader criteria cannot be finished from inside
