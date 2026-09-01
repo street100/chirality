@@ -1,7 +1,7 @@
 ---
 node: arc-text-tools
 layer: navigation
-related: [arcs/README, goals/self-tooling, arcs/zero-python-arc, arcs/binary-split-arc, records/baseline-alignment, index]
+related: [arcs/README, goals/self-tooling, banks/text, arcs/zero-python-arc, arcs/binary-split-arc, records/baseline-alignment, index]
 status: current
 updated: 2026-09-01
 ---
@@ -12,6 +12,9 @@ updated: 2026-09-01
 - reserved element block: **none**. New rows write `UNASSIGNED`.
 - serves: [[arcs/zero-python-arc]] (the nine tools it replaces),
   [[arcs/binary-split-arc]] (what a tool binary carries)
+
+The concept, refracted across its homes, is [[banks/text]]. Read it before
+saying this arc is missing something.
 
 ## The bet
 

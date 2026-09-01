@@ -31,6 +31,7 @@ exist to end it.
 | [[banks/memory]] | space as a port; disciplines as profile choices | malloc/free / GC / ownership / the heap |
 | [[banks/evidence-and-split]] | category C: cross-checked truth where proof runs out | try/catch validation / trust store / attestation / N-version |
 | [[banks/verification]] | layered independent instruments, each blind above its own branch point, ranked by expectation provenance | "the test suite" / CI + coverage % / the self-host fixpoint / golden tests |
+| [[banks/text]] | a payload, a way to name a part of it, and total functions between those | the regex engine / the string library / the Unix text tools / the editor buffer |
 
 ## The schema
 
