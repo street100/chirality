@@ -13,17 +13,22 @@ Suite **303 assertions, 0 failed, 11 phases, 88 roots**. `bin/chirality-bin`
 
 ## ⚑ BLOCKERS AND HAZARDS — read before starting anything
 
-### 1. `.planning/` is untracked, so element state is invisible
-`.gitignore:12` excludes it by master's decision. The catalog, the ledger and
-every SPEC in this arc are **on disk only**. Consequences that already bit:
-- **Two sessions minted `E173` independently** and nothing caught it until a merge
-  put both `docs/examples/INDEX.md` rows side by side. Mine renumbered to E182.
-- Six built elements were invisible to any other reader until this arc's
-  build-state block was added to `status-ledger.md` on 2026-09-01.
-**Working rule:** anything a second reader must know goes in a **tracked** file —
-`docs/examples/INDEX.md`, `docs/definitions/status-ledger.md`, or `LANES.md`.
-Mint only inside Lane A's band **E184–E189**, and land the INDEX row in the same
-change; the INDEX row is the only collision detector there is.
+### 1. Element state lives in TRACKED docs — this is FIXED, keep it that way
+`.planning/` is excluded by `.gitignore:12`, and the consequence is not just
+invisibility: **every worktree carries its own divergent copy.** This arc's rows
+lived only in one worktree's copy; the live checkout never had them, which is a
+split-brain, and is why two sessions minted `E173` with nothing detecting it.
+
+**Fixed 2026-09-01.** The tracked homes now carry element state:
+- **`docs/elements/diagnostics-arc.md`** — every row this arc built or minted,
+  catalog and ledger text verbatim.
+- **`docs/definitions/status-ledger.md`** — the arc's build-state block, the suite
+  figures, and the compiler size.
+- Both `.planning/` copies reconciled (12 rows + 4 SPECs).
+
+**Keep it that way:** an element fact a second reader needs goes in a tracked file
+in the same change that creates it. `.planning/` is for working detail — change
+plans, decision tables, SPEC bodies — that may legitimately die with the worktree.
 
 ### 2. `E176` — `str-sub` is unclamped and SEGFAULTS. This is the sharpest thing open.
 `prelude/prelude.chiral:80` is a raw extern with no bounds behaviour;

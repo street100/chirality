@@ -117,10 +117,14 @@ agree on. **This already cost us one collision:** two sessions independently min
 `E173`, and it surfaced only because a merge happened to put both INDEX rows side
 by side. Nothing detected it.
 
-**The guard, until something better exists:** each lane mints only inside its own
-band above (**A: E184–E189, B: E190–E195**), and a new element's row lands in
-`docs/examples/INDEX.md` — which **is** tracked — in the same change that mints it.
-The INDEX row is the collision detector; the catalog row is the detail.
+**The guard, and it is now structural rather than a convention.** Each lane mints
+inside its own band (**A: E184–E189, B: E190–E195**), and a new element's row lands
+in **two tracked files** in the same change that mints it:
+`docs/examples/INDEX.md` and **`docs/elements/`**. Those are the only tracked
+homes, so they are the only collision detectors that exist — and unlike
+`.planning/`, they do not fork per worktree. `.planning/` keeps the working detail
+(change plans, decision tables, SPEC bodies), which may die with a worktree
+without costing anything.
 
 ---
 

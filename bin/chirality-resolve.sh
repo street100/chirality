@@ -63,6 +63,31 @@
 # lib/module/resolve.chiral's try-exts.
 CHIRALITY_EXTS=(.chiral .port .manifest)
 
+# ── The two caches, and why they are sound ──────────────────────────────────
+#
+# Both memoize a PURE function of a static tree: a file's import list is a
+# function of its bytes, and a key's resolution is a function of which files
+# exist. Neither caches the DFS state -- `seen` and `order` stay per-call, so
+# every blob still gets its own visited set and its own dependency order. That
+# separation is the whole safety argument: caching the walk would make two
+# blobs share a dedup set and silently drop modules from the second.
+#
+# Scope is one shell process. `bin/chirality` sources this file per invocation,
+# so `chirality check` gets a cold cache every time; what the cache is for is
+# the callers that resolve MANY roots in ONE shell, which is run-tests.sh's
+# Phase 7 (38 roots over one heavily-overlapping closure) and any driver that
+# loops. A tree mutated mid-process would be stale, so tools/test/mutant.sh
+# resolves each mutated tree in its own subshell; set CHIRALITY_NO_CACHE=1 to
+# disable both if a caller ever needs to re-read a tree it just wrote.
+#
+# ⚑ MEASURED, 2026-08-31, before any of this: resolving prog/compiler.prog cost
+# 1657ms against 744ms to COMPILE the 732 KB blob it produces, and a root with
+# no imports at all cost 88ms against 14ms. The provider was the dominant cost
+# of every gate in the tree, and none of it was compilation.
+declare -A _CHIR_IMP=()    # file path        -> its import keys, newline-joined
+declare -A _CHIR_PROBE=()  # "root|key"       -> "rc:path"
+declare -A _CHIR_SRC=()    # file path        -> its bytes
+
 # chirality_imports FILE -- the module keys FILE imports, one per line.
 #
 # Comment lines are stripped first. The AUTHORITATIVE provider
@@ -70,30 +95,114 @@ CHIRALITY_EXTS=(.chiral .port .manifest)
 # doc comment that merely mentions an import form is not a dependency to it; a
 # bare grep made it one here. resolve.chiral itself is the proof -- its own
 # header comment names an import form.
+#
+# ⚑ THE PIPELINE STAYS, AND THAT IS A MEASUREMENT RATHER THAN A PREFERENCE.
+# It was first rewritten as pure bash to kill the three forks per module. That
+# is SLOWER, measured 2026-08-31: resolving prog/compiler.prog went 660ms ->
+# 1294ms and a 39-root sweep went 17.3s -> 24.7s, because `sed` and `grep` are C
+# reading a file once while bash parameter expansion walks every line of every
+# file in the interpreter. Three forks of a fast program beat zero forks of a
+# slow one at this size. What is left is the CACHE, which is where the win
+# actually was.
 chirality_imports() {
-  { sed -E 's/^[[:space:]]*;.*$//' "$1" 2>/dev/null \
-      | grep -oE '\(import "[^"]+"\)' \
-      | sed -E 's/.*"([^"]+)".*/\1/'; } || true
+  local f="$1"
+  if [ -z "${CHIRALITY_NO_CACHE:-}" ] && [ -n "${_CHIR_IMP[$f]+x}" ]; then
+    [ -n "${_CHIR_IMP[$f]}" ] && printf '%s\n' "${_CHIR_IMP[$f]}"
+    return 0
+  fi
+  local out
+  out="$( { sed -E 's/^[[:space:]]*;.*$//' "$f" 2>/dev/null \
+              | grep -oE '\(import "[^"]+"\)' \
+              | sed -E 's/.*"([^"]+)".*/\1/'; } || true )"
+  [ -z "${CHIRALITY_NO_CACHE:-}" ] && _CHIR_IMP[$f]="$out"
+  [ -n "$out" ] && printf '%s\n' "$out"
+  return 0
 }
 
-# _chirality_probe ROOT KEY -- echo the resolved path, or nothing.
-#   0 = hit (path on stdout)   1 = miss   2 = extension collision (msg on stderr)
-_chirality_probe() {
-  local root="$1" key="$2" e hits=()
+# _chirality_deps FILE -- sets the array _CHIR_DEPS. The walker's form.
+#
+# `for dep in $(chirality_imports "$f")` forks a subshell on EVERY module of
+# EVERY blob, cache hit or not, which is the fork the cache could not remove.
+# Module keys are root-relative paths and contain no whitespace, so unquoted
+# expansion splits them exactly as the command substitution did, without a
+# process. ⚑ _CHIR_DEPS is global and `_chirality_walk` RECURSES, so the walker
+# must copy it into a local before descending.
+_chirality_deps() {
+  local f="$1"
+  if [ -z "${CHIRALITY_NO_CACHE:-}" ] && [ -n "${_CHIR_IMP[$f]+x}" ]; then
+    # shellcheck disable=SC2206
+    _CHIR_DEPS=( ${_CHIR_IMP[$f]} ); return 0
+  fi
+  local out
+  out="$( { sed -E 's/^[[:space:]]*;.*$//' "$f" 2>/dev/null \
+              | grep -oE '\(import "[^"]+"\)' \
+              | sed -E 's/.*"([^"]+)".*/\1/'; } || true )"
+  [ -z "${CHIRALITY_NO_CACHE:-}" ] && _CHIR_IMP[$f]="$out"
+  # shellcheck disable=SC2206
+  _CHIR_DEPS=( $out )
+  return 0
+}
+
+# _chirality_emit PATH -- write a module's bytes to stdout without forking.
+#
+# The concat loop ran `cat` once per module per blob: ~150 modules x 39 roots is
+# ~5,900 processes to copy files already in the page cache. `read -r -d ''` is a
+# shell builtin and reads the whole file, trailing newline included; the bytes
+# are then held so a second blob over the same module costs one printf. ⚑ It
+# stops at a NUL byte, which no source file in this tree contains -- and the
+# guard is not that claim, it is that every blob is byte-compared against the
+# pre-change resolver, which a truncation would break loudly.
+_chirality_emit() {
+  local p="$1" s
+  if [ -z "${CHIRALITY_NO_CACHE:-}" ] && [ -n "${_CHIR_SRC[$p]+x}" ]; then
+    printf '%s' "${_CHIR_SRC[$p]}"; return 0
+  fi
+  IFS= read -r -d '' s < "$p" || true
+  [ -z "${CHIRALITY_NO_CACHE:-}" ] && _CHIR_SRC[$p]="$s"
+  printf '%s' "$s"
+  return 0
+}
+
+# _chirality_probe_into ROOT KEY -- resolve without forking a subshell.
+#   Sets _CHIR_PROBE_PATH. 0 = hit  1 = miss  2 = extension collision (on stderr)
+#
+# The old form echoed its answer and every caller wrapped it in `$(...)`, which
+# is a fork per root per module. A resolve of the compiler walks ~150 modules
+# over 2 roots, so that alone was ~300 processes doing six `[ -f ]` tests each.
+# A collision is deliberately NOT cached: it prints, and it aborts the walk.
+_chirality_probe_into() {
+  local root="$1" key="$2" ck="$root|$key" v
+  if [ -z "${CHIRALITY_NO_CACHE:-}" ] && [ -n "${_CHIR_PROBE[$ck]+x}" ]; then
+    v="${_CHIR_PROBE[$ck]}"; _CHIR_PROBE_PATH="${v#*:}"; return "${v%%:*}"
+  fi
+  local e hits=()
   for e in "${CHIRALITY_EXTS[@]}"; do
     [ -f "$root/$key$e" ] && hits+=("$root/$key$e")
   done
   case "${#hits[@]}" in
-    0) return 1 ;;
-    1) printf '%s\n' "${hits[0]}"; return 0 ;;
+    0) _CHIR_PROBE_PATH=""
+       [ -z "${CHIRALITY_NO_CACHE:-}" ] && _CHIR_PROBE[$ck]="1:"
+       return 1 ;;
+    1) _CHIR_PROBE_PATH="${hits[0]}"
+       [ -z "${CHIRALITY_NO_CACHE:-}" ] && _CHIR_PROBE[$ck]="0:${hits[0]}"
+       return 0 ;;
     *)
       {
         echo "chirality-resolve: module extension collision on '$key'"
         echo "  ${hits[0]} and ${hits[1]} both resolve it"
         echo "  One key, two identities -- rename one."
       } >&2
+      _CHIR_PROBE_PATH=""
       return 2 ;;
   esac
+}
+
+# _chirality_probe ROOT KEY -- the echoing form, kept so an external caller that
+# learned the old shape still works. Nothing in the tree uses it.
+_chirality_probe() {
+  _chirality_probe_into "$1" "$2"; local rc=$?
+  [ $rc -eq 0 ] && printf '%s\n' "$_CHIR_PROBE_PATH"
+  return $rc
 }
 
 chirality_blob() {
@@ -107,9 +216,9 @@ chirality_blob() {
     [ -n "${seen[$key]+x}" ] && return 0     # re-import -- deduped
     local root f="" rc
     for root in "${roots[@]}"; do
-      f="$(_chirality_probe "$root" "$key")"; rc=$?
+      _chirality_probe_into "$root" "$key"; rc=$?
       [ $rc -eq 2 ] && return 1              # collision: already named on stderr
-      [ $rc -eq 0 ] && break
+      [ $rc -eq 0 ] && { f="$_CHIR_PROBE_PATH"; break; }
       f=""
     done
     if [ -z "$f" ]; then
@@ -122,8 +231,11 @@ chirality_blob() {
       return 1
     fi
     seen[$key]="$f"
+    # ⚑ copy before descending: _CHIR_DEPS is global and this recurses.
+    _chirality_deps "$f"
+    local -a deps=("${_CHIR_DEPS[@]}")
     local dep
-    for dep in $(chirality_imports "$f"); do
+    for dep in "${deps[@]}"; do
       _chirality_walk "$dep" "$f" || return 1
     done
     order="$order $key"
@@ -140,7 +252,7 @@ chirality_blob() {
   # -- the two providers are pinned against each other.
   local k
   for k in $order; do
-    cat "${seen[$k]}"
+    _chirality_emit "${seen[$k]}"
     printf '\n(end-module "%s")\n' "$k"
   done
 }
