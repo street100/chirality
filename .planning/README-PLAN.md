@@ -206,7 +206,60 @@ overturn; it is a real question with a number for an answer, and Q2 may be the
 same. If the questions split into "dismantles an assumption" and "just answers",
 the shape is not uniform and that is worth stating rather than forcing.
 
-### Worked instance: Q4
+### Worked instance: Q4, second draft 2026-09-01
+
+Author's framing, with the paren-audit escalation made honest. Edit in place.
+
+**Does a language with strong opinions have to fight you?**
+
+> Not really. What makes an opinionated language hard is the amount you have to
+> hold in your head. Strong typing already exists to mechanically exclude
+> categories of failure, and that part is not in dispute. What chirality leans on
+> is that if you can express anything, you can express the checker too. Error
+> handling stops being a fixed feature of the language and becomes something you
+> extend, one bug class at a time. A class a primitive covers is a class you stop
+> considering.
+>
+> `paren-audit` is the small version, 244 lines of chirality. Break a paren and
+> it names the form:
+>
+>     broken.chiral   def   is-space   58   390   389   1
+>     broken.chiral   FILE  depth      1
+>
+> Kind, name, the line the form opens on, opens, closes, delta. The counts run to
+> the end of the file because an unclosed form swallows everything after it,
+> which is why you get the first bad form rather than the last.
+>
+> The next step is a tool that repairs the file in place, and it is not built.
+> The report carries a count where a repair needs a position: delta +1 says this
+> form is missing one close paren, and something writing the file back has to
+> know which line. That is P1, the matcher returning spans, and P4, the stable
+> address, both named in `docs/arcs/text-tools-arc.md` and neither assigned. The
+> loop turns; this is where it has got to.
+>
+> | what | state | where | limit |
+> |---|---|---|---|
+> | usage on binders | enforced, gated | `lib/typing/qtt.chiral`, Phase 6 | |
+> | refinement types | enforced, gated | `lib/typing/refine.chiral` | `I64` only, `jg-refine-i64` |
+> | totality as the default | written, unreached | `lib/typing/totality.chiral` | zero importers, no termination judgment in `diag.chiral` |
+> | `->` against `=>` | carried, refused nowhere | `lib/typing/effects.chiral` | E171 |
+> | the classes covered so far | 7 refuse, 3 partial, 4 written and unreached, 3 design only, 12 not started | `docs/definitions/bug-classes.md`, unwritten | the count is the claim, and it is small |
+>
+> Where the checker is wired the load is genuinely off you. Where it is not, the
+> shape is light because nothing is weighing it.
+
+Open on this draft:
+
+- **Which table Q4 takes.** The four typing rows answer "what does the checker
+  demand of you". The bug-class row answers "how far does the extension claim
+  reach". Both are here and they may be two questions.
+- **Verified by running it**, 2026-09-01: the paren-audit output above is real,
+  from `sed`-breaking `is-space` in a copy of `prog/paren-audit.prog`. Neither
+  implementation has a write path, so the repair claim is future work in both.
+- `docs/definitions/bug-classes.md` does not exist yet. The counts come from the
+  draft further down this file. Citing it before it lands is a phantom.
+
+### Worked instance: Q4, first draft, superseded
 
 **Does a language with strong opinions have to fight you?**
 
