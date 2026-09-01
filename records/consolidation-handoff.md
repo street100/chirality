@@ -90,7 +90,8 @@ Recorded as wrong rather than explained away.
 ## Open, and how to continue
 
 **Cadence: serial, one document at a time, one agent at a time.** Standing author
-directive, restated in `.planning/DOC-AUDIT-QUEUE.md`. The first pass was
+directive; the authority is [[decisions/decision-dispatch-cadence]], tracked since
+2026-09-01, and `.planning/DOC-AUDIT-QUEUE.md` restates it. The first pass was
 dispatched as a sweep over all 138 remaining files and was stopped for that
 reason. Do not repeat it. Iterative passes, each one checkable.
 
@@ -110,10 +111,20 @@ Rules that bind the work:
   "SEEDED", every measured number with its date.
 - **An archive with no named successor is not an archive.** If no successor can be
   named, it is a KEEP and the reason is written down.
-- **A standing directive inside an archived file is hoisted, not buried.** Two
-  known and still open: `E69-E72-CHECKLIST.md` carries an AUTONOMY CONTRACT, and
-  `HARNESS-REFACTOR-CHECKLIST.md` carries a "migrating to rocq" invariant that is
-  false since external judgment was cut.
+- **A standing directive inside an archived file is hoisted, not buried.** The
+  rule stands. ⚑ This bullet previously named two instances as "known and still
+  open"; both were already closed when it said so, and a third has since closed.
+  - `.planning/archive/E69-E72-CHECKLIST.md` AUTONOMY CONTRACT: retired in
+    place 2026-09-01, `:12` and `:17`, marked "NOT A STANDING AUTHORIZATION"
+    and struck rather than deleted so a quote of it elsewhere is recognisable.
+  - `.planning/HARNESS-REFACTOR-CHECKLIST.md` "migrating to rocq" invariant:
+    retired in place 2026-09-01, `:45-66`. Invariant 1 needed no hoist and is
+    in the tree twice; invariant 2 is false in both halves, and the live rule
+    is repointed at `docs/arcs/zero-python-arc.md` requirement 1.
+  - `.planning/SCRIBA-UNBLOCK-MAP.md` serial-cadence directive: hoisted
+    2026-09-01 to `docs/decisions/decision-dispatch-cadence.md`, which quotes
+    all six sources and settles the three ways they disagreed. The map itself
+    is a KEEP, for the reason that note records.
 - **Do not mint an element number.** `LANES.md` reserves `E184-E189` and
   `E190-E195`; anything else writes `UNASSIGNED`.
 

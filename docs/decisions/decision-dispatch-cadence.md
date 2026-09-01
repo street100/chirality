@@ -97,6 +97,16 @@ document and one agent at a time, by standing user directive", and
 tracked and both remain correct as local restatements. This note is what they
 are instances of.
 
+`.planning/SCRIBA-UNBLOCK-MAP.md` was queued for archive once this hoist landed.
+It is **not** archived, and the reason is written down here because the queue
+will ask again: it is still the cited slice authority for the E96-E100 wave
+(`docs/elements/catalog.md:418`), for the S17 arena decomposition that the E81,
+E89, E90 and E91 examples and specs cite by section, and for E95's ground truth.
+Its S12(d) ruling also carries a guardrail with no tracked home: `Sock` stays
+`porttype`, and when real spawn returns, handing a socket to a child is a
+transfer crossing that consumes the linear cap, never a re-demotion to `data`.
+Until that lands somewhere tracked, the file is a KEEP.
+
 ## Why this tier
 
 A decision is answerable and a definition is not (`MAP.md`, "The doc tier sorts
