@@ -313,19 +313,55 @@ def check_f() -> list[str]:
     return errs
 
 
+# A code span shaped like a path, whatever its extension. G and R carry a `ctx`
+# so the banks' detached convention works — `ports.chiral` … (`:19`) — and a span
+# this pair cannot open must CLEAR that ctx. Leaving it set attributed a bare
+# `:NN` to whichever file resolved last, which was a different file two hundred
+# lines up. Measured 2026-09-01: verification.md:193's `:129` was reported
+# against alloc-fixed.chiral, and testing-floors.md:309's `:490-499` against
+# ddc.chiral, neither of which either line is about.
+PATHSPAN = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_/.-]*\.[A-Za-z][A-Za-z0-9]*"
+                      r"(?::\d+(?:[–-]\d+)?)?$")
+
+
+_UNIQUE_SRC: dict | None = None
+
+
+def _unique_src() -> dict:
+    """Bare basename -> the one file under lib/ or prog/ that carries it. A name
+    borne by two files is left out, so `mach.chiral` (three homes) stays
+    unresolvable. Docs cite by basename constantly — `loader.chiral:39` — and
+    without this 269 of the 456 line-numbered .chiral citations resolve to
+    nothing and are skipped. Measured 2026-09-01."""
+    global _UNIQUE_SRC
+    if _UNIQUE_SRC is None:
+        homes: dict = {}
+        for f in src_files("*"):
+            homes.setdefault(f.name, []).append(f)
+        _UNIQUE_SRC = {k: v[0] for k, v in homes.items() if len(v) == 1}
+    return _UNIQUE_SRC
+
+
 def _find_src(tok: str):
     for base in (ROOT, SCAFFOLD, SCAFFOLD / "chirality", SCAFFOLD / "lib"):
         p = base / tok
         if p.is_file():
             return p
+    if "/" not in tok:
+        return _unique_src().get(tok)
     return None
 
 
 def check_g() -> list[str]:
     """Line-numbered code citations in docs still fit the file. Handles the
     banks' detached convention: `ports.chiral` … (`:19`) — a bare `:NN` span
-    resolves against the last file span seen. Unresolvable files are skipped
-    (naming an unbuilt file in residue is legitimate)."""
+    resolves against the last file span seen. Two limits on that ctx, both
+    because a bare span read against the wrong file is a guess, and a check
+    aimed at a guess is worse than one that abstains: an unresolvable file
+    CLEARS the ctx rather than leaving the previous one standing, and the ctx
+    does not cross a blank line. Measured 2026-09-01 on E174-r-row-width.md,
+    where `doc.chiral:179-183` in one paragraph was carrying the `:360` and
+    `:368` of render.chiral four lines below it."""
     errs: list[str] = []
     nlines: dict = {}
 
@@ -337,18 +373,22 @@ def check_g() -> list[str]:
     for f in doc_tier():
         ctx = None
         for i, ln in enumerate(f.read_text().splitlines(), 1):
+            if not ln.strip():          # ctx does not cross a paragraph break
+                ctx = None
             for span in re.findall(r"`([^`]+)`", ln):
                 span = span.strip()
-                pm = re.match(r"([A-Za-z0-9_/.-]+\.(?:py|chirality))"
+                pm = re.match(r"([A-Za-z0-9_/.-]+\.(?:py|chiral))"
                               r"(?::(\d+)(?:[–-](\d+))?)?$", span)
                 if pm:
-                    p = _find_src(pm.group(1))
+                    ctx = p = _find_src(pm.group(1))
                     if p is None:
                         continue
-                    ctx = p
                     if pm.group(2) and int(pm.group(3) or pm.group(2)) > count(p):
                         errs.append(f"[G] {f.parent.name}/{f.name}:{i} cites "
                                     f"`{span}` but file has {count(p)} lines")
+                    continue
+                if PATHSPAN.match(span):
+                    ctx = None
                     continue
                 lm = re.match(r":(\d+)(?:[–-](\d+))?$", span)
                 if lm and ctx is not None:
@@ -409,27 +449,30 @@ def check_r() -> list[str]:
     """
     errs: list[str] = []
     ident = re.compile(r"^[A-Za-z_][A-Za-z0-9_?!*<>=+-]*$")
-    cite = re.compile(r"([A-Za-z0-9_/.-]+\.(?:py|chirality))(?::(\d+))?$")
+    cite = re.compile(r"([A-Za-z0-9_/.-]+\.(?:py|chiral))(?::(\d+))?$")
     bare = re.compile(r":(\d+)$")
 
     for f in doc_tier():
         ctx = None
         for i, ln in enumerate(f.read_text().splitlines(), 1):
+            if not ln.strip():          # ctx does not cross a paragraph break
+                ctx = None
             spans = [(m.start(), m.end(), m.group(1).strip())
                      for m in re.finditer(r"`([^`]+)`", ln)]
             for k, (pos, _end, s) in enumerate(spans):
                 cm, bm = cite.match(s), bare.match(s)
                 if cm:
-                    p = _find_src(cm.group(1))
+                    ctx = p = _find_src(cm.group(1))
                     if p is None:
                         continue
-                    ctx = p
                     if not cm.group(2):
                         continue
                     want = int(cm.group(2))
                 elif bm and ctx is not None:
                     p, want = ctx, int(bm.group(1))
                 else:
+                    if PATHSPAN.match(s):
+                        ctx = None
                     continue
                 if k == 0:
                     continue
