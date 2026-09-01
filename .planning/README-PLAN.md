@@ -206,9 +206,7 @@ overturn; it is a real question with a number for an answer, and Q2 may be the
 same. If the questions split into "dismantles an assumption" and "just answers",
 the shape is not uniform and that is worth stating rather than forcing.
 
-### Worked instance: Q4, second draft 2026-09-01
-
-Author's framing, with the paren-audit escalation made honest. Edit in place.
+### Worked instance: Q4
 
 **Does a language with strong opinions have to fight you?**
 
@@ -217,25 +215,13 @@ Author's framing, with the paren-audit escalation made honest. Edit in place.
 > categories of failure, and that part is not in dispute. What chirality leans on
 > is that if you can express anything, you can express the checker too. Error
 > handling stops being a fixed feature of the language and becomes something you
-> extend, one bug class at a time. A class a primitive covers is a class you stop
-> considering.
+> extend, one bug class at a time, until the primitives cover it.
 >
 > `paren-audit` is the small version, 244 lines of chirality. Break a paren and
-> it names the form:
->
->     broken.chiral   def   is-space   58   390   389   1
->     broken.chiral   FILE  depth      1
->
-> Kind, name, the line the form opens on, opens, closes, delta. The counts run to
-> the end of the file because an unclosed form swallows everything after it,
-> which is why you get the first bad form rather than the last.
->
-> The next step is a tool that repairs the file in place, and it is not built.
-> The report carries a count where a repair needs a position: delta +1 says this
-> form is missing one close paren, and something writing the file back has to
-> know which line. That is P1, the matcher returning spans, and P4, the stable
-> address, both named in `docs/arcs/text-tools-arc.md` and neither assigned. The
-> loop turns; this is where it has got to.
+> it names the form, the line it opens on, and the delta. The next step is a tool
+> that repairs the file in place, and at that point unbalanced parens stop being
+> something you consider at all. That is the method: name the class, build the
+> primitive, stop paying attention to it.
 >
 > | what | state | where | limit |
 > |---|---|---|---|
@@ -243,48 +229,24 @@ Author's framing, with the paren-audit escalation made honest. Edit in place.
 > | refinement types | enforced, gated | `lib/typing/refine.chiral` | `I64` only, `jg-refine-i64` |
 > | totality as the default | written, unreached | `lib/typing/totality.chiral` | zero importers, no termination judgment in `diag.chiral` |
 > | `->` against `=>` | carried, refused nowhere | `lib/typing/effects.chiral` | E171 |
-> | the classes covered so far | 7 refuse, 3 partial, 4 written and unreached, 3 design only, 12 not started | `docs/definitions/bug-classes.md`, unwritten | the count is the claim, and it is small |
+> | `paren-audit` diagnosis | built, runs | `prog/paren-audit.prog` | reports a count, not a position |
+> | `paren-audit` repair | not built | | needs P1 spans and P4 addresses, both unassigned in `docs/arcs/text-tools-arc.md` |
 >
-> Where the checker is wired the load is genuinely off you. Where it is not, the
-> shape is light because nothing is weighing it.
-
-Open on this draft:
-
-- **Which table Q4 takes.** The four typing rows answer "what does the checker
-  demand of you". The bug-class row answers "how far does the extension claim
-  reach". Both are here and they may be two questions.
-- **Verified by running it**, 2026-09-01: the paren-audit output above is real,
-  from `sed`-breaking `is-space` in a copy of `prog/paren-audit.prog`. Neither
-  implementation has a write path, so the repair claim is future work in both.
-- `docs/definitions/bug-classes.md` does not exist yet. The counts come from the
-  draft further down this file. Citing it before it lands is a phantom.
-
-### Worked instance: Q4, first draft, superseded
-
-**Does a language with strong opinions have to fight you?**
-
-> Not usually, and it turns on where the fight actually comes from. Languages
-> fight you with a denylist: a set of named things you may not do. Every time you
-> have a good reason to do one you argue with the denier, and the argument ends
-> at an escape hatch. There is no denylist here. What varies is weight. An empty
-> signature is the base case, and each effect and each unit of fuel makes a type
-> heavier. You are refused when the checker cannot prove what you claimed, never
-> because a construct is on a list, so there is no exemption to reach for and
-> nothing to argue with.
->
-> | what | state | where | limit |
-> |---|---|---|---|
-> | usage on binders | enforced, gated | `lib/typing/qtt.chiral`, Phase 6 | |
-> | refinement types | enforced, gated | `lib/typing/refine.chiral` | `I64` only, `jg-refine-i64` |
-> | totality as the default | written, unreached | `lib/typing/totality.chiral` | zero importers, no termination judgment in `diag.chiral` |
-> | `->` against `=>` | carried, refused nowhere | `lib/typing/effects.chiral` | E171 |
->
-> Where the checker is wired the gradient is real. Where it is not, the shape is
+> Where the checker is wired the load is off you. Where it is not, the shape is
 > light because nothing is weighing it.
 
-The imperative problem the earlier pass diagnosed dissolves here on its own. The
-draft reached for "Make the well-behaved shape the low-ceremony one" because the
-sentence had no position to open with and no table to carry the state.
+Notes on this draft, kept out of the answer:
+
+- **Measured 2026-09-01.** Broke `is-space` in a copy of `prog/paren-audit.prog`
+  and ran it. Output: `def is-space 58 390 389 1`, then `FILE depth 1`. The
+  counts run to end of file because an unclosed form swallows the rest, so the
+  first bad form is reported rather than the last. Neither implementation has a
+  write path.
+- **The table may be two tables.** The four typing rows answer what the checker
+  demands of you. The paren-audit rows answer how far the extension claim
+  reaches. Possibly two questions.
+- `docs/definitions/bug-classes.md` does not exist. Any class-coverage count
+  cited here points at the draft further down this file.
 
 ### The earlier angle pass, superseded
 
