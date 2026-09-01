@@ -124,6 +124,31 @@ The INDEX row is the collision detector; the catalog row is the detail.
 
 ---
 
+
+## ⚑ Cross-lane facts Lane B must have (2026-08-31)
+
+Neither is gate-enforceable, so both live here, in the file both lanes read.
+
+1. **The term printer moves to `surface/pretty`, not `typing/pretty`.** E181
+   relocates it, decided against `MAP.md`: `Term` is `surface/syntax.chiral:18`
+   and the output *is* chirality source, while `typing/` is *"every check on it"*
+   and a printer checks nothing — it is `surface/parse`'s inverse. **E146 imports
+   `surface/pretty`.** Root-relative keys make the directory the identity, so the
+   two spellings are different modules; the move happens inside E181 precisely so
+   E146 never takes a dependency on a key that then moves.
+2. **E181 promotes `bin/chirality-bin`** (its deliverable enters the compiler's
+   closure — the first in this arc that does). Any Lane-B measurement taken before
+   that lands was taken against a **different compiler**. Measured in a probe:
+   blob ~755,238 → ~764,000 B, binary 1,130,872 → ~1,147,000 B, fixpoint at
+   generation one.
+
+Also true and worth Lane B knowing, since `.manifest`'s round-trip depends on the
+printed form: a `case` prints multi-line at **every** width, and it makes every
+**enclosing** form multi-line too — `doc-fits` refuses a hard break anywhere inside
+the group it measures (`doc.chiral:131`). That is accepted, not a defect: a `case`
+is structurally multi-line. But a round-trip fixture that assumes single-line
+output at a wide width will be surprised.
+
 ## Working rules (both lanes)
 
 - **Separate worktree per lane**, off `/workspace/chirality`, living under
