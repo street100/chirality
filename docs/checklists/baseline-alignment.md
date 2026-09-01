@@ -30,21 +30,21 @@ tree lacks, or at a guess, passes by looking at nothing.
 
 ### BA-01 map-integrity passes a row that has no destination
 
-- state:    OPEN
+- state:    FIXED
 - claim:    every `new_path` in the migration map exists; a row with no destination is skipped by the `[ -z "$new" ] && continue` guard, and a row pointing at a moved path is reported STALE.
-- measured: `IFS=$'\t' read -r old new ext why` collapses runs of tabs, so a 4-column row with a blank `new_path` shifts `ext` into `$new`. Reproduced with a synthetic row `lib/gone.chiral<TAB><TAB>prog<TAB>retired`: the loop bound `new=prog`, `ext=retired`, `why=` empty, the `-z` guard did not fire, and `[ -e $ROOT/prog ]` was true, so the row passed. The `-z` branch is unreachable for any 4-column row. Retired rows currently dodge this by using the brace form, which the `*"{"*` branch skips.
-- evidence: `tools/test/map-integrity.sh:14`, `:16`, `:18`, `:19`
+- measured: the script moved, at `d4a0297`. Tab is IFS whitespace, so `IFS=$'\t' read` folded runs of tabs and a 4-column row with a blank `new_path` shifted `ext` into `$new`. Reproduced on an isolated fixture root before the change: the row `lib/gone.chiral<TAB><TAB>prog<TAB>retired` bound `new=prog`, `[ -e $ROOT/prog ]` was true, and the run printed `2 rows, 0 stale`, exit 0. The loop now reads through `tr '\t' '\001'`, and \001 is a non-whitespace delimiter, so an empty field stays empty. The same fixture prints `NODEST lib/gone.chiral`, `2 rows, 1 stale`, exit 1. The `-z` branch became a report instead of a skip: a row with no destination records nothing about where the file went, and a retired original says so with the brace form. The real map is unchanged at 869 rows, and the fixed script found one live STALE row, `scaffold/lib/pretty.metis -> lib/typing/pretty.chiral`, repointed at `lib/surface/pretty.chiral` against E181's rename in `0c53875`. `map-integrity` now exits 0.
+- evidence: `tools/test/map-integrity.sh:19`, `:21`, `:26`, `:28`
 - checked:  2026-09-01
-- element:  UNASSIGNED
+- element:  none
 
 ### BA-02 ledger-lint checks G and R cannot see a `.chiral` citation
 
-- state:    OPEN
+- state:    FIXED
 - claim:    check G is "line-numbered code citations in docs still fit the file" and check R is "a line citation lands on the symbol it is cited FOR". R's own docstring cites `ddc.chiral:127` as the defect it was built for.
-- measured: both regexes are `([A-Za-z0-9_/.-]+\.(?:py|chirality))`. The tree's extension is `.chiral`, which neither alternative matches. Docs carry 279 spans of the form `path.chiral:NN` and zero of them can match. 624 spans do match the regex, all Python, and `_find_src` resolves 12 of them to a file that still exists. So G and R together inspect 12 citations out of roughly 903. Both report `[ok] 0 issues`.
-- evidence: `tools/ledger-lint/ledger-lint.py:342`, `:412`, `:316`
+- measured: the checks moved, at `0f72a33`. Both regexes were `([A-Za-z0-9_/.-]+\.(?:py|chirality))` and nothing in the tree ends in `.chirality`, so all 456 line-numbered `.chiral` spans in docs failed both alternatives and the pair inspected 12 citations. Three changes: the alternation is `(?:py|chiral)`; a bare basename resolves to the one file under `lib/` or `prog/` carrying it, leaving `mach.chiral` (three homes) unresolvable; and the ctx a bare `:NN` binds to is cleared by an unresolvable path span and by a blank line. The ctx change is the second half of the same defect. Before it, `verification.md:193`'s `:129` was reported against `alloc-fixed.chiral` and `E174-r-row-width.md:158`'s `:360` against `doc.chiral`, neither of which those lines are about. Coverage is now 407 of 862 line-numbered spans, up from 12. G reports 17 and R 17, all under `docs/examples/`, which is BA-22. Proved on an isolated fixture root: a `.chiral` citation past end of file and one landing off its symbol both returned `0 issues` before and both fire after.
+- evidence: `tools/ledger-lint/ledger-lint.py:323`, `:330`, `:345`, `:380`, `:452`
 - checked:  2026-09-01
-- element:  UNASSIGNED
+- element:  none
 
 ### BA-03 ledger-lint H and M are VACUOUS by decision
 
@@ -142,9 +142,9 @@ tree lacks, or at a guess, passes by looking at nothing.
 
 ### BA-13 the ports header cites a line that moved
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `lib/ports/ports.chiral`'s header attributes the unconditional append to `compile-emit.chiral:189`.
-- measured: the only `app-tfn native-lib` site is line 295. Line 189 is elsewhere in the file. Found while verifying BA-12. This is the class check R was built to catch and cannot, per BA-02.
+- measured: the header moved, at `de0da80`. The only `app-tfn native-lib` site is line 295; line 189 is the H7 chokepoint prose. Comment only, and verified inert under the BUILD RULE: the blob stays 772,967 B and the binary built from it is byte-identical to the committed `bin/chirality-bin`, so no promotion is owed. Suite 303 passed, 0 failed, 87 roots. ⚑ The repaired check R still cannot see this citation, for three independent reasons recorded in BA-19: it sits in a `.chiral` comment rather than a doc, it sits outside a code span, and `native-lib` is defined in `lowering/tal/bytes.chiral` rather than in the file cited. Calling it "the class check R was built to catch" was too broad.
 - evidence: `lib/ports/ports.chiral:28`, `lib/lowering/compile-emit.chiral:295`
 - checked:  2026-09-01
 - element:  none
@@ -208,5 +208,55 @@ tree lacks, or at a guess, passes by looking at nothing.
 - claim:    "`elements/` is empty and stays empty until something derives it. Element status must come from a build-state authority."
 - measured: `docs/elements/` holds `diagnostics-arc.md`, 37.7 KB, added by `9016bef` and revised by `c273971`. Its opening states why it is hand-written and tracked: `.planning/` is git-ignored, so an element fact a second reader needs cannot live there. The two positions are both defensible and they contradict. MAP.md is the contract, so the contract is the side that is stale.
 - evidence: `MAP.md:159`, `docs/elements/diagnostics-arc.md:11-19`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+## Residue from the gate repair, 2026-09-01
+
+BA-01 and BA-02 fixed two gates that could not fail. What follows is what the
+repaired gates still cannot see, and what they saw once they could.
+
+### BA-19 a citation inside a source comment is read by no gate
+
+- state:    OPEN
+- claim:    checks G and R are the tree's line-citation gates.
+- measured: both walk `docs/**/*.md` and both require the citation to sit inside a backtick code span. `lib/` and `prog/` comments carry 59 line-numbered citations across 34 files, and not one is inside a code span or inside a doc. BA-13 is one of them: `(compile-emit.chiral:189)` in a `;` comment, bare parentheses. R could not reach it even with BA-02 fixed, and R's DEFINED-here limit rules it out a second time, because `native-lib` is defined in `lowering/tal/bytes.chiral:636` rather than in the file the comment cites. A gate for this class would be a third predicate. Neither existing one widens to reach it.
+- evidence: `lib/ports/ports.chiral:28`, `lib/lowering/tal/bytes.chiral:636`, `tools/ledger-lint/ledger-lint.py:373`, `:455`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### BA-20 294 doc citations name a path that does not exist
+
+- state:    OPEN
+- claim:    the migration is complete and the map records where each original went.
+- measured: of 862 line-numbered citation spans in `docs/`, 294 name a file `_find_src` cannot open. They are pre-migration paths: `scaffold/lib/…`, `chirality/…`, and basenames whose file was deleted. G and R skip them by design, since naming an unbuilt file in residue is legitimate, so the count is the size of the class and not a defect list. Repointing them is a guess without the old tree, and `/workspace/metis-the-lang` is read-only reference. Nothing distinguishes a legitimately-unbuilt name from a rotted one today.
+- evidence: `tools/ledger-lint/ledger-lint.py:345`, `.planning/MIGRATION-MAP.tsv`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### BA-21 161 bare `:NN` spans have no subject a check can name
+
+- state:    ACCEPTED
+- claim:    the banks' detached convention is `ports.chiral` … (`:19`), a bare line span resolving against the last file named.
+- measured: 161 of the 862 spans are a bare `:NN` whose paragraph names no resolvable file. Before BA-02's ctx fix they were read against whatever file resolved last, sometimes hundreds of lines earlier and about a different module. ACCEPTED because abstaining is the only sound option: a bare span read against the wrong file is a guess, and CLAUDE.md forbids aiming a check at one. Recovering them means the docs naming the file in the paragraph. The check guessing harder is the thing this row forbids.
+- evidence: `tools/ledger-lint/ledger-lint.py:376`, `:458`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### BA-22 34 citations under `docs/examples/` are stale, and repointing them is a policy call
+
+- state:    OPEN
+- claim:    worked examples are the design rationale for an element and are kept as written.
+- measured: with BA-02 fixed, G reports 17 and R 17, every one under `docs/examples/`. No doc under `banks/`, `definitions/`, `decisions/`, `modules/` or `elements/` fails either check. G's 17 are 12 citations of `ports.chiral` at lines 70 through 185 against a 63-line façade, which is the pre-split monolith and needs the old tree to repoint; 2 of `alloc.chiral` at line 43 against 35 lines; 2 of `compile-emit.chiral` at 322 through 348 against 330; and one of `diag.chiral` at 704 against 693. R's 17 each cite a live symbol at a line other than its definition, some off by a banner (`backend.chiral` line 37 for `be-base`, defined at 38; `kernel.chiral` line 91 for `KCat`, defined at 101) and some at a line the element's own commits moved, where the surrounding prose quotes the pre-change source. Repointing that second group would make the narrative describe the wrong file. `HANDOFF.md` already records the same tier stance for the `ours_source:` paths and calls a bulk rewrite its own call. Nothing repointed here.
+- evidence: `python3 tools/ledger-lint/ledger-lint.py` checks G and R, `HANDOFF.md:194`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### BA-23 check A reads a module key as a filesystem path
+
+- state:    OPEN
+- claim:    check A is "ledger evidence paths exist".
+- measured: 5 issues, all module keys rather than paths: `surface/pretty`, `typing/pretty`, `surface/parse`, `typing/`. `is_pathish` accepts any token containing a slash, and `resolve` then tests `ROOT/surface/pretty`, which is nowhere a module lives. E181's row added the ones that fail today, so the check went red on a correct citation. It is the mirror of BA-02: a check whose resolver does not know the tree's own naming rule. `HANDOFF.md` still records check I as the only FAIL, which predates this.
+- evidence: `tools/ledger-lint/ledger-lint.py:51`, `:71`, `docs/definitions/status-ledger.md:52`, `:54`
 - checked:  2026-09-01
 - element:  UNASSIGNED
