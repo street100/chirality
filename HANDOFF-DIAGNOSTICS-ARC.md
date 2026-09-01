@@ -6,6 +6,50 @@ arc's last unbuilt piece. E175's history is below and still accurate; the
 `stash@{0}` partial it describes was applied, verified and committed, and both
 stash entries can be dropped.
 
+
+## ⚑ Why this arc exists — the chain, written down because it got lost
+
+**The arc is not about diagnostics.** Diagnostics are the first consumer. The
+destination is **the new file types**, and `HANDOFF.md`'s route step 3 says so.
+
+```
+E157  Reason        the compiler's errors become VALUES with evidence
+  ↓
+E158  Doc           a formatter that takes structure and defers the flatten     [BUILT]
+  ↓                 (needed E174 r-row + E175 face restore under it)            [BUILT]
+E181  pretty        the term printer repointed at the REAL Term, returning Doc  [NOT BUILT]
+  ↓                 today: 51 lines, its own local 5-ctor Term vs the real 15,
+  ↓                 Str-typed, ZERO importers
+E146  value→source  the five emitters return Doc, gated at widths 1/40/10⁶      [NOT BUILT]
+  ↓
+E163  .manifest     a declared form → a derived codec → a round-trip gate       [NOT BUILT]
+E183  .protocol     the same law, carried in BYTES instead of source            [NOT BUILT]
+```
+
+**The law both file types share** (`HANDOFF.md`): *a declared form → a derived
+codec → a round-trip gate*. `.manifest` round-trips against chirality source
+(`parse(source(v)) ≡ v`); `.protocol` round-trips against bytes. That is why
+`Doc` serves one and not the other — bytes have no layout freedom.
+
+**⚑ What went wrong in the session that built E157/E158/E174/E175, recorded so it
+does not repeat.** Every element built was a genuine blocker discovered by the one
+before it, and all four are green. But **`pretty.chiral` — the actual named
+target — was never touched**, and ended the session demoted to a residue row
+(E181), minted as *phantom-dep cleanup* rather than as the goal. `HANDOFF.md:136`
+says it flatly: *"E158 into E146, the pretty-printer chain. Untouched all
+session."*
+
+The tell was available early: E158's pre-run measured that `pretty.chiral` is a
+**rewrite, not a signature change**, and that got filed as a reason to keep it out
+of E158's gate rather than as a reason it needed its own element immediately.
+**A `why` that lives only in a different document is a `why` that will be traded
+away for whatever is in front of you.** Hence this section, here.
+
+**Also unadopted:** `dg-doc` and `doc->rendering` are imported only by the arc's
+own three modules. No `prog/`, nothing in scriba. Fifth "built but unadopted"
+instance in this repo — and E181 closes it, since a `Doc`-returning printer is
+`Doc`'s first real consumer.
+
 ## Where everything lives
 
 - **Work branch:** `e158-doc` in the worktree **`/workspace/chirality-verify`**
