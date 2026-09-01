@@ -141,7 +141,7 @@ E179) are closed. Today `dg-doc` and `doc->rendering` are imported *only* by
 
 **Lane B:** `.manifest` and `.protocol` exist as declared kinds with derived
 codecs and round-trip gates — `parse(source(v)) ≡ v` against source, and against
-**bytes** respectively. `LAYOUT.md` gains `.protocol`.
+**bytes** respectively. `MAP.md` gains `.protocol`.
 
 **Both, together:** they are the prerequisites for the real destination —
 **replacing the nine Python tools (4,140 lines) with chirality programs and
