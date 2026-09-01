@@ -25,9 +25,9 @@
 (import "prelude/string")
 ; for `bytes=?`. ddc.chiral owns the tree's only byte comparator and states the
 ; rule in its own header -- one owner per rule, no second routine on this path.
-; Its `Prov` is why the sum below is `ExProv`: the E166 DDC gate is one of the
-; gates that will return a `Suite`, so the two live in one import closure and
-; the shadowing that duplicate type names get away with elsewhere is unavailable.
+; Its `Prov` is why the sum below is `ExProv`: the two live in one import closure
+; and the shadowing that duplicate type names get away with elsewhere is
+; unavailable. (The E166 DDC gate this named is DROPPED, 2026-09-01.)
 (import "evidence/ddc")
 ; for `read-fd-all` / `compile-all` -- the build-and-run body `observe` and the
 ; in-tree leg of `oracle-ask` are made of, and the same one `run-one` already uses.
@@ -234,7 +234,8 @@
 ; ===========================================================================
 (data OracleId ()
   (or-python)                                ; the leg being deleted
-  (or-ccomp  (ver Str))                      ; E166's mach-c leg, convicting byte-identically
+  (or-ccomp  (ver Str))                      ; E166's mach-c leg -- DROPPED 2026-09-01,
+                                             ; no leg constructs this today
   (or-gcc    (ver Str))
   (or-rocq)                                  ; the rocq/ floor; nothing pins its version yet
   (or-fixed  (path Str) (digest Bytes))      ; a committed artifact standing in as an opinion
@@ -267,9 +268,11 @@
 (data Minting () (minted-by (o OracleId) (date Str)))
 
 ; D2's licence constraint, as a total function rather than a sentence in a
-; script. ddc-c-leg.sh:29-35 states it about itself -- "the artifacts this script
+; script. ddc-c-leg.sh stated it about itself -- "the artifacts this script
 ; builds are COMPARED AND DISCARDED, never distributed ... NEVER ship, publish,
-; or promote a ccomp-built binary out of here" -- and COMMITTING a ccomp-produced
+; or promote a ccomp-built binary out of here". That script went with the C leg
+; on 2026-09-01; the constraint is kept because it binds any future ccomp use,
+; and it is quoted here rather than cited. COMMITTING a ccomp-produced
 ; artifact IS distribution, which is what keeps the path inside INRIA's
 ; non-commercial licence. A fixture minted by the retired python leg is refused
 ; for the other reason: rank 2 means "outside both legs", and a sibling

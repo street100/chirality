@@ -29,7 +29,8 @@
 ;
 ; Module identity. A module's KEY is its ROOT-RELATIVE PATH -- `ports/process`
 ; and `runtime/proc` are two keys, and `lowering/mach/mach`, `lowering/x64/mach`
-; and `lowering/c/mach` are three. The directory is the identity, not decoration,
+; and `lowering/listing/mach` are three. (`lowering/c/mach` was a fourth until
+; the C backend was dropped on 2026-09-01.) The directory is the identity,
 ; which is what makes the old basename-collision class UNREACHABLE rather than
 ; merely named: two different modules cannot claim one key. Resolution is
 ; deterministic per key, so the same key seen again IS the same module: deduped,

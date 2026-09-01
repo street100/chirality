@@ -2,7 +2,11 @@
 ; five accessors. This is the INTERFACE half only — the same interface/instance
 ; split mach.chiral / mach-x64.chiral / mach-listing.chiral already has (E166
 ; Step 0). The instances live beside it: alloc-growing.chiral (canonical) and
-; alloc-fixed.chiral (the C leg). Deliberately no instance here, and no import
+; alloc-fixed.chiral, the static-arena one. alloc-fixed was built for the C leg,
+; which was dropped 2026-09-01, so it has ZERO importers and no gate compiles it.
+; It stays on purpose: a program picks the discipline it needs, and that is the
+; whole reason the seam is a record. See docs/definitions/open-edges.md.
+; Deliberately no instance here, and no import
 ; of mach-x64: a blob picks exactly one fn-bearing instance, because
 ; specialize-singletons refuses two of them in one blob
 ; (specialize-singleton.chiral:78-84).

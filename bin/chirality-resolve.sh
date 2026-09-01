@@ -23,8 +23,9 @@
 # ── The module KEY is the ROOT-RELATIVE PATH ────────────────────────────────
 #
 # `(import "lowering/x64/mach")`, not `(import "mach")`. The directory IS the
-# identity, not decoration: `lowering/mach/mach`, `lowering/x64/mach`,
-# `lowering/c/mach` and `lowering/listing/mach` are four keys, and the old
+# identity, not decoration: `lowering/mach/mach`, `lowering/x64/mach` and
+# `lowering/listing/mach` are three keys -- four until the C backend was dropped
+# on 2026-09-01, which changed the count and none of the rationale -- and the old
 # basename-collision class ("two DIFFERENT modules under one key") is therefore
 # UNREACHABLE rather than merely named. Resolution is deterministic per key, so
 # a key seen again IS the same module: deduped -- and that dedup is what

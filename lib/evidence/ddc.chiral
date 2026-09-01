@@ -18,8 +18,8 @@
 ; than two legs", so the three `why` strings are NOT interchangeable. The
 ; Python oracle is retired (S12) and is not being maintained in lockstep;
 ; treat `ddc.py` as provenance for how the rule reads, never as the
-; authority. The authority is this file, and its teeth are
-; `scaffold/tests/samples/e166_ddc_legc.chiral`, a program that runs.
+; authority. The authority is this file. ⚑ Its teeth are GONE as of 2026-09-01:
+; e166_ddc_legc was deleted with the C leg, so nothing asserts any of this now.
 
 (import "prelude/prelude")
 
@@ -147,12 +147,12 @@
 ; out. (str-eq never runs on this path: ddc-fold compares bytes only.)
 (def ddc-leg0 Leg (leg "self-hosted" (prov "chirality" "chirality-native" "shred" 2026)))
 (def ddc-leg1 Leg (leg "py-scaffold" (prov "python" "cpython3" "shred" 2025)))
-; E166. The EXTERNAL-COMPILER leg: chirality source -> mach-c -> C -> gcc -> a
-; native compiler, whose emitted artifact is then compared against the
-; self-hosted one (scaffold/tests/ddc-c-leg.sh). It exists so that deleting
-; leg 1 leaves a quorum: ddc-compare refuses below two legs, so retiring the
-; Python floor before this leg is admitted leaves NO quorum at all (SPEC
-; decision 5 -- admit before delete, a hard ordering).
+; E166. The EXTERNAL-COMPILER leg. ⚑ DROPPED 2026-09-01 (d8bcec5, d0c5dd5):
+; lib/lowering/c/{mach,assemble,emit} and prog/compiler-c.prog are deleted, so
+; this constant names a toolchain nothing builds with, and it has ZERO callers
+; and ZERO assertions. It was chirality -> mach-c -> C -> gcc -> a native
+; compiler whose artifact was compared against the self-hosted one, and it
+; existed so that deleting leg 1 left a quorum (SPEC decision 5, admit first).
 ;
 ; What it buys is TOOLCHAIN disjointness, which is the axis a trusting-trust
 ; attack lives on: ("c","gcc-12") differs from ("chirality","chirality-native") on
@@ -179,7 +179,7 @@
 ; EXACTLY ONE of them -- never both counted as two. Running the leg under both
 ; compilers buys more evidence about the SAME leg; it does not buy a third leg,
 ; and a driver that lists both has one leg fewer than it thinks.
-; scaffold/tests/samples/e166_ddc_legc.chiral asserts all three shapes of this.
+; e166_ddc_legc asserted all three shapes of this; DELETED 2026-09-01.
 (def ddc-legcc Leg (leg "c-compcert" (prov "c" "compcert-3.17" "shred" 2026)))
 
 (def ddc-verdict-code (-> Bytes Bytes I64)
@@ -189,3 +189,25 @@
       ((ddc-converged bs) 0)
       ((ddc-diverged x y) 1)
       ((ddc-bad-quorum w) 2))))
+
+; ---- ⚑ 2026-09-01: WHAT IN THIS FILE IS STILL CONSULTED -------------------
+; Nothing above this line. e166_ddc_legc was the only program that exercised
+; ddc-fold, ddc-legs, ddc-compare, ddc-verdict-code, ddc-leg0/1/c/cc and DdcR,
+; and it was deleted with the C backend. This file stays reachable only because
+; test-floor.chiral:31 imports it for bytes=?.
+;
+; A verdict nothing consults is not a gate. This tree names that failure in
+; several places and it now applies here, so it is said here.
+;
+; The shape is not wasted. ddc.chiral is the REFEREE for the scheme that
+; replaces external judgment: verdicts as values, divergence naming WHICH two
+; legs disagreed, and the quorum gate firing before a byte is read. Its own
+; argument -- agreement is not a quorum, because two runs of the SAME compiler
+; agree by construction -- is exactly the argument N judgment cores need.
+; What does NOT transfer: leg2-disjoint? demands language AND toolchain differ,
+; and judgment cores are all chirality-native, so every quorum would come back
+; ddc-bad-quorum "provenance not pairwise disjoint"; Prov has no FORMULATION
+; axis, and the threat moved from a backdoored toolchain to a shared mistake in
+; how the rule set was encoded; and ddc-fold compares BYTES, where different
+; formulations agree on a VERDICT. Repointing it is an open edge with no
+; element minted -- docs/definitions/open-edges.md.
