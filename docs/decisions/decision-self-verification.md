@@ -3,7 +3,7 @@ node: decision-self-verification-hierarchy
 layer: decision
 related: [certificate-discipline, split-role, axis-altitude, decision-split-checker, decision-reflective-floor, modules-lowering, thesis, open-edges]
 status: draft
-updated: 2026-08-31
+updated: 2026-09-01
 ---
 
 # Decision: self-verification is a hierarchy, and the residue is named
@@ -12,6 +12,64 @@ External judgment is cut (HANDOFF decision 5). That removes the anchor every pri
 self-verification effort leaned on. Milawa leaned on HOL4. Harrison leaned on a
 stronger metatheory. MM0 leans on a human reading 25 x86 instruction semantics.
 chirality has none of those. This note says what shape is left.
+
+## 0. The decision, recorded 2026-09-01
+
+The author's call, made when the `Mach`→C backend was dropped (`d8bcec5` the
+modules, `d0c5dd5` the four `e166_*` fixtures). Everything below §0 was written
+before it and is kept as the analysis that led here. Where a passage reads as
+though DDC or an external toolchain is the route, §0 overrides it.
+
+**Self-verification here is N semantically distinct judgment cores that must
+agree.** That is the route. The criterion on those cores is **different
+FORMULATIONS**, and `CLAUDE.md` states the failure mode the criterion exists to
+exclude: three encodings of one rule set would be worth nothing.
+
+**What that rules out. Each was a plausible-looking wrong answer, which is why
+each is named.**
+
+- **A different TARGET is not a different formulation.** The C backend (E166) was
+  built as the external-compiler DDC leg and dropped 2026-09-01. It shared
+  `compile-front` and `compile-back` whole with the canonical instance and
+  differed only at emit: one rule set, one implementation of it, two emitters. It
+  bought toolchain provenance and bought nothing about whether the rules are
+  right. [[decision-backend]] carries the same statement from the backend's side.
+- **An external-toolchain leg is not a judgment core.** gcc and CompCert judge C.
+  Neither holds an opinion about whether a chirality term type-checks, and that is
+  the judgment wanting a second opinion. §5 item 5 makes the adjacent point about
+  Thompson being an adversary and not a correctness bug; read forward, it says
+  toolchain diversity answers a threat and formulation diversity answers an error.
+  They are different purchases and one does not substitute for the other.
+- **DDC is not the route.** §5 item 5 below is correct and stays: the committed
+  binary is trust-on-first-use, and diverse double-compiling is the standard
+  counter to Thompson. Nothing about that changed. What changed is its position.
+  DDC answers the trusting-trust axiom, which `HANDOFF.md`'s SCOPE puts on the
+  deferred ownership-and-trust track. It is not the mechanism by which chirality's
+  own judgments get a second opinion, and this note's earlier framing let it read
+  as one.
+
+**Where DDC does belong, and it is a real job.** `lib/evidence/ddc.chiral` is the
+**referee** over a quorum, and the shape transfers: verdicts are values, a
+divergence names WHICH two legs disagreed, and the quorum gate fires before any
+byte is read. Its own ⚑ is precisely the argument N cores need, *agreement is not
+a quorum, because two runs of the SAME compiler agree with each other by
+construction*. What does not transfer is measured in [[open-edges]] and is not
+small: `leg2-disjoint?` demands both `language` and `toolchain` differ, so a
+quorum of chirality-native cores returns `ddc-bad-quorum "provenance not pairwise
+disjoint"` every time; `Prov` has no FORMULATION axis, and the threat has moved
+from a backdoored toolchain to a shared mistake in how the rule set was encoded;
+and `ddc-fold` compares BYTES, where different formulations agree on a VERDICT.
+Repointing it is open, and no element is minted for it.
+
+**What this decision does not settle**, with §§1–7 as the reason each is hard: how
+many cores; whether they are peers or ordered (§4 fixes one constraint, that only a
+strict order may exchange soundness); what is owed per ordered pair (§4's encoding
+plus adequacy plus conservativity triple); and whether the bridges run through a
+hub (§4 recommends one). N is unchosen. The criterion is chosen.
+
+**The bound in §1 is untouched.** N cores agreeing is a relative result, and the
+hierarchy still terminates downward in an artifact a human reads. Adding cores buys
+no self-consistency proof, and nothing in §0 should be read as though it might.
 
 ## 1. The bound
 
@@ -207,7 +265,15 @@ Named honestly, each with the only thing that could ever discharge it.
    correctly, and its own `leg2-disjoint?` demands different language *and* different
    toolchain, which no available leg satisfies. ⚑ **DDC in this repo is a typed hole,
    not an operating control, and the note base must say so rather than let the file
-   read as coverage.** Three honest routes, in order of what they buy:
+   read as coverage.** ⚑ **HARDER SINCE 2026-09-01**, and §0 relocates the whole
+   item. The C leg that was the one satisfying pair was dropped, so
+   `ddc-verdict-code`, `ddc-fold`, `ddc-legs`, `ddc-compare`, `ddc-leg0/1/c/cc` and
+   `DdcR` now have zero callers and zero assertions; `e166_ddc_legc.prog` was their
+   only exercise. The file stays reachable because `test-floor.chiral:31` imports it
+   for `bytes=?`. A verdict nothing consults is not a gate. And per §0 this axiom
+   sits on the deferred ownership-and-trust track: it is an axiom to name, and it is
+   not the route to self-verification. Three honest routes, in order of what they
+   buy:
    - Grow one of decision 5's formulations into a minimal second compiler. It needs to
      compile exactly one program (the compiler source) exactly once. It does not need
      speed or completeness. This is the only route that produces a real DDC leg.
@@ -283,7 +349,11 @@ section before treating anything above as new.
 - **Hub versus all-pairs** for the cross-formulation bridges. Hub is recommended, not
   decided.
 - **Second DDC leg, seed shrinking, or named axiom.** Cannot be deferred silently
-  while `ddc.chiral` sits in the tree looking like a control.
+  while `ddc.chiral` sits in the tree looking like a control. ⚑ 2026-09-01: still
+  undecided, and now louder. The C leg is gone, `ddc.chiral` has zero callers, and
+  §0 has moved DDC off the self-verification route and onto the deferred
+  ownership-and-trust track without discharging it. [[open-edges]] records the
+  repointing question.
 - **Whether chirality's universe hierarchy is strong enough for level n+1 to prove
   level n's normalization.** Standard for MLTT-style universes. Not established in the
   literature for QTT plus refinement types plus the erasure story, and the research
