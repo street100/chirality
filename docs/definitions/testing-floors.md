@@ -25,6 +25,12 @@ updated: 2026-09-01
 > still bind. A rule learned from a leg outlives the leg. What is retracted is
 > only the coverage: the `Mach` ops row of the map below has **no** instrument
 > now, in-house or external, and nothing else moved in to take it.
+>
+> ⚑ **This banner shifted every line below it by +24.** Any citation of the form
+> `testing-floors.md:NNN` written before 2026-09-01 now lands 18 lines early. Most
+> of them also carry the pre-migration path `docs/testing-floors.md`, which has
+> not existed since the hoist, so they were already unusable; the offset is
+> recorded here rather than repointed one by one at a guess.
 
 chirality is tested by **multiple independent floors** (see `floor-agreement.md`).
 Removing the Python oracle is a rung-1 *milestone goal*, **not** a mechanical

@@ -35,6 +35,9 @@ updated: 2026-09-01
 > **What the drop does NOT retract.** Rules 1, 2 and 3, the adequacy limits in
 > §5, and the mutants that were actually run. Those are findings about
 > differentials in general and survive the leg that produced them.
+>
+> ⚑ **This banner shifted every line below it by +30.** A `verification.md:NNN`
+> citation written before 2026-09-01 lands 30 lines early.
 
 > **What a bank is.** The depth tier under the thin relational notes in
 > `docs/`. A bank holds the full *refraction* of ONE concept: what it is, the

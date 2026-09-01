@@ -359,7 +359,7 @@ axiom `mach-x64` already embeds as the two bytes `0f 05`
 relocated, not added.
 *(Estimate annotated 2026-08-25 at `8a066d5`: the shim shipped at **197 raw
 lines / 103 code**, not ~70. It is still well under the SPEC's ~150 L threshold
-(`E166-mach-c-SPEC.md:287`, *"if it passes ~150 L, stop and say"*), so the
+(`E166-mach-c-SPEC.md:313`, *"if it passes ~150 L, stop and say"*), so the
 honesty check this estimate exists to serve PASSES — the figure moved, the
 verdict did not. §6 carries the full prediction-vs-outcome note and the method.)*
 

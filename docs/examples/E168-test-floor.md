@@ -93,7 +93,7 @@ updated: 2026-08-25
   shipped green without it" (`:193-194`) — running the mutant CAUGHT it — and
   E161 G0, which "only the fixed committed blob … caught" (`:198-199`). E166 G3
   is not in that range at all: `:203` heads it "**E166, as the rule FOLLOWED
-  rather than nearly missed**", and `.planning/specs/E166-mach-c-SPEC.md:556`
+  rather than nearly missed**", and `.planning/specs/E166-mach-c-SPEC.md:579`
   records that the identically-objdumping `m_mul` was measured at design time
   and replaced before shipping — "naming it here would have been a mutant that
   could never fail". So: three shapes, two of them near-misses, zero of them
@@ -192,7 +192,7 @@ def test_sort_gate():
      failing gate on the day it shipped rather than a finding two sessions
      later", which credits E166 with a defect it did not have — that mutant was
      measured identical at design time and replaced before the row shipped
-     (`.planning/specs/E166-mach-c-SPEC.md:556`). What the floor changes is that
+     (`.planning/specs/E166-mach-c-SPEC.md:579`). What the floor changes is that
      the same shape is caught by a type instead of by an author noticing.*
   4. **Judgment is pure; only observation crosses.** The `=>` set is exactly
      `observe`, `mut-run`, `oracle-ask` and `oracle-drop` — they fork, build,

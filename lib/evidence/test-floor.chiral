@@ -10,7 +10,7 @@
 ; apart. NONE of the three shipped, and the record says so: the first two are the
 ; near-misses docs/testing-floors.md:183-187 names, each caught in the session
 ; that produced it, and the third was caught at DESIGN time and replaced by a
-; value-changing mutant before the row shipped (E166-mach-c-SPEC.md:556 --
+; value-changing mutant before the row shipped (E166-mach-c-SPEC.md:579 --
 ; "naming it here would have been a mutant that could never fail"). All three had
 ; sound expectations; what they lacked was structure. The contract is
 ; docs/testing-floors.md:161-214; this file is that contract as types.

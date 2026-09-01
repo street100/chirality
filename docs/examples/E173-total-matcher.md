@@ -38,8 +38,8 @@ updated: 2026-08-31
 (`docs/banks/INDEX.md:22-32`): module, profile, runtime, capability, port,
 effect-and-alarm, memory, evidence-and-split, verification. None refracts
 matching, scanning, or strings, so E173 is a real gap and not a phantom.
-The word "Thompson" does appear in `docs/banks/verification.md:147` and
-`docs/banks/evidence-and-split.md:414`, and in both places it means Ken
+The word "Thompson" does appear in `docs/banks/verification.md:177` and
+`docs/banks/evidence-and-split.md:418`, and in both places it means Ken
 Thompson's trusting-trust attack, unrelated to the Thompson NFA of the
 reference class. A **text/matching bank does not exist and is owed** once this
 element is built; it is listed in §6 as an open item and not deferred to an
