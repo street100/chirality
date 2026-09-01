@@ -282,7 +282,10 @@ def check_f() -> list[str]:
         for f in doc_tier():
             if f.stem == name or f.relative_to(docs).with_suffix("").as_posix() == name:
                 return True
-        return ((ROOT / ".planning" / f"{name}.md").exists()
+        # The agent tier is tracked and nests (.planning/protocol/tone.md), so a
+        # top-level probe alone read every [[protocol/tone]] as dangling.
+        return (bool(list((ROOT / ".planning").rglob(f"{name}.md")))
+                or bool(list((ROOT / ".planning").rglob(f"{name.split('/')[-1]}.md")))
                 or (ROOT / f"{name}.md").exists())
 
     def linkish(f, name: str) -> bool:

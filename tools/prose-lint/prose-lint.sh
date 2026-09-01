@@ -60,7 +60,7 @@ _scope() {
       [ -d "$p" ] && find "$p" -type f -name '*.md' || { [ -f "$p" ] && echo "$p"; }
     done
   else
-    find "$ROOT/docs" "$ROOT/.planning" -type f -name '*.md' 2>/dev/null
+    find "$ROOT/docs" "$ROOT/.planning" "$ROOT/.claude/skills" -type f -name '*.md' 2>/dev/null
     find "$ROOT" -maxdepth 1 -type f -name '*.md' 2>/dev/null
   fi
 }
