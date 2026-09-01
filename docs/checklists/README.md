@@ -100,3 +100,5 @@ once and audited. Editability by anyone is the role.
 ## The checklists
 
 - [[checklists/baseline-alignment]]: does the repo do what it claims to do
+- [[checklists/enforcement-arc]]: what the compiler enforces, and what it can
+  measure about its own work
