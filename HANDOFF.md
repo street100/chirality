@@ -5,6 +5,16 @@ the contract (tree, extensions, module key, doc roles); this file is state and r
 
 ## ⚑ How to work here, before anything else
 
+**Read `LANES.md` first.** The work is split into two lanes with their own element
+number bands (**A: E184–E189**, **B: E190–E195**), gate phases and file ownership.
+Lane A is diagnostics and errors, and resumes from `HANDOFF-LANE-A.md`. Lane B is
+file types. Minting outside your band collides; two sessions already minted `E173`
+independently.
+
+⚑ **Element numbers up to E181 are taken.** The catalog stops at E173, so reading
+it alone is not enough. E174, E175 and E181 have worked examples and INDEX rows,
+and E176 through E180 and E182 through E184 are referenced in Lane A's artifacts.
+
 **Another agent shares this repo.** Two lanes run in the same working tree.
 
 - **Serial dispatch: exactly ONE subagent at a time.** Standing user directive.
@@ -28,10 +38,10 @@ is **complete**; that tree is reference only now.
 
 | | |
 |---|---|
-| source | 301 files (`.chiral` 193 · `.prog` 97 · `.port` 9 · `.manifest` 2) |
-| compiler | `bin/chirality-bin`, 1,102,200 B, committed |
+| source | 303 files, measured 2026-09-01 |
+| compiler | `bin/chirality-bin`, **1,147,256 B**, committed. E181 promoted it 2026-09-01 |
 | resolver | `bin/chirality-resolve.sh` + `lib/module/resolve.chiral`, a matched pair |
-| tests | `bin/chirality test` → **118 assertions, 0 failed**, 86 compile-only roots; 7 of 12 old phases + Phase 13 (E157) |
+| tests | `bin/chirality test` → **303 assertions, 0 failed**, 11 phases, 88 roots (`HANDOFF-LANE-A.md`) |
 | fixtures | `tools/test/samples/` 98 files |
 | docs | 230, sorted by role; `.planning/` 259, **untracked by design** |
 | record | `.planning/MIGRATION-MAP.tsv`, 869 rows; `tools/test/map-integrity.sh` checks every `new_path` exists |
@@ -41,8 +51,12 @@ is **complete**; that tree is reference only now.
 
 ### Verified, not asserted
 
-- **Fixpoint**: gen2 == gen3 at 1,102,200 B, and a rebuild is byte-identical to
-  the committed binary. ⚑ Check each artifact non-empty before the `cmp`.
+- **Fixpoint**: verified at 1,147,256 B after E181's promotion, `N1 == N2` at
+  generation one. ⚑ Check each artifact non-empty before the `cmp`.
+- ⚑ **The compiler's import closure is 59 modules, 16,463 LOC**, out of `lib/`'s
+  103 and 25,559. **1,680 LOC of checking machinery sits outside it**, including
+  `lowering/tal/check`, `typing/effects` and `typing/totality`. See
+  `docs/definitions/bug-classes.md` and the Lane B block in `HANDOFF-LANE-A.md`.
 - ⚑ **A `native-lib` change must be verified at GEN3.** `compile-emit.chiral:295`
   prepends the compiler's own compiled-in runtime to every image, so gen1 and gen2
   compiling proves nothing. This cost one wrong fix on 2026-08-31.
