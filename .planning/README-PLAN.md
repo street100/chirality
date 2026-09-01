@@ -1,8 +1,34 @@
 # README rewrite: working state
 
-**Opened 2026-08-31.** Discussion in progress, no edits made to `README.md` yet
-beyond the earlier dead-reference pass (commit `8c76223`). This file holds the
-settled decisions and the drafts verbatim so they survive a context reset.
+**Opened 2026-08-31. Absorbed `README-PLAN.md` on 2026-09-01.** This file holds
+the settled decisions and the drafts verbatim so they survive a context reset.
+It is the single working file for the README; `README-PLAN.md` is gone.
+
+## Where this stands
+
+The 2026-09-01 session did not know this file existed and edited `README.md`
+twice. Both commits are in `master`.
+
+| commit | what it did | keep? |
+|---|---|---|
+| `8912c09` | re-measured every number; five were wrong | **the measurements, yes.** They belong in section 4, not in a Status section |
+| `871fd05` | restructured the README as a front door | **no.** Written blind to this file and it contradicts four settled decisions below |
+
+`871fd05` against the Framing decisions:
+
+- kept the `common-sense, the language` tagline, which is **cut**
+- opened on zero trust, which is **rejected as the thesis**
+- kept a Status section of numbers, which is **rejected**
+- used its own section order rather than the author's four-part structure
+- its "The idea" section mirrors PRINCIPLES, which the first framing decision
+  forbids
+
+**Recommendation: revert `871fd05`**, keep `8912c09`'s measurements, and build
+from the structure below. The revert is not yet done and is the author's call.
+
+⚑ The tagline was cut from `README.md` on 2026-09-01 as a standalone edit. A
+revert of `871fd05` must not resurrect it: it was in the file before that commit
+too.
 
 ## Structure, set by the author
 
@@ -28,6 +54,77 @@ EXPAND TO MORE DIVERSE CLAIMS WITH STATE TRUTHS AND LIMITS STATED WITH PROPOSALS
   saying what holds.
 - **Tone.** Short and plain. No em-dashes. No "X, not Y" antithesis templates.
   See the `writing-style-terse` memory. Tables and short lists over paragraphs.
+
+## The grounding chain, found 2026-09-01
+
+**The README is a cited source of authority, and the rewrite has to preserve
+that.** `docs/goals/README.md` states the rule: "Adding a goal means citing where
+the project already claims it." Six of the seven goal files discharge it by
+citing README line numbers.
+
+    goals/self-hosting.md          README.md:44-46, :79-81
+    goals/self-tooling.md          README.md:48-50, :79-81
+    goals/ownership-and-trust.md   README.md:77-84
+    goals/enforcement.md           README.md:60-75
+    goals/independent-judgment.md  README.md:71-75
+    goals/presentability.md        README.md:60, :63
+
+All nine are broken today. `8912c09` shifted them and `871fd05` moved the
+sections out from under them.
+
+**Consequence for the rewrite: a section other documents cite needs a stable
+heading anchor.** Line numbers cannot carry this. Every goal citation gets
+repointed to `README.md#anchor`, and whatever a goal quotes has to actually be
+stated in the README in the words the goal quotes.
+
+Second break in the same chain, older and not from this session. Five goal files
+quote `CLAUDE.md` verbatim:
+
+- `goals/self-tooling.md`: "tools/ holds 9 Python tools carried as-is"
+- `goals/independent-judgment.md`: "External judgment is cut ..."
+- `goals/presentability.md`: "Report failures with their output ..."
+- plus `goals/README.md` and `goals/self-hosting.md`
+
+`CLAUDE.md` was emptied to a pointer table and contains none of those strings.
+The rules moved to `docs/definitions/working-discipline.md` and
+`docs/decisions/decision-dispatch-cadence.md`. Each citation needs repointing to
+the tracked home that now carries the rule.
+
+Third break: `docs/definitions/thesis.md` is dated 2026-06-16 and says "The
+seven principles are this idea applied seven times", then walks P1 through P7.
+`PRINCIPLES.md` was condensed to five on 2026-07-20. The one document stating
+the single idea under the language describes a principle set that no longer
+exists.
+
+## Thesis and goals: new instruction, 2026-09-01
+
+The author added scope this session, beyond what the four-part structure covers:
+**"straighten up thesis and goals in the broadest sense of the language."**
+
+The questions half of that instruction is already settled below, seven of them.
+The thesis and goals half is new and unstarted. What exists to build on:
+
+- `docs/definitions/thesis.md`, stale as above. One idea: *a gap is an ungoverned
+  path.* Anything a program can do that the framework cannot name is ungoverned,
+  so the only way to control everything is to be able to express everything.
+- Seven goal files under `docs/goals/`, each with a state:
+
+| goal | state |
+|---|---|
+| the language compiles and checks itself | held since 2026-08-05 |
+| chirality writes its own tooling, no Python remains | in flight |
+| the surface is convenient without escape hatches | in flight |
+| what is built is gated | in flight |
+| what this repo says about itself is true | in flight |
+| judgment that does not rest on one formulation | stated, unbuilt, zero arcs |
+| the ownership and trust model | deferred by decision |
+
+Open: whether the goals appear in the README as their own section, or whether
+section 4 (claims with state, limit, proposal) already is the goals section
+under another name. The two lists overlap and have not been reconciled.
+
+Open: whether the thesis is stated in the README in full or as one line plus a
+link. The note needs the five-principle repoint either way.
 
 ## The seven questions, final wording
 
@@ -62,7 +159,134 @@ Q1 and Q7 are pairs. Seven items total.
 - "Why does every layer of the stack need a different language?" and "Can you
   change a language's core without forking it?" Both rejected for Q7.
 
+Proposed again on 2026-09-01 by a session that had not read this file, and
+rejected again on the same grounds recorded above: "Why another language?",
+"What does zero trust buy me over a strong type system?", "Is everything
+ceremony?", "How is this different from Rust, Idris, ATS, Austral?", "Is it
+usable today?". Defensive, comparison bait, or state that belongs in section 4.
+
+Three from that batch are **not** covered by the seven and stay open as
+candidates: "What happens when I have to do something the type system cannot
+prove?", "What is the runtime, and where does allocation happen?", "What is a
+port, and why is that the unit?". The third overlaps Q5 heavily.
+
 ## Section 3 drafts
+
+### The shape of an answer, settled 2026-09-01
+
+Each of the seven is a **loaded question**. It carries a premise the reader
+already believes, earned from other languages: opinionated means painful, proof
+is slow, you cannot see what a program does. The question is a belief being held
+up, and an answer that opens on mechanism skips the belief.
+
+So an answer opens by **taking a position on the premise**, and the position is
+categorical. The interesting claim is rarely that chirality made a known pain
+smaller. It is that the pain has a specific cause, chirality does not do that
+thing, and the tradeoff the reader is bracing for is not the one they get.
+
+    Q7  proof feels slow because you picture it running. It runs at compile
+        time and is erased before emission, so there is no runtime proof object
+        to pay for. A different category, not an optimisation.
+    Q4  the fight comes from a denylist. There is no denylist here, so the
+        argument that produces the fight never starts.
+
+The hedge is load bearing. "Not usually" rather than "no" is what lets the state
+table underneath read as part of the answer instead of a walk-back.
+
+Three parts, in order:
+
+1. **The position**, one or two sentences, naming what causes the pain elsewhere
+   and why this is not that category.
+2. **The reasoning**, the design goal and why this shape was chosen.
+3. **The state table**: what is built, where it lives, and its honest limit.
+
+Open: the categorical move may not be available for all seven. Q7 and Q4 have it
+cleanly. Q6 (the smallest thing you would have to trust) carries no premise to
+overturn; it is a real question with a number for an answer, and Q2 may be the
+same. If the questions split into "dismantles an assumption" and "just answers",
+the shape is not uniform and that is worth stating rather than forcing.
+
+### Worked instance: Q4
+
+**Does a language with strong opinions have to fight you?**
+
+> Not usually, and it turns on where the fight actually comes from. Languages
+> fight you with a denylist: a set of named things you may not do. Every time you
+> have a good reason to do one you argue with the denier, and the argument ends
+> at an escape hatch. There is no denylist here. What varies is weight. An empty
+> signature is the base case, and each effect and each unit of fuel makes a type
+> heavier. You are refused when the checker cannot prove what you claimed, never
+> because a construct is on a list, so there is no exemption to reach for and
+> nothing to argue with.
+>
+> | what | state | where | limit |
+> |---|---|---|---|
+> | usage on binders | enforced, gated | `lib/typing/qtt.chiral`, Phase 6 | |
+> | refinement types | enforced, gated | `lib/typing/refine.chiral` | `I64` only, `jg-refine-i64` |
+> | totality as the default | written, unreached | `lib/typing/totality.chiral` | zero importers, no termination judgment in `diag.chiral` |
+> | `->` against `=>` | carried, refused nowhere | `lib/typing/effects.chiral` | E171 |
+>
+> Where the checker is wired the gradient is real. Where it is not, the shape is
+> light because nothing is weighing it.
+
+The imperative problem the earlier pass diagnosed dissolves here on its own. The
+draft reached for "Make the well-behaved shape the low-ceremony one" because the
+sentence had no position to open with and no table to carry the state.
+
+### The earlier angle pass, superseded
+
+The author's read: several answers "come from weird angles", with Q4's "Make the
+well-behaved shape the low-ceremony one" as the example.
+
+Diagnosed across all seven. Four of the drafts open in the **designer's
+imperative** ("Make X the Y", "Declare the dangerous thing as Z") or with a
+**theory premise** ("Enumerating what a program outputs is undecidable"). The
+framing decision says questions come from the wanting side. The answers arrive
+from the building side, so the reader is handed a design instruction or a lecture
+where they asked what they get.
+
+| draft | opens with | angle |
+|---|---|---|
+| Q1 | "That makes this a mechanical job" | the project's workload |
+| Q2 | "One language covers the compiler, the checker ..." | **ok**, a fact about what is |
+| Q3 | "Declare the dangerous thing as a crossing" | an instruction |
+| Q4 | "Make the well-behaved shape the low-ceremony one" | an instruction |
+| Q5 | "Enumerating what a program outputs is undecidable" | a theory premise |
+| Q6 | "A judgement core small enough to read in a sitting" | **ok**, a direct answer |
+| Q7 | "Proof runs at compile time" | **ok**, a fact about what is |
+
+The three that work open with **what is true here**. The rule that falls out: an
+answer's first sentence states what holds, from where the reader stands. The
+mechanism comes second. The theory, if it earns a place at all, comes last as the
+reason the mechanism works.
+
+#### Proposed openings, superseded by the three-part shape above
+
+Only the opening move is changed. The mechanism sentences below are the standing
+drafts and are unchanged.
+
+**Q1.** Every failure that is not you reasoning wrong is a class, and a class
+that can be said is a class the checker can refuse.
+*(was: "Everything can be expressed. That makes this a mechanical job.")*
+
+**Q3.** There is no `unsafe`. The dangerous thing is a crossing with a type.
+*(was: "Declare the dangerous thing as a crossing with a type.")*
+
+**Q4.** It does not fight you by default. A function is total unless you
+annotate otherwise, and an empty signature is the light base case.
+*(was: "Make the well-behaved shape the low-ceremony one.")*
+
+**Q5.** You can read a module's reach off its declarations. Crossings are closed
+and named, so the ways it touches anything outside itself are finite and listed.
+The undecidability of what it *outputs* is why that is the question worth asking,
+and it goes last if it goes in at all.
+*(was: "Enumerating what a program outputs is undecidable.")*
+
+Unresolved: whether Q1's opening still carries the question's second half
+("could debugging be made purely about logical bug solving"). The old draft
+answered it in the last line and the new opening may need to keep that shape.
+
+### The standing drafts, verbatim
 
 **Q1. What bugs could a programming language inherently remove? Could debugging a
 program be made purely about logical bug solving?**
@@ -146,6 +370,12 @@ erasure is why the tal preserve check never runs. Unresolved.
 | Judgment frozen, rest re-checkable | `reflect-floor.chiral`, `kernel-core.chiral` written | zero importers | wire, or mark seeded |
 
 ## Measurements taken during this discussion
+
+⚑ **Superseded in part.** The LOC figures below were taken with
+`xargs wc -l | tail -1`, which reports only the last batch. The Wiring sweep at
+the end of this file has the corrected numbers. The importer counts and the
+file counts are unaffected and stand.
+
 
 | thing | value | how |
 |---|---|---|
@@ -277,6 +507,18 @@ Six majors proposed for Q1, honest split as of 2026-08-31:
 - Whether section 4 lives in the README in full or links out for proposals.
 - Whether the tal floor should get a question, since none of the seven reaches it
   now.
+
+Added 2026-09-01:
+
+- **Revert `871fd05`?** The rewrite contradicts four framing decisions. Author's
+  call, and everything else here waits on it.
+- **Do the goal citations repoint to README anchors, or does the README come out
+  of the grounding chain** and the goals cite `PRINCIPLES.md` and the docs tier
+  instead? The second is less coupling and makes the README free to change.
+- **The five dead `CLAUDE.md` quotes**: restore that text somewhere tracked, or
+  repoint each goal to the home that now carries the rule?
+- **Does the goals table live in the README**, or does section 4 already cover it?
+- **Thesis in the README in full, or one line plus a link?**
 
 ## Wiring sweep, 2026-09-01
 
