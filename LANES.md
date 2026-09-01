@@ -21,30 +21,58 @@ than a fresh one.
 
 ---
 
-## ⚑ The shared seam: `Doc` and `pretty`
+## The shared seam: `Doc` and `pretty` — enforced, not agreed
 
-Both lanes print. That is the whole collision risk, and it has exactly two parts.
+Both lanes print. That is the collision risk, and it is **already mechanical**.
+Nothing below is etiquette; each rule names the thing that fails if it is broken.
 
-**`lib/prelude/doc.chiral` is FROZEN.** E158 built it, Phase 14 gates it, and
-**neither lane may change it** without telling the other. It is a closed sum: a
-new constructor is a compile error in every exhaustive `case`, which is the design
-working — but it is also an instant cross-lane break. If a lane believes `Doc`
-needs an arm, that is a conversation, not a commit.
+### `Doc`'s algebra is CLOSED, and two gates prove it
 
-**`E181` (`typing/pretty.chiral`) belongs to Lane A, and Lane B consumes it.**
-The reason is not seniority, it is that Lane A has the forcing consumer already in
-the tree: `diag.chiral:125`'s `r-mismatch` carries **two `Term`s** and there is no
-reachable `Term` renderer, which is why E158 had to ship `dg-term-tag` as a flat
-one-level accessor instead. Lane B's `E146` also needs it — to print chirality
-source — but *later in its own sequence*.
+`lib/prelude/doc.chiral` has six constructors and deliberately no seventh. That is
+not a request to leave it alone — **adding an arm reddens two phases immediately,
+in mutants that are actually run**:
 
-**So Lane B starts on the half that does not need it:** the declared form, the
-schema, the round-trip gate's shape, and `.protocol`'s codec derivation. It
-integrates `pretty` when E181 lands. **Lane B must not write its own term
-printer** — that is the duplicate-owner defect this repo has now fixed four times
-(`str-cmp`, `list-sort`, `list-dedup-adj`, `Ord`).
+- `tools/test/doc.sh` **M5 `add-seventh-constructor`** — adds an arm and nothing
+  else, and asserts the compile is **refused**. Its failure text is the point:
+  *"a 7th `Doc` arm compiled clean; the closed sum buys nothing."*
+- `tools/test/render-doc.sh` **M10 `add-seventh-Doc-constructor`** — the same
+  against `render-doc`'s coverage, because `rdc-best`/`rdc-tree` carry no `_` arm.
 
----
+So a lane that adds a constructor does not "break an agreement" — it fails Phase 14
+and Phase 17, in the other lane's gate, on the next run. **The invariant is in the
+substrate.** (A `_` catch-all would defeat this, which is why neither gate has one
+and why adding one is itself a mutation those rows catch.)
+
+### The extension mechanism is CONVERSION, and it is already the decided pattern
+
+A lane that needs something `Doc` cannot express does **not** add an arm. It builds
+its own type and converts *into* `Doc`. This is not invented here — it is the call
+E158 already made and gated: **`Doc` does not unify with `Rendering`; it
+converts** (`doc->rendering`), because four of `Rendering`'s eight constructors
+carry interaction state that has no meaning in a layout algebra. Same rule, same
+reason: a shared closed sum stays small by *pushing difference into conversions*.
+
+**If a lane genuinely needs a seventh arm, that is an ELEMENT** — a row, a
+pre-run, an audit — because changing a closed sum that two lanes case over
+exhaustively is design work with a measured blast radius, not a commit. The gates
+above are what make that unavoidable rather than optional.
+
+### `E181` (`typing/pretty.chiral`) is Lane A's, and Lane B consumes it
+
+Not seniority — Lane A has the forcing consumer already in the tree.
+`diag.chiral:125`'s `r-mismatch` carries **two `Term`s** with no reachable `Term`
+renderer, which is exactly why E158 had to ship `dg-term-tag` as a flat one-level
+accessor instead of a real printer. Lane B's `E146` needs the same printer *later
+in its own sequence*, so **Lane B starts on the half that does not need it** — the
+declared form, the schema, the round-trip gate's shape, `.protocol`'s codec
+derivation — and integrates when E181 lands.
+
+**Lane B must not write its own term printer.** The enforcer here is a census, not
+a promise: E158's **G6** greps `lib prog tools` for every `prelude/doc.chiral`
+binding and fails on a duplicate definition, with **M6 `redefine-doc-fits`**
+proving it can see one. A second printer defining the same names is caught the same
+way. This is the duplicate-owner defect this repo has already fixed four times —
+`str-cmp`, `list-sort`, `list-dedup-adj`, `Ord`.
 
 ## File ownership — explicit, so nobody has to guess
 
@@ -56,10 +84,15 @@ Lane-A gates.
 **Lane B may write:** `lib/manifest/**` (new) · `lib/protocol/{json,http,wire,apc,vt-parser}.chiral`
 · `prog/` emitters · new Lane-B gates.
 
-**Neither may write, without saying so first:** `lib/prelude/doc.chiral` (frozen)
-· `bin/chirality-bin` (promote only per the build rule) · another lane's gate
-script — every gate sha256-pins its neighbours, so touching one reddens the other
-lane's phase.
+**Neither writes these, and in each case something fails if they do:**
+`lib/prelude/doc.chiral` — the two seventh-constructor mutants above ·
+`bin/chirality-bin` — the BUILD RULE governs it (build-new → test → promote,
+nothing replaces itself in place), and a mismatched binary/blob pair produces the
+inverted "the binary is stale" diagnosis this repo has already been caught by ·
+**another lane's gate script** — every gate **sha256-pins its neighbours**, and
+those pins are checked rows with their own `move-a-pinned-gate` mutants, so
+touching one reddens the other lane's phase on the next run. Converging a pin
+edit takes a fixpoint pass, because each gate pins the others.
 
 ---
 
