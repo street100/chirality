@@ -38,7 +38,7 @@ ROOT="$(_find_root)"
 ORIG_DIR="${ORIG_DIR:-$PWD}"
 
 # The module search path.  Two roots: `lib` (the importable tree) and `prog`
-# (what chirality ships).  The KEY is the ROOT-RELATIVE PATH -- LAYOUT.md.
+# (what chirality ships).  The KEY is the ROOT-RELATIVE PATH -- MAP.md.
 ROOTSPEC="$ROOT/lib:$ROOT/prog"
 
 # the filesystem source provider (pure shell, zero Python): chirality_blob,

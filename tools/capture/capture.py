@@ -349,7 +349,7 @@ def authority_for(kind, nid):
         p = f"docs/decision-{nid}.md"
         exists = os.path.exists(os.path.join(ROOT, p))
         return [(f"{p} (existing settled decision)" if exists
-                 else f"{p} (NEW — must be minted; also bump MAP.md decision count)"),
+                 else f"{p} (NEW — must be minted; also bump CONTENTS.md decision count)"),
                 f"{DOCKET} — the docket item this decision resolves",
                 f"{CONFMAP} — gated E#s"]
     if kind == "bank":
@@ -388,7 +388,7 @@ def placement(kind, nid):
     if kind == "decision":
         if os.path.exists(os.path.join(ROOT, f"docs/decision-{nid}.md")):
             return f"edit-stub: fold into the existing docs/decision-{nid}.md."
-        return ("new decision: place at docs/decision-{}.md AND bump MAP.md's "
+        return ("new decision: place at docs/decision-{}.md AND bump CONTENTS.md's "
                 "'(nine notes)' count (authority-tier — do NOT let capture do it "
                 "silently).".format(nid))
     if kind == "bank":

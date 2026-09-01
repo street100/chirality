@@ -64,7 +64,7 @@ every chirality program a derivative work, which would destroy goal 2 outright.
 
 `LICENSE.EXCEPTION.md` is an additional permission under §7 lifting exactly
 that, modeled on the Bison parser exception and the GNU Classpath exception.
-The boundary it draws is `LAYOUT.md`'s own two tiers: the universal shelf is
+The boundary it draws is `MAP.md`'s own two tiers: the universal shelf is
 runtime and is excepted; `typing/`, `surface/`, `module/` and `lowering/` are
 the language implementation and are not. A work containing those is a compiler,
 and the exception does not reach it.
@@ -74,7 +74,7 @@ and the exception does not reach it.
 - Goal 3 is gone. A competitor may sell or host chirality. They must publish
   their source; nothing stops them charging for it.
 - The exception has not been reviewed by a lawyer.
-- The exception's boundary is a prose reference to `LAYOUT.md`'s tier table. If
+- The exception's boundary is a prose reference to `MAP.md`'s tier table. If
   that table changes, the licensing boundary changes with it, silently. Making
   the tier machine-checkable would close that, and nothing does it today.
 - AGPL is a real adoption cost for a language. Some organizations refuse it by

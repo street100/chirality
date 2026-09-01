@@ -49,7 +49,7 @@ def die(m):
     sys.exit(1)
 
 
-# The doc tier sorts by ROLE as of 2026-08-31 (LAYOUT.md), so a note that used
+# The doc tier sorts by ROLE as of 2026-08-31 (MAP.md), so a note that used
 # to sit at docs/<name>.md now sits under one of these. Order is deliberate:
 # the literal path first, then the roles most notes live in. This is a repoint
 # to KNOWN destinations, not a guess -- .planning/MIGRATION-MAP.tsv records

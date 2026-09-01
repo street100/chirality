@@ -1,6 +1,6 @@
 # chirality: handoff
 
-**Rewritten 2026-08-31, end of the second session.** Start here. `LAYOUT.md` is
+**Rewritten 2026-08-31, end of the second session.** Start here. `MAP.md` is
 the contract (tree, extensions, module key, doc roles); this file is state and route.
 
 ## ⚑ How to work here, before anything else

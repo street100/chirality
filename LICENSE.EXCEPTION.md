@@ -38,7 +38,7 @@ than into the compiler's own: everything under `lib/`, including `lib/prelude/`,
 and `lib/evidence/`.
 
 It does **not** include `lib/typing/`, `lib/surface/`, `lib/module/` or
-`lib/lowering/`. Those are the language implementation. `LAYOUT.md` marks them
+`lib/lowering/`. Those are the language implementation. `MAP.md` marks them
 "language-implementation only", and a work containing them is a compiler.
 
 ## What is not excepted
@@ -52,5 +52,5 @@ case AGPLv3 section 13 exists for, and section 13 applies in full.
 ⚑ **Not reviewed by a lawyer.** This is modeled on the well-precedented Bison
 parser exception and the GNU Classpath exception, both of which solve the same
 problem for the same reason. The boundary in "The Chirality Runtime Library"
-above is drawn from `LAYOUT.md`'s own two tiers, so it moves if that contract
+above is drawn from `MAP.md`'s own two tiers, so it moves if that contract
 moves. Have counsel read it before relying on it commercially.

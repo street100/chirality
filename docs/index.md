@@ -21,7 +21,7 @@ linked notes, one idea per note. Read the hub notes first, then follow links.
 - The root holds the locked spine: [PRINCIPLES](../PRINCIPLES.md) and
   [SECURE-DATUM-MODEL](definitions/secure-datum-model.md). The notes here refine and
   apply that spine. They do not restate it.
-- For orientation above this base, read [MAP](../MAP.md) (the whole project) and
+- For orientation above this base, read [CONTENTS](../CONTENTS.md) (the whole project) and
   [PERSONA](../.planning/PERSONA.md) (how to work here). The long road is in
   [.planning/ROADMAP.md](../.planning/ROADMAP.md).
 
@@ -46,7 +46,7 @@ linked notes, one idea per note. Read the hub notes first, then follow links.
    typeability regions.
 5. [[module-map]] is the full module list and the hub for the per-subsystem
    module notes.
-6. The `decision-*` notes record the design forks we have settled (MAP.md
+6. The `decision-*` notes record the design forks we have settled (CONTENTS.md
    carries the count).
 7. [[open-edges]] is what is still open. [[resolution-patterns]] is its
    reader's-side companion — the recurring *moves* by which open edges resolve

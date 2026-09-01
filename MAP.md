@@ -1,166 +1,151 @@
-# chirality — project map
+# The chirality tree map
 
-Read this first to orient. It is the layout of the whole project on one screen,
-with links into the detail. For how to work here, read `.planning/PERSONA.md` (internal
-working doc; not part of the public mirror).
+## Extensions
 
-Draft, 2026-06-16; scaffold running since 2026-07-05. Developmental.
+The extension is the file's kind. The resolver checks it.
 
----
+| ext | kind | structural test |
+|---|---|---|
+| `.chiral` | module, importable computation | the default |
+| `.prog` | program with an entry | defines the entry symbol |
+| `.port` | port registry, mints capability types | declarations only, zero lambdas, at least one extern or porttype |
+| `.profile` | a named frozen port set | zero lambdas, zero externs, names a module set |
+| `.manifest` | pure data, the replacement for JSON/TOML config | declared in the file, not derived |
 
-## What chirality is
+Extension is the type, directory is the role. Subject matter is neither, so there is
+no `stdlib/` and no `compiler/`.
 
-A new programming language born from the bhumi OS and tool ecosystem. One thesis
-runs under it: a gap is an ungoverned path. To control everything you must be
-able to express everything, so that everything expressible is named and
-checkable. See [PRINCIPLES.md](PRINCIPLES.md).
+## Importability
 
-## The spine (root, locked, plain markdown)
+`.chiral`, `.port` and `.manifest` are import targets. The other two are not:
 
-Root holds four documents and nothing else. Everything that used to float there
-was sorted on 2026-08-31 into the tier it belongs to.
+- a `.prog` defines an entry, and two entries in one blob is a duplicate label;
+- a `.profile` names a module set, which the build consumes and nothing imports.
 
-- [README.md](README.md): the public front door.
-- [PRINCIPLES.md](PRINCIPLES.md): five principles, one thesis (condensed from
-  seven 2026-07-20; a crosswalk in the doc keeps old P1-P7 citations resolving).
-- [LAYOUT.md](LAYOUT.md): the tree contract. Extensions, module key, doc roles.
-- [HANDOFF.md](HANDOFF.md): state and route. Where a session starts.
-- This map.
+Two consequences:
 
-Moved out, and where they went:
-[secure-datum-model](docs/definitions/secure-datum-model.md) and
-[bootstrap](docs/definitions/bootstrap.md) are named concepts, so they are notes
-in the design base. `.planning/PERSONA.md` and `.planning/UMBRELLA.md` are
-internal working documents, and `.planning/MIGRATION-MAP.tsv` is a record.
+- the resolver probes three extensions, not five, and the 177 programs never enter
+  the resolution space;
+- extension ambiguity is not a new collision class. `foo.chiral` beside `foo.port`
+  is the existing basename collision, already a named error.
 
-## The design base (docs/, linked notes)
+## Manifests are declared
 
-Entry point: [docs/index.md](docs/index.md). The base is an org-roam style note
-set, one idea per note, linked with `[[slug]]`. Groups:
+A manifest is a module whose every `def` body is a literal value: constructor
+applications and literals. No `lam` and no computation.
 
-- Foundations: `thesis`, `axis-typeability`, `axis-altitude`, `splitting-law`,
-  `joining-law`, `process-and-runtime`, `bootstrap-sequence`.
-- Categories: `category-typed` (A), `category-untyped` (B), `category-bridge` (C).
-- Modules: `module-map` (the hub table) plus `modules-core`, `modules-security`,
-  `modules-custody`, `modules-broker`, `modules-substrate`, `modules-bridges`,
-  `modules-lowering`, `modules-staging`.
-- Decisions: `decision-profiles`, `decision-brokers`, `decision-backend`,
-  `decision-b-in-type`, `decision-split-checker` (the checker: small trusted core
-  plus untrusted certificate producers), `decision-bridge-elaborator`.
-- Trust discipline: `certificate-discipline` (trusted checker, untrusted producers —
-  re-run the work, don't spot-check; prove elements and provable interactions, not the
-  whole), `split-role` (where proof runs out, the split as a tiered substrate-provided
-  role for the unprovable residue).
-- Applications: `live-environment` (the hub) — a live self-modifying environment,
-  opened first as an AI-orchestration layer, read through the node model.
-- Inspirations: the touchstones the live environment fuses, each lighting one axis
-  and anchoring none — `insp-smalltalk`, `insp-lisp-machine`, `insp-emacs`,
-  `insp-oberon` (residential), `insp-erlang-beam`, `insp-capability-os` (mesh),
-  `insp-unison` (substrate).
-- Provenance and open work: `dump-integration`, `open-edges`.
-- Navigation: `index`, `relations`, `glossary`, `vocabulary`, `perspectives`.
-- Banks (depth tier): `banks/INDEX` — the full refraction of a concept into
-  shards, homes, and build-state, under the thin notes above (module, profile,
-  runtime, capability, port, effect-and-alarm, memory, evidence-and-split).
+That is a property of term structure, not of lines, so the resolver cannot see it.
+Only the loader holds the terms. The kind is therefore declared in the file and
+checked by the loader, the same way `.prog` is a checked projection of
+`compile-main`.
 
-## Architecture at a glance
+Open: whether a program in another language written as data is a manifest or needs a
+further clause. `sys-tal` is the case, its 64 defs being `(t-seq ...)` and
+`(ti-ret ...)` constructor applications.
 
-Two axes place every module.
+## The module key is the root-relative path
 
-- Typeability: A typed (proof), B untyped (quarantined substrate), C the
-  supervisory bridge (typed module, untyped referent, governs by evidence). C is
-  the novel core.
-- Altitude: a span, not a partition. Three levels, upper, the typed assembly
-  floor (tal), and the metal, with drops between. Types are preserved and checked
-  down to tal; below tal is the one trusted drop to machine code, or to CHERI
-  silicon where the marks reach the metal. No untyped bottom.
+Write `(import "lowering/x64/mach")`, not `(import "mach")`.
 
-The splitting law decides boundaries: a module spanning two categories is under
-split; split only when the halves have different types. Its dual, the joining
-law, decides how cut modules reconnect: four typed connectors (bridge, lowering,
-staging, port composition), each preserving the one invariant its boundary
-protects. The modules are the alphabet; the connectors are the grammar. Full
-table in [docs/module-map.md](docs/modules/module-map.md); the connectors in
-[docs/joining-law.md](docs/definitions/joining-law.md).
+On the basename alone, `mach` resolves four ways (`lowering/mach|x64|c|listing/`)
+and `emit` twice. Taking the path as the key means:
 
-The whole runs as nodes. Code runs in nodes that touch only through typed ports,
-with no central kernel: substrate is owned by nothing and governed in the port's
-type, and state is several cross-checked truths reconciled by typed processes. A
-node is a self-similar compiler-plus-runtime bundle, and a remote node is just a
-node you hold a port to, so distribution is native. See
-[docs/node-architecture.md](docs/definitions/node-architecture.md) and
-[docs/process-and-runtime.md](docs/definitions/process-and-runtime.md).
+- the directory is the identity, not decoration;
+- basename collision is unreachable rather than named. `ports/proc` and `proc` were
+  the same key in the old tree; here they cannot be.
 
-## The long road
+## `ports/` holds declarations, not code about ports
 
-The three project files are in [.planning/projects/](.planning/projects/); the
-developmental stages are in [.planning/ROADMAP.md](.planning/ROADMAP.md). The
-short version, from here outward: resolve the load bearing open edges, build the
-QTT kernel, the typed core, the lowering floor, staging and generation, the
-bridge, the substrate and silicon floor, bootstrap to self host, the profiles and
-targets, then reimplement the bhumi tools. It is a spine with backflow, not a
-schedule.
+This is PRINCIPLES §3 applied to the tree. Programming here is coordinating
+port boundaries and writing the logic that produces their inputs, so a
+directory can name the declaration of a boundary. It cannot name a subject.
 
-## The scaffold (first running code)
+A file belongs in `ports/` iff it declares a crossing: an `extern` whose
+implementation is bound at link time, or a `porttype` minting an opaque linear
+atom. That is the same structural test the `.port` extension already carries,
+pointed at the directory.
 
-`scaffold/` is the stage 9 host-language scaffold, pulled forward (2026-07-05)
-to run the first target, [docs/target-tomodachi.md](docs/definitions/target-tomodachi.md).
-It follows the module architecture, not implementation convenience:
+Being *about* ports does not qualify, and on 2026-08-31 three files were in
+`ports/` for exactly that reason. Each moved to the directory its own importers
+already named:
 
-- a minimal QTT kernel with two seams (term-former handlers, membrane rules);
-  the types and effects modules live behind them, not in the kernel;
-- primitives declared in chirality source (`extern`, `porttype`;
-  `lib/prelude.chiral` is the A floor, `lib/ports.chiral` the C floor), host
-  bindings linked at load, and the bridge connector's inbound face checking
-  the values a binding returns (runtime tags and arities, depth-bounded —
-  evidence at the crossing, not a deep proof);
-- profiles as manifests over a frozen port set with a target requirement
-  type, judged by `chirality verify` (G9); four ship over one module base,
-  including a two-node split (sensor and renderer runtimes joined by one
-  typed port: the node model in miniature);
-- the lowering connector: the pure fragment compiles to a typed-assembly
-  floor (`tal.py`) and the tal checker re-checks every compiled body against
-  its declared type (the preserve-check); crossings stay upper by
-  construction. `MET_TAL=1` runs the demo on the floor.
+| file | went to | because |
+|---|---|---|
+| `crossing-wraps` | `lowering/tal/` | both importers are `lowering/tal`, and its header says it is a leaf to dodge a tal-ir collision |
+| `inet` | `protocol/` | its only importer is `protocol/http` |
+| `term` | `protocol/` | 29 defs of terminal logic beside `vt-parser`, `apc`, `grid`, `render` |
 
-The demo is the tomodachi written in chirality: Wayland wire client (no
-libwayland), niri event stream, swappable pure behavior pack. Verified
-headless against protocol mocks; on a real niri session:
-`python3 -m chirality run demo/tomodachi.chiral`. What is real versus stubbed:
-[scaffold/README.md](docs/implementation/README.md); findings ledger in
-[scaffold/AUDIT.md](docs/implementation/AUDIT.md).
+None of the three declared a crossing. All three computed over crossings
+declared elsewhere, which is what every other module in the tree does.
 
-## The three sibling projects
+`ports/ports.chiral` declares nothing either and stays: it is the façade that
+imports the nine registries, so `(import "ports/ports")` still names the whole
+floor. That is a re-export, not a module about ports.
 
-Each is its own GSD project under the umbrella.
+⚑ Nothing checks this. The rule is structural and could be a gate; today it is
+prose, and prose is how the three got there.
 
-- [01-bhumi-context](.planning/projects/01-bhumi-context.md) — what the bhumi tool
-  family needs the language to express.
-- [02-language-design](.planning/projects/02-language-design.md) — the language
-  itself. The `docs/` base is its working output.
-- [03-development-approach](.planning/projects/03-development-approach.md) — how
-  chirality gets built and how bhumi reimplements under it.
+## The two binaries
 
-Information flows 01 to 02 to 03, with backflow. See the umbrella project for the
-sequencing intent.
+- `bin/chirality` is the CLI front door: `compile`, `run`, `check`, `test`.
+- `bin/chirality-bin` is the compiler: a blob on stdin, an ELF on stdout.
 
-## Settled and open
+## Tiers
 
-- Forks settled in `docs/decisions/` (sixteen notes): additive testable profiles
-  over a frozen port set; two brokers agreeing via Adhikara; own typed backend
-  with no compile to C; B in the type not the packaging; the graded/cost-kernel
-  direction; the inspiration policy; the checker as a small trusted core plus
-  untrusted certificate producers; the bridge elaborator; effects as two facets
-  (possession + exercise) with alarms as crossings; deployment/custody as a
-  per-instance decentralized translation of centralized product instincts; and the
-  reflective floor as a frozen judgment changed only by certified succession; and
-  the user layer extending in chirality, live, above that same frozen kernel line.
-- Open work: the unresolved seams enumerated in
-  [docs/open-edges.md](docs/definitions/open-edges.md), with three sequencing questions not
-  yet committed.
+| tier | directories |
+|---|---|
+| universal | `prog` `ports` `capability` `protocol` `runtime` `memory` `evidence` `lowering`, and the base shelf |
+| language-implementation only | `typing` `surface` `module` |
 
-## Start here
+## The tree
 
-New to the project: PRINCIPLES, then `docs/index.md`, then `docs/module-map.md`.
-Picking up work: `docs/open-edges.md` for what is next, this map for where it
-sits.
+```
+lib/
+  prelude/     the base shelf over the extern floor
+  typing/      what a type is, and every check on it
+  surface/     what you write, and how it is read
+  module/      module identity, resolution, loading
+  lowering/
+    upper/     upper to tal
+    tal/       the typed-assembly floor
+    mach/      the frozen contract and target-independent codegen
+    x64/  c/  listing/      one directory per target
+    ...        a new target lands in one new directory; nothing else moves
+  ports/       where a crossing is DECLARED. Nothing else.
+  capability/  what a held port is
+  memory/      space as a port
+  runtime/     running things
+  protocol/    port-protocol data layers
+  evidence/    cross-checked truth
+prog/          what chirality ships, as distinct from what it is
+tools/         one folder per tool
+/                  README.md · PRINCIPLES.md · MAP.md · CONTENTS.md ·
+                   HANDOFF.md, plus LICENSE.md and LICENSE.EXCEPTION.md. A
+                   document at root is one a stranger or a tool opens first;
+                   everything else sorts into a tier below.
+docs/
+  index.md         the hub. Notes link by [[slug]], never by path, so a note
+                   moves between roles without touching a single link.
+  definitions/     one entry per named concept
+  decisions/       one settled decision per entry, carrying its reason
+  modules/         the module map, the module groups, the views
+  banks/           the depth tier: one concept refracted into shards + homes
+  examples/        one entry per code example
+  elements/        one entry per element: status, relationships, explanation
+  implementation/  the source tree described, as distinct from specified
+  benchmarks/      measurements, with their dates
+.planning/         specs, audits, handoffs, captures, the element catalog
+```
+
+## The doc tier sorts by role too
+
+Source is individuated by kind (the extension) and placed by role (the
+directory). Docs have one axis: a doc has no extension worth reading, so the
+directory carries all of it. `decisions/` is not `definitions/` because a
+decision is answerable and a definition is not; `banks/` is not `modules/`
+because a bank is the refraction of one concept across many homes while a
+module note describes one home.
+
+`elements/` is empty and stays empty until something derives it. Element status
+must come from a build-state authority. The old tree kept ~171 status lines by
+hand and grew the lint checks that exist to catch them drifting.

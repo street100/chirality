@@ -426,7 +426,7 @@ floor, QTT-erased type params, and a pure `->` arrow throughout.
 ## 6. Use / modify notes
 
 - **Lands in:** `lib/text/matcher.chiral` (new directory `lib/text/`; extension
-  `.chiral` per `LAYOUT.md`, module key `text/matcher`). Its first consumer edit
+  `.chiral` per `MAP.md`, module key `text/matcher`). Its first consumer edit
   is `prog/prose-lint.prog`.
 - **Conformance target:** `tools/prose-lint/prose-lint.sh --summary` over
   `docs/` + `.planning/` + root `*.md`. The chirality version must reproduce the

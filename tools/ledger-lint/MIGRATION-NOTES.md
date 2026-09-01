@@ -26,7 +26,7 @@ Concrete files (each read directly, no fallback):
 | path | used by |
 |---|---|
 | `docs/status-ledger.md` | check A |
-| `MAP.md` | check C |
+| `CONTENTS.md` | check C |
 | `docs/open-edges.md` | check D |
 | `.planning/audit/CONFORMANCE-MAP.md` | the build-state authority for every bank shard claim |
 | `.planning/SELF-IMPLEMENT-CATALOG.md` | element-row existence |
