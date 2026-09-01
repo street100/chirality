@@ -1,0 +1,99 @@
+---
+node: records-findings
+layer: navigation
+related: [records/README, status-ledger, bug-classes, open-edges, index]
+status: current
+updated: 2026-09-01
+---
+
+# Findings
+
+Dated investigations that belong to no single arc. Row format, states and the
+rules for adding, changing and retiring a row are in [[records/README]]. Prefix
+is `FD`.
+
+Every row here was a `.planning/FINDING-*.md` file, written into a gitignored
+directory where a second reader could not find it. The investigation itself is
+long-form and stays where it is written; the row is the part that survives a
+fresh clone. `evidence:` names the investigation file **and** the live tree
+spans, because the investigation is untracked and the tree is not.
+
+⚑ Two of these investigations cite `scaffold/` paths and Python modules that the
+migration evicted. Where that is so, the row says it, and the `measured:` line
+carries a span in the live tree instead. A citation nobody can open is not
+evidence.
+
+## Compiler defects found while building tools
+
+### FD-01 `str-sub` clamps, says a load-bearing comment
+
+- state:    OPEN
+- claim:    `lib/prelude/string.chiral:14` says "str-sub clamps, so a too-long prefix is just false", and `str-starts-with` is written to depend on it.
+- measured: two range cases were unguarded. `end < start` computed a negative length, reached the allocator and killed the process (`(str-len (str-sub "abc" 2 1))`, SIGSEGV, exit 139). `end > len` did not clamp: `(str-len (str-sub "abc" 0 99))` returned 99, a `Str` of length 99 over a 3-byte buffer, 96 bytes of adjacent memory, no error and no truncation. The inverted-range half was FIXED 2026-08-31: `nb-bslice-t` clamps an inverted range to the empty slice, fixpoint held at gen2==gen3 at 1,102,200 B and the promoted binary rebuilt byte-identically. **The `end > len` half is untouched**, so the cited comment is still false and `str-starts-with` still depends on a read past the buffer returning differing bytes. That is why this row is OPEN and not FIXED.
+- evidence: `lib/prelude/string.chiral:14-17`, `lib/lowering/tal/erase.chiral:114`, `lib/lowering/tal/bytes.chiral` (`nb-bslice`, `nb-bslice-t`), `.planning/FINDING-str-sub-range-2026-08-31.md`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### FD-02 a `let` over a `case` on a computed comparison cannot be proven
+
+- state:    OPEN
+- claim:    refinement checking accepts a two-line minimum function. Found porting `tools/paren-audit/paren-audit.py` to `prog/paren-audit.prog`, which needed one and could not have one.
+- measured: `(let (m (case (<i a b) (true a) (false b))) m)` fails with "cannot prove refinement". The trigger needs all four at once: a `case`, a **computed** comparison as scrutinee rather than a `Bool` that arrived as a variable, arms returning **bound variables** rather than literals, and a `let`-bound result rather than a direct return. Any one of the four removed and it passes. `cond` fails identically, as expected, since it desugars to `case`. The first hypothesis in the investigation was REFUTED by its own diagnosis section; the mechanism is recorded there. Three coherent fixes exist and they differ in what they preserve, so this needs a blueprint rather than a patch.
+- measured (diagnostic half): the *message* cannot be improved cheaply either. No `Reason` arm fits, and adding one costs an arm in all seven exhaustive `case`s over `Reason` in `diag.chiral` (there is deliberately no `_`). Nothing in the tree can print a surface `Term`: `dg-mismatch-msg` is `(lam (w) "type mismatch")`, E158 has zero code in `lib/` or `prog/`, and `lib/typing/pretty.chiral` declares its own private 5-former `Term` and has no importers. Binder names are gone from `Ctx`. The one cheap real improvement is splitting `jg-refine-unproved` into two arms, because `kernel.chiral:1439-1440` collapses two different refusals into one string.
+- evidence: `lib/typing/kernel.chiral:1439-1440`, `lib/typing/diag.chiral:20-25`, `:314-315`, `:346`, `lib/typing/pretty.chiral:15-20`, `prog/paren-audit.prog`, `.planning/FINDING-let-bound-case-refinement-2026-08-31.md`
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+## Refuted premises
+
+### FD-03 the closure refusal is about a bare lambda, not about capture
+
+- state:    OPEN
+- claim:    `.planning/USER-LAYER-GAP.md` §10 records "k>=1, real capture -> REFUSED" and reads it as a language limitation: captured closures in a record do not lower.
+- measured: REFUTED in both directions by a single fixture pair. A fixture with **zero** captures and a bare `(lam ...)` written directly in a data-constructor argument position is refused; the same lambda with the same captures wrapped in `(the (-> ...) ...)` lowers, runs and exits 0, as does a call that returns a closure. The discriminator is purely syntactic: a bare `(lam ...)` in constructor position is never registered as a closure-conversion site. A second, independent limitation is real and separate: the closure-returning projector shape works at one instance and fails at two, exactly as `specialize-singleton.chiral` documents. **Nothing has been applied.** The run's write surface was the finding plus fixtures under a `scaffold/tests/samples/_wip/` path the migration has since evicted, so the fixtures are gone and §10 still carries the wrong table.
+- evidence: `lib/lowering/upper/closconv.chiral`, `lib/lowering/upper/specialize-singleton.chiral`, `.planning/FINDING-captured-closures-2026-08-30.md` (§0, §1.3, §6), `.planning/USER-LAYER-GAP.md` §10
+- checked:  2026-09-01
+- element:  UNASSIGNED
+
+### FD-04 mutually-recursive `data` types are built, not missing
+
+- state:    FIXED
+- claim:    the 2026-07-31 finding says chirality's surface elaborator cannot express mutually-recursive `data` types and calls it an unbuilt prerequisite for the self-hosted checker.
+- measured: built. It landed 2026-08-01 as E79 and it is chirality today, not the Python it was written against: `lib/surface/parse.chiral:1319-1446` is the data-group phase, registering every data name before any field is elaborated, and `diag.chiral` carries the `rl-parse` reason arm for it. Two deltas from the recommendation as written are recorded in the finding: plain forward (DAG) references are supported too, subsumed by SCC-topo processing at no cost, and termination needed no change because the structural token chain is type-agnostic. Strict positivity is still refused, by design, with its own judgment (`jg-not-positive`). The finding's own citations (`surface.py`, `data.py`, `scaffold/`) are all dead paths.
+- evidence: `lib/surface/parse.chiral:632`, `:1319-1322`, `:1446`, `lib/typing/diag.chiral:73`, `:111`, `:469`, `.planning/archive/FINDING-mutual-data-2026-07-31.md`
+- checked:  2026-09-01
+- element:  E79
+
+## Structure and doctrine
+
+### FD-05 `ports/` named a property that is universal
+
+- state:    FIXED
+- claim:    `MAP.md` said `ports/` is "the crossings themselves". Four `.chiral` files sat there and none of them was one.
+- measured: the mechanical half landed. `MAP.md:58-90` now states the test structurally: a file belongs in `ports/` iff it **declares** a crossing, an `extern` bound at link time or a `porttype` minting an opaque linear atom. Being *about* ports does not qualify. The three files moved to the directory their own importers already named: `crossing-wraps` to `lib/lowering/tal/`, `inet` and `term` to `lib/protocol/`. `ports/ports.chiral` stays as the façade over the nine `.port` registries. Confirmed by `ls lib/ports/`: nine `.port` files and `ports.chiral`, nothing else. ⚑ `MAP.md:86` states plainly that nothing checks this and that prose is how the three got there.
+- evidence: `MAP.md:58-90`, `lib/ports/`, `lib/lowering/tal/crossing-wraps.chiral`, `lib/protocol/inet.chiral`, `lib/protocol/term.chiral`, `.planning/FINDING-ports-role-2026-08-31.md`
+- checked:  2026-09-01
+- element:  none
+
+### FD-06 whether to condense the five principles to "everything is a port boundary"
+
+- state:    OPEN
+- claim:    the same finding proposes the boundary, not the process, as the atom, and shows each of P1-P5 reading as a case of it.
+- measured: undecided, and author-tier by the finding's own statement. The test it has to pass is `CLAUDE.md`'s own: an abstraction that does not constrain is overhead, and "everything is X" forbids nothing by itself. One concrete thing it decides is already banked as FD-05, which is evidence it is not vacuous but is only one. The finding says nothing here should be edited into `PRINCIPLES.md` before the call, and names the 2026-07-20 seven-to-five pass as the precedent for how. Separately: the author's note that `PRINCIPLES.md` has more problems than audit 1 surfaced is taken and there is no queue entry for that second kind of pass.
+- evidence: `PRINCIPLES.md`, `.planning/FINDING-ports-role-2026-08-31.md` (§"The principle question", §"Not the whole audit"), `.planning/DOC-AUDIT-QUEUE.md`
+- checked:  2026-09-01
+- element:  none
+
+### FD-07 the secure-datum model's threat split is drawn in the wrong place
+
+- state:    OPEN
+- claim:    `docs/definitions/secure-datum-model.md` §2 puts peripheral DMA **write** (tamper, replay/rollback) in scope and CPU code execution out of scope, and §1 says the register root "is unreachable by the threat".
+- measured: on the stated hardware (no TPM, no IOMMU relied on) DMA write is arbitrary physical memory write, which is a routine path to CPU code execution: overwrite kernel text, a function pointer or a page-table entry. PCILeech, which §2 names as the in-scope tool, ships kernel implants that do exactly this. So the out-of-scope list is a consequence of a power the model grants rather than a power the attacker lacks, and the document's own §1 supplies the verdict, that N layers sharing one dependency collapse to one. What survives intact is the whole model against a **read-only** DMA adversary, the evil-maid and Thunderbolt-snapshot case: register root, derive-not-store, the interrupt-disabled window and every §4 confidentiality multiplier are sound there. Three edits are owed and none applied: split §2 into A_read and A_write with a guarantee per half, move write/tamper/rollback out of the confidentiality stack into an integrity section whose verb is *detect*, and say that A_write requires the IOMMU the document lists as optional.
+- evidence: `docs/definitions/secure-datum-model.md` §1, §2, §4, `.planning/FINDING-datum-model-write-adversary-2026-08-31.md`
+- checked:  2026-09-01
+- element:  none. Document-tier, not an element. If the split becomes a language obligation, that mints a row.
+
+⚑ FD-07 is on the ownership-and-trust track, which is [[goals/ownership-and-trust]],
+deferred out of scope for *work* on 2026-08-31. The row is here because the
+document is in the reader-facing tier and is wrong today. Deferred is not deleted:
+`.planning/FINDING-datum-model-write-adversary-2026-08-31.md` stays where it is.

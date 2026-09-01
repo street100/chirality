@@ -103,6 +103,14 @@ once and audited. Editability by anyone is the role.
 - [[records/baseline-alignment]]: does the repo do what it claims to do
 - [[records/enforcement-arc]]: what the compiler enforces, and what it can
   measure about its own work
+- [[records/findings]]: dated investigations belonging to no single arc
 
-Each one has an arc beside it under `docs/arcs/`. The checklist is the finding
-list; the arc is the work.
+The first two have an arc beside them under `docs/arcs/`. The checklist is the
+finding list; the arc is the work.
+
+[[records/findings]] is the exception to one-file-per-arc, and it is deliberate.
+A session that finds a defect outside its own task writes a `FINDING-*.md` into
+`.planning/`, which `.gitignore:12` excludes, so the finding dies with the
+worktree. Those rows have to land somewhere tracked before an arc exists to own
+them. Its prefix is `FD`. A row moves out of it when the arc that owns it is
+written, and moving a row keeps its ID.
