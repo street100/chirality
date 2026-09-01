@@ -314,7 +314,7 @@ def check_f() -> list[str]:
 
 
 # A code span shaped like a path, whatever its extension. G and R carry a `ctx`
-# so the banks' detached convention works — `ports.chiral` … (`:19`) — and a span
+# so the banks' detached convention works (`ports.chiral` then a bare `:19`). A span
 # this pair cannot open must CLEAR that ctx. Leaving it set attributed a bare
 # `:NN` to whichever file resolved last, which was a different file two hundred
 # lines up. Measured 2026-09-01: verification.md:193's `:129` was reported
@@ -330,7 +330,7 @@ _UNIQUE_SRC: dict | None = None
 def _unique_src() -> dict:
     """Bare basename -> the one file under lib/ or prog/ that carries it. A name
     borne by two files is left out, so `mach.chiral` (three homes) stays
-    unresolvable. Docs cite by basename constantly — `loader.chiral:39` — and
+    unresolvable. Docs cite by basename constantly (`loader.chiral:39`), and
     without this 269 of the 456 line-numbered .chiral citations resolve to
     nothing and are skipped. Measured 2026-09-01."""
     global _UNIQUE_SRC
