@@ -21,8 +21,10 @@ linked notes, one idea per note. Read the hub notes first, then follow links.
 - The root holds the locked spine: [PRINCIPLES](../PRINCIPLES.md) and
   [SECURE-DATUM-MODEL](definitions/secure-datum-model.md). The notes here refine and
   apply that spine. They do not restate it.
-- For orientation above this base, read [CONTENTS](../CONTENTS.md) (the whole project) and
-  [PERSONA](../.planning/PERSONA.md) (how to work here). The long road is in
+- For orientation above this base, read [CONTENTS](../CONTENTS.md) (the whole
+  project). How to work here is the agent tier: [PERSONA](../.planning/PERSONA.md)
+  is the stance and [.planning/protocol/](../.planning/protocol/) holds tone,
+  placement, workflow and dispatch. The long road is in
   [.planning/ROADMAP.md](../.planning/ROADMAP.md).
 
 ## How work is done here

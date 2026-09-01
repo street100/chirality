@@ -1,7 +1,7 @@
 ---
 node: records
 layer: navigation
-related: [index, status-ledger, open-edges, arcs/README, arcs/diagnostics-arc]
+related: [index, status-ledger, open-edges, arcs/README, arcs/diagnostics-arc, decisions/decision-ai-tier]
 status: current
 updated: 2026-09-01
 ---
@@ -11,11 +11,11 @@ updated: 2026-09-01
 A checklist is one arc's standing list of things this repo says about itself, each
 paired with what was measured. One file per arc.
 
-These files are TRACKED. `.gitignore:12` excludes `.planning/`, so a note there
-forks per worktree and dies with it. `docs/arcs/diagnostics-arc.md` exists for
-that reason and these files sit on the same footing. A finding written into a
-commit message or a handoff paragraph is gone by the next session. A row here
-survives a fresh clone.
+These files are TRACKED, and since 2026-09-01 so is the agent tier
+([[decision-ai-tier]]). They stay here because a record is written for a person:
+a claim this repo makes about itself beside what was measured. A finding written
+into a commit message or a handoff paragraph is gone by the next session. A row
+here survives a fresh clone.
 
 ## What a checklist is for
 

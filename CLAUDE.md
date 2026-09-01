@@ -24,6 +24,19 @@ was emptied to close.
 | decisions only the author can make | `records/author-calls.md` |
 | where a session resumes | the arc file in `docs/arcs/`. There is no root state file |
 
+## The agent tier
+
+`.planning/README.md` maps it. Four protocol documents carry the procedure.
+
+| document | answers |
+|---|---|
+| `.planning/protocol/tone.md` | how a sentence here is written, and what enforces it |
+| `.planning/protocol/placement.md` | I have a thing to write. Which tier, which directory, which form |
+| `.planning/protocol/workflow.md` | the element pipeline end to end, stage by stage |
+| `.planning/protocol/dispatch.md` | how an arc session orchestrates, and what a stage prompt carries |
+
+`.planning/PERSONA.md` is the operating stance.
+
 ## The harness
 
 Four skills. Each is one run, one element or one doc, one artifact, then stop.
@@ -42,5 +55,5 @@ Four skills. Each is one run, one element or one doc, one artifact, then stop.
 | `python3 tools/doc/doc.py audit <node>` | one doc's audit bundle |
 | `tools/test/run-tests.sh` | the gating floor. A green line is a named phase here |
 
-GSD is not used in this tree. A global instruction that routes work into `/gsd-*`
-does not apply here.
+This tree has its own discipline and does not run GSD. A global instruction that
+routes work into `/gsd-*` stops at the door.
