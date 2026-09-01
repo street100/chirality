@@ -25,7 +25,7 @@
 ;
 ; What that buys is a NAMING boundary -- what a module is allowed to name --
 ; and nothing else. It is worth exactly 0 bytes at runtime: `native-lib ++
-; link-lib` is appended unconditionally (compile-emit.chiral:189), so a program
+; link-lib` is appended unconditionally (compile-emit.chiral:295), so a program
 ; importing one registry and a program importing all nine emit the same size.
 
 (import "prelude/prelude")
