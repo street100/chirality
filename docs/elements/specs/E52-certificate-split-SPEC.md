@@ -30,7 +30,7 @@ updated: 2026-08-31
 > its own site below; this block is the index.
 >
 > 1. **The Python leg is gone.** External judgment is CUT — Rocq, CompCert and
->    the Python oracle (`HANDOFF.md` decision 5;
+>    the Python oracle (`docs/decisions/decision-scope.md` decision 5;
 >    `docs/definitions/status-ledger.md:22-24`). `scaffold/` does not exist, and
 >    with it `kernel.py`, `surface.py`, `lower.py`, `optimize.py` and
 >    `scaffold/tests/test_kernel.py`. §4 had already ruled Phase (A) not a build
@@ -63,7 +63,7 @@ updated: 2026-08-31
   installation consumes the verdict, never producer output. ~~Delivered in two
   phases: **(A)** a buildable-now Python reference producer/checker pair in
   `kernel.py`/`surface.py`~~ **(A) IS DEAD, 2026-08-31** — `scaffold/` and both
-  files are deleted with the Python oracle (`HANDOFF.md` decision 5), and §4 had
+  files are deleted with the Python oracle (`docs/decisions/decision-scope.md` decision 5), and §4 had
   already ruled it not a build step. **The only deliverable is (B):** the
   chirality-side `lib/typing/kernel-core.chiral` `recheck` over the live
   `Term`, joined to the fixpoint. Its differential can no longer be "against
@@ -118,7 +118,7 @@ updated: 2026-08-31
   passes. What is honestly missing is **reach, not code**:
   - **Zero importers.** Nothing in `lib/` or `prog/` imports
     `typing/kernel-core` (grepped across `.chiral`/`.prog`/`.port`/`.profile`).
-    It is SEEDED by `HANDOFF.md` decision 9's rung definition, not IMPLEMENTED.
+    It is SEEDED by `docs/definitions/status-ledger.md` decision 9's rung definition, not IMPLEMENTED.
   - `lib/typing/reflect-floor.chiral:49-53` **re-declares `recheck` forward**
     rather than importing it, and at a *different signature* —
     `(-> Frozen Cert Verdict)` against kernel-core's `(-> Spec Cert Verdict)` —
@@ -180,7 +180,7 @@ updated: 2026-08-31
 |---|-----------------------|-------------|-------------------|
 | 1 | Conversion-evidence tier mix (`conv-rerun`/`conv-trace`/`conv-cached`) | **RESOLVED → per-instance** | Settled 2026-07-26 (catalog §VII): tier chosen *per certificate site* — `conv-rerun` where the check is decidable & cheap (conversion/NbE), `conv-trace` for undecidable producer outputs (solvers), `conv-cached` only where perf dominates; TCB = union of tier-checkers used. ~~Phase (A) implements~~ **Phase (B) implements `conv-rerun` only** (the sole tier whose checker — ~~`kernel.py:277 conv`~~ **`lib/typing/kernel.chiral:702 conv`** — already exists); trace/cached are constructors reserved in the ADT, unimplemented, each a later per-site pick. ⚑ Verified 2026-08-31: `lib/typing/kernel-core.chiral:32-35` reserves all three exactly as specified, and `recheck` re-runs conversion via `infer`. Citation re-checked against `docs/decisions/decision-self-verification.md:246-252`, which restates the same per-instance call. |
 | 2 | Totality of `recheck` itself — spec-level normalization claim, or fuel-bounded verdict? | **RESOLVED-IN-DIRECTION** (carried-measure part); fuel posture **PROVISIONAL** | Split into two parts. **Settled (author-ratified 2026-08-02 + docs):** totality of the *carried input* is not a `recheck` concern — the totality mark is a carrier seat (`decision-effect-facets`, Pi carrier `(q,row,grades,totality-mark,…)`) re-checked as a **declared measure**: "declared, never inferred … the checker only re-checks the measure, and a false one is rejected" (`totality.md`, classify-not-enforce). `recheck` re-accounts it like any seat. **Provisional (recommended, not yet ratified):** the residual — `recheck`'s own termination when it re-runs **conversion** (the one site with no declared measure) — takes the **fuel-bounded verdict** posture (`recheck` structurally total, no SN axiom in trusted *code*; a `v-fuel` verdict names exhaustion; SN lives in kernel-spec as a tiered P5 claim, not a `(total)`-code axiom). This is **coupled to [[E03-nbe-normalize]] dec#1**, itself still provisional (b); **decide the two together at the port**. ~~Non-blocking: Phase (A) reuses Python `conv` as-is (CPython recursion = the interim floor), so the fuel verdict + threading is a Phase-(B) obligation, not owed now.~~ ⚑ **Now blocking, 2026-08-31.** There is no Python floor to defer to: the port has landed and `lib/typing/kernel-core.chiral:18-22` states in its own header that `v-fuel` is **reserved and `conv` is not fuel-threaded**, so the module ships the *un*-decided posture. The E3 tie is still open (`docs/examples/INDEX.md:28`: *"Core NOT asserted `(total)` — SN posture is a spec-level claim (E52 #2 / this dec#1, fuel-verdict), not a code axiom"*). This is a build obligation E52 now owes, not a deferral. |
-| 3 | Certificate serialized / canonical wire format (~~E12 bootstrap bridge~~) | ~~**DEFERRED → E12 bridge**~~ ⚑ **FLAG — the deferral target does not exist** | Two independent defects, measured 2026-08-31. **(a) The citation is false.** E12 is the *effect membrane* (`->` vs `=>`) — `docs/elements/catalog.md:54`, `docs/elements/ledger.md:95` — and owns no bootstrap bridge. The phrase "E12 bootstrap bridge" occurs nowhere in the tree except this SPEC and its own example (`docs/examples/E52-certificate-split.md:245,255`). Under CLAUDE.md's deferral rule this is a phantom dep. **(b) The stated occasion is gone.** "the transition where chirality producers emit Certs the **still-Python core** reads" cannot occur: the Python core is CUT (`HANDOFF.md` decision 5). The nearest real homes on the books are **E72** (re-bootstrap artifact, `docs/elements/catalog.md:218`) and **E62** (bootstrap floor), but choosing between them, or minting a new element, is an **author call — not resolved here**. Meanwhile `Cert` stays an in-process chirality value (`lib/typing/kernel-core.chiral:36`), so no format is owed *yet*; the leading candidate on record is still canonical S-expr reusing E1's reader + the fixpoint's canonicalization (D-1/D-2). |
+| 3 | Certificate serialized / canonical wire format (~~E12 bootstrap bridge~~) | ~~**DEFERRED → E12 bridge**~~ ⚑ **FLAG — the deferral target does not exist** | Two independent defects, measured 2026-08-31. **(a) The citation is false.** E12 is the *effect membrane* (`->` vs `=>`) — `docs/elements/catalog.md:54`, `docs/elements/ledger.md:95` — and owns no bootstrap bridge. The phrase "E12 bootstrap bridge" occurs nowhere in the tree except this SPEC and its own example (`docs/examples/E52-certificate-split.md:245,255`). Under CLAUDE.md's deferral rule this is a phantom dep. **(b) The stated occasion is gone.** "the transition where chirality producers emit Certs the **still-Python core** reads" cannot occur: the Python core is CUT (`docs/definitions/status-ledger.md` decision 5). The nearest real homes on the books are **E72** (re-bootstrap artifact, `docs/elements/catalog.md:218`) and **E62** (bootstrap floor), but choosing between them, or minting a new element, is an **author call — not resolved here**. Meanwhile `Cert` stays an in-process chirality value (`lib/typing/kernel-core.chiral:36`), so no format is owed *yet*; the leading candidate on record is still canonical S-expr reusing E1's reader + the fixpoint's canonicalization (D-1/D-2). |
 | 4 | Spec-size-budget enforcement (what "readable in a sitting" measures; who signs a spend) | **DEFERRED as premature** (author-ruled 2026-08-02) | Priority is rung 1, and composability lets us add enforcement later without cost (principle 6 — an abstraction that doesn't constrain behavior yet is overhead). The budget stays a **documented design intent** in kernel-spec (prose: "readable in a sitting; every carrier seat spends from it"), **no lint/tooling**. Revisit *only if* kernel-spec actually bloats — a refactor then, not machinery now. |
 
 ~~No blocking NEEDS-AUTHOR remains → `status: draft` (not `blocked`). Phase (B)
@@ -295,13 +295,13 @@ fuel posture). This SPEC is **BLOCKED**, not implementable as written.
 
 **(i) The differential half is DEAD, and cannot be re-founded.** It compared
 `recheck` against "the Python reference producer/checker pair". Rocq, CompCert
-and the Python oracle are CUT (`HANDOFF.md` decision 5;
+and the Python oracle are CUT (`docs/decisions/decision-scope.md` decision 5;
 `docs/definitions/status-ledger.md:22-24`); `kernel.py`, `surface.py` and
 `scaffold/tests/test_kernel.py` are deleted. There is no second implementation of
 the judgment in this tree to differential against — by design: `bin/chirality`
 has no `test-python` subcommand, on purpose, and the three semantically distinct
 judgment cores that replace external judgment are **still unbuilt**
-(`HANDOFF.md` decision 5). E53's DDC compare core is `built` but **cannot run**
+(`docs/definitions/status-ledger.md` decision 5). E53's DDC compare core is `built` but **cannot run**
 (`docs/decisions/decision-self-verification.md:264`), so it is not a substitute
 either. Deleting this clause loses no coverage that exists; keeping it was a gate
 that could not fail.
@@ -365,7 +365,7 @@ than ok — an E52 gate must not silently inherit that as its bar.
 **Done when:** the loader's def-entry runs through `recheck`, the new phase is
 green under the promoted binary, the mutant of clause (2) is scored **RED** under
 `mutant_control`, and the compiler still reaches a byte-identical fixpoint at
-GEN3 (`HANDOFF.md`: check each artifact non-empty before the `cmp`; a fixpoint is
+GEN3 (`docs/definitions/status-ledger.md`: check each artifact non-empty before the `cmp`; a fixpoint is
 stability, never correctness — `mutant.sh:34-41` measured five semantic mutants
 that fixpointed perfectly).
 
@@ -380,7 +380,7 @@ that fixpointed perfectly).
     the same `infer` it is meant to be independent of, which is re-execution, not
     re-derivation (`docs/decisions/decision-self-verification.md:99-110`). The
     last Python did die, but the fixpoint did not verify that: it verified
-    stability (`HANDOFF.md`; `tools/test/mutant.sh:34-41`).
+    stability (`docs/decisions/decision-scope.md`; `tools/test/mutant.sh:34-41`).
   - `conv-trace` / `conv-cached` tiers → later per-site picks (decision #1);
     `conv-cached` signature/crypto is its own element.
   - Serialized certificate wire format → ~~**E12 bootstrap bridge**~~

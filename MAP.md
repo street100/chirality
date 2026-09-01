@@ -121,11 +121,11 @@ lib/
 prog/          what chirality ships, as distinct from what it is
 tools/         one folder per tool
 /                  README.md · PRINCIPLES.md · PRINCIPLES-SLIM.md · MAP.md ·
-                   CONTENTS.md · HANDOFF.md, plus LICENSE.md and
+                   CONTENTS.md · `docs/decisions/decision-scope.md`, plus LICENSE.md and
                    LICENSE.EXCEPTION.md. A document at root is one a stranger or
                    a tool opens first; everything else sorts into a tier below.
-                   LANES.md and HANDOFF-LANE-A.md sit at root while two lanes are
-                   live; their home is undecided and HANDOFF.md records that.
+                   docs/decisions/decision-lane-split.md and records/lane-a-record.md sit at root while two lanes are
+                   live; their home is undecided and `docs/decisions/decision-scope.md` records that.
 docs/
   index.md         the hub. Notes link by [[slug]], never by path, so a note
                    moves between roles without touching a single link.

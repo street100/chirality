@@ -310,16 +310,16 @@ Two consumers want a `Term` rendered: diagnostics (`r-mismatch` carries two)
 and E146, value→source (Lane B). The tempting answer is two printers — a pretty
 one and a faithful one. Refused, and not on taste:
 
-- `LANES.md` forbids Lane B writing a term printer. So E181 must be the printer
+- `docs/decisions/decision-lane-split.md` forbids Lane B writing a term printer. So E181 must be the printer
   E146 can use, or Lane B is blocked or in violation.
-  ⚑ **Audit correction — do not lean on G6 for this.** `LANES.md`'s own sentence
+  ⚑ **Audit correction — do not lean on G6 for this.** `docs/decisions/decision-lane-split.md`'s own sentence
   is *"a second printer **defining the same names** is caught the same way"*, and
   `doc.sh`'s G6 (`tools/test/doc.sh`, the census) enumerates **only
   `lib/prelude/doc.chiral`'s own bindings** — the `(def|data|declare)` heads plus
   every `d-`/`brk-`/`m-`/`dfr` name — and greps `lib prog tools` for a second
   *definition of one of those*. A Lane-B term printer under different names
   (`src-term`, say) is **not** mechanically caught. The enforcement here is
-  `LANES.md`'s file ownership plus review; the two legs below are the ones that
+  `docs/decisions/decision-lane-split.md`'s file ownership plus review; the two legs below are the ones that
   do not depend on a gate.
 - Two printers over one sum is the **duplicate-owner defect this repo has fixed
   four times** (`str-cmp`, `list-sort`, `list-dedup-adj`, `Ord`) — and
@@ -727,7 +727,7 @@ environment, and the two names that may not be spelled the obvious way.
      edge would close a cycle. The direction argument is a structural refusal,
      not a preference.
      So E181's gate pins the *text* (G1) and E146's gate pins the *law*
-     (`parse(source(v)) ≡ v`) — which is Lane B's, by `LANES.md`. **This is a
+     (`parse(source(v)) ≡ v`) — which is Lane B's, by `docs/decisions/decision-lane-split.md`. **This is a
      seam between the lanes and it should be written into E146's SPEC**, not
      assumed. If it needs a Lane-A element of its own, the number is in
      **E184–E189** and **this pre-run cannot mint it**; it is named, not shelved.

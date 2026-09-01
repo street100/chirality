@@ -658,7 +658,7 @@ already minted. Mint one in the change that closes the edge.
     §0 moved DDC off the self-verification route: self-verification is N
     semantically distinct judgment cores that must agree, on the criterion of
     different FORMULATIONS, and DDC answers the trusting-trust axiom instead,
-    which `HANDOFF.md`'s SCOPE defers to the ownership-and-trust track. The file
+    which `docs/decisions/decision-scope.md` defers to the ownership-and-trust track. The file
     keeps a real job in the new scheme: it is the **referee**, the thing that
     adjudicates whether independently produced answers form a quorum and agree.
     Nothing else in the tree does that.

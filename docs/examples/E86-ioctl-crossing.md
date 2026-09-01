@@ -274,5 +274,5 @@ printf("%d rows, %d cols\n", ws.ws_row, ws.ws_col);
   (sibling raw-syscall element) · [[E51-sys-linkage]] (the Fd porttype upgrade
   that threads linearity through every crossing) · `scaffold/lib/sys-tal.chiral`
   (the TAL floor where the crossing lands) · `scaffold/lib/ports.chiral` (the
-  typed surface) · `docs/banks/port.md` · `.planning/SCRIBA-SYSCALL-HANDOFF.md`
+  typed surface) · `docs/banks/port.md` · `.planning/SCRIBA-SYSCALL-`docs/decisions/decision-scope.md`
   (the scriba requirement that motivated this element).

@@ -9,10 +9,10 @@ updated: 2026-09-01
 # Arc: diagnostics and formatting
 
 - goal: [[goals/readable-surface]]
-- reserved element block: `E184-E189`, shared with [[arcs/enforcement-arc]] (`LANES.md`, Lane A)
+- reserved element block: `E184-E189`, shared with [[arcs/enforcement-arc]] (`docs/decisions/decision-lane-split.md`, Lane A)
 - record: [[records/diagnostics-arc-record]]
 - build-state authority: [[status-ledger]]
-- lane resume file: `HANDOFF-LANE-A.md`
+- lane resume file: `records/lane-a-record.md`
 
 TRACKED, and that is the point. The catalog and ledger live in `.planning/`,
 which `.gitignore:12` excludes by design, so each worktree carries its own
@@ -153,14 +153,14 @@ Blockers, hazards and the decisions that each cost a measurement are in
 
 ### E183
 
-| E183 | **`.protocol` — a declared wire form, its derived codec, and a bytes round-trip gate** | Not built, **not previously minted despite HANDOFF naming it and measuring it** — which made it a phantom the whole time. Justification measured in the tree: **1,891 lines / 177 defs / 122 byte-ops across five hand-written codecs** — `http` 780 · `vt-parser` 402 · `json` 361 · `apc` 252 · `wire` 96. Each hand-rolls framing, and `apc`'s went stale twice in one session (its `enc` missed two `Rendering` arms and shipped red; its `dec` ends in an `else`, so new branches are invisible to the compiler — E174 repaired both). ⚑ **One law, two carriers** (`HANDOFF.md`): `.manifest` and `.protocol` are the same shape — **a declared form → a derived codec → a round-trip gate**. `.manifest` round-trips against chirality source (`parse(source(v)) ≡ v`); `.protocol` round-trips against **bytes**. That symmetry is why they are named together and why `Doc` serves one and not the other: bytes have no layout freedom, so `.protocol` owes `Doc` nothing. | `OURS`; ←E158, ~E163 |
+| E183 | **`.protocol` — a declared wire form, its derived codec, and a bytes round-trip gate** | Not built, **not previously minted despite HANDOFF naming it and measuring it** — which made it a phantom the whole time. Justification measured in the tree: **1,891 lines / 177 defs / 122 byte-ops across five hand-written codecs** — `http` 780 · `vt-parser` 402 · `json` 361 · `apc` 252 · `wire` 96. Each hand-rolls framing, and `apc`'s went stale twice in one session (its `enc` missed two `Rendering` arms and shipped red; its `dec` ends in an `else`, so new branches are invisible to the compiler — E174 repaired both). ⚑ **One law, two carriers** (`docs/definitions/status-ledger.md`): `.manifest` and `.protocol` are the same shape — **a declared form → a derived codec → a round-trip gate**. `.manifest` round-trips against chirality source (`parse(source(v)) ≡ v`); `.protocol` round-trips against **bytes**. That symmetry is why they are named together and why `Doc` serves one and not the other: bytes have no layout freedom, so `.protocol` owes `Doc` nothing. | `OURS`; ←E158, ~E163 |
 
 | E183 | protocol | design | **`.protocol`: declared wire form + derived codec + bytes round-trip gate.** Five hand-written codecs, 1,891 lines / 177 defs / 122 byte-ops (`http`/`vt-parser`/`json`/`apc`/`wire`), each hand-rolling framing; `apc`'s went stale twice and shipped red. Sibling of `.manifest` under one law — declared form, derived codec, round-trip gate — differing only in the carrier (bytes vs chirality source). Minted 2026-08-31: HANDOFF had named and measured it without a row. | ←E158, ~E163 |
 
 ## Lane B's elements (file types) — owned elsewhere
 
 `E146` value→source · `E163` `.manifest` · `E183` `.protocol`. Lane B runs in a
-separate session; see `LANES.md`. `E183`'s row is above because this arc minted it.
+separate session; see `docs/decisions/decision-lane-split.md`. `E183`'s row is above because this arc minted it.
 
 ## Numbering
 

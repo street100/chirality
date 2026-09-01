@@ -9,9 +9,9 @@ updated: 2026-09-01
 # Arc: file types
 
 - goal: [[goals/readable-surface]]
-- reserved element block: `E190-E195` (`LANES.md`, Lane B)
+- reserved element block: `E190-E195` (`docs/decisions/decision-lane-split.md`, Lane B)
 - build-state authority: [[status-ledger]]
-- lane: B. It runs in a separate session; `LANES.md` holds the division and what
+- lane: B. It runs in a separate session; `docs/decisions/decision-lane-split.md` holds the division and what
   enforces it.
 
 TRACKED for the reason [[arcs/diagnostics-arc]] is.

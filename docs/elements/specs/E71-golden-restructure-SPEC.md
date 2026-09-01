@@ -34,7 +34,7 @@ updated: 2026-08-02
 >    the half-built truth — §2 and §4 now do (FLAG D).
 > 2. **The conformance gate cited a floor that no longer exists.** §5's
 >    "the reference floor produces" meant the Python `TalMachine`, evicted by
->    `HANDOFF.md` decision 5 and recorded CUT throughout
+>    `docs/decisions/decision-scope.md` decision 5 and recorded CUT throughout
 >    `docs/definitions/status-ledger.md:87,91,99,101`. The seed corpus it drew
 >    on (division sign grid, byte-cell zero-read, fold/native/reference triples)
 >    died with `test_native.py` / `test_optimize.py` / `test_tal.py`. §5 is
@@ -214,7 +214,7 @@ about the branch. It is **BLOCKED**, not implementable as written.
   (`docs/definitions/testing-floors.md:222-224` — *"the meaning of the form,
   hand-derived … from what the program is supposed to mean, by hand, before
   running anything"*), which is the highest rank still available: rank 1 is
-  external judgment and `HANDOFF.md` decision 5 emptied it. The seven-row sign
+  external judgment and `docs/decisions/decision-scope.md` decision 5 emptied it. The seven-row sign
   grid already written out at `docs/definitions/tal-spec.md:77-86` is that
   hand-derivation and is the transcription source for this step.
 - **Size:** ~M.
@@ -232,7 +232,7 @@ about the branch. It is **BLOCKED**, not implementable as written.
   decision, and nobody owns the repair.** Two defects, both in artifacts E71
   authored, both **above the doc tier** so this audit does not pick:
   1. `docs/definitions/tal-spec.md:19-21` still lists *"the Python reference
-     `TalMachine`"* first among tal's executors. `HANDOFF.md` decision 5 evicted
+     `TalMachine`"* first among tal's executors. `docs/decisions/decision-scope.md` decision 5 evicted
      it and `status-ledger.md:22-24` records external judgment CUT. The same
      name survives at `docs/definitions/floor-agreement.md:35` inside the
      rewritten Statement (Step 4's own output), so the contradiction is in
@@ -241,12 +241,12 @@ about the branch. It is **BLOCKED**, not implementable as written.
      observable the reference floor independently produces — verified in
      `tests/test_tal_spec.py`"*. That file never existed, is Python, and would
      be forbidden by `CLAUDE.md` ("Python compiles nothing. EVER."; zero Python
-     is absolute, `HANDOFF.md:40,85`). It also asserts the inverted founding
+     is absolute, `docs/decisions/decision-scope.md`:40,85`). It also asserts the inverted founding
      relation §5 corrects. **The question for the author, verbatim: is repairing
      these two shipped E71 artifacts a re-opened E71 step, or doc-tier rot for a
      `doc-audit` run?** E71 authored both files, which argues E71; the tier
      rule says a doc-audit owns doc prose, which argues elsewhere; and
-     `HANDOFF.md`'s SCOPE may forbid touching them at all (FLAG B).
+     `docs/decisions/decision-scope.md` may forbid touching them at all (FLAG B).
 
 ### Step 4 — the Statement section · **SHIPPED**
 - **Target:** ~~`docs/floor-agreement.md`~~ **`docs/definitions/floor-agreement.md`**.
@@ -280,7 +280,7 @@ visible rather than quietly replaced.
   nothing.
 - **Golden behavior, re-founded:** the exemplar vectors are **hand-derived from
   the meaning of the form** — rank 3, `docs/definitions/testing-floors.md:222-224`
-  — because rank 1 (external judgment) is empty by `HANDOFF.md` decision 5 and
+  — because rank 1 (external judgment) is empty by `docs/decisions/decision-scope.md` decision 5 and
   rank 2 (an independent in-house reference: `interp`, `tal-eval`) **may not
   found this artifact**: under spec-as-golden a vector taken from an executor is
   semantics-by-accident, which `docs/definitions/tal-spec.md:98-104` and
@@ -292,7 +292,7 @@ visible rather than quietly replaced.
 - ~~**Tests to add (`scaffold/tests/test_tal_spec.py`, NEW)**~~ ⚑ **that path is
   dead twice over**: `scaffold/` is deleted, and a Python gate is forbidden
   outright (`CLAUDE.md`: "the compiler compiles everything. Python compiles
-  nothing. EVER."; zero Python is absolute, `HANDOFF.md:40,85`). **The gate is a
+  nothing. EVER."; zero Python is absolute, `docs/decisions/decision-scope.md`:40,85`). **The gate is a
   chirality sample + a phase in `tools/test/run-tests.sh`**, the shape every live
   gate has (`tools/test/samples/*.prog` driven by Phase 2 / Phases 3-6, 13):
   1. **Load + totality:** the Step 1 module elaborates under `bin/chirality-bin`
@@ -322,7 +322,7 @@ visible rather than quietly replaced.
   one named phase, exits 0, and every phase it already passes still passes; the
   5 unported phases keep printing by name and reason; `ledger-lint` no worse than
   its recorded state (⚑ it **exits 1** today on check I for a reason unrelated to
-  this element — `HANDOFF.md:38` — so "clean" is not an available bar; the bar is
+  this element — `docs/decisions/decision-scope.md`:38` — so "clean" is not an available bar; the bar is
   *no new FAIL*).
 - **Done when:** the division + byte-cell observables are pinned as spec vectors
   **hand-derived from `docs/definitions/tal-spec.md`**, ~~that the reference floor
@@ -354,7 +354,7 @@ visible rather than quietly replaced.
   *executors*).
 
 - ⚑ **FLAG B (2026-08-31) — this element may be out of scope entirely, and that
-  call is above the audit.** `HANDOFF.md`'s SCOPE section, set by the author
+  call is above the audit.** `docs/decisions/decision-scope.md` section, set by the author
   2026-08-31, reads: *"The ownership and trust model is a **separate track,
   deferred**: the re-bootstrap climb, DDC, the secure datum model, the register
   root, the cascade. Do not pull any of it into current work, and do not audit

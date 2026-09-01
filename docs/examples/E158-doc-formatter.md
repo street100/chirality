@@ -528,7 +528,7 @@ sections, real provenance, one expression:
     example cannot edit it. Naming the change here is the point of running E158
     first; **making** it is an author decision on the E146 row.
   - **`.protocol`**: `Doc` owes it **nothing**, and the brief's symmetry is
-    misleading. HANDOFF.md's own line — *"`.manifest` round-trips against metis
+    misleading. `docs/decisions/decision-scope.md`'s own line — *"`.manifest` round-trips against metis
     source, `.protocol` against bytes"* — is the reason: bytes have no layout
     freedom, so there is nothing for a layout algebra to decide. `.protocol` is
     also **not yet an extension**: LAYOUT.md lists five (`.chiral`/`.prog`/

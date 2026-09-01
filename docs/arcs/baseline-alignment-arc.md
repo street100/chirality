@@ -39,7 +39,7 @@ Done when all four hold.
    is documented in `MAP.md` with zero instances and no consumer, measured
    2026-09-01.
 3. **Every claim in a root document is measured or carries a checklist row.**
-   `MAP.md`, `README.md`, `CONTENTS.md`, `HANDOFF.md`.
+   `MAP.md`, `README.md`, `CONTENTS.md`, `docs/decisions/decision-scope.md`.
 4. **`python3 tools/ledger-lint/ledger-lint.py` exits 0**, or each remaining
    failing check has a row stating why it cannot.
 
@@ -89,7 +89,7 @@ Next, in the order the measurement suggests:
    unreachable for a 4-column row, because `IFS=$'\t' read -r old new ext why`
    collapses tab runs and a blank `new_path` shifts `ext` into `$new`. Retired
    rows use the brace form instead. The branch wants fixing or deleting.
-3. **BA-09**, the fixture count. `HANDOFF.md` claimed
+3. **BA-09**, the fixture count. `docs/decisions/decision-scope.md` claimed
    `tools/test/samples/` holds 98 files; `ls` counted 54 on 2026-09-01. The
    C-backend drop removed four, so roughly 40 is older drift and undiagnosed.
 4. **BA-23**, check A reads a module key as a filesystem path. 5 issues today,

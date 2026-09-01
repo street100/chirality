@@ -125,7 +125,7 @@ Rules that bind the work:
     2026-09-01 to `docs/decisions/decision-dispatch-cadence.md`, which quotes
     all six sources and settles the three ways they disagreed. The map itself
     is a KEEP, for the reason that note records.
-- **Do not mint an element number.** `LANES.md` reserves `E184-E189` and
+- **Do not mint an element number.** `docs/decisions/decision-lane-split.md` reserves `E184-E189` and
   `E190-E195`; anything else writes `UNASSIGNED`.
 
 Files that need an author call rather than a pass:

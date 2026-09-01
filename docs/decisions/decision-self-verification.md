@@ -43,7 +43,7 @@ each is named.**
 - **DDC is not the route.** §5 item 5 below is correct and stays: the committed
   binary is trust-on-first-use, and diverse double-compiling is the standard
   counter to Thompson. Nothing about that changed. What changed is its position.
-  DDC answers the trusting-trust axiom, which `HANDOFF.md`'s SCOPE puts on the
+  DDC answers the trusting-trust axiom, which `docs/decisions/decision-scope.md` puts on the
   deferred ownership-and-trust track. It is not the mechanism by which chirality's
   own judgments get a second opinion, and this note's earlier framing let it read
   as one.

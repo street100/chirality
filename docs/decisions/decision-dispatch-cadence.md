@@ -16,7 +16,7 @@ dispatches a subagent.
 Hoisted here 2026-09-01. Until then it lived in four `.planning` files and in
 `CLAUDE.md` at the root, all five ignored by `.gitignore:12` or by the rule that
 ignores `.claude/`. A fresh clone got the queues without the rule that runs
-them. `HANDOFF.md` carried a sixth statement and is tracked, but `HANDOFF.md` is
+them. `docs/decisions/decision-scope.md` carried a sixth statement and is tracked, but `docs/decisions/decision-scope.md` is
 session state and is rewritten every few days. The sources are quoted below,
 because a hoist is only honest if what was hoisted can be checked against what
 was there.
@@ -49,7 +49,7 @@ safe, and a serial cadence leaves no concurrency for them to make safe.
 
 It says nothing about whether a stage runs in a subagent. That is a separate
 standing rule, and it points the other way: the main session dispatches and
-does not implement (`CLAUDE.md`, "You are the orchestrator", and `HANDOFF.md`,
+does not implement (`CLAUDE.md`, "You are the orchestrator", and `docs/decisions/decision-scope.md`,
 "How to work here"). Serial cadence constrains how many agents are live at
 once. It is one.
 
@@ -65,7 +65,7 @@ above can be audited:
 | `.planning/USER-LAYER-PIPELINE-PLAN.md` §1 | "these runs go serially, one at a time", standing user directive, "which overrides `CLAUDE.md`'s 'parallel waves' guidance for pre-runs". §4 is titled "The serial queue". |
 | `.planning/USER-LAYER-TRACKER.md` | "Cadence: SERIAL. One stage at a time, one agent at a time." |
 | `.planning/DOC-AUDIT-QUEUE.md` | "Cadence: serial. One document at a time, one agent at a time. Not a batch, not a wave, not three." |
-| `HANDOFF.md`, "How to work here" | "Serial dispatch: exactly ONE subagent at a time. Standing user directive. Launch one, wait, merge, launch the next." |
+| `docs/decisions/decision-scope.md`, "How to work here" | "Serial dispatch: exactly ONE subagent at a time. Standing user directive. Launch one, wait, merge, launch the next." |
 
 Three disagreements, all recorded rather than smoothed:
 

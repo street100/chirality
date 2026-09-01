@@ -13,7 +13,7 @@ updated: 2026-09-01
 
 > **SUPERSEDED 2026-09-01 by E99** — `docs/elements/specs/E99-ioctl-out-cells-SPEC.md`.
 > This contract was executed: `ioctl` shipped 2026-08-06 as one generic 3-arg
-> crossing (`.planning/SCRIBA-SYSCALL-HANDOFF.md:102`). E99 then rejected the
+> crossing (`.planning/SCRIBA-SYSCALL-`docs/decisions/decision-scope.md``). E99 then rejected the
 > shape, not the feature — the generic crossing hands the kernel a
 > surface-allocated `cell-new` `Bytes` to mutate, which the purity floor believes
 > is immutable, so a legal fold/CSE strengthening could constant-fold the result
@@ -52,7 +52,7 @@ updated: 2026-09-01
 ## 2. Baseline (what already exists)
 
 - **Conformance-map verdict:** BUILD — E86 postdates the map snapshot; zero code
-  at any layer. The handoff (.planning/SCRIBA-SYSCALL-HANDOFF.md) confirms a pure
+  at any layer. The handoff (.planning/SCRIBA-SYSCALL-`docs/decisions/decision-scope.md`) confirms a pure
   gap: no TAL crossing, no target-linux entry, no typed surface.
 - **Live code (shards this composes with):**
   - `scaffold/lib/sys-tal.chiral` — the TAL floor: `nb-sys-clock-gettime-t` at
@@ -181,4 +181,4 @@ No NEEDS-AUTHOR — all questions have settled answers.
   - termios struct fields beyond c_lflag (baud rate, c_cc special chars) — unused by raw-mode toggle.
   - Refinement type annotations on winsize fields — E9 refinement engine; plain `I64` for now.
 - **Follow-on:** This unblocks scriba's terminal-control surface — `close` and `fd-write` are already built (typed surface gaps filled in E28 EXTEND); with `ioctl`, scriba can query terminal size and enter/restore raw mode entirely through chirality crossings (zero proc-spawn in the hot path).
-- **Related:** [[E86-ioctl-crossing]] · [[E32-clock-exit-env]] (sibling struct-returning crossing; clock_gettime precedent for kernel-fills-caller-cell pattern) · [[E28-mmap-crossings]] (sibling raw-syscall element) · [[E51-sys-linkage]] (Fd porttype upgrade) · `scaffold/lib/sys-tal.chiral` (TAL floor) · `scaffold/lib/ports.chiral` (typed surface) · `.planning/SCRIBA-SYSCALL-HANDOFF.md` (scriba requirement).
+- **Related:** [[E86-ioctl-crossing]] · [[E32-clock-exit-env]] (sibling struct-returning crossing; clock_gettime precedent for kernel-fills-caller-cell pattern) · [[E28-mmap-crossings]] (sibling raw-syscall element) · [[E51-sys-linkage]] (Fd porttype upgrade) · `scaffold/lib/sys-tal.chiral` (TAL floor) · `scaffold/lib/ports.chiral` (typed surface) · `.planning/SCRIBA-SYSCALL-`docs/decisions/decision-scope.md` (scriba requirement).

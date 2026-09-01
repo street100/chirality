@@ -9,7 +9,7 @@ updated: 2026-09-01
 # Arc: enforcement
 
 - goal: [[goals/enforcement]]
-- reserved element block: `E184-E189`, shared with [[arcs/diagnostics-arc]] (`LANES.md`, Lane A)
+- reserved element block: `E184-E189`, shared with [[arcs/diagnostics-arc]] (`docs/decisions/decision-lane-split.md`, Lane A)
 - checklist: [[records/enforcement-arc]]
 - build-state authority: [[status-ledger]]
 
@@ -27,7 +27,7 @@ This is the part that survives a fresh clone.
 
 Build-state authority for the suite as a whole: [[status-ledger]].
 Measurements this arc rests on: [[records/enforcement-arc]].
-Lane division and what enforces it: `LANES.md`. Lane A resume: `HANDOFF-LANE-A.md`.
+Lane division and what enforces it: `docs/decisions/decision-lane-split.md`. Lane A resume: `records/lane-a-record.md`.
 
 ## Open: minted, not built
 
@@ -117,7 +117,7 @@ type does not lower) are **never produced by a real compile**.
 ## Numbering
 
 E184 is the **first row of this arc**. The highest previously minted element was
-**E183**. Lane A mints in **E184–E189**, Lane B in **E190–E195** (`LANES.md`).
+**E183**. Lane A mints in **E184–E189**, Lane B in **E190–E195** (`docs/decisions/decision-lane-split.md`).
 A new element's row lands in `docs/examples/INDEX.md` **and here** in the same
 change: those are the only two tracked places, and therefore the only collision
 detectors that exist.

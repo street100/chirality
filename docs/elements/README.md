@@ -51,7 +51,7 @@ gate-that-cannot-fail error this repo names as cardinal.
 ## Rules
 
 - Do not mint a number that does not exist. Element bands are reserved in
-  `LANES.md`; an arc with no block writes `UNASSIGNED`.
+  `docs/decisions/decision-lane-split.md`; an arc with no block writes `UNASSIGNED`.
 - A new element's row lands in `docs/examples/INDEX.md` and in its arc file in
   the same change that mints it.
 - Element status does not originate here. [[status-ledger]] holds build state, on

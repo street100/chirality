@@ -14,12 +14,12 @@ updated: 2026-09-01
 > end-to-end by native chirality, no interpreter and no Python logic in the compile.
 > Re-verified after the migration: `C1 == C2`, byte-identical, `bin/chirality-bin`
 > at 1,098,104 bytes and committed; and the old tree's compiler and this one emit
-> byte-identical code for the same source across 147 moved files (`HANDOFF.md`,
+> byte-identical code for the same source across 147 moved files (`docs/definitions/status-ledger.md`,
 > *Verified, not asserted*). The selfhost.py harness that produced the original
 > `FIXPOINT: B1 == B2` line is gone with the rest of the Python; the recompile
 > recipe now lives in `bin/chirality`'s own missing-compiler message.
 >
-> ⚑ **External judgment is CUT** — author decision, `HANDOFF.md` decision 5: the
+> ⚑ **External judgment is CUT** — author decision, `docs/decisions/decision-scope.md` decision 5: the
 > Rocq port, CompCert, and the Python oracle are all gone. `bin/chirality` has no
 > `test-rocq` and no `test-python`, and `tools/test/run-tests.sh` lists Phase 10,
 > the external-compiler C leg, as **DROPPED**. E166's `Mach`→C leg is **dropped
@@ -61,7 +61,7 @@ updated: 2026-09-01
 > **segfaults** · E177 display-width table · E178 `r-table` per-column widths ·
 > E179 the face registry becomes authoritative · E180 face-aware incremental
 > redraw · E182 the arity judgments carry their arity · E183 `.protocol`.
-> Lane B holds E146 · E163 · E183. Division and enforcement: **`LANES.md`**.
+> Lane B holds E146 · E163 · E183. Division and enforcement: **`docs/decisions/decision-lane-split.md`**.
 >
 > **⚑ Where element detail lives, and why this section exists.** `.planning/` is
 > **untracked** (`.gitignore:12`, master's decision — the planning tier is private

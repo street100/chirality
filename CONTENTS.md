@@ -26,13 +26,13 @@ belongs to, and the arc handoffs followed on 2026-09-01.
   seven 2026-07-20; a crosswalk in the doc keeps old P1-P7 citations resolving).
 - [PRINCIPLES-SLIM.md](PRINCIPLES-SLIM.md): the same five, condensed.
 - [MAP.md](MAP.md): the tree contract. Extensions, module key, doc roles.
-- [HANDOFF.md](HANDOFF.md): the router. Where a session starts, and which arcs
+- [`docs/decisions/decision-scope.md`](`docs/decisions/decision-scope.md`): the router. Where a session starts, and which arcs
   are live. Arc state itself lives in `docs/arcs/`.
 - This file, the contents.
 
-`LANES.md` and `HANDOFF-LANE-A.md` also sit at root while two lanes run in one
+`docs/decisions/decision-lane-split.md` and `records/lane-a-record.md` also sit at root while two lanes run in one
 working tree. A lane is who works; an arc is what gets worked. Their home is
-undecided and `HANDOFF.md` records that.
+undecided and `docs/decisions/decision-scope.md` records that.
 
 Moved out, and where they went:
 [secure-datum-model](docs/definitions/secure-datum-model.md) and

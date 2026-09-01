@@ -58,7 +58,7 @@ same-stem file for two of these arcs.
 
 ## Element numbers
 
-Do not mint a number that does not exist. `LANES.md` reserves `E184-E189` for
+Do not mint a number that does not exist. `docs/decisions/decision-lane-split.md` reserves `E184-E189` for
 Lane A and `E190-E195` for Lane B. An arc with no reserved block writes
 `UNASSIGNED` and stops. `CLAUDE.md`'s deferral rule forbids naming an element
 that has never been minted, and a deferral to a nonexistent element is a phantom

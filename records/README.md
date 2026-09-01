@@ -84,7 +84,7 @@ so rather than carrying it forward.
 re-run is worthless.
 
 **Elements.** Where a row needs an element to fix it, write `UNASSIGNED` and stop.
-Do not mint a number. `LANES.md` reserves E184-E189 for Lane A and E190-E195 for
+Do not mint a number. `docs/decisions/decision-lane-split.md` reserves E184-E189 for Lane A and E190-E195 for
 Lane B. An arc with no reserved block gets one from the author, and CLAUDE.md's
 deferral rule forbids naming an element that does not exist.
 
