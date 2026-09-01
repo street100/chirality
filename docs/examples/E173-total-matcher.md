@@ -6,7 +6,7 @@ kind: BUILD-PROPER
 reference_class: PAPER
 ours_source: (none)
 status: drafted
-updated: 2026-08-31
+updated: 2026-09-01
 ---
 
 # E173 — A total matcher over `Str`
@@ -28,22 +28,35 @@ updated: 2026-08-31
      run because it cannot express them: `not-but`, `parallel-no`, and skipping
      code. It also spells 31 literal needles as 13 lines of `cons` chains
      (`prog/prose-lint.prog:105-121`) and makes one full-buffer pass per needle,
-     which `docs/elements/ledger.md:293` records as the whole of its 2.4x gap against
+     which `docs/elements/ledger.md:320` records as the whole of its 2.4x gap against
      the awk version it replaces.
-  2. Zero-Python. `.planning/ZERO-PYTHON-SCOPE.md:14` puts **3,535 LOC behind
-     E173**, against 244 behind E150 and 205 unblocked today, and sequences the
-     goal as E173, then E148, then E150.
+  2. Zero-Python. `.planning/ZERO-PYTHON-SCOPE.md:131-137` puts **3,560 LOC
+     behind E173**, against 244 behind E150 and 205 unblocked today, and
+     sequences the goal as E173, then E148, then E150.
+     *(Audit repoint 2026-09-01: this read `:14` / **3,535 LOC**. The line cite
+     landed on the call-site table, and that doc re-measured its own figures
+     upward — `:131-137` is the honest total it carries today.)*
 
-**Bank check (the cardinal rule).** `docs/banks/` holds nine banks
-(`docs/banks/INDEX.md:22-32`): module, profile, runtime, capability, port,
-effect-and-alarm, memory, evidence-and-split, verification. None refracts
-matching, scanning, or strings, so E173 is a real gap and not a phantom.
+**Bank check (the cardinal rule).** `docs/banks/` holds ten banks
+(`docs/banks/INDEX.md:23-33`), and the tenth is [[banks/text]] — *a payload, a
+way to name a part of it, and total functions between those*, refracting the
+regex engine, the string library, the Unix text tools and the editor buffer.
+That bank is the authority here, and it confirms this element rather than
+retiring it: shard **D**, *the matcher, returning spans*, is homed at `lib/text/`
+and carries **E173, `design`**, with shards A/B/C (the byte floor, the derived
+string ops, the sequence ops) **built** below it. So E173 is a real gap and not
+a phantom, and the bank says which gap.
+
 The word "Thompson" does appear in `docs/banks/verification.md:177` and
 `docs/banks/evidence-and-split.md:418`, and in both places it means Ken
 Thompson's trusting-trust attack, unrelated to the Thompson NFA of the
-reference class. A **text/matching bank does not exist and is owed** once this
-element is built; it is listed in §6 as an open item and not deferred to an
-unminted E#.
+reference class.
+
+~~A **text/matching bank does not exist and is owed** once this element is
+built; it is listed in §6 as an open item and not deferred to an unminted E#.~~
+⛑ **Discharged.** `docs/banks/text.md` exists and names E173 as shard D. This
+paragraph, and §6 open question 4, were written against a nine-bank tree. Struck
+rather than deleted, per the authoring rule at the foot of §6.
 
 ## 2. Research
 
@@ -84,13 +97,13 @@ Feature histogram over the 138 (a site can score in several rows):
 | `.` | 23 | any-byte |
 | `{n,m}` | 19 | counted repetition (`\d{4}`, `[0-9a-f]{64}`) |
 | lazy `+?` | 10 | leftmost-first, so a longest-match engine changes answers |
-| lookahead | 3 | `ledger-lint.py:246,370`, `capture.py:283` |
-| lookbehind | 1 | `ledger-lint.py:790` |
+| lookahead | 3 | `ledger-lint.py:246,413`, `capture.py:283` |
+| lookbehind | 1 | `ledger-lint.py:836` |
 | **backreference** | **0** | mechanically confirmed |
 
 Three of the four lookaround sites are one-byte-class assertions:
 `(?![-A-Z])` (`ledger-lint.py:246`), `(?![A-Za-z0-9_?!*<>=+-])`
-(`ledger-lint.py:370`), `(?<!\\)` (`ledger-lint.py:790`). All three fit the
+(`ledger-lint.py:413`), `(?<!\\)` (`ledger-lint.py:836`). All three fit the
 same zero-width slot as `\b` (21 sites), which is itself a two-byte-window test.
 The one real lookahead is `capture.py:283`,
 `^(\d+)\.\s+(.*(?:\n(?![\d]+\.\s|##|\s*$).*)*)`, and it means "take lines until
@@ -103,8 +116,8 @@ corpus requires backtracking.** That is the single most size-relevant fact here.
 ### Finding 2: 24 patterns are built at runtime, so a pattern must be a value
 
 `rf"..."` sites (17) plus `re.escape` sites (5) build a pattern from data:
-`pack.py:126` `rf"\b{p}0*{n}{sfx}\b"`, `ledger-lint.py:370` splicing an
-identifier into a `(def ...)` probe, `pack.py:358` `re.escape(b)`. If the
+`pack.py:133` `rf"\b{p}0*{n}{sfx}\b"`, `ledger-lint.py:413` splicing an
+identifier into a `(def ...)` probe, `pack.py:426` `re.escape(b)`. If the
 pattern type is a `Str` of regex syntax, E173 must also ship a syntax parser, an
 escaper, and a `p-err` path at every construction site. If the pattern type is a
 closed `data` sum built by constructors, dynamic construction is free, escaping
@@ -168,7 +181,7 @@ fence { lines[FILENAME]++; next }
 }
 ```
 
-and the Python side, `tools/doc/doc.py:129` (one of the 77 capture sites):
+and the Python side, `tools/doc/doc.py:130-131` (one of the 77 capture sites):
 
 ```python
 pm = re.match(r"([A-Za-z0-9_/.-]+\.(?:py|chirality))(?::(\d+)(?:[–-](\d+))?)?$", span)
@@ -272,7 +285,7 @@ floor, QTT-erased type params, and a pure `->` arrow throughout.
 
 ; ── 2. Assert: the whole zero-width budget the corpus needs ──────────────────
 ; All four lookaround sites in the Python corpus are one-byte-window tests
-; (ledger-lint.py:246,370,790 and \b at 21 sites), so this sum covers them and
+; (ledger-lint.py:246,413,836 and \b at 21 sites), so this sum covers them and
 ; a general lookaround engine is never built.
 (data Assert ()
   (a-bol)                               ; prev byte is 10, or offset 0
@@ -395,7 +408,7 @@ floor, QTT-erased type params, and a pure `->` arrow throughout.
 ; (protocol/vt-parser.chiral:11-20 for the PState idiom). Blanking an inline
 ; span is LENGTH-PRESERVING, so offsets found on the blanked copy are still
 ; valid on the original: the same rule su-lower states at string.chiral:96-99,
-; and the same trick doc.py:173 uses (" " * len(m.group(0))).
+; and the same trick doc.py:174 uses (" " * len(m.group(0))).
 (data LState () (ls-prose) (ls-fence))
 (declare line-step (-> LState Str (Pair LState Bool)))   ; snd = scan this line?
 (declare blank-spans (-> Str Str))                       ; `...` -> spaces
@@ -456,10 +469,10 @@ element.
 1. **Captures: tagged derivatives, or a narrower primitive?** Unsettled, and
    deliberately so. The 77 capture sites are dominated by four shapes that are
    not really regex work: table-cell extraction (`^\|\s*E(\d+)\s*\|`, at
-   `ledger-lint.py:543,575,876`, `capture.py:290`, `frontier.py:460`, and more),
+   `ledger-lint.py:270,576,1144`, `capture.py:290`, `frontier.py:460`, and more),
    delimited-span extraction (`` `([^`]+)` `` at `doc.py:127`,
-   `ledger-lint.py:47,340,419`, `pack.py:693`), frontmatter fields
-   (`^related:\s*\[([^\]]*)\]` at `ledger-lint.py:307`, `pack.py:346`), and
+   `ledger-lint.py:47,381,464`, `pack.py:762`), frontmatter fields
+   (`^related:\s*\[([^\]]*)\]` at `ledger-lint.py:310`, `pack.py:414`), and
    integer-after-literal (`E(\d+)`). A split-on-delimiter plus a span scanner
    plus an integer scanner may cover most of them with no tagging at all.
    **What would settle it:** classify all 77 into "served by split/scan" versus
@@ -477,9 +490,14 @@ element.
    dodge and `row-infer.chiral:103-104` is a live precedent, so the answer is
    probably no. Confirm on the first `chirality check` of the module rather than
    designing around it.
-4. **A text/matching bank is owed.** `docs/banks/` has no bank for matching,
+4. ~~**A text/matching bank is owed.** `docs/banks/` has no bank for matching,
    scanning, or strings (§1). Write it after the element is built, when the
-   shards have real homes to cite.
+   shards have real homes to cite.~~
+   ⛑ **Discharged 2026-09-01, and it did not wait for the element.**
+   `docs/banks/text.md` exists, refracting the regex engine / string library /
+   Unix text tools / editor buffer into twelve shards A-L. This element is
+   shard **D**, homed at `lib/text/`, state `design`. What the bank owes E173 on
+   the way out is a state flip on that one row, not a new file.
 
 ### Stale paths hit while writing this
 
@@ -510,7 +528,9 @@ Kept as written, annotated rather than deleted, per the authoring rule above.
   referent. `pack.py`'s substitution key moved with it, and its OURS resolver now
   says a compiler `.py` is gone rather than printing a `scaffold/chirality/` path.
 
-- **Related:** [[E11-totality-checker]] (the measure that picks the algorithm),
+- **Related:** [[banks/text]] (the bank this element is shard D of),
+  [[arcs/text-tools-arc]] (the arc that holds it, as P1),
+  [[E11-totality-checker]] (the measure that picks the algorithm),
   [[E148]] `getdents64` and [[E150]] argv (the other two zero-Python gates),
   [[banks/verification]] (conformance against the awk baseline),
   [[E01-sexp-reader]] (the tree's other byte-level scanner).
