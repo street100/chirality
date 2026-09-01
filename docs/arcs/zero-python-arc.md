@@ -36,7 +36,7 @@ Done when all four hold.
 
 ## What the whole set demands
 
-14 files, 4,654 LOC, measured 2026-08-31. Every count is a `grep -c` over the
+14 files, 4,826 LOC, re-measured 2026-09-01 (4,654 on 2026-08-31; `ledger-lint` gained 124 lines of gate repairs and `pack` 47). Every count is a `grep -c` over the
 actual file. The patterns are recorded in `.planning/ZERO-PYTHON-SCOPE.md` so a
 re-measure reproduces the number rather than a new methodology.
 
@@ -47,7 +47,7 @@ re-measure reproduces the number rather than a new methodology.
 | argv and flags | 20 | 8 files | E150, minted, unbuilt |
 | process spawn | 13 | 5 files | BUILT, `runtime/proc.chiral` (E33) |
 | file write | 13 | 8 files | BUILT, `open-create` plus `write-fd` (E105) |
-| content hash | 6 | 2 files | nothing. A small pure function, a deterministic digest over `bget`. No element, no ledger row: author call |
+| content hash | 3 | 2 files | nothing. `hashlib.sha256` in `frontier`, `hashlib.md5` twice in `scriba-edit-smoke`. A small pure function, a deterministic digest over `bget`. No element, no ledger row: author call |
 
 E173 is the one that matters: 142 sites against 27 and 20. A matcher unblocks
 more than the other two combined.
@@ -67,9 +67,13 @@ reporting) and [[arcs/file-types-arc]] (declared forms and derived codecs).
 
 ## The files, in the order they can be done
 
-**Wave 0, buildable today, no new elements.** Two files.
-`tools/scriba-run-smoke/scriba-run-smoke.py` (51 LOC) and
-`tools/paren-audit/paren-audit.py` (154 LOC). `prog/prose-lint.prog` is the
+**Wave 0, buildable today, no new elements.** Three files.
+`tools/scriba-run-smoke/scriba-run-smoke.py` (51 LOC),
+`tools/paren-audit/paren-audit.py` (154 LOC) and
+`tools/scriba-edit-smoke/scriba-edit-smoke.py` (131 LOC). The last was missing
+from this list until 2026-09-01: the file count said 14 and the waves covered
+13. It uses `hashlib.md5` twice, which is the unminted digest below, so it is
+wave 0 only if the smoke check can compare bytes instead of a digest. `prog/prose-lint.prog` is the
 worked precedent: a path list on stdin, `openat`, `str-find-from`,
 tab-separated rows out, exit code as the verdict.
 
