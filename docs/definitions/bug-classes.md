@@ -71,7 +71,7 @@ absent from the compiler.
 |---|---|---|---|
 | non-exhaustive branches | case coverage | refuses | |
 | unsound recursive data | strict positivity | refuses | |
-| out-of-range values | refinement types, **`I64` only** | refuses. `let`-bound results still fail to check | E174 owed, unminted |
+| out-of-range values | refinement types, **`I64` only** | refuses. `let`-bound results still fail to check | owed, unminted. Next free number is E182 |
 | unchecked parse results | declared crossing plus refinements | partial | |
 | integer overflow, division by zero | | none | |
 | FFI and ABI signature disagreement | extern declarations checked against the real ABI | declared only. `jg-extern-nontype` checks an extern's type is a type. Nothing checks it against the ABI, at declaration or at link | |

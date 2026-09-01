@@ -111,7 +111,7 @@ write its own tooling (zero Python).
    because `check-let` (`kernel.chiral:983`) is the only construct that drops into
    infer mode. **Fix (b), widening, is unsound** and the finding carries the
    counterexample. Three coherent shapes remain, so this **needs a blueprint**:
-   run the pipeline, mint **E174** in the change that fixes it.
+   run the pipeline, mint the element in the change that fixes it. ⚑ **E174 is not free** — it has a worked example (`r-row-width`), as do E175 and E181. Highest artifact anywhere is E181, so next free is **E182**.
    `.planning/FINDING-let-bound-case-refinement-2026-08-31.md`
 2. **`str-sub`'s second half.** `end > len` reads past the buffer.
    ⚑ `str-starts-with` currently depends on that read returning differing bytes.
