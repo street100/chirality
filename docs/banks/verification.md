@@ -18,7 +18,7 @@ updated: 2026-09-01
 >
 > The reason is the criterion. The leg shared `compile-front` and `compile-back`
 > whole with the canonical instance and differed only at emit, which makes it a
-> second **target** under one formulation, not a second formulation. Verification
+> second **target** under one formulation. Verification
 > here goes through N semantically distinct judgment cores that must agree; three
 > encodings of one rule set would be worth nothing, and one encoding emitted
 > twice is less than that. See [[decision-self-verification]].

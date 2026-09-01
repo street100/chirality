@@ -12,7 +12,8 @@ updated: 2026-09-01
 > `lib/lowering/c/{mach,assemble,emit}.chiral`, `prog/compiler-c.prog` and the
 > four `e166_*` fixtures are gone. Every claim below that the leg is built,
 > admitted, registered or running is **historical**, and dated as such where it
-> stands. The reason is the criterion, not the leg's quality: it shared
+> stands. The reason is the criterion itself, and says nothing about the leg's
+> quality: it shared
 > `compile-front` and `compile-back` whole with the canonical instance and
 > differed only at emit, which makes it a second **target** under one
 > formulation. Self-verification here goes through N semantically distinct

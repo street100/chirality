@@ -221,7 +221,7 @@ seeded, the rest are DESIGNED.**
   of independent runtimes — not the double-compilation that would check it.
   ⚑ **2026-09-01: the second leg is gone.** The C backend was dropped
   (`d8bcec5`), so `ddc-legc` names a toolchain nothing builds with and the DDC
-  half runs with one leg again. It was a second *target*, not a second
+  half runs with one leg again. It was a second *target* under one
   formulation; see [[decision-self-verification]].
   Register-root custody is part of the unbuilt **E42 supervisor**
   ([[banks/runtime]] Shard D, DESIGNED). CONFORMANCE-MAP "bootstrap-floor": DECISION,
