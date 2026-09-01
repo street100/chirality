@@ -395,3 +395,12 @@ anything, and in five of these rows that one number predicted the result.
 - evidence: `docs/examples/E181-pretty-term-doc.md:188`, `:199`, `:661`, `docs/elements/specs/E181-pretty-term-doc-SPEC.md:454`, `:465`, `:681`, `records/consolidation-handoff.md`
 - checked:  2026-09-01
 - element:  UNASSIGNED
+
+### BA-38 eleven citations point into another repository's untracked working material
+
+- state:    OPEN
+- claim:    `records/consolidation-handoff.md` §3 called these dead citations — `.planning/METIS-PORT-SPEC.md` "present nowhere in the tree" and "four `.planning/scriba-examples/S1`–`S3` files that do not exist". The wider claim behind the consolidation is that a fresh clone can follow what a tracked document cites.
+- measured: not dead, and not this repo's. All eleven name files under `/workspace/manas/.planning/`, and all five exist on disk: `METIS-PORT-SPEC.md` (6 citations), `scriba-examples/S1-puffer.md` (2), `S1-puffer-AUDIT.md` (1), `S2-S3-rendering-loop.md` (1), `S2-S3-rendering-loop-AUDIT-v2.md` (1). The fragility is a different class: manas has no `.gitignore` rule for `.planning/` and tracks 45 files under it, but `git ls-files --error-unmatch` reports all five UNTRACKED, so they exist on one laptop's disk and a fresh clone of either repository reaches none of them. Two forms are also unopenable from this repo with manas present — `manas/.planning/...` at `S1-puffer-SPEC.md:6` and `[[../manas/.planning/...]]` at `:374`, `:375` are relative and resolve only from `/workspace/`. Not repaired: copying another repo's design spec in is an author call, and absolute `/workspace/manas/...` encodes one laptop's layout. Separately and genuinely dead: `docs/elements/specs/E94-form-type-capacity-SPEC.md:101` cites `.planning/E94-diagnostic.md`, which `find` locates in none of chirality, manas or metis-the-lang.
+- evidence: `docs/elements/catalog.md:222`, `docs/examples/E133-manas-core-types.md:37`, `docs/examples/E134-gate.md:39`, `docs/examples/E135-bind.md:42`, `docs/examples/E136-match-assemble-stop.md:35`, `docs/examples/E138-run-loop.md:39`, `docs/elements/specs/S1-puffer-SPEC.md:6`, `:374`, `:375`, `docs/elements/specs/S2-rendering-SPEC.md:6`, `:7`, `docs/elements/specs/E94-form-type-capacity-SPEC.md:101`, `records/consolidation-handoff.md`
+- checked:  2026-09-01
+- element:  UNASSIGNED
