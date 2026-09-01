@@ -44,7 +44,28 @@ the six `FINDING-*` files became tracked rows in `records/findings.md`;
 `docs/benchmarks/test-suite-wall-clock.md`; `presentability-arc` now names its two
 working queues instead of duplicating them; `CONTENTS.md` repointed off `UMBRELLA`.
 
-`.planning/` is now **66 live files and 33 archived**, from 267.
+`.planning/` is now **138 files, 89 live and 49 archived**, from 267. Measured
+2026-09-01, whole files, not `.md` only:
+
+| | count |
+|---|---|
+| live, top level | 66 |
+| live, in subdirectories | 23 — `capture/` 8, `handoffs/` 6, `scriba-examples/` 5, `capture-fixtures/` 2, `audit/` 2 |
+| live, total | 89 |
+| `archive/` | 49 — 29 at its top, plus `audit/` 9, `handoffs/` 7, `projects/` 3, `quick/` 1 |
+
+Counting `.md` alone it is **86 live and 49 archived**, which is what
+`.planning/DOC-AUDIT-QUEUE.md` carries and it is correct there. The three
+non-`.md` live files are `MIGRATION-MAP.tsv`, `PROSE-BASELINE.tsv` and
+`capture-fixtures/frontier-stub.py`.
+
+⚑ This file previously said "66 live files and 33 archived". 66 counted the top
+level and dropped the 23 files in subdirectories. **33 matches no count anyone
+can state**: the archive holds 29 at its top and 49 in total. Its top plus
+`projects/` plus `quick/` sums to 33, but that subset drops `audit/` and
+`handoffs/` for no reason, so it is arithmetic and not a measurement.
+`.planning/` is untracked, so no history recovers what the number counted.
+Recorded as wrong rather than explained away.
 
 ## Open, and how to continue
 
@@ -53,7 +74,7 @@ directive, restated in `.planning/DOC-AUDIT-QUEUE.md`. The first pass was
 dispatched as a sweep over all 138 remaining files and was stopped for that
 reason. Do not repeat it. Iterative passes, each one checkable.
 
-### 1. The rest of `.planning/` — 66 live files
+### 1. The rest of `.planning/` — 89 live files, 86 of them `.md`
 
 Evidence, not orders: `/workspace/chirality-docmap/rows/DOCS.tsv`, 267 rows, one
 per document, verdict in column 11 and target in column 12. Its paths are stale
