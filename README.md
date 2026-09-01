@@ -1,7 +1,5 @@
 # chirality
 
-*common-sense, the language.*
-
 chirality takes zero trust as far as it will go. Almost nothing is trusted by
 position: every claim is checked where it enters, and the check is carried to
 the lowest level reachable. What a conventional language ships as one monolithic
