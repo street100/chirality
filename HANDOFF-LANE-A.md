@@ -2,7 +2,8 @@
 
 **Resume from this file.** Division of work and what enforces it: `LANES.md`.
 Build-state authority: `docs/definitions/status-ledger.md` (tracked).
-Design rationale for the arc: `HANDOFF-DIAGNOSTICS-ARC.md`.
+Design rationale for the arc: `records/diagnostics-arc-record.md` (binding
+decisions, traps, what each cost). Live arc state: `docs/arcs/diagnostics-arc.md`.
 
 ## Built and merged (master, `gate PASSED`)
 
@@ -272,7 +273,7 @@ an element: wire, or mark seeded with a date.
   bound result is **unsound**, with a counterexample that checks today. Three
   coherent shapes remain, so it needs a blueprint.
 - **`ledger-lint` check T** walks `docs/examples/E*.md` and
-  `.planning/specs/E*-SPEC.md` and asserts each has a catalog row and an INDEX row.
+  `docs/elements/specs/E*-SPEC.md` and asserts each has a catalog row and an INDEX row.
   Every prior check started from the registry and looked outward, which is how E86
   lost its row while keeping both artifacts. T flags **E57**: example, spec,
   catalog and ledger rows, **no INDEX row**, so check N has no state for it.

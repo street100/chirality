@@ -11,7 +11,7 @@ is live. It holds no arc detail: that moved into `docs/` on 2026-09-01.
 |---|---|---|
 | goal | a broad thing this project claims it is doing | `docs/goals/` |
 | arc | the elements assembled toward one goal, with requirements and resume state | `docs/arcs/` |
-| element | one catalog item, an `E#` | `docs/elements/`, `.planning/SELF-IMPLEMENT-CATALOG.md` |
+| element | one catalog item, an `E#` | `docs/elements/`, `docs/elements/catalog.md` |
 
 Hubs: `docs/goals/README.md` and `docs/arcs/README.md`. Both are tracked, which
 `.planning/` is not.
@@ -36,7 +36,7 @@ history follows.
 
 | was | is |
 |---|---|
-| `HANDOFF-DIAGNOSTICS-ARC.md` | `docs/records/diagnostics-arc-record.md` |
+| `HANDOFF-DIAGNOSTICS-ARC.md` | `records/diagnostics-arc-record.md` |
 | `docs/elements/diagnostics-arc.md` | `docs/arcs/diagnostics-arc.md` |
 | `docs/elements/enforcement-arc.md` | `docs/arcs/enforcement-arc.md` |
 
@@ -168,7 +168,7 @@ element in the change that fixes it. Next free element number is **E185**.
   longer exist. Frozen-rationale tier, so a bulk rewrite is its own call.
 - **`op->symop` falls through to `s-ne` for any unrecognized token**, so `!=` is
   never refused and silently reads as `<>`.
-- **`.planning/LEDGER.md:86` files E11 as `built`** while its classifier is
+- **`docs/elements/ledger.md:86` files E11 as `built`** while its classifier is
   imported by nothing. `:95` (E12) and `:103` (E171) cite paths that are gone.
 - **`.planning/USER-LAYER-GAP.md` §6** names four pre-rename tool scripts and LOC
   counts against live ones, and a total that no longer measures.

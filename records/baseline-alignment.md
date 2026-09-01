@@ -384,3 +384,14 @@ anything, and in five of these rows that one number predicted the result.
 - evidence: `python3 tools/ledger-lint/ledger-lint.py`, `README.md:63`, `CLAUDE.md`
 - checked:  2026-09-01
 - element:  none
+
+## Residue from the `.planning` consolidation, 2026-09-01
+
+### BA-37 the two E181 artifacts cite a file the consolidation deleted
+
+- state:    OPEN
+- claim:    a worked example and its SPEC are the design rationale for an element and are kept as written, so their citations resolve.
+- measured: `HANDOFF-DIAGNOSTICS-ARC.md` was split into `records/diagnostics-arc-record.md` (binding decisions, traps) and `docs/arcs/diagnostics-arc.md` (live arc state) and deleted from the root. Six citations of it survive in the two E181 artifacts: three in the example (`:188` the blob-size quote, `:199` a binding decision, `:661` the empty-`cmp` trap) and three in the SPEC (`:454` the status table and Lane A queue, `:465` a promotion step, `:681` the chain and the arc's binding decisions). Each names a file that is not in the tree. Not repaired: both are frozen-rationale tier and `records/consolidation-handoff.md` §2 binds this class to record-do-not-chase, the same stance BA-22 takes for the other 34. Every other live citation of the deleted file was repointed in the same commit; `LANES.md:5` and `records/diagnostics-arc-record.md:15` keep theirs as historical "was X, moved to Y" notes, which is correct.
+- evidence: `docs/examples/E181-pretty-term-doc.md:188`, `:199`, `:661`, `docs/elements/specs/E181-pretty-term-doc-SPEC.md:454`, `:465`, `:681`, `records/consolidation-handoff.md`
+- checked:  2026-09-01
+- element:  UNASSIGNED
