@@ -11,6 +11,15 @@ updated: 2026-07-22
 
 # E53 — Diverse double-compilation / trusting-trust bootstrap (the independence residue under E52)
 
+> ⚑ **2026-09-01: the second leg this element was waiting for is gone again.**
+> E166's `c-external` leg was built 2026-08-24 and dropped 2026-09-01
+> (`d8bcec5`), so `ddc-leg0` has no provenance-disjoint partner in the tree and
+> `ddc-bad-quorum`'s floor of two disjoint legs is unmet. Nothing below is
+> rewritten: this pre-run predates E166 and its design is untouched by the drop.
+> What changed is only the build-state around it. The route that replaces
+> external judgment is N semantically distinct judgment cores that must agree,
+> on *different formulations*; see [[decision-self-verification]].
+
 > One worked example, produced by the `worked-example` pre-run. Conventional
 > approach vs the chirality idea, ending in a clear-cut snippet to copy and modify.
 

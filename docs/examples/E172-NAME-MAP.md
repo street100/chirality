@@ -129,7 +129,7 @@ chirality/
       tal/       ir check erase eval reify ssa spec bytes sys sys-check sys-linkage
       mach/      mach · emit-core · asm-reloc          ← target-INdependent
       x64/       mach-x64 · emit-x64 · elf
-      c/         mach-c · emit-c · c-assemble
+      c/         mach-c · emit-c · c-assemble    ← DROPPED 2026-09-01
       listing/   mach-listing
       cheri/     ← a new target lands here, and NOTHING else moves
     ports/       clock fd file pool process pty sock stdio tty · ports · crossing-wraps · term · inet
@@ -149,7 +149,9 @@ delete the idea.
 
 ### The three findings behind this revision
 
-**1. `lowering/` already had two targets, written as filename suffixes.** `mach-x64`/
+**1. `lowering/` already had two targets, written as filename suffixes.** (⚑ The C
+target was dropped 2026-09-01, `d8bcec5`; this finding is left as it was measured.)
+`mach-x64`/
 `emit-x64` and `mach-c`/`emit-c`/`c-assemble`, plus `mach-listing` (*"a second conforming
 Mach"*), against `emit-core` (*"target-independent code generation"*) and `asm-reloc`
 (*"target-independent relocation"*). The tree already knows which files are shared and

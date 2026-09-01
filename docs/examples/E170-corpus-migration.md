@@ -11,6 +11,17 @@ updated: 2026-08-25
 
 # E170 — **The corpus lands on the floor — the 709-function migration E168 exists to receive**
 
+> ⚑ **2026-09-01: the C leg this document treats as live is DROPPED**
+> (`d8bcec5` the modules, `d0c5dd5` the four `e166_*` fixtures).
+> `lib/lowering/c/{mach,assemble,emit}.chiral` and `prog/compiler-c.prog` are
+> deleted, so every claim below that the second opinion is plural, alive, or
+> convicting is **August's, and is left standing as the record**. The reason is
+> the criterion: the leg shared `compile-front` and `compile-back` whole with the
+> canonical instance and differed only at emit, which makes it a second target
+> under one formulation, where self-verification needs different formulations.
+> See `docs/decisions/decision-self-verification.md`. The findings about gates,
+> mutants and provenance below are untouched by the drop.
+
 > One worked example, produced by the `worked-example` pre-run. Conventional
 > approach vs the chirality idea, ending in a clear-cut snippet to copy and modify.
 

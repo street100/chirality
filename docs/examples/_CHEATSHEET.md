@@ -109,7 +109,10 @@ that one fact — do not read those files in full. -->
   number, the command that produced it, and where the maintained figure lives
   (catalog / LEDGER / bank). The prediction-vs-outcome delta is calibration data
   about our own estimating; a bare stale estimate is not, because an implementer
-  copies it. Pattern: `E166-mach-c.md` §5 + §6.
+  copies it. Pattern: `E166-mach-c.md` §5 + §6. (⚑ That element's backend was
+  dropped 2026-09-01 and the file carries a banner saying so; the ANNOTATION
+  pattern it demonstrates is unaffected, which is why it is still cited here.)
 - A claim that is simply WRONG (not a prediction) is a different repair:
   strike the original through, state the measured truth, and say when and how —
-  `E166-mach-c.md` §2 finding 1.
+  `E166-mach-c.md` §2 finding 1. (Same note as above: the element is dropped,
+  the strike-through pattern is not.)

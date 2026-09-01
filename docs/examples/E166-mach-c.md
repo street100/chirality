@@ -11,6 +11,31 @@ updated: 2026-08-25
 
 # E166 — A conforming `Mach` that emits C, and the external-compiler DDC leg it unlocks
 
+> ⚑ **THE C BACKEND WAS DROPPED ON 2026-09-01** (`d8bcec5` the modules,
+> `d0c5dd5` the four `e166_*` fixtures). `lib/lowering/c/{mach,assemble,emit}.chiral`
+> and `prog/compiler-c.prog` are deleted. **This document is left exactly as it
+> was written.** It is the record of what was decided and built in August 2026,
+> and rewriting it to match today would destroy that record; read every present
+> tense below as August's.
+>
+> **Why it went.** The author's reason is the criterion, and it is not a
+> complaint about the leg's quality: self-verification here goes through N
+> semantically distinct judgment cores that must agree, and the test is
+> *different formulations*. This leg shared `compile-front` and `compile-back`
+> whole with the canonical instance and differed only at emit, so it was a second
+> **target** under one formulation. `CLAUDE.md` values three encodings of one
+> rule set at nothing; one encoding emitted twice is less than that.
+>
+> **What survives.** The `Mach` seam, unchanged, still with two conforming
+> instances (`lowering/x64/mach`, `lowering/listing/mach`), so the 37-field
+> contract is still held to by something besides its only user. Rules 1, 2 and 3
+> of [[testing-floors]] and the run-the-mutant rule, all of which this element
+> paid for. `ddc-legc` and `ddc-legcc` in `lib/evidence/ddc.chiral`, now with
+> zero callers and zero assertions.
+>
+> The element is **not** `superseded`: no element took the work over, none is
+> minted, and the deferral rule forbids minting one to fill the slot.
+
 > One worked example, produced by the `worked-example` pre-run. Conventional
 > approach vs the chirality idea, ending in a clear-cut snippet to copy and modify.
 

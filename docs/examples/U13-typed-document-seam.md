@@ -188,7 +188,8 @@ and the cheapest guard is that `Buf` gets **no accessor globals at all**.
 Its only entry is `find-singleton` (`specialize-singleton.chiral:85-94`), whose
 second gate is `find-con-global` (`:65-76`): it matches a global whose **whole
 body** is a bare `(t-con <dname> <ctor> args)`. `Mach` has exactly one such global per blob
-(`mach-x64.chiral:1651` `(def x64 Mach (mach …))`, or `mach-c.chiral:270`, or
+(`mach-x64.chiral:1651` `(def x64 Mach (mach …))`, or `mach-c.chiral:270` (deleted
+2026-09-01), or
 `mach-listing.chiral:50`); a buffer is built *inside* a `lam` (§5's `fol-buf`),
 so `find-con-global` returns `none`, `collect-singles` yields `nil`, and
 `specialize-singletons` returns the sig unchanged (`:229`) — with or without
