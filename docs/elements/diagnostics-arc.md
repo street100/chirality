@@ -1,7 +1,7 @@
 ---
 node: elements-diagnostics
 layer: navigation
-related: [status-ledger, index]
+related: [status-ledger, index, enforcement-arc]
 status: current
 updated: 2026-09-01
 ---
@@ -106,3 +106,7 @@ separate session; see `LANES.md`. `E183`'s row is above because this arc minted 
 Lane A mints in **E184–E189**, Lane B in **E190–E195**. A new element's row lands
 in `docs/examples/INDEX.md` **and here** in the same change — those are the only
 two tracked places, and therefore the only collision detectors that exist.
+
+**E184 is minted**, and its rows live in [[enforcement-arc]], the first row of a
+second tracked arc. The next free number is E185.
+
