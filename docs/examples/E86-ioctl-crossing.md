@@ -5,11 +5,32 @@ title: `ioctl` as sys crossing (terminal control: TIOCGWINSZ, TCGETS/TCSETS)
 kind: REPLACE-CRUTCH
 reference_class: SPEC
 ours_source: (none)
-status: drafted
-updated: 2026-08-06
+status: superseded
+superseded_by: E99
+updated: 2026-09-01
 ---
 
 # E86 — `ioctl` as sys crossing (terminal control: TIOCGWINSZ, TCGETS/TCSETS)
+
+> **SUPERSEDED 2026-09-01 by E99** — [[E99-ioctl-out-cells]]. E86 shipped
+> 2026-08-06 as a single generic 3-arg `ioctl` crossing over a surface-allocated
+> `Bytes`. E99 founds its own baseline on exactly that artifact — *"Partially
+> built — one generic 3-arg ioctl crossing works at runtime (pty-verified) but
+> mutates a `cell-new` (pure `->`) Bytes in place"*
+> (E99's catalog row, `.planning/SELF-IMPLEMENT-CATALOG.md`) — and replaces it with
+> per-request-family crossings that allocate the out-cell INSIDE the wrapper and
+> return a fresh value. E99's SPEC decision 5 resolved to retire the generic
+> extern in the same wave, because leaving it "re-admits the hazard"
+> (`.planning/specs/E99-ioctl-out-cells-SPEC.md:86`), and the INDEX records E99
+> implemented 2026-08-09 with *"old ioctl retired"* (E99's `docs/examples/INDEX.md` row).
+> Nothing E86 shipped survives: `grep -rn "extern ioctl" lib/ prog/` is empty.
+> E104 then built the pty acquisition crossings on E99's surface
+> (E104's catalog row; `lib/ports/pty.port:40`).
+>
+> The body below is unchanged. It is the record of what was decided in August,
+> not a live design.
+
+---
 
 > One worked example, produced by the `worked-example` pre-run. Conventional
 > approach vs the chirality idea, ending in a clear-cut snippet to copy and modify.

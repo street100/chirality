@@ -20,6 +20,10 @@ Usage:
     tools/pack/pack.py E13 --mark reviewed   # post-audit flip: drafted -> reviewed
     tools/pack/pack.py E13 --mark audited    # post-audit flip: specced -> audited (+ SPEC frontmatter)
 
+An element marked `status: superseded` (its work reshaped into a DIFFERENT
+element, named by `superseded_by:`) is REFUSED at every stage — see
+superseded_stop() and the Status section of docs/examples/INDEX.md.
+
 Three LANES, one pipeline. The element id's prefix selects its SOURCE ADAPTER —
 which document holds the rows, how a row is recognised, what plays the role of
 the catalog's Location/state and Kind/reference_class columns:
@@ -194,6 +198,48 @@ def examples_for(tag):
         exs.remove(named)
         exs.insert(0, named)
     return exs
+
+
+def _frontmatter(path):
+    """The YAML block between the leading `---` fences, or "" if there is none."""
+    m = re.match(r"^---\n(.*?)\n---\n", open(path).read(), re.S)
+    return m.group(1) if m else ""
+
+
+def superseded_stop(eid, tag):
+    """Refuse every stage for an element whose artifacts are marked superseded.
+
+    `superseded` is the pipeline's one EXIT off the drafted -> reviewed ->
+    specced -> audited -> implemented chain (vocabulary and rules: the Status
+    section of docs/examples/INDEX.md). It says the element stopped being the
+    thing that gets built because its work was reshaped into a DIFFERENT
+    element, named by the `superseded_by:` frontmatter field. Its artifacts are
+    kept, unrewritten, as the record of what was decided.
+
+    Without this the tool would walk a retired element forward, because every
+    stage keys off the artifact FILE existing, not off its state: `--spec` would
+    scaffold a fresh SPEC over a superseded example, `--audit` would bundle one
+    for review, and `--mark` would die with a predecessor-mismatch message that
+    reads like a fixable slip instead of a closed element.
+
+    The flip INTO superseded is deliberately not a `--mark`. A `--mark` is a
+    deterministic flip with one legal predecessor to check; supersession has no
+    predecessor (it is reachable from any state) and its target element is an
+    author's call, so it is written by hand.
+    """
+    hits = []
+    for path in (examples_for(tag)
+                 + sorted(glob.glob(os.path.join(SPECDIR, f"{tag}-*-SPEC.md")))):
+        fm = _frontmatter(path)
+        if re.search(r"^status:\s*superseded\s*$", fm, re.M):
+            by = re.search(r"^superseded_by:\s*(\S+)", fm, re.M)
+            hits.append((os.path.relpath(path, ROOT), by.group(1) if by else "(unnamed)"))
+    if not hits:
+        return
+    die(f"{eid} is SUPERSEDED — refusing to run any pipeline stage on it.\n"
+        + "\n".join(f"  {rel}  superseded_by: {by}" for rel, by in hits)
+        + "\nThose artifacts are the record of what was decided, not a live design.\n"
+          "Work the successor element instead.")
 
 
 def die(m):
@@ -660,6 +706,7 @@ def main():
     tag = f"{prefix}{num:02d}{sfx}"
     slug = pos[1] if len(pos) > 1 else ""
     ledger_note(eid)
+    superseded_stop(eid, tag)
 
     if not os.path.exists(src["path"]):
         die(f"{prefix}# row source {os.path.relpath(src['path'], ROOT)} does not exist "

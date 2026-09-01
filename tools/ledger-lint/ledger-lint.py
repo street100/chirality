@@ -838,6 +838,14 @@ def check_n() -> list[str]:
     Coarse by design -- the LEDGER state column is a pointer, not a snapshot,
     and CONFORMANCE-MAP wins on disagreement. Only flags pairs that cannot both
     be true.
+
+    `superseded` (added 2026-09-01) is the one state this check pairs EXACTLY
+    rather than coarsely. It is not a readiness value that the two documents may
+    legitimately see from different distances: it says the element stopped being
+    the thing that gets built, and half a supersession -- retired in the LEDGER,
+    still live in the pipeline index, or the reverse -- is the same lost history
+    the state exists to prevent. Vocabulary: the Status section of
+    docs/examples/INDEX.md.
     """
     errs: list[str] = []
     ledger = ROOT / ".planning" / "LEDGER.md"
@@ -884,6 +892,10 @@ def check_n() -> list[str]:
             print(f"  [N] E{n} KNOWN disagreement (ledger={ls}, INDEX={ps}) "
                   f"-- flagged in the row, not failing")
             continue
+        if "superseded" in (ls, ps) and ls != ps:
+            errs.append(f"[N] E{n} is superseded on ONE SIDE ONLY "
+                        f"(ledger={ls}, INDEX={ps}) -- supersession retires the "
+                        f"element in both registries or in neither")
         if ls == "built" and ps in ("design",):
             errs.append(f"[N] E{n} ledger=built but INDEX={ps} "
                         f"(built is past the pipeline's start)")
@@ -1034,6 +1046,74 @@ def check_s() -> list[str]:
     return errs
 
 
+def check_t() -> list[str]:
+    """T. Every pipeline ARTIFACT ON DISK still has its registry rows (2026-09-01).
+
+    Checks A-S all start FROM a registry and look outward. J walks the catalog
+    and the LEDGER against each other; N walks the LEDGER against INDEX; each can
+    only see an element that some registry file already names. NOTHING enumerated
+    the files. So an element could lose its rows while docs/examples/E<NN>-*.md
+    and .planning/specs/E<NN>-*-SPEC.md sat on disk, and the whole lint stayed
+    blind to it: the artifacts are still there, still readable, still cited, and
+    the element is invisible to every "what do we have?" the registry answers.
+
+    Written from E86 (`ioctl` as a sys crossing): both artifacts present,
+    implemented 2026-08-06 per .planning/SCRIBA-SYSCALL-HANDOFF.md:102, and zero
+    rows in the catalog, the LEDGER or INDEX -- because when E99 reshaped the
+    work the row was DELETED rather than marked `superseded`. Deleting a row is
+    not retiring an element, it is forgetting one. This check is the reason that
+    cannot happen again silently.
+
+    Both pairings are asserted, because the two registries fail differently and
+    both failures are live in this tree: a missing CATALOG row (which J then
+    chains on to a LEDGER row) and a missing INDEX row (which N then chains on to
+    a state, and which tools/pack/pack.py's examples_for() needs to pick the
+    pipeline artifact out of an element's companion files).
+
+    E# lane only. U#/S# artifacts key to different source documents
+    (.planning/USER-LAYER-GAP.md, .planning/SCRIBA-PRIMITIVE-CHECKLIST.md -- see
+    the source adapters in tools/pack/pack.py) and this check does not model
+    them; asserting them against the E# catalog would be a check aimed at a
+    guess."""
+    errs: list[str] = []
+    catalog = ROOT / ".planning" / "SELF-IMPLEMENT-CATALOG.md"
+    index = ROOT / "docs" / "examples" / "INDEX.md"
+    exdir = ROOT / "docs" / "examples"
+    specdir = ROOT / ".planning" / "specs"
+    if not catalog.exists() or not exdir.exists():
+        return errs
+    arts: dict[int, list[str]] = {}
+    for d, pat in ((exdir, "E*.md"), (specdir, "E*-SPEC.md")):
+        if not d.exists():
+            continue
+        for f in sorted(d.glob(pat)):
+            m = re.match(r"E(\d+)", f.name)
+            if m:
+                arts.setdefault(int(m.group(1)), []).append(
+                    str(f.relative_to(ROOT)))
+    if not arts:
+        raise Vacuous("no docs/examples/E*.md or .planning/specs/E*-SPEC.md on "
+                      "disk -- there is no artifact tier to hold to the registry")
+    cat_ids = {int(n) for n in
+               re.findall(r"^\|\s*E(\d+)\s*\|", catalog.read_text(), re.M)}
+    idx_ids = set()
+    if index.exists():
+        idx_ids = {int(n) for n in
+                   re.findall(r"^\|\s*E(\d+)\s*\|", index.read_text(), re.M)}
+    for n in sorted(arts):
+        files = ", ".join(arts[n])
+        if n not in cat_ids:
+            errs.append(f"[T] E{n} has artifacts on disk ({files}) but NO row in "
+                        f".planning/SELF-IMPLEMENT-CATALOG.md -- an element the "
+                        f"registry cannot see. If its work moved to another "
+                        f"element, the row is restored as `superseded`, not deleted")
+        if index.exists() and n not in idx_ids:
+            errs.append(f"[T] E{n} has artifacts on disk ({files}) but NO row in "
+                        f"docs/examples/INDEX.md -- the corpus index does not "
+                        f"list a file of its own corpus, and check N has no "
+                        f"pipeline state to compare")
+    return errs
+
 # ⚑ THE PREFLIGHT. Checks A-S read the doc tier directly, with no fallback, so on
 # a tree that does not have it the first check dies with a FileNotFoundError and
 # says nothing about the other eighteen. That is a crash where a REFUSAL belongs:
@@ -1101,7 +1181,8 @@ def main() -> int:
                      ("P suite compiler override", check_p),
                      ("Q map live tally", check_q),
                      ("R citation lands on its symbol", check_r),
-                     ("S rank-2 anchor is committed", check_s)):
+                     ("S rank-2 anchor is committed", check_s),
+                     ("T artifacts have registry rows", check_t)):
         try:
             errs = fn()
         except Vacuous as v:

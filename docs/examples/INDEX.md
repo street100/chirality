@@ -1,7 +1,7 @@
 ---
 node: examples-index
 layer: navigation
-updated: 2026-07-21
+updated: 2026-09-01
 ---
 
 # Worked-example corpus
@@ -20,6 +20,31 @@ by the `example-to-spec` run, linked in the Artifact column; lives in
 `.planning/specs/`) → `audited` (spec audit passed; implement-ready) →
 `implemented` (a later run built it into `scaffold/`). `needs-rework` marks a
 draft invalidated by a later design decision (see the dated PLAN file).
+
+**`superseded` — the one exit off that chain.** It is not a further rung: it
+records that the element STOPPED BEING THE THING THAT GETS BUILT, because its
+work was reshaped into a *different* element. The artifacts stay, unrewritten,
+as the record of what was decided; both the example and the SPEC take
+`status: superseded` plus a `superseded_by: E<NN>` frontmatter field naming the
+element that took the work over, and a dated note at the top saying what
+replaced it and why.
+
+`superseded` is reachable **from any state**, not only from `implemented`. The
+five chain states measure one thing — how ready this element is to be built —
+and supersession is not a readiness value, it is a statement about which element
+owns the work; an element can be folded into another before anyone specs it.
+E86 is the worked case, and it settles the question by itself: its example sat
+at `drafted` while its SPEC sat at `audited` and the element had in fact been
+implemented, so a `superseded` that could only be entered from `implemented`
+could not have marked either artifact.
+
+Distinct from `needs-rework`, which keeps the element and invalidates the draft.
+`superseded` keeps the draft and retires the element.
+
+`pack.py` performs no supersession flip: there is no deterministic predecessor
+to check and the target element is an author's call, so it is written by hand.
+What `pack.py` does is REFUSE — `--spec`, `--audit` and `--mark` all stop on a
+superseded artifact rather than advance one.
 
 | Element | Title | Kind | Ref | Status | Artifact |
 |---------|-------|------|-----|--------|----------|
@@ -73,6 +98,7 @@ draft invalidated by a later design decision (see the dated PLAN file).
 | E80 | Capability reification to `main` (profile-grants-to-entry): the profile hands the entry point its reified ambient caps (Console/Clock/Timer/Env/NetCap) the way `spawn` hands `node-main` its peer port — `main` grows from `(=> Unit Unit)` to receive the granted linear porttypes; closes the ambient-authority violations named in decision-effect-facets and unblocks E29's deferred NetCap third (forward contract in the E29 SPEC §6) + the shared Clock/Timer/Env edge (added 2026-08-01, author-ratified: build, not defer) | BUILD-PROPER | OURS | audited | [E80-cap-to-main.md](E80-cap-to-main.md) · [SPEC](../../.planning/specs/E80-cap-to-main-SPEC.md) |
 | E76 | Syscall chokepoint: an enumerated `(crossing → number)` registry at the tal floor. Every `ti-sys` immediate must equal its crossing's registered number; a `sys` op in an unregistered function is refused at tal-check (binds name↔number, closing the "nb-sys-write could carry open's number" hole). A profile bounds the permitted subset (never a syscall no crossing declares). The type-level half of "closed by type, not by number" ([[trust-boundary]] WATCH-4) | BUILD-PROPER | OURS/PAPER | implemented (chokepoint over tal-ir sys-lib, differential vs tal.py; refuse-plug at emit-elf = A4 follow-on) | [E76-tal-check-chokepoint-port.md](E76-tal-check-chokepoint-port.md) |
 | E81 | Value-heap alloc seam + `fixed-trap` / `growing` disciplines ({Mach} × {Alloc} product; ELF→growing, JIT/tests→fixed-trap) | BUILD-PROPER | OURS/IMPL | implemented (2026-08-09: alloc-bump→alloc-fixed-trap, alloc-growing stub, alloc-for-elf/alloc-for-jit aliases; fixpoint 684282B) | [E81-alloc-seam.md](E81-alloc-seam.md) · [SPEC](../../.planning/specs/E81-alloc-seam-SPEC.md) |
+| E86 | `ioctl` as sys crossing (terminal control: TIOCGWINSZ, TCGETS/TCSETS) — one generic 3-arg `ioctl` extern over a surface-allocated `Bytes` | REPLACE-CRUTCH | SPEC | superseded (implemented 2026-08-06; superseded by E99 2026-08-09, which replaced the generic crossing with per-request-family alloc-inside crossings and retired the extern in the same wave — E99 SPEC decision 5. E104 later built the pty acquisition crossings on E99's surface) | [E86-ioctl-crossing.md](E86-ioctl-crossing.md) · [SPEC](../../.planning/specs/E86-ioctl-crossing-SPEC.md) |
 | E87 | Import resolution: `(import \"...\")` handler + module bundler — transitively resolve, dedup, and concatenate source files into a flat blob for B1 | SELF-HOST | IMPL/SPEC | audited | [E87-import-resolution.md](E87-import-resolution.md) · [SPEC](../../.planning/specs/E87-import-resolution-SPEC.md) |
 | E88 | Mark + region system: mark-ring, mark (saved cursor position), region (text between point and mark), set-mark, exchange-point-and-mark, kill-region, copy-region — wires the existing kill-ring into real region operations | BUILD-PROPER | OURS/IMPL | audited | [E88-mark-region.md](E88-mark-region.md) · [SPEC](../../.planning/specs/E88-mark-region-SPEC.md) |
 | E89 | Arena startup — entry-stub v3 reserve/commit split (PROT_NONE reservation + mprotect INIT_COMMIT prefix), single-sourced constants both floors | REPLACE-CRUTCH | SPEC/IMPL | implemented (2026-08-09: mprotect wiring + heapreserve cell + native.py constants landed; entry-stub-v3 deferred to E90/E91 — v3 stub segfaults on self-compile, v2 stays as transitional; fixpoint 684282B) | [E89-arena-init.md](E89-arena-init.md) · [SPEC](../../.planning/specs/E89-arena-init-SPEC.md) |
