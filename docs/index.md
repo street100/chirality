@@ -1,9 +1,9 @@
 ---
 node: index
 layer: navigation
-related: [testing-floors, relations, glossary, thesis, splitting-law, joining-law, module-map, open-edges, floor-agreement, status-ledger, design-principles, resolution-patterns, syntax-evolution, trust-boundary, totality, live-environment, certificate-discipline, split-role]
+related: [checklists/README, testing-floors, relations, glossary, thesis, splitting-law, joining-law, module-map, open-edges, floor-agreement, status-ledger, design-principles, resolution-patterns, syntax-evolution, trust-boundary, totality, live-environment, certificate-discipline, split-role]
 status: draft
-updated: 2026-07-27
+updated: 2026-09-01
 ---
 
 # Chirality docs
@@ -107,6 +107,10 @@ allocator at scale), see [benchmarks/](benchmarks/README.md).
 - Targets: [[target-tomodachi]]. A target is a requirement type a profile must
   satisfy ([[decision-profiles]], G9); target notes state one requirement in
   prose and name which open edges it exercises.
+- Checklists: [[checklists/README]] is the hub. One file per arc, each row a
+  claim this repo makes about itself beside what was measured, with a state and a
+  date. The one doc tier any agent may extend or amend without asking; the rules
+  are in the hub. Seeded with [[checklists/baseline-alignment]].
 - Provenance and open work: [[dump-integration]], [[open-edges]], [[resolution-patterns]]
 
 ## Convention

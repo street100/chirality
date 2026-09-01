@@ -19,7 +19,9 @@ This arc has NO reserved element number block. `LANES.md` reserves E184-E189 and
 E190-E195 for the two diagnostics lanes. Rows needing an element carry
 `UNASSIGNED` until the author assigns a block.
 
-Everything below was measured on 2026-09-01 against `master` at `c273971`.
+Everything below was measured on 2026-09-01. Line citations are current as of
+`b7d27f3`. Re-run a row's evidence before relying on it: a banner or an
+insertion above a cited line moves it, which is BA-13.
 
 ## Gates that cannot fail
 
@@ -107,7 +109,7 @@ tree lacks, or at a guess, passes by looking at nothing.
 - state:    OPEN
 - claim:    `HANDOFF.md`'s state table says `tools/test/samples/` holds 98 files.
 - measured: `ls tools/test/samples/ | wc -l` counts 54. Four of the gap is the C-leg fixture drop at `d0c5dd5`, which removed `e166_c_assemble.prog`, `e166_ddc_legc.prog`, `e166_mach_c.prog` and `e166_mach_c_reject_lda6.prog`. The other 40 is older drift and is undiagnosed.
-- evidence: `HANDOFF.md:45` (the fixtures row), commit `d0c5dd5`
+- evidence: `HANDOFF.md:57` (the fixtures row), commit `d0c5dd5`
 - checked:  2026-09-01
 - element:  none
 

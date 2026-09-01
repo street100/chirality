@@ -31,6 +31,18 @@ and E176 through E180 and E182 through E184 are referenced in Lane A's artifacts
 - Theirs right now: `bin/chirality-resolve.sh` (resolver caching),
   `docs/decisions/decision-self-verification.md`.
 
+## ⚑ Where a finding goes: `docs/checklists/`
+
+A defect you find mid-task, outside your own task, goes in a checklist row. A
+commit message loses it. `docs/checklists/README.md` states the format, the four states,
+and the rules for adding, amending and retiring a row. Any agent may edit a
+checklist without asking. Tracked, for the reason `docs/elements/` is: a note in
+`.planning/` forks per worktree and dies there.
+
+Seeded: `docs/checklists/baseline-alignment.md`, 18 rows measured 2026-09-01.
+Claims this repo makes about itself beside what the tree does. It has **no
+reserved element number block**; rows needing one carry `UNASSIGNED`.
+
 ## Where it is
 
 A working, self-hosting language. The migration out of `/workspace/metis-the-lang`

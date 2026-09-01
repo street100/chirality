@@ -133,6 +133,8 @@ docs/
   banks/           the depth tier: one concept refracted into shards + homes
   examples/        one entry per code example
   elements/        one entry per element: status, relationships, explanation
+  checklists/      one per arc: a claim beside its measurement, with a state.
+                   The one doc tier any agent may edit without asking
   implementation/  the source tree described, as distinct from specified
   benchmarks/      measurements, with their dates
 .planning/         specs, audits, handoffs, captures, the element catalog
@@ -146,6 +148,13 @@ directory carries all of it. `decisions/` is not `definitions/` because a
 decision is answerable and a definition is not; `banks/` is not `modules/`
 because a bank is the refraction of one concept across many homes while a
 module note describes one home.
+
+`checklists/` is the mutable tier. A checklist row is a claim this repo makes
+about itself beside what was measured, carrying a state and a date. Every other
+doc tier is written once and audited; a checklist is extended and amended in
+place by whoever measures something. `docs/checklists/README.md` states the row
+format and the rules. It is tracked for the reason `docs/elements/` is: a finding
+in `.planning/` forks per worktree and dies there.
 
 `elements/` is empty and stays empty until something derives it. Element status
 must come from a build-state authority. The old tree kept ~171 status lines by
