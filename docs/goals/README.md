@@ -29,7 +29,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | goal | state | arcs |
 |---|---|---|
 | [[goals/self-hosting]] | held since 2026-08-05, maintained by the BUILD RULE | none open |
-| [[goals/self-tooling]] | in flight | [[arcs/zero-python-arc]] |
+| [[goals/self-tooling]] | in flight | [[arcs/zero-python-arc]], [[arcs/text-tools-arc]] |
 | [[goals/readable-surface]] | in flight | [[arcs/diagnostics-arc]], [[arcs/file-types-arc]] |
 | [[goals/presentability]] | in flight | [[arcs/baseline-alignment-arc]], [[arcs/presentability-arc]], [[arcs/binary-split-arc]] |
 | [[goals/enforcement]] | in flight | [[arcs/enforcement-arc]] |
