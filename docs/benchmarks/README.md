@@ -7,11 +7,16 @@ updated: 2026-08-10
 
 # Benchmarks
 
-Consolidated speed/scale measurements for chirality. Two docs live here:
+Consolidated speed/scale measurements for chirality. Three docs live here:
 
 - **[language-performance.md](language-performance.md)** — codegen/runtime speed:
   chirality-emitted native x86-64 vs `gcc -O2` on three micro-kernels
   (arith / bytesum / states). The native-perf campaign (closed 2026-08-02).
+- **[test-suite-wall-clock.md](test-suite-wall-clock.md)** — the native
+  behavioural suite's own cost: the measured range, the per-phase breakdown, the
+  retirement of a "~4-minute budget" nobody ever measured, and the method for
+  comparing two runs. ⚑ Every figure in it predates the 2026-08-31 migration and
+  is not a baseline for the current tree.
 - **[growing-allocator-scale.md](growing-allocator-scale.md)** — E91 growing
   allocator (reserve-commit arena): bump-allocation + on-demand `mprotect`
   doubling on a fixed 64 GiB `PROT_NONE` reservation, exercised from 16 MiB

@@ -2,7 +2,7 @@
 node: axis-altitude
 layer: foundation
 refines: [thesis]
-related: [axis-typeability, splitting-law, joining-law, modules-lowering, modules-core, decision-backend, category-bridge, open-edges]
+related: [altitude-errors, axis-typeability, splitting-law, joining-law, modules-lowering, modules-core, decision-backend, category-bridge, open-edges]
 status: draft
 updated: 2026-07-24
 ---
@@ -106,3 +106,6 @@ through the module, not that altitude has a third value.
 - CHERI is the bottom level on hardware that has it: the type mark is carried
   into silicon rather than erased. Additive, not required. See the CHERI floor in
   [[modules-lowering]].
+- This axis is about lowering and it has a `preserve-check`. Five other axes
+  carry the same shape — a thing living below the level of generality that owns
+  it — and none of them has a check. See [[altitude-errors]].

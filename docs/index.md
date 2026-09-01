@@ -70,7 +70,8 @@ linked notes, one idea per note. Read the hub notes first, then follow links.
    accepted or rejected.
 
 For measured speed/scale results (native codegen vs `gcc -O2`; the E91 growing
-allocator at scale), see [benchmarks/](benchmarks/README.md).
+allocator at scale; the native suite's own wall clock), see
+[benchmarks/](benchmarks/README.md).
 
 ## Note groups
 
