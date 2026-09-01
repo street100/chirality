@@ -50,6 +50,44 @@ own three modules. No `prog/`, nothing in scriba. Fifth "built but unadopted"
 instance in this repo — and E181 closes it, since a `Doc`-returning printer is
 `Doc`'s first real consumer.
 
+
+### The chain does not end at the file types — it ends at ZERO PYTHON
+
+**Measured 2026-08-31.** 13 Python files remain, **4,140 lines**: nine tools plus
+four `docs/examples/refs/gen-*.py` generators. **Zero of them are in the build or
+test path** — `bin/chirality` has no `test-python` and never shells to it — so
+what is left is the *tooling tier*, not the floor.
+
+```
+tools/ledger-lint  1128     tools/capture      620     tools/paren-audit   154
+tools/pack          831     tools/scriba-*     182     tools/doc           330
+tools/frontier      651     tools/syscall-map  244
+```
+
+**Why this is the same arc and not a separate one.** Every one of those tools does
+three things: it **scans** text, it **reports** what it found, and it **prints**
+the report. Those are precisely the three capabilities this chain builds —
+
+- **printing** → `Doc` (E158, built) + `pretty` (E181, not built)
+- **reporting** → `Reason` (E157, built), the diagnostics vocabulary
+- **scanning** → the total matcher (master's E173, drafted)
+
+plus the floor gap master already measured in
+`.planning/PRIMITIVES-FOR-NATIVE-TOOLS.md`, taken from *writing*
+`prog/prose-lint.prog` rather than from reading a list. **`prose-lint` is the
+existence proof**: one tool already ported, natively.
+
+So the order is forced, not chosen: **the tools cannot be replaced before the
+things they are all made of exist.** Doing the file types first and the Python cut
+second is one sequence, not two projects — and `HANDOFF.md`'s route already says
+so (step 1 *replace the Python tools and delete `tools/`*, step 2 diagnostics,
+step 3 the new file types); the only correction measurement forces is that step 1
+**depends on** steps 2 and 3 rather than preceding them.
+
+⚑ **Do not narrow this to "no Python in the compile path".** That is already true
+and has been for the whole migration. The goal is **zero Python in the repo**,
+`tools/` and the four generators included.
+
 ## Where everything lives
 
 - **Work branch:** `e158-doc` in the worktree **`/workspace/chirality-verify`**
