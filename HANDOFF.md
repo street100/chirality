@@ -38,10 +38,10 @@ is **complete**; that tree is reference only now.
 
 | | |
 |---|---|
-| source | 303 files, measured 2026-09-01 |
+| source | **299** files under `lib/` + `prog/`, measured 2026-09-01 after the C-backend drop (`find lib prog -type f \( -name '*.chiral' -o -name '*.prog' -o -name '*.port' -o -name '*.profile' -o -name '*.manifest' \)`). It was 303; `d8bcec5` took four |
 | compiler | `bin/chirality-bin`, **1,147,256 B**, committed. E181 promoted it 2026-09-01 |
 | resolver | `bin/chirality-resolve.sh` + `lib/module/resolve.chiral`, a matched pair |
-| tests | `bin/chirality test` → **303 assertions, 0 failed**, 11 phases, 88 roots (`HANDOFF-LANE-A.md`) |
+| tests | `bin/chirality test` → **303 assertions, 0 failed**, 11 phases, **87 roots**, gate PASSED. Re-measured 2026-09-01 after the C-backend drop: `prog/compiler-c.prog` was one root, and no assertion moved (`HANDOFF-LANE-A.md`) |
 | fixtures | `tools/test/samples/` 98 files |
 | docs | 230, sorted by role; `.planning/` 259, **untracked by design** |
 | record | `.planning/MIGRATION-MAP.tsv`, 869 rows; `tools/test/map-integrity.sh` checks every `new_path` exists |
@@ -73,9 +73,15 @@ is **complete**; that tree is reference only now.
    targets, so the resolver probes three extensions.
 4. **`.manifest` is declared, not sniffed.** E163, unbuilt.
 5. **External judgment is cut** (Rocq, CompCert, the Python oracle). Replaced by
-   three **semantically distinct** judgment cores that must agree: different
+   N **semantically distinct** judgment cores that must agree: different
    formulations, not three encodings of one rule set. **Still unbuilt**, so every
    rung in `status-ledger` is enforcement against error, not against an adversary.
+   ⚑ **The `Mach`→C backend went with it, 2026-09-01** (`d8bcec5`, `d0c5dd5`). It
+   shared `compile-front` and `compile-back` whole and differed only at emit, so it
+   was a second TARGET under one formulation. `docs/decisions/decision-self-verification.md`
+   §0 records the call and what it rules out; `docs/definitions/open-edges.md` 21
+   and 22 record what it left open (`ddc.chiral` needs repointing and gates nothing;
+   `alloc-fixed` is at zero importers on purpose).
 6. **`bin/chirality-bin` is committed**, with the tree and harness that rebuild it.
 7. **`ports/` holds declarations, not code about ports.** A file belongs there iff
    it declares a crossing. Three modules left on 2026-08-31.
@@ -184,6 +190,17 @@ whose `j > len` half is open · two carried from the old tree (captured closures
   live. That is a measured repoint rather than a guess, so it is now allowed.
 - **`op->symop` falls through to `s-ne` for any unrecognized token**, so `!=` is
   never refused; it silently reads as `<>`. Measured during the cheatsheet fix.
+- **`tools/test/map-integrity.sh` has a gate-that-cannot-fail branch.** Its
+  `[ -z "$new" ] && continue` is meant to skip a row with no destination, and it is
+  unreachable for a 4-column row: `IFS=$'\t' read -r old new ext why` collapses tab
+  runs, so a blank `new_path` shifts the `ext` value into `$new`. Measured
+  2026-09-01 on the eight retired C-backend rows: `ext=prog` made `[ -e $ROOT/prog ]`
+  TRUE and the rows **silently passed**. Retired rows therefore use the brace form
+  (`{DELETED … -- was <path>}`), which the existing `*"{"*` branch skips and still
+  counts. The `-z` branch wants fixing or deleting.
+- **`HANDOFF.md`'s own fixtures row says `tools/test/samples/` 98 files; `ls` counts
+  **54** on 2026-09-01.** The C drop removed four, so the other ~40 is separate,
+  older drift. Not diagnosed.
 - **`CLAUDE.md`'s ⚑ saying `ledger-lint` is "partly blocked, 7 of 14 inputs are
   path mismatches" is stale.** That repoint landed; the mismatch count is 0. The
   file is gitignored, so fix it in place.
