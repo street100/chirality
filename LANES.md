@@ -57,7 +57,7 @@ pre-run, an audit — because changing a closed sum that two lanes case over
 exhaustively is design work with a measured blast radius, not a commit. The gates
 above are what make that unavoidable rather than optional.
 
-### `E181` (`typing/pretty.chiral`) is Lane A's, and Lane B consumes it
+### `E181` (now `surface/pretty.chiral`) is Lane A's, and Lane B consumes it — **BUILT 2026-09-01**
 
 Not seniority — Lane A has the forcing consumer already in the tree.
 `diag.chiral:125`'s `r-mismatch` carries **two `Term`s** with no reachable `Term`
@@ -140,7 +140,10 @@ Neither is gate-enforceable, so both live here, in the file both lanes read.
    closure — the first in this arc that does). Any Lane-B measurement taken before
    that lands was taken against a **different compiler**. Measured in a probe:
    blob ~755,238 → ~764,000 B, binary 1,130,872 → ~1,147,000 B, fixpoint at
-   generation one.
+   generation one. **LANDED 2026-09-01, measured on the real file:** blob
+   755,238 → **772,110 B** (57 → 58 `^(end-module "` markers), binary
+   1,130,872 → **1,147,256 B**, `N1 == N2` at generation one, suite green under
+   the new binary (303/0, 88 roots).
 
 Also true and worth Lane B knowing, since `.manifest`'s round-trip depends on the
 printed form: a `case` prints multi-line at **every** width, and it makes every

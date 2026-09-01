@@ -9,10 +9,13 @@
 > `E179` face registry · `E180` face redraw · adoption of `dg-doc`.
 > **Gate phases 18–20. Element band E184–E189.**
 >
-> **Lane A's next action: E181** — `typing/pretty.chiral` repointed at the real
-> `Term`, returning `Doc`. It is the named target the last session built four
-> elements around and never did, and it is Lane B's prerequisite too, so it goes
-> first.
+> **Lane A's next action: E182** — the arity judgments carry their arity.
+> **E181 is BUILT (2026-09-01)** — the term printer now walks the real
+> sixteen-constructor `Term` and returns a `Doc`, and it MOVED to
+> `surface/pretty.chiral`. Suite 303/0, gate PASSED, 11 phases, 88 roots; Phase
+> 18 is its own, 61/0. `bin/chirality-bin` was rebuilt and promoted —
+> 1,130,872 → **1,147,256 B**, `N1 == N2` at generation one. See the Lane B
+> notice below.
 
 
 **Self-contained.** A fresh session should be able to resume from this file alone.
@@ -32,9 +35,9 @@ E157  Reason        the compiler's errors become VALUES with evidence
   ↓
 E158  Doc           a formatter that takes structure and defers the flatten     [BUILT]
   ↓                 (needed E174 r-row + E175 face restore under it)            [BUILT]
-E181  pretty        the term printer repointed at the REAL Term, returning Doc  [NOT BUILT]
-  ↓                 today: 51 lines, its own local 5-ctor Term vs the real 15,
-  ↓                 Str-typed, ZERO importers
+E181  pretty        the term printer repointed at the REAL Term, returning Doc  [BUILT]
+  ↓                 now lib/surface/pretty.chiral: 30 pp- bindings, all 16 arms,
+  ↓                 no `_`, output IS chirality source; adopted by typing/diag
 E146  value→source  the five emitters return Doc, gated at widths 1/40/10⁶      [NOT BUILT]
   ↓
 E163  .manifest     a declared form → a derived codec → a round-trip gate       [NOT BUILT]
@@ -83,7 +86,7 @@ tools/frontier      651     tools/syscall-map  244
 three things: it **scans** text, it **reports** what it found, and it **prints**
 the report. Those are precisely the three capabilities this chain builds —
 
-- **printing** → `Doc` (E158, built) + `pretty` (E181, not built)
+- **printing** → `Doc` (E158, built) + `pretty` (E181, built — `surface/pretty`)
 - **reporting** → `Reason` (E157, built), the diagnostics vocabulary
 - **scanning** → the total matcher (master's E173, drafted)
 
@@ -134,12 +137,33 @@ last delta is Phase 17's 19, and Phases 13/14/15/16 are unchanged at
 
 | # | element | state |
 |---|---|---|
-| 1 | **E181** `pretty` → real `Term`, returns `Doc` | **NEXT** — 51 lines, own local 5-ctor `Term` vs the real 15, `Str`-typed, **zero importers** |
+| 1 | **E181** `pretty` → real `Term`, returns `Doc` | **BUILT 2026-09-01** — `lib/surface/pretty.chiral` (it MOVED; `typing/` was never its role), 30 `pp-` bindings, all sixteen arms, no `_`. `dg-term-tag` retired at all three sites. Phase 18 = 61/0, suite 303/0. `bin/chirality-bin` promoted to 1,147,256 B, `N1 == N2`. |
 | 2 | **E182** the arity judgments carry their arity | not built — retires 3 of `Judg`'s 38 nullary arms |
 | 3 | **E176** `str-sub` unclamped, **segfaults**, 131 call sites | not built — safety asserted in a comment |
 | 4 | **E179** the face registry becomes authoritative | not built — 5 ad-hoc sites + `lookup-face` synthesis |
 | 5 | **E180** face-aware incremental redraw | not built — unreachable today, the hazard E175 creates |
-| 6 | **adoption** — a real `prog/` consumer renders through `Doc` | not done — `dg-doc`/`doc->rendering` imported only by `lib/` |
+| 6 | **adoption** — a real `prog/` consumer renders through `Doc` | not done — `dg-doc`/`doc->rendering` imported only by `lib/`. ⚑ E181 narrowed it: the compiler's own `typing/diag` now renders TERMS through `Doc`, so the *unadopted* row is closed inside `lib/`; what is still owed is a `prog/` consumer. |
+
+## ⚑ LANE B — the compiler changed under you (2026-09-01)
+
+E181 promoted `bin/chirality-bin`: **1,130,872 → 1,147,256 B**, blob 755,238 →
+772,110 B, and `N1 == N2` (the fixpoint at generation one). Any Lane-B
+measurement taken against the pre-E181 binary was taken against a **different
+compiler**, and a byte comparison across the merge will differ for a reason that
+has nothing to do with Lane B — the inverted *"the binary is stale"* diagnosis
+this repo has already been caught by. Nothing enforces this hand-off; it is a
+line, in this file, on purpose.
+
+The second cross-lane fact: **the printer's module key is `surface/pretty`**, not
+`typing/pretty`. Root-relative keys make the directory the identity, so those are
+different modules — `E146` imports `surface/pretty`. Its API is
+`pp-of : (-> Str Term Doc)` (an explicit prefix, for two terms sharing one
+vocabulary) and `pp-term-doc : (-> Term Doc)` (computes its own). The round-trip
+law `parse(source(t)) ≡ t` is **E146's row and cannot be E181's**: `parse`/`elab`/
+`core->term` live behind `module/loader`, which imports `typing/diag`, which now
+imports the printer — so a `surface/pretty → module/loader` edge would close a
+cycle. Phase 18's G13 runs that closure walk as a checked row (nine modules, no
+`module/loader`).
 
 ## ⚑ The arc's completed set (do not redo)
 

@@ -501,6 +501,15 @@
 ; name payload -- and deliberately not a recursive pretty-printer: repointing
 ; `typing/pretty.chiral` at the real 16-constructor `Term` is a rewrite and is
 ; out of E158 (SPEC decision 12).
+;
+; ⚑ E181 DID IT, and this paragraph is now HISTORY -- kept because it is the
+; reason a flat accessor shipped, not because it still describes the tree. The
+; printer is `lib/surface/pretty.chiral` (it MOVED: a printer checks nothing, so
+; `typing/` was never its role), it returns a `Doc`, and the flat accessor above
+; is gone from this file -- its name survives only in the two sentences of this
+; paragraph, which Phase 18's G8(a) counts. `r-mismatch` now renders both terms
+; through ONE invented vocabulary and `dg-decl-doc`'s `dc-ty` arm through
+; `pp-term-doc`.
 
 (declare dg-doc       (-> Reason Doc))
 (declare dg-decl-doc  (-> Str Decl Doc))
