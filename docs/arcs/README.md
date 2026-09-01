@@ -75,5 +75,5 @@ same change that mints it. Those are the tracked collision detectors.
 | [[arcs/enforcement-arc]] | [[goals/enforcement]] | 1 minted, 0 built | `E184-E189` |
 | [[arcs/file-types-arc]] | [[goals/self-tooling]] | 0 of 3 built | `E190-E195` |
 | [[arcs/zero-python-arc]] | [[goals/self-tooling]] | 0 of 14 `.py` files removed | none |
-| [[arcs/baseline-alignment-arc]] | [[goals/honest-claims]] | 3 rows closed, the rest open | none |
+| [[arcs/baseline-alignment-arc]] | [[goals/presentability]] | 3 rows closed, the rest open | none |
 | [[arcs/binary-split-arc]] | `UNWRITTEN` | measured, unstarted | none |

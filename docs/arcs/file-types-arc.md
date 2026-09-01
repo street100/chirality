@@ -55,7 +55,7 @@ Done when all five hold.
 
 Full element prose for E183 is in [[arcs/diagnostics-arc]], which minted it.
 
-## Resume state, 2026-09-01
+## Resume state
 
 Nothing built. E181 landed and moved the term printer to
 `lib/surface/pretty.chiral`, so E146's dependency is in the tree. Two cross-lane

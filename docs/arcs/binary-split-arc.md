@@ -15,22 +15,16 @@ updated: 2026-09-01
 
 TRACKED for the reason [[arcs/diagnostics-arc]] is.
 
-## The goal was written 2026-09-01
+## The goal
 
-This arc's `goal` field read `UNWRITTEN` until [[goals/presentability]] existed,
-and it was right to. No document stated a goal this work served, and recording
-that was more useful than inventing an ambition on the project's behalf.
+The field read `UNWRITTEN` until [[goals/presentability]] existed. The author
+assigned it there: a text tool that ships the x64 backend and the ELF assembler
+misrepresents the architecture to anyone who measures it, and an outside
+evaluator measures it.
 
-The author assigned it 2026-09-01: the binary split is part of presentability,
-in service of a submission to NLnet or Tangent. The measurement below is why it
-belongs there rather than under [[goals/self-tooling]] — a text tool that ships
-the x64 backend and the ELF assembler misrepresents the architecture to anyone
-who measures it, and an outside evaluator is exactly someone who measures it.
-
-The two framings this file previously offered as candidates still stand as
-supporting arguments, and neither is the goal: `MAP.md` says `prog/` is what
-chirality ships as distinct from what it is, and documents `.profile` as a named
-frozen port set.
+Two supporting arguments, neither of which is the goal: `MAP.md` says `prog/` is
+what chirality ships as distinct from what it is, and documents `.profile` as a
+named frozen port set.
 
 ## What was measured, on disk, 2026-09-01
 
@@ -54,7 +48,7 @@ resolves to 6 modules and 27,222 bytes, measured with a probe root.
 
 ## The author's proposed split, unverified in this tree
 
-Stated by the author 2026-09-01. Five binaries:
+Stated by the author. Five binaries:
 
 | binary | modules |
 |---|---|
@@ -83,7 +77,7 @@ Draft. Each is checkable.
 5. **Every binary reproduces itself** under the BUILD RULE, and the split does
    not cost the fixpoint.
 
-## The four blockers, with citations verified 2026-09-01
+## The four blockers
 
 1. **`read-fd-all` lives inside the compiler's closure**, at
    `lib/lowering/compile-all.chiral:47`. It is a ten-line fd reader that every

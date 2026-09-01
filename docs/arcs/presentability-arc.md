@@ -1,7 +1,7 @@
 ---
 node: arc-presentability
 layer: navigation
-related: [arcs/README, goals/presentability, goals/honest-claims, arcs/binary-split-arc, records/baseline-alignment, index]
+related: [arcs/README, goals/presentability, goals/presentability, arcs/binary-split-arc, records/baseline-alignment, index]
 status: current
 updated: 2026-09-01
 ---
@@ -11,18 +11,15 @@ updated: 2026-09-01
 - goal: [[goals/presentability]]
 - reserved element block: **none**. Rows write `UNASSIGNED`.
 - checklist: [[records/baseline-alignment]], the rows in the reader-facing spine
-- sibling arc under the same goal: [[arcs/binary-split-arc]]
-
-TRACKED for the reason [[arcs/README]] gives.
+- sibling arcs under the same goal: [[arcs/baseline-alignment-arc]], [[arcs/binary-split-arc]]
 
 ## What this arc is
 
 The reader-facing surface, aimed at someone outside the project: `README.md`,
 `MAP.md`, `CONTENTS.md`, `PRINCIPLES.md`, `docs/index.md`, and the doc tier those
-four point into. Opened 2026-09-01 when the author named NLnet and Tangent as
-submission targets.
+four point into.
 
-It is **not** the claim-fixing arc. [[arcs/baseline-alignment-arc]] establishes
+It is not the claim-fixing arc. [[arcs/baseline-alignment-arc]] establishes
 whether a claim is true; this arc decides whether a stranger can find it, read it
 and act on it. Where the two meet, baseline-alignment moves first — presenting a
 false claim more clearly is a worse outcome than the present state.
@@ -69,21 +66,20 @@ gets one from the author.
 half of BA-24. `PRINCIPLES.md:62` says "One atom with no exemptions" and `:89`
 says "the port-check is the type-check"; a pure `->` function performs a syscall
 and is accepted. `README.md`, [[status-ledger]] and `docs/banks/effect-and-alarm`
-all disclose this accurately, so the spine's most-read document is the one that
-does not. That is the highest-value single fix in this arc.
+all disclose this accurately; the spine's most-read document is the one that does
+not.
 
 **What blocks it.** Nothing mechanical. It is a wording decision about a
 principle, so it may want a `docs/decisions/` note first: whether §3 states an
 enforced property or an intended one, and how it says which.
 
-**What was measured, 2026-09-01.** [[records/baseline-alignment]] holds 36
-rows, 27 open. Of the 13 added that day, four cite the spine directly: BA-24
+[[records/baseline-alignment]] holds 36 rows, 27 open. Four cite the spine
+directly: BA-24
 (`PRINCIPLES.md`), BA-30 (`MAP.md:5`, `:37-40`), BA-31 (`docs/banks/profile.md`
 and `docs/definitions/testing-floors.md`), BA-36 (`README.md:63`, `CLAUDE.md`).
 
-## Why this arc exists separately from its goal
+## Scope
 
-[[goals/presentability]] cannot be finished from inside the repo: every criterion
-is about a reader who is not us. This arc holds the part that can be done from
-inside — making the documents true, findable and consistent — and stops at the
-line where the remaining question is whether an outsider actually understood.
+[[goals/presentability]]'s outside-reader criteria cannot be finished from inside
+the repo. This arc holds the part that can be: making the documents true,
+findable and consistent.

@@ -80,7 +80,7 @@ tab-separated rows out, exit code as the verdict.
 `tools/pack/pack.py` (831), `tools/ledger-lint/ledger-lint.py` (1128). Order
 within the wave is `doc` first, smallest and the audit programme runs on it.
 
-## Resume state, 2026-09-01
+## Resume state
 
 **Wave 0 is NOT done.** `prog/paren-audit.prog` exists and
 `tools/paren-audit/paren-audit.py` is still on disk at 154 LOC; their

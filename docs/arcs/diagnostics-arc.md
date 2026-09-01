@@ -62,7 +62,7 @@ Done when all five hold. Each is observable.
 5. **The error-quality rows are closed.** E182 arity evidence, E176 `str-sub`,
    E179 face registry.
 
-## Resume state, 2026-09-01
+## Resume state
 
 Suite 303 assertions, 0 failed, 11 phases, 87 roots, gate PASSED.
 `bin/chirality-bin` 1,147,256 B, promoted by E181, `N1 == N2` at generation one.

@@ -1,14 +1,14 @@
 ---
 node: arc-baseline-alignment
 layer: navigation
-related: [arcs/README, goals/honest-claims, records/baseline-alignment, records/README, index]
+related: [arcs/README, goals/presentability, records/baseline-alignment, records/README, index]
 status: current
 updated: 2026-09-01
 ---
 
 # Arc: baseline alignment
 
-- goal: [[goals/honest-claims]]
+- goal: [[goals/presentability]]
 - reserved element block: **none**. Rows needing one write `UNASSIGNED`.
 - finding list: [[records/baseline-alignment]]
 
@@ -24,7 +24,7 @@ This file is the work. It says which findings are being closed, in what order,
 and what has to hold before the arc is done. A row moves to `FIXED` in the
 checklist; the arc says who moves it and why that one next.
 
-The author's framing, 2026-09-01: current works to actually align with the goals
+The author's framing: current work to actually align with the goals
 we are trying to claim, since apparently we are not.
 
 ## REQUIREMENTS
@@ -43,10 +43,9 @@ Done when all four hold.
 4. **`python3 tools/ledger-lint/ledger-lint.py` exits 0**, or each remaining
    failing check has a row stating why it cannot.
 
-## State, 2026-09-01
+## State
 
-36 rows on 2026-09-01, and the file is being extended while this is written. The
-count is omitted here; read the file. Sections, in its order:
+The row count is omitted here; read the file. Sections, in its order:
 
 | section | what it covers |
 |---|---|
@@ -79,7 +78,7 @@ What can be done without a number: repairing a gate, correcting a document,
 deleting a claim. Three of the four requirements above are reachable that way.
 Requirement 2 is not, because minting `.profile` instances is a design change.
 
-## Resume state, 2026-09-01
+## Resume state
 
 Next, in the order the measurement suggests:
 

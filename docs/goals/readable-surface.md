@@ -27,9 +27,8 @@ updated: 2026-09-01
   safety** — this project already accepts paying in keystrokes, which is what
   makes convenience a goal rather than a preference.
 
-The author's framing, 2026-09-01: actually live up to the readability and
-convenience commitments, without either sacrificing values or leaving escape
-hatches.
+The author's framing: live up to the readability and convenience commitments
+without either sacrificing values or leaving escape hatches.
 
 ## What done means
 
@@ -47,14 +46,10 @@ hatches.
 
 ## State
 
-**In flight, 2026-09-01.** This is the goal the diagnostics work has been serving
-without a file to point at; its arcs previously named [[goals/self-tooling]],
-which is where they land as *inputs* rather than what they are *for*.
-
 Built and reaching: E157 typed diagnostics, E158 `Doc`, E181 `surface/pretty`,
 E174 `r-row`, E175 ambient-face restore.
 
-Against it, measured: `str-sub` reads past its buffer and reports the read length
+Against it: `str-sub` reads past its buffer and reports the read length
 while `string.chiral:14` claims in a comment that it clamps
 ([[records/baseline-alignment]] BA-35) — a regularity violation of the exact
 shape [[design-principles]] names, since the comment teaches a behaviour the
@@ -67,10 +62,9 @@ primitive does not have.
   regularity claim before it is a tooling one, and today it is unchecked
   ([[records/baseline-alignment]] BA-30).
 
-Both arcs also serve [[goals/self-tooling]], which is not a conflict: the tooling
-goal is what the work is built *out of*, this goal is what it is built *for*.
-[[arcs/README]] requires an arc to name exactly one goal, so each names this one
-and cites the other in its body.
+Both arcs also draw on [[goals/self-tooling]]: that goal is what the work is
+built *out of*, this one is what it is built *for*. [[arcs/README]] requires an
+arc to name exactly one goal, so each names this one.
 
 ## Honest limits
 

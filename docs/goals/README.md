@@ -31,33 +31,17 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/self-hosting]] | held since 2026-08-05, maintained by the BUILD RULE | none open |
 | [[goals/self-tooling]] | in flight | [[arcs/zero-python-arc]] |
 | [[goals/readable-surface]] | in flight | [[arcs/diagnostics-arc]], [[arcs/file-types-arc]] |
-| [[goals/presentability]] | in flight, opened 2026-09-01 | [[arcs/presentability-arc]], [[arcs/binary-split-arc]] |
+| [[goals/presentability]] | in flight | [[arcs/baseline-alignment-arc]], [[arcs/presentability-arc]], [[arcs/binary-split-arc]] |
 | [[goals/enforcement]] | in flight | [[arcs/enforcement-arc]] |
-| [[goals/honest-claims]] | in flight | [[arcs/baseline-alignment-arc]] |
 | [[goals/independent-judgment]] | stated, unbuilt, **zero arcs** | none |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | none, by decision |
 
-Two rows are the reason this tier exists.
-
 `independent-judgment` is a stated goal with no arc and no element. `README.md`
 lists it under Honest limits and `CLAUDE.md` states the replacement criterion.
-Nothing in the tree works toward it. Before this tier that fact had nowhere to
-be seen.
+Nothing in the tree works toward it.
 
-[[arcs/binary-split-arc]] had no row above and its goal read `UNWRITTEN`. The
-author wrote that goal 2026-09-01 as [[goals/presentability]], and the arc now
-appears in its row. The `UNWRITTEN` field did its job: it made a real, measured,
-unschedulable arc visible until someone decided what it was for.
-
-Two goals here are **author calls recorded as such**, not derived from existing
-text: [[goals/presentability]] and [[goals/readable-surface]]. Both cite the
-2026-09-01 decision in their own first section, and both then cite the repo text
-they rest on. The rule below is not suspended; it is satisfied by naming who
-made the call and when.
-
-[[goals/readable-surface]] took two arcs from [[goals/self-tooling]]. That was a
-mis-pointing rather than a move: the tooling goal is what diagnostics work is
-built *out of*, the readable surface is what it is built *for*.
+[[goals/presentability]] and [[goals/readable-surface]] are author calls rather
+than derivations from existing text, and say so in their own first section.
 
 ## Rules
 
