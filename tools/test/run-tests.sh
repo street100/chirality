@@ -28,6 +28,8 @@
 #      (E175 face-join + rnd-restore)
 #  17  doc->rendering            NEW HERE   -- tools/test/render-doc.sh
 #      (E158 commit 4)
+#  18  the term printer (E181)   NEW HERE   -- tools/test/pretty.sh
+#      (Term -> Doc, and its output IS source)
 #
 # Each case's expected value comes from what the program MEANS, never from a
 # golden capture of chirality's own output.
@@ -260,6 +262,22 @@ run_phase 16 "ambient face restore (E175 face-join + rnd-restore)"  face.sh
 # actually convicts.  Every mutant here pins the FULL fifteen-row verdict line,
 # not merely "a row went red".
 run_phase 17 "doc->rendering (E158 commit 4)"                      render-doc.sh
+
+# ---- Phase 18: the term printer (E181) --------------------------------------
+# 18 for the reason 17 was 17: 8-12 are names still owed to unported old-tree
+# phases.  E181 repoints the printer at the REAL sixteen-constructor `Term`,
+# returns a `Doc` instead of a `Str`, and MOVES it to `surface/` -- a printer
+# checks nothing, so `typing/` was never its role, and root-relative keys make
+# that a real rename rather than a tidy-up.
+#
+# ⚑ Its gate reads EMITTED BYTES on every row.  The toothless shape for a
+# printer is a row that walks the produced `Doc` and checks it has the
+# constructors you expected -- the same information twice, and green under any
+# mutant that changes what those constructors SAY.  It also carries the one row
+# in the suite that COULD NOT PASS before its element landed: the old file was
+# unimportable twice over (`data redeclared: Term`, `duplicate label ... nlen`),
+# so nothing in the tree ever compiled it.
+run_phase 18 "the term printer (E181 Term -> Doc)"                 pretty.sh
 
 echo
 echo "=== not ported from the old suite (named, not hidden) ==="

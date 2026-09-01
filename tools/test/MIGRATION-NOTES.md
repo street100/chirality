@@ -16,7 +16,7 @@ Entry point: `bin/chirality test` → `tools/test/run-tests.sh`.
 | 6 linear mint (E159) | `test-linear-mint.sh` | `linear-mint.sh` | 21 |
 | 7 downstream roots compile | `run-native.sh` inline | `run-tests.sh` inline | 11 roots |
 
-## New here — Phases 13, 14, 15, 16 and 17
+## New here — Phases 13, 14, 15, 16, 17 and 18
 
 | phase | source | here | assertions |
 |---|---|---|---|
@@ -25,6 +25,7 @@ Entry point: `bin/chirality test` → `tools/test/run-tests.sh`.
 | 15 horizontal composition (E174) | none — written here | `row.sh` + `samples/e174_row.prog` | 41 |
 | 16 ambient face restore (E175) | none — written here | `face.sh` + `samples/e175_face.prog` | 38 |
 | 17 `doc->rendering` (E158 c4) | none — written here | `render-doc.sh` + `samples/e158_render.prog` | 19 |
+| 18 the term printer (E181) | none — written here | `pretty.sh` + `samples/e181_pretty.prog` | 61 |
 
 E157 landed in the old tree after the migration snapshot, so it has **no old-tree
 phase number to inherit**. It is 13 rather than 8: 8–12 are names still owed, and
@@ -32,6 +33,25 @@ reusing one would have made an unported gate look ported. E158 takes **14** for
 the same reason, and its registration line beside 13's is a *required* line, not
 a courtesy — an unregistered `doc.sh` is a gate that never runs, which `doc.sh`
 itself asserts as a row (G7c) so the registration cannot vanish silently.
+
+**Phase 18** is E181's, and it is 18 for the reason 17 was 17. Two things about
+it are worth writing down rather than rediscovering. First, **every row reads
+emitted bytes** — the fixture prints and asserts nothing, and it always exits 0,
+because the toothless shape for a printer gate is a row that walks the produced
+`Doc` and checks it has the constructors you expected: the same information
+twice, and green under any mutant that changes what those constructors *say*.
+Second, it carries **the one row in this suite that could not pass before its
+element landed**. `typing/pretty.chiral` was unimportable twice over — its own
+five-constructor `Term` gave `load: data redeclared: Term` beside
+`surface/syntax`, and its hand-rolled `nlen` gave `duplicate label …: nlen`
+beside `lowering/tal/erase` — and both colliding modules are inside
+`prog/compiler.prog`'s own blob, so nothing in the tree ever compiled the file.
+Phase 7 sweeps *roots*, and no root reached it. The fixture co-imports all three
+on purpose, which is what makes G9 a row and not a claim.
+
+⚑ The printer also **moved**, `typing/pretty` → `surface/pretty`. Module keys are
+root-relative, so those are different modules and the move is a rename with
+consumers, not a tidy-up.
 
 **Phase 15 (E174)** takes 15 for the same reason, and its gate is the first here
 that reads the *emitted byte stream*: `doc.sh`'s `build_run` discards stdout, and
