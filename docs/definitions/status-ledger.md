@@ -3,7 +3,7 @@ node: status-ledger
 layer: navigation
 related: [module-map, open-edges, floor-agreement, index, memory-model, permission-model, totality]
 status: draft
-updated: 2026-08-24
+updated: 2026-09-01
 ---
 
 # Status ledger
@@ -33,6 +33,44 @@ updated: 2026-08-24
 > compiler, not Python (`tools/test/check-cli.sh`), so CPython is off the check
 > path too. See [[trust-boundary]] for the TCB delta and
 > `.planning/FIXPOINT-CHECKLIST.md` for what remains.
+
+> **⚑ Diagnostics & formatting arc — BUILT 2026-09-01.** Six elements landed on
+> `master`, each through the full example → audit → SPEC → audit → implement
+> pipeline. **Suite: 303 assertions, 0 failed, 11 phases, 88 roots, `gate PASSED`.**
+> **`bin/chirality-bin` is 1,147,256 bytes** (was 1,098,104 at migration, then
+> 1,130,872) and reproduces itself byte-identically — `N1 == N2`, fixpoint at
+> generation one, verified after every promotion.
+>
+> | element | what it is | gate |
+> |---|---|---|
+> | **E157** | diagnostics as typed values — `ld-err`/`ck-err` carry a closed `Reason` with evidence, not a `str-cat`'d sentence | Phase 13, 30 |
+> | **E158** | `Doc` — printf's template split from its flatten; `doc->str`, `doc->rendering` | Phases 14 + 17, 45 |
+> | **E174** | `Rendering` gains `r-row` + a per-node width function; also repaired `apc.chiral`'s codec, which was **already red** | Phase 15, 41 |
+> | **E175** | the ANSI close restores the **ambient face** instead of resetting to default | Phase 16, 38 |
+> | **E181** | `surface/pretty` — the term printer repointed at the real 16-constructor `Term`, returning `Doc`; **moved from `typing/`** | Phase 18, 61 |
+>
+> **Two facts other work depends on.** (1) `typing/pretty` **no longer exists** —
+> the key is **`surface/pretty`** (`MAP.md`: a printer checks nothing, so it is
+> `surface/parse`'s inverse). (2) The compiler changed size twice in this arc; any
+> measurement taken against an earlier binary was taken against a different one.
+>
+> **Unbuilt residue, all with rows** (in the untracked `.planning/` catalog —
+> see *Where element detail lives*, below): E176 `str-sub` is unclamped and
+> **segfaults** · E177 display-width table · E178 `r-table` per-column widths ·
+> E179 the face registry becomes authoritative · E180 face-aware incremental
+> redraw · E182 the arity judgments carry their arity · E183 `.protocol`.
+> Lane B holds E146 · E163 · E183. Division and enforcement: **`LANES.md`**.
+>
+> **⚑ Where element detail lives, and why this section exists.** `.planning/` is
+> **untracked** (`.gitignore:12`, master's decision — the planning tier is private
+> working material). So the element catalog, the ledger rows and every SPEC in this
+> arc are **on disk and invisible to git**. Anyone reading the repo sees only
+> `docs/examples/INDEX.md` and *this* file. That is the whole reason a build-state
+> summary belongs here: an arc recorded only in `.planning/` did not happen, as far
+> as a second reader is concerned. **It also cost a real collision** — two sessions
+> independently minted `E173`, and nothing detected it until a merge put both INDEX
+> rows side by side.
+
 
 The design notes are written in the present tense of the finished system. The
 scaffold implements a fraction of it. This note is the map between the two, so a
