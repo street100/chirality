@@ -206,100 +206,20 @@ overturn; it is a real question with a number for an answer, and Q2 may be the
 same. If the questions split into "dismantles an assumption" and "just answers",
 the shape is not uniform and that is worth stating rather than forcing.
 
-### Worked instance: Q4
-
-**Does a language with strong opinions have to fight you?**
-
-> Not really. What makes an opinionated language hard is the amount you have to
-> hold in your head. Strong typing already exists to mechanically exclude
-> categories of failure, and that part is not in dispute. What chirality leans on
-> is that if you can express anything, you can express the checker too. Error
-> handling stops being a fixed feature of the language and becomes something you
-> extend, one bug class at a time, until the primitives cover it.
->
-> `paren-audit` is the small version, 244 lines of chirality. Break a paren and
-> it names the form, the line it opens on, and the delta. The next step is a tool
-> that repairs the file in place, and at that point unbalanced parens stop being
-> something you consider at all. That is the method: name the class, build the
-> primitive, stop paying attention to it.
->
-> | what | state | where | limit |
-> |---|---|---|---|
-> | usage on binders | enforced, gated | `lib/typing/qtt.chiral`, Phase 6 | |
-> | refinement types | enforced, gated | `lib/typing/refine.chiral` | `I64` only, `jg-refine-i64` |
-> | totality as the default | written, unreached | `lib/typing/totality.chiral` | zero importers, no termination judgment in `diag.chiral` |
-> | `->` against `=>` | carried, refused nowhere | `lib/typing/effects.chiral` | E171 |
-> | `paren-audit` diagnosis | built, runs | `prog/paren-audit.prog` | reports a count, not a position |
-> | `paren-audit` repair | not built | | needs P1 spans and P4 addresses, both unassigned in `docs/arcs/text-tools-arc.md` |
->
-> Where the checker is wired the load is off you. Where it is not, the shape is
-> light because nothing is weighing it.
-
-Notes on this draft, kept out of the answer:
-
-- **Measured 2026-09-01.** Broke `is-space` in a copy of `prog/paren-audit.prog`
-  and ran it. Output: `def is-space 58 390 389 1`, then `FILE depth 1`. The
-  counts run to end of file because an unclosed form swallows the rest, so the
-  first bad form is reported rather than the last. Neither implementation has a
-  write path.
-- **The table may be two tables.** The four typing rows answer what the checker
-  demands of you. The paren-audit rows answer how far the extension claim
-  reaches. Possibly two questions.
-- `docs/definitions/bug-classes.md` does not exist. Any class-coverage count
-  cited here points at the draft further down this file.
-
 ### The earlier angle pass, superseded
 
-The author's read: several answers "come from weird angles", with Q4's "Make the
-well-behaved shape the low-ceremony one" as the example.
+An earlier read of the same defect called it phrasing: four drafts opened in the
+designer's imperative ("Make X the Y", "Declare the dangerous thing as Z") or on
+a theory premise ("Enumerating what a program outputs is undecidable"), where
+the three that read straight opened on a fact. That pass proposed replacement
+opening sentences for Q1, Q3, Q4 and Q5.
 
-Diagnosed across all seven. Four of the drafts open in the **designer's
-imperative** ("Make X the Y", "Declare the dangerous thing as Z") or with a
-**theory premise** ("Enumerating what a program outputs is undecidable"). The
-framing decision says questions come from the wanting side. The answers arrive
-from the building side, so the reader is handed a design instruction or a lecture
-where they asked what they get.
-
-| draft | opens with | angle |
-|---|---|---|
-| Q1 | "That makes this a mechanical job" | the project's workload |
-| Q2 | "One language covers the compiler, the checker ..." | **ok**, a fact about what is |
-| Q3 | "Declare the dangerous thing as a crossing" | an instruction |
-| Q4 | "Make the well-behaved shape the low-ceremony one" | an instruction |
-| Q5 | "Enumerating what a program outputs is undecidable" | a theory premise |
-| Q6 | "A judgement core small enough to read in a sitting" | **ok**, a direct answer |
-| Q7 | "Proof runs at compile time" | **ok**, a fact about what is |
-
-The three that work open with **what is true here**. The rule that falls out: an
-answer's first sentence states what holds, from where the reader stands. The
-mechanism comes second. The theory, if it earns a place at all, comes last as the
-reason the mechanism works.
-
-#### Proposed openings, superseded by the three-part shape above
-
-Only the opening move is changed. The mechanism sentences below are the standing
-drafts and are unchanged.
-
-**Q1.** Every failure that is not you reasoning wrong is a class, and a class
-that can be said is a class the checker can refuse.
-*(was: "Everything can be expressed. That makes this a mechanical job.")*
-
-**Q3.** There is no `unsafe`. The dangerous thing is a crossing with a type.
-*(was: "Declare the dangerous thing as a crossing with a type.")*
-
-**Q4.** It does not fight you by default. A function is total unless you
-annotate otherwise, and an empty signature is the light base case.
-*(was: "Make the well-behaved shape the low-ceremony one.")*
-
-**Q5.** You can read a module's reach off its declarations. Crossings are closed
-and named, so the ways it touches anything outside itself are finite and listed.
-The undecidability of what it *outputs* is why that is the question worth asking,
-and it goes last if it goes in at all.
-*(was: "Enumerating what a program outputs is undecidable.")*
-
-Unresolved: whether Q1's opening still carries the question's second half
-("could debugging be made purely about logical bug solving"). The old draft
-answered it in the last line and the new opening may need to keep that shape.
+Superseded by the three-part shape above. The imperative was a symptom: the
+sentence reached for an instruction because it had no position to open with and
+no table to put the state in. Fixing openings alone would have left the answers
+still unable to say what holds. The proposed openings are dropped rather than
+kept, because a per-question draft belongs in the drafts list below and having
+two of them in two places is what caused this.
 
 ### The standing drafts, verbatim
 
@@ -341,10 +261,45 @@ Q2 through Q7 below are the standing drafts.
 
 **Q4. Does a language with strong opinions have to fight you?**
 
-> Make the well-behaved shape the low-ceremony one. Functions are total unless
-> you annotate otherwise. An empty signature is the light base case, and every
-> effect and every unit of fuel makes a type heavier. The risky shape is the one
-> you opt into out loud.
+Rewritten 2026-09-01, first of the seven to take the three-part shape. The
+earlier draft opened "Make the well-behaved shape the low-ceremony one", and its
+claim that functions are total by default is not true of the tree.
+
+> Not really. What makes an opinionated language hard is the amount you have to
+> hold in your head. Strong typing already exists to mechanically exclude
+> categories of failure, and that part is not in dispute. What chirality leans on
+> is that if you can express anything, you can express the checker too. Error
+> handling stops being a fixed feature of the language and becomes something you
+> extend, one bug class at a time, until the primitives cover it.
+>
+> `paren-audit` is the small version, 244 lines of chirality. Break a paren and
+> it names the form, the line it opens on, and the delta. The next step is a tool
+> that repairs the file in place, and at that point unbalanced parens stop being
+> something you consider at all. That is the method: name the class, build the
+> primitive, stop paying attention to it.
+>
+> | what | state | where | limit |
+> |---|---|---|---|
+> | usage on binders | enforced, gated | `lib/typing/qtt.chiral`, Phase 6 | |
+> | refinement types | enforced, gated | `lib/typing/refine.chiral` | `I64` only, `jg-refine-i64` |
+> | totality as the default | written, unreached | `lib/typing/totality.chiral` | zero importers, no termination judgment in `diag.chiral` |
+> | `->` against `=>` | carried, refused nowhere | `lib/typing/effects.chiral` | E171 |
+> | `paren-audit` diagnosis | built, runs | `prog/paren-audit.prog` | reports a count, not a position |
+> | `paren-audit` repair | not built | | needs P1 spans and P4 addresses, both unassigned in `docs/arcs/text-tools-arc.md` |
+>
+> Where the checker is wired the load is off you. Where it is not, the shape is
+> light because nothing is weighing it.
+
+⚑ Measured 2026-09-01. Broke `is-space` in a copy of `prog/paren-audit.prog` and
+ran it: `def is-space 58 390 389 1`, then `FILE depth 1`. The counts run to end
+of file because an unclosed form swallows the rest, so the first bad form is
+reported rather than the last. Neither implementation has a write path.
+
+⚑ Open: the table may be two. The four typing rows answer what the checker
+demands of you; the paren-audit rows answer how far the extension claim reaches.
+
+⚑ `docs/definitions/bug-classes.md` does not exist yet, so any class-coverage
+count cited from this answer points at the draft further down this file.
 
 **Q5. Why is it so hard to see what a program can actually do?**
 
