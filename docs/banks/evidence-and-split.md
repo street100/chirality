@@ -219,6 +219,10 @@ seeded, the rest are DESIGNED.**
   CONFORMS) and since 2026-08-24 runs with a second toolchain-disjoint leg
   (E166's `ddc-legc`). What stays designed is the *floor* — the cross-checked set
   of independent runtimes — not the double-compilation that would check it.
+  ⚑ **2026-09-01: the second leg is gone.** The C backend was dropped
+  (`d8bcec5`), so `ddc-legc` names a toolchain nothing builds with and the DDC
+  half runs with one leg again. It was a second *target*, not a second
+  formulation; see [[decision-self-verification]].
   Register-root custody is part of the unbuilt **E42 supervisor**
   ([[banks/runtime]] Shard D, DESIGNED). CONFORMANCE-MAP "bootstrap-floor": DECISION,
   "*Direction only; internals open (edge 11): count/independence/relation to the
@@ -416,9 +420,12 @@ that still read "needs E-number" now have one — with **no change to the code s
    2026-07-28), CONFORMS**, `examples/INDEX.md` has E53 **implemented**, and
    `scaffold/lib/ddc.chiral` is 135 lines of proven-total compare core
    (`Prov`/`Leg`/`DdcR`/`LegOut` + first-divergence fold). As of **2026-08-24**
-   the quorum also has a second genuinely disjoint leg: `ddc-legc`
+   the quorum also had a second genuinely disjoint leg: `ddc-legc`
    (`ddc.chiral:162`, `("c" "gcc-12" "shred" 2026)`) from **E166**, gated by
-   `scaffold/tests/ddc-c-leg.sh` and by Phase 10 of the native suite. What that
+   `scaffold/tests/ddc-c-leg.sh` and by Phase 10 of the native suite. ⚑ **That
+   leg was dropped 2026-09-01** (`d8bcec5`, `d0c5dd5`) and the `Leg` value it
+   registered now has zero callers and zero assertions. What follows in this item
+   is the record of what the leg bought while it ran. What that
    buys is **toolchain** disjointness — the axis a Thompson attack lives on — and
    *not* a smaller trusted base, since gcc carries the whole of gcc. What is
    still honestly open: the `author` axis stays `"shred"` for every leg and is
