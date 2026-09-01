@@ -1,15 +1,20 @@
-# ── Claude Code working artifacts ────────────────────────────────────────────
-.claude/
+# ── the agent tier is tracked ────────────────────────────────────────────────
+# Two audiences, one repository. `docs/` and `records/` are written for a human
+# reader. `.planning/`, `CLAUDE.md` and `.claude/skills/` are written for an
+# agent: navigation, protocol, relational maps, queues.
+#
+# Both are tracked. A rule that lives only in an ignored file forks per worktree
+# and is invisible to a fresh clone, which is how two sessions minted E173
+# independently. `docs/decisions/decision-ai-tier.md` settles it.
+#
+# What stays out is machine state Claude Code writes for itself: settings,
+# caches, session files. `.claude/skills/` is protocol and is exempt.
+.claude/*
+!.claude/skills/
 .claude-*/
-**/CLAUDE.md
 .scratch/
 *.orig
 *.rej
-
-# ── the planning tier is NOT tracked ─────────────────────────────────────────
-# `.planning/` is private working material: the element catalog, LEDGER, specs,
-# audits, handoffs, findings, captures. It stays on disk and out of git.
-.planning/
 
 # ── build outputs ────────────────────────────────────────────────────────────
 # bin/chirality-bin is COMMITTED on purpose: the source tree and the recompile

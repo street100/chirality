@@ -1,7 +1,7 @@
 ---
 node: working-discipline
 layer: foundation
-related: [index, status-ledger, elements/README, arcs/README, banks/INDEX, decisions/decision-dispatch-cadence, decisions/decision-scope]
+related: [index, status-ledger, elements/README, arcs/README, banks/INDEX, decisions/decision-dispatch-cadence, decisions/decision-scope, decisions/decision-ai-tier]
 status: current
 updated: 2026-09-01
 ---
@@ -100,7 +100,8 @@ Cadence is serial, one stage at a time, one agent at a time. The authority is
 ## Where state lives
 
 There is no state file at the root, and no `.planning/STATE.md`. This repo does
-not use GSD.
+not use GSD, and a global instruction that routes work into GSD does not apply
+here.
 
 | what | where |
 |---|---|
@@ -110,7 +111,7 @@ not use GSD.
 | the element catalog, the ledger, the specs | `docs/elements/` |
 | a claim beside its measurement | `records/` |
 | decisions only the author can make | `records/author-calls.md` |
-| untracked working scratch | `.planning/`, excluded by `.gitignore` |
+| navigation, protocol, queues, handoffs, captures | `.planning/`, the agent tier, tracked since 2026-09-01 ([[decision-ai-tier]]) |
 
 An arc file carries its own resume state, so a session starts from the arc and
 needs nothing at the root.

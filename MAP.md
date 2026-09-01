@@ -121,11 +121,12 @@ lib/
 prog/          what chirality ships, as distinct from what it is
 tools/         one folder per tool
 /                  README.md · PRINCIPLES.md · MAP.md · CONTENTS.md, plus
-                   LICENSE.md and LICENSE.EXCEPTION.md. A document at root is one
-                   a stranger or a tool opens first; everything else sorts into a
-                   tier below. Cleared 2026-09-01: the three agent working files
-                   was cut as a condensed twin of PRINCIPLES.md with nothing
-                   keeping the two in sync.
+                   LICENSE.md and LICENSE.EXCEPTION.md, plus CLAUDE.md for the
+                   agent tier. A document at root is one a stranger or a tool
+                   opens first; everything else sorts into a tier below.
+                   Cleared 2026-09-01: the three agent working files moved to
+                   tracked homes, and PRINCIPLES-SLIM.md was cut as a condensed
+                   twin of PRINCIPLES.md with nothing keeping the two in sync.
 docs/
   index.md         the hub. Notes link by [[slug]], never by path, so a note
                    moves between roles without touching a single link.
@@ -143,8 +144,11 @@ docs/
 records/           one per arc: a claim beside its measurement, with a state.
                    NOT under docs/: docs/ is what a reader is handed, records
                    are what we measured. The one tier any agent may edit
-.planning/         UNTRACKED working scratch: captures, spent handoffs, findings.
-                   The element tier moved to docs/elements/ on 2026-09-01
+.planning/         the agent tier: navigation, protocol, relational maps, queues,
+                   handoffs, captures. Tracked since 2026-09-01, when the human
+                   tier and the agent tier were split and both kept in git
+                   (docs/decisions/decision-ai-tier.md). The element tier moved
+                   to docs/elements/ the same day
 ```
 
 ## The doc tier sorts by role too
@@ -162,8 +166,11 @@ A record row is a claim this repo makes
 about itself beside what was measured, carrying a state and a date. Every other
 doc tier is written once and audited; a checklist is extended and amended in
 place by whoever measures something. `records/README.md` states the row
-format and the rules. It is tracked for the reason `docs/elements/` is: a finding
-in `.planning/` forks per worktree and dies there.
+format and the rules.
+
+`records/` is not the agent tier. A record row is a claim beside a measurement
+and its reader is a person. The agent tier is `.planning/`, `CLAUDE.md` and
+`.claude/skills/`, and `docs/decisions/decision-ai-tier.md` draws the line.
 
 ## Goals, arcs, elements
 
@@ -171,9 +178,14 @@ Three tiers, added 2026-09-01. A goal is a broad thing this project claims it is
 doing. An arc is the list of elements to be done for one goal, carrying that
 goal's requirements. An element is one catalog item, an `E#`.
 
-`goals/` and `arcs/` are tracked, because `.gitignore:12` excludes `.planning/`
-and an element fact written there forks per worktree. Two sessions minted `E173`
-independently and nothing caught it.
+`goals/` and `arcs/` are tracked because their reader is a person: a goal is
+what the project claims and an arc is how it gets there.
+
+They were made tracked on 2026-09-01 for a narrower reason, now spent:
+`.gitignore` excluded `.planning/`, so an element fact written there forked per
+worktree. Two sessions minted `E173` independently and nothing caught it. The
+whole agent tier is tracked as of the same day, so that reason no longer
+distinguishes anything.
 
 `elements/` holds `README.md` and nothing else. It is the tracked home for
 element rows, and the shape of a row is an open author call: one file per
