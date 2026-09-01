@@ -8,9 +8,8 @@ the contract (tree, extensions, module key, doc roles); this file is state and r
 **Read `LANES.md` first.** The work is split into two lanes with their own element
 number bands (**A: E184–E189**, **B: E190–E195**), gate phases and file ownership.
 Lane A is diagnostics and errors, and resumes from `HANDOFF-LANE-A.md`. Lane B is
-file types. The **enforcement arc** (upper ↔ lower, and tests that can fail) is in
-neither band and resumes from `HANDOFF-ENFORCEMENT-ARC.md`. Minting outside your
-band collides; two sessions already minted `E173` independently.
+file types. The **enforcement arc** (upper ↔ lower, and tests
+that can fail) is stated in `HANDOFF-LANE-A.md`. Minting outside your band collides; two sessions already minted `E173` independently.
 
 ⚑ **Element numbers up to E181 are taken.** The catalog stops at E173, so reading
 it alone is not enough. E174, E175 and E181 have worked examples and INDEX rows,

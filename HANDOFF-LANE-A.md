@@ -121,133 +121,168 @@ phantom failures.
   schema-driven printer emitting fields in declaration order produces a term that
   re-elaborates differently. One such case in `Term` today; no gate finds a second.
 
-**From Lane B's wiring sweep, 2026-09-01.** Detail: `docs/definitions/bug-classes.md`
-(tracked) and `.planning/README-REWRITE.md`. Measured on this tree, after E181 landed.
+## The enforcement arc — upper ↔ lower, and tests that can fail
 
-### The upper → tal boundary: the checker is not in the compiler
+**Author directives, 2026-09-01:**
 
-Your note says `preserve-check` is built and unadopted. It is worse than unadopted.
-**`lib/lowering/tal/check.chiral` is not in the compiler's import closure at all.**
-Not merely uncalled. Not compiled in.
+> fully enforce upper ↔ lower as a must always. we made a typed lower level to use it.
+> also we need to enforce real tests
 
-The closure of `prog/compiler.prog` is **59 modules, 16,463 LOC**, out of `lib/`'s
-103 modules and 25,559. Ten modules of checking machinery, **1,680 LOC**, sit
-outside it:
+Measured by Lane B on this tree after E181 landed. Detail in
+`docs/definitions/bug-classes.md` (tracked, 28 failure classes with state).
 
-| module | LOC |
+### `preserve-check` is not unadopted. It is not in the compiler.
+
+Your note said built and unadopted. **`lib/lowering/tal/check.chiral` is not in
+the compiler's import closure at all.**
+
+| | |
 |---|---|
-| `typing/totality` | 387 |
-| `lowering/upper/optimize` | 254 |
-| `lowering/tal/check` | 246 |
-| `lowering/tal/eval` | 187 |
-| `lowering/upper/eff-lower` | 183 |
-| `typing/row-infer` | 137 |
-| `lowering/tal/spec` | 126 |
-| `typing/kernel-core` | 60 |
-| `typing/reflect-floor` | 54 |
-| `typing/effects` | 46 |
+| closure of `prog/compiler.prog` | **59 modules, 16,463 LOC** |
+| `lib/` | 103 modules, 25,559 LOC |
+| checking machinery **outside** the closure | **1,680 LOC across 10 modules** |
+| zero-importer modules in `lib/` | 18, 2,086 LOC |
 
-`ck-fn`'s only call site in the tree is `lowering/upper/optimize.chiral:250`, and
-`optimize` has zero importers, so it is outside too. The reference interpreter and
-the spec are outside. The effect membrane is outside.
+| module | LOC | what it was for |
+|---|---|---|
+| `typing/totality` | 387 | termination |
+| `lowering/upper/optimize` | 254 | holds the only `ck-fn` call in the tree, at `:250` |
+| `lowering/tal/check` | 246 | **the preserve check** |
+| `lowering/tal/eval` | 187 | reference tal interpreter |
+| `lowering/upper/eff-lower` | 183 | effectful lowering |
+| `typing/row-infer` | 137 | effect row inference |
+| `lowering/tal/spec` | 126 | the tal spec |
+| `typing/kernel-core` | 60 | the frozen judgment |
+| `typing/reflect-floor` | 54 | the reflective floor |
+| `typing/effects` | 46 | the `->` / `=>` membrane |
 
-**What the compile actually does.** `compile-fn` lowers eligible defs to typed SSA
-(`TFn`) in every compile. `erase-fn` then strips every `TFn` to a neutral `NFn`,
-and `emit-elf-m` takes `(List NFn)` only (`compile-emit.chiral:292`). So the types
-are produced and discarded with nothing checking them in between.
+**What the compile does.** `compile-fn` (`lower.chiral`, imported at
+`compile-back.chiral:15`) lowers eligible defs to typed SSA (`TFn`) in **every**
+compile. `erase-fn` (`compile-back.chiral:16`) strips every `TFn` to a neutral
+`NFn`, and `emit-elf-m` takes `(List NFn)` only (`compile-emit.chiral:292`). The
+types are produced and discarded with nothing checking them between.
 
-One check does ship and does run: `ck-tiprog`, the E76 syscall chokepoint, at
-`compile-emit.chiral:296`. Do not conflate it with the preserve check.
+One check ships and runs: `ck-tiprog`, the E76 syscall chokepoint, at
+`compile-emit.chiral:296`. Not the preserve check.
 
-**And a lot never lowers.** `skip-reason` (`lower.chiral:83-93`) keeps a def upper
-when it is dependently typed, **effectful**, carries a quantified binder, or has a
-type that does not lower. E70's own catalog row says self-hosting cannot go native
-without effectful lowering. The lowered-versus-skipped ratio is **unmeasured**;
-`status-ledger` marks the old 48/48 as a Python-era count.
+**A large fragment never lowers.** `skip-reason` (`lower.chiral:83-93`) keeps a def
+upper when it is dependently typed, **effectful**, carries a quantified (0/1)
+binder, or has a type that does not lower. E70's row says self-hosting cannot go
+native without effectful lowering. The lowered-to-skipped ratio is **unmeasured**;
+`status-ledger` marks the old 48/48 as a Python-era count nothing reproduces.
 
-### `Judg` cannot say it, so the boundary lands in Lane A's file
+### `Judg` cannot say it, and `Judg` is yours
 
-`diag.chiral:97-110` has 38 `Judg` constructors and `:120-137` has 9 `Reason`
-shapes. **There is no constructor for a preserve-check failure, an effect
-violation, non-termination, a bounds violation, an overflow, or ABI disagreement.**
-A rule cannot refuse what the vocabulary cannot say.
+`diag.chiral:97-110` has 38 constructors, `:120-137` nine `Reason` shapes. Grouped:
+type and arity 17, case coverage 10, refinements 5 (**`I64` only**), linearity 4,
+positivity 1, scope 4, lowering skips 1.
 
-E182 is Lane A's and it edits `Judg`. So enforcing upper → tal needs a `Judg` arm
-before it needs a caller, and that arm is in a Lane A file. This is the one place
-the boundary work is not lane-neutral.
+**No constructor for a preserve-check failure, an effect violation,
+non-termination, bounds, overflow, or ABI disagreement.** The arm comes before the
+caller, and **E182 is the row that edits `Judg`**. This is the one part of the arc
+that is not lane-neutral, so it needs sequencing with E182 rather than around it.
 
-⚑ `diag.chiral:20-25` records a live landmine any new arm inherits: a `case` over
-`Reason`/`Subject`/`Judg` must be the direct body of a `lam`, never nested in a
-case arm. Seven exhaustive `case`s over `Reason` gain an arm each.
+⚑ `diag.chiral:20-25`: a `case` over `Reason`/`Subject`/`Judg` must be the direct
+body of a `lam`, never nested in a case arm. Seven exhaustive `case`s over `Reason`
+each gain an arm.
 
-### "Real tests": your eleven toothless rows and my 86 roots are one defect
+### Your eleven toothless rows and 88 roots are one defect
 
 `tools/test/run-tests.sh:280` prints its own verdict:
 
 > `compile-only: N roots built, N failed -- gates, but asserts nothing`
 
-**86 roots** go through that. A module that compiles passes. Nothing asks whether a
-module is inside the compiler's closure, which is exactly how 1,680 LOC of checking
-machinery got written, compiled clean, marked built, and never ran.
-`prog/test-runner.prog:8-9` already calls "built but unadopted" this repo's
-measured failure mode and counts four. The sweep says ten.
+**88 roots.** A module that compiles passes. Nothing asks whether a module is in
+the closure, which is how 1,680 LOC got written, compiled clean, marked built, and
+never ran. `prog/test-runner.prog:8-9` already calls "built but unadopted" the
+measured failure mode and counts four; the sweep says ten.
 
-Your finding and mine are the same hole at two altitudes: a row that cannot fail,
-and a module that cannot run.
+A row that cannot fail and a module that cannot run are the same hole at two
+altitudes.
 
-### Requirements this arc now carries, stated plainly
+### Requirements
 
-Author directive, 2026-09-01: **enforce upper ↔ lower as a must-always**, and
-**enforce real tests**.
-
-1. **Everything lowers.** `skip-reason`'s four exclusions go. Effectful is E70;
-   dependent types, quantified binders and non-lowering types have no element.
-2. **What lowers is checked.** `ck-fn` runs on every `TFn` **before** `erase-fn`,
-   and failure refuses the compile.
-3. **A closure gate.** A check that computes the compiler's import closure and
-   refuses when a module declared required is absent. The machinery is already
-   chirality: `module/resolve.chiral` has `collect-imports`, `parse-imports`,
-   `walk-imports`, `walk-list`; `evidence/test-floor.chiral` is E168's floor.
-4. **Every `Judg` constructor has an asserted refusal fixture.** Not compiled, run.
+1. **Everything lowers.** `skip-reason`'s four exclusions go. Gate is an empty skip
+   list for the compiler's own source.
+2. **What lowers is checked.** `ck-fn` on every `TFn` **before** `erase-fn`, and
+   failure refuses the compile.
+3. **A closure gate.** Computes the compiler's import closure and refuses when a
+   module declared required is absent. Machinery is already chirality:
+   `module/resolve.chiral` has `collect-imports`, `parse-imports`, `walk-imports`,
+   `walk-list`; `evidence/test-floor.chiral` is E168's floor.
+4. **Every `Judg` constructor has an asserted refusal fixture.** Run, not compiled.
    `tools/test/samples/e170_reject_secret_leak.prog` is already a fixture with no
    runner.
 
 1 and 2 together are the must-always. Either alone leaves the hole: everything
-lowering with no check, or a check over a fragment.
+lowering with nothing checking it, or a check over a fragment.
 
-⚑ **Neither band owns this.** Lane A is E184–E189, Lane B is E190–E195, and the
-upper → tal boundary is in neither. It needs an author call: extend a band, or open
-a third lane. I have not minted anything.
+### Element bounds
 
-### Other findings from the Lane B session, for whoever needs them
+⚑ **Nothing minted.** Lane A is E184–E189, Lane B is E190–E195, and this arc is in
+neither band. Author call: extend a band, or open a third.
+
+⚑ **The catalog stops at E173. Artifacts reach E181.** E174, E175 and E181 have
+examples and INDEX rows; E176–E180 and E182–E184 are referenced in Lane A
+artifacts. Reading the catalog alone is how a number gets reused.
+
+| bound | marks off |
+|---|---|
+| **Closure enforcement.** Refuses when a declared-required module is absent from the compiler's closure. The declaration list is the contract | the hole that hid 1,680 LOC |
+| **Judgment arms.** `Judg` gains preserve-failure, effect-violation and non-termination constructors with `Reason` shapes | unblocks E11 and E171, which cannot refuse without them |
+| **Preserve check wired.** `ck-fn` before `erase-fn`; failure refuses | E16's preserve-check claim, E18's "checker built", `optimize`'s orphan call |
+| **Effectful lowering.** `=>` defs lower to typed SSA | E70, `eff-lower` outside the closure |
+| **Total lowering.** The other three `skip-reason` exclusions | the `r-skipped` escape hatch |
+| **Refusal fixtures.** Every `Judg` constructor triggered and asserted | the 88 roots that assert nothing |
+
+Open on bounds: does the closure gate assert a hand-maintained required list, or
+that every `lib/` module is in the closure or explicitly declared out (catches new
+drift, costs a declaration file)? Does effectful lowering absorb E70 or re-bound
+it? `optimize`, `kernel-core` and `reflect-floor` need an author call rather than
+an element: wire, or mark seeded with a date.
+
+### Order
+
+1. **Closure gate.** First, because everything below can regress silently without it.
+2. **Judgment arms**, sequenced with E182.
+3. **Preserve check wired.** Cheapest real enforcement; the checker exists.
+4. **Measure the lowered/skipped ratio.** One read-only run. Decides whether step 5
+   is four small fixes or a rewrite.
+5. **Effectful lowering**, then the remaining exclusions.
+6. **Refusal fixtures**, per rule as each lands.
+
+### Hazards particular to this arc
+
+- Everything lands in `kernel.chiral` or the compile path, so each carries a full
+  fixpoint rebuild, under the promotion precondition already in blocker 4 above.
+- **Wiring a check makes the compiler accept less.** `lib/evidence/harness.chiral`
+  and `lib/runtime/proc.chiral` are shapes that could flip. Re-verify against them
+  specifically, not just against the fixpoint `cmp`.
+- **`kernel.chiral:817-818`** states helpers are split so parens stay locally
+  countable. A new judgment goes in a top-level helper, never inline.
+
+### Also from the Lane B session
 
 - **The `let`-bound `case` defect is diagnosed and the old hypothesis is refuted.**
-  There is no join. The verdict depends on **source arm order**, so it is
-  first-arm-wins: arm 1 is inferred, its type becomes the expected type, later arms
-  are checked against it. A branch-local assumption from the narrow hook escapes as
-  the case's result type. Refusal at `kernel.chiral:1440`. `check-let`
-  (`kernel.chiral:983`) is the only construct that drops into infer mode, which is
-  the entire scope. The "widen the bound result" fix is **unsound** and the finding
-  carries a counterexample that checks today. Three coherent shapes remain, so it
-  needs a blueprint. `.planning/FINDING-let-bound-case-refinement-2026-08-31.md`.
-- **`docs/definitions/bug-classes.md`** is tracked and holds 28 failure classes with
-  state and element. 6 refuse today, 5 partial, 3 unwired, 2 design, 11 with
-  nothing. It is the target list for "only logical bugs".
-- **`ledger-lint` check T** now walks `docs/examples/E*.md` and
+  No join. The verdict depends on **source arm order**, so it is first-arm-wins:
+  arm 1 is inferred, its type becomes expected, later arms are checked against it.
+  A branch-local assumption from the narrow hook escapes as the case's result type.
+  Refusal at `kernel.chiral:1440`. `check-let` (`kernel.chiral:983`) is the only
+  construct that drops into infer mode, which is the entire scope. Widening the
+  bound result is **unsound**, with a counterexample that checks today. Three
+  coherent shapes remain, so it needs a blueprint.
+- **`ledger-lint` check T** walks `docs/examples/E*.md` and
   `.planning/specs/E*-SPEC.md` and asserts each has a catalog row and an INDEX row.
-  Every prior check started from the registry and looked outward, which is why E86
-  could lose its row while keeping both artifacts. T currently flags **E57**, which
-  has example, spec, catalog and ledger rows but **no INDEX row**, so check N has no
-  pipeline state for it.
-- **`superseded` is now a lifecycle state** with a `superseded_by:` field, defined
-  in `docs/examples/INDEX.md` where the vocabulary lives. `pack.py` refuses every
-  stage on a superseded artifact.
+  Every prior check started from the registry and looked outward, which is how E86
+  lost its row while keeping both artifacts. T flags **E57**: example, spec,
+  catalog and ledger rows, **no INDEX row**, so check N has no state for it.
+- **`superseded` is a lifecycle state** now, with `superseded_by:`, defined in
+  `docs/examples/INDEX.md`. `pack.py` refuses every stage on a superseded artifact.
 - **19 catalog rows say not-built while INDEX says implemented.** Six carry a
-  deliberate "recorded rather than picked" flag; thirteen are simply stale. Nothing
-  lints the catalog's State column: check J compares membership, check N compares
-  LEDGER against INDEX.
+  deliberate "recorded rather than picked" flag. Nothing lints the catalog's State
+  column: check J compares membership, check N compares LEDGER against INDEX.
 - `lib/prelude/doc.chiral:6` citing `lib/typing/pretty.chiral` is confirmed dead.
-  `typing/pretty` no longer exists and is gone from the zero-importer list.
+  `typing/pretty` is gone from the zero-importer list.
 
 ## Unminted, named, needing an author
 
