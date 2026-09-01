@@ -1,7 +1,7 @@
 # S14 — manas author mode (structured config/pipeline editing) — IMPLEMENTATION SPEC
 
 Stage 3 of 5 (example → audit → spec → audit → implement). Source of truth for
-the implementer. Reads with `.planning/scriba-examples/S14-manas-author-mode.md`
+the implementer. Reads with `docs/examples/S14-manas-author-mode.md`
 (the worked example, audited PASS — its typed-value/constructor design is
 verified correct). The example stays the rationale; this SPEC is the contract.
 

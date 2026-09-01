@@ -44,20 +44,40 @@ the six `FINDING-*` files became tracked rows in `records/findings.md`;
 `docs/benchmarks/test-suite-wall-clock.md`; `presentability-arc` now names its two
 working queues instead of duplicating them; `CONTENTS.md` repointed off `UMBRELLA`.
 
-`.planning/` is now **138 files, 89 live and 49 archived**, from 267. Measured
+**The five S# worked examples are tracked** (slice 2). `.planning/scriba-examples/`
+moved to `docs/examples/S13`–`S17`, byte-for-byte, and the five tracked specs that
+cite them are repointed. `git mv` refused — the source was under the ignore rule and
+so never in git — so history does not follow; the files enter as adds. They take no
+row in `docs/examples/INDEX.md`'s table, which is one element per row and an element
+is an `E#`; they are listed in a section below it instead, and no element number is
+minted for them.
+
+The move raised `ledger-lint` check R from **115 to 130**, measured 2026-09-01.
+All 15 are in `examples/S16` and `examples/S17` and none is new breakage: G and R
+walk `docs/**/*.md` and never reached `.planning/`, so these citations were wrong
+where nothing looked. §2's record-do-not-chase rule covers them — worked examples
+are frozen-rationale tier and repointing line numbers is the fix that the next
+insertion undoes. Checks A, B, F, G, I, T did not move. G is a bounds test and
+stayed at 77, so every one of the 15 sits inside its file and points at the wrong
+line in it.
+
+`.planning/` is now **133 files, 84 live and 49 archived**, from 267. Measured
 2026-09-01, whole files, not `.md` only:
 
 | | count |
 |---|---|
 | live, top level | 66 |
-| live, in subdirectories | 23 — `capture/` 8, `handoffs/` 6, `scriba-examples/` 5, `capture-fixtures/` 2, `audit/` 2 |
-| live, total | 89 |
+| live, in subdirectories | 18 — `capture/` 8, `handoffs/` 6, `capture-fixtures/` 2, `audit/` 2 |
+| live, total | 84 |
 | `archive/` | 49 — 29 at its top, plus `audit/` 9, `handoffs/` 7, `projects/` 3, `quick/` 1 |
 
-Counting `.md` alone it is **86 live and 49 archived**, which is what
-`.planning/DOC-AUDIT-QUEUE.md` carries and it is correct there. The three
+Counting `.md` alone it is **81 live and 49 archived**. `.planning/DOC-AUDIT-QUEUE.md`
+still carries 86 live, which was correct until the S# move below. The three
 non-`.md` live files are `MIGRATION-MAP.tsv`, `PROSE-BASELINE.tsv` and
 `capture-fixtures/frontier-stub.py`.
+
+The five that left are `scriba-examples/`, now `docs/examples/S13`–`S17`; the
+directory is gone, not emptied.
 
 ⚑ This file previously said "66 live files and 33 archived". 66 counted the top
 level and dropped the 23 files in subdirectories. **33 matches no count anyone

@@ -1,7 +1,7 @@
 # S16 — manas compose (pick a pipeline, bind a config, pre-flight, dispatch) — IMPLEMENTATION SPEC
 
 Stage 3 of 5 (example → audit → spec → audit → implement). Source of truth for
-the implementer. Reads with `.planning/scriba-examples/S16-manas-compose.md`
+the implementer. Reads with `docs/examples/S16-manas-compose.md`
 (the worked example, audited PASS — its glue design is verified: `bind-config`
 at `bind.chiral:52` is the exact pure pre-flight, `runview-fire` at
 `command-loop.chiral:700` is the exact fire it generalizes, the `bind-ok`/`bind-miss`

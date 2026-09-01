@@ -1,7 +1,7 @@
 # S15 — manas run-view (the run-manifest cockpit, Tier 2) — IMPLEMENTATION SPEC
 
 Stage 3 of 5 (example → audit → spec → audit → implement). Source of truth for
-the implementer. Reads with `.planning/scriba-examples/S15-manas-run-view.md`
+the implementer. Reads with `docs/examples/S15-manas-run-view.md`
 (the worked example, audited PASS — its reused-primitive design is verified: the
 four engine prims are real public defs, `plan-run` is pure so the GATE renders
 pre-network, and it reuses S14's render helpers + one `VimMode` variant with zero

@@ -1,7 +1,7 @@
 # S13 — vim-like modal editing — IMPLEMENTATION SPEC
 
 Stage 3 of 5. Source of truth for the implementer. Reads with
-`.planning/scriba-examples/S13-vim-modes.md` (the worked example).
+`docs/examples/S13-vim-modes.md` (the worked example).
 
 ## §1 Goal
 

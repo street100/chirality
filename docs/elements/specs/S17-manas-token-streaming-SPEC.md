@@ -1,7 +1,7 @@
 # S17 — manas run-view: token streaming (be-chat-stream on-delta) — IMPLEMENTATION SPEC
 
 Stage 3 of 5 (example → audit → spec → audit → implement). Source of truth for
-the implementer. Reads with `.planning/scriba-examples/S17-manas-token-streaming.md`
+the implementer. Reads with `docs/examples/S17-manas-token-streaming.md`
 (the worked example, audited PASS — its three premise corrections are verified
 against code: `r-stream (source-id Str)` exists at `render.chiral:10` so there is
 **NO new render node**; `chat.chiral` blocks via `agent-run-transcript` so it is
