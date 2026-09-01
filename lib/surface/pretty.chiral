@@ -1,0 +1,399 @@
+; E181: the term printer -- `Term` -> `Doc`, and its output IS chirality source.
+;
+; It lives in `surface/` and not in `typing/` because MAP.md sorts a file by its
+; ROLE: `typing/` is "what a type is, and every check on it", `surface/` is "what
+; you write, and how it is read".  A printer checks nothing.  It is the WRITTEN
+; direction of that same sentence -- `surface/parse` reads, this writes -- and its
+; input type (`Term`, surface/syntax:18) and its output grammar (parse-list's
+; head-symbol dispatch) are both surface's.  The forcing consumer is `typing/diag`,
+; but a consumer does not name a home: if it did, every library would live beside
+; its first caller.
+;
+; ONE printer, and its output is SOURCE.  There is no second "readable" form:
+; the surface is S-expressions, so the source form IS the readable form, and a
+; second walk over one sum is the duplicate-owner defect this repo has fixed
+; four times already.  E146 (value -> source) uses THIS printer.
+;
+; `Term` is de-Bruijn -- `module/loader:17-18,39` drops the surface binder names
+; on the way in -- so an invented binder name is a FREE choice, not a lossy
+; approximation of a lost one.  Between invented names there is no hazard by
+; construction (the binder at depth d is prefix ++ d).  Against a FREE name there
+; is exactly one, and it is one-directional: `resolve` (surface.chiral:117-132)
+; searches locals BEFORE globals, so a `(t-global "x0")` printed under a binder
+; also named `x0` would re-elaborate to the binder.  `pp-safe-prefix` discharges
+; it by choosing a prefix no free name can collide with -- over a (List Term),
+; because `r-mismatch` prints TWO terms and they must share one vocabulary.
+;
+; NO `_` arm in `pp-term`: a seventeenth `Term` former is a compile error here,
+; not a silent `<Whatever>`.
+;
+; Two things this file may NOT call, and the reason is a crash and not taste:
+; `str-sub` is unclamped and SEGFAULTS out of range (E176), and
+; `str-starts-with` is built on the false comment that it clamps.  The
+; `x<digits>` test below is therefore byte-level: str->bytes / blen / bget.
+(import "prelude/prelude")
+(import "prelude/list")               ; length, reverse -- both take the ERASED type arg first
+(import "prelude/doc")                ; Doc, Brk -- closed at six constructors; E181 adds none
+(import "surface/syntax")             ; Term (16 formers), KArm, RfAtom, Seat
+(import "typing/qtt")                 ; Qty -- a binder quantity is printed, never elided
+(import "typing/refine")              ; SymOp -- a refinement atom's operator
+
+; Pure (->) throughout: a printer provably crosses no port, and the datasheet
+; reads that off this module's own bindings rather than off this comment.
+(module surface/pretty (cat A) (alt upper))
+
+; ---- the two shapes ---------------------------------------------------------
+; `pp-lines` puts a `d-line` of the GIVEN break BEFORE each element.  It takes
+; the `Brk` and that is not cosmetic: a `case` wants `brk-hard` between its arms
+; (one arm per line by INTENT, the same call dg-chain-doc makes for E97's
+; frames) while every other form wants `brk-space`.
+(declare pp-lines (-> Brk (List Doc) Doc))
+(def pp-lines
+  (lam (b ds)
+    (case ds
+      (nil (d-text ""))
+      ((cons d rest) (d-cat (d-cat (d-line b) d) (pp-lines b rest))))))
+
+; `(kw a b c)` -- the paren pair is STRUCTURE (always emitted), the space is a
+; DECISION POINT (a break), and `d-group` is who decides.  That split is the
+; whole rewrite: the old `(parens (sp a b))` made them one Str, so neither could
+; be chosen later.
+(def pp-form (-> Str (List Doc) Doc)
+  (lam (kw ds)
+    (d-group
+      (d-cat (d-text "(")
+        (d-cat (d-tag "term-kw" (d-text kw))
+          (d-cat (d-nest 2 (pp-lines (brk-space) ds))
+                 (d-text ")")))))))
+
+; the same with a computed head in the keyword's place: applications, patterns,
+; binder triples, refinement atoms.
+(def pp-call (-> (List Doc) Doc)
+  (lam (ds)
+    (case ds
+      (nil (d-text "()"))
+      ((cons h rest)
+        (d-group
+          (d-cat (d-text "(")
+            (d-cat h
+              (d-cat (d-nest 2 (pp-lines (brk-space) rest))
+                     (d-text ")")))))))))
+
+; ---- names ------------------------------------------------------------------
+; The binder at depth d is `prefix ++ d`, and d is the size of the environment,
+; so two binders in scope simultaneously can never share a name.
+(def pp-fresh (-> Str (List Str) Str)
+  (lam (p ns) (str-cat p (i64->str (length Str ns)))))
+
+; innermost-first, the elaborator's own direction: `push-all` (surface:95) and
+; `elab-arms` (:251-259) CONS, and `ctx-find` counts from the head.  The "#i"
+; fallback keeps the printer total over any index, in scope or not -- it is the
+; one output that is not source, and it is worth seeing rather than crashing on.
+; The guard is re-checked at every level, so the fallback only ever fires at the
+; top with the caller's own index.
+(declare pp-name-at (-> (List Str) I64 Str))
+(def pp-name-at
+  (lam (ns i)
+    (case (<i i (length Str ns))
+      (false (str-cat "#" (i64->str i)))
+      (true
+        (case ns
+          (nil (str-cat "#" (i64->str i)))
+          ((cons x r) (case (=i i 0) (true x) (false (pp-name-at r (- i 1))))))))))
+
+; ---- the free names a term will actually EMIT -------------------------------
+; Everything `pp-term` prints as a bare symbol: globals, prims, primitive types,
+; a constructor's `cn`, an applied type's `dn`, and each arm's `cn`.  NOT
+; `t-con`'s `dn` -- `resolve` recovers the home from the signature and the
+; surface has no qualified-constructor syntax, so `dn` is never printed and
+; therefore never a collision.
+(declare pp-free-names (-> Term (List Str) (List Str)))
+(declare pp-free-list  (-> (List Term) (List Str) (List Str)))
+(declare pp-free-arms  (-> (List KArm) (List Str) (List Str)))
+(declare pp-free-atoms (-> (List RfAtom) (List Str) (List Str)))
+(declare pp-free-mb    (-> (Maybe Term) (List Str) (List Str)))
+
+(def pp-free-names
+  (lam (t acc)
+    (case t
+      ((t-var i)          acc)
+      ((t-type n)         acc)
+      ((t-pi q s dm cd)   (pp-free-names cd (pp-free-names dm acc)))
+      ((t-lam body)       (pp-free-names body acc))
+      ((t-app f a)        (pp-free-names a (pp-free-names f acc)))
+      ((t-let q v body)   (pp-free-names body (pp-free-names v acc)))
+      ((t-ann tm ty)      (pp-free-names ty (pp-free-names tm acc)))
+      ((t-global n)       (cons n acc))
+      ((t-prim n)         (cons n acc))
+      ((t-primty n)       (cons n acc))
+      ((t-lit-i v)        acc)
+      ((t-lit-s v)        acc)
+      ((t-con dn cn args) (pp-free-list args (cons cn acc)))
+      ((t-tcon dn args)   (pp-free-list args (cons dn acc)))
+      ((t-case sc ar df)  (pp-free-mb df (pp-free-arms ar (pp-free-names sc acc))))
+      ((t-refine bs ats)  (pp-free-atoms ats (pp-free-names bs acc))))))
+
+(def pp-free-list
+  (lam (ts acc)
+    (case ts
+      (nil acc)
+      ((cons t rest) (pp-free-list rest (pp-free-names t acc))))))
+
+(def pp-free-arms
+  (lam (ks acc)
+    (case ks
+      (nil acc)
+      ((cons k rest)
+        (case k
+          ((karm cn nv body) (pp-free-arms rest (pp-free-names body (cons cn acc)))))))))
+
+(def pp-free-atoms
+  (lam (as acc)
+    (case as
+      (nil acc)
+      ((cons a rest)
+        (case a
+          ((r-atom op operand) (pp-free-atoms rest (pp-free-names operand acc))))))))
+
+(def pp-free-mb
+  (lam (m acc)
+    (case m
+      ((none) acc)
+      ((some t) (pp-free-names t acc)))))
+
+; ---- the safe prefix --------------------------------------------------------
+; Two branches, both total, no search and no counter threaded through the walk.
+; "x" unless some free name has the shape x<digits>; otherwise a run of x's ONE
+; LONGER than the longest free name, so `prefix ++ digits` cannot equal any of
+; them.  The result is ugly (`xxx0`) in a rare branch and that is accepted: a
+; proof is not traded for typography.
+(declare pp-xlike-go (-> Bytes I64 I64 Bool))
+(def pp-xlike-go
+  (lam (b i n)
+    (case (<i i n)
+      (false true)
+      (true
+        (case (<i (bget b i) 48)
+          (true false)
+          (false (case (<i 57 (bget b i))
+                   (true false)
+                   (false (pp-xlike-go b (+ i 1) n)))))))))
+
+(def pp-xlike (-> Str Bool)
+  (lam (s)
+    (let ((b (str->bytes s)))
+      (case (<i 1 (blen b))
+        (false false)
+        (true (case (=i (bget b 0) 120)          ; 'x'
+                (false false)
+                (true (pp-xlike-go b 1 (blen b)))))))))
+
+(declare pp-any-xlike (-> (List Str) Bool))
+(def pp-any-xlike
+  (lam (ns)
+    (case ns
+      (nil false)
+      ((cons x r) (case (pp-xlike x) (true true) (false (pp-any-xlike r)))))))
+
+(declare pp-max-len (-> (List Str) I64))
+(def pp-max-len
+  (lam (ns)
+    (case ns
+      (nil 0)
+      ((cons x r)
+        (let ((m (pp-max-len r)))
+          (case (<i m (str-len x)) (true (str-len x)) (false m)))))))
+
+; over a (List Term): `r-mismatch` prints two terms and one comparison gets one
+; vocabulary, never two.
+(def pp-safe-prefix (-> (List Term) Str)
+  (lam (ts)
+    (let ((fs (pp-free-list ts nil)))
+      (case (pp-any-xlike fs)
+        (false "x")
+        (true (bytes->str (brepeat (str->bytes "x") (+ (pp-max-len fs) 1))))))))
+
+; ---- leaves -----------------------------------------------------------------
+; The quantity is ALWAYS printed.  Both forms round-trip (a binder defaults to
+; `w` when the token is absent), so this is a choice about EVIDENCE, and eliding
+; by default is the printer deciding on the reader's behalf.  It rides inside a
+; zero-width `d-tag`, so a consumer can dim or drop it at the EXIT, where the
+; width and the faces already are, and the value is never destroyed.
+; Not `dg-qty-name`, which prints "omega" where the surface token is `w`.
+(def pp-qty (-> Qty Str)
+  (lam (q) (case q ((q0) "0") ((q1) "1") ((qw) "w"))))
+
+; the effect membrane, a token and not a defaultable field.
+(def pp-seat (-> Seat Str)
+  (lam (s) (case s ((s-pure) "->") ((s-proc) "=>"))))
+
+; not spelled `symop->s`: that name is already taken, at
+; lowering/upper/closconv-driver:31, and `surface/` importing `lowering/` is the
+; wrong direction anyway.
+(def pp-op (-> SymOp Str)
+  (lam (o) (case o ((s-ge) ">=") ((s-gt) ">") ((s-le) "<=") ((s-lt) "<") ((s-ne) "!="))))
+
+; chirality has FOUR escapes and nothing else (render.chiral:175-176).  One byte
+; per call, a flat `cond`, its own top-level def -- the same dispatcher written
+; inside the fold is one closer deep and does not parse.
+(def pp-esc1 (-> Bytes I64 Str)
+  (lam (b i)
+    (let ((c (bget b i)))
+      (cond ((=i c 10) "\\n")
+            ((=i c 9)  "\\t")
+            ((=i c 34) "\\\"")
+            ((=i c 92) "\\\\")
+            (else (bytes->str (bslice b i (+ i 1))))))))
+
+(declare pp-esc-go (-> Bytes I64 I64 Str Str))
+(def pp-esc-go
+  (lam (b i n acc)
+    (case (<i i n)
+      (false acc)
+      (true (pp-esc-go b (+ i 1) n (str-cat acc (pp-esc1 b i)))))))
+
+(def pp-quote (-> Str Str)
+  (lam (s)
+    (let ((b (str->bytes s)))
+      (str-cat "\"" (str-cat (pp-esc-go b 0 (blen b) "") "\"")))))
+
+; ---- the walk ---------------------------------------------------------------
+(declare pp-term  (-> Str (List Str) Term Doc))
+(declare pp-args  (-> Str (List Str) (List Term) (List Doc)))
+(declare pp-spine (-> Str (List Str) Term (List Doc) (List Doc)))
+(declare pp-arms  (-> Str (List Str) (List KArm) (Maybe Term) (List Doc)))
+(declare pp-arm   (-> Str (List Str) KArm Doc))
+(declare pp-arm-go (-> Str Str (List Str) I64 (List Doc) Term Doc))
+(declare pp-atoms (-> Str (List Str) (List RfAtom) (List Doc)))
+
+; SIXTEEN arms, no `_`.  `parse-list` (parse.chiral:173-192) dispatches on the
+; head symbol and everything else is an application, so there is no precedence
+; to recover and no operator table: the grammar below is the whole target.
+(def pp-term
+  (lam (p ns t)
+    (case t
+      ((t-var i)   (d-tag "term-var" (d-text (pp-name-at ns i))))
+      ((t-type n)  (pp-form "type" (cons (d-tag "term-lit" (d-text (i64->str n))) nil)))
+      ; `(-> (q x dom) cod)` / `(=> (q x dom) cod)`; the binder scopes over cod only.
+      ((t-pi q s dm cd)
+        (let ((nm (pp-fresh p ns)))
+          (pp-form (pp-seat s)
+            (cons (pp-call (cons (d-tag "term-qty" (d-text (pp-qty q)))
+                           (cons (d-tag "term-var" (d-text nm))
+                           (cons (pp-term p ns dm) nil))))
+            (cons (pp-term p (cons nm ns) cd) nil)))))
+      ((t-lam body)
+        (let ((nm (pp-fresh p ns)))
+          (pp-form "lam"
+            (cons (pp-call (cons (d-tag "term-var" (d-text nm)) nil))
+            (cons (pp-term p (cons nm ns) body) nil)))))
+      ; the application SPINE is flat: `(f a b)`, never `((f a) b)`.  The surface
+      ; has no currying syntax to recover, so the nested shape is noise.
+      ((t-app f a) (pp-call (pp-spine p ns f (cons (pp-term p ns a) nil))))
+      ((t-let q v body)
+        (let ((nm (pp-fresh p ns)))
+          (pp-form "let"
+            (cons (pp-call (cons (d-tag "term-qty" (d-text (pp-qty q)))
+                           (cons (d-tag "term-var" (d-text nm))
+                           (cons (pp-term p ns v) nil))))
+            (cons (pp-term p (cons nm ns) body) nil)))))
+      ; REVERSED on purpose: the field order is (tm ty), the surface is (the ty e).
+      ; Emitting in declaration order silently produces a term that re-elaborates
+      ; to a DIFFERENT annotation.
+      ((t-ann tm ty) (pp-form "the" (cons (pp-term p ns ty) (cons (pp-term p ns tm) nil))))
+      ((t-global n)  (d-tag "term-name" (d-text n)))
+      ((t-prim n)    (d-tag "term-name" (d-text n)))
+      ((t-primty n)  (d-tag "term-name" (d-text n)))
+      ((t-lit-i v)   (d-tag "term-lit" (d-text (i64->str v))))
+      ((t-lit-s v)   (d-tag "term-lit" (d-text (pp-quote v))))
+      ; nullary prints BARE: `(Nil)` is a surface APPLICATION of Nil to nothing,
+      ; and `resolve` gives the constructor for the bare symbol.
+      ((t-con dn cn args)
+        (case args
+          (nil (d-tag "term-name" (d-text cn)))
+          ((cons a r) (pp-call (cons (d-tag "term-name" (d-text cn)) (pp-args p ns args))))))
+      ((t-tcon dn args)
+        (case args
+          (nil (d-tag "term-name" (d-text dn)))
+          ((cons a r) (pp-call (cons (d-tag "term-name" (d-text dn)) (pp-args p ns args))))))
+      ; ONE ARM PER LINE BY INTENT.  `brk-hard` never flattens, and `doc-fits`
+      ; refuses a hard break anywhere inside the group it measures
+      ; (doc.chiral:131), so a `(case ...)` is multi-line at EVERY width and so is
+      ; every form enclosing it.  That is accepted, not tolerated: a `case` IS
+      ; structurally multi-line and a form containing one is too.
+      ((t-case sc ar df)
+        (d-group
+          (d-cat (d-text "(")
+            (d-cat (d-tag "term-kw" (d-text "case"))
+              (d-cat (d-nest 2 (pp-lines (brk-hard)
+                                 (cons (pp-term p ns sc) (pp-arms p ns ar df))))
+                     (d-text ")"))))))
+      ((t-refine bs ats)
+        (pp-form "refine" (cons (pp-term p ns bs) (pp-atoms p ns ats)))))))
+
+(def pp-args
+  (lam (p ns ts)
+    (case ts
+      (nil nil)
+      ((cons t rest) (cons (pp-term p ns t) (pp-args p ns rest))))))
+
+; walk LEFT down the spine, accumulate RIGHT.  The `_` here is "not an
+; application" and is correct for any former; the exhaustiveness that matters is
+; `pp-term`'s, which has no catch-all at all.
+(def pp-spine
+  (lam (p ns t acc)
+    (case t
+      ((t-app f a) (pp-spine p ns f (cons (pp-term p ns a) acc)))
+      (_ (cons (pp-term p ns t) acc)))))
+
+; an arm is a PARENTHESISED (pattern body) pair -- `parse-arms`
+; (parse.chiral:296-310) refuses anything else -- and the default is `(_ D)`.
+(def pp-arms
+  (lam (p ns ks df)
+    (case ks
+      (nil (case df
+             ((none) nil)
+             ((some d) (cons (pp-call (cons (d-text "_") (cons (pp-term p ns d) nil))) nil))))
+      ((cons k rest) (cons (pp-arm p ns k) (pp-arms p ns rest df))))))
+
+(def pp-arm
+  (lam (p ns k)
+    (case k
+      ((karm cn nv body) (pp-arm-go p cn ns nv nil body)))))
+
+; push each fresh binder AS IT IS EMITTED, then flip the accumulated pattern
+; names once.  `push-all` conses, so index 1 is the FIRST pattern variable and
+; index 0 the second -- without the flip the pattern and the body disagree.
+(def pp-arm-go
+  (lam (p cn ns n acc body)
+    (case (=i n 0)
+      (true
+        (pp-call (cons (pp-call (cons (d-tag "term-name" (d-text cn)) (reverse Doc acc)))
+                 (cons (pp-term p ns body) nil))))
+      (false
+        (let ((nm (pp-fresh p ns)))
+          (pp-arm-go p cn (cons nm ns) (- n 1)
+                     (cons (d-tag "term-var" (d-text nm)) acc) body))))))
+
+; a refinement atom is `(op operand)` -- the whole form is `(refine base a1 a2)`.
+(def pp-atoms
+  (lam (p ns as)
+    (case as
+      (nil nil)
+      ((cons a rest)
+        (case a
+          ((r-atom op operand)
+            (cons (pp-call (cons (d-tag "term-kw" (d-text (pp-op op)))
+                           (cons (pp-term p ns operand) nil)))
+                  (pp-atoms p ns rest))))))))
+
+; ---- the two entry points ---------------------------------------------------
+; `pp-of` takes an EXPLICIT prefix: `r-mismatch` let-binds one over both terms so
+; the comparison has one vocabulary.  `pp-term-doc` computes the prefix from the
+; single term it is given.  Collapsing them would either lose the shared
+; vocabulary or push a prefix argument into every one-term call site.
+(def pp-of (-> Str Term Doc)
+  (lam (p t) (pp-term p nil t)))
+
+(def pp-term-doc (-> Term Doc)
+  (lam (t) (pp-of (pp-safe-prefix (cons t nil)) t)))

@@ -1,0 +1,144 @@
+; e181_pretty.prog -- E181's EMITTED-BYTES fixture.  The Phase 18 value half.
+;
+; Every row here PRINTS.  Nothing in this file asserts, and it always exits 0:
+; the assertions are in tools/test/pretty.sh, in bash, over these bytes.  That
+; is deliberate.  The classic toothless shape for a printer gate is a row that
+; walks the produced `Doc` and checks it has the constructors you expected --
+; the same information twice, and green under any mutant that changes what the
+; constructors SAY.  A byte stream cannot do that.
+;
+; ⚑ IT ALSO IMPORTS `surface/syntax` AND `lowering/tal/erase` BESIDE
+; `surface/pretty`, and that co-import IS a row (pretty.sh G9).  Before E181 the
+; printer was unimportable twice over: its own five-constructor `Term` gave
+; `load: data redeclared: Term`, and its hand-rolled `nlen` gave
+; `duplicate label (an object def collides with the linked runtime): nlen`
+; against erase.chiral's.  Both colliding modules are inside the compiler's own
+; blob, so the old file could never have been adopted at all -- which is why its
+; contents were verified by nothing.
+;
+; ⚑ TWO FORMATTING CONSTRAINTS, both from neighbouring gates that scan `tools/`.
+; This file must not spell the ansi emitter's name at all (face.sh's G7(c) arity
+; scanner is LINE-BASED), and no line may begin with a `def`/`data`/`declare` of
+; a prelude/doc or protocol/render-doc binding (doc.sh's G6 and render-doc.sh's
+; G7 both census `lib prog tools` for exactly that).  Every binding here is
+; `pz-` prefixed.
+;
+; Output framing: each block is
+;     ==BEGIN <label>==
+;     <the emitted bytes>
+;     ==END==
+; so a row whose bytes contain newlines (every width-12 row, and the `case`
+; form at EVERY width) is still one addressable block.
+
+(import "prelude/prelude")
+(import "prelude/doc")                 ; doc->str -- the flatten, at a width the caller chose
+(import "surface/pretty")              ; the element under test
+(import "surface/syntax")              ; co-imported ON PURPOSE -- see G9
+(import "typing/qtt")
+(import "typing/refine")
+(import "typing/diag")                 ; dg-decl-doc + Decl -- the dc-ty site E181 changes
+(import "lowering/tal/erase")          ; co-imported ON PURPOSE -- the `nlen` collision
+(import "ports/stdio")
+
+; the erase co-import, referenced so it cannot be read as decorative
+(def pz-erase-probe I64 (nlen Str (cons "a" nil)))
+
+(data PzRow () (pzr (lbl Str) (w I64) (d Doc)))
+
+(declare pz-emit (=> Str I64 Doc Unit))
+(def pz-emit
+  (lam (lbl w d)
+    (let ((_ (put (str-cat "==BEGIN " (str-cat lbl "==\n")))))
+      (let ((_ (put (doc->str w d))))
+        (put "\n==END==\n")))))
+
+(declare pz-all (=> (List PzRow) Unit))
+(def pz-all
+  (lam (rs)
+    (case rs
+      (nil (unit))
+      ((cons r rest)
+        (case r
+          ((pzr l w d) (let ((_ (pz-emit l w d))) (pz-all rest))))))))
+
+; ---- the terms, each spelled ONCE -------------------------------------------
+; A width row and a byte row that named two different fixtures could never
+; disagree, so they are the same term read twice (the E174/E175 convention).
+(def pz-t01 Term (t-lam (t-var 0)))
+(def pz-t02 Term (t-type 0))
+(def pz-t03 Term (t-pi (q1) (s-pure) (t-primty "I64") (t-primty "Str")))
+(def pz-t04 Term (t-pi (qw) (s-proc) (t-primty "I64") (t-var 0)))
+(def pz-t05 Term (t-app (t-app (t-global "f") (t-global "a")) (t-global "b")))
+(def pz-t06 Term (t-let (qw) (t-lit-i 1) (t-var 0)))
+(def pz-t07 Term (t-ann (t-lit-i 1) (t-primty "I64")))
+(def pz-t08 Term (t-global "f"))
+(def pz-t09 Term (t-prim "str-cat"))
+(def pz-t10 Term (t-primty "I64"))
+(def pz-t11 Term (t-lit-i 42))
+(def pz-t12 Term (t-lit-s "a\nb\"c\\d\te"))
+(def pz-t13 Term (t-con "List" "Nil" nil))
+(def pz-t14 Term (t-con "Box" "mk" (cons (t-lit-i 1) nil)))
+(def pz-t15 Term (t-tcon "Unit" nil))
+(def pz-t16 Term (t-tcon "List" (cons (t-primty "I64") nil)))
+(def pz-t17 Term
+  (t-case (t-var 0)
+    (cons (karm "Nil" 0 (t-lit-i 0))
+    (cons (karm "Cons" 2 (t-app (t-var 1) (t-var 0))) nil))
+    (some (t-lit-i 9))))
+(def pz-t18 Term (t-refine (t-primty "I64") (cons (r-atom (s-gt) (t-lit-i 3)) nil)))
+; the SHADOW case: a free `x0` under one binder.  The prefix must move.
+(def pz-t19 Term (t-lam (t-app (t-global "x0") (t-var 0))))
+; the group/nest case: long enough to break at 12, short enough to fit at 40.
+(def pz-t21 Term
+  (t-app (t-app (t-app (t-global "frobnicate") (t-global "alpha"))
+                (t-global "beta"))
+         (t-global "gamma")))
+; a case NESTED inside a lam -- the contagious hard break, stated as a row
+(def pz-t22 Term (t-lam (t-case (t-var 0) (cons (karm "Nil" 0 (t-lit-i 0)) nil) (none))))
+; the dc-ty site: graded by NOTHING before E181
+(def pz-d20 Decl (dc-ty (t-primty "I64")))
+
+(declare pz-of (-> Term Doc))
+(def pz-of (lam (t) (pp-term-doc t)))
+
+(def pz-rows (List PzRow)
+  (cons (pzr "w6-01" 1000000 (pz-of pz-t01))
+  (cons (pzr "w6-02" 1000000 (pz-of pz-t02))
+  (cons (pzr "w6-03" 1000000 (pz-of pz-t03))
+  (cons (pzr "w6-04" 1000000 (pz-of pz-t04))
+  (cons (pzr "w6-05" 1000000 (pz-of pz-t05))
+  (cons (pzr "w6-06" 1000000 (pz-of pz-t06))
+  (cons (pzr "w6-07" 1000000 (pz-of pz-t07))
+  (cons (pzr "w6-08" 1000000 (pz-of pz-t08))
+  (cons (pzr "w6-09" 1000000 (pz-of pz-t09))
+  (cons (pzr "w6-10" 1000000 (pz-of pz-t10))
+  (cons (pzr "w6-11" 1000000 (pz-of pz-t11))
+  (cons (pzr "w6-12" 1000000 (pz-of pz-t12))
+  (cons (pzr "w6-13" 1000000 (pz-of pz-t13))
+  (cons (pzr "w6-14" 1000000 (pz-of pz-t14))
+  (cons (pzr "w6-15" 1000000 (pz-of pz-t15))
+  (cons (pzr "w6-16" 1000000 (pz-of pz-t16))
+  (cons (pzr "w6-17" 1000000 (pz-of pz-t17))
+  (cons (pzr "w6-18" 1000000 (pz-of pz-t18))
+  (cons (pzr "w6-19" 1000000 (pz-of pz-t19))
+  (cons (pzr "w6-20" 1000000 (dg-decl-doc "declared" pz-d20))
+  (cons (pzr "w6-21" 1000000 (pz-of pz-t21))
+  (cons (pzr "w6-22" 1000000 (pz-of pz-t22))
+  (cons (pzr "w40-21" 40 (pz-of pz-t21))
+  (cons (pzr "w12-21" 12 (pz-of pz-t21))
+  (cons (pzr "w12-01" 12 (pz-of pz-t01))
+  (cons (pzr "w12-02" 12 (pz-of pz-t02))
+  (cons (pzr "w12-03" 12 (pz-of pz-t03))
+  (cons (pzr "w12-04" 12 (pz-of pz-t04))
+  (cons (pzr "w12-05" 12 (pz-of pz-t05))
+  (cons (pzr "w12-06" 12 (pz-of pz-t06))
+  (cons (pzr "w12-07" 12 (pz-of pz-t07))
+  (cons (pzr "w12-13" 12 (pz-of pz-t13))
+  (cons (pzr "w12-14" 12 (pz-of pz-t14))
+  (cons (pzr "w12-16" 12 (pz-of pz-t16))
+  (cons (pzr "w12-17" 12 (pz-of pz-t17))
+  (cons (pzr "w12-18" 12 (pz-of pz-t18))
+  (cons (pzr "w12-19" 12 (pz-of pz-t19)) nil))))))))))))))))))))))))))))))))))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n) (let ((_ (pz-all pz-rows))) 0)))

@@ -56,6 +56,7 @@
 (import "surface/data")        ; DataDecl + llen -- r-redeclared carries declarations
 (import "lowering/skip-diag")  ; SkRec -- r-skipped JOINS E97's chain, never copies it
 (import "prelude/doc")         ; Doc -- E158's layout algebra, the sibling exit
+(import "surface/pretty")      ; E181 -- Term -> Doc, and its output is SOURCE
 
 ; ---- WHERE a relayed reason came from ---------------------------------------
 ; The closure of eight containers (TcR/CkR/FtR/UR/CaseR/EscR/LoadR/ChkR) meets
@@ -503,7 +504,6 @@
 
 (declare dg-doc       (-> Reason Doc))
 (declare dg-decl-doc  (-> Str Decl Doc))
-(declare dg-term-tag  (-> Term Str))
 (declare dg-chain-doc (-> (List SkRec) Doc))
 
 ; NO `_` arm here either: a new Reason constructor must break BOTH renderers.
@@ -530,6 +530,9 @@
       ; ---- `subsume` had `got` and `want` in hand and said only "type
       ; mismatch". E157 made the terms ride along; this is what prints them.
       ((r-mismatch w e a)
+        ; ONE invented vocabulary over BOTH terms -- two prefixes would be two
+        ; namings for one comparison.
+        (let ((pfx (pp-safe-prefix (cons e (cons a nil)))))
         (d-group
           (d-cat
             (d-tag "diag-head"
@@ -541,10 +544,10 @@
               (doc-concat
                 (cons (d-line (brk-space))
                 (cons (d-tag "diag-site" (d-text "expected "))
-                (cons (d-text (dg-term-tag e))
+                (cons (pp-of pfx e)
                 (cons (d-line (brk-space))
                 (cons (d-tag "diag-site" (d-text "actual "))
-                (cons (d-text (dg-term-tag a)) nil)))))))))))
+                (cons (pp-of pfx a) nil))))))))))))
 
       ; ---- the arm that MEASURES the win. dg-usage-msg collapses nine of its
       ; twelve subjects into one sentence and drops both quantities; the subject
@@ -660,31 +663,8 @@
       ((dc-ty t)
         (doc-concat (cons (d-text lbl)
                     (cons (d-text " type ")
-                    (cons (d-text (dg-term-tag t)) nil))))))))
+                    (cons (pp-term-doc t) nil))))))))
 
-; a Term's FORMER, plus whatever name or literal it carries. One level, no
-; recursion: this is an accessor in the shape of dg-subject-tag, not a printer.
-; The recursive Term -> Doc printer is typing/pretty.chiral's rewrite (E158
-; SPEC decision 12), which is out of this element.
-(def dg-term-tag
-  (lam (t)
-    (case t
-      ((t-var  i)         (str-cat "var#" (i64->str i)))
-      ((t-type n)         (str-cat "type" (i64->str n)))
-      ((t-pi q s dm cd)   "a function type")
-      ((t-lam bd)         "a lambda")
-      ((t-app f a)        "an application")
-      ((t-let q v bd)     "a let")
-      ((t-ann tm ty)      "an annotation")
-      ((t-global n)       n)
-      ((t-prim n)         n)
-      ((t-primty n)       n)
-      ((t-lit-i v)        (i64->str v))
-      ((t-lit-s v)        v)
-      ((t-con dn cn args) cn)
-      ((t-tcon dn args)   dn)
-      ((t-case sc ar df)  "a case")
-      ((t-refine bs ats)  "a refinement type"))))
 
 ; E97's blame chain, one frame per HARD line -- the frames were always separate
 ; and format-blame's arrows were the flattening.
