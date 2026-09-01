@@ -1,0 +1,870 @@
+old_path	new_path	ext	reason
+TUI/apc.metis	lib/protocol/apc.chiral	chiral	map §5 | default (has lambdas)
+TUI/samples/t1_child_wiring.metis	prog/scriba/samples/t1_child_wiring.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t2_tiocswinsz.metis	prog/scriba/samples/t2_tiocswinsz.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t4_codec.metis	prog/scriba/samples/t4_codec.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t4_grid.metis	prog/scriba/samples/t4_grid.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t4_minimal.metis	prog/scriba/samples/t4_minimal.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t5_utf8.metis	prog/scriba/samples/t5_utf8.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t5_vt_parser.metis	prog/scriba/samples/t5_vt_parser.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t6_apc_roundtrip.metis	prog/scriba/samples/t6_apc_roundtrip.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/samples/t7_pty_cap.metis	prog/scriba/samples/t7_pty_cap.prog	prog	map §6: fixtures are programs, none are deliverables; TUI sample fixtures under the program they exercise | entry: ^(def compile-main
+TUI/scriba/chat-view.metis	prog/scriba/chat-view.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/chat.metis	prog/scriba/chat.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/cmd-types.metis	prog/scriba/cmd-types.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/command-loop.metis	prog/scriba/command-loop.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/completion.metis	prog/scriba/completion.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/dispatch.metis	prog/scriba/dispatch.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/editor-state.metis	prog/scriba/editor-state.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/file-io.metis	prog/scriba/file-io.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/flook.metis	prog/scriba/flook.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/flow-view-test.metis	prog/scriba/flow-view-test.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/flow-view.metis	prog/scriba/flow-view.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/help.metis	prog/scriba/help.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/init-loader.metis	prog/scriba/init-loader.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/key-parser.metis	prog/scriba/key-parser.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/keymap.metis	prog/scriba/keymap.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/kill-ring.metis	prog/scriba/kill-ring.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/list-utils.metis	prog/scriba/list-utils.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/manas-mode.metis	prog/scriba/manas-mode.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/manas-runview.metis	prog/scriba/manas-runview.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/mark-region.metis	prog/scriba/mark-region.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/minipuffer.metis	prog/scriba/minipuffer.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/puffer.metis	prog/scriba/puffer.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/render-str.metis	prog/scriba/render-str.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/render.metis	lib/protocol/render.chiral	chiral	map §5 | default (has lambdas)
+TUI/scriba/scriba-main.metis	prog/scriba/scriba-main.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/scriba-manas-test.metis	prog/scriba/scriba-manas-test.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/scriba-runview-stream-test.metis	prog/scriba/scriba-runview-stream-test.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/scriba-runview-test.metis	prog/scriba/scriba-runview-test.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/scriba-test-b1.metis	prog/scriba/scriba-test-b1.prog	prog	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | entry: ^(def compile-main
+TUI/scriba/str-edit.metis	prog/scriba/str-edit.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/vim-mode.metis	prog/scriba/vim-mode.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/window.metis	prog/scriba/window.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/scriba/zipper-bridge.metis	prog/scriba/zipper-bridge.chiral	chiral	map §4: 'TUI's own tree - out of scope here'; scriba is the shipped program -> prog/scriba/ | default (has lambdas)
+TUI/session/session.metis	lib/capability/session.chiral	chiral	map §5 | default (has lambdas)
+TUI/vt-core/grid.metis	lib/protocol/grid.chiral	chiral	map §5 | default (has lambdas)
+TUI/vt-core/utf8.metis	lib/protocol/utf8.chiral	chiral	map §5 | default (has lambdas)
+TUI/vt-core/vt-parser.metis	lib/protocol/vt-parser.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/alloc-fixed.metis	lib/memory/alloc-fixed.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/alloc-growing.metis	lib/memory/alloc-growing.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/alloc.metis	lib/memory/alloc.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/arena.metis	lib/memory/arena.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/asm-reloc.metis	lib/lowering/mach/asm-reloc.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/backend.metis	prog/manas/backend.chiral	chiral	map §5 silent; manas model-backend contract -> prog/manas/ | default (has lambdas)
+scaffold/lib/bytes-tal.metis	lib/lowering/tal/bytes.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/c-assemble.metis	{DELETED 2026-09-01 -- was lib/lowering/c/assemble.chiral}	chiral	dropped with the C backend (d8bcec5 the modules, d0c5dd5 the fixtures): a second target under one formulation, never a second judgment core. The brace form is how this map marks a new_path that is not one checkable path; a blank new_path does NOT work, map-integrity.sh collapses tab runs and silently PASSES such a row. Original reason: task rule 'same shape for c/' -> drop the c- prefix | default (has lambdas)
+scaffold/lib/climb.metis	prog/climb.manifest	manifest	MAP-vs-TEST CONFLICT: map §5 lists climb.prog, but climb has no compile-main and is pure data ('a CHECKABLE MANIFEST', its own header) -> derived .manifest, kept in map's prog/ dir | zero (lam, zero ^(extern
+scaffold/lib/closconv-driver.metis	lib/lowering/upper/closconv-driver.chiral	chiral	map §5 silent; stateful driver for closconv (which map puts in upper/) | default (has lambdas)
+scaffold/lib/closconv.metis	lib/lowering/upper/closconv.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/collections.metis	lib/prelude/{ord,list,maybe,alist,map,set}.chiral	chiral	slice 1 moved it whole; slice 5 SPLIT it by the type each def is about, and str-join went to lib/prelude/string.chiral
+scaffold/lib/compile-all.metis	lib/lowering/compile-all.chiral	chiral	map §5 silent; the whole-compile drive across the lowering images -> lowering/ root | default (has lambdas)
+scaffold/lib/compile-back.metis	lib/lowering/compile-back.chiral	chiral	map §5 silent; back-half image of the source->native pipeline -> lowering/ root | default (has lambdas)
+scaffold/lib/compile-driver-c.metis	{DELETED 2026-09-01 -- was prog/compiler-c.prog}	prog	dropped with the C backend (d8bcec5 the modules, d0c5dd5 the fixtures): a second target under one formulation, never a second judgment core. The brace form is how this map marks a new_path that is not one checkable path; a blank new_path does NOT work, map-integrity.sh collapses tab runs and silently PASSES such a row. Original reason: map §5 prog/ names only one 'compiler'; this is the second (C-backend) entry | entry: ^(def compile-main
+scaffold/lib/compile-driver.metis	prog/compiler.prog	prog	map §5 | entry: ^(def compile-main
+scaffold/lib/compile-emit.metis	lib/lowering/compile-emit.chiral	chiral	map §5 silent; emit image (NFn -> ELF) -> lowering/ root | default (has lambdas)
+scaffold/lib/compile-front.metis	lib/lowering/compile-front.chiral	chiral	map §5 silent; front-half image of the source->native pipeline -> lowering/ root | default (has lambdas)
+scaffold/lib/coordinator.metis	prog/manas/coordinator.chiral	chiral	map §5 silent; manas coordinator loop -> prog/manas/ | default (has lambdas)
+scaffold/lib/crossing-wraps.metis	lib/lowering/tal/crossing-wraps.chiral	chiral	map §5 | default (has lambdas) | RELOCATED 2026-08-31: declared no crossing (LAYOUT ports/ rule)
+scaffold/lib/data.metis	lib/surface/data.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/ddc.metis	lib/evidence/ddc.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/eff-lower.metis	lib/lowering/upper/eff-lower.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/effects.metis	lib/typing/effects.chiral	chiral	map §5 silent; E12 effect-membrane rules, importers eff-lower + row-infer -> typing/ | default (has lambdas)
+scaffold/lib/elf.metis	lib/lowering/x64/elf.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/emit-c.metis	{DELETED 2026-09-01 -- was lib/lowering/c/emit.chiral}	chiral	dropped with the C backend (d8bcec5 the modules, d0c5dd5 the fixtures): a second target under one formulation, never a second judgment core. The brace form is how this map marks a new_path that is not one checkable path; a blank new_path does NOT work, map-integrity.sh collapses tab runs and silently PASSES such a row. Original reason: task rule -> lowering/c/emit (map §5 kept the affix; see findings) | default (has lambdas)
+scaffold/lib/emit-core.metis	lib/lowering/mach/emit-core.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/emit-x64.metis	lib/lowering/x64/emit.chiral	chiral	task rule -> lowering/x64/emit (map §5 kept the affix; see findings) | default (has lambdas)
+scaffold/lib/erased-nf.metis	lib/typing/erased-nf.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/fsm.metis	prog/manas/fsm.chiral	chiral	map §5 body directs it: 'it is manas/runtime/fsm until a second consumer appears' (importers: manas only) | default (has lambdas)
+scaffold/lib/harness.metis	lib/evidence/harness.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/http.metis	lib/protocol/http.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/inet.metis	lib/protocol/inet.chiral	chiral	map §5 | default (has lambdas) | RELOCATED 2026-08-31: declared no crossing (LAYOUT ports/ rule)
+scaffold/lib/interp.metis	lib/evidence/interp.chiral	chiral	map §5 silent; 'golden reference interpreter', zero importers -> evidence/ (cross-checked truth) | default (has lambdas)
+scaffold/lib/json.metis	lib/protocol/json.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/kernel-core.metis	lib/typing/kernel-core.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/kernel.metis	lib/typing/kernel.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/lincoll.metis	lib/capability/lincoll.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/load-batch.metis	lib/module/load-batch.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/loader.metis	lib/module/loader.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/lower.metis	lib/lowering/upper/lower.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/lowspec.metis	lib/lowering/lowspec.chiral	chiral	map §5 silent; neutral check->lower transport ADT, imported by compile-front/back | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/mach-c.metis	{DELETED 2026-09-01 -- was lib/lowering/c/mach.chiral}	chiral	dropped with the C backend (d8bcec5 the modules, d0c5dd5 the fixtures): a second target under one formulation, never a second judgment core. The brace form is how this map marks a new_path that is not one checkable path; a blank new_path does NOT work, map-integrity.sh collapses tab runs and silently PASSES such a row. Original reason: task rule -> lowering/c/mach (map §5 kept the affix; see findings) | default (has lambdas)
+scaffold/lib/mach-listing.metis	lib/lowering/listing/mach.chiral	chiral	task rule 'same shape for listing/' -> lowering/listing/mach | default (has lambdas)
+scaffold/lib/mach-x64.metis	lib/lowering/x64/mach.chiral	chiral	task rule -> lowering/x64/mach (map §5 kept the affix; see findings) | default (has lambdas)
+scaffold/lib/mach.metis	lib/lowering/mach/mach.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/manas.metis	prog/manas/manas.chiral	chiral	map §5 silent; the manas program -> prog/manas/ | default (has lambdas)
+scaffold/lib/mem-linear.metis	lib/memory/mem-linear.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/mem-region.metis	lib/memory/mem-region.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/optimize.metis	lib/lowering/upper/optimize.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/parse.metis	lib/surface/parse.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/poll.metis	lib/runtime/poll.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/ports.metis	lib/ports/ports.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/ports/clock.metis	lib/ports/clock.port	port	map §5 | zero (lam, 5 extern/3 porttype
+scaffold/lib/ports/fd.metis	lib/ports/fd.port	port	map §5 | zero (lam, 5 extern/1 porttype
+scaffold/lib/ports/file.metis	lib/ports/file.port	port	map §5 | zero (lam, 2 extern/0 porttype
+scaffold/lib/ports/pool.metis	lib/ports/pool.port	port	map §5 | zero (lam, 4 extern/1 porttype
+scaffold/lib/ports/process.metis	lib/ports/process.port	port	map §5 | zero (lam, 5 extern/0 porttype
+scaffold/lib/ports/pty.metis	lib/ports/pty.port	port	map §5 | zero (lam, 9 extern/1 porttype
+scaffold/lib/ports/sock.metis	lib/ports/sock.port	port	map §5 | zero (lam, 12 extern/2 porttype
+scaffold/lib/ports/stdio.metis	lib/ports/stdio.port	port	map §5 | zero (lam, 3 extern/0 porttype
+scaffold/lib/ports/tty.metis	lib/ports/tty.port	port	map §5 | zero (lam, 5 extern/0 porttype
+scaffold/lib/prelude.metis	lib/prelude/prelude.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/pretty.metis	lib/surface/pretty.chiral	chiral	map §5 | default (has lambdas); moved typing/ -> surface/ by E181 (0c53875)
+scaffold/lib/proc.metis	lib/runtime/proc.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/qtt.metis	lib/typing/qtt.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/refine.metis	lib/typing/refine.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/reflect-floor.metis	lib/typing/reflect-floor.chiral	chiral	map §5 silent; E45 type-level reflective floor, zero importers -> typing/ | default (has lambdas)
+scaffold/lib/resolve-driver.metis	prog/resolve.prog	prog	map §5 | entry: ^(def compile-main
+scaffold/lib/resolve.metis	lib/module/resolve.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/row-infer.metis	lib/typing/row-infer.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/secret.metis	lib/capability/secret.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/self-wield.metis	prog/wield.prog	prog	map §5 | entry: ^(def compile-main
+scaffold/lib/sexp.metis	lib/surface/sexp.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/sig-derive.metis	lib/module/sig-derive.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/sig-driver.metis	lib/module/sig-driver.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/skip-diag.metis	lib/lowering/skip-diag.chiral	chiral	map §5 silent; E97 skip-chain diagnostics, sole importer compile-back | default (has lambdas)
+scaffold/lib/specialize-singleton.metis	lib/lowering/upper/specialize-singleton.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/string-utils.metis	lib/prelude/string.chiral	chiral	map §5 prelude/string; pure rename | default (has lambdas)
+scaffold/lib/supervisor.metis	lib/runtime/supervisor.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/surface.metis	lib/surface/surface.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/syntax.metis	lib/surface/syntax.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/sys-check.metis	lib/lowering/tal/sys-check.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/sys-linkage.metis	lib/lowering/tal/sys-linkage.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/sys-tal.metis	lib/lowering/tal/sys.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/tal-check.metis	lib/lowering/tal/check.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/tal-erase.metis	lib/lowering/tal/erase.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/tal-eval.metis	lib/lowering/tal/eval.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/tal-ir.metis	lib/lowering/tal/ir.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/tal-reify.metis	lib/lowering/tal/reify.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/tal-spec.metis	lib/lowering/tal/spec.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/tal-ssa.metis	lib/lowering/tal/ssa.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
+scaffold/lib/target-linux.metis	lib/lowering/tal/target-linux.manifest	manifest	map §5 silent; Linux syscall table consumed by sys-check -> lowering/tal/ | zero (lam, zero ^(extern
+scaffold/lib/term.metis	lib/protocol/term.chiral	chiral	map §5 | default (has lambdas) | RELOCATED 2026-08-31: declared no crossing (LAYOUT ports/ rule)
+scaffold/lib/terms.metis	lib/surface/terms.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/test-floor.metis	lib/evidence/test-floor.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/test-runner.metis	prog/test-runner.prog	prog	map §5 | entry: ^(def compile-main
+scaffold/lib/totality.metis	lib/typing/totality.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/ty-cmp.metis	lib/typing/ty-cmp.chiral	chiral	map §5 | default (has lambdas)
+scaffold/lib/wire.metis	lib/protocol/wire.chiral	chiral	map §5 | default (has lambdas)
+.planning/ADVERSARY-NOTES-2026-07-21.md	.planning/ADVERSARY-NOTES-2026-07-21.md	md	slice 7 | doc hoist, sorted by role
+.planning/ASSESSMENT-selfhost-cockpit.md	.planning/ASSESSMENT-selfhost-cockpit.md	md	slice 7 | doc hoist, sorted by role
+.planning/AUDIT-2026-08-22.md	.planning/AUDIT-2026-08-22.md	md	slice 7 | doc hoist, sorted by role
+.planning/AUTH-HARNESS-MAP.md	.planning/AUTH-HARNESS-MAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/B1-COMPILE-PERF.md	.planning/B1-COMPILE-PERF.md	md	slice 7 | doc hoist, sorted by role
+.planning/BUGS-AND-GAPS.md	.planning/BUGS-AND-GAPS.md	md	slice 7 | doc hoist, sorted by role
+.planning/BUILD-OBLIGATIONS-2026-07-25.md	.planning/BUILD-OBLIGATIONS-2026-07-25.md	md	slice 7 | doc hoist, sorted by role
+.planning/BUILD-ORDER.md	.planning/BUILD-ORDER.md	md	slice 7 | doc hoist, sorted by role
+.planning/CHATTER-ANSWER-QUALITY.md	.planning/CHATTER-ANSWER-QUALITY.md	md	slice 7 | doc hoist, sorted by role
+.planning/CHATTER-DC-EGRESS-CONTRACT.md	.planning/CHATTER-DC-EGRESS-CONTRACT.md	md	slice 7 | doc hoist, sorted by role
+.planning/CHATTER-DC-FIXES.md	.planning/CHATTER-DC-FIXES.md	md	slice 7 | doc hoist, sorted by role
+.planning/CHATTER-FLOW-MAP.md	.planning/CHATTER-FLOW-MAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/CHATTER-MIX-MAP.md	.planning/CHATTER-MIX-MAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/CHATTER-ORCHESTRATOR-SCOPE.md	.planning/CHATTER-ORCHESTRATOR-SCOPE.md	md	slice 7 | doc hoist, sorted by role
+.planning/CHATTER-QUALITY-DIAGNOSIS.md	.planning/CHATTER-QUALITY-DIAGNOSIS.md	md	slice 7 | doc hoist, sorted by role
+.planning/CHATTER-STATE.md	.planning/CHATTER-STATE.md	md	slice 7 | doc hoist, sorted by role
+.planning/CLUSTER-2-MAP.md	.planning/CLUSTER-2-MAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/COORDINATE-MEASUREMENT.md	.planning/COORDINATE-MEASUREMENT.md	md	slice 7 | doc hoist, sorted by role
+.planning/DECISION-DOCKET.md	.planning/DECISION-DOCKET.md	md	slice 7 | doc hoist, sorted by role
+.planning/DELEGATION-MAP-2026-07-21.md	.planning/DELEGATION-MAP-2026-07-21.md	md	slice 7 | doc hoist, sorted by role
+.planning/DESIGN-SESSION-PREP.md	.planning/DESIGN-SESSION-PREP.md	md	slice 7 | doc hoist, sorted by role
+.planning/DETERMINISM-DEBTS.md	.planning/DETERMINISM-DEBTS.md	md	slice 7 | doc hoist, sorted by role
+.planning/E69-E72-CHECKLIST.md	.planning/E69-E72-CHECKLIST.md	md	slice 7 | doc hoist, sorted by role
+.planning/E69-sig-mutation-PLAN.md	.planning/E69-sig-mutation-PLAN.md	md	slice 7 | doc hoist, sorted by role
+.planning/EDGE-CANDIDATES-2026-07-22.md	.planning/EDGE-CANDIDATES-2026-07-22.md	md	slice 7 | doc hoist, sorted by role
+.planning/FINDING-captured-closures-2026-08-30.md	.planning/FINDING-captured-closures-2026-08-30.md	md	slice 7 | doc hoist, sorted by role
+.planning/FINDING-mutual-data-2026-07-31.md	.planning/FINDING-mutual-data-2026-07-31.md	md	slice 7 | doc hoist, sorted by role
+.planning/FIXPOINT-CHECKLIST.md	.planning/FIXPOINT-CHECKLIST.md	md	slice 7 | doc hoist, sorted by role
+.planning/FORK-C-UNROLLED.md	.planning/FORK-C-UNROLLED.md	md	slice 7 | doc hoist, sorted by role
+.planning/FOUNDATION-FORKS.md	.planning/FOUNDATION-FORKS.md	md	slice 7 | doc hoist, sorted by role
+.planning/HANDOFF-POLY13.md	.planning/HANDOFF-POLY13.md	md	slice 7 | doc hoist, sorted by role
+.planning/HANDOFF-RUNG1-FIXPOINT.md	.planning/HANDOFF-RUNG1-FIXPOINT.md	md	slice 7 | doc hoist, sorted by role
+.planning/HANDOFF-SELF-WIELD.md	.planning/HANDOFF-SELF-WIELD.md	md	slice 7 | doc hoist, sorted by role
+.planning/HANDOFF-VERIFICATION-ARC.md	.planning/HANDOFF-VERIFICATION-ARC.md	md	slice 7 | doc hoist, sorted by role
+.planning/HANDOFF.md	.planning/HANDOFF.md	md	slice 7 | doc hoist, sorted by role
+.planning/HARNESS-REFACTOR-CHECKLIST.md	.planning/HARNESS-REFACTOR-CHECKLIST.md	md	slice 7 | doc hoist, sorted by role
+.planning/IMPORT-HANDLER-BRIEF.md	.planning/IMPORT-HANDLER-BRIEF.md	md	slice 7 | doc hoist, sorted by role
+.planning/LANGUAGE-INVENTORY.md	.planning/LANGUAGE-INVENTORY.md	md	slice 7 | doc hoist, sorted by role
+.planning/LEDGER.md	.planning/LEDGER.md	md	slice 7 | doc hoist, sorted by role
+.planning/MANAS-L0-SPEC.md	.planning/MANAS-L0-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/MANAS-SKILL-GROWER.md	.planning/MANAS-SKILL-GROWER.md	md	slice 7 | doc hoist, sorted by role
+.planning/MANAS-STATE-VS-GOAL.md	.planning/MANAS-STATE-VS-GOAL.md	md	slice 7 | doc hoist, sorted by role
+.planning/MEMORY-DISCIPLINE-ARC.md	.planning/MEMORY-DISCIPLINE-ARC.md	md	slice 7 | doc hoist, sorted by role
+.planning/METIS-FEASIBILITY-RESPONSE.md	.planning/METIS-FEASIBILITY-RESPONSE.md	md	slice 7 | doc hoist, sorted by role
+.planning/MILESTONE-orchestration.md	.planning/MILESTONE-orchestration.md	md	slice 7 | doc hoist, sorted by role
+.planning/MINI-RUSH-HANDOFF.md	.planning/MINI-RUSH-HANDOFF.md	md	slice 7 | doc hoist, sorted by role
+.planning/NATIVE-CAP-LIFECYCLE-MAP.md	.planning/NATIVE-CAP-LIFECYCLE-MAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/NATIVE-TOOLCHAIN-SLICES.md	.planning/NATIVE-TOOLCHAIN-SLICES.md	md	slice 7 | doc hoist, sorted by role
+.planning/NOVELTY-INVENTORY.md	.planning/NOVELTY-INVENTORY.md	md	slice 7 | doc hoist, sorted by role
+.planning/PREGEN-MOMENTS.md	.planning/PREGEN-MOMENTS.md	md	slice 7 | doc hoist, sorted by role
+.planning/PROJECT.md	.planning/PROJECT.md	md	slice 7 | doc hoist, sorted by role
+.planning/ROADMAP-RUNG2-CEREMONY-ARC.md	.planning/ROADMAP-RUNG2-CEREMONY-ARC.md	md	slice 7 | doc hoist, sorted by role
+.planning/ROADMAP.md	.planning/ROADMAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/RUNG-2-MAP.md	.planning/RUNG-2-MAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/RUNG1-CHECKLIST.md	.planning/RUNG1-CHECKLIST.md	md	slice 7 | doc hoist, sorted by role
+.planning/RUNG1-CRITICAL-PATH.md	.planning/RUNG1-CRITICAL-PATH.md	md	slice 7 | doc hoist, sorted by role
+.planning/RUNG2-MICROVM-MAP.md	.planning/RUNG2-MICROVM-MAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/RUNG2-SECURITY-MODEL.md	.planning/RUNG2-SECURITY-MODEL.md	md	slice 7 | doc hoist, sorted by role
+.planning/SCAFFOLD-NEXT.md	.planning/SCAFFOLD-NEXT.md	md	slice 7 | doc hoist, sorted by role
+.planning/SCRIBA-OUTLINE-PLAN.md	.planning/SCRIBA-OUTLINE-PLAN.md	md	slice 7 | doc hoist, sorted by role
+.planning/SCRIBA-PERSIST-PLAN.md	.planning/SCRIBA-PERSIST-PLAN.md	md	slice 7 | doc hoist, sorted by role
+.planning/SCRIBA-POLISH-BACKLOG.md	.planning/SCRIBA-POLISH-BACKLOG.md	md	slice 7 | doc hoist, sorted by role
+.planning/SCRIBA-PRIMITIVE-CHECKLIST.md	.planning/SCRIBA-PRIMITIVE-CHECKLIST.md	md	slice 7 | doc hoist, sorted by role
+.planning/SCRIBA-SLICES.md	.planning/SCRIBA-SLICES.md	md	slice 7 | doc hoist, sorted by role
+.planning/SCRIBA-STATE.md	.planning/SCRIBA-STATE.md	md	slice 7 | doc hoist, sorted by role
+.planning/SCRIBA-SYSCALL-HANDOFF.md	.planning/SCRIBA-SYSCALL-HANDOFF.md	md	slice 7 | doc hoist, sorted by role
+.planning/SCRIBA-UNBLOCK-MAP.md	.planning/SCRIBA-UNBLOCK-MAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/SELF-COMPILE-FRONTIER-MAP.md	.planning/SELF-COMPILE-FRONTIER-MAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/SELF-HOST-PLAN.md	.planning/SELF-HOST-PLAN.md	md	slice 7 | doc hoist, sorted by role
+.planning/SELF-IMPLEMENT-CATALOG.md	.planning/SELF-IMPLEMENT-CATALOG.md	md	slice 7 | doc hoist, sorted by role
+.planning/STAGE-METIS-NO-PYTHON.md	.planning/STAGE-METIS-NO-PYTHON.md	md	slice 7 | doc hoist, sorted by role
+.planning/SYSCALL-WIRING.md	.planning/SYSCALL-WIRING.md	md	slice 7 | doc hoist, sorted by role
+.planning/TEXT-AND-DIAGNOSTICS-ARC.md	.planning/TEXT-AND-DIAGNOSTICS-ARC.md	md	slice 7 | doc hoist, sorted by role
+.planning/TUI-PRIMITIVES.md	.planning/TUI-PRIMITIVES.md	md	slice 7 | doc hoist, sorted by role
+.planning/UNIFICATION-WORKLOG.md	.planning/UNIFICATION-WORKLOG.md	md	slice 7 | doc hoist, sorted by role
+.planning/USER-LAYER-GAP.md	.planning/USER-LAYER-GAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/USER-LAYER-PIPELINE-PLAN.md	.planning/USER-LAYER-PIPELINE-PLAN.md	md	slice 7 | doc hoist, sorted by role
+.planning/USER-LAYER-TRACKER.md	.planning/USER-LAYER-TRACKER.md	md	slice 7 | doc hoist, sorted by role
+.planning/VISION-deployment-custody-2026-07-24.md	.planning/VISION-deployment-custody-2026-07-24.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/AUDIT-MAP.md	.planning/audit/AUDIT-MAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/CONFORMANCE-MAP.md	.planning/audit/CONFORMANCE-MAP.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/DOSSIER-SPEC.md	.planning/audit/DOSSIER-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/FABLE-AUDIT-2026-07-20.md	.planning/audit/FABLE-AUDIT-2026-07-20.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/FABLE-AUDIT-DISPOSITIONS.md	.planning/audit/FABLE-AUDIT-DISPOSITIONS.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/family-1-checker-core.md	.planning/audit/family-1-checker-core.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/family-2-checker-analyses.md	.planning/audit/family-2-checker-analyses.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/family-3-pipeline.md	.planning/audit/family-3-pipeline.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/family-4-substrate.md	.planning/audit/family-4-substrate.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/family-5-sys-and-formats.md	.planning/audit/family-5-sys-and-formats.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/family-6-design-edges-a.md	.planning/audit/family-6-design-edges-a.md	md	slice 7 | doc hoist, sorted by role
+.planning/audit/family-7-design-edges-b.md	.planning/audit/family-7-design-edges-b.md	md	slice 7 | doc hoist, sorted by role
+.planning/capture-fixtures/frontier-stub.py	.planning/capture-fixtures/frontier-stub.py	md	slice 7 | doc hoist, sorted by role
+.planning/capture-fixtures/note.md	.planning/capture-fixtures/note.md	md	slice 7 | doc hoist, sorted by role
+.planning/capture/deployment-custody-2026-07-24/01-bank-banks_capability.md	.planning/capture/deployment-custody-2026-07-24/01-bank-banks_capability.md	md	slice 7 | doc hoist, sorted by role
+.planning/capture/deployment-custody-2026-07-24/02-bank-banks_evidence_and_split.md	.planning/capture/deployment-custody-2026-07-24/02-bank-banks_evidence_and_split.md	md	slice 7 | doc hoist, sorted by role
+.planning/capture/deployment-custody-2026-07-24/03-bank-banks_memory.md	.planning/capture/deployment-custody-2026-07-24/03-bank-banks_memory.md	md	slice 7 | doc hoist, sorted by role
+.planning/capture/deployment-custody-2026-07-24/04-node-open_edges.md	.planning/capture/deployment-custody-2026-07-24/04-node-open_edges.md	md	slice 7 | doc hoist, sorted by role
+.planning/capture/deployment-custody-2026-07-24/05-node-target_tomodachi.md	.planning/capture/deployment-custody-2026-07-24/05-node-target_tomodachi.md	md	slice 7 | doc hoist, sorted by role
+.planning/capture/deployment-custody-2026-07-24/06-node-trust_boundary.md	.planning/capture/deployment-custody-2026-07-24/06-node-trust_boundary.md	md	slice 7 | doc hoist, sorted by role
+.planning/capture/deployment-custody-2026-07-24/AUTHOR-CALLS.md	.planning/capture/deployment-custody-2026-07-24/AUTHOR-CALLS.md	md	slice 7 | doc hoist, sorted by role
+.planning/capture/deployment-custody-2026-07-24/REPORT.md	.planning/capture/deployment-custody-2026-07-24/REPORT.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/BUILD-LANES-HANDOFF.md	.planning/handoffs/BUILD-LANES-HANDOFF.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/CONTINUE-2026-07-25.md	.planning/handoffs/CONTINUE-2026-07-25.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/E91-IMPLEMENT-HANDOFF.md	.planning/handoffs/E91-IMPLEMENT-HANDOFF.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/LANE-1-effect-row.md	.planning/handoffs/LANE-1-effect-row.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/LANE-2-e50-termination.md	.planning/handoffs/LANE-2-e50-termination.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/LANE-3-effectful-lowering.md	.planning/handoffs/LANE-3-effectful-lowering.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/LANE-4-syscall-floor.md	.planning/handoffs/LANE-4-syscall-floor.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/LANE-5-port-fixpoint.md	.planning/handoffs/LANE-5-port-fixpoint.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/LANE-prep-determinism-ddc.md	.planning/handoffs/LANE-prep-determinism-ddc.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/SCOPING-WAVE-HANDOFF.md	.planning/handoffs/SCOPING-WAVE-HANDOFF.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/SCRIBA-DISPATCH-BLOCKER.md	.planning/handoffs/SCRIBA-DISPATCH-BLOCKER.md	md	slice 7 | doc hoist, sorted by role
+.planning/handoffs/TOOL-doc-expansion.md	.planning/handoffs/TOOL-doc-expansion.md	md	slice 7 | doc hoist, sorted by role
+.planning/quarantine/E151-retire-ord.md.superseded	.planning/quarantine/E151-retire-ord.md.superseded	md	slice 7 | doc hoist, sorted by role
+.planning/quick/260715-6jx-secret-custody/260715-6jx-SUMMARY.md	.planning/quick/260715-6jx-secret-custody/260715-6jx-SUMMARY.md	md	slice 7 | doc hoist, sorted by role
+.planning/scriba-examples/S13-vim-modes.md	.planning/scriba-examples/S13-vim-modes.md	md	slice 7 | doc hoist, sorted by role
+.planning/scriba-examples/S14-manas-author-mode.md	.planning/scriba-examples/S14-manas-author-mode.md	md	slice 7 | doc hoist, sorted by role
+.planning/scriba-examples/S15-manas-run-view.md	.planning/scriba-examples/S15-manas-run-view.md	md	slice 7 | doc hoist, sorted by role
+.planning/scriba-examples/S16-manas-compose.md	.planning/scriba-examples/S16-manas-compose.md	md	slice 7 | doc hoist, sorted by role
+.planning/scriba-examples/S17-manas-token-streaming.md	.planning/scriba-examples/S17-manas-token-streaming.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E01-sexp-reader-SPEC.md	.planning/specs/E01-sexp-reader-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E02-row-inference-SPEC.md	.planning/specs/E02-row-inference-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E02-surface-elaborator-SPEC.md	.planning/specs/E02-surface-elaborator-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E03-nbe-normalize-SPEC.md	.planning/specs/E03-nbe-normalize-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E04-bidir-universes-SPEC.md	.planning/specs/E04-bidir-universes-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E04-full-adt-kernel-SPEC.md	.planning/specs/E04-full-adt-kernel-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E05-qtt-semiring-SPEC.md	.planning/specs/E05-qtt-semiring-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E06-data-ctors-coverage-SPEC.md	.planning/specs/E06-data-ctors-coverage-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E07-strict-positivity-SPEC.md	.planning/specs/E07-strict-positivity-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E08-linear-kinds-SPEC.md	.planning/specs/E08-linear-kinds-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E09-refinement-SPEC.md	.planning/specs/E09-refinement-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E10-occurrence-typing-SPEC.md	.planning/specs/E10-occurrence-typing-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E100-FIX-CHECKLIST.md	.planning/specs/E100-FIX-CHECKLIST.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E100-two-type-param-calls-SPEC.md	.planning/specs/E100-two-type-param-calls-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E101-sexp-error-context-SPEC.md	.planning/specs/E101-sexp-error-context-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E102-sexp-enhancements-SPEC.md	.planning/specs/E102-sexp-enhancements-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E103-term-raw-SPEC.md	.planning/specs/E103-term-raw-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E104-pty-crossings-SPEC.md	.planning/specs/E104-pty-crossings-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E106-linear-cap-collection-SPEC.md	.planning/specs/E106-linear-cap-collection-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E107-cap-close-SPEC.md	.planning/specs/E107-cap-close-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E108-shift-ops-SPEC.md	.planning/specs/E108-shift-ops-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E109-bput-u16-le-SPEC.md	.planning/specs/E109-bput-u16-le-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E11-totality-checker-SPEC.md	.planning/specs/E11-totality-checker-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E110-cloexec-pty-SPEC.md	.planning/specs/E110-cloexec-pty-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E111-cell-store-SPEC.md	.planning/specs/E111-cell-store-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E112-apc-sidechannel-SPEC.md	.planning/specs/E112-apc-sidechannel-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E113-pool-read-SPEC.md	.planning/specs/E113-pool-read-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E12-effect-membrane-SPEC.md	.planning/specs/E12-effect-membrane-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E120-native-pool-SPEC.md	.planning/specs/E120-native-pool-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E121-fcntl-SPEC.md	.planning/specs/E121-fcntl-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E122-native-pool-create-SPEC.md	.planning/specs/E122-native-pool-create-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E123-native-porttype-carrier-SPEC.md	.planning/specs/E123-native-porttype-carrier-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E124-adopt-fd-SPEC.md	.planning/specs/E124-adopt-fd-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E125-sock-use-SPEC.md	.planning/specs/E125-sock-use-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E126-socketpair-SPEC.md	.planning/specs/E126-socketpair-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E127-sock-connect-SPEC.md	.planning/specs/E127-sock-connect-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E128-apc-handshake-SPEC.md	.planning/specs/E128-apc-handshake-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E129-sock-connect-in-SPEC.md	.planning/specs/E129-sock-connect-in-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E13-debruijn-SPEC.md	.planning/specs/E13-debruijn-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E130-http-native-SPEC.md	.planning/specs/E130-http-native-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E131-sse-stream-SPEC.md	.planning/specs/E131-sse-stream-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E133-manas-core-types-SPEC.md	.planning/specs/E133-manas-core-types-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E134-gate-SPEC.md	.planning/specs/E134-gate-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E135-bind-SPEC.md	.planning/specs/E135-bind-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E136-match-assemble-stop-SPEC.md	.planning/specs/E136-match-assemble-stop-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E138-run-loop-SPEC.md	.planning/specs/E138-run-loop-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E139-be-log-SPEC.md	.planning/specs/E139-be-log-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E14-pretty-printer-SPEC.md	.planning/specs/E14-pretty-printer-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E140-profiles-docrefine-SPEC.md	.planning/specs/E140-profiles-docrefine-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E141-golden-conformance-SPEC.md	.planning/specs/E141-golden-conformance-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E144-str-porttype-carrier-SPEC.md	.planning/specs/E144-str-porttype-carrier-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E15-reference-interpreter-SPEC.md	.planning/specs/E15-reference-interpreter-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E150-argv-SPEC.md	.planning/specs/E150-argv-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E151-ord-dedup-SPEC.md	.planning/specs/E151-ord-dedup-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E156-sort-adopt-SPEC.md	.planning/specs/E156-sort-adopt-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E157-typed-diagnostics-SPEC.md	.planning/specs/E157-typed-diagnostics-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E16-lowering-SPEC.md	.planning/specs/E16-lowering-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E161-kind-identifier-SPEC.md	.planning/specs/E161-kind-identifier-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E166-mach-c-SPEC.md	.planning/specs/E166-mach-c-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E168-test-floor-SPEC.md	.planning/specs/E168-test-floor-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E17-AUTOSPEC-V2-SPEC.md	.planning/specs/E17-AUTOSPEC-V2-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E17-optimizer-SPEC.md	.planning/specs/E17-optimizer-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E170-corpus-migration-SPEC.md	.planning/specs/E170-corpus-migration-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E18-tal-check-SPEC.md	.planning/specs/E18-tal-check-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E20-loader-SPEC.md	.planning/specs/E20-loader-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E21-arena-SPEC.md	.planning/specs/E21-arena-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E22-regions-SPEC.md	.planning/specs/E22-regions-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E24-i64-arith-SPEC.md	.planning/specs/E24-i64-arith-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E25-byte-cells-SPEC.md	.planning/specs/E25-byte-cells-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E26-alarm-control-flow-SPEC.md	.planning/specs/E26-alarm-control-flow-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E27-dict-set-to-maps-SPEC.md	.planning/specs/E27-dict-set-to-maps-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E28-mmap-crossings-SPEC.md	.planning/specs/E28-mmap-crossings-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E29-sockets-SPEC.md	.planning/specs/E29-sockets-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E30-fd-passing-SPEC.md	.planning/specs/E30-fd-passing-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E31-poll-SPEC.md	.planning/specs/E31-poll-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E32-clock-exit-env-SPEC.md	.planning/specs/E32-clock-exit-env-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E33-process-spawn-SPEC.md	.planning/specs/E33-process-spawn-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E34-elf-writer-SPEC.md	.planning/specs/E34-elf-writer-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E38-graded-cost-SPEC.md	.planning/specs/E38-graded-cost-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E39-effect-row-SPEC.md	.planning/specs/E39-effect-row-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E41-region-types-SPEC.md	.planning/specs/E41-region-types-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E42-alarm-supervisor-SPEC.md	.planning/specs/E42-alarm-supervisor-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E45-reflective-floor-SPEC.md	.planning/specs/E45-reflective-floor-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E47-sized-types-SPEC.md	.planning/specs/E47-sized-types-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E48-telescopes-SPEC.md	.planning/specs/E48-telescopes-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E50-mutual-lex-termination-SPEC.md	.planning/specs/E50-mutual-lex-termination-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E51-sys-linkage-SPEC.md	.planning/specs/E51-sys-linkage-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E52-certificate-split-SPEC.md	.planning/specs/E52-certificate-split-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E53-ddc-bootstrap-SPEC.md	.planning/specs/E53-ddc-bootstrap-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E57-staging-modality-SPEC.md	.planning/specs/E57-staging-modality-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E69-closure-conversion-DESIGN.md	.planning/specs/E69-closure-conversion-DESIGN.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E69-closure-conversion-SPEC.md	.planning/specs/E69-closure-conversion-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E70-effectful-lowering-DESIGN.md	.planning/specs/E70-effectful-lowering-DESIGN.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E70-effectful-lowering-SPEC.md	.planning/specs/E70-effectful-lowering-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E71-golden-restructure-SPEC.md	.planning/specs/E71-golden-restructure-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E72-re-bootstrap-SPEC.md	.planning/specs/E72-re-bootstrap-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E80-cap-to-main-SPEC.md	.planning/specs/E80-cap-to-main-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E81-alloc-seam-SPEC.md	.planning/specs/E81-alloc-seam-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E86-ioctl-crossing-SPEC.md	.planning/specs/E86-ioctl-crossing-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E87-import-resolution-SPEC.md	.planning/specs/E87-import-resolution-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E88-mark-region-SPEC.md	.planning/specs/E88-mark-region-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E89-arena-init-SPEC.md	.planning/specs/E89-arena-init-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E90-arena-grow-crossing-SPEC.md	.planning/specs/E90-arena-grow-crossing-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E91-growing-allocator-SPEC.md	.planning/specs/E91-growing-allocator-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E92-effect-chain-decoupling-SPEC.md	.planning/specs/E92-effect-chain-decoupling-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E93-lowering-multi-pass-SPEC.md	.planning/specs/E93-lowering-multi-pass-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E94-form-type-capacity-SPEC.md	.planning/specs/E94-form-type-capacity-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E95-effectful-mutual-recursion-SPEC.md	.planning/specs/E95-effectful-mutual-recursion-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E96-bitwise-ops-SPEC.md	.planning/specs/E96-bitwise-ops-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E97-skip-chain-diagnostics-SPEC.md	.planning/specs/E97-skip-chain-diagnostics-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E98-honest-crossing-table-SPEC.md	.planning/specs/E98-honest-crossing-table-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/E99-ioctl-out-cells-SPEC.md	.planning/specs/E99-ioctl-out-cells-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/FACT-CARRYING-LOWERING-SPEC.md	.planning/specs/FACT-CARRYING-LOWERING-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/S1-puffer-SPEC.md	.planning/specs/S1-puffer-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/S13-vim-modes-SPEC.md	.planning/specs/S13-vim-modes-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/S14-manas-author-mode-SPEC.md	.planning/specs/S14-manas-author-mode-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/S15-manas-run-view-SPEC.md	.planning/specs/S15-manas-run-view-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/S16-manas-compose-SPEC.md	.planning/specs/S16-manas-compose-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/S17-manas-token-streaming-SPEC.md	.planning/specs/S17-manas-token-streaming-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/S18-scriba-record-SPEC.md	.planning/specs/S18-scriba-record-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/S2-rendering-SPEC.md	.planning/specs/S2-rendering-SPEC.md	md	slice 7 | doc hoist, sorted by role
+.planning/specs/_TEMPLATE.md	.planning/specs/_TEMPLATE.md	md	slice 7 | doc hoist, sorted by role
+AI-RESIDENT-AND-CAPABILITY-RUNG.md	.planning/AI-RESIDENT-AND-CAPABILITY-RUNG.md	md	slice 7 | doc hoist, sorted by role
+BOOTSTRAP.md	docs/definitions/bootstrap.md	md	slice 7 | doc hoist, sorted by role | RESORTED 2026-08-31: root holds four docs
+DOC-DEBT-2026-08-11.md	.planning/DOC-DEBT-2026-08-11.md	md	slice 7 | doc hoist, sorted by role
+LICENSE.md	LICENSE.md	md	slice 7 | doc hoist, sorted by role
+MAP.md	MAP.md	md	slice 7 | doc hoist, sorted by role
+PERSONA.md	.planning/PERSONA.md	md	slice 7 | doc hoist, sorted by role | RESORTED 2026-08-31: root holds four docs
+PRINCIPLES.md	PRINCIPLES.md	md	slice 7 | doc hoist, sorted by role
+README.md	README.md	md	slice 7 | doc hoist, sorted by role
+SECURE-DATUM-MODEL.md	docs/definitions/secure-datum-model.md	md	slice 7 | doc hoist, sorted by role | RESORTED 2026-08-31: root holds four docs
+UMBRELLA.md	.planning/UMBRELLA.md	md	slice 7 | doc hoist, sorted by role | RESORTED 2026-08-31: root holds four docs
+WEBCLAUDE-DOCS-AUDIT-2026-08-11.md	.planning/WEBCLAUDE-DOCS-AUDIT-2026-08-11.md	md	slice 7 | doc hoist, sorted by role
+docs/FRONTIER.md	docs/definitions/FRONTIER.md	md	slice 7 | doc hoist, sorted by role
+docs/axis-altitude.md	docs/definitions/axis-altitude.md	md	slice 7 | doc hoist, sorted by role
+docs/axis-typeability.md	docs/definitions/axis-typeability.md	md	slice 7 | doc hoist, sorted by role
+docs/banks/INDEX.md	docs/banks/INDEX.md	md	slice 7 | doc hoist, sorted by role
+docs/banks/capability.md	docs/banks/capability.md	md	slice 7 | doc hoist, sorted by role
+docs/banks/effect-and-alarm.md	docs/banks/effect-and-alarm.md	md	slice 7 | doc hoist, sorted by role
+docs/banks/evidence-and-split.md	docs/banks/evidence-and-split.md	md	slice 7 | doc hoist, sorted by role
+docs/banks/memory.md	docs/banks/memory.md	md	slice 7 | doc hoist, sorted by role
+docs/banks/module.md	docs/banks/module.md	md	slice 7 | doc hoist, sorted by role
+docs/banks/port.md	docs/banks/port.md	md	slice 7 | doc hoist, sorted by role
+docs/banks/profile.md	docs/banks/profile.md	md	slice 7 | doc hoist, sorted by role
+docs/banks/runtime.md	docs/banks/runtime.md	md	slice 7 | doc hoist, sorted by role
+docs/banks/verification.md	docs/banks/verification.md	md	slice 7 | doc hoist, sorted by role
+docs/benchmarks/README.md	docs/benchmarks/README.md	md	slice 7 | doc hoist, sorted by role
+docs/benchmarks/growing-allocator-scale.md	docs/benchmarks/growing-allocator-scale.md	md	slice 7 | doc hoist, sorted by role
+docs/benchmarks/language-performance.md	docs/benchmarks/language-performance.md	md	slice 7 | doc hoist, sorted by role
+docs/bootstrap-sequence.md	docs/definitions/bootstrap-sequence.md	md	slice 7 | doc hoist, sorted by role
+docs/category-bridge.md	docs/definitions/category-bridge.md	md	slice 7 | doc hoist, sorted by role
+docs/category-typed.md	docs/definitions/category-typed.md	md	slice 7 | doc hoist, sorted by role
+docs/category-untyped.md	docs/definitions/category-untyped.md	md	slice 7 | doc hoist, sorted by role
+docs/certificate-discipline.md	docs/definitions/certificate-discipline.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-b-in-type.md	docs/decisions/decision-b-in-type.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-backend.md	docs/decisions/decision-backend.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-bridge-elaborator.md	docs/decisions/decision-bridge-elaborator.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-brokers.md	docs/decisions/decision-brokers.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-deployment-custody.md	docs/decisions/decision-deployment-custody.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-effect-facets.md	docs/decisions/decision-effect-facets.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-graded-kernel.md	docs/decisions/decision-graded-kernel.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-inspiration-policy.md	docs/decisions/decision-inspiration-policy.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-numeric-width-pluggable.md	docs/decisions/decision-numeric-width-pluggable.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-profiles.md	docs/decisions/decision-profiles.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-reflective-floor.md	docs/decisions/decision-reflective-floor.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-split-checker.md	docs/decisions/decision-split-checker.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-syscall-governance.md	docs/decisions/decision-syscall-governance.md	md	slice 7 | doc hoist, sorted by role
+docs/decision-user-layer-extensibility.md	docs/decisions/decision-user-layer-extensibility.md	md	slice 7 | doc hoist, sorted by role
+docs/design-principles.md	docs/definitions/design-principles.md	md	slice 7 | doc hoist, sorted by role
+docs/dump-integration.md	docs/definitions/dump-integration.md	md	slice 7 | doc hoist, sorted by role
+docs/error-and-alarm.md	docs/definitions/error-and-alarm.md	md	slice 7 | doc hoist, sorted by role
+docs/floor-agreement.md	docs/definitions/floor-agreement.md	md	slice 7 | doc hoist, sorted by role
+docs/glossary.md	docs/definitions/glossary.md	md	slice 7 | doc hoist, sorted by role
+docs/index.md	docs/index.md	md	slice 7 | doc hoist, sorted by role
+docs/insp-capability-os.md	docs/definitions/insp-capability-os.md	md	slice 7 | doc hoist, sorted by role
+docs/insp-emacs.md	docs/definitions/insp-emacs.md	md	slice 7 | doc hoist, sorted by role
+docs/insp-erlang-beam.md	docs/definitions/insp-erlang-beam.md	md	slice 7 | doc hoist, sorted by role
+docs/insp-lisp-machine.md	docs/definitions/insp-lisp-machine.md	md	slice 7 | doc hoist, sorted by role
+docs/insp-oberon.md	docs/definitions/insp-oberon.md	md	slice 7 | doc hoist, sorted by role
+docs/insp-smalltalk.md	docs/definitions/insp-smalltalk.md	md	slice 7 | doc hoist, sorted by role
+docs/insp-unison.md	docs/definitions/insp-unison.md	md	slice 7 | doc hoist, sorted by role
+docs/joining-law.md	docs/definitions/joining-law.md	md	slice 7 | doc hoist, sorted by role
+docs/live-environment.md	docs/definitions/live-environment.md	md	slice 7 | doc hoist, sorted by role
+docs/memory-model.md	docs/definitions/memory-model.md	md	slice 7 | doc hoist, sorted by role
+docs/module-map.md	docs/modules/module-map.md	md	slice 7 | doc hoist, sorted by role
+docs/modules-bridges.md	docs/modules/modules-bridges.md	md	slice 7 | doc hoist, sorted by role
+docs/modules-broker.md	docs/modules/modules-broker.md	md	slice 7 | doc hoist, sorted by role
+docs/modules-core.md	docs/modules/modules-core.md	md	slice 7 | doc hoist, sorted by role
+docs/modules-custody.md	docs/modules/modules-custody.md	md	slice 7 | doc hoist, sorted by role
+docs/modules-lowering.md	docs/modules/modules-lowering.md	md	slice 7 | doc hoist, sorted by role
+docs/modules-security.md	docs/modules/modules-security.md	md	slice 7 | doc hoist, sorted by role
+docs/modules-staging.md	docs/modules/modules-staging.md	md	slice 7 | doc hoist, sorted by role
+docs/modules-substrate.md	docs/modules/modules-substrate.md	md	slice 7 | doc hoist, sorted by role
+docs/node-architecture.md	docs/definitions/node-architecture.md	md	slice 7 | doc hoist, sorted by role
+docs/open-edges.md	docs/definitions/open-edges.md	md	slice 7 | doc hoist, sorted by role
+docs/pattern-boundary-sums.md	docs/definitions/pattern-boundary-sums.md	md	slice 7 | doc hoist, sorted by role
+docs/permission-model.md	docs/definitions/permission-model.md	md	slice 7 | doc hoist, sorted by role
+docs/perspectives.md	docs/definitions/perspectives.md	md	slice 7 | doc hoist, sorted by role
+docs/process-and-runtime.md	docs/definitions/process-and-runtime.md	md	slice 7 | doc hoist, sorted by role
+docs/relations.md	docs/definitions/relations.md	md	slice 7 | doc hoist, sorted by role
+docs/resolution-patterns.md	docs/definitions/resolution-patterns.md	md	slice 7 | doc hoist, sorted by role
+docs/split-role.md	docs/definitions/split-role.md	md	slice 7 | doc hoist, sorted by role
+docs/splitting-law.md	docs/definitions/splitting-law.md	md	slice 7 | doc hoist, sorted by role
+docs/status-ledger.md	docs/definitions/status-ledger.md	md	slice 7 | doc hoist, sorted by role
+docs/syntax-evolution.md	docs/definitions/syntax-evolution.md	md	slice 7 | doc hoist, sorted by role
+docs/syscall-map.md	docs/definitions/syscall-map.md	md	slice 7 | doc hoist, sorted by role
+docs/tal-spec.md	docs/definitions/tal-spec.md	md	slice 7 | doc hoist, sorted by role
+docs/target-tomodachi.md	docs/definitions/target-tomodachi.md	md	slice 7 | doc hoist, sorted by role
+docs/testing-floors.md	docs/definitions/testing-floors.md	md	slice 7 | doc hoist, sorted by role
+docs/thesis.md	docs/definitions/thesis.md	md	slice 7 | doc hoist, sorted by role
+docs/time-and-clocks.md	docs/definitions/time-and-clocks.md	md	slice 7 | doc hoist, sorted by role
+docs/totality.md	docs/definitions/totality.md	md	slice 7 | doc hoist, sorted by role
+docs/trust-boundary.md	docs/definitions/trust-boundary.md	md	slice 7 | doc hoist, sorted by role
+docs/view-authoring.md	docs/modules/view-authoring.md	md	slice 7 | doc hoist, sorted by role
+docs/view-implementation.md	docs/modules/view-implementation.md	md	slice 7 | doc hoist, sorted by role
+docs/view-runtime.md	docs/modules/view-runtime.md	md	slice 7 | doc hoist, sorted by role
+docs/view-security.md	docs/modules/view-security.md	md	slice 7 | doc hoist, sorted by role
+docs/view-types.md	docs/modules/view-types.md	md	slice 7 | doc hoist, sorted by role
+docs/vocabulary.md	docs/definitions/vocabulary.md	md	slice 7 | doc hoist, sorted by role
+examples/E01-sexp-reader.md	docs/examples/E01-sexp-reader.md	md	slice 7 | doc hoist, sorted by role
+examples/E02-row-inference.md	docs/examples/E02-row-inference.md	md	slice 7 | doc hoist, sorted by role
+examples/E02-surface-elaborator.md	docs/examples/E02-surface-elaborator.md	md	slice 7 | doc hoist, sorted by role
+examples/E03-nbe-normalize.md	docs/examples/E03-nbe-normalize.md	md	slice 7 | doc hoist, sorted by role
+examples/E04-bidir-universes.md	docs/examples/E04-bidir-universes.md	md	slice 7 | doc hoist, sorted by role
+examples/E04-full-adt-kernel.md	docs/examples/E04-full-adt-kernel.md	md	slice 7 | doc hoist, sorted by role
+examples/E05-qtt-semiring.md	docs/examples/E05-qtt-semiring.md	md	slice 7 | doc hoist, sorted by role
+examples/E06-data-ctors-coverage.md	docs/examples/E06-data-ctors-coverage.md	md	slice 7 | doc hoist, sorted by role
+examples/E07-strict-positivity.md	docs/examples/E07-strict-positivity.md	md	slice 7 | doc hoist, sorted by role
+examples/E08-linear-kinds.md	docs/examples/E08-linear-kinds.md	md	slice 7 | doc hoist, sorted by role
+examples/E09-refinement.md	docs/examples/E09-refinement.md	md	slice 7 | doc hoist, sorted by role
+examples/E10-occurrence-typing.md	docs/examples/E10-occurrence-typing.md	md	slice 7 | doc hoist, sorted by role
+examples/E100-two-type-param-calls.md	docs/examples/E100-two-type-param-calls.md	md	slice 7 | doc hoist, sorted by role
+examples/E101-sexp-error-context.md	docs/examples/E101-sexp-error-context.md	md	slice 7 | doc hoist, sorted by role
+examples/E102-sexp-enhancements.md	docs/examples/E102-sexp-enhancements.md	md	slice 7 | doc hoist, sorted by role
+examples/E103-term-raw.md	docs/examples/E103-term-raw.md	md	slice 7 | doc hoist, sorted by role
+examples/E104-pty-crossings.md	docs/examples/E104-pty-crossings.md	md	slice 7 | doc hoist, sorted by role
+examples/E106-linear-cap-collection.md	docs/examples/E106-linear-cap-collection.md	md	slice 7 | doc hoist, sorted by role
+examples/E107-cap-close.md	docs/examples/E107-cap-close.md	md	slice 7 | doc hoist, sorted by role
+examples/E108-shift-ops.md	docs/examples/E108-shift-ops.md	md	slice 7 | doc hoist, sorted by role
+examples/E109-bput-u16-le.md	docs/examples/E109-bput-u16-le.md	md	slice 7 | doc hoist, sorted by role
+examples/E11-totality-checker.md	docs/examples/E11-totality-checker.md	md	slice 7 | doc hoist, sorted by role
+examples/E110-cloexec-pty.md	docs/examples/E110-cloexec-pty.md	md	slice 7 | doc hoist, sorted by role
+examples/E111-cell-store.md	docs/examples/E111-cell-store.md	md	slice 7 | doc hoist, sorted by role
+examples/E112-apc-sidechannel.md	docs/examples/E112-apc-sidechannel.md	md	slice 7 | doc hoist, sorted by role
+examples/E113-pool-read.md	docs/examples/E113-pool-read.md	md	slice 7 | doc hoist, sorted by role
+examples/E12-effect-membrane.md	docs/examples/E12-effect-membrane.md	md	slice 7 | doc hoist, sorted by role
+examples/E120-native-pool.md	docs/examples/E120-native-pool.md	md	slice 7 | doc hoist, sorted by role
+examples/E121-fcntl.md	docs/examples/E121-fcntl.md	md	slice 7 | doc hoist, sorted by role
+examples/E122-native-pool-create.md	docs/examples/E122-native-pool-create.md	md	slice 7 | doc hoist, sorted by role
+examples/E123-native-porttype-carrier.md	docs/examples/E123-native-porttype-carrier.md	md	slice 7 | doc hoist, sorted by role
+examples/E124-adopt-fd.md	docs/examples/E124-adopt-fd.md	md	slice 7 | doc hoist, sorted by role
+examples/E125-sock-use.md	docs/examples/E125-sock-use.md	md	slice 7 | doc hoist, sorted by role
+examples/E126-socketpair.md	docs/examples/E126-socketpair.md	md	slice 7 | doc hoist, sorted by role
+examples/E127-sock-connect.md	docs/examples/E127-sock-connect.md	md	slice 7 | doc hoist, sorted by role
+examples/E128-apc-handshake.md	docs/examples/E128-apc-handshake.md	md	slice 7 | doc hoist, sorted by role
+examples/E129-sock-connect-in.md	docs/examples/E129-sock-connect-in.md	md	slice 7 | doc hoist, sorted by role
+examples/E13-debruijn.md	docs/examples/E13-debruijn.md	md	slice 7 | doc hoist, sorted by role
+examples/E130-http-native.md	docs/examples/E130-http-native.md	md	slice 7 | doc hoist, sorted by role
+examples/E131-sse-stream.md	docs/examples/E131-sse-stream.md	md	slice 7 | doc hoist, sorted by role
+examples/E133-manas-core-types.md	docs/examples/E133-manas-core-types.md	md	slice 7 | doc hoist, sorted by role
+examples/E134-gate.md	docs/examples/E134-gate.md	md	slice 7 | doc hoist, sorted by role
+examples/E135-bind.md	docs/examples/E135-bind.md	md	slice 7 | doc hoist, sorted by role
+examples/E136-match-assemble-stop.md	docs/examples/E136-match-assemble-stop.md	md	slice 7 | doc hoist, sorted by role
+examples/E138-run-loop.md	docs/examples/E138-run-loop.md	md	slice 7 | doc hoist, sorted by role
+examples/E139-be-log.md	docs/examples/E139-be-log.md	md	slice 7 | doc hoist, sorted by role
+examples/E14-pretty-printer.md	docs/examples/E14-pretty-printer.md	md	slice 7 | doc hoist, sorted by role
+examples/E140-profiles-docrefine.md	docs/examples/E140-profiles-docrefine.md	md	slice 7 | doc hoist, sorted by role
+examples/E141-golden-conformance.md	docs/examples/E141-golden-conformance.md	md	slice 7 | doc hoist, sorted by role
+examples/E144-str-porttype-carrier.md	docs/examples/E144-str-porttype-carrier.md	md	slice 7 | doc hoist, sorted by role
+examples/E15-reference-interpreter.md	docs/examples/E15-reference-interpreter.md	md	slice 7 | doc hoist, sorted by role
+examples/E150-argv.md	docs/examples/E150-argv.md	md	slice 7 | doc hoist, sorted by role
+examples/E151-ord-dedup.md	docs/examples/E151-ord-dedup.md	md	slice 7 | doc hoist, sorted by role
+examples/E156-sort-adopt.md	docs/examples/E156-sort-adopt.md	md	slice 7 | doc hoist, sorted by role
+examples/E157-typed-diagnostics.md	docs/examples/E157-typed-diagnostics.md	md	slice 7 | doc hoist, sorted by role
+examples/E16-lowering.md	docs/examples/E16-lowering.md	md	slice 7 | doc hoist, sorted by role
+examples/E161-REQUIREMENTS.md	docs/examples/E161-REQUIREMENTS.md	md	slice 7 | doc hoist, sorted by role
+examples/E161-kind-identifier.md	docs/examples/E161-kind-identifier.md	md	slice 7 | doc hoist, sorted by role
+examples/E166-mach-c.md	docs/examples/E166-mach-c.md	md	slice 7 | doc hoist, sorted by role
+examples/E168-test-floor.md	docs/examples/E168-test-floor.md	md	slice 7 | doc hoist, sorted by role
+examples/E17-optimizer.md	docs/examples/E17-optimizer.md	md	slice 7 | doc hoist, sorted by role
+examples/E170-corpus-migration.md	docs/examples/E170-corpus-migration.md	md	slice 7 | doc hoist, sorted by role
+examples/E172-NAME-MAP.md	docs/examples/E172-NAME-MAP.md	md	slice 7 | doc hoist, sorted by role
+examples/E172-file-kinds.md	docs/examples/E172-file-kinds.md	md	slice 7 | doc hoist, sorted by role
+examples/E18-tal-check.md	docs/examples/E18-tal-check.md	md	slice 7 | doc hoist, sorted by role
+examples/E20-loader.md	docs/examples/E20-loader.md	md	slice 7 | doc hoist, sorted by role
+examples/E21-arena.md	docs/examples/E21-arena.md	md	slice 7 | doc hoist, sorted by role
+examples/E22-regions.md	docs/examples/E22-regions.md	md	slice 7 | doc hoist, sorted by role
+examples/E24-i64-arith.md	docs/examples/E24-i64-arith.md	md	slice 7 | doc hoist, sorted by role
+examples/E25-byte-cells.md	docs/examples/E25-byte-cells.md	md	slice 7 | doc hoist, sorted by role
+examples/E26-alarm-control-flow.md	docs/examples/E26-alarm-control-flow.md	md	slice 7 | doc hoist, sorted by role
+examples/E27-dict-set-to-maps.md	docs/examples/E27-dict-set-to-maps.md	md	slice 7 | doc hoist, sorted by role
+examples/E28-mmap-crossings.md	docs/examples/E28-mmap-crossings.md	md	slice 7 | doc hoist, sorted by role
+examples/E29-sockets.md	docs/examples/E29-sockets.md	md	slice 7 | doc hoist, sorted by role
+examples/E30-fd-passing.md	docs/examples/E30-fd-passing.md	md	slice 7 | doc hoist, sorted by role
+examples/E31-poll.md	docs/examples/E31-poll.md	md	slice 7 | doc hoist, sorted by role
+examples/E32-clock-exit-env.md	docs/examples/E32-clock-exit-env.md	md	slice 7 | doc hoist, sorted by role
+examples/E33-process-spawn.md	docs/examples/E33-process-spawn.md	md	slice 7 | doc hoist, sorted by role
+examples/E34-elf-writer.md	docs/examples/E34-elf-writer.md	md	slice 7 | doc hoist, sorted by role
+examples/E38-graded-cost.md	docs/examples/E38-graded-cost.md	md	slice 7 | doc hoist, sorted by role
+examples/E39-effect-row.md	docs/examples/E39-effect-row.md	md	slice 7 | doc hoist, sorted by role
+examples/E40-secret-custody.md	docs/examples/E40-secret-custody.md	md	slice 7 | doc hoist, sorted by role
+examples/E41-region-types.md	docs/examples/E41-region-types.md	md	slice 7 | doc hoist, sorted by role
+examples/E42-alarm-supervisor.md	docs/examples/E42-alarm-supervisor.md	md	slice 7 | doc hoist, sorted by role
+examples/E45-reflective-floor.md	docs/examples/E45-reflective-floor.md	md	slice 7 | doc hoist, sorted by role
+examples/E47-sized-types.md	docs/examples/E47-sized-types.md	md	slice 7 | doc hoist, sorted by role
+examples/E48-telescopes.md	docs/examples/E48-telescopes.md	md	slice 7 | doc hoist, sorted by role
+examples/E50-mutual-lex-termination.md	docs/examples/E50-mutual-lex-termination.md	md	slice 7 | doc hoist, sorted by role
+examples/E51-sys-linkage.md	docs/examples/E51-sys-linkage.md	md	slice 7 | doc hoist, sorted by role
+examples/E52-certificate-split.md	docs/examples/E52-certificate-split.md	md	slice 7 | doc hoist, sorted by role
+examples/E53-ddc-bootstrap.md	docs/examples/E53-ddc-bootstrap.md	md	slice 7 | doc hoist, sorted by role
+examples/E57-staging-modality.md	docs/examples/E57-staging-modality.md	md	slice 7 | doc hoist, sorted by role
+examples/E69-closure-conversion.md	docs/examples/E69-closure-conversion.md	md	slice 7 | doc hoist, sorted by role
+examples/E70-effectful-lowering.md	docs/examples/E70-effectful-lowering.md	md	slice 7 | doc hoist, sorted by role
+examples/E71-golden-restructure.md	docs/examples/E71-golden-restructure.md	md	slice 7 | doc hoist, sorted by role
+examples/E72-re-bootstrap.md	docs/examples/E72-re-bootstrap.md	md	slice 7 | doc hoist, sorted by role
+examples/E76-tal-check-chokepoint-port.md	docs/examples/E76-tal-check-chokepoint-port.md	md	slice 7 | doc hoist, sorted by role
+examples/E80-cap-to-main.md	docs/examples/E80-cap-to-main.md	md	slice 7 | doc hoist, sorted by role
+examples/E81-alloc-seam.md	docs/examples/E81-alloc-seam.md	md	slice 7 | doc hoist, sorted by role
+examples/E86-ioctl-crossing.md	docs/examples/E86-ioctl-crossing.md	md	slice 7 | doc hoist, sorted by role
+examples/E87-import-resolution.md	docs/examples/E87-import-resolution.md	md	slice 7 | doc hoist, sorted by role
+examples/E88-mark-region.md	docs/examples/E88-mark-region.md	md	slice 7 | doc hoist, sorted by role
+examples/E89-arena-init.md	docs/examples/E89-arena-init.md	md	slice 7 | doc hoist, sorted by role
+examples/E90-arena-grow-crossing.md	docs/examples/E90-arena-grow-crossing.md	md	slice 7 | doc hoist, sorted by role
+examples/E91-growing-allocator.md	docs/examples/E91-growing-allocator.md	md	slice 7 | doc hoist, sorted by role
+examples/E92-effect-chain-decoupling.md	docs/examples/E92-effect-chain-decoupling.md	md	slice 7 | doc hoist, sorted by role
+examples/E93-lowering-multi-pass.md	docs/examples/E93-lowering-multi-pass.md	md	slice 7 | doc hoist, sorted by role
+examples/E94-form-type-capacity.md	docs/examples/E94-form-type-capacity.md	md	slice 7 | doc hoist, sorted by role
+examples/E95-effectful-mutual-recursion.md	docs/examples/E95-effectful-mutual-recursion.md	md	slice 7 | doc hoist, sorted by role
+examples/E96-bitwise-ops.md	docs/examples/E96-bitwise-ops.md	md	slice 7 | doc hoist, sorted by role
+examples/E97-skip-chain-diagnostics.md	docs/examples/E97-skip-chain-diagnostics.md	md	slice 7 | doc hoist, sorted by role
+examples/E98-honest-crossing-table.md	docs/examples/E98-honest-crossing-table.md	md	slice 7 | doc hoist, sorted by role
+examples/E99-ioctl-out-cells.md	docs/examples/E99-ioctl-out-cells.md	md	slice 7 | doc hoist, sorted by role
+examples/INDEX.md	docs/examples/INDEX.md	md	slice 7 | doc hoist, sorted by role
+examples/PLAN-2026-07-13.md	docs/examples/PLAN-2026-07-13.md	md	slice 7 | doc hoist, sorted by role
+examples/PLAN-2026-07-13b.md	docs/examples/PLAN-2026-07-13b.md	md	slice 7 | doc hoist, sorted by role
+examples/PLAN-2026-07-21-effect-algebra.md	docs/examples/PLAN-2026-07-21-effect-algebra.md	md	slice 7 | doc hoist, sorted by role
+examples/PLAN-2026-07-24-lanes-2-4-specs.md	docs/examples/PLAN-2026-07-24-lanes-2-4-specs.md	md	slice 7 | doc hoist, sorted by role
+examples/U13-typed-document-seam.md	docs/examples/U13-typed-document-seam.md	md	slice 7 | doc hoist, sorted by role
+examples/_CHEATSHEET.md	docs/examples/_CHEATSHEET.md	md	slice 7 | doc hoist, sorted by role
+examples/_TEMPLATE.md	docs/examples/_TEMPLATE.md	md	slice 7 | doc hoist, sorted by role
+examples/refs/README.md	docs/examples/refs/README.md	md	slice 7 | doc hoist, sorted by role
+examples/refs/gen-clock.py	docs/examples/refs/gen-clock.py	md	slice 7 | doc hoist, sorted by role
+examples/refs/gen-elf.py	docs/examples/refs/gen-elf.py	md	slice 7 | doc hoist, sorted by role
+examples/refs/gen-fdpass.py	docs/examples/refs/gen-fdpass.py	md	slice 7 | doc hoist, sorted by role
+examples/refs/gen-poll.py	docs/examples/refs/gen-poll.py	md	slice 7 | doc hoist, sorted by role
+examples/refs/ref-clock.md	docs/examples/refs/ref-clock.md	md	slice 7 | doc hoist, sorted by role
+examples/refs/ref-elf.md	docs/examples/refs/ref-elf.md	md	slice 7 | doc hoist, sorted by role
+examples/refs/ref-fdpass.md	docs/examples/refs/ref-fdpass.md	md	slice 7 | doc hoist, sorted by role
+examples/refs/ref-poll.md	docs/examples/refs/ref-poll.md	md	slice 7 | doc hoist, sorted by role
+scaffold/AUDIT.md	docs/implementation/AUDIT.md	md	slice 7 | doc hoist, sorted by role
+scaffold/README.md	docs/implementation/README.md	md	slice 7 | doc hoist, sorted by role
+scaffold/bench/OPT-CHECKLIST.md	docs/benchmarks/OPT-CHECKLIST.md	md	slice 7 | doc hoist, sorted by role
+scaffold/bench/OPT-LEDGER.md	docs/benchmarks/OPT-LEDGER.md	md	slice 7 | doc hoist, sorted by role
+scaffold/bench/OPTIMIZATIONS-TODO.md	docs/benchmarks/OPTIMIZATIONS-TODO.md	md	slice 7 | doc hoist, sorted by role
+scaffold/bench/RESULTS-2026-08-01.md	docs/benchmarks/RESULTS-2026-08-01.md	md	slice 7 | doc hoist, sorted by role
+scaffold/bench/TRAIT-OPTS.md	docs/benchmarks/TRAIT-OPTS.md	md	slice 7 | doc hoist, sorted by role
+scaffold/docs/orchestration.md	docs/implementation/orchestration.md	md	slice 7 | doc hoist, sorted by role
+scaffold/docs/rd-packed-cert.md	docs/implementation/rd-packed-cert.md	md	slice 7 | doc hoist, sorted by role
+scaffold/docs/reg-disciplines.md	docs/implementation/reg-disciplines.md	md	slice 7 | doc hoist, sorted by role
+scaffold/lib/manas/chatter/divide-test.metis	prog/manas/chatter/divide-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/chatter/divide.metis	prog/manas/chatter/divide.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/chatter/egress-test.metis	prog/manas/chatter/egress-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/chatter/egress.metis	prog/manas/chatter/egress.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/chatter/orchestrate-test.metis	prog/manas/chatter/orchestrate-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/chatter/orchestrate.metis	prog/manas/chatter/orchestrate.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/chatter/router-test.metis	prog/manas/chatter/router-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/chatter/router.metis	prog/manas/chatter/router.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/chatter/turn-test.metis	prog/manas/chatter/turn-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/chatter/turn.metis	prog/manas/chatter/turn.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/contract/golden.metis	prog/manas/contract/golden.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/contract/manifest.metis	prog/manas/contract/manifest.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/assemble.metis	prog/manas/core/assemble.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/bind.metis	prog/manas/core/bind.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/builder-sg5-test.metis	prog/manas/core/builder-sg5-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/core/builder-test.metis	prog/manas/core/builder-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/core/builder.metis	prog/manas/core/builder.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/flow-persist-test.metis	prog/manas/core/flow-persist-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/core/flow-persist.metis	prog/manas/core/flow-persist.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/flow-test.metis	prog/manas/core/flow-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/core/flow.metis	prog/manas/core/flow.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/gate.metis	prog/manas/core/gate.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/match.metis	prog/manas/core/match.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/skill-test.metis	prog/manas/core/skill-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/core/skill.metis	prog/manas/core/skill.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/stop.metis	prog/manas/core/stop.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/types.metis	prog/manas/core/types.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/compose.metis	prog/manas/pipeline/compose.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/guarded.metis	prog/manas/pipeline/guarded.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/log.metis	prog/manas/pipeline/log.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/persist-test.metis	prog/manas/pipeline/persist-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/pipeline/persist.metis	prog/manas/pipeline/persist.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/plan.metis	prog/manas/pipeline/plan.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/runner.metis	prog/manas/pipeline/runner.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/code-test-test.metis	prog/manas/profile/code-test-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/code-test.metis	prog/manas/profile/code-test.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/decision-test.metis	prog/manas/profile/decision-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/decision.metis	prog/manas/profile/decision.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/deep-research-test.metis	prog/manas/profile/deep-research-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/deep-research.metis	prog/manas/profile/deep-research.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/doc-edit-test.metis	prog/manas/profile/doc-edit-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/doc-edit.metis	prog/manas/profile/doc-edit.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/doc-refine.metis	prog/manas/profile/doc-refine.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/evidence-sift-refined.metis	prog/manas/profile/evidence-sift-refined.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/evidence-sift-test.metis	prog/manas/profile/evidence-sift-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/evidence-sift.metis	prog/manas/profile/evidence-sift.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/profiles.metis	prog/manas/profile/profiles.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/research-test.metis	prog/manas/profile/research-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/research.metis	prog/manas/profile/research.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/skills-test.metis	prog/manas/profile/skills-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/skills.metis	prog/manas/profile/skills.chiral	chiral	slice 4 | map: no entry -> module | default
+agent/agent.metis	prog/agent/agent.chiral	chiral	slice 8 | no entry -> module
+agent/tools-fs.metis	prog/agent/tools-fs.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/_eff.metis	prog/demo/_eff.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/_recurse-ceiling.metis	prog/demo/_recurse-ceiling.prog	prog	slice 8 | entry -> program
+scaffold/demo/_ref.metis	prog/demo/_ref.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/_ref2.metis	prog/demo/_ref2.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/_tal.metis	prog/demo/_tal.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/_type.metis	prog/demo/_type.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/behavior.metis	prog/demo/behavior.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/duo.metis	prog/demo/duo.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/e51-hello.metis	prog/demo/e51-hello.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/headless.metis	prog/demo/headless.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/mood.metis	prog/demo/mood.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/node-render.metis	prog/demo/node-render.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/node-sensor.metis	prog/demo/node-sensor.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/passman-min.metis	prog/demo/passman-min.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/profile-duo.metis	prog/demo/profile-duo.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/profile-headless.metis	prog/demo/profile-headless.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/profile-node-render.metis	prog/demo/profile-node-render.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/profile-node-sensor.metis	prog/demo/profile-node-sensor.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/profile-tomodachi.metis	prog/demo/profile-tomodachi.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/sensor-core.metis	prog/demo/sensor-core.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/sprites.metis	prog/demo/sprites.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/tomodachi.metis	prog/demo/tomodachi.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/verify-total.metis	prog/demo/verify-total.chiral	chiral	slice 8 | no entry -> module
+scaffold/demo/wl-client.metis	prog/demo/wl-client.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/a5_be_chat.metis	prog/samples/a5_be_chat.prog	prog	slice 8 | entry -> program
+scaffold/samples/a5_proc_spawn.metis	prog/samples/a5_proc_spawn.prog	prog	slice 8 | entry -> program
+scaffold/samples/agent-probe.metis	prog/samples/agent-probe.prog	prog	slice 8 | entry -> program
+scaffold/samples/boxed-a.metis	prog/samples/boxed-a.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/boxed-b.metis	prog/samples/boxed-b.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/e103_pty_roundtrip.metis	prog/samples/e103_pty_roundtrip.prog	prog	slice 8 | entry -> program
+scaffold/samples/e103_termios_raw.metis	prog/samples/e103_termios_raw.prog	prog	slice 8 | entry -> program
+scaffold/samples/e106_drain_control.metis	prog/samples/e106_drain_control.prog	prog	slice 8 | entry -> program
+scaffold/samples/e106_reject_drop_tail.metis	prog/samples/e106_reject_drop_tail.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/e106_reject_length.metis	prog/samples/e106_reject_length.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/e106_reject_list_cap.metis	prog/samples/e106_reject_list_cap.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/e106_reject_nonlinear_field.metis	prog/samples/e106_reject_nonlinear_field.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/e106_sockvec_accept.metis	prog/samples/e106_sockvec_accept.prog	prog	slice 8 | entry -> program
+scaffold/samples/e108_shift.metis	prog/samples/e108_shift.prog	prog	slice 8 | entry -> program
+scaffold/samples/e109_bput_u16_le.metis	prog/samples/e109_bput_u16_le.prog	prog	slice 8 | entry -> program
+scaffold/samples/e123_porttype_carrier.metis	prog/samples/e123_porttype_carrier.prog	prog	slice 8 | entry -> program
+scaffold/samples/e124_adopt_roundtrip.metis	prog/samples/e124_adopt_roundtrip.prog	prog	slice 8 | entry -> program
+scaffold/samples/e124_reject_double_close.metis	prog/samples/e124_reject_double_close.prog	prog	slice 8 | entry -> program
+scaffold/samples/e124_reject_drop.metis	prog/samples/e124_reject_drop.prog	prog	slice 8 | entry -> program
+scaffold/samples/e124_reject_use_after_move.metis	prog/samples/e124_reject_use_after_move.prog	prog	slice 8 | entry -> program
+scaffold/samples/e125_send_recv_roundtrip.metis	prog/samples/e125_send_recv_roundtrip.prog	prog	slice 8 | entry -> program
+scaffold/samples/e126_reject_double_close.metis	prog/samples/e126_reject_double_close.prog	prog	slice 8 | entry -> program
+scaffold/samples/e126_reject_drop.metis	prog/samples/e126_reject_drop.prog	prog	slice 8 | entry -> program
+scaffold/samples/e126_socketpair_drain.metis	prog/samples/e126_socketpair_drain.prog	prog	slice 8 | entry -> program
+scaffold/samples/e127_sock_connect_err.metis	prog/samples/e127_sock_connect_err.prog	prog	slice 8 | entry -> program
+scaffold/samples/e129_pack_sa_in.metis	prog/samples/e129_pack_sa_in.prog	prog	slice 8 | entry -> program
+scaffold/samples/e129_parse_quad.metis	prog/samples/e129_parse_quad.prog	prog	slice 8 | entry -> program
+scaffold/samples/e129_sock_connect_in_refused.metis	prog/samples/e129_sock_connect_in_refused.prog	prog	slice 8 | entry -> program
+scaffold/samples/e130_http_get.metis	prog/samples/e130_http_get.prog	prog	slice 8 | entry -> program
+scaffold/samples/e130_http_request_refused.metis	prog/samples/e130_http_request_refused.prog	prog	slice 8 | entry -> program
+scaffold/samples/e130_parse_url.metis	prog/samples/e130_parse_url.prog	prog	slice 8 | entry -> program
+scaffold/samples/e131_sse_framing.metis	prog/samples/e131_sse_framing.prog	prog	slice 8 | entry -> program
+scaffold/samples/e131_sse_socketpair.metis	prog/samples/e131_sse_socketpair.prog	prog	slice 8 | entry -> program
+scaffold/samples/e170_imported_root.metis	prog/samples/e170_imported_root.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/e42_reject_drop_cap.metis	prog/samples/e42_reject_drop_cap.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/e42_reject_let_cap.metis	prog/samples/e42_reject_let_cap.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/e42_reject_pure_as_process.metis	prog/samples/e42_reject_pure_as_process.prog	prog	slice 8 | entry -> program
+scaffold/samples/e42_supervisor_accept.metis	prog/samples/e42_supervisor_accept.prog	prog	slice 8 | entry -> program
+scaffold/samples/e42_supervisor_control.metis	prog/samples/e42_supervisor_control.prog	prog	slice 8 | entry -> program
+scaffold/samples/enum-tag.metis	prog/samples/enum-tag.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/exit42.metis	prog/samples/exit42.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/exit7.metis	prog/samples/exit7.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/manas-builder-live.metis	prog/samples/manas-builder-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-chatter-live.metis	prog/samples/manas-chatter-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-code-test-live.metis	prog/samples/manas-code-test-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-decision-live.metis	prog/samples/manas-decision-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-deep-research-live.metis	prog/samples/manas-deep-research-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-divide-live.metis	prog/samples/manas-divide-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-doc-edit-live.metis	prog/samples/manas-doc-edit-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-evidence-sift-live.metis	prog/samples/manas-evidence-sift-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-evidence-sift-refined-live.metis	prog/samples/manas-evidence-sift-refined-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-flow-branch-live.metis	prog/samples/manas-flow-branch-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-flow-conform.metis	prog/samples/manas-flow-conform.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-flow-green-live.metis	prog/samples/manas-flow-green-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-flow-live.metis	prog/samples/manas-flow-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-flow-stop-live.metis	prog/samples/manas-flow-stop-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-parse-robust-test.metis	prog/samples/manas-parse-robust-test.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-project-builder-live.metis	prog/samples/manas-project-builder-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-research-live.metis	prog/samples/manas-research-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-run-conform.metis	prog/samples/manas-run-conform.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-run-log.metis	prog/samples/manas-run-log.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-run.metis	prog/samples/manas-run.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-skill-live.metis	prog/samples/manas-skill-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/multi-def.metis	prog/samples/multi-def.chiral	chiral	slice 8 | no entry -> module
+scaffold/samples/self-extend-probe.metis	prog/samples/self-extend-probe.prog	prog	slice 8 | entry -> program
+scaffold/samples/slices4_open_create.metis	prog/samples/slices4_open_create.prog	prog	slice 8 | entry -> program
+scaffold/samples/stream-ollama.metis	prog/samples/stream-ollama.prog	prog	slice 8 | entry -> program
+scaffold/samples/t1_child_ctty.metis	prog/samples/t1_child_ctty.prog	prog	slice 8 | entry -> program
+scaffold/samples/t1_child_wiring.metis	prog/samples/t1_child_wiring.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/flag1-direct.metis	tools/test/samples/_wip/flag1-direct.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/flag1.metis	tools/test/samples/_wip/flag1.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/flag2-ctl.metis	tools/test/samples/_wip/flag2-ctl.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/flag2-k0.metis	tools/test/samples/_wip/flag2-k0.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/flag2.metis	tools/test/samples/_wip/flag2.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-01-nocap-inline.metis	tools/test/samples/_wip/p1a-01-nocap-inline.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-02-cap-same-fn.metis	tools/test/samples/_wip/p1a-02-cap-same-fn.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-03-cap-one-instance.metis	tools/test/samples/_wip/p1a-03-cap-one-instance.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-04-cap-fat-arrow.metis	tools/test/samples/_wip/p1a-04-cap-fat-arrow.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-05-cap-arity2.metis	tools/test/samples/_wip/p1a-05-cap-arity2.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-06-cap-use-helper.metis	tools/test/samples/_wip/p1a-06-cap-use-helper.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-07-nocap-named-in-fn.metis	tools/test/samples/_wip/p1a-07-nocap-named-in-fn.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-08-letbound-lam.metis	tools/test/samples/_wip/p1a-08-letbound-lam.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-09-closure-no-record.metis	tools/test/samples/_wip/p1a-09-closure-no-record.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-10-partial-app-global.metis	tools/test/samples/_wip/p1a-10-partial-app-global.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-11-mkadder-into-record.metis	tools/test/samples/_wip/p1a-11-mkadder-into-record.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-12-hof-arg-no-record.metis	tools/test/samples/_wip/p1a-12-hof-arg-no-record.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-13-hof-arg-capture.metis	tools/test/samples/_wip/p1a-13-hof-arg-capture.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-14-the-annotated-lam.metis	tools/test/samples/_wip/p1a-14-the-annotated-lam.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-15-the-nocap.metis	tools/test/samples/_wip/p1a-15-the-nocap.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-16-three-instances-mkadder.metis	tools/test/samples/_wip/p1a-16-three-instances-mkadder.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-17-partial-app-3.metis	tools/test/samples/_wip/p1a-17-partial-app-3.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-18-three-the-inline-case.metis	tools/test/samples/_wip/p1a-18-three-the-inline-case.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-19-three-the-use-helper.metis	tools/test/samples/_wip/p1a-19-three-the-use-helper.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-20-k0-projector.metis	tools/test/samples/_wip/p1a-20-k0-projector.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-21-the-projector-single.metis	tools/test/samples/_wip/p1a-21-the-projector-single.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-22-projector-the-nocap.metis	tools/test/samples/_wip/p1a-22-projector-the-nocap.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-23-projector-partialapp.metis	tools/test/samples/_wip/p1a-23-projector-partialapp.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-24-buffer-as-object.metis	tools/test/samples/_wip/p1a-24-buffer-as-object.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-25-projector-named-in-fn.metis	tools/test/samples/_wip/p1a-25-projector-named-in-fn.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-26-projector-inline-con.metis	tools/test/samples/_wip/p1a-26-projector-inline-con.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-27-two-lam-sites-same-arrow.metis	tools/test/samples/_wip/p1a-27-two-lam-sites-same-arrow.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-28-closure-captures-str.metis	tools/test/samples/_wip/p1a-28-closure-captures-str.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-29-bisect-va-defined-inline-call.metis	tools/test/samples/_wip/p1a-29-bisect-va-defined-inline-call.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-30-bisect-va-plus-mk.metis	tools/test/samples/_wip/p1a-30-bisect-va-plus-mk.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-31-projector-eta.metis	tools/test/samples/_wip/p1a-31-projector-eta.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-32-projector-eta-capture.metis	tools/test/samples/_wip/p1a-32-projector-eta-capture.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-33-projector-2lam-source.metis	tools/test/samples/_wip/p1a-33-projector-2lam-source.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-34-projector-opaque-arg.metis	tools/test/samples/_wip/p1a-34-projector-opaque-arg.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-35-projector-two-consts.metis	tools/test/samples/_wip/p1a-35-projector-two-consts.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/p1a-36-heterogeneous-buffer-list.metis	tools/test/samples/_wip/p1a-36-heterogeneous-buffer-list.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-37-effectful-field.metis	tools/test/samples/_wip/p1a-37-effectful-field.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-38-projector-full-chain-capture.metis	tools/test/samples/_wip/p1a-38-projector-full-chain-capture.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/p1a-39-let-bound-extracted-closure.metis	tools/test/samples/_wip/p1a-39-let-bound-extracted-closure.chiral	chiral	slice 8 | no entry -> module
+scaffold/tests/samples/_wip/v-cap-the.metis	tools/test/samples/_wip/v-cap-the.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/_wip/v-nocap.metis	tools/test/samples/_wip/v-nocap.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e100_poly_ho.metis	tools/test/samples/e100_poly_ho.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e104_pty.metis	tools/test/samples/e104_pty.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e110_cloexec_pty.metis	tools/test/samples/e110_cloexec_pty.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e120_pool_roundtrip.metis	tools/test/samples/e120_pool_roundtrip.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e121_fcntl.metis	tools/test/samples/e121_fcntl.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e125_sock_roundtrip.metis	tools/test/samples/e125_sock_roundtrip.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e134_gate.metis	tools/test/samples/e134_gate.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e135_bind.metis	tools/test/samples/e135_bind.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e136_core.metis	tools/test/samples/e136_core.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e137_backend_linear.metis	tools/test/samples/e137_backend_linear.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e138_spine.metis	tools/test/samples/e138_spine.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e139_roundtrip.metis	tools/test/samples/e139_roundtrip.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e140_profiles.metis	tools/test/samples/e140_profiles.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e141_conformance.metis	tools/test/samples/e141_conformance.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e145_be_peek_roundtrip.metis	tools/test/samples/e145_be_peek_roundtrip.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e147_nested_ho.metis	tools/test/samples/e147_nested_ho.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e151_string_stdlib.metis	tools/test/samples/e151_string_stdlib.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e152_list_sort.metis	tools/test/samples/e152_list_sort.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e156_dedup_adj.metis	tools/test/samples/e156_dedup_adj.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e166_c_assemble.metis	{DELETED 2026-09-01 -- was tools/test/samples/e166_c_assemble.prog}	prog	dropped with the C backend (d8bcec5 the modules, d0c5dd5 the fixtures): a second target under one formulation, never a second judgment core. The brace form is how this map marks a new_path that is not one checkable path; a blank new_path does NOT work, map-integrity.sh collapses tab runs and silently PASSES such a row. Original reason: slice 8 | entry -> program
+scaffold/tests/samples/e166_ddc_legc.metis	{DELETED 2026-09-01 -- was tools/test/samples/e166_ddc_legc.prog}	prog	dropped with the C backend (d8bcec5 the modules, d0c5dd5 the fixtures): a second target under one formulation, never a second judgment core. The brace form is how this map marks a new_path that is not one checkable path; a blank new_path does NOT work, map-integrity.sh collapses tab runs and silently PASSES such a row. Original reason: slice 8 | entry -> program
+scaffold/tests/samples/e166_mach_c.metis	{DELETED 2026-09-01 -- was tools/test/samples/e166_mach_c.prog}	prog	dropped with the C backend (d8bcec5 the modules, d0c5dd5 the fixtures): a second target under one formulation, never a second judgment core. The brace form is how this map marks a new_path that is not one checkable path; a blank new_path does NOT work, map-integrity.sh collapses tab runs and silently PASSES such a row. Original reason: slice 8 | entry -> program
+scaffold/tests/samples/e166_mach_c_reject_lda6.metis	{DELETED 2026-09-01 -- was tools/test/samples/e166_mach_c_reject_lda6.prog}	prog	dropped with the C backend (d8bcec5 the modules, d0c5dd5 the fixtures): a second target under one formulation, never a second judgment core. The brace form is how this map marks a new_path that is not one checkable path; a blank new_path does NOT work, map-integrity.sh collapses tab runs and silently PASSES such a row. Original reason: slice 8 | entry -> program
+scaffold/tests/samples/e168_cap_thread.metis	tools/test/samples/e168_cap_thread.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e168_common_mode.metis	tools/test/samples/e168_common_mode.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e168_empty_floor.metis	tools/test/samples/e168_empty_floor.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e168_mut_identical.metis	tools/test/samples/e168_mut_identical.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e168_mut_survived.metis	tools/test/samples/e168_mut_survived.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e168_rank_floor.metis	tools/test/samples/e168_rank_floor.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e168_reject_cap_drop.metis	tools/test/samples/e168_reject_cap_drop.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e168_reject_diff_swap.metis	tools/test/samples/e168_reject_diff_swap.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e168_reject_hand_diff.metis	tools/test/samples/e168_reject_hand_diff.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e168_reject_nocap.metis	tools/test/samples/e168_reject_nocap.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e168_reject_port_twice.metis	tools/test/samples/e168_reject_port_twice.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_conv_eta.metis	tools/test/samples/e170_conv_eta.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_fixed_digest.metis	tools/test/samples/e170_fixed_digest.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_infer_arms.metis	tools/test/samples/e170_infer_arms.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_port_twin.metis	tools/test/samples/e170_port_twin.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_port_zeros.metis	tools/test/samples/e170_port_zeros.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_qtt_semiring.metis	tools/test/samples/e170_qtt_semiring.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_refine_top.metis	tools/test/samples/e170_refine_top.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_reject_cap_lost.metis	tools/test/samples/e170_reject_cap_lost.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_reject_cap_reuse.metis	tools/test/samples/e170_reject_cap_reuse.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_reject_pool_size.metis	tools/test/samples/e170_reject_pool_size.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_reject_port_swap.metis	tools/test/samples/e170_reject_port_swap.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_reject_recv_zero.metis	tools/test/samples/e170_reject_recv_zero.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_reject_secret_leak.metis	tools/test/samples/e170_reject_secret_leak.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_resolve_observe.metis	tools/test/samples/e170_resolve_observe.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/e170_suite_main.metis	tools/test/samples/e170_suite_main.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/manas_parse_findings.metis	tools/test/samples/manas_parse_findings.prog	prog	slice 8 | entry -> program
+scaffold/tests/samples/s16_compose.metis	tools/test/samples/s16_compose.prog	prog	slice 8 | entry -> program
