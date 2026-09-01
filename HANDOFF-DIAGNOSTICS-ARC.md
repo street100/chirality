@@ -1,4 +1,19 @@
-# Diagnostics arc — handoff (2026-08-31)
+# Diagnostics arc — LANE A tracker
+
+> **⚑ TWO LANES ARE LIVE (2026-08-31).** This file tracks **Lane A — diagnostics
+> and errors**. **Lane B — file types (E146 · E163 · E183)** is running in another
+> session; do not touch its files, its gate phases (21–23) or its element band
+> (E190–E195). The division, and what mechanically enforces it, is **`LANES.md`**.
+>
+> **Lane A owns:** `E181` pretty · `E182` arity evidence · `E176` `str-sub` ·
+> `E179` face registry · `E180` face redraw · adoption of `dg-doc`.
+> **Gate phases 18–20. Element band E184–E189.**
+>
+> **Lane A's next action: E181** — `typing/pretty.chiral` repointed at the real
+> `Term`, returning `Doc`. It is the named target the last session built four
+> elements around and never did, and it is Lane B's prerequisite too, so it goes
+> first.
+
 
 **Self-contained.** A fresh session should be able to resume from this file alone.
 **Updated 2026-08-31 after E158 commit 4 landed** (`34a6dfb`, `688888c`) — the
@@ -115,7 +130,18 @@ Suite: **268 assertions, 0 failed, 12 phases, exit 0** (211 → 249 → 268; the
 last delta is Phase 17's 19, and Phases 13/14/15/16 are unchanged at
 30/26/41/38). All four pre-existing gate scripts are byte-identical by sha256.
 
-## ⚑ The one next action
+## Lane A queue
+
+| # | element | state |
+|---|---|---|
+| 1 | **E181** `pretty` → real `Term`, returns `Doc` | **NEXT** — 51 lines, own local 5-ctor `Term` vs the real 15, `Str`-typed, **zero importers** |
+| 2 | **E182** the arity judgments carry their arity | not built — retires 3 of `Judg`'s 38 nullary arms |
+| 3 | **E176** `str-sub` unclamped, **segfaults**, 131 call sites | not built — safety asserted in a comment |
+| 4 | **E179** the face registry becomes authoritative | not built — 5 ad-hoc sites + `lookup-face` synthesis |
+| 5 | **E180** face-aware incremental redraw | not built — unreachable today, the hazard E175 creates |
+| 6 | **adoption** — a real `prog/` consumer renders through `Doc` | not done — `dg-doc`/`doc->rendering` imported only by `lib/` |
+
+## ⚑ The arc's completed set (do not redo)
 
 **Rebase `e158-doc` onto master and merge.** The arc has nothing unbuilt left in
 it; see *After E158 commit 4* below.
