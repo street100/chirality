@@ -1,7 +1,7 @@
 ---
-node: checklists-baseline-alignment
+node: records-baseline-alignment
 layer: navigation
-related: [checklists/README, status-ledger, open-edges, testing-floors, index]
+related: [records/README, status-ledger, open-edges, testing-floors, index]
 status: current
 updated: 2026-09-01
 ---
@@ -13,7 +13,7 @@ since apparently we do not. Every row is a claim this repo makes about itself
 beside what was measured.
 
 Row format, states and the rules for adding, changing and retiring a row are in
-[[checklists/README]]. Prefix is `BA`.
+[[records/README]]. Prefix is `BA`.
 
 This arc has NO reserved element number block. `LANES.md` reserves E184-E189 and
 E190-E195 for the two diagnostics lanes. Rows needing an element carry
@@ -204,12 +204,12 @@ tree lacks, or at a guess, passes by looking at nothing.
 
 ### BA-18 `MAP.md` says `docs/elements/` is empty
 
-- state:    OPEN
+- state:    FIXED
 - claim:    "`elements/` is empty and stays empty until something derives it. Element status must come from a build-state authority."
-- measured: `docs/elements/` holds `diagnostics-arc.md`, 37.7 KB, added by `9016bef` and revised by `c273971`. Its opening states why it is hand-written and tracked: `.planning/` is git-ignored, so an element fact a second reader needs cannot live there. The two positions are both defensible and they contradict. MAP.md is the contract, so the contract is the side that is stale.
-- evidence: `MAP.md:159`, `docs/elements/diagnostics-arc.md:11-19`
+- measured: both sides moved, 2026-09-01. The two files in `docs/elements/` were arc files, so they went to a new `docs/arcs/` tier by `git mv`; `docs/elements/` now holds a README stating what the tier is for and that the shape of a tracked element row is an open author call. `MAP.md`'s paragraph was replaced by a "Goals, arcs, elements" section describing what each of the three directories holds. The build-state-authority half of the claim survives unchanged: element status still comes from `docs/definitions/status-ledger.md`.
+- evidence: `MAP.md` section "Goals, arcs, elements", `docs/elements/README.md`, `docs/arcs/README.md`
 - checked:  2026-09-01
-- element:  UNASSIGNED
+- element:  none
 
 ## Residue from the gate repair, 2026-09-01
 

@@ -2,7 +2,8 @@
 
 **Written 2026-08-31** so two sessions can run at once without colliding. Read
 this before starting either lane. The chain both lanes serve is at the top of
-`HANDOFF-DIAGNOSTICS-ARC.md`; this file is only the *division*.
+`docs/arcs/diagnostics-arc.md` (was `HANDOFF-DIAGNOSTICS-ARC.md`, moved
+2026-09-01); this file is only the *division*.
 
 ---
 
@@ -120,8 +121,8 @@ by side. Nothing detected it.
 **The guard, and it is now structural rather than a convention.** Each lane mints
 inside its own band (**A: E184–E189, B: E190–E195**), and a new element's row lands
 in **two tracked files** in the same change that mints it:
-`docs/examples/INDEX.md` and **`docs/elements/`**. Those are the only tracked
-homes, so they are the only collision detectors that exist — and unlike
+`docs/examples/INDEX.md` and the arc's file under **`docs/arcs/`**. Those are the
+only tracked homes, so they are the only collision detectors that exist — and unlike
 `.planning/`, they do not fork per worktree. `.planning/` keeps the working detail
 (change plans, decision tables, SPEC bodies), which may die with a worktree
 without costing anything.

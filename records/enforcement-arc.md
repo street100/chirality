@@ -1,7 +1,7 @@
 ---
-node: checklists-enforcement-arc
+node: records-enforcement-arc
 layer: navigation
-related: [checklists/README, status-ledger, enforcement-arc, diagnostics-arc, index]
+related: [records/README, status-ledger, arcs/enforcement-arc, arcs/diagnostics-arc, index]
 status: current
 updated: 2026-09-01
 ---
@@ -12,12 +12,12 @@ Every row is a claim this repo makes about what its compiler enforces and what i
 can measure about its own work, beside what was actually observed.
 
 Row format, states and the rules for adding, changing and retiring a row are in
-[[checklists/README]]. Prefix is `EN`.
+[[records/README]]. Prefix is `EN`.
 
-The arc's element rows live in [[enforcement-arc]]. Its reserved element block is
+The arc's element rows live in [[arcs/enforcement-arc]]. Its reserved element block is
 Lane A's `E184-E189` (`LANES.md`), of which `E184` is minted.
 
-One note on state. [[checklists/README]] has four states and none of them means
+One note on state. [[records/README]] has four states and none of them means
 "the claim reproduced exactly and there is nothing to do". EN-06 is that case and
 is filed `FIXED`, with the reason written into its `measured` line. A fifth state
 is an author call, and the README says so.

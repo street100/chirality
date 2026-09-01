@@ -17,16 +17,22 @@ checkable. See [PRINCIPLES.md](PRINCIPLES.md).
 
 ## The spine (root, locked, plain markdown)
 
-Root holds five documents, plus `LICENSE.md` and `LICENSE.EXCEPTION.md`.
+Root holds six documents, plus `LICENSE.md` and `LICENSE.EXCEPTION.md`.
 Everything that used to float there was sorted on 2026-08-31 into the tier it
-belongs to.
+belongs to, and the arc handoffs followed on 2026-09-01.
 
 - [README.md](README.md): the public front door.
 - [PRINCIPLES.md](PRINCIPLES.md): five principles, one thesis (condensed from
   seven 2026-07-20; a crosswalk in the doc keeps old P1-P7 citations resolving).
+- [PRINCIPLES-SLIM.md](PRINCIPLES-SLIM.md): the same five, condensed.
 - [MAP.md](MAP.md): the tree contract. Extensions, module key, doc roles.
-- [HANDOFF.md](HANDOFF.md): state and route. Where a session starts.
+- [HANDOFF.md](HANDOFF.md): the router. Where a session starts, and which arcs
+  are live. Arc state itself lives in `docs/arcs/`.
 - This file, the contents.
+
+`LANES.md` and `HANDOFF-LANE-A.md` also sit at root while two lanes run in one
+working tree. A lane is who works; an arc is what gets worked. Their home is
+undecided and `HANDOFF.md` records that.
 
 Moved out, and where they went:
 [secure-datum-model](docs/definitions/secure-datum-model.md) and
@@ -59,6 +65,10 @@ set, one idea per note, linked with `[[slug]]`. Groups:
   `insp-oberon` (residential), `insp-erlang-beam`, `insp-capability-os` (mesh),
   `insp-unison` (substrate).
 - Provenance and open work: `dump-integration`, `open-edges`.
+- Goals, arcs, elements (added 2026-09-01): `goals/README` names what this
+  project claims it is doing and which arcs serve each claim; `arcs/README`
+  names the arcs, each carrying its goal, its requirements, its element list and
+  its resume state; `elements/README` states what the element tier still owes.
 - Navigation: `index`, `relations`, `glossary`, `vocabulary`, `perspectives`.
 - Banks (depth tier): `banks/INDEX` — the full refraction of a concept into
   shards, homes, and build-state, under the thin notes above (module, profile,

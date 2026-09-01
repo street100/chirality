@@ -56,7 +56,8 @@ def die(m):
 # where every one of them went.
 DOC_ROLES = ("docs", "docs/definitions", "docs/decisions", "docs/modules",
              "docs/banks", "docs/implementation", "docs/benchmarks",
-             "docs/examples", "docs/elements")
+             "docs/examples", "docs/elements", "records",
+             "docs/goals", "docs/arcs")
 
 def resolve_doc(name):
     cands = [name, f"{name}.md", f"docs/{name}"]

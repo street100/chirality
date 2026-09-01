@@ -120,10 +120,12 @@ lib/
   evidence/    cross-checked truth
 prog/          what chirality ships, as distinct from what it is
 tools/         one folder per tool
-/                  README.md · PRINCIPLES.md · MAP.md · CONTENTS.md ·
-                   HANDOFF.md, plus LICENSE.md and LICENSE.EXCEPTION.md. A
-                   document at root is one a stranger or a tool opens first;
-                   everything else sorts into a tier below.
+/                  README.md · PRINCIPLES.md · PRINCIPLES-SLIM.md · MAP.md ·
+                   CONTENTS.md · HANDOFF.md, plus LICENSE.md and
+                   LICENSE.EXCEPTION.md. A document at root is one a stranger or
+                   a tool opens first; everything else sorts into a tier below.
+                   LANES.md and HANDOFF-LANE-A.md sit at root while two lanes are
+                   live; their home is undecided and HANDOFF.md records that.
 docs/
   index.md         the hub. Notes link by [[slug]], never by path, so a note
                    moves between roles without touching a single link.
@@ -132,11 +134,15 @@ docs/
   modules/         the module map, the module groups, the views
   banks/           the depth tier: one concept refracted into shards + homes
   examples/        one entry per code example
-  elements/        one entry per element: status, relationships, explanation
-  checklists/      one per arc: a claim beside its measurement, with a state.
-                   The one doc tier any agent may edit without asking
+  goals/           one per goal: what the project claims, which arcs serve it
+  arcs/            one per arc: the goal, the requirements, the element list,
+                   the resume state. Its measured history lives in records/
+  elements/        one entry per element. Holds a README only; see below
   implementation/  the source tree described, as distinct from specified
   benchmarks/      measurements, with their dates
+records/           one per arc: a claim beside its measurement, with a state.
+                   NOT under docs/: docs/ is what a reader is handed, records
+                   are what we measured. The one tier any agent may edit
 .planning/         specs, audits, handoffs, captures, the element catalog
 ```
 
@@ -149,13 +155,33 @@ decision is answerable and a definition is not; `banks/` is not `modules/`
 because a bank is the refraction of one concept across many homes while a
 module note describes one home.
 
-`checklists/` is the mutable tier. A checklist row is a claim this repo makes
+`records/` is the mutable tier, and it sits outside `docs/` on purpose: `docs/`
+is the tier a reader is handed, `records/` is what we measured about ourselves.
+A record row is a claim this repo makes
 about itself beside what was measured, carrying a state and a date. Every other
 doc tier is written once and audited; a checklist is extended and amended in
-place by whoever measures something. `docs/checklists/README.md` states the row
+place by whoever measures something. `records/README.md` states the row
 format and the rules. It is tracked for the reason `docs/elements/` is: a finding
 in `.planning/` forks per worktree and dies there.
 
-`elements/` is empty and stays empty until something derives it. Element status
-must come from a build-state authority. The old tree kept ~171 status lines by
-hand and grew the lint checks that exist to catch them drifting.
+## Goals, arcs, elements
+
+Three tiers, added 2026-09-01. A goal is a broad thing this project claims it is
+doing. An arc is the list of elements to be done for one goal, carrying that
+goal's requirements. An element is one catalog item, an `E#`.
+
+`goals/` and `arcs/` are tracked, because `.gitignore:12` excludes `.planning/`
+and an element fact written there forks per worktree. Two sessions minted `E173`
+independently and nothing caught it.
+
+`elements/` holds `README.md` and nothing else. It is the tracked home for
+element rows, and the shape of a row is an open author call: one file per
+element, one per reserved band, or a single index. Underneath it sits the larger
+question of whether the catalog and ledger move out of `.planning/` at all.
+Element *status* does not originate there in any case: it comes from a
+build-state authority, `docs/definitions/status-ledger.md`. The old tree kept ~171 status
+lines by hand and grew the lint checks that exist to catch them drifting.
+
+⚑ This paragraph replaced one that said `elements/` "is empty and stays empty
+until something derives it", which was false from the day the first arc file
+landed in it. `records/baseline-alignment.md` BA-18.

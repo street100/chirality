@@ -1,24 +1,85 @@
 ---
-node: elements-diagnostics
+node: arc-diagnostics
 layer: navigation
-related: [status-ledger, index, enforcement-arc]
+related: [arcs/README, goals/readable-surface, status-ledger, arcs/enforcement-arc, records/diagnostics-arc-record, index]
 status: current
 updated: 2026-09-01
 ---
 
-# Elements — the diagnostics & formatting arc
+# Arc: diagnostics and formatting
 
-**This file is TRACKED, and that is the point.** The element catalog and ledger
-live in `.planning/`, which `.gitignore:12` excludes by design — so each worktree
-carries its **own divergent copy** and nothing there is visible to another reader
-or another session. Two sessions minted `E173` independently and nothing caught
-it. Any element fact a second reader needs lives **here**, not there.
+- goal: [[goals/readable-surface]]
+- reserved element block: `E184-E189`, shared with [[arcs/enforcement-arc]] (`LANES.md`, Lane A)
+- record: [[records/diagnostics-arc-record]]
+- build-state authority: [[status-ledger]]
+- lane resume file: `HANDOFF-LANE-A.md`
 
-`.planning/` remains the working detail (change plans, decision tables, SPECs).
-This is the part that must survive a fresh clone.
+TRACKED, and that is the point. The catalog and ledger live in `.planning/`,
+which `.gitignore:12` excludes by design, so each worktree carries its own
+divergent copy. `.planning/` keeps the working detail: change plans, decision
+tables, SPEC bodies. This is the part that survives a fresh clone.
 
-Build-state authority for the suite as a whole: [[status-ledger]].
-Lane division and what enforces it: `LANES.md`. Lane A resume: `HANDOFF-LANE-A.md`.
+## Why this arc exists
+
+The subject is not diagnostics. Diagnostics are the first consumer. Every one of
+the nine Python tools scans text, reports what it found, and prints the report,
+and this arc builds two of those three: printing, as `Doc` and `pretty`, and
+reporting, as `Reason`. Scanning is the matcher in [[arcs/zero-python-arc]].
+The chain runs on into [[arcs/file-types-arc]] and ends at
+[[goals/self-tooling]].
+
+```
+E157  Reason        the compiler's errors become VALUES with evidence      [BUILT]
+  |
+E158  Doc           a formatter that takes structure and defers flatten    [BUILT]
+  |                 (needed E174 r-row and E175 face restore under it)     [BUILT]
+E181  pretty        the term printer repointed at the REAL Term            [BUILT]
+  |                 lib/surface/pretty.chiral, 30 pp- bindings, 16 arms
+E146  value->source the five emitters return Doc                       [NOT BUILT]
+  |
+E163  .manifest     declared form, derived codec, round-trip gate      [NOT BUILT]
+E183  .protocol     the same law, carried in BYTES                     [NOT BUILT]
+```
+
+## REQUIREMENTS
+
+Done when all five hold. Each is observable.
+
+1. **The error vocabulary is values.** `Reason` is a closed sum carrying
+   evidence, and no diagnostic path builds its message with `str-cat`. E157.
+2. **Layout is deferred, and the algebra stays closed.** `lib/prelude/doc.chiral`
+   has six constructors and no seventh. Two mutants prove it:
+   `tools/test/doc.sh` M5 and `tools/test/render-doc.sh` M10 both add an arm and
+   assert the compile is refused. A lane needing more converts into `Doc` rather
+   than extending it.
+3. **The printer's output is chirality source, over the real `Term`.** All
+   sixteen arms, no `_`. E181, `lib/surface/pretty.chiral`.
+4. **A real `prog/` consumer renders through `Doc`.** Not owed until a consumer
+   outside `lib/` exists. Today `dg-doc` and `doc->rendering` are imported only
+   by `lib/`, which is the fifth built-and-unadopted instance in this repo.
+   E181 narrowed it: the compiler's own `typing/diag` renders terms through
+   `Doc`, so the row is closed inside `lib/`.
+5. **The error-quality rows are closed.** E182 arity evidence, E176 `str-sub`,
+   E179 face registry.
+
+## Resume state, 2026-09-01
+
+Suite 303 assertions, 0 failed, 11 phases, 87 roots, gate PASSED.
+`bin/chirality-bin` 1,147,256 B, promoted by E181, `N1 == N2` at generation one.
+
+Next action is **E182**, the arity judgments carry their arity.
+
+| # | element | state |
+|---|---|---|
+| 1 | E181 `pretty` over the real `Term`, returning `Doc` | **BUILT 2026-09-01.** Moved to `lib/surface/pretty.chiral`; `typing/` was never its role. Phase 18 = 61/0 |
+| 2 | E182 the arity judgments carry their arity | not built. Retires 3 of `Judg`'s 38 nullary arms |
+| 3 | E176 `str-sub` unclamped, segfaults, 131 call sites | not built. The safety was asserted in a comment |
+| 4 | E179 the face registry becomes authoritative | not built. 5 ad-hoc sites plus `lookup-face` synthesis |
+| 5 | E180 face-aware incremental redraw | not built. Unreachable today; the hazard E175 creates |
+| 6 | adoption: a `prog/` consumer renders through `Doc` | not done |
+
+Blockers, hazards and the decisions that each cost a measurement are in
+[[records/diagnostics-arc-record]]. Read it before starting an element here.
 
 ## Built — on master, `gate PASSED`, 303 assertions / 11 phases / 88 roots
 
@@ -107,6 +168,6 @@ Lane A mints in **E184–E189**, Lane B in **E190–E195**. A new element's row 
 in `docs/examples/INDEX.md` **and here** in the same change — those are the only
 two tracked places, and therefore the only collision detectors that exist.
 
-**E184 is minted**, and its rows live in [[enforcement-arc]], the first row of a
+**E184 is minted**, and its rows live in [[arcs/enforcement-arc]], the first row of a
 second tracked arc. The next free number is E185.
 

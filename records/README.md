@@ -1,7 +1,7 @@
 ---
-node: checklists
+node: records
 layer: navigation
-related: [index, status-ledger, open-edges, diagnostics-arc]
+related: [index, status-ledger, open-edges, arcs/README, arcs/diagnostics-arc]
 status: current
 updated: 2026-09-01
 ---
@@ -12,7 +12,7 @@ A checklist is one arc's standing list of things this repo says about itself, ea
 paired with what was measured. One file per arc.
 
 These files are TRACKED. `.gitignore:12` excludes `.planning/`, so a note there
-forks per worktree and dies with it. `docs/elements/diagnostics-arc.md` exists for
+forks per worktree and dies with it. `docs/arcs/diagnostics-arc.md` exists for
 that reason and these files sit on the same footing. A finding written into a
 commit message or a handoff paragraph is gone by the next session. A row here
 survives a fresh clone.
@@ -24,7 +24,8 @@ nowhere to go. Here it becomes a row: the claim, the measurement, a state, the
 evidence, and the date it was last checked.
 
 A checklist carries no build-state authority. [[status-ledger]] holds what is built.
-[[open-edges]] holds what is open by design. `docs/elements/` holds element rows.
+[[open-edges]] holds what is open by design. `docs/arcs/` holds the arcs and
+their element rows.
 A checklist holds the residue: gaps between what a document asserts and what the
 tree does.
 
@@ -89,7 +90,7 @@ deferral rule forbids naming an element that does not exist.
 
 ## Naming
 
-`docs/checklists/<arc>.md`, slug-cased. Link by `[[checklists/<arc>]]`.
+`records/<arc>.md`, slug-cased. Link by `[[records/<arc>]]`.
 
 ## Why a new doc role
 
@@ -97,8 +98,11 @@ deferral rule forbids naming an element that does not exist.
 expected to edit, where `definitions/`, `decisions/` and `elements/` are written
 once and audited. Editability by anyone is the role.
 
-## The checklists
+## The records
 
-- [[checklists/baseline-alignment]]: does the repo do what it claims to do
-- [[checklists/enforcement-arc]]: what the compiler enforces, and what it can
+- [[records/baseline-alignment]]: does the repo do what it claims to do
+- [[records/enforcement-arc]]: what the compiler enforces, and what it can
   measure about its own work
+
+Each one has an arc beside it under `docs/arcs/`. The checklist is the finding
+list; the arc is the work.

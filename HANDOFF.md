@@ -1,218 +1,174 @@
 # chirality: handoff
 
-**Rewritten 2026-08-31, end of the second session.** Start here. `MAP.md` is
-the contract (tree, extensions, module key, doc roles); this file is state and route.
+Start here. This file is a **router**. It says where a session starts and what
+is live. It holds no arc detail: that moved into `docs/` on 2026-09-01.
 
-## ⚑ How to work here, before anything else
+`MAP.md` is the contract (tree, extensions, module key, doc roles).
 
-**Read `LANES.md` first.** The work is split into two lanes with their own element
-number bands (**A: E184–E189**, **B: E190–E195**), gate phases and file ownership.
-Lane A is diagnostics and errors, and resumes from `HANDOFF-LANE-A.md`. Lane B is
-file types. The **enforcement arc** (upper ↔ lower, and tests
-that can fail) is stated in `HANDOFF-LANE-A.md`. Minting outside your band collides; two sessions already minted `E173` independently.
+## The three tiers
 
-⚑ **Element numbers up to E181 are taken.** The catalog stops at E173, so reading
-it alone is not enough. E174, E175 and E181 have worked examples and INDEX rows,
-and E176 through E180 and E182 through E184 are referenced in Lane A's artifacts.
+| tier | unit | home |
+|---|---|---|
+| goal | a broad thing this project claims it is doing | `docs/goals/` |
+| arc | the elements assembled toward one goal, with requirements and resume state | `docs/arcs/` |
+| element | one catalog item, an `E#` | `docs/elements/`, `.planning/SELF-IMPLEMENT-CATALOG.md` |
+
+Hubs: `docs/goals/README.md` and `docs/arcs/README.md`. Both are tracked, which
+`.planning/` is not.
+
+## Live arcs
+
+| arc | goal | resume from |
+|---|---|---|
+| diagnostics and formatting | self-tooling | `docs/arcs/diagnostics-arc.md`, record beside it |
+| enforcement | enforcement | `docs/arcs/enforcement-arc.md` |
+| file types | self-tooling | `docs/arcs/file-types-arc.md` |
+| zero Python | self-tooling | `docs/arcs/zero-python-arc.md` |
+| baseline alignment | honest claims | `docs/arcs/baseline-alignment-arc.md` |
+| the binary split | **UNWRITTEN** | `docs/arcs/binary-split-arc.md` |
+
+One stated goal has no arc at all: `docs/goals/independent-judgment.md`.
+
+## What moved on 2026-09-01
+
+Root carried roughly 55K of arc state. It moved into `docs/`, with `git mv` so
+history follows.
+
+| was | is |
+|---|---|
+| `HANDOFF-DIAGNOSTICS-ARC.md` | `docs/records/diagnostics-arc-record.md` |
+| `docs/elements/diagnostics-arc.md` | `docs/arcs/diagnostics-arc.md` |
+| `docs/elements/enforcement-arc.md` | `docs/arcs/enforcement-arc.md` |
+
+`HANDOFF-LANE-A.md` and `LANES.md` did not move. Both are open in a live
+session.
+
+## How to work here
+
+**Read `LANES.md` first.** The work is split into two lanes with their own
+element bands (A: E184-E189, B: E190-E195), gate phases and file ownership.
+Lane A is diagnostics and errors and resumes from `HANDOFF-LANE-A.md`. Lane B is
+file types. Minting outside your band collides; two sessions already minted
+`E173` independently.
 
 **Another agent shares this repo.** Two lanes run in the same working tree.
 
 - **Serial dispatch: exactly ONE subagent at a time.** Standing user directive.
-  Not a batch. Launch one, wait, merge, launch the next.
+  Launch one, wait, merge, launch the next.
 - **The main session dispatches; it does not implement.** Hold the queue, write
-  the prompt, verify what returns. Doing the work inline is the failure mode, and
-  that includes troubleshooting: when an agent fails, re-dispatch it with what it
-  learned rather than finishing the job yourself.
+  the prompt, verify what returns. That includes troubleshooting: when an agent
+  fails, re-dispatch it with what it learned.
 - **Pathspec every commit** (`git commit -- <paths>`). A bare commit sweeps the
   other agent's staged work. That happened twice on 2026-08-31.
 - **Verify what an agent returns before keeping it.** One scored a file to zero
   findings by inserting the word "but" six times. Another byte-compared a file to
   itself and reported it identical.
-- Theirs right now: `bin/chirality-resolve.sh` (resolver caching),
-  `docs/decisions/decision-self-verification.md`.
 
-## ⚑ Where a finding goes: `docs/checklists/`
+## Where a finding goes: `records/`
 
-A defect you find mid-task, outside your own task, goes in a checklist row. A
-commit message loses it. `docs/checklists/README.md` states the format, the four states,
-and the rules for adding, amending and retiring a row. Any agent may edit a
-checklist without asking. Tracked, for the reason `docs/elements/` is: a note in
-`.planning/` forks per worktree and dies there.
+A defect found mid-task, outside your own task, goes in a checklist row. A commit
+message loses it. `records/README.md` states the format, the four states,
+and the rules. Any agent may edit a checklist without asking.
 
-Seeded: `docs/checklists/baseline-alignment.md`, 18 rows measured 2026-09-01.
-Claims this repo makes about itself beside what the tree does. It has **no
-reserved element number block**; rows needing one carry `UNASSIGNED`.
+`records/baseline-alignment.md` holds what this repo claims about itself
+beside what was measured. It has no reserved element block; rows needing one
+carry `UNASSIGNED`.
 
 ## Where it is
 
 A working, self-hosting language. The migration out of `/workspace/metis-the-lang`
-is **complete**; that tree is reference only now.
+is complete; that tree is reference only.
 
 | | |
 |---|---|
-| source | **299** files under `lib/` + `prog/`, measured 2026-09-01 after the C-backend drop (`find lib prog -type f \( -name '*.chiral' -o -name '*.prog' -o -name '*.port' -o -name '*.profile' -o -name '*.manifest' \)`). It was 303; `d8bcec5` took four |
-| compiler | `bin/chirality-bin`, **1,147,256 B**, committed. E181 promoted it 2026-09-01 |
-| resolver | `bin/chirality-resolve.sh` + `lib/module/resolve.chiral`, a matched pair |
-| tests | `bin/chirality test` → **303 assertions, 0 failed**, 11 phases, **87 roots**, gate PASSED. Re-measured 2026-09-01 after the C-backend drop: `prog/compiler-c.prog` was one root, and no assertion moved (`HANDOFF-LANE-A.md`) |
-| fixtures | `tools/test/samples/` 98 files |
-| docs | 230, sorted by role; `.planning/` 259, **untracked by design** |
+| source | 299 files under `lib/` and `prog/`, measured 2026-09-01 after the C-backend drop |
+| compiler | `bin/chirality-bin`, 1,147,256 B, committed. E181 promoted it 2026-09-01 |
+| resolver | `bin/chirality-resolve.sh` plus `lib/module/resolve.chiral`, a matched pair |
+| tests | `bin/chirality test`, 303 assertions, 0 failed, 11 phases, 87 roots, gate PASSED |
 | record | `.planning/MIGRATION-MAP.tsv`, 869 rows; `tools/test/map-integrity.sh` checks every `new_path` exists |
-| lint | `python3 tools/ledger-lint/ledger-lint.py` → **exits 1**, 19 checks (H and M VACUOUS by decision). The one FAIL is check I: `docs/definitions/FRONTIER.md` is stale because `frontier.py:62` globs `docs/decisions/decision-*.md` and the other agent's untracked note is in that glob. Do **not** run `frontier condense` to clear it; that bakes their in-flight file into the digest. It clears when their work lands |
-| licence | **AGPL-3.0-or-later** + `LICENSE.EXCEPTION.md`; `docs/decisions/decision-license.md` |
-| python | 14 files / 4,654 LOC, re-measured 2026-08-31. Target is zero, **absolute** (author call this session). `.planning/ZERO-PYTHON-SCOPE.md` |
+| lint | `python3 tools/ledger-lint/ledger-lint.py`, 19 checks. Failing checks and their reasons are rows in `records/baseline-alignment.md` |
+| licence | AGPL-3.0-or-later plus `LICENSE.EXCEPTION.md`; `docs/decisions/decision-license.md` |
+| python | 14 files, 4,654 LOC, re-measured 2026-08-31. Target is zero, absolute |
 
-### Verified, not asserted
+### Measured, and re-runnable
 
-- **Fixpoint**: verified at 1,147,256 B after E181's promotion, `N1 == N2` at
-  generation one. ⚑ Check each artifact non-empty before the `cmp`.
-- ⚑ **The compiler's import closure is 59 modules, 16,463 LOC**, out of `lib/`'s
-  103 and 25,559. **1,680 LOC of checking machinery sits outside it**, including
-  `lowering/tal/check`, `typing/effects` and `typing/totality`. See
-  `docs/definitions/bug-classes.md` and the Lane B block in `HANDOFF-LANE-A.md`.
-- ⚑ **A `native-lib` change must be verified at GEN3.** `compile-emit.chiral:295`
-  prepends the compiler's own compiled-in runtime to every image, so gen1 and gen2
-  compiling proves nothing. This cost one wrong fix on 2026-08-31.
+- **Fixpoint** verified at 1,147,256 B after E181's promotion, `N1 == N2` at
+  generation one. Check each artifact non-empty before the `cmp`.
+- **The compiler's import closure is 59 modules, 16,463 LOC**, out of `lib/`'s
+  103 and 25,559. 1,680 LOC of checking machinery sits outside it, including
+  `lowering/tal/check`, `typing/effects` and `typing/totality`.
+- **A `native-lib` change must be verified at GEN3.**
+  `lib/lowering/compile-emit.chiral:295` prepends the compiler's own compiled-in
+  runtime to every image, so gen1 and gen2 compiling proves nothing. This cost
+  one wrong fix on 2026-08-31.
 - 1,025 import sites, 0 unresolved.
 - The 5 unported phases print every run with their reason.
-- `ledger-lint` names two checks **VACUOUS** rather than ok: their subjects are
-  gone (the Python oracle; the `scaffold/lib`-to-`TUI` symlink web).
 
 ## Decisions (do not re-litigate without reading these)
 
-1. **Extension = kind, directory = role, subject matter in neither.**
-2. **Module key = the root-relative path** under `lib:` or `prog:`.
-3. **Importability is the partition.** `.prog` and `.profile` are not import
-   targets, so the resolver probes three extensions.
-4. **`.manifest` is declared, not sniffed.** E163, unbuilt.
-5. **External judgment is cut** (Rocq, CompCert, the Python oracle). Replaced by
-   N **semantically distinct** judgment cores that must agree: different
-   formulations, not three encodings of one rule set. **Still unbuilt**, so every
-   rung in `status-ledger` is enforcement against error, not against an adversary.
-   ⚑ **The `Mach`→C backend went with it, 2026-09-01** (`d8bcec5`, `d0c5dd5`). It
-   shared `compile-front` and `compile-back` whole and differed only at emit, so it
-   was a second TARGET under one formulation. `docs/decisions/decision-self-verification.md`
-   §0 records the call and what it rules out; `docs/definitions/open-edges.md` 21
-   and 22 record what it left open (`ddc.chiral` needs repointing and gates nothing;
-   `alloc-fixed` is at zero importers on purpose).
-6. **`bin/chirality-bin` is committed**, with the tree and harness that rebuild it.
-7. **`ports/` holds declarations, not code about ports.** A file belongs there iff
-   it declares a crossing. Three modules left on 2026-08-31.
-8. **Programming here is coordinating port boundaries and writing the logic that
-   produces their inputs** (PRINCIPLES §3). This makes 7 a rule rather than taste.
-9. **The four rungs measure reach, not substrate**: SEEDED = nothing calls it,
-   IMPLEMENTED = reached but ungated, ENFORCED = gated.
+`MAP.md` carries the tree contract: extension is the kind, directory is the role,
+the module key is the root-relative path, importability is the partition,
+`.manifest` is declared rather than sniffed, and `ports/` holds declarations
+only. `PRINCIPLES.md` §3 is why that last one is a rule rather than taste.
 
-## ⚑ SCOPE, set by the author 2026-08-31: self-hosting only
+Beyond `MAP.md`:
 
-The ownership and trust model is a **separate track, deferred**: the
-re-bootstrap climb, DDC, the secure datum model, the register root, the cascade.
-Do not pull any of it into current work, and do not audit its documents. What is
-in scope is the language compiling and checking itself, and being good enough to
-write its own tooling (zero Python).
+1. **External judgment is cut** (Rocq, CompCert, the Python oracle). The
+   replacement is `docs/goals/independent-judgment.md`, and it is unbuilt. The
+   `Mach`-to-C backend went with it on 2026-09-01 (`d8bcec5`, `d0c5dd5`).
+2. **`bin/chirality-bin` is committed**, with the tree and harness that rebuild
+   it. Build-new, test, promote. Nothing replaces itself in place.
+3. **The four rungs measure reach rather than substrate.** SEEDED means nothing
+   calls it, IMPLEMENTED means reached and ungated, ENFORCED means gated.
 
-## Answered this session, no longer blocking
+## SCOPE, set by the author 2026-08-31: self-hosting only
 
-| | |
-|---|---|
-| `refs/gen-*.py`, 502 LOC | **Zero Python is absolute.** Not "zero Python chirality is built from". Drop everything not required, then catalog what must be built to replace the rest with chirality forms. Renaming to `.py.txt` was rejected as a dodge. ⚑ These four are sliced into pipeline bundles by `pack` as the OURS baselines, so deleting them costs four worked examples their comparison. Decide that before the deletion |
-| the hash shape | **A small pure function**, a deterministic digest over `bget`. No element, no ledger row. The LEDGER's CRY category stays reserved and empty |
-
-## Deferred with the ownership model, not answered
-
-| | |
-|---|---|
-| datum model threat split | DMA **write** is in scope and CPU code execution is out; on no-IOMMU hardware write subsumes execution. Ownership track |
-| two bootstrap documents | `docs/definitions/bootstrap.md` (106 L) is the re-bootstrap climb; `bootstrap-sequence.md` (55 L) is the runtime on-ramp and says of itself "nothing here is built yet". Verified as **two unrelated concepts sharing a word**. Both ownership track. ⚑ `bootstrap.md` cites three paths that are all stale post-hoist: `scaffold/lib/climb.chiral`, `examples/refs/`, and `docs/tal-spec.md` (four times, as "the golden object"; it is `docs/definitions/tal-spec.md`) |
+The ownership and trust model is a separate track, deferred:
+`docs/goals/ownership-and-trust.md`. Do not pull any of it into current work,
+and do not audit its documents.
 
 ## Still blocked on the author, in scope
 
 | | |
 |---|---|
 | Principle 1 has no Honest limit | The broadest claim in the file, the only one without one |
-| P5's present tense | "a split value whose only exit is a guarded combine-process" : CONFORMANCE-MAP calls it vapor beyond the seed |
+| P5's present tense | "a split value whose only exit is a guarded combine-process": CONFORMANCE-MAP calls it vapor beyond the seed |
 | P3 vs open-edges | P3's limit says the membrane's inward reach is open; `open-edges` records it largely answered |
 | `decision-split-checker` | `status: draft`, while PRINCIPLES states its content settled |
-
-## Queue: dispatchable, one agent at a time
-
-1. **`let`-bound case, diagnosed 2026-08-31. The join hypothesis is REFUTED.**
-   There is no join: the verdict depends on **source arm order**, and a join is
-   commutative. It is first-arm-wins. A branch-local assumption from the narrow
-   hook escapes as the case's inferred result type, and later arms must entail an
-   assumption false in them. Refusal at `kernel.chiral:1440`. `let` is the trigger
-   because `check-let` (`kernel.chiral:983`) is the only construct that drops into
-   infer mode. **Fix (b), widening, is unsound** and the finding carries the
-   counterexample. Three coherent shapes remain, so this **needs a blueprint**:
-   run the pipeline, mint the element in the change that fixes it. ⚑ **E174 is not free** — it has a worked example (`r-row-width`), as do E175 and E181. Highest artifact anywhere is E181, so next free is **E182**.
-   `.planning/FINDING-let-bound-case-refinement-2026-08-31.md`
-2. **`str-sub`'s second half.** `end > len` reads past the buffer.
-   ⚑ `str-starts-with` currently depends on that read returning differing bytes.
-3. ~~Three ROUND-OFF OWED flags in `status-ledger`.~~ **Discharged 2026-08-31**
-   (`16f939a`), all three verified by grep first. E171 re-scoped: the seams are
-   already in the tree and already generalized, so what it owes is the **caller**.
-   Termination is **SEEDED**, a built classifier nothing imports; wiring it is
-   E11's remaining work. Secret custody type-checks and lowers with no referent,
-   the same shape as `http-request` and `backend-open`.
-4. **Zero-python**, sized per file in `.planning/ZERO-PYTHON-SCOPE.md`. The order
-   is forced by the measurement: **E173 matcher** (141 sites, 13 of 14 files),
-   then **E148** `getdents64` (22), then **E150** argv (20).
-   ⚑ **Wave 0 is NOT done**, contrary to what this file said before. Wave 0 is
-   two files. `prog/paren-audit.prog` exists but `tools/paren-audit/paren-audit.py`
-   is still on disk at 154 LOC and their equivalence is **unverified**;
-   `tools/scriba-run-smoke/scriba-run-smoke.py` (51 LOC) was never ported at all.
-   `prose-lint` had no `.py` left to replace, so citing it as wave-0 evidence
-   inflated the claim. E173 has a drafted worked example
-   (`docs/examples/E173-total-matcher.md`), audit gate not yet run.
-5. **Audit queue**, `.planning/DOC-AUDIT-QUEUE.md`. Done: PRINCIPLES, status-ledger.
-   Next: MAP, LAYOUT, README, HANDOFF, then the design base.
-6. **E158 into E146**, the pretty-printer chain. Untouched all session.
-7. Prose cleanup: `PRINCIPLES` 24 · `MAP` 15 · `LAYOUT` 7 · `PERSONA` 6.
-   `tools/prose-lint/prose-lint.sh --regress` holds the baseline.
-8. Phases 9 and 12: fixtures landed in slice 8, the phase **scripts** are owed.
-9. `prog/climb.manifest` is misfiled: `prog/` is deliverable programs, climb is
-   data, and nothing imports it. Same class as the `ports/` fix.
-10. `make-public` for the new remote.
+| what a `docs/elements/` file holds | one file per element, one per band, or a tracked index. `docs/elements/README.md` states the fork |
+| `LANES.md`'s home | it sits at root and is orthogonal to the goal-arc-element tiers. Left at root because two live sessions read it |
+| the binary split's goal | `docs/arcs/binary-split-arc.md` ladders up to nothing written down |
 
 ## Findings on disk, none actioned
 
-`.planning/FINDING-*.md`: the datum-model write adversary · the `let`-bound case
-refinement · the ports role, `str-sub` range, whose inverted half is FIXED and
-whose `j > len` half is open · two carried from the old tree (captured closures, mutual data).
+`.planning/FINDING-*.md`: the datum-model write adversary, the `let`-bound case
+refinement, the ports role, `str-sub` range.
 
-## Known-wrong, small
+The `let`-bound case one is the sharpest. The join hypothesis is **refuted**:
+the verdict depends on source arm order and a join is commutative, so it is
+first-arm-wins. Refusal at `kernel.chiral:1440`. `let` is the trigger because
+`check-let` (`kernel.chiral:983`) is the only construct that drops into infer
+mode. Fix (b), widening, is unsound, and the finding carries the counterexample.
+Three coherent shapes remain, so it needs a blueprint: run the pipeline, mint the
+element in the change that fixes it. Next free element number is **E185**.
 
-- `syscall-map` reports `BUILT: 0`. Its regex says `TFn` where the defs say
-  `TIFn`; 180 occurrences invisible. Fixing it changes what the tool measures.
-- `prog/prose-lint.prog` is missing `not-but`, `parallel-no` and code-skipping,
-  and **prints them as NOT-CHECKED every run**. They want E173.
+## Owed, with no arc
+
+- **Audit queue**, `.planning/DOC-AUDIT-QUEUE.md`. Done: PRINCIPLES,
+  status-ledger. Next: MAP, LAYOUT, README, HANDOFF, then the design base.
+- **Prose cleanup**: PRINCIPLES 24, MAP 15, LAYOUT 7, PERSONA 6.
+  `tools/prose-lint/prose-lint.sh --regress` holds the baseline.
+- **Phases 9 and 12**: fixtures landed in slice 8, the phase scripts are owed.
+- **`prog/climb.manifest` is misfiled.** `prog/` is deliverable programs, climb
+  is data, and nothing imports it. Same class as the `ports/` fix.
+- **`make-public`** for the new remote.
 - **`lib/typing/effects.chiral:1-6` still says "effects.py stays the oracle."**
-  The oracle is CUT. `lib/` was off-limits during the round-off pass because the
-  other agent holds the resolver; fix it on the next `lib/` slice.
-- **`.planning/LEDGER.md:86` files E11 as `built`** while its classifier is
-  imported by nothing. `:95` (E12) and `:103` (E171) still cite
-  `scaffold/chirality/effects.py` and `scaffold/lib/effects.chiral`.
+  The oracle is cut.
 - **~40 `docs/examples/E*.md` carry `ours_source: scaffold/…`** paths that no
   longer exist. Frozen-rationale tier, so a bulk rewrite is its own call.
-- **`.planning/USER-LAYER-GAP.md` §6** names four pre-rename tool scripts and
-  LOC counts (1033/650/636/619/313) against live (1128/651/831/620/330), and a
-  total of "3,251 L of Python" against a measured 4,654.
-- **`ledger-lint` check H is VACUOUS** because it verified `_CHEATSHEET.md`
-  against the deleted `refine.py`. After the 2026-08-31 cheatsheet repoint it can
-  aim at `lib/typing/refine.chiral:11` and `lib/module/loader.chiral:20`, both
-  live. That is a measured repoint rather than a guess, so it is now allowed.
 - **`op->symop` falls through to `s-ne` for any unrecognized token**, so `!=` is
-  never refused; it silently reads as `<>`. Measured during the cheatsheet fix.
-- **`tools/test/map-integrity.sh` has a gate-that-cannot-fail branch.** Its
-  `[ -z "$new" ] && continue` is meant to skip a row with no destination, and it is
-  unreachable for a 4-column row: `IFS=$'\t' read -r old new ext why` collapses tab
-  runs, so a blank `new_path` shifts the `ext` value into `$new`. Measured
-  2026-09-01 on the eight retired C-backend rows: `ext=prog` made `[ -e $ROOT/prog ]`
-  TRUE and the rows **silently passed**. Retired rows therefore use the brace form
-  (`{DELETED … -- was <path>}`), which the existing `*"{"*` branch skips and still
-  counts. The `-z` branch wants fixing or deleting.
-- **`HANDOFF.md`'s own fixtures row says `tools/test/samples/` 98 files; `ls` counts
-  **54** on 2026-09-01.** The C drop removed four, so the other ~40 is separate,
-  older drift. Not diagnosed.
-- **`CLAUDE.md`'s ⚑ saying `ledger-lint` is "partly blocked, 7 of 14 inputs are
-  path mismatches" is stale.** That repoint landed; the mismatch count is 0. The
-  file is gitignored, so fix it in place.
+  never refused and silently reads as `<>`.
+- **`.planning/LEDGER.md:86` files E11 as `built`** while its classifier is
+  imported by nothing. `:95` (E12) and `:103` (E171) cite paths that are gone.
+- **`.planning/USER-LAYER-GAP.md` §6** names four pre-rename tool scripts and LOC
+  counts against live ones, and a total that no longer measures.

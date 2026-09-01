@@ -1,7 +1,7 @@
 ---
 node: index
 layer: navigation
-related: [checklists/README, testing-floors, relations, glossary, thesis, splitting-law, joining-law, module-map, open-edges, floor-agreement, status-ledger, design-principles, resolution-patterns, syntax-evolution, trust-boundary, totality, live-environment, certificate-discipline, split-role]
+related: [goals/README, arcs/README, elements/README, records/README, testing-floors, relations, glossary, thesis, splitting-law, joining-law, module-map, open-edges, floor-agreement, status-ledger, design-principles, resolution-patterns, syntax-evolution, trust-boundary, totality, live-environment, certificate-discipline, split-role]
 status: draft
 updated: 2026-09-01
 ---
@@ -107,10 +107,15 @@ allocator at scale), see [benchmarks/](benchmarks/README.md).
 - Targets: [[target-tomodachi]]. A target is a requirement type a profile must
   satisfy ([[decision-profiles]], G9); target notes state one requirement in
   prose and name which open edges it exercises.
-- Checklists: [[checklists/README]] is the hub. One file per arc, each row a
+- Goals, arcs, elements: [[goals/README]] is the hub for the three tiers. A
+  goal is a broad thing this project claims it is doing; an arc is the list of
+  elements to be done for one goal, carrying that goal's requirements and its own
+  resume state; an element is one catalog item. [[arcs/README]] lists the arcs.
+  [[elements/README]] states what the element tier still owes.
+- Checklists: [[records/README]] is the hub. One file per arc, each row a
   claim this repo makes about itself beside what was measured, with a state and a
   date. The one doc tier any agent may extend or amend without asking; the rules
-  are in the hub. Seeded with [[checklists/baseline-alignment]].
+  are in the hub. Seeded with [[records/baseline-alignment]].
 - Provenance and open work: [[dump-integration]], [[open-edges]], [[resolution-patterns]]
 
 ## Convention
