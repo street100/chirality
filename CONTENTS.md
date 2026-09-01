@@ -37,8 +37,10 @@ undecided and `HANDOFF.md` records that.
 Moved out, and where they went:
 [secure-datum-model](docs/definitions/secure-datum-model.md) and
 [bootstrap](docs/definitions/bootstrap.md) are named concepts, so they are notes
-in the design base. `.planning/PERSONA.md` and `.planning/UMBRELLA.md` are
-internal working documents, and `.planning/MIGRATION-MAP.tsv` is a record.
+in the design base. `.planning/PERSONA.md` is an internal working document and
+`.planning/MIGRATION-MAP.tsv` is a record. `.planning/UMBRELLA.md` was archived
+2026-09-01 to `.planning/archive/UMBRELLA.md`: it duplicated this file and
+`README.md`, which are its successors.
 
 ## The design base (docs/, linked notes)
 
