@@ -23,7 +23,7 @@ needs lives here.
 |---|---|---|
 | goal | a broad thing this project claims it is doing | `docs/goals/` |
 | arc | elements assembled toward one goal, with requirements | `docs/arcs/` |
-| element | one catalog item, an `E#` | `docs/elements/`, `.planning/SELF-IMPLEMENT-CATALOG.md` |
+| element | one catalog item, an `E#` | `docs/elements/`, `docs/elements/catalog.md` |
 
 An arc names exactly one goal. Where no goal is written down, the arc's `goal`
 field says `UNWRITTEN` and the arc stays open on an author call. Authoring a

@@ -28,7 +28,7 @@ updated: 2026-08-31
      run because it cannot express them: `not-but`, `parallel-no`, and skipping
      code. It also spells 31 literal needles as 13 lines of `cons` chains
      (`prog/prose-lint.prog:105-121`) and makes one full-buffer pass per needle,
-     which `.planning/LEDGER.md:293` records as the whole of its 2.4x gap against
+     which `docs/elements/ledger.md:293` records as the whole of its 2.4x gap against
      the awk version it replaces.
   2. Zero-Python. `.planning/ZERO-PYTHON-SCOPE.md:14` puts **3,535 LOC behind
      E173**, against 244 behind E150 and 205 unblocked today, and sequences the

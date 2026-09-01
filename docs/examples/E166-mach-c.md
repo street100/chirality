@@ -781,8 +781,8 @@ for — once, as a boundary sum:
   running target earned (over a third of `mach-c.chiral` is the F1 comment). The
   maintained figures live in `docs/banks/verification.md` §2 (`mach-c`, 190 of
   403 — the catalog's 189 is the same file under a slightly different code-line
-  convention) and in the E166 rows of `.planning/SELF-IMPLEMENT-CATALOG.md` and
-  `.planning/LEDGER.md` (the shim's 103, with its method). The verdict the shim
+  convention) and in the E166 rows of `docs/elements/catalog.md` and
+  `docs/elements/ledger.md` (the shim's 103, with its method). The verdict the shim
   estimate existed to gate is unchanged: 103 is under the SPEC's ~150 L
   threshold. **"all 38 fields" was the pre-run's miscount** — 37, as §2 finding
   1 above already records and corrects.

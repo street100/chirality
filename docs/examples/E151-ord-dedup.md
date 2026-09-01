@@ -23,8 +23,8 @@ updated: 2026-08-22
   dropped in commit `b9162b3b`). The element is the **ownership** relation — which
   module owns `str-cmp`, `str-lower`, `str-upper`, `str-trim`, `str-replace`,
   `str-pad` — phrased in the ledger as "Give string comparison an owner"
-  (`.planning/LEDGER.md:274`, category `VAL · Pure value modules`, renamed from
-  "LIB · Standard library" on 2026-08-22, `.planning/LEDGER.md:258`). The file's
+  (`docs/elements/ledger.md:274`, category `VAL · Pure value modules`, renamed from
+  "LIB · Standard library" on 2026-08-22, `docs/elements/ledger.md:258`). The file's
   slug `ord-dedup` is a legacy misnomer the ledger row itself records: `Ord`
   de-duplication is a *consequence* of importing, not the element (see §4).
 - **Kind:** BUILD-PROPER.

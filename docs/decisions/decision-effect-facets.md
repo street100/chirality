@@ -192,7 +192,7 @@ this into the type is still E39's design work — direction found, not yet
 discharged ([[error-and-alarm]]'s fourth commitment remains E39-owned).
 
 *Discharged 2026-07-22 by the E39 SPEC (disposition b,
-`.planning/specs/E39-effect-row-SPEC.md`): it is **not a row-entry shape** —
+`docs/elements/specs/E39-effect-row-SPEC.md`): it is **not a row-entry shape** —
 the row names the crossing; the crossing's handler extern signature carries
 the `KontMsg` sum, and `data`/`case` enforce fatal-vs-recoverable
 structurally. No new carrier field.*

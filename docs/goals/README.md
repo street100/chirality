@@ -14,7 +14,7 @@ Three tiers organise the work.
 |---|---|---|
 | goal | a broad thing this project claims it is doing | `docs/goals/` |
 | arc | the list of elements that serve one goal, with its requirements | `docs/arcs/` |
-| element | one catalog item, an `E#` | `docs/elements/`, `.planning/SELF-IMPLEMENT-CATALOG.md` |
+| element | one catalog item, an `E#` | `docs/elements/`, `docs/elements/catalog.md` |
 
 A goal file says what the goal claims, cites where the project claims it, names
 the arcs that serve it, and states what `done` means. An arc file names the goal

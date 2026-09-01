@@ -51,9 +51,9 @@ import glob, os, re, subprocess, sys, math, datetime
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FRONTIER = os.path.join(ROOT, "tools/frontier/frontier.py")   # SEAM: built in parallel
 OPEN_EDGES = os.path.join(ROOT, "docs/open-edges.md")
-CATALOG = os.path.join(ROOT, ".planning/SELF-IMPLEMENT-CATALOG.md")
+CATALOG = os.path.join(ROOT, "docs/elements/catalog.md")
 BANKS_INDEX = os.path.join(ROOT, "docs/banks/INDEX.md")
-CONFMAP = ".planning/audit/CONFORMANCE-MAP.md"
+CONFMAP = "records/conformance-map.md"
 DOCKET = ".planning/DECISION-DOCKET.md"
 
 KINDS = ("node", "decision", "bank", "edge", "catalog", "new")

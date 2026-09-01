@@ -28,9 +28,9 @@ Concrete files (each read directly, no fallback):
 | `docs/status-ledger.md` | check A |
 | `CONTENTS.md` | check C |
 | `docs/open-edges.md` | check D |
-| `.planning/audit/CONFORMANCE-MAP.md` | the build-state authority for every bank shard claim |
-| `.planning/SELF-IMPLEMENT-CATALOG.md` | element-row existence |
-| `.planning/LEDGER.md`, `.planning/RUNG1-CHECKLIST.md` | ledger rows |
+| `records/conformance-map.md` | the build-state authority for every bank shard claim |
+| `docs/elements/catalog.md` | element-row existence |
+| `docs/elements/ledger.md`, `.planning/RUNG1-CHECKLIST.md` | ledger rows |
 | `examples/INDEX.md`, `examples/_CHEATSHEET.md` | the worked-example corpus |
 | `docs/FRONTIER.md` | the frontier digest |
 
@@ -48,7 +48,7 @@ Two of those are **gone by decision**, not merely unmapped:
 
 The new tree's doc tier is `docs/{examples,definitions,elements}/` — a different
 shape from `docs/*.md` + `docs/banks/` + `examples/` + `.planning/`. Whether
-`docs/elements/` replaces `.planning/SELF-IMPLEMENT-CATALOG.md` + the CONFORMANCE-MAP,
+`docs/elements/` replaces `docs/elements/catalog.md` + the CONFORMANCE-MAP,
 and whether `docs/definitions/` replaces `docs/banks/`, is an **author decision that
 has not been made**. Rewriting the checks against a guess would produce a linter that
 passes because it is looking at nothing — the exact failure class this tool exists

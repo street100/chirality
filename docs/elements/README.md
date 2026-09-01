@@ -14,42 +14,39 @@ assembles elements toward a goal; see [[arcs/README]].
 ## What this directory is for
 
 The tracked home of element rows. `.gitignore:12` excludes `.planning/`, so the
-element catalog (`.planning/SELF-IMPLEMENT-CATALOG.md`) and the ledger
-(`.planning/LEDGER.md`) fork per worktree and die there. Two sessions minted
+element catalog (`docs/elements/catalog.md`) and the ledger
+(`docs/elements/ledger.md`) fork per worktree and die there. Two sessions minted
 `E173` independently and nothing caught it. An element fact a second reader
 needs has to survive a fresh clone.
 
-## What blocks filling it
+## What this directory holds
 
-The shape of a tracked element row is undecided, and it is an author call. Three
-candidates, none chosen:
-
-1. One file per element. 184 files, most of them a paragraph.
-2. One file per number band, matching the reserved blocks in `LANES.md`.
-3. A single tracked index, with the arc files keeping the prose.
-
-Underneath that sits a larger question this run did not answer: whether the
-catalog and ledger themselves become tracked and move out of `.planning/`.
-Moving them goes past a restructure. It changes what is published, and it needs the
-author.
-
-Until then this directory holds this file and nothing else. An empty directory
-with a stated purpose beats a directory filled with a guess.
-
-## Where element rows are today
-
-| what | where |
+| what | file |
 |---|---|
-| the catalog | `.planning/SELF-IMPLEMENT-CATALOG.md`, untracked |
-| the ledger | `.planning/LEDGER.md`, untracked |
-| per-arc element rows, tracked | the arc files under `docs/arcs/` |
-| the worked-example registry, tracked | `docs/examples/INDEX.md` |
-| build state | [[status-ledger]] |
+| the element catalog, detail per element | `catalog.md`, 635 lines |
+| the category map over the E#/T# sets | `ledger.md`, 450 lines |
+| the per-element implementation specs | `specs/`, 126 files |
 
-`docs/arcs/diagnostics-arc.md` and `docs/arcs/enforcement-arc.md` were in this
-directory until 2026-09-01. They are arc files, so they moved one directory
-across. A pointer to `docs/elements/diagnostics-arc.md` written before that date
-means `docs/arcs/diagnostics-arc.md`.
+Moved out of `.planning/` and into git on 2026-09-01, on the author's call. The
+reason is measured: 76 tracked documents cited 156 distinct `.planning` files, so
+a fresh clone got the goals, the arcs, the records and the build state, and then
+every element row those pointed at was missing. Six of those citations could not
+be followed from *this* clone either.
+
+**Moved, not reshaped.** The shape question this file used to pose — one file per
+element, one per number band, or a single index — is still open and is still an
+author call. Changing location and changing shape in one step would make both
+unreviewable. The catalog and ledger are byte-for-byte what they were in
+`.planning/`, at a new path.
+
+### What tracking exposed
+
+`ledger-lint` went from 3 failing checks to 7 the moment these files entered a
+scanned doc role: A(5) B(5) F(27) G(77) I(1) R(112) T(1), 228 issues against 7.
+None of that is new breakage. Those citations were always wrong; they sat where
+the checks did not reach. Treating the jump as a regression would be the wrong
+reading, and re-ignoring the directory to make the number go down would be the
+gate-that-cannot-fail error this repo names as cardinal.
 
 ## Rules
 

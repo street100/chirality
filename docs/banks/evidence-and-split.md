@@ -26,7 +26,7 @@ updated: 2026-08-24
 > depth-bounded tag-check (`bridge.verify`) plus a type-level secret seed. If this
 > bank's density reads as shipped machinery, it has failed at the one thing it most
 > needs to do. Build-state below is AUTHORITATIVE from [[status-ledger]] and
-> `.planning/audit/CONFORMANCE-MAP.md`; every claim is tagged, and the novel core is
+> `records/conformance-map.md`; every claim is tagged, and the novel core is
 > named DESIGNED wherever it is.
 
 ---
@@ -99,7 +99,7 @@ is DESIGNED.
 
 The conventional "make the untrusted trustworthy" monolith decomposes into these
 shards. Build-state is authoritative from [[status-ledger]] and
-`.planning/audit/CONFORMANCE-MAP.md`. Read the column: **one shard is built, one is
+`records/conformance-map.md`. Read the column: **one shard is built, one is
 seeded, the rest are DESIGNED.**
 
 ### Shard 1 — inbound verify (the built sliver) · **IMPLEMENTED (host-mediated)**

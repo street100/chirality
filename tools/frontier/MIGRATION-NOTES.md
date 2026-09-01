@@ -10,7 +10,7 @@ Both subcommands read the **doc ecosystem**, which does not exist here:
 | `docs/index.md`, `docs/glossary.md`, `docs/open-edges.md`, `docs/decision-*.md` | `route`'s ranking corpus |
 | `docs/banks/` | bank homes for a routed topic |
 | `examples/INDEX.md` | the element corpus |
-| `.planning/DECISION-DOCKET.md`, `.planning/specs/` | open decisions |
+| `.planning/DECISION-DOCKET.md`, `docs/elements/specs/` | open decisions |
 | `docs/FRONTIER.md` | `condense`'s **output** |
 
 `docs/` here is `examples/ definitions/ elements/`, all empty. Whether

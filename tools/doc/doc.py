@@ -5,7 +5,7 @@ of pack (which is element-keyed).
 The docs tier encodes its claims in machine-readable shapes: bank shard headers
 carry **STATE (E#s)**, line evidence is cited as `file.py:NN` or `file` … `:NN`,
 [[links]]/related: form a graph, and build-state authority is
-.planning/audit/CONFORMANCE-MAP.md + examples/INDEX.md. This tool exploits that:
+records/conformance-map.md + examples/INDEX.md. This tool exploits that:
 `audit` prints ONE bundle putting every claim next to its live authority — the
 extended ledger-lint findings (pre-sorted worklist), the map/pipeline rows for
 every E# the doc names, the ACTUAL code lines behind every citation, and the
@@ -22,7 +22,7 @@ import glob, os, re, subprocess, sys, datetime
 
 # tools/<name>/<name>.py -> the tree root is THREE levels up, not two.
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-CONFMAP = os.path.join(ROOT, ".planning/audit/CONFORMANCE-MAP.md")
+CONFMAP = os.path.join(ROOT, "records/conformance-map.md")
 EXINDEX = os.path.join(ROOT, "docs/examples/INDEX.md")
 
 CHARTER = """## 0. Doc-audit charter
@@ -248,7 +248,7 @@ updated: {today}
 >
 > **Why this bank exists.** <the monolith this refracts + the recurring
 > misfire>. Build-state is AUTHORITATIVE from
-> `.planning/audit/CONFORMANCE-MAP.md` and [[status-ledger]]; where a facet is
+> `records/conformance-map.md` and [[status-ledger]]; where a facet is
 > genuinely unbuilt it is named as such, never rounded to done.
 
 ---

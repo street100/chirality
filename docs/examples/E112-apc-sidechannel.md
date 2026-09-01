@@ -257,7 +257,7 @@ extension (§ "Deliberately omitted").
   compile rc=0
   ROUND-TRIP run rc=42   (42 = structural equality PASS)
   ```
-- **Questions raised here, RESOLVED by the SPEC (`.planning/specs/E112-…-SPEC.md`):**
+- **Questions raised here, RESOLVED by the SPEC (`docs/elements/specs/E112-…-SPEC.md`):**
   1. **Envelope framing — APC vs private DCS** (`§8.4`). **RESOLVED → APC** (spec
      dec #1): APC has essentially no standard consumer so a chirality-private payload
      cannot collide, whereas DCS (`ESC P`) is claimed by Sixel/DECRQSS; the decode

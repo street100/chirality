@@ -11,7 +11,7 @@ single Bash turn, so the agent goes from ~17 tool calls to ~3.
 Usage:
     tools/pack/pack.py E13 debruijn      # example stage: bundle + scaffold examples/E13-debruijn.md
     tools/pack/pack.py E13               # example bundle only (no scaffold)
-    tools/pack/pack.py E13 --spec        # spec stage: example -> .planning/specs/E13-<slug>-SPEC.md
+    tools/pack/pack.py E13 --spec        # spec stage: example -> docs/elements/specs/E13-<slug>-SPEC.md
                                         #   (slug inferred from the existing drafted example)
     tools/pack/pack.py E13 --audit example   # read-only audit bundle for the drafted example
     tools/pack/pack.py E13 --audit spec      # read-only audit bundle for the SPEC
@@ -28,23 +28,23 @@ Three LANES, one pipeline. The element id's prefix selects its SOURCE ADAPTER �
 which document holds the rows, how a row is recognised, what plays the role of
 the catalog's Location/state and Kind/reference_class columns:
 
-    E13   core self-implementation   .planning/SELF-IMPLEMENT-CATALOG.md
+    E13   core self-implementation   docs/elements/catalog.md
     U13   the user layer             .planning/USER-LAYER-GAP.md
     S19   the scriba editor floor    .planning/SCRIBA-PRIMITIVE-CHECKLIST.md
 
 Everything downstream of the row lookup (bundles, scaffolds, audits, kb slices,
 INDEX rows) is lane-agnostic; artifact tags are prefix-keyed (E13-/U13-/S19-)
-so the three lanes cannot collide in examples/ or .planning/specs/.
+so the three lanes cannot collide in examples/ or docs/elements/specs/.
 """
 import glob, os, re, sys, datetime
 
 # tools/<name>/<name>.py -> the tree root is THREE levels up, not two.
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-CATALOG = os.path.join(ROOT, ".planning/SELF-IMPLEMENT-CATALOG.md")
+CATALOG = os.path.join(ROOT, "docs/elements/catalog.md")
 TEMPLATE = os.path.join(ROOT, "docs/examples/_TEMPLATE.md")
 CHEAT = os.path.join(ROOT, "docs/examples/_CHEATSHEET.md")
 INDEX = os.path.join(ROOT, "docs/examples/INDEX.md")
-CONFMAP = os.path.join(ROOT, ".planning/audit/CONFORMANCE-MAP.md")
+CONFMAP = os.path.join(ROOT, "records/conformance-map.md")
 SPECDIR = os.path.join(ROOT, ".planning/specs")
 SPEC_TEMPLATE = os.path.join(SPECDIR, "_TEMPLATE.md")
 GAPDOC = os.path.join(ROOT, ".planning/USER-LAYER-GAP.md")
@@ -498,9 +498,9 @@ def audit_mode(eid, tag, title, row, row_kind, level):
                    + open(CHEAT).read().strip())
     else:
         if not os.path.exists(spec_path):
-            die(f"no SPEC .planning/specs/{tag}-{slug}-SPEC.md — run --spec first")
+            die(f"no SPEC docs/elements/specs/{tag}-{slug}-SPEC.md — run --spec first")
         sp = open(spec_path).read()
-        out.append(f"## 2. ARTIFACT UNDER AUDIT — .planning/specs/{tag}-{slug}-SPEC.md"
+        out.append(f"## 2. ARTIFACT UNDER AUDIT — docs/elements/specs/{tag}-{slug}-SPEC.md"
                    f"\n\n{sp.strip()}")
         out.append(f"## 3. Its example (the rationale it must not contradict) — "
                    f"docs/examples/{tag}-{slug}.md\n\n{ex.strip()}")
@@ -591,7 +591,7 @@ def spec_mode(eid, tag, title, row, row_kind, no_index):
     out.append("## 5. Test baseline — your §5 green line starts here\n" + test_baseline())
 
     out.append("## 6. Next\nYour SPEC is scaffolded (frontmatter filled) at "
-               f"`.planning/specs/{tag}-{slug}-SPEC.md`. Open THAT file and fill sections "
+               f"`docs/elements/specs/{tag}-{slug}-SPEC.md`. Open THAT file and fill sections "
                "1–6. §3 decisions are dispositioned (RESOLVED with a cited settled doc / "
                "DEFERRED to a named home / NEEDS-AUTHOR) — never silently resolved.")
     print("\n\n".join(out))
@@ -611,7 +611,7 @@ def spec_mode(eid, tag, title, row, row_kind, no_index):
         for a, b in repl.items():
             t = t.replace(a, b)
         open(dest, "w").write(t)
-        print(f"\n[scaffold] wrote .planning/specs/{tag}-{slug}-SPEC.md", file=sys.stderr)
+        print(f"\n[scaffold] wrote docs/elements/specs/{tag}-{slug}-SPEC.md", file=sys.stderr)
 
     # ---- INDEX row: status -> specced, artifact cell gains the SPEC link ----
     idx = open(INDEX).read().splitlines()
@@ -628,7 +628,7 @@ def spec_mode(eid, tag, title, row, row_kind, no_index):
                     print(f"[scaffold] INDEX status {st!r} not drafted/reviewed — "
                           "linking SPEC, status left", file=sys.stderr)
                 cells[6] = cells[6].rstrip() + \
-                    f" · [SPEC](../.planning/specs/{tag}-{slug}-SPEC.md) "
+                    f" · [SPEC](../docs/elements/specs/{tag}-{slug}-SPEC.md) "
                 patched = (i, "|".join(cells))
     if patched is None:
         print(f"[scaffold] INDEX row for {eid} missing or already SPEC-linked — untouched",
@@ -642,7 +642,7 @@ def spec_mode(eid, tag, title, row, row_kind, no_index):
         print(f"[scaffold] INDEX row for {eid}: status → specced, SPEC linked", file=sys.stderr)
 
 
-LEDGER = os.path.join(ROOT, ".planning/LEDGER.md")
+LEDGER = os.path.join(ROOT, "docs/elements/ledger.md")
 
 
 def ledger_lookup(eid):
@@ -674,11 +674,11 @@ def ledger_note(eid):
     new element gets tagged the moment it is touched."""
     cat, mod = ledger_lookup(eid)
     if cat:
-        print(f"[ledger] {cat}·{eid}  (module {mod})  (.planning/LEDGER.md)", file=sys.stderr)
+        print(f"[ledger] {cat}·{eid}  (module {mod})  (docs/elements/ledger.md)", file=sys.stderr)
     elif not os.path.exists(LEDGER):
         pass
     elif id_parts(eid)[0] == "E":
-        print(f"[ledger] {eid} NOT in .planning/LEDGER.md — add its category+module row "
+        print(f"[ledger] {eid} NOT in docs/elements/ledger.md — add its category+module row "
               f"(ledger-lint check J fails until you do)", file=sys.stderr)
     else:
         # check J ratchets the E# space only; a U#/S# row's authority is its own

@@ -467,7 +467,7 @@ Still open:
     resumption multiplicity graded by the continuation's QTT quantity; abort
     discharges by synthesized cancel. The row representation and row-variable
     shape are now **pinned** (2026-07-22,
-    `.planning/specs/E39-effect-row-SPEC.md`: set-of-crossing-names with a
+    `docs/elements/specs/E39-effect-row-SPEC.md`: set-of-crossing-names with a
     sorted-tuple canonical form; the row-variable seat reserved as a second,
     unpopulated field). Remaining under this edge: building E39 per its SPEC,
     and the row's tal shadow and its preserve-check (catalog E70, drafted).

@@ -31,7 +31,7 @@ updated: 2026-07-25
 > multiplicity graded by the continuation's QTT quantity; synthesized cancel;
 > alarms are crossings (dated amendment in [[decision-graded-kernel]]). §5a is
 > retained as the decision's input record — its evidence held. Build-state below is AUTHORITATIVE from
-> [[status-ledger]] and `.planning/audit/CONFORMANCE-MAP.md`; where a facet is a
+> [[status-ledger]] and `records/conformance-map.md`; where a facet is a
 > Python crutch or docs-only, it is named as such, never rounded to built.
 
 ---
@@ -98,7 +98,7 @@ exceptions (`alarms.py`; Shard 3) and a single `halt` extern declared in
 
 ## 2. The refraction — the shards, their homes, their build-state
 
-Build-state is authoritative from `.planning/audit/CONFORMANCE-MAP.md` (rows B/E12,
+Build-state is authoritative from `records/conformance-map.md` (rows B/E12,
 B/E39, B/E26) and [[status-ledger]].
 
 ### Shard 1 — the `eff` bit (the coarse membrane, carried) · **EXTEND (E12/E171)**

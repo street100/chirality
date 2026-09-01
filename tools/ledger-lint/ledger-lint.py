@@ -206,7 +206,7 @@ def _map_classes() -> dict[int, set[str]]:
     """E-number -> set of Class verdicts from CONFORMANCE-MAP rows, with
     E-ranges (E30–E33) expanded so sibling-tagged rows are found."""
     classes: dict[int, set[str]] = {}
-    cmap = ROOT / ".planning" / "audit" / "CONFORMANCE-MAP.md"
+    cmap = ROOT / "records" / "conformance-map.md"
     if not cmap.exists():
         return classes
     for ln in cmap.read_text().splitlines():
@@ -265,8 +265,8 @@ def check_f() -> list[str]:
     [[p]]-style denotational brackets are prose, not links.
     One report per (file, target)."""
     errs: list[str] = []
-    catalog = (ROOT / ".planning" / "SELF-IMPLEMENT-CATALOG.md").read_text() \
-        if (ROOT / ".planning" / "SELF-IMPLEMENT-CATALOG.md").exists() else ""
+    catalog = (ROOT / "docs" / "elements" / "catalog.md").read_text() \
+        if (ROOT / "docs" / "elements" / "catalog.md").exists() else ""
     catalog_ids = {int(n) for n in re.findall(r"^\|\s*E(\d+)\s*\|", catalog, re.M)}
 
     def resolves(name: str) -> bool:
@@ -558,15 +558,15 @@ LEDGER_CATS = {"CK", "RF", "EF", "CG", "MEM", "SYS", "FMT", "TR", "CRY",
 
 
 def check_j() -> list[str]:
-    """J. Ledger ⇄ catalog consistency. .planning/LEDGER.md is the category map
+    """J. Ledger ⇄ catalog consistency. docs/elements/ledger.md is the category map
     over the E# set; a catalog element that is not tagged there rots out of the
     map (the exact failure this lint fights, one level up). Every catalog E# must
     appear in the ledger; every non-reserved ledger E# must exist in the catalog;
     every `## CODE · …` category header must use a legend code. Skipped if the
     ledger is absent (optional tier, like D/E/I)."""
     errs: list[str] = []
-    ledger = ROOT / ".planning" / "LEDGER.md"
-    catalog = ROOT / ".planning" / "SELF-IMPLEMENT-CATALOG.md"
+    ledger = ROOT / "docs" / "elements" / "ledger.md"
+    catalog = ROOT / "docs" / "elements" / "catalog.md"
     if not ledger.exists() or not catalog.exists():
         return errs
     catalog_ids = {int(n) for n in
@@ -605,7 +605,7 @@ def check_k() -> list[str]:
     stale one (e.g. `SYS·E120` when E120 is MEM) so recategorization can't leave
     rotted prefixes in prose. Skipped if the ledger is absent."""
     errs: list[str] = []
-    ledger = ROOT / ".planning" / "LEDGER.md"
+    ledger = ROOT / "docs" / "elements" / "ledger.md"
     if not ledger.exists():
         return errs
     cat_of: dict[int, str] = {}
@@ -821,9 +821,9 @@ def check_q() -> list[str]:
     means the live figures match the file today; it says nothing about the delta.
     """
     errs: list[str] = []
-    cmap = ROOT / ".planning" / "audit" / "CONFORMANCE-MAP.md"
+    cmap = ROOT / "records" / "conformance-map.md"
     if not cmap.exists():
-        return ["[Q] .planning/audit/CONFORMANCE-MAP.md missing — the live tally has no subject"]
+        return ["[Q] records/conformance-map.md missing — the live tally has no subject"]
     text = cmap.read_text()
 
     rows: list[str] = []
@@ -891,7 +891,7 @@ def check_n() -> list[str]:
     docs/examples/INDEX.md.
     """
     errs: list[str] = []
-    ledger = ROOT / ".planning" / "LEDGER.md"
+    ledger = ROOT / "docs" / "elements" / "ledger.md"
     index = ROOT / "docs" / "examples" / "INDEX.md"
     if not ledger.exists() or not index.exists():
         return errs
@@ -1096,7 +1096,7 @@ def check_t() -> list[str]:
     and the LEDGER against each other; N walks the LEDGER against INDEX; each can
     only see an element that some registry file already names. NOTHING enumerated
     the files. So an element could lose its rows while docs/examples/E<NN>-*.md
-    and .planning/specs/E<NN>-*-SPEC.md sat on disk, and the whole lint stayed
+    and docs/elements/specs/E<NN>-*-SPEC.md sat on disk, and the whole lint stayed
     blind to it: the artifacts are still there, still readable, still cited, and
     the element is invisible to every "what do we have?" the registry answers.
 
@@ -1119,7 +1119,7 @@ def check_t() -> list[str]:
     them; asserting them against the E# catalog would be a check aimed at a
     guess."""
     errs: list[str] = []
-    catalog = ROOT / ".planning" / "SELF-IMPLEMENT-CATALOG.md"
+    catalog = ROOT / "docs" / "elements" / "catalog.md"
     index = ROOT / "docs" / "examples" / "INDEX.md"
     exdir = ROOT / "docs" / "examples"
     specdir = ROOT / ".planning" / "specs"
@@ -1135,7 +1135,7 @@ def check_t() -> list[str]:
                 arts.setdefault(int(m.group(1)), []).append(
                     str(f.relative_to(ROOT)))
     if not arts:
-        raise Vacuous("no docs/examples/E*.md or .planning/specs/E*-SPEC.md on "
+        raise Vacuous("no docs/examples/E*.md or docs/elements/specs/E*-SPEC.md on "
                       "disk -- there is no artifact tier to hold to the registry")
     cat_ids = {int(n) for n in
                re.findall(r"^\|\s*E(\d+)\s*\|", catalog.read_text(), re.M)}
@@ -1147,7 +1147,7 @@ def check_t() -> list[str]:
         files = ", ".join(arts[n])
         if n not in cat_ids:
             errs.append(f"[T] E{n} has artifacts on disk ({files}) but NO row in "
-                        f".planning/SELF-IMPLEMENT-CATALOG.md -- an element the "
+                        f"docs/elements/catalog.md -- an element the "
                         f"registry cannot see. If its work moved to another "
                         f"element, the row is restored as `superseded`, not deleted")
         if index.exists() and n not in idx_ids:
@@ -1178,9 +1178,9 @@ REQUIRED_INPUTS = [
     ("docs/examples/INDEX.md",                "checks J/N -- pipeline state"),
     ("docs/examples/_CHEATSHEET.md",          "check H -- cheatsheet ops"),
     (".planning",                             "the planning tier"),
-    (".planning/audit/CONFORMANCE-MAP.md",    "checks E/Q -- the build-state authority"),
-    (".planning/SELF-IMPLEMENT-CATALOG.md",   "checks J/K -- element rows"),
-    (".planning/LEDGER.md",                   "check J -- ledger rows"),
+    ("records/conformance-map.md",    "checks E/Q -- the build-state authority"),
+    ("docs/elements/catalog.md",   "checks J/K -- element rows"),
+    ("docs/elements/ledger.md",                   "check J -- ledger rows"),
     (".planning/RUNG1-CHECKLIST.md",          "check O -- rung-1 python accounting"),
     ("lib",                                   "checks G/L/R -- the source tree"),
     ("prog",                                  "checks G/L/R -- the source tree"),

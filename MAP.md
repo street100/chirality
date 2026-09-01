@@ -137,13 +137,14 @@ docs/
   goals/           one per goal: what the project claims, which arcs serve it
   arcs/            one per arc: the goal, the requirements, the element list,
                    the resume state. Its measured history lives in records/
-  elements/        one entry per element. Holds a README only; see below
+  elements/        the catalog, the ledger, and specs/ -- one per element
   implementation/  the source tree described, as distinct from specified
   benchmarks/      measurements, with their dates
 records/           one per arc: a claim beside its measurement, with a state.
                    NOT under docs/: docs/ is what a reader is handed, records
                    are what we measured. The one tier any agent may edit
-.planning/         specs, audits, handoffs, captures, the element catalog
+.planning/         UNTRACKED working scratch: captures, spent handoffs, findings.
+                   The element tier moved to docs/elements/ on 2026-09-01
 ```
 
 ## The doc tier sorts by role too

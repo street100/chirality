@@ -523,7 +523,7 @@ sections, real provenance, one expression:
     ⚑ **This is a proposal about a DIFFERENT element, and E158's example is not
     the place it takes effect.** E146's catalog row today reads
     `config->source : (-> Config Str)` / `pipeline->source : (-> Pipeline Str)`
-    (`.planning/SELF-IMPLEMENT-CATALOG.md:411`) and has no example and no SPEC,
+    (`docs/elements/catalog.md:411`) and has no example and no SPEC,
     so nothing is being contradicted — but the row is the authority, and this
     example cannot edit it. Naming the change here is the point of running E158
     first; **making** it is an author decision on the E146 row.
@@ -606,7 +606,7 @@ sections, real provenance, one expression:
 E158 owns the **law** (width independence: identical token sequence at every
 width). E146 owns the **consequence** (its five emitters return `Doc`, gate at
 widths 1 / 40 / 10⁶). The amendment is written into
-`.planning/SELF-IMPLEMENT-CATALOG.md`'s E146 row in the same change that landed
+`docs/elements/catalog.md`'s E146 row in the same change that landed
 this file — because a decision about E146 recorded only inside E158's example is
 invisible to whoever implements E146. Per-type siblings, not one generic
 `v->doc`: that row names five emitters and a single generic under-specifies them.

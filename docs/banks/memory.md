@@ -24,7 +24,7 @@ updated: 2026-07-23
 > profile, and cost-grade homes — most already built. The recurring misfire is
 > to see the monolith absent and say *you need an allocator / a GC / a borrow
 > checker*. You do not; each is refracted below. Build-state is AUTHORITATIVE
-> from `.planning/audit/CONFORMANCE-MAP.md` and [[status-ledger]]; where a facet
+> from `records/conformance-map.md` and [[status-ledger]]; where a facet
 > is genuinely unbuilt it is named as such, never rounded to done.
 
 ---

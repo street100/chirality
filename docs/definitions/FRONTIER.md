@@ -93,7 +93,7 @@ updated: 2026-08-31
 - implemented-core: 1
 - part: 1
 
-### Blocked specs (.planning/specs/, named with blocker)
+### Blocked specs (docs/elements/specs/, named with blocker)
 
 - (none blocked)
 

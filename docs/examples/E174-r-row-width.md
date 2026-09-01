@@ -59,7 +59,7 @@ E175 fix changes a single width. See §6 for the one place they do meet.
 catalog row.**
 
 1. **The catalog's blast-radius figure is wrong, and the truth is more
-   interesting.** `.planning/SELF-IMPLEMENT-CATALOG.md:438` says *"12 files case
+   interesting.** `docs/elements/catalog.md:438` says *"12 files case
    over it"*. Measured: **17 files import `protocol/render`** (that figure is
    right), **13 files name a `Rendering` constructor**, but only **five actually
    `case` over the sum** —
@@ -607,8 +607,8 @@ what is written out is what a later run must get *right*, not what it must type.
   E158 commit 4 produces. Order them E174 then E175, and E158's G8 gate grades the
   pair.
 
-- **Contradiction to record.** `.planning/SELF-IMPLEMENT-CATALOG.md:438` and
-  `.planning/LEDGER.md:293` both state *"12 files case over it"*. Measured (finding
+- **Contradiction to record.** `docs/elements/catalog.md:438` and
+  `docs/elements/ledger.md:293` both state *"12 files case over it"*. Measured (finding
   1): 17 import, 13 name a constructor, **5 case, and only 1 has an exhaustive case
   that breaks**. The catalog figure appears to be a count of constructor-naming
   files other than `render.chiral` itself (exactly 12), which is a different and

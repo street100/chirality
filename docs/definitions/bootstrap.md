@@ -103,4 +103,4 @@ This manifest ships now; the climb runs as its gates clear:
   and clocks it once the gates clear (a target-note, not an estimate).
 
 Each gate is pinned as a `breaker` in `scaffold/lib/climb.chiral` and tracked in
-`.planning/specs/E72-re-bootstrap-SPEC.md` §6.
+`docs/elements/specs/E72-re-bootstrap-SPEC.md` §6.

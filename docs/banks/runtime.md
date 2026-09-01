@@ -104,7 +104,7 @@ nodes and ports."
 
 The conventional "runtime system" decomposes into these shards. For each: what it
 is, its principled home, and its build-state with evidence. Build-state is
-authoritative from `.planning/audit/CONFORMANCE-MAP.md` and [[status-ledger]].
+authoritative from `records/conformance-map.md` and [[status-ledger]].
 
 ### Shard A — the evaluator (E15) · **BUILT / CONFORMS**
 

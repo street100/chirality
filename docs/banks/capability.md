@@ -30,7 +30,7 @@ updated: 2026-07-23
 > type is the authority, non-forgeability is already a four-tier conjunction, and
 > revocation is already a customer of the alarm system. This bank documents that
 > refraction so nobody names the phantom again. Build-state is AUTHORITATIVE from
-> [[status-ledger]] and `.planning/audit/CONFORMANCE-MAP.md`; where a facet is
+> [[status-ledger]] and `records/conformance-map.md`; where a facet is
 > genuinely unbuilt it is named as such, never rounded to done.
 
 ---
@@ -526,7 +526,7 @@ the depth:
   split a module requires (module C2).
 - [[banks/runtime]] — the supervisor shard = the broker; the runtime-side of
   revocation (Shard G).
-- [[status-ledger]] / `.planning/audit/CONFORMANCE-MAP.md` — the authority for every
+- [[status-ledger]] / `records/conformance-map.md` — the authority for every
   build-state above (E30/E40/E43/E45/E9, edges 4/5/7/8/11/17).
 - [[open-edges]] — edges 5 (reflective floor), 7 (adhikara), 8 (broker), 11
   (independence), 17 (cross-node alarm).

@@ -12,7 +12,7 @@ updated: 2026-09-01
 > text tool set / the editor buffer** — four things elsewhere, one concept here.
 
 Build state below is **measured against the tree on 2026-09-01**, not taken from
-`.planning/audit/CONFORMANCE-MAP.md`. That map carries 73 elements against a
+`records/conformance-map.md`. That map carries 73 elements against a
 catalog of 177 and has a row for none of the shards here, so citing it would be a
 gate that cannot fail. See [[records/baseline-alignment]].
 

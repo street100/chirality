@@ -2,7 +2,7 @@
 
 **Status:** settled 2026-07-06. Governs *what external material chirality may read
 directly* when building its own implementation of each element in
-`.planning/SELF-IMPLEMENT-CATALOG.md`. This is Step 2 of the plan/audit arc.
+`docs/elements/catalog.md`. This is Step 2 of the plan/audit arc.
 
 ## The governing question
 

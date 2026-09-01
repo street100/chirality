@@ -61,7 +61,7 @@ def source_files() -> list[str]:
     rels += sorted(os.path.relpath(p, ROOT).replace(os.sep, "/")
                    for p in glob.glob(os.path.join(ROOT, "docs", "decisions", "decision-*.md")))
     rels += sorted(os.path.relpath(p, ROOT).replace(os.sep, "/")
-                   for p in glob.glob(os.path.join(ROOT, ".planning", "specs", "*.md"))
+                   for p in glob.glob(os.path.join(ROOT, "docs", "elements", "specs", "*.md"))
                    if os.path.basename(p) != "_TEMPLATE.md")
     return rels
 
@@ -204,7 +204,7 @@ def parse_docket() -> list[dict]:
 def parse_specs() -> list[dict]:
     out = []
     for rel in sorted(os.path.relpath(p, ROOT).replace(os.sep, "/")
-                      for p in glob.glob(os.path.join(ROOT, ".planning", "specs", "*.md"))
+                      for p in glob.glob(os.path.join(ROOT, "docs", "elements", "specs", "*.md"))
                       if os.path.basename(p) != "_TEMPLATE.md"):
         text = read(rel)
         out.append({"element": frontmatter_field(text, "element") or "?",
@@ -352,7 +352,7 @@ def build_digest() -> str:
     for status, count in pipeline:
         L.append(f"- {status}: {count}")
     L.append("")
-    L.append("### Blocked specs (.planning/specs/, named with blocker)")
+    L.append("### Blocked specs (docs/elements/specs/, named with blocker)")
     L.append("")
     blocked = [s for s in specs if s["status"] == "blocked"]
     if blocked:
@@ -455,7 +455,7 @@ def build_homes() -> list[dict]:
             "body": Counter(tokenize(e["block"])),
         })
 
-    catalog = os.path.join(ROOT, ".planning", "SELF-IMPLEMENT-CATALOG.md")
+    catalog = os.path.join(ROOT, "docs", "elements", "catalog.md")
     if os.path.isfile(catalog):
         for m in re.finditer(r"^\|\s*E(\d+)\s*\|\s*([^|]+?)\s*\|",
                              open(catalog, encoding="utf-8").read(), re.M):

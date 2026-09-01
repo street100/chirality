@@ -56,7 +56,7 @@ session's design outcome** — the docs it amends still read the old way.
    two-facet shape.
 3. ~~INDEX flags~~ — **DONE**: E12, E26 → `needs-rework`.
 4. (Added) Catalog rows minted for the lowering reach: **E69–E71** in
-   `.planning/SELF-IMPLEMENT-CATALOG.md` section IX.
+   `docs/elements/catalog.md` section IX.
 
 The batch below is now unblocked; runs cite `decision-effect-facets` directly.
 

@@ -37,7 +37,7 @@ exist to end it.
 
 Every bank follows six sections: **1** the concept in chirality (IS / IS-NOT; the
 monoliths it's confused with) · **2** the refraction (each shard → its principled
-home → build-state, authoritative from `.planning/audit/CONFORMANCE-MAP.md`) · **3**
+home → build-state, authoritative from `records/conformance-map.md`) · **3**
 cross-cuts (where a shard *is* another concept's shard — the highest-value part) ·
 **4** native→chirality translation (the misfire → the correction) · **5** genuinely
 new / unbuilt residue (tied to E# / DECISION, gradients preserved) · **6**

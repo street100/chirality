@@ -22,7 +22,7 @@ updated: 2026-07-25
 > load-bearing one: get it right and the governance vocabulary is a set of views
 > onto a single built mechanism; get it wrong and each view looks like a missing
 > subsystem. Build-state below is AUTHORITATIVE from
-> `.planning/audit/CONFORMANCE-MAP.md` (slice D) and [[status-ledger]]; where a
+> `records/conformance-map.md` (slice D) and [[status-ledger]]; where a
 > facet is genuinely unbuilt it is named as such, never rounded to done.
 
 ---

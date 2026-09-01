@@ -14,10 +14,10 @@ tree:
 
 | needs | for |
 |---|---|
-| `.planning/SELF-IMPLEMENT-CATALOG.md` | the catalog row that is the pack's first input |
-| `.planning/LEDGER.md`, `.planning/USER-LAYER-GAP.md`, `.planning/SCRIBA-PRIMITIVE-CHECKLIST.md` | the element's ledger rows |
-| `.planning/audit/CONFORMANCE-MAP.md` | `--audit` / `--spec` build-state |
-| `.planning/specs/` | `--spec` output dir + `--mark audited` |
+| `docs/elements/catalog.md` | the catalog row that is the pack's first input |
+| `docs/elements/ledger.md`, `.planning/USER-LAYER-GAP.md`, `.planning/SCRIBA-PRIMITIVE-CHECKLIST.md` | the element's ledger rows |
+| `records/conformance-map.md` | `--audit` / `--spec` build-state |
+| `docs/elements/specs/` | `--spec` output dir + `--mark audited` |
 | `examples/`, `examples/INDEX.md`, `examples/_CHEATSHEET.md` | the corpus it scaffolds into, and the idiom reference it prints |
 | `scaffold/metis/*.py` | the **OURS Python baseline** it slices around named symbols |
 | `scaffold/lib`, `scaffold/tests/test_*.py` | structural outlines + the live test count |

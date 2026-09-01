@@ -24,7 +24,7 @@ updated: 2026-08-21
 > like X*. You do not. X is already refracted across `process`, the two axes,
 > the port-set, the two laws, and the profile. This bank documents that
 > refraction so nobody names the phantom again. Build-state below is
-> AUTHORITATIVE from [[status-ledger]] and `.planning/audit/CONFORMANCE-MAP.md`;
+> AUTHORITATIVE from [[status-ledger]] and `records/conformance-map.md`;
 > where a facet is genuinely unbuilt it is named as such, never rounded to done.
 
 ---

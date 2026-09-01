@@ -13,7 +13,7 @@ schema-conformant bank. Both need the tier they operate on:
 | needs | for |
 |---|---|
 | `docs/banks/` (+ `docs/banks/INDEX.md`) | the audited node and `new-bank`'s output dir |
-| `.planning/audit/CONFORMANCE-MAP.md` | the build-state authority every claim is checked against |
+| `records/conformance-map.md` | the build-state authority every claim is checked against |
 | `examples/INDEX.md` | pipeline rows for a named element |
 | `docs/*.md` | linked-note heads |
 | `bin/ledger-lint.py` | the mechanical findings it folds in — now `tools/ledger-lint/ledger-lint.py`; the reference is a message string, not an import |

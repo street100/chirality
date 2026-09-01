@@ -8,7 +8,7 @@
 ;
 ; ⚑ E166 G3 is the rule FOLLOWED, not a gate that shipped broken. The identity
 ; was measured at design time and the row shipped a value-changing mutant
-; instead (.planning/specs/E166-mach-c-SPEC.md:579: "naming it here would have
+; instead (docs/elements/specs/E166-mach-c-SPEC.md:579: "naming it here would have
 ; been a mutant that could never fail"). What is re-expressed here is the SHAPE
 ; that was caught by hand -- on the floor a type catches it.
 ;

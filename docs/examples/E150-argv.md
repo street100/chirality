@@ -23,7 +23,7 @@ updated: 2026-08-22
 
 - **Element:** E150 — a chirality program reads *its own* command line. **The
   capability already exists** (scope corrected 2026-08-22,
-  `.planning/LEDGER.md:190`): a chirality program can read its own command line
+  `docs/elements/ledger.md:190`): a chirality program can read its own command line
   **today, with zero new crossings**, via `/proc/self/cmdline` over the existing
   `openat`/`read`/`close` — §5 below is that program, compiled by the *committed*
   `B1` and run. What is missing is not the reach but the **library**: no
@@ -33,7 +33,7 @@ updated: 2026-08-22
   `proc.chiral:51-62`, packs a *child's* argv for `proc-spawn`, `:124`) — it is
   the mirror to build against, not a substitute.
 - **Kind:** BUILD-PROPER (`ledger` module `sys-argv`, state `design`;
-  `.planning/LEDGER.md:190`).
+  `docs/elements/ledger.md:190`).
 - **Why it is still worth building:** every entry point in the tree is
   stdin-driven — because nobody wrote the reader, not because the read is
   impossible:
@@ -165,7 +165,7 @@ without a process.
 
 ### The A-vs-B question — already settled, restated here as rationale
 
-**This is not an open fork.** `.planning/LEDGER.md:190` records it plainly:
+**This is not an open fork.** `docs/elements/ledger.md:190` records it plainly:
 *"A-vs-B was never open"* — `E80-cap-to-main-SPEC.md` decision #2 resolved it in
 2026-08-01. What follows is the *reasoning* behind the settled call, kept because
 a SPEC reader needs to know why cap-shaped uniformity was declined; it is not a
@@ -178,7 +178,7 @@ result-sum-returning) beside the other process externs in `ports.chiral`.
 
 **Why A, in order of weight:**
 
-1. **The repo already resolved it, on the record.** `.planning/specs/
+1. **The repo already resolved it, on the record.** `docs/elements/specs/
    E80-cap-to-main-SPEC.md:83`, decision #2, asks exactly this question and
    answers: **RESOLVED → entry-stack data** — *"`argv` is *input*, not
    *authority* — it carries no crossing power, so gating it would be ceremony

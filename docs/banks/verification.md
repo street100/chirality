@@ -64,7 +64,7 @@ updated: 2026-09-01
 > lives where, what is actually built, and where a shard of verification turns out
 > to be a shard of [[certificate-discipline]], [[split-role]], or
 > [[axis-altitude]] wearing a different name. Build-state is AUTHORITATIVE from
-> `.planning/audit/CONFORMANCE-MAP.md` and [[status-ledger]]; where a facet is
+> `records/conformance-map.md` and [[status-ledger]]; where a facet is
 > genuinely unbuilt it is named as such, never rounded to done — and where it is
 > built-but-not-green, that is said too.
 

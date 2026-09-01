@@ -2,7 +2,7 @@
 
 The `example-to-spec` wave that follows the 2026-07-24 example-audit gate for
 lanes 2 (E50) and 4 (E28–E33, E51). Each reviewed example was turned into one
-implementation SPEC under `.planning/specs/`. E29 was **excluded** — its
+implementation SPEC under `docs/elements/specs/`. E29 was **excluded** — its
 example-gate surfaced an unresolved author FLAG (`recv-closed` socket-threading)
 that blocks its spec until answered.
 

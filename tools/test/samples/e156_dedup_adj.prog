@@ -9,7 +9,7 @@
 ; list-dedup-adj keeps the FIRST element of each (eq) run. Composed after the
 ; STABLE list-sort that is the earliest occurrence in INPUT order. The
 ; incumbent kept the LAST — by accident of recursion order, never on purpose.
-; Rationale: .planning/specs/E156-sort-adopt-SPEC.md §3 D5.
+; Rationale: docs/elements/specs/E156-sort-adopt-SPEC.md §3 D5.
 ;
 ; ⚑ WHY A str-cmp-ONLY TEST CANNOT BE THE GATE. On Str, (eq) implies value
 ; equality, so keep-first and keep-last return EQUAL lists — such a test
