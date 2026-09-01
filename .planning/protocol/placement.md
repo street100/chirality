@@ -87,6 +87,40 @@ citation is rot.
   `docs/definitions/status-ledger.md`. The old tree kept about 171 status lines
   by hand and grew lint checks to catch them drifting.
 
+## Writing is mostly amending
+
+Most writes in this tree change a document that already exists. Placing a new
+one is the rarer case, and the tables above are for that case. This section is
+for the common one.
+
+**A thing you learn mid-task gets written where it belongs, in the same move.**
+Reporting it in a message and carrying on loses it when the session ends. If the
+learning changes a doc, change the doc. If it has no home yet, the working file
+takes it.
+
+**A discussion in progress is a file.** It holds the settled decisions, the
+drafts verbatim, and what was rejected with the reason. It lives in `.planning/`
+and it is the relay: the next session picks it up rather than restarting the
+argument. `README-PLAN.md` is the live instance.
+
+**Record what was rejected, and why.** An option that was considered and dropped
+comes back otherwise. On 2026-09-01 a session proposed five question wordings
+that the working file had already rejected by name, because it had not read the
+file. The rejection list was doing its job and the session skipped it.
+
+**Supersede in place; do not delete.** When a decision replaces an earlier one,
+mark the earlier one superseded, date it, and leave it. The record of what was
+tried is what stops it being tried again. Cutting it makes the file read cleaner
+and makes the next session dumber.
+
+**Amend with a date.** A doc that changed and does not say when reads as always
+having said that. `updated:` in the frontmatter, and a dated line where the
+change is a reversal.
+
+**Read before you write.** Before adding to a doc, read what it already says on
+the subject. Before opening a new working file, check whether one is open. This
+is the cheapest rule here and the one most often skipped.
+
 ## Before you commit
 
 ```
