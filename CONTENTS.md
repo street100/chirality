@@ -24,10 +24,11 @@ belongs to, and the arc handoffs followed on 2026-09-01.
 - [README.md](README.md): the public front door.
 - [PRINCIPLES.md](PRINCIPLES.md): five principles, one thesis (condensed from
   seven 2026-07-20; a crosswalk in the doc keeps old P1-P7 citations resolving).
-- [PRINCIPLES-SLIM.md](PRINCIPLES-SLIM.md): the same five, condensed.
 - [MAP.md](MAP.md): the tree contract. Extensions, module key, doc roles.
-- [`docs/decisions/decision-scope.md`](`docs/decisions/decision-scope.md`): the router. Where a session starts, and which arcs
-  are live. Arc state itself lives in `docs/arcs/`.
+- [docs/definitions/working-discipline.md](docs/definitions/working-discipline.md): the work contract.
+  The build rule, the deferral rule, commits, and where state lives.
+- [docs/index.md](docs/index.md): the design base. Goals, arcs, elements and the
+  banks hang off it; an arc file carries its own resume state.
 - This file, the contents.
 
 `docs/decisions/decision-lane-split.md` and `records/lane-a-record.md` also sit at root while two lanes run in one

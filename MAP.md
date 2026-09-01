@@ -120,12 +120,12 @@ lib/
   evidence/    cross-checked truth
 prog/          what chirality ships, as distinct from what it is
 tools/         one folder per tool
-/                  README.md · PRINCIPLES.md · PRINCIPLES-SLIM.md · MAP.md ·
-                   CONTENTS.md · `docs/decisions/decision-scope.md`, plus LICENSE.md and
-                   LICENSE.EXCEPTION.md. A document at root is one a stranger or
-                   a tool opens first; everything else sorts into a tier below.
-                   docs/decisions/decision-lane-split.md and records/lane-a-record.md sit at root while two lanes are
-                   live; their home is undecided and `docs/decisions/decision-scope.md` records that.
+/                  README.md · PRINCIPLES.md · MAP.md · CONTENTS.md, plus
+                   LICENSE.md and LICENSE.EXCEPTION.md. A document at root is one
+                   a stranger or a tool opens first; everything else sorts into a
+                   tier below. Cleared 2026-09-01: the three agent working files
+                   was cut as a condensed twin of PRINCIPLES.md with nothing
+                   keeping the two in sync.
 docs/
   index.md         the hub. Notes link by [[slug]], never by path, so a note
                    moves between roles without touching a single link.

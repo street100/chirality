@@ -1,7 +1,7 @@
 ---
 node: index
 layer: navigation
-related: [goals/README, arcs/README, elements/README, records/README, testing-floors, relations, glossary, thesis, splitting-law, joining-law, module-map, open-edges, floor-agreement, status-ledger, design-principles, resolution-patterns, syntax-evolution, trust-boundary, totality, live-environment, certificate-discipline, split-role]
+related: [working-discipline, goals/README, arcs/README, elements/README, records/README, testing-floors, relations, glossary, thesis, splitting-law, joining-law, module-map, open-edges, floor-agreement, status-ledger, design-principles, resolution-patterns, syntax-evolution, trust-boundary, totality, live-environment, certificate-discipline, split-role]
 status: draft
 updated: 2026-09-01
 ---
@@ -24,6 +24,12 @@ linked notes, one idea per note. Read the hub notes first, then follow links.
 - For orientation above this base, read [CONTENTS](../CONTENTS.md) (the whole project) and
   [PERSONA](../.planning/PERSONA.md) (how to work here). The long road is in
   [.planning/ROADMAP.md](../.planning/ROADMAP.md).
+
+## How work is done here
+
+[[working-discipline]] is the work contract: the build rule, the deferral rule,
+commits, and where state lives. `MAP.md` is the tree contract. Neither is
+optional reading for someone changing the tree.
 
 ## Reading order
 
