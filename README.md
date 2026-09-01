@@ -42,14 +42,17 @@ the boundaries by design. **Status**, below, says which of them run today.
 ## Status
 
 **Self-hosting since 2026-08-05.** The compiler compiles its own source to a
-byte-identical copy of itself. `bin/chirality-bin` is committed at 1,102,200
-bytes, and the fixpoint is verified at generation 3 (gen2 == gen3).
+byte-identical copy of itself. Measured 2026-09-01: a 772,967-byte blob goes in
+and a 1,147,256-byte ELF comes out, that ELF compiles the same blob to itself,
+and the result equals the committed `bin/chirality-bin` byte for byte. The
+fixpoint holds at generation one.
 
-No Python runs in the compile, check or run path. 14 Python files remain,
-4,654 LOC, measured 2026-08-31, all under `tools/` and `docs/examples/refs/`.
-The target is zero. The rule is that the compiler compiles everything.
+No Python runs in the compile, check or run path. 14 Python files remain, 4,829
+LOC, measured 2026-09-01: nine under `tools/`, four generators under
+`docs/examples/refs/`, one fixture under `.planning/`. The target is zero. The
+rule is that the compiler compiles everything.
 
-`bin/chirality test` reports **118 assertions passed, 0 failed**, plus 86
+`bin/chirality test` reports **303 assertions passed, 0 failed**, plus 87
 compile-only roots that gate and assert nothing. 5 of the old suite's 12 phases
 are unported; the run prints each by name and reason, every time.
 
@@ -59,7 +62,9 @@ What is real versus designed is tracked in
 
 ### ⚑ Honest limits
 
-- `python3 tools/ledger-lint/ledger-lint.py` **exits 1** today, on one check.
+- `python3 tools/ledger-lint/ledger-lint.py` **exits 1** today with 249
+  findings across nine of its twenty checks (A, B, C, F, G, I, N, R, T). 130 of
+  them are line citations in the corpus that no longer fit the file they name.
   Lint fails.
 - The effect membrane's three refusing rules are in the tree and **nothing
   calls them**. A `->` body that reaches an `=>` one is refused nowhere. The
@@ -181,6 +186,8 @@ nothing proves nothing.
 | typed process spawn | [`lib/runtime/proc.chiral`](lib/runtime/proc.chiral) + [`process.port`](lib/ports/process.port) |
 | userland in chirality | [`lib/`](lib/): [JSON](lib/protocol/json.chiral), [HTTP](lib/protocol/http.chiral), FSMs, the [x86-64 emitter](lib/lowering/x64/emit.chiral) |
 | the tree contract: extensions, roles, the module key | [`MAP.md`](MAP.md) |
+| the work contract: build rule, deferral rule, commits, reporting | [`working-discipline`](docs/definitions/working-discipline.md) |
+| the agent tier: tone, placement, workflow, dispatch | [`.planning/README.md`](.planning/README.md) |
 | design docs | [`docs/`](docs/), starting at [`docs/index.md`](docs/index.md) |
 | benchmarks | [`docs/benchmarks/`](docs/benchmarks/) |
 | worked examples | [`docs/examples/INDEX.md`](docs/examples/INDEX.md) |
@@ -190,9 +197,16 @@ nothing proves nothing.
 
 ## About this repository
 
-This is the public mirror of a private working repo. Planning and process lanes
-are filtered out of the published history, so some older commits reference
-paths that are missing here. That is the filter at work.
+This is the public mirror of a private working repo, and some older commits
+reference paths that are missing here. That is a history filter at work.
+
+Two tiers are tracked and both ship. `docs/` and `records/` are written for a
+human reader. `.planning/`, `CLAUDE.md` and `.claude/skills/` are written for an
+agent working the tree: navigation, protocol, queues, handoffs. They were
+gitignored until 2026-09-01, which meant a rule could live only in a worktree
+and vanish from a fresh clone.
+[decision-ai-tier](docs/decisions/decision-ai-tier.md) has the reasoning, and
+`.planning/README.md` maps that tier.
 
 ## License
 
