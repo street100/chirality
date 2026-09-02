@@ -4,7 +4,7 @@
 ; (:780), `_meet` (:825), `_num_dec_ok` (:843), `_passes_unchanged` (:833),
 ; `_term_spine`. The gate is PURE (`->`) and returns a Verdict VALUE
 ; (errors-as-values) instead of mutating sig.totality + raising; it walks a
-; finite Term tree by structural recursion, so chirality's own totality gate
+; finite TotTerm tree by structural recursion, so chirality's own totality gate
 ; certifies it. data.py stays the oracle; enforcement (require_total escalation)
 ; is the caller's job (surface.py verify_profiles), unchanged.
 ;
@@ -19,21 +19,21 @@
 ; real I64-MAX/I64-MIN constants.
 (import "prelude/prelude")
 
-; ---- the slice of the term ADT the checker judges over (Term <-> Arm mutual,
-; expressible since E79). t-var carries a de Bruijn LEVEL directly (the port
-; simplification of data.py's depth-1-index conversion); t-app is flat (head +
-; arg list, the spine already unwound); t-glob heads both self-calls AND prim
-; ops ("+"/"-"/"<i"/"<=i"/"=i"). t-lit is the port's addition over the example's
+; ---- the slice of the term ADT the checker judges over (TotTerm <-> TotArm mutual,
+; expressible since E79). tot-var carries a de Bruijn LEVEL directly (the port
+; simplification of data.py's depth-1-index conversion); tot-app is flat (head +
+; arg list, the spine already unwound); tot-glob heads both self-calls AND prim
+; ops ("+"/"-"/"<i"/"<=i"/"=i"). tot-lit is the port's addition over the example's
 ; 5 constructors -- the numeric cases (b)/(c) need integer literals, which the
 ; example Term lacked. -----------------------------------------------------------
-(data Term ()
-  (t-var  (lvl  I64))                        ; de Bruijn level
-  (t-lam  (body Term))                       ; a leading binder = recursion param
-  (t-app  (head Term) (args (List Term)))    ; flat application spine
-  (t-case (scrut Term) (arms (List Arm)))
-  (t-glob (name Str))                        ; global / self-call / prim-op head
-  (t-lit  (val I64)))                         ; i64 literal (step / bound constant)
-(data Arm () (arm (ctor Str) (nvars I64) (body Term)))
+(data TotTerm ()
+  (tot-var  (lvl  I64))                        ; de Bruijn level
+  (tot-lam  (body TotTerm))                       ; a leading binder = recursion param
+  (tot-app  (head TotTerm) (args (List TotTerm)))    ; flat application spine
+  (tot-case (scrut TotTerm) (arms (List TotArm)))
+  (tot-glob (name Str))                        ; global / self-call / prim-op head
+  (tot-lit  (val I64)))                         ; i64 literal (step / bound constant)
+(data TotArm () (tot-arm (ctor Str) (nvars I64) (body TotTerm)))
 
 ; --- well-founded evidence threaded down each path ----------------------------
 (data SizeTok ()
@@ -43,18 +43,18 @@
 ; a per-variable bound keyed by its own level: constant interval (lo/hi, none =
 ; unbounded) plus STRICT symbolic bounds lt/gt (levels this var is strictly
 ; less/greater than) -- the faithful port of data.py's (lo, hi, lt, gt).
-(data Bound ()
+(data TotBound ()
   (bnd (lvl I64) (lo (Maybe I64)) (hi (Maybe I64)) (lt (List I64)) (gt (List I64))))
 
 ; errors are values: the verdict is RETURNED, never thrown.
 (data Verdict () (total) (not-total (reason Str)))
-; the walk's result sum: accumulated per-call decreasing sets, or a bail reason.
+; the tot-walk's result sum: accumulated per-call decreasing sets, or a bail reason.
 (data Walked () (v-ok (calls (List (List I64)))) (v-err (reason Str)))
 
 ; Working-type reps (SPEC decision #3), assoc-lists keyed by de Bruijn level --
 ; the concrete mirror of data.py's `size` / `bounds` dicts:
 ;   Sizes  = (List (Pair I64 SizeTok))   ; level -> size token
-;   Bounds = (List Bound)                ; bound carries its own level key
+;   Bounds = (List TotBound)                ; bound carries its own level key
 ;   Calls  = (List (List I64))           ; one decreasing-position set per call
 ;   DecSet = (List I64)                  ; argument positions that decrease
 
@@ -64,11 +64,11 @@
 (def I64-MIN I64 (- (- 0 9223372036854775807) 1))
 
 ; ---- generic list helpers ----------------------------------------------------
-(declare nth (-> (0 A (type 0)) (List A) I64 (Maybe A)))
-(def nth (lam (A xs i)
+(declare tot-nth (-> (0 A (type 0)) (List A) I64 (Maybe A)))
+(def tot-nth (lam (A xs i)
   (case xs
     (nil (none))
-    ((cons h t) (case (<=i i 0) (true (some h)) (false (nth A t (- i 1))))))))
+    ((cons h t) (case (<=i i 0) (true (some h)) (false (tot-nth A t (- i 1))))))))
 
 (declare lapp (-> (0 A (type 0)) (List A) (List A) (List A)))
 (def lapp (lam (A xs ys)
@@ -87,14 +87,14 @@
       (false (i64-inter r b)))))))
 
 ; ---- term inspectors ---------------------------------------------------------
-(declare lit-of (-> Term (Maybe I64)))
-(def lit-of (lam (z) (case z ((t-lit k) (some k)) (_ (none)))))
+(declare lit-of (-> TotTerm (Maybe I64)))
+(def lit-of (lam (z) (case z ((tot-lit k) (some k)) (_ (none)))))
 
-(declare plevel (-> Term I64 (Maybe I64)))    ; a param var (level < np) -> its level
+(declare plevel (-> TotTerm I64 (Maybe I64)))    ; a param var (level < np) -> its level
 (def plevel (lam (z np)
-  (case z ((t-var l) (case (<i l np) (true (some l)) (false (none)))) (_ (none)))))
+  (case z ((tot-var l) (case (<i l np) (true (some l)) (false (none)))) (_ (none)))))
 
-(declare args2 (-> (List Term) (Maybe (Pair Term Term))))
+(declare args2 (-> (List TotTerm) (Maybe (Pair TotTerm TotTerm))))
 (def args2 (lam (args)                        ; exactly two args -> (pair a0 a1)
   (case args
     ((cons a0 r0) (case r0
@@ -105,30 +105,30 @@
 (declare is-cmp (-> Str Bool))
 (def is-cmp (lam (op) (or (str-eq op "<i") (or (str-eq op "<=i") (str-eq op "=i")))))
 
-(declare is-self (-> Term Str Bool))
-(def is-self (lam (head name) (case head ((t-glob g) (str-eq g name)) (_ false))))
+(declare is-self (-> TotTerm Str Bool))
+(def is-self (lam (head name) (case head ((tot-glob g) (str-eq g name)) (_ false))))
 
 (declare sz-param (-> SizeTok I64))
 (def sz-param (lam (tok) (case tok ((st-root p) p) ((st-smaller p) p))))
 
 ; ---- numeric step detection (data.py `_num_delta`) ---------------------------
-(declare plus-delta  (-> Term Term I64 (Maybe (Pair I64 I64))))
+(declare plus-delta  (-> TotTerm TotTerm I64 (Maybe (Pair I64 I64))))
 (def plus-delta (lam (x y np)                 ; (+ p k) or (+ k p) -> (level, k)
   (case (plevel x np)
     ((some lx) (case (lit-of y) ((some k) (some (pair lx k))) (none (none))))
     (none (case (plevel y np)
             ((some ly) (case (lit-of x) ((some k) (some (pair ly k))) (none (none))))
             (none (none)))))))
-(declare minus-delta (-> Term Term I64 (Maybe (Pair I64 I64))))
+(declare minus-delta (-> TotTerm TotTerm I64 (Maybe (Pair I64 I64))))
 (def minus-delta (lam (x y np)                ; (- p k) -> (level, -k)
   (case (plevel x np)
     ((some lx) (case (lit-of y) ((some k) (some (pair lx (- 0 k)))) (none (none))))
     (none (none)))))
-(declare num-delta (-> Term I64 (Maybe (Pair I64 I64))))
+(declare num-delta (-> TotTerm I64 (Maybe (Pair I64 I64))))
 (def num-delta (lam (a np)
   (case a
-    ((t-app head args) (case head
-      ((t-glob op) (case (args2 args)
+    ((tot-app head args) (case head
+      ((tot-glob op) (case (args2 args)
         (none (none))
         ((some xy) (case xy ((pair x y)
           (case (str-eq op "+")
@@ -140,7 +140,7 @@
     (_ (none)))))
 
 ; ---- bound environment (data.py `_meet` + dict get/insert) -------------------
-(declare bounds-get (-> (List Bound) I64 Bound))
+(declare bounds-get (-> (List TotBound) I64 TotBound))
 (def bounds-get (lam (bs j)                    ; missing -> NOBOUND
   (case bs
     (nil (bnd j (none) (none) nil nil))
@@ -154,20 +154,20 @@
 (def min-def (lam (a b)
   (case a (none b) ((some x) (case b (none (some x)) ((some y) (some (min x y))))))))
 
-(declare meet-bnd (-> Bound Bound Bound))      ; intersect two bounds at one level
+(declare meet-bnd (-> TotBound TotBound TotBound))      ; intersect two bounds at one level
 (def meet-bnd (lam (b0 b1)
   (case b0 ((bnd p lo0 hi0 lt0 gt0) (case b1 ((bnd q lo1 hi1 lt1 gt1)
     (bnd p (max-def lo0 lo1) (min-def hi0 hi1) (lapp I64 lt0 lt1) (lapp I64 gt0 gt1))))))))
 
-(declare ins-at (-> (List Bound) I64 Bound (List Bound)))
+(declare ins-at (-> (List TotBound) I64 TotBound (List TotBound)))
 (def ins-at (lam (bs L f)                      ; meet f into the bound at level L
   (case bs
     (nil (cons f nil))
     ((cons b rest) (case b ((bnd p lo hi lt gt)
       (case (=i p L) (true (cons (meet-bnd b f) rest)) (false (cons b (ins-at rest L f))))))))))
-(declare ins-bnd (-> (List Bound) Bound (List Bound)))
+(declare ins-bnd (-> (List TotBound) TotBound (List TotBound)))
 (def ins-bnd (lam (bs f) (case f ((bnd fl lo hi lt gt) (ins-at bs fl f)))))
-(declare extend-bounds (-> (List Bound) (List Bound) (List Bound)))
+(declare extend-bounds (-> (List TotBound) (List TotBound) (List TotBound)))
 (def extend-bounds (lam (bounds facts)
   (case facts (nil bounds) ((cons f rest) (extend-bounds (ins-bnd bounds f) rest)))))
 
@@ -187,26 +187,26 @@
           (true  (case is-true (true (some (pair (none) (some k)))) (false (some (pair (some (+ k 1)) (none))))))
           (false (case is-true (true (some (pair (some k) (none)))) (false (some (pair (none) (some (- k 1))))))))))))))
 
-(declare var-lit (-> Term Term (Maybe (Pair I64 I64))))
+(declare var-lit (-> TotTerm TotTerm (Maybe (Pair I64 I64))))
 (def var-lit (lam (v other)                    ; (var, lit) -> (level, k)
-  (case v ((t-var l) (case (lit-of other) ((some k) (some (pair l k))) (none (none)))) (_ (none)))))
+  (case v ((tot-var l) (case (lit-of other) ((some k) (some (pair l k))) (none (none)))) (_ (none)))))
 
-(declare mk-const-fact (-> Str Bool I64 I64 Bool (List Bound)))
+(declare mk-const-fact (-> Str Bool I64 I64 Bool (List TotBound)))
 (def mk-const-fact (lam (op var-left lv k is-true)
   (case (const-of op var-left k is-true)
     (none nil)
     ((some ivl) (case ivl ((pair lo hi) (cons (bnd lv lo hi nil nil) nil)))))))
 
-(declare sym-facts (-> Str Term Term Bool (List Bound)))
+(declare sym-facts (-> Str TotTerm TotTerm Bool (List TotBound)))
 (def sym-facts (lam (op x y is-true)           ; x < y (strict, true) -> symbolic bounds
   (case (and (str-eq op "<i") is-true)
     (false nil)
-    (true (case x ((t-var lx) (case y ((t-var ly)
+    (true (case x ((tot-var lx) (case y ((tot-var ly)
       (cons (bnd lx (none) (none) (cons ly nil) nil)
       (cons (bnd ly (none) (none) nil (cons lx nil)) nil)))
       (_ nil))) (_ nil))))))
 
-(declare guard-facts (-> Str Term Term Bool (List Bound)))
+(declare guard-facts (-> Str TotTerm TotTerm Bool (List TotBound)))
 (def guard-facts (lam (op x y is-true)
   (case (is-cmp op)
     (false nil)
@@ -216,13 +216,13 @@
         ((some p) (case p ((pair ly k) (mk-const-fact op false ly k is-true))))
         (none (sym-facts op x y is-true)))))))))
 
-(declare guard-bound (-> Term Str (List Bound)))
+(declare guard-bound (-> TotTerm Str (List TotBound)))
 (def guard-bound (lam (scrut cname)
   (case (or (str-eq cname "true") (str-eq cname "false"))
     (false nil)
     (true (case scrut
-      ((t-app head args) (case head
-        ((t-glob op) (case (args2 args)
+      ((tot-app head args) (case head
+        ((tot-glob op) (case (args2 args)
           (none nil)
           ((some xy) (case xy ((pair x y) (guard-facts op x y (str-eq cname "true")))))))
         (_ nil)))
@@ -240,10 +240,10 @@
   (case (<=i nvars 0)
     (true sizes)
     (false (add-fields (cons (pair depth (st-smaller p)) sizes) p (- nvars 1) (+ depth 1))))))
-(declare extend-sizes (-> (List (Pair I64 SizeTok)) Term I64 I64 (List (Pair I64 SizeTok))))
+(declare extend-sizes (-> (List (Pair I64 SizeTok)) TotTerm I64 I64 (List (Pair I64 SizeTok))))
 (def extend-sizes (lam (sizes scrut nvars depth)
   (case scrut
-    ((t-var l) (case (sizes-get sizes l)
+    ((tot-var l) (case (sizes-get sizes l)
       ((some tok) (add-fields sizes (sz-param tok) nvars depth))
       (none sizes)))                            ; no token -> fields carry no size info
     (_ sizes))))
@@ -261,18 +261,18 @@
     (false false)
     (true (case lo (none false) ((some l) (<=i (- I64-MIN d) l)))))))
 
-(declare arg-is-var-at (-> (List Term) I64 Bool))
+(declare arg-is-var-at (-> (List TotTerm) I64 Bool))
 (def arg-is-var-at (lam (allargs L)             ; args[L] passed unchanged (var at level L)
-  (case (nth Term allargs L)
+  (case (tot-nth TotTerm allargs L)
     (none false)
-    ((some t) (case t ((t-var l2) (=i l2 L)) (_ false))))))
-(declare passes-unchanged (-> (List Term) (List I64) Bool))
+    ((some t) (case t ((tot-var l2) (=i l2 L)) (_ false))))))
+(declare passes-unchanged (-> (List TotTerm) (List I64) Bool))
 (def passes-unchanged (lam (allargs levels)
   (case levels
     (nil false)
     ((cons L rest) (case (arg-is-var-at allargs L) (true true) (false (passes-unchanged allargs rest)))))))
 
-(declare num-dec-ok (-> Term I64 I64 (List Term) (List Bound) Bool))
+(declare num-dec-ok (-> TotTerm I64 I64 (List TotTerm) (List TotBound) Bool))
 (def num-dec-ok (lam (a j np allargs bounds)
   (case (num-delta a np)
     (none false)
@@ -287,15 +287,15 @@
                 (and (=i d (- 0 1)) (passes-unchanged allargs gt)))))))))))))))
 
 ; ---- scoring one self-call: structural OR numeric per argument position -------
-(declare struct-dec? (-> Term I64 (List (Pair I64 SizeTok)) Bool))
-(def struct-dec? (lam (a j sizes)               ; (t-var l), size (st-smaller j)
+(declare struct-dec? (-> TotTerm I64 (List (Pair I64 SizeTok)) Bool))
+(def struct-dec? (lam (a j sizes)               ; (tot-var l), size (st-smaller j)
   (case a
-    ((t-var l) (case (sizes-get sizes l)
+    ((tot-var l) (case (sizes-get sizes l)
       ((some tok) (case tok ((st-smaller p) (=i p j)) (_ false)))
       (none false)))
     (_ false))))
 
-(declare score-from (-> I64 I64 (List Term) (List Term) (List (Pair I64 SizeTok)) (List Bound) (List I64)))
+(declare score-from (-> I64 I64 (List TotTerm) (List TotTerm) (List (Pair I64 SizeTok)) (List TotBound) (List I64)))
 (def score-from (lam (j np cursor allargs sizes bounds)
   (case cursor
     (nil nil)
@@ -303,7 +303,7 @@
       (case (or (struct-dec? a j sizes) (num-dec-ok a j np allargs bounds))
         (true  (cons j (score-from (+ j 1) np rest allargs sizes bounds)))
         (false (score-from (+ j 1) np rest allargs sizes bounds)))))))
-(declare score-args (-> I64 (List Term) (List (Pair I64 SizeTok)) (List Bound) (List I64)))
+(declare score-args (-> I64 (List TotTerm) (List (Pair I64 SizeTok)) (List TotBound) (List I64)))
 (def score-args (lam (np args sizes bounds) (score-from 0 np args args sizes bounds)))
 
 ; ---- calls accumulator + uniform-decreasing-position intersection ------------
@@ -320,64 +320,64 @@
 (def intersect-all (lam (calls)                 ; some position decreasing on EVERY call
   (case calls (nil (none)) ((cons first rest) (first-of (inter-fold first rest))))))
 
-; ---- the walk: gather decreasing positions by structural recursion on Term ---
-(declare walk       (-> Str I64 Term I64 (List (Pair I64 SizeTok)) (List Bound) (List (List I64)) Walked))
-(declare walk-list  (-> Str I64 (List Term) I64 (List (Pair I64 SizeTok)) (List Bound) (List (List I64)) Walked))
-(declare walk-arms  (-> Str I64 Term (List Arm) I64 (List (Pair I64 SizeTok)) (List Bound) (List (List I64)) Walked))
-(def walk (lam (name np t depth sizes bounds calls)
+; ---- the tot-walk: gather decreasing positions by structural recursion on TotTerm ---
+(declare tot-walk       (-> Str I64 TotTerm I64 (List (Pair I64 SizeTok)) (List TotBound) (List (List I64)) Walked))
+(declare tot-walk-list  (-> Str I64 (List TotTerm) I64 (List (Pair I64 SizeTok)) (List TotBound) (List (List I64)) Walked))
+(declare tot-walk-arms  (-> Str I64 TotTerm (List TotArm) I64 (List (Pair I64 SizeTok)) (List TotBound) (List (List I64)) Walked))
+(def tot-walk (lam (name np t depth sizes bounds calls)
   (case t
-    ((t-app head args)
+    ((tot-app head args)
       (case (is-self head name)
-        (true  (walk-list name np args depth sizes bounds
+        (true  (tot-walk-list name np args depth sizes bounds
                           (calls-push calls (score-args np args sizes bounds))))
-        (false (walk-list name np (cons head args) depth sizes bounds calls))))
-    ((t-case scrut arms)
-      (case (walk name np scrut depth sizes bounds calls)
+        (false (tot-walk-list name np (cons head args) depth sizes bounds calls))))
+    ((tot-case scrut arms)
+      (case (tot-walk name np scrut depth sizes bounds calls)
         ((v-err r) (v-err r))
-        ((v-ok calls1) (walk-arms name np scrut arms depth sizes bounds calls1))))
-    ((t-glob g)
+        ((v-ok calls1) (tot-walk-arms name np scrut arms depth sizes bounds calls1))))
+    ((tot-glob g)
       (case (str-eq g name)
         (true  (v-err "the definition is used as a value, not called directly -- its recursion cannot be checked for termination"))
         (false (v-ok calls))))
-    ((t-lam body) (walk name np body (+ depth 1) sizes bounds calls))
-    (_ (v-ok calls)))))                          ; t-var / t-lit: leaves
-(def walk-list (lam (name np ts depth sizes bounds calls)
+    ((tot-lam body) (tot-walk name np body (+ depth 1) sizes bounds calls))
+    (_ (v-ok calls)))))                          ; tot-var / tot-lit: leaves
+(def tot-walk-list (lam (name np ts depth sizes bounds calls)
   (case ts
     (nil (v-ok calls))
     ((cons x rest)
-      (case (walk name np x depth sizes bounds calls)
+      (case (tot-walk name np x depth sizes bounds calls)
         ((v-err r) (v-err r))
-        ((v-ok calls1) (walk-list name np rest depth sizes bounds calls1)))))))
-(def walk-arms (lam (name np scrut arms depth sizes bounds calls)
+        ((v-ok calls1) (tot-walk-list name np rest depth sizes bounds calls1)))))))
+(def tot-walk-arms (lam (name np scrut arms depth sizes bounds calls)
   (case arms
     (nil (v-ok calls))
     ((cons a rest)
-      (case a ((arm cname nvars body)
-        (case (walk name np body (+ depth nvars)
+      (case a ((tot-arm cname nvars body)
+        (case (tot-walk name np body (+ depth nvars)
                     (extend-sizes sizes scrut nvars depth)
                     (extend-bounds bounds (guard-bound scrut cname))
                     calls)
           ((v-err r) (v-err r))
-          ((v-ok calls1) (walk-arms name np scrut rest depth sizes bounds calls1)))))))))
+          ((v-ok calls1) (tot-walk-arms name np scrut rest depth sizes bounds calls1)))))))))
 
 ; ---- count / strip the leading recursion binders -----------------------------
-(declare count-lams (-> Term I64 I64))
-(def count-lams (lam (t acc) (case t ((t-lam body) (count-lams body (+ acc 1))) (_ acc))))
-(declare strip-lams (-> Term Term))
-(def strip-lams (lam (t) (case t ((t-lam body) (strip-lams body)) (_ t))))
+(declare count-lams (-> TotTerm I64 I64))
+(def count-lams (lam (t acc) (case t ((tot-lam body) (count-lams body (+ acc 1))) (_ acc))))
+(declare tot-strip-lams (-> TotTerm TotTerm))
+(def tot-strip-lams (lam (t) (case t ((tot-lam body) (tot-strip-lams body)) (_ t))))
 (declare sizes-init (-> I64 (List (Pair I64 SizeTok))))
 (declare mk-roots (-> I64 I64 (List (Pair I64 SizeTok))))
 (def mk-roots (lam (i np) (case (<i i np) (false nil) (true (cons (pair i (st-root i)) (mk-roots (+ i 1) np))))))
 (def sizes-init (lam (np) (mk-roots 0 np)))
 
-; ---- the gate: PURE, structurally recursive on the finite Term tree ----------
+; ---- the gate: PURE, structurally recursive on the finite TotTerm tree ----------
 ; foetus -- collect one decreasing-position set per self-call, then intersect;
 ; total iff some position decreases on EVERY self-call.
-(declare check-termination (-> Str Term Verdict))
+(declare check-termination (-> Str TotTerm Verdict))
 (def check-termination (lam (name body)
   (let ((np (count-lams body 0)))
-    (let ((spine (strip-lams body)))
-      (case (walk name np spine np (sizes-init np) nil nil)
+    (let ((spine (tot-strip-lams body)))
+      (case (tot-walk name np spine np (sizes-init np) nil nil)
         ((v-err reason) (not-total reason))     ; used-as-value / mutual rec
         ((v-ok calls)
           (case (calls-empty? calls)

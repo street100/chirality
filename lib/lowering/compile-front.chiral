@@ -21,6 +21,7 @@
 (import "lowering/upper/closconv-driver")     ; closconv-sig: defunctionalize HO defs before peel
 (import "lowering/lowspec")             ; NTalTy / NCore / NArm / NDef
 (import "typing/diag")                  ; E157: dg-msg -- the front entry is EGRESS
+(import "typing/totality-check")        ; E11: tot-gate -- the `(total)` profile gate
 
 ; Qty -> the I64 quantity code lower.Core uses (inverse of kernel i->qty).
 (def qty->i (-> Qty I64) (lam (q) (case q ((q0) 0) ((q1) 1) ((qw) 2))))
@@ -323,8 +324,19 @@
 ; THE FRONT ENTRY: source string + entry name -> FR (fr-ok NDef / fr-err msg).
 ; Pure chirality: parse + elaborate + typecheck (load-source) then peel. The whole
 ; source-driven, type-checked front half of the native compile in one call.
+; E11 -- the `(total)` profile gate runs HERE, between the load and the peel.
+; docs/definitions/totality.md calls it a composition-time judgment over the
+; loaded composite, so it needs the whole checked Sig, which is the last point
+; that has one; and it must read the bodies the LOADER stored, before
+; specialize-singletons and closconv-sig rewrite them.
+;
+; A source that declares no `(total)` profile pays nothing: `tot-gate` reads the
+; profile list first and returns tot-proven without classifying a single def.
 (def compile-front (-> Str Str FR)
   (lam (src name)
     (case (load-source-batched src)
       ((ld-err m)  (fr-err (str-cat "load: " (dg-msg m))))
-      ((ld-ok sig) (bridge-sig (closconv-sig (specialize-singletons sig)) name)))))
+      ((ld-ok sig)
+        (case (tot-gate sig)
+          ((tot-holdout hn why) (fr-err (tot-holdout-msg hn why)))
+          ((tot-proven) (bridge-sig (closconv-sig (specialize-singletons sig)) name)))))))

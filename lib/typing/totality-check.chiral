@@ -1,0 +1,161 @@
+; E11, remaining half: the CALLER for `typing/totality`'s classifier.
+;
+; `typing/totality` holds the E11 gate and judges its own six-constructor
+; `TotTerm`. The compiler's terms are `surface/syntax`'s sixteen-constructor
+; `Term`, de Bruijn INDEXED and curried. Nothing bridged the two, so the
+; classifier had no caller and termination was neither enforced nor classified
+; in the built compiler (docs/definitions/status-ledger.md, the Totality row).
+; This module is the bridge and the composition-time gate.
+;
+; TWO JOBS, and they are separate on purpose:
+;
+;   `tot-of-def name body`  CLASSIFIES one def. Pure, a Verdict VALUE, readable
+;                           by any caller that wants a verdict and refuses
+;                           nothing.
+;   `tot-gate sig`          the PROFILE gate. docs/definitions/totality.md, "The
+;                           profile gate": a profile carrying a bare `(total)`
+;                           asserts the sub-category where every morphism is
+;                           total, and its scope is the WHOLE COMPOSITE, as it
+;                           is for the port set. No profile demands it -> the
+;                           scan does not run and nothing is refused.
+;
+; ENFORCE-BY-DEFAULT IS STILL OUT OF SCOPE. totality.md gates that flip on
+; E47 + E50 and this module does not take it: a def whose recursion the
+; classifier cannot prove compiles exactly as before unless a `(total)` profile
+; is declared over it.
+;
+; THE TRANSLATION, and what each shape costs. `tot-of-def` walks the kernel Term
+; at a binder DEPTH and rebuilds it as a TotTerm:
+;
+;   t-var i           -> tot-var (depth - i - 1)     index becomes level
+;   t-app f a         -> tot-app head args           the curried spine, unwound
+;   t-lam / karm      -> tot-lam / tot-arm            the two binders the walk knows
+;   t-global/t-prim n -> tot-glob n                  a self-call OR a prim op:
+;                                                   `+`, `-`, `<i`, `<=i`, `=i`
+;                                                   are prims here, and the
+;                                                   numeric measure reads them
+;                                                   off the same constructor
+;   t-lit-i v         -> tot-lit v                   step / bound constants
+;   t-ann tm ty       -> the term, type dropped     a type is erased at runtime,
+;                                                   and keeping it would hide a
+;                                                   decreasing argument behind
+;                                                   an app node
+;   t-case dflt       -> one more arm, ctor "_"     a default branch is a branch:
+;                                                   dropping it would miss a
+;                                                   self-call inside it
+;   t-let / t-pi      -> an opaque app over the
+;                        binder as a tot-lam         the walk's depth then tracks
+;                                                   the translation's depth
+;   the rest          -> an opaque app / tot-glob ""  no name, no literal, no
+;                                                   comparison: contributes
+;                                                   nothing and hides nothing
+;
+; The binder rule is the load-bearing one. `tot-walk` recomputes levels from its
+; own `depth`, incrementing at tot-lam and by nvars at tot-arm, so every kernel
+; binder must arrive as one of those two or the two depths drift and a level
+; names the wrong variable. That is why t-let and t-pi keep a tot-lam.
+;
+; An opaque node is CONSERVATIVE. It can only cost a decrease the checker would
+; otherwise have seen, which classifies a total def as not-proven. It cannot
+; make a looping def prove.
+(import "typing/kernel")               ; Term / KArm / RfAtom / Sig / Profile
+(import "typing/totality")             ; TotTerm / TotArm / Verdict / check-termination
+
+; a de Bruijn INDEX under `depth` binders is the LEVEL depth-i-1.
+(declare tot-lvl (-> I64 I64 I64))
+(def tot-lvl (lam (depth i) (- (- depth i) 1)))
+
+; the opaque node: a head that is no name, no literal and no comparison.
+(declare tot-opaque (-> (List TotTerm) TotTerm))
+(def tot-opaque (lam (args) (tot-app (tot-glob "") args)))
+
+; unwind the curried application spine: (t-app (t-app f a) b) -> (f, [a, b]).
+(declare tot-spine (-> Term (List Term) (Pair Term (List Term))))
+(def tot-spine (lam (t acc)
+  (case t ((t-app f a) (tot-spine f (cons a acc))) (_ (pair t acc)))))
+
+(declare tot-tr       (-> I64 Term TotTerm))
+(declare tot-tr-list  (-> I64 (List Term) (List TotTerm)))
+(declare tot-tr-arms  (-> I64 (List KArm) (List TotArm)))
+(declare tot-tr-dflt  (-> I64 (Maybe Term) (List TotArm)))
+(declare tot-tr-atoms (-> I64 (List RfAtom) (List TotTerm)))
+(declare tot-tr-bind  (-> I64 Term Term TotTerm))
+
+(def tot-tr (lam (depth t)
+  (case t
+    ((t-var i)      (tot-var (tot-lvl depth i)))
+    ((t-lam b)      (tot-lam (tot-tr (+ depth 1) b)))
+    ((t-app f a)    (case (tot-spine t nil)
+                      ((pair h args) (tot-app (tot-tr depth h) (tot-tr-list depth args)))))
+    ((t-global n)   (tot-glob n))
+    ((t-prim n)     (tot-glob n))
+    ((t-lit-i v)    (tot-lit v))
+    ((t-ann tm ty)  (tot-tr depth tm))
+    ((t-case s arms dflt)
+      (tot-case (tot-tr depth s)
+               (lapp TotArm (tot-tr-arms depth arms) (tot-tr-dflt depth dflt))))
+    ((t-let q v b)  (tot-tr-bind depth v b))
+    ((t-pi q sea dom cod) (tot-tr-bind depth dom cod))
+    ((t-con dn cn args)   (tot-opaque (tot-tr-list depth args)))
+    ((t-tcon dn args)     (tot-opaque (tot-tr-list depth args)))
+    ((t-refine base atoms)
+      (tot-opaque (cons (tot-tr depth base) (tot-tr-atoms depth atoms))))
+    (_ (tot-glob "")))))                ; t-type / t-primty / t-lit-s: leaves
+
+; a one-binder form: the bound subterm stays a tot-lam so the walk's depth and
+; this translation's depth stay in step.
+(def tot-tr-bind (lam (depth v b)
+  (tot-opaque (cons (tot-tr depth v)
+              (cons (tot-lam (tot-tr (+ depth 1) b)) nil)))))
+
+(def tot-tr-list (lam (depth ts)
+  (case ts (nil nil) ((cons x r) (cons (tot-tr depth x) (tot-tr-list depth r))))))
+(def tot-tr-arms (lam (depth as)
+  (case as
+    (nil nil)
+    ((cons a r) (case a ((karm cn nvars body)
+      (cons (tot-arm cn nvars (tot-tr (+ depth nvars) body)) (tot-tr-arms depth r))))))))
+(def tot-tr-dflt (lam (depth m)
+  (case m (none nil) ((some d) (cons (tot-arm "_" 0 (tot-tr depth d)) nil)))))
+(def tot-tr-atoms (lam (depth as)
+  (case as
+    (nil nil)
+    ((cons a r) (case a ((r-atom op operand)
+      (cons (tot-tr depth operand) (tot-tr-atoms depth r))))))))
+
+; ---- job 1: CLASSIFY one def. A value, refusing nothing. ---------------------
+(declare tot-of-def (-> Str Term Verdict))
+(def tot-of-def (lam (name body) (check-termination name (tot-tr 0 body))))
+
+; ---- job 2: the profile gate over the whole composite -----------------------
+(data TotalR () (tot-proven) (tot-holdout (name Str) (reason Str)))
+
+(declare tot-profile-demands (-> Profile Bool))
+(def tot-profile-demands (lam (p) (case p ((mk-profile nm po tg me to) to))))
+(declare tot-demanded (-> (List Profile) Bool))
+(def tot-demanded (lam (ps)
+  (case ps
+    (nil false)
+    ((cons p r) (case (tot-profile-demands p) (true true) (false (tot-demanded r)))))))
+
+; the first holdout, with its reason. One name is what the report needs; the
+; scan stops there rather than building a list nothing reads.
+(declare tot-scan (-> (List (Pair Str (Pair Term Term))) TotalR))
+(def tot-scan (lam (gs)
+  (case gs
+    (nil (tot-proven))
+    ((cons g r) (case g ((pair nm tb) (case tb ((pair ty body)
+      (case (tot-of-def nm body)
+        ((total) (tot-scan r))
+        ((not-total why) (tot-holdout nm why))))))))))) 
+
+(declare tot-gate (-> Sig TotalR))
+(def tot-gate (lam (sig)
+  (case (tot-demanded (sig-profiles sig))
+    (false (tot-proven))
+    (true  (tot-scan (sig-globals sig))))))
+
+; the refusal sentence, in the shape docs/definitions/totality.md prints it.
+(declare tot-holdout-msg (-> Str Str Str))
+(def tot-holdout-msg (lam (nm why)
+  (str-cat "profile (total): def " (str-cat nm (str-cat " not proven total: " why)))))
