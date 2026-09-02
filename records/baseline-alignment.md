@@ -435,3 +435,36 @@ anything, and in five of these rows that one number predicted the result.
 - evidence: `docs/definitions/status-ledger.md:155`, `lib/typing/refine.chiral`, `lib/prelude/prelude.chiral:150`, `tools/test/samples/e173_matcher.prog:100-107`, `prog/paren-audit.prog:103-107`, `records/findings.md` FD-02
 - checked:  2026-09-01
 - element:  UNASSIGNED
+
+## Claims that outlived the tree, 2026-09-02
+
+Three rows from opening the arcs [[goals/local-ai]] and
+[[goals/ownership-and-trust]] were owed. Each is a recorded gap that the tree
+closed, or a recorded reason that the file it cites contradicts.
+
+### BA-42 the transport gap is stated in three names, and two of them stopped being externs
+
+- state:    OPEN
+- claim:    `docs/definitions/status-ledger.md:149`, the orchestration-substrate row, gives the reason the substrate cannot run as `http-request` and `backend-open` having no entry in `lib/lowering/tal/crossing-wraps.chiral`. The owed table in `docs/goals/local-ai.md` adds `chat-open` and says the three have no runtime referent. `.planning/LOCAL-AI-ARC-REALIGNMENT.md` section 3A rests its whole first arc on that reading.
+- measured: two of the three are chirality `def`s. `http-request` is defined at `lib/protocol/http.chiral:437` over the socket caps and `chat-open` at `:773`; the catalog files E130 and E131 BUILT for exactly that swap, with the module's own header recording it. `backend-open` is still an `extern` in `prog/manas/backend.chiral` and is erased to `nb-id` at `lib/lowering/tal/erase.chiral:123` under the E144 string carrier, so a crossing entry is the wrong home for it. Every `extern` declared under `lib/protocol/` and `prog/manas/` was checked against both lowering tables: `backend-close`, `backend-open`, `be-base` and `be-peek` erase, `close` crosses, and nothing is unmapped. The conclusion the row draws may still hold, and its stated reason does not: Phase 7 of `tools/test/run-tests.sh` sweeps every root compile-only, no phase performs a model call, and the one root binding a client connect sits on that phase's known-failing list needing a live peer. Repair is `arcs/transport-arc` row T1.
+- evidence: `docs/definitions/status-ledger.md:149`, `docs/goals/local-ai.md`, `lib/protocol/http.chiral:437`, `:773`, `lib/lowering/tal/erase.chiral:123`, `lib/lowering/tal/crossing-wraps.chiral`, `tools/test/run-tests.sh:170-174`
+- checked:  2026-09-02
+- element:  UNASSIGNED
+
+### BA-43 S18 is recorded as owed in two documents and was built on 2026-08-23
+
+- state:    OPEN
+- claim:    the owed table in `docs/goals/local-ai.md` records the `Scriba` state record as a SPEC that exists and is unbuilt. `.planning/LOCAL-AI-ARC-REALIGNMENT.md` section 3B builds its scriba arc on the same reading and makes `S18` the first row.
+- measured: `prog/scriba/editor-state.chiral` defines `data Scriba` and is imported across the command layer. `.planning/SCRIBA-PRIMITIVE-CHECKLIST.md:106` records the landing as BUILT 2026-08-23 with two commits and its own correction that every figure in the original row was low: 78 signatures, 367 argument sites over 318 lines, nine threading shapes where the SPEC predicted one 11-parameter thread, and net LOC 0 against a 14.8% blob-byte fall. The cost the goal file cites for the record it calls unbuilt is therefore a cost already paid. Repair is `arcs/scriba-arc` row S1.
+- evidence: `docs/goals/local-ai.md`, `prog/scriba/editor-state.chiral`, `.planning/SCRIBA-PRIMITIVE-CHECKLIST.md:106`
+- checked:  2026-09-02
+- element:  UNASSIGNED
+
+### BA-44 five documents cite `.gitignore:12` as excluding `.planning/`, and that file says the opposite
+
+- state:    OPEN
+- claim:    `docs/arcs/README.md`, `docs/elements/README.md:16`, `docs/arcs/presentability-arc.md`, `docs/definitions/status-ledger.md:67` and `docs/decisions/decision-dispatch-cadence.md:17` all cite `.gitignore:12` for the planning tier being excluded from git. Three of them draw doctrine from it: a fact written under `.planning/` forks per worktree, dies with it, and cannot be relied on by a second reader.
+- measured: `.gitignore:1-9` is a banner headed "the agent tier is tracked", and it names `.planning/`, `CLAUDE.md` and `.claude/skills/` as the agent half of two audiences in one repository, both tracked, citing `docs/decisions/decision-ai-tier.md` for the ruling. Line 12 is a comment introducing `.claude/*`, and the only rules in the file's first block are `.claude/*`, the `!.claude/skills/` exception, `.claude-*/`, `.scratch/`, `*.orig` and `*.rej`. `git check-ignore -v .planning/LOCAL-AI-ARC-REALIGNMENT.md` matches no rule and `git ls-files .planning` returns 140 files. The doctrine those documents carry, that a tracked fact belongs in `docs/` or `records/`, is settled by `docs/decisions/decision-ai-tier.md` on its own terms and survives without the citation. `docs/definitions/status-ledger.md:67` is the harder one: it attributes the exclusion to a master decision that the planning tier is private, so this row is a conflict between two recorded decisions and needs the author before an edit. Not repaired here, and no document was rewritten on one measurement.
+- evidence: `.gitignore:1-14`, `docs/arcs/README.md`, `docs/elements/README.md:16`, `docs/definitions/status-ledger.md:67`, `docs/decisions/decision-dispatch-cadence.md:17`, `docs/arcs/presentability-arc.md`
+- checked:  2026-09-02
+- element:  UNASSIGNED
