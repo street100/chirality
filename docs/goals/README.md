@@ -3,7 +3,7 @@ node: goals
 layer: navigation
 related: [index, arcs/README, records/README, status-ledger, open-edges]
 status: current
-updated: 2026-09-01
+updated: 2026-09-02
 ---
 
 # Goals
@@ -28,14 +28,14 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 
 | goal | state | arcs |
 |---|---|---|
-| [[goals/self-hosting]] | held since 2026-08-05, maintained by the BUILD RULE | none open |
+| [[goals/self-hosting]] | held since 2026-08-05, maintained by the BUILD RULE | none open, and see Rules |
 | [[goals/self-tooling]] | in flight | [[arcs/zero-python-arc]], [[arcs/text-tools-arc]] |
 | [[goals/readable-surface]] | in flight | [[arcs/diagnostics-arc]], [[arcs/file-types-arc]] |
 | [[goals/presentability]] | in flight | [[arcs/baseline-alignment-arc]], [[arcs/presentability-arc]], [[arcs/binary-split-arc]] |
 | [[goals/enforcement]] | in flight | [[arcs/enforcement-arc]] |
 | [[goals/independent-judgment]] | stated, unbuilt | [[arcs/independent-judgment-arc]] |
-| [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | none yet, deferred on an author call |
-| [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | none, by decision |
+| [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | [[arcs/transport-arc]], [[arcs/scriba-arc]], [[arcs/tuning-arc]] |
+| [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
 
 `independent-judgment` carries an arc as of 2026-09-01 and still has no element.
 `README.md` lists it under Honest limits, and
@@ -47,10 +47,16 @@ reserved element block.
 than derivations from existing text, and say so in their own first section.
 
 [[goals/local-ai]] is an author call too, stated verbatim on 2026-09-01 and
-says so in its own first section. It carries no arc yet: which existing arcs
-supply pieces and which are owed is proposed in
-`.planning/LOCAL-AI-ARC-REALIGNMENT.md`, and two rows in
-[[records/author-calls]] block the assignment.
+says so in its own first section. Its three arcs opened 2026-09-02 from
+`.planning/LOCAL-AI-ARC-REALIGNMENT.md`, which also says which existing arcs
+supply pieces without being re-pointed. Two rows in [[records/author-calls]]
+still block work inside them: [[arcs/tuning-arc]] is blocked whole and
+[[arcs/transport-arc]] can be worked as far as its first row.
+
+[[goals/ownership-and-trust]] carries an arc as of 2026-09-02 and every row in
+it is deferred. The arc holds three minted elements, `E53`, `E71` and `E72`,
+that were sitting in the goal file. A deferred goal keeps its arc unscheduled,
+and the arc says so in its own resume state.
 
 ## Rules
 
@@ -60,3 +66,14 @@ supply pieces and which are owed is proposed in
   new ambition is an author call.
 - Changing what a goal claims changes what its arcs are for, so it is a decision
   and belongs in `docs/decisions/` first.
+- **A goal held by a standing gate carries no arc, and that is its finished
+  shape.** An arc schedules work toward a goal that is open. Where a goal is
+  maintained on every change by a rule that already runs, there is no work to
+  schedule and an arc would be an empty file. [[goals/self-hosting]] is the
+  case: the BUILD RULE in [[working-discipline]] holds it on every change whose
+  deliverable enters the compiler's import closure, and
+  `tools/test/map-integrity.sh` and `bin/chirality test` measure it. Its goal
+  file names the gates and its honest limits say what a fixpoint does not
+  prove. A goal in this shape says `none open` in the table above, and
+  `ledger-lint` check V reads that as the recorded reason rather than a hole.
+  A goal with neither an arc nor a gate is a hole and check V fails it.

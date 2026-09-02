@@ -107,8 +107,8 @@ Measured 2026-09-01 against this tree.
 
 | what | measured state |
 |---|---|
-| A runtime referent for the model transport | `http-request`, `backend-open` and `chat-open` have no entry in `lib/lowering/tal/crossing-wraps.chiral`. [[status-ledger]] carries this as the orchestration-substrate row: the whole substrate type-checks and lowers with nothing to run against. The live runs recorded in `.planning/MANAS-STATE-VS-GOAL.md` were taken through the CPython transport, which is cut. UNASSIGNED |
-| The `Scriba` state record | `docs/elements/specs/S18-scriba-record-SPEC.md` exists and is unbuilt. `.planning/SCRIBA-PRIMITIVE-CHECKLIST.md` measures the cost it removes: 11 loop-state parameters threaded through 436 argument sites |
+| A run that reaches a model server | Re-measured 2026-09-02 as `BA-42` in [[records/baseline-alignment]]: `http-request` and `chat-open` are chirality `def`s over the socket caps since E130 and E131, and `backend-open` erases rather than crossing, so the crossing-table gap this row used to name is closed. What is owed is a run. Phase 7 of `tools/test/run-tests.sh` sweeps every root compile-only and no phase performs a model call, so the live runs recorded in `.planning/MANAS-STATE-VS-GOAL.md` remain the CPython ones, taken through a transport that is cut. [[arcs/transport-arc]] holds it. UNASSIGNED |
+| Buffer list and switching, `S19` | The `Scriba` state record that gates it is BUILT, 2026-08-23, `prog/scriba/editor-state.chiral`. This row read `S18` unbuilt until 2026-09-02 and that is `BA-43`. [[arcs/scriba-arc]] holds the S-series states |
 | Fine tuning, model creation, the interaction set | `prog/manas/backend.chiral:17` records `train-start` and `train-status` as documented and unbuilt on the worker side. Nothing in this tree names them. Blocked on author call A. UNASSIGNED |
 | Directory enumeration | E148 `getdents64` plus `stat`. Not built, zero occurrences under `lib/`, re-verified 2026-08-31 |
 | The `.manifest` module kind | E163, minted and unbuilt. Two `.manifest` files sit on disk, `prog/climb.manifest` and `lib/lowering/tal/target-linux.manifest`, and `MAP.md` declares the kind. The loader check that makes it a kind is the owed half |
@@ -117,18 +117,33 @@ Measured 2026-09-01 against this tree.
 
 ## Arcs
 
-None yet, deferred on the two author calls below. The realignment proposal is
-`.planning/LOCAL-AI-ARC-REALIGNMENT.md`: which existing arcs already supply
-pieces, which would have to be re-pointed, and which arcs are owed.
+Three, opened 2026-09-02 from `.planning/LOCAL-AI-ARC-REALIGNMENT.md`. That
+proposal also records which existing arcs supply pieces of this goal while
+serving their own, and it re-points nothing.
+
+| arc | covers | state |
+|---|---|---|
+| [[arcs/transport-arc]] | criterion 1, a run that reaches a model server | open. Its first row is a measurement repair and needs no element number |
+| [[arcs/scriba-arc]] | criterion 2, full interaction from the editor | open and unblocked. `S#` is its own namespace |
+| [[arcs/tuning-arc]] | criterion 4, fine tuning and the transformer verbs | opened blocked on author call A, with no row written |
+
+Criterion 3 has no arc. The framework is largely built and naming a gap there
+would be a phantom feature: the `Flow` algebra is recursive and total over seven
+constructors and the skill registry is enumerable data. The one L0 row that is
+genuinely absent is the tiny-step lint of criterion 5, and it is a text tool in
+shape, which is [[arcs/text-tools-arc]].
 
 ## Honest limits
 
-**The engine has no referent to run against in this tree.** Nine thousand nine
-hundred and thirty lines under `prog/manas/` compile and lower, and the three
-externs that would reach a model server are absent from the crossing table. Every
-"live verified" line in `.planning/MANAS-STATE-VS-GOAL.md` was measured through
-the CPython transport that the migration cut. This is the first thing criterion 1
-needs and it is the cheapest of the owed rows.
+**The engine has never run in this tree.** Nine thousand nine hundred and thirty
+lines under `prog/manas/` compile and lower, and Phase 7 of
+`tools/test/run-tests.sh` gates them on compiling. No phase in the suite performs
+a model call. Every "live verified" line in `.planning/MANAS-STATE-VS-GOAL.md`
+was measured through the CPython transport that the migration cut. Until
+2026-09-02 this limit was written as three externs missing from the crossing
+table, which E130 and E131 had already made false; `BA-42` in
+[[records/baseline-alignment]] holds the re-measurement. The gap is a run, and
+it is the first thing criterion 1 needs.
 
 **There is no float type.** `lib/protocol/json.chiral:4` states it and keeps
 numbers as their raw lexeme for that reason. `F64` and `Float` are absent from

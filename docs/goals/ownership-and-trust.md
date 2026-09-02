@@ -1,9 +1,9 @@
 ---
 node: goal-ownership-and-trust
 layer: navigation
-related: [goals/README, secure-datum-model, bootstrap, trust-boundary, index]
+related: [goals/README, arcs/ownership-and-trust-arc, secure-datum-model, bootstrap, trust-boundary, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-02
 ---
 
 # Goal: the ownership and trust model
@@ -31,7 +31,12 @@ with no entry reads as an abandoned one.
 
 ## Arcs
 
-None, by decision.
+[[arcs/ownership-and-trust-arc]], opened 2026-09-02 and deferred whole. The
+track's own sentence above points at three minted elements, `E53`, `E71` and
+`E72`, and until now they had no place in the goal-arc-element chain to sit.
+The arc holds them with the state each is actually in. Opening it schedules
+nothing: every row says deferred and the arc's resume state says a session picks
+it up nowhere.
 
 ## Open, and parked with the track
 

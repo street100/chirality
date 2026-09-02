@@ -33,7 +33,9 @@ Authoring a goal the project has never stated is forbidden.
 
 ## What an arc file carries
 
-1. `goal:` the goal it serves, or `UNWRITTEN`.
+1. `goals:` every goal it serves, or `UNWRITTEN`. The singular `goal:` is
+   the same field and is what the arcs written before the relation opened up
+   still spell.
 2. `REQUIREMENTS`: what must hold for the arc to be done, numbered, each one
    checkable. A requirement with no way to observe it is a wish.
 3. The element list with state. One row per element.
@@ -83,9 +85,19 @@ when this table and an arc file disagree.
 | [[arcs/zero-python-arc]] | [[goals/self-tooling]] | 0 of 14 `.py` files removed | none |
 | [[arcs/baseline-alignment-arc]] | [[goals/presentability]] | 3 rows closed, the rest open | none |
 | [[arcs/presentability-arc]] | [[goals/presentability]] | 3 rows, none started | none |
-| [[arcs/binary-split-arc]] | [[goals/presentability]] | measured, unstarted | none |
+| [[arcs/binary-split-arc]] | [[goals/presentability]] | 5 rows, none started | none |
 | [[arcs/independent-judgment-arc]] | [[goals/independent-judgment]] | 4 rows, none started | none |
+| [[arcs/transport-arc]] | [[goals/local-ai]] | 4 rows, none started | none |
+| [[arcs/scriba-arc]] | [[goals/local-ai]] | 6 rows, `S18` built and five open | the `S` namespace |
+| [[arcs/tuning-arc]] | [[goals/local-ai]] | opened blocked, no row written | none |
+| [[arcs/ownership-and-trust-arc]] | [[goals/ownership-and-trust]] | 3 rows, all deferred by author call | none |
 
-Six of the nine hold no reserved block, so their work cannot be minted as an
-`E#` today. `docs/decisions/decision-work-ids.md` drafts the arc-local row id
-that would let them name it anyway.
+Three of the thirteen hold a reserved `E` band and one holds the `S` namespace.
+The other nine cannot mint an element today, and
+`docs/decisions/decision-work-ids.md` settles the arc-local row id that lets
+them name their work anyway. Every one of the nine spells its scheme in its own
+`reserved element block:` field, and `ledger-lint` check V fails an arc that
+holds neither a band nor a scheme.
+
+A goal with no arc is a different shape and `docs/goals/README.md` states when
+it is legitimate.

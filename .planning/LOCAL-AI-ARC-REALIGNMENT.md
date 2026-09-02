@@ -7,6 +7,15 @@ and both are named at the bottom of this file.
 It answers three questions: which existing arcs already supply pieces of this
 goal, which would have to be re-pointed, and which arcs are owed.
 
+**Acted on 2026-09-02.** The three arcs of section 3 are open as
+`docs/arcs/transport-arc.md`, `docs/arcs/scriba-arc.md` and
+`docs/arcs/tuning-arc.md`. Two premises here were measured stale in the same
+pass and the arcs carry the corrected reading: the transport gap is `BA-42` in
+`records/baseline-alignment.md` and `S18` being unbuilt is `BA-43`. Section 1's
+rule that an arc names exactly one goal was superseded by the many-to-many
+relation in `docs/arcs/README.md`, and the conclusion it drew, that this
+proposal re-points nothing, still stands.
+
 ---
 
 ## 1. The rule this proposal obeys

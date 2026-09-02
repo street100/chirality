@@ -3,7 +3,7 @@ node: goal-self-hosting
 layer: navigation
 related: [goals/README, status-ledger, testing-floors, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-02
 ---
 
 # Goal: the language compiles and checks itself
@@ -33,9 +33,16 @@ Held. `bin/chirality-bin` is 1,147,256 B, promoted by E181 on 2026-09-01, with
 
 ## Arcs
 
-None open. This goal is maintained by the BUILD RULE on every change whose
-deliverable enters the compiler's import closure, and by
-`tools/test/map-integrity.sh` and `bin/chirality test`.
+None open, and none is owed. This goal is maintained by the BUILD RULE on every
+change whose deliverable enters the compiler's import closure, and by
+`tools/test/map-integrity.sh` and `bin/chirality test`. An arc schedules work
+toward an open goal; a goal a standing gate holds on every change has no work to
+schedule, so the arc would be empty. [[goals/README]] states that shape once,
+under Rules, and `ledger-lint` check V reads the `none open` row there as the
+recorded reason.
+
+What would earn an arc: a decision to close the limits below, since neither is
+held by a gate today.
 
 ## Honest limits
 
