@@ -54,7 +54,8 @@
   (cons (pair "raw-proc-spawn" "nb-run-cmd")  ; E33-A2: native process spawn
   (cons (pair "wait"           "nb-wait")        ; E33-A2: native reap decode
   (cons (pair "signal"         "nb-signal")      ; signal(2): set signal disposition
-    nil))))))))))))))))))))))))))))))))))))))))))))
+  (cons (pair "heap-allocated" "nb-heap-allocated") ; the arena cursor, read out (x64 x-fin)
+    nil)))))))))))))))))))))))))))))))))))))))))))))
 
 (declare cw-lookup (-> (List (Pair Str Str)) Str (Maybe Str)))
 (def cw-lookup (lam (t op)

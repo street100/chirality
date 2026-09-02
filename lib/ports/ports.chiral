@@ -21,7 +21,7 @@
 ;   ports/tty      line-discipline ioctls + read-key + Key/KeySeq/Keymap
 ;   ports/stdio    print / put / trace
 ;   ports/clock    Clock, Timer, Env caps and their result sums
-;   ports/process  exit / halt / signal / mmap / mprotect
+;   ports/process  exit / halt / signal / mmap / mprotect / heap-allocated
 ;
 ; What that buys is a NAMING boundary -- what a module is allowed to name --
 ; and nothing else. It is worth exactly 0 bytes at runtime: `native-lib ++

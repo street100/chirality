@@ -16,3 +16,21 @@
 (extern mmap (=> I64 I64 I64 I64 I64 I64 I64))  ; mmap(addr,len,prot,flags,fd,off) -> base or -errno
 (extern mprotect (=> I64 I64 I64 I64))            ; mprotect(addr,len,prot) -> 0 or -errno
 (extern signal (=> I64 I64 I64))              ; signal(signum,handler) -> old handler (SIG_DFL=0/SIG_IGN=1)
+
+; heap-allocated: the arena's bump cursor, read out. `heapptr - heapbase` is
+; TOTAL BYTES EVER ALLOCATED, exactly -- the cursor only advances and nothing
+; reclaims, so it is the allocator's own state and not an inference from RSS.
+; The four arena cells are stored by the entry stub before main runs
+; (lib/lowering/compile-emit.chiral:36-44); this crossing reads two of them.
+;
+; Why `=>`, and why this registry. The answer depends on mutable machine state:
+; the same argument gives a different answer once the program has allocated.
+; Prelude's standing invariant is that every extern it declares is `->`
+; (prelude.chiral:10 -- "every one of them is `->`, so its `crossings` is empty
+; by derivation"), so an effectful extern has no home there. An effectful extern
+; is a bound crossing by the tree's own derivation (module/loader.chiral
+; crossings-of), and MAP.md puts a declared crossing under ports/. It joins
+; mmap/mprotect on THIS registry instead of minting a tenth: the arena's own
+; crossings are already here, and ports.chiral argues against a registry per
+; single declaration.
+(extern heap-allocated (=> Unit I64))

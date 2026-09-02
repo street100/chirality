@@ -556,6 +556,24 @@
 
                     (cons (a-bytes (b1 195))
 
+; nb-heap-allocated -- the arena's cursor, read out. Total bytes ever allocated
+; is exactly heapptr - heapbase: the bump pointer only advances (x-alo/x-galo
+; above) and nothing reclaims, so the difference is the allocator's own state,
+; not an estimate. A leaf: no frame, no call, and rsi is free to clobber because
+; a `cal` clobbers all six argument registers (x64-clobbers, clb-all). Lives in
+; `fin` because the cells do -- a target with no heap story emits neither, and a
+; program that names the crossing on such a target fails to resolve the label
+; rather than reading a zero.
+                      (cons (a-label "nb-heap-allocated")
+
+                      (cons (a-rel 7 e-ldrsi "heapbase")               ; rsi = *heapbase
+
+                      (cons (a-rel 7 e-ldheap "heapptr")               ; rax = *heapptr
+
+                      (cons (a-bytes (bc3 (b1 72) (b1 41) (b1 240)))   ; 48 29 f0 sub rax, rsi
+
+                      (cons (a-bytes (b1 195))                         ; c3       ret
+
                       (cons (a-align 4096)
 
                         (cons (a-label "heapptr")
@@ -574,7 +592,7 @@
 
                                   (cons (a-bytes (b8 0))
 
-                                    (the (List Asm) nil))))))))))))))))))))
+                                    (the (List Asm) nil)))))))))))))))))))))))))
 
 )
 
