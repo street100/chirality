@@ -216,9 +216,17 @@ the shape is not uniform and that is worth stating rather than forcing.
 **Q1. What bugs could a programming language inherently remove? Could debugging a
 program be made purely about logical bug solving?**
 
+> **The goal.** `docs/goals/enforcement.md`: what is built is gated, and the
+> compiler checks what it claims to check. That turns your question into a
+> narrower one. A bug class comes off the list when it can be stated as a
+> judgment and a gate fails when the judgment stops holding. Anything short of
+> that is a bug the language happens to catch today.
+>
 > Some of them, and the set is open. A failure you can name as a class is a
 > failure a checker can refuse, and because the language can express its own
 > checker the list is worked rather than given.
+>
+> **The state.**
 >
 > | category | what refuses today | how far it goes |
 > |---|---|---|
@@ -253,8 +261,16 @@ Q2 through Q7 below are the standing drafts.
 
 **Q2. Why does one working stack need half a dozen languages that share nothing?**
 
+> **The goal.** `docs/goals/self-hosting.md` and `docs/goals/self-tooling.md`:
+> the language compiles and checks itself, and it is good enough to write its own
+> tooling with no Python left. A stack fragments because each layer is held to a
+> different constraint, so the test of one language is whether it survives being
+> held to all of them at once.
+>
 > Chirality wants to be one language covering the compiler, the checker, the emitter,
 > the runtime, the tooling and the data.
+>
+> **The state.**
 >
 > | layer | written in chirality as | state |
 > |---|---|---|
@@ -295,6 +311,11 @@ Q2 through Q7 below are the standing drafts.
 
 **Q4. Does a language with strong opinions have to fight you?**
 
+> **The goal.** `docs/goals/readable-surface.md`: the surface stays convenient
+> without buying it back in escape hatches. It is stated against a failure mode
+> rather than a feature, and the failure mode is your question: an annotation
+> everyone writes is an escape hatch with a polite name.
+>
 > Not really. What makes an opinionated language hard is the amount you have to
 > hold in your head. Strong typing already exists to mechanically exclude
 > categories of failure, but they effectively leave all of typing to you every time.
@@ -303,7 +324,7 @@ Q2 through Q7 below are the standing drafts.
 > you extend, one bug class at a time, until the primitives cover it. (and this is the
 > end goal)
 >
-> `paren-audit` is the small version, 244 lines of chirality. Break a paren and
+> **The state.** `paren-audit` is the small version, 244 lines of chirality. Break a paren and
 > it names the form, the line it opens on, and the delta. Easy enough for the next
 > step is a tool that repairs the file in place, and at that point unbalanced parens
 > stop being something you consider at all. That is the method: name the class,
