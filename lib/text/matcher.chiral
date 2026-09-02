@@ -427,3 +427,103 @@
 
 (declare count-matches (-> Pat Bytes I64))
 (def count-matches (lam (p bs) (length Span (find-all p bs))))
+
+; ─── LState: the line pass ───────────────────────────────────────────────────
+; The PState idiom of lib/protocol/vt-parser.chiral:11-20, at two constructors.
+; Code is skipped before any pattern sees a line: a fenced block goes whole and
+; an inline span is blanked, so an identifier or a quoted check name stays out
+; of the findings.
+(data LState () (ls-prose) (ls-fence))
+
+; The first non-blank offset at or after i, or n when the rest is blank. Total
+; by the numeric measure: the step is exactly +1 under the strict guard
+; (<i i n) with n passed unchanged, so the measure is n - i (totality.md:81-89).
+(declare ls-nonblank (-> Bytes I64 I64 I64))
+(def ls-nonblank
+  (lam (bs i n)
+    (case (<i i n)
+      (false n)
+      (true
+        (let ((c (bget bs i)))
+          (case (or (=i c 32) (=i c 9))
+            (true  (ls-nonblank bs (+ i 1) n))
+            (false i)))))))
+
+; A toggler is leading blanks then three backtick bytes (96), which is the awk
+; baseline's fence test at tools/prose-lint/prose-lint.sh:89. A longer run of
+; backticks toggles too, because both tests read the first three and stop.
+; Total: a case chain over three fixed offsets with no recursion. The nesting
+; keeps every bget behind the one bounds test that covers it.
+(declare line-is-fence (-> Str Bool))
+(def line-is-fence
+  (lam (ln)
+    (let ((bs (str->bytes ln)))
+      (let ((n (blen bs)))
+        (let ((i (ls-nonblank bs 0 n)))
+          (case (<=i (+ i 3) n)
+            (false false)
+            (true
+              (case (=i (bget bs i) 96)
+                (false false)
+                (true
+                  (case (=i (bget bs (+ i 1)) 96)
+                    (false false)
+                    (true (=i (bget bs (+ i 2)) 96))))))))))))
+
+; The whole toggle. A fence line flips the state and answers false, so the
+; toggling line reaches no pattern; the awk baseline does the same at
+; tools/prose-lint/prose-lint.sh:89-91, where the toggle arm and the fenced arm
+; both end in `next`. Total: two cases over two closed sums, no recursion.
+(declare line-step (-> LState Str (Pair LState Bool)))   ; snd: scan this line?
+(def line-step
+  (lam (st ln)
+    (case (line-is-fence ln)
+      (true
+        (case st
+          ((ls-prose) (pair ls-fence false))
+          ((ls-fence) (pair ls-prose false))))
+      (false
+        (case st
+          ((ls-prose) (pair ls-prose true))
+          ((ls-fence) (pair ls-fence false)))))))
+
+; ─── blank-spans: an inline span becomes spaces of the same length ───────────
+; The replacement is spaces, both backticks included, so an offset found on the
+; blanked copy is still valid on the original. That is the length-preserving
+; rule lib/prelude/string.chiral:96-99 states for the ASCII case fold, carried
+; to a span of any width. The awk baseline deletes the span instead
+; (tools/prose-lint/prose-lint.sh:93), which shortens the line and can glue the
+; two sides of a span into a match that the source never held.
+(def ls-space Str " ")
+
+(declare ls-spaces (-> I64 Str))
+(def ls-spaces (lam (k) (bytes->str (brepeat (str->bytes ls-space) k))))
+
+; `pend` holds the open span's original text with its opening backtick. A
+; closing backtick turns that length into spaces; reaching the end of the line
+; with `pend` still open emits the text verbatim, which is how the awk gsub
+; leaves an unpaired backtick alone.
+;
+; Total by the numeric measure: the step is exactly +1 under the strict guard
+; (<i i n) with n passed unchanged, measure n - i (totality.md:81-89).
+(declare blank-go (-> Bytes I64 I64 Str (Maybe Str) Str))
+(def blank-go
+  (lam (bs i n acc pend)
+    (case (<i i n)
+      (false (case pend (none acc) ((some t) (str-cat acc t))))
+      (true
+        (let ((one (bytes->str (bslice bs i (+ i 1)))))
+          (case pend
+            (none
+              (case (=i (bget bs i) 96)
+                (true  (blank-go bs (+ i 1) n acc (some one)))
+                (false (blank-go bs (+ i 1) n (str-cat acc one) none))))
+            ((some t)
+              (case (=i (bget bs i) 96)
+                (true  (blank-go bs (+ i 1) n
+                         (str-cat acc (ls-spaces (+ (str-len t) 1))) none))
+                (false (blank-go bs (+ i 1) n acc (some (str-cat t one))))))))))))
+
+(declare blank-spans (-> Str Str))
+(def blank-spans
+  (lam (s) (let ((bs (str->bytes s))) (blank-go bs 0 (blen bs) "" none))))
