@@ -295,7 +295,7 @@ run_phase 18 "the term printer (E181 Term -> Doc)"                 pretty.sh
 # ⚑ Its M3 is the mutant this tree cannot refuse.  A `pd` whose `p-star` arm
 # does not rebuild the star does not terminate, and `chirality check` answers OK
 # on it: `lib/typing/totality.chiral` is the built E11 classifier and nothing
-# imports it (docs/definitions/status-ledger.md:156).  G10 therefore RUNS the
+# imports it (docs/definitions/status-ledger.md:157).  G10 therefore RUNS the
 # mutant under a bounded stack and reads the divergence, with the base tree
 # under the same limits as its control.
 run_phase 19 "the total matcher (E173 pd + norm)"                  matcher.sh

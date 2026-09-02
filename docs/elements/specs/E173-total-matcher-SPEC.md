@@ -387,7 +387,7 @@ measurement exists. It mints no element and this SPEC does not plan it.
   **G10 is a run and not a check, because nothing in this tree refuses a
   non-terminating `pd`.** `lib/typing/totality.chiral` is the built E11
   classifier and no module imports it, so termination is neither enforced nor
-  classified in the built compiler (`docs/definitions/status-ledger.md:156`) and
+  classified in the built compiler (`docs/definitions/status-ledger.md:157`) and
   `chirality check` answers OK on M3, measured. The row therefore **observes**
   the divergence: the fixture runs under an 8 MB stack and a 20 s ceiling, the
   mutant dies on its stack with no sentinel, and the base tree reaching that

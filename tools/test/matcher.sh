@@ -31,7 +31,7 @@
 # result does not terminate, and `chirality check` answers OK on it -- MEASURED,
 # and the cause is recorded: `lib/typing/totality.chiral` is the built E11
 # classifier and no module imports it, so termination is neither enforced nor
-# classified in the built compiler (docs/definitions/status-ledger.md:156).
+# classified in the built compiler (docs/definitions/status-ledger.md:157).
 # Wiring it is E11's remaining work. Until then a row asserting a refusal here
 # would pass by looking at nothing, so G10 OBSERVES the divergence instead: the
 # fixture is run under an 8 MB stack and a 20 s timeout, and the base tree
@@ -401,13 +401,13 @@ fi
 # the result. ⚑ THE COMPILER ACCEPTS THIS. The row asserts two things in order,
 # because the first is the finding: the mutant COMPILES CLEAN, and only the RUN
 # diverges. `lib/typing/totality.chiral` is imported by nothing
-# (status-ledger.md:156), so no static row here could be anything but green.
+# (status-ledger.md:157), so no static row here could be anything but green.
 if mutlib "M3 pd-star-recurses-into-itself" lib/text/matcher.chiral \
      's|((p-star q) (pd-cat (pd k b q) (p-star q))))))|((p-star q) (pd-cat (pd k b (p-star q)) (p-star q))))))|'; then
   if build_elf "$MUTLIB" "$FIXTURE" "$TMP/m3.elf"; then
     ok "M3 compiles clean -- the built compiler classifies no termination (E11 unwired)"
   else
-    bad "M3 did NOT compile -- something now refuses it, and status-ledger.md:156 is stale"
+    bad "M3 did NOT compile -- something now refuses it, and status-ledger.md:157 is stale"
   fi
   m3rc=0
   build_run_bounded "$MUTLIB" "$FIXTURE" "$TMP/m3.out" || m3rc=$?

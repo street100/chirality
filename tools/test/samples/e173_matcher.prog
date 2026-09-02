@@ -23,7 +23,7 @@
 ; ⚑ FIELD 3 IS WHERE A NON-TERMINATING `pd` DIVERGES, and field 12 is how the
 ; gate reads that. The compiler refuses nothing here: lib/typing/totality.chiral
 ; is the built E11 classifier and no module imports it, so a self-call that does
-; not shrink compiles clean (status-ledger.md:156). The divergence is therefore
+; not shrink compiles clean (status-ledger.md:157). The divergence is therefore
 ; OBSERVED at run time under a bounded stack rather than refused at check time.
 ;
 ; ⚑ FIELD 9 CARRIES THE TEXT ITSELF. The line pass is graded against awk's fence
