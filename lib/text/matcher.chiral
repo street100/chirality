@@ -1,0 +1,17 @@
+; Matching and spans over Bytes. Shard D of the text bank: a total, pure,
+; span-returning matcher over Antimirov partial derivatives, with the live
+; set bounded by a call to norm.
+;
+; Bytes throughout. A UTF-8 lead byte is >= 194 and fails every ASCII range,
+; and lib/protocol/utf8.chiral owns codepoint classes.
+;
+; E173 slice 1: no captures. Slice 2 carries tagged derivatives.
+
+(import "prelude/prelude")
+(import "prelude/list")
+(import "prelude/ord")
+
+; All pure, category A, checked form. The port-set half is DERIVED on this
+; module's datasheet from what it binds, and this module binds no extern, so
+; its `crossings` is empty by derivation.
+(module text/matcher (cat A) (alt upper))

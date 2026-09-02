@@ -117,6 +117,7 @@ lib/
   memory/      space as a port
   runtime/     running things
   protocol/    port-protocol data layers
+  text/        matching and spans over Bytes
   evidence/    cross-checked truth
 prog/          what chirality ships, as distinct from what it is
 tools/         one folder per tool
