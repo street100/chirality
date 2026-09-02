@@ -113,7 +113,12 @@ Timing, cache pressure, and speculation are effects on the world with no explici
 port, and two processes with disjoint port sets can still signal through a shared
 cache. That is P1's seccomp hole one level down. Closing it is the
 security-properties layer's work (constant-time, information-flow, taint), named
-here rather than waved away, and how far the membrane reaches inward is open.
+here rather than waved away. How far the membrane reaches inward is largely
+settled: `docs/definitions/open-edges.md` edge 2 records it answered by
+`decision-graded-kernel` (time and space as grades, info-flow a reserved factor,
+termination a property) and `decision-effect-facets` (crossings are the effect
+row, spends are grades, partiality is the mark). What stays open there is the
+grade domains' mechanization, E38, and filling info-flow's reserved seat.
 
 Example: a regex that ReDoS-es never opens a file or a socket. To an I/O-only
 effect system it is pure and harmless, and it still pins a core indefinitely.
@@ -182,7 +187,7 @@ guarding T1 material, whose own trust is assumed, not derived.
 
 The default is the point: declaring a split should be as cheap as declaring a
 variable (P4), so splitting sensitive state is normal, not a project. In chirality
-that is one type, a split value whose only exit is a guarded combine-process, whose
+that is one type by design, a split value whose only exit is a guarded combine-process, whose
 shares are move-only and zeroed on drop, whose reconstruction is an effect, and
 whose verification is in the type. Secret-sharing, capabilities, effects, and
 linearity are then the same construct.
@@ -200,7 +205,10 @@ Honest limit: "zeroed on drop" is a language-semantics promise the machine can
 break, through register spills, compiler-introduced copies, swap, and dead-store
 elimination of the zeroing write itself. That is a P5 problem inside P5's own
 feature; carrying zeroing as a property checked down to the typed-assembly floor is
-the intended answer, unfinished.
+the intended answer, unfinished. The construct itself is a seed rather than a
+built thing: `records/conformance-map.md:127` measures the custody-split row as
+**vapor beyond the secret seed**, so the sentence above states a design and not
+a capability the tree has.
 
 Example: a three-tier lock (cold, soft, hard, distinct passphrases) and quorum
 key-release are tiered truth done by hand in Rust today. The principle is that

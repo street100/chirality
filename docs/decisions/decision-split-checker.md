@@ -2,7 +2,7 @@
 node: decision-split-checker
 layer: decision
 related: [certificate-discipline, split-role, category-typed, category-untyped, decision-profiles, decision-bridge-elaborator, joining-law, splitting-law, module-map, modules-core, node-architecture, trust-boundary, open-edges, insp-unison, live-environment]
-status: draft
+status: settled
 updated: 2026-07-21
 ---
 

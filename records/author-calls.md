@@ -23,8 +23,6 @@ where the tree does not settle the answer and a pass must stop.
 | P3 vs open-edges | P3's limit says the membrane's inward reach is open; `open-edges` records it largely answered |
 | `decision-split-checker` | `status: draft`, while PRINCIPLES states its content settled |
 | what a `docs/elements/` file holds | one file per element, one per band, or a tracked index. `docs/elements/README.md` states the fork |
-| `docs/decisions/decision-lane-split.md`'s home | it sits at root and is orthogonal to the goal-arc-element tiers. Left at root because two live sessions read it |
-| the binary split's goal | `docs/arcs/binary-split-arc.md` ladders up to nothing written down |
 | Python: outside the tree, or inside it | [[goals/self-tooling]] and [[goals/local-ai]] point opposite ways, and the call decides whether they conflict at all. The two readings are below |
 | A reserved element block for [[goals/local-ai]] | Its transport arc and its tuning arc write `UNASSIGNED` and stop. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else |
 
