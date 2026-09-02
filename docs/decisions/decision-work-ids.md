@@ -1,0 +1,91 @@
+---
+node: decision-work-ids
+layer: decision
+related: [arcs/README, elements/README, goals/README, records/README, working-discipline, decision-lane-split, index]
+status: draft
+updated: 2026-09-01
+---
+
+# Decision: an arc names its work before the work has a number
+
+**Draft. An author call, still open.**
+
+## The problem
+
+`E#` is the only citable unit of work in this tree, and minting one needs a
+reserved band. `docs/decisions/decision-lane-split.md` reserves two bands and
+nothing else, so five arcs of eight cannot mint an element. Their work writes
+`UNASSIGNED`, which is anonymous: it cannot be cited, counted, given a state, or
+pointed at from another document.
+
+That leaves the tree naming far more work than it can schedule. The naming is
+correct and the scheduling is what is missing, so the honest record of what this
+project intends to build is spread through arc prose, bank shards and record
+rows with no handle on any of it.
+
+Measured 2026-09-01, by `ledger-lint` check V: `baseline-alignment`,
+`binary-split`, `presentability`, `text-tools` and `zero-python` all write
+`UNASSIGNED` rows and hold no block. They serve two of the five in-flight goals.
+
+## What the tree already does
+
+`docs/arcs/text-tools-arc.md` solved this locally without saying so. It carries
+four rows called `P1` through `P4`. `P1` maps to `E173`, which is minted. `P2`,
+`P3` and `P4` map to nothing. All four are cited by name from the arc's own
+coverage table, which reads `needs P1`, `needs P1, P2` and `needs P3` against
+the classic tools each composition would yield.
+
+Those citations work today. Nothing formalises them, so no other arc has them
+and no check knows they exist.
+
+## The proposal
+
+**An arc holds rows with arc-local ids, and a row maps to an element or to
+nothing.**
+
+| field | |
+|---|---|
+| id | arc-local and stable, cited as `<arc>/<id>` such as `text-tools/P2` |
+| title | one line |
+| state | what is true of it now |
+| element | the `E#` it was minted as, or `unminted` |
+
+Promotion assigns an `E#` and **the local id does not change**, so every citation
+made before the number existed survives the number arriving. That invariant is
+already written down for a different tier in `records/README.md`: *"Never
+renumber a row that already exists. Its ID is cited elsewhere."*
+
+## Why this does not break the deferral rule
+
+[[working-discipline]] forbids deferring work to an `E#` that has not been
+minted, because an unminted `E#` reads as scheduled work and is not. The reason
+is about what the reader concludes from the form.
+
+An arc-local id claims identification. It says this arc has named this piece of
+work and can point at it. It does not claim a place in a band, a catalog row, a
+ledger row or a pipeline stage, and `unminted` in the element field says so on
+every row that has no number.
+
+So the deferral rule keeps its whole force over `E#`, and the tree gains a way
+to write down what it intends without inventing a number to hold it.
+
+## What it buys
+
+- Every goal can list its arcs with a state note, because an arc with no band
+  still has rows.
+- Every arc cites its own work by name, so a requirement, a bank shard or a
+  record row can point at a specific piece rather than at a paragraph.
+- Work is documented while a band is still an open author call, which is the
+  current blocker on five arcs.
+- Promotion becomes a mapping change in one cell rather than a rewrite, and no
+  citation anywhere else moves.
+
+## What it does not decide
+
+- **The id alphabet.** `text-tools` uses `P` for primitive. Whether each arc
+  picks its own letter or a single scheme covers all of them is open.
+- **Whether rows replace the element list or sit beside it.** An arc with a band
+  holds minted and unminted work at once. One list carrying both with an element
+  column is the simpler shape; two lists keep the tiers visually apart.
+- **Whether a row needs its own state vocabulary**, or reuses the four rungs in
+  [[status-ledger]]. An unbuilt row has nothing on the rungs to name.

@@ -69,11 +69,20 @@ same change that mints it. Those are the tracked collision detectors.
 
 ## The arcs
 
+Each row's goal is the arc's own `goal:` field, and `ledger-lint` check V fails
+when this table and an arc file disagree.
+
 | arc | goal | state | reserved block |
 |---|---|---|---|
-| [[arcs/diagnostics-arc]] | [[goals/self-tooling]] | 5 built, 4 open | `E184-E189` shared with enforcement |
+| [[arcs/diagnostics-arc]] | [[goals/readable-surface]] | 5 built, 4 open | `E184-E189` shared with enforcement |
 | [[arcs/enforcement-arc]] | [[goals/enforcement]] | 1 minted, 0 built | `E184-E189` |
-| [[arcs/file-types-arc]] | [[goals/self-tooling]] | 0 of 3 built | `E190-E195` |
+| [[arcs/file-types-arc]] | [[goals/readable-surface]] | 0 of 3 built | `E190-E195` |
+| [[arcs/text-tools-arc]] | [[goals/self-tooling]] | 1 of 4 primitives minted | none |
 | [[arcs/zero-python-arc]] | [[goals/self-tooling]] | 0 of 14 `.py` files removed | none |
 | [[arcs/baseline-alignment-arc]] | [[goals/presentability]] | 3 rows closed, the rest open | none |
-| [[arcs/binary-split-arc]] | `UNWRITTEN` | measured, unstarted | none |
+| [[arcs/presentability-arc]] | [[goals/presentability]] | 3 rows, none started | none |
+| [[arcs/binary-split-arc]] | [[goals/presentability]] | measured, unstarted | none |
+
+Five of the eight hold no reserved block, so their work cannot be minted as an
+`E#` today. `docs/decisions/decision-work-ids.md` drafts the arc-local row id
+that would let them name it anyway.

@@ -1278,6 +1278,18 @@ def check_v() -> list[str]:
         if none_blk and "UNASSIGNED" in text:
             errs.append(f"[V] {arc.name} writes UNASSIGNED rows and holds no reserved "
                         f"element block, so its elements cannot be minted (author call)")
+    arc_idx = (arcs_dir / "README.md")
+    if arc_idx.exists():
+        itext = arc_idx.read_text()
+        for arc in sorted(arcs_dir.glob("*-arc.md")):
+            row = re.search(rf"^\|\s*\[\[arcs/{re.escape(arc.stem)}\]\].*$", itext, re.M)
+            if not row:
+                errs.append(f"[V] {arc.name} has no row in arcs/README.md")
+                continue
+            m = re.search(r"^- goal:\s*\[\[goals/([a-z0-9-]+)\]\]", arc.read_text(), re.M)
+            if m and f"goals/{m.group(1)}" not in row.group(0):
+                errs.append(f"[V] arcs/README.md gives {arc.name} a different goal "
+                            f"than the arc's own goal: field ({m.group(1)})")
     idx = (goals_dir / "README.md").read_text() if (goals_dir / "README.md").exists() else ""
     for g in sorted(goals - served):
         row = re.search(rf"\[\[goals/{re.escape(g)}\]\][^\n]*", idx)
