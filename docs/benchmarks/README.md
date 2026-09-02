@@ -2,12 +2,12 @@
 node: benchmarks
 layer: navigation
 status: draft
-updated: 2026-08-10
+updated: 2026-09-02
 ---
 
 # Benchmarks
 
-Consolidated speed/scale measurements for chirality. Three docs live here:
+Consolidated speed/scale measurements for chirality. Four docs live here:
 
 - **[language-performance.md](language-performance.md)** — codegen/runtime speed:
   chirality-emitted native x86-64 vs `gcc -O2` on three micro-kernels
@@ -21,10 +21,16 @@ Consolidated speed/scale measurements for chirality. Three docs live here:
   allocator (reserve-commit arena): bump-allocation + on-demand `mprotect`
   doubling on a fixed 64 GiB `PROT_NONE` reservation, exercised from 16 MiB
   up to 32 GiB plus a deterministic hard-ceiling test.
+- **[text-matcher-prose-lint.md](text-matcher-prose-lint.md)**: E173's
+  partial-derivative matcher in `prog/prose-lint.prog` against the mawk tool it
+  replaces, over 81 files / 609,872 B on 2026-09-02. ⚑ The native side measures
+  **15.1x slower** (min-of-11, band 7.8x to 18.5x), allocates **1.11 GB** to scan
+  610 KB, and is **OOM-killed** on the tree's default scope. Records the wall
+  clock per the author's 2026-09-01 ruling; sets no bar.
 
 ## Shared conventions
 
-These conventions apply to every figure in both docs; they exist because this
+These conventions apply to every figure in all four docs; they exist because this
 project has a false-summit history and will not carry an unsourced number.
 
 - **Every result cites host specs + a date.** Absolute timings do not travel
