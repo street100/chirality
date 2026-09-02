@@ -34,6 +34,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/presentability]] | in flight | [[arcs/baseline-alignment-arc]], [[arcs/presentability-arc]], [[arcs/binary-split-arc]] |
 | [[goals/enforcement]] | in flight | [[arcs/enforcement-arc]] |
 | [[goals/independent-judgment]] | stated, unbuilt | [[arcs/independent-judgment-arc]] |
+| [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | none yet, deferred on an author call |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | none, by decision |
 
 `independent-judgment` carries an arc as of 2026-09-01 and still has no element.
@@ -44,6 +45,12 @@ reserved element block.
 
 [[goals/presentability]] and [[goals/readable-surface]] are author calls rather
 than derivations from existing text, and say so in their own first section.
+
+[[goals/local-ai]] is an author call too, stated verbatim on 2026-09-01 and
+says so in its own first section. It carries no arc yet: which existing arcs
+supply pieces and which are owed is proposed in
+`.planning/LOCAL-AI-ARC-REALIGNMENT.md`, and two rows in
+[[records/author-calls]] block the assignment.
 
 ## Rules
 

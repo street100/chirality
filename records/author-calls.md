@@ -25,6 +25,8 @@ where the tree does not settle the answer and a pass must stop.
 | what a `docs/elements/` file holds | one file per element, one per band, or a tracked index. `docs/elements/README.md` states the fork |
 | `docs/decisions/decision-lane-split.md`'s home | it sits at root and is orthogonal to the goal-arc-element tiers. Left at root because two live sessions read it |
 | the binary split's goal | `docs/arcs/binary-split-arc.md` ladders up to nothing written down |
+| Python: outside the tree, or inside it | [[goals/self-tooling]] and [[goals/local-ai]] point opposite ways, and the call decides whether they conflict at all. The two readings are below |
+| A reserved element block for [[goals/local-ai]] | Its transport arc and its tuning arc write `UNASSIGNED` and stop. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else |
 
 ## Closed since the hoist
 
@@ -108,3 +110,41 @@ The rulings are applied in `docs/elements/specs/E173-total-matcher-SPEC.md`.
   `docs/benchmarks/text-matcher-prose-lint.md`, and the cost of the ruling
   written down in §6 residue, which is that the n-pass driver shape now ships
   with no gate row that can convict it.
+
+## Added by the local-ai goal, 2026-09-01
+
+### Python: outside the tree, or inside it
+
+`docs/goals/self-tooling.md` states done as no `.py` file anywhere under
+`/workspace/chirality`, with `tools/` deleted. `docs/goals/local-ai.md`
+criterion 4 carries the author's phrase *"wrap to use python for (fine tuning,
+creating, full growing and changing set of interactions) transformer types"*.
+Two readings survive that sentence and they permit different things.
+
+| reading | what it permits | what it costs |
+|---|---|---|
+| Python as a spawned external process, its scripts living outside this repo | The whole of criterion 4, through E33's typed spawn, with [[goals/self-tooling]] intact and its file count still headed to zero. ollama and llama.cpp get wrapped by the same mechanism, so the author's "for now" clause needs one seam and not three | The training scripts live in a second repository. This tree cannot gate them and cannot claim them, so a capability the goal names is verified nowhere here |
+| `.py` files inside the tree, under a carve-out | The scripts are tracked, testable and versioned beside the chirality that calls them | [[goals/self-tooling]]'s done condition becomes false as written and has to be reworded, which `docs/goals/README.md` makes a decision before it is an edit. `tools/` cannot be deleted |
+
+Under reading one the two goals are independent. Under reading two one of them
+has to change. Nothing in the tree settles it, which is why a pass stops here.
+
+The mechanism the first reading rests on is built: E33 `proc-spawn` returns one
+`SpawnRes` with a linear `Reap` obligation (`lib/runtime/proc.chiral`), and
+`raw-proc-spawn` maps to `nb-run-cmd` at
+`lib/lowering/tal/crossing-wraps.chiral:54`.
+
+### A reserved element block for the local-ai goal
+
+The transport arc (give `http-request`, `backend-open` and `chat-open` a runtime
+referent) and the tuning arc (criterion 4) have no block, so every row in them
+writes `UNASSIGNED`. This is the same block that stops
+[[arcs/text-tools-arc]]'s P2, P3 and P4 rows, and that arc already carries its
+own row above. One ruling can cover both.
+
+The scriba half of this goal is exempt and needs no ruling: `S#` is namespaced
+by its own letter per `docs/elements/ledger.md`, `S18` already has a SPEC at
+`docs/elements/specs/S18-scriba-record-SPEC.md`, and
+`.planning/SCRIBA-PRIMITIVE-CHECKLIST.md` numbers `S18` through `S30`.
+
+`.planning/LOCAL-AI-ARC-REALIGNMENT.md` is the proposal both calls block.
