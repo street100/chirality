@@ -10,12 +10,12 @@ updated: 2026-09-01
 
 ## The claim, and where the project makes it
 
-- `CLAUDE.md`: *"`tools/` holds 9 Python tools carried as-is. Route step 1
-  replaces them with chirality programs and deletes the directory. The target is
-  zero Python in this repo."*
-- `README.md:48-50`: *"14 Python files remain, 4,654 LOC ... The target is zero."*
-- `README.md:79-81`: self-hosting scope includes *"being good enough to write its
-  own tooling."*
+- [[arcs/zero-python-arc]] holds the replacement of the Python tools with
+  chirality programs, tool by tool, and the deletion of `tools/` at the end.
+- `README.md`, What is real: the Python files that remain, with *"The target is
+  zero."* The count is dated in the README and moves; the target does not.
+- `README.md`, Scope: self-hosting includes *"being good enough to write its own
+  tooling."*
 - Author call, 2026-08-31: zero Python is absolute. It does not mean zero Python
   in the compile path, which has been true for the whole migration.
 

@@ -10,12 +10,13 @@ updated: 2026-09-01
 
 ## The claim, and where the project makes it
 
-- `README.md:60` carries a standing `Honest limits` section, and every principle
+- `README.md` carries a standing `Honest limits` section, and every principle
   in `PRINCIPLES.md` carries its own. The form is the commitment.
-- `CLAUDE.md`: *"Report failures with their output. Name skipped work. Say
-  `done` only when a gate ran."*
-- `CLAUDE.md`: a subcommand dispatching to a floor this tree lacks is a gate that
-  cannot fail. The same rule reads on documents.
+- [[working-discipline]], Reporting: *"Report failures with their output. Name
+  skipped work. Say `done` only when a gate ran."*
+- `docs/decisions/decision-scope.md`, by way of [[working-discipline]]: a
+  subcommand dispatching to a floor this tree lacks is a gate that cannot fail.
+  The same rule reads on documents.
 - [[records/README]]: a record row is a claim this repo makes about itself beside
   what was measured.
 - `LICENSE.md` is AGPL-3.0-or-later with `LICENSE.EXCEPTION.md`, and
@@ -64,8 +65,10 @@ something ENFORCED because a form asks whether it is. The four rungs mean what
 **The outside half cannot be finished from inside the repo.** Criteria 2 to 4 are
 about a reader who is not us. Until someone outside reads it, done is inferred.
 
-**Known false today**: `ledger-lint` exits 0 while three checks fail, against
-`README.md:63` and `CLAUDE.md` (BA-36). `MAP.md:5` and `:37-40` describe a
+**Known false today**: BA-36 recorded `ledger-lint` exiting 0 while three checks
+failed. Re-measured 2026-09-01: it exits 1 with 249 findings across nine of its
+twenty checks, so the exit code now agrees with the findings and the row's
+numbers are stale. `MAP.md:5` and `:37-40` describe a
 file-kind check with no implementation (BA-30). `docs/banks/profile.md:246`
 refutes a real gap with a command that does not exist (BA-31). 294 doc citations
 name a path that does not exist and 161 bare `:NN` spans have no subject a check

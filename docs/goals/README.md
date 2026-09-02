@@ -37,8 +37,8 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | none, by decision |
 
 `independent-judgment` is a stated goal with no arc and no element. `README.md`
-lists it under Honest limits and `CLAUDE.md` states the replacement criterion.
-Nothing in the tree works toward it.
+lists it under Honest limits, and `docs/decisions/decision-self-verification.md`
+records the call.
 
 [[goals/presentability]] and [[goals/readable-surface]] are author calls rather
 than derivations from existing text, and say so in their own first section.

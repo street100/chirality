@@ -10,12 +10,13 @@ updated: 2026-09-01
 
 ## The claim, and where the project makes it
 
-- `README.md:44-46`: *"Self-hosting since 2026-08-05. The compiler compiles its
-  own source to a byte-identical copy of itself."*
-- `README.md:79-81`: *"Current work is self-hosting only: the language compiling
+- `README.md`, What is real: *"The compiler compiles its own source to a
+  byte-identical copy of itself."*
+- `README.md`, Scope: *"Current work is self-hosting only: the language compiling
   and checking itself."*
-- `CLAUDE.md`: chirality *"self-hosting as chirality-in-chirality"*, and the
-  BUILD RULE: the compiler compiles everything, Python compiles nothing.
+- [[working-discipline]], The build rule: *"The compiler compiles everything.
+  Python compiles nothing."* `build-new`, test, promote, and nothing replaces
+  itself in place.
 
 ## What done means
 

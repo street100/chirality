@@ -10,12 +10,13 @@ updated: 2026-09-01
 
 ## The claim, and where the project makes it
 
-- `CLAUDE.md`: *"External judgment is cut. No Rocq leg, no CompCert leg, no
-  Python oracle. Three semantically distinct judgment cores that must agree
-  replace them. The criterion is different formulations: three encodings of one
-  rule set would be worth nothing."*
-- `README.md:71-75`: the replacement is unbuilt, so every rung in the ledger is
-  enforcement against error.
+- `README.md`, Honest limits: *"External judgment is cut: the Rocq leg, the
+  CompCert leg, the Python oracle. What replaces them is three semantically
+  distinct judgment cores that must agree, and that is unbuilt."* So every rung
+  in the ledger is enforcement against error.
+- The criterion is **different formulations**. Three encodings of one rule set
+  would be worth nothing, which is why a second target under one formulation was
+  dropped rather than counted (`docs/elements/catalog.md`, E166).
 - `docs/decisions/decision-self-verification.md` §0 records the call and what it
   rules out.
 - `PRINCIPLES.md` §5: where proof runs out, split the truth and require

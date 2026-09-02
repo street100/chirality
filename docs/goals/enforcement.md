@@ -17,8 +17,7 @@ updated: 2026-09-01
   checkable and mediated, and that crossing is the type-check.
 - `MAP.md:86`: the `ports/` rule is structural and could be a gate. Today it is
   prose, and prose is how three files got into the wrong directory.
-- `README.md:60-75`, Honest limits: three capabilities are built and reach
-  nothing.
+- `README.md`, Honest limits: three capabilities are built and reach nothing.
 
 ## What done means
 
