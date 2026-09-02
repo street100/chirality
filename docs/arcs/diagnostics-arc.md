@@ -67,18 +67,17 @@ Done when all five hold. Each is observable.
 Suite 303 assertions, 0 failed, 11 phases, 87 roots, gate PASSED.
 `bin/chirality-bin` 1,147,256 B, promoted by E181 at `58603c3`.
 
-⚑ **`N1 == N2` at generation one was true for E181 and is false now.** Measured
-2026-09-02 at `3be8915`: `B1` differs from the shipped binary at char 98,
-`B1 != B2`, `B2 == B3`. The tree fixpoints at generation two and the committed
-binary is one generation behind. 13 commits across three arcs have touched
-`lib/` or `prog/` since that promotion, so the staleness belongs to no element.
-`records/findings.md` FD-08 holds the measurement and
-`records/author-calls.md` holds the call.
+⚑ **`N1 == N2` at generation one described E181, and does not describe the tree
+now.** Measured 2026-09-02 at `3be8915`: the shipped binary trails its sources
+by one generation, and the tree reproduces itself at `B2 == B3`. That is the
+ordinary two-generation bootstrap, and `records/findings.md` FD-08 records why
+it is ACCEPTED rather than a defect.
 
-Next action is the **E182 SPEC**, and it is blocked on that call:
-`lib/typing/kernel.chiral` and `lib/typing/diag.chiral` are both inside
-`prog/compiler.prog`'s closure, so E182 promotes, and a baseline delta taken
-against this base carries 13 commits of other arcs' work.
+Next action is the **E182 SPEC**. `lib/typing/kernel.chiral` and
+`lib/typing/diag.chiral` are both inside `prog/compiler.prog`'s closure, so
+E182 promotes. Its blob and binary deltas will carry 13 commits of other arcs'
+work unless a re-promotion lands first, so the SPEC states which of the two it
+reports.
 
 | # | element | state |
 |---|---|---|
