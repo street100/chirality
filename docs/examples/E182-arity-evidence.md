@@ -91,10 +91,11 @@ dead, and leaves the one live site free.
 
 **Finding 3 — a tenth `Reason` arm costs eight renderer arms and nothing else
 breaks.** Every exhaustive `case` over `Reason` in the tree is in `diag.chiral`,
-and there are eight: `dg-reason-tag:152`, `dg-subject:200`, `dg-incumbent:216`,
-`dg-newcomer:230`, `dg-declared:266`, `dg-observed:280`, `dg-msg:324`,
-`dg-doc:596`. `lib/module/loader.chiral` constructs `Reason` values and never
-cases one. The comment above `dg-msg` states the design intent this depends on:
+and there are eight, by their `def` lines: `dg-reason-tag:145`,
+`dg-subject:193`, `dg-incumbent:209`, `dg-newcomer:223`, `dg-declared:259`,
+`dg-observed:273`, `dg-msg:317`, `dg-doc:519`. `lib/module/loader.chiral`
+constructs `Reason` values and never cases one. The comment above `dg-msg` states
+the design intent this depends on:
 *NO `_` arm, on purpose: a new Reason constructor must break every renderer
 loudly.* Adding the arm is therefore a compile error at eight known places, which
 is the desired failure mode.
@@ -198,6 +199,7 @@ if args.len() != fields.len() {
 
 ; The flat exit. i64->str is the prelude extern (prelude.chiral:84); diag.chiral
 ; already uses it at :670 for dg-dd-arity, so this is not a new dependency.
+(declare dg-arity-msg (-> Subject I64 I64 Str))
 (def dg-arity-msg
   (lam (w e a)
     (str-cat (dg-subject-name w)
@@ -241,8 +243,10 @@ if args.len() != fields.len() {
           (false (tc-err (r-arity (subj-ctor cn)
                                   (llen Field fields)      ; expected
                                   (llen Term args))))      ; actual
-          (true  ; … unchanged …
-                 (tc-ok (v-tcon dn targs) (uzero (ctx-len c)))))))))
+          (true  ; … unchanged, verbatim from :1098-1100 …
+                 (case (check-con-args sig c args fts (uzero (ctx-len c)))
+                   ((u-err m) (tc-err m))
+                   ((u-ok u)  (tc-ok (v-tcon dn targs) u)))))))))
 
 ; SITE 2 (:1041-1042). The one the catalog row did not name. Same shape.
 ; This retires `jg-tparam-arity`, which the row does not mention, and NOT
@@ -297,11 +301,12 @@ if args.len() != fields.len() {
   their own lines. Everything E157 pins byte-for-byte stays byte-identical,
   because none of the nine arms it pins is touched.
 
-### The build rule, and a precondition that does NOT hold
+### The build rule, and the precondition FD-08 accepted
 
 `lib/typing/{diag,kernel}.chiral` are compiler sources, so **E182 owes
 `build-new → test → promote` and a promotion of `bin/chirality-bin`.** It was
-measured before any edit, on the unmodified tree, and the precondition fails:
+measured before any edit, on the unmodified tree, and the precondition does not
+hold:
 
 ```
 . bin/chirality-resolve.sh
@@ -329,21 +334,25 @@ Two globals subtracted, which reads as the arena counter from
 `7341ddf ports/process: heap-allocated, the arena counter a program can read`.
 `bin/chirality-bin` was last promoted at `58603c3` (E181, 2026-09-01) and
 **thirteen commits have touched `lib/` or `prog/` since**, including that one,
-E11's `(total)`, and all five of E173's matcher slices. The shipped binary is one
-generation behind its own sources, so a single-generation promotion from this
-base ships a binary with a hole in it.
+E11's `(total)`, and all five of E173's matcher slices. The shipped binary trails
+its sources by one generation, and `B1 != B2` with `B2 == B3` is the ordinary
+two-generation bootstrap: `7341ddf` changed emitted code, so the shipped binary
+omits that body where `B1` emits it, and the tree reaches its fixpoint at
+generation two.
 
-**This is inherited and pre-existing. It is not E182's drift and E182 must not be
-convicted of it.** But E182 cannot produce an honest promotion until it is
-cleared, because `B1` built from the current base is defective by measurement.
+**`records/findings.md` FD-08 records exactly this measurement, state ACCEPTED,
+and nothing here is broken.** It is inherited, it is pre-existing, and it is
+E182's to report rather than E182's to fix. The one consequence that survives is
+attribution: an element promoting from this base reports blob and binary deltas
+carrying thirteen commits of other arcs' work.
 
-### FLAG (orchestrator, before E182 is specced)
+### The promotion choice, which FD-08 hands to the SPEC
 
-**The tree is not at a fixpoint and has not been since E181's promotion.** The
-options are the orchestrator's, not this pre-run's: promote `B2` rather than
-`B1`, or land a separate re-promotion element first and let E182 measure against
-a clean base. Whichever is chosen should be recorded, because the next element
-that touches the closure hits this identically.
+FD-08 names E182 as the next element to promote from this base, and it leaves
+that element two honest ways to report. Either promote once from the unmodified
+tree beforehand, so the element's own deltas are its own, or promote in one step
+and report the inherited delta and the element's delta separately. **The SPEC
+disposes of this.** Re-filing it as a defect would re-argue an ACCEPTED finding.
 
 ### FLAG (ownership, record only)
 
@@ -354,6 +363,25 @@ that touches the closure hits this identically.
 path under it", which covers it at directory granularity. So E182's detection
 sites are permitted by the prose and unlisted by both enumerations. Not resolved
 here, and the decision document is not edited here.
+
+### FLAG (scope, author-tier: raised by the EXAMPLE audit 2026-09-02)
+
+The catalog row proposed retiring three arms. The measurement in §1 leaves one
+arm actually retired (`jg-tparam-arity`), with two dead arms staying in place and
+one of them unretirable behind a sha256 pin. The element shrank under its own
+research, so the question the row's rationale no longer answers is:
+
+> Does `r-arity` carrying `(what Subject) (expected I64) (actual I64)` still pay
+> for a tenth `Reason` arm and the eight renderer arms that arm costs, when it
+> repoints two call sites?
+
+**Not resolved here.** Two facts already settled elsewhere bear on it and are
+recorded rather than weighed: the boundary-sums standing directive's test is met
+verbatim at both sites (both counts exist at the comparison and are absent at the
+renderer), and `docs/decisions/decision-lane-split.md` makes closing E182 part of
+Lane A's definition of done. What neither settles is whether the shrunken version
+is the version the author wants, and correcting the catalog row's three-arm
+premise is an author's write into a file this audit may not touch.
 
 ### The traps, measured
 
@@ -411,21 +439,25 @@ rather than grepping the source that would satisfy it. **G2's mutant must corrup
 `dg-arity-msg`, not the `Reason` arm** — corrupting the arm makes the fixture
 fail to compile, which convicts G1 and leaves G2 unexercised.
 
-### Unminted residue (needs the orchestrator to allocate; `E184-E189` is contended)
+### Residue, carried as arc-local ids
 
-Two pieces of work fall out of the measurement and neither has a number. Naming
-one would be minting into a contended band.
+Two pieces of work fall out of the measurement, and `E184-E189` is contended with
+the enforcement arc, so both took arc-local ids under
+[[decisions/decision-work-ids]] instead of an `E#`. Their rows are in
+[[arcs/diagnostics-arc]] under Numbering, named 2026-09-02 by this pre-run. An id
+claims identification and nothing else, so a citation made now survives the
+number arriving.
 
-- **The two unreachable `Judg` arms.** `jg-tcon-arity` at `kernel.chiral:1050`
-  and `jg-ctor-arity` at `:1107` are dead branches kept for totality, and one of
-  them is pinned by a fixture that cannot be edited. Whether a provably
-  unreachable arm should be removed, kept with the proof written beside it, or
-  refused by a totality gate is a real question and it is **not** E182's.
-  **Unminted. Needs a row.**
-- **The exhaustiveness claim in two frozen files.** `e157_diag.prog:50` and
-  `doc.sh:230` will both assert something false the moment a tenth `Reason` arm
-  lands, and both are sha256-pinned. Repairing them is a change to E157's and
-  E158's gates and belongs to whoever owns those. **Unminted. Needs a row.**
+- **`diagnostics/D1`, the two provably unreachable `Judg` arms get a
+  disposition.** `jg-tcon-arity` at `kernel.chiral:1050` and `jg-ctor-arity` at
+  `:1107` are dead branches kept for totality, and one of them is spelled by a
+  sha256-pinned fixture. Whether such an arm should be removed, kept with the
+  proof written beside it, or refused by a totality gate is a real question and
+  it belongs to `diagnostics/D1` rather than to E182.
+- **`diagnostics/D2`, the `Reason` exhaustiveness claim becomes checkable.**
+  `e157_diag.prog:50` and `doc.sh:230` will both assert something false the
+  moment a tenth `Reason` arm lands, and both are sha256-pinned. Repairing them
+  is a change to E157's and E158's gates and belongs to whoever owns those.
 
 ### Open questions for the SPEC
 
@@ -442,5 +474,5 @@ one would be minting into a contended band.
   fixture that pins `jg-ctor-arity`, and the audit FLAG B that minted this row),
   E159 (`r-linear` / `r-arrow`, the payload-carrying precedent; no example file
   in `docs/examples/`),
-  [[E181-pretty-term-doc]] (Phase 18, and the promotion whose successor generation
-  was never taken).
+  [[E181-pretty-term-doc]] (Phase 18, and the promotion FD-08 measures this base
+  against).
