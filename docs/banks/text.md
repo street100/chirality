@@ -47,7 +47,7 @@ The three monoliths this gets confused with, and what they actually are here:
 | **A** | the byte/string floor: `str-len`, `str-sub`, `str-find`, `str-find-from`, `str-cat`; `blen`, `bget`, `bslice`, `bcat` | `lib/prelude/prelude.chiral`, extern | **built**. `str-sub` is unclamped, E176 / BA-35 |
 | **B** | derived string ops: starts-with, strip-prefix, contains, split, cmp, lower, upper, trim, replace, pad, join | `lib/prelude/string.chiral` | **built**, chirality over A |
 | **C** | sequence ops: take, drop, map, filter, fold, find, concat, sort, dedup-adjacent | `lib/prelude/list.chiral` | **built**. E152 sort, E156 dedup |
-| **D** | **the matcher, returning spans** | owed, `lib/text/` | **E173**, `audited` 2026-09-01. Antimirov partial derivatives, drafted at `docs/examples/E173-total-matcher.md`, specced and audited at `docs/elements/specs/E173-total-matcher-SPEC.md`. Unbuilt |
+| **D** | **the matcher, returning spans** | `lib/text/matcher.chiral`, 533 lines | **E173**, `implemented` for **slice 1**, 2026-09-01. Antimirov partial derivatives: `pd` is the residual, `norm` is the line the live-set bound lives in, `find-all` is one pass whose threads carry their own start offset. First consumer `prog/prose-lint.prog`. Gated by Phase 19, `tools/test/matcher.sh`, 18 assertions and 12 mutants. ⚑ **Captures are slice 2 of E173 and unbuilt** |
 | **E** | **the match score** | owed | UNASSIGNED. The whole gap between prefix completion and ranked select, since C already takes a comparator |
 | **F** | **the edit script over two sequences** | owed | UNASSIGNED. Yields diff, comm, join |
 | **G** | **the stable address** | owed; render half built | UNASSIGNED. `Doc`'s `d-tag` carries a semantic role at zero width — that half exists |
@@ -110,14 +110,23 @@ Read this before saying chirality lacks a text feature.
   motivation, from writing `prose-lint`: it does *"31 passes over 7 MB where one
   pass would do… the algorithm is the cost, not the compiled code"*, and runs 2.4x
   slower than awk as a result. The constraint and the performance win select the
-  same design. That is not true of any language this borrows from.
+  same design. That is not true of any language this borrows from. ⚑ **The 2.4x
+  is the pre-E173 figure.** The one-pass matcher landed on 2026-09-01 and no run
+  in this tree has re-measured the ratio, so the performance half of that claim
+  is owed a wall clock; `docs/benchmarks/` has no file for it yet.
 - **A span-returning matcher is one primitive where a boolean one is four.** A
   span answers does-it-match, where, what-was-captured and how-many in one pass.
 
 **Unbuilt, honestly:**
 
-- **D, E, F, G.** One minted (E173), three not. [[arcs/text-tools-arc]] holds them
-  and has no reserved element block, so they cannot be scheduled yet.
+- **D is built for slice 1 only.** `find-all` returns spans, and E173's slice 2,
+  tagged derivatives for the 77 capture sites the census counted, is unbuilt.
+  **E, F and G stay unminted.** [[arcs/text-tools-arc]] holds them and has no
+  reserved element block, so they cannot be scheduled yet.
+- **The native `prose-lint` carries eight of the awk tool's ten checks.**
+  `self-reference` and `first-person` have no implementation in
+  `prog/prose-lint.prog`, which prints them as explicit NOT-CHECKED rows so the
+  gap is visible on every run. Closing it is outside slice 1.
 - **`PureFn` is closed at six constructors.** A new text step means editing
   `manas/core/flow.chiral` and recompiling. This is the ease-of-use wall, and
   opening it is D's second job.

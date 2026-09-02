@@ -30,21 +30,21 @@ composition of things in this repo, the primitive set is wrong.
 
 | classic tool | composition | status |
 |---|---|---|
-| `grep` | `find-all` + `filter` | needs P1 |
-| `grep -c` | `find-all` + `length` | needs P1 |
-| `cut`, capture groups | `find-all` → spans → `str-sub` | needs P1 |
-| `sed s///` | `find-all` + `str-replace` over spans | needs P1 |
+| `grep` | `find-all` + `filter` | **built**, E173 slice 1 |
+| `grep -c` | `find-all` + `length` | **built**, E173 slice 1 |
+| `cut`, capture groups | `find-all` → spans → `str-sub` | spans built; capture groups need E173 slice 2 |
+| `sed s///` | `find-all` + `str-replace` over spans | **built**, E173 slice 1 |
 | `tr` | `map-list` over bytes | **built** |
 | `sort` | `list-sort` with a caller's comparator | **built**, E152 |
 | `uniq` | `list-dedup-adj` | **built**, E156 |
 | `wc` | `foldl` | **built** |
 | `head`, `tail` | `ms-take`, `ms-drop` | **built** |
-| `fzf` | subsequence pattern + P2 score + `list-sort` | needs P1, P2 |
+| `fzf` | subsequence pattern + P2 score + `list-sort` | needs P2 |
 | `diff` | P3 | needs P3 |
 | `comm`, `join` | P3, or a sorted merge | needs P3 |
 | `column`, `fmt` | `Doc` + `r-row` | **built**, E158/E174 |
 | `jq` | `protocol/json` | **built** |
-| citation checking | `find-all` + P4 addresses | needs P1, P4 |
+| citation checking | `find-all` + P4 addresses | needs P4 |
 
 Two results fall out of writing this table:
 
@@ -64,24 +64,45 @@ floor; two are enablers this arc depends on but does not own.
 
 ### `text-tools/P1` — the matcher, returning spans · element **E173**
 
-`find-all : Ctx -> Pat -> Bytes -> (List Span)`.
+`find-all : Pat -> Bytes -> (List Span)`.
 
-Already drafted at `docs/examples/E173-total-matcher.md` as an **Antimirov
-partial-derivative** matcher: `pd` returns the residual set, `step-set` advances
-it, `accepts` decides, and `run-from : Bytes -> I64 -> I64 -> (List Pat) -> I64
--> I64` already returns *the end offset, or -1*. So the drafted design is span
--shaped at the bottom; what is owed above it is the all-matches enumeration.
+**The `Ctx` argument this sketch used to carry is gone.** The one-byte window an
+assertion decides against is derived inside the scan from `(bs, i)`:
+`(at-byte bs (- i 1))` and `(at-byte bs i)` build a `Win`, and `-1` reads as off
+the end of the buffer. The type is named `Win` because
+`lib/typing/kernel.chiral` already spends `Ctx` on the typing context, the loader
+holds one namespace for data declarations, and `prog/prose-lint.prog` pulls both
+modules into one blob.
+
+Built as the **Antimirov partial-derivative** matcher the example drafted: `pd`
+returns the residual set, `norm` is the line the live-set bound lives in,
+`step-set` advances the set, `run-from` returns *the end offset, or -1*, and
+`find-at` keeps the longest accept. The all-matches enumeration the draft owed is
+`scan-go`, one pass whose live threads each carry the offset they started at.
 
 **It returning spans rather than `Bool` is what makes it one primitive instead of
 four.** A span answers "does it match", "where", "what did it capture" and "how
 many" with one pass. Six rows of the coverage table collapse onto it.
 
-State: **audited**, 2026-09-01. Example drafted and gated (`33204e6`), spec
-written (`be2aa94`), spec audit BLOCKED on two author calls and re-audited to
-PASS once they were ruled (`4769cd2`). Implementation is under way in `lib/text/matcher.chiral`,
-533 lines at `7599a70`: steps 3 and 4 have landed, the derivative with its bound
-and the one-pass driver, then the line-state pass over `LState`. `BA-39` records
-a mutant in this element's own gate that passed by looking at nothing. `docs/elements/specs/E173-total-matcher-SPEC.md`.
+State: **implemented for slice 1**, 2026-09-01. `lib/text/matcher.chiral`, 533
+lines, with `prog/prose-lint.prog` as its first consumer. Gated by Phase 19,
+`tools/test/matcher.sh`: 18 assertions and 12 mutants, none inert, each mutant
+pinning the full verdict line. G9 compares the eight native checks against the
+awk tool over 80 files through `prose-lint --summary` and the totals agree
+exactly. Pipeline: example drafted and gated (`33204e6`), spec written
+(`be2aa94`), spec audit BLOCKED on two author calls and re-audited to PASS once
+they were ruled (`4769cd2`), implementation over six commits ending at
+`e882568`.
+
+⚑ **Slice 2 is unbuilt.** Captures are tagged derivatives for the 77 capture
+sites the census counted, and they stay inside E173. ⚑ **The native tool carries
+eight of the awk tool's ten checks**: `self-reference` and `first-person` print
+NOT-CHECKED rows. ⚑ `BA-39` records a mutant in this element's own gate that
+passed by looking at nothing; step 6 retargeted it as G10, which observes the
+divergence under a stack and time ceiling instead of asserting a refusal the
+compiler cannot make. ⚑ `BA-40` records the awk tool's two divergent check sets,
+which is why G9 runs through `--summary`. ⚑ The wall clock is unmeasured.
+`docs/elements/specs/E173-total-matcher-SPEC.md`.
 
 ### `text-tools/P2` — match score · element `unminted`
 
@@ -180,8 +201,15 @@ and:
 
 A backtracking matcher cannot be typed here, so it cannot be written. What can be
 typed is a one-pass automaton, linear in the input and independent of the pattern
-count, which is also the fast one. E173's drafted partial-derivative design is
-that shape. The constraint and the performance win select the same algorithm.
+count, which is also the fast one. E173's partial-derivative matcher is that
+shape and it is built. The constraint and the performance win select the same
+algorithm.
+
+⚑ **The 2.4x above is the pre-E173 figure.** `prog/prose-lint.prog` now runs the
+one-pass matcher and no run in this tree has re-measured the ratio, so REQUIREMENT
+4 is satisfied on output (G9 compares the eight checks against awk over the
+corpus) and the wall clock is still owed a measurement. `docs/benchmarks/` has no
+file for it.
 
 ## Resume state
 
@@ -189,10 +217,11 @@ Order is forced by dependency, not preference.
 
 1. **P2 score** — unblocked by anything, small, and turns prefix completion into
    ranked select. Cheapest real progress in the arc.
-2. **P1 / E173** — needs the pipeline: example exists, spec does not, audit not
-   run. Its open fork belongs in that spec: are patterns fixed at pack time, fully
-   bounded and checkable at compile time, or accepted at run time, bounded per
-   pattern with a dynamic set? That changes the type.
+2. **P1 / E173** — **slice 1 is built**, 2026-09-01. The open fork this list used
+   to carry is closed by the SPEC: a pattern is a runtime value, because a pattern
+   in the corpus is built from `argv` and staticness buys no totality. What
+   remains inside E173 is slice 2, the captures, whose first step is classifying
+   the 77 capture sites into served-by-split-scan and needs-a-submatch.
 3. **P3 diff** — independent of P1; can run in parallel with it on another day.
 4. **P4 addressing** — wants a decision before an example, because it changes a
    payload type that `Flow` already uses.
