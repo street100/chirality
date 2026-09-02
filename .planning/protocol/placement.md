@@ -128,7 +128,7 @@ python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A
 tools/prose-lint/prose-lint.sh PATH...       # how it reads
 ```
 
-`ledger-lint` carries 252 findings against the current tree. Compare the count
+`ledger-lint` carries 255 findings against the current tree. Compare the count
 and the per-check distribution before and after, so a change that adds none is
 visible. Commit with a pathspec, `git commit -- <path>`, because a bare commit
 sweeps another agent's staged work and that has happened twice here.

@@ -1203,6 +1203,91 @@ def preflight() -> int:
     return 2
 
 
+def check_u() -> list[str]:
+    """U. A quote attributed to a file appears in that file.
+
+    A doc citing `FILE`: *"text"* is asserting that FILE says text. Five goal
+    files quoted CLAUDE.md verbatim after it was emptied to a pointer table, and
+    nothing saw it, because a quotation is evidence and nothing checked it.
+
+    Matches the tree's citation form: a backticked path, a colon, then italic
+    text in double quotes. Whitespace is normalised on both sides so a quote
+    that wraps across lines still matches. A quote ending in an ellipsis is
+    checked on its head only, since the elision is deliberate."""
+    errs: list[str] = []
+    pat = re.compile(r"`([A-Za-z0-9_./-]+\.(?:md|chiral|prog|port|sh|py))`[^\n]{0,40}?:\s*"
+                     r"\*\"(.+?)\"\*", re.S)
+    for md in doc_tier() + [ROOT / "README.md", ROOT / "MAP.md",
+                            ROOT / "CONTENTS.md", ROOT / "PRINCIPLES.md"]:
+        if not md.exists():
+            continue
+        text = md.read_text()
+        for m in pat.finditer(text):
+            target, quote = m.group(1), " ".join(m.group(2).split())
+            tp = ROOT / target
+            if not tp.exists():
+                continue                      # check A owns a missing path
+            head = quote.split("...")[0].split("\u2026")[0].strip().rstrip(".,;")
+            if len(head) < 12:
+                continue                      # too short to be evidence
+            # A quote reproduces rendered prose. Emphasis markers and link
+            # syntax sit inside quoted sentences in the source and never in the
+            # quote, so both sides are flattened before comparing.
+            def flat(t):
+                t = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", t)
+                return " ".join(re.sub(r"[*_`]", "", t).split())
+            body, head = flat(tp.read_text()), flat(head)
+            if head not in body:
+                line = text.count("\n", 0, m.start()) + 1
+                errs.append(f"[U] {md.name}:{line} quotes {target} as saying "
+                            f"\u201c{head[:60]}\u2026\u201d and it does not")
+    return errs
+
+
+def check_v() -> list[str]:
+    """V. The goal-arc-element chain holds.
+
+    Three ways it breaks, all seen on 2026-09-01:
+      an arc names a goal file that does not exist;
+      a goal has no arc and no recorded reason for having none;
+      an arc writes UNASSIGNED rows while holding no reserved element block,
+      so its work cannot be scheduled.
+    The third is not a defect in the arc. It is an author call, and the point of
+    the row is that it stays visible until the author makes it."""
+    goals_dir, arcs_dir = ROOT / "docs" / "goals", ROOT / "docs" / "arcs"
+    if not goals_dir.is_dir() or not arcs_dir.is_dir():
+        raise Vacuous("docs/goals or docs/arcs is absent")
+    errs: list[str] = []
+    goals = {p.stem for p in goals_dir.glob("*.md")} - {"README"}
+    served: set[str] = set()
+    for arc in sorted(arcs_dir.glob("*.md")):
+        if arc.stem == "README":
+            continue
+        text = arc.read_text()
+        m = re.search(r"^- goal:\s*\[\[goals/([a-z0-9-]+)\]\]", text, re.M)
+        if not m:
+            if "UNWRITTEN" not in text:
+                errs.append(f"[V] {arc.name} names no goal and does not say UNWRITTEN")
+            continue
+        g = m.group(1)
+        served.add(g)
+        if g not in goals:
+            errs.append(f"[V] {arc.name} names goal '{g}' and docs/goals/{g}.md does not exist")
+        blk = re.search(r"^- reserved element block:\s*(.+)$", text, re.M)
+        none_blk = bool(blk) and "none" in blk.group(1).lower()
+        if none_blk and "UNASSIGNED" in text:
+            errs.append(f"[V] {arc.name} writes UNASSIGNED rows and holds no reserved "
+                        f"element block, so its elements cannot be minted (author call)")
+    idx = (goals_dir / "README.md").read_text() if (goals_dir / "README.md").exists() else ""
+    for g in sorted(goals - served):
+        row = re.search(rf"\[\[goals/{re.escape(g)}\]\][^\n]*", idx)
+        if row and re.search(r"none, by decision|none open|deferred", row.group(0)):
+            continue
+        errs.append(f"[V] goal '{g}' has no arc, and goals/README.md records no "
+                    f"reason for it having none")
+    return errs
+
+
 def main() -> int:
     rc = preflight()
     if rc:
@@ -1228,7 +1313,9 @@ def main() -> int:
                      ("Q map live tally", check_q),
                      ("R citation lands on its symbol", check_r),
                      ("S rank-2 anchor is committed", check_s),
-                     ("T artifacts have registry rows", check_t)):
+                     ("T artifacts have registry rows", check_t),
+                     ("U quotes match their source", check_u),
+                     ("V goal-arc-element chain", check_v)):
         try:
             errs = fn()
         except Vacuous as v:

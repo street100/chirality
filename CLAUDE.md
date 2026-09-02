@@ -51,7 +51,7 @@ Four skills. Each is one run, one element or one doc, one artifact, then stop.
 | tool | is |
 |---|---|
 | `python3 tools/pack/pack.py E<#> …` | every pipeline bundle, and the scaffolder |
-| `python3 tools/ledger-lint/ledger-lint.py` | the mechanical doc worklist, checks A to S |
+| `python3 tools/ledger-lint/ledger-lint.py` | the mechanical doc worklist, checks A to V |
 | `python3 tools/doc/doc.py audit <node>` | one doc's audit bundle |
 | `tools/test/run-tests.sh` | the gating floor. A green line is a named phase here |
 

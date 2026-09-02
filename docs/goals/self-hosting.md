@@ -10,8 +10,8 @@ updated: 2026-09-01
 
 ## The claim, and where the project makes it
 
-- `README.md`, What is real: *"The compiler compiles its own source to a
-  byte-identical copy of itself."*
+- `README.md`: *"The compiler is written in chirality and compiles itself to a
+  byte-identical copy."*
 - `README.md`, Scope: *"Current work is self-hosting only: the language compiling
   and checking itself."*
 - [[working-discipline]], The build rule: *"The compiler compiles everything.

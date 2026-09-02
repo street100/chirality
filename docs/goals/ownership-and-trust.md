@@ -11,8 +11,8 @@ updated: 2026-09-01
 ## The claim, and where the project makes it
 
 - `README.md`, Scope: *"The ownership and trust model is a separate track,
-  deferred from this one and built in its own lane: the re-bootstrap climb, DDC,
-  the secure datum model, the register root, the cascade."*
+  deferred and built in its own lane: the re-bootstrap climb, DDC, the secure
+  datum model, the register root, the cascade."*
 - `PRINCIPLES.md` §5 and its rung table T0 through T3.
 - [[secure-datum-model]], [[bootstrap]], [[trust-boundary]].
 
