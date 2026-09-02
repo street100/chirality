@@ -75,7 +75,10 @@ it, `accepts` decides, and `run-from : Bytes -> I64 -> I64 -> (List Pat) -> I64
 four.** A span answers "does it match", "where", "what did it capture" and "how
 many" with one pass. Six rows of the coverage table collapse onto it.
 
-State: worked example drafted, **no spec, audit gate not run**.
+State: **audited**, 2026-09-01. Example drafted and gated (`33204e6`), spec
+written (`be2aa94`), spec audit BLOCKED on two author calls and re-audited to
+PASS once they were ruled (`4769cd2`). Next stage is implement, step 1 of the
+spec's seven. `docs/elements/specs/E173-total-matcher-SPEC.md`.
 
 ### P2 — match score · `UNASSIGNED`
 

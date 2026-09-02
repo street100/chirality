@@ -47,7 +47,7 @@ The three monoliths this gets confused with, and what they actually are here:
 | **A** | the byte/string floor: `str-len`, `str-sub`, `str-find`, `str-find-from`, `str-cat`; `blen`, `bget`, `bslice`, `bcat` | `lib/prelude/prelude.chiral`, extern | **built**. `str-sub` is unclamped, E176 / BA-35 |
 | **B** | derived string ops: starts-with, strip-prefix, contains, split, cmp, lower, upper, trim, replace, pad, join | `lib/prelude/string.chiral` | **built**, chirality over A |
 | **C** | sequence ops: take, drop, map, filter, fold, find, concat, sort, dedup-adjacent | `lib/prelude/list.chiral` | **built**. E152 sort, E156 dedup |
-| **D** | **the matcher, returning spans** | owed, `lib/text/` | **E173**, `design`. Antimirov partial derivatives, drafted at `docs/examples/E173-total-matcher.md`. No spec, audit not run |
+| **D** | **the matcher, returning spans** | owed, `lib/text/` | **E173**, `audited` 2026-09-01. Antimirov partial derivatives, drafted at `docs/examples/E173-total-matcher.md`, specced and audited at `docs/elements/specs/E173-total-matcher-SPEC.md`. Unbuilt |
 | **E** | **the match score** | owed | UNASSIGNED. The whole gap between prefix completion and ranked select, since C already takes a comparator |
 | **F** | **the edit script over two sequences** | owed | UNASSIGNED. Yields diff, comm, join |
 | **G** | **the stable address** | owed; render half built | UNASSIGNED. `Doc`'s `d-tag` carries a semantic role at zero width — that half exists |
