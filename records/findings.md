@@ -97,3 +97,14 @@ evidence.
 deferred out of scope for *work* on 2026-08-31. The row is here because the
 document is in the reader-facing tier and is wrong today. Deferred is not deleted:
 `.planning/FINDING-datum-model-write-adversary-2026-08-31.md` stays where it is.
+
+## The committed compiler
+
+### FD-08 `bin/chirality-bin` does not reproduce from the sources it ships with
+
+- state:    OPEN
+- claim:    the build rule requires `build-new -> test -> promote`, and `docs/decisions/decision-lane-split.md:112-116` makes a precondition of it: on the unmodified tree `B1(blob)` must already equal `bin/chirality-bin`, so a staleness inherited from a merge is caught as a merge's and not blamed on the element promoting next. The arc file records that precondition passing for E181 on 2026-09-01.
+- measured: it does not hold on master at `3be8915`. Blob 804,277 B. `bin/chirality-bin` is 1,147,256 B and was last promoted at `58603c3` (E181, 2026-09-01). `B1 = bin/chirality-bin(blob)` is 1,184,120 B and differs from the shipped binary at char 98. `B1 != B2`, differing at char 1,180,606; `B2 == B3`, so the tree reaches a fixpoint at generation two rather than generation one. Every artifact was checked non-empty before its `cmp`. 13 commits have touched `lib/` or `prog/` since that promotion, spanning three arcs (`aedf555` E11, `13a1362`-`e882568` E173, `7341ddf` ports, `d8bcec5` the C backend drop), so the staleness belongs to no one element. Consequence: the next element whose deliverable enters the compiler's closure cannot promote honestly, because the inherited delta and its own arrive together. E182 is that element.
+- evidence: `docs/definitions/working-discipline.md:19-42`, `docs/decisions/decision-lane-split.md:105-119`, `docs/arcs/diagnostics-arc.md:68`, `records/diagnostics-arc-record.md:162-164`, `git log 58603c3..HEAD -- lib prog`
+- checked:  2026-09-02
+- element:  UNASSIGNED

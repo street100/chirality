@@ -27,6 +27,7 @@ where the tree does not settle the answer and a pass must stop.
 | A reserved element block for [[goals/local-ai]] | Its transport arc and its tuning arc write `UNASSIGNED` and stop. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else |
 | `E184-E189` is one band and two focuses draw on it | [[arcs/enforcement-arc]] and [[arcs/diagnostics-arc]] both mint from it, `E184` is spent, and four numbers remain. Concurrent minting is the collision that produced two `E173`s. The work split is in `docs/decisions/decision-lane-split.md` |
 | Which arc owns the allocation gap | ~1,747 B of arena per input byte, no reclamation on any compiled path, and a projected ~6.3 GB at the default scope against 3.85 GB with no swap. It blocks manas and scriba from running once transport lands and no arc holds it |
+| How the stale `bin/chirality-bin` gets re-promoted | It does not reproduce from its own sources (`records/findings.md` FD-08), the staleness spans three arcs, and the next element entering the compiler's closure cannot separate its own delta from the inherited one |
 
 ## Closed since the hoist
 
@@ -205,3 +206,27 @@ survives it, and the seven arcs cover none of it.
 |---|---|
 | [[arcs/enforcement-arc]] holds it | a proven bound the machine ignores is an enforcement failure, which is the arc's own subject |
 | its own arc | the work is a runtime discipline over `lib/memory/` and the x64 emitter, and touches none of enforcement's five rows |
+
+### How the stale `bin/chirality-bin` gets re-promoted
+
+Measured 2026-09-02 on master at `3be8915` and recorded as `FD-08` in
+[[records/findings]]. `B1 = bin/chirality-bin(blob)` differs from the shipped
+binary at char 98; `B1 != B2`; `B2 == B3`. The tree reaches a fixpoint at
+generation two and the committed binary is one generation behind. 13 commits
+have touched `lib/` or `prog/` since E181 promoted at `58603c3`, spanning three
+arcs, so no element owns it.
+
+The precondition at `docs/decisions/decision-lane-split.md:112-116` exists to
+stop exactly this being charged to whichever element promotes next. It is doing
+its job: E182 is the next diagnostics element inside the closure, and its SPEC
+owes a baseline delta that cannot be honest against this base.
+
+| route | what it gives | what it costs |
+|---|---|---|
+| promote `B2` as its own change, before E182 is specced | the precondition holds again and E182's delta is its own. The fixpoint is verified at gen two, which is the state the sources are already in | a commit that promotes a binary no element asked for, attributed to none of the three arcs whose commits caused it |
+| fold the re-promotion into E182's implement stage | one build, one promotion | E182's measured delta then contains 13 commits of other arcs' work, which is the misattribution the precondition was written to prevent |
+| leave it and require each closure element to re-measure | nothing is promoted speculatively | every future closure element pays the same investigation, and the arc file's `N1 == N2` line stays stale |
+
+This pass decides nothing. `docs/arcs/diagnostics-arc.md` carried
+`N1 == N2` at generation one, true at E181 and false since. That line now
+carries the correction.

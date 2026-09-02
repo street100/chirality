@@ -65,14 +65,25 @@ Done when all five hold. Each is observable.
 ## Resume state
 
 Suite 303 assertions, 0 failed, 11 phases, 87 roots, gate PASSED.
-`bin/chirality-bin` 1,147,256 B, promoted by E181, `N1 == N2` at generation one.
+`bin/chirality-bin` 1,147,256 B, promoted by E181 at `58603c3`.
 
-Next action is **E182**, the arity judgments carry their arity.
+⚑ **`N1 == N2` at generation one was true for E181 and is false now.** Measured
+2026-09-02 at `3be8915`: `B1` differs from the shipped binary at char 98,
+`B1 != B2`, `B2 == B3`. The tree fixpoints at generation two and the committed
+binary is one generation behind. 13 commits across three arcs have touched
+`lib/` or `prog/` since that promotion, so the staleness belongs to no element.
+`records/findings.md` FD-08 holds the measurement and
+`records/author-calls.md` holds the call.
+
+Next action is the **E182 SPEC**, and it is blocked on that call:
+`lib/typing/kernel.chiral` and `lib/typing/diag.chiral` are both inside
+`prog/compiler.prog`'s closure, so E182 promotes, and a baseline delta taken
+against this base carries 13 commits of other arcs' work.
 
 | # | element | state |
 |---|---|---|
 | 1 | E181 `pretty` over the real `Term`, returning `Doc` | **BUILT 2026-09-01.** Moved to `lib/surface/pretty.chiral`; `typing/` was never its role. Phase 18 = 61/0 |
-| 2 | E182 the arity judgments carry their arity | not built. Retires 3 of `Judg`'s 38 nullary arms |
+| 2 | E182 the arity judgments carry their arity | **example drafted 2026-09-02** (`3be8915`). Premise corrected: it retires ONE of `Judg`'s 38 nullary arms, and the arm it retires is `jg-tparam-arity`, which the row never named. Gate is Phase 20; 19 went to E173 |
 | 3 | E176 `str-sub` unclamped, segfaults, 131 call sites | not built. The safety was asserted in a comment |
 | 4 | E179 the face registry becomes authoritative | not built. 5 ad-hoc sites plus `lookup-face` synthesis |
 | 5 | E180 face-aware incremental redraw | not built. Unreachable today; the hazard E175 creates |
@@ -150,6 +161,35 @@ Blockers, hazards and the decisions that each cost a measurement are in
 | E182 | **The arity judgments carry their arity** *(minted 2026-08-31 as E173; RENUMBERED to E182 at the master merge — master had independently minted its own E173, "A total matcher over `Str`", which is the TRACKED one in `docs/examples/INDEX.md` and keeps the number. Two sessions minting into a private, untracked `.planning/` is how one number gets used twice; the tracked authority wins.)* — retire `jg-tcon-arity` / `jg-ctor-arity` / `jg-ctor-arg-arity` into ONE evidence-bearing `r-arity (what Subject) (expected I64) (actual I64)`. | Not built. E157 shipped `Judg` as **38 nullary arms** — one constructor per *message*, which is precisely what E157's own taxonomy line (*one constructor per evidence shape, not per message*) forbade; it was forced by the byte-identity golden on the pre-E157 strings. Three of those arms are arity errors whose expected/actual counts are **live at the detection site and dropped**; two render as the two-word stubs `"tcon arity"` / `"constructor arity"` — the stub is the tell. Minted 2026-08-31 by the E158 example audit (FLAG B): E157 is DONE, and a completed element's row is a record, not a worklist, so parking this there would have tracked nothing. | `OURS`; E157's `Judg` is the in-tree defect |
 
 | E182 | diagnostics | design | *(was E173 until the master merge; master's tracked E173 is "A total matcher over `Str`".)* **The arity judgments carry their arity.** One `r-arity (what Subject) (expected I64) (actual I64)` retires `jg-tcon-arity`/`jg-ctor-arity`/`jg-ctor-arg-arity` from E157's 38-arm nullary `Judg`. The counts are live at the detection site and dropped; two of the three render as two-word stubs. E157's own taxonomy line forbids a constructor per message — this is the first repayment of that debt. Minted by the E158 example audit (FLAG B) rather than parked on the DONE E157 row. | ←E157, ←E158 |
+
+⚑ **PREMISE CORRECTED 2026-09-02 by the E182 pre-run** (`docs/examples/E182-arity-evidence.md`),
+which probed the checker rather than reading it. Both rows above name three arms
+and two of the three are **unreachable**. `jg-tcon-arity`
+(`kernel.chiral:1050`) sits behind `check-tcon`'s length equality guard at
+`:1041`, and `check-tparams` has no other caller. `jg-ctor-arity` (`:1107`) sits
+behind the `=i` length guard that `con-check` (`:1091`) applies five lines into
+its body, and `ctor-field-types` (`:1020`) emits one field type per field, so
+`check-con-args` cannot exhaust `fts` first. The
+row's third arm, `jg-ctor-arg-arity` (`:1097`), is live. The **second** live
+arity comparison is `jg-tparam-arity` at `:1042`, which neither row names. Four
+probes drove real refusals in both directions and neither stub was ever emitted.
+
+⚑ **`jg-ctor-arity` cannot be retired even though it is dead.**
+`tools/test/samples/e158_doc.prog:189` pins the string `"constructor arity"`,
+and that fixture's sha256 is hardcoded at `tools/test/pretty.sh:371`,
+`face.sh:545` and `row.sh:644`. Editing it reddens Phases 14, 15, 16 and 18.
+
+⚑ **A tenth `Reason` arm weakens a pinned claim without reddening anything.**
+`samples/e157_diag.prog:50` says it builds one value of every `Reason` arm and
+`tools/test/doc.sh:230` repeats that, and both files are sha256-pinned.
+`dgt-all` is a hardcoded nine-value chain that no `case` covers, so exhaustiveness
+degrades to nine of ten silently. This is unminted residue and the band is
+contended.
+
+⚑ **Phase 19 is gone.** `docs/decisions/decision-lane-split.md:30` reserves
+gate phases 18, 19 and 20 for this lane. E173 registered `matcher.sh` as Phase
+19 (`tools/test/run-tests.sh:301`), so the lane holds 18 and 20. E182 gates at
+**Phase 20**.
 
 ### E183
 
