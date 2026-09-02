@@ -210,3 +210,16 @@ two tracked places, and therefore the only collision detectors that exist.
 **E184 is minted**, and its rows live in [[arcs/enforcement-arc]], the first row of a
 second tracked arc. The next free number is E185.
 
+### Arc-local rows
+
+The band is shared with [[arcs/enforcement-arc]] and four numbers remain, so
+work this arc has named and not scheduled takes an arc-local id under
+[[decisions/decision-work-ids]]. An id claims identification and nothing else.
+Promotion later assigns an `E#` and the local id does not move, so a citation
+made now survives the number arriving.
+
+| id | title | state | element |
+|---|---|---|---|
+| `diagnostics/D1` | the two provably unreachable `Judg` arms get a disposition | named 2026-09-02 by the E182 pre-run. `jg-tcon-arity` and `jg-ctor-arity` are refused by guards upstream, and one of them is spelled by a sha256-pinned fixture, so a deletion has to answer for the pin | unminted |
+| `diagnostics/D2` | the `Reason` exhaustiveness claim becomes checkable | named 2026-09-02 by the E182 pre-run. `samples/e157_diag.prog:50` and `tools/test/doc.sh:230` both assert one value of every `Reason` arm, `dgt-all` is a hardcoded nine-value chain no `case` covers, and both files are sha256-pinned. A tenth arm degrades the claim to nine of ten with nothing going red | unminted |
+
