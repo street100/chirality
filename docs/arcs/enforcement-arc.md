@@ -57,15 +57,15 @@ Done when all five hold. Each is checkable, and the state beside it is measured
    [[goals/enforcement]] and from `docs/definitions/testing-floors.md:261`. E173
    found two rows that could not fail; both were repaired at `e882568`.
 
-⚑ Requirement 3 is the one that gates the rest. It is not in E16's or E18's
-scope as written, and no element owns it.
+⚑ Requirement 3 is the one that gates the rest. E16's scope and E18's both
+stop short of it as written, so no element owns it.
 
 ## Resume state
 
 **Start with the `ck-prog` disagreement, requirement 3.** It blocks 2 and 4, and
 it is the open author call in [[records/author-calls]].
 
-The enabling change is measured and reverted, not lost.
+The enabling change was measured, then reverted. Its artifacts survive.
 `lib/lowering/tal/check.chiral` declares **11 top-level names that already exist
 in the compiler's blob** (`CkR`/`ck-ok`/`ck-err` against `lib/typing/kernel.chiral:411`,
 `CovR`/`cov-ok` against `lib/surface/data.chiral:37`, `find-ctor`, and five
