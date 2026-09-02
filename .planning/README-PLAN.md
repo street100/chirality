@@ -236,11 +236,22 @@ Q2 through Q7 below are the standing drafts.
 
 **Q2. Why does one working stack need half a dozen languages that share nothing?**
 
-> One language covers the compiler, the checker, the emitter, the runtime, the
-> tooling and the data. The file extension carries the kind: `.chiral` is a
-> module, `.prog` an entry point, `.port` a registry that mints capability types,
-> `.profile` a frozen port set, `.manifest` data. Config stops being a second
-> language.
+> Chirality wants to be one language covering the compiler, the checker, the emitter,
+> the runtime, the tooling and the data.
+>
+> | layer | written in chirality as | state |
+> |---|---|---|
+> | the compiler | `prog/compiler.prog` over `lib/lowering/` | self-hosting since 2026-08-05, byte-identical fixpoint at generation one |
+> | the checker | `lib/typing/`, 3,227 lines | on the path of every compile |
+> | the emitter | `lib/lowering/x64/emit.chiral` | emits the shipped ELF |
+> | the runtime | `lib/runtime/`, 3 modules, 379 lines | |
+> | the tooling | `prose-lint`, `paren-audit`, `resolve`, `test-runner`, `wield` | 9 Python tools left, the target is zero |
+> | config and data | `.manifest`, 2 files in the tree | resolves as an import target. The loader does not check the declared-data property that makes it data, which is E163 |
+> | a frozen port set | `.profile` | named as a kind in `MAP.md` and in the resolver. Zero files in the tree |
+>
+> The file extension carries the kind, so config is a module the checker reads
+> rather than a second language with its own parser and its own escaping story.
+> Three of the five kinds are import targets and the resolver probes only those.
 
 **Q3. Could escape hatches like `unsafe`, `any` and raw casts be made into checked routes?**
 
@@ -253,16 +264,17 @@ Q2 through Q7 below are the standing drafts.
 
 > Not really. What makes an opinionated language hard is the amount you have to
 > hold in your head. Strong typing already exists to mechanically exclude
-> categories of failure, and that part is not in dispute. What chirality leans on
-> is that if you can express anything, you can express the checker too. Error
-> handling stops being a fixed feature of the language and becomes something you
-> extend, one bug class at a time, until the primitives cover it.
+> categories of failure, but they effectively leave all of typing to you every time.
+> Chirality's bit is that if you can express anything, you can express the checker
+> too. Error handling can be a fixed feature of the language and becomes something
+> you extend, one bug class at a time, until the primitives cover it. (and this is the
+> end goal)
 >
 > `paren-audit` is the small version, 244 lines of chirality. Break a paren and
-> it names the form, the line it opens on, and the delta. The next step is a tool
-> that repairs the file in place, and at that point unbalanced parens stop being
-> something you consider at all. That is the method: name the class, build the
-> primitive, stop paying attention to it.
+> it names the form, the line it opens on, and the delta. Easy enough for the next
+> step is a tool that repairs the file in place, and at that point unbalanced parens
+> stop being something you consider at all. That is the method: name the class,
+> build the primitive, stop paying attention to it.
 >
 > | what | state | where | limit |
 > |---|---|---|---|
