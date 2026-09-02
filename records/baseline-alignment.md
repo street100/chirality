@@ -404,3 +404,12 @@ anything, and in five of these rows that one number predicted the result.
 - evidence: `docs/elements/catalog.md:222`, `docs/examples/E133-manas-core-types.md:37`, `docs/examples/E134-gate.md:39`, `docs/examples/E135-bind.md:42`, `docs/examples/E136-match-assemble-stop.md:35`, `docs/examples/E138-run-loop.md:39`, `docs/elements/specs/S1-puffer-SPEC.md:6`, `:374`, `:375`, `docs/elements/specs/S2-rendering-SPEC.md:6`, `:7`, `docs/elements/specs/E94-form-type-capacity-SPEC.md:101`, `records/consolidation-handoff.md`
 - checked:  2026-09-01
 - element:  UNASSIGNED
+
+### BA-39 E173's SPEC mutant M3 is inert, because termination is not enforced
+
+- state:    OPEN
+- claim:    `docs/elements/specs/E173-total-matcher-SPEC.md` §5 carries M3, a mutant that makes `pd`'s `p-star` arm recurse into `(p-star q)` instead of a strict subterm, and asserts `chirality check` refuses it. The SPEC passed its audit at `4769cd2`, and `.planning/protocol/workflow.md` requires every gate row to name a mutant that is actually run.
+- measured: M3 does not fail. The mutant was built in a scratch `lib/` copy during E173 step 3 and the module compiled, rc 0. The reason is recorded one tier up and was not consulted by either SPEC audit: `docs/definitions/status-ledger.md:156` states "Termination is neither enforced nor classified in the built compiler", because `lib/typing/totality.chiral` is the built E11 classifier and no module imports it. Measured here: `grep -rn 'import "typing/totality"' lib/ prog/` returns 0. So a gate row asserting a termination refusal passes by looking at nothing, which `docs/decisions/decision-scope.md` names as the error the tree exists to avoid. Not repaired: step 6 owns Phase 19 and the mutant table, and the fix is a spec correction before that step, not a patch to a gate script that does not exist yet. Every function in `lib/text/matcher.chiral` still meets the written criterion of `docs/definitions/totality.md:48-53` by hand, checked at step 3, so the code is not in doubt. The check is.
+- evidence: `docs/elements/specs/E173-total-matcher-SPEC.md` §5 M3, `docs/definitions/status-ledger.md:156`, `lib/typing/totality.chiral`, `.planning/protocol/workflow.md`
+- checked:  2026-09-01
+- element:  E11 (wiring the classifier is E11's remaining work; no new element is owed)
