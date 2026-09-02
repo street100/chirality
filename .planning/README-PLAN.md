@@ -235,6 +235,15 @@ program be made purely about logical bug solving?**
 >
 > The residue is whether your specification says what you meant. Intent stays
 > outside the checker. That is the logical bug.
+>
+> **Honest limits.** Three of the six categories refuse nothing, so an open set
+> is a program of work rather than a property the language has today. The
+> six-way split is a draft in this file and `docs/definitions/bug-classes.md`
+> does not exist, so there is no settled taxonomy to measure the claim against.
+> Naming a class and checking it well are different achievements: refinement
+> refuses out-of-range values for `I64` and for no other type. And every one of
+> the 37 judgments is enforcement against error. An adversary who controls the
+> source is outside the reach of all of them.
 
 ⚑ Two earlier drafts were rejected. The first enumerated mechanisms with no
 argument. The second used "mechanical rather than a research problem", which is
@@ -266,6 +275,16 @@ Q2 through Q7 below are the standing drafts.
 > - A .manifest is view of the code that is very similar as a language,
 >   but structured in a way friendlier to it's purpose as a view.
 > - Applying this logic to .protocol, .grammar, and more.
+>
+> **Honest limits.** One language holds for the compile, check and run path. It
+> does not hold for the tooling: nine Python tools remain against a target of
+> zero. `.manifest` resolves as an import target and nothing checks that its
+> contents are data, so the kind is a naming convention until E163. `.protocol`
+> is minted as E183 and unbuilt, and `.grammar` is named nowhere in the tree, so
+> two thirds of the end-game list are still to be minted. The round-trip law that
+> would make a view and its code the same artifact is stated in
+> `docs/arcs/file-types-arc.md` as `parse(source(v)) == v`, and it is unbuilt for
+> both carriers.
 
 **Q3. Could escape hatches like `unsafe`, `any` and raw casts be made into checked routes?**
 
@@ -301,6 +320,12 @@ Q2 through Q7 below are the standing drafts.
 >
 > Where the checker is wired the load is off you. Where it is not, the shape is
 > light because nothing is weighing it.
+>
+> **Honest limits.** Two of the four typing rows are unreached, so on those the
+> low ceremony is absence rather than design. The repair half of the paren-audit
+> escalation needs P1 spans and P4 addresses, neither of which is assigned to an
+> element. And the claim is about load rather than about correctness: a checker
+> you never argue with may simply have stopped looking.
 
 **Q5. Why is it so hard to see what a program can actually do?**
 
