@@ -355,15 +355,46 @@ measurement exists. It mints no element and this SPEC does not plan it.
 
   | row | asserts |
   |---|---|
-  | G1 | `cls-has` at both edges of every class constant: 47/48/57/58, 64/65/90/91, 96/97/122/123, and byte 194 outside every ASCII class |
-  | G2 | `nullable` on all seven `Pat` arms, both `Ctx` windows |
-  | G3 | the bound holds: `(p-star (p-cls cls-lower))` over 100 lower bytes keeps the live set at 2 at every step |
-  | G4 | the bound is `norm`'s: with `norm` neutered the same input drives the live set past `‖pat‖ + 1` |
-  | G5 | `find-all` over the eight prose-lint patterns on a fixed fixture equals the awk counts for the same fixture |
-  | G6 | leftmost-longest, in two parts. **(a)** `norm` is order-independent: `(norm (cons (th 1 P) (cons (th 0 P) nil)))` is `(cons (th 0 P) nil)`, so the least start survives whatever order the list arrives in. Hand-derived, rank 3, and it is the assertion the sort key owes. **(b)** `find-all` over overlapping candidates returns the earliest start and the longest end |
-  | G7 | the line pass: fenced and inline-span lines match the awk `fence` toggle's skipped set, and `blank-spans` is length-preserving |
-  | G8 | the blob from `chirality_blob_file "lib:prog" prog/compiler.prog` is **byte-identical** before and after, so `text/matcher` is outside the compiler's closure and no promotion is owed |
-  | G9 | the corpus differential: over the same file list the awk `_scan` walks, the two tools' per-check totals agree on all eight checks, in one invocation with both live. G5 is the same comparison on a fixture the test author wrote; this row is the comparison on the corpus, which holds patterns no fixture was written for |
+  | G1 | `cls-has` at both edges of every class constant: 96/97/122/123, 47/48/57/58, 64/65/90/91/95/96, and byte 194 against each of the three constants and against `c-any` |
+  | G2 | `nullable` on all seven `Pat` arms, in two `Win` windows. The first is **off the front of the buffer**, which is `a-bol`'s offset-0 reading and the only one that distinguishes it from *prev is a newline* |
+  | G3 | the bound holds: `(p-star (p-cls cls-lower))` over 100 lower bytes keeps the live set at **2**, which is `‖pat‖ + 1` |
+  | G4 | the bound is `norm`'s: the same input stepped with `norm` skipped reaches **101**, so G3 holds for the reason it claims and not because the input is thin |
+  | G5 | the eight checks agree with the awk tool on a written fixture where every one of them fires, alongside a fenced block whose contents would score as prose and a line carrying an inline span |
+  | G6a | `norm` is order-independent: `(norm (cons (th 1 P) (cons (th 0 P) nil)))` is `(cons (th 0 P) nil)`, so the least start survives whatever order the list arrives in. Hand-derived, rank 3, and it is the assertion the sort key owes |
+  | G6b | leftmost-longest: `alt("ab","abc")` over `"xabc"` is one span, `1-4`. The earliest start, and the longest end |
+  | G6c | one pass, non-overlapping: `"aa"` over `"aaaa"` is `0-2,2-4` |
+  | G6d | `find-at` keeps the longest accept: `alt("ab","abc")` over `"abc"` from offset 0 is `0-3` |
+  | G7a | the kept lines **are** awk's kept lines. The fixture prints the text it scanned, so the `fence` toggle at `tools/prose-lint/prose-lint.sh:89-91` is handed the same bytes rather than a second spelling of them |
+  | G7b | and they are the hand-derived set, `100010001`, over prose, a fence pair, prose, an indented and info-stringed fence pair, and an inline-span line |
+  | G7c | `blank-spans` is length-preserving: 24 bytes in, 24 bytes out, with the 8-byte span blanked |
+  | G8 | the blob from `chirality_blob_file "lib:prog" prog/compiler.prog` does not contain `text/matcher`, so the module is outside the compiler's closure and no promotion is owed |
+  | G9 | the corpus differential: over the 80 files of `docs/arcs`, `docs/decisions` and `docs/definitions`, the two tools' per-check totals agree on all eight checks, in one invocation with both live. G5 is the same comparison on a fixture the test author wrote; this row is the comparison on the corpus, which holds patterns no fixture was written for |
+  | G10 | the `p-star` residual terminates, **observed rather than refused** |
+
+  **G9 names the awk path it compares against, and the path is the row.** The
+  awk tool carries two divergent check sets. `_scan`
+  (`tools/prose-lint/prose-lint.sh:86-113`) holds ten `gsub` checks and feeds
+  `--summary`, `--worklist`, `--baseline` and `--regress`. `cmd_lines` (`:153-176`)
+  holds one hand-merged alternation used by the bare `prose-lint PATH...`
+  per-line form, which omits `parallel-no` outright plus four other branches.
+  Measured over the 80 files above, the native tool and `--summary` agree
+  exactly at em-dash 906, antithesis 392, copula-negation 159 and parallel-no 8,
+  while the per-line form reports 1457 against 1465. **G9 runs through
+  `prose-lint --summary`.** Pointed at the per-line form it would fail on an awk
+  reporter defect, and "fixing" the native tool to match would reproduce that
+  defect.
+
+  **G10 is a run and not a check, because nothing in this tree refuses a
+  non-terminating `pd`.** `lib/typing/totality.chiral` is the built E11
+  classifier and no module imports it, so termination is neither enforced nor
+  classified in the built compiler (`docs/definitions/status-ledger.md:156`) and
+  `chirality check` answers OK on M3, measured. The row therefore **observes**
+  the divergence: the fixture runs under an 8 MB stack and a 20 s ceiling, the
+  mutant dies on its stack with no sentinel, and the base tree reaching that
+  sentinel under the same limits is the control that keeps the reading from
+  being an artifact of the limit. Wiring the classifier is E11's remaining work,
+  already named in `docs/decisions/decision-scope.md`'s queue, and no element is
+  minted here.
 
   Mutants. The harness is **not** `tools/test/mutant.sh`. That one mutates a
   file, rebuilds `prog/compiler.prog`'s blob and asserts the mutant compiler
@@ -374,8 +405,11 @@ measurement exists. It mints no element and this SPEC does not plan it.
   on the same E158 commit 4 precedent G8 already cites: a scratch `lib/` copied
   with `cp -a`, mutated in place with `sed -i`, refused if the mutation changed
   nothing, and the fixture compiled against that tree
-  (`tools/test/render-doc.sh:131-142`, driven at `:315-318`). `matcher.sh`
-  carries its own copy of that helper.
+  (`tools/test/render-doc.sh:131-145`, driven at `:315-325`). `matcher.sh`
+  carries its own copy of that helper, and every mutant that reaches the value
+  rows pins the **whole** eleven-row verdict line: a mutant that reddens a row
+  it was never paired with is then impossible to miss rather than merely
+  unlikely.
 
   Two mutants sit outside the plain `lib/` copy and the helper has to reach
   them.
@@ -392,27 +426,31 @@ measurement exists. It mints no element and this SPEC does not plan it.
 
   | mutant | mutation | convicted by |
   |---|---|---|
-  | M1 | `a-bol` loses its offset-0 case | G7 |
-  | M2 | `norm` becomes the identity | G4, G3 |
-  | M3 | the `p-star` arm of `pd` recurses into `(p-star q)` instead of rebuilding it | `chirality check` refuses the module |
-  | M4 | `find-at` keeps the first accept instead of the longest | G6 |
-  | M5 | `thread-key-cmp` drops its `from` tiebreak and returns `thread-cmp`'s answer | G6 |
+  | M1 | `a-bol` keeps only its newline case, losing offset 0 | G2 |
+  | M2 | `norm` becomes the identity | G3, G4, G6a |
+  | M3 | the `p-star` arm of `pd` recurses into `(p-star q)` instead of rebuilding it | G10 |
+  | M4 | `run-from` keeps the first accept instead of the longest | G6d |
+  | M5 | `thread-key-cmp` drops its `from` tiebreak and returns `thread-cmp`'s answer | G6a |
   | M6 | `c-range` uses `<i` at the high edge | G1 |
-  | M7 | `blank-spans` deletes a span instead of blanking it | G7 |
+  | M7 | `blank-spans` deletes a span instead of blanking it | G7c |
   | M8 | `nullable` returns false on the `p-star` arm | G2 |
-  | M9 | `find-all` reports overlapping matches instead of resuming at a match's end | G5 |
+  | M9 | `th-since` stops retiring the threads a committed span covers, so `find-all` reports overlaps | G6c |
   | M10 | a compiler-closure module gains `(import "text/matcher")` | G8 |
-  | M11 | one needle is dropped from a check's `p-alt` tree in `prog/prose-lint.prog` | G9 |
-  | M12 | `thread-cmp`, the dedup key, gains the `from` field | G3, G4 |
+  | M11 | `never` leaves `p-anti-kw`'s `p-alt` tree in `prog/prose-lint.prog` | G5, G9 |
+  | M12 | `thread-cmp`, the dedup key, gains the `from` field | G3, G4, G6a |
 
-  M8 through M11 exist because `docs/definitions/testing-floors.md:261` requires
-  every row to name a mutant that is run, and G2, G5, G8 and G9 named none.
+  Every row above names a mutant and every mutant convicts a row, which is what
+  `docs/definitions/testing-floors.md:261` asks for. The sub-rows G6a-d and
+  G7a-c are what that requirement bought: one row reading *leftmost-longest* had
+  three separate mutants aimed at it and no way to tell which of them it caught.
 
   M5 and M12 are the two ways the split comparator §4 step 3 introduces can be
   got wrong, and they fail different rows. Neutering the sort key's `from` half loses the least
-  start, which G6(a) sees. Adding `from` to the dedup key keeps one thread per
+  start, which G6a sees while the bound stays at 2. Adding `from` to the dedup key keeps one thread per
   `(pat, from)` pair instead of one per `pat`, so the live set grows with the
-  offset and the bound goes, which G3 sees at step 3 and G4 confirms.
+  offset and the bound goes, which G3 sees and G4 confirms. Every span the
+  matcher returns is still correct under it, which is why a gate that only
+  checked answers would ship it.
 
 - **Recorded, not gated: the wall clock.** Author call, 2026-09-01. The two
   tools are timed back to back on the same file list in the same run, and the
@@ -436,10 +474,11 @@ measurement exists. It mints no element and this SPEC does not plan it.
   so decision 7 ships without a gate. §6 carries that as residue.
 
 - **Green line:** suite **303 passed, 0 failed** (last measured, recorded at
-  `records/baseline-alignment.md:147`) → ≥ 303 plus Phase 19's assertions, with
-  Phases 1 through 18 unchanged at their recorded counts. `ledger-lint` no worse
-  than its measured baseline: A(6) B(5) C(1) F(27) G(77) I(1) R(130) T(1), with
-  H and M vacuous.
+  `records/baseline-alignment.md:147`) → **321 passed, 0 failed**, being 303 plus
+  Phase 19's **18** assertions, with Phases 1 through 18 unchanged at their
+  recorded counts. `matcher.sh` run on its own measures 18 passed, 0 failed in
+  11 s. `ledger-lint` no worse than its measured baseline: A(6) B(5) C(1) F(27)
+  G(77) I(1) R(130) T(1), with H and M vacuous.
 
 - **Done when:** Phase 19 is green with all **twelve** mutants convicted and
   each one's measured failure recorded, the awk and chirality per-check totals

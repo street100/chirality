@@ -30,6 +30,8 @@
 #      (E158 commit 4)
 #  18  the term printer (E181)   NEW HERE   -- tools/test/pretty.sh
 #      (Term -> Doc, and its output IS source)
+#  19  the total matcher (E173)  NEW HERE   -- tools/test/matcher.sh
+#      (pd + norm, and the prose-lint differential)
 #
 # Each case's expected value comes from what the program MEANS, never from a
 # golden capture of chirality's own output.
@@ -278,6 +280,25 @@ run_phase 17 "doc->rendering (E158 commit 4)"                      render-doc.sh
 # unimportable twice over (`data redeclared: Term`, `duplicate label ... nlen`),
 # so nothing in the tree ever compiled it.
 run_phase 18 "the term printer (E181 Term -> Doc)"                 pretty.sh
+
+# ---- Phase 19: the total matcher (E173 slice 1) -----------------------------
+# 19 for the reason 18 was 18: 8-12 are names still owed to unported old-tree
+# phases.  `lib/text/matcher.chiral` is Antimirov partial derivatives with the
+# live set bounded by a call to `norm`, and `prog/prose-lint.prog` is its first
+# consumer.
+#
+# ⚑ Its mutant harness is NOT tools/test/mutant.sh.  That one asserts a mutated
+# `prog/compiler.prog` blob DIFFERS, and G8 measures that `text/matcher` is
+# outside that closure -- so every mutation of it would score INERT there.  A
+# scratch `lib/` is the mechanism for a module outside the blob, as in Phase 17.
+#
+# ⚑ Its M3 is the mutant this tree cannot refuse.  A `pd` whose `p-star` arm
+# does not rebuild the star does not terminate, and `chirality check` answers OK
+# on it: `lib/typing/totality.chiral` is the built E11 classifier and nothing
+# imports it (docs/definitions/status-ledger.md:156).  G10 therefore RUNS the
+# mutant under a bounded stack and reads the divergence, with the base tree
+# under the same limits as its control.
+run_phase 19 "the total matcher (E173 pd + norm)"                  matcher.sh
 
 echo
 echo "=== not ported from the old suite (named, not hidden) ==="
