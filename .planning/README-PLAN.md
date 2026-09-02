@@ -96,35 +96,54 @@ seven principles are this idea applied seven times", then walks P1 through P7.
 the single idea under the language describes a principle set that no longer
 exists.
 
-## Thesis and goals: new instruction, 2026-09-01
+## Goals: the handling, and the table
 
-The author added scope this session, beyond what the four-part structure covers:
-**"straighten up thesis and goals in the broadest sense of the language."**
+Draft for the README section. Measured 2026-09-01.
 
-The questions half of that instruction is already settled below, seven of them.
-The thesis and goals half is new and unstarted. What exists to build on:
+### How chirality handles goals
 
-- `docs/definitions/thesis.md`, stale as above. One idea: *a gap is an ungoverned
-  path.* Anything a program can do that the framework cannot name is ungoverned,
-  so the only way to control everything is to be able to express everything.
-- Seven goal files under `docs/goals/`, each with a state:
+Three tiers. A **goal** is a broad thing the project claims it is doing. An
+**arc** is the list of elements serving one goal, carrying that goal's
+requirements and its own resume state. An **element** is one catalog item, an
+`E#`. An arc names exactly one goal and an element belongs to exactly one arc.
 
-| goal | state |
+Three rules keep it a record rather than an ambition:
+
+- **A goal cites where the project already claims it.** Writing a new ambition
+  is an author call. An arc serving a goal nobody has written down puts
+  `UNWRITTEN` in its goal field.
+- **A goal carries no build state.** What is built sits on four rungs in
+  `docs/definitions/status-ledger.md`, so a goal cannot grade itself.
+- **An element is minted into a reserved band.** An arc without one writes
+  `UNASSIGNED` and stops, because naming work that has no number is a phantom
+  dependency.
+
+### The goals
+
+| goal | where the project claims it | arcs | state |
+|---|---|---|---|
+| the language compiles and checks itself | README, self-hosting | none open | held since 2026-08-05, maintained by the build rule |
+| chirality writes its own tooling, and no Python remains | README, the Python count | `text-tools`, `zero-python` | in flight. Neither arc has a reserved block |
+| the surface is convenient without buying it back in escape hatches | `PRINCIPLES.md` §4 and its own honest limit | `diagnostics`, `file-types` | in flight. `E184-E189` and `E190-E195` |
+| what is built is gated, and the compiler checks what it claims | `status-ledger`'s four rungs, `PRINCIPLES.md` §3 | `enforcement` | in flight. `E184-E189`, shared with `diagnostics` |
+| what this repo says about itself is true | README's Honest limits, and every principle carrying one | `baseline-alignment`, `binary-split`, `presentability` | in flight. None of the three has a reserved block |
+| judgment that does not rest on one formulation | README, Honest limits: external judgment is cut | none | stated and unbuilt. It has no arc, and nothing in the tree works toward it |
+| the ownership and trust model | README, Scope | none | deferred by author decision, 2026-08-31 |
+
+### Gaps in the handling
+
+| gap | measured |
 |---|---|
-| the language compiles and checks itself | held since 2026-08-05 |
-| chirality writes its own tooling, no Python remains | in flight |
-| the surface is convenient without escape hatches | in flight |
-| what is built is gated | in flight |
-| what this repo says about itself is true | in flight |
-| judgment that does not rest on one formulation | stated, unbuilt, zero arcs |
-| the ownership and trust model | deferred by decision |
+| five arcs of eight cannot mint an element | `baseline-alignment`, `binary-split`, `presentability`, `text-tools`, `zero-python` have no reserved block. They serve two of the five in-flight goals, so that work writes `UNASSIGNED` and stops |
+| one goal has no arc at all | `independent-judgment`. It is the criterion the project set for replacing external judgment, and no element points at it |
+| six goal files cite README line numbers | the citations moved when the README was edited on 2026-09-01. Stable heading anchors are the fix |
+| five goal files quote `CLAUDE.md` | the strings are gone. The rules moved to `working-discipline` and `decision-dispatch-cadence` |
+| two goals are author calls rather than derivations | `presentability` and `readable-surface` say so in their own first section. They are what the project decided to want rather than what it had already written down |
+| the thesis note describes a principle set that no longer exists | `docs/definitions/thesis.md` walks P1 through P7. `PRINCIPLES.md` was condensed to five on 2026-07-20 |
 
-Open: whether the goals appear in the README as their own section, or whether
-section 4 (claims with state, limit, proposal) already is the goals section
-under another name. The two lists overlap and have not been reconciled.
-
-Open: whether the thesis is stated in the README in full or as one line plus a
-link. The note needs the five-principle repoint either way.
+Each row is inventory. None of it blocks writing the README section; the section
+states the goal, the state and the gap in the same table, which is the same shape
+the seven answers take.
 
 ## The seven questions, final wording
 
