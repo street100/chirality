@@ -15,7 +15,7 @@ Regularity is the bridge: "the safe path is the cheap path" (P4) and "make the
 language behave as it looks" are the same commitment from the writer's side here
 and the reader's side there.
 
-Draft, 2026-06-14. Condensed seven to five on 2026-07-20: an adversarial review
+Draft. Condensed seven to five: an adversarial review
 found the old P4 (inert interior) and P7 (tiering) carried no weight independent
 of P3 (ports) and P6 (redundancy), and the old P2's real content was its
 cost mechanism, not its slogan. The crosswalk at the end preserves existing
@@ -102,7 +102,7 @@ not the shape.
 That is the working outlook, and it decides things. A directory named for a
 subject rather than for boundaries is a category error: `lib/ports/` holds files
 that *declare* a crossing and nothing else, and three modules that merely
-computed over crossings moved out on 2026-08-31 because being *about* ports is
+computed over crossings moved out because being *about* ports is
 subject matter. A module's interface is the boundaries it names; a design
 question is answered by asking which boundary it moves. Time and space stop
 reading as an exception bolted onto I/O and read as what they are: the boundary

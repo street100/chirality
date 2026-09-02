@@ -4,7 +4,7 @@ Read this first to orient. It is the index into the whole project on one screen,
 with links into the detail. For how to work here, read `.planning/PERSONA.md` (internal
 working doc; not part of the public mirror).
 
-Draft, 2026-06-16; scaffold running since 2026-07-05. Developmental.
+Draft. Developmental.
 
 ---
 
@@ -18,12 +18,12 @@ checkable. See [PRINCIPLES.md](PRINCIPLES.md).
 ## The spine (root, locked, plain markdown)
 
 Root holds six documents, plus `LICENSE.md` and `LICENSE.EXCEPTION.md`.
-Everything that used to float there was sorted on 2026-08-31 into the tier it
-belongs to, and the arc handoffs followed on 2026-09-01.
+Everything that used to float there was sorted into the tier it belongs to, and
+the arc handoffs followed.
 
 - [README.md](README.md): the public front door.
 - [PRINCIPLES.md](PRINCIPLES.md): five principles, one thesis (condensed from
-  seven 2026-07-20; a crosswalk in the doc keeps old P1-P7 citations resolving).
+  seven; a crosswalk in the doc keeps old P1-P7 citations resolving).
 - [MAP.md](MAP.md): the tree contract. Extensions, module key, doc roles.
 - [docs/definitions/working-discipline.md](docs/definitions/working-discipline.md): the work contract.
   The build rule, the deferral rule, commits, and where state lives.
@@ -40,7 +40,7 @@ Moved out, and where they went:
 [bootstrap](docs/definitions/bootstrap.md) are named concepts, so they are notes
 in the design base. `.planning/PERSONA.md` is an internal working document and
 `.planning/MIGRATION-MAP.tsv` is a record. `.planning/UMBRELLA.md` was archived
-2026-09-01 to `.planning/archive/UMBRELLA.md`: it duplicated this file and
+to `.planning/archive/UMBRELLA.md`: it duplicated this file and
 `README.md`, which are its successors.
 
 ## The design base (docs/, linked notes)
@@ -68,7 +68,7 @@ set, one idea per note, linked with `[[slug]]`. Groups:
   `insp-oberon` (residential), `insp-erlang-beam`, `insp-capability-os` (mesh),
   `insp-unison` (substrate).
 - Provenance and open work: `dump-integration`, `open-edges`.
-- Goals, arcs, elements (added 2026-09-01): `goals/README` names what this
+- Goals, arcs, elements: `goals/README` names what this
   project claims it is doing and which arcs serve each claim; `arcs/README`
   names the arcs, each carrying its goal, its requirements, its element list and
   its resume state; `elements/README` states what the element tier still owes.
@@ -117,8 +117,8 @@ schedule.
 
 ## The scaffold (first running code)
 
-`scaffold/` is the stage 9 host-language scaffold, pulled forward (2026-07-05)
-to run the first target, [docs/target-tomodachi.md](docs/definitions/target-tomodachi.md).
+`scaffold/` is the stage 9 host-language scaffold, pulled forward to run the
+first target, [docs/target-tomodachi.md](docs/definitions/target-tomodachi.md).
 It follows the module architecture, not implementation convenience:
 
 - a minimal QTT kernel with two seams (term-former handlers, membrane rules);

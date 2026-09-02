@@ -1,11 +1,44 @@
 # chirality
 
-One language for the whole stack, where the checker is something you can write.
-A bug class comes off the list when someone states it as a judgment and puts a
-gate under it, so what the compiler refuses grows with the tree instead of being
-fixed when the language was designed.
+This is a passion project. There is 0 straightforward way to introduce where I come from on this project.
 
-**Self-hosting since 2026-08-05.** The compiler is written in chirality and
+The best way I can guide one through it is by explaining how I got here. The thinking started with being upset at how
+much mental running around it is to achieve security, and how backwards that relationship is. Why do I need different
+stacks at any level for that? How could it even be secure having to trust so many? This sparks a cascade of questions, whose
+answers all point towards the same rabbithole, which is the extent that virtually all code in any environment is insecure,
+even despite the efforts you can make.
+
+The peak of the arc is this project. This is the thing I am creatively redirecting my anger at it realizing it is the case that we
+have discovered and genuinely implemented more than enough to know that we can make a programming language that could solve literally
+any legitimate complaint with a programming language that exists.
+
+Pre-solve all non-logic bugs? If it's not logic its mechanical. If it's mechanical its
+computable. The wiggle room there really favors us.
+
+Why is the checker something you get instead of something you write? Every language ships a
+fixed set of refusals and calls that a type system. If you can express anything you can
+express the checker too. Then a bug class comes off the list because someone did the work,
+not because a version shipped.
+
+One language the whole way down? Every layer gets held to a different constraint, so nobody
+tries. Hold one language to all of them at once and either it survives or you find out
+exactly where it didn't. Compiler, checker, emitter, runtime, tooling, data. Same language.
+
+Why is `unsafe` a keyword? Because the type system ran out of things it could say, and the
+language handed you a door instead of a word. Give the dangerous thing a type and there is
+no door to reach for.
+
+See everything a program can touch? Enumerating what it outputs is undecidable. Enumerating
+how it reaches outside itself is finite. That is a far smaller question and almost nobody
+asks it. Time and memory count as reaching out too.
+
+Proof you don't pay for? It runs at compile time and gets erased before emission. You were
+picturing it running.
+
+How much do you actually have to trust? Ours is 1,823 lines. Everything above it is text
+that core checked. That number is the whole argument, and it is the number to attack.
+
+**It self-hosts.** The compiler is written in chirality and
 compiles itself to a byte-identical copy. No Python runs in the compile, check
 or run path.
 
@@ -138,7 +171,7 @@ tooling and the data.
 
 | layer | written in chirality as | state |
 |---|---|---|
-| the compiler | `prog/compiler.prog` over `lib/lowering/` | self-hosting since 2026-08-05, byte-identical fixpoint at generation one |
+| the compiler | `prog/compiler.prog` over `lib/lowering/` | self-hosting, byte-identical fixpoint at generation one |
 | the checker | `lib/typing/`, 3,227 lines | on the path of every compile |
 | the emitter | `lib/lowering/x64/emit.chiral` | emits the shipped ELF |
 | the runtime | `lib/runtime/`, 3 modules | |
@@ -332,13 +365,13 @@ Three rules keep it a record rather than an ambition:
 
 | goal | arcs | state |
 |---|---|---|
-| the language compiles and checks itself | none open | held since 2026-08-05, maintained by the build rule |
+| the language compiles and checks itself | none open | held, maintained by the build rule |
 | chirality writes its own tooling, and no Python remains | `text-tools`, `zero-python` | in flight. Neither arc has a reserved block |
 | the surface is convenient without buying it back in escape hatches | `diagnostics`, `file-types` | in flight. `E184-E189` and `E190-E195` |
 | what is built is gated, and the compiler checks what it claims | `enforcement` | in flight. `E184-E189`, shared with `diagnostics` |
 | what this repo says about itself is true | `baseline-alignment`, `binary-split`, `presentability` | in flight. None of the three has a reserved block |
 | judgment that does not rest on one formulation | none | stated and unbuilt. It has no arc, and nothing in the tree works toward it |
-| the ownership and trust model | none | deferred by author decision, 2026-08-31 |
+| the ownership and trust model | none | deferred by author decision |
 | full genuine local AI on small models | three drafted, none open | blocked on two author calls in [`records/author-calls.md`](records/author-calls.md) |
 
 ⚑ Five arcs of nine cannot mint an element, because `baseline-alignment`,

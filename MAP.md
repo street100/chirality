@@ -48,8 +48,8 @@ further clause. `sys-tal` is the case, its 64 defs being `(t-seq ...)` and
 Write `(import "lowering/x64/mach")`, not `(import "mach")`.
 
 On the basename alone, `mach` resolves three ways (`lowering/mach|x64|listing/`).
-It was four, and `emit` resolved twice, until the C target was dropped on
-2026-09-01. Taking the path as the key means:
+It was four, and `emit` resolved twice, until the C target was dropped. Taking
+the path as the key means:
 
 - the directory is the identity, not decoration;
 - basename collision is unreachable rather than named. `ports/proc` and `proc` were
@@ -66,8 +66,8 @@ implementation is bound at link time, or a `porttype` minting an opaque linear
 atom. That is the same structural test the `.port` extension already carries,
 pointed at the directory.
 
-Being *about* ports does not qualify, and on 2026-08-31 three files were in
-`ports/` for exactly that reason. Each moved to the directory its own importers
+Being *about* ports does not qualify, and three files were in `ports/` for
+exactly that reason. Each moved to the directory its own importers
 already named:
 
 | file | went to | because |
@@ -125,7 +125,7 @@ tools/         one folder per tool
                    LICENSE.md and LICENSE.EXCEPTION.md, plus CLAUDE.md for the
                    agent tier. A document at root is one a stranger or a tool
                    opens first; everything else sorts into a tier below.
-                   Cleared 2026-09-01: the three agent working files moved to
+                   Cleared: the three agent working files moved to
                    tracked homes, and PRINCIPLES-SLIM.md was cut as a condensed
                    twin of PRINCIPLES.md with nothing keeping the two in sync.
 docs/
@@ -146,7 +146,7 @@ records/           one per arc: a claim beside its measurement, with a state.
                    NOT under docs/: docs/ is what a reader is handed, records
                    are what we measured. The one tier any agent may edit
 .planning/         the agent tier: navigation, protocol, relational maps, queues,
-                   handoffs, captures. Tracked since 2026-09-01, when the human
+                   handoffs, captures. Tracked, since the human
                    tier and the agent tier were split and both kept in git
                    (docs/decisions/decision-ai-tier.md). The element tier moved
                    to docs/elements/ the same day
@@ -175,14 +175,14 @@ and its reader is a person. The agent tier is `.planning/`, `CLAUDE.md` and
 
 ## Goals, arcs, elements
 
-Three tiers, added 2026-09-01. A goal is a broad thing this project claims it is
+Three tiers. A goal is a broad thing this project claims it is
 doing. An arc is the list of elements to be done for one goal, carrying that
 goal's requirements. An element is one catalog item, an `E#`.
 
 `goals/` and `arcs/` are tracked because their reader is a person: a goal is
 what the project claims and an arc is how it gets there.
 
-They were made tracked on 2026-09-01 for a narrower reason, now spent:
+They were made tracked for a narrower reason, now spent:
 `.gitignore` excluded `.planning/`, so an element fact written there forked per
 worktree. Two sessions minted `E173` independently and nothing caught it. The
 whole agent tier is tracked as of the same day, so that reason no longer
