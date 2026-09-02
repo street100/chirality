@@ -27,6 +27,10 @@ recorded in that direction.
 Scope stance from [[goals/local-ai]]: CPU is the target, tiny models, GPU
 assumed absent, fine tuning before from-scratch training.
 
+The settled theory this framing was working toward is
+[[train-of-thought]]: a thought carried through a set of considerations, in
+twelve kinds, each with what it tracks.
+
 ## Section 1: the two floors, measured
 
 ### SpiNNaker1

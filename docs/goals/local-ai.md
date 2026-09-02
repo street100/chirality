@@ -1,9 +1,9 @@
 ---
 node: goal-local-ai
 layer: navigation
-related: [goals/README, goals/self-tooling, goals/presentability, records/author-calls, status-ledger, working-discipline, index]
+related: [goals/README, goals/self-tooling, goals/presentability, train-of-thought, records/author-calls, status-ledger, working-discipline, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-02
 ---
 
 # Goal: full genuine local AI on small models
