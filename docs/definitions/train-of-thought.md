@@ -74,6 +74,13 @@ has to know it did or it will keep re-entering it.
 Across the train, two more: the order the considerations were met in, and what
 has already been rejected. The second is what stops a train circling.
 
+## What the tracked column is for
+
+The orchestration layer feeds the raw layer as much as it can. The tracked
+column is that feed. It is the only thing the level below can see of what
+happened above it. So track what the raw layer can use, and track more of it
+where that is cheap.
+
 ## Three flagged as possibly not primitive
 
 Each is open, and the author rules.
