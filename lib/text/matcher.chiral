@@ -15,3 +15,102 @@
 ; module's datasheet from what it binds, and this module binds no extern, so
 ; its `crossings` is empty by derivation.
 (module text/matcher (cat A) (alt upper))
+
+; ─── Cls: a byte class as a value ─────────────────────────────────────────────
+; Bytes throughout. A UTF-8 lead byte is >= 194 and fails every ASCII range,
+; which is the answer prose-lint.prog:43-45 wants. Codepoint classes belong to
+; lib/protocol/utf8.chiral and stay there.
+(data Cls ()
+  (c-byte  (b I64))                     ; exactly this byte
+  (c-range (lo I64) (hi I64))           ; lo..hi inclusive
+  (c-any)                               ; any byte except 10, which is awk's dot
+  (c-not   (inner Cls))
+  (c-or    (l Cls) (r Cls)))
+
+; The class constants the corpus needs. \w is spelled once here instead of 85
+; times across the Python corpus.
+(def cls-lower Cls (c-range 97 122))
+(def cls-digit Cls (c-range 48 57))
+(def cls-word Cls
+  (c-or (c-range 48 57)
+    (c-or (c-range 65 90) (c-or (c-range 97 122) (c-byte 95)))))
+
+; Total: structural on c. Both recursive arms take a strict subterm, which is
+; the criterion totality.md:48-53 applies.
+(declare cls-has (-> Cls I64 Bool))
+(def cls-has
+  (lam (c b)
+    (case c
+      ((c-byte  x)     (=i b x))
+      ((c-range lo hi) (and (<=i lo b) (<=i b hi)))
+      ((c-any)         (not (=i b 10)))
+      ((c-not inner)   (not (cls-has inner b)))
+      ((c-or l r)      (or (cls-has l b) (cls-has r b))))))
+
+; ─── Assert: the whole zero-width budget the corpus needs ─────────────────────
+; The census over the Python corpus found 21 word-boundary sites, three
+; one-byte-class lookaround sites and zero backreferences. These five cover all
+; of them, so Assert is closed at five and a general lookaround engine is never
+; built.
+(data Assert ()
+  (a-bol)                               ; prev byte is 10, or offset 0
+  (a-eol)                               ; here byte is 10, or off the end
+  (a-wordb)                             ; \b : prev and here differ on cls-word
+  (a-not-before (c Cls))                ; (?![...])
+  (a-not-after  (c Cls)))               ; (?<![...])
+
+; The one-byte window an Assert decides against. -1 means off the end.
+(data Ctx () (ctx (prev I64) (here I64)))
+
+; Total: one case over a five-constructor sum, with no recursion. The window is
+; destructured once at the top, so every arm reads the same two bytes.
+(declare holds (-> Ctx Assert Bool))
+(def holds
+  (lam (k a)
+    (case k
+      ((ctx p h)
+        (case a
+          ((a-bol) (or (<i p 0) (=i p 10)))
+          ((a-eol) (or (<i h 0) (=i h 10)))
+          ((a-wordb)                    ; \b : exactly one side is a word byte
+            (case (cls-has cls-word p)
+              (true  (not (cls-has cls-word h)))
+              (false (cls-has cls-word h))))
+          ((a-not-before c) (not (cls-has c h)))
+          ((a-not-after  c) (not (cls-has c p))))))))
+
+; ─── Pat: the pattern is a value, so escaping does not exist ──────────────────
+; p-lit sits beside p-cls so a literal run stays one node: the driver's
+; prefilter can hand it straight to the str-find-from primitive
+; (prelude.chiral:82 -> nb-bfind-from, bytes.chiral:355), which is what closes
+; prose-lint's 2.4x gap.
+(data Pat ()
+  (p-nil)                               ; matches the empty string
+  (p-lit  (s Str))
+  (p-cls  (c Cls))
+  (p-ast  (a Assert))                   ; zero-width
+  (p-cat  (l Pat) (r Pat))
+  (p-alt  (l Pat) (r Pat))
+  (p-star (inner Pat)))
+
+; prose-lint's not-but check, spelled as a value. Every Pat constructor except
+; p-alt and p-ast appears here, so it doubles as the module's smoke value.
+(def pat-not-but Pat
+  (p-cat (p-lit "not ")
+    (p-cat (p-cls cls-lower)
+      (p-cat (p-star (p-cls cls-lower)) (p-lit " but ")))))
+
+; ─── nullable: can p accept here, with assertions decided against ctx ─────────
+; Structural on p. Every recursive call takes a strict subterm, so this proves
+; under the structural rule with no declared measure (totality.md:48-53).
+(declare nullable (-> Ctx Pat Bool))
+(def nullable
+  (lam (k p)
+    (case p
+      ((p-nil)     true)
+      ((p-lit s)   (=i 0 (str-len s)))
+      ((p-cls c)   false)
+      ((p-ast a)   (holds k a))
+      ((p-cat l r) (and (nullable k l) (nullable k r)))
+      ((p-alt l r) (or  (nullable k l) (nullable k r)))
+      ((p-star q)  true))))
