@@ -216,8 +216,8 @@ the shape is not uniform and that is worth stating rather than forcing.
 **Q1. What bugs could a programming language inherently remove? Could debugging a
 program be made purely about logical bug solving?**
 
-> Some of them, and which ones is not fixed. A failure you can name as a class is
-> a failure a checker can refuse, and because the language can express its own
+> Some of them, and the set is open. A failure you can name as a class is a
+> failure a checker can refuse, and because the language can express its own
 > checker the list is worked rather than given.
 >
 > | category | what refuses today | how far it goes |
