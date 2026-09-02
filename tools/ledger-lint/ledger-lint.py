@@ -1273,11 +1273,19 @@ def check_v() -> list[str]:
         served.add(g)
         if g not in goals:
             errs.append(f"[V] {arc.name} names goal '{g}' and docs/goals/{g}.md does not exist")
-        blk = re.search(r"^- reserved element block:\s*(.+)$", text, re.M)
-        none_blk = bool(blk) and "none" in blk.group(1).lower()
-        if none_blk and "UNASSIGNED" in text:
-            errs.append(f"[V] {arc.name} writes UNASSIGNED rows and holds no reserved "
-                        f"element block, so its elements cannot be minted (author call)")
+        # An arc with no band still names its work. decision-work-ids settles the
+        # arc-local row id, so an anonymous UNASSIGNED row is the defect now,
+        # rather than the missing band.
+        blk = re.search(r"^- reserved element block:\s*(.+?)(?=\n[-#]|\n\n)", text, re.S | re.M)
+        if blk and "none" in blk.group(1).lower() \
+           and "decision-work-ids" not in blk.group(1) \
+           and "BA-" not in blk.group(1):
+            errs.append(f"[V] {arc.name} holds no reserved element block and names no "
+                        f"arc-local row id scheme (decision-work-ids)")
+        for m in re.finditer(r"^\|\s*UNASSIGNED\s*\|", text, re.M):
+            line = text.count("\n", 0, m.start()) + 1
+            errs.append(f"[V] {arc.name}:{line} has an anonymous UNASSIGNED row. "
+                        f"decision-work-ids gives it an arc-local id")
     arc_idx = (arcs_dir / "README.md")
     if arc_idx.exists():
         itext = arc_idx.read_text()

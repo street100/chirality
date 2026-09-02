@@ -33,12 +33,14 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/readable-surface]] | in flight | [[arcs/diagnostics-arc]], [[arcs/file-types-arc]] |
 | [[goals/presentability]] | in flight | [[arcs/baseline-alignment-arc]], [[arcs/presentability-arc]], [[arcs/binary-split-arc]] |
 | [[goals/enforcement]] | in flight | [[arcs/enforcement-arc]] |
-| [[goals/independent-judgment]] | stated, unbuilt, **zero arcs** | none |
+| [[goals/independent-judgment]] | stated, unbuilt | [[arcs/independent-judgment-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | none, by decision |
 
-`independent-judgment` is a stated goal with no arc and no element. `README.md`
-lists it under Honest limits, and `docs/decisions/decision-self-verification.md`
-records the call.
+`independent-judgment` carries an arc as of 2026-09-01 and still has no element.
+`README.md` lists it under Honest limits, and
+`docs/decisions/decision-self-verification.md` records the call. Its four rows
+carry arc-local ids per [[decisions/decision-work-ids]], because the arc has no
+reserved element block.
 
 [[goals/presentability]] and [[goals/readable-surface]] are author calls rather
 than derivations from existing text, and say so in their own first section.

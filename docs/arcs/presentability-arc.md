@@ -9,7 +9,8 @@ updated: 2026-09-01
 # Arc: presentability and documentation
 
 - goal: [[goals/presentability]]
-- reserved element block: **none**. Rows write `UNASSIGNED`.
+- reserved element block: **none**. Rows carry arc-local ids `D1` and up, per
+  [[decisions/decision-work-ids]], and map to `unminted` until a block exists.
 - checklist: [[records/baseline-alignment]], the rows in the reader-facing spine
 - sibling arcs under the same goal: [[arcs/baseline-alignment-arc]], [[arcs/binary-split-arc]]
 
@@ -50,11 +51,11 @@ is a wish.
 
 ## Elements
 
-| element | what | state |
-|---|---|---|
-| UNASSIGNED | reconcile the spine against the open `BA-` rows in requirement 2 | not started |
-| UNASSIGNED | `MAP.md` doc-role table gains `goals/`, `arcs/`, records | not started |
-| UNASSIGNED | retire or build `chirality verify` and its 14 citations | not started |
+| row | what | state | element |
+|---|---|---|---|
+| `presentability/D1` | reconcile the spine against the open `BA-` rows in requirement 2 | not started | `unminted` |
+| `presentability/D2` | `MAP.md` doc-role table gains `goals/`, `arcs/`, records | not started | `unminted` |
+| `presentability/D3` | retire or build `chirality verify` and its 14 citations | not started | `unminted` |
 
 No element number is minted. This arc has no reserved block, and `CLAUDE.md`'s
 deferral rule forbids naming an element that does not exist. An arc with no block

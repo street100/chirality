@@ -9,7 +9,9 @@ updated: 2026-09-01
 # Arc: baseline alignment
 
 - goal: [[goals/presentability]]
-- reserved element block: **none**. Rows needing one write `UNASSIGNED`.
+- reserved element block: **none**. Its rows are the `BA-` ids in
+  [[records/baseline-alignment]], which is the arc-local id scheme
+  [[decisions/decision-work-ids]] settles. They map to `unminted`.
 - finding list: [[records/baseline-alignment]]
 
 TRACKED for the reason [[arcs/diagnostics-arc]] is.

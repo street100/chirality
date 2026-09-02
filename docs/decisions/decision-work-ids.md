@@ -2,13 +2,13 @@
 node: decision-work-ids
 layer: decision
 related: [arcs/README, elements/README, goals/README, records/README, working-discipline, decision-lane-split, index]
-status: draft
+status: settled
 updated: 2026-09-01
 ---
 
 # Decision: an arc names its work before the work has a number
 
-**Draft. An author call, still open.**
+**Settled 2026-09-01 by author directive.**
 
 ## The problem
 
@@ -80,12 +80,26 @@ to write down what it intends without inventing a number to hold it.
 - Promotion becomes a mapping change in one cell rather than a rewrite, and no
   citation anywhere else moves.
 
-## What it does not decide
+## The three details, settled
 
-- **The id alphabet.** `text-tools` uses `P` for primitive. Whether each arc
-  picks its own letter or a single scheme covers all of them is open.
-- **Whether rows replace the element list or sit beside it.** An arc with a band
-  holds minted and unminted work at once. One list carrying both with an element
-  column is the simpler shape; two lists keep the tiers visually apart.
-- **Whether a row needs its own state vocabulary**, or reuses the four rungs in
-  [[status-ledger]]. An unbuilt row has nothing on the rungs to name.
+**The id alphabet is the arc's own.** One letter naming the kind of work, then a
+number from 1. `text-tools` keeps `P` for primitive.
+`records/baseline-alignment.md` keeps `BA`, which it already used for exactly
+this and which is the second place the tree invented this pattern by itself.
+
+| arc | letter | |
+|---|---|---|
+| `text-tools` | `P` | primitive |
+| `zero-python` | `T` | tool |
+| `presentability` | `D` | document |
+| `binary-split` | `B` | binary |
+| `baseline-alignment` | `BA` | the existing record rows, reused rather than duplicated |
+
+**One list, with an element column.** An arc with a band holds minted and
+unminted work at once, and splitting them into two lists hides that the same arc
+owns both. The element cell carries the `E#` or `unminted`.
+
+**A row's state is a short phrase.** The four rungs in [[status-ledger]] measure
+what is built and reached; an unminted row usually has nothing on them, so
+forcing it onto a rung would put it at DESIGNED and say less than a sentence
+does. Build state stays with the ledger and does not move here.

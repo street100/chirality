@@ -9,7 +9,8 @@ updated: 2026-09-01
 # Arc: zero Python
 
 - goal: [[goals/self-tooling]]
-- reserved element block: **none**. Rows needing one write `UNASSIGNED`.
+- reserved element block: **none**. Rows needing one carry arc-local ids `T1`
+  and up, per [[decisions/decision-work-ids]], and map to `unminted`.
 - working detail: `.planning/ZERO-PYTHON-SCOPE.md`, untracked. The facts a
   reader needs from a fresh clone are copied below.
 

@@ -9,7 +9,8 @@ updated: 2026-09-01
 # Arc: the text primitives
 
 - goal: [[goals/self-tooling]]
-- reserved element block: **none**. New rows write `UNASSIGNED`.
+- reserved element block: **none**. Its rows are `P1` to `P4`, the arc-local id
+  scheme [[decisions/decision-work-ids]] settles and this arc invented first.
 - serves: [[arcs/zero-python-arc]] (the nine tools it replaces),
   [[arcs/binary-split-arc]] (what a tool binary carries)
 
@@ -61,7 +62,7 @@ small.
 An arc is a group of elements and each of these is one element. Four are the text
 floor; two are enablers this arc depends on but does not own.
 
-### P1 — the matcher, returning spans · **E173**, minted, `design`
+### `text-tools/P1` — the matcher, returning spans · element **E173**
 
 `find-all : Ctx -> Pat -> Bytes -> (List Span)`.
 
@@ -77,17 +78,19 @@ many" with one pass. Six rows of the coverage table collapse onto it.
 
 State: **audited**, 2026-09-01. Example drafted and gated (`33204e6`), spec
 written (`be2aa94`), spec audit BLOCKED on two author calls and re-audited to
-PASS once they were ruled (`4769cd2`). Next stage is implement, step 1 of the
-spec's seven. `docs/elements/specs/E173-total-matcher-SPEC.md`.
+PASS once they were ruled (`4769cd2`). Implementation is under way in `lib/text/matcher.chiral`,
+533 lines at `7599a70`: steps 3 and 4 have landed, the derivative with its bound
+and the one-pass driver, then the line-state pass over `LState`. `BA-39` records
+a mutant in this element's own gate that passed by looking at nothing. `docs/elements/specs/E173-total-matcher-SPEC.md`.
 
-### P2 — match score · `UNASSIGNED`
+### `text-tools/P2` — match score · element `unminted`
 
 `score : Pat -> Str -> I64`, pure, total.
 
 The whole remaining gap between `completion.chiral` (64 lines, prefix-only) and
 ranked select, because `list-sort` already takes the comparator. Small.
 
-### P3 — edit script over two sequences · `UNASSIGNED`
+### `text-tools/P3` — edit script over two sequences · element `unminted`
 
 `diff : (-> (0 A) (-> A A Bool) (List A) (List A) (List Edit))`.
 
@@ -95,7 +98,7 @@ Generic in the element type, so it serves lines, spans, rows and records.
 Yields `diff`, `comm` and `join`, and it is what makes reviewing a patch and
 appending to a `-record.md` mechanical rather than manual.
 
-### P4 — the stable address · `UNASSIGNED`
+### `text-tools/P4` — the stable address · element `unminted`
 
 A payload type plus the discipline that mints an id and preserves it across an
 edit. **Not merely a missing function**, which is why it is last and hardest.

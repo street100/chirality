@@ -82,7 +82,8 @@ when this table and an arc file disagree.
 | [[arcs/baseline-alignment-arc]] | [[goals/presentability]] | 3 rows closed, the rest open | none |
 | [[arcs/presentability-arc]] | [[goals/presentability]] | 3 rows, none started | none |
 | [[arcs/binary-split-arc]] | [[goals/presentability]] | measured, unstarted | none |
+| [[arcs/independent-judgment-arc]] | [[goals/independent-judgment]] | 4 rows, none started | none |
 
-Five of the eight hold no reserved block, so their work cannot be minted as an
+Six of the nine hold no reserved block, so their work cannot be minted as an
 `E#` today. `docs/decisions/decision-work-ids.md` drafts the arc-local row id
 that would let them name it anyway.

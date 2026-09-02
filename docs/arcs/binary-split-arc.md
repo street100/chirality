@@ -9,7 +9,8 @@ updated: 2026-09-01
 # Arc: the binary split
 
 - goal: [[goals/presentability]]
-- reserved element block: **none**. Rows write `UNASSIGNED`.
+- reserved element block: **none**. Rows carry arc-local ids `B1` and up, per
+  [[decisions/decision-work-ids]], and map to `unminted` until a block exists.
 - measurement this arc starts from: [[records/baseline-alignment]] BA-16 and
   BA-17.
 
