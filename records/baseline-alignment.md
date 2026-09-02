@@ -413,3 +413,14 @@ anything, and in five of these rows that one number predicted the result.
 - evidence: `docs/elements/specs/E173-total-matcher-SPEC.md` §5 M3, `docs/definitions/status-ledger.md:156`, `lib/typing/totality.chiral`, `.planning/protocol/workflow.md`
 - checked:  2026-09-01
 - element:  E11 (wiring the classifier is E11's remaining work; no new element is owed)
+
+## A tool whose two paths carry different checks, 2026-09-01
+
+### BA-40 prose-lint's per-line reporter runs a smaller check set than its counter
+
+- state:    OPEN
+- claim:    `tools/prose-lint/prose-lint.sh:85` states that "both the counter and the per-line reporter read through this same filter, so a worklist number and its lines agree". `.planning/protocol/tone.md` tabulates ten checks as what the tool enforces.
+- measured: the two paths carry different check sets. `_scan`, the counter behind `--worklist`, `--summary` and `--baseline`, runs ten `gsub` checks at `:95-104`. `cmd_lines`, the per-line reporter reached by the `prose-lint PATH...` form, runs one hand-merged alternation at `:164` that drops `parallel-no` entirely and drops four needles from four other checks: `isn.t|aren.t` from `copula-negation`, `[Ii]n other words` from `throat-clearing`, `Additionally,` from `connective`, and `[Pp]lethora|[Mm]yriad|[Pp]ivotal` from `slop-word`. Over `docs/arcs/*.md docs/decisions/*.md docs/definitions/*.md`, 80 files, the reporter prints 1457 hits and the counter prints 1465. All 8 of the difference are `parallel-no`, across 6 files: `docs/arcs/zero-python-arc.md:51`, `docs/arcs/text-tools-arc.md:121`, `docs/definitions/insp-smalltalk.md:24`, `docs/definitions/memory-model.md:37` and `:98`, `docs/definitions/secure-datum-model.md:4`, `docs/definitions/target-tomodachi.md:36` and `:51`. Each was confirmed against awk's own `parallel-no` regex through `grep -nE`. The smallest case reproduces alone: `prose-lint --summary docs/definitions/insp-smalltalk.md` reports 2 and `prose-lint docs/definitions/insp-smalltalk.md` prints 1. The other four omissions score 0 over these 80 files, so they are latent rather than visible today. A hypothesis that `_scan`'s `c["name"] = gsub(...)` assignment form discards an earlier line's count was tested and refuted: all ten keys are reassigned on every line and `tot[FILENAME SUBSEP k] += c[k]` runs after the ten, so totals accumulate. `_scan` is correct on all four checks that fire over this corpus, and E173's native `prog/prose-lint.prog` matches it exactly, 906 / 392 / 159 / 8. Not repaired: E173 slice 1 ports the counter, and the shell tool is scheduled for replacement.
+- evidence: `tools/prose-lint/prose-lint.sh:85`, `:95-104`, `:153-171`, `.planning/protocol/tone.md`
+- checked:  2026-09-01
+- element:  UNASSIGNED
