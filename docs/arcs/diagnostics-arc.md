@@ -82,7 +82,7 @@ reports.
 | # | element | state |
 |---|---|---|
 | 1 | E181 `pretty` over the real `Term`, returning `Doc` | **BUILT 2026-09-01.** Moved to `lib/surface/pretty.chiral`; `typing/` was never its role. Phase 18 = 61/0 |
-| 2 | E182 the arity judgments carry their arity | **example drafted 2026-09-02** (`3be8915`). Premise corrected: it retires ONE of `Judg`'s 38 nullary arms, and the arm it retires is `jg-tparam-arity`, which the row never named. Gate is Phase 20; 19 went to E173 |
+| 2 | E182 the arity judgments carry their arity | **example REVIEWED 2026-09-02** (`a5aae47`), audit PASS on all five checks. Premise corrected in the example, the catalog row and the ledger row: it retires ONE of `Judg`'s 38 nullary arms, and the arm it retires is `jg-tparam-arity`, which none of the three rows named. Gate is Phase 20; 19 went to E173. One scope FLAG stands in §6 |
 | 3 | E176 `str-sub` unclamped, segfaults, 131 call sites | not built. The safety was asserted in a comment |
 | 4 | E179 the face registry becomes authoritative | not built. 5 ad-hoc sites plus `lookup-face` synthesis |
 | 5 | E180 face-aware incremental redraw | not built. Unreachable today; the hazard E175 creates |
