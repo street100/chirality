@@ -2,8 +2,8 @@
 node: arc-binary-split
 layer: navigation
 related: [arcs/README, goals/README, records/baseline-alignment, index]
-status: draft
-updated: 2026-09-01
+status: current
+updated: 2026-09-02
 ---
 
 # Arc: the binary split
@@ -18,9 +18,8 @@ TRACKED for the reason [[arcs/diagnostics-arc]] is.
 
 ## The goal
 
-The field read `UNWRITTEN` until [[goals/presentability]] existed. The author
-assigned it there: a text tool that ships the x64 backend and the ELF assembler
-misrepresents the architecture to anyone who measures it, and an outside
+The author assigned this arc to [[goals/presentability]]: a text tool that
+ships the x64 backend and the ELF assembler misrepresents the architecture to anyone who measures it, and an outside
 evaluator measures it.
 
 Two supporting arguments, neither of which is the goal: `MAP.md` says `prog/` is
@@ -63,9 +62,9 @@ The 6 and the 15 reproduce against the measurements above. The 23 and the 44
 have no source I could find in the tree, so they are recorded as stated and
 dated. Re-measure before relying on them.
 
-## REQUIREMENTS, once a goal exists
+## REQUIREMENTS
 
-Draft. Each is checkable.
+Each is checkable.
 
 1. **A text tool's closure contains no backend.** Measured as `^(end-module "`
    markers on its blob.
@@ -101,6 +100,37 @@ Draft. Each is checkable.
 `.profile` is documented in `MAP.md` as one of the five kinds, with zero
 instances in the tree and no consumer. `find . -name '*.profile'` returns
 nothing, measured 2026-09-01. That is BA-10, and it is requirement 4 above.
+
+## Rows
+
+One row per blocker, in the order the measurement suggests.
+
+| row | what | state | element |
+|---|---|---|---|
+| `binary-split/B1` | give `read-fd-all` a home a text tool can import without the compiler | not started. Blocker 1, measured as `BA-17` | `unminted` |
+| `binary-split/B2` | a way to import one crossing without the whole port floor | not started. Blocker 2. `MAP.md` records the re-export as deliberate, so this is a design change | `unminted` |
+| `binary-split/B3` | a root that stops at the front end, so a checker-only binary has something to build from | not started. Blocker 3 | `unminted` |
+| `binary-split/B4` | `.profile` gains an instance and a consumer, or the kind leaves `MAP.md` | not started. Requirement 4, measured as `BA-10` | `unminted` |
+| `binary-split/B5` | the split binaries each reproduce under the BUILD RULE | not started. Requirement 5, through blocker 4's GEN3 trap, and it gates the other four | `unminted` |
+
+## Resume state
+
+**Where a session picks up.** B1. It is one ten-line fd reader, it is the reason
+two text tools carry a backend, and `lib/module/resolve.chiral` already routes
+around it with a second reader under another name.
+
+**What blocks the arc.** No reserved element block, so every row above writes
+`unminted` and none can be scheduled as catalog work. That is the author call
+[[records/author-calls]] carries for the arcs with no band.
+
+**A trap already recorded.** `compile-emit.chiral` prepends the compiler's own
+compiled-in runtime to every image unconditionally, so a runtime change is
+invisible until GEN3: gen1 and gen2 compiling proves nothing about it. That cost
+one wrong fix on 2026-08-31, and B5 is measured through it.
+
+**Two figures with no source.** The 23-module and 44-module binaries in the
+author's proposed split reproduce nowhere in this tree. Re-measure before
+building to them.
 
 ## Duplicated facts
 
