@@ -99,7 +99,7 @@ shrink-the-TCB goal.
 | E8 | Linear-kind decision for data (`_linear_data`, bounded abstract walk) | BUILT `lib/surface/data.chiral` (384 L), in the compiler blob | QTT/linear-logic kinds (`PAPER`) | SH |
 | E9 | Refinement decision procedure: interval-with-holes + symbolic bounds, `entails` | BUILT `lib/typing/refine.chiral` (168 L), in the compiler blob | Liquid Types (Rondon/Jhala), interval/octagon domains, Z3/CVC5 (`PAPER`/`IMPL`) | SH |
 | E10 | Path-sensitivity / occurrence typing (`_narrow`, `sig.narrow_hooks`) | BUILT `lib/typing/refine.chiral` (168 L) + the guard tracking in `lib/surface/data.chiral` (384 L), both in the compiler blob | Typed Racket occurrence typing, Flow (`PAPER`/`IMPL`) | SH |
-| E11 | Totality: structural + numeric-measure termination (`check_termination`) | `lib/typing/totality.chiral` (387 L) exists and has **ZERO importers**, so it is in no blob and nothing runs it. ⚑ LEDGER files E11 `built`; `docs/definitions/status-ledger.md` calls termination SEEDED (a built classifier nothing imports) and names wiring it E11's remaining work. Recorded as a disagreement, not picked | foetus/size-change (Lee–Jones–Ben-Amram) (`PAPER`); Agda/Coq (`IMPL`) | SH |
+| E11 | Totality: structural + numeric-measure termination (`check_termination`) | **WIRED 2026-09-02.** `lib/typing/totality-check.chiral` bridges the kernel `Term` to the classifier's `TotTerm` and `lib/lowering/compile-front.chiral` runs the gate, so a profile carrying `(total)` refuses a def whose recursion the classifier cannot prove and a source without the clause compiles unchanged. The earlier disagreement (LEDGER `built` against a module with zero importers) is closed. Still open: the enforce-by-default flip, gated on E47 | foetus/size-change (Lee–Jones–Ben-Amram) (`PAPER`); Agda/Coq (`IMPL`) | SH |
 | E12 | Effect membrane rules (pure `->` vs process `=>`) | `lib/typing/effects.chiral` (46 L) is the chirality-side MODEL, and it is reached by nothing that runs: its only importers are `lib/typing/row-infer.chiral` and `lib/lowering/upper/eff-lower.chiral`, and neither is in the compiler blob. The `->`/`=>` bit is carried and refused at no call. The Python seam that did refuse is evicted with the oracle, so **no implementation of this rule exists in the tree**. Enforcing it in the compiler that compiles everything is **E171**. ⚑ `lib/typing/effects.chiral:1-6` still says *"effects.py stays the oracle"* and is wrong (`docs/definitions/status-ledger.md`, known-wrong list) | effect systems, graded monads (`PAPER`) | SH |
 | E13 | Term de-Bruijn machinery (`uses_below`, `shift_close`) | `lib/surface/terms.chiral` (65 L) exists and has **ZERO importers**; the de-Bruijn machinery the compiler actually runs is inside `lib/typing/kernel.chiral`. ⚑ LEDGER files E13 `built` | `OURS`; standard (`PAPER`) | SH |
 | E14 | Pretty-printer (display, non-trusted) | `lib/typing/pretty.chiral` (51 L) exists and has **ZERO importers**, so nothing prints through it. ⚑ LEDGER files E14 `built`. E158 records the same file as *"a printer that goes straight to `Str`, imported by nobody"* | `OURS` (low priority) | SH |
@@ -599,12 +599,12 @@ exists. These are for the author to place.
    the Python reference first in its list of executors. It is E71's data-form deliverable,
    shipped and unrecorded until this pass, and the E71 audit reported it missing because it
    looked under the pre-migration path.
-3. **Five modules the compiler does not reach, each filed `built` somewhere:**
+3. **Four modules the compiler does not reach, each filed `built` somewhere:**
    `lib/surface/terms.chiral` (65 L), `lib/typing/pretty.chiral` (51 L),
-   `lib/typing/totality.chiral` (387 L), `lib/lowering/upper/optimize.chiral` (254 L),
-   `lib/lowering/tal/check.chiral` (246 L, reachable only through two modules that are
-   themselves unimported). E11's wiring is already named in `docs/decisions/decision-scope.md`'s queue; the other
-   four are not named anywhere.
+   `lib/lowering/upper/optimize.chiral` (254 L), `lib/lowering/tal/check.chiral` (246 L,
+   reachable only through two modules that are themselves unimported). None of the four is
+   named anywhere. `lib/typing/totality.chiral` (387 L) was the fifth and left this list on
+   2026-09-02, when E11's wiring landed.
 4. **Four headers in `lib/` still name evicted Python as live.**
    `lib/typing/effects.chiral:1-6` (*"effects.py stays the oracle"*, plus three `effects.py`
    line numbers), `lib/evidence/interp.chiral:6` (*"runtime.py stays the oracle"*),

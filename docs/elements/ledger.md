@@ -429,7 +429,7 @@ and that a disagreement above this document is FLAGGED.
 | What | This ledger | The catalog / the tree | Disposition |
 |------|-------------|------------------------|-------------|
 | **`kernel-spec` has no owning element** | — | E52 calls it a non-goal that *"couples E71"*, E71 delivers `tal-spec` instead, E72 merely couples it. `Spec`/`SpecRule` at `lib/typing/kernel-core.chiral:28-29` have nothing populating them: `spec-rule` occurs exactly once in the tree, at its own declaration | **OWNERLESS.** No element is minted here; that is an author call |
-| **E11 totality** | `built` | `lib/typing/totality.chiral` (387 L) has **ZERO importers**; `docs/definitions/status-ledger.md` calls termination SEEDED and names the wiring as E11's remaining work | Recorded, not picked |
+| **E11 totality** | `built` | **AGREED 2026-09-02.** `lib/typing/totality-check.chiral` imports the classifier and `lib/lowering/compile-front.chiral` runs it as the `(total)` profile gate, so the ledger's `built` and the tree now say the same thing | Closed |
 | **E13 de-Bruijn** | `built` | `lib/surface/terms.chiral` (65 L) has **ZERO importers**; what the compiler runs is inside `lib/typing/kernel.chiral` | Recorded, not picked |
 | **E14 printer** | `built` | `lib/typing/pretty.chiral` (51 L) has **ZERO importers**; E158 says the same of the same file | Recorded, not picked |
 | **E17 optimizer** | `built` | `lib/lowering/upper/optimize.chiral` (254 L) has **ZERO importers** and is in no blob | Recorded, not picked |
