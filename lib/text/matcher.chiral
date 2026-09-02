@@ -10,6 +10,7 @@
 (import "prelude/prelude")
 (import "prelude/list")
 (import "prelude/ord")
+(import "prelude/string")
 
 ; All pure, category A, checked form. The port-set half is DERIVED on this
 ; module's datasheet from what it binds, and this module binds no extern, so
@@ -114,3 +115,315 @@
       ((p-cat l r) (and (nullable k l) (nullable k r)))
       ((p-alt l r) (or  (nullable k l) (nullable k r)))
       ((p-star q)  true))))
+
+; ─── pd: the partial derivative, and the whole algorithm ──────────────────────
+; pd k b p is the set of residual patterns after consuming byte b at window k.
+; Structural on p in every arm. The p-star arm rebuilds `(p-star q)` in the
+; RESULT and recurses only into q, which is why the star terminates.
+;
+; pd-cat is defined ahead of its caller because the loader resolves names in
+; blob order, the same reason ms-take precedes ms-sort-n in
+; lib/prelude/list.chiral.
+(declare pd-cat (-> (List Pat) Pat (List Pat)))
+(def pd-cat
+  (lam (ps r)
+    (case ps
+      (nil nil)
+      ((cons h t) (cons (p-cat h r) (pd-cat t r))))))
+
+(declare pd (-> Ctx I64 Pat (List Pat)))
+(def pd
+  (lam (k b p)
+    (case p
+      ((p-nil)   nil)
+      ((p-cls c) (case (cls-has c b) (true (cons (p-nil) nil)) (false nil)))
+      ((p-ast a) nil)                   ; zero-width, so it consumes nothing
+      ((p-lit s)                        ; peel one byte; the tail stays a p-lit
+        (case (<i 0 (str-len s))
+          (false nil)
+          (true
+            (case (=i b (bget (str->bytes s) 0))
+              (true  (cons (p-lit (str-sub s 1 (str-len s))) nil))
+              (false nil)))))
+      ((p-alt l r) (append Pat (pd k b l) (pd k b r)))
+      ((p-cat l r)
+        (append Pat (pd-cat (pd k b l) r)
+          (case (nullable k l) (true (pd k b r)) (false nil))))
+      ((p-star q) (pd-cat (pd k b q) (p-star q))))))
+
+; ─── the total order on Pat, which is what lets the live set be deduped ───────
+; Rank by constructor first, then by fields, structural on the left argument.
+; The shape is lib/typing/ty-cmp.chiral:29-38 over a different sum.
+(declare ord-then (-> Ord Ord Ord))
+(def ord-then (lam (o k) (case o ((eq) k) ((lt) (lt)) ((gt) (gt)))))
+
+(declare cls-rank (-> Cls I64))
+(def cls-rank
+  (lam (c)
+    (case c
+      ((c-byte b) 0) ((c-range lo hi) 1) ((c-any) 2)
+      ((c-not inner) 3) ((c-or l r) 4))))
+
+(declare cls-cmp-go (-> Cls Cls Ord))
+(def cls-cmp-go
+  (lam (a b)
+    (case (i64-cmp (cls-rank a) (cls-rank b))
+      ((lt) (lt))
+      ((gt) (gt))
+      ((eq)
+        (case a
+          ((c-byte x)      (case b ((c-byte y) (i64-cmp x y)) (_ (eq))))
+          ((c-range lo hi)
+            (case b
+              ((c-range mo mi) (ord-then (i64-cmp lo mo) (i64-cmp hi mi)))
+              (_ (eq))))
+          ((c-any)         (eq))
+          ((c-not ia)      (case b ((c-not ib) (cls-cmp-go ia ib)) (_ (eq))))
+          ((c-or la ra)
+            (case b
+              ((c-or lb rb) (ord-then (cls-cmp-go la lb) (cls-cmp-go ra rb)))
+              (_ (eq)))))))))
+
+(declare ast-rank (-> Assert I64))
+(def ast-rank
+  (lam (a)
+    (case a
+      ((a-bol) 0) ((a-eol) 1) ((a-wordb) 2)
+      ((a-not-before c) 3) ((a-not-after c) 4))))
+
+(declare ast-cmp (-> Assert Assert Ord))
+(def ast-cmp
+  (lam (a b)
+    (case (i64-cmp (ast-rank a) (ast-rank b))
+      ((lt) (lt))
+      ((gt) (gt))
+      ((eq)
+        (case a
+          ((a-bol)   (eq))
+          ((a-eol)   (eq))
+          ((a-wordb) (eq))
+          ((a-not-before ca)
+            (case b ((a-not-before cb) (cls-cmp-go ca cb)) (_ (eq))))
+          ((a-not-after ca)
+            (case b ((a-not-after cb) (cls-cmp-go ca cb)) (_ (eq)))))))))
+
+(declare pat-rank (-> Pat I64))
+(def pat-rank
+  (lam (p)
+    (case p
+      ((p-nil) 0) ((p-lit s) 1) ((p-cls c) 2) ((p-ast a) 3)
+      ((p-cat l r) 4) ((p-alt l r) 5) ((p-star inner) 6))))
+
+(declare pat-cmp-go (-> Pat Pat Ord))
+(def pat-cmp-go
+  (lam (a b)
+    (case (i64-cmp (pat-rank a) (pat-rank b))
+      ((lt) (lt))
+      ((gt) (gt))
+      ((eq)
+        (case a
+          ((p-nil)     (eq))
+          ((p-lit sa)  (case b ((p-lit sb) (str-cmp sa sb))    (_ (eq))))
+          ((p-cls ca)  (case b ((p-cls cb) (cls-cmp-go ca cb)) (_ (eq))))
+          ((p-ast aa)  (case b ((p-ast ab) (ast-cmp aa ab))    (_ (eq))))
+          ((p-cat la ra)
+            (case b
+              ((p-cat lb rb) (ord-then (pat-cmp-go la lb) (pat-cmp-go ra rb)))
+              (_ (eq))))
+          ((p-alt la ra)
+            (case b
+              ((p-alt lb rb) (ord-then (pat-cmp-go la lb) (pat-cmp-go ra rb)))
+              (_ (eq))))
+          ((p-star qa) (case b ((p-star qb) (pat-cmp-go qa qb)) (_ (eq)))))))))
+
+; The wrapper is what keeps the comparator out of the value-poison shape:
+; totality.md:105 poisons a RECURSIVE definition passed as a value, and
+; str-cmp over su-cmp-bytes (lib/prelude/string.chiral:91-92) is the tree's
+; live dodge. Only these three wrappers reach a call site as arguments.
+(declare pat-cmp (-> Pat Pat Ord))
+(def pat-cmp (lam (a b) (pat-cmp-go a b)))
+
+; ─── Thread: a residual pattern with the offset it started at ────────────────
+; A named nullary type instead of (Pair I64 Pat): list-sort takes its erased
+; type argument at the call site (lib/typing/row-infer.chiral:103-104 passes
+; Str), and multi-parameter type application at a call site is E100.
+(data Span   () (span (from I64) (to I64)))       ; `to` is exclusive
+(data Thread () (th (from I64) (pat Pat)))
+
+; Two comparators, one norm. list-sort takes its comparator at
+; lib/prelude/list.chiral:143 and list-dedup-adj takes its own at :184-186, so
+; one composition sorts on a wider key than it dedups on.
+(declare thread-cmp (-> Thread Thread Ord))       ; the DEDUP key: pat alone
+(def thread-cmp
+  (lam (a b) (case a ((th fa pa) (case b ((th fb pb) (pat-cmp pa pb)))))))
+
+(declare thread-key-cmp (-> Thread Thread Ord))   ; the SORT key: pat, then from
+(def thread-key-cmp
+  (lam (a b)
+    (case a
+      ((th fa pa)
+        (case b ((th fb pb) (ord-then (pat-cmp pa pb) (i64-cmp fa fb))))))))
+
+; ─── norm: the line the bound lives in ───────────────────────────────────────
+; Antimirov: the reachable state set has at most ‖pat‖ + 1 members. The dedup
+; key is `pat` alone, so at most one thread survives per distinct residual and
+; the live set stays at that bound. Delete this call and the matcher is a
+; backtracker wearing a set.
+;
+; THE SURVIVOR IS THE LEAST START, and the sort key is the whole reason. The
+; sort orders `from` ascending inside each `pat` run, so the least start heads
+; its run, and list-dedup-adj keeps the head (lib/prelude/list.chiral:184-186).
+; The order the driver appended threads in carries no weight here: norm
+; reorders its own output every step, so the live list entering the next step
+; is in `pat` order and unrelated to `from`.
+(declare norm (-> (List Thread) (List Thread)))
+(def norm
+  (lam (ts)
+    (list-dedup-adj Thread thread-cmp (list-sort Thread thread-key-cmp ts))))
+
+; ─── stepping the live set ───────────────────────────────────────────────────
+; Every residual of one thread inherits that thread's start offset.
+(declare pd-threads (-> I64 (List Pat) (List Thread) (List Thread)))
+(def pd-threads
+  (lam (f ps acc)
+    (case ps
+      (nil acc)
+      ((cons h t) (cons (th f h) (pd-threads f t acc))))))
+
+(declare step-set (-> Ctx I64 (List Thread) (List Thread)))
+(def step-set
+  (lam (k b ts)
+    (case ts
+      (nil nil)
+      ((cons h r)
+        (case h ((th f p) (pd-threads f (pd k b p) (step-set k b r))))))))
+
+; ─── reading a byte, and reading the live set ────────────────────────────────
+; The one place -1 survives. It reads as `off the end of the buffer`, a byte
+; value rather than a which-of-N classification, so pattern-boundary-sums
+; leaves it alone.
+(declare at-byte (-> Bytes I64 I64))
+(def at-byte
+  (lam (bs i)
+    (cond ((<i i 0) (- 0 1))
+          ((<i i (blen bs)) (bget bs i))
+          (else (- 0 1)))))
+
+; The least start among the threads that accept at k. Structural on ts.
+(declare accept-from (-> Ctx (List Thread) (Maybe I64)))
+(def accept-from
+  (lam (k ts)
+    (case ts
+      (nil none)
+      ((cons h r)
+        (case h
+          ((th f p)
+            (case (nullable k p)
+              (false (accept-from k r))
+              (true
+                (case (accept-from k r)
+                  (none (some f))
+                  ((some g)
+                    (case (<i f g) (true (some f)) (false (some g)))))))))))))
+
+(declare accepts (-> Ctx (List Thread) Bool))
+(def accepts
+  (lam (k ts) (case (accept-from k ts) (none false) ((some g) true))))
+
+; ─── find-at: the anchored entry ─────────────────────────────────────────────
+; run-from keeps the longest end offset reached from one fixed start. Total by
+; the numeric measure: i steps by exactly +1 under the strict guard (<i i n)
+; with n passed unchanged, so the measure is n - i (totality.md:80-89).
+(declare run-from (-> Bytes I64 I64 (List Thread) (Maybe I64) (Maybe I64)))
+(def run-from
+  (lam (bs i n ts best)
+    (let ((k (ctx (at-byte bs (- i 1)) (at-byte bs i))))
+      (let ((best2 (case (accepts k ts) (true (some i)) (false best))))
+        (case (<i i n)
+          (false best2)
+          (true
+            (let ((ts2 (norm (step-set k (bget bs i) ts))))
+              (case ts2
+                (nil best2)                ; no continuation survives
+                ((cons h t) (run-from bs (+ i 1) n ts2 best2))))))))))
+
+; The failure carries no field and there is exactly one of it, so the sum is
+; (Maybe Span) and a bespoke result type would name nothing.
+(declare find-at (-> Pat Bytes I64 (Maybe Span)))
+(def find-at
+  (lam (p bs from)
+    (case (run-from bs from (blen bs) (cons (th from p) nil) none)
+      (none none)
+      ((some e) (some (span from e))))))
+
+; ─── find-all: ONE pass, leftmost-longest, non-overlapping ───────────────────
+; Restarting find-at at every offset is n passes, which is the defect this
+; module exists to remove. The live set carries each thread's start instead,
+; and the pass visits every offset once.
+(declare th-any-le (-> I64 (List Thread) Bool))
+(def th-any-le
+  (lam (f ts)
+    (case ts
+      (nil false)
+      ((cons h r)
+        (case h
+          ((th g p) (case (<=i g f) (true true) (false (th-any-le f r)))))))))
+
+; Non-overlap: after a span ends at t, a thread that started before t is dead.
+(declare th-since (-> I64 (List Thread) (List Thread)))
+(def th-since
+  (lam (t ts)
+    (case ts
+      (nil nil)
+      ((cons h r)
+        (case h
+          ((th g p)
+            (case (<i g t)
+              (true  (th-since t r))
+              (false (cons h (th-since t r))))))))))
+
+; The pending span is committed once no live thread can still start at or
+; before it: at that point no longer match and no earlier match remains
+; reachable. Total by the same numeric measure as run-from: every self-call is
+; (+ i 1) under (<i i n) with n unchanged. `acc` is built by consing and
+; reversed on the way out.
+(declare scan-go
+  (-> Pat Bytes I64 I64 (List Thread) (Maybe Span) (List Span) (List Span)))
+(def scan-go
+  (lam (p bs n i ts best acc)
+    (let ((k (ctx (at-byte bs (- i 1)) (at-byte bs i))))
+      (let ((ts1 (cons (th i p) ts)))       ; a thread may start at every offset
+        (let ((best1
+                (case (accept-from k ts1)
+                  (none best)
+                  ((some g)
+                    (case best
+                      (none (some (span g i)))
+                      ((some s)
+                        (case s
+                          ((span f e)
+                            (case (<=i g f)
+                              (true  (some (span g i)))   ; leftmoster, or longer
+                              (false (some (span f e))))))))))))
+          (case (<i i n)
+            (false
+              (case best1
+                (none (reverse Span acc))
+                ((some s) (reverse Span (cons s acc)))))
+            (true
+              (let ((ts2 (norm (step-set k (bget bs i) ts1))))
+                (case best1
+                  (none (scan-go p bs n (+ i 1) ts2 none acc))
+                  ((some s)
+                    (case s
+                      ((span f t)
+                        (case (th-any-le f ts2)
+                          (true  (scan-go p bs n (+ i 1) ts2 (some (span f t)) acc))
+                          (false (scan-go p bs n (+ i 1) (th-since t ts2) none
+                                   (cons (span f t) acc))))))))))))))))
+
+(declare find-all (-> Pat Bytes (List Span)))
+(def find-all (lam (p bs) (scan-go p bs (blen bs) 0 nil none nil)))
+
+(declare count-matches (-> Pat Bytes I64))
+(def count-matches (lam (p bs) (length Span (find-all p bs))))
