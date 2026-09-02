@@ -287,6 +287,7 @@
           (and (not (refine-ok ty-doc ""))                       ; ty-doc, empty      -> false
           (and (refine-ok ty-findings "[{\"kind\":\"gap\"}]")    ; findings shape     -> true
           (and (not (refine-ok ty-findings "just a sentence"))   ; not findings       -> false
+          (and (not (refine-ok ty-findings "kind"))              ; the bare word is not findings
           ; parse-perspectives: multi-line text -> one perspective per non-empty line
           (and (=i (persp-count (parse-perspectives "check security\ncheck performance\ncheck correctness")) 3)
           (and (=i (persp-count (parse-perspectives "one angle only")) 1)  ; single line -> 1
@@ -319,6 +320,6 @@
           (and (not (perspective-failed? has-call-clean-manifest))        ; a clean >=1-call sub-run -> NOT a drop
           (and (not (manifest-all-green? branch-drop-composite))          ; dropped angle -> composite NOT green (THE FIX)
                (manifest-all-green? branch-clean-composite)))))))))))))))))  ; clean branch -> STILL green
-               )))))))))))))))))))))))
+               ))))))))))))))))))))))))
       (true 0)
       (false 1))))))

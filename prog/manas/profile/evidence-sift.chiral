@@ -69,7 +69,7 @@
 ; reasoner : for THE item in hand, reason whether it is supported evidence at the reference
 ; level or a speculative association (a single narrow move). out-ty is ty-text (a free
 ; reasoning move is PROSE) — NOT ty-findings. ty-findings' seam validator (refine-ok)
-; demands a JSON-ish shape ("[" or "kind"); a 0.5b's prose reasoning intermittently lacks
+; demands a decodable JSON array of objects; a 0.5b's prose reasoning intermittently lacks
 ; it, refine-failing the seam, and the branch SILENTLY SWALLOWS that per-item chain
 ; (empty-manifest, routing lost) — so the item vanishes while manifest-all-green? still
 ; reads true off the composite. Typing this narrow reasoning ty-text (lenient non-empty,

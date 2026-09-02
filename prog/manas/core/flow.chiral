@@ -22,7 +22,7 @@
 (import "prelude/prelude")                 ; Maybe, some, none, Bool, true, false, =i, <i, <=i, +, -, and, or, not, str-len, str-find, str-sub, str-cat, List, Pair, pair, case
 (import "prelude/list")
 (import "prelude/string")            ; str-trim (E151b: the owner, no longer a local copy)
-(import "protocol/json")                    ; json-parse-str, Json (j-arr), obj-get, as-str  (lenient perspective parse)
+(import "protocol/json")                    ; json-parse-str, Json (j-arr/j-obj), obj-get, as-str, as-arr  (the seam decoder + lenient perspective parse)
 (import "manas/core/types")        ; Pipeline, GateRule, Expert, Config, ExpertOutcome (+ ctors), RunManifest, ExpertCall, Finding, RawCall, combiner-ok, StopPolicy (stop-single/stop-capped/stop-until-dry)
 (import "manas/core/bind")         ; bind-config  (bind-ok / bind-miss)
 (import "manas/backend")                 ; Backend (E137 linear porttype)
@@ -59,6 +59,9 @@
 (def ty-span         Ty (ty "ty-span"         sh-prose))
 (def ty-text         Ty (ty "ty-text"         sh-prose))
 (def ty-patch        Ty (ty "ty-patch"        sh-prose))
+; ty-perspectives is sh-prose deliberately, though its ask demands JSON:
+; parse-perspectives reads a JSON array OR one item per non-empty line, so a
+; JSON-only seam would refuse prose the parser downstream handles fine.
 (def ty-perspectives Ty (ty "ty-perspectives" sh-prose))
 (def ty-findings     Ty (ty "ty-findings"     (sh-list sh-finding)))
 (def ty-verdict      Ty (ty "ty-verdict"      (sh-list sh-finding)))
@@ -283,32 +286,66 @@
 ; When output crosses a seam it is VALIDATED against the declared out-Ty BEFORE the
 ; next step sees it — that is what makes a tiny-model output safe (a malformed output
 ; is caught immediately, not five steps later). refine is the per-Ty well-formedness
-; predicate. The validators are MINIMAL / LENIENT for now — ty-doc/ty-text/most Ty =
-; non-empty; ty-findings looks like the findings shape (a JSON array or a "kind" key).
-; They SHARPEN over time, purely ADDITIVELY (a stricter validator only rejects more).
+; predicate, and it is now the Ty's own carried Shape read as a decoder: a payload is
+; well-formed at the seam IFF it decodes to the shape the Ty declares.
 (def str-nonempty (-> Str Bool) (lam (s) (<i 0 (str-len s))))
 (def str-has (-> Str Str Bool) (lam (h n) (<=i 0 (str-find h n))))
 
 ; NAMED refine-ok, not `refine` — `refine` is the reserved refinement-type special
 ; form in the surface parser (parse.chiral:187), so it cannot be a def/call head.
-; SHARPENED (Audit #4): types with STRUCTURE get a structural check so a mistyped step (esp. a
-; flow-pure claiming a structured out-ty but producing free prose) refine-FAILS at the seam, not
-; just statically. A verdict/finding/part is JSON-shaped in this codebase (the runner asks every
-; leaf for a JSON array of {kind,target,body}; pure verdicts are [{"kind":...}]). The genuinely
-; OPAQUE text types (ty-doc/ty-text/ty-span) stay non-empty — any text is a valid value, nothing
-; to sharpen. ty-perspectives stays lenient (dual-format: a JSON array OR one item per line).
-; ty-patch stays non-empty (diff formats vary).
-(def json-ish (-> Str Bool)
-  (lam (out) (and (str-nonempty out) (or (str-has out "[") (or (str-has out "{") (str-has out "kind"))))))
+; Types with STRUCTURE get a structural check so a mistyped step (esp. a flow-pure claiming a
+; structured out-ty but producing free prose) refine-FAILS at the seam, not just statically. A
+; verdict/finding is JSON-shaped in this codebase (the runner asks every leaf for a JSON array
+; of {kind,target,body}; pure verdicts are [{"kind":...}]); a part is the Flow JSON OBJECT the
+; builder's author step emits. The genuinely OPAQUE text types (ty-doc/ty-text/ty-span) stay
+; non-empty — any text is a valid value, nothing to sharpen. ty-perspectives stays lenient
+; (dual-format: a JSON array OR one item per line). ty-patch stays non-empty (diff formats vary).
+; ACCEPTANCE IS DECODE SUCCESS. The old validators grepped for substrings, so the
+; ty-findings seam accepted the bare four-letter string "kind" and handed it to
+; parse-findings, which cannot read it and falls back to raw-finding: the gate
+; accepted what the parser refuses. shape-ok recurses on the shape the Ty carries,
+; so the seam and the parser now agree by construction.
+;
+;   sh-prose  -> non-empty. Prose has no structure to check; that is correct here.
+;   sh-list   -> parses, is an array, is NON-EMPTY, every element decodes. Empty is
+;                false because parse-findings already treats [] as a fallback case.
+;   sh-rec    -> parses and is an object. Field PRESENCE is not required: obj->finding
+;                reads every field with field-or-empty, so a missing field is "" and
+;                not a decode failure.
+;
+; Split by level: shape-ok parses the Str ONCE, shape-ok-json recurses on the already
+; parsed value, so a nested element is never re-parsed.
+(declare shape-ok-json (-> Shape Json Bool))
+(declare shape-list-ok (-> Shape (List Json) Bool))
+(def shape-list-ok
+  (lam (s xs)
+    (case xs
+      (nil true)
+      ((cons h rest)
+        (case (shape-ok-json s h)
+          (false false)
+          (true (shape-list-ok s rest)))))))
+(def shape-ok-json
+  (lam (s j)
+    (case s
+      ((sh-prose) (case (as-str j) (none false) ((some x) (str-nonempty x))))
+      ((sh-list of)
+        (case (as-arr j)
+          (none false)
+          ((some xs)
+            (case xs
+              (nil false)                            ; an empty array said nothing
+              ((cons h rest) (shape-list-ok of xs))))))
+      ((sh-rec fs) (case j ((j-obj kvs) true) (_ false))))))
+(def shape-ok (-> Shape Str Bool)
+  (lam (s out)
+    (case s
+      ((sh-prose) (str-nonempty out))
+      (_ (case (json-parse-str out)
+           (none false)
+           ((some j) (shape-ok-json s j)))))))
 (def refine-ok (-> Ty Str Bool)
-  (lam (t out)
-    (let ((n (ty-name t)))
-      (cond
-        ((str-eq n "ty-findings") (and (str-nonempty out)
-                                       (or (str-has out "[") (str-has out "kind"))))
-        ((str-eq n "ty-verdict")  (json-ish out))   ; a verdict is findings-shaped: [{"kind":...}]
-        ((str-eq n "ty-part")     (json-ish out))   ; a tool part is a JSON object/array
-        (else (str-nonempty out))))))               ; ty-doc/ty-span/ty-patch/ty-perspectives/ty-text
+  (lam (t out) (shape-ok (ty-shape t) out)))
 
 ; ------------------------------------------------------- the ASK that pairs with refine-ok
 ; For each Ty, the instruction appended to a leaf's prompt by call-expert (runner.chiral).

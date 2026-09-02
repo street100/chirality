@@ -51,7 +51,7 @@
 
 ; reasoner : for THE angle in hand, reason what could go wrong (a single narrow move).
 ; out-ty is ty-text (a free reasoning move is PROSE) — NOT ty-findings. ty-findings'
-; seam validator (refine-ok) demands a JSON-ish shape ("[" or "kind"); a 0.5b's prose
+; seam validator (refine-ok) demands a decodable JSON array of objects; a 0.5b's prose
 ; reasoning intermittently lacks it, refine-failing the seam, and the branch SILENTLY
 ; SWALLOWS that per-angle chain (empty-manifest, routing lost) — so the angle vanishes
 ; while manifest-all-green? still reads true off the composite. Typing this narrow
