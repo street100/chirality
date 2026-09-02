@@ -46,7 +46,7 @@
 (import "prelude/prelude")               ; Bool, Str, List, Maybe, Pair, pair, cons, nil, some, none, str-eq, cond, case
 (import "protocol/json")                  ; Json (+ ctors j-str/j-obj/j-arr), json-show, json-parse-str, obj-get, as-str, as-arr
 (import "manas/core/types")      ; GateRule (+ gate-rule ctor)
-(import "manas/core/flow")       ; Ty (+ 8 ctors), Arrow (+ arrow ctor), Flow (+ 5 ctors), ty-name
+(import "manas/core/flow")       ; Ty (+ the 8 named Tys), Arrow (+ arrow ctor), Flow (+ 5 ctors), ty-name
 (import "manas/pipeline/persist"); gate-list->jsons, jsons->gate-rules  (GateRule codec — reused, not reinvented)
 
 ; ============================================================ Ty codec

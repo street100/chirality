@@ -30,25 +30,48 @@
 (import "manas/pipeline/runner")   ; run-pipeline, call-expert, call-combiner, ret-json-findings, CallR (call-r), CombR (comb-r), RunR (run-r)
 
 ; ------------------------------------------------------------------- Ty : payload types
-; A small CLOSED, EXTENSIBLE sum of the types that flow BETWEEN tiny steps. ty-text
-; is the opaque escape hatch (any not-yet-modelled payload). Ty-compatibility starts
-; as structural EQUALITY (subtyping is a later, additive refinement — §0.5).
-(data Ty ()
-  (ty-doc) (ty-span) (ty-findings) (ty-patch) (ty-verdict)
-  (ty-perspectives) (ty-part) (ty-text))
+; The types that flow BETWEEN tiny steps. ty-text is the opaque escape hatch (any
+; not-yet-modelled payload). Ty-compatibility is equality on the name (subtyping is
+; a later, additive refinement — §0.5).
+; A Ty is a NAME plus the STRUCTURE its values carry. The eight names below are
+; `def`s over one constructor, so every value-position use reads unchanged; what
+; changed is that a Ty now knows its own shape instead of leaving each consumer to
+; re-invent one. The name is carried BESIDE the shape because ty-doc / ty-span /
+; ty-text / ty-patch are all prose: structural equality alone would collapse four
+; distinct types into one and widen what ty-eq accepts at compose time.
+(data Ty      () (ty (name Str) (shape Shape)))
+; Shape — the structure a payload carries. sh-prose is the genuinely opaque case
+; (any text is a valid value). sh-list/sh-rec are the JSON shapes the runner's ask
+; already demands and parse-findings already reads back.
+(data Shape   () (sh-prose) (sh-list (of Shape)) (sh-rec (fields (List ShField))))
+(data ShField () (shf (name Str) (sh Shape)))
+
+(def ty-name  (-> Ty Str)   (lam (t) (case t ((ty n s) n))))
+(def ty-shape (-> Ty Shape) (lam (t) (case t ((ty n s) s))))
+
+; a finding: the {kind,target,body} object parse-findings reads (runner.chiral).
+(def sh-finding Shape
+  (sh-rec (cons (shf "kind"   sh-prose)
+          (cons (shf "target" sh-prose)
+          (cons (shf "body"   sh-prose) nil)))))
+
+(def ty-doc          Ty (ty "ty-doc"          sh-prose))
+(def ty-span         Ty (ty "ty-span"         sh-prose))
+(def ty-text         Ty (ty "ty-text"         sh-prose))
+(def ty-patch        Ty (ty "ty-patch"        sh-prose))
+(def ty-perspectives Ty (ty "ty-perspectives" sh-prose))
+(def ty-findings     Ty (ty "ty-findings"     (sh-list sh-finding)))
+(def ty-verdict      Ty (ty "ty-verdict"      (sh-list sh-finding)))
+(def ty-part         Ty (ty "ty-part"         (sh-rec nil)))
 
 ; ------------------------------------------------------------------- Arrow : a typed edge
 (data Arrow () (arrow (dom Ty) (cod Ty)))
 (def arrow-dom (-> Arrow Ty) (lam (a) (case a ((arrow d c) d))))
 (def arrow-cod (-> Arrow Ty) (lam (a) (case a ((arrow d c) c))))
 
-; ty-eq : structural equality on Ty (the compatibility relation). All Ty ctors are
-; nullary, so equality = same constructor: rank each to an I64 tag and compare.
-(def ty-tag (-> Ty I64)
-  (lam (t) (case t
-    (ty-doc 0) (ty-span 1) (ty-findings 2) (ty-patch 3) (ty-verdict 4)
-    (ty-perspectives 5) (ty-part 6) (ty-text 7))))
-(def ty-eq (-> Ty Ty Bool) (lam (a b) (=i (ty-tag a) (ty-tag b))))
+; ty-eq : equality on Ty (the compatibility relation). The name IS the identity —
+; comparing shapes would make ty-doc and ty-span the same type.
+(def ty-eq (-> Ty Ty Bool) (lam (a b) (str-eq (ty-name a) (ty-name b))))
 
 ; ------------------------------------------------------------------- Flow : the fractal tree
 ; The recursive composition tree. A leaf is a tiny step. SELF-TYPING: a node that
@@ -279,16 +302,13 @@
   (lam (out) (and (str-nonempty out) (or (str-has out "[") (or (str-has out "{") (str-has out "kind"))))))
 (def refine-ok (-> Ty Str Bool)
   (lam (t out)
-    (case t
-      (ty-doc          (str-nonempty out))
-      (ty-span         (str-nonempty out))
-      (ty-findings     (and (str-nonempty out)
-                            (or (str-has out "[") (str-has out "kind"))))
-      (ty-patch        (str-nonempty out))
-      (ty-verdict      (json-ish out))            ; a verdict is findings-shaped: [{"kind":...}]
-      (ty-perspectives (str-nonempty out))
-      (ty-part         (json-ish out))            ; a tool part is a JSON object/array
-      (ty-text         (str-nonempty out)))))
+    (let ((n (ty-name t)))
+      (cond
+        ((str-eq n "ty-findings") (and (str-nonempty out)
+                                       (or (str-has out "[") (str-has out "kind"))))
+        ((str-eq n "ty-verdict")  (json-ish out))   ; a verdict is findings-shaped: [{"kind":...}]
+        ((str-eq n "ty-part")     (json-ish out))   ; a tool part is a JSON object/array
+        (else (str-nonempty out))))))               ; ty-doc/ty-span/ty-patch/ty-perspectives/ty-text
 
 ; ------------------------------------------------------- the ASK that pairs with refine-ok
 ; For each Ty, the instruction appended to a leaf's prompt by call-expert (runner.chiral).
@@ -312,22 +332,16 @@
   "\n\nReturn ONLY the patch text (a unified diff). No JSON, no commentary, no code fence.")
 (def ty-return-instruction (-> Ty Str)
   (lam (t)
-    (case t
-      (ty-doc          ret-prose)
-      (ty-span         ret-prose)
-      (ty-findings     ret-json-findings)
-      (ty-patch        ret-patch)
-      (ty-verdict      ret-json-findings)
-      (ty-perspectives ret-json-findings)
-      (ty-part         ret-json-findings)
-      (ty-text         ret-prose))))
+    (let ((n (ty-name t)))
+      (cond
+        ((str-eq n "ty-doc")   ret-prose)
+        ((str-eq n "ty-span")  ret-prose)
+        ((str-eq n "ty-text")  ret-prose)
+        ((str-eq n "ty-patch") ret-patch)
+        (else ret-json-findings)))))               ; ty-findings/ty-verdict/ty-part/ty-perspectives
 
-; the Ty's routing name (for the honest error routing string on a refine-fail seam).
-(def ty-name (-> Ty Str)
-  (lam (t) (case t
-    (ty-doc "ty-doc") (ty-span "ty-span") (ty-findings "ty-findings")
-    (ty-patch "ty-patch") (ty-verdict "ty-verdict") (ty-perspectives "ty-perspectives")
-    (ty-part "ty-part") (ty-text "ty-text"))))
+; the Ty's routing name (for the honest error routing string on a refine-fail seam)
+; is now the carried field — ty-name is defined beside the Ty declaration above.
 
 ; ------------------------------------------------------------------- run-pure : the code-step interpreter
 ; PURE, TOTAL over PureFn — the deterministic verdict logic that a flow-pure step runs
