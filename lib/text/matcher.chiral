@@ -61,15 +61,19 @@
   (a-not-after  (c Cls)))               ; (?<![...])
 
 ; The one-byte window an Assert decides against. -1 means off the end.
-(data Ctx () (ctx (prev I64) (here I64)))
+; Named Win and not Ctx: the loader holds ONE namespace for data declarations,
+; and lib/typing/kernel.chiral:404 already spends Ctx on the typing context.
+; prog/prose-lint.prog pulls both modules into one blob, so the two names would
+; collide at load and the entry would not load at all.
+(data Win () (win (prev I64) (here I64)))
 
 ; Total: one case over a five-constructor sum, with no recursion. The window is
 ; destructured once at the top, so every arm reads the same two bytes.
-(declare holds (-> Ctx Assert Bool))
+(declare holds (-> Win Assert Bool))
 (def holds
   (lam (k a)
     (case k
-      ((ctx p h)
+      ((win p h)
         (case a
           ((a-bol) (or (<i p 0) (=i p 10)))
           ((a-eol) (or (<i h 0) (=i h 10)))
@@ -101,10 +105,10 @@
     (p-cat (p-cls cls-lower)
       (p-cat (p-star (p-cls cls-lower)) (p-lit " but ")))))
 
-; ─── nullable: can p accept here, with assertions decided against ctx ─────────
+; ─── nullable: can p accept here, with assertions decided against the window ──
 ; Structural on p. Every recursive call takes a strict subterm, so this proves
 ; under the structural rule with no declared measure (totality.md:48-53).
-(declare nullable (-> Ctx Pat Bool))
+(declare nullable (-> Win Pat Bool))
 (def nullable
   (lam (k p)
     (case p
@@ -131,7 +135,7 @@
       (nil nil)
       ((cons h t) (cons (p-cat h r) (pd-cat t r))))))
 
-(declare pd (-> Ctx I64 Pat (List Pat)))
+(declare pd (-> Win I64 Pat (List Pat)))
 (def pd
   (lam (k b p)
     (case p
@@ -290,7 +294,7 @@
       (nil acc)
       ((cons h t) (cons (th f h) (pd-threads f t acc))))))
 
-(declare step-set (-> Ctx I64 (List Thread) (List Thread)))
+(declare step-set (-> Win I64 (List Thread) (List Thread)))
 (def step-set
   (lam (k b ts)
     (case ts
@@ -310,7 +314,7 @@
           (else (- 0 1)))))
 
 ; The least start among the threads that accept at k. Structural on ts.
-(declare accept-from (-> Ctx (List Thread) (Maybe I64)))
+(declare accept-from (-> Win (List Thread) (Maybe I64)))
 (def accept-from
   (lam (k ts)
     (case ts
@@ -326,7 +330,7 @@
                   ((some g)
                     (case (<i f g) (true (some f)) (false (some g)))))))))))))
 
-(declare accepts (-> Ctx (List Thread) Bool))
+(declare accepts (-> Win (List Thread) Bool))
 (def accepts
   (lam (k ts) (case (accept-from k ts) (none false) ((some g) true))))
 
@@ -337,7 +341,7 @@
 (declare run-from (-> Bytes I64 I64 (List Thread) (Maybe I64) (Maybe I64)))
 (def run-from
   (lam (bs i n ts best)
-    (let ((k (ctx (at-byte bs (- i 1)) (at-byte bs i))))
+    (let ((k (win (at-byte bs (- i 1)) (at-byte bs i))))
       (let ((best2 (case (accepts k ts) (true (some i)) (false best))))
         (case (<i i n)
           (false best2)
@@ -391,7 +395,7 @@
   (-> Pat Bytes I64 I64 (List Thread) (Maybe Span) (List Span) (List Span)))
 (def scan-go
   (lam (p bs n i ts best acc)
-    (let ((k (ctx (at-byte bs (- i 1)) (at-byte bs i))))
+    (let ((k (win (at-byte bs (- i 1)) (at-byte bs i))))
       (let ((ts1 (cons (th i p) ts)))       ; a thread may start at every offset
         (let ((best1
                 (case (accept-from k ts1)
