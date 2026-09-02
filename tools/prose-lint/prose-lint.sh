@@ -50,6 +50,19 @@ _checks_doc() {
                    "at its core" / "in other words". Says a sentence is coming
                    instead of saying it.
   connective       Furthermore / Moreover / "Additionally,".
+  self-reference   "as noted above" / "see above" / "the draft below" / "Notes
+                   on this". A sentence that points at the document instead of
+                   saying the thing. Added 2026-09-01 after a pass glued
+                   revision notes onto the content they described. NOT extended
+                   to "an earlier draft of this" or "Rewritten <date>": those
+                   score 37 and 2 here and are the honest-correction
+                   convention, which records what was wrong beside what is
+                   right. The tic and the convention use the same words and
+                   differ only in where they sit, so the check stays at the
+                   part that is a shape.
+  first-person     "I wrote", "I added", "my row". Docs here are impersonal.
+                   Five in the corpus, each a deliberate self-correction, so
+                   this is a worklist of things to look at rather than a rule.
 EOF
 }
 
@@ -87,6 +100,8 @@ _scan() {
       c["slop-word"]       = gsub(/[Dd]elve|[Tt]apestry|[Ss]eamless|[Ss]howcase|testament to|[Pp]lethora|[Mm]yriad|[Pp]ivotal/, "&")
       c["throat-clearing"] = gsub(/worth noting|important to note|[Ii]n essence|[Aa]t its core|[Ii]n other words/, "&")
       c["connective"]      = gsub(/Furthermore|Moreover|Additionally,/, "&")
+      c["self-reference"]  = gsub(/as noted above|as mentioned above|see above|as (I|we) (said|noted|wrote)|the draft (above|below)|Notes on this/, "&")
+      c["first-person"]    = gsub(/( |^)I (wrote|added|proposed|changed|removed|kept|kept)|( |^)my (row|draft|framing|first)/, "&")
       for (k in c) tot[FILENAME SUBSEP k] += c[k]
       lines[FILENAME]++
     }
@@ -146,7 +161,7 @@ cmd_lines() {
       {
         s = $0
         gsub(/`[^`]*`/, "", s)
-        while (match(s, /—|, (but |and |though |yet )?(not|never|rather than) [a-z]|(is|are|was|were) not (just |merely |simply )?[a-z]|not [a-z]+ but |[Dd]elve|[Tt]apestry|[Ss]eamless|[Ss]howcase|testament to|worth noting|important to note|[Ii]n essence|[Aa]t its core|Furthermore|Moreover/)) {
+        while (match(s, /—|, (but |and |though |yet )?(not|never|rather than) [a-z]|(is|are|was|were) not (just |merely |simply )?[a-z]|not [a-z]+ but |[Dd]elve|[Tt]apestry|[Ss]eamless|[Ss]howcase|testament to|worth noting|important to note|[Ii]n essence|[Aa]t its core|Furthermore|Moreover|as noted above|as mentioned above|see above|as (I|we) (said|noted|wrote)|the draft (above|below)|Notes on this|( |^)I (wrote|added|proposed|changed|removed|kept)|( |^)my (row|draft|framing|first)/)) {
           printf "%6d  %s\n", FNR, substr(s, RSTART, RLENGTH)
           s = substr(s, RSTART + RLENGTH)
         }

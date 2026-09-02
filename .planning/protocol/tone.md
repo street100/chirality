@@ -15,11 +15,11 @@ comma clause is the tic, and the tic is what the linter finds.
 
 ## What the linter checks
 
-`tools/prose-lint/prose-lint.sh` is the enforcement. Eight checks, each matching
-a shape rather than a word, because the obvious word list was measured against
-this corpus first and scored near zero: `delve` 0, `tapestry` 0, `seamless` 0,
-`Furthermore` 0. Shipping that list would have produced a linter that always
-says clean.
+`tools/prose-lint/prose-lint.sh` is the enforcement. Ten checks, each matching a
+shape rather than a word, because the obvious word list was measured against this
+corpus first and scored near zero: `delve` 0, `tapestry` 0, `seamless` 0,
+`Furthermore` 0. Shipping that list would have produced a linter that always says
+clean.
 
 | check | matches | baseline hits |
 |---|---|---|
@@ -30,7 +30,9 @@ says clean.
 | `slop-word` | eight words, listed by `prose-lint --checks` | 5 |
 | `throat-clearing` | `worth noting`, `important to note`, `in essence`, `at its core`, `in other words` | 2 |
 | `not-but` | `not x but y` | 1 |
-| `connective` | `Furthermore`, `Moreover`, `Additionally,` | recorded in the baseline |
+| `connective` | `Furthermore`, `Moreover`, `Additionally,` | 1 |
+| `self-reference` | `as noted above`, `see above`, `the draft below`, `Notes on this` | 7 |
+| `first-person` | `I wrote`, `I added`, `my row` | 6 |
 
 The top two were named by the author as tics before any of this was built, and
 the measurement agreed with them by three orders of magnitude over the word list.
@@ -49,6 +51,12 @@ sentence there.
 
 These carry no check and still apply:
 
+- **Do not narrate the edit inside the artifact.** A dated note about how a
+  document got rewritten, glued to the content it describes, stands between the
+  reader and the thing. Git carries the history and the commit message carries
+  the reason. This is distinct from recording a correction: `banks/verification`
+  writing "the old text said X, and X was wrong" is a fact about the tree and it
+  belongs. The `self-reference` check catches only the pointing half.
 - **Say it once.** Two documents stating one thing differently is the regularity
   violation `docs/definitions/design-principles.md` names as the worst class of
   defect. A pointer costs nothing and cannot drift.
@@ -78,10 +86,10 @@ across 475 files on 2026-08-31. That number falling is the only evidence a
 cleanup pass did anything, which is why the tool is deterministic with no model
 in any path. A file with no baseline row is new and held to zero.
 
-⚑ The baseline predates the consolidation and still names `.planning/specs/`,
-`.planning/LEDGER.md` and `.planning/audit/CONFORMANCE-MAP.md`. Those paths
-moved. Re-freezing it is a pending pass, and until then `--regress` reports the
-moved files as new.
+Re-frozen 2026-09-01 at **23,231 hits across 515 files**, which is the figure
+that counts against the two checks added that day. The earlier 21,456 was taken
+before them and before the consolidation moved `.planning/specs/`,
+`.planning/LEDGER.md` and `.planning/audit/CONFORMANCE-MAP.md`.
 
-Not wired into `chirality test`. 21k findings would fail the gate on day one.
+Not wired into `chirality test`. 23k findings would fail the gate on day one.
 `--regress` is the part that becomes a gate once the corpus is under control.

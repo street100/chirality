@@ -34,13 +34,19 @@ What actually saturates the corpus is structural:
 
 | check | baseline hits | files |
 |---|---|---|
-| em-dash | 17,533 | 440 |
-| antithesis (`, not x`) | 3,033 | 444 |
-| copula-negation (`is not just x`) | 794 | 244 |
-| parallel-no (`no x, no y`) | 88 | 63 |
+| em-dash | 18,678 | 468 |
+| antithesis (`, not x`) | 3,407 | 479 |
+| copula-negation (`is not just x`) | 1,028 | 278 |
+| parallel-no (`no x, no y`) | 95 | 67 |
+| self-reference (`see above`) | 7 | 7 |
+| first-person (`I wrote`) | 6 | 6 |
 | slop-word | 5 | 4 |
-| throat-clearing | 2 | 2 |
-| not-but | 1 | 1 |
+| not-but | 3 | 3 |
+| throat-clearing | 1 | 1 |
+| connective | 1 | 1 |
+
+Re-measured 2026-09-01, when `self-reference` and `first-person` were added and
+`.claude/skills` entered the scope.
 
 Both of the top two were named by the author as tics before any of this was
 built. The measurement agreed with them by three orders of magnitude over the
@@ -86,15 +92,24 @@ first cleanup pass for exactly that reason.
 So this is the same split `ledger-lint` has with `doc`: the tool produces the
 worklist, a human decides each line. Nothing here rewrites a file.
 
+`self-reference` shows why a check gets narrowed. It was proposed as a catch for
+revision notes glued onto content, and the first draft matched `an earlier draft
+of this` and `Rewritten <date>` as well. Measured first: those score 37 and 2
+here, and every hit is the honest-correction convention, a doc recording what it
+used to say wrongly beside what is right. The tic and the convention are the same
+words in a different place. So the check ships as the pointing half only, where a
+sentence refers to the document instead of saying the thing.
+
 ## The iteration
 
 `.planning/PROSE-BASELINE.tsv` holds per-file counts. Clean a file, re-run, watch
 the number fall. `--regress` refuses to let any file get worse than its recorded
 count, and treats a file with no row as new and held to zero.
 
-The baseline was frozen at **21,456 hits across 475 files** on 2026-08-31. That
-number going down is the only evidence that a cleanup pass did anything, which is
-why the tool is deterministic and has no model in any path.
+The baseline was re-frozen at **23,231 hits across 515 files** on 2026-09-01,
+with the two new checks in it. The 21,456 before that predates them. That number
+going down is the only evidence that a cleanup pass did anything, which is why
+the tool is deterministic and has no model in any path.
 
 Not wired into `chirality test`. 21k findings would fail the gate on day one.
 `--regress` is the part that could become a gate once the corpus is under control.
