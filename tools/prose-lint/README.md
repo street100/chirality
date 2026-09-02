@@ -79,8 +79,15 @@ in a sitting.
 Fenced blocks and inline `spans` are removed before counting. An identifier, a
 shell snippet, or a check name quoted in a doc is not a finding. This README
 tripped its own `slop-word` check by naming the words it looks for, which is how
-the rule got written. The counter and the per-line reporter share the filter, so
-a worklist number always matches the lines it will show you.
+the rule got written.
+
+⚑ The counter and the per-line reporter share the code filter and **not** the
+pattern set. `cmd_lines` carries its own regex, and it omits `parallel-no`,
+`Additionally,`, three of the slop words, `in other words`, and the
+`isn't`/`aren't` half of `copula-negation`. So a file's worklist count can
+exceed the lines the reporter prints, and a hit in one of those checks is
+findable only through `--summary`. Measured 2026-09-01 on a file counted at 14
+and reported at 13.
 
 ## It sorts. It does not correct.
 
