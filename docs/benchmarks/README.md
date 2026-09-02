@@ -7,7 +7,7 @@ updated: 2026-09-02
 
 # Benchmarks
 
-Consolidated speed/scale measurements for chirality. Four docs live here:
+Consolidated speed/scale measurements for chirality. Five docs live here:
 
 - **[language-performance.md](language-performance.md)** — codegen/runtime speed:
   chirality-emitted native x86-64 vs `gcc -O2` on three micro-kernels
@@ -27,6 +27,12 @@ Consolidated speed/scale measurements for chirality. Four docs live here:
   **15.1x slower** (min-of-11, band 7.8x to 18.5x), allocates **1.11 GB** to scan
   610 KB, and is **OOM-killed** on the tree's default scope. Records the wall
   clock per the author's 2026-09-01 ruling; sets no bar.
+- **[text-matcher-allocation.md](text-matcher-allocation.md)**: where that
+  1.11 GB goes, attributed by building one subject per pipeline stage under a
+  2 GB cgroup on 2026-09-02. The matcher takes **86.8%**, `blank-spans` 6.8%,
+  `str-split` 6.3%; inside the matcher it is the driver's three per-offset cells
+  against an arena that reclaims nothing, and `norm` and `pd-cat` are both
+  refuted as the cost. Names four repairs and mints no element.
 
 ## Shared conventions
 

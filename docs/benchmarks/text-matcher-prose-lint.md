@@ -195,7 +195,11 @@ does not finish.
 - **Peak RSS is one run per subject.** No repeats, so it has no band.
 - **The split inside the 1.468 s has no measurement.** How much belongs to `pd`
   and `norm` and how much to `keep-lines` and `blank-spans` would need an
-  instrumented build, and none was made.
+  instrumented build, and none was made. The **memory** half of that split was
+  measured on 2026-09-02 and lives in
+  [[benchmarks/text-matcher-allocation]]: the matcher takes 86.8% of the
+  1.11 GB, `blank-spans` 6.8%, `str-split` 6.3%, and `norm` is refuted. The wall
+  clock's split is still open.
 - **This is one host.** Absolute timings do not travel, per the README's first
   convention.
 
