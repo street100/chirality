@@ -3,8 +3,8 @@ node: decision-lane-split
 layer: decision
 status: DECIDED
 decided: 2026-08-31
-related: [decisions/decision-dispatch-cadence, arcs/diagnostics-arc, arcs/file-types-arc, arcs/enforcement-arc, elements/README, index]
-updated: 2026-09-01
+related: [decisions/decision-dispatch-cadence, decisions/decision-work-ids, arcs/README, arcs/diagnostics-arc, arcs/file-types-arc, arcs/enforcement-arc, arcs/transport-arc, arcs/text-tools-arc, arcs/zero-python-arc, benchmarks/text-matcher-allocation, records/author-calls, elements/README, index]
+updated: 2026-09-02
 ---
 
 # Decision: two lanes, and what enforces the seam
@@ -207,3 +207,99 @@ codecs and round-trip gates — `parse(source(v)) ≡ v` against source, and aga
 **replacing the nine Python tools (4,140 lines) with chirality programs and
 deleting `tools/`.** Neither lane does that; both exist so it can be done. Not
 "no Python in the compile path" — that is already true. **Zero Python in the repo.**
+
+---
+
+## The four focuses, 2026-09-02
+
+The two lanes above are two arcs of seven. The author settled the work into four
+focuses so that scriba and manas can move forward. Those two are the destination.
+Neither is the work.
+
+| focus | arcs | element block |
+|---|---|---|
+| enforcement | [[arcs/enforcement-arc]] | `E184-E189`, shared with diagnostics |
+| transport | [[arcs/transport-arc]] | none. Arc-local `T#` per [[decisions/decision-work-ids]] |
+| readability | [[arcs/diagnostics-arc]], [[arcs/file-types-arc]] | `E184-E189` shared, and `E190-E195` |
+| no-Python self-hosting | [[arcs/zero-python-arc]], [[arcs/text-tools-arc]] | none, and both are frozen |
+
+Each arc file carries its own requirements, element list and resume state. This
+section carries the division. [[arcs/README]] holds the goal relation, which has
+been many to many since `39710ee`.
+
+Two arcs spell their arc-local ids with the same letter. `zero-python` takes `T`
+for tool and `transport` takes `T` for its rows, both under
+[[decisions/decision-work-ids]]. The ids are arc-local, so the citation form
+`<arc>/<id>` is what keeps `zero-python/T1` and `transport/T1` apart, and a bare
+`T1` in a document that spans arcs is ambiguous.
+
+## File ownership, measured 2026-09-02
+
+Read off each arc's own element list and checked against the tree by grep. The
+evidence column names what was read.
+
+| arc | writes | evidence |
+|---|---|---|
+| transport | `prog/manas/`, `prog/agent/agent.chiral`, `prog/samples/e130_*.prog`, `e131_*.prog`, `stream-ollama.prog`, a new phase in `tools/test/run-tests.sh` | the nine importers of `protocol/http`. Rows `T2` to `T4` each owe a gated root and a phase that judges it |
+| text-tools | `lib/text/` | one file, `matcher.chiral`. `prog/prose-lint.prog` is its only consumer |
+| diagnostics | `lib/typing/diag.chiral`, `lib/surface/pretty.chiral`, `lib/protocol/render.chiral`, `lib/protocol/render-doc.chiral`, a consumer under `prog/` | `Judg` is `diag.chiral:99`, which E182 reshapes. `lookup-face` is in `render.chiral`, which E179 and E180 reach. The adoption row owes a consumer outside `lib/` |
+| zero-python | `tools/`, plus one port root under `prog/` per tool | `prog/prose-lint.prog` and `prog/paren-audit.prog` are the two ports that exist |
+| enforcement | `lib/lowering/` at top level (`compile-front`, `compile-back`, `compile-all`, `skip-diag`), `lib/lowering/upper/` (`lower`, `optimize`, `eff-lower`), `lib/lowering/tal/` (`ir`, `check`, `eval`), `bin/chirality` | E184's R3 to R7 name the four top-level files. E16, E17, E18 and E70 name the other six. E184's R7 owes a report exit `bin/chirality` does not have |
+| file-types | `lib/manifest/**` (new), `lib/protocol/{json,http,wire,apc,vt-parser}.chiral`, emitters under `prog/`, `lib/module/loader.chiral` | the arc's own may-write list, plus requirement 1: `.manifest` is a property of term structure and is checked by the loader |
+
+Three shapes a path glob gets wrong here, each with something that fails.
+
+- **`lib/prelude/doc.chiral` is written by no arc.** The seventh-constructor
+  section above names the two mutants that refuse it. Diagnostics consumes it and
+  does not own it.
+- **`prog/*.prog` is six roots and only two of them port a Python tool.**
+  `prog/compiler.prog` is the compiler's own root. `prog/resolve.prog`,
+  `prog/test-runner.prog` and `prog/wield.prog` port nothing under `tools/`. Sweeping
+  them into zero-python's scope would put the compiler root in an arc whose
+  requirement 2 is that `tools/` is deleted.
+- **`lib/typing/` belongs to diagnostics.** The enforcement arc names no path
+  under it. Enforcement's whole footprint is `lib/lowering/` plus
+  `bin/chirality`, and `lib/typing/diag.chiral` carries `Judg` for E182.
+
+## What contends, and what does not
+
+No two arcs' measured write sets share a file. Three couplings survive that.
+
+| coupling | between | what it forces |
+|---|---|---|
+| one band | enforcement and diagnostics | `E184-E189` is five numbers and `E184` is spent. Two focuses cannot mint from it concurrently |
+| one module, read against written | transport and file-types | `lib/protocol/http.chiral` holds `http-request` at `:437` and `chat-open` at `:773`, which transport's gates run against, and it is one of the five hand-written codecs file-types derives. A sequencing constraint. No arc is excluded by it |
+| one consumer | text-tools and zero-python | `prog/prose-lint.prog` is the matcher's only consumer and is also a tool port. Both arcs are frozen, so nothing contends today |
+
+So the four focuses run concurrently as far as files decide it. What sequences
+enforcement against diagnostics is the shared band, and that is an author call.
+
+### Two ownership lines stay unmeasured
+
+- **E176's repair site.** `str-sub` is an extern at
+  `lib/prelude/prelude.chiral:80`, mapped to `nb-bslice` at
+  `lib/lowering/tal/erase.chiral:114`. Whether the fix is a guard in
+  `lib/prelude/string.chiral` or a change under `lib/lowering/` decides whether
+  diagnostics reaches enforcement's tree. The element has no SPEC and nothing
+  settles it. `FD-01` in `records/findings.md` holds the measurement.
+- **file-types' emitters under `prog/`.** The arc's may-write list carries the
+  phrase and names no file. This pass did not locate E146's five emitters.
+
+## The allocation gap belongs to no arc
+
+Measured 2026-09-02 in [[benchmarks/text-matcher-allocation]], on the tree at
+`c23947e`, host `claude-sandbox`, `MemTotal` 4,033,056 kB and `SwapTotal` 0.
+
+| fact | figure |
+|---|---|
+| arena per input byte, `prog/prose-lint.prog` over 81 files and 609,872 B | ~1,747 B |
+| reclamation on any path a compiled program takes | none. `x-galo` advances `heapptr` and `nb-arena-grow` doubles the commit. Peak RSS is therefore total bytes ever allocated |
+| `lib/memory/` modules with zero importers | four of six: `alloc-fixed`, `arena`, `mem-linear`, `mem-region`. `mem-region` is the only reclamation discipline in the tree |
+| default-scope projection, itemised over 545 files and 8,142,676 B | 14.12 GB against 3.85 GB with no swap. The kill is arithmetic |
+| what `9f46c6c` cut, min-of-3 under a 2 GB cgroup | peak 1,111,728,128 to 466,821,120 B, 58.0%. The matching term 67.1% |
+| the same projection with those per-term deltas applied | ~6.3 GB. Projected. The default scope has never been run |
+
+This blocks manas and scriba from running once transport lands, and no arc holds
+it. Enforcement is one candidate, because a bound the machine ignores is an
+enforcement failure. Its own arc is another. The call is a row in
+[[records/author-calls]] and this section decides nothing.

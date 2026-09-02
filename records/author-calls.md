@@ -3,7 +3,7 @@ node: records-author-calls
 layer: record
 related: [records/README, records/consolidation-handoff, arcs/README, elements/README, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-02
 ---
 
 # Open author calls
@@ -25,6 +25,8 @@ where the tree does not settle the answer and a pass must stop.
 | what a `docs/elements/` file holds | one file per element, one per band, or a tracked index. `docs/elements/README.md` states the fork |
 | Python: outside the tree, or inside it | [[goals/self-tooling]] and [[goals/local-ai]] point opposite ways, and the call decides whether they conflict at all. The two readings are below |
 | A reserved element block for [[goals/local-ai]] | Its transport arc and its tuning arc write `UNASSIGNED` and stop. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else |
+| `E184-E189` is one band and two focuses draw on it | [[arcs/enforcement-arc]] and [[arcs/diagnostics-arc]] both mint from it, `E184` is spent, and four numbers remain. Concurrent minting is the collision that produced two `E173`s. The work split is in `docs/decisions/decision-lane-split.md` |
+| Which arc owns the allocation gap | ~1,747 B of arena per input byte, no reclamation on any compiled path, and a projected ~6.3 GB at the default scope against 3.85 GB with no swap. It blocks manas and scriba from running once transport lands and no arc holds it |
 
 ## Closed since the hoist
 
@@ -146,3 +148,60 @@ by its own letter per `docs/elements/ledger.md`, `S18` already has a SPEC at
 `.planning/SCRIBA-PRIMITIVE-CHECKLIST.md` numbers `S18` through `S30`.
 
 `.planning/LOCAL-AI-ARC-REALIGNMENT.md` is the proposal both calls block.
+
+## Added by the work split, 2026-09-02
+
+Both rows are in the table above and the detail is here.
+`docs/decisions/decision-lane-split.md` carries the measured file ownership the
+split rests on.
+
+### The no-Python focus cannot mint
+
+[[arcs/zero-python-arc]] and [[arcs/text-tools-arc]] serve
+[[goals/self-tooling]], hold no reserved band, and are both frozen.
+`text-tools`' row under the consolidation heading states half of this; the
+`zero-python` half has never had a row. Two routes are open and the tree settles
+neither.
+
+| route | what it gives | what it costs |
+|---|---|---|
+| a reserved band each | catalog rows, ledger rows and a pipeline stage per piece of work, which is what `E#` buys | two more bands out of a numbering space that has produced one collision already, spent on two arcs that are frozen |
+| the arc-local scheme the other five arcs took | it works today at no cost. `baseline-alignment` uses `BA-`, `binary-split` `B`, `presentability` `D`, `independent-judgment` `J`, `transport` `T`, and [[decisions/decision-work-ids]] settles the form | an arc-local id claims identification and nothing else. `text-tools`' P2 score, P3 edit script and P4 stable address stay `unminted` and cannot be scheduled as catalog work |
+
+`text-tools` already spells `P1` to `P4` and `zero-python` already spells `T1`
+and up, so the second route is in the tree for both. What the ruling decides is
+whether either arc gets a band on top of that.
+
+### `E184-E189` is shared and `E184` is spent
+
+Two of the four focuses draw on one band of five.
+[[arcs/enforcement-arc]] minted `E184` on 2026-09-01;
+[[arcs/diagnostics-arc]] has five open rows against the same band. Neither can
+mint while the other is minting, because the two tracked collision detectors,
+`docs/examples/INDEX.md` and the arc file, catch a collision after it happened.
+
+| route | what it gives |
+|---|---|
+| split the four remaining numbers | both arcs mint concurrently. Whichever arc runs out first stops on a fresh call |
+| give one focus its own band | the band is whole for one arc and the other waits, which is the state today with the wait unstated |
+
+Nothing else in the split sequences these two: their measured write sets share
+no file.
+
+### Which arc owns the allocation gap
+
+The measurement is [[benchmarks/text-matcher-allocation]], taken 2026-09-02 on
+the tree at `c23947e`. The runtime is a bump allocator with no reclamation on any
+path a compiled program takes, so peak RSS equals total bytes ever allocated.
+`lib/memory/` holds six modules and four have zero importers, `mem-region`
+included, which is the only reclamation discipline in the tree. `9f46c6c` cut
+peak 58.0% and the itemised default-scope projection is still ~6.3 GB against
+this box's 3.85 GB with no swap.
+
+[[arcs/transport-arc]] delivers the model call. This gap decides whether the run
+survives it, and the seven arcs cover none of it.
+
+| route | why it is arguable |
+|---|---|
+| [[arcs/enforcement-arc]] holds it | a proven bound the machine ignores is an enforcement failure, which is the arc's own subject |
+| its own arc | the work is a runtime discipline over `lib/memory/` and the x64 emitter, and touches none of enforcement's five rows |
