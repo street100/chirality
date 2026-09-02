@@ -349,6 +349,15 @@ measurement exists. It mints no element and this SPEC does not plan it.
   | M5 | `thread-cmp` compares the `from` field as well as `pat` | G6 |
   | M6 | `c-range` uses `<i` at the high edge | G1 |
   | M7 | `blank-spans` deletes a span instead of blanking it | G7 |
+  | M8 | `nullable` returns false on the `p-star` arm | G2 |
+  | M9 | `find-all` reports overlapping matches instead of resuming at a match's end | G5 |
+  | M10 | a compiler-closure module gains `(import "text/matcher")` | G8 |
+  | M11 | the driver restarts the anchored `find-at` at every offset instead of carrying threads | G9 |
+
+  M8 through M11 exist because `docs/definitions/testing-floors.md:261` requires
+  every row to name a mutant that is run, and G2, G5, G8 and G9 named none. M11
+  is the one that matters most: it is the n-pass shape decision 7 rejects, it is
+  correct on every other row, and G9 is the only row that can see it.
 
 - **Green line:** suite **303 passed, 0 failed** (last measured, recorded at
   `records/baseline-alignment.md:147`) → ≥ 303 plus Phase 19's assertions, with
