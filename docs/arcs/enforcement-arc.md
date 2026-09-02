@@ -3,7 +3,7 @@ node: arc-enforcement
 layer: navigation
 related: [arcs/README, goals/enforcement, status-ledger, arcs/diagnostics-arc, records/enforcement-arc, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-02
 ---
 
 # Arc: enforcement
@@ -19,8 +19,9 @@ design, so each worktree carries its own copy and nothing there reaches a second
 reader or a second session. An element fact anyone else needs lives here.
 
 The arc's subject is enforcement: a claim the compiler makes about its own work,
-carried as a value, with evidence, and refused when it does not hold. E184 is its
-first row.
+carried as a value, with evidence, and refused when it does not hold. E184 is the
+first element minted for it, and four older catalog rows belong to it: E16, E17,
+E18 and E70.
 
 `.planning/` stays the working detail (change plans, decision tables, SPECs).
 This is the part that survives a fresh clone.
@@ -114,9 +115,42 @@ imports `lower` for `compile-fn` only (`compile-back.chiral:15`). So the four
 exclusions those functions name (dependent type, effectful, quantified binder,
 type does not lower) are **never produced by a real compile**.
 
+## The typed-assembly floor: built, and adopted at one point only
+
+[[goals/enforcement]] states the gap in its own State list: the typed-assembly
+floor is built and unadopted, and neither the floor checker nor the optimizer's
+re-check runs in the shipping compile. These four elements are that sentence,
+and they are the reason it is true. Every count below was measured 2026-09-02 by
+grepping `(import "<key>")` over `lib/` and `prog/` and by walking the transitive
+import closure of `prog/compiler.prog`, which is 50 modules.
+
+### E16
+
+| E16 | **Lowering: pure→tal, register/slot alloc, non-tail case outlining, preserve-check** | Three of the four deliverables are built and the fourth never runs. `lib/lowering/upper/lower.chiral` (407 L) is inside the compiler's closure and `lib/lowering/compile-back.chiral` imports it for `compile-fn`, which makes E16 the one element of these four on the live path. The preserve-check has no call site: `ck-prog` lives in `lib/lowering/tal/check.chiral` and is called nowhere in `lib/` or `prog/`; `lower.chiral` imports `prelude/prelude` and `lowering/tal/ssa` and nothing further; `compile-back.chiral` imports `lowering/tal/check` at no line. The two comments that name the check (`lib/lowering/upper/lower.chiral:20`, `:115`) say an emitted `TFn` would reach `ck-prog` with no conversion. That is a fact about the IR and is no evidence of a call. The check stays in E16's scope as its remaining work. | `OURS`; SSA/reg-alloc (Cooper–Torczon) (`PAPER`) |
+
+| E16 | lower | built | **Lowering: pure→tal, reg/slot alloc, preserve-check.** Three of four deliverables. The lowering runs on every compile; the preserve-check in the element's own title runs on nothing, because `ck-prog` has no caller and `compile-back.chiral` never imports the module that defines it. Building it is the enforcement content of this row, and E70 carries the effect-side twin. | ←E18, →E70 |
+
+### E17
+
+| E17 | **Optimizer: const-fold, DCE, specialize/partial-eval/pregen** | Built and unreached. `lib/lowering/upper/optimize.chiral` (254 L) has zero importers across `lib/` and `prog/` and sits outside the compiler's closure, so no program in this tree is optimized by it. It is one of the two importers of `lowering/tal/check`, which is the mechanism by which the optimizer's re-check stays unrun: the re-check is written, and the module holding it is dead. | partial evaluation (Jones–Gomard–Sestoft) (`PAPER`) |
+
+| E17 | optimize | built | **Optimizer: const-fold, DCE, specialize/pregen.** 254 L, zero importers, outside the compiler blob. The optimizer's re-check over tal is written inside a module nothing loads. ⚑ The ledger's state cell files E17 `built`, and built here means present on disk. | ←E18 |
+
+### E18
+
+| E18 | **TAL checker + reference tal interpreter** | Split three ways, one part reached. `lib/lowering/tal/ir.chiral` (49 L) is built and inside the compiler's closure, with six importers: `lowering/mach/emit-core`, `lowering/tal/bytes`, `lowering/tal/reify`, `lowering/tal/sys-check`, `lowering/tal/sys-linkage`, `lowering/tal/sys`. The checker `lib/lowering/tal/check.chiral` (246 L) has two importers, `lowering/upper/optimize` with zero importers of its own and `lowering/upper/eff-lower` with one, `lib/module/sig-driver.chiral`, which itself has zero importers. The reference interpreter `lib/lowering/tal/eval.chiral` (187 L) has none. Everything except the IR is outside the compiler's closure. ⚑ The catalog's earlier wording said both importers of `check` were themselves unimported, and that is stale: `eff-lower` has an importer now, and the conclusion survives because that importer is itself dead. | Typed Assembly (Morrisett et al.) (`PAPER`) |
+
+| E18 | tal | built | **TAL checker + reference tal interpreter.** The IR is reached (49 L, six importers, in the blob); the checker (246 L) and the reference interpreter (187 L) are outside the blob and run on nothing. Adopting the checker is what closes the goal's floor-is-unadopted bullet, and it is the same call site E16 owes. | →E16, ←E70 |
+
+### E70
+
+| E70 | **Effectful lowering: the effect row's tal shadow plus a preserve-check over the effect claim** | Design. Unbuilt, and gated on `decision-effect-facets` (edge 16). This is the second preserve-check in the arc and the harder one: E16's check is over types the lowering already carries, while this one is over the effect claim, which `lib/lowering/upper/eff-lower.chiral` (183 L) models and no module inside the compiler's closure reads. Making `=>` arrows lowerable is the precondition for self-hosting going native, because the compiler is itself effectful. | `OURS` (`lib/lowering/upper/lower.chiral`, `lib/lowering/upper/eff-lower.chiral`) plus the effect-facets decision |
+
+| E70 | lower-reach | design | **Effectful lowering: effect-row tal shadow + preserve-check over the effect claim.** Gated on `decision-effect-facets` (edge 16). The effect-side twin of E16's unrun check. | ←E16, ←E12 |
+
 ## Numbering
 
-E184 is the **first row of this arc**. The highest previously minted element was
+E184 is the **first element minted for this arc**. The highest previously minted element was
 **E183**. Lane A mints in **E184–E189**, Lane B in **E190–E195** (`docs/decisions/decision-lane-split.md`).
 A new element's row lands in `docs/examples/INDEX.md` **and here** in the same
 change: those are the only two tracked places, and therefore the only collision

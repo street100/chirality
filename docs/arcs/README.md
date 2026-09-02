@@ -3,7 +3,7 @@ node: arcs
 layer: navigation
 related: [goals/README, index, records/README, status-ledger, elements/README]
 status: current
-updated: 2026-09-01
+updated: 2026-09-02
 ---
 
 # Arcs
@@ -75,7 +75,7 @@ when this table and an arc file disagree.
 | arc | goal | state | reserved block |
 |---|---|---|---|
 | [[arcs/diagnostics-arc]] | [[goals/readable-surface]] | 5 built, 4 open | `E184-E189` shared with enforcement |
-| [[arcs/enforcement-arc]] | [[goals/enforcement]] | 1 minted, 0 built | `E184-E189` |
+| [[arcs/enforcement-arc]] | [[goals/enforcement]] | 5 rows: E16 on the live path with its check unrun, E17/E18 built and unadopted, E70/E184 design | `E184-E189` |
 | [[arcs/file-types-arc]] | [[goals/readable-surface]] | 0 of 3 built | `E190-E195` |
 | [[arcs/text-tools-arc]] | [[goals/self-tooling]] | 1 of 4 primitives minted | none |
 | [[arcs/zero-python-arc]] | [[goals/self-tooling]] | 0 of 14 `.py` files removed | none |
