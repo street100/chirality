@@ -8,7 +8,7 @@ updated: 2026-09-01
 
 # Arc: file types
 
-- goal: [[goals/readable-surface]]
+- goals: [[goals/readable-surface]] (what it is built *for*), [[goals/self-tooling]] (what it is built *out of*)
 - reserved element block: `E190-E195` (`docs/decisions/decision-lane-split.md`, Lane B)
 - build-state authority: [[status-ledger]]
 - lane: B. It runs in a separate session; `docs/decisions/decision-lane-split.md` holds the division and what

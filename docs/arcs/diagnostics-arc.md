@@ -8,7 +8,7 @@ updated: 2026-09-01
 
 # Arc: diagnostics and formatting
 
-- goal: [[goals/readable-surface]]
+- goals: [[goals/readable-surface]] (what it is built *for*), [[goals/self-tooling]] (what it is built *out of*)
 - reserved element block: `E184-E189`, shared with [[arcs/enforcement-arc]] (`docs/decisions/decision-lane-split.md`, Lane A)
 - record: [[records/diagnostics-arc-record]]
 - build-state authority: [[status-ledger]]

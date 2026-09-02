@@ -38,6 +38,7 @@ reader needs from a fresh clone.
 |---|---|
 | [[arcs/diagnostics-arc]] | printing (`Doc`, `pretty`) and reporting (`Reason`) |
 | [[arcs/file-types-arc]] | declared forms with derived codecs and round-trip gates |
+| [[arcs/text-tools-arc]] | the text primitives every tool scans with: the matcher, the score, the edit script, the stable address |
 | [[arcs/zero-python-arc]] | scanning (the total matcher), directory walk, argv, and the ports themselves |
 
 The order is forced by measurement. Every one of the nine tools scans text,

@@ -41,8 +41,8 @@ unstarted work.
 
 ## Arcs
 
-None. Opening one is an author call: it needs a scope, a reserved element block,
-and a decision about which formulations.
+[[arcs/independent-judgment-arc]]. It carries no reserved element block and its
+rows take arc-local ids `J1` and up, so it can be worked without one.
 
 ## Honest limits
 

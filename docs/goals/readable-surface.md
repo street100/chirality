@@ -62,9 +62,8 @@ primitive does not have.
   regularity claim before it is a tooling one, and today it is unchecked
   ([[records/baseline-alignment]] BA-30).
 
-Both arcs also draw on [[goals/self-tooling]]: that goal is what the work is
-built *out of*, this one is what it is built *for*. [[arcs/README]] requires an
-arc to name exactly one goal, so each names this one.
+Both arcs also serve [[goals/self-tooling]]: that goal is what the work is built
+*out of*, this one is what it is built *for*. Both name both.
 
 ## Honest limits
 

@@ -17,8 +17,8 @@ Three tiers organise the work.
 | element | one catalog item, an `E#` | `docs/elements/`, `docs/elements/catalog.md` |
 
 A goal file says what the goal claims, cites where the project claims it, names
-the arcs that serve it, and states what `done` means. An arc file names the goal
-it serves. An element belongs to exactly one arc.
+the arcs that serve it, and states what `done` means. An arc file names every
+goal it serves. An element belongs to exactly one arc.
 
 Every goal below is derived from text already in the repo. The citation is in
 the goal file. A goal nobody has written down does not go here: it goes in the

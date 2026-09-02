@@ -349,7 +349,8 @@ guest.
 Three tiers. A **goal** is a broad thing the project claims it is doing. An
 **arc** is the list of elements serving one goal, carrying that goal's
 requirements and its own resume state. An **element** is one catalog item, an
-`E#`. An arc names exactly one goal and an element belongs to exactly one arc.
+`E#`. An arc names every goal it serves, goals and arcs relate many to many, and
+an element belongs to exactly one arc.
 
 Three rules keep it a record rather than an ambition:
 

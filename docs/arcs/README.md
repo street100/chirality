@@ -25,9 +25,11 @@ needs lives here.
 | arc | elements assembled toward one goal, with requirements | `docs/arcs/` |
 | element | one catalog item, an `E#` | `docs/elements/`, `docs/elements/catalog.md` |
 
-An arc names exactly one goal. Where no goal is written down, the arc's `goal`
-field says `UNWRITTEN` and the arc stays open on an author call. Authoring a
-goal the project has never stated is forbidden.
+An arc names every goal it serves, and a goal is served by every arc that names
+it. The relation is many to many: one arc can supply two goals at once, and one
+goal can take work from several arcs. Where no goal is written down, the arc's
+`goal` field says `UNWRITTEN` and the arc stays open on an author call.
+Authoring a goal the project has never stated is forbidden.
 
 ## What an arc file carries
 

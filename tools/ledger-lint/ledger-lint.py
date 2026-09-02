@@ -1264,7 +1264,7 @@ def check_v() -> list[str]:
         if arc.stem == "README":
             continue
         text = arc.read_text()
-        m = re.search(r"^- goal:\s*\[\[goals/([a-z0-9-]+)\]\]", text, re.M)
+        m = re.search(r"^- goals?:\s*\[\[goals/([a-z0-9-]+)\]\]", text, re.M)
         if not m:
             if "UNWRITTEN" not in text:
                 errs.append(f"[V] {arc.name} names no goal and does not say UNWRITTEN")
@@ -1294,7 +1294,7 @@ def check_v() -> list[str]:
             if not row:
                 errs.append(f"[V] {arc.name} has no row in arcs/README.md")
                 continue
-            m = re.search(r"^- goal:\s*\[\[goals/([a-z0-9-]+)\]\]", arc.read_text(), re.M)
+            m = re.search(r"^- goals?:\s*\[\[goals/([a-z0-9-]+)\]\]", arc.read_text(), re.M)
             if m and f"goals/{m.group(1)}" not in row.group(0):
                 errs.append(f"[V] arcs/README.md gives {arc.name} a different goal "
                             f"than the arc's own goal: field ({m.group(1)})")
