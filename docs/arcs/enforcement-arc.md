@@ -30,6 +30,59 @@ Build-state authority for the suite as a whole: [[status-ledger]].
 Measurements this arc rests on: [[records/enforcement-arc]].
 Lane division and what enforces it: `docs/decisions/decision-lane-split.md`. Lane A resume: `records/lane-a-record.md`.
 
+## REQUIREMENTS
+
+Done when all five hold. Each is checkable, and the state beside it is measured
+2026-09-02.
+
+1. **A capability sits at ENFORCED, or its ledger row says why it does not.**
+   Inherited verbatim from [[goals/enforcement]]. Today four rows in
+   [[status-ledger]] are written and unreached, so the row-says-why half is
+   carrying the weight.
+2. **The typed-assembly floor runs on the shipping path.** `ck-prog` is called
+   nowhere in `lib/` or `prog/`, and `lib/lowering/compile-back.chiral` does not
+   import `lowering/tal/check`. E16's own title names the preserve-check and
+   three of its four deliverables are built. E18's checker and reference
+   interpreter both exist unreached.
+3. **The check agrees with the compiler it checks.** Measured: `ck-prog` accepts
+   743 of 1,504 TFns and **rejects 761, 50.6%**, across 41 modules with none
+   clean. The same 761 erase, emit, link and run, and the binary they produce
+   reaches a byte fixpoint. Until that disagreement is root-caused, wiring the
+   check ships a refusal nobody can act on. Four diagnostic classes: 392 `ret`,
+   187 `con`, 107 `case on non-data register`, 75 `argument arity`.
+4. **The optimizer's re-check runs, or E17 says why it does not.**
+   `lib/lowering/upper/optimize.chiral` has zero importers and is in no blob, so
+   `optimize` and `specialize` return a `Checked` result nothing ever forms.
+5. **Every gate row names a mutant that is actually run.** Inherited from
+   [[goals/enforcement]] and from `docs/definitions/testing-floors.md:261`. E173
+   found two rows that could not fail; both were repaired at `e882568`.
+
+⚑ Requirement 3 is the one that gates the rest. It is not in E16's or E18's
+scope as written, and no element owns it.
+
+## Resume state
+
+**Start with the `ck-prog` disagreement, requirement 3.** It blocks 2 and 4, and
+it is the open author call in [[records/author-calls]].
+
+The enabling change is measured and reverted, not lost.
+`lib/lowering/tal/check.chiral` declares **11 top-level names that already exist
+in the compiler's blob** (`CkR`/`ck-ok`/`ck-err` against `lib/typing/kernel.chiral:411`,
+`CovR`/`cov-ok` against `lib/surface/data.chiral:37`, `find-ctor`, and five
+byte-identical duplicates of `lower.chiral:160-191`), so importing it is a
+`duplicate label` refusal at load before any type-checking. That is E154's
+fifth instance. `tools/test/diag.sh:250-256` already records the collision as
+deliberate.
+
+Resolving them plus inserting the call site reaches a fixpoint at `K2 == K3` and
+the suite runs `320 passed, 1 failed`, the one failure being `diag.sh:256`
+grepping for a renamed literal. Repointing that guard cascades through **seven
+sha256-pinned gate scripts over two rounds**, which is why it was reverted rather
+than half-shipped.
+
+Owed before any of this lands: the diagnosis slice for the four classes. Then the
+refuse-or-carry ruling, which is the author's.
+
 ## Open: minted, not built
 
 ### E184
