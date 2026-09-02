@@ -216,14 +216,22 @@ the shape is not uniform and that is worth stating rather than forcing.
 **Q1. What bugs could a programming language inherently remove? Could debugging a
 program be made purely about logical bug solving?**
 
-> Everything can be expressed. That makes this a mechanical job. Every non-logic
-> failure is a class, a class can be given a way to be said, and once it can be
-> said the checker can refuse it. Work through the classes until what is left is
-> you reasoning wrong.
+> Some of them, and which ones is not fixed. A failure you can name as a class is
+> a failure a checker can refuse, and because the language can express its own
+> checker the list is worked rather than given.
 >
-> [six categories with state, table below]
+> | category | what refuses today | how far it goes |
+> |---|---|---|
+> | memory and ownership | a linear binder used twice or dropped, a linear field | quantities carry it. There is no null in the language to dereference. Buffer bounds refuse nothing, and `str-sub` reads past its own buffer |
+> | data at boundaries | non-exhaustive and duplicate branches, an empty case, a datatype with a negative recursive occurrence, an unproved refinement | nine judgments. Refinement is `I64` only. Integer overflow and division by zero have none |
+> | effects and authority | a crossing outside the declared profile port set, refused at emit | `compile-emit.chiral:300`. A `->` body that calls an `=>` one has no judgment at all, which is E171 |
+> | resources and termination | nothing | no termination judgment exists. The classifier is written and nothing imports it |
+> | compilation fidelity | nothing on the shipping path | the typed-assembly floor checker exists and the compile never calls it |
+> | concurrency | nothing | nothing in the tree points at it |
 >
-> Full list and current state in `docs/definitions/bug-classes.md`.
+> Three of the six refuse something today and three refuse nothing. The
+> vocabulary is 37 named judgments in `lib/typing/diag.chiral`, and what it does
+> not contain is the more useful half of the answer.
 >
 > The residue is whether your specification says what you meant. Intent stays
 > outside the checker. That is the logical bug.
@@ -247,11 +255,17 @@ Q2 through Q7 below are the standing drafts.
 > | the runtime | `lib/runtime/`, 3 modules, 379 lines | |
 > | the tooling | `prose-lint`, `paren-audit`, `resolve`, `test-runner`, `wield` | 9 Python tools left, the target is zero |
 > | config and data | `.manifest`, 2 files in the tree | resolves as an import target. The loader does not check the declared-data property that makes it data, which is E163 |
-> | a frozen port set | `.profile` | named as a kind in `MAP.md` and in the resolver. Zero files in the tree |
+> | a frozen port set | declared inline, `(profile name (ports ...) (target t))` | refuses at emit, `compile-emit.chiral:300`, gated by `tools/test/profile-target.sh`. The `.profile` extension `MAP.md` names has zero files in the tree |
 >
-> The file extension carries the kind, so config is a module the checker reads
-> rather than a second language with its own parser and its own escaping story.
-> Three of the five kinds are import targets and the resolver probes only those.
+> File extension and types are kinda in the figuring stuff out process, but the
+> goal is that we have file types that *are* parsed differently. The bit here is
+> that they aren't different languages.
+
+> End game requirements are like this:
+> - A manifest can be written and turned into actual code + vice versa
+> - A .manifest is view of the code that is very similar as a language,
+>   but structured in a way friendlier to it's purpose as a view.
+> - Applying this logic to .protocol, .grammar, and more.
 
 **Q3. Could escape hatches like `unsafe`, `any` and raw casts be made into checked routes?**
 
@@ -481,8 +495,11 @@ Added 2026-09-01:
 - **Does an answer's state table cover one thing or two?** Q4's has four typing
   rows answering what the checker demands of you, and two paren-audit rows
   answering how far the extension claim reaches.
-- **`docs/definitions/bug-classes.md` does not exist.** Any answer citing class
-  coverage is citing the draft in this file.
+- **`docs/definitions/bug-classes.md` does not exist.** Q1's table cites the
+  judgment vocabulary directly instead, so it does not depend on the doc. The
+  doc is still owed: the six-category split and the class rows in this file are
+  its content, and the deferral rule says a README pointing at it before it
+  lands is naming something that is not there.
 
 ## Wiring sweep, 2026-09-01
 
