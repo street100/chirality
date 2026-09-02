@@ -4,7 +4,7 @@ slug: total-matcher
 title: **A total matcher over `Str`**
 kind: BUILD-PROPER
 example: docs/examples/E173-total-matcher.md
-status: draft
+status: audited
 updated: 2026-09-01
 ---
 
@@ -40,8 +40,9 @@ this run minted none.
 
 - **`prog/prose-lint.prog` retires its three NOT-CHECKED rows.** The three
   strings it prints today at `:186-188` (`not-but`, `parallel-no`,
-  code-skipping) become counted rows, and the 31 literal needles spelled as
-  `cons` chains at `:105-121` become patterns scanned in one pass instead of 31.
+  code-skipping) become counted rows, and the 31 buffer passes become one. The
+  31 are 30 literal needles in five `cons` chains (`:105-122`) plus the em-dash
+  literal `scan-doc` counts on its own (`:145`).
 
 - **Non-goals**, each with a home in §6: captures and tagged derivatives (slice
   2); a regex-syntax parser (there is no pattern syntax, on purpose); codepoint
@@ -67,12 +68,19 @@ this run minted none.
   | | `Ord` as `(lt) (eq) (gt)` | `lib/prelude/ord.chiral:14` |
   | | the `data`+`case` state-machine idiom this copies | `lib/protocol/vt-parser.chiral:11-20` |
 
-  Two contract facts from C are load-bearing in §4 and are quoted rather than
-  re-derived. `list-sort` is **stable** (`lib/prelude/list.chiral:120-145`:
-  `ms-merge` takes the left element on `eq`, and `ms-sort-n` splits left-first).
-  `list-dedup-adj` keeps the **first** element of each run
-  (`lib/prelude/list.chiral:148-190`, which writes the survivor rule down
-  because a key projection makes it observable).
+  Three contract facts from C are quoted rather than re-derived, and §4 step 3
+  leans on all three.
+
+  1. `list-dedup-adj` keeps the **first** element of each run
+     (`lib/prelude/list.chiral:148-190`, which writes the survivor rule down
+     because a key projection makes it observable).
+  2. Each of the two takes its comparator as its own argument
+     (`lib/prelude/list.chiral:143`, `:184-186`), so a sort key and a dedup key
+     can differ inside one composition.
+  3. `list-sort` is **stable** (`lib/prelude/list.chiral:120-145`: `ms-merge`
+     takes the left element on `eq`, and `ms-sort-n` splits left-first). §4's
+     sort key is total on `(pat, from)`, so stability decides only between
+     threads that agree on both fields and are therefore the same thread.
 
 - **What does not exist.** There is no `lib/text/` directory. The tree has
   eleven under `lib/` and `text` is absent from them. `MAP.md:104-120` lists the `lib/`
@@ -96,8 +104,8 @@ calls.
 | 1 | **The arc's fork.** Patterns fixed at pack time and checkable at compile time, or accepted at run time and bounded per pattern with a dynamic set? | **RESOLVED. Run time.** | Three facts, below. |
 | 2 | `run-from` returns `-1` for no match, a sentinel where a sum belongs | **RESOLVED. A sum.** | [[pattern-boundary-sums]] is a standing author directive: *"If a `Str` or `I64` in a signature encodes which-of-N-things, it is a sum wearing a disguise."* Its own live precedent is the errno-or-value crossing sums. There is exactly one failure mode here and it carries no field, so the sum is `(Maybe Span)` and a bespoke `MatchR` would add a name over nothing. The internal accumulator becomes `(Maybe I64)` by the same rule. |
 | 3 | **Captures:** tagged derivatives, or a narrower primitive (split + span scan + integer scan)? | **DEFERRED to slice 2 of E173.** | The example names the measurement that settles it: classify all 77 sites into served-by-split-scan versus needs-a-submatch, from the same census script, before a line of tagging. That classification is slice 2's step 1. No element is minted; a slice of E173 is E173. |
-| 4 | **Match semantics:** longest, shortest, or leftmost-first? | **RESOLVED for slice 1: leftmost-longest.** Leftmost-first **DEFERRED to slice 2** | `norm` is the one function the arrow's honesty lives in, and it is sort-then-dedup over the tree's existing `list-sort` / `list-dedup-adj` idiom. Leftmost-first needs a priority-ordered residual list and a dedup that keeps first-by-priority, which replaces that idiom with a new one. Slice 1's only consumer counts hits and is indifferent. All 10 lazy-quantifier sites in the census are capture-bearing and therefore slice 2's, so the decision is taken where its evidence is. This is scoped to E173. It rules on nothing outside it. |
-| 5 | Does `pat-cmp` passed to `list-sort` trip the value-poison rule? | **RESOLVED. No.** | `docs/definitions/totality.md:105-107` poisons a *recursive* definition used as a value. The tree's dodge is a non-recursive wrapper over the recursive worker, `str-cmp` over `su-cmp-bytes` at `lib/prelude/string.chiral:91-92`, and `lib/typing/row-infer.chiral:103-104` is a live caller passing exactly that pair into `list-dedup-adj` and `list-sort`. `pat-cmp` copies the shape. |
+| 4 | **Match semantics:** longest, shortest, or leftmost-first? | **RESOLVED for slice 1: leftmost-longest.** Leftmost-first **DEFERRED to slice 2.** Author call, 2026-09-01 | `norm` is the one function the arrow's honesty lives in, and it is sort-then-dedup over the tree's existing `list-sort` / `list-dedup-adj` idiom. Leftmost is carried by the **sort key** `(pat, from)` while the dedup key stays `pat` alone, which the two primitives already allow because each takes its comparator separately (§4 step 3). Leftmost-first needs a priority-ordered residual list and a dedup that keeps first-by-priority, which replaces that idiom with a new one. Slice 1's only consumer counts hits and is indifferent. All 10 lazy-quantifier sites in the census are capture-bearing and therefore slice 2's, so the decision is taken where its evidence is. This is scoped to E173. It rules on nothing outside it. |
+| 5 | Does `pat-cmp` passed to `list-sort` trip the value-poison rule? | **RESOLVED. No.** | `docs/definitions/totality.md:105-107` poisons a *recursive* definition used as a value. The tree's dodge is a non-recursive wrapper over the recursive worker, `str-cmp` over `su-cmp-bytes` at `lib/prelude/string.chiral:91-92`, and `lib/typing/row-infer.chiral:103-104` is a live caller passing exactly that pair into `list-dedup-adj` and `list-sort`. `pat-cmp` copies the shape, and `thread-cmp` and `thread-key-cmp` are non-recursive wrappers over it by the same rule. |
 | 6 | A text bank is owed | **RESOLVED. Discharged.** | `docs/banks/text.md` exists and homes this element as shard D. What it owes on the way out is a state flip on that one row (§4 step 7). |
 | 7 | *(new here)* `find-all` over n start offsets is n anchored passes, which is the defect the element exists to remove | **RESOLVED. One pass; a thread carries its start.** | Forced by [[arcs/text-tools-arc]] REQUIREMENT 1 and by the measured motivation the arc quotes: *"31 passes over 7 MB where one pass would do… the algorithm is the cost, not the compiled code."* Restarting an anchored `run-from` at every offset is n passes and is worse than the 31 it replaces. §4 step 3 carries the shape. |
 | 8 | *(new here)* `lib/text/` has no row in `MAP.md`'s tree | **RESOLVED. The change plan adds it.** | `MAP.md` is the tree contract, so a directory absent from it is absent from the tree. §4 step 1. |
@@ -201,8 +209,8 @@ it a checked row instead of an assumption.
 
 ### Step 3 — the derivative, the bound, and the one-pass driver
 - **Target:** `lib/text/matcher.chiral`: `pd`, `pd-cat`, `Thread`, `pat-cmp-go`,
-  `pat-cmp`, `thread-cmp`, `norm`, `step-set`, `Span`, `at-byte`, `accepts`,
-  `find-at`, `find-all`, `count-matches`
+  `pat-cmp`, `thread-cmp`, `thread-key-cmp`, `norm`, `step-set`, `Span`,
+  `at-byte`, `accepts`, `find-at`, `find-all`, `count-matches`
 - **Change:** `pd` is the example §5 block 5 unchanged; it is the whole
   algorithm and every arm recurses on a strict subterm. The driver is **not**
   the example's: decision 7 replaces the anchored restart with one pass whose
@@ -214,10 +222,11 @@ it a checked row instead of an assumption.
 (declare pd        (-> Ctx I64 Pat (List Pat)))
 (declare pat-cmp-go (-> Pat Pat Ord))
 (declare pat-cmp    (-> Pat Pat Ord))              ; non-recursive wrapper, decision 5
-(declare thread-cmp (-> Thread Thread Ord))        ; compares the pat field ONLY
+(declare thread-cmp     (-> Thread Thread Ord))    ; the DEDUP key: `pat` alone
+(declare thread-key-cmp (-> Thread Thread Ord))    ; the SORT key: `pat`, then `from`
 (declare norm      (-> (List Thread) (List Thread)))
 (def norm (lam (ts) (list-dedup-adj Thread thread-cmp
-                      (list-sort Thread thread-cmp ts))))
+                      (list-sort Thread thread-key-cmp ts))))
 (declare find-all  (-> Pat Bytes (List Span)))
 ```
 
@@ -227,12 +236,25 @@ it a checked row instead of an assumption.
   multi-parameter type application at a call site is its own element. A named
   nullary type sidesteps that and carries the field names besides.
 
-  **Why the pass stays bounded.** New threads are appended, so starts run
-  non-decreasing along the live list; `list-sort` is stable and
-  `list-dedup-adj` keeps the first of each run, so deduping on the `pat` field
-  alone keeps the **least start** per distinct residual. The set is therefore
-  held at `‖pat‖ + 1` and the earliest start wins, which is leftmost-longest
-  (decision 4) falling out of the bound rather than being bolted beside it.
+  **Two comparators, one `norm`.** `list-sort` and `list-dedup-adj` each take
+  their comparator at the call site (`lib/prelude/list.chiral:143`, `:184-186`),
+  so one composition can sort on a wider key than it dedups on. `norm` sorts on
+  `(pat, from)` and dedups on `pat`. No new primitive is owed.
+
+  **Why the pass stays bounded.** The dedup key is `pat` alone, so at most one
+  thread survives per distinct residual and the live set is held at
+  `‖pat‖ + 1`.
+
+  **Why the survivor is the least start.** The sort key orders `from` ascending
+  inside each `pat` run, so the least start is the head of its run, and
+  `list-dedup-adj` keeps the head (`lib/prelude/list.chiral:184-186`). The
+  property
+  is carried by the sort key and holds for any order the driver hands `norm`.
+  That matters because `norm` reorders its own output every step: the live list
+  going into the next step is in `pat` order, which carries no relation to
+  `from`, so any argument resting on the order threads were appended in is
+  false. The earliest start per residual is what makes the match leftmost
+  (decision 4).
 
   **The arrow, stated honestly.** States visited is `O(n × ‖pat‖)`. Work per
   state adds `pd` over each live thread and one sort, so bytes-to-work is
@@ -251,7 +273,7 @@ it a checked row instead of an assumption.
 - **Change:** `vt-parser`'s `PState` idiom (`lib/protocol/vt-parser.chiral:11-20`)
   with two states. A line whose first non-blank content is a run of three backticks toggles `ls-prose` / `ls-fence` and the
   toggling line is itself never scanned, which is what the awk baseline does at
-  `tools/prose-lint/prose-lint.sh:76-79`. `blank-spans` replaces an inline span
+  `tools/prose-lint/prose-lint.sh:89-91`. `blank-spans` replaces an inline span
   with **spaces of the same length**, so an offset found on the blanked copy is
   still valid on the original. That is the length-preserving rule
   `lib/prelude/string.chiral:96-99` already states for the ASCII case fold.
@@ -265,13 +287,15 @@ it a checked row instead of an assumption.
 
 ### Step 5 — the consumer: `prog/prose-lint.prog`
 - **Target:** `prog/prose-lint.prog`: `n-antithesis`, `n-copula`, `n-slop`,
-  `n-throat`, `n-connective` (`:105-121`), `scan-doc` (`:143`),
+  `n-throat`, `n-connective` (`:105-122`), `scan-doc` (`:143`),
   `compile-main` (`:181`)
 - **Change:** each check becomes one `Pat` built by constructor application, so
-  the five `cons` chains collapse into five `p-alt` trees; `scan-doc` runs
-  `line-step` over the lines and `count-matches` once per check per line instead
-  of `str-find-from` once per needle over the whole buffer. The three
-  `NOT-CHECKED` rows at `:186-188` become counted rows. Import `text/matcher`.
+  the five `cons` chains collapse into five `p-alt` trees and the em-dash
+  literal at `:145` becomes a sixth; `scan-doc` runs `line-step` over the lines
+  and `count-matches` once per check per line instead of `str-find-from` once
+  per needle over the whole buffer. The three `NOT-CHECKED` rows at `:186-188`
+  become counted rows, so the tool carries eight patterns. Import
+  `text/matcher`.
 - **Size:** M
 
 ### Step 6 — the gate
@@ -285,12 +309,16 @@ it a checked row instead of an assumption.
 
 ### Step 7 — the state, on the way out
 - **Target:** `docs/banks/text.md` shard D row, `docs/definitions/status-ledger.md`,
-  `docs/examples/INDEX.md`, `docs/arcs/text-tools-arc.md`
+  `docs/examples/INDEX.md`, `docs/arcs/text-tools-arc.md`,
+  `docs/benchmarks/text-matcher-prose-lint.md` (new), `docs/benchmarks/README.md`
 - **Change:** flip shard D from `design` to built-for-slice-1 with the measured
   line count; add the rung E173 reached to the status ledger; flip the INDEX row
   to `implemented` with the date and what was measured; repoint the arc's P1
   sketch signature, which reads `find-all : Ctx -> Pat -> Bytes -> (List Span)`
-  and carries a `Ctx` argument that step 3 derives from `(bs, i)` instead.
+  and carries a `Ctx` argument that step 3 derives from `(bs, i)` instead; write
+  the wall-clock file §5 names, with the frontmatter (`layer: benchmark`,
+  `status: measured`) and the host-plus-date and honest-spread conventions the
+  benchmarks README states, and add its row to that README's list.
 - **Size:** S
 
 ### Slice 2, scoped and not planned here
@@ -301,11 +329,20 @@ measurement exists. It mints no element and this SPEC does not plan it.
 ## 5. Conformance gate
 
 - **Golden behavior.** `prog/prose-lint.prog` and the awk implementation at
-  `tools/prose-lint/prose-lint.sh:75-98` produce the **same per-check totals**
-  over the same file list, for all eight checks, including the three the native
-  tool prints as NOT-CHECKED today. That is
-  [[arcs/zero-python-arc]] REQUIREMENT 3 (each replacement verified against the
-  tool it replaces, on the same inputs) applied to this element.
+  `tools/prose-lint/prose-lint.sh:86-113` produce the **same per-check totals**
+  over the same file list, for **eight of the awk tool's ten checks**: the six
+  the native tool counts today plus `not-but` and `parallel-no`, which it prints
+  as NOT-CHECKED at `:186-188`. That is [[arcs/zero-python-arc]] REQUIREMENT 3
+  (each replacement verified against the tool it replaces, on the same inputs)
+  applied to this element.
+
+  ⚑ **The awk tool has ten checks and `prog/prose-lint.prog` has eight.**
+  `self-reference` and `first-person` (`tools/prose-lint/prose-lint.sh:103-104`)
+  are absent from the native tool and are not printed as NOT-CHECKED either, so
+  they vanish silently, which is the failure mode `prog/prose-lint.prog:177-180`
+  says it refuses. Slice 1 does not close that gap and §6 carries it as residue
+  with its home. The differential covers eight checks and says so, so it is not
+  a gate reporting ok over a subject it never looked at.
 
   The comparison is **differential and run in the same invocation**, against the
   awk tool live. `.planning/PROSE-BASELINE.tsv` is frozen at 21,456 hits across
@@ -322,11 +359,11 @@ measurement exists. It mints no element and this SPEC does not plan it.
   | G2 | `nullable` on all seven `Pat` arms, both `Ctx` windows |
   | G3 | the bound holds: `(p-star (p-cls cls-lower))` over 100 lower bytes keeps the live set at 2 at every step |
   | G4 | the bound is `norm`'s: with `norm` neutered the same input drives the live set past `‖pat‖ + 1` |
-  | G5 | `find-all` over the five prose-lint patterns on a fixed fixture equals the awk counts for the same fixture |
-  | G6 | leftmost-longest: overlapping candidates return the earliest start and the longest end |
+  | G5 | `find-all` over the eight prose-lint patterns on a fixed fixture equals the awk counts for the same fixture |
+  | G6 | leftmost-longest, in two parts. **(a)** `norm` is order-independent: `(norm (cons (th 1 P) (cons (th 0 P) nil)))` is `(cons (th 0 P) nil)`, so the least start survives whatever order the list arrives in. Hand-derived, rank 3, and it is the assertion the sort key owes. **(b)** `find-all` over overlapping candidates returns the earliest start and the longest end |
   | G7 | the line pass: fenced and inline-span lines match the awk `fence` toggle's skipped set, and `blank-spans` is length-preserving |
   | G8 | the blob from `chirality_blob_file "lib:prog" prog/compiler.prog` is **byte-identical** before and after, so `text/matcher` is outside the compiler's closure and no promotion is owed |
-  | G9 | wall clock: the chirality tool and the awk tool timed back to back on the same file list in the same run, ratio `<= 1.0`. The native tool is 2.4x slower today, and removing the 31 passes is the stated reason for the element |
+  | G9 | the corpus differential: over the same file list the awk `_scan` walks, the two tools' per-check totals agree on all eight checks, in one invocation with both live. G5 is the same comparison on a fixture the test author wrote; this row is the comparison on the corpus, which holds patterns no fixture was written for |
 
   Mutants. The harness is **not** `tools/test/mutant.sh`. That one mutates a
   file, rebuilds `prog/compiler.prog`'s blob and asserts the mutant compiler
@@ -340,24 +377,63 @@ measurement exists. It mints no element and this SPEC does not plan it.
   (`tools/test/render-doc.sh:131-142`, driven at `:315-318`). `matcher.sh`
   carries its own copy of that helper.
 
+  Two mutants sit outside the plain `lib/` copy and the helper has to reach
+  them.
+
+  - **M10** mutates a module the compiler does import, and the row it fails is
+    a blob comparison. The scratch tree is the search path, so the blob under
+    test is `chirality_blob_file "$MUTLIB:prog" prog/compiler.prog`
+    (`bin/chirality-resolve.sh` takes a colon-separated rootspec of
+    directories), compared against the same call over `lib:prog`. The mutant
+    tree pulls `text/matcher` into the blob and the compare fails, which is G8.
+  - **M11** mutates `prog/prose-lint.prog`, which is not under `lib/`. The
+    helper copies the entry file beside the scratch tree and mutates the copy,
+    keeping the same refusal when a `sed` expression changes nothing.
+
   | mutant | mutation | convicted by |
   |---|---|---|
   | M1 | `a-bol` loses its offset-0 case | G7 |
   | M2 | `norm` becomes the identity | G4, G3 |
   | M3 | the `p-star` arm of `pd` recurses into `(p-star q)` instead of rebuilding it | `chirality check` refuses the module |
   | M4 | `find-at` keeps the first accept instead of the longest | G6 |
-  | M5 | `thread-cmp` compares the `from` field as well as `pat` | G6 |
+  | M5 | `thread-key-cmp` drops its `from` tiebreak and returns `thread-cmp`'s answer | G6 |
   | M6 | `c-range` uses `<i` at the high edge | G1 |
   | M7 | `blank-spans` deletes a span instead of blanking it | G7 |
   | M8 | `nullable` returns false on the `p-star` arm | G2 |
   | M9 | `find-all` reports overlapping matches instead of resuming at a match's end | G5 |
   | M10 | a compiler-closure module gains `(import "text/matcher")` | G8 |
-  | M11 | the driver restarts the anchored `find-at` at every offset instead of carrying threads | G9 |
+  | M11 | one needle is dropped from a check's `p-alt` tree in `prog/prose-lint.prog` | G9 |
+  | M12 | `thread-cmp`, the dedup key, gains the `from` field | G3, G4 |
 
   M8 through M11 exist because `docs/definitions/testing-floors.md:261` requires
-  every row to name a mutant that is run, and G2, G5, G8 and G9 named none. M11
-  is the one that matters most: it is the n-pass shape decision 7 rejects, it is
-  correct on every other row, and G9 is the only row that can see it.
+  every row to name a mutant that is run, and G2, G5, G8 and G9 named none.
+
+  M5 and M12 are the two ways the split comparator §4 step 3 introduces can be
+  got wrong, and they fail different rows. Neutering the sort key's `from` half loses the least
+  start, which G6(a) sees. Adding `from` to the dedup key keeps one thread per
+  `(pat, from)` pair instead of one per `pat`, so the live set grows with the
+  offset and the bound goes, which G3 sees at step 3 and G4 confirms.
+
+- **Recorded, not gated: the wall clock.** Author call, 2026-09-01. The two
+  tools are timed back to back on the same file list in the same run, and the
+  ratio is **written down with its host and its date**, following the shared
+  conventions in `docs/benchmarks/README.md`: every result cites host and date,
+  and the claim is the min-max band over repeated runs with the machine load
+  named. Its home is a new `docs/benchmarks/text-matcher-prose-lint.md`, listed
+  in that README beside the other three. The implement stage writes it; this
+  SPEC only names where the number lands.
+
+  Nothing in the tree has measured this ratio. A threshold taken from no run
+  would block a correct implementation for a reason unrelated to correctness,
+  and `docs/benchmarks/test-suite-wall-clock.md` carries the case: a ~4-minute
+  budget was asserted, propagated into three rows as a bar the suite "is
+  supposed to hold", and had never been measured against anything. A bar here
+  can be minted once the file carries a real number.
+
+  **What this costs.** The one-pass driver and the n-pass restart decision 7
+  rejects return the same spans on every input; they differ only in cost. With
+  the wall clock recorded instead of gated, no row can convict the n-pass shape,
+  so decision 7 ships without a gate. §6 carries that as residue.
 
 - **Green line:** suite **303 passed, 0 failed** (last measured, recorded at
   `records/baseline-alignment.md:147`) → ≥ 303 plus Phase 19's assertions, with
@@ -365,9 +441,12 @@ measurement exists. It mints no element and this SPEC does not plan it.
   than its measured baseline: A(6) B(5) C(1) F(27) G(77) I(1) R(130) T(1), with
   H and M vacuous.
 
-- **Done when:** Phase 19 is green with all seven mutants convicted, the awk and
-  chirality per-check totals agree on all eight checks in one differential run,
-  and the blob is byte-identical across the change.
+- **Done when:** Phase 19 is green with all **twelve** mutants convicted and
+  each one's measured failure recorded, the awk and chirality per-check totals
+  agree on eight of the awk tool's ten checks in one differential run, the blob
+  is byte-identical across the change, and
+  `docs/benchmarks/text-matcher-prose-lint.md` carries the wall-clock band with
+  its host and date.
 
 ## 6. Residue & links
 
@@ -391,6 +470,20 @@ measurement exists. It mints no element and this SPEC does not plan it.
   - **The entry shape** (one `.prog` per tool, or one multi-call entry). The arc
     states it does not settle this and does not need to; the library is the
     artifact.
+  - **The awk tool's other two checks**, `self-reference` and `first-person`
+    (`tools/prose-lint/prose-lint.sh:103-104`). Both are literal alternations
+    plus a one-byte-class assertion, so slice 1's `Pat` expresses them and
+    nothing in this element blocks them. They are absent from
+    `prog/prose-lint.prog` and are not printed as NOT-CHECKED either, which is
+    the silent-vanish failure that file's own comment at `:177-180` refuses, and
+    that comment says *three* checks where the count is five. Home: this
+    element, as a step 5 follow-on, or the arc's P2 row. Nothing here is
+    deferred to an unminted element.
+  - **A gate for the one-pass shape.** The n-pass restart decision 7 rejects
+    returns the same spans on every input, so only its cost distinguishes it and
+    §5 records the wall clock instead of gating it. Home: this element's Phase
+    19, once `docs/benchmarks/text-matcher-prose-lint.md` carries a measured
+    ratio a bar can be set from.
 
 - **Follow-on:** slice 2 of this element. Downstream, [[arcs/zero-python-arc]]
   unblocks the 3,560 LOC it puts behind E173, and E148 and E150 remain the other

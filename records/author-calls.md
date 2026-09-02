@@ -48,7 +48,10 @@ where the tree does not settle the answer and a pass must stop.
   a single index. `docs/elements/README.md` states the fork; the catalog and
   ledger were moved without reshaping so the question stays open.
 
-## Added by the E173 SPEC audit
+## Added by the E173 SPEC audit, and closed
+
+Both were raised by the SPEC-level audit at `4f233d4` and ruled on 2026-09-01.
+The rulings are applied in `docs/elements/specs/E173-total-matcher-SPEC.md`.
 
 - **E173 decision 4's leftmost-longest, which does not fall out of `norm`.** §4
   step 3 grounds the semantics in *"New threads are appended, so starts run
@@ -69,7 +72,25 @@ where the tree does not settle the answer and a pass must stop.
   separately, and which makes mutant M5 wrong as written; (b) leftmost-longest
   moves to slice 2 with the priority-ordered residual list decision 4 says it
   needs, and slice 1 ships an unordered set for the counting consumer that is
-  indifferent to it; (c) something else. Blocks the E173 SPEC audit.
+  indifferent to it; (c) something else.
+  **Ruled 2026-09-01: shape (a).** `norm` sorts with a `(pat, from)` comparator
+  and dedups with the `pat`-only one. The two primitives already allow it,
+  because each takes its comparator separately
+  (`lib/prelude/list.chiral:143`, `:184-186`), so no new primitive is owed.
+  Sorting on `(pat, from)` puts the least start adjacent-first inside each
+  `pat` run and the `pat`-only dedup keeps it. Leftmost-longest stays in
+  slice 1. Applied in SPEC §4 step 3: two declared comparators, the old
+  append-order rationale replaced by the sort key, and mutant M5 rewritten to
+  neuter the sort key's `from` half.
+  ⚑ The counterexample above is over-strong as spelled. `pd-cat` builds
+  `(p-cat p-nil r)` without collapsing the `p-nil`
+  (`docs/examples/E173-total-matcher.md:358-360`), so the residual of `a*` is a
+  `p-cat` node, which sorts ahead of the freshly spawned `p-alt` and leaves
+  that input's start order intact under the old `norm` too. What the row
+  establishes is the class: a `pat`-only sort makes the survivor a function of
+  the pre-sort order, and the pre-sort order is `norm`'s own previous output.
+  Shape (a) removes the dependence, so the ruling rests on the property and
+  not on that input. The SPEC's G6(a) asserts the property directly.
 - **E173 gate row G9's wall-clock threshold.** G9 gates on a chirality-to-awk
   ratio `<= 1.0` and nothing has measured that number. §4 step 3 states the arrow
   as `O(n x ‖pat‖² log ‖pat‖)`, a merge sort over the live set at every input
@@ -77,3 +98,13 @@ where the tree does not settle the answer and a pass must stop.
   passes is a large win and landing at or under 1.0 is a bet. Is `<= 1.0` the bar
   slice 1 must clear to land, or is the gate the pass count with the wall clock
   recorded rather than gated?
+  **Ruled 2026-09-01: record, do not gate.** G9 keeps its correctness half,
+  now the corpus differential against the awk tool, and the wall clock becomes
+  a measurement written down with its host and its date under
+  `docs/benchmarks/`. Gating on a number nothing has measured would block a
+  correct implementation for a reason unrelated to correctness, and the ratio
+  can be tightened later from a real number. Applied in SPEC §5: G9 rewritten,
+  a recorded-not-gated bullet naming
+  `docs/benchmarks/text-matcher-prose-lint.md`, and the cost of the ruling
+  written down in §6 residue, which is that the n-pass driver shape now ships
+  with no gate row that can convict it.
