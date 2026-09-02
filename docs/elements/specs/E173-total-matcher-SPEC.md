@@ -53,7 +53,7 @@ this run minted none.
 ## 2. Baseline (what already exists)
 
 - **Conformance-map verdict:** no rows. E173 postdates the map snapshot, which
-  carries 73 elements against a catalog of 177, so the map is silent here and
+  carries 73 elements against a catalog of 178, so the map is silent here and
   the element is **BUILD**. The build-state authority used instead is
   [[banks/text]] §2, measured against the tree on 2026-09-01.
 
@@ -75,7 +75,7 @@ this run minted none.
   because a key projection makes it observable).
 
 - **What does not exist.** There is no `lib/text/` directory. The tree has
-  eleven under `lib/` and `text` is absent from them. `MAP.md:104-116` lists the `lib/`
+  eleven under `lib/` and `text` is absent from them. `MAP.md:104-120` lists the `lib/`
   directories and has no row for it. Nothing in the tree names a `Span`, a
   `Pat`, or a matcher. The whole floor today is `str-find` / `str-find-from`
   (`lib/prelude/prelude.chiral:81-82`), which lower to the naive scan
@@ -328,10 +328,20 @@ measurement exists. It mints no element and this SPEC does not plan it.
   | G8 | the blob from `chirality_blob_file "lib:prog" prog/compiler.prog` is **byte-identical** before and after, so `text/matcher` is outside the compiler's closure and no promotion is owed |
   | G9 | wall clock: the chirality tool and the awk tool timed back to back on the same file list in the same run, ratio `<= 1.0`. The native tool is 2.4x slower today, and removing the 31 passes is the stated reason for the element |
 
-  Mutants, each run through `tools/test/mutant.sh`:
+  Mutants. The harness is **not** `tools/test/mutant.sh`. That one mutates a
+  file, rebuilds `prog/compiler.prog`'s blob and asserts the mutant compiler
+  differs from the base (`mutant_differs`, `tools/test/mutant.sh:125`, checked
+  at `:208`). G8 says `text/matcher` is outside that closure, so a mutation of
+  it builds a byte-identical compiler and the harness scores it INERT instead of
+  convicting a row. The mechanism for a module outside the closure is Phase 17's,
+  on the same E158 commit 4 precedent G8 already cites: a scratch `lib/` copied
+  with `cp -a`, mutated in place with `sed -i`, refused if the mutation changed
+  nothing, and the fixture compiled against that tree
+  (`tools/test/render-doc.sh:131-142`, driven at `:315-318`). `matcher.sh`
+  carries its own copy of that helper.
 
-  | mutant | convicted by |
-  |---|---|
+  | mutant | mutation | convicted by |
+  |---|---|---|
   | M1 | `a-bol` loses its offset-0 case | G7 |
   | M2 | `norm` becomes the identity | G4, G3 |
   | M3 | the `p-star` arm of `pd` recurses into `(p-star q)` instead of rebuilding it | `chirality check` refuses the module |

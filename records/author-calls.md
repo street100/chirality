@@ -47,3 +47,33 @@ where the tree does not settle the answer and a pass must stop.
 - **The shape of a tracked element row** — one file per element, one per band, or
   a single index. `docs/elements/README.md` states the fork; the catalog and
   ledger were moved without reshaping so the question stays open.
+
+## Added by the E173 SPEC audit
+
+- **E173 decision 4's leftmost-longest, which does not fall out of `norm`.** §4
+  step 3 grounds the semantics in *"New threads are appended, so starts run
+  non-decreasing along the live list"*, and `norm` returns the list sorted by
+  `pat`. `Pat` carries no start, so from step 2 onward the order is `pat`-order
+  and the `from` values in it are arbitrary. `list-sort` is stable and
+  `list-dedup-adj` keeps the first of a run (`lib/prelude/list.chiral:113-145`,
+  `:156`), so the survivor of a `pat`-run is whichever thread was earliest in the
+  pre-sort list, which is the previous step's `pat`-order. Counterexample, under a
+  `pat-cmp` that follows the `data Pat` declaration order (`p-alt` before
+  `p-star`): pattern `a*|aa*` over `"aa"`. After byte 0 the live set is
+  `[(0, a*), (1, a*|aa*)]` and `norm` returns `[(1, alt), (0, star)]`; after byte
+  1 both derive to `a*`, the derived list is `[(1, a*), (0, a*)]`, and the dedup
+  keeps `from = 1`. The thread anchored at 0 is dropped and the longest match at 0
+  can no longer be found. Three shapes, and the SPEC settles none of them: (a)
+  `norm` sorts with a `(pat, from)` comparator and dedups with the `pat`-only one,
+  which the two primitives already allow since each takes its comparator
+  separately, and which makes mutant M5 wrong as written; (b) leftmost-longest
+  moves to slice 2 with the priority-ordered residual list decision 4 says it
+  needs, and slice 1 ships an unordered set for the counting consumer that is
+  indifferent to it; (c) something else. Blocks the E173 SPEC audit.
+- **E173 gate row G9's wall-clock threshold.** G9 gates on a chirality-to-awk
+  ratio `<= 1.0` and nothing has measured that number. §4 step 3 states the arrow
+  as `O(n x ‖pat‖² log ‖pat‖)`, a merge sort over the live set at every input
+  byte, against awk's compiled DFA with no per-byte allocation. Removing the 31
+  passes is a large win and landing at or under 1.0 is a bet. Is `<= 1.0` the bar
+  slice 1 must clear to land, or is the gate the pass count with the wall clock
+  recorded rather than gated?
