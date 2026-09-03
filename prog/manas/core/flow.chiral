@@ -337,13 +337,21 @@
               (nil false)                            ; an empty array said nothing
               ((cons h rest) (shape-list-ok of xs))))))
       ((sh-rec fs) (case j ((j-obj kvs) true) (_ false))))))
+; the Str level is EXHAUSTIVE over Shape, one arm per constructor and no wildcard,
+; so a Shape added later is a compile error here instead of falling silently into a
+; catch-all (the defect E174 repaired in apc's dec). sh-list and sh-rec share the one
+; parse below rather than each writing their own; sh-prose still never parses at all.
+(def shape-ok-parsed (-> Shape Str Bool)
+  (lam (s out)
+    (case (json-parse-str out)
+      (none false)
+      ((some j) (shape-ok-json s j)))))
 (def shape-ok (-> Shape Str Bool)
   (lam (s out)
     (case s
-      ((sh-prose) (str-nonempty out))
-      (_ (case (json-parse-str out)
-           (none false)
-           ((some j) (shape-ok-json s j)))))))
+      ((sh-prose)   (str-nonempty out))
+      ((sh-list of) (shape-ok-parsed s out))
+      ((sh-rec fs)  (shape-ok-parsed s out)))))
 (def refine-ok (-> Ty Str Bool)
   (lam (t out) (shape-ok (ty-shape t) out)))
 
