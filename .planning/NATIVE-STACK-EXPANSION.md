@@ -75,9 +75,9 @@ information-flow element named in `secret.chiral`'s header.
 
 | fork | shape |
 |---|---|
-| when the track opens | author call; decision-scope holds the current track |
-| element block or arc-local ids | author call, shared with six other arcs |
-| mulhi surface binding vs small limbs | either unblocks the key exchange; undecided |
+| when the track opens | answered for the protocol arc: opened 2026-09-03 by the author, kernels targeted next day. Window and document still open |
+| element block or arc-local ids | the protocol arc took the `N` namespace 2026-09-03, the scriba `S` precedent. The other two arcs still wait |
+| mulhi surface binding vs small limbs | working constraint 2026-09-03: small limbs, zero compiler changes. An audit may flag it |
 | bitmap font vs rasterizer | W4's floor is bitmap; the rasterizer is its own project |
 | the app's name | deferred by the author |
 | a crypto bank | the banks hold no crypto concept. One is owed once shards exist to refract; premature at zero |

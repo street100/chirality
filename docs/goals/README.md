@@ -37,7 +37,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/bridge]] | stated 2026-09-02, unbuilt | [[arcs/bridge-arc]] |
 | [[goals/module-split]] | in flight, one measured miss | [[arcs/module-split-arc]] |
 | [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | [[arcs/transport-arc]], [[arcs/scriba-arc]], [[arcs/tuning-arc]] |
-| [[goals/native-stack]] | stated 2026-09-03, unbuilt, unopened against [[decisions/decision-scope]] | [[arcs/native-protocol-arc]], [[arcs/native-window-arc]], [[arcs/native-document-arc]] |
+| [[goals/native-stack]] | in flight: protocol arc opened 2026-09-03, window and document unopened | [[arcs/native-protocol-arc]], [[arcs/native-window-arc]], [[arcs/native-document-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
 
 `independent-judgment` carries an arc as of 2026-09-01 and still has no element.

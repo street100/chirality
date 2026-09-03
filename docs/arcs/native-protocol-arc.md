@@ -9,14 +9,15 @@ updated: 2026-09-03
 # Arc: the native protocol
 
 - goal: [[goals/native-stack]]
-- reserved element block: **none**. Rows carry arc-local ids `N1` and up, per
-  [[decisions/decision-work-ids]], and map to an element or to `unminted`.
+- reserved element block: **the `N` namespace**. Rows carry arc-local ids `N1`
+  and up, per [[decisions/decision-work-ids]], and the ids double as example
+  ids, the scriba `S` precedent.
 - build-state authority: [[status-ledger]]
 
 Opened 2026-09-03 by author statement: a chirality-native network protocol,
-crypto required, the shrednet mesh's identity model as the base idea. Unopened
-for work until the author call in [[records/author-calls]] schedules it
-against [[decisions/decision-scope]].
+crypto required, the shrednet mesh's identity model as the base idea. Opened
+for work the same day by author direction, in session;
+[[records/author-calls]] holds the residue for the window and document arcs.
 
 ## What is in the tree already
 
@@ -60,9 +61,15 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
 
 ## Resume state
 
-Unopened. The design discussion is `.planning/NATIVE-STACK-EXPANSION.md`. N1
-and N2 are independent of every other arc. N5 is the language-development row
-and leans on the information-flow deferral recorded in
-`lib/capability/secret.chiral`'s header. The key exchange needs a 128-bit
-product: either a surface binding for op-mulhi or limbs small enough that
-products fit I64. That fork is undecided.
+Opened 2026-09-03 by author direction with a next-day target on the kernels,
+so the pipeline runs N1 through example, audit, spec and audit first, and
+implementation follows. Queue: N1 in pipeline; N2 and N3 are crossings, owed
+before N4; N5 is the language-development row and leans on the
+information-flow deferral recorded in `lib/capability/secret.chiral`'s
+header.
+
+The pipeline's working constraint, set by the timeline: zero compiler
+changes. The key exchange uses limbs small enough that every product fits
+signed I64, and the op-mulhi surface binding stays unbuilt. An audit that
+finds the small-limb route unsound flags it instead of reaching for the
+binding, because the binding is a `lib/` edit and owes a fixpoint rebuild.
