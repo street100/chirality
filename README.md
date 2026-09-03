@@ -84,6 +84,10 @@ $ chirality run hello.chiral --entry main
   → exit code 42
 ```
 
+The suite figures are the last measured run, 2026-09-01, recorded in
+[status-ledger](docs/definitions/status-ledger.md). Two compiler changes are
+built with verified fixpoints and unpromoted, so a run today may differ.
+
 `chirality check` is the compiler's own front end with the ELF thrown away. One
 front end, so there is no second checker to drift. Each demo is a file of two to
 four lines. Open it and see exactly what was checked.
@@ -195,8 +199,8 @@ parsed differently while staying the same language:
 - the same applies to `.protocol`, `.grammar` and more
 
 ⚑ **Honest limits.** One language holds for the compile, check and run path. It
-does not hold for the tooling: 14 Python files remain across the tree, 4,936
-lines, against a target of zero. `.manifest` resolves as an import target and
+does not hold for the tooling: 14 Python files remain across the tree, 4,949
+lines measured 2026-09-03, against a target of zero. `.manifest` resolves as an import target and
 nothing checks that its contents are data, so the kind is a naming convention
 until E163. `.protocol` is minted as E183 and unbuilt, `.grammar` is named
 nowhere in the tree, and the `.profile` extension `MAP.md` names has zero files.
@@ -313,11 +317,13 @@ A judgment core, and everything above it is text that core checked. The surface
 is elaborated into a small calculus before checking, so convenience syntax has
 nothing left to smuggle.
 
+Measured 2026-09-03.
+
 | what | lines | note |
 |---|---|---|
 | the judgment core: `kernel` + `kernel-core` + `qtt` + `refine` | 1,823 | the number the question asks for |
-| all of `lib/typing/` | 3,227 | the core plus elaboration, inference and diagnostics |
-| `lib/` and `prog/` | 51,084 | everything the core checks |
+| all of `lib/typing/` | 3,449 | the core plus elaboration, inference and diagnostics |
+| `lib/` and `prog/` | 52,335 | everything the core checks |
 
 ⚑ **Honest limits.** "Small enough to read in a sitting" is optimistic for 1,823
 lines of dependently typed code, and that claim is flagged and unresolved.
@@ -368,24 +374,31 @@ Three rules keep it a record rather than an ambition:
 - **A goal carries no build state.** What is built sits on four rungs in
   [status-ledger](docs/definitions/status-ledger.md), so a goal cannot grade
   itself.
-- **An element is minted into a reserved band.** An arc without one writes
-  `UNASSIGNED` and stops, because naming work that has no number is a phantom
-  dependency.
+- **Work is named before it is scheduled.** An `E#` is minted into a reserved
+  band, and only three arcs of eighteen hold one. The other fifteen carry
+  arc-local ids instead, a row per unit of work, each mapping to an element or to
+  nothing. Naming work that has no number used to mean writing `UNASSIGNED` and
+  stopping, which made the work uncitable;
+  [decision-work-ids](docs/decisions/decision-work-ids.md) settled the current
+  rule on 2026-09-01.
 
-| goal | arcs | state |
+| goal | arcs | element ids |
 |---|---|---|
-| the language compiles and checks itself | none open | held, maintained by the build rule |
-| chirality writes its own tooling, and no Python remains | `text-tools`, `zero-python` | in flight. Neither arc has a reserved block |
-| the surface is convenient without buying it back in escape hatches | `diagnostics`, `file-types` | in flight. `E184-E189` and `E190-E195` |
-| what is built is gated, and the compiler checks what it claims | `enforcement` | in flight. `E184-E189`, shared with `diagnostics` |
-| what this repo says about itself is true | `baseline-alignment`, `binary-split`, `presentability` | in flight. None of the three has a reserved block |
-| judgment that does not rest on one formulation | none | stated and unbuilt. It has no arc, and nothing in the tree works toward it |
-| the ownership and trust model | none | deferred by author decision |
-| full genuine local AI on small models | three drafted, none open | blocked on two author calls in [`records/author-calls.md`](records/author-calls.md) |
+| the language compiles and checks itself | none | held, maintained by the build rule |
+| chirality writes its own tooling, and no Python remains | `diagnostics`, `file-types`, `text-tools`, `zero-python` | `E184-E189`, `E190-E195`, `P1-P4`, `T1` |
+| the surface is convenient without buying it back in escape hatches | `diagnostics`, `file-types` | `E184-E189` and `E190-E195`, the only two reserved bands |
+| what is built is gated, and the compiler checks what it claims | `enforcement` | `E184-E189`, shared with `diagnostics` |
+| what this repo says about itself is true | `baseline-alignment`, `binary-split`, `presentability` | `BA-`, `B1`, `D1` |
+| judgment that does not rest on one formulation | `independent-judgment` | `J1` |
+| A governs B, and the bridge is what carries it | `bridge` | `C1` |
+| each module is one thing, down to the trusted core | `module-split` | `S1` |
+| the native stack, wire and screen in the same language | `native-protocol`, `native-window`, `native-document` | the `N` namespace, `W1`, `V1` |
+| the ownership and trust model | `ownership-and-trust` | `O1`. Deferred by author decision, [decision-scope](docs/decisions/decision-scope.md) |
+| full genuine local AI on small models | `scriba`, `text-tools`, `transport`, `tuning` | the `S` namespace, `P1-P4`, `T1`, `U1`. Blocked on two author calls in [`records/author-calls.md`](records/author-calls.md) |
 
-⚑ Five arcs of nine cannot mint an element, because `baseline-alignment`,
-`binary-split`, `presentability`, `text-tools` and `zero-python` have no reserved
-block. One goal has no arc at all.
+⚑ **Fifteen arcs of eighteen cannot mint an `E#`**, so most of what this project
+intends is named and citable without being scheduled. Two arc-local namespaces
+collide today: `transport` and `zero-python` both open at `T1`.
 
 ## Scope
 
@@ -408,8 +421,8 @@ all of it.
 | everything lowers to typed assembly | eligible defs lower to typed SSA in every compile | types erased before emit, the preserve check is never called, effectful and dependent code stays upper, the fraction is unmeasured | measure the ratio, build E70, wire `ck-fn` |
 | every unit is a process with a type | the pure/process bit is carried through the front end | the three refusing rules have zero callers | E171 |
 | cost is in the type | QTT and refinement run in the checker | `totality.chiral` has zero importers | wire E11, or drop termination from the claim |
-| crossings are named and closed | 9 port registries, the facade has 107 importers | timing, cache pressure and speculation have no port | name it open |
-| readable and self-hosting | self-hosts, byte-identical fixpoint | 14 Python files remain, 4,936 lines. Kernel and runtime rows are design | E173, E148, E150 |
+| crossings are named and closed | 9 port registries, `ports/ports.chiral` has 107 importers | timing, cache pressure and speculation have no port | name it open |
+| readable and self-hosting | self-hosts, byte-identical fixpoint | 14 Python files remain, 4,949 lines. Kernel and runtime rows are design | E173, E148, E150 |
 | judgment frozen, the rest re-checkable | `reflect-floor.chiral` and `kernel-core.chiral` are written | zero importers | wire, or mark seeded |
 
 ## The tree
@@ -420,7 +433,7 @@ is neither, so there is no `stdlib/` and no `compiler/`.
 
 | | |
 |---|---|
-| [`lib/`](lib/) | 92 modules. `prelude` `typing` `surface` `module` `lowering` `ports` `capability` `memory` `runtime` `protocol` `evidence` |
+| [`lib/`](lib/) | 105 importable modules in thirteen groups: `prelude` `typing` `surface` `module` `lowering` `ports` `capability` `memory` `runtime` `protocol` `evidence` `text` `crypto` |
 | [`prog/`](prog/) | what chirality ships, as distinct from what it is, plus `demo/` `samples/` `scriba/` `manas/` `agent/` |
 | [`bin/`](bin/) | `chirality` is the CLI front door. `chirality-bin` is the compiler: a blob on stdin, an ELF on stdout |
 | [`tools/`](tools/) | one folder per tool. Nine of them are the Python still being replaced |
@@ -438,7 +451,7 @@ is neither, so there is no `stdlib/` and no `compiler/`.
 | [`definitions/`](docs/definitions/) | one entry per named concept, 50 of them |
 | [`decisions/`](docs/decisions/) | one settled fork per entry, carrying its reason |
 | [`banks/`](docs/banks/) | the depth tier: one concept refracted into its shards and their homes |
-| [`goals/`](docs/goals/) and [`arcs/`](docs/arcs/) | eight goals, and the arc of elements serving each. An arc file carries its own resume state |
+| [`goals/`](docs/goals/) and [`arcs/`](docs/arcs/) | eleven goals, and the arcs serving each. An arc file carries its own resume state |
 | [`elements/`](docs/elements/) | the catalog, the ledger, and one SPEC per element |
 | [`examples/`](docs/examples/) | one worked example per element, conventional approach beside the chirality one |
 | [`records/`](records/) | a claim beside its measurement, with a state and a date |
