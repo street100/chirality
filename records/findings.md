@@ -128,3 +128,13 @@ document is in the reader-facing tier and is wrong today. Deferred is not delete
 - evidence: `lib/lowering/upper/eff-lower.chiral:1-17`, `lib/lowering/compile-back.chiral:181-210`, `lib/lowering/skip-diag.chiral:11`, `lib/lowering/tal/sys.chiral:1-12`, `docs/decisions/decision-effect-facets.md`, `lib/module/loader.chiral:280`
 - checked:  2026-09-02
 - element:  UNASSIGNED
+
+### FD-11 Lane A's reserved gate phases were spent by other arcs
+
+- state:    OPEN
+- claim:    `docs/decisions/decision-lane-split.md:30` reserves gate phases **18, 19, 20** for Lane A and **21, 22, 23** for Lane B, and `:33-35` says phases 1-7 and 13-17 are taken while 8-12 are names owed to unported old-tree phases that must never be reused.
+- measured: all three of Lane A's are gone as of 2026-09-02 and only one went to Lane A. Phase 18 is `pretty.sh`, E181, which is Lane A's own. **Phase 19 is `matcher.sh`, E173, the text-tools arc** (`tools/test/run-tests.sh:301`). **Phase 20 is `transport.sh`, the transport arc** (`:324`, commit `d7d7cfe`). So E182 needed a gate number and its reservation held none, while Lane B's 21-23 sit unused. The E182 SPEC was written against Phase 20 and was overtaken between its audit and its implement run. E182's gate takes **Phase 24**, outside both reservations and clear of the forbidden 8-12. Same class as the two independently minted `E173`s: a reservation that nothing enforces, discovered after the collision.
+- evidence: `docs/decisions/decision-lane-split.md:30`, `:33-35`, `tools/test/run-tests.sh:301`, `:324`, `docs/elements/specs/E182-arity-evidence-SPEC.md` §5
+- checked:  2026-09-02
+- element:  E182 took Phase 24 and moved on. Whether Lane A gets a fresh reservation is an author call
+

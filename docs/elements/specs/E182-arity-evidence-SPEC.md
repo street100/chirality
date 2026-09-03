@@ -95,7 +95,7 @@ updated: 2026-09-02
     refusal at `:156-158`, and both are load-bearing here.
 
 - **True delta:** one `Reason` arm, two message helpers, eight renderer arms,
-  two repointed detection sites, two retired `Judg` arms, and a Phase 20 gate.
+  two repointed detection sites, two retired `Judg` arms, and a Phase 24 gate.
   Fifteen `.chiral` bindings move across two files: the `Reason` and `Judg` data
   forms, `dg-arity-noun` and `dg-arity-msg`, the eight `case`s over `Reason`,
   `dg-judg-msg`, and the two detection sites. Both files are inside
@@ -229,18 +229,24 @@ tree concurrently.
   Lane B the moment this lands.** Any measurement they took against the old
   binary was taken against a different compiler.
 
-### Commit 4: the Phase 20 gate, its script and its fixture
+### Commit 4: the Phase 24 gate, its script and its fixture
 
 - **Targets:** `tools/test/samples/e182_arity.prog` (**NEW**) ·
   `tools/test/arity.sh` (**NEW**) · `tools/test/run-tests.sh` (**EDIT**: one
-  `run_phase 20` line after `:301`, and one line in the phase-list header at
+  `run_phase 24` line after `:301`, and one line in the phase-list header at
   `:11-34`) · `tools/test/MIGRATION-NOTES.md` (**EDIT**: one row in the
   "New here" table).
 - **Change:** §5 in full. Registration:
-  `run_phase 20 "the arity evidence (E182 r-arity)"                   arity.sh`
+  `run_phase 24 "the arity evidence (E182 r-arity)"                   arity.sh`
 - **Size:** L. About 300 lines of bash and about 60 lines of fixture.
-- **Verify:** Phase 20 green, and Phases 13 through 19 unchanged at their
-  measured counts.
+- **Verify:** Phase 24 green, and Phases 13 through 20 unchanged at their
+  measured counts. ⚑ **The number is 24 and not 20.** This SPEC was written
+  against Phase 20 and `d7d7cfe` registered `transport.sh` there between the
+  audit and the implement run, after `matcher.sh` had already taken 19. All
+  three of Lane A's reserved phases at `docs/decisions/decision-lane-split.md:30`
+  are spent and only 18 went to Lane A. 21 through 23 are Lane B's and 8 through
+  12 are forbidden, so 24 is the first number that collides with nothing.
+  `records/findings.md` FD-11 holds the measurement.
 - **⚑ An unregistered script never runs**, which is why G8 grades the
   registration line.
 
@@ -251,7 +257,7 @@ tree concurrently.
   `:160`, `:162`, and the Resume state at `:66-79`.
 - **Change:** the catalog and ledger rows flip `design → built` with the
   measured landing note: the arm, the two helpers, the eight renderer arms, the
-  two repointed sites, the two retired `Judg` arms with `Judg` at 36, Phase 20's script and its
+  two repointed sites, the two retired `Judg` arms with `Judg` at 36, Phase 24's script and its
   assertion count, both promotion deltas, and the residue with its arc-local
   ids. The INDEX row flips `specced → implemented`. The arc's Resume state takes
   the new suite total, the new binary size and the next action.
@@ -260,7 +266,7 @@ tree concurrently.
   landings that moved one authority and left another reading `design`
   (`docs/arcs/diagnostics-arc.md:104`).
 
-## 5. Conformance gate: `tools/test/arity.sh`, Phase 20
+## 5. Conformance gate: `tools/test/arity.sh`, Phase 24
 
 **⚑ Phase 19 is taken.** `tools/test/run-tests.sh:301` registers E173's
 `matcher.sh` there, and `docs/decisions/decision-lane-split.md:30` reserves 18,
@@ -335,13 +341,13 @@ constructor cannot be added without every renderer accounting for it.
 | **G5: the constructor site reports, through a real compile** | ⚑ **The strongest row, and the one eleven toothless rows in this arc did not have.** A compiler **built from the `lib/` under test** is handed a source that applies a two-field constructor to one argument, and its refusal is read off stderr: `load: mk2 wrong number of arguments (expected 2, actual 1)`. The device is `diag.sh:183-201` with `refuse_msg` (`:66`). ⚑ **The base row builds its compiler from `$REPO/lib` too, so the row grades the sources and not whatever binary happens to be shipped.** `$CC` is still the bootstrap that turns each blob into an executable (`diag.sh:56`); what the row never does is read a refusal off `$CC` itself | **M5 `con-check-reverts-to-a-stub`**: `con-check`'s false branch goes back to a `r-judged`. ⚑ **Its revert target must be `(jg-ctor-arity)`, an arm that survives.** `jg-ctor-arg-arity`, the arm the site used to build, was deleted by commit 2, so a mutant reaching for it fails to compile and the row scores BUILD:fail instead of convicting, which is a toothless mutant wearing a red row. The refusal becomes `load: constructor arity`, G5 the only red, and the row emits a stub string the shipped compiler has never been able to produce |
 | **G6: the type-parameter site reports, through a real compile** | The same compiler refuses a source applying a one-parameter data type to two type arguments with `load: Box wrong number of type parameters (expected 1, actual 2)`. Two sites, two rows, because one repointed site passing says nothing about the other | **M6 `check-tcon-reverts-to-a-stub`**: `check-tcon`'s false branch becomes `(tc-err (r-judged (subj-data dn) (jg-tcon-arity)))`. ⚑ **Its revert target is `(jg-tcon-arity)` for the same reason M5's is `(jg-ctor-arity)`**: `jg-tparam-arity`, the arm the site used to build, was deleted by commit 2. The refusal becomes `load: tcon arity`, G6 the only red, and the two stub strings the mutants emit are different, so neither row can pass by reading the other's failure |
 | **G7: both live arms are gone, and the new arm is built at exactly two sites** | Outside the verdict line, and both halves are E182's own claims. **(a)** Neither `jg-tparam-arity` nor `jg-ctor-arg-arity` appears anywhere under `lib/` or `prog/`, and `Judg` reads **36** arms counted out of `diag.chiral`. ⚑ **The count takes every `(jg-` head on a line, all of them**: `Judg`'s arms run three to a line, so `doc.sh:298-307`'s paren-balanced walk is the device but its one-arm-per-line `print` is not -- a line count reads 13 and grades nothing. **(b)** `r-arity` is **constructed at exactly two sites** under `lib/` and `prog/`, `kernel.chiral:1042` and `:1097`, which is the claim that the element repointed the two live comparisons and invented no third one. ⚑ **`diag.chiral` is excluded by name**, because the arm's own declaration and its eight `case` patterns all spell `(r-arity ` and an unexcluded scan reads eleven. Both needles assembled from two halves | **M7 `put-the-arm-back`**: add `(jg-tparam-arity)` back to `Judg` in a scratch `lib/` and revert `check-tcon`'s false branch to build it. The census must see both: the arm count reads 37 and `r-arity`'s construction sites drop to one. Without this row the scan passes on a needle matching nothing anywhere, which is what it would do if either name were renamed |
-| **G8: Phase 20 is registered** | `run_phase 20 .* arity.sh$` appears exactly once in `run-tests.sh`, asserted with `row.sh`'s `reg()` device, which greps **a different file from the one doing the grep** and so cannot match its own source | **M8 `unregister-the-phase`**: delete the `run_phase 20` line from a **copy** of `run-tests.sh`; the row must notice |
+| **G8: Phase 24 is registered** | `run_phase 24 .* arity.sh$` appears exactly once in `run-tests.sh`, asserted with `row.sh`'s `reg()` device, which greps **a different file from the one doing the grep** and so cannot match its own source | **M8 `unregister-the-phase`**: delete the `run_phase 24` line from a **copy** of `run-tests.sh`; the row must notice |
 
 **Cost, stated because it is the one number this SPEC cannot take.** G5 and G6
 each need a compiler built from the `lib/` under test, so `verdict` costs one
 compiler build per call: 1 base plus M2 to M6, **six compiler builds**. M1 costs
 one refused program build, M7 one scan, M8 none. **The implement run measures
-Phase 20's wall clock and reports it.** If it exceeds 120 s, split the line: keep
+Phase 24's wall clock and reports it.** If it exceeds 120 s, split the line: keep
 the six-token verdict for the base, M5 and M6, and give M2, M3 and M4 a
 four-token fixture-only line over G1 to G4, which costs a small program build
 each and takes the count to three compiler builds. M2 and M3 stay distinguishable
@@ -364,11 +370,11 @@ measurement behind it.
 **Green line:** the last measured suite total is **321 passed, 0 failed**
 (E173, `docs/examples/INDEX.md:163`). **This run did not execute the suite**, on
 a 3.85 GB box with no swap, so the implement run measures the total before
-commit 1 and after commit 4 and reports both. Expected: `321 → 321 + <Phase 20's
+commit 1 and after commit 4 and reports both. Expected: `321 → 321 + <Phase 24's
 count>`, Phases 13 through 19 unchanged, `gate PASSED`, exit 0. ledger-lint
 stays at its baseline of 251 findings, and no check A to V gains one.
 
-**Done when:** Phase 20 is green with all eight rows holding and all eight
+**Done when:** Phase 24 is green with all eight rows holding and all eight
 mutants convicting at their pinned verdict lines, the promoted binary reproduces
 itself, both promotion deltas are reported separately, and the five authorities
 in commit 5 agree that E182 is built.
