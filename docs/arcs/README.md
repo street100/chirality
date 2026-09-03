@@ -93,7 +93,7 @@ when this table and an arc file disagree.
 | [[arcs/scriba-arc]] | [[goals/local-ai]] | 6 rows, `S18` built and five open | the `S` namespace |
 | [[arcs/tuning-arc]] | [[goals/local-ai]] | opened blocked, no row written | none |
 | [[arcs/ownership-and-trust-arc]] | [[goals/ownership-and-trust]] | 3 rows, all deferred by author call | none |
-| [[arcs/native-protocol-arc]] | [[goals/native-stack]] | 5 rows, N1 in pipeline | the `N` namespace |
+| [[arcs/native-protocol-arc]] | [[goals/native-stack]] | 5 rows, N1 SPEC audited | the `N` namespace |
 | [[arcs/native-window-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 | [[arcs/native-document-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 
