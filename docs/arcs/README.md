@@ -3,7 +3,7 @@ node: arcs
 layer: navigation
 related: [goals/README, index, records/README, status-ledger, elements/README]
 status: current
-updated: 2026-09-02
+updated: 2026-09-03
 ---
 
 # Arcs
@@ -93,11 +93,14 @@ when this table and an arc file disagree.
 | [[arcs/scriba-arc]] | [[goals/local-ai]] | 6 rows, `S18` built and five open | the `S` namespace |
 | [[arcs/tuning-arc]] | [[goals/local-ai]] | opened blocked, no row written | none |
 | [[arcs/ownership-and-trust-arc]] | [[goals/ownership-and-trust]] | 3 rows, all deferred by author call | none |
+| [[arcs/native-protocol-arc]] | [[goals/native-stack]] | 5 rows, none started | none |
+| [[arcs/native-window-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
+| [[arcs/native-document-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 
-Three of the thirteen hold a reserved `E` band and one holds the `S` namespace.
-The other nine cannot mint an element today, and
+Three of the eighteen hold a reserved `E` band and one holds the `S` namespace.
+The other fourteen cannot mint an element today, and
 `docs/decisions/decision-work-ids.md` settles the arc-local row id that lets
-them name their work anyway. Every one of the nine spells its scheme in its own
+them name their work anyway. Every one of the fourteen spells its scheme in its own
 `reserved element block:` field, and `ledger-lint` check V fails an arc that
 holds neither a band nor a scheme.
 
