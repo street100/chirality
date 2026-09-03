@@ -27,6 +27,7 @@ where the tree does not settle the answer and a pass must stop.
 | A reserved element block for [[goals/local-ai]] | Its transport arc and its tuning arc write `UNASSIGNED` and stop. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else |
 | `E184-E189` is one band and two focuses draw on it | [[arcs/enforcement-arc]] and [[arcs/diagnostics-arc]] both mint from it, `E184` is spent, and four numbers remain. Concurrent minting is the collision that produced two `E173`s. The work split is in `docs/decisions/decision-lane-split.md` |
 | Which arc owns the allocation gap | ~1,747 B of arena per input byte, no reclamation on any compiled path, and a projected ~6.3 GB at the default scope against 3.85 GB with no swap. It blocks manas and scriba from running once transport lands and no arc holds it |
+| Whether E182 still earns its keep, shrunken | The catalog row proposed retiring three arms and the measurement leaves two. `docs/elements/specs/E182-arity-evidence-SPEC.md` decision 12 carries it as NEEDS-AUTHOR and the SPEC is implementable the moment it is answered |
 
 ## Closed since the hoist
 
@@ -205,3 +206,29 @@ survives it, and the seven arcs cover none of it.
 |---|---|
 | [[arcs/enforcement-arc]] holds it | a proven bound the machine ignores is an enforcement failure, which is the arc's own subject |
 | its own arc | the work is a runtime discipline over `lib/memory/` and the x64 emitter, and touches none of enforcement's five rows |
+
+### Whether E182 still earns its keep, shrunken
+
+Raised by the E182 EXAMPLE audit on 2026-09-02 and carried into the SPEC as
+decision 12. Verbatim:
+
+> Does `r-arity` carrying `(what Subject) (expected I64) (actual I64)` still pay
+> for a tenth `Reason` arm and the eight renderer arms that arm costs, when it
+> repoints two call sites?
+
+⚑ **The terms moved after the flag was raised.** It was written when the element
+looked like one retired arm. The count was corrected at `f406524`: repointing
+both live comparisons leaves both arms unconstructed, so `Judg` goes 38 to 36
+and two render arms go with them. The author is answering a better trade than
+the one the flag names.
+
+| side | measured |
+|---|---|
+| cost | one `Reason` arm, from nine to ten. Eight `case`s in `diag.chiral` gain an arm, at `:145`, `:193`, `:209`, `:223`, `:259`, `:273`, `:317` and `:519`. Six of the eight are one-liners returning the subject or a nullary constructor |
+| gain | the two live arity comparisons stop discarding counts they hold at the point of refusal. `Judg` loses two nullary arms and `dg-judg-msg` loses two render arms. `check-tcon` and `con-check` are the whole live arity family in the kernel |
+| already settled | `docs/decisions/decision-lane-split.md` makes "the error-quality rows (E182, E176, E179) are closed" part of Lane A's definition of done, so E182 being in scope is decided. What is open is whether the shrunken shape still pays |
+| the standing directive | `docs/pattern-boundary-sums.md` is met verbatim at both sites: both counts are present at the comparison and absent at the renderer. The eight compile errors are the price `diag.chiral:315-316` says the tree chose deliberately |
+
+The EXAMPLE audit's own view was that it pays, on those four grounds, and it
+left the flag standing because whether the author accepts the shrunken element
+is a taste call the bundle cannot settle. This section decides nothing.
