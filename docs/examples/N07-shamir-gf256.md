@@ -22,8 +22,8 @@ updated: 2026-09-03
 - **Kind:** LAYER-K. A pure kernel beside the ChaCha20 and Poly1305 slices,
   serving [[decision-quorum-store]]: nothing authoritative sits whole in one
   place, and reconstruction from two share subsets that disagrees is a named
-  observable (arc requirement 5).
-- **Why chirality needs its own:** the arc's requirement 1 bars foreign crypto
+  observable (goal requirement 4, the Store line of [[goals/native-stack]]).
+- **Why chirality needs its own:** the goal's requirement 1 bars foreign crypto
   from the path, and the codebase settles neither of this element's two real
   shape choices: the GF(256) representation, and which helpers move to the N6
   shared primitives module. Both are exactly the unsettled-shape condition the
@@ -127,8 +127,10 @@ func Combine(shares map[byte][]byte) ([]byte, error) {
   (a crossing needs its capability parameter, and the `->` signature refuses
   the row); a garbage reconstruction consumed as if clean (`ag-off` is a
   constructor, and exhaustive `case` makes ignoring it untypeable); a
-  duplicate x reaching the field inverse (the dup scan refuses it as a value
-  before any `gf-inv` runs, so `inv 0` is unreachable from this call graph).
+  duplicate or out-of-range x reaching the field arithmetic (the point scan
+  refuses both as values before any `gf-inv` runs, so `inv 0` is unreachable
+  from this call graph, and an x = 0 "share", whose y string Lagrange at zero
+  would hand back verbatim as the secret, is refused before interpolation).
 
 ## 5. Chirality example (fleshed)
 
@@ -202,10 +204,13 @@ func Combine(shares map[byte][]byte) ([]byte, error) {
 (data JoinR ()
   (j-ok    (jsec Bytes))             ; the interpolated secret
   (j-short (jhave I64) (jneed I64))  ; fewer than t shares offered
-  (j-dupx  (jdx I64)))               ; two shares carry one x: refused as a value
+  (j-dupx  (jdx I64))                ; two shares carry one x: refused as a value
+  (j-badx  (jbx I64)))               ; an x outside 1..255: refused as a value
 
-; the duplicate scan answers a which-of-two, so it is a sum
-(data DupR () (dup-none) (dup-at (ddx I64)))
+; the point scan answers a which-of-three, so it is a sum. px-bad covers
+; x = 0: split never emits it, f(0) IS the secret, and a "share" there would
+; hand join its y string verbatim (Lagrange at zero returns that point's y)
+(data PxR () (px-clean) (px-dup (pdx I64)) (px-bad (pbx I64)))
 
 ; agreement outcomes: disagreement is the NAMED observable the quorum store
 ; seeds on (decision-quorum-store). ag-off carries the witness x and the
@@ -216,7 +221,8 @@ func Combine(shares map[byte][]byte) ([]byte, error) {
   (ag-ok    (asec Bytes))
   (ag-off   (ox I64) (opos I64))
   (ag-short (ahave I64) (aneed I64))
-  (ag-dupx  (adx I64)))
+  (ag-dupx  (adx I64))
+  (ag-badx  (abx I64)))
 
 ; ─── split ──────────────────────────────────────────────────────────────────
 ; coefs carries (t - 1) injected bytes per secret byte, degree-major per
@@ -237,11 +243,12 @@ func Combine(shares map[byte][]byte) ([]byte, error) {
 ; the xor over the t shares i of
 ;   (py_i at p) * w_i,  w_i = product over the other shares j of
 ;                             px_j * inv(px_j xor px_i)
-; The dup scan runs FIRST, so the inv argument is nonzero on this call
+; The point scan runs FIRST, so the inv argument is nonzero on this call
 ; graph with no refinement obligation spent.
 (declare sh-len   (-> (List Share) I64))
 (declare sh-take  (-> I64 (List Share) (List Share)))
-(declare sh-dup   (-> (List Share) DupR))            ; pairwise px scan ; …
+(declare sh-px    (-> (List Share) PxR))             ; pairwise px scan
+                                                     ; + 1..255 range ; …
 (declare sh-w     (-> I64 (List Share) I64))         ; one basis weight w_i
 (declare sh-bytes (-> (List Share) I64 Bytes Bytes)) ; positions climb under
                                                      ; (<i p len); one pm-b1
@@ -252,37 +259,56 @@ func Combine(shares map[byte][]byte) ([]byte, error) {
     (case (<i (sh-len shares) t)
       (true (j-short (sh-len shares) t))
       (false
-        (case (sh-dup (sh-take t shares))
-          ((dup-at x) (j-dupx x))
-          ((dup-none) (j-ok (sh-bytes (sh-take t shares) 0 pm-empty))))))))
+        (case (sh-px (sh-take t shares))
+          ((px-dup x) (j-dupx x))
+          ((px-bad x) (j-badx x))
+          (px-clean (j-ok (sh-bytes (sh-take t shares) 0 pm-empty))))))))
 
 ; ─── agreement: the quorum seed ─────────────────────────────────────────────
 ; join the base subset (the first t), then hold EVERY offered share against
 ; the curve through the base by evaluating that interpolation at its x. Two
-; distinct degree t-1 curves agree on at most t-1 points and the base pins
-; t of them, so one corrupted share among k >= t+1 surfaces wherever it
-; sits: inside the base (every clean extra goes off the bent curve) or
-; outside it (the corrupt share goes off the true curve). This IS two-subset
-; disagreement: the base and base-minus-one-plus-witness reconstruct
-; differently, and ag-off is that pair compressed to its witness.
+; distinct degree t-1 curves agree on at most t-1 points, and with all k
+; offered x distinct the t-1 clean base points spend that whole budget, so
+; one corrupted share among k >= t+1 surfaces wherever it sits: inside the
+; base (every clean extra goes off the bent curve) or outside it (the
+; corrupt share goes off the true curve). The scan here therefore covers
+; ALL k offered shares; a scan of the taken t alone leaves a hole, because
+; a clean extra that repeats a clean base x sits ON the bent curve and a
+; corruption elsewhere in the base goes unseen (checked numerically
+; 2026-09-03: t = 3, base share 2 flipped, extra repeating base x = 1,
+; zero off-curve shares). This IS two-subset disagreement: the base and
+; base-minus-one-plus-witness reconstruct differently, and ag-off is that
+; pair compressed to its witness.
 (declare sh-at    (-> (List Share) I64 I64 I64))  ; base curve at x, position p
 (declare sh-check (-> Bytes (List Share) (List Share) AgreeR))  ; walk all k ; …
 
 (def sh-agree (-> I64 (List Share) AgreeR)
   (lam (t shares)
-    (case (sh-join t shares)
-      ((j-ok sec)    (sh-check sec (sh-take t shares) shares))
-      ((j-short h n) (ag-short h n))
-      ((j-dupx x)    (ag-dupx x)))))
+    (case (sh-px shares)
+      ((px-dup x) (ag-dupx x))
+      ((px-bad x) (ag-badx x))
+      (px-clean
+        (case (sh-join t shares)
+          ((j-ok sec)    (sh-check sec (sh-take t shares) shares))
+          ((j-short h n) (ag-short h n))
+          ((j-dupx x)    (ag-dupx x))     ; unreachable: all k just scanned
+          ((j-badx x)    (ag-badx x))))))) ; unreachable, mapped for coverage
 ```
 
 - **Knobs to modify:** refinements on the point and the threshold
-  (`(refine I64 (>= 1) (< 256))` on `px`, `(refine I64 (>= 2))` on `t`)
-  where E9's engine reaches them; the `ag-off` payload, widened to carry both
-  candidate reconstructions when N8's return track wants them on the wire;
-  the coefficient layout, flipped to position-major if N8's share record
-  reads better that way; the base subset, rotated per retrieval if the store
-  wants it; `sh-dup` widened from the base t to all k offered shares.
+  (`(refine I64 (>= 1) (< 256))` on `px`, `(refine I64 (>= 2))` on `t`);
+  refined `data` fields are live prior art (`lib/runtime/proc.chiral:41`,
+  `ExitStatus`), and a refined `px` is fed by a guard or a checked cast at
+  the construction site, since arithmetic results never carry a range
+  (measured 2026-09-03 by probe against `bin/chirality check`; the gf lanes
+  below stay bare I64 with their byte bound argued in comments and pinned by
+  G7). Also: the `ag-off` payload, widened to carry both candidate
+  reconstructions when N8's return track wants them on the wire; the
+  coefficient layout, flipped to position-major if N8's share record reads
+  better that way; the base subset, rotated per retrieval if the store wants
+  it. (The all-k point scan was a knob here when drafted; the 2026-09-03
+  EXAMPLE audit moved it into the spine, because the agreement claim is
+  false without it.)
 - **Deliberately omitted:** verifiable secret sharing (Feldman commitments):
   residue by [[decision-quorum-store]], row `UNASSIGNED`. Secret custody
   around the reconstructed value (E40): N8's seam. Share serialization,
@@ -324,12 +350,13 @@ func Combine(shares map[byte][]byte) ([]byte, error) {
   | G8 | round-trip: (t, n) in {(2, 3), (3, 5), (5, 8)}, fixed injected coefs, a 32-byte secret from `pack-u32` words (the `nt-key` idiom); `sh-join` over the first t shares returns `j-ok` with the secret |
   | G9 | subset agreement: all n clean shares under the same three shapes, `sh-agree` returns `ag-ok` |
   | G10 | corrupted share: one y byte flipped inside the base subset and, on a second row, outside it; `sh-agree` returns `ag-off` both times |
-  | G11 | refusals: t-1 shares yield `ag-short`; a duplicated x yields `ag-dupx` |
+  | G11 | refusals: t-1 shares yield `ag-short`; a duplicated x yields `ag-dupx`, including a clean extra repeating a base x (the hole a base-only scan leaves, per the `sh-agree` comment); an x = 0 share yields `ag-badx` |
   | M3 | mutant, RUN: `R283` 283 to 27 in the scratch lib (one sed needle, the M1/M2 mechanism); every product that overflows degree 7 reduces wrong, so G7 and G8 both go red |
 
-- **Open questions:** whether E9's engine reaches refinements on `data`
-  fields, or `px`/`t` bounds stay stated contracts (the N01 SPEC decision 2
-  precedent); whether prim lands as its own commit before shamir or in the
+- **Open questions:** whether the `sh-split` call site spends a guard or a
+  checked cast to fill a refined `px`, or the `px`/`t` bounds stay stated
+  contracts (the N01 SPEC decision 2 precedent; the engine's reach itself is
+  settled, see the refinement knob above); whether prim lands as its own commit before shamir or in the
   same train (the SPEC orders the slices); whether `sh-bytes` keeps the
   per-byte bcat under a key-sized secret budget or takes the `cx-run` block
   shape, which N8's seal-then-split sizing decides.
