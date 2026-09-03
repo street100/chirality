@@ -1,0 +1,163 @@
+; ChaCha20: the block function and the stream xor, RFC 8439. N1 slice 1.
+;
+; Preconditions, stated rather than typed (N01 SPEC decision 2): key is 32
+; bytes, nonce is 12 bytes, the counter is one u32. Every bget goes through
+; cc-at, the guarded read in the at-byte shape (lib/text/matcher.chiral:310),
+; so a short buffer yields bytes of 0 and never traps. The cost is named and
+; accepted: a short key makes a wrong keystream with no signal beyond this
+; contract; the RFC vector rows in tools/test/crypto.sh pin correct-length
+; behavior.
+
+(import "prelude/prelude")
+
+; Pure, category A, checked form. Binds no extern of its own -- prelude
+; i64/bytes ops only -- so the crossings row is empty by derivation.
+(module crypto/chacha (cat A) (alt upper))
+
+; ─── 32-bit lanes inside signed I64 ─────────────────────────────────────────
+(def M32 I64 4294967295)          ; 2^32 - 1 in decimal (hex does not lex)
+
+(def add32 (-> I64 I64 I64) (lam (a b) (band (+ a b) M32)))
+
+; shr is the logical zero-fill shift (prelude.chiral:70) and every lane stays
+; in 0..2^32-1, so sar is never wanted here.
+(def rotl32 (-> I64 I64 I64)
+  (lam (x n) (band (bor (shl x n) (shr x (- 32 n))) M32)))
+
+; ─── the guarded byte read ──────────────────────────────────────────────────
+; An out-of-range index is a byte value here, not a which-of-N classification,
+; so pattern-boundary-sums leaves it alone. 0 rather than matcher's -1: these
+; bytes feed bxor and every lane must stay in 0..255.
+(def cc-at (-> Bytes I64 I64)
+  (lam (bs i)
+    (cond ((<i i 0) 0)
+          ((<i i (blen bs)) (bget bs i))
+          (else 0))))
+
+; ─── state: sixteen words as one fixed shape ────────────────────────────────
+; One closed product (SPEC decision 1): the diagonal half of dround replumbs
+; words across all four columns, so the flat shape puts every word in scope
+; for one rebuild per double round. Rounds allocate cells, never buffers,
+; which keeps the loop off the arena's Bytes path.
+(data St () (st (s0 I64) (s1 I64) (s2 I64) (s3 I64)
+                (s4 I64) (s5 I64) (s6 I64) (s7 I64)
+                (s8 I64) (s9 I64) (s10 I64) (s11 I64)
+                (s12 I64) (s13 I64) (s14 I64) (s15 I64)))
+
+; a quarter round returns its four words as a closed product
+(data Q4 () (q4 (qa I64) (qb I64) (qc I64) (qd I64)))
+
+(def qround (-> I64 I64 I64 I64 Q4)
+  (lam (a b c d)
+    (let ((a1 (add32 a b)) (d1 (rotl32 (bxor d a1) 16))
+          (c1 (add32 c d1)) (b1 (rotl32 (bxor b c1) 12))
+          (a2 (add32 a1 b1)) (d2 (rotl32 (bxor d1 a2) 8))
+          (c2 (add32 c1 d2)) (b2 (rotl32 (bxor b1 c2) 7)))
+      (q4 a2 b2 c2 d2))))
+
+; one double round: the four column qrounds, then the four diagonals
+(def dround (-> St St)
+  (lam (s)
+    (case s
+      ((st s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15)
+        (case (qround s0 s4 s8 s12) ((q4 a0 b0 c0 d0)
+        (case (qround s1 s5 s9 s13) ((q4 a1 b1 c1 d1)
+        (case (qround s2 s6 s10 s14) ((q4 a2 b2 c2 d2)
+        (case (qround s3 s7 s11 s15) ((q4 a3 b3 c3 d3)
+        (case (qround a0 b1 c2 d3) ((q4 e0 f1 g2 h3)
+        (case (qround a1 b2 c3 d0) ((q4 e1 f2 g3 h0)
+        (case (qround a2 b3 c0 d1) ((q4 e2 f3 g0 h1)
+        (case (qround a3 b0 c1 d2) ((q4 e3 f0 g1 h2)
+          (st e0 e1 e2 e3 f0 f1 f2 f3
+              g0 g1 g2 g3 h0 h1 h2 h3)))))))))))))))))))))
+
+; double rounds on a decreasing counter. Strict guard + unit step toward the
+; constant bound 0: the numeric measure proves this total.
+(def rounds (-> St I64 St)
+  (lam (s n)
+    (case (<i 0 n)
+      (true  (rounds (dround s) (- n 1)))
+      (false s))))
+
+; ─── constants and block assembly ───────────────────────────────────────────
+(def C0 I64 1634760805)   ; "expa"
+(def C1 I64 857760878)    ; "nd 3"
+(def C2 I64 2036477234)   ; "2-by"
+(def C3 I64 1797285236)   ; "te k"
+
+; init: 4 constants, 8 key words, 1 counter word, 3 nonce words, all LE.
+; unpack-u32 (prelude.chiral:99) reads the little-endian u32 at a byte offset.
+(def block-init (-> Bytes Bytes I64 St)
+  (lam (key nonce ctr)
+    (st C0 C1 C2 C3
+        (unpack-u32 key 0)  (unpack-u32 key 4)
+        (unpack-u32 key 8)  (unpack-u32 key 12)
+        (unpack-u32 key 16) (unpack-u32 key 20)
+        (unpack-u32 key 24) (unpack-u32 key 28)
+        (band ctr M32)
+        (unpack-u32 nonce 0) (unpack-u32 nonce 4) (unpack-u32 nonce 8))))
+
+; the feed-forward: each word of the init state added back in, mod 2^32
+(def st-add (-> St St St)
+  (lam (s t)
+    (case s
+      ((st x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15)
+        (case t
+          ((st y0 y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 y11 y12 y13 y14 y15)
+            (st (add32 x0 y0)   (add32 x1 y1)   (add32 x2 y2)   (add32 x3 y3)
+                (add32 x4 y4)   (add32 x5 y5)   (add32 x6 y6)   (add32 x7 y7)
+                (add32 x8 y8)   (add32 x9 y9)   (add32 x10 y10) (add32 x11 y11)
+                (add32 x12 y12) (add32 x13 y13) (add32 x14 y14) (add32 x15 y15))))))))
+
+; serialize: sixteen LE words, one 64-byte Bytes out
+(def st-bytes (-> St Bytes)
+  (lam (s)
+    (case s
+      ((st x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15)
+        (bcat (pack-u32 x0) (bcat (pack-u32 x1) (bcat (pack-u32 x2)
+        (bcat (pack-u32 x3) (bcat (pack-u32 x4) (bcat (pack-u32 x5)
+        (bcat (pack-u32 x6) (bcat (pack-u32 x7) (bcat (pack-u32 x8)
+        (bcat (pack-u32 x9) (bcat (pack-u32 x10) (bcat (pack-u32 x11)
+        (bcat (pack-u32 x12) (bcat (pack-u32 x13)
+        (bcat (pack-u32 x14) (pack-u32 x15))))))))))))))))))))
+
+; the block function: init, ten double rounds, feed-forward, serialize
+(def chacha-block (-> Bytes Bytes I64 Bytes)
+  (lam (key nonce ctr)
+    (let ((s0 (block-init key nonce ctr)))
+      (st-bytes (st-add s0 (rounds s0 10))))))
+
+; ─── the stream xor ─────────────────────────────────────────────────────────
+(def cc-empty Bytes (bslice (pack-u32 0) 0 0))
+
+; one byte as a Bytes of length 1 (the e151 idiom)
+(def cc-b1 (-> I64 Bytes) (lam (b) (bslice (pack-u32 b) 0 1)))
+
+; one block's run: msg bytes base..min(base+64, blen) xored against ks. The
+; run is block-local, at most 64 bytes, so the per-byte append stays bounded;
+; the accumulator below takes ONE bcat per block. A per-byte bcat on the
+; whole-message accumulator is the named anti-pattern (example honest-limits
+; row). The index climbs under (<i i (blen msg)): the symbolic-bound shape
+; the numeric measure proves.
+(def cx-run (-> Bytes Bytes I64 I64 Bytes Bytes)
+  (lam (ks msg base i run)
+    (case (<i i (blen msg))
+      (true
+        (case (<i (- i base) 64)
+          (true (cx-run ks msg base (+ i 1)
+                  (bcat run (cc-b1 (bxor (cc-at msg i) (cc-at ks (- i base)))))))
+          (false run)))
+      (false run))))
+
+; the block walk: one keystream block and one accumulator bcat per 64 bytes
+(def cx-blocks (-> Bytes Bytes I64 Bytes I64 Bytes Bytes)
+  (lam (key nonce ctr msg base acc)
+    (case (<i base (blen msg))
+      (true (cx-blocks key nonce (+ ctr 1) msg (+ base 64)
+              (bcat acc (cx-run (chacha-block key nonce ctr) msg base base cc-empty))))
+      (false acc))))
+
+; stream encrypt and decrypt are the same xor
+(def chacha-xor (-> Bytes Bytes I64 Bytes Bytes)
+  (lam (key nonce ctr msg)
+    (cx-blocks key nonce ctr msg 0 cc-empty)))
