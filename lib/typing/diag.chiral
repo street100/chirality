@@ -137,7 +137,9 @@
   ; a judgment whose only evidence is its subject (see Judg)
   (r-judged     (what Subject) (jg Judg))
   ; a diagnostic OWNED by a layer below the checker, handed up at an ingress site
-  (r-relayed    (from Relay) (msg Str)))
+  (r-relayed    (from Relay) (msg Str))
+  ; an arity disagreement: both counts as the integers the comparison held
+  (r-arity      (what Subject) (expected I64) (actual I64)))
 
 ; ============================================================ accessors =======
 
@@ -153,7 +155,8 @@
       ((r-unbound    w)      "unbound")
       ((r-skipped    c)      "skipped")
       ((r-judged     w j)    "judged")
-      ((r-relayed    f m)    "relayed"))))
+      ((r-relayed    f m)    "relayed")
+      ((r-arity      w e a)  "arity"))))
 
 (declare dg-subject-name (-> Subject Str))
 (def dg-subject-name
@@ -201,7 +204,8 @@
       ((r-unbound    w)      w)
       ((r-skipped    c)      (subj-none))
       ((r-judged     w j)    w)
-      ((r-relayed    f m)    (subj-none)))))
+      ((r-relayed    f m)    (subj-none))
+      ((r-arity      w e a)  w))))
 
 ; the two sides of a redeclare, as VALUES. `r-redeclared` cannot be built without
 ; both, so a caller can always ask -- which is the whole point of the element.
@@ -217,7 +221,8 @@
       ((r-unbound    w)      (dc-none))
       ((r-skipped    c)      (dc-none))
       ((r-judged     w j)    (dc-none))
-      ((r-relayed    f m)    (dc-none)))))
+      ((r-relayed    f m)    (dc-none))
+      ((r-arity      w e a)  (dc-none)))))
 
 (declare dg-newcomer (-> Reason Decl))
 (def dg-newcomer
@@ -231,7 +236,8 @@
       ((r-unbound    w)      (dc-none))
       ((r-skipped    c)      (dc-none))
       ((r-judged     w j)    (dc-none))
-      ((r-relayed    f m)    (dc-none)))))
+      ((r-relayed    f m)    (dc-none))
+      ((r-arity      w e a)  (dc-none)))))
 
 (declare dg-decl-kind (-> Decl Str))
 (def dg-decl-kind
@@ -267,7 +273,8 @@
       ((r-unbound    w)      (qw))
       ((r-skipped    c)      (qw))
       ((r-judged     w j)    (qw))
-      ((r-relayed    f m)    (qw)))))
+      ((r-relayed    f m)    (qw))
+      ((r-arity      w e a)  (qw)))))
 
 (declare dg-observed (-> Reason Qty))
 (def dg-observed
@@ -281,7 +288,8 @@
       ((r-unbound    w)      (qw))
       ((r-skipped    c)      (qw))
       ((r-judged     w j)    (qw))
-      ((r-relayed    f m)    (qw)))))
+      ((r-relayed    f m)    (qw))
+      ((r-arity      w e a)  (qw)))))
 
 (declare dg-qty-name (-> Qty Str))
 (def dg-qty-name (lam (q) (case q ((q0) "0") ((q1) "1") ((qw) "omega"))))
@@ -309,6 +317,8 @@
 (declare dg-arrow-msg      (-> Subject Str Str))
 (declare dg-unbound-msg    (-> Subject Str))
 (declare dg-judg-msg       (-> Subject Judg Str))
+(declare dg-arity-noun     (-> Subject Str))
+(declare dg-arity-msg      (-> Subject I64 I64 Str))
 (declare dg-relay-msg      (-> Relay Str Str))
 (declare dg-chain-msg      (-> (List SkRec) Str))
 
@@ -325,7 +335,8 @@
       ((r-unbound    w)      (dg-unbound-msg w))
       ((r-skipped    c)      (dg-chain-msg c))
       ((r-judged     w j)    (dg-judg-msg w j))
-      ((r-relayed    f m)    (dg-relay-msg f m)))))
+      ((r-relayed    f m)    (dg-relay-msg f m))
+      ((r-arity      w e a)  (dg-arity-msg w e a)))))
 
 (def dg-redeclared-msg
   (lam (w)
@@ -458,6 +469,40 @@
         ((jg-not-positive)      (str-cat "not strictly positive: " n))
         ((jg-linear-field-decl) (str-cat "linear field declared non-1: " n))
         ((jg-field-nontype)     "field type is not a type")))))
+
+; WHICH noun the two counts are counting, read off the subject instead of off a
+; second Reason arm. `subj-data` is the only subject an arity refusal can carry
+; that is counting type parameters; every other one is counting arguments. One
+; arm serves both detection sites and the two sentences stay distinct.
+(def dg-arity-noun
+  (lam (s)
+    (case s
+      ((subj-none)         "arguments")
+      ((subj-data   n)     "type parameters")
+      ((subj-ctor   n)     "arguments")
+      ((subj-extern n)     "arguments")
+      ((subj-prim   n)     "arguments")
+      ((subj-def    n)     "arguments")
+      ((subj-atom   n)     "arguments")
+      ((subj-field  n)     "arguments")
+      ((subj-lam-binder)   "arguments")
+      ((subj-let-binder)   "arguments")
+      ((subj-pi-binder)    "arguments")
+      ((subj-field-binder) "arguments"))))
+
+; the sentence the two detection sites used to build, with the evidence they
+; already held appended. The prefix is byte-for-byte what `jg-tparam-arity` and
+; `jg-ctor-arg-arity` rendered; the parenthesised pair is what those two arms
+; structurally could not carry.
+(def dg-arity-msg
+  (lam (w e a)
+    (let ((n (dg-subject-name w)) (noun (dg-arity-noun w)))
+      (str-cat n
+        (str-cat " wrong number of "
+          (str-cat noun
+            (str-cat " (expected "
+              (str-cat (i64->str e)
+                (str-cat ", actual " (str-cat (i64->str a) ")"))))))))))
 
 ; the ingress prefixes. They are a property of WHICH layer relayed, so they are
 ; read off the Relay tag here instead of being str-cat'd at six call sites.
@@ -651,7 +696,26 @@
               (doc-concat
                 (cons (d-line (brk-space))
                 (cons (d-text "relayed by ")
-                (cons (d-text (dg-relay-tag f)) nil)))))))))))
+                (cons (d-text (dg-relay-tag f)) nil))))))))
+
+      ; ---- both counts on their own laid-out lines, field for field with the
+      ; r-usage arm above. A narrow width breaks between them, never inside one.
+      ((r-arity w e a)
+        (d-group
+          (d-cat
+            (d-tag "diag-head"
+              (doc-concat (cons (d-text (dg-arity-msg w e a))
+                          (cons (d-text " (")
+                          (cons (d-text (dg-subject-tag w))
+                          (cons (d-text ")") nil))))))
+            (d-nest 2
+              (doc-concat
+                (cons (d-line (brk-space))
+                (cons (d-text "expected ")
+                (cons (d-text (i64->str e))
+                (cons (d-line (brk-space))
+                (cons (d-text "actual ")
+                (cons (d-text (i64->str a)) nil))))))))))))))
 
 ; one side of a redeclare, labelled. `dc-none` says so rather than inventing a
 ; declaration; `dc-data` carries the constructor count, which is the cheap
