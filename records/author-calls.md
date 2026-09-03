@@ -27,7 +27,6 @@ where the tree does not settle the answer and a pass must stop.
 | A reserved element block for [[goals/local-ai]] | Its transport arc and its tuning arc write `UNASSIGNED` and stop. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else |
 | `E184-E189` is one band and two focuses draw on it | [[arcs/enforcement-arc]] and [[arcs/diagnostics-arc]] both mint from it, `E184` is spent, and four numbers remain. Concurrent minting is the collision that produced two `E173`s. The work split is in `docs/decisions/decision-lane-split.md` |
 | Which arc owns the allocation gap | ~1,747 B of arena per input byte, no reclamation on any compiled path, and a projected ~6.3 GB at the default scope against 3.85 GB with no swap. It blocks manas and scriba from running once transport lands and no arc holds it |
-| Whether E182 still earns its keep, shrunken | The catalog row proposed retiring three arms and the measurement leaves two. `docs/elements/specs/E182-arity-evidence-SPEC.md` decision 12 carries it as NEEDS-AUTHOR and the SPEC is implementable the moment it is answered |
 
 ## Closed since the hoist
 
@@ -37,6 +36,16 @@ where the tree does not settle the answer and a pass must stop.
   files cite it for those bands.
 - **The binary split's goal** — the arc laddered up to nothing written down. The
   author wrote [[goals/presentability]] on 2026-09-01 and assigned it there.
+- **Whether E182 still earns its keep, shrunken.** **ANSWERED YES 2026-09-02.**
+  The element is built as specced. ⚑ The question as raised was framed badly and
+  the framing is what made it look like a call: it asked whether the work pays
+  for a *tenth* `Reason` arm, which reads as growth. The element is **net
+  arm-negative**: `Reason` goes 9 to 10 while `Judg` goes 38 to 36, so one more
+  data constructor leaves than arrives, and two dead render arms leave with
+  them. With that counted, three things already settled it: the shape is forced
+  by the measurement rather than chosen, both live sites hold both counts at the
+  moment they refuse, and `docs/decisions/decision-lane-split.md:198` already
+  puts the error-quality rows in Lane A's definition of done.
 
 ## Added by the consolidation
 
@@ -207,28 +216,44 @@ survives it, and the seven arcs cover none of it.
 | [[arcs/enforcement-arc]] holds it | a proven bound the machine ignores is an enforcement failure, which is the arc's own subject |
 | its own arc | the work is a runtime discipline over `lib/memory/` and the x64 emitter, and touches none of enforcement's five rows |
 
-### Whether E182 still earns its keep, shrunken
+### Whether E182 still earns its keep, shrunken: ANSWERED YES
 
-Raised by the E182 EXAMPLE audit on 2026-09-02 and carried into the SPEC as
-decision 12. Verbatim:
+Raised by the E182 EXAMPLE audit on 2026-09-02, carried as SPEC decision 12,
+answered by the author the same day. Kept because the framing is the lesson.
+
+As asked:
 
 > Does `r-arity` carrying `(what Subject) (expected I64) (actual I64)` still pay
 > for a tenth `Reason` arm and the eight renderer arms that arm costs, when it
 > repoints two call sites?
 
-⚑ **The terms moved after the flag was raised.** It was written when the element
-looked like one retired arm. The count was corrected at `f406524`: repointing
-both live comparisons leaves both arms unconstructed, so `Judg` goes 38 to 36
-and two render arms go with them. The author is answering a better trade than
-the one the flag names.
+⚑ **The framing hid the deciding fact.** Counting only the arm being added makes
+the element read as growth. Counted whole it shrinks the tree's constructors:
 
-| side | measured |
-|---|---|
-| cost | one `Reason` arm, from nine to ten. Eight `case`s in `diag.chiral` gain an arm, at `:145`, `:193`, `:209`, `:223`, `:259`, `:273`, `:317` and `:519`. Six of the eight are one-liners returning the subject or a nullary constructor |
-| gain | the two live arity comparisons stop discarding counts they hold at the point of refusal. `Judg` loses two nullary arms and `dg-judg-msg` loses two render arms. `check-tcon` and `con-check` are the whole live arity family in the kernel |
-| already settled | `docs/decisions/decision-lane-split.md` makes "the error-quality rows (E182, E176, E179) are closed" part of Lane A's definition of done, so E182 being in scope is decided. What is open is whether the shrunken shape still pays |
-| the standing directive | `docs/pattern-boundary-sums.md` is met verbatim at both sites: both counts are present at the comparison and absent at the renderer. The eight compile errors are the price `diag.chiral:315-316` says the tree chose deliberately |
+| | before | after |
+|---|---|---|
+| `Reason` arms | 9 | 10 |
+| `Judg` arms | 38 | 36 |
+| `dg-judg-msg` render arms | 38 | 36 |
+| net data constructors | 47 | 46 |
 
-The EXAMPLE audit's own view was that it pays, on those four grounds, and it
-left the flag standing because whether the author accepts the shrunken element
-is a taste call the bundle cannot settle. This section decides nothing.
+The eight `case`s over `Reason` each gain an arm, at `:145`, `:193`, `:209`,
+`:223`, `:259`, `:273`, `:317` and `:519`, and most return the subject or a
+nullary constructor. `diag.chiral:315-316` says a new `Reason` constructor must
+break every renderer loudly, so that cost is one the tree chose.
+
+Three things settled it. The shape is forced by the measurement rather than
+chosen: both live sites hold both counts at the point of refusal and build a
+nullary judgment carrying neither, which is what E157's own taxonomy line
+forbids. `docs/decisions/decision-lane-split.md:198` already puts "the
+error-quality rows (E182, E176, E179) are closed" in Lane A's definition of
+done, so the element was in scope before the flag existed. And both audits
+independently reached the same answer on the bundle alone.
+
+⚑ **A sequencing note the flag did not ask and the author raised.** `E176` is on
+this arc, unbuilt, and is sharper than E182 on consequence: `str-sub` is
+unclamped, segfaults, has 131 call sites, and its safety was asserted in a
+comment that `str-starts-with` was then built on. E182 buys two error messages
+that gain their numbers. Both are in Lane A's definition of done. On sharpness
+alone E176 goes first, and that is a sequencing question rather than a scope
+one, so it decides nothing here.

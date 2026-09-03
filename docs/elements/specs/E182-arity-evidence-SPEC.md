@@ -14,14 +14,13 @@ updated: 2026-09-02
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.
 
-> **⚑ Audited, and still waiting on one answer.** Decision 12 below is
-> NEEDS-AUTHOR and it is the element's own scope question, carried verbatim out
-> of the example's §6 where the EXAMPLE audit raised it. Everything else is
-> dispositioned and §4 to §6 are executable the moment the author answers yes.
-> The owed row was written: `records/author-calls.md:30` and its section
-> *Whether E182 still earns its keep, shrunken*. **The implement run does not
-> start until that row is answered**, and the SPEC audit graded the other four
-> checks rather than the standing call.
+> **⚑ Audited, and the one open call is ANSWERED.** Decision 12 was the
+> element's own scope question, raised by the EXAMPLE audit and carried verbatim
+> out of the example's §6. The author answered **yes** on 2026-09-02 and it is
+> closed in `records/author-calls.md` under *Closed since the hoist*. Every
+> decision is now dispositioned and §4 to §6 are executable. ⚑ The question's
+> framing is what made it look like a call: it counted the arm arriving while
+> two leave, and the element is **net arm-negative**.
 
 > **⚑ The catalog premise was falsified before this SPEC was written.** The row
 > proposed retiring three `Judg` arms. Two of the three are unreachable and one
@@ -120,7 +119,7 @@ dispositioned. Twelve is the only one carried out of this run.
 | 9 | Whether E182 promotes once from the unmodified tree first, or promotes once and reports two deltas | RESOLVED, orchestrator's call | One `build-new → test → promote`, no separate re-promotion commit. Two deltas reported **separately**: the inherited one, `1,147,256 → 1,184,120 B`, which belongs to the 13 commits of other arcs since E181 promoted at `58603c3`; and E182's own, `B_after` minus `B_before` where `B_before` is 1,184,120 B on the unmodified tree. The fixpoint is **predicted at generation two**, so a gen-one fixpoint fails to be the target and its absence convicts nothing |
 | 10 | `lib/typing/kernel.chiral` is absent from both of the lane-split document's file enumerations | RESOLVED, and the document stays unedited | `docs/decisions/decision-lane-split.md:260` reads "`lib/typing/` belongs to diagnostics. The enforcement arc names no path under it", which covers the file at directory granularity, and the enforcement arc names no path under `lib/typing/`. The two enumerations at `:94-97` and `:245` omit the file and that gap is recorded in the example's §6. Proceed on the prose; repairing the enumerations is a doc-tier write |
 | 11 | Where the residue goes, with `E184-E189` contended | RESOLVED | Arc-local ids under `docs/decisions/decision-work-ids.md`. `diagnostics/D1` and `diagnostics/D2` already have rows in `docs/arcs/diagnostics-arc.md:223-224`. **No `E#` is minted by this run**, so the deferral rule is satisfied without touching a contended band |
-| 12 | **The element's own scope, carried verbatim from the example's §6** (below) | **NEEDS-AUTHOR, unresolved** | The element shrank under its own research: from retiring three arms to minting one and repointing two sites. Two settled facts bear on it and are recorded rather than weighed. The boundary-sums standing directive's test is met verbatim at both sites, since both counts exist at the comparison and are absent at the renderer. `docs/decisions/decision-lane-split.md:198` makes closing E182 part of Lane A's definition of done. Neither settles whether the shrunken version is the version the author wants. **Owner: the author.** A row in `records/author-calls.md` is owed |
+| 12 | **The element's own scope, carried verbatim from the example's §6** (below) | **RESOLVED: yes, 2026-09-02, by the author.** Net arm-negative is the deciding fact the question's framing hid: `Reason` 9 to 10, `Judg` 38 to 36, so one more data constructor leaves than arrives. Closed in `records/author-calls.md` | The element shrank under its own research: from retiring three arms to minting one and repointing two sites. Two settled facts bear on it and are recorded rather than weighed. The boundary-sums standing directive's test is met verbatim at both sites, since both counts exist at the comparison and are absent at the renderer. `docs/decisions/decision-lane-split.md:198` makes closing E182 part of Lane A's definition of done. Neither settles whether the shrunken version is the version the author wants. **Owner: the author.** A row in `records/author-calls.md` is owed |
 
 **Decision 12, verbatim:**
 

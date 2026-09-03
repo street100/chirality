@@ -78,11 +78,16 @@ by one generation, and the tree reproduces itself at `B2 == B3`. That is the
 ordinary two-generation bootstrap, and `records/findings.md` FD-08 records why
 it is ACCEPTED rather than a defect.
 
-Next action is the **E182 implement run**, and it waits on one author call:
-decision 12 of the SPEC, `records/author-calls.md` row *Whether E182 still
-earns its keep, shrunken*. Every other stage of the pipeline is closed. The
-implement run writes `lib/typing/{diag,kernel}.chiral`, adds
-`tools/test/arity.sh` as Phase 20, and promotes `bin/chirality-bin`. `lib/typing/kernel.chiral` and
+Next action is the **E182 implement run**. Every stage before it is closed and
+the one author call is answered. It writes `lib/typing/{diag,kernel}.chiral`,
+adds `tools/test/arity.sh` as Phase 20, and promotes `bin/chirality-bin`,
+reporting the inherited delta and E182's own separately per FD-08.
+
+⚑ **Sequencing, raised by the author and undecided.** `E176` is sharper than
+E182 on consequence: `str-sub` is unclamped, segfaults, has 131 call sites, and
+its safety was asserted in a comment that `str-starts-with` was built on. Both
+are in Lane A's definition of done. On sharpness alone E176 goes first. The
+row is in `records/author-calls.md`. `lib/typing/kernel.chiral` and
 `lib/typing/diag.chiral` are both inside `prog/compiler.prog`'s closure, so
 E182 promotes. Its blob and binary deltas will carry 13 commits of other arcs'
 work unless a re-promotion lands first, so the SPEC states which of the two it
@@ -91,7 +96,7 @@ reports.
 | # | element | state |
 |---|---|---|
 | 1 | E181 `pretty` over the real `Term`, returning `Doc` | **BUILT 2026-09-01.** Moved to `lib/surface/pretty.chiral`; `typing/` was never its role. Phase 18 = 61/0 |
-| 2 | E182 the arity judgments carry their arity | **AUDITED 2026-09-02** (`b1eb648`), SPEC audit PASS on all five checks, sixteen FIXes, three mutants repaired. Implement-ready, and waiting on one author call. Example REVIEWED at `a5aae47`, audit PASS on all five checks. Premise corrected in the example, the catalog row and the ledger row: it repoints the two LIVE comparisons and retires both arms behind them, `jg-tparam-arity` and `jg-ctor-arg-arity`, taking `Judg` from 38 to 36. The two arms the catalog row named beside them are unreachable and stay. Gate is Phase 20; 19 went to E173. One scope FLAG stands in §6 |
+| 2 | E182 the arity judgments carry their arity | **AUDITED 2026-09-02** (`b1eb648`), SPEC audit PASS on all five checks, sixteen FIXes, three mutants repaired. Scope call ANSWERED YES the same day. **Implementing.** Example REVIEWED at `a5aae47`, audit PASS on all five checks. Premise corrected in the example, the catalog row and the ledger row: it repoints the two LIVE comparisons and retires both arms behind them, `jg-tparam-arity` and `jg-ctor-arg-arity`, taking `Judg` from 38 to 36. The two arms the catalog row named beside them are unreachable and stay. Gate is Phase 20; 19 went to E173. One scope FLAG stands in §6 |
 | 3 | E176 `str-sub` unclamped, segfaults, 131 call sites | not built. The safety was asserted in a comment |
 | 4 | E179 the face registry becomes authoritative | not built. 5 ad-hoc sites plus `lookup-face` synthesis |
 | 5 | E180 face-aware incremental redraw | not built. Unreachable today; the hazard E175 creates |
