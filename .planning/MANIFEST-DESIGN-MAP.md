@@ -22,6 +22,56 @@ derived from the type declaration, so there is no second implementation to audit
 Types are carried across surface↔upper, upper↔tal and tal↔mach. Below tal is the
 single trusted drop, which `axis-altitude` already states as the axiom.
 
+## Amended 2026-09-02
+
+A design session moved five things. The sections below stand as written except
+where this block says otherwise.
+
+**1. `.manifest` is a VIEW of an existing registry, and that is why it is
+cheap.** `Sig` carries nine registries (globals, prims, datas, latoms, ldatas,
+targets, profiles, kinds, sheets). A manifest feeds `globals`, whose entries are
+`def`s; `.protocol` feeds `datas`. Neither needs the traversal to learn a new
+slot, so neither adds a judgment. `.grammar` feeds none of the nine, which makes
+it a new registry and a judgment in all but name; it is minted as **E190**
+2026-09-02 and owes that argument before it owes an implementation.
+
+**2. The round-trip law does a second job beyond formatting: it is the VIEW law.** `read (show
+v) = v` is what separates a view of the term language from a second language you
+translate to. A form that produces more than it shows cannot round-trip, so the
+law decides the manifest-as-generator question by itself. See The law, below,
+which stated the equation correctly and named it for the wrong job.
+
+**3. The author's two guidelines, which permit fan-out.** Where the mechanic can
+be conveyed plainly, the form carries a position naming it, so the fan-out is
+visible in the file that causes it. Where the outcome is a judgement rather than
+a mechanic, the author writes it and nothing generates it. `data` is the
+precedent: it fans out into coverage, positivity, linearity and quantity, and
+reads as regular because the form is declared to do that.
+
+**4. The triple.** Everything is a question of what exists, what is allowed and
+what happens, with `exists` containing `allowed` containing `happens`. `happens`
+is derived and never authored, so a manifest is never a record of what a program
+did. `.planning/FILE-KIND-STRUCTURES.md` holds the frame.
+
+**5. Prior art says pure wiring works, and splits it three ways.** WIT's world is
+"a complete description of both imports and exports of a component", and it
+"only defines the surface of a component", leaving internal behaviour out.
+CAmkES on seL4
+is components, interfaces and connections, generating the glue rather than
+containing it, and "the security policy is observed if communication can only
+happen where it is explicitly allowed by the architecture". The seL4 stack keeps
+**two** wiring layers, CAmkES ADL for the assembly and CapDL for the capability
+distribution, and WIT adds a third question, one unit's own surface. Three
+questions: what I need and offer, who is connected to whom, what authority each
+starts with.
+
+⚑ **The fork this opens, unresolved.** WIT and CAmkES are pure wiring because
+their implementation language is a different language. This tree's premise is one
+language and a manifest as a view of it. So either the wiring view is genuinely a
+view of chirality terms and owes the round trip, or it is a second language and
+the one-language claim weakens. Prior art took the second option and does not
+carry this constraint.
+
 ## The three shapes
 
 ```
@@ -160,6 +210,13 @@ canon (show_Σ (read_Σ s)) = canon s
 `fmt = show ∘ read` is idempotent. That is the formatter law and the only claim a
 `.manifest` formatter should make.
 
+⚑ **Amended 2026-09-02: this law does a second job the section did not name.**
+`read_Σ (show_Σ v) = v` is the condition that makes a kind a **view** of the term
+language rather than a second language. A view is faithful by definition and a
+generator is not, so a `.manifest` that elaborated into more than it shows would
+fail the equation above. That is the whole argument against manifest-as-code-
+generator, and it is already here.
+
 ⚑ The law is relative to a `Sig`. `t-con` and `t-tcon` carry a home module `dn`, the
 surface has no qualified-constructor syntax, so `show` drops `dn` and `read` recovers
 it from the `Sig`. Two modules exporting one constructor name breaks it.
@@ -188,6 +245,19 @@ direction.
 
 ## Open
 
+- **The two existing manifests disagree about what a manifest may contain, and
+  nothing rules.** Measured 2026-09-02. `lib/lowering/tal/target-linux.manifest`
+  imports `lowering/tal/sys-check`, declares `(module lowering/tal/target-linux
+  (cat B) (alt tal))`, and holds one `def` whose type comes from that import.
+  `prog/climb.manifest` imports `prelude/prelude` and **declares three data types
+  inline**, `ShipItem`, `Stage` and `Breaker`, before its three `def`s. So one
+  manifest consumes a vocabulary and the other mints its own. Requirement 1
+  ("every entry carries its type") is satisfied by both and says nothing about
+  where the type came from. This decides whether a manifest can be purely about
+  wiring: declaring a type is a different activity from wiring one thing to
+  another, and `climb.manifest` does both in one file. Either the kind admits
+  both and is a view of `globals` **and** `datas`, or the type declarations move
+  and `climb.manifest` splits.
 - **Escape hatch.** `show` over `Term` is total, so it needs a fallback arm or a
   carved-out `MTerm` for the admissible fragment. A fallback arm is the untyped hole
   the design forbids. `MTerm` costs a conversion and an injectivity argument.
