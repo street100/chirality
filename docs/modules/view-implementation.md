@@ -34,13 +34,13 @@ packaged as an ordinary module whose type declares the untyped referent, per
 [[decision-b-in-type]]. The work is discipline, keeping the set small and routed
 through C. See [[modules-substrate]].
 
-Category C is the novel work: the bhumi custody ceremonies made cheap and
+Category C is the novel work: custody ceremonies made cheap and
 declarative. Custody: `custody-split`, `redundancy`, `datum-policy`
 ([[modules-custody]]). The runtime side: `broker` (component), `kernel-gate`,
 `adhikara` ([[modules-broker]]). The bridges: `bridge-supervisor`, `attestation`,
 `isolation-enforce`, `freshness-verify`, `audit-reconcile`, `runtime`,
 `reflect-raw` ([[modules-bridges]]). This is where the design spends its
-originality: new work, the bhumi ceremonies made language features. See
+originality: new work, custody ceremonies made language features. See
 [[category-bridge]].
 
 ## How it composes: four connectors

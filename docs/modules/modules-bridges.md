@@ -38,7 +38,7 @@ against is untrusted substrate made into evidence, the told time of
 
 Checks a write once trail against live state. The evidence half of the audit
 split; the obligation half `audit-mark` is in [[modules-security]]. This is the
-saksin audit chain pattern: a second, tamper evident record reconciled against
+the audit chain pattern: a second, tamper evident record reconciled against
 the live state.
 
 ## bridge-supervisor

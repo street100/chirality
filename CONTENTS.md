@@ -12,16 +12,8 @@ what is written for a person and what for a session.
 
 ## What chirality is
 
-A new programming language. Its disciplines came out of bhumi, a design for a
-hardened OS and the custody tools around it.
-
-⚑ **Bhumi is written down rather than built.** The OS, the tools, and the
-ceremonies they would carry are design documents; `sua`, `bija` and `saksin` are
-each a `PROJECT.md` and no more. So every mention of bhumi in this tree names an
-intention, and nothing chirality claims depends on bhumi existing. What
-transferred is the disciplines, and they transferred as text.
-
-One thesis runs under chirality: a gap is an ungoverned path. To control everything you must be
+A new programming language. One thesis runs under it: a gap is an ungoverned
+path. To control everything you must be
 able to express everything, so that everything expressible is named and
 checkable. See [PRINCIPLES.md](PRINCIPLES.md).
 
@@ -124,8 +116,7 @@ The developmental stages are in [.planning/ROADMAP.md](.planning/ROADMAP.md).
 The short version, from here outward: resolve the load bearing open edges, build
 the QTT kernel, the typed core, the lowering floor, staging and generation, the
 bridge, the substrate and silicon floor, bootstrap to self host, the profiles and
-targets, then write the bhumi tools in chirality. That last step builds them
-for the first time, since none of them exists today. It is a spine with backflow
+targets, then build the custody tool family on it. It is a spine with backflow
 rather than a schedule.
 
 What the project claims it is doing, and who is doing it, sits one tier down:

@@ -12,7 +12,7 @@ The consolidated note for how chirality holds memory. Like [[permission-model]],
 this adds no module and no mechanism: it collects positions already settled
 across the base and the accepted dump material, names where the flexibility
 lives, and points at the open edges. Written from a research pass over the
-spine, the docs, GIANTDUMP, and the bhumi hygiene notes in /kb. Depth tier:
+spine, the docs, GIANTDUMP, and a set of operational memory-hygiene notes. Depth tier:
 [[banks/memory]] — the shard-by-shard refraction, cross-cuts, and build-state
 behind this note.
 
@@ -76,8 +76,7 @@ discipline a profile composes in, not what an allocator decides at runtime.
    zeroed on drop (SECURE-DATUM-MODEL, [[modules-custody]]). These are
    design commitments: the secret custody *seed* is built (E40), but memory
    custody, per-datum policy, and zeroize-to-the-floor are unbuilt (E56). The
-   operational ancestors are the bhumi hygiene rules
-   (/kb/systems/memory-hygiene-bhumi.md, /kb/patterns/bhumi-key-lifecycle.md):
+   operational ancestors are hygiene rules kept outside this repository:
    universal zeroize on drop, locked memory, no swap, panic drops keys.
    Those rules are what this model turns from discipline into types.
 

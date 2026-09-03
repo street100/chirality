@@ -389,7 +389,7 @@ overrides the behavior pack's idle deadline. Customize by editing
   the bound as an erased parameter, and the bridge verifies the size claim
   at the crossing. Offsets within the bound stay a runtime check until
   refinement types land. Pools are zeroized before release, the typed form
-  of the bhumi drop-hygiene rule. Two disciplines (linear, region) compose
+  of the drop-hygiene rule. Two disciplines (linear, region) compose
   over this one substrate and a profile names its choice (see above).
 - `lib/collections.chiral`: list functions and association lists in chirality,
   the library floor the self-hosted checker will stand on.

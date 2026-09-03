@@ -22,7 +22,7 @@ C module supervises; they never define an untyped hole directly. The whole deriv
 not store thread and the register root model are absent.
 
 So the division of labor is clean. The dumps populate the A upper modules and the
-Bhumi seam. This spine and the secure datum model populate B, the pregen twin,
+custody seam. This spine and the secure datum model populate B, the pregen twin,
 and the discipline that keeps C honest.
 
 ## Confirmed by independent re derivation

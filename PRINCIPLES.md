@@ -5,13 +5,8 @@ base, entered at [docs/index.md](docs/index.md), have to satisfy these. If a
 choice there contradicts one of these, the choice is wrong, or the principle is,
 in which case change it here first, on purpose.
 
-These came out of bhumi. bhumi's disciplines are written to govern an OS; these
-govern the language that OS would be written in.
-
-⚑ **Bhumi is a design and remains unbuilt.** Its OS, its tools and the custody
-ceremonies they would carry are documents, so the sentence above describes an
-intended relationship. These principles stand on their own reasoning, and none
-of them is evidence for bhumi or waits on it.
+These came out of operating-system work. Those disciplines govern a system;
+these govern the language a system gets written in.
 
 These are the architecture principles, what the language governs. The
 reader's-side principles, how it presents to a human, live in

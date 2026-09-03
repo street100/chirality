@@ -88,9 +88,11 @@ in typed code with no exemption. Its dual nature is the point: typed
 implementation, untyped referent. The type tracks the evidence; the referent is
 the thing the evidence is about.
 
-## The bhumi connection
+## Why C is the novel core
 
-Bhumi already runs many C ceremonies by hand: the three tier lock in sua, quorum
-key release in bija, the saksin audit chain. Today each tool rebuilds the
-ceremony in Rust. The aim is to express these directly, so declaring a split is
-as cheap as declaring a variable (P5).
+The C ceremonies exist today as hand-written procedure: a tiered lock over a
+secret, a quorum release of a key, an audit chain that has to be reconciled
+against a second record. Every system that needs one rebuilds it from scratch,
+and the invariant it protects lives in the author's head rather than in a type.
+The aim is to express these directly, so declaring a split is as cheap as
+declaring a variable (P5).

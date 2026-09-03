@@ -20,7 +20,7 @@ different categories, and they agree through one protocol.
 ## broker, emergent (A)
 
 The compile time port mediation. In Chirality the port check is the type check, so
-the static part of Bhumi's syscall broker has no runtime entity. It dissolves
+the static part of a syscall broker has no runtime entity. It dissolves
 into the capability and effect type system. This is `kernel-gate`'s static half
 plus capability typing. Calling it a broker is the historical confusion; it is
 just type checking. Provenance: dump D1, the broker collapse.

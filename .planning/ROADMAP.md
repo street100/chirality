@@ -120,10 +120,10 @@ The stage numbers below are the design spine, **not the build order**:
 
 ## Stage 7 — The bridge
 - Goal: category C, the novel core. Custody, the component broker, Adhikara,
-  attestation, the bridges, the runtime. Where bhumi ceremonies become language
+  attestation, the bridges, the runtime. Where custody ceremonies become language
   features.
 - Produces: `modules-custody`, `modules-broker`, `modules-bridges`.
-- Owner: 02-language-design, fed by 01-bhumi-context.
+- Owner: 02-language-design, fed by the custody context.
 - Status: open. Interleaves with stage 6. The broker's shape settled 2026-07-27
   (`docs/decision-brokers.md`): the static half dissolves into the type system
   (emergent); the component broker is the bridge elaborator instantiated over
@@ -202,11 +202,11 @@ The stage numbers below are the design spine, **not the build order**:
   (D4, settled same day). The chirality-verify profile itself is still edge 9
   (open); the scaffold's `(total)` clause is its first slice.
 
-## Stage 11 — Bhumi reimplementation
-- Goal: port the bhumi tool family under chirality. Design the broker so the core
-  bhumi services are its natural implementation, not later integrations.
+## Stage 11 — Tool reimplementation
+- Goal: port the custody tool family under chirality. Design the broker so those
+  core services are its natural implementation rather than later integrations.
 - Produces: the port disposition and the dogfooding ladder.
-- Owner: 03-development-approach, fed by 01-bhumi-context.
+- Owner: 03-development-approach.
 - Status: open. Depends on stage 9.
 
 ---
@@ -380,7 +380,7 @@ The stage numbers below are the design spine, **not the build order**:
   invariant still holds (both marked sysface). 191 tests green (+3).
 - Building stage 5 will test whether the stage 2 cost decision survives contact
   with real lowering.
-- Stage 7 will surface bhumi shapes that should have been language primitives,
+- Stage 7 will surface custody shapes that should have been language primitives,
   which feeds back into stages 3 and 4.
 - Stage 11 is the real proving ground. A tool that is awkward to port is evidence
   about the language, not just the port.

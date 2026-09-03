@@ -54,6 +54,6 @@ proof, quarantined substrate, evidence over substrate.
 
 A is mostly a borrowing problem. A good typed core with effects and graded cost
 is well trodden in prior art. B is a discipline problem: keep it small, named,
-and routed through C. C is where Chirality earns its existence. Every Bhumi custody
-ceremony today is category C built by hand in Rust. Making C cheap and
-declarative is the work.
+and routed through C. C is where Chirality earns its existence. A custody
+ceremony today is category C built by hand, in whatever language the system
+around it happens to use. Making C cheap and declarative is the work.

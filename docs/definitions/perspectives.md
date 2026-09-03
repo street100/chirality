@@ -114,7 +114,7 @@ The outward-facing construct. See [[vocabulary]].
 - type: a typed module whose referent is a B thing.
 - membrane: the bridge, substrate to evidence to typed value; a B value enters A
   only as evidence.
-- builder: the novel work, the bhumi custody ceremonies made cheap and
+- builder: the novel work, custody ceremonies made cheap and
   declarative.
 - runtime: a supervisor reconciling several truths.
 
