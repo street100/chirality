@@ -35,6 +35,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/enforcement]] | in flight | [[arcs/enforcement-arc]] |
 | [[goals/independent-judgment]] | stated, unbuilt | [[arcs/independent-judgment-arc]] |
 | [[goals/bridge]] | stated 2026-09-02, unbuilt | [[arcs/bridge-arc]] |
+| [[goals/module-split]] | in flight, one measured miss | [[arcs/module-split-arc]] |
 | [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | [[arcs/transport-arc]], [[arcs/scriba-arc]], [[arcs/tuning-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
 
@@ -58,6 +59,14 @@ still block work inside them: [[arcs/tuning-arc]] is blocked whole and
 ambition: [[thesis]] and [[category-bridge]] both call C "the part of Chirality
 that is new work rather than borrowed", and no goal, arc or row stood against
 it. Its arc has no reserved block, so its rows take arc-local ids.
+
+[[goals/module-split]] was opened 2026-09-02, also a derivation:
+[[splitting-law]] and [[joining-law]] are standing rules with a decidable test
+and nothing was scheduled against either. It is separate from
+[[goals/readable-surface]] because that goal is the *surface*, its own done
+clauses naming syntax, diagnostics and file kinds, and separate from
+[[goals/presentability]] because that one is truth and outside-reader
+orientation. This is how the source itself is cut.
 
 [[goals/ownership-and-trust]] carries an arc as of 2026-09-02 and every row in
 it is deferred. The arc holds three minted elements, `E53`, `E71` and `E72`,
