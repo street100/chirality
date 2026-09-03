@@ -3,7 +3,8 @@
 #
 # PHASE 18, and 18 for the reason 17 was 17: 8-12 are names still OWED to
 # unported old-tree phases (run-tests.sh:18-22), and reusing one would make an
-# unported gate look ported. 13-17 are taken. LANES.md gives Lane A 18/19/20.
+# unported gate look ported. 13-17 are taken.
+# docs/decisions/decision-lane-split.md:30 gives Lane A 18/19/20.
 #
 # ─── WHAT THIS ELEMENT IS, AND WHAT IT IS GRADED ON ─────────────────────────
 #

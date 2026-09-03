@@ -905,5 +905,5 @@ the above.
 >   the strongest candidate for the next hoist, and `CLAUDE.md`'s BUILD RULE
 >   already carries a condensed form.
 > - **§2's waves and §3's acceptance**, superseded for the two live lanes by
->   `LANES.md` (Lane A diagnostics, Lane B file types) but still the only record
->   of the S# and U# ordering.
+>   `docs/decisions/decision-lane-split.md` (Lane A diagnostics, Lane B file
+>   types) but still the only record of the S# and U# ordering.
