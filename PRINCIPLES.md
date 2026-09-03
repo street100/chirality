@@ -1,12 +1,17 @@
 # chirality — design principles
 
-What chirality commits to, and why. The semantics and type system in
-`.planning/projects/02-language-design.md` have to satisfy these. If a choice there contradicts one of
-these, the choice is wrong, or the principle is, in which case change it here
-first, on purpose.
+What chirality commits to, and why. The semantics and type system in the design
+base, entered at [docs/index.md](docs/index.md), have to satisfy these. If a
+choice there contradicts one of these, the choice is wrong, or the principle is,
+in which case change it here first, on purpose.
 
-These came out of bhumi. bhumi's disciplines govern the OS; these govern the
-language the OS gets written in.
+These came out of bhumi. bhumi's disciplines are written to govern an OS; these
+govern the language that OS would be written in.
+
+⚑ **Bhumi is a design and remains unbuilt.** Its OS, its tools and the custody
+ceremonies they would carry are documents, so the sentence above describes an
+intended relationship. These principles stand on their own reasoning, and none
+of them is evidence for bhumi or waits on it.
 
 These are the architecture principles, what the language governs. The
 reader's-side principles, how it presents to a human, live in
