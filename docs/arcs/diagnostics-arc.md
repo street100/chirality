@@ -73,7 +73,7 @@ by one generation, and the tree reproduces itself at `B2 == B3`. That is the
 ordinary two-generation bootstrap, and `records/findings.md` FD-08 records why
 it is ACCEPTED rather than a defect.
 
-Next action is the **E182 SPEC**. `lib/typing/kernel.chiral` and
+Next action is the **E182 SPEC audit** (`pipeline-audit`, SPEC level). `lib/typing/kernel.chiral` and
 `lib/typing/diag.chiral` are both inside `prog/compiler.prog`'s closure, so
 E182 promotes. Its blob and binary deltas will carry 13 commits of other arcs'
 work unless a re-promotion lands first, so the SPEC states which of the two it
@@ -82,7 +82,7 @@ reports.
 | # | element | state |
 |---|---|---|
 | 1 | E181 `pretty` over the real `Term`, returning `Doc` | **BUILT 2026-09-01.** Moved to `lib/surface/pretty.chiral`; `typing/` was never its role. Phase 18 = 61/0 |
-| 2 | E182 the arity judgments carry their arity | **example REVIEWED 2026-09-02** (`a5aae47`), audit PASS on all five checks. Premise corrected in the example, the catalog row and the ledger row: it repoints the two LIVE comparisons and retires both arms behind them, `jg-tparam-arity` and `jg-ctor-arg-arity`, taking `Judg` from 38 to 36. The two arms the catalog row named beside them are unreachable and stay. Gate is Phase 20; 19 went to E173. One scope FLAG stands in §6 |
+| 2 | E182 the arity judgments carry their arity | **SPECCED 2026-09-02** (`c97df01`), SPEC status `blocked` on its one author call. Example REVIEWED at `a5aae47`, audit PASS on all five checks. Premise corrected in the example, the catalog row and the ledger row: it repoints the two LIVE comparisons and retires both arms behind them, `jg-tparam-arity` and `jg-ctor-arg-arity`, taking `Judg` from 38 to 36. The two arms the catalog row named beside them are unreachable and stay. Gate is Phase 20; 19 went to E173. One scope FLAG stands in §6 |
 | 3 | E176 `str-sub` unclamped, segfaults, 131 call sites | not built. The safety was asserted in a comment |
 | 4 | E179 the face registry becomes authoritative | not built. 5 ad-hoc sites plus `lookup-face` synthesis |
 | 5 | E180 face-aware incremental redraw | not built. Unreachable today; the hazard E175 creates |
