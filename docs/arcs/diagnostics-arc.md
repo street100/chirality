@@ -59,8 +59,9 @@ Done when all five hold. Each is observable.
    by `lib/`, which is the fifth built-and-unadopted instance in this repo.
    E181 narrowed it: the compiler's own `typing/diag` renders terms through
    `Doc`, so the row is closed inside `lib/`.
-5. **The error-quality rows are closed.** E182 arity evidence, E176 `str-sub`,
-   E179 face registry.
+5. **The error-quality rows are closed.** E182 arity evidence **(closed
+   2026-09-02)**, E176 `str-sub`, E179 face registry. Two of the three are open,
+   so this requirement stands unmet.
 
 ## Resume state
 
@@ -102,7 +103,7 @@ reports.
 Blockers, hazards and the decisions that each cost a measurement are in
 [[records/diagnostics-arc-record]]. Read it before starting an element here.
 
-## Built — on master, `gate PASSED`, 303 assertions / 11 phases / 88 roots
+## Built — on master, `gate PASSED`, 328 assertions / 12 gate scripts
 
 ### E157
 
@@ -133,38 +134,6 @@ Blockers, hazards and the decisions that each cost a measurement are in
 | E181 | **the term printer is repointed at the real `Term`, returns a `Doc`, and MOVES to `surface/pretty.chiral`** | **BUILT 2026-09-01.** `lib/surface/pretty.chiral` — 30 `pp-` bindings, all **sixteen** `Term` arms, **no `_`** (a seventeenth former is a compile error), and its output **is chirality source**. The old `typing/pretty.chiral` was not merely unimported but **unimportable**, twice over (`load: data redeclared: Term`; `duplicate label …: nlen` against `lowering/tal/erase:34`), so nothing in the tree ever compiled it. The home MOVED against `MAP.md`: a printer checks nothing, so `typing/` (*"every check on it"*) was never its role — it is `surface/parse`'s written direction. Root-relative keys make that a real rename. `typing/diag` adopts it and `dg-term-tag` retires at all three sites. **First element in this arc inside `prog/compiler.prog`'s closure**, so the full BUILD RULE ran: blob 755,238 → 772,110 B, binary 1,130,872 → **1,147,256 B**, `N1 == N2` at generation one. Gate: **Phase 18** (`tools/test/pretty.sh` + `samples/e181_pretty.prog`), 61 assertions on emitted bytes, 17 mutants all RUN. Suite 242 → **303 passed, 0 failed**. | `OURS`; ←E158, →E146 |
 
 | E181 | doc | **BUILT 2026-09-01** | **`pretty.chiral` repointed at the real `Term`, returning `Doc` — and RELOCATED to `surface/pretty.chiral`.** All sixteen arms, no `_`, output is chirality source; `typing/diag` adopts it and `dg-term-tag` retires. Phase 18 (61/0) grades emitted bytes only. `bin/chirality-bin` promoted 1,130,872 → 1,147,256 B, `N1 == N2`. Suite 303/0. | ←E158, →E146 |
-
-## Open — minted, not built
-
-### E176
-
-| E176 | **`str-sub` does not clamp — an out-of-range end index SEGFAULTS, and a prelude comment claims the opposite** | Not built. `str-sub` is a raw extern (`prelude/prelude.chiral:80`, `(-> Str I64 I64 Str)`) with no bounds behaviour at the metis level; `(str-sub "abc" 0 999995)` exits **139**, measured while building E158's G2 mutant. **The doc says the opposite:** `prelude/string.chiral:14` reads *"str-sub clamps, so a too-long prefix is just false"*, and `str-starts-with` (`:15`) is written ON that belief — it calls `(str-sub s 0 (str-len prefix))`, so **`str-starts-with` segfaults whenever the prefix is longer than the string.** 131 `str-sub` call sites across `lib`+`prog`. This is a memory-safety hole in a language whose thesis is that such holes are untypeable, and it is the sharpest possible instance: the safety was asserted in a comment instead of in a type. The fix is a decision, not a patch — clamp in the extern's lowering, or give it a refined signature (`(refine I64 (>= 0))` plus an end ≤ length obligation) so an unclamped call does not typecheck. The refined route is the one the language exists to make available. | `OURS`; found by the E158 implement run |
-
-| E176 | string | design | **`str-sub` is unclamped and segfaults out of range; `string.chiral:14` claims it clamps.** Extern at `prelude/prelude.chiral:80`; `(str-sub "abc" 0 999995)` → exit 139, measured. `str-starts-with` is built on the false comment and segfaults for any prefix longer than its subject. 131 call sites. A safety property asserted in PROSE rather than in a TYPE — exactly what refinement types exist for here. Clamp at lowering, or refine the signature so the bad call cannot typecheck. Minted 2026-08-31 by the E158 implement run. | ←E158 |
-
-### E177
-
-| E177 | **A display-width table — what a column IS, for text nobody in the tree has rendered yet** | Not built. E174 ships `str-cols` counting **codepoints**, which is correct for every string the tree renders today and wrong the moment a CJK, combining, or emoji character appears. `utf8` is a **decoder only** — no width function exists anywhere in `lib/` or `prog/` (measured). The residue is real rather than theoretical because **scriba renders user documents**, so wide cells arrive with the first non-Latin buffer, not with a hypothetical. **`str-cols` is the seam and its signature does not move** — this element is a body change plus a table, and E174 is its first consumer, already written against it. ⚑ The hard part is not the table but the CLASS: U+2014 is East-Asian **Ambiguous**, the one class where wcwidth implementations legitimately disagree, so this element must pick a stance (narrow-ambiguous, or terminal-declared) and say so, not just copy a table. Minted 2026-08-31 with E174's SPEC so the residue has a home rather than a sentence. | `OURS`; wcwidth/UAX-11 |
-
-| E177 | render | design | **Display-width table (wide cells, combining, ambiguous).** E174's `str-cols` counts codepoints — right for today's corpus, wrong for the first CJK buffer scriba opens. `utf8` decodes only; no width function exists in the tree. `str-cols` is the seam, signature unchanged, E174 the first consumer. The real decision is the AMBIGUOUS class (U+2014 and friends), where implementations disagree — pick a stance, do not copy a table. Minted with the E174 SPEC (NEEDS-AUTHOR-1) so named residue has a row. | ←E174 |
-
-### E178
-
-| E178 | **`r-table` gets real per-column widths — one value, two layouts is the defect** | Not built. `render.chiral` advances table **headers by content** (`:360`) and **body cells by a hardcoded `(+ col 16)`** (`:368`): the same `r-table` value is laid out two different ways in one render, and the width function E174 adds can only be honest about one of them. E174 therefore fixtures its `r-table` gate strictly INSIDE the agreeing region (headers ≤ 14 columns, cells ≤ 16) and says in the script what it does not cover — a deliberately narrowed gate, recorded so it is not mistaken for coverage. Two candidate fixes: a **per-column measure fold** (the natural first consumer of E174's `rnd-cols`, and the direction this row prefers because it makes the layout a function of content rather than of a constant), or **deleting the header gutter arithmetic** (smaller, loses alignment). The choice belongs to this element's own pre-run. Minted 2026-08-31 with E174's SPEC (NEEDS-AUTHOR-2), because E174's narrowed gate is otherwise a silent debt. | `OURS`; E174 is the enabling element |
-
-| E178 | render | design | **`r-table` per-column widths.** Headers advance by content (`render.chiral:360`), body cells by a hardcoded `(+ col 16)` (`:368`) — one value, two layouts, so E174's width function cannot be honest about both. E174 narrows its table gate to the agreeing region (headers ≤ 14, cells ≤ 16) and says so in the script. Fix is a per-column measure fold (the natural first consumer of `rnd-cols`) or deleting the header arithmetic; that choice takes its own pre-run. Minted with the E174 SPEC so the narrowed gate is a tracked debt, not a silent one. | ←E174 |
-
-### E179
-
-| E179 | **The face registry becomes the only source of a face — and an unknown name is an error, not a synthesis** | Not built. Two symptoms, one principle. **(a) Five drawing sites bypass the registry entirely**, hardcoding `ansi-bold`: `rnd-emit-headers`, `render-section`, `render-tree`'s selection highlight, `r-text`'s `bold` field, and `r-stream`. E175 repairs their *closes* and leaves them ad-hoc, so after E175 the registry still does not know what half the screen is wearing. **(b) `lookup-face` silently SYNTHESIZES a face for an unknown name**, so `"default"` and a typo are indistinguishable — a `Str` classifying which-of-N with no closed domain and no error, which `pattern-boundary-sums` exists to forbid. Together: a face name is a which-of-N wearing a `Str`, and the registry is advisory rather than authoritative. Minted 2026-08-31; named by the E175 pre-run and again by its audit, which correctly refused to point at a number it could not mint. | `OURS`; ←E175 |
-
-| E179 | render | design | **The face registry is authoritative; an unknown face name is an error.** Five sites hardcode `ansi-bold` past the registry (`rnd-emit-headers`, `render-section`, `render-tree` selection, `r-text`'s `bold`, `r-stream`); `lookup-face` invents a face for any unknown name, so a typo renders as default. One principle: a face name is a which-of-N in a `Str` with no closed domain. E175 fixes these sites' closes and leaves them ad-hoc — this is that residue, minted rather than left as a sentence. | ←E175 |
-
-### E180
-
-| E180 | **A face-aware incremental redraw — the hazard E175 creates** | Not built, and **unreachable today**: `render-to-ansi-delta` is a full redraw, so nothing repaints a subtree in isolation. E175 makes a node's emitted SGR depend on its ANCESTORS (the ambient face it restores to), which is correct for a whole-screen render and becomes wrong the moment a diffed subtree is repainted without its enclosing faces. ⚑ **This is E175's OWN residue, not a pre-existing defect** — before E175 an escaped payload rendered unfaced like everything else, so there was nothing to get wrong. Minted 2026-08-31 on the E175 example audit's recommendation, which argued the spec should mint rather than merely consider: a latent hazard introduced by a change, with no row, is exactly what gets rediscovered as a bug years later. Whoever makes the redraw incremental must land this first. | `OURS`; ←E175 |
-
-| E180 | render | design | **Face-aware incremental redraw.** E175 makes a node's SGR depend on its ancestors, so repainting a diffed subtree without its enclosing faces renders it wrong. Unreachable today (`render-to-ansi-delta:733` is a full redraw), and E175's own residue rather than an inherited defect. Blocks any move to incremental repaint. Minted with the E175 example audit. | ←E175 |
 
 ### E182
 
@@ -200,6 +169,38 @@ contended.
 gate phases 18, 19 and 20 for this lane. E173 registered `matcher.sh` as Phase
 19 (`tools/test/run-tests.sh:301`), so the lane holds 18 and 20. E182 gates at
 **Phase 20**.
+
+## Open — minted, not built
+
+### E176
+
+| E176 | **`str-sub` does not clamp — an out-of-range end index SEGFAULTS, and a prelude comment claims the opposite** | Not built. `str-sub` is a raw extern (`prelude/prelude.chiral:80`, `(-> Str I64 I64 Str)`) with no bounds behaviour at the metis level; `(str-sub "abc" 0 999995)` exits **139**, measured while building E158's G2 mutant. **The doc says the opposite:** `prelude/string.chiral:14` reads *"str-sub clamps, so a too-long prefix is just false"*, and `str-starts-with` (`:15`) is written ON that belief — it calls `(str-sub s 0 (str-len prefix))`, so **`str-starts-with` segfaults whenever the prefix is longer than the string.** 131 `str-sub` call sites across `lib`+`prog`. This is a memory-safety hole in a language whose thesis is that such holes are untypeable, and it is the sharpest possible instance: the safety was asserted in a comment instead of in a type. The fix is a decision, not a patch — clamp in the extern's lowering, or give it a refined signature (`(refine I64 (>= 0))` plus an end ≤ length obligation) so an unclamped call does not typecheck. The refined route is the one the language exists to make available. | `OURS`; found by the E158 implement run |
+
+| E176 | string | design | **`str-sub` is unclamped and segfaults out of range; `string.chiral:14` claims it clamps.** Extern at `prelude/prelude.chiral:80`; `(str-sub "abc" 0 999995)` → exit 139, measured. `str-starts-with` is built on the false comment and segfaults for any prefix longer than its subject. 131 call sites. A safety property asserted in PROSE rather than in a TYPE — exactly what refinement types exist for here. Clamp at lowering, or refine the signature so the bad call cannot typecheck. Minted 2026-08-31 by the E158 implement run. | ←E158 |
+
+### E177
+
+| E177 | **A display-width table — what a column IS, for text nobody in the tree has rendered yet** | Not built. E174 ships `str-cols` counting **codepoints**, which is correct for every string the tree renders today and wrong the moment a CJK, combining, or emoji character appears. `utf8` is a **decoder only** — no width function exists anywhere in `lib/` or `prog/` (measured). The residue is real rather than theoretical because **scriba renders user documents**, so wide cells arrive with the first non-Latin buffer, not with a hypothetical. **`str-cols` is the seam and its signature does not move** — this element is a body change plus a table, and E174 is its first consumer, already written against it. ⚑ The hard part is not the table but the CLASS: U+2014 is East-Asian **Ambiguous**, the one class where wcwidth implementations legitimately disagree, so this element must pick a stance (narrow-ambiguous, or terminal-declared) and say so, not just copy a table. Minted 2026-08-31 with E174's SPEC so the residue has a home rather than a sentence. | `OURS`; wcwidth/UAX-11 |
+
+| E177 | render | design | **Display-width table (wide cells, combining, ambiguous).** E174's `str-cols` counts codepoints — right for today's corpus, wrong for the first CJK buffer scriba opens. `utf8` decodes only; no width function exists in the tree. `str-cols` is the seam, signature unchanged, E174 the first consumer. The real decision is the AMBIGUOUS class (U+2014 and friends), where implementations disagree — pick a stance, do not copy a table. Minted with the E174 SPEC (NEEDS-AUTHOR-1) so named residue has a row. | ←E174 |
+
+### E178
+
+| E178 | **`r-table` gets real per-column widths — one value, two layouts is the defect** | Not built. `render.chiral` advances table **headers by content** (`:360`) and **body cells by a hardcoded `(+ col 16)`** (`:368`): the same `r-table` value is laid out two different ways in one render, and the width function E174 adds can only be honest about one of them. E174 therefore fixtures its `r-table` gate strictly INSIDE the agreeing region (headers ≤ 14 columns, cells ≤ 16) and says in the script what it does not cover — a deliberately narrowed gate, recorded so it is not mistaken for coverage. Two candidate fixes: a **per-column measure fold** (the natural first consumer of E174's `rnd-cols`, and the direction this row prefers because it makes the layout a function of content rather than of a constant), or **deleting the header gutter arithmetic** (smaller, loses alignment). The choice belongs to this element's own pre-run. Minted 2026-08-31 with E174's SPEC (NEEDS-AUTHOR-2), because E174's narrowed gate is otherwise a silent debt. | `OURS`; E174 is the enabling element |
+
+| E178 | render | design | **`r-table` per-column widths.** Headers advance by content (`render.chiral:360`), body cells by a hardcoded `(+ col 16)` (`:368`) — one value, two layouts, so E174's width function cannot be honest about both. E174 narrows its table gate to the agreeing region (headers ≤ 14, cells ≤ 16) and says so in the script. Fix is a per-column measure fold (the natural first consumer of `rnd-cols`) or deleting the header arithmetic; that choice takes its own pre-run. Minted with the E174 SPEC so the narrowed gate is a tracked debt, not a silent one. | ←E174 |
+
+### E179
+
+| E179 | **The face registry becomes the only source of a face — and an unknown name is an error, not a synthesis** | Not built. Two symptoms, one principle. **(a) Five drawing sites bypass the registry entirely**, hardcoding `ansi-bold`: `rnd-emit-headers`, `render-section`, `render-tree`'s selection highlight, `r-text`'s `bold` field, and `r-stream`. E175 repairs their *closes* and leaves them ad-hoc, so after E175 the registry still does not know what half the screen is wearing. **(b) `lookup-face` silently SYNTHESIZES a face for an unknown name**, so `"default"` and a typo are indistinguishable — a `Str` classifying which-of-N with no closed domain and no error, which `pattern-boundary-sums` exists to forbid. Together: a face name is a which-of-N wearing a `Str`, and the registry is advisory rather than authoritative. Minted 2026-08-31; named by the E175 pre-run and again by its audit, which correctly refused to point at a number it could not mint. | `OURS`; ←E175 |
+
+| E179 | render | design | **The face registry is authoritative; an unknown face name is an error.** Five sites hardcode `ansi-bold` past the registry (`rnd-emit-headers`, `render-section`, `render-tree` selection, `r-text`'s `bold`, `r-stream`); `lookup-face` invents a face for any unknown name, so a typo renders as default. One principle: a face name is a which-of-N in a `Str` with no closed domain. E175 fixes these sites' closes and leaves them ad-hoc — this is that residue, minted rather than left as a sentence. | ←E175 |
+
+### E180
+
+| E180 | **A face-aware incremental redraw — the hazard E175 creates** | Not built, and **unreachable today**: `render-to-ansi-delta` is a full redraw, so nothing repaints a subtree in isolation. E175 makes a node's emitted SGR depend on its ANCESTORS (the ambient face it restores to), which is correct for a whole-screen render and becomes wrong the moment a diffed subtree is repainted without its enclosing faces. ⚑ **This is E175's OWN residue, not a pre-existing defect** — before E175 an escaped payload rendered unfaced like everything else, so there was nothing to get wrong. Minted 2026-08-31 on the E175 example audit's recommendation, which argued the spec should mint rather than merely consider: a latent hazard introduced by a change, with no row, is exactly what gets rediscovered as a bug years later. Whoever makes the redraw incremental must land this first. | `OURS`; ←E175 |
+
+| E180 | render | design | **Face-aware incremental redraw.** E175 makes a node's SGR depend on its ancestors, so repainting a diffed subtree without its enclosing faces renders it wrong. Unreachable today (`render-to-ansi-delta:733` is a full redraw), and E175's own residue rather than an inherited defect. Blocks any move to incremental repaint. Minted with the E175 example audit. | ←E175 |
 
 ### E183
 
