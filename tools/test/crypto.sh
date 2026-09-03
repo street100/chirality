@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# crypto.sh -- N1: the crypto kernels. Slice 1: ChaCha20 (lib/crypto/chacha.chiral).
+# crypto.sh -- N1: the crypto kernels.
+#   slice 1: ChaCha20 (lib/crypto/chacha.chiral)
+#   slice 2: Poly1305 + AEAD (lib/crypto/poly1305.chiral)
 #
 # NOT YET REGISTERED: the run_phase line in run-tests.sh is owed to the
 # suite-owning session. 8-12 stay owed to unported old-tree phases and reusing
@@ -29,6 +31,26 @@
 #        first rotation of every quarter round moves, so the keystream
 #        diverges from the first double round and BOTH rows must go red
 #
+# ⚑ SLICE 2 VECTOR PROVENANCE: RFC 8439 fetched from rfc-editor.org on
+# 2026-09-03 by the implementing session (WebFetch over the .txt) and §2.5.2
+# / §2.8.2 transcribed below verbatim; the fetch agreed byte-for-byte with
+# the session's own knowledge of both vectors. The tag row and the seal row
+# are asserted independently so a single mistranscription cannot pass
+# silently: §2.8.2's tag runs the same Poly1305 under a chacha-derived key,
+# so the two rows only agree with each other by being right.
+#
+#   G3   poly1305-mac, RFC 8439 §2.5.2: the one-time key 85:d6:.. over
+#        "Cryptographic Forum Research Group" -> the 16 tag bytes        [M2]
+#   G4   aead-seal, RFC 8439 §2.8.2: key 80..9f, nonce 07:00:00:00 +
+#        IV 40..47, aad 50..53:c0..c7, the sunscreen plaintext -> all
+#        114 ciphertext bytes with the 16 tag bytes appended
+#   G5   aead-open on the sealed blob -> op-ok carrying the plaintext
+#   G6   aead-open with ciphertext byte 0 flipped -> op-bad
+#   M2   the weight-5 carry fold dropped in f-mul (x0 keeps u0, loses
+#        w5), RUN: the §2.5.2 message spans three blocks and its clamped
+#        r has a nonzero top limb, so every fold carries reduced value
+#        into the tag and G3 must go red
+#
 # ⚑ THE MUTANT HARNESS IS NOT tools/test/mutant.sh. That one rebuilds
 # prog/compiler.prog and asserts the mutant compiler differs; crypto/chacha
 # is OUTSIDE that closure, so every mutation of it builds a byte-identical
@@ -53,6 +75,8 @@ CC="${CHIRALITY_COMPILE:-}"
 
 CHACHA="$REPO/lib/crypto/chacha.chiral"
 [ -f "$CHACHA" ] || { echo "  FAIL  $CHACHA missing -- a gate without its module cannot fail"; exit 2; }
+POLY="$REPO/lib/crypto/poly1305.chiral"
+[ -f "$POLY" ] || { echo "  FAIL  $POLY missing -- a gate without its module cannot fail"; exit 2; }
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -114,11 +138,93 @@ cat >"$FIXTURE" <<'CHIRAL'
         0))))
 CHIRAL
 
+# ─── the slice-2 fixture ────────────────────────────────────────────────────
+# Inline for the same reason as the slice-1 fixture above: the slice landed
+# as new-file additions plus this script while the enforcement-arc session
+# held the rest of tools/test/.
+AFIXTURE="$TMP/n01_aead.prog"
+cat >"$AFIXTURE" <<'CHIRAL'
+; n01_aead.prog -- N1 slice 2 emitted-bytes fixture. Prints, never asserts:
+; the assertions live in tools/test/crypto.sh, in bash, over these bytes.
+(import "prelude/prelude")
+(import "crypto/chacha")
+(import "crypto/poly1305")
+(import "ports/stdio")
+
+; §2.5.2 one-time key 85:d6:be:78:..:41:49:f5:1b as eight LE u32 words
+(def na-k252 Bytes
+  (bcat (pack-u32 2025772677) (bcat (pack-u32 862803287)
+  (bcat (pack-u32 4266804351) (bcat (pack-u32 2819020098)
+  (bcat (pack-u32 2323645185) (bcat (pack-u32 4256304635)
+  (bcat (pack-u32 2952183626) (pack-u32 469059905)))))))))
+
+; §2.5.2 message, 34 bytes (three MAC blocks, the last one short)
+(def na-msg Bytes (str->bytes "Cryptographic Forum Research Group"))
+
+; §2.8.2 key 80:81:..:9f as eight LE u32 words
+(def na-k282 Bytes
+  (bcat (pack-u32 2206368128) (bcat (pack-u32 2273740164)
+  (bcat (pack-u32 2341112200) (bcat (pack-u32 2408484236)
+  (bcat (pack-u32 2475856272) (bcat (pack-u32 2543228308)
+  (bcat (pack-u32 2610600344) (pack-u32 2677972380)))))))))
+
+; §2.8.2 nonce 07:00:00:00:40:41:42:43:44:45:46:47 as three LE words
+(def na-n282 Bytes
+  (bcat (pack-u32 7) (bcat (pack-u32 1128415552) (pack-u32 1195787588))))
+
+; §2.8.2 aad 50:51:52:53:c0:c1:c2:c3:c4:c5:c6:c7 as three LE words
+(def na-aad Bytes
+  (bcat (pack-u32 1397903696)
+        (bcat (pack-u32 3284320704) (pack-u32 3351692740))))
+
+; §2.8.2 plaintext, 114 bytes (the §2.4.2 sunscreen text)
+(def na-pt Bytes
+  (str->bytes "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."))
+
+; one byte as a Bytes of length 1 (the e151 idiom)
+(def na-b1 (-> I64 Bytes) (lam (b) (bslice (pack-u32 b) 0 1)))
+
+(def na-emit (=> Bytes I64 Unit)
+  (lam (bs i)
+    (case (<i i (blen bs))
+      (true (let ((_ (put (i64->str (bget bs i)))))
+              (let ((_ (put " ")))
+                (na-emit bs (+ i 1)))))
+      (false (unit)))))
+
+(def na-blk (=> Str Bytes Unit)
+  (lam (lbl bs)
+    (let ((_ (put (str-cat "==BEGIN " (str-cat lbl "==\n")))))
+      (let ((_ (na-emit bs 0)))
+        (put "\n==END==\n")))))
+
+; an open outcome as bytes: 1 then the plaintext on op-ok, 0 on op-bad
+(def na-open-blk (=> Str OpenR Unit)
+  (lam (lbl r)
+    (case r
+      ((op-ok pt) (na-blk lbl (bcat (na-b1 1) pt)))
+      ((op-bad) (na-blk lbl (na-b1 0))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((sealed (aead-seal na-k282 na-n282 na-aad na-pt)))
+      (let ((_ (na-blk "t252" (poly1305-mac na-k252 na-msg))))
+        (let ((_ (na-blk "s282" sealed)))
+          (let ((_ (na-open-blk "o282"
+                     (aead-open na-k282 na-n282 na-aad sealed))))
+            (let ((flip (bcat (na-b1 (bxor (bget sealed 0) 1))
+                              (bslice sealed 1 (blen sealed)))))
+              (let ((_ (na-open-blk "obad"
+                         (aead-open na-k282 na-n282 na-aad flip))))
+                0))))))))
+CHIRAL
+
 # ─── helpers (the pretty.sh idiom) ──────────────────────────────────────────
-# build_raw LIBDIR OUT -> 0 and OUT holds the fixture's raw stdout.
+# build_raw LIBDIR OUT [FIX] -> 0 and OUT holds the fixture's raw stdout.
+# FIX defaults to the slice-1 fixture; slice 2 passes its own.
 build_raw() {
-  local lib="$1" out="$2" blob="$TMP/o.blob" elf="$TMP/o.elf"
-  ( cd "$REPO" && chirality_blob_file "$lib:$REPO/prog" "$FIXTURE" ) >"$blob" 2>/dev/null || return 1
+  local lib="$1" out="$2" fix="${3:-$FIXTURE}" blob="$TMP/o.blob" elf="$TMP/o.elf"
+  ( cd "$REPO" && chirality_blob_file "$lib:$REPO/prog" "$fix" ) >"$blob" 2>/dev/null || return 1
   ( ulimit -s unlimited; "$CC" <"$blob" >"$elf" 2>/dev/null ) || return 1
   [ -s "$elf" ] || return 1
   chmod +x "$elf"
@@ -202,6 +308,88 @@ else
           ok "M1 rotl32 16->17 -- RUN, and both rows went red (the assertions read the code)"
         else
           bad "M1 rotl32 16->17 -- a row stayed GREEN under the mutant; that row is toothless"
+        fi
+      fi
+    fi
+  fi
+fi
+
+# ─── slice 2: the transcribed vectors, hex verbatim from the RFC's dumps ────
+# RFC 8439 §2.5.2, the Poly1305 tag:
+V252="a8 06 1d c1 30 51 36 c6 c2 2b 8b af 0c 01 27 a9"
+
+# RFC 8439 §2.8.2, the AEAD ciphertext:
+V282CT="d3 1a 8d 34 64 8e 60 db 7b 86 af bc 53 ef 7e c2
+a4 ad ed 51 29 6e 08 fe a9 e2 b5 a7 36 ee 62 d6
+3d be a4 5e 8c a9 67 12 82 fa fb 69 da 92 72 8b
+1a 71 de 0a 9e 06 0b 29 05 d6 a5 b6 7e cd 3b 36
+92 dd bd 7f 2d 77 8b 8c 98 03 ae e3 28 09 1b 58
+fa b3 24 e4 fa d6 75 94 55 85 80 8b 48 31 d7 bc
+3f f4 de f0 8e 4b 7a 9d e5 76 d2 65 86 ce c6 4b
+61 16"
+
+# RFC 8439 §2.8.2, the AEAD tag:
+V282TAG="1a e1 0b 59 4f 09 e2 6a 7e 90 2e cb d0 60 06 91"
+
+WANT252="$(dec "$V252")"
+WANT282="$(dec "$V282CT") $(dec "$V282TAG")"
+
+# the open row's expectation comes from the plaintext itself, not the RFC
+# dump: 1 (op-ok) then the 114 sunscreen bytes in decimal
+PT282="Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."
+WANTOPEN="1 $(printf '%s' "$PT282" | od -An -v -tu1 | xargs)"
+
+# ─── slice 2: G3..G6 ────────────────────────────────────────────────────────
+echo
+echo "=== N1 slice 2: Poly1305 + AEAD vs RFC 8439 ==="
+AOUT="$TMP/aead.out"
+if ! build_raw "$REPO/lib" "$AOUT" "$AFIXTURE"; then
+  echo "  FAIL  the aead fixture did not build/run against the real lib/"; exit 1
+fi
+
+got252="$(echo $(blk t252 "$AOUT"))"
+got282="$(echo $(blk s282 "$AOUT"))"
+gotopen="$(echo $(blk o282 "$AOUT"))"
+gotobad="$(echo $(blk obad "$AOUT"))"
+
+if [ "$got252" = "$WANT252" ]; then ok "G3 poly1305-mac -- all 16 §2.5.2 tag bytes match"
+else bad "G3 poly1305-mac diverges from §2.5.2"; echo "        want: $WANT252"; echo "        got:  $got252"; fi
+
+if [ "$got282" = "$WANT282" ]; then ok "G4 aead-seal -- all 114 §2.8.2 ciphertext bytes and the 16 tag bytes match"
+else bad "G4 aead-seal diverges from §2.8.2"; echo "        want: $WANT282"; echo "        got:  $got282"; fi
+
+if [ "$gotopen" = "$WANTOPEN" ]; then ok "G5 aead-open -- op-ok, and the recovered plaintext matches byte for byte"
+else bad "G5 aead-open did not return the plaintext"; echo "        want: $WANTOPEN"; echo "        got:  $gotopen"; fi
+
+if [ "$gotobad" = "0" ]; then ok "G6 aead-open -- ciphertext byte 0 flipped, refused as op-bad"
+else bad "G6 aead-open ACCEPTED a flipped ciphertext byte"; echo "        got:  $gotobad"; fi
+
+# ─── M2: the dropped weight-5 carry fold, RUN ───────────────────────────────
+# Same mechanism and same symlink guard as M1: a module outside the compiler
+# closure is mutated in a scratch lib/ and the fixture rebuilt against it.
+MUTLIB2="$TMP/mutlib2"; rm -rf "$MUTLIB2"; cp -a "$REPO/lib" "$MUTLIB2"
+if [ -L "$MUTLIB2" ]; then
+  bad "M2 -- the scratch lib/ is a SYMLINK; sed would write into the tree under test"
+else
+  MTGT2="$MUTLIB2/crypto/poly1305.chiral"
+  NEEDLE2="(x0 (+ u0 w5))"
+  nhits2="$(grep -cF -- "$NEEDLE2" "$MTGT2")"
+  if [ "$nhits2" -ne 1 ]; then
+    bad "M2 -- needle matched $nhits2 time(s), not 1 (stale pattern; the mutation would be a lie)"
+  else
+    sed -i 's/(x0 (+ u0 w5))/(x0 u0)/' "$MTGT2"
+    if cmp -s "$MTGT2" "$POLY"; then
+      bad "M2 -- the mutation did not change poly1305.chiral (stale pattern)"
+    else
+      MOUT2="$TMP/mut2.out"
+      if ! build_raw "$MUTLIB2" "$MOUT2" "$AFIXTURE"; then
+        bad "M2 -- the mutant did not build/run; UNBUILT measures nothing about the rows"
+      else
+        m252="$(echo $(blk t252 "$MOUT2"))"
+        if [ "$m252" != "$WANT252" ]; then
+          ok "M2 f-mul carry fold dropped -- RUN, and the §2.5.2 tag row went red (the assertion reads the code)"
+        else
+          bad "M2 f-mul carry fold dropped -- the §2.5.2 row stayed GREEN under the mutant; that row is toothless"
         fi
       fi
     fi
