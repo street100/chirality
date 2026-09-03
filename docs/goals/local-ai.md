@@ -123,7 +123,7 @@ serving their own, and it re-points nothing.
 
 | arc | covers | state |
 |---|---|---|
-| [[arcs/transport-arc]] | criterion 1, a run that reaches a model server | open. Its first row is a measurement repair and needs no element number |
+| [[arcs/transport-arc]] | criterion 1, a run that reaches a model server | T1 through T4 done 2026-09-02, and all four of the arc's own requirements hold. Phase 20 gates the transport path and criterion 1 stays unmet. Rows stay `unminted` on author call B |
 | [[arcs/scriba-arc]] | criterion 2, full interaction from the editor | open and unblocked. `S#` is its own namespace |
 | [[arcs/tuning-arc]] | criterion 4, fine tuning and the transformer verbs | opened blocked on author call A, with no row written |
 
@@ -135,15 +135,56 @@ shape, which is [[arcs/text-tools-arc]].
 
 ## Honest limits
 
-**The engine has never run in this tree.** Nine thousand nine hundred and thirty
-lines under `prog/manas/` compile and lower, and Phase 7 of
-`tools/test/run-tests.sh` gates them on compiling. No phase in the suite performs
-a model call. Every "live verified" line in `.planning/MANAS-STATE-VS-GOAL.md`
-was measured through the CPython transport that the migration cut. Until
-2026-09-02 this limit was written as three externs missing from the crossing
-table, which E130 and E131 had already made false; `BA-42` in
-[[records/baseline-alignment]] holds the re-measurement. The gap is a run, and
-it is the first thing criterion 1 needs.
+**The engine has never run in this tree. The transport under it has.** Nine
+thousand nine hundred and thirty lines under `prog/manas/` compile and lower,
+and Phase 7 of `tools/test/run-tests.sh` gates them on compiling. Phase 20,
+`tools/test/transport.sh`, registered at `tools/test/run-tests.sh:324`, gates
+`lib/protocol/http.chiral`'s transport path through five roots under
+`prog/samples/`: each is compiled with `bin/chirality-bin`, refused if the
+artifact is empty, run under a `timeout`, and judged against the exit code its
+own header specifies. That phase leaves `prog/manas/` compile-only. Every "live
+verified" line in `.planning/MANAS-STATE-VS-GOAL.md` was measured through the
+CPython transport that the migration cut. Until 2026-09-02 this limit was
+written as three externs missing from the crossing table, which E130 and E131
+had already made false; `BA-42` in [[records/baseline-alignment]] holds the
+re-measurement. Criterion 1 remains unmet. Phase 20 performs no pipeline run. It
+emits no `RunManifest` and asserts no conformance verdict, which is what
+criterion 1 asks a phase for. Two roots already carry that shape.
+`prog/samples/manas-run-conform.prog` reads a frozen golden off disk, runs
+`guarded-run` live against `100.64.0.5:11434`, and its header gives exit 0 iff
+`manifest-conforms` accepts the actual `RunManifest` against that golden, 1 on
+non-conformance and 90, 91 or 92 on an IO, parse or deserialize failure.
+`prog/samples/manas-flow-conform.prog` is its twin through `run-flow` over
+`pipeline->flow doc-refine-pipeline`, with the same exit contract. Both name
+their golden at
+`/workspace/chirality-the-lang/scaffold/tests/golden/manas-smoke-doc-refine.golden.json`,
+a path absent from this tree, and no `*.golden.json` file exists anywhere under
+it, measured 2026-09-02. Neither basename appears in `tools/test/run-tests.sh`
+or in any `tools/test/*.sh`; Phase 7 sweeps both compile-only, as roots that
+define `compile-main`. `prog/samples/agent-probe.prog` is a third, a full
+`agent-run` tool-call turn against `qwen3:8b`, and it carries no assertion. No
+arc holds that work.
+
+⚑ **Phase 20 ran inside `tools/test/run-tests.sh` once, on 2026-09-02, on host
+`claude-sandbox`.** The suite was run end to end and exited 0, `chirality test:
+gate PASSED`. `MemAvailable` was 3,395,072 kB at launch and the suite completed
+without an OOM kill. Phase 20 reported `transport: 5 passed, 0 failed, 0
+deferred`; the endpoint answered and the streaming root printed `Hello! How may
+I help you today?`. Its five assertions are counted in the suite total, which is
+the part that proves the registration: `6 + 7 + 31 + 12 + 32 + 30 + 26 + 41 + 38
++ 19 + 61 + 18 + 5` sums to 326 with `5` as the transport term, and the run
+reported `assertions: 326 passed, 0 failed`. So `run_phase`'s two-field `grep`
+parses the tally line correctly despite its trailing `, 0 deferred`. The same
+run reported `compile-only: 87 roots built, 0 failed`, so Phase 7 held. The
+phase itself was measured standalone on 2026-09-02 on host `claude-sandbox`:
+`bash tools/test/transport.sh` reported 5 passed, 0 failed, 0 deferred and
+exited 0; with the probe host and port overridden to a closed port it reported
+3 passed, 0 failed, 2 deferred and exited 0; with `CHIRALITY_COMPILE=/bin/true`
+it reported 0 passed, 5 failed and exited 1, every root refused as an empty
+artifact. That suite run happened once, on one box, on one day, with the
+endpoint up. The memory risk recorded in `.planning/HANDOFF-DOC-SESSION.md` is
+real and other sessions here were OOM-killed by it. Phase 20 is written to run
+standalone for that reason, and that remains the reason.
 
 **There is no float type.** `lib/protocol/json.chiral:4` states it and keeps
 numbers as their raw lexeme for that reason. `F64` and `Float` are absent from
