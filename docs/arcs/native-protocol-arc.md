@@ -57,7 +57,7 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
 
 | row | what | state | element |
 |---|---|---|---|
-| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class | slice 1 built and gated 2026-09-03, slices 2 to 4 open | `unminted` |
+| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class | slices 1 and 2 built and gated 2026-09-03, slices 3 and 4 open | `unminted` |
 | `native-protocol/N2` | the entropy crossing | not started | `unminted` |
 | `native-protocol/N3` | listen-side AF_INET, and UDP if the handshake wants it | not started | `unminted` |
 | `native-protocol/N4` | the handshake and framing, Noise reference class, shrednet identity model as base | not started | `unminted` |
@@ -81,8 +81,10 @@ and coordinates with the enforcement session), then slices 3 and 4, then N4
 beside N8. The `tools/test/run-tests.sh` registration stays owed to the
 suite session along with an optional tracked sample fixture. Residue
 noted 2026-09-03: `St`/`st` are also defined in
-`lib/lowering/upper/lower.chiral`; no current blob co-links them, and a
-future blob linking crypto with lowering would collide. After N1: N2 and N3 are
+`lib/lowering/upper/lower.chiral`, and `OpenR` in
+`lib/module/resolve.chiral`; no current blob co-links either pair, and a
+future blob linking crypto with those modules would collide. The N6
+primitives module is the natural fix for the first pair when it lands. After N1: N2 and N3 are
 crossings, owed before N4; N5 is the language-development row and leans on
 the information-flow deferral recorded in `lib/capability/secret.chiral`'s
 header.
