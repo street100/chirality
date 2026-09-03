@@ -33,7 +33,7 @@ other: bytes have no layout freedom.
 
 ## REQUIREMENTS
 
-Done when all five hold.
+Done when all six hold.
 
 1. **`.manifest` exists as a checked kind.** A module whose every `def` body is a
    literal value: constructor applications and literals, no `lam` and no
@@ -44,6 +44,10 @@ Done when all five hold.
 4. **Each kind has a round-trip gate** with a named mutant that is actually run:
    source for `.manifest`, bytes for `.protocol`.
 5. **The five emitters return `Doc`**, gated at widths 1, 40 and 10^6. E146.
+6. **`.grammar` either exists as a checked kind or the arc records why it should
+   not.** E190, minted 2026-09-02. It is the one proposed kind that is a **new
+   registry** rather than a view of an existing one, so it adds a judgment in all
+   but name, and the argument for that comes before any implementation.
 
 ## Element list
 
@@ -52,6 +56,7 @@ Done when all five hold.
 | E146 | value to source: the five emitters return `Doc` | not built. Imports `surface/pretty`, which E181 landed |
 | E163 | `.manifest`: a declared form, a derived codec, a round-trip gate against source | not built |
 | E183 | `.protocol`: the same law carried in bytes | not built. Minted 2026-08-31 by the diagnostics arc |
+| E190 | `.grammar`: the surface syntax as a declared signature | not built. Minted 2026-09-02 from this arc's own band, having been named a whole session with no row |
 
 Full element prose for E183 is in [[arcs/diagnostics-arc]], which minted it.
 
