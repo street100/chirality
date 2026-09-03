@@ -26,6 +26,7 @@ changes, and the `op-mulhi` surface binding stays unbuilt.
 |----|---------|-------|------|------|
 | **N2** | **The entropy crossing.** `getrandom` as a declared crossing. The tree today has zero RNG paths and every compiled path is deterministic; this row spends that property deliberately, through one declared site. | design | none | ? |
 | **N3** | **Listen-side AF_INET and UDP externs**, landing beside `nb-sock-connect-in` in the socket registry. The registry today carries client connect only. | design | none | ? |
+| **N9** | **The universal crossing trait.** Today a new crossing is one hand-tal `TIFn` in `lib/lowering/tal/sys.chiral` plus a `crossing-wraps` row; the dispatch half is already table data (E70) and port values already peel universally (E123). This row makes the stub itself type-directed, so a new port extends the table and TAL stays frozen. Author direction 2026-09-03: upper grows without extending TAL, and everything still lowers. | design | N2 | ? |
 
 ### Layer P: the protocol
 

@@ -65,6 +65,7 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
 | `native-protocol/N6` | the shared primitives module: word ops, LE codecs, field arithmetic; every kernel consumes it, slice 1 helpers migrate in | not started | `unminted` |
 | `native-protocol/N7` | Shamir over GF(256): split, reconstruct, quorum agreement, corrupted-share detection | not started | `unminted` |
 | `native-protocol/N8` | the split store: seal then split, distribution, the return track with disagreement handling | not started | `unminted` |
+| `native-protocol/N9` | the universal crossing trait: a crossing's TAL stub synthesized from its declared type, so a new port extends a table instead of TAL code | not started | `unminted` |
 
 ## Resume state
 
