@@ -24,7 +24,7 @@ where the tree does not settle the answer and a pass must stop.
 | `decision-split-checker` | `status: draft`, while PRINCIPLES states its content settled |
 | what a `docs/elements/` file holds | one file per element, one per band, or a tracked index. `docs/elements/README.md` states the fork |
 | Python: outside the tree, or inside it | [[goals/self-tooling]] and [[goals/local-ai]] point opposite ways, and the call decides whether they conflict at all. The two readings are below |
-| A reserved element block for [[goals/local-ai]] | Its transport arc and its tuning arc write `UNASSIGNED` and stop. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else |
+| A reserved element block for the six arcs that have none | Transport, tuning, text-tools, independent-judgment, bridge and module-split write `UNASSIGNED` and stop, 16 rows in total. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else |
 | `E184-E189` is one band and two focuses draw on it | [[arcs/enforcement-arc]] and [[arcs/diagnostics-arc]] both mint from it, `E184` is spent, and four numbers remain. Concurrent minting is the collision that produced two `E173`s. The work split is in `docs/decisions/decision-lane-split.md` |
 | Which arc owns the allocation gap | ~1,747 B of arena per input byte, no reclamation on any compiled path, and a projected ~6.3 GB at the default scope against 3.85 GB with no swap. It blocks manas and scriba from running once transport lands and no arc holds it |
 
@@ -151,6 +151,25 @@ referent) and the tuning arc (criterion 4) have no block, so every row in them
 writes `UNASSIGNED`. This is the same block that stops
 [[arcs/text-tools-arc]]'s P2, P3 and P4 rows, and that arc already carries its
 own row above. One ruling can cover both.
+
+**Widened 2026-09-02.** The same ruling now blocks three more arcs, so it is one
+call over six rather than two:
+
+| arc | rows waiting | opened |
+|---|---|---|
+| [[arcs/transport-arc]] | `T1` to `T4` | before |
+| [[arcs/tuning-arc]] | criterion 4 | before |
+| [[arcs/text-tools-arc]] | `P2`, `P3`, `P4` | before |
+| [[arcs/independent-judgment-arc]] | `J1` to `J5` | 2026-09-01 |
+| [[arcs/bridge-arc]] | `C1`, `C2`, `C3`, `C5`. `C4` holds `E40`/`E56`, minted 2026-07-21 | 2026-09-02 |
+| [[arcs/module-split-arc]] | `S1` to `S4` | 2026-09-02 |
+
+Sixteen rows across six arcs carry arc-local ids and map to `unminted`. Every
+one of them names measured work: `bridge/C2` has `cat-fenced`'s two missing
+arms, `module-split/S1` has `conv`'s signature, `independent-judgment/J5` has
+`SpecRule.statement` being a `Str`. The naming is done and the numbering is what
+is missing, which is [[decisions/decision-work-ids]]' own diagnosis one year of
+arcs later.
 
 The scriba half of this goal is exempt and needs no ruling: `S#` is namespaced
 by its own letter per `docs/elements/ledger.md`, `S18` already has a SPEC at
