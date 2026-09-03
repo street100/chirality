@@ -38,6 +38,10 @@ Three conditions, one per arc.
 3. **Document.** A typed document with a typed style calculus renders in that
    window, and style is a total function of a declared state.
    [[arcs/native-document-arc]].
+4. **Store.** A value is sealed, split t of n by Shamir sharing, and
+   reconstructed only by quorum, with disagreement a named outcome.
+   [[decisions/decision-quorum-store]], added by author ruling 2026-09-03,
+   carried by [[arcs/native-protocol-arc]] rows N6 to N8.
 
 ## State
 

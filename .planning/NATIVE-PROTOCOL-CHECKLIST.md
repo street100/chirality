@@ -17,6 +17,8 @@ changes, and the `op-mulhi` surface binding stays unbuilt.
 | N# | Element | State | Gate | Size |
 |----|---------|-------|------|------|
 | **N1** | **Crypto kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class.** Pure category A throughout. Limbs are kept small enough that every product fits signed I64. The assertion gate carries the published RFC vectors; a kernel with a missing vector row is unproven and says so. | design | none | ? |
+| **N6** | **The shared primitives module.** Word ops, LE codecs and field arithmetic in one home every kernel consumes; a helper private to one kernel carries a reason. The slice 1 helpers migrate in. `decision-quorum-store` rules primitives first. | design | none | ? |
+| **N7** | **Shamir over GF(256): split, reconstruct, quorum agreement, corrupted-share detection.** Reconstruction from two share subsets that disagrees is a named observable. Plain Shamir first; verifiable sharing is residue with its own future row. | design | N6 | ? |
 
 ### Layer X: the crossings
 
@@ -30,6 +32,7 @@ changes, and the `op-mulhi` surface binding stays unbuilt.
 | N# | Element | State | Gate | Size |
 |----|---------|-------|------|------|
 | **N4** | **Handshake and framing.** Noise reference class, the shrednet identity model as base. Key material lives behind Secret custody from mint to reveal, per E40's rule. | design | N1 · N2 · N3 | ? |
+| **N8** | **The split store: seal then split, distribution, the return track with disagreement handling.** The quorum shape from `decision-quorum-store`: nothing authoritative sits whole in one place. The seam against N4 is undrawn and the design draws it. | design | N7 · N4 | ? |
 
 ### Layer J: the judgment
 

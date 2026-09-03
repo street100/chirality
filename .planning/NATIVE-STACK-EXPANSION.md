@@ -71,6 +71,17 @@ information-flow element named in `secret.chiral`'s header.
 - **Borrowed transport crypto as the permanent story.** The current borrowing
   is named at `inet.chiral:4`. The protocol arc exists to retire it.
 
+## The 2026-09-03 re-ruling, late session
+
+The author corrected the line's purpose and order. Crypto and Shamir are the
+mechanics of a split source-of-truth store: seal, split t of n, reconstruct
+by quorum, disagreement a named outcome on the return track. Primitives
+first, one shared module every kernel consumes. The entropy crossing moves
+ahead of the handshake because shares and keys consume it. Tracked in
+`docs/decisions/decision-quorum-store.md`; rows N6 to N8 carry it. The
+correction also stands as recorded feedback: the orchestrator had sequenced
+RNG last and kernels self-contained, and both readings were wrong.
+
 ## Open forks
 
 | fork | shape |
