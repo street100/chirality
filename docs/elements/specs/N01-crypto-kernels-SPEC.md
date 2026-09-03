@@ -4,7 +4,7 @@ slug: crypto-kernels
 title: "**Crypto kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class**"
 kind: LAYER-K
 example: examples/N01-crypto-kernels.md
-status: draft
+status: audited
 updated: 2026-09-03
 ---
 
@@ -57,7 +57,7 @@ updated: 2026-09-03
   | integer externs | `+ - * / % =i <i <=i` and `band bor bxor shl shr sar` | `lib/prelude/prelude.chiral:58-71` |
   | bytes externs | `blen bget bslice bcat brepeat` | `lib/prelude/prelude.chiral:93-97` |
   | LE serialization | `pack-u32` / `unpack-u32` | `lib/prelude/prelude.chiral:98-99`, LE per `lib/lowering/compile-emit.chiral:29` and `lib/protocol/wire.chiral:3` |
-  | guarded byte read | `at-byte` | `lib/text/matcher.chiral:310-315` |
+  | guarded byte read | `at-byte` | `lib/text/matcher.chiral:310-314` |
   | result idiom | fallible `sock-*` carrying `*-err` constructors | E29, `docs/examples/E29-sockets.md` |
   | totality shapes | countdown to a constant bound; index under `blen` | `docs/definitions/totality.md` |
 
@@ -121,7 +121,7 @@ regularity rule (`docs/definitions/design-principles.md`). A second consumer
 promotes it to a shared home as that change's business (§6).
 
 No NEEDS-AUTHOR rows. All four dispositions derive from reviewed or settled
-documents cited above, so `status: draft` stands.
+documents cited above, so the SPEC reached its audit owing no author round.
 
 ## 4. Change plan (ordered, commit-sized)
 
@@ -240,12 +240,12 @@ its gate phase run.
 
 - **Mutant rows, each RUN (red, then reverted):**
 
-  | mutant | red row |
-  |---|---|
-  | `rotl32` count 16 changed to 17 in `qround` | §2.3.2 |
-  | one weight-5 carry fold dropped in `f-mul` | §2.5.2 |
-  | two entries swapped in `sig0` | appendix B |
-  | fold weight 19 changed to 18 in `f10-mul` | §5.2 |
+  | mutant | red row | why red is forced |
+  |---|---|---|
+  | `rotl32` count 16 changed to 17 in `qround` | §2.3.2 | the first rotation of every quarter round moves, so the keystream diverges from the first double round |
+  | one weight-5 carry fold dropped in `f-mul` | §2.5.2 | the §2.5.2 message spans three blocks and its clamped `r` has a nonzero top limb, so every fold carries reduced value into the tag |
+  | the first two entries swapped in `sig0` | appendix B | `"abc"` pads to one block whose only nonzero word is `m0`; the swap feeds `m0` to the other message add of the first `g-mix` call. The pair is pinned because a swap of two zero-word entries would leave the digest fixed and the row green |
+  | fold weight 19 changed to 18 in `f10-mul` | §5.2 | both §5.2 inputs drive nonzero cross products past the top limb, so the misweighted fold shifts the reduction mod `2^255 - 19` |
 
 - **Green line:** the suite gains one phase. The assertion baseline is
   recorded at implement time from `tools/test/run-tests.sh`'s own print;

@@ -188,4 +188,4 @@ Status is not tracked here. `S1`/`S2` and `S18` have specs in
 `docs/elements/specs/` with no example in this corpus; `S1`/`S2` cite their
 examples in `/workspace/manas`, which is a separate repository (see
 `records/baseline-alignment.md` BA-38).
-| N1 | **Crypto kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class** | LAYER-K | EXTERNAL | specced | [N01-crypto-kernels.md](N01-crypto-kernels.md) · [SPEC](../../docs/elements/specs/N01-crypto-kernels-SPEC.md) |
+| N1 | **Crypto kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class** | LAYER-K | EXTERNAL | audited | [N01-crypto-kernels.md](N01-crypto-kernels.md) · [SPEC](../../docs/elements/specs/N01-crypto-kernels-SPEC.md) |
