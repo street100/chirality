@@ -10,6 +10,99 @@ Two documents already hold pieces of this. This file points at them:
 | `.planning/README-PLAN.md:308-322` | the end-game requirements, and the honest limit that `.grammar` is named nowhere in the tree |
 | `.planning/MANIFEST-DESIGN-MAP.md` | the one-translator model, `.manifest`'s three shapes, the round-trip law, built-versus-new |
 
+⚑ **Scope widened 2026-09-02.** This opened as a file-kind note. The session
+found the kinds are downstream of a semantic split that had no home, so the
+split is recorded first and the kinds follow from it.
+
+## The triple
+
+Author's frame, 2026-09-02. Every layer asks three questions:
+
+| question | is | authored |
+|---|---|---|
+| **what exists** | the vocabulary. Which things there are at all | yes |
+| **what is allowed** | the bound. Which of them this may use | yes |
+| **what happens** | the record. Which it actually used | **no, derived** |
+
+They stand in inclusion: `exists` contains `allowed` contains `happens`. That is
+not an analogy. It is the port discipline as
+[[decisions/decision-effect-facets]] already states it: "crossings subset of
+capabilities in scope" is `allowed` grounded in `exists`, and profile
+conformance is `happens` inside `allowed`.
+
+**`what happens` is never written by a person.** The effect row is "inferred by
+elaboration from the transitive closure of extern crossings in the call graph",
+and `Sheet.crossings` is marked "derived, WHICH not whether". E161 derives it
+with no surface production at all. So a layer has two authored forms and one
+derived view, and a kind proposed for `happens` is a kind that should not exist.
+
+### The recursion
+
+`what is allowed` is itself composite. Settling it means stringing together a
+configuration of some other layer's own exists, allowed and happens. A profile
+says which crossings a module may perform, and to say that it names a port set,
+which is an `exists` one level down, and a target, which is that level's
+`allowed`. So the triple nests, and the recursion terminates where a layer's
+`exists` is a primitive the language declares rather than composes.
+
+### The same triple, four layers
+
+| layer | exists | allowed | happens |
+|---|---|---|---|
+| crossings | `.port` registry | cap value, arrow, profile | the effect row |
+| types | `data` declarations | what is imported into scope | which are used |
+| grades | the semiring | the annotation on the binder | the usage vector |
+| rules | the signature table | this module's subset | the derivation |
+
+### Five carriers, three questions
+
+The boundary shows up in five places in the source and they collapse onto the
+triple, with `allowed` asked at three scopes rather than three times over.
+
+| carrier | question | scope |
+|---|---|---|
+| `.port` file | exists | the tree |
+| linear cap value | allowed | a term |
+| `->` against `=>` (`Seat`) | allowed | a signature |
+| the profile | allowed | a module |
+| the effect row | happens | a term, derived |
+
+⚑ The tight thing that makes this cheap: [[decisions/decision-effect-facets]]
+joins possession and exercise by construction rather than by any new judgment, because
+every crossing takes its capability as a parameter. "Nothing new enters the
+kernel judgment for containment." That gives a test for any proposed kind: **a
+kind is legitimate when what it declares is discharged by the signature rather
+than by a judgment added to the core.** `.port` passes. A kind needing a new
+registry the traversal must learn to consult is a new judgment in all but name.
+
+## Two claims, checked 2026-09-02
+
+**1. `.manifest` is universal, because everything is types and types go to
+core.** Partly true, and the ceiling is already written.
+`.planning/MANIFEST-DESIGN-MAP.md` states it: "The format expresses any inert
+value. Coverage is bounded by what interpreters exist to read the data.
+Ceiling: the author never writes control flow. Conditionals and recursion live
+in the interpreter." So a manifest is universal over inert values and stops at
+computation. It needs no judgment of its own, which is the half of the claim
+that holds.
+
+**2. Anything expressible in upper must go through lower.** FALSE, in both
+directions, and deliberately.
+
+- Erased content never arrives. `lib/lowering/upper/lower.chiral:65` says "a
+  binder stays upper only when LINEAR (q=1); q=0 is erased (dropped)", `:70`
+  says "only the KEPT (q!=0) binders' domains must lower",
+  `lib/lowering/compile-front.chiral:90` says "the callee's erased positions are
+  dropped, an erased arg is a TYPE Term", and `closconv.chiral:1177` carries
+  `drop-erased-args`. Types and proofs live at upper and stop there.
+- Lower holds content that never came from upper. `sys-tal`'s 64 hand-authored
+  defs are written at tal directly, and `erased-nf.chiral` records that its
+  shape is "EXACTLY the subset of tal-ir a lowered pure function can reach, no
+  ti-sys / ti-bptr (hand-authored sys tal only)".
+
+So altitude fails to be a projection in either direction. The erasure boundary is
+where upper stops, and hand-authored tal is where lower starts without it.
+
 ## The frame
 
 One translator, one configuration per kind. A kind is a **view** of the term
