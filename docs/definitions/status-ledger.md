@@ -41,7 +41,10 @@ updated: 2026-09-01
 > pipeline. **Suite: 303 assertions, 0 failed, 11 phases, 88 roots, `gate PASSED`.**
 > **`bin/chirality-bin` is 1,147,256 bytes** (was 1,098,104 at migration, then
 > 1,130,872) and reproduces itself byte-identically — `N1 == N2`, fixpoint at
-> generation one, verified after every promotion.
+> generation one, verified after every promotion. ⚑ **E182 fixpointed at
+> generation TWO** (2026-09-02): a source change that alters emitted code makes
+> the old binary's output differ from that output's own, and the answer is to
+> promote the fixpoint rather than generation one. `records/findings.md` FD-08.
 >
 > | element | what it is | gate |
 > |---|---|---|
@@ -50,6 +53,7 @@ updated: 2026-09-01
 > | **E174** | `Rendering` gains `r-row` + a per-node width function; also repaired `apc.chiral`'s codec, which was **already red** | Phase 15, 41 |
 > | **E175** | the ANSI close restores the **ambient face** instead of resetting to default | Phase 16, 38 |
 > | **E181** | `surface/pretty` — the term printer repointed at the real 16-constructor `Term`, returning `Doc`; **moved from `typing/`** | Phase 18, 61 |
+> | **E182** | `r-arity` carries the counts both live arity comparisons already held and dropped; `Judg` 38 → 36 | Phase 24, 13 |
 >
 > **Two facts other work depends on.** (1) `typing/pretty` **no longer exists** —
 > the key is **`surface/pretty`** (`MAP.md`: a printer checks nothing, so it is
@@ -60,7 +64,8 @@ updated: 2026-09-01
 > see *Where element detail lives*, below): E176 `str-sub` is unclamped and
 > **segfaults** · E177 display-width table · E178 `r-table` per-column widths ·
 > E179 the face registry becomes authoritative · E180 face-aware incremental
-> redraw · E182 the arity judgments carry their arity · E183 `.protocol`.
+> redraw · E183 `.protocol`. **E182 built 2026-09-02** and moved to the table
+> above.
 > Lane B holds E146 · E163 · E183. Division and enforcement: **`docs/decisions/decision-lane-split.md`**.
 >
 > **⚑ Where element detail lives, and why this section exists.** `.planning/` is

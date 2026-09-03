@@ -64,24 +64,21 @@ Done when all five hold. Each is observable.
 
 ## Resume state
 
-Suite **321 assertions, 0 failed, 12 phases, 87 roots, gate PASSED**, the figure
-E173 measured on 2026-09-01 (`docs/examples/INDEX.md:163`). ⚑ *This line read
-303 / 11 phases until 2026-09-02, which was E181's figure. E173 registered
-Phase 19 and its 18 assertions after it, and flipped one authority and not this
-one. Found by the E182 SPEC audit, which could not write this file.* The suite
-has not been re-run here: this box is 3.85 GB with no swap.
-`bin/chirality-bin` 1,147,256 B, promoted by E181 at `58603c3`.
+Suite **328 assertions, 0 failed** across twelve gate scripts, measured
+2026-09-02 under the binary E182 promoted. `run-tests.sh` has not been run
+here: this box is 3.85 GB with no swap, so the phases are run individually.
+`bin/chirality-bin` **1,188,216 B**, promoted by E182 at `4047a66`.
 
-⚑ **`N1 == N2` at generation one described E181, and does not describe the tree
-now.** Measured 2026-09-02 at `3be8915`: the shipped binary trails its sources
-by one generation, and the tree reproduces itself at `B2 == B3`. That is the
-ordinary two-generation bootstrap, and `records/findings.md` FD-08 records why
-it is ACCEPTED rather than a defect.
+⚑ **The tree is at its fixpoint and `B1 == bin/chirality-bin` holds**, for the
+first time since E181. E182's commit 3 shipped generation one while correctly
+measuring the fixpoint at generation two, and commit 3b promoted the fixpoint.
+That closed `records/findings.md` FD-08, which had recorded the one-generation
+lag as ACCEPTED while it belonged to 13 commits nobody had promoted.
 
-Next action is the **E182 implement run**. Every stage before it is closed and
-the one author call is answered. It writes `lib/typing/{diag,kernel}.chiral`,
-adds `tools/test/arity.sh` as Phase 20, and promotes `bin/chirality-bin`,
-reporting the inherited delta and E182's own separately per FD-08.
+Next action is **E176**, `str-sub` unclamped. E182 is built: five commits on
+2026-09-02 over `lib/typing/{diag,kernel}.chiral`, with `tools/test/arity.sh`
+at **Phase 24**, because `transport.sh` took 20 between this element's SPEC
+audit and its implement run (`records/findings.md` FD-11).
 
 ⚑ **Sequencing, raised by the author and undecided.** `E176` is sharper than
 E182 on consequence: `str-sub` is unclamped, segfaults, has 131 call sites, and
@@ -96,7 +93,7 @@ reports.
 | # | element | state |
 |---|---|---|
 | 1 | E181 `pretty` over the real `Term`, returning `Doc` | **BUILT 2026-09-01.** Moved to `lib/surface/pretty.chiral`; `typing/` was never its role. Phase 18 = 61/0 |
-| 2 | E182 the arity judgments carry their arity | **AUDITED 2026-09-02** (`b1eb648`), SPEC audit PASS on all five checks, sixteen FIXes, three mutants repaired. Scope call ANSWERED YES the same day. **Implementing.** Example REVIEWED at `a5aae47`, audit PASS on all five checks. Premise corrected in the example, the catalog row and the ledger row: it repoints the two LIVE comparisons and retires both arms behind them, `jg-tparam-arity` and `jg-ctor-arg-arity`, taking `Judg` from 38 to 36. The two arms the catalog row named beside them are unreachable and stay. Gate is Phase 20; 19 went to E173. One scope FLAG stands in §6 |
+| 2 | E182 the arity judgments carry their arity | **BUILT 2026-09-02**, five commits `65bec90` to `bd042ae`. `Judg` 38 to 36, `Reason` 9 to 10, both live comparisons carry their counts. Phase 24 = 13/0, 8 mutants all RUN, suite 328/0, binary promoted to 1,188,216 B at the fixpoint. Pipeline ran clean: example `a5aae47`, SPEC audit `b1eb648`, scope call answered the same day. Premise corrected in the example, the catalog row and the ledger row: it repoints the two LIVE comparisons and retires both arms behind them, `jg-tparam-arity` and `jg-ctor-arg-arity`, taking `Judg` from 38 to 36. The two arms the catalog row named beside them are unreachable and stay. Gate is Phase 20; 19 went to E173. One scope FLAG stands in §6 |
 | 3 | E176 `str-sub` unclamped, segfaults, 131 call sites | not built. The safety was asserted in a comment |
 | 4 | E179 the face registry becomes authoritative | not built. 5 ad-hoc sites plus `lookup-face` synthesis |
 | 5 | E180 face-aware incremental redraw | not built. Unreachable today; the hazard E175 creates |

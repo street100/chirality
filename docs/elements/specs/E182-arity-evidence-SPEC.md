@@ -62,19 +62,29 @@ updated: 2026-09-02
   for this element is the corrected catalog row and the arc row, both cited
   above.
 
+⚑ **The `diag.chiral` line numbers below were repointed on 2026-09-02, after this
+element was implemented.** Commits `65bec90` and `d26d7a1` inserted the arm, its
+two helpers and eight renderer arms, which shifted every name under them. The
+numbers now name where each binding **is**, so a reader can open them; the prose
+around them describes the tree **before** E182, which is what a baseline is for.
+Nine names moved: `Reason` 122 to 121, `dg-subject-name` 159 to 161,
+`dg-subject-tag` 176 to 178, `dg-subject` 193 to 195, `dg-newcomer` 223 to 227,
+`dg-declared` 259 to 264, `dg-msg` 317 to 326, `dg-judg-msg` 419 to 429,
+`dg-doc` 519 to 561.
+
 - **Live code this composes with, and none of it is respecced:**
-  - `Reason` at `lib/typing/diag.chiral:122`, E157's evidence-bearing sum, nine
+  - `Reason` at `lib/typing/diag.chiral:121`, E157's evidence-bearing sum, nine
     arms. `r-mismatch` already carries `(expected Term) (actual Term)` and
     `r-usage` already carries `(declared Qty) (observed Qty)`, so the field
     order and the naming this element follows are the file's own.
   - The eight exhaustive `case`s over `Reason`, all in `diag.chiral`, none with
-    a `_`: `dg-reason-tag` (`:145`), `dg-subject` (`:193`), `dg-incumbent`
-    (`:209`), `dg-newcomer` (`:223`), `dg-declared` (`:259`), `dg-observed`
-    (`:273`), `dg-msg` (`:317`), `dg-doc` (`:519`). The comment above `dg-msg`
+    a `_`: `dg-reason-tag` (`:145`), `dg-subject` (`:195`), `dg-incumbent`
+    (`:209`), `dg-newcomer` (`:227`), `dg-declared` (`:264`), `dg-observed`
+    (`:273`), `dg-msg` (`:326`), `dg-doc` (`:561`). The comment above `dg-msg`
     states the intent this element depends on: a new `Reason` constructor must
     break every renderer loudly.
-  - `Subject` at `:80`, twelve arms, with `dg-subject-name` (`:159`) and
-    `dg-subject-tag` (`:176`) already casing all twelve. `subj-data` and
+  - `Subject` at `:80`, twelve arms, with `dg-subject-name` (`:161`) and
+    `dg-subject-tag` (`:178`) already casing all twelve. `subj-data` and
     `subj-ctor` are the two subjects the detection sites already pass.
   - `i64->str`, the prelude extern at `lib/prelude/prelude.chiral:84`, already
     called from `diag.chiral:670`. The new message needs no new dependency.
@@ -114,7 +124,7 @@ dispositioned. Twelve is the only one carried out of this run.
 | 4 | The `dg-arity-msg` wording, which no golden constrains | RESOLVED | The existing sentence survives verbatim as the prefix and the evidence is appended: `<name> wrong number of arguments (expected 2, actual 1)` and `<name> wrong number of type parameters (expected 1, actual 2)`. E157 introduces no new diagnostic and changes no wording (`diag.chiral:300-302`); this element adds evidence under the same rule, so the two probe refusals keep their meaning and gain their numbers, which is the example's §6 conformance target |
 | 5 | Field order on the arm | RESOLVED | `(expected, actual)`, following `r-mismatch` (`diag.chiral:126`) and `r-usage` (`:128`). The reverse order follows nothing in this file |
 | 6 | Whether `dg-expected` / `dg-actual` return `0` or a `(Maybe I64)` for the other nine arms | RESOLVED, and neither: **the accessor pair stays unbuilt** | `dg-declared` and `dg-observed` exist because `samples/e157_diag.prog` reads them. Nothing reads an arity count off a `Reason` today, and this gate reads both counts through `dg-msg` and `dg-doc`. Two accessors would add twenty boilerplate arms to an element whose cost is the open author question. Home for the unbuilt pair: nobody's yet, recorded in §6 |
-| 7 | Whether a new `Subject` arm distinguishes type parameters from constructor arguments | RESOLVED | No new arm. `dg-arity-noun`, a new `(-> Subject Str)` casing all twelve `Subject` arms the way `dg-subject-tag` (`:176`) does, answers `"type parameters"` for `subj-data` and `"arguments"` for every other arm. One arm serves both sites and the sentences stay distinct. G3 is that claim as a row |
+| 7 | Whether a new `Subject` arm distinguishes type parameters from constructor arguments | RESOLVED | No new arm. `dg-arity-noun`, a new `(-> Subject Str)` casing all twelve `Subject` arms the way `dg-subject-tag` (`:178`) does, answers `"type parameters"` for `subj-data` and `"arguments"` for every other arm. One arm serves both sites and the sentences stay distinct. G3 is that claim as a row |
 | 8 | FD-08: the shipped binary trails its sources by one generation | ACCEPTED, and it is a precondition report rather than a defect | `records/findings.md:103-110` records the measurement with state ACCEPTED. `7341ddf` changed emitted code, so `B1 != B2` and `B2 == B3` is the ordinary two-generation bootstrap. Re-filing it as a blocker would re-argue an ACCEPTED finding. Its one live consequence is attribution, which decision 9 disposes of |
 | 9 | Whether E182 promotes once from the unmodified tree first, or promotes once and reports two deltas | RESOLVED, orchestrator's call | One `build-new → test → promote`, no separate re-promotion commit. Two deltas reported **separately**: the inherited one, `1,147,256 → 1,184,120 B`, which belongs to the 13 commits of other arcs since E181 promoted at `58603c3`; and E182's own, `B_after` minus `B_before` where `B_before` is 1,184,120 B on the unmodified tree. The fixpoint is **predicted at generation two**, so a gen-one fixpoint fails to be the target and its absence convicts nothing |
 | 10 | `lib/typing/kernel.chiral` is absent from both of the lane-split document's file enumerations | RESOLVED, and the document stays unedited | `docs/decisions/decision-lane-split.md:260` reads "`lib/typing/` belongs to diagnostics. The enforcement arc names no path under it", which covers the file at directory granularity, and the enforcement arc names no path under `lib/typing/`. The two enumerations at `:94-97` and `:245` omit the file and that gap is recorded in the example's §6. Proceed on the prose; repairing the enumerations is a doc-tier write |
@@ -141,7 +151,7 @@ tree concurrently.
 
 - **Target:** `lib/typing/diag.chiral`.
 - **Change:**
-  - `Reason` (`:122`) gains a tenth arm below `r-relayed`:
+  - `Reason` (`:121`) gains a tenth arm below `r-relayed`:
     `(r-arity (what Subject) (expected I64) (actual I64))`, with the one-line
     comment the file's style gives every arm.
   - Two new bindings beside the other `dg-*-msg` helpers, each with its
@@ -172,7 +182,7 @@ tree concurrently.
 
 - **Targets:** `lib/typing/kernel.chiral`, with `check-tcon` (`:1036`) and
   `con-check` (`:1091`) · `lib/typing/diag.chiral`, with `Judg` (`:99`) and
-  `dg-judg-msg` (`:419`).
+  `dg-judg-msg` (`:429`).
 - **Change:**
   - `check-tcon`'s false branch becomes
     `(tc-err (r-arity (subj-data dn) (llen Term (decl-params decl)) (llen Term args)))`.
@@ -183,7 +193,7 @@ tree concurrently.
     the same reuse.
   - `jg-tparam-arity` (`diag.chiral:107`) and `jg-ctor-arg-arity` (`:109`) are
     both deleted from the `Judg` sum, and both of their arms are deleted from
-    `dg-judg-msg` (`diag.chiral:419`), whose `jg-tparam-arity` arm sits at line
+    `dg-judg-msg` (`diag.chiral:429`), whose `jg-tparam-arity` arm sits at line
     446 and whose `jg-ctor-arg-arity` arm at line 452.
     **`Judg` goes from 38 arms to 36.**
     Repointing both live comparisons leaves both arms unconstructed, and keeping

@@ -199,6 +199,11 @@ if args.len() != fields.len() {
 
 ; The flat exit. i64->str is the prelude extern (prelude.chiral:84); diag.chiral
 ; already uses it at :670 for dg-dd-arity, so this is not a new dependency.
+; ⚑ THE WORDING BELOW IS THE SKETCH AND THE TREE DOES NOT CARRY IT. The SPEC's
+; decision 4 settled on the existing sentence as a prefix with the counts
+; appended: "<name> wrong number of <noun> (expected N, actual M)", which is
+; what §1, G2, G5 and G6 pin and what shipped at 65bec90. This example is the
+; design rationale and keeps its own draft.
 (declare dg-arity-msg (-> Subject I64 I64 Str))
 (def dg-arity-msg
   (lam (w e a)
