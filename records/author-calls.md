@@ -3,7 +3,7 @@ node: records-author-calls
 layer: record
 related: [records/README, records/consolidation-handoff, arcs/README, elements/README, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-03
 ---
 
 # Open author calls
@@ -24,7 +24,8 @@ where the tree does not settle the answer and a pass must stop.
 | `decision-split-checker` | `status: draft`, while PRINCIPLES states its content settled |
 | what a `docs/elements/` file holds | one file per element, one per band, or a tracked index. `docs/elements/README.md` states the fork |
 | Python: outside the tree, or inside it | [[goals/self-tooling]] and [[goals/local-ai]] point opposite ways, and the call decides whether they conflict at all. The two readings are below |
-| A reserved element block for the six arcs that have none | Transport, tuning, text-tools, independent-judgment, bridge and module-split write `UNASSIGNED` and stop, 16 rows in total. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else |
+| A reserved element block for the nine arcs that have none | Transport, tuning, text-tools, independent-judgment, bridge and module-split write `UNASSIGNED` and stop, 16 rows in total. The three native-stack arcs, opened 2026-09-03, add 13 arc-local rows mapping to `unminted`. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else |
+| When the native-stack track opens | [[decisions/decision-scope]] holds the current track to self-hosting only. The author stated [[goals/native-stack]] and its internal order on 2026-09-03 and set no opening date, so its three arcs sit unopened |
 | `E184-E189` is one band and two focuses draw on it | [[arcs/enforcement-arc]] and [[arcs/diagnostics-arc]] both mint from it, `E184` is spent, and four numbers remain. Concurrent minting is the collision that produced two `E173`s. The work split is in `docs/decisions/decision-lane-split.md` |
 | Which arc owns the allocation gap | ~1,747 B of arena per input byte, no reclamation on any compiled path, and a projected ~6.3 GB at the default scope against 3.85 GB with no swap. It blocks manas and scriba from running once transport lands and no arc holds it |
 
