@@ -43,6 +43,19 @@ WORDS = {"one":1,"two":2,"three":3,"four":4,"five":5,"six":6,"seven":7,
          "fourteen":14,"fifteen":15,"sixteen":16,"seventeen":17,"eighteen":18,
          "nineteen":19,"twenty":20}
 
+
+def as_count(tok: str):
+    """A claimed count, written as an English word or as digits.
+
+    WORDS stops at twenty because every count it was built for was small. A tier
+    that grows past it has no spelling, so the claim can be correct and the check
+    still fails: `docs/decisions/` reached 22 notes and check C reported "claims
+    22; tree has 22". Digits are accepted here so the ceiling is gone rather than
+    merely raised.
+    """
+    w = WORDS.get(tok.lower())
+    return w if w is not None else (int(tok) if tok.isdigit() else None)
+
 # a code span is a file path if it carries a dir sep or a known extension
 PATHISH = re.compile(r"`([^`]+)`")
 EXTS = (".py", ".chiral", ".md")
@@ -157,7 +170,7 @@ def check_c() -> list[str]:
     if not m:
         errs.append("[C] CONTENTS.md no '(N notes)' claim for docs/decision-*")
     else:
-        claimed = WORDS.get(m.group(1).lower())
+        claimed = as_count(m.group(1))
         if claimed != n_decisions:
             errs.append(f"[C] CONTENTS claims {m.group(1)} decision notes; "
                         f"tree has {n_decisions}")
@@ -168,7 +181,7 @@ def check_c() -> list[str]:
         n_seq = len(re.findall(r"^\s*\d+\.\s", seq_block[1], re.M)) or \
                 len(re.findall(r"^-\s", seq_block[1], re.M))
         m = re.search(r"(\w+)\s+sequencing questions", mapmd)
-        if m and WORDS.get(m.group(1).lower()) != n_seq:
+        if m and as_count(m.group(1)) != n_seq:
             errs.append(f"[C] CONTENTS claims {m.group(1)} sequencing questions; "
                         f"open-edges has {n_seq}")
     return errs
