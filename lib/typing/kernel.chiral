@@ -1039,7 +1039,7 @@
       (none (tc-err (r-unbound (subj-data dn))))
       ((some decl)
         (case (=i (llen Term args) (llen Term (decl-params decl)))
-          (false (tc-err (r-judged (subj-data dn) (jg-tparam-arity))))
+          (false (tc-err (r-arity (subj-data dn) (llen Term (decl-params decl)) (llen Term args))))
           (true  (check-tparams sig c (decl-params decl) args nil expected dn)))))))
 (def check-tparams
   (lam (sig c params args env expected dn)
@@ -1094,7 +1094,7 @@
       ((ft-err m) (tc-err m))
       ((ft-ok fts)
         (case (=i (llen Term args) (llen Field fields))
-          (false (tc-err (r-judged (subj-ctor cn) (jg-ctor-arg-arity))))
+          (false (tc-err (r-arity (subj-ctor cn) (llen Field fields) (llen Term args))))
           (true  (case (check-con-args sig c args fts (uzero (ctx-len c)))
                    ((u-err m) (tc-err m))
                    ((u-ok u)  (tc-ok (v-tcon dn targs) u)))))))))

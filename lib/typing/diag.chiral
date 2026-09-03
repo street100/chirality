@@ -30,7 +30,7 @@
 ; label.
 ;
 ; WHY typing/. LAYOUT.md: the extension is the kind, the directory is the ROLE.
-; Every one of `Judg`'s 38 arms is a judgment the checker refused to make, and
+; Every one of `Judg`'s 36 arms is a judgment the checker refused to make, and
 ; the evidence the other arms carry is `Term`, `Qty` and `DataDecl` -- so this is
 ; "every check on a type", stated from the refusal side. Its two importers are
 ; `typing/kernel` (the checker, 37 originating sites) and `module/loader` (its
@@ -104,12 +104,11 @@
   (jg-branch-arity)       (jg-scrut-unknown)    (jg-scrut-nondata)
   (jg-nonexhaustive)      (jg-empty-case)       (jg-refine-i64)
   (jg-refine-base)        (jg-refine-opnd-i64)  (jg-refine-opnd-form)
-  (jg-refine-unproved)    (jg-linear-field)     (jg-tparam-arity)
-  (jg-type-as-value)      (jg-not-a-ctor)       (jg-ctor-other-data)
-  (jg-ctor-nondata)       (jg-ctor-infer-params) (jg-ctor-arg-arity)
-  (jg-def-ty-nontype)     (jg-declare-ty-nontype) (jg-no-prior-declare)
-  (jg-extern-nontype)     (jg-dparam-nontype)   (jg-not-positive)
-  (jg-linear-field-decl)  (jg-field-nontype))
+  (jg-refine-unproved)    (jg-linear-field)     (jg-type-as-value)
+  (jg-not-a-ctor)         (jg-ctor-other-data)  (jg-ctor-nondata)
+  (jg-ctor-infer-params)  (jg-def-ty-nontype)   (jg-declare-ty-nontype)
+  (jg-no-prior-declare)   (jg-extern-nontype)   (jg-dparam-nontype)
+  (jg-not-positive)       (jg-linear-field-decl) (jg-field-nontype))
 
 ; ---- a DECLARATION, as the loader knows one ---------------------------------
 ; What a redeclare's two sides actually are. A data redeclare has two full
@@ -454,13 +453,11 @@
         ((jg-refine-opnd-form)  "refinement operand must be a constant or a bare variable")
         ((jg-refine-unproved)   "cannot prove refinement")
         ((jg-linear-field)      (str-cat "linear field " n))
-        ((jg-tparam-arity)      (str-cat n " wrong number of type parameters"))
         ((jg-type-as-value)     (str-cat n " is a type; a non-type was expected"))
         ((jg-not-a-ctor)        (str-cat n " is not a constructor of this type"))
         ((jg-ctor-other-data)   (str-cat n " checked against a different data type"))
         ((jg-ctor-nondata)      (str-cat n " checked against a non-data type"))
         ((jg-ctor-infer-params) (str-cat "cannot infer type parameters of " n))
-        ((jg-ctor-arg-arity)    (str-cat n " wrong number of arguments"))
         ((jg-def-ty-nontype)    "definition type is not a type")
         ((jg-declare-ty-nontype) "declared type is not a type")
         ((jg-no-prior-declare)  (str-cat "def body with no prior declare: " n))
@@ -491,9 +488,9 @@
       ((subj-field-binder) "arguments"))))
 
 ; the sentence the two detection sites used to build, with the evidence they
-; already held appended. The prefix is byte-for-byte what `jg-tparam-arity` and
-; `jg-ctor-arg-arity` rendered; the parenthesised pair is what those two arms
-; structurally could not carry.
+; already held appended. The prefix is byte-for-byte what the two retired `Judg`
+; arms rendered; the parenthesised pair is what a nullary code structurally
+; cannot carry.
 (def dg-arity-msg
   (lam (w e a)
     (let ((n (dg-subject-name w)) (noun (dg-arity-noun w)))
