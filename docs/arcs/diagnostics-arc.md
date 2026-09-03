@@ -82,7 +82,7 @@ reports.
 | # | element | state |
 |---|---|---|
 | 1 | E181 `pretty` over the real `Term`, returning `Doc` | **BUILT 2026-09-01.** Moved to `lib/surface/pretty.chiral`; `typing/` was never its role. Phase 18 = 61/0 |
-| 2 | E182 the arity judgments carry their arity | **example REVIEWED 2026-09-02** (`a5aae47`), audit PASS on all five checks. Premise corrected in the example, the catalog row and the ledger row: it retires ONE of `Judg`'s 38 nullary arms, and the arm it retires is `jg-tparam-arity`, which none of the three rows named. Gate is Phase 20; 19 went to E173. One scope FLAG stands in §6 |
+| 2 | E182 the arity judgments carry their arity | **example REVIEWED 2026-09-02** (`a5aae47`), audit PASS on all five checks. Premise corrected in the example, the catalog row and the ledger row: it repoints the two LIVE comparisons and retires both arms behind them, `jg-tparam-arity` and `jg-ctor-arg-arity`, taking `Judg` from 38 to 36. The two arms the catalog row named beside them are unreachable and stay. Gate is Phase 20; 19 went to E173. One scope FLAG stands in §6 |
 | 3 | E176 `str-sub` unclamped, segfaults, 131 call sites | not built. The safety was asserted in a comment |
 | 4 | E179 the face registry becomes authoritative | not built. 5 ad-hoc sites plus `lookup-face` synthesis |
 | 5 | E180 face-aware incremental redraw | not built. Unreachable today; the hazard E175 creates |
@@ -220,6 +220,6 @@ made now survives the number arriving.
 
 | id | title | state | element |
 |---|---|---|---|
-| `diagnostics/D1` | the two provably unreachable `Judg` arms get a disposition | named 2026-09-02 by the E182 pre-run. `jg-tcon-arity` and `jg-ctor-arity` are refused by guards upstream, and one of them is spelled by a sha256-pinned fixture, so a deletion has to answer for the pin | unminted |
+| `diagnostics/D1` | the two provably unreachable `Judg` arms get a disposition | named 2026-09-02 by the E182 pre-run. `jg-tcon-arity` and `jg-ctor-arity` are refused by guards upstream, and one of them is spelled by a sha256-pinned fixture, so a deletion has to answer for the pin. These are the two arms E182 leaves standing | unminted |
 | `diagnostics/D2` | the `Reason` exhaustiveness claim becomes checkable | named 2026-09-02 by the E182 pre-run. `samples/e157_diag.prog:50` and `tools/test/doc.sh:230` both assert one value of every `Reason` arm, `dgt-all` is a hardcoded nine-value chain no `case` covers, and both files are sha256-pinned. A tenth arm degrades the claim to nine of ten with nothing going red | unminted |
 
