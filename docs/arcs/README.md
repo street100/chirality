@@ -87,6 +87,7 @@ when this table and an arc file disagree.
 | [[arcs/presentability-arc]] | [[goals/presentability]] | 3 rows, none started | none |
 | [[arcs/binary-split-arc]] | [[goals/presentability]] | 5 rows, none started | none |
 | [[arcs/independent-judgment-arc]] | [[goals/independent-judgment]] | 4 rows, none started | none |
+| [[arcs/bridge-arc]] | [[goals/bridge]] | 5 rows, C4 holds E40/E56 | none |
 | [[arcs/transport-arc]] | [[goals/local-ai]] | 4 rows, none started | none |
 | [[arcs/scriba-arc]] | [[goals/local-ai]] | 6 rows, `S18` built and five open | the `S` namespace |
 | [[arcs/tuning-arc]] | [[goals/local-ai]] | opened blocked, no row written | none |

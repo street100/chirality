@@ -192,12 +192,22 @@ Measured 2026-09-02 by counting constructor uses across `lib` and `prog`.
 | whether a crossing may happen | `t-pi` | `s-pure s-proc` | kernel membrane check | 14 |
 | a predicate over a base type | `t-refine` | `RfAtom` | 7 modules, incl. totality and lowering | 29 |
 | which form charged a name | `Sig` | `eh-def eh-data eh-extern eh-porttype` | the exports datasheet | 4 |
-| typeability, altitude | the `(module ...)` form | `cat-a b c`, `alt-upper tal metal` | nothing | 2 to 3 each |
+| typeability | the `(module ...)` form | `cat-a b c` | `cat-fenced`, but **only the `cat-a` arm** | 3, 2, 2 |
+| altitude | the `(module ...)` form | `alt-upper tal metal` | nothing | 2 each |
 | what the file is | the filename | 6 extensions | resolver probes 3 of 6; content checked for 0 of 6 | n/a |
 
 The first three ride inside `Term` and all have consumers. The last three ride
 beside it and have almost none. `lib/typing/kernel.chiral:102-106` says the
 altitude axis has "neither a producer nor a consumer" in its own comment.
+
+⚑ **Corrected 2026-09-02.** An earlier version of this row said typeability had
+no consumer, which was measured wrong. `lib/surface/parse.chiral:1127` produces
+`cat-c`, and `lib/module/loader.chiral:295-300` consumes the axis:
+`cat-fenced` refuses a module declaring `(cat A)` that reaches a crossing. Its
+arms are `((cat-a) ...)` and `(_ none)`, so **A carries an enforced obligation
+and B and C carry none**. That asymmetry is [[goals/bridge]]'s whole gap, and
+the goal and [[arcs/bridge-arc]] opened 2026-09-02 off it. Altitude's row stands
+as written.
 
 Consequence for the goal of moving load onto the parser and lowering chain: a
 layer carries load only once something consumes it. `cat` and `alt` at 2 to 3

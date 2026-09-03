@@ -34,6 +34,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/presentability]] | in flight | [[arcs/baseline-alignment-arc]], [[arcs/presentability-arc]], [[arcs/binary-split-arc]] |
 | [[goals/enforcement]] | in flight | [[arcs/enforcement-arc]] |
 | [[goals/independent-judgment]] | stated, unbuilt | [[arcs/independent-judgment-arc]] |
+| [[goals/bridge]] | stated 2026-09-02, unbuilt | [[arcs/bridge-arc]] |
 | [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | [[arcs/transport-arc]], [[arcs/scriba-arc]], [[arcs/tuning-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
 
@@ -52,6 +53,11 @@ says so in its own first section. Its three arcs opened 2026-09-02 from
 supply pieces without being re-pointed. Two rows in [[records/author-calls]]
 still block work inside them: [[arcs/tuning-arc]] is blocked whole and
 [[arcs/transport-arc]] can be worked as far as its first row.
+
+[[goals/bridge]] was opened 2026-09-02 and is a derivation rather than a new
+ambition: [[thesis]] and [[category-bridge]] both call C "the part of Chirality
+that is new work rather than borrowed", and no goal, arc or row stood against
+it. Its arc has no reserved block, so its rows take arc-local ids.
 
 [[goals/ownership-and-trust]] carries an arc as of 2026-09-02 and every row in
 it is deferred. The arc holds three minted elements, `E53`, `E71` and `E72`,
