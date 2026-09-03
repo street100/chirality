@@ -1,10 +1,12 @@
-# chirality — contents
+# chirality: contents
 
 Read this first to orient. It is the index into the whole project on one screen,
-with links into the detail. For how to work here, read `.planning/PERSONA.md` (internal
-working doc; not part of the public mirror).
-
-Draft. Developmental.
+with links into the detail. How to work here is the agent tier:
+[`.planning/PERSONA.md`](.planning/PERSONA.md) is the stance and
+[`.planning/protocol/`](.planning/protocol/) holds tone, placement, workflow and
+dispatch. Both are tracked and both ship in the mirror;
+[decision-ai-tier](docs/decisions/decision-ai-tier.md) draws the line between
+what is written for a person and what for a session.
 
 ---
 
@@ -15,25 +17,28 @@ runs under it: a gap is an ungoverned path. To control everything you must be
 able to express everything, so that everything expressible is named and
 checkable. See [PRINCIPLES.md](PRINCIPLES.md).
 
-## The spine (root, locked, plain markdown)
+## The spine
 
-Root holds six documents, plus `LICENSE.md` and `LICENSE.EXCEPTION.md`.
-Everything that used to float there was sorted into the tier it belongs to, and
-the arc handoffs followed.
+Root holds five markdown documents plus the two licenses. Everything that used
+to float there was sorted into the tier it belongs to, and the arc handoffs
+followed: the last two left on 2026-09-03.
 
 - [README.md](README.md): the public front door.
 - [PRINCIPLES.md](PRINCIPLES.md): five principles, one thesis (condensed from
   seven; a crosswalk in the doc keeps old P1-P7 citations resolving).
 - [MAP.md](MAP.md): the tree contract. Extensions, module key, doc roles.
-- [docs/definitions/working-discipline.md](docs/definitions/working-discipline.md): the work contract.
-  The build rule, the deferral rule, commits, and where state lives.
-- [docs/index.md](docs/index.md): the design base. Goals, arcs, elements and the
-  banks hang off it; an arc file carries its own resume state.
+- [CLAUDE.md](CLAUDE.md): the agent tier's entry point, tracked.
 - This file, the contents.
 
-`docs/decisions/decision-lane-split.md` and `records/lane-a-record.md` also sit at root while two lanes run in one
-working tree. A lane is who works; an arc is what gets worked. Their home is
-undecided and `docs/decisions/decision-scope.md` records that.
+Two more documents are spine and live in the tier that owns them:
+[working-discipline](docs/definitions/working-discipline.md) is the work
+contract, and [docs/index.md](docs/index.md) is the design base that goals, arcs,
+elements and the banks hang off.
+
+A lane is who works and an arc is what gets worked.
+[decision-lane-split](docs/decisions/decision-lane-split.md) holds the division
+and reserves the two element bands; it moved out of the root on 2026-09-01 and
+`records/author-calls.md` records that placement as closed.
 
 Moved out, and where they went:
 [secure-datum-model](docs/definitions/secure-datum-model.md) and
@@ -57,14 +62,14 @@ set, one idea per note, linked with `[[slug]]`. Groups:
 - Decisions: `decision-profiles`, `decision-brokers`, `decision-backend`,
   `decision-b-in-type`, `decision-split-checker` (the checker: small trusted core
   plus untrusted certificate producers), `decision-bridge-elaborator`.
-- Trust discipline: `certificate-discipline` (trusted checker, untrusted producers —
-  re-run the work, don't spot-check; prove elements and provable interactions, not the
-  whole), `split-role` (where proof runs out, the split as a tiered substrate-provided
+- Trust discipline: `certificate-discipline` (trusted checker, untrusted
+  producers: re-run the work rather than spot-check it, and prove elements and
+  provable interactions rather than the whole), `split-role` (where proof runs out, the split as a tiered substrate-provided
   role for the unprovable residue).
-- Applications: `live-environment` (the hub) — a live self-modifying environment,
+- Applications: `live-environment` (the hub): a live self-modifying environment,
   opened first as an AI-orchestration layer, read through the node model.
 - Inspirations: the touchstones the live environment fuses, each lighting one axis
-  and anchoring none — `insp-smalltalk`, `insp-lisp-machine`, `insp-emacs`,
+  and anchoring none: `insp-smalltalk`, `insp-lisp-machine`, `insp-emacs`,
   `insp-oberon` (residential), `insp-erlang-beam`, `insp-capability-os` (mesh),
   `insp-unison` (substrate).
 - Provenance and open work: `dump-integration`, `open-edges`.
@@ -73,7 +78,7 @@ set, one idea per note, linked with `[[slug]]`. Groups:
   names the arcs, each carrying its goal, its requirements, its element list and
   its resume state; `elements/README` states what the element tier still owes.
 - Navigation: `index`, `relations`, `glossary`, `vocabulary`, `perspectives`.
-- Banks (depth tier): `banks/INDEX` — the full refraction of a concept into
+- Banks (depth tier): `banks/INDEX`: the full refraction of a concept into
   shards, homes, and build-state, under the thin notes above (module, profile,
   runtime, capability, port, effect-and-alarm, memory, evidence-and-split).
 
@@ -84,7 +89,7 @@ Two axes place every module.
 - Typeability: A typed (proof), B untyped (quarantined substrate), C the
   supervisory bridge (typed module, untyped referent, governs by evidence). C is
   the novel core.
-- Altitude: a span, not a partition. Three levels, upper, the typed assembly
+- Altitude: a span rather than a partition. Three levels, upper, the typed assembly
   floor (tal), and the metal, with drops between. Types are preserved and checked
   down to tal; below tal is the one trusted drop to machine code, or to CHERI
   silicon where the marks reach the metal. No untyped bottom.
@@ -94,73 +99,58 @@ split; split only when the halves have different types. Its dual, the joining
 law, decides how cut modules reconnect: four typed connectors (bridge, lowering,
 staging, port composition), each preserving the one invariant its boundary
 protects. The modules are the alphabet; the connectors are the grammar. Full
-table in [docs/module-map.md](docs/modules/module-map.md); the connectors in
-[docs/joining-law.md](docs/definitions/joining-law.md).
+table in [module-map](docs/modules/module-map.md); the connectors in
+[joining-law](docs/definitions/joining-law.md).
 
 The whole runs as nodes. Code runs in nodes that touch only through typed ports,
 with no central kernel: substrate is owned by nothing and governed in the port's
 type, and state is several cross-checked truths reconciled by typed processes. A
 node is a self-similar compiler-plus-runtime bundle, and a remote node is just a
 node you hold a port to, so distribution is native. See
-[docs/node-architecture.md](docs/definitions/node-architecture.md) and
-[docs/process-and-runtime.md](docs/definitions/process-and-runtime.md).
+[node-architecture](docs/definitions/node-architecture.md) and
+[process-and-runtime](docs/definitions/process-and-runtime.md).
 
 ## The long road
 
-The three project files are in [.planning/projects/](.planning/projects/); the
-developmental stages are in [.planning/ROADMAP.md](.planning/ROADMAP.md). The
-short version, from here outward: resolve the load bearing open edges, build the
-QTT kernel, the typed core, the lowering floor, staging and generation, the
+The developmental stages are in [.planning/ROADMAP.md](.planning/ROADMAP.md).
+The short version, from here outward: resolve the load bearing open edges, build
+the QTT kernel, the typed core, the lowering floor, staging and generation, the
 bridge, the substrate and silicon floor, bootstrap to self host, the profiles and
-targets, then reimplement the bhumi tools. It is a spine with backflow, not a
-schedule.
+targets, then reimplement the bhumi tools. It is a spine with backflow rather
+than a schedule.
 
-## The scaffold (first running code)
+What the project claims it is doing, and who is doing it, sits one tier down:
+[`docs/goals/`](docs/goals/) holds eleven goals, [`docs/arcs/`](docs/arcs/) holds
+the eighteen arcs serving them, and [`docs/elements/`](docs/elements/) holds the
+catalog, the ledger and one SPEC per element. A goal carries no build state;
+that lives on four rungs in
+[status-ledger](docs/definitions/status-ledger.md).
 
-`scaffold/` is the stage 9 host-language scaffold, pulled forward to run the
-first target, [docs/target-tomodachi.md](docs/definitions/target-tomodachi.md).
-It follows the module architecture, not implementation convenience:
+## The code
 
-- a minimal QTT kernel with two seams (term-former handlers, membrane rules);
-  the types and effects modules live behind them, not in the kernel;
-- primitives declared in chirality source (`extern`, `porttype`;
-  `lib/prelude.chiral` is the A floor, `lib/ports.chiral` the C floor), host
-  bindings linked at load, and the bridge connector's inbound face checking
-  the values a binding returns (runtime tags and arities, depth-bounded —
-  evidence at the crossing, not a deep proof);
-- profiles as manifests over a frozen port set with a target requirement
-  type, judged by `chirality verify` (G9); four ship over one module base,
-  including a two-node split (sensor and renderer runtimes joined by one
-  typed port: the node model in miniature);
-- the lowering connector: the pure fragment compiles to a typed-assembly
-  floor (`tal.py`) and the tal checker re-checks every compiled body against
-  its declared type (the preserve-check); crossings stay upper by
-  construction. `MET_TAL=1` runs the demo on the floor.
+`scaffold/` and the Python host are gone, retired by the 2026-08-31 migration.
+The compiler is written in chirality and compiles itself, and no Python runs in
+the compile, check or run path. [README.md](README.md) walks the tree and
+[MAP.md](MAP.md) is the contract it follows: the extension is the file's kind,
+the directory is its role, and the module key is the root-relative path.
 
-The demo is the tomodachi written in chirality: Wayland wire client (no
-libwayland), niri event stream, swappable pure behavior pack. Verified
-headless against protocol mocks; on a real niri session:
-`python3 -m chirality run demo/tomodachi.chiral`. What is real versus stubbed:
-[scaffold/README.md](docs/implementation/README.md); findings ledger in
-[scaffold/AUDIT.md](docs/implementation/AUDIT.md).
+- `lib/` is the importable tree, 105 modules in thirteen groups.
+- `prog/` is what chirality ships, including `demo/` and the 69 programs in
+  `samples/`.
+- `bin/chirality` is the CLI and `bin/chirality-bin` is the compiler, a blob on
+  stdin and an ELF on stdout.
+- `tools/` is one folder per tool. Nine still hold the Python being replaced.
 
-## The three sibling projects
-
-Each is its own GSD project under the umbrella.
-
-- [01-bhumi-context](.planning/projects/01-bhumi-context.md) — what the bhumi tool
-  family needs the language to express.
-- [02-language-design](.planning/projects/02-language-design.md) — the language
-  itself. The `docs/` base is its working output.
-- [03-development-approach](.planning/projects/03-development-approach.md) — how
-  chirality gets built and how bhumi reimplements under it.
-
-Information flows 01 to 02 to 03, with backflow. See the umbrella project for the
-sequencing intent.
+The first target is the tomodachi, a Wayland wire client with no libwayland, a
+niri event stream and a swappable pure behavior pack:
+[target-tomodachi](docs/definitions/target-tomodachi.md). What the scaffold era
+proved and what it stubbed is kept in
+[docs/implementation/](docs/implementation/), with the findings ledger in
+[AUDIT.md](docs/implementation/AUDIT.md).
 
 ## Settled and open
 
-- Forks settled in `docs/decisions/` (seventeen notes): additive testable profiles
+- Forks settled in `docs/decisions/` (22 notes): additive testable profiles
   over a frozen port set; two brokers agreeing via Adhikara; own typed backend
   with no compile to C; B in the type not the packaging; the graded/cost-kernel
   direction; the inspiration policy; the checker as a small trusted core plus
@@ -171,11 +161,14 @@ sequencing intent.
   the user layer extending in chirality, live, above that same frozen kernel line;
   and dispatch cadence as serial, one stage and one agent at a time.
 - Open work: the unresolved seams enumerated in
-  [docs/open-edges.md](docs/definitions/open-edges.md), with three sequencing questions not
-  yet committed.
+  [open-edges](docs/definitions/open-edges.md). Its closing section holds three
+  sequencing questions: which security properties block the trusted base is open,
+  the type-system build order records a later partial closure, and the
+  first-backend choice was closed by reconciliation on 2026-07-22.
 
 ## Start here
 
-New to the project: PRINCIPLES, then `docs/index.md`, then `docs/module-map.md`.
-Picking up work: `docs/open-edges.md` for what is next, these contents for where
-it sits.
+New to the project: PRINCIPLES, then `docs/index.md`, then
+`docs/modules/module-map.md`. Picking up work: the arc in `docs/arcs/` that owns
+it, since an arc file carries its own resume state, then
+`docs/definitions/open-edges.md` for the seams nobody has closed.
