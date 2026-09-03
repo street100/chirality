@@ -12,9 +12,9 @@ rejection here.
 
 | # | formula | conventional form | the rethink question | feeds | state |
 |---|---|---|---|---|---|
-| 1 | 32-bit lane arithmetic (add mod 2^32, rotl) | wrapping uint32 | a refined Lane32 the checker holds: can `refine` carry bounds through band, +, *, shl | N6, re-seats slices 1-2 | open, probe first |
-| 2 | prime field 2^130-5, five 26-bit limbs | donna-shape C | a Limb type whose bound rides the type; carry fold as a typed op; whether per-op output bounds are expressible | N6, poly1305 | open, follows 1 |
-| 3 | prime field 2^255-19, ten 25.5-bit limbs | ref10-shape C | same as 2, harder; the ladder's structure ties to the constant-time judgment | N6 then slice 4 | open, follows 2 |
+| 1 | 32-bit lane arithmetic (add mod 2^32, rotl) | wrapping uint32 | a refined Lane32 the checker holds: can `refine` carry bounds through band, +, *, shl | N6, re-seats slices 1-2 | WORKED 2026-09-03, shape 2 |
+| 2 | prime field 2^130-5, five 26-bit limbs | donna-shape C | a Limb type whose bound rides the type; carry fold as a typed op; whether per-op output bounds are expressible | N6, poly1305 | shaped by row 1: boundary types |
+| 3 | prime field 2^255-19, ten 25.5-bit limbs | ref10-shape C | same as 2, harder; the ladder's structure ties to the constant-time judgment | N6 then slice 4 | shaped by row 1: boundary types |
 | 4 | GF(256) (xor add, peasant or table mul) | byte tables | field as a closed algebra with anchor vectors; representation under decimal literals | N7 | in N7 pre-run now |
 | 5 | polynomial split and Lagrange at 0, t of n | array loops | threshold in the type, the `(Pool n)` precedent: shares as values indexed by t and n so an under-quorum reconstruct is untypeable | N7, N8 | open, high value |
 | 6 | AEAD composition (encrypt then MAC) | convention plus care | the nonce as a LINEAR mint: one use by quantity, reuse unrepresentable; keys behind Secret custody at the API | N6 seam, re-seats slice 2 | open, cheap, novel |
@@ -47,5 +47,23 @@ on the enforcement arc's R3 for its strong form.
 
 ## Worked
 
-Nothing yet. Entries move here with their date, probe result or artifact,
-and the decision they produced.
+**Row 1, 2026-09-03. Verdict: shape 2, refined boundaries with checked-cast
+entry and bare I64 kernel interiors.** Seventeen probe files against
+`bin/chirality check`, two re-run by the orchestrator. What is real today:
+range refinements over I64 with up to five comparison atoms conjoined by
+listing (`parse-refine`, `lib/surface/parse.chiral:385`; ops at
+`lib/typing/refine.chiral:10`), boundary-exact literal checking (4294967295
+accepted, 4294967296 refused), entailment between refinements, variable
+operands instantiated at call sites (`lib/memory/mem-linear.chiral:27` is
+live prior art), guard narrowing that stacks two `case` guards to a full
+Lane32 range, and the checked-cast-into-a-sum idiom
+(`lib/runtime/proc.chiral:42` prior art). What is dead: arithmetic never
+narrows. The deciding probe: `(band x 4294967295)` against a Lane32 return
+is `load: cannot prove refinement`; every arithmetic extern returns bare
+I64 (`prelude.chiral:58-71`) and `refine.chiral:7` defers the solver to
+unbuilt E41. Two working constraints for N6: declare every def (check
+mode), and keep guarded case results out of let bindings (FD-02, reconfirmed).
+Decision produced: N6's prim module carries Lane32/Limb26 as boundary
+types with guarded entry casts; kernel interiors stay bare I64 with the
+bounds argued in the module header and pinned by vector gates; E41 is the
+named upgrade path to checker-held interiors.
