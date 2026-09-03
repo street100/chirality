@@ -14,8 +14,8 @@ genuinely implemented more than enough to build a language that answers every
 legitimate complaint anyone has about the languages we have. Nobody has put it
 in one place.
 
-**Pre-solve every non-logic bug.** A bug is logic or it is mechanical. Mechanical
-means computable. The wiggle room there favors us.
+**Pre-solve all non-logic bugs?** If it's not logic it's mechanical. If it's
+mechanical it's computable. The wiggle room there really favors us.
 
 **Why is the checker something you get instead of something you write?** Every
 language ships a fixed set of refusals and calls that a type system. If you can
