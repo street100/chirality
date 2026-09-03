@@ -16,7 +16,7 @@ Entry point: `bin/chirality test` → `tools/test/run-tests.sh`.
 | 6 linear mint (E159) | `test-linear-mint.sh` | `linear-mint.sh` | 21 |
 | 7 downstream roots compile | `run-native.sh` inline | `run-tests.sh` inline | 11 roots |
 
-## New here — Phases 13, 14, 15, 16, 17 and 18
+## New here — Phases 13, 14, 15, 16, 17, 18 and 24
 
 | phase | source | here | assertions |
 |---|---|---|---|
@@ -26,6 +26,7 @@ Entry point: `bin/chirality test` → `tools/test/run-tests.sh`.
 | 16 ambient face restore (E175) | none — written here | `face.sh` + `samples/e175_face.prog` | 38 |
 | 17 `doc->rendering` (E158 c4) | none — written here | `render-doc.sh` + `samples/e158_render.prog` | 19 |
 | 18 the term printer (E181) | none — written here | `pretty.sh` + `samples/e181_pretty.prog` | 61 |
+| 24 the arity evidence (E182) | none — written here | `arity.sh` + `samples/e182_arity.prog` | 13 |
 
 E157 landed in the old tree after the migration snapshot, so it has **no old-tree
 phase number to inherit**. It is 13 rather than 8: 8–12 are names still owed, and

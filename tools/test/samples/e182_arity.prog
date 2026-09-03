@@ -1,0 +1,52 @@
+; e182_arity.prog — E182's fixture. The Phase 24 value half.
+;
+; ⚑ THIS PROGRAM MAKES NO ASSERTION AND ALWAYS EXITS 0. It PRINTS the values;
+; every comparison is the gate's, in bash (tools/test/arity.sh). A fixture that
+; grades itself can be wrong twice in the same direction, and one that exits at
+; its first failing case masks every later row from every mutant. Fields are
+; separated by a single byte 1 (SOH), the device at samples/e173_matcher.prog:199,
+; which no field below can contain.
+;
+; ⚑ EVERY TOP-LEVEL BINDING IS PREFIXED `ar-`. Three neighbouring censuses grep
+; `lib prog tools` for `^\((def|data|declare) <name>` — doc.sh:380 over
+; prelude/doc.chiral's names, render-doc.sh:436 over protocol/render-doc.chiral's
+; and row.sh:742 over protocol/render.chiral's — and this file is under `tools/`.
+; A binding here that reused one of their names would redden three other phases.
+;
+; ⚑ IT BUILDS NO `r-relayed` VALUE. diag.sh:224 greps `lib prog tools` for that
+; constructor with a five-entry exclusion list, and diag.sh is sha256-pinned at
+; pretty.sh:389 so the list cannot grow. The all-ten-arms row lives on a scratch
+; root arity.sh writes outside the tree, where that census correctly never looks.
+;
+; ⚑ EVERY PROBE FORM STAYS ON ONE LINE. Phase 16 went red because a fixture
+; split a call over two lines and a line-based scanner made the break part of the
+; contract (docs/arcs/diagnostics-arc.md:106).
+;
+;   1  G2a  dg-msg over the constructor site's Reason
+;   2  G2b  dg-msg over the type-parameter site's Reason
+;   3  G4   doc->str 24 over dg-doc's arity arm, both counts laid out
+;   4  the sentinel: reaching it says the stream completed
+
+(import "prelude/prelude")
+(import "prelude/string")
+(import "prelude/doc")
+(import "ports/stdio")
+(import "typing/diag")
+
+(def ar-mark Str (bytes->str (bslice (pack-u32 1) 0 1)))
+
+; the two live detection sites' evidence, as the two Reason values they build.
+; kernel.chiral:1097 hands (subj-ctor cn) with the field count and the argument
+; count; kernel.chiral:1042 hands (subj-data dn) with the parameter counts.
+(def ar-ctor Reason (r-arity (subj-ctor "mk2") 2 1))
+(def ar-data Reason (r-arity (subj-data "Box") 1 2))
+
+(def ar-emit (=> Str Unit) (lam (s) (let ((_ (put s))) (put ar-mark))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((_ (ar-emit (dg-msg ar-ctor))))
+    (let ((_ (ar-emit (dg-msg ar-data))))
+    (let ((_ (ar-emit (doc->str 24 (dg-doc ar-ctor)))))
+    (let ((_ (ar-emit "END")))
+      0))))))

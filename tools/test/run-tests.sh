@@ -32,6 +32,8 @@
 #      (Term -> Doc, and its output IS source)
 #  19  the total matcher (E173)  NEW HERE   -- tools/test/matcher.sh
 #      (pd + norm, and the prose-lint differential)
+#  24  the arity evidence (E182)  NEW HERE   -- tools/test/arity.sh
+#      (r-arity: both counts, on both exits, at both sites)
 #
 # Each case's expected value comes from what the program MEANS, never from a
 # golden capture of chirality's own output.
@@ -322,6 +324,25 @@ run_phase 19 "the total matcher (E173 pd + norm)"                  matcher.sh
 # ⚑ Runs standalone, because run-tests.sh does not fit on a 3.85 GB box with no
 # swap and has OOM-killed sessions here:  bash tools/test/transport.sh
 run_phase 20 "the transport path (a model call, E130 + E131)"     transport.sh
+
+# ---- Phase 24: the arity evidence (E182) ------------------------------------
+# 24, and NOT the 20 this element's SPEC was written against.  Lane A reserved
+# 18, 19 and 20 (docs/decisions/decision-lane-split.md:30); 18 went to E181, 19
+# to E173's matcher.sh, and d7d7cfe took 20 for transport.sh between E182's SPEC
+# audit and its implement run.  21-23 are Lane B's and 8-12 are names still owed
+# to unported old-tree phases, so 24 is the first number that collides with
+# nothing.  records/findings.md FD-11 holds the measurement.
+#
+# `Reason` carries a tenth arm, `(r-arity (what Subject) (expected I64)
+# (actual I64))`, and the two live arity comparisons in typing/kernel.chiral
+# build it with the integers they already held.  Two nullary `Judg` arms retire
+# with them and `Judg` reads 36.
+#
+# ⚑ Its two strongest rows RUN A COMPILER BUILT FROM THE lib/ UNDER TEST and read
+# the refusal off stderr, the base row included -- so they grade the sources
+# rather than whatever binary happens to be shipped.  That costs one compiler
+# build per `verdict` call, six in the phase, measured at ~2.2 s each.
+run_phase 24 "the arity evidence (E182 r-arity)"                   arity.sh
 
 echo
 echo "=== not ported from the old suite (named, not hidden) ==="
