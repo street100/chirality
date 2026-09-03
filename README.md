@@ -1,54 +1,70 @@
 # chirality
 
-This is a passion project. There is 0 straightforward way to introduce where I come from on this project.
+A passion project, and the honest way in is how I got here.
 
-The best way I can guide one through it is by explaining how I got here. The thinking started with being upset at how
-much mental running around it is to achieve security, and how backwards that relationship is. Why do I need different
-stacks at any level for that? How could it even be secure having to trust so many? This sparks a cascade of questions, whose
-answers all point towards the same rabbithole, which is the extent that virtually all code in any environment is insecure,
-even despite the efforts you can make.
+I got tired of how much mental running around it takes to be secure, and of how
+backwards that relationship is. Why does one stack need a different language at
+every level? How is anything secure when being secure means trusting all of
+them? Those questions cascade, and they land in the same place: virtually all
+code in virtually every environment is insecure, and it stays that way no matter
+how much effort you spend on it.
 
-The peak of the arc is this project. This is the thing I am creatively redirecting my anger at it realizing it is the case that we
-have discovered and genuinely implemented more than enough to know that we can make a programming language that could solve literally
-any legitimate complaint with a programming language that exists.
+This project is that anger pointed somewhere useful. We have discovered and
+genuinely implemented more than enough to build a language that answers every
+legitimate complaint anyone has about the languages we have. Nobody has put it
+in one place.
 
-Pre-solve all non-logic bugs? If it's not logic its mechanical. If it's mechanical its
-computable. The wiggle room there really favors us.
+**Pre-solve every non-logic bug.** A bug is logic or it is mechanical. Mechanical
+means computable. The wiggle room there favors us.
 
-Why is the checker something you get instead of something you write? Every language ships a
-fixed set of refusals and calls that a type system. If you can express anything you can
-express the checker too. Then a bug class comes off the list because someone did the work,
-not because a version shipped.
+**Why is the checker something you get instead of something you write?** Every
+language ships a fixed set of refusals and calls that a type system. If you can
+express anything you can express the checker too. Then a bug class comes off the
+list because someone did the work, on your schedule instead of a vendor's
+release calendar.
 
-Why is nothing one language the whole way down? Every layer gets held to a different constraint, so nobody
-tries. Hold one language to all of them at once and either it survives or you find out
-exactly where it didn't. Compiler, checker, emitter, runtime, tooling, data. Same language.
+**Why is nothing one language the whole way down?** Every layer gets held to a
+different constraint, so nobody tries. Hold one language to all of them at once
+and either it survives or you find out exactly where it did not. Compiler,
+checker, emitter, runtime, tooling, data. Same language.
 
-Why is `unsafe` a thing we let happen? Because the type system ran out of things it could say, and the
-language handed you a door instead of a word. Give the dangerous thing a type and there is
-no door to reach for.
+**Why is `unsafe` a thing we let happen?** Because the type system ran out of
+things it could say, and the language handed you a door instead of a word. Give
+the dangerous thing a type and there is no door to reach for.
 
-Why is it hard to see everything a program can touch? Enumerating what it outputs is undecidable. Enumerating
-how it reaches outside itself is finite. That is a far smaller question and almost nobody
-asks it. Time and memory count as reaching out too.
+**Why is it hard to see everything a program can touch?** Enumerating what it
+outputs is undecidable. Enumerating how it reaches outside itself is finite.
+That is a far smaller question and almost nobody asks it. Time and memory count
+as reaching out too.
 
-Can you have proof without sacrificing speed? Check runs at compile time and gets erased before emission
+**Can you have proof without giving up speed?** Checking runs at compile time and
+is erased before emission. Nothing about it survives into the binary.
 
-How much do you actually have to trust to trust an entire language? Current number for chirality is 1,823 lines.
-Everything above it is text that core checked. That number is the whole argument, and it is the number to attack.
+**How much do you have to trust to trust an entire language?** For chirality,
+1,823 lines. Everything above it is text that core checked. That number is the
+whole argument, and it is the number to attack.
 
-**It self-hosts.** The compiler is written in chirality and
-compiles itself to a byte-identical copy. No Python runs in the compile, check
-or run path. (Which doesn't really say much about logic level bugs but is a nice attribute to have)
+**It self-hosts.** The compiler is written in chirality and compiles itself to a
+byte-identical copy. No Python runs in the compile, check or run path. A
+fixpoint shows stability and says nothing about a logic-level bug, so treat it
+as a floor rather than a result.
 
-Many of what is discussed are goals, read more for state specifics about claims. This is a work in progress.
-This project is vaguely 2 months in to the actual implementation work and self hosts to machine code without
-an external library, which makes me feel very good about trajectory. Current labor is focused on fully enforcing
-the model, pre-ownership model plans. (ATM, QTT for everything upper to lower, properly modular trusted
-core and lowering, both given to a user to use arbitrarily for any product of the language. Next focus
-will be on giving an ownership and user security core for naturalizing identity security as another layer
-of the model. Current gaps between the focuses are 1. text tools and file types being straightened up 2.
-crypto)
+## Where this is
+
+Two months into implementation. It self-hosts to machine code with no external
+library, which is the trajectory the rest of this document should be read
+against.
+
+Current labor is enforcing the model end to end: QTT from the upper layers down
+through lowering, and a trusted core and lowering modular enough that someone
+can take both and build any product of the language on them. Next is the
+ownership and user security core, which makes identity another layer of the
+model instead of a thing bolted on top. Two gaps sit between those focuses. Text
+tools and file types need straightening up, and there is no crypto yet.
+
+Much of what follows is a goal rather than a shipped thing.
+[Claims, state and limits](#claims-state-and-limits) is the table that separates
+the two, and every ⚑ in this file marks a limit that is real today.
 
 ## Start here
 
