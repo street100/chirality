@@ -53,7 +53,7 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
 
 | row | what | state | element |
 |---|---|---|---|
-| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class | SPEC audited 2026-09-03, implement next | `unminted` |
+| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class | slice 1 built and gated 2026-09-03, slices 2 to 4 open | `unminted` |
 | `native-protocol/N2` | the entropy crossing | not started | `unminted` |
 | `native-protocol/N3` | listen-side AF_INET, and UDP if the handshake wants it | not started | `unminted` |
 | `native-protocol/N4` | the handshake and framing, Noise reference class, shrednet identity model as base | not started | `unminted` |
@@ -62,10 +62,15 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
 ## Resume state
 
 N1 ran the full pipeline on 2026-09-03: example `77c3867`, EXAMPLE audit
-PASS `535c56f`, SPEC `f4f859e`, SPEC audit PASS `54d59b3`. The next session
-implements from `docs/elements/specs/N01-crypto-kernels-SPEC.md`, slice 1
-first; the plan's own precondition line governs the `lib/` and `tools/test/`
-touches while the enforcement-arc session is live. After N1: N2 and N3 are
+PASS `535c56f`, SPEC `f4f859e`, SPEC audit PASS `54d59b3`. Slice 1 landed the same
+day: `lib/crypto/chacha.chiral` green on both RFC 8439 vector rows in
+`tools/test/crypto.sh`, mutant run red. Slices 2 to 4 implement next from
+`docs/elements/specs/N01-crypto-kernels-SPEC.md`; the plan's precondition
+line governs the `tools/test/run-tests.sh` registration, which is owed to
+the suite session along with an optional tracked sample fixture. Residue
+noted 2026-09-03: `St`/`st` are also defined in
+`lib/lowering/upper/lower.chiral`; no current blob co-links them, and a
+future blob linking crypto with lowering would collide. After N1: N2 and N3 are
 crossings, owed before N4; N5 is the language-development row and leans on
 the information-flow deferral recorded in `lib/capability/secret.chiral`'s
 header.
