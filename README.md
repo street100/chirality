@@ -20,27 +20,35 @@ fixed set of refusals and calls that a type system. If you can express anything 
 express the checker too. Then a bug class comes off the list because someone did the work,
 not because a version shipped.
 
-One language the whole way down? Every layer gets held to a different constraint, so nobody
+Why is nothing one language the whole way down? Every layer gets held to a different constraint, so nobody
 tries. Hold one language to all of them at once and either it survives or you find out
 exactly where it didn't. Compiler, checker, emitter, runtime, tooling, data. Same language.
 
-Why is `unsafe` a keyword? Because the type system ran out of things it could say, and the
+Why is `unsafe` a thing we let happen? Because the type system ran out of things it could say, and the
 language handed you a door instead of a word. Give the dangerous thing a type and there is
 no door to reach for.
 
-See everything a program can touch? Enumerating what it outputs is undecidable. Enumerating
+Why is it hard to see everything a program can touch? Enumerating what it outputs is undecidable. Enumerating
 how it reaches outside itself is finite. That is a far smaller question and almost nobody
 asks it. Time and memory count as reaching out too.
 
-Proof you don't pay for? It runs at compile time and gets erased before emission. You were
-picturing it running.
+Can you have proof without sacrificing speed? Check runs at compile time and gets erased before emission
 
-How much do you actually have to trust? Ours is 1,823 lines. Everything above it is text
-that core checked. That number is the whole argument, and it is the number to attack.
+How much do you actually have to trust to trust an entire language? Current number for chirality is 1,823 lines.
+Everything above it is text that core checked. That number is the whole argument, and it is the number to attack.
 
 **It self-hosts.** The compiler is written in chirality and
 compiles itself to a byte-identical copy. No Python runs in the compile, check
-or run path.
+or run path. (Which doesn't really say much about logic level bugs but is a nice attribute to have)
+
+Many of what is discussed are goals, read more for state specifics about claims. This is a work in progress.
+This project is vaguely 2 months in to the actual implementation work and self hosts to machine code without
+an external library, which makes me feel very good about trajectory. Current labor is focused on fully enforcing
+the model, pre-ownership model plans. (ATM, QTT for everything upper to lower, properly modular trusted
+core and lowering, both given to a user to use arbitrarily for any product of the language. Next focus
+will be on giving an ownership and user security core for naturalizing identity security as another layer
+of the model. Current gaps between the focuses are 1. text tools and file types being straightened up 2.
+crypto)
 
 ## Start here
 
