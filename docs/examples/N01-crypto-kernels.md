@@ -55,9 +55,10 @@ updated: 2026-09-03
 - **Key findings:**
   1. **The whole suite fits under the no-`mulhi` ceiling.** ChaCha20 and
      BLAKE2s are add / xor / rotate machines on 32-bit words. Poly1305-donna's
-     32-bit path holds the accumulator in five 26-bit limbs and its largest
-     accumulation is a five-term sum of 52-bit products with a small wrap
-     factor; curve25519-donna c32 holds field elements in ten limbs
+     32-bit path holds the accumulator in five 26-bit limbs; the block add
+     lifts an h limb toward 2^27, so each product stays under `2^53` and the
+     worst five-term accumulation with its weight-5 folds stays under
+     `21 * 2^53 < 2^58`; curve25519-donna c32 holds field elements in ten limbs
      alternating 26 and 25 bits, worst accumulation under `19 * 2^52 * 10 <
      2^62`. Both profiles fit signed I64 with headroom (checked 2026-09-03,
      `python3`, this pre-run).
@@ -74,7 +75,7 @@ updated: 2026-09-03
      nonnegative by construction, so logical `shr` is the right shift
      everywhere and `sar` goes unused.
   4. **Published vectors exist for every kernel.** RFC 8439 §2.3.2 (block
-     function), §2.5.2 (tag), §2.8.2 (full AEAD); RFC 7693 appendix E
+     function), §2.5.2 (tag), §2.8.2 (full AEAD); RFC 7693 appendix B
      (BLAKE2s of `"abc"`); RFC 7748 §5.2 (two scalar-mult vectors) and §6.1
      (the Diffie-Hellman pair). The catalog row's rule binds: a kernel with a
      missing vector row is unproven and says so.
@@ -150,7 +151,7 @@ slices 2 and 4.
 
 ; Pure, category A, checked form. Binds no extern beyond prelude i64/bytes
 ; ops, so this module's crossings row is empty by derivation.
-(module crypto/chacha (cat A))
+(module crypto/chacha (cat A) (alt upper))
 
 ; ─── 32-bit lanes inside signed I64 ─────────────────────────────────────────
 (def M32 I64 4294967295)          ; 2^32 - 1 in decimal (hex literals do not lex)
@@ -221,9 +222,10 @@ slices 2 and 4.
 
 (def M26 I64 67108863)            ; 2^26 - 1
 
-; h * r mod 2^130 - 5. Limbs above the top fold back at weight 5. Every
-; product is at most 2^52 and each five-term sum stays under 2^56: signed
-; I64 holds it without a mulhi.
+; h * r mod 2^130 - 5. Limbs above the top fold back at weight 5. The block
+; add lifts an h limb toward 2^27, so each product stays under 2^53 and each
+; five-term sum with its weight-5 folds under 21 * 2^53 < 2^58: signed I64
+; holds it without a mulhi.
 (def f-mul (-> F F F)
   (lam (h r)
     (case h ((f5 h0 h1 h2 h3 h4)
@@ -267,7 +269,7 @@ slices 2 and 4.
   `lib/crypto/blake2s.chiral`, `lib/crypto/x25519.chiral`. Nothing edits an
   existing `lib/` file.
 - **Conformance target:** the published vectors as gate assertions, RFC 8439
-  §2.3.2 / §2.5.2 / §2.8.2, RFC 7693 appendix E, RFC 7748 §5.2 and §6.1. The
+  §2.3.2 / §2.5.2 / §2.8.2, RFC 7693 appendix B, RFC 7748 §5.2 and §6.1. The
   gate is a planned phase in `tools/test/` (a `crypto.sh` in the suite's
   shape) that the implement stage owes. It stays unbuilt today; a passing
   claim needs a run.
