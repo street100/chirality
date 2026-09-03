@@ -3,7 +3,7 @@ node: goal-independent-judgment
 layer: navigation
 related: [goals/README, decision-self-verification, certificate-discipline, split-role, testing-floors, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-02
 ---
 
 # Goal: judgment that does not rest on one formulation
@@ -32,12 +32,23 @@ refusal. One formulation with two emitters does not count: that is what the
 
 ## State
 
-Unbuilt. **This goal has zero arcs and zero elements.** No work in the tree
-serves it.
+Unbuilt. **The goal has one arc, five rows, and zero elements.** No work in the
+tree serves it yet.
 
 Recording that is the point of the goals tier. The gap was visible only as a
 line in `README.md`'s Honest limits, where it read as a caveat instead of as
 unstarted work.
+
+⚑ Amended 2026-09-02. This section read "zero arcs and zero elements" while the
+Arcs section below named an arc, which was true for the few hours before
+[[arcs/independent-judgment-arc]] opened on 2026-09-01 and stale after.
+
+The three modules written for this goal are unreached, and the measurement
+sharpened on 2026-09-02 (`records/findings.md` FD-09): `lib/typing/kernel-core.chiral`
+holds `JForm`, the six forms the judgment splits into, and every one of them has
+a single use, its own declaration line. Nothing imports the module. The demanded
+statement each leg would be judged against is a `Str`, so the artifact
+[[certificate-discipline]] names as the one place vacuity survives is prose.
 
 ## Arcs
 

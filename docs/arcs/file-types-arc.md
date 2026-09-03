@@ -3,7 +3,7 @@ node: arc-file-types
 layer: navigation
 related: [arcs/README, goals/readable-surface, arcs/diagnostics-arc, status-ledger, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-02
 ---
 
 # Arc: file types
@@ -57,6 +57,17 @@ Full element prose for E183 is in [[arcs/diagnostics-arc]], which minted it.
 
 ## Resume state
 
+**Design session 2026-09-02, author-led.** The arc's framing widened: a kind is a
+**view** of the term language rather than a subset a predicate admits, and it is
+legitimate when it round-trips, which is what requirement 4's gate already
+demands without saying so. `.grammar` and a checker kind joined `.manifest` and
+`.protocol`, and the author set two guidelines that let a kind fan out without
+being mystical: mechanical is declared, judgement is written. The shared
+structure is tracked in `.planning/FILE-KIND-STRUCTURES.md`, which points at
+`.planning/README-PLAN.md` for the end-game requirements and
+`.planning/MANIFEST-DESIGN-MAP.md` for `.manifest`'s own design. None of it is
+minted, and E190-E195 is untouched.
+
 Nothing built. E181 landed and moved the term printer to
 `lib/surface/pretty.chiral`, so E146's dependency is in the tree. Two cross-lane
 facts, neither gate-enforceable:
@@ -91,6 +102,16 @@ width will be surprised.
 - **`Doc`'s algebra is closed.** Six constructors and no seventh. A lane needing
   more converts into `Doc`. Adding an arm reddens two phases in mutants that are
   actually run.
+- **The demanded statement this arc's kinds are checked against is prose, and
+  unreached.** Measured 2026-09-02, `records/findings.md` FD-09. Under
+  [[decisions/decision-split-checker]] each kind is an untrusted producer whose
+  output `kernel-core` re-checks against a fixed statement, which is what lets a
+  kind be added without growing the trusted base. In the tree that statement is
+  `SpecRule.statement`, a `Str`, in `lib/typing/kernel-core.chiral`, which no
+  module imports and no phase runs. So the argument that a new kind is cheap
+  rests on a seam that is written and not wired. It does not block a kind from
+  being built. It does mean a kind cannot claim its certificate is checked.
+  `independent-judgment/J5` owns the fix and this arc does not.
 - **Files Lane B may write**: `lib/manifest/**` (new),
   `lib/protocol/{json,http,wire,apc,vt-parser}.chiral`, `prog/` emitters, new
   Lane-B gates.

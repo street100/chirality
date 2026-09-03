@@ -108,3 +108,14 @@ document is in the reader-facing tier and is wrong today. Deferred is not delete
 - evidence: `docs/definitions/working-discipline.md:19-42`, `docs/decisions/decision-lane-split.md:105-119`, `docs/arcs/diagnostics-arc.md:68`, `records/diagnostics-arc-record.md:162-164`, `git log 58603c3..HEAD -- lib prog`
 - checked:  2026-09-02
 - element:  UNASSIGNED
+
+## The judgment
+
+### FD-09 the demanded statement is prose, and the judgment's decomposition is unreached
+
+- state:    OPEN
+- claim:    [[certificate-discipline]] states that a certificate's one surviving vacuity is whether the demanded statement is meaningful, and pins it by fixing that statement at the socket as part of the small audited spec, so vacuity "lives in exactly one place ... one small thing audited once". [[decisions/decision-split-checker]] names `kernel-spec` as "the type theory as a small, human-audited requirement type" and one of the three parts the checker splits into.
+- measured: the statement is a `Str`. `(data SpecRule () (spec-rule (form JForm) (name Str) (statement Str)))`, so the artifact the whole scheme's non-vacuity rests on is unstructured prose, and nothing can check it says anything. The decomposition beside it is unreached: the six `JForm` constructors (`j-check`, `j-infer`, `j-conv`, `j-usage`, `j-data`, `j-membrane`) have **one use each**, their own declaration line; `JForm` 2, `SpecRule` 2, `Spec` 3. No file imports `typing/kernel-core`; the only mention of it anywhere in `lib`, `prog`, `tools` or `bin` is a comment at `reflect-floor.chiral:16` calling it work the port "must carry". It compiles clean standalone (`chirality check` exits 0) and no suite phase runs it, so `recheck` has never been executed against a populated `Spec`. Two live checking concerns have no `JForm` at all: totality (`typing/totality.chiral`, `typing/totality-check.chiral`) is presumably folded into `j-data` and nothing says so, and refinement (`typing/refine.chiral`, `t-refine` at 29 uses across 7 modules) has no form. `docs/arcs/independent-judgment-arc.md` already records the module as "written, unreached" and row `J2` owns wiring it; what is new here is that the statement is prose and that the form set is both inert and incomplete.
+- evidence: `lib/typing/kernel-core.chiral:27-29`, `:53-60`, `lib/typing/reflect-floor.chiral:16`, `docs/definitions/certificate-discipline.md`, `docs/decisions/decision-split-checker.md`, `docs/arcs/independent-judgment-arc.md`
+- checked:  2026-09-02
+- element:  UNASSIGNED
