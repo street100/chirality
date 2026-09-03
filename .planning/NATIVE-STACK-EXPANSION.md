@@ -82,6 +82,13 @@ ahead of the handshake because shares and keys consume it. Tracked in
 correction also stands as recorded feedback: the orchestrator had sequenced
 RNG last and kernels self-contained, and both readings were wrong.
 
+## The formula pass
+
+`.planning/FORMULA-RETHINK.md`, opened 2026-09-03: twelve formulas, each
+rethought in the language's own machinery, worked one at a time. Premise
+ruled by the author: semantic before mechanical; cipher cores stay
+transcriptions. Slices 3 and 4 wait behind row 1's probe and N6.
+
 ## Open forks
 
 | fork | shape |
