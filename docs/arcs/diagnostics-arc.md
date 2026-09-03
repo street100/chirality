@@ -64,7 +64,12 @@ Done when all five hold. Each is observable.
 
 ## Resume state
 
-Suite 303 assertions, 0 failed, 11 phases, 87 roots, gate PASSED.
+Suite **321 assertions, 0 failed, 12 phases, 87 roots, gate PASSED**, the figure
+E173 measured on 2026-09-01 (`docs/examples/INDEX.md:163`). ⚑ *This line read
+303 / 11 phases until 2026-09-02, which was E181's figure. E173 registered
+Phase 19 and its 18 assertions after it, and flipped one authority and not this
+one. Found by the E182 SPEC audit, which could not write this file.* The suite
+has not been re-run here: this box is 3.85 GB with no swap.
 `bin/chirality-bin` 1,147,256 B, promoted by E181 at `58603c3`.
 
 ⚑ **`N1 == N2` at generation one described E181, and does not describe the tree

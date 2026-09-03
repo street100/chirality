@@ -4,7 +4,7 @@ slug: arity-evidence
 title: **The arity judgments carry their arity**
 kind: BUILD-PROPER
 example: examples/E182-arity-evidence.md
-status: blocked
+status: audited
 updated: 2026-09-02
 ---
 
@@ -14,13 +14,14 @@ updated: 2026-09-02
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.
 
-> **⚑ `status: blocked`.** Decision 12 below is NEEDS-AUTHOR and it is the
-> element's own scope question, carried verbatim out of the example's §6 where
-> the EXAMPLE audit raised it. Everything else is dispositioned and §4 to §6 are
-> written to be executable the moment the author answers yes. **A row in
-> `records/author-calls.md` is owed and this run was scoped out of writing it**
-> (its single artifact is this file plus the `docs/examples/INDEX.md` row the
-> pack flipped). The arc session owes that row.
+> **⚑ Audited, and still waiting on one answer.** Decision 12 below is
+> NEEDS-AUTHOR and it is the element's own scope question, carried verbatim out
+> of the example's §6 where the EXAMPLE audit raised it. Everything else is
+> dispositioned and §4 to §6 are executable the moment the author answers yes.
+> The owed row was written: `records/author-calls.md:30` and its section
+> *Whether E182 still earns its keep, shrunken*. **The implement run does not
+> start until that row is answered**, and the SPEC audit graded the other four
+> checks rather than the standing call.
 
 > **⚑ The catalog premise was falsified before this SPEC was written.** The row
 > proposed retiring three `Judg` arms. Two of the three are unreachable and one
@@ -88,7 +89,11 @@ updated: 2026-09-02
     pinned-verdict mutant runner (`tools/test/matcher.sh:146,297`), the
     compiler-level mutant that reads a real refusal (`tools/test/diag.sh:183`
     with `refuse_msg` at `:66`), and the assembled-needle idiom that keeps a
-    census row from matching its own source (`tools/test/doc.sh:292`).
+    census row from matching its own source (`tools/test/doc.sh:291-292`).
+    ⚑ **The scratch `lib/` comes from `mutlib` (`tools/test/matcher.sh:146`) and
+    not from `diag.sh:184-185`**, which open-codes `cp -a` plus `sed -i` with no
+    symlink guard. The symlink refusal sits at `matcher.sh:149` and the no-op-`sed`
+    refusal at `:156-158`, and both are load-bearing here.
 
 - **True delta:** one `Reason` arm, two message helpers, eight renderer arms,
   two repointed detection sites, two retired `Judg` arms, and a Phase 20 gate.
@@ -115,7 +120,7 @@ dispositioned. Twelve is the only one carried out of this run.
 | 9 | Whether E182 promotes once from the unmodified tree first, or promotes once and reports two deltas | RESOLVED, orchestrator's call | One `build-new → test → promote`, no separate re-promotion commit. Two deltas reported **separately**: the inherited one, `1,147,256 → 1,184,120 B`, which belongs to the 13 commits of other arcs since E181 promoted at `58603c3`; and E182's own, `B_after` minus `B_before` where `B_before` is 1,184,120 B on the unmodified tree. The fixpoint is **predicted at generation two**, so a gen-one fixpoint fails to be the target and its absence convicts nothing |
 | 10 | `lib/typing/kernel.chiral` is absent from both of the lane-split document's file enumerations | RESOLVED, and the document stays unedited | `docs/decisions/decision-lane-split.md:260` reads "`lib/typing/` belongs to diagnostics. The enforcement arc names no path under it", which covers the file at directory granularity, and the enforcement arc names no path under `lib/typing/`. The two enumerations at `:94-97` and `:245` omit the file and that gap is recorded in the example's §6. Proceed on the prose; repairing the enumerations is a doc-tier write |
 | 11 | Where the residue goes, with `E184-E189` contended | RESOLVED | Arc-local ids under `docs/decisions/decision-work-ids.md`. `diagnostics/D1` and `diagnostics/D2` already have rows in `docs/arcs/diagnostics-arc.md:223-224`. **No `E#` is minted by this run**, so the deferral rule is satisfied without touching a contended band |
-| 12 | **The element's own scope, carried verbatim from the example's §6** (below) | **NEEDS-AUTHOR, unresolved** | The element shrank under its own research: from retiring three arms to minting one and repointing two sites. Two settled facts bear on it and are recorded rather than weighed. The boundary-sums standing directive's test is met verbatim at both sites, since both counts exist at the comparison and are absent at the renderer. `docs/decisions/decision-lane-split.md:28` makes closing E182 part of Lane A's definition of done. Neither settles whether the shrunken version is the version the author wants. **Owner: the author.** A row in `records/author-calls.md` is owed |
+| 12 | **The element's own scope, carried verbatim from the example's §6** (below) | **NEEDS-AUTHOR, unresolved** | The element shrank under its own research: from retiring three arms to minting one and repointing two sites. Two settled facts bear on it and are recorded rather than weighed. The boundary-sums standing directive's test is met verbatim at both sites, since both counts exist at the comparison and are absent at the renderer. `docs/decisions/decision-lane-split.md:198` makes closing E182 part of Lane A's definition of done. Neither settles whether the shrunken version is the version the author wants. **Owner: the author.** A row in `records/author-calls.md` is owed |
 
 **Decision 12, verbatim:**
 
@@ -230,7 +235,7 @@ tree concurrently.
 - **Targets:** `tools/test/samples/e182_arity.prog` (**NEW**) ·
   `tools/test/arity.sh` (**NEW**) · `tools/test/run-tests.sh` (**EDIT**: one
   `run_phase 20` line after `:301`, and one line in the phase-list header at
-  `:10-33`) · `tools/test/MIGRATION-NOTES.md` (**EDIT**: one row in the
+  `:11-34`) · `tools/test/MIGRATION-NOTES.md` (**EDIT**: one row in the
   "New here" table).
 - **Change:** §5 in full. Registration:
   `run_phase 20 "the arity evidence (E182 r-arity)"                   arity.sh`
@@ -259,7 +264,7 @@ tree concurrently.
 ## 5. Conformance gate: `tools/test/arity.sh`, Phase 20
 
 **⚑ Phase 19 is taken.** `tools/test/run-tests.sh:301` registers E173's
-`matcher.sh` there, and `docs/decisions/decision-lane-split.md:28` reserves 18,
+`matcher.sh` there, and `docs/decisions/decision-lane-split.md:30` reserves 18,
 19 and 20 for this lane, so the lane holds 20 and E182 takes it.
 
 **Golden behavior:** an arity refusal names both integers it compared, at both
@@ -268,8 +273,10 @@ constructor cannot be added without every renderer accounting for it.
 
 **Two upgrades this arc paid for, adopted verbatim.**
 
-1. **Every mutant pins the full verdict line.** A mutant that reddens an unpaired row then fails the
-   same assertion as one that reddens nothing. `verdict LIBDIR` prints all six value rows at once.
+1. **Every mutant that can move a value row pins the full verdict line.** A mutant that reddens an
+   unpaired row then fails the same assertion as one that reddens nothing. `verdict LIBDIR` prints all
+   six value rows at once. M1, M7 and M8 are graded beside it, each for a stated reason: M1 kills every
+   row at once, and M7 and M8 grade scans rather than values.
 2. **The fixture asserts nothing and always exits 0.** It prints values; every
    comparison is the gate's, in bash. A fixture that grades itself can be wrong
    twice in the same direction, and one that exits on its first failure masks
@@ -290,7 +297,12 @@ constructor cannot be added without every renderer accounting for it.
   `protocol/render-doc.chiral`'s, and `row.sh:742` over `protocol/render.chiral`'s.
   So no binding in `e182_arity.prog` may take a `d-`, `brk-`, `m-`, `dfr`,
   `rdcf`, `rdcs` or `rnd-` prefix, or reuse any top-level name from those three
-  files. The fixture prefixes every binding `ar-`.
+  files. The fixture prefixes every binding `ar-`. ⚑ **The rule covers the
+  heredoc'd scratch root too.** Its text lives inside `arity.sh`, which is itself
+  under `tools/`, and the three censuses are line-anchored greps that cannot tell
+  a heredoc from a program: a `(def ` at the start of a line in the gate's own
+  source is scanned exactly as if it were one in a fixture. `doc.sh:314-320`
+  prefixes its probe `dpz-` for this reason; the scratch root prefixes `ar-`.
 - **A line-based scanner makes a fixture's line breaks part of its contract.**
   Phase 16 went red because `e175_face.prog` split a call over two lines
   (`docs/arcs/diagnostics-arc.md:106`). Every probe form in `e182_arity.prog`
@@ -313,36 +325,39 @@ constructor cannot be added without every renderer accounting for it.
   value of **all ten** `Reason` arms and prints the joined tags. It exists
   outside the tree for the reason above.
 
-**The rows. Six in the verdict line, two beside it, and every mutant is RUN.**
+**The rows. Six value rows in the verdict line, two rows beside it, and every one of the eight mutants is RUN.**
 
 | row | asserts | named mutant that must convict |
 |---|---|---|
-| **G1: the tenth tag, over all ten arms** | On the scratch root: `dg-reason-tag` over one value of every `Reason` arm joins to `redeclared,mismatch,usage,linear,arrow,unbound,skipped,judged,relayed,arity,`. ⚑ This is the row `samples/e157_diag.prog:50` can no longer make: it joins nine hardcoded values, its comment claims one value of every arm, and a tenth arm leaves the claim false with nothing going red. That file is sha256-pinned and `diagnostics/D2` owns repairing it; this row keeps the guarantee at full width for E182's own arm | **M1 `tag-loses-the-arity-arm`**: delete the `r-arity` arm from `dg-reason-tag`. The scratch root must then **fail to compile** on a non-exhaustive case, which is the eight-renderer property as a checked row. G1 goes `bad` and the other five stay `ok` |
-| **G2: the flat exit carries both counts, at both subjects** | `dg-msg (r-arity (subj-ctor "mk2") 2 1)` is exactly `mk2 wrong number of arguments (expected 2, actual 1)`, and `dg-msg (r-arity (subj-data "Box") 1 2)` is exactly `Box wrong number of type parameters (expected 1, actual 2)`. Both strings pinned in full, so a message that keeps one count and drops the other cannot pass | **M2 `msg-drops-the-expected-count`**: `dg-arity-msg` stops calling `i64->str e`. G2 red, G3 red, everything else green. ⚑ **The mutant must corrupt `dg-arity-msg` and never the `Reason` arm**: corrupting the arm stops the fixture compiling, which convicts G1 and leaves G2 unexercised |
-| **G3: one arm, two nouns, read off the subject** | The two G2 strings differ in exactly their noun, so a single `Reason` arm serves a site about type parameters and a site about constructor arguments without a new `Subject` arm. Asserted as the two nouns extracted from the two strings, `type parameters` and `arguments` | **M3 `noun-collapses-to-arguments`**: `dg-arity-noun`'s `subj-data` arm answers `"arguments"`. G3 red and G2 red, since the pinned `Box` string moves too. ⚑ The pair is deliberate: M2 and M3 redden overlapping sets, and the full verdict line is what tells them apart |
+| **G1: the tenth tag, over all ten arms** | On the scratch root: `dg-reason-tag` over one value of every `Reason` arm joins to `redeclared,mismatch,usage,linear,arrow,unbound,skipped,judged,relayed,arity,`. ⚑ This is the row `samples/e157_diag.prog:50` can no longer make: it joins nine hardcoded values, its comment claims one value of every arm, and a tenth arm leaves the claim false with nothing going red. That file is sha256-pinned and `diagnostics/D2` owns repairing it; this row keeps the guarantee at full width for E182's own arm | **M1 `tag-loses-the-arity-arm`**, and ⚑ **it is graded beside the verdict line rather than inside it**: delete the `r-arity` arm from `dg-reason-tag`. A non-exhaustive `case` in `diag.chiral` refuses the whole module, so the fixture, the scratch root and the compiler build all die together and the verdict line reads six `bad` -- which is what a `sed` that merely broke the syntax also reads. So M1 asserts the **refusal text**: the build against the mutated `lib/` must be refused with the non-exhaustive-case message, the string `diag.sh:174-177` already pins as `load: non-exhaustive case`. That is the eight-renderer property as a checked row; an all-red verdict line is not |
+| **G2: the flat exit carries both counts, at both subjects** | `dg-msg (r-arity (subj-ctor "mk2") 2 1)` is exactly `mk2 wrong number of arguments (expected 2, actual 1)`, and `dg-msg (r-arity (subj-data "Box") 1 2)` is exactly `Box wrong number of type parameters (expected 1, actual 2)`. Both strings pinned in full, so a message that keeps one count and drops the other cannot pass | **M2 `msg-drops-the-expected-count`**: `dg-arity-msg` stops calling `i64->str e`. ⚑ **Four other rows read that helper**: it is `dg-doc`'s head (G4) and it is the sentence both compiled refusals carry (G5, G6), so the pinned line is `G1:ok G2:bad G3:bad G4:bad G5:bad G6:bad`. M2 is told apart from M1 by G1 staying `ok`, and from M3 by G4 and G5. ⚑ **The mutant must corrupt `dg-arity-msg` and never the `Reason` arm**: corrupting the arm stops the fixture compiling, which convicts G1 and leaves G2 unexercised |
+| **G3: one arm, two nouns, read off the subject** | The two G2 strings differ in exactly their noun, so a single `Reason` arm serves a site about type parameters and a site about constructor arguments without a new `Subject` arm. Asserted as the two nouns extracted from the two strings, `type parameters` and `arguments` | **M3 `noun-collapses-to-arguments`**: `dg-arity-noun`'s `subj-data` arm answers `"arguments"`. G3 red and G2 red, since the pinned `Box` string moves too, and **G6 red**, since the type-parameter refusal carries the same noun. The `mk2` sentence is untouched, so the pinned line is `G1:ok G2:bad G3:bad G4:ok G5:ok G6:bad`. ⚑ The pair is deliberate: M2 and M3 both redden G2 and G3, and G4 / G5 in the full verdict line are what tell them apart |
 | **G4: the `Doc` exit lays both counts on their own lines** | `doc->str 24 (dg-doc (r-arity (subj-ctor "mk2") 2 1))` puts `expected 2` and `actual 1` on separate lines under a two-space nest, the shape the `r-usage` arm at `diag.chiral:564` already has. Pinned as the full multi-line string | **M4 `doc-arm-drops-the-nest`**: the `r-arity` arm of `dg-doc` returns its head alone. G4 red only, and G2 stays green, which is the point: the two exits are graded separately because a fix to one leaves the other unfixed |
-| **G5: the constructor site reports, through a real compile** | ⚑ **The strongest row, and the one eleven toothless rows in this arc did not have.** A compiler **built from the `lib/` under test** is handed a source that applies a two-field constructor to one argument, and its refusal is read off stderr: `load: mk2 wrong number of arguments (expected 2, actual 1)`. The device is `diag.sh:183-201` with `refuse_msg` (`:66`). ⚑ **The base row builds its compiler from `$REPO/lib` too, and does not read `$CC`**, so the row grades the sources and not whatever binary happens to be shipped | **M5 `con-check-reverts-to-a-stub`**: `con-check`'s false branch goes back to a `r-judged`. ⚑ **Its revert target must be `(jg-ctor-arity)`, an arm that survives.** `jg-ctor-arg-arity`, the arm the site used to build, was deleted by commit 2, so a mutant reaching for it fails to compile and the row scores BUILD:fail instead of convicting, which is a toothless mutant wearing a red row. The refusal becomes `load: constructor arity`, G5 the only red, and the row emits a stub string the shipped compiler has never been able to produce |
+| **G5: the constructor site reports, through a real compile** | ⚑ **The strongest row, and the one eleven toothless rows in this arc did not have.** A compiler **built from the `lib/` under test** is handed a source that applies a two-field constructor to one argument, and its refusal is read off stderr: `load: mk2 wrong number of arguments (expected 2, actual 1)`. The device is `diag.sh:183-201` with `refuse_msg` (`:66`). ⚑ **The base row builds its compiler from `$REPO/lib` too, so the row grades the sources and not whatever binary happens to be shipped.** `$CC` is still the bootstrap that turns each blob into an executable (`diag.sh:56`); what the row never does is read a refusal off `$CC` itself | **M5 `con-check-reverts-to-a-stub`**: `con-check`'s false branch goes back to a `r-judged`. ⚑ **Its revert target must be `(jg-ctor-arity)`, an arm that survives.** `jg-ctor-arg-arity`, the arm the site used to build, was deleted by commit 2, so a mutant reaching for it fails to compile and the row scores BUILD:fail instead of convicting, which is a toothless mutant wearing a red row. The refusal becomes `load: constructor arity`, G5 the only red, and the row emits a stub string the shipped compiler has never been able to produce |
 | **G6: the type-parameter site reports, through a real compile** | The same compiler refuses a source applying a one-parameter data type to two type arguments with `load: Box wrong number of type parameters (expected 1, actual 2)`. Two sites, two rows, because one repointed site passing says nothing about the other | **M6 `check-tcon-reverts-to-a-stub`**: `check-tcon`'s false branch becomes `(tc-err (r-judged (subj-data dn) (jg-tcon-arity)))`. ⚑ **Its revert target is `(jg-tcon-arity)` for the same reason M5's is `(jg-ctor-arity)`**: `jg-tparam-arity`, the arm the site used to build, was deleted by commit 2. The refusal becomes `load: tcon arity`, G6 the only red, and the two stub strings the mutants emit are different, so neither row can pass by reading the other's failure |
-| **G7: both live arms are gone, and the new arm is built at exactly two sites** | Outside the verdict line, and both halves are E182's own claims. **(a)** Neither `jg-tparam-arity` nor `jg-ctor-arg-arity` appears anywhere under `lib/` or `prog/`, and `Judg` reads **36** arms counted out of `diag.chiral`. **(b)** `r-arity` is **constructed at exactly two sites** under `lib/` and `prog/`, `kernel.chiral:1042` and `:1097`, which is the claim that the element repointed the two live comparisons and invented no third one. Both needles assembled from two halves | **M7 `put-the-arm-back`**: add `(jg-tparam-arity)` back to `Judg` in a scratch `lib/` and revert `check-tcon`'s false branch to build it. The census must see both: the arm count reads 37 and `r-arity`'s construction sites drop to one. Without this row the scan passes on a needle matching nothing anywhere, which is what it would do if either name were renamed |
+| **G7: both live arms are gone, and the new arm is built at exactly two sites** | Outside the verdict line, and both halves are E182's own claims. **(a)** Neither `jg-tparam-arity` nor `jg-ctor-arg-arity` appears anywhere under `lib/` or `prog/`, and `Judg` reads **36** arms counted out of `diag.chiral`. ⚑ **The count takes every `(jg-` head on a line, all of them**: `Judg`'s arms run three to a line, so `doc.sh:298-307`'s paren-balanced walk is the device but its one-arm-per-line `print` is not -- a line count reads 13 and grades nothing. **(b)** `r-arity` is **constructed at exactly two sites** under `lib/` and `prog/`, `kernel.chiral:1042` and `:1097`, which is the claim that the element repointed the two live comparisons and invented no third one. ⚑ **`diag.chiral` is excluded by name**, because the arm's own declaration and its eight `case` patterns all spell `(r-arity ` and an unexcluded scan reads eleven. Both needles assembled from two halves | **M7 `put-the-arm-back`**: add `(jg-tparam-arity)` back to `Judg` in a scratch `lib/` and revert `check-tcon`'s false branch to build it. The census must see both: the arm count reads 37 and `r-arity`'s construction sites drop to one. Without this row the scan passes on a needle matching nothing anywhere, which is what it would do if either name were renamed |
 | **G8: Phase 20 is registered** | `run_phase 20 .* arity.sh$` appears exactly once in `run-tests.sh`, asserted with `row.sh`'s `reg()` device, which greps **a different file from the one doing the grep** and so cannot match its own source | **M8 `unregister-the-phase`**: delete the `run_phase 20` line from a **copy** of `run-tests.sh`; the row must notice |
 
 **Cost, stated because it is the one number this SPEC cannot take.** G5 and G6
 each need a compiler built from the `lib/` under test, so `verdict` costs one
-compiler build per call and the six rows cost 1 base plus 6 mutants, seven
-builds. **The implement run measures Phase 20's wall clock and reports it.** If
-it exceeds 120 s, split the line: keep the six-token verdict for the base, M5
-and M6, and give M1 to M4 a four-token fixture-only line, which costs a small
-program build each. Record which was chosen and the measurement behind it.
+compiler build per call: 1 base plus M2 to M6, **six compiler builds**. M1 costs
+one refused program build, M7 one scan, M8 none. **The implement run measures
+Phase 20's wall clock and reports it.** If it exceeds 120 s, split the line: keep
+the six-token verdict for the base, M5 and M6, and give M2, M3 and M4 a
+four-token fixture-only line over G1 to G4, which costs a small program build
+each and takes the count to three compiler builds. M2 and M3 stay distinguishable
+under the short line, since G4 separates them. Record which was chosen and the
+measurement behind it.
 
 **Not gate rows, deliberately, and each says where it lives:**
 
 - **A byte-identity row over the nine `dg-msg` strings E157 pins.**
-  `pretty.sh:389` already pins `diag.sh`, `doc.sh`, `row.sh`, `face.sh`,
+  `pretty.sh:365-372` already pins `diag.sh`, `doc.sh`, `row.sh`, `face.sh`,
   `render-doc.sh` and the three fixtures by sha256, and Phase 13 grades the nine
   strings. A second pin here would grade them twice.
 - **A `Reason` name census.** `diag.sh:288-305` builds its name set out of
   `diag.chiral` and interpolates the count into its own pass message without
-  comparing it to a literal, so `r-arity` grows the set by one and moves no
+  comparing it to a literal, so the three new names (`r-arity`, `dg-arity-noun`, `dg-arity-msg`) grow the set by three and move no
   assertion. Measured, and a second census would double-grade it.
 - **Anything about `jg-tcon-arity` or `jg-ctor-arity`.** `diagnostics/D1`.
 - **Repairing `e157_diag.prog:50` or `doc.sh:230`.** `diagnostics/D2`.
