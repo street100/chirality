@@ -300,6 +300,29 @@ run_phase 18 "the term printer (E181 Term -> Doc)"                 pretty.sh
 # under the same limits as its control.
 run_phase 19 "the total matcher (E173 pd + norm)"                  matcher.sh
 
+# ---- Phase 20: the transport path (a model call) ----------------------------
+# 20 for the reason 19 was 19: 8-12 are names still owed to unported old-tree
+# phases.  Five roots under prog/samples/ compile, RUN, and are judged against
+# the exit codes their own headers specify: a non-streaming HTTP round trip
+# (e130_http_get, 42), a streaming chat-open -> chat-read -> chat-close against
+# the live model (stream-ollama, 0), the pure SSE framing golden under that
+# stream (e131_sse_framing, 0), a socketpair-fed chat-read loop with no network
+# (e131_sse_socketpair, 0), and http-request against a closed port
+# (e130_http_request_refused, 42 on the conn-err arm's status -1).
+#
+# ⚑ Phase 7 above compiles these same five roots and executes NONE of them.
+# That is the gap this phase closes: the transport path was gated on whether it
+# parses and lowers, and a run of it existed only as a hand-measured note.
+#
+# ⚑ Three of the five are hermetic and hard-gated.  The two that need
+# 100.64.0.5:11434 DEFER when it does not answer, under the author ruling at
+# prog/samples/e130_http_get.prog:8-9: report honestly, do not gate on it.  A
+# DEFER is neither a pass nor a failure and the phase stays green on the three.
+#
+# ⚑ Runs standalone, because run-tests.sh does not fit on a 3.85 GB box with no
+# swap and has OOM-killed sessions here:  bash tools/test/transport.sh
+run_phase 20 "the transport path (a model call, E130 + E131)"     transport.sh
+
 echo
 echo "=== not ported from the old suite (named, not hidden) ==="
 echo "  Phase 8  module datasheet (E161)      -- 808 lines of fixtures on old-tree module keys; see tools/test/MIGRATION-NOTES.md"

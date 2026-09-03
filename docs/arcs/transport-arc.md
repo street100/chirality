@@ -23,9 +23,11 @@ work.
 Criterion 1 of [[goals/local-ai]] asks for a gated multi-agent run end to end
 under `bin/chirality-bin`. The substrate is 9,930 lines under `prog/manas/`,
 37 `.chiral` modules and 18 `.prog` roots, measured 2026-09-02. Phase 7 of
-`tools/test/run-tests.sh` sweeps every root in the tree compile-only, and no
-phase in the suite performs a model call. So the largest body of built code in
-the repository is gated on whether it parses and lowers, and on nothing else.
+`tools/test/run-tests.sh` sweeps every root in the tree compile-only, and when
+this arc opened no phase in the suite performed a model call. So the largest
+body of built code in the repository was gated on whether it parses and lowers,
+and on nothing else. Phase 20 judges the transport path's five roots.
+`prog/manas/` stays compile-only.
 
 ## What was measured, 2026-09-02, and it moved the premise three times
 
@@ -149,60 +151,90 @@ Done when all four hold.
 2. **One non-streaming call runs end to end and is asserted.** A request leaves
    the tree, a typed result comes back, and a phase in `tools/test/run-tests.sh`
    judges it. The call ran on 2026-09-02: `prog/samples/e130_http_get.prog`
-   exited 42, its header's code for status 200 with a non-empty body. The phase
-   is owed.
+   exited 42, its header's code for status 200 with a non-empty body. Phase 20
+   of `tools/test/run-tests.sh` compiles that root, runs it under a `timeout`
+   and asserts 42. The assertion is deferred when `100.64.0.5:11434` does not
+   answer a TCP probe.
 3. **The streaming path gets the same treatment.** `chat-open`, `chat-read` and
    `chat-close` carry a run. All three ran on 2026-09-02.
    `prog/samples/stream-ollama.prog` exited 0 on a clean `[DONE]` against the
    live endpoint, and `prog/samples/e131_sse_socketpair.prog` exited 0 over a
-   socketpair. The phase is owed.
+   socketpair. Phase 20 asserts exit 0 on each, and asserts that
+   `prog/samples/stream-ollama.prog` writes a non-empty stdout, which an exit
+   code alone cannot show. The socketpair root is hermetic and hard-gated.
+   `chat-open` is reached only by the endpoint-bound root, so on a box with no
+   route the streaming open is deferred and `chat-read` and `chat-close` stay
+   gated.
 4. **An absent server produces a typed refusal.** A run against a closed port
    ends in a verdict. `prog/samples/e130_http_request_refused.prog` exited 42 on
    2026-09-02, the code its header gives when the conn-err arm yields status
-   `-1`, and the root is hermetic. The phase is owed.
+   `-1`, and the root is hermetic. Phase 20 asserts 42 on every run, under a
+   `timeout` so a regression that hangs fails loudly.
 
-Requirement 1 holds as of 2026-09-02, and the substance of requirements 2
-through 4 holds with it. The one piece all three wait on is a phase in
-`tools/test/run-tests.sh` that compiles a root, executes it, and judges the exit
-code, so a run is defended on every suite run instead of performed by hand once.
+Requirement 1 holds as of 2026-09-02, and requirements 2 through 4 hold with it.
+`tools/test/transport.sh` is the phase all three waited on. It compiles each
+root with `bin/chirality-bin`, checks the artifact is non-empty, executes it and
+judges the exit code, so the run is defended on every suite run and no longer
+rests on a measurement performed by hand once. Two of its five assertions are
+endpoint-bound and defer when the endpoint is silent.
 
 ## Rows
 
 | row | what | state | element |
 |---|---|---|---|
 | `transport/T1` | restate the transport gap where it is recorded, against the 2026-09-02 measurement | done. `docs/goals/local-ai.md:110` landed in `9ef9448`; the orchestration-substrate row in [[status-ledger]] names the measured run and the absent gate. `records/author-calls.md` still carries the three-name reading and sits on another session's write surface, which moved its line number twice on 2026-09-02, so the citation names the file with no line number | `unminted` |
-| `transport/T2` | a phase in `tools/test/run-tests.sh` that compiles `prog/samples/e130_http_get.prog`, runs it, and compares the exit code against the 42 its own header specifies | not started. Requirement 2. The root is verified: compiled with `bin/chirality-bin` and run 2026-09-02, exit 42 measured. It is non-hermetic, so the phase carries the deferral ruling | `unminted` |
-| `transport/T3` | the same phase treatment for `prog/samples/e131_sse_socketpair.prog`, header exit 0, and for `prog/samples/stream-ollama.prog`, header exit 0 | not started. Requirement 3. Both roots are verified: compiled and run 2026-09-02, exit 0 measured on each. `chat-open` is reached only by the endpoint-bound one | `unminted` |
-| `transport/T4` | the same phase treatment for `prog/samples/e130_http_request_refused.prog`, header exit 42, as a negative control on T2 | not started. Requirement 4. The root is verified: compiled and run 2026-09-02, exit 42 measured against a closed port, which is a verdict. It is hermetic | `unminted` |
+| `transport/T2` | a phase in `tools/test/run-tests.sh` that compiles `prog/samples/e130_http_get.prog`, runs it, and compares the exit code against the 42 its own header specifies | done. Requirement 2. Phase 20 is `tools/test/transport.sh`, registered at `tools/test/run-tests.sh:324`. It blobs the root through `chirality_blob_file "lib:prog"`, compiles it with `bin/chirality-bin`, refuses an empty artifact, runs it under a `timeout` and asserts exit 42. The root is non-hermetic, so the phase probes `100.64.0.5:11434` once and defers this assertion when the probe is refused, under the ruling at `prog/samples/e130_http_get.prog:8-9` | `unminted` |
+| `transport/T3` | the same phase treatment for `prog/samples/e131_sse_socketpair.prog`, header exit 0, and for `prog/samples/stream-ollama.prog`, header exit 0 | done. Requirement 3. Phase 20 asserts exit 0 on `prog/samples/e131_sse_socketpair.prog`, hermetic and hard-gated, and exit 0 plus a non-empty stdout on `prog/samples/stream-ollama.prog`, which is endpoint-bound and deferred with T2's assertion. `chat-open` is reached only by the endpoint-bound one, so a box with no route gates `chat-read` and `chat-close` and defers the streaming open | `unminted` |
+| `transport/T4` | the same phase treatment for `prog/samples/e130_http_request_refused.prog`, header exit 42, as a negative control on T2 | done. Requirement 4. Phase 20 asserts exit 42 against `127.0.0.1:1`, hermetic and hard-gated on every run, under a `timeout` because a hang is the failure this row watches for. It is the phase's negative control, and it is why the phase carries no mutant harness | `unminted` |
 
 ### Two constraints on how T2 through T4 are built
 
-**One file, two owners, unresolved.**
+**One file, two owners.**
 `docs/decisions/decision-lane-split.md:243` gives transport "a new phase in
 `tools/test/run-tests.sh`" as part of its measured file ownership.
 `.planning/HANDOFF-DOC-SESSION.md:16` gives `tools/test/` to the parallel
 compiler session and says it edits those files while other work runs. Two live
-documents assign the same file to two lanes. This is an open coordination
-question for the author and no row here settles it.
+documents assign the same file to two lanes. The resume state below carries the
+author's ruling for the Phase 20 change and says what it leaves standing.
 
 **The suite does not run on this box.** `tools/test/run-tests.sh` needs more
 than the 3.85 GB available, there is no swap, and it has OOM-killed sessions
 (`.planning/HANDOFF-DOC-SESSION.md:34-36`). A new phase therefore has to be
 runnable standalone, so that the root it compiles and executes can be judged
-without the whole suite.
+without the whole suite. `tools/test/transport.sh` is written that way and runs
+as `bash tools/test/transport.sh`.
 
 ## Resume state
 
-**Where a session picks up.** T2. Requirement 1 is met, and T2 is the first row
-whose subject is a phase.
+**Where a session picks up.** No row is open. T1 through T4 are done and all
+four requirements hold as of 2026-09-02. The next work on this arc is minting,
+which waits on the author.
 
-**What blocks the arc.** No reserved element block, so T2 through T4 write
+**What blocks the arc.** No reserved element block, so T1 through T4 stay
 `unminted` and cannot be scheduled as catalog work. Author call B in
 [[records/author-calls]] is the ruling, and `arcs/text-tools-arc`'s P2 through
-P4 wait on the same one. The `tools/test/run-tests.sh` ownership contention
-above is the second block, and it is an author call as well.
+P4 wait on the same one.
 
-**What has stopped blocking it.** Three things.
+**The `tools/test/run-tests.sh` ownership contention is settled for this
+change.** The author gave the go-ahead directly on 2026-09-02 for Phase 20 to
+be written into that file, and that ruling covers this change. The two documents
+named above still disagree on paper: `docs/decisions/decision-lane-split.md:243`
+gives the phase to transport and `.planning/HANDOFF-DOC-SESSION.md:16` gives
+`tools/test/` to the parallel compiler session. Whoever holds those files owes
+the repair.
+
+**What the phase does not gate.** Three limits, each measured.
+
+- `prog/samples/e130_http_get.prog` and `prog/samples/stream-ollama.prog` stay
+  non-hermetic. Phase 20 probes `100.64.0.5:11434` once, and on a refusal it
+  prints a DEFER block and counts both roots as neither passed nor failed.
+- Requirement 3's `chat-open` is reached only by the endpoint-bound root, so on
+  a box with no route the streaming open is deferred and only `chat-read` and
+  `chat-close` stay gated, by `prog/samples/e131_sse_socketpair.prog`.
+- `prog/samples/agent-probe.prog` carries no assertion. It is the sixth root and
+  it sits beyond the four requirements.
+
+**What has stopped blocking it.** Four things.
 
 - The model server. `100.64.0.5:11434` answered `GET /v1/models` with
   `HTTP/1.1 200 OK` on 2026-09-02 from `claude-sandbox`, so the reachability
@@ -213,9 +245,10 @@ above is the second block, and it is an author call as well.
 - Running one. Five of the six were compiled with `bin/chirality-bin` and
   executed on 2026-09-02, each returning its header's success code, and the two
   endpoint-bound roots reached the live model.
-
-What no phase does is judge an exit code, so every row below T1 stays
-`not started` and `unminted`.
+- Judging one. `tools/test/transport.sh` compiles and runs all five and asserts
+  each exit code, plus a non-empty stdout on the streaming root. Run standalone
+  twice on 2026-09-02 it reported 5 passed, 0 failed, 0 deferred both times, and
+  the streaming root printed different text on each run.
 
 **A trap this arc has now hit three times.** The premise the arc was proposed
 under was stale within a day of being written, because the proposal quoted a
