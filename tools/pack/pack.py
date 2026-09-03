@@ -24,17 +24,18 @@ An element marked `status: superseded` (its work reshaped into a DIFFERENT
 element, named by `superseded_by:`) is REFUSED at every stage — see
 superseded_stop() and the Status section of docs/examples/INDEX.md.
 
-Three LANES, one pipeline. The element id's prefix selects its SOURCE ADAPTER —
+Four LANES, one pipeline. The element id's prefix selects its SOURCE ADAPTER —
 which document holds the rows, how a row is recognised, what plays the role of
 the catalog's Location/state and Kind/reference_class columns:
 
     E13   core self-implementation   docs/elements/catalog.md
     U13   the user layer             .planning/USER-LAYER-GAP.md
     S19   the scriba editor floor    .planning/SCRIBA-PRIMITIVE-CHECKLIST.md
+    N1    the native protocol        .planning/NATIVE-PROTOCOL-CHECKLIST.md
 
 Everything downstream of the row lookup (bundles, scaffolds, audits, kb slices,
-INDEX rows) is lane-agnostic; artifact tags are prefix-keyed (E13-/U13-/S19-)
-so the three lanes cannot collide in examples/ or docs/elements/specs/.
+INDEX rows) is lane-agnostic; artifact tags are prefix-keyed (E13-/U13-/S19-/N01-)
+so the four lanes cannot collide in examples/ or docs/elements/specs/.
 """
 import glob, os, re, sys, datetime
 
@@ -49,6 +50,7 @@ SPECDIR = os.path.join(ROOT, "docs/elements/specs")
 SPEC_TEMPLATE = os.path.join(SPECDIR, "_TEMPLATE.md")
 GAPDOC = os.path.join(ROOT, ".planning/USER-LAYER-GAP.md")
 SCRIBADOC = os.path.join(ROOT, ".planning/SCRIBA-PRIMITIVE-CHECKLIST.md")
+NATIVEDOC = os.path.join(ROOT, ".planning/NATIVE-PROTOCOL-CHECKLIST.md")
 
 
 # ------------------------------------------------------------- source adapters
@@ -80,6 +82,11 @@ def _kind_U(ln):
 def _kind_S(ln):
     m = re.match(r"^###\s+Tier\s+([A-Za-z])\b", ln)
     return (f"Tier {m.group(1)}", f"TIER-{m.group(1).upper()}") if m else None
+
+
+def _kind_N(ln):
+    m = re.match(r"^###\s+Layer\s+([A-Za-z])\b", ln)
+    return (f"Layer {m.group(1)}", f"LAYER-{m.group(1).upper()}") if m else None
 
 
 SOURCES = {
@@ -114,12 +121,18 @@ SOURCES = {
         tick_cols=(1, 4), py_roots=("", "bin", "tools/*"),
         section_baselines={}, derive_refclass=True,
     ),
+    "N": dict(
+        path=NATIVEDOC, header="| N#", kind=_kind_N,
+        row=lambda eid: rf"\|\s*\*{{0,2}}{eid}\*{{0,2}}\s*\|",
+        tick_cols=(1, 4), py_roots=("", "bin", "tools/*"),
+        section_baselines={}, derive_refclass=True,
+    ),
 }
 
 
 def id_parts(eid):
     """(prefix, number, suffix) — `S20b` is a real id in the scriba lane."""
-    m = re.match(r"^([EUS])(\d+)([a-z]?)$", eid)
+    m = re.match(r"^([EUSN])(\d+)([a-z]?)$", eid)
     return (m.group(1), int(m.group(2)), m.group(3)) if m else (None, 0, "")
 
 
@@ -681,7 +694,7 @@ def ledger_note(eid):
         print(f"[ledger] {eid} NOT in docs/elements/ledger.md — add its category+module row "
               f"(ledger-lint check J fails until you do)", file=sys.stderr)
     else:
-        # check J ratchets the E# space only; a U#/S# row's authority is its own
+        # check J ratchets the E# space only; a U#/S#/N# row's authority is its own
         # lane doc, so an absent LEDGER row here is normal, not a defect.
         print(f"[ledger] {eid} not LEDGER-tagged (normal for this lane) — row authority is "
               f"{os.path.relpath(source_for(eid)['path'], ROOT)}", file=sys.stderr)
@@ -696,9 +709,9 @@ def main():
     # strip to the bare stable E# key — the category prefix is a label, not the id.
     m = re.match(r"^[A-Za-z]{2,4}[·./]E?(\d+)$", pos[0])
     eid = f"E{m.group(1)}" if m else pos[0]
-    m2 = re.match(r"^([EeUuSs])(\d+)([A-Za-z]?)$", eid)
+    m2 = re.match(r"^([EeUuSsNn])(\d+)([A-Za-z]?)$", eid)
     if not m2:
-        die("element id must look like E13 / U13 / S19 (or the CAT·E# form, "
+        die("element id must look like E13 / U13 / S19 / N1 (or the CAT·E# form, "
             "e.g. MEM·E120)")
     eid = m2.group(1).upper() + m2.group(2) + m2.group(3).lower()
     src = source_for(eid)
