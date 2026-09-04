@@ -204,7 +204,7 @@ example edits through `apply-edit`. Detailed in §8.
   (edit-stop    (policy StopPolicy)))                    ; replace a Pipeline STOP
 ```
 
-`num-ctx` is `I64` by the E133 `Binding` type (`types.chiral:29`) — this is where
+`num-ctx` is `I64` by the E133 `Binding` type (`types.chiral:28`) — this is where
 the YAML "16k-as-string" mis-edit becomes a compile-time rejection; there is no
 `ManasEdit` value carrying a string context length.
 
@@ -319,7 +319,7 @@ rather than an lw `Bool`):
 ```
 
 Body: `case` the single printable char of `ks` (via a `key-motion-char`-style
-one-char extractor — reuse `key-motion-char` from `vim-mode.chiral:53`, already in
+one-char extractor — reuse `key-motion-char` from `vim-mode.chiral:89`, already in
 scope through the import graph):
 
 - **`"m"` (rebind a slot)** — only meaningful when `d` is `doc-config`. Prompt

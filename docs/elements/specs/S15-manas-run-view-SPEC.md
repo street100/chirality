@@ -160,7 +160,7 @@ Four additive touch-points, all mirroring the S14 `vm-manas` wiring:
   `:628`): in `vm-runview` keys are **navigation only** — the run is already finished.
   ESC → `command-loop-inner … vm-normal pending-none`; any other key →
   `beep-recurse … (vm-runview rv) pending-none`. (Scroll-the-manifest is residue, §9.)
-- **entry**: `vim-command-run` (`command-loop.chiral:834`, the `str-eq cmd "…"` chain
+- **entry**: `vim-command-run` (`command-loop.chiral:1810`, the `str-eq cmd "…"` chain
   that already dispatches `manas ` → `manas-enter`) gains a `:run` arm → `runview-fire`
   (§4.3). `runview-fire` fires the run and enters `vm-runview` over the finished value.
 
@@ -274,8 +274,9 @@ the `case` — a silently-dropped failure is not representable):
 
 ### 3.4 `runview-render` — the total value renderer (pure `-> Rendering`)
 
-Walks the whole `RunView` into `r-lines` of face-tagged rows, reusing S14's `mh-row`/
-`mf-row`/`join-comma`/`rrows-append` (`manas-mode.chiral:206`/`:205`/`:181`/`:228`) —
+Walks the whole `RunView` into `r-lines` of face-tagged rows, reusing S14's
+`mh-row` (`manas-mode.chiral:473`), `mf-row` (`:472`), `join-comma` (`:448`) and
+`rrows-append` (`:495`) —
 this is the "reuse I2 transcript rendering" the slice asks for (the same
 `r-lines`-of-`r-face`-rows tree S14's value view emits). `dims`/`scroll` are carried
 for parity with the S14 renderer shape; S15 renders the whole value (no windowing —
@@ -346,7 +347,7 @@ plan branch renders the GATE **before any network** (`plan-run` is PURE, `plan.c
   (the proven mid-effect paint `vim-chat-prompt` uses after a network call,
   `command-loop.chiral:806`); scroll 0 = top during the live run.
 - `outcomes-of : (-> (List RvCall) (List ExpertOutcome))` — unwrap the bundles to feed
-  `gather-findings` (`runner.chiral:108`) and `assemble-manifest` (`plan.chiral:164`),
+  `gather-findings` (`runner.chiral:174`) and `assemble-manifest` (`plan.chiral:164`),
   which are typed on `(List ExpertOutcome)`. Assembling from the *raw* outcomes keeps
   the manifest byte-identical to the headless path (`RvCall` is a render-only wrapper).
 - `yield-of : (-> CombinerOutcome Str)` — the combiner text (`""` on `combiner-bad`);
@@ -376,7 +377,7 @@ the `rv-calling` phase:
                   (fan-render b rest bindings doc extra rv2 dims acc2))))))))))
 ```
 
-`call-expert` (`runner.chiral:66`), `bnd-model` (`plan.chiral:58`), `exp-slot`
+`call-expert` (`runner.chiral:97`), `bnd-model` (`plan.chiral:58`), `exp-slot`
 (`plan.chiral:47`) are public. `exp-id-of` reads the `Expert` id — `plan.chiral`'s
 `exp-id` (`:46`) is private to that module, so `fan-render` uses a local one-line
 `case`-accessor (or `ids-of-experts` over a singleton). `reverse`/`append`/`len` come
@@ -385,7 +386,7 @@ from `collections`; add `(import "collections")` in commit 2 if not already pull
 ### 4.3 `runview-fire` — the `:run` entry (effectful, special-cased like `chat-send`)
 
 Firing is effectful and returns into a mode, so it is special-cased by command name
-in `vim-command-run` exactly as `manas ` → `manas-enter` is (`command-loop.chiral:834`).
+in `vim-command-run` exactly as `manas ` → `manas-enter` is (`command-loop.chiral:1257`).
 Fires the crafted doc-refine run (the sample's inputs, §4.4), then hands control to
 `vm-runview` over the finished value:
 
@@ -402,7 +403,7 @@ Fires the crafted doc-refine run (the sample's inputs, §4.4), then hands contro
               rendering renderers ops (vm-runview rv) pending-none)))))))
 ```
 
-Wired into the `vim-command-run` chain (`command-loop.chiral:834`) as
+Wired into the `vim-command-run` chain (`command-loop.chiral:1810`) as
 `(case (str-eq cmd "run") (true (runview-fire km puf chat dims scroll old-rendering renderers ops)) (false …))`,
 before the existing `manas `/`beep-recurse` fallthrough.
 
@@ -477,8 +478,8 @@ of S15, §9).
 
 - **D3 — reuse the four prims vs call `run-pipeline`/`guarded-run` as a black box.**
   **RESOLVED.** `runview-drive` reuses `plan-run`/`call-expert`/`call-combiner`/
-  `assemble-manifest` directly (all public: `plan.chiral:97,164`, `runner.chiral:66,87`),
-  **not** `run-pipeline` (`runner.chiral:121`) or `guarded-run` (`guarded.chiral`),
+  `assemble-manifest` directly (all public: `plan.chiral:97,164`, `runner.chiral:97,136`),
+  **not** `run-pipeline` (`runner.chiral:187`) or `guarded-run` (`guarded.chiral`),
   because those return only at the end and per-expert repaint needs a seam *between* the
   calls (example §7.1). The breaker count `guarded-run` adds is orthogonal (a post-run
   fold, recomputable from the final manifest if the cockpit ever wants it). **Zero
