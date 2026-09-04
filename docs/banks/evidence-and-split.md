@@ -5,7 +5,7 @@ tier: depth
 indexes: [vocabulary, glossary, axis-typeability, category-bridge, split-role, certificate-discipline, decision-split-checker, floor-agreement]
 related: [banks/module, banks/effect-and-alarm, banks/port, banks/capability, category-untyped, decision-bridge-elaborator, modules-custody, modules-substrate, open-edges, status-ledger]
 status: draft
-updated: 2026-08-24
+updated: 2026-09-04
 ---
 
 # BANK: evidence-and-split
@@ -83,12 +83,16 @@ one *tier* of one *leg*). Each native monolith fuses one shard below with the wh
 see §4.
 
 **How it is realized in code (evidence).** Almost none of it, and the bank's honesty
-turns on saying so. The *only* built C-bridge crossing is the inbound tag-check:
-`scaffold/chirality/bridge.py` `verify()` walks a returned host value against the
-extern's declared result type, **depth-bounded ≤4**, and raises `PortError` on
-mismatch — "*evidence at the membrane, not proof of the implementation*"
-(`bridge.py:1–13`, CONFORMS but **no E-number**, inbound half only). The secret
-custody seed is type-level only (`lib/secret.chiral`, E40, SEEDED). The certificate
+turns on saying so. ⚑ **And less than this section claimed, re-measured
+2026-09-04.** The *only* built C-bridge crossing was the inbound tag-check in
+`bridge.py`: `verify()` walking a returned host value against the
+extern's declared result type, depth-bounded to four, raising `PortError` on
+mismatch, "evidence at the membrane, not proof of the implementation". That file
+went with the Python oracle and has **no live referent**; nothing in `lib/`
+re-checks an extern's return today, and `lib/evidence/interp.chiral:19-21` names
+that face as E15's deferred connector. So the C bridge is built in **no** place at
+all. The secret
+custody seed is type-level only (`lib/capability/secret.chiral`, E40, SEEDED). The certificate
 discipline's *flagship* — `preserve-check` — is built and ENFORCED, but for the
 *lowering/optimizer* seam, not for the C bridge. Everything else named in this bank
 is DESIGNED.
@@ -102,21 +106,22 @@ shards. Build-state is authoritative from [[status-ledger]] and
 `records/conformance-map.md`. Read the column: **one shard is built, one is
 seeded, the rest are DESIGNED.**
 
-### Shard 1 — inbound verify (the built sliver) · **IMPLEMENTED (host-mediated)**
+### Shard 1 — inbound verify (the sliver that was built) · **no live referent**
 - **What.** B→A integrity: every value an extern returns is checked against its
   declared result type at the crossing; a divergence is a typed alarm, not a
   downstream crash. This is the smallest real instance of "turn substrate into
   evidence a typed process can check."
 - **Home.** the inbound face of the [[category-bridge]] connector.
-- **Build-state.** IMPLEMENTED, the one place the C bridge is real in code.
-  `scaffold/chirality/bridge.py` `verify()` — tag-checks `I64/Str/Bytes`, port atoms
-  (`Sock/Fd/Pool/LSock`), and datatype constructors, **depth-bounded ≤4** ("*evidence
-  at the crossing, not a deep proof*", `bridge.py:73`); mismatch → `PortError`
-  ([[banks/effect-and-alarm]]). CONFORMANCE-MAP "inbound bridge
+- **Build-state.** ⚑ **No live referent, recorded 2026-09-04.** This was the one
+  place the C bridge was real in code, and it was `bridge.py`'s `verify()`:
+  tag-checking `I64/Str/Bytes`, the port atoms `Sock/Fd/Pool/LSock` and datatype
+  constructors, depth-bounded to four, mismatch to `PortError`. All of it went with
+  the Python oracle. CONFORMANCE-MAP "inbound bridge
   integrity-verification": CONFORMS, **no E#**, "*Integrity/inbound half only …
-  Outbound confinement not built.*" Honest ceiling: host-mediated (rests on CPython;
-  adversarial enforcement is E51/self-hosting), and it verifies *shape/tag*, not the
-  host's semantic correctness.
+  Outbound confinement not built*" — a verdict on the oracle, left visible for that
+  reason. The honest ceiling has moved: the shard is now **DESIGNED with a prior
+  implementation**, and the C-bridge column below has no built row.
+  [[banks/port]] Shard 4 carries the same finding from the port side.
 
 ### Shard 2 — outbound confine (the missing half) · **BUILD / not built**
 - **What.** A→B confidentiality + capability containment: an A value crossing into B
@@ -160,7 +165,8 @@ seeded, the rest are DESIGNED.**
 - **Build-state.** The *ladder* is settled design law. Its *instances* per build:
   **T0 is built** (the kernel judgment, E3–E5, [[banks/module]] Shard 1). **T1
   copies-compared is partially built as a development discipline** — differential
-  testing / floor-agreement (§3, `test_native.py`, [[floor-agreement]]) is the T1
+  testing / floor-agreement (§3, [[floor-agreement]], and the scripts under
+  `tools/test/` that `tools/test/run-tests.sh` drives) is the T1
   net that is real today. **T2** is named as a trap, not a target (no code owed).
   **T3 verifiable split is DESIGNED** (E54, Shard 6). So the ladder is real; the
   rungs above T0/T1-as-CI are forward.
@@ -176,7 +182,9 @@ seeded, the rest are DESIGNED.**
   unprovable side); the boundary drawn in [[category-bridge]] and
   [[decision-split-checker]].
 - **Build-state.** Split. The certificate discipline's **flagship `preserve-check`
-  is BUILT/ENFORCED** ([[status-ledger]], `lower.py`/`optimize.py`; "*the proof that
+  is BUILT/ENFORCED** ([[status-ledger]], `lib/lowering/upper/lower.chiral` and
+  `lib/lowering/upper/optimize.chiral`, whose `re-check` at `:250` is the
+  preserve-check in the pipeline's signature; "*the proof that
   a lowering step opened no hole*", [[modules-lowering]]) — a real certificate re-checker for the
   lowering seam. The **kernel-core certificate split** (kernel-spec + trusted core +
   untrusted producers) that generalizes it is **DESIGNED, E52** (F2's tier-climb,
@@ -418,18 +426,19 @@ that still read "needs E-number" now have one — with **no change to the code s
    Thompson). *This item said "zero code" and that was already wrong when it was
    written*: `CONFORMANCE-MAP.md:45` records the compare core as **BUILT (E53,
    2026-07-28), CONFORMS**, `examples/INDEX.md` has E53 **implemented**, and
-   `scaffold/lib/ddc.chiral` is 135 lines of proven-total compare core
-   (`Prov`/`Leg`/`DdcR`/`LegOut` + first-divergence fold). As of **2026-08-24**
+   `lib/evidence/ddc.chiral` is a proven-total compare core, 213 lines as of
+   2026-09-04 (`Prov`/`Leg`/`DdcR`/`LegOut` + first-divergence fold). As of **2026-08-24**
    the quorum also had a second genuinely disjoint leg: `ddc-legc`
-   (`ddc.chiral:162`, `("c" "gcc-12" "shred" 2026)`) from **E166**, gated by
-   `scaffold/tests/ddc-c-leg.sh` and by Phase 10 of the native suite. ⚑ **That
+   (`lib/evidence/ddc.chiral:162`, `("c" "gcc-12" "shred" 2026)`) from **E166**,
+   gated by a C-leg script and by Phase 10 of the native suite. ⚑ **That
    leg was dropped 2026-09-01** (`d8bcec5`, `d0c5dd5`) and the `Leg` value it
    registered now has zero callers and zero assertions. What follows in this item
    is the record of what the leg bought while it ran. What that
    buys is **toolchain** disjointness — the axis a Thompson attack lives on — and
    *not* a smaller trusted base, since gcc carries the whole of gcc. What is
    still honestly open: the `author` axis stays `"shred"` for every leg and is
-   recorded rather than laundered (`ddc.chiral:14`), and `ddc-verdict-code` still
+   recorded rather than laundered (`lib/evidence/ddc.chiral:29`), and
+   `ddc-verdict-code` still
    composes leg 0 with the dying Python leg 1 rather than with the C one. Depth
    tier: [[banks/verification]] Shards 4 and 8. Its shipped form is **E72**
    (re-bootstrap artifact: the climb chain as a checkable manifest — "no
@@ -448,13 +457,15 @@ that still read "needs E-number" now have one — with **no change to the code s
    agreement (E54).
 
 **Named as built, so the gradient is honest:**
-- **Inbound `bridge.verify`** — IMPLEMENTED, host-mediated, depth-bounded ≤4, tag/shape
-  only (`bridge.py`). The one real C crossing.
-- **Secret custody seed** — SEEDED, **type-level only**, E40 (`lib/secret.chiral`):
+- **Inbound `bridge.verify`** — ⚑ **struck 2026-09-04.** It was implemented,
+  host-mediated, depth-bounded to four and tag-only, and it went with the oracle.
+  There is no real C crossing.
+- **Secret custody seed** — SEEDED, **type-level only**, E40 (`lib/capability/secret.chiral`):
   opaque linear `Secret`, single greppable exit `secret-reveal`. Host-copy hygiene
   partial (returns immutable `bytes` it cannot zero); memory custody absent; redundancy
   not built. The first line of [[modules-custody]], nothing more.
-- **`preserve-check`** — BUILT/ENFORCED (`lower.py`/`optimize.py`), the certificate
+- **`preserve-check`** — BUILT/ENFORCED (`lib/lowering/upper/lower.chiral`,
+  `lib/lowering/upper/optimize.chiral`), the certificate
   discipline's flagship — but for the *lowering* seam, not the bridge or the checker.
 - **Differential testing / floor-agreement** — BUILT as a CI discipline
   ([[floor-agreement]]), the running instance of T1 agreement and the checker's honest
