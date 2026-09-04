@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: f2a1f5c487803a9665a1bb0b7984fc30c521f83b112c738468d62a4ea91b5d3b -->
+<!-- FRONTIER-SOURCES-SHA256: 5760f30aefb99cabf4ae71302c3af7260b6911a6d2adb98cff7353a4b3845c61 -->
 <!-- sources: 155 files -->
 
 ## Decided recently
@@ -97,10 +97,11 @@ updated: 2026-09-04
 - specced: 2
 - audited: 44
 - implemented: 62
+- **drafted: 1
 - **implemented: 2
 - impl: 1
 - implemented-core: 1
-- minted: 2
+- minted: 1
 - part: 1
 - superseded: 1
 
@@ -112,6 +113,7 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 66756ab — the distinctness criterion, drafted: formulation is the only axis that counts
 - 2026-09-04 5d58a23 — E185 is minted: how the $apply dispatcher's erased domains are spelled
 - 2026-09-04 83550f1 — the erased-word type is a lowering-level type, and the kernel keeps its conv
 - 2026-09-04 32823ee — the author's doc pass: 34 files across the definition, decision and module tiers
@@ -119,4 +121,3 @@ updated: 2026-09-04
 - 2026-09-03 b5994d0 — the ledger tells the truth about today, and five lint checks go to zero
 - 2026-09-03 5b4fb71 — tal/check is importable beside the compiler, eleven names prefixed tck-
 - 2026-09-03 ddfbc27 — the tal checker agrees with the compiler, and Phase 22 pins that it still refuses
-- 2026-09-03 0bd65dd — N7 example audit: PASS, the agreement theorem repaired and x=0 refused
