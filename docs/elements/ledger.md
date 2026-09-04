@@ -90,7 +90,7 @@ element a side-project consumes tags `→TUI`; a side-project's core-delta
 | E48 | records | design | Dependent records / telescopes | SH |
 | E49 | surface | design | Real surface syntax (stage 4) | SH |
 | E79 | data | built | Mutual/forward data groups (SCC scan + group judge) | SH |
-| E101 | reader | built | Sexp-reader error context (line/col) | SH |
+| E101 | reader | built | Sexp-reader error context (line/col). ⚑ **Qualified PARTIAL 2026-09-04.** The reader half is built: `pos-line` at `lib/surface/sexp.chiral:137`, `pos-col` at `:151`, `fmt-pos` at `:164`, and `depth` plus a `last-form` context threaded through the spine at `:212-251`. The `lib/surface/parse.chiral` half the catalog title names in the same breath is untouched: `p-err` carries a bare string with no position, and `(lam (x ...) body)`, one of the two opaque messages the element was minted to retire, is unchanged at `parse.chiral:244-247`. `records/ledger-reconciliation.md` | SH |
 | E102 | reader | flight | Sexp-reader follow-up (per-fn paren delta) | SH |
 
 ## RF · Refinement & analyses
