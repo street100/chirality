@@ -1,78 +1,77 @@
-; e158_doc.prog — the E158 layout-algebra runtime gate (Phase 14).
+; e158_doc.prog -- the E158 layout-algebra runtime gate (Phase 14).
 ;
 ; E158 splits a formatter into the two halves that are one today: a TEMPLATE
 ; (what the structure is) and a FLATTEN (how it becomes characters at a width).
-; `Doc` is the template — six constructors, no `d-union` — and `doc->str` is
+; `Doc` is the template, six constructors and no `d-union`, and `doc->str` is
 ; the first of three exits. `dg-doc` is `dg-msg`'s SIBLING over E157's `Reason`.
 ;
+; ⚑ THIS PROGRAM MAKES NO ASSERTION AND ALWAYS EXITS 0. It PRINTS the values;
+; every comparison is the gate's, in bash (tools/test/doc.sh). Fields are
+; separated by a single byte 1 (SOH), the device at samples/e173_matcher.prog:199
+; and samples/e182_arity.prog:37, which no field below can contain.
+;
+; ⚑ WHY, AND WHAT IT REPLACES. This file used to grade itself with a
+; first-failure reducer and return the 1-based number of the FIRST failing case.
+; records/gate-audit.md GA-23 measured the two costs. A fixture that grades
+; itself can be wrong twice in the same direction; and one that stops at its
+; first failure MASKS every later row from every mutant, so nine of the fourteen
+; cases carried no mutant at all and doc.sh had to write a standalone probe
+; (`g2only.prog`) to say one thing about a row the exit code could not reach.
+; The upgrade is tools/test/arity.sh:27-31's, adopted verbatim: the fixture
+; prints, bash grades, and every mutant pins the WHOLE verdict line. The case
+; numbers, their order and their meanings are UNCHANGED.
+;
 ; ⚑ WHAT THIS GATE MUST NOT DO. `dg-msg`'s nine goldens in tools/test/diag.sh
-; pin byte-identity, and that constraint is E157's — it is what made a
+; pin byte-identity, and that constraint is E157's: it is what made a
 ; per-message `Judg` the cheap way out at 38 arms. `doc->str` MUST NOT INHERIT
-; IT. Nothing here compares `doc->str` output byte-for-byte against a golden
-; sentence, and the only `dg-msg` reference below is case 14's substring-ABSENCE
-; control (which is the row that states the win). Cross-asserting the two exits
-; re-imports the exact constraint `Doc` exists to lift; tools/test/doc.sh's G7
-; makes that a checked row rather than a promise.
+; IT. Nothing here or in doc.sh compares `doc->str` output byte-for-byte against
+; a golden sentence; the evidence rows are substring survival. The only `dg-msg`
+; reference below is field 16, which case 14's ABSENCE control reads. Cross-
+; asserting the two exits re-imports the exact constraint `Doc` exists to lift;
+; tools/test/doc.sh's G7 makes that a checked row rather than a promise.
 ;
-; The rows are laws, not typography:
-;   1-2   G4  the group decision actually happens (flat at 40, broken at 10)
-;   3     G1  the FLAT LAW — what makes d-group sound
-;   4     G2  width independence — the law E146 consumes
-;   5-13  G3  evidence survival, EIGHT of the nine Reason arms
-;   14    G3c the control: dg-msg drops both quantities, dg-doc keeps them
+; ⚑ EVERY TOP-LEVEL BINDING IS PREFIXED `dt-`. Three neighbouring censuses grep
+; `lib prog tools` for `^\((def|data|declare) <name>` -- doc.sh:380 over
+; prelude/doc.chiral's names, render-doc.sh:436 over protocol/render-doc.chiral's
+; and row.sh:742 over protocol/render.chiral's -- and this file is under `tools/`.
 ;
-; ⚑ THE NINTH ARM (`r-relayed`) IS NOT BUILT HERE, and the reason is E157's,
-; not a gap. `diag.sh`'s G4 is a CONTAINMENT invariant: only a layer below the
-; checker may construct an `r-relayed`, and it enforces that with a tree-wide
-; `grep -RIn` for the constructor form over `lib prog tools`, minus a hard-coded list of
-; three files where one is supposed to appear. `samples/e157_diag.prog` is on
-; that list; this file, written after it, is not — so one honest gate fixture
-; here turns E157's Phase 13 red. Adding a line to that list would move
-; `diag.sh`, which E158's own G7(b) pins byte-for-byte. So the r-relayed
-; evidence row lives in `doc.sh` instead, on a scratch root the gate writes
-; outside the tree, where E157's census correctly never looks. The row is not
-; weakened — it is asserted, with its own mutant — only relocated.
+; ⚑ THE NINTH REASON ARM (`r-relayed`) IS NOT BUILT HERE, and the reason is
+; E157's, not a gap. `diag.sh`'s G4 is a CONTAINMENT invariant: only a layer
+; below the checker may construct an `r-relayed`, and it enforces that with a
+; tree-wide `grep -RIn` for the constructor form over `lib prog tools`, minus a
+; hard-coded list of three files where one is supposed to appear.
+; `samples/e157_diag.prog` is on that list; this file, written after it, is not,
+; so one honest gate fixture here turns E157's Phase 13 red. Adding a line to
+; that list would move `diag.sh`, which E158's own G7(b) pins byte-for-byte. So
+; the r-relayed evidence row lives in `doc.sh` instead, on a scratch root the
+; gate writes outside the tree, where E157's census correctly never looks. The
+; row is not weakened, it is asserted with its own mutant, only relocated.
 ;
-; Case order is load-bearing: each named mutant in doc.sh must convict at ITS
-; row, so a row must come before every other row its mutant also reddens.
-;
-; Exit 0 iff ALL correct; else the 1-based number of the first failing case.
+; The rows are laws, not typography. Field, case, row:
+;   1     1   G4f    the group FITS at 40, no break introduced
+;   2     2   G4b    ...and it BREAKS at 10, at the frame's own indent
+;   3,4   3   G1     the FLAT LAW, both sides
+;   5,6,7 4   G2     width independence at 1, 40 and 1000000
+;   8     5   G3red  r-redeclared names its subject
+;   8     6   G3dcl  BOTH declarations reach the output, and they differ
+;   9     7   G3mis  r-mismatch keeps both terms
+;   10    8   G3use  r-usage keeps both quantities
+;   11    9   G3lin  r-linear keeps the offending quantity
+;   12   10   G3arr  r-arrow keeps the extern and the linear result
+;   13   11   G3unb  r-unbound keeps the namespace searched
+;   14   12   G3skp  r-skipped keeps E97's chain
+;   15   13   G3jud  r-judged: the subject IS the evidence
+;   10,16 14  G3c    the control: dg-msg drops both quantities, dg-doc keeps them
+;   17        the sentinel: reaching it says the stream completed
+
 (import "prelude/prelude")
 (import "prelude/string")
 (import "prelude/doc")
+(import "ports/stdio")
 (import "typing/diag")
 
-; ── a whole-list first-failure reducer (the e152/e156/e157 convention) ───────
-(def dt-first-bad (-> (List Bool) I64 I64)
-  (lam (bs k)
-    (case bs
-      (nil 0)
-      ((cons b rest)
-        (case b
-          (false k)
-          (true (dt-first-bad rest (+ k 1))))))))
-
-; ── strip EVERY whitespace byte (G2's normalization) ─────────────────────────
-; Not "strip \n and leading spaces": a brk-space flattens to " " at a wide
-; width and to "\n"+indent at a narrow one, so that form would compare "a b"
-; with "ab" and go red on correct code. Dropping all whitespace is correct for
-; all three Brk arms at once, and it leaves the CONTENT bytes — which is what
-; width independence is a statement about.
-(declare dt-strip-go (-> Bytes I64 I64 Bytes Bytes))
-(def dt-strip-go
-  (lam (b i n acc)
-    (case (<i i n)
-      (false acc)
-      (true
-        (let ((c (bget b i)))
-          (case (su-is-ws c)
-            (true  (dt-strip-go b (+ i 1) n acc))
-            (false (dt-strip-go b (+ i 1) n (bcat acc (bslice b i (+ i 1)))))))))))
-
-(def dt-strip-ws (-> Str Str)
-  (lam (s)
-    (let ((b (str->bytes s)))
-      (bytes->str (dt-strip-go b 0 (blen b) (str->bytes ""))))))
+(def dt-mark Str (bytes->str (bslice (pack-u32 1) 0 1)))
+(def dt-emit (=> Str Unit) (lam (s) (let ((_ (put s))) (put dt-mark))))
 
 ; ── the documents ────────────────────────────────────────────────────────────
 ; dt-g4: the group decision. Flat it is "header one two" (14 columns), so at
@@ -89,8 +88,8 @@
 ; dt-g1 + dt-g1-flat: the FLAT LAW's two sides. dt-g1 uses ALL SIX Doc
 ; constructors; dt-g1-flat is the same document with every d-line replaced by
 ; its Brk's flat text (brk-soft -> "", brk-space -> " "). brk-hard is excluded
-; on purpose: it has no flat text — it breaks in either mode — so the flat law
-; is over the non-hard breaks, which is exactly what makes d-group sound.
+; on purpose: it has no flat text, it breaks in either mode, so the flat law is
+; over the non-hard breaks, which is exactly what makes d-group sound.
 (def dt-g1 Doc
   (d-group
     (d-cat (d-tag "h" (d-text "alpha"))
@@ -118,7 +117,7 @@
               (d-cat (d-line (brk-space)) (d-text "cccc")))))))))
 
 ; ── the reasons (E157 values, unchanged by E158) ─────────────────────────────
-; Two DIFFERENT declarations of one name — one constructor and two. The loader
+; Two DIFFERENT declarations of one name, one constructor and two. The loader
 ; binds exactly this pair and `dg-msg` collapses both into "data redeclared: Box".
 (def dt-box1 DataDecl
   (data-decl "Box" nil (cons (ctor "mk" (cons (field 2 "v" (t-primty "I64")) nil)) nil)))
@@ -134,66 +133,26 @@
 ; this with "linear binder usage mismatch" and drops BOTH quantities.
 (def dt-usage Reason (r-usage (subj-lam-binder) (q1) (qw)))
 
-; the element's exit, at the width every row below uses
+; the element's exit, at the width every evidence row uses
 (def dt-r80 (-> Reason Str) (lam (r) (doc->str 80 (dg-doc r))))
 
-(def dt-has2 (-> Str Str Str Bool)
-  (lam (s a b) (and (str-contains s a) (str-contains s b))))
-
-(def compile-main (-> I64 I64)
+(def compile-main (=> I64 I64)
   (lam (n)
-    (dt-first-bad
-      (cons ; 1  G4: the group FITS at 40 — no break is introduced
-        (not (str-contains (doc->str 40 dt-g4) "\n"))
-      (cons ; 2  G4: ...and it BREAKS at 10, at the frame's own indent
-        (str-contains (doc->str 10 dt-g4) "\n    one")
-      (cons ; 3  G1 THE FLAT LAW: at a huge width the document equals itself
-            ;    with every d-line replaced by its Brk's flat text
-        (str-eq (doc->str 1000000 dt-g1) (doc->str 1000000 dt-g1-flat))
-      (cons ; 4  G2 WIDTH INDEPENDENCE: same token sequence at 1, 40, 1000000.
-            ;    Only breaks and leading indent may differ — so compare with
-            ;    every whitespace byte removed. This is the law E146 consumes.
-        (and (str-eq (dt-strip-ws (doc->str 1 dt-g2))
-                     (dt-strip-ws (doc->str 40 dt-g2)))
-             (str-eq (dt-strip-ws (doc->str 40 dt-g2))
-                     (dt-strip-ws (doc->str 1000000 dt-g2))))
-      (cons ; ⚑ 5..13  G3 EVIDENCE SURVIVAL — one row per Reason arm (r-relayed
-            ;         is asserted in doc.sh instead — see the header)
-            ; 5  r-redeclared names its subject
-        (dt-has2 (dt-r80 dt-redecl) "data redeclared: Box" "Box")
-      (cons ; 6  THE THESIS ROW: BOTH declarations reach the output, and they
-            ;    DIFFER (one constructor vs two). dg-msg can carry neither.
-        (dt-has2 (dt-r80 dt-redecl)
-                 "declared data Box with 1 ctor(s)"
-                 "and data Box with 2 ctor(s)")
-      (cons ; 7  r-mismatch: `subsume` had both terms and said "type mismatch"
-        (dt-has2 (dt-r80 (r-mismatch (subj-none) (t-primty "I64") (t-primty "Str")))
-                 "expected I64" "actual Str")
-      (cons ; 8  THE SECOND THESIS ROW: r-usage keeps BOTH quantities. Qty is
-            ;    (q0)/(q1)/(qw) — three values that always would have fit.
-        (dt-has2 (dt-r80 dt-usage) "declared 1" "used omega")
-      (cons ; 9  r-linear: E159's offending quantity, still a Qty at the exit
-        (dt-has2 (dt-r80 (r-linear (subj-let-binder) (qw)))
-                 "quantity omega" "let-binder")
-      (cons ; 10 r-arrow: the extern and the linear result it returns
-        (dt-has2 (dt-r80 (r-arrow (subj-extern "mint") "Cap"))
-                 "extern mint" "result Cap")
-      (cons ; 11 r-unbound: the Subject says WHICH namespace was searched
-        (dt-has2 (dt-r80 (r-unbound (subj-def "nosuch")))
-                 "nosuch" "in the def namespace")
-      (cons ; 12 r-skipped: E97's chain, one frame per line, joined not copied
-        (dt-has2 (dt-r80 (r-skipped (cons (mk-skrec "lowerme" (sk-callee "callee")) nil)))
-                 "lowerme" "callee")
-      (cons ; 13 r-judged: the subject IS the evidence, and it reaches the output
-        (dt-has2 (dt-r80 (r-judged (subj-ctor "Nope") (jg-ctor-arity)))
-                 "constructor arity" "subject ctor Nope")
-      (cons ; ⚑ 14 G3c THE CONTROL THAT STATES THE WIN. Same value, both exits:
-            ;    dg-msg contains NEITHER quantity, dg-doc contains BOTH. This is
-            ;    a positive assertion about the BASELINE, so it also fails if
-            ;    someone "fixes" dg-msg — at which point E157's goldens and this
-            ;    row must be reconciled deliberately, not silently.
-        (and (and (not (str-contains (dg-msg dt-usage) "1"))
-                  (not (str-contains (dg-msg dt-usage) "omega")))
-             (dt-has2 (dt-r80 dt-usage) "1" "omega"))
-        nil))))))))))))))
-      1)))
+    (let ((_ (dt-emit (doc->str 40 dt-g4))))
+    (let ((_ (dt-emit (doc->str 10 dt-g4))))
+    (let ((_ (dt-emit (doc->str 1000000 dt-g1))))
+    (let ((_ (dt-emit (doc->str 1000000 dt-g1-flat))))
+    (let ((_ (dt-emit (doc->str 1 dt-g2))))
+    (let ((_ (dt-emit (doc->str 40 dt-g2))))
+    (let ((_ (dt-emit (doc->str 1000000 dt-g2))))
+    (let ((_ (dt-emit (dt-r80 dt-redecl))))
+    (let ((_ (dt-emit (dt-r80 (r-mismatch (subj-none) (t-primty "I64") (t-primty "Str"))))))
+    (let ((_ (dt-emit (dt-r80 dt-usage))))
+    (let ((_ (dt-emit (dt-r80 (r-linear (subj-let-binder) (qw))))))
+    (let ((_ (dt-emit (dt-r80 (r-arrow (subj-extern "mint") "Cap")))))
+    (let ((_ (dt-emit (dt-r80 (r-unbound (subj-def "nosuch"))))))
+    (let ((_ (dt-emit (dt-r80 (r-skipped (cons (mk-skrec "lowerme" (sk-callee "callee")) nil))))))
+    (let ((_ (dt-emit (dt-r80 (r-judged (subj-ctor "Nope") (jg-ctor-arity))))))
+    (let ((_ (dt-emit (dg-msg dt-usage))))
+    (let ((_ (dt-emit "END")))
+      0)))))))))))))))))))

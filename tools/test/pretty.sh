@@ -124,7 +124,9 @@ blk() {
 # toks FILE LABEL -> the block's token sequence, `is-delim`'s way
 # (sexp.chiral:74): an atom ENDS at whitespace, `(`, `)`, `"` or `;`.
 # ⚑ WHITESPACE IS A DELIMITER AND IS NEVER DELETED. This row was first drafted
-# with doc.sh's `dt-strip-ws`, which removes every whitespace byte -- exactly the
+# with doc.sh's whitespace-stripping normalisation -- `dt-strip-ws` in the
+# fixture then, `nows` in the gate script since GA-23's repair -- which removes
+# every whitespace byte, exactly the
 # byte M2 removes -- so `(type 0)` and `(type0)` both mapped to `(type0)` and the
 # row passed either way. That inversion IS the row.
 toks() {
@@ -458,17 +460,21 @@ else bad "G8(b) typing/diag does not import surface/pretty"; fi
 # (c) FIVE gate scripts and THREE fixtures, byte-unchanged. Pinning four while
 # exercising one is the same hole, one file smaller -- so every pin is checked
 # and M10 moves EACH of them in turn.
-# ⚑ `row.sh`'s and `render-doc.sh`'s were re-taken 2026-09-04 when GA-17's and
-# GA-22's repairs added M14 and M13. A pin re-taken in the commit that moves the
-# file is the loud path these rows exist to force; the other six stand at the
-# values E181 wrote.
+# ⚑ Five of the eight have been re-taken since E181 wrote them, all on
+# 2026-09-04: `row.sh`'s and `render-doc.sh`'s when GA-17's and GA-22's repairs
+# added M14 and M13, and `doc.sh`'s, `samples/e158_doc.prog`'s, `row.sh`'s,
+# `face.sh`'s and `render-doc.sh`'s when GA-23's repair rewrote doc.sh and its
+# fixture. That repair is a cascade and it terminates here: row.sh and face.sh
+# carry doc.sh's pair, render-doc.sh carries row.sh's and face.sh's, and this
+# file is pinned by nothing. A pin re-taken in the commit that moves the file is
+# the loud path these rows exist to force.
 PINS="400166d2bada74728abf895ef6bae8b8e5a63e5ffbce1653e348399f773e140b  diag.sh
-1536b14abf23c1d36c6e26a0060bb79fc2a30bc1d40da24c862a69b7833da091  doc.sh
-74055a76aef8bf17629224ed902d90b3b0ab95884fa754a674ad958b13ff1746  row.sh
-1cabeb7a0fa6da7e05118c766597621c9e5bcf7d9ed3a6402d0be5d381e585a9  face.sh
-08cd9d55bf6b6e4240b4be14a044b5bfa787c06102a559515208d6747de8e978  render-doc.sh
+13df27e543bd79548a76bc94cb2e35047e847c127b78a0e83c6a0d6b20cead0d  doc.sh
+64a7bd3e2a222acbf8c45562728d33c56d18e47a9e0f8315fb1fe0c4a8925146  row.sh
+fd1a52f883bbdb64416659ee7a37ec05042e7e31be2428e68d27ffd0214261b3  face.sh
+0e0bc5d1e39c1d38f24311400cef953211809ccbba1d638aa54868af1dde4e05  render-doc.sh
 713fe84d51c149d491edf8289a5799206f44b0e925a28dc7f123ba3f7ab4171c  samples/e157_diag.prog
-56292ca8dfd175eb3bd1e7b79aa1b1e0b6971cde8478632790906a995fada584  samples/e158_doc.prog
+2a319302e79f4bf012b72f7f870069742df340d93618f6314d67c0a08d27eea8  samples/e158_doc.prog
 a0cf04d8cb91a5bbc4f143c1315e406558f22d5c97ce76f83c8a5f53f02e75fd  samples/e174_row.prog"
 pin_check() {  # pin_check DIR -> "" when every pin matches, else the offenders
   local dir="$1" n h

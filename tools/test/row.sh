@@ -100,8 +100,11 @@ build_run() {
 }
 
 # build_out LIBDIR SRC OUTFILE -> 0 and OUTFILE holds the program's STDOUT.
-# ⚑ This is the one helper doc.sh does not already have: its `build_run`
-# discards stdout, and every layout row below is read out of stdout.
+# ⚑ This was the one helper doc.sh did not have when E174 was written: its
+# `build_run` discarded stdout, and every layout row below is read out of
+# stdout.  GA-23's repair gave doc.sh a `build_raw` of the same shape; this one
+# stays, because row.sh is sha256-pinned by two neighbours and a rename here
+# would move both pins for a helper that is already correct.
 build_out() {
   local lib="$1" src="$2" out="$3" blob="$TMP/o.blob" elf="$TMP/o.elf"
   ( cd "$REPO" && chirality_blob_file "$lib:$REPO/prog" "$src" ) >"$blob" 2>/dev/null || return 1
@@ -657,8 +660,8 @@ echo
 echo "=== E174 G7: the E157 and E158 gates are byte-unchanged, and every phase still runs ==="
 DIAG_SH_SHA=400166d2bada74728abf895ef6bae8b8e5a63e5ffbce1653e348399f773e140b
 DIAG_FX_SHA=713fe84d51c149d491edf8289a5799206f44b0e925a28dc7f123ba3f7ab4171c
-DOC_SH_SHA=1536b14abf23c1d36c6e26a0060bb79fc2a30bc1d40da24c862a69b7833da091
-DOC_FX_SHA=56292ca8dfd175eb3bd1e7b79aa1b1e0b6971cde8478632790906a995fada584
+DOC_SH_SHA=13df27e543bd79548a76bc94cb2e35047e847c127b78a0e83c6a0d6b20cead0d
+DOC_FX_SHA=2a319302e79f4bf012b72f7f870069742df340d93618f6314d67c0a08d27eea8
 sha_of() { sha256sum "$1" | awk '{print $1}'; }
 pin() {  # pin LABEL FILE WANT
   local got; got="$(sha_of "$2")"

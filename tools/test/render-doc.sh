@@ -489,13 +489,15 @@ echo "=== E158c4 G8: the four existing gates are byte-unchanged, and Phase 17 ru
 # ⚑ The pins are the sha256 of the four gate scripts AS OF THIS ELEMENT. doc.sh
 # already pins diag.sh; this pins all four, so a later element cannot quietly
 # reword one of them and leave this gate's expectations describing a file that
-# no longer exists. `row.sh`'s was re-taken 2026-09-04 when GA-17's repair added
-# its M14; a pin re-taken in the commit that moves the file is the loud path this
-# row exists to force, and it is the only re-take since the element.
+# no longer exists. A pin re-taken in the commit that moves the file is the loud
+# path this row exists to force. Two re-takes since the element, both on
+# 2026-09-04: `row.sh`'s when GA-17's repair added its M14, and `doc.sh`'s,
+# `row.sh`'s and `face.sh`'s together when GA-23's repair rewrote doc.sh and its
+# fixture and both neighbours carry that pair's pins.
 PINS="400166d2bada74728abf895ef6bae8b8e5a63e5ffbce1653e348399f773e140b  diag.sh
-1536b14abf23c1d36c6e26a0060bb79fc2a30bc1d40da24c862a69b7833da091  doc.sh
-74055a76aef8bf17629224ed902d90b3b0ab95884fa754a674ad958b13ff1746  row.sh
-1cabeb7a0fa6da7e05118c766597621c9e5bcf7d9ed3a6402d0be5d381e585a9  face.sh"
+13df27e543bd79548a76bc94cb2e35047e847c127b78a0e83c6a0d6b20cead0d  doc.sh
+64a7bd3e2a222acbf8c45562728d33c56d18e47a9e0f8315fb1fe0c4a8925146  row.sh
+fd1a52f883bbdb64416659ee7a37ec05042e7e31be2428e68d27ffd0214261b3  face.sh"
 pin_check() {  # pin_check DIR -> "" when every pin matches, else the offenders
   local dir="$1" n h
   echo "$PINS" | while read -r h n; do
