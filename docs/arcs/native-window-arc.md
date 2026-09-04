@@ -58,7 +58,7 @@ Grepped 2026-09-03: zero hits for xdg, seat, pointer or keyboard across
 ## Resume state
 
 Unopened. The design discussion is `.planning/NATIVE-STACK-EXPANSION.md`. The
-rung of the existing demos is the first thing to re-measure on opening: the
-suite gates them and was deliberately unrun on the day this arc was written
-(3.85 GB, no swap, OOM history). The agent sandbox hosts no compositor, so
-live verification runs on the host.
+rung of the existing demos is the first thing to re-measure on opening. Nothing
+under `tools/test/` reads `prog/demo/`, measured 2026-09-03, so no gate defends
+them and none of them is a `compile-main` root Phase 7 would sweep. The agent
+sandbox hosts no compositor, so live verification runs on the host.

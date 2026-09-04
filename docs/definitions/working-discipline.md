@@ -3,7 +3,7 @@ node: working-discipline
 layer: foundation
 related: [index, status-ledger, elements/README, arcs/README, banks/INDEX, decisions/decision-dispatch-cadence, decisions/decision-scope, decisions/decision-ai-tier]
 status: current
-updated: 2026-09-01
+updated: 2026-09-03
 ---
 
 # Working discipline
@@ -11,10 +11,6 @@ updated: 2026-09-01
 How work is done in this tree. `MAP.md` is the *tree* contract — extension is the
 kind, directory is the role, the module key is the root-relative path. This is the
 *work* contract.
-
-Hoisted 2026-09-01 from a gitignored agent-instruction file at the root. Every
-rule below was load-bearing and none of it survived a fresh clone, which meant a
-new reader could not learn how to build the compiler from the repository itself.
 
 ## The build rule
 

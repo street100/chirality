@@ -3,7 +3,7 @@ node: design-principles
 layer: foundation
 related: [thesis, joining-law, floor-agreement, status-ledger, open-edges, syntax-evolution]
 status: draft
-updated: 2026-07-06
+updated: 2026-09-03
 ---
 
 # Design principles (the reader's side)
@@ -26,8 +26,8 @@ longer trust that a familiar shape means what it meant last time, so every
 instance must be re-reasoned from scratch (the `==` disease — a comparison whose
 meaning depends on the operands' types).
 
-Regularity is the presentation-layer cousin of P5, *the safe path is the cheap
-path*. P5 makes the safe shape the default to **write**; regularity makes the
+Regularity is the presentation-layer cousin of P4, *the safe path is the cheap
+path*. P4 makes the safe shape the default to **write**; regularity makes the
 true shape the default to **read**. It is tested on three surfaces, and this
 cycle chirality failed it on all three:
 

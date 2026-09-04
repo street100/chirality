@@ -5,13 +5,13 @@ refines: [axis-typeability]
 implements: [modules-core, modules-security]
 related: [category-untyped, category-bridge, modules-lowering, decision-profiles]
 status: draft
-updated: 2026-06-16
+updated: 2026-09-03
 ---
 
 # Category A: typed
 
 The region where correctness rests on a proof and one copy is correct because it
-is proven. Principles P1 through P5, tier T0.
+is proven. Principles P1 through P4, tier T0.
 
 ## What lives here
 
@@ -44,7 +44,7 @@ passed through [[category-bridge]] and been turned into evidence (verified,
 divergence checked, MAC confirmed). And A may never emit a value into B except
 confined: encrypted if it must not be read, carrying no live capability, its
 exposure window bounded. The bridge runs both ways, verify inbound and confine
-outbound. It is P4's membrane crossing, applied to integrity on the way in and to
+outbound. It is P3's membrane crossing, applied to integrity on the way in and to
 confidentiality and capability containment on the way out, not only to I/O.
 
 ## Preserved downward

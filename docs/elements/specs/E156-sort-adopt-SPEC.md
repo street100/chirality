@@ -89,7 +89,7 @@ caller; `sig-driver.chiral:23` is `row-infer`'s only importer.
 
 | probe | result |
 |---|---|
-| `bash scaffold/tests/run-native.sh` | **exit 0** — P1 6, P2 test-runner 0 (6 samples), P3 7, P4 31, P5 12, P6 21, P7 81 roots compiled / 0 failed / 12 known, P8 44. **121 assertions + 81 roots** |
+| `bash scaffold/tests/run-native.sh` | **exit 0** — Phase 1 6, Phase 2 test-runner 0 (6 samples), Phase 3 7, Phase 4 31, Phase 5 12, Phase 6 21, Phase 7 81 roots compiled / 0 failed / 12 known, Phase 8 44. **121 assertions + 81 roots** |
 | `chirality_blob scaffold/lib row-infer` + a `compile-main` probe, `B1` | compiles **rc 0**, ELF **exit 42** — `infer-row` over a fixture with a duplicate callee and a `"*"` returns `["put"]`. This is the golden Step 4 pins, and it is the **first** time anything in the tree compiled `row-infer` |
 | the incumbent's survivor rule, generalised to `(Pair I64 Str)` + a key comparator | ELF **exit 42** asserting tags `d,c,e` — the incumbent really keeps the **LAST** of each run |
 | the proposed `list-sort` ∘ `list-dedup-adj` on the same input | ELF **exit 42** asserting tags `b,a,e` — keep-**FIRST**. The two rules are distinguishable by a runnable program, and the mutant is the shipped incumbent |
@@ -232,7 +232,7 @@ Every row names the mutant that makes it fail.
 
 **Green line, counted by running the gate.** Native: `run-native.sh` goes from
 **121 assertions + 81 roots, exit 0** (measured 2026-08-23: P1 6 · P2 test-runner
-exit 0 over 6 samples · P3 7 · P4 31 · P5 12 · P6 21 · P7 81/0/12 · P8 44) to
+exit 0 over 6 samples · Phase 3 7 · Phase 4 31 · Phase 5 12 · Phase 6 21 · Phase 7 81/0/12 · Phase 8 44) to
 **135 assertions** — Phase 9 adds **14** (3+2+2+3+2+2). Phase 7's root count is
 unchanged (`row-infer` still defines no `compile-main`; it is reached by G4's
 probe, not by the sweep). **Python: unchanged and still red** — 348 ran / 23

@@ -6,7 +6,7 @@ kind: REPLACE-CRUTCH
 reference_class: SPEC   # mmap/mprotect man pages; JIT loaders (SPEC/IMPL)
 ours_source: scaffold/chirality/native.py
 status: drafted
-updated: 2026-07-12
+updated: 2026-09-03
 ---
 
 # E20 — Loader: RW mmap -> W^X mprotect -> executable
@@ -93,7 +93,7 @@ _mprotect(base, code_end, _PROT_READ | _PROT_EXEC)   # ctypes -> libc.mprotect
 
 How chirality's model reframes it.
 
-- **Chirality features in play:** port types & capabilities (P3/P4 — the `porttype`
+- **Chirality features in play:** port types & capabilities (P3/P3 — the `porttype`
   category-C boundary of `lib/ports.chiral`), QTT linearity (move-only quantity
   1), the effect membrane (`=>` process, since mapping and protecting are
   crossings), erased type indices (quantity 0 for the page-count bound), and the

@@ -3,7 +3,7 @@ node: view-types
 layer: view
 related: [perspectives, vocabulary, modules-core, category-typed, category-bridge, decision-b-in-type, modules-lowering, decision-profiles, permission-model, node-architecture, open-edges]
 status: draft
-updated: 2026-07-04
+updated: 2026-09-03
 ---
 
 # View: the type system
@@ -27,10 +27,10 @@ The type is the entire truth about what a process can do ([[perspectives]]). P2
 allows no exemption: a function is a process whose type says it has no effects,
 and a category of code that opts out of the type is the thesis's gap restated. So
 the signature carries the effects (the port algebra, P3), the graded cost (time,
-space, termination, P2 and P4), the tier weight (how the truths it holds are held,
-P7), and the ports it offers, which are the outward slices of the type. Authority
+space, termination, P2 and P3), the tier weight (how the truths it holds are held,
+P5), and the ports it offers, which are the outward slices of the type. Authority
 and resource use are not two accounts; both are the weight of the type, and that
-weight is the cost gradient of P5.
+weight is the cost gradient of P4.
 
 ## The feature list
 
@@ -44,17 +44,17 @@ deferred to later slices, plus capability as the typed face of P3. `effects` is
 the closed port algebra, including alarm effects and their counter effects
 ([[error-and-alarm]]). `cost-typed` is graded time, space, and termination, an
 over-approximate bound, because exact cost is undecidable. `totality` makes total
-the default and partiality the marked climb (P5). The build order (refinement,
+the default and partiality the marked climb (P4). The build order (refinement,
 then linear, then capability) is recorded, not decided; see [[open-edges]].
 
 ## Where proof ends and evidence begins
 
 The typeability axis is this seat's map ([[axis-typeability]]). In
 [[category-typed|A]], correctness rests on proof: one copy is correct because it
-is proven, tier T0, the region of P1 through P5. In [[category-bridge|C]], the
+is proven, tier T0, the region of P1 through P4. In [[category-bridge|C]], the
 module is itself typed but its referent is untyped, so what the type tracks is
 evidence: copies that must agree, a verifiable split, a register-anchored MAC, an
-attestation, a reconciled audit trail. Divergence is the alarm (P6, P7). Tiers T1
+attestation, a reconciled audit trail. Divergence is the alarm (P5). Tiers T1
 and T3 live here; T2 is the warning case, secrecy without tamper evidence. In
 [[category-untyped|B]] there is no proof and no evidence, only the referent, and
 the type system's move is [[decision-b-in-type]]: B lives in the type, not the

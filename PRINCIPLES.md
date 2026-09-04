@@ -15,12 +15,8 @@ Regularity is the bridge: "the safe path is the cheap path" (P4) and "make the
 language behave as it looks" are the same commitment from the writer's side here
 and the reader's side there.
 
-Draft. Condensed seven to five: an adversarial review
-found the old P4 (inert interior) and P7 (tiering) carried no weight independent
-of P3 (ports) and P6 (redundancy), and the old P2's real content was its
-cost mechanism, not its slogan. The crosswalk at the end preserves existing
-P-number citations across the base until a sweep renumbers them. Ordered
-foundation-first. Add to it, argue with it, date the big changes.
+Draft. Five, ordered foundation-first. Add to it, argue with it, date the big
+changes.
 
 ---
 
@@ -213,31 +209,6 @@ a capability the tree has.
 Example: a three-tier lock (cold, soft, hard, distinct passphrases) and quorum
 key-release are tiered truth done by hand in Rust today. The principle is that
 chirality expresses them directly, instead of each tool re-implementing the ceremony.
-
----
-
-## Crosswalk (old seven to new five)
-
-Notes across the base still cite the old P1 through P7. They resolve through this
-table until a sweep renumbers them, the same in-flight-rename discipline the
-`door` to `port` change used.
-
-Convention during the rename window: a doc **written or updated after the
-2026-07-20 condensation cites the new five directly** — that is this file's own
-current usage, so it needs no crosswalk. The crosswalk resolves *pre-condensation*
-citations only. Since P6 and P7 exist solely in the old scheme, a citation of P6 or
-P7 is always old; P1–P5 in a post-condensation doc are always new. (The ledger-lint
-check B flags P6/P7 in any doc dated after the condensation.)
-
-| Old | New | Fate |
-|---|---|---|
-| P1 express everything | **1** | kept, refined with expressible-vs-modifiable |
-| P2 everything is a process | **2** | kept; its real content is the cost gradient |
-| P3 govern the ports | **3** | kept |
-| P4 compute is inert until a port | **3** | folded: the interior-free view is the inside of govern-the-ports, and its own caveat (time and space are ports) is now P3's core |
-| P5 safe path is cheap path | **4** | kept, with the two-cheapnesses limit |
-| P6 split what you cannot type | **5** | kept |
-| P7 tier how you hold a truth | **5** | folded: the tiering is P5's operational detail, as the old text already said |
 
 ---
 

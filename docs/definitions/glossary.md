@@ -3,7 +3,7 @@ node: glossary
 layer: navigation
 related: [index, axis-typeability, axis-altitude, modules-broker, modules-lowering, live-environment]
 status: draft
-updated: 2026-07-04
+updated: 2026-09-03
 ---
 
 # Glossary
@@ -27,7 +27,7 @@ see the depth-tier banks in [[banks/INDEX]] (`module`, `profile`, `runtime`,
   held capability, time, space. The port set is closed. See P3 and
   [[category-typed]].
 - membrane. The boundary a computation crosses to do anything. Compute is inert
-  until it crosses a port. See P4.
+  until it crosses a port. See P3.
 - capability. A port held. Authority is the set of ports you hold. See P3 and
   [[vocabulary]].
 - status rungs (DESIGNED / SEEDED / IMPLEMENTED / ENFORCED). How real a design
@@ -42,7 +42,7 @@ see the depth-tier banks in [[banks/INDEX]] (`module`, `profile`, `runtime`,
 - category C, bridge. Typed module, untyped referent, governs by evidence. See
   [[category-bridge]].
 - tier T0 to T3. How a truth is held: T0 typed singleton, T1 copies compared, T2
-  plain Shamir, T3 verifiable split. See P7 and [[axis-typeability]].
+  plain Shamir, T3 verifiable split. See P5 and [[axis-typeability]].
 - alarm. A detected divergence, raised as a typed effect, carrying what diverged
   from what. See [[error-and-alarm]].
 - counter effect. The effect that answers an alarm: re-key, re-derive, relocate,

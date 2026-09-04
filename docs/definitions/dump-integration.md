@@ -3,7 +3,7 @@ node: dump-integration
 layer: provenance
 related: [index, module-map, modules-staging, decision-backend, open-edges]
 status: draft
-updated: 2026-06-16
+updated: 2026-09-03
 ---
 
 # Dump integration

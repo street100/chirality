@@ -133,6 +133,6 @@ allocator at scale; the native suite's own wall clock), see
 
 Principles are cited as P1 through P5, matching
 [PRINCIPLES](../PRINCIPLES.md) (condensed from seven on 2026-07-20; a crosswalk in
-that file resolves older P1 through P7 citations still in the base). Tiers are cited
+that file is the authority for every P-number in the base). Tiers are cited
 as T0 through T3, matching principle 5 (the tiering). Dump source items are cited by their ledger id (for example A9,
 D8, C12) and resolved in [[dump-integration]].

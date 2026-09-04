@@ -4,7 +4,7 @@ layer: foundation
 refines: [principles]
 related: [axis-typeability, category-bridge, open-edges]
 status: current
-updated: 2026-09-01
+updated: 2026-09-03
 ---
 
 # Thesis: a gap is an ungoverned path
@@ -27,9 +27,6 @@ The five principles are this idea applied five times:
 - §5 marks where the idea runs out. Some substrate cannot be brought under a
   type as a proof. There you hold the truth in several cross-checked copies and
   treat disagreement as the alarm.
-
-Written against the old seven until 2026-09-01. §3 absorbed the membrane and §5
-absorbed the tiering, which is the fold `PRINCIPLES.md`'s crosswalk records.
 
 Why this matters for the rest of the base: the design splits cleanly because the
 thesis splits cleanly. Where proof holds, you are in [[category-typed]]. Where

@@ -3,7 +3,7 @@ node: decision-b-in-type
 layer: decision
 related: [category-untyped, modules-substrate, modules-lowering]
 status: settled
-updated: 2026-06-16
+updated: 2026-09-03
 ---
 
 # Decision: B lives in the type, not the packaging
@@ -42,7 +42,7 @@ packaging keeps it normal.
 
 ## Principle basis
 
-P2 (the type carries the weight, no exemption) and P4 (the membrane is where
+P2 (the type carries the weight, no exemption) and P3 (the membrane is where
 governance happens; here the membrane is the signature).
 
 ## Connection to the floor

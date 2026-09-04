@@ -4,7 +4,7 @@ layer: foundation
 refines: [thesis]
 related: [axis-altitude, category-typed, category-untyped, category-bridge, splitting-law]
 status: draft
-updated: 2026-06-16
+updated: 2026-09-03
 ---
 
 # Axis 1: typeability
@@ -16,7 +16,7 @@ seems to be two kinds at once, it is not yet split (see [[splitting-law]]).
 ## The three kinds
 
 - A, typed. Correctness rests on a proof. One copy is correct because it is
-  proven. This is the region of P1 through P5 and tier T0. See
+  proven. This is the region of P1 through P4 and tier T0. See
   [[category-typed]].
 - B, untyped. A substrate that can violate any type from outside the language's
   reach: DMA, raw pointers, physical memory, foreign code across the ABI, the
@@ -26,7 +26,7 @@ seems to be two kinds at once, it is not yet split (see [[splitting-law]]).
   thing. Its job is to let A govern B by turning untypeable reality into
   checkable evidence: redundant copies that must agree, a verifiable split, a
   register anchored MAC, an attestation, an audit reconciliation. This is the
-  region of P6 and P7, tiers T1 and T3. See [[category-bridge]].
+  region of P5, tiers T1 and T3. See [[category-bridge]].
 
 ## The test
 

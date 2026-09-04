@@ -4,7 +4,7 @@ layer: foundation
 refines: [thesis]
 related: [modules-core, modules-staging, modules-broker, bootstrap-sequence, splitting-law, joining-law, open-edges]
 status: draft
-updated: 2026-06-16
+updated: 2026-09-03
 ---
 
 # Process and runtime
@@ -34,7 +34,7 @@ What looked like an under split is intended recursion.
   reduced to staging, now the process model and not only the compiler. See
   [[modules-staging]].
 - Ports connect runtimes. Concurrent processes share nothing except through typed
-  ports (P3, P4). The concurrency model is the port model applied between
+  ports (P3). The concurrency model is the port model applied between
   processes: every interaction is a port crossing, typed and governed. The
   component broker (C) supervises the live population, the dynamic referent it
   always had. See [[modules-broker]].

@@ -3,7 +3,7 @@ node: view-runtime
 layer: view
 related: [index, perspectives, process-and-runtime, node-architecture, bootstrap-sequence, modules-staging, modules-broker, decision-brokers, permission-model, error-and-alarm, time-and-clocks, joining-law, modules-substrate, open-edges]
 status: draft
-updated: 2026-07-04
+updated: 2026-09-03
 ---
 
 # View: the runtime seat

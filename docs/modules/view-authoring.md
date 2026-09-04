@@ -3,7 +3,7 @@ node: view-authoring
 layer: view
 related: [index, perspectives, thesis, decision-profiles, permission-model, axis-altitude, node-architecture, modules-custody, modules-core, error-and-alarm, open-edges]
 status: draft
-updated: 2026-07-04
+updated: 2026-09-03
 ---
 
 # View: authoring
@@ -23,7 +23,7 @@ type is the entire truth about what your code can do: its effects, the time and
 space it spends, its tier weight. A cost you did not declare does not type-check
 as cheap. Your code is total by default; partiality is the marked opt in climb,
 so the common case is provably terminating and unbounded recursion has to be
-requested (P5). The lowest thing you can author is tal, the typed assembly floor,
+requested (P4). The lowest thing you can author is tal, the typed assembly floor,
 still typed, still yours to write; below it is one trusted emission step you
 never edit. See [[axis-altitude]] and [[modules-lowering]]. The `syntax` module names the surface
 seat ([[modules-core]]); no concrete surface form is drawn anywhere in this base.
@@ -73,7 +73,7 @@ bring to a crossing is the grant, the sidehand, and it is permitted by the
 bridges the crossing traverses agreeing on it: copies compared, a verifiable
 split, a register-anchored MAC, an attestation. Agreement permits, divergence is
 the alarm. No owner adjudicates because agreement is evidence lining up, not
-privilege (P6, P7). See [[permission-model]] and [[category-bridge]]. Ports are
+privilege (P5). See [[permission-model]] and [[category-bridge]]. Ports are
 minted from a linear supply against real finite capacity, so what you hold is
 backed by real RAM, real devices, real cycles, and grants cannot overlap or
 outrun the hardware. A remote node is just a node you hold a port to, so
@@ -81,9 +81,9 @@ distribution adds nothing to your authoring model. See [[node-architecture]].
 
 ## What the system owes you
 
-The safe shape must be the cheap shape (P5), so the ceremony is the system's
+The safe shape must be the cheap shape (P4), so the ceremony is the system's
 job, not yours. Declaring a split should be as cheap as declaring a variable
-(P7). For per-datum security you name the policy in the datum's type,
+(P5). For per-datum security you name the policy in the datum's type,
 confidential, register keyed, integrity by MAC or Merkle, versioned, clear
 window bound, refresh interval, split k of n, constant time, and `datum-policy`
 weaves the mechanism: derive in register, decrypt into a bounded window, verify

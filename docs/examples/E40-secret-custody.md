@@ -6,7 +6,7 @@ kind: BUILD-PROPER
 reference_class: PAPER
 ours_source: scaffold/lib/ports.chiral
 status: implemented
-updated: 2026-07-15
+updated: 2026-09-03
 ---
 
 # E40 — Secret custody (opaque linear `Secret` with a single guarded exit)
@@ -40,7 +40,7 @@ updated: 2026-07-15
   a **compile-time type error**.
 - **Kind:** BUILD-PROPER — a designed-but-unbuilt feature (the capability
   family), scoped to the smallest version that is real.
-- **Why chirality needs its own:** this is P3/P4 for data — "compute is inert until
+- **Why chirality needs its own:** this is P3/P3 for data — "compute is inert until
   it crosses a port," applied to a secret. On a normal stack a decrypted secret
   is just bytes and nothing structurally stops it flowing to a socket. The whole
   point of chirality is that the leak is *not expressible*, not *defended against*.

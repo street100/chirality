@@ -24,8 +24,7 @@ to float there was sorted into the tier it belongs to, and the arc handoffs
 followed: the last two left on 2026-09-03.
 
 - [README.md](README.md): the public front door.
-- [PRINCIPLES.md](PRINCIPLES.md): five principles, one thesis (condensed from
-  seven; a crosswalk in the doc keeps old P1-P7 citations resolving).
+- [PRINCIPLES.md](PRINCIPLES.md): five principles, one thesis.
 - [MAP.md](MAP.md): the tree contract. Extensions, module key, doc roles.
 - [CLAUDE.md](CLAUDE.md): the agent tier's entry point, tracked.
 - This file, the contents.
@@ -141,9 +140,10 @@ the directory is its role, and the module key is the root-relative path.
   stdin and an ELF on stdout.
 - `tools/` is one folder per tool. Nine still hold the Python being replaced.
 
-The first target is the tomodachi, a Wayland wire client with no libwayland, a
-niri event stream and a swappable pure behavior pack:
-[target-tomodachi](docs/definitions/target-tomodachi.md). What the scaffold era
+The first target named was the tomodachi, a Wayland wire client with no
+libwayland, a niri event stream and a swappable pure behavior pack. It is
+parked, ungated and never run against a compositor:
+[target-tomodachi](docs/definitions/target-tomodachi.md) carries the state. What the scaffold era
 proved and what it stubbed is kept in
 [docs/implementation/](docs/implementation/), with the findings ledger in
 [AUDIT.md](docs/implementation/AUDIT.md).

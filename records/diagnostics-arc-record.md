@@ -3,7 +3,7 @@ node: arc-diagnostics-record
 layer: navigation
 related: [arcs/diagnostics-arc, arcs/README, status-ledger, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-03
 ---
 
 # Record: the diagnostics and formatting arc
@@ -11,8 +11,6 @@ updated: 2026-09-01
 The measured history of [[arcs/diagnostics-arc]]. What landed, the traps that
 fired, and the decisions that each cost a measurement. Appended, not rewound.
 Live state (element rows, requirements, what is next) is in the arc file.
-
-Was `HANDOFF-DIAGNOSTICS-ARC.md` at root until 2026-09-01.
 
 Two standing facts about the working environment, kept here because they cost a
 session each:

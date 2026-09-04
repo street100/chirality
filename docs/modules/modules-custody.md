@@ -5,7 +5,7 @@ implements: [category-bridge]
 supervises: [category-untyped]
 related: [module-map, modules-security, modules-bridges, modules-substrate]
 status: draft
-updated: 2026-06-16
+updated: 2026-09-03
 ---
 
 # Custody modules
@@ -13,7 +13,7 @@ updated: 2026-06-16
 > **Status: DESIGNED.** custody-split, redundancy, and datum-policy are unbuilt;
 > this note is intent, not scaffold reality. See [[status-ledger]].
 
-The part of [[category-bridge|C]] that holds sensitive state. This is P7 made
+The part of [[category-bridge|C]] that holds sensitive state. This is P5 made
 into modules: declaring a split should be as cheap as declaring a variable.
 
 ## custody-split
@@ -29,7 +29,7 @@ corruption matters never sits at T2.
 
 The T1 mechanism: several full copies that must agree, with divergence
 detection. For the untypeable region, redundancy is the evidence you fall back on
-when proof runs out (P6). Robust or verifiable decoding can correct some bad
+when proof runs out (P5). Robust or verifiable decoding can correct some bad
 copies and name them.
 
 ## datum-policy

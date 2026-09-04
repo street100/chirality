@@ -3,7 +3,7 @@ node: relations
 layer: navigation
 related: [index, splitting-law, joining-law, module-map, open-edges, permission-model, live-environment]
 status: draft
-updated: 2026-07-04
+updated: 2026-09-03
 ---
 
 # Relations
@@ -69,7 +69,7 @@ axis-altitude  ----------------> modules-lowering
 - [[certificate-discipline]] `refines` [[joining-law]] and P1: a trusted checker
   re-checks untrusted producers' certificates; chirality proves elements and the
   interactions that admit proof, never the whole system.
-- [[split-role]] `implements` P5/P7 for the unprovable residue: the split as a tiered
+- [[split-role]] `implements` P4/P5 for the unprovable residue: the split as a tiered
   substrate-provided role (containment by ports, independence by provenance, verdict by
   agreement or certificate). Touches [[modules-custody]] and [[decision-profiles]].
 
@@ -78,7 +78,7 @@ axis-altitude  ----------------> modules-lowering
 - [[permission-model]] refines [[node-architecture]] and [[category-bridge]]. It
   applies nodes-touch-only-through-ports and bridge-agreement to how a crossing is
   permitted: a grant presented at a crossing, permitted by the bridges it traverses
-  agreeing (P6, P7). No new module; it names the grant and the altitude split of
+  agreeing (P5). No new module; it names the grant and the altitude split of
   authority.
 
 ## Views

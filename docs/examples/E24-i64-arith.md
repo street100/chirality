@@ -86,7 +86,7 @@ How chirality's model reframes it.
 - **Chirality features in play:** the **float→I64 wall** (I64 *is* the machine word;
   there is no promotion to bignum, so wrap is the type, not a fixup);
   **refinement types** (P: refinement absorbs integer safety); **totality** —
-  partiality is the *marked climb*, totality the default (P5); **category A**
+  partiality is the *marked climb*, totality the default (P4); **category A**
   (correctness by proof, pure `->`, no membrane); **floor collapse** as the
   substrate form of P5 (one definition can't disagree with itself).
 - **The reframing:** two moves. **(a) Wrap becomes the type, not a correction.**
@@ -131,7 +131,7 @@ The clear-cut example — real chirality surface syntax, copy-and-modify ready.
 ;   (extern % (-> I64 I64 I64))   ; Euclidean remainder in [0,|b|)
 
 ; ---- Divisor proven nonzero: partiality retired at the type level ------------
-; Raw `/` is partial (undefined at b = 0). Totality is the default (P5), so the
+; Raw `/` is partial (undefined at b = 0). Totality is the default (P4), so the
 ; precondition goes INTO the type: a safe divisor is an I64 refined `<> 0` (the
 ; disequality op in refine.py's _OPS — there is no `/=`). In the arrow this
 ; reads just like mem-linear's `(refine I64 (>= 0) (< n))` offset. Inside div,

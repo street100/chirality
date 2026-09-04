@@ -3,7 +3,7 @@ node: vocabulary
 layer: navigation
 related: [index, glossary, thesis, process-and-runtime, joining-law, axis-typeability, permission-model]
 status: draft
-updated: 2026-07-04
+updated: 2026-09-03
 ---
 
 # Vocabulary
@@ -74,7 +74,7 @@ Note: whether ports are formally session-typed is an open mechanism decision, no
 settled by this name. See [[open-edges]].
 
 ### membrane
-Is: the outward boundary of a process. Compute is inert until it crosses it (P4).
+Is: the outward boundary of a process. Compute is inert until it crosses it (P3).
 Ports are the typed crossings in it.
 Is not: a single point. It is the whole skin; ports are the holes.
 
@@ -85,7 +85,7 @@ Is not: a ring or a privilege class. There is no privilege here, only possession
 ### grant (sidehand)
 Is: a capability in its active role, what a process brings to a crossing to
 authorize the action it attempts. Permitted by the bridge's agreement at the
-crossing, not by an owner (P6, P7). See [[permission-model]].
+crossing, not by an owner (P5). See [[permission-model]].
 Is not: a separate mechanism from a capability. A grant is a held port used at a
 crossing; sidehand is the informal handle for that presented role.
 
@@ -109,12 +109,12 @@ unsafe, and through evidence where proof runs out.
 ### evidence (category C)
 Is: cross-checked truth about substrate (redundancy, verifiable split, MAC,
 attestation, reconciliation). The bridge turns substrate into evidence a typed
-process can check (P6). See [[category-bridge]].
+process can check (P5). See [[category-bridge]].
 Is not: proof. It is what you fall back on when proof runs out.
 
 ### tier, T0 to T3
 Is: how a truth is held. T0 typed singleton (proof), T1 copies compared, T2 plain
-Shamir (the warning case, no tamper evidence), T3 verifiable split. See P7 and
+Shamir (the warning case, no tamper evidence), T3 verifiable split. See P5 and
 [[axis-typeability]].
 
 ## Deprecated

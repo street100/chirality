@@ -3,7 +3,7 @@ node: perspectives
 layer: navigation
 related: [vocabulary, glossary, index, process-and-runtime, joining-law, splitting-law, axis-typeability, decision-profiles, view-security, view-types, view-runtime, view-authoring, view-implementation]
 status: draft
-updated: 2026-07-04
+updated: 2026-09-03
 ---
 
 # Perspectives
@@ -137,4 +137,4 @@ The outward-facing construct. See [[vocabulary]].
 - hardware: T1 and T3 are copies and shares living in B; the shares themselves
   are substrate.
 - security: which of secrecy, integrity, availability you buy; name the tier you
-  mean. See P7.
+  mean. See P5.

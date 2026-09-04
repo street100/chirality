@@ -3,10 +3,20 @@ node: target-tomodachi
 layer: target
 related: [decision-profiles, open-edges, permission-model, time-and-clocks, node-architecture, error-and-alarm, modules-staging, category-bridge]
 status: draft
-updated: 2026-07-05
+updated: 2026-09-03
 ---
 
 # Target: tomodachi
+
+⚑ **Parked. No part of this has been verified against a compositor.** Measured 2026-09-03:
+nothing under `tools/test/` reads `prog/demo/`, so `tomodachi.chiral`,
+`profile-tomodachi.chiral` and `wl-client.chiral` are neither compiled nor run
+by the suite, and none of them is a `compile-main` root that Phase 7 would
+sweep. No environment in this tree hosts a Wayland compositor, so the wire
+client has never spoken to one. Everything below states the requirement, which
+is what a target note is for. None of it is a report of observed behaviour.
+[[arcs/native-window-arc]] is unopened and re-measuring the demos is its first
+row.
 
 The first concrete target requirement type, per the conformance mechanism in
 [[decision-profiles]] (G9). A desktop companion process for a Wayland session,

@@ -4,7 +4,7 @@ layer: foundation
 refines: [process-and-runtime]
 related: [process-and-runtime, modules-substrate, modules-staging, modules-broker, module-map, joining-law]
 status: draft
-updated: 2026-06-16
+updated: 2026-09-03
 ---
 
 # The bootstrap sequence

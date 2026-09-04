@@ -6,7 +6,7 @@ kind: SELF-HOST
 reference_class: OURS
 ours_source: scaffold/chirality/runtime.py
 status: drafted
-updated: 2026-07-12
+updated: 2026-09-03
 ---
 
 # E15 — Reference interpreter (golden semantics, tree-walk + TCO)
@@ -118,11 +118,11 @@ turns the hand-rolled trampoline into an ordinary tail-recursive function plus a
 closed `data Step` the `case` must cover.
 
 - **Chirality features in play:**
-  - **Effect membrane `->` vs `=>` (E12, P4).** The pure *fragment* is the **term
+  - **Effect membrane `->` vs `=>` (E12, P3).** The pure *fragment* is the **term
     language** the evaluator walks (`Var`/`Lit`/`Lam`/`App`-of-closure/`Case`/`Let`
     cross no I/O port). The **evaluator over it is `=>`**, though: `eval-step`,
     `eval`, and `run` are one mutual-recursion group (the big-step evaluator forces
-    subterms), they may not terminate — and P4 says non-termination *is* a port
+    subterms), they may not terminate — and P3 says non-termination *is* a port
     ("non-termination and unbounded allocation are ports") — and `run` exits the
     `step-stuck` case through the `rt-alarm` crossing. So the honest arrow on all
     three is `=>`. A genuinely-pure `->` **single-step** — one that returns a
@@ -146,13 +146,13 @@ closed `data Step` the `case` must cover.
   - **QTT erasure is structural (E5), not a sentinel.** A 0-quantity `Let` does
     not exist at runtime; there is no `("erased",)` in `Value`, so there is
     nothing to force by mistake. Erasure is enforced by the quantity, upstream.
-  - **Totality-by-default, partiality as the marked case (E11, P5).** Each *body*
+  - **Totality-by-default, partiality as the marked case (E11, P4).** Each *body*
     recurses structurally on `Term`, but `eval-step`/`eval`/`run` form a mutual
     group whose loop (`run` → `eval-step` → `eval` → `run`) is **not** structurally
     decreasing — so the group is the *deliberately* partial one, the honest type of
     an interpreter that runs arbitrary programs. That partiality is opt-in and loud
     (it type-checks only because totality is classified, not enforced by default —
-    E11), the marked case per P5.
+    E11), the marked case per P4.
   - **I64 floor (E24).** de-Bruijn indices, literals, and case tags are `I64`.
 - **The reframing:** meaning is given by a step relation `Term => Step` whose
   `step-tail` says "continue at `(env, next)`"; the driver iterates that relation
@@ -262,7 +262,7 @@ The pure step function is `->`; the divergence-carrying driver is `=>`.
 ; run s : drive the trampoline to a Value. Loops on step-tail exactly where
 ; runtime.py loops with `while True` -- but it is an ordinary TAIL call, so chirality's
 ; proper-tail-call guarantee makes it constant-stack; no hand-managed stack. `run`
-; is `=>` (process), not `->`: an evaluated program may diverge, and P4 counts
+; is `=>` (process), not `->`: an evaluated program may diverge, and P3 counts
 ; non-termination as a port. step-stuck raises a typed alarm at the membrane
 ; (never reached on well-checked terms).
 (def run                                    ; declared above (mutual group)

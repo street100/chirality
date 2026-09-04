@@ -3,7 +3,7 @@ node: view-security
 layer: view
 related: [index, perspectives, thesis, permission-model, category-bridge, node-architecture, axis-typeability, axis-altitude, modules-substrate, modules-custody, modules-security, modules-bridges, modules-broker, error-and-alarm, time-and-clocks, joining-law, open-edges]
 status: draft
-updated: 2026-07-04
+updated: 2026-09-03
 ---
 
 # View: security
@@ -20,7 +20,7 @@ not a denylist bolted onto a language; it is the demand that the language expres
 everything, so that everything expressible is named and therefore gateable (P1).
 Every mechanism below is this one idea applied at a different seam. Where the
 idea runs out, at substrate no proof can reach, the design says so and switches
-from proof to evidence (P6, P7) instead of pretending.
+from proof to evidence (P5) instead of pretending.
 
 ## The trusted base, and how small it is
 
@@ -73,7 +73,7 @@ supervisor would be the thesis's gap restated.
 
 ## The tier ladder
 
-P7 names what a mechanism buys. T0, a typed singleton, secrecy and integrity by
+P5 names what a mechanism buys. T0, a typed singleton, secrecy and integrity by
 proof, only for the typeable. T1, N full copies compared, integrity for the
 untypeable, no secrecy. T2, plain Shamir, secrecy and availability but no tamper
 evidence: a bad share reconstructs the wrong value silently, so anything where

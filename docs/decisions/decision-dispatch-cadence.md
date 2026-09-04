@@ -3,7 +3,7 @@ node: decision-dispatch-cadence
 layer: decision
 related: [decision-inspiration-policy, arcs/presentability-arc, elements/README, index]
 status: settled
-updated: 2026-09-01
+updated: 2026-09-03
 ---
 
 # Decision: dispatch cadence is serial
@@ -13,13 +13,8 @@ repository is worked: the pipeline (example, audit, spec, audit), the doc-audit
 and doc-cleanup passes, the `.planning` consolidation, and any lane that
 dispatches a subagent.
 
-Hoisted here 2026-09-01. Until then it lived in four `.planning` files and in
-`CLAUDE.md` at the root, all five ignored by `.gitignore:12` or by the rule that
-ignores `.claude/`. A fresh clone got the queues without the rule that runs
-them. `docs/decisions/decision-scope.md` carried a sixth statement and is tracked, but `docs/decisions/decision-scope.md` is
-session state and is rewritten every few days. The sources are quoted below,
-because a hoist is only honest if what was hoisted can be checked against what
-was there.
+The sources it was stated in are quoted below, so the directive can be checked
+against them.
 
 ## The directive
 
