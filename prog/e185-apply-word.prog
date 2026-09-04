@@ -1,0 +1,124 @@
+; e185-apply-word.prog -- the E185 probe: judge R1 to R5 of the SPEC's gate over
+; the `NDef` list `compile-front` produces for the fixture.
+;
+; It reads the FIXTURE's blob on stdin, runs the whole front half
+; (load-source -> tot-gate -> specialize-singletons -> closconv-sig -> peel) and
+; prints ONE five-token line naming the five rows, then the measured detail
+; behind them.  `tools/test/apply-word.sh` appends R6, which needs two binaries
+; and so cannot be judged here.
+;
+; ⚑ IT IMPORTS NOTHING UNDER `lowering/tal/`.  E154's eleven colliding top-level
+; names are the reason the whole-blob conformance measurement is still a reverted
+; probe; this one stays clear of them by stopping at `compile-front`, whose import
+; closure reaches no emitter.  That is also why R6 is the driver's row.
+;
+; It ASSERTS NOTHING and always exits 0.  Every comparison lives in bash in the
+; driver, over these bytes: a gate that re-derives its own verdict is green under
+; any mutant that changes what the verdict SAYS (the pretty.sh / tal-check.sh
+; rule).
+(import "prelude/prelude")
+(import "lowering/compile-front")
+(import "ports/stdio")
+(import "ports/fd")
+
+; ---- read the fixture source off fd 0 ---------------------------------------
+(def e185-read-go (=> I64 Bytes Bytes)
+  (lam (fd acc)
+    (let (chunk (read fd 65536))
+      (case (=i (blen chunk) 0)
+        (true acc)
+        (false (e185-read-go fd (bcat acc chunk)))))))
+
+; ---- render an NTalTy so a red row says WHAT it measured ---------------------
+(declare e185-nt->s  (-> NTalTy Str))
+(declare e185-nts->s (-> (List NTalTy) Str))
+(def e185-nt->s (lam (t)
+  (case t
+    ((nt-i64)   "nt-i64")
+    ((nt-str)   "nt-str")
+    ((nt-bytes) "nt-bytes")
+    ((nt-word)  "nt-word")
+    ((nt-data dn as)
+      (str-cat "(nt-data " (str-cat dn (str-cat " [" (str-cat (e185-nts->s as) "])"))))))))
+(def e185-nts->s (lam (ts)
+  (case ts
+    (nil "")
+    ((cons x r) (str-cat (e185-nt->s x) (str-cat " " (e185-nts->s r)))))))
+
+(declare e185-is->s (-> (List I64) Str))
+(def e185-is->s (lam (xs)
+  (case xs
+    (nil "")
+    ((cons x r) (str-cat (i64->str x) (str-cat " " (e185-is->s r)))))))
+
+; ---- the five rows -----------------------------------------------------------
+(declare e185-find (-> (List NDef) Str (Maybe NDef)))
+(def e185-find (lam (ds n)
+  (case ds
+    (nil (none))
+    ((cons d r) (case d ((ndef nm ps ret er b)
+      (case (str-eq nm n) (true (some d)) (false (e185-find r n)))))))))
+
+; R2: EVERY domain parameter is the erased word.  The leading $clo argument is
+; R3's and is not in this list.
+(declare e185-all-word (-> (List NTalTy) Bool))
+(def e185-all-word (lam (ts)
+  (case ts
+    (nil true)
+    ((cons x r) (case x ((nt-word) (e185-all-word r)) (_ false))))))
+
+(def e185-tok (-> Bool Str) (lam (b) (case b (true "ok") (false "bad"))))
+
+; R3: the leading parameter is (nt-data "$clo0" nil) -- concrete, because the
+; dispatcher's body is a CASE on it.
+(def e185-is-clo0 (-> NTalTy Bool)
+  (lam (t) (case t ((nt-data dn as) (case (str-eq dn "$clo0") (true (case as (nil true) (_ false))) (false false))) (_ false))))
+
+; R4: the family's ground codomain, and NOT the erased word.
+(def e185-is-i64 (-> NTalTy Bool)
+  (lam (t) (case t ((nt-i64) true) (_ false))))
+
+; R2 reads the domains, which are every parameter AFTER the leading $clo one; a
+; dispatcher with no domain at all is red, not vacuously green.
+(declare e185-doms-word (-> (List NTalTy) Bool))
+(def e185-doms-word (lam (ps)
+  (case ps
+    (nil false)
+    ((cons lead rest) (case rest (nil false) (_ (e185-all-word rest)))))))
+
+(declare e185-lead-ok (-> (List NTalTy) Bool))
+(def e185-lead-ok (lam (ps)
+  (case ps (nil false) ((cons lead rest) (e185-is-clo0 lead)))))
+
+(declare e185-empty? (-> (List I64) Bool))
+(def e185-empty? (lam (xs) (case xs (nil true) (_ false))))
+
+(declare e185-report (-> NDef Str))
+(def e185-report (lam (d)
+  (case d ((ndef nm ps ret er b)
+    (str-cat "==E185== ok "
+    (str-cat (e185-tok (e185-doms-word ps))
+    (str-cat " "
+    (str-cat (e185-tok (e185-lead-ok ps))
+    (str-cat " "
+    (str-cat (e185-tok (e185-is-i64 ret))
+    (str-cat " "
+    (str-cat (e185-tok (e185-empty? er))
+    (str-cat "\nparams: "
+    (str-cat (e185-nts->s ps)
+    (str-cat "\nret:    "
+    (str-cat (e185-nt->s ret)
+    (str-cat "\nerased: "
+    (str-cat (e185-is->s er) "\n"))))))))))))))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (src (bytes->str (e185-read-go 0 (str->bytes ""))))
+      (case (compile-front src "compile-main")
+        ((fr-err m) (do (put "==E185== bad absent absent absent absent\n")
+                    (do (put (str-cat "front: " (str-cat m "\n"))) 0)))
+        ((fr-ok defs datas prims ports)
+          (case (e185-find defs "$apply0")
+            ((none) (do (put "==E185== bad absent absent absent absent\n")
+                    (do (put "front: no $apply0 NDef in compile-front's output\n") 0)))
+            ((some d) (do (put (e185-report d)) 0))))))))

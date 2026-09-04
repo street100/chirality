@@ -1,0 +1,36 @@
+; e185_apply_word.prog -- the E185 fixture: ONE defunctionalization family whose
+; members DISAGREE on the domain.
+;
+; `shape-eq` (lib/lowering/upper/closconv.chiral:335-356) makes every non-arrow
+; domain one word, so `(-> I64 I64)` and `(-> (List Str) I64)` share a family by
+; design; `cod-key-eq` (:365-380) keeps the ground codomain `I64` concrete, so
+; the family has something the dispatcher must NOT erase.  `$apply0` therefore
+; declares one domain whose two members are `I64` and `(List Str)`, which is the
+; EN-15 shape at its smallest.
+;
+; HOME: tools/test/samples/, not prog/.  Phase 7 discovers roots with
+; `grep -rl '^(def compile-main' lib prog` (tools/test/run-tests.sh:175); this
+; file needs a `compile-main` for the R6 ELF, so under prog/ it would be a second
+; new root and move the root census twice.
+;
+; It also RUNS correctly, which is what R6 compares: `use-i bump 41` is 42 and
+; `use-l len ("x" "y")` is 2, so a miscompile of the dispatcher shows up as a
+; non-zero exit as well as a byte difference.
+(import "prelude/prelude")
+
+(declare e185-len (-> (List Str) I64))
+(def e185-len (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (e185-len t))))))
+
+(def e185-bump (-> I64 I64) (lam (n) (+ n 1)))
+
+; the two higher-order parameters.  Their arrow types differ ONLY in the domain,
+; which is exactly what the family key erases.
+(def e185-use-i (-> (-> I64 I64) I64 I64) (lam (f x) (f x)))
+(def e185-use-l (-> (-> (List Str) I64) (List Str) I64) (lam (g ys) (g ys)))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (let ((a (e185-use-i e185-bump 41))
+          (b (e185-use-l e185-len (cons "x" (cons "y" nil)))))
+      (case (=i a 42) (false 1) (true
+      (case (=i b 2)  (false 2) (true 0)))))))
