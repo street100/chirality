@@ -27,6 +27,20 @@ the compiler makes about its own work is carried as a value with evidence, and
 refused when it does not hold. Every gate row has a named mutant that is
 actually run.
 
+**And the enforcing is done in chirality.** A gate that judges chirality source
+from outside the language is a floor this project does not own. Measured
+2026-09-04: the gate tier is 6,915 lines of shell against 134 lines of native
+test floor, and it makes **352 calls to `grep`, `sed`, `sort` and `awk` where
+`docs/arcs/text-tools-arc.md` already records a built chirality composition**.
+`lib/text/matcher.chiral` has one consumer. The capability exists and the
+shipping path does not reach it, which is the SEEDED pattern this goal exists to
+close, turned on the gates themselves.
+
+⚑ The direction matters more than the count. Every classic tool that becomes a
+composition is one fewer thing the eventual OS rung has to trust, and it is
+cheaper to take the ground now than to migrate a coreutils dependency later.
+`records/gate-audit.md` holds the measurement.
+
 ## State
 
 In flight. A bug class comes off the list when it can be stated as a judgment and

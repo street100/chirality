@@ -32,7 +32,7 @@ Lane division and what enforces it: `docs/decisions/decision-lane-split.md`. Lan
 
 ## REQUIREMENTS
 
-Done when all five hold. Each is checkable, and the state beside it is measured
+Done when all six hold. Each is checkable, and the state beside it is measured
 2026-09-02.
 
 1. **A capability sits at ENFORCED, or its ledger row says why it does not.**
@@ -65,7 +65,17 @@ Done when all five hold. Each is checkable, and the state beside it is measured
 4. **The optimizer's re-check runs, or E17 says why it does not.**
    `lib/lowering/upper/optimize.chiral` has zero importers and is in no blob, so
    `optimize` and `specialize` return a `Checked` result nothing ever forms.
-5. **Every gate row names a mutant that is actually run.** Inherited from
+5. **The gate tier is chirality's own.** Measured 2026-09-04: 6,915 lines of
+   shell against 134 lines of native floor, and **352 calls to `grep`, `sed`,
+   `sort` and `awk` where `docs/arcs/text-tools-arc.md` records a built
+   chirality composition**. `lib/text/matcher.chiral` has one consumer,
+   `prog/prose-lint.prog`. ⚑ Some shell is correct and stays: a comparator
+   holding constants cannot be fooled by a mutated compiler, which is why
+   `crypto.sh` prints from the fixture and compares in bash. What is owed is the
+   text work, where a composition exists and nothing calls it. Every tool that
+   moves is one fewer the OS rung has to trust. `records/gate-audit.md`.
+
+6. **Every gate row names a mutant that is actually run.** Inherited from
    [[goals/enforcement]] and from `docs/definitions/testing-floors.md:261`. E173
    found two rows that could not fail; both were repaired at `e882568`.
 
