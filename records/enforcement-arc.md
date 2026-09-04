@@ -3,7 +3,7 @@ node: records-enforcement-arc
 layer: navigation
 related: [records/README, status-ledger, arcs/enforcement-arc, arcs/diagnostics-arc, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-03
 ---
 
 # Enforcement arc
@@ -22,8 +22,8 @@ One note on state. [[records/README]] has four states and none of them means
 is filed `FIXED`, with the reason written into its `measured` line. A fifth state
 is an author call, and the README says so.
 
-Everything below was measured on 2026-09-01. Re-run a row's evidence before
-relying on it.
+Rows EN-01 to EN-07 were measured on 2026-09-01 and EN-08 to EN-13 on
+2026-09-03. Re-run a row's evidence before relying on it.
 
 ## What is measurable about lowering
 
@@ -95,3 +95,62 @@ relying on it.
 - evidence: commits `d8bcec5`, `d0c5dd5`, `docs/decisions/decision-self-verification.md:16-21`
 - checked:  2026-09-01
 - element:  E184
+
+## The `ck-prog` disagreement, class by class
+
+Measured 2026-09-03. Every count below came from one scratch probe, described in
+EN-08 and reverted, and every claim is per-TFn.
+
+### EN-08 the four diagnostic classes reproduce, and the instrument is a probe
+
+- state:    OPEN
+- claim:    [[arcs/enforcement-arc]] requirement 3 records `ck-prog` accepting 743 of 1,504 TFns and rejecting 761 (50.6%), in four classes: 392 `ret`, 187 `con`, 107 `case on non-data register`, 75 `argument arity`.
+- measured: CONFIRMED in shape, with counts that moved with the tree. Today's compiler blob emits 1,481 TFns: 727 accept and 754 reject (50.9%), in the same four classes at 389 `ret`, 185 `con`, 105 `case on non-data register`, 75 `argument arity`. The delta traces to E182, which landed at `65bec90` and `d26d7a1` on 2026-09-02 over `lib/typing/diag.chiral` and `lib/typing/kernel.chiral`, both inside the compiler's closure. Method: a scratch probe living outside `lib/` and `prog/`, importing `lowering/compile-all`, re-running `lower-defs`' per-def loop over the `NDef` list `compile-front` produces, and folding a copy of `check.chiral` over every emitted TFn under the `CEnv` `ck-prog` rebuilds. The copy exists because `check.chiral` cannot be imported beside the compiler: E154's fifth instance, eleven colliding top-level names. Each name in the copy carries a prefix; every accept and reject decision is the original's, and only the verdict strings differ, plus `ck-args` returning a reason string where the original returns a `Bool`. The probe was reverted. The same source reaches a byte fixpoint the same day: `bin/chirality-bin` over the blob yields a 1,188,216-byte binary that reproduces itself byte for byte.
+- evidence: `lib/lowering/tal/check.chiral:243-246`, `lib/lowering/compile-back.chiral:231-240`, `lib/lowering/compile-all.chiral:18-33`, commits `65bec90`, `d26d7a1`, `docs/definitions/working-discipline.md:30-38`
+- checked:  2026-09-03
+- element:  none
+
+### EN-09 the `ret` class is the checker: an erased type-argument list, 389 of 389
+
+- state:    OPEN
+- claim:    requirement 3 counts the `ret` class and leaves the side that is wrong unnamed.
+- measured: THE CHECKER, in all 389, and the shape is uniform. Every one is `tt-data` against `tt-data` under the same data name, with the register's type carrying zero type arguments and the declared return carrying one (375) or two (14). Zero are an unbound register, zero are a data-name mismatch, zero are a ground-type mismatch. The register's type comes from `expr-con`, which annotates every constructed value `(tt-data dn nil)`; the declared return comes from `ntalty->talty`, which carries the arguments through from `compile-front`'s `t-tcon` peel. `tal-ty=?`'s `tt-data` arm demands `tys=?`, and `tys=?` refuses an empty list against a non-empty one. The arguments carry no checking power anywhere else in the checker: `ck-con` and `ck-term`'s case arm both resolve a data type by its name alone. Relaxing `tal-ty=?` so that an empty argument list on either side matches, the wildcard role `tt-word` already plays for a whole type, turns all 389 into accepts. Minimal rejecting TFn: a def declared to return `(tt-data "Lst" (tt-i64))` whose whole body is `(i-con 0 "Lst" "lnil" nil (tt-data "Lst" nil))` then `(t-ret 0)`; respelling the declared return as `(tt-data "Lst" nil)` makes the identical body accept. Its source twin compiles, emits, links and runs correctly. ⚑ The lowering carries a contributing defect that would close none of the class on its own: `expr-con` binds an expected type `exty` and reads it at no line.
+- evidence: `lib/lowering/upper/lower.chiral:288-296`, `lib/lowering/compile-back.chiral:29`, `lib/lowering/compile-front.chiral:68`, `lib/lowering/tal/check.chiral:50-63`, `:190-192`, `:123-125`, `:196`
+- checked:  2026-09-03
+- element:  UNASSIGNED
+
+### EN-10 the `con` class is that same erased argument list, 184 of 185
+
+- state:    OPEN
+- claim:    requirement 3 counts the `con` class and leaves the side that is wrong unnamed.
+- measured: THE CHECKER for 184 of 185, by the mechanism EN-09 names, arriving through `ck-con`'s field check instead of through the terminator. `expr-con` types each field argument by walking `expr`, so a nested constructed value comes back `(tt-data dn nil)` while the declaring constructor's field type carries its arguments, peeled by `field-tys->n` and widened by `ndctors->dctors`. All 184 carry zero arguments against one (182) or two (2). The 185th is a ground-type conflation inside `$apply7`, a register typed `(tt-data "List" ...)` in a field position declared `tt-str`, and it belongs with the residue in EN-13. Minimal rejecting TFn: a two-level con whose outer constructor declares its second field `(tt-data "Lst" (tt-word))` while the inner con's register is `(tt-data "Lst" nil)`; annotating that inner register `(tt-data "Lst" (tt-word))` makes it accept. Its source twin compiles, emits, links and runs correctly.
+- evidence: `lib/lowering/tal/check.chiral:117-129`, `:82-90`, `lib/lowering/upper/lower.chiral:288-296`, `lib/lowering/compile-front.chiral:216-223`, `lib/lowering/compile-back.chiral:66-69`
+- checked:  2026-09-03
+- element:  UNASSIGNED
+
+### EN-11 the `case on non-data register` class is the checker lacking the recovery the lowering has, 105 of 105
+
+- state:    OPEN
+- claim:    requirement 3 counts the `case on non-data register` class and leaves the side that is wrong unnamed.
+- measured: THE CHECKER, in all 105. Every one is a scrutinee register typed `tt-word`. Zero are the other path to that same message, an unbound scrutinee register. The lowering performs a B1 recovery: `case-sty` calls `ctor-data` to read the data name out of the first arm's constructor whenever the scrutinee's tal type fails to be `tt-data`. That recovery stays inside the lowering's own bookkeeping and reaches the emitted instruction at no point, so the register keeps `tt-word` in the TFn. `ck-term`'s case arm carries no `tt-word` arm and falls through to its catch-all. The refusal contradicts the checker's own `tal-ty=?`, whose first arm makes `tt-word` compatible with every type. Giving `ck-term` the same `ctor-data` walk over `ce-datas` turns all 105 into accepts. Minimal rejecting TFn: `(tfn "sel" ((tt-word)) (tt-i64) (block nil (tt-case 0 ...)))`; respelling that parameter `(tt-data "Lst" nil)` makes the identical body accept. Its source twin, a case over a value read out of a polymorphic field, compiles, emits, links and runs correctly.
+- evidence: `lib/lowering/upper/lower.chiral:168-188`, `:304-306`, `:347-355`, `lib/lowering/tal/check.chiral:193-205`, `:50-52`, `lib/lowering/tal/ssa.chiral:17-20`
+- checked:  2026-09-03
+- element:  UNASSIGNED
+
+### EN-12 the `argument arity` class splits, 70 to the checker and 5 to the lowering
+
+- state:    OPEN
+- claim:    requirement 3 counts the `argument arity` class and leaves the side that is wrong unnamed.
+- measured: SPLITS 70 to the checker and 5 to the lowering. As counted, the 75 are 73 the erased argument list of EN-09 reaching `ck-app` through `ck-args`, all of them zero arguments against one, plus one data-name mismatch and one ground-type mismatch. Relaxing that one checker relation flips 70 of the 75 to accepts and leaves 5, which is where the split lives: the relaxation unmasks two rejects the argument-list failure had been hiding, because `ck-args` returns on its first failing position. Those two are the lowering, and they are a real defect. `build-binders` allocates a fresh register for every erased binder position and emits no instruction defining it, on the stated ground that a `q=0` binder has zero runtime uses; `outline` then passes the whole binder environment as the outlined call's arguments, so that undefined register is passed. The enclosing TFn's `params` holds the kept list, so nothing binds it there either. They are `emit-code` (4 params, undefined register 4) and `emit-args-res` (3 params, undefined register 3), where in both the offending index equals the parameter count, which is the first register `build-binders` allocates. The emitted native code reads an undefined register and the program still computes correctly, because the callee reads that argument at no point. The remaining 3 of the 5 sit inside `$apply` dispatchers and belong with the residue in EN-13. Minimal rejecting TFn: a caller of one parameter whose body is `(i-call 1 "inner" (0 2) (tt-i64))` where register 2 is bound by nothing; inserting a definition of register 2 makes it accept. Its source twin, an erased binder over a non-tail case, compiles, emits, links and runs correctly.
+- evidence: `lib/lowering/upper/lower.chiral:383-397`, `:308-317`, `:399-406`, `lib/lowering/tal/check.chiral:82-90`, `:92-100`, `:220-225`
+- checked:  2026-09-03
+- element:  UNASSIGNED
+
+### EN-13 six TFns survive both relaxations, and the repair shape is an author call
+
+- state:    OPEN
+- claim:    none. This row records what the diagnosis leaves behind.
+- measured: With both checker relaxations applied, the one EN-09 names and the one EN-11 names, 1,475 of 1,481 TFns accept and six reject. Two are the undefined erased-binder register of EN-12, in `emit-code` and `emit-args-res`. Four are the closure-conversion dispatchers `$apply4`, `$apply5`, `$apply6` and `$apply7`, where a register's tal type disagrees with the expected type across the ground-versus-data boundary instead of inside a type-argument list: two `tt-i64` against `(tt-data "List" ...)`, one data-name mismatch, one `(tt-data "List" ...)` against `tt-str`. `closconv.chiral:362` already records that two families of different concrete type must stay unmerged, which is the shape these four have. Those six are lowering defects the checker is right about, and they are 0.4% of 1,481. So the 50.6% disagreement is 99.2% one checker relation and one missing checker arm. ⚑ Two questions stay open and this slice answers neither. The first is the author's: "Is the argument-list disagreement repaired by relaxing the checker so that an erased argument list is a wildcard, or by making the lowering carry the arguments into the IR?" `LCore` is type-erased, so the second option may be unreachable at the constructor sites. The second question is the refuse-or-carry ruling already standing in [[records/author-calls]], which this slice leaves untouched.
+- evidence: `lib/lowering/upper/closconv.chiral:362`, `:1098`, `lib/lowering/upper/lower.chiral:116-123`, `:385-397`, `lib/lowering/mach/emit-core.chiral:178`, `:200`
+- checked:  2026-09-03
+- element:  UNASSIGNED
