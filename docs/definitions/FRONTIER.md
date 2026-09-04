@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 5c12a898c547c21e9cff04fa8464509a3bb5d16abcf06dd6aebdc83e1fa7a555 -->
+<!-- FRONTIER-SOURCES-SHA256: aba8573189ab403b0fb8b4596492b1fbeab95c2a9f1d56219670217fc2d29fa7 -->
 <!-- sources: 159 files -->
 
 ## Decided recently
@@ -114,11 +114,11 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 465cb3d — E186 SPEC audit: M1 reddens R3 too, and R4 is implied by R2 and R3
+- 2026-09-04 af69b60 — C1C2 SPEC: the change plan was run off-tree before it was written
 - 2026-09-04 0507ef6 — E186 SPEC: the ruling is concrete, and ctor-honest? is built here
 - 2026-09-04 f15e688 — C1C2 example re-audit: the four blocking changes hold, verdict PASS
 - 2026-09-04 82c71a3 — E186 passes the example gate: drafted -> reviewed
 - 2026-09-04 ba6d29c — E186 pre-run: the capture constructor's fields are already the concrete side
 - 2026-09-04 5283af1 — three manas citations the growing files left behind
 - 2026-09-04 b08d94f — prelude, protocol and module: sixteen citations across nine docs
-- 2026-09-04 e135b59 — the typing kernel and the reader: twelve citations, one line to three hundred out
-- 2026-09-04 a889536 — C1C2 pre-run: relate the two style representations and state the round trip
