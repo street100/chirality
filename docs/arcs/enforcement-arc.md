@@ -19,9 +19,9 @@ design, so each worktree carries its own copy and nothing there reaches a second
 reader or a second session. An element fact anyone else needs lives here.
 
 The arc's subject is enforcement: a claim the compiler makes about its own work,
-carried as a value, with evidence, and refused when it does not hold. E184 and
-E185 are minted for it, and four older catalog rows belong to it: E16, E17, E18
-and E70.
+carried as a value, with evidence, and refused when it does not hold. E184,
+E185, E186 and E187 are minted for it, and four older catalog rows belong to it:
+E16, E17, E18 and E70.
 
 `.planning/` stays the working detail (change plans, decision tables, SPECs).
 This is the part that survives a fresh clone.
@@ -240,6 +240,51 @@ type does not lower) are **never produced by a real compile**.
 
 | E185 | lowering | design | **How the `$apply` dispatcher's erased domains are spelled at the lowering type level.** The level is settled by [[decisions/decision-erased-word-level]]: the erased-word type lives strictly at the lowering type level, `Core` gains no word spelling, and the kernel's `conv` relation is left alone. The spelling is open, and the prior art splits (`.planning/RESEARCH-EN15-prior-art.md` §6): a quantified type variable with the concrete types on the constructor (Pottier and Gauthier, TAL's abstract `α`, TALx86's `∀α:T4`), against a coarse word type of the lower language related by subtyping (Java's `Object`, the JVM verifier's `oneWord`, MLton's `RepType`). `term->ntalty` already maps `(t-var i)` to `(nt-word)` at `lib/lowering/compile-front.chiral:70`, which is an observation and not a decision. Touches `apply-ty` (`lib/lowering/upper/closconv.chiral:1081-1083`), its call site (`lib/lowering/upper/closconv-driver.chiral:175`) and the peel, all compiler source, so the full BUILD RULE applies with the fixpoint verified. **Pipeline: yes.** Closing it unblocks the arc's requirement 2, `ck-prog` on the shipping path. It leaves EN-17, the `$kI_J` capture constructor's field types, which is a separate author call. Minted 2026-09-04; full text in `docs/arcs/enforcement-arc.md`. | ←E16, ←E18 |
 
+### E186
+
+| E186 | **The `$k<i>_<j>` capture constructor's field types: concrete, or the erased word** | Not built. Minted 2026-09-04 by E185's SPEC run, from [[records/enforcement-arc]] EN-17, and the author call EN-17 holds is what this element carries. [[decisions/decision-erased-word-level]] settles where the erased-word type lives and reaches the `$apply` dispatcher's domains only; the capture constructor's fields are a second instance and the prior art answers them the other way. `.planning/RESEARCH-EN15-prior-art.md` §7: Pottier and Gauthier's `succ : Arrow int int` carries concrete field types beside concrete arrow indices, Minamide, Morrisett and Harper hide a heterogeneous environment behind `∃` with the fields concrete inside the pack, and Huang and Yallop's label-context entry keeps the captures at their source types. The structural reason the two instances differ: a capture constructor, spelled by `ctor-name` (`lib/lowering/upper/closconv.chiral:1099`), is applied at exactly one site, its own definition site, so nothing forces its field types to merge, while the shared dispatcher's argument position is constrained by every member of the family at once. ⚑ **E185 does not decide this and does not wait on it.** E185 states the dispatcher's parameter types as the erased word, which makes `$apply7`'s field check in `ck-con` (`lib/lowering/tal/check.chiral:183-196`) pass on the parameter side while the constructor's declared fields stay concrete, so the four dispatchers go green with this question still open. What stays open is whether the fields themselves erase. **The author call comes first** and the pipeline follows it, which is why the element is minted rather than scheduled. ⚑ Nothing here is a miscompile today, for EN-15's reason: every one of these values is one word at runtime and the emitted code is correct. | `OURS`; ←E185, ←E18 |
+
+| E186 | lowering | design | **The `$k<i>_<j>` capture constructor's field types: concrete, or the erased word.** EN-17 turned from an author call into an element by E185's SPEC run. The 2026-09-04 ruling settles the dispatcher's domains and does not reach the capture constructor, and `.planning/RESEARCH-EN15-prior-art.md` §7 finds both published answers keeping constructor fields CONCRETE. The structural reason: a capture constructor (`ctor-name`, `lib/lowering/upper/closconv.chiral:1099`) is applied at one site, so nothing forces its fields to merge, while the dispatcher's argument position is constrained by the whole family. E185 goes green without this: stating the dispatcher's parameters as the erased word makes `$apply7`'s `ck-con` field check pass on the parameter side with the fields left concrete. **The author call comes first.** Minted 2026-09-04; full text in `docs/arcs/enforcement-arc.md`. | ←E185, ←E18 |
+
+#### Why it is separate from E185
+
+One ruling covering both instances would prejudge the second. The dispatcher's
+argument position is constrained by every member of its family at once, so it is
+the varying side and the erased word is the honest spelling. A capture
+constructor is applied at one site only, so it is the concrete side, and every
+system in `.planning/RESEARCH-EN15-prior-art.md` §7 keeps it concrete. The
+measured `$apply7` rejection is the opposite arrangement to that reading, which
+is exactly why the question is open rather than settled by analogy.
+
+#### What it does not block
+
+E185. Stating a dispatcher's parameter types as the erased word makes the
+parameter side of `ck-con`'s field check pass, because `tal-ty=?`
+(`lib/lowering/tal/check.chiral:68-70`) has the erased word matching everything.
+The constructor's declared fields are untouched by E185 and stay concrete. So the
+four dispatchers accept with EN-17 still open, and what EN-17 blocks is the
+question of whether the fields are honest, not whether the dispatchers are.
+
+### E187
+
+| E187 | **`closconv` states the lowering-level type of every name it invents** | Not built. Minted 2026-09-04 by E185's SPEC run, and it is the generalization E185's channel makes cheap. `closconv` invents three name families and not one of them has a source type: `$clo<i>` (`lib/lowering/upper/closconv.chiral:1097`), `$apply<i>` (`:1098`) and `$k<i>_<j>` (`:1099`). They exist because the pass made them, and the pass is the only thing in the tree that knows the erasure it performed. E185 builds the stated-parameter channel from `closconv-sig` to the bridge and populates it for `$apply<i>` alone; this element extends it to the other two and writes the pass's translation down, so a reader meets ⟦·⟧ stated rather than reconstructed from `shape-eq` (`:335-356`) and `cod-key-eq` (`:365-380`). It also retires E185's residue: `apply-ty` (`:1081-1083`) still spells the dispatcher's domains from one family member, read after E185 for the codomain and the erased vector only, and an annotation nothing reads still drifts. The constructor half is gated on E186's ruling, and the `$clo<i>` half runs through a second path the `NDef` channel does not reach, `field-tys->n` and `datas->n` (`lib/lowering/compile-front.chiral:216-240`). ⚑ **Measured 2026-09-04:** after E185 lands, 1,820 lines of live rewriting in `lib/lowering/upper/` still say nothing at the lowering type level (`closconv` 1332, `closconv-driver` 256, `specialize-singleton` 232), and the three modules there that do speak tal are off the live path or have no caller. All compiler source inside the blob, so the full BUILD RULE applies: `build-new → test → promote` with the fixpoint verified and the Step-0 precondition checked first. **Needs the full pipeline.** | `OURS`; ←E185, ←E186 |
+
+| E187 | lowering | design | **`closconv` states the lowering-level type of every name it invents.** Three invented name families with no source type: `$clo<i>`, `$apply<i>` and `$k<i>_<j>` (`lib/lowering/upper/closconv.chiral:1097-1099`). E185 builds the stated-parameter channel and populates it for `$apply<i>`; this extends it to the other two and writes ⟦·⟧ down instead of leaving it to be reconstructed from `shape-eq` and `cod-key-eq`. It retires E185's residue, the `Core` domains `apply-ty` still spells from one family member. The constructor half waits on E186; the `$clo<i>` half runs through `field-tys->n` / `datas->n`, a path the `NDef` channel does not reach. After E185, 1,820 lines of live rewriting in `lib/lowering/upper/` still state nothing at the lowering type level. Compiler source, full BUILD RULE. **Pipeline: yes.** Minted 2026-09-04; full text in `docs/arcs/enforcement-arc.md`. | ←E185, ←E186 |
+
+#### Why it is separate from E185, given that E185's SPEC picks the stated form
+
+E185's SPEC resolves the spelling fork to the lowering-level statement, which is
+the mechanism this element generalizes, so the two partly merge and the cut is
+stated rather than assumed. **E185 builds the channel and populates it for one
+name.** That is one function, one call site, one probe figure, and it is what
+requirement 2 waits on. **E187 populates the channel for the other two names and
+states the translation.** The `$clo<i>` half is not the same work: a data
+declaration reaches the bridge through `field-tys->n` and `datas->n`
+(`lib/lowering/compile-front.chiral:216-240`), which the `NDef` channel does not
+touch, and the constructor half waits on E186's ruling. Folding all of it into
+E185 would put an unanswered author call inside the element that unblocks
+requirement 2.
+
 ## The typed-assembly floor: built, and adopted at one point only
 
 [[goals/enforcement]] states the gap in its own State list: the typed-assembly
@@ -276,9 +321,10 @@ import closure of `prog/compiler.prog`, which is 50 modules.
 ## Numbering
 
 E184 was the **first element minted for this arc** and **E185** is the second,
-minted 2026-09-04. The highest previously minted element was **E183**. Lane A
-mints in **E184–E189**, Lane B in **E190–E195**
-(`docs/decisions/decision-lane-split.md`). `E186` through `E189` remain in Lane A's
+minted 2026-09-04. **E186 and E187** are the third and fourth, minted 2026-09-04
+by E185's SPEC run, which is the stage that mints. The highest previously minted
+element was **E183**. Lane A mints in **E184–E189**, Lane B in **E190–E195**
+(`docs/decisions/decision-lane-split.md`). `E188` and `E189` remain in Lane A's
 band, and it is shared with [[arcs/diagnostics-arc]].
 A new element's row lands in `docs/examples/INDEX.md` **and here** in the same
 change: those are the only two tracked places, and therefore the only collision

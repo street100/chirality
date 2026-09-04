@@ -190,4 +190,14 @@ EN-08 and reverted, and every claim is per-TFn.
 - measured: A CORRECTION, and the prior art splits the two instances. `.planning/RESEARCH-EN15-prior-art.md` §7: both published answers keep constructor fields CONCRETE. Pottier and Gauthier's `succ : Arrow int int` carries concrete field types beside concrete arrow indices, and the dispatcher's branch recovers the indices from the GADT equation; Minamide, Morrisett and Harper's typed closure conversion hides a heterogeneous environment behind `∃` with the fields concrete inside the pack, and Huang and Yallop's label-context entry keeps the captures at their source types. The reason the two differ is structural: a capture constructor (`ctor-name`, `lib/lowering/upper/closconv.chiral:1099`, spelling `$k<i>_<j>`) is applied at exactly one site, its own definition site, so nothing forces its field types to merge with another constructor's, while the shared dispatcher's argument position is constrained by every member of the family at once. Under that shape the constructor is the concrete side and the dispatcher the varying side, which is the OPPOSITE arrangement to the measured `$apply7`: that one reddens through `ck-con`'s field check (`lib/lowering/tal/check.chiral:183-196`) instead of through `ck-args` (`lib/lowering/tal/check.chiral:148-156`). So whether the two instances are one defect or two is unsettled, and the E185 spelling ruling may or may not reach the fields. ⚑ Nothing here is a miscompile today, for the same reason EN-15 gives: every one of these values is one word at runtime and the emitted code is correct. What is wrong is the type the IR carries, and `ck-prog` cannot be wired to refuse on the shipping path while either instance stands.
 - evidence: `.planning/RESEARCH-EN15-prior-art.md` §7, `lib/lowering/upper/closconv.chiral:1099`, `lib/lowering/tal/check.chiral:183-196`, `:148-156`, `docs/decisions/decision-erased-word-level.md`, [[records/author-calls]]
 - checked:  2026-09-04
-- element:  UNASSIGNED
+- element:  E186 (minted 2026-09-04 by E185's SPEC run; the author call stands and the element carries the pipeline after it)
+
+⚑ **E185 no longer waits on this row, measured against the SPEC's disposition
+2026-09-04.** `docs/elements/specs/E185-type-preserving-upper-SPEC.md` states the
+dispatcher's parameter types at the lowering type level as the erased word.
+`tal-ty=?` (`lib/lowering/tal/check.chiral:68-70`) has the erased word matching
+everything, so `$apply7`'s field check in `ck-con` passes on the parameter side
+while the constructor's declared fields stay concrete, which is the arrangement
+research §7 finds in the prior art. So the four dispatchers accept with this row
+open. What the row still blocks is whether the constructor's fields are honest,
+which is E186.
