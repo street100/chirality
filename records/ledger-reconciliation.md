@@ -175,3 +175,42 @@ as the fifteen, and the evidence for each is already written down two sections u
 tree while reading `status: audited`. Both are artifacts frozen at authoring time
 that no mechanism updates on landing. The catalog now has one; the SPEC tier does
 not.
+
+## The last three, and AB reaches 0, 2026-09-04
+
+`c528cf9`, `e9fa0d2` and `c126136`. **Check AB is 0.** The rest of the line is
+unmoved: `G(70) R(131)`, and W, X, Y, Z, J, N, I and AA all at zero.
+
+⚑ **The section above reported these three as corrected. They were not.** The
+measurements were taken and written down; no cell was edited. The lint kept
+firing on all three for exactly that reason, and this is the pass that made the
+edits. One measurement in that section is also wrong on its own terms: it says
+`diag.chiral` carries **22** `Reason` arms. `Reason` has **ten**, at
+`lib/typing/diag.chiral:121`; 36 is `Judg`'s count, at `:99`. The claim that the
+sum is closed was right.
+
+Same direction as the fifteen: the catalog was the stale cell in all three and
+the ledger was wrong in none.
+
+| E# | the catalog claimed | live source says |
+|---|---|---|
+| E121 | `no fcntl crossing (grep clean)` | `(extern fcntl (=> I64 I64 I64 I64))` at `lib/ports/fd.port:36` commented `E121:`; crossing row at `crossing-wraps.chiral:45` over `nb-sys-fcntl-t` at `sys.chiral:208`; syscall 72 in `target-linux.manifest`; `fd-cloexec?` at `term.chiral:188` |
+| E157 | `the reason is a string` | `Reason` is ten evidence-bearing arms at `diag.chiral:121`; `LoadR` at `loader.chiral:60` and `CkR` at `kernel.chiral:411` both hold `(why Reason)`; `kernel.chiral:636`, the site this cell named, raises `(r-usage (subj-lam-binder) q (last-qty u))` |
+| E182 | `Not built.` | `r-arity` is `Reason`'s tenth arm at `diag.chiral:141`, `Judg` is 36 arms at `:99`, and **the last column of the same row already carried the whole BUILT record**, five commits and the measured refusals. AB reads only column three, so a row can contradict itself and still be half green |
+
+### What this pass left as a finding rather than an edit
+
+**E121 is BUILT and NOT ENFORCED, and the gate it was minted to feed does not
+run either.** `tools/test/samples/e121_fcntl.prog` holds both legs, (a) the
+`F_SETFD` then `F_GETFD` round trip and (b) the conclusive cloexec readback the
+E110 spec asked for, and **no phase dispatches it**: `e121` and `e110` are
+grep-clean across every `tools/test/*.sh`. The crossing landed, and the evidence
+sitting beside it asserts nothing. Recorded in the cell and here rather than
+fixed, because wiring a phase is a change to `tools/`. It joins E106's four
+ungated refusals as the second instance of the same shape in this file.
+
+**E157 and E182 were promoted to ENFORCED and their gates were checked first**,
+Phase 13 (`tools/test/diag.sh`, `run-tests.sh:216`) and Phase 24
+(`tools/test/arity.sh`, `run-tests.sh:345`). E121 was not, on the same rule.
+`tools/test/registration.sh` names seven scripts outside the dispatch table; a
+gate that does not run does not enforce.
