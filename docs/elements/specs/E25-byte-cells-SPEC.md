@@ -30,6 +30,7 @@ updated: 2026-08-01
   **edge 3 / E41** (outside E9's fragment — the same gate as E22's cursor;
   annotated in the example §5). Codecs, realloc/growth, arena reclamation →
   the example's omissions, homed below.
+- 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 ## 2. Baseline (what already exists)
 
@@ -81,6 +82,7 @@ resolve from the fragment limits, the built ABI, or named homes.
   builder-backed `bcat` (the audited let-chain binding the erased `n` once).
   Bindings for `bnew`/`bput`/`bfreeze` route to the existing floor ops.
 - **Size:** ~S.
+- 2026-09-04: pre-migration scaffold/ path.
 
 ### Step 2 — the gate tests
 - **Target:** `tests/test_memory.py` or `test_string_utils.py` (behavior) +

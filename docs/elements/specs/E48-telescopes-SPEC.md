@@ -102,6 +102,7 @@ a named re-entry condition. Frontmatter stays `draft`.
   parameterized `PoolR` — same runtime rep, same linear discipline, same
   bound-verification at the crossing.
 - **Size:** ~S.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 5. Conformance gate
 
@@ -123,6 +124,7 @@ a named re-entry condition. Frontmatter stays `draft`.
 - **Done when:** a value-indexed record written with field dependence checks and
   runs identically to today's parameter workaround, and a lying field index is a
   declaration-time rejection.
+- 2026-09-04: cut Python oracle, no live successor.
 
 ## 6. Residue & links
 

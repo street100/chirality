@@ -106,6 +106,7 @@ Frontmatter stays `draft`. Sequencing: Tier 1 depends on E41 (audited); Tier 2
   and the negatives — reading a `(Ptr r t)` after its cap is consumed, a
   double-free, and a cross-region read each **fail to type-check**.
 - **Size:** ~S.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 5. Conformance gate
 

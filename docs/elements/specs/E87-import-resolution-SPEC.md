@@ -104,6 +104,7 @@ updated: 2026-08-07
   dependency order (prelude before ports before term before scriba modules),
   byte-identical output.
 - **Size:** S (~30 lines)
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 5. Conformance gate
 
@@ -122,6 +123,7 @@ updated: 2026-08-07
 - **Done when:** `bin/scriba` compiles scriba through the native resolver
   (no shell in the hot path), blob matches shell resolver byte-for-byte,
   B1 produces zero "unknown name" errors from the resolved blob.
+- 2026-09-04: pre-migration scaffold/ path.
 
 ## 6. Residue & links
 

@@ -47,6 +47,7 @@ forms and which no surface production can write; the sole authored field `cat` i
 - No closure-conversion provenance. The lifted-lambda bound
   (`compile-emit.chiral:283-290`) is not in scope; under D1 it also stops
   mattering, because sense (a) never reads object code.
+- 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 ---
 
@@ -73,7 +74,7 @@ shipped defect) and the live code below, each line re-read for this spec.
 | `kinds-taken` / `sig-kind-taken` (redeclaration by NAME) | `loader.chiral:186-193` | ships |
 | `handle-kind` + `KErr` + `k-msg` (load-time shape/axis/redecl refusals) | `parse.chiral:1046-1068`, `:1110-1149` | ships |
 | toplevel head dispatch | `parse.chiral:1166-1189` | ships |
-| the two providers that concatenate modules | `bin/chirality-resolve.sh:47-97` (`chirality_blob`), `lib/module/resolve.chiral:318-324` (`concat-mods`) | ship. **NOT pinned against each other today** — `scaffold/tests/test_resolve_chirality.py` runs only the shell provider (substring + ordering checks) and then type-checks `resolve.chiral` with the *Python* checker; it never runs `scaffold/build/resolve` and never compares two blobs. The differential is built by §5 G0, in bash. See §6.4 finding 8 |
+| the two providers that concatenate modules | `bin/chirality-resolve.sh:47-97` (`chirality_blob`), `lib/module/resolve.chiral:318-324` (`concat-mods`) | ship. **NOT pinned against each other today** — `scaffold/tests/test_resolve_chirality.py` runs only the shell provider (substring + ordering checks) and then type-checks `resolve.chiral` with the *Python* checker; it never runs `scaffold/build/resolve` and never compares two blobs. The differential is built by §5 G0, in bash. See §6.4 finding 8. 2026-09-04: cut Python oracle, no live successor. |
 | E160 gate | `scaffold/tests/test-module-kind.sh`, driven from `run-native.sh:190-199` (Phase 8) | ships, **29** assertions — measured by RUNNING it, not by counting call sites. Counting `refuse`/`accepts`/`mod_runs`/`mod_refuses` gives 26 and is wrong: there is a **fifth** helper, `appended` (`:277-293`), with 3 calls (`:297-299`). It builds `chirality_blob <root>` and appends the program, which is the shape R9's and G12's cases need. The ledger row's "29-case" figure is correct; an earlier draft of this spec called it stale |
 
 **Retiring, not surviving** (§4 Step 7): `kind-offender` /
@@ -221,6 +222,7 @@ Steps 1–2 are prerequisite: without them a `Sheet` for `ports` would be charge
 `(kind ports C upper)` at `:10781` is the last `kind` form; `345` `def` forms
 follow it — re-verified for this spec). **Compiler sources change from Step 1
 onward, so the full build ceremony in §5 applies to every step.**
+2026-09-04: pre-migration scaffold/ path.
 
 ### Step 1 — the declared extent (E160's shipped defect, fixed at the root)
 - **Targets:**
@@ -508,6 +510,7 @@ its branch instead of only saying "not 42":
 ```
 
 ### Tests to add — `scaffold/tests/test-module-kind.sh` (native, zero Python)
+2026-09-04: pre-migration scaffold/ path.
 
 Every case was written so that **mutating the corresponding check in the compiler
 source and rebuilding makes it FAIL**. The mutant is named per case. `channel` is
@@ -595,6 +598,7 @@ cp /tmp/blob.new scaffold/build/blob.chiral                        # BOTH, toget
 ./scaffold/build/B1 < scaffold/build/blob.chiral > /tmp/V && cmp /tmp/V bin/chirality-bin
 bash tools/test/run-tests.sh
 ```
+2026-09-04: pre-migration scaffold/ path.
 
 Then **rebuild the native test-runner** (`scaffold/build/test-runner`) against the
 promoted B1 — a runner built by the previous compiler is the stale-artifact trap
@@ -739,6 +743,7 @@ home.
    `chirality_blob <dir> <root>` — and on a three-module fixture (including a
    subdirectory module) their output is byte-identical. §5 G0 makes that the
    real check, in bash, zero Python.
+2026-09-04: pre-migration scaffold/ path.
 
 9. **Build-at-close plus "unclosed at EOF is legal" is fail-open.** D3c's rule is
    right, but combined with Step 4's build-at-close it would leave every

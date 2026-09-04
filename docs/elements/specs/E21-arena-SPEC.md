@@ -95,6 +95,7 @@ defer to named homes (E22/E48/E80). Change plan fully unblocked.
   heap-cell pokes through E20's `nb-blit`; keep `self._heap` bookkeeping
   identical. Depends on E20 Steps 2–3 being built.
 - **Size:** ~S.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ### Step 4 — the 3-way bump differential
 - **Target:** `tests/test_memory.py` (or `test_native.py`).

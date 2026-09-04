@@ -158,6 +158,7 @@ updated: 2026-08-13
 - **Tests to add:** no new test files — `scriba-test-b1.chiral` test2 and test3 ARE the gate. The existing `chirality test-native` suite must still pass. The Python `test_collections.py` suite must still pass (verifies alist-get/alist-put semantics unchanged).
 - **Green line:** test2 and test3 go from FAIL (no emitted label) → PASS (label emitted, binary runs). `chirality test` baseline passes (698 tests). B1 fixpoint holds (B1==B2 byte-identical).
 - **Done when:** `alist-get` and `alist-put` are callable from `compile-main` through B1; test2 and test3 pass; zero inlined `alist-get`/`alist-put` copies remain in any scriba file (verified by `grep -r "Inlined to avoid.*alist-get" scaffold/lib/scriba/` returning empty); B1 self-compile fixpoint holds.
+- 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 ### 5a. RESIDUAL conformance gate
 

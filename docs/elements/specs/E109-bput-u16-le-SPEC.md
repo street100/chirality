@@ -147,6 +147,7 @@ lands with commit (2).
 - **Done when:** the sample compiles under B1 and exits 42, AND the core-blob
   cmp is byte-identical (or, if it differs, the reblobbed B1 reproduces itself
   `B2==B1`).
+- 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 ## 6. Residue & links
 

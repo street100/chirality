@@ -184,6 +184,7 @@ No NEEDS-AUTHOR blockers.
 - **Done when:** a first-order effectful function compiles native and matches
   its reference observables, and an undeclared-crossing body is a floor
   rejection. (The closure-heavy effectful fragment rides E69 being landed.)
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 6. Residue & links
 

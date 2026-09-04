@@ -104,6 +104,7 @@ to named homes. Frontmatter stays `draft`.
 - **Change:** the arith-expression entailment has a direct unit test; the region
   layer is differential vs the runtime-checked arena; the fallback path stays green.
 - **Size:** ~S.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 5. Conformance gate
 

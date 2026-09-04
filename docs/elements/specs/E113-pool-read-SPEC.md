@@ -78,6 +78,7 @@ updated: 2026-08-12
   the **optional** `_poolread` Python-oracle host function in `impl_ports.py`, so
   the advisory python floor matches native. No change to `Pool`'s representation,
   no new syscall, no new TAL, no changes to `pool-write`/`pool-create`/`pool-close`.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 3. Decisions
 
@@ -119,6 +120,7 @@ the native leg is now available as a follow-on rather than author-gated).
   python floor is advisory (`docs/testing-floors.md`); build only to keep the advisory
   floor legible.
 - **Size:** ~S. Commit: `E113: _poolread advisory-oracle binding (matches native pr-r + halt)`.
+- 2026-09-04: cut Python oracle, no live successor.
 
 ### Step 4 — round-trip sample (native, authoritative)
 - **Target:** E120 already ships `tools/test/samples/e120_pool_roundtrip.prog`

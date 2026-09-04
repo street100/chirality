@@ -97,6 +97,7 @@ follow-on element; §4 is unblocked for the fd-close deliverable.
   Also add/keep the negative checks: dropping a cap without closing and
   double-close stay **checker-rejected** (linear quantity-1).
 - **Size:** ~M.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ### Step 3 — `pool-close`→`nb-sys-munmap` (DEFERRED; do NOT do in this run)
 - **Dependency:** the native `Pool` representation (fat-cap carrying base+length),
@@ -136,6 +137,7 @@ follow-on element; §4 is unblocked for the fd-close deliverable.
 - **Done when:** an executor B1-compiles the E106 `sv-drain` sample and observes
   native **exit 42**, the two negative cases stay checker-rejected, and the
   reblob-cmp gate is satisfied (byte-identical or promoted).
+- 2026-09-04: pre-migration scaffold/ path.
 
 ## 6. Residue & links
 

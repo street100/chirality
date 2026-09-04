@@ -104,6 +104,7 @@ wrappers (its SPEC carries the dated note).
   linkage-internal referent, NOT in `ports.chiral` and NOT in the surface extern
   set, so the frozen-port-set check never sees it as callable app-side (Decision 1).
 - **Size:** S
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ### Step 2 — the binding table + C-bridge wrappers (`lib/sys-linkage.chiral`)
 - **Target:** NEW `lib/lowering/tal/sys-linkage.chiral` — `SysBinding`, `sys-bindings`,
@@ -147,6 +148,7 @@ wrappers (its SPEC carries the dated note).
   `IMPLS` is not a load error). During the window, an unbound effectful extern
   still falls to `IMPLS`; when lane A closes the bank, flip unbound→**link error**.
 - **Size:** M
+- 2026-09-04: cut Python oracle, no live successor.
 
 ### Step 5 — demote `impl_ports` for the bound crossings
 - **Target:** `scaffold/chirality/impl_ports.py` (`_poolwrite`/`_fdclose`/... referents).

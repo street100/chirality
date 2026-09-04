@@ -302,6 +302,7 @@ No blocking NEEDS-AUTHOR → frontmatter stays `status: draft`.
   the ambient Console writers are reified (Step 7 commit; Clock/Timer/Env
   ride E32), tests 1-6 pass, and the 281 baseline is still green with zero
   new kernel term forms.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 6. Residue & links
 

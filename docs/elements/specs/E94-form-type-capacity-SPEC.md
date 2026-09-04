@@ -58,6 +58,7 @@ updated: 2026-08-08
   - `scaffold/chirality/surface.py` — `Elab.load_file`, `Elab.load_str` (Python
     baseline with no form-count limits, dict-based Sig, 1 GB thread stack).
     Serves as the design reference for the chirality port's intended behavior.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 - **The current limit mechanism:** `run-forms` (parse.chiral:841–845) recurses
   linearly over the `(List Sexp)` — each form is one recursive call. Similarly,
@@ -162,6 +163,7 @@ design goes to NEEDS-AUTHOR and is surfaced, never answered on the author's beha
     exceeds the unbounded-recursion ceiling but passes with batching.
   - Extend `scaffold/tests/test_compile_run_chirality.py` with a scriba+linkage
     end-to-end gate.
+- 2026-09-04: cut Python oracle, no live successor.
 
 - **Green line:** 708 → ≥ 711 test functions (708 existing + 3 new batch-loader
   tests). All existing tests continue to pass (no regression).

@@ -39,6 +39,7 @@ updated: 2026-08-02
   (deferred within E69 — §3 #4); typed-environment/existential conversion (the
   modular alternative — deferred to E57 staging, §3 #2); the conversion as a
   certificate-emitting producer (E52).
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 2. Baseline (what already exists)
 

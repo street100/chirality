@@ -81,7 +81,7 @@ updated: 2026-08-11
 | 2 | **The porttype-consuming native close** (so a real `Sock`/`Session` cap drains to native exit-42 end-to-end) | **RESOLVED — out of scope, follow-on** (orchestrator ruling, D-followon) | `sock-close`/`fd-close`/`env-close` do NOT appear in `crossing-wraps.chiral`, so B1 emits no entry for an `=>` main that calls them (`no emitted label for entry compile-main`, reproduced). Landing an `nb-*`-backed porttype close is a **separate follow-on crossing element**, shaped like E105 (surface extern + `crossing-wraps` pair over an already-registered syscall). Recorded in §6 as the honest completion path; NOT implemented or absorbed here. |
 | 3 | Is the polymorphic `LVec A` worth landing now? (example §6.a) | **DEFERRED** — to the `List`/`Map` native-lowering work | Blocked on the same higher-order polymorphic-container lowering that keeps `collections.chiral` checker-only during bootstrap. The `1`-fielded polymorphic form type-checks identically (verified) and is a drop-in for checker-only contexts, but `mux` is real code that must run → monomorphic `SockVec` per decision 1. Land `LVec` when List-lowering lands. |
 | 4 | O(1) swap-remove vs the O(n) splice? (example §6.b) | **RESOLVED** — O(n) splice | The shown `sv-detach-at` splice is O(n) but linearity-clean; the Vec last-into-hole trick needs an array-backed linear vector (a bigger build) and is an **optimization, not a correctness need** (example §5 "Deliberately omitted"). Fine at the expected N for T9. |
-| 5 | Home: new `lib/capability/lincoll.chiral` vs `TUI/vt-core/session-pool.chiral`? | **RESOLVED** — `lib/capability/lincoll.chiral` | It is a language-feature floor (the linear-fielded cousin of `collections.chiral`), not a TUI-specific consumer; `mux`/T9 imports it. Placing it beside `collections.chiral` keeps it in the compilable `scaffold/lib` floor and reusable beyond the TUI. |
+| 5 | Home: new `lib/capability/lincoll.chiral` vs `TUI/vt-core/session-pool.chiral`? | **RESOLVED** — `lib/capability/lincoll.chiral` | It is a language-feature floor (the linear-fielded cousin of `collections.chiral`), not a TUI-specific consumer; `mux`/T9 imports it. Placing it beside `collections.chiral` keeps it in the compilable `scaffold/lib` floor and reusable beyond the TUI. 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory. |
 | 6 | Does a keyed linear map (`Session`-id → cap) become its own element? (example §6.c) | **DEFERRED** — proposed separate future element | The AVL `Map`'s `k K`/`v V` fields are unrestricted; a linear keyed map needs the same `1`-field retype as `SockVec` plus balancing over linear values. Out of E106's bag-not-map scope; note in §6 for the catalog wave. |
 
 No NEEDS-AUTHOR blockers remain — decisions 1 and 2 are the orchestrator's dispositioned rulings; 3–6 are decidable and decided above with citations. `status: specced`, §4–§6 fully specified.
@@ -127,6 +127,7 @@ No NEEDS-AUTHOR blockers remain — decisions 1 and 2 are the orchestrator's dis
     `linear field declared non-1: hd`.
 - **Checkable state:** each blob run through B1 produces exactly its verdict/message.
 - **Size:** ~M
+- 2026-09-04: pre-migration scaffold/ path.
 
 ### Step 4 — the native drain-and-close CONTROL run (exit 42, lowering crossing)
 - **Target:** NEW `prog/samples/e106_drain_control.prog` — an `=>` main that
@@ -149,6 +150,7 @@ No NEEDS-AUTHOR blockers remain — decisions 1 and 2 are the orchestrator's dis
 - **Checkable state:** `pytest scaffold/tests/test_e106_linear_cap.py` green; suite
   count rises.
 - **Size:** ~M
+- 2026-09-04: cut Python oracle, no live successor.
 
 ## 5. Conformance gate
 

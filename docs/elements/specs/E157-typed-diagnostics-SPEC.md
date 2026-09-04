@@ -24,6 +24,7 @@ updated: 2026-08-23
   `kernel.chiral` builds a reason **carrying the evidence it already had in scope**;
   and `dg-msg : (-> Reason Str)` reproduces today's message text at the one place
   the text is finally needed.
+- 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 - **Non-goals:**
   - Width-aware or structured formatting — **E158** (`Doc`). This element's exit
@@ -192,6 +193,7 @@ before any work is deferred to it, and a spec run's write surface cannot mint it
   break with the type — and **`test-module-kind.sh` is `run-native.sh` Phase 8**,
   i.e. the suite goes red until this lands. The draft named neither.
 - **Size:** S.
+- 2026-09-04: pre-migration scaffold/ path.
 
 ### Step 6 — the gate
 - **Target:** `tools/test/samples/e157_diag.chiral` + a `run-native.sh` Phase 10

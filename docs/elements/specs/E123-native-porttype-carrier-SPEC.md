@@ -102,6 +102,7 @@ No NEEDS-AUTHOR items; `status: draft` (unblocked).
   native run; run the self-hosting reblob-`cmp` since `compile-front.chiral` is
   blob-resident.
 - **Size:** ~S.
+- 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 **Commit count: 2** (Step 1 carrier map; Step 3 sample+gate), **+1 conditional**
 (Step 2 mirror only if a live `UT` porttype flow surfaces — not expected).

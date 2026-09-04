@@ -151,6 +151,7 @@ Steps 1–3 (the crossing + assembly) are landable now. Steps 4–5 (surface wra
 - **Target:** `scaffold/tests/test_process_externs.py` (the process-extern test
   home; `poll2` has NO test today — these are its first).
 - **Size:** M
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 5. Conformance gate
 

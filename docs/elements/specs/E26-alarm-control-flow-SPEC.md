@@ -101,6 +101,7 @@ ordering, E39 step 7) is explicitly not E26's and sits in Non-goals.
   captured linear port ⇒ the closure binds at `q=1`; port-free ⇒ ω) — this is
   existing linearity judgment doing the work, no new kernel form.
 - **Size:** ~M.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ### Step 3 — row subtraction at the handling site
 - **Target:** `scaffold/chirality/effects.py` (+ the row plumbing in `row.py` if a
@@ -119,6 +120,7 @@ ordering, E39 step 7) is explicitly not E26's and sits in Non-goals.
   the check is the existing one). A captured port with no table entry is an
   elaboration error (not a silent leak).
 - **Size:** ~M.
+- 2026-09-04: cut Python oracle, no live successor.
 
 ### Step 5 — host-boundary repositioning
 - **Target:** `scaffold/chirality/alarms.py` + call sites in the RT.
@@ -128,6 +130,7 @@ ordering, E39 step 7) is explicitly not E26's and sits in Non-goals.
   `PortError` remains solely at the bridge's inbound face (C-tier, non-goal).
   Docstring the boundary so the crutch cannot silently regrow.
 - **Size:** ~S.
+- 2026-09-04: cut Python oracle, no live successor.
 
 ## 5. Conformance gate
 

@@ -136,6 +136,7 @@ updated: 2026-08-22
     `mach-x64.chiral` (`x-fin`), `crossing-wraps.chiral`, `ports.chiral`, and
     `scaffold/chirality/native.py` `_entry_stub` (:778) in byte-for-byte lockstep.
     `target-linux.chiral` is **not** touched — see the Phase B note in §4.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 3. Decisions
 
@@ -190,6 +191,7 @@ signal** (the image is zero-padded); only behaviour is.
 - **Buildable now:** yes. Nothing effectful in this step; it type-checks and
   runs standalone against `prelude` alone.
 - **Size:** ~S (≈45 lines)
+- 2026-09-04: pre-migration scaffold/ path.
 
 #### Step A2 — the acquisition
 - **Target:** `scaffold/lib/argv.chiral` — local externs + `argv-raw`, `slurp`
@@ -209,6 +211,7 @@ signal** (the image is zero-padded); only behaviour is.
   one `close` site.
 - **Buildable now:** yes — all three crossings are already wired (§2).
 - **Size:** ~S (≈35 lines)
+- 2026-09-04: pre-migration scaffold/ path.
 
 #### Step A3 — the driver sample and the behavioural gate
 - **Target:** `scaffold/samples/argv_echo.chiral` (new),
@@ -226,6 +229,7 @@ signal** (the image is zero-padded); only behaviour is.
   is the harness here and compiles nothing.
 - **Buildable now:** yes.
 - **Size:** ~M (≈120 lines, mostly the test table)
+- 2026-09-04: cut Python oracle, no live successor.
 
 ---
 
@@ -285,6 +289,7 @@ signal** (the image is zero-padded); only behaviour is.
   prevent.
 - **Buildable now:** no — must land in the *same commit* as B1.
 - **Size:** ~M
+- 2026-09-04: cut Python oracle, no live successor.
 
 #### Step B3 — swap the substrate under the unchanged surface
 - **Target:** `lib/ports/process.port` (the process registry, `:13-18`, with
@@ -396,6 +401,7 @@ implementation is caught by the vector that claims it.
   `test_argv_slurp_over_ceiling_reports_trunc`, `test_pkt_to_argv_floors_agree`,
   `test_argv_composes_with_ports_and_term` (Phase A); `test_argv_without_procfs`
   (Phase B).
+- 2026-09-04: cut Python oracle, no live successor.
 
 - **Green line:** 709 test functions / 77 files → **≥ 717 / 78** after Phase A
   (8 new functions in 1 new file); **≥ 718** after Phase B.

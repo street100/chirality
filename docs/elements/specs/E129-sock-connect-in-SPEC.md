@@ -126,6 +126,7 @@ No NEEDS-AUTHOR remains: #2 is RESOLVED (empty Str, errno deferred). The change 
 - **Change:** add the §5 named tests; extend the golden crossing-set fixtures
   with `nb-sock-connect-in` per the crossing checklist.
 - **Size:** M
+- 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 ## 5. Conformance gate
 

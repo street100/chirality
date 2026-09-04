@@ -123,6 +123,7 @@ here; the only author input owed is *when* to build it.
   (the report shape already used for target/port-set rows). This is the "profile
   hands caps to `main`" contract made structural.
 - **Size:** ~M.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ### Step 4 — mint at the entry + profile-scoped ambient exclusion
 - **Target:** the entry/runtime (`impl_ports` bindings + the `main` invocation
@@ -144,6 +145,7 @@ here; the only author input owed is *when* to build it.
   reads an env key under a profile that `(grants Console Env)`; plus the negative
   tests (§5).
 - **Size:** ~S.
+- 2026-09-04: cut Python oracle, no live successor.
 
 ## 5. Conformance gate
 

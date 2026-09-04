@@ -125,6 +125,7 @@ which functions need it — build the fragment for exactly them.
 - **Done when:** a merge-sort-shaped recursion on a size-reducing helper is
   classified total, a lying size signature is rejected, and every prior totality
   verdict is unchanged.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 6. Residue & links
 

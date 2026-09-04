@@ -133,6 +133,7 @@ E53 + determinism debts), tracked in §6 — not decisions.
 - **Done when:** the manifest + prose ship and agree, every breaker is pinned to
   a real obligation, and the running-climb integration test is scoped + gated
   (Step 4) with its gates named.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 6. Residue & links
 

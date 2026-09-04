@@ -113,6 +113,7 @@ former NEEDS-AUTHOR) is now RESOLVED by E121 — the conclusive gate is in §5.
   flag is a valid `openat` flag → master & slave still open). (c) optional cheap
   unit check: the compiled `nb-sys-open-rw` const is `524546` (`0x80102`).
 - **Size:** ~S.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 5. Conformance gate
 

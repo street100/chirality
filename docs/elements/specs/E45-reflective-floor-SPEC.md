@@ -128,6 +128,7 @@ default (narrowing deferred), #3 is a clean rung-2 deferral. Frontmatter `draft`
 - **Done when:** the `SigB→Frozen` linear consume typechecks, reusing the
   consumed builder is a linearity rejection, and a writeback is unexpressible —
   the floor is structural at the type level, with the Python `Sig` untouched.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 6. Residue & links
 

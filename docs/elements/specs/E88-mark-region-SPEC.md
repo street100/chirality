@@ -83,6 +83,7 @@ Every open question from the example §6, dispositioned.
   having too many nested `case`/`let` expressions for B1's compilation limit;
   if so, split helpers out.
 - **Size:** iterative fix loop, ~S.
+- 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 ### Step 3 — (deferred) command-loop wiring
 - **Target:** `prog/scriba/command-loop.chiral`,

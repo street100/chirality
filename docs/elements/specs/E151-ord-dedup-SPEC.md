@@ -18,6 +18,7 @@ updated: 2026-08-22
 > spec run** against a throwaway copy of `scaffold/lib/` in a scratchpad —
 > nothing under `scaffold/`, `TUI/`, or `examples/` was touched. Each step below
 > carries its measured verdict. Where a step was *not* measured it says so.
+2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 ## 1. Deliverable
 
@@ -142,6 +143,7 @@ chirality_blob scaffold/lib sys-linkage compile-front compile-back compile-emit 
 ./scaffold/build/B1 < /tmp/blob.chiral > /tmp/B1p && chmod +x /tmp/B1p
 cmp /tmp/B1p bin/chirality-bin        # must be byte-identical BEFORE any edit
 ```
+2026-09-04: pre-migration scaffold/ path.
 
 **Measured 2026-08-22: identical (1 020 280 bytes).** `scaffold/build/B1` is
 *current* with respect to `scaffold/lib/`; it is `scaffold/build/blob.chiral` that
@@ -275,10 +277,10 @@ are measured, not predicted.**
 | **0** | — | — | `B1(regenerated blob) == bin/chirality-bin` ✅ measured identical |
 | **1** | regenerated compiler blob → `C1` | `printf '(def compile-main (-> I64 I64) (lam (n) 42))' \| C1` → ELF exits **42**; `C1 < g151 blob` → ELF exits **0** (**load-bearing — see the teeth note**) | `C1 < blob > C2`; `cmp C1 C2` **identical** ✅; **and** `C1 < <pre-change blob> == bin/chirality-bin` byte-identical ✅ (the cross-compiler differential: the new compiler re-emits the old compiler exactly) |
 | **2** | same as Step 1 (both converted) | same | ✅ measured: `C1 == C2`, 1 024 376 bytes (+4 096 vs B1 — the whole shelf links in) |
-| **3** | `{ chirality_blob scaffold/lib ty-cmp; echo '(def compile-main (-> I64 I64) (lam (n) 42))'; } \| B1` | ELF exits **42** ✅ | — (`ty-cmp` is not in the compiler blob) |
-| **4** | `{ chirality_blob scaffold/lib sig-driver; echo '(def compile-main …42…)'; } \| B1` | ELF exits **42** ✅ | — (`row-infer` is not in the compiler blob) |
-| **5** | `{ chirality_blob scaffold/lib string-utils; cat tools/test/samples/e151_string_stdlib.prog; } \| B1` | ELF exits **0** ✅ (pre-change baseline confirmed) | — |
-| **6** | `manas/chatter/turn`, `manas/chatter/divide`, `manas/chatter/orchestrate`, `manas/core/flow-test`, `manas/chatter/turn-test`, and `{ chirality_blob scaffold/lib prelude manas/core/types manas/core/match manas/core/assemble manas/core/stop; cat tools/test/samples/e136_core.prog; }` | `turn`/`divide`/`orchestrate` → **42**; `flow-test` → **0**; `turn-test` → **0**; `e136_core` → **0** — all four ✅ measured **identical before and after** the conversion (audit re-ran the full three-import variant, not just the one-import probe) | — |
+| **3** | `{ chirality_blob scaffold/lib ty-cmp; echo '(def compile-main (-> I64 I64) (lam (n) 42))'; } \| B1` | ELF exits **42** ✅ | — (`ty-cmp` is not in the compiler blob). 2026-09-04: pre-migration scaffold/ path. |
+| **4** | `{ chirality_blob scaffold/lib sig-driver; echo '(def compile-main …42…)'; } \| B1` | ELF exits **42** ✅ | — (`row-infer` is not in the compiler blob). 2026-09-04: pre-migration scaffold/ path. |
+| **5** | `{ chirality_blob scaffold/lib string-utils; cat tools/test/samples/e151_string_stdlib.prog; } \| B1` | ELF exits **0** ✅ (pre-change baseline confirmed) | —. 2026-09-04: pre-migration scaffold/ path. |
+| **6** | `manas/chatter/turn`, `manas/chatter/divide`, `manas/chatter/orchestrate`, `manas/core/flow-test`, `manas/chatter/turn-test`, and `{ chirality_blob scaffold/lib prelude manas/core/types manas/core/match manas/core/assemble manas/core/stop; cat tools/test/samples/e136_core.prog; }` | `turn`/`divide`/`orchestrate` → **42**; `flow-test` → **0**; `turn-test` → **0**; `e136_core` → **0** — all four ✅ measured **identical before and after** the conversion (audit re-ran the full three-import variant, not just the one-import probe) | —. 2026-09-04: pre-migration scaffold/ path. |
 | **all** | — | `bash tools/test/run-tests.sh` (GATING); `python3 tools/ledger-lint/ledger-lint.py` clean | — |
 
 - **Gate teeth — measured by mutation, not asserted.** Each claim below was
@@ -321,6 +323,7 @@ are measured, not predicted.**
   earlier "≥ 709 … carrying ~6 more cases" read as if it did); `run-native.sh` green;
   `python3 tools/ledger-lint/ledger-lint.py` clean **with the ratchet at**
   `str-cmp: 1`, `data Ord: 2`, `str-contains: 1`, `str-lower: 1`, `str-trim: 1`.
+- 2026-09-04: pre-migration scaffold/ path.
 
 - **Done when:** `^\(def str-cmp `, `^\(def str-contains `, `^\(def str-lower `,
   `^\(def str-trim ` each match exactly one file (`string-utils.chiral`),

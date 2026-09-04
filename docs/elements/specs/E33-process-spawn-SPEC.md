@@ -145,6 +145,7 @@ v1). §4–§6 are specified against decs 1/2/3/4/5.
 - **Change:** the four §5 gate tests (below). Assert the interior-NUL case
   issues **zero** syscalls (spy/patch `os.fork`/`socket.socketpair`).
 - **Size:** ~M
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 5. Conformance gate
 

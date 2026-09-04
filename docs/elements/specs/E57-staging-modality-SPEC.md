@@ -67,6 +67,7 @@ updated: 2026-08-07
   reimplementing anything), surface parsing for `(static A)`/`(dynamic A)`,
   lowering rules for the new forms, and autospec reading the stage annotations
   on TAL function parameters instead of guessing from `const` instructions.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 3. Decisions
 
@@ -92,6 +93,7 @@ updated: 2026-08-07
   (different stages). Type-of: `VStatic(ty)` → `Type(level_of(ty))`,
   `VNext(ty)` → `Type(level_of(ty))`.
 - **Size:** ~M (60–80 lines)
+- 2026-09-04: cut Python oracle, no live successor.
 
 ### Step 2 — Surface: parse `(static A)` and `(dynamic A)`
 - **Target:** `scaffold/chirality/surface.py` — extend `Elab.apply()` or add a new
@@ -103,6 +105,7 @@ updated: 2026-08-07
   flows into type annotations (the codomain position of `(declare ...)` or
   the domain position of `(-> ...)`).
 - **Size:** ~S (20–30 lines)
+- 2026-09-04: cut Python oracle, no live successor.
 
 ### Step 3 — Lowering: erase `Static` parameters, lower `Next` normally
 - **Target:** `scaffold/chirality/lower.py` — `ttype()`, `lower_all()`, `sysface()`
@@ -123,6 +126,7 @@ updated: 2026-08-07
     to a TAL param. With `Static`, the Pi carries the stage annotation on its
     domain type, and the lowerer must inspect it.
 - **Size:** ~M (40–60 lines)
+- 2026-09-04: cut Python oracle, no live successor.
 
 ### Step 4 — Optimizer: autospec reads stage annotations
 - **Target:** `scaffold/chirality/optimize.py` — `autospec()`, `specialize()`,
@@ -144,6 +148,7 @@ updated: 2026-08-07
     nullary-constructor bindings. The caller (autospec) just has better
     information about which bindings to propose.
 - **Size:** ~S (30–40 lines)
+- 2026-09-04: cut Python oracle, no live successor.
 
 ### Step 5 — Tests
 - **Target:** `scaffold/tests/test_staging.py` (new) + updates to
@@ -158,6 +163,7 @@ updated: 2026-08-07
     no `const` instruction appears
   - Run full test suite: 673 → ≥ 680 green
 - **Size:** ~M (80–100 lines)
+- 2026-09-04: cut Python oracle, no live successor.
 
 ## 5. Conformance gate
 
@@ -185,6 +191,7 @@ updated: 2026-08-07
   all new tests pass, and an autospec run on a lowered function with
   `(static I64)` parameters produces a specialized residual with the
   static argument folded.
+- 2026-09-04: cut Python oracle, no live successor.
 
 ## 6. Residue & links
 

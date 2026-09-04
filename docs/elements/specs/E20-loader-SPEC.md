@@ -110,6 +110,7 @@ to its named home (E21/E26). The change plan is fully unblocked.
   each fault a host raise (decision #2). The bindings are the C-floor referents;
   the *types* live in Step 1.
 - **Size:** ~S.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ### Step 4 — rewire `compile()`
 - **Target:** `scaffold/chirality/native.py` — `compile` (`:472–486`).
@@ -118,6 +119,7 @@ to its named home (E21/E26). The change plan is fully unblocked.
   `code_end`), keeping `last_code`/`last_offsets`/`self._maps`/`self._heap`
   bookkeeping identical. The CFUNCTYPE loop (`:487–495`) is untouched (E23).
 - **Size:** ~M.
+- 2026-09-04: cut Python oracle, no live successor.
 
 ## 5. Conformance gate
 
