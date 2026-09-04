@@ -192,19 +192,29 @@ audited: 2026-08-31
   same commit.
 
 - **Live code this composes with (already built — compose, do not rebuild):**
-  - **`lib/protocol/render.chiral`, 492 L**, `(import "prelude/prelude")` +
-    `(import "ports/ports")`, **no `(module …)` line**. `(data Rendering ()` at
-    `:6-14`; `r-face` at `:14`. `diff-node` `:223` and `render-to-ansi` `:424`
+  - **`lib/protocol/render.chiral`, 492 L when this baseline was measured**,
+    `(import "prelude/prelude")` + `(import "ports/ports")`, **no `(module …)`
+    line**.
+    ⚑ *2026-09-04, citation repair: the file is 790 L now — E174 and E175 have
+    both shipped into it. Every coordinate below was re-read in the live file.
+    The bare literals quoted in the parentheses are the pre-E174 code and are
+    the measurement as taken, not a description of the tree: E174 replaced each
+    with the named constant it introduced, so the 2 reads `rnd-header-gutter`,
+    the 16 reads `rnd-table-cell` and the tree indent reads `rnd-tree-indent`
+    today. The arm counts are likewise the baseline's; both cases carry nine
+    arms now.*
+    `(data Rendering ()` at `:7-32`; `r-face` at `:15`. `diff-node` `:263` and
+    `render-to-ansi` `:718`
     are the **two exhaustive 8-arm cases** — the entire measured cost of a ninth
-    constructor inside this file. `ansi-reset = ESC[0m` `:282`;
-    `ansi-goto row col = ESC[<row>;<col>H` `:302-305`. Emitters:
-    `rnd-emit-headers` `:351` (advance `(+ c (+ (str-len h) 2))` at `:360`),
-    `rnd-emit-one-row` `:362` (advance `(+ col 16)` at `:368`), `render-table`
-    `:378`, **`render-section` `:383-392`**, `render-tree` `:394` (child at
-    `(+ col 2)`, `:401`), `render-lines` `:409-415` (steps `row`, **holds
-    `col`**), `render-to-ansi-full` `:480`, `render-to-ansi-delta` `:488`.
-    `rd-in-view` `:420` clips **by row only** and never by column, and the
-    comment at `:426-429` states that containers do not clip and do not
+    constructor inside this file. `ansi-reset = ESC[0m` `:329`;
+    `ansi-goto row col = ESC[<row>;<col>H` `:398-401`. Emitters:
+    `rnd-emit-headers` `:614` (advance `(+ c (+ (str-len h) 2))` at `:623`),
+    `rnd-emit-one-row` `:625` (advance `(+ col 16)` at `:631`), `render-table`
+    `:641`, **`render-section` `:646-667`**, `render-tree` `:669` (child at
+    `(+ col 2)`, `:676`), `render-lines` `:684-690` (steps `row`, **holds
+    `col`**), `render-to-ansi-full` `:778`, `render-to-ansi-delta` `:786`.
+    `rd-in-view` `:714` clips **by row only** and never by column, and the
+    comment at `:720-723` states that containers do not clip and do not
     `ansi-goto`.
   - **`lib/protocol/utf8.chiral`** — `(import "prelude/prelude")` **only**, so
     `protocol/render` → `protocol/utf8` is acyclic. `cont?` `:31/:38`,
@@ -444,9 +454,12 @@ satisfied: every follow-on named below has a minted row.
     `rnd-tree-indent 2` · `rnd-section-indent 2` · `rnd-table-cell 16` ·
     `rnd-header-gutter 2` · `rnd-collapsed-mark " [+]"` · `rnd-hole-mark "<?>"` ·
     `rnd-stream-open "["` · `rnd-stream-close " — live stream]"`.
-  - **`rnd-emit-headers` (`:360`), `rnd-emit-one-row` (`:368`), `render-tree`
-    (`:401`), `render-section` (`:387`, `:392`), the `r-stream` arm (`:457`,
-    `:459`) and the `r-hole` arm (`:466`) are edited to READ those names.**
+  - **Six emitters are edited to READ those names** — `rnd-emit-headers`
+    `:614-623`, `rnd-emit-one-row` `:625-631`, `render-tree` `:669-676`,
+    `render-section` `:646-667` (the mark at `:662`, the body indent at `:667`),
+    the `r-stream` arm at `:755` and `:757`, and the `r-hole` arm at `:764`.
+    **(Live lines, re-read 2026-09-04; the plan was drafted against `:360`,
+    `:368`, `:401`, `:387`/`:392`, `:457`/`:459` and `:466`.)**
     Hoisting the constant without repointing its emitter buys nothing — the two
     readers are the deliverable.
   - `str-cols : (-> Str I64)` = `cp-count (decode-utf8 (str->bytes s)) 0`, with
@@ -475,14 +488,15 @@ satisfied: every follow-on named below has a minted row.
     children abut (decision 4).
   - `render-row : (=> (List Rendering) (Pair I64 I64) I64 I64 I64 I64 Unit)` —
     a container, so **no `ansi-goto` of its own and no `rd-in-view` clip**,
-    following `render-lines`/`render-tree` (`:426-429` says why): recurse on the
+    following `render-lines`/`render-tree` (`:720-723` says why): recurse on the
     head at `col`, then on the tail at `(+ col (rnd-cols child))`.
   - `render-to-ansi`'s ninth arm, `((r-row children) (render-row children dims
-    row col drow dcol))`, beside the `r-lines`/`r-tree` arms at `:431-434`.
-  - `diff-node`'s ninth arm (`:223`), structural, in the shape of the existing
-    `r-lines` arm; `list-all-diff-same` (`:191`) needs no change.
+    row col drow dcol))`, beside the `r-lines`/`r-tree` arms at `:725-728`.
+  - `diff-node`'s ninth arm (`:263-323`; the `r-row` arm landed at `:303-309`),
+    structural, in the shape of the existing `r-lines` arm;
+    `list-all-diff-same` (`:231`) needs no change.
   - **`render-section` gets `(put (ansi-goto row col))` as its first `put`** —
-    one `let`, wrapping `:385` (decision 1 / FLAG A).
+    one `let`, wrapping `:660` (decision 1 / FLAG A).
   - `r-row`'s header comment states decision 5 in as many words: a stacked child
     is **allowed** and makes the row occupy several rows.
 - **Verify:** `./bin/chirality check lib/protocol/render.chiral` → OK.
