@@ -5,11 +5,46 @@ title: A typed Style value, a closed Role sum, and a theme a root supplies
 kind: primitive+law
 reference_class: OURS/EXTERNAL
 ours_source: lib/protocol/render.chiral, lib/prelude/doc.chiral
-status: drafted
+status: superseded
+superseded_by: C1C2
 updated: 2026-09-04
 ---
 
 # C01: A typed Style value, a closed Role sum, and a theme a root supplies
+
+> **SUPERSEDED 2026-09-04 by C1C2**, [[C1C2-style-round-trip]]. This example
+> proposes building a typed style value and a total ordered fold for
+> `display-calculus/C1` and `C2`. Both are on disk and reached, in a tier this
+> example does not cite. `lib/protocol/grid.chiral` carries `Color` as a closed
+> three-arm sum (`:6`), `Attrs` as six named `Bool`s over it (`:12`), `Sgr` as a
+> boundary sum parsed once and cased totally downstream (`:35`), `parse-sgr`
+> (`:201`), `apply-one` under a comment reading *"total case over Sgr"* with
+> *"no default clause"* (`:215`), and `fold-sgr`, the ordered fold (`:232`). The one
+> named-unknown arm this example designs as `rl-unknown` in its own §5 is
+> `sgr-other` (`grid.chiral:40`), shipped, with the opposite disposition:
+> ignored where `rl-unknown` paints. `docs/elements/ledger.md:177` records the
+> lot as E111, `built`. [[banks/render]] shards D and H are the same finding
+> stated as a refraction.
+>
+> So C1 and C2 name a **conversion** where this example reads a construction: the tree
+> carries the concept twice, facing opposite directions, and nothing relates
+> them. C1C2 states the law the two halves can already satisfy, that
+> `face-sgr` emits and `parse-sgr`/`fold-sgr` read, and measures where the round
+> trip loses.
+>
+> **What C1C2 does not take over.** This example also covers
+> `display-calculus/C4` (the inherit sum) and `C5` (a root-supplied theme), and
+> `grid.chiral` supersedes neither: `Color`'s `color-default` is a default
+> rather than an inherit, and no theme value exists anywhere
+> ([[banks/render]] shard V, `absent`). Those two rows return to `not started`
+> in [[arcs/display-calculus-arc]] and carry no pre-run.
+>
+> The body below is unchanged. §2's measurements were true when taken and are
+> still true: the seven-tag/eleven-face coverage gap, the `(Env, State)` product
+> of 1, and the `doc.chiral:13-16` layering rule are the reason C1C2 scopes to
+> two rows instead of four.
+
+---
 
 > One worked example, produced by the `worked-example` pre-run. Conventional
 > approach vs the chirality idea, ending in a clear-cut snippet to copy and modify.

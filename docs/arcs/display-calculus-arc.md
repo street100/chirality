@@ -112,11 +112,11 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
 
 | row | what | state | element |
 |---|---|---|---|
-| `display-calculus/C1` | typed property values, invalid states unconstructible. `primitive` | pre-run done, `23f6830`, `docs/examples/C01-typed-style-value.md`. Not yet audited | `unminted` |
-| `display-calculus/C2` | the cascade as a total ordered fold. `law` | pre-run done, covered by C1's example (`23f6830`). Not yet audited | `unminted` |
+| `display-calculus/C1` | typed property values, invalid states unconstructible. `primitive` | **built, in one tier.** `lib/protocol/grid.chiral:12` is `Attrs`, six named `Bool`s over the closed `Color` sum at `:6`; E111, `built`. The C01 pre-run is `superseded`. The residue is a conversion to the emit side's `Face`, taken over by `docs/examples/C1C2-style-round-trip.md` (pre-run 2026-09-04) | `unminted` |
+| `display-calculus/C2` | the cascade as a total ordered fold. `law` | **the fold is built and the law is unstated.** `apply-one` (`grid.chiral:215`) cases totally over `Sgr` and `fold-sgr` (`:232`) folds it in order. No gate feeds `face-sgr`'s bytes into it. The C01 pre-run is `superseded`; `docs/examples/C1C2-style-round-trip.md` (pre-run 2026-09-04) states the round-trip law | `unminted` |
 | `display-calculus/C3` | attachment by a pure function over the node, no selectors and no specificity. `law` | not started; C1's example measures that this witness needs no conflict rule, without settling C3 itself | `unminted` |
-| `display-calculus/C4` | the inherit sum wrapping every property value. `primitive` | pre-run done, covered by C1's example (`23f6830`). Not yet audited | `unminted` |
-| `display-calculus/C5` | design tokens as typed bindings, and a theme as a root-supplied value. Cashes the `Mode.faces` shard `render.chiral:42-43` already carries and `command-loop.chiral:96` discards. `primitive` | pre-run done, covered by C1's example (`23f6830`). Not yet audited | `unminted` |
+| `display-calculus/C4` | the inherit sum wrapping every property value. `primitive` | not started. Covered by the C01 pre-run, which went `superseded` 2026-09-04; C1C2 does not take this row over. `Color`'s `color-default` (`grid.chiral:6`) is a default and `Face`'s `-1` is a sentinel, so neither is the constructor this row asks for | `unminted` |
+| `display-calculus/C5` | design tokens as typed bindings, and a theme as a root-supplied value. Cashes the `Mode.faces` shard `render.chiral:42-43` already carries and `command-loop.chiral:96` discards. `primitive` | not started. Covered by the C01 pre-run, which went `superseded` 2026-09-04; C1C2 does not take this row over. [[banks/render]] shard V measures the theme value as `absent` | `unminted` |
 | `display-calculus/C6` | the value expression algebra with the unit in the type. `primitive` | not started | `unminted` |
 | `display-calculus/C7` | the environment as a declared ADT. `primitive` | not started | `unminted` |
 | `display-calculus/C8` | state-driven style over a finite state sum. `law` | not started | `unminted` |
