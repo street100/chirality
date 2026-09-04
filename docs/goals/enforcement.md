@@ -29,9 +29,20 @@ actually run.
 
 **And chirality's own tooling is chirality's.** A tool that judges chirality
 source from outside the language is a floor this project does not own. Measured
-2026-09-04: **12,450 lines outside the language against 390 native.** The gate
+2026-09-04: **12,450 lines outside the language against 782 native.** The gate
 tier is 6,915 lines of shell, `prose-lint` is 223 with awk doing the matching,
-seven Python tools are 4,786, and the CLI and resolver are 526. Within the gate
+seven Python tools are 4,786, and the CLI and resolver are 526. The 782 is every
+`.prog` file: `prose-lint` 256, `paren-audit` 244, `test-runner` 134, `resolve`
+104, `wield` 44. The 390 this row carried until 2026-09-04 counted only the
+first and the third.
+
+⚑ **The larger native figure does not improve the position.** Reach measures it
+and the ratio does not. `test-runner` and `prose-lint` are the two entries
+anything reaches, and they are exactly the 390. The other 392 lines sit at
+SEEDED: `grep -rIn` over `tools/` and `bin/` returns no invocation of
+`paren-audit.prog`, `resolve.prog` or `wield.prog` from any shell file, gate
+phase or CLI subcommand. Half the native tooling is written and unreached, which
+is the same defect this goal names below, turned on the tools. Within the gate
 tier alone, **352 calls to `grep`, `sed`, `sort` and `awk` have a built
 chirality composition** recorded in `docs/arcs/text-tools-arc.md`, and
 `lib/text/matcher.chiral` has one consumer. The capability exists and the

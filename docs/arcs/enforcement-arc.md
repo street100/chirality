@@ -72,11 +72,22 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    `lib/lowering/upper/optimize.chiral` has zero importers and is in no blob, so
    `optimize` and `specialize` return a `Checked` result nothing ever forms.
 5. **Chirality's own tooling is chirality's.** Measured 2026-09-04: **12,450
-   lines outside the language** against **390 native** (`prog/test-runner.prog`
-   134, `prog/prose-lint.prog` 256). The surface is the gate tier at 6,915 lines
-   of shell, `tools/prose-lint/prose-lint.sh` at 223 with awk doing the
-   matching, seven Python tools at 4,786, and `bin/chirality` plus
-   `bin/chirality-resolve.sh` at 526. Within the gate tier alone there are
+   lines outside the language** against **782 native**, every `.prog` file:
+   `prose-lint` 256, `paren-audit` 244, `test-runner` 134, `resolve` 104,
+   `wield` 44. The **390** this requirement carried until 2026-09-04 was
+   `test-runner` plus `prose-lint` and omitted the other three.
+
+   ⚑ **782 is the worse reading. 390 was the flattering one.** The two entries
+   the 390 counted are the two entries anything reaches. `grep -rIn` over
+   `tools/` and `bin/` finds no shell file, gate phase or CLI subcommand
+   invoking `paren-audit.prog`, `resolve.prog` or `wield.prog`, so **392 of the
+   782 sits at SEEDED**. TC-03 and TC-04 in [[records/tooling-classification]]
+   carry the two whose replaced predecessor is still live beside them.
+
+   The surface is the gate tier at 6,915 lines of shell,
+   `tools/prose-lint/prose-lint.sh` at 223 with awk doing the matching, seven
+   Python tools at 4,786, and `bin/chirality` plus `bin/chirality-resolve.sh` at
+   526. Within the gate tier alone there are
    **352 calls to `grep`, `sed`, `sort` and `awk` where
    `docs/arcs/text-tools-arc.md` records a built chirality composition**, and
    `lib/text/matcher.chiral` has one consumer.
@@ -105,8 +116,9 @@ stop short of it as written, so no element owns it.
 
 **2026-09-04: requirement 5 is first priority by author direction**, and
 `.planning/HANDOFF-2026-09-04.md` carries the full queue. The gate tier is
-6,915 lines of shell against a 134-line native floor, with 352 calls where a
-built chirality composition exists. Every tool that moves is one fewer the OS
+6,915 lines of shell against `prog/test-runner.prog` at 134 lines, the only
+native part of that floor, with 352 word occurrences of the four classic tools
+across it. Every tool that moves is one fewer the OS
 rung has to trust.
 
 **Requirement 3 is closed and requirement 2 is the live one.** 2026-09-03 ran
