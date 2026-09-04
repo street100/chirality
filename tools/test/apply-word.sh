@@ -265,12 +265,12 @@ if mutate M3 "lowering/upper/closconv-driver.chiral" '(cons (nt-data (clo-name i
 fi
 
 # M4: peel-def's stated branch overwrites the codomain with the erased word.
-if mutate M4 "lowering/compile-front.chiral" '(ndef name sptys ret (ty-erased ty 0) snb)' '(ndef name sptys (nt-word) (ty-erased ty 0) snb)'; then
+if mutate M4 "lowering/compile-front.chiral" '(ndef name sptys ret (ty-erased ty 0) nb)' '(ndef name sptys (nt-word) (ty-erased ty 0) nb)'; then
   run_mutant M4 "ok ok ok bad ok ok" "the ground codomain erased with the domains"
 fi
 
 # M5: peel-def's stated branch drops the def instead of peeling it.  R1's falsifier.
-if mutate M5 "lowering/compile-front.chiral" '((some nb) (some (ndef name sptys ret (ty-erased ty 0) snb)))' '((some nb) (none))'; then
+if mutate M5 "lowering/compile-front.chiral" '(some (ndef name sptys ret (ty-erased ty 0) nb))' '(none)'; then
   run_mutant M5 "bad absent absent absent absent bad" "the dispatcher never reaches the NDef list"
 fi
 
