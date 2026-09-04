@@ -14,10 +14,14 @@ updated: 2026-09-04
 - build-state authority: [[status-ledger]]
 - lane resume file: `records/lane-a-record.md`
 
-TRACKED, and that is the point. The catalog and ledger live in `.planning/`,
-which `.gitignore:12` excludes by design, so each worktree carries its own
-divergent copy. `.planning/` keeps the working detail: change plans, decision
-tables, SPEC bodies. This is the part that survives a fresh clone.
+TRACKED, and that is the point. ⚑ **The reason stated here until 2026-09-04 was
+false twice over:** the catalog and the ledger are tracked at `docs/elements/`,
+and `.gitignore:12` is `.claude/*`, so `.planning/` was never the exclusion this
+paragraph named. `.planning/` has been tracked since 2026-09-01
+(`docs/decisions/decision-ai-tier.md`). What survives is the real reason, which
+`docs/arcs/README.md` states: two sessions minted `E173` independently and
+nothing caught it until a merge put both INDEX rows side by side. `.planning/`
+keeps the working detail: change plans, decision tables, SPEC bodies.
 
 ## Why this arc exists
 

@@ -222,9 +222,14 @@ arc's live blocker.**
    is right to refuse them. Two candidates, and
    `.planning/RESEARCH-EN15-prior-art.md` §6 measures the prior art as split: a
    quantified type variable with the concrete types on the constructor, against a
-   coarse word type of the lower language related by subtyping. ⚑ Nothing here is
-   a miscompile. Every one of these values is one word at runtime and the emitted
-   code is correct; the defect is the type the IR carries.
+   coarse word type of the lower language related by subtyping. ⚑ **Nothing in the erased-domain
+   annotation is a miscompile.** Every one of those values is one word at runtime
+   and the emitted code is correct; the defect is the type the IR carries. ⚑ **The
+   scope of that sentence is corrected 2026-09-04 by [[records/enforcement-arc]]
+   EN-20**, which measured a separate defect in the same pass that IS one:
+   `arm-body`'s `(none)` arm at `lib/lowering/upper/closconv.chiral:1057`, commented
+   `unreachable`, emits a literal `0` as a whole function body when `def-ctx`
+   refuses. Reached twice in the blob. E188 owns it.
 2. **The `$kI_J` capture constructor's field types. EN-17, an open author call,
    opened 2026-09-04.** Research §7 finds both published shapes keeping
    constructor fields concrete, and the structural reason is that a capture
