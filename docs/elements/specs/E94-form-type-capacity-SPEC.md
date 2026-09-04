@@ -16,15 +16,15 @@ updated: 2026-08-08
 
 ## 1. Deliverable
 
-- **After this runs:** A new file `scaffold/lib/load-batch.chiral` exists providing
+- **After this runs:** A new file `lib/module/load-batch.chiral` exists providing
   `load-source-batched` — a capacity-token-bounded alternative to `load-source`
   that processes forms in configurable-sized batches rather than one unbounded
-  recursive pass. `scaffold/lib/compile-front.chiral` line 249 is patched to call
+  recursive pass. `lib/lowering/compile-front.chiral` line 249 is patched to call
   `load-source-batched` instead of `load-source`. The scriba blob compiled through
   B1 with all 5 linkage files (`crossing-wraps.chiral`, `sys-check.chiral`,
   `target-linux.chiral`, `sys-tal.chiral`, `sys-linkage.chiral`) appended produces
   a runnable ELF that passes the 5 gate tests in
-  `scaffold/lib/scriba/scriba-test-b1.chiral`.
+  `prog/scriba/scriba-test-b1.prog`.
 
 - **Non-goals:**
   - Does not fix the 2-type-param B1 limitation (render.chiral:21, keymap.chiral:74)
@@ -41,16 +41,16 @@ updated: 2026-08-08
   loader/compiler-front stack.
 
 - **Live code (already built, this change composes with):**
-  - `scaffold/lib/compile-front.chiral` — `compile-front` (line 247–251): the
+  - `lib/lowering/compile-front.chiral` — `compile-front` (line 247–251): the
     front entry calling `load-source src` at line 249, then `bridge-sig` which
     runs closconv + specialize-singletons + peel. Also: `bridge-sig` (235),
     `peel-globals` (169), `term->ncore` (72), `datas->n` (197).
-  - `scaffold/lib/parse.chiral` — `load-source` (line 849–869): three-phase
+  - `lib/surface/parse.chiral` — `load-source` (line 849–869): three-phase
     pipeline (porttypes → data group → rest); `run-forms` (840–845): linear
     recursive form processor; `load-form` (line ~800): dispatches
     def/declare/data/extern/import. Also: `SrcSt`, `StepR`, `base-senv`,
     `collect-porttype`, `collect-data`, `keep-rest`, `load-forms`.
-  - `scaffold/lib/loader.chiral` — `LoadR` (ld-ok / ld-err), `Sig` operations
+  - `lib/module/loader.chiral` — `LoadR` (ld-ok / ld-err), `Sig` operations
     (`sig-add-global`, `sig-add-data`, `sig-add-prim`, `sig-add-atom`,
     `sig-add-linear-data`, `empty-sig`), `load-def`, `load-declare`,
     `load-finish`, `load-extern`, `load-atom`, `load-data`, `load-data-group`,
@@ -67,10 +67,10 @@ updated: 2026-08-08
   functions. The scriba blob (~38 types + linkage) exceeds that depth; the
   compiler's own ~62-type blob passes.
 
-- **True delta:** New file `scaffold/lib/load-batch.chiral` (~120 lines:
+- **True delta:** New file `lib/module/load-batch.chiral` (~120 lines:
   `Cap`, `BatchR`, `load-forms-capped`, `load-source-capped`,
   `load-source-batched`, `load-source-loop`, `sig-merge`, `serialize-forms`).
-  One-line patch in `scaffold/lib/compile-front.chiral`: `load-source src` →
+  One-line patch in `lib/lowering/compile-front.chiral`: `load-source src` →
   `load-source-batched src`. No other files touched.
 
 ## 3. Decisions
@@ -100,8 +100,8 @@ design goes to NEEDS-AUTHOR and is surfaced, never answered on the author's beha
 - **Size:** M (no permanent code change; writes diagnostic findings to a
   `.planning/E94-diagnostic.md` note).
 
-### Step 2 — Create `scaffold/lib/load-batch.chiral` (new file)
-- **Target:** New file `scaffold/lib/load-batch.chiral` — capacity types and
+### Step 2 — Create `lib/module/load-batch.chiral` (new file)
+- **Target:** New file `lib/module/load-batch.chiral` — capacity types and
   capped loader functions.
 - **Change:** Port the example §5 chirality code, fleshing out stubs:
   - `(data Cap () (cap-remaining (steps I64)) (cap-exhausted))` — capacity token
@@ -120,8 +120,8 @@ design goes to NEEDS-AUTHOR and is surfaced, never answered on the author's beha
     simple sexp printer
 - **Size:** L (~120 lines of chirality)
 
-### Step 3 — Patch `scaffold/lib/compile-front.chiral`
-- **Target:** `scaffold/lib/compile-front.chiral` — `compile-front` (line 249)
+### Step 3 — Patch `lib/lowering/compile-front.chiral`
+- **Target:** `lib/lowering/compile-front.chiral` — `compile-front` (line 249)
 - **Change:** Replace `(load-source src)` with `(load-source-batched src)`.
   Add `(import "load-batch")` at the top import block (after line 18).
   No other lines change. Both return `LoadR`, so the `case` arm below (line 250)
@@ -129,14 +129,14 @@ design goes to NEEDS-AUTHOR and is surfaced, never answered on the author's beha
 - **Size:** S (2 lines changed, 1 line added)
 
 ### Step 4 — Tune and verify
-- **Target:** `scaffold/lib/load-batch.chiral` — the cap value in `load-source-batched`
+- **Target:** `lib/module/load-batch.chiral` — the cap value in `load-source-batched`
 - **Change:** Set the per-batch cap to the empirically measured safe value from
   Step 1 (target: scriba+linkage passes), with a 2× safety margin. Document the
   measurement in a comment.
 - **Size:** S (one constant change + comment)
 
 ### Step 5 — Rebuild B1 and run conformance gates
-- **Target:** `scaffold/build/B1` (native compiler binary)
+- **Target:** `bin/chirality-bin` (native compiler binary)
 - **Change:** Rebuild B1 with the patched loader path. Run scriba blob build
   with all 5 linkage files. Run 708 compiler tests. Run self-compile fixpoint.
 - **Size:** S (build + test commands)
@@ -148,7 +148,7 @@ design goes to NEEDS-AUTHOR and is surfaced, never answered on the author's beha
      appended to the scriba blob produces a runnable ELF — no `(lam (x ...) body)`
      parse corruption, no stack overflow, no `LoadR` error.
   2. The resulting scriba ELF passes the 5 gate tests defined in
-     `scaffold/lib/scriba/scriba-test-b1.chiral`: `test1-find`, `test2-alist-get`,
+     `prog/scriba/scriba-test-b1.prog`: `test1-find`, `test2-alist-get`,
      `test3-two-type`, `test4-command-loop`, `test5-full-editor`.
   3. Self-compile fixpoint holds: the B1 built with `load-source-batched`
      compiles its own frontend (parse.chiral + loader.chiral + compile-front.chiral)

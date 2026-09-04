@@ -16,13 +16,13 @@ updated: 2026-08-09
 
 ## 1. Deliverable
 
-- **After this runs:** `scaffold/lib/sexp.chiral` gains four additive enhancements
+- **After this runs:** `lib/surface/sexp.chiral` gains four additive enhancements
   built on E101's position helpers: (1) `data ParenDelta` + `paren-scan` for
   per-function paren balance reporting, (2) `MAX-DEPTH` constant + `read-form-depth`
   depth guard, (3) `data FormPos` + `data AllFR` + `read-all-forms`/`read-all-forms-str`
   form-splitter with byte offsets, (4) `read-atom-start`/`read-string-start`/`scan-str-start`
   for token-start-position-aware error messages.
-  `scaffold/lib/parse.chiral` may optionally use `read-all-forms` in
+  `lib/surface/parse.chiral` may optionally use `read-all-forms` in
   `load-source` but this is not required for conformance.
 - **Non-goals:** Inline paren counting (the `paren-scan` skeleton detects
   `def`/`declare` boundaries but does not count interior parens within function
@@ -47,7 +47,7 @@ updated: 2026-08-09
     last-form context), backward-compat wrappers (`read-form`, `read-list`),
     and top-level reader (`read-all`, `read-all-go`, `read-all-str`).
   - `lib/parse.chiral` (869 lines): surface parser + `load-source` gateway.
-  - `lib/collections.chiral`: provides `reverse` (used by `read-all-forms-go`).
+  - `lib/prelude/list.chiral`: provides `reverse` (used by `read-all-forms-go`).
 - **True delta:** Three additive data types (`ParenDelta`, `FormPos`, `AllFR`),
   1 new constant (`MAX-DEPTH`), ~10 new functions
   (`paren-scan`, `paren-delta-report`, `read-form-depth`, `read-all-forms-go`,
@@ -71,27 +71,27 @@ design goes to NEEDS-AUTHOR and is surfaced, never answered on the author's beha
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — Add data types for paren delta, form-splitter, and depth guard
-- **Target:** `scaffold/lib/sexp.chiral` — after the existing `AllR` definition (line 26), before char helpers (line 28).
+- **Target:** `lib/surface/sexp.chiral` — after the existing `AllR` definition (line 26), before char helpers (line 28).
 - **Change:** Insert `data ParenDelta`, `data FormPos`, `data AllFR`, and the `MAX-DEPTH` constant. These are pure data declarations with no dependencies on rest of file.
 - **Size:** ~S (4 data types + 1 constant, ~25 lines)
 
 ### Step 2 — Add per-function paren delta scanner
-- **Target:** `scaffold/lib/sexp.chiral` — after E101's `read-list` wrapper (line 257), before `read-all-go` (line 259).
+- **Target:** `lib/surface/sexp.chiral` — after E101's `read-list` wrapper (line 257), before `read-all-go` (line 259).
 - **Change:** Insert `paren-scan` and `paren-delta-report` functions as shown in example §5 Enhancement 1. `paren-scan` uses only `Sexp` constructors (`s-list`, `s-sym`, `cons`, `nil`), `str-eq`, `pair`, which are all already available.
 - **Size:** ~M (~50 lines, deeply nested pattern matching)
 
 ### Step 3 — Add max nesting depth guard function
-- **Target:** `scaffold/lib/sexp.chiral` — after paren delta functions, before `read-all-go`.
+- **Target:** `lib/surface/sexp.chiral` — after paren delta functions, before `read-all-go`.
 - **Change:** Insert `read-form-depth` as shown in example §5 Enhancement 2. Depends on `MAX-DEPTH` (Step 1), `read-form*` (E101), `fmt-pos` (E101), `i64->str` (prelude).
 - **Size:** ~S (~10 lines)
 
 ### Step 4 — Add form-splitter (read-all-forms)
-- **Target:** `scaffold/lib/sexp.chiral` — after depth guard, before `read-all-go`.
+- **Target:** `lib/surface/sexp.chiral` — after depth guard, before `read-all-go`.
 - **Change:** Insert `read-all-forms-go`, `read-all-forms`, `read-all-forms-str` as shown in example §5 Enhancement 3. Depends on `FormPos`/`AllFR` (Step 1), `read-form` (existing), `skip-trivia` (existing), `reverse` (collections import already present).
 - **Size:** ~S (~20 lines)
 
 ### Step 5 — Add token-start-position-aware atom and string readers
-- **Target:** `scaffold/lib/sexp.chiral` — after the existing `read-string` (line 192), before `read-form*` (line 197).
+- **Target:** `lib/surface/sexp.chiral` — after the existing `read-string` (line 192), before `read-form*` (line 197).
 - **Change:** Insert `read-atom-start`, `scan-str-start`, `scan-str-escape-start`, `read-string-start` as shown in example §5 Enhancement 4. These stand alone alongside the existing `read-atom`/`read-string` — they do NOT replace them.
 - **Size:** ~M (~35 lines, includes scan-str-start and scan-str-escape-start with start parameter)
 

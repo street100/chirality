@@ -247,8 +247,8 @@ signal** (the image is zero-padded); only behaviour is.
 - **Size:** ~S
 
 #### Step B1 — the stub materializes the packet
-- **Target:** `scaffold/lib/compile-emit.chiral` — `entry-stub-v2`,
-  `entry-stub-len`; `scaffold/lib/mach-x64.chiral` — `x-fin`
+- **Target:** `lib/lowering/compile-emit.chiral` — `entry-stub-v2`,
+  `entry-stub-len`; `lib/lowering/x64/mach.chiral` — `x-fin`
 - **Change:** insert the argv walk **after** the `mprotect` succeeds (the arena
   must be live) and **before** the `xor edi,edi` / `call <entry>`: read
   `argc` at `[rsp]`, walk `argv[i]` at `[rsp+8+8i]` following **each pointer
@@ -287,10 +287,12 @@ signal** (the image is zero-padded); only behaviour is.
 - **Size:** ~M
 
 #### Step B3 — swap the substrate under the unchanged surface
-- **Target:** `scaffold/lib/ports.chiral` (the `; ---- process` block,
-  `:135-146`, with `ArgvR` declared before it — the loaders are single-pass,
-  `ports.chiral:185`); `scaffold/lib/crossing-wraps.chiral`;
-  `scaffold/lib/argv.chiral`
+- **Target:** `lib/ports/process.port` (the process registry, `:13-18`, with
+  `ArgvR` declared before it — the loaders are single-pass);
+  `lib/lowering/tal/crossing-wraps.chiral`; a new `argv` module whose home is
+  unassigned. 2026-09-04: `scaffold/` was cut in the 2026-08-31 migration and
+  the port floor split into nine `.port` registries, so the one-file
+  `ports.chiral` target this step named no longer exists.
 - **Change:** `(extern argv-raw (=> Unit ArgvR))` in `ports.chiral`; a
   `("argv-raw" "nb-argv")` row in `crossing-wraps.chiral`; `nb-argv` in
   `sys-tal.chiral` as a `ti-sys`-free TIFn that `ti-call`s `nb-argv-cell`.

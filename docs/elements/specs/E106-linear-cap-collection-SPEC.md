@@ -17,7 +17,7 @@ updated: 2026-08-11
 
 ## 1. Deliverable
 
-- **After this runs:** a new file `scaffold/lib/lincoll.chiral` exists, a sibling
+- **After this runs:** a new file `lib/capability/lincoll.chiral` exists, a sibling
   to `collections.chiral`, containing a **monomorphic linear cap vector** —
   `(data SockVec () (sv-nil) (sv-cons (1 hd Sock) (1 tl SockVec)))` — whose
   element AND tail fields are declared quantity-`1`, so the whole type registers
@@ -45,30 +45,30 @@ updated: 2026-08-11
 
 - **Conformance-map verdict:** no CONFORMANCE-MAP rows name E106 (it postdates the
   snapshot) — treat as **BUILD**. Stage-1 ground truth (measured through
-  `scaffold/build/B1` in the audited example, re-confirmed here) is the baseline:
+  `bin/chirality-bin` in the audited example, re-confirmed here) is the baseline:
   the checker's linearity machinery already exists and already REJECTS the naive
   approach, which is precisely why a new type is warranted.
 - **Live code this composes with (name, do not respec):**
-  - `scaffold/lib/ports.chiral` — the `porttype` floor: `(porttype Sock)` (:12),
+  - `lib/ports/ports.chiral` — the `porttype` floor: `(porttype Sock)` (:12),
     the `RecvR` result-sum pattern with `1`-fielded arms (:28-31), `sock-recv`
     (:62), `sock-close (=> (1 s Sock) Unit)` (:63). The new type imports this and
     copies the `RecvR` shape for `CountR`/`DetachR`.
-  - `scaffold/lib/kernel.chiral` — `is-linear` (a value is linear iff its type
+  - `lib/typing/kernel.chiral` — `is-linear` (a value is linear iff its type
     constant is a registered `porttype`/`ldatas` entry) and `ctor-field-types`
     (constructor-application gate: `(and (not (=i q 1)) (is-linear …))` →
     `ft-err "linear field <name>"`, the :683-684 str-cat). These enforce the
     discipline the new type relies on — unchanged.
-  - `scaffold/lib/loader.chiral` — `check-dfields`→`linear-bad?` (:208-209): the
+  - `lib/module/loader.chiral` — `check-dfields`→`linear-bad?` (:208-209): the
     DECLARATION gate, `"linear field declared non-1: <name>"`. This is what
     rejects a container ctor that puts a porttype in a non-`1` field.
-  - `scaffold/lib/collections.chiral` — the UNRESTRICTED `List`/`Map` this
+  - `lib/prelude/prelude.chiral` (`List`) and `lib/prelude/map.chiral` (`Map`) — the UNRESTRICTED pair this
     deliberately does NOT reuse and does NOT edit (`length` discards the head).
-  - `scaffold/lib/crossing-wraps.chiral:21` — `(pair "close" "nb-sys-close")`, the
+  - `lib/lowering/tal/crossing-wraps.chiral:21` — `(pair "close" "nb-sys-close")`, the
     raw-fd `close` `=>` crossing that DOES lower to native. This is the only close
     the conformance control run can reach at runtime today (verified exit 42).
-  - `scaffold/lib/prelude.chiral` — imported for `I64`/`Unit`/`Bool`; `List`'s
+  - `lib/prelude/prelude.chiral` — imported for `I64`/`Unit`/`Bool`; `List`'s
     element param is `(type 0)` (the reason a linear atom can't safely ride it).
-- **True delta:** one new file (`scaffold/lib/lincoll.chiral`) + its conformance
+- **True delta:** one new file (`lib/capability/lincoll.chiral`) + its conformance
   samples/test. No edits to `collections.chiral`, `kernel.chiral`, `loader.chiral`,
   or `ports.chiral` — the checker gates already do the work; E106 only supplies a
   type shaped to pass them and ops that preserve linearity.
@@ -81,7 +81,7 @@ updated: 2026-08-11
 | 2 | **The porttype-consuming native close** (so a real `Sock`/`Session` cap drains to native exit-42 end-to-end) | **RESOLVED — out of scope, follow-on** (orchestrator ruling, D-followon) | `sock-close`/`fd-close`/`env-close` do NOT appear in `crossing-wraps.chiral`, so B1 emits no entry for an `=>` main that calls them (`no emitted label for entry compile-main`, reproduced). Landing an `nb-*`-backed porttype close is a **separate follow-on crossing element**, shaped like E105 (surface extern + `crossing-wraps` pair over an already-registered syscall). Recorded in §6 as the honest completion path; NOT implemented or absorbed here. |
 | 3 | Is the polymorphic `LVec A` worth landing now? (example §6.a) | **DEFERRED** — to the `List`/`Map` native-lowering work | Blocked on the same higher-order polymorphic-container lowering that keeps `collections.chiral` checker-only during bootstrap. The `1`-fielded polymorphic form type-checks identically (verified) and is a drop-in for checker-only contexts, but `mux` is real code that must run → monomorphic `SockVec` per decision 1. Land `LVec` when List-lowering lands. |
 | 4 | O(1) swap-remove vs the O(n) splice? (example §6.b) | **RESOLVED** — O(n) splice | The shown `sv-detach-at` splice is O(n) but linearity-clean; the Vec last-into-hole trick needs an array-backed linear vector (a bigger build) and is an **optimization, not a correctness need** (example §5 "Deliberately omitted"). Fine at the expected N for T9. |
-| 5 | Home: new `scaffold/lib/lincoll.chiral` vs `TUI/vt-core/session-pool.chiral`? | **RESOLVED** — `scaffold/lib/lincoll.chiral` | It is a language-feature floor (the linear-fielded cousin of `collections.chiral`), not a TUI-specific consumer; `mux`/T9 imports it. Placing it beside `collections.chiral` keeps it in the compilable `scaffold/lib` floor and reusable beyond the TUI. |
+| 5 | Home: new `lib/capability/lincoll.chiral` vs `TUI/vt-core/session-pool.chiral`? | **RESOLVED** — `lib/capability/lincoll.chiral` | It is a language-feature floor (the linear-fielded cousin of `collections.chiral`), not a TUI-specific consumer; `mux`/T9 imports it. Placing it beside `collections.chiral` keeps it in the compilable `scaffold/lib` floor and reusable beyond the TUI. |
 | 6 | Does a keyed linear map (`Session`-id → cap) become its own element? (example §6.c) | **DEFERRED** — proposed separate future element | The AVL `Map`'s `k K`/`v V` fields are unrestricted; a linear keyed map needs the same `1`-field retype as `SockVec` plus balancing over linear values. Out of E106's bag-not-map scope; note in §6 for the catalog wave. |
 
 No NEEDS-AUTHOR blockers remain — decisions 1 and 2 are the orchestrator's dispositioned rulings; 3–6 are decidable and decided above with citations. `status: specced`, §4–§6 fully specified.
@@ -89,7 +89,7 @@ No NEEDS-AUTHOR blockers remain — decisions 1 and 2 are the orchestrator's dis
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — the linear container type + pure/count/detach ops
-- **Target:** NEW `scaffold/lib/lincoll.chiral` — `(import "prelude")`,
+- **Target:** NEW `lib/capability/lincoll.chiral` — `(import "prelude")`,
   `(import "ports")`; the `SockVec` type; `sv-push`; the `CountR` sum + `sv-count`;
   the `DetachR` sum + `sv-detach-at`. Verbatim from example §5 (fields at
   quantity-`1`, result caps on `1`-fields of sums, out-of-range as a `det-none`
@@ -100,7 +100,7 @@ No NEEDS-AUTHOR blockers remain — decisions 1 and 2 are the orchestrator's dis
 - **Size:** ~S
 
 ### Step 2 — the drain + mux-step (the consuming ops)
-- **Target:** `scaffold/lib/lincoll.chiral` — append `sv-drain` (`=>`, closes each
+- **Target:** `lib/capability/lincoll.chiral` — append `sv-drain` (`=>`, closes each
   cap exactly once via `sock-close`, structural recursion ⇒ total) and the
   `mux-step` servicing skeleton (detach → `sock-recv` → push back / close on
   `recv-closed` / drop on `recv-err`), verbatim from example §5.
@@ -129,7 +129,7 @@ No NEEDS-AUTHOR blockers remain — decisions 1 and 2 are the orchestrator's dis
 - **Size:** ~M
 
 ### Step 4 — the native drain-and-close CONTROL run (exit 42, lowering crossing)
-- **Target:** NEW `scaffold/samples/e106_drain_control.chiral` — an `=>` main that
+- **Target:** NEW `prog/samples/e106_drain_control.prog` — an `=>` main that
   holds a small set of raw fds and drains-and-closes them recursively via the
   raw-fd `close` crossing (`crossing-wraps.chiral:21`, `close`→`nb-sys-close`),
   then `exit 42`. This proves the drain-and-close *shape* reaches native runtime
@@ -137,7 +137,7 @@ No NEEDS-AUTHOR blockers remain — decisions 1 and 2 are the orchestrator's dis
   `SockVec` drain (which is porttype-gated, decision 2), and the sample must say so
   in a header comment.
 - **Checkable state:** B1 compiles it AND it runs to exit code 42 (modelled on
-  `scaffold/samples/exit42.chiral` + the raw-fd close control from the example §6).
+  `prog/samples/exit42.chiral` + the raw-fd close control from the example §6).
 - **Size:** ~S
 
 ### Step 5 — the test driver

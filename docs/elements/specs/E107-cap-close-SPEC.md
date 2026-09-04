@@ -35,10 +35,10 @@ updated: 2026-08-12
 
 - **Conformance-map verdict:** no map row — E107 postdates the CONFORMANCE-MAP
   snapshot; treat as **BUILD**. The verified live baseline:
-  - **All five surface externs already exist** in `scaffold/lib/ports.chiral`:
+  - **All five surface externs already exist** in `lib/ports/ports.chiral`:
     `lsock-close` :59, `sock-close` :63, `pool-close` :75, `fd-close` :80,
     `env-close` :122. E107 authors **no new extern**.
-  - **Both TAL release bodies already exist** in `scaffold/lib/sys-tal.chiral`:
+  - **Both TAL release bodies already exist** in `lib/lowering/tal/sys.chiral`:
     `nb-sys-close-t` :200 (`ti-fn "nb-sys-close" 1 2` — one arg, the fd) and
     `nb-sys-munmap-t` :106 (`ti-fn "nb-sys-munmap" 2 3` — addr+length), both
     listed in `sys-lib` (:708) at :716–717. E107 authors **no new TAL body**.
@@ -72,7 +72,7 @@ follow-on element; §4 is unblocked for the fd-close deliverable.
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — the three fd-close `crossing-wraps` pairs (the deliverable)
-- **Target:** `scaffold/lib/crossing-wraps.chiral` — the `crossing-wraps` list
+- **Target:** `lib/lowering/tal/crossing-wraps.chiral` — the `crossing-wraps` list
   (the `cons`-chain, :14–40).
 - **Change:** add three pairs beside the E105 `write-fd` entry, mirroring its
   shape exactly (surface name → already-registered wrapper; no new body):
@@ -113,7 +113,7 @@ follow-on element; §4 is unblocked for the fd-close deliverable.
   runs to native exit 42**. Today the identical program fails at native emit with
   `no emitted label for entry compile-main` (compile exit 1) because `sock-close`
   has no wrapper; after Step 1 it lowers to `close(fd)` and drains to exit 42.
-  The raw-fd `close` control (already exit 42 through `scaffold/build/B1`) proves
+  The raw-fd `close` control (already exit 42 through `bin/chirality-bin`) proves
   the shape is reachable.
 - **Negative gate (unchanged, must stay red):** dropping a linear cap without
   closing, and double-closing a cap, remain **checker-rejected** — the cap is
@@ -125,8 +125,8 @@ follow-on element; §4 is unblocked for the fd-close deliverable.
   `crossing-wraps` is inlined into `scaffold/build/blob.chiral` (:1013, and the
   derived `sys-bindings` at :1142), so B1's own sources changed. Reproduce:
   ```
-  chirality_blob scaffold/lib <root> | scaffold/build/B1 > /tmp/B1.new
-  cmp /tmp/B1.new scaffold/build/B1
+  chirality_blob scaffold/lib <root> | bin/chirality-bin > /tmp/B1.new
+  cmp /tmp/B1.new bin/chirality-bin
   ```
   If it differs, reblob + promote (the self-hosting check — the promoted binary
   must reproduce itself byte-for-byte); if identical, no reblob needed. Python

@@ -70,7 +70,7 @@ No blocking NEEDS-AUTHOR; #1 carries a non-blocking FLAG (the face-swap).
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — the wrappers
-- **Target:** `scaffold/lib/prelude.chiral` — the pure-defs section (after
+- **Target:** `lib/prelude/prelude.chiral` — the pure-defs section (after
   `min`).
 - **Change:** per the audited example §5: `div`/`mod`/`divmod` with the second
   parameter `(refine I64 (<> 0))` (body forgets to base I64 at the raw call —

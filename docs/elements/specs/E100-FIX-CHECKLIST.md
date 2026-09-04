@@ -80,7 +80,7 @@ across every place the capture set is materialized or re-addressed.
 `closconv.chiral` (`mk-fields`:701, `reg-lam`, `lam-con`, `lam-subst`/`cap-subst`/
 `own-subst`, the `cs-g` path), `compile-front.chiral:70` (`term->ntalty`),
 `compile-back.chiral:241` (`lower-defs` le-skip), `lower.chiral:349` ("case on unknown
-data"). Runtime test: a new `scaffold/tests/samples/e100_poly_ho.chiral`.
+data"). Runtime test: a new `tools/test/samples/e100_poly_ho.prog`.
 
 ## Why this is doable (not a rabbit hole)
 The root cause is exact and the erasure principle is simple ("a `q0` type capture has no

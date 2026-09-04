@@ -17,7 +17,7 @@ updated: 2026-08-01
 ## 1. Deliverable
 
 - **After this runs:** W^X is a **type fact**, not a line ordering. A new
-  `scaffold/lib/loader.chiral` defines the linear porttypes `MapRW`/`MapRX` and
+  `lib/module/loader.chiral` defines the linear porttypes `MapRW`/`MapRX` and
   the crossings `map-rw` / `map-write` / `seal-exec` (seal **consumes** the
   writable handle — no writable view survives it), plus `load-batch`;
   `NativeBackend.compile`'s imperative W^X block (`native.py:472–486`) is rewired
@@ -72,7 +72,7 @@ updated: 2026-08-01
 | 2 | **`mprotect`/`mmap` errno → typed alarm vs host raise** (example §6 open question 2). | **RESOLVED (interim) → host-raise at the binding, faithful to the current bridge idiom; typed alarm DEFERRED → E26.** | Today every crossing fault is a host-side `PortError`/`OSError` (`native.py:419,486`); alarms-as-typed-effects are **E26**, hard-gated on the E39 row (built) + E26's own build. The loader keeps the faithful interim and converts with E26 — not a loader-local invention. |
 | 3 | **A distinct porttype for the arena** so it can never be sealed by mistake (example §6 open question 3). | **DEFERRED → E21.** | The arena is E21's subject; whether it stays a `MapRW` (sealing it would *consume* it — a loud runtime fault, not silent corruption) or gets its own `Arena` porttype is E21's call to make with the bump-allocator wiring. E20's `load-batch` takes the arena handle opaquely either way. |
 | 4 | **`map-write`'s referent** — the blit is `ctypes.memmove` today; what does the typed crossing lower to? | **RESOLVED → a floor blit routine (`nb-blit`), differential vs `memmove`.** | The write path must leave ctypes or the W^X "no writable view" claim rests on Python again. The floor already writes memory (arena bump, `mem-put-checked`, byte-cell stores in `bytes-tal.chiral`), so a bounded store-loop `nb-blit(addr, src-cell, len)` is within tal's proven power — the principled home (memory ops live on the floor). The implementation may route through an existing mem-put loop if one fits; the gate is byte-equality vs `memmove`. The two 8-byte cell pokes ride the same routine. |
-| 5 | **Where the porttypes live** — `lib/ports.chiral` (the frozen app-facing set) vs the new `lib/loader.chiral`. | **RESOLVED → `lib/loader.chiral`.** | Loader crossings are **compiler-internal**, not app-surface: no app profile should see `MapRW`/`seal-exec` in its port set. `ports.chiral` stays the app-facing C floor; the loader file registers its porttypes the same way (the surface `porttype` form is not file-bound). Follows the example's §6. |
+| 5 | **Where the porttypes live** — `lib/ports/ports.chiral` (the frozen app-facing set) vs the new `lib/loader.chiral`. | **RESOLVED → `lib/loader.chiral`.** | Loader crossings are **compiler-internal**, not app-surface: no app profile should see `MapRW`/`seal-exec` in its port set. `ports.chiral` stays the app-facing C floor; the loader file registers its porttypes the same way (the surface `porttype` form is not file-bound). Follows the example's §6. |
 
 No NEEDS-AUTHOR: each question resolves from the reference's behavior or defers
 to its named home (E21/E26). The change plan is fully unblocked.
@@ -95,7 +95,7 @@ to its named home (E21/E26). The change plan is fully unblocked.
 - **Size:** ~S.
 
 ### Step 2 — the floor blit
-- **Target:** `lib/sys-tal.chiral` or `lib/bytes-tal.chiral` — `nb-blit`.
+- **Target:** `lib/lowering/tal/sys.chiral` or `lib/lowering/tal/bytes.chiral` — `nb-blit`.
 - **Change:** a bounded store-loop copying `len` bytes from a byte cell to an
   absolute address (decision #4), preserve-checked like every `nb-*` routine;
   registered in `sys-lib`. Differential: bytes written byte-equal to

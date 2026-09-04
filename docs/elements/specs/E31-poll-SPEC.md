@@ -89,7 +89,7 @@ Steps 1–3 (the crossing + assembly) are landable now. Steps 4–5 (surface wra
 + crutch retirement) are gated on the **E51** binding table / `sock-view` mint.
 
 ### Step 1 — sub-word byte-field helpers
-- **Target:** `scaffold/lib/bytes-tal.chiral` — new `put-i16`, `bget-i16`, and
+- **Target:** `lib/lowering/tal/bytes.chiral` — new `put-i16`, `bget-i16`, and
   `put-i32` (fd field) tal fns.
 - **Change:** compose the existing single-byte floor ops at consecutive LE
   offsets. `put-i16` = `ti-bput ptr idx (v & 0xff)` then `ti-bput ptr (idx+1)
@@ -98,7 +98,7 @@ Steps 1–3 (the crossing + assembly) are landable now. Steps 4–5 (surface wra
 - **Size:** S
 
 ### Step 2 — the `poll(2)` crossing
-- **Target:** `scaffold/lib/sys-tal.chiral` — new `nb-sys-poll`; extend `sys-lib`.
+- **Target:** `lib/lowering/tal/sys.chiral` — new `nb-sys-poll`; extend `sys-lib`.
 - **Change:** `(def nb-sys-poll TFn (tfn "nb-sys-poll" 3 4 (t-seq (ti-sys 3 7
   (cons 0 (cons 1 (cons 2 nil)))) (t-ret 3))))` — arg0 rdi = array ptr, arg1 rsi
   = nfds, arg2 rdx = timeout-ms, **nr 7**, result in reg 3. Add `nb-sys-poll` to
@@ -106,7 +106,7 @@ Steps 1–3 (the crossing + assembly) are landable now. Steps 4–5 (surface wra
 - **Size:** S
 
 ### Step 3 — pollfd-array assembly
-- **Target:** `scaffold/lib/sys-tal.chiral` — `pollfd-fill` tal fn (precedent:
+- **Target:** `lib/lowering/tal/sys.chiral` — `pollfd-fill` tal fn (precedent:
   `nb-sys-memfd` already assembles its name cell inline in sys-tal, so
   crossing-argument assembly is at home here; `lib/sys-poll.chiral` is Step 4's
   surface layer, not the tal layer).

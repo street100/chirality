@@ -16,7 +16,7 @@ updated: 2026-08-08
 
 ## 1. Deliverable
 
-- **After this runs:** `scaffold/lib/scriba/command-loop.chiral` has `try-dispatch` inlined as a helper defined before `command-loop-inner`, with a forward `declare` for `command-loop-inner`, and the `(false ...)` arm of the quit check calls `try-dispatch` instead of beeping + recursing directly.
+- **After this runs:** `prog/scriba/command-loop.chiral` has `try-dispatch` inlined as a helper defined before `command-loop-inner`, with a forward `declare` for `command-loop-inner`, and the `(false ...)` arm of the quit check calls `try-dispatch` instead of beeping + recursing directly.
 - **Non-goals:** Fixing B1's lowering pass (`lower.chiral`) to handle mutual recursion through effects. The helper is wired but B1 still rejects the blob — that's a compiler-level change tracked separately. Also not: making `try-dispatch` a separate importable module (a standalone `dispatch.chiral` exists but B1 can't fuse the chain either way).
 
 ## 2. Baseline (what already exists)
@@ -42,7 +42,7 @@ Every open question from the example §6, dispositioned.
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — Forward-declare `command-loop-inner` for the helper
-- **Target:** `scaffold/lib/scriba/command-loop.chiral` — after `command-loop` definition, before `try-dispatch`
+- **Target:** `prog/scriba/command-loop.chiral` — after `command-loop` definition, before `try-dispatch`
 - **Change:** Add `(declare command-loop-inner (=> Keymap (Puffer Str) (Pair I64 I64) Rendering (List (Pair Str RendererFn)) (List ScribaOp) Unit))` so `try-dispatch` can reference it before the full `def`.
 - **Size:** ~S (1 line)
 
@@ -52,7 +52,7 @@ Every open question from the example §6, dispositioned.
 - **Size:** ~M (~15 lines)
 
 ### Step 3 — Wire `try-dispatch` into `command-loop-inner`
-- **Target:** `scaffold/lib/scriba/command-loop.chiral` — the `(false ...)` arm of the quit check in `command-loop-inner`
+- **Target:** `prog/scriba/command-loop.chiral` — the `(false ...)` arm of the quit check in `command-loop-inner`
 - **Change:** Replace the inline beep+recurse in the `(false ...)` arm with a call to `(try-dispatch puf dims old-rendering renderers ops opname)`.
 - **Size:** ~S (1 line changed)
 

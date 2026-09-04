@@ -55,7 +55,7 @@ updated: 2026-08-02
   q=1 linearity), the fourth (reflective floor) unbuilt (E45). **No bank shard
   covers "the entry receives its caps"** — that origin seam is exactly E80's gap.
 - **Live code this composes with (do NOT respec):**
-  - `lib/ports.chiral` — the cap model is half-built: `(porttype Clock/Timer/Env)`
+  - `lib/ports/ports.chiral` — the cap model is half-built: `(porttype Clock/Timer/Env)`
     (106–108) with cap-gated `time-mono`/`sleep-ms`/`env-view` (121–123) that
     thread the cap back (the RecvR pattern, `TimeR`/`SleepR`/`EnvR` at 110–119).
     `Sock`/`LSock`/`Fd`/`Pool` porttypes (12–19). **The `spawn`→`node-main`
@@ -93,8 +93,8 @@ here; the only author input owed is *when* to build it.
 > **Trusted-checker edit flagged:** Step 3 touches `surface.py` (profile
 > verification) — reviewed as the sensitive class (diff shown explicitly).
 
-### Step 1 — reify the two ambient caps (`lib/ports.chiral`)
-- **Target:** `lib/ports.chiral` — new porttypes + successors near the process block.
+### Step 1 — reify the two ambient caps (`lib/ports/ports.chiral`)
+- **Target:** `lib/ports/ports.chiral` — new porttypes + successors near the process block.
 - **Change:** `(porttype Console)`, `(porttype NetCap)`; `(data OutR () (out-r
   (1 c Console)))` + `(extern console-put (=> (1 c Console) Str OutR))` and
   `console-trace` (the `print`/`trace` successors, RecvR-threaded). **NetCap is
@@ -107,7 +107,7 @@ here; the only author input owed is *when* to build it.
 - **Size:** ~M.
 
 ### Step 2 — the `Grant` bundle + the entry convention
-- **Target:** `lib/ports.chiral` (or a small `lib/entry.chiral`).
+- **Target:** `lib/ports/ports.chiral` (or a small `lib/entry.chiral`).
 - **Change:** `(data Grant () (grant (1 con Console) (1 clk Clock) (1 tmr Timer)
   (1 env Env) (1 net NetCap)))` — linear bundle (linear by E8's walk). Document
   the entry convention: a program's `main` is `(=> (1 g Grant) Unit)`; a profile

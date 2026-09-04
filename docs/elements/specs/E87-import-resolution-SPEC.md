@@ -15,7 +15,7 @@ updated: 2026-08-07
 
 ## 1. Deliverable
 
-- **After this runs:** `scaffold/lib/resolve.chiral` — a chirality-native module
+- **After this runs:** `lib/module/resolve.chiral` — a chirality-native module
   bundler (~120 lines). Given a libdir prefix and root module name, walks
   transitive `(import "...")` deps, deduplicates by basename, concatenates in
   dependency order. Produces a flat source blob for B1. Replaces
@@ -33,15 +33,15 @@ updated: 2026-08-07
   shell `chirality-resolve.sh` are the existing implementations to replace.
 - **Live code this change composes with:**
   - `lib/sexp.chiral` — `read-all-str` (E1 reader, parses source to Sexp list)
-  - `lib/ports.chiral` — `openat`, `read`, `close`, `fd-write` (syscall surface)
+  - `lib/ports/ports.chiral` — `openat`, `read`, `close`, `fd-write` (syscall surface)
   - `lib/prelude.chiral` — `Str`, `Bytes`, `List`, `Pair`, `Maybe`, `str-cat`,
     `str-eq`, `blen`, `bcat`, `bslice`, `bytes->str`
-  - `lib/collections.chiral` — `find`, `member` (assoc-list operations)
+  - `lib/prelude/list.chiral:74` — `find`. The assoc-list operations moved to `lib/prelude/alist.chiral`, and `member` has no live successor under that name; `lib/prelude/set.chiral:17` owns `s-member`
   - `bin/chirality-resolve.sh` — the shell resolver (stays as bootstrap path)
-  - `scaffold/lib/scriba/resolve.chiral` — 54-line stub (file I/O helpers,
+  - `prog/scriba/resolve.chiral` — 54-line stub (file I/O helpers,
     skeleton entry point — the scaffolding this SPEC fleshes out)
 - **True delta:** move the stub from `scriba/resolve.chiral` to
-  `scaffold/lib/resolve.chiral`, flesh out the dependency-walk core and the
+  `lib/module/resolve.chiral`, flesh out the dependency-walk core and the
   effectful driver, wire `build.sh` and `bin/scriba` to use the native
   resolver once it self-compiles (shell resolver stays as the bootstrap).
 
@@ -56,10 +56,10 @@ updated: 2026-08-07
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — Move and clean the stub
-- **Target:** `scaffold/lib/resolve.chiral` (new location),
-  `scaffold/lib/scriba/resolve.chiral` (remove)
+- **Target:** `lib/module/resolve.chiral` (new location),
+  `prog/scriba/resolve.chiral` (remove)
 - **Change:** Move the 54-line stub from the scriba debris dir to
-  `scaffold/lib/resolve.chiral`. The stub already has `file-read-all`,
+  `lib/module/resolve.chiral`. The stub already has `file-read-all`,
   `file-open`, `nul-byte`, and the skeleton `main` entry. Remove the
   `(import "collections")` line (not yet needed). Keep imports of
   `prelude` and `ports`.
@@ -77,7 +77,7 @@ updated: 2026-08-07
 - **Size:** M (~60 lines)
 
 ### Step 3 — Implement the effectful driver
-- **Target:** `scaffold/lib/resolve.chiral` — `bundle` entry point
+- **Target:** `lib/module/resolve.chiral` — `bundle` entry point
 - **Change:** `bundle` takes a libdir Bytes path and root module Str, opens
   the libdir via `openat`, calls the pure core, concatenates all module
   sources via `bcat` into one Bytes blob. Error handling: missing modules →

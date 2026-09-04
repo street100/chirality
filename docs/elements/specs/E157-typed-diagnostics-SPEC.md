@@ -194,7 +194,7 @@ before any work is deferred to it, and a spec run's write surface cannot mint it
 - **Size:** S.
 
 ### Step 6 — the gate
-- **Target:** `scaffold/tests/samples/e157_diag.chiral` + a `run-native.sh` Phase 10
+- **Target:** `tools/test/samples/e157_diag.chiral` + a `run-native.sh` Phase 10
 - **Change:** as §5.
 - **Size:** M.
 

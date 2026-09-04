@@ -35,26 +35,26 @@ updated: 2026-08-12
   snapshot (bundle §3: "none — treat as BUILD"); grep-clean, no `fcntl` crossing
   exists. This is net-new linkage on a fully-built substrate, not an EXTEND/REFACTOR.
 - **Live code this composes with (name, do not respec):**
-  - `scaffold/lib/sys-tal.chiral:200` `nb-sys-close-t` — the value-in / rax-out
+  - `lib/lowering/tal/sys.chiral:200` `nb-sys-close-t` — the value-in / rax-out
     mirror (`ti-fn "nb-sys-close" 1 2` → `ti-sys` then `ti-ret`, no cell). E121 is
     the same shape with 3 register args.
-  - `scaffold/lib/sys-tal.chiral:511` `nb-sys-tcsets-t` — the existing 3-arg
+  - `lib/lowering/tal/sys.chiral:511` `nb-sys-tcsets-t` — the existing 3-arg
     `ti-sys` precedent (`(cons 0 (cons 2 (cons 3 nil)))`), confirms the arg-list
     idiom E121 mirrors (E121's three args are the plain a0/a1/a2 registers, no
     `ti-const`/`ti-bptr` staging since there is no cell).
-  - `scaffold/lib/target-linux.chiral:11` `linux-syscalls` (`SysReg`) — the
+  - `lib/lowering/tal/target-linux.manifest:11` `linux-syscalls` (`SysReg`) — the
     allow-list E121 adds one row to.
-  - `scaffold/lib/crossing-wraps.chiral:13` `crossing-wraps` — the surface→wrapper
+  - `lib/lowering/tal/crossing-wraps.chiral:13` `crossing-wraps` — the surface→wrapper
     table E121 adds one pair to. Its stated INVARIANT: must agree with
     `lib/sys-linkage.chiral` `sys-bindings`, which is *derived* from this table
     (`cw->binds crossing-wraps`, sys-linkage.chiral:91-93) — so no manual
     sys-linkage edit is needed; adding the pair propagates automatically.
-  - `scaffold/lib/ports.chiral:88` `write-fd` (`(=> I64 Bytes I64)`) — the flat
+  - `lib/ports/fd.port:35` `write-fd` (`(=> I64 Bytes I64)`) — the flat
     single-raw-crossing extern precedent E121's `fcntl` extern follows.
-  - `scaffold/lib/term.chiral:181` `open-pty` — E110's consumer; currently opens
+  - `lib/protocol/term.chiral:181` `open-pty` — E110's consumer; currently opens
     via `open-rw` (O_RDWR|O_NOCTTY, no O_CLOEXEC). Home for the typed sugar and
     the E110 assertion.
-  - `scaffold/lib/prelude.chiral:28,39` `op-band` (surface op **`band`**) — the
+  - `lib/prelude/prelude.chiral:28,39` `op-band` (surface op **`band`**) — the
     I64 bitwise-and used by the sugar and both conformance legs.
 - **True delta:** one tal body + one SysReg row + one crossing-wraps pair + one
   surface extern + three pure I64 defs + one pure `fd-cloexec?` def + one
@@ -74,8 +74,8 @@ No genuine open author decision. Nothing blocks §4; `status: specced`.
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — crossing body + allow-list row
-- **Target:** `scaffold/lib/sys-tal.chiral` (new `nb-sys-fcntl-t`, near the
-  value-in crossings ~L200/L511) and `scaffold/lib/target-linux.chiral`
+- **Target:** `lib/lowering/tal/sys.chiral` (new `nb-sys-fcntl-t`, near the
+  value-in crossings ~L200/L511) and `lib/lowering/tal/target-linux.manifest`
   (`linux-syscalls`, one row).
 - **Change:**
   ```chirality
@@ -93,8 +93,8 @@ No genuine open author decision. Nothing blocks §4; `status: specced`.
 - **Size:** S
 
 ### Step 2 — surface extern + wrap pair + typed sugar
-- **Target:** `scaffold/lib/crossing-wraps.chiral` (one pair), `scaffold/lib/ports.chiral`
-  (one extern), `scaffold/lib/term.chiral` (typed sugar, near `open-pty`).
+- **Target:** `lib/lowering/tal/crossing-wraps.chiral` (one pair), `lib/ports/ports.chiral`
+  (one extern), `lib/protocol/term.chiral` (typed sugar, near `open-pty`).
 - **Change:**
   - crossing-wraps: add `(cons (pair "fcntl" "nb-sys-fcntl")` + one closing `)`
     on the trailing `nil))))...` line. (sys-linkage `sys-bindings` re-derives — no
@@ -115,8 +115,8 @@ No genuine open author decision. Nothing blocks §4; `status: specced`.
 - **Size:** S
 
 ### Step 3 — conformance sample (both legs)
-- **Target:** `scaffold/tests/samples/e121_fcntl.chiral` (model on
-  `scaffold/tests/samples/e104_pty.chiral`).
+- **Target:** `tools/test/samples/e121_fcntl.prog` (model on
+  `tools/test/samples/e104_pty.prog`).
 - **Change:** the two `compile-main (=> I64 I64)` legs of §5 (a) and (b),
   exit 42 on success. Import `prelude`/`ports`/`bytes-tal`/`term`.
 - **Size:** S
@@ -139,7 +139,7 @@ No genuine open author decision. Nothing blocks §4; `status: specced`.
 - **Reblob-cmp gate:** `sys-tal.chiral`, `target-linux.chiral`, and
   `crossing-wraps.chiral` are all in B1's blob, so a self-host re-check is
   required. After promoting: rebuild the blob and byte-compare —
-  `chirality_blob … | B1 < blob | cmp - scaffold/build/B1`. Reblob + promote only if
+  `chirality_blob … | B1 < blob | cmp - bin/chirality-bin`. Reblob + promote only if
   it differs (compiler sources changed → the one-command self-hosting check per
   the BUILD RULE). Then green-line the sample: compile it with B1 and run
   (`B1 < sample.chiral > out && ./out; echo $?` → 42).

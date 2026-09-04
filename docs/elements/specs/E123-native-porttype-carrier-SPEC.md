@@ -75,7 +75,7 @@ No NEEDS-AUTHOR items; `status: draft` (unblocked).
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — word-carrier map in the front peel  *(the whole functional change)*
-- **Target:** `scaffold/lib/compile-front.chiral` — `term->ntalty` (30-39),
+- **Target:** `lib/lowering/compile-front.chiral` — `term->ntalty` (30-39),
   `t-primty` case.
 - **Change:** after the `I64`/`Str`/`Bytes` ladder, add a porttype-carrier
   fallthrough. Add a leaf helper `porttype-word? : Str → Bool` (or a `Carrier`

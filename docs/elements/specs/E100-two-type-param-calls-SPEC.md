@@ -72,12 +72,12 @@ updated: 2026-08-13
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — E97 diagnostic instrument (prerequisite, separate impl run)
-- **Target:** `scaffold/lib/lower.chiral` — `LowerOut` ledger + `SkReason` sum
+- **Target:** `lib/lowering/upper/lower.chiral` — `LowerOut` ledger + `SkReason` sum
 - **Change:** E97 lands first. After E97, any skip reason surfaces as a value instead of vanishing silently. This gives E100's impl run a concrete `sk-callee "alist-get"` or `sk-extern "alist-get"` at the entry gate.
 - **Size:** L (separate E97 run; E100 unblocked after)
 
 ### Step 2 — Diagnose: peel vs lowering (using E97)
-- **Target:** `scaffold/lib/compile-front.chiral` — `peel-def` and `build-emap` path vs the lowering stage
+- **Target:** `lib/lowering/compile-front.chiral` — `peel-def` and `build-emap` path vs the lowering stage
 - **Change:** Run the `scriba-test-b1.chiral` test3 blob through B1 with E97 active. Read the `LowerOut`/`SkReason` to determine whether the skip is in the peel (miscount of erased binders) or lowering (mangled entry symbol / arg-slot mismatch). If peel: `peel-def` rejects the def (returns `none` silently, becoming `sk-callee` under E97). If lowering: the `NDef` is emitted but lowering can't find/match it.
 - **Size:** S (diagnosis only — one test run + reading E97 output)
 
@@ -88,12 +88,12 @@ updated: 2026-08-13
 - **Size:** M
 
 ### Step 4 — Verify test2 and test3 pass through B1
-- **Target:** `scaffold/lib/scriba/scriba-test-b1.chiral`
+- **Target:** `prog/scriba/scriba-test-b1.prog`
 - **Change:** Build the scriba-test-b1 blob (prelude + collections + ports + term + puffer + render + command-loop + keymap + init-loader + scriba-test-b1) and pipe through B1. Both test2 (`alist-get` through B1) and test3 (`test3-two-type` minimal repro) must emit labels for their entries. Verify with: build blob → `B1 < blob > /dev/null 2>&1` — expect no "no emitted label" for either entry.
 - **Size:** S (test run)
 
 ### Step 5 — Delete inlined alist copies from scriba files
-- **Target:** `scaffold/lib/scriba/render.chiral` — `lookup-renderer` (lines 71-80)
+- **Target:** `lib/protocol/render.chiral` — `lookup-renderer` (lines 71-80)
 - **Change:** Delete the inlined `lookup-renderer` def. Replace with `(declare lookup-renderer (-> (List (Pair Str RendererFn)) Str (Maybe RendererFn)))` and a thin wrapper using real `alist-get`:
   ```chirality
   (import "collections")
@@ -108,7 +108,7 @@ updated: 2026-08-13
 - **Size:** S (delete ~10 lines, add ~6 lines)
 
 ### Step 6 — Delete inlined alist copy from keymap.chiral
-- **Target:** `scaffold/lib/scriba/keymap.chiral` — `lookup-keymap` (lines 75-79; already converted — `(import "collections")` at :12, delegate body at :75-79)
+- **Target:** `prog/scriba/keymap.chiral` — `lookup-keymap` (lines 75-79; already converted — `(import "collections")` at :12, delegate body at :75-79)
 - **Change:** Delete the inlined `lookup-keymap` def. Add `(import "collections")`. Replace with a thin wrapper using real `alist-get`:
   ```chirality
   (def lookup-keymap (-> KeySeq Keymap (Maybe Str))
@@ -121,7 +121,7 @@ updated: 2026-08-13
 - **Size:** S (delete ~13 lines, add ~6 lines)
 
 ### Step 7 — Verify full B1 self-compile fixpoint
-- **Target:** `scaffold/build/B1` (the native compiler binary)
+- **Target:** `bin/chirality-bin` (the native compiler binary)
 - **Change:** After all lib changes, rebuild B1: sync changed files to public mirror, `./build.sh`, verify FIXPOINT (byte-identical B1==B2). If the fix touches `compile-front.chiral` (which IS in the self-compile path), the first rebuild will produce a new B1; a second rebuild must produce a byte-identical B1.
 - **Size:** M (two rebuild passes)
 
@@ -129,27 +129,27 @@ updated: 2026-08-13
 
 ### Step 8 — E97 skip-chain diagnosis (read the reason, do not guess)
 - **Target:** the live E97 skip chain (`skip-diag.chiral` wired via `compile-back.chiral:19`) + `compile-emit.chiral:192` (the `no emitted label for entry` elf-err) + `lower.chiral` `lower-def` :98 / `lower-all` :103 (the `low-skip "$apply0" <reason>` record)
-- **Change:** Build the `a5_be_chat` blob (prelude + collections + json + http + backend + `scaffold/samples/a5_be_chat.chiral`) and pipe through B1. Read the skip chain `compile-main <- be-chat <- chat-body <- map-list <- $apply0`. Record the exact `low-skip "$apply0" <reason>` string — one of `lower.chiral`'s skip values (`case on unknown data`, `branch not a ctor`, `call target not lowered`, `con: unknown data`, `body is not a lambda chain`, `partial application`, `over-application`, or an `expr-con`/`tail-case` reconstruction skip). The chain being PRESENT (not bare) already proves the def passed the peel and failed body emission; the reason names the exact site. No guessing.
+- **Change:** Build the `a5_be_chat` blob (prelude + collections + json + http + backend + `prog/samples/a5_be_chat.prog`) and pipe through B1. Read the skip chain `compile-main <- be-chat <- chat-body <- map-list <- $apply0`. Record the exact `low-skip "$apply0" <reason>` string — one of `lower.chiral`'s skip values (`case on unknown data`, `branch not a ctor`, `call target not lowered`, `con: unknown data`, `body is not a lambda chain`, `partial application`, `over-application`, or an `expr-con`/`tail-case` reconstruction skip). The chain being PRESENT (not bare) already proves the def passed the peel and failed body emission; the reason names the exact site. No guessing.
 - **Size:** S
 
 ### Step 9 — Fix closconv: compose `rw` over the synthesized `$apply` arm bodies (primary, per #9a)
-- **Target:** `scaffold/lib/closconv.chiral` — `arm-body` :951 (the `cs-g` arm `(remap (g-subst n m d) gbody)`), `fob` :444 (falls through bare Globals to `(_ true)`), `rw` :1011 (whose job, :1015, is "a function-value Global → its nullary Con")
+- **Target:** `lib/lowering/upper/closconv.chiral` — `arm-body` :951 (the `cs-g` arm `(remap (g-subst n m d) gbody)`), `fob` :444 (falls through bare Globals to `(_ true)`), `rw` :1011 (whose job, :1015, is "a function-value Global → its nullary Con")
 - **Change:** Per decision #9 (a), the fix is HERE. `arm-body` builds the `$apply` arm via de-Bruijn `remap` ONLY — it never runs `rw`, so a fn-value global (`as-str`) in value position survives bare (the verbatim lift). Compose `rw` with the `remap` on the synthesized arm body, so ANY fn-value global becomes its nullary `Con` (`$clo` ctor) and the defunctionalization output is fully first-order — honoring `fob` :413's own contract ("lifted verbatim into an `$apply` arm, lowers first-order"). One general composition, no special-case for `as-str`. `lower.chiral` untouched.
 - **Size:** M (the primary fix)
 
 ### Step 10 — Confirm lower.chiral unchanged (no change, per #9a)
-- **Target:** `scaffold/lib/lower.chiral` — `expr` :234, the `(lc-global n)` arm at :242, the fallthrough `(_ (er-skip (str-cat "reference stays upper: " n)))` at :246
+- **Target:** `lib/lowering/upper/lower.chiral` — `expr` :234, the `(lc-global n)` arm at :242, the fallthrough `(_ (er-skip (str-cat "reference stays upper: " n)))` at :246
 - **Change:** Per decision #9 (a), `lower.chiral` is NOT the fix site — its `lc-global` guard is the oracle-ratified invariant (lower.py:339-342 "post-closconv: a Global used as a VALUE is already a Con"). With Step 9 making closconv emit fully-first-order output, the bare fn-value global never reaches `lower.chiral`, so this arm is unchanged. Do NOT add a function-pointer instruction or diverge B1 from the oracle.
 - **Size:** S (read + confirm)
 
 ### Step 11 — Conformance gate: `a5_be_chat` compiles, `be-chat` emits
-- **Target:** `scaffold/samples/a5_be_chat.chiral` (golden, untouched) + the B1 blob build
+- **Target:** `prog/samples/a5_be_chat.prog` (golden, untouched) + the B1 blob build
 - **Change:** Build the `a5_be_chat` blob and pipe through B1. Assert the skip chain `compile-main <- be-chat <- chat-body <- map-list <- $apply0` is EMPTY; `$apply0` and `be-chat` emit labels. Assert `git diff` is empty on `collections.chiral`/`json.chiral`/`backend.chiral`. The live run (endpoint up) exits 42 = a real assistant reply came back; the hermetic gate is label emission, not the live round-trip.
 - **Size:** S (test run)
 
 ### Step 12 — test-native green + self-host fixpoint
-- **Target:** `scaffold/lib/closconv.chiral` (the fix, per decision #9a) → sync to `../chirality`, `./build.sh`
-- **Change:** Sync all changed files as one batch (`closconv.chiral` IS in the self-compile path), `./build.sh`, `chirality test-native` green, then self-host: `B1 < blob | cmp - B1` byte-identical (FIXPOINT B1==B2). Copy `bin/chirality-bin.new` back as `scaffold/build/B1`. Two-rebuild fixpoint because `closconv.chiral` changes the compiler itself.
+- **Target:** `lib/lowering/upper/closconv.chiral` (the fix, per decision #9a) → sync to `../chirality`, `./build.sh`
+- **Change:** Sync all changed files as one batch (`closconv.chiral` IS in the self-compile path), `./build.sh`, `chirality test-native` green, then self-host: `B1 < blob | cmp - B1` byte-identical (FIXPOINT B1==B2). Copy `bin/chirality-bin.new` back as `bin/chirality-bin`. Two-rebuild fixpoint because `closconv.chiral` changes the compiler itself.
 - **Size:** M
 
 ## 5. Conformance gate
@@ -161,7 +161,7 @@ updated: 2026-08-13
 
 ### 5a. RESIDUAL conformance gate
 
-- **Golden behavior:** `scaffold/samples/a5_be_chat.chiral` compiles through B1 and, run against a live endpoint, exits 42 (a live assistant reply came back). `be-chat` emits a label; the skip chain `compile-main <- be-chat <- chat-body <- map-list <- $apply0` is empty; `$apply0` emits a ground label.
+- **Golden behavior:** `prog/samples/a5_be_chat.prog` compiles through B1 and, run against a live endpoint, exits 42 (a live assistant reply came back). `be-chat` emits a label; the skip chain `compile-main <- be-chat <- chat-body <- map-list <- $apply0` is empty; `$apply0` emits a ground label.
 - **Hermetic gate (label emission, no endpoint needed):** `be-chat` and `$apply0` emit labels when the `a5_be_chat` blob is piped through B1 — no "no emitted label ... $apply0". The exit-42 assertion is confirming but non-hermetic (needs the ollama endpoint up); label emission is the deterministic green line.
 - **Byte-identity:** `collections.chiral`, `json.chiral`, `backend.chiral` are byte-identical before and after (verified by `git diff` empty on those three files). The change is confined to `closconv.chiral` (per decision #9a; `lower.chiral` unchanged).
 - **Green line:** `chirality test-native` passes (the gate floor). B1 self-host fixpoint holds: `B1 < blob | cmp - B1` byte-identical (B1==B2).

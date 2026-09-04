@@ -48,9 +48,9 @@ updated: 2026-08-12
   - `nb-sys-fcntl-t` (`sys-tal.chiral:208-211`, nr 72) + `fd-cloexec?` /
     `F_GETFD` / `FD_CLOEXEC` (`term.chiral:185-196`) — the E121 fcntl crossing
     (committed 6bc75ba), the readback machinery this SPEC's gate now uses.
-  - e104_pty sample (`scaffold/tests/samples/e104_pty.chiral`) — opens master via
+  - e104_pty sample (`tools/test/samples/e104_pty.prog`) — opens master via
     `open-rw`, unlocks, reads ptsno, opens slave, exits 42 on success.
-  - e121_fcntl sample (`scaffold/tests/samples/e121_fcntl.chiral`) — leg (a) is a
+  - e121_fcntl sample (`tools/test/samples/e121_fcntl.prog`) — leg (a) is a
     standalone `fcntl` set→get round-trip (drives exit 42); leg (b)
     `observe-master-cloexec` opens the master via `open-pty` and reads
     `fd-cloexec? master` — the conclusive E110 gate, wired observational-only
@@ -88,14 +88,14 @@ former NEEDS-AUTHOR) is now RESOLVED by E121 — the conclusive gate is in §5.
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — Flip the open-flag const to include O_CLOEXEC
-- **Target:** `scaffold/lib/sys-tal.chiral` — `nb-sys-open-rw-t`, the `(ti-const
+- **Target:** `lib/lowering/tal/sys.chiral` — `nb-sys-open-rw-t`, the `(ti-const
   3 258)` at line 638 (and the descriptive comment block at lines 630-633).
 - **Change:** `(ti-const 3 258)` → `(ti-const 3 524546)`. Update the comment
   block (`:630`) from `O_RDWR|O_NOCTTY=0x102=258` to
   `O_RDWR|O_NOCTTY|O_CLOEXEC=0x80102=524546`, noting the bit breakdown and that
   it mirrors `nb-sys-memfd-t`'s `MFD_CLOEXEC` (`:75`). No other line changes.
 - **Reblob + self-host:** `sys-tal` is in B1's blob. After the edit, rebuild:
-  `chirality_blob … | B1 < blob | cmp - scaffold/build/B1`. If the byte-compare
+  `chirality_blob … | B1 < blob | cmp - bin/chirality-bin`. If the byte-compare
   differs (it will — the const is embedded), reblob and promote the new B1 per
   the BUILD RULE (build-new → test → promote; then run the promoted binary over
   the same blob once and byte-compare for the self-hosting fixpoint, since a
@@ -103,7 +103,7 @@ former NEEDS-AUTHOR) is now RESOLVED by E121 — the conclusive gate is in §5.
 - **Size:** ~S (one literal + comment).
 
 ### Step 2 — Conformance test (conclusive fcntl readback + regression)
-- **Target:** promote leg (b) of `scaffold/tests/samples/e121_fcntl.chiral`
+- **Target:** promote leg (b) of `tools/test/samples/e121_fcntl.prog`
   (`observe-master-cloexec`) from observational to gating, plus a
   `scaffold/tests/test_e110_cloexec_pty.py` runner; reuse the e104_pty sample.
 - **Change:** see §5. (a) **Conclusive:** the e121_fcntl leg (b) call

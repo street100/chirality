@@ -16,7 +16,7 @@ updated: 2026-07-27
 
 ## 1. Deliverable
 
-- **After this runs:** a new `scaffold/lib/proc.chiral` gives chirality a typed,
+- **After this runs:** a new `lib/runtime/proc.chiral` gives chirality a typed,
   single-return `proc-spawn`: from a validated `(List Str)` argv it launches an
   **arbitrary external program** over a `SOCK_CLOEXEC` socketpair plus a
   CLOEXEC errno-pipe (`fork` → child `dup2`+`execve`, errno written to the
@@ -85,7 +85,7 @@ v1). §4–§6 are specified against decs 1/2/3/4/5.
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — types: `SpawnErr` / `Reap` / `Child` / `SpawnRes` / `ExitStatus`
-- **Target:** NEW `scaffold/lib/proc.chiral` — the five `data` decls from ex. §5.
+- **Target:** NEW `lib/runtime/proc.chiral` — the five `data` decls from ex. §5.
 - **Change:** `(import "prelude")` + `(import "ports")` (to reuse `Sock`).
   Declare `SpawnErr` (`se-nomem`/`se-noexec` carrying `(errno I64)`,
   `se-badargv`); `Reap` = `(reap (pid (refine I64 (> 0))))`; `Child` =
@@ -96,7 +96,7 @@ v1). §4–§6 are specified against decs 1/2/3/4/5.
 - **Size:** ~S
 
 ### Step 2 — pure edge: `argv->pkt` validator + marshaller
-- **Target:** `scaffold/lib/proc.chiral` — `(declare argv->pkt (-> (List Str) (Option Bytes)))` + `def`.
+- **Target:** `lib/runtime/proc.chiral` — `(declare argv->pkt (-> (List Str) (Option Bytes)))` + `def`.
 - **Change:** build the byte-framing loop the example omitted as mechanical:
   fold `argv`, `str->bytes` each element, scan for interior `0x00` (→ `none`,
   i.e. `se-badargv`), else frame NUL-terminated into one `Bytes` block. A `->`
@@ -124,7 +124,7 @@ v1). §4–§6 are specified against decs 1/2/3/4/5.
 - **Size:** ~L
 
 ### Step 4 — reap: `wait` extern + status decode
-- **Target:** `scaffold/lib/proc.chiral` decl `(declare wait (=> (1 r Reap) ExitStatus))`
+- **Target:** `lib/runtime/proc.chiral` decl `(declare wait (=> (1 r Reap) ExitStatus))`
   (host extern `raw-wait`) + `_raw_wait` in `impl_ports.py`.
 - **Change:** consumes the linear `Reap`, reads its `pid`, `os.waitpid(pid, 0)`,
   decode: `os.WIFEXITED` → `exited(WEXITSTATUS)`, `os.WIFSIGNALED` →
@@ -133,7 +133,7 @@ v1). §4–§6 are specified against decs 1/2/3/4/5.
 - **Size:** ~S/M
 
 ### Step 5 — Category C bridge: `proc-spawn` + `run-filter` demo
-- **Target:** `scaffold/lib/proc.chiral` — `proc-spawn`, `run-filter`.
+- **Target:** `lib/runtime/proc.chiral` — `proc-spawn`, `run-filter`.
 - **Change:** `(declare proc-spawn (=> (List Str) SpawnRes))`,
   `def = (lam (argv) (case (argv->pkt argv) (none (sp-err se-badargv)) ((some pkt) (raw-proc-spawn pkt))))`.
   Then `run-filter` verbatim from ex. §5 (send-close-write → drain → wait →

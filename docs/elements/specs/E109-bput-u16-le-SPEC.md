@@ -17,15 +17,15 @@ updated: 2026-08-12
 ## 1. Deliverable
 
 - **After this runs:** one new surface `def bput-u16-le (-> Bytes I64 I64 Bytes)`
-  exists in `scaffold/lib/bytes-tal.chiral`, placed immediately after `bput-u8`
-  (`:557`), mirroring `bput-u32-le` (`:543`): it packs a 16-bit little-endian
+  exists in `lib/lowering/tal/bytes.chiral`, placed immediately after `bput-u8`
+  (`:610`), mirroring `bput-u32-le` (`:596`): it packs a 16-bit little-endian
   value into a `Bytes` cell at a byte offset, length-preserving, returning a
-  FRESH cell — the direct inverse of the existing `bget-u16-le` reader (`:532`).
+  FRESH cell — the direct inverse of the existing `bget-u16-le` reader (`:585`).
   Today B1 reports `load: unknown name bput-u16-le`; after this it resolves and
   is callable, closing the writer-symmetry gap (readers for both widths + the
   u8/u32 writers already exist; only the u16 writer is missing).
 - **Non-goals:** no true in-place TAL `nb-put-u16` primitive (a two-`ti-bput`
-  store mirroring `nb-put-u32-t` at `:482`) — the surface splice is the mirror
+  store mirroring `nb-put-u32-t` at `:535`) — the surface splice is the mirror
   the catalog row names and is enough to close the gap (residue → §6). No
   rewrite of `pack-winsize` call sites (OPTIONAL follow-on, §6). No new
   out-of-range `off` validation policy (inherits `bslice`'s fault-on-`i>j`).
@@ -36,7 +36,7 @@ updated: 2026-08-12
   snapshot — no rows name it; treat as a fresh build). Ledger row: `E109 =
   CG/byte-prims`, reference class `OURS` (the `bput-u32-le`/`bput-u8` idiom).
 - **Live code this composes with (all built — do NOT respec):**
-  - `pack-u16 (-> I64 Bytes)` — prelude extern, `scaffold/lib/prelude.chiral:88`;
+  - `pack-u16 (-> I64 Bytes)` — prelude extern, `lib/prelude/prelude.chiral:88`;
     lays down little-endian (low byte first). Its inverse `unpack-u16` is
     `:89`.
   - `bslice`, `bcat`, `blen` — the `Bytes` floor (`bslice` is
@@ -71,8 +71,8 @@ No NEEDS-AUTHOR items. `status: draft` (unblocked).
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — add the `bput-u16-le` surface def
-- **Target:** `scaffold/lib/bytes-tal.chiral` — new `def bput-u16-le`, inserted
-  immediately after `bput-u8` (after `:566`), before `native-lib` (`:569`).
+- **Target:** `lib/lowering/tal/bytes.chiral` — new `def bput-u16-le`, inserted
+  immediately after `bput-u8` (after `:610`), before `native-lib` (`:636`).
 - **Change:** paste the example §5 def verbatim (mirrors `bput-u32-le` with two
   deltas: `pack-u16` instead of `pack-u32`, and `(+ off 2)` instead of
   `(+ off 4)` for the suffix start). Keep a short comment mirroring the
@@ -109,7 +109,7 @@ lands with commit (2).
   2. **`i==j` boundary:** write the last two bytes of a 2-byte cell —
      `(bput-u16-le cell2 0 v)` where `off+2 == blen cell2` — yields a legal
      empty tail via `bslice cell2 2 2`, no fault.
-- **Behavioral sample:** add `scaffold/tests/samples/e109_bput_u16_le.chiral`
+- **Behavioral sample:** add `prog/samples/e109_bput_u16_le.prog`
   (compile+run, exit **42** on success — the repo's behavioral-witness
   convention). A round trip alone is NOT sufficient: reading back at offset 0
   returns the packed word regardless of a suffix off-by-one (which shifts the
@@ -133,10 +133,10 @@ lands with commit (2).
   (`scaffold/build/blob.chiral:11948`). After Step 1, rebuild B1 from the blob
   and byte-compare against the committed binary:
   ```
-  chirality_blob | B1 < blob | cmp - scaffold/build/B1
+  chirality_blob | B1 < blob | cmp - bin/chirality-bin
   ```
   (concretely: `../chirality/bin/chirality-bin < scaffold/build/blob.chiral > /tmp/B1.new
-  && cmp /tmp/B1.new scaffold/build/B1`). Expected byte-IDENTICAL — `bput-u16-le`
+  && cmp /tmp/B1.new bin/chirality-bin`). Expected byte-IDENTICAL — `bput-u16-le`
   is an unreferenced surface def that B1 itself never calls, so a
   reachability-pruned blob should reproduce the same binary. **If it differs**
   (the blob pipeline retains the new def), that is acceptable: reblob + promote
@@ -156,7 +156,7 @@ lands with commit (2).
     element, not E109. The fresh-cell splice is the deliverable.
   - Out-of-range `off` validation — home: nobody's yet; inherits `bslice`'s
     fault-on-`i>j`, deliberately not added.
-- **Follow-on (OPTIONAL):** rewrite `pack-winsize` (`scaffold/lib/term.chiral:48`,
+- **Follow-on (OPTIONAL):** rewrite `pack-winsize` (`lib/protocol/term.chiral:48`,
   currently `(bcat (bcat (pack-u16 rows) (pack-u16 cols)) (pack-u32 0))` at
   `:50`) to write the two u16 fields in place into a `(cell-new 8)` zeroed cell
   (`rows@0`, `cols@2`; `xpixel@4`/`ypixel@6` stay 0) via `bput-u16-le`. Demonstrates

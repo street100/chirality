@@ -85,7 +85,7 @@ surface and leave the extern alive; step 4 is the single swap that retires it.
 Each step stays paren-balanced and B1-clean on its own.
 
 ### Step 1 — imports + pure URL boundary
-- **Target:** `scaffold/lib/http.chiral` — header imports, `UrlR`, `parse-url`.
+- **Target:** `lib/protocol/http.chiral` — header imports, `UrlR`, `parse-url`.
 - **Change:** add `(import "ports")` and `(import "inet")` beside the existing
   `(import "prelude")`. Add `(data UrlR () (url-ok (host Str) (port I64)
   (path Str)) (url-err (msg Str)))`. Add `(declare parse-url (-> Str UrlR))`
@@ -109,7 +109,7 @@ Each step stays paren-balanced and B1-clean on its own.
 - **Size:** M.
 
 ### Step 2 — request framing
-- **Target:** `scaffold/lib/http.chiral` — `CRLF`, `SP`, `format-request`.
+- **Target:** `lib/protocol/http.chiral` — `CRLF`, `SP`, `format-request`.
 - **Change:** define `CRLF = (bcat (byte 13) (byte 10))` and `SP = (byte 32)`,
   reusing inet's `byte` (do NOT redefine it). Add `(declare format-request (->
   Str Str I64 Str Bytes Bytes))` + `(def format-request (lam (method host port

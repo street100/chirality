@@ -89,7 +89,7 @@ caller; `sig-driver.chiral:23` is `row-infer`'s only importer.
 
 | probe | result |
 |---|---|
-| `bash scaffold/tests/run-native.sh` | **exit 0** — Phase 1 6, Phase 2 test-runner 0 (6 samples), Phase 3 7, Phase 4 31, Phase 5 12, Phase 6 21, Phase 7 81 roots compiled / 0 failed / 12 known, Phase 8 44. **121 assertions + 81 roots** |
+| `bash tools/test/run-tests.sh` | **exit 0** — Phase 1 6, Phase 2 test-runner 0 (6 samples), Phase 3 7, Phase 4 31, Phase 5 12, Phase 6 21, Phase 7 81 roots compiled / 0 failed / 12 known, Phase 8 44. **121 assertions + 81 roots** |
 | `chirality_blob scaffold/lib row-infer` + a `compile-main` probe, `B1` | compiles **rc 0**, ELF **exit 42** — `infer-row` over a fixture with a duplicate callee and a `"*"` returns `["put"]`. This is the golden Step 4 pins, and it is the **first** time anything in the tree compiled `row-infer` |
 | the incumbent's survivor rule, generalised to `(Pair I64 Str)` + a key comparator | ELF **exit 42** asserting tags `d,c,e` — the incumbent really keeps the **LAST** of each run |
 | the proposed `list-sort` ∘ `list-dedup-adj` on the same input | ELF **exit 42** asserting tags `b,a,e` — keep-**FIRST**. The two rules are distinguishable by a runnable program, and the mutant is the shipped incumbent |
@@ -166,7 +166,7 @@ No decision blocks §4. `status: draft`.
 - **Size:** S (+4 / −17 lines).
 
 ### Step 3 — the runtime sample
-- **Target:** new `scaffold/tests/samples/e156_dedup_adj.chiral`, in the shape of
+- **Target:** new `tools/test/samples/e156_dedup_adj.prog`, in the shape of
   `e152_list_sort.chiral` (a flat `Bool` list, `ls-t-first-bad`-style first-false
   index as the exit code, exit **0** on all-pass).
 - **Change:** the G1–G3 cases of §5 — `str-cmp` shapes, the **key-projection
@@ -176,7 +176,7 @@ No decision blocks §4. `status: draft`.
 - **Size:** M (~120 lines).
 
 ### Step 4 — the gate script and the phase that runs it
-- **Target:** new `scaffold/tests/test-e156-dedup.sh`; `scaffold/tests/run-native.sh`
+- **Target:** new `scaffold/tests/test-e156-dedup.sh`; `tools/test/run-tests.sh`
   (new Phase 9 + its banner in the header comment block, `:12-29`).
 - **Change:** the script builds each blob with `chirality_blob` / `chirality_blob_file`,
   compiles with `$CHIRALITY_BIN`, runs the ELF, and compares exit codes — the
@@ -255,10 +255,10 @@ chirality_blob scaffold/lib sys-linkage compile-front compile-back compile-emit 
 /tmp/C1 < /tmp/blob.new > /tmp/C2 && cmp /tmp/C1 /tmp/C2        # byte-identical fixpoint
 #  behavioural gates -- the fixpoint is NOT a correctness check:
 bash scaffold/tests/test-e156-dedup.sh                          # G1-G6
-cp /tmp/C1 scaffold/build/B1 && chmod +x scaffold/build/B1
+cp /tmp/C1 bin/chirality-bin && chmod +x bin/chirality-bin
 cp /tmp/blob.new scaffold/build/blob.chiral                      # BOTH, together
-./scaffold/build/B1 < scaffold/build/blob.chiral > /tmp/V && cmp /tmp/V scaffold/build/B1
-bash scaffold/tests/run-native.sh                               # all nine phases, exit 0
+./scaffold/build/B1 < scaffold/build/blob.chiral > /tmp/V && cmp /tmp/V bin/chirality-bin
+bash tools/test/run-tests.sh                               # all nine phases, exit 0
 ```
 
 Then **rebuild `scaffold/build/test-runner`** against the promoted B1 — a runner

@@ -17,7 +17,7 @@ updated: 2026-08-01
 ## 1. Deliverable
 
 - **After this runs:** allocation is a typed, linear, **total** operation. A new
-  `scaffold/lib/arena.chiral` defines `Ptr`/`Arena`/`Alloc` + `align8` + the pure
+  `lib/memory/arena.chiral` defines `Ptr`/`Arena`/`Alloc` + `align8` + the pure
   `bump` (exhaustion = a returned `a-err`, never a fault) and the `MapPort`-gated
   `arena-map` crossing; `native.py`'s arena setup (`:476–480`) routes through it.
   The typed bump agrees address-for-address with **both** live bumps — the
@@ -73,7 +73,7 @@ defer to named homes (E22/E48/E80). Change plan fully unblocked.
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — `lib/arena.chiral`: the typed layer
-- **Target:** `scaffold/lib/arena.chiral` (NEW FILE).
+- **Target:** `lib/memory/arena.chiral` (NEW FILE).
 - **Change:** per example §5 with decision #4's shape: `(porttype MapPort)`,
   `(porttype ArenaTok)`; `(data Ptr () (ptr (addr I64)))`, `(data Arena ()
   (arena (1 tok ArenaTok) (cur I64) (end I64)))`, `(data Alloc () (a-ok (p Ptr)

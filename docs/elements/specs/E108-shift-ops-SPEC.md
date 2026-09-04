@@ -16,8 +16,8 @@ updated: 2026-08-12
 
 ## 1. Deliverable
 
-- **After this runs:** two new lines in `scaffold/lib/prelude.chiral`, right after
-  `shl` at `:59` — `(extern shr (-> I64 I64 I64))` (logical / zero-fill) and
+- **After this runs:** two new lines in `lib/prelude/prelude.chiral`, right after
+  `shl` at `:69` — `(extern shr (-> I64 I64 I64))` (logical / zero-fill) and
   `(extern sar (-> I64 I64 I64))` (arithmetic / sign-fill) — so surface programs
   can call `(shr a k)` and `(sar a k)` and have them type-check, interpret, and
   native-compile. B1's current `load: unknown name sar` gap closes.
@@ -58,7 +58,7 @@ No NEEDS-AUTHOR items. §4 is fully unblocked.
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — Add the two surface externs
-- **Target:** `scaffold/lib/prelude.chiral` — immediately after the `shl` extern at
+- **Target:** `lib/prelude/prelude.chiral` — immediately after the `shl` extern at
   `:59`, inside the `; i64 (bitwise)` block.
 - **Change:** insert, mirroring the E96 band/bor/bxor/shl formatting:
   ```chirality
@@ -76,7 +76,7 @@ No NEEDS-AUTHOR items. §4 is fully unblocked.
 - **Size:** XS (probe, folded into the §5 sample).
 
 ### Step 3 (OPTIONAL residue) — simplify the `poll.chiral` bit test
-- **Target:** `scaffold/lib/poll.chiral:22-23` — `bit?` currently
+- **Target:** `lib/runtime/poll.chiral:22-23` — `bit?` currently
   `(=i (mod (div m f) 2) 1)`.
 - **Change:** may be re-keyed by bit index as `(=i (band (shr m k) 1) 1)`. Explicitly
   NOT required for the gate; land as a follow-up cleanup only if convenient.

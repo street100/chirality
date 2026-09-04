@@ -73,7 +73,7 @@ shipped defect) and the live code below, each line re-read for this spec.
 | `kinds-taken` / `sig-kind-taken` (redeclaration by NAME) | `loader.chiral:186-193` | ships |
 | `handle-kind` + `KErr` + `k-msg` (load-time shape/axis/redecl refusals) | `parse.chiral:1046-1068`, `:1110-1149` | ships |
 | toplevel head dispatch | `parse.chiral:1166-1189` | ships |
-| the two providers that concatenate modules | `bin/chirality-resolve.sh:47-97` (`chirality_blob`), `scaffold/lib/resolve.chiral:318-324` (`concat-mods`) | ship. **NOT pinned against each other today** — `scaffold/tests/test_resolve_chirality.py` runs only the shell provider (substring + ordering checks) and then type-checks `resolve.chiral` with the *Python* checker; it never runs `scaffold/build/resolve` and never compares two blobs. The differential is built by §5 G0, in bash. See §6.4 finding 8 |
+| the two providers that concatenate modules | `bin/chirality-resolve.sh:47-97` (`chirality_blob`), `lib/module/resolve.chiral:318-324` (`concat-mods`) | ship. **NOT pinned against each other today** — `scaffold/tests/test_resolve_chirality.py` runs only the shell provider (substring + ordering checks) and then type-checks `resolve.chiral` with the *Python* checker; it never runs `scaffold/build/resolve` and never compares two blobs. The differential is built by §5 G0, in bash. See §6.4 finding 8 |
 | E160 gate | `scaffold/tests/test-module-kind.sh`, driven from `run-native.sh:190-199` (Phase 8) | ships, **29** assertions — measured by RUNNING it, not by counting call sites. Counting `refuse`/`accepts`/`mod_runs`/`mod_refuses` gives 26 and is wrong: there is a **fifth** helper, `appended` (`:277-293`), with 3 calls (`:297-299`). It builds `chirality_blob <root>` and appends the program, which is the shape R9's and G12's cases need. The ledger row's "29-case" figure is correct; an earlier draft of this spec called it stale |
 
 **Retiring, not surviving** (§4 Step 7): `kind-offender` /
@@ -305,10 +305,10 @@ onward, so the full build ceremony in §5 applies to every step.**
 - **Size:** M.
 
 ### Step 3 — the `Sheet` schema, the `Sig` field, and the lookup
-- **Target:** `scaffold/lib/kernel.chiral` — `ExpKind` / `Export` / `Sheet` beside
-  `KCat`/`KAlt` (`:91-93`); a ninth `sheets` field on `Sig` (`:126-135`) with
-  `sig-sheets` beside `sig-kinds` (`:145`); `find-sheet` / `sig-sheet` in the
-  shape of `find-target` / `sig-profile` (`:148-156`).
+- **Target:** `lib/typing/kernel.chiral` — `ExpKind` / `Export` / `Sheet` beside
+  `KCat` (`:101`) and `KAlt` (`:107`); a ninth `sheets` field on `Sig`
+  (`:228-238`) with `sig-sheets` beside `sig-kinds` (`:248`); `find-sheet` /
+  `sig-sheet` in the shape of `find-target` (`:255`) / `sig-profile` (`:263`).
 - **Change:** exactly the example §5 block. `Sheet` is **total** (D5): `name`,
   `cat`, `alt`, `crossings`, `exports`, `mints`, every field present on every
   record, no `Maybe`. Adding the ninth field is the largest mechanical edit in
@@ -522,7 +522,7 @@ helpers), `in-proc` (a `mod_runs` reader program, per the table above), or
 | G2 | 2 | fence | **the fence, on both close paths.** G2a: an inline root — `(module m (cat A) …)` binding one `=>` extern, no marker — is REFUSED naming **module + crossing** (closes at EOF). G2b: the same module placed in a **fixture libdir** and imported, so the provider closes it with `(end-module "m")` — also REFUSED, same message | make `cat-fenced` return `none` unconditionally → both fail. Running it on both paths is the point: a fence wired only to the marker close would pass G2b and silently ignore every hand-compiled source, which is G12's failure one row earlier |
 | G3 | 3 | fence | **one-directionality.** `(cat B)` and `(cat C)` over that same crossing module are ACCEPTED; `(cat A)` over a module binding only `->` externs is ACCEPTED | make the fence bidirectional (`B`/`C` ⇒ must cross) → G3 fails. Step 6 / example Finding 7 |
 | G4 | 1 | fence | **the grammar (D4).** `(module m (cat A) (crossings foo))` is REFUSED by the existing `(k-shape)` arm | add a `crossings` production to `handle-kind` → G4 accepts → fails. Pins "derived fields are not writable" as *absence of a production* |
-| G5 | 2 | in-proc + fence | **FAÇADE, the R7/D1b case.** In-proc: a two-module fixture in one literal — a façade (`(module f (cat C) …)`, one `data`, **no def**, `(end-module "f")`) followed by a module with defs — ⇒ the façade's sheet is **total**, its `crossings` and `mints` empty and its `exports` holding **its own `data` head** — not empty: `data` is an export head, so `ports` really derives `exports=[Port:data]`, and the pre-build draft of this row was wrong — and the second module's defs land on the second module's sheet. Fence: the real blob, where `lib/ports.chiral` is that façade | revert Step 1 (drop the `(end-module …)` emission, or make the close conditional on `ds` again) → the façade's `exports` lists the next module's defs → G5 fails. **This is the shipped-defect regression test.** |
+| G5 | 2 | in-proc + fence | **FAÇADE, the R7/D1b case.** In-proc: a two-module fixture in one literal — a façade (`(module f (cat C) …)`, one `data`, **no def**, `(end-module "f")`) followed by a module with defs — ⇒ the façade's sheet is **total**, its `crossings` and `mints` empty and its `exports` holding **its own `data` head** — not empty: `data` is an export head, so `ports` really derives `exports=[Port:data]`, and the pre-build draft of this row was wrong — and the second module's defs land on the second module's sheet. Fence: the real blob, where `lib/ports/ports.chiral` is that façade | revert Step 1 (drop the `(end-module …)` emission, or make the close conditional on `ds` again) → the façade's `exports` lists the next module's defs → G5 fails. **This is the shipped-defect regression test.** |
 | G5b | 1 | in-proc | **the deleted heuristic, from the other side.** `(module m (cat A))` · `def a` · `(import "x")` · `def b` · `(end-module "m")` ⇒ **both** `a` and `b` are on `m`'s sheet | restore `kinds-close-bodied` → `b` is charged to nobody → G5b fails. **Verified to fail on today's compiler (probe 4, exit 4).** |
 | G6 | 1 | fence | **extent name (D3b).** `(module wrongname (cat A))` inside an extent the provider closed as `"right"` is REFUSED, naming both | drop the name comparison in `sig-close-extent` → G6 accepts → fails |
 | G7 | 1 | fence | **two coordinates in one extent (D3c).** Two `(module …)` forms with no `(end-module …)` between them are REFUSED | restore "a `module` form closes the open one" → G7 accepts → fails |
@@ -590,10 +590,10 @@ chirality_blob scaffold/lib sys-linkage compile-front compile-back compile-emit 
 /tmp/C1 < /tmp/blob.new > /tmp/C2 && cmp /tmp/C1 /tmp/C2         # byte-identical fixpoint
 #   behavioural gates (the fixpoint is NOT a correctness check):
 #   e151_string_stdlib + e152_list_sort samples, exit 0 each, plus G0-G12 above
-cp /tmp/C1 scaffold/build/B1 && chmod +x scaffold/build/B1
+cp /tmp/C1 bin/chirality-bin && chmod +x bin/chirality-bin
 cp /tmp/blob.new scaffold/build/blob.chiral                        # BOTH, together
-./scaffold/build/B1 < scaffold/build/blob.chiral > /tmp/V && cmp /tmp/V scaffold/build/B1
-bash scaffold/tests/run-native.sh
+./scaffold/build/B1 < scaffold/build/blob.chiral > /tmp/V && cmp /tmp/V bin/chirality-bin
+bash tools/test/run-tests.sh
 ```
 
 Then **rebuild the native test-runner** (`scaffold/build/test-runner`) against the

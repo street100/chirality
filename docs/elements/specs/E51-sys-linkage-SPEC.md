@@ -97,7 +97,7 @@ wrappers (its SPEC carries the dated note).
 
 ### Step 1 — `fd-view` bridge primitive (sysface-only raw-port view)
 - **Target:** `scaffold/chirality/runtime.py` (`IMPLS`/link layer registration) +
-  `scaffold/lib/sys-linkage.chiral` (the `FdView` datatype + `fd-view` referent decl).
+  `lib/lowering/tal/sys-linkage.chiral` (the `FdView` datatype + `fd-view` referent decl).
 - **Change:** add a runtime referent that, given a linear `Fd` atom, returns
   `(fd-view-r raw f2)` — the raw int plus the *same* port threaded back (no
   double-use; matches `RecvR`'s result-shape threading). Register it ONLY as a
@@ -106,7 +106,7 @@ wrappers (its SPEC carries the dated note).
 - **Size:** S
 
 ### Step 2 — the binding table + C-bridge wrappers (`lib/sys-linkage.chiral`)
-- **Target:** NEW `scaffold/lib/sys-linkage.chiral` — `SysBinding`, `sys-bindings`,
+- **Target:** NEW `lib/lowering/tal/sys-linkage.chiral` — `SysBinding`, `sys-bindings`,
   `FdView`, and the v1 wrappers `wrap-put`/`wrap-print`/`wrap-trace`.
 - **Change:** the v1 bound set (Decision 5: bind ONLY externs whose FULL
   crossing path exists today) is the three ambient writers — `put`/`print`

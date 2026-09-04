@@ -17,7 +17,7 @@ updated: 2026-08-13
 ## 1. Deliverable
 
 - **After this runs:** the socket floor stops being AF_UNIX-only. A new pure
-  surface file `scaffold/lib/inet.chiral` holds `parse-quad`, `pack-sa-in`, and
+  surface file `lib/protocol/inet.chiral` holds `parse-quad`, `pack-sa-in`, and
   the `sock-connect-in` wrapper; `ports.chiral` gains the raw crossing extern
   `nb-sock-connect-in (=> Bytes ConnR)`; `sys-tal.chiral` gains the fused
   `nb-sock-connect-in-t` TAL body (registered in `sys-lib`) that does
@@ -61,7 +61,7 @@ Every open question from the example §6, dispositioned. No silent design calls.
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
 | 0 | sockaddr_in packing is pure chirality surface `pack-sa-in`, NOT a TAL byte-builder; the only TAL body is the thin `nb-sock-connect-in-t` taking pre-packed Bytes | RESOLVED | Author's explicit resolution of the prior audit FLAG (chirality-conventions, "Resolved-FLAG residue", 2026-08-12). Do not re-open. |
-| 1 | Where `parse-quad`/`pack-sa-in`/`sock-connect-in` live | RESOLVED | Pure `->` surface (`Quad`, `QuadR`, `parse-quad`, `pack-sa-in`) plus the effectful `sock-connect-in` wrapper land in a NEW `scaffold/lib/inet.chiral` (imports prelude + ports). The raw extern `nb-sock-connect-in` lands in `ports.chiral` with the other socket externs. Rationale: pure `->` surface must stay off the membrane (never `sys-tal.chiral`), and `ports.chiral` is extern/porttype-only (verified: zero `def`s in its outline), so the pure defs get their own home. Refines example §6 "Lands in", which bundled everything into ports.chiral. |
+| 1 | Where `parse-quad`/`pack-sa-in`/`sock-connect-in` live | RESOLVED | Pure `->` surface (`Quad`, `QuadR`, `parse-quad`, `pack-sa-in`) plus the effectful `sock-connect-in` wrapper land in a NEW `lib/protocol/inet.chiral` (imports prelude + ports). The raw extern `nb-sock-connect-in` lands in `ports.chiral` with the other socket externs. Rationale: pure `->` surface must stay off the membrane (never `sys-tal.chiral`), and `ports.chiral` is extern/porttype-only (verified: zero `def`s in its outline), so the pure defs get their own home. Refines example §6 "Lands in", which bundled everything into ports.chiral. |
 | 2 | `conn-err` carries a formatted `Str` vs grows an errno field `(conn-err (errno I64))` | RESOLVED | Keep `conn-err (msg Str)`, empty Str on error, mirroring E127. Author's call (2026-08-13): the errno field is ergonomics, not load-bearing — growing it changes the SHARED `ConnR` type (ports.chiral:43) and ripples to E127's built `nb-sock-connect-t`. The errno-field upgrade is a deferred follow-on. |
 | 3 | `sock-connect-in` shares the `ConnR` decode with `sock-connect` (E127) vs its own errno mapping (ECONNREFUSED vs ENOENT) | RESOLVED | Share the decode: E129 reuses `ConnR` as-is, same `conn-r`=0 / `conn-err`=1 tags, same `ti-cona` assembly as `nb-sock-connect-t` (ports.chiral:43-49 "numeric render deferred"; examples/E127-sock-connect.md). The ECONNREFUSED-vs-ENOENT distinction is exactly what the §3 #2 errno field would carry; the errno field is deferred (§3 #2 RESOLVED), so both E127 and E129 report a bare empty-Str `conn-err`. |
 | 4 | Exact surface shape: `sock-connect-in : (=> Str I64 ConnR)` vs raw `(=> Bytes ConnR)` crossing + pure wrapper | RESOLVED | Raw crossing + pure wrapper. The ONLY crossing is `nb-sock-connect-in : (=> Bytes ConnR)` (takes the pre-packed 16-byte sockaddr_in; socket+connect+decode). The public `sock-connect-in : (=> Str I64 ConnR)` is a pure-surface `def` composing `parse-quad` → `pack-sa-in` → `nb-sock-connect-in`. crossing-wraps row: `(pair "nb-sock-connect-in" "nb-sock-connect-in")` (extern name == ti-fn name). sys-lib entry: `nb-sock-connect-in-t` (TIFn, `ti-fn "nb-sock-connect-in"`). Cite example §5 wrapper spine + the thin-TAL-body resolution (#0). |
@@ -71,7 +71,7 @@ No NEEDS-AUTHOR remains: #2 is RESOLVED (empty Str, errno deferred). The change 
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — pure AF_INET surface (new file)
-- **Target:** `scaffold/lib/inet.chiral` (new) — `Quad`, `QuadR`, `parse-quad`,
+- **Target:** `lib/protocol/inet.chiral` (new) — `Quad`, `QuadR`, `parse-quad`,
   `byte`, `pack-sa-in`, `sock-connect-in`
 - **Change:** `(import "prelude")` + `(import "ports")`. Add `(data Quad ()
   (quad (a I64) (b I64) (c I64) (d I64)))` and `(data QuadR () (quad-ok (q
@@ -87,7 +87,7 @@ No NEEDS-AUTHOR remains: #2 is RESOLVED (empty Str, errno deferred). The change 
 - **Size:** M (~60 lines, new file)
 
 ### Step 2 — raw crossing extern
-- **Target:** `scaffold/lib/ports.chiral` — insert after the `sock-connect`
+- **Target:** `lib/ports/ports.chiral` — insert after the `sock-connect`
   extern (:82)
 - **Change:** `(extern nb-sock-connect-in (=> Bytes ConnR))`. Bare types, no
   named params (the B1 `load: unknown name` trap). Comment: takes the packed
@@ -95,14 +95,14 @@ No NEEDS-AUTHOR remains: #2 is RESOLVED (empty Str, errno deferred). The change 
 - **Size:** S
 
 ### Step 3 — crossing-wraps row
-- **Target:** `scaffold/lib/crossing-wraps.chiral` — insert after the
+- **Target:** `lib/lowering/tal/crossing-wraps.chiral` — insert after the
   `sock-connect` row (:39)
 - **Change:** `(cons (pair "nb-sock-connect-in" "nb-sock-connect-in") ...)`
   and +1 close paren on the `nil)))...` tail. Extern name == ti-fn name.
 - **Size:** S
 
 ### Step 4 — fused TAL body + sys-lib entry
-- **Target:** `scaffold/lib/sys-tal.chiral` — new `nb-sock-connect-in-t` TIFn
+- **Target:** `lib/lowering/tal/sys.chiral` — new `nb-sock-connect-in-t` TIFn
   (after `nb-sock-connect-t`, :921) + `sys-lib` entry (after
   `nb-sock-connect-t`, :1074)
 - **Change:** `(def nb-sock-connect-in-t TIFn (ti-fn "nb-sock-connect-in" 1 N

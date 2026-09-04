@@ -16,7 +16,7 @@ updated: 2026-08-08
 
 ## 1. Deliverable
 
-- **After this runs:** A new file `scaffold/lib/scriba/mark-region.chiral` exists
+- **After this runs:** A new file `prog/scriba/mark-region.chiral` exists
   (~80 lines) defining `Mark`, `MarkRing` types and pure `->` functions:
   `set-mark`, `exchange-point-and-mark`, `mark-ring-push`, `mark-ring-pop`,
   `zipper-offset`, `region-between`, `kill-region`, `copy-region`. The file
@@ -36,10 +36,10 @@ updated: 2026-08-08
 - **Conformance-map verdict:** (none — E88 postdates the map snapshot; treat
   as BUILD: pure new construction, nothing to conform to or extend.)
 - **Live code this composes with:**
-  - `scaffold/lib/scriba/str-edit.chiral` (699 lines) — `TextZipper`, `LineCtx`,
+  - `prog/scriba/str-edit.chiral` (699 lines) — `TextZipper`, `LineCtx`,
     `zipper-to-text`, `advance-by`, `text-zipper-from-str`,
     `str-delete-forward`, `str-len`, `str-sub`, `str-cat`, `str-eq`.
-  - `scaffold/lib/scriba/kill-ring.chiral` (74 lines) — `KillRing`,
+  - `prog/scriba/kill-ring.chiral` (74 lines) — `KillRing`,
     `kill-ring-push`, `kill-ring-top`, `kill-ring-empty?` (integration target;
     not imported by mark-region, used by command loop).
   - `prelude` — `I64`, `Str`, `Bool`, `Unit`, `List`, `Maybe`, `Pair`, `=i`,
@@ -66,7 +66,7 @@ Every open question from the example §6, dispositioned.
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — `mark-region.chiral`: types + pure ops
-- **Target:** `scaffold/lib/scriba/mark-region.chiral` — new file.
+- **Target:** `prog/scriba/mark-region.chiral` — new file.
 - **Change:** Write the full file: `(import "prelude")`, `(import "str-edit")`,
   `Mark` and `MarkRing` data types, then all pure functions in the order they
   appear in the example §5 snippet. Adapt naming and types from the example
@@ -76,7 +76,7 @@ Every open question from the example §6, dispositioned.
 
 ### Step 2 — B1 compilation verification
 - **Target:** verify through B1: `chirality_blob scaffold/lib scriba/mark-region |
-  scaffold/build/B1`.
+  bin/chirality-bin`.
 - **Change:** If B1 rejects any construct (effect chain threshold on a pure
   `->` function should be fine — pure functions don't cross the membrane),
   simplify the offending function body. The expected hazard is `region-between`
@@ -85,8 +85,8 @@ Every open question from the example §6, dispositioned.
 - **Size:** iterative fix loop, ~S.
 
 ### Step 3 — (deferred) command-loop wiring
-- **Target:** `scaffold/lib/scriba/command-loop.chiral`,
-  `scaffold/lib/scriba/scriba-main.chiral`.
+- **Target:** `prog/scriba/command-loop.chiral`,
+  `prog/scriba/scriba-main.prog`.
 - **Change:** Add `Mark`, `MarkRing`, `KillRing` parameters to
   `command-loop-inner` and `command-loop`. Thread them through the recursive
   call. Initialize `none` mark, empty `mark-ring`, empty `kill-ring` in
@@ -138,5 +138,5 @@ Every open question from the example §6, dispositioned.
   module routes `kill-region` op calls through the command loop. Undo tree
   (scriba slice 3) can record kill-region as atomic edits.
 - **Related:** [[E88-mark-region]],
-  `scaffold/lib/scriba/kill-ring.chiral`,
-  `scaffold/lib/scriba/str-edit.chiral`.
+  `prog/scriba/kill-ring.chiral`,
+  `prog/scriba/str-edit.chiral`.

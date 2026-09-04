@@ -61,15 +61,15 @@ updated: 2026-08-22
   BUILD; the build-state facts below were measured directly during this run.
 
 - **Live code this composes with — do NOT respec it:**
-  - `scaffold/lib/string-utils.chiral` (179 lines, E151a, landed): `str-cmp` (:80)
+  - `lib/prelude/string.chiral` (179 lines, E151a, landed): `str-cmp` (:80)
     over `su-cmp-bytes` (:65), `str-lower` (:105), `str-upper` (:121),
     `str-trim` (:152) over `su-is-ws` (:129), `str-replace` (:175),
     `str-starts-with` (:10), `str-strip-prefix` (:15), `str-contains` (:22),
     `str-split` (:37). Internals all `su-`-prefixed (the E154 guard).
-  - `scaffold/lib/collections.chiral:156` owns `(data Ord () (lt) (eq) (gt))`;
+  - `lib/prelude/ord.chiral:14` owns `(data Ord () (lt) (eq) (gt))`;
     `string-utils.chiral:7` imports it precisely for that. `Ord` is **not** in
     E151b's scope as a thing to build — only as re-declarations to delete.
-  - `scaffold/tests/samples/e151_string_stdlib.chiral` (113 lines) — E151a's
+  - `tools/test/samples/e151_string_stdlib.prog` (113 lines) — E151a's
     runtime gate, exit 0 iff every case is right.
   - `tools/ledger-lint/ledger-lint.py:494` `OWNERSHIP_BASELINE` — the L ratchet
     (`:497`, "a shared name defined in N files has no owning module; N must never
@@ -140,7 +140,7 @@ cd /workspace/chirality
 ulimit -s unlimited
 chirality_blob scaffold/lib sys-linkage compile-front compile-back compile-emit compile-all > /tmp/blob.chiral
 ./scaffold/build/B1 < /tmp/blob.chiral > /tmp/B1p && chmod +x /tmp/B1p
-cmp /tmp/B1p scaffold/build/B1        # must be byte-identical BEFORE any edit
+cmp /tmp/B1p bin/chirality-bin        # must be byte-identical BEFORE any edit
 ```
 
 **Measured 2026-08-22: identical (1 020 280 bytes).** `scaffold/build/B1` is
@@ -149,7 +149,7 @@ is stale (see §7). Do not skip this — it is what makes the Step 1/2 gate mean
 something. `scaffold/build/` is gitignored; regenerate, never commit.
 
 ### Step 1 — `asm-reloc` imports the owner
-- **Target:** `scaffold/lib/asm-reloc.chiral`
+- **Target:** `lib/lowering/mach/asm-reloc.chiral`
 - **Change:** add `(import "string-utils")` after `(import "collections")` (:10);
   **delete lines 66-80** — `ar-cmp-i64`, `(declare ar-cmp-bytes)` + `ar-cmp-bytes`,
   `ar-str-cmp`; rename the two call sites `ar-str-cmp` → `str-cmp` (:88 `offs->tree`,
@@ -158,14 +158,14 @@ something. `scaffold/build/` is gitignored; regenerate, never commit.
 - **Size:** S (−15 lines, +1 import, 2 call sites)
 
 ### Step 2 — `compile-back` imports the owner
-- **Target:** `scaffold/lib/compile-back.chiral`
+- **Target:** `lib/lowering/compile-back.chiral`
 - **Change:** add `(import "string-utils")` after `(import "collections")` (:18);
   **delete lines 115-129** — `cb-cmp-i64`, `(declare cb-cmp-bytes)` + `cb-cmp-bytes`,
   `cb-str-cmp`; rename the two call sites in `dedup-str` (:133, :135).
 - **Size:** S (−15 lines, +1 import, 2 call sites)
 
 ### Step 3 — `ty-cmp` imports the owner
-- **Target:** `scaffold/lib/ty-cmp.chiral`
+- **Target:** `lib/typing/ty-cmp.chiral`
 - **Change:** add `(import "string-utils")` after `(import "data")` (:14);
   **delete** `:16` `(data Ord () (lt) (eq) (gt))`, and `:24-34`
   (`(declare cmp-bytes)`, `cmp-bytes`, `str-cmp`). **KEEP** `cmp-i64` (:18) and
@@ -272,14 +272,14 @@ are measured, not predicted.**
 
 | Step | must compile | must run | must byte-compare |
 |---|---|---|---|
-| **0** | — | — | `B1(regenerated blob) == scaffold/build/B1` ✅ measured identical |
-| **1** | regenerated compiler blob → `C1` | `printf '(def compile-main (-> I64 I64) (lam (n) 42))' \| C1` → ELF exits **42**; `C1 < g151 blob` → ELF exits **0** (**load-bearing — see the teeth note**) | `C1 < blob > C2`; `cmp C1 C2` **identical** ✅; **and** `C1 < <pre-change blob> == scaffold/build/B1` byte-identical ✅ (the cross-compiler differential: the new compiler re-emits the old compiler exactly) |
+| **0** | — | — | `B1(regenerated blob) == bin/chirality-bin` ✅ measured identical |
+| **1** | regenerated compiler blob → `C1` | `printf '(def compile-main (-> I64 I64) (lam (n) 42))' \| C1` → ELF exits **42**; `C1 < g151 blob` → ELF exits **0** (**load-bearing — see the teeth note**) | `C1 < blob > C2`; `cmp C1 C2` **identical** ✅; **and** `C1 < <pre-change blob> == bin/chirality-bin` byte-identical ✅ (the cross-compiler differential: the new compiler re-emits the old compiler exactly) |
 | **2** | same as Step 1 (both converted) | same | ✅ measured: `C1 == C2`, 1 024 376 bytes (+4 096 vs B1 — the whole shelf links in) |
 | **3** | `{ chirality_blob scaffold/lib ty-cmp; echo '(def compile-main (-> I64 I64) (lam (n) 42))'; } \| B1` | ELF exits **42** ✅ | — (`ty-cmp` is not in the compiler blob) |
 | **4** | `{ chirality_blob scaffold/lib sig-driver; echo '(def compile-main …42…)'; } \| B1` | ELF exits **42** ✅ | — (`row-infer` is not in the compiler blob) |
-| **5** | `{ chirality_blob scaffold/lib string-utils; cat scaffold/tests/samples/e151_string_stdlib.chiral; } \| B1` | ELF exits **0** ✅ (pre-change baseline confirmed) | — |
-| **6** | `manas/chatter/turn`, `manas/chatter/divide`, `manas/chatter/orchestrate`, `manas/core/flow-test`, `manas/chatter/turn-test`, and `{ chirality_blob scaffold/lib prelude manas/core/types manas/core/match manas/core/assemble manas/core/stop; cat scaffold/tests/samples/e136_core.chiral; }` | `turn`/`divide`/`orchestrate` → **42**; `flow-test` → **0**; `turn-test` → **0**; `e136_core` → **0** — all four ✅ measured **identical before and after** the conversion (audit re-ran the full three-import variant, not just the one-import probe) | — |
-| **all** | — | `bash scaffold/tests/run-native.sh` (GATING); `python3 tools/ledger-lint/ledger-lint.py` clean | — |
+| **5** | `{ chirality_blob scaffold/lib string-utils; cat tools/test/samples/e151_string_stdlib.prog; } \| B1` | ELF exits **0** ✅ (pre-change baseline confirmed) | — |
+| **6** | `manas/chatter/turn`, `manas/chatter/divide`, `manas/chatter/orchestrate`, `manas/core/flow-test`, `manas/chatter/turn-test`, and `{ chirality_blob scaffold/lib prelude manas/core/types manas/core/match manas/core/assemble manas/core/stop; cat tools/test/samples/e136_core.prog; }` | `turn`/`divide`/`orchestrate` → **42**; `flow-test` → **0**; `turn-test` → **0**; `e136_core` → **0** — all four ✅ measured **identical before and after** the conversion (audit re-ran the full three-import variant, not just the one-import probe) | — |
+| **all** | — | `bash tools/test/run-tests.sh` (GATING); `python3 tools/ledger-lint/ledger-lint.py` clean | — |
 
 - **Gate teeth — measured by mutation, not asserted.** Each claim below was
   produced by breaking the change on purpose and watching the gate:
@@ -307,7 +307,7 @@ are measured, not predicted.**
   changed. What must hold is that the new compiler reproduces itself.
 
 - **Tests to add:** Step 5 only (the `str-pad` cases in
-  `scaffold/tests/samples/e151_string_stdlib.chiral`, native floor). Steps 1–4 and 6
+  `tools/test/samples/e151_string_stdlib.prog`, native floor). Steps 1–4 and 6
   add none by design — the whole point is that behavior is unchanged, and the
   gate is the pre/post differential above. Floors compared: **native** (gating,
   every row of the table), **python** (advisory: `test_string_utils.py`,
@@ -316,7 +316,7 @@ are measured, not predicted.**
 
 - **Green line:** 709 test functions / 77 files in `scaffold/tests/` → **still
   709 / 77**. The `str-pad` cases land in
-  `scaffold/tests/samples/e151_string_stdlib.chiral`, a native `.chiral` gate
+  `tools/test/samples/e151_string_stdlib.prog`, a native `.chiral` gate
   sample, not a Python test function, so the Python count does not move (an
   earlier "≥ 709 … carrying ~6 more cases" read as if it did); `run-native.sh` green;
   `python3 tools/ledger-lint/ledger-lint.py` clean **with the ratchet at**

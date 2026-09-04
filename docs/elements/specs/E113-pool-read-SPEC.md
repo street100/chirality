@@ -60,17 +60,17 @@ updated: 2026-08-12
   work extends the real `ports.chiral`/`impl_ports.py` `Pool` machinery, it does not
   port an external.
 - **Live code this composes with (name, do NOT respec):**
-  - `scaffold/lib/ports.chiral:19` — `(porttype Pool (n I64))`; `:34` — `PoolR`
-    (`pool-r (1 pool (Pool n)) (1 fd Fd)`); `:73` `pool-create`; `:74`
+  - `lib/ports/pool.port:13` — `(porttype Pool (n I64))`; `:15` — `PoolR`
+    (`pool-r (1 pool (Pool n)) (1 fd Fd)`); `:26` `pool-create`; `:27`
     `pool-write : (-> (0 n I64) (=> (1 p (Pool n)) I64 Bytes (Pool n)))` — the
-    line-for-line shape mirror; `:75` `pool-close`. `RecvR` (`:28`) / `AvailR`
+    line-for-line shape mirror; `:31` `pool-close`. `RecvR` (`lib/ports/sock.port:22`) / `AvailR`
     (`mem-region.chiral:65`) are the precedent for a linear-field-carrying result sum.
   - `scaffold/chirality/impl_ports.py:287` `_poolwrite(_n, pv, off, data)` — the host
     tuple `("pool", mm, size)` unpack + the bounds check + `mm[off:off+len] = data`
     store; `:267` `_poolcreate` (records `size` via `ftruncate`+`mmap`); `:277`
     `_poolclose` (reads `_, mm, size = pv`, gets its `munmap` length from the same
     tuple — the precedent that the runtime length already lives host-side).
-  - `scaffold/lib/mem-region.chiral:23` — `Region` carries `cap` (the value the pool
+  - `lib/memory/mem-region.chiral:23` — `Region` carries `cap` (the value the pool
     was created with, agreeing with `n` by construction), the surface-level length
     witness; `:74` `region-close`. E111 will thread `pool-read` through here.
 - **True delta (post-E120):** the `PoolReadR` sum + `pool-read` extern + native
@@ -121,7 +121,7 @@ the native leg is now available as a follow-on rather than author-gated).
 - **Size:** ~S. Commit: `E113: _poolread advisory-oracle binding (matches native pr-r + halt)`.
 
 ### Step 4 — round-trip sample (native, authoritative)
-- **Target:** E120 already ships `scaffold/tests/samples/e120_pool_roundtrip.chiral`
+- **Target:** E120 already ships `tools/test/samples/e120_pool_roundtrip.prog`
   (create → write → read → close, exit 42). E113's read leg is exercised there.
   If a read-focused sample is wanted, extend it: `pool-read` the written range back,
   assert byte-equality on `pr-r`, threaded `(Pool n)` live. Native run is the gate.

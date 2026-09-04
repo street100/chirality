@@ -17,7 +17,7 @@ updated: 2026-08-12
 ## 1. Deliverable
 
 - **After this runs:** a pure `(extern adopt-fd (-> I64 Fd))` primitive exists in
-  `scaffold/lib/ports.chiral` and lowers to the identity on its carrier word, so
+  `lib/ports/ports.chiral` and lowers to the identity on its carrier word, so
   an already-open raw `I64` fd can be re-typed into the linear `Fd` cap — closing
   the loop `open-rw (I64) → adopt-fd (Fd, quantity 1) → fd-close`, where the
   checker now forces the adopted fd to be closed exactly once and rejects
@@ -35,20 +35,20 @@ updated: 2026-08-12
   E123 already lowers the `Fd` carrier (committed afea68d), so the value-level
   identity is settled fact, not respec.
 - **Live code this composes with (do NOT respec):**
-  - `scaffold/lib/ports.chiral` — `(porttype Fd)` (:14), `(extern fd-close (=> (1 f Fd) Unit))` (:80),
+  - `lib/ports/ports.chiral` — `(porttype Fd)` (:14), `(extern fd-close (=> (1 f Fd) Unit))` (:80),
     `(extern open-rw (=> Bytes I64))` (:154, the raw-fd source). The `adopt-fd`
     line lands beside `fd-close`.
-  - `scaffold/lib/compile-front.chiral` — `porttype-word?` already lists `Fd` (:35-36),
+  - `lib/lowering/compile-front.chiral` — `porttype-word?` already lists `Fd` (:35-36),
     so `term->ntalty` peels `Fd → nt-i64` (:46-48, E123); `prim->n`/`prims->n`
     (:242-254) already accept a pure `->` prim whose domains/codomain peel to
     `nt-i64`, so `(adopt-fd raw)` becomes `i-prim dst "adopt-fd" [raw] nt-i64`
     with NO front-half change.
-  - `scaffold/lib/tal-erase.chiral` — `prim2lib-table` (:110-123) with the pure
+  - `lib/lowering/tal/erase.chiral` — `prim2lib-table` (:110-123) with the pure
     re-type precedent `("str->bytes" "nb-id")` and `("bytes->str" "nb-id")` (:118);
     `prim2lib` lookup (:124); `erase-prim` (:137-153) whose fifth rung is the
     `prim2lib` `n-call` and whose final fall-through is
     `xi-err "prim not in native subset: <op>"` (:153).
-  - `scaffold/lib/bytes-tal.chiral` — `nb-id` identity body `(ti-fn "nb-id" 1 1 (ti-ret 0))`
+  - `lib/lowering/tal/bytes.chiral` — `nb-id` identity body `(ti-fn "nb-id" 1 1 (ti-ret 0))`
     (:23), one-in/one-out, returns its argument register. Already ships; no new body.
 - **True delta:** exactly two lines — one `extern` in `ports.chiral`, one
   `prim2lib-table` row `(pair "adopt-fd" "nb-id")` in `tal-erase.chiral`. The
@@ -76,7 +76,7 @@ Two lines, one logical commit (the extern is inert until the erase row lowers it
 so they ship atomically). Coupled with E107 for the positive gate (§5).
 
 ### Step 1 — surface the `adopt-fd` extern
-- **Target:** `scaffold/lib/ports.chiral` — beside `(extern fd-close …)` (:80).
+- **Target:** `lib/ports/ports.chiral` — beside `(extern fd-close …)` (:80).
 - **Change:** add `(extern adopt-fd (-> I64 Fd))` with a comment: pure re-type of
   an already-open raw fd into the linear `Fd` cap; trusted (caller vouches the fd
   is open and theirs, category-C); no crossing → `->`. `Fd` is already in
@@ -84,7 +84,7 @@ so they ship atomically). Coupled with E107 for the positive gate (§5).
 - **Size:** ~XS (one line).
 
 ### Step 2 — wire the identity lowering
-- **Target:** `scaffold/lib/tal-erase.chiral` — `prim2lib-table` (:111-123).
+- **Target:** `lib/lowering/tal/erase.chiral` — `prim2lib-table` (:111-123).
 - **Change:** add the row `(pair "adopt-fd" "nb-id")` alongside the
   `str->bytes`/`bytes->str → nb-id` rows (:118). This routes `erase-prim`'s fifth
   rung to a `n-call adopt-fd → nb-id` instead of falling to
