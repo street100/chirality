@@ -43,11 +43,11 @@
 #   G3   the bound holds: the live set stays at ‖pat‖ + 1      [M2,M12]
 #   G4   the bound is `norm`'s, not the input's                [M2,M12]
 #   G6a  `norm`'s survivor is the LEAST start, in any order     [M5,M2,M12]
-#   G6b  leftmost-longest over overlapping alternatives          [M4-adjacent]
+#   G6b  leftmost-longest over overlapping alternatives             [M13]
 #   G6c  the spans of one pass do not overlap                     [M9]
 #   G6d  `find-at` keeps the LONGEST accept, not the first        [M4]
-#   G7a  the kept lines ARE awk's kept lines, differentially       [-]
-#   G7b  and they are the hand-derived set                         [-]
+#   G7a  the kept lines ARE awk's kept lines, differentially       [M14]
+#   G7b  and they are the hand-derived set                         [M14]
 #   G7c  `blank-spans` preserves length                           [M7]
 #   G5   the eight checks agree with awk on a written fixture     [M11]
 #   G8   `text/matcher` is OUTSIDE prog/compiler.prog's closure   [M10]
@@ -384,6 +384,34 @@ mutant "M12 dedup-key-gains-from (one thread per pair, not per residual)" \
   "G1:ok G2:ok G3:bad G4:bad G6a:bad G6b:ok G6c:ok G6d:ok G7a:ok G7b:ok G7c:ok" \
   lib/text/matcher.chiral \
   's|(case b ((th fb pb) (pat-cmp pa pb)))|(case b ((th fb pb) (ord-then (pat-cmp pa pb) (i64-cmp fa fb))))|'
+
+# M13 (G6b) -- LEFTMOST-LONGEST KEEPS THE FIRST ACCEPT AT A TIED START.
+# `scan-go` commits a pending span by asking whether the new accept starts at or
+# before the pending one; `<=i` is what makes the SECOND, longer accept from the
+# same start win. Narrow it to `<i` and `alt("ab","abc")` over "xabc" answers
+# 1-3, the shorter arm, while every other row stays byte-identical -- measured,
+# and it is why this mutant is G6b's alone. M4 is the same property one function
+# over, in `run-from`, which `find-all` never calls: before this row G6b read
+# `ok` in all nine pins and the table said `[M4-adjacent]` about a mutant whose
+# own pin reads `G6b:ok`. records/gate-audit.md GA-21 is that measurement.
+mutant "M13 tie-keeps-the-shorter-accept (leftmost-longest becomes leftmost-first)" \
+  "G1:ok G2:ok G3:ok G4:ok G6a:ok G6b:bad G6c:ok G6d:ok G7a:ok G7b:ok G7c:ok" \
+  lib/text/matcher.chiral \
+  's|(case (<=i g f)|(case (<i g f)|'
+
+# M14 (G7a/G7b) -- THE FENCE NEVER CLOSES. `line-step`'s ls-fence arm stops
+# flipping back to ls-prose, so the first toggler swallows the rest of the file
+# and the kept-line bitmap reads 100000000 where nine lines mean 100010001.
+# ⚑ IT REDDENS BOTH ROWS BECAUSE BOTH READ FIELD 10, and that is not a
+# duplication: G7a compares that field against awk's own toggle over the bytes
+# the fixture printed, G7b against the hand-derived constant. A fixture whose
+# nine lines changed moves G7b and leaves G7a green. Before this row both read
+# `[-]` in the table, honestly, and the property that a fenced block is skipped
+# had no falsifier anywhere in the file.
+mutant "M14 fence-never-closes (the first toggler swallows the file)" \
+  "G1:ok G2:ok G3:ok G4:ok G6a:ok G6b:ok G6c:ok G6d:ok G7a:bad G7b:bad G7c:ok" \
+  lib/text/matcher.chiral \
+  's|((ls-fence) (pair ls-prose false))|((ls-fence) (pair ls-fence false))|'
 
 # ============================================================================
 # G10 -- THE STAR TERMINATES, OBSERVED RATHER THAN REFUSED.
