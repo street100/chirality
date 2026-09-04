@@ -38,9 +38,10 @@ updated: 2026-08-09
 ## 2. Research
 
 - **Reference class:** `OURS` — the alloc-inside idiom already used by
-  `nb-sys-read-t` (sys-tal.chiral:39-53), `term.chiral`, and `ports.chiral:150`
+  `nb-sys-read-t` (sys-tal.chiral:39-53), `term.chiral`, and `ports.chiral` line 150
   (the generic `ioctl` extern `(=> I64 I64 Bytes I64)`). `IMPL` — Rust `nix`'s
   `ioctl_read!` / `ioctl_write!` macro families.
+- 2026-09-04, citation repair: E99 retired the generic `ioctl` extern and H11 split the port floor into nine `.port` registries under `lib/ports/`. The `ports.chiral` line above is kept as a record and has no live successor.
 - **Key findings:**
   1. **The direction/size of ioctl's third arg is request-dependent, and legacy
      tty requests (the `0x54xx` block) encode neither** in the request number.

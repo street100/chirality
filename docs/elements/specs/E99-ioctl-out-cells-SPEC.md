@@ -70,17 +70,18 @@ updated: 2026-08-09
   - ADD: 2 new target-linux syscall rows (both syscall 16, different names)
   - MODIFY: `term.chiral` — `tiocgwinsz`, `tcgetattr` switch from `ioctl`+`cell-new`
     to the new alloc-inside crossings
-  - REMOVE: `(extern ioctl ...)` from `ports.chiral:152`
+  - REMOVE: `(extern ioctl ...)` from `ports.chiral` (line 152 as written)
   - REMOVE: old `nb-sys-ioctl-t` from `sys-tal.chiral:448-453`
   - REMOVE: old `(pair "ioctl" "nb-sys-ioctl")` from crossing-wraps
   - REMOVE: old `(sys-row "nb-sys-ioctl" 16)` from target-linux
+  - 2026-09-04, citation repair: the four REMOVE targets above are gone from the tree. `grep -rn 'nb-sys-ioctl|"ioctl"|extern ioctl' lib/ prog/` returns nothing, and the port floor split into nine `.port` registries under `lib/ports/` (H11), so the `ports.chiral` line numbers here are a record and have no live successor.
 
 ## 3. Decisions
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
 | 1 | **S12(c) — wrapper home:** put per-request ioctl crossings in `sys-tal.chiral` (beside `nb-sys-read-t`) or carve a new `term-tal.chiral` leaf? | RESOLVED — sys-tal | Author resolved S12c: wrapper home = sys-tal. Keeps all syscall wrappers in one file (simple, fewer files to sync to public mirror). Decision recorded in INDEX. |
-| 2 | **Fate of the generic `ioctl` extern:** retire it (remove `ports.chiral:152` + old TAL + old crossing-wraps entry) or demote it to a documented non-surface primitive? | RESOLVED — RETIRE | Author resolved: RETIRE, delete rows. Nothing else uses it once term.chiral is reworked, and leaving it standing re-admits the surface-mutation hazard. Decision recorded in INDEX. |
+| 2 | **Fate of the generic `ioctl` extern:** retire it (remove `ports.chiral` line 152 + old TAL + old crossing-wraps entry) or demote it to a documented non-surface primitive? | RESOLVED — RETIRE | Author resolved: RETIRE, delete rows. Nothing else uses it once term.chiral is reworked, and leaving it standing re-admits the surface-mutation hazard. Decision recorded in INDEX. |
 | 3 | Cell sizes: 8 bytes for winsize, 60 bytes for termios. | RESOLVED | Linux kernel `struct winsize` = 8 bytes (4× u16). `struct termios` = ~36 bytes; 60 is oversized-safe headroom. Both confirmed in worked example §2 (research). `c_lflag` at offset 12 is cross-verified in both classic and kernel `termios`/`termios2` layouts. |
 | 4 | TCSETS: keep value-in shape or also convert to alloc-inside? | RESOLVED | Keep value-in. The kernel only READS the TCSETS cell — there is no mutation, so passing a surface `Bytes` is already honest. The worked example §1 confirms: "TCSETS keeps the value-in shape." No fold/CSE hazard exists on the read path. |
 | 5 | Timing: retire old ioctl immediately (one wave) or in a follow-on? | RESOLVED | Same wave. Leaving the old generic ioctl in place after the new crossings are built re-admits the hazard. The negative gate — "no `cell-new` → `ioctl` mutation pattern anywhere" — is only satisfied if the old extern is gone. |
@@ -177,7 +178,7 @@ as confirmed by the author.
 ### Step 6 — Remove old generic ioctl
 - **Target:** Four files.
 - **Change:**
-  - `ports.chiral:152`: delete `(extern ioctl (=> I64 I64 Bytes I64))`
+  - `ports.chiral`, line 152: delete `(extern ioctl (=> I64 I64 Bytes I64))`
   - `sys-tal.chiral:448-453`: delete `nb-sys-ioctl-t`
   - `crossing-wraps.chiral:23`: delete `(pair "ioctl" "nb-sys-ioctl")`
   - `target-linux.chiral:21`: delete `(sys-row "nb-sys-ioctl" 16)`
