@@ -1,9 +1,9 @@
 ---
 node: totality
 layer: foundation
-related: [decision-graded-kernel, decision-effect-facets, status-ledger, open-edges, floor-agreement, design-principles]
-status: draft
-updated: 2026-07-23
+related: [decision-graded-kernel, decision-effect-facets, status-ledger, open-edges, floor-agreement, design-principles, decision-scope]
+status: current
+updated: 2026-09-04
 ---
 
 # Totality
@@ -21,7 +21,7 @@ adds and multiplies.
 It earns its keep twice. It is the **license to evaluate at generation time**:
 the fold optimizer and the pregenerator ([[floor-agreement]]) may run a subterm
 early only because a total subterm cannot hang the generator. And it is what
-keeps the refinement layer **sound at runtime** (`chirality/refine.py`,
+keeps the refinement layer **sound at runtime** (`lib/typing/refine.chiral`,
 [[decision-graded-kernel]] item 1): a diverging term inhabits every type, so a
 solver-discharged refinement `{i < 16}` would be a lie if the term proving it
 could loop. Totality is the floor those two stand on.
@@ -33,15 +33,18 @@ program can fail to be total:
 
 | Pillar | Rules out | Where | Status |
 |---|---|---|---|
-| **Strict positivity** | non-well-founded *data* (a type whose values can't be built finitely) | `data.py`, per-parameter variance | IMPLEMENTED |
-| **Case coverage** | a *match* that gets stuck on an unhandled constructor | `data.py` `_check_case` (exhaustive-or-default) | IMPLEMENTED |
-| **Structural recursion** | a *recursion* that never bottoms out | `data.py` `check_termination` | IMPLEMENTED (classifier) |
+| **Strict positivity** | non-well-founded *data* (a type whose values can't be built finitely) | `lib/surface/data.chiral` + `lib/module/loader.chiral`, per-parameter variance | IMPLEMENTED, refuses |
+| **Case coverage** | a *match* that gets stuck on an unhandled constructor | `lib/typing/kernel.chiral` + `lib/typing/diag.chiral` (`non-exhaustive case`) | IMPLEMENTED, refuses |
+| **Structural recursion** | a *recursion* that never bottoms out | `lib/typing/totality.chiral`, reached by `lib/typing/totality-check.chiral` | IMPLEMENTED (classifier), refuses under `(total)` |
 
 Positivity makes the data well-founded; coverage makes matching total; structural
-recursion makes the recursion total. All three live in the types module, not the
-kernel core, because each must see through `Con`/`Case`, which the kernel core
-does not understand ([[status-ledger]]). The kernel calls the recursion check
-through `sig.def_hooks` after a def type-checks.
+recursion makes the recursion total. All three live outside the kernel core,
+because each must see through `Con`/`Case`, which the kernel core does not
+understand ([[status-ledger]]).
+
+⚑ **The three do not refuse alike.** Positivity and coverage refuse on every
+compile. Termination classifies on every compile and refuses only where a profile
+carries `(total)`, which the profile-gate section below states exactly.
 
 ## The structural-recursion criterion
 
@@ -63,20 +66,21 @@ A second measure covers **bounded numeric recursion**, the loops the structural
 rule misses. A self-call is decreasing at position `j` when the argument is a
 constant step of parameter `j` — `(+ i k)` or `(- i k)` — *toward* a constant
 bound that the guards on the path to the call establish (via the path-sensitivity
-of `chirality/refine.py`): an increment `i` with an upper bound `i < H` learned from a
+of `lib/typing/refine.chiral`): an increment `i` with an upper bound `i < H` learned from a
 guard, or a decrement with a lower bound. The measure is the distance to the
 bound (`H - i`), and the argument is sound because the guard is **re-checked every
 iteration** — `i` steps monotonically, so after finitely many steps it crosses
 the bound and the recursing branch is not taken.
 
 `row-bytes` in the sprite demo — `(<=i 16 i)` guards `(row-bytes row (+ i 1))` —
-now proves total this way, as does every counting loop with a constant guard.
+proves total this way, as does every counting loop with a constant guard.
 
 The bound must **exclude the two's-complement wraparound point** (`hi ≤ MAX − k`,
 `lo ≥ MIN − k`): a vacuous bound at the extreme (`i ≤ MAX`, then `i + 1`) would
 otherwise "prove" a loop that actually wraps `MAX → MIN` and never stops. That is
 where wrapping `I64` would have made a naive measure unsound; the exclusion is what
-keeps it sound.
+keeps it sound. `num-dec-ok` in `lib/typing/totality.chiral` carries that proof
+against the real `I64-MAX` and `I64-MIN` constants.
 
 The bound may also be a **variable**: `(f (+ i 1))` guarded by the strict
 `(<i i n)` proves total when the step is `±1` and the recursive call passes `n`
@@ -90,84 +94,143 @@ symbolic refinement bound.
 
 ### What it still does not prove
 
+- **a bound that is a call rather than a variable** — `(str-len s)` as the `n` in
+  `(<i i (str-len s))`. The checker reads a bare in-scope variable and reads no
+  call, so every index walk over a `Str` or a `Bytes` classifies not-proven. This
+  is the largest measured class, and the measurement section below counts it;
 - **non-unit or non-strict symbolic steps** — `(+ i 2)` against a variable bound,
   or a `≤` guard, where the wraparound argument no longer holds;
 - **size-change** recursion — the descent is real but not on a single argument
   (argument-permuting groups; the reserved fallback beyond E50's cheap tier);
-- **lexicographic descent and mutual recursion without a declared measure** —
-  since 2026-07-28 (E50) both PROVE when the recursion group declares a shared
-  measure (`(measure structural <argpos>)` or
-  `(measure lexicographic (<argpos> structural|numeric) …)` on the forward
-  `declare`s; declared, never inferred — certificate discipline: the checker
-  only re-checks the measure, and a false one is rejected). An undeclared
-  mutual group still classifies not-proven with the mutual-recursion reason.
+- **a measure spread over two arguments** — merge sort descends on the sum of two
+  list lengths and on neither list alone, so the one-position rule misses it;
+- **lexicographic descent and mutual recursion**. ⚑ `lib/typing/totality.chiral`
+  scopes both **out** of E11 and assigns them to E50, whose catalog row reads
+  `not built`. A mutual group classifies not-proven with the mutual-recursion
+  reason, and no `(measure …)` clause exists in the surface today.
 
 Two shapes it cannot analyze at all it names explicitly: a definition **used as a
 value** (passed to a higher-order function rather than called), whose future call
-sites are out of view — inside a measured group this poisons the whole group's
-verdict; and a **forward reference** to a declared-but-undefined global outside
-any measured group, the unmeasured-mutual case.
+sites are out of view; and a **forward reference** to a declared-but-undefined
+global. Both return the `used-as-value` verdict.
 
-## Classify now, enforce later
+## What the compiler does
 
-With the numeric measure, the loops that would have forced this open — the
-counting loops the structural rule misses — now prove, so mandatory totality no
-longer rejects them wholesale. But it is still not the default, because genuine
-gaps remain (non-unit or non-strict symbolic steps, size-change/argument-
-permuting descent, mutual groups that declare no measure), and blocking
-those outright would reject terminating code the checker simply cannot yet see.
-The honest response is not to overclaim by forcing it ([[design-principles]]).
+The classifier is a **pure function returning a value**. `lib/typing/totality.chiral`
+declares
 
-So the checker **classifies, it does not yet enforce by default**. Every def
-records a verdict in `sig.totality[name]`: `None` if proven total, else the reason
-it could not be proven. `sig.require_total` (default `False`) flips classification
-into rejection — available now for code that wants the guarantee, and the
-intended default once the remaining gaps close. This is the [[status-ledger]]
-distinction made operational: totality is **IMPLEMENTED** (the analysis is sound —
-structural *and* numeric — and runs on every def) but not yet globally
-**ENFORCED**, and the ledger says exactly that rather than overclaiming.
+```
+(data Verdict () (total) (not-total (reason Str)))
+```
+
+and `lib/typing/totality-check.chiral` exposes the one entry a caller reads:
+
+```
+(declare tot-of-def (-> Str Term Verdict))
+```
+
+`tot-of-def` takes a def's name and its kernel `Term` body, translates the
+kernel's sixteen-constructor `Term` into the classifier's six-constructor
+`TotTerm` (de Bruijn index to level, the curried spine unwound, `t-let` and
+`t-pi` kept as binders the walk can count), and returns a `Verdict`. It raises
+nothing and mutates nothing. Its own recursion walks a finite `TotTerm` tree
+structurally, so the classifier certifies itself.
+
+⚑ **There is no per-def ledger and no load-time switch.** The Python oracle
+carried `sig.totality[name]` and a `sig.require_total` flag; that oracle is CUT
+([[decision-scope]] consequence 1) and neither has a native referent. There is
+also no `chirality verify` subcommand: `bin/chirality` dispatches `compile`,
+`run`, `check` and `test`. A verdict exists while `tot-of-def` is on the stack
+and is consumed by the profile gate below.
 
 ## The profile gate
 
-The per-def ledger is what a **profile** demands totality against. A profile that
-carries a bare `(total)` clause asserts it is the sub-category where every
-morphism is total (open-edge 9); `chirality verify` discharges that by checking every
-def in the composite has `sig.totality[name] is None`, and reports each holdout
-with its reason:
+A profile that carries a bare `(total)` clause asserts it is the sub-category
+where every morphism is total (open-edge 9). `tot-gate` discharges it:
 
 ```
-profile p: VALID   (target totalizer: 1/1; port set: respected; total: proven)
-profile p: INVALID (target totalizer: 1/1; port set: respected; total: violated)
-  def spin not proven total: no argument position decreases in every recursive ...
+(data TotalR () (tot-proven) (tot-holdout (name Str) (reason Str)))
+(declare tot-gate (-> Sig TotalR))
 ```
 
-This is the same shape as the profile's other conformance rows — the target
-requirement type and the frozen port set — a *composition-time* judgment over the
-loaded composite, not a load-time gate. `sig.require_total` is the orthogonal
-load-time enforcer for code that wants the guarantee eagerly; the profile clause
-is the declarative, per-composite version, and is how chirality-verify becomes a real
-gate rather than a description. (`demo/verify-total.chiral` is a worked example.)
-Scope is the whole composite, as it is for the port set; reachability-scoped
+`tot-gate` reads the composite's profile list first. **A source that declares no
+`(total)` profile pays nothing**: the gate returns `tot-proven` without
+classifying a single def. Where some profile does carry the clause, `tot-scan`
+walks every global in the `Sig`, calls `tot-of-def` on each, and stops at the
+**first** holdout with its reason. One name is what the report needs, so the scan
+builds no list.
+
+`lib/lowering/compile-front.chiral` is the caller. It runs the gate between the
+load and the peel, which is the last point that holds a whole checked `Sig` and
+the last point where the bodies are still the ones the loader stored, before
+`specialize-singletons` and `closconv-sig` rewrite them. A holdout becomes a
+front-end error and the compile stops:
+
+```
+profile (total): def spin not proven total: no argument position decreases in
+every recursive call by a measure the checker can see ...
+```
+
+Measured 2026-09-02: `(profile p (ports halt) (target totalizer) (total))` over
+`(def spin (-> I64 I64) (lam (i) (spin (+ i 1))))` fails `chirality check` with
+that sentence, and the same source with the clause dropped checks OK.
+
+Scope is the whole composite, as it is for the port set. Reachability-scoped
 totality is the same refinement the port check will eventually want.
+
+⚑ **The gate is opt-in and no phase fails when it breaks.**
+`tools/test/profile-target.sh` gates the clause's *parse*; nothing gates its
+proof. `prog/demo/verify-total.chiral` is the worked example, and its own header
+still invokes the retired `python3 -m chirality verify`.
+
+## Measured: 40 holdouts over 1,469 defs
+
+Over `prog/compiler.prog`'s own closure the classifier proved all but **40** defs,
+**measured 2026-09-02**.
+
+| where | holdouts |
+|---|---|
+| `lib/surface/sexp.chiral` | 10 |
+| `lib/prelude/string.chiral` | 6 |
+| `lib/lowering/mach/emit-core.chiral` | 5 |
+
+The class is real rather than a bug. Three shapes account for it: index loops
+whose bound is a **call** (`(str-len s)`) where the checker reads only a bare
+variable; merge sort's **two-list measure** in `lib/prelude/list.chiral`, which
+descends on no single argument; and `conv` in `lib/typing/kernel.chiral`, whose
+termination is the strong-normalization axiom rather than a syntactic descent.
+
+The consequence is concrete. **A `(total)` profile over any closure containing
+`lib/prelude/string.chiral` is refused today**, and the first holdout the gate
+names is `su-pad-go`. That one is honest: `su-pad-go` grows its accumulator by
+`pad` until the accumulator reaches `width`, so an empty `pad` makes it diverge.
+The refusal is correct there and conservative in the other 39 cases.
+
+⚑ **This count predates today's compiler and has not been re-measured.**
+`40e8726` changed `lib/lowering/upper/lower.chiral`, which is inside
+`prog/compiler.prog`'s closure, after the measurement was taken. Re-taking it
+needs a classifier run over the current closure. [[status-ledger]] carries the
+same figure on its build-state row.
 
 ## The promotion path
 
-The symbolic refinement slice has since **landed**: `chirality/refine.py` carries
+The symbolic refinement slice has landed: `lib/typing/refine.chiral` carries
 strict variable-vs-variable facts (`v < n`) beside the constant intervals, the
 variable-bound measure above consumes them, and the pool offset is compile-time
-bounds-checked (`mem-put-checked`). What remains is catalogued. The fuller
-completion is **sized types** (E47, not built): a size index on a datatype turns
-"smaller" from a syntactic fact into a typed measure, subsuming both structural
-and numeric descent, and a size index is close enough to a cost grade that if
-sized types land they reuse the semiring machinery ([[decision-graded-kernel]]
-item 2) — the one place totality touches the grade vector. Beside it sits
-**lexicographic / mutual descent** (E50, **built 2026-07-28** at the cheap
-tier — a declared shared measure per recursion group; the full size-change
-graph for argument-permuting groups is the deferred residue). Flipping
-enforcement on by default is E11's owed payload, **gated on E47 + E50** —
-E50 now satisfied, E47 (sized types) remaining — flipped earlier it would
-reject real terminating code. Until then,
-`require_total` (and the `(total)` profile clause) gates the guarantee, and the
-per-def ledger records how much of the corpus already clears the bar —
-structural, constant-bounded, strict-`±1` variable-bounded numeric, and
-declared-measure mutual/lexicographic groups today.
+bounds-checked (`mem-put-checked` in `lib/memory/mem-linear.chiral`). What
+remains is catalogued.
+
+| what | element | state |
+|---|---|---|
+| Sized types: a size index turns "smaller" from a syntactic fact into a typed measure | E47 | not built |
+| Lexicographic and mutual descent | E50 | not built |
+| Flipping enforcement on by default | E11's owed payload, gated on E47 + E50 | not flipped |
+
+A size index is close enough to a cost grade that if sized types land they reuse
+the semiring machinery ([[decision-graded-kernel]] item 2), which is the one
+place totality touches the grade vector.
+
+Flipped today, enforcement would reject real terminating code: the 40 holdouts
+above are the evidence, and 39 of them terminate. Until E47 and E50 land, the
+`(total)` profile clause is the whole of the guarantee, and a caller that wants it
+per-def calls `tot-of-def` and reads the `Verdict`.

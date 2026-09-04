@@ -2,10 +2,16 @@
 node: benchmarks-text-matcher-allocation
 layer: benchmark
 status: measured
-updated: 2026-09-02
+updated: 2026-09-04
 ---
 
 # Where prose-lint's 1.11 GB goes
+
+⚑ **Read the instrument section first.** Every absolute below was taken with
+`memory.peak` on the tree at `c23947e`, 2026-09-02. `memory.peak` has since been
+measured to under-read the arena and to jitter between identical runs, and
+`9f46c6c` cut the matcher's allocation 58% per input byte. The absolutes are
+lower bounds on a compiler that no longer exists. The attributions hold.
 
 `docs/benchmarks/text-matcher-prose-lint.md` measured `prog/prose-lint.prog`
 allocating 1,111,703,552 B to scan 609,872 B, fitted the growth at ~1,747 B of
@@ -45,7 +51,7 @@ unlimited`, and reports `memory.peak` with `memory.events`. Every figure below
 is min-of-N with N at least 3; the observed spread is under 0.4% on every
 subject.
 
-## Why `memory.peak` is the right instrument here
+## The instrument, and why every figure below is a lower bound
 
 The runtime is a bump allocator with **no reclamation anywhere**. `x-galo`
 (`lib/lowering/x64/mach.chiral:509`) advances `heapptr` by `sz = 8 * (1 +
@@ -53,17 +59,65 @@ fields)` and stores; the only other motion is `nb-arena-grow`
 (`lib/lowering/tal/sys.chiral:174`) doubling the committed prefix of a 64 GiB
 `PROT_NONE` reservation from a 262,144 B floor
 (`lib/lowering/compile-emit.chiral:49-50`). Nothing on any path a compiled
-program takes ever frees, drops a region, or collects. **Peak RSS is therefore
-total bytes ever allocated**, and a difference between two builds is the
-allocation one of them does.
+program takes ever frees, drops a region, or collects. Every figure in this file
+was taken as `memory.peak` on that runtime, under the reading that peak RSS
+equals total bytes ever allocated.
+
+⚑ **That reading is refuted, and it was measured.** `7341ddf` added `(extern
+heap-allocated (=> Unit I64))` to `lib/ports/process.port`, which reads
+`heapptr - heapbase`: the allocator's own cursor, and therefore total bytes ever
+allocated by construction rather than by inference from residency. Run against
+`memory.peak` on the same binary and the same input, 2026-09-04:
+
+| | value |
+|---|---|
+| `heap-allocated`, three runs | 541,293,624 B, **bit-identical every run** |
+| `memory.peak`, three runs | 535,797,760 / 535,818,240 / 535,568,384 B |
+| `memory.peak` low by | 5,725,240 B against the min, **1.06%** |
+| `memory.peak` run-to-run spread | 249,856 B on an input that never changed |
+
+Arena bytes handed out and never touched never become resident, so peak RSS
+reads **under** what the program allocated, and it wanders between identical
+runs. **Every absolute in this file is therefore a lower bound**, and the deltas
+between two `memory.peak` readings carry the jitter twice.
+
+The direction of the error is fixed and its size is not. A separate run on a
+different workload put `memory.peak` **9.5%** low against the same counter,
+where the run above puts it 1.06% low. The bias tracks how much of the arena a
+workload writes into, so it cannot be corrected by a single factor.
+
+⚑ **The figures below still stand on `memory.peak`.** Re-taking them means
+rebuilding and re-running roughly forty mutated subjects, which is a suite this
+session's memory ceiling has no room for; the one run above is what fits.
+Two further things moved underneath the numbers, so a re-measurement would not be
+a like-for-like correction either:
+
+- **The matcher was rewritten.** `9f46c6c` cut its allocation, and the same
+  program over the same three directories now allocates **766 B per input byte**
+  (541,293,624 B over 91 files, 706,438 B, 2026-09-04) against the **1,823 B per
+  input byte** this file reports (1,111,703,552 B over 81 files, 609,872 B,
+  2026-09-02). That is **58.0% lower per byte**, matching the figure
+  `docs/benchmarks/text-matcher-prose-lint.md` carries. The corpora differ, so
+  this is a lower bound on the change rather than a controlled comparison: the
+  two quadratic terms below track the file mix.
+- **The shares moved with it.** The headline share split (matcher 86.8%, line
+  machinery 6.8%, `str-split` 6.3%) was taken before that cut. The matcher's
+  share is smaller today by an amount this file does not measure.
+
+What survives unharmed is the **attribution**: which construct allocates, and
+why. The three-cells-per-offset finding, the two quadratics and their exact
+arithmetic, the live set of 8 threads, and the tail-call cliff at seven
+parameters are all structural facts about the code, and each is checked below
+against a prediction rather than against a single reading.
 
 That 262,144 B floor is the measured floor: an empty loop over a 12,800 B buffer
-reports `peak=262144` exactly.
+reports `peak=262144` exactly. The counter agrees, reading **0** before a probe
+program's first allocation.
 
 Cross-check on the instrument. `str-split`'s payload can be predicted from the
 corpus by arithmetic (below). The prediction is 69,353,244 B and the measured
 delta is 70,074,368 B, **1.0% apart**. The residue is the cell headers the
-arithmetic omits.
+arithmetic omits, and it sits inside the instrument's own error bar.
 
 ## The ladder: one stage added per build
 
@@ -130,7 +184,7 @@ difference is the per-byte cost. `p-lit "zqx"` throughout.
 `count-matches` over the same pattern on 64-byte lines measures 118.3 B per
 byte, so the ladder accounts for the floor.
 
-`scan-go` (`lib/text/matcher.chiral:396`) allocates the `Win`, the `Thread` and
+`scan-go` (`lib/text/matcher.chiral:450`) allocates the `Win`, the `Thread` and
 the `cons` at **every offset, unconditionally, whatever the pattern does**. At
 `8 * (1 + 2)` bytes each those three are 72 B of the 125 B floor by the cell
 formula and 96 B by the ladder. **77% of the per-byte floor is three cells that
@@ -290,6 +344,12 @@ independent routes agree to 1.3%, and the kill stays arithmetic. Its scope was
 - **`pd`'s residual sizes.** The collapse mutant measures the effect of removing
   a `p-nil`; the residuals themselves were never counted.
 - **The default scope.** It went unrun, per the direction above.
+- **Every figure in this file, against `heap-allocated`.** Only the whole-program
+  total was re-taken (2026-09-04, above). The ladder, the per-check builds, the
+  cell ladder, the mutation matrix and the arity ladder all still stand on
+  `memory.peak`.
+- **How much of the 58% per-byte drop is `9f46c6c` and how much is the corpus.**
+  The two measurements ran over different file sets.
 
 ## The repair, and it has no number
 
@@ -331,7 +391,20 @@ cat /sys/fs/cgroup/cc-probe/memory.peak
 cat /sys/fs/cgroup/cc-probe/memory.events
 ```
 
-`memory.peak` is cumulative, so the cgroup is recreated between runs. Each
+`memory.peak` is cumulative, so the cgroup is recreated between runs.
+
+**Use the counter instead.** A re-run should read `heap-allocated` rather than
+`memory.peak`, which needs two lines in the subject and reports the arena exactly:
+
+```
+(import "ports/process")
+... (put (i64->str (heap-allocated unit))) ...
+```
+
+The promoted `bin/chirality-bin` emits the crossing (verified 2026-09-04 by
+compiling and running a probe), so no promotion is owed first.
+
+Each
 subject is built by copying `lib/` and `prog/prose-lint.prog` to scratch,
 editing the copy, and resolving against the copied root:
 

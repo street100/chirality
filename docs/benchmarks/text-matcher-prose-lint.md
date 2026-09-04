@@ -2,7 +2,7 @@
 node: benchmarks-text-matcher-prose-lint
 layer: benchmark
 status: measured
-updated: 2026-09-02
+updated: 2026-09-04
 ---
 
 # The native prose-lint against awk
@@ -12,13 +12,72 @@ updated: 2026-09-02
 agree on eight checks over the corpus, which E173's G9 row gates. This file
 carries what G9 leaves out: the wall clock, and the memory.
 
-⚑ **The native tool is 15x slower than awk on the corpus and it cannot finish
-the tree's default scope at all.** It gets OOM-killed there. Both figures are
-below with their method. The author's ruling on 2026-09-01 was to record the
-wall clock rather than gate on it, so a bad number lands here instead of
-blocking the element.
+⚑ **The 15x below is superseded. Re-measured 2026-09-04 the ratio is 9.35x.**
+`9f46c6c` rewrote the matcher after the 2026-09-02 runs, cutting its arena 58%
+per input byte, and the wall clock moved with it. The re-measurement is the first
+section; every other section on this page predates the rewrite and its figures
+stand as taken. The tool is still an order of magnitude behind awk and still
+cannot finish the tree's default scope.
 
-## Host, date, load
+The author's ruling on 2026-09-01 was to record the wall clock rather than gate
+on it, so a bad number lands here instead of blocking the element.
+
+## Re-measured 2026-09-04, after `9f46c6c`
+
+Same method as below: min-of-11, both sides alternating in one sitting, same
+box. Tree at `4139662`, `bin/chirality-bin` sha256 `e68355af3aef62eb…`,
+`/proc/loadavg` 0.08 before and 0.22 after. The corpus is the same three
+directories and has grown: **91 files, 706,438 bytes**.
+
+| subject | min | median | max |
+|---|---|---|---|
+| awk `--summary`, 10 checks | **0.101** | 0.106 | 0.113 |
+| `prog/prose-lint.prog`, 8 checks | **0.944** | 0.964 | 0.981 |
+
+```
+awk     0.101 0.101 0.103 0.104 0.104 0.106 0.110 0.111 0.112 0.112 0.113
+native  0.944 0.955 0.962 0.964 0.964 0.964 0.964 0.968 0.970 0.975 0.981
+```
+
+**9.35x min against min, 9.09x median against median, and the band at the
+extremes is 8.35x to 9.71x.** The native distribution has also tightened: 3.9%
+spread across eleven samples against 22% on 2026-09-02.
+
+Per input byte, since the two corpora differ:
+
+| | 2026-09-02 | 2026-09-04 | change |
+|---|---|---|---|
+| native, s per input byte | 2.407e-6 | 1.336e-6 | **44.5% faster** |
+| awk, s per input byte | 1.590e-7 | 1.430e-7 | 10% faster |
+| native, arena B per input byte | 1,823 | **766** | **58.0% less** |
+| native peak RSS | 1,111,769,088 B | **535,769,088 B** | |
+| awk peak RSS | 8,499,200 B | 8,638,464 B | |
+
+Memory against mawk is **62x** today, down from 131x.
+
+The two arena columns come from different instruments: 1,823 is `memory.peak`
+and 766 is `heap-allocated`, the allocator's own cursor.
+[[benchmarks/text-matcher-allocation]] carries why the counter replaced
+`memory.peak` and by how much the older one under-reads. Taking `memory.peak` on
+both sides instead gives 758 B per input byte today and a 58.4% cut, so the
+headline survives the instrument change.
+
+⚑ **The default scope stayed unrun.** The 58% cut takes the projection from
+~14.12 GB to roughly 6 GB, which still exceeds 3.85 GB with no swap, so the kill
+below is expected to stand. Nothing here tested that, and this session was
+directed away from repeating an OOM.
+
+⚑ **Only the wall clock and the two totals were re-taken.** The per-check
+attribution, the pre-E173 comparison, the compile cost and the 2.4x findings all
+still stand on the 2026-09-02 runs.
+
+## The 2026-09-02 measurement
+
+Everything from here down was taken before `9f46c6c` and is left as measured.
+Read its ratios as the matcher that E173 shipped rather than the one in the tree
+today.
+
+### Host, date, load
 
 | | |
 |---|---|
@@ -36,7 +95,7 @@ that agents have been OOM-killed on this box today.** 3.85 GB with zero swap mak
 the tail and makes any memory figure a hard ceiling rather than a soft cost. Read
 the bands. One sample proves nothing here.
 
-## Method
+### Method
 
 - **min-of-N**, N=11 on the corpus and N=7 on the default scope. The min is the
   quietest sample the box gave, and the max beside it is the noise.
@@ -57,7 +116,7 @@ time ( ulimit -s unlimited; ./lint.elf < corpus.list >/dev/null )
 time ( tools/prose-lint/prose-lint.sh --summary docs/arcs docs/decisions docs/definitions >/dev/null )
 ```
 
-## The corpus
+### The corpus
 
 `docs/arcs`, `docs/decisions`, `docs/definitions`: **81 files, 609,872 bytes,
 10,122 lines**. G9 in `docs/elements/specs/E173-total-matcher-SPEC.md` says 80.
@@ -70,7 +129,7 @@ The **default scope** is the second corpus: `docs`, `.planning`,
 `.claude/skills` and the root `*.md`, being **544 files, 8,130,791 bytes**. It is
 the scope whose size the 2.4x note gives as ~7 MB. The corpus has grown since.
 
-## Wall clock, 81 files
+### Wall clock, 81 files
 
 Three subjects. `real` seconds, all eleven samples, sorted.
 
@@ -95,7 +154,7 @@ which is ~20x of CPU with no I/O term in it.
 
 **The old 2.4x is beaten in the wrong direction, by a factor of six.**
 
-## Memory, and the run that died
+### Memory, and the run that died
 
 | subject | peak RSS, 81 files | peak RSS, default scope |
 |---|---|---|
@@ -125,7 +184,7 @@ to 6.3 s.
 `prog/prose-lint.prog:7` shows `find docs .planning | chirality run
 prog/prose-lint.prog`, and that command OOMs here.
 
-## The two tools do unequal work
+### The two tools do unequal work
 
 | tool | checks counted | checks named as absent | fence and span filter |
 |---|---|---|---|
@@ -143,7 +202,7 @@ The pre-E173 row is a third workload again: six checks and no code filter at
 all. Its 0.102 s is therefore a floor and its comparison against awk is loose in
 its own favour.
 
-## Why: the tool is still eight passes
+### Why: the tool is still eight passes
 
 E173's one pass is **per pattern**. `find-all` walks the buffer once for one
 `Pat`. The tool did not fold its checks into one alternation:
@@ -163,7 +222,7 @@ back. `.planning/PRIMITIVES-FOR-NATIVE-TOOLS.md:85-87` reads
 constant factor of the better algorithm is larger than the pass count it
 removed.
 
-## Compile cost, excluded above
+### Compile cost, excluded above
 
 `chirality run` pays this on every invocation. Three samples, min taken.
 
