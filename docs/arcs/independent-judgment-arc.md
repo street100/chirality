@@ -1,9 +1,9 @@
 ---
 node: arc-independent-judgment
 layer: navigation
-related: [arcs/README, goals/independent-judgment, decision-self-verification, decision-work-ids, certificate-discipline, status-ledger, index]
+related: [arcs/README, goals/independent-judgment, decision-self-verification, decision-formulation-distinctness, decision-work-ids, certificate-discipline, records/tooling-classification, status-ledger, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-04
 ---
 
 # Arc: judgment that does not rest on one formulation
@@ -89,15 +89,38 @@ Done when all five hold.
 
 | row | what | state | element |
 |---|---|---|---|
-| `independent-judgment/J1` | the distinctness criterion, written | not started. Requirement 1 | `unminted` |
+| `independent-judgment/J1` | the distinctness criterion, written | drafted 2026-09-04 as [[decisions/decision-formulation-distinctness]], `status: draft` and awaiting the author. Requirement 1 | `unminted` |
 | `independent-judgment/J2` | `kernel-core` and `reflect-floor` wired, or moved to SEEDED with the reason | not started. Both are written with zero importers | `unminted` |
 | `independent-judgment/J3` | a second judgment core in a different formulation | not started. The whole of requirement 2 | `unminted` |
-| `independent-judgment/J4` | the two dead C legs retired or re-grounded | not started. `ddc-legc` and `ddc-legcc` have zero callers since the backend was dropped | `unminted` |
+| `independent-judgment/J4` | the two dead C legs retired or re-grounded | not started. `ddc-legc` and `ddc-legcc` have zero callers since the backend was dropped. The J1 draft answers half of it: neither can be re-grounded as a judgment leg | `unminted` |
 | `independent-judgment/J5` | the demanded statement given a form a check can read, and `JForm` completed or closed | not started. `SpecRule.statement` is a `Str`; totality and refinement have no form. FD-09 | `unminted` |
 
 ## Resume state
 
-Nothing built, and J1 comes first: requirement 2 cannot be judged without it.
+Nothing built. **J1 has a proposal and no ruling**, drafted 2026-09-04 as
+[[decisions/decision-formulation-distinctness]] against
+[[records/tooling-classification]], which measured 288 gate-tier call sites
+blocked on this criterion existing. The proposal is that formulation is the only
+axis that alone makes two judges distinct, with closure disjointness against the
+subject and build independence as mechanical side conditions, and that profile,
+port set, runtime, language, toolchain, author and epoch are recorded and never
+counted. It refuses E166 on two independent grounds. Requirement 2 stays
+unjudgeable until the author rules, and §7 of the note lists the five calls.
+
+Three findings the draft carries back into this arc:
+
+- **`lib/lowering/tal/eval.chiral` qualifies and this arc's own table omits it.**
+  187 lines, zero importers, closure `prelude/prelude` and `lowering/tal/ssa`
+  only. `records/tooling-classification` TC-13. It is a second formulation over
+  the tal floor and it is not a second judgment core over the whole rule set.
+- **`kernel-core` and `reflect-floor` do not qualify**, for different reasons.
+  `recheck` re-runs the existing judgment and imports the typing modules it would
+  judge; `reflect-floor` decides nothing. That does not weaken J2, which wires
+  them for their own reasons.
+- **J4's re-grounded option now has a criterion**, and the answer it gives is
+  that gcc and CompCert judge C and hold no opinion about whether a chirality
+  term type-checks. Whether the constants are retired or kept as a dated record
+  is the half the criterion does not settle.
 
 **J5 was added 2026-09-02** off FD-09, from a file-types session reading
 `kernel-core` for its demanded-statement contract. It is separable from J2: J2
