@@ -90,9 +90,21 @@ second instance of the same missing statement, at the `$kI_J` capture
 constructor's fields, and it was opened one day after EN-15 was answered. §6 of
 this file carries the split recommendation.
 
-⚑ **Nothing here is a miscompile.** Every one of these values is one word at
-runtime and the emitted code is correct. The defect is the type the IR carries,
-and `ck-prog` is right to refuse it.
+⚑ **Nothing in the erased-domain annotation is a miscompile.** Every one of
+these values is one word at runtime and the emitted code is correct. The defect
+is the type the IR carries, and `ck-prog` is right to refuse it.
+
+⚑ **That sentence read as a claim about the whole pass until 2026-09-04, and
+[[records/enforcement-arc]] EN-20 corrects the scope.** It covers this element's
+subject and stops there. A separate defect in the same pass is a live
+miscompile. `arm-body` (`lib/lowering/upper/closconv.chiral:1051-1058`) has one
+arm for the case where `def-ctx` returns none, the `(none)` arm at `:1057`
+carrying the comment `unreachable: g always has a def-ctx`, and that arm emits
+the literal `0` as a whole function body. It is reached twice in the compiler's
+own blob, and EN-20 demonstrates the wrong value end to end on a fixture
+compiled by today's binary: `direct box-f: 30`, `via $apply: 0`. That defect is
+**E188**, minted 2026-09-04, and it changes nothing about E185's spelling
+question.
 
 ## 2. Research
 
