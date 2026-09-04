@@ -36,9 +36,14 @@ nested inside double quotes is scanned.
 ⚑ **This is not the number the goal tier carries.** The figures in
 [[goals/enforcement]] and [[arcs/enforcement-arc]] are word-occurrence counts.
 Reproduced here: `grep -ohE '\bgrep\b' tools/test/*.sh | wc -l` returns 149,
-where the scan above finds 122 invocations in the same files. The gap is
+where the scan above finds **119** invocations in the same files. The gap is
 comments, the scratch filenames `g5.awk` and `g9.awk`, and the word `awk` inside
 prose describing the tool the native matcher replaces. TC-02 carries it.
+⚑ *This sentence read 122 until 2026-09-04 and disagreed with this file's own
+per-tool table by 3.* That table puts `grep` at 123 sites over the whole
+surface, and the four sites outside the gate tier are `bin/chirality:171`,
+`bin/chirality-resolve.sh:116` and `:139`, and
+`tools/prose-lint/prose-lint.sh:206`, which leaves 119. TC-14.
 
 The scanner was a session script and is not tracked. Its rule is stated above so
 the count can be re-taken.
@@ -70,8 +75,9 @@ documents say seven (TC-11).
 ⚑ The library modules those five entries import are in neither figure.
 `lib/text/matcher.chiral` is **602 lines** and exists to serve
 `prog/prose-lint.prog`. On the same basis as 782 plus that one module, native
-tooling reads **1,384**. TC-05 carries the line count, which three documents
-still record as 533.
+tooling reads **1,384**. TC-05 carries the line count. Seven documents recorded
+it as 533; three were repointed at `8b65108` and four still carry the old
+figure.
 
 ## The property, and the criterion that is owed
 
@@ -467,19 +473,35 @@ the author.** TC-08.
 
 ### TC-01 the goal tier's native line count omits three of the five entries
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `docs/goals/enforcement.md:32` and `docs/arcs/enforcement-arc.md:74-75` read "12,450 lines outside the language against 390 native", and the arc names `prog/test-runner.prog` 134 and `prog/prose-lint.prog` 256 as the whole of it.
 - measured: `wc -l prog/*.prog` returns `paren-audit` 244, `prose-lint` 256, `test-runner` 134, `resolve` 104, `wield` 44 and `compiler` 20. Tooling is the five, and the sum is **782**. The 390 is 134 + 256 and omits `paren-audit`, `resolve` and `wield`, which together are 392, so the figure is short by more than it contains. The 12,450 reproduces exactly: 6,915 + 223 + 4,786 + 526.
-- evidence: `docs/goals/enforcement.md:32-36`; `docs/arcs/enforcement-arc.md:74-82`; `prog/paren-audit.prog`, `prog/resolve.prog`, `prog/wield.prog`
+  Re-measured at `67d3d54`: `wc -l prog/*.prog` returns the same six figures and
+  the same 782. **Repointed at `56348b9`**, in both documents. The documents now
+  also record what the correction costs: `test-runner` and `prose-lint` are the
+  only two entries `grep -rIn` over `tools/` and `bin/` finds any consumer for,
+  and they are exactly the 390, so the 392 lines the correction adds are all
+  SEEDED and the ratio reads worse rather than better.
+- evidence: `docs/goals/enforcement.md:32-45`; `docs/arcs/enforcement-arc.md:74-85`; `prog/paren-audit.prog`, `prog/resolve.prog`, `prog/wield.prog`
 - checked:  2026-09-04
 - element:  none
 
 ### TC-02 the 352-call figure is a word count, and the invocation count is 240
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `docs/arcs/enforcement-arc.md:79-82` and `docs/goals/enforcement.md:35-38` read that within the gate tier alone there are **352 calls to `grep`, `sed`, `sort` and `awk` where `docs/arcs/text-tools-arc.md` records a built chirality composition**.
 - measured: 352 reproduces as a word-occurrence count. `for t in grep sed awk sort; do grep -ohE "\b$t\b" tools/test/*.sh | wc -l; done` returns 149, 100, 81 and 22, summing to exactly 352. Those occurrences include comments, the scratch filenames `g5.awk` and `g9.awk`, and the prose in `tools/test/matcher.sh` naming the awk tool the native matcher is graded against. Counting invocations in command position gives **240** for the same four tools in the same files. Of those 240, **210 are judgments** and **30 are owed work with a built composition**. Over the whole surface the four total 259 invocations, 210 judgments and 49 owed.
-- evidence: `docs/arcs/enforcement-arc.md:74-82`; `tools/test/matcher.sh:14`, `:49`, `:474`, `:497`
+  Re-measured at `67d3d54` with an independently written scanner following the
+  rule stated above: **240 exactly** for the four tools in `tools/test/*.sh`,
+  agreeing site for site. The word count reads 353 at `67d3d54` rather than 352,
+  one `awk` occurrence added by the concurrent gate pass; 352 still reproduces
+  at `acc70d6`. ⚑ **The stale half was the number. The false half was the claim
+  attached to it.** Both documents read that a built chirality composition stood
+  behind all 352. It stands behind **30**: 49 of the four tools' 259 sites are
+  bucket 2 across the whole surface, and 19 of those 49 sit outside the gate
+  tier, which the per-tier table already fixes. **Repointed at `100137a`**, with
+  the other 210 named as judgments waiting on J1.
+- evidence: `docs/arcs/enforcement-arc.md:74-100`; `docs/goals/enforcement.md:46-61`; `tools/test/matcher.sh:14`, `:49`, `:474`, `:497`
 - checked:  2026-09-04
 - element:  none
 
@@ -506,7 +528,16 @@ the author.** TC-08.
 - state:    OPEN
 - claim:    `docs/arcs/text-tools-arc.md:87`, `docs/definitions/status-ledger.md:165` and `docs/goals/local-ai.md:103` each record `lib/text/matcher.chiral` at **533 lines**.
 - measured: `wc -l lib/text/matcher.chiral` returns **602**. The file grew after those rows were written: `git log --follow` puts the last change at `9f46c6c`, "matcher: the two constructions scan-go built and threw away", and the figure was taken at the E173 slice-1 landing on 2026-09-01. The consumer count is unchanged and correct: `grep -rIn 'import "text/matcher"' lib prog` returns exactly one shipping consumer, `prog/prose-lint.prog:43`, plus the gate fixture `tools/test/samples/e173_matcher.prog:37`. Its own imports are `prelude/prelude`, `prelude/list`, `prelude/ord` and `prelude/string`, which is what makes its closure small enough to be a judge everywhere except over itself.
-- evidence: `docs/arcs/text-tools-arc.md:87`; `docs/definitions/status-ledger.md:165`; `docs/goals/local-ai.md:103`; `lib/text/matcher.chiral:10-13`; `prog/prose-lint.prog:43`
+  ⚑ **This row named three documents and there are seven.** `grep -rln` for the
+  figure over `docs/` returns `docs/definitions/status-ledger.md:165`,
+  `docs/elements/catalog.md:499`, `docs/elements/ledger.md:321`,
+  `docs/banks/text.md:50`, `docs/examples/INDEX.md:164`,
+  `docs/goals/local-ai.md:103` and `docs/arcs/text-tools-arc.md:87`, where the
+  last wraps the number onto the following line. **Three repointed at
+  `8b65108`**: `status-ledger`, `catalog`, `ledger`. The other four stay owed;
+  `docs/banks/text.md` was held by a concurrent bank pass at the time and was
+  not opened.
+- evidence: `docs/arcs/text-tools-arc.md:87`; `docs/banks/text.md:50`; `docs/examples/INDEX.md:164`; `docs/goals/local-ai.md:103`; `lib/text/matcher.chiral:10-13`; `prog/prose-lint.prog:43`
 - checked:  2026-09-04
 - element:  none
 
@@ -533,7 +564,12 @@ the author.** TC-08.
 - state:    OPEN
 - claim:    `docs/decisions/decision-lane-split.md:30` reserves gate phases **21, 22, 23** for Lane B, which owns E146, E163 and E183. `tools/test/run-tests.sh:332` repeats it: "21-23 are Lane B's".
 - measured: two scripts that are not Lane B elements sit in that block. `tools/test/tal-check.sh:3` reads "The Phase 22 gate" and `:5-9` takes 22 explicitly, leaving 21 to `crypto.sh` "which was written first and whose registration is already owed". `docs/definitions/testing-floors.md:69` records tal-check.sh as Phase 22 and describes "the `crypto.sh` precedent holding phase 21". Reading `crypto.sh` in full, it claims **no phase number**: `:6-8` says only that registration is owed and that "21-23 are free at this writing". So three documents place phase 21 with a script that has never asked for it, and phase 22 with EN-09/EN-11 work rather than with Lane B's E163 or E183. Recorded as an open allocation question. No number was assigned by this pass.
-- evidence: `docs/decisions/decision-lane-split.md:30`; `tools/test/run-tests.sh:332`; `tools/test/tal-check.sh:3`, `:5-9`; `tools/test/crypto.sh:6-8`; `docs/definitions/testing-floors.md:69`
+  Re-read at `67d3d54`: `crypto.sh:8` still claims no number and still records
+  21 through 23 as free. **`docs/definitions/testing-floors.md:69` repointed at
+  `096ba33`**: it no longer asserts the precedent, and it names all four
+  positions with the author call beside them. **No number was assigned.** The
+  allocation stays open, and `records/author-calls.md:30` holds it.
+- evidence: `docs/decisions/decision-lane-split.md:30`; `tools/test/run-tests.sh:332`; `tools/test/tal-check.sh:3`, `:5-9`; `tools/test/crypto.sh:6-8`; `docs/definitions/testing-floors.md:69`; `records/author-calls.md:30`
 - checked:  2026-09-04
 - element:  UNASSIGNED
 
@@ -557,10 +593,11 @@ the author.** TC-08.
 
 ### TC-11 the Python tier is nine files, and two documents say seven
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `docs/goals/enforcement.md:34` and `docs/arcs/enforcement-arc.md:78` both read "seven Python tools are 4,786".
 - measured: `find tools -name '*.py' | wc -l` returns **9** and their lines sum to exactly 4,786, so the line figure is right and the file count is not. `tools/README.md` lists nine Python folders: `paren-audit`, `syscall-map`, `ledger-lint`, `pack`, `frontier`, `capture`, `doc`, `scriba-edit-smoke`, `scriba-run-smoke`. Excluding the two smoke tests, which is the only reading that gives seven, leaves 4,604 lines rather than 4,786.
-- evidence: `docs/goals/enforcement.md:34`; `docs/arcs/enforcement-arc.md:78`; `tools/README.md:11-21`
+  Re-measured at `67d3d54`: 9 files, 4,786 lines. **Repointed at `5f84af8`**.
+- evidence: `docs/goals/enforcement.md:34`; `docs/arcs/enforcement-arc.md:88-89`; `tools/README.md:11-21`
 - checked:  2026-09-04
 - element:  none
 
@@ -582,6 +619,15 @@ the author.** TC-08.
 - checked:  2026-09-04
 - element:  UNASSIGNED
 
+### TC-14 the surface figures started drifting the day they were taken
+
+- state:    OPEN
+- claim:    the table above and both goal-tier documents read a gate tier of **6,915** lines and **12,450** lines outside the language, measured 2026-09-04 against `dda00b9`. This file's scope paragraph read **122** gate-tier `grep` invocations.
+- measured: three separate drifts, none of them a defect in the original count. **One.** Four commits after `acc70d6` (`ebec76a`, `d3ab4d3`, `3a71658`, `f7caf96`, all falsifier work on `tools/test/*.sh`) took the gate tier to **7,136** lines, so the surface outside the language reads **12,671** at `67d3d54` and the 12,450 is already behind. Neither figure was repointed: `tools/test/` was held by a concurrent gate pass and the target moves under it. **Two.** The same four commits added no classic-tool call site, so **506 stands as 504** under an independently written scanner following this file's stated rule, with `tools/test/doc.sh` at 47 against 48 and `tools/prose-lint/prose-lint.sh` at 23 against 24, one `sort` and one `wc` this pass could not place. Every other file and 17 of the 19 tools agree exactly, and the gate-tier four-tool count reproduces at **240** site for site. **Three.** The 122 above disagreed with this file's own per-tool table and is corrected to 119 in the same commit as this row.
+- evidence: `records/tooling-classification.md:36-46`; `docs/goals/enforcement.md:32-33`; `docs/arcs/enforcement-arc.md:74`, `:87-90`, `:130`; `git log acc70d6..67d3d54 -- tools/test/`
+- checked:  2026-09-04
+- element:  none
+
 ## What this pass did not do
 
 - Nothing was converted. No file outside `records/` was edited.
@@ -590,8 +636,12 @@ the author.** TC-08.
   from reading files.
 - The scanner is a session script and is not tracked. Its rule is written above
   and the count can be re-taken from it.
-- `docs/goals/enforcement.md` and `docs/arcs/enforcement-arc.md` still carry the
-  390, the 352 and the seven. TC-01, TC-02 and TC-11 are the correction; making
-  the documents true is a separate change.
+- `docs/goals/enforcement.md` and `docs/arcs/enforcement-arc.md` carried the
+  390, the 352 and the seven when this file was written. A later pass repointed
+  all three (`56348b9`, `5f84af8`, `100137a`), repointed three of the seven
+  documents carrying 533 (`8b65108`), and repointed
+  `docs/definitions/testing-floors.md:69` off the phase-21 precedent
+  (`096ba33`). TC-01, TC-02 and TC-11 are `FIXED`. TC-05 and TC-08 stay `OPEN`
+  and TC-14 records what has drifted since.
 - J1 was not written. This file states which axis covers each 1b group and does
   **not** claim that a criterion exists.
