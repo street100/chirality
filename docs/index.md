@@ -102,7 +102,7 @@ allocator at scale; the native suite's own wall clock), see
   [[decision-dispatch-cadence]] (how work here is dispatched: serial, one stage
   and one agent at a time),
   [[decision-erased-word-level]] (the erased-word type lives at the lowering type
-  level; `Core` gains no word spelling and `conv` is not widened)
+  level; `Core` gains no word spelling and `conv` is left alone)
 - Trust discipline: [[certificate-discipline]] (trusted checker, untrusted producers
   — how a socket checks what plugs into it: re-run the work, do not spot-check) and
   [[split-role]] (where proof runs out, the split as a tiered substrate-provided role

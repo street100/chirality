@@ -1,9 +1,9 @@
 ---
 node: arc-enforcement
 layer: navigation
-related: [arcs/README, goals/enforcement, status-ledger, arcs/diagnostics-arc, records/enforcement-arc, index]
+related: [arcs/README, goals/enforcement, status-ledger, arcs/diagnostics-arc, records/enforcement-arc, decisions/decision-erased-word-level, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-04
 ---
 
 # Arc: enforcement
@@ -19,9 +19,9 @@ design, so each worktree carries its own copy and nothing there reaches a second
 reader or a second session. An element fact anyone else needs lives here.
 
 The arc's subject is enforcement: a claim the compiler makes about its own work,
-carried as a value, with evidence, and refused when it does not hold. E184 is the
-first element minted for it, and four older catalog rows belong to it: E16, E17,
-E18 and E70.
+carried as a value, with evidence, and refused when it does not hold. E184 and
+E185 are minted for it, and four older catalog rows belong to it: E16, E17, E18
+and E70.
 
 `.planning/` stays the working detail (change plans, decision tables, SPECs).
 This is the part that survives a fresh clone.
@@ -219,6 +219,12 @@ imports `lower` for `compile-fn` only (`compile-back.chiral:15`). So the four
 exclusions those functions name (dependent type, effectful, quantified binder,
 type does not lower) are **never produced by a real compile**.
 
+### E185
+
+| E185 | **How the `$apply` dispatcher's erased domains are spelled at the lowering type level** | Not built. Minted 2026-09-04. The level is settled and the spelling is open. [[decisions/decision-erased-word-level]] rules that the erased-word type lives strictly at the lowering type level, that `Core` gains no word spelling, and that the kernel's `conv` relation is left alone. What stays open is the SHAPE of the erased position, and [[records/enforcement-arc]] EN-15 is the measurement that stops without it: `apply-ty` spells the dispatcher's domains with one defunctionalization family member's concrete `Core` types (`lib/lowering/upper/closconv.chiral:1081-1083`), reached from `lib/lowering/upper/closconv-driver.chiral:175`, so four dispatchers carry a tal type their own arms contradict and `ck-prog` is right to refuse them. **Two candidates, and `.planning/RESEARCH-EN15-prior-art.md` §6 measures the prior art as split between them.** **(a) A quantified type variable**, with the concrete types on the constructor: Pottier and Gauthier's specialized `apply`, TAL's abstract `α` in a register-file type, TALx86's `∀α:T4`. **(b) A coarse word type of the lower language**, related by subtyping: Java's `Object`, the JVM verifier's `oneWord`, MLton's `RepType` with `isSubtype`. The tree already reaches `tt-word` from a type variable, because `term->ntalty` maps `(t-var i)` to `(nt-word)` at `lib/lowering/compile-front.chiral:70` under the comment *"B1: an erased type variable in a KEPT position"*. That is an observation about machinery that exists, and it settles nothing. **What it touches:** `apply-ty` and its one call site, plus the peel in `lib/lowering/compile-front.chiral`. All of it is compiler source inside the blob, so the full BUILD RULE applies: `build-new → test → promote` with the fixpoint verified and the Step-0 precondition checked first. **Needs the full pipeline** (worked example → audit → SPEC → audit → implement), because the spelling is a genuine choice between shapes the codebase does not settle. **What it closes.** The arc's requirement 2, wiring `ck-prog` onto the shipping path, is what EN-15 blocks today, and this element is what unblocks it. **What it leaves.** [[records/enforcement-arc]] EN-17, the `$kI_J` capture constructor's field types, is a separate author call and stays open: research §7 shows the prior art keeping constructor fields concrete, so the two instances may take different answers. ⚑ Nothing here is a miscompile today. Every one of these values is one word at runtime and the emitted code is correct; the defect is the type the IR carries. | `OURS`; ←E16, ←E18 |
+
+| E185 | lowering | design | **How the `$apply` dispatcher's erased domains are spelled at the lowering type level.** The level is settled by [[decisions/decision-erased-word-level]]: the erased-word type lives strictly at the lowering type level, `Core` gains no word spelling, and the kernel's `conv` relation is left alone. The spelling is open, and the prior art splits (`.planning/RESEARCH-EN15-prior-art.md` §6): a quantified type variable with the concrete types on the constructor (Pottier and Gauthier, TAL's abstract `α`, TALx86's `∀α:T4`), against a coarse word type of the lower language related by subtyping (Java's `Object`, the JVM verifier's `oneWord`, MLton's `RepType`). `term->ntalty` already maps `(t-var i)` to `(nt-word)` at `lib/lowering/compile-front.chiral:70`, which is an observation and not a decision. Touches `apply-ty` (`lib/lowering/upper/closconv.chiral:1081-1083`), its call site (`lib/lowering/upper/closconv-driver.chiral:175`) and the peel, all compiler source, so the full BUILD RULE applies with the fixpoint verified. **Pipeline: yes.** Closing it unblocks the arc's requirement 2, `ck-prog` on the shipping path. It leaves EN-17, the `$kI_J` capture constructor's field types, which is a separate author call. Minted 2026-09-04; full text in `docs/arcs/enforcement-arc.md`. | ←E16, ←E18 |
+
 ## The typed-assembly floor: built, and adopted at one point only
 
 [[goals/enforcement]] states the gap in its own State list: the typed-assembly
@@ -254,8 +260,11 @@ import closure of `prog/compiler.prog`, which is 50 modules.
 
 ## Numbering
 
-E184 is the **first element minted for this arc**. The highest previously minted element was
-**E183**. Lane A mints in **E184–E189**, Lane B in **E190–E195** (`docs/decisions/decision-lane-split.md`).
+E184 was the **first element minted for this arc** and **E185** is the second,
+minted 2026-09-04. The highest previously minted element was **E183**. Lane A
+mints in **E184–E189**, Lane B in **E190–E195**
+(`docs/decisions/decision-lane-split.md`). Three numbers remain in Lane A's band,
+and it is shared with [[arcs/diagnostics-arc]].
 A new element's row lands in `docs/examples/INDEX.md` **and here** in the same
 change: those are the only two tracked places, and therefore the only collision
 detectors that exist.

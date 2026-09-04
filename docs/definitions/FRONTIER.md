@@ -2,7 +2,7 @@
 node: frontier
 layer: generated
 tier: orientation
-updated: 2026-09-03
+updated: 2026-09-04
 ---
 
 # Design frontier — where things stand
@@ -14,13 +14,14 @@ updated: 2026-09-03
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: f7bdacb065655414d886aaa9aff0a5f7f95dbcc101cc112ee31a52095837a270 -->
-<!-- sources: 153 files -->
+<!-- FRONTIER-SOURCES-SHA256: b780dfed29337897ef3c871f9f84ef3e314f78d94129d922b7840f5db508477e -->
+<!-- sources: 154 files -->
 
 ## Decided recently
 
 ### Settled decision notes (docs/decision-*.md, newest first)
 
+- 2026-09-04 · decision-erased-word-level [settled] — Decision: the erased-word type lives at the lowering type level
 - 2026-09-03 · decision-quorum-store [DECIDED] — Decision: crypto and Shamir serve a split source-of-truth store
 - 2026-09-03 · decision-dispatch-cadence [settled] — Decision: dispatch cadence is serial
 - 2026-09-03 · decision-b-in-type [settled] — Decision: B lives in the type, not the packaging
@@ -98,7 +99,7 @@ updated: 2026-09-03
 - **implemented: 2
 - impl: 1
 - implemented-core: 1
-- minted: 1
+- minted: 2
 - part: 1
 - superseded: 1
 
@@ -110,11 +111,11 @@ updated: 2026-09-03
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 83550f1 — the erased-word type is a lowering-level type, and the kernel keeps its conv
+- 2026-09-04 32823ee — the author's doc pass: 34 files across the definition, decision and module tiers
+- 2026-09-04 53c3d3a — baseline-alignment re-measured, and eight definitions notes stop describing a cut compiler
 - 2026-09-03 b5994d0 — the ledger tells the truth about today, and five lint checks go to zero
 - 2026-09-03 5b4fb71 — tal/check is importable beside the compiler, eleven names prefixed tck-
 - 2026-09-03 ddfbc27 — the tal checker agrees with the compiler, and Phase 22 pins that it still refuses
 - 2026-09-03 0bd65dd — N7 example audit: PASS, the agreement theorem repaired and x=0 refused
 - 2026-09-03 92b0660 — N7 pre-run: Shamir over GF(256), peasant loop, AgreeR quorum sum
-- 2026-09-03 1b1101b — quorum store: the author's re-ruling recorded across the tier
-- 2026-09-03 54d59b3 — N1 spec audit: PASS, the sigma mutant pinned so appendix B must go red
-- 2026-09-03 f4f859e — N1 spec: four decisions dispositioned, four slices, the vector-and-mutant gate

@@ -3,7 +3,7 @@ node: arc-diagnostics
 layer: navigation
 related: [arcs/README, goals/readable-surface, status-ledger, arcs/enforcement-arc, records/diagnostics-arc-record, index]
 status: current
-updated: 2026-09-03
+updated: 2026-09-04
 ---
 
 # Arc: diagnostics and formatting
@@ -219,8 +219,9 @@ Lane A mints in **E184–E189**, Lane B in **E190–E195**. A new element's row 
 in `docs/examples/INDEX.md` **and here** in the same change — those are the only
 two tracked places, and therefore the only collision detectors that exist.
 
-**E184 is minted**, and its rows live in [[arcs/enforcement-arc]], the first row of a
-second tracked arc. The next free number is E185.
+**E184 and E185 are minted**, and their rows live in [[arcs/enforcement-arc]].
+E185 was minted 2026-09-04 for the `$apply` dispatcher's erased-domain spelling.
+The next free number is E186, and three remain in the band.
 
 ### Arc-local rows
 
