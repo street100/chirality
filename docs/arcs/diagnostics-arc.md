@@ -219,12 +219,14 @@ Lane A mints in **E184–E189**, Lane B in **E190–E195**. A new element's row 
 in `docs/examples/INDEX.md` **and here** in the same change — those are the only
 two tracked places, and therefore the only collision detectors that exist.
 
-**E184, E185, E186 and E187 are minted**, and their rows live in
+**E184, E185, E186, E187 and E188 are minted**, and their rows live in
 [[arcs/enforcement-arc]]. E185 was minted 2026-09-04 for the `$apply`
 dispatcher's erased-domain spelling; E186 and E187 were minted the same day by
 E185's SPEC run, for the `$k<i>_<j>` capture constructor's field types and for
-`closconv` stating the lowering-level type of every name it invents. The next
-free number is E188, and `E188` and `E189` are what remain in the band.
+`closconv` stating the lowering-level type of every name it invents; E188 was
+minted the same day from [[records/enforcement-arc]] EN-20, for the live
+wrong-code defect in `arm-body`'s unreachable arm. The next free number is E189,
+and `E189` is the last one left in the band.
 
 ### Arc-local rows
 

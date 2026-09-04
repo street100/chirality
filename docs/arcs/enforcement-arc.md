@@ -20,8 +20,8 @@ reader or a second session. An element fact anyone else needs lives here.
 
 The arc's subject is enforcement: a claim the compiler makes about its own work,
 carried as a value, with evidence, and refused when it does not hold. E184,
-E185, E186 and E187 are minted for it, and four older catalog rows belong to it:
-E16, E17, E18 and E70.
+E185, E186, E187 and E188 are minted for it, and four older catalog rows belong
+to it: E16, E17, E18 and E70.
 
 `.planning/` stays the working detail (change plans, decision tables, SPECs).
 This is the part that survives a fresh clone.
@@ -308,6 +308,43 @@ touch, and the constructor half waits on E186's ruling. Folding all of it into
 E185 would put an unanswered author call inside the element that unblocks
 requirement 2.
 
+### E188
+
+| E188 | **`arm-body`'s unreachable arm is reached, and an `$apply` arm returns a literal `0` as a whole function body** | Not built. Minted 2026-09-04 from [[records/enforcement-arc]] EN-20, and it is the first live wrong-code defect this arc has measured in the shipping compiler. **The defect.** `def-ctx` (`lib/lowering/upper/closconv.chiral:582-596`) returns `(none)` for a defunctionalization site whose `peel-lam-exact` fails, which is any curried projector whose type peels deeper than its body is `lam`s. `arm-body` (`:1051-1058`) has exactly one arm for that case, the `(none)` arm at `:1057` carrying the comment `unreachable: g always has a def-ctx`, and it emits `(c-lit-i 0)` as the arm's whole body. It is reached twice in the compiler's own blob, at `mach-galo` and `mach-gbnw` (`lib/lowering/mach/mach.chiral:134-137`), which `alloc-growing` (`lib/memory/alloc-growing.chiral:18-24`) puts in value position: `$apply5`'s `$k5_8` arm and `$apply6`'s `$k6_3` arm are each two instructions, `const 0` then `ret`. **The demonstration.** EN-20 built a fixture of that shape outside `lib/` and `prog/`, compiled and ran it with today's binary, and got three lines: `direct box-f: 30`, `via $apply: 0`, `via $apply2: -10`. The same global is correct called directly and returns `0` through the dispatcher. **Three candidate fix shapes, and EN-20 picks none.** (a) `arm-body` builds the call spine `(g cap0..capk-1 arg0..argd-1)` from the site, which is correct without reading the body at all. (b) `def-ctx` eta-expands a body shallower than its type before peeling. (c) `collect` poisons the family when `def-ctx` fails, the mechanism `keep-fams` (`lib/lowering/upper/closconv-driver.chiral:96-106`) already runs for an unsaturated higher-order use, which turns wrong code into a named skip. ⚑ **Erasing the codomain would HIDE this defect.** `tal-ty=?`'s first arm makes `tt-word` match everything (`lib/lowering/tal/check.chiral:68-70`), so a `tt-word` return accepts `const 0` and the two red rows go green with the wrong code still emitted. That is the one repair shape ruled out in advance. ⚑ **`ck-prog` does not detect the general case, and the gate is the interesting part of this element.** The `ret` refusal reddens the compiler's two instances only because their family codomain happens to be `(List Asm)`. EN-20's fixture has an `I64` codomain, `const 0` matches the declared return, `ck-prog` accepts, and nothing anywhere reddens. A gate for E188 must therefore catch a body that returns a LITERAL where it should return a COMPUTATION, which is a value-level assertion the existing type-level check demonstrably cannot make. This row states that requirement and does not design the gate. ⚑ **Blast radius in this tree is zero today, and nothing measures that on purpose.** `compile-fn` skips `alloc-growing` and `mach-galo`, so no `$clo5` or `$clo6` con reaches any of the 1,484 TFns and the two dead dispatchers ride into the ELF uncalled. The same two sites appear in `prog/test-runner.prog`, `prog/wield.prog`, `prog/prose-lint.prog` and `prog/paren-audit.prog`. The suite's green line and the byte fixpoint witness none of it. **What it touches:** `arm-body`, `def-ctx` or `collect` depending on the shape chosen, all compiler source inside the blob, so the full BUILD RULE applies: `build-new → test → promote` with the fixpoint verified and the Step-0 precondition checked first. **Needs the full pipeline** (worked example → audit → SPEC → audit → implement), because three candidate shapes is a choice the codebase does not settle. | `OURS`; ←E185, ←E16 |
+
+| E188 | lowering | design | **`arm-body`'s unreachable arm is reached, and an `$apply` arm returns a literal `0` as a whole function body.** Minted 2026-09-04 from [[records/enforcement-arc]] EN-20, the arc's first measured wrong-code defect in the shipping compiler. `def-ctx` (`lib/lowering/upper/closconv.chiral:582-596`) refuses a curried projector whose type peels deeper than its body, and `arm-body` (`:1051-1058`) answers that with `(c-lit-i 0)` under a comment reading `unreachable: g always has a def-ctx`. Reached twice in the compiler's own blob, `mach-galo` and `mach-gbnw`. EN-20's fixture on today's binary: `direct box-f: 30` against `via $apply: 0`. Three candidate shapes and none picked: build the call spine from the site, eta-expand a shallow body, or poison the family through `keep-fams`. Erasing the codomain would HIDE it, because `tal-ty=?`'s `tt-word` arm matches everything, and `ck-prog` misses the general case whenever the family codomain is ground, so the gate must assert the VALUE. Compiler source, full BUILD RULE. **Pipeline: yes.** Minted 2026-09-04; full text in `docs/arcs/enforcement-arc.md`. | ←E185, ←E16 |
+
+#### Why it is separate from E185, E186 and E187
+
+Those three state a TYPE. E188 is a wrong VALUE. `apply-ty`'s domains, the
+`$k<i>_<j>` fields and the invented names all carry an annotation the emitted
+code contradicts, and repairing the annotation moves no byte, which
+`docs/elements/specs/E185-type-preserving-upper-SPEC.md` R6 pins as a control.
+`arm-body`'s `(none)` arm emits a different instruction stream from the one the
+site calls for, so no statement of a type repairs it. [[records/enforcement-arc]]
+EN-19 reached the same conclusion from the other side: `cod-key-eq` was suspected
+of merging two families and was cleared, and the residue was the code.
+
+#### The gate this element owes, and why the existing one is not it
+
+`ck-prog`'s `ret` check refuses `$apply5`'s and `$apply6`'s arms today. That is
+luck. The refusal fires because those two families return `(List Asm)`, so
+`const 0 : i64` disagrees with the declared return. EN-20's fixture has an `I64`
+codomain, `const 0` agrees with the declared return, `ck-prog` accepts, and the
+wrong code ships silently. A gate for E188 must assert the VALUE the dispatcher
+produces on a fixture of the shallow-body shape, because the type-level check is
+absent for the whole class of families whose codomain is ground. The requirement
+is stated here and the gate is designed in the pipeline.
+
+#### What it does not touch
+
+The blast radius in this tree is zero today. `compile-fn` skips `alloc-growing`
+and `mach-galo`, so the two bad dispatchers are dead code inside every blob that
+carries them, and the byte fixpoint is undisturbed by both the defect and its
+repair. Requirement 2 is unaffected: E185 is what stands between `ck-prog` and
+the shipping path, and E188 is a defect `ck-prog` on the shipping path would
+still miss.
+
 ## The typed-assembly floor: built, and adopted at one point only
 
 [[goals/enforcement]] states the gap in its own State list: the typed-assembly
@@ -345,10 +382,11 @@ import closure of `prog/compiler.prog`, which is 50 modules.
 
 E184 was the **first element minted for this arc** and **E185** is the second,
 minted 2026-09-04. **E186 and E187** are the third and fourth, minted 2026-09-04
-by E185's SPEC run, which is the stage that mints. The highest previously minted
+by E185's SPEC run, which is the stage that mints. **E188** is the fifth, minted
+2026-09-04 from [[records/enforcement-arc]] EN-20. The highest previously minted
 element was **E183**. Lane A mints in **E184–E189**, Lane B in **E190–E195**
-(`docs/decisions/decision-lane-split.md`). `E188` and `E189` remain in Lane A's
-band, and it is shared with [[arcs/diagnostics-arc]].
+(`docs/decisions/decision-lane-split.md`). **The next free number is `E189`**, the
+last one in Lane A's band, and the band is shared with [[arcs/diagnostics-arc]].
 A new element's row lands in `docs/examples/INDEX.md` **and here** in the same
 change: those are the only two tracked places, and therefore the only collision
 detectors that exist.
