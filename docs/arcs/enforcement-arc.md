@@ -39,11 +39,16 @@ Done when all five hold. Each is checkable, and the state beside it is measured
    Inherited verbatim from [[goals/enforcement]]. Today four rows in
    [[status-ledger]] are written and unreached, so the row-says-why half is
    carrying the weight.
-2. **The typed-assembly floor runs on the shipping path.** `ck-prog` is called
-   nowhere in `lib/` or `prog/`, and `lib/lowering/compile-back.chiral` does not
-   import `lowering/tal/check`. E16's own title names the preserve-check and
-   three of its four deliverables are built. E18's checker and reference
-   interpreter both exist unreached.
+2. **The typed-assembly floor runs on the shipping path.** Still open, and the
+   two things standing in front of it are now named. `ck-prog` is called nowhere
+   and `lib/lowering/compile-back.chiral` does not import `lowering/tal/check`,
+   because that import is a `duplicate label` refusal at load: eleven colliding
+   top-level names, E154's fifth instance. Resolving them cascades through seven
+   sha256-pinned gate scripts. Beyond that, a hard refusal on the shipping path
+   needs EN-15 answered, since the compiler would refuse its own four `$apply`
+   dispatchers. E16's title names the preserve-check and three of its four
+   deliverables are built; E18's checker and reference interpreter exist
+   unreached.
 3. **The check agrees with the compiler it checks.** **Root-caused 2026-09-03**,
    `records/enforcement-arc.md` EN-08 to EN-13. Re-measured on that day's blob:
    1,481 TFns, 727 accept, **754 reject, 50.9%** (the move from 1,504/743/761 is
@@ -51,10 +56,12 @@ Done when all five hold. Each is checkable, and the state beside it is measured
    two defects: an erased type-argument list that `tal-ty=?` refuses and no other
    rule reads, and a `tt-word` scrutinee `ck-term`'s case arm has no arm for,
    which contradicts `tal-ty=?`'s own first arm. Relaxing both, 1,475 of 1,481
-   accept. The surviving six are genuine lowering defects: an erased-binder
-   register `build-binders` allocates and defines nowhere, and four `$apply`
-   dispatchers in the shape `closconv.chiral:362` warns about. ⚑ The repair shape
-   is an author call, EN-13, now a row in [[records/author-calls]].
+   accept. **Both checker defects are repaired at `ddfbc27`** and Phase 22
+   (`tools/test/tal-check.sh`) pins that the repaired check still refuses, with
+   nine REJECT rows and three live mutants. Of the six survivors, the
+   erased-binder register is **fixed at `40e8726`** (EN-14) and the probe reads
+   **1,477 of 1,481**. ⚑ The four `$apply` dispatchers remain, EN-15, and they
+   are an author call in [[records/author-calls]].
 4. **The optimizer's re-check runs, or E17 says why it does not.**
    `lib/lowering/upper/optimize.chiral` has zero importers and is in no blob, so
    `optimize` and `specialize` return a `Checked` result nothing ever forms.
@@ -67,12 +74,18 @@ stop short of it as written, so no element owns it.
 
 ## Resume state
 
-**Requirement 3 is root-caused and the next move is the author's.** The
-diagnosis slice ran 2026-09-03 and is `records/enforcement-arc.md` EN-08 to
-EN-13: the checker is wrong in 99.2% of the disagreement, and the six survivors
-are named lowering defects. What is owed before any wiring lands is the repair
-shape, EN-13's fork, which is a row in [[records/author-calls]]. The
-refuse-or-carry ruling standing there is untouched and is a separate call.
+**Requirement 3 is closed and requirement 2 is the live one.** 2026-09-03 ran
+the diagnosis (EN-08 to EN-13), the author's ruling, both checker repairs with
+Phase 22 gating them (`ddfbc27`), and the erased-binder fix with a promoted
+fixpoint (`40e8726`). Suite 339 passed, 0 failed, 87 roots, gate PASSED.
+
+Two things are owed, and they are independent of each other. **The eleven name
+collisions** make `lowering/tal/check` unimportable beside the compiler, which
+blocks requirement 2 and requirement 4 alike; resolving them is mechanical and
+cascades into `tools/test/diag.sh:256` and seven sha256-pinned gate scripts.
+**EN-15** is the author's, and it gates the moment the refusal goes live rather
+than the plumbing. The refuse-or-carry ruling in [[records/author-calls]] is a
+third and separate call.
 
 The enabling change was measured, then reverted. Its artifacts survive.
 `lib/lowering/tal/check.chiral` declares **11 top-level names that already exist
