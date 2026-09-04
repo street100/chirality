@@ -103,6 +103,7 @@ once and audited. Editability by anyone is the role.
 - [[records/baseline-alignment]]: does the repo do what it claims to do
 - [[records/enforcement-arc]]: what the compiler enforces, and what it can
   measure about its own work
+- [[records/gate-audit]]: which gate rows can be made to fail, and which cannot
 - [[records/findings]]: dated investigations belonging to no single arc
 
 The first two have an arc beside them under `docs/arcs/`. The checklist is the
