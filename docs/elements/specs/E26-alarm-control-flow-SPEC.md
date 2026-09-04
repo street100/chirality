@@ -56,7 +56,7 @@ updated: 2026-08-01
 - **Live code (do NOT respec):**
   - `alarms.py` (24 lines): `MetisExit(code)` / `MetisHalt` / `PortError` — the
     crutch being repositioned to the host boundary.
-  - `ports.chiral:128–129`: `exit : (-> (0 A (type 0)) (=> I64 A))`, `halt :
+  - `lib/ports/process.port:13-14`: `exit : (-> (0 A (type 0)) (=> I64 A))`, `halt :
     (-> (0 A (type 0)) (=> Str A))` — ambient externs (the E80 reification
     class), **polymorphic-`A` return** — the scaffold's existing bottom idiom.
   - **The settled mechanism** ([[decision-effect-facets]], amended

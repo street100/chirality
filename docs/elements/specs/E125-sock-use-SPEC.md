@@ -40,8 +40,8 @@ updated: 2026-08-12
     (1 sock Sock)) | (recv-closed (1 sock Sock)) | (recv-err (msg Str))`
     (`ports.chiral:28-31`). `recv-err` carries **no** `Sock` (cap already
     consumed on error — documented `lincoll.chiral:89`).
-  - **The externs** — `sock-send` (`ports.chiral:70`), `sock-recv`
-    (`ports.chiral:72`). Real downstream users already call them:
+  - **The externs** — `sock-send` (`lib/ports/sock.port:67`), `sock-recv`
+    (`lib/ports/sock.port:69`). Real downstream users already call them:
     `lincoll.chiral:86` (`sock-recv s 4096`), `secret.chiral:56` (`sock-send s bs`).
   - **The two raw crossings** — `nb-sys-write-t` (nr 1, `sys-tal.chiral:18`),
     `nb-sys-read-t` (nr 0, with the truncate-to-`r`-via-`nb-copy` idiom,

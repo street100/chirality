@@ -173,7 +173,7 @@ construction).
   - **Recoverable `pool-create` (boundary-sums ideal) → DEFERRED.** A
     `pool-create` returning a `PoolCreateR` result sum (so ENOMEM/EMFILE is
     handled, not fatal) would be the boundary-sums ideal, but the extern
-    signature `(=> (w n I64) (PoolR n))` (`ports.chiral:73`), the `_poolcreate`
+    signature `(=> (w n I64) (PoolR n))` (`lib/ports/pool.port:26`), the `_poolcreate`
     oracle, and every E120 consumer of `pool-r` assume the non-recoverable
     `(PoolR n)`. Reshaping to a recoverable sum is a pool-family-wide refactor
     (re-opens the extern + oracle + E120) — surfaced, not dropped; same posture

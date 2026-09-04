@@ -39,7 +39,7 @@ updated: 2026-08-13
 - **Conformance-map verdict:** none. E130 postdates the map snapshot, so this
   element is treated as BUILD. Live source is the authority, not the map.
 - **Live code this composes with (already built, not respec'd):**
-  - `ports.chiral:12-98` — `Sock`, `ConnR` (`conn-r`/`conn-err`), `SendR`
+  - `lib/ports/sock.port:16-70` — `Sock`, `ConnR` (`conn-r`/`conn-err`), `SendR`
     (`send-r`/`send-err`), `RecvR` (`recv-r`/`recv-closed`/`recv-err`), and the
     `sock-send`/`sock-recv`/`sock-close` externs.
   - `inet.chiral:33-114` — `sock-connect-in : (=> Str I64 ConnR)` plus the pure
