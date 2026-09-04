@@ -1321,6 +1321,339 @@ def check_v() -> list[str]:
     return errs
 
 
+# ── the five doc-rot classes: W, X, Y, Z, AA (added 2026-09-04) ──────────────
+# records/doc-rot.md measured five rot classes across 310, 131, 21, 18 and 15
+# files. Every one of them reached that count by regrowing after a sweep, because
+# checks A to V name none of them. A sweep with no detector is undone by the next
+# session. These five are the detectors.
+#
+# The corpus and the excuse rule below are shared by all five, so "what counts as
+# a defect" is stated once. MAP.md sorts the doc tier by role and the role
+# decides:
+#
+#   docs/definitions|modules|banks|goals|arcs, and the root docs
+#       the present tense of the system. A dead reference is a defect.
+#   docs/examples, docs/elements/specs
+#       pipeline artifacts. The status in docs/examples/INDEX.md decides. A
+#       pre-build status is a live blueprint an implementer will follow, so a
+#       dead reference is a defect. `implemented` is a record of what was
+#       examined and earns a dated banner, so it is left alone.
+#   records/, docs/benchmarks/
+#       a claim beside its measurement, dated. History by construction, never
+#       scanned.
+#   docs/decisions/
+#       a settled fork carrying its reason. Historical context is legitimate
+#       there and no mechanical rule separates it from a live citation, so the
+#       tier is skipped and named as a gap.
+#   .planning/, docs/elements/{catalog,ledger}.md, docs/examples/INDEX.md
+#       skipped. The registries carry one dated build record per row and the
+#       planning tier mixes present-tense protocol with dated passes. Neither
+#       splits mechanically, and flagging a dated record pushes a later session
+#       toward rewriting it, which is the failure doc-rot.md exists to prevent.
+#
+# These five under-report by construction. A check that cries wolf is a check
+# nobody reads, and the counts here are a worklist rather than a census.
+ROT_LIVE_DIRS = ("docs/definitions", "docs/modules", "docs/banks",
+                 "docs/goals", "docs/arcs")
+ROT_ROOT_DOCS = ("CONTENTS.md", "MAP.md", "PRINCIPLES.md", "README.md",
+                 "docs/index.md")
+ROT_PIPELINE_DIRS = ("docs/examples", "docs/elements/specs")
+# The states BEFORE a build. Vocabulary: the Status section of
+# docs/examples/INDEX.md, minted -> drafted -> reviewed -> specced -> audited ->
+# implemented. `audited` reads "spec audit passed; implement-ready" there, which
+# makes it the most load-bearing blueprint state in the corpus: 44 of the 116
+# rows sit on it. `needs-rework` and `superseded` are excluded because both
+# already say the artifact stopped being followed.
+ROT_LIVE_PIPELINE = frozenset({"minted", "drafted", "reviewed", "specced", "audited"})
+
+
+def _rot_pipeline_state() -> dict[int, str]:
+    """E# -> pipeline status, read from docs/examples/INDEX.md.
+
+    Same row shape check N reads: | Element | Title | Kind | Ref | Status |
+    Artifact |, status in cells[4], first token only because the cell carries
+    dated prose after the word."""
+    st: dict[int, str] = {}
+    idx = ROOT / "docs" / "examples" / "INDEX.md"
+    if not idx.exists():
+        return st
+    for ln in idx.read_text().splitlines():
+        cells = [c.strip() for c in ln.strip().strip("|").split("|")]
+        if len(cells) >= 5 and re.match(r"^E\d+$", cells[0]):
+            s = re.sub(r"[*`]", "", cells[4]).strip()
+            if s:
+                st[int(cells[0][1:])] = s.split()[0].lower()
+    return st
+
+
+def rot_corpus() -> list[tuple]:
+    """(path, why) for every doc a dead reference is a defect in.
+
+    `why` travels into each finding, so a reader sees which tier rule put the
+    file under the check rather than having to look it up."""
+    out: list[tuple] = []
+    for d in ROT_LIVE_DIRS:
+        for p in sorted((ROOT / d).rglob("*.md")):
+            out.append((p, "the present tense of the system"))
+    for r in ROT_ROOT_DOCS:
+        p = ROOT / r
+        if p.exists():
+            out.append((p, "the present tense of the system"))
+    skills = ROOT / ".claude" / "skills"
+    if skills.is_dir():
+        for p in sorted(skills.rglob("*.md")):
+            out.append((p, "live protocol a session follows"))
+    state = _rot_pipeline_state()
+    for d in ROT_PIPELINE_DIRS:
+        for p in sorted((ROOT / d).glob("*.md")):
+            m = re.match(r"^E(\d+)-", p.name)
+            if not m:
+                continue
+            s = state.get(int(m.group(1)))
+            if s in ROT_LIVE_PIPELINE:
+                out.append((p, f"a pipeline artifact at status {s}, "
+                               f"a blueprint an implementer follows"))
+    return out
+
+
+# A reference is history when the text around it says so. Two markers do the
+# separating, and both are read from the block the reader reads.
+_ROT_RETIRED = re.compile(
+    r"\b(cut|retire[ds]?|retires|evicted|deleted|absent|removed|no longer|"
+    r"formerly|former|historical(ly)?|dead|gone|does not exist|do not exist|"
+    r"did not exist|never existed|superseded|supersedes|migration|migrated|"
+    r"repointed|renamed|moved|replaced|stale|pre-migration|old tree|doc-rot|"
+    r"rewritten|does not resolve|not a subcommand|no such|nonexistent|phantom|"
+    r"spent|dissolved|dropped|unlinked|no file)\b", re.I)
+_ROT_DATED = re.compile(r"\b20\d\d-\d\d-\d\d\b")
+
+
+def rot_scope(text: str, pos: int) -> str:
+    """The block a reader reads around `pos`, whitespace-flattened.
+
+    A table row is its own record, so a row scopes to itself; one dated row
+    would otherwise excuse every other row in the table. Everything else scopes
+    to the blank-line paragraph, which keeps a wrapped sentence whole. Scoping
+    to the line alone was measured first and it split "no / longer exists"
+    across a wrap in status-ledger.md, reporting a repaired sentence as rot."""
+    la = text.rfind("\n", 0, pos) + 1
+    lb = text.find("\n", pos)
+    lb = len(text) if lb < 0 else lb
+    if text[la:lb].lstrip().startswith("|"):
+        return " ".join(text[la:lb].split())
+    a = text.rfind("\n\n", 0, pos)
+    a = 0 if a < 0 else a + 2
+    b = text.find("\n\n", pos)
+    b = len(text) if b < 0 else b
+    return " ".join(text[a:b].split())
+
+
+def rot_excused(text: str, pos: int) -> bool:
+    """True when the block names the reference as history.
+
+    Either it carries a retirement word, or it carries a date, which is the
+    `status-ledger` pattern doc-rot.md names as the disposition for a figure:
+    dated at what it measured. This is the loose half of the rule on purpose.
+    It suppressed 456 of 937 raw cut-Python matches, and the suppressed set is
+    where the repaired sentences live."""
+    s = rot_scope(text, pos)
+    return bool(_ROT_RETIRED.search(s) or _ROT_DATED.search(s))
+
+
+def rot_scan(letter: str, pattern, what: str, fix: str,
+             corpus=None) -> list[str]:
+    """One finding per FILE, carrying the hit count and the first location.
+
+    Per-hit reporting was measured at 481 lines for check W alone, which is a
+    worklist nobody opens. The file is the unit of repair anyway."""
+    errs: list[str] = []
+    for p, why in (corpus if corpus is not None else rot_corpus()):
+        text = p.read_text()
+        hits = [(text.count("\n", 0, m.start()) + 1, m.group(0))
+                for m in pattern.finditer(text) if not rot_excused(text, m.start())]
+        if not hits:
+            continue
+        ln, tok = hits[0]
+        errs.append(f"[{letter}] {p.relative_to(ROOT).as_posix()} carries "
+                    f"{len(hits)} live {what} (first :{ln}, `{tok.strip()}`) -- "
+                    f"the file is {why}. {fix}")
+    return errs
+
+
+_ROT_PY = re.compile(r"chirality/[A-Za-z_][\w-]*\.py|(?<![\w/])scaffold/"
+                     r"|python3 -m chirality")
+
+
+def check_w() -> list[str]:
+    """W. No live reference to the cut Python oracle (added 2026-09-04).
+
+    DR-1 in records/doc-rot.md, 310 files by grep and the largest of the five.
+    `docs/decisions/decision-scope.md` decision 5 cuts external judgment,
+    the Python oracle among it. `scaffold/` went with it in the 2026-08-31
+    migration and no such directory exists.
+
+    Three forms carry the class: a `chirality/<name>.py` path, a path under
+    `scaffold/`, and the `python3 -m chirality` invocation. A live spec that
+    says "Lands in: scaffold/lib/collections.chiral" sends an implementer at a
+    path that has been gone for four days.
+
+    Vacuous when scaffold/ is back, because the reference would resolve."""
+    if (ROOT / "scaffold").exists():
+        raise Vacuous("scaffold/ exists again, so a path under it resolves")
+    return rot_scan("W", _ROT_PY, "reference(s) to the cut Python oracle",
+                    "Repoint it at the live tree, or date the sentence.")
+
+
+# The four module keys the 2026-08-31 migration moved. MAP.md holds the tree
+# contract: the module key is the root-relative path, so `lib/ports.chiral` and
+# `lib/ports/ports.chiral` are different keys and the first one names nothing.
+_ROT_MOVED = {
+    "lib/sys-tal.chiral": re.compile(r"lib/sys-tal\.chiral"),
+    "lib/ports.chiral": re.compile(r"lib/ports\.chiral"),
+    "lib/collections.chiral": re.compile(r"lib/collections\.chiral"),
+    "typing/pretty": re.compile(r"(?<![\w/])typing/pretty\b"),
+}
+
+
+def check_x() -> list[str]:
+    """X. No live citation of a pre-migration module key (added 2026-09-04).
+
+    DR-2 in records/doc-rot.md, 131 files by grep. Each key is checked for
+    existence first, so the check goes quiet on its own the day a file comes
+    back rather than holding an assertion about the tree that only this
+    docstring records. `typing/pretty` resolves as `lib/typing/pretty.chiral`;
+    the live key is `lib/surface/pretty.chiral`, and `status-ledger.md:66`
+    states it.
+
+    Vacuous when all four resolve again."""
+    live = {k: pat for k, pat in _ROT_MOVED.items()
+            if not (ROOT / (k if k.endswith(".chiral") else f"lib/{k}.chiral")).exists()}
+    if not live:
+        raise Vacuous("all four pre-migration keys resolve again")
+    joined = re.compile("|".join(p.pattern for p in live.values()))
+    return rot_scan("X", joined, "pre-migration module key(s)",
+                    "MAP.md: the module key is the root-relative path.")
+
+
+def check_y() -> list[str]:
+    """Y. `chirality verify` names a subcommand that exists (added 2026-09-04).
+
+    DR-3 in records/doc-rot.md, 21 files by grep. The arms are read from
+    bin/chirality's own dispatch rather than listed here, the way check O reads
+    its patterns from RUNG1-CHECKLIST: a second copy in code drifts from the
+    thing it enforces. `docs/definitions/working-discipline.md` states the
+    structural rule this serves -- a subcommand dispatching to a floor this tree
+    lacks is a gate that cannot fail.
+
+    Vacuous when the dispatch grows a `verify` arm."""
+    cli = ROOT / "bin" / "chirality"
+    if not cli.exists():
+        raise Vacuous("bin/chirality is absent, so no dispatch can be read")
+    text = cli.read_text()
+    if 'case "${1:-help}" in' not in text:
+        raise Vacuous("bin/chirality has no toplevel dispatch to read arms from")
+    tail = text.split('case "${1:-help}" in', 1)[1]
+    arms = set(re.findall(r"^\s*([a-z][\w-]*)\)", tail, re.M))
+    if "verify" in arms:
+        raise Vacuous("bin/chirality dispatches `verify` now")
+    return rot_scan("Y", re.compile(r"\bchirality verify\b"),
+                    "use(s) of the subcommand `chirality verify`",
+                    f"bin/chirality dispatches {', '.join(sorted(arms)[:6])}.")
+
+
+_ROT_PLANNING = re.compile(
+    r"\.gitignore:12"
+    r"|\.planning/?[^\n]{0,60}?\b(untracked|not tracked|ignored|gitignored|"
+    r"excluded|excludes)\b"
+    r"|\b(untracked|ignored|excludes|excluded)\b[^\n]{0,60}?`?\.planning")
+
+
+def check_z() -> list[str]:
+    """Z. The planning tier is called tracked, because it is (added 2026-09-04).
+
+    DR-4 in records/doc-rot.md, 18 files by grep and false in every instance.
+    `git ls-files .planning` returns 145 and `.gitignore`'s own first line is a
+    banner headed "the agent tier is tracked"; line 12 introduces `.claude/*`
+    and says nothing about `.planning/`. Three skill files carry the claim as an
+    instruction to a session, which makes it the one class that misdirects work
+    rather than merely misdescribing the tree.
+
+    The strictest of the five: no reading of the tree makes the claim true, so
+    the only excuse is the shared one, a block that dates it or names it as
+    history.
+
+    Vacuous when git tracks nothing under .planning."""
+    import subprocess
+    try:
+        out = subprocess.run(["git", "ls-files", "-z", ".planning"], cwd=ROOT,
+                             capture_output=True, text=True, check=True).stdout
+    except Exception as e:
+        raise Vacuous(f"git ls-files failed ({e}), so tracking cannot be read")
+    n = len([x for x in out.split("\0") if x])
+    if n == 0:
+        raise Vacuous("git tracks no file under .planning/, so the claim holds")
+    return rot_scan("Z", _ROT_PLANNING, "instance(s) of the claim that .planning/ is untracked",
+                    f"`git ls-files .planning` returns {n}.")
+
+
+_ROT_ASSERTIONS = re.compile(r"\b(?:303|321) assertions\b")
+_ROT_SIZE = re.compile(r"(?<![\w,])(\d{1,3}(?:,\d{3})+)\s*(?:B\b|bytes\b)")
+_ROT_BIN = re.compile(r"\bchirality-bin\b(?!-)")
+
+
+def check_aa() -> list[str]:
+    """AA. A superseded figure carries the date it measured (added 2026-09-04).
+
+    DR-5 in records/doc-rot.md, 15 files by grep. Two limbs.
+
+    The binary size is read from bin/chirality-bin on disk, so the check has no
+    frozen number to rot: a comma-formatted byte figure on a line naming
+    `chirality-bin` and disagreeing with the live size is undated history. The
+    `(?!-)` matters -- `chirality-bin-c` is a different binary and its 1,077,624
+    and 2,171,314 are correct where they stand.
+
+    The suite figures 303 and 321 are literals, because the live assertion count
+    comes only from running the suite and this tool runs nothing. Both are
+    superseded and doc-rot.md names them.
+
+    ⚑ This finds nothing in the live tiers today, and that is the measurement
+    rather than a hole: every live-tier instance already carries its date, which
+    is the disposition doc-rot.md gives the class. The residue sits in records/
+    and the element registries, which the tier rule never scans. The demonstration
+    that it fires is in the same record.
+
+    Vacuous when the compiler binary is absent."""
+    binp = ROOT / "bin" / "chirality-bin"
+    if not binp.exists():
+        raise Vacuous("bin/chirality-bin is absent, so no live size can be read")
+    live = binp.stat().st_size
+    errs: list[str] = []
+    for p, why in rot_corpus():
+        text = p.read_text()
+        lines = text.splitlines()
+        hits: list[tuple] = []
+        for m in _ROT_ASSERTIONS.finditer(text):
+            if not rot_excused(text, m.start()):
+                hits.append((text.count("\n", 0, m.start()) + 1, m.group(0)))
+        for m in _ROT_SIZE.finditer(text):
+            ln = text.count("\n", 0, m.start()) + 1
+            if not _ROT_BIN.search(lines[ln - 1]):
+                continue
+            if int(m.group(1).replace(",", "")) == live:
+                continue
+            if rot_excused(text, m.start()):
+                continue
+            hits.append((ln, m.group(0)))
+        if not hits:
+            continue
+        ln, tok = sorted(hits)[0]
+        errs.append(f"[AA] {p.relative_to(ROOT).as_posix()} carries "
+                    f"{len(hits)} superseded figure(s) (first :{ln}, "
+                    f"`{tok.strip()}`) -- the file is {why}. bin/chirality-bin "
+                    f"is {live:,} B today; date the figure at what it measured.")
+    return errs
+
+
 def main() -> int:
     rc = preflight()
     if rc:
@@ -1348,7 +1681,12 @@ def main() -> int:
                      ("S rank-2 anchor is committed", check_s),
                      ("T artifacts have registry rows", check_t),
                      ("U quotes match their source", check_u),
-                     ("V goal-arc-element chain", check_v)):
+                     ("V goal-arc-element chain", check_v),
+                     ("W cut-python references", check_w),
+                     ("X pre-migration module keys", check_x),
+                     ("Y chirality verify", check_y),
+                     ("Z planning tier tracked", check_z),
+                     ("AA superseded figures", check_aa)):
         try:
             errs = fn()
         except Vacuous as v:
