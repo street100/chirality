@@ -4,7 +4,7 @@ layer: bank
 tier: depth
 related: [decision-profiles, glossary, vocabulary, joining-law, modules-core, category-typed, totality, memory-model, open-edges, status-ledger, banks/module, banks/runtime]
 status: draft
-updated: 2026-07-25
+updated: 2026-09-04
 ---
 
 # Bank: profile
@@ -38,7 +38,9 @@ Sharpened, a profile is exactly four things bound together:
 
 Optionally it carries a **memory-discipline** clause (`(memory linear)` /
 `(memory region)`) and a **`(total)`** clause. Its validity is a *type-checking
-question*, run by `chirality verify` (`surface.py:verify_profiles`).
+question*, taken by the front end while the source is read: `chirality check FILE`
+(`bin/chirality:161`) compiles and discards the ELF, and the profile judgments run
+on that path.
 
 **What it IS:**
 
@@ -88,11 +90,11 @@ connectors").
 **Home:** [[banks/module]] (the modules), [[joining-law]] (bridge / lowering /
 staging / port-composition — the four connectors). The manifest is the *set-of*;
 the elements live in the module bank.
-**Build-state:** CONFORMS. In the scaffold the manifest is the `import` lines
-above the `(profile …)` form; the composite is the loaded globals
-(`surface.py:528`, `used_ports`, `global_defs`). Rosters "held loosely, derived
-not asserted" (`decision-profiles`). Evidence: `demo/profile-tomodachi.chiral`
-(`import "tomodachi"` is the manifest).
+**Build-state:** CONFORMS. The manifest is the `import` lines
+above the `(profile …)` form; the composite is the loaded globals, `sig-globals`
+at `lib/typing/kernel.chiral:239`. Rosters "held loosely, derived
+not asserted" (`decision-profiles`). Evidence:
+`prog/demo/profile-tomodachi.chiral:30`.
 
 ### Shard B — the frozen port set
 **What:** the finite, profile-invariant set of typed crossings the composite may
@@ -101,17 +103,19 @@ are in scope*; it never mints or removes a port.
 **Home:** the `(ports …)` clause + P3 (the port set is closed; [[category-typed]],
 [[vocabulary]] "port"). This is the capability/containment shard — see cross-cut
 §3.
-**Build-state:** CONFORMS, checked at verify time. `top_profile`
-(`surface.py:180-186`) rejects any listed name that is **not a declared extern**
-and any name that is **pure** ("only crossings belong in the port set",
-`surface.py:185`). `verify_profiles` (`surface.py:526-531`) computes `used_ports`
-over the composite and flags **every crossing used but not in the frozen set** as
-a violation. Evidence: `demo/profile-tomodachi.chiral` deliberately *omits*
-`time-mono` — "the companion has no clock beyond the poll deadline, and using one
-would invalidate the profile." status-ledger files "Frozen-port-set conformance"
-under **IMPLEMENTED** ("named crossings only; edge 18 open") — the check runs in
-`chirality verify` on the host substrate, not structurally in the kernel judgment, so
-it is not on the ledger's ENFORCED rung.
+**Build-state:** the declaration half is checked while the profile form is read.
+`mf-check-ports` (`lib/surface/parse.chiral:907`) rejects any listed name that is
+**not a declared extern** (`mf-port-unknown`) and any name that is **pure**
+(`mf-port-pure`), and the manifest reaches the front end at
+`lib/lowering/compile-front.chiral:322`. ⚑ The use-site half, computing the
+crossings the composite actually reaches and flagging one outside the frozen set,
+was the oracle's `verify_profiles` and has **no live referent**.
+`lib/surface/parse.chiral:723-724` states the boundary in its own words: the slice
+parses, judges and stores, and the refusal at emit reads `sig-profiles` later and
+is not there. Evidence: `prog/demo/profile-tomodachi.chiral:28-29` deliberately
+*omits* `time-mono` — "the companion has no clock beyond the poll deadline". The
+ledger's **IMPLEMENTED** rung for "Frozen-port-set conformance" is the right one
+and the reason is now the missing use-site check rather than a host-side driver.
 
 ### Shard C — the target as a requirement type
 **What:** the target ("be an OS substrate," "host the broker," "be the
@@ -120,10 +124,11 @@ must support, the guarantees it must provide — expressed as a list of
 `(require name ty)` rows.
 **Home:** the `(target …)` top-form; the `types`/`effects` modules of
 [[modules-core]] supply the types the rows are written in.
-**Build-state:** CONFORMS (scaffold slice of G9). `top_target`
-(`surface.py:202-216`) elaborates each requirement's type and forces it into a
-universe (`expect_universe`), so a target is a *well-typed* spec, not prose.
-Evidence: `demo/profile-tomodachi.chiral`'s `(target tomodachi (require main …)
+**Build-state:** CONFORMS (the slice of G9 that is parsed and judged).
+`handle-target` (`lib/surface/parse.chiral:833`) with `mf-req` (`:783`) elaborates
+each requirement's type in the empty local scope and refuses it unless it infers
+to a universe (`mf-req-not-type`), so a target is a *well-typed* spec, not prose.
+Evidence: `prog/demo/profile-tomodachi.chiral:15`'s `(target tomodachi (require main …)
 (require draw (-> (0 n I64) (=> (1 p (Pool n)) Mood (Pool n)))) …)` — note the
 requirement is a **dependent, linear, effectful** arrow: the spec can demand a
 memory bound (`(Pool n)`) and a linearity (`1 p`) as *part of the type*.
@@ -134,17 +139,22 @@ requirement type: at least those ports, at least those effects, the demanded
 guarantees." Satisfaction is a **subtyping relation in the existing type system**
 — which is why validity is checkable, not a slogan (`decision-profiles`
 §"Conformance").
-**Home:** the checker's `subtype` relation (`kernel.py`). Conformance is *not a
+**Home:** the checker's `subtype` relation (`lib/typing/kernel.chiral:799`).
+Conformance is *not a
 new analysis* — it is three reused checks (preserving connectors, port-routing,
 subtyping). See cross-cut §3.
-**Build-state:** CONFORMS / IMPLEMENTED. `_target_rows` (`surface.py:552-564`)
-looks up each requirement's declared provider in `global_types` and calls
-`K.subtype(sig, 0, declared, required)`; a missing provider → "not provided," a
-non-subtype → "provides X, requires Y." Subtyping mechanism is IMPLEMENTED
-(status-ledger; `kernel.py subtype`, cumulativity via subtype). Evidence:
-`verify_targets` / `verify_profiles`, `demo/profile-headless.chiral` (a *second*
-runtime — different port set, same behavior modules — conforming to a distinct
-target).
+**Build-state:** ⚑ **the conformance check has no live referent, recorded
+2026-09-04.** The mechanism it would reuse is real: `subtype`
+(`lib/typing/kernel.chiral:799`) is IMPLEMENTED, and a target's rows are parsed and
+judged into the Sig by `handle-target` (`lib/surface/parse.chiral:833`). What is
+missing is the step between them. The oracle's `_target_rows`, which looked each
+requirement's provider up and called subtype on it, went with the Python and
+nothing in `lib/` decides that a composite satisfies its target's rows. So the
+row is mechanism IMPLEMENTED and application ABSENT, the same shape
+[[banks/capability]] Shard C carries for grant-narrowing. Evidence:
+`prog/demo/profile-headless.chiral` is a *second*
+runtime — different port set, same behavior modules — declared against a distinct
+target, and nothing checks that it meets it.
 
 ### Shard E — the memory-discipline clause
 **What:** the optional `(memory linear)` / `(memory region)` clause naming the
@@ -156,9 +166,10 @@ because space is a port (P3).
 discharged at compile time for literal/guarded offsets); region REFACTOR (E41/E22
 — lib built but the capacity check is still a *runtime* branch, gated on the E9
 arithmetic-expression fragment (`cursor + size ≤ cap`; symbolic `v < n` landed
-2026-07-06)). `MEMORY_DISCIPLINES = ("linear", "region")` (`surface.py:142`);
-`top_profile` rejects an unknown discipline (`surface.py:195-198`). Evidence:
-`demo/profile-tomodachi.chiral` `(memory linear)` — "a different discipline over
+2026-07-06)). `mf-memory-of` (`lib/surface/parse.chiral:939`) admits `linear` and
+`region` and refuses anything else with `mf-memory-unknown`;
+`tools/test/profile-target.sh:92` asserts the refusal and its message. Evidence:
+`prog/demo/profile-tomodachi.chiral` `(memory linear)` — "a different discipline over
 the same `(Pool n)` substrate is a one-word change here plus its import."
 
 ### Shard F — the `(total)` clause
@@ -170,17 +181,29 @@ of two enforcement handles, the other being `sig.require_total`).
 pillars — positivity, coverage, termination — built and recording
 `sig.totality`), and **enforced on demand** via the profile clause, but not yet
 globally on-by-default (gated on E47 sized types + E50 mutual/lexicographic).
-`top_profile` parses `(total)` as a bare flag (`surface.py:168-173`);
-`verify_profiles` (`surface.py:532-539`) reports any `global_def` for which the
-checker recorded a not-proven reason. Evidence: `demo/verify-total.chiral` — adding
-an unguarded `spin` loop "turns verify INVALID."
+`mf-has-total` (`lib/surface/parse.chiral:956`) reads `(total)` as a bare flag
+onto the profile record, and `tot-gate` (`lib/typing/totality-check.chiral:153`)
+is the gate, called from the front end at `lib/lowering/compile-front.chiral:340`;
+a source declaring no `(total)` profile pays nothing (`:333`). Evidence:
+`prog/demo/verify-total.chiral` — adding an unguarded `spin` loop turns the gate
+against the source. ⚑ That demo's own header, measured 2026-09-04, still invokes
+the cut oracle by module and names a subcommand the CLI does not have; the repoint
+is an edit to `prog/` and is left to the owner of that tree.
 
-### Shard G — verify (the driver that runs the judgment)
-**What:** the `chirality verify` command that renders all of the above into a
-pass/fail report per profile and per target.
-**Home:** the CLI/entrypoint (E2) + `verify_profiles`/`verify_targets`.
-**Build-state:** CONFORMS (E2). This is the *testability* consequence
-(`decision-profiles` §"Consequence: profiles are testable") made real.
+### Shard G — the driver that runs the judgment
+**What:** the command that renders all of the above into a pass/fail answer per
+profile and per target.
+**Home:** the CLI entrypoint (E2), `bin/chirality`.
+**Build-state:** ⚑ **partly present, corrected 2026-09-04.** There is no
+`chirality verify`: `bin/chirality` dispatches `compile`, `run`, `check` and
+`test` (`:211-214`) and has never had a `verify` arm. What survives of this shard
+is `chirality check FILE` (`:161`), which compiles and discards the ELF, so every
+judgment the front end takes while reading a profile runs on that path: the port
+list, the discipline, the target rows, the `(total)` gate. What does not survive
+is the *report*, a per-profile and per-target pass/fail rendering, and the two
+use-site checks it carried (Shards B and D). The *testability* consequence
+(`decision-profiles` §"Consequence: profiles are testable") is real for the
+declaration half and absent for the use half.
 
 ---
 
@@ -199,15 +222,16 @@ is really "that already lives in another home."
   (`decision-profiles` §"Composite type"): a profile selects modules + connectors,
   **staging assembles them into a runtime**, a runtime is a process, a process is
   its type. So **"the system changes as configured" is not a profile feature — it
-  is the runtime being staged differently**. `demo/profile-headless.chiral` vs
-  `demo/profile-tomodachi.chiral` are *two runtimes from one module base* — that
+  is the runtime being staged differently**. `prog/demo/profile-headless.chiral` vs
+  `prog/demo/profile-tomodachi.chiral` are *two runtimes from one module base* — that
   IS "configurable profiles" at this scale. The dynamic/lifecycle story belongs to
   [[banks/runtime]]; the profile is the *static contract* that says which runtime
   is legal.
 
 - **conformance-as-subtyping ↔ the checker's subtype relation (Shard D).** There
-  is **no profile-validation engine**. Conformance reuses `kernel.py subtype`
-  verbatim (`surface.py:558`). Any request for "a profile matcher / compatibility
+  is **no profile-validation engine**. Conformance is meant to reuse `subtype`
+  (`lib/typing/kernel.chiral:799`) verbatim, and the call site that would do it is
+  absent (Shard D). Any request for "a profile matcher / compatibility
   resolver" is answered by the *type system's existing subtyping* — the same
   relation that does universe cumulativity. If subtyping gets richer (grant
   narrowing, effect rows), conformance gets richer *for free*.
@@ -218,7 +242,7 @@ is really "that already lives in another home."
   whole runtime; omitting `time-mono` from the tomodachi profile is *capability
   attenuation expressed as a profile*. The confinement half doubles up:
   behavior-pack requirements are *pure arrows*, so "a conforming pack cannot
-  perform a port operation" (`demo/profile-tomodachi.chiral`) — the requirement
+  perform a port operation" (`prog/demo/profile-tomodachi.chiral`) — the requirement
   type and the port set jointly confine.
 
 - **`(total)` clause ↔ the totality modality (Shard F).** The clause does not
@@ -243,7 +267,7 @@ is really "that already lives in another home."
 | **Dependency manifest / lockfile** (`package.json`, `Cargo.lock`) | "chirality needs a manifest + resolver to declare and pin deps." | **Already refracted.** The manifest is the module roster (Shard A); "does it fit together" is not version-resolution but **subtyping against the target** (Shard D). New residue: none for the *typed* question. (Fetch/version pinning is out of the language's scope by design.) |
 | **DI container / service wiring** (Spring, Guice) | "chirality needs a DI container to wire modules and inject implementations." | **Already refracted.** Wiring = the four **connectors** ([[joining-law]]), each preserving an invariant; "graph complete & safe" is discharged by conformance subtyping (Shard D), not a runtime resolver. New residue: none — the resolver is a compile-time type check. |
 | **Runtime/OS image spec** ("this is an OS build", "this is firmware") | "chirality needs a target-triple / image-builder for OS vs app vs firmware." | **Mostly refracted.** Each target is a **requirement type** (Shard C); "be an OS substrate / firmware" is a spec the composite subtypes. `chirality-bare` = minimal conforming module set, not app-minus-features. New residue: the **whole-assembly** requirement types (non-interference, tier-weight compositionality) — see §5. |
-| **Conformance / cert test suite** ("does this runtime meet the spec?") | "chirality needs a conformance test harness." | **Refracted into type-checking.** `chirality verify` runs the *judgment*, not tests (`decision-profiles` §"Consequence"). Show-your-work, not a test-pass. New residue: only the properties that are *not compositional* need a dedicated global argument (§5). |
+| **Conformance / cert test suite** ("does this runtime meet the spec?") | "chirality needs a conformance test harness." | **Refracted into type-checking.** The front end runs the *judgment*, not tests, and `chirality check FILE` is the command that runs it (`decision-profiles` §"Consequence"). Show-your-work, not a test-pass. New residue: only the properties that are *not compositional* need a dedicated global argument (§5). |
 
 ---
 
