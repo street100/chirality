@@ -14,13 +14,14 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: b780dfed29337897ef3c871f9f84ef3e314f78d94129d922b7840f5db508477e -->
-<!-- sources: 154 files -->
+<!-- FRONTIER-SOURCES-SHA256: f2a1f5c487803a9665a1bb0b7984fc30c521f83b112c738468d62a4ea91b5d3b -->
+<!-- sources: 155 files -->
 
 ## Decided recently
 
 ### Settled decision notes (docs/decision-*.md, newest first)
 
+- 2026-09-04 · decision-formulation-distinctness [draft] — Decision: two judges are distinct when their formulations differ
 - 2026-09-04 · decision-erased-word-level [settled] — Decision: the erased-word type lives at the lowering type level
 - 2026-09-03 · decision-quorum-store [DECIDED] — Decision: crypto and Shamir serve a split source-of-truth store
 - 2026-09-03 · decision-dispatch-cadence [settled] — Decision: dispatch cadence is serial
@@ -111,6 +112,7 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 5d58a23 — E185 is minted: how the $apply dispatcher's erased domains are spelled
 - 2026-09-04 83550f1 — the erased-word type is a lowering-level type, and the kernel keeps its conv
 - 2026-09-04 32823ee — the author's doc pass: 34 files across the definition, decision and module tiers
 - 2026-09-04 53c3d3a — baseline-alignment re-measured, and eight definitions notes stop describing a cut compiler
@@ -118,4 +120,3 @@ updated: 2026-09-04
 - 2026-09-03 5b4fb71 — tal/check is importable beside the compiler, eleven names prefixed tck-
 - 2026-09-03 ddfbc27 — the tal checker agrees with the compiler, and Phase 22 pins that it still refuses
 - 2026-09-03 0bd65dd — N7 example audit: PASS, the agreement theorem repaired and x=0 refused
-- 2026-09-03 92b0660 — N7 pre-run: Shamir over GF(256), peasant loop, AgreeR quorum sum
