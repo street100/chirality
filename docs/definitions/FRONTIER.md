@@ -14,8 +14,8 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 5850da4f79227f7f8464853601c6563510e0f5553713140cad9728a9e88e37b5 -->
-<!-- sources: 155 files -->
+<!-- FRONTIER-SOURCES-SHA256: 1a9b647ea24833150fc287b01464c366ca41f1f6e676c1433274191157adc20e -->
+<!-- sources: 156 files -->
 
 ## Decided recently
 
@@ -94,14 +94,13 @@ updated: 2026-09-04
 ### Pipeline (examples/INDEX.md, by status)
 
 - drafted: 1
-- reviewed: 1
 - specced: 2
-- audited: 44
+- audited: 45
 - implemented: 62
 - **implemented: 2
 - impl: 1
 - implemented-core: 1
-- minted: 1
+- minted: 3
 - part: 1
 - superseded: 1
 
@@ -113,11 +112,11 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 8988923 — INDEX: E185's SPEC link resolves
+- 2026-09-04 130d4fc — E185 SPEC: the dispatcher's erased domains are stated at the lowering level
+- 2026-09-04 b4a2688 — mint E186 and E187, and EN-17 becomes an element
+- 2026-09-04 be40dc0 — E185 audit, EXAMPLE level: the spine's ground is the flattening, and the index arithmetic named the wrong binder
 - 2026-09-04 541e8bf — E185 pre-run: the spelling is one slice, and the framing is too narrow
 - 2026-09-04 66756ab — the distinctness criterion, drafted: formulation is the only axis that counts
 - 2026-09-04 5d58a23 — E185 is minted: how the $apply dispatcher's erased domains are spelled
 - 2026-09-04 83550f1 — the erased-word type is a lowering-level type, and the kernel keeps its conv
-- 2026-09-04 32823ee — the author's doc pass: 34 files across the definition, decision and module tiers
-- 2026-09-04 53c3d3a — baseline-alignment re-measured, and eight definitions notes stop describing a cut compiler
-- 2026-09-03 b5994d0 — the ledger tells the truth about today, and five lint checks go to zero
-- 2026-09-03 5b4fb71 — tal/check is importable beside the compiler, eleven names prefixed tck-

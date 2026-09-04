@@ -4,7 +4,7 @@ slug: type-preserving-upper
 title: **How the `$apply` dispatcher's erased domains are spelled at the lowering type level**
 kind: BUILD-PROPER
 example: examples/E185-type-preserving-upper.md
-status: draft
+status: audited
 updated: 2026-09-04
 ---
 
@@ -190,8 +190,15 @@ files compare equal and the precondition passes on a build that produced nothing
 
 ### Step 1 — the gate, written first and RED
 
-- **Target:** `prog/samples/e185_apply_word.prog` (fixture),
+- **Target:** `tools/test/samples/e185_apply_word.prog` (fixture),
   `prog/e185-apply-word.prog` (probe), `tools/test/apply-word.sh` (driver).
+  The fixture's home is `tools/test/samples/`, where every recent gate fixture
+  lives (`e157_diag.prog`, `e158_doc.prog`, `e174_row.prog`), and NOT
+  `prog/samples/`. Phase 7 discovers roots with
+  `grep -rl '^(def compile-main' lib prog` (`tools/test/run-tests.sh:175`), so a
+  fixture under `prog/` becomes a second new root and the 88 below becomes 89.
+  The fixture needs a `compile-main` for R6's ELF, so the directory is what
+  keeps it out of the root scan.
 - **Change:** the fixture holds a defunctionalization family whose members
   disagree on the domain: two closures of the same word arity, one taking a
   ground `I64` and one taking a `(List Str)`, both reaching one higher-order
@@ -199,17 +206,28 @@ files compare equal and the precondition passes on a build that produced nothing
   `cod-key-eq` has something to keep. The probe imports `lowering/compile-front`
   and **nothing from `lowering/tal/`**, so E154's eleven collisions are not
   touched: it reads the blob on stdin, calls `compile-front`, finds the
-  `$apply0` `NDef` and judges the six rows of §5. The driver builds the fixture
-  blob with `chirality_blob_file`, builds and runs the probe, and reports.
-- **Expected now:** rows R2 and R6 red, because `$apply0`'s params carry one
-  member's concrete spelling today.
+  `$apply0` `NDef` and judges **R1 to R5** of §5. **R6 is the driver's row, not
+  the probe's**: the probe's import closure is 25 modules rooted at
+  `lowering/compile-front` and reaches no emitter, so it cannot produce an ELF.
+  The driver builds the fixture blob with `chirality_blob_file`, builds and runs
+  the probe, then `cmp`s the fixture's ELF under the two binaries for R6, and
+  reports one six-token verdict line.
+- **Expected now:** **R2 red, and R6 not yet measurable.** `$apply0`'s params
+  carry one member's concrete spelling today, which is R2. R6 compares the
+  pre-change binary against the promoted one and there is no promoted binary
+  until Step 5, so it is scored for the first time there. R1, R3, R4 and R5 are
+  green on the pre-change tree and stay green.
 - **Size:** M.
 
 ### Step 2 — the stated-parameter channel
 
 - **Target:** `lib/lowering/upper/closconv-driver.chiral` — a new
   `(import "lowering/lowspec")`, new `word-ptys` and `apply-ptys`, and the
-  threading through `synth-apply`, `synth-applies` and `closconv-sig`.
+  threading through `synth-apply`, `synth-fams`, `synth-applies` and
+  `closconv-sig`. `synth-fams` (`lib/lowering/upper/closconv-driver.chiral:187-191`)
+  sits between the other two and its `SynR` (`:110-113`) holds the `applies`
+  list, so the stated list crosses it as well; a plan that skips it stops at the
+  first rebuild.
 - **Change:**
 
 ```chirality
@@ -245,7 +263,7 @@ files compare equal and the precondition passes on a build that produced nothing
 ### Step 3 — the bridge prefers the stated params
 
 - **Target:** `lib/lowering/compile-front.chiral` — a new `sp-get`, and
-  `peel-def` (`:193-201`), `peel-globals` (`:204-210`) and `bridge-sig`
+  `peel-def` (`:193-201`), `peel-globals` (`:204-211`) and `bridge-sig`
   (`:314-322`) rethreaded.
 - **Change:** `peel-def` takes the stated list. On a hit it uses the stated
   `(List NTalTy)` as `params`; on a miss it peels as it does today. The codomain
@@ -253,7 +271,12 @@ files compare equal and the precondition passes on a build that produced nothing
   keeps it honest, and `erased` still comes from `ty-erased`, which returns `nil`
   for a dispatcher. `bridge-sig` becomes `(-> CCOut Str FR)` and pulls the `Sig`
   and the stated list out of the `ccout`. The call inside `compile-front`
-  (`lib/lowering/compile-front.chiral:335-342`) is textually unchanged.
+  (`lib/lowering/compile-front.chiral:335-342`) is textually unchanged, and
+  `closconv-sig` has exactly one caller, that one, so the return-type change
+  reaches nothing else. No third file changes: `def-sigs`
+  (`lib/lowering/compile-back.chiral:78-79`) already reads `NDef`'s `params`
+  into the `$apply<i>` `TalSig` that call sites see, so the stated types
+  propagate to the back half with no edit.
 - **Size:** M. Compiler source: BUILD RULE.
 
 ### Step 4 — say it where `apply-ty` is read
@@ -294,35 +317,78 @@ blob and binary byte figures beside Step 0's.
   argument, the family's ground codomain at `ret`, and an empty `erased` vector.
   The emitted bytes for that source do not move.
 
-- **Rows, judged by `prog/e185-apply-word.prog` and reported by
-  `tools/test/apply-word.sh`.**
+- **Rows. R1 to R5 are judged by `prog/e185-apply-word.prog`; R6 is judged by
+  `tools/test/apply-word.sh`, which is the only leg holding two binaries.** The
+  driver reports all six on one verdict line, and every mutant pins that whole
+  line: `records/gate-audit.md` GA-21 and GA-22 both convict a gate that names
+  one row per mutant, because a mutant reddening a row outside its own pin is
+  then invisible. The **falsifier** column carries the mutant that reddens the
+  row, or `[-]` for a control that nothing here can falsify.
 
-  | row | assertion | what it guards |
+  | row | assertion | falsifier | what it guards |
+  |---|---|---|---|
+  | R1 | `$apply0` is present in `compile-front`'s `NDef` list | M2 | the dispatcher still lowers; a `le-skip` drops it from the emitted program silently (`lib/lowering/upper/lower.chiral:412-417`) |
+  | R2 | every domain param of `$apply0` is `nt-word` | M1 | the deliverable |
+  | R3 | the leading param of `$apply0` is `(nt-data "$clo0" nil)` | M3 | the one param that must stay concrete, and nothing else catches it. `ck-scrut-dn` recovers the data name from the first arm in the checker, and `case-sty` (`lib/lowering/upper/lower.chiral:183-191`) recovers it again in the lowering, so a `tt-word` here compiles and checks clean |
+  | R4 | `$apply0`'s `ret` is the family's ground codomain and is not `nt-word` | M4 | `cod-key-eq` (`lib/lowering/upper/closconv.chiral:365-380`): two families returning different ground types must not merge |
+  | R5 | `$apply0`'s `erased` vector is empty | `[-]` | decision 2. No `q=0` binder is introduced, so `emap-get` and `tnc-keep` drop nothing at a call site. A **control**, and the reason is measured rather than assumed: `NDef`'s `erased` and `params` are coupled at `compile-fn`'s `total` (`lib/lowering/upper/lower.chiral:414`), so any mutant that puts a position into `erased` also moves `total` past the dispatcher's lambda chain, `strip-lams` refuses, and R1 falls first. There is no substitution that reddens R5 alone |
+  | R6 | the fixture's emitted ELF is byte-identical under the pre-change binary and the promoted one | `[-]` | the ⚑ that has stood since EN-15: nothing here is a miscompile. `erase-fn` keeps only the parameter count (`lib/lowering/tal/erase.chiral:270-276`), so a parameter retyping must move no byte. It is a **control** in GA-14's accepted sense: no mutant of this change reddens it without reddening R1 or R2 first, because the only mutants available are mutants of the stated types, and a stated type reaches the emitter through `erase-fn`, which drops it. The two places `erase-instr` still reads a type are `i-const`'s literal tag and `is-unit-ty`'s prim result (`lib/lowering/tal/erase.chiral:182-189`, `:210-211`), and neither reads a parameter's declared type |
+
+- **Mutants, and all four are RUN after Step 5, then reverted, with the measured
+  failure recorded.** Required by [[definitions/testing-floors]]'s
+  run-the-mutant rule and by requirement 6 of [[arcs/enforcement-arc]].
+
+  **Every mutant is a SUBSTITUTION, never an arm deletion.** `records/gate-audit.md`
+  GA-19 measures the trap: deleting an arm of a sum makes the module
+  non-exhaustive, the compiler refuses the mutated tree, and the row is then
+  graded on a compile refusal instead of on the property it names. An unbuilt
+  mutant is `tools/test/mutant.sh:24-26`'s silent failure 2.
+
+  **The four silent failures of `tools/test/mutant.sh:19-40`, each closed here.**
+  (1) *The mutation matched nothing*: every substitution below declares its
+  occurrence count and the driver refuses any other count, and the mutated tree
+  is `cmp -s`'d against the base before it is built, which is the idiom
+  `records/gate-audit.md` GA-18 accepts. (2) *The mutant did not build*: no
+  substitution below removes an arm or changes an arity, and a failed build
+  collapses the line to `BUILD:fail`, a token no pin holds. (3) *Semantically
+  inert*: each substitution moves a stated type that R1 to R5 read directly, and
+  the pinned line is the evidence it moved. (4) *The base was already red*: the
+  driver asserts the six-token line reads `ALLOK` over the promoted tree before
+  it mutates anything, which is why the mutants run after Step 5 and not after
+  Step 1.
+
+  | mutant | the substitution | pinned line |
   |---|---|---|
-  | R1 | `$apply0` is present in `compile-front`'s `NDef` list | the dispatcher still lowers; the `le-skip "body is not a lambda chain"` failure mode (`lib/lowering/upper/lower.chiral:412-417`) is silent otherwise |
-  | R2 | every domain param of `$apply0` is `nt-word` | the deliverable |
-  | R3 | the leading param of `$apply0` is `(nt-data "$clo0" nil)` | the one param that must stay concrete. `ck-scrut-dn` would recover the data name from the first arm anyway, so no other instrument catches this |
-  | R4 | `$apply0`'s `ret` is the family's ground codomain and is not `nt-word` | `cod-key-eq` (`lib/lowering/upper/closconv.chiral:365-380`): two families returning different ground types must not merge |
-  | R5 | `$apply0`'s `erased` vector is empty | decision 2. No `q=0` binder is introduced, so `emap-get` and `tnc-keep` drop nothing at a call site |
-  | R6 | the fixture's emitted ELF is byte-identical under the pre-change binary and the promoted one | the ⚑ that has stood since EN-15: nothing here is a miscompile. `erase-fn` keeps only the parameter count (`lib/lowering/tal/erase.chiral:270-276`), so a parameter retyping must move no byte |
+  | M1 | `sp-get`'s hit branch returns `(none)`, so `peel-def` always falls to today's peel. The arm stays, the module builds | R1 ok, **R2 bad** reporting `nt-i64` where `nt-word` is expected, R3 ok, R4 ok, R5 ok, R6 ok |
+  | M2 | `apply-ptys` passes `(- (cc-llen doms) 1)` to `word-ptys`, so the stated list is one short | **R1 bad**, R2 to R5 `absent` because there is no `$apply0` `NDef` to read, and **R6 bad** because a program missing its dispatcher does not emit the base's bytes. Two reddened rows, pinned as two: a one-row expectation here would be the GA-21 shape. ⚑ The mechanism is NOT a `strip-lams` failure: `strip-lams` (`lib/lowering/upper/lower.chiral:218`) returns `(some core)` the moment `n <= 0`, so a SHORTER `total` strips one lambda too few and succeeds. `tail` then meets an `lc-lam`, falls through to `expr`, and `expr`'s `((lc-lam b) (er-skip "lambda stays upper"))` (`:251`) is the refusal that drops the dispatcher. The arity rule priced at `lib/lowering/lowspec.chiral:52-57` is what makes the count load-bearing either way |
+  | M3 | `apply-ptys` returns `(nt-word)` for the leading `$clo` argument too | R1 ok, R2 ok, **R3 bad**, R4 ok, R5 ok, R6 ok |
+  | M4 | `peel-def`'s stated-params branch also overwrites `ret` with `(nt-word)` | R1 ok, R2 ok, R3 ok, **R4 bad**, R5 ok, R6 ok. Without it R4 is a row no mutant reddens, which is GA-22's shape |
 
-- **Mutants, and all three are RUN, then reverted, with the measured failure
-  recorded.** Required by [[definitions/testing-floors]]'s run-the-mutant rule
-  and by requirement 6 of [[arcs/enforcement-arc]].
+  R5 and R6 carry no mutant and say so in the falsifier column. R6 is the
+  byte-identity control the whole ⚑ rests on; R5 is unfalsifiable in isolation
+  for the arity reason its row states. The other four rows are each reddened by
+  a named substitution that builds, and no substitution reddens a row outside
+  its own pin.
 
-  | mutant | the edit | expected |
-  |---|---|---|
-  | M1 | delete the stated-params arm in `peel-def`, so the domains peel as they do today | R2 red, reporting `nt-i64` where `nt-word` is expected |
-  | M2 | `word-ptys` emits one fewer word | R1 red. The stated list is short, so `compile-fn`'s `total` shrinks, `strip-lams` fails and the dispatcher leaves the program. This is the arity rule `lib/lowering/lowspec.chiral:52-57` states |
-  | M3 | `apply-ptys` returns `(nt-word)` for the leading `$clo` argument too | R3 red |
+- **Green line, and what this gate owes.** No phase number is assigned:
+  decision 5 is NEEDS-AUTHOR and four documents disagree. The gate runs by hand,
+  as `tools/test/tal-check.sh` does, and its six rows are reported on their own
+  line. The suite's recorded figure is `339 passed, 0 failed, 87 roots`
+  ([[definitions/testing-floors]], measured 2026-09-04); the probe is a new root
+  and the fixture is not, so the root count is expected at **88** and the
+  implementation run re-measures both. `ledger-lint` counts must not rise.
 
-- **Green line.** No phase number is assigned: decision 5 is NEEDS-AUTHOR and
-  four documents disagree. The gate runs by hand, as `tools/test/tal-check.sh`
-  does, and its six rows are reported on their own line. The suite's recorded
-  figure is `339 passed, 0 failed, 87 roots` ([[definitions/testing-floors]],
-  measured 2026-09-04); the probe is a new root, so the root count is expected at
-  **88** and the implementation run re-measures both. `ledger-lint` counts must
-  not rise.
+  ⚑ **This gate is unregistered, so it never fires in the suite, and it must not
+  hide that behind a row of its own.** `records/gate-audit.md` GA-24 measures the
+  circularity: a row asserting its own `run_phase` line cannot fire, because
+  deleting that line stops the script that holds the row from running. So
+  `tools/test/apply-word.sh` carries **no** registration assertion. What the
+  suite witnesses of this element is exactly one thing, that the probe compiles
+  as root 88 under Phase 7; the six rows are witnessed by the implementer's
+  hand-run and by nothing else. That is the same standing `tal-check.sh` has had
+  since `ddfbc27` and it is a debt, not a design: it is discharged when the
+  author settles decision 5 and the gate takes a number. Until then the EN-18 row
+  of Step 6 is the only durable record that the six rows were ever green.
 
 - **Conformance target, whole-blob.** The EN-08 probe reads **1,477 of 1,481**
   today and the four `$apply` dispatchers are the whole of the remainder
@@ -333,8 +399,8 @@ blob and binary byte figures beside Step 0's.
   `N of N` is re-measured rather than predicted. Stating it as `1,481 of 1,481`
   would be a figure no compile produces.
 
-- **Done when:** the six rows pass under the promoted binary, all three mutants
-  have been run and reverted with their failures recorded, the BUILD RULE reaches
+- **Done when:** the six rows pass under the promoted binary, all four mutants
+  have been run and reverted with their pinned lines recorded, the BUILD RULE reaches
   `C1 == C2` at non-empty, the suite is green at its re-measured count, and the
   re-run EN-08 probe reports zero `$apply` rejects.
 
