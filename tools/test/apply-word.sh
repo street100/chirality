@@ -36,9 +36,16 @@
 #
 # ─── R6 NEEDS A BASELINE BINARY ─────────────────────────────────────────────
 # `bin/chirality-bin` is tracked, so the pre-change compiler is recoverable from
-# git.  E185_BASE_REV names the revision; E185_BASE_CC overrides it with a path.
-# With neither, R6 scores `nobase` and this script exits 1: an unscored control
-# is not a passing one.
+# git.  E185_BASE_REV names the revision and defaults to `ccff8e8`, the last
+# commit before E185's promotion, whose `bin/chirality-bin` is generation one.
+# E185_BASE_CC overrides it with a path.  With neither, R6 scores `nobase` and
+# this script exits 1: an unscored control is not a passing one.
+#
+# ⚑ THE DEFAULT REVISION IS PINNED ON PURPOSE AND IT WILL AGE.  R6 asks whether
+# THIS change moved a byte, so its baseline is THIS change's predecessor.  A
+# later compiler change moves the fixture's bytes for its own reasons and R6
+# goes red saying so; that red is a stale pin, and the fix is a fresh
+# E185_BASE_REV, never a widened comparison.
 #
 # ─── THE MUTANTS, AND ALL FIVE ARE SUBSTITUTIONS ────────────────────────────
 # `records/gate-audit.md` GA-19: deleting an arm makes the module non-exhaustive,
@@ -92,7 +99,7 @@ bad() { echo "  FAIL  $1"; fail=$((fail+1)); }
 
 # ─── the baseline compiler for R6 ───────────────────────────────────────────
 BASE_CC="${E185_BASE_CC:-}"
-BASE_REV="${E185_BASE_REV:-}"
+BASE_REV="${E185_BASE_REV:-ccff8e8}"
 if [ -z "$BASE_CC" ] && [ -n "$BASE_REV" ]; then
   BASE_CC="$TMP/base-cc"
   if ! ( cd "$REPO" && git show "$BASE_REV:bin/chirality-bin" ) >"$BASE_CC" 2>/dev/null || [ ! -s "$BASE_CC" ]; then
