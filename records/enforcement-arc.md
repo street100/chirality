@@ -202,6 +202,17 @@ research §7 finds in the prior art. So the four dispatchers accept with this ro
 open. What the row still blocks is whether the constructor's fields are honest,
 which is E186.
 
+⚑ **Evidence coordinate corrected 2026-09-04 by the E186 example audit, appended
+rather than rewritten.** The evidence line above cites `ctor-name` at
+`lib/lowering/upper/closconv.chiral:1099`. `ctor-name` is at **`:1114`**, with
+`clo-name` at `:1112` and `apply-name` at `:1113`; `:1099` was correct when this
+row was written and E185's own comment insertion (`ccff8e8`, 15 lines above the
+three defs) moved them. The measured text is unaffected. Two more spans in this
+file carry the same 15-line drift and are left standing as the record they are:
+EN-18's evidence `closconv.chiral:1079-1099` and EN-13's `:1098`. The maintained
+coordinates live in `docs/elements/catalog.md` and `docs/elements/ledger.md`,
+both repointed in the same change.
+
 ### EN-18 the dispatchers' domains are stated as the erased word, and two of the four rejects survive in a class the fourth's repair unmasked
 
 - state:    FIXED for the class it names, and it opens EN-19 for what is left.
