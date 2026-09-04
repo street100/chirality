@@ -91,11 +91,11 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
 
 | row | what | state | element |
 |---|---|---|---|
-| `display-calculus/C1` | typed property values, invalid states unconstructible. `primitive` | not started | `unminted` |
-| `display-calculus/C2` | the cascade as a total ordered fold. `law` | not started | `unminted` |
-| `display-calculus/C3` | attachment by a pure function over the node, no selectors and no specificity. `law` | not started | `unminted` |
-| `display-calculus/C4` | the inherit sum wrapping every property value. `primitive` | not started | `unminted` |
-| `display-calculus/C5` | design tokens as typed bindings, and a theme as a root-supplied value. `primitive` | not started | `unminted` |
+| `display-calculus/C1` | typed property values, invalid states unconstructible. `primitive` | pre-run done, `23f6830`, `docs/examples/C01-typed-style-value.md`. Not yet audited | `unminted` |
+| `display-calculus/C2` | the cascade as a total ordered fold. `law` | pre-run done, covered by C1's example (`23f6830`). Not yet audited | `unminted` |
+| `display-calculus/C3` | attachment by a pure function over the node, no selectors and no specificity. `law` | not started; C1's example measures that this witness needs no conflict rule, without settling C3 itself | `unminted` |
+| `display-calculus/C4` | the inherit sum wrapping every property value. `primitive` | pre-run done, covered by C1's example (`23f6830`). Not yet audited | `unminted` |
+| `display-calculus/C5` | design tokens as typed bindings, and a theme as a root-supplied value. `primitive` | pre-run done, covered by C1's example (`23f6830`). Not yet audited | `unminted` |
 | `display-calculus/C6` | the value expression algebra with the unit in the type. `primitive` | not started | `unminted` |
 | `display-calculus/C7` | the environment as a declared ADT. `primitive` | not started | `unminted` |
 | `display-calculus/C8` | state-driven style over a finite state sum. `law` | not started | `unminted` |
@@ -114,8 +114,40 @@ condition. A row that cannot say which half it is has not been scoped.
 
 ## Resume state
 
-Unopened for work. The design detail, the reference class per row and the full
-59-row roster this arc draws 17 rows from are `.planning/DISPLAY-LAYER-GAP.md`.
+The cell-lane pre-run ran 2026-09-04: `docs/examples/C01-typed-style-value.md`
+at `23f6830`, covering C1/C2/C4/C5 as one decision, on U13's precedent for a
+run that covers more than one row. Not yet audited.
+
+The three owed measurements came back, and none killed the design outright,
+though one sharpens a claim the arc states more strongly than it holds. The
+`(Env, State)` product for the cell lane's two witnesses
+(`lib/typing/diag.chiral`, `lib/surface/pretty.chiral`) is **1**: neither
+declares an `Env` or a `State` axis, so C9's every-state walk would prove
+only that the tool runs; convicting anything needs a bigger product. A
+meaningful instance of C9/C8 needs an interactive consumer, out of this
+witness's reach. **H1's "one style value drives both `Doc` and `Rendering`" is
+narrower than written**: `d-tag`'s field stays `Str`, frozen because
+`prelude/doc.chiral` depends on nothing past the base shelf
+(`lib/prelude/doc.chiral:12-14`) and retyping it would break that layering
+independent of the BUILD RULE fixpoint cost. What actually drives both ends
+is one closed `Role` sum, projected as a bare string at the frozen `d-tag`
+seam and carried typed everywhere `protocol/render` is free to type it
+(measured: `protocol/render` sits outside the compiler's blob,
+`render-doc.chiral:19-24`). Attachment for the seven tags needs no conflict
+rule: 35 call sites inside two ordinary printer functions each choose at
+most one role by direct code, and nesting is cascade rather than a race
+between two attachment functions, so D2 survives unchanged.
+
+The measured coverage gap reproduces exactly: seven `d-tag` names, eleven
+registry faces, zero overlap, five faces with no consumer. The example's
+`TUI/` grep is corrected to `lib/ prog/`; the tree carries no `TUI/`
+directory today.
+
+The design detail, the reference class per row and the full 59-row roster
+this arc draws 17 rows from are `.planning/DISPLAY-LAYER-GAP.md`.
+
+**Suggested next element:** C1's example audit (`pipeline-audit`), then a
+SPEC for C1/C2/C4/C5 together.
 
 **The one experiment is the cell-lane element**, which instantiates C1, C2, C4,
 C5 and the `Rendering` half of the seam against the terminal surface. It is one
