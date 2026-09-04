@@ -5,7 +5,7 @@ title: "Relate the two style representations, and make the round trip close"
 kind: law
 reference_class: OURS
 ours_source: lib/protocol/render.chiral, lib/protocol/grid.chiral
-status: drafted
+status: reviewed
 updated: 2026-09-04
 ---
 
@@ -442,8 +442,10 @@ typedef struct {
 ; THE DOMAIN, as a predicate. `Face`'s three I64 fields state none of this, so
 ; until they do (§6) the domain is a checked value rather than a type. The gate
 ; root below sweeps a RAW range wider than this predicate and asks the predicate
-; which probes to assert, so the predicate decides the checked set and a mutant
-; on its bound moves that set.
+; which probes to assert, so the predicate decides the checked set. The two
+; colour UPPER bounds are the falsifiable ones: widening either admits M1's
+; losses, which is mutant 2. The other four bounds are residue and §6 measures
+; them.
 (def in-sgr-domain
   (lam (f)
     (case f
@@ -520,8 +522,20 @@ typedef struct {
   axes are swept wider. The reason is measured: `face-params` and `face-join`
   read bits `1`, `2`, `4` and `8` and nothing else, so an `attrs` of `16` to `31`
   behaves exactly as `attrs - 16` and a widened attribute bound admits probes
-  that agree. That half of the predicate has no mutant that can redden it, and
-  §6 records it as residue rather than sweeping 16 masks that prove nothing. The ambient axis is
+  that agree. Widening that bound has no falsifier, and §6 records it as residue
+  rather than sweeping 16 masks that prove nothing.
+
+  ⚑ **Measured across all six bounds in this audit's re-derivation, because a
+  predicate with one dead conjunct usually has more.** Widening `fg` or `bg`
+  past `7` disagrees on every probe it admits, 15,840 each. Widening `attrs`
+  past `15` admits 14,256 probes and disagrees on none; widening it below `0`
+  admits 14,256 and disagrees on none; widening either colour LOWER bound below
+  `-1` admits 12,672 and disagrees on none, because a negative index emits
+  nothing and inherits the outer either way. So two of the six bounds are
+  falsifiable by widening. **Narrowing is the other direction and it is
+  guarded**: `walk-amb` asserts `in-sgr-domain` on every registry face, so
+  `attrs <= 7` fails on `manas-cursor` and `fg <= 3` fails on `manas-header`,
+  and the root exits 1. The ambient axis is
   `default-faces` and swapping it for a root-supplied list is `display-calculus/C5`.
   The probe face's name is arbitrary because no SGR code carries a name.
 - **Deliberately omitted.** A byte-level leg. The gate compares parameter lists,
@@ -602,11 +616,28 @@ typedef struct {
   and a mutant on `face-params` moves both sides together. Writing a second
   emitter in the gate root to compare against would put a second copy of the
   byte rule in the tree, which is the defect this element retires. The property
-  that row wanted is convicted by a gate that already runs: `tools/test/face.sh`
-  is Phase 16, its G1 pins a pre-E175 golden cell map (`:292-303`, `:346`) and
-  its G5 pins raw bytes (`:495`), both downstream of `face-sgr`. So a split that
-  changed the emitted bytes reddens Phase 16, and this element's root is the
-  wrong home for that check.
+  that row wanted is convicted in part by a gate that already runs, and the part
+  is measured. `tools/test/face.sh` is Phase 16; its G1 pins a pre-E175 golden
+  cell map (`:304-343`, asserted at `:344-346`), its G4 pins two join shapes
+  (`:429-447`) and its G5 pins the stream's final four bytes (`:496-499`), all
+  downstream of `face-sgr`. Built and run in this audit, the E175 fixture's whole
+  stream carries the SGR codes `0 1 4 7 31 32 37` and no others, 129 sequences in
+  841 bytes. So a split that drops, adds or misnumbers one of those six codes
+  reddens Phase 16, and G4(b)'s `{1,7,31}` is a three-code cell, so a `sgr-str`
+  that lost an element reddens there.
+
+  ⚑ **What Phase 16 does not reach, since the substitution is partial.** Three
+  of `face-params`' rows emit nothing under that fixture. The italic row needs a
+  face with attribute bit `4` and no registry face sets one; the `bg` row needs a
+  non-negative `bg` and every registry `bg` is `-1`; five of the eight `fg`
+  indices never appear. The cell map is an unordered set (`{1,4,31}`) and G5
+  pins only the tail, so a reordering of the codes is invisible to Phase 16 as
+  well. This element's own gate covers each of those at the **parameter** level,
+  because a dropped or misnumbered code reaches `sgr-other` and the fold then
+  disagrees. Mutant 3 is that case run on the reverse row, at 6,480 probes.
+  What is left unguarded anywhere is `sgr-code` on codes `3` and `40` through
+  `47`, and `sgr-code` (`render.chiral:180`) is one expression Phase 16 already
+  exercises on six other codes.
 - **This element ships a hand-run gate. That is its price, stated up front.**
   The gate ends in an exit code from a compiled native binary. ⚑ **No
   suite phase executes it, and none will until the phase-number call is
@@ -631,9 +662,11 @@ typedef struct {
 
   It does not end in screen bytes, and that is what keeps
   `display-calculus/A1` from blocking it: `A1` is
-  still owed (`lib/protocol/render-doc.chiral` has zero importers and `dg-doc`
-  has no consumer outside `lib/typing/diag.chiral`), so a gate ending in a
-  rendered screen would have nothing producing one. This gate's producer is
+  still owed (`lib/protocol/render-doc.chiral` has zero importers under `lib/`
+  and `prog/`, its only two being `tools/test/samples/e158_render.prog:58` and a
+  heredoc probe at `tools/test/render-doc.sh:423`, and `dg-doc` has no consumer
+  outside `lib/typing/diag.chiral`), so a gate ending in a rendered screen would
+  have no shipping producer. This gate's producer is
   `face-params` and its consumer is `fold-sgr`, both `->`, both reached by the
   root above.
 - **Shard G's keyspace survives this element untouched.** `d-tag`'s field stays

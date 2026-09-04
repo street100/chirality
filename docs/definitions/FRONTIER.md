@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 5dc187434957b3723200f09478b357d6c5b40820ced701c0eb055019ea708af7 -->
+<!-- FRONTIER-SOURCES-SHA256: 7674ed543f71a574a7391926c9af4d1e82bcf7b975192b3839157e35ca37a5fc -->
 <!-- sources: 157 files -->
 
 ## Decided recently
@@ -115,6 +115,7 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 82c71a3 — E186 passes the example gate: drafted -> reviewed
 - 2026-09-04 ba6d29c — E186 pre-run: the capture constructor's fields are already the concrete side
 - 2026-09-04 5283af1 — three manas citations the growing files left behind
 - 2026-09-04 b08d94f — prelude, protocol and module: sixteen citations across nine docs
@@ -122,4 +123,3 @@ updated: 2026-09-04
 - 2026-09-04 a889536 — C1C2 pre-run: relate the two style representations and state the round trip
 - 2026-09-04 094fadf — S14 and S15: nine citations into scriba and the manas pipeline
 - 2026-09-04 fe8580e — S17: backend.chiral and runner.chiral both grew past their citations
-- 2026-09-04 269bfb8 — S16: command-loop grew to 2545 lines and took the whole compose entry with it
