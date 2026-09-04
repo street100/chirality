@@ -3,7 +3,7 @@ node: arc-baseline-alignment
 layer: navigation
 related: [arcs/README, goals/presentability, records/baseline-alignment, records/README, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-04
 ---
 
 # Arc: baseline alignment
@@ -72,9 +72,12 @@ claims it.
 ## Ordering
 
 No element numbers are reserved for this arc, so nothing here can be scheduled
-as an element yet. Rows carry `UNASSIGNED` in their `element:` field, which is
-what [[records/README]] requires and what `CLAUDE.md`'s deferral rule
-forbids working around.
+as catalog work. The rows are the `BA-` ids in [[records/baseline-alignment]],
+which [[decisions/decision-work-ids]] settled on 2026-09-01 as the arc-local
+scheme for an arc with no band, and their `element:` field reads `UNASSIGNED`
+until a number is minted. An arc-local id claims identification and claims no
+place in a band or a catalog row, so `CLAUDE.md`'s deferral rule keeps its whole
+force over `E#`.
 
 What can be done without a number: repairing a gate, correcting a document,
 deleting a claim. Three of the four requirements above are reachable that way.
@@ -94,5 +97,17 @@ Next, in the order the measurement suggests:
 3. **BA-09**, the fixture count. `docs/decisions/decision-scope.md` claimed
    `tools/test/samples/` holds 98 files; `ls` counted 54 on 2026-09-01. The
    C-backend drop removed four, so roughly 40 is older drift and undiagnosed.
-4. **BA-23**, check A reads a module key as a filesystem path. 5 issues today,
-   all module keys. It is the mirror of BA-02.
+4. **BA-23**, check A reads a module key as a filesystem path. It is the mirror
+   of BA-02. The 5 issues it reported on 2026-09-01 are gone for a reason that
+   leaves the defect standing: `b5994d0` reworded [[status-ledger]] and took the
+   module keys out of the code spans check A scans, so the check reads 0 on
+   2026-09-04 with `is_pathish` unchanged. The resolver still accepts any token
+   carrying a slash, and the next module-key citation in the ledger fires it
+   again.
+
+**Measured 2026-09-04, and it moves requirement 4.** `ledger-lint` exits 1 and
+prints `[FAIL]` for G and R alone. A, B, C, F, I and T all report 0 issues, H
+and M stay VACUOUS. `BA-36`'s reading, that the run exits 0 while A, I and T
+fail, was taken on 2026-09-01 and describes neither the tool nor its exit status
+today. Repointing that row belongs to whoever holds
+[[records/baseline-alignment]].

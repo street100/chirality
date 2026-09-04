@@ -3,7 +3,7 @@ node: arc-native-protocol
 layer: navigation
 related: [arcs/README, goals/native-stack, arcs/transport-arc, banks/port, decisions/decision-work-ids, decisions/decision-scope, records/author-calls, status-ledger, index]
 status: current
-updated: 2026-09-03
+updated: 2026-09-04
 ---
 
 # Arc: the native protocol
@@ -63,7 +63,7 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
 | `native-protocol/N4` | the handshake and framing, Noise reference class, shrednet identity model as base | not started | `unminted` |
 | `native-protocol/N5` | the constant-time judgment: a secret-dependent branch or index is refused mechanically | not started | `unminted` |
 | `native-protocol/N6` | the shared primitives module: word ops, LE codecs, field arithmetic; every kernel consumes it, slice 1 helpers migrate in | not started | `unminted` |
-| `native-protocol/N7` | Shamir over GF(256): split, reconstruct, quorum agreement, corrupted-share detection | not started | `unminted` |
+| `native-protocol/N7` | Shamir over GF(256): split, reconstruct, quorum agreement, corrupted-share detection | pre-run done. Example `92b0660`, EXAMPLE audit PASS `0bd65dd`, `docs/examples/INDEX.md` row reads `reviewed`. SPEC not written | `unminted` |
 | `native-protocol/N8` | the split store: seal then split, distribution, the return track with disagreement handling | not started | `unminted` |
 | `native-protocol/N9` | the universal crossing trait: a crossing's TAL stub synthesized from its declared type, so a new port extends a table instead of TAL code | not started | `unminted` |
 
@@ -79,7 +79,13 @@ helpers migrate to the primitives module are real shape choices), then N2
 moves up (entropy feeds share and key generation; it is compiler-touching
 and coordinates with the enforcement session), then slices 3 and 4, then N4
 beside N8. The `tools/test/run-tests.sh` registration stays owed to the
-suite session along with an optional tracked sample fixture. Residue
+suite session along with an optional tracked sample fixture. ⚑ Measured
+2026-09-04: `tools/test/crypto.sh` carries no `run_phase` line, so it sits
+outside the suite's `339 passed, 0 failed` and is run directly. N7 then ran its
+pre-run on 2026-09-03:
+`docs/examples/N07-shamir-gf256.md` drafted at `92b0660` and audited PASS at
+`0bd65dd`, with the agreement theorem repaired and `x=0` refused. Its SPEC is
+the next artifact. Residue
 noted 2026-09-03: `St`/`st` are also defined in
 `lib/lowering/upper/lower.chiral`, and `OpenR` in
 `lib/module/resolve.chiral`; no current blob co-links either pair, and a

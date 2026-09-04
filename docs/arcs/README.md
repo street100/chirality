@@ -3,7 +3,7 @@ node: arcs
 layer: navigation
 related: [goals/README, index, records/README, status-ledger, elements/README]
 status: current
-updated: 2026-09-03
+updated: 2026-09-04
 ---
 
 # Arcs
@@ -12,10 +12,13 @@ An arc is the list of elements to be done for one goal. It carries the
 requirements that must hold before the arc is done, and it carries its own
 resume state, so a session starts from the arc file and needs nothing at root.
 
-These files are TRACKED. `.gitignore:12` excludes `.planning/`, so an element
-fact written there forks per worktree and dies with it. Two sessions minted
-`E173` independently and nothing caught it. An element fact a second reader
-needs lives here.
+These files are TRACKED. `.planning/` is tracked too, since 2026-09-01
+(`docs/decisions/decision-ai-tier.md`); the `.gitignore` header states the rule
+and keeps out only the machine state Claude Code writes for itself. **The
+exclusion that made this paragraph necessary is closed.** What survives it is
+the reason an element fact lives here: two sessions minted `E173` independently
+and nothing caught it until a merge put both INDEX rows side by side.
+`records/baseline-alignment.md` BA-44 holds the measurement.
 
 ## The three tiers
 
@@ -63,10 +66,16 @@ same-stem file for two of these arcs.
 ## Element numbers
 
 Do not mint a number that does not exist. `docs/decisions/decision-lane-split.md` reserves `E184-E189` for
-Lane A and `E190-E195` for Lane B. An arc with no reserved block writes
-`UNASSIGNED` and stops. `CLAUDE.md`'s deferral rule forbids naming an element
-that has never been minted, and a deferral to a nonexistent element is a phantom
-dependency.
+Lane A and `E190-E195` for Lane B. `CLAUDE.md`'s deferral rule forbids naming an
+element that has never been minted, and a deferral to a nonexistent element is a
+phantom dependency.
+
+An arc with no reserved block writes `UNASSIGNED` in the `element:` field of
+anything owed a number, and carries its work as arc-local rows meanwhile.
+`docs/decisions/decision-work-ids.md` settled that on 2026-09-01, replacing the
+earlier rule that such an arc writes `UNASSIGNED` and stops. An arc-local id
+claims identification and claims no place in a band, a catalog row, a ledger row
+or a pipeline stage, so the deferral rule keeps its whole force over `E#`.
 
 A new element's row lands in `docs/examples/INDEX.md` and in its arc file in the
 same change that mints it. Those are the tracked collision detectors.
@@ -80,20 +89,20 @@ when this table and an arc file disagree.
 |---|---|---|---|
 | [[arcs/diagnostics-arc]] | [[goals/readable-surface]] | 5 built, 4 open | `E184-E189` shared with enforcement |
 | [[arcs/enforcement-arc]] | [[goals/enforcement]] | 5 rows: E16 on the live path with its check unrun, E17/E18 built and unadopted, E70/E184 design | `E184-E189` |
-| [[arcs/file-types-arc]] | [[goals/readable-surface]] | 0 of 3 built | `E190-E195` |
+| [[arcs/file-types-arc]] | [[goals/readable-surface]] | 0 of 4 built | `E190-E195` |
 | [[arcs/text-tools-arc]] | [[goals/self-tooling]] | 1 of 4 primitives minted | none |
 | [[arcs/zero-python-arc]] | [[goals/self-tooling]] | 0 of 14 `.py` files removed | none |
-| [[arcs/baseline-alignment-arc]] | [[goals/presentability]] | 3 rows closed, the rest open | none |
+| [[arcs/baseline-alignment-arc]] | [[goals/presentability]] | 44 rows on 2026-09-04: 4 FIXED, 6 ACCEPTED, 34 open | none |
 | [[arcs/presentability-arc]] | [[goals/presentability]] | 3 rows, none started | none |
 | [[arcs/binary-split-arc]] | [[goals/presentability]] | 5 rows, none started | none |
-| [[arcs/independent-judgment-arc]] | [[goals/independent-judgment]] | 4 rows, none started | none |
+| [[arcs/independent-judgment-arc]] | [[goals/independent-judgment]] | 5 rows, none started | none |
 | [[arcs/bridge-arc]] | [[goals/bridge]] | 5 rows, C4 holds E40/E56 | none |
 | [[arcs/module-split-arc]] | [[goals/module-split]] | 4 rows, none started | none |
-| [[arcs/transport-arc]] | [[goals/local-ai]] | 4 rows, none started | none |
+| [[arcs/transport-arc]] | [[goals/local-ai]] | 4 rows, all four done 2026-09-02 and gated by Phase 20 | none |
 | [[arcs/scriba-arc]] | [[goals/local-ai]] | 6 rows, `S18` built and five open | the `S` namespace |
 | [[arcs/tuning-arc]] | [[goals/local-ai]] | opened blocked, no row written | none |
 | [[arcs/ownership-and-trust-arc]] | [[goals/ownership-and-trust]] | 3 rows, all deferred by author call | none |
-| [[arcs/native-protocol-arc]] | [[goals/native-stack]] | 5 rows, N1 SPEC audited | the `N` namespace |
+| [[arcs/native-protocol-arc]] | [[goals/native-stack]] | 9 rows: N1 slices 1 and 2 built, N7 example audited | the `N` namespace |
 | [[arcs/native-window-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 | [[arcs/native-document-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 

@@ -3,7 +3,7 @@ node: arc-file-types
 layer: navigation
 related: [arcs/README, goals/readable-surface, arcs/diagnostics-arc, status-ledger, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-04
 ---
 
 # Arc: file types
@@ -82,9 +82,11 @@ facts, neither gate-enforceable:
    `surface/pretty`. Its API is `pp-of : (-> Str Term Doc)` and
    `pp-term-doc : (-> Term Doc)`.
 2. **E181 promoted `bin/chirality-bin`**, 1,130,872 to 1,147,256 B, blob 755,238
-   to 772,110 B. Any measurement taken before that landed was taken against a
-   different compiler, and a byte comparison across the merge will differ for a
-   reason unrelated to this arc.
+   to 772,110 B, measured when E181 landed. Both figures are superseded:
+   `40e8726` promoted again on 2026-09-03 and `bin/chirality-bin` is 1,188,216 B
+   with the blob at 807,767 B ([[status-ledger]]). Any measurement taken before a
+   promotion was taken against a different compiler, and a byte comparison across
+   the merge will differ for a reason unrelated to this arc.
 
 The round-trip law `parse(source(t)) == t` is E146's row and cannot be E181's:
 `parse`, `elab` and `core->term` live behind `module/loader`, which imports

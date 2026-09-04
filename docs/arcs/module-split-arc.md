@@ -3,7 +3,7 @@ node: arc-module-split
 layer: navigation
 related: [arcs/README, goals/module-split, splitting-law, joining-law, decision-split-checker, decision-work-ids, certificate-discipline, status-ledger, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-04
 ---
 
 # Arc: cutting the source where the type differs
@@ -46,8 +46,8 @@ Nine files, so the typing tier is mostly cut already.
 |---|---|---|
 | `kernel.chiral` | 1517 | the checker. Inlines `infer`, `check`, `conv`, con/tcon/case |
 | `diag.chiral` | 693 | imported |
-| `totality.chiral` + `totality-check.chiral` | 548 | not imported by the checker |
-| `effects.chiral` + `row-infer.chiral` | 183 | not imported by the checker |
+| `totality.chiral` + `totality-check.chiral` | 548 | on the compile path. `totality-check` imports `totality`, and `lowering/compile-front` imports `totality-check`. ⚑ The classifier gates only under an opt-in `(total)` clause and no phase fails when it breaks. Re-measured 2026-09-04 |
+| `effects.chiral` + `row-infer.chiral` | 183 | not imported by the checker. `row-infer` is reached from `module/sig-driver`, whose Phase 8 is unported, and `effects` from `row-infer` and `lowering/upper/eff-lower`. Re-measured 2026-09-04 |
 | `refine.chiral` | 168 | imported by the checker |
 | `qtt.chiral` | 78 | imported by the checker |
 | `kernel-core.chiral` | 60 | **zero** |
@@ -110,8 +110,12 @@ this goal's letter and none of its point.
   type shape adds overhead. Integer safety is the recorded case of the ceiling
   correctly refusing a split.
 - **Cutting is half the theory.** [[joining-law]] holds the four typed
-  connectors, and `preserve-check` is the only one running today, in
-  `eff-lower`, `optimize`, `lower` and `sig-driver`.
+  connectors, and `preserve-check` is the only one with call sites at all, in
+  `eff-lower`, `optimize`, `lower` and `sig-driver`. ⚑ **None of them is
+  reached by a shipping compile.** [[status-ledger]] demoted `preserve-check` to
+  built-and-unadopted on 2026-08-31 and records on 2026-09-03 that `ck-prog` has
+  no call site on the compile path. That is the enforcement arc's requirement 2,
+  and this arc rejoins nothing through a connector that runs.
 - **A split is a claim about types rather than about size.** 1517 lines is what made
   `kernel.chiral` worth measuring and it is no argument on its own. The argument
   is that `conv` takes none of the three arguments its neighbours take.

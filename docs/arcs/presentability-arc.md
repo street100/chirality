@@ -3,7 +3,7 @@ node: arc-presentability
 layer: navigation
 related: [arcs/README, goals/presentability, goals/presentability, arcs/binary-split-arc, records/baseline-alignment, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-04
 ---
 
 # Arc: presentability and documentation
@@ -39,8 +39,9 @@ is a wish.
 3. **Every number in the spine is current or dated.** A count with no date is a
    claim about now. Observed by grep for bare figures.
 4. **No spine document cites a path or command that does not exist.**
-   `chirality verify` is cited 14 times and does not exist (BA-31). Observed by
-   `ledger-lint` checks A and G once BA-23 and BA-02 land.
+   `chirality verify` was cited 14 times on 2026-09-01 and does not exist
+   (BA-31). Observed by `ledger-lint` checks A and G. Check A reads 0 on
+   2026-09-04 and BA-23's resolver defect stands under it; check G reports 74.
 5. **The doc roles in `MAP.md` match the tree.** `MAP.md` sorts docs by role;
    `goals/`, `arcs/` and the records tier are new roles and are not in it.
    Observed by comparing the list to `ls docs/`.
@@ -74,17 +75,22 @@ not.
 principle, so it may want a `docs/decisions/` note first: whether §3 states an
 enforced property or an intended one, and how it says which.
 
-[[records/baseline-alignment]] holds 36 rows, 27 open. Four cite the spine
+[[records/baseline-alignment]] holds 44 rows, 34 open, measured 2026-09-04. It
+held 36 rows with 27 open on 2026-09-01. Four cite the spine
 directly: BA-24
 (`PRINCIPLES.md`), BA-30 (`MAP.md:5`, `:37-40`), BA-31 (`docs/banks/profile.md`
 and `docs/definitions/testing-floors.md`), BA-36 (`README.md:63`, `CLAUDE.md`).
 
 ## Working queues, and why there are two of them
 
-Both are untracked author directives opened 2026-08-31, and they are deliberately
-**not** merged into each other or into this file. `.gitignore:12` excludes
-`.planning/`, so neither survives a fresh clone and this arc does. A finding that
-a second reader needs goes to `records/`, not to either queue.
+Both are author directives opened 2026-08-31, and they are deliberately kept
+apart from each other and from this file. Both are tracked, with the rest of
+`.planning/`, since 2026-09-01 (`docs/decisions/decision-ai-tier.md`); `git
+ls-files .planning` returned 145 files on 2026-09-04. **The fresh-clone argument
+this paragraph used to carry is retired.** What stands in its place is the tier
+split: `docs/` and `records/` are written for a human reader and the queues are
+written for a session, so a finding a second reader needs goes to `records/`.
+`records/baseline-alignment.md` BA-44 holds the measurement.
 
 | file | what it does | what it is not |
 |---|---|---|
@@ -94,8 +100,9 @@ a second reader needs goes to `records/`, not to either queue.
 Both run **serial, one document and one agent at a time**, by standing user
 directive.
 
-Two facts from those queues that a reader needs and that would otherwise be lost
-with them:
+Two facts from those queues that a reader of this arc needs, repeated here
+because the queues are the session tier and a reader handed `docs/` never opens
+them:
 
 - **Deferred is not deleted.** The ownership-and-trust track documents stay and
   their content stays. They are only required to be honestly marked unbuilt. See
