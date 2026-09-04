@@ -5,7 +5,7 @@ title: "**The `$k<i>_<j>` capture constructor's field types: concrete, or the er
 kind: BUILD-PROPER
 reference_class: OURS
 ours_source: (none)
-status: drafted
+status: reviewed
 updated: 2026-09-04
 ---
 
