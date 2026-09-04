@@ -78,6 +78,8 @@ All dispositioned; none blocking. `status: draft`.
 
 ## 4. Change plan (ordered, commit-sized)
 
+2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. Every `optimize.py` line number below is kept as a record and has no live successor; the line numbers are left in prose for that reason.
+
 ### Step 1 — `Checked` + `re-check` over the E18 checker seam
 - **Target:** `scaffold/lib/optimize.chiral` (new) — `(import "prelude")`
   `(import "tal-ir")`; `data Checked` (`c-ok (v TFn)`/`c-err (msg Str)`); the
@@ -95,7 +97,7 @@ All dispositioned; none blocking. `status: draft`.
 
 ### Step 3 — `dead` (DCE)
 - **Target:** `optimize.chiral` — `dead (-> TFn TFn)` + `uses-in`/`_dead_block`.
-- **Change:** port `optimize.py:dead` (`:216`)/`_uses_in_block` (`:54`); the
+- **Change:** port `optimize.py`'s `dead` (line 216) / `_uses_in_block` (line 54); the
   liveness fixpoint terminating by bounded live-set growth (decision #2); drop
   instrs whose def ∉ live. Total.
 - **Size:** ~M
@@ -103,7 +105,7 @@ All dispositioned; none blocking. `status: draft`.
 ### Step 4 — `specialize` (partial eval / pregen) + `optimize` pipeline
 - **Target:** `optimize.chiral` — `specialize (-> (0 e Env) TFn Bindings Checked)`
   + `optimize (-> (0 e Env) TFn Checked)`.
-- **Change:** port `optimize.py:specialize` (`:264`)/`_remap_block` (`:223`) — bind
+- **Change:** port `optimize.py`'s `specialize` (line 264) / `_remap_block` (line 223) — bind
   static args → residual, then `re-check` (the residual is a pregen artifact);
   `optimize` = `re-check (dead (fold fn))` (end-recheck, decision #1). Total.
 - **Size:** ~M
