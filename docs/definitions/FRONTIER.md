@@ -14,7 +14,7 @@ updated: 2026-09-03
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 7d2a39c279879cae96dce2398aa0092bd50050cc584eacb7bcbfd9ba1e13158b -->
+<!-- FRONTIER-SOURCES-SHA256: dafc3cf625b7d490833dacb183f2187cee65a40239b581bdadb1cf4c82cc1a28 -->
 <!-- sources: 153 files -->
 
 ## Decided recently
@@ -110,6 +110,7 @@ updated: 2026-09-03
 
 ### Last commits touching the frontier sources
 
+- 2026-09-03 b5994d0 — the ledger tells the truth about today, and five lint checks go to zero
 - 2026-09-03 5b4fb71 — tal/check is importable beside the compiler, eleven names prefixed tck-
 - 2026-09-03 ddfbc27 — the tal checker agrees with the compiler, and Phase 22 pins that it still refuses
 - 2026-09-03 0bd65dd — N7 example audit: PASS, the agreement theorem repaired and x=0 refused
@@ -117,4 +118,3 @@ updated: 2026-09-03
 - 2026-09-03 1b1101b — quorum store: the author's re-ruling recorded across the tier
 - 2026-09-03 54d59b3 — N1 spec audit: PASS, the sigma mutant pinned so appendix B must go red
 - 2026-09-03 f4f859e — N1 spec: four decisions dispositioned, four slices, the vector-and-mutant gate
-- 2026-09-03 535c56f — N1 example audit: PASS, four fixes, drafted -> reviewed
