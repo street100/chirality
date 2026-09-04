@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 221d27041ea4efcc4c1f8db5852a32d37fc41c9d2877860583381cb89496da21 -->
+<!-- FRONTIER-SOURCES-SHA256: 2ab36879fe488addc77663a7a993d2d8d4e35cc39acc199292f3c51f12666310 -->
 <!-- sources: 157 files -->
 
 ## Decided recently
@@ -114,6 +114,7 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 56a6014 — mint the display goal, its numerics ruling and its first arc
 - 2026-09-04 e057b47 — E188 minted: the unreachable arm that ships a literal 0
 - 2026-09-04 f8018ee — annotate 64 SPECs with the triage bucket they fell into
 - 2026-09-04 9579ba3 — matcher line count: 533 was measured at the E173 slice-1 landing, the file is 602
@@ -121,4 +122,3 @@ updated: 2026-09-04
 - 2026-09-04 c496c01 — specs: repoint implementation SPEC citations at the post-migration tree
 - 2026-09-04 07a26a7 — citations that E185 moved, in the three files this run owns
 - 2026-09-04 9831eee — E185's INDEX row goes to built, and says what it did not reach
-- 2026-09-04 95162e9 — E185 SPEC audit: the gate's four silent failures, and two rows nothing reddens
