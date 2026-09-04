@@ -4,7 +4,7 @@ layer: bank
 tier: depth
 related: [testing-floors, floor-agreement, certificate-discipline, split-role, decision-split-checker, axis-altitude, modules-lowering, trust-boundary, status-ledger, banks/evidence-and-split, open-edges]
 status: draft
-updated: 2026-09-01
+updated: 2026-09-04
 ---
 
 # Bank: verification
@@ -133,8 +133,10 @@ suite, not a number, and not the fixpoint.
 
 ### Shard 3 — the native behavioural suite · **BUILT**
 - **What.** `.chiral` programs whose *meaning* fixes an exit code, run natively.
-- **Home.** `scaffold/tests/run-native.sh` (Phase 1 inline) + `scaffold/samples/`
-  (walked by the native test-runner).
+- **Home.** `tools/test/run-tests.sh` (Phase 1 inline) + `tools/test/samples/`
+  (55 `.prog` roots as of 2026-09-04, walked by the native test-runner
+  `prog/test-runner.prog`). ⚑ Every figure in this shard's build-state below was
+  measured against the pre-migration paths and has not been retaken.
 - **Build-state.** BUILT and GATING: **twelve phases, 175 ok assertions / 0 FAIL /
   82 roots, exit 0 in 4m10.591s** (measured 2026-08-25 at `f9441e4`, `ulimit -s
   unlimited; time bash scaffold/tests/run-native.sh`, C leg on
@@ -165,10 +167,12 @@ suite, not a number, and not the fixpoint.
 ### Shard 4 — DDC / diverse double-compilation · **BUILT-compare-core (E53); a second disjoint leg standing (E166)**
 - **What.** Wheeler's construction: two provenance-disjoint legs compile the same
   source; agreement admits, divergence is named and localized.
-- **Home.** `scaffold/lib/ddc.chiral` (**135 L** at `wc -l`, pure compare core:
-  `Prov`/`Leg`/`DdcR`/`LegOut` + first-divergence fold, every fn proven total) +
-  the untrusted driver `scaffold/tests/ddc.py`, and now the native leg script
-  `scaffold/tests/ddc-c-leg.sh`.
+- **Home.** `lib/evidence/ddc.chiral` (**213 L** at `wc -l` on 2026-09-04, pure
+  compare core: `Prov`/`Leg`/`DdcR`/`LegOut` + first-divergence fold, every fn
+  proven total). ⚑ Both drivers are gone: the untrusted Python one went with the
+  oracle, and the C-leg script went with the leg on 2026-09-01. The file says so
+  itself at `:21-22`, "Its teeth are GONE as of 2026-09-01 … nothing asserts any
+  of this now." The compare core stands with no caller.
 - **Build-state.** Compare core BUILT (`CONFORMANCE-MAP.md:45`, CONFORMS, E53).
   **One honest narrowing survives, one is discharged.** (a) SURVIVES — `Prov` has
   four axes `(language toolchain author epoch)` but `leg2-disjoint?` checks
@@ -196,11 +200,15 @@ suite, not a number, and not the fixpoint.
   standing constant that the script gates, not the default second opinion inside
   that one function. Swapping it is a one-constant change and is not done.
 
-### Shard 5 — the Python oracle (the external-verification leg, retiring) · **LEGACY, red**
+### Shard 5 — the Python oracle (the external-verification leg) · **CUT**
 - **What.** A differential second opinion via the reference interpreter/checker.
-- **Home.** `scaffold/chirality/`.
-- **Build-state.** LEGACY and slated for retirement, but **still the only running
-  external leg**, and therefore repaired rather than ignored on 2026-08-23:
+- **Home.** ⚑ **none.** `scaffold/chirality/` is gone, and
+  `docs/decisions/decision-scope.md` consequence 1 records the cut. The 14 `.py`
+  files left in the tree on 2026-09-04 are the authoring harness under `tools/`
+  plus four example generators, and none of them judges chirality.
+- **Build-state.** ⚑ **CUT, recorded 2026-09-04. There is no running external
+  leg at all.** The paragraph below is the record of the last repair while it
+  ran, dated 2026-08-23:
   **348 → 638 tests running**, errors **318 → 88**, failures 23 unchanged.
   290 tests were not *executing* at all (`setUpClass` died before discovery), so
   the suite reported a small green-ish number while most of it never ran. Four
@@ -231,8 +239,10 @@ suite, not a number, and not the fixpoint.
 ### Shard 6 — the Rocq external-spec leg · **SEEDED ONLY**
 - **What.** An independent formalization of chirality semantics, proved under `coqc`;
   the only instrument that survives a *consistent* miscompile in our own tree.
-- **Home.** `rocq/` — `Chirality/I64.v` (64 L) + `Chirality/I64Spec.v` (183 L),
-  `HAMMER-MANIFEST.md`, the hammer loop.
+- **Home.** ⚑ **none in this tree, measured 2026-09-04.** `rocq/` does not exist
+  and `docs/decisions/decision-scope.md` consequence 1 cuts Rocq with the rest of
+  external judgment. What it held is recorded here as history: `Chirality/I64.v`
+  (64 L) + `Chirality/I64Spec.v` (183 L), `HAMMER-MANIFEST.md`, the hammer loop.
 - **Build-state.** SEEDED. ⚑ *Corrected 2026-08-25 — the blanket "no toolchain in
   this environment" was already stale and is now measurably false.* `coqc 8.16.1`
   is installed (it cannot read `rocq/Chirality/*.v`, which use Rocq-9's
@@ -251,7 +261,7 @@ suite, not a number, and not the fixpoint.
   every gate row names a mutant *and runs it*.
 - **Home.** [[testing-floors]].
 - **Build-state.** **BUILT for gates written on the floor, DOCS-ONLY elsewhere —
-  E168, 2026-08-25.** `scaffold/lib/test-floor.chiral` makes both mechanical: an
+  E168, 2026-08-25.** `lib/evidence/test-floor.chiral` makes both mechanical: an
   `Expect` has no arity that omits its `ExProv`, so an unlabelled expectation is
   not constructible, and a `Gate` cannot be built without a `MutRun` that only
   `mut-run` produces — from two programs that were built and run. The residue is
@@ -264,9 +274,9 @@ suite, not a number, and not the fixpoint.
   gate is the README's.** `README.md`'s *"effect membrane — pure code
   structurally can't do I/O"* line is demonstrated by `chirality check
   demo/_eff.chiral` → `load: type mismatch`, exit 1. It does fail. It fails for
-  the **wrong reason**: `scaffold/demo/_eff.chiral:3` is `(def f (-> I64 Unit)
+  the **wrong reason**: `prog/demo/_eff.chiral:3` is `(def f (-> I64 Unit)
   (lam (n) (put 42)))`, and `put` is `(=> Str Unit)`
-  (`scaffold/lib/ports/stdio.chiral:11`), so the refusal is the **argument**
+  (`lib/ports/stdio.port:11`), so the refusal is the **argument**
   mismatch `I64`-where-`Str`-is-wanted. Mutate it the one way the claim requires
   — `(put "x")`, same `(-> I64 Unit)` signature — and it compiles under
   `scaffold/build/B1` and prints. Running the mutant is the whole difference
@@ -291,9 +301,11 @@ suite, not a number, and not the fixpoint.
   compilers are **not two legs**: `leg2-disjoint?` needs both language and
   toolchain to differ and they share `"c"`, so `ddc-legc` (gcc) and `ddc-legcc`
   (CompCert) are alternatives, and a quorum is leg 0 plus *exactly one* of them.
-- **Home.** `scaffold/lib/mach.chiral`'s backend seam (137 L, **37** accessor
-  fields), used a third time beside `mach-x64.chiral` (1,737 L) and
-  `mach-listing.chiral`. Not a reversal of [[decision-backend]] — that fork scopes
+- **Home.** `lib/lowering/mach/mach.chiral`'s backend seam (**37** accessor
+  fields), used beside `lib/lowering/x64/mach.chiral` and
+  `lib/lowering/listing/mach.chiral`. ⚑ The third instance this shard is about,
+  `mach-c.chiral`, went with the C target on 2026-09-01 and is not in the tree;
+  everything below is dated evidence of what the leg bought while it ran. Not a reversal of [[decision-backend]] — that fork scopes
   the *canonical shred instance*, and an additive verification instance is what
   [[banks/profile]]'s decision-profiles is for.
 - **Build-state.** **E166 COMPLETE 2026-08-24 (Steps 0–6 + two fixes); E167 still
@@ -453,13 +465,14 @@ suite, not a number, and not the fixpoint.
 ### Shard 9 — upper→tal behavioural coverage · **DESIGN (E169)**
 - **What.** The first *behavioural* instrument over `lower.chiral` (407 L), whose
   only current instrument is `preserve-check`'s **type** argument.
-- **Home.** In-house half: `interp.chiral` (109 L, E15 — "the golden reference
-  interpreter") evaluating upper terms vs `tal-eval.chiral` (187 L) running the
+- **Home.** In-house half: `lib/evidence/interp.chiral` (E15, "the golden reference
+  interpreter") evaluating upper terms vs `lib/lowering/tal/eval.chiral` running the
   lowered tal. External half: `preserve-check` verified in Rocq.
-- **Build-state.** DESIGN. ⚑ And the in-house half has a dependency nobody had
-  counted: **`interp.chiral:6` says *"runtime.py stays the oracle"*** — the golden
-  reference interpreter is itself propped on Python, and is another casualty of
-  the retirement.
+- **Build-state.** DESIGN, and both halves have lost a leg. ⚑ The in-house half
+  still declares its dependency in its own header,
+  `lib/evidence/interp.chiral:6`, on an oracle that is cut, so the golden
+  reference interpreter is golden against nothing. The external half's
+  formalization is `rocq/`, which is not in the tree (Shard 6).
 
 ### The coverage map, and the two rules that generate it
 
