@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 2ab36879fe488addc77663a7a993d2d8d4e35cc39acc199292f3c51f12666310 -->
+<!-- FRONTIER-SOURCES-SHA256: b7dc05df52534dab03ef615f264179ea7374b4be80018e5acaa70aca9d47f6d2 -->
 <!-- sources: 157 files -->
 
 ## Decided recently
@@ -114,11 +114,11 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
-- 2026-09-04 56a6014 — mint the display goal, its numerics ruling and its first arc
-- 2026-09-04 e057b47 — E188 minted: the unreachable arm that ships a literal 0
-- 2026-09-04 f8018ee — annotate 64 SPECs with the triage bucket they fell into
-- 2026-09-04 9579ba3 — matcher line count: 533 was measured at the E173 slice-1 landing, the file is 602
-- 2026-09-04 3b4e6d3 — specs: date the citations the cut oracle left behind
-- 2026-09-04 c496c01 — specs: repoint implementation SPEC citations at the post-migration tree
-- 2026-09-04 07a26a7 — citations that E185 moved, in the three files this run owns
-- 2026-09-04 9831eee — E185's INDEX row goes to built, and says what it did not reach
+- 2026-09-04 64e39b0 — E170 D8 asks for a split that has already landed
+- 2026-09-04 6bd7a2e — E17 ports from optimize.py, which was cut
+- 2026-09-04 d4eeab8 — E158 and E181 cited the catalog under its pre-rename filename
+- 2026-09-04 923ca4f — check G: five bare spans repointed at the file they were about
+- 2026-09-04 1ecc2db — E174: four bare spans were reading against apc.chiral
+- 2026-09-04 fe1f37d — S18: six bare spans were reading against dispatch.chiral, and belong to command-loop.chiral
+- 2026-09-04 27e0226 — E161 step 7 ran, so the emit-gate coordinates become a record
+- 2026-09-04 321af01 — E99: the generic ioctl extern has no live successor, so its line is dated
