@@ -5,7 +5,7 @@ tier: depth
 indexes: [vocabulary, module-map, splitting-law, joining-law, axis-typeability, axis-altitude, decision-profiles, process-and-runtime]
 related: [banks/profile, banks/runtime, split-role, perspectives, modules-core, decision-split-checker, permission-model]
 status: draft
-updated: 2026-08-21
+updated: 2026-09-04
 ---
 
 # BANK: module
@@ -67,13 +67,21 @@ compilation unit. Not a package with a version string. Each of those is a
 conventional monolith that fuses several of the shards below with an *incidental*
 carrier (the file, the name) that chirality discards. See §4.
 
-**How it is realized in code (evidence).** There is no first-class `module`
-construct in the scaffold. A module is realized as a *set of declarations* —
-`data`, `def`, `porttype`, `extern`, `target`, `profile` — accumulated into the
-checker's `Sig` (`scaffold/chirality/surface.py:74–216`, the toplevel dispatch). The
-`lib/*.chiral` files are *renderings* that carry those declarations; the file is
+**How it is realized in code (evidence).** A module is realized as a *set of
+declarations* — `data`, `def`, `porttype`, `extern`, `target`, `profile` —
+accumulated into the checker's `Sig` by the toplevel dispatch `load-form`
+(`lib/surface/parse.chiral:1266`). The
+`lib/**/*.chiral` files are *renderings* that carry those declarations; the file is
 the transport, not the module. Individuation is by the elaborated type in `Sig`
-(`sig.global_types`, `sig.prim_types`, `sig.data`), never by filename. This is
+(`sig-globals`, `sig-prims`, `sig-datas` at `lib/typing/kernel.chiral:239-241`),
+never by filename. ⚑ Since E160/E161 a module DOES carry a first-class
+**coordinate**: `(module <name> (cat A|B|C) (alt upper|tal|metal))`, dispatched at
+`lib/surface/parse.chiral:1292` to `handle-kind` (`:1166`), with a closed refusal
+sum `KErr` (`:1091`) and a declared extent closed by `(end-module "<name>")`. The
+coordinate states the two axes and the extent; it does not key identity to a name,
+so the individuation claim below is unchanged and the sentence this paragraph
+carried until 2026-09-04, "there is no first-class module construct", was wrong.
+This is
 the concept's own claim made concrete: the module is individuated by its type,
 and the code has literally no filename-keyed notion of module identity.
 
@@ -90,8 +98,9 @@ principled home and its own build-state.
 - **Home.** kernel / `process` & `core-ir` ([[modules-core]]; category A, `cross`
   in [[module-map]]).
 - **Build-state.** CONFORMS. NbE eval/quote/conv (E3), bidirectional infer/check
-  + universes (E4), QTT semiring 0/1/ω (E5). Evidence: `scaffold/chirality/kernel.py`,
-  `terms.py`; `tests/test_kernel.py`. The judgment core is ENFORCED
+  + universes (E4), QTT semiring 0/1/ω (E5). Evidence: `lib/typing/kernel.chiral`
+  (`conv` at `:702`, `subtype` at `:799`), `lib/typing/kernel-core.chiral`,
+  `lib/typing/qtt.chiral`, `lib/surface/terms.chiral`. The judgment core is ENFORCED
   ([[status-ledger]]).
 
 ### Shard 2 — Typeability placement (A / B / C)
@@ -101,9 +110,12 @@ principled home and its own build-state.
   splitting law forces monochromaticity.
 - **Home.** axis-typeability; the classification is realized as *three different
   enforcement mechanisms*: A = the kernel judgment (ENFORCED), C =
-  `bridge.verify` turning a host return into checked evidence
-  (`scaffold/chirality/bridge.py`, IMPLEMENTED, inbound only), B = named quarantined
-  holes reached only through ports ([[modules-substrate]]).
+  `bridge.verify` turning a host return into checked evidence, B = named quarantined
+  holes reached only through ports ([[modules-substrate]]). ⚑ `bridge.verify` was
+  the Python oracle's and has **no live referent**: `lib/evidence/interp.chiral:19-21`
+  records the extern/port/bridge face as the deferred connector of E15's SPEC. The
+  C mechanism named here is therefore a design, and the row below is read against
+  the map rather than against a live symbol.
 - **Build-state.** Mixed by category. A CONFORMS (E3–E5). C inbound-half
   IMPLEMENTED (bridge.verify, depth-bounded ≤4); the C evidence bridges
   (attestation/freshness/audit/isolation/reflect-raw) are BUILD / docs-only
@@ -120,8 +132,10 @@ principled home and its own build-state.
   ([[modules-lowering]]).
 - **Build-state.** CONFORMS for the pure, ground, non-dependent slice. Lowering +
   preserve-check (E16), tal checker + trusted interpreter (E18/E19), x86-64
-  modular Mach (E19). Evidence: `lower.py`, `optimize.py`, `tal.py`, `native.py`,
-  `lib/mach-x64.chiral`; preserve-check is ENFORCED ([[status-ledger]]). Honest
+  modular Mach (E19). Evidence: `lib/lowering/upper/lower.chiral`,
+  `lib/lowering/upper/optimize.chiral`, `lib/lowering/tal/check.chiral`,
+  `lib/lowering/tal/ir.chiral`, `lib/lowering/x64/mach.chiral`; preserve-check is
+  ENFORCED ([[status-ledger]]). Honest
   slice limit: only pure/ground/non-dependent bodies lower today; closures/HO are
   separate forward work (E69, 2026-07-21 catalog extension; not a defect).
 
@@ -136,27 +150,34 @@ principled home and its own build-state.
   `kernel-gate` ([[modules-core]], [[module-map]]).
 - **Build-state.** CONFORMS. Category-C port membrane, conformance-map tags
   E30–E33 (a sample of its crossing elements — the membrane also spans E29
-  sockets; not a contiguous range): `lib/ports.chiral`
-  declares opaque linear porttypes (`Sock/LSock/Fd/(Pool n)`), `impl_ports` binds
-  host referents, linearity + frozen-set enforced by the checker. Realized in
-  code as `porttype` + `extern` with `sig.prim_is_port`
-  (`surface.py:108–130, 184`). Transport self-host (E51) is a separate lane, not
-  a reshape.
+  sockets; not a contiguous range): the nine registries under `lib/ports/`
+  declare opaque linear porttypes (`Sock`/`LSock` at `lib/ports/sock.port:16-17`,
+  `Fd` at `lib/ports/fd.port:16`, `(Pool n)` at `lib/ports/pool.port:13`), the
+  extern's host referent binds at link, linearity + frozen-set enforced by the
+  checker. Realized in code as `porttype` + `extern`: the dispatch arms sit at
+  `lib/surface/parse.chiral:1280` and `:1279`, and `handle-extern` is defined at
+  `lib/surface/parse.chiral:659`. Transport self-host
+  (E51) is a separate lane, not a reshape.
 - **⚑ Split the verdict by facet — added 2026-08-25.** CONFORMS is right for the
   **possession** facet (opaque linear porttypes, linearity at the binder — both
   measured real in B1, `.planning/AUTH-HARNESS-MAP.md` §2). It is **not** right
   for the **exercise** facet. E161's `crossings` field is *sense (a) BINDS* on
-  purpose (`scaffold/tests/test-module-kind.sh:717-719`: *"A def is not a
-  crossing … a def that CALLS one has bound nothing"*), and nothing else records
+  purpose, and nothing else records
   what a module performs — so a module that binds no `=>` extern and only CALLS
   imported ones has an **empty** exercise facet while really crossing. Measured
-  against `scaffold/build/B1` at `4f64d91`: a program under `(module tfloor (cat
-  A) (alt upper))` — *correctness by proof* — whose `->` def calls an `=>` def
-  that calls `put` compiles, runs and writes to stdout. The call-level gate that
+  2026-08-25 against the then-current build at `4f64d91`, whose path
+  `scaffold/build/B1` went with the migration: a program under `(module tfloor
+  (cat A) (alt upper))` — *correctness by proof* — whose `->` def calls an `=>`
+  def that calls `put` compiled, ran and wrote to stdout. The live binary is
+  `bin/chirality-bin` and the measurement has not been retaken against it. The call-level gate that
   would make the facet honest is **E171**; the depth is
   [[banks/effect-and-alarm]] §5d. (The *frozen port set* half of this bullet is
-  separately known to be oracle-only — `surface.py`, not `parse.chiral`;
-  `.planning/AUTH-HARNESS-MAP.md` §2 carries that one.)
+  ⚑ no longer oracle-only, corrected 2026-09-04: `mf-check-ports`
+  (`lib/surface/parse.chiral:907`) refuses a listed name that is not a declared
+  extern and one whose type crosses nothing, and the manifest reaches the front
+  end at `lib/lowering/compile-front.chiral:322`. `.planning/AUTH-HARNESS-MAP.md`
+  line 42 already carried that correction, dated 2026-08-25, and what stays
+  unmeasured is whether emit refuses an off-manifest crossing.)
 
 ### Shard 5 — The unit the splitting law cuts (individuation by type)
 - **What.** Where one module ends and the next begins: cut a module until each
@@ -197,11 +218,16 @@ principled home and its own build-state.
   modules plus connectors"). The module is thus the *unit of composition*.
 - **Home.** [[decision-profiles]] / see the sibling **[[banks/profile]]** for the
   profile's own full refraction — do not re-read it here.
-- **Build-state.** CONFORMS. `top_profile` parses `(profile name (ports p...)
-  (target t) [(memory d)])` as an additive manifest over a frozen port set;
-  `verify_profiles` checks the composite satisfies the target by subtyping, every
-  used crossing is inside the frozen set, and per-def totality if `(total)` is
-  claimed (`surface.py:144–200, 518–542`). E2, enforced by `chirality verify`.
+- **Build-state.** `handle-profile` (`lib/surface/parse.chiral:989`) parses
+  `(profile name (ports p...) (target t) [(memory d)] [(total)])` as an additive
+  manifest over a frozen port set, and judges each half: `mf-check-ports` (`:907`)
+  the port list, `mf-memory-of` (`:939`) the discipline, `sig-target` the named
+  target. `tools/test/profile-target.sh` is the gate. ⚑ That is PARSE, JUDGE and
+  STORE, which `lib/surface/parse.chiral:723-724` says in its own words; whether
+  emit refuses an off-manifest crossing was not measured, so the CONFORMS this row
+  used to claim is withdrawn, and so is the subcommand this row named as its
+  enforcer: `bin/chirality` dispatches check, compile, run and test, and no
+  `verify` arm has ever been in it. E2.
 
 ### Shard 8 — Individuated-by-type: versioned / composed / replaced
 - **What.** "packaged, versioned, composed, replaced" — a module is *replaceable*
@@ -210,8 +236,14 @@ principled home and its own build-state.
   conformance to a target requirement type.
 - **Home.** target / conformance ([[decision-profiles]]: conformance = the
   composite's type satisfies the target by subtyping).
-- **Build-state.** Subtyping IMPLEMENTED (`kernel.py` `subtype`); target/require +
-  `_target_rows` conformance check CONFORMS (`surface.py:202–216, 545–564`, E2).
+- **Build-state.** Subtyping IMPLEMENTED (`subtype` at
+  `lib/typing/kernel.chiral:799`); `(target name (require dname ty) ...)` is parsed
+  and judged natively by `handle-target` (`lib/surface/parse.chiral:833`), each
+  requirement's type elaborated in the empty scope and required to be a universe
+  (`mf-req`, `:783`). ⚑ The conformance check itself, the oracle's `_target_rows`,
+  has **no live referent**: nothing in `lib/` decides that a profile's composite
+  satisfies its target's rows. The row is parse-and-judge, and the CONFORMS it
+  used to claim covered a check that is gone (E2).
   **The "versioned" facet is the least-built** — there is *no* version machinery
   and none is owed as a separate feature: versioning reduces to swapping a
   conforming module against the same target row, which subtyping already decides
@@ -261,16 +293,18 @@ its operational meaning is the kernel's definitional-equality judgment (conv, vi
 NbE, E3). Two modules are the same module iff their types are conv-equal; the
 splitting law's "same type shape ⇒ spurious split" (Shard 5) is decided by the
 *exact same* conv the checker uses to accept a program. Module identity and type
-identity are one mechanism (`kernel.py` conv; E3, CONFORMS). This is why there is
+identity are one mechanism (`conv` at `lib/typing/kernel.chiral:702`; E3,
+CONFORMS). This is why there is
 no filename-keyed module table in the code (§1): the checker's `Sig` already
 individuates by type.
 
 **C4 · A module's "replaced" IS subtype conformance to a target.** Shard 8 and the
 concept *conformance* ([[decision-profiles]]) are the same shard. Swapping module
 M for M′ in a profile is valid iff M′'s type is a subtype of the target row M
-filled — the very check `_target_rows` runs (`surface.py:552–564`). So "hot-swap /
-versioning / dependency substitution" all collapse onto subtyping. No separate
-substitution mechanism exists or is owed.
+filled. ⚑ The check that would run it, the oracle's `_target_rows`, has no live
+referent (Shard 8), so the collapse is sound as a design and unenforced as code.
+So "hot-swap / versioning / dependency substitution" all collapse onto subtyping.
+No separate substitution mechanism exists or is owed.
 
 **C5 · The twin pattern (Shard 5) IS the joining law's rejoin (Shard 6).** The
 splitting law *produces* twins (proof-in-A, evidence-in-C); the joining law
@@ -314,7 +348,8 @@ E3–E5) + typeability placement (Shard 2) + port-set membrane (Shard 4, built,
 E30–E33) + the splitting/joining laws (Shards 5–6) + the profile (Shard 7, built,
 E2). The *namespace/file/import-resolution* part a package system bundles is
 **not** the module — it is the surface reader + elaborator (`resolve`, E1/E2,
-`surface.py`), and it is incidental transport. Genuinely-new shard: none; the
+`lib/module/resolve.chiral`, `lib/surface/parse.chiral`), and it is incidental
+transport. Genuinely-new shard: none; the
 package *manager* (version resolution) reduces to subtype conformance (C4).
 
 **"You need classes / objects for encapsulation."**
@@ -363,7 +398,10 @@ rounded to done or to undone.
 
 1. **The staging connector as a binding-time *modality* (Shard 6, staging).** The
    only connector of the four not built. Today: SEEDED — `spawn` + link-at-load,
-   ad hoc ([[status-ledger]] SEEDED/Staging; `impl_ports.py`, `runtime.py`). The
+   ad hoc ([[status-ledger]] SEEDED/Staging). ⚑ The two files this row cited for
+   it, `impl_ports.py` and `runtime.py`, were the oracle's and have no live
+   referent; `lib/runtime/proc.chiral` and `lib/module/loader.chiral` are where the
+   live spawn and link-at-load sit. The
    *modality* — link/load-vs-runtime carried in the type (Fork C) — is DESIGNED,
    `gap` in [[module-map]], catalogued as **E57** in the 2026-07-21 extension
    (the CONFORMANCE-MAP row predates the assignment and still reads "needs
@@ -400,7 +438,10 @@ rounded to done or to undone.
    `ok2xx`→`agent-ok2xx`, scriba S15; `TUI/scriba/cmd-types.chiral:2` inlining
    `lookup-scribaop` "to avoid B1 label issue"). It has a second-order cost: modules
    write prefixed clones of shared helpers rather than importing them, which is the
-   mechanical root of the stdlib altitude leak (`.planning/STDLIB-INVENTORY.md` §10).
+   mechanical root of the stdlib altitude leak
+   (`.planning/LANGUAGE-INVENTORY.md` §10 item 3, which measures `str-cmp` existing
+   four times in four compiler modules; the `STDLIB-INVENTORY.md` this line used to
+   cite has never existed in this tree).
    Catalogued 2026-08-21 as **E154** (label mangling at emit) with **E155** (a
    multi-root resolver search path) beside it. Added here because §4's "already
    handled" read true at the design tier and false at the emit tier, and the bank
