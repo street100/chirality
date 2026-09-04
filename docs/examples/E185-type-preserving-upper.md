@@ -5,7 +5,7 @@ title: **How the `$apply` dispatcher's erased domains are spelled at the lowerin
 kind: BUILD-PROPER
 reference_class: OURS
 ours_source: (none)
-status: drafted
+status: reviewed
 updated: 2026-09-04
 ---
 
@@ -196,7 +196,10 @@ monomorphises before defunctionalizing, so its dispatchers never see a
 polymorphic domain and can be spelled exactly (research §5). Pottier and Gauthier
 name the cost, "code duplication, whose cost may be difficult to control", and
 with polymorphic recursion it "becomes impossible". `closconv.chiral:359-363`
-already rules that route out for this tree in its own design note.
+records that this tree does not take that route: a polymorphic `(-> K K ..)`
+parameter reaches `closconv` and has to share a family with the concrete closures
+passed to it, which is a parameter MLton's dispatchers never see. The note rules
+out finer families; the route it forecloses is a consequence, not its subject.
 
 ## 4. The chirality idea
 
@@ -265,12 +268,19 @@ already rules that route out for this tree in its own design note.
   reads and writes.** Half of it is right and the wrong half is load-bearing.
 
   1. **`NTalTy` has no arrow former**, by design: `nt-i64`, `nt-str`, `nt-bytes`,
-     `nt-word`, `nt-data`, and the header states the invariant, "a non-ground type
-     never reaches here". `closconv`'s entire input is arrow types, and its family
-     key is an arrow-shape equality that recurses through `peel-pi-doms` and
-     `pi-effs`. A spine that cannot spell `(-> A B)` cannot carry the pass whose
-     job is to eliminate arrows. Adding an arrow former to `NTalTy` would retract
-     the invariant the front bridge's rejection rests on.
+     `nt-word`, `nt-data` (`lowspec.chiral:30-33`). ⚑ **The ground is not that the
+     bridge refuses an arrow.** It does not: `term->ntalty` maps `(t-pi _ _ _ _)`
+     to `(nt-word)` at `compile-front.chiral:71`, *"arrow types (kept by
+     `ty-kept-doms`) are pointer-sized"*, so an arrow already reaches `NTalTy` and
+     arrives there **flattened to one word**. The header's "a non-ground type never
+     reaches here" is written for the types `term->ntalty` returns `none` on, and it
+     over-reads if taken to cover arrows. The constraint is the flattening, and it
+     is stronger than a refusal would be. `closconv`'s entire input is arrow types
+     and its family key is an arrow-shape equality recursing through `peel-pi-doms`
+     and `pi-effs`, which is exactly the structure `nt-word` has destroyed. A spine
+     that collapses `(-> A B)` before the pass runs cannot carry the pass whose job
+     is to eliminate arrows, and adding an arrow former would put the structure back
+     at the one level built to have dropped it.
   2. **`NCore` is deliberately the lowerable term fragment**, and
      `specialize-singletons` runs before anything is known to lower: it rewrites
      data declarations, `KArm`s and quantities in the kernel `Term`, ahead of
@@ -327,17 +337,24 @@ copying. Candidate (b) is sketched at the end so the SPEC can price both.
 ; domain is a traversal artifact.
 
 ; ---- (ii) the erased spelling of ONE domain -------------------------------
-; `lvl` is the number of erased type binders wrapped around the whole chain,
-; `j` is this domain's index among them. The variable is BOUND, so no dangling
-; de Bruijn index leaves this function.
+; `lvl` is the number of type binders wrapped around the whole chain, one per
+; DOMAIN POSITION and a0 OUTERMOST; `j` is this domain's index in the chain. One
+; per position rather than one per erased position is what keeps the index
+; arithmetic below a constant; a nested-arrow position then leaves its binder
+; unused, and tightening that is knob 3's to price. The index is CONSTANT
+; at lvl, and the derivation is the whole of the care this needs: domain j sits
+; under the $clo binder plus j earlier domain binders, so counting outward
+; a_{lvl-1} is at 1+j and a_j is at (1+j) + (lvl-1-j) = lvl. A bound index is
+; not enough on its own -- lvl-1-j is bound too, and names the wrong binder.
 (declare dom-ty (-> Core I64 I64 Core))
 (def dom-ty
   (lam (d lvl j)
     (case (is-arrow d)
-      (false (c-var (- (- lvl 1) j)))          ; one word: the family's variable
+      (false (c-var lvl))                      ; one word: the family's variable
       (true  (arrow-ty d lvl j)))))            ; nested arrow keeps its structure
 ; arrow-ty mirrors shape-eq's recursion over peel-pi-doms / peel-pi-cod /
-; pi-effs and rebuilds the c-pi chain with each non-arrow domain erased. …
+; pi-effs and rebuilds the c-pi chain with each non-arrow domain erased,
+; carrying the extra depth of the binders it introduces. …
 
 (declare erase-doms (-> (List Core) I64 I64 (List Core)))
 (def erase-doms
@@ -357,23 +374,36 @@ copying. Candidate (b) is sketched at the end so the SPEC can price both.
 ; (compile-front.chiral:159-170), and term->ntalty maps the surviving bound
 ; (t-var i) to (nt-word) at :70. tt-word is reached with NO new constructor,
 ; no Core word spelling, and no widened conv, which is the settled level.
-(declare quant-binders (-> I64 Core Core))     ; wrap k binders (0 a_j (type 0))
+; (lvl k body): wrap the remaining k binders, naming from a_{lvl-k}, so the
+; OUTERMOST is a0 and the display above reads left to right.
+(declare quant-binders (-> I64 I64 Core Core))
 (def quant-binders
-  (lam (k body)
+  (lam (lvl k body)
     (case (<=i k 0)
       (true  body)
-      (false (c-pi 0 0 (str-cat "a" (i64->str (- k 1)))
+      (false (c-pi 0 0 (str-cat "a" (i64->str (- lvl k)))
                    (c-type 0)
-                   (quant-binders (- k 1) body))))))
+                   (quant-binders lvl (- k 1) body))))))
 
 (declare apply-ty (-> Str (List Core) Core (List I64) Core))
 (def apply-ty
   (lam (dname doms cod fam-effs)
     (let (k (cc-llen doms))
-      (quant-binders k
+      (quant-binders k k
         (mk-pi (cons (c-tcon dname nil) (erase-doms doms k 0))
                (cons 0 fam-effs)               ; the leading $clo arrow is pure
                cod)))))                        ; cod-key-eq already keeps this honest
+
+; ---- (iii-b) apply-body's binder chain moves with the type -----------------
+; compile-fn strips exactly |params| + |erased| lambdas (lower.chiral:414-416)
+; and returns le-skip "body is not a lambda chain" when the chain is short, so
+; the k new q=0 binders need k new lams. lowspec.chiral:52-55 is the reason: an
+; erased binder KEEPS its lambda position and takes a placeholder register.
+;
+;   (mk-lams (+ (+ 1 d) k) (c-case (c-var d) …))   ; closconv.chiral:1109-1111
+;
+; The scrutinee index d does not move: the new binders sit OUTSIDE the $clo
+; binder, so nothing under it shifts.
 
 ; ---- (iii') candidate (b): state the type at the lowering level ------------
 ; Not writable above, because a Core word spelling is refused by
@@ -384,9 +414,9 @@ copying. Candidate (b) is sketched at the end so the SPEC can price both.
 ; lowspec into one image on every compile.
 ;
 ;   (import "lowering/lowspec")     ; NTalTy / nt-word / NDef
-;   (declare apply-ndef (-> Str (List Core) Core (List I64) NDef))
+;   (declare apply-ndef (-> Str I64 (List Core) Core (List I64) NDef))
 ;   (def apply-ndef
-;     (lam (dname doms cod fam-effs)
+;     (lam (dname i doms cod fam-effs)
 ;       (ndef (apply-name i)
 ;             (cons (nt-data dname nil) (word-params doms))   ; erased -> nt-word
 ;             (cod->ntalty cod) nil (apply-nbody …))))
@@ -395,16 +425,23 @@ copying. Candidate (b) is sketched at the end so the SPEC can price both.
 ```
 
 - **Knobs to modify.**
-  - **Which candidate.** (a) touches `apply-ty`, `mk-pi` and the one call site at
-    `closconv-driver.chiral:175`. (b) touches the bridge and gives `lowspec` a
-    second producer.
+  - **Which candidate.** (a) touches `apply-ty`, `mk-pi`, `apply-body` and the one
+    call site at `closconv-driver.chiral:175`. (b) touches the bridge and gives
+    `lowspec` a second producer.
+  - **`apply-body`'s lambda count under (a).** Not optional and not a knob at all,
+    which is why it is in the snippet: `compile-fn` strips `|params| + |erased|`
+    lambdas (`lower.chiral:414-416`) and a short chain returns `le-skip "body is
+    not a lambda chain"`, so a dispatcher whose type gained `k` erased binders and
+    whose body did not stops lowering. `lowspec.chiral:52-55` states the rule the
+    strip enforces. The measured effect of missing it is not a red row, it is a
+    dispatcher silently absent from the emitted program.
   - **The call sites of `$apply<i>` under (a).** Adding leading `q=0` binders
     changes the global's erased-position vector, and `build-emap`
     (`compile-front.chiral:171-175`) computes that vector from the type, so
     `emap-get` will drop args at the new positions. Either `apply-body` and `rw`
     pass type arguments at those positions, or the emap entry for a synthesized
     dispatcher is built by the pass that synthesized it. This is the one place
-    where (a) stops being a two-function change.
+    where (a) reaches outside `closconv`.
   - **Whether `arrow-ty` erases a nested arrow's own domains.** `shape-eq`
     recurses, so ⟦·⟧ says yes. A first cut may keep nested arrows verbatim and
     take the narrower gate.
@@ -423,8 +460,9 @@ copying. Candidate (b) is sketched at the end so the SPEC can price both.
 
 ## 6. Use / modify notes
 
-- **Lands in:** `lib/lowering/upper/closconv.chiral` (`apply-ty`, `mk-pi`, and a
-  new `dom-ty` / `erase-doms` / `quant-binders`) with its one call site at
+- **Lands in:** `lib/lowering/upper/closconv.chiral` (`apply-ty`, `mk-pi`,
+  `apply-body` under candidate (a), and a new `dom-ty` / `erase-doms` /
+  `quant-binders`) with its one call site at
   `lib/lowering/upper/closconv-driver.chiral:170-177`. Under candidate (b), also
   `lib/lowering/lowspec.chiral` and the bridge in
   `lib/lowering/compile-front.chiral`. All of it is compiler source inside the
@@ -476,8 +514,18 @@ copying. Candidate (b) is sketched at the end so the SPEC can price both.
   1. Candidate (a) or candidate (b). The prior art splits and the decision leaves
      it open; this pre-run's measurement favours (a) on cost, because it adds no
      constructor and reuses `term->ntalty:70` and `ty-kept-doms`, and favours (b)
-     on shape, because it puts the statement at the level the ruling names. The
-     SPEC decides.
+     on shape, because it puts the statement at the level the ruling names. Two
+     things price the fork and neither was in the catalog row. **(a)'s cost is
+     four functions and a call-site question**, not two functions: the binder
+     chain and the emap both move with the type. **And (a) relocates the remaining
+     dishonesty rather than removing it.** `$apply`'s `Core` type becomes a
+     parametric claim its own arms do not honour, since an arm applies a concrete
+     function at a variable-typed argument, and Pottier and Gauthier recover that
+     step with a GADT equation this tree has no machinery for (research §2).
+     Nothing catches it, because `closconv-sig` runs after the typecheck
+     (`compile-front.chiral:342`) and reason 3 of the ruling turns on exactly that.
+     Under (b) the tal type is stated and the `Core` type stops being read. So the
+     fork is where the unchecked statement sits, and the SPEC decides.
   2. Under (a), how `$apply<i>`'s call sites get their type arguments, given that
      `build-emap` derives erased positions from the type and `emap-get` drops args
      at them.
