@@ -22,7 +22,9 @@ updated: 2026-09-04
   lowering from `closconv-sig`'s own output, `tools/test/samples/e186_capture_fields.prog`
   is the family that exercises both halves of the rule, and
   `tools/test/capture-fields.sh` judges four rows and runs four mutants, each of
-  which reddens a named row on a tree that builds.
+  which reddens its named rows on a tree that builds. ⚑ **R2 is the row that
+  separates the two answers, and R4 is not**; §5 measures why, and the SPEC
+  audit's proof that R4 is implied by R2 ∧ R3 on this fixture stands beside it.
 
 - **Non-goals.**
   - **No compiler source changes.** Nothing under `lib/` is edited, so the blob
@@ -88,7 +90,7 @@ design goes to NEEDS-AUTHOR and is surfaced for the author to answer.
 | 1 | Does E186's SPEC produce a change plan, or a ruling and a gate row? | **RESOLVED: both, and neither touches the blob** | The example's own recommendation, taken with one correction. §4 is a change plan whose steps land in `docs/`, `records/`, `prog/` and `tools/test/`, and in no file under `lib/`. `docs/definitions/working-discipline.md:30-38` states the build rule for compiler source; with no compiler source touched there is nothing to build, test and promote, and saying so out loud is what the example asked the SPEC stage for. |
 | 2 | Is the §5(c) predicate worth building before E187 lands? | **RESOLVED: yes, and it is built here** | See the measurement below. This is the decision the EXAMPLE audit routed to this stage. |
 | 3 | What does the gate assert, given that today's tree already meets the non-regression target? | **RESOLVED: the field lowering itself, over a fixture with both halves** | `docs/definitions/working-discipline.md:69-72` names a check aimed at nothing as a gate that cannot fail. §5's four rows read the `$clo0` ctor field types that `datas->n` produced against the source `Term`s `site-fields->term` wrote, and four mutants redden them. |
-| 4 | Which suite phase number does the new gate take? | **DEFERRED to the standing row** in `records/author-calls.md` (*Which suite phase number a new gate takes*) | No new author call is opened. Four documents disagree about 21 through 23 and 8 through 12 stay owed to unported old-tree phases. The gate takes the `crypto.sh` / `tal-check.sh` / `apply-word.sh` route: a `not-a-phase:` header with a reason, which keeps `tools/test/registration.sh` G2 and G4 green. ⚑ **The price, stated:** it becomes the **eighth** `PEND` in that witness and the **fifth** script waiting on one number. |
+| 4 | Which suite phase number does the new gate take? | **DEFERRED to the standing row** in `records/author-calls.md` (*Which suite phase number a new gate takes*) | No new author call is opened. Four documents disagree about 21 through 23 and 8 through 12 stay owed to unported old-tree phases. The gate takes the `crypto.sh` / `tal-check.sh` / `apply-word.sh` route: a `not-a-phase:` header with a reason, which keeps `tools/test/registration.sh` G2 and G4 green. ⚑ **The price, stated, re-measured at HEAD by the SPEC audit 2026-09-04:** `tools/test/registration.sh` reports **7 of 20** scripts outside the dispatch table, so this gate becomes the **eighth** `PEND`. Of those seven, only three wait on the contested *number* (`crypto.sh:6`, `tal-check.sh:11`, `apply-word.sh:5`); the other four declare out for structural reasons. So this gate is the **fourth** script waiting on one number at HEAD. `records/author-calls.md`'s display paragraph reads C1C2's as the fourth, and C1C2's script does not exist yet: whichever of the two lands first takes fourth and the other takes fifth. |
 | 5 | Is the non-regression target vacuous? | **RESOLVED: no, and it certifies nothing E186 adds** | Both halves are true and both belong here. It holds up under `working-discipline.md`'s test: it asserts a partition (`1,482 of 1,484`, two `ret` rejects, none in the `con:` class) that E187 or E188 could genuinely break. It is also met identically under the opposite ruling, so what it grades is E185's repair. ⚑ **Its instrument is absent from the tree.** EN-08's whole-blob probe carries a name-prefixed copy of `check.chiral`, because E154's eleven colliding top-level names forbid importing it beside the compiler; it was built and reverted twice. Committing it is the whole-blob measurement E184 owns. §5 therefore records the target and does not gate on it. |
 | 6 | The stale citations the pre-run found | **RESOLVED for E187's row, DEFERRED as recorded for E185's** | The EXAMPLE audit repaired three spans in E187's catalog and arc rows on the author's direction, verified at HEAD. E185's own catalog and arc rows still point `apply-ty` and its call site at pre-E185 line numbers, fifteen and thirty-one lines low of where `lib/lowering/upper/closconv.chiral:1096-1098` and `lib/lowering/upper/closconv-driver.chiral:206` sit at HEAD. `ledger-lint` check R does not catch that class. Left alone deliberately, and this SPEC does not propagate it. |
 
@@ -202,9 +204,24 @@ table states, so the standing disposition holds without being forced.
 - **Change:** flip E186 to built with its evidence commits and the gate's
   verdict line; INDEX to `implemented`. In `records/author-calls.md`, append to
   the **existing** *Which suite phase number a new gate takes* row's note that
-  E186's gate is the fifth script waiting and the eighth `PEND`, in the shape
-  the display-calculus arc's paragraph already uses. **Do not open a new row.**
+  E186's gate is the eighth `PEND` and its place in the waiting-on-a-number
+  count as decision 4 states it, in the shape the display-calculus arc's
+  paragraph already uses. **Do not open a new row.**
   All rows land in the same change, per the deferral rule.
+  ⚑ **A second row in that file is the one E186 answers, and it was missing
+  from this list** (added by the SPEC audit 2026-09-04). `records/author-calls.md`
+  carries a live blocking row *The `$kI_J` capture constructor's field types*,
+  whose closing clause reads that the call "stays open on its own question:
+  whether the capture constructor's fields should erase too", and
+  `docs/decisions/decision-erased-word-level.md`'s closing sentence — the one
+  Step 1 replaces — points at that row as the holder. Step 1 without this leaves
+  the decision doc ruled and the author's own file open, pointing at each other.
+  Append an **ANSWERED 2026-09-04** note in the row, naming E186 and the decision
+  doc, in the shape the row's own "⚑ **Narrowed and given an element
+  2026-09-04**" clause already uses. `records/` is appended, never rewound.
+  ⚑ **FLAG A in the SPEC audit** asks whether an implementation run may write
+  that note at all, or whether closing a row in the author's own file is the
+  author's edit and E186 ships with the row left standing.
 - **Size:** M.
 
 ⚑ **Nothing in this plan touches `lib/` or `prog/compiler.prog`.** No
@@ -236,14 +253,20 @@ source in the change. Pathspec every commit.
 - **Baseline → expected.** Base verdict `ok ok ok ok`. Measured 2026-09-04 on
   the scratch probe at HEAD, on the fixture of Step 3.
 
-- **The four mutants, each measured to run and to redden the row it claims.**
-  Every needle below was counted at **exactly 1** occurrence at HEAD, every
-  mutated tree built its probe under `bin/chirality-bin`, and every probe ran.
-  None scores `nobuild`.
+- **The four mutants.** What was **measured** 2026-09-04: every needle below was
+  counted at **exactly 1** occurrence at HEAD, every mutated tree built its probe
+  under `bin/chirality-bin`, every probe ran, and each printed the `src`/`low`
+  detail the notes below quote. None scores `nobuild`. What is **derived** from
+  that detail: the pinned four-token lines, because the four rows and
+  `tools/test/capture-fields.sh` do not exist yet, so no row has been observed
+  red. The implementer re-measures every pin against the rows as built and
+  corrects this table from the run rather than reproducing it.
+  ⚑ **The audit corrected M1's pin from that detail** (2026-09-04); see the note
+  below the table.
 
   | mutant | substitution | pinned line | reddens |
   |---|---|---|---|
-  | **M1** | `closconv-driver.chiral`, `site-fields->term`: `(str-cat "cap" (i64->str n)) (core->term fty)` → `… (t-var 0)`. Every kept field is spelled as an erased variable, which is the opposite ruling as closely as `Core` can express it | `ok bad ok ok` | **R2** |
+  | **M1** | `closconv-driver.chiral`, `site-fields->term`: `(str-cat "cap" (i64->str n)) (core->term fty)` → `… (t-var 0)`. Every kept field is spelled as an erased variable, which is the opposite ruling as closely as `Core` can express it | `ok bad bad ok` | **R2**, **R3** |
   | **M2** | `compile-front.chiral`, `term->ntalty`: `(str-eq n "I64") (true (some (nt-i64)))` → `… (true (some (nt-word)))`. A ground source spelling lowers to the word | `ok bad ok bad` | **R2**, **R4** |
   | **M3** | `compile-front.chiral`, `term->ntalty`: `((t-pi _ _ _ _) (some (nt-word)))` → `((t-pi _ _ _ _) (some (nt-i64)))`. The word is no longer reached where the source has no ground spelling | `ok ok bad ok` | **R3** |
   | **M4** | `compile-front.chiral`, `term->ntalty`: the whole `t-tcon` arm → `((t-tcon dn args) (none))`. `field-tys->n` fails, `datas->n` drops `$clo0`, the subject never arrives | `bad absent absent absent` | **R1** |
@@ -252,9 +275,38 @@ source in the change. Pathspec every commit.
   Under M1 the probe reads `src: t-var:0 t-var:0` against `low: nt-word nt-word`
   and `ctor-honest?` returns **true**: the predicate compares a field's lowering
   against the field's own declared `Term`, so a driver that replaces the source
-  type with a variable is consistent with itself and invisible to R4. R2 pins the
-  lowered types against the fixture's declared captures and catches it. Stating
-  this is the point: R4 alone does not separate `concrete` from `word`.
+  type with a variable is consistent with itself and invisible to R4. R2 catches
+  it, against the two lowered types this driver holds as constants. Stating this
+  is the point: R4 alone does not separate `concrete` from `word`.
+
+  ⚑ **M1's pin was `ok bad ok ok` and it is wrong; the audit corrected it to
+  `ok bad bad ok`** (2026-09-04, from the SPEC's own quoted detail). R3 asserts
+  two things about the one-field ctor, that its lowering is `nt-word` **and that
+  its source `Term` is `t-pi`. M1 rewrites every kept field's source `Term` to
+  `(t-var 0)`, the arrow capture with the rest, so R3's second conjunct is false
+  under M1 and R3 reddens beside R2. A mutant reddening a row outside its own pin
+  is [[records/gate-audit]] GA-22's exact shape, which is why the whole line is
+  pinned. R2 stays M1's headline row; the attribution column now names both.
+
+  ⚑ **R4 is implied by R2 ∧ R3 on this fixture, and no mutant reddens it alone.**
+  Proof over the fixture's three ctors. `$k0_0` has no fields, so `ctor-honest?`
+  holds on it vacuously. `$k0_2` is pinned whole by R2 at `nt-i64` and
+  `(nt-data "List" ((nt-str)))`, neither of which is the word, so R4's clause
+  holds on both its fields whenever R2 holds. `$k0_1` is pinned whole by R3 at
+  `nt-word` with source `t-pi`, which has no ground spelling, so R4's clause
+  holds on it whenever R3 holds. Every field of every `$clo0` ctor is therefore
+  golden-pinned by R2 or R3, and **R4 cannot go red while both are green**. The
+  mutant table shows it: M1 reddens R2 and R3, M2 reddens R2 and R4, M3 reddens
+  R3, M4 reddens R1, and R4 is the sole red in none of them. R4 adds no
+  falsifying power over today's fixture. What it adds is **growth**: it is the
+  only row quantified over every `$clo` ctor rather than pinned to a named one,
+  so a later site added to the fixture, or a third erasing arm in `term->ntalty`,
+  is caught by R4 without a new golden. Shipped as it stands, R4 is a row nothing
+  can redden while the gate is green, which is the shape
+  `docs/definitions/working-discipline.md` names and
+  [[records/gate-audit]] GA-19 convicts. ⚑ **FLAG B in the SPEC audit** asks
+  whether to spend a fourth fixture site, capturing a ground type that no golden
+  pins, so that a fifth mutant can redden R4 and nothing else.
 
   ⚑ **No row reads `ck-prog`.** EN-20 measured a live miscompile that `ck-prog`
   accepts in silence whenever the family codomain is ground, so nothing here
@@ -292,6 +344,20 @@ source in the change. Pathspec every commit.
     `peel-def` and `peel-globals`. Carrying it to `datas->n` is one job with one
     shape. **Home: [[E187]]**, whose row already names it as its `$clo<i>` half
     in those words.
+  - **A quantified row over `site-fields->term`, the ruling's own producer.**
+    Found by the SPEC audit 2026-09-04. E186 rules on what `site-fields->term`
+    writes, and the gate's only assertion over it is R2, a golden holding two
+    lowered types as constants in the driver. `ctor-honest?` cannot supply the
+    quantified form, because it reads each field's lowering against that field's
+    **own** declared `Term`, both of which `site-fields->term` wrote: it is
+    `term->ntalty`'s honesty, and it is self-consistent under any rewriting of
+    the source type, which is what M1 measures. The quantified statement — every
+    kept capture's declared field `Term` is the capture's own source type — needs
+    the pre-`closconv` `Csite` capture list beside the emitted `Field`, and the
+    probe reads only the `CCOut`. **Home: [[E187]]**, which rewrites
+    `site-fields->term`'s side of the channel and holds both sides at once. That
+    is the example's open question 2 recommendation, declined here for
+    `ctor-honest?` and taken here for this.
   - **`no-ground-spelling?`'s exact preimage.** Two arms plus the `t-refine`
     recursion are the honest reading of what the compiler's own fields hold
     today. A future shard that adds a third erasing arm to `term->ntalty` has to
