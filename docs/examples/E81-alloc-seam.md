@@ -27,8 +27,11 @@ updated: 2026-08-09
 > the *selection*, and the *byte-identity* contract. **Live-tree note (audit
 > 2026-08-09):** the caller side of the rename is already committed
 > (`emit-x64.chiral:24,27,33` reference `alloc-fixed-trap` since `be3df92`; the
-> tests expect all four new names since `f2632c1`) while `alloc.chiral:43` still
+> tests expect all four new names since `f2632c1`) while `alloc.chiral` line 43 still
 > defines `alloc-bump` — the def-side landing below is what closes that gap.
+> **2026-09-04, citation repair:** that gap is closed. `alloc-bump` is gone from the tree
+> (`grep -rn alloc-bump lib prog` returns nothing) and `alloc.chiral` is now the 35-line
+> `Alloc` seam with its five accessors, so line 43 has no live successor.
 
 ## 1. Scope
 
@@ -344,7 +347,7 @@ only *names* and *selects* them; it does not redesign the sequences.
   assembly site, consumed by `compile-emit.chiral:153` for the ELF path and by the
   py `NativeBackend` `DISCIPLINES` table for the JIT/tests) already reference
   `alloc-fixed-trap` (`be3df92`), and the tests expect all four new names
-  (`f2632c1`), while `alloc.chiral:43` still defines `alloc-bump`; today all three
+  (`f2632c1`), while `alloc.chiral` line 43 still defined `alloc-bump`; today all three
   wrappers pin ONE discipline for every floor, so the per-floor split is part of
   this landing (open question 3 pins the exact wiring). `x-galo`/`x-gbnw`
   (lambda-wrapped per E91 SPEC decision #7) and the `"arena-grow"` stub body are
