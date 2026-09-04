@@ -272,11 +272,12 @@ audited: 2026-08-31
     (`render.chiral`, `apc.chiral`, `scriba-runview-test.prog`,
     `scriba-runview-stream-test.prog`, `t6_apc_roundtrip.prog:82`); and
     **exactly 1 file has an exhaustive case that breaks** — `render.chiral`,
-    **twice**, at `:223` and `:424`, 8 arms each. All three `.prog` matchers go
+    **twice**, in `diff-node` at `render.chiral:263` and `render-to-ansi` at `:718`, 8 arms each. All three `.prog` matchers go
     through `(_ …)`. `apc.chiral` is the already-broken one. The catalog's
-    *"12 files case over it"* (`:438`, `LEDGER.md:293`) is a count of
+    *"12 files case over it"* (`catalog.md:487`, `ledger.md:309`) is a count of
     constructor-naming files other than `render.chiral` — a different and much
     larger set.
+   - 2026-09-04, citation repair: `render.chiral` has grown to 790 lines since this baseline was measured, and E174 has since shipped. Every coordinate repointed here was read in the live file; the arm counts and the red/green readings above are the measurement as taken and are not restated.
   - **Name census, run tree-wide with `grep -R` (not `-r` — symlinks).** All
     seventeen names E174 introduces — `r-row`, `rnd-cols`, `rnd-cols-sum`,
     `rnd-cols-max`, `rnd-hdr-cols`, `rnd-row-cells`, `str-cols`, `cp-count`,
@@ -315,7 +316,7 @@ with its blast radius.
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
 | 1 | Does `render-section` get its `ansi-goto` inside E174? | **BINDING — YES, inside E174. Author decision, `ea218aa`** | One line at `render.chiral:385`, wrapping `(put ansi-bold)` in `(let ((_ (put (ansi-goto row col)))) …)`. Measured (§2): `render-section` takes `row`/`col` and **never reads either to position itself** (it reads `col` exactly once, at `:392`, only to indent the body); `:356`, `:439`, `:455`, `:465` all position themselves, so it is the single outlier and the fix **removes** a special case. Without it, `r-row`'s whole contract — child *n* draws at `col + Σ widths` — is void for an `r-section` child no matter what `rnd-cols` returns, and §5's agreement row would be **unsatisfiable for one constructor**: a gate row that cannot fail. **It carries its own gate row** (§5 **G5**): a section rendered first-on-row must land exactly where it lands today, proving the fix is a no-op in the only configuration the tree currently produces. The screen map to pin is measured and printed in §5. |
-| 2 | SGR escapes inside `r-text`'s `Str`? | **BINDING — REFUSED** | A `Str` carrying which-of-N presentation structure is the precise flattening defect E157 and E158 exist to remove (`pattern-boundary-sums`), and it would make `Rendering` unsafe to re-render to any non-ANSI medium — including `apc.chiral`'s codec, which transports the value itself. The alternative, **restricting `doc->rendering`'s contract** to single-segment lines, was **measured dead on E158's own first consumer** (`dg-doc`'s `r-redeclared` arm puts a tagged head, a space and a tagged site on one line at any width where the group fits). **Horizontal composition wins by elimination, not preference.** Both are already on the catalog row (`:438`); nothing below re-argues either. |
+| 2 | SGR escapes inside `r-text`'s `Str`? | **BINDING — REFUSED** | A `Str` carrying which-of-N presentation structure is the precise flattening defect E157 and E158 exist to remove (`pattern-boundary-sums`), and it would make `Rendering` unsafe to re-render to any non-ANSI medium — including `apc.chiral`'s codec, which transports the value itself. The alternative, **restricting `doc->rendering`'s contract** to single-segment lines, was **measured dead on E158's own first consumer** (`dg-doc`'s `r-redeclared` arm puts a tagged head, a space and a tagged site on one line at any width where the group fits). **Horizontal composition wins by elimination, not preference.** Both are already on the catalog row (`catalog.md:487`); nothing below re-argues either. |
 | 3 | Is E175 absorbed into E174? | **BINDING — NO, and the independence is a proof, not a scoping note** | SGR bytes are **non-printing**, so `rnd-cols`'s `r-face` arm is `(rnd-cols body)` under both today's `ansi-reset` and E175's restore: **`rnd-cols` is provably invariant under E175**. E174 is missing **layout**; E175 is non-nesting **SGR state** (`LEDGER.md:294`, minted). Folding them would conflate two failures with one symptom. §5's screen model ignores `ESC[…m` and **mutant M3** (`face-costs-a-column`) makes the zero-width claim a row that can fail. Order: E174, then E175; E158's G8 grades the pair. |
 | 4 | Does `r-row` carry a separator? | **BINDING — NO. Bare juxtaposition** | The two existing horizontal placers each bake a spacing constant in — `+2` at `:360`, `+16` at `:368` — and the measured consequence is one `r-table` value with two column layouts. A combinator with a baked-in gap cannot express "no gap", which is exactly what a `d-cat` of two adjacent tagged spans needs; a caller who wants a gap writes one more child, `(r-text " " false)`. One constructor, one meaning. |
 | 5 | What does `r-row` do with a multi-row child (example q3)? | **RESOLVED — option (i), allow it, and SAY SO. Was parked; it is decidable** | `rnd-cols` of an `r-lines` is `max`, which is the only defensible number, and `render-row` as written in the example's §5 **already** does (i) with no extra line: each child draws where it wants and `col` advances by the max. Option (iii), refuse it, needs a check `Rendering` has nowhere to put. So the question collapses to **(i) plus one sentence of doc**, and the sentence is the deliverable: `r-row`'s header comment states that a stacked child makes the row occupy several rows, and that this is allowed rather than accidental. A silently-2-D combinator is a surprise; a documented one is a feature. |
@@ -670,7 +671,7 @@ byte-identity row (E157 and E158 own those, and G7 is what keeps them out).
     **is** already red at `lib/protocol/apc.chiral` with `load: non-exhaustive
     case`, and `render.chiral` **is** green · **17** import, **13** name a
     constructor, **5** case, **exactly 1** with an exhaustive case that breaks,
-    twice (`:223`, `:424`, 8 arms each) · all three `.prog` matchers go through
+    twice (`diff-node` at `render.chiral:263`, `render-to-ansi` at `:718`, 8 arms each) · all three `.prog` matchers go through
     `(_ …)` · `t5_vt_parser` is red via `vt-parser.chiral:4` and `t5_utf8` is red
     for an unrelated reason — it carries **no imports at all** (`unknown name
     Unit`; `Unit` lives at `lib/prelude/prelude.chiral:17`) · **no width function exists
@@ -744,7 +745,7 @@ byte-identity row (E157 and E158 own those, and G7 is what keeps them out).
     deferred: there is no row and this SPEC does not mint one.
   - **Moving `str-cols` to `prelude/string`** — a one-line move the day a second
     consumer appears (decision 11). Not an element.
-  - **`r-hole`'s dead `(put "")`** (`:468`) — real, inert, not this element.
+  - **`r-hole`'s dead `(put "")`** (`render.chiral:766`) — real, inert, not this element.
 
 - **Follow-on consumers, in order:** **E158 commit 4** (`doc->rendering`) is the
   forcing consumer and is gated on E174 **and** E175. Behind it,
