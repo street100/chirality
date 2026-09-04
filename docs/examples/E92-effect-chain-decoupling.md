@@ -190,7 +190,7 @@ forward-declared so the helper can reference it.
 
 ## 5. Chirality example (fleshed)
 
-The before/after as it lives in `scaffold/lib/scriba/command-loop.chiral`.
+The before/after as it lives in `prog/scriba/command-loop.chiral`.
 
 **Before (fails B1)** — all dispatch logic inline in `command-loop-inner`,
 pushing past the ~3-effectful-op threshold:
@@ -343,7 +343,7 @@ The inline dispatch is extracted into `try-dispatch`, defined BEFORE
 
 ## 6. Use / modify notes
 
-- **Lands in:** `scaffold/lib/scriba/command-loop.chiral` — lines 99–160
+- **Lands in:** `prog/scriba/command-loop.chiral` — lines 99–160
   contain the inline `try-dispatch` helper, the forward `declare` of
   `command-loop-inner`, and the decoupled inner loop. The outer
   `command-loop` entry point is lines 87–97.
@@ -381,7 +381,7 @@ The inline dispatch is extracted into `try-dispatch`, defined BEFORE
     `command-loop-inner`. A `beep-and-loop` helper could reduce the
     effectful-op count per branch, but each branch already has ≤1
     direct effectful call — no pressure to refactor yet.
-- **Related:** [[E92-effect-chain-decoupling]] · `scaffold/lib/scriba/command-loop.chiral` ·
-  `scaffold/lib/scriba/dispatch.chiral` (blocked reference) ·
-  `docs/decision-effect-facets.md` · `scaffold/lib/compile-back.chiral` (forward-ref mechanism) ·
-  `scaffold/lib/lower.chiral` (blocking `sig-assoc` pass)
+- **Related:** [[E92-effect-chain-decoupling]] · `prog/scriba/command-loop.chiral` ·
+  `prog/scriba/dispatch.chiral` (blocked reference) ·
+  `docs/decision-effect-facets.md` · `lib/lowering/compile-back.chiral` (forward-ref mechanism) ·
+  `lib/lowering/upper/lower.chiral` (blocking `sig-assoc` pass)

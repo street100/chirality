@@ -39,8 +39,8 @@ updated: 2026-08-23
 ## 2. Research
 
 - **Reference class:** `OURS` — the port source is our own tree, read directly:
-  `scaffold/lib/row-infer.chiral:93–109`, `scaffold/lib/collections.chiral:162,397`,
-  `scaffold/tests/samples/e152_list_sort.chiral`, plus the two sibling fused
+  `lib/typing/row-infer.chiral:93–109`, `lib/prelude/ord.chiral:14`, `lib/prelude/list.chiral:143`,
+  `tools/test/samples/e152_list_sort.prog`, plus the two sibling fused
   sort/dedup sites found while scoping (`closconv.chiral:39`, `compile-back.chiral:116`).
 
 **Load-bearing findings.**
@@ -57,7 +57,7 @@ updated: 2026-08-23
 
 2. **`list-sort` is stable, and the E152 suite already proves stability is
    observable through a non-injective comparator.**
-   `scaffold/tests/samples/e152_list_sort.chiral:151` sorts `(Pair I64 Str)` by key
+   `tools/test/samples/e152_list_sort.prog:151` sorts `(Pair I64 Str)` by key
    alone and asserts the tag order `"b,d,a,c,e"` — equal keys, distinguishable
    payloads, input order preserved. So for a comparator whose `(eq)` does *not*
    imply value equality, first-vs-last is a genuinely different answer. The choice
@@ -154,7 +154,7 @@ v.erase(std::unique(v.begin(), v.end()), v.end());  // keeps the head of each ru
 ## 5. Chirality example (fleshed)
 
 ```chirality
-; ================= scaffold/lib/collections.chiral — beside list-sort (E152)
+; ================= lib/prelude/list.chiral — beside list-sort (E152)
 
 ; list-dedup-adj: drop every element that is (eq) to its IMMEDIATE PREDECESSOR.
 ; Binder order matches list-sort exactly -- (0 A) type, comparator, list -- so the
@@ -188,7 +188,7 @@ v.erase(std::unique(v.begin(), v.end()), v.end());  // keeps the head of each ru
           ((lt) (cons y (dd-skip A cmp y r)))          ; new run opens at y
           ((gt) (cons y (dd-skip A cmp y r))))))))     ; unsorted input: same move
 
-; ================= scaffold/lib/row-infer.chiral — replacing :93-109
+; ================= lib/typing/row-infer.chiral — replacing :93-109
 
 (import "collections")   ; list-sort (E152), list-dedup-adj (E156), Ord
 ; str-cmp is ALREADY the canonical one: E151b (built 2026-08-22) retired this file's

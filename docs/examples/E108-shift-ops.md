@@ -141,7 +141,7 @@ After E108, keyed by bit index instead of a power-of-two mask:
 
 ## 6. Use / modify notes
 
-- **Lands in:** `scaffold/lib/prelude.chiral` (two `(extern …)` lines beside `shl`
+- **Lands in:** `lib/prelude/prelude.chiral` (two `(extern …)` lines beside `shl`
   at `:59`). No other file changes — verify (do not re-add) the existing
   `impl_pure.py:66-67`, `native.py:63/70`, `optimize.py:705`,
   `tal-erase.chiral:101-102`, `mach-x64.chiral:321/323` entries.

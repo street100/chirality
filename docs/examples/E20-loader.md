@@ -43,7 +43,7 @@ updated: 2026-09-03
 - **Reference class:** SPEC — the `mmap(2)` / `mprotect(2)` Linux ABI, plus the
   standard JIT-loader shape (IMPL, clean-room: describe the move, copy no code).
   Grounded against our own `native.py` baseline and the already-built
-  `lib/sys-tal.chiral` crossings.
+  `lib/lowering/tal/sys.chiral` crossings.
 - **Key findings:**
   - The W^X loader move is three syscalls in order: `mmap(NULL, len,
     PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)` -> write the code ->

@@ -189,9 +189,9 @@ def connect_in(host, port):
 
 - **Lands in:** surface extern `sock-connect-in` plus the pure surface
   `parse-quad`/`pack-sa-in` and the `nb-sock-connect-in` wrapper in
-  `scaffold/lib/ports.chiral`; the `nb-sock-connect-in-t` TAL body plus its
-  `sys-lib` entry in `scaffold/lib/sys-tal.chiral`; a `sock-connect-in ->
-  nb-sock-connect-in` row in `scaffold/lib/crossing-wraps.chiral`. No new
+  `lib/ports/ports.chiral`; the `nb-sock-connect-in-t` TAL body plus its
+  `sys-lib` entry in `lib/lowering/tal/sys.chiral`; a `sock-connect-in ->
+  nb-sock-connect-in` row in `lib/lowering/tal/crossing-wraps.chiral`. No new
   syscall numbers: 41/42 already registered in `target-linux.chiral`.
 - **Conformance target:** CPython `socket.socket(AF_INET,
   SOCK_STREAM).connect(("100.64.0.5", 11434))` reachability is the oracle.

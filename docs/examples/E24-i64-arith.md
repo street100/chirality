@@ -33,8 +33,8 @@ updated: 2026-07-12
   algorithm to invent. Sources reviewed: `scaffold/chirality/impl_pure.py`
   (`wrap64`/`i64_div`/`i64_mod`, lines 19–75); the pinned semantics comment
   (lines 11–17); `docs/floor-agreement.md` "Worked example: division" (§73–83)
-  and its collapse/validate/fuzz gradient (§55–71); `scaffold/lib/prelude.chiral`
-  (the `extern + - * / %` typed face, lines 21–30); `scaffold/lib/mem-linear.chiral`
+  and its collapse/validate/fuzz gradient (§55–71); `lib/prelude/prelude.chiral`
+  (the `extern + - * / %` typed face, lines 21–30); `lib/memory/mem-linear.chiral`
   (real `(refine I64 …)` surface syntax, line 27).
 - **Key findings:**
   1. **Two decisions are load-bearing** (impl_pure.py:14–17): `I64` is

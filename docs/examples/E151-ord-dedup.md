@@ -9,7 +9,7 @@ status: drafted
 updated: 2026-08-22
 ---
 
-# E151 — **Give string comparison an owner** — the `string` module owns canonical `str-cmp : (-> Str Str Ord)`, `str-lower`/`str-upper`, `str-trim`, `str-replace`, `str-pad`, homed in `scaffold/lib/string-utils.chiral`. Deliverable INCLUDES retiring the duplicates.
+# E151 — **Give string comparison an owner** — the `string` module owns canonical `str-cmp : (-> Str Str Ord)`, `str-lower`/`str-upper`, `str-trim`, `str-replace`, `str-pad`, homed in `lib/prelude/string.chiral`. Deliverable INCLUDES retiring the duplicates.
 
 > One worked example, produced by the `worked-example` pre-run. Conventional
 > approach vs the chirality idea, ending in a clear-cut snippet to copy and modify.
@@ -61,7 +61,7 @@ updated: 2026-08-22
   **What consolidation does and does not buy.** It does *not* turn divergence into
   a syntax error — the opposite is true today: adding `(import "string-utils")` to a
   module that already defines `str-cmp` **double-defines the name in a combined leaf
-  blob** (`scaffold/lib/manas/core/match.chiral:15-18`, a shipped SPEC decision — the
+  blob** (`prog/manas/core/match.chiral:15-18`, a shipped SPEC decision — the
   same note also records that `string-utils`' `str-contains` takes its arguments in
   the reverse order, `(needle s)` vs `(haystack needle)`; the *other* ad-hoc copy of
   that name, `TUI/scriba/help.chiral:198`, takes `(haystack needle)` as well — so
@@ -229,7 +229,7 @@ form below was assembled into a blob and run through `./scaffold/build/B1`
 
 ```chirality
 ; ═══════════════════════════════════════════════════════════════════════════
-; BEFORE — scaffold/lib/ty-cmp.chiral:16-34, four defs nothing else may share
+; BEFORE — lib/typing/ty-cmp.chiral:16-34, four defs nothing else may share
 ; ═══════════════════════════════════════════════════════════════════════════
 (import "data")            ; the Ty ADT + prelude bytes ops
 
@@ -306,10 +306,10 @@ exit 0.
 
 ## 6. Use / modify notes
 
-- **Lands in:** `scaffold/lib/ty-cmp.chiral`, `scaffold/lib/row-infer.chiral`,
-  `scaffold/lib/asm-reloc.chiral`, `scaffold/lib/compile-back.chiral` — deletions
+- **Lands in:** `lib/typing/ty-cmp.chiral`, `lib/typing/row-infer.chiral`,
+  `lib/lowering/mach/asm-reloc.chiral`, `lib/lowering/compile-back.chiral` — deletions
   plus one `(import "string-utils")` each. Nothing is added to
-  `scaffold/lib/string-utils.chiral` except `str-pad`, if E151b takes it.
+  `lib/prelude/string.chiral` except `str-pad`, if E151b takes it.
   `tools/ledger-lint/ledger-lint.py`'s `OWNERSHIP_BASELINE` is lowered in the same change.
 
 - **Conformance target:** three gates, all already runnable.

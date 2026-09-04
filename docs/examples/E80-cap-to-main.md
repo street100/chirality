@@ -23,7 +23,7 @@ updated: 2026-08-02
   has a **named, typed root** instead of leaking in ambiently.
 - **Kind:** BUILD-PROPER. The cap side is *half built*: `Clock`/`Timer`/`Env`
   porttypes and their cap-gated ops (`time-mono`/`sleep-ms`/`env-view`, which
-  thread the cap back via RecvR) already exist (`lib/ports.chiral`). What is
+  thread the cap back via RecvR) already exist (`lib/ports/ports.chiral`). What is
   **missing is the source of a cap** — `main` is `(=> Unit Unit)` and holds
   nothing, so `env-view` is *uncallable from a real program*, and `print` /
   `env-get` stay ambient (`ports.chiral:92,95` flags `env-get` inline as "AMBIENT
@@ -41,7 +41,10 @@ updated: 2026-08-02
   `docs/decision-effect-facets.md` (the recorded direction: caps "handed to
   `main` by the profile the way `spawn` already hands `node-main` its peer
   port"), `docs/banks/capability.md`, and the built `spawn`→`node-main`
-  precedent (`lib/ports.chiral:88`, `demo/node-render.chiral:72,87`).
+  precedent (`prog/demo/duo.chiral:17`, `prog/demo/node-render.chiral:72,87`).
+  2026-09-04: the `spawn : (=> Str Sock)` extern this cited at line 88 of the
+  pre-split port floor is declared nowhere in the live tree, so the call site is
+  the only verified referent left.
 - **Key findings:**
   1. **The precedent is already in the tree.** `spawn : (=> Str Sock)` mints a
      peer; the child `node-main : (=> (1 peer Sock) Unit)` receives it linearly;

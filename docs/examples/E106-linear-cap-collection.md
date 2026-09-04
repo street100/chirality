@@ -54,7 +54,7 @@ updated: 2026-08-11
     which instantiates each field type under the concrete type-args.
 
   Probes (blob = `prelude` + `ports` + `collections` + probe, compiled by
-  `scaffold/build/B1`):
+  `bin/chirality-bin`):
 
   | Probe | B1 result (verbatim) |
   |---|---|

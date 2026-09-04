@@ -219,9 +219,9 @@ class Reader:
 
 ## 6. Use / modify notes
 
-- **Lands in:** `scaffold/lib/sexp.chiral` (replace `read-form`/`read-list`
+- **Lands in:** `lib/surface/sexp.chiral` (replace `read-form`/`read-list`
   with `read-form*`/`read-list*`, add `pos-line`/`pos-col`/`fmt-pos` helpers).
-  `scaffold/lib/parse.chiral` (enhance `load-source` to include position in
+  `lib/surface/parse.chiral` (enhance `load-source` to include position in
   sexp-level errors; optionally enhance surface parse errors).
 - **Conformance target:** The existing `chirality test` + `chirality test-native` must
   pass unchanged — all existing parse paths must produce identical ASTs.

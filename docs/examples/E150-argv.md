@@ -402,10 +402,12 @@ as `./argv.elf alpha "beta gamma"`, printed its own path, `alpha`, and
   have theirs (`crossing-wraps.chiral:19-21`; `target-linux.chiral:13/15/37`).
   Verified by construction: §5 was compiled by the *committed* `B1` with
   `scaffold/` untouched.
-- `scaffold/lib/ports.chiral` — needed **only under substrate (b)**: the
-  `argv-raw` extern goes in the `; ---- process` block beside `read`/`write-fd`
-  (`:135-146`), with `ArgvR` declared before it (the loaders are single-pass —
-  `ports.chiral:185` states the rule).
+- `lib/ports/process.port` — needed **only under substrate (b)**: the
+  `argv-raw` extern goes in the process registry (`:13-18`), with `ArgvR`
+  declared before it (the loaders are single-pass). 2026-09-04: `read` and
+  `write-fd` moved to `lib/ports/fd.port` when the floor split into nine
+  registries, so "beside `read`/`write-fd`" names two files now, and the
+  single-pass rule this cited at line 185 of the pre-split floor has no live line.
 - Under substrate (b), the four-place crossing recipe applies:
   `sys-tal.chiral` (the `nb-*` TIFn) → `target-linux.chiral` (the `sys-row`
   number) → `crossing-wraps.chiral` (the surface-name → wrapper row) →
@@ -418,7 +420,7 @@ compile a program whose `compile-main` is the §5 spine, run it as
 `./out alpha "beta gamma"`, and require stdout `./out\nalpha\nbeta gamma\n` with
 exit status `3`. This exact run is the evidence behind this example
 (reproduced at audit: `chirality_blob scaffold/lib prelude` + the §5 block →
-`scaffold/build/B1 < blob > argv.elf` → `./argv.elf alpha "beta gamma"` printed
+`bin/chirality-bin < blob > argv.elf` → `./argv.elf alpha "beta gamma"` printed
 `./argv.elf` / `alpha` / `beta gamma` and exited `3`; with no arguments it
 exited `1`).
 

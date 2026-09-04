@@ -170,7 +170,7 @@ label is emitted.
 
 ## 6. Use / modify notes — **SIZE VERDICT**
 
-- **Lands in:** `scaffold/lib/compile-front.chiral` (`term->ntalty`, the primary
+- **Lands in:** `lib/lowering/compile-front.chiral` (`term->ntalty`, the primary
   and possibly ONLY functional site). NOT `tal-erase.chiral`/`compile-back.chiral`
   as the catalog row assumed — the carrier is decided at the front peel; once a
   porttype is `nt-i64`, erase/SSA/emit are untouched. This is the key sizing

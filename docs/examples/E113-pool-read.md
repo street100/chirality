@@ -193,11 +193,11 @@ resources are threaded through `case` (the `mem-region.chiral` idiom) — **not*
 
 ## 6. Use / modify notes
 
-- **Lands in:** the `pool-read` extern + `PoolReadR` in `scaffold/lib/ports.chiral`
+- **Lands in:** the `pool-read` extern + `PoolReadR` in `lib/ports/ports.chiral`
   (beside `pool-write`); the host binding as `@impl("pool-read")` in
   `scaffold/chirality/impl_ports.py` (a `mm[off:off+len]` slice, bounds-checked against
   the tuple `size` exactly as `_poolwrite`); and a `Region`-level reader in
-  `scaffold/lib/mem-region.chiral` for E111 to call.
+  `lib/memory/mem-region.chiral` for E111 to call.
 - **Conformance target:** a write-then-read round trip returns the bytes written
   (`pool-read(pool-write(p, off, bs), off, |bs|) == bs`), threads the same `(Pool n)`
   onward, and returns `pread-oob` (not a halt, not garbage) for an offset+len past

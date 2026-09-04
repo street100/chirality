@@ -154,7 +154,7 @@ The clear-cut example — real chirality surface syntax, copy-and-modify ready.
 ```chirality
 ; E94 — capacity-bounded loader. The Sig becomes an append-only builder that
 ; survives across multiple load-source calls, each within a Cap bound.
-; Lands in: scaffold/lib/loader.chiral or a new scaffold/lib/load-batch.chiral.
+; Lands in: lib/module/loader.chiral or a new lib/module/load-batch.chiral.
 
 (import "prelude")
 (import "kernel")     ; Sig, Term, DataDecl, LoadR, empty-sig, load-def, load-data
@@ -297,14 +297,14 @@ The clear-cut example — real chirality surface syntax, copy-and-modify ready.
 
 ## 6. Use / modify notes
 
-- **Lands in:** `scaffold/lib/load-batch.chiral` (new file) plus a small
-  patch to `scaffold/lib/compile-front.chiral` to call `load-source-batched`
+- **Lands in:** `lib/module/load-batch.chiral` (new file) plus a small
+  patch to `lib/lowering/compile-front.chiral` to call `load-source-batched`
   instead of `load-source`.
 - **Conformance target:** The scriba blob compiled through B1 with all 5
   linkage files appended (`crossing-wraps.chiral`, `sys-check.chiral`,
   `target-linux.chiral`, `sys-tal.chiral`, `sys-linkage.chiral`) produces a
   runnable ELF that passes the 5 gate tests in
-  `scaffold/lib/scriba/scriba-test-b1.chiral`. No regression in the
+  `prog/scriba/scriba-test-b1.prog`. No regression in the
   existing 708 compiler tests.
 - **Open questions:**
   1. What is the actual native stack ceiling in B1's codegen? Need a

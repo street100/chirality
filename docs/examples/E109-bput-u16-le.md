@@ -149,8 +149,8 @@ in beside `bput-u8`; the only deltas from the u32 writer are `pack-u16` and the
 
 ## 6. Use / modify notes
 
-- **Lands in:** `scaffold/lib/bytes-tal.chiral`, a single new surface `def`
-  immediately after `bput-u8` (`:557`), mirroring `bput-u32-le` (`:543`).
+- **Lands in:** `lib/lowering/tal/bytes.chiral`, a single new surface `def`
+  immediately after `bput-u8` (`:610`), mirroring `bput-u32-le` (`:596`).
   One-home change — no new module, no import churn.
 - **Conformance target:** for any `cell`, `off`, and `val` in `[0, 65535]`,
   `(bget-u16-le (bput-u16-le cell off val) off)` = `val`, and `bput-u16-le`

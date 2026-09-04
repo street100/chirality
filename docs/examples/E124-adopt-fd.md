@@ -35,10 +35,10 @@ updated: 2026-08-12
 
 ## 2. Research
 
-- **Reference class:** OURS — `scaffold/lib/ports.chiral` (the `porttype`/`extern`
+- **Reference class:** OURS — `lib/ports/ports.chiral` (the `porttype`/`extern`
   floor: `Fd` at :14, `fd-close` at :80, the `sock-connect`/`open-rw` acquisition
-  precedents), `scaffold/lib/compile-front.chiral:27-43` (E123: `porttype-word?` →
-  `term->ntalty` peels `Fd` to `nt-i64`), `scaffold/lib/crossing-wraps.chiral:36-38`
+  precedents), `lib/lowering/compile-front.chiral:27-43` (E123: `porttype-word?` →
+  `term->ntalty` peels `Fd` to `nt-i64`), `lib/lowering/tal/crossing-wraps.chiral:36-38`
   (the E107 `fd-close`/`sock-close`/`lsock-close → nb-sys-close` release rows). The
   external framing is POSIX/Rust raw-fd ownership.
 - **Key findings:**
@@ -171,10 +171,10 @@ let file: File = unsafe { File::from_raw_fd(raw) };
 
 ## 6. Use / modify notes
 
-- **Lands in:** (1) `scaffold/lib/ports.chiral` — one `extern adopt-fd (-> I64 Fd)`
+- **Lands in:** (1) `lib/ports/ports.chiral` — one `extern adopt-fd (-> I64 Fd)`
   line beside `fd-close`; `Fd` is already a member of `porttype-word?`
   (compile-front.chiral:39), so the E123 carrier peel needs no change. (2)
-  `scaffold/lib/tal-erase.chiral` — one `prim2lib-table` row `(pair "adopt-fd"
+  `lib/lowering/tal/erase.chiral` — one `prim2lib-table` row `(pair "adopt-fd"
   "nb-id")` (beside the `str->bytes`/`bytes->str → nb-id` rows at :118), so the pure
   prim reaches its identity lowering instead of the `"prim not in native subset"`
   fall-through. No new TAL body is required (`nb-id` already ships, bytes-tal.chiral:23).

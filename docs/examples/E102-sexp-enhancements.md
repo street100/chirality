@@ -308,8 +308,8 @@ class ParenTracker:
 
 ## 6. Use / modify notes
 
-- **Lands in:** `scaffold/lib/sexp.chiral` (all four enhancements are pure sexp
-  reader additions). `scaffold/lib/parse.chiral` (callers: `load-source` can use
+- **Lands in:** `lib/surface/sexp.chiral` (all four enhancements are pure sexp
+  reader additions). `lib/surface/parse.chiral` (callers: `load-source` can use
   `read-all-forms` for binary-search; `handle-import` can use form offsets).
 - **Conformance target:** `chirality test` + `chirality test-native` must pass unchanged.
   The existing `read-form`/`read-all` paths are unchanged. New functions are

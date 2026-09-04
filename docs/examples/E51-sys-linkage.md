@@ -22,7 +22,7 @@ updated: 2026-07-22
 - **Kind:** REPLACE-CRUTCH — the crutch is `impl_ports.py`: every port extern
   today resolves at link time to a Python function over the CPython stdlib.
 - **Why chirality needs its own:** this is **the** self-host gate. The typed sys
-  crossings already exist (`lib/sys-tal.chiral`: `write`(1), `read`(0),
+  crossings already exist (`lib/lowering/tal/sys.chiral`: `write`(1), `read`(0),
   `lseek`(8), `ftruncate`(77), `memfd_create`(319), `mmap`(9), `munmap`(11) as
   hand-authored tal, differentially tested against real pipes and a
   self-mapped arena) — but they are only tal-machine/test-reachable. Upper
@@ -123,7 +123,7 @@ IMPLS["pool-write"] = _pool_write
   (write-r  (n I64) (1 f Fd))          ; n bytes written, authority moved back
   (write-err (errno I64) (1 f Fd)))    ; typed errno, port still yours to close
 
-; The typed face is unchanged (lib/ports.chiral owns it):
+; The typed face is unchanged (lib/ports/ports.chiral owns it):
 ;   (extern fd-write (=> (1 f Fd) Bytes WriteR))
 
 ; The C-bridge wrapper the table points at. sysface-marked territory: only

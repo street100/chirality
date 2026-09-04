@@ -75,7 +75,7 @@ git ls-files '*.chiral' | xargs grep -h '^(import' | wc -l            -> 1182
 Exactly one of 1182 import lines mentions `.chiral`, and it is inside a trailing
 comment (`TUI/scriba/manas-runview.chiral:23`). **An extension change therefore
 touches zero import sites.** The resolver appends the extension itself —
-`scaffold/lib/resolve.chiral:213` `(str-cat name ".chiral")`, and
+`lib/module/resolve.chiral:213` `(str-cat name ".chiral")`, and
 `bin/chirality-resolve.sh:55-57` `"$parent/$name.chiral"` / `"$libdir/$name.chiral"`.
 
 The corollary is the trap: because the *name* is the key, a **directory** move
@@ -90,7 +90,7 @@ because they never meet in one blob. Moving altitude out of the basename pushes
 
 ### Finding 3 — the resolver runs strictly upstream of every derived fact
 
-`scaffold/lib/compile-driver.chiral:9` — *"Read source from stdin (fd 0)"* — the
+`prog/compiler.prog:9` — *"Read source from stdin (fd 0)"* — the
 compiler never sees a path. The resolvers are the only filename-aware stage, and
 they run **before** the blob exists, so they see nothing but a path and a byte
 string. Anything the extension projects must be decidable from **surface syntax
@@ -101,10 +101,10 @@ all, so they cannot be written and therefore cannot disagree"*
 (`test-module-kind.sh:19-21`).
 
 The proof that the derived fact and the syntactic fact differ is
-`scaffold/lib/sys-tal.chiral`:
+`lib/lowering/tal/sys.chiral`:
 
 ```
-grep -cE '^\(extern' scaffold/lib/sys-tal.chiral                      -> 0
+grep -cE '^\(extern' lib/lowering/tal/sys.chiral                      -> 0
 ```
 
 Zero externs, zero porttypes — and it is the *most* authority-bearing file in
@@ -151,14 +151,14 @@ time, and put its answer in `ls`.**
 The tree today, and the three conventions it runs on:
 
 ```
-scaffold/lib/compile-driver.chiral     ; entry — "-driver" says so
-scaffold/lib/self-wield.chiral         ; entry — nothing says so
-scaffold/lib/test-runner.chiral        ; entry — nothing says so
-scaffold/lib/tal-ir.chiral             ; tal   — prefix
-scaffold/lib/sys-tal.chiral            ; tal   — suffix, opposite position
-scaffold/lib/ports/sock.chiral         ; membrane — directory
-scaffold/lib/prelude.chiral            ; membrane (32 externs) — nothing says so
-scaffold/demo/profile-headless.chiral  ; profile — prefix
+prog/compiler.prog     ; entry — "-driver" says so
+prog/wield.prog         ; entry — nothing says so
+prog/test-runner.prog        ; entry — nothing says so
+lib/lowering/tal/ir.chiral             ; tal   — prefix
+lib/lowering/tal/sys.chiral            ; tal   — suffix, opposite position
+lib/ports/sock.port         ; membrane — directory
+lib/prelude/prelude.chiral            ; membrane (32 externs) — nothing says so
+prog/demo/profile-headless.chiral  ; profile — prefix
 ```
 
 and the resolver that reads them, which knows one thing:
@@ -205,7 +205,7 @@ comm -12 <(… grep -l '^(def compile-main' …) <(… grep -l '^(porttype\|^(ex
                                                                      -> 9
 ```
 
-Nine files are **already both** entry and membrane: `scaffold/lib/self-wield.chiral`
+Nine files are **already both** entry and membrane: `prog/wield.prog`
 (`extern openat` at line 14, `compile-main` at line 34) and eight port-discipline
 samples (`e106_drain_control`, `e123_porttype_carrier`, the four `e124_reject_*`,
 `e42_supervisor_accept`, `e145_be_peek_roundtrip`). Under a four-extension set
@@ -285,7 +285,7 @@ carrier it does not need.
 
 ## 5. Chirality example (fleshed)
 
-Lands in `scaffold/lib/resolve.chiral` (and mirrored in `bin/chirality-resolve.sh`).
+Lands in `lib/module/resolve.chiral` (and mirrored in `bin/chirality-resolve.sh`).
 Boundary-sums directive applies throughout: the classification is parsed **once**
 at the path boundary and travels as a value.
 
@@ -390,11 +390,11 @@ at the path boundary and travels as a value.
 The altitude carrier is a tree, not code — it is the same 48 import names moved:
 
 ```
-scaffold/lib/tal/ir.chiral      tal/check.chiral  tal/ssa.chiral  tal/erase.chiral
-scaffold/lib/tal/eval.chiral    tal/reify.chiral  tal/spec.chiral
-scaffold/lib/tal/bytes.chiral   tal/sys.chiral            ; the two -tal suffixes
-scaffold/lib/metal/emit-x64.chiral   metal/mach-x64.chiral
-scaffold/lib/metal/asm-reloc.chiral  metal/elf.chiral
+lib/lowering/tal/ir.chiral      tal/check.chiral  tal/ssa.chiral  tal/erase.chiral
+lib/lowering/tal/eval.chiral    tal/reify.chiral  tal/spec.chiral
+lib/lowering/tal/bytes.chiral   tal/sys.chiral            ; the two -tal suffixes
+lib/lowering/x64/emit.chiral   metal/mach-x64.chiral
+lib/lowering/mach/asm-reloc.chiral  metal/elf.chiral
 scaffold/lib/upper/…                                    ; everything else
 ```
 

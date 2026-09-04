@@ -121,7 +121,7 @@ there is no second copy to fall out of sync."* **The work here is plumbing what
 exists to somewhere addressable, not new analysis.**
 
 **Finding 3 — "which crossings" is derivable in THREE inequivalent senses, and
-the schema must name which one it holds.** Measured on `scaffold/lib/backend.chiral`:
+the schema must name which one it holds.** Measured on `prog/manas/backend.chiral`:
 
 - **(a) crossings the module BINDS** — its own `extern` forms with an effectful
   arrow. `ty-crosses` says **exactly one**: `backend-open (=> Str Backend)`
@@ -451,7 +451,7 @@ elided with `; …`.
 (data Export  () (exp (name Str) (ek ExpKind)))
 
 ; ── THE SCHEMA.  TOTAL (R7): every field present on every record, no Maybe and
-;    no "unspecified".  A façade (lib/ports.chiral: no defs at all) carries the
+;    no "unspecified".  A façade (lib/ports/ports.chiral: no defs at all) carries the
 ;    same six fields with EMPTY lists — a real derivation of a weak statement,
 ;    which is certificate-discipline.md:33-38's residual vacuity in this
 ;    setting, and the reason open question 1 has to be answered.  ⚑ "Empty" is

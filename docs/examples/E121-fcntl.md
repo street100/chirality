@@ -32,7 +32,7 @@ updated: 2026-08-12
 - **Reference class:** SPEC — Linux `fcntl(2)` ABI (man7 `fcntl(2)` /
   `F_GETFD.2const`, glibc `bits/fcntl-linux.h`, `asm/unistd_64.h`). No OURS
   baseline; the crossing bodies are mirrored from existing chirality crossings in
-  `scaffold/lib/sys-tal.chiral`.
+  `lib/lowering/tal/sys.chiral`.
 - **Key ABI facts (web-verified — do NOT assert from memory, this is the
   wrong-constant failure class):**
   - **`fcntl` syscall number on x86-64 = `72`** (`__NR_fcntl`, `asm/unistd_64.h`).
@@ -95,7 +95,7 @@ if (!(flags & FD_CLOEXEC)) abort();       /* leak: fd survives exec */
 The clear-cut example — real chirality surface syntax, copy-and-modify ready.
 
 ```chirality
-; ── (a) TAL floor: the crossing body — scaffold/lib/sys-tal.chiral ──────────
+; ── (a) TAL floor: the crossing body — lib/lowering/tal/sys.chiral ──────────
 ; fcntl(fd, cmd, arg) -> result in rax (flag word for F_GETFD, 0 for F_SETFD;
 ; -errno on error). Value-in / value-out-via-rax: NO cell, so NO ti-bptr/ti-bnew.
 ; Mirror of nb-sys-close-t (value-in, ti-ret the rax result); 3 args instead of 1.
@@ -105,13 +105,13 @@ The clear-cut example — real chirality surface syntax, copy-and-modify ready.
     (t-seq (ti-sys 3 72 (cons 0 (cons 1 (cons 2 nil))))   ; nr 72 = __NR_fcntl
       (ti-ret 3))))
 
-; ── (b) syscall allow-list: one row — scaffold/lib/target-linux.chiral ──────
+; ── (b) syscall allow-list: one row — lib/lowering/tal/target-linux.manifest ──────
 ;   (cons (sys-row "nb-sys-fcntl"       72)     ; E121: fcntl F_GETFD/F_SETFD
 
-; ── (c) crossing → wrapper linkage: one row — scaffold/lib/crossing-wraps.chiral
+; ── (c) crossing → wrapper linkage: one row — lib/lowering/tal/crossing-wraps.chiral
 ;   (cons (pair "fcntl"      "nb-sys-fcntl")
 
-; ── (d) surface extern: the owned type — scaffold/lib/ports.chiral ──────────
+; ── (d) surface extern: the owned type — lib/ports/ports.chiral ──────────
 ;   flat E105 write-fd style: one raw crossing, cmd/arg passed as plain I64s.
 (extern fcntl (=> I64 I64 I64 I64))   ; fcntl(fd, cmd, arg) -> flags | -errno
 

@@ -223,8 +223,8 @@ bundle mainModule = do
 
 ## 6. Use / modify notes
 
-- **Lands in:** `scaffold/lib/resolve.chiral` (the stub already exists at
-  `scaffold/lib/scriba/resolve.chiral` — move it to the lib root and flesh
+- **Lands in:** `lib/module/resolve.chiral` (the stub already exists at
+  `prog/scriba/resolve.chiral` — move it to the lib root and flesh
   it out). The shell resolver `bin/chirality-resolve.sh` stays as the bootstrap
   path until the chirality-native resolver self-compiles.
 - **Conformance target:** given `scriba/scriba-main` as root and

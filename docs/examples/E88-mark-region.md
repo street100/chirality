@@ -143,7 +143,7 @@ Lisp_Object kill_region(struct buffer *b) {
 ;                         str-insert-char, str-delete-forward, str-delete-backward)
 ;       scriba/kill-ring (KillRing, kill-ring-push, kill-ring-top)
 ;
-; Lands in: scaffold/lib/scriba/mark-region.chiral (~80 lines)
+; Lands in: prog/scriba/mark-region.chiral (~80 lines)
 
 (import "prelude")
 (import "str-edit")    ; TextZipper, LineCtx, zipper-to-text, advance-by,
@@ -327,7 +327,7 @@ Lisp_Object kill_region(struct buffer *b) {
 
 ## 6. Use / modify notes
 
-- **Lands in:** `scaffold/lib/scriba/mark-region.chiral` — a new file alongside
+- **Lands in:** `prog/scriba/mark-region.chiral` — a new file alongside
   the existing `kill-ring.chiral`, `str-edit.chiral`, and `puffer.chiral`.
 - **Conformance target:** Emacs mark-ring behavior (minimal subset):
   `C-SPC` sets mark, `C-x C-x` exchanges point and mark, `C-w` kills region
