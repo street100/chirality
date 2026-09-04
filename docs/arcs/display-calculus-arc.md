@@ -137,9 +137,24 @@ condition. A row that cannot say which half it is has not been scoped.
 
 ## Resume state
 
-The cell-lane pre-run ran 2026-09-04: `docs/examples/C01-typed-style-value.md`
+The cell-lane pre-run ran 2026-09-04 as `docs/examples/C01-typed-style-value.md`
 at `23f6830`, covering C1/C2/C4/C5 as one decision, on U13's precedent for a
-run that covers more than one row. Not yet audited.
+run that covers more than one row. **It went `superseded` the same day at
+`8928028`, and the replacement is `docs/examples/C1C2-style-round-trip.md`,
+`drafted`, covering C1 and C2.** [[banks/render]] found the reason: C01 proposes
+building a typed style value and a total ordered fold, and both are on disk.
+`lib/protocol/grid.chiral:12` is `Attrs`, six named `Bool`s over the closed
+`Color` sum at `:6`; `apply-one` (`:215`) cases over `Sgr` arm-per-arm with no
+default clause and `fold-sgr` (`:232`) folds it in order. E111, `built`.
+
+**The measurement that reshaped the rows.** `face-sgr` (`render.chiral:188`)
+emits `ESC[3m` for attribute bit 4 and `parse-sgr` (`grid.chiral:201`) names 21
+codes, code 3 among none of them, so 8 of the 16 attribute masks lose italic on
+the way back. `fg` 10 through 17 emit `ESC[40m` through `ESC[47m` and decode as
+a **background** change. Over `default-faces` the trip closes, because all
+eleven entries sit in the sub-domain. So C1 and C2 own a conversion between two
+built representations plus the law relating them, and C1C2 states it. C4 and C5
+lost their pre-run with C01 and return to `not started`.
 
 The three owed measurements came back, and none killed the design outright,
 though one sharpens a claim the arc states more strongly than it holds. The
@@ -206,8 +221,10 @@ against enforcement requirement 5's tooling surface
 ([[records/tooling-classification]] TC-11); [[arcs/enforcement-arc]] carries
 the pointer to this gap. This is a fact about running this arc's pipeline.
 
-**Suggested next element:** C1's example audit (`pipeline-audit`), then a
-SPEC for C1/C2/C4/C5 together.
+**Suggested next element:** C1C2's example audit (`pipeline-audit`), then a
+SPEC for C1 and C2 together. `pack.py` runs neither: its id regex refused
+`C1C2` on 2026-09-04 with *"element id must look like E13 / U13 / S19 / N1"*,
+which is the same prefix gate this section records below.
 
 **The one experiment is the cell-lane element**, which instantiates C1, C2, C4,
 C5 and the `Rendering` half of the seam against the terminal surface. It is one
