@@ -3,7 +3,7 @@ node: banks/INDEX
 layer: bank
 tier: depth
 related: [module-map, glossary, vocabulary, index, status-ledger]
-updated: 2026-08-23
+updated: 2026-09-04
 ---
 
 # Banks — the depth tier
@@ -32,6 +32,7 @@ exist to end it.
 | [[banks/evidence-and-split]] | category C: cross-checked truth where proof runs out | try/catch validation / trust store / attestation / N-version |
 | [[banks/verification]] | layered independent instruments, each blind above its own branch point, ranked by expectation provenance | "the test suite" / CI + coverage % / the self-host fixpoint / golden tests |
 | [[banks/text]] | a payload, a way to name a part of it, and total functions between those | the regex engine / the string library / the Unix text tools / the editor buffer |
+| [[banks/erasure]] | three independent droppings at three levels: quantity, representation, annotation | type erasure / "the compiler drops types before codegen" |
 
 ## The schema
 
