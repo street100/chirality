@@ -4,7 +4,7 @@ layer: bank
 tier: depth
 related: [banks/module, banks/profile, banks/capability, banks/effect-and-alarm, banks/memory, vocabulary, glossary, category-typed, permission-model, open-edges, status-ledger, joining-law, decision-profiles]
 status: draft
-updated: 2026-07-25
+updated: 2026-09-04
 ---
 
 # Bank: port
@@ -77,12 +77,15 @@ with an *incidental* carrier — the file descriptor number, the vtable, the FFI
 symbol — that chirality discards.
 
 **How it is realized in code (evidence).** A port is spelled with two surface
-forms and no others: `porttype` introduces the opaque linear atom, `extern`
-declares one typed crossing over it (`surface.py:108–130`). There is no
+forms and no others: `porttype` introduces the opaque linear atom
+(`handle-porttype`, `lib/surface/parse.chiral:688`), `extern`
+declares one typed crossing over it (`handle-extern`, `lib/surface/parse.chiral:659`). There is no
 first-class `port` object — a port is a *value of a porttype produced or consumed
 by an extern*, and "is this extern a crossing?" is a **derived** boolean, not a
-declared one (`kernel.py:592`, §Shard 3). The membrane's inbound integrity check
-is `bridge.verify` (`bridge.py`). That is the entire mechanism; every governance
+declared one (`ty-crosses`, `lib/typing/kernel.chiral:315`, §Shard 3). ⚑ The
+membrane's inbound integrity check, `bridge.verify`, was the Python oracle's and
+has **no live referent**; `lib/evidence/interp.chiral:19-21` records that face as
+E15's deferred connector. That is the entire mechanism; every governance
 concept in §3 is a *view* onto it.
 
 ---
@@ -97,14 +100,16 @@ FFI binding, an API method) fuses; in chirality each has its own home and build-
   it exists and that it is **linear** — so any value of it (or anything
   transitively holding one) can only ever be bound with quantity 1. This is the
   substance a port *is*: a B-ness-in-the-type atom the checker threads move-only.
-- **Home.** the port floor / category-C boundary declared in source
-  (`lib/ports.chiral`; [[category-typed]] "the port set"). `(porttype Sock)`,
-  `(porttype LSock)`, `(porttype Fd)`.
-- **Build-state.** CONFORMS (E30–E33). `surface.py:116–117` → `K.declare_atom(sig,
-  name, linear=True)` (`kernel.py:570`) records an opaque linear atom;
-  `lib/ports.chiral` header states the invariant ("the kernel learns nothing about
+- **Home.** the port floor / category-C boundary declared in source (the nine
+  registries under `lib/ports/`; [[category-typed]] "the port set").
+  `(porttype Sock)` and `(porttype LSock)` at `lib/ports/sock.port:16-17`,
+  `(porttype Fd)` at `lib/ports/fd.port:16`.
+- **Build-state.** CONFORMS (E30–E33). `handle-porttype`
+  (`lib/surface/parse.chiral:688`) → `load-atom` (`lib/module/loader.chiral:487`)
+  records an opaque linear atom in the `latoms` registry;
+  `lib/ports/ports.chiral:3-8` states the invariant ("the kernel learns nothing about
   it except that it exists and that B-ness lives in the type"). Linearity is
-  ENFORCED by `is_linear` + the depth-bounded abstract walk (E8,
+  ENFORCED by `is-linear` (`lib/typing/kernel.chiral:325`) + the depth-bounded abstract walk (E8,
   CONFORMANCE-MAP D "Linear-kind decision"). CONFORMANCE-MAP D row "Category C
   port membrane": CONFORMS.
 
@@ -114,17 +119,19 @@ FFI binding, an API method) fuses; in chirality each has its own home and build-
   contract / B-owns-the-referent split made concrete: `(extern sock-send (=> (1 s
   Sock) Bytes Sock))` names the contract; the socket syscall behind it is invisible
   to the type system.
-- **Home.** `lib/ports.chiral` (the contracts) + `impl_ports.py` (the host binding
-  behind the membrane) + `kernel.py declare_extern`.
-- **Build-state.** CONFORMS (E30–E33). `surface.py:127–130` → `K.declare_extern`
-  (`kernel.py:577`) type-checks the declared type into a universe and records it in
-  `sig.prim_types`; the implementation is resolved from `IMPL_PORTS` **at load**,
-  and `RT.__init__` refuses to run if any declared extern lacks a host impl
-  ([[banks/runtime]] Shard B). `impl_ports.py` docstring: "the typed face of each
-  lives in chirality source … this file is only the host binding behind that
-  membrane." **The referent binding is host-mediated today — transport self-host
-  is E51 (§5), a separate lane, not a reshape** (CONFORMANCE-MAP D "Transport swap
-  is E51 lane, not a reshape").
+- **Home.** the nine `lib/ports/*.port` registries (the contracts) + the linkage
+  behind the membrane + `handle-extern`.
+- **Build-state.** CONFORMS (E30–E33). `handle-extern`
+  (`lib/surface/parse.chiral:659`) elaborates the declared type, checks it is a
+  universe and installs `name : ty` into the Sig's `prims`
+  (`lib/typing/kernel.chiral:240`). ⚑ The host-binding half this shard cited,
+  `impl_ports.py` and `IMPL_PORTS` and `RT.__init__`, was the Python oracle's and
+  has **no live referent**. The live binding seam is
+  `lib/lowering/tal/sys-linkage.chiral`, whose header says it routes an effectful
+  extern through a hand-tal wrapper over the sys crossings rather than through a
+  CPython callable, and names E51 as the true self-host gate. Its v1 binds the
+  three ambient writers only, so **the transport half of this row is a lane in
+  progress** (CONFORMANCE-MAP D "Transport swap is E51 lane, not a reshape").
 
 ### Shard 3 — the effect (a crossing carries an effect; the port-check IS the type-check)
 - **What.** What *makes* an extern a port rather than a pure primitive is that its
@@ -134,34 +141,38 @@ FFI binding, an API method) fuses; in chirality each has its own home and build-
   two-facet decision the bit is the one-entry seed of the exercise **row** — the
   record of crossings performed, distinct from ports held
   ([[decision-effect-facets]], 2026-07-21).
-- **Home.** the effect membrane ([[banks/effect-and-alarm]]); derived in
-  `kernel.py`.
+- **Home.** the effect membrane ([[banks/effect-and-alarm]]); derived by
+  `ty-crosses` (`lib/typing/kernel.chiral:315`).
 - **Build-state.** Split gradient — the *derivation* CONFORMS, the *effect
   representation* is REFACTOR. ⚑ **Third leg, added 2026-08-25: the derivation is
   sound for an `extern` and does NOT reach a `def`.** "To know a process's ports
-  you type it" holds where the port is *bound*; measured against
-  `scaffold/build/B1` at `4f64d91`, a `(-> Str I64)` def that CALLS an `(=> Str
-  I64)` def compiles, runs and performs the crossing, so typing that def tells you
+  you type it" holds where the port is *bound*; measured 2026-08-25 against the
+  then-current build at `4f64d91`, whose path went with the migration, a
+  `(-> Str I64)` def that CALLS an `(=> Str
+  I64)` def compiled, ran and performed the crossing, so typing that def tells you
   nothing about its ports. ⚑ **Sharpened 2026-08-29 (E170 lane E, and it is worse
   than the 2026-08-25 reading):** the intermediate `=>` def is not needed. A `(->
   Bytes I64)` def calling the `=>` **extern directly** — `(lam (bs) (write-fd 1
   bs))` — compiles and is committed as `pe-pure-write` in
-  `scaffold/tests/samples/e170_port_zeros.chiral` (Phase 12 row E7b). So the `->`/
+  `tools/test/samples/e170_port_zeros.prog` (Phase 12 row E7b). So the `->`/
   `=>` membrane refuses **nothing** at the call, not even the declared crossing
-  itself. The refusing seams exist only in the retired oracle
-  (`scaffold/chirality/effects.py:23,38,46`). Enforcing them natively is **E171**;
+  itself. The three refusing seams are native now, `on-apply-ok`, `erased-allow`
+  and `on-binder-ok` at `lib/typing/effects.chiral:34-46`, and nothing calls
+  them ([[status-ledger]] Effects row). Reaching them is **E171**;
   the measurement and its method are [[banks/effect-and-alarm]] §5d. Until then
   P3's *"the port-check is the type-check"* is true of externs and aspirational
   for defs.
-  - Derivation, CONFORMS: `declare_extern` walks the Pi spine and sets
-    `sig.prim_is_port[name] = is_port` where `is_port` is OR-ed over each arrow's
-    effect field (`kernel.py:586–592`, comment "an effect arrow means it crosses").
-    `top_profile` then **refuses any port-set member that is pure** —
-    `if not self.sig.prim_is_port.get(str(p)): raise "… is pure; only crossings
-    belong in the port set"` (`surface.py:184–185`). Evidence of the pure/crossing
+  - Derivation, CONFORMS: `ty-crosses` (`lib/typing/kernel.chiral:315`) walks the
+    Pi spine and is true iff any arrow's seat is `s-proc`, computed from the stored
+    type rather than cached in a registry, so there is no second copy to fall out
+    of sync (`lib/typing/kernel.chiral:310-312`).
+    `mf-check-ports` (`lib/surface/parse.chiral:907`) then **refuses any port-set
+    member that is pure**, returning `mf-port-pure`, and any name that is not a
+    declared extern, returning `mf-port-unknown`. Evidence of the pure/crossing
     split in the source: `pool-write` is `(-> (0 n I64) (=> (1 p (Pool n)) I64
-    Bytes (Pool n)))` — the outer `->` (pure, erased bound) wraps an inner `=>`
-    (the crossing), and `prim_is_port` is true because a `=>` appears.
+    Bytes (Pool n)))` (`lib/ports/pool.port:27`) — the outer `->` (pure, erased
+    bound) wraps an inner `=>` (the crossing), and `ty-crosses` is true because a
+    `=>` appears.
   - Representation, REFACTOR: the effect is a **coarse boolean** on the arrow, not
     a typed row; conv compares it by equality, not subsumption. Enriching it to a
     named effect row is **E39** — its gating decision (edge 16) was **resolved
@@ -177,13 +188,18 @@ FFI binding, an API method) fuses; in chirality each has its own home and build-
   result type *at the crossing*, and a mismatch is a divergence **alarm**, not a
   crash downstream. This is *evidence at the membrane*, not proof of the
   implementation.
-- **Home.** [[category-bridge]] inbound face; `bridge.py`.
-- **Build-state.** CONFORMS (no E# — the inbound half). `bridge.verify(sig, name,
-  v, tyv)` (`bridge.py:32`) tag-checks the runtime value against the declared
-  result type; a mismatch raises `PortError` — "the host binding diverged from its
-  declaration (inbound membrane alarm)" (`bridge.py:84`). Depth-bounded to **≤4**
-  deliberately ("evidence at the crossing, not a deep proof", `bridge.py:73`);
-  neutral/polymorphic result types are let through (`bridge.py:36–37`).
+- **Home.** [[category-bridge]] inbound face.
+- **Build-state.** ⚑ **No live referent, recorded 2026-09-04.** The whole of this
+  row's evidence was `bridge.py`: `bridge.verify(sig, name, v, tyv)` tag-checking a
+  runtime value against the declared result type, `PortError` as the inbound
+  membrane alarm, the deliberate depth bound of four, and the pass-through for
+  neutral and polymorphic result types. That file went with the Python oracle and
+  nothing in `lib/` re-checks an extern's return today.
+  `lib/evidence/interp.chiral:19-21` names the extern/port/bridge face as E15's
+  deferred connector, and `lib/lowering/tal/sys-linkage.chiral:11-12` says the
+  linkage re-seats `bridge.verify` on a wrapper's return, which is a design over a
+  symbol that is gone. The CONFORMS below is the map's verdict on the oracle and
+  is left visible for that reason.
   CONFORMANCE-MAP D "Inbound bridge integrity-verification": CONFORMS, "Integrity/
   inbound half only; no E#. **Outbound confinement not built**."
 
@@ -193,7 +209,8 @@ FFI binding, an API method) fuses; in chirality each has its own home and build-
   exposure window bounded ([[category-typed]] "the handoff to C"). This is P4's
   membrane crossing applied to confidentiality + capability-containment on the way
   out, dual to Shard 4's integrity on the way in.
-- **Home.** [[category-bridge]] outbound face; would sit beside `bridge.verify`.
+- **Home.** [[category-bridge]] outbound face; would sit beside the inbound
+  check of Shard 4.
 - **Build-state.** **BUILD / not built.** CONFORMANCE-MAP D "Inbound bridge …
   Outbound confinement not built"; overlaps E44. This is the port's largest single
   unbuilt shard (§5). The membrane is **half-preserving** today: it verifies what
@@ -205,15 +222,17 @@ FFI binding, an API method) fuses; in chirality each has its own home and build-
   resource limit is a bound in the port" (P3, [[open-edges]] node-model) is
   realized — the size travels *in the type*, and a target can demand a specific
   bound.
-- **Home.** the port floor + dependent types (`lib/ports.chiral`; [[banks/memory]]
-  for the discipline over it).
-- **Build-state.** CONFORMS (E30–E33). `surface.py:118–126` elaborates the index
-  params and declares the porttype as an **empty linear `data`** (`D.check_data` +
-  `sig.linear_data.add(name)`) — an atom whose only inhabitants come from externs.
-  `pool-create : (=> (w n I64) (PoolR n))` flows the size argument into the result
-  type. The bridge checks the *claim* where the index is concrete: for `(Pool k)`
-  with a literal `k`, `bridge.verify` diverges if the runtime mmap's size ≠ k
-  (`bridge.py:59–61`). A constant offset within the bound is compile-time
+- **Home.** the port floor + dependent types (`lib/ports/pool.port:13`;
+  [[banks/memory]] for the discipline over it).
+- **Build-state.** CONFORMS (E30–E33). `handle-porttype`
+  (`lib/surface/parse.chiral:688`) takes the indexed form and declares the porttype
+  as an **empty linear `data`** (`:698`) — an atom whose only inhabitants come from
+  externs, recorded in the `ldatas` registry (`lib/typing/kernel.chiral:232`).
+  `pool-create : (=> (w n I64) (PoolR n))` (`lib/ports/pool.port:26`) flows the size
+  argument into the result type. ⚑ The runtime cross-check of that *claim* was the
+  oracle's `bridge.verify` and has **no live referent** (Shard 4), so a concrete
+  `(Pool k)` whose mapping is not `k` bytes is refused nowhere at the crossing
+  today. A constant offset within the bound is compile-time
   bounds-checked (`mem-put-checked`, E22); a computed offset falls back to a
   runtime check pending E9 symbolic bounds ([[banks/memory]]).
 
@@ -225,9 +244,15 @@ FFI binding, an API method) fuses; in chirality each has its own home and build-
 - **Home.** [[category-typed]] "the port set" + the profile's `(ports …)` clause;
   see **[[banks/profile]]** Shard B for the profile's own depth — do not
   re-document it here.
-- **Build-state.** CONFORMS + ENFORCED (E2). `top_profile` (`surface.py:180–186`)
-  rejects any listed name that is not a declared extern and any name that is pure;
-  `verify_profiles` flags any crossing used but outside the frozen set.
+- **Build-state.** `mf-check-ports` (`lib/surface/parse.chiral:907`)
+  rejects any listed name that is not a declared extern and any name that is pure,
+  and the manifest reaches the front end at
+  `lib/lowering/compile-front.chiral:322`. ⚑ The second half, flagging a crossing
+  *used* but outside the frozen set, was the oracle's `verify_profiles` and has no
+  live referent; `lib/surface/parse.chiral:723-724` states the live boundary in its
+  own words, that the slice parses, judges and stores and that emit's refusal reads
+  `sig-profiles` later and is not there. So the row is parse-and-judge ENFORCED and
+  use-site ENFORCEMENT UNMEASURED (E2).
   [[status-ledger]]: "Frozen-port-set conformance — ENFORCED (named crossings only;
   edge 18 open)."
 
@@ -236,7 +261,8 @@ FFI binding, an API method) fuses; in chirality each has its own home and build-
   typestate or session aspect, "the thing meant by data gathered through the state
   of the type" ([[vocabulary]] "port protocol"). Visible already as *distinct
   porttypes for distinct protocol states*: `LSock` (listening) vs `Sock`
-  (connected) are "same wire, different protocol state" (`lib/ports.chiral`), and
+  (connected) are "same wire, different protocol state"
+  (`lib/ports/sock.port:17`), and
   the linear return-threading (`sock-recv` hands back the *same* `Sock` moved
   onward) is a hand-encoded one-step advance.
 - **Home.** the port protocol ([[vocabulary]]); the mechanism decision is
@@ -282,11 +308,12 @@ the possession-view depth — do not re-document it here.
 
 **C2 · The crossing IS an effect; the port-check IS the type-check.** Shard 3 and
 the concept *effect* are the same shard: a port is exactly an extern whose type
-carries a `=>`, and `prim_is_port` is *derived* from that arrow (`kernel.py:592`),
-not declared. So governing the ports (P3) requires no machinery beyond
+carries a `=>`, and crossing-ness is *derived* from that arrow (`ty-crosses`,
+`lib/typing/kernel.chiral:315`), not declared. So governing the ports (P3) requires no machinery beyond
 type-checking — to enumerate a process's crossings you infer its type. Inbound
-divergence at a crossing is an **alarm** (`PortError`, Shard 4), i.e. a port
-failure surfaces as a typed effect on the membrane, not an out-of-band exception.
+divergence at a crossing is an **alarm** in the design (Shard 4, whose mechanism
+has no live referent), so a port failure is meant to surface as a typed effect on
+the membrane rather than an out-of-band exception.
 The typed-effect-row refinement (E39) is where this cross-cut gets richer; see
 **[[banks/effect-and-alarm]]**.
 
@@ -323,9 +350,13 @@ decidable — it moves with the effect mechanism, settled 2026-07-21
 already-legal), leaving a narrower open **mechanism decision** (the scheduler +
 two-step liveness), not a forward build.
 
-**C7 · Staging is a port.** `spawn : (=> Str Sock)` is itself a crossing in the
-frozen set — "who may stage is governed like any crossing: spawn sits in a
-profile's frozen port set or that profile cannot use it" (`lib/ports.chiral`). So
+**C7 · Staging is a port.** Staging is itself a crossing in the frozen set:
+"who may stage is governed like any crossing: spawn sits in a
+profile's frozen port set or that profile cannot use it". ⚑ The extern this
+cross-cut names, `spawn : (=> Str Sock)`, is **not in the live registries**. The
+one spawning crossing there is `spawn-in-pty : (=> Bytes Bytes I64)`
+(`lib/ports/pty.port:47`), which hands back a pid and no `Sock`, so the
+`Sock`-handing shape below is the design and not a declared crossing. So
 "birth a runtime" and "hold a port to it" are the same act: the staging connector
 ([[joining-law]]) hands the parent one `Sock`, and teardown is *consuming* that
 port. The runtime-lifecycle view lives in [[banks/runtime]]; the port is what it
@@ -339,7 +370,7 @@ is *made of*.
 → Correction: an fd is a porttype value (Shard 1) — but chirality keeps the *linear
 authority* and discards the *integer*. `Fd` is opaque; there is no fd *number* a
 program can forge, dup, or leak, because the value is move-only and the number
-lives in B behind the membrane (`impl_ports.py` runtime tag `("fd", int)`). The
+lives in B behind the membrane. The
 "handle table" a kernel keeps is refracted into the checker's linearity discipline
 (E8). Genuinely-new shard: none.
 
@@ -348,17 +379,19 @@ lives in B behind the membrane (`impl_ports.py` runtime tag `("fd", int)`). The
 distinct types* (Shard 8) and whose operations are externs threading it linearly
 (`sock-recv` returns `RecvR` carrying the moved-back `Sock` or a named
 `recv-closed` event). "A closed stream is a named event in the type, not a
-sentinel value" (`lib/ports.chiral`). The BSD socket API's fused blob (fd + state +
+sentinel value" (`lib/ports/sock.port:21`). The BSD socket API's fused blob (fd + state +
 errno) splits into porttype + protocol + alarm. New shard: formal session-typing of
 the state machine is edge 14 (§5).
 
 **"You need syscalls / an FFI to reach the OS."**
 → Correction: a syscall is an extern (Shard 2) — the *type* owned in chirality source,
-the syscall itself in B behind the membrane. The sys-face (`lib/sys-tal.chiral`)
+the syscall itself in B behind the membrane. The sys-face
+(`lib/lowering/tal/sys.chiral`)
 already carries write/read/lseek/memfd/ftruncate/mmap/munmap as typed crossings
-(E28); the FFI "binding" a conventional language trusts blindly is replaced by
-`bridge.verify` at the inbound edge (Shard 4). Genuinely-new shard: the *transport
-self-host* (E51) that retires `impl_ports.py`, and mprotect/close (§5).
+(E28); the FFI "binding" a conventional language trusts blindly was to be replaced
+by the inbound check at the crossing, which is Shard 4's design and has no live
+referent. Genuinely-new shard: the *transport self-host* (E51), whose live seam is
+`lib/lowering/tal/sys-linkage.chiral`, and mprotect/close (§5).
 
 **"You need an interface / API / abstract class for encapsulation."**
 → Correction: **"API" fuses two things chirality splits** — the port-set-as-contract
@@ -406,8 +439,9 @@ this bank, in four lines, each of which is a committed fixture and not a reading
   `secret-seal`, `backend-open`, `pool-create`, `sock-connect`/`sock-listen`/
   `socketpair`. Holding a port is evidence of a threading obligation discharged,
   **not of provenance**; the §1 bullet "a held port is a capability" should be read
-  with that limit attached. And **42 of the 62 crossings in `scaffold/lib` take no
-  capability at all** — the no-ambient-authority violation this bank names in §1,
+  with that limit attached. And **42 of the 62 crossings took no
+  capability at all**, measured 2026-08-29 over the pre-migration tree — the
+  no-ambient-authority violation this bank names in §1,
   now with a number and a program (`pe-ambient-w`: the real `write(2)`, no `Fd`
   held, beside `fd-close`, which demands one).
 - **Shard 8 gets its program.** *"Do not assert ports are session-typed"* is
@@ -450,11 +484,12 @@ this bank, in four lines, each of which is a committed fixture and not a reading
    Gradient: the P3 *shape* CONFORMS; the *effect algebra* under it is unbuilt.
 
 4. **Transport self-host (E51) — REFACTOR; edge 16 resolved 2026-07-21
-   ([[decision-effect-facets]]), the remaining gate is the E39 row shape.** Every port
-   referent resolves to a Python impl (`IMPL_PORTS`); the E51 linkage that would
-   route upper-effectful chirality through the self-hosted sys-tal face and retire
-   `impl_ports.py` as transport is "the real self-host gate," still
-   test-reachable-only (CONFORMANCE-MAP D "E51 sys-face linkage"). This does not
+   ([[decision-effect-facets]]), the remaining gate is the E39 row shape.** The
+   Python impl table this row was written against is gone with the oracle. The live
+   seam is `lib/lowering/tal/sys-linkage.chiral`, which routes an effectful extern
+   through a hand-tal wrapper over the sys crossings, and its own header scopes v1
+   to the three ambient writers, leaving sockets, poll and spawn to lane A
+   (CONFORMANCE-MAP D "E51 sys-face linkage"). This does not
    reshape the *contracts* (Shard 2) — it swaps what sits behind them. Adjacent:
    sys-tal's memory/fd bank is complete (E28 implemented 2026-07-28); the
    socket/poll/spawn crossings remain E29/E31/E33.
