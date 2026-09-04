@@ -1078,6 +1078,21 @@
 
 ; apply : (-> $clo dom0..dom_{d-1} cod). The leading $clo arrow is pure; the rest
 ; carry the family's eff flags (closconv.py: apply_effs = (False,) + fam effs).
+;
+; ⚑ E185: THIS CHAIN IS NO LONGER THE AUTHORITY ON THE DISPATCHER'S PARAMETER
+; TYPES.  `doms` arrives from `(peel-pi-doms key)` and the key is one arbitrary
+; family member's arrow type, stored by `ensure-fam` in traversal order, so the
+; domains here spell ONE member's concrete types across an erasure `shape-eq`
+; (:335-356) already performed.  `closconv-driver`'s `apply-ptys` now STATES the
+; dispatcher's parameter types at the lowering type level, `nt-word` at every
+; domain, and `compile-front`'s `peel-def` prefers that statement.  What is still
+; READ off this chain is the CODOMAIN, which `cod-key-eq` (:365-380) keeps
+; concrete on purpose, and the erased vector, which `ty-erased` computes as nil
+; because `mk-pi` gives every binder q=2.
+;
+; A wrong annotation that nothing reads is still a wrong annotation.  Retiring
+; the spelling means stating this pass's translation for every name it invents,
+; which is E187; until then this note is what keeps the fact at the code.
 (def apply-ty (-> Str (List Core) Core (List I64) Core)
   (lam (dname doms cod fam-effs)
     (mk-pi (cons (c-tcon dname nil) doms) (cons 0 fam-effs) cod)))
