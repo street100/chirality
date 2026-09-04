@@ -237,13 +237,16 @@ would assert. Real surface syntax, skeleton form.
 (declare word? (-> NTalTy Bool))
 (def word? (lam (t) (case t ((nt-word) true) (_ false))))
 
-; the dispatcher side: leading $clo, then nothing but the word.
-(declare disp-erased? (-> (List NTalTy) Bool))
+; the dispatcher side: leading $clo, then nothing but the word.  `i` is the
+; family index, because the claim names $clo<i> and nil args, not "some data".
+(declare disp-erased? (-> I64 (List NTalTy) Bool))
 (def disp-erased?
-  (lam (ts) (case ts
+  (lam (i ts) (case ts
     (nil false)                                   ; a dispatcher has >= 1 param
     ((cons lead r) (case lead
-      ((nt-data dn as) (all-word? r))
+      ((nt-data dn as) (case as
+        (nil (and (str-eq dn (clo-name i)) (all-word? r)))
+        (_ false)))                               ; $clo<i> takes no type args
       (_ false))))))
 
 ; the constructor side: a field is word ONLY where its source had no ground
@@ -268,6 +271,14 @@ would assert. Real surface syntax, skeleton form.
   future shard that adds a third erasing arm has to widen both together, and the
   predicate going red is how that is noticed. `disp-erased?` is the E185 side and
   is already what `apply-ptys` builds.
+  ⚑ **One arm short of the exact preimage, named by the audit 2026-09-04.**
+  `term->ntalty`'s refine arm recurses into the base
+  (`lib/lowering/compile-front.chiral:69`), so `(refine <t-var> …)` reaches
+  `(nt-word)` too and the preimage of the word is closed under `t-refine`. Two
+  arms are the honest reading of what the compiler's own fields hold today;
+  `no-ground-spelling?` has to recurse through `t-refine` the moment a refined
+  type variable or a refined arrow becomes constructible, and the predicate
+  would otherwise redden on correct output.
 - **Deliberately omitted:** the `∃`-packed alternative. MMH's existential
   environment is the other published shape, and it is not reachable here:
   `NTalTy` has no arrow former and no quantifier, so the pack has nowhere to
@@ -292,6 +303,16 @@ would assert. Real surface syntax, skeleton form.
   ⚑ The target is a **non-regression**, and it must be read together with §4's
   warning: a green `ck-prog` does not certify the fields, it certifies that
   nothing contradicts them.
+  ⚑ **Stated all the way, by the audit 2026-09-04: today's tree already meets
+  this target with no work done, and it would meet it under the opposite
+  ruling too.** So the reject set is the wrong thing to grade E186 on. The one
+  assertion that separates `concrete` from `word` is §5(c)'s `ctor-honest?`,
+  which reddens exactly when a concretely-spellable field is spelled as the
+  word, and open question 2 recommends deferring its build to E187. If the SPEC
+  takes that recommendation, E186 ships with a gate that today's tree passes
+  untouched, which is what `docs/definitions/working-discipline.md` names as a
+  gate that cannot fail. Binding the two is the SPEC stage's call and open
+  questions 1 and 2 are where it is put.
 
 ### The judgment this pre-run owes
 
@@ -351,6 +372,19 @@ is the band's last number.
      evidence carries the same `:1099`. Three coordinates in another element's
      row, so this run leaves them; they belong to E187's pre-run or to a
      `doc-audit` pass.
+     ⚑ **REPAIRED 2026-09-04 by this example's audit**, on the author's
+     direction, and the item stands as the finding it was. `:1112-1114` verified
+     at HEAD and repointed in the E187 row of `docs/elements/catalog.md` and in
+     the two mirrors of that row in `docs/arcs/enforcement-arc.md`; EN-17 got an
+     appended correction rather than a rewrite, because `records/` is not
+     rewound. Two more spans in the same row carried the same drift and were
+     repointed with them: `field-tys->n`/`datas->n` at
+     `lib/lowering/compile-front.chiral:216-240`, now `:238-261`, and `apply-ty`
+     at `lib/lowering/upper/closconv.chiral:1096-1098`, cited there as
+     `:1081-1083`. Still standing, and reported rather than touched: E185's own
+     catalog and arc rows carry that same pre-E185 `apply-ty` span and
+     `closconv-driver.chiral:175` for its call site, now `:206`. Both are the
+     record of a built element.
 
 - **Related:** [[E185]] (the dispatcher's side, built, and the reason this
   element's observable is gone) · [[E187]] (owns the residue: state the lowering
