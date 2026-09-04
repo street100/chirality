@@ -68,6 +68,17 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    **1,477 of 1,481**. ⚑ The four `$apply` dispatchers remain, and EN-15 is
    **answered 2026-09-04**: [[decisions/decision-erased-word-level]] settles the
    level. Their spelling is **E185**, minted the same day and unbuilt.
+
+   ⚑ **The requirement has a second half nothing measured until 2026-09-04.**
+   Agreement runs both ways, and [[records/enforcement-arc]] EN-20 measures a
+   case where the check agrees with a compiler that is wrong. `arm-body`'s
+   `(none)` arm emits the literal `0` as a whole function body; when the
+   family's codomain is ground, `const 0` matches the declared return, `ck-prog`
+   accepts, and the wrong code passes. The two instances in the compiler's own
+   blob redden only because their codomain is `(List Asm)`. So the 1,477-of-1,481
+   figure above measures the checker agreeing with the compiler and says nothing
+   about either being right. **E188** owns that defect. The requirement stands as
+   written.
 4. **The optimizer's re-check runs, or E17 says why it does not.**
    `lib/lowering/upper/optimize.chiral` has zero importers and is in no blob, so
    `optimize` and `specialize` return a `Checked` result nothing ever forms.
