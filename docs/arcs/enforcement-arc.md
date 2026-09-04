@@ -65,15 +65,28 @@ Done when all six hold. Each is checkable, and the state beside it is measured
 4. **The optimizer's re-check runs, or E17 says why it does not.**
    `lib/lowering/upper/optimize.chiral` has zero importers and is in no blob, so
    `optimize` and `specialize` return a `Checked` result nothing ever forms.
-5. **The gate tier is chirality's own.** Measured 2026-09-04: 6,915 lines of
-   shell against 134 lines of native floor, and **352 calls to `grep`, `sed`,
-   `sort` and `awk` where `docs/arcs/text-tools-arc.md` records a built
-   chirality composition**. `lib/text/matcher.chiral` has one consumer,
-   `prog/prose-lint.prog`. ⚑ Some shell is correct and stays: a comparator
-   holding constants cannot be fooled by a mutated compiler, which is why
-   `crypto.sh` prints from the fixture and compares in bash. What is owed is the
-   text work, where a composition exists and nothing calls it. Every tool that
-   moves is one fewer the OS rung has to trust. `records/gate-audit.md`.
+5. **Chirality's own tooling is chirality's.** Measured 2026-09-04: **12,450
+   lines outside the language** against **390 native** (`prog/test-runner.prog`
+   134, `prog/prose-lint.prog` 256). The surface is the gate tier at 6,915 lines
+   of shell, `tools/prose-lint/prose-lint.sh` at 223 with awk doing the
+   matching, seven Python tools at 4,786, and `bin/chirality` plus
+   `bin/chirality-resolve.sh` at 526. Within the gate tier alone there are
+   **352 calls to `grep`, `sed`, `sort` and `awk` where
+   `docs/arcs/text-tools-arc.md` records a built chirality composition**, and
+   `lib/text/matcher.chiral` has one consumer.
+
+   ⚑ **Some of it is correct and stays.** A comparator holding constants cannot
+   be fooled by a mutated compiler, which is why `crypto.sh` prints from the
+   fixture and compares in bash, and why `mutant.sh` substitutes in pure
+   parameter expansion. Over-claiming that bucket replaces a safety property
+   with a dependency. What is owed is the work a composition already covers.
+
+   ⚑ **The reason is the OS rung rather than the gate.** Every classic tool
+   that becomes a composition is one fewer thing an operating system written in
+   this language has to trust, and a resolver and a text tool are needed long
+   before a test harness is. Taking the ground now is cheaper than migrating a
+   coreutils dependency later. `records/gate-audit.md` holds the measurement;
+   `docs/arcs/text-tools-arc.md` holds the coverage table.
 
 6. **Every gate row names a mutant that is actually run.** Inherited from
    [[goals/enforcement]] and from `docs/definitions/testing-floors.md:261`. E173

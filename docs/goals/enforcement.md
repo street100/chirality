@@ -27,19 +27,26 @@ the compiler makes about its own work is carried as a value with evidence, and
 refused when it does not hold. Every gate row has a named mutant that is
 actually run.
 
-**And the enforcing is done in chirality.** A gate that judges chirality source
-from outside the language is a floor this project does not own. Measured
-2026-09-04: the gate tier is 6,915 lines of shell against 134 lines of native
-test floor, and it makes **352 calls to `grep`, `sed`, `sort` and `awk` where
-`docs/arcs/text-tools-arc.md` already records a built chirality composition**.
+**And chirality's own tooling is chirality's.** A tool that judges chirality
+source from outside the language is a floor this project does not own. Measured
+2026-09-04: **12,450 lines outside the language against 390 native.** The gate
+tier is 6,915 lines of shell, `prose-lint` is 223 with awk doing the matching,
+seven Python tools are 4,786, and the CLI and resolver are 526. Within the gate
+tier alone, **352 calls to `grep`, `sed`, `sort` and `awk` have a built
+chirality composition** recorded in `docs/arcs/text-tools-arc.md`, and
 `lib/text/matcher.chiral` has one consumer. The capability exists and the
 shipping path does not reach it, which is the SEEDED pattern this goal exists to
-close, turned on the gates themselves.
+close, turned on the tools.
 
-⚑ The direction matters more than the count. Every classic tool that becomes a
-composition is one fewer thing the eventual OS rung has to trust, and it is
-cheaper to take the ground now than to migrate a coreutils dependency later.
-`records/gate-audit.md` holds the measurement.
+⚑ Some of it is correct and stays. A comparator holding constants cannot be
+fooled by a mutated compiler, which is why the crypto gate prints from the
+fixture and compares in bash. Over-claiming that bucket trades a safety property
+for a dependency.
+
+⚑ The reason is the OS rung rather than the gate. Every classic tool that
+becomes a composition is one fewer thing an operating system written in this
+language has to trust, and a resolver and a text tool are needed long before a
+test harness is. `records/gate-audit.md` holds the measurement.
 
 ## State
 
