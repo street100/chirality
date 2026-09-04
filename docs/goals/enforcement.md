@@ -31,7 +31,7 @@ actually run.
 source from outside the language is a floor this project does not own. Measured
 2026-09-04: **12,450 lines outside the language against 782 native.** The gate
 tier is 6,915 lines of shell, `prose-lint` is 223 with awk doing the matching,
-seven Python tools are 4,786, and the CLI and resolver are 526. The 782 is every
+nine Python tools are 4,786, and the CLI and resolver are 526. The 782 is every
 `.prog` file: `prose-lint` 256, `paren-audit` 244, `test-runner` 134, `resolve`
 104, `wield` 44. The 390 this row carried until 2026-09-04 counted only the
 first and the third.

@@ -85,7 +85,7 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    carry the two whose replaced predecessor is still live beside them.
 
    The surface is the gate tier at 6,915 lines of shell,
-   `tools/prose-lint/prose-lint.sh` at 223 with awk doing the matching, seven
+   `tools/prose-lint/prose-lint.sh` at 223 with awk doing the matching, nine
    Python tools at 4,786, and `bin/chirality` plus `bin/chirality-resolve.sh` at
    526. Within the gate tier alone there are
    **352 calls to `grep`, `sed`, `sort` and `awk` where
