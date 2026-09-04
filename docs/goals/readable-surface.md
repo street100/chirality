@@ -3,7 +3,7 @@ node: goal-readable-surface
 layer: navigation
 related: [goals/README, arcs/diagnostics-arc, arcs/file-types-arc, design-principles, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-03
 ---
 
 # Goal: the surface is convenient without buying it back in escape hatches
@@ -55,6 +55,24 @@ while `string.chiral:14` claims in a comment that it clamps
 shape [[design-principles]] names, since the comment teaches a behaviour the
 primitive does not have.
 
+What makes an opinionated language hard is the amount you have to hold in your
+head. Where the checker is wired the load is off you; where it is not, the shape
+is light because nothing is weighing it.
+
+| what | state | where | limit |
+|---|---|---|---|
+| usage on binders | enforced, gated | `lib/typing/qtt.chiral`, Phase 6 | |
+| refinement types | enforced, gated | `lib/typing/refine.chiral` | `I64` only, `jg-refine-i64` |
+| totality as the default | reached, ungated | `lib/typing/totality.chiral` through `typing/totality-check` | `tot-gate` runs at `compile-front.chiral:340`, and a source declaring no `(total)` profile pays nothing. No termination judgment in `diag.chiral`, and no suite phase runs the one demo that declares one |
+| `->` against `=>` | carried, refused nowhere | `lib/typing/effects.chiral` | E171 |
+| `paren-audit` diagnosis | built, runs | `prog/paren-audit.prog` | reports a count where a position is wanted |
+| `paren-audit` repair | not built | | needs P1 spans and P4 addresses in [[arcs/text-tools-arc]] |
+
+`paren-audit` is the method at its smallest: name the class, build the primitive,
+stop paying attention to it. 244 lines of chirality that name the form, the line
+it opens on, and the delta. The repair half turns unbalanced parens into
+something you never consider again.
+
 ## Arcs
 
 - [[arcs/diagnostics-arc]] — errors, formatting, the reader-facing message.
@@ -72,6 +90,10 @@ settle which wins.** `PRINCIPLES.md` §4 says the choice — reject some safe co
 demand annotation, or coarsen the type — is "a decision owed, not settled here".
 It is still owed. This goal inherits that, and a decision belongs in
 `docs/decisions/` before an arc acts on it.
+
+**Two of the four typing rows are unreached**, so on those the low ceremony is
+absence rather than design. The claim is about load rather than about
+correctness: a checker you never argue with may simply have stopped looking.
 
 **Convenience is measured on a reader, and there is one reader.** Every judgement
 about what is convenient is currently the author's own, so the evidence for this

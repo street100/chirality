@@ -3,17 +3,18 @@ node: goal-self-hosting
 layer: navigation
 related: [goals/README, status-ledger, testing-floors, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-03
 ---
 
 # Goal: the language compiles and checks itself
 
 ## The claim, and where the project makes it
 
-- `README.md`: *"The compiler is written in chirality and compiles itself to a
-  byte-identical copy."*
-- `README.md`, Scope: *"Current work is self-hosting only: the language compiling
-  and checking itself."*
+- [[status-ledger]], the self-hosting fixpoint milestone: the native compiler
+  compiles its own source to a byte-identical copy of itself, and CPython is
+  evicted from the compile path.
+- `docs/decisions/decision-scope.md`: current work is self-hosting only, the
+  language compiling and checking itself.
 - [[working-discipline]], The build rule: *"The compiler compiles everything.
   Python compiles nothing."* `build-new`, test, promote, and nothing replaces
   itself in place.
@@ -28,8 +29,27 @@ updated: 2026-09-02
 
 ## State
 
-Held. `bin/chirality-bin` is 1,147,256 B, promoted by E181 on 2026-09-01, with
-`N1 == N2` at generation one. Suite 303 assertions, 0 failed, 87 roots.
+Held. `bin/chirality-bin` is 1,188,216 B, measured 2026-09-03, reproducing itself
+byte for byte. Suite 321 assertions, 0 failed, 87 roots, last recorded run
+2026-09-01 in [[status-ledger]].
+
+A stack fragments because each layer is held to a different constraint, so the
+test of one language is whether it survives being held to all of them at once.
+
+| layer | written in chirality as | state |
+|---|---|---|
+| the compiler | `prog/compiler.prog` over `lib/lowering/` | self-hosting, byte-identical fixpoint |
+| the checker | `lib/typing/`, 3,449 lines | on the path of every compile |
+| the emitter | `lib/lowering/x64/emit.chiral` | emits the shipped ELF |
+| the runtime | `lib/runtime/`, 3 modules | |
+| the tooling | `prose-lint`, `paren-audit`, `resolve`, `test-runner`, `wield` | 14 Python files remain, [[goals/self-tooling]] |
+| config and data | `.manifest` | resolves as an import target, contents unchecked, E163 |
+| a frozen port set | `(profile name (ports ...) (target t))` | refuses at emit, `compile-emit.chiral:300` |
+
+⚑ E182 fixpointed at generation two on 2026-09-02. A source change that alters
+emitted code makes the old binary's output differ from that output's own, and the
+answer is to promote the fixpoint rather than generation one
+([[records/findings]] FD-08).
 
 ## Arcs
 

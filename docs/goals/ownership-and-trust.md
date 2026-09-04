@@ -3,16 +3,16 @@ node: goal-ownership-and-trust
 layer: navigation
 related: [goals/README, arcs/ownership-and-trust-arc, secure-datum-model, bootstrap, trust-boundary, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-03
 ---
 
 # Goal: the ownership and trust model
 
 ## The claim, and where the project makes it
 
-- `README.md`, Scope: *"The ownership and trust model is a separate track,
-  deferred and built in its own lane: the re-bootstrap climb, DDC, the secure
-  datum model, the register root, the cascade."*
+- `docs/decisions/decision-scope.md`: the ownership and trust model is a
+  separate track, deferred and built in its own lane, being the re-bootstrap
+  climb, DDC, the secure datum model, the register root and the cascade.
 - `PRINCIPLES.md` §5 and its rung table T0 through T3.
 - [[secure-datum-model]], [[bootstrap]], [[trust-boundary]].
 
@@ -38,7 +38,9 @@ The arc holds them with the state each is actually in. Opening it schedules
 nothing: every row says deferred and the arc's resume state says a session picks
 it up nowhere.
 
-## Open, and parked with the track
+## Honest limits
+
+Parked with the track. Nothing below is being worked.
 
 - The datum-model threat split: DMA write is in scope and CPU code execution is
   out, and on no-IOMMU hardware write subsumes execution.

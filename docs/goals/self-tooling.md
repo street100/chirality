@@ -3,7 +3,7 @@ node: goal-self-tooling
 layer: navigation
 related: [goals/README, arcs/diagnostics-arc, arcs/file-types-arc, arcs/zero-python-arc, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-03
 ---
 
 # Goal: chirality writes its own tooling, and no Python remains
@@ -12,10 +12,10 @@ updated: 2026-09-01
 
 - [[arcs/zero-python-arc]] holds the replacement of the Python tools with
   chirality programs, tool by tool, and the deletion of `tools/` at the end.
-- `README.md`, What is real: the Python files that remain, with *"The target is
-  zero."* The count is dated in the README and moves; the target does not.
-- `README.md`, Scope: self-hosting includes *"being good enough to write its own
-  tooling."*
+- [[status-ledger]] and [[records/README]] carry the Python that remains, dated
+  at each measurement. The count moves; the target of zero does not.
+- `docs/decisions/decision-scope.md`: self-hosting includes being good enough to
+  write its own tooling.
 - Author call, 2026-08-31: zero Python is absolute. It does not mean zero Python
   in the compile path, which has been true for the whole migration.
 
@@ -27,7 +27,8 @@ the tree.
 
 ## State
 
-14 Python files, 4,654 LOC, measured 2026-08-31. `prog/prose-lint.prog` is the
+14 Python files, 4,962 LOC, measured 2026-09-03, across 9 of the 12 folders in
+`tools/`. `prog/prose-lint.prog` is the
 one tool already ported natively and is the worked precedent. Sizing per file is
 `.planning/ZERO-PYTHON-SCOPE.md`, and [[arcs/zero-python-arc]] copies the parts a
 reader needs from a fresh clone.
@@ -45,8 +46,22 @@ The order is forced by measurement. Every one of the nine tools scans text,
 reports what it found, and prints the report. The tools cannot be replaced
 before the three things they are made of exist.
 
+### File kinds are the other half
+
+The extension is a kind rather than a dialect, and the end state is that a kind
+is parsed differently while staying the same language. A manifest can be written
+and turned into code, and code back into a manifest; a `.manifest` is a view of
+the code, structured for its purpose as a view; the same applies to `.protocol`,
+`.grammar` and more. `MAP.md` is the contract.
+
 ## Honest limits
 
+- `.manifest` resolves as an import target and nothing checks that its contents
+  are data, so the kind is a naming convention until E163. `.protocol` is minted
+  as E183 and unbuilt, `.grammar` is named nowhere in the tree, and the
+  `.profile` extension `MAP.md` names has zero files. The round-trip law that
+  would make a view and its code the same artifact is `parse(source(v)) == v` in
+  [[arcs/file-types-arc]], unbuilt for both carriers.
 - `prog/prose-lint.prog` is missing `not-but`, `parallel-no` and code-skipping,
   and prints them as NOT-CHECKED every run. Those want the matcher.
 - `tools/paren-audit/paren-audit.py` still sits on disk at 154 LOC beside

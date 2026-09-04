@@ -3,15 +3,16 @@ node: goal-presentability
 layer: navigation
 related: [goals/README, arcs/presentability-arc, arcs/baseline-alignment-arc, arcs/binary-split-arc, records/baseline-alignment, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-03
 ---
 
 # Goal: what this repo says about itself is true, and a reader outside it can tell
 
 ## The claim, and where the project makes it
 
-- `README.md` carries a standing `Honest limits` section, and every principle
-  in `PRINCIPLES.md` carries its own. The form is the commitment.
+- `README.md` marks every live limit inline with ⚑ and carries a standing
+  `Claims, state and limits` table; every principle in `PRINCIPLES.md` carries
+  its own limits. The form is the commitment.
 - [[working-discipline]], Reporting: *"Report failures with their output. Name
   skipped work. Say `done` only when a gate ran."*
 - `docs/decisions/decision-scope.md`, by way of [[working-discipline]]: a
@@ -40,6 +41,19 @@ can find does not count.
    reading `.planning/`.
 5. They can take a tool without taking the compiler. A text tool that ships the
    x64 backend misrepresents the architecture to anyone who measures it.
+
+## State
+
+In flight. [[records/baseline-alignment]] holds 36 rows, most still open, and
+four of them cite the spine directly: BA-24 (`PRINCIPLES.md`), BA-30 (`MAP.md`),
+BA-31 (`chirality verify`, cited 14 times and not a subcommand), BA-36
+(`README.md`, `CLAUDE.md`).
+
+The standing miss is `PRINCIPLES.md`, which says "One atom with no exemptions"
+and "the port-check is the type-check" while a pure `->` function performs a
+syscall and is accepted. `README.md`, [[status-ledger]] and
+[[banks/effect-and-alarm]] all disclose that accurately; the spine's most-read
+document is the one that does not.
 
 ## Arcs
 

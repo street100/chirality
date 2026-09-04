@@ -1,59 +1,74 @@
 # chirality
 
-A passion project, and the honest way in is how I got here.
+This project is 3 broad things:
+1. A typing, judgement, and lowering arrangement for
+2. An upper and lower level programming language
+3. And a methodology + set of tools to reflect the intended use of the previous
 
-I got tired of how much mental running around it takes to be secure, and of how
-backwards that relationship is. Why does one stack need a different language at
-every level? How is anything secure when being secure means trusting all of
-them? Those questions cascade, and they land in the same place: virtually all
-code in virtually every environment is insecure, and it stays that way no matter
-how much effort you spend on it.
+This problem is a production of my anger at many things, but namely:
 
-This project is that anger pointed somewhere useful. We have discovered and
-genuinely implemented more than enough to build a language that answers every
-legitimate complaint anyone has about the languages we have. Nobody has put it
-in one place.
+How is anything considered secure when being secure generally means a variety of
+languages meant to cover where the rest lack?
 
-**Pre-solve all non-logic bugs?** If it's not logic it's mechanical. If it's
-mechanical it's computable. The wiggle room there really favors us.
+Why do programming languages let you do unsafe things, and why do the
+languages that don't, not help you deal with the extra mechanics?
+
+And most importantly: **Why does nothing recognize how required a trait composability is?**
+
+For me, the dissapointing but exciting thing here is that we have already done
+more than enough in programming to know that these complaints can be solved.
+
+Some examples of the lense I see this through:
+
+**Pre-solve non-logical bugs?** Non-logical bugs are mechanical solve guaranteed.
+The bit here is that if something mechanical is wrong, it must be able to be
+expressed uniquely from the correct version. This is because in chirality,
+the goal is that everything is a type carried from upper to lower before translation
+to machine code, against a dependently typed, QTT lineage, refinement carrying judgment core.
+[→ enforcement](docs/goals/enforcement.md), [→ bug-classes](docs/definitions/bug-classes.md)
 
 **Why is the checker something you get instead of something you write?** Every
 language ships a fixed set of refusals and calls that a type system. If you can
-express anything you can express the checker too. Then a bug class comes off the
-list because someone did the work, on your schedule instead of a vendor's
-release calendar.
+express anything you can express the checker too. Then the refusal set is
+anyone's to extend at any time, in the same language everything else is done in.
+[→ readable-surface](docs/goals/readable-surface.md)
 
 **Why is nothing one language the whole way down?** Every layer gets held to a
 different constraint, so nobody tries. Hold one language to all of them at once
 and either it survives or you find out exactly where it did not. Compiler,
 checker, emitter, runtime, tooling, data. Same language.
+[→ self-hosting](docs/goals/self-hosting.md), [→ self-tooling](docs/goals/self-tooling.md)
 
 **Why is `unsafe` a thing we let happen?** Because the type system ran out of
 things it could say, and the language handed you a door instead of a word. Give
 the dangerous thing a type and there is no door to reach for.
+[→ enforcement](docs/goals/enforcement.md)
 
 **Why is it hard to see everything a program can touch?** Enumerating what it
 outputs is undecidable. Enumerating how it reaches outside itself is finite.
 That is a far smaller question and almost nobody asks it. Time and memory count
 as reaching out too.
+[→ enforcement](docs/goals/enforcement.md), [→ ownership-and-trust](docs/goals/ownership-and-trust.md)
 
 **Can you have proof without giving up speed?** Checking runs at compile time and
 is erased before emission. Nothing about it survives into the binary.
+[→ enforcement](docs/goals/enforcement.md)
 
 **How much do you have to trust to trust an entire language?** For chirality,
-1,823 lines. Everything above it is text that core checked. That number is the
-whole argument, and it is the number to attack.
+1,823 lines. Everything above it is text that core checked. The bit here is everything 
+is a type and port, carried from upper to lower, in a system focused on port boundaries.
+[→ independent-judgment](docs/goals/independent-judgment.md)
 
 **It self-hosts.** The compiler is written in chirality and compiles itself to a
 byte-identical copy. No Python runs in the compile, check or run path. A
 fixpoint shows stability and says nothing about a logic-level bug, so treat it
 as a floor rather than a result.
+[→ self-hosting](docs/goals/self-hosting.md)
 
 ## Where this is
 
 Two months into implementation. It self-hosts to machine code with no external
-library, which is the trajectory the rest of this document should be read
-against.
+library, which is a trajectory that gives me a lot of hope for this project.
 
 Current labor is enforcing the model end to end: QTT from the upper layers down
 through lowering, and a trusted core and lowering modular enough that someone
@@ -70,7 +85,7 @@ the two, and every ⚑ in this file marks a limit that is real today.
 
 | you are | go to |
 |---|---|
-| deciding whether this is interesting | [The questions](#the-questions) |
+| deciding whether this is interesting | the questions at the top, then the goal each one cites |
 | wanting to run it | [Try it](#try-it) |
 | reading the source | [The tree](#the-tree), then [`MAP.md`](MAP.md) for the contract it follows |
 | asking what actually works | [Claims, state and limits](#claims-state-and-limits), then [status-ledger](docs/definitions/status-ledger.md) |
@@ -129,250 +144,10 @@ Bigger programs are in `prog/demo/`: `passman-min` (a secret has no structural
 path to a socket), `tomodachi` (an effect-gated behavior pack), `wl-client` (the
 Wayland wire codec). `prog/samples/` holds 69 small programs the suite sweeps.
 
-## The questions
-
-Seven, from the wanting side. Each answer opens by taking a position, gives the
-design goal underneath it, and ends with a table of what is built and what its
-limit is.
-
-1. [What bugs could a language inherently remove?](#q1)
-2. [Why does one stack need half a dozen languages that share nothing?](#q2)
-3. [Could escape hatches be made into checked routes?](#q3)
-4. [Does a language with strong opinions have to fight you?](#q4)
-5. [Why is it so hard to see what a program can actually do?](#q5)
-6. [What is the smallest thing you would have to trust?](#q6)
-7. [Does proof have to be costly or slow?](#q7)
-
-### Q1
-
-**What bugs could a language inherently remove? Could debugging be made purely
-about logical bug solving?**
-
-**The goal.** [`goals/enforcement`](docs/goals/enforcement.md): what is built is
-gated, and the compiler checks what it claims to check. That turns the question
-into a narrower one. A bug class comes off the list when it can be stated as a
-judgment and a gate fails when the judgment stops holding. Anything short of
-that is a bug the language happens to catch today.
-
-Some of them, and the set is open. A failure you can name as a class is a
-failure a checker can refuse, and because the language can express its own
-checker the list is worked rather than given.
-
-| category | what refuses today | how far it goes |
-|---|---|---|
-| memory and ownership | a linear binder used twice or dropped, a linear field | quantities carry it. There is no null in the language to dereference. Buffer bounds refuse nothing, and `str-sub` reads past its own buffer |
-| data at boundaries | non-exhaustive and duplicate branches, an empty case, a datatype with a negative recursive occurrence, an unproved refinement | nine judgments. Refinement is `I64` only. Integer overflow and division by zero have none |
-| effects and authority | a crossing outside the declared profile port set, refused at emit | `compile-emit.chiral:300`. A `->` body that calls an `=>` one has no judgment at all, which is E171 |
-| resources and termination | nothing | no termination judgment exists. The classifier is written and nothing imports it |
-| compilation fidelity | nothing on the shipping path | the typed-assembly floor checker exists and the compile never calls it |
-| concurrency | nothing | nothing in the tree points at it |
-
-Three of the six refuse something today and three refuse nothing. The vocabulary
-is 38 named judgments in `lib/typing/diag.chiral`, and what it does not contain
-is the more useful half of the answer.
-
-The residue is whether your specification says what you meant. Intent stays
-outside the checker. That is the logical bug.
-
-⚑ **Honest limits.** Three of the six categories refuse nothing, so an open set
-is a program of work rather than a property the language has today. The six-way
-split is a draft and `docs/definitions/bug-classes.md` does not exist, so there
-is no settled taxonomy to measure the claim against. Naming a class and checking
-it well are different achievements: refinement refuses out-of-range values for
-`I64` and for no other type. And every one of the 38 judgments is enforcement
-against error. An adversary who controls the source is outside the reach of all
-of them.
-
-### Q2
-
-**Why does one working stack need half a dozen languages that share nothing?**
-
-**The goal.** [`goals/self-hosting`](docs/goals/self-hosting.md) and
-[`goals/self-tooling`](docs/goals/self-tooling.md): the language compiles and
-checks itself, and it is good enough to write its own tooling with no Python
-left. A stack fragments because each layer is held to a different constraint, so
-the test of one language is whether it survives being held to all of them at
-once.
-
-Chirality covers the compiler, the checker, the emitter, the runtime, the
-tooling and the data.
-
-| layer | written in chirality as | state |
-|---|---|---|
-| the compiler | `prog/compiler.prog` over `lib/lowering/` | self-hosting, byte-identical fixpoint at generation one |
-| the checker | `lib/typing/`, 3,227 lines | on the path of every compile |
-| the emitter | `lib/lowering/x64/emit.chiral` | emits the shipped ELF |
-| the runtime | `lib/runtime/`, 3 modules | |
-| the tooling | `prose-lint`, `paren-audit`, `resolve`, `test-runner`, `wield` | 9 Python tools left in `tools/`, the target is zero |
-| config and data | `.manifest`, 2 files in the tree | resolves as an import target. The loader does not check the declared-data property that makes it data, which is E163 |
-| a frozen port set | declared inline, `(profile name (ports ...) (target t))` | refuses at emit, `compile-emit.chiral:300`, gated by `tools/test/profile-target.sh` |
-
-File extensions are a kind rather than a dialect. The end state is that a kind is
-parsed differently while staying the same language:
-
-- a manifest can be written and turned into code, and code back into a manifest
-- a `.manifest` is a view of the code, structured for its purpose as a view
-- the same applies to `.protocol`, `.grammar` and more
-
-⚑ **Honest limits.** One language holds for the compile, check and run path. It
-does not hold for the tooling: 14 Python files remain across the tree, 4,949
-lines measured 2026-09-03, against a target of zero. `.manifest` resolves as an import target and
-nothing checks that its contents are data, so the kind is a naming convention
-until E163. `.protocol` is minted as E183 and unbuilt, `.grammar` is named
-nowhere in the tree, and the `.profile` extension `MAP.md` names has zero files.
-The round-trip law that would make a view and its code the same artifact is
-`parse(source(v)) == v` in [`arcs/file-types`](docs/arcs/file-types-arc.md), and
-it is unbuilt for both carriers.
-
-### Q3
-
-**Could escape hatches like `unsafe`, `any` and raw casts be made into checked
-routes?**
-
-**The goal.** [`goals/enforcement`](docs/goals/enforcement.md). A hatch exists
-because the type system has something it cannot express, so the language gives
-you a way out of the type system instead. The dangerous thing gets a type here
-and there is no exemption to reach for.
-
-Declare it as a crossing. A port registry mints the capability, the crossing is
-named, and a program that calls a crossing its profile froze out is refused at
-emit.
-
-| what | state | where |
-|---|---|---|
-| port registries | 9 `.port` files, one per crossing family | `lib/ports/` |
-| the profile port set | refused at emit | `compile-emit.chiral:300`, gated by `tools/test/profile-target.sh` |
-| capability types | `lincoll`, `secret`, `session` | `lib/capability/` |
-| the crossing-to-wrapper table | one entry per lowered crossing | `lib/lowering/tal/crossing-wraps.chiral` |
-
-⚑ **Honest limits.** The refusal is at emit rather than at check, so a program
-that names a frozen crossing type-checks and fails later. `ports/ports.chiral`
-has 107 importers, which makes the facade a wide seam rather than a narrow one.
-Timing, cache pressure and speculation are reaches with no port, so the closed
-set is closed only over the crossings someone thought to declare. And
-`http-request`, `backend-open` and `chat-open` have no wrapper entry at all,
-so a declared crossing can compile and have nothing to lower to.
-
-### Q4
-
-**Does a language with strong opinions have to fight you?**
-
-**The goal.** [`goals/readable-surface`](docs/goals/readable-surface.md): the
-surface stays convenient without buying it back in escape hatches. It is stated
-against a failure mode, and the failure mode is the question: an annotation
-everyone writes is an escape hatch with a polite name.
-
-Not really. What makes an opinionated language hard is the amount you have to
-hold in your head. Strong typing already exists to mechanically exclude
-categories of failure, and it still leaves all of the typing to you every time.
-The bit here is that if you can express anything, you can express the checker
-too. Error handling becomes something you extend, one bug class at a time, until
-the primitives cover it.
-
-`paren-audit` is the small version, 244 lines of chirality. Break a paren and it
-names the form, the line it opens on, and the delta. The next step is a tool that
-repairs the file in place, and at that point unbalanced parens stop being
-something you consider at all. That is the method: name the class, build the
-primitive, stop paying attention to it.
-
-| what | state | where | limit |
-|---|---|---|---|
-| usage on binders | enforced, gated | `lib/typing/qtt.chiral`, Phase 6 | |
-| refinement types | enforced, gated | `lib/typing/refine.chiral` | `I64` only, `jg-refine-i64` |
-| totality as the default | written, unreached | `lib/typing/totality.chiral` | zero importers, no termination judgment in `diag.chiral` |
-| `->` against `=>` | carried, refused nowhere | `lib/typing/effects.chiral` | E171 |
-| `paren-audit` diagnosis | built, runs | `prog/paren-audit.prog` | reports a count where a position is wanted |
-| `paren-audit` repair | not built | | needs P1 spans and P4 addresses, both `UNASSIGNED` in [`arcs/text-tools`](docs/arcs/text-tools-arc.md) |
-
-Where the checker is wired the load is off you. Where it is not, the shape is
-light because nothing is weighing it.
-
-⚑ **Honest limits.** Two of the four typing rows are unreached, so on those the
-low ceremony is absence rather than design. The repair half of the paren-audit
-escalation needs P1 spans and P4 addresses, neither of which is assigned to an
-element. And the claim is about load rather than about correctness: a checker you
-never argue with may simply have stopped looking.
-
-### Q5
-
-**Why is it so hard to see what a program can actually do?**
-
-**The goal.** [`goals/ownership-and-trust`](docs/goals/ownership-and-trust.md)
-and [`goals/enforcement`](docs/goals/enforcement.md). Enumerating what a program
-outputs is undecidable. Enumerating how it can reach outside itself is finite,
-and languages make the second hard by leaving reach implicit in whatever a
-library happened to link.
-
-The crossings are closed and named, so a module's reach is the set of boundaries
-it declares. Time and memory are crossings too, which is how a regex that pins a
-core stops reading as harmless.
-
-| what | state | where |
-|---|---|---|
-| crossings, declared per family | 9 registries | `lib/ports/` |
-| space as a crossing | arena, region, linear and two allocators | `lib/memory/` |
-| a profile's frozen port set | refused at emit | `compile-emit.chiral:300` |
-| the module datasheet, reach per module | not built, E161 | Phase 8 is unported and prints its reason every run |
-
-⚑ **Honest limits.** A profile declares reach for a whole target rather than per
-module, and the datasheet that would give a reader one module's reach is E161 and
-unbuilt, so today the answer is assembled by hand from imports. Timing, cache
-pressure and speculation have no port and are named open. `ports/ports.chiral`
-has 107 importers, so most of the tree holds the facade rather than a narrow
-capability.
-
-### Q6
-
-**What is the smallest thing you would have to trust to trust the whole
-language?**
-
-**The goal.** [`goals/independent-judgment`](docs/goals/independent-judgment.md).
-This one has a number for an answer rather than an assumption to overturn.
-
-A judgment core, and everything above it is text that core checked. The surface
-is elaborated into a small calculus before checking, so convenience syntax has
-nothing left to smuggle.
-
-Measured 2026-09-03.
-
-| what | lines | note |
-|---|---|---|
-| the judgment core: `kernel` + `kernel-core` + `qtt` + `refine` | 1,823 | the number the question asks for |
-| all of `lib/typing/` | 3,449 | the core plus elaboration, inference and diagnostics |
-| `lib/` and `prog/` | 52,335 | everything the core checks |
-
-⚑ **Honest limits.** "Small enough to read in a sitting" is optimistic for 1,823
-lines of dependently typed code, and that claim is flagged and unresolved.
-`kernel-core.chiral` and `reflect-floor.chiral` both have zero importers, so part
-of what is counted as the core is written and unreached. The typed-assembly floor
-below the core has a checker the compile never calls, so the trust argument stops
-where emission begins. And the goal this answers has no arc: nothing in the tree
-currently works toward it.
-
-### Q7
-
-**Does proof have to be costly? Does proof have to be slow?**
-
-**The goal.** [`goals/enforcement`](docs/goals/enforcement.md). Proof feels slow
-because you picture it running. It runs at compile time and is erased before
-emission, so there is no runtime proof object to pay for. That is a different
-category rather than an optimisation.
-
-Quantity-0 binders are erased before runtime and types are erased before emission,
-so the checking does not ride along.
-
-| what | measured | where |
-|---|---|---|
-| against `gcc -O0` | 2 to 6 times faster | three micro-kernels, 2026-08-01 |
-| against `gcc -O2` | 1.37 to 8.4 times behind | same, the honest optimised-C reference |
-| erasure | q0 binders before runtime, types before emission | `lib/typing/qtt.chiral` |
-
-⚑ **Honest limits.** The same erasure that makes proof free at runtime is why the
-typed-assembly preserve check never runs: the types it would check are gone by
-then. The benchmark harness was Python and did not survive the doc hoist, so
-these numbers cannot be re-measured in this tree today and stand as a dated
-record. Cross-side ratios only: absolute times do not travel off the measurement
-guest.
+⚑ `prog/demo/` is read by nothing under `tools/test/`, measured 2026-09-03, so
+those three are ungated: open them and run them yourself. The tomodachi target
+is parked and its client has never spoken to a live compositor
+([target-tomodachi](docs/definitions/target-tomodachi.md)).
 
 ## How goals are handled
 
@@ -436,8 +211,8 @@ all of it.
 |---|---|---|---|
 | everything lowers to typed assembly | eligible defs lower to typed SSA in every compile | types erased before emit, the preserve check is never called, effectful and dependent code stays upper, the fraction is unmeasured | measure the ratio, build E70, wire `ck-fn` |
 | every unit is a process with a type | the pure/process bit is carried through the front end | the three refusing rules have zero callers | E171 |
-| cost is in the type | QTT and refinement run in the checker | `totality.chiral` has zero importers | wire E11, or drop termination from the claim |
-| crossings are named and closed | 9 port registries, `ports/ports.chiral` has 107 importers | timing, cache pressure and speculation have no port | name it open |
+| cost is in the type | QTT and refinement run in the checker; E11's `tot-gate` is called at `compile-front.chiral:340` | no termination judgment exists in `diag.chiral`, and the one source declaring a `(total)` profile is ungated | mint the judgment, or drop termination from the claim |
+| crossings are named and closed | 9 port registries, `ports/ports.chiral` has 118 importers, 2026-09-03 | timing, cache pressure and speculation have no port | name it open |
 | readable and self-hosting | self-hosts, byte-identical fixpoint | 14 Python files remain, 4,949 lines. Kernel and runtime rows are design | E173, E148, E150 |
 | judgment frozen, the rest re-checkable | `reflect-floor.chiral` and `kernel-core.chiral` are written | zero importers | wire, or mark seeded |
 
@@ -497,7 +272,8 @@ way twice.
 ## Measured performance
 
 Narrow and dated: [RESULTS-2026-08-01](docs/benchmarks/RESULTS-2026-08-01.md).
-The numbers and their limits are in [Q7](#q7).
+The numbers and their limits are in
+[goals/enforcement](docs/goals/enforcement.md), under Honest limits.
 
 The remaining gap is attributed pass by pass, and part of the optimizer is
 *trait-native*: transforms licensed by facts the checker proves. Totality-licensed

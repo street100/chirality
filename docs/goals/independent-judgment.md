@@ -3,17 +3,17 @@ node: goal-independent-judgment
 layer: navigation
 related: [goals/README, decision-self-verification, certificate-discipline, split-role, testing-floors, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-03
 ---
 
 # Goal: judgment that does not rest on one formulation
 
 ## The claim, and where the project makes it
 
-- `README.md`, Honest limits: *"External judgment is cut: the Rocq leg, the
-  CompCert leg, the Python oracle. What replaces them is three semantically
-  distinct judgment cores that must agree, and that is unbuilt."* So every rung
-  in the ledger is enforcement against error.
+- [[status-ledger]], the external-judgment banner: the Rocq leg, the CompCert
+  leg and the Python oracle are cut, and what replaces them is three
+  semantically distinct judgment cores that must agree, which is unbuilt. So
+  every rung in the ledger is enforcement against error.
 - The criterion is **different formulations**. Three encodings of one rule set
   would be worth nothing, which is why a second target under one formulation was
   dropped rather than counted (`docs/elements/catalog.md`, E166).
@@ -32,16 +32,54 @@ refusal. One formulation with two emitters does not count: that is what the
 
 ## State
 
-Unbuilt. **The goal has one arc, five rows, and zero elements.** No work in the
-tree serves it yet.
+Unbuilt as stated: one arc, five rows, zero elements, and no work in the tree
+serves it. What exists today is the premise this goal rests on, and a number.
 
-Recording that is the point of the goals tier. The gap was visible only as a
-line in `README.md`'s Honest limits, where it read as a caveat instead of as
-unstarted work.
+### Premise 1: three categories cover everything
 
-⚑ Amended 2026-09-02. This section read "zero arcs and zero elements" while the
-Arcs section below named an arc, which was true for the few hours before
-[[arcs/independent-judgment-arc]] opened on 2026-09-01 and stale after.
+There is no fourth, because [[thesis]] forbids one. A path the framework cannot
+name is ungoverned by that fact alone, so the only way to control everything is
+to be able to express everything.
+
+| | what it holds | what judges it |
+|---|---|---|
+| [[category-typed]], A | the kernel calculus, the type system, quantities, refinements, totality, the surface. Where correctness rests on a proof | the judgment core, directly |
+| [[category-untyped]], B | the substrate that violates types from outside the language's reach: DMA-capable peripherals, raw memory, the far side of the FFI, the register root | nothing can. It is named, quarantined, kept as small a set as possible |
+| [[category-bridge]], C | typed modules whose referent is a B thing: custody, the broker, attestation, driver wrapping | the judgment core, on the evidence C produces rather than on B |
+
+A is borrowed prior art, B is an honest admission of holes, and C is where the
+originality goes. Together they leave nothing unnamed, which is what makes a
+single core sufficient rather than merely small.
+
+### Premise 2: the type is carried from upper to lower
+
+A type here survives past the point where an annotation would be discarded. The
+surface elaborates into the small calculus before checking, so
+convenience syntax has nothing left to smuggle. The calculus is checked against
+quantities and refinements. What survives lowers to a typed assembly. The
+judgment made at the top is the judgment in force at the bottom.
+
+### So the core is the whole answer
+
+Everything above it is text the core checked. Everything below it carries the
+core's verdict rather than deciding again. That is why the number below is a
+trust boundary and not a module size. Measured 2026-09-03, and
+[[trust-boundary]] holds the TCB it sits inside.
+
+| what | lines | note |
+|---|---|---|
+| the judgment core: `kernel` + `kernel-core` + `qtt` + `refine` | 1,823 | the number the question asks for |
+| all of `lib/typing/` | 3,449 | the core plus elaboration, inference and diagnostics |
+| `lib/` and `prog/` | 52,335 | everything the core checks |
+
+Recording the gap is the point of the goals tier. It was visible only as a
+caveat in the spine, where it read as a limit instead of as unstarted work.
+
+⚑ 1,823 lines is optimistic for "small enough to read in a sitting", and that
+claim is flagged and unresolved. `kernel-core.chiral` and `reflect-floor.chiral`
+both have zero importers, so part of what the number counts is written and
+unreached. The typed-assembly floor below the core has a checker the compile
+never calls, so the trust argument stops where emission begins.
 
 The three modules written for this goal are unreached, and the measurement
 sharpened on 2026-09-02 (`records/findings.md` FD-09): `lib/typing/kernel-core.chiral`
@@ -56,6 +94,17 @@ statement each leg would be judged against is a `Str`, so the artifact
 rows take arc-local ids `J1` and up, so it can be worked without one.
 
 ## Honest limits
+
+**Both premises are partly unpaid.** Premise 2 breaks at emission: types are
+erased before the ELF is written, the typed-assembly preserve check is never
+called, and the checker that would run there refuses 754 of the 1,481 functions
+the compiler emits for its own source ([[records/enforcement-arc]] EN-08,
+2026-09-03). Premise 1 is unpaid on C: [[goals/ownership-and-trust]] holds most
+of the bridge and is deferred whole, so B is named without being governed.
+
+**The core is one formulation, so agreement is with itself.** That is the goal
+above, and it is why the line count answers a smaller question than it looks
+like it answers.
 
 - `bin/chirality` has no `test-rocq` and no `test-python` subcommand, on purpose.
   A subcommand dispatching to a floor this tree lacks is a gate that cannot fail.

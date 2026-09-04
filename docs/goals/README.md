@@ -76,8 +76,11 @@ and the arc says so in its own resume state.
 
 ## Rules
 
-- A goal file is written once and audited. It does not track status. Build state
-  is [[status-ledger]]; measurement residue is [[records/README]].
+- A goal file carries a dated summary of where its goal stands, in `## State`,
+  and of what still falls short, in `## Honest limits`. It carries no element or arc
+  rows. [[status-ledger]] is the authority for what is built on the four rungs
+  and [[records/README]] for a claim beside its measurement, so a summary that
+  disagrees with either is a defect in the summary.
 - Adding a goal means citing where the project already claims it. Authoring a
   new ambition is an author call.
 - Changing what a goal claims changes what its arcs are for, so it is a decision

@@ -3,7 +3,7 @@ node: goal-enforcement
 layer: navigation
 related: [goals/README, arcs/enforcement-arc, status-ledger, testing-floors, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-03
 ---
 
 # Goal: what is built is gated, and what the compiler claims it checks
@@ -17,7 +17,8 @@ updated: 2026-09-01
   checkable and mediated, and that crossing is the type-check.
 - `MAP.md:86`: the `ports/` rule is structural and could be a gate. Today it is
   prose, and prose is how three files got into the wrong directory.
-- `README.md`, Honest limits: three capabilities are built and reach nothing.
+- [[status-ledger]], the SEEDED rung: a capability whose code exists and that
+  no shipping path reaches.
 
 ## What done means
 
@@ -28,8 +29,43 @@ actually run.
 
 ## State
 
-In flight. The named gaps, from `README.md` Honest limits and
-[[records/enforcement-arc]]:
+In flight. A bug class comes off the list when it can be stated as a judgment and
+a gate fails when the judgment stops holding. Anything short of that is a bug the
+language happens to catch today.
+
+Three of the six categories in [[bug-classes]] refuse something and three refuse
+nothing. The vocabulary is 36 named judgments in `lib/typing/diag.chiral`,
+measured 2026-09-03, and what it does not contain is the more useful half: no
+constructor exists for effects, termination, bounds, overflow or ABI agreement.
+
+### The dangerous thing has a type
+
+A hatch exists because the type system has something it cannot express, so the
+language hands you a way out of it. Declared as a crossing instead, the dangerous
+thing carries a type and there is no exemption to reach for. Enumerating what a
+program outputs is undecidable; enumerating how it reaches outside itself is
+finite, so a module's reach is the set of boundaries it declares. Time and memory
+are crossings too.
+
+| what | state | where |
+|---|---|---|
+| port registries | 9 `.port` files, one per crossing family | `lib/ports/` |
+| the profile port set | refused at emit | `compile-emit.chiral:300`, gated by `tools/test/profile-target.sh` |
+| capability types | `lincoll`, `secret`, `session` | `lib/capability/` |
+| the crossing-to-wrapper table | one entry per lowered crossing | `lib/lowering/tal/crossing-wraps.chiral` |
+| space as a crossing | arena, region, linear and two allocators | `lib/memory/` |
+| the module datasheet, reach per module | not built, E161 | Phase 8 is unported and prints its reason every run |
+
+### Checking costs nothing at runtime
+
+Proof runs at compile time and is erased before emission, so there is no runtime
+proof object to pay for. Quantity-0 binders are erased before runtime and types
+before emit, in `lib/typing/qtt.chiral`. The measurements are
+`docs/benchmarks/RESULTS-2026-08-01.md`.
+
+### The named gaps
+
+From [[records/enforcement-arc]]:
 
 - The effect membrane's three refusing rules are in the tree and nothing calls
   them. E171, unbuilt.
@@ -47,3 +83,26 @@ In flight. The named gaps, from `README.md` Honest limits and
 Every rung in the ledger is enforcement against error. An adversary who controls
 the source is out of its reach, because [[goals/independent-judgment]] is
 unbuilt.
+
+**On the bug classes.** An open set of classes is a program of work rather than a
+property the language has. Naming a class and checking it well are different
+achievements: refinement refuses out-of-range values for `I64` and for no other
+type. [[bug-classes]] carries the six-way split and is `status: draft`.
+
+**On the crossings.** The refusal is at emit rather than at check, so a program
+that names a frozen crossing type-checks and fails later. `ports/ports.chiral`
+has 118 importers as of 2026-09-03, which makes the facade a wide seam rather
+than a narrow one.
+Timing, cache pressure and speculation are reaches with no port, so the closed
+set is closed only over the crossings someone thought to declare.
+`http-request`, `backend-open` and `chat-open` have no wrapper entry, so a
+declared crossing can compile with nothing to lower to.
+
+**On reach.** A profile declares reach for a whole target rather than per module,
+and the datasheet that would give a reader one module's reach is E161 and
+unbuilt. Today the answer is assembled by hand from imports.
+
+**On erasure.** The same erasure that makes proof free at runtime is why the
+typed-assembly preserve check never runs: the types it would check are gone by
+then. The benchmark harness was Python and did not survive the doc hoist, so
+those numbers cannot be re-measured in this tree and stand as a dated record.

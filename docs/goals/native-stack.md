@@ -15,8 +15,9 @@ statement, following the precedent in [[records/author-calls]] where
 
 ## The claim, and where the project makes it
 
-- `README.md#the-questions` asks whether one language can be held to every
-  layer at once and names the layers it means.
+- [[goals/self-hosting]] and [[goals/self-tooling]] hold one language to the
+  compiler, checker, emitter, runtime, tooling and data. This goal adds the
+  layers a program meets on the way out: wire, screen and document.
 - [[target-tomodachi]] already puts the language on screen: "A desktop
   companion process for a Wayland session", speaking the wire format with no
   libwayland.
