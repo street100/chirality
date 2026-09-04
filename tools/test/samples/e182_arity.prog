@@ -25,7 +25,8 @@
 ;   1  G2a  dg-msg over the constructor site's Reason
 ;   2  G2b  dg-msg over the type-parameter site's Reason
 ;   3  G4   doc->str 24 over dg-doc's arity arm, both counts laid out
-;   4  the sentinel: reaching it says the stream completed
+;   4  G3   the noun census: one sentence per Subject arm, twelve lines
+;   5  the sentinel: reaching it says the stream completed
 
 (import "prelude/prelude")
 (import "prelude/string")
@@ -43,10 +44,37 @@
 
 (def ar-emit (=> Str Unit) (lam (s) (let ((_ (put s))) (put ar-mark))))
 
+; ── field 4: the noun census, over ALL TWELVE Subject arms ───────────────────
+; dg-arity-noun (diag.chiral:474-488) is a twelve-arm dispatch with no `_`, and
+; exactly one arm answers "type parameters" because exactly one subject has type
+; parameters. Fields 1 and 2 read two of those arms; the other ten are read by
+; nothing else in the tree. Every named subject is called "X" so the twelve
+; sentences differ in their NOUN alone, and the counts are 1 and 2 so the
+; gate's extraction anchors on a shape neither field 1 nor field 2 carries.
+(def ar-join (-> (List Str) Str) (lam (xs) (case xs (nil "") ((cons x r) (str-cat x (str-cat "\n" (ar-join r)))))))
+
+(def ar-say (-> Subject Str) (lam (s) (dg-msg (r-arity s 1 2))))
+
+(def ar-nouns (List Str)
+  (cons (ar-say (subj-none))
+  (cons (ar-say (subj-data "X"))
+  (cons (ar-say (subj-ctor "X"))
+  (cons (ar-say (subj-extern "X"))
+  (cons (ar-say (subj-prim "X"))
+  (cons (ar-say (subj-def "X"))
+  (cons (ar-say (subj-atom "X"))
+  (cons (ar-say (subj-field "X"))
+  (cons (ar-say (subj-lam-binder))
+  (cons (ar-say (subj-let-binder))
+  (cons (ar-say (subj-pi-binder))
+  (cons (ar-say (subj-field-binder))
+    nil)))))))))))))
+
 (def compile-main (=> I64 I64)
   (lam (n)
     (let ((_ (ar-emit (dg-msg ar-ctor))))
     (let ((_ (ar-emit (dg-msg ar-data))))
     (let ((_ (ar-emit (doc->str 24 (dg-doc ar-ctor)))))
+    (let ((_ (ar-emit (ar-join ar-nouns))))
     (let ((_ (ar-emit "END")))
-      0))))))
+      0)))))))

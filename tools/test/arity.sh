@@ -58,7 +58,7 @@
 #
 #   G1  the tenth tag, over all ten Reason arms                   [M1,M9]
 #   G2  the flat exit carries both counts, at both subjects       [M2,M3]
-#   G3  one arm, two nouns, read off the subject                  [M2,M3]
+#   G3  the noun, read off the subject, over all 12 Subject arms [M2,M3,M10]
 #   G4  the Doc exit lays both counts on their own lines             [M4]
 #   G5  the constructor site reports, through a real compile         [M5]
 #   G6  the type-parameter site reports, through a real compile      [M6]
@@ -237,11 +237,21 @@ TENPROG
 #      `Box` is a data type, so dg-arity-noun's subj-data arm gives it
 #      "type parameters".  Both counts appear in both sentences, so a message
 #      that keeps one and drops the other cannot pass.
-#  G3  the SAME two sentences, read for their noun alone, extracted with the rest
-#      of each sentence ANCHORED.  One `Reason` arm serves a site about type
-#      parameters and a site about constructor arguments, and the noun is the
-#      only thing that differs.  The anchor is why M2 reddens this row too: a
-#      sentence whose counts moved no longer matches the pattern at all.
+#  G3  the noun ALONE, over ALL TWELVE `Subject` arms, read off field 4 with the
+#      rest of each sentence ANCHORED.  Every named subject is called "X" and the
+#      counts are 1 and 2, so the twelve sentences differ in their noun and in
+#      nothing else.  Hand-derived: exactly one subject HAS type parameters, so
+#      exactly one arm of dg-arity-noun may say so.  The anchor is why M2 reddens
+#      this row too: a sentence whose counts moved matches no pattern at all and
+#      contributes no entry, so the census comes back short.
+#      ⚑ THIS ROW USED TO READ FIELDS 1 AND 2, which are G2's own two sentences,
+#      and records/gate-audit.md GA-20 measured what that made it.  Extracting
+#      "arguments" out of field 1 with the rest of G2A_WANT anchored holds iff
+#      field 1 IS G2A_WANT, so G3 held exactly when G2 held: fifteen sentence
+#      pairs agreed on all fifteen and no pin ever separated them.  Six named
+#      rows, five predicates.  The census is the row the comment always claimed
+#      to be -- ten of the twelve arms are read by nothing else in the tree --
+#      and M10 is the mutant that reddens G3 with G2 green.
 #  G4  dg-doc's arity arm is a d-group whose head is that sentence plus the
 #      subject tag in parentheses, over a `d-nest 2` carrying `expected <e>` and
 #      `actual <a>` behind two soft breaks -- field for field with the r-usage
@@ -251,7 +261,7 @@ TENPROG
 G1_WANT="redeclared,mismatch,usage,linear,arrow,unbound,skipped,judged,relayed,arity,"
 G2A_WANT="mk2 wrong number of arguments (expected 2, actual 1)"
 G2B_WANT="Box wrong number of type parameters (expected 1, actual 2)"
-G3_WANT="arguments|type parameters"
+G3_WANT="arguments,type parameters,arguments,arguments,arguments,arguments,arguments,arguments,arguments,arguments,arguments,arguments,"
 G4_WANT="mk2 wrong number of arguments (expected 2, actual 1) (ctor)
   expected 2
   actual 1"
@@ -263,9 +273,19 @@ G6_SRC='(data Box ((P (type 0))) (mk (v P)))
 (def compile-main (-> I64 I64) (lam (n) 42))'
 G6_WANT="load: Box wrong number of type parameters (expected 1, actual 2)"
 
-# noun_of SENTENCE-1-EXPECTED-SHAPE -> the noun, or "" when the sentence moved.
-noun_ctor() { printf '%s' "$1" | sed -n 's|^mk2 wrong number of \(.*\) (expected 2, actual 1)$|\1|p'; }
-noun_data() { printf '%s' "$1" | sed -n 's|^Box wrong number of \(.*\) (expected 1, actual 2)$|\1|p'; }
+# noun_census FIELD-4 -> the twelve nouns, comma-joined and comma-terminated.
+# A sentence whose shape moved matches nothing and contributes NO entry, so a
+# corruption of the counts shortens the list instead of passing through it.
+noun_census() {
+  printf '%s\n' "$1" | sed -n 's|^X\{0,1\} wrong number of \(.*\) (expected 1, actual 2)$|\1|p' | tr '\n' ','
+}
+
+# g3_token RAWFILE -> `ok` / `bad`, G3's own token off an already-built fixture.
+# ⚑ IT IS A FUNCTION FOR g1_verdict's REASON: the twelve-arm loop below calls the
+# one `verdict` calls, so no want is re-derived beside the loop.
+g3_token() {
+  if [ "$(noun_census "$(fld 4 "$1")")" = "$G3_WANT" ]; then printf ok; else printf bad; fi
+}
 
 # g1_verdict LIBDIR -> `ok` / `bad` / `nobuild`, G1's own token.
 # ⚑ IT IS A FUNCTION SO M9 CAN CALL THE ONE THAT EMITTED THE BASE ROW.  M9
@@ -289,7 +309,7 @@ verdict() {  # verdict LIBDIR -> six `name:ok` / `name:bad` / `name:nobuild` tok
   if build_raw "$lib" "$FIXTURE" "$raw"; then
     a="$(fld 1 "$raw")"; b="$(fld 2 "$raw")"
     if [ "$a" = "$G2A_WANT" ] && [ "$b" = "$G2B_WANT" ]; then add G2 ok; else add G2 bad; fi
-    eq G3 "$(noun_ctor "$a")|$(noun_data "$b")" "$G3_WANT"
+    add G3 "$(g3_token "$raw")"
     eq G4 "$(fld 3 "$raw")" "$G4_WANT"
   else
     add G2 nobuild; add G3 nobuild; add G4 nobuild
@@ -459,6 +479,45 @@ else
   bad "M9 tag-string-renamed -- $m9_red of 9 reddened G1; misses:$m9_miss"
 fi
 
+# M10 (G3) -- ONE ARM OF dg-arity-noun ANSWERS THE OTHER NOUN.  The arm is
+# `subj-extern`, which neither of G2's two sentences reaches, so this is the
+# mutant the old G3 could not have had: G2 GREEN, G3 RED, the two rows separated
+# for the first time.  records/gate-audit.md GA-20 is that measurement.
+mutant "M10/extern noun-flipped-on-one-arm" \
+  "G1:ok G2:ok G3:bad G4:ok G5:ok G6:ok" \
+  lib/typing/diag.chiral \
+  's|((subj-extern n)     "arguments")|((subj-extern n)     "type parameters")|'
+
+# ⚑ TWELVE ARMS, NOT ONE -- M9's reason one function over.  Each arm of
+# dg-arity-noun is flipped to the OTHER noun in turn and must redden G3.  The
+# extern arm above carries the FULL verdict line; the other eleven call
+# g3_token, the function `verdict` itself calls, over a mutated tree.  Each arm
+# head is PADDED to column 21 in diag.chiral, so the needle is built with that
+# padding and `mutlib` refuses any spelling that matched nothing.
+m10_miss=""; m10_red=0
+for spec in "(subj-none)" "(subj-data   n)" "(subj-ctor   n)" "(subj-prim   n)" \
+            "(subj-def    n)" "(subj-atom   n)" "(subj-field  n)" "(subj-lam-binder)" \
+            "(subj-let-binder)" "(subj-pi-binder)" "(subj-field-binder)"; do
+  head="$(printf '(%-20s' "$spec")"
+  case "$spec" in
+    "(subj-data"*) from="type parameters"; to="arguments" ;;
+    *)             from="arguments"; to="type parameters" ;;
+  esac
+  if mutlib "M10/$spec noun-flipped" lib/typing/diag.chiral \
+       "s|$head\"$from\")|$head\"$to\")|"; then
+    if build_raw "$MUTLIB" "$FIXTURE" "$TMP/m10.raw"; then v="$(g3_token "$TMP/m10.raw")"; else v=nobuild; fi
+    if [ "$v" = bad ]; then m10_red=$((m10_red+1)); else m10_miss="$m10_miss $spec=$v"; fi
+  else
+    m10_miss="$m10_miss $spec=unmutated"
+  fi
+done
+# ⚑ THE COUNT IS ASSERTED, not just the absence of a miss -- M9's reason.
+if [ -z "$m10_miss" ] && [ "$m10_red" -eq 11 ]; then
+  ok "M10 noun-flipped-on-one-arm -- all twelve dg-arity-noun arms redden G3, one at a time (11 here + the extern pin above)"
+else
+  bad "M10 noun-flipped-on-one-arm -- $m10_red of 11 reddened G3; misses:$m10_miss"
+fi
+
 # ============================================================================
 # G7 -- THE TWO SCANS, and both halves are E182's own claims.  Outside the
 # verdict line because neither reads a value.
@@ -534,6 +593,6 @@ if [ "$(reg 24 arity.sh "$TMP/m8.sh")" -eq 0 ] && [ "$(reg 24 arity.sh "$RT")" -
 else bad "M8 unregister-the-phase -- a deleted run_phase line was not caught"; fi
 
 echo
-echo "  (Phase 24 wall clock: $((SECONDS - T0))s, of which seven compiler builds and nine scratch-root builds)"
+echo "  (Phase 24 wall clock: $((SECONDS - T0))s, of which eight compiler builds, nine scratch-root builds and eleven fixture builds)"
 echo "the arity evidence (E182 r-arity): $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
