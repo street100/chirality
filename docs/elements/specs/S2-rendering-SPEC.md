@@ -528,7 +528,14 @@ Wave 1 deliverables (all land in `scaffold/lib/scriba/render.chiral`):
   drives rendering: reads a key, dispatches an op, calls `render-puffer` (pure,
   produces new Rendering), then calls `render-to-ansi-delta`.
 
-- **Related:** [[S2-S3-rendering-loop]] (worked example), [[S2-S3-rendering-loop-AUDIT-v2]]
-  (audit, PASS, 0 BLOCKED findings), [[S1-puffer-SPEC]] (S1 SPEC — puffer type
-  with `type-name` field used by renderer registry), [[SCRIBA-CATALOG.md]]
-  (catalog entry), [[SCRIBA-UNBLOCK-MAP.md]] (build plan, S2 is Phase 1 Wave 2).
+- **Related:** [[S1-puffer-SPEC]] (S1 SPEC — puffer type
+  with `type-name` field used by renderer registry), [[SCRIBA-SLICES]] (the
+  S1-S17 slice rows, successor to the old SCRIBA-CATALOG.md),
+  [[SCRIBA-UNBLOCK-MAP]] (build plan, S2 is Phase 1 Wave 2).
+  ⚑ Two targets are left unlinked because they live outside this tree.
+  S2-S3-rendering-loop named the worked example and S2-S3-rendering-loop-AUDIT-v2
+  its audit (PASS, 0 BLOCKED findings). Both files exist on one laptop's disk
+  under /workspace/manas/.planning/scriba-examples/ and are untracked there, so a
+  fresh clone of either repository reaches neither.
+  `records/baseline-alignment.md` BA-38 holds the measurement and records that
+  copying them in is an author call.

@@ -368,9 +368,13 @@ Wave 1 deliverables (all land in `scaffold/lib/scriba/puffer.chiral`):
   `PufValueR` from this module. S3 (command loop) imports `Puffer`,
   `NewPufR` for puffer lifecycle. S5's `str-edit.chiral` is called by
   `puffer-str-insert` (this spec's Step 6).
-- **Related:** [[S1-puffer]] (worked example), [[S1-puffer-AUDIT]] (audit,
-  3 FLAGs resolved, 6 FIXes applied), [[SCRIBA-CATALOG.md]] (catalog
-  entry), [[SCRIBA-UNBLOCK-MAP.md]] (build plan, S1 is Phase 1 Wave 1),
-  [[../manas/.planning/scriba-examples/S1-puffer.md]] (worked example
-  with research and design rationale), [[../manas/.planning/scriba-examples/S1-puffer-AUDIT.md]]
-  (audit with FLAG resolution and FIX application).
+- **Related:** [[SCRIBA-SLICES]] (the S1-S17 slice rows, successor to the old
+  SCRIBA-CATALOG.md), [[SCRIBA-UNBLOCK-MAP]] (build plan, S1 is Phase 1 Wave 1).
+  ⚑ Four targets are left unlinked because they live outside this tree.
+  S1-puffer named the worked example, S1-puffer-AUDIT its audit (3 FLAGs
+  resolved, 6 FIXes applied), and both were cited twice over, once by slug and
+  once as ../manas/.planning/scriba-examples/. Both files exist on one laptop's
+  disk under /workspace/manas/.planning/scriba-examples/ and are untracked
+  there, so a fresh clone of either repository reaches neither.
+  `records/baseline-alignment.md` BA-38 holds the measurement and records that
+  copying them in is an author call.

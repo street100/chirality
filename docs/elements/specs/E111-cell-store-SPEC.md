@@ -204,5 +204,5 @@ pure→linear migration + the sample:
   native stores.
 - **Related:** [[E111-cell-store]], E113 (`pool-read` dependency), E107 (shares
   the "`Pool n` erased but bounded read needs runtime length" question),
-  [[port-bank]] (the `Pool` refraction), [[memory-discipline-arc]] (E81/E91
+  [[banks/port]] (the `Pool` refraction), [[MEMORY-DISCIPLINE-ARC]] (E81/E91
   linear regions), E30 (structs at the floor).

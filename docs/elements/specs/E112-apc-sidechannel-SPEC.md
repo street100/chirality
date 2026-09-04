@@ -206,4 +206,5 @@ specified.
 - **Related:** [[E112-apc-sidechannel]] · `TERMINAL-PORT-DESIGN.md` (§2 two-tier +
   degrade, §8 items 2/4) · `render.chiral` `Rendering`/`render-to-ansi-full`
   (baseline tier) · `vt-core/vt-parser.chiral` `ps-apc-string` (decode seam) ·
-  [[boundary-sums]] (tags-as-values) · [[chirality-terminal-emulator-arc]].
+  [[pattern-boundary-sums]] (tags-as-values) · chirality-terminal-emulator-arc, an
+  old-tree arc note with no successor in this tree.

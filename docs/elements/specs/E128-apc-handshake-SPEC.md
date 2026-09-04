@@ -143,4 +143,4 @@ dependency-sequenced after E112 + the Terminal port land.
   surface (the differentiator) rides the structured channel once negotiated.
 - **Related:** [[E128-apc-handshake]] · [[E112-apc-sidechannel]] (consumes the bit) ·
   `TERMINAL-PORT-DESIGN.md` (§2 degrade, §8 item 4) · E31 `poll` (timed read) ·
-  E32 `Clock` (nonce) · T13/T15 (Terminal port + (M) backend) · [[boundary-sums]].
+  E32 `Clock` (nonce) · T13/T15 (Terminal port + (M) backend) · [[pattern-boundary-sums]].

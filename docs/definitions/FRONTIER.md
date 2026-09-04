@@ -2,7 +2,7 @@
 node: frontier
 layer: generated
 tier: orientation
-updated: 2026-08-31
+updated: 2026-09-03
 ---
 
 # Design frontier — where things stand
@@ -14,26 +14,32 @@ updated: 2026-08-31
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: a87b1f03b04f97826cf70af498d0f2e26f5eb08164b5dc5c397054e6956a1e29 -->
-<!-- sources: 140 files -->
+<!-- FRONTIER-SOURCES-SHA256: 7d2a39c279879cae96dce2398aa0092bd50050cc584eacb7bcbfd9ba1e13158b -->
+<!-- sources: 153 files -->
 
 ## Decided recently
 
 ### Settled decision notes (docs/decision-*.md, newest first)
 
-- 2026-08-31 · decision-self-verification-hierarchy [draft] — Decision: self-verification is a hierarchy, and the residue is named
+- 2026-09-03 · decision-quorum-store [DECIDED] — Decision: crypto and Shamir serve a split source-of-truth store
+- 2026-09-03 · decision-dispatch-cadence [settled] — Decision: dispatch cadence is serial
+- 2026-09-03 · decision-b-in-type [settled] — Decision: B lives in the type, not the packaging
+- 2026-09-02 · decision-lane-split [DECIDED] — Decision: two lanes, and what enforces the seam
+- 2026-09-01 · decision-work-ids [settled] — Decision: an arc names its work before the work has a number
+- 2026-09-01 · decision-self-verification-hierarchy [draft] — Decision: self-verification is a hierarchy, and the residue is named
+- 2026-09-01 · decision-scope [DECIDED] — Decision: the current track is self-hosting only
+- 2026-09-01 · decision-backend [settled] — Decision: own typed backend, no compile to C
+- 2026-09-01 · decision-ai-tier [settled] — Decision: the agent tier is tracked, and it is distinct from the human tier
 - 2026-08-31 · decision-license [decided] — Decision: AGPL-3.0-or-later, with a runtime exception
-- 2026-08-01 · decision-backend [settled] — Decision: own typed backend, no compile to C
 - 2026-07-28 · decision-syscall-governance [settled] — Decision: the syscall surface is closed by default-deny at an enforced chokepoint, not by enumerating it
 - 2026-07-27 · decision-reflective-floor [settled] — Decision: the reflective floor is a frozen judgment, changed only by certified succession
 - 2026-07-27 · decision-profiles [settled] — Decision: profiles are additive module manifests over a fixed port set
 - 2026-07-27 · decision-brokers [settled] — Decision: two brokers, agreeing through Adhikara
 - 2026-07-26 · decision-deployment-custody [settled] — Decision: deployment, personal-host & custody are a per-instance decentralized translation
-- 2026-07-21 · decision-split-checker [draft] — Decision: the checker is a small trusted core plus untrusted producers
+- 2026-07-21 · decision-split-checker [settled] — Decision: the checker is a small trusted core plus untrusted producers
 - 2026-07-21 · decision-graded-kernel [settled] — Decision: the graded kernel (cost, totality, staging)
 - 2026-07-21 · decision-effect-facets [settled] — Decision: effects are two facets — possession and exercise — joined by construction
 - 2026-07-21 · decision-bridge-elaborator [draft] — Decision: one general bridge elaborator, parameterized by evidence elements
-- 2026-06-16 · decision-b-in-type [settled] — Decision: B lives in the type, not the packaging
 - 0000-00-00 · decision-user-layer-extensibility [DECIDED (2026-08-22)] — Decision — the user layer extends in chirality, live; the kernel is the floor
 - 0000-00-00 · decision-numeric-width-pluggable [DIRECTION-SET (broader-project TODO — not yet scoped into elements)] — Decision — numeric width is a moduleset-configured conformance axis
 - 0000-00-00 · decision-inspiration-policy [?] — Decision: Inspiration & Reading Policy
@@ -86,12 +92,15 @@ updated: 2026-08-31
 ### Pipeline (examples/INDEX.md, by status)
 
 - drafted: 1
-- specced: 1
+- specced: 2
 - audited: 44
-- implemented: 58
+- implemented: 62
+- **implemented: 2
 - impl: 1
 - implemented-core: 1
+- minted: 1
 - part: 1
+- superseded: 1
 
 ### Blocked specs (docs/elements/specs/, named with blocker)
 
@@ -101,7 +110,11 @@ updated: 2026-08-31
 
 ### Last commits touching the frontier sources
 
-- 2026-08-31 c748379 — license: BUSL 1.1 -> AGPL-3.0-or-later, with a runtime exception
-- 2026-08-31 42dc9e9 — gitignore: untrack .planning
-- 2026-08-31 cbb67c7 — sort root to four docs, and the datum model's threat split is wrong
-- 2026-08-31 6707f1f — slice 7: hoist the doc and planning base, sorted by role, language renamed
+- 2026-09-03 5b4fb71 — tal/check is importable beside the compiler, eleven names prefixed tck-
+- 2026-09-03 ddfbc27 — the tal checker agrees with the compiler, and Phase 22 pins that it still refuses
+- 2026-09-03 0bd65dd — N7 example audit: PASS, the agreement theorem repaired and x=0 refused
+- 2026-09-03 92b0660 — N7 pre-run: Shamir over GF(256), peasant loop, AgreeR quorum sum
+- 2026-09-03 1b1101b — quorum store: the author's re-ruling recorded across the tier
+- 2026-09-03 54d59b3 — N1 spec audit: PASS, the sigma mutant pinned so appendix B must go red
+- 2026-09-03 f4f859e — N1 spec: four decisions dispositioned, four slices, the vector-and-mutant gate
+- 2026-09-03 535c56f — N1 example audit: PASS, four fixes, drafted -> reviewed

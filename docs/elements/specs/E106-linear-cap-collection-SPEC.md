@@ -200,8 +200,9 @@ No NEEDS-AUTHOR blockers remain — decisions 1 and 2 are the orchestrator's dis
 - **Follow-on this unblocks:** the TUI `mux` (T9) session-pool can hold N move-only
   caps once `lincoll` lands (checker-verified); full native `mux` awaits the
   porttype cap-close follow-on above.
-- **Related:** [[E106-linear-cap-collection]], [[ports]] (the `porttype` floor +
-  `RecvR` result-sum pattern copied), [[collections]] (the unrestricted `List`/`Map`
-  deliberately not reused), the effect-facets decision (possession = holding N
+- **Related:** [[E106-linear-cap-collection]], [[banks/port]] (the `porttype` floor +
+  `RecvR` result-sum pattern copied), collections, an old-tree module note with no
+  successor here; the unrestricted `List`/`Map` it named are `lib/prelude/list.chiral`
+  and `lib/prelude/map.chiral`, deliberately not reused, the effect-facets decision (possession = holding N
   caps, exercise = `sv-drain`), E42 alarm-supervisor, E105 (the crossing-element
   shape the follow-on copies).

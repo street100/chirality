@@ -720,4 +720,4 @@ this file is now the implementation contract.
 - **Follow-on:** **E170** — *the corpus lands on the floor*. Minted with this
   SPEC so the deferrals above name a real home rather than a phantom.
 - **Related:** [[E168-test-floor]] · [[testing-floors]] · [[pattern-boundary-sums]]
-  · [[E166-mach-c]] · [[verification]] · [[SELF-IMPLEMENT-CATALOG]]
+  · [[E166-mach-c]] · [[verification]] · [[elements/catalog]]

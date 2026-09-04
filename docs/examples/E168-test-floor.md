@@ -517,4 +517,4 @@ def test_sort_gate():
     is **not** mechanizable; the floor's answer here decides whether there is an
     escape hatch and, if so, whether it is itself labelled.
 - **Related:** [[testing-floors]] · [[pattern-boundary-sums]] · [[E166-mach-c]]
-  · [[SELF-IMPLEMENT-CATALOG]]
+  · [[elements/catalog]]

@@ -170,4 +170,5 @@ the native leg is now available as a follow-on rather than author-gated).
 - **Follow-on:** unblocks E111 (Pool-backed Grid indexed reads); pairs with E107
   (`pool-close`→`munmap`) on the shared native-Pool work.
 - **Related:** [[E113-pool-read]], [[E111-pool-grid]], [[E107-pool-close-munmap]],
-  [[ports]], [[mem-region]], `docs/pattern-boundary-sums.md` (E29 errors-as-values).
+  [[banks/port]], [[banks/memory]], `docs/definitions/pattern-boundary-sums.md`
+  (E29 errors-as-values).

@@ -195,4 +195,6 @@ No blocking NEEDS-AUTHOR; `status: draft`.
 - **Follow-on:** unblocks **E103** (its pty behavioral test drives exactly the
   `open-pty` round-trip) and scriba owning its own terminal.
 - **Related:** [[E104-pty-crossings]] · [[E99-ioctl-crossings]] (the mirrored idiom)
-  · [[E103]] (rides this) · [[openat-crossing]] · [[pattern-boundary-sums]].
+  · [[E103]] (rides this) · openat-crossing, an old-tree crossing note with no
+  successor here; the live crossing table is `lib/lowering/tal/crossing-wraps.chiral`
+  · [[pattern-boundary-sums]].

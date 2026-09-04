@@ -179,5 +179,6 @@ former NEEDS-AUTHOR) is now RESOLVED by E121 — the conclusive gate is in §5.
   child-wiring line; the E121 fcntl crossing also serves any future fd-flag
   inspection.
 - **Related:** [[E110-cloexec-pty]], [[E104-pty-acquire]] (added `open-rw`, the
-  flags-less open this builds on), [[sys-tal]] (`nb-sys-memfd-t` `MFD_CLOEXEC`
-  precedent), [[term]].
+  flags-less open this builds on), sys-tal and term, two old-tree module notes with
+  no successor here; their live modules are `lib/lowering/tal/sys.chiral`, which
+  carries the `nb-sys-memfd-t` `MFD_CLOEXEC` precedent, and `lib/protocol/term.chiral`.
