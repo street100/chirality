@@ -38,8 +38,10 @@ carries a type.**
 | the resolution | `render.chiral:164` | `lookup-face` | its `nil` arm at `:167` returns `(face name -1 -1 0)` and reports nothing |
 | the cascade | `render.chiral:366` | `face-join` | attrs accumulate by bitwise or, the inner's stated colour wins, and a negative colour inherits. A real rule with no law and no check |
 
-**The coverage gap, measured 2026-09-04** by grepping `lib/`, `prog/` and
-`TUI/` for every emitted `d-tag` and `r-face` name against the registry.
+**The coverage gap, measured 2026-09-04** by grepping `lib/` and `prog/` for
+every emitted `d-tag` and `r-face` name against the registry. `TUI/` does not
+exist in this tree; the terminal code the name pointed at lives at
+`prog/scriba/`, already reached by the `prog/` half of the grep.
 
 ```
 d-tag names emitted:  diag-head diag-site term-kw term-lit term-name term-qty term-var
@@ -80,12 +82,22 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
    compile.** The coverage check the compiler already runs on a closed sum is
    the whole gate. Done also evicts `manas-*` from `lib/`, which is checkable by
    the same grep that measured it.
-5. **The every-state walk runs as a suite phase and convicts on first use.** The
-   phase enumerates the `(Env, State)` product and checks contrast, overflow,
-   focus visibility and unstyled roles in each pair. A gate that has never
-   refused anything is the failure mode [[decisions/decision-scope]] names, and
-   the seven silently-resolving tags are the defect it must find. ⚑ Its phase
-   number is behind the standing suite-number call in [[records/author-calls]].
+5. **The every-state walk is a distinct mechanism from coverage, and it needs
+   an interactive witness this arc has not chosen.** The phase enumerates the
+   `(Env, State)` product and checks contrast, overflow, focus visibility and
+   unstyled roles in each pair. Requirements 3 and 4 are the static check:
+   a closed `Role` sum plus a total `Theme`, and the compiler's own
+   exhaustiveness check is what finds the seven silently-resolving tags,
+   because a theme omitting one of them fails to compile. The walk is a
+   dynamic check over a state axis, and it needs a consumer that declares one.
+   The cell-lane witness (`lib/typing/diag.chiral`, `lib/surface/pretty.chiral`)
+   declares neither an `Env` nor a `State`, so its product is 1 and a walk over
+   it would prove only that the phase runs. A meaningful instance needs an
+   interactive consumer, and which one stands as its witness is an open author
+   call ([[records/author-calls]]); `prog/scriba/` is the obvious candidate, on
+   the evidence that the registry already carries a `manas-cursor` face for a
+   navigable cursor row. ⚑ Its phase number is behind the standing
+   suite-number call in [[records/author-calls]].
 
 ## Rows
 
@@ -99,7 +111,7 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
 | `display-calculus/C6` | the value expression algebra with the unit in the type. `primitive` | not started | `unminted` |
 | `display-calculus/C7` | the environment as a declared ADT. `primitive` | not started | `unminted` |
 | `display-calculus/C8` | state-driven style over a finite state sum. `law` | not started | `unminted` |
-| `display-calculus/C9` | the every-state gate: a property checked in every reachable rendering. `tool` | not started | `unminted` |
+| `display-calculus/C9` | the every-state gate: a property checked in every reachable rendering. `tool` | not started; the cell-lane witness has no `Env`/`State` axis to walk, so this row waits on an interactive-consumer witness not yet chosen (resume state) | `unminted` |
 | `display-calculus/C10` | resolution at compile time, as ordinary code the compiler evaluates. `law` | not started | `unminted` |
 | `display-calculus/C11` | declared invalidation: the dependency is the argument list. `law` | not started | `unminted` |
 | `display-calculus/C12` | shorthands as constructors that cannot reach an unnamed field. `primitive` | not started | `unminted` |
@@ -107,7 +119,7 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
 | `display-calculus/E2` | the semantic role as a required constructor field. `primitive` | not started | `unminted` |
 | `display-calculus/E3` | the accessibility tree derived by a total function. `law` | not started | `unminted` |
 | `display-calculus/E4` | every document has a text form, and nothing renders from it. `law` | not started | `unminted` |
-| `display-calculus/H6` | the property walk, run as a suite phase. `tool` | not started | `unminted` |
+| `display-calculus/H6` | the property walk, run as a suite phase. `tool` | not started; same witness gap as C9, which it instantiates | `unminted` |
 
 The `kind` cell is the anti-monolith column of [[goals/display]]'s shape
 condition. A row that cannot say which half it is has not been scoped.
@@ -126,17 +138,31 @@ declares an `Env` or a `State` axis, so C9's every-state walk would prove
 only that the tool runs; convicting anything needs a bigger product. A
 meaningful instance of C9/C8 needs an interactive consumer, out of this
 witness's reach. **H1's "one style value drives both `Doc` and `Rendering`" is
-narrower than written**: `d-tag`'s field stays `Str`, frozen because
-`prelude/doc.chiral` depends on nothing past the base shelf
-(`lib/prelude/doc.chiral:12-14`) and retyping it would break that layering
-independent of the BUILD RULE fixpoint cost. What actually drives both ends
-is one closed `Role` sum, projected as a bare string at the frozen `d-tag`
-seam and carried typed everywhere `protocol/render` is free to type it
-(measured: `protocol/render` sits outside the compiler's blob,
-`render-doc.chiral:19-24`). Attachment for the seven tags needs no conflict
-rule: 35 call sites inside two ordinary printer functions each choose at
-most one role by direct code, and nesting is cascade rather than a race
-between two attachment functions, so D2 survives unchanged.
+narrower than written**: `d-tag`'s field stays `Str`, blocked by a stated
+layering rule rather than only by cost. `lib/prelude/doc.chiral:13-16`:
+*"`Doc` depends on nothing but Str/List/I64 and is needed by `typing/` (the
+diagnostics renderer), by `protocol/` (the display exit) and by `prog/`. That
+is 'the base shelf over the extern floor'."* Retyping `d-tag`'s field would
+force that shelf to import a `protocol/`-tier type, independent of the BUILD
+RULE fixpoint cost. What actually drives both ends is one closed `Role` sum,
+projected as a bare string at the frozen `d-tag` seam and carried typed
+everywhere `protocol/render` is free to type it (measured: `protocol/render`
+sits outside the compiler's blob, `render-doc.chiral:19-24`). Attachment for
+the seven tags needs no conflict rule: 35 call sites inside two ordinary
+printer functions each choose at most one role by direct code, and nesting is
+cascade rather than a race between two attachment functions, so D2 survives
+unchanged.
+
+**What this closes and what it does not.** Requirement 4's coverage closes on
+the theme side: `Theme = (-> Role Style)` over the closed seven-plus-one-arm
+`Role` sum, and an incomplete theme is a compiler refusal. It does not close
+on the emission side: nothing stops a stray `d-tag` string literal elsewhere
+in the tree from naming a role the closed sum has no arm for, because
+`d-tag`'s field stays the open `Str` it is today. `rl-unknown` is the design's
+answer, a named and loudly-styled failure state (reverse video in
+`compiler-theme`) replacing the silent fabrication at
+`lib/protocol/render.chiral:167`. That is an improvement over a fabricated
+default, and the compiler's refusal stops at the theme.
 
 The measured coverage gap reproduces exactly: seven `d-tag` names, eleven
 registry faces, zero overlap, five faces with no consumer. The example's
@@ -145,6 +171,15 @@ directory today.
 
 The design detail, the reference class per row and the full 59-row roster
 this arc draws 17 rows from are `.planning/DISPLAY-LAYER-GAP.md`.
+
+**`tools/pack/pack.py` has no adapter for this arc's rows.** It selects a
+source adapter by element-id prefix, `E`, `U`, `S` or `N`
+(`tools/pack/pack.py:27-37`); this arc's rows carry `C`, `E` and `H`, and its
+own `E` prefix already names a different lane, core self-implementation. The
+pre-run assembled its bundle by hand. `pack.py` is one of the seven Python
+tools already counted against enforcement requirement 5's tooling surface
+([[records/tooling-classification]] TC-11). This is a fact about running this
+arc's pipeline.
 
 **Suggested next element:** C1's example audit (`pipeline-audit`), then a
 SPEC for C1/C2/C4/C5 together.

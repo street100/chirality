@@ -48,8 +48,9 @@ Measured 2026-09-04 in the working tree.
 | the resolution | `render.chiral:167` | `lookup-face` | a miss returns `(face name -1 -1 0)` silently |
 | the cascade | `render.chiral:369` | `face-join` | attrs accumulate by `bor`; the inner's stated colour wins and `-1` inherits. A real rule with no law and no check |
 
-**The coverage gap, measured 2026-09-04.** Grepped across `lib/`, `prog/` and
-`TUI/`.
+**The coverage gap, measured 2026-09-04.** Grepped across `lib/` and `prog/`.
+`TUI/` does not exist in this tree; the terminal code the name pointed at
+lives at `prog/scriba/`, already reached by the `prog/` half of the grep.
 
 ```
 d-tag names emitted:  diag-head diag-site term-kw term-lit term-name term-qty term-var
@@ -138,7 +139,7 @@ homes, per the refraction rule in `docs/banks/INDEX.md`.
 | C6 | **The value expression algebra** | `calc()`, `min()`, `max()`, `clamp()`, with unit errors surfacing at computed-value time | an expression ADT with the unit in the type. A unit mismatch fails the checker | `primitive` | `EXTERNAL` |
 | C7 | **The environment as a declared ADT** | media queries, then container queries (baseline since 2023), then anchored container queries. Each is a separate matching mechanism | the style function takes a declared `Env`. Viewport, container, colour scheme, reduced motion are fields of one value | `primitive` | `EXTERNAL` |
 | C8 | **State-driven style over a finite state sum** | `:hover`, `:focus-visible`, `:active`, `:checked`, `:has()`, plus whatever CSS-in-JS computes at runtime | `style : (-> Env State Node Style)`, the state a declared ADT. This is the JSS capability with the closure replaced by a total function | `law` | `EXTERNAL` |
-| C9 | **The every-state gate** | nothing in CSS or JS can state a property that holds across every reachable rendering | with `State` and `Env` finite, the gate walks the product and checks a property in each: contrast, no overflow, focus visible, no unstyled role. **The genuinely new row** | `tool` | `EXTERNAL` |
+| C9 | **The every-state gate** | nothing in CSS or JS can state a property that holds across every reachable rendering | with `State` and `Env` finite, the gate walks the product and checks a property in each: contrast, no overflow, focus visible, no unstyled role. **The genuinely new row, and the one this roadmap has not yet reached a witness for.** The cell lane's `(Env, State)` product measures 1, so it cannot exercise the walk; [[arcs/display-calculus-arc]]'s resume state carries the open call on which consumer does | `tool` | `EXTERNAL` |
 | C10 | **Resolution at compile time** | vanilla-extract and StyleX extract to static CSS at build time; Slint compiles `.slint` ahead of time and requires binding expressions to be pure, checked by its compiler | style resolution is ordinary code the compiler already evaluates. Nothing new is needed for the property Slint advertises | `law` | `EXTERNAL` |
 | C11 | **Declared invalidation** | Blink's invalidation sets accept deliberate over-invalidation to avoid the cost of precise dependency tracking. Xilem diffs successive view trees | the dependency is the argument list of a pure function. What a style reads is what invalidates it, by construction | `law` | `EXTERNAL` |
 | C12 | **Shorthands as constructors** | a CSS shorthand resets longhands it does not mention, which is the classic surprise | a shorthand is a function returning a value of the property record type. It cannot reach a field it does not name | `primitive` | `EXTERNAL` |
@@ -364,7 +365,7 @@ compiler change:
 
 | | rows | why now |
 |---|---|---|
-| the cell-lane instance | C1, C2, C4, C5, the `Rendering` half of H1 | seven tags resolve silently today, the compiler's own diagnostics among them. **This is the one experiment**: it tests the state sum, attachment, coverage and the seam at once |
+| the cell-lane instance | C1, C2, C4, C5, the `Rendering` half of H1 | seven tags resolve silently today, the compiler's own diagnostics among them. **This is the one experiment**: it tests attachment, coverage and the seam at once. Measured 2026-09-04: it does not test the state sum, because its two witnesses declare no `Env`/`State` axis and their product is 1; [[arcs/display-calculus-arc]] carries what that leaves open |
 | the span primitive question | D4, R3 | shares the question `native-protocol/N6` is already asking about word ops and codecs |
 | the numerics decision | D1 | pure paperwork, and it unblocks five rows |
 | the role and registry question | D3, E1, E2 | a total function from a closed sum, no compiler change |
