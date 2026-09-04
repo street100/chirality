@@ -14,8 +14,8 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 7674ed543f71a574a7391926c9af4d1e82bcf7b975192b3839157e35ca37a5fc -->
-<!-- sources: 157 files -->
+<!-- FRONTIER-SOURCES-SHA256: 71604b9f73a533331d1cd5de7e788bfc76a8f6b37c3e8fd615c87d8a4069cbee -->
+<!-- sources: 158 files -->
 
 ## Decided recently
 
@@ -95,8 +95,7 @@ updated: 2026-09-04
 ### Pipeline (examples/INDEX.md, by status)
 
 - drafted: 1
-- reviewed: 1
-- specced: 2
+- specced: 3
 - audited: 44
 - implemented: 62
 - **implemented: 2
@@ -115,11 +114,11 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 0507ef6 — E186 SPEC: the ruling is concrete, and ctor-honest? is built here
+- 2026-09-04 f15e688 — C1C2 example re-audit: the four blocking changes hold, verdict PASS
 - 2026-09-04 82c71a3 — E186 passes the example gate: drafted -> reviewed
 - 2026-09-04 ba6d29c — E186 pre-run: the capture constructor's fields are already the concrete side
 - 2026-09-04 5283af1 — three manas citations the growing files left behind
 - 2026-09-04 b08d94f — prelude, protocol and module: sixteen citations across nine docs
 - 2026-09-04 e135b59 — the typing kernel and the reader: twelve citations, one line to three hundred out
 - 2026-09-04 a889536 — C1C2 pre-run: relate the two style representations and state the round trip
-- 2026-09-04 094fadf — S14 and S15: nine citations into scriba and the manas pipeline
-- 2026-09-04 fe8580e — S17: backend.chiral and runner.chiral both grew past their citations
