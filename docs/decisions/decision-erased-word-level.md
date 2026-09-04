@@ -17,8 +17,8 @@ the erasure as intent: domains always erase, because a polymorphic `(-> K K ..)`
 parameter has to share a family with the concrete closures passed to it
 (`lib/lowering/upper/closconv.chiral:359-363`). `apply-ty` then spells the
 synthesized `$apply` dispatcher's domains with one family member's concrete
-`Core` types (`lib/lowering/upper/closconv.chiral:1081-1083`), reached from
-`lib/lowering/upper/closconv-driver.chiral:175`. Those concrete types survive the
+`Core` types (`lib/lowering/upper/closconv.chiral:1096-1098`), reached from
+`lib/lowering/upper/closconv-driver.chiral:206`. Those concrete types survive the
 peel, because `term->ntalty` carries a primitive type through as `nt-i64` or
 `nt-str` and a data type as `nt-data` (`lib/lowering/compile-front.chiral:60-72`).
 

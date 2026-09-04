@@ -216,7 +216,7 @@ arc's live blocker.**
 1. **The spelling of the erased position. E185, `design`, minted 2026-09-04,
    needing the full pipeline.** The level is settled by
    [[decisions/decision-erased-word-level]]; the shape is open. `apply-ty`
-   (`lib/lowering/upper/closconv.chiral:1081-1083`) spells the synthesized
+   (`lib/lowering/upper/closconv.chiral:1096-1098`) spells the synthesized
    dispatcher's domains with one family member's concrete `Core` types, so four
    `$apply` dispatchers carry a tal type their own arms contradict and `ck-prog`
    is right to refuse them. Two candidates, and
@@ -228,7 +228,7 @@ arc's live blocker.**
 2. **The `$kI_J` capture constructor's field types. EN-17, an open author call,
    opened 2026-09-04.** Research §7 finds both published shapes keeping
    constructor fields concrete, and the structural reason is that a capture
-   constructor (`ctor-name`, `lib/lowering/upper/closconv.chiral:1099`) is
+   constructor (`ctor-name`, `lib/lowering/upper/closconv.chiral:1114`) is
    applied at one site, so nothing forces its fields to merge, while the shared
    dispatcher's argument position is constrained by every family member at once.
    That is the opposite arrangement to the measured `$apply7`, so whether the two

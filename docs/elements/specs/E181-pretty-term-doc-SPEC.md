@@ -212,7 +212,7 @@ pp-term pp-term-doc pp-args pp-spine pp-arms pp-arm pp-arm-go pp-atoms pp-of`.
 ⚑ **The census must be word-boundaried**: a fixed-string `grep -F pp-args`
 returns 16 hits, every one of them `app-args` in
 `lib/lowering/upper/closconv.chiral`.
-⚑ `symop->s` **already exists**, at `lib/lowering/upper/closconv-driver.chiral:31`
+⚑ `symop->s` **already exists**, at `lib/lowering/upper/closconv-driver.chiral:32`
 with the identical body — so `pp-op` may not be spelled that way, and
 `typing/` importing `lowering/` is the wrong direction anyway. `dg-qty-name`
 (`diag.chiral:286`) prints `"omega"` where the surface token is `w`, so `pp-qty`
