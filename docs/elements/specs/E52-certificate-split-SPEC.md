@@ -149,7 +149,7 @@ updated: 2026-08-31
   - ~~`kernel.py:277 conv`~~ → **`lib/typing/kernel.chiral:702 conv`** (declared
     `:426`) — the conversion checker (`conv-rerun`, tier 1) already exists and is
     what tier-1 sites re-run. `preserve-check` is the **proven-once** certificate
-    re-checker E52 generalizes, now `lib/lowering/tal/check.chiral:224 ck-fn` +
+    re-checker E52 generalizes, now `lib/lowering/tal/check.chiral:290 ck-fn` +
     `lib/lowering/upper/optimize.chiral:250 re-check`. ⚑ It was **demoted from
     ENFORCED to built-but-unadopted on 2026-08-31**
     (`docs/definitions/status-ledger.md:121`): neither runs in the shipping

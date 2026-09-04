@@ -363,11 +363,11 @@ else bad "G8(b) typing/diag does not import surface/pretty"; fi
 # (c) FIVE gate scripts and THREE fixtures, byte-unchanged. Pinning four while
 # exercising one is the same hole, one file smaller -- so every pin is checked
 # and M10 moves EACH of them in turn.
-PINS="f50f2ff82f533b13f1eadc23edb69ffde30511ea26796b60f1bddb9a468808fe  diag.sh
-d4feea4ae7a95c66b9e7cb854f5306096682d22ad786968a14023df9ac8e5686  doc.sh
-00aa631da299a711fc611c32324ffa9da56b5225995c3dc52e5fd62f10efc0b4  row.sh
-7733277092446b7a0a6a34307b73af01c91d8e79d9345de964bc715e4d52b07c  face.sh
-10ea95e5fc93a786850205150cc70ceb892673f495f81543b5fe29ca17feafab  render-doc.sh
+PINS="400166d2bada74728abf895ef6bae8b8e5a63e5ffbce1653e348399f773e140b  diag.sh
+1536b14abf23c1d36c6e26a0060bb79fc2a30bc1d40da24c862a69b7833da091  doc.sh
+3f86f26b1b4bba4ab29c16dae080bb8dc73af0ef55c9956af8aa9a3d5f7ed2b0  row.sh
+1cabeb7a0fa6da7e05118c766597621c9e5bcf7d9ed3a6402d0be5d381e585a9  face.sh
+55ac6c4b08075fea11f465669e37b53dea750b40fcca947021b1d3d4e61228a4  render-doc.sh
 713fe84d51c149d491edf8289a5799206f44b0e925a28dc7f123ba3f7ab4171c  samples/e157_diag.prog
 56292ca8dfd175eb3bd1e7b79aa1b1e0b6971cde8478632790906a995fada584  samples/e158_doc.prog
 a0cf04d8cb91a5bbc4f143c1315e406558f22d5c97ce76f83c8a5f53f02e75fd  samples/e174_row.prog"

@@ -370,7 +370,7 @@ measurement behind it.
   `pretty.sh:365-372` already pins `diag.sh`, `doc.sh`, `row.sh`, `face.sh`,
   `render-doc.sh` and the three fixtures by sha256, and Phase 13 grades the nine
   strings. A second pin here would grade them twice.
-- **A `Reason` name census.** `diag.sh:288-305` builds its name set out of
+- **A `Reason` name census.** `diag.sh:298-315` builds its name set out of
   `diag.chiral` and interpolates the count into its own pass message without
   comparing it to a literal, so the three new names (`r-arity`, `dg-arity-noun`, `dg-arity-msg`) grow the set by three and move no
   assertion. Measured, and a second census would double-grade it.

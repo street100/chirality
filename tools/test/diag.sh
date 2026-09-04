@@ -250,13 +250,23 @@ keep lib/module/load-batch.chiral      '(batch-err  (msg Str))' "BatchR keeps it
 keep lib/lowering/upper/optimize.chiral '(chk-err (msg Str))'   "Checked keeps its Str payload"
 keep lib/lowering/compile-front.chiral '(fr-err (msg Str))'     "FrontR keeps its Str payload"
 keep lib/surface/data.chiral           '(pos-bad (reason Str))' "PosR keeps its Str payload"
-# decision 2: lowering/tal/check declares its OWN CkR/ck-err and holds more
-# ck-err occurrences than kernel does. It is not co-blobbed with kernel's, and a
-# tree-wide ck-err rewrite would have corrupted it silently.
-keep lib/lowering/tal/check.chiral     '(ck-err (msg Str))'     "tal/check still owns its own CkR (msg Str)"
+# decision 2: lowering/tal/check has its OWN verdict sum with its own Str
+# payload, and E157's widening must not sweep it. It used to spell that sum CkR
+# with a ck-err arm, which is exactly what made the row fragile -- a tree-wide
+# ck-err rewrite would have corrupted it silently. The sum is TckR/tck-err now
+# (E154's flat-namespace hand-patch, check.chiral's header), so the literal this
+# row greps for is unique to that file by CONSTRUCTION and no longer merely by
+# luck. The guarantee is unchanged: tal/check keeps a Str payload of its own.
+keep lib/lowering/tal/check.chiral     '(tck-err (msg Str))'    "tal/check still owns its own verdict sum with a Str payload"
+# The co-import count. It used to say the two verdict sums COULD NOT meet: the
+# import was `load: data redeclared: CkR` before any type-checking ran. The
+# eleven collisions are `tck-` prefixed now and the co-import loads and runs, so
+# zero says something weaker and truer -- NOTHING HAS WIRED IT YET. ck-prog has
+# no call site (enforcement-arc requirement 2) and optimize.chiral has no
+# importer (requirement 4). tools/test/tal-check.sh's G17 holds the same count.
 both="$(cd "$REPO" && grep -RIl 'import "lowering/tal/check"' lib prog 2>/dev/null \
          | while read -r f; do grep -q 'import "typing/kernel"' "$f" 2>/dev/null && echo "$f"; done | wc -l)"
-if [ "$both" -eq 0 ]; then ok "no module imports both typing/kernel and lowering/tal/check (the two CkRs never meet)"
+if [ "$both" -eq 0 ]; then ok "no module imports both typing/kernel and lowering/tal/check (nothing has wired it yet)"
 else bad "$both module(s) import both typing/kernel and lowering/tal/check"; fi
 # the eight containers really did widen
 w="$(cd "$REPO" && grep -c '(why Reason)' lib/typing/kernel.chiral lib/module/loader.chiral | awk -F: '{s+=$2} END {print s}')"

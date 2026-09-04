@@ -67,13 +67,22 @@
 #   G15  r7  two PRESENT argument lists that disagree             REJECT  [M3]
 #   G16  r8  field arity                                          REJECT
 #   G17  the co-import census: no module under lib/ or prog/ imports both
-#        typing/kernel and lowering/tal/check (diag.sh:257-259 counts the same
-#        thing, and this gate must keep that count at zero)
+#        typing/kernel and lowering/tal/check (diag.sh:267-270 counts the same
+#        thing, and this gate must keep that count at zero).  ⚑ WHAT ZERO NOW
+#        MEANS.  It used to mean the co-import was IMPOSSIBLE -- eleven top-level
+#        names of check.chiral were already in the compiler's blob, so the import
+#        was `load: data redeclared: CkR`.  Those eleven are `tck-` prefixed now
+#        and the co-import LOADS AND RUNS, measured against the whole compiler
+#        closure.  Zero therefore means NOTHING HAS WIRED IT YET: ck-prog still
+#        has no call site (enforcement-arc requirement 2) and optimize.chiral
+#        still has no importer (requirement 4).  The row goes red the day one of
+#        them is wired, and on that day the red row is a REMINDER to retire this
+#        gate. It reports no defect.
 #   G18  `def ck-prog` does not appear in the compiler's blob -- the subject of
 #        this gate is OUTSIDE the compiler closure, which is why the mutant
 #        harness below is a scratch lib/ and not tools/test/mutant.sh
 #
-#   M1   the B1 recovery returns (none) instead of walking ce-datas.  RUN: G3
+#   M1   the B1 recovery returns (none) instead of walking tck-ce-datas.  RUN: G3
 #        goes back to "case on non-data register" and G13's message goes back
 #        with it, while G11 must stay red for the SAME reason it is red now.
 #   M2   tal-ty=?'s tt-data arm calls the strict tys=? again.  RUN: G1, G5 and
@@ -126,9 +135,11 @@ cat >"$FIXTURE" <<'CHIRAL'
 ; mutant that changes what the verdict SAYS (the pretty.sh / crypto.sh rule).
 ;
 ; IMPORTS: prelude, lowering/tal/ssa, lowering/tal/check and the stdio port.
-; NOTHING that reaches typing/kernel, surface/data or lowering/upper/lower --
-; those carry the eleven top-level names check.chiral collides with, and a
-; co-import is a `duplicate label` refusal at load (tools/test/diag.sh:253-259).
+; It reaches neither typing/kernel nor surface/data nor lowering/upper/lower, and
+; that is now ECONOMY rather than necessity: check.chiral's eleven colliding
+; names are `tck-` prefixed, so a co-import loads and runs (tools/test/diag.sh:
+; 253-270).  This fixture keeps the narrow closure because a smaller blob builds
+; faster and the mutant harness rebuilds it four times.
 (import "prelude/prelude")
 (import "lowering/tal/ssa")
 (import "lowering/tal/check")
@@ -262,8 +273,8 @@ cat >"$FIXTURE" <<'CHIRAL'
     (block (cons (i-con 0 "Box" "bx" nil (tt-data "Box" nil)) nil) (t-ret 0)) 1))
 
 ; ---- printing ---------------------------------------------------------------
-(declare tk-verdict (-> CkR Str))
-(def tk-verdict (lam (r) (case r ((ck-ok e) "accept") ((ck-err m) (str-cat "reject: " m)))))
+(declare tk-verdict (-> TckR Str))
+(def tk-verdict (lam (r) (case r ((tck-ok e) "accept") ((tck-err m) (str-cat "reject: " m)))))
 
 (declare tk-emit (=> Str TFn Unit))
 (def tk-emit (lam (l f)
@@ -357,10 +368,16 @@ expect "$OUT" r6  "$W_CASE" "G14 r6  an unrecoverable arm constructor -- still R
 expect "$OUT" r7  "$W_RET"  "G15 r7  two present argument lists that disagree -- still REFUSED"
 expect "$OUT" r8  "$W_FLD"  "G16 r8  field arity -- still REFUSED"
 
-# ─── G17: the co-import census (the same count diag.sh:257-259 holds) ───────
+# ─── G17: the co-import census (the same count diag.sh:267-270 holds) ───────
+# Zero now means NOTHING HAS WIRED IT YET.  It no longer means the wiring is
+# impossible: the eleven collisions are gone (`tck-` prefix, check.chiral's
+# header), and a fixture importing lowering/compile-all beside lowering/tal/check
+# compiles and runs.
+# What is still missing is the call site itself: ck-prog has none, so this count
+# is a measure of enforcement-arc requirement 2 remaining open.
 both="$(cd "$REPO" && grep -RIl 'import "lowering/tal/check"' lib prog 2>/dev/null \
          | while read -r f; do grep -q 'import "typing/kernel"' "$f" 2>/dev/null && echo "$f"; done | wc -l)"
-if [ "$both" -eq 0 ]; then ok "G17 no module under lib/ or prog/ imports both typing/kernel and lowering/tal/check"
+if [ "$both" -eq 0 ]; then ok "G17 no module under lib/ or prog/ imports both typing/kernel and lowering/tal/check -- nothing has wired it yet"
 else bad "G17 $both module(s) import both typing/kernel and lowering/tal/check"; fi
 
 # ─── G18: the subject is outside the compiler's closure ─────────────────────

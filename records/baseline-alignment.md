@@ -291,7 +291,7 @@ anything, and in five of these rows that one number predicted the result.
 - state:    OPEN
 - claim:    the tree lowers through typed assembly before machine code.
 - measured: code does pass through TAL IR: `compile-emit` imports `lowering/tal/reify` and `lowering/x64/emit`. The check on that IR does not run. `ck-prog` and `ck-block` have zero callers. `ck-fn`'s only caller is `re-check` at `lib/lowering/upper/optimize.chiral:250`, and `optimize.chiral` has zero importers, so the one call site is unreachable. The compile path is `compile-front` then `compile-back` then `compile-emit`, and none of the three references a tal check.
-- evidence: `lib/lowering/tal/check.chiral:223`, `:233`, `:242`, `lib/lowering/upper/optimize.chiral:250`, `lib/lowering/compile-emit.chiral:14-18`
+- evidence: `lib/lowering/tal/check.chiral:240`, `:250`, `:259`, `lib/lowering/upper/optimize.chiral:250`, `lib/lowering/compile-emit.chiral:14-18`
 - checked:  2026-09-01
 - element:  UNASSIGNED
 

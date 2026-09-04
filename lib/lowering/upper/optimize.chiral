@@ -247,7 +247,7 @@
 
 ; ---- re-check + optimize pipeline (the preserve-check in the signature) -------
 (declare re-check (-> CEnv TFn Checked))
-(def re-check (lam (ce t) (case (ck-fn ce t) ((ck-ok env) (chk-ok t)) ((ck-err m) (chk-err m)))))
+(def re-check (lam (ce t) (case (ck-fn ce t) ((tck-ok env) (chk-ok t)) ((tck-err m) (chk-err m)))))
 (declare optimize (-> CEnv TFn Checked))
 (def optimize (lam (ce fn) (re-check ce (dead (fold fn)))))
 (declare specialize (-> CEnv TFn (List (Pair I64 SVal)) Checked))

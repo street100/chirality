@@ -3,7 +3,7 @@
 ; / _fields (:255). Re-verifies every lowered instruction against its type
 ; annotation, INDEPENDENTLY of the kernel (the point of preserve-and-recheck).
 ; A register-file Gamma (REnv, I64 reg -> TalTy) is THREADED not mutated; the
-; verdict is a CkR VALUE (ck-ok extended-env | ck-err msg), never a raised
+; verdict is a TckR VALUE (tck-ok extended-env | tck-err msg), never a raised
 ; TalError; the instruction union is a coverage-checked `case` over `data Instr`
 ; (a new IR ctor with no rule = a COMPILE error, not tal.py's runtime catch-all).
 ; PURE (->), total (structural on Block<->TalTerm<->Branch). tal.py stays the oracle.
@@ -16,6 +16,23 @@
 ; check only because Python ints are unbounded).
 ;
 ; This element PROVIDES ck-fn/ck-prog to E16 (lowering) and E17 (optimizer).
+;
+; E154 (flat emitted-label namespace): eleven internals here are `tck-` prefixed
+; -- TckR/tck-ok/tck-err, TckCovR/tck-cov-ok, tck-find-ctor, tck-sig-assoc,
+; tck-find-data, tck-ce-prims, tck-ce-fns, tck-ce-datas. Every one of them was
+; already a top-level name in the compiler's blob (typing/kernel.chiral's own
+; CkR, surface/data.chiral's CovR, kernel's find-ctor, and five byte-identical
+; twins of lowering/upper/lower.chiral:163-194), so an `(import
+; "lowering/tal/check")` beside the kernel was `load: data redeclared: CkR`
+; before any type-checking ran. Two co-blobbed modules cannot define the same
+; emitted label; typing/diag.chiral's `dg-` prefix is the same hand-patch for
+; the same defect. The five twins are DUPLICATION rather than a conflict of
+; meaning and their honest fix is a shared module. That is recorded as EN-16 in
+; records/enforcement-arc.md and left there: lower.chiral is inside the blob, so
+; extracting from it owes a full rebuild-and-promote.
+;
+; ck-fn and ck-prog, the two names this module exports, collide with nothing and
+; keep their spelling.
 (import "prelude/prelude")
 
 ; ---- the CHECKER's typed IR is now the shared lib/tal-ssa.chiral: TalTy /
@@ -27,13 +44,13 @@
 
 ; Gamma + the verdict (errors are values).
 (data REnv () (renv-nil) (renv-cons (r I64) (t TalTy) (rest REnv)))
-(data CkR  () (ck-ok (env REnv)) (ck-err (msg Str)))
+(data TckR    () (tck-ok (env REnv)) (tck-err (msg Str)))
 ; the branch fold's result: covered-ctor set, or an error.
-(data CovR () (cov-ok (covered (List Str))) (cov-err (msg Str)))
+(data TckCovR () (tck-cov-ok (covered (List Str))) (cov-err (msg Str)))
 
-(def ce-prims (-> CEnv (List (Pair Str TalSig))) (lam (c) (case c ((cenv p f d l) p))))
-(def ce-fns   (-> CEnv (List (Pair Str TalSig))) (lam (c) (case c ((cenv p f d l) f))))
-(def ce-datas (-> CEnv (List DData))             (lam (c) (case c ((cenv p f d l) d))))
+(def tck-ce-prims (-> CEnv (List (Pair Str TalSig))) (lam (c) (case c ((cenv p f d l) p))))
+(def tck-ce-fns   (-> CEnv (List (Pair Str TalSig))) (lam (c) (case c ((cenv p f d l) f))))
+(def tck-ce-datas (-> CEnv (List DData))             (lam (c) (case c ((cenv p f d l) d))))
 
 ; ---- lookups + structural type equality --------------------------------------
 (declare renv-get (-> REnv I64 (Maybe TalTy)))
@@ -81,21 +98,21 @@
     (nil (case bs (nil true) (_ false)))
     ((cons x xr) (case bs (nil false) ((cons y yr) (and (tal-ty=? x y) (tys=? xr yr))))))))
 
-(declare sig-assoc (-> (List (Pair Str TalSig)) Str (Maybe TalSig)))
-(def sig-assoc (lam (ps k)
+(declare tck-sig-assoc (-> (List (Pair Str TalSig)) Str (Maybe TalSig)))
+(def tck-sig-assoc (lam (ps k)
   (case ps
     (nil (none))
-    ((cons p r) (case p ((pair pk pv) (case (str-eq pk k) (true (some pv)) (false (sig-assoc r k)))))))))
-(declare find-data (-> (List DData) Str (Maybe (List DCtor))))
-(def find-data (lam (ds dn)
+    ((cons p r) (case p ((pair pk pv) (case (str-eq pk k) (true (some pv)) (false (tck-sig-assoc r k)))))))))
+(declare tck-find-data (-> (List DData) Str (Maybe (List DCtor))))
+(def tck-find-data (lam (ds dn)
   (case ds
     (nil (none))
-    ((cons d r) (case d ((ddata dn2 ctors) (case (str-eq dn2 dn) (true (some ctors)) (false (find-data r dn)))))))))
-(declare find-ctor (-> (List DCtor) Str (Maybe (List TalTy))))
-(def find-ctor (lam (cs cn)
+    ((cons d r) (case d ((ddata dn2 ctors) (case (str-eq dn2 dn) (true (some ctors)) (false (tck-find-data r dn)))))))))
+(declare tck-find-ctor (-> (List DCtor) Str (Maybe (List TalTy))))
+(def tck-find-ctor (lam (cs cn)
   (case cs
     (nil (none))
-    ((cons c r) (case c ((dctor cn2 ftys) (case (str-eq cn2 cn) (true (some ftys)) (false (find-ctor r cn)))))))))
+    ((cons c r) (case c ((dctor cn2 ftys) (case (str-eq cn2 cn) (true (some ftys)) (false (tck-find-ctor r cn)))))))))
 
 ; B1 recovery (EN-11, records/enforcement-arc.md): the data name a case
 ; dispatches on, recovered from the first arm's constructor when the scrutinee
@@ -115,7 +132,7 @@
   (case ds
     (nil (none))
     ((cons d r) (case d ((ddata dn cs)
-      (case (find-ctor cs cn)
+      (case (tck-find-ctor cs cn)
         ((some ftys) (some dn))
         (none (ctor-dn r cn)))))))))
 (declare ck-scrut-dn (-> (List DData) TalTy (List Branch) (Maybe Str)))
@@ -139,22 +156,22 @@
         ((some got) (case (tal-ty=? got e) (true (ck-args env er sr)) (false false))))))))))
 
 ; ck-app: args typed against the sig, sig.ret must equal the annotation, dst set
-(declare ck-app (-> REnv TalSig (List I64) I64 TalTy CkR))
+(declare ck-app (-> REnv TalSig (List I64) I64 TalTy TckR))
 (def ck-app (lam (env sig srcs dst ty)
   (case sig ((talsig argtys sigret)
     (case (ck-args env argtys srcs)
-      (false (ck-err "argument arity or type mismatch"))
+      (false (tck-err "argument arity or type mismatch"))
       (true (case (tal-ty=? sigret ty)
-        (false (ck-err "return type annotation does not match signature"))
-        (true (ck-ok (renv-cons dst ty env))))))))))
+        (false (tck-err "return type annotation does not match signature"))
+        (true (tck-ok (renv-cons dst ty env))))))))))
 
 ; ck-src / ck-void: the byte-floor arg check, with / without a dst
-(declare ck-src (-> REnv (List TalTy) (List I64) I64 TalTy CkR))
+(declare ck-src (-> REnv (List TalTy) (List I64) I64 TalTy TckR))
 (def ck-src (lam (env expect srcs dst rty)
-  (case (ck-args env expect srcs) (true (ck-ok (renv-cons dst rty env))) (false (ck-err "argument arity or type mismatch")))))
-(declare ck-void (-> REnv (List TalTy) (List I64) CkR))
+  (case (ck-args env expect srcs) (true (tck-ok (renv-cons dst rty env))) (false (tck-err "argument arity or type mismatch")))))
+(declare ck-void (-> REnv (List TalTy) (List I64) TckR))
 (def ck-void (lam (env expect srcs)
-  (case (ck-args env expect srcs) (true (ck-ok env)) (false (ck-err "argument arity or type mismatch")))))
+  (case (ck-args env expect srcs) (true (tck-ok env)) (false (tck-err "argument arity or type mismatch")))))
 
 ; const-fits?: an I64 literal always inhabits tt-i64 (bounded by the field type);
 ; a tt-str/tt-bytes/tt-data annotation on an I64 value never fits (tal.py's type
@@ -163,37 +180,37 @@
 (def const-fits? (lam (ty v) (case ty ((tt-i64) true) ((tt-word) true) ((tt-str) true) ((tt-bytes) true) (_ false))))
 
 ; ck-con: annotation must be (tt-data dn ...) with matching dn; fields vs decl
-(declare ck-con (-> CEnv REnv I64 Str Str (List I64) TalTy CkR))
+(declare ck-con (-> CEnv REnv I64 Str Str (List I64) TalTy TckR))
 (def ck-con (lam (ce env dst dn cn srcs ty)
   (case ty
     ((tt-data tydn targs)
       (case (str-eq tydn dn)
-        (false (ck-err "con: annotation data name does not match"))
-        (true (case (find-data (ce-datas ce) dn)
-          (none (ck-err "con: unknown data type"))
-          ((some ctors) (case (find-ctor ctors cn)
-            (none (ck-err "con: not a constructor of the data type"))
+        (false (tck-err "con: annotation data name does not match"))
+        (true (case (tck-find-data (tck-ce-datas ce) dn)
+          (none (tck-err "con: unknown data type"))
+          ((some ctors) (case (tck-find-ctor ctors cn)
+            (none (tck-err "con: not a constructor of the data type"))
             ((some ftys) (case (ck-args env ftys srcs)
-              (true (ck-ok (renv-cons dst ty env)))
-              (false (ck-err "con: field arity or type mismatch"))))))))))
-    (_ (ck-err "con: annotation is not a data type")))))
+              (true (tck-ok (renv-cons dst ty env)))
+              (false (tck-err "con: field arity or type mismatch"))))))))))
+    (_ (tck-err "con: annotation is not a data type")))))
 
 ; ---- one instruction, one local rule (exhaustive over Instr) ------------------
-(declare ck-instr (-> CEnv REnv Instr CkR))
+(declare ck-instr (-> CEnv REnv Instr TckR))
 (def ck-instr (lam (ce env i)
   (case i
     ((i-const dst ty v)
       (case (const-fits? ty v)
-        (true  (ck-ok (renv-cons dst ty env)))
-        (false (ck-err "const: literal does not inhabit its annotation"))))
+        (true  (tck-ok (renv-cons dst ty env)))
+        (false (tck-err "const: literal does not inhabit its annotation"))))
     ((i-prim dst op srcs ty)
-      (case (sig-assoc (ce-prims ce) op)
+      (case (tck-sig-assoc (tck-ce-prims ce) op)
         ((some sig) (ck-app env sig srcs dst ty))
-        (none       (ck-err "prim: no tal signature"))))
+        (none       (tck-err "prim: no tal signature"))))
     ((i-call dst f srcs ty)
-      (case (sig-assoc (ce-fns ce) f)
+      (case (tck-sig-assoc (tck-ce-fns ce) f)
         ((some sig) (ck-app env sig srcs dst ty))
-        (none       (ck-err "call: unknown tal function"))))
+        (none       (tck-err "call: unknown tal function"))))
     ((i-con dst dn cn srcs ty) (ck-con ce env dst dn cn srcs ty))
     ((i-bnew dst n)     (ck-src env (cons (tt-i64) nil) (cons n nil) dst (tt-bytes)))
     ((i-bget dst ptr idx) (ck-src env (cons (tt-bytes) (cons (tt-i64) nil)) (cons ptr (cons idx nil)) dst (tt-i64)))
@@ -201,21 +218,21 @@
     ((i-blen dst src)   (ck-src env (cons (tt-bytes) nil) (cons src nil) dst (tt-i64))))))
 
 ; ---- blocks / terminators / fn / prog ----------------------------------------
-(declare ck-instrs   (-> CEnv REnv (List Instr) CkR))
-(declare ck-block    (-> CEnv REnv Block TalTy CkR))
-(declare ck-term     (-> CEnv REnv TalTerm TalTy CkR))
-(declare ck-branches (-> CEnv REnv (List DCtor) (List Branch) TalTy CovR))
+(declare ck-instrs   (-> CEnv REnv (List Instr) TckR))
+(declare ck-block    (-> CEnv REnv Block TalTy TckR))
+(declare ck-term     (-> CEnv REnv TalTerm TalTy TckR))
+(declare ck-branches (-> CEnv REnv (List DCtor) (List Branch) TalTy TckCovR))
 (def ck-instrs (lam (ce env instrs)
   (case instrs
-    (nil (ck-ok env))
+    (nil (tck-ok env))
     ((cons i rest) (case (ck-instr ce env i)
-      ((ck-err m) (ck-err m))
-      ((ck-ok env2) (ck-instrs ce env2 rest)))))))
+      ((tck-err m) (tck-err m))
+      ((tck-ok env2) (ck-instrs ce env2 rest)))))))
 (def ck-block (lam (ce env blk ret)
   (case blk ((block instrs term)
     (case (ck-instrs ce env instrs)
-      ((ck-err m) (ck-err m))
-      ((ck-ok env2) (ck-term ce env2 term ret)))))))
+      ((tck-err m) (tck-err m))
+      ((tck-ok env2) (ck-term ce env2 term ret)))))))
 
 (declare bind-dsts (-> REnv (List I64) (List TalTy) REnv))
 (def bind-dsts (lam (env dsts ftys)
@@ -237,39 +254,39 @@
 (def ck-term (lam (ce env term ret)
   (case term
     ((t-ret src) (case (renv-get env src)
-      ((some got) (case (tal-ty=? got ret) (true (ck-ok env)) (false (ck-err "ret: type does not match declared return"))))
-      (none (ck-err "ret: type does not match declared return"))))
+      ((some got) (case (tal-ty=? got ret) (true (tck-ok env)) (false (tck-err "ret: type does not match declared return"))))
+      (none (tck-err "ret: type does not match declared return"))))
     ((tt-case src branches dflt) (case (renv-get env src)
-      (none (ck-err "case on non-data register"))
-      ((some sty) (case (ck-scrut-dn (ce-datas ce) sty branches)
-        (none (ck-err "case on non-data register"))
-        ((some dn) (case (find-data (ce-datas ce) dn)
-          (none (ck-err "case: unknown data type"))
+      (none (tck-err "case on non-data register"))
+      ((some sty) (case (ck-scrut-dn (tck-ce-datas ce) sty branches)
+        (none (tck-err "case on non-data register"))
+        ((some dn) (case (tck-find-data (tck-ce-datas ce) dn)
+          (none (tck-err "case: unknown data type"))
           ((some ctors) (case (ck-branches ce env ctors branches ret)
-            ((cov-err m) (ck-err m))
-            ((cov-ok covered) (case dflt
+            ((cov-err m) (tck-err m))
+            ((tck-cov-ok covered) (case dflt
               ((some blk) (ck-block ce env blk ret))
               (none (case (covers-all? covered ctors)
-                (true (ck-ok env))
-                (false (ck-err "non-exhaustive tal case")))))))))))))))))
+                (true (tck-ok env))
+                (false (tck-err "non-exhaustive tal case")))))))))))))))))
 (def ck-branches (lam (ce env ctors branches ret)
   (case branches
-    (nil (cov-ok nil))
+    (nil (tck-cov-ok nil))
     ((cons b rest) (case b ((branch cn dsts body)
-      (case (find-ctor ctors cn)
+      (case (tck-find-ctor ctors cn)
         (none (cov-err "case branch is not a constructor of the scrutinee type"))
         ((some ftys) (case (len=? dsts ftys)
           (false (cov-err "case branch binds the wrong number of fields"))
           (true (case (ck-block ce (bind-dsts env dsts ftys) body ret)
-            ((ck-err m) (cov-err m))
-            ((ck-ok ignore) (case (ck-branches ce env ctors rest ret)
+            ((tck-err m) (cov-err m))
+            ((tck-ok ignore) (case (ck-branches ce env ctors rest ret)
               ((cov-err m) (cov-err m))
-              ((cov-ok cov) (cov-ok (cons cn cov))))))))))))))))
+              ((tck-cov-ok cov) (tck-cov-ok (cons cn cov))))))))))))))))
 
 (declare seed-params (-> I64 (List TalTy) REnv))
 (def seed-params (lam (i ptys)
   (case ptys (nil (renv-nil)) ((cons t rest) (renv-cons i t (seed-params (+ i 1) rest))))))
-(declare ck-fn (-> CEnv TFn CkR))
+(declare ck-fn (-> CEnv TFn TckR))
 (def ck-fn (lam (ce fn)
   (case fn ((tfn name params ret body nregs) (ck-block ce (seed-params 0 params) body ret)))))
 
@@ -279,16 +296,16 @@
     (nil nil)
     ((cons f rest) (case f ((tfn name params ret body nregs)
       (cons (pair name (talsig params ret)) (prog-fns rest))))))))
-(declare ck-fns (-> CEnv (List TFn) CkR))
+(declare ck-fns (-> CEnv (List TFn) TckR))
 (def ck-fns (lam (ce fns)
   (case fns
-    (nil (ck-ok (renv-nil)))
+    (nil (tck-ok (renv-nil)))
     ((cons f rest) (case (ck-fn ce f)
-      ((ck-err m) (ck-err m))
-      ((ck-ok ignore) (ck-fns ce rest)))))))
+      ((tck-err m) (tck-err m))
+      ((tck-ok ignore) (ck-fns ce rest)))))))
 ; ck-prog: derive the fn-sig table from the Prog, then fold ck-fn. cenv0 carries
 ; the extern sigs + data decls (its fns field is ignored/rebuilt here).
-(declare ck-prog (-> CEnv Prog CkR))
+(declare ck-prog (-> CEnv Prog TckR))
 (def ck-prog (lam (cenv0 p)
   (case p ((prog fns)
     (case cenv0 ((cenv prims ignore datas lits)

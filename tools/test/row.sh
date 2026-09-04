@@ -638,9 +638,9 @@ fi
 # so each element's gate is held by the next one.
 echo
 echo "=== E174 G7: the E157 and E158 gates are byte-unchanged, and every phase still runs ==="
-DIAG_SH_SHA=f50f2ff82f533b13f1eadc23edb69ffde30511ea26796b60f1bddb9a468808fe
+DIAG_SH_SHA=400166d2bada74728abf895ef6bae8b8e5a63e5ffbce1653e348399f773e140b
 DIAG_FX_SHA=713fe84d51c149d491edf8289a5799206f44b0e925a28dc7f123ba3f7ab4171c
-DOC_SH_SHA=d4feea4ae7a95c66b9e7cb854f5306096682d22ad786968a14023df9ac8e5686
+DOC_SH_SHA=1536b14abf23c1d36c6e26a0060bb79fc2a30bc1d40da24c862a69b7833da091
 DOC_FX_SHA=56292ca8dfd175eb3bd1e7b79aa1b1e0b6971cde8478632790906a995fada584
 sha_of() { sha256sum "$1" | awk '{print $1}'; }
 pin() {  # pin LABEL FILE WANT

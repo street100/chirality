@@ -406,7 +406,7 @@ premise is an author's write into a file this audit may not touch.
    string, so **E182 is not that reconciliation**. It is the same class of hazard
    one row earlier: row 13 pins `jg-ctor-arity` with no such comment on it. The
    anticipation was written and then attached to the wrong neighbour.
-3. **The `diag.sh:288` census does not move.** It builds a name set from
+3. **The `diag.sh:298` census does not move.** It builds a name set from
    `diag.chiral` and asserts that **none of those names is redefined anywhere
    else in `lib/` or `prog/`** (`:303-305`). `$nnames` is interpolated into the
    pass message and never compared to a literal. `r-arity` currently appears
