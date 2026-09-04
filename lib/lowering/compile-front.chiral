@@ -189,26 +189,48 @@
   (case gs (nil (none))
     ((cons p r) (case p ((pair k v) (case (str-eq k name) (true (some v)) (false (glookup r name)))))))))
 
+; ---- E185: the stated-parameter lookup ---------------------------------------
+; `closconv-sig` invents the `$apply<i>` dispatchers, and the family key it built
+; them from ERASED every domain (`shape-eq`, closconv.chiral:335-356).  The Pi
+; chain `apply-ty` writes therefore spells those domains with ONE arbitrary
+; family member's concrete `Core` types, chosen by traversal order, and peeling
+; them here carried that arbitrary choice into the emitted `TFn`
+; ([[records/enforcement-arc]] EN-15, four rejects).  The pass now STATES the
+; dispatcher's parameter types at the lowering type level and this list is that
+; statement.  A name with no entry peels exactly as it did before.
+(declare sp-get (-> (List (Pair Str (List NTalTy))) Str (Maybe (List NTalTy))))
+(def sp-get (lam (m g)
+  (case m (nil (none))
+    ((cons e r) (case e ((pair k ps) (case (str-eq k g) (true (some ps)) (false (sp-get r g)))))))))
+
 ; ---- peel ONE def (type+body) into a Maybe NDef (none = stays upper) ----------
-(declare peel-def (-> (List (Pair Str (List I64))) Str Term Term (Maybe NDef)))
-(def peel-def (lam (em name ty body)
-  (case (term->ntalty-list (ty-kept-doms ty))
+; The STATED branch replaces the domains ONLY.  `ret` still comes from `ty-cod`,
+; because `cod-key-eq` (closconv.chiral:365-380) keeps a ground codomain concrete
+; on purpose, and `erased` still comes from `ty-erased`, which returns nil for a
+; dispatcher because `mk-pi` gives every binder q=2.
+(declare peel-def (-> (List (Pair Str (List I64))) (List (Pair Str (List NTalTy))) Str Term Term (Maybe NDef)))
+(def peel-def (lam (em sp name ty body)
+  (case (term->ntalty (ty-cod ty))
     (none (none))
-    ((some ptys) (case (term->ntalty (ty-cod ty))
-      (none (none))
-      ((some ret) (case (term->ncore em body)
+    ((some ret) (case (sp-get sp name)
+      ((some sptys) (case (term->ncore em body)
         (none (none))
-        ((some nb) (some (ndef name ptys ret (ty-erased ty 0) nb))))))))))
+        ((some nb) (some (ndef name sptys ret (ty-erased ty 0) nb)))))
+      ((none) (case (term->ntalty-list (ty-kept-doms ty))
+        (none (none))
+        ((some ptys) (case (term->ncore em body)
+          (none (none))
+          ((some nb) (some (ndef name ptys ret (ty-erased ty 0) nb))))))))))))
 
 ; ---- peel EVERY lowerable global into an NDef list (non-lowerable ones dropped)
-(declare peel-globals (-> (List (Pair Str (List I64))) (List (Pair Str (Pair Term Term))) (List NDef)))
-(def peel-globals (lam (em gs)
+(declare peel-globals (-> (List (Pair Str (List I64))) (List (Pair Str (List NTalTy))) (List (Pair Str (Pair Term Term))) (List NDef)))
+(def peel-globals (lam (em sp gs)
   (case gs
     (nil nil)
     ((cons p r) (case p ((pair nm tb) (case tb ((pair ty body)
-      (case (peel-def em nm ty body)
-        (none      (peel-globals em r))
-        ((some nd) (cons nd (peel-globals em r))))))))))))
+      (case (peel-def em sp nm ty body)
+        (none      (peel-globals em sp r))
+        ((some nd) (cons nd (peel-globals em sp r))))))))))))
 
 ; ---- thread the user DATA declarations: kernel DataDecl -> neutral NData ------
 ; The field-type peel reuses term->ntalty. A data type with a field that does not
@@ -311,15 +333,20 @@
     (none (prims->n r))
     ((some np) (cons np (prims->n r))))))))
 
-(def bridge-sig (-> Sig Str FR)
-  (lam (sig name)
+; E185: the bridge now takes closconv-sig's CCOut, which is the rewritten Sig
+; beside what the pass stated about the names it invented.  `def-sigs`
+; (compile-back.chiral:78-79) already reads NDef's `params` into the TalSig call
+; sites see, so the stated types reach the back half with no edit there.
+(def bridge-sig (-> CCOut Str FR)
+  (lam (cc name)
+    (case cc ((ccout sig sp)
     (case (glookup (sig-globals sig) name)
       (none (fr-err (str-cat "no such def: " name)))
-      ((some tb) (let (defs (peel-globals (emap-app (build-emap (sig-globals sig)) (build-pmap (sig-prims sig))) (sig-globals sig)))
+      ((some tb) (let (defs (peel-globals (emap-app (build-emap (sig-globals sig)) (build-pmap (sig-prims sig))) sp (sig-globals sig)))
         (case (has-def defs name)
           (false (fr-err (str-cat "the entry def does not lower: " name)))
           (true  (fr-ok defs (datas->n (sig-datas sig)) (prims->n (sig-prims sig))
-                        (ports-manifest (sig-profiles sig))))))))))
+                        (ports-manifest (sig-profiles sig))))))))))))
 
 ; THE FRONT ENTRY: source string + entry name -> FR (fr-ok NDef / fr-err msg).
 ; Pure chirality: parse + elaborate + typecheck (load-source) then peel. The whole
