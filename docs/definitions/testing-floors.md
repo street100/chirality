@@ -2,11 +2,30 @@
 node: testing-floors
 layer: foundation
 related: [floor-agreement, certificate-discipline, axis-altitude, decision-backend, modules-lowering, decision-split-checker, split-role, status-ledger, trust-boundary, open-edges]
-status: draft
-updated: 2026-09-01
+status: current
+updated: 2026-09-04
 ---
 
-# Testing floors — the contract during the Python-oracle retirement
+# Testing floors
+
+> **⚑ THE EXTERNAL FLOORS ARE CUT, and this note was rewritten against the live
+> tree 2026-09-04.** External judgment went by author decision
+> ([[decisions/decision-scope]]). `rocq/` and `scaffold/` are both absent from
+> the tree, and so is every `chirality/*.py`. `bin/chirality` dispatches
+> `compile`, `run`, `check`, `test` and `help`, so `chirality test-native`,
+> `chirality test-rocq`, `chirality test-python` and `chirality verify` name
+> nothing. [[status-ledger]] carries that fact as the build-state authority and
+> this note points at it rather than restating it.
+>
+> Every passage below describing a rocq obligation, a Python differential, a
+> CompCert leg, or a path under `scaffold/` is **historical**, and dated where it
+> stands. `records/baseline-alignment.md` BA-08 and BA-31 are the rows that
+> found it.
+>
+> **What the cut does NOT retract.** Rules 1, 2 and 3, the run-the-mutant rule,
+> the expectation-provenance ranking and the anchor admission test were paid for
+> by E156, E161, E166, E168 and E170. A rule learned from a floor outlives the
+> floor. What is retracted is the coverage.
 
 > **⚑ THE `Mach`→C LEG IS DROPPED, 2026-09-01** (`d8bcec5`, `d0c5dd5`).
 > `lib/lowering/c/{mach,assemble,emit}.chiral`, `prog/compiler-c.prog` and the
@@ -46,22 +65,29 @@ feature so the retirement completes as a byproduct of normal work.
 
 | Floor | Command | Role | Gates? |
 |---|---|---|---|
-| **native-behavioral** | `chirality test-native` | primary correctness gate — compile a `.chiral` program whose *meaning* fixes an exit code, run it natively, check it. Zero Python. **Eleven phases; 163 ok / 0 FAIL / 82 roots, exit 0**; wall clock **5m07s–5m36s** over seven runs 2026-08-25 — the range, the per-phase breakdown, and the fact that the earlier "~4-minute budget" was never measured all live in [[benchmarks/test-suite-wall-clock]], which owns the figure. ⚑ Every figure there predates the 2026-08-31 migration and is not a baseline for the current tree. Orientation only: **75 % of it is two phases** (Phase 7 at 45 %, Phase 10 at 30 %), and 82 % of Phase 7 is `bin/chirality-resolve.sh` forking helpers rather than anything compiling. ⚑ *The "3m35s at `70ee90f`" this row used to carry disagreed with [[benchmarks/test-suite-wall-clock]]'s **2m52s** for the same commit and the same 163 assertions, and both are now FALSIFIED: phases whose workload that commit and HEAD share exactly (94 roots, 25 F3 samples) cost more than either figure allows for the whole run. A floors contract should not carry a rival wall clock.* Phase 10 is E166's external-compiler leg, run in its `--no-admission` form so the suite does not re-enter itself; **Phase 11** is the resolver + build-state gate (E155/E161, 19 assertions), wired in at `70ee90f` after sitting orphaned. *The "Ten phases; 144 ok" this row carried was the 2026-08-24 measurement, one phase out of date.* | **GATING** |
-| **rocq (external spec)** | `chirality test-rocq` | independent formalization of chirality semantics (`rocq/`), proved under `coqc`. Catches a *consistent* miscompile the fixpoint can't. | **GATING** on well-formedness; open obligations are pending, not failures |
-| **python oracle** | `chirality test-python` | differential second opinion via the reference interpreter. Known-drifting (E90/E98 changes not taught to it). | **ADVISORY** — runs, reports its delta, never fails the gate |
+| **native-behavioral** | `tools/test/run-tests.sh`, reached as `chirality test` | primary correctness gate — compile a `.chiral` program whose *meaning* fixes an exit code, run it natively, check it. Zero Python. **Measured 2026-09-04: 339 passed, 0 failed, 87 roots, `gate PASSED`.** ⚑ *Every figure in the rest of this cell was measured against the pre-migration tree and is kept at the date it was taken.* **Eleven phases; 163 ok / 0 FAIL / 82 roots, exit 0, measured 2026-08-25**; wall clock **5m07s–5m36s** over seven runs 2026-08-25 — the range, the per-phase breakdown, and the fact that the earlier "~4-minute budget" was never measured all live in [[benchmarks/test-suite-wall-clock]], which owns the figure. ⚑ Every figure there predates the 2026-08-31 migration and is not a baseline for the current tree. Orientation only: **75 % of it is two phases** (Phase 7 at 45 %, Phase 10 at 30 %), and 82 % of Phase 7 is `bin/chirality-resolve.sh` forking helpers rather than anything compiling. ⚑ *The "3m35s at `70ee90f`" this row used to carry disagreed with [[benchmarks/test-suite-wall-clock]]'s **2m52s** for the same commit and the same 163 assertions, and both are now FALSIFIED: phases whose workload that commit and HEAD share exactly (94 roots, 25 F3 samples) cost more than either figure allows for the whole run. A floors contract should not carry a rival wall clock.* Phase 10 is E166's external-compiler leg, run in its `--no-admission` form so the suite does not re-enter itself; **Phase 11** is the resolver + build-state gate (E155/E161, 19 assertions), wired in at `70ee90f` after sitting orphaned. *The "Ten phases; 144 ok" this row carried was the 2026-08-24 measurement, one phase out of date.* | **GATING** |
+| **tal floor checker** | `tools/test/tal-check.sh` | Phase 22, the independent checker over the typed IR: 16 hand-built TFns, nine REJECT rows, three mutants that each turn a named row red. Added `ddfbc27`. | ⚑ **unregistered** in `run-tests.sh` by decision, the `crypto.sh` precedent holding phase 21, so it runs by hand and the suite's 339 excludes it |
+| **rocq (external spec)** | ⚑ **CUT 2026-09-01** | an independent formalization of chirality semantics under `coqc`, which caught a *consistent* miscompile the fixpoint cannot. `rocq/` and `rocq/HAMMER-MANIFEST.md` are absent from the tree. Historical row, kept because the reasoning below cites it by name. | none |
+| **python oracle** | ⚑ **CUT 2026-09-01** | a differential second opinion via the reference interpreter, known-drifting when it went. Historical row. | none |
 
-`chirality test` runs all present floors and passes iff the **gating** floors pass.
-Flags: `--strict` (re-gate Python — use once it's green again), `--no-python`
-(skip the advisory floor for speed), `--only <native|rocq|python>`.
+`chirality test` execs `tools/test/run-tests.sh` and passes iff it passes
+(`bin/chirality:181`), forwarding its arguments. ⚑ *The `--strict`,
+`--no-python` and `--only <native|rocq|python>` flags this row carried until
+2026-09-04 selected among floors that no longer exist, and `run-tests.sh` has no
+option parser.* **Live figure, measured 2026-09-04: 339 passed, 0 failed, 87
+roots, `gate PASSED`.** [[status-ledger]] owns it.
 
-### Why Python is advisory, not deleted
+### What the cut costs, stated rather than absorbed
 
-The fixpoint proves chirality reproduces chirality — *stability*, not *correctness*. A
-compiler that miscompiles consistently still fixpoints. So something external
-must still catch that class of bug once Python goes; that is what the **rocq**
-floor is for. Until rocq + native cover an area, Python stays plugged in as an
-advisory second opinion — reported so a *new* red is still visible, but not
-allowed to block work over its known pre-existing drift.
+The fixpoint proves chirality reproduces chirality: *stability*, and nothing
+about *correctness*. A compiler that miscompiles consistently still fixpoints.
+Something outside the tree was what caught that class, and the rocq floor was
+the plan for it. ⚑ **Nothing took its place.** Since 2026-09-01 the tree has one
+gating floor and it shares an author, a toolchain and a rule set with the thing
+it tests, which is the common-mode case Rule 1 below names. `docs/decisions/decision-self-verification.md`
+holds the reasoning that a second encoding of one rule set buys nothing; the
+consequence, that the consistent-miscompile class now has no instrument at all,
+is recorded here rather than argued away.
 
 ## The coverage map — what each instrument can see
 
@@ -114,7 +140,7 @@ are marked as such.
 
 The shape this produces is worth naming: **the C trick covers the machine-ward
 half, Rocq covers the proof-ward half, and they meet at tal** — which is what
-`docs/axis-altitude.md` already says tal is for (*"Typeability is preserved down
+[[axis-altitude]] already says tal is for (*"Typeability is preserved down
 to tal and checked the whole way (`preserve-check`) … tal is the floor and it is
 typed. Below tal is the single trusted drop to the metal."*).
 
@@ -506,26 +532,39 @@ The per-port map, its facets, and the falsification of each guard are
 
 **Every new chirality/scriba feature ships with the floor that covers it:**
 
-1. **Behavioral feature** (scriba: band, pty probe, term-raw; codegen; a new
-   syscall crossing) → add a **native-behavioral sample**: a `.chiral` program
-   whose exit code encodes the expected result, wired into
-   `scaffold/tests/run-native.sh` (Phase 1 inline) or `scaffold/samples/`
-   (Phase 2, walked by the native test-runner). This is the gate for the work.
+1. **Behavioral feature** (a scriba band, a pty probe, term-raw; codegen; a new
+   syscall crossing) → add a **native-behavioral sample**: a program whose exit
+   code encodes the expected result, wired into `tools/test/run-tests.sh` Phase 1
+   inline, or into a phase script under `tools/test/` with its fixtures in
+   `tools/test/samples/`. This is the gate for the work. ⚑ *Until 2026-09-04 this
+   step named `scaffold/tests/run-native.sh` and `scaffold/samples/`, both gone in
+   the 2026-08-31 migration. Phase 2 walks a six-sample manifest bundled inside
+   `prog/test-runner.prog` rather than a directory, so dropping a file into
+   `tools/test/samples/` reaches no phase by itself: BA-32 measures 47 of the 56
+   entries there as referenced by no script.*
 
-2. **Semantic property** (arithmetic law, refinement soundness, a type-checker
-   invariant) → add a **rocq obligation**: a `Lemma … . Proof. Admitted. (*
-   HAMMER:<name> *)` in the matching `rocq/Chirality/*Spec.v`, faithful to the chirality
-   source it mirrors, and let the hammer loop close it. Record the
-   obligation→test mapping in `rocq/HAMMER-MANIFEST.md`.
+2. **Semantic property** (an arithmetic law, refinement soundness, a type-checker
+   invariant) → ⚑ **this step has had no floor since 2026-09-01.** It read: add a
+   rocq obligation, a `Lemma … . Proof. Admitted. (* HAMMER:<name> *)` in the
+   matching `rocq/Chirality/*Spec.v` faithful to the chirality source it mirrors,
+   let the hammer loop close it, and record the obligation-to-test mapping in
+   `rocq/HAMMER-MANIFEST.md`. Both paths went with the floor. The live substitute
+   is a fixture on the E168 test floor (`lib/evidence/test-floor.chiral`) carrying
+   its own provenance rank and a run mutant, which is rank 2 or 3 where the
+   obligation was rank 1. That drop is the cut's real cost and it is stated here
+   rather than absorbed.
 
-3. **Whatever the new floors now cover, drop from Python** — delete the Python
-   tests that only asserted the migrated behavior (or that only tested the
-   Python floor's own internals; ~93% of the suite is white-box floor tests
-   that can't be ported because their subject is leaving). Never port Python
-   test *code* to Coq — mine it for the *property* and re-state it about chirality.
+3. ⚑ **Retired 2026-09-04, and done rather than owed.** It read: whatever the new
+   floors cover, drop from Python. Never port Python test *code* to Coq. Mine it
+   for the *property* and re-state that about chirality. The oracle was cut whole on 2026-09-01 instead of
+   drained feature by feature, so nothing remains to drop. `ledger-lint` check O
+   keeps the accounting over `.planning/RUNG1-CHECKLIST.md`'s C-inventory and
+   reports 0 issues.
 
-Coverage moves with each feature; the uncovered surface shrinks monotonically;
-"zero Python" arrives without a stop-the-world rewrite.
+⚑ *The sentence this section closed on, "coverage moves with each feature; the
+uncovered surface shrinks monotonically; zero Python arrives without a
+stop-the-world rewrite", described a migration that ended by decision instead.
+[[arcs/zero-python-arc]] holds the residue and its own measured count.*
 
 ### Scope lives next door, and this note does not restate it
 
@@ -547,12 +586,12 @@ stated and dated there, once.
 
 ## Triage buckets (for retiring an existing Python test)
 
+⚑ **Historical since 2026-09-01. No test remains to triage** and the `prove`
+bucket's destination is gone with `rocq/`. Kept because the three-way split is
+the shape the next floor retirement should reach for.
+
 - **delete** — tests the Python floor's internals, or is subsumed by the
   fixpoint. No replacement needed.
 - **sample** — behavioral: re-express as a native-behavioral sample (floor 1).
 - **prove** — a semantic property only a proof settles universally: a rocq
   obligation (floor 2).
-
-The manifest `rocq/HAMMER-MANIFEST.md` tracks the `prove` bucket. A classify
-pass (which test → which bucket + its one-line intended property) is the cheap
-first step and can be run on the local model, Claude-verified.

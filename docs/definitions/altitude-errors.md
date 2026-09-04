@@ -3,7 +3,7 @@ node: altitude-errors
 layer: foundation
 related: [axis-altitude, bug-classes, status-ledger, records/baseline-alignment, records/findings]
 status: draft
-updated: 2026-09-01
+updated: 2026-09-04
 ---
 
 # Altitude errors: the five axes the lowering axis does not cover
@@ -18,7 +18,11 @@ measurement rather than by reading. None of them has a check, which is why they
 rot silently.
 
 The taxonomy was written 2026-08-21/22 in `.planning/BUILD-ORDER.md`, which is
-untracked. The classes are the durable part and are hoisted here. **Every
+tracked with the rest of the agent tier since 2026-09-01
+([[decisions/decision-ai-tier]]). ⚑ *This read "which is untracked", the false
+claim `records/baseline-alignment.md` BA-44 records as a class;
+`git ls-files .planning` returns 145.* The classes are the durable part and are
+hoisted here because a taxonomy is written for a person. **Every
 instance below was re-measured 2026-09-01 against the migrated tree**, because
 the original instances cite `scaffold/` and `TUI/` paths the migration evicted,
 and about half of them are fixed.

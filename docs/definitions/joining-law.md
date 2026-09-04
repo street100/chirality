@@ -4,7 +4,7 @@ layer: foundation
 refines: [splitting-law]
 related: [splitting-law, axis-typeability, axis-altitude, category-bridge, modules-lowering, modules-staging, decision-profiles, module-map, open-edges, floor-agreement]
 status: draft
-updated: 2026-07-26
+updated: 2026-09-04
 ---
 
 # The joining law
@@ -51,9 +51,20 @@ invariant is one principle.
 ([[certificate-discipline]]), and they split by type-vs-semantic — which is also
 the build-state line** ([[open-edges]] edges 12/13, shaped 2026-07-25):
 
-- **Built (structural):** lowering → the generic `preserve-check` over `translate`;
-  port-composition → the frozen-port-set check (`verify_profiles`, ENFORCED). Each
-  preserves a *type* / a *set*, mechanically checkable.
+- **Built (structural):** lowering → the generic `preserve-check` over
+  `translate`; port-composition → the frozen-port-set check. Each preserves a
+  *type* / a *set*, mechanically checkable. ⚑ *Re-measured 2026-09-04, and the
+  two halves have different build states.* The **port-composition** half is live:
+  `lib/surface/parse.chiral` judges and stores the `(profile ...)` manifest, the
+  refusal point is `emit-elf-m` in `lib/lowering/compile-emit.chiral` (H8,
+  per-program), and Phases 4 and 5 gate it. ⚑ The **lowering** half is
+  **built and unadopted**, demoted from ENFORCED on 2026-08-31: the shipping
+  compile reaches `ck-prog` nowhere, and `lib/lowering/tal/check.chiral` is
+  imported only from modules with no importers of their own.
+  [[status-ledger]]'s preserve-check row owns the state and
+  `records/enforcement-arc.md` requirement 2 owns the work. ⚑ *This bullet named
+  the check `verify_profiles`, a Python identifier from the cut oracle. The only
+  surviving mention is a comment at `lib/typing/totality.chiral:9`.*
 - **Open (semantic):** bridge → `bridge-preserve-check` "a B referent enters A only
   as evidence" (its *inbound* half; the *outbound* half — "nothing secret or
   authority-bearing leaks A→B", above — is the outbound-confinement obligation,

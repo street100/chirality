@@ -3,7 +3,7 @@ node: bug-classes
 layer: foundation
 related: [status-ledger, totality, open-edges, tal-spec]
 status: draft
-updated: 2026-09-01
+updated: 2026-09-04
 ---
 
 # Bug classes: the coverage list
@@ -32,8 +32,9 @@ unscoped.
 | **by construction** | the language has no way to express the failure |
 
 ⚑ **Unwired is the important one, and it is not the same as unbuilt.** See the
-systemic finding at the bottom. 1,680 LOC of checking machinery is written and
-absent from the compiler.
+systemic finding at the bottom. 1,359 LOC of checking machinery is written and
+absent from the compiler, re-measured 2026-09-04 (⚑ *1,680 on 2026-09-01, before
+E11's classifier joined the closure*).
 
 ## Memory and ownership
 
@@ -60,7 +61,7 @@ absent from the compiler.
 
 | class | how it gets said | state | element |
 |---|---|---|---|
-| non-termination, unbounded recursion | structural and numeric-measure classifier | **unwired.** `typing/totality` (387 L) is not in the compiler binary and `Judg` has no termination constructor. `LEDGER.md:86` files this `built`, which is wrong | E11 |
+| non-termination, unbounded recursion | structural and numeric-measure classifier | **partial, wired 2026-09-02.** `typing/totality` (387 L) is in the compiler binary through `typing/totality-check`, which `lowering/compile-front` imports, and the gate refuses wherever a profile carries `(total)`. The gate is **opt-in** and no suite phase fails when it breaks, so a source with no profile diverges as before. `Judg` still has no termination constructor; the refusal is a `tot-holdout` string from `tot-holdout-msg`. ⚑ *This row read "unwired, and `LEDGER.md:86` files this `built`, which is wrong". `docs/elements/ledger.md:433` records the two sides AGREED on 2026-09-02.* | E11 |
 | unbounded allocation | cost carried in the type | design | |
 | handle and fd leaks | linear resources | partial | |
 | time or fuel budget exceeded | the cost gradient | design | |
@@ -71,7 +72,7 @@ absent from the compiler.
 |---|---|---|---|
 | non-exhaustive branches | case coverage | refuses | |
 | unsound recursive data | strict positivity | refuses | |
-| out-of-range values | refinement types, **`I64` only** | refuses. `let`-bound results still fail to check | owed, unminted. Next free number is E182 |
+| out-of-range values | refinement types, **`I64` only** | refuses. `let`-bound results still fail to check, measured as BA-41 and `records/findings.md` FD-02 | `UNASSIGNED`. ⚑ *This read "next free number is E182"; E182 was minted, built 2026-09-02, and is a different element* |
 | unchecked parse results | declared crossing plus refinements | partial | |
 | integer overflow, division by zero | | none | |
 | FFI and ABI signature disagreement | extern declarations checked against the real ABI | declared only. `jg-extern-nontype` checks an extern's type is a type. Nothing checks it against the ABI, at declaration or at link | |
@@ -123,18 +124,25 @@ Ground truth is the judgment vocabulary, `lib/typing/diag.chiral:97-110`
 agreement.** A rule cannot refuse what the vocabulary cannot say, so each of
 those needs a `Judg` arm before it needs a caller.
 
-## The systemic finding, 2026-09-01
+## The systemic finding, 2026-09-01, re-measured 2026-09-04
 
 The compiler binary is the transitive import closure of `prog/compiler.prog`:
-**58 modules, 16,075 LOC**, out of `lib/`'s 103 modules and 25,222 LOC.
+**60 modules**, of which 50 are `lib/**.chiral` totalling **16,736 LOC**, out of
+`lib/`'s 95 `.chiral` modules and 25,934 LOC. ⚑ *The 2026-09-01 reading was
+**58 modules, 16,075 LOC** against 103 modules and 25,222 LOC, and it stands as
+what it measured. E11's wiring on 2026-09-02 put `typing/totality` and
+`typing/totality-check` into the closure, which is the whole of the module-count
+move.*
 
-Ten modules are checking machinery that is written and absent from that closure.
+**Nine** modules are checking machinery that is written and absent from that
+closure. ⚑ *This read ten. `typing/totality` (387 LOC) left the list when the
+classifier was wired, and `lowering/tal/check` grew from 246 to 312 when
+`5b4fb71` prefixed eleven names `tck-`.*
 
 | module | LOC |
 |---|---|
-| `typing/totality` | 387 |
+| `lowering/tal/check` | 312 |
 | `lowering/upper/optimize` | 254 |
-| `lowering/tal/check` | 246 |
 | `lowering/tal/eval` | 187 |
 | `lowering/upper/eff-lower` | 183 |
 | `typing/row-infer` | 137 |
@@ -142,21 +150,24 @@ Ten modules are checking machinery that is written and absent from that closure.
 | `typing/kernel-core` | 60 |
 | `typing/reflect-floor` | 54 |
 | `typing/effects` | 46 |
-| **total** | **1,680** |
+| **total** | **1,359** |
 
-That is 10% of the compiler's own size. Verified two ways: no `(import "<key>")`
-anywhere in `lib` or `prog`, and no mention of the full module key anywhere in
-`lib`, `prog` or `tools`.
+That is 8% of the compiler's own size, down from the 10% the ten scored. Verified
+two ways: no `(import "<key>")` anywhere in `lib` or `prog`, and no mention of the
+full module key anywhere in `lib`, `prog` or `tools`. ⚑ `lowering/tal/check` is
+now **importable** beside the compiler (`5b4fb71`) and still imported by nothing
+on the compile path, which BA-26 measures: being loadable and being adopted are
+two states and only the first moved.
 
 Absent for good reasons, since the compiler has no use for them: `protocol/`
 (3,729), `evidence/` (1,348), `runtime/` (379), `capability/` (216), the C
 backend.
 
-**How it happens.** `tools/test/run-tests.sh:280` says it plainly:
+**How it happens.** `tools/test/run-tests.sh:363` says it plainly:
 
 > `compile-only: N roots built, N failed -- gates, but asserts nothing`
 
-86 roots go through that gate. A module that compiles passes it. Nothing asks
+87 roots go through that gate, measured 2026-09-04. A module that compiles passes it. Nothing asks
 whether a module is inside the compiler's import closure. So a checking rule can
 be written, compile cleanly, pass the suite, get marked built in the catalog, and
 never run.

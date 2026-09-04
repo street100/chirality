@@ -2,8 +2,8 @@
 node: memory-model
 layer: foundation
 related: [banks/memory, node-architecture, modules-core, modules-substrate, modules-custody, category-untyped, decision-profiles, decision-graded-kernel, permission-model, target-tomodachi, open-edges, dump-integration]
-status: draft
-updated: 2026-07-23
+status: current
+updated: 2026-09-04
 ---
 
 # Memory model
@@ -80,26 +80,35 @@ discipline a profile composes in, not what an allocator decides at runtime.
    universal zeroize on drop, locked memory, no swap, panic drops keys.
    Those rules are what this model turns from discipline into types.
 
-## Scaffold status
+## Build status
 
-The executable scaffold now demonstrates commitment 3 concretely: discipline
-is a profile choice, selected at composition time. Two discipline libraries
-sit over the *same* substrate — the value-indexed linear `(Pool n)` from
-`lib/ports.chiral`:
+⚑ **Paths repointed 2026-09-04 against the 2026-08-31 migration.** This section
+was headed "Scaffold status" and named `lib/ports.chiral`, `lib/mem-linear.chiral`
+and `lib/mem-region.chiral`. `MAP.md` is the tree contract and the module key is
+the root-relative path.
 
-- `lib/mem-linear.chiral` — write at explicit offsets, close once. It gives
-  the discipline a name so `(memory linear)` in a profile points somewhere
-  real, and carries `mem-put-checked`, the bounds-checked write whose offset
-  is refined to `{I64 | >=0, <n}` (see the refinement paragraph below).
-- `lib/mem-region.chiral` — a bump-allocated arena: a linear `Region` wrapping
-  the pool plus a cursor; `mem-alloc` advances the cursor and returns an
-  offset; the whole arena frees as a unit. Built from what already exists — no
-  kernel feature, no collector, no runtime allocator.
+The tree demonstrates commitment 3 concretely: discipline is a profile choice,
+selected at composition time. Two discipline libraries sit over the *same*
+substrate, the value-indexed linear `(Pool n)` declared at
+`lib/ports/pool.port:13`:
 
-A profile now carries an optional `(memory <discipline>)` clause; `chirality
-verify` reports it, and an unknown discipline is a surface error. The two
-disciplines and the clause are exercised in `tests/test_memory.py`, including
-the arena running for real (bump offsets advance, over-capacity halts).
+- `lib/memory/mem-linear.chiral` — write at explicit offsets, close once. It
+  gives the discipline a name so `(memory linear)` in a profile points somewhere
+  real, and carries `mem-put-checked` (`:26`), the bounds-checked write whose
+  offset is refined to `{I64 | >=0, <n}` (see the refinement paragraph below).
+- `lib/memory/mem-region.chiral` — a bump-allocated arena: a linear `Region`
+  wrapping the pool plus a cursor; `mem-alloc` advances the cursor and returns an
+  offset; the whole arena frees as a unit. Built from what already exists, with
+  no kernel feature, no collector and no runtime allocator.
+
+A profile carries an optional `(memory <discipline>)` clause and an unknown
+discipline is a surface error. `tools/test/profile-target.sh` (Phase 4) gates the
+clause's parse and pins both the accepts and the refusal. ⚑ *This paragraph said
+`chirality verify` reports the clause and that `tests/test_memory.py` exercises
+the two disciplines including the arena running for real. `bin/chirality` is
+compile / run / check / test / help and has no `verify`; `tests/test_memory.py`
+is CUT with the Python oracle. So the clause's parse is gated and the arena's
+runtime behaviour is gated by nothing today.*
 
 The same shape reappears at the metal: the scaffold's native backend
 (de-Pythoning milestones 2-3) represents data-with-fields as `[tag][fields]`
@@ -126,11 +135,16 @@ Region types (the arena story the type system tells, retiring that runtime
 check) remain unbuilt — catalogued as E41/E22, gated on arithmetic-expression
 refinement bounds (E9, edge 3); nothing here advances them.
 
-Refinement types, however, have a live scaffold slice (`chirality/refine.py`).
+Refinement types, however, have a live slice, `lib/typing/refine.chiral`
+(⚑ *this named `chirality/refine.py`, cut with the Python oracle*).
 It retires *constant-bound* checks — a nonzero divisor, an index below a
 literal bound — as compile-time obligations rather than runtime guards, and
 path-sensitivity plus bare-variable symbolic bounds (`v < n`, learned along
-comparison-guarded branches) have since landed. That is what lets the pool
+comparison-guarded branches) have since landed. ⚑ *Measured 2026-09-01: a guard
+over two **let-bound** `I64`s leaves an obligation nothing discharges, and
+`load: cannot prove refinement` is the result. Two params of a named function are
+fine. `records/baseline-alignment.md` BA-41 and `records/findings.md` FD-02 hold
+the four conditions and the workaround.* That is what lets the pool
 offset be typed instead of checked at the crossing: `mem-put-checked`
 discharges the offset bound at compile time for literal and guarded offsets
 (E22 CONFORMS), while the raw write keeps the runtime witness for computed

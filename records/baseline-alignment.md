@@ -3,7 +3,7 @@ node: records-baseline-alignment
 layer: navigation
 related: [records/README, status-ledger, open-edges, testing-floors, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-04
 ---
 
 # Baseline alignment arc
@@ -19,9 +19,14 @@ This arc has NO reserved element number block. `docs/decisions/decision-lane-spl
 E190-E195 for the two diagnostics lanes. Rows needing an element carry
 `UNASSIGNED` until the author assigns a block.
 
-Everything below was measured on 2026-09-01. Line citations are current as of
-`b7d27f3`. Re-run a row's evidence before relying on it: a banner or an
-insertion above a cited line moves it, which is BA-13.
+Rows BA-01 to BA-41 were measured on 2026-09-01 against `b7d27f3`. BA-42 to
+BA-44 were measured on 2026-09-02. Re-run a row's evidence before relying on
+it: a banner or an insertion above a cited line moves it, which is BA-13.
+
+A row re-measured later keeps its original measurement with the date it was
+taken and carries the newer one beside it, the pattern
+`docs/definitions/status-ledger.md` uses. Ten rows carry a 2026-09-04
+re-measure against `1fcb019`.
 
 ## Gates that cannot fail
 
@@ -187,8 +192,20 @@ tree lacks, or at a guess, passes by looking at nothing.
   | `prog/resolve.prog` | 15 | 68,429 |
 
   `paren-audit` and `prose-lint` are text tools. They carry the whole compiler including the x64 backend and the ELF assembler because each imports `lowering/compile-all` for `read-fd-all`, a ten-line fd reader. A tools tier of `prelude/prelude`, `prelude/list`, `prelude/string`, `ports/fd`, `ports/stdio` resolves to 6 modules and 27,222 bytes, measured with a probe root.
+  ⚑ Re-measured 2026-09-04 against `1fcb019`, by the same method. The shape holds and every figure moved, because E11 put `typing/totality` and `typing/totality-check` into the compiler's closure:
+
+  | root | modules | blob bytes |
+  |---|---|---|
+  | `prog/compiler.prog` | 60 | 807,767 |
+  | `prog/paren-audit.prog` | 60 | 817,886 |
+  | `prog/prose-lint.prog` | 61 | 844,110 |
+  | `prog/wield.prog` | 60 | 808,901 |
+  | `prog/test-runner.prog` | 63 | 900,522 |
+  | `prog/resolve.prog` | 15 | 69,581 |
+
+  The 2026-09-01 column above stands as what it measured. `prose-lint` gained one module over the other text tools and still carries the x64 backend and the ELF assembler for a ten-line fd reader, so the row stays OPEN on its own terms.
 - evidence: `prog/paren-audit.prog:34`, `prog/prose-lint.prog:32`, `lib/lowering/compile-all.chiral:41-48`
-- checked:  2026-09-01
+- checked:  2026-09-04
 - element:  UNASSIGNED
 
 ### BA-17 the reader collision was routed around locally
@@ -248,17 +265,18 @@ repaired gates still cannot see, and what they saw once they could.
 - state:    OPEN
 - claim:    worked examples are the design rationale for an element and are kept as written.
 - measured: with BA-02 fixed, G reports 17 and R 17, every one under `docs/examples/`. No doc under `banks/`, `definitions/`, `decisions/`, `modules/` or `elements/` fails either check. G's 17 are 12 citations of `ports.chiral` at lines 70 through 185 against a 63-line façade, which is the pre-split monolith and needs the old tree to repoint; 2 of `alloc.chiral` at line 43 against 35 lines; 2 of `compile-emit.chiral` at 322 through 348 against 330; and one of `diag.chiral` at 704 against 693. R's 17 each cite a live symbol at a line other than its definition, some off by a banner (`backend.chiral` line 37 for `be-base`, defined at 38; `kernel.chiral` line 91 for `KCat`, defined at 101) and some at a line the element's own commits moved, where the surrounding prose quotes the pre-change source. Repointing that second group would make the narrative describe the wrong file. `docs/decisions/decision-scope.md` already records the same tier stance for the `ours_source:` paths and calls a bulk rewrite its own call. Nothing repointed here.
+ ⚑ Re-measured 2026-09-04: G reports 74 and R reports 132, and the class has spread past `docs/examples/`. G's 74 and R's 132 both land under `docs/elements/specs/` as well, which the 17-and-17 reading did not cover. The policy the row states is unchanged and nothing was repointed here; only the size of the class is newer. The structural fix stays `P4` and `UNASSIGNED`, because repointing by hand is undone by the next insertion, which is BA-13.
 - evidence: `python3 tools/ledger-lint/ledger-lint.py` checks G and R, `docs/decisions/decision-scope.md`:194`
-- checked:  2026-09-01
+- checked:  2026-09-04
 - element:  UNASSIGNED
 
 ### BA-23 check A reads a module key as a filesystem path
 
 - state:    OPEN
 - claim:    check A is "ledger evidence paths exist".
-- measured: 5 issues, all module keys rather than paths: `surface/pretty`, `typing/pretty`, `surface/parse`, `typing/`. `is_pathish` accepts any token containing a slash, and `resolve` then tests `ROOT/surface/pretty`, which is nowhere a module lives. E181's row added the ones that fail today, so the check went red on a correct citation. It is the mirror of BA-02: a check whose resolver does not know the tree's own naming rule. `docs/decisions/decision-scope.md` still records check I as the only FAIL, which predates this.
-- evidence: `tools/ledger-lint/ledger-lint.py:51`, `:71`, `docs/definitions/status-ledger.md:52`, `:54`
-- checked:  2026-09-01
+- measured: 5 issues, all module keys rather than paths: `surface/pretty`, `typing/pretty`, `surface/parse`, `typing/`. `is_pathish` accepts any token containing a slash, and `resolve` then tests `ROOT/surface/pretty`, which is nowhere a module lives. E181's row added the ones that fail today, so the check went red on a correct citation. It is the mirror of BA-02: a check whose resolver does not know the tree's own naming rule. `docs/decisions/decision-scope.md` still records check I as the only FAIL, which predates this. ⚑ Re-measured 2026-09-04: check A reports 0 issues, and the row stays OPEN because that is no fix. `is_pathish` at `tools/ledger-lint/ledger-lint.py:64` is unchanged since `ffffb9a`, and it still reads any token holding a slash as a filesystem path. What moved is the subject: `b5994d0` rewrote the ledger and the module keys it cites now sit in bold rather than inside the backtick code spans check A scans, so `typing/pretty` at `docs/definitions/status-ledger.md:66` is invisible to the check. The next module-key citation written inside a code span fires it again. Do not close this row on the green check.
+- evidence: `tools/ledger-lint/ledger-lint.py:64`, `docs/definitions/status-ledger.md:66`, `:68`
+- checked:  2026-09-04
 - element:  UNASSIGNED
 
 ## What the compiler claims to enforce and does not
@@ -272,27 +290,27 @@ anything, and in five of these rows that one number predicted the result.
 
 - state:    OPEN
 - claim:    `PRINCIPLES.md:62` "One atom with no exemptions" and `:89` "the port-check is the type-check". The membrane separates pure `->` from effectful `=>`.
-- measured: `(declare pure-syscall (-> I64 Unit))` whose body calls `put` (declared `(extern put (=> Str Unit))` in `lib/ports/stdio.port:11`) passes `chirality check` and writes to stdout when run. A three-deep all-`->` chain does the same. What the arrow does enforce is nominal type identity: passing an `=>` value where `->` is demanded is `load: type mismatch`. So the arrow is a type tag, not a membrane. `typing/effects.chiral` holds three refusing rules; its two importers are both dead through `lib/module/sig-driver.chiral`, which has zero importers, and `typing/effects` is not in the 58-module compiler closure. README, `status-ledger` and `docs/banks/effect-and-alarm.md` disclose this accurately; `PRINCIPLES.md` does not.
+- measured: `(declare pure-syscall (-> I64 Unit))` whose body calls `put` (declared `(extern put (=> Str Unit))` in `lib/ports/stdio.port:11`) passes `chirality check` and writes to stdout when run. A three-deep all-`->` chain does the same. What the arrow does enforce is nominal type identity: passing an `=>` value where `->` is demanded is `load: type mismatch`. So the arrow is a type tag, not a membrane. `typing/effects.chiral` holds three refusing rules; its two importers are both dead through `lib/module/sig-driver.chiral`, which has zero importers, and `typing/effects` is not in the 58-module compiler closure. README, `status-ledger` and `docs/banks/effect-and-alarm.md` disclose this accurately; `PRINCIPLES.md` does not. ⚑ Re-measured 2026-09-04: the closure is 60 modules, grown by `typing/totality` and `typing/totality-check`, and `typing/effects` stays outside it. `grep -rn 'module/sig-driver' lib/ prog/` still returns no import, so the two dead importers are dead by the same route. The row is unchanged apart from the count.
 - evidence: `lib/typing/effects.chiral`, `lib/module/sig-driver.chiral`, `lib/ports/stdio.port:11`, `PRINCIPLES.md:62`, `:89`
-- checked:  2026-09-01
+- checked:  2026-09-04
 - element:  UNASSIGNED
 
 ### BA-25 termination checking never runs
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `docs/definitions/totality.md` states that the checker refuses a divergent definition, and names the single-function spin loop as the example it refuses.
-- measured: `lib/typing/totality.chiral` has zero importers. `(def spin (lam (n) (spin n)))` passes `chirality check`, compiles, and does not halt. E50's defining syntax is refused by the parser by name: `(declare f ty (measure structural 0))` gives `load: (declare name ty (measure ...)) -- measure attribute DEFERRED`. The feature has no front door. E50's `built` state was true of the Python oracle (`data.py _check_recgroup`), which was evicted; the state outlived its subject. `status-ledger.md:157` is correct and `docs/definitions/totality.md:97-104`, `:164-168` contradict it, stating that mutual and lexicographic recursion prove via syntax the parser rejects.
-- evidence: `lib/typing/totality.chiral:11-12`, `lib/surface/parse.chiral:622`, `docs/definitions/totality.md:97-104`, `:164-168`, `docs/definitions/status-ledger.md:157`
-- checked:  2026-09-01
+- measured: `lib/typing/totality.chiral` has zero importers. `(def spin (lam (n) (spin n)))` passes `chirality check`, compiles, and does not halt. E50's defining syntax is refused by the parser by name: `(declare f ty (measure structural 0))` gives `load: (declare name ty (measure ...)) -- measure attribute DEFERRED`. The feature has no front door. E50's `built` state was true of the Python oracle (`data.py _check_recgroup`), which was evicted; the state outlived its subject. `status-ledger.md:157` is correct and `docs/definitions/totality.md:97-104`, `:164-168` contradict it, stating that mutual and lexicographic recursion prove via syntax the parser rejects. ⚑ Superseded 2026-09-04, and both sides moved. The classifier is wired: `lib/typing/totality-check.chiral:62` imports `typing/totality` and `lib/lowering/compile-front.chiral:24` imports `totality-check`, so it sits in the compiler's 60-module closure and `compile-front` runs `tot-gate` between the load and the peel. `1fcb019` rewrote `docs/definitions/totality.md` to describe that gate, so the contradiction the row records is gone. Reproduced today: `(def spin (lam (n) (spin n)))` under `(profile P (ports cap-use) (target Svc) (total))` fails `chirality check` at rc 1 with `profile (total): def spin not proven total: no argument position decreases in every recursive call`, and the same def with no profile passes at rc 0. A narrower limit survives and `docs/definitions/totality.md:181` states it: the gate is opt-in and no suite phase fails when it breaks, which BA-39 carries. The `(measure ...)` attribute stays DEFERRED at `lib/surface/parse.chiral:622`, unchanged. ⚑ The refusal sentence names `docs/totality.md` and the file is `docs/definitions/totality.md`; repairing that string edits compiler source and owes the rebuild, so it is recorded rather than taken.
+- evidence: `lib/typing/totality-check.chiral:62`, `:152`, `lib/lowering/compile-front.chiral:24`, `:340`, `lib/surface/parse.chiral:622`, `docs/definitions/totality.md:181`
+- checked:  2026-09-04
 - element:  E50
 
 ### BA-26 the TAL floor check is unreachable from the compile path
 
 - state:    OPEN
 - claim:    the tree lowers through typed assembly before machine code.
-- measured: code does pass through TAL IR: `compile-emit` imports `lowering/tal/reify` and `lowering/x64/emit`. The check on that IR does not run. `ck-prog` and `ck-block` have zero callers. `ck-fn`'s only caller is `re-check` at `lib/lowering/upper/optimize.chiral:250`, and `optimize.chiral` has zero importers, so the one call site is unreachable. The compile path is `compile-front` then `compile-back` then `compile-emit`, and none of the three references a tal check.
-- evidence: `lib/lowering/tal/check.chiral:240`, `:250`, `:259`, `lib/lowering/upper/optimize.chiral:250`, `lib/lowering/compile-emit.chiral:14-18`
-- checked:  2026-09-01
+- measured: code does pass through TAL IR: `compile-emit` imports `lowering/tal/reify` and `lowering/x64/emit`. The check on that IR does not run. `ck-prog` and `ck-block` have zero callers. `ck-fn`'s only caller is `re-check` at `lib/lowering/upper/optimize.chiral:250`, and `optimize.chiral` has zero importers, so the one call site is unreachable. The compile path is `compile-front` then `compile-back` then `compile-emit`, and none of the three references a tal check. ⚑ Re-measured 2026-09-04, and the row stays OPEN. The unreachability is unchanged: `ck-prog` has zero callers, `ck-fn`'s only caller is `re-check` at `lib/lowering/upper/optimize.chiral:250`, `optimize.chiral` has zero importers, and `compile-emit` imports `lowering/tal/reify` and `lowering/x64/emit` and no tal check. Two blockers under it moved. `5b4fb71` prefixed eleven of the module's internal names `tck-`, so `lib/lowering/tal/check.chiral` loads beside `typing/kernel` without the `data redeclared: CkR` collision its own header at `:26` records, which is what wiring it needs. `ddfbc27` made `ck-prog` agree with the compiler and added Phase 22 as `tools/test/tal-check.sh`: 16 hand-built TFns, nine REJECT rows, three mutants. ⚑ Phase 22 is unregistered in `tools/test/run-tests.sh` by decision, the `crypto.sh` precedent, so the suite's 339 excludes it and it runs by hand. `tools/test/tal-check.sh:380` gate G17 pins this row's subject as a green assertion: no module under `lib/` or `prog/` imports both `typing/kernel` and `lowering/tal/check`.
+- evidence: `lib/lowering/tal/check.chiral:26`, `:289`, `:308`, `lib/lowering/upper/optimize.chiral:250`, `lib/lowering/compile-emit.chiral:14-18`, `tools/test/tal-check.sh:380`
+- checked:  2026-09-04
 - element:  UNASSIGNED
 
 ### BA-27 strict positivity accepts a nullary mutual cycle
@@ -344,9 +362,9 @@ anything, and in five of these rows that one number predicted the result.
 
 - state:    OPEN
 - claim:    the suite reports 303 assertions, 0 failed, and the `*_reject_*` fixtures exist to prove the compiler refuses what it should refuse.
-- measured: `tools/test/run-tests.sh:174` reads `case "$rb" in *_reject_*) continue`, so phase 7 skips every reject root instead of asserting that it fails. All 23 were run by hand and all 23 still reject, so this is 23 assertions behind one `continue` rather than a defect in the compiler. Separately, 47 of the 53 fixtures under `tools/test/samples/` are referenced by no script at all; `run-tests.sh:18-24` records phases 8, 9, 11 and 12 as `NOT PORTED -- script owed`.
-- evidence: `tools/test/run-tests.sh:174`, `:18-24`, `tools/test/samples/`
-- checked:  2026-09-01
+- measured: `tools/test/run-tests.sh:174` reads `case "$rb" in *_reject_*) continue`, so phase 7 skips every reject root instead of asserting that it fails. All 23 were run by hand and all 23 still reject, so this is 23 assertions behind one `continue` rather than a defect in the compiler. Separately, 47 of the 53 fixtures under `tools/test/samples/` are referenced by no script at all; `run-tests.sh:18-24` records phases 8, 9, 11 and 12 as `NOT PORTED -- script owed`. ⚑ Re-measured 2026-09-04: the suite reports 339 passed, 0 failed, 87 roots, `gate PASSED`, superseding the 303 the claim quotes. The skip is unchanged and now counted: phase 7 reads `case "$rb" in *_reject_*) r_skip=$((r_skip+1)); continue` and prints the tally as `known/negative`, so the skip is visible in the run rather than silent. Six of the 23 reject fixtures are `.prog` roots under `prog/samples/` and reach that line; the other 17 are `.chiral` files or sit under `tools/test/samples/`, which phase 7 never walks. `tools/test/samples/` now holds 56 top-level entries, 47 of them referenced by no script, one of which is the `_wip/` subdirectory carrying 46 more.
+- evidence: `tools/test/run-tests.sh:179`, `:18-24`, `tools/test/samples/`
+- checked:  2026-09-04
 - element:  none
 
 ### BA-33 33 of 50 port crossings take no capability
@@ -378,11 +396,11 @@ anything, and in five of these rows that one number predicted the result.
 
 ### BA-36 ledger-lint exits 0 while three checks fail
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `README.md:63` says `ledger-lint` exits 1. CLAUDE.md says the count of path mismatches is 0.
-- measured: the run prints `[FAIL]` for A, I and T and `[VACUOUS]` for H and M, and exits 0. So a caller gating on the exit status sees a pass. Both documents are wrong and in opposite directions: the README describes a failing exit the tool does not produce, and CLAUDE.md describes a clean count the tool contradicts. Check A's own defect is BA-23.
-- evidence: `python3 tools/ledger-lint/ledger-lint.py`, `README.md:63`, `CLAUDE.md`
-- checked:  2026-09-01
+- measured: the run prints `[FAIL]` for A, I and T and `[VACUOUS]` for H and M, and exits 0. So a caller gating on the exit status sees a pass. Both documents are wrong and in opposite directions: the README describes a failing exit the tool does not produce, and CLAUDE.md describes a clean count the tool contradicts. Check A's own defect is BA-23. ⚑ Superseded 2026-09-04. The run exits 1. A, I and T each report 0 issues, G reports 74, R reports 132, and H and M stay `[VACUOUS]`, so the exit status is a usable gate. Both documents the row cites dropped their claim: `2224915` rewrote `README.md` and it names `ledger-lint` nowhere, and `CLAUDE.md:54` carries the tool with no count. ⚑ The exit-0 half of the original measurement did NOT reproduce and has no mechanism in the source: `main` has returned 1 whenever any check collects an error since `ffffb9a`, and that region is unchanged, so a caller reading 0 on 2026-09-01 was reading something other than the script's own status. Carried as unverified rather than corrected. Check A reading zero is no fix, which BA-23 records.
+- evidence: `python3 tools/ledger-lint/ledger-lint.py`, `tools/ledger-lint/ledger-lint.py:1375`, `CLAUDE.md:54`
+- checked:  2026-09-04
 - element:  none
 
 ## Residue from the `.planning` consolidation, 2026-09-01
@@ -409,9 +427,9 @@ anything, and in five of these rows that one number predicted the result.
 
 - state:    OPEN
 - claim:    `docs/elements/specs/E173-total-matcher-SPEC.md` §5 carries M3, a mutant that makes `pd`'s `p-star` arm recurse into `(p-star q)` instead of a strict subterm, and asserts `chirality check` refuses it. The SPEC passed its audit at `4769cd2`, and `.planning/protocol/workflow.md` requires every gate row to name a mutant that is actually run.
-- measured: M3 does not fail. The mutant was built in a scratch `lib/` copy during E173 step 3 and the module compiled, rc 0. The reason is recorded one tier up and was not consulted by either SPEC audit: `docs/definitions/status-ledger.md:157` states "Termination is neither enforced nor classified in the built compiler", because `lib/typing/totality.chiral` is the built E11 classifier and no module imports it. Measured here: `grep -rn 'import "typing/totality"' lib/ prog/` returns 0. So a gate row asserting a termination refusal passes by looking at nothing, which `docs/decisions/decision-scope.md` names as the error the tree exists to avoid. Not repaired: step 6 owns Phase 19 and the mutant table, and the fix is a spec correction before that step, not a patch to a gate script that does not exist yet. Every function in `lib/text/matcher.chiral` still meets the written criterion of `docs/definitions/totality.md:48-53` by hand, checked at step 3, so the code is not in doubt. The check is.
-- evidence: `docs/elements/specs/E173-total-matcher-SPEC.md` §5 M3, `docs/definitions/status-ledger.md:157`, `lib/typing/totality.chiral`, `.planning/protocol/workflow.md`
-- checked:  2026-09-01
+- measured: M3 does not fail. The mutant was built in a scratch `lib/` copy during E173 step 3 and the module compiled, rc 0. The reason is recorded one tier up and was not consulted by either SPEC audit: `docs/definitions/status-ledger.md:157` states "Termination is neither enforced nor classified in the built compiler", because `lib/typing/totality.chiral` is the built E11 classifier and no module imports it. Measured here: `grep -rn 'import "typing/totality"' lib/ prog/` returns 0. So a gate row asserting a termination refusal passes by looking at nothing, which `docs/decisions/decision-scope.md` names as the error the tree exists to avoid. Not repaired: step 6 owns Phase 19 and the mutant table, and the fix is a spec correction before that step, not a patch to a gate script that does not exist yet. Every function in `lib/text/matcher.chiral` still meets the written criterion of `docs/definitions/totality.md:48-53` by hand, checked at step 3, so the code is not in doubt. The check is. ⚑ Superseded 2026-09-04, and the row stays OPEN on a different mechanism. The zero-importer half is FALSE and had been since termination was wired on 2026-09-02: `lib/typing/totality-check.chiral:62` imports `typing/totality` and `lib/lowering/compile-front.chiral:24` imports `totality-check`, so both sit in the compiler's 60-module closure. What keeps M3 inert is the opt-in: `tot-gate` at `lib/typing/totality-check.chiral:152` reads the composite's profile list first and returns `tot-proven` without classifying a single def unless some profile carries `(total)`. `prog/prose-lint.prog` carries no profile clause, so M3 still observes divergence rather than proving termination and the gate row still passes by looking at nothing. BA-25 carries the repro on both sides of the gate.
+- evidence: `lib/typing/totality-check.chiral:62`, `:152`, `lib/lowering/compile-front.chiral:24`, `prog/prose-lint.prog`, `docs/elements/specs/E173-total-matcher-SPEC.md` §5 M3, `.planning/protocol/workflow.md`
+- checked:  2026-09-04
 - element:  E11 (wiring the classifier is E11's remaining work; no new element is owed)
 
 ## A tool whose two paths carry different checks, 2026-09-01
@@ -464,7 +482,7 @@ closed, or a recorded reason that the file it cites contradicts.
 
 - state:    OPEN
 - claim:    `docs/arcs/README.md`, `docs/elements/README.md:16`, `docs/arcs/presentability-arc.md`, `docs/definitions/status-ledger.md:67` and `docs/decisions/decision-dispatch-cadence.md:17` all cite `.gitignore:12` for the planning tier being excluded from git. Three of them draw doctrine from it: a fact written under `.planning/` forks per worktree, dies with it, and cannot be relied on by a second reader.
-- measured: `.gitignore:1-9` is a banner headed "the agent tier is tracked", and it names `.planning/`, `CLAUDE.md` and `.claude/skills/` as the agent half of two audiences in one repository, both tracked, citing `docs/decisions/decision-ai-tier.md` for the ruling. Line 12 is a comment introducing `.claude/*`, and the only rules in the file's first block are `.claude/*`, the `!.claude/skills/` exception, `.claude-*/`, `.scratch/`, `*.orig` and `*.rej`. `git check-ignore -v .planning/LOCAL-AI-ARC-REALIGNMENT.md` matches no rule and `git ls-files .planning` returns 140 files. The doctrine those documents carry, that a tracked fact belongs in `docs/` or `records/`, is settled by `docs/decisions/decision-ai-tier.md` on its own terms and survives without the citation. `docs/definitions/status-ledger.md:67` is the harder one: it attributes the exclusion to a master decision that the planning tier is private, so this row is a conflict between two recorded decisions and needs the author before an edit. Not repaired here, and no document was rewritten on one measurement.
-- evidence: `.gitignore:1-14`, `docs/arcs/README.md`, `docs/elements/README.md:16`, `docs/definitions/status-ledger.md:67`, `docs/decisions/decision-dispatch-cadence.md:17`, `docs/arcs/presentability-arc.md`
-- checked:  2026-09-02
+- measured: `.gitignore:1-9` is a banner headed "the agent tier is tracked", and it names `.planning/`, `CLAUDE.md` and `.claude/skills/` as the agent half of two audiences in one repository, both tracked, citing `docs/decisions/decision-ai-tier.md` for the ruling. Line 12 is a comment introducing `.claude/*`, and the only rules in the file's first block are `.claude/*`, the `!.claude/skills/` exception, `.claude-*/`, `.scratch/`, `*.orig` and `*.rej`. `git check-ignore -v .planning/LOCAL-AI-ARC-REALIGNMENT.md` matches no rule and `git ls-files .planning` returns 140 files. The doctrine those documents carry, that a tracked fact belongs in `docs/` or `records/`, is settled by `docs/decisions/decision-ai-tier.md` on its own terms and survives without the citation. `docs/definitions/status-ledger.md:67` is the harder one: it attributes the exclusion to a master decision that the planning tier is private, so this row is a conflict between two recorded decisions and needs the author before an edit. Not repaired here, and no document was rewritten on one measurement. ⚑ Superseded 2026-09-04. Three of the five are repaired: `docs/definitions/status-ledger.md` at `b5994d0`, `docs/arcs/README.md` and `docs/arcs/presentability-arc.md` at `4139662`. `4139662` also retired two instances the row never listed, both in `docs/arcs/zero-python-arc.md` over `.planning/ZERO-PYTHON-SCOPE.md`, which makes the sixth and seventh. The `status-ledger` case the row sent to the author was settled there: the tier split in `docs/decisions/decision-ai-tier.md` is the live decision and the privacy reading was retired. `git ls-files .planning` returns 145 today, up from 140. The class is wider than five. Eight files carry `.gitignore:12` at `1fcb019`: `docs/elements/README.md:16` and `docs/decisions/decision-dispatch-cadence.md:17` from the row's own list, and `docs/arcs/enforcement-arc.md:17`, `docs/arcs/diagnostics-arc.md:18`, `records/README.md:113`, `records/lane-a-record.md:33`, `docs/benchmarks/test-suite-wall-clock.md:11`, `.planning/DOC-CLEANUP-PASS.md:17`. ⚑ `docs/decisions/decision-dispatch-cadence.md` is repaired in the author's uncommitted working tree, leaving seven on disk. `docs/arcs/diagnostics-arc.md` is also in the author's working tree and was left alone. The other six are outside this stage's scope and stay unrepaired.
+- evidence: `.gitignore:1-14`, `docs/elements/README.md:16`, `docs/arcs/enforcement-arc.md:17`, `records/README.md:113`, `records/lane-a-record.md:33`, `docs/benchmarks/test-suite-wall-clock.md:11`, `.planning/DOC-CLEANUP-PASS.md:17`
+- checked:  2026-09-04
 - element:  UNASSIGNED

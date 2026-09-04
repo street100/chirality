@@ -3,8 +3,8 @@ node: axis-altitude
 layer: foundation
 refines: [thesis]
 related: [altitude-errors, axis-typeability, splitting-law, joining-law, modules-lowering, modules-core, decision-backend, category-bridge, open-edges]
-status: draft
-updated: 2026-07-24
+status: current
+updated: 2026-09-04
 ---
 
 # Axis 2: altitude
@@ -37,7 +37,14 @@ hardware, or carried into silicon on CHERI. See [[modules-lowering]].
 ## No untyped bottom
 
 Typeability is preserved down to tal and checked the whole way (`preserve-check`).
-If a drop erased the type above tal, it would drill the thesis's gap at the
+⚑ *The checker is built and **unadopted**, demoted from ENFORCED on 2026-08-31.
+`lib/lowering/tal/check.chiral` holds `ck-fn` and `ck-prog`, and the shipping
+compile reaches neither: `compile-front` then `compile-back` then `compile-emit`
+references no tal check. So this sentence states the design and the tree does not
+yet run it. [[status-ledger]]'s preserve-check row owns the state,
+`records/enforcement-arc.md` requirement 2 owns the work, and
+`records/baseline-alignment.md` BA-26 carries the measurement.* If a drop erased
+the type above tal, it would drill the thesis's gap at the
 bottom of the stack, the worst place for it. Assembly is exactly where types
 usually die. Chirality refuses that: tal is the floor and it is typed. Below tal is
 the single trusted drop to the metal. On CHERI the type does not die there
@@ -46,9 +53,13 @@ either; it lands in the silicon.
 ## The floor is thin
 
 No untyped bottom says the floor is *typed*; this says the floor is *minimal*.
-The tal type universe is deliberately small — `I64`, `Str`, `Bytes` (`tal.py`) —
+The tal type universe is deliberately small (`lib/lowering/tal/ssa.chiral:21`)
 and the floor's instruction vocabulary is the rare, guarded exception, not the
-growth point. Typing is imposed *above* the floor (the calculus, refinements,
+growth point. ⚑ *Repointed 2026-09-04. This cited `tal.py`, cut with the Python
+oracle, and listed the universe as `I64`, `Str`, `Bytes`. `TalTy` carries five
+constructors today: those three, plus `tt-word` for an erased one-word value and
+`tt-data` for a data name with type arguments. Small still holds and the list was
+one migration out of date.* Typing is imposed *above* the floor (the calculus, refinements,
 custody) and re-seated across the [[category-bridge]] on the way back up; the
 floor holds raw words, not a type for every shape.
 

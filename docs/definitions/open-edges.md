@@ -3,7 +3,7 @@ node: open-edges
 layer: open
 related: [index, relations, splitting-law, joining-law, modules-broker, modules-lowering, modules-staging, permission-model, live-environment, resolution-patterns]
 status: open
-updated: 2026-09-01
+updated: 2026-09-04
 ---
 
 # Open edges
@@ -34,7 +34,9 @@ draws a module seam. These are the design questions to settle next.
    Staging is the binding-time **modality** ([[decision-graded-kernel]] point 3),
    not a process — a later stage is still typed and pure until it crosses. The bit
    that makes something a process is the `=>` in its type, exactly as
-   `prim_is_port` is *derived* from the effect arrow ([[banks/port]] Shard 3): "is
+   `prim-is-port` (`lib/module/sig-derive.chiral:32`) is *derived* from the effect
+   arrow ([[banks/port]] Shard 3; ⚑ *this note said `prim_is_port`, the cut
+   oracle's name for it*): "is
    this a process?" = "does its type carry a crossing?", the same derived read that
    answers "is this a port?". Even elaboration-time producers (row inference, cancel
    synthesis, handler elaboration — [[decision-effect-facets]]) are pure: they emit
@@ -149,8 +151,13 @@ draws a module seam. These are the design questions to settle next.
 
 6. Where the typed assembly vocabulary is drawn, and the per hardware target
    modules. Sits inside [[modules-lowering]]. **Shaped 2026-07-24:** the tal
-   floor's type universe is deliberately minimal — `I64`/`STR`/`BYTES` only
-   (`tal.py`); typing is imposed *above* the floor and re-seated across the
+   floor's type universe is deliberately minimal (`lib/lowering/tal/ssa.chiral:21`;
+   ⚑ *this cited `tal.py`, cut with the Python oracle*). ⚑ *It also read
+   `I64`/`STR`/`BYTES` **only**, and `TalTy` carries five constructors today:
+   `tt-i64`, `tt-str`, `tt-bytes`, `tt-word` (the uniform erased one-word type,
+   representation-compatible with any one-word type) and `tt-data` (a data name
+   with type arguments). Minimal still holds; "only" stopped being true when
+   erasure landed.* Typing is imposed *above* the floor and re-seated across the
    bridge ([[category-bridge]]), never carried as floor types. A new floor opcode
    or type is the rare, justified exception; the default is composition from the
    existing floor ops — `ti-bput` already stores at a computed offset into an
@@ -206,10 +213,18 @@ draws a module seam. These are the design questions to settle next.
    framed as one instance of the conformance mechanism (G9): its requirement type
    is the global totality property. The per-def totality classifier now exists
    ([[totality]]: strict positivity + case coverage + structural recursion, the
-   recursion pillar classifying via `sig.totality`), and the profile's
-   requirement is built at scaffold scale: a bare `(total)` profile clause makes
-   `chirality verify` demand every def in the composite be proven total, reported
-   beside the target and port-set rows (`scaffold/demo/verify-total.chiral`). Remaining
+   recursion pillar classifying via `lib/typing/totality.chiral`), and the
+   profile's requirement is **wired 2026-09-02**: a bare `(total)` profile clause
+   makes `chirality check` refuse the composite where any def fails to prove,
+   with `tot-gate` running in `lib/lowering/compile-front.chiral` between the load
+   and the peel. The demo is `prog/demo/verify-total.chiral`. ⚑ *Repointed
+   2026-09-04. This read "built at scaffold scale", named `chirality verify`,
+   which `bin/chirality` has never dispatched, and cited
+   `scaffold/demo/verify-total.chiral`, a path the 2026-08-31 migration evicted.
+   The demo's own header still invokes the retired `python3 -m chirality verify`,
+   and repairing that is a source edit this note does not take.* ⚑ The gate is
+   **opt-in and gated by no suite phase**, which [[totality]] states and BA-39 in
+   `records/baseline-alignment.md` measures. Remaining
    work is settling whether totality is compositional, reachability-scoping the
    claim (the same refinement the port-set check wants), and the sized-types
    promotion so numeric recursion can clear the bar. Sits inside
