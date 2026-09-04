@@ -2,7 +2,7 @@
 
 **Opened 2026-09-04** from a design session with the author. This is an
 **outline of coverage**. No row is specced, nothing is minted into
-`.planning/SELF-IMPLEMENT-CATALOG.md` or `.planning/LEDGER.md`, and no code is
+`docs/elements/catalog.md` or `docs/elements/ledger.md`, and no code is
 touched. §7 is the mint queue that runs before any row here may be cited by a
 spec, per the no-phantom-dep rule in `docs/definitions/working-discipline.md`.
 
