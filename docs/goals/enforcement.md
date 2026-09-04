@@ -42,9 +42,23 @@ anything reaches, and they are exactly the 390. The other 392 lines sit at
 SEEDED: `grep -rIn` over `tools/` and `bin/` returns no invocation of
 `paren-audit.prog`, `resolve.prog` or `wield.prog` from any shell file, gate
 phase or CLI subcommand. Half the native tooling is written and unreached, which
-is the same defect this goal names below, turned on the tools. Within the gate
-tier alone, **352 calls to `grep`, `sed`, `sort` and `awk` have a built
-chirality composition** recorded in `docs/arcs/text-tools-arc.md`, and
+is the same defect this goal names below, turned on the tools.
+
+Within the gate tier alone, `grep`, `sed`, `sort` and `awk` run as **240
+invocations**, of which **30 have a built chirality composition** recorded in
+`docs/arcs/text-tools-arc.md`. The other 210 are judgments and wait on the
+independence criterion in [[arcs/independent-judgment-arc]] J1, which has not
+been written.
+
+⚑ **The 352 this row carried until 2026-09-04 was a word-occurrence count,
+presented as a call count with a composition behind every one of them.**
+`grep -ohE '\bgrep\b' tools/test/*.sh` and its three siblings return 149, 100,
+22 and 81, summing to exactly 352. Those occurrences include comments, the
+scratch filenames `g5.awk` and `g9.awk`, and the prose in
+`tools/test/matcher.sh` naming the tool the native matcher is graded against.
+Counting invocations in command position gives 240, and the composition claim
+covers 30 of them. TC-02 in [[records/tooling-classification]] carries both.
+
 `lib/text/matcher.chiral` has one consumer. The capability exists and the
 shipping path does not reach it, which is the SEEDED pattern this goal exists to
 close, turned on the tools.

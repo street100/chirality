@@ -87,9 +87,20 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    The surface is the gate tier at 6,915 lines of shell,
    `tools/prose-lint/prose-lint.sh` at 223 with awk doing the matching, nine
    Python tools at 4,786, and `bin/chirality` plus `bin/chirality-resolve.sh` at
-   526. Within the gate tier alone there are
-   **352 calls to `grep`, `sed`, `sort` and `awk` where
-   `docs/arcs/text-tools-arc.md` records a built chirality composition**, and
+   526. Within the gate tier alone `grep`, `sed`, `sort` and `awk` run as **240
+   invocations**, of which **30 are ones where `docs/arcs/text-tools-arc.md`
+   records a built chirality composition**. The other 210 are judgments and wait
+   on [[arcs/independent-judgment-arc]] J1, the distinctness criterion, which is
+   rowed there as not started (TC-12).
+
+   ⚑ **The 352 this requirement carried until 2026-09-04 was a word-occurrence
+   count, presented as a call count with a composition behind every one.**
+   `grep -ohE '\bgrep\b' tools/test/*.sh` and its three siblings return 149,
+   100, 22 and 81, summing to exactly 352 at `acc70d6`. The occurrences include
+   comments, the scratch filenames `g5.awk` and `g9.awk`, and the prose in
+   `tools/test/matcher.sh` naming the tool the native matcher is graded against.
+   TC-02.
+
    `lib/text/matcher.chiral` has one consumer.
 
    ⚑ **Some of it is correct and stays.** A comparator holding constants cannot
@@ -117,8 +128,8 @@ stop short of it as written, so no element owns it.
 **2026-09-04: requirement 5 is first priority by author direction**, and
 `.planning/HANDOFF-2026-09-04.md` carries the full queue. The gate tier is
 6,915 lines of shell against `prog/test-runner.prog` at 134 lines, the only
-native part of that floor, with 352 word occurrences of the four classic tools
-across it. Every tool that moves is one fewer the OS
+native part of that floor, with 240 invocations of the four classic tools
+across it and a built composition behind 30 of them. Every tool that moves is one fewer the OS
 rung has to trust.
 
 **Requirement 3 is closed and requirement 2 is the live one.** 2026-09-03 ran
