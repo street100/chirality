@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: b7dc05df52534dab03ef615f264179ea7374b4be80018e5acaa70aca9d47f6d2 -->
+<!-- FRONTIER-SOURCES-SHA256: 45215c04657451f2721daec7005c7d0dd0e54ab2e0eed5a04bde6db5b40e2d2c -->
 <!-- sources: 157 files -->
 
 ## Decided recently
@@ -114,11 +114,11 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
-- 2026-09-04 64e39b0 — E170 D8 asks for a split that has already landed
-- 2026-09-04 6bd7a2e — E17 ports from optimize.py, which was cut
-- 2026-09-04 d4eeab8 — E158 and E181 cited the catalog under its pre-rename filename
-- 2026-09-04 923ca4f — check G: five bare spans repointed at the file they were about
-- 2026-09-04 1ecc2db — E174: four bare spans were reading against apc.chiral
-- 2026-09-04 fe1f37d — S18: six bare spans were reading against dispatch.chiral, and belong to command-loop.chiral
-- 2026-09-04 27e0226 — E161 step 7 ran, so the emit-gate coordinates become a record
-- 2026-09-04 321af01 — E99: the generic ioctl extern has no live successor, so its line is dated
+- 2026-09-04 5283af1 — three manas citations the growing files left behind
+- 2026-09-04 b08d94f — prelude, protocol and module: sixteen citations across nine docs
+- 2026-09-04 e135b59 — the typing kernel and the reader: twelve citations, one line to three hundred out
+- 2026-09-04 a889536 — C1C2 pre-run: relate the two style representations and state the round trip
+- 2026-09-04 094fadf — S14 and S15: nine citations into scriba and the manas pipeline
+- 2026-09-04 fe8580e — S17: backend.chiral and runner.chiral both grew past their citations
+- 2026-09-04 269bfb8 — S16: command-loop grew to 2545 lines and took the whole compose entry with it
+- 2026-09-04 8928028 — C01 is superseded: its central move is grid.chiral, built and reached
