@@ -50,10 +50,10 @@
 #
 #   G0  the fixture builds, exits 0, and paints                    [-]
 #   G0p the layout PIN the rest of the gate is written against     [-]
-#   G1  a-f  the text survives the conversion, 5 pairs + the
-#            proof that the widths actually differ            [M1,M2]
+#   G1  a-e  the text survives the conversion, 5 pairs       [M1,M2]
+#   G1f      the proof that the widths actually differ          [M13]
 #   G2  a-c  the tag TREE: row count and DFS pre-order face names
-#                                                            [M3,M12]
+#                                                        [M3,M12,M13]
 #   G3  a,b  nested faces on the SCREEN -- the JOIN, and THE FLAG C
 #            ROW: the outer face survives the inner close         [M4]
 #   G4  a,b  one tag over TWO rows, and an UNTAGGED indent         [M5]
@@ -393,6 +393,26 @@ mutant "M12 rdc-tags-cons-not-append (the nesting order inverts)" \
   lib/protocol/render-doc.chiral \
   's|(append Str tg (cons n nil))|(cons n tg)|'
 
+# M13 (G1f) -- THE WIDTH STOPS DECIDING ANYTHING. G1f is the row that says the
+# two widths took DIFFERENT layout decisions, which is what keeps the five
+# width-independence pairs above from being one document compared with itself
+# five times. Before this row it read `ok` in all seven pins, M1's and M2's
+# included, because both of them mutate render-doc and G1f reads two `doc->str`
+# fields. records/gate-audit.md GA-22 is that measurement.
+#
+# `doc-fits` answering false on an exhausted worklist means no group ever
+# flattens, so width 1000 lays out exactly as width 8 and fields 1 and 3 become
+# the same string. ⚑ IT DOES NOT GRADE PHASE 14'S LAW, which the header above
+# puts out of scope: it grades this gate's own FIXTURE, that the document being
+# compared is one the width can move. G2c goes with it and is pinned -- the face
+# list at width 1000 picks up a second `error` for the second row the break
+# creates, which is the same fact read off the tag tree. `lib/prelude/doc.chiral`
+# is already this file's mutation target at M10.
+mutant "M13 nothing-ever-fits (the two widths stop disagreeing)" \
+  "G0p:ok G1a:ok G1b:ok G1c:ok G1d:ok G1e:ok G1f:bad G2a:ok G2b:ok G2c:bad G3a:ok G3b:ok G4a:ok G4b:ok G5:ok" \
+  lib/prelude/doc.chiral \
+  's|          (nil true)|          (nil false)|'
+
 # ============================================================================
 # The closed sum. `rdc-best` and `rdc-tree` carry no `_` arm, so a new `Doc`
 # constructor must BREAK this file rather than be silently ignored -- which is
@@ -469,10 +489,12 @@ echo "=== E158c4 G8: the four existing gates are byte-unchanged, and Phase 17 ru
 # ⚑ The pins are the sha256 of the four gate scripts AS OF THIS ELEMENT. doc.sh
 # already pins diag.sh; this pins all four, so a later element cannot quietly
 # reword one of them and leave this gate's expectations describing a file that
-# no longer exists.
+# no longer exists. `row.sh`'s was re-taken 2026-09-04 when GA-17's repair added
+# its M14; a pin re-taken in the commit that moves the file is the loud path this
+# row exists to force, and it is the only re-take since the element.
 PINS="400166d2bada74728abf895ef6bae8b8e5a63e5ffbce1653e348399f773e140b  diag.sh
 1536b14abf23c1d36c6e26a0060bb79fc2a30bc1d40da24c862a69b7833da091  doc.sh
-3f86f26b1b4bba4ab29c16dae080bb8dc73af0ef55c9956af8aa9a3d5f7ed2b0  row.sh
+74055a76aef8bf17629224ed902d90b3b0ab95884fa754a674ad958b13ff1746  row.sh
 1cabeb7a0fa6da7e05118c766597621c9e5bcf7d9ed3a6402d0be5d381e585a9  face.sh"
 pin_check() {  # pin_check DIR -> "" when every pin matches, else the offenders
   local dir="$1" n h

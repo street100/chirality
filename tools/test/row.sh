@@ -26,7 +26,7 @@
 #       arms the compiler cannot see                         [M7]
 #   G3  the row is a row -- three segments, one line         [M1]
 #   G4  widths agree with the emitter, per constructor,
-#       by EXACT ADJACENCY                 [M2,M3,M11,M4,M13,M10]
+#       by EXACT ADJACENCY             [M2,M3,M11,M4,M13,M14,M10]
 #   G5  FLAG A's own row: the fix is a NO-OP where the tree
 #       already worked                                       [M10]
 #   G6  the sum is closed and no `_` absorbs the new arm     [M5]
@@ -34,10 +34,12 @@
 #       three phases still run                              [M8,M9]
 #   G8  name census, tree-wide                           [M12,M5]
 #
-# ⚑ THIRTEEN mutants, not the SPEC's twelve. M13 (table-forgets-its-grid) and
+# ⚑ FOURTEEN mutants, not the SPEC's twelve. M13 (table-forgets-its-grid) and
 # M5's census half were added because without them the r-table row and the
 # constructor-count row were the two rows here that NOTHING could redden -- the
-# exact standing hazard this repo turned up five instances of.
+# exact standing hazard this repo turned up five instances of. M14
+# (hole-forgets-its-mark) closes the third: the same reasoning applied to the
+# one G4 row the SPEC's enumeration stopped short of.
 #
 # ⚑ WHAT THIS GATE CANNOT PROVE, stated because it bounds the rows above.  The
 # screen reducer advances ONE COLUMN PER CODEPOINT, which is the same unit
@@ -553,6 +555,21 @@ g4_mutant "M4 row-uses-max" r-row \
 # report the header extent (6) while the body still draws out to column 18.
 g4_mutant "M13 table-forgets-its-grid" r-table \
   's|             (\* rnd-table-cell (rnd-row-cells rows 0 0))))|             (rnd-row-cells rows 0 0)))|'
+# M14: THE HOLE FORGETS ITS MARK.  Added for the same reason M13 was, one row
+# further along the enumeration: `r-hole` was the last constructor in G4 that
+# NOTHING could redden.  The six g4_mutant calls redden six of the nine rows and
+# M1 reaches `r-text` and `r-lines` as collateral, which leaves `r-hole` alone --
+# it holds no `r-text`, so M1's off-by-one never touches it, and every other
+# mutant aims at another arm or another file.  records/gate-audit.md GA-17 is
+# that measurement.
+#
+# `rnd-cols`'s r-hole arm is the mark plus the label; the emitter paints the
+# mark and then the label.  Drop the mark from the WIDTH only and the two
+# disagree by exactly the mark's three columns, which is (a) and (c) both.
+# ⚑ Not a mutation of `rnd-hole-mark` itself: the width arm and the emitter
+# both read it, so changing it moves them together and reddens nothing.
+g4_mutant "M14 hole-forgets-its-mark" r-hole \
+  's|      ((r-hole label) (+ (str-cols rnd-hole-mark) (str-cols label)))|      ((r-hole label) (str-cols label))|'
 
 # ============================================================================
 # G5 -- FLAG A's OWN ROW: THE FIX IS A NO-OP WHERE THE TREE ALREADY WORKED.

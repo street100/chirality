@@ -458,11 +458,15 @@ else bad "G8(b) typing/diag does not import surface/pretty"; fi
 # (c) FIVE gate scripts and THREE fixtures, byte-unchanged. Pinning four while
 # exercising one is the same hole, one file smaller -- so every pin is checked
 # and M10 moves EACH of them in turn.
+# ⚑ `row.sh`'s and `render-doc.sh`'s were re-taken 2026-09-04 when GA-17's and
+# GA-22's repairs added M14 and M13. A pin re-taken in the commit that moves the
+# file is the loud path these rows exist to force; the other six stand at the
+# values E181 wrote.
 PINS="400166d2bada74728abf895ef6bae8b8e5a63e5ffbce1653e348399f773e140b  diag.sh
 1536b14abf23c1d36c6e26a0060bb79fc2a30bc1d40da24c862a69b7833da091  doc.sh
-3f86f26b1b4bba4ab29c16dae080bb8dc73af0ef55c9956af8aa9a3d5f7ed2b0  row.sh
+74055a76aef8bf17629224ed902d90b3b0ab95884fa754a674ad958b13ff1746  row.sh
 1cabeb7a0fa6da7e05118c766597621c9e5bcf7d9ed3a6402d0be5d381e585a9  face.sh
-55ac6c4b08075fea11f465669e37b53dea750b40fcca947021b1d3d4e61228a4  render-doc.sh
+08cd9d55bf6b6e4240b4be14a044b5bfa787c06102a559515208d6747de8e978  render-doc.sh
 713fe84d51c149d491edf8289a5799206f44b0e925a28dc7f123ba3f7ab4171c  samples/e157_diag.prog
 56292ca8dfd175eb3bd1e7b79aa1b1e0b6971cde8478632790906a995fada584  samples/e158_doc.prog
 a0cf04d8cb91a5bbc4f143c1315e406558f22d5c97ce76f83c8a5f53f02e75fd  samples/e174_row.prog"
