@@ -129,7 +129,7 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
 | `display-calculus/E3` | the accessibility tree derived by a total function. `law` | not started | `unminted` |
 | `display-calculus/E4` | every document has a text form, and nothing renders from it. `law` | not started | `unminted` |
 | `display-calculus/H6` | the property walk, run as a suite phase. `tool` | not started; same witness gap as C9, which it instantiates | `unminted` |
-| `display-calculus/A1` | the `Doc` to `Rendering` path is reached. `law` | measured 2026-09-04: `grep -rn '"protocol/render-doc"' lib/ prog/` returns zero, and `dg-doc` (`lib/typing/diag.chiral:561`) has zero consumers outside its own file. No `d-tag` in this tree reaches `lookup-face`. **Precondition for any C1 gate that can fail** | `unminted` |
+| `display-calculus/A1` | the `Doc` to `Rendering` path is reached. `law` | measured 2026-09-04, and re-measured the same day: `grep -rn '"protocol/render-doc"' lib/ prog/` returns zero, and `dg-doc` (`lib/typing/diag.chiral:561`) has zero consumers outside its own file. ⚑ The scope is load-bearing. Two importers live under `tools/`, `tools/test/samples/e158_render.prog:58` and a heredoc probe at `tools/test/render-doc.sh:423`, and Phase 17 (`tools/test/run-tests.sh:268`) builds the first and runs it (`tools/test/render-doc.sh:110`). What this row asks for is a SHIPPING producer, and there is none. No `d-tag` in this tree reaches `lookup-face`. **Precondition for any C1 gate that can fail** | `unminted` |
 | `display-calculus/A2` | `Mode`'s `faces` reaches the renderer. `law` | measured 2026-09-04: `command-loop.chiral:96` discards it. The shard C5 cashes | `unminted` |
 
 The `kind` cell is the anti-monolith column of [[goals/display]]'s shape
@@ -141,14 +141,15 @@ The cell-lane pre-run ran 2026-09-04 as `docs/examples/C01-typed-style-value.md`
 at `23f6830`, covering C1/C2/C4/C5 as one decision, on U13's precedent for a
 run that covers more than one row. **It went `superseded` the same day at
 `8928028`, and the replacement is `docs/examples/C1C2-style-round-trip.md`,
-`drafted`, covering C1 and C2.** [[banks/render]] found the reason: C01 proposes
+covering C1 and C2. It passed its example gate at `f15e688` and is `specced` at
+`docs/elements/specs/C1C2-style-round-trip-SPEC.md`.** [[banks/render]] found the reason: C01 proposes
 building a typed style value and a total ordered fold, and both are on disk.
 `lib/protocol/grid.chiral:12` is `Attrs`, six named `Bool`s over the closed
 `Color` sum at `:6`; `apply-one` (`:215`) cases over `Sgr` arm-per-arm with no
 default clause and `fold-sgr` (`:232`) folds it in order. E111, `built`.
 
 **The measurement that reshaped the rows.** `face-sgr` (`render.chiral:188`)
-emits `ESC[3m` for attribute bit 4 and `parse-sgr` (`grid.chiral:201`) names 21
+emits `ESC[3m` for attribute bit 4 and `parse-sgr` (`grid.chiral:201`) names 23
 codes, code 3 among none of them, so 8 of the 16 attribute masks lose italic on
 the way back. `fg` 10 through 17 emit `ESC[40m` through `ESC[47m` and decode as
 a **background** change. Over `default-faces` the trip closes, because all
@@ -191,9 +192,10 @@ answer, a named and loudly-styled failure state (reverse video in
 default, and the compiler's refusal stops at the theme.
 
 **`A1` is the precondition for any C1 gate that can fail.** No `d-tag` in this
-tree reaches `lookup-face` today: `protocol/render-doc` has zero importers and
-`dg-doc` (`lib/typing/diag.chiral:561`) has zero consumers outside its own
-file. A gate that walks a theme's coverage over a `Role` sum nothing produces
+tree reaches `lookup-face` today: `protocol/render-doc` has zero importers
+under `lib/` and `prog/` and `dg-doc` (`lib/typing/diag.chiral:561`) has zero
+consumers outside its own file. Its two importers are both under `tools/`,
+so the reach it has is a gate fixture rather than a program a user runs. A gate that walks a theme's coverage over a `Role` sum nothing produces
 would pass by looking at nothing, the same failure mode
 [[decisions/decision-scope]] names for a subcommand dispatching to a floor the
 tree lacks. `A1` closing is what makes a future C1 gate a gate rather than a
@@ -221,8 +223,11 @@ against enforcement requirement 5's tooling surface
 ([[records/tooling-classification]] TC-11); [[arcs/enforcement-arc]] carries
 the pointer to this gap. This is a fact about running this arc's pipeline.
 
-**Suggested next element:** C1C2's example audit (`pipeline-audit`), then a
-SPEC for C1 and C2 together. `pack.py` runs neither: its id regex refused
+**Suggested next element:** the SPEC audit of
+`docs/elements/specs/C1C2-style-round-trip-SPEC.md` (`pipeline-audit` at SPEC
+level), then implementation. The SPEC's change plan was executed off-tree in the
+spec run and the gate root reached exit 42, so what the audit grades is citation
+truth and gate soundness rather than feasibility. `pack.py` runs neither: its id regex refused
 `C1C2` on 2026-09-04 with *"element id must look like E13 / U13 / S19 / N1"*,
 which is the same prefix gate this section records below.
 
