@@ -20,7 +20,7 @@
 # bytes it printed.
 #
 #   G1   all sixteen formers byte-exact at width 10^6, plus KArm,
-#        RfAtom and the dc-ty site -- twenty goldens               [M1]
+#        RfAtom and the dc-ty site -- twenty goldens     [M1,M18-M25]
 #   G2   `brk-soft` is never correct between atoms: the TOKEN
 #        SEQUENCE is width-independent                             [M2]
 #   G3   the group decision and the indent, on a real term      [M3,M4]
@@ -140,7 +140,14 @@ else
 fi
 
 # expect LABEL EXPECTED
+# ⚑ IT RECORDS AS IT GRADES.  M18-M25 below re-run G1's own comparison over a
+# mutated tree, and a golden re-spelled beside those mutants would be a want the
+# mutation cannot reach -- the defect tools/test/arity.sh:75-79 names.  There is
+# one spelling of each golden and it is the argument here.
+G1_LABELS=""
+declare -A G1_WANT=()
 expect() {
+  G1_LABELS="$G1_LABELS $1"; G1_WANT["$1"]="$2"
   local got; got="$(blk "$1" "$OUT")"
   if [ "$got" = "$2" ]; then ok "G1 $1 -> $(printf '%s' "$2" | head -1)$( [ "$(printf '%s\n' "$2" | wc -l)" -gt 1 ] && printf ' (+%s more lines)' "$(( $(printf '%s\n' "$2" | wc -l) - 1 ))")"
   else bad "G1 $1 -- got [$got] want [$2]"; fi
@@ -203,6 +210,94 @@ if mutlib "M1" lib/surface/pretty.chiral '/^      ((t-lit-i v)   (d-tag "term-li
     *) bad "M1 delete-a-pp-term-arm -- expected 'non-exhaustive case', got [$(printf '%s' "$e" | head -1)]" ;;
   esac
 fi
+
+# ============================================================================
+# M18-M25: THE EIGHT LEAF GOLDENS, EACH WITH A MUTANT THAT REDDENS IT.
+#
+# M1 deletes an arm, and a non-exhaustive `case` in pretty.chiral refuses the
+# whole module: the fixture stops building and NO golden moves.  So the atom and
+# leaf formers -- the ones whose printed bytes ARE the whole row, with no
+# enclosing form to carry them -- had no falsifier anywhere in this file.
+# records/gate-audit.md GA-13 measured the eight: w6-08, w6-09, w6-10, w6-11,
+# w6-12, w6-13, w6-15 and w6-20.
+#
+# Each mutant below changes ONE leaf's printed bytes and compiles clean, and
+# each pins the FULL SET of goldens that move, the idiom matcher.sh:25-27 and
+# arity.sh:23-26 use on their verdict lines.  Collateral is real and is written
+# down rather than tolerated: `I64` is a `t-primty` inside six other goldens and
+# `42` is a `t-lit-i` inside six more, so a mutant of either moves its own row
+# and theirs.  A mutant that reddened some OTHER row and left its own green is
+# then a FAIL of that mutant's row.
+#
+# ⚑ `nobuild` IS NOT A CONVICTION.  `g1_reds` answers `BUILD:fail` for a mutant
+# that did not compile and no pin below holds that token, so a mutant that
+# merely broke the syntax cannot wear a red set.
+
+# g1_reds LIBDIR -> the G1 labels whose golden moved, or BUILD:fail
+g1_reds() {
+  local out="$TMP/g1m.out" l r=""
+  build_raw "$1" "$FIXTURE" "$out" || { printf 'BUILD:fail'; return; }
+  for l in $G1_LABELS; do
+    [ "$(blk "$l" "$out")" = "${G1_WANT[$l]}" ] || r="$r $l"
+  done
+  printf '%s' "${r# }"
+}
+
+g1_mutant() {  # g1_mutant NAME WANT-REDS REPO-REL-PATH SED-EXPR...
+  local name="$1" want="$2" rel="$3"; shift 3
+  mutlib "$name" "$rel" "$@" || return
+  local got; got="$(g1_reds "$MUTLIB")"
+  if [ "$got" = "$want" ]; then ok "$name -- reddens exactly [$got]"
+  else
+    bad "$name -- the red set is not the pinned one"
+    echo "          got:  [$got]"
+    echo "          want: [$want]"
+  fi
+}
+
+echo
+echo "=== E181 G1's leaf goldens: eight mutants, each pinning the SET it reddens ==="
+g1_mutant "M18 t-global-prints-a-constant" "w6-05 w6-08 w6-19" \
+  lib/surface/pretty.chiral \
+  's|((t-global n)  (d-tag "term-name" (d-text n)))|((t-global n)  (d-tag "term-name" (d-text "?g")))|'
+
+g1_mutant "M19 t-prim-prints-a-constant" "w6-09" \
+  lib/surface/pretty.chiral \
+  's|((t-prim n)    (d-tag "term-name" (d-text n)))|((t-prim n)    (d-tag "term-name" (d-text "?p")))|'
+
+g1_mutant "M20 t-primty-prints-a-constant" "w6-03 w6-04 w6-07 w6-10 w6-16 w6-18 w6-20" \
+  lib/surface/pretty.chiral \
+  's|((t-primty n)  (d-tag "term-name" (d-text n)))|((t-primty n)  (d-tag "term-name" (d-text "?t")))|'
+
+# The off-by-one rather than a constant: an integer literal printed one too high
+# is the corruption a golden of `42` exists to catch, and it stays an integer so
+# nothing downstream re-lexes differently.
+g1_mutant "M21 t-lit-i-is-one-too-high" "w6-06 w6-07 w6-11 w6-14 w6-17 w6-18 w6-22" \
+  lib/surface/pretty.chiral \
+  's|((t-lit-i v)   (d-tag "term-lit" (d-text (i64->str v))))|((t-lit-i v)   (d-tag "term-lit" (d-text (i64->str (+ v 1)))))|'
+
+# w6-12 is the escaped-string golden and this is the mutant it was written for:
+# the quoting and escaping are dropped, so the literal prints as its own bytes
+# and the output stops being source.
+g1_mutant "M22 t-lit-s-drops-the-quoting" "w6-12" \
+  lib/surface/pretty.chiral \
+  's|((t-lit-s v)   (d-tag "term-lit" (d-text (pp-quote v))))|((t-lit-s v)   (d-tag "term-lit" (d-text v)))|'
+
+# The two NULLARY arms, which print bare.  Their applied arms are covered by
+# w6-14 and w6-16; before these two the bare spelling was graded by nothing.
+g1_mutant "M23 nullary-ctor-prints-a-constant" "w6-13" \
+  lib/surface/pretty.chiral \
+  's|          (nil (d-tag "term-name" (d-text cn)))|          (nil (d-tag "term-name" (d-text "?c")))|'
+
+g1_mutant "M24 nullary-tcon-prints-a-constant" "w6-15" \
+  lib/surface/pretty.chiral \
+  's|          (nil (d-tag "term-name" (d-text dn)))|          (nil (d-tag "term-name" (d-text "?d")))|'
+
+# w6-20 is the dc-ty site, and it is the one golden whose bytes come from
+# typing/diag rather than from the printer.  Its mutant lives there too.
+g1_mutant "M25 dc-ty-loses-its-word" "w6-20" \
+  lib/typing/diag.chiral \
+  's|                    (cons (d-text " type ")|                    (cons (d-text " ty ")|'
 
 echo
 echo "=== E181 G2: the token sequence is width-independent ==="
