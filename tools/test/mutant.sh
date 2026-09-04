@@ -8,6 +8,10 @@
 # and the five phases that did not honour it were indistinguishable from the
 # ones that did, because nothing in the tree could tell the two apart.
 #
+# not-a-phase: a sourceable library plus a matrix driver a person runs by hand.
+# records/gate-audit.md GA-01 is the open row arguing the matrix wants a phase of
+# its own.  Nothing has ruled yet, so it stays out and stays visible.
+#
 # This file is that rule as a sourceable library plus a standalone matrix
 # driver. It mutates a rule in `lib/`, builds a compiler from the mutated tree,
 # and puts THAT compiler under a whole phase through CHIRALITY_COMPILE -- the

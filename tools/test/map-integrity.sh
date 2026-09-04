@@ -4,6 +4,8 @@
 # record that lies. It drifted twice on 2026-08-31 alone (the ports/ relocation,
 # then the root sort), both times silently, which is why this is a script.
 #
+# not-a-phase: it reads .planning/MIGRATION-MAP.tsv and a person runs it after a move.
+# (records/tooling-classification.md TC-09 disputes the reason given below.)
 # Not a suite phase: the map lives under .planning/, which is not tracked, so a
 # fresh checkout has no map to check. Run it after any move.
 set -uo pipefail

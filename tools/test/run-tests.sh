@@ -344,6 +344,43 @@ run_phase 20 "the transport path (a model call, E130 + E131)"     transport.sh
 # build per `verdict` call, six in the phase, measured at ~2.2 s each.
 run_phase 24 "the arity evidence (E182 r-arity)"                   arity.sh
 
+# ---- registration: the witness for every dispatch line above ----------------
+# not-a-phase: this file IS the dispatch table; the block below invokes its witness.
+#
+# ⚑ WHY IT HAS NO NUMBER, AND WHY IT IS NOT DISPATCHED BY `run_phase`.
+# records/gate-audit.md GA-24: five gate scripts assert their OWN `run_phase`
+# line, and a row that names its own phase cannot fire -- deleting the line
+# stops the script holding the row.  Phases 3, 4, 5, 6, 19 and 20 were witnessed
+# by nothing at all, and `matcher.sh` could be dropped from the suite with
+# nothing going red.  A witness dispatched by a `run_phase` line of its own
+# would inherit exactly that hole one level up.  This one runs because this file
+# runs, which is the premise of every phase above it.
+#
+# It grades the dispatch table against tools/test/ and costs no compiler.  A
+# deleted `run_phase` line reddens a row HERE, in a file the deletion did not
+# silence.  The other half of the pair is tools/test/pretty.sh G8(e), which
+# asserts that the invocation below still exists -- so neither can be removed
+# with one edit.
+REG="$HERE/registration.sh"
+if [ -f "$REG" ]; then
+  echo
+  echo "=== registration (no phase number: it witnesses the run_phase lines) ==="
+  reglog="$T/registration.log"
+  bash "$REG" 2>&1 | tee "$reglog"; regrc="${PIPESTATUS[0]}"
+  [ "$regrc" -eq 0 ] || fail=$((fail+1))
+  regline="$(grep -oE '[0-9]+ passed, [0-9]+ failed' "$reglog" | tail -1)"
+  if [ -n "$regline" ]; then
+    rgp="${regline%% passed*}"; rgf="${regline#*, }"; rgf="${rgf%% failed*}"
+    tally "$rgp" "$rgf"
+  else
+    echo "  FAIL  registration.sh printed no tally -- a gate with no count reports nothing"
+    fail=$((fail+1))
+  fi
+else
+  echo "  FAIL  $REG is missing -- the run_phase lines would be witnessed by nothing"
+  fail=$((fail+1))
+fi
+
 echo
 echo "=== not ported from the old suite (named, not hidden) ==="
 echo "  Phase 8  module datasheet (E161)      -- 808 lines of fixtures on old-tree module keys; see tools/test/MIGRATION-NOTES.md"

@@ -3,6 +3,7 @@
 #   slice 1: ChaCha20 (lib/crypto/chacha.chiral)
 #   slice 2: Poly1305 + AEAD (lib/crypto/poly1305.chiral)
 #
+# not-a-phase: N1's kernels; the dispatch line is owed to the suite-owning session.
 # NOT YET REGISTERED: the run_phase line in run-tests.sh is owed to the
 # suite-owning session. 8-12 stay owed to unported old-tree phases and reusing
 # one would make an unported gate look ported; 21-23 are free at this writing.

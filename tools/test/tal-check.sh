@@ -8,6 +8,7 @@
 # tools/test/crypto.sh, which was written first and whose registration is
 # already owed.
 #
+# not-a-phase: it claims 22, which is inside Lane B's reserved 21-23 band.
 # NOT YET REGISTERED: the run_phase line in run-tests.sh is owed to the
 # suite-owning session, the crypto.sh precedent.  Registering 22 ahead of 21
 # would open a gap in a file another session holds, and this session is barred

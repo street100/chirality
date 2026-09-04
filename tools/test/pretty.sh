@@ -509,6 +509,30 @@ if [ "$(grep -cE "^$RP .* pretty.sh\$" "$TMP/rt.sh")" = 0 ]; then
   ok "M11 drop-the-registration -- the registration check sees the missing line"
 else bad "M11 drop-the-registration -- the check cannot see a dropped registration"; fi
 
+# (e) and the WITNESS that grades every OTHER registration is still invoked.
+# ⚑ G8(d) above is circular by construction, and records/gate-audit.md GA-24 is
+# that measurement: deleting `run_phase 18 ... pretty.sh` stops THIS file from
+# running, so the row that would have caught the deletion is the row the
+# deletion silenced.  tools/test/registration.sh closes it from outside -- it
+# has no phase number, it runs because run-tests.sh runs, and it reddens when a
+# dispatch line goes missing.  This row is the other half of that pair: it
+# asserts the invocation still exists.  Neither can be removed with one edit,
+# because registration.sh reddens on a deleted `run_phase 18` and this reddens
+# on a deleted invocation.  Both needles are assembled, so this file's own
+# source cannot satisfy a check it is running.
+REGN="registration"".sh"
+RINV='bash "$REG"'
+if [ -f "$HERE/$REGN" ] \
+   && [ "$(grep -cF "$REGN" "$HERE/run-tests.sh")" -ge 1 ] \
+   && [ "$(grep -cF "$RINV" "$HERE/run-tests.sh")" -ge 1 ]; then
+  ok "G8(e) run-tests.sh still invokes $REGN -- the dispatch table is graded from outside itself"
+else bad "G8(e) run-tests.sh no longer invokes $REGN -- every run_""phase line is back to witnessing only itself"; fi
+grep -vF "$REGN" "$HERE/run-tests.sh" | grep -vF "$RINV" >"$TMP/rt-nowitness.sh"
+if [ "$(grep -cF "$REGN" "$TMP/rt-nowitness.sh")" = 0 ] \
+   && [ "$(grep -cF "$RINV" "$TMP/rt-nowitness.sh")" = 0 ]; then
+  ok "M18 drop-the-witness -- G8(e) sees the invocation stripped from a copy"
+else bad "M18 drop-the-witness -- the check cannot see a stripped invocation; G8(e) is toothless"; fi
+
 # M9: the census must be able to SEE a re-added call site.
 if mutlib "M9" lib/typing/diag.chiral "s/(cons (pp-of pfx e)/(cons (d-text (${DTT} e))/"; then
   n="$(grep -REoh "\($DTT " "$MUTLIB" 2>/dev/null | wc -l)"

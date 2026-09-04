@@ -2,6 +2,7 @@
 # apply-word.sh -- the E185 gate: the `$apply<i>` dispatcher's domains are the
 # erased word at the lowering type level.
 #
+# not-a-phase: E185's number is NEEDS-AUTHOR -- four documents disagree about 21-23.
 # ⚑ UNREGISTERED, AND IT CARRIES NO ROW SAYING SO.  No suite phase number is
 # assigned: `tools/test/run-tests.sh:332` and `docs/decisions/decision-lane-split.md:30`
 # reserve 21 through 23 for Lane B, `tools/test/tal-check.sh:5` claims 22, and
