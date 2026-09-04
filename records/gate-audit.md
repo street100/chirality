@@ -315,3 +315,20 @@ run, so neither gap is invisible any more.
 - evidence: `tools/test/run-tests.sh:144-147`, `:303`, `:326`, `:345`, `:347-382`; `tools/test/registration.sh`; `tools/test/pretty.sh:512-534`; `tools/test/doc.sh:462-473`; `tools/test/arity.sh:465-477`; `tools/test/row.sh:683-689`; `tools/test/face.sh:585-591`
 - checked:  2026-09-04
 - element:  none
+
+## What a gate script says about the suite's own reach
+
+Opened 2026-09-04 by the revision of `docs/examples/C1C2-style-round-trip.md`,
+which had to price a gate root and measured the two censuses to do it. The
+subject here is a gate script's stated reason rather than a gate row's mutant.
+A reason that is false steers the next author wrong even when the choice it
+defends is right.
+
+### GA-25 tal-check.sh's fixture-placement reason is false about both censuses
+
+- state:    OPEN
+- claim:    `tools/test/tal-check.sh:127-129` gives the reason its fixture is written into a temp directory instead of tracked under `tools/test/samples/`: *"Written here rather than tracked under tools/test/samples/: everything under samples/ is walked by Phase 2's test-runner and counted by the compile-only root census, and this gate has no business moving either number."*
+- measured: REFUTED, both halves. Phase 2's test-runner walks nothing. `prog/test-runner.prog:39-46` is a bundled `manifest` of six `sample` entries naming `prog/samples/exit42.chiral`, `exit7.chiral`, `multi-def.chiral`, `boxed-a.chiral`, `boxed-b.chiral` and `enum-tag.chiral` by literal path, so it is a list rather than a directory walk and nothing under `tools/test/samples/` can enter it. The compile-only root census is Phase 7's `ALL_ROOTS`, `grep -rl '^(def compile-main' lib prog` (`tools/test/run-tests.sh:175`), whose search roots are `lib` and `prog`; run in this tree it returns 97 roots and `grep -c '^tools/'` over that list returns **0**. So a tracked fixture under `tools/test/samples/` moves neither number, and the stated reason does not hold. ⚑ THE CHOICE IS FINE AND THE REASON IS NOT. A temp fixture cannot go stale against the script that writes it. That is a good reason. The comment gives a different one. What the false reason costs is the inverse reading: an author who believes it concludes that landing a root under `tools/test/samples/` buys suite reach. It buys none, and every root there is reached by one thing, a script naming it as its `FIXTURE`. `docs/examples/C1C2-style-round-trip.md` M2 measured exactly this while pricing its own gate, and it is why that element ships a hand-run script under the `crypto.sh:6` and `tal-check.sh:11` precedent instead of assuming a sweep would find its root. The repair is three comment lines in `tools/`, outside this run's write set.
+- evidence: `tools/test/tal-check.sh:11`, `:127-129`; `prog/test-runner.prog:39-46`; `tools/test/run-tests.sh:175`; `tools/test/crypto.sh:6`; `docs/examples/C1C2-style-round-trip.md` M2 and §6
+- checked:  2026-09-04
+- element:  none
