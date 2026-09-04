@@ -28,6 +28,7 @@ where the tree does not settle the answer and a pass must stop.
 | When the native-stack track opens | [[decisions/decision-scope]] holds the current track to self-hosting only. The author stated [[goals/native-stack]] and its internal order on 2026-09-03, then opened [[arcs/native-protocol-arc]] the same day, in session, with a next-day target on the kernels. The window and document arcs sit unopened |
 | `E184-E189` is one band and two focuses draw on it | [[arcs/enforcement-arc]] and [[arcs/diagnostics-arc]] both mint from it, `E184` is spent, and four numbers remain. Concurrent minting is the collision that produced two `E173`s. The work split is in `docs/decisions/decision-lane-split.md` |
 | Which arc owns the allocation gap | ~1,747 B of arena per input byte, no reclamation on any compiled path, and a projected ~6.3 GB at the default scope against 3.85 GB with no swap. It blocks manas and scriba from running once transport lands and no arc holds it |
+| The `$apply` dispatcher's erased domains | `apply-ty` spells a defunctionalization family's domains with one member's concrete `Core` types, while `shape-eq` erases every non-arrow domain into that family on purpose, so four dispatchers carry a tal type `ck-prog` is right to refuse ([[records/enforcement-arc]] EN-15). `Core` has no word spelling, `closconv-sig` runs after the typecheck so nothing re-checks its output, and the same question returns on the `$kI_J` capture constructor's field types. Until it is answered, `ck-prog` cannot refuse on the shipping path |
 
 ## Closed since the hoist
 

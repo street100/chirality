@@ -129,6 +129,9 @@
 (data TD    () (td-ok (dflt (Maybe Block)) (st St)) (td-skip (reason Str)))
 (data BO    () (bo-ok (fn TFn) (extra (List TFn)) (fns (List (Pair Str TalSig)))) (bo-skip (reason Str)))
 (data LowE  () (le-ok (main TFn) (extra (List TFn))) (le-skip (reason Str)))
+; build-binders' result: the binder env, the instructions DEFINING the erased
+; placeholders in it, and the threaded state. EN-14, records/enforcement-arc.md.
+(data BB    () (bb (env (List (Pair I64 TalTy))) (defs (List Instr)) (st St)))
 
 ; ---- generic list + state helpers -------------------------------------------
 (declare l-snoc (-> (0 A (type 0)) (List A) A (List A)))
@@ -377,31 +380,41 @@
 
 ; B1: build the full binder env in binder order (outermost first). The kept
 ; params were pre-seeded as `pregs` (kept order, the first-k registers); an
-; erased (q=0) position gets a ssa-fresh PLACEHOLDER register (never read: q=0 =
-; zero runtime uses), typed tt-word, so de Bruijn stays aligned. Mirrors
-; lower.py Low.fn's parts-walk.
-(declare build-binders (-> (List (Pair I64 TalTy)) (List I64) I64 I64 St
-                           (Pair (List (Pair I64 TalTy)) St)))
+; erased (q=0) position gets a ssa-fresh PLACEHOLDER register, typed tt-word, so
+; de Bruijn stays aligned. Mirrors lower.py Low.fn's parts-walk.
+;
+; EN-14, records/enforcement-arc.md: the placeholder is DEFINED, by the i-const 0
+; collected in `defs` and prepended to the body by compile-fn below. It used to be
+; allocated and defined nowhere, on the ground that a q=0 binder has zero runtime
+; uses. That ground does not hold: `outline` passes the whole binder env as the
+; outlined call's arguments, so the undefined register travelled with them, and
+; the enclosing TFn's `params` carries the kept list, which binds it nowhere
+; either. emit-code and emit-args-res read an undefined register in the shipping
+; compiler, and both computed correctly for one reason, that their callees read
+; that argument at no point. `tail` already defines an erased LET binder exactly
+; this way (its lc-let q=0 arm); this is the same repair for an erased PARAM
+; binder.
+(declare build-binders (-> (List (Pair I64 TalTy)) (List I64) I64 I64 St BB))
 (def build-binders (lam (pregs erased total pos st)
   (case (<i pos total)
-    (false (pair nil st))
+    (false (bb nil nil st))
     (true (case (mem-i erased pos)
       (true (case (ssa-fresh st) ((pair d st1)
-        (case (build-binders pregs erased total (+ pos 1) st1) ((pair rest st2)
-          (pair (cons (pair d (tt-word)) rest) st2))))))
+        (case (build-binders pregs erased total (+ pos 1) st1) ((bb rest defs st2)
+          (bb (cons (pair d (tt-word)) rest)
+              (cons (i-const d (tt-word) 0) defs) st2))))))
       (false (case pregs
-        (nil (case (build-binders nil erased total (+ pos 1) st) ((pair rest st1)
-               (pair rest st1))))                       ; defensive: no more params
+        (nil (build-binders nil erased total (+ pos 1) st)) ; defensive: no more params
         ((cons pr prest)
-          (case (build-binders prest erased total (+ pos 1) st) ((pair rest st1)
-            (pair (cons pr rest) st1)))))))))))
+          (case (build-binders prest erased total (+ pos 1) st) ((bb rest defs st1)
+            (bb (cons pr rest) defs st1)))))))))))
 
 (def compile-fn (lam (ce name body ptys erased ret)
   (case (seed-env ptys (st 0 nil (ce-fns ce) 0 name)) ((pair pregs st1)
     (let (total (+ (l-llen TalTy ptys) (l-llen I64 erased)))
-    (case (build-binders pregs erased total 0 st1) ((pair env st2)
+    (case (build-binders pregs erased total 0 st1) ((bb env defs st2)
       (case (strip-lams body total)
         (none (le-skip "body is not a lambda chain"))
-        ((some sp) (case (tail ce env sp (some ret) nil st2)
+        ((some sp) (case (tail ce env sp (some ret) defs st2)
           ((tr-skip r) (le-skip r))
           ((tr-ok blk st3) (le-ok (tfn name ptys ret blk (st-nreg st3)) (st-extra st3)))))))))))))
