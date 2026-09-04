@@ -5,7 +5,7 @@ tier: depth
 indexes: [vocabulary, glossary, permission-model, node-architecture, split-role, modules-broker, decision-b-in-type]
 related: [banks/port, banks/effect-and-alarm, banks/memory, banks/evidence-and-split, banks/module, banks/profile, banks/runtime, split-role, permission-model, modules-broker, node-architecture, status-ledger, open-edges]
 status: draft
-updated: 2026-07-23
+updated: 2026-09-04
 ---
 
 # BANK: capability
@@ -97,17 +97,18 @@ is a conventional monolith that fuses several of the shards below onto an owner 
 a runtime gate that chirality discards.
 
 **How it is realized in code (evidence).** A capability is a value of an **opaque
-linear porttype** declared in `scaffold/lib/ports.chiral:1–19` (`Sock`, `LSock`,
-`Fd`, `(Pool n)`). `porttype` introduces "an opaque linear atom: the kernel learns
-nothing about it except that it exists and that … a value of it … can only ever be
-bound with quantity 1" (`ports.chiral:3–8`). The declaration path is
-`surface.py:108–126` → `K.declare_atom(sig, name, linear=True)`
-(`kernel.py:570–575`), which registers an atom type with a `linear` flag and **no
-data constructors**. Authority-crossings are `extern`s whose types are owned in
-source and whose host referents bind at link (the nine `ports/*.chiral` registries —
-repointed 2026-08-22; `ports.chiral` is now a façade). There is no
-`capability` object, no permission table, and no runtime check — exactly as the
-concept claims.
+linear porttype** declared in one of the nine registries under `lib/ports/`:
+`Sock` and `LSock` at `lib/ports/sock.port:16-17`, `Fd` at `lib/ports/fd.port:16`,
+`(Pool n)` at `lib/ports/pool.port:13`. `porttype` introduces "an opaque linear
+atom: the kernel learns nothing about it except that it exists and that … a value
+of it … can only ever be bound with quantity 1" (`lib/ports/ports.chiral:3-8`).
+The declaration path is `handle-porttype` (`lib/surface/parse.chiral:688`) →
+`load-atom` (`lib/module/loader.chiral:487`), which records the name in the
+linear-atom registry and gives it **no data constructors**. Authority-crossings are
+`extern`s whose types are owned in source and whose host referents bind at link.
+`lib/ports/ports.chiral` is a façade over the nine registries and defines no def
+of its own (`:47`). There is no `capability` object, no permission table, and no
+runtime check, exactly as the concept claims.
 
 ---
 
@@ -119,11 +120,12 @@ its own principled home and its own build-state.
 ### Shard A — the authority IS a linear port (its type is the power)
 - **What.** The capability *is* a held [[banks/port]]; its port type is the
   authority. This is the substance — every other shard is a facet of *this* type.
-- **Home.** the port-set / [[banks/port]]; `lib/ports.chiral` porttypes; P3.
-- **Build-state.** CONFORMS. Category-C port membrane E30–E33: `ports.chiral`
-  declares opaque linear porttypes, `impl_ports` binds host referents, the checker
-  enforces move-only threading. Evidence: `ports.chiral:12–19`,
-  `surface.py:108–130, 184`; CONFORMANCE-MAP "Category C port membrane … CONFORMS".
+- **Home.** the port-set / [[banks/port]]; the `lib/ports/*.port` porttypes; P3.
+- **Build-state.** CONFORMS. Category-C port membrane E30–E33: the nine registries
+  under `lib/ports/` declare opaque linear porttypes, the extern's host referent
+  binds at link, the checker enforces move-only threading. Evidence:
+  `lib/ports/sock.port:16-17`, `lib/ports/fd.port:16`, `lib/ports/pool.port:13`,
+  `lib/surface/parse.chiral:688`; CONFORMANCE-MAP "Category C port membrane … CONFORMS".
   Do **not** re-document port semantics here — see the sibling **[[banks/port]]**.
 
 ### Shard B — non-forgeability = a conjunction of FOUR mechanisms at four tiers
@@ -133,16 +135,19 @@ its own principled home and its own build-state.
   1. **the porttype has no constructor** (surface / kernel) — `porttype` declares an
      opaque atom with zero data constructors, so a `Sock` value is *unspeakable* in
      surface syntax; the only way to obtain one is a host-bound `extern`
-     (`ports.chiral:3–8`, `surface.py:108–126`, `kernel.py:570`);
-  2. **the frozen port set** (profiles / verify) — a profile may use only the named
-     crossings it declares; `top_profile` rejects any listed name that is not a
-     declared extern or that is pure (`surface.py:183–185`), and the off-manifest
-     *violation* check is a `chirality verify` report, not run-time loading — the gate
-     holds where verify is run;
+     (`lib/ports/ports.chiral:3-8`, `lib/surface/parse.chiral:688`,
+     `lib/module/loader.chiral:487`);
+  2. **the frozen port set** (profiles) — a profile may use only the named
+     crossings it declares; `mf-check-ports` (`lib/surface/parse.chiral:907`)
+     rejects a listed name that is not a declared extern (`mf-port-unknown`) and
+     one whose type crosses nothing (`mf-port-pure`). The refusal is taken while
+     the profile form is read, so the gate holds at load;
   3. **q=1 linearity** (kernel, `on_binder`) — a value of a linear porttype is bound
-     with quantity 1, checked at every binder (`is_linear`, `kernel.py:207–218`;
-     `on_binder` at Pi/let/lambda, `kernel.py:418, 441, 477`), so a held port cannot
-     be *copied* into two authorities;
+     with quantity 1, checked at every binder: `is-linear`
+     (`lib/typing/kernel.chiral:325`) judges the type, `linear-binder-bad`
+     (`lib/typing/kernel.chiral:360`) is the refusal, and its three call sites are
+     the Pi binder at `:867` and the let binder at `:907` and `:988`. A held port
+     cannot be *copied* into two authorities;
   4. **the reflective floor** (E45, DECISION) — the boundary below which a running
      chirality cannot reconfigure the port set / judgment core, so you cannot forge by
      *re-editing the rules from inside*.
@@ -179,13 +184,14 @@ its own principled home and its own build-state.
   attenuated port's type is a subtype offering less, never more. Widening is not
   expressible" ([[permission-model]] §Attenuate). Where the narrowing is *numeric*
   (a smaller pool bound), the `m ≤ n` obligation is a **refinement entailment** (E9)
-  over the port's **value-index** (`(porttype Pool (n I64))`, `ports.chiral:19`),
-  **not** nominal subtyping.
-- **Home.** the checker's `subtype` relation (`kernel.py:321`) composed with the
-  refinement fragment (E9, `refine.py`) over the value-indexed porttype
-  (`ports.chiral:19, 48–50`).
+  over the port's **value-index** (`(porttype Pool (n I64))`,
+  `lib/ports/pool.port:13`), **not** nominal subtyping.
+- **Home.** the checker's `subtype` relation (`lib/typing/kernel.chiral:799`)
+  composed with the refinement fragment (E9, `entails` at
+  `lib/typing/refine.chiral:93`) over the value-indexed porttype
+  (`lib/ports/pool.port:13, 26-31`).
 - **Build-state.** **The one live softness.** The subtype *mechanism* is IMPLEMENTED
-  (`kernel.py subtype`, cumulativity via subtype) but is **not yet applied to grant
+  (`lib/typing/kernel.chiral:799`, cumulativity via subtype) but is **not yet applied to grant
   narrowing** ([[status-ledger]] line 52; CONFORMANCE-MAP lines 84, 123: "subtype
   mechanism present but NOT applied to grant narrowing"). The refinement fragment is
   built as the named I64 literal/bare-var fragment (E9; map class REFACTOR toward
@@ -273,7 +279,7 @@ its own principled home and its own build-state.
 ### Shard H — reflection without authority (the erased witness)
 
 **Home.** scriba (the port-viewer) + the `effects`/quantity floor. **Build-state:**
-DESIGNED, shovel-ready (its prerequisite is *enforced*, not merely designed).
+DESIGNED. Its prerequisite is written and unreached, re-measured 2026-09-04.
 
 The graph is legible (RUNG2-SECURITY-MODEL §6: "trust is legible in the port graph"),
 but legibility needs a *viewer that holds nothing*. The move: authority to **act** is
@@ -286,11 +292,17 @@ caught; it is inexpressible ([[decision-b-in-type]]: property in the type, not t
 packaging). It is **E52's pattern reused** — untrusted producer (scriba) emits an
 artifact, the index is the trusted re-check.
 
-**Prerequisite (satisfied):** the pattern is sound only if erasure is real — a q=0
-position must be effect-free. It **is enforced**: `effects.py:48` `erased_allow` forces
-any quantity-0 position pure (`EMPTY_ROW`), corroborated by
-[[effect-and-alarm]]. Only the *prose statement* of the rule into `open-edges` edge 2
-is outstanding (doc-debt item 3), not the enforcement.
+**Prerequisite (written and unreached, measured 2026-09-04):** the pattern is sound
+only if erasure is real, so a q=0 position must be effect-free. The rule is written.
+`erased-allow` at `lib/typing/effects.chiral:39` maps a `q0` position to the empty
+row, and [[banks/erasure]] shard B carries it. Nothing calls it.
+[[status-ledger]]'s Effects row measures the three membrane seams as having **no
+caller anywhere in the tree**, and the module's two importers,
+`lib/typing/row-infer.chiral:16` and `lib/lowering/upper/eff-lower.chiral:21`, take
+`row-join`, `row-sub` and `mem-str` only. E171 owns the caller. This line read
+"enforced" until 2026-09-04 and the enforcement was never there; the prose statement
+of the rule into `open-edges` edge 2 (doc-debt item 3) is the smaller half of what
+is outstanding.
 
 **Residue (NEEDS-AUTHOR):** *freshness* — typing gives "faithful to a graph," not "to
 *the* graph, *now*"; a stale-but-correct view stays expressible. See
@@ -329,10 +341,12 @@ most of them designed, none of them a new "revocation module." See
 **C3 · Attenuation IS refinement entailment (E9), not nominal subtyping.** Shard C
 and the concept *refinement* land on the same shard for the numeric case: narrowing
 `(Pool n)` → `(Pool m)` is discharged by proving `m ≤ n` in the refinement fragment
-(E9), over the porttype's value-index (`ports.chiral:19`) — the *same* `entails`
-machinery that bounds-checks a pool write (`mem-put-checked`, E22). Attenuation of a
+(E9), over the porttype's value-index (`lib/ports/pool.port:13`) — the *same*
+`entails` machinery that bounds-checks a pool write (`mem-put-checked`,
+`lib/memory/mem-linear.chiral:26`, E22). Attenuation of a
 memory capability and a bounds-check on that same memory are **one mechanism**. The
-non-numeric case (fewer operations) is plain `subtype` (`kernel.py:321`). Both exist;
+non-numeric case (fewer operations) is plain `subtype`
+(`lib/typing/kernel.chiral:799`). Both exist;
 neither is yet *wired to grant-narrowing* (Shard C build-state).
 
 **C4 · Delegation-over-a-boundary IS the node model + fd-passing (Shard D ↔ node).**
@@ -424,8 +438,8 @@ revocation primitive.
 
 **"You need capability attenuation / rights-narrowing you can call."**
 → Correction: attenuation *is subtyping over refinement* (Shard C, C3) — the
-mechanism exists (`kernel.py subtype`, E9 refinement) but is **not yet wired to
-grant-narrowing**. This is a *present-but-unapplied EXTEND*, not a missing feature:
+mechanism exists (`subtype` at `lib/typing/kernel.chiral:799`, E9 refinement) but
+is **not yet wired to grant-narrowing**. This is a *present-but-unapplied EXTEND*, not a missing feature:
 the honest statement is "the subtype relation exists; applying it to narrow `(Pool
 n)`→`(Pool m)` is the unshipped wiring," not "chirality lacks attenuation."
 
@@ -438,7 +452,7 @@ to done or to undone.
 
 1. **Grant-narrowing (attenuation) — present-but-unapplied EXTEND (Shard C).** This
    is the **one live softness** and the most important line in the bank. The subtype
-   mechanism is IMPLEMENTED (`kernel.py:321`) and the refinement fragment is built
+   mechanism is IMPLEMENTED (`lib/typing/kernel.chiral:799`) and the refinement fragment is built
    (E9), but the wiring that applies `subtype` to *narrow a held capability* is not
    yet in place (CONFORMANCE-MAP lines 84, 123; [[status-ledger]] line 52). Gradient:
    **not a BUILD from zero** — every piece exists; it is an EXTEND that connects two
@@ -488,6 +502,12 @@ to done or to undone.
    custody module" as missing — it is the broker, mostly designed
    ([[modules-broker]]), and it is the same artifact as the [[banks/runtime]]
    supervisor shard.
+
+7. **The erased witness's prerequisite — written and unreached (Shard H).**
+   `erased-allow` exists at `lib/typing/effects.chiral:39` and no caller reaches it,
+   so the q=0-is-pure rule Shard H rests on is a written rule and not an enforced
+   one. E171 owns the caller, and until it lands Shard H is DESIGNED over a floor
+   that refuses nothing.
 
 Gradient summary: the capability's *substance* (Shard A) and three of the four
 non-forgeability tiers (Shard B) are ENFORCED; **local** Move is the one built grant
