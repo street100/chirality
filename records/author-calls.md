@@ -27,10 +27,27 @@ where the tree does not settle the answer and a pass must stop.
 | A reserved element block for the nine arcs that have none | Transport, tuning, text-tools, independent-judgment, bridge and module-split write `UNASSIGNED` and stop, 16 rows in total. The three native-stack arcs, opened 2026-09-03, add 13 arc-local rows mapping to `unminted`. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else |
 | When the native-stack track opens | [[decisions/decision-scope]] holds the current track to self-hosting only. The author stated [[goals/native-stack]] and its internal order on 2026-09-03, then opened [[arcs/native-protocol-arc]] the same day, in session, with a next-day target on the kernels. The window and document arcs sit unopened |
 | `E184-E189` is one band and two focuses draw on it | [[arcs/enforcement-arc]] and [[arcs/diagnostics-arc]] both mint from it, `E184` is spent, and four numbers remain. Concurrent minting is the collision that produced two `E173`s. The work split is in `docs/decisions/decision-lane-split.md` |
-| The `ck-prog` repair shape | Root-caused 2026-09-03, `records/enforcement-arc.md` EN-13. Is the argument-list disagreement repaired by relaxing the checker so an erased argument list is a wildcard, the role `tt-word` already plays for a whole type, or by making the lowering carry the arguments into the IR? `LCore` is type-erased (`lib/lowering/upper/lower.chiral:116-123`), so the second may be unreachable at constructor sites. It gates enforcement requirements 2, 3 and 4 |
 | Which arc owns the allocation gap | ~1,747 B of arena per input byte, no reclamation on any compiled path, and a projected ~6.3 GB at the default scope against 3.85 GB with no swap. It blocks manas and scriba from running once transport lands and no arc holds it |
 
 ## Closed since the hoist
+
+- **The `ck-prog` repair shape.** **ANSWERED 2026-09-03.** Both defects are
+  repaired in the checker, and neither is a loosening: each makes `ck-prog` match
+  the semantics `lib/lowering/tal/ssa.chiral:17-20` already states. That header
+  defines `tt-word` as the uniform erased one-word type, representation-compatible
+  with any one-word type and *checked by `tal-ty=?`*, so `ck-term` carrying no
+  `tt-word` arm contradicts its own IR spec. The argument list goes the same way
+  for a different reason: `targs` distinguish nothing a machine can observe, the
+  parameter position erases to `tt-word` so `ck-con`'s field check cannot recover
+  the distinction either, and `ck-con:123-125` and `ck-term:196` already resolve a
+  data type by name alone. Carrying `targs` into the IR would enforce a
+  distinction the IR erases everywhere else. It would also close nothing on its
+  own: `expr-con`'s unread `exty` covers checking positions and never inference
+  positions, so the wildcard is owed either way. ⚑ **Conditional on a mutant.**
+  A relaxation shipped on its argument alone is the gate that cannot fail, which
+  `docs/decisions/decision-scope.md` names as the failure mode. The evidence it is
+  sound is that the repaired check still refuses 6 of 1,481, every one a genuine
+  lowering defect, and the gate has to pin that. The six get their own row.
 
 - **`LANES.md`'s home** — it sat at root and was orthogonal to the goal-arc-element
   tiers. Moved 2026-09-01 to `docs/decisions/decision-lane-split.md`: it settles a
