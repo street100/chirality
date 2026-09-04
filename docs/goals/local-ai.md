@@ -100,7 +100,7 @@ Measured 2026-09-01 against this tree.
 | The Ollama wire shape | `lib/protocol/http.chiral:600` reads Ollama's `message.content`, `:610` takes either the OpenAI delta or the Ollama field, and `:258` handles Ollama's chunked transfer with no content length |
 | Typed external process spawn | E33, built native. `lib/runtime/proc.chiral` `proc-spawn` returns one `SpawnRes` with a linear `Reap`; `raw-proc-spawn` maps to `nb-run-cmd` and `wait` to `nb-wait` at `lib/lowering/tal/crossing-wraps.chiral:54-55`, with `spawn-in-pty` at `:49` |
 | Writing a file | E105, `write-fd` to `nb-sys-write` at `lib/lowering/tal/crossing-wraps.chiral:36` |
-| A total matcher over `Str` | E173 slice 1, `lib/text/matcher.chiral`, 533 lines, gated by Phase 19 |
+| A total matcher over `Str` | E173 slice 1, `lib/text/matcher.chiral`, 602 lines, gated by Phase 19 |
 | JSON both ways | `lib/protocol/json.chiral` |
 
 ### Owed

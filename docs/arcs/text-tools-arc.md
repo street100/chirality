@@ -84,7 +84,7 @@ returns the residual set, `norm` is the line the live-set bound lives in,
 four.** A span answers "does it match", "where", "what did it capture" and "how
 many" with one pass. Six rows of the coverage table collapse onto it.
 
-State: **implemented for slice 1**, 2026-09-01. `lib/text/matcher.chiral`, 533
+State: **implemented for slice 1**, 2026-09-01. `lib/text/matcher.chiral`, 602
 lines, with `prog/prose-lint.prog` as its first consumer. Gated by Phase 19,
 `tools/test/matcher.sh`: 18 assertions and 12 mutants, none inert, each mutant
 pinning the full verdict line. G9 compares the eight native checks against the
