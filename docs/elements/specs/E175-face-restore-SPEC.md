@@ -67,10 +67,10 @@ updated: 2026-08-31
      Six drawing sites open with an SGR and close with an unconditional full
      reset; **five of the six are ad-hoc `ansi-bold`** the face registry does not
      know about. A stack in the `r-face` arm never sees them.
-  3. **The forcing consumer does not nest either.** `dg-doc`
-     (`lib/typing/diag.chiral:510`) has thirteen `d-tag` sites and they are all
-     **siblings**; `dg-decl-doc` (`:647`), the one function called from inside a
-     `d-tag` body, emits no tag. E158 commit 4 hits the sibling case.
+  3. **The forcing consumer does not nest either.**
+     `dg-doc` (`lib/typing/diag.chiral:561`) has thirteen `d-tag` sites and they
+     are all **siblings**; `dg-decl-doc` (`:720`), the one function called from
+     inside a `d-tag` body, emits no tag. E158 commit 4 hits the sibling case.
 
   The honest statement is that **the emitter is self-inconsistent — the open is
   a delta and the close is a replacement** — and only the close changes.
@@ -152,21 +152,27 @@ updated: 2026-08-31
 - **Live code this composes with (already built — compose, do not rebuild):**
   - **`lib/protocol/render.chiral`, 737 L**, `(import "prelude/prelude")` +
     `(import "ports/ports")` + `(import "protocol/utf8")`, no `(module …)` line.
+    ⚑ *Citations re-read against the live file 2026-09-04. E175 has landed since
+    this section was drafted (737 L → 790 L) and its own two declares sit inside
+    the block below, so every number in these two bullets is the LIVE one and is
+    four above the pre-E175 baseline it was written as. The 21 call-site numbers
+    in the next bullet are the pre-E175 list and are left standing as the record
+    of what the commit changed.*
     `(data Face () (face (name Str) (fg I64) (bg I64) (attrs I64)))` at
-    **`:37-38`**. `lookup-face` declared `:57` / defined `:160`, and its `nil`
-    case (`:163`) **synthesizes** `(face name -1 -1 0)`. `face-sgr` declared
-    `:61` / defined `:184-195`: six conditional emits, each producing `""` when
-    its bit is clear, and `""` for `fg`/`bg` `< 0`. `default-faces` `:144-158`,
-    **eleven** rows (audit: counted, not twelve); `"default"` is `(face "default" -1 -1 0)` (`:145`),
-    `"keyword"` `(1 -1 1)` (`:147`), `"comment"` `(2 -1 0)` (`:146`),
-    `"error"` `(1 -1 2)` (`:149`), `"manas-cursor"` `(-1 -1 8)` (`:157`).
-    `ansi-reset` `:325`, `ansi-bold` `:327`.
+    **`:37-38`**. `lookup-face` declared `:57` / defined `:164`, and its `nil`
+    case (`:167`) **synthesizes** `(face name -1 -1 0)`. `face-sgr` declared
+    `:61` / defined `:188-198`: six conditional emits, each producing `""` when
+    its bit is clear, and `""` for `fg`/`bg` `< 0`. `default-faces` `:148-162`,
+    **eleven** rows (audit: counted, not twelve); `"default"` is `(face "default" -1 -1 0)` (`:149`),
+    `"keyword"` `(1 -1 1)` (`:151`), `"comment"` `(2 -1 0)` (`:150`),
+    `"error"` `(1 -1 2)` (`:153`), `"manas-cursor"` `(-1 -1 8)` (`:161`).
+    `ansi-reset` `:329`, `ansi-bold` `:331`.
   - **The nine walker signatures**, all `(… Unit))`-terminated and all
-    contiguous: `render-row` **`:97`**, `render-to-ansi` **`:99-101`**,
-    `render-table` **`:103`**, `rnd-emit-headers` **`:105`**, `rnd-emit-rows`
-    **`:107`**, `rnd-emit-one-row` **`:109`**, `render-section` **`:111`**,
-    `render-tree` **`:115`**, `render-lines` **`:117`**. `render-to-ansi-full`
-    (`:119`) and `render-to-ansi-delta` (`:121`) are the entry points and **do
+    contiguous: `render-row` **`:101`**, `render-to-ansi` **`:103-105`**,
+    `render-table` **`:107`**, `rnd-emit-headers` **`:109`**, `rnd-emit-rows`
+    **`:111`**, `rnd-emit-one-row` **`:113`**, `render-section` **`:115`**,
+    `render-tree` **`:119`**, `render-lines` **`:121`**. `render-to-ansi-full`
+    (`:123`) and `render-to-ansi-delta` (`:125`) are the entry points and **do
     not move**.
   - **The 21 call sites**, all inside this file: `:570, 577, 578, 585, 586, 590,
     591, 614, 623, 625, 636, 637, 655, 656, 673, 675, 679, 691, 695` (19
@@ -417,12 +423,15 @@ phantom: E177, E178, E179 and E180 all have catalog and ledger rows today.**
   a partial threading does not compile — and `row.sh`'s three probes are
   seven-argument callers, so `render.chiral` alone leaves Phase 15 red. The tree
   is green before and after; it is never red in between.
-- **Change:**
+- **Change:** ⚑ *This commit landed 2026-08-31; the line numbers in this plan
+  are the pre-E175 baseline it was written against and are left standing as the
+  record of what moved. Live positions are in §2. Re-read 2026-09-04.*
   - Three new names beside the face block. `(declare face-join (-> Face Face
     Face))` and `(declare rnd-restore (=> Face Unit))` after `face-sgr`'s declare
     (`:61`); the three `def`s **after the `ansi-*` string block (`:323-330`)** and
     before `rnd-emit-headers`. ⚑ **The placement is forced, and this SPEC's own
-    first instruction — "after `face-sgr`'s body (`:195`)" — DOES NOT COMPILE**
+    first instruction — "after `face-sgr`'s body" (`:188-198` live; the draft
+    said `:195`) — DOES NOT COMPILE**
     (audit, measured): `ansi-reset` is a bare `(def ansi-reset Str …)` at `:325`
     **with no `declare`**, so a `rnd-restore` written above it forward-references
     an undeclared name and the module fails with **`load: unknown name
@@ -447,9 +456,10 @@ phantom: E177, E178, E179 and E180 all have catalog and ledger rows today.**
       close is **longer than today's by exactly `face-sgr amb`**, that the
       enclosing `r-face`'s own close then wipes it, and that the invariant is the
       **screen**, not the byte stream.
-  - **Nine signatures** gain one trailing `Face`, at `:97, 101, 103, 105, 107,
-    109, 111, 115, 117`. `render-to-ansi-full` (`:119`) and
-    `render-to-ansi-delta` (`:121`) **do not move**.
+  - **Nine signatures** gain one trailing `Face`, at the pre-E175
+    `:97, 101, 103, 105, 107, 109, 111, 115, 117`. `render-to-ansi-full` and
+    `render-to-ansi-delta` (`:123-125` live, `:119` and `:121` as drafted) **do
+    not move**.
   - **Nine `lam` binders** gain a trailing `amb`, at `:562, 573, 581, 589, 594,
     617, 632, 651, 666`.
   - **21 call sites** gain a trailing `Face` argument: `amb` at `:570, 577, 578,
