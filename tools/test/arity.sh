@@ -430,9 +430,10 @@ mutant "M6 check-tcon-reverts-to-a-stub" \
 # so a rename that stopped compiling is a FAIL of this row rather than a
 # conviction.
 #
-# ⚑ THE NEEDLE IS BUILT FROM THE LOOP VARIABLE.  Spelling `(r-relayed ` in this
-# file would trip E157's containment census (diag.sh:224), and the range address
-# is assembled from two halves for the same reason.
+# ⚑ THE NEEDLE IS BUILT FROM THE LOOP VARIABLE.  Spelling the r-relayed
+# constructor's open-paren form anywhere in this file would trip E157's
+# containment census (diag.sh:224), and the range address is assembled from two
+# halves for the same reason.
 DRT="(def ""dg-reason-tag"
 mutant "M9/arity tag-string-renamed" \
   "G1:bad G2:ok G3:ok G4:ok G5:ok G6:ok" \
