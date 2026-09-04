@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 45215c04657451f2721daec7005c7d0dd0e54ab2e0eed5a04bde6db5b40e2d2c -->
+<!-- FRONTIER-SOURCES-SHA256: ffdb8a7e3133d0a1c1b2286c6f9ead7f61994794eececa51c6f6b1e7eac16874 -->
 <!-- sources: 157 files -->
 
 ## Decided recently
@@ -94,7 +94,7 @@ updated: 2026-09-04
 
 ### Pipeline (examples/INDEX.md, by status)
 
-- drafted: 1
+- drafted: 2
 - specced: 2
 - audited: 44
 - implemented: 62
@@ -102,7 +102,7 @@ updated: 2026-09-04
 - built: 1
 - impl: 1
 - implemented-core: 1
-- minted: 4
+- minted: 3
 - part: 1
 - superseded: 1
 
@@ -114,6 +114,7 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 ba6d29c — E186 pre-run: the capture constructor's fields are already the concrete side
 - 2026-09-04 5283af1 — three manas citations the growing files left behind
 - 2026-09-04 b08d94f — prelude, protocol and module: sixteen citations across nine docs
 - 2026-09-04 e135b59 — the typing kernel and the reader: twelve citations, one line to three hundred out
@@ -121,4 +122,3 @@ updated: 2026-09-04
 - 2026-09-04 094fadf — S14 and S15: nine citations into scriba and the manas pipeline
 - 2026-09-04 fe8580e — S17: backend.chiral and runner.chiral both grew past their citations
 - 2026-09-04 269bfb8 — S16: command-loop grew to 2545 lines and took the whole compose entry with it
-- 2026-09-04 8928028 — C01 is superseded: its central move is grid.chiral, built and reached
