@@ -143,7 +143,7 @@ updated: 2026-08-31
     the *existing* `check`/`infer` on the certificate's term — no new judgment.
   - ~~`kernel.py:567 finish_def`~~ **DELETED.** The def-entry it named is now the
     loader path `lib/module/loader.chiral` → `lib/typing/kernel.chiral`, and it
-    returns a `TcR`/`CkR` **verdict value already** (`kernel.chiral:410`
+    returns a `TcR`/`CkR` **verdict value already** (`kernel.chiral:411`
     `(data TcR () (tc-ok …) (tc-err (why Reason)))`), not a raised `KernelError`.
     The errors-as-values half of E52 therefore **landed elsewhere, via E157**,
     and is no longer part of E52's delta.
@@ -221,7 +221,7 @@ fuel posture). This SPEC is **BLOCKED**, not implementable as written.
 > must start at **B1**. Their content has already been partly superseded by the
 > tree: `Verdict`-as-a-value is live at `lib/typing/kernel-core.chiral:39-43`,
 > and the raising `KernelError` they wrap does not exist — the judgment returns
-> `TcR`/`CkR` (`lib/typing/kernel.chiral:410`).
+> `TcR`/`CkR` (`lib/typing/kernel.chiral:411`).
 
 ### Step A1 — the certificate data layer (Python) — **DEAD TARGET**
 - **Target:** ~~`scaffold/chirality/kernel.py`~~ (deleted) — new module-level types near the top.

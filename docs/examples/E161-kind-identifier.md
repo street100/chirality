@@ -127,7 +127,7 @@ the schema must name which one it holds.** Measured on `prog/manas/backend.chira
 
 - **(a) crossings the module BINDS** — its own `extern` forms with an effectful
   arrow. `ty-crosses` says **exactly one**: `backend-open (=> Str Backend)`
-  (`backend.chiral:36`). `be-base` (`:37`), `backend-close` (`:43`) and `be-peek`
+  (`backend.chiral:36`). `be-base` (`:38`), `backend-close` (`:44`) and `be-peek`
   (`:56`) are all `->`, and their own comments say why — *"Pure (`->`): no
   syscall"* (`:42`), *"Pure (`->`): it crosses no membrane and issues no syscall"*
   (`:51-52`). ⚑ The requirements' §5 sample record shows
@@ -356,12 +356,12 @@ a catch-all arm that could absorb the new def quietly.
 
 | field | derivation | build-state |
 |---|---|---|
-| `cat` | **AUTHORED** — no traversal answers *"what does its correctness rest on"* (`k-msg`'s own wording, `parse.chiral:1061-1062`) | ships (`KCat`, `kernel.chiral:91`) |
+| `cat` | **AUTHORED** — no traversal answers *"what does its correctness rest on"* (`k-msg`'s own wording, `parse.chiral:1061-1062`) | ships (`KCat`, `kernel.chiral:101`) |
 | `exports` (def grain) | names charged to the open coordinate | **partial** — `defs (List Str)` ships (`kernel.chiral:123`; `sig-note-def`, `loader.chiral:170`); `extern`/`porttype`/`data` are **not** charged (`parse.chiral:1169-1171`) |
-| per-export `fn`/`proc` | `ty-crosses` over the Pi spine | **built, unplumbed** — one line, the twin of `sig-prim-crosses` (`kernel.chiral:242`) |
+| per-export `fn`/`proc` | `ty-crosses` over the Pi spine | **built, unplumbed** — one line, the twin of `sig-prim-crosses` (`kernel.chiral:388`) |
 | `crossings` | one of the three senses in Finding 3 | **built in sense (c) and discarded** — `kv-first-crossing` (`compile-emit.chiral:315-321`) stops at the first crosser; the crossing travels as a bare `Str` out of `cw-extern-of` (`:215-218`) |
 | `mints` | the porttypes this module installs | **partial** — `sig-latoms`/`sig-ldatas` ship (`kernel.chiral:139-140`); not charged per module (`handle-porttype`, `parse.chiral:685-697`) |
-| `alt` | nothing derives it (Finding 5) | authored today (`KAlt`, `kernel.chiral:92`) |
+| `alt` | nothing derives it (Finding 5) | authored today (`KAlt`, `kernel.chiral:107`) |
 
 So the honest shape of the work: **one new check (the fence), three charging
 hooks, one one-line derivation, one un-truncated walk, and a lookup.** No new
