@@ -58,8 +58,10 @@ to a module's description of itself.
 (List Str)))`), reachable through `sig-kinds` (`kernel.chiral:145`). Six modules
 carry it: `collections`, `pretty`, `prelude`, `ports`, `target-linux`,
 `string-utils` (each file's line 12–52). The port-set claim is checked at emit
-(`kind-offender`, `compile-emit.chiral:344-348`); shape/axis/redeclaration are
+(`kind-offender`, `compile-emit.chiral` lines 344-348); shape/axis/redeclaration are
 checked at load (`handle-kind`, `parse.chiral:1110-1149`).
+
+2026-09-04, citation repair: E161 shipped and its step 7 retired the emit gate. `kind-offender` and `kind-offender-go` are gone from `compile-emit.chiral`; the line numbers this pre-run records have no live successor.
 
 **What E161 is.** Per the requirements' §7 cut: **R2-derived, R3, R5, R6, R7** —
 turn E160's single authored boolean into a compiler-filled, queryable, def-grain
@@ -76,7 +78,7 @@ record; **retire the authored `(pure)`/`(crosses)` claim**, which becomes derive
    and `backend.chiral`, see whether any def's letter differs from its module's)
    has never been run, so no claim about its value is made here.
 2. **"A module must be wholly pure or wholly crossing."** FALSE, verified.
-   `kind-offender-go` (`compile-emit.chiral:322-342`) reads `(crosses)`
+   `kind-offender-go` (`compile-emit.chiral` lines 322-342) reads `(crosses)`
    **existentially**: the claim is met the moment one def crosses, pure defs
    beside it are fine. A mixed module compiles today.
 3. **The double-extension file scheme as a centrepiece.** Settled and cosmetic —

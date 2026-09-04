@@ -84,13 +84,15 @@ shipped defect) and the live code below, each line re-read for this spec.
 | E160 gate | `scaffold/tests/test-module-kind.sh`, driven from `run-native.sh:190-199` (Phase 8) | ships, **29** assertions — measured by RUNNING it, not by counting call sites. Counting `refuse`/`accepts`/`mod_runs`/`mod_refuses` gives 26 and is wrong: there is a **fifth** helper, `appended` (`:277-293`), with 3 calls (`:297-299`). It builds `chirality_blob <root>` and appends the program, which is the shape R9's and G12's cases need. The ledger row's "29-case" figure is correct; an earlier draft of this spec called it stale |
 
 **Retiring, not surviving** (§4 Step 7): `kind-offender` /
-`kind-offender-go` (`compile-emit.chiral:322-348`), `kv-named` (`:307-312`),
+`kind-offender-go` (`compile-emit.chiral` lines 322-348), `kv-named` (`:307-312`),
 `kv-first-crossing` (`:315-321`), `KvErr`'s three arms + `kv-msg`
-(`:291-305`), the emit call site (`:364-365`), `kind-rows` + `krev`
+(`:291-305`), the emit call site (lines 364-365), `kind-rows` + `krev`
 (`compile-front.chiral:297-307`), `FR`'s `kinds` field (`:312-315`), its
 producer (`:341-343`) and its consumer destructure (`compile-all.chiral:22`).
 `xw-code`, `cw-wrappers` and `cw-extern-of` **survive** — H8 still uses them
-(`compile-emit.chiral:263`, `:361`).
+(`compile-emit.chiral:263`, `:301`).
+
+2026-09-04, citation repair: step 7 ran. `kind-offender`, `kind-offender-go`, `kv-named`, `kv-first-crossing`, `KvErr` and `kv-msg` are gone from `compile-emit.chiral`, so every retirement coordinate above is a record with no live successor and its line number is left in prose. The three survivors are live: `cw-wrappers` at `compile-emit.chiral:212`, `cw-extern-of` at `:216`, `xw-code` at `:240`.
 
 **True delta.** Five things, and only one is new analysis:
 
@@ -116,7 +118,7 @@ defect and is prerequisite, not optional.
 | D1 | Which sense of "crossings" does the schema hold? (example Q1) | **RESOLVED — sense (a), DECLARED** | `PRINCIPLES.md` **P3**: *"you govern the membrane it must cross, not the interior."* A module's membrane is what it binds outward — its own `=>` externs. Cited as decided in `examples/E161-REQUIREMENTS.md:§11 FLAG 1` and on the ledger row (`docs/elements/ledger.md:281`). Producer: filter the charged names by `sig-prim-crosses` (`kernel.chiral:242`). On `backend` this is exactly `{backend-open}` (`backend.chiral:36`). |
 | D1a | Does the record cover re-exported / transitive crossings? (example Q1, second half) | **RESOLVED — no field; it is a FOLD over (a) across imports** | Composition, not a new pass (global principle 3). A consumer that needs "does importing this put a crossing in my binary" folds the imported modules' sheets. Holding (b) as a field would duplicate what composition already gives. Requirements §11 FLAG 1. |
 | D1b | Is a façade's empty `crossings` vacuous? (example Q1 / Finding 4) | **RESOLVED — empty is CORRECT, not vacuous** | Under (a), `ports.chiral` declares nothing and re-exports everything; empty *is* the true reading of its membrane. R7's live vacuity case is dissolved, not worked around. Requirements §11 FLAG 1. |
-| D2 | Where does the object-code (sense c) analysis go when the emit gate retires? (example Q4) | **RESOLVED — it goes home to H8** | (c) is a property of an emitted **program**, not of a module; the profile gate already owns it (`compile-emit.chiral:238-263`, `:361`). E160 only borrowed it. Nothing is re-homed and nothing is lost: `xw-code` / `cw-wrappers` / `cw-extern-of` keep their live H8 callers. Requirements §11 FLAG 1. |
+| D2 | Where does the object-code (sense c) analysis go when the emit gate retires? (example Q4) | **RESOLVED — it goes home to H8** | (c) is a property of an emitted **program**, not of a module; the profile gate already owns it (`compile-emit.chiral:238-263`, `:301`). E160 only borrowed it. Nothing is re-homed and nothing is lost: `xw-code` / `cw-wrappers` / `cw-extern-of` keep their live H8 callers. Requirements §11 FLAG 1. |
 | D3 | How does a def-less coordinate close? (example Q6 — the shipped defect) | **RESOLVED — a DECLARED extent, marker chosen in this spec** | `PRINCIPLES.md` **P1** (*"the fix is never a longer denylist; it is a model that covers the whole surface"*) + global principle 5 (*push invariants into the substrate, not across a runtime seam*). The blob carries **no** module boundary; the provider knows every one and destroys it at concatenation (`chirality-resolve.sh:96`, `resolve.chiral:319-324`); `kinds-close-bodied` re-derives it by heuristic and the heuristic swallows 345 defs. Requirements §11 FLAG 5. **The exact marker is spec-grain and is decided in D3a.** |
 | D3a | What is the extent marker? | **RESOLVED here, with reasoning — `(end-module "<name>")`, one provider-emitted toplevel form per module** | See the reasoning block below the table. |
 | D3b | Is the coordinate NAME checked against the extent name? | **RESOLVED — yes, mismatch is a refusal** | Forced by D3a: once the extent is named, *not* checking the coordinate against it would leave two names for one thing with nothing comparing them — the exact second-source-of-truth disease this element treats (requirements §3). It also retires the standing caveat at `kernel.chiral:98-104` (*"not verifiable against the file"*): under a declared extent it becomes verifiable, so it is verified. |
@@ -394,8 +396,8 @@ onward, so the full build ceremony in §5 applies to every step.**
 - **Targets and disposition (all DELETED unless stated):**
   - `compile-emit.chiral` — `KvErr` + its three arms + `kv-msg` (`:291-305`);
     `kv-named` (`:307-312`); `kv-first-crossing` (`:315-321`);
-    `kind-offender-go` (`:322-342`); `kind-offender` (`:344-348`); the call site
-    and its `elf-err` (`:364-365`); the H7/H8 scope comment that describes the
+    `kind-offender-go` (lines 322-342); `kind-offender` (lines 344-348); the call site
+    and its `elf-err` (lines 364-365); the H7/H8 scope comment that describes the
     retired gate (`:283-290`) is **rewritten**, not deleted, since H8's own bound
     still needs stating.
   - `compile-front.chiral` — `kind-rows` (`:299-307`); `krev` (`:297-298`, no
@@ -722,7 +724,7 @@ home.
    *the compiler blob* would be wrong.
 5. **`cw-extern-of` survives the retirement.** The example §6 lists it among the
    emit-gate machinery losing its subject; it has a second, live H8 caller
-   (`compile-emit.chiral:361`). Deleting it would break the profile gate. Step 7
+   (`compile-emit.chiral:301`). Deleting it would break the profile gate. Step 7
    states this explicitly.
 6. **`alt` is not merely underived — it is unread.** The example says "nothing
    derives it"; verified stronger: the only occurrences of `KAlt` / `alt-upper` /
