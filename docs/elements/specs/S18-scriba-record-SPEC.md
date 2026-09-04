@@ -88,13 +88,13 @@ prefixes:
 |---|---|
 | 58 | `km puf chat dims scroll old-rendering renderers ops` |
 | 15 | `km puf chat dims old-rendering renderers ops` |
-| 2 | `puf dims rendering renderers ops` (`try-dispatch`, `dispatch.chiral:73`) |
-| 1 | `km puf chat dims scroll msg old-rendering renderers ops mode pending` (`command-loop-inner`, `:2045`) |
-| 1 | `km puf chat dims scroll msg rendering renderers ops` (`resume-normal`, `:2103`) |
-| 1 | `km puf dims renderers ops` (`command-loop`, `:265` — the external entry) |
-| 1 | `puf dims old-rendering renderers ops` (`try-dispatch-n`, `:703`) |
+| 2 | `puf dims rendering renderers ops` (`try-dispatch`, `dispatch.chiral:75`) |
+| 1 | `km puf chat dims scroll msg old-rendering renderers ops mode pending` (`command-loop-inner`, `command-loop.chiral:2041`) |
+| 1 | `km puf chat dims scroll msg rendering renderers ops` (`resume-normal`, `command-loop.chiral:2102`) |
+| 1 | `km puf dims renderers ops` (`command-loop`, `command-loop.chiral:265` — the external entry) |
+| 1 | `puf dims old-rendering renderers ops` (`try-dispatch-n`, `command-loop.chiral:706`) |
 | 1 | `puf dims unused renderers ops` |
-| 1 | `dir query anchor current chat km dims old-rendering renderers ops` (`isearch-loop`, `:2430`) |
+| 1 | `dir query anchor current chat km dims old-rendering renderers ops` (`isearch-loop`, `command-loop.chiral:2429`) |
 
 `isearch-loop` threads the same state **in a different order**, with four of its
 own parameters in front. `try-dispatch`/`try-dispatch-n` thread a sub-run with no
@@ -353,11 +353,12 @@ The two irregular cases, spelled out so nobody improvises:
   **`current` is not folded into `sc-puf`**: it is the search cursor, a different value
   from the committed buffer. Do not re-thread; the rule replaces state, it does not
   redesign the def.
-- **`try-dispatch` (`dispatch.chiral:69-73`) / `try-dispatch-n` (`:702`)** — their run has
+- **`try-dispatch` (`dispatch.chiral:72-75`) / `try-dispatch-n` (`command-loop.chiral:706`)** — their run has
   no `km` and no `chat`, and callers routinely pass a *different* puffer than the bound
-  one (`command-loop.chiral:1596` passes `puf2`). They become `(=> Scriba Str (Puffer Str))`
+  one (`command-loop.chiral:1594` passes `puf2`). They become `(=> Scriba Str (Puffer Str))`
   and the caller supplies the substitution explicitly:
   `(try-dispatch (sc-with-puf s puf2) "previous-line")`.
+  - 2026-09-04, citation repair: this step is already in the tree. `try-dispatch` is declared `(=> Scriba Str (Puffer Str))` at `dispatch.chiral:72-73` and the caller at `command-loop.chiral:1594` already reads `(try-dispatch (sc-with-puf s puf2) "previous-line")`. Step left as written.
 
 `command-loop` (`:263-274`) keeps its 5-parameter `(=> Keymap (Puffer Str) (Pair I64 I64)
 (List (Pair Str Mode)) (List ScribaOp) Unit)` signature and constructs the initial
