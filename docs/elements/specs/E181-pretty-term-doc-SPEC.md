@@ -92,10 +92,10 @@ updated: 2026-08-31
     unknown key (`lib/protocol/render.chiral:164-167`) and `d-tag` is zero-width
     in **both** `doc-fits` (`:123`) and `doc-best` (`:151`), so a new key can
     never move a break and never fails. E179 inherits **eighteen** ad-hoc sites
-    instead of thirteen. Minted (`SELF-IMPLEMENT-CATALOG.md:443`).
+    instead of thirteen. Minted (`catalog.md:493`).
   - **E176 — `str-sub` is unclamped and segfaults.** E181 does not fix it and
     **does not build on it**: decision 6 forbids `str-sub` and
-    `str-starts-with` anywhere in `pretty.chiral`. Minted (`:440`).
+    `str-starts-with` anywhere in `pretty.chiral`. Minted (`catalog.md:490`).
   - **E146 value→source** is **Lane B's** and E181 must not pre-empt it. E181 is
     its prerequisite and the round-trip law is the seam (decision 23).
   - **`lib/surface/syntax.chiral`** — E181 *reads* `Term`; it does not change it.
@@ -171,7 +171,7 @@ error text is `bad case branch (want (pattern body))` — and `parse-arm`
 default. A refinement atom is `(op operand)` (`parse-ratoms`, `:393`), with the
 ops spelled `>= > <= < !=` (`loader.chiral:21-24`, `SymOp` at
 `lib/typing/refine.chiral:11`). `t-ann`'s fields are `(tm ty)`
-(`syntax.chiral:25`) and the surface is `(the ty e)` (`parse-the`, `:219-230`).
+(`syntax.chiral:25`) and the surface is `(the ty e)` (`parse-the`, `parse.chiral:219-230`).
 Chirality's string escapes are `\n \t \" \\` and **nothing else**
 (`lib/protocol/render.chiral:175-176`). An atom ends at whitespace, `(`, `)`,
 `"` or `;` (`is-delim`, `lib/surface/sexp.chiral:74`).

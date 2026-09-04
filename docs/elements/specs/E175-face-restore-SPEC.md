@@ -740,7 +740,7 @@ cannot be reading two different fixtures.
     its cost.** `lib/prelude/doc.chiral:182` reads *"E175 (nested `r-face` resets
     rather than restores)"* — the **withdrawn nesting framing**, in the same
     comment that names E158 commit 4 as blocked on E174 and E175. It is also the
-    lone `r-face` hit this SPEC cites at blob `:2176`, which is exactly how the
+    lone `r-face` hit this SPEC cites at blob line 2176, which is exactly how the
     audit found it. **The cost is measured and it is why this is recorded rather
     than folded into commit 3:** `lib/prelude/doc.chiral` **IS** inside
     `prog/compiler.prog`'s import closure (that is why the comment reaches the

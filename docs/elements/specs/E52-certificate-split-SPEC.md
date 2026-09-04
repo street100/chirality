@@ -134,7 +134,7 @@ updated: 2026-08-31
     definition with a global reference is expressible as a `Cert` today.
 - **Live code this composes with (do NOT respec):**
   - ~~`kernel.py:400 infer` / `kernel.py:483 check`~~ → **`lib/typing/kernel.chiral:819 infer` /
-    `:937 check`** (declares at `:434-435`) — the bidirectional judgment
+    `:937 check`** (declares at `kernel.chiral:434-435`) — the bidirectional judgment
     is **already syntax-directed re-derivation** over the elaborated core `Term`
     (`Var`/`Global`/`Prim`/`Lit`/`Pi`/`App`/`Let`/`Ann`/`Lam`/EXT). Metavariables
     are resolved in the elaborator; the elaborated term already carries `Ann`

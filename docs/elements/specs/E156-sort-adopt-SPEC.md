@@ -76,7 +76,7 @@ the live code below, each line re-read and, where it mattered, **run**.
 | `str-cmp : (-> Str Str Ord)` — byte-wise, so `(eq)` implies value equality on `Str` | `string-utils.chiral:91-92` | ships (E151a) |
 | `row-infer` already imports the canonical `str-cmp` | `row-infer.chiral:17` | ships (E151b, 2026-08-22) |
 | `drop-dyn` — discards the `"*"` marker before canonicalisation | `row-infer.chiral:85-91` | ships, untouched |
-| `infer-row` — the one consumer of `row-of` | `row-infer.chiral:140-142` | ships, untouched |
+| `infer-row` — the one consumer of `row-of` | `row-infer.chiral:135-137` | ships, untouched |
 | `e152_list_sort.chiral:151` — the key-projection comparator `ls-t-key` over `(Pair I64 Str)` whose `(eq)` does **not** imply value equality | `scaffold/tests/samples/` | ships. **Run by no automated phase** — §6.4 finding 4. 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory. |
 | `run-native.sh` Phases 1–8, and the four helpers of `test-module-kind.sh` | `scaffold/tests/` | ship. 2026-09-04: pre-migration scaffold/ path. |
 
