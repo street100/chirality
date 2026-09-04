@@ -14,8 +14,8 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 20640b048b9e416adcbcdc7a6bd4e709c2eb3de37a9063a01ab4a39c6032b9e0 -->
-<!-- sources: 156 files -->
+<!-- FRONTIER-SOURCES-SHA256: 221d27041ea4efcc4c1f8db5852a32d37fc41c9d2877860583381cb89496da21 -->
+<!-- sources: 157 files -->
 
 ## Decided recently
 
@@ -23,6 +23,7 @@ updated: 2026-09-04
 
 - 2026-09-04 · decision-formulation-distinctness [draft] — Decision: two judges are distinct when their formulations differ
 - 2026-09-04 · decision-erased-word-level [settled] — Decision: the erased-word type lives at the lowering type level
+- 2026-09-04 · decision-display-numerics [settled] — Decision: display geometry is fixed point, and the scale rides the type
 - 2026-09-03 · decision-quorum-store [DECIDED] — Decision: crypto and Shamir serve a split source-of-truth store
 - 2026-09-03 · decision-dispatch-cadence [settled] — Decision: dispatch cadence is serial
 - 2026-09-03 · decision-b-in-type [settled] — Decision: B lives in the type, not the packaging
@@ -101,7 +102,7 @@ updated: 2026-09-04
 - built: 1
 - impl: 1
 - implemented-core: 1
-- minted: 3
+- minted: 4
 - part: 1
 - superseded: 1
 
@@ -113,11 +114,11 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 e057b47 — E188 minted: the unreachable arm that ships a literal 0
+- 2026-09-04 f8018ee — annotate 64 SPECs with the triage bucket they fell into
 - 2026-09-04 9579ba3 — matcher line count: 533 was measured at the E173 slice-1 landing, the file is 602
 - 2026-09-04 3b4e6d3 — specs: date the citations the cut oracle left behind
 - 2026-09-04 c496c01 — specs: repoint implementation SPEC citations at the post-migration tree
 - 2026-09-04 07a26a7 — citations that E185 moved, in the three files this run owns
 - 2026-09-04 9831eee — E185's INDEX row goes to built, and says what it did not reach
 - 2026-09-04 95162e9 — E185 SPEC audit: the gate's four silent failures, and two rows nothing reddens
-- 2026-09-04 8988923 — INDEX: E185's SPEC link resolves
-- 2026-09-04 130d4fc — E185 SPEC: the dispatcher's erased domains are stated at the lowering level
