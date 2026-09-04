@@ -56,7 +56,7 @@
 #   (render-doc.sh:131-145).  `mutlib` below is matcher.sh:146's, checked rather
 #   than remembered, and it REFUSES a `sed` that changed nothing.
 #
-#   G1  the tenth tag, over all ten Reason arms                      [M1]
+#   G1  the tenth tag, over all ten Reason arms                   [M1,M9]
 #   G2  the flat exit carries both counts, at both subjects       [M2,M3]
 #   G3  one arm, two nouns, read off the subject                  [M2,M3]
 #   G4  the Doc exit lays both counts on their own lines             [M4]
@@ -267,12 +267,24 @@ G6_WANT="load: Box wrong number of type parameters (expected 1, actual 2)"
 noun_ctor() { printf '%s' "$1" | sed -n 's|^mk2 wrong number of \(.*\) (expected 2, actual 1)$|\1|p'; }
 noun_data() { printf '%s' "$1" | sed -n 's|^Box wrong number of \(.*\) (expected 1, actual 2)$|\1|p'; }
 
+# g1_verdict LIBDIR -> `ok` / `bad` / `nobuild`, G1's own token.
+# ⚑ IT IS A FUNCTION SO M9 CAN CALL THE ONE THAT EMITTED THE BASE ROW.  M9
+# mutates ten tags and a full `verdict` for each costs three compiler builds
+# apiece; a G1 predicate written a second time beside the loop would be a want
+# the mutation cannot reach, which is the defect arity.sh:75-79 exists to avoid.
+g1_verdict() {
+  local ten="$TMP/g1.ten"
+  if build_raw "$1" "$TEN" "$ten"; then
+    if [ "$(cat "$ten")" = "$G1_WANT" ]; then printf ok; else printf bad; fi
+  else printf nobuild; fi
+}
+
 verdict() {  # verdict LIBDIR -> six `name:ok` / `name:bad` / `name:nobuild` tokens
-  local lib="$1" out="" raw="$TMP/v.raw" ten="$TMP/v.ten" cc="$TMP/v.cc" a b
+  local lib="$1" out="" raw="$TMP/v.raw" cc="$TMP/v.cc" a b
   add() { out="$out${out:+ }$1:$2"; }
   eq()  { if [ "$2" = "$3" ]; then add "$1" ok; else add "$1" bad; fi; }
 
-  if build_raw "$lib" "$TEN" "$ten"; then eq G1 "$(cat "$ten")" "$G1_WANT"; else add G1 nobuild; fi
+  add G1 "$(g1_verdict "$lib")"
 
   if build_raw "$lib" "$FIXTURE" "$raw"; then
     a="$(fld 1 "$raw")"; b="$(fld 2 "$raw")"
@@ -403,6 +415,49 @@ mutant "M6 check-tcon-reverts-to-a-stub" \
   lib/typing/kernel.chiral \
   "s|${AR}(subj-data dn) (llen Term (decl-params decl)) (llen Term args))|(r-judged (subj-data dn) (jg-tcon-arity))|"
 
+# M9 (G1) -- EACH OF THE TEN TAG STRINGS, RENAMED IN TURN.  M1 deletes an arm,
+# which the compiler's exhaustiveness check on `Reason` already refuses, so what
+# M1 falsifies is the module's build and never the golden at :251.  Before this
+# row the ten STRINGS had no falsifier anywhere in the file: a renamed tag
+# compiles clean and G1 read `ok` in all five pins.  records/gate-audit.md GA-19
+# is that measurement.
+#
+# ⚑ TEN MUTANTS, NOT ONE.  face.sh:557-559 states the reason on its five pins:
+# exercising one while nine stand is the same hole one file smaller.  The `arity`
+# arm carries the FULL verdict line, so collateral on G2-G6 is caught the way
+# every other mutant here catches it; the other nine call `g1_verdict`, the
+# function `verdict` itself calls, over a mutated tree.  `nobuild` is not `bad`,
+# so a rename that stopped compiling is a FAIL of this row rather than a
+# conviction.
+#
+# ⚑ THE NEEDLE IS BUILT FROM THE LOOP VARIABLE.  Spelling `(r-relayed ` in this
+# file would trip E157's containment census (diag.sh:224), and the range address
+# is assembled from two halves for the same reason.
+DRT="(def ""dg-reason-tag"
+mutant "M9/arity tag-string-renamed" \
+  "G1:bad G2:ok G3:ok G4:ok G5:ok G6:ok" \
+  lib/typing/diag.chiral \
+  "/^${DRT}\$/,/^\$/ s|\"arity\")|\"arity-renamed\")|"
+
+m9_miss=""; m9_red=0
+for t in redeclared mismatch usage linear arrow unbound skipped judged relayed; do
+  if mutlib "M9/$t tag-string-renamed" lib/typing/diag.chiral \
+       "/^${DRT}\$/,/^\$/ s|\"$t\")|\"$t-renamed\")|"; then
+    v="$(g1_verdict "$MUTLIB")"
+    if [ "$v" = bad ]; then m9_red=$((m9_red+1)); else m9_miss="$m9_miss $t=$v"; fi
+  else
+    m9_miss="$m9_miss $t=unmutated"
+  fi
+done
+# ⚑ THE COUNT IS ASSERTED, not just the absence of a miss.  A loop whose body
+# never ran leaves `m9_miss` empty too, and that is the shape this whole row
+# was added to close.
+if [ -z "$m9_miss" ] && [ "$m9_red" -eq 9 ]; then
+  ok "M9 tag-string-renamed -- all ten tag strings redden G1, one at a time (9 here + the arity pin above)"
+else
+  bad "M9 tag-string-renamed -- $m9_red of 9 reddened G1; misses:$m9_miss"
+fi
+
 # ============================================================================
 # G7 -- THE TWO SCANS, and both halves are E182's own claims.  Outside the
 # verdict line because neither reads a value.
@@ -478,6 +533,6 @@ if [ "$(reg 24 arity.sh "$TMP/m8.sh")" -eq 0 ] && [ "$(reg 24 arity.sh "$RT")" -
 else bad "M8 unregister-the-phase -- a deleted run_phase line was not caught"; fi
 
 echo
-echo "  (Phase 24 wall clock: $((SECONDS - T0))s, of which six compiler builds)"
+echo "  (Phase 24 wall clock: $((SECONDS - T0))s, of which seven compiler builds and nine scratch-root builds)"
 echo "the arity evidence (E182 r-arity): $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
