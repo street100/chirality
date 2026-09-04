@@ -44,12 +44,17 @@ Done when all five hold. Each is checkable, and the state beside it is measured
    import `lowering/tal/check`. E16's own title names the preserve-check and
    three of its four deliverables are built. E18's checker and reference
    interpreter both exist unreached.
-3. **The check agrees with the compiler it checks.** Measured: `ck-prog` accepts
-   743 of 1,504 TFns and **rejects 761, 50.6%**, across 41 modules with none
-   clean. The same 761 erase, emit, link and run, and the binary they produce
-   reaches a byte fixpoint. Until that disagreement is root-caused, wiring the
-   check ships a refusal nobody can act on. Four diagnostic classes: 392 `ret`,
-   187 `con`, 107 `case on non-data register`, 75 `argument arity`.
+3. **The check agrees with the compiler it checks.** **Root-caused 2026-09-03**,
+   `records/enforcement-arc.md` EN-08 to EN-13. Re-measured on that day's blob:
+   1,481 TFns, 727 accept, **754 reject, 50.9%** (the move from 1,504/743/761 is
+   E182 at `65bec90`, `d26d7a1`). **The checker is wrong in 99.2% of it**, through
+   two defects: an erased type-argument list that `tal-ty=?` refuses and no other
+   rule reads, and a `tt-word` scrutinee `ck-term`'s case arm has no arm for,
+   which contradicts `tal-ty=?`'s own first arm. Relaxing both, 1,475 of 1,481
+   accept. The surviving six are genuine lowering defects: an erased-binder
+   register `build-binders` allocates and defines nowhere, and four `$apply`
+   dispatchers in the shape `closconv.chiral:362` warns about. ⚑ The repair shape
+   is an author call, EN-13, now a row in [[records/author-calls]].
 4. **The optimizer's re-check runs, or E17 says why it does not.**
    `lib/lowering/upper/optimize.chiral` has zero importers and is in no blob, so
    `optimize` and `specialize` return a `Checked` result nothing ever forms.
@@ -62,8 +67,12 @@ stop short of it as written, so no element owns it.
 
 ## Resume state
 
-**Start with the `ck-prog` disagreement, requirement 3.** It blocks 2 and 4, and
-it is the open author call in [[records/author-calls]].
+**Requirement 3 is root-caused and the next move is the author's.** The
+diagnosis slice ran 2026-09-03 and is `records/enforcement-arc.md` EN-08 to
+EN-13: the checker is wrong in 99.2% of the disagreement, and the six survivors
+are named lowering defects. What is owed before any wiring lands is the repair
+shape, EN-13's fork, which is a row in [[records/author-calls]]. The
+refuse-or-carry ruling standing there is untouched and is a separate call.
 
 The enabling change was measured, then reverted. Its artifacts survive.
 `lib/lowering/tal/check.chiral` declares **11 top-level names that already exist
