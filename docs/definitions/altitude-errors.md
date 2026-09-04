@@ -52,9 +52,8 @@ one.
 
 **Now (measured 2026-09-01).** The shelf exists and most of the leak drained
 into it. `str-cmp` has exactly one definition, `lib/prelude/string.chiral:91`.
-`str-lower` and `str-trim` are `lib/prelude/string.chiral:116` and `:163`, out
-of the application. `list-sort` and `ms-sort-n` are `lib/prelude/list.chiral:143`
-and `:134`.
+`str-lower` is `lib/prelude/string.chiral:116` and `str-trim` is `:163`, out of
+the application. `list-sort` is `lib/prelude/list.chiral:143`, `ms-sort-n` `:134`.
 
 Still leaking, and this is the current instance list rather than the 2026-08 one:
 
@@ -62,7 +61,8 @@ Still leaking, and this is the current instance list rather than the 2026-08 one
 |---|---|---|
 | `list-nth` | 2 | `lib/evidence/interp.chiral:50`, `prog/scriba/list-utils.chiral:14` |
 | `dedup-str` | 2 | `lib/lowering/compile-back.chiral:117`, `prog/manas/core/gate.chiral:105` |
-| `se-length` / `se-reverse` | 2 | `prog/scriba/str-edit.chiral:30`, `:26` |
+| `se-length` | 1 | `prog/scriba/str-edit.chiral:30` |
+| `se-reverse` | 1 | `prog/scriba/str-edit.chiral:26` |
 | `ins-uniq` | 1, private | `lib/lowering/upper/closconv.chiral:40` |
 | `rnd-append-list` | 1 | `lib/protocol/render.chiral:218` |
 | `rules-append` | 1 | `prog/scriba/manas-mode.chiral:208` |
