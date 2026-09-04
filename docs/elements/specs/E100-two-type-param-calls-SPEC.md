@@ -189,7 +189,7 @@ updated: 2026-08-13
 ### 6a. RESIDUAL residue & links
 
 - **Deliberately unbuilt (residual):**
-  - The capture-heavy `be-chat-stream` variant (`backend.chiral:114`, the `(=> Str Unit)` fn param) — a non-nullary `$clo` ctor with de-Bruijn re-addressing in `arm-body`. Out of scope per decision #10; the nullary fix must not regress it, and it becomes a follow-on element if the orch stream path needs it.
+  - The capture-heavy `be-chat-stream` variant (`backend.chiral:155`, the `(=> Str Unit)` fn param) — a non-nullary `$clo` ctor with de-Bruijn re-addressing in `arm-body`. Out of scope per decision #10; the nullary fix must not regress it, and it becomes a follow-on element if the orch stream path needs it.
   - Effectful fn-params generally (`(=> ...)` arrow fn-args) — the `$apply` dispatcher for an effectful capture is a separate shape (the `$clo` arrow carries the effect flag in `apply-ty`'s `pi-effs`), not exercised by `msg->json`.
   - The `Map` (AVL) `(-> K K Ord)` fn-param shape — already residue above, now confirmed adjacent to the recursive-codomain residual but distinct (the `Ord` codomain is non-recursive).
   - Public mirror sync of the residual fix — deferred to the implementation run after fixpoint.

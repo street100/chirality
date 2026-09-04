@@ -499,7 +499,7 @@ measurement exists. It mints no element and this SPEC does not plan it.
     19 sites, all with small literal bounds. No constructor is owed.
   - **A byte-set `Cls` constructor over a 256-bit bitmap.** A pure speedup
     that changes no arm of `pd`. Home: this module, when a measurement asks.
-  - **Opening `PureFn`** (`prog/manas/core/flow.chiral:103`), which
+  - **Opening `PureFn`** (`prog/manas/core/flow.chiral:129`), which
     [[banks/text]] calls D's second job. Outside slice 1 and unscheduled.
   - **Shards E (score), F (edit script) and G (stable address)** of
     [[banks/text]], all unnumbered. [[arcs/text-tools-arc]] has no reserved element
