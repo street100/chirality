@@ -80,8 +80,8 @@ not), network, persistence, audio, multi-seat.
 
 The stage 9 scaffold was pulled forward (2026-07-05) as the execution vehicle so
 this target runs before self-hosting. What the scaffold enforces today and what
-it stubs is recorded in `scaffold/README.md`, not here — the pre-migration
-tree, and that file has no successor in this one; this note is the
+it stubs is recorded in `scaffold/README.md`, not here. That is the
+pre-migration tree and the file has no successor in this one. This note is the
 requirement, not the implementation. "Highly optimized" stays a typed claim
 until a real backend (stage 5) exists to measure; no numbers before then.
 
