@@ -22,6 +22,7 @@
 
 (import "module/loader")     ; Sig / Term / DataDecl / Field / Ctor / core->term / mk-sig
 (import "lowering/upper/closconv")   ; Core / SigV / collect / synth term-builders / rw / ...
+(import "lowering/lowspec")           ; NTalTy / nt-word / nt-data: the stated-type transport
 
 ; ---------------------------------------------------------------- term -> core
 ; The inverse of loader's core->term (near-identity; Term is de-Bruijn so binder
@@ -110,7 +111,35 @@
 (data SynR ()
   (synr (clos (List DataDecl))
         (applies (List (Pair Str (Pair Term Term))))
-        (ka (List ApplyEnt))))
+        (ka (List ApplyEnt))
+        (stated (List (Pair Str (List NTalTy))))))
+
+; E185: the STATED-PARAMETER CHANNEL.  The dispatcher's lowering-level parameter
+; types, COMPUTED from the family and never copied off a member.  `shape-eq`
+; (closconv.chiral:335-356) makes every non-arrow domain one word, and a
+; nested-arrow domain is pointer-sized (compile-front.chiral:71), so every domain
+; is `nt-word`.  The leading $clo argument keeps its data name, because the arm
+; case is a case ON it (`case-sty` / `ck-scrut-dn` both recover that name).
+;
+; This is the level `decisions/decision-erased-word-level.md` names: `Core` gains
+; no word spelling, so the pass STATES the type where the instrument for lowered
+; code (`ck-prog`) reads it.
+(declare word-ptys (-> I64 (List NTalTy)))
+(def word-ptys
+  (lam (n) (case (<=i n 0) (true nil) (false (cons (nt-word) (word-ptys (- n 1)))))))
+
+(declare apply-ptys (-> I64 (List Core) (List NTalTy)))
+(def apply-ptys
+  (lam (i doms) (cons (nt-data (clo-name i) nil) (word-ptys (cc-llen doms)))))
+
+; the synth accumulator carries the stated types beside the globals it builds.
+(data SynA () (syna (globs (List (Pair Str (Pair Term Term))))
+                    (stated (List (Pair Str (List NTalTy))))))
+
+; closconv-sig's output: the rewritten Sig, plus what the pass STATED about the
+; names it invented.  A Sig alone cannot carry it, because a Sig global holds a
+; Term and there is no Term that spells the erased word.
+(data CCOut () (ccout (sig Sig) (stated (List (Pair Str (List NTalTy))))))
 
 (def site-fields (-> Csite (List (Pair I64 Core)))
   (lam (s) (case s ((cs-g g k f) f) ((cs-lam inr d cap f) f))))
@@ -150,13 +179,14 @@
 (declare synth-ent (-> SigV Core (List Csite) I64 SynR SynR))
 (def synth-ent
   (lam (sv key sites i acc)
-    (case acc ((synr clos applies ka)
+    (case acc ((synr clos applies ka stated)
       (case (build-sites i 0 sites) ((sitesr ctors cof)
         (let (dname (clo-name i))
         (let (aname (apply-name i))
           (synr (cons (data-decl dname nil ctors) clos)
                 applies
-                (cons (apply-ent key dname aname cof) ka))))))))))
+                (cons (apply-ent key dname aname cof) ka)
+                stated)))))))))
 
 (declare synth-ents (-> SigV (List Family) I64 SynR SynR))
 (def synth-ents
@@ -167,16 +197,18 @@
         (synth-ents sv r (+ i 1) (synth-ent sv key sites i acc))))))))
 
 ; phase 2: the $apply def for one family, using the COMPLETE ka.
-(declare synth-apply (-> SigV (List ApplyEnt) Core (List Csite) I64 (List (Pair Str (Pair Term Term))) (List (Pair Str (Pair Term Term)))))
+(declare synth-apply (-> SigV (List ApplyEnt) Core (List Csite) I64 SynA SynA))
 (def synth-apply
   (lam (sv ka key sites i acc)
-    (let (doms (peel-pi-doms key))
-    (let (cod (peel-pi-cod key))
-    (let (aty (core->term (apply-ty (clo-name i) doms cod (pi-effs key))))
-    (let (abody (core->term (apply-body sv i sites (cc-llen doms) ka)))
-      (cons (pair (apply-name i) (pair aty abody)) acc)))))))
+    (case acc ((syna globs stated)
+      (let (doms (peel-pi-doms key))
+      (let (cod (peel-pi-cod key))
+      (let (aty (core->term (apply-ty (clo-name i) doms cod (pi-effs key))))
+      (let (abody (core->term (apply-body sv i sites (cc-llen doms) ka)))
+        (syna (cons (pair (apply-name i) (pair aty abody)) globs)
+              (cons (pair (apply-name i) (apply-ptys i doms)) stated))))))))))
 
-(declare synth-applies (-> SigV (List ApplyEnt) (List Family) I64 (List (Pair Str (Pair Term Term))) (List (Pair Str (Pair Term Term)))))
+(declare synth-applies (-> SigV (List ApplyEnt) (List Family) I64 SynA SynA))
 (def synth-applies
   (lam (sv ka fams i acc)
     (case fams
@@ -187,8 +219,9 @@
 (declare synth-fams (-> SigV (List Family) I64 SynR SynR))
 (def synth-fams
   (lam (sv fams i acc)
-    (case (synth-ents sv fams i acc) ((synr clos _ ka)
-      (synr clos (synth-applies sv ka fams 0 nil) ka)))))
+    (case (synth-ents sv fams i acc) ((synr clos _ ka _)
+      (case (synth-applies sv ka fams 0 (syna nil nil)) ((syna globs stated)
+        (synr clos globs ka stated)))))))
 
 ; ---------------------------------------------------------------- rewrite install
 ; Rewrite each original def's body (rw) and its arrow-typed params/return to $clo.
@@ -241,16 +274,17 @@
 
 ; THE DRIVER: defunctionalize a checked Sig in place. NO-OP (returns the Sig
 ; unchanged) on closure-free programs (no kept family). Mirrors closure_convert.
-(def closconv-sig (-> Sig Sig)
+(def closconv-sig (-> Sig CCOut)
   (lam (s)
     (case s ((mk-sig g p d la ld tg pf km sh)
       (let (sv (build-sigv s))
         (case (collect sv) ((cstate fams ho pois)
           (case (keep-fams fams pois)
-            (nil s)                                     ; closure-free: untouched
+            (nil (ccout s nil))                         ; closure-free: untouched
             ((cons kf kr)
-              (case (synth-fams sv (cons kf kr) 0 (synr nil nil nil)) ((synr clos applies ka)
-                (mk-sig (app-glob (rewrite-defs sv ka g) applies)
-                        p
-                        (app-data d clos)
-                        la ld tg pf km sh))))))))))))
+              (case (synth-fams sv (cons kf kr) 0 (synr nil nil nil nil)) ((synr clos applies ka stated)
+                (ccout (mk-sig (app-glob (rewrite-defs sv ka g) applies)
+                               p
+                               (app-data d clos)
+                               la ld tg pf km sh)
+                       stated))))))))))))
