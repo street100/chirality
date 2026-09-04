@@ -4,7 +4,7 @@
 > Starting from *any Linux-ish box plus any programming language* (and **no
 > trusted chirality binary anywhere**), you can climb back up to a native,
 > self-checked chirality, and verify every step. This file is the human-facing
-> chain; `scaffold/lib/climb.chiral` is the same chain as checkable data (the two
+> chain; `prog/climb.manifest` is the same chain as checkable data (the two
 > must agree). The machine-checkable golden object each stage validates against
 > is `docs/tal-spec.md` (the tal specification: prose + pinned vectors, E71).
 >
@@ -102,5 +102,5 @@ This manifest ships now; the climb runs as its gates clear:
 - **The "weekend" bound as a *measured* claim** is owed: someone runs the climb
   and clocks it once the gates clear (a target-note, not an estimate).
 
-Each gate is pinned as a `breaker` in `scaffold/lib/climb.chiral` and tracked in
+Each gate is pinned as a `breaker` in `prog/climb.manifest` (`:60-67`) and tracked in
 `docs/elements/specs/E72-re-bootstrap-SPEC.md` §6.
