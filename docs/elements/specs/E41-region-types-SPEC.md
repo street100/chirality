@@ -10,6 +10,11 @@ updated: 2026-08-02
 
 # E41 SPEC — Region types (retire runtime offset/bounds checks)
 
+> ⚑ **TRIAGE 2026-09-04 — NEEDS-REPLAN.** 2 of 4 steps are executable at HEAD.
+> Steps 2-3 resolve; Step 1 (`refine.py`) and Step 4 (`scaffold/tests/`) need
+> new homes. Bucket and evidence: `records/spec-tier-triage.md`. This file was
+> not rewritten and its `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

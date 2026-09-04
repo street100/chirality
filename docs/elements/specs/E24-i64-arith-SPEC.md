@@ -10,6 +10,12 @@ updated: 2026-08-01
 
 # E24 SPEC — I64 arithmetic: the refined safe path over the pinned semantics
 
+> ⚑ **TRIAGE 2026-09-04 — NEEDS-REPLAN.** 1 of 2 steps are executable at HEAD.
+> Step 1 is executable at `lib/prelude/prelude.chiral`; Step 2's gate must be
+> rehomed on `tools/test/`. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

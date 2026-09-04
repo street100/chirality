@@ -1,5 +1,10 @@
 # E70 — effectful lowering, drawn out (worked examples + implementation notes)
 
+> ⚑ **TRIAGE 2026-09-04 — DEAD.** 0 of 0 steps are executable at HEAD. Design
+> companion to the DEAD SPEC; keep as rationale, do not queue. Bucket and
+> evidence: `records/spec-tier-triage.md`. This file was not rewritten and its
+> `status:` was not changed.
+
 Companion to `E70-effectful-lowering-SPEC.md` (the contract) and the example
 (the rationale). Works the row shadow + the re-derivation check through on the
 *actual* substrate — which corrects a simplification the example carried.

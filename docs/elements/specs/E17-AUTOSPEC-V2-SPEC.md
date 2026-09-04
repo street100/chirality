@@ -1,5 +1,11 @@
 # E17 EXTEND — auto-pregen v2 (unbounded policy)
 
+> ⚑ **TRIAGE 2026-09-04 — DEAD.** 0 of 5 steps are executable at HEAD. Retire
+> or re-found: its baseline is `optimize.autospec` in the oracle and all three
+> of its named dependencies are DEAD. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 **2026-08-06**
 **Pipeline:** spec (E17 extension)
 **Depends on:** E38 (graded cost), E57 (staging), fact-carrying lowering

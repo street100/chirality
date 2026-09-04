@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: f5c875df7ee04e18130b739fed6c57b7b31cb64a3f2a813fd9bec18aba06f9ce -->
+<!-- FRONTIER-SOURCES-SHA256: 20640b048b9e416adcbcdc7a6bd4e709c2eb3de37a9063a01ab4a39c6032b9e0 -->
 <!-- sources: 156 files -->
 
 ## Decided recently
@@ -113,6 +113,7 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 9579ba3 — matcher line count: 533 was measured at the E173 slice-1 landing, the file is 602
 - 2026-09-04 3b4e6d3 — specs: date the citations the cut oracle left behind
 - 2026-09-04 c496c01 — specs: repoint implementation SPEC citations at the post-migration tree
 - 2026-09-04 07a26a7 — citations that E185 moved, in the three files this run owns
@@ -120,4 +121,3 @@ updated: 2026-09-04
 - 2026-09-04 95162e9 — E185 SPEC audit: the gate's four silent failures, and two rows nothing reddens
 - 2026-09-04 8988923 — INDEX: E185's SPEC link resolves
 - 2026-09-04 130d4fc — E185 SPEC: the dispatcher's erased domains are stated at the lowering level
-- 2026-09-04 b4a2688 — mint E186 and E187, and EN-17 becomes an element

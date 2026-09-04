@@ -10,6 +10,12 @@ updated: 2026-08-13
 
 # E100 SPEC — 2-type-param + fn-param call lowering: `alist-get`/`alist-put` (2 type params + fn param) callable from compile-main through B1, completing the case-on-call fix train; conformance includes deleting every inlined alist copy from scriba files
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 12 steps are executable at
+> HEAD. `lib/lowering/upper/closconv.chiral:704,954,984,1104,1170` carry the
+> E100 fix. Step 5 has no live target. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

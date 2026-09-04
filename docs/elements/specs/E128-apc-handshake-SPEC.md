@@ -10,6 +10,12 @@ updated: 2026-08-12
 
 # E128 SPEC — APC structured-side-channel **handshake**: the wire negotiation protocol that *sets* `term-structured?`'s bit — an APC query (`ESC _ ? … ST`) the emulator answers with an APC reply, so a dumb terminal stays silent and a timeout ⇒ `false` (aligned with E112's APC transport). Split out of E112 (the codec consumes the `Bool`; this negotiates it) 2026-08-12 by the E112 spec-revision. Its spec resolves the exact query/reply bytes + timeout
 
+> ⚑ **TRIAGE 2026-09-04 — NEEDS-REPLAN.** 0 of 4 steps are executable at HEAD.
+> Every target is a `TUI/` path; repoint at `lib/protocol/apc.chiral` and
+> `tools/test/samples/`. Intent survives whole. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

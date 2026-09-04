@@ -10,6 +10,12 @@ updated: 2026-09-03
 
 # N01 SPEC: **Crypto kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class**
 
+> ⚑ **TRIAGE 2026-09-04 — EXECUTABLE.** 2 of 4 steps are executable at HEAD.
+> Slices 3-4 (BLAKE2s, X25519) are unbuilt and their targets resolve under
+> `lib/crypto/`; slices 1-2 already landed. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

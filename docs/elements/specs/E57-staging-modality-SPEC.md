@@ -10,6 +10,11 @@ updated: 2026-08-07
 
 # E57 SPEC — Staging / binding-time modality (Fork C): link/load vs runtime carried in the type
 
+> ⚑ **TRIAGE 2026-09-04 — DEAD.** 0 of 5 steps are executable at HEAD.
+> Re-example from scratch; five oracle modules, no live successor named.
+> Bucket and evidence: `records/spec-tier-triage.md`. This file was not
+> rewritten and its `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

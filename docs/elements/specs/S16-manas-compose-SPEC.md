@@ -1,5 +1,10 @@
 # S16 — manas compose (pick a pipeline, bind a config, pre-flight, dispatch) — IMPLEMENTATION SPEC
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 0 steps are executable at HEAD.
+> `prog/manas/pipeline/compose.chiral` exists. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 Stage 3 of 5 (example → audit → spec → audit → implement). Source of truth for
 the implementer. Reads with `docs/examples/S16-manas-compose.md`
 (the worked example, audited PASS — its glue design is verified: `bind-config`

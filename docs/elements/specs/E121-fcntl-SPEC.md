@@ -10,6 +10,12 @@ updated: 2026-08-12
 
 # E121 SPEC — `fcntl`/`F_GETFD` crossing
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 3 steps are executable at HEAD.
+> `lib/ports/fd.port:36` carries `fcntl` commented `E121:`; `sys.chiral:208`;
+> `crossing-wraps.chiral:45`; `tools/test/samples/e121_fcntl.prog`. Bucket and
+> evidence: `records/spec-tier-triage.md`. This file was not rewritten and its
+> `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

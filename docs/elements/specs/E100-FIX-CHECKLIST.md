@@ -1,5 +1,10 @@
 # E100 fix — polymorphic-HO defunctionalization: erase type-kinded captures
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 0 steps are executable at HEAD.
+> A checklist companion, no frontmatter and no steps; folded into the E100
+> finding. Bucket and evidence: `records/spec-tier-triage.md`. This file was
+> not rewritten and its `status:` was not changed.
+
 > **✅ DONE 2026-08-16** (commits `b402aff` sub-task 0, `ff6d72c` sub-tasks 1-5,
 > `1bf585f` sub-task 7). All 8 sub-tasks landed. Fix = DROP type-kinded captures
 > (one `field-erased?` predicate at every materialization point + `$apply` arm

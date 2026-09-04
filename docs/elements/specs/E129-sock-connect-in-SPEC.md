@@ -10,6 +10,12 @@ updated: 2026-08-13
 
 # E129 SPEC — Native `sock-connect-in` (AF_INET TCP connect)
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 5 steps are executable at HEAD.
+> `lib/protocol/inet.chiral:17-99`, `sys.chiral:961`,
+> `crossing-wraps.chiral:41` all cite E129. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

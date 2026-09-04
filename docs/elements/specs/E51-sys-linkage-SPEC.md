@@ -10,6 +10,12 @@ updated: 2026-07-27
 
 # E51 SPEC — **Sys-face linkage**: upper-effectful chirality reaches syscalls *through* `sys-tal`, retiring `impl_ports` as the transport (the true self-host gate — F7/C1)
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 5 steps are executable at HEAD.
+> Step 2 landed as `lib/lowering/tal/sys-linkage.chiral`; Steps 1,3,4,5 name
+> the cut `runtime.py`/`impl_ports.py`. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

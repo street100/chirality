@@ -1,5 +1,10 @@
 # S15 — manas run-view (the run-manifest cockpit, Tier 2) — IMPLEMENTATION SPEC
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 0 steps are executable at HEAD.
+> `prog/scriba/manas-runview.chiral` + `scriba-runview-test.prog` exist.
+> Bucket and evidence: `records/spec-tier-triage.md`. This file was not
+> rewritten and its `status:` was not changed.
+
 Stage 3 of 5 (example → audit → spec → audit → implement). Source of truth for
 the implementer. Reads with `docs/examples/S15-manas-run-view.md`
 (the worked example, audited PASS — its reused-primitive design is verified: the

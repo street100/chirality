@@ -10,6 +10,11 @@ updated: 2026-08-01
 
 # E26 SPEC — alarms onto the built row (handlers, KontMsg, synthesized cancel)
 
+> ⚑ **TRIAGE 2026-09-04 — DEAD.** 0 of 5 steps are executable at HEAD.
+> Re-found on the built effect row; Step 1's `KontMsg` already landed under
+> E42. Bucket and evidence: `records/spec-tier-triage.md`. This file was not
+> rewritten and its `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

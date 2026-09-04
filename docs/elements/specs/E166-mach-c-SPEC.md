@@ -10,6 +10,11 @@ updated: 2026-08-24
 
 # E166 SPEC — `mach-c`, and the external-compiler DDC leg it unlocks
 
+> ⚑ **TRIAGE 2026-09-04 — DEAD.** 0 of 7 steps are executable at HEAD. The
+> `Mach`-to-C backend was cut 2026-09-01; the SPEC records a build that no
+> longer exists. Bucket and evidence: `records/spec-tier-triage.md`. This file
+> was not rewritten and its `status:` was not changed.
+
 > ⚑ **THE C BACKEND WAS DROPPED ON 2026-09-01** (`d8bcec5`, `d0c5dd5`). Every
 > file this contract builds is deleted: `lib/lowering/c/{mach,assemble,emit}.chiral`,
 > `prog/compiler-c.prog`, and the four `e166_*` fixtures. **Nothing below is

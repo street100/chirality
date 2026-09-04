@@ -11,6 +11,11 @@ updated: 2026-09-01
 
 # E86 SPEC — `ioctl` as sys crossing (terminal control: TIOCGWINSZ, TCGETS/TCSETS)
 
+> ⚑ **TRIAGE 2026-09-04 — DEAD.** 0 of 8 steps are executable at HEAD. Already
+> `superseded` in all three registers; no action. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > **SUPERSEDED 2026-09-01 by E99** — `docs/elements/specs/E99-ioctl-out-cells-SPEC.md`.
 > This contract was executed: `ioctl` shipped 2026-08-06 as one generic 3-arg
 > crossing (`.planning/SCRIBA-SYSCALL-`docs/decisions/decision-scope.md``). E99 then rejected the

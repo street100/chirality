@@ -10,6 +10,11 @@ updated: 2026-08-08
 
 # E94 SPEC — B1 form/type capacity: raise or remove hard limit on forms/data types in `parse.chiral`/`loader.chiral` so scriba blob compiles with full linkage
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 5 steps are executable at HEAD.
+> `lib/module/load-batch.chiral` exists. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

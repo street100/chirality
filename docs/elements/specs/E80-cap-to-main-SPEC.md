@@ -10,6 +10,12 @@ updated: 2026-08-02
 
 # E80 SPEC — Capability reification to `main` (profile-grants-to-entry)
 
+> ⚑ **TRIAGE 2026-09-04 — NEEDS-REPLAN.** 2 of 5 steps are executable at HEAD.
+> Steps 1-2 resolve at `lib/ports/ports.chiral`; Steps 3-5 need a live home
+> for the profile clause and the mint. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

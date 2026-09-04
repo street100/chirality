@@ -10,6 +10,12 @@ updated: 2026-08-12
 
 # E124 SPEC — `adopt-fd`: introduce a raw `I64` fd into the linear `Fd` porttype so an already-open fd (e.g. from `openat`/`open-rw`) becomes a move-only cap that must be closed exactly once. Because `Fd` erases to `nt-i64` (E123), adoption is a RUNTIME NO-OP (identity on the word) — the only substance is the surface introduction form + its effect/capability posture (adopting ambient authority into the cap discipline). The cheapest native cap PRODUCER: with E107's `fd-close` row it yields a native cap round-trip (`adopt-fd (openat …) → fd-close → exit 42`), proving carrier+acquire+release below the type layer WITHOUT the ~M socket-acquisition layer. Unblocks verifying E107's held close rows
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 3 steps are executable at HEAD.
+> `lib/ports/fd.port:32` carries `adopt-fd`;
+> `lib/lowering/tal/erase.chiral:111` carries `prim2lib-table`. Bucket and
+> evidence: `records/spec-tier-triage.md`. This file was not rewritten and its
+> `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

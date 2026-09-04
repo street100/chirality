@@ -10,6 +10,11 @@ updated: 2026-08-01
 
 # E25 SPEC — the linear byte-builder over the built cell floor
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 2 steps are executable at HEAD.
+> `lib/lowering/tal/bytes.chiral` is the cell builder. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

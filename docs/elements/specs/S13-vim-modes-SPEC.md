@@ -1,5 +1,10 @@
 # S13 — vim-like modal editing — IMPLEMENTATION SPEC
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 0 steps are executable at HEAD.
+> `prog/scriba/vim-mode.chiral` exists; no frontmatter, no step list. Bucket
+> and evidence: `records/spec-tier-triage.md`. This file was not rewritten and
+> its `status:` was not changed.
+
 Stage 3 of 5. Source of truth for the implementer. Reads with
 `docs/examples/S13-vim-modes.md` (the worked example).
 

@@ -1,5 +1,10 @@
 # Fact-carrying lowering — E9 × E16 slice
 
+> ⚑ **TRIAGE 2026-09-04 — DEAD.** 0 of 6 steps are executable at HEAD.
+> Unnumbered, unfrontmattered, six steps at `tal.py`/`lower.py`. Retire or
+> re-example. Bucket and evidence: `records/spec-tier-triage.md`. This file
+> was not rewritten and its `status:` was not changed.
+
 **2026-08-06**
 **Pipeline:** spec (cross-cut element, not a standalone E#)
 **Status:** drafted — first slice: carry `(>= 0)` through the lowering boundary

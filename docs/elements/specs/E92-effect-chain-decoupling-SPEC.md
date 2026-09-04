@@ -10,6 +10,11 @@ updated: 2026-08-08
 
 # E92 SPEC — Effect chain decoupling: inline `try-dispatch` helper before `command-loop-inner` in `command-loop.chiral`, forward-declare `command-loop-inner`, replace `(false ...)` beep arm with `try-dispatch` call
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 3 steps are executable at HEAD.
+> `try-dispatch` is live; `prog/scriba/command-loop.chiral:481,687`. Bucket
+> and evidence: `records/spec-tier-triage.md`. This file was not rewritten and
+> its `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

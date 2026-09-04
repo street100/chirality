@@ -10,6 +10,12 @@ updated: 2026-08-01
 
 # E20 SPEC — Loader: RW mmap → W^X `mprotect` → executable
 
+> ⚑ **TRIAGE 2026-09-04 — NEEDS-REPLAN.** 1 of 4 steps are executable at HEAD.
+> Only Step 2 (`nb-blit`) survives; the code loader is unbuilt and the
+> ledger's `built` is a mis-read of the module loader. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

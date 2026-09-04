@@ -10,6 +10,12 @@ updated: 2026-08-13
 
 # E130 SPEC: Native HTTP/1.1 client (transport swap)
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 4 steps are executable at HEAD.
+> `lib/protocol/http.chiral:101,134,357,437` carry `parse-url`,
+> `format-request`, `parse-response`, `http-request`. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

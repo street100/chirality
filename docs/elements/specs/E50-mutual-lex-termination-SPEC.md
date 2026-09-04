@@ -10,6 +10,11 @@ updated: 2026-07-24
 
 # E50 SPEC — Bidirectional/mutual termination + lexicographic measures
 
+> ⚑ **TRIAGE 2026-09-04 — DEAD.** 0 of 5 steps are executable at HEAD. Nothing
+> to run; the ledger already reads `built` on `lib/typing/totality.chiral`.
+> Bucket and evidence: `records/spec-tier-triage.md`. This file was not
+> rewritten and its `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

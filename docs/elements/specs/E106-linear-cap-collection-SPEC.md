@@ -10,6 +10,11 @@ updated: 2026-08-11
 
 # E106 SPEC — Linear collection of caps
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 5 steps are executable at HEAD.
+> `lib/capability/lincoll.chiral:26-81` carries `SockVec`, `sv-drain`,
+> `mux-step`. Bucket and evidence: `records/spec-tier-triage.md`. This file
+> was not rewritten and its `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example (`examples/E106-linear-cap-collection.md`)

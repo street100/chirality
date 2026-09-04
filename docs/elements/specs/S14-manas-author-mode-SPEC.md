@@ -1,5 +1,10 @@
 # S14 — manas author mode (structured config/pipeline editing) — IMPLEMENTATION SPEC
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 0 steps are executable at HEAD.
+> `prog/scriba/manas-mode.chiral` + `scriba-manas-test.prog` exist. Bucket and
+> evidence: `records/spec-tier-triage.md`. This file was not rewritten and its
+> `status:` was not changed.
+
 Stage 3 of 5 (example → audit → spec → audit → implement). Source of truth for
 the implementer. Reads with `docs/examples/S14-manas-author-mode.md`
 (the worked example, audited PASS — its typed-value/constructor design is

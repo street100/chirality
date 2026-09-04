@@ -1,5 +1,10 @@
 # S17 — manas run-view: token streaming (be-chat-stream on-delta) — IMPLEMENTATION SPEC
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 0 steps are executable at HEAD.
+> `prog/scriba/scriba-runview-stream-test.prog` exists. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 Stage 3 of 5 (example → audit → spec → audit → implement). Source of truth for
 the implementer. Reads with `docs/examples/S17-manas-token-streaming.md`
 (the worked example, audited PASS — its three premise corrections are verified

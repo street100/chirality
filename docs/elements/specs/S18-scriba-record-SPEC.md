@@ -11,6 +11,12 @@ measured-at: HEAD `1b61120`, 2026-08-23
 
 # S18 SPEC — the `Scriba` editor-state record
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 2 steps are executable at HEAD.
+> `prog/scriba/editor-state.chiral` exists and cites S18 at `:3`;
+> `dispatch.chiral:37,45` adopt it. Frontmatter still reads `specced`. Bucket
+> and evidence: `records/spec-tier-triage.md`. This file was not rewritten and
+> its `status:` was not changed.
+
 > Implementation contract. **Authority order:** live CODE >
 > `.planning/SCRIBA-PRIMITIVE-CHECKLIST.md` > the task framing. Every place the
 > code disagreed with either is recorded in §7, not silently reconciled.

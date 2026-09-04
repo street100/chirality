@@ -10,6 +10,11 @@ updated: 2026-08-12
 
 # E110 SPEC — Close-on-exec fd hygiene on the pty path
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 2 steps are executable at HEAD.
+> `lib/lowering/tal/sys.chiral` `nb-sys-open-rw-t` has the O_CLOEXEC constant
+> 524546. Bucket and evidence: `records/spec-tier-triage.md`. This file was
+> not rewritten and its `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

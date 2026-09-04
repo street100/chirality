@@ -10,6 +10,11 @@ updated: 2026-08-02
 
 # E69 SPEC — Closure conversion + quantities-to-tal
 
+> ⚑ **TRIAGE 2026-09-04 — DEAD.** 0 of 4 steps are executable at HEAD. Nothing
+> to run: closure conversion is live at `lib/lowering/upper/closconv.chiral`.
+> Bucket and evidence: `records/spec-tier-triage.md`. This file was not
+> rewritten and its `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

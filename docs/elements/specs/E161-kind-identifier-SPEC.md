@@ -12,6 +12,12 @@ updated: 2026-08-23
 
 # E161 SPEC — the module datasheet
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 8 steps are executable at HEAD.
+> `lib/typing/kernel.chiral:237` carries the ninth `sheets` field;
+> `parse.chiral:1166` `handle-kind`; `loader.chiral:279` `SheetErr`. Bucket
+> and evidence: `records/spec-tier-triage.md`. This file was not rewritten and
+> its `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run.
 >
 > **Authority order for this file:** live CODE > `examples/E161-REQUIREMENTS.md`

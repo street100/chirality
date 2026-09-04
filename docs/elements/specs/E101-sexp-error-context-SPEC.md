@@ -10,6 +10,11 @@ updated: 2026-08-09
 
 # E101 SPEC — Sexp-reader error context
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 5 steps are executable at HEAD.
+> `lib/surface/sexp.chiral:136-154` carries `pos-line`/`pos-col`. Bucket and
+> evidence: `records/spec-tier-triage.md`. This file was not rewritten and its
+> `status:` was not changed.
+
 > Implementation contract. Bridges the worked example into an executable change plan.
 
 ## 1. Deliverable

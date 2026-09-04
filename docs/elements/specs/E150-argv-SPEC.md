@@ -10,6 +10,12 @@ updated: 2026-08-22
 
 # E150 SPEC — Own `argv`
 
+> ⚑ **TRIAGE 2026-09-04 — NEEDS-REPLAN.** 1 of 7 steps are executable at HEAD.
+> Only B1 resolves. B3's stated home is wrong: `read`/`write-fd` are
+> `lib/ports/fd.port:34-35`, not the process block. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > **⚑ SPEC-LEVEL AUDIT 2026-08-22 — VERDICT: BLOCKED. Do not start Phase A.**
 > One blocking author call: **§3 decision 2 is REOPENED** — `lib/argv.chiral` is
 > the first *library* to declare `openat`/`close` locally, and a duplicate

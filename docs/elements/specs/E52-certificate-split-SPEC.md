@@ -10,6 +10,11 @@ updated: 2026-08-31
 
 # E52 SPEC — Kernel-core certificate split: kernel-spec + kernel-core + the certificate seam
 
+> ⚑ **TRIAGE 2026-09-04 — NEEDS-REPLAN.** 1 of 5 steps are executable at HEAD.
+> Already self-annotated DEAD TARGET on A1-A4; B1 partly landed. Intent
+> survives, gate does not. Bucket and evidence: `records/spec-tier-triage.md`.
+> This file was not rewritten and its `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.

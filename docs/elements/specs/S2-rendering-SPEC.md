@@ -11,6 +11,11 @@ updated: 2026-08-10
 
 # S2 SPEC — the rendering engine
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 9 steps are executable at HEAD.
+> `lib/protocol/render.chiral:263,718,778,786` carry `diff-node` and all three
+> `render-to-ansi*`. Bucket and evidence: `records/spec-tier-triage.md`. This
+> file was not rewritten and its `status:` was not changed.
+
 > Implementation contract produced from the worked example + v2 audit (PASS).
 > The example + audit cover both S2 and S3 paired; this SPEC isolates the S2
 > boundary — types, diff, ANSI emission, renderer registry. S3's command loop

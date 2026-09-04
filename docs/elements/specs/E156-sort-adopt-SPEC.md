@@ -10,6 +10,12 @@ updated: 2026-08-23
 
 # E156 SPEC — `row-infer` adopts the sort owner
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 6 steps are executable at HEAD.
+> `lib/prelude/list.chiral:186` carries `list-dedup-adj`;
+> `tools/test/samples/e156_dedup_adj.prog` exists. Step 4's Phase number is
+> owed, not free. Bucket and evidence: `records/spec-tier-triage.md`. This
+> file was not rewritten and its `status:` was not changed.
+
 > Implementation contract produced by the `example-to-spec` run.
 >
 > **Authority order for this file:** live CODE > the reviewed example

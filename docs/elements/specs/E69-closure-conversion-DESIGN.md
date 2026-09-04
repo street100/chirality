@@ -1,5 +1,10 @@
 # E69 — closure conversion, drawn out (worked examples + implementation notes)
 
+> ⚑ **TRIAGE 2026-09-04 — DEAD.** 0 of 5 steps are executable at HEAD. Design
+> companion to the DEAD SPEC; keep as rationale, do not queue. Bucket and
+> evidence: `records/spec-tier-triage.md`. This file was not rewritten and its
+> `status:` was not changed.
+
 > **IMPLEMENTATION STATE (2026-08-02, 401 green).**
 > `scaffold/chirality/closconv.py` exists and is **wired live into `lower_all`**
 > (idempotent via `sig._closconv_done`; no-op on closure-free code). THREE

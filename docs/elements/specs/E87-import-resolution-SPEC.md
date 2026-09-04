@@ -10,6 +10,11 @@ updated: 2026-08-07
 
 # E87 SPEC — Import resolution: module bundler for B1
 
+> ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 5 steps are executable at HEAD.
+> `lib/module/resolve.chiral:366` carries `bundle`. Bucket and evidence:
+> `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
+> was not changed.
+
 > Implementation contract. Bridges the worked example into an executable change
 > plan. An implementation run follows THIS file.
 
