@@ -4,7 +4,7 @@ slug: style-round-trip
 title: "Relate the two style representations, and make the round trip close"
 kind: law
 example: examples/C1C2-style-round-trip.md
-status: draft
+status: audited
 updated: 2026-09-04
 ---
 
@@ -79,7 +79,7 @@ thirteen homes. Nothing below is respecced.
   (`render.chiral:15`) and never a `Face` value.
 - **Reach.** `protocol/grid` has five importers, `vt-parser.chiral` and four
   roots under `prog/scriba/samples/`. All of them bottom out in Phase 7, which
-  compiles and runs nothing (`tools/test/run-tests.sh:150`, loop at `:175-190`).
+  compiles and runs nothing (`tools/test/run-tests.sh:150`, loop at `:175-193`).
   Zero roots under `tools/test/samples/` import `protocol/grid` today, so this
   element's gate creates its own reach.
 
@@ -136,7 +136,7 @@ to overrule and say so.
 ### 1. The refinement, settled by measurement
 
 The example logs this as the follow-on's first decision and flags the two
-computed constructions as the risk. Four probes were compiled in this run against
+computed constructions as the risk. Six probes were compiled in this run against
 `lib/`, and they settle it outright:
 
 | probe | verdict |
@@ -355,11 +355,15 @@ than a prediction.
 ### Step 7. The doc tier
 - **Target:** `docs/elements/ledger.md`, `docs/examples/INDEX.md`,
   [[arcs/display-calculus-arc]] rows `C1` and `C2`, [[banks/render]] shards G, H
-  and L, `records/gate-audit.md`
+  and L plus its gradient paragraph, `records/gate-audit.md`
 - **Change:** the arc rows move off `unminted` with the gate named and its
   hand-run status stated. Shard G stops saying the cascade has no stated law.
   `records/gate-audit.md` gains the row decision 5 files. **No row anywhere may
   say this element's conformance is in the suite total.**
+- ⚑ **The shard-K correction in §2 stopped at the header.** `docs/banks/render.md:328`
+  still reads *"J and K are written and unreached"*, and its own enumeration sums
+  to twenty running against the header's twenty-one. K moves to the tool-tier
+  clause beside X, measured in the SPEC audit.
 - **Size:** S
 
 ## 5. Conformance gate
