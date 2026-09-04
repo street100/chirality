@@ -3,7 +3,7 @@ node: target-tomodachi
 layer: target
 related: [decision-profiles, open-edges, permission-model, time-and-clocks, node-architecture, error-and-alarm, modules-staging, category-bridge]
 status: draft
-updated: 2026-09-03
+updated: 2026-09-04
 ---
 
 # Target: tomodachi
@@ -80,14 +80,23 @@ not), network, persistence, audio, multi-seat.
 
 The stage 9 scaffold was pulled forward (2026-07-05) as the execution vehicle so
 this target runs before self-hosting. What the scaffold enforces today and what
-it stubs is recorded in `scaffold/README.md`, not here; this note is the
+it stubs is recorded in `scaffold/README.md`, not here — the pre-migration
+tree, and that file has no successor in this one; this note is the
 requirement, not the implementation. "Highly optimized" stays a typed claim
 until a real backend (stage 5) exists to measure; no numbers before then.
 
-The conformance mechanism this note assumes now exists in miniature:
-`scaffold/demo/profile-tomodachi.chiral` is the profile (import manifest plus a
-`target` requirement type naming the crossings above), and `chirality verify`
-judges it by subtyping, per [[decision-profiles]].
+The conformance mechanism this note assumes exists in part:
+`prog/demo/profile-tomodachi.chiral` is the profile (import manifest plus a
+`target` requirement type naming the crossings above), and `chirality check`
+judges its shape, its port set and its target name (`handle-profile-body`,
+`lib/surface/parse.chiral:960`), refusing a pure extern in the port set and an
+unknown target. ⚑ **The subtyping half has no live implementation (measured
+2026-09-04).** [[decision-profiles]] states conformance as type-checking, and
+this sentence used to name `chirality verify` for it; that subcommand does not
+exist and `bin/chirality` dispatches check / compile / run / test. Nothing in the
+tree judges a target's `require` types against what the composite provides. The
+one profile refusal that is live is the port-set one, `emit-elf-m` in
+`lib/lowering/compile-emit.chiral:292` (H8, per-program, refusing at `:299`).
 
 The memory bound is now typed (2026-07-05, [[memory-model]] pass): the pool
 port type is value-indexed, the target requires the client to come up holding
