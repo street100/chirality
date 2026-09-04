@@ -17,7 +17,7 @@ updated: 2026-08-12
 ## 1. Scope
 
 - **Element:** E125 — lower the two socket "use" crossings, `sock-send`
-  (`ports.chiral:70`) and `sock-recv` (`ports.chiral:72`), from oracle-only
+  (`lib/ports/sock.port:67`) and `sock-recv` (`lib/ports/sock.port:69`), from oracle-only
   Python to hand-authored native TAL bodies, each threading the linear `Sock`
   cap back through its result sum (`SendR`/`RecvR`, `ports.chiral:51,28`).
 - **Kind:** BUILD-PROPER (design from the spec + the committed E126 precedent;

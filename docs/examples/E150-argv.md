@@ -79,7 +79,7 @@ relative arrangement."* So the strings are **not** safely contiguous — a reade
 must follow each pointer, it cannot slice one blob out of the block.
 
 **Finding 2 — `Env` is *not* a syscall, and its native leg does not exist.**
-`ports.chiral:170-176` is a linear, opaque, keyed read-only view:
+`lib/ports/clock.port:28-40` is a linear, opaque, keyed read-only view:
 `env-view (=> (1 e Env) Str EnvR)`, plus INTERIM ambient `env-open (=> Unit Env)`
 / `env-close (=> (1 e Env) Unit)`, with `EnvR` threading the cap back (the
 `RecvR` pattern). But its *data source* is host Python:
@@ -371,7 +371,7 @@ as `./argv.elf alpha "beta gamma"`, printed its own path, `alpha`, and
   ever matters.
 - **The `Args` cap, if it is ever wanted.** Nothing above prevents it: add
   `(porttype Args)`, `(data ArgsR () (args-r (line Bytes) (1 a Args)))` and
-  `args-view`, threaded exactly like `EnvR` (`ports.chiral:164-176`), and leave
+  `args-view`, threaded exactly like `EnvR` (`lib/ports/clock.port:19-40`), and leave
   `pkt->argv` untouched — the pure edge does not care where the packet came from.
 
 **Deliberately omitted**

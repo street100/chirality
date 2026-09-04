@@ -53,7 +53,7 @@ updated: 2026-08-12
   - **`size` is the runtime witness of the erased type-level `n`.** The extern
     signatures pass the bound as an **erased** parameter —
     `pool-write : (-> (0 n I64) (=> (1 p (Pool n)) I64 Bytes (Pool n)))`,
-    `pool-close : (-> (0 n I64) (=> (1 p (Pool n)) Unit))` (`ports.chiral:74-75`)
+    `pool-close : (-> (0 n I64) (=> (1 p (Pool n)) Unit))` (`lib/ports/pool.port:27`, `:31`)
     — so `n` is compile-time only; the store bound at runtime must come from a
     value carried *inside* the `Pool` (exactly the E113/E107 resolution, now
     native).

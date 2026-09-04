@@ -52,7 +52,7 @@ updated: 2026-08-02
      *top-level* entry, with **the profile** (not a parent's `spawn`) as the
      minter of authority.
   2. **Half of E80 is already built.** `Clock`/`Timer`/`Env` + `time-mono`/
-     `sleep-ms`/`env-view` exist and are RecvR-threaded (`ports.chiral:106–123`).
+     `sleep-ms`/`env-view` exist and are RecvR-threaded (`lib/ports/clock.port:21-34`).
      The one missing thing is *where a cap comes from*: nothing mints one for app
      code. E80 is precisely the mint-and-hand-to-`main` seam, not the ops.
   3. **The profile is the authority root.** Today `(profile headless (ports

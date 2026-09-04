@@ -40,7 +40,7 @@ chunked`) is OUT of scope here; it is the deferred follow-on E131.
 - **Reference class:** OURS/SPEC. OURS: the frozen urllib oracle at
   `impl_ports.py:343`, the `HttpR`/`http-request` face in `http.chiral`, the
   call sites in `backend.chiral:83,126`, and the native socket floor
-  (`ports.chiral:95-98`, `inet.chiral:109-114`, the recv-loop pattern in
+  (`lib/ports/sock.port:67-70`, `inet.chiral:109-114`, the recv-loop pattern in
   `lincoll.chiral:86-89`). SPEC: HTTP/1.1 message framing, RFC 7230.
 - **Key findings:**
   - **Message shape (RFC 7230 §3).** A message is `start-line`, then zero or more
@@ -69,7 +69,7 @@ chunked`) is OUT of scope here; it is the deferred follow-on E131.
     `Bytes` body (`backend.chiral:83` POST, `:126` GET with `(str->bytes "")`).
     Below it, `sock-send : (=> (1 s Sock) Bytes SendR)` and
     `sock-recv : (=> (1 s Sock) (refine I64 (> 0)) RecvR)` thread the `Sock`
-    linearly through `SendR`/`RecvR` sums (`ports.chiral:95-98`), and
+    linearly through `SendR`/`RecvR` sums (`lib/ports/sock.port:67-69`), and
     `sock-connect-in : (=> Str I64 ConnR)` takes a dotted-quad host and a port
     (`inet.chiral:109`). `RecvR` is three-way: `recv-r` (bytes back, `Sock` back),
     `recv-closed` (peer FIN, `Sock` back), `recv-err` (message, `Sock` consumed)

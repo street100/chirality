@@ -88,7 +88,7 @@ updated: 2026-08-11
      (recoverable-vs-fatal in the type): that is **E26, hard-gated on E39** (BUILD,
      unbuilt). So today an alarm is a thesis with a Python crutch (`MetisExit` /
      `PortError`, `alarms.py`), and only `halt` is realized (a bare extern,
-     `ports.chiral:127`). §5 fleshes with the coarse `=>` bit and **names** the E26
+     `lib/ports/process.port:14`). §5 fleshes with the coarse `=>` bit and **names** the E26
      alarm-tag upgrade — it does not pretend the typed alarm is here.
   2. **Alarms are crossings, and control is graded by capture** (settled 2026-07-21,
      `decision-effect-facets`, amended into `decision-graded-kernel`). A handler is

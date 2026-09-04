@@ -30,7 +30,7 @@ updated: 2026-07-22
   level and is "the next construction"** ([[error-and-alarm]]). The handler
   machinery / row subtraction explicitly **rides E26** (the E39 map row). The
   fatal tier's `Exit`-port gating below is the **E80 reification class**:
-  today `halt`/`exit` are ambient externs (`ports.chiral:128–129`, the same
+  today `halt`/`exit` are ambient externs (`lib/ports/process.port:13-14`, the same
   named-violation class as `env-get`); the grant-to-`main` delivery lands with
   E80.
 - **Why chirality needs its own:** shed the CPython crutch. In chirality an alarm is not
