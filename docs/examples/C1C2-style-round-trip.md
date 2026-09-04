@@ -74,7 +74,7 @@ rather than by reading the source. `face-sgr` was applied across the whole
 constructible span of `Face`'s attribute mask and colour indices; `parse-sgr`
 was applied to every code from 0 to 50.
 
-`parse-sgr` names **21** of the 51 codes: `0 1 4 7 22 24 27`, `30` through `37`,
+`parse-sgr` names **23** of the 51 codes: `0 1 4 7 22 24 27`, `30` through `37`,
 and `40` through `47`. Every other code returns `sgr-other`, which `apply-one`
 folds as identity (`grid.chiral:229`).
 
@@ -108,17 +108,30 @@ importers are **two**, both sample roots (`t5_vt_parser`, `t6_apc_roundtrip`).
 Every path to `grid.chiral` bottoms out under `prog/scriba/samples/`.
 
 Those roots reach Phase 7, which **compiles and runs nothing**: the phase's own
-header says *"Compile only (no run)"* and the loop ends at the compiler
-(`tools/test/run-tests.sh:172-183`). Neither `t4_grid` nor `t5_vt_parser` is in
-that phase's `KNOWN_FAIL` (`:173`), and both were compiled clean in this run.
+header says *"Compile only"* (`tools/test/run-tests.sh:150`) and the loop ends
+at the compiler (`:177-190`). Neither `t4_grid` nor `t5_vt_parser` is in that
+phase's `KNOWN_FAIL` (`:173`), and both were compiled clean in this run.
 
 **Zero roots under `tools/test/samples/` import `protocol/grid` or
-`protocol/vt-parser`.** Six import `protocol/render` (`e158_doc`,
-`e158_render`, `e174_row`, `e175_face`, `e181_pretty`, `e182_arity`). So the
-half of this element's law that runs today is the emit half, and the decode half
-is gated on compilation and on nothing else. **A round-trip gate must therefore
-create the reach it needs**, which §5 does by landing a root under
-`tools/test/samples/` and §6 prices as the element's own phase.
+`protocol/vt-parser`.** Three import `protocol/render` (`e158_render`,
+`e174_row`, `e175_face`); `e158_doc`, `e181_pretty` and `e182_arity` reach the
+display tier through `prelude/doc` and `typing/diag` instead. So the half of
+this element's law that runs today is the emit half, and the decode half is
+gated on compilation and on nothing else.
+
+⚑ **A root under `tools/test/samples/` creates no reach by itself, and this is
+the measurement that prices the gate.** Phase 7's census is
+`grep -rl '^(def compile-main' lib prog` (`run-tests.sh:175`), so `tools/` sits
+outside it and nothing there is even compiled by the sweep. Phase 2's manifest
+is six named roots under `prog/samples/` (`prog/test-runner.prog:40-46`) and it
+is a bundled list rather than a directory walk, so it reaches nothing under
+`tools/` either. ⚑ `tools/test/tal-check.sh:127-129` states the opposite,
+*"everything under samples/ is walked by Phase 2's test-runner and counted by
+the compile-only root census"*, and both halves are false against the two
+sources above. Every root under `tools/test/samples/` is reached by exactly one
+thing: a phase script naming it as its `FIXTURE`, dispatched by a `run_phase`
+line. **So the reach this element needs is the `run_phase` line, and §6 records
+that the number for it is an open author call.**
 
 ### M3. `grid.chiral` is outside the compiler's blob, measured on the blob
 
@@ -171,9 +184,10 @@ arms the emit side cannot reach at all: `sgr-blink` and `sgr-strike` have no
 | measured | figure | command |
 |---|---|---|
 | `(r-face` applications | **26** tree-wide, **18** under `prog/scriba/` | `grep -rn '(r-face' lib/ prog/ \| grep -v ':[0-9]*: *;'` |
-| `(face-sgr` call sites | **2**, both in `render.chiral` (`:396`, `:772`) | `grep -rn '(face-sgr' lib/ prog/ tools/` |
-| `(face-join` call sites | **1**, `render.chiral:773` | the same, with `face-join` |
-| `Face` constructions | **14**, every one in `render.chiral` | `grep -rn '(face ' lib/ prog/` |
+| `(face-sgr` call sites | **2**, both in `render.chiral` (`:396`, `:772`) | `grep -rn '(face-sgr' lib/ prog/` |
+| `(face-sgr` inside gate mutants | **2** more, `face.sh:371` and `render-doc.sh:362`, both `sed` patterns over a copy | the same, with `tools/` added |
+| `(face-join` call sites | **1**, `render.chiral:773` | `grep -rn '(face-join' lib/ prog/ tools/` |
+| `Face` constructions | **14**, every one in `render.chiral` | `grep -rn '(face ' lib/ prog/` returns 20; the six the figure excludes are the `face` constructor's own field list (`:38`), `r-face`'s `face` field (`:15`), three `case` patterns (`:191`, `:369`, `:371`) and a lambda parameter named `face` (`chat-view.chiral:121`) |
 | `lookup-face` call sites | **8** | `grep -rn '(lookup-face' lib/ prog/` |
 
 **This element carries none of the 26.** The `r-face` constructor
@@ -194,12 +208,16 @@ a refinement on the field a live question rather than a formality. §6 carries i
 value: an `attr[]` set plus single-valued `fg` and `bg` registers, in awk, with
 its own state machine over `ESC[…m`. It is E175's Phase 16 gate and it runs.
 
-It disagrees with `apply-one` on two classes. Its final arm is
+It disagrees with `apply-one` on three classes. Its final arm is
 `else { attr[v]=1 }`, so `ESC[22m` sets attribute 22 where `apply-one` clears
-bold; and every unknown code becomes a set flag where `parse-sgr` returns
-`sgr-other` and the fold ignores it. `face-sgr` emits neither class today, so the
-gate stands correct where it is. It does mean the awk reducer cannot serve as
-the oracle for this element's law without diverging from it.
+bold; every unknown code becomes a set flag where `parse-sgr` returns
+`sgr-other` and the fold ignores it; and the reducer honours `39` and `49` as
+default-fg and default-bg (`face.sh:213`, `:215`) where `parse-sgr` has no row
+for either and returns `sgr-other`. So the two models disagree in **both**
+directions: the awk knows two codes the typed decoder does not, and the typed
+decoder knows three off-codes the awk does not. `face-sgr` emits none of the
+five today, so the gate stands correct where it is. It does mean the awk reducer
+cannot serve as the oracle for this element's law without diverging from it.
 
 ⚑ **This is a finding about [[banks/render]].** That bank lists twenty-three
 shards across twelve homes and gives none of them to `tools/test/face.sh`. A
@@ -366,9 +384,17 @@ typedef struct {
                false false                    ; blink, strike: unreachable from Face
                (idx->color fg) (idx->color bg))))))
 
+; ⚑ THIS PAIR ALREADY EXISTS, in a fixture rather than in lib/.
+; `prog/scriba/samples/t4_codec.prog:17-31` defines `color-eq` and `attrs-eq`
+; over these same two types, structurally identical to the bodies below, with
+; its own `booleq` at `:15`. That root is one of the four Phase 7 compiles and
+; does not run. So the choice is not whether to write this pair; it is whether
+; it is hoisted into `grid.chiral` beside `Attrs` and the fixture reduced to a
+; caller, or copied a second time. §6 carries it as an open question.
+;
 ; Equality is written out rather than borrowed from `cell->bytes`. The codec is
 ; injective over the colours parse-sgr can produce, so byte equality WOULD serve
-; — and it would put E111's codec on this element's blame chain, so a codec bug
+; and it would put E111's codec on this element's blame chain, so a codec bug
 ; would redden a style row. Total case, arm per constructor, no `_`.
 (def color-eq
   (lam (a b)
@@ -385,8 +411,10 @@ typedef struct {
       ((attrs xb xu xi xr xk xs xf xg)
         (case y
           ((attrs yb yu yi yr yk ys yf yg)
-            (and (beq xb yb) (and (beq xu yu) (and (beq xi yi)
-            (and (beq xr yr) (and (beq xk yk) (and (beq xs ys)
+            ; `bool-eq` is render.chiral:202 and this module imports it. The
+            ; tree has no `beq`; `t4_codec.prog:15` spells its own `booleq`.
+            (and (bool-eq xb yb) (and (bool-eq xu yu) (and (bool-eq xi yi)
+            (and (bool-eq xr yr) (and (bool-eq xk yk) (and (bool-eq xs ys)
             (and (color-eq xf yf) (color-eq xg yg))))))))))))))
 
 ; THE DOMAIN, as a predicate. `Face`'s three I64 fields state none of this, so
@@ -473,21 +501,52 @@ typedef struct {
   under `tools/test/`. **Zero compiler changes**, and M3 is the measurement that
   licenses it: both edited files are outside `prog/compiler.prog`'s blob, so
   implementation is a plain `chirality run FILE`.
+- **The new script owes `registration.sh` one line.** `tools/test/registration.sh`
+  grades the directory against `run-tests.sh`'s dispatch table, and its G2 row
+  fails any `tools/test/*.sh` that is neither dispatched by a `run_phase` line
+  nor carries a `# not-a-phase: <reason>` header line. Measured in this run: 13
+  dispatch lines, 20 scripts, 7 of them `PEND`. So a phase script landing with
+  the number still `UNASSIGNED` must carry the declaration, and the run then
+  prints it under *"written, and NOT dispatched: these gates do not run"*.
+  `crypto.sh:6`, `apply-word.sh:5` and `tal-check.sh:11` are the three standing
+  precedents.
+- **The `grid.chiral` edit runs under no gate today, and this element does not
+  change that.** `parse-sgr` and `fold-sgr` are reached by `t4_grid.prog:94`,
+  `:112` and by `lib/protocol/vt-parser.chiral:253`, whose own importers are two
+  `prog/scriba/samples/` roots. All of them stop at Phase 7. So there is no E111
+  gate to re-run after the two `cond` rows land, and nothing existing reddens if
+  they are wrong. `t4_grid` folds codes `1` and `31` only, so the new rows change
+  no fixture's result. **Who owns a `parse-sgr` regression is an open question**,
+  carried below.
 - **The layering rule holds and is respected.** `lib/prelude/doc.chiral:13-16`
   states that `Doc` depends on nothing but `Str`, `List` and `I64`. Nothing here
   touches `Doc` or `d-tag`. `protocol/style` sits at the `protocol/` tier and
   imports two `protocol/` siblings, which is the tier the rule leaves free.
 - **Conformance target.** `walk-amb` returns true over the full product, giving
-  exit 42, and every one of M1's three losses reddens it when reintroduced:
-  removing the `(=i code 3)` row from `parse-sgr` must fail the gate; widening
-  `in-sgr-domain`'s `fg` bound to 17 must fail it; and reverting `face-sgr` to
-  its own code list must fail whichever row checks `face-sgr` against
-  `sgr-str (face-params f)`. Alongside that, `tools/test/face.sh` stays green:
+  exit 42. The product is 11 ambients x 16 attribute masks x 9 `fg` x 9 `bg` =
+  **14,256** probes, and removing the `(=i code 3)` row from `parse-sgr` flips
+  **7,128** of them, exactly the half whose mask carries bit 4. That mutant is
+  the one M1 loss this gate convicts.
+  ⚑ **The other two stated mutants cannot redden this gate as §5 draws it.**
+  `in-sgr-domain` is applied to the ambient `v` only, and all eleven registry
+  faces have `fg` in `{-1, 1, 2, 3, 4, 7}`, so widening its bound to 17 leaves
+  the predicate true on every one of them; the sweep's own range comes from
+  `walk-fg`'s starting counter and reads nothing from the predicate. And no row
+  in §5's root compares `face-sgr` against `sgr-str (face-params f)` at all: the
+  gate calls `face-params` and `fold-sgr`, and never `sgr-str`. Both wants need
+  a row that exists before they mean anything. `tools/test/face.sh` stays green
+  independently:
   `face-sgr`'s output is byte-identical after the split by construction, and
   E175's cell maps are graded on those bytes.
-- **What this element's gate ends in, and it runs.** An exit code from a
-  compiled native binary, checked by a suite phase. It does not end in screen
-  bytes, and that is what keeps `display-calculus/A1` from blocking it: `A1` is
+- **What this element's gate ends in, and what runs it.** An exit code from a
+  compiled native binary, checked by a suite phase. ⚑ **No suite phase executes
+  it while the number stays `UNASSIGNED`.** The two censuses that sweep roots
+  without being told about them both stop short of `tools/test/`, measured in
+  M2, so the gate is reached by its own phase script and by nothing else. Until
+  a `run_phase` line exists the element ships a gate that runs by hand, which is
+  the shape [[working-discipline]]'s reporting rule names and which the phase
+  row below prices. It does not end in screen bytes, and that is what keeps
+  `display-calculus/A1` from blocking it: `A1` is
   still owed (`lib/protocol/render-doc.chiral` has zero importers and `dg-doc`
   has no consumer outside `lib/typing/diag.chiral`), so a gate ending in a
   rendered screen would have nothing producing one. This gate's producer is
@@ -527,7 +586,21 @@ typedef struct {
      unknown and off codes. `fold-sgr` is the typed version of exactly that
      reducer. Whether a chirality decoder replaces it belongs to
      [[arcs/enforcement-arc]]'s tooling-surface requirement.
-  5. **Whether `lib/protocol/style.chiral` carries a `(module …)` coordinate.**
+  5. **Which element owns a `parse-sgr` regression.** The two `cond` rows land
+     inside `grid.chiral`, which `docs/elements/ledger.md:177` records as E111,
+     `built`. E111's own stated conformance is *"t4_codec/t4_grid native exit
+     42"*, and both roots sit under `prog/scriba/samples/`, which Phase 7
+     compiles and executes none of, so E111 has no running gate to re-run. The
+     call is whether this element's row inherits `parse-sgr` outright or E111's
+     row is reopened to carry the arm it already declares.
+  6. **Where `color-eq` and `attrs-eq` live.** They exist at
+     `prog/scriba/samples/t4_codec.prog:17-31`, in a fixture, over library
+     types. Hoisting them into `grid.chiral` beside `Attrs` gives one definition
+     and puts them on E111's row; leaving them and writing a second pair in
+     `style.chiral` gives this element a clean blame chain and two definitions of
+     one function. `tools/test/row.sh:729-770` censuses `render.chiral`'s names
+     for exactly this class and covers neither file.
+  7. **Whether `lib/protocol/style.chiral` carries a `(module …)` coordinate.**
      Zero of the eleven files under `lib/protocol/` do, against nine of nine
      under `lib/prelude/`. A new file is the cheapest moment to start, and
      starting alone leaves the other eleven silent.
