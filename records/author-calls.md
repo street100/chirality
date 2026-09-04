@@ -1,9 +1,9 @@
 ---
 node: records-author-calls
 layer: record
-related: [records/README, records/consolidation-handoff, arcs/README, elements/README, index]
+related: [records/README, records/consolidation-handoff, arcs/README, elements/README, decisions/decision-erased-word-level, index]
 status: current
-updated: 2026-09-03
+updated: 2026-09-04
 ---
 
 # Open author calls
@@ -28,9 +28,31 @@ where the tree does not settle the answer and a pass must stop.
 | When the native-stack track opens | [[decisions/decision-scope]] holds the current track to self-hosting only. The author stated [[goals/native-stack]] and its internal order on 2026-09-03, then opened [[arcs/native-protocol-arc]] the same day, in session, with a next-day target on the kernels. The window and document arcs sit unopened |
 | `E184-E189` is one band and two focuses draw on it | [[arcs/enforcement-arc]] and [[arcs/diagnostics-arc]] both mint from it, `E184` is spent, and four numbers remain. Concurrent minting is the collision that produced two `E173`s. The work split is in `docs/decisions/decision-lane-split.md` |
 | Which arc owns the allocation gap | ~1,747 B of arena per input byte, no reclamation on any compiled path, and a projected ~6.3 GB at the default scope against 3.85 GB with no swap. It blocks manas and scriba from running once transport lands and no arc holds it |
-| The `$apply` dispatcher's erased domains | `apply-ty` spells a defunctionalization family's domains with one member's concrete `Core` types, while `shape-eq` erases every non-arrow domain into that family on purpose, so four dispatchers carry a tal type `ck-prog` is right to refuse ([[records/enforcement-arc]] EN-15). `Core` has no word spelling, `closconv-sig` runs after the typecheck so nothing re-checks its output, and the same question returns on the `$kI_J` capture constructor's field types. Until it is answered, `ck-prog` cannot refuse on the shipping path |
+| The `$kI_J` capture constructor's field types | The 2026-09-04 ruling below settles where the `$apply` dispatcher's erased domains live and does not reach the capture constructor. `.planning/RESEARCH-EN15-prior-art.md` §7 shows both published shapes keeping constructor fields CONCRETE, and the structural reason: a capture constructor is applied at one site, so nothing forces its fields to merge, while the dispatcher's argument position is constrained by the whole family. That makes the constructor the concrete side and the dispatcher the varying side, the opposite arrangement to the measured `$apply7`, which reddens through `ck-con`'s field check. Whether the two instances are one defect or two is the call ([[records/enforcement-arc]] EN-17). Until it is answered, `ck-prog` cannot refuse on the shipping path |
 
 ## Closed since the hoist
+
+- **The `$apply` dispatcher's erased domains.** **ANSWERED 2026-09-04.** The
+  erased-word type lives strictly at the lowering type level. `Core` gains no
+  word spelling and the kernel's `conv` relation is not widened. The reasons are
+  in [[decisions/decision-erased-word-level]] and the measurement is
+  [[records/enforcement-arc]] EN-15. The strongest reason stands alone:
+  conversion is an equivalence relation, so it is transitive, and a `Word` that
+  converts with `I64` and with `(List Str)` makes `I64` convert with
+  `(List Str)`, which collapses the source type system. GHC keeps `Any` a closed
+  family with no equations for exactly this, and Java keeps `Object` in a
+  directional relation. Behind it: `.planning/RESEARCH-EN15-prior-art.md` §6
+  surveys seven systems and none admits such a type into a source conversion or
+  equality relation; `closconv-sig` runs after the typecheck, so the kernel would
+  never use the widened relation; `tt-word` already carries the relation at
+  exactly one level; and the one argument for the kernel, re-checking
+  post-closconv output, asks one instrument to work at two levels, which
+  `docs/banks/verification.md` refuses, so it is an argument for unblocking
+  `ck-prog`, which is the ruling. ⚑ **Two things stay open and both are named.**
+  The SPELLING of the erased position is **E185**: a quantified type variable
+  against a coarse word type of the lower language. The `$kI_J` capture
+  constructor's field types are a separate call and hold a row in the table
+  above.
 
 - **The `ck-prog` repair shape.** **ANSWERED 2026-09-03.** Both defects are
   repaired in the checker, and neither is a loosening: each makes `ck-prog` match
