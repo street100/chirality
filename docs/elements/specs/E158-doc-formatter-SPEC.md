@@ -90,10 +90,11 @@ updated: 2026-08-31
   - **`Judg` = 38 nullary arms** (`diag.chiral:97-110`, counted: 38 distinct
     `(jg-…)` tokens). E182's territory, stated here only so §5 does not try to
     fix it.
-  - **`lib/protocol/render.chiral`.** `Rendering` = 8 constructors (`:6-14`),
-    `r-face (face Str) (body Rendering)` at `:14`, `r-lines` at `:12`,
-    `lookup-face` declared `:39`. **`(data Mode ()` at `:24`** — decision 4's
-    citation, verified.
+  - **`lib/protocol/render.chiral`.** `Rendering` = 8 constructors when this was
+    measured and nine today, E174 having added `r-row` (`:7-32`),
+    `r-face (face Str) (body Rendering)` at `:15`, `r-lines` at `:13`,
+    `lookup-face` declared `:57`. **`(data Mode ()` at `:42`** — decision 4's
+    citation, verified; re-read 2026-09-04.
   - **`lib/prelude/string.chiral`** — `str-join` `:215`, **`str-pad` `:209`**
     (decision 11: this is `nl-indent`'s spaces; no new primitive).
     **`lib/prelude/list.chiral`** — `reverse` `:33`, signature

@@ -22,7 +22,7 @@ updated: 2026-08-12
 
 ## 1. Deliverable
 
-- **After this runs:** `term->ntalty` (`compile-front.chiral:30`) assigns the
+- **After this runs:** `term->ntalty` (`compile-front.chiral:60`) assigns the
   six single-word handle porttypes — `Sock`, `LSock`, `Fd`, `Clock`, `Timer`,
   `Env` — a runtime carrier (`nt-i64`) at the front peel, so a def whose
   argument, return, or data-field is one of them PEELS and emits an entry label

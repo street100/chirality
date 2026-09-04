@@ -139,11 +139,11 @@ with E174 already landed.**
    contains a value whose ANSI rendering is wrong and nothing that renders it.
 
 4. **⚑ The forcing consumer does not nest either, which changes what the fix has
-   to cover.** `dg-doc` (`lib/typing/diag.chiral:510`) is E158's `(-> Reason Doc)`
+   to cover.** `dg-doc` (`lib/typing/diag.chiral:561`) is E158's `(-> Reason Doc)`
    and the mapping E158 commit 4 will build is `d-tag` → `r-face`
    (`lib/prelude/doc.chiral:83,182`). Its thirteen `d-tag` sites (`:519,526,528,
    535,543,546,555,573,587,601,616,624,637`) are **all siblings** — `diag-head`
-   beside `diag-site`, never inside — and `dg-decl-doc` (`:647`), the one function
+   beside `diag-site`, never inside — and `dg-decl-doc` (`:720`), the one function
    called from *inside* a `d-tag` body, emits `doc-concat` of plain `d-text`s and
    no tag of its own. So `dg-doc`'s first arm, `r-redeclared`, becomes
 

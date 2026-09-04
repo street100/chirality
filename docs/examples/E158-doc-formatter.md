@@ -285,7 +285,7 @@ sections, real provenance, one expression:
 ; two mutually-recursive pairs over a worklist that grows. That is E50, NOT
 ; BUILT. Nothing breaks (totality is not enforced by default), but do not write
 ; "the checker proves it" in the spec.
-; NOT `Mode`: `protocol/render.chiral:24` already defines a `Mode`, and names
+; NOT `Mode`: `protocol/render.chiral:42` already defines a `Mode`, and names
 ; are FLAT in a blob — "two defs of one name is `duplicate label`"
 ; (module/resolve.chiral:57-61, which renamed `read-fd-all` for exactly this).
 ; `protocol/render-doc.chiral` below must import both modules, so the two would

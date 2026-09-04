@@ -55,7 +55,7 @@ updated: 2026-08-12
     `memfd_create("chirality-pool",0)` → `ftruncate(fd,size)` → `mmap(fd,size)`,
     `size<=0` rejected.
   - The error-path precedent this element does *better* than the oracle:
-    `open-pty` (`term.chiral:183`) threads `close` on every error path after the
+    `open-pty` (`term.chiral:197`) threads `close` on every error path after the
     master fd is open (:190/:193/:197) and decodes negative raw returns into a
     `pty-err` sum (`<i master 0` :186, `<i rc 0` :173).
 - **True delta:** one native TAL body (`nb-pool-create-t`) + one crossing row +

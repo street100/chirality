@@ -246,7 +246,7 @@ alone.**
     ⚑ `symop->s : (-> SymOp Str)` **already exists**, at
     `lib/lowering/upper/closconv-driver.chiral:31` — so `pp-op` may not be spelled
     that way, and `typing/` importing `lowering/` is the wrong direction anyway
-    (§6). Likewise `dg-qty-name` (`diag.chiral:286`) prints `"omega"`, not `"w"`:
+    (§6). Likewise `dg-qty-name` (`diag.chiral:294`) prints `"omega"`, not `"w"`:
     a source printer genuinely needs the other spelling, so `pp-qty` is a second
     function and not a duplicate.
 
@@ -390,7 +390,7 @@ Every former has one of two shapes:
 - keyword form: `(d-group "(" ++ tag kw ++ nest 2 (line ++ arg)* ++ ")")`
 - application: the same without the keyword, with the head in its place.
 
-`d-nest 2` matches `dg-doc`'s own indent (`diag.chiral:523`, and eight more). The breaks:
+`d-nest 2` matches `dg-doc`'s own indent (`diag.chiral:561`, whose `d-nest 2` sites are `:574` and nine more). The breaks:
 
 - **`brk-space` everywhere between tokens.** Flat gives `" "`, broken gives a
   newline plus the indent — which is exactly the separator an S-expression wants.

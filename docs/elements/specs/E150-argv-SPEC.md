@@ -85,8 +85,8 @@ updated: 2026-08-22
     blob — `load: extern redeclared: read`, zero-byte output; the same for a
     duplicate `openat`. So `read`/`write-fd` **must** come from `(import
     "ports")`, never a local declaration — which is exactly what the cited
-    `resolve.chiral` does (`:19` imports `ports` *for* `read`; only `openat`
-    `:24` and `close` `:25` are local). `close` and `openat` are the open
+    `resolve.chiral` does (`:44` imports `ports` *for* `read`; only `openat`
+    `:49` and `close` `:50` are local). `close` and `openat` are the open
     question, not `read` (§3 decision 2, REOPENED).
   - **`term.chiral:137`** `(extern close (=> I64 Unit))` — a **library** (not a
     root) that declares `close` locally, and it is in `scriba`'s import graph.

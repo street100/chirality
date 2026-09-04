@@ -145,7 +145,7 @@ catalog row.**
    ```
 
    `d-group` renders **flat when it fits** (`doc.chiral`, Lindig), and flat mode
-   turns `(d-line (brk-space))` into a single space (`doc-best`, `:169`). So at any
+   turns `(d-line (brk-space))` into a single space (`doc-best` `:140`, its `brk-space` arm at `:169`). So at any
    width where the group fits, `diag-head`'s tagged span, a space, and
    `diag-site`'s tagged span land on **one output line**. `d-tag`→`r-face`
    (`LEDGER.md:283`), and `r-face` is a wrapper that emits no `ansi-goto` of its
@@ -499,8 +499,8 @@ what is written out is what a later run must get *right*, not what it must type.
 ## 6. Use / modify notes
 
 - **Lands in:** `lib/protocol/render.chiral` — the sum (`:6`), the new constants,
-  `str-cols` + `rnd-cols` + its four folds, the `render-to-ansi` arm (`:424`), the
-  `diff-node` arm (`:223`), and a new `(import "protocol/utf8")`. Secondarily
+  `str-cols` + `rnd-cols` + its four folds, the `render-to-ansi` arm (`:731-732`), the
+  `diff-node` arm (`:303-309`), and a new `(import "protocol/utf8")`. Secondarily
   `lib/protocol/apc.chiral` (`enc` at `:89`, plus decode) — see open question 5.
   Nothing in `prog/` needs touching: the eight only-constructing files are
   unaffected by a new arm, and all three `.prog` files that do case

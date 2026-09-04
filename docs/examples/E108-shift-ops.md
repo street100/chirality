@@ -95,7 +95,7 @@ you when a value's signedness changes elsewhere.
 ## 5. Chirality example (fleshed)
 
 The whole element is these two lines, added in `prelude.chiral` right after the
-existing `shl` extern (`:59`), mirroring the E96 band/bor/bxor/shl block exactly:
+existing `shl` extern (`:69`), mirroring the E96 band/bor/bxor/shl block exactly:
 
 ```chirality
 ; ---------------------------------------------------------------- i64 (bitwise)

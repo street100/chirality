@@ -236,7 +236,7 @@ v.erase(std::unique(v.begin(), v.end()), v.end());  // keeps the head of each ru
   comparator over `(Pair I64 Str)` and assert the surviving tags are the first of each
   key-run. (A test that only uses `str-cmp` cannot fail the decision this element makes.)
 - **Open questions (for the spec stage):**
-  1. Does `row-join` — "dedup union", `effects.chiral:23`, imported at
+  1. Does `row-join` — "dedup union", `effects.chiral:25`, imported at
      `row-infer.chiral:16` and also used by `eff-lower.chiral:46,52` — become a consumer
      of the owner too, or does a union over an accumulator stay its own linear scan?
      (It is the third de-duplicator in this one file; E156 does not touch it.)

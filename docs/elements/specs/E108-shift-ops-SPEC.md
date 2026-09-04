@@ -54,7 +54,7 @@ updated: 2026-08-12
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
-| 1 | Should E108 touch any layer besides the prelude extern? | RESOLVED — surface-only. | Every internal layer is pre-wired by the Euclidean-division lowering that already emits `sar`/`shr`; verified at `prelude.chiral:28`, `impl_pure.py:66-67`, `native.py:63/70`, `optimize.py:705`, `tal-erase.chiral:101-102`, `mach-x64.chiral:321/323`. The extern is the only missing face. |
+| 1 | Should E108 touch any layer besides the prelude extern? | RESOLVED — surface-only. | Every internal layer is pre-wired by the Euclidean-division lowering that already emits `sar`/`shr`; verified at `prelude.chiral:70`, `impl_pure.py:66-67`, `native.py:63/70`, `optimize.py:705`, `tal-erase.chiral:101-102`, `mach-x64.chiral:321/323`. The extern is the only missing face. |
 | 2 | `shr` logical vs `sar` arithmetic — are the semantics settled? | RESOLVED. | Settled by the existing interp arms `impl_pure.py:66-67`: `shr` masks to unsigned then shifts (zero-fill); `sar` keeps the sign-propagating shift (sign-fill). Count masked `&63` on both — no undefined-behavior cliff. Two distinct names by design (boundary-sums; the shift kind is a `ctor`, never a signedness accident). |
 | 3 | Migrate `poll.chiral:bit?` to the new op in this run? | DEFERRED to §6 residue. | The extern is the element; the call-site rewrite is optional polish, not required for the gate. |
 
