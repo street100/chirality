@@ -28,7 +28,7 @@
 #   G5   the quantity is always printed -- the evidence row        [M6]
 #   G6   no invented name shadows a FREE one                       [M7]
 #   G7   arm binders agree with the elaborator's push order        [M8]
-#   G8   adoption is real and the frozen gates did not move [M9,M10,M11]
+#   G8   adoption, the frozen gates, the witness [M9,M10,M11,M26]
 #   G9   the file is IMPORTABLE -- refused twice over before  [M12,M13]
 #   G10  no cross-assertion on E157's wording                     [M14]
 #   G11  E154 census, tree-wide, for every `pp-` name             [M15]
@@ -530,8 +530,8 @@ else bad "G8(e) run-tests.sh no longer invokes $REGN -- every run_""phase line i
 grep -vF "$REGN" "$HERE/run-tests.sh" | grep -vF "$RINV" >"$TMP/rt-nowitness.sh"
 if [ "$(grep -cF "$REGN" "$TMP/rt-nowitness.sh")" = 0 ] \
    && [ "$(grep -cF "$RINV" "$TMP/rt-nowitness.sh")" = 0 ]; then
-  ok "M18 drop-the-witness -- G8(e) sees the invocation stripped from a copy"
-else bad "M18 drop-the-witness -- the check cannot see a stripped invocation; G8(e) is toothless"; fi
+  ok "M26 drop-the-witness -- G8(e) sees the invocation stripped from a copy"
+else bad "M26 drop-the-witness -- the check cannot see a stripped invocation; G8(e) is toothless"; fi
 
 # M9: the census must be able to SEE a re-added call site.
 if mutlib "M9" lib/typing/diag.chiral "s/(cons (pp-of pfx e)/(cons (d-text (${DTT} e))/"; then
