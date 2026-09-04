@@ -304,6 +304,7 @@ m = re.match(r"data redeclared: (\w+)", str(e))   # re-parsing our own message
   owner). Edits follow in `lib/module/loader.chiral` (`:55`, `:56`, `:60-73`,
   `:428`, `:438`, `:464`, `:472`, `:480`, `:494`, `:555`, `:576`) and
   `lib/typing/kernel.chiral` (`:313`, `:410`).
+- 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 - **Conformance target:** the **existing** diagnostics must still be produced, byte
   for byte where they are asserted — and the audit measured exactly where that is,

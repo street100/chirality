@@ -40,6 +40,7 @@ underived, since a check right two-thirds of the time gets suppressed."* So the
 directory assignment below is **proposed with evidence**, never derived.
 
 ## §2 · `scaffold/lib` top level — 97 modules
+2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 | proposed | count |
 |---|---|
@@ -78,7 +79,7 @@ a spec must confirm each against `axis-altitude`.
 | `prelude` | 4 | 1 | re-import — E155 dedups |
 | `grid` | 3 | 1 | re-import |
 | `apc` `collections` `ports` `render` `session` `utf8` `vt-parser` | 2 each | 1 each | re-import |
-| **`t1_child_wiring`** | 2 | **2** | **REAL** — `TUI/samples/` vs `scaffold/samples/`, different bytes |
+| **`t1_child_wiring`** | 2 | **2** | **REAL** — `TUI/samples/` vs `scaffold/samples/`, different bytes. 2026-09-04: pre-migration scaffold/ path. |
 
 ⚑ **Correction owed to the E172 catalog row.** It says *"10 basenames already
 collide."* The pre-run said **duplicated**; *collide* was my escalation, and E155

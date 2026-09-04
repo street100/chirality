@@ -177,3 +177,4 @@ Record Pool := { n : nat ; p : Vector.t byte n }.   (* p's type uses n *)
   actually uses), [[E52-certificate-split]] (extrinsic/de-Bruijn checker — why
   self-host needs neither this nor Σ), [[E50-mutual-lexicographic]] /
   [[E47-sized-types]] (the sibling self-applicability features).
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.

@@ -216,3 +216,4 @@ constexpr int factorial(int n) {
 - **Related:** [[E57-staging-modality]] · [[E38-graded-cost]] · [[E17-optimizer]]
   · [[decision-graded-kernel]] (Fork C, settled) · [[modules-staging]]
   · [[E9-refinement-decision]] · [[E16-lowering]] · `.planning/FORK-C-UNROLLED.md`
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.

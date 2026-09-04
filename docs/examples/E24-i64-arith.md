@@ -49,6 +49,7 @@ updated: 2026-07-12
      *validate* the native floor by differential fuzz across the full sign grid.
   4. Division is **partial** at `b = 0`; the reference returns `None` and the
      caller raises `PortError` (impl_pure.py:30, 62–75).
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 3. Conventional (other-language) approach
 

@@ -112,6 +112,7 @@ class TestBeta(unittest.TestCase):
         src = "((lam (x) x) 7)"
         # the oracle is IMPORTED, never passed: py_check is ambient
         self.assertEqual(chirality_eval(src), py_check.normalize(parse(src)))
+2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
     def test_kernel_rejects_bad_app(self):
         with self.assertRaises(py_check.TypeError_):
@@ -302,6 +303,7 @@ class TestBeta(unittest.TestCase):
 ; NOTE: `scaffold/build/blob.chiral` fails the admission test on (a), (b) and (e)
 ; — gitignored, resolver-regenerated, and 660 KB.  It was also never the E161 G0
 ; anchor: that was the heredoc pin in test-module-kind.sh (§2 finding 4).
+; 2026-09-04: pre-migration scaffold/ path.
 
 ; ------------------------------------------------------- per-file bookkeeping
 (data Mig () (mig (src Str) (fns I64) (disps (List Disp))))
@@ -345,6 +347,7 @@ class TestBeta(unittest.TestCase):
       (cons (beta-gate adequacy minted)
       (cons (app-mismatch-gate adequacy)
         nil)))))                                   ; …  one gate per source function
+; 2026-09-04: pre-migration scaffold/ path.
 
 ; ------------------------------------------ re-founding ONE differential (a)
 ; BEFORE (python):  assertEqual(chirality_eval(src), py_check.normalize(parse(src)))

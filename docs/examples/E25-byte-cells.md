@@ -60,6 +60,7 @@ updated: 2026-07-13
      I64 → I64`, tal.py:130–143) but bounds are checked **dynamically** by the
      interpreter; nothing at the tal level stops an out-of-range index —
      that safety currently lives in the bytearray.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 3. Conventional (other-language) approach
 

@@ -242,3 +242,4 @@ bundle mainModule = do
 - **Related:** [[IMPORT-HANDLER-BRIEF]] (the in-compiler alternative),
   [[E51-sys-face-linkage]] (the openat/read surface the bundler needs),
   [[E28-mmap-munmap]] (filesystem syscalls).
+- 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.

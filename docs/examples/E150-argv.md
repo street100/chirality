@@ -258,6 +258,7 @@ signature; take the crossing, refuse the type. Two amendments:
 (`chirality_blob scaffold/lib prelude` + this file), and the resulting ELF, invoked
 as `./argv.elf alpha "beta gamma"`, printed its own path, `alpha`, and
 `beta gamma`, and exited `3`. Nothing under `scaffold/` was modified to do it.
+2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 ```chirality
 ; ---- the boundary sum + the ONE crossing ------------------------------------
@@ -423,6 +424,7 @@ exit status `3`. This exact run is the evidence behind this example
 `bin/chirality-bin < blob > argv.elf` → `./argv.elf alpha "beta gamma"` printed
 `./argv.elf` / `alpha` / `beta gamma` and exited `3`; with no arguments it
 exited `1`).
+2026-09-04: pre-migration scaffold/ path.
 
 **The check does not discriminate a compiler change under (a)** — the committed
 `B1` already compiles and runs it, which is the point of the corrected scope. It

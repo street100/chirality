@@ -58,6 +58,7 @@ updated: 2026-07-12
   4. **The invariant the SPEC forces:** `base <= heapptr <= heapend`, and every
      handed-out pointer lies in `[base, end)` and is 8-byte aligned. That is the
      whole correctness contract the chirality side must preserve.
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 ## 3. Conventional (other-language) approach
 

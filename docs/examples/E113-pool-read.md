@@ -43,6 +43,7 @@ updated: 2026-08-11
   lines 266-292), `mem-region.chiral` (the linear bump arena, the `Region.cap`
   runtime witness), and `sys-tal.chiral` (the `nb-sys-memfd`/`ftruncate`/`mmap`/
   `munmap` TAL bodies, lines 75-107).
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
 - **Key findings (the load-bearing facts):**
   1. **The runtime length is NOT lost — it lives in the host port value.** At the
@@ -218,3 +219,4 @@ resources are threaded through `case` (the `mem-region.chiral` idiom) — **not*
 - **Related:** [[E111-pool-grid]] (the cell-store dependent that needs indexed
   reads), [[E107-pool-close-munmap]] (shares the runtime-length resolution above),
   [[ports]], [[memory]].
+- 2026-09-04: cut Python oracle, no live successor.

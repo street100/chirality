@@ -218,3 +218,4 @@ grade argument; `s0`/`(ssuc i)` are the size expressions.
   [[E38-graded-cost]] (the carrier the size index may ride),
   `docs/decision-graded-kernel.md` (point 2: size ≈ cost grade),
   `docs/totality.md` (the enforcement seam).
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.

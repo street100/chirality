@@ -267,6 +267,7 @@ whose violation is *already an error* — just a late and unreadable one.
   Giving it a directory would be a second truth about a fact already carried
   perfectly. Pure value modules go in `upper/` because they are *upper*; their
   purity stays in their arrows.
+- 2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 ### Answering `sys-tal.chiral` directly
 
@@ -397,6 +398,7 @@ lib/lowering/x64/emit.chiral   metal/mach-x64.chiral
 lib/lowering/mach/asm-reloc.chiral  metal/elf.chiral
 scaffold/lib/upper/…                                    ; everything else
 ```
+2026-09-04: pre-migration scaffold/ path.
 
 - **Knobs to modify:** the entry symbol (`"(def compile-main"`) if the entry
   convention ever changes; `strict?`'s flip point; the probe order in

@@ -36,6 +36,7 @@ updated: 2026-08-08
   source, the `Sig`/`Term` data structures in `kernel.chiral`, and the
   `scaffold/chirality/surface.py` Python baseline the chirality loader ports.
 - **Key findings:**
+- 2026-09-04: the Python oracle was cut, and scaffold/ went with it in the 2026-08-31 migration. The citations it left are kept as a record and have no live successor.
 
   1. **Rust's `#![recursion_limit]`** (default 128 in 2015 edition, 512 in 2021+)
      is the canonical self-hosted-compiler capacity control — a configurable
@@ -75,6 +76,7 @@ updated: 2026-08-08
 
 How this is done in the Python baseline (`scaffold/chirality/surface.py`) and in
 Rust/OCaml compilers.
+2026-09-04: cut Python oracle, no live successor.
 
 ```python
 # scaffold/chirality/surface.py — Elab.load_file (simplified)
@@ -90,6 +92,7 @@ class Elab:
         for f in forms:
             self._load_form(f)                 # install into self.sig
 ```
+2026-09-04: cut Python oracle, no live successor.
 
 ```rust
 // Rust compiler: recursion_limit controls macro-expansion depth

@@ -287,6 +287,7 @@ applied to `asm-reloc` and `compile-back` inside the real compiler blob
 (`scaffold/build/blob.chiral`, `string-utils` co-loaded right after `collections`)
 also compiles clean, byte-reproduces itself, and still compiles the E151a gate to
 exit 0.
+2026-09-04: the 2026-08-31 migration moved the tree out of scaffold/. The pre-migration paths kept here name no live directory.
 
 - **Knobs to modify:** *which* names a given consumer deletes (`ty-cmp` sheds
   `data Ord` + `cmp-bytes` + `str-cmp` but keeps `cmp-i64`/`then`; `asm-reloc`
