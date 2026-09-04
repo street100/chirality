@@ -84,6 +84,12 @@ stop short of it as written, so no element owns it.
 
 ## Resume state
 
+**2026-09-04: requirement 5 is first priority by author direction**, and
+`.planning/HANDOFF-2026-09-04.md` carries the full queue. The gate tier is
+6,915 lines of shell against a 134-line native floor, with 352 calls where a
+built chirality composition exists. Every tool that moves is one fewer the OS
+rung has to trust.
+
 **Requirement 3 is closed and requirement 2 is the live one.** 2026-09-03 ran
 the diagnosis (EN-08 to EN-13), the author's ruling, both checker repairs with
 Phase 22 gating them (`ddfbc27`), and the erased-binder fix with a promoted
