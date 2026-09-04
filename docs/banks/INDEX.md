@@ -33,6 +33,7 @@ exist to end it.
 | [[banks/verification]] | layered independent instruments, each blind above its own branch point, ranked by expectation provenance | "the test suite" / CI + coverage % / the self-host fixpoint / golden tests |
 | [[banks/text]] | a payload, a way to name a part of it, and total functions between those | the regex engine / the string library / the Unix text tools / the editor buffer |
 | [[banks/erasure]] | three independent droppings at three levels: quantity, representation, annotation | type erasure / "the compiler drops types before codegen" |
+| [[banks/render]] | a typed value, a total function to one surface's own form, and the style resolved on the way | the renderer / the style engine / the display list / the terminal emulator |
 
 ## The schema
 

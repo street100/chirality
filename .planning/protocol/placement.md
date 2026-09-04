@@ -75,7 +75,7 @@ citation is rot.
 - **Say it once.** A rule that appears in two places drifts. If a home already
   holds the rule, write a pointer. `CLAUDE.md` was emptied to a pointer table
   for this reason.
-- **Read the bank before naming a gap.** `docs/banks/INDEX.md` holds eleven. A
+- **Read the bank before naming a gap.** `docs/banks/INDEX.md` holds twelve. A
   feature that is one thing elsewhere is here a sum of shards, each in its own
   home, usually mostly built. Naming a phantom feature is the cardinal working
   error in this repository. If a concept has no bank, build one.

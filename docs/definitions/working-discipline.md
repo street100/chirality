@@ -74,7 +74,7 @@ left alone and recorded.
 
 ## Before naming a gap
 
-**Read the concept's bank first.** [[banks/INDEX]] holds eleven, and states the
+**Read the concept's bank first.** [[banks/INDEX]] holds twelve, and states the
 rule: a feature that is one thing elsewhere is here a sum of shards, each in its
 own home, usually mostly built. Naming a phantom feature is the cardinal working
 error in this repository.
