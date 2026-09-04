@@ -52,6 +52,14 @@ failed in each. The questions asked of each script were whether a mutant that
 fails to build can wear a red row, whether the want-verdict is computed by the
 function that emitted the base rows, and which rows no declared mutant reddens.
 
+Scope of the repair pass, 2026-09-04, commits `ebec76a`, `d3ab4d3`, `3a71658`
+and `f7caf96`. Five rows moved to FIXED: GA-13, GA-17, GA-19, GA-21 and GA-22,
+the five whose defect is one shape, a gate row no mutant falsifies. Each gained
+a mutant that reddens that row and nothing it was not pinned for, run in the
+phase it belongs to. Four rows were left alone and are named here so the file
+says why: GA-20 is a dedup rather than a hole, GA-23 is a fixture idiom whose
+repair is a larger change, GA-24 is structural, and GA-03 is the profile gate.
+
 ## The instrument
 
 ### GA-01 the harness that audits the gates has no phase in the gate
@@ -182,12 +190,12 @@ function that emitted the base rows, and which rows no declared mutant reddens.
 
 ### GA-13 pretty.sh's M1 reddens the build, and eight of G1's goldens have no falsifier
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `tools/test/pretty.sh:22-23` attributes G1, *"all sixteen formers byte-exact at width 10^6, plus KArm, RfAtom and the dc-ty site -- twenty goldens"*, to M1, and `:45` says coverage is asserted by ARM DELETION, one arm at a time.
-- measured: G1 emits **twenty-one** goldens where the header says twenty. M1 deletes ONE arm, once, `t-lit-i`'s (`tools/test/pretty.sh:199`), so *one arm at a time* is a description of a loop the script does not run. Applied to the tree the fixture stops compiling with `load: non-exhaustive case`, the phase aborts at its first row, and the run reports **0 passed, 2 failed**. So what M1 falsifies is the fixture's build, which the compiler's exhaustiveness check on `Term` already forces: the same header at `:40-45` records that a seventeenth constructor reddens `prog/compiler.prog` on the un-E181'd tree for that reason and calls such a row false. No G1 golden moves under M1. Taking the union over every mutant that does move one (M2, M3, M5, M6, M7, M8), thirteen of the twenty-one goldens have a run falsifier. The eight that have none anywhere in the script are `w6-08` (`f`), `w6-09` (`str-cat`), `w6-10` (`I64`), `w6-11` (`42`), `w6-12` (the escaped string), `w6-13` (`Nil`), `w6-15` (`Unit`) and `w6-20` (`declared type I64`): the atom and leaf formers. `w6-11` is the golden of the very arm M1 deletes, so the one former the coverage claim is written about is a former whose printed bytes nothing here can falsify.
-- evidence: `tools/test/pretty.sh:22-23`, `:40-45`, `:197-205`
+- measured: G1 emits **twenty-one** goldens where the header says twenty. M1 deletes ONE arm, once, `t-lit-i`'s (`tools/test/pretty.sh:199`), so *one arm at a time* is a description of a loop the script does not run. Applied to the tree the fixture stops compiling with `load: non-exhaustive case`, the phase aborts at its first row, and the run reports **0 passed, 2 failed**. So what M1 falsifies is the fixture's build, which the compiler's exhaustiveness check on `Term` already forces: the same header at `:40-45` records that a seventeenth constructor reddens `prog/compiler.prog` on the un-E181'd tree for that reason and calls such a row false. No G1 golden moves under M1. Taking the union over every mutant that does move one (M2, M3, M5, M6, M7, M8), thirteen of the twenty-one goldens have a run falsifier. The eight that have none anywhere in the script are `w6-08` (`f`), `w6-09` (`str-cat`), `w6-10` (`I64`), `w6-11` (`42`), `w6-12` (the escaped string), `w6-13` (`Nil`), `w6-15` (`Unit`) and `w6-20` (`declared type I64`): the atom and leaf formers. `w6-11` is the golden of the very arm M1 deletes, so the one former the coverage claim is written about is a former whose printed bytes nothing here can falsify. **FIXED in `3a71658`.** `pretty.sh` gains M18-M25, one per leaf former, each changing what that former prints and compiling clean: M18 `t-global`, M19 `t-prim`, M20 `t-primty`, M21 `t-lit-i` one too high, M22 `t-lit-s` unquoted, M23 the nullary ctor, M24 the nullary tcon, M25 the `dc-ty` site in `typing/diag`. Each pins the FULL set of goldens it moves, because `I64` is a `t-primty` inside six other goldens and `42` a `t-lit-i` inside six more: M18 `[w6-05 w6-08 w6-19]`, M19 `[w6-09]`, M20 `[w6-03 w6-04 w6-07 w6-10 w6-16 w6-18 w6-20]`, M21 `[w6-06 w6-07 w6-11 w6-14 w6-17 w6-18 w6-22]`, M22 `[w6-12]`, M23 `[w6-13]`, M24 `[w6-15]`, M25 `[w6-20]`. All eight of the goldens named above are in that union. `expect` now records label and golden as it grades and `g1_reds` reads that record, so the mutants compare against the value the base row compared against; `BUILD:fail` is the token for a mutant that did not compile and no pin holds it. Measured: `bash tools/test/pretty.sh` -> **69 passed, 0 failed** in 12.9 s, was 61.
+- evidence: `tools/test/pretty.sh:22-23`, `:40-45`, `:143-152`, `:197-205`, `:215-235`, `:237-258`, `:260-301`
 - checked:  2026-09-04
-- element:  UNASSIGNED
+- element:  none
 
 ### GA-14 face.sh honours the rule on all thirteen
 
@@ -218,12 +226,12 @@ function that emitted the base rows, and which rows no declared mutant reddens.
 
 ### GA-17 row.sh's `r-hole` width row is falsified by nothing
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `tools/test/row.sh:548-552` says M13 was added beyond the SPEC's twelve because *"without it the r-table row is the one row in G4 with NO mutant, and a row nothing can redden is a row that exercises nothing"*.
-- measured: G4 emits **nine** constructor rows and the six `g4_mutant` calls redden six of them, one each. The three left over are `r-text`, `r-lines` and `r-hole`. M1 covers the first two as collateral, which `:414-417` records in as many words and which the whole-tree run confirms: under M1 the red set is `r-text r-face r-lines r-row r-tree r-section`. `r-hole` appears in no red set anywhere in the script. It holds no `r-text`, so M1's off-by-one never reaches it; the other twelve mutants touch other arms or other files. So the sentence at `:548-552` is true of `r-hole` today, by its own wording, and the mutant that would answer it was never written. This is the same shape as GA-13 one script over: the reasoning that mints a mutant is present and correct, and the enumeration it is applied to stops one row short.
-- evidence: `tools/test/row.sh:414-417`, `:455`, `:531-556`, `:548-552`
+- measured: G4 emits **nine** constructor rows and the six `g4_mutant` calls redden six of them, one each. The three left over are `r-text`, `r-lines` and `r-hole`. M1 covers the first two as collateral, which `:414-417` records in as many words and which the whole-tree run confirms: under M1 the red set is `r-text r-face r-lines r-row r-tree r-section`. `r-hole` appears in no red set anywhere in the script. It holds no `r-text`, so M1's off-by-one never reaches it; the other twelve mutants touch other arms or other files. So the sentence at `:548-552` is true of `r-hole` today, by its own wording, and the mutant that would answer it was never written. This is the same shape as GA-13 one script over: the reasoning that mints a mutant is present and correct, and the enumeration it is applied to stops one row short. **FIXED in `f7caf96`.** `row.sh` gains M14, which drops `rnd-hole-mark` from the WIDTH arm of `rnd-cols` and leaves the emitter painting it, so the two disagree by the mark's three columns and G4's (a) and (c) both fail for that constructor. Measured red set: `r-hole` alone. Not a mutation of `rnd-hole-mark` itself, which both readers take and which therefore moves them together and reddens nothing. Measured: `bash tools/test/row.sh` -> **42 passed, 0 failed**, was 41.
+- evidence: `tools/test/row.sh:29`, `:38-42`, `:414-417`, `:455`, `:531-556`, `:548-552`, `:558-573`
 - checked:  2026-09-04
-- element:  UNASSIGNED
+- element:  none
 
 ## The `mutant NAME WANT-VERDICT PATH SED` idiom
 
@@ -238,12 +246,12 @@ function that emitted the base rows, and which rows no declared mutant reddens.
 
 ### GA-19 arity.sh's ten-tag golden is falsified by nothing, and M1 falsifies the compile
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `tools/test/arity.sh:59` lists `G1 the tenth tag, over all ten Reason arms [M1]`, and `:251` holds the golden `redeclared,mismatch,usage,linear,arrow,unbound,skipped,judged,relayed,arity,`.
-- measured: G1 reads `ok` in the base line and in all five pinned verdict lines (`:361`, `:371`, `:382`, `:393`, `:402`), so no mutant in the script moves it. M1 is graded beside the line rather than inside it (`:337-352`): it deletes the `r-arity` arm from `dg-reason-tag`, the module then stops compiling, and the row asserts the refusal text `load: non-exhaustive case`, which the run reproduced. That refusal is the compiler's exhaustiveness check on `Reason` doing the work, and it holds for any deleted arm of any sum. The header at `:341-343` states the trade and calls the result the eight-renderer property as a checked row. What it leaves unsaid is the consequence: the ten tag STRINGS then have no falsifier anywhere in the script. A mutant renaming one arm's tag, `"arity"` to anything else, would redden G1 and compile clean, and no such mutant is declared. Same shape as GA-13, where `pretty.sh` M1's arm deletion reddens the build and leaves eight goldens standing.
-- evidence: `tools/test/arity.sh:59`, `:232-234`, `:251`, `:275`, `:337-352`, `:361`, `:371`, `:382`, `:393`, `:402`
+- measured: G1 reads `ok` in the base line and in all five pinned verdict lines (`:361`, `:371`, `:382`, `:393`, `:402`), so no mutant in the script moves it. M1 is graded beside the line rather than inside it (`:337-352`): it deletes the `r-arity` arm from `dg-reason-tag`, the module then stops compiling, and the row asserts the refusal text `load: non-exhaustive case`, which the run reproduced. That refusal is the compiler's exhaustiveness check on `Reason` doing the work, and it holds for any deleted arm of any sum. The header at `:341-343` states the trade and calls the result the eight-renderer property as a checked row. What it leaves unsaid is the consequence: the ten tag STRINGS then have no falsifier anywhere in the script. A mutant renaming one arm's tag, `"arity"` to anything else, would redden G1 and compile clean, and no such mutant is declared. Same shape as GA-13, where `pretty.sh` M1's arm deletion reddens the build and leaves eight goldens standing. **FIXED in `ebec76a`.** `arity.sh` gains M9, which renames one tag string at a time inside `dg-reason-tag`'s `case` and compiles clean. The `arity` arm carries the FULL verdict line, pinned `G1:bad G2:ok G3:ok G4:ok G5:ok G6:ok`, so collateral on G2-G6 is caught the way every other mutant here catches it; the other nine call `g1_verdict`, the function `verdict` itself calls, over a mutated tree, and the reddened count is asserted at 9 so a loop that never ran is a FAIL. `g1_verdict` was extracted for that reason: a want re-derived beside the loop is a want the mutation cannot reach. `nobuild` is not `bad`, so a rename that stopped compiling is a FAIL of the row. Measured: `bash tools/test/arity.sh` -> **15 passed, 0 failed**, was 13; base line `G1:ok`, M9/arity's pin `G1:bad`, the nine-loop 9 of 9.
+- evidence: `tools/test/arity.sh:59`, `:232-234`, `:251`, `:270-281`, `:337-352`, `:418-459`
 - checked:  2026-09-04
-- element:  UNASSIGNED
+- element:  none
 
 ### GA-20 arity.sh's G3 is G2's predicate written a second time
 
@@ -256,21 +264,21 @@ function that emitted the base rows, and which rows no declared mutant reddens.
 
 ### GA-21 matcher.sh: three of eleven verdict rows are reddened by nothing
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `tools/test/matcher.sh:25-27` reads that every mutant pins the full verdict line, so a mutant reddening a row outside its own pin is impossible to miss. The row table at `:41-55` names a mutant beside each row.
-- measured: the nine mutants pin eleven tokens each, and the union of the rows they redden is G1 (M6), G2 (M1, M8), G3 (M2, M12), G4 (M2, M12), G6a (M2, M5, M12), G6c (M9), G6d (M4) and G7c (M7). G6b, G7a and G7b read `ok` in all nine pins and in `ALLOK` (`:261`). The table is honest about two of the three: G7a and G7b carry `[-]` (`:49-50`). G6b carries `[M4-adjacent]` (`:46`) and M4's own pin reads `G6b:ok` (`:332`), so the one row whose attribution is not `[-]` is a row that mutant leaves green. G7a and G7b are the fence property, that a fenced block is skipped, asserted differentially against awk and against the hand-derived `100010001`. The nearest cover is G5, whose written fixture carries a fenced block holding an em-dash that would score if the fence leaked (`:451-467`), so a fence regression would move G5's differential; no declared mutant aims at it either, and M11 moves a needle inside a check rather than the fence toggle. G6b, leftmost-longest over overlapping alternatives, has no cover at all: M4 reaches `find-at` and G6b reads `find-all`.
-- evidence: `tools/test/matcher.sh:25-27`, `:41-55`, `:246`, `:249-253`, `:261`, `:314-384`
+- measured: the nine mutants pin eleven tokens each, and the union of the rows they redden is G1 (M6), G2 (M1, M8), G3 (M2, M12), G4 (M2, M12), G6a (M2, M5, M12), G6c (M9), G6d (M4) and G7c (M7). G6b, G7a and G7b read `ok` in all nine pins and in `ALLOK` (`:261`). The table is honest about two of the three: G7a and G7b carry `[-]` (`:49-50`). G6b carries `[M4-adjacent]` (`:46`) and M4's own pin reads `G6b:ok` (`:332`), so the one row whose attribution is not `[-]` is a row that mutant leaves green. G7a and G7b are the fence property, that a fenced block is skipped, asserted differentially against awk and against the hand-derived `100010001`. The nearest cover is G5, whose written fixture carries a fenced block holding an em-dash that would score if the fence leaked (`:451-467`), so a fence regression would move G5's differential; no declared mutant aims at it either, and M11 moves a needle inside a check rather than the fence toggle. G6b, leftmost-longest over overlapping alternatives, has no cover at all: M4 reaches `find-at` and G6b reads `find-all`. **FIXED in `d3ab4d3`.** `matcher.sh` gains M13 and M14. M13 narrows `scan-go`'s tie test from `<=i` to `<i`, so a second accept from the same start no longer displaces the first and `alt("ab","abc")` over `"xabc"` answers 1-3; measured against the base fixture, field 6 is the only field that moves, so the pin is `G6b:bad` and ten `ok`. M4 is the same property one function over, in `run-from`, which `find-all` never calls, and the table now says `[M13]` instead of `[M4-adjacent]`. M14 stops `line-step`'s `ls-fence` arm flipping back to `ls-prose`, so the first toggler swallows the file and the bitmap reads `100000000` for nine lines that mean `100010001`; field 10 is the only field that moves and both G7a and G7b read it, G7a against awk's toggle over the printed bytes and G7b against the constant. Measured: `bash tools/test/matcher.sh` -> **20 passed, 0 failed** in 8.8 s, was 18.
+- evidence: `tools/test/matcher.sh:25-27`, `:41-55`, `:246`, `:249-253`, `:261`, `:314-384`, `:388-400`, `:402-415`
 - checked:  2026-09-04
-- element:  UNASSIGNED
+- element:  none
 
 ### GA-22 render-doc.sh's G1f sits inside a group both its named mutants leave green
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `tools/test/render-doc.sh:53-54` lists `G1 a-f the text survives the conversion, 5 pairs + the proof that the widths actually differ [M1,M2]`, and `:46-49` reads that every mutant pins the full verdict line because a mutant reddening a row outside its own pin is the shape that produced nine toothless rows in this arc.
-- measured: G1f is the `ne` at `:262`, the assertion that the two widths took different layout decisions. It reads `ok` in all seven pins (`:332`, `:341`, `:350`, `:360`, `:371`, `:381`, `:392`), M1's and M2's included. Both mutate `lib/protocol/render-doc.chiral`, and G1f compares two fields that come from `doc->str`, which is Phase 14's and which no mutant in this file touches. So the `[M1,M2]` attribution covers G1a to G1e and stops one letter short. The two rows this script declares unfalsifiable, G0 and G0p, carry `[-]` (`:51-52`) and are controls of the kind GA-14 accepted: G0p is the layout pin the rest of the gate is written against, and it is the row that would catch a `doc->str` that moved. G1f is the same kind of row carrying a mutant attribution instead. This is the only hole found in `render-doc.sh`, and every other row in its fifteen is reddened by a named mutant that ran.
-- evidence: `tools/test/render-doc.sh:46-49`, `:51-54`, `:256`, `:262`, `:289`, `:332-392`
+- measured: G1f is the `ne` at `:262`, the assertion that the two widths took different layout decisions. It reads `ok` in all seven pins (`:332`, `:341`, `:350`, `:360`, `:371`, `:381`, `:392`), M1's and M2's included. Both mutate `lib/protocol/render-doc.chiral`, and G1f compares two fields that come from `doc->str`, which is Phase 14's and which no mutant in this file touches. So the `[M1,M2]` attribution covers G1a to G1e and stops one letter short. The two rows this script declares unfalsifiable, G0 and G0p, carry `[-]` (`:51-52`) and are controls of the kind GA-14 accepted: G0p is the layout pin the rest of the gate is written against, and it is the row that would catch a `doc->str` that moved. G1f is the same kind of row carrying a mutant attribution instead. This is the only hole found in `render-doc.sh`, and every other row in its fifteen is reddened by a named mutant that ran. **FIXED in `f7caf96`.** `render-doc.sh` gains M13, which makes `doc-fits` answer false on an exhausted worklist so no group ever flattens and width 1000 lays out exactly as width 8, collapsing fields 1 and 3 into one string. Pinned in full: `G1f:bad G2c:bad` and thirteen `ok`. G2c is the collateral and it is the same fact read off the tag tree, the width-1000 face list picking up a second `error` for the row the break creates. `lib/prelude/doc.chiral` is already this file's mutation target at M10, and the row grades this gate's own FIXTURE rather than Phase 14's law: that the document being compared is one the width can move. Measured: `bash tools/test/render-doc.sh` -> **20 passed, 0 failed**, was 19. ⚑ THE PIN CASCADE was taken in full in the same commit: `row.sh` is pinned by `render-doc.sh:497` and `pretty.sh:371`, `render-doc.sh` by `pretty.sh:373`, and `pretty.sh` by nothing, so the chain terminates in one pass. Both moved pins were re-taken in the commit that moves the file. `face.sh:537-539` does not pin `row.sh`, by its own statement.
+- evidence: `tools/test/render-doc.sh:46-49`, `:51-55`, `:256`, `:262`, `:289`, `:332-392`, `:396-414`, `:469-500`
 - checked:  2026-09-04
-- element:  UNASSIGNED
+- element:  none
 
 ### GA-23 doc.sh keeps the fixture idiom the other three were upgraded away from
 
