@@ -38,7 +38,7 @@ Measured 2026-09-04 in the working tree.
 | `lib/ports/pool.port` | 31 | the shm pool, size in the port type, backing memfd a linear `Fd` |
 | `lib/memory/` | 233 | six files. The only writable region is a `Pool`, written by `pool-write` at an offset |
 
-### The five parts of a style system already exist, untyped
+### The six parts of a style system already exist, untyped
 
 | part | where | today | defect |
 |---|---|---|---|
@@ -47,6 +47,7 @@ Measured 2026-09-04 in the working tree.
 | the attachment | `doc.chiral:83-85` | `d-tag`'s `Str`, an open keyspace | any string is a key, and no key is required to exist |
 | the resolution | `render.chiral:167` | `lookup-face` | a miss returns `(face name -1 -1 0)` silently |
 | the cascade | `render.chiral:369` | `face-join` | attrs accumulate by `bor`; the inner's stated colour wins and `-1` inherits. A real rule with no law and no check |
+| the theme | `render.chiral:42-43`, `Mode`'s `faces` field | `init-loader.chiral:614-616` registers three modes, each with its own face list | `command-loop.chiral:96` destructures `((mode r faces))` and discards `faces`. A root-supplied theme already exists and reaches no consumer |
 
 **The coverage gap, measured 2026-09-04.** Grepped across `lib/` and `prog/`.
 `TUI/` does not exist in this tree; the terminal code the name pointed at
@@ -60,9 +61,15 @@ faces defined:        comment default error keyword manas-bad manas-cursor
 
 **Seven tags, eleven faces, zero overlap.** Every semantic tag the tree emits
 resolves through `lookup-face`'s silent arm, including the compiler's own
-diagnostics and the term pretty-printer. Five defined faces (`default`, `error`,
-`manas-cursor`, `manas-tag`, `string`) have no `r-face` or `d-tag` consumer.
-The registry and its consumers have drifted apart in both directions and nothing
+diagnostics and the term pretty-printer. **Eight** defined faces reach an
+`r-face` consumer: six by a literal name at the call site, and two,
+`manas-tag` (`prog/scriba/init-loader.chiral:222`, registered at `:244`) and
+`manas-cursor` (`prog/scriba/manas-mode.chiral:918`, also `:1002`), through a
+name computed and bound to a variable before the call. **Three defined faces
+(`default`, `string`, `error`) have no `r-face` or `d-tag` consumer.** A grep
+for `r-face "NAME"` sees only the literal six, so a literal grep undercounts
+reach; the orphan count is three rather than the five such a grep reports. The
+registry and its consumers have drifted apart in both directions and nothing
 reports it.
 
 ### What is absent
@@ -135,7 +142,7 @@ homes, per the refraction rule in `docs/banks/INDEX.md`.
 | C2 | **The cascade as a total ordered fold** | Servo records match results as a path in a shared rule trie keyed on (rule, specificity), then folds applicable declarations against the parent's computed values | one fold over an ordered list, total, with the order decidable from the value. No trie, because there is no string selector to memoise | `law` | `OURS` (`face-join`) |
 | C3 | **Attachment without selectors** | selector matching needs a Bloom filter for descendant selectors and a specificity algebra to break ties | style attaches by a pure function over the node. A function returns one style, so specificity has nothing to arbitrate. Selector-shaped helpers are derived, and they compose by a stated law | `law` | `EXTERNAL` |
 | C4 | **The inherit sum on every value** | CSS-wide keywords `inherit`, `initial`, `unset`, `revert`, applicable to every property | one wrapper sum around every property type, so "no opinion" is a constructor. `face-join` already does this with `-1` and cannot say it in the type | `primitive` | `OURS` |
-| C5 | **Design tokens as typed bindings** | CSS custom properties are untyped strings that fail at the use site. The W3C DTCG format reached its first stable version 2025.10 with 40+ organisations behind it | a token is a typed binding checked at its definition. A theme is a value a root supplies, which also evicts `manas-*` from `lib/` | `primitive` | `EXTERNAL` |
+| C5 | **Design tokens as typed bindings** | CSS custom properties are untyped strings that fail at the use site. The W3C DTCG format reached its first stable version 2025.10 with 40+ organisations behind it | a token is a typed binding checked at its definition. A theme is a value a root supplies. `Mode`'s `faces` field (`render.chiral:42-43`) already carries one per mode, discarded today at `command-loop.chiral:96`; C5 cashes that shard. This also evicts `manas-*` from `lib/` | `primitive` | `OURS` (`Mode.faces`, discarded) |
 | C6 | **The value expression algebra** | `calc()`, `min()`, `max()`, `clamp()`, with unit errors surfacing at computed-value time | an expression ADT with the unit in the type. A unit mismatch fails the checker | `primitive` | `EXTERNAL` |
 | C7 | **The environment as a declared ADT** | media queries, then container queries (baseline since 2023), then anchored container queries. Each is a separate matching mechanism | the style function takes a declared `Env`. Viewport, container, colour scheme, reduced motion are fields of one value | `primitive` | `EXTERNAL` |
 | C8 | **State-driven style over a finite state sum** | `:hover`, `:focus-visible`, `:active`, `:checked`, `:has()`, plus whatever CSS-in-JS computes at runtime | `style : (-> Env State Node Style)`, the state a declared ADT. This is the JSS capability with the closure replaced by a total function | `law` | `EXTERNAL` |
@@ -221,7 +228,19 @@ homes, per the refraction rule in `docs/banks/INDEX.md`.
 | H8 | **The interface scanner** | `wayland-scanner` reads protocol XML and emits C for both the client and the server role | a tool that reads an interface description and emits chirality: a closed sum per interface, encode and decode. Direction-agnostic, so a compositor gets the mirror role for free. Belongs to enforcement requirement 5's tooling surface | `tool` | `EXTERNAL` |
 | H9 | **The style inspector** | devtools exists because the cascade is opaque: a computed value cannot say which rule produced it without instrumentation | provenance is a value. The inspector is a pure function from a node to the list of functions that contributed each property, exact rather than reconstructed | `tool` | `EXTERNAL` |
 
-**Count: 59 rows across seven lanes. 24 primitives, 23 laws, 8 tools, 1 port, 3 decisions.**
+### Lane A · adoption
+
+Minted by the C01 EXAMPLE audit, 2026-09-04. Neither row proposes a goal; each
+measures reach into a shard that already exists, so neither fits a lane above.
+[[arcs/display-calculus-arc]] carries the same two rows under `display-calculus/A1`
+and `display-calculus/A2`.
+
+| id | goal | what the reference does | the chirality representation | kind | class |
+|---|---|---|---|---|---|
+| A1 | **The `Doc` to `Rendering` path is reached** | a measured fact about this tree. No reference class applies | measured: `grep -rn '"protocol/render-doc"' lib/ prog/` returns zero, and `dg-doc` (`lib/typing/diag.chiral:561`) has zero consumers outside its own file. No `d-tag` reaches `lookup-face`. Precondition for any C1 gate that can fail | `law` | `OURS` (unreached) |
+| A2 | **`Mode`'s `faces` reaches the renderer** | the same measured fact | `command-loop.chiral:96` discards it today. The shard C5 cashes | `law` | `OURS` (unreached) |
+
+**Count: 61 rows across eight lanes. 24 primitives, 25 laws, 8 tools, 1 port, 3 decisions.**
 
 ---
 
@@ -274,6 +293,10 @@ separable.
 | D7 | **Which lanes ship a text form** | E4. `print` is mandatory for documents. Whether a display list has one is open |
 | D8 | **CSS `float`** | B10. Recommendation is to omit |
 | D9 | **How many resolution stages** | CSS has specified, computed, used and actual values because layout feeds back into style: `width: 50%` needs the containing block and `em` needs the parent's resolved size. A single pass before layout is the assumption the roster currently carries, and it is probably false. The staging belongs in the types. **B5 is the row that surfaces it**, which is the reason geometry is the second experiment | 
+| D10 | **Whether `Role` carries an address-bearing arm, or shard G loses its home** | C1. `docs/banks/text.md:75-77`, verbatim: `"It carries a face-registry key, not a which-of-N, so the semantic-role set is open. That is what lets an address ride on rendered output at zero width."` `d-tag`'s open `Str` keyspace is what shard G ([[banks/text]] §2, the stable address, BA-20/BA-21) rides on. C1 closes that keyspace: `Role` becomes a closed sum. Either `Role` gets a constructor an address can occupy, or shard G's open keyspace stops existing once C1 lands. The fork is stated here and left open |
+| D11 | **Does the theme reproduce today's output, or admit the colour change** | C01's own example answers this twice, and the two answers differ. §6's conformance target claims `compiler-theme` reproduces today's screen bytes exactly, because every one of the seven tags falls through `lookup-face`'s miss today to no colour and no attrs. §5's `compiler-theme` assigns real colours to four of the eight `Role` arms (`sgr-red`, `sgr-yellow`, `sgr-cyan`, `sgr-magenta`) and bold to two more. A theme built as §5 shows does not reproduce §6's claimed baseline. Which one C1 ships stays a decision until the SPEC settles it |
+| D12 | **Does C1 carry the `prog/scriba/` edits, or does a follow-on row** | C1 retypes `Rendering`'s `r-face` field from `(face Str)` to `(role Role)`. Every `prog/scriba/` call site that builds an `r-face` node directly (`chat-view.chiral:141`, `:195`; `init-loader.chiral:135`, `:138`, `:234`; `manas-runview.chiral:74`, `:76`, `:101`; `manas-mode.chiral:472`, `:473`, `:919`, `:1003`; `command-loop.chiral:1471`) passes a `Str`, and none of `manas-header`/`manas-ok`/`manas-bad`/`manas-tag`/`manas-cursor`/`manas-field`/`comment`/`keyword` is an arm of C1's seven-plus-one-arm `Role`, by the example's own design (`manas-*` is deliberately excluded). Landing `r-face`'s new field type without touching these sites leaves `prog/scriba/` uncompilable. C1's SPEC decides whether it carries that rewrite (including a `manas`-owned role sum) or defers it to a named follow-on row |
+| D13 | **Whether `lib/prelude/doc.chiral:84-87`'s comment rides a fixpoint or stays stale** | its four lines call `d-tag`'s `Str` "a FACE-REGISTRY KEY ... `lookup-face` already indexes." C1 retires `lookup-face`. `doc.chiral` is inside the compiler's blob (C01 §2 finding 2), so even a comment-only edit there owes the BUILD RULE fixpoint per [[working-discipline]]. Leaving the comment stale and recording the drift is one option; folding the edit into a fixpoint C1 or a later element already owes is the other. The no-fixpoint pricing in any C1 cost estimate depends on which is chosen |
 
 ---
 
@@ -351,8 +374,13 @@ Runs before any row above is cited by a spec.
    what-is-in-the-tree table.
 4. `records/author-calls.md`: the scope ruling, the lane ruling, and the
    native-document merge call.
-5. A display bank, once shards exist to refract. Premature at zero, on the
-   crypto-bank precedent in `.planning/NATIVE-STACK-EXPANSION.md`.
+5. **A display bank, owed now.** The crypto-bank precedent's own condition,
+   shards measured and named, is met: §1's six parts plus §3 Lane A's two
+   reach facts. Skipping it already cost a finding: the C01 EXAMPLE audit
+   caught C5 proposing to build a theme from nothing when `Mode.faces`
+   (`render.chiral:42-43`, discarded at `command-loop.chiral:96`) already
+   carried the shard, exactly the phantom-feature class [[banks/INDEX]]
+   states a bank exists to catch.
 
 ---
 

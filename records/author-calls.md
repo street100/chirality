@@ -337,3 +337,13 @@ because a directive kept only in a session transcript is lost.
 
 The fourth item is a fork rather than a directive and holds its own row above:
 whether [[arcs/native-document-arc]] merges into the display goal.
+
+**A fifth item, found by the C01 EXAMPLE audit, is also a fork and is recorded
+rather than resolved.** `docs/banks/text.md:75-77` states `d-tag`'s carried
+key as a face-registry key rather than a which-of-N, open by design, which is
+what lets an address ride on rendered output at zero width. That open keyspace
+is shard G's home ([[banks/text]] §2, the stable address, BA-20/BA-21). C1's
+central move is closing it: `Role` becomes a closed sum. Either `Role` gains a
+constructor an address can occupy, or shard G's open keyspace stops existing
+once C1 lands. `.planning/DISPLAY-LAYER-GAP.md` §5 D10 carries the exact quote
+and the decision-tier detail.

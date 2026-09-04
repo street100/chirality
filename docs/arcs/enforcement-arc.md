@@ -187,6 +187,11 @@ The diagnosis slice for the four classes ran 2026-09-03, EN-08 to EN-13. What is
 still owed before any of this lands is the refuse-or-carry ruling, which is the
 author's.
 
+[[arcs/display-calculus-arc]]'s resume state names a further item on this
+requirement's surface: `tools/pack/pack.py`'s prefix gate has no adapter and
+no `--mark` path for that arc's rows, so its pipeline has no deterministic
+finish on a PASS.
+
 ## Open: minted, not built
 
 ### E184

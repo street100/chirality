@@ -11,11 +11,13 @@ updated: 2026-09-04
 - goal: [[goals/display]]
 - reserved element block: **none**. Rows carry arc-local ids per
   [[decisions/decision-work-ids]] and map to an element or to `unminted`. This
-  arc keeps three letters instead of one, `C`, `E` and `H`, because the ids are
-  the roster's in `.planning/DISPLAY-LAYER-GAP.md` and renumbering them would
-  break every citation the roster already makes. ⚑ A row spelled `E1` here is
-  arc-local, cited `display-calculus/E1`, and carries no claim on the element
-  numbering.
+  arc keeps four letters instead of one, `C`, `E`, `H` and `A`, because the
+  first three are the roster's in `.planning/DISPLAY-LAYER-GAP.md` and
+  renumbering them would break every citation the roster already makes. ⚑ A
+  row spelled `E1` here is arc-local, cited `display-calculus/E1`, and carries
+  no claim on the element numbering. **`A` is the fourth letter, minted by the
+  C01 EXAMPLE audit.** `A1` and `A2` measure reach into what already exists in
+  the tree rather than propose a goal, so no lane in the roster fits them.
 - build-state authority: [[status-ledger]]
 
 Opened 2026-09-04 by author statement, as the first of five conditions under
@@ -27,7 +29,7 @@ lane ruling in [[records/author-calls]].
 
 ## What is in the tree already
 
-Measured 2026-09-04. **Five parts of a style system exist and none of them
+Measured 2026-09-04. **Six parts of a style system exist and none of them
 carries a type.**
 
 | part | where | today | the defect |
@@ -37,6 +39,7 @@ carries a type.**
 | the attachment | `doc.chiral:83` | `d-tag` carries a `Str` | the keyspace is open. Any string is a key and no key is required to exist |
 | the resolution | `render.chiral:164` | `lookup-face` | its `nil` arm at `:167` returns `(face name -1 -1 0)` and reports nothing |
 | the cascade | `render.chiral:366` | `face-join` | attrs accumulate by bitwise or, the inner's stated colour wins, and a negative colour inherits. A real rule with no law and no check |
+| the theme | `render.chiral:42-43`, `Mode`'s `faces` field | `init-loader.chiral:614-616` registers three modes, each carrying its own face list | `command-loop.chiral:96` destructures `((mode r faces))` and discards `faces`. A root-supplied theme already exists and reaches no consumer |
 
 **The coverage gap, measured 2026-09-04** by grepping `lib/` and `prog/` for
 every emitted `d-tag` and `r-face` name against the registry. `TUI/` does not
@@ -52,10 +55,16 @@ faces defined:        comment default error keyword manas-bad manas-cursor
 **Seven tags, eleven faces, zero overlap.** Every semantic tag the tree emits
 resolves through the silent arm. The two emitters are the compiler's own
 diagnostics, `lib/typing/diag.chiral`, and the term pretty-printer,
-`lib/surface/pretty.chiral`. Six faces reach a consumer through `r-face`, and
-five reach none: `default`, `error`, `manas-cursor`, `manas-tag` and `string`.
-The registry and its consumers have drifted apart in both directions and
-nothing reports it.
+`lib/surface/pretty.chiral`. **Eight** faces reach a consumer through `r-face`:
+six by a literal name at the call site (`comment`, `keyword`, `manas-header`,
+`manas-ok`, `manas-bad`, `manas-field`), and two through a computed name:
+`manas-tag` (`prog/scriba/init-loader.chiral:222`, registered at `:244`) and
+`manas-cursor` (`prog/scriba/manas-mode.chiral:918`, also `:1002`). **Three
+reach none: `default`, `string`, `error`.** A grep for `r-face "NAME"` finds
+only the literal six; a name bound to a variable before the call does not
+match that pattern, so a literal grep undercounts reach and the true orphan
+count is three rather than the five such a grep reports. The registry and its
+consumers have drifted apart in both directions and nothing reports it.
 
 ## What is missing
 
@@ -107,7 +116,7 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
 | `display-calculus/C2` | the cascade as a total ordered fold. `law` | pre-run done, covered by C1's example (`23f6830`). Not yet audited | `unminted` |
 | `display-calculus/C3` | attachment by a pure function over the node, no selectors and no specificity. `law` | not started; C1's example measures that this witness needs no conflict rule, without settling C3 itself | `unminted` |
 | `display-calculus/C4` | the inherit sum wrapping every property value. `primitive` | pre-run done, covered by C1's example (`23f6830`). Not yet audited | `unminted` |
-| `display-calculus/C5` | design tokens as typed bindings, and a theme as a root-supplied value. `primitive` | pre-run done, covered by C1's example (`23f6830`). Not yet audited | `unminted` |
+| `display-calculus/C5` | design tokens as typed bindings, and a theme as a root-supplied value. Cashes the `Mode.faces` shard `render.chiral:42-43` already carries and `command-loop.chiral:96` discards. `primitive` | pre-run done, covered by C1's example (`23f6830`). Not yet audited | `unminted` |
 | `display-calculus/C6` | the value expression algebra with the unit in the type. `primitive` | not started | `unminted` |
 | `display-calculus/C7` | the environment as a declared ADT. `primitive` | not started | `unminted` |
 | `display-calculus/C8` | state-driven style over a finite state sum. `law` | not started | `unminted` |
@@ -120,6 +129,8 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
 | `display-calculus/E3` | the accessibility tree derived by a total function. `law` | not started | `unminted` |
 | `display-calculus/E4` | every document has a text form, and nothing renders from it. `law` | not started | `unminted` |
 | `display-calculus/H6` | the property walk, run as a suite phase. `tool` | not started; same witness gap as C9, which it instantiates | `unminted` |
+| `display-calculus/A1` | the `Doc` to `Rendering` path is reached. `law` | measured 2026-09-04: `grep -rn '"protocol/render-doc"' lib/ prog/` returns zero, and `dg-doc` (`lib/typing/diag.chiral:561`) has zero consumers outside its own file. No `d-tag` in this tree reaches `lookup-face`. **Precondition for any C1 gate that can fail** | `unminted` |
+| `display-calculus/A2` | `Mode`'s `faces` reaches the renderer. `law` | measured 2026-09-04: `command-loop.chiral:96` discards it. The shard C5 cashes | `unminted` |
 
 The `kind` cell is the anti-monolith column of [[goals/display]]'s shape
 condition. A row that cannot say which half it is has not been scoped.
@@ -164,22 +175,36 @@ answer, a named and loudly-styled failure state (reverse video in
 `lib/protocol/render.chiral:167`. That is an improvement over a fabricated
 default, and the compiler's refusal stops at the theme.
 
+**`A1` is the precondition for any C1 gate that can fail.** No `d-tag` in this
+tree reaches `lookup-face` today: `protocol/render-doc` has zero importers and
+`dg-doc` (`lib/typing/diag.chiral:561`) has zero consumers outside its own
+file. A gate that walks a theme's coverage over a `Role` sum nothing produces
+would pass by looking at nothing, the same failure mode
+[[decisions/decision-scope]] names for a subcommand dispatching to a floor the
+tree lacks. `A1` closing is what makes a future C1 gate a gate rather than a
+formality.
+
 The measured coverage gap reproduces exactly: seven `d-tag` names, eleven
-registry faces, zero overlap, five faces with no consumer. The example's
-`TUI/` grep is corrected to `lib/ prog/`; the tree carries no `TUI/`
-directory today.
+registry faces, zero overlap, three faces with no consumer once the two
+computed-name reaches are traced (§ above). The example's `TUI/` grep is
+corrected to `lib/ prog/`; the tree carries no `TUI/` directory today.
 
 The design detail, the reference class per row and the full 59-row roster
 this arc draws 17 rows from are `.planning/DISPLAY-LAYER-GAP.md`.
 
 **`tools/pack/pack.py` has no adapter for this arc's rows.** It selects a
 source adapter by element-id prefix, `E`, `U`, `S` or `N`
-(`tools/pack/pack.py:27-37`); this arc's rows carry `C`, `E` and `H`, and its
-own `E` prefix already names a different lane, core self-implementation. The
-pre-run assembled its bundle by hand. `pack.py` is one of the seven Python
-tools already counted against enforcement requirement 5's tooling surface
-([[records/tooling-classification]] TC-11). This is a fact about running this
-arc's pipeline.
+(`tools/pack/pack.py:27-37`); this arc's rows carry `C`, `E`, `H` and `A`, and
+its own `E` prefix already names a different lane, core self-implementation.
+The pre-run assembled its bundle by hand. The same prefix gate blocks `--mark
+reviewed` (`tools/pack/pack.py:20`, `:462`, `:548`): the id regex refuses any
+prefix outside `E`/`U`/`S`/`N` before `mark_mode` ever runs, so a `C`, `E`
+(arc-local) or `H` row has no way to flip `drafted` to `reviewed` even after a
+PASS. **This arc's pipeline has no deterministic finish, on a PASS or
+otherwise.** `pack.py` is one of the seven Python tools already counted
+against enforcement requirement 5's tooling surface
+([[records/tooling-classification]] TC-11); [[arcs/enforcement-arc]] carries
+the pointer to this gap. This is a fact about running this arc's pipeline.
 
 **Suggested next element:** C1's example audit (`pipeline-audit`), then a
 SPEC for C1/C2/C4/C5 together.
@@ -200,7 +225,7 @@ shape:
 |---|---|
 | the size of the `(Env, State)` product for the cell lane | requirement 5 walks it. Nothing has measured either sum, and a walk over an unbounded product cannot be a phase |
 | the import closure a typed tag moves | `prelude/doc` is imported at `lib/typing/diag.chiral:58`, `lib/surface/pretty.chiral:36` and `lib/protocol/render-doc.chiral:105`, and two of the three are compiler modules. Retyping `d-tag`'s key owes a fixpoint. Deriving the registry from a role sum outside `doc.chiral` may buy the same property with no compiler change |
-| what the seven emitted tags resolve to | requirement 4 checks a theme total against a role sum nobody has authored. The mapping, and the disposition of the five faces with no consumer, has to exist before coverage means anything |
+| what the seven emitted tags resolve to | requirement 4 checks a theme total against a role sum nobody has authored. The mapping, and the disposition of the three faces with no consumer, has to exist before coverage means anything |
 
 **The staging risk this arc will not surface.** CSS carries specified, computed,
 used and actual values because layout feeds back into style: a percentage width
