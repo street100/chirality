@@ -119,7 +119,7 @@ chirality each has its own principled home and its own honest build-state.
 - **What.** The bounds-checked write: the offset is refined to
   `{I64 | >=0, <n}`, so the substrate's runtime bound check is discharged **at
   COMPILE time** for literal/guarded offsets — the offset half of F8.
-- **Home.** the refinement fragment / `lib/mem-linear.chiral`. `mem-put-checked :
+- **Home.** the refinement fragment / `lib/memory/mem-linear.chiral`. `mem-put-checked :
   (-> (0 n I64) (=> (1 p (Pool n)) (refine I64 (>= 0) (< n)) Bytes (Pool n)))`
   — the `< n` references the *erased* capacity; at a concrete pool it collapses
   to a constant bound. The raw `mem-put`/`pool-write` stays for **computed
@@ -153,7 +153,7 @@ chirality each has its own principled home and its own honest build-state.
 - **What.** `(memory region)`: a bump-allocated arena — a linear `Region`
   wrapping the pool plus a `used` cursor; `mem-alloc` advances the cursor and
   returns an offset; the whole arena frees as a unit.
-- **Home.** `lib/mem-region.chiral`. `(data Region ((n I64)) (region (1 pool
+- **Home.** `lib/memory/mem-region.chiral`. `(data Region ((n I64)) (region (1 pool
   (Pool n)) (cap I64) (used I64)))`; `mem-alloc` reserves and advances,
   `region-close` drops the whole arena.
 - **Build-state — two-part, do not collapse.** The *library* is BUILT and

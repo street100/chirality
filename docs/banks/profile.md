@@ -159,8 +159,8 @@ target, and nothing checks that it meets it.
 ### Shard E — the memory-discipline clause
 **What:** the optional `(memory linear)` / `(memory region)` clause naming the
 composite's allocation discipline over the same `(Pool n)` substrate.
-**Home:** the memory-discipline modules (`lib/mem-linear.chiral`,
-`lib/mem-region.chiral`; [[memory-model]]). Discipline is a *profile choice*
+**Home:** the memory-discipline modules (`lib/memory/mem-linear.chiral`,
+`lib/memory/mem-region.chiral`; [[memory-model]]). Discipline is a *profile choice*
 because space is a port (P3).
 **Build-state:** linear CONFORMS/ENFORCED (E22 — `mem-put-checked`, bounds
 discharged at compile time for literal/guarded offsets); region REFACTOR (E41/E22

@@ -655,7 +655,7 @@ would have shipped green had it not been run.
    files about one integer type.
 4. **The oracle is not green — LEGACY, retiring, NEEDS-AUTHOR.** 88 errors and 23
    failures survive the repair. They are **not one systemic cause** and need
-   per-case adjudication. Two already triaged: `lib/reflect-floor.chiral` fails on
+   per-case adjudication. Two already triaged: `lib/typing/reflect-floor.chiral` fails on
    **both** floors (`unknown name Former`) — the oracle and the native compiler
    *agree*, so it is a source defect, unnoticed because nothing compiles
    `reflect-floor` natively (it defines no `compile-main`, so Phase 7 never sweeps
