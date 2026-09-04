@@ -63,8 +63,15 @@ glossary, PRINCIPLES and the lib-style files. Do not read those, and do not read
 sibling `docs/examples/E*.md`. If (and only if) you need one specific fact the
 bundle lacks, `grep` for just that fact.
 
-`.planning/` is untracked scratch that forks per worktree. Do not cite it and do
-not write an artifact into it.
+`.planning/` is the **agent tier, and it is tracked**.
+`docs/decisions/decision-ai-tier.md` settled that on 2026-09-01 and removed the
+`.gitignore` exclusion (`git ls-files .planning` returns 148 on 2026-09-04), so a
+citation into it resolves in a fresh clone. The old reason for this rule is gone
+and the tier reason stands: the artifact you write lives in `docs/`, the tier a
+person reads, while `.planning/` holds navigation, queues and handoffs written
+for a session, much of it spent (`records/consolidation-handoff.md` holds the
+prune queue). Cite the human tier: `docs/`, `records/`, the root spine. The
+artifact goes to `docs/examples/`. Write nothing into `.planning/`.
 
 ## Step 2: fill the scaffolded artifact (six sections, in order)
 

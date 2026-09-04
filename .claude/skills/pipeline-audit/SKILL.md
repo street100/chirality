@@ -14,8 +14,15 @@ description: >-
 The corpus pipeline is **example → audit → spec → audit → implement**. The
 example is `docs/examples/E<NN>-<slug>.md`, the SPEC is
 `docs/elements/specs/E<NN>-<slug>-SPEC.md`, and the build-state authority is
-`records/conformance-map.md`. `.planning/` is untracked scratch. Do not cite it
-and do not write into it.
+`records/conformance-map.md`. `.planning/` is the **agent tier, and it is
+tracked**: `docs/decisions/decision-ai-tier.md` settled that on 2026-09-01 and
+removed the `.gitignore` exclusion (`git ls-files .planning` returns 148 on
+2026-09-04). A `.planning/` citation in the artifact under audit therefore
+resolves, so it is **no longer a dangling reference** and must not be flagged as
+one. Flag it as a tier violation instead: the artifact is read by a person, and
+`.planning/` is written for a session. The authorities an artifact may cite are
+the human tier (`docs/`, `records/`, the root spine) and the live source. Write
+nothing into `.planning/`.
 
 Cadence is serial, one stage and one agent at a time
 (`docs/decisions/decision-dispatch-cadence.md`), and that decision overrides

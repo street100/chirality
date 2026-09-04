@@ -61,8 +61,15 @@ sources. If an outline lacks a body you genuinely need, a few *narrow*
 greps/reads (specific symbol, specific fact) are allowed. Each extra turn is the
 cost.
 
-`.planning/` is untracked scratch that forks per worktree. Do not cite it and do
-not write a SPEC into it.
+`.planning/` is the **agent tier, and it is tracked**.
+`docs/decisions/decision-ai-tier.md` settled that on 2026-09-01 and removed the
+`.gitignore` exclusion (`git ls-files .planning` returns 148 on 2026-09-04), so a
+citation into it resolves in a fresh clone. The old reason for this rule is gone
+and the tier reason stands: a SPEC lives in `docs/`, the tier a person reads,
+while `.planning/` holds navigation, queues and handoffs written for a session,
+much of it spent (`records/consolidation-handoff.md` holds the prune queue). Cite
+the human tier: `docs/`, `records/`, the root spine. The SPEC goes to
+`docs/elements/specs/`. Write nothing into `.planning/`.
 
 ## Step 2: fill the scaffolded SPEC (six sections, in order)
 
