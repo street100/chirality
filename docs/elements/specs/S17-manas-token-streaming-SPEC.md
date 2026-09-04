@@ -16,10 +16,10 @@ scriba has **no mutable ref** (`command-loop.chiral:457`) so the growing text is
 painted transiently, not stored). The example stays the rationale; this SPEC is the
 contract.
 
-**Gate:** S15 (`TUI/scriba/manas-runview.chiral` — the run-view frame S17 upgrades:
-`RunView`/`RunPhase`/`RvCall`, `runview-render` `:98`, `fan-render` `:162`,
-`runview-drive` `:181`, `repaint-runview` `:153`, `rv-with-calls` `:124`,
-`len-rvcall` `:138` — all shipped) + `be-chat-stream` (`scaffold/lib/backend.chiral:122`
+**Gate:** S15 (`prog/scriba/manas-runview.chiral` — the run-view frame S17 upgrades:
+`RunView`/`RunPhase`/`RvCall`, `runview-render` `:109`, `fan-render` `:190`,
+`runview-drive` `:218`, `repaint-runview` `:178`, `rv-with-calls` `:140`,
+`len-rvcall` `:154` — all shipped) + `be-chat-stream` (`prog/manas/backend.chiral:155`
 — the primitive threaded; its 4th arg is the `(=> Str Unit)` on-delta, returns the
 same `ChatR` as `be-chat`). Both landed. Seed: `coordinator.chiral:37-42` `run-cycle`
 (the proven `(lam (d) (put d))` on-delta over `be-chat-stream`) + `stream-ollama.chiral`
@@ -138,7 +138,7 @@ drift. The two twins are:
 
 One import addition: `be-chat-stream` from `backend` — but `runner.chiral` already
 `(import "backend")` (`:17`); the twins reference `be-chat-stream` (public,
-`backend.chiral:122`) from the same import, **no import-list change** (only the comment
+`backend.chiral:155`) from the same import, **no import-list change** (only the comment
 `; be-chat (…)` on `:17` widens to name `be-chat-stream` too). The `Msg`/`msg`/`ChatR`
 ctors, `assemble-prompt`, `render-findings`, `parse-findings`, `expert-ok`/`expert-bad`/
 `combiner-ok`/`combiner-bad` are all already in scope (used by the non-stream twins).
@@ -192,12 +192,12 @@ whole point of the pure render core. Detailed §8.1.
   already carries — so `mode-name` and the two `case mode` arms (dispatch, resize) are
   untouched. This is why S17 has **no coverage-atomic mode commit** (contrast S15
   commit-3): no `VimMode` variant is added.
-- **`command-loop.chiral` — NO CHANGE.** The `:run` fire entry (`runview-fire` `:701`)
-  and S16's `:compose` fire (`compose-fire` `:737`) both call `runview-drive`
+- **`command-loop.chiral` — NO CHANGE.** The `:run` fire entry (`runview-fire` `:1439`)
+  and S16's `:compose` fire (`compose-fire` `:1464`) both call `runview-drive`
   *unchanged in signature* — the streaming lives **entirely inside**
   `fan-render`/`runview-drive`, which they already invoke. So both `:run` and
   `:compose` inherit streaming for free with **zero fire-entry change** (§6 D5).
-  `runview-nav-dispatch` (`:679`) operates on a **finished** (`rv-done`) `RunView` —
+  `runview-nav-dispatch` (`:1417`) operates on a **finished** (`rv-done`) `RunView` —
   `rv-streaming` never lands in `vm-runview` state (it exists only mid-drive) — so nav
   is untouched.
 - **`init-loader.chiral`/`dispatch.chiral` — NO CHANGE.** No new render-`Mode`, no new
@@ -376,7 +376,7 @@ the GATE pre-network paint, and the `fan-render` fan-out are S15's:
   So the accumulating text is **not** stored in `RunView` (the marker carries only
   `idx`/`id`/`slot`/`model`); it is `put` inline (coordinator-style), and the
   **authoritative full text arrives in the returned `ChatR`** (`chat-ok acc`, where
-  `acc` is `drain-stream`'s accumulation, `backend.chiral:113-120`), which
+  `acc` is `drain-stream`'s accumulation, `backend.chiral:146-153`), which
   `fan-render`/`runview-drive` map to a settled `RvCall`/manifest. The **only** moment
   the screen is ahead of the typed value is mid-stream; the next repaint
   (`render-to-ansi-full`, full clear + redraw) reconciles it from the settled value.
@@ -411,7 +411,7 @@ the GATE pre-network paint, and the `fan-render` fan-out are S15's:
   (synthetic `idx = (len-rvcall calls)`, the combiner's own id/slot/model, §4.2). One
   constructor, one `phase-tag` arm, one `runview-render` arm cover both — minimal
   surface, one coverage obligation. CONFIRMED: the combiner is an `Expert`
-  (`call-combiner`'s 2nd arg, `runner.chiral:87`), so `expert-id`/`exp-slot`/`bnd-model`
+  (`call-combiner`'s 2nd arg, `runner.chiral:136`), so `expert-id`/`exp-slot`/`bnd-model`
   apply to it exactly as to a fired expert.
 
 - **D2 — the twins are additive; `call-expert`/`call-combiner` are unchanged.**
@@ -447,7 +447,7 @@ the GATE pre-network paint, and the `fan-render` fan-out are S15's:
 - **D5 — no new `VimMode`, no fire-entry change; streaming lives inside the driver.**
   **RESOLVED.** S17 reuses S15's `vm-runview` verbatim (the `rv-streaming` marker rides
   inside the `RunView` the mode already carries), and the `:run`/`:compose` fires
-  (`runview-fire` `:701` / `compose-fire` `:737`) call `runview-drive` unchanged in
+  (`runview-fire` `:1439` / `compose-fire` `:1464`) call `runview-drive` unchanged in
   signature — so both inherit streaming with **zero `command-loop.chiral`/`vim-mode.chiral`
   change** (§2.4). The task's "thread streaming into the fire entry" resolves to *no
   fire-entry edit*: the threading is entirely within `fan-render`/`runview-drive`.
@@ -466,7 +466,7 @@ the GATE pre-network paint, and the `fan-render` fan-out are S15's:
 
 - **D7 — synchronous / blocking is in scope; async + concurrent are residue.**
   **RESOLVED (accepted, as S15/chat).** The stream is a **synchronous** linear
-  `drain-stream` loop (`backend.chiral:113`) — the on-delta fires once per SSE frame as
+  `drain-stream` loop (`backend.chiral:146`) — the on-delta fires once per SSE frame as
   bytes arrive, and the editor blocks during the run exactly as S15 blocks per `be-chat`
   and chat mode blocks per `agent-run-transcript`. One open streaming row at a time
   (experts stream one-at-a-time down the sequential `fan-render`). Non-blocking/async
@@ -474,7 +474,7 @@ the GATE pre-network paint, and the `fan-render` fan-out are S15's:
   out, not faked (§9).
 
 - **NEEDS-AUTHOR:** none. Every primitive is a verified public def: `be-chat-stream`
-  (`backend.chiral:122`), `drain-stream` (`:113`), `be-chat`/`be-url`/`chat-open`/
+  (`backend.chiral:155`), `drain-stream` (`:146`), `be-chat`/`be-url`/`chat-open`/
   `chat-read`/`chat-close` (backend), `put` (`ports`, per `coordinator.chiral:20`),
   `assemble-prompt`/`render-findings`/`parse-findings`/`gather-findings` (runner),
   `expert-ok`/`expert-bad`/`combiner-ok`/`combiner-bad` (`types.chiral:115,121`),
@@ -614,7 +614,7 @@ S17 touches scriba (`TUI/scriba/*`) + one additive engine-library edit
 ### Relational anchors
 
 Gate S15 (`manas-runview.chiral` — the frame S17 grows) + `be-chat-stream`
-(`backend.chiral:122` — the primitive threaded). Seed `coordinator.chiral:37-42`
+(`backend.chiral:155` — the primitive threaded). Seed `coordinator.chiral:37-42`
 (`(lam (d) (put d))`) + `samples/stream-ollama.chiral` (the mesh-verified `chat-read →
 put` loop) — **NOT** `chat.chiral` (it blocks on `agent-run-transcript`, does not
 stream). Pattern S15's pure/effectful split + closed-sum `RunPhase` (S17 adds

@@ -14,7 +14,7 @@ appear live on the current expert's row as they are generated, not just the fini
 row.
 
 The move is one seam-swap: S15's fan-out calls **`be-chat`** (whole response, then one
-repaint); S17 calls **`be-chat-stream`** (`backend.chiral:122`) and threads its 4th
+repaint); S17 calls **`be-chat-stream`** (`backend.chiral:155`) and threads its 4th
 argument — the **`(=> Str Unit)` on-delta callback** — down through the run-view driver,
 so each token/chunk paints the instant it arrives. The GATE decision, the fired set, the
 finished rows, and the manifest stay exactly the typed value S15 renders; only the
@@ -49,14 +49,14 @@ token-by-token, then settles into the typed `RvCall` S15 already renders**.
 ## §2 Research (what already exists, on both sides)
 
 **The streaming primitive is built, sample-verified, and its shape is frozen.**
-`be-chat-stream` (`backend.chiral:122`) is:
+`be-chat-stream` (`backend.chiral:155`) is:
 
 ```
 (def be-chat-stream (=> Backend Str (List Msg) (=> Str Unit) ChatR) …)
 ```
 
 Its 4th argument is the on-delta `(=> Str Unit)`. Internally it opens the SSE stream
-(`chat-open`, E131) and hands it to `drain-stream` (`backend.chiral:113`), which threads
+(`chat-open`, E131) and hands it to `drain-stream` (`backend.chiral:146`), which threads
 the **linear** `(1 s ChatStream)` handle and, per content delta, does
 `(do (on-delta d) (drain-stream s2 on-delta (str-cat acc d)))` — i.e. **the callback
 fires synchronously, once per SSE frame, as bytes arrive**; the full text is accumulated
@@ -204,7 +204,7 @@ renderer reads — is exactly the ref scriba refuses; see §7.2.
 
 ### §5.1 `call-expert-stream` — the streaming wrapper (engine, runner.chiral)
 
-The only engine change: a streaming twin of `call-expert` (`runner.chiral:66`). It is
+The only engine change: a streaming twin of `call-expert` (`runner.chiral:97`). It is
 `call-expert` with `be-chat` swapped for `be-chat-stream` and the on-delta threaded in as
 one extra parameter — **prompt assembly, the JSON instruction, `parse-findings`, and the
 `expert-ok`/`expert-bad` mapping are byte-identical**, so a streamed call and a
@@ -234,7 +234,7 @@ owns the SEES-prompt + JSON-instruction + `parse-findings` contract; a scriba-si
 `be-chat-stream` call would have to duplicate all of it and could drift from the
 non-stream path. The wrapper adds exactly one parameter and reuses everything. (A
 `call-combiner-stream` sibling is the same one-line change over `call-combiner`
-(`runner.chiral:87`) — §7.2.)
+(`runner.chiral:136`) — §7.2.)
 
 ### §5.2 The `RunView` streaming marker (scriba)
 
@@ -354,7 +354,7 @@ lives entirely inside it.
 (`repaint-runview`) clears the screen and redraws from `(1,1)` (`render.chiral:468`), so
 the transient streamed bytes are wiped and the settled `RvCall` row is drawn fresh — the
 stream is **replaced, never merged**. The one caveat is the streaming row's own length:
-a very long line clips at the right edge under `ansi-nowrap` (`render.chiral:287`, the
+a very long line clips at the right edge under `ansi-nowrap` (`render.chiral:340`, the
 known cursor/wrap limitation) — acceptable residue (§7.2).
 
 ## §6 Three walkthroughs (open the row, tokens flow, settle)
@@ -457,7 +457,7 @@ The combiner + yield close the run exactly as S15 (§6.4 there) — with a
 ### §7.2 Honest residue (what S17 does NOT cover)
 
 - **Non-blocking / async streaming.** The stream is a **synchronous** linear
-  `drain-stream` loop (`backend.chiral:113`) — the editor blocks during the run exactly as
+  `drain-stream` loop (`backend.chiral:146`) — the editor blocks during the run exactly as
   S15 blocks per `be-chat` (and chat mode blocks on `agent-run-transcript`). Tokens flow
   *within* a call, but you cannot type over a running stream. True non-blocking needs an
   async/select substrate scriba does not have; **not in S17, not faked.**
@@ -465,7 +465,7 @@ The combiner + yield close the run exactly as S15 (§6.4 there) — with a
   sequential `fan-render` — one open row at a time. Fanning six streams into six live rows
   at once is the async substrate above, not this slice.
 - **Combiner streaming — in-scope-optional (decision).** `call-combiner-stream` over
-  `call-combiner` (`runner.chiral:87`) is the **same one-line** change (be-chat ->
+  `call-combiner` (`runner.chiral:136`) is the **same one-line** change (be-chat ->
   be-chat-stream + on-delta), and the combiner's yield is where the *final* text appears —
   so streaming it is high-value and trivial. **Decision: fold it in** (both
   `call-expert-stream` and `call-combiner-stream`), with an `rv-streaming`-style
@@ -483,7 +483,7 @@ The combiner + yield close the run exactly as S15 (§6.4 there) — with a
 - **Per-line repaint cost / long-line wrap.** on-delta `put`s inline (no full clear per
   token — O(delta) per token, not O(screen)), so cost is fine; but a streaming line longer
   than the terminal width **clips at the right edge** under `ansi-nowrap`
-  (`render.chiral:287`, the known cursor/wrap limitation — a cell-grid renderer, the
+  (`render.chiral:340`, the known cursor/wrap limitation — a cell-grid renderer, the
   dropped vt-core/grid work, is the real fix). A line-local `render-to-ansi-delta`
   (`render.chiral:476`) repaint of just the streaming row is a natural optimization, left
   to implementation.
@@ -493,7 +493,7 @@ The combiner + yield close the run exactly as S15 (§6.4 there) — with a
 ### §7.3 Relational anchors + minting
 
 - **Gate:** **S15** (`manas-runview.chiral` — the run-view frame S17 grows) +
-  **`be-chat-stream`** (`backend.chiral:122` — exists, the primitive threaded). Without
+  **`be-chat-stream`** (`backend.chiral:155` — exists, the primitive threaded). Without
   S15 there is no frame to stream into; without `be-chat-stream` no on-delta.
 - **Seed:** **`coordinator.chiral`** `run-cycle` (`:37–42` — the `(lam (d) (put d))`
   on-delta) and **`samples/stream-ollama.chiral`** (the `chat-read -> put` loop,
