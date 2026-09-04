@@ -263,8 +263,8 @@ import closure of `prog/compiler.prog`, which is 50 modules.
 E184 was the **first element minted for this arc** and **E185** is the second,
 minted 2026-09-04. The highest previously minted element was **E183**. Lane A
 mints in **E184–E189**, Lane B in **E190–E195**
-(`docs/decisions/decision-lane-split.md`). Three numbers remain in Lane A's band,
-and it is shared with [[arcs/diagnostics-arc]].
+(`docs/decisions/decision-lane-split.md`). `E186` through `E189` remain in Lane A's
+band, and it is shared with [[arcs/diagnostics-arc]].
 A new element's row lands in `docs/examples/INDEX.md` **and here** in the same
 change: those are the only two tracked places, and therefore the only collision
 detectors that exist.

@@ -221,7 +221,7 @@ two tracked places, and therefore the only collision detectors that exist.
 
 **E184 and E185 are minted**, and their rows live in [[arcs/enforcement-arc]].
 E185 was minted 2026-09-04 for the `$apply` dispatcher's erased-domain spelling.
-The next free number is E186, and three remain in the band.
+The next free number is E186, and `E186` through `E189` remain in the band.
 
 ### Arc-local rows
 
