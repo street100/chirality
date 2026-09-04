@@ -150,7 +150,7 @@ proved and what it stubbed is kept in
 
 ## Settled and open
 
-- Forks settled in `docs/decisions/` (22 notes): additive testable profiles
+- Forks settled in `docs/decisions/` (23 notes): additive testable profiles
   over a frozen port set; two brokers agreeing via Adhikara; own typed backend
   with no compile to C; B in the type not the packaging; the graded/cost-kernel
   direction; the inspiration policy; the checker as a small trusted core plus
@@ -159,7 +159,9 @@ proved and what it stubbed is kept in
   per-instance decentralized translation of centralized product instincts; and the
   reflective floor as a frozen judgment changed only by certified succession; and
   the user layer extending in chirality, live, above that same frozen kernel line;
-  and dispatch cadence as serial, one stage and one agent at a time.
+  and dispatch cadence as serial, one stage and one agent at a time; and the
+  erased-word type living strictly at the lowering type level, with the kernel's
+  `conv` relation left alone.
 - Open work: the unresolved seams enumerated in
   [open-edges](docs/definitions/open-edges.md). Its closing section holds three
   sequencing questions: which security properties block the trusted base is open,

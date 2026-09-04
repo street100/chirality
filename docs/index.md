@@ -3,7 +3,7 @@ node: index
 layer: navigation
 related: [working-discipline, goals/README, arcs/README, elements/README, records/README, testing-floors, relations, glossary, thesis, splitting-law, joining-law, module-map, open-edges, floor-agreement, status-ledger, design-principles, resolution-patterns, syntax-evolution, trust-boundary, totality, live-environment, certificate-discipline, split-role]
 status: draft
-updated: 2026-09-01
+updated: 2026-09-04
 ---
 
 # Chirality docs
@@ -100,7 +100,9 @@ allocator at scale; the native suite's own wall clock), see
   elements), [[decision-effect-facets]] (effects: possession and exercise, two
   facets joined by construction; alarms are crossings),
   [[decision-dispatch-cadence]] (how work here is dispatched: serial, one stage
-  and one agent at a time)
+  and one agent at a time),
+  [[decision-erased-word-level]] (the erased-word type lives at the lowering type
+  level; `Core` gains no word spelling and `conv` is not widened)
 - Trust discipline: [[certificate-discipline]] (trusted checker, untrusted producers
   — how a socket checks what plugs into it: re-run the work, do not spot-check) and
   [[split-role]] (where proof runs out, the split as a tiered substrate-provided role
