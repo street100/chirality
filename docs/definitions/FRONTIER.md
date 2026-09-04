@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: aba8573189ab403b0fb8b4596492b1fbeab95c2a9f1d56219670217fc2d29fa7 -->
+<!-- FRONTIER-SOURCES-SHA256: eac7a7d81115c9fe66316e824f5b0db8f56423f00406128b21948a97d2e5c052 -->
 <!-- sources: 159 files -->
 
 ## Decided recently
