@@ -44,6 +44,7 @@
 
 (declare tal-ty=? (-> TalTy TalTy Bool))
 (declare tys=?    (-> (List TalTy) (List TalTy) Bool))
+(declare targs=?  (-> (List TalTy) (List TalTy) Bool))
 ; B1/B2: word-compatibility, not nominal equality. tt-word matches any one-word
 ; type (either side); tt-data recurses through the same relation on its type-args
 ; (so (List I64) matches (List Word)). Mirrors lower.py's _wcompat.
@@ -54,9 +55,27 @@
     ((tt-str)   (case b ((tt-str) true) ((tt-word) true) (_ false)))
     ((tt-bytes) (case b ((tt-bytes) true) ((tt-word) true) (_ false)))
     ((tt-data dn1 as1) (case b
-      ((tt-data dn2 as2) (and (str-eq dn1 dn2) (tys=? as1 as2)))
+      ((tt-data dn2 as2) (and (str-eq dn1 dn2) (targs=? as1 as2)))
       ((tt-word) true)
       (_ false))))))
+; B3 (EN-09/EN-10/EN-12, records/enforcement-arc.md): an EMPTY type-argument
+; list is the wildcard at the argument-list level that tt-word is at the whole-
+; type level. LCore is type-erased (lower.chiral:116-123) and expr-con
+; (lower.chiral:296) therefore annotates every constructed value (tt-data dn
+; nil) while a declared type carries its arguments, so nominal tys=? refused
+; 99.2% of the ck-prog disagreement. targs distinguish nothing a machine can
+; observe and no other rule reads them: ck-con below and ck-term's case arm
+; both resolve a data type by NAME alone. Author call, records/author-calls.md
+; "The `ck-prog` repair shape", 2026-09-03. The data NAME still has to match,
+; and a ground type still never matches a data type -- tal-ty=?'s tt-i64 /
+; tt-str / tt-bytes arms are untouched, which is why the six genuine lowering
+; defects of EN-13 still refuse.
+(def targs=? (lam (as bs)
+  (case as
+    (nil true)
+    (_ (case bs
+      (nil true)
+      (_ (tys=? as bs)))))))
 (def tys=? (lam (as bs)
   (case as
     (nil (case bs (nil true) (_ false)))
@@ -77,6 +96,36 @@
   (case cs
     (nil (none))
     ((cons c r) (case c ((dctor cn2 ftys) (case (str-eq cn2 cn) (true (some ftys)) (false (find-ctor r cn)))))))))
+
+; B1 recovery (EN-11, records/enforcement-arc.md): the data name a case
+; dispatches on, recovered from the first arm's constructor when the scrutinee
+; register carries the erased one-word type. ssa.chiral:17-20 defines tt-word as
+; representation-compatible with any one-word type and says tal-ty=? is what
+; checks it; tal-ty=?'s first arm above duly makes tt-word match everything, so
+; a case arm that refuses a tt-word scrutinee contradicted this module's own IR
+; spec. The lowering already performs exactly this recovery -- case-sty calling
+; ctor-data, lower.chiral:168-188 -- and it stays inside the lowering's
+; bookkeeping, so the register reaches the TFn still typed tt-word. Author call,
+; records/author-calls.md "The `ck-prog` repair shape", 2026-09-03.
+; The recovery is scoped to tt-word. A tt-i64 / tt-str / tt-bytes scrutinee is
+; still refused, and covers-all? below still runs on the recovered ctor list, so
+; a non-exhaustive tt-word case is still refused too.
+(declare ctor-dn (-> (List DData) Str (Maybe Str)))
+(def ctor-dn (lam (ds cn)
+  (case ds
+    (nil (none))
+    ((cons d r) (case d ((ddata dn cs)
+      (case (find-ctor cs cn)
+        ((some ftys) (some dn))
+        (none (ctor-dn r cn)))))))))
+(declare ck-scrut-dn (-> (List DData) TalTy (List Branch) (Maybe Str)))
+(def ck-scrut-dn (lam (ds sty branches)
+  (case sty
+    ((tt-data dn targs) (some dn))
+    ((tt-word) (case branches
+      (nil (none))
+      ((cons b r) (case b ((branch cn dsts body) (ctor-dn ds cn))))))
+    (_ (none)))))
 
 ; ---- argument arity + type check (tal.py _check_args) -------------------------
 (declare ck-args (-> REnv (List TalTy) (List I64) Bool))
@@ -192,8 +241,9 @@
       (none (ck-err "ret: type does not match declared return"))))
     ((tt-case src branches dflt) (case (renv-get env src)
       (none (ck-err "case on non-data register"))
-      ((some sty) (case sty
-        ((tt-data dn targs) (case (find-data (ce-datas ce) dn)
+      ((some sty) (case (ck-scrut-dn (ce-datas ce) sty branches)
+        (none (ck-err "case on non-data register"))
+        ((some dn) (case (find-data (ce-datas ce) dn)
           (none (ck-err "case: unknown data type"))
           ((some ctors) (case (ck-branches ce env ctors branches ret)
             ((cov-err m) (ck-err m))
@@ -201,8 +251,7 @@
               ((some blk) (ck-block ce env blk ret))
               (none (case (covers-all? covered ctors)
                 (true (ck-ok env))
-                (false (ck-err "non-exhaustive tal case"))))))))))
-        (_ (ck-err "case on non-data register")))))))))
+                (false (ck-err "non-exhaustive tal case")))))))))))))))))
 (def ck-branches (lam (ce env ctors branches ret)
   (case branches
     (nil (cov-ok nil))
