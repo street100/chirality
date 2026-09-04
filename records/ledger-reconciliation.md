@@ -106,10 +106,69 @@ authoring time and never updated when the element landed:
 - **E182** opens *"Not built."* Its gate is `tools/test/arity.sh`, dispatched as
   Phase 24 and green.
 
-⚑ **The remaining 15 are not corrected here and must be verified one at a time.**
-This same file records a triage that over-reported four of seven, and a
-mass-edit driven by a lint hit would repeat that. The check names the worklist; it
-does not license a sweep.
+⚑ **The remaining 15 were not corrected in that pass and had to be verified one
+at a time.** This same file records a triage that over-reported four of seven, and
+a mass-edit driven by a lint hit would repeat that. The check names the worklist;
+it does not license a sweep.
+
+## The 15, verified one at a time, 2026-09-04
+
+Every one was read against live source before its cell was touched. **The catalog
+was the stale cell in all 15 and the ledger was wrong in none**, which is the
+better direction of this defect: no capability was claimed that does not exist.
+`b055085`, `194fc2e`, `4e96f7f` and `4247a38` carry the corrections, grouped so a
+collision cannot sweep the batch. AB falls 18 to 3.
+
+| E# | the catalog claimed | live source says |
+|---|---|---|
+| E34 | `Not built` | `lib/lowering/x64/elf.chiral` names E34 in its header; `elf-file` at `:79`; `compile-emit.chiral:18` imports and `:144` calls it, so every executable the tree emits is its output |
+| E97 | skip reasons discarded, `no emitted label` the only signal | `lib/lowering/skip-diag.chiral` (79 L) is the single decl home, imported by `compile-back.chiral:20` and `diag.chiral:57`, which JOINS the chain. `native-prim?` is grep-clean, closed by deletion |
+| E101 | reader computes no line/col | **PARTIAL.** `pos-line`/`pos-col`/`fmt-pos` at `sexp.chiral:137`/`:151`/`:164` plus depth and last-form. The `parse.chiral` half the same title names is untouched |
+| E106 | no linear container; `List` element param is `(type 0)` | `lincoll.chiral:26` declares `SockVec` linear in both fields, with `sv-push`/`sv-count`/`sv-detach-at`/`sv-drain`/`mux-step`. Two accept samples, four refusals |
+| E107 | no porttype-consuming close lowers | five `(=> (1 x T) Unit)` closes across four `.port` files, crossing rows at `crossing-wraps.chiral:42-44` and `:53`. `pty-close` still has no row |
+| E109 | only `bput-u8`/`bput-u32-le` writers | `bput-u16-le` at `bytes.chiral:628`, gated by `prog/samples/e109_bput_u16_le.prog` |
+| E110 | `open-pty` opens with no close-on-exec | `nb-sys-open-rw-t` at `sys.chiral:654` hardcodes `O_CLOEXEC` in `0x80102` (`:658`), its own comment giving this element's reason |
+| E111 | not built by design, T4 shipped on `List` | `grid.chiral:28` stores cells in `(1 store (Pool n))`, a linear size-indexed region, 16-byte codec at `:52` |
+| E112 | no APC serialize/parse primitive | `apc.chiral` holds the envelope, the netstring grammar and the FNV-1a-64 `block-id`; `vt-parser.chiral:4` imports `dec-frame` |
+| E113 | no read/peek crossing exists | `pool-read` at `pool.port:30`, `PoolReadR` at `:19`, crossing row at `crossing-wraps.chiral:52`, called at `grid.chiral:194` |
+| E124 | no raw-to-porttype introducer exists | `adopt-fd` `(=> I64 Fd)` at `fd.port:32`, lowered by `(pair "adopt-fd" "nb-id")` at `erase.chiral:119`; `file.port:9` names it as the mint |
+| E129 | AF_UNIX-only floor, and the LEDGER is the stale one | `inet.chiral:2` names E129 and owns `sock-connect-in`; crossing row at `crossing-wraps.chiral:41`; seven importers. The LEDGER half of its own note was fixed on 2026-09-04, leaving the cell last |
+| E151 | FIVE ad-hoc string comparators | seven names, one definition each, all in `prelude/string.chiral`; `ty-cmp.chiral:15` and `row-infer.chiral:17` import it; `ar-str-cmp`/`cb-str-cmp` grep-clean |
+| E155 | single libdir, silent first-wins, 9 duplicate modules | `resolve.chiral:6-11` takes a list of roots; the key is the root-relative path (`:30-38`), so the collision class is unreachable; no `TUI/` and no symlinks in the tree |
+| E159 | `(adopt-fd 999)` closed twice compiles exit 0 | the two refusals are `diag.chiral:385` and `:387-394`; Phase 6 (`tools/test/linear-mint.sh`, dispatched at `run-tests.sh:146`) builds all three holes and reads them |
+
+### What the pass left as a finding rather than a cell edit
+
+**E101 is a genuine PARTIAL and the ledger row now says so**, on E26's precedent:
+`built`, qualified. The element's own title names two files. `lib/surface/sexp.chiral`
+landed in full. `lib/surface/parse.chiral` did not: its `p-err` still carries a
+bare string with no position, and `(lam (x ...) body)`, one of the two opaque
+messages the catalog cell was minted to retire, is unchanged at `:244-247`, beside
+`(let binding body)`, `(case scrut branch...)` and `bad case pattern`. One cell
+saying `built` and one saying `Not built` were each half right.
+
+**E106's four refusal samples run under no dispatched gate.**
+`tools/test/run-tests.sh:179` skips every `*_reject_*` by name, so
+`e106_reject_length.chiral` and its three siblings sit on disk asserting nothing.
+The element is BUILT and its negative conformance is not gated. Recorded in the
+cell rather than fixed, because fixing it is a change to `tools/`.
+
+**E107's owed `pty-close` is still owed.** Declared `(=> (1 p Pty) Unit)` at
+`lib/ports/pty.port:38` and called at `session.chiral:54-55`, with NO
+`crossing-wraps` row, so it does not lower. The ledger row already named this; the
+catalog cell now names it too.
+
+**E151's Element cell is stale beside its state cell.** It gives the owner as
+`string-utils.chiral`, which no longer exists anywhere in the tree, and homes
+`str-lower` and `str-trim` in `manas`, which no longer define them. Check AB reads
+only the state column, so nothing flags this. Noted in the cell; renaming the
+element's own description is an author call.
+
+⚑ **AB stops at 3, and those three are E121, E157 and E182.** The spot-check
+above verified all three against live source and none of their catalog cells was
+edited, so the lint still fires on them. The finding above records them as
+*corrected*; what happened was that they were *measured*. Three cells, same shape
+as the fifteen, and the evidence for each is already written down two sections up.
 
 ⚑ This is the SPEC tier's disease in a second register.
 `records/spec-tier-triage.md` found 104 of 129 SPECs describing work already in the
