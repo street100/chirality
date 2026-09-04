@@ -105,12 +105,13 @@ when this table and an arc file disagree.
 | [[arcs/native-protocol-arc]] | [[goals/native-stack]] | 9 rows: N1 slices 1 and 2 built, N7 example audited | the `N` namespace |
 | [[arcs/native-window-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 | [[arcs/native-document-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
+| [[arcs/display-calculus-arc]] | [[goals/display]] | 17 rows, none started | none |
 
-Three of the eighteen hold a reserved `E` band, [[arcs/scriba-arc]] holds the
+Three of the nineteen hold a reserved `E` band, [[arcs/scriba-arc]] holds the
 `S` namespace and [[arcs/native-protocol-arc]] holds the `N` namespace. The
-other thirteen cannot mint an element today, and
+other fourteen cannot mint an element today, and
 `docs/decisions/decision-work-ids.md` settles the arc-local row id that lets
-them name their work anyway. Every one of the thirteen spells its scheme in its own
+them name their work anyway. Every one of the fourteen spells its scheme in its own
 `reserved element block:` field, and `ledger-lint` check V fails an arc that
 holds neither a band nor a scheme.
 

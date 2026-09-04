@@ -3,7 +3,7 @@ node: goals
 layer: navigation
 related: [index, arcs/README, records/README, status-ledger, open-edges]
 status: current
-updated: 2026-09-03
+updated: 2026-09-04
 ---
 
 # Goals
@@ -38,6 +38,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/module-split]] | in flight, one measured miss | [[arcs/module-split-arc]] |
 | [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | [[arcs/transport-arc]], [[arcs/scriba-arc]], [[arcs/tuning-arc]] |
 | [[goals/native-stack]] | in flight: protocol arc opened 2026-09-03, window and document unopened | [[arcs/native-protocol-arc]], [[arcs/native-window-arc]], [[arcs/native-document-arc]] |
+| [[goals/display]] | stated 2026-09-04, unbuilt: the calculus arc opened, four conditions unopened | [[arcs/display-calculus-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
 
 `independent-judgment` carries an arc as of 2026-09-01 and still has no element.
@@ -60,6 +61,14 @@ still block work inside them: [[arcs/tuning-arc]] is blocked whole and
 ambition: [[thesis]] and [[category-bridge]] both call C "the part of Chirality
 that is new work rather than borrowed", and no goal, arc or row stood against
 it. Its arc has no reserved block, so its rows take arc-local ids.
+
+[[goals/display]] was stated 2026-09-04 and is an author call, the fourth
+after [[goals/presentability]], [[goals/readable-surface]] and
+[[goals/local-ai]]. It says so in its own first section. Four of its five
+done-conditions hold no arc file and stay conditions in the goal, so this
+table lists the one arc that exists. [[goals/native-stack]] condition 3 becomes
+a consumer of it, and whether [[arcs/native-document-arc]] survives the overlap
+is a row in [[records/author-calls]].
 
 [[goals/module-split]] was opened 2026-09-02, also a derivation:
 [[splitting-law]] and [[joining-law]] are standing rules with a decidable test

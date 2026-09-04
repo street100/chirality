@@ -119,8 +119,8 @@ targets, then build the custody tool family on it. It is a spine with backflow
 rather than a schedule.
 
 What the project claims it is doing, and who is doing it, sits one tier down:
-[`docs/goals/`](docs/goals/) holds eleven goals, [`docs/arcs/`](docs/arcs/) holds
-the eighteen arcs serving them, and [`docs/elements/`](docs/elements/) holds the
+[`docs/goals/`](docs/goals/) holds twelve goals, [`docs/arcs/`](docs/arcs/) holds
+the nineteen arcs serving them, and [`docs/elements/`](docs/elements/) holds the
 catalog, the ledger and one SPEC per element. A goal carries no build state;
 that lives on four rungs in
 [status-ledger](docs/definitions/status-ledger.md).
@@ -150,7 +150,7 @@ proved and what it stubbed is kept in
 
 ## Settled and open
 
-- Forks settled in `docs/decisions/` (24 notes): additive testable profiles
+- Forks settled in `docs/decisions/` (25 notes): additive testable profiles
   over a frozen port set; two brokers agreeing via Adhikara; own typed backend
   with no compile to C; B in the type not the packaging; the graded/cost-kernel
   direction; the inspiration policy; the checker as a small trusted core plus
