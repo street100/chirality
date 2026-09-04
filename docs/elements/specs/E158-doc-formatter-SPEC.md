@@ -111,7 +111,7 @@ updated: 2026-08-31
 - **The defect, measured (not paraphrased):**
   - `prog/manas/core/assemble.chiral` — `def assemble-prompt` at **`:48`**, the
     ten-deep `str-cat` nest at **`:52-57`**, closing `))))))))))`.
-    ⚑ *Correction:* the example says `:47-57`; the catalog row (`:420`) says
+    ⚑ *Correction:* the example says `:47-57`; the catalog row (`catalog.md:470`) says
     `:51-56`. Measured, the def opens at 48 and the nest runs 52-57.
   - `lib/typing/pretty.chiral` — **51 lines**, hardcodes `sp`/`parens` (`:22-23`),
     goes straight to `Str`, and is imported by **zero** modules
@@ -349,8 +349,8 @@ subject matter is neither the extension nor the role.
   `d-tag` open and popped at its close, emitting one faced node per segment per
   line. Correct for nested tags, per FLAG C.
 - **Dependency:** the emission half has no target constructor until **E174**
-  lands `r-row` + the per-node width function (`SELF-IMPLEMENT-CATALOG.md:438`,
-  `LEDGER.md:293`; NEEDS-AUTHOR-1 as answered).
+  lands `r-row` + the per-node width function (`catalog.md:487`,
+  `ledger.md:309`; NEEDS-AUTHOR-1 as answered).
   **Do not land a version that is plausibly right and quietly wrong** — that is
   precisely what FLAG C refused, and the artifact's own reasoning (four logged
   "built but unadopted" findings) cuts against it.
@@ -400,7 +400,7 @@ count (E182), any `pretty.chiral` behaviour (decision 12).
      example's §6 lands-in table lists it as an addition; adding it is a
      duplicate label in one file. **Decision 9.**
   2. **`assemble.chiral` line numbers** — the example says `:47-57`, the catalog
-     row (`:420`) says `:51-56`. Measured: `def assemble-prompt` at **`:48`**,
+     row (`catalog.md:470`) says `:51-56`. Measured: `def assemble-prompt` at **`:48`**,
      the `str-cat` nest at **`:52-57`**.
   3. **Open question 2 / FLAG C is obstructed by the target type**, not by
      effort: `Rendering` has no horizontal composition constructor, so the
@@ -419,7 +419,7 @@ count (E182), any `pretty.chiral` behaviour (decision 12).
   - **`doc->json`** — no consumer. Not deferred to an element; it is one `case`
     over six constructors the day a consumer exists.
   - **`doc->rendering`** — scoped IN (commit 4), dependent on **E174**
-    (`SELF-IMPLEMENT-CATALOG.md:438`, `LEDGER.md:293`), landing correct or not at
+    (`catalog.md:487`, `ledger.md:309`), landing correct or not at
     all. **NEEDS-AUTHOR-2 (§3) is open**: nested `r-face` does not restore the
     outer face, which E174 does not cover, so the dependency may be two elements.
   - **A totality certificate for the renderer** — **E50**
