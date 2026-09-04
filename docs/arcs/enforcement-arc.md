@@ -45,8 +45,13 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    because that import is a `duplicate label` refusal at load: eleven colliding
    top-level names, E154's fifth instance. Resolving them cascades through seven
    sha256-pinned gate scripts. Beyond that, a hard refusal on the shipping path
-   needs EN-15 answered, since the compiler would refuse its own four `$apply`
-   dispatchers. E16's title names the preserve-check and three of its four
+   waits on **E185** being built, since the compiler would refuse its own four
+   `$apply` dispatchers. EN-15 is answered:
+   [[decisions/decision-erased-word-level]] puts the erased-word type strictly at
+   the lowering type level, leaves `Core` without a word spelling and leaves the
+   kernel's `conv` relation alone. What is left is the spelling of the erased
+   position, which is E185's whole subject and needs the full pipeline.
+   E16's title names the preserve-check and three of its four
    deliverables are built; E18's checker and reference interpreter exist
    unreached.
 3. **The check agrees with the compiler it checks.** **Root-caused 2026-09-03**,
@@ -60,8 +65,9 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    (`tools/test/tal-check.sh`) pins that the repaired check still refuses, with
    nine REJECT rows and three live mutants. Of the six survivors, the
    erased-binder register is **fixed at `40e8726`** (EN-14) and the probe reads
-   **1,477 of 1,481**. ⚑ The four `$apply` dispatchers remain, EN-15, and they
-   are an author call in [[records/author-calls]].
+   **1,477 of 1,481**. ⚑ The four `$apply` dispatchers remain, and EN-15 is
+   **answered 2026-09-04**: [[decisions/decision-erased-word-level]] settles the
+   level. Their spelling is **E185**, minted the same day and unbuilt.
 4. **The optimizer's re-check runs, or E17 says why it does not.**
    `lib/lowering/upper/optimize.chiral` has zero importers and is in no blob, so
    `optimize` and `specialize` return a `Checked` result nothing ever forms.
@@ -108,13 +114,21 @@ the diagnosis (EN-08 to EN-13), the author's ruling, both checker repairs with
 Phase 22 gating them (`ddfbc27`), and the erased-binder fix with a promoted
 fixpoint (`40e8726`). Suite 339 passed, 0 failed, 87 roots, gate PASSED.
 
-Two things are owed, and they are independent of each other. **The eleven name
+Four things are owed, and they are independent of each other. **The eleven name
 collisions** make `lowering/tal/check` unimportable beside the compiler, which
 blocks requirement 2 and requirement 4 alike; resolving them is mechanical and
 cascades into `tools/test/diag.sh:256` and seven sha256-pinned gate scripts.
-**EN-15** is the author's, and it gates the moment the refusal goes live rather
+**E185** is the second: EN-15 was answered 2026-09-04 and
+[[decisions/decision-erased-word-level]] settles the level, so what stands
+between the four `$apply` dispatchers and a live refusal is an unbuilt element
+needing the full pipeline. It gates the moment the refusal goes live rather
 than the plumbing. The refuse-or-carry ruling in [[records/author-calls]] is a
-third and separate call.
+third and separate call, and **EN-17** is a fourth, opened 2026-09-04: the
+`$kI_J` capture constructor's field types are their own author call, since
+research §7 finds the prior art keeping constructor fields concrete.
+[[records/enforcement-arc]] EN-17 and its row in [[records/author-calls]] both
+hold that `ck-prog` cannot refuse on the shipping path while that instance
+stands, so requirement 2 carries it alongside E185.
 
 The enabling change was measured, then reverted. Its artifacts survive.
 `lib/lowering/tal/check.chiral` declares **11 top-level names that already exist
@@ -131,8 +145,9 @@ grepping for a renamed literal. Repointing that guard cascades through **seven
 sha256-pinned gate scripts over two rounds**, which is why it was reverted rather
 than half-shipped.
 
-Owed before any of this lands: the diagnosis slice for the four classes. Then the
-refuse-or-carry ruling, which is the author's.
+The diagnosis slice for the four classes ran 2026-09-03, EN-08 to EN-13. What is
+still owed before any of this lands is the refuse-or-carry ruling, which is the
+author's.
 
 ## Open: minted, not built
 
