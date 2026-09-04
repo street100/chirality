@@ -248,9 +248,11 @@ refusals, their diagnostics, an assertion F3's `refused` marker never made. ⚑ 
 so **no row carries `refused` today**: those five refusal fixtures are floor
 fixtures, their `refused` rows cost 17–20 s a run (resolve + one refusal compile
 for the five measures 13.9 s; the branch does two), and the leg's own note says
-that comparison **cannot fail** — both legs get the same blob, both front ends
-come from the same `scaffold/lib`, and every refusal today happens at LOAD, above
-both backends. The branch stays for the day a sample is refused during *lowering*,
+that comparison **cannot fail** — both legs got the same blob, both front ends
+came from the same pre-migration `scaffold/lib`, and every refusal happened at
+LOAD, above both backends. (The C leg was DROPPED 2026-09-01 and Phase 12 is not
+ported, so `scaffold/lib` has no successor to repoint at here: this sentence is
+the record of what the leg's note said while the leg stood.) The branch stays for the day a sample is refused during *lowering*,
 where the two backends genuinely differ, and is documented as unused.
 
 **The honest limit: F3 does not subsume the per-arm gates.** A third mutant, also
@@ -333,14 +335,20 @@ promoted pair (`scaffold/tests/test-module-kind.sh:504-508`).
 What actually convicted the mutant is the gate's **own expected blob**:
 `want-lib.chiral` and `want-root.chiral`, two hand-written heredocs inside the
 tracked gate script (`scaffold/tests/test-module-kind.sh:465-480` and `:490-499`)
-that `blob_is` (`:195-207`) byte-compares against each provider's output. Both
-providers were mutated; the expectation was not, because it is text in a
-committed file rather than anything either leg emits. **The history is unchanged
-and so is the rank:** a fixed expectation held constant across two runs is what
-caught a defect a provider-vs-provider differential could not see, which is rank
-2 by its second clause — *a reference outside BOTH legs*, the form the built floor
-records at `scaffold/lib/test-floor.chiral:45-47`. The rank-2 definition above is
-not loosened to fit this instance; the instance was described wrongly.
+that `blob_is` (`:195-207`) byte-compares against each provider's output. ⚑ That
+script has **no successor in this tree**: Phase 8 is one of the five the
+migration did not port, because every fixture declares an old-tree module
+coordinate and the live key is the root-relative path
+(`tools/test/MIGRATION-NOTES.md`, "Not ported"). The three citations above are
+therefore left pointing at the pre-migration tree as the record of what convicted
+the mutant, not repointed. Both providers were mutated; the expectation was not,
+because it is text in a committed file rather than anything either leg emits.
+**The history is unchanged and so is the rank:** a fixed expectation held
+constant across two runs is what caught a defect a provider-vs-provider
+differential could not see, which is rank 2 by its second clause — *a reference
+outside BOTH legs*, the form the built floor records at
+`lib/evidence/test-floor.chiral:56-58`. The rank-2 definition above is not
+loosened to fit this instance; the instance was described wrongly.
 
 **The admission test for a NEW anchor.** The old wording survived because it
 named an artifact nobody had to point at. From here on an artifact minted as a
@@ -441,7 +449,16 @@ way a re-founding fails silently:
   reason, plus that the mutation matched something, that the mutant still built,
   and that the fixture carries the written `MutRun` claim the mutation
   implements. **Isolation is established, not asserted:** a 6×3 matrix of every
-  mutant against every fixture is a clean diagonal.
+  mutant against every fixture is a clean diagonal. ⚑ That script is Phase 12,
+  one of the five the migration did **not** port
+  (`tools/test/MIGRATION-NOTES.md`), so both `scaffold/` names above stand as the
+  pre-migration record and neither is repointed. The *shape* survived:
+  `tools/test/mutant.sh` is this tree's library-mutant harness — `mutant_build`
+  (`:101`) copies `lib prog bin` into a scratch tree, mutates one named file
+  under a declared anchor count, re-resolves and rebuilds, and `mutant_red`
+  (`:133`) runs a chosen phase under the mutant. It carries the anchor-matched
+  and still-built assertions; the `MutRun`-claim assertion has no counterpart,
+  there being no fixture-side claim here to check against.
 
 ⚑ **B3 = 0 before this.** The corpus classification found no refusal-universality
 test anywhere in the 709, so `e170_refine_top` is the tree's first. What such a
