@@ -347,3 +347,30 @@ central move is closing it: `Role` becomes a closed sum. Either `Role` gains a
 constructor an address can occupy, or shard G's open keyspace stops existing
 once C1 lands. `.planning/DISPLAY-LAYER-GAP.md` §5 D10 carries the exact quote
 and the decision-tier detail.
+
+**A sixth item, raised by the C1C2 example and its audit, extends a standing
+row instead of opening a new one.** The row is *Which suite phase number a new
+gate takes*, in the table above. The display tier now supplies its own instance
+and the instance sharpens the cost.
+
+Measured 2026-09-04, in this tree. Phase 7's root census is
+`grep -rl '^(def compile-main' lib prog` (`tools/test/run-tests.sh:175`), so it
+stops short of `tools/`. Phase 2's manifest is six named roots under
+`prog/samples/` (`prog/test-runner.prog:40-46`), a bundled list rather than a
+directory walk. So a gate root landing under `tools/test/samples/` is reached by
+one thing only: a script naming it as its `FIXTURE`. A script carrying no
+`run_phase` line runs when a person types its name and at no other time.
+
+`docs/examples/C1C2-style-round-trip.md` takes the `crypto.sh` and
+`tal-check.sh` route: a `# not-a-phase: <reason>` declaration, outside the suite
+total, run directly. That keeps `tools/test/registration.sh` G2 green and prices
+the element honestly as shipping a hand-run gate. What it does not do is make
+the standing call cheaper. Three scripts already wait on one number
+(`crypto.sh:6`, `tal-check.sh:11`, `apply-word.sh:5`), C1C2's would be the
+fourth, and `display-calculus/C1` and `C2` would then join E185 in landing
+conformance the suite does not execute. Measured the same day: 13 `run_phase`
+lines against 20 scripts under `tools/test/`, 7 of them printed as `PEND`.
+
+The fork is unchanged and no new one is opened here. 8 through 12 stay owed to
+unported old-tree phases. 21 through 23 are contested by the four documents the
+standing row names.
