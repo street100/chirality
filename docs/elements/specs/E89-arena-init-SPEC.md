@@ -60,10 +60,11 @@ updated: 2026-08-09
 - **TAL crossings already wired:**
   - `mmap` (nr 9): `nb-sys-mmap-t` in `sys-tal.chiral:99`, `sys-row` in
     `target-linux.chiral:17`, `(pair "mmap" "nb-sys-mmap")` in
-    `crossing-wraps.chiral:30`, `(extern mmap ...)` in `ports.chiral:96`.
+    `crossing-wraps.chiral:30`, `(extern mmap ...)` in `lib/ports/process.port:16`.
   - `mprotect` (nr 10): `nb-sys-mprotect-t` in `sys-tal.chiral:113`, `sys-row`
     in `target-linux.chiral:19` — **but no crossing-wraps entry and no
     ports.chiral extern.** Both must be added (Step 1).
+  - 2026-09-04, citation repair: both landed since. The extern is `(extern mprotect (=> I64 I64 I64 I64))` at `lib/ports/process.port:17` and the wraps row at `lib/lowering/tal/crossing-wraps.chiral:27`. Step 1 below is already in the tree; the step text is left as written.
 - **True delta:** `compile-emit.chiral` — replace constants + stub + cell count.
   `mach-x64.chiral` — add third arena cell to `x-fin`. `native.py` — mirror
   new constants + stub bytes. `crossing-wraps.chiral` — add mprotect entry.
@@ -89,7 +90,7 @@ dispositioned.
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — Add mprotect extern + crossing-wraps entry
-- **Target:** `ports.chiral:96` (after `mmap` extern), `crossing-wraps.chiral:30`
+- **Target:** `lib/ports/process.port:16` (after `mmap` extern), `crossing-wraps.chiral:30`
   (after `mmap` entry).
 - **Change:**
   - `ports.chiral`: add `(extern mprotect (=> I64 I64 I64 I64))  ; mprotect(addr,len,prot) -> 0 or -errno`
