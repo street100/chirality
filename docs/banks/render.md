@@ -10,9 +10,10 @@ updated: 2026-09-04
 # Bank: render
 
 > The monolith this refracts: **the renderer / the style engine / the display
-> list / the terminal emulator**. Four subsystems elsewhere; here, twenty-three
-> shards across twelve homes, nineteen of them running, two written and
-> unreached, two absent.
+> list / the terminal emulator**. Four subsystems elsewhere; here, twenty-four
+> shards across thirteen homes, twenty of them running, two written and
+> unreached, two absent. The twenty-fourth is in the tool tier and was found by
+> the C1C2 example on 2026-09-04.
 
 **Why this bank exists, and the cost is measured.** The C01 EXAMPLE audit at
 `d0fc26a` caught a drafted worked example proposing *"a theme is a value the
@@ -95,7 +96,7 @@ The four monoliths this gets confused with, and what each actually is:
 | you reach for | it is here |
 |---|---|
 | a renderer | five exits, shards A, B, K, L, S, T. One value, one function each |
-| a style engine | shards C through J. Eight parts, all eight on disk, one of them unreached |
+| a style engine | shards C through J, plus X in the tool tier. Nine parts, all nine on disk, one unreached, and the ninth is in awk |
 | a display list | shard B, `Rendering`, nine constructors, 18 importers |
 | a terminal emulator | shards P and Q, a linear cell grid and a total escape parser, both built |
 
@@ -135,8 +136,9 @@ a gate, and every such row says so.
 | **U** | **the surface port**: the crossing every terminal byte leaves through | `lib/ports/stdio.port`, `put` | **runs, and it is `Str`.** Nothing at the crossing distinguishes a control sequence from content. Shard L emits SGR through it. Map is silent |
 | **V** | **the theme value**: a colour set a root supplies, distinct from the library's own | nowhere | **absent.** Zero hits for `theme` in `lib/` and `prog/`. J carries the shape of its *domain*; nothing carries its value. `display-calculus/C5` |
 | **W** | **the every-state walk**: a property checked in every reachable rendering | nowhere | **absent, and its witness is unchosen.** The cell lane's `(Env, State)` product measures 1. `display-calculus/C9` and `H6`; the open call is in [[records/author-calls]] |
+| **X** | **the style model in the tool tier**: an `attr[]` set plus single-valued `fg` and `bg` registers, a third representation of the value C and D each hold | `tools/test/face.sh`, `SGR_AWK` at `:176-223`, `sgr_screen` at `:225` | **runs, as Phase 16** (`run-tests.sh:252`), gating E175. It is the one place the emitter's SGR bytes are decoded today, and it disagrees with shard H in three classes, which is §3. Found by `docs/examples/C1C2-style-round-trip.md` 2026-09-04. Map is silent |
 
-⚑ **A twenty-third shard, unreached and superseded.**
+⚑ **An unlettered shard, unreached and superseded.**
 `prog/scriba/render-str.chiral` is a second `Str`-to-`Rendering` renderer with
 zero importers. `default-str-renderer` (`init-loader.chiral:68`) does the job and
 is the one wired into the mode table. Recorded here and given no letter, because
@@ -221,6 +223,20 @@ non-content key for `block-id`. Adopting it as it stands buys nothing.
 - **M's width slot exists twice and is filled once, with the wrong function.**
   `str-cols` counts codepoints, `Cell` has a `width` field, and `put-cell` writes
   a literal `1`. E177 is one table serving both.
+- **X is a third model of the same value, and the gate disagrees with the code
+  it gates.** `SGR_AWK` (`tools/test/face.sh:176-223`) reduces the emitter's
+  bytes in awk, and three classes separate it from `apply-one`. Its final arm is
+  `else { attr[v]=1 }` (`:216`), so `ESC[22m` sets an attribute numbered 22
+  where `apply-one` clears bold, and every unrecognised code becomes a set flag
+  where `parse-sgr` returns `sgr-other` and the fold discards it. It honours
+  `39` and `49` as default-fg and default-bg (`:213`, `:215`), and `parse-sgr`
+  has a row for neither. The disagreement therefore runs both ways: the awk
+  knows two codes the typed decoder does not, and the typed decoder knows three
+  off-codes (`22`, `24`, `27`) the awk does not. `face-sgr` emits none of the
+  five, so Phase 16 grades E175 correctly as the tree stands. What X cannot be
+  is the oracle for `display-calculus/C2`'s law, because a decoder that agreed
+  with it would disagree with `apply-one`. Whether X retires once a typed
+  decoder can serve is [[arcs/enforcement-arc]]'s tooling-surface requirement.
 
 ### Where a render shard belongs to another bank
 
@@ -244,7 +260,7 @@ non-content key for `block-id`. Adopting it as it stands buys nothing.
   decodes UTF-8 to count. A width table changes what the count means and leaves
   the decoder alone.
 - **Which shards a gate can reach is [[banks/verification]]'s question.** Five of
-  the twenty-three (N, O, P, Q, and the `t4_*` half of D) are reached only from
+  the twenty-four (N, O, P, Q, and the `t4_*` half of D) are reached only from
   roots under `prog/scriba/samples/`, which Phase 7 compiles without running.
   `t5_utf8.prog` is one of three names in that phase's `KNOWN_FAIL` list
   (`tools/test/run-tests.sh:173`). A shard whose only caller is a fixture is
@@ -308,9 +324,9 @@ Read this before saying chirality lacks a display feature.
    stands as witness is an open author call.
 
 **Gradient, stated once.** Shards A, B, C, E, F, G, I, L, M, R, S, T and U run on
-every render. D, H, N, O, P and Q run under fixture roots. J and K are written
-and unreached. V and W are absent. The seven rows above are the whole of what the
-display tier owes. Two of them carry a minted element (E177 and E178, both
+every render. D, H, N, O, P and Q run under fixture roots. X runs as a suite
+phase and on no render. J and K are written and unreached. V and W are absent.
+The seven rows above are the whole of what the display tier owes. Two of them carry a minted element (E177 and E178, both
 `design`); the other five are arc rows mapping to `unminted`, so nothing
 schedules them.
 
