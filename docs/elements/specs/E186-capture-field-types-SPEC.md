@@ -282,7 +282,7 @@ source in the change. Pathspec every commit.
   ⚑ **M1's pin was `ok bad ok ok` and it is wrong; the audit corrected it to
   `ok bad bad ok`** (2026-09-04, from the SPEC's own quoted detail). R3 asserts
   two things about the one-field ctor, that its lowering is `nt-word` **and that
-  its source `Term` is `t-pi`. M1 rewrites every kept field's source `Term` to
+  its source `Term` is `t-pi`**. M1 rewrites every kept field's source `Term` to
   `(t-var 0)`, the arrow capture with the rest, so R3's second conjunct is false
   under M1 and R3 reddens beside R2. A mutant reddening a row outside its own pin
   is [[records/gate-audit]] GA-22's exact shape, which is why the whole line is
