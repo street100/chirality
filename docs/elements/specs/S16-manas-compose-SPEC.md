@@ -89,8 +89,9 @@ pure glue** — every effectful piece it needs is already a shipped public def.
 
 The pure core lives in the **manas library**, not in scriba, because
 `pipeline-slots` is genuinely a library concern — it is the *conservative
-selection-time* analog of `plan-run`'s *runtime* bind (`plan.chiral:110`:
-`dedup-str (append Str (slots-of fired) (cons (exp-slot comb) nil))`), and
+selection-time* analog of `plan-run` (`plan.chiral:97`), whose *runtime* bind at
+`:110` is
+`dedup-str (append Str (slots-of fired) (cons (exp-slot comb) nil))`, and
 `compose-preflight` is pure glue over E135's `bind-config`. A library home keeps it
 unit-testable as a `scaffold/tests/samples/` sample with **no scriba, no PTY**
 (exactly like `e135_bind.chiral`) and keeps scriba thin. (Deviation from the slice
@@ -142,14 +143,14 @@ minipuffer changes.
 Three additive touch-points, all mirroring the shipped `manas-enter`/`runview-fire`
 wiring:
 
-- **entry**: the `vim-command-run` chain (`command-loop.chiral:873`, the
+- **entry**: the `vim-command-run` chain (`command-loop.chiral:1810`, the
   `str-eq cmd "…"` cascade that already dispatches `"run"` → `runview-fire`) gains a
   `(str-eq cmd "compose")` arm → `compose-enter`, before the `beep-recurse`
   fallthrough.
-- **`compose-enter`** (NEW effectful helper, sibling of `manas-enter` `:662`): reads
+- **`compose-enter`** (NEW effectful helper, sibling of `manas-enter` `:1257`): reads
   the two picks via chained `minipuffer-read`, resolves each id to its value, and
   calls `compose-fire`. Detailed §4.1.
-- **`compose-fire`** (NEW effectful helper, sibling of `runview-fire` `:700`): runs
+- **`compose-fire`** (NEW effectful helper, sibling of `runview-fire` `:1439`): runs
   the **pure** `compose-preflight` gate, then either paints a `manas-bad` pre-flight
   line (→ `vm-normal`) or fires `runview-drive` (→ `vm-runview`). Detailed §4.2.
 
@@ -203,7 +204,7 @@ Map each declared id (combiner ++ fired expert-ids) to the slot it binds via
 (total). This is the **conservative superset** of any GATE outcome (§5): the doc
 isn't chosen at pick time, so S16 binds every *declared* slot, not the exact fired
 subset — a `bind-ok` here is *sufficient* for any run of this pipeline (the runtime
-`plan-run` bind, `plan.chiral:110`, is the exact backstop).
+`plan-run` (`plan.chiral:97`) bind at `:110` is the exact backstop).
 
 ```
 ; each id -> its slot (dangling id -> dropped). Explicit structural recursion, not
@@ -278,7 +279,7 @@ Config picking already has `all-profiles` (`profiles.chiral:51`) + `config-id`
   (lam (cs) (case cs (nil nil) ((cons c rest) (cons (config-id c) (config-ids rest))))))
 ```
 
-`pipeline-id` is E136 (`match.chiral:23`); `config-id` is `profiles.chiral:15`. The
+`pipeline-id` is E136 (`match.chiral:25`); `config-id` is `profiles.chiral:15`. The
 candidate lists are the safety rail exactly as in S14: a typo'd pipeline/config name
 is never confirmable, and `pipeline-by-id`/`profile-by-id` turn a confirmed id back
 into the value (the `manas-enter` id→value pattern, `command-loop.chiral:665-669`).
@@ -348,7 +349,7 @@ prevents it):
                   rendering renderers ops (vm-runview rv) pending-none)))))))))
 ```
 
-- `runview-drive`'s signature (`manas-runview.chiral:181`) is
+- `runview-drive`'s signature (`manas-runview.chiral:218`) is
   `(=> Backend Str (List Pipeline) (List Expert) Config Str (List (Pair Str Str))
   (Pair I64 I64) RunView)` — `pipe` replaces `doc-refine-pipeline`, `config` replaces
   `smoke-local-config`; the pool (`expert-pool`), request (`rv-req`), doc (`rv-doc`),
@@ -395,7 +396,8 @@ This is the S16 form of the pure/effectful split that runs through the whole coc
   the pipeline's **declared** slots — a superset of any GATE outcome. If the config
   covers that, it covers any fired subset (a `bind-ok` here is *sufficient*). This
   over-reports a `bind-miss` only for a slot a *never-fired* agent needs — the safe
-  direction — and the runtime `plan-run` bind (`plan.chiral:110`, `plan-unbound`) is
+  direction — and the runtime `plan-run` (`plan.chiral:97`) bind at `:110`
+  (`plan-unbound`) is
   the exact backstop. A doc-aware pre-flight (run the pure GATE first, bind only fired
   slots) is a refinement, not MVP (§9).
 - **The swap property is a checked guarantee.** All four shipped profiles bind
@@ -436,14 +438,16 @@ This is the S16 form of the pure/effectful split that runs through the whole coc
   **RESOLVED.** Because S16 adds no `VimMode` variant (D1), the S14/S15 "mode variant
   + all its exhaustive `case` arms land together" constraint **does not apply**. The
   one coverage constraint is the `Prompt` sum: `mp-prompt-label` is an exhaustive
-  `case` over `Prompt` (`minipuffer.chiral:162`), so the two new constructors and their
+  `case` over `Prompt` (`minipuffer.chiral:28`; the case is `mp-prompt-label` at
+  `:183`), so the two new constructors and their
   two label arms land in the **same commit** (commit 2, §7).
 
 - **D4 — the pre-flight binds the conservative declared-slot superset.**
   **RESOLVED (scoped).** `pipeline-slots` binds the combiner ++ every declared
   expert-id's slot (§3.1), a superset of any GATE-fired subset, because the doc isn't
   chosen at pick time (§5). A `bind-ok` is therefore *sufficient* for any run; the
-  over-report direction is safe; `plan-run`'s runtime bind (`plan.chiral:110`) is the
+  over-report direction is safe; `plan-run` (`plan.chiral:97`) and its runtime bind
+  at `:110` are the
   backstop. Doc-aware pre-flight (pure GATE first) is a refinement, out of S16 (§9).
 
 - **D5 — entry UX: `:compose` command, not a keymap chord.** **RESOLVED (scoped).**
@@ -476,9 +480,9 @@ This is the S16 form of the pure/effectful split that runs through the whole coc
 - **NEEDS-AUTHOR:** none. Every primitive S16 relies on is a verified public def
   (`bind-config` `bind.chiral:52`, `all-profiles`/`config-id`/`profile-by-id`
   `profiles.chiral:51/15/60`, `doc-refine-pipeline`/`expert-pool`/`expert-by-id`/
-  `expert-slot-of` `doc-refine.chiral:124/88/100/18`, `pipeline-id` `match.chiral:23`,
-  `dedup-str` `gate.chiral:104`, `runview-drive`/`runview-render` `manas-runview.chiral:181/98`,
-  `runview-fire`/`manas-enter`/`minipuffer-read` `command-loop.chiral:700/662/229`) and
+  `expert-slot-of` `doc-refine.chiral:124/88/100/18`, `pipeline-id` `match.chiral:25`,
+  `dedup-str` `gate.chiral:105`, `runview-drive`/`runview-render` `manas-runview.chiral:218/109`,
+  `runview-fire`/`manas-enter`/`minipuffer-read` `command-loop.chiral:1439/1257/243`) and
   every deviation (D1/D2) is mechanically buildable and resolved above.
 
 ---

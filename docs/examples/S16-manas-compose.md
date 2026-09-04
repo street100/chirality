@@ -8,7 +8,7 @@ Slice 12 gave scriba a **read-only manas colorer**. S14 made the library
 **editable** — the buffer holds a *typed* `Config`/`Pipeline` value and edits are
 total transforms over it. S15 **fired a run and rendered it live** — but it fired a
 *hardcoded* pair (`doc-refine-pipeline` + `smoke-local-config`, crafted inputs;
-`command-loop.chiral:700` `runview-fire`). S16 is the **top of the cockpit**: the
+`command-loop.chiral:1439` `runview-fire`). S16 is the **top of the cockpit**: the
 glue that lets you *choose* what S14 holds and *hand it to* what S15 renders — and
 the **pre-flight bind check** wedged in between, so the gap between "configured" and
 "runnable" is closed **at selection time**, not discovered mid-run.
@@ -35,7 +35,7 @@ The move, in three beats:
    acceptance-critical, unit-testable, no-PTY function (the S16 sibling of S14's
    `apply-edit` and S15's `runview-render`);
 3. a **one-keybind dispatch** `compose-fire` that generalizes `runview-fire`
-   (`command-loop.chiral:700`): on `bind-ok` -> S15's `runview-drive`; on `bind-miss`
+   (`command-loop.chiral:1439`): on `bind-ok` -> S15's `runview-drive`; on `bind-miss`
    -> a rendered red pre-flight line, **never fires**.
 
 **Out of scope** (this is compose/select/pre-flight/dispatch, the glue):
@@ -88,21 +88,21 @@ The **pre-flight** is E135, already the exact function S16 needs:
   config id** — the caller cases it; "Python raised `KeyError`; here it's a value"
   (`types.chiral:39-44`).
 
-The **GATE** is E134 (`run-gate`, `gate.chiral:113`) — pure, total, routes which
+The **GATE** is E134 (`run-gate`, `gate.chiral:114`) — pure, total, routes which
 agents fire; S16 does not re-run it at selection time (see §4 on the *conservative*
 slot set), but it is the routing E135 pre-flights against.
 
 The **dispatch target** and the **entry pattern** are both shipped in S15's wiring:
 
-- **`runview-drive`** (`manas-runview.chiral:181`) — `(=> Backend Str (List Pipeline)
+- **`runview-drive`** (`manas-runview.chiral:218`) — `(=> Backend Str (List Pipeline)
   (List Expert) Config Str (List (Pair Str Str)) (Pair I64 I64) RunView)` — fire one
   run, repaint per stage; effect row exactly `be-chat`. S16 calls this with the
   **chosen** pipeline + config instead of the hardcoded pair.
-- **`runview-fire`** (`command-loop.chiral:700`) — the `:run` entry that today
+- **`runview-fire`** (`command-loop.chiral:1439`) — the `:run` entry that today
   hardcodes `doc-refine-pipeline` + `smoke-local-config`; S16 **generalizes it** to
   a `(pipe, config)` pair. Its special-casing (effectful, returns into a mode,
   ordered before the dispatch) is the exact template.
-- **`manas-enter`** (`command-loop.chiral:662`) — the `:manas <id>` lookup entry;
+- **`manas-enter`** (`command-loop.chiral:1257`) — the `:manas <id>` lookup entry;
   its `profile-by-id`/`"doc-refine"` id-resolution is the template for turning a
   *picked id* back into a *value*.
 - **the minipuffer** (`minipuffer.chiral:28`) — `Prompt` sum + `complete`-over-
@@ -331,7 +331,7 @@ loop is unchanged; the chosen pipeline is carried in the sum, not a global.
 
 ### §5.5 The one-keybind dispatch (generalize runview-fire)
 
-`compose-fire` is `runview-fire` (`command-loop.chiral:700`) with the hardcoded pair
+`compose-fire` is `runview-fire` (`command-loop.chiral:1439`) with the hardcoded pair
 replaced by the picked `(pipe, config)` **and the pre-flight gate added**. On
 `bind-ok` it hands off to S15's `runview-drive`; on `bind-miss` it renders the
 pre-flight failure and returns to the compose state — **it never enters the
@@ -510,8 +510,8 @@ you edit a config. Suppose S14 was used to leave `smoke-local` with only
   **E135** (`bind.chiral` `bind-config` — the pure pre-flight itself, `BindResult`).
   Without S14 there is nothing to pick; without S15 nothing to hand off to; without
   E135 no pre-flight value.
-- **Seed:** **`runview-fire`** (`command-loop.chiral:700` — the `:run` entry S16
-  generalizes) and **`manas-enter`** (`command-loop.chiral:662` — the id->value
+- **Seed:** **`runview-fire`** (`command-loop.chiral:1439` — the `:run` entry S16
+  generalizes) and **`manas-enter`** (`command-loop.chiral:1257` — the id->value
   resolution pattern).
 - **Pattern:** **S14** (the `prompt-manas-*` minipuffer extension + the
   candidate-list safety rail, `minipuffer.chiral:35`) and **S13** (the two-step
