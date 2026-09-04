@@ -76,3 +76,43 @@ prose in the title cell rather than by the state.
 ⚑ **`ledger-lint` check N does not pair the ledger's state against the catalog's.**
 E185 sat `built` in one and `Not built` in the other and nothing flagged it. That
 gap is why this reconciliation was needed at all.
+
+## The gap is closed, and it was an 18-element class
+
+`ledger-lint` gained **check AB** on 2026-09-04: the LEDGER's state column against
+the CATALOG's own prose assertion. Check N pairs the LEDGER against
+`docs/examples/INDEX.md` and never opens the catalog, so the two documents that
+both assert a build state could disagree with nothing watching.
+
+The check is deliberately narrow, for check N's stated reason: it flags only pairs
+that cannot both be true. The catalog's state is prose rather than a column, so it
+reads **only** an unambiguous `Not built` opening the description cell, against a
+LEDGER row reading `built`. Hedged cells (`partially built`, `not built as
+specified`, `not built;`) are left alone. A check aimed at a guess passes by
+looking at nothing.
+
+**It fired on 18 elements**, of which E185 was the one found by hand:
+
+`E34 · E97 · E101 · E106 · E107 · E109 · E110 · E111 · E112 · E113 · E121 · E124 ·
+E129 · E151 · E155 · E157 · E159 · E182`
+
+Three spot-checked, all genuine and all the same shape, a catalog cell frozen at
+authoring time and never updated when the element landed:
+
+- **E121** opens *"Not built — no fcntl crossing (grep clean)"*. `lib/ports/fd.port:36`
+  declares `(extern fcntl (=> I64 I64 I64 I64))` with an `E121:` comment on the line.
+- **E157** opens *"Not built. The outcome is already a sum; the reason is a string"*.
+  `lib/typing/diag.chiral` carries 22 `Reason` arms; the sum is closed.
+- **E182** opens *"Not built."* Its gate is `tools/test/arity.sh`, dispatched as
+  Phase 24 and green.
+
+⚑ **The remaining 15 are not corrected here and must be verified one at a time.**
+This same file records a triage that over-reported four of seven, and a
+mass-edit driven by a lint hit would repeat that. The check names the worklist; it
+does not license a sweep.
+
+⚑ This is the SPEC tier's disease in a second register.
+`records/spec-tier-triage.md` found 104 of 129 SPECs describing work already in the
+tree while reading `status: audited`. Both are artifacts frozen at authoring time
+that no mechanism updates on landing. The catalog now has one; the SPEC tier does
+not.

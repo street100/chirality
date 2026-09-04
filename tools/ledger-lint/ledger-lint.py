@@ -1601,6 +1601,55 @@ _ROT_SIZE = re.compile(r"(?<![\w,])(\d{1,3}(?:,\d{3})+)\s*(?:B\b|bytes\b)")
 _ROT_BIN = re.compile(r"\bchirality-bin\b(?!-)")
 
 
+def check_ab() -> list[str]:
+    """AB. LEDGER state vs the CATALOG's own prose assertion.
+
+    Added 2026-09-04. Check N pairs the LEDGER against docs/examples/INDEX.md and
+    never opens docs/elements/catalog.md, so the two documents that both assert a
+    build state could disagree with nothing watching. They did: E185 sat `built`
+    in the LEDGER and "Not built" in the CATALOG for a day after it landed
+    (ccff8e8, promoted 1157028), and records/ledger-reconciliation.md is the pass
+    that found it by hand.
+
+    Deliberately narrow, for check N's stated reason: only flag pairs that cannot
+    both be true. The CATALOG's state is prose, not a column, so this reads ONLY
+    an unambiguous "not built" opening the description cell and fires ONLY against
+    a LEDGER row reading `built`. A cell that hedges ("partially built", "not
+    built as specified", "not built;") is left alone -- a check aimed at a guess
+    passes by looking at nothing, which docs/decisions/decision-scope.md names.
+    """
+    errs: list[str] = []
+    ledger = ROOT / "docs" / "elements" / "ledger.md"
+    catalog = ROOT / "docs" / "elements" / "catalog.md"
+    if not ledger.exists() or not catalog.exists():
+        return errs
+    lstate: dict[int, str] = {}
+    for ln in ledger.read_text().splitlines():
+        cells = [c.strip() for c in ln.strip().strip("|").split("|")]
+        if len(cells) >= 3 and re.match(r"^\*{0,2}E\d+\*{0,2}$", cells[0]):
+            lstate[int(re.sub(r"\D", "", cells[0]))] = \
+                re.sub(r"[*`]", "", cells[2]).split()[0].lower()
+    if not lstate:
+        return errs
+    for ln in catalog.read_text().splitlines():
+        cells = [c.strip() for c in ln.strip().strip("|").split("|")]
+        if len(cells) < 3 or not re.match(r"^\*{0,2}E\d+\*{0,2}$", cells[0]):
+            continue
+        num = int(re.sub(r"\D", "", cells[0]))
+        desc = re.sub(r"[*`]", "", cells[2]).strip()
+        # Only the unambiguous opening. "Not built." / "Not built," / "Not built "
+        # count; "Not built as specified", "Partially built", "not built;" do not.
+        if not re.match(r"^not built\s*[.,]?(\s|$)", desc, re.I):
+            continue
+        if re.match(r"^not built\s+(as|except|apart|in|for|beyond|outside)\b",
+                    desc, re.I):
+            continue
+        if lstate.get(num) == "built":
+            errs.append(f"[AB] E{num} ledger=built but catalog opens \"Not built\" "
+                        f"-- both documents assert a build state and they disagree")
+    return errs
+
+
 def check_aa() -> list[str]:
     """AA. A superseded figure carries the date it measured (added 2026-09-04).
 
@@ -1686,7 +1735,8 @@ def main() -> int:
                      ("X pre-migration module keys", check_x),
                      ("Y chirality verify", check_y),
                      ("Z planning tier tracked", check_z),
-                     ("AA superseded figures", check_aa)):
+                     ("AA superseded figures", check_aa),
+                     ("AB ledger vs catalog build state", check_ab)):
         try:
             errs = fn()
         except Vacuous as v:
