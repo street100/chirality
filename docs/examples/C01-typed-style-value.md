@@ -71,18 +71,26 @@ updated: 2026-09-04
    `diag-head diag-site term-kw term-lit term-name term-qty term-var`. The
    registry (`default-faces`, `render.chiral:148-162`) has eleven:
    `default comment keyword string error manas-tag manas-field manas-header
-   manas-ok manas-bad manas-cursor`. The two sets have zero overlap. Five
+   manas-ok manas-bad manas-cursor`. The two sets have zero overlap. **Three**
    registry entries reach no `r-face` consumer anywhere in `lib/` or `prog/`:
-   `default`, `string`, `error`, `manas-tag`, `manas-cursor`. Both numbers
-   (seven, eleven, zero overlap, five orphaned) match the arc and gap doc
-   exactly; only the `TUI/` claim in their grep command is stale. The two
+   `default`, `string`, `error`. The arc and the gap doc say five, from a grep
+   that matches only a string literal in the `r-face` argument position. Two of
+   their five reach `r-face` through a bound variable: `manas-tag` at
+   `prog/scriba/init-loader.chiral:234`, whose name is computed at `:222`, and
+   `manas-cursor` at `prog/scriba/manas-mode.chiral:919` and `:1003`, whose
+   names are computed at `:918` and `:1002`. Seven, eleven and zero overlap
+   reproduce; the orphan count and the `TUI/` claim do not. The two
    emitters together carry **35** `d-tag` call sites over the seven names: 14
    in `lib/typing/diag.chiral`, 21 in `lib/surface/pretty.chiral`.
 2. **`lib/protocol/render.chiral` is outside the compiler's blob;
    `lib/prelude/doc.chiral` is inside it, at exactly three importers.**
-   `lib/protocol/render-doc.chiral:19-24` states this as a measured fact, not
-   an assumption: *"the compiler blob contains two occurrences of the string
-   `protocol/render`, both of them comments in `prelude/doc.chiral`"*, so
+   `lib/protocol/render-doc.chiral:19-24` states it as a measured fact:
+   *"the compiler blob contains two occurrences of the string
+   `protocol/render`, both of them comments in `prelude/doc.chiral`"*. The
+   blob built today from `prog/compiler.prog` is 812,351 bytes and carries
+   four such occurrences, all still comments inside `prelude/doc.chiral`'s
+   span; `Face`, `default-faces`, `lookup-face`, `face-join`, `Rendering`
+   and `r-face` appear in it zero times. So
    `Face`, the registry, `lookup-face`, `face-join` and `Rendering` itself
    change under the ordinary `chirality run FILE` discipline
    ([[working-discipline]]), no BUILD RULE fixpoint. `Doc`/`d-tag` do not
@@ -104,7 +112,7 @@ updated: 2026-09-04
    needs typing.
 4. **`prelude/doc.chiral`'s own header states the constraint that decides
    D3 for this element**, and it carries a layering argument alongside its
-   cost argument. `lib/prelude/doc.chiral:12-14`: *"`Doc` depends on nothing but
+   cost argument. `lib/prelude/doc.chiral:13-15`: *"`Doc` depends on nothing but
    Str/List/I64 and is needed by `typing/` … by `protocol/` … and by
    `prog/`. That is 'the base shelf over the extern floor'."* Retyping
    `d-tag`'s field from `Str` to a `Role` defined in the style layer would
@@ -150,7 +158,7 @@ application's palette:
   nil))))))))))))
 ```
 
-`render.chiral:164-172`, resolution with a silent fabrication on miss:
+`render.chiral:164-173`, resolution with a silent fabrication on miss:
 
 ```chirality
 (def lookup-face
@@ -163,7 +171,7 @@ application's palette:
             (case (str-eq k name) (true v) (false (lookup-face rest name)))))))))
 ```
 
-`render.chiral:366-380`, the cascade, written as a description of what the
+`render.chiral:366-375`, the cascade, written as a description of what the
 emitter already does:
 
 ```chirality
@@ -221,9 +229,11 @@ emitter already does:
 ### The three measurements
 
 **1. Is the `(Env, State)` product finite and small.** Measured against the
-two witnesses (`lib/typing/diag.chiral`, `lib/surface/pretty.chiral`): `grep`
-for `Env`, `State`, `focus`, `hover`, `checked`, `active` across both files
-returns zero. Tree-wide, `grep -rn "(data Env" lib/ prog/` returns exactly
+two witnesses (`lib/typing/diag.chiral`, `lib/surface/pretty.chiral`): `grep
+-nE 'Env|State|focus|hover|checked|active'` across both files returns four
+hits, every one the word `checked` inside a diagnostic message or a comment
+(`diag.chiral:439`, `:458`, `:459`, `pretty.chiral:92`). Neither file declares
+an axis under any of those names. Tree-wide, `grep -rn "(data Env" lib/ prog/` returns exactly
 one hit, `EnvR` at `lib/ports/clock.port:28`, naming the process
 environment rather than a style axis; `(data State` returns nothing. Both witnesses are pure functions
 over a fixed value (a `Reason`, a `Term`); neither reads a terminal
@@ -259,9 +269,13 @@ structural reason rather than a policy choice. Attachment here is never two
 independent functions racing to match one node, the shape D2 warns against.
 It is 35 call sites inside two ordinary printer functions, each choosing at
 most one `d-tag` name for the node it is currently emitting, by direct
-code rather than by a pattern matched against the node's shape. *Nesting*
-is real (`diag.chiral:570` wraps `diag.chiral:577`'s `diag-site` calls) and
-it is cascade rather than collision: `render-doc.chiral:166`'s ordered tag
+code rather than by a pattern matched against the node's shape. No `d-tag`
+lexically encloses another: all 35 spans were walked and every body is a
+`d-text` or a `doc-concat` of `d-text`s. *Nesting* is real one call deep,
+through a function: `diag.chiral:577`'s `(d-tag "diag-site" (dg-decl-doc …))`
+reaches `dg-decl-doc`'s `dc-ty` arm (`diag.chiral:733-736`), which calls
+`pp-term-doc` (`pretty.chiral:398`), which emits `term-*` tags under the
+open `diag-site`. That nesting is cascade rather than collision: `render-doc.chiral:166`'s ordered tag
 list is exactly the ancestor chain C2's fold walks, one `Role` per level,
 joined top-down. Two roles never compete for the same leaf; an ancestor
 role and a descendant role compose, which is what `style-join` computes.
@@ -330,9 +344,10 @@ unchanged, and this measurement leaves it in place.
   (rl-term-kw) (rl-term-lit) (rl-term-name) (rl-term-qty) (rl-term-var)
   (rl-unknown))               ; the miss, named instead of fabricated
 
-; The canonical string each role prints as. Total, and it is the ONLY place
-; the seven literal strings `diag.chiral`/`pretty.chiral` emit today are
-; written down once. `d-tag`'s field stays Str (frozen); this is what an
+; The canonical string each role prints as. Total. The seven literals stay
+; spelled at all 35 emit sites until the role-name knob below is taken; this
+; is the one place they are written down beside their role. `d-tag`'s field
+; stays Str (frozen); this is what an
 ; emit site would call if it adopted the typed constructor (§6, a follow-on,
 ; not required by this element).
 (declare role-name (-> Role Str))
@@ -364,8 +379,8 @@ unchanged, and this measurement leaves it in place.
 ; C2: the fold, as two named laws rather than one undeclared rule.
 ; color-join: override — the inner's stated opinion wins (render.chiral's
 ; existing -1-inherits behaviour, typed). Identity: inherit. Associative.
-(def color-join (0 A (type 0)) (-> (Inherit A) (Inherit A) (Inherit A))
-  (lam (outer inner)
+(def color-join (-> (0 A (type 0)) (Inherit A) (Inherit A) (Inherit A))
+  (lam (A outer inner)
     (case inner
       ((explicit v) (explicit v))
       (inherit      outer))))
@@ -437,7 +452,7 @@ unchanged, and this measurement leaves it in place.
 ;     (let ((f (lookup-face default-faces face-name))) …))
 ; becomes a THEME parameter threaded through the walk (one new argument,
 ; the shape render.chiral's `dims`/`amb` threading already has room for):
-(declare render-to-ansi (-> Rendering (Pair I64 I64) (Maybe Rendering) I64 I64
+(declare render-to-ansi (=> Rendering (Pair I64 I64) (Maybe Rendering) I64 I64
                              I64 I64 Style (-> Role Style) Unit))
 (def render-to-ansi
   (lam (node dims prev row col drow dcol amb theme)
