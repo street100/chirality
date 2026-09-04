@@ -4,7 +4,7 @@ layer: bank
 tier: depth
 related: [process-and-runtime, node-architecture, modules-broker, error-and-alarm, banks/profile, banks/module, vocabulary, glossary, status-ledger, open-edges]
 status: draft
-updated: 2026-07-21
+updated: 2026-09-04
 ---
 
 # Bank: runtime
@@ -71,21 +71,24 @@ artifact and a *designed* one:
 
 | When someone says "the runtime" they may mean… | Referent | Artifact / status |
 |---|---|---|
-| **The evaluator** — the thing that walks checked terms and produces values | E15: `scaffold/chirality/runtime.py` — a strict tree-walking evaluator + the load-time linker | **BUILT** |
-| **The supervisor** — critical sections, register-root custody, the scheduler | E42: the [[modules-broker]] component-broker as specified | **DESIGNED**, not built. `runtime.py` is **NOT** this. |
+| **The evaluator** — the thing that walks checked terms and produces values | E15: `lib/evidence/interp.chiral` — a big-step tree-walk over the pure fragment, in the trampoline idiom | **BUILT for the pure fragment.** Its own header scopes it: the extern/port/bridge face and the linker are the deferred connector (`:19-21`) |
+| **The supervisor** — critical sections, register-root custody, the scheduler | E42: the [[modules-broker]] component-broker as specified | **DESIGNED** for those three. ⚑ `lib/runtime/supervisor.chiral` exists as E42 v1, a coarse-`=>` supervised event loop with alarm-as-crossing; the three named halves have no referent in it ([[status-ledger]] line 208-211) |
 | **The node** — the running system as a peer in the graph | the process-at-system-scale of [[node-architecture]] | a *view*, not a separate artifact |
 | **The staged configuration** — this particular live wiring of modules | what a [[banks/profile]] stages via the CLI staging connector | the *result* of staging; changes per profile |
 | **The native execution substrate** — "what actually runs the metal" | the tal floor + W^X loader + sys-face, over the untyped B substrate | **BUILT** (host-mediated), see §2 |
 
-The **hazard is named in the ledger itself**. [[status-ledger]] sharpest-gap #5:
-"*The `runtime` note describes a different artifact than `runtime.py`.*" The
-DESIGNED-only list closes with: "*`runtime` as specified (critical sections,
-register-root custody, scheduler — `runtime.py` is an evaluator + linker, a
-different artifact).*" The CONFORMANCE-MAP has two adjacent rows that must never be
+The **hazard is named in the ledger itself**. [[status-ledger]] states what
+`lib/runtime/` actually holds: `poll.chiral`, `proc.chiral` and
+`supervisor.chiral`, "a coarse-`=>` supervised loop, a process face, a poll face.
+The rung-2 halves have no rung-1 referent and `supervisor.chiral` says so." The
+CONFORMANCE-MAP has two adjacent rows that must never be
 collapsed: *"Reference interpreter / evaluator + linker … This is E15 (golden
 semantics), **NOT** the E42 supervisor — keep distinct"* and *"Runtime supervisor
 as specified … Not built; runtime.py is evaluator+linker, no
-crit-sections/GC-roots/scheduling."*
+crit-sections/GC-roots/scheduling."* ⚑ Both map rows are phrased against the cut
+Python oracle and predate `lib/runtime/supervisor.chiral`; the distinction they
+draw survives the rephrasing and the artifact they name for the built side does
+not.
 
 ### The native monolith it is confused with
 
@@ -112,43 +115,62 @@ What a tree-walker does: reduce checked terms to values, run the event loop.
 **Home:** the reference interpreter, a golden semantics distinct from the kernel's
 NbE (which serves *type-checking*, not execution) — what "golden" means once the
 Python reference is evicted at self-hosting is E71's open decision (2026-07-21
-catalog extension). **State:** built complete.
-`scaffold/chirality/runtime.py:1` — "*strict tree-walking evaluator over checked
-kernel terms, with tail-call iteration so long-running event loops do not grow the
-python stack.*" Erases q=0 lets (`runtime.py` `run`, ~line 65); carries no usage
-bookkeeping because quantities were checked statically. CONFORMANCE-MAP class
-CONFORMS, E15. This is the thing `runtime.py` *actually is*.
+catalog extension). **State:** built for the pure fragment.
+`lib/evidence/interp.chiral` is the live artifact: `eval-step` at `:75`, `run` at
+`:100`, the trampoline hop an ordinary tail call so `run` is constant-stack by
+construction. Its scope is stated in its own header, var/lit/lam/app/let/case, with
+the extern/port/bridge face and the linker deferred (`:19-21`).
+⚑ **Corrected 2026-09-04: the evaluator does not erase q=0 lets.** The claim
+described the cut Python oracle. `lib/typing/kernel.chiral:680` is the live let
+arm, `((t-let q v b) (eval-term (cons (eval-term env v) env) b))`, which pushes the
+value whatever the quantity says and never reads `q`. What erases at eval is the
+**annotation**, `:681`, `((t-ann tm ty) (eval-term env tm))`, whose own comment
+reads "annotations erase at eval". Quantity erasure is a separate mechanism with
+its own home; [[banks/erasure]] shard A holds it. The evaluator still carries no
+usage bookkeeping, because quantities were checked statically. CONFORMANCE-MAP class
+CONFORMS, E15, and that row's own wording, "erases q=0 lets", carries the same
+error.
 
 ### Shard B — the linker (E15, same file) · **BUILT / CONFORMS**
 
 Resolving externs to host implementations at load, the "main-is-process" gate.
-**Home:** the link step of the staging story, folded into `RT.__init__`.
-**State:** built. `runtime.py:36` — `RT()` verifies *every* declared extern has a
-host impl before anything runs (`missing = [n for n in sig.prim_types if n not in
-IMPLS]` → raise). `runtime.py:10` — "*Externs are declared in chirality source and
-bound here at load … That is the link step of the staging story, at scaffold
-scale.*"
+**Home:** the link step of the staging story. **State:** ⚑ **the artifact this
+shard described has no live referent, recorded 2026-09-04.** `RT.__init__`
+refusing to run when a declared extern lacks a host impl was the Python oracle's,
+and `lib/evidence/interp.chiral:19-21` names the linker as E15's deferred
+connector. What is live is the *load-time* half in the compiler's own front end:
+`load-extern` (`lib/module/loader.chiral:457`) elaborates an extern's declared
+type, refuses it unless it is a universe, and installs it into the Sig, and
+`lib/lowering/tal/sys-linkage.chiral` is the seam that routes an effectful extern
+to a hand-tal wrapper. The "every extern has an implementation before anything
+runs" gate is not among them.
 
 ### Shard C — the staging connector (the "changes as configured" axis) · **BUILT / CONFORMS**
 
 The act that *births* a runtime from a profile: verify the staged profile, verify
 the entry crossing's type, hand the node its one port. **Home:** the CLI
 `_spawn_run`, the child half of the staging connector ([[joining-law]],
-[[modules-staging]]). **State:** built. `scaffold/chirality/cli.py:101` `_spawn_run` —
-refuses to stage unless a profile is declared and valid (`verify_profiles`), then
-checks `node-main` conv-equals `(=> (1 peer Sock) Unit)` and hands it exactly one
-`Sock` port (`cli.py:129`). **This is the concrete "changes as configured" seam.**
+[[modules-staging]]). **State:** ⚑ **no live referent, recorded 2026-09-04.**
+`_spawn_run` was the Python CLI's: it refused to stage unless a profile was
+declared and valid, checked `node-main` conv-equals `(=> (1 peer Sock) Unit)`, and
+handed the child exactly one `Sock`. None of that is in `bin/chirality`, which
+fixes the entry symbol at `compile-main` (`:88-89`) and knows nothing about
+profiles. So the child half of the staging connector is **designed and unbuilt**,
+and the "changes as configured" seam below describes what a profile *varies*
+rather than a seam that runs.
 What a profile actually varies, and therefore what a re-configured runtime differs
 in ([[banks/profile]] owns the detail):
 
 - **module set** — which modules are wired in (the profile is a named set of
   modules over a target);
 - **port set** — rendered over the *frozen* port set; the profile is additive over
-  it and `verify` rejects pure ports / unknown crossings;
+  it and `mf-check-ports` (`lib/surface/parse.chiral:907`) rejects pure ports and
+  unknown crossings;
 - **memory discipline** — `(memory linear)` vs region, a profile clause pointing
-  at `lib/mem-linear.chiral` / `lib/mem-region.chiral` (E22);
+  at `lib/memory/mem-linear.chiral` / `lib/memory/mem-region.chiral` (E22);
 - **`(total)` gate** — whether per-def termination is *enforced* for this staging
-  (`surface.py` `verify_profiles`, E11).
+  (`tot-gate`, `lib/typing/totality-check.chiral:153`, reached from
+  `lib/lowering/compile-front.chiral:340`, E11).
 
 Two profiles over the same target stage two different runtimes. That is the axis in
 one sentence: *the runtime is a value of the staging function, and the profile is
@@ -161,14 +183,22 @@ part that cannot be decided at compile time. **Home:** the **component broker (C
 of [[modules-broker]]: "*the runtime supervisor of the part that cannot be decided
 at compile time: process and runtime lifecycle (spawn and teardown), dynamic grant
 and revoke, audit reconciliation against live state … a typed supervisor over
-untyped runtime reality.*" **State:** DESIGNED, not built — and this is the shard
-most often mistaken for `runtime.py`. CONFORMANCE-MAP E42, class BUILD, reference
+untyped runtime reality.*" **State:** the three named halves are DESIGNED and
+absent. CONFORMANCE-MAP E42, class BUILD, reference
 class PAPER (seL4/microkernel): *"Not built; runtime.py is evaluator+linker, no
-crit-sections/GC-roots/scheduling."* What *is* built of the broker is only the
-thin dynamic slice: **spawn / teardown / link-at-load** ([[status-ledger]] SEEDED
-row: "*Broker — spawn / teardown / link-at-load only; grant / revoke / audit not
-built*", `impl_ports.py`, `runtime.py`). The scheduler and critical-section
-machinery are genuinely absent (§5).
+crit-sections/GC-roots/scheduling."* ⚑ **Updated 2026-09-04: a v1 exists.**
+`lib/runtime/supervisor.chiral` is E42 v1, a supervised event loop on the coarse
+`=>` bit that multiplexes fd-readiness and fired alarms through one blocking
+`poll` timeout, dispatches exactly one unit of work per tick, and threads the
+linear `SockVec` and `Clock` caps on every arm. An alarm there is a crossing
+rather than an ambient signal. The map row predates it and reads against the cut
+oracle. What is still absent is exactly the three this shard names: critical
+sections, register-root custody, and a scheduler ([[status-ledger]] lines 208-211,
+which says `supervisor.chiral` says so itself). What *is* built of the broker
+beside it is the thin dynamic slice **spawn / teardown / link-at-load**
+([[status-ledger]] Broker row: `lib/runtime/proc.chiral` for spawn and teardown,
+`load-extern` in `lib/module/loader.chiral` for link-at-load; grant, revoke and
+audit have no code).
 
 ### Shard E — the node view (distribution) · **view, distribution native**
 
@@ -183,13 +213,17 @@ runtime" need not be one place: a remote node is one you hold a port to.
 "What actually drives the metal." Refracted again into: the **tal floor** (typed
 assembly + trusted interpreter, E18/E19, BUILT/CONFORMS), the **x86-64 Mach
 emitter** (E19, BUILT), the **W^X loader** (E20, IMPLEMENTED but Python-mediated —
-REFACTOR to self-host), and the **sys-face syscall crossings** (E28, `lib/sys-tal.chiral`,
+REFACTOR to self-host), and the **sys-face syscall crossings** (E28,
+`lib/lowering/tal/sys.chiral`,
 write/read/lseek/memfd/ftruncate/mmap/munmap built; mprotect/close missing). The
 untyped reality underneath — devices, RAM, the register root — is **category B
 substrate**, owned by nothing ([[modules-substrate]], [[node-architecture]] "The
 substrate is owned by nothing"). Note the honest TCB caveat from [[status-ledger]]:
-today even ENFORCED properties rest on the CPython + Linux-syscall host; adversarial
-enforcement arrives with self-hosting (E51).
+even ENFORCED properties rest on the Linux-syscall host, and adversarial
+enforcement arrives with self-hosting (E51). ⚑ The CPython half of that caveat is
+spent: the oracle is cut and `bin/chirality-bin` is the compiler that compiles
+everything. The W^X row is separately demoted in [[status-ledger]], which measures
+the built path emitting one RWX `PT_LOAD`.
 
 ---
 
@@ -259,8 +293,9 @@ between [[error-and-alarm]] and [[node-architecture]]. It is unbuilt and undecid
 ### Evaluator ≠ NbE (a within-runtime cross-cut worth stating)
 
 Even inside the built shards the word forks: the kernel's **NbE** normalizer
-(`kernel.py`) serves *type-checking*; the **evaluator** (`runtime.py`) serves
-*execution*. Two reducers, deliberately separate (`runtime.py:3`). Conflating them
+(`eval-term`, `lib/typing/kernel.chiral:672`) serves *type-checking*; the
+**evaluator** (`eval-step`, `lib/evidence/interp.chiral:75`) serves
+*execution*. Two reducers, deliberately separate. Conflating them
 is a smaller cousin of the main overload.
 
 ---
@@ -273,14 +308,17 @@ is a smaller cousin of the main overload.
 **The correction:** "The runtime" is not one engine; it is a plural,
 configuration-relative sum, mostly already built:
 
-- **the evaluator** — BUILT (E15, `runtime.py`);
-- **the linker** — BUILT (E15, same file, extern resolution at load);
-- **the staging connector that births it from a profile** — BUILT (E15,
-  `cli.py:_spawn_run`) — this is the "changes as configured" seam;
+- **the evaluator** — BUILT for the pure fragment (E15,
+  `lib/evidence/interp.chiral`);
+- **the linker** — ⚑ the runtime-side link gate has **no live referent** (Shard B);
+  the load-time half is `load-extern` (`lib/module/loader.chiral:457`);
+- **the staging connector that births it from a profile** — ⚑ **no live referent**
+  (Shard C); `bin/chirality` knows nothing about profiles;
 - **the native execution substrate** (tal floor + Mach emitter + W^X loader +
   sys-face) — BUILT, host-mediated (E18/E19/E20/E28);
 - **the supervisor** (scheduler, critical sections, register-root custody) —
-  **DESIGNED, not built** (E42), and it is the component **broker**, not a
+  those three **DESIGNED and absent** (E42), over a built v1 event loop
+  (`lib/runtime/supervisor.chiral`), and it is the component **broker**, not a
   separate manager;
 - **the node view** — a *perspective* that also makes it distributable (native).
 
@@ -358,8 +396,8 @@ tier):
 - [[error-and-alarm]] — the counter-effect end of the revocation chain.
 - [[vocabulary]] / [[glossary]] — the pinned `runtime` / `node` / `process` /
   `broker` term truth; point here for depth.
-- [[status-ledger]] — sharpest-gap #5 (the `runtime.py`-vs-`runtime`-note gap);
-  the authority for build-state, mirrored here.
+- [[status-ledger]] — what `lib/runtime/` holds against what the `runtime` note
+  specifies; the authority for build-state, mirrored here.
 - [[banks/profile]] — the "changes as configured" axis (staging detail lives
   there, not here).
 - [[banks/module]] — the module set a profile wires into a runtime.
