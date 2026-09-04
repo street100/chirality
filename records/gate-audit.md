@@ -42,6 +42,16 @@ and the shell held four descriptors. A run taken during such a window reports
 every `sed` and every `sha256sum` as a failure and is discarded on sight. This
 file says nothing about those four.
 
+Scope of the third pass, GA-18 onward, measured 2026-09-04 against `be40dc0`
+with `lib/` and `tools/` clean in `git status`. It covers the four the second
+pass left untested, and its subject is the `mutant NAME WANT-VERDICT PATH SED`
+idiom the five earlier scripts did not use. All four ran green in this session,
+which is what makes each script's declared pin the measured red set:
+`arity.sh` 13 passed, `doc.sh` 26, `matcher.sh` 18, `render-doc.sh` 19, zero
+failed in each. The questions asked of each script were whether a mutant that
+fails to build can wear a red row, whether the want-verdict is computed by the
+function that emitted the base rows, and which rows no declared mutant reddens.
+
 ## The instrument
 
 ### GA-01 the harness that audits the gates has no phase in the gate
@@ -212,5 +222,70 @@ file says nothing about those four.
 - claim:    `tools/test/row.sh:548-552` says M13 was added beyond the SPEC's twelve because *"without it the r-table row is the one row in G4 with NO mutant, and a row nothing can redden is a row that exercises nothing"*.
 - measured: G4 emits **nine** constructor rows and the six `g4_mutant` calls redden six of them, one each. The three left over are `r-text`, `r-lines` and `r-hole`. M1 covers the first two as collateral, which `:414-417` records in as many words and which the whole-tree run confirms: under M1 the red set is `r-text r-face r-lines r-row r-tree r-section`. `r-hole` appears in no red set anywhere in the script. It holds no `r-text`, so M1's off-by-one never reaches it; the other twelve mutants touch other arms or other files. So the sentence at `:548-552` is true of `r-hole` today, by its own wording, and the mutant that would answer it was never written. This is the same shape as GA-13 one script over: the reasoning that mints a mutant is present and correct, and the enumeration it is applied to stops one row short.
 - evidence: `tools/test/row.sh:414-417`, `:455`, `:531-556`, `:548-552`
+- checked:  2026-09-04
+- element:  UNASSIGNED
+
+## The `mutant NAME WANT-VERDICT PATH SED` idiom
+
+### GA-18 the full-line pin closes all four silent failures, and the entry-point hazard with them
+
+- state:    ACCEPTED
+- claim:    `tools/test/arity.sh:75-79` reads that a build which did not happen scores `nobuild` and never `bad`, and that no pinned line below ever expects that token, so a mutant that merely fails to compile cannot wear a red row and be read as a conviction. `tools/test/mutant.sh:19-40` names the four ways the measurement fails silently, and this idiom is a second implementation of the same rule.
+- measured: all four scripts ran green in this session: `arity.sh` **13 passed, 0 failed** in 12 s, `doc.sh` **26 passed, 0 failed**, `matcher.sh` **18 passed, 0 failed**, `render-doc.sh` **19 passed, 0 failed**. A green phase is what makes each declared pin the measured red set, and every row below reads off that. The idiom closes all four failures, three of them by an assertion and the fourth by the pin itself. (1) A mutation that matched nothing is refused by `cmp -s` against the tree under test, in every copy of `mutlib` (`arity.sh:161-163`, `matcher.sh:161-163`, `render-doc.sh:145-147`) and inline in `doc.sh:119-121`. (2) A mutant that did not build produces a token no pin holds: `verdict` scores `nobuild` per row group (`arity.sh:275`, `:283`, `:290`) or collapses the whole line to `BUILD:fail` (`matcher.sh:229`, `render-doc.sh:247`), and `doc.sh`'s `build_run` returns 255 (`doc.sh:64-74`). Read against every pin in the four files, five in `arity.sh` (`:361`, `:371`, `:382`, `:393`, `:402`), nine in `matcher.sh` (`:314-384`), seven in `render-doc.sh` (`:332-392`) and five case numbers 1, 3, 4, 8 and 14 in `doc.sh` (`:127`, `:131`, `:136`, `:190`, `:196`), no want string carries `nobuild`, `BUILD:fail` or 255. So the entry-point hazard is closed by string equality rather than by care, and a mutant that fails to build is reported as a FAIL of its own row. (3) A semantically inert mutant produces an all-`ok` line, which no pin holds either. (4) A red base is caught first: each script asserts `verdict "$REPO/lib"` equals `ALLOK` before any mutation (`arity.sh:300-301`, `matcher.sh:266-267`, `render-doc.sh:294-295`), and `doc.sh` runs its fixture over the real tree at `:97-100`. The want-verdict is computed by the function that emitted the base rows in all four: `verdict` takes the library directory as its only argument (`arity.sh:270`, `matcher.sh:227`, `render-doc.sh:245`) and `doc.sh` calls one `build_run` over one fixture for both legs (`:66`, `:97`, `:122`). Nothing is re-derived anywhere a mutation cannot reach.
+- evidence: `tools/test/arity.sh:75-79`, `:152-165`, `:270-293`, `:300-301`, `:325-334`; `tools/test/matcher.sh:146-160`, `:227-260`, `:266-267`, `:297-307`; `tools/test/render-doc.sh:131-145`, `:245-288`, `:294-295`, `:315-325`; `tools/test/doc.sh:64-74`, `:97-100`, `:109-125`
+- checked:  2026-09-04
+- element:  none
+
+### GA-19 arity.sh's ten-tag golden is falsified by nothing, and M1 falsifies the compile
+
+- state:    OPEN
+- claim:    `tools/test/arity.sh:59` lists `G1 the tenth tag, over all ten Reason arms [M1]`, and `:251` holds the golden `redeclared,mismatch,usage,linear,arrow,unbound,skipped,judged,relayed,arity,`.
+- measured: G1 reads `ok` in the base line and in all five pinned verdict lines (`:361`, `:371`, `:382`, `:393`, `:402`), so no mutant in the script moves it. M1 is graded beside the line rather than inside it (`:337-352`): it deletes the `r-arity` arm from `dg-reason-tag`, the module then stops compiling, and the row asserts the refusal text `load: non-exhaustive case`, which the run reproduced. That refusal is the compiler's exhaustiveness check on `Reason` doing the work, and it holds for any deleted arm of any sum. The header at `:341-343` states the trade and calls the result the eight-renderer property as a checked row. What it leaves unsaid is the consequence: the ten tag STRINGS then have no falsifier anywhere in the script. A mutant renaming one arm's tag, `"arity"` to anything else, would redden G1 and compile clean, and no such mutant is declared. Same shape as GA-13, where `pretty.sh` M1's arm deletion reddens the build and leaves eight goldens standing.
+- evidence: `tools/test/arity.sh:59`, `:232-234`, `:251`, `:275`, `:337-352`, `:361`, `:371`, `:382`, `:393`, `:402`
+- checked:  2026-09-04
+- element:  UNASSIGNED
+
+### GA-20 arity.sh's G3 is G2's predicate written a second time
+
+- state:    OPEN
+- claim:    `tools/test/arity.sh:60-61` lists G2 and G3 as separate rows, and `:240-244` says G3 reads the same two sentences for their noun alone, extracted with the rest of each sentence ANCHORED, so one arm serving a type-parameter site and a constructor-argument site is graded on the only thing that differs.
+- measured: the two rows carry one predicate. G2 holds iff `a` equals `G2A_WANT` and `b` equals `G2B_WANT` (`:279`). G3's two extractors anchor the whole sentence as a literal around a single capture (`:267-268`) and the pair is compared against `arguments|type parameters` (`:254`), which holds iff the capture is `arguments` and `type parameters`, which holds iff `a` and `b` are those same two strings. Run over fifteen pairs built from the true sentence, a moved count, a moved noun, an empty field and a trailing suffix crossed with three data sentences, G2 and G3 agreed on all fifteen. The pins agree from the other side: G2 and G3 are `bad` together under M2 (`:361`) and under M3 (`:371`) and are never apart in any pin. So the verdict line names six rows and carries five predicates, and no mutant can ever separate G3 from G2. The anchoring the comment describes is what makes them identical rather than what makes them different.
+- evidence: `tools/test/arity.sh:60-61`, `:240-244`, `:254`, `:267-268`, `:279-280`, `:361`, `:371`
+- checked:  2026-09-04
+- element:  UNASSIGNED
+
+### GA-21 matcher.sh: three of eleven verdict rows are reddened by nothing
+
+- state:    OPEN
+- claim:    `tools/test/matcher.sh:25-27` reads that every mutant pins the full verdict line, so a mutant reddening a row outside its own pin is impossible to miss. The row table at `:41-55` names a mutant beside each row.
+- measured: the nine mutants pin eleven tokens each, and the union of the rows they redden is G1 (M6), G2 (M1, M8), G3 (M2, M12), G4 (M2, M12), G6a (M2, M5, M12), G6c (M9), G6d (M4) and G7c (M7). G6b, G7a and G7b read `ok` in all nine pins and in `ALLOK` (`:261`). The table is honest about two of the three: G7a and G7b carry `[-]` (`:49-50`). G6b carries `[M4-adjacent]` (`:46`) and M4's own pin reads `G6b:ok` (`:332`), so the one row whose attribution is not `[-]` is a row that mutant leaves green. G7a and G7b are the fence property, that a fenced block is skipped, asserted differentially against awk and against the hand-derived `100010001`. The nearest cover is G5, whose written fixture carries a fenced block holding an em-dash that would score if the fence leaked (`:451-467`), so a fence regression would move G5's differential; no declared mutant aims at it either, and M11 moves a needle inside a check rather than the fence toggle. G6b, leftmost-longest over overlapping alternatives, has no cover at all: M4 reaches `find-at` and G6b reads `find-all`.
+- evidence: `tools/test/matcher.sh:25-27`, `:41-55`, `:246`, `:249-253`, `:261`, `:314-384`
+- checked:  2026-09-04
+- element:  UNASSIGNED
+
+### GA-22 render-doc.sh's G1f sits inside a group both its named mutants leave green
+
+- state:    OPEN
+- claim:    `tools/test/render-doc.sh:53-54` lists `G1 a-f the text survives the conversion, 5 pairs + the proof that the widths actually differ [M1,M2]`, and `:46-49` reads that every mutant pins the full verdict line because a mutant reddening a row outside its own pin is the shape that produced nine toothless rows in this arc.
+- measured: G1f is the `ne` at `:262`, the assertion that the two widths took different layout decisions. It reads `ok` in all seven pins (`:332`, `:341`, `:350`, `:360`, `:371`, `:381`, `:392`), M1's and M2's included. Both mutate `lib/protocol/render-doc.chiral`, and G1f compares two fields that come from `doc->str`, which is Phase 14's and which no mutant in this file touches. So the `[M1,M2]` attribution covers G1a to G1e and stops one letter short. The two rows this script declares unfalsifiable, G0 and G0p, carry `[-]` (`:51-52`) and are controls of the kind GA-14 accepted: G0p is the layout pin the rest of the gate is written against, and it is the row that would catch a `doc->str` that moved. G1f is the same kind of row carrying a mutant attribution instead. This is the only hole found in `render-doc.sh`, and every other row in its fifteen is reddened by a named mutant that ran.
+- evidence: `tools/test/render-doc.sh:46-49`, `:51-54`, `:256`, `:262`, `:289`, `:332-392`
+- checked:  2026-09-04
+- element:  UNASSIGNED
+
+### GA-23 doc.sh keeps the fixture idiom the other three were upgraded away from
+
+- state:    OPEN
+- claim:    `tools/test/doc.sh:18-20` reads that every row that matters carries a NAMED MUTANT and that a row whose mutant also passes exercises nothing. Its table at `:23-30` maps eight gate rows onto seven mutants. `tools/test/arity.sh:27-31` records the upgrade this arc paid for and adopted verbatim: the fixture asserts nothing and always exits 0, because a fixture that grades itself can be wrong twice in the same direction, and one that exits at its first failure masks every later row from every mutant.
+- measured: `samples/e158_doc.prog` is the pre-upgrade shape on both counts. It grades itself with `dt-first-bad` (`:46-53`) over fourteen cases and returns the 1-based number of the FIRST failing case (`:39`, `:143-199`). The five fixture mutants pin cases 1, 3, 4, 8 and 14 (`doc.sh:127`, `:131`, `:136`, `:190`, `:196`). Nine of the fourteen cases carry no mutant: 2, 5, 6, 7, 9, 10, 11, 12 and 13. Eight of those nine are G3's evidence arms, the element's own row, so of the nine `Reason` arms the fixture walks only case 8's `r-usage` has a falsifier; the ninth arm is asserted outside the fixture with M9 (`doc.sh:247-277`). `doc.sh:139-141` states the masking in its own words and works around it for one row by writing a standalone `g2only.prog` probe carrying the G2 assertion alone. Two further zeros measured in the same pass. Case 5 asserts `data redeclared: Box` and `Box` on the same string (`samples/e158_doc.prog:163`), and the second needle is a substring of the first, so that half of the row holds for free. G5(b), `Doc has exactly 6 constructors` (`doc.sh:308-310`), is never run against a mutated tree even though M5's own substitution produces one: applying M5's sed (`:336`) to a scratch `lib/` and running `doc_ctors` over the result reads seven arms, `d-text d-cat d-line d-nest d-group d-tag d-fill`, which M5 never asks about, since it asserts the compile refusal instead (`:344-346`). `arity.sh`'s M7 is the same census row done the other way, running `judg_arms` over the mutated tree and requiring the count to move to 37 (`arity.sh:451-460`). The rows named here still redden on a real regression, because the base leg runs over the real tree; what none of them has is evidence that it is sensitive at all.
+- evidence: `tools/test/doc.sh:18-30`, `:97-100`, `:109-125`, `:127`, `:131`, `:136`, `:139-141`, `:190`, `:196`, `:308-310`, `:333-346`; `tools/test/samples/e158_doc.prog:39`, `:46-53`, `:143-199`, `:163`; `tools/test/arity.sh:27-31`, `:451-460`
+- checked:  2026-09-04
+- element:  UNASSIGNED
+
+### GA-24 a registration row that names its own phase cannot fire, and six phases are witnessed by nothing
+
+- state:    OPEN
+- claim:    `tools/test/doc.sh:466`, `tools/test/arity.sh:471` and `tools/test/pretty.sh:403-407` each read that an unregistered gate is a gate that never runs, and each asserts the `run_phase` line of the script it is written in.
+- measured: `run-tests.sh` dispatches thirteen phases (`:144-147`, `:216`, `:225`, `:236`, `:252`, `:268`, `:284`, `:303`, `:326`, `:345`). Grepping the tree for a check on each number: 13 and 14 are asserted by three scripts each (`doc.sh:464-466`, `row.sh:686-687`, `face.sh:588-589`), 15 by two (`row.sh:687`, `face.sh:589`), 16 by one besides itself (`face.sh:589`). Phase 17 is asserted only inside `render-doc.sh`, 18 only inside `pretty.sh` (`:404-407`), 24 only inside `arity.sh` (`:470`). Phases 3, 4, 5, 6, 19 and 20 are asserted nowhere: outside `run-tests.sh` the string `run_phase 19` occurs only in `docs/`. A row asserting its own registration is circular, because deleting the `run_phase` line stops the script that holds the row from running. So `matcher.sh`, one of the four subjects here, can be dropped from the suite with nothing anywhere going red, and `arity.sh` and `render-doc.sh` can each be dropped with only their own row noticing, which by then it cannot. `matcher.sh` is also covered by no sha256 pin: `pretty.sh:366-373` pins five gate scripts and three fixtures, and `matcher.sh`, `arity.sh` and `transport.sh` are outside that set. This is GA-01 and GA-10 one layer in: those rows are about a harness nothing dispatches, this one is about a dispatch line nothing checks.
+- evidence: `tools/test/run-tests.sh:144-147`, `:303`, `:326`, `:345`; `tools/test/doc.sh:462-473`; `tools/test/arity.sh:465-477`; `tools/test/pretty.sh:366-373`, `:403-411`; `tools/test/row.sh:683-689`; `tools/test/face.sh:585-591`
 - checked:  2026-09-04
 - element:  UNASSIGNED
