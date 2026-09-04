@@ -4,7 +4,7 @@ layer: bank
 tier: depth
 related: [error-and-alarm, decision-graded-kernel, decision-effect-facets, open-edges, totality, vocabulary, glossary, status-ledger, banks/module, banks/profile, banks/runtime, banks/capability, banks/evidence-and-split, modules-broker, permission-model]
 status: draft
-updated: 2026-07-25
+updated: 2026-09-04
 ---
 
 # Bank: effect-and-alarm
@@ -81,18 +81,19 @@ whether a process *ends*; an alarm governs whether what it produced or read
 `try/catch` fuses these; chirality deliberately un-fuses them (§4).
 
 **How it is realized in code (evidence).** The `eff` bit is BUILT and CONFORMS
-(E12). It rides **position 2 of the Pi 6-tuple** — `("Pi", q, eff, name, dom,
-cod)` (`terms.py`; the walkers read `t[2]` as eff). It is **part of type
-identity**: conv rejects two Pis whose effect bits differ —
-`if a[1] != b[1] or a[2] != b[2]: return False  # quantity and effect are part
-of the type` (`kernel.py:292`). The surface attaches it to the arrow that
-actually returns the effectful result: `cod = ("Pi", q, eff and is_last, bname,
-ty, cod)` (`surface.py:372`) — so `->` is a pure arrow (`eff=False`) and `=>` an
-effectful one. The kernel *carries* this annotation structurally but does **not**
-interpret it: meaning is decided in the `effects` module (Shard 2). The alarm and
-counter-effect faces are **not** yet on this algebra — today they are Python host
-exceptions (`alarms.py`; Shard 3) and a single `halt` extern declared in
-`lib/ports.chiral` (Shard 4). That gap is the honest residue (§5).
+(E12). It rides the Pi as a **`Seat`**: `(t-pi (q Qty) (s Seat) (dom Term)
+(cod Term))` with `(data Seat () (s-pure) (s-proc))`, both at
+`lib/surface/syntax.chiral:21` and `:12`. It is **part of type
+identity**: conv rejects two Pis whose seats differ, `(and (seat= s s2) …)` at
+`lib/typing/kernel.chiral:715`, whose own comment reads "seat part of =", with
+`seat=` at `:559`. The loader turns the parsed bit into the seat, `eff->seat`
+(`lib/module/loader.chiral:19`) — so `->` is a pure arrow (`s-pure`) and `=>` an
+effectful one (`s-proc`). The kernel *carries* this annotation structurally but does **not**
+interpret it: meaning is decided in the `effects` module (Shard 2). ⚑ The alarm and
+counter-effect faces are **not** on this algebra. What Shard 3 described, the
+Python host exceptions of `alarms.py`, has **no live referent**; what remains is
+the single `halt` extern, `(extern halt (-> (0 A (type 0)) (=> Str A)))` at
+`lib/ports/process.port:14` (Shard 4). That gap is the honest residue (§5).
 
 ---
 
@@ -109,61 +110,66 @@ B/E39, B/E26) and [[status-ledger]].
   `effects` module *interprets* it (Shard 2). "Built, matches scope; eff bit
   rides Pi pos 2, membrane in module not kernel" (CONFORMANCE-MAP B/E12).
 - **Build-state.** ⚑ **Corrected 2026-08-25 (was `CONFORMS`, "no work owed within
-  the coarse-bit scope").** The bit is *carried* — `terms.py` Pi tuple
-  `("Pi", q, eff, name, dom, cod)`; `kernel.py:292` conv `a[2] != b[2]`;
-  `surface.py:372` `eff and is_last`; natively, the `Seat` in the Pi plus the
-  `ty-crosses` / `sheet-crossings` readers. It is *refused* nowhere in the
+  the coarse-bit scope").** The bit is *carried* — the `Seat` in the Pi
+  (`lib/surface/syntax.chiral:21`), compared in conv by `seat=`
+  (`lib/typing/kernel.chiral:715`, `:559`), attached by `eff->seat`
+  (`lib/module/loader.chiral:19`), and read by
+  `ty-crosses` (`lib/typing/kernel.chiral:315`) and the sheet-crossings
+  readers. It is *refused* nowhere in the
   compiler that compiles everything: see Shard 2 and §5d. Work IS owed within the
   coarse-bit scope and its home is **E171**; the upgrade to a full algebra remains
   separate (E39, Shard 5).
 
-### Shard 2 — the membrane seams (where meaning is decided — in the ORACLE only) · **EXTEND (E12/E171)**
+### Shard 2 — the membrane seams (native, and reached by nothing) · **EXTEND (E12/E171)**
 - **What.** The kernel carries the annotation; the *module* decides what it
-  permits, at **exactly three judgment points**. The `effects.py` `Rules` class:
-  - `on_apply(sig, ctx, fty, allow_eff)` — "may this application happen here"; if
-    `eff and not allow_eff` it raises "effectful application inside a pure
-    function (use => not ->)" (`effects.py:23`);
-  - `on_binder(sig, ctx, tyv, q, what)` — "may a value of this type be bound at
-    this quantity"; a linear type at `q != 1` raises (`effects.py:38`, the
-    port-linearity seam);
-  - `erased_allow(q, allow_eff)` — "what may run inside a quantity-0 position": a
-    `q=0` (erased, runtime-absent) position is forced pure (`effects.py:46`).
-- **Home.** the `effects` module (category A port algebra). "So what the membrane
-  permits is decided in this module, not in the kernel" (`effects.py` docstring).
-  `install(sig)` wires `sig.rules = Rules()`; the kernel consults `sig.rules` at
-  the three seams.
+  permits, at **exactly three judgment points**, all three now in this tree:
+  - `on-apply-ok` (`lib/typing/effects.chiral:35`) — "may this application happen
+    here": the callee's row must be contained in the context's permitted row,
+    `(row-sub callee here)`;
+  - `on-binder-ok` (`:44`) — "may a value of this type be bound at
+    this quantity": a linear type binds only at `q1`, the port-linearity seam;
+  - `erased-allow` (`:39`) — "what may run inside a quantity-0 position": a
+    `q0` position is mapped to the empty row.
+- **Home.** `lib/typing/effects.chiral` (category A port algebra), whose header
+  states the split: "The membrane only GATES -- it interprets nothing" (`:5-6`).
+  The generalization from the oracle's one-bit lattice to set-containment over the
+  effect row is stated in the same header (`:1-3`).
 - **Build-state.** ⚑ **EXTEND, corrected 2026-08-25 (was `CONFORMS`).** The **seam
   architecture** is right and is why the E39 upgrade is a module reshape, not a
   kernel reshape (§5) — the same kernel-carries / module-interprets split the whole
-  language uses (P1). What is false is that the seams are *in the tree that
-  compiles*: all three live only in `scaffold/chirality/effects.py:23,38,46`, the
-  retired oracle. The native compiler names their absence in its own comments —
-  `kernel.chiral:897` *"No allow_eff/erased_allow/on_binder -- the row/membrane
-  layer is E12, kept as the seat"*, `kernel.chiral:998` the same for the con/tcon
-  arms, and `kernel.chiral:14-15` still lists *"the effect-row allow_eff threading +
-  membrane seams (on_apply/on_binder/erased_allow)"* among the seams owed to E12 —
-  and `scaffold/lib/effects.chiral:1-6` is the E12 *model*, whose header says so:
-  *"effects.py stays the oracle … The membrane only GATES -- it interprets
-  nothing."* It is a pure row algebra nothing in the checker calls. Measured, not
+  language uses (P1). ⚑ **Re-measured 2026-09-04, and the 2026-08-25 reading is
+  superseded:** the seams are no longer oracle-only. All three are native, at
+  `lib/typing/effects.chiral:35`, `:39` and `:44`. What stays true is the part that
+  mattered: **nothing calls them.** [[status-ledger]]'s Effects row measures the
+  three as having no caller anywhere in the tree, and the module's only two
+  importers, `lib/typing/row-infer.chiral:16` and
+  `lib/lowering/upper/eff-lower.chiral:21`, take `row-join`, `row-sub` and
+  `mem-str` and nothing else. The kernel names the absence in its own comments,
+  `lib/typing/kernel.chiral:898` *"No allow_eff/erased_allow/on_binder -- the
+  row/membrane layer is E12, kept as the seat"* and `:14-15` listing the membrane
+  seams among what E12 still owes. So it is a pure row algebra nothing in the
+  checker calls, and what E171 owes is the **caller**, not the rules. Measured, not
   inferred: §5d. Home for the extension: **E171**.
 
-### Shard 3 — the alarm (a divergence as a typed effect) · **BUILD (Python crutch today)**
+### Shard 3 — the alarm (a divergence as a typed effect) · **BUILD (and the crutch is gone too)**
 - **What.** A detected divergence raised as a typed effect on the membrane,
   named in the type, total, carrying what-diverged-from-what. "An unnamed failure
   path would be the gap" ([[error-and-alarm]]).
 - **Home.** the `effects` membrane (the effect row it would be named in — E39) +
-  the detection sites (`bridge.verify`, custody, tier ladder). The *design* home
-  is a typed effect; the *current* home is Python exceptions.
-- **Build-state.** **BUILD (E26), size M — today a Python-exception crutch.**
-  `alarms.py` holds `MetisExit(code)`, `MetisHalt` ("a fatal alarm the program
-  raises deliberately, with what diverged in the message"), and `PortError`
-  ("a port operation diverged from its protocol. The scaffold's alarm").
-  `bridge.verify()`'s inbound tag-check raises `PortError` on a type mismatch
-  (CONFORMANCE-MAP D/inbound-bridge). CONFORMANCE-MAP B/E26: "Python host
+  the detection sites (the inbound port check, custody, tier ladder). The *design*
+  home is a typed effect.
+- **Build-state.** **BUILD (E26), size M.** ⚑ **Re-measured 2026-09-04: the
+  crutch this row described has no live referent.** `alarms.py` and its
+  `MetisExit`, `MetisHalt` and `PortError` went with the Python oracle, and so did
+  the `bridge.verify` tag-check that raised the last of them
+  ([[banks/port]] Shard 4). CONFORMANCE-MAP B/E26 still reads "Python host
   exceptions … no effect row / no handler machinery … Python exceptions are floor
   plumbing to replace. **Hard-gated on E39** (its effect row); sequence after
-  E39." So the *thesis* ("an alarm is an effect") is stated and the crutch is
-  isolated, but the alarm is not yet on the algebra.
+  E39"; the "plumbing to replace" half is spent and the gate is unchanged. So the
+  *thesis* ("an alarm is an effect") is stated, the crutch is gone, and what is
+  live is `lib/runtime/supervisor.chiral`, where "an alarm is a CROSSING, not an
+  ambient signal" (`:9`) over the coarse `=>` bit. The alarm is still not on the
+  algebra.
 
 ### Shard 4 — the counter-effect (the named response set) · **partially built (halt only)**
 - **What.** The handler for an alarm, itself an effect, drawn from a **named
@@ -174,10 +180,12 @@ B/E39, B/E26) and [[status-ledger]].
   them: repair-from-survivors lives in the **split** (custody / [[banks/evidence-and-split]]),
   re-derive in register-root custody ([[banks/runtime]] Shard D/F), quarantine and
   halt in the broker/supervisor ([[modules-broker]]).
-- **Build-state.** **Only `halt` is realized, and only as a bare extern.** "Alarm
-  counter effects (halt) are declared in chirality source (lib/ports.chiral) like any
-  extern; nothing here special-cases them" (`effects.py` docstring); the runtime
-  raises `MetisHalt`. The *other* counter-effects (re-key / re-derive / relocate /
+- **Build-state.** **Only `halt` is realized, and only as a bare extern.**
+  `(extern halt (-> (0 A (type 0)) (=> Str A)))` at `lib/ports/process.port:14`,
+  whose registry says "exit is the clean end, halt is the fatal alarm counter
+  effect" (`:7`). It is an ordinary declared crossing and nothing special-cases
+  it. ⚑ The runtime response this row named, raising `MetisHalt`, has no live
+  referent. The *other* counter-effects (re-key / re-derive / relocate /
   repair / quarantine) have **no handler machinery** — they are named in the
   design and performed, where at all, by modules that are themselves mostly
   designed (custody redundancy BUILD, broker grant/revoke/audit DESIGNED —
@@ -258,10 +266,11 @@ works with** (repair-from-survivors *needs* to know which share is bad). The
 operation — recovery material lives in the **split**, not in a handler (this is
 load-bearing for the D1 fork; §5).
 
-**X3 · `eff` and `q` both ride the Pi tuple, both are type-identity.** The effect
-bit (position 2) and the QTT quantity (position 1) are *siblings* in the same
-6-tuple `("Pi", q, eff, name, dom, cod)`, and conv rejects a mismatch in *either*
-— `if a[1] != b[1] or a[2] != b[2]` (`kernel.py:292`). But they are **different
+**X3 · the seat and `q` both ride the Pi, both are type-identity.** The `Seat`
+and the QTT quantity are *siblings* in the same constructor,
+`(t-pi (q Qty) (s Seat) (dom Term) (cod Term))`
+(`lib/surface/syntax.chiral:21`), and conv rejects a mismatch in *either*
+(`lib/typing/kernel.chiral:715`). But they are **different
 kinds of thing** and go to different homes: `q` is a **coeffect grade** (it scales
 under substitution, adds under sequencing — [[decision-graded-kernel]] item 1),
 while `eff` is the seed of the **effect row** — the exercise facet of
@@ -293,9 +302,11 @@ unbuilt, from opposite directions — name them precisely, don't call the whole
 loop present.
 
 **X6 · The membrane seam IS the port algebra ([[banks/module]] Shard 4).** The
-three `effects.py` seams are the same mechanism as the module's port-set membrane:
-`on_binder`'s linear-kind check (`effects.py:38`) is *exactly* what forces a port
-to be bound at `q=1`. So "a module's outward face" (module bank) and "where effect
+three seams at `lib/typing/effects.chiral:34-46` are the same mechanism as the
+module's port-set membrane: `on-binder-ok`'s linear-kind check (`:44`) is
+*exactly* what would force a port to be bound at `q=1`, and the rule that does
+force it today is `linear-binder-bad` (`lib/typing/kernel.chiral:360`), which the
+kernel calls at its Pi and let binders. So "a module's outward face" (module bank) and "where effect
 meaning is decided" (this bank) are one seam viewed from two sides. Do not
 re-document the port-set here — [[banks/module]] owns it.
 
@@ -390,7 +401,7 @@ weigh, not a verdict):
 
 - **Multi-shot resumption fights QTT linearity and totality.** A resumption
   re-enters a linear scope; but **a consumed `q=1` port cannot be re-run** — the
-  membrane's `on_binder` seam (`effects.py:38`) binds a port exactly once, and a
+  membrane's `on-binder-ok` seam (`lib/typing/effects.chiral:44`) binds a port exactly once, and a
   handler that resumes twice would consume it twice. Multi-shot control and
   linear ports are in tension. Totality compounds it: an unrestricted resumption
   is a way to re-enter a loop the termination checker proved bounded (Shard 6).
@@ -418,23 +429,28 @@ the cost of resumption?* ([[DECISION-DOCKET]] D1). **This bank does not answer i
 Evidence is tied above; the call is deferred to D1's home decision doc.
 
 **What the reshape is, once decided** (CONFORMANCE-MAP B/E39, DECISION → then
-REFACTOR-L): `kernel.py:292` conv keeps row *equality*; row *subsumption*
-lands as a new VPi case in `subtype` (`kernel.py:321`) with contravariant
+REFACTOR-L): conv keeps seat *equality* (`lib/typing/kernel.chiral:715`); row
+*subsumption*
+lands as a new `v-pi` case in `subtype` (`lib/typing/kernel.chiral:799`) with contravariant
 domains *(corrected 2026-07-22, E39-SPEC 2nd-order audit — subsumption inside
-symmetric conv is unsound: conv compares Pi domains at `kernel.py:294`, a
+symmetric conv is unsound: conv compares Pi domains at a
 contravariant position)*;
-`effects.py` `on_apply`/`erased_allow` boolean → **set-containment**; the
-`allow_eff` threading bool → row across infer/check; `surface.py:372` per-arrow
-effect attachment; `terms.py` Pi position-2 field *type* (bool → row);
-`prim_is_port` derivation. Critically, **the judgment seams stay put** — this is a
-*module* reshape (effects.py) plus a *field-type* change, not a kernel-logic
+⚑ the `on-apply-ok`/`erased-allow` half of this list is **already done**:
+`lib/typing/effects.chiral` generalized both from the oracle's one-bit lattice to
+set-containment over the row, and says so in its header (`:1-3`). What remains is
+the `allow_eff` threading bool → row across infer/check; the per-arrow
+effect attachment; the Pi's `Seat` field *type* (a two-constructor sum → a row);
+and the `ty-crosses` derivation. Critically, **the judgment seams stay put** — this is a
+*module* reshape plus a *field-type* change, not a kernel-logic
 reshape, exactly because Shard 2 already isolated meaning in the module. After the
 edge-16 call, the E39 row-shape becomes a bounded EXTEND of the bit.
 
 ### 5b. E26 — alarms as a typed effect (BUILD, hard-gated on E39)
 
 Once the effect row exists, the alarm becomes a *tag in it* and the Python
-crutches (`MetisExit` / `MetisHalt` / `PortError`, `alarms.py`) retire. "Forward
+crutches (`MetisExit` / `MetisHalt` / `PortError`, `alarms.py`) would have
+retired; they went with the oracle first, so E26 now builds onto an empty seat
+rather than replacing one. "Forward
 construction; Python exceptions are floor plumbing to replace. Hard-gated on E39
 (its effect row); sequence after E39" (CONFORMANCE-MAP B/E26, size M). Shard 5
 (recoverable-vs-fatal in the type) lands *with* E26 — it is the first thing the
@@ -468,28 +484,32 @@ of the **E168 spec-level audit** at `4f64d91`, which needed the membrane to be
 load-bearing (*"`Obs` is producible only inside an `=>` def, and a `->` function
 cannot call one"*) and tested the premise instead of assuming it.
 
-**Method.** Each program written as a source file, resolved with
-`bin/chirality-resolve.sh` (`chirality_blob_file scaffold/lib`), compiled `B1 < blob >
-out` with `scaffold/build/B1` (1,077,624 B, the promoted binary at `4f64d91`),
-then RUN. No Python anywhere in the path. Re-measured independently at the mint.
+**Method, as run on 2026-08-25.** Each program written as a source file, resolved
+with `bin/chirality-resolve.sh`, compiled by the promoted binary of the day
+(1,077,624 B at `4f64d91`), then RUN. No Python anywhere in the path. Re-measured
+independently at the mint. ⚑ The resolver root and the binary path have both moved
+since: the root is `"lib:prog"` and the binary is `bin/chirality-bin`. The
+measurement has **not** been retaken against them, so the five results below are
+dated evidence rather than a present-tense claim.
 
 1. a `(-> I64 I64)` def calling the `=>` extern `backend-open`
-   (`backend.chiral:36`, `(=> Str Backend)`) — compiles, **exit 42**;
+   (`prog/manas/backend.chiral:37`, `(=> Str Backend)`) — compiles, **exit 42**;
 2. a `(-> I64 I64)` def calling the bound crossing `put`
-   (`scaffold/lib/ports/stdio.chiral:11`, `(=> Str Unit)`) — compiles, **and
+   (`lib/ports/stdio.port:11`, `(=> Str Unit)`) — compiles, **and
    writes to stdout**;
 3. `(def observe (=> Str I64) …)` beside
    `(def check (-> Str I64) (lam (s) (observe s)))` — compiles, prints,
    **exit 7**;
 4. the **module coordinate does not catch it either**: the same program under
    `(module tfloor (cat A) (alt upper))` — *correctness by proof* — compiles and
-   prints, because `crossings` is sense (a) BINDS. In
-   `scaffold/tests/test-module-kind.sh:717-719`'s own words: *"A def is not a
-   crossing -- crossings is sense (a) BINDS, and a def that CALLS one has bound
-   nothing."* So `(cat A)` refuses a module that BINDS a `=>` extern (the G8
-   refusal case, `scaffold/tests/test-module-kind.sh:709-714`) and admits one that only CALLS an imported one;
+   prints, because `crossings` is sense (a) BINDS: a def that CALLS a crossing has
+   bound nothing. So `(cat A)` refuses a module that BINDS a `=>` extern and
+   admits one that only CALLS an imported one. ⚑ The test file this clause quoted
+   for both halves, `test-module-kind.sh`, has **no live referent** and
+   `tools/test/` carries no module-coordinate script, so the refusal case is
+   unasserted by any gate today;
 5. the **membrane demo in `README.md` fails for the wrong reason**:
-   `scaffold/demo/_eff.chiral:3` is `(def f (-> I64 Unit) (lam (n) (put 42)))`,
+   `prog/demo/_eff.chiral:3` is `(def f (-> I64 Unit) (lam (n) (put 42)))`,
    and B1's `load: type mismatch` is the **argument** mismatch (`I64` supplied
    where `Str` is wanted). Repair it to `(put "x")` under the *same*
    `(-> I64 Unit)` signature and it compiles, runs and prints — so the demo could
@@ -508,7 +528,7 @@ crossing, transitively. What is genuinely open — the blast radius (every def i
 the compiler that transitively reaches `put`/`openat` gets re-typed), whether the
 intermediate state was deliberate staging by **E160/E161** (which moved the
 port-set claim to MODULE granularity and dropped the authored per-def
-`(pure)`/`(crosses)`: `kernel.chiral:303-304`, *"There is no declaration left for a
+`(pure)`/`(crosses)`: `lib/typing/kernel.chiral:304-305`, *"There is no declaration left for a
 module to contradict"*), how the rule composes with the module coordinate and the
 `Sheet`'s derived `crossings`, and whether the obligation is inferred from the
 call graph or annotated — belongs to **E171**'s own pre-run and is deliberately
@@ -520,8 +540,9 @@ capability rather than wait for the membrane.
 
 **Gradient summary.** ⚑ **Corrected 2026-08-25 — the previous sentence read "the
 membrane's *coarse floor* (the `eff` bit + three seams) is ENFORCED/CONFORMS", and
-it is not.** The bit is carried; the seams enforce only inside `effects.py`, the
-oracle that compiles nothing (§5d). In the native compiler the coarse floor is
+it is not.** The bit is carried; the three seams are native at
+`lib/typing/effects.chiral:34-46` and nothing calls them (§5d, and Shard 2's
+2026-09-04 re-measure). In the compiler that compiles everything the coarse floor is
 EXTEND, and E171 owns the extension. Partiality stands alone in the totality modality, beside
 the row seat the algebra will fill (Shard 6, classified-built / enforce-EXTEND).
 Everything else —
