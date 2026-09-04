@@ -4,7 +4,7 @@ layer: bank
 tier: depth
 related: [memory-model, decision-graded-kernel, modules-substrate, modules-custody, permission-model, banks/profile, banks/capability, banks/port, banks/evidence-and-split, vocabulary, glossary, status-ledger, open-edges]
 status: draft
-updated: 2026-07-23
+updated: 2026-09-04
 ---
 
 # Bank: memory
@@ -42,7 +42,7 @@ in, not what an allocator decides at runtime."
   allocation is a port a program incurs by running (P3, [[PRINCIPLES]] — old P4
   folded into it at the 2026-07-20 condensation: "time and space are ports too"
   is P3's core). A buffer supply is a linear
-  `(Pool n)` carrying its capacity `n` *in* the type (`lib/ports.chiral:19`,
+  `(Pool n)` carrying its capacity `n` *in* the type (`lib/ports/pool.port:13`,
   `(porttype Pool (n I64))`). `(Pool 16384)` and `(Pool 4096)` are *different
   types*.
 - **A discipline a profile chooses.** The flexibility is composition-time, not
@@ -63,11 +63,15 @@ Rust ownership/borrow (chirality has *use-once threading*, not a borrow checker 
 an incidental carrier chirality discards.
 
 **How it is realized in code (evidence).** There is no allocator module and no
-heap object. At the metal, a span of RAM is `mmap`'d anonymous memory
-(`scaffold/chirality/native.py:48` `ARENA_BYTES = 1<<20`, `:415` `mmap.mmap(-1,
-ARENA_BYTES, PROT_READ|PROT_WRITE)`), and allocation is a *cursor bump* over it
-(`alloc_bytes`, `native.py:735`, "*Bumps the same heapptr the native allocator
-uses*"; exhaustion is a `ud2` fault / `MemoryError`). At the chirality surface the
+heap object. At the metal, a span of RAM is `mmap`'d anonymous memory: `init-heap`
+at `lib/memory/arena.chiral:27` takes 64 MB of `MAP-PRIVATE | MAP-ANON |
+MAP-NORESERVE` and returns it as an `(arena base len)` pair, and `arena-grow` at
+`:37` doubles it when the bump cursor exhausts it. Allocation is a *cursor bump*
+over that span (`alloc-growing` at `lib/memory/alloc-growing.chiral:18`, with
+`alloc-fixed` at `lib/memory/alloc-fixed.chiral:17` as the non-growing profile
+choice). ⚑ The measurements this paragraph used to carry, `ARENA_BYTES = 1<<20`
+and a `ud2`/`MemoryError` exhaustion path, were the cut Python loader's and are
+gone with it; the live arena's figure is the 64 MB above. At the chirality surface the
 same span is the linear `(Pool n)`; the discipline libraries add a cursor over
 it but no new kernel feature. RAM itself is **category-B substrate, owned by
 nothing** ([[modules-substrate]], [[node-architecture]]: "The substrate is owned
@@ -83,13 +87,13 @@ chirality each has its own principled home and its own honest build-state.
 ### Shard 1 — the arena (mmap'd anonymous span as a bump region) · **BUILT / CONFORMS (E21, E25)**
 - **What.** A raw span acquired from the substrate and consumed by advancing a
   cursor; frees as a unit.
-- **Home.** the native execution substrate / sys-face crossings. `native.py`
-  *sets up* (the loader `mmap`s the arena and pokes `heapptr`/`heapend` cells,
-  `:412–421`); the **chirality side bumps** the cursor.
+- **Home.** the native execution substrate / sys-face crossings.
+  `lib/memory/arena.chiral` *sets up* (`init-heap` at `:27` takes the span,
+  `arena-grow` at `:37` doubles it); the **chirality side bumps** the cursor.
 - **Build-state.** BUILT. **E21 self-hosted arena is COMPLETE**: chirality creates
   and sizes its own anonymous file and maps it — `memfd_create → ftruncate →
   mmap(MAP_SHARED) → byte-roundtrip → munmap`, *differentially tested*
-  (`lib/sys-tal.chiral`; [[status-ledger]] "*chirality sizes+maps its own anonymous
+  (`lib/lowering/tal/sys.chiral:69-90`; [[status-ledger]] "*chirality sizes+maps its own anonymous
   file*"). The self-hosted crossings present: write/read/lseek/memfd/ftruncate/
   mmap/munmap/mprotect/close — **E28 complete** (implemented 2026-07-28,
   CONFORMANCE-MAP CONFORMS; mprotect unblocks E20's W^X loader swap). TCB
@@ -98,12 +102,11 @@ chirality each has its own principled home and its own honest build-state.
 ### Shard 2 — the Pool (value-indexed linear porttype) · **BUILT / CONFORMS (E30–E33, E4)**
 - **What.** `(Pool n)` — one linear resource carrying its bound `n` in its type
   (dependent). You write at explicit offsets and close it once.
-- **Home.** the port-set / category-C port membrane. `lib/ports.chiral`:
-  `(porttype Pool (n I64))` (`:19`), `pool-create : (=> (w n I64) (PoolR n))`
-  (`:48`), `pool-write`/`pool-close` take the bound as an *erased* `(0 n I64)`
-  parameter (`ports/pool.chiral:13,26` — repointed 2026-08-22) — size lives in the type,
-  nothing branches on it at
-  runtime. `PoolR` bundles the pool with its `Fd` (`:29`).
+- **Home.** the port-set / category-C port membrane. `lib/ports/pool.port`:
+  `(porttype Pool (n I64))` (`:13`), `pool-create : (=> (w n I64) (PoolR n))`
+  (`:26`), `pool-write`/`pool-close` take the bound as an *erased* `(0 n I64)`
+  parameter (`:27`, `:31`) — size lives in the type, nothing branches on it at
+  runtime. `PoolR` bundles the pool with its `Fd` (`:15`).
 - **Build-state.** CONFORMS. Opaque linear porttypes in the frozen set, host
   referents bound by `impl_ports`, linearity + frozen-set enforced by the
   checker (CONFORMANCE-MAP tags E30–E33 — a sample of the membrane's crossing
@@ -131,13 +134,19 @@ chirality each has its own principled home and its own honest build-state.
 ### Shard 4 — the linear discipline · **BUILT / ENFORCED (E22)**
 - **What.** `(memory linear)`: write at explicit offsets, close once, no
   bookkeeping. The memory-safety backbone.
-- **Home.** `lib/mem-linear.chiral` — "*adds nothing over `lib/ports.chiral`; it
-  exists to give the discipline a name and a home so `(memory linear)` in a
-  profile points somewhere real*". `mem-drop` closes the pool (zeroized by the
+- **Home.** `lib/memory/mem-linear.chiral`, whose own header at `:8-9` says it
+  adds nothing over the port floor and exists to give the discipline a name and a
+  home, so `(memory linear)` in a profile points somewhere real. ⚑ That header
+  still spells the floor with the pre-migration module key; a comment-only edit to
+  `lib/` owes the compiler rebuild, so the repoint is deferred rather than taken
+  for free. `mem-drop`
+  (`:31`) closes the pool (zeroized by the
   substrate on close — but see Shard 9 on how far that promise reaches).
 - **Build-state.** CONFORMS/ENFORCED (CONFORMANCE-MAP E22; [[status-ledger]]
-  "*Memory discipline as a profile choice … `lib/mem-linear.chiral`*"; exercised
-  in `tests/test_memory.py`). Linearity itself is a property of the TYPE
+  "*Memory discipline as a profile choice … `lib/mem-linear.chiral`*"). ⚑ The
+  exercise this row cited, `tests/test_memory.py`, went with the Python oracle
+  and `tools/test/` has no memory script, so the row's *test* evidence has no
+  live referent. Linearity itself is a property of the TYPE
   (linear-kind, E8; CONFORMANCE-MAP "*Linearity a property of the TYPE*").
 
 ### Shard 5 — the region discipline · **lib BUILT / CONFORMS; region TYPES REFACTOR (E41/E22), edge-3-gated**
@@ -165,7 +174,8 @@ chirality each has its own principled home and its own honest build-state.
 - **What.** Native arena cells: data-with-fields as `[tag][fields]`, Str/Bytes
   as `[len][payload]`, both bump-allocated from the arena the loader maps — the
   region discipline again, one altitude down.
-- **Home.** `lib/bytes-tal.chiral` + the native arena (`native.py:15–21`).
+- **Home.** `lib/lowering/tal/bytes.chiral` + the arena
+  (`lib/memory/arena.chiral:27`).
 - **Build-state.** CONFORMS. Real path built + self-hosted; `nb-*` prims
   preserve-checked at load, arena cells execute (CONFORMANCE-MAP E25). The host
   `bytearray` in the reference interpreter is a **deliberate differential
@@ -174,12 +184,14 @@ chirality each has its own principled home and its own honest build-state.
 ### Shard 7 — discipline-as-profile-choice · **BUILT / CONFORMS (E2)**
 - **What.** Which discipline is composed is a profile clause, checked at
   composition time; an unknown discipline is a surface error.
-- **Home.** the profile manifest / `verify_profiles` — see the sibling
+- **Home.** the profile manifest / `handle-profile-body` — see the sibling
   **[[banks/profile]]** for the profile's own full refraction; do not
   re-document it here.
 - **Build-state.** CONFORMS. A profile carries an optional `(memory
-  <discipline>)` clause; `chirality verify` reports it and rejects unknown
-  disciplines (CONFORMANCE-MAP E2; `tests/test_memory.py`).
+  <discipline>)` clause; `mf-memory-of` (`lib/surface/parse.chiral:939`) admits
+  `linear` and `region` and refuses anything else with `mf-memory-unknown`, at
+  the moment the profile form is read. `tools/test/profile-target.sh:92` asserts
+  the refusal and its message (CONFORMANCE-MAP E2).
 
 ### Shard 8 — space-as-a-grade (the cost coeffect) · **REFACTOR, settled-on-paper (E38)**
 - **What.** Space reserved as a **coeffect factor in the cost semiring** —
@@ -287,7 +299,7 @@ through the allocator: there is no allocator.
 
 **"You need `malloc`/`free` — an allocator API."**
 → Correction: allocation is a **cursor bump over an `mmap`'d arena** (Shard 1,
-`native.py`, BUILT), and deallocation is **linear drop of the whole region as a
+`lib/memory/arena.chiral`, BUILT), and deallocation is **linear drop of the whole region as a
 unit** (Shard 4/5, `mem-drop`/`region-close`). There is no allocator-of-record
 and no ambient `free`; the Pool is threaded and dropped exactly once. A general
 free-list allocator beyond the bump arena is genuinely unbuilt — and owed only if
