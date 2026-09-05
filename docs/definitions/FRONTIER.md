@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: de8cb795e25b4bf7134413403ca7ed32d715b785c49acdb36acefcc8fd9576f1 -->
+<!-- FRONTIER-SOURCES-SHA256: f1055fdc8507de830d3d49d9a5dfa62e615c4f591df1acad64d7aba4e93b2790 -->
 <!-- sources: 160 files -->
 
 ## Decided recently
@@ -95,8 +95,8 @@ updated: 2026-09-04
 ### Pipeline (examples/INDEX.md, by status)
 
 - drafted: 1
-- specced: 3
-- audited: 44
+- specced: 2
+- audited: 45
 - implemented: 63
 - **implemented: 2
 - built: 1
@@ -114,6 +114,7 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 f6fa5a4 — E188 SPEC PASS: status specced -> audited
 - 2026-09-04 3d08402 — E188 SPEC audit: the census scoping is narrowed and M4 is replaced
 - 2026-09-04 bebc058 — E188 SPEC: the guard makes the spine saturated, and the census measures it
 - 2026-09-04 8252d43 — E188 INDEX: drafted -> reviewed
@@ -121,4 +122,3 @@ updated: 2026-09-04
 - 2026-09-04 5dd7031 — E186 step 6: the rows, and the author's row gets a pointer and stays open
 - 2026-09-04 0d87b27 — E186 step 1: the ruling is concrete, written where the fork was left open
 - 2026-09-04 c04ffd6 — E186 SPEC audit PASS: status specced -> audited
-- 2026-09-04 497c20b — E186 SPEC audit: the M5 nobuild analogy is checked, and two cites repaired
