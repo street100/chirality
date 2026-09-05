@@ -1112,7 +1112,16 @@
       ((cs-g g k fields)
         (case (def-ctx sig g)
           ((some dc) (case dc ((dctx ctx cod gbody n) (rw sig ka (arm-rw-ctx fields) none (remap (g-subst n fields k m d) gbody)))))
-          ((none) (c-lit-i 0))))                    ; unreachable: g always has a def-ctx
+          ; g's body is shallower than its type, so there is no lam chain to
+          ; remap.  Build the CALL SPINE from the site alone: g applied to its
+          ; captures and then to the apply args, addressed with spine-args'
+          ; (= g-subst-go's) indices.  Run it through rw exactly as the some
+          ; path is, so a fn-value global inside it still lowers first-order.
+          ; The arity is (+ k d): step 3's guard at st-add-gsite refuses any
+          ; cs-g site where that disagrees with g's own declared arity, so this
+          ; is a consequence of the code rather than an assumption about it.
+          ((none) (rw sig ka (arm-rw-ctx fields) none
+                      (cspine (c-global g) (spine-args 0 0 fields (+ k d) k m d))))))
       ((cs-lam inner dd captys fields)
         (rw sig ka (arm-rw-ctx fields) none (remap (lam-subst inner dd fields d m) inner))))))
 
