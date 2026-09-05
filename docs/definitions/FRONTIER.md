@@ -2,7 +2,7 @@
 node: frontier
 layer: generated
 tier: orientation
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Design frontier — where things stand
@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: c63aa16ab23eb26d02b7694073a393e85ff0b0cf99e232c3a1d6fe0700aee1a6 -->
+<!-- FRONTIER-SOURCES-SHA256: 50f2f3dbc32e0370b24fec08f0fec6c09a4dd44e0dcc7c39f04c31ef66104fad -->
 <!-- sources: 160 files -->
 
 ## Decided recently
@@ -94,7 +94,7 @@ updated: 2026-09-04
 
 ### Pipeline (examples/INDEX.md, by status)
 
-- drafted: 1
+- drafted: 2
 - specced: 2
 - audited: 44
 - implemented: 63
@@ -102,7 +102,7 @@ updated: 2026-09-04
 - built: 1
 - impl: 1
 - implemented-core: 1
-- minted: 2
+- minted: 1
 - part: 1
 - superseded: 1
 
@@ -114,6 +114,7 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-05 c04334a — E187 pre-run: the element as minted is spent, and one channel survives
 - 2026-09-04 0b51d2e — E188 step 9: the records, with the claim beside its measurement
 - 2026-09-04 f6fa5a4 — E188 SPEC PASS: status specced -> audited
 - 2026-09-04 3d08402 — E188 SPEC audit: the census scoping is narrowed and M4 is replaced
@@ -121,4 +122,3 @@ updated: 2026-09-04
 - 2026-09-04 8252d43 — E188 INDEX: drafted -> reviewed
 - 2026-09-04 09f445f — E188 pre-run: the unreachable arm is reached, and the tree already refuses this
 - 2026-09-04 5dd7031 — E186 step 6: the rows, and the author's row gets a pointer and stays open
-- 2026-09-04 0d87b27 — E186 step 1: the ruling is concrete, written where the fork was left open
