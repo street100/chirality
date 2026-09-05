@@ -42,6 +42,14 @@
 # A compiler with the linear-usage audit disabled fixpoints perfectly. That is
 # HANDOFF.md's "a fixpoint is stability, never correctness" as a measurement.
 #
+# ⚑ 2026-09-05, ON HOW TO READ THAT PARAGRAPH. Its "four of them" was taken with
+# the single `cmp C1 C2` this file did until today, and that check answers `no`
+# on a mutant which converges one generation later (see mutant_fixpoints). The
+# figure is a measurement as taken and stands: four fixpoints were seen. What it
+# licenses is "at least four", not "exactly four" -- the fifth was never shown
+# NOT to reach one. It is not rewritten, because the correction moves answers in
+# the `no` direction only and every `yes` above was and remains a fixpoint.
+#
 # Zero Python, here as everywhere in this harness: the literal-text search and
 # replace below is pure bash parameter expansion, so the tool that audits the
 # gates does not reach for the floor the gates exist without.
@@ -141,13 +149,72 @@ mutant_red() {
 mutant_control() { [ "$(mutant_red "$MUT_B1" "$1")" = green ]; }
 
 # ---- the fixpoint, as a measurement rather than a claim ---------------------
-# mutant_fixpoints <label> -> 0 if the mutant compiler reproduces itself
+# mut_first_diff <a> <b> -> cmp's first differing char, without the long paths
+mut_first_diff() {
+  local d; d="$(cd "$MUT_WORK" && cmp "${1##*/}" "${2##*/}" 2>&1)"
+  printf '%s' "${d##*differ: }"
+}
+
+# mutant_fixpoints <label> -> 0 when two CONSECUTIVE generations agree
+# Sets MUT_FP to where they agreed (C1==C2, C2==C3, C3==C4) or to `no`, and
+# MUT_FP_WHY to the sizes and the first differing char when they did not.
 # Reported so "it self-hosts" is never read as "it is correct".
+#
+# ⚑ NOT ONE `cmp C1 C2`, which is what this function did until 2026-09-05.
+# docs/definitions/working-discipline.md was corrected at 76d3296: convergence
+# is two consecutive generations agreeing, and C1 carries the new sources
+# emitted by the OLD code generator. A change to EMITTED CODE that the
+# compiler's own blob reaches separates C1 from C2 for that reason alone and
+# first agrees at C2 == C3. The single `cmp` therefore answered `no` on a mutant
+# that converges one generation later, so every `no` the matrix printed was
+# inconclusive. Bounded at C4, since the same argument caps the first agreement
+# at C2 == C3.
+#
+# ⚑ COST, and the answer is `converged-at-N` rather than yes/no so the cost is
+# visible in the matrix. A generation past the second is built ONLY when the
+# previous pair differed, which is the corrected rule read literally rather than
+# a cheaper approximation of it: a mutant converging at C1 == C2 builds the one
+# generation it always built. Measured 2026-09-05 on this box: a generation is
+# about 1 s (mutant_build's 5 s is the tree copy and the blob resolve, not the
+# compile), and all seven declared mutants answer C1 == C2 with ONE generation
+# built each. The whole fixpoint stage over the declared set is 28 s, unchanged,
+# and the matrix's ceiling if every mutant went the long way is +14 s.
+#
+# ⚑ VERIFIED against a mutant that does change emitted code, 2026-09-05. The
+# declared set is typing and parse rules and none of it reaches emission, so the
+# falsifier for this repair was built by hand: E188's step-4 fix reverted, which
+# 6d59b81 measured as an emission change the compiler's own blob reaches twice.
+#     . tools/test/mutant.sh
+#     mutant_build emit-probe lib/lowering/upper/closconv.chiral 1 \
+#       '((none) (rw sig ka (arm-rw-ctx fields) none
+#            (cspine (c-global g) (spine-args 0 0 fields (+ k d) k m d))))))' \
+#       '((none) (c-lit-i 0))))'      # indentation as in the file
+# C1 1,184,120 B, C2 1,192,312 B differing at char 98, C3 byte-identical to C2.
+# The old check answered `no` on it. This one answers C2 == C3. That `no` was
+# the defect: a correct three-generation convergence reported as a failure.
+#
+# ⚑ NON-EMPTY BEFORE EVERY cmp, and (ulimit -s unlimited) on EVERY build. Two
+# empty files compare equal, so an unguarded cmp reports a fixpoint on a build
+# that produced nothing. The corrected rule needs both guards in three places
+# where the old one needed them in one.
+MUT_FP=""; MUT_FP_WHY=""
 mutant_fixpoints() {
-  local cc="$MUT_WORK/$1.cc" blob="$MUT_WORK/$1.blob" c2="$MUT_WORK/$1.c2"
-  [ -s "$cc" ] && [ -s "$blob" ] || return 1
-  ( ulimit -s unlimited; "$cc" <"$blob" >"$c2" 2>/dev/null ) || return 1
-  [ -s "$c2" ] && cmp -s "$cc" "$c2"
+  local label="$1" next n
+  local blob="$MUT_WORK/$label.blob" prev="$MUT_WORK/$label.cc"
+  MUT_FP=no; MUT_FP_WHY=""
+  [ -s "$prev" ] && [ -s "$blob" ] || { MUT_FP_WHY="no C1, or no blob to build one from"; return 1; }
+  MUT_FP_WHY="C1 $(wc -c <"$prev") B"
+  for n in 2 3 4; do
+    next="$MUT_WORK/$label.c$n"
+    ( ulimit -s unlimited; "$prev" <"$blob" >"$next" 2>/dev/null ) \
+      || { MUT_FP_WHY="$MUT_FP_WHY; C$n did not build"; return 1; }
+    [ -s "$next" ] || { MUT_FP_WHY="$MUT_FP_WHY; C$n is empty"; return 1; }
+    chmod +x "$next"
+    if cmp -s "$prev" "$next"; then MUT_FP="C$((n-1))==C$n"; return 0; fi
+    MUT_FP_WHY="$MUT_FP_WHY; C$n $(wc -c <"$next") B, $(mut_first_diff "$prev" "$next")"
+    prev="$next"
+  done
+  return 1
 }
 
 # ============================================================================
@@ -213,8 +280,9 @@ mut_matrix_one() {
     printf '  INERT -- byte-identical to the base; it can neither convict nor be a hole\n'
     printf '%s\tINERT\n' "$label" >>"$MUT_WORK/matrix.tsv"; return
   fi
-  local fp=no; mutant_fixpoints "$label" && fp=yes
-  printf '  built %s B, differs from base, self-hosting fixpoint: %s\n' "$(wc -c <"$cc")" "$fp"
+  mutant_fixpoints "$label"
+  printf '  built %s B, differs from base, self-hosting fixpoint: %s\n' "$(wc -c <"$cc")" "$MUT_FP"
+  [ "$MUT_FP" = no ] && printf '    no fixpoint by C4: %s\n' "$MUT_FP_WHY"
   local row="$label" survived=1 p v
   for p in $MUT_PHASES; do
     v="$(mutant_red "$cc" "$p")"
@@ -223,7 +291,7 @@ mut_matrix_one() {
     row="$row	${p%.sh}=$v"
   done
   [ "$survived" = 1 ] && printf '  ⚑ SURVIVED EVERY PHASE -- the rule it breaks has no coverage\n'
-  printf '%s\tfixpoint=%s\n' "$row" "$fp" >>"$MUT_WORK/matrix.tsv"
+  printf '%s\tfixpoint=%s\n' "$row" "$MUT_FP" >>"$MUT_WORK/matrix.tsv"
 }
 
 # ---- the driver -------------------------------------------------------------
