@@ -106,10 +106,13 @@ when this table and an arc file disagree.
 | [[arcs/native-window-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 | [[arcs/native-document-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 | [[arcs/display-calculus-arc]] | [[goals/display]] | 17 rows, none started | none |
+| [[arcs/unit-lane-arc]] | [[goals/local-ai]] | 42 rows, none started | `E196-E239` |
 
-Three of the nineteen hold a reserved `E` band, [[arcs/scriba-arc]] holds the
-`S` namespace and [[arcs/native-protocol-arc]] holds the `N` namespace. The
-other fourteen cannot mint an element today, and
+Four of the twenty hold a reserved `E` band, [[arcs/scriba-arc]] holds the
+`S` namespace and [[arcs/native-protocol-arc]] holds the `N` namespace.
+[[arcs/unit-lane-arc]] holds a band and still spells its own rows with the
+same `N` letter, arc-local. The other fourteen cannot mint an element today,
+and
 `docs/decisions/decision-work-ids.md` settles the arc-local row id that lets
 them name their work anyway. Every one of the fourteen spells its scheme in its own
 `reserved element block:` field, and `ledger-lint` check V fails an arc that

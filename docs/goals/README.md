@@ -36,7 +36,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/independent-judgment]] | stated, unbuilt | [[arcs/independent-judgment-arc]] |
 | [[goals/bridge]] | stated 2026-09-02, unbuilt | [[arcs/bridge-arc]] |
 | [[goals/module-split]] | in flight, one measured miss | [[arcs/module-split-arc]] |
-| [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | [[arcs/transport-arc]], [[arcs/scriba-arc]], [[arcs/tuning-arc]] |
+| [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | [[arcs/transport-arc]], [[arcs/scriba-arc]], [[arcs/tuning-arc]], [[arcs/unit-lane-arc]] |
 | [[goals/native-stack]] | in flight: protocol arc opened 2026-09-03, window and document unopened | [[arcs/native-protocol-arc]], [[arcs/native-window-arc]], [[arcs/native-document-arc]] |
 | [[goals/display]] | stated 2026-09-04, unbuilt: the calculus arc opened, four conditions unopened | [[arcs/display-calculus-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
@@ -51,11 +51,13 @@ reserved element block.
 than derivations from existing text, and say so in their own first section.
 
 [[goals/local-ai]] is an author call too, stated verbatim on 2026-09-01 and
-says so in its own first section. Its three arcs opened 2026-09-02 from
+says so in its own first section. Three of its arcs opened 2026-09-02 from
 `.planning/LOCAL-AI-ARC-REALIGNMENT.md`, which also says which existing arcs
 supply pieces without being re-pointed. Two rows in [[records/author-calls]]
 still block work inside them: [[arcs/tuning-arc]] is blocked whole and
-[[arcs/transport-arc]] can be worked as far as its first row.
+[[arcs/transport-arc]] can be worked as far as its first row. A fourth,
+[[arcs/unit-lane-arc]], opened 2026-09-05 for condition 3, carrying the
+roster `.planning/AI-LANE-GAP.md` drew from [[banks/unit]].
 
 [[goals/bridge]] was opened 2026-09-02 and is a derivation rather than a new
 ambition: [[thesis]] and [[category-bridge]] both call C "the part of Chirality

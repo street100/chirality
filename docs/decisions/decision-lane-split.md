@@ -3,7 +3,7 @@ node: decision-lane-split
 layer: decision
 status: DECIDED
 decided: 2026-08-31
-related: [decisions/decision-dispatch-cadence, decisions/decision-work-ids, arcs/README, arcs/diagnostics-arc, arcs/file-types-arc, arcs/enforcement-arc, arcs/transport-arc, arcs/text-tools-arc, arcs/zero-python-arc, benchmarks/text-matcher-allocation, records/author-calls, elements/README, index]
+related: [decisions/decision-dispatch-cadence, decisions/decision-work-ids, arcs/README, arcs/diagnostics-arc, arcs/file-types-arc, arcs/enforcement-arc, arcs/transport-arc, arcs/text-tools-arc, arcs/zero-python-arc, arcs/unit-lane-arc, banks/unit, benchmarks/text-matcher-allocation, records/author-calls, elements/README, index]
 updated: 2026-09-02
 ---
 
@@ -34,6 +34,14 @@ this before starting either lane.
 fixed-point multiply-accumulate. `docs/arcs/native-protocol-arc.md`'s crypto
 pipeline cites it as a route it refuses. Owned by neither arc. Lane A's band is now
 spent.
+
+**A third band, `E196-E239`, reserved 2026-09-05 for the unit lane.** 44 slots
+against the 42 rows `.planning/AI-LANE-GAP.md` tables, two of headroom. The
+unit lane is real work with a roster ([[banks/unit]], `.planning/AI-LANE-GAP.md`).
+[[decisions/decision-work-ids]] allows arc-local ids only until a row needs
+citing by a spec, and that is the gap this band closes: [[arcs/unit-lane-arc]]
+carries the roster, and its 42 rows can now be cited once an element is
+minted for one. Every row stays `unminted` until then.
 
 Phases 1–7 and 13–17 are taken. 8–12 are names still owed to unported old-tree
 phases — **do not reuse them**; a number that once meant something else is worse

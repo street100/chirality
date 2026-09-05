@@ -120,7 +120,7 @@ rather than a schedule.
 
 What the project claims it is doing, and who is doing it, sits one tier down:
 [`docs/goals/`](docs/goals/) holds twelve goals, [`docs/arcs/`](docs/arcs/) holds
-the nineteen arcs serving them, and [`docs/elements/`](docs/elements/) holds the
+the twenty arcs serving them, and [`docs/elements/`](docs/elements/) holds the
 catalog, the ledger and one SPEC per element. A goal carries no build state;
 that lives on four rungs in
 [status-ledger](docs/definitions/status-ledger.md).
