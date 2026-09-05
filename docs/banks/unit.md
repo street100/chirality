@@ -57,7 +57,8 @@ through every shard in this bank:
 - **The shape is a value.** `Expert`, `Flow`, `PureFn`, `Skill`, `GateRule` are
   category-A data, `(data ...)` records with named constructors and zero
   crossings. `prog/manas/core/types.chiral`'s own header states it for the
-  whole file: "ZERO logic. No def, no accessors, no crossings." An `Expert`'s
+  whole file: zero logic, holding no definitions, accessors or crossings of
+  any kind. An `Expert`'s
   `sees` and `returns` fields are `Str`: prose descriptors the header names as
   a deliberate deferral, "typed I/O is target work" (`types.chiral:64`).
 - **The execution is a process.** `run-flow`, `call-expert`, `bind-config`,
