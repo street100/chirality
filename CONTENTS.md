@@ -150,7 +150,7 @@ proved and what it stubbed is kept in
 
 ## Settled and open
 
-- Forks settled in `docs/decisions/` (25 notes): additive testable profiles
+- Forks settled in `docs/decisions/` (26 notes): additive testable profiles
   over a frozen port set; two brokers agreeing via Adhikara; own typed backend
   with no compile to C; B in the type not the packaging; the graded/cost-kernel
   direction; the inspiration policy; the checker as a small trusted core plus
@@ -161,7 +161,9 @@ proved and what it stubbed is kept in
   the user layer extending in chirality, live, above that same frozen kernel line;
   and dispatch cadence as serial, one stage and one agent at a time; and the
   erased-word type living strictly at the lowering type level, with the kernel's
-  `conv` relation left alone. One of the 24 is a proposal and says so in its own
+  `conv` relation left alone; and design happening before an element is minted,
+  which moves minting to the end of the pipeline and gives a settled artifact a
+  revisit stage. One of the 26 is a proposal and says so in its own
   first line: [decision-formulation-distinctness](docs/decisions/decision-formulation-distinctness.md)
   drafts what makes two judges distinct enough that their agreement is evidence,
   and it is `status: draft` awaiting the author.
