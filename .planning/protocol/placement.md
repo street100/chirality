@@ -24,20 +24,30 @@ or `.claude/skills/`. `docs/decisions/decision-ai-tier.md` draws that line.
 | one module, described | `docs/modules/` | frontmatter note |
 | the source tree as it is | `docs/implementation/` | frontmatter note |
 | a measurement, with its date | `docs/benchmarks/` | frontmatter note |
-| what the project claims it is doing | `docs/goals/<name>.md` | goal, plus the arcs that serve it |
-| the elements for one goal | `docs/arcs/<name>-arc.md` | goal link, reserved band, requirements, element list, resume state |
-| one catalog element, worked | `docs/examples/E<NN>-<slug>.md` | six sections, plus its `INDEX.md` row |
-| the plan that implements one element | `docs/elements/specs/E<NN>-<slug>-SPEC.md` | six sections |
-| a new element row | `docs/elements/catalog.md` and `docs/elements/ledger.md`, both |
+| what the project claims it is doing | `docs/goals/<name>.md` | five sections, done-conditions numbered and checkable |
+| the work for one goal condition | `docs/arcs/<name>-arc.md` | six sections, ending in the roster and the resume state |
+| one roster row worked up, before it has a number | `docs/arcs/parts/<arc>-<id>.md` | six sections, ending in the mint packet |
+| the plan that builds one minted element | `docs/elements/specs/E<NN>-<slug>-SPEC.md` | five sections |
+| a new element row | `docs/elements/catalog.md` and `docs/elements/ledger.md`, both, written by the mint |
 | what is built, on the four rungs | `docs/definitions/status-ledger.md` | ENFORCED, IMPLEMENTED, SEEDED, DESIGNED |
 | a claim beside what was measured | `records/<arc>.md` | a `###` block, six fields |
 | a fork only the author can settle | `records/author-calls.md` | one row, with why it blocks |
 
-Two forms are produced by a tool rather than by hand. A bank is scaffolded by
-`python3 tools/doc/doc.py new-bank <name> E# E#`, which pre-seeds the elements'
-map rows as evidence and prints the `INDEX.md` row to add. Lint check D fails
-until that row exists, which is the forcing function. An example and a SPEC are
-scaffolded by `pack.py`, covered in `workflow.md`.
+Most of these are produced by a tool rather than by hand. A bank is scaffolded
+by `python3 tools/doc/doc.py new-bank <name> E# E#`, which pre-seeds the
+elements' map rows as evidence and prints the `INDEX.md` row to add. Lint check
+D fails until that row exists, which is the forcing function. A goal, an arc, a
+design and a SPEC are scaffolded by `pack.py`, covered in `workflow.md`.
+
+**A catalog row is written by the mint, and the mint runs off a design audit's
+PASS.** `docs/decisions/decision-design-before-mint.md` settled that on
+2026-09-05: a catalog row demands title, reference, reference class, rationale,
+category, module and track, and the old pipeline demanded all seven before any
+of the work was done. Until a row mints it is named in its arc's roster and
+cited as `<arc>/<id>`.
+
+`docs/examples/` is closed. Its 132 files describe elements that were built,
+which is the role `MAP.md` gives `docs/implementation/`.
 
 ## The agent tier
 
@@ -79,10 +89,12 @@ citation is rot.
   feature that is one thing elsewhere is here a sum of shards, each in its own
   home, usually mostly built. Naming a phantom feature is the cardinal working
   error in this repository. If a concept has no bank, build one.
-- **Never defer to an unminted element.** If you name a follow-on `E#`, mint its
-  catalog row and its ledger row in the same change, or write `UNASSIGNED` and
-  stop. `docs/definitions/working-discipline.md` carries the rule and
-  `docs/decisions/decision-lane-split.md` reserves the bands.
+- **Never defer to an unminted element.** Where you name a follow-on `E#`, that
+  element already exists. Name a roster row instead, or open one in the arc and
+  say that you did. `docs/definitions/working-discipline.md` carries the rule,
+  `docs/decisions/decision-lane-split.md` reserves the bands, and
+  `docs/decisions/decision-work-ids.md` gives an arc-local row the identity that
+  makes this cheap.
 - **Element status has one authority.** It comes from
   `docs/definitions/status-ledger.md`. The old tree kept about 171 status lines
   by hand and grew lint checks to catch them drifting.
@@ -124,11 +136,15 @@ is the cheapest rule here and the one most often skipped.
 ## Before you commit
 
 ```
-python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A to S
+python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A to AC
 tools/prose-lint/prose-lint.sh PATH...       # how it reads
 ```
 
-`ledger-lint` carries 255 findings against the current tree. Compare the count
-and the per-check distribution before and after, so a change that adds none is
-visible. Commit with a pathspec, `git commit -- <path>`, because a bare commit
+`ledger-lint` runs 29 checks, A through AC. Measured 2026-09-05 it reports **4
+findings**, one `I` and three `AC`, with `H` and `M` recorded as checking
+nothing. The 255 this paragraph carried until 2026-09-05 was the count at the
+2026-09-01 consolidation and it was never re-measured. Compare the count and the
+per-check distribution before and after a change, so a change that adds none is
+visible, and read the distribution rather than the total: an `[ok]` line matches
+the same shape as a finding. Commit with a pathspec, `git commit -- <path>`, because a bare commit
 sweeps another agent's staged work and that has happened twice here.

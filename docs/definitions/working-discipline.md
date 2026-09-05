@@ -73,15 +73,16 @@ Everything that is not the compiler has no ceremony: `chirality run FILE`.
 
 ## The deferral rule
 
-**Never defer work to a follow-on `E#` or `T#` that is not already minted.** If
-you name one, mint its catalog row and its ledger row in the same change.
+**Never defer work to a follow-on `E#` or `T#` that is not already minted.**
 
 A deferral to a nonexistent element is a phantom dependency, and the "it's
 deferred" note is a lie by omission: it reads as scheduled work and is not.
 
-Where an arc needs an element and has no reserved block, it writes `UNASSIGNED`
-and stops. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and
-`E190-E195`; an arc outside those gets a block from the author.
+Name a roster row instead. [[decisions/decision-work-ids]] gives an arc-local
+row a stable citable id that claims no place in a band, a catalog row, a ledger
+row or a pipeline stage, so the deferral rule keeps its whole force over `E#`
+while work still gets named. `docs/decisions/decision-lane-split.md` reserves
+the bands; an arc outside them gets one from the author.
 
 ## Commits
 
@@ -110,12 +111,30 @@ If a concept has no bank, build one rather than guess.
 
 ## The element pipeline
 
-`example → audit → spec → audit → implement`.
+`design → audit → MINT → spec → audit → implement`, with `revisit` reaching any
+artifact in it. [[decisions/decision-design-before-mint]] settled the shape on
+2026-09-05 and `.planning/protocol/workflow.md` holds the run.
 
-Run it for an element **iff implementing it requires choosing between shapes the
-codebase does not already settle.** A bug-class fix whose shape is forced by the
-defect does not need a blueprint; the defect is the blueprint. When in doubt, run
-it: the pipeline is one cheap turn and a wrong shape is not.
+**Minting is the graduation.** A unit of work is named in its arc's roster when
+the arc opens, cited as `<arc>/<id>` per [[decisions/decision-work-ids]], worked
+up in `docs/arcs/parts/`, and given an `E#` only when its design audit passes.
+The arc-local id survives the promotion, so a citation made before the number
+existed still resolves.
+
+The design stage always runs, because it is what measures the baseline. Two of
+its outcomes end the row without building anything, and both are successes:
+
+- **§3 finds an empty delta.** The work is already built. The row closes, names
+  the shards that cover it, and mints nothing. Minting an element to build what
+  exists is the failure this catches.
+- **§4 finds the shape forced.** The codebase already settles it, so the row is
+  `direct`: it mints and goes to implement with no SPEC. A bug-class fix whose
+  shape is forced by the defect needs no blueprint, because the defect is the
+  blueprint.
+
+That second case is where this rule used to sit as a decision about whether to
+run the pipeline at all. It is now a finding the pipeline produces, with a
+citation behind it.
 
 Cadence is serial, one stage at a time, one agent at a time. The authority is
 [[decisions/decision-dispatch-cadence]].
@@ -131,6 +150,7 @@ here.
 | build state, on the four rungs | [[status-ledger]] |
 | what a goal claims and which arcs serve it | `docs/goals/` |
 | an arc's requirements, element list and resume state | `docs/arcs/` |
+| a roster row worked up, before it has a number | `docs/arcs/parts/` |
 | the element catalog, the ledger, the specs | `docs/elements/` |
 | a claim beside its measurement | `records/` |
 | decisions only the author can make | `records/author-calls.md` |

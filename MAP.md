@@ -135,11 +135,14 @@ docs/
   decisions/       one settled decision per entry, carrying its reason
   modules/         the module map, the module groups, the views
   banks/           the depth tier: one concept refracted into shards + homes
-  examples/        one entry per code example
+  examples/        CLOSED to new writes. 132 entries from the retired
+                   worked-example pipeline; they fold into implementation/
   goals/           one per goal: what the project claims, which arcs serve it
-  arcs/            one per arc: the goal, the requirements, the element list,
-                   the resume state. Its measured history lives in records/
-  elements/        the catalog, the ledger, and specs/ -- one per element
+  arcs/            one per arc: the goal, the requirements, the roster, the
+                   resume state. Its measured history lives in records/
+    parts/         one roster row worked up, before it has an element number
+  elements/        the catalog, the ledger, and specs/ -- one per element.
+                   A catalog row is written by the mint, at the end of design
   implementation/  the source tree described, as distinct from specified
   benchmarks/      measurements, with their dates
 records/           one per arc: a claim beside its measurement, with a state.
@@ -176,8 +179,14 @@ and its reader is a person. The agent tier is `.planning/`, `CLAUDE.md` and
 ## Goals, arcs, elements
 
 Three tiers. A goal is a broad thing this project claims it is
-doing. An arc is the list of elements to be done for one goal, carrying that
-goal's requirements. An element is one catalog item, an `E#`.
+doing. An arc is the list of work to be done for one goal, carrying that
+goal's requirements as a roster. An element is one catalog item, an `E#`.
+
+A roster row sits between the arc and the element. It is named when the arc
+opens, cited as `<arc>/<id>`, and it becomes an `E#` only when its design passes
+audit. `docs/decisions/decision-design-before-mint.md` settled that on
+2026-09-05 and `docs/decisions/decision-work-ids.md` gives the id its stability
+across the promotion.
 
 `goals/` and `arcs/` are tracked because their reader is a person: a goal is
 what the project claims and an arc is how it gets there.
