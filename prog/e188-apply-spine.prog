@@ -1,0 +1,67 @@
+; e188-apply-spine.prog -- the E188 probe: judge R4 of the SPEC's gate over the
+; `NDef` list `compile-front` produces for the fixture.
+;
+; It reads the FIXTURE's blob on stdin, runs the whole front half
+; (load-source -> tot-gate -> specialize-singletons -> closconv-sig -> peel) and
+; prints ONE two-token line, then the measured detail behind it.
+; `tools/test/apply-spine.sh` judges R1 to R3 from the fixture's own stdout, R5
+; from the refusal fixture's diagnostic and R6 from two binaries; none of those
+; can be seen from here.
+;
+; ⚑ R4 IS A POSITIVE PRESENCE ROW AND THAT IS WHY IT EXISTS.  SPEC §5: a row
+; reading "the two agree" passes on ABSENCE, because candidate (c) -- refuse the
+; family outright -- satisfies it by deleting the second term.  R4 asserts that
+; the family was BUILT and that its dispatcher is CALLED, so a green R2 cannot
+; be bought by dropping the dispatcher.
+;
+; ⚑ IT IMPORTS NOTHING UNDER `lowering/tal/`.  E154's eleven colliding top-level
+; names are the reason the whole-blob conformance measurement is still a reverted
+; probe; this one stays clear of them by stopping at `compile-front`.
+;
+; It ASSERTS NOTHING and always exits 0.  Every comparison lives in bash in the
+; driver, over these bytes: a gate that re-derives its own verdict is green under
+; any mutant that changes what the verdict SAYS (the pretty.sh / tal-check.sh
+; rule).
+(import "prelude/prelude")
+(import "lowering/compile-front")
+(import "ports/stdio")
+(import "ports/fd")
+
+; ---- read the fixture source off fd 0 ---------------------------------------
+(def e188-read-go (=> I64 Bytes Bytes)
+  (lam (fd acc)
+    (let (chunk (read fd 65536))
+      (case (=i (blen chunk) 0)
+        (true acc)
+        (false (e188-read-go fd (bcat acc chunk)))))))
+
+; ---- the NDef list, by name --------------------------------------------------
+(declare e188-find (-> (List NDef) Str Bool))
+(def e188-find (lam (ds n)
+  (case ds
+    (nil false)
+    ((cons d r) (case d ((ndef nm ps ret er b)
+      (case (str-eq nm n) (true true) (false (e188-find r n)))))))))
+
+; every emitted name, so a red row says WHAT it measured.
+(declare e188-names (-> (List NDef) Str))
+(def e188-names (lam (ds)
+  (case ds
+    (nil "")
+    ((cons d r) (case d ((ndef nm ps ret er b)
+      (str-cat nm (str-cat " " (e188-names r)))))))))
+
+(def e188-tok (-> Bool Str) (lam (b) (case b (true "ok") (false "bad"))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (src (bytes->str (e188-read-go 0 (str->bytes ""))))
+      (case (compile-front src "compile-main")
+        ((fr-err m) (do (put "==E188== absent absent\n")
+                    (do (put (str-cat "front: " (str-cat m "\n"))) 0)))
+        ((fr-ok defs datas prims ports)
+          (do (put (str-cat "==E188== "
+                   (str-cat (e188-tok (e188-find defs "$apply0"))
+                   (str-cat " "
+                   (str-cat (e188-tok (e188-find defs "e188-use")) "\n")))))
+          (do (put (str-cat "ndefs: " (str-cat (e188-names defs) "\n"))) 0)))))))
