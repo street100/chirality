@@ -825,11 +825,15 @@ silent arm `render.chiral:167` already demonstrates.
 
 ## §17 · Relation to the roster
 
-`.planning/OWN-WEB-GAP.md` lanes X, L and J were drawn before this file existed
-and it supersedes their content. Lane X's `Mark` and `Seal` split survives.
-Lane L's identity, packet and link rows sit behind `R1`. Lane J collapses into
-§5, since a native medium is a `.port` and the tether is the one named
-exception. **Rewriting those three lanes against this file is owed and undone.**
+`.planning/OWN-WEB-GAP.md` lanes X, L and J were drawn before this file existed.
+**They are now one pointer section there and this file is the authority for all
+three**, so nothing is stated twice. Lane X's `Mark` and `Seal` split survives
+in §3 and §4, lane L's identity, packet and link rows sit behind `R1`, and lane
+J is §5.
+
+That roster keeps the document half: the vocabulary, the canvas and the lens
+pipeline, which is where a value comes from and where it goes after §1's three
+verbs have moved it.
 
 ## §18 · Sources
 

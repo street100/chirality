@@ -149,49 +149,62 @@ homes, per the refraction rule in `docs/banks/INDEX.md`.
 | F4 | **A document has one text form and nothing renders from it** | HTML is its own serialization, which is the reason the parser must be lenient | `print` is mandatory per type. Save, diff and grep work on the one truth. This is `display-calculus/E4` and this row states its consequence for a document that arrived from elsewhere | `law` | `OURS` (U19, E4) |
 | F5 | **A document is a value, so two readers agree by construction** | two browsers rendering one page differ, and the reference-test suites exist because of it | the mark is data and the reader is a total function, so disagreement between two readers is a difference in their code and is findable by comparing two display lists structurally | `law` | `OURS` (`prog/manas/contract/golden.chiral`) |
 
-### Lane X · the address, naming without a global namespace
+### Lanes X, L and J · superseded
+
+The address, the fabric and the crossing were drawn before
+`.planning/REACH-MODEL.md` existed and **it is the authority for all three
+now**. Their rows are kept nowhere here, because a roster row beside a worked
+model is the second statement that drifts.
+
+| what those lanes asked | where it is worked |
+|---|---|
+| the address, naming without an authority | `REACH-MODEL` §3, and the `Mark` and `Seal` split survives |
+| open against gated reachability | `REACH-MODEL` §4, with `Grant` |
+| media, the tether, and what IP costs | `REACH-MODEL` §5 |
+| routes, the ceremony, the splice | `REACH-MODEL` §6 |
+| routing, and the dumb hop | `REACH-MODEL` §7 |
+| the crypto every one of them consumes | `.planning/CRYPTO-MODEL.md` |
+
+### Lane G · the canvas, and the host that places it
+
+**There is no browser and no widget toolkit.** A canvas is a **view function**
+from a value to a presentation algebra, the same kind of thing
+`lib/surface/pretty.chiral` already is for `Term`. A **host** puts a
+presentation on a surface. State, ports and input belong to the program, and
+never to the canvas.
 
 | id | goal | what the reference does | the chirality representation | kind | class |
 |---|---|---|---|---|---|
-| X1 | **The address is derived from the identity** | DNS maps a name to an address through a hierarchy of authorities, with registrars, TLS certificate authorities and a root zone behind it | the address is a total function of the identity bundle. Nothing issues it and nothing can revoke it, because there is no issuer | `primitive` | `EXTERNAL` (Reticulum, jala) |
-| X2 | **Endpoint or value** | Reticulum's destination hash is a live endpoint you open a link to. A content hash is an immutable value you fetch and verify | the fork, stated in §5 as D1. `apc.chiral:48` already answers `value` at node granularity and answers nothing at document granularity | `decision` | `OURS` and `EXTERNAL`, disagreeing |
-| X3 | **A name is a local binding** | DNS is one global namespace, so a name is scarce, contested and administered | a nickname table is a `.manifest`: pure data, declared in the file, checked by the loader. Two readers may bind different names to one address and neither is wrong | `primitive` | `EXTERNAL` (petname systems) |
-| X4 | **Reaching and naming are one mechanism** | resolution is a separate protocol from the connection, with its own cache, its own failure modes and its own attack surface | announce-then-resolve. What is reachable is what announced, and the announcement carries the address it is for | `law` | `EXTERNAL` (Reticulum) |
-| X5 | **An address has no transport in it** | a URL names a scheme, a host, a port and a path, so the address is a route and moving the content breaks it | the address names the destination. Which crossing carries it is lane J's answer and changes nothing about the address | `primitive` | `EXTERNAL` |
-| X6 | **`parse-url` is the baseline being replaced** | a measured fact about this tree. No reference class applies | measured 2026-09-05: `lib/protocol/http.chiral:101` returns `url-ok host port path` and requires a dotted quad with an explicit port. It is the whole addressing surface the tree has today | `law` | `OURS` |
+| G1 | **A canvas is a pure view function** | a widget is an object with mutable state, a mainloop and a registered callback, which is what makes widgets inseparable | `(-> Env State Node)`. The program holds the state, the host hands input in as data, and nothing is registered. **This is why canvases can be separate runtimes** | `primitive` | `OURS` (`pretty.chiral` is the working instance for a different value) |
+| G2 | **A canvas does not own its surface** | a widget is bound to its toolkit's window, so re-hosting is a rewrite | the canvas emits a display list and a **host** places it. A window today, a DE layer later, and **the canvas is identical in both** | `law` | `EXTERNAL` |
+| G3 | **The port set is the border** | GTK's `GdkDisplay` reaches through the whole stack, so "this widget does not touch the display server" is a convention | a **pure canvas has an empty port set**, an app-like one names its crossings, and the host owns the surface ports. Nesting **reduces** a port set, because a nested canvas needs no surface. `Profile` is live in the compiler: `kernel.chiral:60`, `compile-front.chiral:301`'s `pm-isect`, `totality-check.chiral:130`. **This is `display-calculus/H3` with a consumer, and the first `.profile` instance** | `tool` | `OURS` (live, zero instances) |
+| G4 | **A document is data and carries no computation** | JS in the page is the entire security model of the web, and every mitigation since 1995 is a fence around it | no constructor holds a lambda. Behaviour is a **closed `State` sum with a total transition table** and effects are a **closed `Request` sum**, both data the program interprets. **The single highest-value invariant in this roster**, and it survives all the way to the app end | `primitive` | `EXTERNAL` |
+| G5 | **The declared state is the every-state witness** | nothing in CSS or JS can state a property that holds across every reachable rendering | `arcs/display-calculus-arc.md` measures the cell lane's `(Env, State)` product at 1 and carries an open author call on which consumer witnesses `C9` and `H6`. A canvas declares a finite `State` because G4 forces it, so **the app-like end supplies the property instead of costing it** | `law` | `OURS` |
+| G6 | **A canvas asks for nothing on a document's behalf** | cookies, storage, autoplay, notifications and geolocation are each a prompt bolted on after the fact, because the page can ask | a capability is held by the program, gated by a `Grant`. **One document, two hosts: a request a host's profile forbids is refused and the document still renders.** Graceful degradation with no negotiation | `law` | `EXTERNAL` |
+| G7 | **`Grant` is one type at three layers** | ownership, authentication and authorization are three subsystems everywhere else | route formation, request honouring and value ownership all gate on the same value, and it **proves permission and never identity**, so anonymity survives at every one. `REACH-MODEL` §4 holds the route layer | `primitive` | `OURS` (E40 custody) |
+| G8 | **One value reaches many hosts** | GSK routes one render-node tree to GL, Vulkan and cairo, and that split is what lets one vocabulary serve many surfaces | the terminal, a Wayland surface under a foreign compositor, and a DE layer. **`display-calculus/Z1`'s two-consumer test with three named**, so the display list is a proven seam | `law` | `OURS` (terminal live, the rest behind §8's two blockers) |
 
-### Lane G · the agent, the reader
+### Lane P · the pipeline, and the lenses over it
 
-| id | goal | what the reference does | the chirality representation | kind | class |
-|---|---|---|---|---|---|
-| G1 | **The reader holds a frozen port set, checked at compile time** | a browser has ambient access to the network, the filesystem, the clipboard, the camera and the microphone, and the sandbox is a runtime construct with a long CVE history | `Profile` is already a kernel type (`kernel.chiral:60`) carrying `(ports (List Str))`, `compile-front.chiral:301` intersects the sets with `pm-isect`, and `totality-check.chiral:130` gates the composite. A reader whose document layer reaches a socket fails to compile. **This is `display-calculus/H3` with a consumer** | `tool` | `OURS` (live in the compiler, zero `.profile` instances) |
-| G2 | **A document is data and carries no computation** | JS in the page is the entire security model of the web, and every mitigation since 1995 has been a fence around it | the mark's constructor set has no arm holding a lambda. Dynamism is the reader's own state function over the document's data, which is `display-calculus/C8`. **The single highest-value invariant in this roster** | `primitive` | `EXTERNAL` |
-| G3 | **Navigation is a total function over a declared state** | history, back, forward and the back-forward cache are stateful machinery whose bugs are user-visible and hard to reproduce | the reader's state is a declared ADT and navigation is a total function over it, so the reachable set is enumerable | `law` | `EXTERNAL` |
-| G4 | **The reader is the interactive witness the display arc lacks** | a measured fact about this tree | `arcs/display-calculus-arc.md` measures the cell lane's `(Env, State)` product at 1 and carries an open author call on which consumer witnesses `C9` and `H6`. A reader declares an `Env` and a `State` because it has to. **This row is the answer to that call** | `law` | `OURS` |
-| G5 | **The reader asks for nothing on the document's behalf** | cookies, storage, autoplay, notifications, geolocation and clipboard access are each a permission prompt bolted on after the fact, because the page can ask | a capability is held by the reader. The document cannot request one, because G2 leaves it nowhere to write the request | `law` | `EXTERNAL` |
-| G6 | **One document reaches two surfaces** | GSK routes one render-node tree to GL, Vulkan and cairo, and the split is what keeps one vocabulary serving many surfaces | the cell lane and the Wayland window are the two consumers. **This is `display-calculus`'s `Z1` two-consumer test with both consumers named**, and it is the evidence that the display list is a seam | `law` | `OURS` (cell lane live, `native-window/W1-W4` unopened) |
+The compiler already runs this machine and the document path is its second
+instance. Stage 4 is the waist: many lenses in, one value, many views out.
 
-### Lane L · the line, the fabric
+| # | stage | source instance, running | document instance |
+|---|---|---|---|
+| 1 | the written form | chirality source text | **nothing.** `M1` and decision `D2` |
+| 2 | read, bytes to a surface AST | `sexp.chiral`, E1 | **free** for an s-expression lens |
+| 3 | elaborate to the value | `parse.chiral` then `surface.chiral`, E2/E49 | its own elaborator, the same shape |
+| 4 | **the value** | `Term` | **nothing.** `E1` and `E2`. `Doc` is a layout algebra where a document vocabulary is wanted |
+| 5 | view, value to a presentation | `pretty.chiral`, E181, and **its output is source** | nothing |
+| 6 | the presentation algebra | `Doc`, six constructors | `Rendering` at nine for the terminal. **A display list does not exist**, which is `Z1` |
+| 7 | host, presentation to a surface | `render.chiral` emits SGR | `sprites.chiral` writes ARGB8888, behind §8's blockers |
 
-| id | goal | what the reference does | the chirality representation | kind | class |
-|---|---|---|---|---|---|
-| L1 | **The identity bundle is a typed value** | jala's bundle is a KEM public key, a signature public key, a classical ECC public key and metadata, hashed to the address | one record. The private half never enters it, on E40's custody rule, and every reveal site stays greppable | `primitive` | `EXTERNAL` (jala) |
-| L2 | **The packet has no source field** | IP carries a source address, and that field is most of the traffic-analysis surface. Reticulum omits it | the constructor has no source field, so a source is unconstructible. Stripping is a runtime discipline and this is a type | `primitive` | `EXTERNAL` (Reticulum) |
-| L3 | **Strangers route and cannot address** | an IP host answers anyone who can reach it, and access control is a separate layer that has to be correct | a peer without the bundle cannot derive the handshake keys, so the access rule is a consequence of key possession | `law` | `EXTERNAL` (jala Model B) |
-| L4 | **A destination is typed** | a port number is an integer with a convention attached | single, group and plain are constructors, so a group send and a single send are different values | `primitive` | `EXTERNAL` (Reticulum) |
-| L5 | **MTU rides the crossing's type** | Reticulum baked 500 bytes for LoRa into the protocol, and jala's correction is per-interface negotiation | `pool.port` is the precedent already in the tree: the size is in the port type, `(Pool 16384)` and `(Pool 4096)` are different types, and a target can demand a bound | `primitive` | `OURS` (`pool.port:3-5`) |
-| L6 | **A link is a linear capability** | a socket is an integer, and use-after-close is a runtime error every network program has shipped at least once | every cap in `sock.port` is already linear. A link that has been torn down cannot be used, because the value is gone | `primitive` | `OURS` (`sock.port:54-74`) |
-| L7 | **TTL bounds forwarding** | IP's TTL, and Reticulum's, both exist because a mesh loops | a field with a decrementing law and a stated bound, checked in the gate | `primitive` | `EXTERNAL` |
-
-### Lane J · the crossing, foreign transports
-
-| id | goal | what the reference does | the chirality representation | kind | class |
-|---|---|---|---|---|---|
-| J1 | **A foreign transport is a declared crossing** | jala-setu makes each transport a crate implementing an `Interface` trait, and the discipline is a convention the compiler cannot see | `MAP.md`'s rule: a file belongs in `ports/` iff it declares a crossing. The trait becomes a `.port`, and the structural test is the extension's | `port` | `OURS` (`MAP.md`, the ten registries) |
-| J2 | **The bridge never sees the payload** | jala-setu states it as a responsibility boundary and nothing enforces it | the crossing's type takes opaque `Bytes`, so a decoded frame cannot be passed to it. The boundary is the signature | `primitive` | `OURS` |
-| J3 | **Foreign addressing stops at the boundary** | an overlay that bridges to IP tends to leak IP semantics upward, which is how a mesh acquires a port number | a dotted quad has no representation above the crossing. `inet.chiral` is already the pure translator and already sits outside `ports/` | `law` | `OURS` (`inet.chiral`) |
-| J4 | **Every cross-transport hop goes through the fabric** | jala-setu forbids bridging two foreign protocols directly, so an IP ingress reaches an i2p egress only through jala | the same rule, and it falls out of J2: a bridge holding only opaque bytes has nothing to hand another bridge | `law` | `EXTERNAL` (jala-setu) |
-| J5 | **The IP crossing, as it is** | a measured fact about this tree | measured 2026-09-03 and unchanged: client-side AF_INET connect exists, listen-side AF_INET does not, and UDP does not. `native-protocol/N3` holds the gap and this row states what the bridge inherits | `port` | `OURS` (`sock.port:54-74`) |
+| id | goal | the chirality representation | kind | class |
+|---|---|---|---|---|
+| P1 | **A lens is a reader and a view sitting beside the existing pair** | `pretty.chiral`'s header states the split: `surface/parse` reads, this writes. A lens is additive, one module pair and one gate, and nothing else moves | `primitive` | `OURS` |
+| P2 | **A lens may re-spell the vocabulary and may not extend it** | the parse direction has nowhere to put a concept stage 4 cannot hold. So a design concept worth having belongs in the **vocabulary**, and the lens only makes it pleasant to write | `law` | `EXTERNAL` |
+| P3 | **The round trip is what separates viewing from editing** | a read-only lens prints. An **editable** lens prints and parses and the trip closes, which is `E4` and `M3`. Manipulating a design surface is the parse direction running | `law` | `OURS` (`pretty.chiral` is the existing proof) |
+| P4 | **Lenses come last** | a lens cannot be designed against a vocabulary that does not exist, which inverts the intuition that the authoring surface is designed first | `decision` | `OURS` |
 
 ### Lane Q · the harness
 
@@ -203,7 +216,9 @@ homes, per the refraction rule in `docs/banks/INDEX.md`.
 | Q4 | **The hostile-document corpus** | browser fuzzing corpora exist because the parser is lenient and the attack surface is the leniency | a corpus of malformed, oversized, wrong-version and adversarial marks, each refused by a **named** outcome. A refusal with no name is the silent arm `lookup-face` already demonstrates at `render.chiral:167` | `tool` | `EXTERNAL` |
 | Q5 | **The every-state walk, instantiated** | nothing in CSS or JS can state a property that holds across every reachable rendering | `display-calculus/C9` and `H6` with the reader as the witness. Contrast, overflow, focus visibility and unstyled roles checked in every reachable `(Env, State)` pair | `tool` | `EXTERNAL` |
 
-**Count: 40 rows across seven lanes. 15 primitives, 15 laws, 7 tools, 2 ports, 1 decision.**
+**Count: 28 rows across five lanes. 9 primitives, 12 laws, 6 tools, 1 decision.** The
+address, the fabric and the crossing left this roster for
+`.planning/REACH-MODEL.md`, and the pipeline lane arrived with them gone.
 
 Nine rows are pointers into rosters that already exist: F1, F4, G4, G6 and Q5
 into `arcs/display-calculus-arc.md`, J5 into `arcs/native-protocol-arc.md`, and
@@ -249,14 +264,16 @@ document. They do not share a stylesheet.
 
 | id | decision | why it is a decision |
 |---|---|---|
-| D1 | **Endpoint or value** | X2. A destination hash is a live endpoint. A content hash is an immutable value. `apc.chiral:48` picked value at node granularity and nothing has picked at document granularity. The two build different webs: one gets mutability free and caching hard, the other gets caching and verification free and needs a naming layer that turns back into DNS if it is designed by accident |
+| D1 | ~~Endpoint or value~~ | **Answered in `REACH-MODEL` §3.** It was a false fork: a `Mark` addresses a value and a `Seal` addresses a party, they are different types, and a party's answer is a document with a mark, so the mutable layer returns immutable values |
 | D2 | **Which file kind a mark is** | M1. `.manifest` fits a static document and refuses a generated one, because a manifest's every `def` body is a literal. Either a mark is a manifest and generation is M2's separate `.prog`, or `MAP.md` grows a sixth kind. `.planning/MANIFEST-DESIGN-MAP.md` and `.planning/FILE-KIND-STRUCTURES.md` are the inputs |
 | D3 | **Where the size bound is enforced** | F2. `pool.port` puts it in the port type and `sock-recv` puts it in a refinement, so the tree has two precedents and they are at different layers. The allocation figure in `records/author-calls.md` makes the choice load-bearing rather than stylistic |
 | D4 | **Does the mark carry any style at all** | M6. The strong form is that it carries a role and nothing else, and the reader owns every visual decision. The weak form lets an author express intent the reader may honor. The strong form is the recommendation and it is the one that makes a reader's theme total |
-| D5 | **What the reader's state axis is** | G3 and G4. `arcs/display-calculus-arc.md` carries an open author call on which consumer witnesses `C9`, and this roster proposes the reader. The call stays open until the reader's `State` sum is written down, because a walk over an undeclared product proves that the phase runs |
-| D6 | **Public documents and pair-gating** | L3. Pair-gating makes a stranger unable to address, which makes a publicly readable page impossible by default. jala carries the same fork as Model A against Model B and leaves it open. A web with no public page is a different artifact from one with public pages |
-| D7 | **Whether the reader is one binary or two** | G1. A reader that also authors holds the write path and the untrusted-input path in one port set, which is the boundary a profile exists to draw. Two roots over one profile is the alternative |
-| D8 | **Which crossing the first reader uses** | J5 and X5. A reader over a local file needs no crossing at all and can be built inside the current scope ruling. A reader over the fabric waits on `native-protocol/N2` through `N4`. The first reader's input source decides how much of this roster is reachable now |
+| D5 | **What a canvas's `State` sum is** | G4 and G5. `arcs/display-calculus-arc.md` carries an open author call on which consumer witnesses `C9`, and this roster proposes a canvas. The call stays open until a `State` sum is written down, because a walk over an undeclared product proves only that the phase runs |
+| D6 | **Public documents and pair-gating** | moved to `REACH-MODEL` §4's open-against-gated axis, and it stays open there |
+| D7 | **Whether authoring and viewing share a host** | G3. A host that also authors holds the write path and the untrusted-input path in one port set, which is the boundary a profile exists to draw |
+| D8 | **Which host comes first** | G2. A terminal host exists today. A Wayland host is behind §8's two blockers. A DE-layer host is behind the window arc. The first host decides how much of lane G is reachable now |
+| D10 | **Where the doc-like to app-like spectrum is cut** | G4. Behaviour as a closed `State` sum with a total transition table, and effects as a closed `Request` sum, keeps a document pure data at the app end. Whether both sums are one vocabulary or two is the fork |
+| D11 | **Whether a canvas declares which display-list constructors it may emit** | G3. That would make surface capability checkable the same way the port set is, at the cost of a second declaration per canvas |
 | D9 | **Whether `Role` carries an address-bearing arm** | inherited from the display roster's D10, unchanged and now with a second consumer. `docs/banks/text.md:75-77` records that `d-tag`'s open keyspace is what lets an address ride on rendered output at zero width. Closing the keyspace closes that, and F3's `block-id` is the other addressing surface in play |
 
 ---
@@ -291,11 +308,10 @@ an arc is one sentence that becomes true.
 
 | arc | what becomes true | rows | state |
 |---|---|---|---|
-| **the mark** | a document is a typed value with one text form, and a reader cannot be surprised by it | M1 to M6, F1 to F5, Q1 | **mint this one** |
-| **the reader** | one document reaches two surfaces through a program whose port set is frozen and checked | G1 to G6, Q2 to Q5 | mint this one if D7 and D8 allow |
-| the address | reaching something needs no authority | X1 to X6 | goal condition, unopened. Behind D1 |
-| the line | two peers exchange a document with no source on the wire | L1 to L7 | goal condition, unopened. Behind `native-protocol/N2` to `N4` |
-| the crossing | IP is one declared boundary and nothing above it knows | J1 to J5 | goal condition, unopened. Behind the line |
+| **the vocabulary** | a document is a typed value with one text form, and nothing that reads it can be surprised | M1 to M6, F1 to F5, Q1 | **mint this one.** It is stage 4, the waist everything narrows through |
+| **the canvas** | one value reaches many hosts through view functions whose port sets are frozen and checked | G1 to G8, P1 to P4, Q2 to Q5 | mint this one once the vocabulary closes |
+| reach | one instance gets a value from another | `REACH-MODEL` | **worked in depth there.** It holds no rows here |
+| crypto | the primitives every layer consumes | `CRYPTO-MODEL` | **worked in depth there.** It holds no rows here |
 
 **Two arcs are proposed for minting and three stay as conditions in the goal
 file.** `records/author-calls.md:27` records nine arcs already writing rows
@@ -342,14 +358,25 @@ Not a build order. Sorted by the standing scope ruling.
 | | rows | why now |
 |---|---|---|
 | the mark, end to end | M3, M4, M6, F1, F4, Q1 | a document on local disk needs no network. The round-trip law is the same shape `C1C2` already proved off-tree |
-| the two measurements | X6, J5 | both are greps and both are cheap. They fix what the baseline actually is before a row proposes replacing it |
-| the profile instance | G1, Q2 | `Profile` is live in the compiler and `.profile` has zero instances. The first instance closes `binary-split/B4` and `BA-10` as a side effect |
+| the two measurements | moved to `REACH-MODEL` §14 | `parse-url` and the IP crossing are measured there |
+| the profile instance | G3, Q2 | `Profile` is live in the compiler and `.profile` has zero instances. The first instance closes `binary-split/B4` and `BA-10` as a side effect |
 | the built shard | F3 | `block-id` ships today with two importers under `tools/`. Measuring its reach is the same class of row as `display-calculus/A1` |
-| the two decisions | D1, D2 | paperwork, and between them they unblock lane X entire and lane M's first three rows |
+| the one decision | D2 | the file kind. It unblocks lane M's first three rows and stage 1 of lane P |
 
 **Behind `native-protocol`**, per the arc's own resume state: every row in lanes
 L and J beyond the two measurements. `N2` entropy and `N3` listen-side AF_INET
 come before any of it.
+
+**Two blockers stand between a canvas and a screen**, both measured, neither
+owned.
+
+| blocker | measurement |
+|---|---|
+| nothing reaches a screen | `lib/lowering/tal/crossing-wraps.chiral` has 44 lowered crossings and **`sock-send-fd` is absent from them**. `prog/demo/wl-client.chiral:201` calls it to hand the pool's memfd to the compositor, so that demo does not lower. `sock-listen`, `sock-accept` and `bind` are missing too, and nothing under `tools/test/` reads `prog/demo/`, which is why it went unnoticed |
+| nothing draws varying content in linear time | `display-calculus/R3`, the measured wall. The pure `Bytes` surface is twelve externs with no `pack-u8`, no builder and no fill-with-function. `brepeat` makes a solid span and varying content has no linear-time path. It gates six rows in the raster lane, one in text and all of composite |
+
+Sprites work. Real drawing does not, and the terminal host is unaffected by
+either.
 
 **Out of the immediate roadmap entirely**, per the 2026-09-04 scope ruling:
 HTML, CSS parsing, JS, DNS, TLS, and any foreign document.
