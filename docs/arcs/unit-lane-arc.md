@@ -113,8 +113,37 @@ other row reads `unminted`.
 
 ## Resume state
 
-**E197 is reviewed** (2026-09-05, `3213705`, `d2ec1ae` and `7cefae7`).
-`unit-lane/N10` is minted as E197 and its worked example sits at
+**E197 is built** (2026-09-05), so `unit-lane/N10` and `unit-lane/N43` are
+closed. Three new files, none under `lib/`: `prog/unit/recording.chiral`,
+`prog/e197-recording-sweep.prog` and `tools/test/recording.sh`, which reads
+`12 passed, 0 failed` over R1 to R6 and M1 to M6. The twenty golden lines came
+out byte-identical to the SPEC's on the first compile. R2 asserts the
+refinement's compile refusal in both directions, `25` building and `0` and `-3`
+both giving `load: cannot prove refinement`, which is what replaces the
+negative-interval sweep row decision 2 made unconstructible. All six mutants
+were built and run and every moved-line set matches the SPEC's table, including
+the two the element turns on: M3 reddens four rows through `rr-interval` alone
+while not one `samples=` figure in the file moves, and M5 reddens nineteen of
+twenty through `xspk` while R4's per-arm recomputation names the four
+`samples=` rows exactly. No fixpoint is owed and the scan was proved sensitive
+rather than silent: the blob holds zero `unit/recording` and a copied
+`lib/typing/diag.chiral` importing the module makes the same scan see it
+arrive. `registration.sh` holds at `9 passed, 0 failed`, 11 of 24 to 12 of 25.
+⚑ **The blob and binary byte figures are not the SPEC's**: a concurrent Lane A
+session promoted a new `bin/chirality-bin` at 1,241,464 B, against the SPEC's
+HEAD figure of 1,188,216 B, and moved `lib/` while this run was open, so the
+blob reads 855,545 B here against 820,959. Both halves of the scan were taken
+on the same binary and the same `lib/`, and the golden lines and probe verdicts
+are unchanged by the move.
+
+**The next row is `unit-lane/N11`**, the unbounded trace type paired against
+`RunManifest` and parallel to `RawCall`, at L2 and `unminted`. E197's residue
+lands on it twice: what the `rr-fields` digest becomes is N11's answer to give,
+and rate-bin aggregation sits behind it because it needs a trace to aggregate.
+The mint is the arc session's event and comes first.
+
+The record below is the state E197 was implemented from.
+`unit-lane/N10` was minted as E197 and its worked example sits at
 `docs/examples/E197-record-request.md`, twenty-one golden lines and five
 mutants. The EXAMPLE audit reproduced every figure independently and returned
 six fixes, the largest being a fifth mutant for the spikes pricing arm, which
@@ -126,10 +155,10 @@ to the four spikes rows where R3 reddens 19 of 20 and points nowhere, and
 landed four fixes. Decision 4 was tested on its own terms and holds two ways:
 the no-pricing counterfactual kills `VolumeR`, `rr-wrap` and `RunShape`, whose
 sole consumer is `rr-samples`, and dropping the refinement leaves all twenty
-golden lines byte-identical. **The next stage is implementation**, ordinary
+golden lines byte-identical. **The stage that followed was implementation**, ordinary
 work under the build rule: `prog/unit/recording.chiral`,
-`prog/e197-recording-sweep.prog` and `tools/test/recording.sh`. Nothing lands
-under `lib/`, so no fixpoint is owed and the sensitivity half of the scan is.
+`prog/e197-recording-sweep.prog` and `tools/test/recording.sh`. Nothing landed
+under `lib/`, so no fixpoint was owed and the sensitivity half of the scan was.
 
 **The roster row is closed and one tool fix is owed.** The volume law E197's
 decision 4 scoped in is `unit-lane/N43` in the table above, opened by this arc

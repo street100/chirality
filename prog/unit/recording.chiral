@@ -1,0 +1,129 @@
+; recording.chiral -- E197: what a run is asked to record, as a value.
+;
+; One closed sum names what a run writes down, one constructor per class of
+; recordable signal, and one total function prices a request against the run it
+; is aimed at. Three classes from the SNN simulator literature: spikes are
+; discrete events addressed by occurrence, membrane potential is a continuous
+; value existing at every step, synaptic weights are one value per synapse
+; moving on a learning timescale.
+;
+; ⚑ THE INTERVAL'S ABSENCE IS THE STRUCTURAL CLAIM. `record-spikes` carries no
+; `sample-every` because an event stream is addressed by occurrence and not by
+; time. That is the whole difference between three constructors and one record
+; with an optional field, and it moves no volume figure anywhere: `rr-interval`
+; is what carries it and tools/test/recording.sh row R5 is what convicts it.
+;
+; ⚑ INTEGER THROUGHOUT, on decisions/decision-display-numerics. `rate-milli` is
+; spikes per neuron per 1,000 ticks, so it reads as Hz when a tick is a
+; millisecond, held as an integer because the float wall leaves no other option.
+;
+; ⚑ `population` IS A `Str` AND THAT IS A DEBT. The boundary-sums directive
+; holds that a `Str` encoding which-of-N is a sum in disguise. No `Population`
+; type exists: that is arcs/unit-lane-arc row N17 at L4, unminted, and an L2 row
+; blocking on an L4 one inverts the lane. The in-tree precedent is `Expert`'s
+; `sees` and `returns` at prog/manas/core/types.chiral:63, whose own closing row
+; N13 is also unminted. Shipping `Str` here mints a second instance of that
+; debt, recorded rather than absorbed.
+;
+; ⚑ THE SCOPE STOPS AT THE REQUEST. The trace itself is arcs/unit-lane-arc row
+; N11, unminted, and this file writes into neither `RunManifest` nor `RawCall`:
+; the manifest's fifteen fields are the golden manifest's fifteen top-level keys
+; and `RawCall`'s comment names the round-trip schema that protects. Any
+; population, any projection, any producer of a spike and any storage backend
+; are rows N11 through N23 and every one of them is unminted.
+
+(import "prelude/prelude")
+
+; ---- the request ------------------------------------------------------------
+;
+; ⚑ `sample-every` IS CLOSED AT THE CONSTRUCTOR. `(refine I64 (> 0))` is what
+; removes a zero divide and a negative volume before a binary exists: `0` and
+; `-3` are refused with `load: cannot prove refinement`. The engine decides the
+; predicate for a literal and for a value already at the refined type, and
+; refuses every computed argument including `(+ 20 5)`, so every caller between
+; the literal and this constructor carries the refined type in its OWN
+; signature. An ordinary `I64` seat fails the whole root with no site named.
+; `>` and `<` are two of the five legal refinement operators (`SymOp`,
+; lib/typing/refine.chiral:11).
+(data RecordRequest ()
+  (record-spikes   (population Str))
+  (record-membrane (population Str) (sample-every (refine I64 (> 0))))
+  (record-weights  (population Str) (sample-every (refine I64 (> 0)))))
+
+; ---- the run a request is priced against ------------------------------------
+
+(data RunShape ()
+  (run-shape (neurons I64) (fanout I64) (ticks I64) (rate-milli I64)))
+
+; ---- what a pricing answers -------------------------------------------------
+;
+; ⚑ COMMISSIONING NOTHING IS A REASON, NOT A ZERO. With the refinement in place
+; a zero divide and a negative volume are gone at compile time, so the second
+; arm holds one case: the interval outran the run. On an `I64` return that case
+; prints 0, and 0 is a legitimate volume elsewhere in the type, since a request
+; over a population at `rate-milli = 0` prices honestly at zero. One integer
+; would then carry two unrelated facts. That is the collision
+; definitions/pattern-boundary-sums names and E196's `DecodeR` already answers
+; one layer up.
+;
+; ⚑ THERE IS NO `v-unbounded` AND THE WRAP IS UNGUARDED. Reporting the `I64`
+; wrap before the multiply needs either a high-half product, which is
+; arcs/unit-lane-arc row N1 and unminted, or a division pre-check on every
+; factor, which `RunShape`'s unrefined fields do not support. The wall sits at
+; 10^18 samples, an exabyte at one byte per sample, so the sweep pins the wrap
+; as observed behaviour and this type guards nothing.
+(data VolumeR ()
+  (v-ok (samples I64))
+  (v-empty))
+
+; a product of zero is a request that commissions nothing.
+(def rr-wrap (-> I64 VolumeR)
+  (lam (v) (case (=i v 0) (true (v-empty)) (false (v-ok v)))))
+
+; ---- the pricing ------------------------------------------------------------
+;
+; ONE total function over the sum. Three arms, no `_`, integer only, and `->`
+; because a request is inert data and pricing it crosses nothing.
+;
+;   spikes    every neuron's events over the whole run, at the firing rate
+;   membrane  one value per neuron per sampled step
+;   weights   one value per synapse per sampled step
+;
+; The division is the tree's `/`, which floors, so an interval exceeding the run
+; gives a quotient of zero and `rr-wrap` folds the product to `v-empty`.
+(declare rr-samples (-> RunShape RecordRequest VolumeR))
+(def rr-samples (lam (s q)
+  (case s
+    ((run-shape n f t r)
+      (case q
+        ((record-spikes p)     (rr-wrap (/ (* (* n t) r) 1000)))
+        ((record-membrane p e) (rr-wrap (* n (/ t e))))
+        ((record-weights p e)  (rr-wrap (* (* n f) (/ t e)))))))))
+
+; ---- the interval, typed ----------------------------------------------------
+;
+; The `none` arm IS the asymmetry: it is what a conventional `sampling_interval=`
+; keyword cannot say.
+(declare rr-interval (-> RecordRequest (Maybe I64)))
+(def rr-interval (lam (q)
+  (case q
+    ((record-spikes p)     none)
+    ((record-membrane p e) (some e))
+    ((record-weights p e)  (some e)))))
+
+; ---- the digest -------------------------------------------------------------
+;
+; What a manifest would keep: bounded, and constant in the run's length. The
+; sweep's `fields=` column beside its `samples=` column is the contrast the
+; element exists to express, and it is why the request cannot be folded into the
+; trace it commissions.
+;
+; ⚑ WHAT THE DIGEST BECOMES IS NOT ANSWERED HERE. Whether it is a field on row
+; N11's trace type, a separate small record, or this function and nothing more
+; is N11's answer to give, and N11 is unminted.
+(declare rr-fields (-> RecordRequest I64))
+(def rr-fields (lam (q)
+  (case q
+    ((record-spikes p)     1)
+    ((record-membrane p e) 2)
+    ((record-weights p e)  2))))

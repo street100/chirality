@@ -1,0 +1,134 @@
+; e197-recording-sweep.prog -- the E197 probe: price twenty recording requests
+; against the run shapes they are aimed at and print one pinned line per
+; configuration.
+;
+; Twenty configurations, twenty lines, eight columns:
+;
+;   n         neurons in the run
+;   f         synapses per neuron
+;   t         ticks the run advances
+;   r         spikes per neuron per 1,000 ticks
+;   ivl       the request's OWN `sample-every`, or `none` on a spikes request
+;   samples   the priced volume, or `empty` where nothing is commissioned
+;   fields    the bounded digest
+;   xspk      the volume as a multiple of the SAME shape's spike volume
+;
+; ⚑ IT ASSERTS NOTHING AND ALWAYS EXITS 0. Every comparison lives in bash, in
+; `tools/test/recording.sh`, over these bytes. A gate that re-derives its own
+; verdict is green under any mutant that changes what the verdict says, which is
+; the rule `prog/e188-apply-spine.prog` states for its own R4 and this root
+; follows.
+;
+; ⚑ `xspk` COUPLES EVERY ROW TO THE SPIKES ARM, DELIBERATELY. It carries the
+; element's headline ratio directly: membrane at 100x the spike cost and weights
+; at 10,000x on the same shape, and line 8's fall from 100 to 10 showing the
+; ratio is set by the firing rate and not by the constructor. The cost is that
+; a wrong spikes arm reddens nineteen of twenty rows on the pin. What localizes
+; it is gate row R4, which recomputes the law per arm and names the four
+; `samples=` rows exactly.
+;
+; ⚑ THE INTERVAL PARAMETERS CARRY THE REFINEMENT. `row-mem` and `row-wgt` are
+; `(=> I64 I64 I64 I64 (refine I64 (> 0)) Unit)`. Declaring the last seat an
+; ordinary `I64` fails the WHOLE root with `load: cannot prove refinement` and
+; no site named, because the refinement does not survive an unrefined seat.
+; There is no `sample-every = -3` row here for the same reason: that
+; configuration is unconstructible, so the golden is twenty lines and the defect
+; it used to pin is gate row R2's compile refusal instead.
+;
+; The suite compiles this root and executes none of it. Phase 7 sweeps
+; `grep -rl '^(def compile-main' lib prog`, so the root lands in that census for
+; free and reaches the `compiled` state banks/unit §2 defines, one step short of
+; reached. That is the whole suite claim E197 makes.
+
+(import "prelude/prelude")
+(import "unit/recording")
+(import "ports/stdio")
+
+; ---- the line ----------------------------------------------------------------
+
+; append ` <key><value>` to a line under construction.
+(def kv (-> Str Str I64 Str)
+  (lam (s k v) (str-cat s (str-cat " " (str-cat k (i64->str v))))))
+
+(def kvs (-> Str Str Str Str)
+  (lam (s k v) (str-cat s (str-cat " " (str-cat k v)))))
+
+; a volume that commissions nothing prints its reason, not a zero. That is the
+; whole of decision 3 in one column.
+(def vol-str (-> VolumeR Str)
+  (lam (v) (case v (v-empty "empty") ((v-ok x) (i64->str x)))))
+
+; the interval column. `none` on a spikes request and on no other, which is the
+; sum's structural claim rendered.
+(def ivl-str (-> RecordRequest Str)
+  (lam (q) (case (rr-interval q) (none "none") ((some e) (i64->str e)))))
+
+; the volume as a multiple of the same shape's spike volume. A request that
+; commissions nothing has no ratio to report.
+(def xspk-str (-> VolumeR VolumeR Str)
+  (lam (v sv)
+    (case v
+      (v-empty "empty")
+      ((v-ok x)
+        (case sv
+          (v-empty "empty")
+          ((v-ok y) (i64->str (/ x y))))))))
+
+; ---- one row -----------------------------------------------------------------
+;
+; The spike volume in the last column is priced from the SAME shape, so every
+; row's ratio is against its own run and not against a fixed baseline.
+(def row-line (=> Str I64 I64 I64 I64 RecordRequest Unit)
+  (lam (tag n f t r q)
+    (let ((s (run-shape n f t r)))
+      (let ((v (rr-samples s q)))
+        (let ((sv (rr-samples s (record-spikes "pop"))))
+          (put (str-cat
+                 (kvs (kv (kvs (kvs (kv (kv (kv (kv tag "n=" n) "f=" f) "t=" t) "r=" r)
+                                    "ivl=" (ivl-str q))
+                               "samples=" (vol-str v))
+                          "fields=" (rr-fields q))
+                      "xspk=" (xspk-str v sv))
+                 "\n")))))))
+
+(def row-spk (=> I64 I64 I64 I64 Unit)
+  (lam (n f t r) (row-line "spikes" n f t r (record-spikes "pop"))))
+
+(def row-mem (=> I64 I64 I64 I64 (refine I64 (> 0)) Unit)
+  (lam (n f t r e) (row-line "membrane" n f t r (record-membrane "pop" e))))
+
+(def row-wgt (=> I64 I64 I64 I64 (refine I64 (> 0)) Unit)
+  (lam (n f t r e) (row-line "weights" n f t r (record-weights "pop" e))))
+
+; ---- the twenty configurations ------------------------------------------------
+;
+; Rows 1 to 6 are one shape priced three ways, which is the headline ratio.
+; Rows 7 and 8 move the firing rate alone and show the ratio following it.
+; Rows 9 to 11 lengthen the run, rows 12 to 14 widen it. Rows 15 to 18 are the
+; four intervals that do not divide the run, which carry the whole rounding
+; claim: 1001 outruns the run entirely, 999 rounds below one sample per neuron,
+; and 3 and 7 floor mid-range. Rows 19 and 20 are the wall, one inside `I64` and
+; one wrapped.
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (do (row-spk 1000 100 1000 10)
+    (do (row-mem 1000 100 1000 10 1)
+    (do (row-mem 1000 100 1000 10 25)
+    (do (row-mem 1000 100 1000 10 50)
+    (do (row-wgt 1000 100 1000 10 1)
+    (do (row-wgt 1000 100 1000 10 1000)
+    (do (row-spk 1000 100 1000 100)
+    (do (row-mem 1000 100 1000 100 1)
+    (do (row-spk 1000 100 60000 10)
+    (do (row-mem 1000 100 60000 10 1)
+    (do (row-wgt 1000 100 60000 10 1000)
+    (do (row-spk 100000 1000 1000 10)
+    (do (row-mem 100000 1000 1000 10 1)
+    (do (row-wgt 100000 1000 1000 10 1)
+    (do (row-mem 1000 100 1000 10 1001)
+    (do (row-mem 1000 100 1000 10 999)
+    (do (row-mem 1000 100 1000 10 3)
+    (do (row-mem 1000 100 1000 10 7)
+    (do (row-wgt 1000000 1000000 1000000 10 1)
+    (do (row-wgt 1000000 10000000 1000000 10 1)
+        0))))))))))))))))))))))
