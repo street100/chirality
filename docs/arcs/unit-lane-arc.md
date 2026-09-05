@@ -102,7 +102,7 @@ Every other row reads `unminted`.
 
 ## Resume state
 
-**E196 is specced** at `docs/elements/specs/E196-encoding-seam-SPEC.md`
+**E196 is audited and unbuilt** at `docs/elements/specs/E196-encoding-seam-SPEC.md`
 (2026-09-05), which carries `unit-lane/N8` and `unit-lane/N9` one step from
 implementation. Six open questions are dispositioned and none blocks: `Latency`
 gains `max`, the decode returns a `DecodeR` result sum, the module lands at
