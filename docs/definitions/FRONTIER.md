@@ -14,8 +14,8 @@ updated: 2026-09-05
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 4e13777304cb18a3247bde0694d24905bc941176f018f636825644f6bea42ba1 -->
-<!-- sources: 161 files -->
+<!-- FRONTIER-SOURCES-SHA256: 1b1d12f524a01ea9d7c7e88fec5dc59293d65e69e048cc72923a52269b54798b -->
+<!-- sources: 162 files -->
 
 ## Decided recently
 
@@ -96,7 +96,7 @@ updated: 2026-09-05
 
 - drafted: 1
 - specced: 3
-- audited: 44
+- audited: 45
 - implemented: 63
 - **implemented: 3
 - built: 1
@@ -114,11 +114,11 @@ updated: 2026-09-05
 
 ### Last commits touching the frontier sources
 
+- 2026-09-05 13aeb19 — E196 SPEC: the seam gains a scale on Latency and a result sum on the decode
+- 2026-09-05 0d7ebb5 — E187: repoint the citations E187's own line shifts moved
+- 2026-09-05 af08fed — E196 EXAMPLE audit: every figure reproduced, and the gate has no phase
+- 2026-09-05 47c33f6 — E196 pre-run: the Encoding seam, measured before it is designed
+- 2026-09-05 9fb6fe8 — E187 SPEC: status draft -> audited, the implement-ready gate is passed
+- 2026-09-05 877de1d — E187 SPEC audit: the cause segment is cut on the marker, and the fixpoint's generation is measured
+- 2026-09-05 e7f41ef — mint the unit lane's element band and open its arc
 - 2026-09-05 5aaa17d — E187 SPEC: the sk-defunc blame channel, two lists and a cause clause
-- 2026-09-05 e04168f — E189: mint the op-mulhi surface binding, owned by neither lane
-- 2026-09-05 5422515 — E187 example: drafted -> reviewed
-- 2026-09-05 c9f8e85 — E187 re-scoped in place: the sk-defunc blame channel
-- 2026-09-05 4d00373 — E187's four homes: repair the +67 line drift and the one false claim
-- 2026-09-05 c04334a — E187 pre-run: the element as minted is spent, and one channel survives
-- 2026-09-04 0b51d2e — E188 step 9: the records, with the claim beside its measurement
-- 2026-09-04 f6fa5a4 — E188 SPEC PASS: status specced -> audited
