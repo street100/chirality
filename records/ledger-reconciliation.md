@@ -3,7 +3,7 @@ node: records-ledger-reconciliation
 layer: record
 related: [records/README, elements/README, status-ledger, records/spec-tier-triage, goals/enforcement]
 status: current
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Ledger reconciliation, 2026-09-04
@@ -214,3 +214,115 @@ Phase 13 (`tools/test/diag.sh`, `run-tests.sh:216`) and Phase 24
 (`tools/test/arity.sh`, `run-tests.sh:345`). E121 was not, on the same rule.
 `tools/test/registration.sh` names seven scripts outside the dispatch table; a
 gate that does not run does not enforce.
+
+## The check-AC pass, 29 rows, 2026-09-05
+
+`ledger-lint` gained **check AC** at `e3d6b79`, the third pairing of the ledger's
+state column. Check N pairs it against `docs/examples/INDEX.md` for `built`
+against `design` and for `implemented` against not-`built`; check AB pairs it
+against the catalog. AC closes the reverse INDEX leg: ledger `built` against a
+pipeline status in the pre-implementation set (`drafted`, `reviewed`, `specced`,
+`audited`), which the INDEX itself defines as *implement-ready*.
+
+It fired on **29**. Every one was read against live source before its cell was
+touched, on this file's own rule that a lint hit is a worklist entry rather than
+a verdict. **The INDEX was the stale registry in 26 and the ledger was wrong in
+none.** Three are left as findings, firing.
+
+⚑ **No element was promoted to a rung whose gate was not named and confirmed
+dispatched.** The INDEX's `implemented` is a pipeline status, not a rung: it says
+a run built the element, and it carries no enforcement claim. Two cells name
+ENFORCED and both gates were checked in `tools/test/run-tests.sh` first, E130's
+Phase 20 at `:326` and E157's Phase 13 at `:216`. E121's cell says IMPLEMENTED
+and NOT gated, on the same rule.
+
+`44913ce` carries the 29 row edits.
+
+### The 26 where the INDEX row was stale
+
+| E# | live source says |
+|---|---|
+| E21 | the entry stub mmaps and stores `heapptr`/`heapbase`/`heapend`/`heapreserve` (`compile-emit.chiral:34-98`); the bump advance is `x-lea-bump` (`x64/mach.chiral:443`, `:473`) |
+| E24 | the subject is the x86-64 emitter, as the AB pass measured. `x-div-guarded`/`x-mod-guarded` wrap `cqo`/`idiv` with the #DE guards at `x64/mach.chiral:173-189`, `:299-307`, dispatched at `:363` |
+| E25 | `[len][payload]` is the live cell for `Str` and `Bytes` alike: `tal/bytes.chiral:8`, `tal/ir.chiral:15`, `x64/mach.chiral:605`, `:733` |
+| E31 | `nb-sys-poll-t` at `tal/sys.chiral:302` and `nb-pollfd-fill-t` at `:310`, registered at `:1339`. The surface wrappers the row called E51-gated landed: `poll2` at `sock.port:71`, `nb-poll` at `:74` |
+| E33 | `lib/runtime/proc.chiral:1` names itself E33 and owns `proc-spawn` over fork+execve+wait4; crossing row `raw-proc-spawn` to `nb-run-cmd` at `crossing-wraps.chiral:54`; imported by `evidence/harness.chiral:7` |
+| E51 | `impl_ports` is gone from the tree and CPython is off the compile path. The `wrap-*` E51 wrappers are `tal/sys-linkage.chiral`, imported at `compile-emit.chiral:17` and read at `:204` |
+| E69 | `upper/closconv.chiral:1` names itself E69, `closconv-driver.chiral:2` is its stateful driver, `compile-front.chiral:21` imports it onto the shipping path |
+| E87 | `module/resolve.chiral:2` names E87 and retires `bin/chirality-resolve.sh`; imported by `prog/resolve.prog:20` and `evidence/test-floor.chiral:44` |
+| E88 | `prog/scriba/mark-region.chiral`, imported by `init-loader.chiral:17`. Rehomed to scriba:S31 |
+| E92 | `prog/scriba/dispatch.chiral:3` defines `try-dispatch`; `init-loader.chiral:361` routes every op through it. Rehomed to scriba:S32 |
+| E100 | `field-erased?` at `closconv.chiral:765`, applied at `:1018`, `:1054` and `closconv-driver.chiral:162` |
+| E106 | `SockVec` linear in both fields at `capability/lincoll.chiral:26-28`, `sv-push` at `:31`, `CountR` at `:37` |
+| E107 | four fd-backed closes lower: `sock-close`/`lsock-close`/`fd-close` at `crossing-wraps.chiral:42-44`, `pool-close` at `:53` |
+| E108 | `shr`/`sar` externs at `prelude/prelude.chiral:70-71`, Op ctors and names at `:38`, `:49` |
+| E109 | `bput-u16-le` at `tal/bytes.chiral:628` |
+| E110 | `nb-sys-open-rw-t` hardcodes `O_RDWR\|O_NOCTTY\|O_CLOEXEC` = `0x80102` at `tal/sys.chiral:646-658` |
+| E113 | `pool-read` at `pool.port:30` under an `E113/E120` comment, crossing row `crossing-wraps.chiral:52`, called at `grid.chiral:194` |
+| E121 | `fcntl` extern at `fd.port:36` commented `E121:`, crossing row `crossing-wraps.chiral:45` |
+| E123 | `porttype-word?` maps the handle porttypes to `nt-i64` inside `term->ntalty` at `compile-front.chiral:62-68` |
+| E124 | `adopt-fd (=> I64 Fd)` at `fd.port:32`, lowered by the `adopt-fd`/`nb-id` pair at `tal/erase.chiral:119` |
+| E129 | `protocol/inet.chiral:2` names E129 and owns `sock-connect-in`; crossing row `crossing-wraps.chiral:41`; consumed by `http.chiral` and five `prog/samples` roots |
+| E130 | `protocol/http.chiral:4-8` records the swap; `http-request` is a `def` at `:436-437` over the native socket caps |
+| E151 | `str-cmp` at `prelude/string.chiral:91`, `str-lower` `:116`, `str-upper` `:132`, `str-trim` `:163`, `str-replace` `:186`; `ar-str-cmp` and `cb-str-cmp` grep-clean |
+| E156 | `row-infer.chiral:104` calls `list-sort Str str-cmp`; the private `ins-sorted`/`sort-dedup` are gone, survived by the comment at `:95-96` |
+| E157 | `Reason` is a closed sum at `typing/diag.chiral:121`; `LoadR` carries `(why Reason)` at `module/loader.chiral:60` |
+| E161 | the checked `(module <key> (cat A) ...)` datasheet form is live across the prelude, e.g. `prelude/string.chiral:11`, with its derived `crossings` noted at `:9-10` |
+
+### The three left firing, and why each is a finding
+
+Same shape as E20's precedent in this file: the two cells are not disagreeing
+about one fact, they are naming different things, and moving either cell would
+record a claim neither document holds. Each INDEX row now carries the finding
+and check AC keeps reporting all three.
+
+**E20.** Unchanged from this file's 2026-09-04 disposition, re-verified against
+`lib/lowering/x64/elf.chiral:59-60` and re-read here rather than re-measured. The
+row and the element disagree about what E20 is. Naming the survivor is an author
+call, so the INDEX row was given the finding and left at `audited`.
+
+**E26.** The ledger's `built` is already qualified PARTIAL and covers the
+crossing half: `halt` at `lib/ports/process.port:14` beside `exit` at `:13`. The
+typed alarm the INDEX row is still waiting on is hard-gated on E39, which reads
+`design` at `ledger.md:114`. Each cell is half right.
+
+**E101.** The ledger's `built` is already qualified PARTIAL and covers the reader
+half: `pos-line` at `lib/surface/sexp.chiral:137`, `pos-col` at `:151`, `fmt-pos`
+at `:164`. The `lib/surface/parse.chiral` half this element's own title names in
+the same breath is untouched, with `(lam (x ...) body)` still a bare `p-err` at
+`:244-247`, exactly where the AB pass measured it. Each cell is half right.
+
+⚑ **AC provides an escape hatch these three were NOT given.** A ledger row
+carrying the literal marker `UNRESOLVED` is honored the way check N honors E52:
+reported on every run, not failing the gate. Pulling it for E20, E26 or E101
+would take AC to 0. It was left alone deliberately, because in all three the
+disposition is an author call and a self-issued `UNRESOLVED` would retire the
+worklist entry on the strength of an agent's reading. **Author call.**
+
+### What this pass found beside the cells
+
+**E107's owed close family is TWO, not one.** The ledger row names `pty-close`
+(declared at `lib/ports/pty.port:38`) as the owed binding. `env-close` is the
+second: declared at `lib/ports/clock.port:40`, called from four `prog/demo` roots
+and from `prog/samples/e106_reject_drop_tail.chiral`, and it has **no
+`crossing-wraps` row either**. Four of the element's five named closes lower;
+two do not. Recorded in the INDEX cell and here; adding a row is a change to
+`lib/`.
+
+**E121's gate still does not run, and the count moved.** `e121` and `e110` remain
+grep-clean across every `tools/test/*.sh`, so the pass took the cell to
+IMPLEMENTED and no further, on the 2026-09-04 rule. `tools/test/registration.sh`
+now reports **11 of 24** scripts outside the dispatch table; the section above
+says seven, which was that day's figure.
+
+**E156's element title cites a home that moved.** It names `list-sort` as coming
+from `collections`. The live definition is `lib/prelude/list.chiral:143` and
+there is no `collections.chiral` in the tree. Same shape as E151's stale Element
+cell recorded above: the state cell is right and the description is behind a
+migration. Renaming is an author call.
+
+**E25 carries stale gating prose in two prelude headers.** `prelude/map.chiral:7`
+and `prelude/alist.chiral:51` both read *"bytes-cmp is E25-gated (no byte-compare
+primitive yet)"*. E25 is the `[len][payload]` cell and it is built;
+`typing/ty-cmp.chiral:13` says the comparison is *"composed from the existing byte
+face"* with no `bcmp` primitive needed. The comments name a gate that closed.
