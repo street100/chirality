@@ -23,8 +23,8 @@ is filed `FIXED`, with the reason written into its `measured` line. A fifth stat
 is an author call, and the README says so.
 
 Rows EN-01 to EN-07 were measured on 2026-09-01, EN-08 to EN-16 on
-2026-09-03, and EN-15's ruling, EN-17, EN-18, EN-19 and EN-20 on 2026-09-04. Re-run a
-row's evidence before relying on it.
+2026-09-03, and EN-15's ruling, EN-17, EN-18, EN-19, EN-20 and EN-21 on
+2026-09-04. Re-run a row's evidence before relying on it.
 
 ## What is measurable about lowering
 
@@ -213,6 +213,21 @@ EN-18's evidence `closconv.chiral:1079-1099` and EN-13's `:1098`. The maintained
 coordinates live in `docs/elements/catalog.md` and `docs/elements/ledger.md`,
 both repointed in the same change.
 
+⚑ **RULED 2026-09-04 by E186: `concrete`, and the ruling is recorded in
+[[decisions/decision-erased-word-level]].** The capture constructor's field
+types stay at the capture's own source type, and the erased word is reached only
+where that source type has no ground spelling. That is what `site-fields->term`
+(`lib/lowering/upper/closconv-driver.chiral:153-163`) already writes, so the
+ruling changes no compiler source; what E186 built is the ruling written down
+plus a gate that separates the two answers, `tools/test/capture-fields.sh`, four
+rows and five mutants at `9 ok, 0 FAIL`. The measurement is EN-21.
+⚑ **The word is RULED and this row stays `state: OPEN`.** EN-15 reads ANSWERED
+because the author closed its call. This row's call is still live in
+[[records/author-calls]] and closing it is the author's own act, so this note
+records where the ruling landed and nothing more. Nothing in the tree waits on
+the row: the ruling is written, the gate grades it, and `element: E186` carries
+the pipeline after it.
+
 ### EN-18 the dispatchers' domains are stated as the erased word, and two of the four rejects survive in a class the fourth's repair unmasked
 
 - state:    FIXED for the class it names, and it opens EN-19 for what is left.
@@ -239,3 +254,12 @@ both repointed in the same change.
 - evidence: `lib/lowering/upper/closconv.chiral:1051-1058`, `:582-596`, `:590`, `lib/lowering/upper/closconv-driver.chiral:96-106`, `lib/lowering/mach/mach.chiral:134-137`, `lib/memory/alloc-growing.chiral:18-25`, `docs/elements/catalog.md:501`, `:502`
 - checked:  2026-09-04
 - element:  E188 (minted 2026-09-04; catalog, ledger, examples/INDEX and a section in `docs/arcs/enforcement-arc.md`)
+
+### EN-21 `ctor-honest?` is computable from `closconv-sig`'s output alone, and five mutants separate the two answers
+
+- state:    FIXED
+- claim:    `docs/elements/specs/E186-capture-field-types-SPEC.md` decision 2 rests on one condition: that the predicate separating `concrete` from the erased word can be built inside E186's boundary, without reaching into E187's stated channel through `datas->n`. §5 pins a base line and five mutant verdicts, four of them derived and one of them, M5, never built.
+- measured: **THE CONDITION HOLDS, AND ALL FIVE MUTANTS BUILT AND RAN.** Both arguments to `ctor-honest?` come off the SAME `CCOut`: `srcs` is `(sig-datas sig)`'s `$clo0` `DataDecl`, each `(field q fn fty)`'s `fty`, and `ftys` is `(datas->n (sig-datas sig))`'s matching `(ndctor cn ftys)`. `datas->n` (`lib/lowering/compile-front.chiral:254-261`) takes no `sp` parameter, and `peel-def` and `peel-globals` — the two functions that consult it — are not on this path, so **E187's channel is required only by the answer E186 rejects**. The probe is `prog/e186-capture-fields.prog`, committed rather than scratch, and it imports nothing under `lowering/tal/` (E154's eleven collisions), so no row reads `ck-prog`. **THE FIXTURE READING**, four sites in one family over `tools/test/samples/e186_capture_fields.prog`: `$k0_0 a=3 src: t-primty:Bytes t-primty:Str t-primty:I64 low: nt-bytes nt-str nt-i64`; `$k0_1 a=2 src: t-primty:I64 t-tcon:List low: nt-i64 (nt-data List [nt-str])`; `$k0_2 a=1 src: t-pi low: nt-word`; `$k0_3 a=0` with no fields. Concrete wherever the capture's source type has a ground spelling, the word at exactly the one source shape that has none. Base verdict `ok ok ok ok`. **THE FIVE MUTANTS, EVERY ONE OF THEM MEASURED**, needle counted at exactly 1 in the file it mutates and at exactly 1 across `lib/`, mutated file `cmp -s`'d against the base, probe rebuilt and run: **M1** `closconv-driver.chiral`, `site-fields->term`'s `(core->term fty)` → `(t-var 0)`, RUN `ok bad bad ok`, reddening **R2 and R3**; **M2** `compile-front.chiral`, `term->ntalty`'s `I64` arm → `(some (nt-word))`, RUN `ok bad ok bad`, reddening **R2 and R4**; **M3** the same function's `t-pi` arm → `(some (nt-i64))`, RUN `ok ok bad ok`, reddening **R3**; **M4** the whole `t-tcon` arm → `(none)`, RUN `bad absent absent absent`, reddening **R1** by dropping `$clo0` from `datas->n`'s output entirely; **M5** the `Bytes` arm → `(some (nt-word))`, RUN `ok ok ok bad`, reddening **R4 ALONE**. ⚑ **M5 IS THE ROW'S OWN FALSIFIER AND THE SPEC HAD NEVER BUILT IT.** §5 carried M5's build and run as *not measured*, because the fourth fixture site did not exist when the SPEC was written; it argued the build risk was bounded by M2's, over three nullary `NTalTy` constructors on two adjacent lines (`lib/lowering/lowspec.chiral:31-32`). The argument holds: M5 assembled, built and ran on the first attempt. Over the first three sites **R2 ∧ R3 ⟹ R4**, because every field of every ctor is golden-pinned by R2 or R3; the three-field site is pinned by neither golden, which is what gives R4 independent falsifying power and what M5 witnesses. ⚑ **M1 IS A MEASURED LIMIT ON `ctor-honest?`.** Under M1 the probe reads `src: t-var:0 t-var:0 t-var:0` against `low: nt-word nt-word nt-word` and **R4 stays green**: the predicate compares a field's lowering against that field's OWN declared `Term`, so a driver that rewrites the source type is self-consistent and invisible to it. R2 catches it. **R4 alone does not separate `concrete` from `word`**, at three sites or at four, and that is why R2 is a golden holding two lowered types as constants. ⚑ **Two SPEC pins corrected from the run, and both were already corrected in the SPEC by its audit**: M1's verdict is `ok bad bad ok` and not `ok bad ok ok`, because R3 asserts the one-field ctor's SOURCE is `t-pi` as well as its lowering being `nt-word`, and M1 rewrites every kept field's source. Every other pin reproduced exactly as §5 derived it. ⚑ **FILED `FIXED`, and the SPEC is the side that moved**: M5's build and run were carried as *not measured* and are now measured, and M1's verdict was corrected from `ok bad ok ok` to `ok bad bad ok`. [[records/README]] has four states and none of them means "the derived table reproduced and one derivation was wrong"; EN-06 is the same case and takes the same state, and minting a fifth is an author call. ⚑ **NO COMPILER SOURCE MOVED.** E186 edits no file under `lib/`, so the blob is byte-identical by construction, there is no `build-new → test → promote` and no byte fixpoint in this element. The gate is UNREGISTERED and says so in its own header: it is the eighth `PEND` in `tools/test/registration.sh` and the fourth script waiting on the standing suite-phase-number call in [[records/author-calls]].
+- evidence: `prog/e186-capture-fields.prog`, `tools/test/samples/e186_capture_fields.prog`, `tools/test/capture-fields.sh`, `lib/lowering/compile-front.chiral:58-72`, `:238-261`, `lib/lowering/upper/closconv-driver.chiral:131-133`, `:142`, `:153-163`, `lib/lowering/lowspec.chiral:30-33`, `docs/elements/specs/E186-capture-field-types-SPEC.md`, `docs/decisions/decision-erased-word-level.md`
+- checked:  2026-09-04
+- element:  E186
