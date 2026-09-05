@@ -1,7 +1,7 @@
 ---
 element: E187
 slug: stated-invented-names
-title: **`closconv` states the lowering-level type of every name it invents**
+title: **The `sk-defunc` blame channel: `closconv` states why it dropped a family**
 kind: BUILD-PROPER
 reference_class: OURS
 ours_source: (none)
@@ -9,7 +9,7 @@ status: drafted
 updated: 2026-09-05
 ---
 
-# E187 — **`closconv` states the lowering-level type of every name it invents**
+# E187 — **The `sk-defunc` blame channel: `closconv` states why it dropped a family**
 
 > One worked example, produced by the `worked-example` pre-run. Conventional
 > approach vs the chirality idea, ending in a clear-cut snippet to copy and modify.
@@ -23,8 +23,8 @@ one the row names. Read §1 before §5: the snippet is the survivor, not the row
 HEAD and the finding survives all of them.** The structural argument of §1.3 was
 attacked directly and held; the corrections below are citation precision, not
 substance. What the audit changed is §6 question 1, which the pre-run routed to
-the SPEC stage and which is an author call, so it now states two options and
-answers neither.
+the SPEC stage and which is an author call, so the audit left it stating two
+options and answering neither. The banner below records the answer.
 
 | what the audit attacked | how it failed |
 |---|---|
@@ -48,14 +48,34 @@ condition in its own arms rather than handing them to `st-add-pois`, whose type
 §5's `"no declared type"` now matches the discriminant `skip-diag.chiral:12`
 already names.
 
+⚑ **The author answered §6 question 1 on 2026-09-05: option (i), re-scope E187
+in place.** The element is retitled to the `sk-defunc` blame channel of §1.6 and
+§5, and the type-statement clauses are struck from all four registry rows. Each
+row records what E187 was and that E185 and E186 consumed it, so a reader who
+followed the old subject can see what happened. `E189` is not spent: it is the
+last free number in Lane A's `E184-E189` band, shared with
+[[arcs/diagnostics-arc]], and spending a scarce contested number is what produced
+the two-`E173` collision this tree records. The example is marked `reviewed` on
+the same run. ⚑ **Only §1's scope bullets and §6's question 1 move.** §1.1
+through §1.6 are the measurement that caused the re-scope and they stand as
+written; the file keeps its `stated-invented-names` slug for the same reason,
+as the provenance of what this artifact was minted to examine.
+
 ## 1. Scope
 
-- **Element:** E187, `closconv` writing down the lowering-level type of the three
-  name families it mints, `$clo<i>`, `$apply<i>` and `$k<i>_<j>`.
+- **Element:** E187 as re-scoped, routing `sk-defunc` from `st-add-gsite` to the
+  user, so `closconv` states WHY it dropped a family. §1.6 is the measurement
+  and §5 is the snippet.
+- **As minted:** `closconv` writing down the lowering-level type of the three
+  name families it mints, `$clo<i>`, `$apply<i>` and `$k<i>_<j>`. §1.1 through
+  §1.5 measure that subject SPENT at HEAD, which is what the re-scope rests on.
 - **Kind:** BUILD-PROPER.
-- **Why chirality needs its own:** the pass invents names that have no source
-  type. Nothing upstream of `closconv` knows the erasure it performed, so no
-  other module in the tree can supply the missing statement.
+- **Why chirality needs its own:** no exceptions and no ambient reporting, so a
+  classification made inside the pass reaches the user only as a value riding a
+  data type. `st-add-gsite` makes the classification, `st-add-pois` has no seat
+  for it, and the boundary sum the STANDING DIRECTIVE names is the only shape
+  available. Nothing downstream of `closconv` can reconstruct which condition
+  fired, because the poisoned family is gone by then.
 
 ### 1.1 The row's citations are stale at HEAD, and the numbers are corrected here
 
@@ -435,33 +455,34 @@ widenings and one recording site. Elided arms marked `; …`.
   measured a guard-off rebuild identical there, so no family in this tree is
   poisoned and no blame should appear.
 - **Open questions:**
-  1. **Is E187 still a whole element? An AUTHOR CALL, and the audit routes it
-     rather than answering it.** This pre-run's answer is **no, as minted**, and
-     the EXAMPLE-level audit of 2026-09-05 confirms every measurement it rests
-     on. The type-statement content is fully consumed: `$apply<i>` by E185,
-     `$k<i>_<j>` by E186, `$clo<i>` by E186 because it has no content of its own
-     (§1.3), and `apply-ty`'s residue by the ruling (§1.4). Only §1.6's blame
-     channel survives, and it entered the tree from E188 rather than from this
-     row. What is left is a numbering decision with exactly two shapes, and it
-     belongs to the author because it edits the minting record:
+  1. **Is E187 still a whole element? ANSWERED 2026-09-05 by the author:
+     option (i), re-scope in place.** The pre-run's answer was **no, as minted**,
+     and the EXAMPLE-level audit confirmed every measurement it rests on. The
+     type-statement content is fully consumed: `$apply<i>` by E185, `$k<i>_<j>`
+     by E186, `$clo<i>` by E186 because it has no content of its own (§1.3), and
+     `apply-ty`'s residue by the ruling (§1.4). Only §1.6's blame channel
+     survives, and it entered the tree from E188 rather than from this row.
 
-     - **(i) Re-scope E187 in place.** Strike the type-statement clauses from the
-       four rows in §1.1's second paragraph, retitle the element to the
-       `sk-defunc` blame channel, and let §5 stand as its example. Keeps the
-       dependency edges `←E185, ←E186` honest as history and adds `←E188`. Costs
-       one row rewrite in each of `docs/elements/catalog.md`,
-       `docs/elements/ledger.md`, `docs/examples/INDEX.md` and
-       `docs/arcs/enforcement-arc.md`, and leaves no free number consumed.
-     - **(ii) Retire E187 as consumed and mint the channel fresh.** The four rows
-       say `spent by E185 and E186` and the channel takes a new number. Clean
-       provenance, at the price of the band: `E189` is the LAST free number in
-       Lane A's `E184-E189` block and it is shared with
-       [[arcs/diagnostics-arc]], so spending it here closes the band and the next
-       Lane A mint needs a band decision first.
+     - **(i) Re-scope E187 in place. TAKEN.** The type-statement clauses are
+       struck from `docs/elements/catalog.md`, `docs/elements/ledger.md`,
+       `docs/examples/INDEX.md` and `docs/arcs/enforcement-arc.md`, the element
+       is retitled to the `sk-defunc` blame channel, and §5 stands as its
+       example. Each row records what E187 WAS and that E185 and E186 consumed
+       it, rather than erasing the old subject. The dependency edges stay honest
+       as history and gain `←E188`. Four row rewrites, no free number consumed,
+       and the whole thing is reversible.
+     - **(ii) Retire E187 as consumed and mint the channel fresh. REJECTED.**
+       Clean provenance, at the price of the band: `E189` is the LAST free number
+       in Lane A's `E184-E189` block and it is shared with
+       [[arcs/diagnostics-arc]]. Spending a scarce contested number is what
+       produced the two-`E173` collision this tree records, and the next Lane A
+       mint would have needed a band decision first.
 
-     **This run mints nothing and edits no row's title.** The audit's own repair
-     of the four homes is confined to the stale line spans of §1.1, which are
-     wrong under either option.
+     **The re-scope run mints nothing and `E189` stays free.** It also leaves the
+     artifact's filename at the `stated-invented-names` slug: the slug is the
+     provenance of what this example was minted to examine, `pack.py` resolves
+     the element by globbing `E187-*`, and the INDEX link and the self-wikilink
+     in **Related** below both point at the current name.
   2. **Does the blame channel warrant a full element on its own?** It is six
      files, all inside the blob, so it is a full BUILD RULE run with a fixpoint,
      and it has a real observable (the refusal message changes on a fixture that
@@ -478,10 +499,22 @@ widenings and one recording site. Elided arms marked `; …`.
      or a fourth `SkReason` arm. That is a genuine fork, and it is what tips
      question 2 toward yes. The SPEC stage should answer
      that against the rule rather than by size.
-  3. **The stale spans in §1.1.** Four documents carry the +67 drift. Repairing
-     them is a doc-tier edit and `ledger-lint` check R does not flag the class,
-     which is the same finding E186's SPEC recorded for E185's row and left
-     standing. This run records and does not propagate.
+  3. **The stale spans in §1.1. CLOSED for the doc tier, OPEN in the source.**
+     E187's four homes were repaired at `4d00373` and E185's rows at the
+     re-scope run, which recorded the live lines: `apply-ty` at
+     `closconv.chiral:1163-1165`, its one call site at
+     `closconv-driver.chiral:206`, `arm-body` at `closconv.chiral:1109-1126`.
+     `docs/examples/INDEX.md`'s E185 row carried no drifted citation.
+     `ledger-lint` check R lands a citation on its symbol and does not flag a
+     span that has drifted past it, so the class keeps recurring.
+     ⚑ **Three COMPILER SOURCE comments carry the same drift and are left
+     standing on purpose**: `lib/lowering/compile-front.chiral:194`,
+     `lib/lowering/upper/closconv-driver.chiral:119` and
+     `lib/lowering/upper/closconv.chiral:1153` all cite `shape-eq` at
+     `closconv.chiral:335-356` where it is `:340-356`. A comment-only edit under
+     `lib/` owes the full BUILD RULE with a fixpoint, so it is not a doc-tier
+     repair. The natural home is this element's own implementation run, which
+     already touches `closconv` and `closconv-driver`.
   4. **Does `format-blame` render `sk-defunc` acceptably?** `skwhy-tag`
      (`skip-diag.chiral:29`) already returns `"defunc"` and `skwhy-name` returns
      the global. Unverified whether the rendered line reads well beside the
