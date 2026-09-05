@@ -42,6 +42,17 @@ the tree during this run.
 | `keep-fams` at `closconv-driver.chiral:96-106`, poison threaded as `CState`'s `pois` | yes |
 | `SkReason` has exactly two constructors, `sk-extern` and `sk-callee`, `skip-diag.chiral:11` | yes |
 
+⚑ **Four rows re-read by the EXAMPLE-level audit, 2026-09-04.** Two of them
+overturn a claim this pre-run made, and the sections below carry the corrected
+text.
+
+| claim | verified |
+|---|---|
+| a `cs-g` site is built at three places, and only one of them records the global's REMAINING type: `cwalk-app-head` (`closconv.chiral:826-833`) keys by `(ty-of ctx t)` after `k` args, `fv-own` (`:844-850`) keys by the global's OWN type at `k=0`, and `fv-site` (`:852-862`) keys by the CALLEE-PARAM SLOT | yes, and it breaks §5's stated ground for `d = arity - k` |
+| `d` is `(cc-llen (peel-pi-doms key))` of the FAMILY key, `closconv-driver.chiral:204` and `:207` | yes |
+| `collect` already consults `def-ctx`: `collect-defs` (`closconv.chiral:922-930`) calls it at `:927` and skips the def on `none` | yes, so candidate (c)'s stated cost is wrong |
+| `mach-galo`'s type peels 4 domains (`ty-cod` is greedy, `compile-front.chiral:165`) against a body one `lam` deep, so `compile-fn` (`lower.chiral:412`) refuses it on the `strip-lams` arm rather than on a `tr-skip` | derived from HEAD, not measured |
+
 ### Is zero blast radius a reason to defer this? No, and the reason inverts the usual one
 
 EN-20 measured the blast radius as zero: `compile-fn` `le-skip`s `alloc-growing`
@@ -56,7 +67,11 @@ TFns, and `$apply5` and `$apply6` ride into the ELF dead. That is true and it is
    a missing function. The day `alloc-growing` lowers, the dead dispatcher goes
    live and returns `0`. So the ordering constraint is real and it points the
    other way from "defer": E188 must land **before** anything that makes
-   `alloc-growing` lower.
+   `alloc-growing` lower. ⚑ **One qualifier the audit adds.** For *these two*
+   instances `ck-prog`'s `ret` refusal already reddens, so if the arc's
+   requirement 2 lands first the arming shows up as a refused compile rather
+   than as a wrong answer. The qualifier does not survive the general case,
+   which is ground 3: at a ground codomain the same arming is silent.
 
 2. **The instruments that would notice are structurally blind here, so "zero" is
    unmeasured rather than measured.** [[banks/verification]] §1 states the limit
@@ -127,6 +142,25 @@ So `closconv` asks a *stricter* version of the question `lower` asks, and where
 condition, two functions, opposite answers. The honest answer is already built
 and running forty lines of module away.
 
+⚑ **The EXAMPLE-level audit sharpened this finding twice, and it holds harder
+than the pre-run stated it.**
+
+**It is the same def, not merely the same predicate.** `peel-def` takes the
+codomain through `ty-cod` (`lib/lowering/compile-front.chiral:165`), which
+recurses to the final non-`Pi`, so `mach-galo` reaches `compile-fn` with
+`total = 4` against a body one `lam` deep. `strip-lams` returns `none` and the
+arm at `lower.chiral:417` fires. EN-20 measures the same def `le-skip`ped by
+`compile-fn`; this run derives which arm does it. So `mach-galo` is refused by
+name in one function and answered with `(c-lit-i 0)` in the other, in the same
+compile.
+
+**And a third function in this pass asks the predicate a third way, inside
+`closconv` itself.** `collect-defs` (`closconv.chiral:922-930`) calls
+`def-ctx` at `:927` for every def it walks and **skips** the def on `none`,
+silently. So the pass already carries two answers to `def-ctx` failing — skip
+the def, and emit `0` — and the refusing one is the one written first. What
+`arm-body` lacks is not the mechanism. It is a channel to put the refusal in.
+
 ## 3. Conventional (other-language) approach
 
 OCaml, a hand-written defunctionalizer of the shape `closconv` ports. The arm
@@ -184,6 +218,24 @@ touches, and they are named here as observations rather than claims:
 `; defensive: no more params` (`lower.chiral:407`). Neither is measured by this
 run.
 
+⚑ **The audit read both, and neither is a second live miscompile. The
+observation is kept and its wording is corrected.**
+
+`closconv.chiral:969` is the same shape and its "unreachable" is discharged.
+`fs` is `(g-param-specs sig g k)`, `cwalk-app-head` guards its site with
+`0 < k < ar` (`:827`), and the two `fv-*` paths build `cs-g g 0 nil`, so the
+`p < k` branch is either fed exactly `k` entries or never entered. An unproven
+comment over a proven fact.
+
+`lower.chiral:407` is a **different** shape and does not belong beside the
+other two. Its comment reads `defensive`, not `unreachable`; it produces a
+short binder list rather than a fabricated value; and it is a list running out
+rather than a `Maybe` failing. Nothing there invents a `0`.
+
+The closer third instance is `cap-subst`'s `((nil) nil) ; unreachable: aligned`
+(`closconv.chiral:1005`), which is `g-subst-go`'s twin on the `cs-lam` side and
+carries the same unproven comment over a value. It is unmeasured here.
+
 **What chirality makes impossible here.** It makes throwing impossible, which is
 what produced the defect. It also makes the honest repair cheap and composable,
 which is what closes it: the refusal is a **value**, it travels in a sum, and the
@@ -222,10 +274,8 @@ resulting indices, and candidate (a) reuses them verbatim:
 ```chirality
 ; ---------------------------------------------------------------- candidate (a)
 ; The arm for a cs-g site, built from the SITE and never from the callee's body.
-; Correct for every cs-g site, because a family's arity d always satisfies
-; d = arity - k: the site's recorded arrow is the global's REMAINING type, so
-; `peel-pi-doms` of it counts exactly the arguments the dispatcher supplies.
-; The spine is therefore saturated at the global's full arity by construction.
+; Correct for every cs-g site WHERE d = arity - k holds.  ⚑ THAT IS AN
+; OBLIGATION, NOT A CONSTRUCTION.  See the note under this block.
 
 ; one argument term per source parameter p in 0..arity-1, in source order.
 (declare spine-args (-> I64 I64 (List (Pair I64 Core)) I64 I64 I64 I64 (List Core)))
@@ -239,6 +289,14 @@ resulting indices, and candidate (a) reuses them verbatim:
           ; erased (E100 / erasure shard A), emit the same placeholder g-subst-go
           ; emits.  Sound because a q=0 position has no runtime presence.
           (true (case fs
+                  ; ⚑ THE AUDIT FLAGS THIS ARM.  It is `g-subst-go`'s
+                  ;   `((nil) nil) ; unreachable: fs has k entries` (:969)
+                  ;   copied verbatim, and it silently TRUNCATES the spine
+                  ;   rather than fabricating a 0.  Copying an unproven
+                  ;   "unreachable" into the arm written to remove one is the
+                  ;   defect this element exists to close.  The SPEC either
+                  ;   discharges it with `k <= |fs|` at the site builder or
+                  ;   routes it into the same refusal channel below.
                   ((nil) nil)
                   ((cons f rest)
                     (case (field-erased? f)
@@ -257,20 +315,74 @@ resulting indices, and candidate (a) reuses them verbatim:
   (lam (g arity fields k m d)
     (cspine (c-global g) (spine-args 0 0 fields arity k m d))))
 
-; the replacement arm.  `arity` comes from `arity sig g` (:490-494), which reads the
-; TYPE alone and never the body, so this path is total wherever the global has a
-; declared type.
-;   ((none) (spine-body g (+ k d) fields k m d))
+; the replacement arm.  TWO READINGS OF `arity`, and they are NOT the same code:
+;   ((none) (spine-body g (+ k d)          fields k m d))   ; A: arity FROM THE FAMILY
+;   ((none) (spine-body g <arity sig g>    fields k m d))   ; B: arity FROM THE TYPE
+; B reads `arity sig g` (:490-494), the TYPE alone and never the body, and it is
+; total wherever g has a declared type.  A cannot disagree with the dispatcher
+; because it is defined from it, and it silently truncates or over-extends the
+; spine when g's real arity differs.  The SPEC picks one; the pre-run wrote A in
+; the snippet and B in the prose, which is the contradiction this audit found.
 ```
+
+⚑ **`d = arity - k` is an OBLIGATION the SPEC must discharge, and the pre-run's
+ground for it is wrong. The EXAMPLE-level audit overturned this claim; it is the
+one finding that changes what the SPEC owes.**
+
+`d` is `(cc-llen (peel-pi-doms key))` of the **family key**
+(`closconv-driver.chiral:204`, `:207`), and a `cs-g` site is built at three
+places, which record three different arrows:
+
+| site path | recorded arrow | is it `arity - k`? |
+|---|---|---|
+| `cwalk-app-head` (`closconv.chiral:826-833`) | `(ty-of ctx t)`, the type of the `k`-ary partial application, guarded `0 < k < ar` | yes, and this is the case the pre-run described |
+| `fv-own` (`:844-850`) | the global's OWN type, `k = 0` | yes, trivially |
+| `fv-site` (`:852-862`) | the **callee's parameter slot**, `k = 0`, and its own comment says so | **unproven** |
+
+`arrow-key-eq` (`:381-385`) forces every member of one family to share a domain
+count, so `d` is well defined per family. Nothing relates `d` to the *global's*
+arity on the `fv-site` path. `peel-pi-doms` stops at a non-`Pi`, so a slot whose
+codomain is a type variable peels shallower than the global filling it: this
+tree's own prelude has such slots, `map-list`'s `(-> A B)` and `foldl`'s
+`(-> B A B)` (`lib/prelude/list.chiral:37`, `:50`), and any of them filled by a
+global whose arity exceeds the slot's depth gives `d < arity - k`.
+
+Two consequences, and the second is why this is not a reason to abandon (a).
+
+1. **Reading B without the invariant is unsound the same way the current code
+   is.** At `d < arity - k` the innermost `spine-args` index
+   `(- (- (+ m d) 1) (- p k))` goes negative. `arm-body`'s existing `some` path
+   already computes exactly that expression through `g-subst` with `n` from
+   `def-ctx`, so if the invariant fails, **today's code is already wrong at that
+   site too**, in a second way this element does not yet name.
+2. **The refusal channel is what closes it.** (a) with a `none` case for
+   `d ≠ arity - k`, answered by (d) and carried by (c), is correct without the
+   invariant. That is the recommendation this section already makes, and this
+   finding is the sharpest argument for it: (a) alone is not enough.
+
+⚑ **This run does not measure whether a real site breaks the invariant.** It
+measures that nothing in the pass establishes it. The SPEC owes either a proof
+or the `none` case, and a census is the cheaper of the two only if it is a gate
+rather than a one-off.
 
 ```chirality
 ; ---------------------------------------------------------- the refusal channel
 ; What (c) and (d) both need, and what (a) still needs for the residue:
-; arm-body stops being total in Core and answers in a sum instead.  The
-; consumers are build-arms (:1117) -> apply-body (:1124) -> synth.
-(def arm-body (-> SigV Csite I64 I64 (List ApplyEnt) (Maybe Core)) ; …
-  ; …
-  )
+; arm-body stops being total in Core and answers in a sum instead.  Signature
+; only; the arms are the SPEC's.
+(declare arm-body (-> SigV Csite I64 I64 (List ApplyEnt) (Maybe Core)))
+
+; ⚑ THE CONSUMER CHAIN, READ AT HEAD.  Five frames and two accumulators, not
+; the three the pre-run named:
+;   arm-body        closconv.chiral:1051
+;   build-arms      closconv.chiral:1118   (builds one CArm per site)
+;   apply-body      closconv.chiral:1124   (mk-lams over the c-case)
+;   synth-apply     closconv-driver.chiral:201  -- core->term inside a `let`,
+;                     result stuffed into the SynA accumulator
+;   synth-applies   closconv-driver.chiral:212
+;   synth-fams      closconv-driver.chiral:220 (SynR), reached from :285
+; `synth` is not a function.  A (Maybe Core) has to cross core->term and both
+; accumulators, so (d)'s cost is the chain and not the one signature.
 
 ; and the blame gets a name, because SkReason today has exactly two constructors
 ; and neither of them says this (skip-diag.chiral:11):
@@ -296,16 +408,21 @@ resulting indices, and candidate (a) reuses them verbatim:
 
 | | shape | what it costs | verdict |
 |---|---|---|---|
-| **(a)** | build the call spine from the `Csite` | one new helper (~15 L), reuse of `cspine` with its `declare` hoisted one place, and the erased-position placeholder inherited from `g-subst-go`. Touches `arm-body` alone. | **recommended.** Correct without reading the body at all, and EN-20 already measured the thing it reproduces: `direct box-f: 30`. The spine *is* the direct call. |
-| **(b)** | eta-expand a shallow body before peeling | a de Bruijn shift of the body under the added binders. `remap`/`rm` shift a threshold (`closconv.chiral:14`, `:144`) and `free-indices` exists (`:108`, used at `:1015`), so it is buildable, and it runs inside the pass that is already miscompiling. Changes `def-ctx`'s output for every shallow site. | **rejected.** Eta-expanding `(lam (m) (case m …))` to depth 4 produces the spine `((case m …) a b c)`. It computes candidate (a) the long way, through the body, at strictly higher risk and cost. |
-| **(c)** | poison the family through `keep-fams` | `collect` must consult `def-ctx`, which it does not today; the `SigV` it holds makes that reachable. `SkReason` needs a third constructor or the blame is unnameable. Converts wrong code into a missing function. | **keep as the backstop, reject as the primary.** A named skip beats a wrong value and loses to correct code. It is the right answer for any residue (a) cannot construct, such as a global with no declared type. |
-| **(d)** | refuse: make the arm a refusal rather than a value | `arm-body : … (Maybe Core)`, propagated through `build-arms`, `apply-body`, `synth`. The refusal then has to *become* something, and the only thing in the tree that consumes it is the poison list. | **it is (c)'s local half, and it is right.** (d) states the impossibility; (c) is the mechanism that carries it. Adopting (d) without (c) leaves the compile with a `none` and nowhere to put it. |
+| **(a)** | build the call spine from the `Csite` | one new helper (~15 L), reuse of `cspine` with its `declare` hoisted one place, and the erased-position placeholder inherited from `g-subst-go`. Touches `arm-body` alone. ⚑ Plus the `d = arity - k` obligation, which the pre-run priced at zero and the audit prices at either a proof or a `none` case. | **recommended, and it does not stand alone.** Correct without reading the body at all, and EN-20 already measured the thing it reproduces: `direct box-f: 30`. The spine *is* the direct call. But `fv-site` keys a site by the callee's parameter slot, so `d = arity - k` is not construction, and (a) without (d)+(c) trades one silent wrong value for another. |
+| **(b)** | eta-expand a shallow body before peeling | a de Bruijn shift of the body under the added binders. `remap`/`rm` shift a threshold (`closconv.chiral:14`, `:143`) and `free-indices` exists (`:108`, used at `:1015`), so it is buildable, and it runs inside the pass that is already miscompiling. Changes `def-ctx`'s output for every shallow site. | **rejected.** Eta-expanding `(lam (m) (case m …))` to depth 4 produces the spine `((case m …) a b c)`. It computes candidate (a) the long way, through the body, at strictly higher risk and cost. |
+| **(c)** | poison the family through `keep-fams` | ⚑ **cheaper than the pre-run priced it.** `collect` ALREADY consults `def-ctx`: `collect-defs` (`:922-930`) calls it at `:927` and skips the def on `none`. What is missing is the consult at the SITE, and all three site builders (`cwalk-app-head` `:816`, `fv-own` `:844`, `fv-site` `:852`) take `sig` as their first parameter, so the data is in hand at the point of decision. `st-add-pois` (`:676`) is the one call. `SkReason` needs a third constructor or the blame is unnameable. Converts wrong code into a missing function. | **keep as the backstop, reject as the primary.** A named skip beats a wrong value and loses to correct code. It is the right answer for any residue (a) cannot construct, such as a global with no declared type. |
+| **(d)** | refuse: make the arm a refusal rather than a value | `arm-body : … (Maybe Core)`, propagated through `build-arms` (`:1118`), `apply-body` (`:1124`), then `synth-apply` / `synth-applies` / `synth-fams` in the driver (`:201`, `:212`, `:220`) and their two accumulators. ⚑ Five frames, not three. The refusal then has to *become* something, and the only thing in the tree that consumes it is the poison list. | **it is (c)'s local half, and it is right.** (d) states the impossibility; (c) is the mechanism that carries it. Adopting (d) without (c) leaves the compile with a `none` and nowhere to put it. |
 
 **The recommendation, in one line.** Take **(a)** as the code answer and
 **(d)+(c)** as the honesty answer underneath it, so that the arm is correct where
 it can be constructed and refuses where it cannot, and no path returns a value it
 cannot justify. What the SPEC stage must decide beyond that is the minimal-vs-
 uniform knob: whether (a) replaces the `none` arm alone or the whole `cs-g` case.
+
+⚑ **The audit strengthened this recommendation rather than weakening it.** The
+pre-run offered (d)+(c) as honesty underneath a spine that was correct anyway.
+With `d = arity - k` unproven on the `fv-site` path, (d)+(c) is the thing that
+makes (a) correct, and dropping it is no longer a matter of taste.
 
 ## 6. Use / modify notes
 
@@ -350,6 +467,20 @@ accepts. Stated as a requirement:
    line.** Both are undisturbed by this defect today, by EN-20's measurement, so
    either passing is evidence of nothing.
 
+5. ⚑ **It must assert that the dispatcher is ON the path, and this requirement
+   was missing.** Requirements 1 to 4 are individually satisfiable and none is
+   unsatisfiable as stated, but the set has a hole the EXAMPLE-level audit
+   found: requirement 2's observable is *`direct` agrees with `via $apply`*, and
+   candidate **(c)** satisfies it by deleting the second term. Poisoning the
+   family drops it at `keep-fams`, the site is never rewritten to a `Con`,
+   `use` becomes a missing label, and the `via $apply` line does not print at
+   all. A row that reads "the two agree" then passes on absence. Since this
+   section recommends (a) with (c) underneath it, the gate has to distinguish
+   *repaired* from *removed*: it must assert that the fixture's family is built
+   and its `$apply` called, and it must grade a skipped compile as `absent`
+   rather than as `ok`. E185's `apply-word.sh` already spells that convention,
+   with `absent` a distinct cell from `ok` and `bad`.
+
 An element whose gate cannot see its own defect is a gate that cannot fail, which
 is the failure the erasure bank names in its own build-state note and which
 [[decisions/decision-scope]] consequence 2 is about at the rung level: every rung
@@ -383,6 +514,19 @@ named here as residue and is left `UNASSIGNED`. If a later stage judges it worth
 an element, that stage mints it.
 
 - **Open questions for the SPEC stage.**
+  - ⚑ **First, and the audit added it: discharge `d = arity - k`, or carry a
+    `none` case for its failure.** `fv-site` (`:852-862`) keys a site by the
+    callee's parameter slot, so the invariant is nowhere established. Either
+    prove it, or read `arity sig g` and refuse the mismatch through (d)+(c).
+    A census that runs once settles nothing; the discharge has to be a gate or
+    a refusal in the code. ⚑ The existing `some` path rests on the same
+    invariant through `g-subst`, so whichever answer the SPEC picks applies to
+    both arms of the `cs-g` case, which pushes the minimal-vs-uniform knob
+    below toward uniform.
+  - Which reading of `arity` the replacement arm takes: `(+ k d)` from the
+    family, or `arity sig g` from the type. They are different code and the
+    pre-run's snippet and prose disagreed; this is the fork underneath that
+    disagreement.
   - Minimal or uniform: does (a) replace the `none` arm alone, or the whole
     `cs-g` case? Uniform retires a code path and changes emitted code for eleven
     currently-correct sites, so it needs the fixpoint to be the arbiter.
@@ -390,8 +534,11 @@ an element, that stage mints it.
     to `(+ m d)`, the closure's own index. Candidate (a) inherits it. Whether
     that convention is *sound* or merely *unobserved* is unmeasured by this run
     and the SPEC should settle it against [[banks/erasure]] shard A.
-  - Does `collect` reach `def-ctx` cheaply? It holds the `SigV`, so the data is
-    there; whether the traversal order permits it is unread.
+  - ~~Does `collect` reach `def-ctx` cheaply?~~ **Read, and the answer is yes.**
+    `collect-defs` calls `def-ctx` at `:927` already, and every site builder
+    carries `sig`. What is left for the SPEC is not reachability but placement:
+    poison at the site builder, or after `collect` in a second pass over the
+    families.
   - Whether a global with no declared type can reach a `cs-g` site. `arity`
     (`:490`) returns `(Maybe I64)`, so candidate (a) has a `none` case of its own,
     and that is exactly the residue (c) catches.
