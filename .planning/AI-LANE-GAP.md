@@ -93,6 +93,8 @@ number (section 3).
 | N27 | `Expert`/`Flow`/`Skill` reused as the lane's composition layer | L7 | primitive | connect |
 | N28 | `RunManifest`/golden oracle reused as the lane's audit record | L7 | primitive | connect |
 | N29 | `SkillEntry` registry reused for population/skill entries | L7 | tool | connect |
+| N41 | the running end of the corpus write path: `be-log` and the worker schema exist (`interactions`, `expert_calls`, `models`, `training_runs`), and no database was found under `/workspace/manas`, so what is missing is whatever runs and fills them | L7 | tool | new |
+| N42 | a neuron-layer acceptance gate, standing where `manifest-all-green?` stands for the deliberative layer. Without it the decomposition discipline has no enforcement below L7 | L7 | decision | new |
 
 N33's kind is `decision`. REM dendritic calcium spikes are implicated in
 pruning and strengthening spines, and that finding names a phenomenon. The
@@ -167,15 +169,15 @@ measure.
 
 | by layer | rows | by kind | rows | by origin | rows |
 |---|---|---|---|---|---|
-| L0 | 5 | primitive | 22 | new | 35 |
+| L0 | 5 | primitive | 22 | new | 37 |
 | L1 | 2 | law | 11 | connect | 4 |
 | L2 | 5 | port | 3 | bind | 1 |
-| L3 | 6 | decision | 3 | | |
-| L4 | 10 | tool | 1 | | |
+| L3 | 6 | decision | 4 | | |
+| L4 | 10 | tool | 2 | | |
 | L5 | 4 | | | | |
 | L6 | 5 | | | | |
-| L7 | 3 | | | | |
-| **total** | **40** | | **40** | | **40** |
+| L7 | 5 | | | | |
+| **total** | **42** | | **42** | | **42** |
 
 L3, L4, L5 and L6 each carry the corrected row set: L3 gained N32, L4
 gained N31, L5 gained N30, and L6 gained N33 alongside N26's widened scope.
@@ -190,6 +192,14 @@ moves from 19/9/3/3/1 to 22/11/3/3/1 (primitive/law/port/decision/tool).
 Origin moves from 30/4/1 to 35/4/1 (new/connect/bind). L0, L1, L2, L3, L5,
 L6 and L7 are unchanged this pass.
 
+This pass adds two rows at L7. N41 is a tool and N42 a decision, both
+origin new. L7 moves from 3 rows to 5. Kind moves from 22/11/3/3/1 to
+22/11/3/4/2 (primitive/law/port/decision/tool). Origin moves from 35/4/1 to
+37/4/1. The correction behind N41: an earlier reading of
+`.planning/MANAS-STATE-VS-GOAL.md` treated the corpus as accumulating. The
+write path and the schema are real. No database file was found, so the
+running end is the gap and the row names that rather than the data.
+
 Line estimate per layer, reasoned against the tree's own comparable
 modules (`flow.chiral` at 1,373 lines, the chatter layer at 2,057 lines,
 shard K's `manifest.chiral`/`golden.chiral` pair):
@@ -203,8 +213,8 @@ shard K's `manifest.chiral`/`golden.chiral` pair):
 | L4 | ~1,150 | two new constructs plus a routing table plus a `Flow` lift plus a branch-targeted inhibition target (N31), plus the construction API that builds and wires them (N36-N39), plus a dedication field (N40), the most structural layer |
 | L5 | ~750 | a sum type, a per-member discipline, the runner wiring it drives, plus an inward feedback-edge constructor (N30) that `Advance` has no analog for today |
 | L6 | ~650 | one trace type (N24), a fixed-random broadcast channel (N25) costing a wiring line, a small metaparameter-channel construct (N34), a plasticity rule widened to carry a structural placement change (N26), plus a distinct offline consolidation mode (N33) |
-| L7 | ~300 | almost entirely reuse; the cost is wiring |
-| **total** | **~4,450** | |
+| L7 | ~450 | mostly reuse, and the cost is wiring. N41 adds a runner for the existing write path, N42 a gate |
+| **total** | **~4,600** | |
 
 Four estimates moved: L3 by +50, L4 by +50, L5 by +50, L6 by +100. Each
 matches the one row its layer gained, except L6, which gained one row
