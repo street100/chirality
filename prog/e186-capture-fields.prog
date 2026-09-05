@@ -1,0 +1,293 @@
+; e186-capture-fields.prog -- the E186 probe: judge R1 to R4 of the SPEC's gate
+; over the `$clo0` constructor field types that `datas->n` produces for the
+; fixture, read against the source `Term`s `site-fields->term` wrote.
+;
+; E186's ruling is `concrete`: the `$k<i>_<j>` capture constructor's field types
+; stay at the capture's OWN source type, and the erased word is reached only
+; where that source type has no ground spelling.  Both halves of the partition
+; are asserted here, from both sides at once.
+;
+; It reads the FIXTURE's blob on stdin
+; (`tools/test/samples/e186_capture_fields.prog`), runs
+; `load-source-batched -> specialize-singletons -> closconv-sig`, and takes BOTH
+; arguments off the SAME `CCOut`:
+;
+;   srcs : (List Term)    `(sig-datas sig)`, the `$clo0` DataDecl, each
+;                         `(field q fn fty)`'s `fty`
+;   ftys : (List NTalTy)  `(datas->n (sig-datas sig))`, the matching
+;                         `(ndctor cn ftys)`
+;
+; ⚑ NEITHER ARGUMENT TOUCHES THE STATED CHANNEL.  `datas->n`
+; (lib/lowering/compile-front.chiral:254-261) takes no `sp` parameter, and
+; `peel-def` / `peel-globals` -- the two functions that consult `sp` -- are not
+; on this path.  That is the measurement E186's SPEC decision 2 rests on: the
+; ruling's own gate is buildable inside E186's boundary, and E187's stated
+; channel for datas is required only by the answer this element REJECTS.
+;
+; ⚑ IT IMPORTS NOTHING UNDER `lowering/tal/`.  E154's eleven colliding top-level
+; names are why the whole-blob `ck-prog` census is still a reverted probe; this
+; one stays clear of them by stopping at `compile-front`'s import closure.  That
+; is also why no row here reads `ck-prog` -- and EN-20 measured a live miscompile
+; `ck-prog` accepts in silence, so nothing here would lean on it anyway.
+;
+; ⚑ THE CTORS ARE NAMED BY FIELD ARITY, NOT BY INDEX.  `$k0_<j>` numbering
+; follows `build-sites`' site order (closconv-driver.chiral:166-174), which is
+; unstable under any fixture edit.  The fixture keeps the four arities distinct
+; at 0, 1, 2 and 3 so the arity IS the identifier.
+;
+; ⚑ THE KNOB IS `e186-no-ground-spelling?`.  Its arms are the exact preimage of
+; the word under `term->ntalty` (compile-front.chiral:58-72): `t-var`, `t-pi`,
+; and the `t-refine` recursion, because a refinement lowers as its base and so
+; `(refine <t-var> ...)` reaches the word too.  A future shard that adds a THIRD
+; erasing arm to `term->ntalty` must widen this predicate in the same change; R4
+; reddening on correct output is how that is noticed.
+;
+; It ASSERTS NOTHING and always exits 0.  Every comparison lives in bash in
+; `tools/test/capture-fields.sh`, over these bytes: a gate that re-derives its
+; own verdict is green under any mutant that changes what the verdict SAYS (the
+; pretty.sh / tal-check.sh / apply-word.sh rule).
+(import "prelude/prelude")
+(import "lowering/compile-front")
+(import "ports/stdio")
+(import "ports/fd")
+
+; ---- read the fixture source off fd 0 ---------------------------------------
+(def e186-read-go (=> I64 Bytes Bytes)
+  (lam (fd acc)
+    (let (chunk (read fd 65536))
+      (case (=i (blen chunk) 0)
+        (true acc)
+        (false (e186-read-go fd (bcat acc chunk)))))))
+
+; ---- string plumbing ---------------------------------------------------------
+(def e186-c3 (-> Str Str Str Str) (lam (a b c) (str-cat a (str-cat b c))))
+(def e186-tok (-> Bool Str) (lam (b) (case b (true "ok") (false "bad"))))
+
+; ---- render an NTalTy / a Term so a red row says WHAT it measured -------------
+(declare e186-nt->s  (-> NTalTy Str))
+(declare e186-nts->s (-> (List NTalTy) Str))
+(def e186-nt->s (lam (t)
+  (case t
+    ((nt-i64)   "nt-i64")
+    ((nt-str)   "nt-str")
+    ((nt-bytes) "nt-bytes")
+    ((nt-word)  "nt-word")
+    ((nt-data dn as) (e186-c3 "(nt-data " dn (e186-c3 " [" (e186-nts->s as) "])"))))))
+(def e186-nts->s (lam (ts)
+  (case ts
+    (nil "")
+    ((cons x r) (e186-c3 (e186-nt->s x) " " (e186-nts->s r))))))
+
+; the source Term's HEAD TAG is all a verdict line needs: the rows turn on which
+; shape it is, never on what is inside it.
+(declare e186-tm->s  (-> Term Str))
+(declare e186-tms->s (-> (List Term) Str))
+(def e186-tm->s (lam (t)
+  (case t
+    ((t-var i)          (str-cat "t-var:" (i64->str i)))
+    ((t-primty n)       (str-cat "t-primty:" n))
+    ((t-tcon dn args)   (str-cat "t-tcon:" dn))
+    ((t-pi _ _ _ _)     "t-pi")
+    ((t-refine _ _)     "t-refine")
+    (_                  "t-other"))))
+(def e186-tms->s (lam (ts)
+  (case ts
+    (nil "(none)")
+    ((cons x r) (case r
+      (nil (e186-tm->s x))
+      (_   (e186-c3 (e186-tm->s x) " " (e186-tms->s r))))))))
+
+; ---- the §5(c) predicates, carried verbatim in shape --------------------------
+(def e186-word? (-> NTalTy Bool) (lam (t) (case t ((nt-word) true) (_ false))))
+
+; the exact preimage of the word under `term->ntalty`, and the knob named above.
+(declare e186-no-ground-spelling? (-> Term Bool))
+(def e186-no-ground-spelling? (lam (t)
+  (case t
+    ((t-var _)          true)
+    ((t-pi _ _ _ _)     true)
+    ((t-refine base _)  (e186-no-ground-spelling? base))
+    (_                  false))))
+
+; a field is the word ONLY where its source had no ground spelling.  `srcs` is
+; the aligned (List Term) `site-fields->term` wrote; `ftys` is what `datas->n`
+; made of it.  A length disagreement is RED, not skipped.
+(declare e186-ctor-honest? (-> (List Term) (List NTalTy) Bool))
+(def e186-ctor-honest? (lam (srcs ftys)
+  (case srcs
+    (nil (case ftys (nil true) (_ false)))
+    ((cons s sr) (case ftys
+      (nil false)
+      ((cons f fr) (case (and (e186-word? f) (not (e186-no-ground-spelling? s)))
+        (true  false)                 ; a concretely-spellable field went word: RED
+        (false (e186-ctor-honest? sr fr)))))))))
+
+; ---- finding the subject ------------------------------------------------------
+(declare e186-find-nd (-> (List NData) Str (Maybe NData)))
+(def e186-find-nd (lam (ds n)
+  (case ds
+    (nil (none))
+    ((cons d r) (case d ((ndata dn cs)
+      (case (str-eq dn n) (true (some d)) (false (e186-find-nd r n)))))))))
+
+(declare e186-find-dd (-> (List DataDecl) Str (Maybe DataDecl)))
+(def e186-find-dd (lam (ds n)
+  (case ds
+    (nil (none))
+    ((cons d r) (case d ((data-decl dn ps cs)
+      (case (str-eq dn n) (true (some d)) (false (e186-find-dd r n)))))))))
+
+(declare e186-find-ctor (-> (List Ctor) Str (Maybe Ctor)))
+(def e186-find-ctor (lam (cs n)
+  (case cs
+    (nil (none))
+    ((cons c r) (case c ((ctor cn fs)
+      (case (str-eq cn n) (true (some c)) (false (e186-find-ctor r n)))))))))
+
+(declare e186-field-tys (-> (List Field) (List Term)))
+(def e186-field-tys (lam (fs)
+  (case fs
+    (nil nil)
+    ((cons f r) (case f ((field q fn fty) (cons fty (e186-field-tys r))))))))
+
+; the source Terms of the ctor named `cn`; nil when it is absent, which R4 reads
+; separately so an absent ctor is never vacuously honest.
+(declare e186-srcs-of (-> (List Ctor) Str (List Term)))
+(def e186-srcs-of (lam (cs cn)
+  (case (e186-find-ctor cs cn)
+    ((none)   nil)
+    ((some c) (case c ((ctor n fs) (e186-field-tys fs)))))))
+
+(declare e186-nlen (-> (List NTalTy) I64))
+(def e186-nlen (lam (ts) (case ts (nil 0) ((cons x r) (+ 1 (e186-nlen r))))))
+
+(declare e186-clen (-> (List NDCtor) I64))
+(def e186-clen (lam (cs) (case cs (nil 0) ((cons x r) (+ 1 (e186-clen r))))))
+
+(declare e186-count-arity (-> (List NDCtor) I64 I64))
+(def e186-count-arity (lam (cs k)
+  (case cs
+    (nil 0)
+    ((cons c r) (case c ((ndctor cn ftys)
+      (case (=i (e186-nlen ftys) k)
+        (true  (+ 1 (e186-count-arity r k)))
+        (false (e186-count-arity r k)))))))))
+
+(declare e186-by-arity (-> (List NDCtor) I64 (Maybe NDCtor)))
+(def e186-by-arity (lam (cs k)
+  (case cs
+    (nil (none))
+    ((cons c r) (case c ((ndctor cn ftys)
+      (case (=i (e186-nlen ftys) k)
+        (true  (some c))
+        (false (e186-by-arity r k)))))))))
+
+; ---- R1: $clo0 reaches datas->n's output with four ctors, arities 0/1/2/3 -----
+(declare e186-r1 (-> (List NDCtor) Bool))
+(def e186-r1 (lam (cs)
+  (and (=i (e186-clen cs) 4)
+  (and (=i (e186-count-arity cs 0) 1)
+  (and (=i (e186-count-arity cs 1) 1)
+  (and (=i (e186-count-arity cs 2) 1)
+       (=i (e186-count-arity cs 3) 1)))))))
+
+; ---- R2: the two-field ctor is nt-i64 then (nt-data "List" ((nt-str))) --------
+; THE RULING.  Both are concrete, neither is the word, and they are held as
+; CONSTANTS here because that is what separates `concrete` from `word`: M1
+; rewrites a field's source Term and its lowering together and stays
+; self-consistent under `ctor-honest?`, so R4 cannot see it and R2 must.
+(def e186-is-i64 (-> NTalTy Bool) (lam (t) (case t ((nt-i64) true) (_ false))))
+(def e186-is-str (-> NTalTy Bool) (lam (t) (case t ((nt-str) true) (_ false))))
+(def e186-is-list-str (-> NTalTy Bool)
+  (lam (t) (case t
+    ((nt-data dn as) (case (str-eq dn "List")
+      (true (case as
+        (nil false)
+        ((cons a r) (case r (nil (e186-is-str a)) (_ false)))))
+      (false false)))
+    (_ false))))
+(declare e186-r2 (-> (List NDCtor) Bool))
+(def e186-r2 (lam (cs)
+  (case (e186-by-arity cs 2)
+    ((none) false)
+    ((some c) (case c ((ndctor cn ftys)
+      (case ftys
+        (nil false)
+        ((cons a r) (case r
+          (nil false)
+          ((cons b r2) (case r2
+            (nil (and (e186-is-i64 a) (e186-is-list-str b)))
+            (_ false))))))))))))
+
+; ---- R3: the one-field ctor is nt-word and its source Term is t-pi ------------
+; The word is STILL REACHED where the source has no ground spelling.  Both
+; conjuncts are asserted: the lowering AND the source shape, so a driver that
+; rewrites the source Term to a variable is red here as well as at R2.
+(def e186-is-pi (-> Term Bool) (lam (t) (case t ((t-pi _ _ _ _) true) (_ false))))
+(declare e186-r3 (-> (List Ctor) (List NDCtor) Bool))
+(def e186-r3 (lam (cs ncs)
+  (case (e186-by-arity ncs 1)
+    ((none) false)
+    ((some c) (case c ((ndctor cn ftys)
+      (and
+        (case ftys (nil false) ((cons f r) (case r (nil (e186-word? f)) (_ false))))
+        (case (e186-srcs-of cs cn)
+          (nil false)
+          ((cons s r) (case r (nil (e186-is-pi s)) (_ false)))))))))))
+
+; ---- R4: ctor-honest? holds over EVERY $clo0 ctor -----------------------------
+; The only row quantified rather than pinned to a named ctor, and the only row
+; that reaches the three-field site -- whose fields no golden holds as a
+; constant, which is what gives R4 a falsifier of its own (M5).
+(declare e186-r4 (-> (List Ctor) (List NDCtor) Bool))
+(def e186-r4 (lam (cs ncs)
+  (case ncs
+    (nil true)
+    ((cons c r) (case c ((ndctor cn ftys)
+      (case (e186-find-ctor cs cn)
+        ((none) false)                ; a lowered ctor with no source ctor: RED
+        ((some sc) (case sc ((ctor n fs)
+          (case (e186-ctor-honest? (e186-field-tys fs) ftys)
+            (false false)
+            (true  (e186-r4 cs r)))))))))))))
+
+; ---- the measured detail behind the line --------------------------------------
+(declare e186-detail (-> (List Ctor) (List NDCtor) Str))
+(def e186-detail (lam (cs ncs)
+  (case ncs
+    (nil "")
+    ((cons c r) (case c ((ndctor cn ftys)
+      (e186-c3
+        (e186-c3 "  " cn (e186-c3 " a=" (i64->str (e186-nlen ftys)) ""))
+        (e186-c3 "  src: " (e186-tms->s (e186-srcs-of cs cn))
+                 (e186-c3 "  low: " (e186-nts->s ftys) "\n"))
+        (e186-detail cs r))))))))
+
+(declare e186-report (-> DataDecl NData Str))
+(def e186-report (lam (dd nd)
+  (case dd ((data-decl dn dps cs)
+  (case nd ((ndata ndn ncs)
+    (e186-c3 "==E186== "
+      (e186-c3 (e186-tok (e186-r1 ncs)) " "
+      (e186-c3 (e186-tok (e186-r2 ncs)) " "
+      (e186-c3 (e186-tok (e186-r3 cs ncs)) " "
+      (e186-c3 (e186-tok (e186-r4 cs ncs)) "\n" ""))))
+      (e186-detail cs ncs))))))))
+
+(def e186-absent (-> Str Str)
+  (lam (why) (e186-c3 "==E186== bad absent absent absent\n" (str-cat "front: " why) "\n")))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (src (bytes->str (e186-read-go 0 (str->bytes ""))))
+      (case (load-source-batched src)
+        ((ld-err m) (do (put (e186-absent (str-cat "load: " (dg-msg m)))) 0))
+        ((ld-ok sig)
+          (case (closconv-sig (specialize-singletons sig))
+            ((ccout sig2 stated)
+              (case (e186-find-nd (datas->n (sig-datas sig2)) "$clo0")
+                ((none) (do (put (e186-absent "no $clo0 in datas->n's output")) 0))
+                ((some nd)
+                  (case (e186-find-dd (sig-datas sig2) "$clo0")
+                    ((none) (do (put (e186-absent "no $clo0 DataDecl in the CCOut sig")) 0))
+                    ((some dd) (do (put (e186-report dd nd)) 0))))))))))))
