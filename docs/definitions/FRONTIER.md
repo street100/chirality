@@ -14,7 +14,7 @@ updated: 2026-09-05
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 818334241192984c905bd6cdafb7affead89c8292c19290ac8fcb329829ca7f1 -->
+<!-- FRONTIER-SOURCES-SHA256: 0b8fc129439bb8fa684c4f61f436bd2dd07b5bad0cd745183f9e180a6af261aa -->
 <!-- sources: 163 files -->
 
 ## Decided recently
@@ -96,9 +96,9 @@ updated: 2026-09-05
 
 - drafted: 1
 - specced: 2
-- audited: 19
+- audited: 18
 - implemented: 90
-- **implemented: 4
+- **implemented: 5
 - built: 1
 - impl: 1
 - implemented-core: 1
@@ -114,6 +114,7 @@ updated: 2026-09-05
 
 ### Last commits touching the frontier sources
 
+- 2026-09-05 a2130c5 — E197 is built: RecordRequest, its pricing law, and a gate with six mutants
 - 2026-09-05 69874b1 — E197 SPEC audit: the four probes, the twenty golden lines and all six mutants reproduce
 - 2026-09-05 e7c27e7 — requirement 4 closes on the wiring branch, and EN-24 carries the measurement
 - 2026-09-05 beaa237 — E197 SPEC: RecordRequest ships with its pricing, and the refinement decides literals only
@@ -121,4 +122,3 @@ updated: 2026-09-05
 - 2026-09-05 d2ec1ae — E197 pre-run: what a run is asked to record, measured before it is designed
 - 2026-09-05 44913ce — INDEX: 26 pipeline rows advanced, 3 left as findings
 - 2026-09-05 857a005 — E187's SPEC link resolved to docs/docs/
-- 2026-09-05 a9c74ba — E187's INDEX row names check AC and its measured 29
