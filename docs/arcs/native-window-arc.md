@@ -57,6 +57,15 @@ Grepped 2026-09-03: zero hits for xdg, seat, pointer or keyboard across
 
 ## Resume state
 
+⚑ **A blocker was measured 2026-09-05 and it sits under all four rows.**
+`lib/lowering/tal/crossing-wraps.chiral` carries 44 lowered crossings and
+`sock-send-fd` is absent from them, so `prog/demo/wl-client.chiral:201` does
+not lower and no pool memfd reaches a compositor. `sock-listen`, `sock-accept`
+and `bind` are missing too. The line below records why it went unnoticed: no
+gate reads `prog/demo/`, so the demos are described as running and were never
+compiled by the suite. **Nothing in this arc is reachable until that crossing
+has a body**, and [[arcs/canvas-arc]] carries the same blocker.
+
 Unopened. The design discussion is `.planning/NATIVE-STACK-EXPANSION.md`. The
 rung of the existing demos is the first thing to re-measure on opening. Nothing
 under `tools/test/` reads `prog/demo/`, measured 2026-09-03, so no gate defends

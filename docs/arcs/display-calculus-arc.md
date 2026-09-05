@@ -120,7 +120,7 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
 | `display-calculus/C6` | the value expression algebra with the unit in the type. `primitive` | not started | `unminted` |
 | `display-calculus/C7` | the environment as a declared ADT. `primitive` | not started | `unminted` |
 | `display-calculus/C8` | state-driven style over a finite state sum. `law` | not started | `unminted` |
-| `display-calculus/C9` | the every-state gate: a property checked in every reachable rendering. `tool` | not started; the cell-lane witness has no `Env`/`State` axis to walk, so this row waits on an interactive-consumer witness not yet chosen (resume state) | `unminted` |
+| `display-calculus/C9` | the every-state gate: a property checked in every reachable rendering. `tool` | not started. ⚑ **The witness is proposed 2026-09-05: [[arcs/canvas-arc]] row `G5`.** A canvas declares a finite `State` because `G4` forbids a document from carrying computation, so behaviour is a closed sum with a total transition table. The cell lane's product measures 1 and a canvas's does not | `unminted` |
 | `display-calculus/C10` | resolution at compile time, as ordinary code the compiler evaluates. `law` | not started | `unminted` |
 | `display-calculus/C11` | declared invalidation: the dependency is the argument list. `law` | not started | `unminted` |
 | `display-calculus/C12` | shorthands as constructors that cannot reach an unnamed field. `primitive` | not started | `unminted` |

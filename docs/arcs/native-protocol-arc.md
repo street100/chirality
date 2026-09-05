@@ -38,7 +38,7 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
 
 ## REQUIREMENTS
 
-1. **The transport is ours.** Two chirality processes complete an
+1. **The transport is ours.** ⚑ Re-scoped by [[goals/own-web]] condition 4, and the wording below predates it: post-quantum throughout, with the configuration derived from the target. `.planning/CRYPTO-MODEL.md` §1 measures the gap and §13 carries the twelve decisions it opens. Two chirality processes complete an
    authenticated key exchange and move bytes under an AEAD with zero foreign
    crypto on the path.
 2. **Every kernel passes its published test vectors** inside the assertion
@@ -57,7 +57,7 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
 
 | row | what | state | element |
 |---|---|---|---|
-| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class | slices 1 and 2 built and gated 2026-09-03, slices 3 and 4 open | `unminted` |
+| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class | slices 1 and 2 built and gated 2026-09-03, slices 3 and 4 open. ⚑ **The reference class is pre-quantum and [[goals/own-web]] condition 4 states a post-quantum target.** Measured 2026-09-05: zero mentions of post-quantum across this arc, `docs/examples/N01-crypto-kernels.md`, its SPEC and the checklist. `.planning/CRYPTO-MODEL.md` holds the re-scope, and slices 3 and 4 are specced against a suite the target abandons | `unminted` |
 | `native-protocol/N2` | the entropy crossing | not started | `unminted` |
 | `native-protocol/N3` | listen-side AF_INET, and UDP if the handshake wants it | not started | `unminted` |
 | `native-protocol/N4` | the handshake and framing, Noise reference class, shrednet identity model as base | not started | `unminted` |

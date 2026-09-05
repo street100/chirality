@@ -110,7 +110,7 @@ One row per blocker, in the order the measurement suggests.
 | `binary-split/B1` | give `read-fd-all` a home a text tool can import without the compiler | not started. Blocker 1, measured as `BA-17` | `unminted` |
 | `binary-split/B2` | a way to import one crossing without the whole port floor | not started. Blocker 2. `MAP.md` records the re-export as deliberate, so this is a design change | `unminted` |
 | `binary-split/B3` | a root that stops at the front end, so a checker-only binary has something to build from | not started. Blocker 3 | `unminted` |
-| `binary-split/B4` | `.profile` gains an instance and a consumer, or the kind leaves `MAP.md` | not started. Requirement 4, measured as `BA-10` | `unminted` |
+| `binary-split/B4` | `.profile` gains an instance and a consumer, or the kind leaves `MAP.md` | not started. Requirement 4, measured as `BA-10`. ⚑ **A consumer is proposed 2026-09-05: [[arcs/canvas-arc]] row `G3`**, where a canvas's port set is its border and the profile machinery already live at `kernel.chiral:60` and `compile-front.chiral:301` gets its first instance | `unminted` |
 | `binary-split/B5` | the split binaries each reproduce under the BUILD RULE | not started. Requirement 5, through blocker 4's GEN3 trap, and it gates the other four | `unminted` |
 
 ## Resume state

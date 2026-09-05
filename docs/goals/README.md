@@ -39,6 +39,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | [[arcs/transport-arc]], [[arcs/scriba-arc]], [[arcs/tuning-arc]], [[arcs/unit-lane-arc]] |
 | [[goals/native-stack]] | in flight: protocol arc opened 2026-09-03, window and document unopened | [[arcs/native-protocol-arc]], [[arcs/native-window-arc]], [[arcs/native-document-arc]] |
 | [[goals/display]] | stated 2026-09-04, unbuilt: the calculus arc opened, four conditions unopened | [[arcs/display-calculus-arc]] |
+| [[goals/own-web]] | stated 2026-09-05, unbuilt: two arcs opened, three conditions unopened | [[arcs/vocabulary-arc]], [[arcs/canvas-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
 
 `independent-judgment` carries an arc as of 2026-09-01 and still has no element.

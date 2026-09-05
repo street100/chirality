@@ -47,6 +47,13 @@ dynamism in the substrate, rendered in the native window. The design draft is
 
 ## Resume state
 
+⚑ **A third option for the merge call, 2026-09-05.** [[records/author-calls]]
+carries the fork of whether this arc merges into [[goals/display]] or keeps
+`V4` alone. [[goals/own-web]] gives it a third answer: `V1` and `V2` are
+[[arcs/vocabulary-arc]], `V3` is [[arcs/canvas-arc]] rows `G4` and `G5`, and
+`V4`'s render seam is `G2` and `G8`, so **this arc closes into that goal with
+no row left over**. A session cannot pick without deleting a tracked arc.
+
 Unopened, and blocked by design: [[arcs/native-window-arc]] rows W3 and W4 are
 the render floor this arc lands on. The style calculus in the planning file is
 a draft and nothing more.
