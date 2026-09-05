@@ -4,7 +4,7 @@ slug: record-request
 title: "**`RecordRequest`: what a run is asked to record, as a value**"
 kind: BUILD-PROPER
 example: examples/E197-record-request.md
-status: draft
+status: audited
 updated: 2026-09-05
 ---
 
@@ -23,8 +23,8 @@ halves of the fixpoint scan were compiled and executed. Nothing under the live
 ⚑ **A concurrent session left a newer, uncommitted binary in the tree while this
 run was open**, 1,237,368 bytes against HEAD's 1,188,216, and the two are not
 byte-identical. Every claim here was re-run on both. The twenty golden lines
-reproduce byte-identically under each, and the refinement probes give the same
-three verdicts under each. The figures below are stated against the tracked
+reproduce byte-identically under each, and the four refinement probes give the
+same four verdicts under each. The figures below are stated against the tracked
 binary, which is HEAD's.
 
 ## 1. Deliverable
@@ -145,14 +145,21 @@ still reddens four rows. So the sum's structural claim is gateable with
 `rr-interval` and `rr-fields` and no pricing. The call is therefore made on the
 other side of the ledger, and on evidence this run took:
 
-- **Without a divide, the refinement guards a field nothing in the element
-  reads.** `sample-every` becomes an integer the module stores and never uses.
-  Decision 2's whole apparatus, a refined constructor field threaded through
-  every caller's signature, constrains no behaviour E197 ships, which is what
-  the sixth operating principle cuts.
+- **Without a divide, the refinement guards a field nothing computes with.**
+  `sample-every` is still *read* without the pricing: `rr-interval` returns it
+  and the sweep prints it in the `ivl=` column, which is what M3 convicts
+  through. What goes is the arithmetic. `(> 0)` was bought to close M2's zero
+  divide and M2's negative volume, and both are the divide's; against a value
+  that is only carried and printed, an interval of `0` or `-3` costs the element
+  nothing. Measured: dropping the refinement from the constructor and from
+  `row-mem` and `row-wgt` leaves all twenty golden lines byte-identical. So
+  decision 2's whole apparatus, a refined constructor field threaded through
+  every caller's signature, constrains no behaviour a pricing-free E197 would
+  ship, which is what the sixth operating principle cuts.
 - **Without a pricing result, `VolumeR` has no reason to exist at all.** Decision
   3 is a decision about `rr-samples`'s return type. Deleting the function
-  deletes the question.
+  deletes the question, and it takes `rr-wrap` and `RunShape` with it: measured,
+  `rr-samples` is the only consumer of all three.
 - **So the field would be settled against a guess at the law.** That is the arc's
   own stated reason for minting N8 and N9 as one element, applied to the same
   shape one row later.
@@ -221,14 +228,19 @@ Every step below was executed off-tree in this run against a copy of `lib/` and
   mechanism `tools/test/encoding.sh` uses for a module outside the compiler's
   blob, with the same symlink guard: `cp -a` copies a symlink as a symlink and
   every later `sed -i` then writes through it into the tree under test.
-- ⚑ **`int()` clamps to 32 bits in this tree's awk**, measured:
-  `awk 'BEGIN{print int(100000000000)}'` prints `1e+11` and an `int()` around
-  the same product yields 2147483647. R4's recomputation therefore applies
-  `int()` only to the small quotient `t/ivl` and to the spikes product, keeps
-  the wide multiply in floating point, which is exact below 2^53, and declares
-  the two rows at or past that bound skipped rather than checking them wrong. A
-  first draft of R4 reported a false finding on golden line 14 for exactly this
-  reason, and the repair is why the row prints its own skipped count.
+- ⚑ **What loses a wide value in this tree's awk is the RENDERING, not `int()`**,
+  measured on `mawk`: `int(100000000000)` compares equal to `100000000000` and
+  `printf "%.0f"` prints it back exactly, so `int()` is lossless. What loses it
+  is `printf "%d"`, which clamps to 2147483647, and string coercion under
+  `CONVFMT`/`OFMT` at `%.6g`, where the same value renders as `1e+11`. That
+  second one is what made a first draft of R4 report a false finding on golden
+  line 14: the recomputed 100,000,000,000 was compared as the string `1e+11`
+  against the row's own `100000000000`. R4 therefore renders every recomputed
+  volume with `%.0f` and never with `%d` or a bare `print`, applies `int()` to
+  the small quotient `t/ivl` for the floor division it is there to do, keeps the
+  wide multiply in floating point, which is exact below 2^53, and declares the
+  two rows at or past that bound skipped rather than checking them wrong. The
+  repair is why the row prints its own skipped count.
 - **Verified by:** the six rows and six mutants, run end to end in this run.
 - **Size:** M
 
@@ -354,9 +366,13 @@ mutants judged by the recomputed law alone.
 | **M6** empty-is-zero | `rr-wrap`'s body → `(v-ok v)` | **line 15 alone**: `samples=empty xspk=empty` → `samples=0 xspk=0` | line 15 |
 
 ⚑ **M5's blast radius is nineteen rows and that is the `xspk` column's doing,
-not an arm leak.** M1, M2, M3, M4 and M6 each stay inside their own arm, so a
-reddened row names the arm that broke it, which is E196's property. M5 breaks it
-by construction: `xspk` divides every row's volume by the same shape's spikes
+not an arm leak.** M1, M2, M3 and M6 each stay inside their own arm, so a
+reddened row names the arm that broke it, which is E196's property. M4 has no
+single arm, because the ceiling idiom goes into the membrane and weights arms
+together, but it stays inside its own arithmetic all the same: every weights row
+in the golden carries an interval that divides its run exactly, so the four rows
+it reddens are the four the rounding rule can reach. M5 breaks it by
+construction: `xspk` divides every row's volume by the same shape's spikes
 volume, so changing the spikes arm moves the denominator under all three. The
 column is kept for that reason and not in spite of it. It is what carries the
 element's headline ratio directly, the 100x and 10,000x of the example's M1, and
