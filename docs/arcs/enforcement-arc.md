@@ -3,7 +3,7 @@ node: arc-enforcement
 layer: navigation
 related: [arcs/README, goals/enforcement, status-ledger, arcs/diagnostics-arc, records/enforcement-arc, decisions/decision-erased-word-level, index]
 status: current
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Arc: enforcement
@@ -40,24 +40,35 @@ Done when all six hold. Each is checkable, and the state beside it is measured
 2026-09-02.
 
 1. **A capability sits at ENFORCED, or its ledger row says why it does not.**
-   Inherited verbatim from [[goals/enforcement]]. Today four rows in
-   [[status-ledger]] are written and unreached, so the row-says-why half is
-   carrying the weight.
-2. **The typed-assembly floor runs on the shipping path.** Still open, and the
-   two things standing in front of it are now named. `ck-prog` is called nowhere
-   and `lib/lowering/compile-back.chiral` does not import `lowering/tal/check`,
-   because that import is a `duplicate label` refusal at load: eleven colliding
-   top-level names, E154's fifth instance. Resolving them cascades through seven
-   sha256-pinned gate scripts. Beyond that, a hard refusal on the shipping path
-   waits on **E185** being built, since the compiler would refuse its own four
-   `$apply` dispatchers. EN-15 is answered:
-   [[decisions/decision-erased-word-level]] puts the erased-word type strictly at
-   the lowering type level, leaves `Core` without a word spelling and leaves the
-   kernel's `conv` relation alone. What is left is the spelling of the erased
-   position, which is E185's whole subject and needs the full pipeline.
-   E16's title names the preserve-check and three of its four
-   deliverables are built; E18's checker and reference interpreter exist
-   unreached.
+   Inherited verbatim from [[goals/enforcement]]. The row-says-why half carries
+   the weight and is the open part. Measured 2026-09-05: `docs/elements/ledger.md`
+   holds **66 rows at `design`**, and a `design` row states what an element would
+   do rather than why the capability is not at ENFORCED. Filling that half is
+   mechanical, row by row, and needs no author call. E70's row is the shape to
+   copy: it keeps `design` and says in the row why.
+2. **The typed-assembly floor runs on the shipping path.** Open, and **materially
+   smaller than this requirement claimed until 2026-09-05.** ⚑ **The stated
+   blocker is gone and was gone before it was stated.** The eleven E154
+   collisions were resolved at `5b4fb71` and never reverted:
+   `lib/lowering/tal/check.chiral:47` declares `TckR`/`tck-ok`/`tck-err`, and
+   `(import "lowering/compile-all") (import "lowering/tal/check")` answers `OK`.
+   The "duplicate label refusal at load" and the "seven sha256-pinned gate
+   scripts" cascade are both pre-`5b4fb71` readings. **E185 is built** and so are
+   E186, E187 and E188, so the `$apply` dispatchers no longer gate this either;
+   EN-15 is answered by [[decisions/decision-erased-word-level]] and EN-17 is
+   ruled `concrete` by E186.
+
+   **The remaining gap is measured, and it is one class.** Requirement 4's
+   wiring put a re-check on every compile, so the floor's judgment now runs on
+   the shipping path in `optimize`'s form. Over the compiler's own blob:
+   **1,582 TFns, 1,550 `chk-ok`, 32 `chk-err`**, and **every one of the 32 is
+   `call: unknown tal function` on a port extern the tal function table does not
+   carry, first instance `bput-u8`** ([[records/enforcement-arc]] EN-24). That
+   is what stands between here and `ck-prog` on the shipping path: the extern
+   table, not a loader refusal and not a type-level fork.
+
+   E16's title names the preserve-check and three of its four deliverables are
+   built; E18's checker and reference interpreter exist unreached.
 3. **The check agrees with the compiler it checks.** **Root-caused 2026-09-03**,
    `records/enforcement-arc.md` EN-08 to EN-13. Re-measured on that day's blob:
    1,481 TFns, 727 accept, **754 reject, 50.9%** (the move from 1,504/743/761 is
@@ -81,8 +92,16 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    accepts, and the wrong code passes. The two instances in the compiler's own
    blob redden only because their codomain is `(List Asm)`. So the 1,477-of-1,481
    figure above measures the checker agreeing with the compiler and says nothing
-   about either being right. **E188** owns that defect. The requirement stands as
-   written.
+   about either being right. **E188** owns that defect, and E188 is **built**.
+
+   ⚑ **The content is done and the dispatch is owed to a phase number.** The
+   evidence for this requirement is Phase 22, `tools/test/tal-check.sh`, which
+   `tools/test/registration.sh` prints as `PEND  tal-check.sh -- it claims 22,
+   which is inside Lane B's reserved 21-23 band.` The gate is written, runs by
+   hand and passes; it is outside `run-tests.sh`'s dispatch table, so the suite
+   line does not carry it. Nothing technical is left. What is left is the
+   standing suite-phase-number author call, 21 through 23 contested across four
+   documents ([[records/author-calls]]), and a session is barred from making it.
 4. **The optimizer's re-check runs, or E17 says why it does not.**
    **CLOSED 2026-09-05 on the first branch**, [[records/enforcement-arc]] EN-24.
    `lib/lowering/compile-back.chiral:16` imports `lowering/upper/optimize` and
@@ -112,11 +131,16 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    EN-19's shape a second time: the `Checked` sum proves ck-fn ran and says
    nothing about meaning. Repairing `dead` is E17's remaining work and it is
    not this requirement's.
-5. **Chirality's own tooling is chirality's.** Measured 2026-09-04: **12,450
-   lines outside the language** against **782 native**, every `.prog` file:
+5. **Chirality's own tooling is chirality's.** Measured 2026-09-05 at `67d3d54`:
+   **12,671 lines outside the language** against **782 native**, every `.prog`
+   file:
    `prose-lint` 256, `paren-audit` 244, `test-runner` 134, `resolve` 104,
    `wield` 44. The **390** this requirement carried until 2026-09-04 was
-   `test-runner` plus `prose-lint` and omitted the other three.
+   `test-runner` plus `prose-lint` and omitted the other three. ⚑ **The 12,450
+   this requirement carried until 2026-09-05 is behind.** Four falsifier commits
+   after `acc70d6` took the gate tier to 7,136 lines;
+   [[records/tooling-classification]] TC-13 measures the corrected 12,671 and
+   confirms the gate-tier four-tool count reproduces at **240** site for site.
 
    ⚑ **782 is the worse reading. 390 was the flattering one.** The two entries
    the 390 counted are the two entries anything reaches. `grep -rIn` over
@@ -161,57 +185,76 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    [[goals/enforcement]] and from `docs/definitions/testing-floors.md:261`. E173
    found two rows that could not fail; both were repaired at `e882568`.
 
+   **Two halves, and they part company.** ⚑ *Registration.* `ls tools/test/*.sh`
+   lists **twenty-four** scripts, `run-tests.sh` dispatches thirteen, and
+   **eleven sit outside the dispatch table**: `run-tests.sh` itself,
+   `apply-spine.sh`, `apply-word.sh`, `capture-fields.sh`, `crypto.sh`,
+   `defunc-blame.sh`, `encoding.sh`, `map-integrity.sh`, `mutant.sh`,
+   `registration.sh` and `tal-check.sh`. Every one is built, runs green by hand,
+   and carries a `not-a-phase:` declaration with a reason in its own header,
+   which `registration.sh` G2 and G4 enforce. So no row is undeclared. Whether
+   any of the eleven *should* be dispatched is the suite-phase-number author
+   call, the same one requirement 3 waits on ([[records/gate-audit]] GA-10,
+   still OPEN for that reason).
+
+   ⚑ *Rows nothing can move.* Two rows in [[records/gate-audit]] stay OPEN with
+   stated reasons. **GA-04**: `ba62549` took `profile-target.sh` from 1 of 31
+   rows reddened to 23 of 34, but twenty of the twenty-three come from one
+   coarse mutant, and **eleven rows are reddened by nothing** — `target with one
+   requirement`, `target with several requirements`, `profile with one clause`,
+   `profile name is not a symbol`, and seven `top_target` refusals. Left open on
+   measured churn: eleven message-rename mutants and eleven compiler builds on a
+   phase that already went from 2 s to 27 s. **GA-08**: the `(memory ...)` rows
+   are quantified over an empty set of consumers. `mk-profile`'s `me` field is
+   read by nothing in `lib/`, and no mutant of the discipline's *meaning* can
+   exist until something consumes it, which is a compiler change and an author
+   call about what a memory discipline is for. GA-01 and GA-10 are the other two
+   open rows.
+
 ⚑ Requirement 3 is the one that gates the rest. E16's scope and E18's both
 stop short of it as written, so no element owns it.
 
 ## Resume state
 
-**2026-09-04 evening: resume from `.planning/HANDOFF-2026-09-04-EVENING.md`.**
-It supersedes the morning handoff. `ledger-lint` exits 0 for the first time,
-the suite reads `373 passed, 0 failed, 88 roots, gate PASSED`, and E185 is
-built and promoted. The live resume point is **E186's SPEC-level re-audit**:
-`docs/elements/specs/E186-capture-field-types-SPEC.md` is `status: draft`, its
-first SPEC audit returned BLOCKED with two FLAGs, and `15a369e` disposed both.
-⚑ **E186 IS BUILT, 2026-09-04, and that resume point is spent.** The SPEC reached
-`status: audited` at `c04ffd6` and the implementation ran: the ruling is
-`concrete`, no compiler source moved, and `tools/test/capture-fields.sh` grades
-it at `9 ok, 0 FAIL` with M5 reddening R4 alone. The measurement is
-[[records/enforcement-arc]] EN-21. **The next unbuilt elements in this arc are
-E187 and E188**, both `design`, and neither has a pre-run; picking between them
-is the next arc session's call and this run makes none.
-⚑ **EN-20 records a live miscompile** at `lib/lowering/upper/closconv.chiral:1057`
-that `ck-prog` does not catch; E188 owns it.
+**2026-09-05: resume from `.planning/HANDOFF-2026-09-05.md`.** It supersedes
+`.planning/HANDOFF-2026-09-04-EVENING.md`, which is kept for its measurements.
+That file carries the state, the six requirements in working order, the DCE
+defect a fresh session must not rediscover, the open author calls and the rules
+that bit.
 
-**2026-09-04: requirement 5 is first priority by author direction**, and
-`.planning/HANDOFF-2026-09-04.md` carries the full queue. The gate tier is
-6,915 lines of shell against `prog/test-runner.prog` at 134 lines, the only
-native part of that floor, with 240 invocations of the four classic tools
-across it and a built composition behind 30 of them. Every tool that moves is one fewer the OS
-rung has to trust.
+**All four minted elements in this arc's band are built.** E185, E186, E187 and
+E188 reached `built`; `E184` and `E189` are the two `design` rows left in the
+band, and `E189` is the last free number. E184 needs the full pipeline and has
+no pre-run.
 
-**Requirement 3 is closed and requirement 2 is the live one.** 2026-09-03 ran
-the diagnosis (EN-08 to EN-13), the author's ruling, both checker repairs with
-Phase 22 gating them (`ddfbc27`), and the erased-binder fix with a promoted
-fixpoint (`40e8726`). Suite 339 passed, 0 failed, 87 roots, gate PASSED.
+⚑ **EN-20's live miscompile is E188's and E188 is built.** What EN-24 opened in
+its place is a second live miscompile: **wiring `optimize` whole miscompiles the
+compiler.** `fold` alone is `42 passed, 0 failed`; **`dead` alone is
+`33 passed, 9 failed`**, and `re-check` accepts the dead residual. DCE is
+excluded from the shipped wiring and named in requirement 4. No instrument in
+the tree can refuse it, because `ck-fn` accepts it. Repairing `dead` and finding
+an instrument that can refuse it are E17's remaining work.
 
-Four things are owed, and they are independent of each other. **The eleven name
-collisions are resolved.** They were prefixed `tck-` at `5b4fb71`, and
-`lowering/tal/check` loads beside the compiler's whole blob today; the paragraph
-below is the pre-`5b4fb71` reading and is kept for the collision census it
-carries. That unblocked requirement 4, closed 2026-09-05 by EN-24, and it
-leaves requirement 2 waiting on its own call sites rather than on a loader
-refusal.
-**E185** is the second: EN-15 was answered 2026-09-04 and
-[[decisions/decision-erased-word-level]] settles the level, so what stands
-between the four `$apply` dispatchers and a live refusal is an unbuilt element
-needing the full pipeline. It gates the moment the refusal goes live rather
-than the plumbing. The refuse-or-carry ruling in [[records/author-calls]] is a
-third and separate call, and **EN-17** is a fourth, opened 2026-09-04: the
-`$kI_J` capture constructor's field types are their own author call, since
-research §7 finds the prior art keeping constructor fields concrete.
-[[records/enforcement-arc]] EN-17 and its row in [[records/author-calls]] both
-hold that `ck-prog` cannot refuse on the shipping path while that instance
-stands, so requirement 2 carries it alongside E185.
+**Requirement 5 is first priority by author direction** and
+`.planning/HANDOFF-2026-09-04.md` carries the full queue. The gate tier reads
+7,136 lines of shell against `prog/test-runner.prog` at 134 lines, the only
+native part of that floor, with 240 invocations of the four classic tools across
+it and a built composition behind 30 of them. The program of work is gated on
+[[arcs/independent-judgment-arc]] J1, the distinctness criterion, rowed there as
+not started (TC-12).
+
+**Requirements 3 and 4 are closed on content, and requirement 2 is the live
+one.** Requirement 3's evidence is Phase 22, written and passing and undispatched;
+requirement 4 closed 2026-09-05 by EN-24. What requirement 2 has left is the 32
+`call: unknown tal function` refusals on port externs, first `bput-u8`.
+
+**The eleven name collisions are resolved and block nothing.** They were prefixed
+`tck-` at `5b4fb71`, and `lowering/tal/check` loads beside the compiler's whole
+blob today. The census paragraph below is the pre-`5b4fb71` reading and is kept
+for the collision census it carries, not for its conclusion. The refuse-or-carry
+ruling in [[records/author-calls]] is a separate and still-open call. **EN-17 is
+ruled**: E186 settled the `$kI_J` capture constructor's field types as
+`concrete` on 2026-09-04, so requirement 2 no longer carries it.
 
 **The enabling change LANDED at `5b4fb71`, and this paragraph is the census it
 was measured from.** ⚑ Its opening sentence read "measured, then reverted" until
@@ -226,9 +269,11 @@ deliberate.
 
 Resolving them plus inserting the call site reaches a fixpoint at `K2 == K3` and
 the suite runs `320 passed, 1 failed`, the one failure being `diag.sh:256`
-grepping for a renamed literal. Repointing that guard cascades through **seven
-sha256-pinned gate scripts over two rounds**, which is why it was reverted rather
-than half-shipped.
+grepping for a renamed literal, and repointing that guard cascades through
+**seven sha256-pinned gate scripts over two rounds**. ⚑ **This paragraph read
+"which is why it was reverted rather than half-shipped" until 2026-09-05.** It
+was not reverted. `5b4fb71` shipped the renames, and EN-24 measured the module
+loading clean beside the blob.
 
 The diagnosis slice for the four classes ran 2026-09-03, EN-08 to EN-13. What is
 still owed before any of this lands is the refuse-or-carry ruling, which is the
