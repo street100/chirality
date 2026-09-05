@@ -237,6 +237,11 @@ is roughly 10% of the tree and about 45% of manas's own size, smaller than
 manas itself because L7, the layer closest to manas, is nearly all
 `connect`.
 
+Section 6's census checked all 37 `origin: new` rows against the tree.
+Zero moved. Kind and origin hold at 22/11/3/4/2
+(primitive/law/port/decision/tool) and 37/4/1 (new/connect/bind), the same
+totals this section already carried.
+
 ## 5. The discovery ratio
 
 The display lane found that roughly half of its first rows already existed
@@ -263,22 +268,56 @@ sits in the `Op` sum, unbound at surface, one hit out of five gap-table
 rows. That is row N1, and it is the cheapest row in the whole table: a
 bind rather than a build.
 
-The implication for section 2's 35 `origin: new` rows is that they were
-never checked against the tree the way A-S were. `origin: connect` rows
-(N1, N20, N27, N28, N29) cost a gate or a wiring line. `origin: new` rows
-cost a subsystem. The L7 census undercounted what already existed before
-this bank ran it. Some of the 35 `new` rows above are likely `connect` rows
-nobody has looked for yet, and that grep should run before any of L1-L6 is
-treated as a green field.
+The implication for section 2's `origin: new` rows was that they were never
+checked against the tree the way A-S were. `origin: connect` rows (N1, N20,
+N27, N28, N29) cost a gate or a wiring line. `origin: new` rows cost a
+subsystem. The L7 census undercounted what already existed before this bank
+ran it. Section 6 runs that grep. 37 `new` rows checked, zero moved to
+`connect`, three ambiguous hits held at `new` and recorded there.
 
-The four rows this correction pass added, N30 through N33, carry the same
-gap. No census reached them either. Each could turn out to be a `connect`
-row already sitting somewhere in the tree, and the new-to-connect ratio
-above runs further toward `new` until that census exists.
+The four rows this correction pass added, N30 through N33, carried the same
+gap before section 6's census. All four returned no hit. None moved.
 
 This pass adds N34 and N35 and narrows N25 to the broadcast channel alone.
-The same gap applies: no census reached N34 or N35 either, and each could
-turn out to be a `connect` row nobody has looked for yet.
+Section 6's census reached all three. No hit for any, no move.
 
 This pass adds N36 through N40, the construction row group and dedication.
-The same gap applies. No census reached them either.
+Section 6's census reached all five. No hit for any, no move.
+
+## 6. The L0-L6 census
+
+The grep pass section 5 called for, run 2026-09-05 against every row in
+section 2 marked `origin: new`: 37 rows. Method, one or two targeted greps
+per row over `lib/` and `prog/`, for the type name, constructor name or
+function name the row's own text names. No source file opened; a grep hit
+alone decided the verdict. A hit naming a different domain's homonym
+counted as no hit: `Network` on sockets (`lib/ports/sock.port`,
+`lib/protocol/http.chiral`), `Projection` on data-shape projection
+(`lib/prelude/list.chiral:160`, `lib/typing/effects.chiral:29`), `router` on
+chat dispatch (`prog/manas/chatter/router`), `Advance` on the English word
+(`lib/surface/sexp.chiral:81`, `lib/protocol/render.chiral:451`), `trace` on
+the type-checker's conversion trace or the stdio debug port
+(`lib/typing/kernel-core.chiral:34`, `lib/ports/stdio.port:12`),
+`consolidat-` on chat-message consolidation (`prog/scriba/chat.chiral:17`),
+`eligibility` on the lowering pass's own eligibility partition
+(`lib/lowering/upper/lower.chiral:1`).
+
+| result | rows |
+|---|---|
+| checked | 37 |
+| moved | 0 |
+| ambiguous, held at `new` | 3 |
+
+| row | hit | why it holds at `new` |
+|---|---|---|
+| N4 | `lib/lowering/tal/bytes.chiral:388`, a Horner-scheme byte decode | decodes an integer from eight bytes; not a polynomial evaluator over arbitrary coefficients for i-GELU/i-Softmax |
+| N14 | `prog/manas/core/flow.chiral:75-77`, `ty-eq` defined and used from `prog/manas/core/flow-test.prog:38` | `ty-eq` exists and is reached; the row wants a shape-equality bug fixed inside it, not `ty-eq` built |
+| N22 | `lib/typing/effects.chiral:1-6`, "the effect membrane" gating `->` against `=>` | the same two symbols, a general purity system already wired everywhere; no per-member, per-neuron application of it exists |
+
+Zero rows moved. The 34 remaining `origin: new` rows returned no hit under
+this method. N1's bind, `op-mulhi` sitting unbound in the `Op` sum, does not
+repeat at N2 through N42: no second row is sitting unbound in an existing
+sum or reachable function the way `op-mulhi` was. The three ambiguous hits
+above are the closest this census came, and each holds at `new` on the
+conservative rule: a hit naming the general mechanism a row would build on,
+not the row's own concept, does not move it.
