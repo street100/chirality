@@ -19,6 +19,35 @@ E186 between them answered all three name families, and §1 measures that at HEA
 rather than inheriting the row. What survives is one channel, and it is not the
 one the row names. Read §1 before §5: the snippet is the survivor, not the row.
 
+⚑ **The EXAMPLE-level audit, 2026-09-05, re-ran the load-bearing measurements at
+HEAD and the finding survives all of them.** The structural argument of §1.3 was
+attacked directly and held; the corrections below are citation precision, not
+substance. What the audit changed is §6 question 1, which the pre-run routed to
+the SPEC stage and which is an author call, so it now states two options and
+answers neither.
+
+| what the audit attacked | how it failed |
+|---|---|
+| `$clo<i>` carries content of its own, so a second channel is owed | it does not. `(data-decl dname nil ctors)` (`closconv-driver.chiral:186`) has no type parameters, and `term->ntalty`'s `t-tcon` arm (`compile-front.chiral:68`) derives `(nt-data dn nil)` from any `Core` spelling of it with no channel. `apply-ptys` (`:131-133`) covers the one position where the name is not recoverable from `Core` |
+| some position other than the dispatcher's leading parameter needs the statement | none found. `datas->n` (`compile-front.chiral:254-261`) takes no `sp` parameter and the constructors' fields go through `field-tys->n` (`:238-245`), which E186 ruled `concrete`. A capture whose own type IS a `$clo` is a `t-tcon` and lands on the same derived arm |
+| `apply-ty`'s domain content is read somewhere, so §1.4 falls | it is not. `peel-def` (`compile-front.chiral:211-223`) reaches `ty-kept-doms` only in its `(none)` branch, `sp-get` hits for every `$apply<i>`, and `ty-erased` (`:167-170`) returns nil because every `mk-pi` binder is `(c-pi 2 …)` (`closconv.chiral:1137-1144`). `build-emap` (`:172-175`, called at `:345`) reads only that same erased vector |
+| the drop-consistency worry needs `ck-prog` | it does not. `lib/lowering/tal/erase.chiral:193-194` and `:249-250` refuse by constructor name on the live path, and `ck-con` (`check.chiral:183-196`) refuses by data name on the checked one |
+| the arity prices in §5 are guessed | measured. `CState` has three fields (`closconv.chiral:618`) so `dsk` is a fourth; `CCOut` has two (`closconv-driver.chiral:142`) so it is a third, which is where E188's own residue note says *fourth* and is wrong; `fr-ok` has four (`compile-front.chiral:315-316`) so it is a fifth; `back-program` (`compile-back.chiral:297-301`) already passes `nil nil` as `lower-defs`' seed `TFn` and seed `SkRec` lists, so the seat exists |
+| `sk-defunc` has a caller after all | it has none. Four grep hits in the tree, three of them the declaration and the two destructuring accessors, one of them a comment |
+
+**Six citation corrections landed in place**: `arm-body` ends at `:1126` and not
+`:1134`; the `shape-eq`/`shapes-eq` pair ends at `:356` and not `:363`;
+`ctors->n` ends at `:253`; `aty`'s second read is `closconv-driver.chiral:208`
+and not `:211`; the `erase` refusals are at `:193-194` and `:249-250` in
+`lib/lowering/tal/`; the `e186-capture-fields.prog` pattern line is `:287` and
+not `:286`, which is the one place E188's residue note was right and this pre-run
+was not. **Two wording corrections**: `st-add-gsite` discards `g` and the
+condition in its own arms rather than handing them to `st-add-pois`, whose type
+`(-> CState Core CState)` has no seat for either; and the accessor at
+`skip-diag.chiral:29` is `skwhy-tag`, not `skwhy-kind`. **One string aligned**:
+§5's `"no declared type"` now matches the discriminant `skip-diag.chiral:12`
+already names.
+
 ## 1. Scope
 
 - **Element:** E187, `closconv` writing down the lowering-level type of the three
@@ -37,8 +66,8 @@ and every line citation in that row moved. Measured at `a381156`:
 |---|---|---|
 | name spellings at `closconv.chiral:1112-1114` | `clo-name` `:1179`, `apply-name` `:1180`, `ctor-name` `:1181` | +67 |
 | `apply-ty` at `:1096-1098` | `:1163-1165` | +67 |
-| `arm-body` at `:1051-1058` | `:1109-1134` | +58, and the body was rewritten |
-| `shape-eq` at `:335-356`, `cod-key-eq` at `:365-380` | `:340-363`, `:365-380` | `shape-eq` +5, `cod-key-eq` exact |
+| `arm-body` at `:1051-1058` | `:1109-1126` | +58 at the head, and the body was rewritten |
+| `shape-eq` at `:335-356`, `cod-key-eq` at `:365-380` | `:340-356`, `:365-380` | `shape-eq` +5, `cod-key-eq` exact |
 | `field-tys->n` / `datas->n` at `compile-front.chiral:238-261` | `:238-245` and `:254-261` | exact |
 | 1,820 lines of live rewriting in `lib/lowering/upper/` | 1,936: `closconv` 1,414, `closconv-driver` 290, `specialize-singleton` 232 | +116 |
 
@@ -62,7 +91,7 @@ split is structural:
 |---|---|---|---|
 | `$apply<i>` | a **global** | `peel-globals` → `peel-def` (`compile-front.chiral:211-233`), which consults the stated map first via `sp-get` (`:201-204`) | **E185, built** |
 | `$clo<i>` | a **data declaration** | `datas->n` (`:254-261`), and its own TYPE is `(nt-data "$clo<i>" nil)` | see 1.3 |
-| `$k<i>_<j>` | a **constructor of that data** | `ctors->n` → `field-tys->n` (`:238-252`) | **E186, ruled `concrete`** |
+| `$k<i>_<j>` | a **constructor of that data** | `ctors->n` → `field-tys->n` (`:238-253`) | **E186, ruled `concrete`** |
 
 E185's channel is keyed by global name, `(List (Pair Str (List NTalTy)))`, and
 `peel-def` consults it for every global. Extending it to another GLOBAL is free.
@@ -103,7 +132,7 @@ dispatcher's domains from one family member". Measured at HEAD, that residue has
 two properties that together close it:
 
 - **Its content is read by nothing.** `apply-ty`'s output `aty` becomes the Sig
-  global's type for `$apply<i>` (`closconv-driver.chiral:206`, `:211`). Three
+  global's type for `$apply<i>` (`closconv-driver.chiral:206`, `:208`). Three
   readers touch it afterwards. `peel-def` takes `(ty-cod ty)` and, because
   `sp-get` hits, skips `ty-kept-doms` entirely (`compile-front.chiral:213-221`).
   `peel-def` and `build-emap` both take `(ty-erased ty 0)`, which returns nil
@@ -125,8 +154,8 @@ final disposition, and it already says so in the source.
 If a capture's source type fails `term->ntalty`, `field-tys->n` returns `(none)`,
 `ctors->n` returns `(none)`, and `datas->n` drops the whole `$clo<i>` data while
 `peel-def` still emits the `$apply<i>` NDef whose leading parameter names it.
-That inconsistency is real and it is **loud on the live path**: `erase.chiral:193`
-answers `con: unknown constructor $k<i>_<j>` and `:249` answers
+That inconsistency is real and it is **loud on the live path**: `lib/lowering/tal/erase.chiral:193-194`
+answers `con: unknown constructor $k<i>_<j>` and `:249-250` answers
 `branch: unknown constructor`, both named refusals rather than wrong code, and
 both reached without `ck-prog`. `ck-con` (`check.chiral:183-196`) answers
 `con: unknown data type` at `:190` on the checked path. The historically hit instance is
@@ -138,14 +167,15 @@ vanished. E100 built `field-erased?` and closed it. There is no gap to name here
 
 `SkReason` gained `sk-defunc` in E188 and **no caller constructs it**. Verified at
 HEAD: `lib/lowering/skip-diag.chiral:15` declares it and `:26`, `:29` destructure
-it, and `grep -rn sk-defunc lib/ prog/ tools/` returns those three lines and
-nothing else.
+it. `grep -rn sk-defunc lib/ prog/ tools/` returns four lines: those three, plus
+the comment at `:11` that names the two discriminants. No line constructs it.
 
 `st-add-gsite` (`closconv.chiral:700-706`) holds both facts the blame needs, the
 global's name `g` and which of two conditions fired, an untyped global or a
-family/global arity mismatch. It hands both to `st-add-pois` (`:676-678`), which
-appends only the family KEY to `CState`'s `pois`, a `(List Core)` (`:618`). The
-name and the reason are discarded there. Downstream the user gets
+family/global arity mismatch. Both die in its own two refusing arms (`:703`,
+`:706`): each calls `(st-add-pois st key)` and `st-add-pois` (`:676-678`) is
+typed `(-> CState Core CState)`, so there is no seat for a name or a reason. All
+it appends is the family KEY, to `CState`'s `pois`, a `(List Core)` (`:618`). Downstream the user gets
 `keep-fams` dropping the family (`closconv-driver.chiral:96-106`), the source def
 left unrewritten, and `compile-fn` refusing it with `body is not a lambda chain`,
 which is the SYMPTOM. [[records/enforcement-arc]] EN-22 measured exactly that
@@ -292,7 +322,7 @@ widenings and one recording site. Elided arms marked `; …`.
 (def st-add-gsite (-> SigV CState Core Str I64 (List (Pair I64 Core)) CState)
   (lam (sig st key g k fields)
     (case (arity sig g)
-      ((none)    (st-pois-defunc st key g "global has no declared type"))
+      ((none)    (st-pois-defunc st key g "no declared type"))
       ((some ar) (case (=i ar (+ k (cc-llen (peel-pi-doms key))))
                    (true  (st-add-site st key (cs-g g k fields)))
                    (false (st-pois-defunc st key g "family arity disagrees with the global's")))))))
@@ -380,10 +410,10 @@ widenings and one recording site. Elided arms marked `; …`.
     E186's `concrete` ruling. It is not in this snippet on purpose.
   - **Any edit to `apply-ty`.** §1.4: its domain content is read by nothing, and
     the ruling forbids the only honest replacement.
-  - **The `$clo<i>` drop-consistency check.** §1.5: `erase.chiral:193` and `:249`
+  - **The `$clo<i>` drop-consistency check.** §1.5: `lib/lowering/tal/erase.chiral:193-194` and `:249-250`
     already refuse by name on the live path.
   - **`prog/e186-capture-fields.prog`'s pattern update.** Mechanical, one line at
-    `:286`, and it must land in the same commit as the `CCOut` widening or that
+    `:287`, and it must land in the same commit as the `CCOut` widening or that
     probe stops compiling.
 
 ## 6. Use / modify notes
@@ -405,28 +435,54 @@ widenings and one recording site. Elided arms marked `; …`.
   measured a guard-off rebuild identical there, so no family in this tree is
   poisoned and no blame should appear.
 - **Open questions:**
-  1. **Is E187 still a whole element?** This pre-run's answer is **no, as
-     minted**. The type-statement content is fully consumed: `$apply<i>` by E185,
+  1. **Is E187 still a whole element? An AUTHOR CALL, and the audit routes it
+     rather than answering it.** This pre-run's answer is **no, as minted**, and
+     the EXAMPLE-level audit of 2026-09-05 confirms every measurement it rests
+     on. The type-statement content is fully consumed: `$apply<i>` by E185,
      `$k<i>_<j>` by E186, `$clo<i>` by E186 because it has no content of its own
      (§1.3), and `apply-ty`'s residue by the ruling (§1.4). Only §1.6's blame
      channel survives, and it entered the tree from E188 rather than from this
-     row. The SPEC stage decides whether that becomes E187 re-scoped in place,
-     with the type-statement clauses struck, or a fresh number. **This run mints
-     nothing**; `E189` is the last free number in Lane A's band and it is shared
-     with [[arcs/diagnostics-arc]].
+     row. What is left is a numbering decision with exactly two shapes, and it
+     belongs to the author because it edits the minting record:
+
+     - **(i) Re-scope E187 in place.** Strike the type-statement clauses from the
+       four rows in §1.1's second paragraph, retitle the element to the
+       `sk-defunc` blame channel, and let §5 stand as its example. Keeps the
+       dependency edges `←E185, ←E186` honest as history and adds `←E188`. Costs
+       one row rewrite in each of `docs/elements/catalog.md`,
+       `docs/elements/ledger.md`, `docs/examples/INDEX.md` and
+       `docs/arcs/enforcement-arc.md`, and leaves no free number consumed.
+     - **(ii) Retire E187 as consumed and mint the channel fresh.** The four rows
+       say `spent by E185 and E186` and the channel takes a new number. Clean
+       provenance, at the price of the band: `E189` is the LAST free number in
+       Lane A's `E184-E189` block and it is shared with
+       [[arcs/diagnostics-arc]], so spending it here closes the band and the next
+       Lane A mint needs a band decision first.
+
+     **This run mints nothing and edits no row's title.** The audit's own repair
+     of the four homes is confined to the stale line spans of §1.1, which are
+     wrong under either option.
   2. **Does the blame channel warrant a full element on its own?** It is six
      files, all inside the blob, so it is a full BUILD RULE run with a fixpoint,
      and it has a real observable (the refusal message changes on a fixture that
      already exists). That is element-sized. It is also pure plumbing with no
      choice between shapes the codebase does not settle, which is the build rule's
      own test for whether the pipeline is owed at all
-     (`docs/definitions/working-discipline.md`). The SPEC stage should answer
+     (`docs/definitions/working-discipline.md`). ⚑ The audit adds one shape
+     choice the pre-run left implicit and §5's knobs half-name: `pois` and `dsk`
+     as two lists against one list of pairs. `keep-fams` (`closconv-driver.chiral:96-106`)
+     filters on `key-in? pois key`, so merging them makes every membership test
+     project a pair, and `st-add-pois` is called from three sites of which only
+     `st-add-gsite`'s two carry a name; the third passes a higher-order key,
+     a type with no global attached. One list of pairs therefore needs a `Maybe Str`
+     or a fourth `SkReason` arm. That is a genuine fork, and it is what tips
+     question 2 toward yes. The SPEC stage should answer
      that against the rule rather than by size.
   3. **The stale spans in §1.1.** Four documents carry the +67 drift. Repairing
      them is a doc-tier edit and `ledger-lint` check R does not flag the class,
      which is the same finding E186's SPEC recorded for E185's row and left
      standing. This run records and does not propagate.
-  4. **Does `format-blame` render `sk-defunc` acceptably?** `skwhy-kind`
+  4. **Does `format-blame` render `sk-defunc` acceptably?** `skwhy-tag`
      (`skip-diag.chiral:29`) already returns `"defunc"` and `skwhy-name` returns
      the global. Unverified whether the rendered line reads well beside the
      `extern` and `callee` arms; a SPEC should pin the exact string.
