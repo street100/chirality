@@ -53,7 +53,7 @@ The `element` column carries the row's E# once it is minted, per
 [[arcs/README]]. `unit-lane/N8` and `unit-lane/N9` are minted together as
 **E196**, because a constructor's fields and its decode arithmetic constrain
 each other and splitting them would settle one against a guess at the other.
-Every other row reads `unminted`.
+`unit-lane/N10` is minted as **E197**. Every other row reads `unminted`.
 
 | row | what | layer | kind | origin | element |
 |---|---|---|---|---|---|
@@ -66,7 +66,7 @@ Every other row reads `unminted`.
 | `unit-lane/N7` | logical-step/timestamp time parameter carried in the type | L1 | primitive | new | `unminted` |
 | `unit-lane/N8` | `Encoding` sum (`Rate`/`Latency`/`Population`) | L2 | primitive | new | `E196` |
 | `unit-lane/N9` | encode/decode arithmetic over `Encoding` | L2 | law | new | `E196` |
-| `unit-lane/N10` | `RecordRequest` sum (`record-spikes`/`record-membrane`/`record-weights`) | L2 | primitive | new | `unminted` |
+| `unit-lane/N10` | `RecordRequest` sum (`record-spikes`/`record-membrane`/`record-weights`) | L2 | primitive | new | `E197` |
 | `unit-lane/N11` | unbounded trace type paired against `RunManifest`, parallel to `RawCall` | L2 | primitive | new | `unminted` |
 | `unit-lane/N12` | spike/graded payload message-width contract | L2 | law | new | `unminted` |
 | `unit-lane/N13` | typed I/O on `Expert`, closing the `sees`/`returns` deferral | L3 | primitive | new | `unminted` |
