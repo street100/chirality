@@ -3,7 +3,7 @@ node: records-findings
 layer: navigation
 related: [records/README, status-ledger, bug-classes, open-edges, index]
 status: current
-updated: 2026-09-01
+updated: 2026-09-05
 ---
 
 # Findings
@@ -138,3 +138,14 @@ document is in the reader-facing tier and is wrong today. Deferred is not delete
 - checked:  2026-09-02
 - element:  E182 took Phase 24 and moved on. Whether Lane A gets a fresh reservation is an author call
 
+
+## The pipeline tooling
+
+### FD-12 the scaffolder wrote the INDEX SPEC link one directory too shallow
+
+- state:    FIXED
+- claim:    `docs/examples/INDEX.md` spells the SPEC cell relative to its own directory. All 119 of its SPEC-linked rows read `[SPEC](../../docs/elements/specs/…)`, and `tools/pack/pack.py --spec` is the only writer of that cell.
+- measured: the scaffolder emitted `../docs/elements/specs/`, one `../` short, which resolves from `docs/examples/` to `docs/docs/elements/specs/` and lands on nothing. The line was wrong from the start and no gate sees it: ledger-lint check F checks only link-shaped targets in `examples/`, so a markdown link with a wrong prefix passes. It was repaired by hand twice with the line left untouched, at `857a005` for E187 ("E187's SPEC link resolved to docs/docs/") and again during E197's SPEC run on 2026-09-05. Measured off-tree on 2026-09-05 by scaffolding E172 into two throwaway copies: HEAD wrote `../docs/elements/specs/E172-file-kinds-SPEC.md`, normalizing to `docs/docs/elements/specs/E172-file-kinds-SPEC.md`, absent; the fixed line wrote `../../docs/elements/specs/E172-file-kinds-SPEC.md`, normalizing to `docs/elements/specs/E172-file-kinds-SPEC.md`, present. Zero INDEX rows still carry the broken spelling, so both hand repairs held. `pack.py` emits no other `../` path; its one other INDEX link, the example cell at `:877`, is a sibling filename and all 131 of those resolve. The tool side moved. `pack.py` is Python, outside the compiler's closure, so no fixpoint was owed.
+- evidence: `tools/pack/pack.py:644`, `docs/examples/INDEX.md`, commit `857a005`, `docs/arcs/unit-lane-arc.md:163-170`, `tools/ledger-lint/ledger-lint.py:277`
+- checked:  2026-09-05
+- element:  none. The fix is the one line, landed in the same change as this row.

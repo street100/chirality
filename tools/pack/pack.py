@@ -641,7 +641,7 @@ def spec_mode(eid, tag, title, row, row_kind, no_index):
                     print(f"[scaffold] INDEX status {st!r} not drafted/reviewed — "
                           "linking SPEC, status left", file=sys.stderr)
                 cells[6] = cells[6].rstrip() + \
-                    f" · [SPEC](../docs/elements/specs/{tag}-{slug}-SPEC.md) "
+                    f" · [SPEC](../../docs/elements/specs/{tag}-{slug}-SPEC.md) "
                 patched = (i, "|".join(cells))
     if patched is None:
         print(f"[scaffold] INDEX row for {eid} missing or already SPEC-linked — untouched",

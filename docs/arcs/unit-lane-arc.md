@@ -160,14 +160,13 @@ work under the build rule: `prog/unit/recording.chiral`,
 `prog/e197-recording-sweep.prog` and `tools/test/recording.sh`. Nothing landed
 under `lib/`, so no fixpoint was owed and the sensitivity half of the scan was.
 
-**The roster row is closed and one tool fix is owed.** The volume law E197's
-decision 4 scoped in is `unit-lane/N43` in the table above, opened by this arc
-on 2026-09-05 and covered by E197, so the roster is 43 rows and the arc no
-longer under-reports the element. What stands is `tools/pack/pack.py:644`,
-which writes the INDEX SPEC link as `../docs/elements/specs/` and so resolves
-to `docs/docs/` from `docs/examples/`. E187 hit it and was repaired by hand at
-`857a005`, E197 hit it and was repaired by hand again, and the line is
-untouched.
+**Both items this arc owed are closed.** The volume law E197's decision 4
+scoped in is `unit-lane/N43` in the table above, opened by this arc on
+2026-09-05 and covered by E197, so the roster is 43 rows and the arc no longer
+under-reports the element. `tools/pack/pack.py:644`, which wrote the INDEX SPEC
+link one directory too shallow and was repaired by hand for E187 at `857a005`
+and again for E197, is fixed and proved off-tree. [[records/findings]] FD-12
+holds the measurement.
 
 The example carries five open questions and the audit moved two of them without
 answering either. Question 2 asked whether the refinement engine decides
