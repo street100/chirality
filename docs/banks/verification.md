@@ -4,7 +4,7 @@ layer: bank
 tier: depth
 related: [testing-floors, floor-agreement, certificate-discipline, split-role, decision-split-checker, axis-altitude, modules-lowering, trust-boundary, status-ledger, banks/evidence-and-split, open-edges]
 status: draft
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Bank: verification
@@ -113,8 +113,11 @@ suite, not a number, and not the fixpoint.
 ## 2. The refraction — the shards, their homes, their build-state
 
 ### Shard 1 — the self-host fixpoint · **BUILT (rung-1, 2026-08-05)**
-- **What.** Compile the blob with B1, run the result over the same blob, byte-compare.
-- **Home.** The build ceremony — `.planning/BUILD-ORDER.md`, `CLAUDE.md`'s build rule.
+- **What.** Compile the blob with B1, then keep building generations from the
+  same blob until two consecutive ones byte-compare equal. E188 (`032681f`)
+  took three, because generation one is emitted by the old code generator.
+- **Home.** The build ceremony — `.planning/BUILD-ORDER.md`,
+  `docs/definitions/working-discipline.md`'s build rule.
 - **Build-state.** BUILT and routinely run (~1s). **What it proves is stability,
   not correctness.** `BUILD-ORDER.md` records the sharpest available proof of the
   limit: a *reversed-but-total* comparator passed the fixpoint at identical byte

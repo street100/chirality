@@ -3,7 +3,7 @@ node: working-discipline
 layer: foundation
 related: [index, status-ledger, elements/README, arcs/README, banks/INDEX, decisions/decision-dispatch-cadence, decisions/decision-scope, decisions/decision-ai-tier]
 status: current
-updated: 2026-09-03
+updated: 2026-09-05
 ---
 
 # Working discipline
@@ -20,22 +20,49 @@ kind, directory is the role, the module key is the root-relative path. This is t
 binary from the blob; you test that binary; you promote it. **Nothing replaces
 itself in place.**
 
-When the compiler's own sources changed, run the promoted binary over the same
-blob once more and byte-compare:
+When the compiler's own sources changed, build generations from the same blob
+until two consecutive ones are byte-identical:
 
 ```
 . bin/chirality-resolve.sh
 chirality_blob_file "lib:prog" prog/compiler.prog > /tmp/blob.chiral
 (ulimit -s unlimited; bin/chirality-bin < /tmp/blob.chiral > /tmp/C1) && chmod +x /tmp/C1
-[ -s /tmp/C1 ] && (ulimit -s unlimited; /tmp/C1 < /tmp/blob.chiral > /tmp/C2) && cmp /tmp/C1 /tmp/C2
+[ -s /tmp/C1 ] && (ulimit -s unlimited; /tmp/C1 < /tmp/blob.chiral > /tmp/C2) && chmod +x /tmp/C2
+[ -s /tmp/C2 ] && cmp /tmp/C1 /tmp/C2
+# they differ: build C3 from C2 the same way, cmp C2 C3, then C4 against C3.
 ```
 
-**Check the artifact is non-empty before the `cmp`.** Two empty files compare
-equal, so an unguarded `cmp` reports a fixpoint on a build that produced nothing.
+**Convergence is two consecutive generations agreeing, and the first agreement is
+not always `C1 == C2`.** `C1` carries the new sources and was emitted by the old
+code generator. Where the change touched emission and the compiler's own blob
+holds a site that change reaches, `C1` and `C2` differ for that reason alone and
+the build is correct. `C1` and `C2` carry the same sources and emit alike, which
+puts the first agreement at `C2 == C3`. A change that leaves emission alone
+converges at `C1 == C2`.
+
+**Check the artifact is non-empty before every `cmp`, and keep the `(ulimit -s
+unlimited; …)` on every build.** Two empty files compare equal, so an unguarded
+`cmp` reports a fixpoint on a build that produced nothing.
+
+**Stop after `C4`.** The paragraph above caps the first agreement at `C2 == C3`,
+so a fourth generation that still differs is a defect rather than a slow
+convergence, and an open-ended loop only repeats a compile that already told you
+what it had to say. Report the sizes and the first differing char, and stop.
+
+E188 measured the three-generation case (`032681f`, 2026-09-04). Its `B1` is the
+tracked binary at 1,192,312 bytes, so its `B2`, `B3` and `B4` are `C1`, `C2` and
+`C3` here: `C1` 1,192,312 bytes differing from the tracked binary at char 3040,
+`C2` 1,184,120 differing from `C1` at char 98, `C3` 1,184,120 byte-identical to
+`C2`. `C1` was emitted by the old code generator and was not the fixpoint, `C2`
+was promoted, and **a run stopping at `cmp C1 C2` would have reported failure on
+a correct build.** The change was the `(none)` arm of `arm-body`
+(`lib/lowering/upper/closconv.chiral:1109`), which the compiler's own blob reaches
+twice.
 
 **A fixpoint shows stability and says nothing about correctness.** The compiler
 reproducing itself byte-for-byte is consistent with it being wrong in the same way
-twice.
+twice. E188 is the second reason to believe that: the wrong code it repaired rode
+into `$apply5` and `$apply6` under a green suite and a holding fixpoint.
 
 ⚑ **A comment-only edit to `lib/` or `prog/` is still a change to compiler
 source** and owes the rebuild above. This is why `lib/typing/diag.chiral:32` still
