@@ -5,12 +5,30 @@
 # mutant that falsifies it, and the mutant must be RUN. Naming a mutant is a
 # claim about the gate; running it is the evidence. Until now every phase script
 # that honoured the rule re-implemented it (diag.sh does, at the fixture level),
-# and the five phases that did not honour it were indistinguishable from the
-# ones that did, because nothing in the tree could tell the two apart.
+# and the phases that did not honour it were indistinguishable from the ones
+# that did, because nothing in the tree could tell the two apart.
+#
+# ⚑ 2026-09-05, THE COUNT THAT STOOD IN THAT SENTENCE IS GONE.
+# records/gate-audit.md GA-11 measured it: it read "the five phases", which was
+# MUT_PHASES below -- the five sub-scripts run-tests.sh dispatched at 58f4f7c,
+# the commit that added this file. The same sentence exempts diag.sh, and GA-06
+# measured syscall-manifest.sh as honouring the rule in its own `poison` idiom,
+# so the set was three at that commit and never five. The suite dispatches
+# thirteen phases today and the number has moved again. A bare figure with no
+# date beside it is what docs/definitions/testing-floors.md calls a figure that
+# rots, so this paragraph now carries none.
 #
 # not-a-phase: a sourceable library plus a matrix driver a person runs by hand.
 # records/gate-audit.md GA-01 is the open row arguing the matrix wants a phase of
 # its own.  Nothing has ruled yet, so it stays out and stays visible.
+#
+# ⚑ 2026-09-05, THE LIBRARY HALF IS NOW UNDER THE SUITE. Phases 3, 4 and 6
+# source this file and declare mutants of their own (check-cli.sh,
+# profile-target.sh, linear-mint.sh, for records/gate-audit.md GA-03, GA-05 and
+# GA-07), so mut_count, mut_sub, mutant_build and mutant_differs are exercised
+# on every run of the gate. What is still outside the gate is the MATRIX -- the
+# driver at the foot of this file and its every-mutant-by-every-phase table --
+# and GA-01 is that gap and nothing wider.
 #
 # This file is that rule as a sourceable library plus a standalone matrix
 # driver. It mutates a rule in `lib/`, builds a compiler from the mutated tree,
@@ -138,8 +156,15 @@ mutant_differs() { ! cmp -s "$1" "$MUT_B1"; }
 
 # ---- run a phase under a chosen compiler ------------------------------------
 # mutant_red <compiler> <phase script name> -> RED | green
+#
+# ⚑ CHIRALITY_NO_MUTANTS is set for the leg. Three dispatched phases source
+# this file and build mutants of their own; under the matrix those legs would
+# build a mutant of a mutant and cost minutes to say nothing about this cell. A
+# matrix cell means "the phase's own rows, under this compiler", so the phase's
+# own mutant block is turned off for it.
 mutant_red() {
-  if CHIRALITY_COMPILE="$1" timeout "${CHIRALITY_MUTANT_TIMEOUT:-600}" \
+  if CHIRALITY_COMPILE="$1" CHIRALITY_NO_MUTANTS=1 \
+       timeout "${CHIRALITY_MUTANT_TIMEOUT:-600}" \
        bash "$MUT_HERE/$2" >/dev/null 2>&1
   then printf 'green'; else printf 'RED'; fi
 }
