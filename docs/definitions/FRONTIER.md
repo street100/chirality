@@ -14,7 +14,7 @@ updated: 2026-09-05
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: d2bd73067faa3fad0925f031bd02803ca0861dc8c5fd9c2eb55202b12c84021b -->
+<!-- FRONTIER-SOURCES-SHA256: bf427d71d3693c099915b473bfe940abe1783d2c5207ed5147b19aaf8b2954f8 -->
 <!-- sources: 162 files -->
 
 ## Decided recently
@@ -96,8 +96,8 @@ updated: 2026-09-05
 
 - drafted: 1
 - specced: 2
-- audited: 46
-- implemented: 63
+- audited: 45
+- implemented: 64
 - **implemented: 3
 - built: 1
 - impl: 1
@@ -114,6 +114,7 @@ updated: 2026-09-05
 
 ### Last commits touching the frontier sources
 
+- 2026-09-05 3cc3fb7 — E187: the examples INDEX row, flipped to implemented and its two false claims flagged
 - 2026-09-05 2c68b04 — E196 SPEC audit: twenty golden lines and five mutants reproduced, ten fixes
 - 2026-09-05 13aeb19 — E196 SPEC: the seam gains a scale on Latency and a result sum on the decode
 - 2026-09-05 0d7ebb5 — E187: repoint the citations E187's own line shifts moved
@@ -121,4 +122,3 @@ updated: 2026-09-05
 - 2026-09-05 47c33f6 — E196 pre-run: the Encoding seam, measured before it is designed
 - 2026-09-05 9fb6fe8 — E187 SPEC: status draft -> audited, the implement-ready gate is passed
 - 2026-09-05 877de1d — E187 SPEC audit: the cause segment is cut on the marker, and the fixpoint's generation is measured
-- 2026-09-05 e7f41ef — mint the unit lane's element band and open its arc
