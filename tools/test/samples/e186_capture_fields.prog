@@ -1,0 +1,82 @@
+; e186_capture_fields.prog -- the E186 fixture: ONE defunctionalization family
+; whose FOUR sites carry 0, 1, 2 and 3 kept captures.
+;
+; E186 rules that the `$k<i>_<j>` capture constructor's field types stay at the
+; capture's OWN source type.  A gate for that ruling needs both halves of the
+; rule to have a subject in one family: a capture whose source type has a ground
+; spelling (which must stay concrete) and a capture whose source type has none
+; (which must reach the erased word).  `site-fields->term`
+; (lib/lowering/upper/closconv-driver.chiral:153-163) writes one field per kept
+; capture, and `term->ntalty` (lib/lowering/compile-front.chiral:58-72) decides
+; which of the two a field gets.
+;
+; ─── THE FOUR SITES, AND THE ARITIES ARE THE IDENTIFIER ─────────────────────
+; `$k0_<j>` numbering follows `build-sites`' site order, which is unstable, so
+; the probe names each ctor by its FIELD ARITY instead.  The four arities are
+; kept DISTINCT at 0, 1, 2 and 3 on purpose; a second one-field ctor would leave
+; R3's subject ambiguous.
+;
+;   arity 0  `e186-bump` passed bare              -- no capture at all
+;   arity 1  `(e186-appf e186-bump)`              -- captures ONE ARROW.
+;            source Term `t-pi`, honest lowering `nt-word`.  R3's subject.
+;   arity 2  `(e186-addk 10 ("x" "y"))`           -- captures an `I64` and a
+;            `(List Str)`.  Honest lowering `nt-i64` and
+;            `(nt-data "List" ((nt-str)))`.  R2's subject, and R2 is the row
+;            that separates `concrete` from `word`.
+;   arity 3  `(e186-mix (str->bytes "abc") "de" 7)` -- captures a `Bytes`, a
+;            `Str` and an `I64`.  Honest lowering `nt-bytes`, `nt-str`,
+;            `nt-i64`.  ⚑ NO GOLDEN PINS ANY FIELD OF THIS CTOR, and that is
+;            what it is for: R2 pins the two-field ctor and R3 pins the
+;            one-field ctor, so R4 (`ctor-honest?` over EVERY `$clo` ctor) is
+;            the only row reaching this site and therefore the only row a
+;            mutant can redden alone.  M5 is that mutant.  Three captures
+;            rather than one so the arity stays distinct; `Str` and `I64` ride
+;            along for the arity and `Bytes` is the field that carries R4.
+;
+; Every site's value has type `(-> I64 I64)` and arrives at ONE higher-order
+; parameter, so `shape-eq` (closconv.chiral:340-356) puts all four in family 0
+; and all four ctors land in `$clo0`.
+;
+; ─── HOME: tools/test/samples/, NOT prog/ ───────────────────────────────────
+; Phase 7 discovers roots with `grep -rl '^(def compile-main' lib prog`
+; (tools/test/run-tests.sh:175).  This file needs a `compile-main` of its own,
+; so under `prog/` it would be a SECOND new root and move the root census twice.
+; `prog/e186-capture-fields.prog` is the one root E186 adds, 88 -> 89.
+;
+; It also RUNS correctly, so a miscompile shows as a non-zero exit and not only
+; as a type reading: all four sites answer 42, and the case ladder returns the
+; number of the first site that does not.
+(import "prelude/prelude")
+
+(declare e186-len (-> (List Str) I64))
+(def e186-len (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (e186-len t))))))
+
+; the one higher-order consumer.  Every site's value arrives here, which is what
+; makes the four sites ONE family.
+(def e186-use (-> (-> I64 I64) I64 I64) (lam (g n) (g n)))
+
+; arity 0: a captureless global.
+(def e186-bump (-> I64 I64) (lam (x) (+ x 1)))
+
+; arity 1: partially applied, it captures the ARROW `f` -- the one source shape
+; with no ground spelling.
+(def e186-appf (-> (-> I64 I64) I64 I64) (lam (f x) (f x)))
+
+; arity 2: captures an `I64` and a `(List Str)`, both concretely spellable.
+(def e186-addk (-> I64 (List Str) I64 I64)
+  (lam (k ys x) (+ x (+ k (e186-len ys)))))
+
+; arity 3: captures a `Bytes`, a `Str` and an `I64`.  R4's own subject.
+(def e186-mix (-> Bytes Str I64 I64 I64)
+  (lam (b s k x) (+ x (+ (blen b) (+ (blen (str->bytes s)) k)))))
+
+(def compile-main (-> I64 I64)
+  (lam (n)
+    (let ((a (e186-use e186-bump 41))
+          (b (e186-use (e186-appf e186-bump) 41))
+          (c (e186-use (e186-addk 10 (cons "x" (cons "y" nil))) 30))
+          (d (e186-use (e186-mix (str->bytes "abc") "de" 7) 30)))
+      (case (=i a 42) (false 1) (true
+      (case (=i b 42) (false 2) (true
+      (case (=i c 42) (false 3) (true
+      (case (=i d 42) (false 4) (true 0)))))))))))
