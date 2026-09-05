@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: cf9334dd9dffbde88040e7fa648322c2faa50bdb503a8b58d4fbb769e62c1cb4 -->
+<!-- FRONTIER-SOURCES-SHA256: f57718b813ef74fd1a355dafed84e1774775559005f0396931eb5a730179e51b -->
 <!-- sources: 159 files -->
 
 ## Decided recently
@@ -94,7 +94,8 @@ updated: 2026-09-04
 
 ### Pipeline (examples/INDEX.md, by status)
 
-- drafted: 2
+- drafted: 1
+- reviewed: 1
 - specced: 2
 - audited: 44
 - implemented: 63
@@ -114,6 +115,7 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 8252d43 — E188 INDEX: drafted -> reviewed
 - 2026-09-04 09f445f — E188 pre-run: the unreachable arm is reached, and the tree already refuses this
 - 2026-09-04 5dd7031 — E186 step 6: the rows, and the author's row gets a pointer and stays open
 - 2026-09-04 0d87b27 — E186 step 1: the ruling is concrete, written where the fork was left open
@@ -121,4 +123,3 @@ updated: 2026-09-04
 - 2026-09-04 497c20b — E186 SPEC audit: the M5 nobuild analogy is checked, and two cites repaired
 - 2026-09-04 15a369e — E186 SPEC: both audit FLAGs disposed, and R4 gets a falsifier
 - 2026-09-04 bf90ac6 — C1C2 SPEC audit: every execution claim reproduced, verdict PASS
-- 2026-09-04 1c4ec62 — close an unbalanced emphasis marker in the M1 correction note
