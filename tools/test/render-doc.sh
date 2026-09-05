@@ -494,10 +494,10 @@ echo "=== E158c4 G8: the four existing gates are byte-unchanged, and Phase 17 ru
 # 2026-09-04: `row.sh`'s when GA-17's repair added its M14, and `doc.sh`'s,
 # `row.sh`'s and `face.sh`'s together when GA-23's repair rewrote doc.sh and its
 # fixture and both neighbours carry that pair's pins.
-PINS="400166d2bada74728abf895ef6bae8b8e5a63e5ffbce1653e348399f773e140b  diag.sh
-13df27e543bd79548a76bc94cb2e35047e847c127b78a0e83c6a0d6b20cead0d  doc.sh
-64a7bd3e2a222acbf8c45562728d33c56d18e47a9e0f8315fb1fe0c4a8925146  row.sh
-fd1a52f883bbdb64416659ee7a37ec05042e7e31be2428e68d27ffd0214261b3  face.sh"
+PINS="ec0d72f3793459af9719e8eeb8816e065c9d5b9efd49110251ebf2e4ed8cd8fd  diag.sh
+76d943af6dfddbc4c834c7bb2c2488d114f23c09bc11cba2fd4ba392bf22f028  doc.sh
+526349487f73f076be71ec24e536db22774945c1d9558d78e7b157690d5af5a7  row.sh
+27a70f561e8fa53392a56bd49c269aac87b9180cdbb90cf6541ee30249e53f34  face.sh"
 pin_check() {  # pin_check DIR -> "" when every pin matches, else the offenders
   local dir="$1" n h
   echo "$PINS" | while read -r h n; do

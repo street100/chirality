@@ -590,7 +590,7 @@ else bad "M7(ii) cross-assert -- G7(a) did not catch an added golden row"; fi
 # (b) E157's gate is byte-unchanged by this element, against a PINNED sha256.
 # (A `git diff --stat` row is not equivalent: once these commits land, the diff
 # against them is empty forever and the row reports ok for the rest of time.)
-DIAG_SH_SHA=400166d2bada74728abf895ef6bae8b8e5a63e5ffbce1653e348399f773e140b
+DIAG_SH_SHA=ec0d72f3793459af9719e8eeb8816e065c9d5b9efd49110251ebf2e4ed8cd8fd
 DIAG_FX_SHA=713fe84d51c149d491edf8289a5799206f44b0e925a28dc7f123ba3f7ab4171c
 sha_of() { sha256sum "$1" | awk '{print $1}'; }
 got_sh="$(sha_of "$HERE/diag.sh")"

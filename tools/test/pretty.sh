@@ -469,10 +469,10 @@ else bad "G8(b) typing/diag does not import surface/pretty"; fi
 # file is pinned by nothing. A pin re-taken in the commit that moves the file is
 # the loud path these rows exist to force.
 PINS="ec0d72f3793459af9719e8eeb8816e065c9d5b9efd49110251ebf2e4ed8cd8fd  diag.sh
-13df27e543bd79548a76bc94cb2e35047e847c127b78a0e83c6a0d6b20cead0d  doc.sh
-64a7bd3e2a222acbf8c45562728d33c56d18e47a9e0f8315fb1fe0c4a8925146  row.sh
-fd1a52f883bbdb64416659ee7a37ec05042e7e31be2428e68d27ffd0214261b3  face.sh
-0e0bc5d1e39c1d38f24311400cef953211809ccbba1d638aa54868af1dde4e05  render-doc.sh
+76d943af6dfddbc4c834c7bb2c2488d114f23c09bc11cba2fd4ba392bf22f028  doc.sh
+526349487f73f076be71ec24e536db22774945c1d9558d78e7b157690d5af5a7  row.sh
+27a70f561e8fa53392a56bd49c269aac87b9180cdbb90cf6541ee30249e53f34  face.sh
+2f43b8ef7a5f4a73d70df4160f6f65df2851a4bd3f92b66ad90692ae3787ea6e  render-doc.sh
 713fe84d51c149d491edf8289a5799206f44b0e925a28dc7f123ba3f7ab4171c  samples/e157_diag.prog
 2a319302e79f4bf012b72f7f870069742df340d93618f6314d67c0a08d27eea8  samples/e158_doc.prog
 a0cf04d8cb91a5bbc4f143c1315e406558f22d5c97ce76f83c8a5f53f02e75fd  samples/e174_row.prog"
