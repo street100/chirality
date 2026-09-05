@@ -25,7 +25,7 @@ updated: 2026-09-05
 - **Kind:** BUILD-PROPER.
 - **Why chirality needs its own:** the seam has no shard in this tree. A grep of
   `lib/` and `prog/` for `spike`, `neuron`, `tuning`, `population vector` and
-  `first-spike` returns **zero files** (measured 2026-09-05 at `9e960b2`), and
+  `first-spike` returns **zero files** (measured 2026-09-05 at `fc53378`), and
   [[banks/unit]]'s nineteen-shard refraction names no encoding shard: its shard B
   is the `Ty`/`Shape` payload type and its shard G is the `Backend` model
   crossing, both above this layer. The census at `471f688` reached the same
@@ -35,8 +35,8 @@ updated: 2026-09-05
 
 ⚑ **The element defines a seam and encodes nothing real.** No population exists
 to consume a spike train, so the deliverable is the sum, the decode, and a gate
-over the round trip. §6 says what that gate ends in and shows two mutants
-reddening it.
+over the round trip. §6 says what that gate ends in, what it cannot end in
+yet, and shows three mutants reddening it.
 
 ## 2. Research
 
@@ -372,13 +372,49 @@ and the measurement reached that arm with an error of 980:
 | `Latency` | **exact equality**, unrestricted over `[0, window]` | measured: 101 of 101, 17 of 17, 1025 of 1025. No division occurs |
 | `Population` | **a bounded error** against a stated `size`, `h` and `k`, plus a positive assertion that a silent window decodes to `d-silent` | measured: exactness only at the `size` tuning values, and a reachable zero denominator |
 
-- **The gate can fail, demonstrated.** Two mutants were built and run on today's
-  binary:
+⚑ **A pinned line asserts an equality, and the bound is a second check.**
+Comparing `exact=9 maxerr=31` against a golden line asserts `maxerr == 31`. It is
+stronger than `maxerr <= ceil(max/window)` on that one row and says nothing about
+the law, which §2 M1 already calls a measured bound over this sweep. The driver
+gets one or the other by construction: pin the observed integers, or compute
+`ceil(max/window)` in the root and pin the verdict it prints. A table promising a
+bound over a driver that pins an integer is a gate aimed past its own claim, so
+the SPEC picks and says which. The `d-silent` half of `Population`'s row is
+likewise unmeasured here: §5's `DecodeR` variant is written and no sweep runs it,
+so that assertion has no figure and no mutant yet.
+
+⚑ **The driver needs a phase or a declaration, and it has neither.**
+`tools/test/registration.sh` G2 holds that every `tools/test/*.sh` on disk is
+dispatched by a `run_phase` line in `run-tests.sh` or declares itself out in its
+own header as `# not-a-phase:` with a reason, and a script that lands as neither
+reddens G2 on the next suite pass. Phase 7 sweeps
+`grep -rl '^(def compile-main' lib prog`, so it compiles the root and executes
+nothing, and `tools/` sits outside that census entirely. Phases 1-7 and 13-20 and
+24 are taken, 8-12 are held for unported old-tree phases,
+[[decisions/decision-lane-split]] reserves 21-23 for Lane B, and no band is
+reserved for this lane, so the number is an author call. `crypto.sh` and
+`tal-check.sh` are the standing precedent and both sit undispatched: a gate
+declared out is a gate that does not run.
+
+- **The gate can fail, demonstrated.** Three mutants were built and run on
+  today's binary:
 
 | mutant | change | effect |
 |---|---|---|
-| **M1** | `Rate`'s decode divides by `window + 1` | every rate row reddens: exact 101 → **1**, 51 → **1**, 256 → **1**, and `max error` rises on all nine |
+| **M1** | `Rate`'s decode divides by `window + 1` | all nine rate rows redden on the exact count, every one of them falling to **1**: 101 → **1**, 51 → **1**, 256 → **1**, 9 → **1**, 2 → **1**. `max error` rises on eight and holds at 99 on `window=1, max=100`, where the exact count is the whole conviction |
 | **M2** | `Latency`'s decode drops the window complement, returning `first-spike - ref` | every latency row reddens: exact 101 → **2**, 17 → **2**, 1025 → **2**, `max error` 0 → `window` |
+| **M3** | `Population`'s tuning curve goes rectangular, firing a flat `k` inside `h` | three of the four rows redden: exact 247 → **13**, 38 → **7**, 430 → **53**. The `h = 20` row does not move, at 8 exact and 980 max error either way |
+
+  Each mutant reddens its own arm and leaves the other two rows untouched, so a
+  reddened row names the arm that broke it.
+
+⚑ **The `h = 20` row cannot see the curve's shape.** Spacing is 142 and the
+half-width is 20, so at most one unit ever fires, and one unit's weighted average
+is its own tuning value whatever count that unit carries. The row carrying the
+load-bearing 980 is blind to the whole tuning-curve defect class, and the three
+overlapping rows are what convict it. A fourth mutant dropping the zero
+denominator guard does reach it, reddening all four rows and taking `h = 20`
+from 8 exact to **6**.
 
   The exact counts are the load-bearing pins. A row asserting only "the two
   agree" would pass under a decode that always returns its input, which is the
@@ -401,7 +437,19 @@ and the measurement reached that arm with an error of 980:
      dependent machinery this element has not priced.
   5. **The directory.** `lib/unit/` is a new subdirectory of `lib/` and the
      module key is the root-relative path, so naming it is a `MAP.md`-visible
-     choice rather than a free one.
+     choice rather than a free one. Two measurements bear on it. `MAP.md`'s own
+     `lib/` tree lists twelve directories and the filesystem holds thirteen, so
+     that listing is already one behind and gains a second gap here. And every
+     shard [[banks/unit]] refracts sits under `prog/manas/`, including the closed
+     sums `Expert`, `Flow` and `StopPolicy` and the `Backend` porttype the bank
+     records as an anomaly for living outside `lib/ports/`. `prog/` is what
+     chirality ships and `lib/` is what it is, so an application-domain sum for a
+     neuron lane has a claim on `prog/` that this element has not weighed.
+     `lib/manifest/` is the counter-precedent: [[decisions/decision-lane-split]]
+     lands Lane B in a new `lib/` subdirectory by author call.
+  6. **The gate's phase number.** No band is reserved for this lane and 8-12,
+     21-23 are held. The driver is dispatched at a number the author assigns or
+     it declares itself `# not-a-phase:` and does not run.
 - **Related:** [[arcs/unit-lane-arc]] rows `unit-lane/N8` and `unit-lane/N9`;
   [[banks/unit]]; [[decisions/decision-display-numerics]];
   [[decisions/decision-lane-split]]. E189 stays a separate, unowned element, per §2 M4.
