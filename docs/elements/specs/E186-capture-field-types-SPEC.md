@@ -4,7 +4,7 @@ slug: capture-field-types
 title: "**The `$k<i>_<j>` capture constructor's field types: concrete, or the erased word**"
 kind: BUILD-PROPER
 example: examples/E186-capture-field-types.md
-status: draft
+status: audited
 updated: 2026-09-04
 ---
 
