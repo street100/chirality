@@ -33,9 +33,15 @@
             ; carrying to the back half any more.
             (case (emit-elf-m fns lits entry ports)
               ((elf-ok b) (ca-ok b))
+              ; E187: the SYMPTOM stays byte-identical and the CAUSE is a second
+              ; clause after it.  format-causes answers "" when the skip list
+              ; holds no sk-defunc record, which is every message this tree
+              ; produces today; blame-chain is not touched, because its extern
+              ; arm is a leaf and a chain that leafs first never walks to the
+              ; refused family at all.
               ((elf-err m) (case skips
                 (nil (ca-err m))
-                ((cons s r) (ca-err (str-cat m (str-cat " | " (format-blame entry skips))))))))))))))
+                ((cons s r) (ca-err (str-cat m (str-cat " | " (str-cat (format-blame entry skips) (format-causes skips)))))))))))))))
 
 ; read ALL of fd into one Bytes: 64K chunks until a read returns empty (EOF).
 (def read-fd-go (=> I64 Bytes Bytes)
