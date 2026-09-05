@@ -116,7 +116,7 @@
 
 ; E185: the STATED-PARAMETER CHANNEL.  The dispatcher's lowering-level parameter
 ; types, COMPUTED from the family and never copied off a member.  `shape-eq`
-; (closconv.chiral:335-356) makes every non-arrow domain one word, and a
+; (closconv.chiral:340-356) makes every non-arrow domain one word, and a
 ; nested-arrow domain is pointer-sized (compile-front.chiral:71), so every domain
 ; is `nt-word`.  The leading $clo argument keeps its data name, because the arm
 ; case is a case ON it (`case-sty` / `ck-scrut-dn` both recover that name).
@@ -278,7 +278,7 @@
   (lam (s)
     (case s ((mk-sig g p d la ld tg pf km sh)
       (let (sv (build-sigv s))
-        (case (collect sv) ((cstate fams ho pois)
+        (case (collect sv) ((cstate fams ho pois dsk)
           (case (keep-fams fams pois)
             (nil (ccout s nil))                         ; closure-free: untouched
             ((cons kf kr)

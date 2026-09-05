@@ -23,6 +23,7 @@
 ;
 ; closconv.py stays the golden oracle until the chirality kernel drives conversion.
 (import "surface/surface")
+(import "lowering/skip-diag")   ; E187: SkRec / sk-defunc -- the cause the guard states
 
 ; ---------------------------------------------------------------- small helpers
 
@@ -615,7 +616,14 @@
 
 (data Family () (family (key Core) (sites (List Csite))))
 
-(data CState () (cstate (fams (List Family)) (ho (List Core)) (pois (List Core))))
+; E187: `dsk` carries the REASON a family was poisoned, keyed by the global at
+; the refused site.  It is a second list rather than a pair inside `pois`
+; because the third `st-add-pois` call site (:851 below) poisons an unsaturated
+; higher-order VARIABLE keyed by `hty`, which has no global and no reason to
+; state beyond the key itself; a merged list would carry a `(none)` no reader
+; could act on.  `st-pois-defunc` keeps the two in correspondence by recording
+; at most one cause per family, mirroring `key-add`'s idempotence.
+(data CState () (cstate (fams (List Family)) (ho (List Core)) (pois (List Core)) (dsk (List SkRec))))
 
 ; ---- ckey / family membership (structural, the dict-key stand-ins) ----------
 
@@ -666,16 +674,28 @@
 ; ---- CState operations (fam(ty) always registers the family) ----------------
 
 (def st-ensure-fam (-> CState Core CState)
-  (lam (st key) (case st ((cstate fs ho po) (cstate (ensure-fam fs key) ho po)))))
+  (lam (st key) (case st ((cstate fs ho po ds) (cstate (ensure-fam fs key) ho po ds)))))
 (def st-add-site (-> CState Core Csite CState)
   (lam (st key site)
-    (case (st-ensure-fam st key) ((cstate fs ho po) (cstate (fam-add-site fs key site) ho po)))))
+    (case (st-ensure-fam st key) ((cstate fs ho po ds) (cstate (fam-add-site fs key site) ho po ds)))))
 (def st-add-ho (-> CState Core CState)
   (lam (st key)
-    (case (st-ensure-fam st key) ((cstate fs ho po) (cstate fs (key-add ho key) po)))))
+    (case (st-ensure-fam st key) ((cstate fs ho po ds) (cstate fs (key-add ho key) po ds)))))
 (def st-add-pois (-> CState Core CState)
   (lam (st key)
-    (case (st-ensure-fam st key) ((cstate fs ho po) (cstate fs ho (key-add po key))))))
+    (case (st-ensure-fam st key) ((cstate fs ho po ds) (cstate fs ho (key-add po key) ds)))))
+
+; E187: poison, and STATE why, keyed by the global at the refused site.  The
+; record is appended only when the family was not already poisoned, so `dsk`
+; holds at most one cause per family and the two lists cannot drift into
+; reporting one drop twice.
+(def st-pois-defunc (-> CState Core Str Str CState)
+  (lam (st key g why)
+    (case st ((cstate fs ho po ds)
+      (case (key-in? po key)
+        (true  (st-add-pois st key))
+        (false (case (st-add-pois st key) ((cstate fs2 ho2 po2 ds2)
+                 (cstate fs2 ho2 po2 (cons (mk-skrec g (sk-defunc g why)) ds2))))))))))
 
 ; ---- the cs-g site guard (E188) --------------------------------------------
 ; Every cs-g site records a family arity d = (cc-llen (peel-pi-doms key)) and a
@@ -700,10 +720,10 @@
 (def st-add-gsite (-> SigV CState Core Str I64 (List (Pair I64 Core)) CState)
   (lam (sig st key g k fields)
     (case (arity sig g)
-      ((none)    (st-add-pois st key))
+      ((none)    (st-pois-defunc st key g "no declared type"))
       ((some ar) (case (=i ar (+ k (cc-llen(peel-pi-doms key))))
                    (true  (st-add-site st key (cs-g g k fields)))
-                   (false (st-add-pois st key)))))))
+                   (false (st-pois-defunc st key g "family arity disagrees with the global's")))))))
 
 ; ---- reg-lam helpers --------------------------------------------------------
 
@@ -958,7 +978,7 @@
 
 (def collect (-> SigV CState)
   (lam (sig)
-    (case sig ((sigv tys defs ctors) (collect-defs sig (cstate nil nil nil) defs)))))
+    (case sig ((sigv tys defs ctors) (collect-defs sig (cstate nil nil nil nil) defs)))))
 
 ; ================================================================ synth
 ; Term-building for one defunctionalization family: the $clo `data` sum (one ctor
@@ -1150,7 +1170,7 @@
 ; TYPES.  `doms` arrives from `(peel-pi-doms key)` and the key is one arbitrary
 ; family member's arrow type, stored by `ensure-fam` in traversal order, so the
 ; domains here spell ONE member's concrete types across an erasure `shape-eq`
-; (:335-356) already performed.  `closconv-driver`'s `apply-ptys` now STATES the
+; (:340-356) already performed.  `closconv-driver`'s `apply-ptys` now STATES the
 ; dispatcher's parameter types at the lowering type level, `nt-word` at every
 ; domain, and `compile-front`'s `peel-def` prefers that statement.  What is still
 ; READ off this chain is the CODOMAIN, which `cod-key-eq` (:365-380) keeps
