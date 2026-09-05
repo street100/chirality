@@ -60,8 +60,8 @@ number (section 3).
 | N5 | scope `decision-display-numerics` to weight/state/accumulator/message scales | L0 | decision | new |
 | N6 | quantity-typed state slot generalizing `Backend` | L1 | primitive | new |
 | N7 | logical-step/timestamp time parameter carried in the type | L1 | primitive | new |
-| N8 | `Encoding` sum (`Rate`/`Latency`/`Population`) | L2 | primitive | new |
-| N9 | encode/decode arithmetic over `Encoding` | L2 | law | new |
+| N8 | `Encoding` sum (`Rate`/`Latency`/`Population`), gaining a `max` on `Latency` and a `DecodeR` result. **BUILT as E196**, `prog/unit/encoding.chiral` | L2 | primitive | built |
+| N9 | encode/decode arithmetic over `Encoding`. **BUILT as E196**, gated by `tools/test/encoding.sh` at nine rows with four mutants | L2 | law | built |
 | N10 | `RecordRequest` sum (`record-spikes`/`record-membrane`/`record-weights`) | L2 | primitive | new |
 | N11 | unbounded trace type paired against `RunManifest`, parallel to `RawCall` | L2 | primitive | new |
 | N12 | spike/graded payload message-width contract | L2 | law | new |
@@ -284,7 +284,25 @@ Section 6's census reached all three. No hit for any, no move.
 This pass adds N36 through N40, the construction row group and dedication.
 Section 6's census reached all five. No hit for any, no move.
 
-## 6. The L0-L6 census
+## 6. Built so far
+
+**E196 closed N8 and N9 on 2026-09-05**, the first element of the lane through
+the full pipeline. `prog/unit/encoding.chiral` is 174 lines, gated by
+`tools/test/encoding.sh` at nine rows with four mutants, none of which reddens
+an arm it does not own. The suite held at 373 passed and 0 failed, the blob was
+byte-identical at 820,959 bytes, and no fixpoint was owed.
+
+Two of the design's defects were found by measurement rather than review:
+`Latency` carried no scale, which made two arms of one sum decode onto two
+domains, and `Population` decoded a silent window as a floor value. Both were
+repaired inside the element, and giving `Latency` a `max` unified the error law
+across all fourteen scalar rows.
+
+**40 of 42 rows remain.** Against the roster's ~4,600-line estimate, E196 spent
+roughly 174 lines of module plus its root and gate, so the remaining estimate is
+approximately 4,400 lines.
+
+## 7. The L0-L6 census
 
 The grep pass section 5 called for, run 2026-09-05 against every row in
 section 2 marked `origin: new`: 37 rows. Method, one or two targeted greps
