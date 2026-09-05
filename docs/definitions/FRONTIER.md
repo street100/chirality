@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: f1055fdc8507de830d3d49d9a5dfa62e615c4f591df1acad64d7aba4e93b2790 -->
+<!-- FRONTIER-SOURCES-SHA256: c63aa16ab23eb26d02b7694073a393e85ff0b0cf99e232c3a1d6fe0700aee1a6 -->
 <!-- sources: 160 files -->
 
 ## Decided recently
@@ -96,9 +96,9 @@ updated: 2026-09-04
 
 - drafted: 1
 - specced: 2
-- audited: 45
+- audited: 44
 - implemented: 63
-- **implemented: 2
+- **implemented: 3
 - built: 1
 - impl: 1
 - implemented-core: 1
@@ -114,6 +114,7 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 0b51d2e — E188 step 9: the records, with the claim beside its measurement
 - 2026-09-04 f6fa5a4 — E188 SPEC PASS: status specced -> audited
 - 2026-09-04 3d08402 — E188 SPEC audit: the census scoping is narrowed and M4 is replaced
 - 2026-09-04 bebc058 — E188 SPEC: the guard makes the spine saturated, and the census measures it
@@ -121,4 +122,3 @@ updated: 2026-09-04
 - 2026-09-04 09f445f — E188 pre-run: the unreachable arm is reached, and the tree already refuses this
 - 2026-09-04 5dd7031 — E186 step 6: the rows, and the author's row gets a pointer and stays open
 - 2026-09-04 0d87b27 — E186 step 1: the ruling is concrete, written where the fork was left open
-- 2026-09-04 c04ffd6 — E186 SPEC audit PASS: status specced -> audited
