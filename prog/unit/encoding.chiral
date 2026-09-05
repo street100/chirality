@@ -1,0 +1,174 @@
+; encoding.chiral -- E196: the seam between a continuous value and a spike train.
+;
+; One closed sum names how a value is carried as spikes, and one total decode
+; reads it back. Three schemes from the SNN neural-coding literature: rate
+; counts spikes in a window, latency carries one spike whose offset from a
+; shared reference is the value, population spreads the value across a group of
+; units each with its own preferred value and decodes the group's joint
+; activity as a weighted average.
+;
+; Every constructor carries what its OWN decode arm reads and nothing another
+; scheme would want instead. A field the decode never reads is dead; a decode
+; reaching for a field the constructor lacks is a type error.
+;
+; ⚑ INTEGER THROUGHOUT. decisions/decision-display-numerics rules out float in
+; this tree, and the domain never needed one: Loihi 2 is 32-bit fixed point with
+; spike payloads as integers up to 24 bits and no floating-point unit. The
+; triangular tuning curve below is what that buys instead of the conventional
+; Gaussian.
+;
+; ⚑ EVERY ARM CARRIES ITS OWN SCALE. `Rate` decodes onto [0, max] and `Latency`
+; would decode onto [0, window] without a `max` field, so a caller holding an
+; `Encoding` could not know the range without matching on the arm. With `max` on
+; both arms the two obey one law over one domain: `maxerr <= ceil(max/window)`,
+; measured over fourteen scalar configurations by tools/test/encoding.sh.
+; `Population`'s scale lives in `tuning` under any reading.
+;
+; ⚑ THE SCOPE STOPS AT THE SEAM. This file declares the sum, the decode and the
+; encoders. A neuron model, a population construct, a projection, an execution
+; discipline and any producer or consumer of a spike train are arcs/unit-lane-arc
+; rows N15 through N23, and every one of those rows is unminted.
+
+(import "prelude/prelude")
+(import "prelude/list")
+
+; ---- the seam ---------------------------------------------------------------
+;
+; `Population` is the one arm carrying arrays, because its decode spans the
+; whole group. `Rate` and `Latency` decode one unit and carry scalars.
+;
+; ⚑ `enc-population`'s FIELDS CARRY AN UNCHECKED PRECONDITION:
+; `size * max-tuning * max-count < 2^63`. `enc-decode`'s population arm forms
+; the dot product before dividing, so the numerator overflows past that bound
+; and the decode answers a negative value. Measured: size 64 with tuning
+; ceiling 2^31-1 and count ceiling 2^16 gives a numerator of
+; 4,503,599,623,241,728, which is 0.048828% of I64's range; size 64 with tuning
+; ceiling 2^40 and count ceiling 2^24 gives -520,093,696 and decodes to -1.
+; Expressing the bound needs `refine` on a constructor field, which has no arc
+; row and no element, so it is stated here and left unbuilt.
+(data Encoding ()
+  (enc-rate       (window I64) (count I64) (max I64))
+  (enc-latency    (window I64) (ref I64) (max I64) (first-spike (Maybe I64)))
+  (enc-population (size I64) (tuning (List I64)) (count (List I64))))
+
+; ---- what a decode answers --------------------------------------------------
+;
+; ⚑ SILENCE IS A VALUE OF ITS OWN. A window in which nothing fired and a
+; window decoding to the floor are two different facts, and collapsing them puts
+; the reason downstream of the only place that holds it. The measurement is
+; direct: on the sharp population sweep, folding silence into `(d-val 0)` moves
+; the maximum error from 19 to 980 and hides 727 of 1,001 readings. This is the
+; boundary-sums directive banks/unit shard F's `bind-miss` and shard S's
+; `accept-gate` already apply.
+(data DecodeR ()
+  (d-val    (v I64))
+  (d-silent))
+
+; ---- integer helpers the decode needs ---------------------------------------
+
+(def enc-abs (-> I64 I64)
+  (lam (x) (case (<i x 0) (true (- 0 x)) (false x))))
+
+(declare enc-dot (-> (List I64) (List I64) I64))
+(def enc-dot (lam (a b)
+  (case a
+    (nil 0)
+    ((cons x xs)
+      (case b
+        (nil 0)
+        ((cons y ys) (+ (* x y) (enc-dot xs ys))))))))
+
+(declare enc-sum (-> (List I64) I64))
+(def enc-sum (lam (a)
+  (case a
+    (nil 0)
+    ((cons x xs) (+ x (enc-sum xs))))))
+
+(declare enc-nonzero (-> (List I64) I64))
+(def enc-nonzero (lam (a)
+  (case a
+    (nil 0)
+    ((cons x xs)
+      (case (=i x 0)
+        (true  (enc-nonzero xs))
+        (false (+ 1 (enc-nonzero xs))))))))
+
+; ---- the decode -------------------------------------------------------------
+;
+; ONE total function over the sum. Three arms, no `_`, integer only, and `->`
+; because nothing here crosses a port.
+;
+;   rate      count the spikes and scale the count back onto [0, max]
+;   latency   the offset is the window's COMPLEMENT, so a large value fires
+;             early; the round trip subtracts the reference and complements back
+;   population the group's activity-weighted mean of the preferred values
+(declare enc-decode (-> Encoding DecodeR))
+(def enc-decode (lam (e)
+  (case e
+    ((enc-rate w c m) (d-val (/ (* c m) w)))
+    ((enc-latency w r m f)
+      (case f
+        (none (d-silent))
+        ((some t) (d-val (/ (* (- w (- t r)) m) w)))))
+    ((enc-population n ts cs)
+      (let ((den (enc-sum cs)))
+        (case (=i den 0)
+          (true  (d-silent))
+          (false (d-val (/ (enc-dot ts cs) den)))))))))
+
+; how many units carry a spike. `Rate` and `Latency` are one unit apiece, so the
+; answer is 0 or 1; `Population` counts the group. The sweep's `maxfire` column
+; reads this, and it is what separates a configuration whose tuning curve is
+; observable from one where a lone firing unit decodes to its own preferred
+; value whatever count it carries.
+(declare enc-fired (-> Encoding I64))
+(def enc-fired (lam (e)
+  (case e
+    ((enc-rate w c m) (case (=i c 0) (true 0) (false 1)))
+    ((enc-latency w r m f) (case f (none 0) ((some t) 1)))
+    ((enc-population n ts cs) (enc-nonzero cs)))))
+
+; ---- the encoders, one per arm, each the inverse of its own decode arm -------
+
+(def enc-rate-of (-> I64 I64 I64 Encoding)
+  (lam (w m v) (enc-rate w (/ (* v w) m) m)))
+
+; a value at the floor never fires and the field is `none`.
+(def enc-latency-of (-> I64 I64 I64 I64 Encoding)
+  (lam (w r m v)
+    (case (=i v 0)
+      (true  (enc-latency w r m none))
+      (false (enc-latency w r m (some (+ r (- w (/ (* v w) m)))))))))
+
+; `size` preferred values spread evenly over [0, max]. Even spacing is what
+; makes a configuration either blind or overlapping, and one configuration
+; cannot be both: spacing is `max/(size-1)`, silence needs the half-width below
+; half of it and overlap needs the half-width above it.
+(declare enc-tuning-go (-> I64 I64 I64 (List I64)))
+(def enc-tuning-go (lam (i n m)
+  (case (<i i n)
+    (false nil)
+    (true (cons (/ (* i m) (- n 1)) (enc-tuning-go (+ i 1) n m))))))
+
+(def enc-tuning (-> I64 I64 (List I64))
+  (lam (n m) (enc-tuning-go 0 n m)))
+
+; triangular tuning of half-width `h` and peak `k`: a unit `h` away from the
+; value is silent, a unit on the value fires `k`, and the fall is linear. The
+; conventional Gaussian is what the integer discipline removes.
+(declare enc-counts (-> (List I64) I64 I64 I64 (List I64)))
+(def enc-counts (lam (ts v h k)
+  (case ts
+    (nil nil)
+    ((cons t r)
+      (let ((d (enc-abs (- v t))))
+        (case (<i d h)
+          (true  (cons (- k (/ (* k d) h)) (enc-counts r v h k)))
+          (false (cons 0 (enc-counts r v h k)))))))))
+
+; the whole population encode: `n` units spread over [0, m], each firing its own
+; triangular response to `v`.
+(def enc-population-of (-> I64 I64 I64 I64 I64 Encoding)
+  (lam (n m v h k)
+    (let ((ts (enc-tuning n m)))
+      (enc-population n ts (enc-counts ts v h k)))))
