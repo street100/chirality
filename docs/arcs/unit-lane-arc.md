@@ -102,6 +102,17 @@ Every other row reads `unminted`.
 
 ## Resume state
 
+**E196 is specced** at `docs/elements/specs/E196-encoding-seam-SPEC.md`
+(2026-09-05), which carries `unit-lane/N8` and `unit-lane/N9` one step from
+implementation. Six open questions are dispositioned and none blocks: `Latency`
+gains `max`, the decode returns a `DecodeR` result sum, the module lands at
+`prog/unit/encoding.chiral`, and the gate declares itself out of the dispatch
+table under the standing suite-phase-number call. The change plan ran off-tree
+against a copy of `lib/` and `prog/` and produced three new files, none under
+`lib/`, so the element owes no fixpoint; the SPEC measures that against
+`prog/compiler.prog`'s blob rather than reasoning about imports.
+
+
 The census ran 2026-09-05 at `471f688`. It checked 37 `origin: new` rows
 against `lib/` and `prog/` and **moved none of them**, so the roster's
 sizing holds and this lane is genuinely new work. Three hits were held at
