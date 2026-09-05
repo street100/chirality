@@ -191,7 +191,7 @@
 
 ; ---- E185: the stated-parameter lookup ---------------------------------------
 ; `closconv-sig` invents the `$apply<i>` dispatchers, and the family key it built
-; them from ERASED every domain (`shape-eq`, closconv.chiral:335-356).  The Pi
+; them from ERASED every domain (`shape-eq`, closconv.chiral:340-356).  The Pi
 ; chain `apply-ty` writes therefore spells those domains with ONE arbitrary
 ; family member's concrete `Core` types, chosen by traversal order, and peeling
 ; them here carried that arbitrary choice into the emitted `TFn`
@@ -339,7 +339,7 @@
 ; sites see, so the stated types reach the back half with no edit there.
 (def bridge-sig (-> CCOut Str FR)
   (lam (cc name)
-    (case cc ((ccout sig sp)
+    (case cc ((ccout sig sp dsk)
     (case (glookup (sig-globals sig) name)
       (none (fr-err (str-cat "no such def: " name)))
       ((some tb) (let (defs (peel-globals (emap-app (build-emap (sig-globals sig)) (build-pmap (sig-prims sig))) sp (sig-globals sig)))

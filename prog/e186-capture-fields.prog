@@ -284,7 +284,7 @@
         ((ld-err m) (do (put (e186-absent (str-cat "load: " (dg-msg m)))) 0))
         ((ld-ok sig)
           (case (closconv-sig (specialize-singletons sig))
-            ((ccout sig2 stated)
+            ((ccout sig2 stated dsk2)
               (case (e186-find-nd (datas->n (sig-datas sig2)) "$clo0")
                 ((none) (do (put (e186-absent "no $clo0 in datas->n's output")) 0))
                 ((some nd)

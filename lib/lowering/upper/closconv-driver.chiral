@@ -139,7 +139,10 @@
 ; closconv-sig's output: the rewritten Sig, plus what the pass STATED about the
 ; names it invented.  A Sig alone cannot carry it, because a Sig global holds a
 ; Term and there is no Term that spells the erased word.
-(data CCOut () (ccout (sig Sig) (stated (List (Pair Str (List NTalTy))))))
+; E187: `dsk` is what `collect` stated about the families it refused.  It rides
+; the same seam the stated types do, because a refusal a caller cannot name is
+; the defect this channel closes.
+(data CCOut () (ccout (sig Sig) (stated (List (Pair Str (List NTalTy)))) (dsk (List SkRec))))
 
 (def site-fields (-> Csite (List (Pair I64 Core)))
   (lam (s) (case s ((cs-g g k f) f) ((cs-lam inr d cap f) f))))
@@ -280,11 +283,13 @@
       (let (sv (build-sigv s))
         (case (collect sv) ((cstate fams ho pois dsk)
           (case (keep-fams fams pois)
-            (nil (ccout s nil))                         ; closure-free: untouched
+            ; closure-free: untouched.  The causes still ride out: this is the arm
+            ; a program whose ONLY family was poisoned lands in.
+            (nil (ccout s nil dsk))
             ((cons kf kr)
               (case (synth-fams sv (cons kf kr) 0 (synr nil nil nil nil)) ((synr clos applies ka stated)
                 (ccout (mk-sig (app-glob (rewrite-defs sv ka g) applies)
                                p
                                (app-data d clos)
                                la ld tg pf km sh)
-                       stated))))))))))))
+                       stated dsk))))))))))))
