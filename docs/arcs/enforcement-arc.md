@@ -65,7 +65,10 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    `call: unknown tal function` on a port extern the tal function table does not
    carry, first instance `bput-u8`** ([[records/enforcement-arc]] EN-24). That
    is what stands between here and `ck-prog` on the shipping path: the extern
-   table, not a loader refusal and not a type-level fork.
+   table, not a loader refusal and not a type-level fork. ⚑ **The tree cannot
+   re-derive those three numbers.** The probe that produced them was never
+   committed ([[records/enforcement-arc]] EN-25), so this requirement's
+   remaining scope is stated in a figure no one can reproduce.
 
    E16's title names the preserve-check and three of its four deliverables are
    built; E18's checker and reference interpreter exist unreached.
@@ -94,16 +97,36 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    figure above measures the checker agreeing with the compiler and says nothing
    about either being right. **E188** owns that defect, and E188 is **built**.
 
-   ⚑ **The content is done and the dispatch is owed to a phase number.** The
-   evidence for this requirement is Phase 22, `tools/test/tal-check.sh`, which
-   `tools/test/registration.sh` prints as `PEND  tal-check.sh -- it claims 22,
-   which is inside Lane B's reserved 21-23 band.` The gate is written, runs by
-   hand and passes; it is outside `run-tests.sh`'s dispatch table, so the suite
-   line does not carry it. Nothing technical is left. What is left is the
-   standing suite-phase-number author call, 21 through 23 contested across four
-   documents ([[records/author-calls]]), and a session is barred from making it.
+   ⚑ **THE EVIDENCE GATE IS RED, AND THE CLAIM THAT NOTHING TECHNICAL IS LEFT
+   WAS FALSE WHEN IT WAS WRITTEN.** The evidence for this requirement is Phase
+   22, `tools/test/tal-check.sh`, which `tools/test/registration.sh` prints as
+   `PEND  tal-check.sh -- it claims 22, which is inside Lane B's reserved 21-23
+   band.` Run by hand at HEAD on 2026-09-05 it **exits 1** and reads
+   **`20 ok, 1 FAIL`**. The failing row is
+   `FAIL  G18 'def ck-prog' appears 1 time(s) in the compiler blob`. G18 asserts
+   that `lowering/tal/check` stays OUTSIDE the compiler's closure, and
+   requirement 4's wiring at `5b7478f` put it inside:
+   `lib/lowering/compile-back.chiral:16` imports `lowering/upper/optimize` and
+   `lib/lowering/upper/optimize.chiral:17` imports `lowering/tal/check`. G18 is
+   therefore falsified correctly by the tree it measures.
+
+   ⚑ **THE REDNESS WAS PRE-REGISTERED AND THE FOLLOW-THROUGH WAS NOT.**
+   `tools/test/tal-check.sh:79-81`, written at `5b4fb71` two days before the
+   wiring, says the row "goes red the day one of them is wired, and on that day
+   the red row is a REMINDER to retire this gate. It reports no defect." That
+   note rules out a compiler defect. It leaves the absent check exactly where it
+   was, and it was never acted on: the wiring shipped and no file under
+   `tools/test/` was touched ([[records/enforcement-arc]] EN-25). **What is left
+   here includes technical work.** G18's fate is an author call and carrying it
+   out edits a gate script, so this requirement waits on more than a number.
+
+   The suite-phase-number author call is separate and still open: 21 through 23,
+   contested across four documents ([[records/author-calls]]), and a session is
+   barred from making it. Phase 22 sits outside `run-tests.sh`'s dispatch table
+   under either answer, so the suite line does not carry it today.
 4. **The optimizer's re-check runs, or E17 says why it does not.**
-   **CLOSED 2026-09-05 on the first branch**, [[records/enforcement-arc]] EN-24.
+   **CLOSED 2026-09-05 on the first branch**, [[records/enforcement-arc]] EN-24,
+   and ⚑ **the closure is short of its own evidence**, two paragraphs down.
    `lib/lowering/compile-back.chiral:16` imports `lowering/upper/optimize` and
    `lower-defs` hands every emitted TFn to `re-check`, adopting the residual
    only through `chk-ok`, which ck-fn has to form. Measured on the promoted
@@ -111,7 +134,38 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    the un-folded baseline accepts the same 1,550, so the fold costs no
    acceptance. The 32 are `call: unknown tal function` on port externs and are
    requirement 2's. Fixpoint `F2 == F3 == F4` at 1,241,464 bytes,
-   `391 passed, 0 failed`, `91 roots built, 0 failed`, gate PASSED.
+   `391 passed, 0 failed`, `91 roots built, 0 failed`, gate PASSED on the day of
+   promotion. Re-run at HEAD 2026-09-05: `391 passed, 0 failed`,
+   **`92 roots built, 0 failed`**, gate PASSED, exit 0. The extra root is
+   `prog/e197-recording-sweep.prog`, added by E197 at `a2130c5`.
+
+   ⚑ **THE CLOSURE SHIPPED NO GATE, LEFT ONE RED, AND RESTS ON A PROBE THAT IS
+   NOT IN THE TREE.** [[records/enforcement-arc]] EN-25 measures all three.
+   `git show --stat 5b7478f` touches `bin/chirality-bin`,
+   `lib/lowering/compile-back.chiral` and `lib/lowering/upper/optimize.chiral`,
+   and **zero files under `tools/test/`**; `e7c27e7` seven minutes later is
+   documentation. Every other element that landed this week shipped a gate in
+   its own step commit: E186 `capture-fields.sh` (`f1d86b7`), E188
+   `apply-spine.sh` (`bd367bf`), E187 `defunc-blame.sh` (`7a0b3fd`), E196
+   `encoding.sh` (`799bf06`), E197 `recording.sh` (`a2130c5`). Grep over
+   `tools/test/` for `compile-back`, `optimize`, `opt-tfns` and `chk-ok` finds
+   no assertion about the wiring, so **cutting the wiring would leave the suite
+   at `391 passed, 0 failed`**. The one gate over the module the wiring pulled
+   into the closure, Phase 22, is red at HEAD and sits outside the dispatch
+   table, so nothing runs it. And the `1,582 / 1,550 / 32` figure the closure
+   rests on came from a probe outside `lib/` and `prog/` that was never
+   committed: nothing under `prog/` or `tools/` mentions `opt-tfns`, and nothing
+   in the tree reproduces `1,582`.
+
+   **What is built, what is unverified, what is owed.** Built: the import,
+   `opt-tfns` on `lower-defs`' `le-ok` arm, the `chk-ok` adoption, and a fixpoint
+   at 1,241,464 bytes under a green suite. Unverified: that the re-check runs on
+   a shipping compile at all, because no gate reads it and the suite is
+   indifferent to its removal. Owed: a gate that reddens when the wiring is cut,
+   and a committed form of the probe behind `1,582 / 1,550 / 32`, which is also
+   requirement 2's scope statement. That owed gate has no element.
+   **Whether this requirement reopens is the author's call and this file does
+   not make it.**
 
    ⚑ **THE COLLISIONS THIS REQUIREMENT WAS WAITING ON WERE ALREADY GONE.** The
    eleven E154 names were prefixed `tck-` at `5b4fb71` and `lowering/tal/check`
@@ -158,6 +212,13 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    on [[arcs/independent-judgment-arc]] J1, the distinctness criterion, which is
    rowed there as not started (TC-12).
 
+   ⚑ **Every gate-tier line figure in this requirement is behind by at least
+   `recording.sh`.** They were taken at `67d3d54` (2026-09-04 11:52). E197's
+   gate, `tools/test/recording.sh` at **414 lines**, landed at `a2130c5`
+   (2026-09-05 15:41), and E196's `tools/test/encoding.sh` at 306 landed at
+   `799bf06` the same day. No corrected total is written here because none was
+   measured.
+
    ⚑ **The 352 this requirement carried until 2026-09-04 was a word-occurrence
    count, presented as a call count with a composition behind every one.**
    `grep -ohE '\bgrep\b' tools/test/*.sh` and its three siblings return 149,
@@ -185,17 +246,25 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    [[goals/enforcement]] and from `docs/definitions/testing-floors.md:261`. E173
    found two rows that could not fail; both were repaired at `e882568`.
 
-   **Two halves, and they part company.** ⚑ *Registration.* `ls tools/test/*.sh`
-   lists **twenty-four** scripts, `run-tests.sh` dispatches thirteen, and
-   **eleven sit outside the dispatch table**: `run-tests.sh` itself,
-   `apply-spine.sh`, `apply-word.sh`, `capture-fields.sh`, `crypto.sh`,
-   `defunc-blame.sh`, `encoding.sh`, `map-integrity.sh`, `mutant.sh`,
-   `registration.sh` and `tal-check.sh`. Every one is built, runs green by hand,
-   and carries a `not-a-phase:` declaration with a reason in its own header,
-   which `registration.sh` G2 and G4 enforce. So no row is undeclared. Whether
-   any of the eleven *should* be dispatched is the suite-phase-number author
-   call, the same one requirement 3 waits on ([[records/gate-audit]] GA-10,
-   still OPEN for that reason).
+   **Two halves, and they part company.** ⚑ *Registration.* Measured at HEAD
+   2026-09-05: `ls tools/test/*.sh` lists **25** scripts, `run-tests.sh`
+   dispatches **thirteen**, and **twelve sit outside the dispatch table**:
+   `run-tests.sh` itself, `apply-spine.sh`, `apply-word.sh`,
+   `capture-fields.sh`, `crypto.sh`, `defunc-blame.sh`, `encoding.sh`,
+   `map-integrity.sh`, `mutant.sh`, `recording.sh`, `registration.sh` and
+   `tal-check.sh`. `registration.sh` prints the same split as
+   `12 of 25 scripts are outside the dispatch table by their own declaration.`
+   The twenty-four and eleven this paragraph carried until 2026-09-05 predate
+   `recording.sh`, E197's gate, added at `a2130c5`. Every one carries a
+   `not-a-phase:` declaration with a reason in its own header, which
+   `registration.sh` G2 and G4 enforce, so no row is undeclared and that half
+   survives the recount. ⚑ **`tal-check.sh` does not run green.** It exits 1 at
+   `20 ok, 1 FAIL` on G18 (requirement 3), which is the wiring's doing rather
+   than the gate's. The "built, runs green by hand" this paragraph carried is
+   measured false for `tal-check.sh` and unre-measured for the other eleven.
+   Whether any of the twelve *should*
+   be dispatched is the suite-phase-number author call, the same one requirement
+   3 waits on ([[records/gate-audit]] GA-10, still OPEN for that reason).
 
    ⚑ *Rows nothing can move.* Two rows in [[records/gate-audit]] stay OPEN with
    stated reasons. **GA-04**: `ba62549` took `profile-target.sh` from 1 of 31
@@ -243,10 +312,14 @@ it and a built composition behind 30 of them. The program of work is gated on
 [[arcs/independent-judgment-arc]] J1, the distinctness criterion, rowed there as
 not started (TC-12).
 
-**Requirements 3 and 4 are closed on content, and requirement 2 is the live
-one.** Requirement 3's evidence is Phase 22, written and passing and undispatched;
-requirement 4 closed 2026-09-05 by EN-24. What requirement 2 has left is the 32
-`call: unknown tal function` refusals on port externs, first `bput-u8`.
+⚑ **REQUIREMENTS 3 AND 4 ARE NOT CLOSED ON CONTENT, AND THIS PARAGRAPH SAID
+THEY WERE.** Requirement 3's evidence is Phase 22, `tools/test/tal-check.sh`,
+which exits 1 at HEAD reading `20 ok, 1 FAIL` on G18. Requirement 4's closure
+shipped no gate, left G18 unrun, and rests on an uncommitted probe
+([[records/enforcement-arc]] EN-25). Requirement 2 is still the live one, and
+what it has left is the 32 `call: unknown tal function` refusals on port
+externs, first `bput-u8`. That figure comes from the same uncommitted probe and
+cannot be re-derived from the tree.
 
 **The eleven name collisions are resolved and block nothing.** They were prefixed
 `tck-` at `5b4fb71`, and `lowering/tal/check` loads beside the compiler's whole
