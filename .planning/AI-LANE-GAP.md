@@ -6,7 +6,14 @@ census of the manas shard set. No arc holds any of it. This maps the four
 notes and the census onto a row table, onto `goals/local-ai`'s conditions,
 and onto a line-count estimate, using only measurements already on record.
 
-## 1. The layer stack
+## 1. The layer graph
+
+L0 through L7 are labels. Reading them in order as a build sequence is
+wrong. Two edges run against the numbering: L7 drives the modulator at L3,
+and N30's back-propagating spike crosses inward at L5. The sequence
+reading breaks on both: L3 would have to build before L7 supplies the
+modulator's broadcast, and L5 would need every outward crossing finished
+before the one inward edge it also carries exists.
 
 | | layer | what exists today |
 |---|---|---|
@@ -18,6 +25,14 @@ and onto a line-count estimate, using only measurements already on record.
 | L5 | execution protocol: the `Advance` sum | Given as a design shape in `AI-LANE-EXECUTION` section 4, unbuilt. The tree's own loop is a Mealy FSM (shard Q, E66, "already chirality") driving one flat step (shard P): one discipline picked once for the whole run |
 | L6 | plasticity: a rule bound to a projection, over a weight change or a structural placement change | Absent. `docs/banks/unit.md` section 5 point 7 measured that `ExpertCall`/`RunManifest` are append-only: nothing folds a later verdict back into an earlier record, which is the revision channel a plasticity rule needs |
 | L7 | deliberative composition: `Flow`, `Skill`, `Expert` | Built. Shards A, C, H, K, O are all **compiled**: present, complete, compiling on every suite pass, executed by none of it, per section 2's own census |
+
+### The edges
+
+| edge | direction | what crosses |
+|---|---|---|
+| L7 -> L3 | against the numbering | L7's own composition (`Flow`/`Skill`/`Expert`) drives the modulator (N35) |
+| L3 -> L6 | with the numbering | the modulator's broadcast reaches L6: N25's learning signal, N34's metaparameter channels |
+| L5 -> L3 | against the numbering | N30's spike crosses inward, from the execution protocol's outward (`=>`) boundary into the member's own dendrite |
 
 The L3/L4 boundary above sits one atom finer than the row first drawn it.
 `AI-LANE-DENDRITES` measured the branch as the atom carrying nonlinearity,
@@ -61,6 +76,11 @@ number (section 3).
 | N19 | routing table (address down to a compartment, plus fan-out) | L4 | primitive | new |
 | N20 | lift `Population`/`Projection` through `Flow`, reusing shards C/D | L4 | law | connect |
 | N31 | branch-targeted inhibition: shunting inhibition vetoes one branch, pathway-specific gating; a second routing target the topology layer must carry | L4 | primitive | new |
+| N36 | construct a `Population` from a count, a unit model and parameters | L4 | law | new |
+| N37 | wire a `Projection` from a pre-population, a post-population and a connector | L4 | law | new |
+| N38 | connector vocabulary as a closed sum: all-to-all, one-to-one, fixed-probability, explicit list | L4 | primitive | new |
+| N39 | assemble populations and projections into a network value the execution layer can run | L4 | primitive | new |
+| N40 | dedication: a field on `Population` naming what the group is for | L4 | primitive | new |
 | N21 | `Advance` sum (`advance-tick`/`advance-on-event`/`advance-hybrid`) | L5 | primitive | new |
 | N22 | per-member membrane discipline (`->` pure step, `=>` boundary) | L5 | law | new |
 | N23 | build the membrane once per member; `Advance` picks the trigger, no shared queue | L5 | decision | new |
@@ -94,6 +114,22 @@ would cost a subsystem. N35 gives that broadcast a unit kind of its own,
 distinct from the neuron unit at N15 and from `Expert`: a modulator
 computes nothing locally, holds no per-unit state, and exists to broadcast
 one output across a large fan-out.
+
+N36 through N39 give the roster verbs. Every row above names a type:
+`Population`, `Projection`, `Encoding`, `Advance`, `Modulator`. PyNN's own
+API is constructive: `Population(n, cellclass, params)` builds a
+population value and `Projection(pre, post, connector)` wires one. Manas
+today declares an `Expert` and cannot construct one. N36 and N37 are that
+constructor pair. N38 is the connector sum N37 draws its third argument
+from. N39 assembles the constructed populations and projections into the
+network value the execution layer runs, the role `Pipeline` plays for
+`Flow` today.
+
+N40 gives dedication a field. `Expert` carries `lens`, `sees`, `returns`
+and `slot`, prose descriptors of what the expert is for. `Population`
+carries none. Dedication is the L7 concept reaching down to L4: it states
+what the group is for. That is what turns a population into a lobe.
+Without it a population is a bag of units with no purpose attached.
 
 ## 3. Mapping to the tree's units of work
 
@@ -131,15 +167,15 @@ measure.
 
 | by layer | rows | by kind | rows | by origin | rows |
 |---|---|---|---|---|---|
-| L0 | 5 | primitive | 19 | new | 30 |
-| L1 | 2 | law | 9 | connect | 4 |
+| L0 | 5 | primitive | 22 | new | 35 |
+| L1 | 2 | law | 11 | connect | 4 |
 | L2 | 5 | port | 3 | bind | 1 |
 | L3 | 6 | decision | 3 | | |
-| L4 | 5 | tool | 1 | | |
+| L4 | 10 | tool | 1 | | |
 | L5 | 4 | | | | |
 | L6 | 5 | | | | |
 | L7 | 3 | | | | |
-| **total** | **35** | | **35** | | **35** |
+| **total** | **40** | | **40** | | **40** |
 
 L3, L4, L5 and L6 each carry the corrected row set: L3 gained N32, L4
 gained N31, L5 gained N30, and L6 gained N33 alongside N26's widened scope.
@@ -147,6 +183,12 @@ This pass splits N25 into three rows: N25 narrows to the broadcast channel,
 N34 carries the three metaparameter channels, and N35 gives the broadcast
 its own unit kind at L3. L3 now also carries N35; L6 now also carries N34.
 L0, L1, L2 and L7 are unchanged from both passes.
+
+This pass adds five rows, all at L4: N36 and N37 (kind law), N38 through
+N40 (kind primitive), all origin new. L4 moves from 5 rows to 10. Kind
+moves from 19/9/3/3/1 to 22/11/3/3/1 (primitive/law/port/decision/tool).
+Origin moves from 30/4/1 to 35/4/1 (new/connect/bind). L0, L1, L2, L3, L5,
+L6 and L7 are unchanged this pass.
 
 Line estimate per layer, reasoned against the tree's own comparable
 modules (`flow.chiral` at 1,373 lines, the chatter layer at 2,057 lines,
@@ -158,11 +200,11 @@ shard K's `manifest.chiral`/`golden.chiral` pair):
 | L1 | ~200 | two type-level generalizations of an existing porttype |
 | L2 | ~550 | three sum types plus decode arithmetic plus a codec pair, scaled against shard K |
 | L3 | ~700 | a typed-I/O closure, a bug fix, a new porttype, one ProcessModel per backend, one cheap per-compartment decay-rate variable (N32), plus one stateless broadcaster unit kind (N35) |
-| L4 | ~850 | two new constructs plus a routing table plus a `Flow` lift plus a branch-targeted inhibition target (N31), the most structural layer |
+| L4 | ~1,150 | two new constructs plus a routing table plus a `Flow` lift plus a branch-targeted inhibition target (N31), plus the construction API that builds and wires them (N36-N39), plus a dedication field (N40), the most structural layer |
 | L5 | ~750 | a sum type, a per-member discipline, the runner wiring it drives, plus an inward feedback-edge constructor (N30) that `Advance` has no analog for today |
 | L6 | ~650 | one trace type (N24), a fixed-random broadcast channel (N25) costing a wiring line, a small metaparameter-channel construct (N34), a plasticity rule widened to carry a structural placement change (N26), plus a distinct offline consolidation mode (N33) |
 | L7 | ~300 | almost entirely reuse; the cost is wiring |
-| **total** | **~4,150** | |
+| **total** | **~4,450** | |
 
 Four estimates moved: L3 by +50, L4 by +50, L5 by +50, L6 by +100. Each
 matches the one row its layer gained, except L6, which gained one row
@@ -176,8 +218,12 @@ did, since a weight that never trains needs no training machinery of its
 own. The two changes leave L6's net move at +50 rather than the sum of
 each change taken alone.
 
+This pass moves one more. L4 moves by +300, for the five rows in the
+construction group and dedication (N36-N40): two constructor functions, a
+closed connector sum, a network-assembly value, and a dedication field.
+
 The tree is 44,682 lines. `prog/manas/` is 9,990 of it. The estimate above
-is roughly 9% of the tree and about 42% of manas's own size, smaller than
+is roughly 10% of the tree and about 45% of manas's own size, smaller than
 manas itself because L7, the layer closest to manas, is nearly all
 `connect`.
 
@@ -207,11 +253,11 @@ sits in the `Op` sum, unbound at surface, one hit out of five gap-table
 rows. That is row N1, and it is the cheapest row in the whole table: a
 bind rather than a build.
 
-The implication for section 2's 30 `origin: new` rows is that they were
+The implication for section 2's 35 `origin: new` rows is that they were
 never checked against the tree the way A-S were. `origin: connect` rows
 (N1, N20, N27, N28, N29) cost a gate or a wiring line. `origin: new` rows
 cost a subsystem. The L7 census undercounted what already existed before
-this bank ran it. Some of the 30 `new` rows above are likely `connect` rows
+this bank ran it. Some of the 35 `new` rows above are likely `connect` rows
 nobody has looked for yet, and that grep should run before any of L1-L6 is
 treated as a green field.
 
@@ -223,3 +269,6 @@ above runs further toward `new` until that census exists.
 This pass adds N34 and N35 and narrows N25 to the broadcast channel alone.
 The same gap applies: no census reached N34 or N35 either, and each could
 turn out to be a `connect` row nobody has looked for yet.
+
+This pass adds N36 through N40, the construction row group and dedication.
+The same gap applies. No census reached them either.
