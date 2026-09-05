@@ -215,42 +215,124 @@ learning nothing across a link requires per-link state, which requires a link,
 which puts a party at the floor of the model. §15's `R1` is the fork that
 records this, and the ruling reaches it.
 
-## §9 · Discovery as the cover stream
+## §9 · Discovery, and why it is the cover stream
 
-**The idea.** Ordinary cover traffic is waste. Discovery is work that happens
-anyway. A real ask inserted into a discovery stream that was going to run costs
-the difference between the two, which is what makes it low cost.
+### Three things wear the name
 
-**Established.**
+Separating them is what lets the design close.
 
-- a discovery ask and a real ask have to be one shape on the wire. That is a
-  type-level property and it is cheap here.
-- **a cover ask has to be satisfiable.** A holder that can serve some asks and
-  never others learns which were real by which ones hit. This puts a floor
-  under how meaningless a cover ask is allowed to be.
-
-**The spectrum, and the whole design sits somewhere on it.**
-
-| a cover ask asks for | usefulness | what it leaks |
+| | the question | the mechanism |
 |---|---|---|
-| marks a peer advertised | high. It fills the cache with real values | your interest, exactly |
-| marks adjacent to what is already held | medium. It prefetches plausibly | the neighbourhood of your interest |
-| marks drawn from a shared public set | low | nothing about you |
-| values no holder can serve | zero, and it fails the satisfiability rule above | nothing, and a holder separates real from cover trivially |
+| peer | who am I linked to | out of band pairing. The first hop is a human act and no network mechanism reaches it |
+| existence | what is there to want | an index is a document. No new mechanism |
+| content | who holds mark `M` | a holdings summary |
 
-**What would settle it.** A stated mix, and a ruling on whether the mix is a
-protocol constant or deployment policy.
+### Existence discovery needs no mechanism
 
-**Notes to cover.**
+A document carries the marks of other documents, so following a link is a
+fetch. An index is a document listing marks, so searching is a fetch of
+somebody's index. The one new thing is a mutable pointer, "the current index of
+party `P`", which belongs to the naming layer and carries a signature. The rest
+is already the three verbs.
 
-- who chooses what a cover ask asks for, and out of what set
-- whether a peer answering a cover ask does useful work or wasted work
+This is why existence discovery costs nothing to design. It reduces to content
+discovery plus one mutable pointer per party.
+
+### Content discovery is a holdings summary
+
+| | |
+|---|---|
+| what a peer publishes | a summary of the marks it holds. A Bloom filter is the reference shape, roughly 10 bits per mark at a 1% false positive rate, so ten thousand marks is about twelve kilobytes |
+| what a false positive costs | one wasted ask, which is why the filter can be deliberately small |
+| how a summary is exchanged | **the summary is a document with its own mark**, so fetching one uses the three verbs and needs nothing new |
+| what it buys | with a summary per paired peer, a real ask goes to one peer instead of flooding. `route` reads them out of `Table` |
+
+### Why this is the cover stream
+
+Summary sync carries four properties that ordinary cover traffic lacks.
+
+| property | why it holds |
+|---|---|
+| unlimited supply | a summary can always be re-fetched, at a higher resolution, or for a peer's peers |
+| satisfiable by construction | it exists and it resolves, so the satisfiability floor below is met with no effort |
+| real work | every synced summary makes some future real ask route in one hop |
+| identical shape | a summary fetch **is** a fetch |
+
+**More cover makes real routing cheaper.** Ordinary cover traffic is a tax.
+This is a prefetch that happens to be indistinguishable from the thing it
+hides, and that is the whole of low cost and high value. It is also why the
+mechanism has to be discovery specifically and cannot be arbitrary filler.
+
+**The satisfiability floor.** A cover ask has to be answerable. A holder that
+can serve some asks and never others separates real from cover by which ones
+hit. Summary sync meets this without trying, and it is the constraint that
+kills the obvious cheap answer of asking for noise.
+
+### Two adversaries, and cover answers one
+
+| adversary | what it sees | what cover does |
+|---|---|---|
+| a hop or an on-path observer | that a slot was used | **solved.** Under per-link encryption and §10's cadence every slot is opaque and identical, and summary sync fills the idle ones |
+| the peer being asked | exactly which mark was asked | **nothing.** A peer knows a summary fetch when it serves one, so summary traffic is no decoy against it |
+
+This is the distinction the design turns on. Against a hop, cover is free and
+the problem closes. Against the peer serving the ask, a decoy has to be a
+plausible real ask, which means asking for values that are unwanted, which
+leaks the neighbourhood of the wanted ones.
+
+**One free contribution.** Bloom false positives produce genuine asks for
+values the peer does not hold, and to that peer they are indistinguishable from
+real asks. The filter's error rate is a decoy rate, and it is already being
+paid for another reason.
+
+### The spectrum, scoped to the peer being asked
+
+The rows below apply to the second adversary only. Against the first, §10's
+cadence already closed it.
+
+| a decoy ask asks for | usefulness | what it leaks to the peer |
+|---|---|---|
+| marks that peer advertised | high. It fills the cache with real values | the interest, exactly |
+| marks adjacent to what is already held | medium. It prefetches plausibly | the neighbourhood of the interest |
+| marks drawn from a shared public set | low | nothing |
+| a Bloom false positive | zero, and it is free | nothing, and it arrives without being chosen |
+
+### The counterintuitive part, and it is deliberate
+
+Re-fetching a whole summary is wasteful beside fetching a delta. The waste is
+the cover, so the wasteful option is the better one here. A delta scheme would
+need a mutable pointer per summary and would shrink the cover supply at the
+same time.
+
+### The disclosure this introduces
+
+Publishing a summary tells anyone who fetches it what a peer holds. That
+disclosure runs the opposite direction from every other one in §8, and it is
+the price paid for one-hop routing. Whether a summary is public or per-link is
+`R14`.
+
+### What would settle it
+
+The summary's shape and error rate, whether a summary is public or per-link,
+and whether a decoy mix beyond Bloom false positives is spent at all.
+
+### Notes to cover
+
+- the summary's size and false positive rate, and who chooses them
+- how often a peer republishes as its holdings change, and what the stale
+  window costs a router
+- whether a summary covers what a peer **holds** or what it can **reach**,
+  which are different claims and the second one composes across hops
+- a peer publishing a summary that claims everything, to attract asks. Nothing
+  above refuses it and the cost lands on the asker
+- how a peer's peers' summaries are named without a mutable pointer per peer
+- bootstrapping an instance with zero peers, where pairing is the only entry
 - what a peer does with a value it fetched as cover: hold it, or drop it
 - whether cover asks are forwarded the way real ones are, and what that costs
   every peer downstream
 - whether an idle instance is distinguishable from a busy one at any distance
-- how this interacts with §10, since cover is what fills the idle slots and the
-  cover rate is then the slot rate minus real traffic
+- how this meets §10, since cover fills the idle slots and the cover rate is
+  the slot rate minus real traffic
 
 ## §10 · Cadence
 
@@ -465,6 +547,8 @@ restriction is what makes the cost affordable.
 | R10 | who selects a path | §11. The sender needs topology to build a route, and holding topology is information about the sender |
 | R11 | the onion header construction | §14. One KEM ciphertext per hop, classical re-blinding with a PQ payload, or symmetric layers over PQ-established link keys. The third is the only one that fits a small MTU and it constrains routing to paired peers |
 | R12 | how many envelope slices | §13. Each slice costs a key derivation, and whether the holder's slice and the asker's slice are one slice is part of it |
+| R14 | whether a holdings summary is public or per-link | §9. Publishing one tells any fetcher what a peer holds, which runs opposite to every other disclosure in §8. Per-link summaries cost one per relationship and shrink the cover supply |
+| R15 | whether a summary claims what a peer holds or what it can reach | §9. The second composes across hops and turns the summary into routing state, which is most of a structured overlay arriving through the side door |
 | R13 | whether the type-level opening claim survives lowering | §13. The property has to hold after erasure. This is the one fork that is a question about this compiler instead of about the protocol |
 
 ## §16 · Relation to the roster
