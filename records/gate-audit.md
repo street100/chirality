@@ -3,7 +3,7 @@ node: records-gate-audit
 layer: navigation
 related: [records/README, records/baseline-alignment, testing-floors, arcs/enforcement-arc, status-ledger, index]
 status: current
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Gate audit
@@ -78,6 +78,25 @@ still OPEN. GA-01 and GA-10 are not closed by it either, but the harness and the
 four undispatched scripts they name are now PRINTED by name and reason on every
 run, so neither gap is invisible any more.
 
+Scope of the residue pass, 2026-09-05, commits `625d45e`, `ba62549` and
+`b12c29e`. Its subject is the nine rows perspectives 1 and 2 left open while the
+eight newer rows were closed. Each was re-established at HEAD before anything
+was decided about it, and NONE of the nine had been closed by later work. Five
+moved to FIXED: GA-03, GA-05, GA-07, GA-11 and GA-25. Four are left OPEN with
+the reason written into the row: GA-01 and GA-10 are the standing
+suite-phase-number author call, GA-04 is a per-row falsifier count whose closure
+is eleven more compiler builds, and GA-08 is a compiler-design zero that no gate
+row can reach. The three FIXED gate rows share one shape and one repair. A phase
+script that named a falsifier it did not run, or named none at all, now sources
+`tools/test/mutant.sh`, builds the mutant, re-runs ITSELF under it through a red
+log, and pins the FULL set of rows that went red. Suite after: **391 passed, 0
+failed, 91 roots built, 0 failed, gate PASSED**, was 373 and 90, 4m10s wall
+clock. The eighteen new assertions are `check-cli.sh` 12, was 7,
+`profile-target.sh` 38, was 31, and `linear-mint.sh` 38, was 32. ⚑ The root
+count moved by one for reasons outside this pass: `ALL_ROOTS` greps `lib` and
+`prog`, this pass changed neither, and `git diff --stat` over both across its
+three commits is empty.
+
 ## The instrument
 
 ### GA-01 the harness that audits the gates has no phase in the gate
@@ -85,8 +104,9 @@ run, so neither gap is invisible any more.
 - state:    OPEN
 - claim:    `tools/test/mutant.sh:1-45` is the run-the-mutant rule made mechanical, and `docs/definitions/testing-floors.md:287` binds every gate row to a mutant that is RUN.
 - measured: `grep -n '^run_phase' tools/test/run-tests.sh` returns thirteen dispatch lines (`:144-147`, `:216`, `:225`, `:236`, `:252`, `:268`, `:284`, `:303`, `:326`, `:345`) and none of them names `mutant.sh`. The only occurrence of the string in that file is a comment at `:292` pointing a different element at a different harness. So the matrix runs by hand or it runs never. Two SPECs already rest a gate on it: E52 re-founds the surviving half of its conformance gate on `mutant.sh` (`docs/elements/specs/E52-certificate-split-SPEC.md:255`, `:311`) and E173 cites `mutant_differs` (`docs/elements/specs/E173-total-matcher-SPEC.md:399-401`). Cost measured today: `bash tools/test/mutant.sh --matrix` completed in **3m00s** wall clock, control green, seven mutants built at about 7 s each. The suite's own budget already carries phases costing more.
-- evidence: `tools/test/run-tests.sh:144-147`, `:292`, `:345`; `tools/test/mutant.sh:154`
-- checked:  2026-09-04
+  ⚑ RE-MEASURED 2026-09-05 at `b12c29e`, and the standing is unchanged. `grep -n '^run_phase' tools/test/run-tests.sh` still returns thirteen dispatch lines and none of them names `mutant.sh`. `7662570` is the only change to this file since the row was written: it made `mutant_fixpoints` iterate to convergence rather than take one `cmp`, and it moves no cost here. The file's own 2026-09-05 note measures all seven declared mutants answering `C1 == C2` with ONE generation built each and the whole fixpoint stage at 28 s, unchanged, so the 3m00s this row priced still prices it. ⚑ WHAT DID CHANGE IS WHICH HALF OF THE FILE THE GAP COVERS. `ba62549` puts three DISPATCHED phases on this file as a library: `check-cli.sh`, `profile-target.sh` and `linear-mint.sh` each source it, and `mut_count`, `mut_sub`, `mutant_build` and `mutant_differs` now run twelve times on every suite run. What is still outside the gate is the MATRIX, the driver and its every-mutant-by-every-phase table, and this row is now that and nothing wider. LEFT OPEN, and the reason is not the cost. A phase for the matrix wants a phase NUMBER, and which number a new gate takes is a standing author call (`records/author-calls.md`, `docs/decisions/decision-lane-split.md:30`): 21 through 23 are Lane B's and 8 through 12 are owed to unported phases. `registration.sh` takes no number, and that route is open to the matrix too, but it costs three minutes on a four-minute suite and whether the suite pays that is the same call. This session is barred from making it.
+- evidence: `tools/test/run-tests.sh:144-147`, `:292`, `:345`; `tools/test/mutant.sh:154`; after the re-measurement `tools/test/mutant.sh:11-25`
+- checked:  2026-09-05
 - element:  UNASSIGNED
 
 ### GA-02 the declared matrix, re-run and reconciled
@@ -114,30 +134,33 @@ run, so neither gap is invisible any more.
 
 ### GA-03 the `(total)` profile gate is convicted by no phase in the suite
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `profile-target.sh` gates the composition manifest, and four of its rows carry the `(total)` clause. `lib/lowering/compile-front.chiral:24` imports `typing/totality-check` for E11's profile gate, and `:340` calls `tot-gate` on the shipping path.
 - measured: a new mutant, `total-clause-dead`, built through `mutant_build` against `lib/surface/parse.chiral:956` with the declared count 1: `(case (mf-find-clause cs "total") (none false) ((some x) true))` becomes the same form ending `false`. The `(total)` clause then parses, validates and stores a dead flag, so `tot-profile-demands` (`lib/typing/totality-check.chiral:134`) always answers false and `tot-gate` always returns `tot-proven`. Built at **1,188,216 B**, byte-differing from the base, self-hosting fixpoint **yes**. Semantic witness, so the mutant is demonstrably live: a file carrying `(profile P (ports) (target Svc) (total))` beside `(def loop (lam (n) (loop n)))` is REFUSED by the base with `profile (total): def loop not proven total: no argument position decreases ...` and is answered `OK` by the mutant. Scored against every phase `mutant.sh:154` names: `check-cli` green, `profile-target` green, `linear-mint` green, `syscall-manifest` green, `diag` green. **It survives all five.** Bounding the claim over the rest of the suite: `grep -lE 'profile|tot-gate|totality' tools/test/*.sh` names only `mutant.sh`, `doc.sh`, `matcher.sh`, `run-tests.sh`, `syscall-manifest.sh` and `profile-target.sh`, and `grep -l '(total)' tools/test/*.sh` names `profile-target.sh` alone. The one artifact in the tree declaring `(total)` outside `lib/` is `prog/demo/verify-total.chiral:25`, which defines no `compile-main`, so Phase 7's root sweep never compiles it, and its own header at `:6` still invokes `python3 -m chirality verify`.
-- evidence: `lib/surface/parse.chiral:955-957`, `:985`; `lib/typing/totality-check.chiral:133-156`; `lib/lowering/compile-front.chiral:24`, `:340`; `tools/test/profile-target.sh:60-68`, `:98`; `prog/demo/verify-total.chiral:6`, `:25`
-- checked:  2026-09-04
-- element:  UNASSIGNED
+  **FIXED in `ba62549`.** `profile-target.sh` gains three rows and three mutants, and `total-clause-dead` is one of the three. THE ROWS ARE THE REPAIR AND THE MUTANT IS THE EVIDENCE FOR THEM: until now every row carrying `(total)` asserted that the clause PARSES, and what the clause MEANS is E11's profile gate. `(total): an unproven def is REFUSED` is the semantic witness this row measured, made a gate row. `(total): a proven def is ADMITTED` is the direction control that stops a checker refusing every `(total)` outright. `no (total): the same unproven def is ADMITTED` is what says the refusal comes from the CLAUSE and not from the def. The three defs are prefixed `pt-` for the reason `tools/test/arity.sh:40` gives: three censuses grep `lib prog tools` for `^\((def|data|declare) <name>` and cannot tell a bash string from a program. MEASURED ON THE REAL TREE, not asserted: with `total-clause-dead` built and put under it, HEAD's `profile-target.sh` read **31 passed, 0 failed** and said nothing at all, and the repaired file under that same compiler reads `FAIL (total): an unproven def is REFUSED -- exit 0, want 1: ... OK` and **33 passed, 1 failed**. Inside the phase the mutant pins the single line `(total): an unproven def is REFUSED` and it holds exactly, with BOTH admit rows green, which is what separates a row that reads the demand from a row that reads the def. Phase after: **38 passed, 0 failed**, was 31; 27 s, was 2 s.
+- evidence: `lib/surface/parse.chiral:955-957`, `:985`; `lib/typing/totality-check.chiral:133-156`; `lib/lowering/compile-front.chiral:24`, `:340`; `tools/test/profile-target.sh:60-68`, `:98`; `prog/demo/verify-total.chiral:6`, `:25`; after the repair `tools/test/profile-target.sh:95-123`, `:176-205`, `:251-278`
+- checked:  2026-09-05
+- element:  none
 
 ### GA-04 profile-target.sh licenses one of its 31 rows
 
 - state:    OPEN
 - claim:    `tools/test/profile-target.sh:6-12` says the point of its cases is the REFUSALS, and that a parser accepting everything freezes nothing.
 - measured: `bash tools/test/profile-target.sh` reports **31 passed, 0 failed** in 1.85 s. Nine rows are positive, twenty-two are refusals. The script declares zero mutants of its own: it has no `mutant`, `poison` or scratch-tree helper anywhere. One declared mutant in `mutant.sh` reaches it, `port-purity-off`, and running it turns exactly **one** row red, `port is PURE (does not cross)`, leaving 30 passed. So 30 of the 31 rows have no run falsifier anywhere in the tree, and GA-03 is one measured consequence.
-- evidence: `tools/test/profile-target.sh:6-12`, `:57-121`; `tools/test/mutant.sh:192-195`
-- checked:  2026-09-04
+  ⚑ RE-MEASURED 2026-09-05 and PARTLY CLOSED, which is not closed. `ba62549` gives `profile-target.sh` a mutant block, three new rows and three mutants, so the count is 23 of 34 rows reddened by something, where it was 1 of 31. The count is honest and the coverage is not what the count looks like. TWENTY of the twenty-three come from ONE COARSE MUTANT, `known-clause-refuses-all`, which makes no profile clause head recognisable and reddens seven positives and thirteen refusals together. What that establishes is that those rows RUN and that the manifest path is load-bearing. It does not establish that any one row's own message is what holds it up. The two discriminating mutants redden one row each, `port-purity-off` and `total-clause-dead`. ELEVEN ROWS ARE REDDENED BY NOTHING: `target with one requirement`, `target with several requirements`, `profile with one clause`, `profile name is not a symbol`, and the seven `top_target` refusals. LEFT OPEN on the churn, measured rather than guessed: each of the eleven wants its own message-rename mutant and its own compiler build, eleven builds at about 2.4 s plus eleven legs at about 2 s, on a phase that cost 2 s before this block and 27 s after it. The residue is named at the head of the file's own mutant block, so the next author reads it there instead of rediscovering it.
+- evidence: `tools/test/profile-target.sh:6-12`, `:57-121`; `tools/test/mutant.sh:192-195`; after the partial repair `tools/test/profile-target.sh:196-205`, `:268-278`
+- checked:  2026-09-05
 - element:  UNASSIGNED
 
 ### GA-05 check-cli.sh licenses two of its 7 rows
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `tools/test/check-cli.sh:3-9` says the cases pin that `chirality check` accepts well-typed source and refuses ill-typed source, and that a checker only ever saying OK fails to be a checker.
 - measured: `bash tools/test/check-cli.sh` reports **7 passed, 0 failed** in 0.64 s. Three positive rows, four refusals. Zero mutants declared in the script. Two declared mutants reach it: `strip-binder-off` turns `linear cap used twice` and `linear cap dropped` red (5 passed, 2 failed), and `qfits-q1-accepts-all` reddens the same pair. The remaining two refusals, `arity / type mismatch` and `unknown name`, carry no run falsifier, and neither do the three positive rows. `records/baseline-alignment.md` BA-04 already holds the separate finding that all four refusals are front-end and none reaches a lowering or emit refusal; this row is about the falsifier rather than the stage.
-- evidence: `tools/test/check-cli.sh:3-9`, `:41-60`; `records/baseline-alignment.md` BA-04
-- checked:  2026-09-04
-- element:  UNASSIGNED
+  **FIXED in `ba62549`.** `check-cli.sh` gains four mutants and ALL SEVEN rows now have a falsifier the phase itself runs. M1 `qfits-q1-accepts-all` reddens `linear cap used twice` and `linear cap dropped`, the pair this row measured; it is the same mutant, run by the phase that owns the rows instead of by a driver nothing dispatches. M2 `qfits-refuses-all` is new and is the only falsifier the three POSITIVE rows have: `((qw) true)` becomes `((qw) false)`, every omega binder stops fitting, and well-typed source is refused. M3 `mismatch-msg-renamed` and M4 `unknown-name-renamed` are message renames at `dg-mismatch-msg` and at the name resolver's own sentence. ⚑ WHICH HALF OF A ROW EACH MUTANT CONVICTS IS WRITTEN IN THE FILE RATHER THAN ROUNDED UP. `:68` claims each refusal is non-zero AND NAMED. M1 convicts the non-zero half of its two rows, since the ill-typed source is ADMITTED under it. M3 and M4 convict the NAMED half of theirs, since the source is still refused and the reason is wrong. A mutant that makes the checker admit an arity mismatch or an unbound name is not declared here, so the non-zero half of those two rows is still reddened by nothing. MEASURED, not asserted: under `qfits-refuses-all` the phase reads three FAILs and **4 passed, 3 failed**; under `qfits-q1-accepts-all`, 5 and 2. Clean: **12 passed, 0 failed**, was 7; 11 s, was 0.7 s.
+- evidence: `tools/test/check-cli.sh:3-9`, `:41-60`; `records/baseline-alignment.md` BA-04; after the repair `tools/test/check-cli.sh:10-14`, `:82-103`, `:147-177`
+- checked:  2026-09-05
+- element:  none
 
 ### GA-06 syscall-manifest.sh honours the rule in its own idiom
 
@@ -150,20 +173,22 @@ run, so neither gap is invisible any more.
 
 ### GA-07 linear-mint.sh's rows name a mutant only an unregistered harness runs
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `tools/test/linear-mint.sh:248-251` records that a mutant SURVIVED ALL FIVE PHASE SCRIPTS, that these rows are the re-founding, and that the run which produced them is what says they are needed. `:253-259` names two `qjoin` mutants and the measured 2x2 diagonal. `:330-333` names `qfits-q0-accepts-all`.
 - measured: `bash tools/test/linear-mint.sh` reports **32 passed, 0 failed**, the largest row count of the five phases audited. The script declares zero mutants of its own: `grep -cE '^\s*mutant' tools/test/linear-mint.sh` returns 0 and it defines no scratch-tree helper. Every falsifier its comments cite lives in `tools/test/mutant.sh:156-196`, which GA-01 measures as reachable by no `run_phase` line. Re-running the matrix reproduces the cited diagonal exactly: `qjoin-q1-no-saturate` and `qjoin-q0-no-saturate` each turn `linear-mint` red and leave the other four phases green. So the rows are genuinely falsifiable and the falsification is genuinely outside the gate. Fixing GA-01 fixes this row.
-- evidence: `tools/test/linear-mint.sh:248-271`, `:326-334`; `tools/test/mutant.sh:156-196`
-- checked:  2026-09-04
-- element:  UNASSIGNED
+  **FIXED in `ba62549`.** Nothing was wrong with the rows and no row changed. `linear-mint.sh` gains five mutants and runs them itself, so the measurements its own comments quote are measurements the phase now takes. THE 2x2 DIAGONAL IS THE PIN: M1 `qjoin-q1-no-saturate` pins `[E1, E6]` and M2 `qjoin-q0-no-saturate` pins `[E2]`, in full, so a mutant reddening the other arm's row is a FAIL of its own row rather than a sentence nobody re-ran. M3 `qfits-q0-accepts-all` pins section F's three arrivals. M4 `strip-binder-off` and M5 `close-binder-off` were added beyond this row's claim, because between them they reach four rows in sections C, D and E that no other mutant here touches. Ten of the thirty-two rows now have a falsifier. MEASURED: under `qjoin-q1-no-saturate` the phase reads **30 passed, 2 failed** and the two are E1 and E6; clean, **38 passed, 0 failed**, was 32; 22 s, was 0.6 s. ⚑ THE RESIDUE IS NAMED IN THE FILE. Sections A and B, the extern-arrow and porttype-registry rules, and the two `runs` controls are reddened by nothing, twenty-two rows, and no declared mutant anywhere aims at them. This row's claim is about the rows whose comments CITE a mutant and those are closed. GA-04's shape, one script over, is not.
+- evidence: `tools/test/linear-mint.sh:248-271`, `:326-334`; `tools/test/mutant.sh:156-196`; after the repair `tools/test/linear-mint.sh:30-37`, `:63-77`, `:390-419`, `:463-505`
+- checked:  2026-09-05
+- element:  none
 
 ### GA-08 the profile's memory discipline is stored and read nowhere
 
 - state:    OPEN
 - claim:    `tools/test/profile-target.sh:8` documents the manifest form as `(profile name (ports p...) (target t) [(memory d)] [(total)])` and four of its rows exercise `(memory ...)`: two positives, `unknown memory discipline gc`, and `malformed (memory)`.
 - measured: `grep -rn 'mk-profile' lib/ prog/ --include=*.chiral` finds one constructor site (`lib/surface/parse.chiral:984`) and three destructurings. `lib/typing/totality-check.chiral:134` reads the `to` field, `lib/lowering/compile-front.chiral:272` reads the `po` field, `lib/typing/kernel.chiral:260` reads `pn` for the redeclare lookup. The `me` field is read by nothing after `handle-profile-body` validates it, and so is `tg`. The four `(memory ...)` rows therefore assert a parse message over a value the compiler discards, and no mutant of the discipline's meaning can exist while nothing consumes it. Recorded as a zero in the shape `docs/definitions/testing-floors.md` uses for E170 lane E: a field with no reader is a gate row quantified over an empty set of consumers.
-- evidence: `lib/surface/parse.chiral:938-953`, `:984`; `lib/typing/kernel.chiral:260`; `lib/lowering/compile-front.chiral:272`; `lib/typing/totality-check.chiral:134`
-- checked:  2026-09-04
+  ⚑ RE-MEASURED 2026-09-05 at `b12c29e`, unchanged. `grep -rn 'mk-profile' lib/ prog/ --include=*.chiral` finds one constructor site (`lib/surface/parse.chiral:984`), the declaration (`lib/typing/kernel.chiral:60`) and three destructurings: `lib/typing/kernel.chiral:260` reads `pn`, `lib/lowering/compile-front.chiral:294` reads `po`, `lib/typing/totality-check.chiral:134` reads `to`. `me` is read by nothing and neither is `tg`. LEFT OPEN, and it is not a gate row's defect. `ba62549` closed GA-03 by giving `(total)` rows that read what the flag DOES, and the same repair is unavailable here for a reason worth stating: `to` had a consumer to point a row at, and `me` has none. A falsifier for the discipline's MEANING cannot exist until something in `lib/` consumes the field, which is a compiler change and an author call about what a memory discipline is for. The four `(memory ...)` rows are reddened by `known-clause-refuses-all` since `ba62549`, so they are no longer rows nothing can move. What they still are is rows quantified over an empty set of consumers, and that is the zero this row records.
+- evidence: `lib/surface/parse.chiral:938-953`, `:984`; `lib/typing/kernel.chiral:60`, `:260`; `lib/lowering/compile-front.chiral:294`; `lib/typing/totality-check.chiral:134`
+- checked:  2026-09-05
 - element:  UNASSIGNED
 
 ## The method
@@ -182,18 +207,20 @@ run, so neither gap is invisible any more.
 - state:    OPEN
 - claim:    `docs/definitions/testing-floors.md:69` records `tools/test/tal-check.sh` as unregistered in `run-tests.sh` by decision, on the `crypto.sh` precedent, so the suite's 339 excludes it.
 - measured: `ls tools/test/*.sh` lists eighteen scripts and `run-tests.sh` dispatches thirteen. The five outside the dispatch are `run-tests.sh` itself, `crypto.sh`, `tal-check.sh`, `map-integrity.sh` and `mutant.sh`. Two of the four carry a written decision (`crypto.sh`, `tal-check.sh`). `map-integrity.sh` is reached by a separate route: `docs/goals/self-hosting.md:58` names it beside `bin/chirality test` as a thing a person runs, and `records/baseline-alignment.md` BA-01 is its own row. `mutant.sh` carries no decision anywhere in `docs/`, and GA-01 is that gap. Assertion counts for the unregistered pair audited here: `crypto.sh` and `tal-check.sh` were left unmeasured by this pass.
-- evidence: `tools/test/run-tests.sh:144-147`, `:345`; `docs/definitions/testing-floors.md:69`; `docs/goals/self-hosting.md:58`
-- checked:  2026-09-04
+  ⚑ RE-MEASURED 2026-09-05 at `b12c29e`, and every figure above has moved. `ls tools/test/*.sh` lists TWENTY-FOUR scripts, `run-tests.sh` dispatches thirteen, and ELEVEN are outside the dispatch table: `run-tests.sh` itself, `apply-spine.sh`, `apply-word.sh`, `capture-fields.sh`, `crypto.sh`, `defunc-blame.sh`, `encoding.sh`, `map-integrity.sh`, `mutant.sh`, `registration.sh` and `tal-check.sh`. ⚑ THE HALF THIS ROW MEASURED IS CLOSED AND THE ROW IS NOT. Every one of the eleven carries a `not-a-phase:` declaration with a reason, in its own header; `registration.sh` G2 fails a script on disk that carries none and G4 fails a reason that is blank, and M1 through M4 are the mutants that redden them. `126c842` and `9f6e563` did that. So "carries no decision anywhere" is true of nothing on disk today, `mutant.sh` included, and its declaration names GA-01. What is left is exactly what GA-24 said it did not close: whether any of the eleven SHOULD be dispatched. That is the standing suite-phase-number author call, 21 through 23 contested across four documents and 8 through 12 owed to unported phases, and this session is barred from making it. LEFT OPEN as the author call it is, with its figures corrected so the next reader is not working from eighteen and five.
+- evidence: `tools/test/run-tests.sh:144-147`, `:345`; `docs/definitions/testing-floors.md:69`; `docs/goals/self-hosting.md:58`; after the re-measurement `tools/test/registration.sh:26-46`, `:50-57`
+- checked:  2026-09-05
 - element:  UNASSIGNED
 
 ### GA-11 mutant.sh's header count of five disagrees with its own parenthetical
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `tools/test/mutant.sh:5-9` reads that every phase script honouring the rule re-implemented it, that `diag.sh` does so at the fixture level, and that "the five phases that did not honour it" were indistinguishable from the ones that did.
 - measured: `git log --diff-filter=A -- tools/test/mutant.sh` puts the file at `58f4f7c`, where `run-tests.sh` dispatched exactly five sub-scripts: `check-cli`, `profile-target`, `syscall-manifest`, `linear-mint` and `diag`. `MUT_PHASES` (`:154`) is that same list, and it needs `diag.sh` as a positive control. The set of sub-script phases that did NOT honour the rule at that commit is four, since the same sentence exempts `diag.sh`, and GA-06 removes `syscall-manifest.sh` from it as well, leaving three. Today the suite dispatches thirteen phases and the count has moved again. The number in the header is a snapshot with no date beside it, which is the shape `docs/definitions/testing-floors.md` calls a figure that rots.
-- evidence: `tools/test/mutant.sh:5-9`, `:154`; `tools/test/run-tests.sh:144-147`
-- checked:  2026-09-04
-- element:  UNASSIGNED
+  **FIXED in `625d45e`.** The sentence carries no count at all now, and the paragraph gains a dated note recording what the number was and why it was wrong: it was `MUT_PHASES`, the five sub-scripts dispatched at `58f4f7c`, and the same sentence exempts `diag.sh` while GA-06 removes `syscall-manifest.sh`, so the set was three at that commit and never five. THE ALTERNATIVE REJECTED was writing "the three phases" with a date beside it. It is true and it would have been correct, and it would have needed re-taking on the next change to the dispatch table, which is the defect one iteration later. `docs/definitions/testing-floors.md` calls that a figure that rots, so the repair is to carry none. This is the only one of the five rows fixed in this pass whose repair is a sentence rather than a mutant, and it is not a gate row: no mutant is owed, because nothing in the tree reads the sentence. `mutant.sh` is under no sha256 pin, checked by hashing it and grepping `tools/` for the digest, so no pin was re-taken.
+- evidence: `tools/test/mutant.sh:5-9`, `:154`; `tools/test/run-tests.sh:144-147`; after the repair `tools/test/mutant.sh:6-19`
+- checked:  2026-09-05
+- element:  none
 
 ## Gates that do fail, measured
 
@@ -326,9 +353,10 @@ defends is right.
 
 ### GA-25 tal-check.sh's fixture-placement reason is false about both censuses
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `tools/test/tal-check.sh:127-129` gives the reason its fixture is written into a temp directory instead of tracked under `tools/test/samples/`: *"Written here rather than tracked under tools/test/samples/: everything under samples/ is walked by Phase 2's test-runner and counted by the compile-only root census, and this gate has no business moving either number."*
 - measured: REFUTED, both halves. Phase 2's test-runner walks nothing. `prog/test-runner.prog:39-46` is a bundled `manifest` of six `sample` entries naming `prog/samples/exit42.chiral`, `exit7.chiral`, `multi-def.chiral`, `boxed-a.chiral`, `boxed-b.chiral` and `enum-tag.chiral` by literal path, so it is a list rather than a directory walk and nothing under `tools/test/samples/` can enter it. The compile-only root census is Phase 7's `ALL_ROOTS`, `grep -rl '^(def compile-main' lib prog` (`tools/test/run-tests.sh:175`), whose search roots are `lib` and `prog`; run in this tree it returns 97 roots and `grep -c '^tools/'` over that list returns **0**. So a tracked fixture under `tools/test/samples/` moves neither number, and the stated reason does not hold. ⚑ THE CHOICE IS FINE AND THE REASON IS NOT. A temp fixture cannot go stale against the script that writes it. That is a good reason. The comment gives a different one. What the false reason costs is the inverse reading: an author who believes it concludes that landing a root under `tools/test/samples/` buys suite reach. It buys none, and every root there is reached by one thing, a script naming it as its `FIXTURE`. `docs/examples/C1C2-style-round-trip.md` M2 measured exactly this while pricing its own gate, and it is why that element ships a hand-run script under the `crypto.sh:6` and `tal-check.sh:11` precedent instead of assuming a sweep would find its root. The repair is three comment lines in `tools/`, outside this run's write set.
-- evidence: `tools/test/tal-check.sh:11`, `:127-129`; `prog/test-runner.prog:39-46`; `tools/test/run-tests.sh:175`; `tools/test/crypto.sh:6`; `docs/examples/C1C2-style-round-trip.md` M2 and §6
-- checked:  2026-09-04
+  **FIXED in `b12c29e`.** The three comment lines are replaced by the true reason, that a fixture the script writes cannot go stale against it, plus a dated note recording what the false one said and what it cost. Both halves were re-measured at `b12c29e` before the repair landed and both refutations stand: `prog/test-runner.prog` still carries a bundled `manifest` of six LITERAL `prog/samples/` paths, so it is a list and not a directory read, and Phase 7's `ALL_ROOTS` (`tools/test/run-tests.sh:175`) greps `lib` and `prog` and returns **100** paths in this tree with **0** under `tools/`, where this row's 2026-09-04 measurement read 97. The choice the comment defends is unchanged and was never in question; the repair is three lines of prose and no gate row moved. `tal-check.sh` is under no sha256 pin and is dispatched by no `run_phase` line, so nothing else moves with it, and it still runs green by hand: **21 ok, 0 FAIL**.
+- evidence: `tools/test/tal-check.sh:11`, `:127-129`; `prog/test-runner.prog:39-46`; `tools/test/run-tests.sh:175`; `tools/test/crypto.sh:6`; `docs/examples/C1C2-style-round-trip.md` M2 and §6; after the repair `tools/test/tal-check.sh:127-145`
+- checked:  2026-09-05
 - element:  none
