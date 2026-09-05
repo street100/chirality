@@ -174,9 +174,9 @@ compiler change.**
 
 Line 20 is 10^18, inside `I64`'s 9,223,372,036,854,775,807 with a factor of
 nine to spare, and it describes a million neurons at a million synapses each
-sampled every tick for a million ticks: 10^15 synapses, an order of magnitude
-past a human brain's, sampled 10^6 times. Line 21 raises fan-out tenfold and
-the product wraps to a negative. So the wall exists and sits at a
+sampled every tick for a million ticks: `n * f` is 10^12 synapses, sampled 10^6
+times. Line 21 raises fan-out tenfold and the product wraps to a negative. So
+the wall exists and sits at a
 **sample count no storage tier could hold**: at one byte per sample line 20 is
 already an exabyte. `op-mulhi` and E189 are therefore off this element's path
 for the same reason E196 measured, and **no compiler change is required**:
@@ -184,10 +184,13 @@ every figure in this section was produced on today's binary with nothing under
 `lib/` altered.
 
 **M5 · The digest is constant and the trace is not, which is why they are two
-types.** Lines 1, 2 and 5 against lines 9, 10 and 11 hold the same requests
+types.** Lines 1, 2 and 6 against lines 9, 10 and 11 hold the same requests
 against a run sixty times longer. `fields=` reads 1, 2 and 2 in both, and
-`samples=` multiplies by sixty. The request is a bounded value whose size is
-fixed by its constructor; what it commissions grows with the run. That is
+`samples=` multiplies by sixty: 10,000 to 600,000, 1,000,000 to 60,000,000 and
+100,000 to 6,000,000. Line 6 is the weights row that shares line 11's interval;
+line 5 carries `ivl=1` and prices a different request. The request is a bounded
+value whose size is fixed by its constructor; what it commissions grows with
+the run. That is
 `ExpertCall` against `RawCall`, one layer down.
 
 ⚑ **`RunManifest` cannot absorb the digest, and this is a finding rather than a
@@ -270,8 +273,9 @@ nest.Connect(mm, pop)                          # nothing records until this runs
 ## 5. Chirality example (fleshed)
 
 Real surface syntax. Every form below compiled and ran under today's
-`bin/chirality-bin` while producing section 2's figures, apart from the
-`VolumeR` variant at the end, which is the recommendation M4 argues for.
+`bin/chirality-bin` while producing section 2's figures. The `VolumeR` variant
+at the end is the recommendation M4 argues for; the pre-run did not compile it
+and the audit did, which the note under it records.
 
 ```chirality
 (import "prelude/prelude")
@@ -342,6 +346,20 @@ dies outright on a zero interval:
   (record-weights  (population Str) (sample-every (refine I64 (> 0)))))
 ```
 
+⚑ **The audit compiled the variant the pre-run did not, 2026-09-05, and the
+refinement engine decides this predicate today.** Both declarations above went
+through today's `bin/chirality-bin` unchanged. Constructing
+`(record-membrane "p" 25)` compiles and prices; `0` and `-1` are both refused
+at compile time with `load: cannot prove refinement`, so no binary is produced
+at all. That moves the failure a whole stage earlier than M2's: the zero
+interval dies at run time on today's shape and does not compile on this one. So
+the `(> 0)` refinement closes M2's zero divide and M2's negative volume at the
+constructor, measured rather than projected, for a literal argument. It says
+nothing about a `sample-every`
+computed at runtime, and nothing about the interval-exceeds-the-run case, which
+stays run-relative. Open question 2 below is unchanged by this: what it now has
+is a measurement where it had an assumption.
+
 - **Knobs to modify:** the constructor set, which is where a fourth signal
   class would land; the `RunShape` field list, which is what `rr-samples` may
   read; the refinement bound on `sample-every`; whether `rr-samples` returns
@@ -390,15 +408,18 @@ a driver that recomputes `n * (t / e)` in awk from the row's own `n`, `t` and
 say this explicitly, because the E196 precedent reads as though the two checks
 were alternatives.
 
-- **The gate can fail, demonstrated.** Four mutants were built and run on
-  today's binary. Each row below names what reddens **and what cannot**:
+- **The gate can fail, demonstrated.** Five mutants were built and run on
+  today's binary. Four are the pre-run's; **M5 is the audit's**, added
+  2026-09-05 because no stated mutant reddened a spikes `samples=` figure. Each
+  row below names what reddens **and what cannot**:
 
 | mutant | change | reddens | cannot move |
 |---|---|---|---|
 | **M1** | `record-membrane`'s pricing drops the neuron factor | the **ten** membrane rows (2, 3, 4, 8, 10, 13, 16, 17, 18, 19): 1,000,000 → **1,000**, 40,000 → **40**, 60,000,000 → **60,000**, -333,000 → **-333** | every spikes row and every weights row. The arms are priced independently |
 | **M2** | `record-weights`'s pricing drops the fan-out | the **six** weights rows (5, 6, 11, 14, 20, 21): 100,000,000 → **1,000,000**, 100,000,000,000 → **100,000,000** | every spikes and membrane row. It also **collapses lines 20 and 21 onto the same figure** (1,000,000,000,000 both), so the wall stops being observable |
 | **M3** | `rr-interval` answers `(some 1)` for spikes | the **four** spikes rows (1, 7, 9, 12), in the `ivl=` column only: `none` → **1** | **every `samples=` figure in the file**. Not one number moves |
-| **M4** | the interval divide ceils instead of flooring | the **five** rows where `e` does not divide `t` (15, 16, 17, 18, 19): 0 → **1,000**, 1,000 → **2,000**, 333,000 → **334,000**, 142,000 → **143,000**, -333,000 → **-332,000** | the **nine** rows whose interval divides the run exactly (`ivl` = 1, 25, 50 or 1,000). Those rows are blind to the rounding rule |
+| **M4** | the interval divide takes the ceiling idiom, `(/ t e)` → `(/ (+ t (- e 1)) e)`. On rows 15 to 18 that is a ceiling against the base's floor; on row 19, where the base already ceils because the divisor is negative (M3), it is a shift of one | the **five** rows where `e` does not divide `t` (15, 16, 17, 18, 19): 0 → **1,000**, 1,000 → **2,000**, 333,000 → **334,000**, 142,000 → **143,000**, -333,000 → **-332,000** | the **twelve** rows whose interval divides the run exactly (2, 3, 4, 5, 6, 8, 10, 11, 13, 14, 20, 21, at `ivl` = 1, 25, 50 or 1,000), and the **four** spikes rows, which carry no interval at all. Sixteen of the twenty-one rows are blind to the rounding rule |
+| **M5** | `record-spikes`'s pricing drops the firing rate, `(/ (* (* n t) r) 1000)` → `(/ (* n t) 1000)` | the **four** spikes rows (1, 7, 9, 12) on `samples=`: 10,000 → **1,000**, 100,000 → **1,000**, 600,000 → **60,000**, 1,000,000 → **100,000** | every membrane and weights row. It also **collapses lines 1 and 7 onto the same figure** (1,000 both), so the firing-rate dependence stops being observable |
 
 ⚑ **M3 is the mutant this element exists to catch, and no volume column sees
 it.** The interval on `record-spikes` is the whole structural content of the
@@ -409,12 +430,27 @@ row in the table above exist for that single reason, and dropping either one
 leaves the element's central claim ungated while the gate still reads green.
 
 ⚑ **M4 names which rows carry the rounding claim, and they are the ones a
-shorter sweep would drop.** Nine of the fourteen rows in M1's table use an interval that divides
-the run exactly, so the ceiling mutant leaves every one of them untouched. The
+shorter sweep would drop.** Ten of the fourteen rows in M1's table use an
+interval that divides the run exactly and the other four carry no interval at
+all, so the ceiling mutant leaves every one of the fourteen untouched. The
 claim is carried entirely by lines 15 to 19. Dropping the `ivl=3` or `ivl=7`
 configuration to shorten the sweep would cost the whole rounding claim while
 the row count barely moves, which is the trap E196's audit found on its own
 `h=20` row.
+
+⚑ **M5 is the audit's, and it exists because the spikes pricing arm was
+asserted by the gate and convicted by nothing.** The conformance table's first
+row asserts three laws, one per arm, and `n * t * r / 1000` is the third. But
+M1 moves only membrane rows, M2 only weights rows, M4 only rows 15 to 19, and
+M3 moves the four spikes rows in the `ivl=` column alone. Across all four, not
+one spikes `samples=` figure moves, so a wrong spikes arm was pinned and no
+mutant reached it. M5 reaches it, and what it costs is sharper than the pin: it
+collapses lines 1 and 7, the spikes pair differing solely in `r`, onto 1,000
+both. Those two lines carry half of M1's ⚑ argument that the ratio is set by
+the firing rate, the half where the spike cost rises tenfold against lines 2
+and 8's flat membrane cost. The whole point that a request cannot be priced from its
+constructor alone rests on rows no pre-run mutant could redden. This is the
+same finding E196's audit made when it added its own third mutant.
 
 - **The driver needs a phase or a declaration, and it takes the second.**
   `tools/test/registration.sh` G2 holds that every `tools/test/*.sh` on disk is
@@ -445,18 +481,31 @@ the row count barely moves, which is the trap E196's audit found on its own
      zero divide and the negative volume. The interval-exceeds-the-run case is
      run-relative and no constructor-level predicate can see it, so it needs
      either a smart constructor taking the `RunShape`, a `VolumeR` result, or a
-     stated precondition. Which of the three, and whether the refinement engine
-     decides `(> 0)` on this field today, are both open.
+     stated precondition. Which of the three is open. The second half of this
+     question is now measured: the audit compiled the refined declaration on
+     today's binary and the engine does decide `(> 0)` on this field, refusing
+     `0` and `-1` at compile time. That is for a literal argument and says
+     nothing about an interval computed at runtime.
   3. **`I64` or `VolumeR`.** M2's silent zero and M4's wrap are the same defect
      class E196 closed with `DecodeR`, and the boundary-sums directive answers
      it the same way. The cost is a second data type plus a `case` at every call
      site, on a function whose callers do not exist yet.
   4. **Whether `rr-samples` belongs to this element at all.** The row is a
-     primitive at L2 and names the sum only. The pricing function is what makes
-     the sum gateable, and without it E197 ships a data declaration no test can
-     convict. Adding it means E197 covers a law the roster did not put in this
-     row, which is the choice E196 made deliberately for N8 and N9 and which
-     should be made deliberately again rather than by drift.
+     primitive at L2 and names the sum only. Adding the pricing function means
+     E197 covers a law the roster did not put in this row, which is the choice
+     E196 made deliberately for N8 and N9 and which should be made deliberately
+     again rather than by drift.
+     ⚑ **The audit measured the half of this that was stated as fact, and it
+     came back the other way.** The pre-run held that without `rr-samples` the
+     element ships a data declaration no test can convict. Mutant M3 refutes
+     that: it touches `rr-interval` alone, moves no `samples=` figure anywhere
+     in the file, and still reddens four rows on the `ivl=` column. So the sum's
+     central structural claim, the interval on two constructors of three, is
+     gateable with `rr-interval` and `rr-fields` and no pricing at all. What
+     `rr-samples` gates is the volume law, which is a separate claim and an L2
+     law closer in shape to `unit-lane/N9` than to `N10`. The scoping call
+     stands open; what it no longer rests on is an ungateability that does not
+     hold.
   5. **What the digest becomes.** M5 measures that the request is bounded and
      the trace is not, and the finding above rules that `RunManifest` cannot
      absorb it. Whether the digest is a field on `unit-lane/N11`'s trace type, a
