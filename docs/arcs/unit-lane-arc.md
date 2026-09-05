@@ -107,9 +107,18 @@ each other and splitting them would settle one against a guess at the other.
 `docs/examples/E197-record-request.md`, twenty-one golden lines and five
 mutants. The EXAMPLE audit reproduced every figure independently and returned
 six fixes, the largest being a fifth mutant for the spikes pricing arm, which
-the gate asserted and no stated mutant convicted. **The SPEC is written**
-(`beaa237`), `docs/elements/specs/E197-record-request-SPEC.md`. The next stage
-is its audit, `python3 tools/pack/pack.py E197 --audit spec`.
+the gate asserted and no stated mutant convicted. **The SPEC is audited**
+(`beaa237`, `69874b1`), `docs/elements/specs/E197-record-request-SPEC.md`. Its
+audit reproduced the four refinement probes, the twenty golden lines and all
+six mutants off-tree on HEAD's binary, measured that gate row R4 localizes M5
+to the four spikes rows where R3 reddens 19 of 20 and points nowhere, and
+landed four fixes. Decision 4 was tested on its own terms and holds two ways:
+the no-pricing counterfactual kills `VolumeR`, `rr-wrap` and `RunShape`, whose
+sole consumer is `rr-samples`, and dropping the refinement leaves all twenty
+golden lines byte-identical. **The next stage is implementation**, ordinary
+work under the build rule: `prog/unit/recording.chiral`,
+`prog/e197-recording-sweep.prog` and `tools/test/recording.sh`. Nothing lands
+under `lib/`, so no fixpoint is owed and the sensitivity half of the scan is.
 
 **The arc owes one row and one tool fix.** The SPEC's decision 4 scopes the
 pricing function `rr-samples` into E197, so the element covers `N10` plus a

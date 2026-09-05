@@ -14,7 +14,7 @@ updated: 2026-09-05
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: bc6899e9b8389c9d0878fb0e0b1e14990ed2102b4b45ca4067a4e3da5a8ae98d -->
+<!-- FRONTIER-SOURCES-SHA256: 818334241192984c905bd6cdafb7affead89c8292c19290ac8fcb329829ca7f1 -->
 <!-- sources: 163 files -->
 
 ## Decided recently
@@ -95,8 +95,8 @@ updated: 2026-09-05
 ### Pipeline (examples/INDEX.md, by status)
 
 - drafted: 1
-- specced: 3
-- audited: 18
+- specced: 2
+- audited: 19
 - implemented: 90
 - **implemented: 4
 - built: 1
@@ -114,11 +114,11 @@ updated: 2026-09-05
 
 ### Last commits touching the frontier sources
 
+- 2026-09-05 69874b1 — E197 SPEC audit: the four probes, the twenty golden lines and all six mutants reproduce
+- 2026-09-05 e7c27e7 — requirement 4 closes on the wiring branch, and EN-24 carries the measurement
 - 2026-09-05 beaa237 — E197 SPEC: RecordRequest ships with its pricing, and the refinement decides literals only
 - 2026-09-05 7cefae7 — E197 EXAMPLE audit: all 21 figures reproduced, and a fifth mutant
 - 2026-09-05 d2ec1ae — E197 pre-run: what a run is asked to record, measured before it is designed
 - 2026-09-05 44913ce — INDEX: 26 pipeline rows advanced, 3 left as findings
 - 2026-09-05 857a005 — E187's SPEC link resolved to docs/docs/
 - 2026-09-05 a9c74ba — E187's INDEX row names check AC and its measured 29
-- 2026-09-05 2bd5b38 — E196's INDEX row said audited against a built ledger row
-- 2026-09-05 3cc3fb7 — E187: the examples INDEX row, flipped to implemented and its two false claims flagged
