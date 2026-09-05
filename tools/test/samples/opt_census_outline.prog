@@ -1,0 +1,28 @@
+; opt_census_outline.prog -- R5's subject in tools/test/opt-census.sh.
+;
+; `probe` is the shape all 32 chk-err TFns in the compiler's own blob have: a
+; non-tail `case` on a data-typed scrutinee, which `outline`
+; (lib/lowering/upper/lower.chiral:311) extracts as `probe$0` and CALLS. The
+; outlined signature never reaches the program-wide CEnv, so `re-check` refuses
+; `probe` with `call: unknown tal function` and `opt-tfns` falls back to the
+; un-folded TFn.
+;
+; `(* 6 7)` is the part the fallback throws away. It is a foldable i-prim over
+; two constants sitting in the SAME block as the outlined call, so the residual
+; the check refuses differs from the original and the difference is emitted.
+; That is what makes the guard observable at all: on the compiler's own blob it
+; is not, because none of the 32 carry foldable work outside their outlined
+; block.
+;
+; The sibling `opt_census_control.prog` is the same arithmetic with no case, so
+; nothing outlines, the check accepts, and both compilers adopt the residual.
+(import "prelude/prelude")
+(import "ports/stdio")
+
+(data W () (wa) (wb))
+
+(def probe (-> W I64)
+  (lam (w) (+ (* 6 7) (case w ((wa) 1) ((wb) 2)))))
+
+(def compile-main (=> I64 I64)
+  (lam (n) (do (put (str-cat (i64->str (probe (wa))) "\n")) 0)))
