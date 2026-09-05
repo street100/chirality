@@ -14,7 +14,7 @@ updated: 2026-09-05
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 50f2f3dbc32e0370b24fec08f0fec6c09a4dd44e0dcc7c39f04c31ef66104fad -->
+<!-- FRONTIER-SOURCES-SHA256: b01a7187eed39e624f837be35e250f0cfc1a410301106b6cdbc9b8546ed69444 -->
 <!-- sources: 160 files -->
 
 ## Decided recently
@@ -114,6 +114,7 @@ updated: 2026-09-05
 
 ### Last commits touching the frontier sources
 
+- 2026-09-05 4d00373 — E187's four homes: repair the +67 line drift and the one false claim
 - 2026-09-05 c04334a — E187 pre-run: the element as minted is spent, and one channel survives
 - 2026-09-04 0b51d2e — E188 step 9: the records, with the claim beside its measurement
 - 2026-09-04 f6fa5a4 — E188 SPEC PASS: status specced -> audited
@@ -121,4 +122,3 @@ updated: 2026-09-05
 - 2026-09-04 bebc058 — E188 SPEC: the guard makes the spine saturated, and the census measures it
 - 2026-09-04 8252d43 — E188 INDEX: drafted -> reviewed
 - 2026-09-04 09f445f — E188 pre-run: the unreachable arm is reached, and the tree already refuses this
-- 2026-09-04 5dd7031 — E186 step 6: the rows, and the author's row gets a pointer and stays open
