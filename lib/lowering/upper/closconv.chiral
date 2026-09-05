@@ -1045,6 +1045,37 @@
 (def arm-rw-ctx (-> (List (Pair I64 Core)) (List (Maybe Core)))
   (lam (fields) (rev-onto-some (kept-tys fields) nil)))
 
+; ---- the call spine for a g-site whose def-ctx fails (E188) -----------------
+
+; one arg per source param p in [0, arity), in source order.  Indices are
+; g-subst-go's (:961-977) and nothing here re-derives them:
+;   captured, KEPT   (kj-th kept field)  -> (- (- m 1) kj)
+;   captured, ERASED (no field)          -> (+ m d), the clo binder; dropped by
+;                                           term->ncore's tnc-keep
+;   supplied p >= k  (apply arg a_{p-k}) -> (- (- (+ m d) 1) (- p k))
+; fs is the site's own field list -- (g-param-specs sig g k) at a cwalk-app-head
+; site, nil at an fv-site / fv-own site where k = 0 -- so it has exactly k
+; entries.  The field list running out IS p reaching k, which is why the
+; scrutinee is fs and not (<i p k): one test instead of two, and no arm is left
+; carrying an unproven "unreachable" comment over a value.
+(declare cspine (-> Core (List Core) Core))
+(declare spine-args (-> I64 I64 (List (Pair I64 Core)) I64 I64 I64 I64 (List Core)))
+(def spine-args
+  (lam (p kj fs arity k m d)
+    (case (<i p arity)
+      (false nil)
+      (true
+        (case fs
+          ((cons f rest)
+            (case (field-erased? f)
+              (true  (cons (c-var (+ m d))
+                           (spine-args (+ p 1) kj rest arity k m d)))
+              (false (cons (c-var (- (- m 1) kj))
+                           (spine-args (+ p 1) (+ kj 1) rest arity k m d)))))
+          ((nil)
+            (cons (c-var (- (- (+ m d) 1) (- p k)))
+                  (spine-args (+ p 1) kj nil arity k m d))))))))
+
 ; the arm body for a site: d = the family (apply) arity, m = the site's capture
 ; count. Mirrors closconv.py _arm_body. The remapped body runs through rw so a
 ; fn-value global lifted verbatim (e.g. as-str) lowers first-order.
@@ -1202,8 +1233,8 @@
               (true  (drop-erased-args fr ar))
               (false (cons a (drop-erased-args fr ar))))))))))
 
-; fold an application spine (closconv.py _spine).
-(declare cspine (-> Core (List Core) Core))
+; fold an application spine (closconv.py _spine).  Its (declare) is hoisted to
+; sit with spine-args, which calls it from above.
 (def cspine
   (lam (head args) (case args ((nil) head) ((cons a r) (cspine (c-app head a) r)))))
 
