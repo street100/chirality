@@ -4,7 +4,7 @@ slug: encoding-seam
 title: "**`Encoding`: the seam between a continuous value and a spike train**"
 kind: BUILD-PROPER
 example: examples/E196-encoding-seam.md
-status: draft
+status: audited
 updated: 2026-09-05
 ---
 
@@ -44,8 +44,8 @@ both probes were re-run on it with output identical to the first pass.
   [[banks/unit]] §2 refracts the concept into nineteen shards, A through S, and
   no shard is an encoding: shard B is the `Ty`/`Shape` payload type and shard G
   is the `Backend` model crossing, both above this layer.
-- **What the change composes with:** `prelude/prelude` for the fifteen integer
-  ops and `i64->str`, `prelude/list` for `List`, `ports/stdio` for `put`. The
+- **What the change composes with:** `prelude/prelude` for the fourteen integer
+  ops at `lib/prelude/prelude.chiral:57-70` and `i64->str`, `prelude/list` for `List`, `ports/stdio` for `put`. The
   module binds no extern of its own and every function in it is `->`.
 - **True delta:** one new module, one new root, one new gate script. Three files,
   all new, none under `lib/`.
@@ -60,7 +60,7 @@ Every open question from the example §6, dispositioned.
 | 2 | `I64` or `DecodeR` | **RESOLVED: `DecodeR`, and `enc-decode` returns it** | The boundary-sums directive, applied by [[banks/unit]] shard F's `bind-miss` and shard S's `accept-gate`: a reason that exists at the decode is a value. Measured below: the repair moves 727 of 1,001 population readings and one of every 101 latency readings out of the numeric channel |
 | 3 | The refinement on `Population`'s fields | **DEFERRED to the implementation run's documented precondition, and priced here** | The bound is `size * max-tuning * max-count < 2^63` and the failure past it is measured below. `refine` on a constructor is machinery this element has not priced and the arc has no row for it, so the deferral rule forbids minting one to hold it |
 | 4 | The array type | **DEFERRED, and it stays `(List I64)`** | A length-indexed pair makes the `tuning`/`count` mismatch untypeable and costs dependent machinery. `unit-lane/N14` (`ty-eq` shape-equality) is the arc row that layer sits behind and it is `unminted`, so nothing is deferred to a name that does not exist: the residue is recorded in §6 with no element attached |
-| 5 | The directory | **RESOLVED: `prog/unit/encoding.chiral`** | `MAP.md` splits `lib/` into a universal tier and a language-implementation tier and says `prog/` is what chirality ships. An `Encoding` sum for a neuron lane is application-domain data and belongs to neither `lib/` tier. Every shard [[banks/unit]] refracts already sits under `prog/`. Two mechanical facts follow: `MAP.md` lists twelve `lib/` directories against thirteen on disk, so a `lib/unit/` would widen a gap this element does not own, and `MAP.md` carries no `prog/` subdirectory listing, so `prog/unit/` is invisible to it. `lib/manifest/` is the counter-precedent and it does not reach: a manifest is module-system machinery, which is the universal tier |
+| 5 | The directory | **RESOLVED: `prog/unit/encoding.chiral`** | `MAP.md`'s tiers table names `prog` in the universal tier beside seven `lib/` directories and the base shelf, and leaves `typing`, `surface` and `module` in the language-implementation tier. `MAP.md:122` reads `prog/` as what chirality ships, as distinct from what it is. An `Encoding` sum for a neuron lane is application-domain data and belongs to neither `lib/` tier. Every shard [[banks/unit]] refracts already sits under `prog/`. Two mechanical facts follow: `MAP.md` lists twelve `lib/` directories against thirteen on disk, so a `lib/unit/` would widen a gap this element does not own, and `MAP.md` carries no `prog/` subdirectory listing, so `prog/unit/` is invisible to it. `lib/manifest/` is the counter-precedent and it does not reach: a manifest is module-system machinery, which is the universal tier |
 | 6 | The gate's phase number | **DEFERRED to the standing author call, *Which suite phase number a new gate takes*, in `records/author-calls.md`** | `tools/test/encoding.sh` declares itself out with `# not-a-phase:` and a reason, the route `crypto.sh`, `tal-check.sh`, `apply-word.sh`, `capture-fields.sh`, `defunc-blame.sh` and `apply-spine.sh` already take. Measured below: the declaration keeps `registration.sh` G2 and G4 green and the gate runs by hand |
 
 **Decision 1, and what adding the field costs.** `Latency` as the research states
@@ -70,8 +70,10 @@ value whose range differs from the window has no code at all. With `max` on the
 arm, encode is `ref + (window - v*window/max)` and decode is
 `(window - (first-spike - ref)) * max / window`. Where `max = window` the two
 divisions cancel and the arithmetic is the example's, so the exactness result
-survives. Where `max > window` the arm becomes lossy exactly as `Rate` is, and
-the measured figures below are `Rate`'s figures for the same `window` and `max`.
+survives. Where `max > window` the arm becomes lossy exactly as `Rate` is. The `maxerr`
+figures below are `Rate`'s at the same `window` and `max`, 3 at `w=100 m=400` and
+16 at `w=16 m=255`. The exact counts sit one below `Rate`'s, 100 against 101 and
+1 against 2, because `v = 0` decodes to `d-silent` under decision 2.
 The alternative, removing `max` from `Rate`, was refused: it deletes the whole
 M1 sweep and it does not make the three arms symmetric, because `Population`'s
 scale lives in `tuning` under either reading.
@@ -128,6 +130,12 @@ Every step was executed off-tree in this run against a copy of `lib/` and
   `let` binds in the double-paren form `(let ((x e)) …)` that `lib/prelude/list.chiral`
   uses, and `enc-fired` is new, because the `maxfire` column §5 needs did not
   exist in the example.
+- ⚑ **A `def`'s type must carry one argument per `lam` binder.**
+  `(def enc-latency-of (-> I64 I64 I64 Encoding) (lam (w r m v) …))` fails with
+  `load: lambda checked against a non-function type`, because decision 1's fourth
+  field gives the encoder a fourth argument.
+- **Verified by:** the module resolves under `lib:prog` and compiles inside a
+  probe root that decodes one `enc-rate-of`.
 - **Size:** M
 
 ### Step 2: the sweep root
@@ -148,6 +156,7 @@ Every step was executed off-tree in this run against a copy of `lib/` and
   pass and executes none of it. That is the `compiled` state [[banks/unit]] §2
   defines, one step short of reached, and it is the whole suite claim this
   element may make.
+- **Verified by:** G1, then G2 against the golden.
 - **Size:** M
 
 ### Step 3: the gate
@@ -156,6 +165,12 @@ Every step was executed off-tree in this run against a copy of `lib/` and
   `# not-a-phase: E196's number waits on the standing suite-phase-number call in
   records/author-calls.md` at the head. Mutants run over a copied tree, the
   mechanism Phase 17 and Phase 19 use for a module outside the compiler's blob.
+- ⚑ **`mutlib` copies `lib/` alone.** `tools/test/render-doc.sh:133` is
+  `cp -a "$REPO/lib" "$MUTLIB"` and every mutant target is `lib/`-relative. This
+  module sits under `prog/`, so the driver copies `prog/` beside it and points
+  the resolver at the copy.
+- **Verified by:** `tools/test/encoding.sh` printing `9 passed, 0 failed` over
+  G1 to G5 and M1 to M4.
 - **Size:** M
 
 ### Step 4: the registries
@@ -163,7 +178,12 @@ Every step was executed off-tree in this run against a copy of `lib/` and
 - **Change:** the catalog and ledger rows both spell
   `Latency { window, ref, first-spike }`, which decision 1 supersedes, and
   neither names `DecodeR`. Repoint both at implementation time, in the commit
-  that lands the module.
+  that lands the module, so this step rides in step 1's and opens no fourth
+  commit.
+- **What holds the rows today:** no `ledger-lint` check reads a catalog row's
+  constructor prose. J, K, N and AB pass with both rows unedited and must still
+  pass after the repoint, which is what makes the deferral safe and the repair
+  owed.
 - **Size:** S
 
 **No step touches `lib/` or `prog/compiler.prog`**, so the build rule's
@@ -239,6 +259,13 @@ configuration. This answers the example's fork by taking neither horn.
 tuning values evenly spread over `[0, max]`, spacing is `max/(size-1)` and a unit
 fires inside a half-width `h`. Silence needs `h` below half the spacing and
 overlap needs `h` above it, so **no evenly spaced configuration carries both**.
+Measured exhaustively over `max` in 100, 255 and 1000, `size` 3 through 16 and
+every `h` up to `max`: zero configurations carry both, and the flip is one step
+wide. At `size=8 max=1000`, `h=71` gives 13 silent at `maxfire=1` and `h=72`
+gives 0 silent at `maxfire=2`. The limit belongs to `enc-tuning`'s even spacing.
+Uneven tuning carries both: `[0, 10, 500, 1000]` at `h=20` measures 912 silent
+and `maxfire=2`, so the blind row is a consequence of the tuning constructor this
+element ships.
 The sweep measures it: the one row with `silent > 0` carries `maxfire=1`, and all
 five rows with `maxfire >= 2` carry `silent=0`. A row where one unit fires
 decodes to that unit's own tuning value whatever count it carries, so the
@@ -259,16 +286,19 @@ a reddened row names the arm that broke it.
 
 ⚑ **G3 is subsumed on this sweep and is kept anyway.** No mutant reddens G3
 without also reddening G2; a fifth mutant doubling `Rate`'s decode was built and
-run and it reddens G3 on eight of nine rate rows and G2 on all nine. G3 earns its
-keep on a configuration added to the root later, which it judges with no new
-golden line.
+run and it reddens G3 on eight of nine rate rows and G2 on all nine. G3 earns
+its keep when a configuration is added to the root later. That row's golden line
+is cut by running the code, so a wrong decode is pinned as correct and G2 blesses
+it for good. G3 evaluates the law from the row's own `w` and `m` and never reads
+the golden, so it convicts a row the pin cannot.
 
 ⚑ **G5 sees the needle arrive, measured.** `prog/compiler.prog`'s blob resolves to
 820,959 bytes and holds zero occurrences of `enc-decode`, `enc-rate`,
 `enc-population`, `DecodeR`, `d-silent`, `Encoding` and `unit/encoding`. Adding
 `(import "unit/encoding")` to `lib/typing/diag.chiral` over a copied tree takes
 the blob to 824,763 bytes with `enc-decode` at 2 and `unit/encoding` at 3, so the
-scan sees the needle arrive. This is `tools/test/render-doc.sh`'s G9 plus M11,
+scan sees the needle arrive. The byte count rides the module's own size and the
+needle counts are what the row asserts. This is `tools/test/render-doc.sh`'s G9 plus M11,
 applied to a second element. **The element therefore ships under a plain
 `chirality run` with no fixpoint obligation.**
 
@@ -285,7 +315,8 @@ tree in this run.
 findings, both predating it; H and M vacuous; everything else clean. At the close
 R stands at 1, because the concurrent session repointed forty citations at
 `0d7ebb5`. This SPEC adds no finding to either check, and J, K, N, V and AB stay
-green.
+green. Re-measured at `98a9450`: `ledger-lint: clean`, every check at zero, H and
+M still vacuous, and N carrying its one KNOWN non-failing E52 note.
 
 **Done when:** `tools/test/encoding.sh` prints `encoding: 9 passed, 0 failed`
 over G1 to G5 and M1 to M4, `tools/test/registration.sh` still prints
@@ -310,7 +341,8 @@ over G1 to G5 and M1 to M4, `tools/test/registration.sh` still prints
     `records/author-calls.md` covers it and the row is already stale against the
     live count, so this run adds no paragraph to it and states the measurement
     here: 11 of 24 scripts outside the dispatch table once this gate lands, of
-    which five wait on that one number.
+    which seven wait on that one number and four declare out for structural
+    reasons.
 - **Follow-on:** none minted by this run. `unit-lane/N10` through `N42` are the
   arc's remaining rows and every one reads `unminted`.
 - **Related:** [[E196-encoding-seam]], [[arcs/unit-lane-arc]] rows `unit-lane/N8`
