@@ -132,9 +132,9 @@ Decision D2 is what this forces.
   comment at `:11-14`: `"no declared type"` and
   `"family arity disagrees with the global's"`.
 - **The back's skip list**, `BR`'s `(skips (List SkRec))`
-  (`compile-back.chiral:125`), `lower-defs`' `skips` accumulator (`:220-243`),
+  (`compile-back.chiral:125`), `lower-defs`' `skips` accumulator (`:220-240`),
   and the assembly `(lapp-skip skips (lapp-skip fskips (lapp-skip pskips esk)))`
-  at `:225`, which puts the accumulator's contents FIRST.
+  at `:227`, which puts the accumulator's contents FIRST.
 - **`back-program`'s seat.** `compile-back.chiral:297-301` already passes
   `nil nil` as `lower-defs`' seed `TFn` and seed `SkRec` lists. The seat exists;
   only the entry needs to offer it.
@@ -204,6 +204,16 @@ per family and the two lists cannot drift into reporting a cause twice for one
 drop. That is the honest fraction of the invariant the merge was reaching for,
 and it is enforceable inside one function.
 
+⚑ **What that idempotence does not buy, stated so it is not a later surprise.**
+It bounds `dsk` from above and leaves it unbounded from below. A family poisoned
+FIRST at `closconv.chiral:851`, where there is no name and no record, and
+reaching `st-add-gsite` afterwards under an `arrow-key-eq`-equal key, finds
+`key-in?` already true and records no cause: that drop is reported by the
+symptom alone. No shape in this tree reaches that order, because `:851` keys on a
+`c-var` head's own type and `st-add-gsite` keys on a partial global
+application's remainder. R5 and the suite are what catch it, and the repair if it
+bites is a `key-in?` read off `dsk` in place of the one off `pois`.
+
 ⚑ **This is RESOLVED by measurement rather than by a settled document.** What
 would reopen it: a fourth `st-add-pois` call site that carries a name, or a
 ruling that the higher-order poison at `:851` should also state a reason. Either
@@ -225,7 +235,7 @@ Three shapes were available.
   structure for an unrelated and still-live reason.
 - **Rely on list order so `find-skip` returns the defunc record first.** Rejected
   by measurement: `lower-defs` PREPENDS its own `le-skip` records onto the
-  accumulator (`compile-back.chiral:240`), so a seeded record sits at the
+  accumulator (`compile-back.chiral:239`), so a seeded record sits at the
   accumulator's tail and the back's record for the same name wins. Relying on
   that order is a convention nothing checks.
 - **Render the causes as a second clause.** TAKEN. A new `format-causes` filters
@@ -378,7 +388,13 @@ the step that introduced it.
   `11 ok, 0 FAIL` to `10 ok, 1 FAIL`. Repoint it to the new
   `(false (st-pois-defunc st key g "family arity disagrees with the global's"))`
   with the same replacement, which leaves M3's pin unmoved because it still
-  registers the mismatch instead of poisoning it.
+  registers the mismatch instead of poisoning it. ⚑ **That needle cannot ride a
+  single-quoted shell argument**: the pinned string carries an apostrophe in
+  `global's`, and every `mutate` call in that script passes its needle in single
+  quotes. Pass it double-quoted with the inner `"` escaped, and keep it spanning
+  the WHOLE call. A needle cut short of the apostrophe leaves the tail behind,
+  `sed` writes a tree that does not compile, and the row is graded on a build
+  failure, which is GA-19 through a different door.
 - **Size:** M.
 
 ### Step 8 — the BUILD RULE, then promotion
@@ -395,16 +411,24 @@ the step that introduced it.
   # differ: C3 from C2, cmp C2 C3; then C4 against C3.  STOP AFTER C4.
   ```
 
-  ⚑ **Convergence is two consecutive generations agreeing, and the first
-  agreement is not `C1 == C2` here.** This change touches emitted code:
-  `format-causes` is called from `compile-all`, which the compiler's own blob
-  contains. So `C1` carries the new sources under the old code generator and
-  differs from `C2` for that reason alone. **Expect the first agreement at
-  `C2 == C3`**, which is exactly what E188 measured (`032681f`). A run stopping
-  at `cmp C1 C2` would report failure on a correct build. Non-empty is checked
-  before every `cmp`; `(ulimit -s unlimited; …)` is on every build; a fourth
-  generation that still differs is a defect. Report the sizes and the first
-  differing char, and stop.
+  ⚑ **Convergence is two consecutive generations agreeing, bounded at `C4`, and
+  WHICH generation agrees first is measured here rather than predicted.**
+  `docs/definitions/working-discipline.md` puts the first agreement at `C2 == C3`
+  where the change reaches an EMITTING site the compiler's own blob executes,
+  which is what E188 measured (`032681f`, its `arm-body` `(none)` arm reached
+  twice), and at `C1 == C2` where the change leaves emission alone.
+  ⚑ **The two readings are mutually exclusive with this SPEC's own byte-identity
+  check, which makes the fixpoint's shape a second reading of that check.** The
+  check below asserts the promoted binary emits byte-identically over `lib/` and
+  `prog/`: no family here is poisoned, so `dsk` is `nil` at every root, and
+  `format-causes` is reached only on the `elf-err` path a successful self-compile
+  never takes. Where that holds, the tracked binary and `C1` emit alike on the
+  same blob and the first agreement is `C1 == C2`. A measured `C1 != C2` says the
+  change did move emission, and the byte-identity check is then what to read
+  next. Either agreement is a correct build and neither is assumed. Non-empty is
+  checked before every `cmp`; `(ulimit -s unlimited; …)` is on every build; a
+  generation past `C4` that still differs is a defect. Report the sizes and the
+  first differing char, and stop.
 - ⚑ **Byte-identity check.** Recompile every root under `lib/` and `prog/` with
   the promoted binary and compare against the pre-change output. No family in
   this tree is poisoned (E188 measured a guard-off rebuild identical), so **no
@@ -449,14 +473,26 @@ are `bad` at HEAD.**
 |---|---|---|---|
 | **R1** | the compile is **refused**: no ELF is emitted | the presence of an ELF | `ok`. Present so absence is graded, and it carries the deliverable nowhere |
 | **R2** | the message carries a **cause clause**: `defunctionalization refused:` | the stderr | **`bad`** |
-| **R3** | the cause clause **names the global at the refused site**: `e188-plus` appears in the segment after the last pipe separator | the cause segment alone, never the whole stderr | **`bad`** |
+| **R3** | the cause clause **names the global at the refused site**: `e188-plus` appears in the cause segment | the cause segment alone, never the whole stderr | **`bad`** |
 | **R4** | the cause names the **right discriminant**: `family arity disagrees with the global's` is in the cause segment and `no declared type` is not | the cause segment alone | **`bad`** |
 | **R5** | the **symptom clause is unchanged**: the stderr still carries `skip chain for compile-main: compile-main: extern does not lower: reference stays upper: e188-plus`, verbatim | the stderr | `ok`. The non-regression row, and what protects `apply-spine.sh` R5 |
 | **R6** | the **pre-change** binary emits no cause clause on the same fixture and the promoted one does | two binaries, one fixture | **`bad`** (`nobase` until a baseline is set) |
 
-**The seventh field is not a row.** `cause=<v>`, where `<v>` is the cause
-segment's `why` normalised to `[a-z0-9_]` (spaces to `_`, everything else
-dropped), or `cause=absent`. E188's own gate carries the same kind of field for
+⚑ **The cause segment is cut on the marker, and cutting it on the last pipe
+separator is M-A's own trap.** At HEAD the message carries ONE `|`, so the text
+after the last separator is the skip chain and `e188-plus` sits inside it: R3
+read that way scores `ok` before any work, which is the cell M-A was measured to
+protect. **The cut.** The cause segment is the text following the first
+`defunctionalization refused: ` in the stderr, and it is the EMPTY string when a
+refusal carries no such marker. A row asserting a substring of an empty segment
+grades `bad`. `absent` is reserved for a run with no refusal to read, which is
+M5's case alone.
+
+**The seventh field is not a row.** `cause=<v>`, where `<v>` is the cause segment
+with its leading `<name>: ` cut at the FIRST `: `, normalised to `[a-z0-9_]`
+(spaces to `_`, everything else dropped), or `cause=absent` when the segment is
+empty or there is no refusal. That cut is what `defunc-lines` writes, and M2, M3
+and the base line are pinned against it. E188's own gate carries the same kind of field for
 the same reason: **two mutants below redden the identical six cells and only the
 measured value separates them.**
 
@@ -491,7 +527,7 @@ scratch `lib/` is checked not to be a symlink (the `pretty.sh` arc).
 | **M1** | Step 2's mismatch arm reverts to `(st-add-pois st key)`: the family is still poisoned and the reason goes unrecorded | **R2, R3, R4, R6** | `ok bad bad bad ok bad cause=absent` |
 | **M2** | Step 2's two `why` strings are swapped, so the arity arm passes `"no declared type"` | **R4 alone** | `ok ok ok bad ok ok cause=no_declared_type` |
 | **M3** | Step 2's record becomes `(sk-defunc why why)`: a cause with the right discriminant and no name | **R3 alone** | `ok ok bad ok ok ok cause=family_arity_disagrees_with_the_globals` |
-| **M4** | Step 1's `defunc-lines` filters on `"extern"` instead of `"defunc"`: a cause clause exists and reports the wrong record | **R4 alone** | `ok ok ok bad ok ok cause=reference_stays_upper_e188plus` |
+| **M4** | Step 1's `defunc-lines` filters on `"extern"` instead of `"defunc"`: a cause clause exists and reports the wrong record | **R4 alone** | `ok ok ok bad ok ok cause=e188plus_reference_stays_upper_e188plus` |
 | **M5** | Step 2's guard never fires: the mismatch branch calls `st-add-site` (`apply-spine.sh`'s own M3) | **R1, R5, R6**; R2–R4 grade `absent` | `bad absent absent absent bad bad cause=absent` |
 
 ⚑ **M1 is the element's own falsifier and it reproduces today's line exactly.**
@@ -506,6 +542,14 @@ was selected*. Both leave R2 and R3 green, because `defunctionalization refused:
 present and `e188-plus` is inside the segment in both. Only the measured
 `cause=` value tells them apart. A gate pinning six cells would grade them
 identical and one of the two would be falsifying nothing.
+
+⚑ **M4's seventh value is the least certain of the five.** `skwhy-name` and
+`skwhy-detail` BOTH answer `op` on a `sk-extern` reason (`skip-diag.chiral:26`,
+and Step 1's accessor), so M4's line renders the op twice and the cut above lands
+inside it. The pin is what that derivation gives on a one-record filter; the
+record count under M4's filter is unmeasured, and a second extern record would
+lengthen the value through `join-semi`. The six cells hold either way, and the
+value is corrected by measurement like every other pin.
 
 ⚑ **Every row is reddened by at least one mutant**, which is what GA-22
 convicts a gate for lacking: R1 by M5, R2 by M1, R3 by M1 and M3, R4 by M1, M2
