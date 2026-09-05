@@ -19,7 +19,7 @@
   (lam (src entry)
     (case (compile-front src entry)
       ((fr-err m) (ca-err m))
-      ((fr-ok defs datas prims ports)
+      ((fr-ok defs datas prims ports dsk)
         (case (back-program defs datas prims)
           ((br-err m) (ca-err m))
           ((br-ok fns lits skips)

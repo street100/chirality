@@ -312,8 +312,12 @@
 ; more: the port-set axis is DERIVED at load, on the module's own datasheet
 ; (loader.chiral's crossings-of), so it neither needs nor gets a ride to the back
 ; half. The coordinates are still in the Sig, reachable by `sig-sheet`.
+; E187: `dsk` is closconv's stated reason for every family it refused.  It rides
+; fr-ok and not fr-err, because a poisoned family is a NAMED SKIP at keep-fams'
+; own granularity and not a whole-program error; the back half seeds its skip
+; list with it and the message states the cause beside the symptom.
 (data FR () (fr-ok (defs (List NDef)) (datas (List NData)) (prims (List NPrim))
-                   (ports (Maybe (List Str))))
+                   (ports (Maybe (List Str))) (dsk (List SkRec)))
             (fr-err (msg Str)))
 
 ; ---- extract the pure externs' tal sigs (mirrors lower.py prim_sigs) ----------
@@ -346,7 +350,7 @@
         (case (has-def defs name)
           (false (fr-err (str-cat "the entry def does not lower: " name)))
           (true  (fr-ok defs (datas->n (sig-datas sig)) (prims->n (sig-prims sig))
-                        (ports-manifest (sig-profiles sig))))))))))))
+                        (ports-manifest (sig-profiles sig)) dsk))))))))))
 
 ; THE FRONT ENTRY: source string + entry name -> FR (fr-ok NDef / fr-err msg).
 ; Pure chirality: parse + elaborate + typecheck (load-source) then peel. The whole

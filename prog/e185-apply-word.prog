@@ -117,7 +117,7 @@
       (case (compile-front src "compile-main")
         ((fr-err m) (do (put "==E185== bad absent absent absent absent\n")
                     (do (put (str-cat "front: " (str-cat m "\n"))) 0)))
-        ((fr-ok defs datas prims ports)
+        ((fr-ok defs datas prims ports dsk)
           (case (e185-find defs "$apply0")
             ((none) (do (put "==E185== bad absent absent absent absent\n")
                     (do (put "front: no $apply0 NDef in compile-front's output\n") 0)))
