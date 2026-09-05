@@ -89,7 +89,7 @@ counted with `grep -rn` over `lib/`, `prog/` and `tools/`:
 | `CState` 3 → 4 | `closconv.chiral:626` | `closconv.chiral:669`, `:672`, `:675`, `:678`, `:961`; **`closconv-driver.chiral:281`** |
 | `CCOut` 2 → 3 | `closconv-driver.chiral:145` | `closconv-driver.chiral:283`, `:286`; `compile-front.chiral:342`; **`prog/e186-capture-fields.prog:287`** |
 | `fr-ok` 4 → 5 | `compile-front.chiral:315-317` | `compile-front.chiral:348`; `compile-all.chiral:22`; **`prog/e185-apply-word.prog:120`**; **`prog/e188-apply-spine.prog:62`** |
-| `back-program` 3 → 4 | `compile-back.chiral:300` | `compile-all.chiral:23` |
+| `back-program` 3 → 4 | `compile-back.chiral:327` | `compile-all.chiral:23` |
 
 The three the example does not name are `prog/e185-apply-word.prog:120` and
 `prog/e188-apply-spine.prog:62`, both Phase 7 roots and both probes whose own
@@ -161,7 +161,7 @@ measurements above opened. No silent design calls.
 | D1 | `pois` and `dsk` as two lists, against one list of pairs | **RESOLVED: two lists** | §3.1, by measurement at `closconv.chiral:851` |
 | D2 | Where the cause is rendered | **RESOLVED: a second clause beside `format-blame`** | §3.2, by M-C |
 | D3 | `why` as `Str`, or a nested sum | **RESOLVED: `Str`** | `skip-diag.chiral:11-14` already names the two discriminants and `SkReason`'s other two arms carry `Str` |
-| D4 | Where the seed enters the back half | **RESOLVED: `back-program` gains the parameter** | `back-program` (`compile-back.chiral:300`) already passes `nil nil`; the alternative reaches past the back's entry |
+| D4 | Where the seed enters the back half | **RESOLVED: `back-program` gains the parameter** | `back-program` (`compile-back.chiral:327`) already passes `nil nil`; the alternative reaches past the back's entry |
 | D5 | Which suite phase number the gate takes | **DEFERRED: `records/author-calls.md:30`** | The standing call; the gate declares itself out with a reason, as `apply-spine.sh`, `apply-word.sh` and `capture-fields.sh` do |
 | D6 | The three `shape-eq` comments citing `:335-356` | **RESOLVED: folded into Steps 2 and 4** | Example §6 question 3; a comment-only edit owes the rebuild, and these steps already own the rebuild |
 | D7 | Does `format-blame` render `sk-defunc` acceptably | **RESOLVED: it does not render it at all** | M-C. Question 4 is answered by measurement and its answer is D2 |
@@ -363,7 +363,7 @@ the step that introduced it.
 ### Step 5 — `back-program` offers the seat `lower-defs` already has
 - **Targets:** `lib/lowering/compile-back.chiral`,
   `lib/lowering/compile-all.chiral`. One commit.
-- **Change:** `back-program` (`compile-back.chiral:300`) becomes
+- **Change:** `back-program` (`compile-back.chiral:327`) becomes
   `(-> (List NDef) (List NData) (List NPrim) (List SkRec) BR)` and passes the
   new parameter as `lower-defs`' last argument in place of the second `nil`.
   `compile-all.chiral:23` passes `dsk`.

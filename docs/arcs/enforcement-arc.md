@@ -84,8 +84,34 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    about either being right. **E188** owns that defect. The requirement stands as
    written.
 4. **The optimizer's re-check runs, or E17 says why it does not.**
-   `lib/lowering/upper/optimize.chiral` has zero importers and is in no blob, so
-   `optimize` and `specialize` return a `Checked` result nothing ever forms.
+   **CLOSED 2026-09-05 on the first branch**, [[records/enforcement-arc]] EN-24.
+   `lib/lowering/compile-back.chiral:16` imports `lowering/upper/optimize` and
+   `lower-defs` hands every emitted TFn to `re-check`, adopting the residual
+   only through `chk-ok`, which ck-fn has to form. Measured on the promoted
+   binary: **1,582 TFns per self-compile, 1,550 `chk-ok`, 32 `chk-err`**, and
+   the un-folded baseline accepts the same 1,550, so the fold costs no
+   acceptance. The 32 are `call: unknown tal function` on port externs and are
+   requirement 2's. Fixpoint `F2 == F3 == F4` at 1,241,464 bytes,
+   `391 passed, 0 failed`, `91 roots built, 0 failed`, gate PASSED.
+
+   ⚑ **THE COLLISIONS THIS REQUIREMENT WAS WAITING ON WERE ALREADY GONE.** The
+   eleven E154 names were prefixed `tck-` at `5b4fb71` and `lowering/tal/check`
+   loads beside the compiler's whole blob today, measured by loading it. What
+   `optimize` still owed was two homonyms of its own, `cenv-get` against
+   `lowering/mach/emit-core` and `two-srcs` against `lowering/tal/erase`, both
+   in a module nothing imported. EN-16 stays open on its own subject, the five
+   duplicated defs, and no longer blocks this requirement or requirement 2.
+
+   ⚑ **THE REWRITE IS `fold` ALONE, AND E17's DCE IS A LIVE MISCOMPILE.**
+   `optimize` is `re-check ce (dead (fold fn))`. Wired whole it reaches a
+   fixpoint and the compiler miscompiles itself: `293 passed, 98 failed` with
+   `91 roots built, 0 failed`, so every program still compiles and many compute
+   the wrong value. Attributed over `tools/test/row.sh` by two single-generation
+   builds: `fold` alone `42 passed, 0 failed`, `dead` alone
+   `33 passed, 9 failed`. **`re-check` accepts the dead residual**, which is
+   EN-19's shape a second time: the `Checked` sum proves ck-fn ran and says
+   nothing about meaning. Repairing `dead` is E17's remaining work and it is
+   not this requirement's.
 5. **Chirality's own tooling is chirality's.** Measured 2026-09-04: **12,450
    lines outside the language** against **782 native**, every `.prog` file:
    `prose-lint` 256, `paren-audit` 244, `test-runner` 134, `resolve` 104,
@@ -169,9 +195,12 @@ Phase 22 gating them (`ddfbc27`), and the erased-binder fix with a promoted
 fixpoint (`40e8726`). Suite 339 passed, 0 failed, 87 roots, gate PASSED.
 
 Four things are owed, and they are independent of each other. **The eleven name
-collisions** make `lowering/tal/check` unimportable beside the compiler, which
-blocks requirement 2 and requirement 4 alike; resolving them is mechanical and
-cascades into `tools/test/diag.sh:256` and seven sha256-pinned gate scripts.
+collisions are resolved.** They were prefixed `tck-` at `5b4fb71`, and
+`lowering/tal/check` loads beside the compiler's whole blob today; the paragraph
+below is the pre-`5b4fb71` reading and is kept for the collision census it
+carries. That unblocked requirement 4, closed 2026-09-05 by EN-24, and it
+leaves requirement 2 waiting on its own call sites rather than on a loader
+refusal.
 **E185** is the second: EN-15 was answered 2026-09-04 and
 [[decisions/decision-erased-word-level]] settles the level, so what stands
 between the four `$apply` dispatchers and a live refusal is an unbuilt element
@@ -184,7 +213,9 @@ research §7 finds the prior art keeping constructor fields concrete.
 hold that `ck-prog` cannot refuse on the shipping path while that instance
 stands, so requirement 2 carries it alongside E185.
 
-The enabling change was measured, then reverted. Its artifacts survive.
+**The enabling change LANDED at `5b4fb71`, and this paragraph is the census it
+was measured from.** ⚑ Its opening sentence read "measured, then reverted" until
+2026-09-05, when EN-24 loaded the module beside the blob and found it clean.
 `lib/lowering/tal/check.chiral` declares **11 top-level names that already exist
 in the compiler's blob** (`CkR`/`ck-ok`/`ck-err` against `lib/typing/kernel.chiral:411`,
 `CovR`/`cov-ok` against `lib/surface/data.chiral:37`, `find-ctor`, and five
@@ -212,9 +243,9 @@ finish on a PASS.
 
 ### E184
 
-| E184 | **Attribution: every def's fate is stated by the compiler, with evidence, and checked** | Not built. Minted 2026-09-01. Attribution is **not measurable today**: five mechanisms decide a def's fate, only three leave a record, and all of it is discarded on the success arm. Seven requirements. **R1, a total fate function** over every def in the compiler's closure, a closed sum with no `_` arm: `emitted <label>` · `specialized-into <names>` (because `specialize-singletons` rewrites rather than drops) · `erased-by-design` (the type-level defs `filter-erasable` is supposed to remove) · `skipped <reason>`. The `erased-by-design` arm is required rather than optional: a type-level def is not a failed lowering, and without that arm every ratio built on the fates is noise. **R2, reasons carry evidence, not strings.** `skipped`'s reason is itself a closed sum: extern-with-no-wrapper naming the op, type-does-not-peel naming which type and where, callee-cascade naming the chain. E157's rule applies unchanged, and a `str-cat`'d sentence here reintroduces what E157 removed. **R3, `peel-def` stops returning `(Maybe NDef)`** and becomes a result sum. `compile-front.chiral:203-210` drops a def by returning `(none)` and keeps no record at all, the only one of the five mechanisms that leaves no trace, so nothing downstream can recover it. **R4, the record survives success.** `compile-all.chiral:34-38` discards the `skips` list on the `elf-ok` arm, so it surfaces only on an emit failure. **R5, the cascade is rooted.** `prune-fix` (`compile-back.chiral:212`) is transitive, and the cascade record is built at `compile-back.chiral:210`, in `prune-pass`, so "dropped because callee X was dropped" is a pointer rather than an attribution; every chain must resolve to a non-cascade root, and `skip-diag.chiral` already carries E97's blame chain as the existing shape, which is why it is the right home. **R6, fates survive a renaming, and this is the design fork.** `specialize-singletons` (`compile-front.chiral:20`) runs before peel and changes a def's identity: `x64` becomes `x64$0`, `x64$1` and so on. Fates are therefore a relation across a renaming, and the rename mapping has to be produced by the pass that performs it and carried the rest of the way. Get it wrong and monomorphized singletons read as failures, which is exactly the misreading that made the earlier measurement worthless. **R7, conservation checked inside the compile, plus an exit.** The fates partition the closure's def set, exactly one per def, and folding them reproduces the emitted set; a def with no fate, or with two, fails the compile. That is the line between attribution and logging. `bin/chirality` has compile / run / check / test and no exit for the report, so one is owed, and the gate that reads it is a chirality program on E168's test floor rather than a shell script. **Cost:** roughly 150 to 250 LOC across five modules, three signature changes (`peel-def`, `specialize-singletons` emitting its rename relation, `compile-all` threading fates), plus build-new → test → promote with the fixpoint verified and the Step-0 precondition checked first. **Needs the full pipeline** (worked example → audit → SPEC → audit → implement): the fate taxonomy is a taxonomy and R6 is a genuine fork. The pre-run may recommend splitting R6 into its own element; if it does, that split mints its rows in the same change. ⚑ **The one read-only probe is gone.** Compiling through the E166 `Mach`→C leg and joining mangled C symbol names back to def names died with that leg (`d8bcec5`, `d0c5dd5`), and was never legitimate anyway: it shared `compile-front` and `compile-back` whole and differed only at emit, which is one formulation with two emitters, the shape `docs/decisions/decision-self-verification.md` §0 explicitly rules out. ⚑ **Measured 2026-09-01:** `skip-reason` (`lib/lowering/upper/lower.chiral:83-93`) together with `eligible?`, `lower-all`, `lower-def` and `LowRes` has **no caller outside its own file**; the live path imports `lower` for `compile-fn` only (`compile-back.chiral:15`), so the four exclusions those functions name (dependent type, effectful, quantified binder, type does not lower) are **never produced by a real compile**. Full requirement text: `docs/arcs/enforcement-arc.md`. | `OURS`; ←E97, ←E157, ←E168 |
+| E184 | **Attribution: every def's fate is stated by the compiler, with evidence, and checked** | Not built. Minted 2026-09-01. Attribution is **not measurable today**: five mechanisms decide a def's fate, only three leave a record, and all of it is discarded on the success arm. Seven requirements. **R1, a total fate function** over every def in the compiler's closure, a closed sum with no `_` arm: `emitted <label>` · `specialized-into <names>` (because `specialize-singletons` rewrites rather than drops) · `erased-by-design` (the type-level defs `filter-erasable` is supposed to remove) · `skipped <reason>`. The `erased-by-design` arm is required rather than optional: a type-level def is not a failed lowering, and without that arm every ratio built on the fates is noise. **R2, reasons carry evidence, not strings.** `skipped`'s reason is itself a closed sum: extern-with-no-wrapper naming the op, type-does-not-peel naming which type and where, callee-cascade naming the chain. E157's rule applies unchanged, and a `str-cat`'d sentence here reintroduces what E157 removed. **R3, `peel-def` stops returning `(Maybe NDef)`** and becomes a result sum. `compile-front.chiral:203-210` drops a def by returning `(none)` and keeps no record at all, the only one of the five mechanisms that leaves no trace, so nothing downstream can recover it. **R4, the record survives success.** `compile-all.chiral:34-38` discards the `skips` list on the `elf-ok` arm, so it surfaces only on an emit failure. **R5, the cascade is rooted.** `prune-fix` (`compile-back.chiral:213`) is transitive, and the cascade record is built at `compile-back.chiral:210`, in `prune-pass`, so "dropped because callee X was dropped" is a pointer rather than an attribution; every chain must resolve to a non-cascade root, and `skip-diag.chiral` already carries E97's blame chain as the existing shape, which is why it is the right home. **R6, fates survive a renaming, and this is the design fork.** `specialize-singletons` (`compile-front.chiral:20`) runs before peel and changes a def's identity: `x64` becomes `x64$0`, `x64$1` and so on. Fates are therefore a relation across a renaming, and the rename mapping has to be produced by the pass that performs it and carried the rest of the way. Get it wrong and monomorphized singletons read as failures, which is exactly the misreading that made the earlier measurement worthless. **R7, conservation checked inside the compile, plus an exit.** The fates partition the closure's def set, exactly one per def, and folding them reproduces the emitted set; a def with no fate, or with two, fails the compile. That is the line between attribution and logging. `bin/chirality` has compile / run / check / test and no exit for the report, so one is owed, and the gate that reads it is a chirality program on E168's test floor rather than a shell script. **Cost:** roughly 150 to 250 LOC across five modules, three signature changes (`peel-def`, `specialize-singletons` emitting its rename relation, `compile-all` threading fates), plus build-new → test → promote with the fixpoint verified and the Step-0 precondition checked first. **Needs the full pipeline** (worked example → audit → SPEC → audit → implement): the fate taxonomy is a taxonomy and R6 is a genuine fork. The pre-run may recommend splitting R6 into its own element; if it does, that split mints its rows in the same change. ⚑ **The one read-only probe is gone.** Compiling through the E166 `Mach`→C leg and joining mangled C symbol names back to def names died with that leg (`d8bcec5`, `d0c5dd5`), and was never legitimate anyway: it shared `compile-front` and `compile-back` whole and differed only at emit, which is one formulation with two emitters, the shape `docs/decisions/decision-self-verification.md` §0 explicitly rules out. ⚑ **Measured 2026-09-01:** `skip-reason` (`lib/lowering/upper/lower.chiral:83-93`) together with `eligible?`, `lower-all`, `lower-def` and `LowRes` has **no caller outside its own file**; the live path imports `lower` for `compile-fn` only (`compile-back.chiral:15`), so the four exclusions those functions name (dependent type, effectful, quantified binder, type does not lower) are **never produced by a real compile**. Full requirement text: `docs/arcs/enforcement-arc.md`. | `OURS`; ←E97, ←E157, ←E168 |
 
-| E184 | lowering | design | **Attribution: every def's fate is stated by the compiler, with evidence, and checked.** A total fate function over every def in the compiler's closure, a closed sum with no `_` arm: `emitted <label>` / `specialized-into <names>` / `erased-by-design` / `skipped <reason>`, with `skipped`'s reason itself a closed sum carrying evidence (extern-with-no-wrapper, type-does-not-peel, callee-cascade), so E157's rule applies unchanged. `peel-def` stops returning `(Maybe NDef)`: `compile-front.chiral:203-210` drops a def with no record at all. `compile-all.chiral:34-38` stops discarding `skips` on the `elf-ok` arm. `prune-fix`'s transitive cascade (`compile-back.chiral:212`, record built at `compile-back.chiral:210` in `prune-pass`) resolves to a non-cascade root, in `skip-diag.chiral` beside E97's blame chain. Fates survive `specialize-singletons`' renaming (`compile-front.chiral:20`, `x64` becomes `x64$0`), which is the design fork: get it wrong and monomorphized singletons read as failures. Conservation is checked inside the compile, one fate per def, folding to the emitted set, with a report exit `bin/chirality` does not have and a gate on E168's floor. **Attribution is not measurable today:** five mechanisms decide a fate, three leave a record, all of it discarded on success. The one read-only probe died with the E166 C leg (`d8bcec5`, `d0c5dd5`) and was never legitimate, one formulation with two emitters. Measured 2026-09-01: `skip-reason` (`lib/lowering/upper/lower.chiral:83-93`) with `eligible?`/`lower-all`/`lower-def`/`LowRes` has no caller outside its own file, so its four exclusions never occur in a real compile. ~150-250 LOC, five modules, three signature changes, full BUILD RULE. **Pipeline: yes.** Minted 2026-09-01; full text in `docs/arcs/enforcement-arc.md`. | ←E97, ←E157, ←E168 |
+| E184 | lowering | design | **Attribution: every def's fate is stated by the compiler, with evidence, and checked.** A total fate function over every def in the compiler's closure, a closed sum with no `_` arm: `emitted <label>` / `specialized-into <names>` / `erased-by-design` / `skipped <reason>`, with `skipped`'s reason itself a closed sum carrying evidence (extern-with-no-wrapper, type-does-not-peel, callee-cascade), so E157's rule applies unchanged. `peel-def` stops returning `(Maybe NDef)`: `compile-front.chiral:203-210` drops a def with no record at all. `compile-all.chiral:34-38` stops discarding `skips` on the `elf-ok` arm. `prune-fix`'s transitive cascade (`compile-back.chiral:213`, record built at `compile-back.chiral:210` in `prune-pass`) resolves to a non-cascade root, in `skip-diag.chiral` beside E97's blame chain. Fates survive `specialize-singletons`' renaming (`compile-front.chiral:20`, `x64` becomes `x64$0`), which is the design fork: get it wrong and monomorphized singletons read as failures. Conservation is checked inside the compile, one fate per def, folding to the emitted set, with a report exit `bin/chirality` does not have and a gate on E168's floor. **Attribution is not measurable today:** five mechanisms decide a fate, three leave a record, all of it discarded on success. The one read-only probe died with the E166 C leg (`d8bcec5`, `d0c5dd5`) and was never legitimate, one formulation with two emitters. Measured 2026-09-01: `skip-reason` (`lib/lowering/upper/lower.chiral:83-93`) with `eligible?`/`lower-all`/`lower-def`/`LowRes` has no caller outside its own file, so its four exclusions never occur in a real compile. ~150-250 LOC, five modules, three signature changes, full BUILD RULE. **Pipeline: yes.** Minted 2026-09-01; full text in `docs/arcs/enforcement-arc.md`. | ←E97, ←E157, ←E168 |
 
 
 #### The seven requirements
@@ -241,7 +272,7 @@ downstream can recover it.
 `skips` list on the `elf-ok` arm, so it surfaces only on an emit failure. Fates
 must return on success.
 
-**R5. The cascade is rooted.** `prune-fix` (`compile-back.chiral:212`) is
+**R5. The cascade is rooted.** `prune-fix` (`compile-back.chiral:213`) is
 transitive, and the cascade record is built at `compile-back.chiral:210`, in
 `prune-pass`. "Dropped because callee X was dropped" is a pointer rather than an
 attribution. Every chain resolves to a non-cascade root. `skip-diag.chiral`
@@ -394,8 +425,10 @@ still miss.
 
 [[goals/enforcement]] states the gap in its own State list: the typed-assembly
 floor is built and unadopted, and neither the floor checker nor the optimizer's
-re-check runs in the shipping compile. These four elements are that sentence,
-and they are the reason it is true. Every count below was measured 2026-09-02 by
+re-check runs in the shipping compile. **Half of that sentence expired
+2026-09-05.** The optimizer's re-check runs on every compile, EN-24; the floor
+checker `ck-prog` still has no call site, which is requirement 2. These four
+elements are that sentence, and they are the reason the surviving half is true. Every count below was measured 2026-09-02 by
 grepping `(import "<key>")` over `lib/` and `prog/` and by walking the transitive
 import closure of `prog/compiler.prog`, which is 50 modules.
 
@@ -407,9 +440,9 @@ import closure of `prog/compiler.prog`, which is 50 modules.
 
 ### E17
 
-| E17 | **Optimizer: const-fold, DCE, specialize/partial-eval/pregen** | Built and unreached. `lib/lowering/upper/optimize.chiral` (254 L) has zero importers across `lib/` and `prog/` and sits outside the compiler's closure, so no program in this tree is optimized by it. It is one of the two importers of `lowering/tal/check`, which is the mechanism by which the optimizer's re-check stays unrun: the re-check is written, and the module holding it is dead. | partial evaluation (Jones–Gomard–Sestoft) (`PAPER`) |
+| E17 | **Optimizer: const-fold, DCE, specialize/partial-eval/pregen** | **Wired 2026-09-05, and the re-check runs.** `lib/lowering/compile-back.chiral:16` imports `lowering/upper/optimize`, and `lower-defs` const-folds every emitted TFn and adopts the residual only through `chk-ok`, which `re-check` cannot form without ck-fn judging it. **1,582 TFns per self-compile, 1,550 `chk-ok`, 32 `chk-err`**, un-folded baseline 1,550. The 254 lines are on the live path and `lowering/tal/check` came with them, so the module holding the re-check is loaded. ⚑ **`dead` IS EXCLUDED BY MEASUREMENT.** Wired whole, `optimize` reaches a fixpoint and the compiler miscompiles itself, `293 passed, 98 failed` with `91 roots built, 0 failed`; `fold` alone grades `tools/test/row.sh` at `42 passed, 0 failed` and `dead` alone at `33 passed, 9 failed`. `re-check` accepts the dead residual. [[records/enforcement-arc]] EN-24 | partial evaluation (Jones–Gomard–Sestoft) (`PAPER`) |
 
-| E17 | optimize | built | **Optimizer: const-fold, DCE, specialize/pregen.** 254 L, zero importers, outside the compiler blob. The optimizer's re-check over tal is written inside a module nothing loads. ⚑ The ledger's state cell files E17 `built`, and built here means present on disk. | ←E18 |
+| E17 | optimize | built | **Optimizer: const-fold, DCE, specialize/pregen.** 254 L, **imported by `compile-back.chiral:16` since 2026-09-05**, inside the compiler blob. The optimizer's re-check over tal runs on every compile, 1,550 `chk-ok` of 1,582 TFns. ⚑ The ledger's state cell files E17 `built`, and built here now means reached as well as present. What is left is the DCE pass, which miscompiles and which `re-check` accepts anyway, EN-24 | ←E18 |
 
 ### E18
 
