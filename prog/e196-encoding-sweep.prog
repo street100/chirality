@@ -1,0 +1,143 @@
+; e196-encoding-sweep.prog -- the E196 probe: sweep each `Encoding` arm's whole
+; domain and print one pinned line per configuration.
+;
+; Twenty configurations, twenty lines. For every value in [0, max] the root
+; encodes, decodes and folds the reading into an accumulator carrying four
+; columns:
+;
+;   domain    how many values were swept, `max + 1`
+;   exact     readings that came back equal to the value encoded
+;   silent    readings that came back `d-silent`
+;   maxerr    the largest |decoded - encoded| over the readings that carried one
+;   maxfire   the largest number of units carrying a spike in one reading
+;
+; ⚑ IT ASSERTS NOTHING AND ALWAYS EXITS 0. Every comparison lives in bash, in
+; `tools/test/encoding.sh`, over these bytes. A gate that re-derives its own
+; verdict is green under any mutant that changes what the verdict says, which is
+; the rule `prog/e188-apply-spine.prog` states for its own R4 and this root
+; follows.
+;
+; ⚑ `maxerr` AND `maxfire` MEASURE TWO DIFFERENT BLINDNESSES. `maxerr` is the
+; round trip's accuracy. `maxfire` is whether the tuning curve was observable at
+; all: a population reading in which one unit fires decodes to that unit's own
+; preferred value whatever count it carries, so a sweep of such rows cannot see
+; the curve's shape. G4 in the gate reads this column for that reason.
+;
+; The suite compiles this root and executes none of it. Phase 7 sweeps
+; `grep -rl '^(def compile-main' lib prog`, so the root lands in that census for
+; free and reaches the `compiled` state banks/unit §2 defines, one step short of
+; reached. That is the whole suite claim E196 makes.
+
+(import "prelude/prelude")
+(import "prelude/list")
+(import "unit/encoding")
+(import "ports/stdio")
+
+; ---- the accumulator ---------------------------------------------------------
+
+(data Acc ()
+  (acc (exact I64) (silent I64) (maxerr I64) (maxfire I64)))
+
+(def i-max (-> I64 I64 I64)
+  (lam (a b) (case (<i a b) (true b) (false a))))
+
+; fold one reading in. A `d-silent` reading is counted and contributes no error,
+; which is the whole point of decision 2: it never enters the numeric channel.
+(declare acc-step (-> Acc I64 DecodeR I64 Acc))
+(def acc-step (lam (a v r f)
+  (case a
+    ((acc ex si me mf)
+      (case r
+        ((d-silent) (acc ex (+ si 1) me (i-max mf f)))
+        ((d-val x)
+          (let ((e (enc-abs (- x v))))
+            (case (=i e 0)
+              (true  (acc (+ ex 1) si me (i-max mf f)))
+              (false (acc ex si (i-max me e) (i-max mf f)))))))))))
+
+; ---- the sweeps, one per arm -------------------------------------------------
+
+(declare sw-rate (-> I64 I64 I64 Acc Acc))
+(def sw-rate (lam (w m v a)
+  (case (<=i v m)
+    (false a)
+    (true
+      (let ((e (enc-rate-of w m v)))
+        (sw-rate w m (+ v 1) (acc-step a v (enc-decode e) (enc-fired e))))))))
+
+(declare sw-lat (-> I64 I64 I64 I64 Acc Acc))
+(def sw-lat (lam (w r m v a)
+  (case (<=i v m)
+    (false a)
+    (true
+      (let ((e (enc-latency-of w r m v)))
+        (sw-lat w r m (+ v 1) (acc-step a v (enc-decode e) (enc-fired e))))))))
+
+(declare sw-pop (-> I64 I64 I64 I64 I64 Acc Acc))
+(def sw-pop (lam (n m h k v a)
+  (case (<=i v m)
+    (false a)
+    (true
+      (let ((e (enc-population-of n m v h k)))
+        (sw-pop n m h k (+ v 1) (acc-step a v (enc-decode e) (enc-fired e))))))))
+
+; ---- the line ----------------------------------------------------------------
+
+; append ` <key><value>` to a line under construction.
+(def kv (-> Str Str I64 Str)
+  (lam (s k v) (str-cat s (str-cat " " (str-cat k (i64->str v))))))
+
+(def tail-cols (-> Str I64 Acc Str)
+  (lam (s m a)
+    (case a
+      ((acc ex si me mf)
+        (str-cat
+          (kv (kv (kv (kv (kv s "domain=" (+ m 1)) "exact=" ex)
+                  "silent=" si) "maxerr=" me) "maxfire=" mf)
+          "\n")))))
+
+(def row-rate (=> I64 I64 Unit)
+  (lam (w m)
+    (put (tail-cols (kv (kv "rate" "w=" w) "m=" m) m
+                    (sw-rate w m 0 (acc 0 0 0 0))))))
+
+(def row-lat (=> I64 I64 I64 Unit)
+  (lam (w r m)
+    (put (tail-cols (kv (kv (kv "lat" "w=" w) "r=" r) "m=" m) m
+                    (sw-lat w r m 0 (acc 0 0 0 0))))))
+
+(def row-pop (=> I64 I64 I64 I64 Unit)
+  (lam (n m h k)
+    (put (tail-cols (kv (kv (kv (kv "pop" "n=" n) "m=" m) "h=" h) "k=" k) m
+                    (sw-pop n m h k 0 (acc 0 0 0 0))))))
+
+; ---- the twenty configurations ------------------------------------------------
+;
+; Nine rate rows carry the exactness result and its failure past `max > window`.
+; Five latency rows carry the same law on the second scalar arm, which is what
+; decision 1's `max` field buys. Six population rows walk the half-width from
+; blind (h=20, one unit firing, 727 silent readings) through overlapping
+; (h>=80), and the last one is the realistic ceiling of decision 3's bound.
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (do (row-rate 100 100)
+    (do (row-rate 100 50)
+    (do (row-rate 255 255)
+    (do (row-rate 100 400)
+    (do (row-rate 32 1000)
+    (do (row-rate 16 255)
+    (do (row-rate 7 255)
+    (do (row-rate 3 100)
+    (do (row-rate 1 100)
+    (do (row-lat 100 1000 100)
+    (do (row-lat 16 0 16)
+    (do (row-lat 1024 1000000 1024)
+    (do (row-lat 100 1000 400)
+    (do (row-lat 16 0 255)
+    (do (row-pop 8 1000 20 100)
+    (do (row-pop 8 1000 80 100)
+    (do (row-pop 8 1000 200 100)
+    (do (row-pop 8 1000 400 100)
+    (do (row-pop 32 1000 100 100)
+    (do (row-pop 64 65536 4096 1024)
+        0))))))))))))))))))))))
