@@ -39,12 +39,9 @@ Three verbs and one invariant. A fetch of an immutable value carries no
 handshake, no session, no identity and no cipher, because the address is the
 proof.
 
-**Forwarding.** A hop forwards what its own layer tells it to forward. It does
-not read an ask and decide whether it can serve it, because a peer that reads
-an ask has read the ask, and that is §9's level four disclosure at every hop.
-Gossip forwarding and hop blindness cannot both hold. §8's holdings summary is
-what makes gossip unnecessary: the sender already knows who holds the value, so
-nothing has to search on its behalf.
+**Forwarding.** A hop forwards what its own layer tells it to forward, and
+never reads an ask to decide whether it could serve it. §8 holds the reason and
+the mechanism that makes the alternative unnecessary.
 
 ## §2 · The chain
 
@@ -92,13 +89,11 @@ holder for a reason the address cannot justify.
 separate**, because a hop reading `size` and `chunk` is §9's level four
 disclosure. §10 holds the envelope that decides it.
 
-**The one cryptographic dependency.** A mark needs a collision-resistant digest
-and this tree has none. `lib/crypto/` holds ChaCha20 and Poly1305, a cipher and
-a MAC. The only content hash in the tree is FNV-1a-64 (`apc.chiral:122-130`),
-correct for what E112 uses it for and far too narrow here, so **`mark-of` is
-new work and `block-id` is a precedent for the shape**. The whole addressing
-model has exactly one cryptographic dependency and `arcs/native-protocol-arc.md`
-already rosters it as `N1`'s open hash slice.
+**The one cryptographic dependency.** A mark needs a collision-resistant
+digest. E112's `block-id` is FNV-1a-64, correct for what it does and far too
+narrow for an address, so **`mark-of` is new work and `block-id` is a precedent
+for the shape**. That is the whole addressing model's only cryptographic
+dependency. §14 holds what the tree has.
 
 ## §4 · Reachability: open and gated
 
@@ -218,11 +213,11 @@ A ceremonial route is established once and reused. The reference class is the
 set and a simpler analysis, a free route gives resilience and scale, and
 Loopix's stratified topology is the modern middle.
 
-| problem | how the ceremony answers it |
+| problem, and where it is stated | how the ceremony answers it |
 |---|---|
-| per-packet unlinkability costs statelessness | state becomes per route, bounded by topology instead of by traffic |
-| topological inference from hop direction | everyone traverses the same path, so direction carries nothing about anyone |
-| the sender must hold topology | it holds a route handle, and everyone holds the same ones |
+| §11's corner table: per-packet unlinkability costs statelessness | state becomes per route, bounded by topology instead of by traffic |
+| §7's corridor trap: direction leaks the destination | one path for everyone, so direction carries nothing about anyone |
+| `R10`: the sender must hold topology | it holds a route handle, and everyone holds the same ones |
 
 **A shared route is stronger than per-session state, and cheaper.** Per-session
 state lets a hop count sessions and count packets within one. On a shared route
@@ -434,17 +429,10 @@ price of one-hop routing.
 | 4 | which value is wanted | **open research.** Below |
 | 5 | the value itself | encryption, and §10 decides who opens what |
 
-**The three-way tension.** Two of these three are available at once.
-
-| | content-addressed | a hop learns nothing | stateless |
-|---|---|---|---|
-| the ask in the clear | yes | **no** | yes |
-| per-link labels | yes | yes | **no**, a label needs setup |
-| broadcast on one bus | yes | yes | yes, and it never leaves that bus |
-
-The author's ruling that a hop learns nothing therefore requires per-link
-state, which requires a link, which puts a party at the floor. `R1` records the
-fork and the ruling reaches it.
+**What the ruling costs.** A hop learning nothing across a link requires
+per-link state, which requires a link, which puts a party at the floor of the
+model. §11's corner table prices the three ways out. `R1` records the fork and
+the ruling reaches it.
 
 ### Cadence
 
@@ -476,10 +464,8 @@ with degree, and §8's cover fills the idle slots.
 | a fixed payload size | varying size would leak position and allow size correlation |
 | padding and filler at constant header length | length carries nothing |
 
-Sphinx provides all four as a proven property. **HORNET does not**: its AHDR is
-constant through a session, so nodes can link every packet of one session. Its
-claim is that a node learns neither source nor destination, which leaves
-packet unlinkability outside what it promises.
+Sphinx provides all four as a proven property and HORNET provides none of
+them, for the reason §11's corner table gives.
 
 **All three defences or none of them matter.** Perfect bitwise unlinkability
 with a 5 ms forwarding delay and no cover is correlatable with a stopwatch,
@@ -494,13 +480,8 @@ has marked it research. Content addressing hands the level out by construction,
 because the mark **is** the identifier and anyone who has seen the content
 recognises the ask.
 
-| partial | what it buys |
-|---|---|
-| ask only peers there is a link with | the leak is bounded to peers that were chosen |
-| per-link derived tags | one value asked on two links is unlinkable across them |
-| §8's cover mix | an observer sees which asks happened and cannot say which were real |
-
-Mitigations, and none is a solution.
+§8's two-adversary table is where the mitigations live, and every one of them
+bounds this level without closing it.
 
 ## §10 · The envelope
 
@@ -618,9 +599,8 @@ with nothing to decide.
 Holds: one long-term local secret, one key per neighbour, one entry per route
 crossing it, a bounded replay cache.
 
-**The features are the absent rows.** A hop does not choose a next hop, learn a
-destination, learn its position, learn whether it is last, or hold per-flow
-state. The one cell it writes is the replay cache.
+**The features are the absent rows**, enumerated in §7. The one cell this
+column writes is the replay cache.
 
 ### The receiver
 
@@ -728,19 +708,15 @@ A partial update fetches exactly what changed, with no protocol support for it.
 
 ### Reaching a gated endpoint
 
-| step | what happens | who learns what |
-|---|---|---|
-| 0 | the asker holds a `Grant`, from out of band or a PAKE ceremony | without it step 3 is unformable, so the endpoint is unreachable and its existence unlearnable |
-| 1 | build an ephemeral half-route to a splice the asker picks | the splice knows it was picked |
-| 2 | hand the splice a one-time secret | it holds a secret and no keys |
-| 3 | send an introduction over the ceremonial route, sealed under the grant, naming the splice and the secret | ceremonial hops see an introduction pass |
-| 4 | the endpoint builds its own half-route to the splice | its hops learn only their own next link |
-| 5 | the splice joins the halves | it forwards opaque parcels and decrypts nothing |
-| 6 | the session runs, and marks still verify inside it | |
+§6 holds the mechanism and who learns what at each step. What this walkthrough
+adds is the precondition and the price.
 
-Against the public case: two half-routes at `H` each, one introduction, one
-handshake, one live splice. At `H` of 3 that is six hops end to end, which is
-where Tor lands.
+| | |
+|---|---|
+| precondition | the asker holds a `Grant`, from out of band or a PAKE ceremony. Without it §6's introduction is unformable, so the endpoint is unreachable and its existence unlearnable |
+| against the public case | two half-routes at `H` each, one introduction, one handshake, one live splice |
+| end to end | at `H` of 3 that is six hops, which is where Tor lands |
+| inside the session | marks still verify, so integrity never depends on the session |
 
 ### What the walkthroughs expose
 
