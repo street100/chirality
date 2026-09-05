@@ -128,7 +128,7 @@ none, and that difference is the sizing answer. The one layer where a census did
 `AI-LANE-NUMERICS` section 3 against L0, found `op-mulhi` already sitting in
 the `Op` sum and unbound at surface: that finding is `unit-lane/N1`, and the
 same primitive is now minted as `E189` ([[decisions/decision-lane-split]],
-owned by neither this arc nor `native-protocol`). The census is the
-cheapest next action available here: it is cheaper than any row in the
-table above, and it may close several of them for free the way it already
-closed N1.
+owned by neither this arc nor `native-protocol`). That was the census's one
+catch, and it was taken before this arc opened; the sweep run on 2026-09-05
+caught nothing further, so the cheap way out of the table is spent and every
+remaining row is work.

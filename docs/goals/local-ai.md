@@ -3,7 +3,7 @@ node: goal-local-ai
 layer: navigation
 related: [goals/README, goals/self-tooling, goals/presentability, train-of-thought, records/author-calls, status-ledger, working-discipline, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-05
 ---
 
 # Goal: full genuine local AI on small models
@@ -117,21 +117,28 @@ Measured 2026-09-01 against this tree.
 
 ## Arcs
 
-Three, opened 2026-09-02 from `.planning/LOCAL-AI-ARC-REALIGNMENT.md`. That
-proposal also records which existing arcs supply pieces of this goal while
-serving their own, and it re-points nothing.
+Four. Three were opened 2026-09-02 from
+`.planning/LOCAL-AI-ARC-REALIGNMENT.md`, which also records which existing arcs
+supply pieces of this goal while serving their own, and re-points nothing. The
+fourth was opened 2026-09-05 from `.planning/AI-LANE-GAP.md`, after the section
+below had already ruled that criterion 3 needed no arc.
 
 | arc | covers | state |
 |---|---|---|
 | [[arcs/transport-arc]] | criterion 1, a run that reaches a model server | T1 through T4 done 2026-09-02, and all four of the arc's own requirements hold. Phase 20 gates the transport path and criterion 1 stays unmet. Rows stay `unminted` on author call B |
 | [[arcs/scriba-arc]] | criterion 2, full interaction from the editor | open and unblocked. `S#` is its own namespace |
 | [[arcs/tuning-arc]] | criterion 4, fine tuning and the transformer verbs | opened blocked on author call A, with no row written |
+| [[arcs/unit-lane-arc]] | criterion 3, the model of computation the agents run under, extended to a neuron population and a transformer instance | 42 rows over eight layers, band `E196-E239`. `E196` built 2026-09-05, closing rows `N8` and `N9`; 40 rows open |
 
-Criterion 3 has no arc. The framework is largely built and naming a gap there
-would be a phantom feature: the `Flow` algebra is recursive and total over seven
-constructors and the skill registry is enumerable data. The one L0 row that is
-genuinely absent is the tiny-step lint of criterion 5, and it is a text tool in
-shape, which is [[arcs/text-tools-arc]].
+Criterion 3 held no arc until 2026-09-05, on the reading that the framework is
+largely built and naming a gap there would be a phantom feature: the `Flow`
+algebra is recursive and total over seven constructors and the skill registry is
+enumerable data. That reading stands for the deliberative layer and does not
+reach below it. [[arcs/unit-lane-arc]] takes the criterion's own sentence, "the
+model of computation the agents run under is chirality's own", down to the unit
+the agents are made of, where a census over 37 rows on 2026-09-05 found nothing
+built. The one L0 row that is genuinely absent is the tiny-step lint of
+criterion 5, and it is a text tool in shape, which is [[arcs/text-tools-arc]].
 
 ## Honest limits
 

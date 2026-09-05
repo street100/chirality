@@ -3,7 +3,7 @@ node: arcs
 layer: navigation
 related: [goals/README, index, records/README, status-ledger, elements/README]
 status: current
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Arcs
@@ -66,7 +66,8 @@ same-stem file for two of these arcs.
 ## Element numbers
 
 Do not mint a number that does not exist. `docs/decisions/decision-lane-split.md` reserves `E184-E189` for
-Lane A and `E190-E195` for Lane B. `CLAUDE.md`'s deferral rule forbids naming an
+Lane A, `E190-E195` for Lane B, and `E196-E239` for the unit lane since
+2026-09-05. `CLAUDE.md`'s deferral rule forbids naming an
 element that has never been minted, and a deferral to a nonexistent element is a
 phantom dependency.
 
@@ -106,7 +107,7 @@ when this table and an arc file disagree.
 | [[arcs/native-window-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 | [[arcs/native-document-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 | [[arcs/display-calculus-arc]] | [[goals/display]] | 17 rows, none started | none |
-| [[arcs/unit-lane-arc]] | [[goals/local-ai]] | 42 rows, none started | `E196-E239` |
+| [[arcs/unit-lane-arc]] | [[goals/local-ai]] | 42 rows: `E196` built 2026-09-05 closing N8 and N9, 40 open | `E196-E239` |
 
 Four of the twenty hold a reserved `E` band, [[arcs/scriba-arc]] holds the
 `S` namespace and [[arcs/native-protocol-arc]] holds the `N` namespace.
