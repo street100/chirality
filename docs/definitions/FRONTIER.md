@@ -14,7 +14,7 @@ updated: 2026-09-05
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 6e506e37746846f4f51812dd4d054cdde19129edf1315b6bcacef9b8d4d101fc -->
+<!-- FRONTIER-SOURCES-SHA256: 410a8369c884084a674876abad3a9deaca6cffd9aea055077486431ff0cdafb8 -->
 <!-- sources: 162 files -->
 
 ## Decided recently
@@ -96,8 +96,8 @@ updated: 2026-09-05
 
 - drafted: 1
 - specced: 2
-- audited: 44
-- implemented: 64
+- audited: 18
+- implemented: 90
 - **implemented: 4
 - built: 1
 - impl: 1
@@ -114,6 +114,7 @@ updated: 2026-09-05
 
 ### Last commits touching the frontier sources
 
+- 2026-09-05 44913ce — INDEX: 26 pipeline rows advanced, 3 left as findings
 - 2026-09-05 857a005 — E187's SPEC link resolved to docs/docs/
 - 2026-09-05 a9c74ba — E187's INDEX row names check AC and its measured 29
 - 2026-09-05 2bd5b38 — E196's INDEX row said audited against a built ledger row
@@ -121,4 +122,3 @@ updated: 2026-09-05
 - 2026-09-05 2c68b04 — E196 SPEC audit: twenty golden lines and five mutants reproduced, ten fixes
 - 2026-09-05 13aeb19 — E196 SPEC: the seam gains a scale on Latency and a result sum on the decode
 - 2026-09-05 0d7ebb5 — E187: repoint the citations E187's own line shifts moved
-- 2026-09-05 af08fed — E196 EXAMPLE audit: every figure reproduced, and the gate has no phase
