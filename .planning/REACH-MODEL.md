@@ -134,6 +134,40 @@ parcel, and each parcel ask routes on its own. One fetch can draw from a bus,
 a cache and a tether at the same time, and each parcel verifies against the
 tree root alone.
 
+### Reachability: the gate sits here and nowhere else
+
+**One security model, constant.** Everything is encrypted, routing is secured,
+both ends are protected, and anonymity is available. None of that varies.
+
+**One axis, two positions**, differing only in whether routability exists by
+default.
+
+| position | routability | everything downstream |
+|---|---|---|
+| open | follows from the mark | identical |
+| gated | follows from the mark **and a grant** | identical |
+
+| | signature |
+|---|---|
+| open | `route : (-> Mark Table (List Hop))` |
+| gated | `route : (-> Mark Grant Table (List Hop))` |
+
+An unauthorized party meets no refusal. It holds no function that yields hops,
+so it has nowhere to send an ask. After route formation both positions run the
+same code, the same envelope, the same cadence and the same anonymity, which is
+why the security model is described once.
+
+**Anonymity survives the gate**, because a `Grant` proves permission and never
+proves identity. A bearer capability or a membership proof answers "you may"
+without answering "who".
+
+**The precedent is one system rather than two.** Tor v3 onion services with and
+without client authorization are these two positions. Same crypto, same
+both-ends-hidden property, same anonymity. Without client auth anyone resolves
+the descriptor and reaches the service. With it the descriptor is encrypted to
+credential holders, so the unauthorized cannot form the ability to reach it and
+cannot learn it exists.
+
 `w-near` is the only way that needs a structured overlay over digest space,
 and it is the only one that needs a maintained peer table. Leaving it as one
 unbuilt arm is what keeps a structured overlay out of the model's floor.
@@ -167,6 +201,7 @@ the case it exists for.
 | one place to try | **`Hop`** | §4 |
 | one reach strategy | **`Way`** | §4, a closed sum |
 | what this instance knows | **`Table`** | §4, a `.manifest` |
+| the authority to form a route | **`Grant`** | §4. Proves permission and never identity, so the gate costs no anonymity |
 | a medium that ends the route | **`Tether`** | two participants, no forwarding |
 
 The constructor prefix wants choosing against the whole link set. `r-` is spent
@@ -237,6 +272,14 @@ is already the three verbs.
 
 This is why existence discovery costs nothing to design. It reduces to content
 discovery plus one mutable pointer per party.
+
+### The summary answers the open position only
+
+A holdings summary answers "who holds what". For a gated mark that question is
+askable only by a grant holder, so **a summary of gated holdings is itself
+gated content**. The recursion closes with no new mechanism, and an open-tier
+summary never contains a gated mark. Everything in this section is scoped to
+the open position by that rule.
 
 ### Content discovery is a holdings summary
 
@@ -547,7 +590,7 @@ restriction is what makes the cost affordable.
 | R10 | who selects a path | §11. The sender needs topology to build a route, and holding topology is information about the sender |
 | R11 | the onion header construction | §14. One KEM ciphertext per hop, classical re-blinding with a PQ payload, or symmetric layers over PQ-established link keys. The third is the only one that fits a small MTU and it constrains routing to paired peers |
 | R12 | how many envelope slices | §13. Each slice costs a key derivation, and whether the holder's slice and the asker's slice are one slice is part of it |
-| R14 | whether a holdings summary is public or per-link | §9. Publishing one tells any fetcher what a peer holds, which runs opposite to every other disclosure in §8. Per-link summaries cost one per relationship and shrink the cover supply |
+| R14 | whether a holdings summary is open or per-grant | §9. Publishing one tells any fetcher what a peer holds, which runs opposite to every other disclosure in §8. A per-grant summary costs one per relationship and shrinks the cover supply |
 | R15 | whether a summary claims what a peer holds or what it can reach | §9. The second composes across hops and turns the summary into routing state, which is most of a structured overlay arriving through the side door |
 | R13 | whether the type-level opening claim survives lowering | §13. The property has to hold after erasure. This is the one fork that is a question about this compiler instead of about the protocol |
 
