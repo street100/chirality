@@ -107,8 +107,38 @@ A capture constructor is applied at one site, so nothing forces its fields to
 merge. Only the shared dispatcher's argument position is constrained by the whole
 family. Under that shape the constructor is the concrete side and the dispatcher
 the varying side, which is the opposite arrangement to the measured `$apply7`,
-which reddens through `ck-con`'s field check. Whether the two instances are one
-defect or two stays unsettled, and a row in [[records/author-calls]] holds it.
+which reddens through `ck-con`'s field check.
+
+**RULED 2026-09-04 by [[E186]]: `concrete`.** The capture constructor's field
+types stay at the capture's **own source type**, and the erased word is reached
+only where that source type has no ground spelling. Three grounds converge on
+it. The prior art keeps constructor fields concrete in both published shapes:
+Pottier's `succ : Arrow int int` and MMH's `∃`-packed environment
+(`.planning/RESEARCH-EN15-prior-art.md` §7, tracked since 2026-09-01 per
+[[decisions/decision-ai-tier]]). The constructor is applied at one site, so no
+merge pressure exists to erase it, while `shape-eq`
+(`lib/lowering/upper/closconv.chiral:340-356`) puts the **dispatcher's** argument
+position under the whole family at once — the two instances take different
+answers because they stand under different pressure. And the tree already spells
+it that way: `site-fields->term`
+(`lib/lowering/upper/closconv-driver.chiral:153-163`) writes one field per kept
+capture as `(field q "capN" (core->term fty))`, the capture's own source type at
+its own site.
+
+**The cost is asymmetric, and that is the fourth reason.** A `Field` carries a
+`Term`, and by this same decision `Core` gains no word spelling — so the
+erased-field answer is **unwritable in the pass's own output**. Reaching it
+needs a second stated channel beside the `Sig`, carrying lowering-level types
+for the datas the way E185's `CCOut` carries them for the invented globals.
+[[E187]] owns that channel; the answer ruled here needs none of it, which is why
+the ruling is the cheap side as well as the published one.
+
+⚑ **Which document is live.** The ruling is **here**. [[records/author-calls]]
+carries a row on the same question and it **stays open** until the author closes
+it, because recording an outcome is one act and making the author's call is
+another. Nothing in the tree waits on that row: E186 shipped the ruling, its
+gate (`tools/test/capture-fields.sh`) grades it, and the measurement is
+[[records/enforcement-arc]] EN-21.
 
 ## The survey
 
