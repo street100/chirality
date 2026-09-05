@@ -102,8 +102,23 @@ each other and splitting them would settle one against a guess at the other.
 
 ## Resume state
 
-**E196 is built** (2026-09-05), so `unit-lane/N8` and `unit-lane/N9` are closed
-and the next unminted row is `unit-lane/N10`. The SPEC at
+**E197 is drafted** (2026-09-05, `3213705` and `d2ec1ae`). `unit-lane/N10` is
+minted as E197 and its worked example sits at
+`docs/examples/E197-record-request.md`, twenty-one golden lines and four
+mutants. The next stage on this arc is its EXAMPLE-level audit,
+`python3 tools/pack/pack.py E197 --audit example`. The example carries five open
+questions for the SPEC, and question 4 is the one that decides the element's
+size: whether `rr-samples`, the pricing function, belongs to E197 at all. The
+row names the sum only, and a bare data declaration has nothing a gate can
+convict, which is the same pairing argument that put N8 and N9 in E196.
+
+The mint is its own event and it comes first: `pack.py` refuses to scaffold an
+example for a number `docs/elements/catalog.md` does not carry, so a pre-run
+dispatched before the catalog and ledger rows exist cannot run. E196 hit this
+first and the ordering was not written down until E197 hit it again.
+
+**E196 is built** (2026-09-05), so `unit-lane/N8` and `unit-lane/N9` are closed.
+The SPEC at
 `docs/elements/specs/E196-encoding-seam-SPEC.md` dispositioned six open
 questions and none blocked: `Latency` gains `max`, the decode returns a
 `DecodeR` result sum, the module lands at `prog/unit/encoding.chiral`, and the

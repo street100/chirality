@@ -114,6 +114,7 @@ updated: 2026-09-05
 
 ### Last commits touching the frontier sources
 
+- 2026-09-05 d2ec1ae — E197 pre-run: what a run is asked to record, measured before it is designed
 - 2026-09-05 44913ce — INDEX: 26 pipeline rows advanced, 3 left as findings
 - 2026-09-05 857a005 — E187's SPEC link resolved to docs/docs/
 - 2026-09-05 a9c74ba — E187's INDEX row names check AC and its measured 29
@@ -121,4 +122,3 @@ updated: 2026-09-05
 - 2026-09-05 3cc3fb7 — E187: the examples INDEX row, flipped to implemented and its two false claims flagged
 - 2026-09-05 2c68b04 — E196 SPEC audit: twenty golden lines and five mutants reproduced, ten fixes
 - 2026-09-05 13aeb19 — E196 SPEC: the seam gains a scale on Latency and a result sum on the decode
-- 2026-09-05 0d7ebb5 — E187: repoint the citations E187's own line shifts moved
