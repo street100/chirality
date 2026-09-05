@@ -36,14 +36,72 @@ Authoring a goal the project has never stated is forbidden.
 
 ## What an arc file carries
 
-1. `goals:` every goal it serves, or `UNWRITTEN`. The singular `goal:` is
-   the same field and is what the arcs written before the relation opened up
-   still spell.
-2. `REQUIREMENTS`: what must hold for the arc to be done, numbered, each one
-   checkable. A requirement with no way to observe it is a wish.
-3. The element list with state. One row per element.
-4. Resume state: where a session picks up, what blocks it, what was measured.
-5. Its reserved element block, or `none`.
+Six sections, in order. `arc-open` scaffolds them and
+`docs/decisions/decision-design-before-mint.md` settles the shape.
+
+1. **The header fields.** `goals:` every goal it serves, or `UNWRITTEN`. The
+   singular `goal:` is the same field and is what the arcs written before the
+   relation opened up still spell. Beside it: the reserved element block or the
+   arc-local id scheme, the build-state authority, and the `records/` checklist
+   where one exists.
+2. **Why this arc exists.** The goal condition, quoted, and what it takes to
+   hold.
+3. **What the tree already holds.** Measured, bank first, cited at `file:line`
+   with the ledger rung. `docs/banks/INDEX.md` holds twelve banks and a feature
+   that is one thing elsewhere is here a sum of shards, usually mostly built.
+4. **What is missing, and its structure.** The groups in dependency order, and
+   **the edges that run against that order**. An ordering with no stated
+   back-edges reads as a build sequence, and reading it that way is usually
+   wrong. `.planning/AI-LANE-GAP.md` names two such edges over eight layers.
+5. **REQUIREMENTS.** Numbered, six or fewer, each one checkable with the
+   observation stated beside it. A requirement with no way to observe it is a
+   wish.
+6. **The roster**, below, and then the resume state: where a session picks up,
+   what blocks it, what was measured.
+
+### The roster
+
+One row per unit of work. Ids are arc-local and stable per
+[[decisions/decision-work-ids]], and **the id never changes when the row mints**,
+so a citation made before the number existed survives it.
+
+| column | holds |
+|---|---|
+| `row` | `<arc>/<id>`, the citable name |
+| `what` | one line, specific enough that two people would build the same thing |
+| `group` | which group of §4 |
+| `kind` | `primitive` · `law` · `port` · `decision` · `tool` |
+| `origin` | `new` · `bind` (it exists and needs a surface) · `connect` (two built things need joining) |
+| `req` | the numbered §5 requirements this row serves |
+| `state` | `open` · `designed` · `minted` · `specced` · `building` · `built` · `closed` |
+| `element` | the `E#` once minted, or `unminted` |
+
+**The `state` column is the pipeline's authority for a row.** Build state on the
+four rungs stays with [[status-ledger]], which measures a different thing. The
+two sat side by side in `docs/examples/INDEX.md` until
+[[decisions/decision-design-before-mint]] closed that corpus; the INDEX rows
+survive for the elements built under the old pipeline.
+
+### The coverage check
+
+An arc states it before its resume state, and it is what keeps an arc from being
+thin:
+
+- every requirement in §5 is named by at least one row's `req`. A requirement no
+  row serves is unscheduled;
+- every row names at least one requirement. A row serving none is out of scope,
+  or §5 is missing one;
+- every row's `origin` is defensible from §3. A row marked `new` whose work §3
+  shows already built is the phantom-feature error, caught here rather than four
+  stages later.
+
+### `parts/`
+
+`docs/arcs/parts/<arc>-<id>.md` holds one roster row worked up: the obligation,
+what the tree holds, the delta, the candidate shapes, the call, and the mint
+packet. It is written by `element-design` before the row has an element number,
+gated by `pipeline-audit`, and the gate's PASS is what mints. The file keeps its
+arc-local name after the promotion.
 
 An arc may keep a second file, `records/<arc>-record.md`, holding the measured
 history: what landed, the traps that fired, the decisions that each cost a
@@ -78,8 +136,15 @@ earlier rule that such an arc writes `UNASSIGNED` and stops. An arc-local id
 claims identification and claims no place in a band, a catalog row, a ledger row
 or a pipeline stage, so the deferral rule keeps its whole force over `E#`.
 
-A new element's row lands in `docs/examples/INDEX.md` and in its arc file in the
-same change that mints it. Those are the tracked collision detectors.
+**Minting is the end of the design stage.** A row is named in the roster when
+the arc opens, worked up in `parts/`, and given an `E#` only when its design
+audit passes. `docs/decisions/decision-design-before-mint.md` settled that on
+2026-09-05, and the reason is that a catalog row demands title, reference,
+reference class, rationale, category, module and track at the moment least is
+known.
+
+The roster is the tracked collision detector. A number minted twice shows up as
+two rows claiming it.
 
 ## The arcs
 

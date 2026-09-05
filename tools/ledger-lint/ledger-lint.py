@@ -136,9 +136,17 @@ def frontmatter_date(text: str) -> date | None:
 # docs/index.md. Found by the PRINCIPLES.md audit, 2026-08-31, with a live
 # miss: docs/banks/evidence-and-split.md is dated 2026-08-24, cites P6 and P7,
 # and check B did not see it.
+# A leading underscore marks a FORM rather than a claim. `_TEMPLATE.md` carries
+# placeholder links ([[goals/<name>]]) and placeholder frontmatter on purpose:
+# the scaffolder fills them. Checking a template's placeholders reports rot that
+# the next scaffold overwrites, so every enumeration here skips them.
+def is_form(p) -> bool:
+    return p.name.startswith("_")
+
 def doc_tier(pattern: str = "*.md"):
-    """Every markdown doc under docs/, at any depth, sorted and deduped."""
-    return sorted(set((ROOT / "docs").rglob(pattern)))
+    """Every markdown doc under docs/, at any depth, sorted and deduped.
+    Templates are skipped: see is_form."""
+    return sorted(p for p in set((ROOT / "docs").rglob(pattern)) if not is_form(p))
 
 def check_b() -> list[str]:
     """No P6/P7 in docs updated after the condensation."""
@@ -1271,10 +1279,11 @@ def check_v() -> list[str]:
     if not goals_dir.is_dir() or not arcs_dir.is_dir():
         raise Vacuous("docs/goals or docs/arcs is absent")
     errs: list[str] = []
-    goals = {p.stem for p in goals_dir.glob("*.md")} - {"README"}
+    goals = {p.stem for p in goals_dir.glob("*.md")
+             if not is_form(p)} - {"README"}
     served: set[str] = set()
     for arc in sorted(arcs_dir.glob("*.md")):
-        if arc.stem == "README":
+        if arc.stem == "README" or is_form(arc):
             continue
         text = arc.read_text()
         m = re.search(r"^- goals?:\s*\[\[goals/([a-z0-9-]+)\]\]", text, re.M)

@@ -2,66 +2,62 @@
 element: E<NN>
 slug: <slug>
 title: <human title>
-kind: SELF-HOST | REPLACE-CRUTCH | BUILD-PROPER
-example: examples/E<NN>-<slug>.md
+design: arcs/parts/<arc>-<id>.md
 status: draft
 updated: <YYYY-MM-DD>
 ---
 
-# E<NN> SPEC — <human title>
+# E<NN> SPEC: <human title>
 
-> Implementation contract produced by the `example-to-spec` run. Bridges the
-> drafted worked example into an executable change plan. An implementation run
-> follows THIS file; the example remains the design rationale behind it.
+> The build half, produced by the `design-to-spec` run. The design at
+> `docs/arcs/parts/<arc>-<id>.md` made the design decisions and an audit gated
+> them before this element minted. An implementation run follows THIS file.
 
 ## 1. Deliverable
 
-- **After this runs:** <the one-sentence observable delta — what exists in
-  `scaffold/` / `lib/` that does not exist now>.
-- **Non-goals:** <what this run explicitly does not build — residue lives in §6>.
+- **After this runs:** <the one-sentence observable delta, carried from the
+  design's §5 call>.
+- **Chosen shape:** <the design's call, cited. Do not re-argue it>.
+- **Non-goals:** <what this run does not build. Residue lives in §5>.
 
-## 2. Baseline (what already exists)
+## 2. What the code forces
 
-- **Conformance-map verdict:** <the CONFORMS/EXTEND/REFACTOR/BUILD/DECISION rows
-  for this element and what they imply for the shape of the change>.
-- **Live code:** <the shards already built that this change composes with —
-  file + symbol, from the bundle outlines. Name them; do NOT respec them.>
-- **True delta:** <deliverable minus baseline — the actual new/changed surface>.
+The design chose a shape against structural outlines. This is where the live
+files push back.
 
-## 3. Decisions
+| target | the design assumed | the file admits | verdict |
+|---|---|---|---|
+| `file:line` | <assumption> | <what is actually there> | agrees / constrains / **refuses** |
 
-Every open question from the example §6, dispositioned. No silent design calls:
-RESOLVED only when derivable from a settled doc (cite it); genuinely novel
-design goes to NEEDS-AUTHOR and is surfaced, never answered on the author's behalf.
+- **Constraints carried into §3:** <an ordering, an extra helper, a name already
+  taken>.
+- **Refusals:** <a target that will not admit the chosen shape. Do NOT re-decide
+  it here: that is a `revisit` on the design with this run as the trigger. Name
+  the design artifact and set `status: blocked`.>
 
-| # | Question | Disposition | Rationale / owner |
-|---|----------|-------------|-------------------|
-| 1 | <q> | RESOLVED / DEFERRED(E# or edge) / NEEDS-AUTHOR | <settled doc cited, or the docket edge it waits on, or the author call owed> |
+## 3. Change plan (ordered, commit-sized)
 
-If any NEEDS-AUTHOR blocks §4, set frontmatter `status: blocked`, still fill
-§4–§6 for the unblocked remainder (or mark them `pending decision #n`), and stop.
-
-## 4. Change plan (ordered, commit-sized)
-
-### Step 1 — <name>
-- **Target:** `<file>` — <symbols / section>
-- **Change:** <precise description; adapt the example §5 snippet where it applies>
+### Step 1: <name>
+- **Target:** `<file>`, at <symbols>
+- **Change:** <precise description>
 - **Size:** ~<S / M / L>
 
-### Step 2 — <name>
-- …
+> A step touching `lib/` or `prog/` is compiler source and owes the build rule in
+> [[working-discipline]]: build-new, test, promote, generations from the same
+> blob until two consecutive agree, a non-empty check before every `cmp`, a stop
+> at `C4`. A comment-only edit counts.
 
-## 5. Conformance gate
+## 4. Conformance gate
 
-- **Golden behavior:** <the example's conformance target, restated checkably —
-  observable outputs, differential agreement across floors, error shapes>.
-- **Tests to add:** <named tests; which floor(s) each compares>.
-- **Green line:** <current N> → ≥ <N + k>; ledger-lint clean.
+- **Baseline:** <what the gate reads today>.
+- **Expected:** <what it reads after>.
+- **Named phase:** <the phase in `tools/test/run-tests.sh`>.
+- **Mutant:** <the mutant that is actually run, and what it breaks. A gate with
+  no run mutant passes by looking at nothing>.
 - **Done when:** <one sentence an executor can verify>.
 
-## 6. Residue & links
+## 5. Residue and links
 
-- **Deliberately unbuilt:** <each residue item with its home — an E#, a docket
-  edge, or an explicit "nobody's yet">.
-- **Follow-on:** <the elements this unblocks>.
-- **Related:** [[E<NN>-<slug>]] <linked elements / decisions>.
+- **Deliberately unbuilt:** <each item with the home that owns it>.
+- **Follow-on:** <roster rows, or already-minted elements>.
+- **Related:** [[links]].
