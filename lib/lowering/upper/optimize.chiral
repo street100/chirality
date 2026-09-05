@@ -34,14 +34,14 @@
 (def iassoc (lam (ps k) (case ps (nil (none)) ((cons p r) (case p ((pair pk pv) (case (=i pk k) (true (some pv)) (false (iassoc r k)))))))))
 
 ; ---- const env: reg -> CVal (assoc) ------------------------------------------
-(declare cenv-get (-> (List (Pair I64 CVal)) I64 (Maybe CVal)))
-(def cenv-get (lam (cenv r) (case cenv (nil (none)) ((cons p rest) (case p ((pair k v) (case (=i k r) (true (some v)) (false (cenv-get rest r)))))))))
+(declare opt-cenv-get (-> (List (Pair I64 CVal)) I64 (Maybe CVal)))
+(def opt-cenv-get (lam (cenv r) (case cenv (nil (none)) ((cons p rest) (case p ((pair k v) (case (=i k r) (true (some v)) (false (opt-cenv-get rest r)))))))))
 (declare cenv-pop (-> (List (Pair I64 CVal)) I64 (List (Pair I64 CVal))))
 (def cenv-pop (lam (cenv r) (case cenv (nil nil) ((cons p rest) (case p ((pair k v) (case (=i k r) (true (cenv-pop rest r)) (false (cons p (cenv-pop rest r))))))))))
 (declare cenv-set (-> (List (Pair I64 CVal)) I64 CVal (List (Pair I64 CVal))))
 (def cenv-set (lam (cenv r v) (cons (pair r v) (cenv-pop cenv r))))
 (declare cenv-c (-> (List (Pair I64 CVal)) I64 (Maybe Str)))
-(def cenv-c (lam (cenv r) (case (cenv-get cenv r) ((some v) (case v ((cv-c cn) (some cn)) (_ (none)))) (none (none)))))
+(def cenv-c (lam (cenv r) (case (opt-cenv-get cenv r) ((some v) (case v ((cv-c cn) (some cn)) (_ (none)))) (none (none)))))
 
 ; ---- fold: arithmetic + comparison + static case dispatch --------------------
 (def tt-i64? (-> TalTy Bool) (lam (t) (case t ((tt-i64) true) (_ false))))
@@ -61,15 +61,15 @@
   (false (case (str-eq op "<=i") (true (some (bool->cn (<=i a b))))
   (false (none)))))))))
 
-(declare two-srcs (-> (List I64) (Maybe (Pair I64 I64))))
-(def two-srcs (lam (srcs) (case srcs ((cons a r0) (case r0 ((cons b r1) (case r1 (nil (some (pair a b))) (_ (none)))) (_ (none)))) (_ (none)))))
+(declare opt-two-srcs (-> (List I64) (Maybe (Pair I64 I64))))
+(def opt-two-srcs (lam (srcs) (case srcs ((cons a r0) (case r0 ((cons b r1) (case r1 (nil (some (pair a b))) (_ (none)))) (_ (none)))) (_ (none)))))
 (declare both-i (-> (List (Pair I64 CVal)) I64 I64 (Maybe (Pair I64 I64))))
 (def both-i (lam (cenv s0 s1)
-  (case (cenv-get cenv s0) ((some v0) (case v0 ((cv-i a) (case (cenv-get cenv s1) ((some v1) (case v1 ((cv-i b) (some (pair a b))) (_ (none)))) (none (none)))) (_ (none)))) (none (none)))))
+  (case (opt-cenv-get cenv s0) ((some v0) (case v0 ((cv-i a) (case (opt-cenv-get cenv s1) ((some v1) (case v1 ((cv-i b) (some (pair a b))) (_ (none)))) (none (none)))) (_ (none)))) (none (none)))))
 
 (declare fold-prim-instr (-> Instr I64 Str (List I64) TalTy (List (Pair I64 CVal)) (Pair (List Instr) (List (Pair I64 CVal)))))
 (def fold-prim-instr (lam (i dst op srcs ty cenv)
-  (case (two-srcs srcs)
+  (case (opt-two-srcs srcs)
     (none (pair (cons i nil) (cenv-pop cenv dst)))
     ((some pr) (case pr ((pair s0 s1)
       (case (both-i cenv s0 s1)
