@@ -261,9 +261,20 @@ keep lib/lowering/tal/check.chiral     '(tck-err (msg Str))'    "tal/check still
 # The co-import count. It used to say the two verdict sums COULD NOT meet: the
 # import was `load: data redeclared: CkR` before any type-checking ran. The
 # eleven collisions are `tck-` prefixed now and the co-import loads and runs, so
-# zero says something weaker and truer -- NOTHING HAS WIRED IT YET. ck-prog has
-# no call site (enforcement-arc requirement 2) and optimize.chiral has no
-# importer (requirement 4). tools/test/tal-check.sh's G17 holds the same count.
+# zero says something weaker and truer: NO ONE MODULE REACHES BOTH NAMESPACES.
+# `ck-prog` still has no call site anywhere in lib/ or prog/ (enforcement-arc
+# requirement 2), verified 2026-09-05.
+#
+# `optimize.chiral` DOES have an importer, and this comment claimed otherwise
+# until 2026-09-05. `5b7478f` added `(import "lowering/upper/optimize")` at
+# lib/lowering/compile-back.chiral:16, so requirement 4's module is on the
+# shipping path and `lowering/tal/check` entered the compiler closure with it.
+# The count stays zero because compile-back reaches tal/check transitively
+# rather than directly, and cannot import `typing/kernel` at all (the TalTerm
+# collision, compile-back.chiral:12). tools/test/opt-census.sh is the gate over
+# that wiring. tools/test/tal-check.sh's G17 holds the same count and its :78
+# prose carries the same stale claim; retiring G18 is an author call
+# (enforcement-arc requirement 3) and that file is left to it.
 both="$(cd "$REPO" && grep -RIl 'import "lowering/tal/check"' lib prog 2>/dev/null \
          | while read -r f; do grep -q 'import "typing/kernel"' "$f" 2>/dev/null && echo "$f"; done | wc -l)"
 if [ "$both" -eq 0 ]; then ok "no module imports both typing/kernel and lowering/tal/check (nothing has wired it yet)"

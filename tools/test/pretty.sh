@@ -468,7 +468,7 @@ else bad "G8(b) typing/diag does not import surface/pretty"; fi
 # carry doc.sh's pair, render-doc.sh carries row.sh's and face.sh's, and this
 # file is pinned by nothing. A pin re-taken in the commit that moves the file is
 # the loud path these rows exist to force.
-PINS="400166d2bada74728abf895ef6bae8b8e5a63e5ffbce1653e348399f773e140b  diag.sh
+PINS="ec0d72f3793459af9719e8eeb8816e065c9d5b9efd49110251ebf2e4ed8cd8fd  diag.sh
 13df27e543bd79548a76bc94cb2e35047e847c127b78a0e83c6a0d6b20cead0d  doc.sh
 64a7bd3e2a222acbf8c45562728d33c56d18e47a9e0f8315fb1fe0c4a8925146  row.sh
 fd1a52f883bbdb64416659ee7a37ec05042e7e31be2428e68d27ffd0214261b3  face.sh
