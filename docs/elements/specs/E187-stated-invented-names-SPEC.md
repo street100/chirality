@@ -4,7 +4,7 @@ slug: stated-invented-names
 title: "**The `sk-defunc` blame channel: `closconv` states why it dropped a family**"
 kind: BUILD-PROPER
 example: examples/E187-stated-invented-names.md
-status: draft
+status: audited
 updated: 2026-09-05
 ---
 
