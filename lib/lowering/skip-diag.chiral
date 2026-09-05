@@ -28,6 +28,45 @@
 (def skwhy-tag (-> SkReason Str)
   (lam (w) (case w ((sk-extern op) "extern") ((sk-callee name) "callee") ((sk-defunc name why) "defunc"))))
 
+; ---- E187: the defunctionalization cause channel ----------------------------
+; `blame-chain` below reads `skwhy-name` and `skwhy-tag` and never `why`, and
+; its `extern` arm is a LEAF, so a `sk-defunc` record is neither walked to on a
+; chain that leafs first nor rendered when it is.  The cause therefore travels
+; as a SECOND clause beside the chain: `format-blame`'s own output stays
+; byte-identical on every program, which is what E187's R5 gates.
+(def skwhy-detail (-> SkReason Str)
+  (lam (w) (case w ((sk-extern op) op) ((sk-callee name) name) ((sk-defunc name why) why))))
+
+; one rendered line per defunc-tagged record, through the accessors only.
+(def defunc-lines (-> (List SkRec) (List Str))
+  (lam (skips)
+    (case skips
+      (nil nil)
+      ((cons s r)
+        (let (w (skrec-why s))
+          (case (str-eq (skwhy-tag w) "defunc")
+            (true (cons (str-cat "defunctionalization refused: "
+                                 (str-cat (skwhy-name w) (str-cat ": " (skwhy-detail w))))
+                        (defunc-lines r)))
+            (false (defunc-lines r))))))))
+
+; ---- Join a cause list with "; " -- a cause list is not a chain -------------
+(def join-semi (-> (List Str) Str)
+  (lam (xs)
+    (case xs
+      (nil "")
+      ((cons x r)
+        (case r
+          (nil x)
+          ((cons y s) (str-cat x (str-cat "; " (join-semi r)))))))))
+
+; ---- The cause clause, "" when no family was refused ------------------------
+(def format-causes (-> (List SkRec) Str)
+  (lam (skips)
+    (case (defunc-lines skips)
+      (nil "")
+      ((cons c r) (str-cat " | " (join-semi (cons c r)))))))
+
 ; ---- SkRec list append ----
 (def lapp-skip (-> (List SkRec) (List SkRec) (List SkRec))
   (lam (xs ys) (case xs (nil ys) ((cons h t) (cons h (lapp-skip t ys))))))
