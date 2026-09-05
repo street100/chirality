@@ -1,0 +1,69 @@
+; e188_apply_spine.prog -- the E188 fixture: an `$apply` arm for a
+; defunctionalization site whose `def-ctx` FAILS.
+;
+; `arm-body` (lib/lowering/upper/closconv.chiral) has two arms for a `cs-g`
+; site.  The second one, for a global whose `def-ctx` answers `none`, read
+; `(c-lit-i 0)` under a comment saying it was unreachable.  It is reached, and
+; the literal was the WHOLE BODY of an `$apply` dispatcher arm.  E188 replaces
+; it with the call spine `(g cap0..cap_{k-1} a0..a_{d-1})`.
+;
+; ⚑ THE `def-ctx` FAILURE HERE IS THE ANNOTATION, AND THAT IS DELIBERATE.
+; `def-ctx` peels with `peel-lam-exact`, which demands a PLAIN lam chain and
+; skips no annotation (`closconv.chiral`, its own comment).  `compile-fn` peels
+; with `strip-lams`, which calls `strip-ann` first (`lower.chiral:215-218`).  So
+; `(the T (lam (a x y) ..))` fails `def-ctx` and lowers perfectly, which is the
+; one shape where the spine's value is OBSERVABLE.
+;
+; ⚑ EN-20's OWN `box-f` SHAPE CANNOT CARRY THIS ROW, MEASURED 2026-09-04.  A
+; global whose BODY is genuinely shallower than its TYPE does not lower either:
+; `rewrite-one` (`closconv-driver.chiral:251-253`) leaves a def whose `def-ctx`
+; fails untouched, so `compile-fn` refuses it on the same `strip-lams` arm.
+; Under E188 the spine then calls it and the compile is REFUSED by name --
+; `compile-main <- use <- $apply1 <- box-f: extern does not lower: body is not
+; a lambda chain` -- instead of silently answering `0`.  That is the element's
+; whole argument (SPEC §3.3, three answers collapsing to one) and it is a
+; strictly better outcome, but it is a refusal and not a value, so a fixture
+; built on it would grade R1 to R3 `absent`.  The SPEC's §1 sentence that
+; EN-20's fixture "prints 30 on both lines" is corrected by that measurement.
+;
+; ⚑ THE THREE SUPPLIED ARGUMENTS ARE DISTINCT AND THE BODY IS NON-COMMUTATIVE.
+; §5's M4 permutes which binder one spine argument reads while keeping the
+; argument count.  A permutation of equal arguments, or of arguments under `+`
+; alone, prints `direct`'s own answer and reddens nothing.  `(+ a (- x y))`
+; over 10, 35, 15 costs one operator and makes the permutation visible.
+;
+; HOME: tools/test/samples/, not prog/.  Phase 7 discovers roots with
+; `grep -rl '^(def compile-main' lib prog` (tools/test/run-tests.sh:175); this
+; file needs a `compile-main` for the value rows, so under prog/ it would be a
+; second new root and move the root census twice.
+;
+; It ASSERTS NOTHING and always exits 0.  Every comparison lives in bash, in
+; tools/test/apply-spine.sh.  A fixture that grades itself can be wrong twice in
+; the same direction.
+;
+;   direct: 30    the same global called directly           -> R1
+;   apply : 30    the same global through the dispatcher    -> R2, the deliverable
+;   sib   : -10   the honestly-shaped sibling, `some` path  -> R3
+(import "prelude/prelude")
+(import "ports/stdio")
+
+; def-ctx FAILS (the annotation), compile-fn SUCCEEDS (strip-ann).  This is the
+; global whose $apply arm was the literal 0.
+(def e188-boxf (-> I64 I64 I64 I64)
+  (the (-> I64 I64 I64 I64) (lam (a x y) (+ a (- x y)))))
+
+; the honestly-shaped sibling: three lams for three domains, so def-ctx answers
+; `some` and arm-body takes the UNCHANGED path.  Same family key.
+(def e188-sib (-> I64 I64 I64 I64)
+  (lam (a x y) (- a (- x y))))
+
+; a saturated higher-order call: this is what becomes the `$apply<i>` call.
+(def e188-use (-> (-> I64 I64 I64 I64) I64 I64 I64 I64)
+  (lam (f a x y) (f a x y)))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((_ (put (str-cat "direct: " (str-cat (i64->str (e188-boxf 10 35 15)) "\n")))))
+    (let ((_ (put (str-cat "apply : " (str-cat (i64->str (e188-use e188-boxf 10 35 15)) "\n")))))
+    (let ((_ (put (str-cat "sib   : " (str-cat (i64->str (e188-use e188-sib 10 35 15)) "\n")))))
+      0)))))

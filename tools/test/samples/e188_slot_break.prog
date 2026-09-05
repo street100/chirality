@@ -1,0 +1,41 @@
+; e188_slot_break.prog -- the E188 REFUSAL fixture: a `cs-g` site whose recorded
+; family arity disagrees with the global's own declared arity.
+;
+; `e188-ap1`'s function slot is `(-> A B)`.  `peel-pi-doms` stops at the first
+; non-Pi, so the slot peels exactly ONE domain whatever `B` is instantiated to.
+; `e188-plus` fills it with `B := (-> I64 I64)`, so `fv-site`'s arrow branch
+; records `d = 1` against `arity e188-plus = 2`.  Nothing in the pass compared
+; those two numbers, and `g-subst`'s supplied-param index
+; `(- (- (+ m d) 1) (- p k))` is then `-1` at `p = 1`.
+;
+; This fixture must NOT emit `compile-main` under either binary.  What the gate
+; reads is the BLAME.  Measured 2026-09-04:
+;
+;   pre-change  compile-main <- e188-drive: extern does not lower:
+;               higher-order application
+;   guarded     compile-main: extern does not lower: reference stays upper:
+;               e188-plus
+;
+; Under E188's guard the family is poisoned at `collect`, `keep-fams` drops it,
+; nothing rewrites the site, and `lower` refuses `compile-main` NAMING THE
+; GLOBAL AT THE REFUSED SITE.  Without the guard the blame names the middle
+; function and says nothing about which reference was the problem.
+;
+; HOME: tools/test/samples/, for the same reason the value fixture gives.
+;
+; It is never RUN.  Only its diagnostic is read.
+(import "prelude/prelude")
+(import "ports/stdio")
+
+(def e188-plus (-> I64 I64 I64) (lam (x y) (+ x y)))
+
+; the polymorphic applier whose function slot peels ONE domain.
+(def e188-ap1 (-> (0 A (type 0)) (0 B (type 0)) (-> A B) A B)
+  (lam (A B f x) (f x)))
+
+(def e188-drive (-> (-> I64 I64) I64 I64) (lam (g y) (g y)))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((_ (put (str-cat "v: " (str-cat (i64->str (e188-drive (e188-ap1 I64 (-> I64 I64) e188-plus 100) 5)) "\n")))))
+      0)))
