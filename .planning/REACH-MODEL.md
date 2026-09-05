@@ -528,6 +528,7 @@ path.**
 | AEAD | the payload, each envelope slice, each layer | per parcel | 16 B tag, 12 B nonce | **built.** `lib/crypto/chacha.chiral`, `lib/crypto/poly1305.chiral` |
 | KDF | per-layer and per-parcel keys from a link secret | per creation and per hop | 32 B out | absent, and it rides whichever hash is chosen |
 | signature, PQ | the mutable naming layer only | per claim | ~3.3 KB signature | absent, and **it never touches the fetch path**, because a hash is the integrity proof |
+| PAKE | pairing and route ceremony from a short human-carried secret | per pairing, per ceremony | ~2 round trips | absent. §17 |
 | entropy | keys, nonces, cover selection | per use | one crossing | absent. `native-protocol/N2`, unstarted |
 | constant-time judgment | all six above | a compile-time property | none | `native-protocol/N5`, unstarted |
 
@@ -593,27 +594,15 @@ restriction is what makes the cost affordable.
 | R14 | whether a holdings summary is open or per-grant | §9. Publishing one tells any fetcher what a peer holds, which runs opposite to every other disclosure in §8. A per-grant summary costs one per relationship and shrinks the cover supply |
 | R15 | whether a summary claims what a peer holds or what it can reach | §9. The second composes across hops and turns the summary into routing state, which is most of a structured overlay arriving through the side door |
 | R16 | gossip forwarding against hop blindness | §1 states forwarding as unprivileged and §11 states a hop learns nothing. A peer that gossips an ask has read it, which is the level 4 leak at every hop, and sealing the ask does not help because a gossiping peer must read it to know whether it holds the value. §9's summary is what makes gossip unnecessary and the two sections are one decision |
-| R17 | per-packet unlinkability against a shared header | §17. Sharing one header across a value's packets is what makes HORNET fast and what makes its packets session-linkable at every hop. Blinding is inherently asymmetric, so per-packet unlinkability costs one scalar mult per hop per packet |
-| R18 | `H`, the max hop count, and whether it is per medium | §17. It is the anonymity set, the standing overhead and the DoS amplification factor at once, and the 500 B radio profile cannot carry the same `H` as a pool |
-| R19 | what bounds holder storage | §17. It is the one resource in the model with no bound in a type or a constant |
+| R17 | per-packet unlinkability against a shared header | §16. Sharing one header across a value's packets is what makes HORNET fast and what makes its packets session-linkable at every hop. Blinding is inherently asymmetric, so per-packet unlinkability costs one scalar mult per hop per packet |
+| R18 | `H`, the max hop count, and whether it is per medium | §16. It is the anonymity set, the standing overhead and the DoS amplification factor at once, and the 500 B radio profile cannot carry the same `H` as a pool |
+| R19 | what bounds holder storage | §16. It is the one resource in the model with no bound in a type or a constant |
+| R20 | ceremonial routes against free routes | §17. A cascade gives a larger anonymity set, bounds hop state by topology, and kills §11's topological inference. A free route gives resilience and scale. It is the oldest settled-into-a-tradeoff question in this field |
+| R21 | route lifetime | §17. A third constant beside `H` and the session length, dialling the same way |
+| R22 | whether the introduction and session split is enforced by type | §17. A ceremonial route that accepts an introduction and refuses a session would make the authenticate-here, carry-there split a compile-time property |
 | R13 | whether the type-level opening claim survives lowering | §13. The property has to hold after erasure. This is the one fork that is a question about this compiler instead of about the protocol |
 
-## §16 · Relation to the roster
-
-`.planning/OWN-WEB-GAP.md` lanes X, L and J are drawn against the earlier
-sketch and this file supersedes their content. Lane X's `Mark` and `Seal` split
-survives. Lane L's identity, packet and link rows fall behind R1, because a
-model with no party in the floor needs none of them to fetch a value. Lane J
-collapses into §5, since a native medium is a `.port` and the tether is the
-one named exception.
-
-§8 through §14 are six open design items and §17 is the load budget under
-them. None of the seven has a lane in that roster at all. The roster's lanes were drawn before the observer model existed.
-Rewriting them against this file is owed. It stays undone here.
-
-Rewriting those three lanes against this file is owed. It stays undone here.
-
-## §17 · The load, by party
+## §16 · The load, by party
 
 Every feature in this file lands as work on one of three parties. This section
 is the same design read through that lens, with the wire cost beside each row,
@@ -775,3 +764,180 @@ What a holder keeps, and for how long, has neither.
 |---|---|
 | `H`, the max hop count | anonymity set, standing header overhead, DoS amplification, and now per-medium feasibility |
 | the session length | the linkable set against the asymmetric setup rate |
+
+## §17 · Routes: ceremonial, ephemeral, and the splice
+
+§4 states one reachability axis and §16 prices one route. This section says
+what kinds of route exist and why the public one carries introductions instead
+of sessions.
+
+**The principle, stated once: one channel authenticates and a different
+channel carries.**
+
+### Three route kinds
+
+| layer | route kind | who uses it | state, and where |
+|---|---|---|---|
+| introduction | **ceremonial**, public, published, long-lived | everyone, and that is the point | per route at each hop, bounded by topology |
+| rendezvous | one node acting as a **splice** | one connection | per live splice, at that node only |
+| session | two **ephemeral** half-routes joined at the splice | one connection | per live connection, at the endpoints |
+
+§4's open position is the ceremonial layer. That is what makes it public: the
+route is shared, so the anonymity set is everyone using it, and heavy use
+improves the property instead of degrading it.
+
+### The ceremony, and what it buys
+
+A ceremonial route is established once and reused. The reference class is the
+**mix cascade**, against free-route mixnets, and the old finding holds: a
+cascade gives a larger anonymity set and a simpler analysis, and a free route
+gives resilience and scale. Loopix's stratified topology is the modern middle.
+
+Three problems collapse into it.
+
+| problem | how the ceremony answers it |
+|---|---|
+| per-packet unlinkability costs statelessness (§16, `R17`) | state becomes per route, bounded by topology instead of by traffic |
+| topological inference from hop direction (§11) | everyone traverses the same path, so direction carries nothing about anyone |
+| the sender must hold topology (`R10`) | it holds a route handle. Everyone holds the same ones |
+
+**A shared route is stronger than per-session state, and cheaper.** With
+per-session state a hop counts sessions and counts packets within one. On a
+shared route it sees one undifferentiated stream and cannot separate senders at
+all.
+
+The routing-layer key is shared by everyone on the route, and the payload stays
+sealed end to end. A co-sender learns that a packet went to the next hop, which
+that hop already knew.
+
+### The splice
+
+The private endpoint never appears on a ceremonial route. The public layer
+carries an introduction, and the session runs elsewhere.
+
+| step | what happens |
+|---|---|
+| 1 | the asker builds its own ephemeral half-route to a node it picks, and hands that node a one-time secret. That node is the splice |
+| 2 | the asker sends an introduction over the ceremonial route, sealed to the endpoint, naming the splice and carrying the one-time secret |
+| 3 | the endpoint builds **its own** ephemeral half-route to the splice |
+| 4 | the splice joins the two halves and forwards opaque parcels between them |
+
+| party | what it learns |
+|---|---|
+| a ceremonial hop | that an introduction passed. Not for whom |
+| the introduction point | that someone introduced. It learns neither the splice's role nor the session |
+| **the splice** | two half-routes exist and it joins them. It holds neither key and decrypts nothing |
+| either endpoint | its own half. Never the other's path |
+
+Tor's own documentation calls the rendezvous point a **dumb splice**, and the
+property it names is the one this whole file has been reaching for: client and
+service hold a shared key that neither the introduction point nor the splice
+ever possessed.
+
+**This is a third instance of §11's idiom.** A splice holds a value with two
+link fields and no key field, so decrypting is unavailable to it in the same
+sense that a destination is unavailable to a hop and a payload is unavailable
+to a router. One construction, three places.
+
+### What only a party needs
+
+**The splice machinery is for parties. A value needs none of it.**
+
+| what is wanted | what it costs |
+|---|---|
+| an immutable value | ask on the ceremonial route, someone gives, verify against the mark. **No session, no splice, no handshake** |
+| a mutable answer from a party | the full introduction and splice above |
+| a gated endpoint | the same, with the introduction sealed to grant holders |
+
+That is the payoff of content addressing showing up in the routing layer. The
+common case stays as cheap as §1 describes, and the expensive machinery is
+confined to the two cases that genuinely need a party at the other end.
+
+The gate composes without new mechanism: an introduction sealed to grant
+holders means a party without the grant cannot form one, so it cannot reach the
+endpoint and cannot learn the endpoint exists. That is §4's gated position and
+Tor v3's client authorisation, arriving at the same place.
+
+### Key entry
+
+A short secret a person can carry, spoken or written, bootstraps both a pairing
+and a route ceremony.
+
+**The distinction that matters: a short human-transferable secret cannot be the
+key, and it can authenticate the exchange that produces the key.** Six spoken
+digits is around twenty bits, which is nowhere near a key and is ample to
+authenticate a full-strength exchange, because the construction gives an
+attacker one online guess instead of an offline dictionary attack.
+
+| construction | what it is |
+|---|---|
+| SPAKE2 | the standard balanced PAKE. `magic-wormhole` uses it with codes shaped like `7-crossover-clockwork` |
+| a short authentication string | ZRTP style. Both sides read a short string aloud and compare, authenticating an exchange already completed |
+| a short secret authenticating a PQ KEM | the conservative hybrid. PQ PAKEs exist and are less mature |
+
+jala's pairing design is already this: a rotating code plus a passphrase, out of
+band, feeding the handshake as salt.
+
+**The two halves compose.** A route ceremony is a pairing whose output is a
+shared routing key instead of a link secret, so one primitive serves both and
+the tree carries one idiom rather than two.
+
+### The four corners, restated with state cost
+
+`R17`'s menu, with §16's finding that statelessness is the cheapest of the three
+to give up in a mesh.
+
+| construction | stateless hop | symmetric per packet | per-packet unlinkable | state at a hop |
+|---|---|---|---|---|
+| Sphinx, Outfox | yes | no | yes | none |
+| HORNET | yes | yes | no | none |
+| per-session rotating tags | no | yes | yes | O(active sessions), unbounded by topology |
+| **ceremonial routes** | no | yes | yes | **O(routes crossing it)** |
+
+All three cannot hold together, and the reason is exact: the sender would have
+to encrypt under a key only the hop can derive, which is the definition of
+public-key encryption. Every construction picks one to give up.
+
+### What it costs
+
+| cost | detail |
+|---|---|
+| a ceremonial route is a fixed target | censorship and compromise both get something stable to aim at |
+| whole-route compromise | everyone on it loses routing-layer privacy at once. Payloads survive it |
+| coordination | establishing and rotating a route is an event instead of a local act |
+| failure handling | a break inside a fixed route is answered by switching routes, and which route is picked leaks a little |
+| the splice doubles the hops | two half-routes at `H` each. At `H` of 3 that is six hops end to end, which is what Tor lands on |
+| route lifetime | a new constant, dialling the same way session length does |
+
+### Notes to cover
+
+- how a ceremonial route is published, and whether the publication is itself a
+  document with a mark
+- who may propose a route, and what stops a hostile route from being adopted
+- route lifetime and the rotation schedule, which is a third constant beside
+  `H` and the session length
+- how a splice is chosen, and whether choosing badly is detectable
+- what the splice does when one half goes away, and whether saying so tells the
+  other half anything
+- whether a node may refuse to be a splice, and what a refusal reveals
+- the introduction point's own load, since it is the one public role that sees
+  a request rate tied to one endpoint
+- whether an endpoint runs several introduction points, and what the count
+  leaks
+- how a PAKE's single online guess is rate limited, given that the limiter is
+  the endpoint an attacker is trying to reach
+
+## §18 · Relation to the roster
+
+`.planning/OWN-WEB-GAP.md` lanes X, L and J are drawn against the earlier
+sketch and this file supersedes their content. Lane X's `Mark` and `Seal` split
+survives. Lane L's identity, packet and link rows fall behind R1, because a
+model with no party in the floor needs none of them to fetch a value. Lane J
+collapses into §5, since a native medium is a `.port` and the tether is the
+one named exception.
+
+§8 through §14 are six open design items, §16 is the load budget under them and
+§17 is the route structure. None of the eight has a lane in that roster at all. The roster's lanes were drawn before the observer model existed.
+Rewriting them against this file is owed. It stays undone here.
+
+Rewriting those three lanes against this file is owed. It stays undone here.
