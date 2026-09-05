@@ -102,15 +102,23 @@ each other and splitting them would settle one against a guess at the other.
 
 ## Resume state
 
-**E197 is drafted** (2026-09-05, `3213705` and `d2ec1ae`). `unit-lane/N10` is
-minted as E197 and its worked example sits at
-`docs/examples/E197-record-request.md`, twenty-one golden lines and four
-mutants. The next stage on this arc is its EXAMPLE-level audit,
-`python3 tools/pack/pack.py E197 --audit example`. The example carries five open
-questions for the SPEC, and question 4 is the one that decides the element's
-size: whether `rr-samples`, the pricing function, belongs to E197 at all. The
-row names the sum only, and a bare data declaration has nothing a gate can
-convict, which is the same pairing argument that put N8 and N9 in E196.
+**E197 is reviewed** (2026-09-05, `3213705`, `d2ec1ae` and `7cefae7`).
+`unit-lane/N10` is minted as E197 and its worked example sits at
+`docs/examples/E197-record-request.md`, twenty-one golden lines and five
+mutants. The EXAMPLE audit reproduced every figure independently and returned
+six fixes, the largest being a fifth mutant for the spikes pricing arm, which
+the gate asserted and no stated mutant convicted. The next stage is the SPEC,
+`python3 tools/pack/pack.py E197 --spec`.
+
+The example carries five open questions and the audit moved two of them without
+answering either. Question 2 asked whether the refinement engine decides
+`(> 0)` on `sample-every` today: it does, measured, `25` compiles and `0` and
+`-1` are refused with `load: cannot prove refinement`. Question 4 is the one
+that decides the element's size, whether the pricing function `rr-samples`
+belongs to E197 at all, and it rested on a claim the audit refutes: M3 reddens
+four rows through `rr-interval` alone, so the sum is gateable with no pricing
+at all, and what `rr-samples` gates is a volume law closer in shape to `N9`
+than to `N10`. The call is the SPEC's.
 
 The mint is its own event and it comes first: `pack.py` refuses to scaffold an
 example for a number `docs/elements/catalog.md` does not carry, so a pre-run

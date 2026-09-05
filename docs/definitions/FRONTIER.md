@@ -14,7 +14,7 @@ updated: 2026-09-05
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: d6ffe325860c9d1ce889e23a352f2727afa456c27b066f46dacde039fa3de1f6 -->
+<!-- FRONTIER-SOURCES-SHA256: c1c89de86f48477efeaeffe3f5a8333919b5b9ea1e8c6ddb7a9aedb09669fa3c -->
 <!-- sources: 162 files -->
 
 ## Decided recently
@@ -94,7 +94,8 @@ updated: 2026-09-05
 
 ### Pipeline (examples/INDEX.md, by status)
 
-- drafted: 2
+- drafted: 1
+- reviewed: 1
 - specced: 2
 - audited: 18
 - implemented: 90
@@ -114,6 +115,7 @@ updated: 2026-09-05
 
 ### Last commits touching the frontier sources
 
+- 2026-09-05 7cefae7 — E197 EXAMPLE audit: all 21 figures reproduced, and a fifth mutant
 - 2026-09-05 d2ec1ae — E197 pre-run: what a run is asked to record, measured before it is designed
 - 2026-09-05 44913ce — INDEX: 26 pipeline rows advanced, 3 left as findings
 - 2026-09-05 857a005 — E187's SPEC link resolved to docs/docs/
@@ -121,4 +123,3 @@ updated: 2026-09-05
 - 2026-09-05 2bd5b38 — E196's INDEX row said audited against a built ledger row
 - 2026-09-05 3cc3fb7 — E187: the examples INDEX row, flipped to implemented and its two false claims flagged
 - 2026-09-05 2c68b04 — E196 SPEC audit: twenty golden lines and five mutants reproduced, ten fixes
-- 2026-09-05 13aeb19 — E196 SPEC: the seam gains a scale on Latency and a result sum on the decode
