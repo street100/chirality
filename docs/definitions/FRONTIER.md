@@ -14,7 +14,7 @@ updated: 2026-09-05
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: ed4fb12e7db8bb28ccb9e0b7925c4387ffdd6537a79bfe075845a3a6636d4ebe -->
+<!-- FRONTIER-SOURCES-SHA256: 6e506e37746846f4f51812dd4d054cdde19129edf1315b6bcacef9b8d4d101fc -->
 <!-- sources: 162 files -->
 
 ## Decided recently
@@ -114,6 +114,7 @@ updated: 2026-09-05
 
 ### Last commits touching the frontier sources
 
+- 2026-09-05 857a005 — E187's SPEC link resolved to docs/docs/
 - 2026-09-05 a9c74ba — E187's INDEX row names check AC and its measured 29
 - 2026-09-05 2bd5b38 — E196's INDEX row said audited against a built ledger row
 - 2026-09-05 3cc3fb7 — E187: the examples INDEX row, flipped to implemented and its two false claims flagged
@@ -121,4 +122,3 @@ updated: 2026-09-05
 - 2026-09-05 13aeb19 — E196 SPEC: the seam gains a scale on Latency and a result sum on the decode
 - 2026-09-05 0d7ebb5 — E187: repoint the citations E187's own line shifts moved
 - 2026-09-05 af08fed — E196 EXAMPLE audit: every figure reproduced, and the gate has no phase
-- 2026-09-05 47c33f6 — E196 pre-run: the Encoding seam, measured before it is designed
