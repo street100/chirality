@@ -8,17 +8,27 @@ re-bills the whole accumulated context. This script does the deterministic
 foraging (catalog row, OURS source slices, chirality reference, template) as a
 single Bash turn, so the agent goes from ~17 tool calls to ~3.
 
-Usage:
-    tools/pack/pack.py E13 debruijn      # example stage: bundle + scaffold examples/E13-debruijn.md
-    tools/pack/pack.py E13               # example bundle only (no scaffold)
-    tools/pack/pack.py E13 --spec        # spec stage: example -> docs/elements/specs/E13-<slug>-SPEC.md
-                                        #   (slug inferred from the existing drafted example)
-    tools/pack/pack.py E13 --audit example   # read-only audit bundle for the drafted example
-    tools/pack/pack.py E13 --audit spec      # read-only audit bundle for the SPEC
-    tools/pack/pack.py E13 --audit           # audits the furthest artifact that exists
-    tools/pack/pack.py E13 --kb              # standalone scoped kb slices for any run
-    tools/pack/pack.py E13 --mark reviewed   # post-audit flip: drafted -> reviewed
-    tools/pack/pack.py E13 --mark audited    # post-audit flip: specced -> audited (+ SPEC frontmatter)
+Usage, PRE-MINT (no element number exists yet — decision-design-before-mint):
+    tools/pack/pack.py --goal local-ai        # goal bundle + scaffold docs/goals/local-ai.md
+    tools/pack/pack.py --arc unit-lane        # arc bundle + scaffold docs/arcs/unit-lane-arc.md
+    tools/pack/pack.py unit-lane/N24          # design bundle + scaffold arcs/parts/unit-lane-N24.md
+    tools/pack/pack.py unit-lane/N24 --audit  # read-only design gate bundle
+    tools/pack/pack.py unit-lane/N24 --mint   # THE GRADUATION: allocate the E#,
+                                              #   write the catalog and ledger rows from §6
+Usage, POST-MINT:
+    tools/pack/pack.py E13 --spec        # spec stage -> docs/elements/specs/E13-<slug>-SPEC.md
+    tools/pack/pack.py E13 --audit spec  # read-only audit bundle for the SPEC
+    tools/pack/pack.py E13 --audit       # audits the furthest artifact that exists
+    tools/pack/pack.py E13 --kb          # standalone scoped kb slices for any run
+    tools/pack/pack.py E13 --mark audited    # post-audit flip: specced -> audited
+Usage, RECONSIDERING:
+    tools/pack/pack.py --revisit              # worklist: records rows whose evidence
+                                              #   moved after they were last checked
+    tools/pack/pack.py <target> --revisit <trigger>   # one artifact beside one trigger
+
+The example stage is RETIRED. `pack.py E13 <slug>` still scaffolds a
+docs/examples/ artifact and that path is kept only for the 132 files already
+there; new work runs the design stage above.
 
 An element marked `status: superseded` (its work reshaped into a DIFFERENT
 element, named by `superseded_by:`) is REFUSED at every stage — see
@@ -700,11 +710,632 @@ def ledger_note(eid):
               f"{os.path.relpath(source_for(eid)['path'], ROOT)}", file=sys.stderr)
 
 
+
+# ══════════════════════════════════════════════════════════ the pre-mint tier ══
+# decision-design-before-mint (2026-09-05) moved minting to the end of the
+# pipeline. Everything below works a unit of work that has NO element number:
+# it is named in its arc's roster, cited as <arc>/<id>, and gets an E# only when
+# its design passes audit. decision-work-ids gives that id its stability.
+
+ARCDIR = os.path.join(ROOT, "docs/arcs")
+PARTSDIR = os.path.join(ARCDIR, "parts")
+GOALDIR = os.path.join(ROOT, "docs/goals")
+ARC_TEMPLATE = os.path.join(ARCDIR, "_TEMPLATE.md")
+PART_TEMPLATE = os.path.join(PARTSDIR, "_TEMPLATE.md")
+GOAL_TEMPLATE = os.path.join(GOALDIR, "_TEMPLATE.md")
+LEDGERDOC = os.path.join(ROOT, "docs/elements/ledger.md")
+BANKDIR = os.path.join(ROOT, "docs/banks")
+STATUS_LEDGER = os.path.join(ROOT, "docs/definitions/status-ledger.md")
+RECORDSDIR = os.path.join(ROOT, "records")
+
+
+def arc_path(arc):
+    """docs/arcs/<arc>-arc.md, accepting the name with or without the suffix."""
+    stem = arc[:-4] if arc.endswith("-arc") else arc
+    return os.path.join(ARCDIR, f"{stem}-arc.md")
+
+
+def arc_field(text, name):
+    m = re.search(rf"^- {name}s?:\s*(.+?)(?=\n[-#]|\n\n)", text, re.S | re.M)
+    return m.group(1).strip() if m else ""
+
+
+def arc_section(text, head):
+    """One '## <head>' section body, or ''."""
+    m = re.search(rf"^##+ .*{head}.*$", text, re.M | re.I)
+    if not m:
+        return ""
+    rest = text[m.end():]
+    nxt = re.search(r"^## ", rest, re.M)
+    return rest[:nxt.start()].strip() if nxt else rest.strip()
+
+
+def roster_row(text, arc, rid):
+    """The roster line for <arc>/<id>. Tolerates `arc/id`, arc/id and a bare id
+    in the first cell, because the arcs written before the schema landed spell
+    their rows three ways."""
+    pats = [rf"^\|\s*`?{re.escape(arc)}/{re.escape(rid)}`?\s*\|",
+            rf"^\|\s*`?{re.escape(rid)}`?\s*\|"]
+    for pat in pats:
+        m = re.search(pat, text, re.M)
+        if m:
+            line = text[m.start():text.index("\n", m.start())]
+            return line, [c.strip() for c in line.strip().strip("|").split("|")]
+    return "", []
+
+
+def roster_all(text):
+    """Every roster line, for the sibling-row slice."""
+    out = []
+    for m in re.finditer(r"^\|\s*`?[a-z0-9-]+/[A-Z]+\d+`?\s*\|.*$", text, re.M):
+        out.append(m.group(0))
+    return out
+
+
+def band_of(text):
+    """(lo, hi) from the arc's reserved element block, or None."""
+    m = re.search(r"E(\d+)\s*[-\u2013]\s*E?(\d+)", arc_field(text, "reserved element block"))
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def taken_numbers():
+    """Every E# already spoken for, catalog and ledger both. A number in either
+    is minted: reading only one is how E173 got minted twice."""
+    nums = set()
+    for f in (CATALOG, LEDGERDOC):
+        if os.path.exists(f):
+            nums |= {int(n) for n in re.findall(r"\|\s*E(\d+)\s*\|", open(f).read())}
+    return nums
+
+
+def banks_named_by(text):
+    """The banks a document points at: [[banks/x]] anywhere, plus `related:`.
+    An arc names its own refraction, and that is a far better signal than
+    keyword-matching a one-line row description."""
+    names = set(re.findall(r"\[\[banks/([a-z0-9-]+)\]\]", text))
+    fm = re.search(r"^related:\s*\[(.*?)\]", text, re.M | re.S)
+    if fm:
+        names |= {m for m in re.findall(r"banks/([a-z0-9-]+)", fm.group(1))}
+    return sorted(names)
+
+
+def bank_hits(terms, named=()):
+    """Banks to slice: the ones the arc NAMES (whole leading section, they are the
+    refraction this row sits in), then any other bank whose text carries a row
+    term. A term shorter than five characters matches too much to be useful."""
+    out, seen = [], set()
+    for n in named:
+        f = os.path.join(BANKDIR, f"{n}.md")
+        if not os.path.exists(f):
+            continue
+        seen.add(f)
+        lines = open(f).read().splitlines()
+        out.append((os.path.relpath(f, ROOT)
+                    + f"  (NAMED BY THE ARC: head of {len(lines)} lines. Read the "
+                      f"whole bank before §3)", lines[:40], len(lines)))
+    terms = [t for t in terms if len(t) > 4]
+    for f in sorted(glob.glob(os.path.join(BANKDIR, "*.md"))):
+        if f in seen or os.path.basename(f).startswith("_"):
+            continue
+        hits = [ln for ln in open(f).read().splitlines()
+                if any(re.search(rf"\b{re.escape(t)}\b", ln, re.I) for t in terms)]
+        if hits:
+            out.append((os.path.relpath(f, ROOT), hits[:8], len(hits)))
+    return out
+
+
+def ledger_rungs(terms):
+    lines = []
+    if os.path.exists(STATUS_LEDGER):
+        for ln in open(STATUS_LEDGER).read().splitlines():
+            if any(re.search(rf"\b{re.escape(t)}\b", ln, re.I) for t in terms if len(t) > 3):
+                lines.append(ln)
+    return lines[:30]
+
+
+# Pipeline vocabulary is not subject matter. Slicing on it matches every bank
+# that mentions an unminted row, which is most of them: measured on unit-lane/N24,
+# `unminted` alone pulled three banks and nine noise lines into the slice.
+_STOP = {"unminted", "minted", "designed", "specced", "building", "built", "closed",
+         "open", "primitive", "law", "port", "decision", "tool", "new", "bind",
+         "connect", "UNASSIGNED", "none"}
+
+
+def _terms_from(cells):
+    """Backticked names and capitalised words from a roster row's DESCRIPTION.
+    The id, state and element cells carry pipeline vocabulary, not subject
+    matter, so they are excluded."""
+    joined = cells[1] if len(cells) > 1 else " ".join(cells)
+    raw = (re.findall(r"`([^`]+)`", joined)
+           + re.findall(r"\b([A-Z][a-zA-Z]{3,})\b", joined)
+           + re.findall(r"\b([a-z]{5,})\b", joined))
+    return [t for t in dict.fromkeys(raw) if t.lower() not in _STOP]
+
+
+def _arc_head(atext, arc):
+    return "\n".join([
+        f"### the arc: docs/arcs/{arc}-arc.md",
+        f"- goals: {arc_field(atext, 'goal')}",
+        f"- reserved element block: {arc_field(atext, 'reserved element block')}",
+        f"- build-state authority: {arc_field(atext, 'build-state authority')}",
+    ])
+
+
+def design_mode(arc, rid, scaffold=True):
+    ap = arc_path(arc)
+    if not os.path.exists(ap):
+        die(f"no arc at {os.path.relpath(ap, ROOT)} — open it with --arc {arc} first")
+    atext = open(ap).read()
+    line, cells = roster_row(atext, arc, rid)
+    if not line:
+        die(f"{arc}/{rid} is not in the roster of {os.path.relpath(ap, ROOT)} — "
+            f"a design run works a row that exists")
+    # The element cell is LAST in every roster shape, the 6-column rows written
+    # before the schema landed included. Index 7 misses those.
+    if cells and re.fullmatch(r"`?E\d+`?", cells[-1]):
+        print(f"[note] {arc}/{rid} already carries {cells[-1].strip('`')}. The design "
+              f"stage is behind it; use --spec", file=sys.stderr)
+
+    terms = _terms_from(cells)
+    goal = arc_field(atext, "goal")
+    gm = re.search(r"goals/([a-z0-9-]+)", goal)
+    gtext = ""
+    if gm:
+        gp = os.path.join(GOALDIR, f"{gm.group(1)}.md")
+        if os.path.exists(gp):
+            gtext = open(gp).read()
+
+    out = [f"# DESIGN BUNDLE — {arc}/{rid}",
+           "Read THIS ONLY. This row has NO element number: it gets one when this "
+           "design passes audit. Fill the six sections in order — §2 measures "
+           "before §3 names a gap, and §3 sizes the gap before §4 proposes a "
+           "shape for it.",
+           _arc_head(atext, arc.removesuffix('-arc')),
+           f"## 1. Your roster row\n{line}",
+           "## 2. The arc's requirements\n" + (arc_section(atext, "REQUIREMENT") or "(none written)"),
+           "## 3. What the arc says the tree already holds\n"
+           + (arc_section(atext, "already") or "(the arc's §3 is empty — measure it yourself)"),
+           "## 4. What the arc says is missing\n"
+           + (arc_section(atext, "missing") or "(the arc's §4 is empty)")]
+
+    sibs = [l for l in roster_all(atext) if l != line]
+    out.append(f"## 5. Sibling rows ({len(sibs)}) — check none of them owns this work\n"
+               + "\n".join(sibs[:60]))
+
+    if gtext:
+        cond = arc_section(gtext, "done means")
+        out.append(f"## 6. The goal's done-conditions\n{cond or '(none)'}")
+
+    banks = bank_hits(terms, banks_named_by(atext))
+    if banks:
+        blk = []
+        for rel, hits, n in banks:
+            blk.append(f"### {rel}"
+                       + ("" if "NAMED BY" in rel else f" ({n} naming line(s), "
+                          f"{min(len(hits), 8)} shown)")
+                       + "\n" + "\n".join(hits))
+        out.append("## 7. Banks naming this concept — READ THESE BEFORE §3\n"
+                   "A feature that is one thing elsewhere is here a sum of shards, each "
+                   "in its own home, usually mostly built. Naming a phantom feature is "
+                   "the cardinal working error in this repository.\n\n" + "\n\n".join(blk))
+    else:
+        out.append("## 7. Banks naming this concept — NONE\n"
+                   "No bank in docs/banks/ names these terms: "
+                   + ", ".join(terms[:12] or ["(none extracted)"])
+                   + ".\nIf this concept has no bank, say so in §2 and build one rather "
+                     "than guess.")
+
+    rungs = ledger_rungs(terms)
+    out.append("## 8. status-ledger rungs in range\n"
+               + ("\n".join(rungs) if rungs else "(no rung names these terms)"))
+
+    outl = target_outlines(line)
+    if outl:
+        out.append("## 9. Live target outlines\n" + outl)
+
+    out.append("## 10. Next\nYour artifact is scaffolded at "
+               f"`docs/arcs/parts/{arc}-{rid}.md`. Fill §1-§6. §3 may close the row "
+               "with an empty delta, which mints nothing and is a success. §6 is the "
+               "packet `--mint` executes.")
+    print("\n\n".join(out))
+
+    if scaffold:
+        os.makedirs(PARTSDIR, exist_ok=True)
+        dest = os.path.join(PARTSDIR, f"{arc}-{rid}.md")
+        if os.path.exists(dest):
+            print(f"\n[scaffold] {arc}-{rid}.md already exists — left as-is", file=sys.stderr)
+        else:
+            t = open(PART_TEMPLATE).read()
+            what = cells[1] if len(cells) > 1 else rid
+            for a, b in {"<arc>/<id>": f"{arc}/{rid}", "<arc>": arc, "<id>": rid,
+                         "<human title>": what,
+                         "<YYYY-MM-DD>": datetime.date.today().isoformat()}.items():
+                t = t.replace(a, b)
+            open(dest, "w").write(t)
+            print(f"\n[scaffold] wrote docs/arcs/parts/{arc}-{rid}.md", file=sys.stderr)
+        set_roster_state(arc, rid, "designed")
+
+
+def set_roster_state(arc, rid, state, element=None):
+    """Rewrite the row's state cell (and element cell) in place. The roster is
+    the pipeline's authority for a row."""
+    ap = arc_path(arc)
+    atext = open(ap).read()
+    line, cells = roster_row(atext, arc, rid)
+    if not line or len(cells) < 8:
+        print(f"[roster] {arc}/{rid} predates the 8-column schema "
+              f"({len(cells)} columns). Set its state by hand.", file=sys.stderr)
+        return
+    cells[-2] = state
+    if element:
+        cells[-1] = f"`{element}`"
+    new = "| " + " | ".join(cells) + " |"
+    open(ap, "w").write(atext.replace(line, new, 1))
+    print(f"[roster] {arc}/{rid} -> state {state}"
+          + (f", element {element}" if element else ""), file=sys.stderr)
+
+
+def part_audit_mode(arc, rid):
+    dest = os.path.join(PARTSDIR, f"{arc}-{rid}.md")
+    if not os.path.exists(dest):
+        die(f"no design at docs/arcs/parts/{arc}-{rid}.md — the element-design run "
+            f"comes first")
+    dtext = open(dest).read()
+    if re.search(r"^status:\s*superseded", dtext, re.M):
+        m = re.search(r"^superseded_by:\s*(\S+)", dtext, re.M)
+        die(f"REFUSED: {arc}/{rid} is superseded by {m.group(1) if m else '(unnamed)'}. "
+            f"There is nothing to gate.")
+    ap = arc_path(arc)
+    atext = open(ap).read()
+    line, cells = roster_row(atext, arc, rid)
+    terms = _terms_from(cells)
+
+    charter = """## 0. THE DESIGN CHARTER — run these five, in order
+
+| # | check | fails when |
+|---|---|---|
+| 1 | Citation truth | a §2 claim's `file:line` does not say what the artifact says it says, or carries no citation at all |
+| 2 | Phantom feature | §3's delta names work the bank refraction shows already built. The cardinal working error, and why this gate exists |
+| 3 | Shape honesty | §4 lists one shape with no citation that the tree settles it, or lists shapes that are one shape described twice |
+| 4 | Decision discipline | a §5 RESOLVED cites no settled doc, a DEFERRED points at something unminted, or a NEEDS-AUTHOR was answered inside the run |
+| 5 | Mint packet soundness | §6's band is unreserved, a row is incomplete, the split reason does not hold, or it names an unminted `E#` |
+
+FIX what is decidable from this bundle. FLAG what is author-tier, with the
+question verbatim. On PASS run `pack.py {a}/{r} --mint`. Where §3 closed the row
+on an empty delta, verify the shards cover it and report CLOSED: mint nothing.""".format(a=arc, r=rid)
+
+    out = [f"# DESIGN AUDIT BUNDLE — {arc}/{rid}", charter,
+           f"## 1. The artifact under audit\n{dtext}",
+           _arc_head(atext, arc.removesuffix('-arc')),
+           f"## 2. Its roster row\n{line}",
+           "## 3. The arc's requirements\n" + (arc_section(atext, "REQUIREMENT") or "(none)")]
+    banks = bank_hits(terms, banks_named_by(atext))
+    if banks:
+        out.append("## 4. Banks naming this concept (check 2 runs against these)\n"
+                   + "\n\n".join(f"### {rel} ({n} line(s))\n" + "\n".join(h)
+                                   for rel, h, n in banks))
+    rungs = ledger_rungs(terms)
+    if rungs:
+        out.append("## 5. status-ledger rungs in range\n" + "\n".join(rungs))
+    band = band_of(atext)
+    free = sorted(set(range(band[0], band[1] + 1)) - taken_numbers())[:6] if band else []
+    out.append("## 6. The band (check 5 runs against this)\n"
+               + (f"reserved `E{band[0]}-E{band[1]}`; next free: "
+                  + ", ".join(f"E{n}" for n in free) if band
+                  else "this arc holds NO reserved band. §6 must read UNASSIGNED."))
+    out.append("## 7. Nothing is scaffolded and no status changes. This bundle is pure input.")
+    print("\n\n".join(out))
+
+
+def mint_mode(arc, rid):
+    """The graduation. Allocates the E#, writes the catalog and ledger rows from
+    the design's §6, and flips the roster row."""
+    dest = os.path.join(PARTSDIR, f"{arc}-{rid}.md")
+    if not os.path.exists(dest):
+        die(f"no design at docs/arcs/parts/{arc}-{rid}.md — minting reads its §6")
+    dtext = open(dest).read()
+    ap = arc_path(arc)
+    atext = open(ap).read()
+    line, cells = roster_row(atext, arc, rid)
+    if cells and re.fullmatch(r"`?E\d+`?", cells[-1]):
+        die(f"{arc}/{rid} already minted as {cells[-1].strip('`')}. A row mints once")
+
+    band = band_of(atext)
+    if not band:
+        die(f"{os.path.relpath(ap, ROOT)} holds no reserved element block. "
+            f"decision-lane-split reserves the bands and an arc outside them gets "
+            f"one from the author: this row stays UNASSIGNED.")
+    free = sorted(set(range(band[0], band[1] + 1)) - taken_numbers())
+    if not free:
+        die(f"band E{band[0]}-E{band[1]} is full ({band[1]-band[0]+1} numbers, all "
+            f"taken). The arc needs a new block from the author.")
+    num = free[0]
+    eid = f"E{num}"
+
+    # An unfilled template still carries every placeholder AND the §3 guidance
+    # blockquote, whose prose contains the string this used to scan for. Read the
+    # Verdict line itself, and refuse a template that was never filled.
+    if "<the refraction" in dtext or "<one line, what must become true>" in dtext:
+        die(f"docs/arcs/parts/{arc}-{rid}.md is still the unfilled template. "
+            f"The element-design run fills §1-§6 before anything mints.")
+    verdict = re.search(r"^\*\*Verdict:\*\*\s*`?([a-z ]+)", arc_section(dtext, "delta"), re.M)
+    if verdict and verdict.group(1).strip().startswith("closed"):
+        die("this design closed the row on an empty delta (§3). It mints nothing: "
+            "the work is already built. Set the roster row to `closed`.")
+
+    packet = arc_section(dtext, "mint packet")
+    if not packet:
+        die("the design has no §6 mint packet. Minting executes what it wrote.")
+
+    cat = re.search(r"^\s*`?(\|\s*E<NN>.*\|)`?\s*$", packet, re.M)
+    led = re.findall(r"^\s*`?(\|\s*E<NN>.*\|)`?\s*$", packet, re.M)
+    if len(led) < 2:
+        die("§6 must carry BOTH rows verbatim, the catalog row and the ledger row, "
+            "each starting `| E<NN> |`. Found "
+            f"{len(led)}. Fill the packet before minting.")
+    catrow, ledrow = led[0].replace("E<NN>", eid), led[1].replace("E<NN>", eid)
+
+    with open(CATALOG, "a") as f:
+        f.write(catrow.rstrip() + "\n")
+    with open(LEDGERDOC, "a") as f:
+        f.write(ledrow.rstrip() + "\n")
+    set_roster_state(arc, rid, "minted", element=eid)
+
+    print(f"[mint] {arc}/{rid} -> {eid}", file=sys.stderr)
+    print(f"[mint] catalog.md += {catrow.strip()}", file=sys.stderr)
+    print(f"[mint] ledger.md  += {ledrow.strip()}", file=sys.stderr)
+    print(f"[mint] APPENDED at end of file. Move each row into its section by hand: "
+          f"the catalog sorts by kind and the ledger by category.", file=sys.stderr)
+    print(f"\nMinted **{eid}** for {arc}/{rid}. Next: "
+          f"`python3 tools/pack/pack.py {eid} --spec`")
+
+
+def goal_mode(name):
+    dest = os.path.join(GOALDIR, f"{name}.md")
+    hits = []
+    for d in ("", "docs", "records"):
+        base = os.path.join(ROOT, d) if d else ROOT
+        for f in sorted(glob.glob(os.path.join(base, "*.md"))
+                        + (glob.glob(os.path.join(base, "**/*.md"), recursive=True) if d else [])):
+            if "/goals/" in f or os.path.basename(f).startswith("_"):
+                continue
+            for i, ln in enumerate(open(f, errors="ignore").read().splitlines(), 1):
+                if re.search(rf"\b{re.escape(name.replace('-', '[- ]'))}\b", ln, re.I):
+                    hits.append(f"{os.path.relpath(f, ROOT)}:{i}  {ln.strip()[:150]}")
+    hits = list(dict.fromkeys(hits))[:60]
+
+    others = []
+    for f in sorted(glob.glob(os.path.join(GOALDIR, "*.md"))):
+        if os.path.basename(f).startswith("_") or os.path.basename(f) == "README.md":
+            continue
+        t = open(f).read()
+        m = re.search(r"^# (Goal:.*)$", t, re.M)
+        others.append(f"- {os.path.basename(f)[:-3]}: {m.group(1) if m else ''}")
+
+    out = [f"# GOAL BUNDLE — {name}",
+           "Adding a goal means CITING where the project already claims it. Every "
+           "goal here is a derivation from repo text, or it declares itself an "
+           "author call in its own first section. If §1 below is empty, report that "
+           "and stop: authoring a new ambition is an author call.",
+           f"## 1. Repo text naming '{name}' ({len(hits)} line(s))\n"
+           + ("\n".join(hits) if hits else "NONE. There is no claim to derive from."),
+           "## 2. The standing goals — check none of them already claims this\n"
+           + "\n".join(others),
+           "## 3. Author calls that may block it\n"
+           + "\n".join(ln for ln in open(os.path.join(RECORDSDIR, "author-calls.md")).read().splitlines()
+                       if re.search(name.split("-")[0], ln, re.I))[:2000],
+           "## 4. Next\nFill five sections. Done-conditions are NUMBERED and each "
+           "names its arc or says it is unopened. `## Honest limits` is what keeps "
+           "the goal from reading as a pitch."]
+    print("\n\n".join(out))
+
+    if os.path.exists(dest):
+        print(f"\n[scaffold] goals/{name}.md already exists — left as-is", file=sys.stderr)
+    else:
+        t = open(GOAL_TEMPLATE).read().replace("<name>", name).replace(
+            "<YYYY-MM-DD>", datetime.date.today().isoformat())
+        open(dest, "w").write(t)
+        print(f"\n[scaffold] wrote docs/goals/{name}.md", file=sys.stderr)
+
+
+def arc_mode(name):
+    stem = name[:-4] if name.endswith("-arc") else name
+    dest = arc_path(stem)
+    bands = ""
+    lp = os.path.join(ROOT, "docs/decisions/decision-lane-split.md")
+    if os.path.exists(lp):
+        bands = "\n".join(ln for ln in open(lp).read().splitlines()
+                           if re.search(r"E\d+\s*[-\u2013]\s*E?\d+", ln))[:1500]
+    rows = []
+    for f in sorted(glob.glob(os.path.join(ARCDIR, "*-arc.md"))):
+        t = open(f).read()
+        rows.append(f"- {os.path.basename(f)[:-3]}: goal {arc_field(t, 'goal')[:60]} | "
+                    f"band {arc_field(t, 'reserved element block')[:40]} | "
+                    f"{len(roster_all(t))} roster row(s)")
+    out = [f"# ARC BUNDLE — {stem}",
+           "An arc schedules ONE goal condition. Read the overlapping arcs first: "
+           "two arcs owning one row is the collision this stage catches.",
+           "## 1. The standing arcs\n" + "\n".join(rows),
+           "## 2. Reserved element bands (decision-lane-split)\n"
+           + (bands or "(none parsed)"),
+           "## 3. The banks\n"
+           + open(os.path.join(BANKDIR, "INDEX.md")).read()[:4000],
+           "## 4. Next\nFill six sections. §4 carries the GROUPS and the EDGES that "
+           "run against their order: an ordering with no stated back-edges reads as "
+           "a build sequence and reading it that way is usually wrong. Then run the "
+           "coverage check: every requirement named by a row, every row naming a "
+           "requirement, every `origin` defensible from §3."]
+    print("\n\n".join(out))
+
+    if os.path.exists(dest):
+        print(f"\n[scaffold] {os.path.basename(dest)} already exists — left as-is", file=sys.stderr)
+    else:
+        t = open(ARC_TEMPLATE).read().replace("<name>", stem).replace(
+            "<YYYY-MM-DD>", datetime.date.today().isoformat())
+        open(dest, "w").write(t)
+        print(f"\n[scaffold] wrote docs/arcs/{stem}-arc.md", file=sys.stderr)
+
+
+def _git_last_change(rel):
+    import subprocess
+    try:
+        r = subprocess.run(["git", "-C", ROOT, "log", "-1", "--format=%cs", "--", rel],
+                           capture_output=True, text=True, timeout=20)
+        return r.stdout.strip()
+    except Exception:
+        return ""
+
+
+def revisit_scan():
+    """records/ rows whose evidence changed after the row was last checked.
+    records/README.md already states this as a rule and nothing acted on it."""
+    stale = []
+    for f in sorted(glob.glob(os.path.join(RECORDSDIR, "*.md"))):
+        if os.path.basename(f) == "README.md":
+            continue
+        txt = open(f).read()
+        for blk in re.split(r"\n(?=### )", txt):
+            h = re.match(r"### (\S+)\s*(.*)", blk)
+            if not h:
+                continue
+            chk = re.search(r"^- checked:\s*(\d{4}-\d{2}-\d{2})", blk, re.M)
+            ev = re.search(r"^- evidence:\s*(.+)$", blk, re.M)
+            st = re.search(r"^- state:\s*(\S+)", blk, re.M)
+            if not (chk and ev):
+                continue
+            for path in re.findall(r"([A-Za-z0-9_./-]+\.(?:chiral|prog|py|sh|md))", ev.group(1)):
+                if not os.path.exists(os.path.join(ROOT, path)):
+                    continue
+                last = _git_last_change(path)
+                if last and last > chk.group(1):
+                    stale.append((os.path.relpath(f, ROOT), h.group(1),
+                                  st.group(1) if st else "?", chk.group(1), path, last,
+                                  h.group(2)[:70]))
+                    break
+    stale.sort(key=lambda r: r[3])
+    print("# REVISIT WORKLIST — rows whose evidence moved after they were checked")
+    print("\nrecords/README.md: \"A row whose `checked:` date predates the last change "
+          "to the files it cites is unverified.\" This is that list. Taking a row off "
+          "it is a SEPARATE run: `pack.py <target> --revisit <trigger>`.\n")
+    if not stale:
+        print("None. Every records row's evidence predates its check date.")
+        return
+    print(f"{len(stale)} row(s), oldest check first.\n")
+    print("| record | row | state | checked | evidence | last changed | title |")
+    print("|---|---|---|---|---|---|---|")
+    for r in stale:
+        print("| " + " | ".join(r) + " |")
+
+
+def revisit_mode(target, trigger):
+    """One artifact beside one named trigger. Never re-derives the artifact."""
+    cands = [target,
+             os.path.join(PARTSDIR, f"{target}.md"),
+             os.path.join(ARCDIR, f"{target}.md"), arc_path(target),
+             os.path.join(GOALDIR, f"{target}.md")]
+    if "/" in target and not target.endswith(".md"):
+        a, _, r = target.partition("/")
+        cands.insert(0, os.path.join(PARTSDIR, f"{a}-{r}.md"))
+    path = next((c for c in cands if os.path.exists(c)
+                 and os.path.isfile(c)), "")
+    if not path:
+        die(f"no artifact resolves for '{target}' — tried "
+            + ", ".join(os.path.relpath(c, ROOT) for c in cands[:4]))
+    art = open(path).read()
+
+    tpath = trigger if os.path.exists(trigger) else os.path.join(ROOT, trigger)
+    tsrc = open(tpath).read()[:6000] if os.path.exists(tpath) and os.path.isfile(tpath) else ""
+
+    cites = []
+    for m in re.finditer(r"`?([A-Za-z0-9_./-]+\.(?:chiral|prog|py|sh|md)):(\d+)(?:-(\d+))?`?", art):
+        rel, a = m.group(1), int(m.group(2))
+        b = int(m.group(3)) if m.group(3) else a
+        fp = os.path.join(ROOT, rel)
+        if not os.path.exists(fp):
+            # Docs in this tree cite a bare basename as often as a repo-relative
+            # path (goals/enforcement cites `compile-emit.chiral:300`). Resolve
+            # it, and say when the basename is ambiguous rather than picking one.
+            hits = [h for h in glob.glob(os.path.join(ROOT, "**", os.path.basename(rel)),
+                                         recursive=True) if os.path.isfile(h)]
+            if len(hits) == 1:
+                fp, rel = hits[0], os.path.relpath(hits[0], ROOT)
+            elif len(hits) > 1:
+                cites.append(f"### {rel}:{a} — AMBIGUOUS basename, {len(hits)} files: "
+                             + ", ".join(os.path.relpath(h, ROOT) for h in hits[:5]))
+                continue
+            else:
+                cites.append(f"### {rel}:{a} — FILE GONE (no such path, and no file "
+                             f"of that basename anywhere in the tree)")
+                continue
+        lines = open(fp, errors="ignore").read().splitlines()
+        body = "\n".join(f"{i:>5}  {lines[i-1]}" for i in range(a, min(b, len(lines)) + 1)
+                         if 0 < i <= len(lines))
+        cites.append(f"### {rel}:{a}{'-'+str(b) if b != a else ''} "
+                     f"(last changed {_git_last_change(rel)})\n```\n{body}\n```")
+
+    print("\n\n".join([
+        f"# REVISIT BUNDLE — {os.path.relpath(path, ROOT)} against {trigger}",
+        """## 0. THE RULES
+
+**Read the trigger before the artifact.** A run that opens the artifact and goes
+looking for problems is an audit, and it is the unbounded re-read this stage
+replaces.
+
+**Bounded by the delta.** Work only the claims the trigger reaches. If more than
+its reach is wrong, the verdict is REOPEN and the owning stage re-runs.
+
+| verdict | when | writes |
+|---|---|---|
+| HOLDS | the trigger changes nothing | the `checked:` date. The artifact stays as it is |
+| AMEND | right shape, wrong detail | the correction in place, marked `⚑` |
+| RESCOPE | the row's boundary moved | the roster row, and a new row where the work divides |
+| REOPEN | the stage is invalidated | the roster row's `state` drops back |
+| SUPERSEDE | the row stops being what gets built | FLAG only. An author's call |
+
+Every run writes one `records/<arc>.md` row, six fields, `checked:` today,
+including a HOLDS: a check that leaves no trace gets redone.""",
+        f"## 1. The trigger\n{tsrc or '(not a file — the trigger is the argument text: ' + trigger + ')'}",
+        f"## 2. The artifact\n{art}",
+        f"## 3. Live state of every `file:line` it cites ({len(cites)})\n"
+        + ("\n\n".join(cites) if cites else "(the artifact cites no file:line)"),
+    ]))
+
+
 def main():
     no_index = "--no-index" in sys.argv  # skip INDEX append (safe for parallel runs)
     pos = [a for a in sys.argv[1:] if not a.startswith("--")]
+    flags = [a for a in sys.argv[1:] if a.startswith("--")]
+
+    # ---- the pre-mint tier dispatches BEFORE the element-id parse, because none
+    # ---- of its targets has an element number yet. decision-design-before-mint.
+    if "--goal" in flags:
+        if not pos:
+            die("usage: pack.py --goal <name>")
+        goal_mode(pos[0]); return
+    if "--arc" in flags:
+        if not pos:
+            die("usage: pack.py --arc <name>")
+        arc_mode(pos[0]); return
+    if "--revisit" in flags and not pos:
+        revisit_scan(); return
+    if pos and "/" in pos[0] and not pos[0].startswith("E"):
+        arc, _, rid = pos[0].partition("/")
+        arc = arc[:-4] if arc.endswith("-arc") else arc
+        if "--revisit" in flags:
+            revisit_mode(pos[0], pos[1] if len(pos) > 1 else "(unnamed)"); return
+        if "--mint" in flags:
+            mint_mode(arc, rid); return
+        if "--audit" in flags:
+            part_audit_mode(arc, rid); return
+        design_mode(arc, rid, scaffold="--no-scaffold" not in flags); return
+    if "--revisit" in flags and pos:
+        revisit_mode(pos[0], pos[1] if len(pos) > 1 else "(unnamed)"); return
+
     if not pos:
-        die("usage: tools/pack/pack.py E<#> [slug] [--no-index]")
+        die("usage: tools/pack/pack.py E<#> [slug] [--no-index]\n"
+            "       tools/pack/pack.py --goal <name> | --arc <name>\n"
+            "       tools/pack/pack.py <arc>/<id> [--audit | --mint]\n"
+            "       tools/pack/pack.py --revisit | <target> --revisit <trigger>")
     # accept the CAT·E# display form (MEM·E120, SYS.E121, mem/E120) as input and
     # strip to the bare stable E# key — the category prefix is a label, not the id.
     m = re.match(r"^[A-Za-z]{2,4}[·./]E?(\d+)$", pos[0])
