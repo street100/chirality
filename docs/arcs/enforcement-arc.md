@@ -61,14 +61,29 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    **The remaining gap is measured, and it is one class.** Requirement 4's
    wiring put a re-check on every compile, so the floor's judgment now runs on
    the shipping path in `optimize`'s form. Over the compiler's own blob:
-   **1,582 TFns, 1,550 `chk-ok`, 32 `chk-err`**, and **every one of the 32 is
-   `call: unknown tal function` on a port extern the tal function table does not
-   carry, first instance `bput-u8`** ([[records/enforcement-arc]] EN-24). That
-   is what stands between here and `ck-prog` on the shipping path: the extern
-   table, not a loader refusal and not a type-level fork. ⚑ **The tree cannot
-   re-derive those three numbers.** The probe that produced them was never
-   committed ([[records/enforcement-arc]] EN-25), so this requirement's
-   remaining scope is stated in a figure no one can reproduce.
+   **1,582 TFns, 1,550 `chk-ok`, 32 `chk-err`**, and every one of the 32 is
+   `call: unknown tal function` ([[records/enforcement-arc]] EN-24).
+
+   ⚑ **The figure is reproducible as of 2026-09-05, and the class behind it is
+   not what this requirement said it was.** `prog/optimizer-census.prog`
+   (`7a62965`) re-derives the census over the compiler's own blob and prints
+   `census tfns=1582 ok=1550 err=32 defs=1551 skipped=10 unfolded-ok=1550`, so
+   all three numbers hold and `tools/test/opt-census.sh` R2 pins them. **The
+   attribution does not.** This paragraph read that the 32 sit on port externs
+   the tal function table does not carry, first instance `bput-u8`. Measured:
+   `bput-u8` is the name of the *refused TFn*, it is an ordinary def at
+   `lib/lowering/tal/bytes.chiral:610`, and no port extern appears in the set.
+   All 32 are missing the SAME callee shape, `<name>$0`, which is the TFn's own
+   outlined block: `outline` (`lib/lowering/upper/lower.chiral:311-319`)
+   extracts a non-tail `case` as `<name>$<n>` and adds its signature to `St`'s
+   fn list, `compile-fn` (`:420`) returns `le-ok main extra` and discards
+   `st-fns`, and the program-wide `CEnv` `lower-defs` builds from `def-sigs`
+   never carries it. **So what stands between here and `ck-prog` on the shipping
+   path is a `CEnv`-plumbing gap at the re-check call site.** The extern table
+   is a different subject and this set says nothing about it.
+   [[records/enforcement-arc]] EN-25 carries the measurement and
+   `tools/test/opt-census.sh` R3 asserts the shape positively, with M5 as its
+   falsifier.
 
    E16's title names the preserve-check and three of its four deliverables are
    built; E18's checker and reference interpreter exist unreached.
@@ -137,7 +152,10 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    `391 passed, 0 failed`, `91 roots built, 0 failed`, gate PASSED on the day of
    promotion. Re-run at HEAD 2026-09-05: `391 passed, 0 failed`,
    **`92 roots built, 0 failed`**, gate PASSED, exit 0. The extra root is
-   `prog/e197-recording-sweep.prog`, added by E197 at `a2130c5`.
+   `prog/e197-recording-sweep.prog`, added by E197 at `a2130c5`. Re-run again
+   after this requirement's own gate landed: `391 passed, 0 failed`,
+   **`93 roots built, 0 failed`**, gate PASSED, exit 0. That extra root is
+   `prog/optimizer-census.prog`.
 
    ⚑ **THE CLOSURE SHIPPED NO GATE, LEFT ONE RED, AND RESTS ON A PROBE THAT IS
    NOT IN THE TREE.** [[records/enforcement-arc]] EN-25 measures all three.
@@ -166,6 +184,31 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    requirement 2's scope statement. That owed gate has no element.
    **Whether this requirement reopens is the author's call and this file does
    not make it.**
+
+   ⚑ **BOTH OWED ITEMS SHIPPED 2026-09-05, AND NEITHER CHANGES THE `CLOSED`
+   MARKER, WHICH IS THE AUTHOR'S.** `prog/optimizer-census.prog` (`7a62965`) is
+   the committed probe and reproduces all three numbers exactly.
+   `tools/test/opt-census.sh` (`d7ccad8`) is the gate: six rows, six mutants,
+   **`opt-census: 12 passed, 0 failed`**, out of dispatch by a `not-a-phase:`
+   declaration on the route eight sibling gates take. It reddens on each of the
+   three cuts this requirement was closed without: **M1** comments out the
+   import at `lib/lowering/compile-back.chiral:16` and reverts `opt-tfns` to the
+   identity, which is the tree exactly as it stood before `5b7478f`, and R5 and
+   R6 both go red; **M2** keeps the call to `re-check` and adopts the residual
+   without `chk-ok`, and R5 alone convicts it; **M3** regresses the accept count
+   from 1,550 to 358, and R2 and R3 go red. Every row carries a falsifier that
+   was built and run, so no row here is one of requirement 6's.
+
+   ⚑ **AND THE GUARD IS INERT ON THE COMPILER'S OWN BLOB.** A compiler with
+   `re-check` forced to answer `chk-ok` emits **byte-identical** output for
+   `prog/compiler.prog`'s blob against the guarded one, 1,241,464 bytes each.
+   None of the 32 refused TFns carry foldable work outside the block that
+   outlined, so the residual the check refuses and the fallback it adopts emit
+   the same code. The check runs on every compile and, on this blob, refuses 32
+   residuals that would have cost nothing. R5 is therefore measured on
+   `tools/test/samples/opt_census_outline.prog`, the smallest program where the
+   refusal is observable, beside a control that must not move. What the wiring
+   buys today is the shape of a guarantee rather than a change to what ships.
 
    ⚑ **THE COLLISIONS THIS REQUIREMENT WAS WAITING ON WERE ALREADY GONE.** The
    eleven E154 names were prefixed `tck-` at `5b4fb71` and `lowering/tal/check`
@@ -247,24 +290,50 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    found two rows that could not fail; both were repaired at `e882568`.
 
    **Two halves, and they part company.** ⚑ *Registration.* Measured at HEAD
-   2026-09-05: `ls tools/test/*.sh` lists **25** scripts, `run-tests.sh`
-   dispatches **thirteen**, and **twelve sit outside the dispatch table**:
+   2026-09-05: `ls tools/test/*.sh` lists **26** scripts, `run-tests.sh`
+   dispatches **thirteen**, and **thirteen sit outside the dispatch table**:
    `run-tests.sh` itself, `apply-spine.sh`, `apply-word.sh`,
    `capture-fields.sh`, `crypto.sh`, `defunc-blame.sh`, `encoding.sh`,
-   `map-integrity.sh`, `mutant.sh`, `recording.sh`, `registration.sh` and
-   `tal-check.sh`. `registration.sh` prints the same split as
-   `12 of 25 scripts are outside the dispatch table by their own declaration.`
-   The twenty-four and eleven this paragraph carried until 2026-09-05 predate
-   `recording.sh`, E197's gate, added at `a2130c5`. Every one carries a
-   `not-a-phase:` declaration with a reason in its own header, which
-   `registration.sh` G2 and G4 enforce, so no row is undeclared and that half
-   survives the recount. ⚑ **`tal-check.sh` does not run green.** It exits 1 at
-   `20 ok, 1 FAIL` on G18 (requirement 3), which is the wiring's doing rather
-   than the gate's. The "built, runs green by hand" this paragraph carried is
-   measured false for `tal-check.sh` and unre-measured for the other eleven.
-   Whether any of the twelve *should*
-   be dispatched is the suite-phase-number author call, the same one requirement
-   3 waits on ([[records/gate-audit]] GA-10, still OPEN for that reason).
+   `map-integrity.sh`, `mutant.sh`, `opt-census.sh`, `recording.sh`,
+   `registration.sh` and `tal-check.sh`. `registration.sh` prints the same split
+   as `13 of 26 scripts are outside the dispatch table by their own
+   declaration.` and reads `9 passed, 0 failed` with G1 to G6 ok. The
+   twenty-five and twelve this paragraph carried predate `opt-census.sh`,
+   requirement 4's gate, added at `d7ccad8`; the twenty-four and eleven before
+   them predate `recording.sh` at `a2130c5`. Every one carries a `not-a-phase:`
+   declaration with a reason in its own header, which `registration.sh` G2 and
+   G4 enforce, so no row is undeclared and that half survives each recount.
+
+   ⚑ **ALL THIRTEEN WERE RUN BY HAND AT HEAD ON 2026-09-05. ELEVEN ARE GREEN AND
+   TWO ARE RED.** The "built, runs green by hand" this paragraph carried was
+   measured false for one and unmeasured for the rest; both halves are closed
+   here.
+
+   | gate | exit | reads |
+   |---|---|---|
+   | `apply-word.sh` | 0 | `11 ok, 0 FAIL` |
+   | `apply-spine.sh` | 0 | `11 ok, 0 FAIL` |
+   | `capture-fields.sh` | 0 | `9 ok, 0 FAIL` |
+   | `crypto.sh` | 0 | `8 ok, 0 FAIL` |
+   | `defunc-blame.sh` | 0 | `11 ok, 0 FAIL` |
+   | `encoding.sh` | 0 | `9 passed, 0 failed` |
+   | `mutant.sh` | 0 | the matrix, `fixpoint=C1==C2` on every row |
+   | `opt-census.sh` | 0 | `12 passed, 0 failed` |
+   | `recording.sh` | 0 | `12 passed, 0 failed` |
+   | `registration.sh` | 0 | `9 passed, 0 failed` |
+   | `run-tests.sh` | 0 | `391 passed, 0 failed`, `93 roots built, 0 failed`, gate PASSED |
+   | `tal-check.sh` | **1** | `20 ok, 1 FAIL` on G18 |
+   | `map-integrity.sh` | **1** | `869 rows, 176 stale` |
+
+   `tal-check.sh`'s red is requirement 3's: G18 asserts `lowering/tal/check`
+   stays outside the compiler closure and requirement 4's wiring put it inside,
+   so the row is falsified correctly and retiring it is the author's call.
+   `map-integrity.sh`'s red is a separate defect dated 2026-08-31: 176 of its
+   869 `.planning/MIGRATION-MAP.tsv` rows point at paths the migration moved.
+   Neither is this requirement's subject and neither is fixed here. Whether any
+   of the thirteen *should* be dispatched is the suite-phase-number author call,
+   the same one requirement 3 waits on ([[records/gate-audit]] GA-10, still OPEN
+   for that reason).
 
    ⚑ *Rows nothing can move.* Two rows in [[records/gate-audit]] stay OPEN with
    stated reasons. **GA-04**: `ba62549` took `profile-target.sh` from 1 of 31
