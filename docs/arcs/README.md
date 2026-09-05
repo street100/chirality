@@ -107,7 +107,7 @@ when this table and an arc file disagree.
 | [[arcs/native-window-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 | [[arcs/native-document-arc]] | [[goals/native-stack]] | 4 rows, none started | none |
 | [[arcs/display-calculus-arc]] | [[goals/display]] | 17 rows, none started | none |
-| [[arcs/unit-lane-arc]] | [[goals/local-ai]] | 42 rows: `E196` built 2026-09-05 closing N8 and N9, 40 open | `E196-E239` |
+| [[arcs/unit-lane-arc]] | [[goals/local-ai]] | 43 rows: `E196` built 2026-09-05 closing N8 and N9, `E197` audited over N10 and N43, 39 open | `E196-E239` |
 
 Four of the twenty hold a reserved `E` band, [[arcs/scriba-arc]] holds the
 `S` namespace and [[arcs/native-protocol-arc]] holds the `N` namespace.

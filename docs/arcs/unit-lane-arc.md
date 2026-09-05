@@ -30,8 +30,10 @@ shards, of which 16 are written and unreached by any gate.
 
 ## What is missing
 
-`.planning/AI-LANE-GAP.md` holds the layer graph and the row table this
-arc's Rows section carries below. Read it before adding a row here.
+`.planning/AI-LANE-GAP.md` holds the layer graph and the 42-row table this
+arc's Rows section carries below. Read it before adding a row here. The
+roster is 43 rows: `unit-lane/N43` was opened by this arc, after the note, on
+the SPEC evidence its own row records.
 
 ## REQUIREMENTS
 
@@ -53,7 +55,15 @@ The `element` column carries the row's E# once it is minted, per
 [[arcs/README]]. `unit-lane/N8` and `unit-lane/N9` are minted together as
 **E196**, because a constructor's fields and its decode arithmetic constrain
 each other and splitting them would settle one against a guess at the other.
-`unit-lane/N10` is minted as **E197**. Every other row reads `unminted`.
+`unit-lane/N10` is minted as **E197**, and so is `unit-lane/N43`, the row this
+arc opened on 2026-09-05 to carry what E197's SPEC decision 4 scoped in. The
+roster drew N10 as the sum alone and the pricing law had no row, which the
+SPEC audit measured as the roster under-reporting what E197 builds. The pairing
+reason is the one N8 and N9 carry: the no-pricing counterfactual compiles and
+kills `VolumeR`, `rr-wrap` and `RunShape`, whose sole consumer is `rr-samples`,
+so splitting settles the field against a guess at the law. `N43` is arc-local
+per [[decisions/decision-work-ids]] and takes no second element number. Every
+other row reads `unminted`.
 
 | row | what | layer | kind | origin | element |
 |---|---|---|---|---|---|
@@ -67,6 +77,7 @@ each other and splitting them would settle one against a guess at the other.
 | `unit-lane/N8` | `Encoding` sum (`Rate`/`Latency`/`Population`) | L2 | primitive | new | `E196` |
 | `unit-lane/N9` | encode/decode arithmetic over `Encoding` | L2 | law | new | `E196` |
 | `unit-lane/N10` | `RecordRequest` sum (`record-spikes`/`record-membrane`/`record-weights`) | L2 | primitive | new | `E197` |
+| `unit-lane/N43` | price a `RecordRequest` against the run it is aimed at | L2 | law | new | `E197` |
 | `unit-lane/N11` | unbounded trace type paired against `RunManifest`, parallel to `RawCall` | L2 | primitive | new | `unminted` |
 | `unit-lane/N12` | spike/graded payload message-width contract | L2 | law | new | `unminted` |
 | `unit-lane/N13` | typed I/O on `Expert`, closing the `sees`/`returns` deferral | L3 | primitive | new | `unminted` |
@@ -120,13 +131,14 @@ work under the build rule: `prog/unit/recording.chiral`,
 `prog/e197-recording-sweep.prog` and `tools/test/recording.sh`. Nothing lands
 under `lib/`, so no fixpoint is owed and the sensitivity half of the scan is.
 
-**The arc owes one row and one tool fix.** The SPEC's decision 4 scopes the
-pricing function `rr-samples` into E197, so the element covers `N10` plus a
-volume law the roster has no row for. Minting is this session's event and the
-SPEC opened nothing. Separately, `tools/pack/pack.py:644` writes the INDEX
-SPEC link as `../docs/elements/specs/`, which resolves to `docs/docs/` from
-`docs/examples/`. E187 hit it and was repaired by hand at `857a005`, E197 hit
-it and was repaired by hand again, and the line itself is untouched.
+**The roster row is closed and one tool fix is owed.** The volume law E197's
+decision 4 scoped in is `unit-lane/N43` in the table above, opened by this arc
+on 2026-09-05 and covered by E197, so the roster is 43 rows and the arc no
+longer under-reports the element. What stands is `tools/pack/pack.py:644`,
+which writes the INDEX SPEC link as `../docs/elements/specs/` and so resolves
+to `docs/docs/` from `docs/examples/`. E187 hit it and was repaired by hand at
+`857a005`, E197 hit it and was repaired by hand again, and the line is
+untouched.
 
 The example carries five open questions and the audit moved two of them without
 answering either. Question 2 asked whether the refinement engine decides
