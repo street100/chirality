@@ -5,7 +5,7 @@ title: **The `sk-defunc` blame channel: `closconv` states why it dropped a famil
 kind: BUILD-PROPER
 reference_class: OURS
 ours_source: (none)
-status: drafted
+status: reviewed
 updated: 2026-09-05
 ---
 
