@@ -592,6 +592,10 @@ restriction is what makes the cost affordable.
 | R12 | how many envelope slices | §13. Each slice costs a key derivation, and whether the holder's slice and the asker's slice are one slice is part of it |
 | R14 | whether a holdings summary is open or per-grant | §9. Publishing one tells any fetcher what a peer holds, which runs opposite to every other disclosure in §8. A per-grant summary costs one per relationship and shrinks the cover supply |
 | R15 | whether a summary claims what a peer holds or what it can reach | §9. The second composes across hops and turns the summary into routing state, which is most of a structured overlay arriving through the side door |
+| R16 | gossip forwarding against hop blindness | §1 states forwarding as unprivileged and §11 states a hop learns nothing. A peer that gossips an ask has read it, which is the level 4 leak at every hop, and sealing the ask does not help because a gossiping peer must read it to know whether it holds the value. §9's summary is what makes gossip unnecessary and the two sections are one decision |
+| R17 | per-packet unlinkability against a shared header | §17. Sharing one header across a value's packets is what makes HORNET fast and what makes its packets session-linkable at every hop. Blinding is inherently asymmetric, so per-packet unlinkability costs one scalar mult per hop per packet |
+| R18 | `H`, the max hop count, and whether it is per medium | §17. It is the anonymity set, the standing overhead and the DoS amplification factor at once, and the 500 B radio profile cannot carry the same `H` as a pool |
+| R19 | what bounds holder storage | §17. It is the one resource in the model with no bound in a type or a constant |
 | R13 | whether the type-level opening claim survives lowering | §13. The property has to hold after erasure. This is the one fork that is a question about this compiler instead of about the protocol |
 
 ## §16 · Relation to the roster
@@ -603,8 +607,171 @@ model with no party in the floor needs none of them to fetch a value. Lane J
 collapses into §5, since a native medium is a `.port` and the tether is the
 one named exception.
 
-§8 through §14 are six open design items and none of them has a lane in that
-roster at all. The roster's lanes were drawn before the observer model existed.
+§8 through §14 are six open design items and §17 is the load budget under
+them. None of the seven has a lane in that roster at all. The roster's lanes were drawn before the observer model existed.
 Rewriting them against this file is owed. It stays undone here.
 
 Rewriting those three lanes against this file is owed. It stays undone here.
+
+## §17 · The load, by party
+
+Every feature in this file lands as work on one of three parties. This section
+is the same design read through that lens, with the wire cost beside each row,
+because the wire is the constrained resource and §14's small-MTU media are
+where it binds.
+
+Sizes below are derived from the field set unless a source is named. HORNET's
+300+ byte header and Sphinx's 2048 byte fixed payload are the two measured
+figures and the rest is arithmetic over them.
+
+### The sender
+
+| process | runs | crypto | state touched | on the wire |
+|---|---|---|---|---|
+| pair with a peer | once per relationship, ever | 1 hybrid KEM encap, 1 KDF | writes one link secret | ~2.3 KB, once |
+| select a path | per session | none | reads topology and summaries | nothing |
+| establish a session | per session | 1 asymmetric op per hop | writes n opaque FSes | a setup packet, header grows with hop count |
+| build the header | per message | n symmetric seals, padded to the max hop count | reads the session's FSes | the header budget below |
+| build a SURB | per message wanting a reply | n symmetric | none | **doubles the header** |
+| form an ask, session-linkable | per packet | n symmetric | none | one header, reused |
+| form an ask, per-packet unlinkable | per packet | **n scalar mults** plus n symmetric | none | one header plus a blinding element |
+| choose what fills a slot | per slot | none | reads the summary set and the queue | nothing |
+| emit | **every slot, busy or idle** | none | none | one packet per slot, standing |
+| verify a parcel | per parcel | 1 hash, plus log(n) siblings under a Merkle chunk tree | none | the sibling path rides the give |
+| reassemble | per chunked value | none | writes the value | nothing |
+
+Holds: one link secret per peer, one summary per peer, n FSes per live session.
+
+**The feature this table states.** Every decision in the design is in this
+column. Path selection, layer construction, cover choice and verification all
+sit with the sender, which is what leaves the router with nothing to decide.
+
+### The router
+
+| process | runs | crypto | state touched | on the wire |
+|---|---|---|---|---|
+| mint its own FS | once per session crossing it | 1 asymmetric op | reads its local secret, **writes nothing** | one FS into the setup packet |
+| open its FS | per packet | 1 symmetric | reads its local secret | nothing added |
+| peel the payload | per packet | 1 symmetric | none | nothing added |
+| blind the header | per packet, **only in the unlinkable corner** | 1 scalar mult, 1 wide-block transform | none | nothing added |
+| re-pad the header | per packet | none | none | **constant length, which is the point** |
+| check replay | per packet | 1 hash to key the cache | **reads and writes the replay cache** | nothing added |
+| re-encrypt on the return leg | per reply packet | 1 symmetric | none | nothing added |
+
+Holds: one long-term local secret, one key per neighbour, a bounded replay
+cache with expiry.
+
+**The features this table states, as absences.** A router does not choose a
+next hop, does not learn a destination, does not learn its own position, does
+not learn whether it is last, and keeps no per-flow or per-session state. Every
+one of those is a row that is missing from the table rather than a check that
+passes.
+
+**The one thing it writes** is the replay cache, and §8's path-tracing attack
+is why it cannot be dropped.
+
+### The receiver
+
+Two roles, loading differently.
+
+**As a holder.**
+
+| process | runs | crypto | state touched | on the wire |
+|---|---|---|---|---|
+| answer an ask | per ask | none beyond the forwarding it also pays | 1 lookup, 1 read | one give |
+| build a summary | per republish | one hash per held mark | reads the whole holding set | nothing |
+| serve a summary | per fetch | identical to any give | 1 read | ~10 bits per mark held |
+| store a value | per value kept | none | **writes, and nothing bounds it** | nothing |
+
+**As a recipient.**
+
+| process | runs | crypto | state touched | on the wire |
+|---|---|---|---|---|
+| recognise its layer reads "yours" | per packet | 1 symmetric | none | nothing added |
+| open the payload slice | per packet | 1 symmetric | none | nothing added |
+| reply through the SURB | per reply | n symmetric, on a route it did not build | none | one packet |
+
+**The feature this table states.** A recipient replies without ever learning
+who it replies to, because the return route was built by the sender and arrives
+with the message.
+
+### The wire budget
+
+The header is the optimisation target. Its fields, and whether each can shrink.
+
+| field | size | who reads it | can it shrink |
+|---|---|---|---|
+| per-hop link id | 1 to 2 B | that hop | already minimal. It indexes that hop's own neighbours |
+| per-hop key material | 16 to 32 B | that hop | **16 B if the hop expands a seed rather than carrying a key** |
+| per-hop MAC | 16 B | that hop | 8 B truncated, at a stated cost in forgery resistance |
+| the above, times the max hop count | ×`H` | | `H` is the triple-duty constant below |
+| the blinding element | 32 B classical | every hop | **~1.1 KB under PQ. This is the wall** |
+| the payload | a fixed size | the recipient | size classes, at a stated leak |
+| the mark's digest | 32 B | the holder | 24 B buys 96-bit security instead of 128 |
+
+**Three worked profiles**, at 34 B per hop record and a classical blinding
+element.
+
+| profile | `H` | payload | header | total | fits |
+|---|---|---|---|---|---|
+| pool or LAN | 8 | 2048 B | ~304 B | ~2.4 KB | trivially. This reproduces HORNET's measured 300+ B header |
+| tether | 8 | 1024 B | ~304 B | ~1.3 KB | yes |
+| **radio, 500 B MTU** | **3** | **256 B** | **~134 B** | **~390 B** | yes, and only at those numbers |
+
+**The radio row is the constraint that binds.** A 500-byte MTU forces `H` down
+to about 3 and the payload to about 256 B. It cannot carry the LAN profile at
+any hop count, so a small-MTU medium runs a different `H` from a pool, which
+makes `H` a per-medium parameter instead of a protocol constant.
+
+**The PQ wall, priced.** Swapping the 32 B classical blinding element for a
+~1.1 KB PQ ciphertext takes the LAN header from ~304 B to ~1360 B, a factor of
+4.5, and takes the radio profile out of one frame entirely. That is §14's open
+research problem expressed as a number.
+
+### The optimisation levers
+
+| lever | what it saves | what it costs |
+|---|---|---|
+| a hop expands a seed instead of carrying a key | ~16 B per hop, so ~128 B at `H` of 8 | one KDF per hop per packet |
+| truncate the per-hop MAC to 8 B | ~64 B at `H` of 8 | forgery resistance, stated rather than assumed |
+| lower `H` | linear in the header | anonymity set, per the triple duty below |
+| payload size classes | most of the padding on small messages | log2 of the class count, in bits, per packet |
+| amortise one header over a chunked value | the header, once instead of per parcel | **per-packet unlinkability. It is the same trade as HORNET against Sphinx** |
+| carry the mark once per value instead of per parcel | 32 B per parcel | the parcels become linkable to each other, which the shared path already did |
+| a 24 B digest | 8 B per mark | 96-bit security instead of 128 |
+
+The fifth row is the one that matters most and it is the same fork as §14's:
+sharing a header across packets is exactly what makes HORNET fast and exactly
+what makes its packets session-linkable.
+
+### Four asymmetries
+
+**Asking is expensive and serving is cheap.** The sender pays path selection,
+session setup, layering and verification. A holder pays one lookup and one
+read. That is what lets the open position stay open without becoming a target.
+
+**The max hop count `H` does three jobs on one number.**
+
+| job | how it uses `H` |
+|---|---|
+| position hiding | the header is padded to it, so a hop cannot count |
+| standing overhead | that padding is paid on every message, one-hop messages included |
+| DoS amplification | one attacker packet costs `H` routers a decrypt and a send each |
+
+Raising `H` buys anonymity and buys an attacker leverage in the same move.
+
+**The replay cache is the only router state an attacker can grow.** It is the
+one cell the router column writes to, and tags are free to generate. NDN's
+Interest Flooding wearing different clothes, landing on the single piece of
+state a router cannot do without.
+
+**Holder storage is unbounded and nothing in the model touches it.** Every
+other resource in all three tables carries a bound in a type or a constant.
+What a holder keeps, and for how long, has neither.
+
+### The two constants everything prices against
+
+| constant | what it dials |
+|---|---|
+| `H`, the max hop count | anonymity set, standing header overhead, DoS amplification, and now per-medium feasibility |
+| the session length | the linkable set against the asymmetric setup rate |
