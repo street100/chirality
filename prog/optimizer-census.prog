@@ -1,0 +1,212 @@
+; optimizer-census.prog -- re-derives the shipping optimizer's re-check census
+; over the compiler's own blob.
+;
+; `lib/lowering/compile-back.chiral:239` (`opt-tfns`) is the one call site of
+; `re-check` on the shipping path: `lower-defs` hands every TFn `compile-fn`
+; emits to `(re-check ce (fold t))` and adopts the residual only through
+; `chk-ok`. This root replicates that per-def loop with the SAME inputs
+; `back-program` builds, reads the compiler blob on stdin, and prints what the
+; loop saw.
+;
+; ⚑ IT EXISTS BECAUSE THE FIGURE IT PRINTS WAS NOT REPRODUCIBLE. EN-24 credits
+; `1,582 TFns, 1,550 chk-ok, 32 chk-err` to a probe that was never committed,
+; and those three numbers are simultaneously requirement 4's closing evidence
+; and requirement 2's remaining scope. EN-25 records the gap. Nothing else in
+; `lib/`, `prog/` or `tools/` re-derives them.
+;
+; ⚑ IT ASSERTS NOTHING AND ALWAYS EXITS 0. Every comparison lives in bash, in
+; `tools/test/opt-census.sh`, over these bytes. A gate that re-derives its own
+; verdict is green under any mutant that changes what the verdict says, which
+; is the rule `prog/e188-apply-spine.prog` states for its own R4 and
+; `prog/e197-recording-sweep.prog` follows.
+;
+; ⚑ IT DOES NOT CALL `opt-tfns`, AND THAT IS DELIBERATE. `opt-tfns` returns the
+; adopted TFns and discards the verdict, so a census taken through it could
+; count nothing. This root re-runs `re-check` itself and keeps both halves.
+;
+; ⚑ `dead` IS EXCLUDED HERE BECAUSE IT IS EXCLUDED ON THE SHIPPING PATH.
+; `optimize` is `re-check ce (dead (fold fn))`; what `opt-tfns` ships is
+; `re-check ce (fold t)`. EN-24 measured `dead` as a live miscompile. This root
+; measures the path that ships, so it folds and does not DCE.
+;
+; ---- the output -------------------------------------------------------------
+;
+;   census tfns=<n> ok=<n> err=<n> defs=<n> skipped=<n> unfolded-ok=<n>
+;   class n=<n> first=<tfn> msg=<the ck-fn message>          (one per class)
+;   err <tfn> | <the unknown callee> | <the ck-fn message>   (one per instance)
+;
+; `unfolded-ok` re-checks the SAME TFn un-folded. Two equal counts is the claim
+; that the fold costs zero acceptances; a gap is the fold refusing work the
+; check would otherwise take.
+
+(import "prelude/prelude")
+(import "lowering/compile-front")
+(import "lowering/compile-back")
+(import "lowering/upper/optimize")            ; imported in its own right: unwiring the
+                                              ; shipping path must not disturb this probe
+(import "ports/stdio")
+(import "ports/fd")
+
+; ---- read the blob off fd 0 --------------------------------------------------
+(def oc-read-go (=> I64 Bytes Bytes)
+  (lam (fd acc)
+    (let (chunk (read fd 65536))
+      (case (=i (blen chunk) 0)
+        (true acc)
+        (false (oc-read-go fd (bcat acc chunk)))))))
+
+; ---- the accumulator ---------------------------------------------------------
+; One chk-err instance: the TFn the check refused, what ck-fn said, and the
+; first callee in its body the fn table does not carry.
+(data ECR () (ecr (name Str) (msg Str) (callee Str)))
+; One error CLASS: ck-fn's messages carry no name, so a class IS a message and
+; the instance behind it has to be carried beside it.
+(data ECls () (ecls (msg Str) (n I64) (first Str)))
+(data Cen () (cen (tfns I64) (oks I64) (errs (List ECR)) (uoks I64) (skips I64)))
+
+(def tfn-name (-> TFn Str) (lam (t) (case t ((tfn nm ps ret body nr) nm))))
+
+; ---- the first callee the fn table does not carry ----------------------------
+; `ck-instr`'s `i-call` arm answers `call: unknown tal function` and drops the
+; NAME it looked up. Without the name the class says nothing about its cause,
+; so this walks the same body for the same lookup and keeps it.
+(declare oc-unk-instrs   (-> CEnv (List Instr) (Maybe Str)))
+(declare oc-unk-block    (-> CEnv Block (Maybe Str)))
+(declare oc-unk-term     (-> CEnv TalTerm (Maybe Str)))
+(declare oc-unk-branches (-> CEnv (List Branch) (Maybe Str)))
+(declare oc-unk-dflt     (-> CEnv (Maybe Block) (Maybe Str)))
+(def oc-unk-instrs (lam (ce is)
+  (case is
+    (nil (none))
+    ((cons i r)
+      (case i
+        ((i-call dst f srcs ty)
+          (case (tck-sig-assoc (tck-ce-fns ce) f)
+            ((some sig) (oc-unk-instrs ce r))
+            (none       (some f))))
+        (_ (oc-unk-instrs ce r)))))))
+(def oc-unk-block (lam (ce b)
+  (case b ((block is t)
+    (case (oc-unk-instrs ce is)
+      ((some f) (some f))
+      (none     (oc-unk-term ce t)))))))
+(def oc-unk-term (lam (ce t)
+  (case t
+    ((t-ret s) (none))
+    ((tt-case s brs d)
+      (case (oc-unk-branches ce brs)
+        ((some f) (some f))
+        (none     (oc-unk-dflt ce d)))))))
+(def oc-unk-branches (lam (ce brs)
+  (case brs
+    (nil (none))
+    ((cons b r) (case b ((branch cn dsts body)
+      (case (oc-unk-block ce body)
+        ((some f) (some f))
+        (none     (oc-unk-branches ce r)))))))))
+(def oc-unk-dflt (lam (ce d)
+  (case d (none (none)) ((some b) (oc-unk-block ce b)))))
+
+(def oc-unk (-> CEnv TFn Str)
+  (lam (ce t)
+    (case t ((tfn nm ps ret body nr)
+      (case (oc-unk-block ce body) ((some f) f) (none "(none)"))))))
+
+(declare oc-app-ecr (-> (List ECR) ECR (List ECR)))
+(def oc-app-ecr (lam (xs e)
+  (case xs (nil (cons e nil)) ((cons h t) (cons h (oc-app-ecr t e))))))
+
+; ---- one TFn: the shipping check, and the same check un-folded ---------------
+(declare cen-one (-> CEnv TFn Cen Cen))
+(def cen-one (lam (ce t acc)
+  (case acc ((cen n oks errs uoks sk)
+    (let (u (case (re-check ce t) ((chk-ok v) 1) ((chk-err m) 0)))
+      (case (re-check ce (fold t))
+        ((chk-ok v)  (cen (+ n 1) (+ oks 1) errs (+ uoks u) sk))
+        ((chk-err m) (cen (+ n 1) oks
+                          (oc-app-ecr errs (ecr (tfn-name t) m (oc-unk ce (fold t))))
+                          (+ uoks u) sk))))))))
+
+(declare cen-tfns (-> CEnv (List TFn) Cen Cen))
+(def cen-tfns (lam (ce ts acc)
+  (case ts (nil acc) ((cons t r) (cen-tfns ce r (cen-one ce t acc))))))
+
+(def cen-skip (-> Cen Cen)
+  (lam (acc) (case acc ((cen n oks errs uoks sk) (cen n oks errs uoks (+ sk 1))))))
+
+; ---- lower-defs' per-def loop, with the verdict kept -------------------------
+; `ce` is loop-invariant in `lower-defs` (it rebuilds the same `cenv` on every
+; iteration from the same four arguments), so it is built once here.
+(declare cen-defs (-> CEnv (List NDef) Cen Cen))
+(def cen-defs (lam (ce ds acc)
+  (case ds
+    (nil acc)
+    ((cons d r) (case d ((ndef name params ret erased body)
+      (let (ptys (ntalty->talty-list params))
+      (let (rty  (ntalty->talty ret))
+        (case (compile-fn ce name (ncore->core body) ptys erased rty)
+          ((le-skip er)       (cen-defs ce r (cen-skip acc)))
+          ((le-ok main extra) (cen-defs ce r (cen-tfns ce (cons main extra) acc))))))))))))
+
+; ---- classes -----------------------------------------------------------------
+(declare cls-bump (-> (List ECls) Str Str (List ECls)))
+(def cls-bump (lam (cs m nm)
+  (case cs
+    (nil (cons (ecls m 1 nm) nil))
+    ((cons c r) (case c ((ecls cm cn cf)
+      (case (str-eq cm m)
+        (true  (cons (ecls cm (+ cn 1) cf) r))
+        (false (cons c (cls-bump r m nm))))))))))
+
+(declare cls-of (-> (List ECR) (List ECls) (List ECls)))
+(def cls-of (lam (es acc)
+  (case es
+    (nil acc)
+    ((cons e r) (case e ((ecr nm m cal) (cls-of r (cls-bump acc m nm))))))))
+
+; ---- printing ----------------------------------------------------------------
+(def kv (-> Str Str I64 Str)
+  (lam (s k v) (str-cat s (str-cat " " (str-cat k (i64->str v))))))
+
+(declare put-cls (=> (List ECls) Unit))
+(def put-cls (lam (cs)
+  (case cs
+    (nil unit)
+    ((cons c r) (case c ((ecls m n f)
+      (do (put (str-cat (kv "class" "n=" n)
+               (str-cat " first=" (str-cat f (str-cat " msg=" (str-cat m "\n"))))))
+          (put-cls r))))))))
+
+(declare put-errs (=> (List ECR) Unit))
+(def put-errs (lam (es)
+  (case es
+    (nil unit)
+    ((cons e r) (case e ((ecr nm m cal)
+      (do (put (str-cat "err " (str-cat nm (str-cat " | " (str-cat cal (str-cat " | " (str-cat m "\n")))))))
+          (put-errs r))))))))
+
+(declare ndefs-len (-> (List NDef) I64))
+(def ndefs-len (lam (ds) (case ds (nil 0) ((cons h t) (+ 1 (ndefs-len t))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let (src (bytes->str (oc-read-go 0 (str->bytes ""))))
+      (case (compile-front src "compile-main")
+        ((fr-err m) (do (put "census front-error\n")
+                    (do (put (str-cat "front: " (str-cat m "\n"))) 0)))
+        ((fr-ok defs datas prims ports dsk)
+          (let (ce (cenv (app-ts (nprims->table prims) prim-table)
+                         (def-sigs defs)
+                         (ndatas->ddatas datas)
+                         (program-lits defs)))
+            (case (cen-defs ce defs (cen 0 0 nil 0 0))
+              ((cen tn oks errs uoks sk)
+                (do (put (str-cat (kv (kv (kv (kv (kv (kv "census" "tfns=" tn)
+                                                  "ok=" oks)
+                                              "err=" (- tn oks))
+                                          "defs=" (ndefs-len defs))
+                                      "skipped=" sk)
+                                  "unfolded-ok=" uoks)
+                         "\n"))
+                (do (put-cls (cls-of errs nil))
+                (do (put-errs errs) 0)))))))))))
