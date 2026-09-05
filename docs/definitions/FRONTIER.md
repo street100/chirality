@@ -14,7 +14,7 @@ updated: 2026-09-04
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 38d287159f3c3836b2a16ef5405bc00678e8a4b92f37256277ed13f09bda3f44 -->
+<!-- FRONTIER-SOURCES-SHA256: cfc21022607ea9c3dc354060bd363cb45b44960e92d04de57470a11899a49e8c -->
 <!-- sources: 159 files -->
 
 ## Decided recently
@@ -96,8 +96,8 @@ updated: 2026-09-04
 
 - drafted: 1
 - specced: 2
-- audited: 45
-- implemented: 62
+- audited: 44
+- implemented: 63
 - **implemented: 2
 - built: 1
 - impl: 1
@@ -114,11 +114,11 @@ updated: 2026-09-04
 
 ### Last commits touching the frontier sources
 
+- 2026-09-04 5dd7031 — E186 step 6: the rows, and the author's row gets a pointer and stays open
+- 2026-09-04 0d87b27 — E186 step 1: the ruling is concrete, written where the fork was left open
+- 2026-09-04 c04ffd6 — E186 SPEC audit PASS: status specced -> audited
 - 2026-09-04 497c20b — E186 SPEC audit: the M5 nobuild analogy is checked, and two cites repaired
 - 2026-09-04 15a369e — E186 SPEC: both audit FLAGs disposed, and R4 gets a falsifier
 - 2026-09-04 bf90ac6 — C1C2 SPEC audit: every execution claim reproduced, verdict PASS
 - 2026-09-04 1c4ec62 — close an unbalanced emphasis marker in the M1 correction note
 - 2026-09-04 465cb3d — E186 SPEC audit: M1 reddens R3 too, and R4 is implied by R2 and R3
-- 2026-09-04 af69b60 — C1C2 SPEC: the change plan was run off-tree before it was written
-- 2026-09-04 0507ef6 — E186 SPEC: the ruling is concrete, and ctor-honest? is built here
-- 2026-09-04 f15e688 — C1C2 example re-audit: the four blocking changes hold, verdict PASS
