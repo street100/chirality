@@ -114,3 +114,7 @@ they are waiting on.
 
 **The design is `.planning/OWN-WEB-GAP.md`**, lanes G, P and Q, and its §5
 carries the decisions this arc waits on.
+
+**Row state and order live in `.planning/OWN-WEB-CHECKLIST.md`**, which carries
+both arcs' rows grouped by pipeline stage, with `design`, `blocked`, `decide`
+and `owed` against `docs/decisions/decision-design-before-mint.md`.
