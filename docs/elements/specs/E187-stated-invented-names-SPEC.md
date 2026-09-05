@@ -86,10 +86,10 @@ counted with `grep -rn` over `lib/`, `prog/` and `tools/`:
 
 | widened | declaration | destructuring / constructing sites |
 |---|---|---|
-| `CState` 3 → 4 | `closconv.chiral:618` | `closconv.chiral:669`, `:672`, `:675`, `:678`, `:961`; **`closconv-driver.chiral:281`** |
-| `CCOut` 2 → 3 | `closconv-driver.chiral:142` | `closconv-driver.chiral:283`, `:286`; `compile-front.chiral:342`; **`prog/e186-capture-fields.prog:287`** |
+| `CState` 3 → 4 | `closconv.chiral:626` | `closconv.chiral:669`, `:672`, `:675`, `:678`, `:961`; **`closconv-driver.chiral:281`** |
+| `CCOut` 2 → 3 | `closconv-driver.chiral:145` | `closconv-driver.chiral:283`, `:286`; `compile-front.chiral:342`; **`prog/e186-capture-fields.prog:287`** |
 | `fr-ok` 4 → 5 | `compile-front.chiral:315-317` | `compile-front.chiral:348`; `compile-all.chiral:22`; **`prog/e185-apply-word.prog:120`**; **`prog/e188-apply-spine.prog:62`** |
-| `back-program` 3 → 4 | `compile-back.chiral:297` | `compile-all.chiral:23` |
+| `back-program` 3 → 4 | `compile-back.chiral:300` | `compile-all.chiral:23` |
 
 The three the example does not name are `prog/e185-apply-word.prog:120` and
 `prog/e188-apply-spine.prog:62`, both Phase 7 roots and both probes whose own
@@ -122,7 +122,7 @@ Decision D2 is what this forces.
   E188 built the guard, and the standing comment at `closconv.chiral:686-699`
   states its argument.
 - **`st-add-pois`' three call sites**, and only two carry a global name:
-  `closconv.chiral:703` and `:706` do; `cwalk-app-head` (`closconv.chiral:844`)
+  `closconv.chiral:703` and `:706` do; `cwalk-app-head` (`closconv.chiral:864`)
   does not, and its poison call sits at `closconv.chiral:851`. It poisons an
   **unsaturated higher-order variable** keyed by `hty`, a type with no global
   attached. This is D1's decisive fact.
@@ -161,7 +161,7 @@ measurements above opened. No silent design calls.
 | D1 | `pois` and `dsk` as two lists, against one list of pairs | **RESOLVED: two lists** | §3.1, by measurement at `closconv.chiral:851` |
 | D2 | Where the cause is rendered | **RESOLVED: a second clause beside `format-blame`** | §3.2, by M-C |
 | D3 | `why` as `Str`, or a nested sum | **RESOLVED: `Str`** | `skip-diag.chiral:11-14` already names the two discriminants and `SkReason`'s other two arms carry `Str` |
-| D4 | Where the seed enters the back half | **RESOLVED: `back-program` gains the parameter** | `back-program` (`compile-back.chiral:297`) already passes `nil nil`; the alternative reaches past the back's entry |
+| D4 | Where the seed enters the back half | **RESOLVED: `back-program` gains the parameter** | `back-program` (`compile-back.chiral:300`) already passes `nil nil`; the alternative reaches past the back's entry |
 | D5 | Which suite phase number the gate takes | **DEFERRED: `records/author-calls.md:30`** | The standing call; the gate declares itself out with a reason, as `apply-spine.sh`, `apply-word.sh` and `capture-fields.sh` do |
 | D6 | The three `shape-eq` comments citing `:335-356` | **RESOLVED: folded into Steps 2 and 4** | Example §6 question 3; a comment-only edit owes the rebuild, and these steps already own the rebuild |
 | D7 | Does `format-blame` render `sk-defunc` acceptably | **RESOLVED: it does not render it at all** | M-C. Question 4 is answered by measurement and its answer is D2 |
@@ -285,7 +285,7 @@ the step that introduced it.
 
 ### Step 1 — `skip-diag.chiral` gains the accessor and the formatter
 - **Target:** `lib/lowering/skip-diag.chiral`, after `skwhy-tag` (`:28-29`) and
-  before `lapp-skip` (`:32`).
+  before `lapp-skip` (`:71`).
 - **Change:** four additions, no existing symbol touched.
   - `skwhy-detail (-> SkReason Str)`, the third accessor: `op` for `sk-extern`,
     `name` for `sk-callee`, **`why`** for `sk-defunc`. M-C: nothing reads `why`
@@ -311,7 +311,7 @@ the step that introduced it.
     `compile-back` and `typing/diag` already co-blob that module, so no new name
     collision is introduced (cf. E154), and `skip-diag` depends only on
     `prelude/prelude`, so the blob's order is unaffected.
-  - `CState` (`:618`) gains a fourth field `(dsk (List SkRec))`. Rebuild it
+  - `CState` (`:626`) gains a fourth field `(dsk (List SkRec))`. Rebuild it
     unchanged in `st-ensure-fam` (`:668-669`), `st-add-site` (`:670-672`),
     `st-add-ho` (`:673-675`), `st-add-pois` (`:676-678`); seed it `nil` in
     `collect` (`:959-961`).
@@ -341,7 +341,7 @@ the step that introduced it.
   `(ccout s nil dsk)`. ⚑ **A refusal still reports when no family survives**,
   which is the arm that would otherwise drop every cause on a program whose only
   family was poisoned. The synth arm at `:286` passes `dsk` through.
-  `bridge-sig` (`compile-front.chiral:340`) destructures the third field at
+  `bridge-sig` (`compile-front.chiral:344`) destructures the third field at
   `compile-front.chiral:342` and discards it at this step. `prog/e186-capture-fields.prog:287`'s `((ccout sig2 stated)`
   gains the third binder.
 - **Size:** S.
@@ -363,7 +363,7 @@ the step that introduced it.
 ### Step 5 — `back-program` offers the seat `lower-defs` already has
 - **Targets:** `lib/lowering/compile-back.chiral`,
   `lib/lowering/compile-all.chiral`. One commit.
-- **Change:** `back-program` (`compile-back.chiral:297`) becomes
+- **Change:** `back-program` (`compile-back.chiral:300`) becomes
   `(-> (List NDef) (List NData) (List NPrim) (List SkRec) BR)` and passes the
   new parameter as `lower-defs`' last argument in place of the second `nil`.
   `compile-all.chiral:23` passes `dsk`.

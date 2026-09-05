@@ -59,7 +59,7 @@ have no caller outside `optimize.chiral:250`, which nothing loads
 a tree-walk artifact.** `apply-ty` (`lib/lowering/upper/closconv.chiral:1081-1083`),
 called once at `lib/lowering/upper/closconv-driver.chiral:175`, builds the
 dispatcher's Pi chain from `(peel-pi-doms key)`. `key` is a `Family`'s stored key
-(`closconv.chiral:616`), and `ensure-fam` (`:653`) stores **the first arrow type
+(`closconv.chiral:616`), and `ensure-fam` (`:661`) stores **the first arrow type
 walked into the family**; every later member is matched to it by `arrow-key-eq`
 and changes nothing. So the domain type four dispatchers declare is one arbitrary
 member's concrete `Core` type, and which member is decided by traversal order.

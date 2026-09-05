@@ -32,7 +32,7 @@ options and answering neither. The banner below records the answer.
 | some position other than the dispatcher's leading parameter needs the statement | none found. `datas->n` (`compile-front.chiral:254-261`) takes no `sp` parameter and the constructors' fields go through `field-tys->n` (`:238-245`), which E186 ruled `concrete`. A capture whose own type IS a `$clo` is a `t-tcon` and lands on the same derived arm |
 | `apply-ty`'s domain content is read somewhere, so §1.4 falls | it is not. `peel-def` (`compile-front.chiral:211-223`) reaches `ty-kept-doms` only in its `(none)` branch, `sp-get` hits for every `$apply<i>`, and `ty-erased` (`:167-170`) returns nil because every `mk-pi` binder is `(c-pi 2 …)` (`closconv.chiral:1137-1144`). `build-emap` (`:172-175`, called at `:345`) reads only that same erased vector |
 | the drop-consistency worry needs `ck-prog` | it does not. `lib/lowering/tal/erase.chiral:193-194` and `:249-250` refuse by constructor name on the live path, and `ck-con` (`check.chiral:183-196`) refuses by data name on the checked one |
-| the arity prices in §5 are guessed | measured. `CState` has three fields (`closconv.chiral:618`) so `dsk` is a fourth; `CCOut` has two (`closconv-driver.chiral:142`) so it is a third, which is where E188's own residue note says *fourth* and is wrong; `fr-ok` has four (`compile-front.chiral:315-316`) so it is a fifth; `back-program` (`compile-back.chiral:297-301`) already passes `nil nil` as `lower-defs`' seed `TFn` and seed `SkRec` lists, so the seat exists |
+| the arity prices in §5 are guessed | measured. `CState` has three fields (`closconv.chiral:626`) so `dsk` is a fourth; `CCOut` has two (`closconv-driver.chiral:145`) so it is a third, which is where E188's own residue note says *fourth* and is wrong; `fr-ok` has four (`compile-front.chiral:315-316`) so it is a fifth; `back-program` (`compile-back.chiral:297-301`) already passes `nil nil` as `lower-defs`' seed `TFn` and seed `SkRec` lists, so the seat exists |
 | `sk-defunc` has a caller after all | it has none. Four grep hits in the tree, three of them the declaration and the two destructuring accessors, one of them a comment |
 
 **Six citation corrections landed in place**: `arm-body` ends at `:1126` and not
@@ -287,7 +287,7 @@ fun apply0 (c: clo0, x: int) : int =
   That ruling is what makes a **channel** the only shape available. `closconv`
   emits a `Sig`, and a `Sig` global holds a `Term`, and no `Term` spells the
   erased word. So the pass says the honest thing beside its output rather than
-  inside it. `CCOut` (`closconv-driver.chiral:142`) is that channel and E185
+  inside it. `CCOut` (`closconv-driver.chiral:145`) is that channel and E185
   built it.
 
   The same argument, run over the blame, gives the same shape. `keep-fams` drops
