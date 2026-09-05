@@ -128,7 +128,7 @@ below had already ruled that criterion 3 needed no arc.
 | [[arcs/transport-arc]] | criterion 1, a run that reaches a model server | T1 through T4 done 2026-09-02, and all four of the arc's own requirements hold. Phase 20 gates the transport path and criterion 1 stays unmet. Rows stay `unminted` on author call B |
 | [[arcs/scriba-arc]] | criterion 2, full interaction from the editor | open and unblocked. `S#` is its own namespace |
 | [[arcs/tuning-arc]] | criterion 4, fine tuning and the transformer verbs | opened blocked on author call A, with no row written |
-| [[arcs/unit-lane-arc]] | criterion 3, the model of computation the agents run under, extended to a neuron population and a transformer instance | 43 rows over eight layers, band `E196-E239`. `E196` built 2026-09-05 closing `N8` and `N9`, `E197` audited over `N10` and `N43`; 39 rows open |
+| [[arcs/unit-lane-arc]] | criterion 3, the model of computation the agents run under, extended to a neuron population and a transformer instance | 43 rows over eight layers, band `E196-E239`. `E196` and `E197` both built 2026-09-05, closing `N8`, `N9`, `N10` and `N43`; 39 rows open |
 
 Criterion 3 held no arc until 2026-09-05, on the reading that the framework is
 largely built and naming a gap there would be a phantom feature: the `Flow`
