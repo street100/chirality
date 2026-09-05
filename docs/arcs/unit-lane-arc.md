@@ -102,10 +102,15 @@ Every other row reads `unminted`.
 
 ## Resume state
 
-Two things gate progress. L0 through L6 have never had a tree-side census
-the way [[banks/unit]] ran for L7, so an unknown share of the 35
-`origin: new` rows above may turn out to be `origin: connect` rows already
-sitting in the tree, unlooked-for. The one layer where a census did run,
+The census ran 2026-09-05 at `471f688`. It checked 37 `origin: new` rows
+against `lib/` and `prog/` and **moved none of them**, so the roster's
+sizing holds and this lane is genuinely new work. Three hits were held at
+`new` on inspection: a Horner scheme that decodes bytes rather than
+evaluating a general polynomial, a `ty-eq` that exists and is reached where
+the row wants a bug fixed inside it, and the effect membrane, which is
+general and has no per-member application. Everything else was a homonym.
+The display lane found roughly half its rows already built; this lane found
+none, and that difference is the sizing answer. The one layer where a census did run,
 `AI-LANE-NUMERICS` section 3 against L0, found `op-mulhi` already sitting in
 the `Op` sum and unbound at surface: that finding is `unit-lane/N1`, and the
 same primitive is now minted as `E189` ([[decisions/decision-lane-split]],
