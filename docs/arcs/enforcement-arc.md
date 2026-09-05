@@ -140,6 +140,15 @@ stop short of it as written, so no element owns it.
 
 ## Resume state
 
+**2026-09-04 evening: resume from `.planning/HANDOFF-2026-09-04-EVENING.md`.**
+It supersedes the morning handoff. `ledger-lint` exits 0 for the first time,
+the suite reads `373 passed, 0 failed, 88 roots, gate PASSED`, and E185 is
+built and promoted. The live resume point is **E186's SPEC-level re-audit**:
+`docs/elements/specs/E186-capture-field-types-SPEC.md` is `status: draft`, its
+first SPEC audit returned BLOCKED with two FLAGs, and `15a369e` disposed both.
+⚑ **EN-20 records a live miscompile** at `lib/lowering/upper/closconv.chiral:1057`
+that `ck-prog` does not catch; E188 owns it.
+
 **2026-09-04: requirement 5 is first priority by author direction**, and
 `.planning/HANDOFF-2026-09-04.md` carries the full queue. The gate tier is
 6,915 lines of shell against `prog/test-runner.prog` at 134 lines, the only
