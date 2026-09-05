@@ -19,9 +19,17 @@ and a reader turn out to be, so speccing transport first would guess all three.
 
 **Inspiration ruling, author, 2026-09-05.** `/workspace/jala` and
 `/workspace/jala-setu` are idea sources. Their language, their crate structure,
-their daemon shapes and their surrounding policy plumbing stop at the door.
-`docs/decisions/decision-inspiration-policy.md` is the standing rule and §2
-states what crossed under it.
+their daemon shapes and their surrounding policy plumbing stop at the door. §2
+states what crossed.
+
+Those two are the author's own design notes and
+`docs/decisions/decision-inspiration-policy.md` has no tier for that case, so
+the ruling above stands on its own. The policy does reach the reference class
+behind them. Reticulum is external prior art, its rule of thumb applies
+verbatim, and this roster takes it as **Tier P**: the protocol description is
+the paper and the Python reference implementation is a kernel in a repo that
+nothing here reads. Its license is unverified from this sandbox, which the
+policy's own license floor requires stating.
 
 **Scope ruling, author, 2026-09-04, still standing.** Rendering HTML, CSS, JS
 or HTTPS from a foreign server is out. Every row below is a local primitive or
