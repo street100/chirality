@@ -52,7 +52,7 @@ deleted. A third measurement is a mechanical census over the tree. All three are
   - The three `cs-g` site builders: `cwalk-app-head` (`:816-836`), `fv-own`
     (`:844-850`), `fv-site` (`:852-862`). All three take `sig` first.
   - The poison channel, built and running: `CState`'s `pois` field (`:618`),
-    `st-add-pois` (`:676-678`), `keep-fams`
+    `st-add-site` (`:670-672`), `st-add-pois` (`:676-678`), `keep-fams`
     (`lib/lowering/upper/closconv-driver.chiral:96-106`), reached from
     `closconv-sig` (`:277-289`, the `keep-fams` call at `:282`).
   - `cspine` (`lib/lowering/upper/closconv.chiral:1206-1208`), the left fold that
@@ -96,6 +96,41 @@ that `synth-apply` (`lib/lowering/upper/closconv-driver.chiral:201-208`) passes
 as `(cc-llen doms)` over `(peel-pi-doms key)` does equal
 `arity − k` at every live site, and the pass establishes that nowhere.
 
+⚑ **The walk's SCOPE is corrected by the SPEC audit 2026-09-04, and the
+invariant claim is reproduced under a second instrument.** Two statements in the
+paragraph above describe a mechanism the pass does not have. Neither moves the
+verdict, and both narrow what the census is evidence for.
+
+- The condition stated is not `scan-fvargs`' condition for reaching `fv-site` /
+  `fv-own`. `scan-fvargs` (`closconv.chiral:863-872`) calls `fv-site` on EVERY
+  argument of every application, and `fv-site` falls through to `fv-own`
+  whenever the slot is absent or is not an arrow. What the condition describes
+  is `fv-site`'s ARROW branch (`:858`), the one `cs-g` shape whose recorded `d`
+  can disagree with `arity sig g`. Every other path keys the site by the
+  global's OWN type at `k = 0` (`fv-own`, `:848`), where `d = arity` holds by
+  construction and a mismatch is unreachable.
+- A constructor application is a `c-con`, and `cwalk-struct`'s `c-con` arm
+  (`:791`) hands `scan-fvargs` `cdoms = none`. A constructor's field type is
+  therefore never a slot, and every bare global inside a `c-con` reaches
+  `fv-own`. That covers **the two sites this element exists for**: `alloc` is a
+  constructor of `Alloc` (`lib/memory/alloc.chiral`), so
+  `lib/memory/alloc-growing.chiral:19-20` keys `mach-galo` and `mach-gbnw` by
+  their own types rather than by `alloc`'s field slots. The two depths coincide
+  with the field types for the reason `alloc-growing.chiral:15-17` states in its
+  own comment, that the curried types match the field types exactly.
+
+**Reproduced.** A second scoped walk, written independently and run three times
+at widening scope (def-telescope param types; then `arm-ctx`'s ctor field types
+for `case` binders and a `ty-of` for `let`; then `cwalk-descend`'s lam-literal
+params), reads the same tree at **68 occurrences, 63 distinct
+`(family key, g, k)` sites, 0 mismatches**, with `mach-galo` 4 against 4 and
+`mach-gbnw` 3 against 3. The count is instrument-dependent and the verdict is
+not. Of the 68, 32 are ctor-headed and reach `fv-own`, so the evidence bearing
+on this element is **36 occurrences, 31 distinct sites**. Widening the walk to
+heads that are local binders of known arrow type added no site at all, and the
+7,724 applications whose head type neither walk could resolve cannot hide one:
+an unresolved head is `callee-doms` answering `none`, which is `fv-own` again.
+
 **M-B. The invariant is constructible-false, and today the failure is a REFUSAL
 rather than a second wrong value.** Fixture, outside `lib/` and `prog/`:
 
@@ -123,6 +158,18 @@ no emitted label for entry compile-main | skip chain for compile-main
 (`lib/lowering/upper/lower.chiral:198`) indexes `(- (- (l-llen env) 1) ix)`, so
 `ix < 0` always exceeds the environment and `lnth` always answers `none`. The
 failure mode is therefore structurally a named skip, not a silent wrong value.
+
+⚑ **Checked one level down by the SPEC audit 2026-09-04, because the
+composition is what carries the claim.** `lnth` (`lower.chiral:154`) tests
+`(<=i i 0)`, so `lnth` itself CLAMPS a negative index to the list head. The
+safety rests on the COMPOSED index being `>= len`, not on `ix` being negative:
+at `ix = -1` the composed index is `len`, `lnth` walks off the end, and
+`lower.chiral:239` turns the `none` into `er-skip "unbound var"`, the message
+measured above. The mirror case, `ix > len - 1`, drives `lnth`'s own index
+negative and WOULD alias the environment's first entry. M-C is what rules that
+one out, because `d <= arity − k` puts every index error this pass can produce
+in the negative direction. So the no-aliasing claim holds, and it holds on M-C
+rather than on `env-get` read alone.
 **So the `fv-site` break is not a second miscompile and E188's scope does not
 grow to one.** What it is, is a compile refused with an internal name
 (`$apply0`) and a reason (`unbound var`) that describe the pass rather than the
@@ -146,15 +193,15 @@ binary prints `direct: 30`, `apply : 0`, `sib   : -10`.
 | # | Question | Disposition | Rationale |
 |---|---|---|---|
 | 1 | ⚑ Discharge `d = arity − k`, or carry a refusal for its failure. | **RESOLVED — carry the refusal, at `collect` rather than at `arm-body`.** | M-A shows the invariant true today and unenforced; M-B shows it constructible-false; M-C shows the failure confined to `fv-site` and one-directional. A census that runs once settles nothing, which the example's §6 says in its own words. The guard goes in the code, at the one place where both numbers are already in hand and the refusal channel already exists. |
-| 2 | Which reading of `arity` the replacement arm takes: `(+ k d)` from the family, or `arity sig g` from the type. | **RESOLVED — `(+ k d)`, form A, and decision 1 is what makes it right.** | The two forms are the same code wherever `d = arity − k`. Where they differ, form B computes a negative index (M-B) and form A builds a **partial** application of `g`, which `collect` never registered as a site, so `rw` leaves it bare and `lower` refuses it. **Neither form is correct at a mismatch**, which is why the answer is not a choice between them but the guard in decision 1. Once the guard runs at the site builder, every surviving `cs-g` site satisfies `arity = k + d`, and form A is correct **by construction** — the phrase the example's §5 used as an assumption becomes a consequence of the code this element adds. Form A is then also total: it needs no `Maybe`. |
+| 2 | Which reading of `arity` the replacement arm takes: `(+ k d)` from the family, or `arity sig g` from the type. | **RESOLVED — `(+ k d)`, form A, and decision 1 is what makes it right.** | The two forms are the same code wherever `d = arity − k`. Where they differ, form B computes a negative index (M-B) and form A builds a **partial** application of `g`, which `collect` never registered as a site, so `rw` leaves it bare and `lower` refuses it. **Neither form is correct at a mismatch**, which is why the answer is not a choice between them but the guard in decision 1. Once the guard runs at the site builder, every surviving `cs-g` site satisfies `arity = k + d`, and form A is correct **by construction** — the phrase the example's §5 used as an assumption becomes a consequence of the code this element adds. Form A is then also total: it needs no `Maybe`. ⚑ **Both halves checked at source by the SPEC audit 2026-09-04, and the pass ORDER is what keeps the argument off its own tail.** `closconv-sig` (`closconv-driver.chiral:277-289`) runs `collect`, then `keep-fams` at `:282`, then `synth-fams`, and `arm-body` is reached only from `synth-fams`, so the guard runs in a strictly earlier pass on every path into the arm. Form A's counterfactual is real rather than asserted: an unregistered partial application falls through `rw-app-disp`'s `ctor-of-find` to a bare spine (`closconv.chiral:1287-1291`), and `lower` refuses that at `expr-args` with `"partial application"` (`lower.chiral:266`). |
 | 3 | Minimal or uniform: does the spine replace the `none` arm alone, or the whole `cs-g` case? | **RESOLVED — minimal at `arm-body`, uniform at the guard.** | The example's own note pushes toward uniform because the `some` path rests on the same invariant. Decision 1 satisfies that: the guard covers **both** arms, because it runs before either. Replacing the `some` path's `def-ctx` inlining with a spine as well would change emitted code at eleven currently-correct sites for no measured defect, and [[banks/verification]] §1 is explicit that the fixpoint would not tell us whether that was right. Leave the `some` path alone. |
-| 4 | The erased-position placeholder: `g-subst-go` maps an erased captured param to `(+ m d)`, the closure's own index. Does the spine inherit it? | **RESOLVED — yes, and the reason is that the reference is discarded.** | `g-subst-go`'s own comment (`:955-957`) states it: the erased reference sits in a q=0 position and `term->ncore`'s `tnc-keep` (`lib/lowering/compile-front.chiral:104`, `:136-143`) drops the argument before it reaches lowering. [[decisions/decision-erased-word-level]] settles that an erased position has no runtime presence. Inheriting the convention keeps one spelling; inventing a second would be the drift `CLAUDE.md` names. |
-| 5 | ⚑ The example's snippet copies `g-subst-go:969`'s `((nil) nil) ; unreachable: fs has k entries` into `spine-args`. | **RESOLVED — do not ship it. The list is not consulted at all.** | `spine-args` walks `p` from `0` to `arity−1` and needs a field only for `p < k`. The fields it needs are `(g-param-specs sig g k)`, the same list `cwalk-app-head` built the site from, so the `p < k` branch is fed exactly `k` entries by construction — the example's §4 already discharges this for `g-subst-go`. The SPEC's `spine-args` therefore takes `fs` and **pattern-matches only `cons`**, with the `nil` case folded into the `p < k` guard: `(case (<i p k)` is entered only while entries remain. §4 Step 2 spells the arm. Reproducing an unproven "unreachable" inside the arm written to remove one is the defect this element exists to close. |
+| 4 | The erased-position placeholder: `g-subst-go` maps an erased captured param to `(+ m d)`, the closure's own index. Does the spine inherit it? | **RESOLVED — yes, and the reason is that the reference is discarded.** | `g-subst-go`'s own comment (`lib/lowering/upper/closconv.chiral:955-957`) states it: the erased reference sits in a q=0 position and `term->ncore`'s `tnc-keep` (`lib/lowering/compile-front.chiral:104`, `:136-143`) drops the argument before it reaches lowering. [[decisions/decision-erased-word-level]] settles that an erased position has no runtime presence. Inheriting the convention keeps one spelling; inventing a second would be the drift `CLAUDE.md` names. |
+| 5 | ⚑ The example's snippet copies `g-subst-go:969`'s `((nil) nil) ; unreachable: fs has k entries` into `spine-args`. | **RESOLVED — do not ship it. `fs` carries the `p < k` test, so the arm it would sit in does not exist.** | `spine-args` walks `p` from `0` to `arity−1` and needs a field only for `p < k`. The fields it gets are the site's own: `(g-param-specs sig g k)` at a `cwalk-app-head` site, `nil` at an `fv-site` / `fv-own` site where `k = 0`. Either way `fs` has exactly `k` entries, so the field list running out IS `p` reaching `k`. §4 Step 2 therefore scrutinises **`fs`** and gives its `nil` arm the SUPPLIED-parameter body: both arms carry real work and neither is an unproven "unreachable". ⚑ **The prose here read "pattern-matches only `cons`, with the `nil` case folded into the `p < k` guard: `(case (<i p k)`", which describes a shape Step 2 does not ship; corrected by the SPEC audit 2026-09-04 to match the code, which is the better of the two.** Reproducing an unproven "unreachable" inside the arm written to remove one is the defect this element exists to close. |
 | 6 | Where the poison decision is placed: at the site builder, or in a second pass over the families. | **RESOLVED — at the site builder, through one shared helper.** | All three builders take `sig`, and the key is the value being passed to `st-add-site`, so both numbers are in hand at the point of decision. A second pass would re-derive what the builder knew. One helper called by three builders pushes the invariant into the substrate rather than repeating a check three times, which is the shape [[definitions/pattern-boundary-sums]] and the tree's own directive prefer. |
 | 7 | Whether a global with no declared type can reach a `cs-g` site. | **RESOLVED — yes, through `fv-site`, and the guard catches it.** | `fv-site`'s arrow branch (`:858`) calls `st-add-site` without consulting `g`'s type at all; only the `fv-own` fallback reads it. `arity` returns `(Maybe I64)`, so `none` is one of the guard's two refusal cases. After the guard, `arm-body`'s `cs-g` case can assume a declared type. |
 | 8 | Whether `arm-body` should answer in `(Maybe Core)` — candidate (d). | **RESOLVED — no, and this overrides the example's recommendation on placement while keeping its judgment.** | The example's §6 chain is right about the cost: five frames and two accumulators (`build-arms` `:1118`, `apply-body` `:1124`, `synth-apply` `closconv-driver.chiral:201`, `synth-applies` `:212`, `synth-fams` `:220`, reached from `:285`), and a `(Maybe Core)` has to cross `core->term` as well. The example's judgment was that (a) needs a refusal channel to be right; decision 1 gives it one that costs nothing, because the poison channel already spans exactly those frames and already ends somewhere. Adding (d) as well would be a **second** channel for one condition. The refusal is kept; only its home moves earlier. |
 | 9 | `SkReason` needs a constructor or the blame is unnameable. | **RESOLVED — add `sk-defunc`, carrying the two names the site knows.** | `SkReason` has exactly two constructors (`skip-diag.chiral:11`) and neither says this. The boundary-sums directive says the classification travels as a value carrying the blame the site knows rather than a formatted string, so the constructor takes the global's name and the reason discriminant, not a sentence. `skwhy-name` (`:21`) and `skwhy-tag` (`:24`) each gain an arm. |
-| 10 | ⚑ The gate's suite phase number. | **DEFERRED — to the standing author call, `records/author-calls.md:30`.** | The gate declares itself out with `# not-a-phase: <reason>`, the route `crypto.sh`, `tal-check.sh`, `apply-word.sh` and `capture-fields.sh` all take, which keeps `registration.sh` G2 and G4 green. `registration.sh` reads **8 of 21** scripts outside the dispatch table today; E188's gate makes it 9 of 22 and is the fifth waiting on the number. **This SPEC assigns no number and opens no new call.** A blank reason fails G4, so the declaration's reason is written out in §5. |
+| 10 | ⚑ The gate's suite phase number. | **DEFERRED — to the standing author call, `records/author-calls.md:30`.** | The gate declares itself out with `# not-a-phase: <reason>`, the route `crypto.sh`, `tal-check.sh`, `apply-word.sh` and `capture-fields.sh` all take, which keeps `registration.sh` G2 and G4 green. `registration.sh` reads **8 of 21** scripts outside the dispatch table today; E188's gate makes it 9 of 22. ⚑ **The ordinal is corrected by the SPEC audit 2026-09-04, re-measured at HEAD:** eight `not-a-phase:` header declarations across twenty-one `tools/test/*.sh`, four of them waiting on the contested number (`crypto.sh:6`, `tal-check.sh:11`, `apply-word.sh:5`, `capture-fields.sh:6`), the other four out for structural reasons. `records/author-calls.md:30` already reads `display-calculus/C1C2`'s gate as the **fifth** when it exists, and C1C2's script does not exist yet, so whichever of the two lands first takes fifth and the other takes sixth. **This SPEC assigns no number and opens no new call.** A blank reason fails G4, so the declaration's reason is written out in §5. |
 | 11 | ⚑ `docs/definitions/bug-classes.md:85` carries `miscompilation` with mechanism *"typed assembly, checked at instruction level"* and state `unwired`. E188 is a measured instance the stated mechanism does not cover. | **DEFERRED — to a `doc-audit` run on `bug-classes.md`.** | The example flagged it as doc-tier residue for a later run, and it is not this element's write surface. Named in §6 so it is not lost. |
 
 **No NEEDS-AUTHOR blocks §4.** Decision 10 is deferred to a call that already
@@ -178,6 +225,14 @@ unbound var` and becomes a named skip at the source def, reaching `SkRec` and
 element's whole argument made concrete: **one condition, three answers in one
 compile** — `lower` refuses by name, `collect-defs` (`:922-930`) skips silently,
 `arm-body` returns `0` — collapses to one.
+
+⚑ **The refusal is FAMILY-wide, stated by the SPEC audit 2026-09-04.**
+`st-add-pois` (`:676-678`) keys the poison by the family key, and `keep-fams`
+(`closconv-driver.chiral:96-106`) drops the whole family, so one mismatching
+site refuses every site that shares that key, the honest ones with it. That is
+the existing channel's granularity and this element adds no new cost to it. M-A
+is what bounds the cost: no family anywhere in `lib/` or `prog/` is newly
+poisoned, which is also what bounds Step 5's `B1 ≠ B2`.
 
 ## 4. Change plan (ordered, commit-sized)
 
@@ -240,7 +295,7 @@ precondition on landing and never the evidence.
 
 ### Step 3 — the guard, at one place, called by three
 - **Target:** `lib/lowering/upper/closconv.chiral` — a new `st-add-gsite` beside
-  `st-add-site` (`:670-673`), and the three builders that call it for a `cs-g`
+  `st-add-site` (`:670-672`), and the three builders that call it for a `cs-g`
   site: `cwalk-app-head` (`:816`), `fv-own` (`:844`), `fv-site` (`:852`).
 - **Change:** `st-add-gsite sig st key g k fields` computes
   `d = (cc-llen (peel-pi-doms key))` and consults `(arity sig g)`. On
@@ -250,6 +305,14 @@ precondition on landing and never the evidence.
   of `st-add-site` for their `cs-g` sites. `cwalk-app-head`'s existing
   `0 < k < ar` guard stays; the new one subsumes nothing and duplicates nothing,
   because it compares a different pair of numbers.
+  ⚑ **The three call sites are enumerated by the SPEC audit 2026-09-04, so the
+  rewrite cannot miss one.** `st-add-site` is called four times in
+  `closconv.chiral` and exactly three of those calls construct a `cs-g`: line
+  830 inside `cwalk-app-head`, its partial-application exit; line 848 inside
+  `fv-own`; line 858 inside `fv-site`, its arrow branch. The fourth, line 735,
+  builds a `cs-lam` inside `reg-lam` and is out of scope. `fv-own` is reached
+  only from `fv-site`, at lines 859 and 860, so the two are one entry with two
+  exits and both exits need the guard.
   ⚑ **The blame has to reach `SkRec`.** `CState` carries no diagnostic list
   today. The cheapest honest home is a fourth `CState` field threaded exactly as
   `pois` is (`:618`, `:676`), surfaced by `closconv-sig` alongside `CCOut`'s
@@ -298,6 +361,11 @@ precondition on landing and never the evidence.
   reason: Phase 7 discovers roots with `grep -rl '^(def compile-main' lib prog`
   (`tools/test/run-tests.sh:175`), and a fixture under `prog/` would move the
   root census twice.
+  ⚑ **The first fixture's supplied arguments must differ under a
+  NON-COMMUTATIVE operation** (added by the SPEC audit 2026-09-04). §5's M4 is
+  an argument permutation, and a permutation of two equal arguments, or of two
+  arguments under `+`, prints `direct`'s own answer and reddens nothing. EN-20's
+  `box-f` shape holds a `(-> I64 I64 I64)`, so the constraint costs one operator.
 - **Size:** S.
 
 ### Step 7 — the probe
@@ -360,6 +428,20 @@ deleting the second term**, and a row that reads "the two agree" would pass on
 absence. It cannot here, because absence is a distinct cell and R4 asserts
 presence positively.
 
+⚑ **R5 gates the REFUSAL and it does not reach Step 1. Stated by the SPEC audit
+2026-09-04 so the gap is not discovered later as a surprise.** Under the guard
+the slot-break fixture's family is poisoned, `keep-fams` drops it, nothing
+rewrites the site, and `lower` already answers `er-skip "higher-order
+application"` (`lower.chiral:283`) attributed to the source def. That is a named
+skip at the source def whose blame does not read `$apply<i>: … unbound var`, so
+**R5 goes green on the family drop alone, with or without `sk-defunc`**. §3.3
+rules the wording out of the deliverable and Step 3 allows the blame channel to
+land as a Step 3b, both of which this is consistent with. The honest consequence
+is that Step 1's constructor is falsified by no row in this gate; decision 9
+carries it on [[definitions/pattern-boundary-sums]] and on nothing measurable.
+Tightening R5 to read the `sk-defunc` tag is available once Step 3b lands and it
+is the author's call, recorded in §6.
+
 **R6's baseline binary** comes from git the way `apply-word.sh`'s does:
 `E188_BASE_REV` defaults to the last commit before E188's promotion, overridable
 by `E188_BASE_CC`. With neither, R6 scores `nobase` and the script exits 1 — an
@@ -378,7 +460,7 @@ checked not to be a symlink (the `pretty.sh` arc).
 | **M1** | Step 4's arm reverted to `(c-lit-i 0)` | **R2** alone | `ok bad ok ok ok bad` |
 | **M2** | Step 3's guard always refuses (`(=i ar (+ k d))` → `(=i ar (+ k (+ d 1)))`) | **R4**, and R1–R3 become `absent` | `absent absent absent bad ok bad` |
 | **M3** | Step 3's guard never fires (the mismatch branch calls `st-add-site`) | **R5** alone | `ok ok ok ok bad ok` |
-| **M4** | `spine-args` stops one short (`(<i p arity)` → `(<i p (- arity 1))`) | **R2** with a different failure than M1's | `ok bad ok ok ok bad` |
+| **M4** | ⚑ **arity-PRESERVING, value-CHANGING**: one supplied index in `spine-args` reads a different binder, the argument count staying `(+ k d)`. The SPEC audit replaced the original substitution and the note below says why | **R2** with a different failure than M1's | measured at implementation |
 | **M5** | `g-subst-go`'s supplied index off by one (`(- (- (+ m d) 1) (- p k))` → `(- (+ m d) (- p k))`) | **R3** alone | `ok ok bad ok ok bad` |
 
 ⚑ **M1 is the element's own falsifier and it is BUILT AND RUN, not derived.**
@@ -386,6 +468,30 @@ EN-21 corrected E186's M5 for exactly that gap; this SPEC does not reintroduce
 it. ⚑ **M3 is R5's falsifier**, and without it R5 would be a row no mutant
 reddens, which is GA-22's shape. ⚑ **M4 separates "a spine" from "the RIGHT
 spine"**: R2 without it is satisfied by any spine that happens to return 30.
+
+⚑ **M4'S SUBSTITUTION IS WRONG AND ITS PIN CANNOT HOLD. Corrected by the SPEC
+audit 2026-09-04, and the replacement is measured at implementation time rather
+than pinned here.** `(<i p arity)` → `(<i p (- arity 1))` makes `spine-args`
+emit `(+ k d) − 1` arguments for a `(+ k d)`-ary global, so the arm becomes a
+PARTIAL application. Decision 2 already traced that shape to a refusal:
+`rw-app-disp` finds no ctor for the unregistered `(ckey-g g ((+ k d) − 1))` and
+leaves the spine bare (`closconv.chiral:1287-1291`), and `lower` refuses it at
+`expr-args` with `"partial application"` (`lower.chiral:266`). The fixture's
+`compile-main` is then skipped, R1 to R3 grade **`absent`** rather than
+`ok bad ok`, and M4 has collapsed into M2. A mutant that reddens R2 by DELETING
+the observable is the hole R4 and the `absent` cell exist to close, and it
+leaves "the RIGHT spine" falsified by nothing, which is GA-22's shape and the
+thing M4 is for. **The replacement is arity-PRESERVING and value-CHANGING**: it
+keeps the argument count at `(+ k d)` and changes which binder ONE argument
+reads, so the fixture still compiles, `$apply` is still called, and the `apply`
+line prints a number that is not `direct`'s. Two constraints on the choice, both
+read off this tree: the substituted index has to stay inside the arm's binder
+range, or `lower` answers `unbound var` (M-B) and the row grades `absent` again;
+and the fixture's supplied arguments have to carry DIFFERENT values under a
+non-commutative operation, or a permutation is invisible. Step 6 owes the second
+one. `apply-word.sh:59-67` records the same correction being forced on E185 by
+measurement, and it is why **no pin in the table above is evidence until its
+mutant has been built and run**.
 
 **Why this gate is not satisfiable by the fixpoint or by today's green line.**
 Both are undisturbed by the defect today, by EN-20's measurement and by M-A:
@@ -432,6 +538,12 @@ fixture's codomain is ground on purpose.
   deferred to a `doc-audit` run on that doc.
 - **The `CState` diagnostic channel**, if Step 3's blame proves wider than one
   commit. Step 3 names the split and the gate reads the refusal either way.
+- **Whether R5 is tightened to read the `sk-defunc` tag** once that channel
+  lands, which would give Step 1 a falsifier it does not have (§5). ⚑ **The
+  author's call, opened by the SPEC audit 2026-09-04 and opening no row**: the
+  alternative is dropping Step 1 and letting the family drop carry the blame, at
+  the cost of the boundary-sums shape decision 9 argues for. Nothing waits on it
+  and the element is implementable either way.
 - **`records/author-calls.md:30`'s count paragraph** reads "8 of 21" and will
   read 9 of 22 once E188's gate lands. Editing that row is the author's, per
   decision 10; the implementation run adds the pointer, not the ruling.
