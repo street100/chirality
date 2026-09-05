@@ -124,10 +124,25 @@ ok()  { echo "  ok    $1"; pass=$((pass+1)); }
 bad() { echo "  FAIL  $1"; fail=$((fail+1)); }
 
 # ─── the fixture ────────────────────────────────────────────────────────────
-# Written here rather than tracked under tools/test/samples/: everything under
-# samples/ is walked by Phase 2's test-runner and counted by the compile-only
-# root census, and this gate has no business moving either number.  The
-# crypto.sh precedent, same framing as e181_pretty.prog.
+# Written here rather than tracked under tools/test/samples/, and the reason is
+# that a fixture written by the script that reads it cannot go stale against it.
+# The crypto.sh precedent, same framing as e181_pretty.prog.
+#
+# ⚑ THE REASON THIS COMMENT USED TO GIVE WAS FALSE, both halves, measured
+# 2026-09-04 and again 2026-09-05: records/gate-audit.md GA-25.  It read that
+# everything under samples/ is walked by Phase 2's test-runner and counted by
+# the compile-only root census.  Phase 2 walks nothing -- prog/test-runner.prog
+# carries a bundled `manifest` of six LITERAL prog/samples/ paths, so it is a
+# list and not a directory read, and nothing under tools/test/samples/ can enter
+# it.  The root census is Phase 7's ALL_ROOTS, `grep -rl '^(def compile-main'
+# lib prog` (tools/test/run-tests.sh:175), whose search roots are lib and prog;
+# it returns 100 paths in this tree and none of them is under tools/.  A tracked
+# fixture here would move neither number.
+#
+# ⚑ WHAT THE FALSE REASON COST is the inverse reading: an author who believes it
+# concludes that landing a root under tools/test/samples/ buys suite reach.  It
+# buys none.  Every root there is reached by exactly one thing, a script naming
+# it as its FIXTURE.
 FIXTURE="$TMP/en14_tal_check.prog"
 cat >"$FIXTURE" <<'CHIRAL'
 ; en14_tal_check.prog -- the Phase 22 emitted-bytes fixture.  Prints, never
