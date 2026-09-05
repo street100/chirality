@@ -27,6 +27,14 @@
 # Fd is a raw integer at runtime; nothing here stops machine code from closing
 # that integer twice. Machine authority over a descriptor is E77 (seccomp).
 #
+# ⚑ THE MUTANTS THIS FILE'S COMMENTS CITE ARE NOW RUN BY THIS FILE, since
+# 2026-09-05. records/gate-audit.md GA-07: sections E and F were re-founded on a
+# mutation run, their comments quote a measured 2x2 diagonal and a measured q0
+# arm, and every falsifier they name lived in tools/test/mutant.sh -- which no
+# run_phase line dispatches (GA-01). The rows were genuinely falsifiable and the
+# falsification was genuinely outside the gate. The block at the foot moves it
+# inside.
+#
 # Zero Python. Zero golden captures: every expectation is what the form MEANS.
 set -uo pipefail
 
@@ -46,9 +54,25 @@ if [ -z "$CC" ]; then
 fi
 [ -n "$CC" ] || { echo "no compiler found (bin/chirality-bin)"; exit 2; }
 
+SELF="${BASH_SOURCE[0]:-$0}"
+
 pass=0; fail=0
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 ulimit -s unlimited
+
+# ⚑ THE RED LOG. Every FAIL below appends its DESCRIPTION here. A mutant leg
+# re-runs this whole file under a mutated compiler and reads THIS FILE to learn
+# which rows went red, rather than parsing the printed FAIL lines: a refusal
+# message can itself contain ` -- ` and a parse would drop the row, which is an
+# under-count in the direction that reads as a pass. CHIRALITY_RED_LOG being set
+# is also what tells the block at the foot it is inside a leg, so it does not
+# recurse.
+RED_LOG="${CHIRALITY_RED_LOG:-$T/reds}"
+: >"$RED_LOG"
+
+ok()  { echo "  ok    $1"; pass=$((pass+1)); }
+bad() { echo "  FAIL  $1"; fail=$((fail+1)); }
+red() { echo "  FAIL  $1 -- $2"; printf '%s\n' "$1" >>"$RED_LOG"; fail=$((fail+1)); }
 
 # ---- refuse <desc> <want-msg> <src> ------------------------------------------
 # the source must be REFUSED at load time with a named message. Load errors are
@@ -58,13 +82,13 @@ refuse() {
   local desc="$1" want_msg="$2" src="$3" out got
   out="$(printf '%s' "$src" | "$CC" 2>&1 >/dev/null)"; got=$?
   if [ "$got" = "0" ]; then
-    echo "  FAIL  $desc -- ACCEPTED (exit 0); it must be refused"; fail=$((fail+1)); return
+    red "$desc" "ACCEPTED (exit 0); it must be refused"; return
   fi
   if ! printf '%s' "$out" | grep -q -- "$want_msg"; then
-    echo "  FAIL  $desc -- refused, but not for this reason. want '$want_msg', got: $(printf '%s' "$out" | tr '\n' ' ' | head -c 200)"
-    fail=$((fail+1)); return
+    red "$desc" "refused, but not for this reason. want '$want_msg', got: $(printf '%s' "$out" | tr '\n' ' ' | head -c 200)"
+    return
   fi
-  echo "  ok    $desc"; pass=$((pass+1))
+  ok "$desc"
 }
 
 # ---- admit <desc> <src> ------------------------------------------------------
@@ -77,10 +101,10 @@ admit() {
   local desc="$1" src="$2" out
   out="$(printf '%s' "$src" | "$CC" 2>&1 >/dev/null)"
   if printf '%s' "$out" | grep -q '^load:'; then
-    echo "  FAIL  $desc -- REFUSED at load: $(printf '%s' "$out" | tr '\n' ' ' | head -c 200)"
-    fail=$((fail+1)); return
+    red "$desc" "REFUSED at load: $(printf '%s' "$out" | tr '\n' ' ' | head -c 200)"
+    return
   fi
-  echo "  ok    $desc"; pass=$((pass+1))
+  ok "$desc"
 }
 
 # ---- runs <desc> <want-exit> <src> -------------------------------------------
@@ -92,14 +116,14 @@ runs() {
   f="$T/r$n.chiral"; printf '%s' "$src" > "$f"
   out="$(ORIG_DIR="$T" "$CHIR" compile "$f" -o "$T/r$n.elf" 2>&1)"; got=$?
   if [ "$got" != "0" ]; then
-    echo "  FAIL  $desc -- compile exit $got: $(printf '%s' "$out" | tr '\n' ' ' | head -c 200)"
-    fail=$((fail+1)); return
+    red "$desc" "compile exit $got: $(printf '%s' "$out" | tr '\n' ' ' | head -c 200)"
+    return
   fi
   "$T/r$n.elf" >/dev/null 2>&1; rr=$?
   if [ "$rr" != "$want" ]; then
-    echo "  FAIL  $desc -- program exit $rr, want $want"; fail=$((fail+1)); return
+    red "$desc" "program exit $rr, want $want"; return
   fi
-  echo "  ok    $desc (program exit $rr)"; pass=$((pass+1))
+  ok "$desc (program exit $rr)"
 }
 
 # a locally declared capability + its consumer: an opaque linear atom, and an
@@ -362,6 +386,123 @@ admit "erased let: (0 x 5) never used -- erasure works" \
 admit "erased pi param: (0 n I64) never used -- erasure works" \
   '(def f (-> (0 n I64) I64) (lam (n) 7))
 (def compile-main (-> I64 I64) (lam (m) (f 3)))'
+
+# ============================================================================
+# THE MUTANTS. records/gate-audit.md GA-07.
+#
+# ⚑ WHAT WAS BROKEN. Nothing about the rows: they are falsifiable and the
+# falsifiers are correct. What was broken is WHERE the falsification happened.
+# `:271-275` records that a mutant SURVIVED ALL FIVE PHASE SCRIPTS and that
+# these rows are the re-founding; `:277-284` names the two qjoin arms and the
+# 2x2 diagonal; `:354-357` names qfits-q0-accepts-all. Every one of those measurements
+# was taken by tools/test/mutant.sh --matrix, which a person runs by hand. A row
+# whose evidence is produced by hand is a row the gate does not hold.
+#
+# ⚑ THE SHAPE. A mutant leg re-runs THIS WHOLE FILE under the mutated compiler
+# and reads the red log, so the want is graded by the same `refuse` and `admit`
+# that emitted the base rows (GA-18). Every mutant pins the FULL red set, one
+# description per line, so a mutant reddening a row outside its pin is a FAIL
+# rather than a miss (GA-22). A mutant that did not build scores BUILD:fail,
+# which no pin holds (GA-19); one byte-identical to the base scores INERT. The
+# base red set is asserted EMPTY first.
+#
+# ⚑ THE DIAGONAL IS THE PIN, not a sentence beside it. M1's pin holds E1 and E6
+# and NOT E2; M2's holds E2 and neither E1 nor E6. That is the 2x2 `:277-284`
+# describes, and it is now a comparison the phase makes rather than a claim the
+# comment makes.
+#
+# ⚑ WHAT IS STILL UNCOVERED. Sections A, B and C, and the two `runs` controls,
+# are reddened by nothing here: twenty-two of the thirty-two rows. M4 and M5
+# reach four of them and the rest want mutants of the extern-arrow and
+# porttype-registry rules, which no declared mutant touches. GA-07's claim is
+# about the rows whose comments cite a mutant, and those are E, F and the two
+# binder-audit rows M4 and M5 land on. The residue is named, not closed.
+if [ -z "${CHIRALITY_RED_LOG:-}" ] && [ -z "${CHIRALITY_NO_MUTANTS:-}" ]; then
+  echo
+  echo "=== E159 M: the mutants -- each pins the FULL set of rows it reddens ==="
+  if [ ! -s "$RED_LOG" ]; then
+    ok "the base red set is EMPTY -- no mutant below is scored against a red base"
+  else
+    bad "the base is ALREADY RED; every mutant below would score as convicted:"
+    sed 's/^/          /' "$RED_LOG"
+  fi
+
+  export CHIRALITY_MUTANT_DIR="$T/mut"
+  export CHIRALITY_MUTANT_BASE="$CC"
+  mkdir -p "$CHIRALITY_MUTANT_DIR"
+  # shellcheck disable=SC1090
+  . "$HERE/mutant.sh"
+
+  # leg LABEL CC -> the description of every row that goes red under CC
+  leg() {
+    local log="$CHIRALITY_MUTANT_DIR/red-$1" out="$CHIRALITY_MUTANT_DIR/out-$1"
+    : >"$log"
+    CHIRALITY_RED_LOG="$log" CHIRALITY_COMPILE="$2" bash "$SELF" >"$out" 2>&1
+    grep -q " passed, " "$out" || { echo "LEG-DID-NOT-FINISH"; return; }
+    cat "$log"
+  }
+
+  # mut_row LABEL FILE COUNT OLD NEW WANT-RED-SET
+  mut_row() {
+    local label="$1" rel="$2" n="$3" old="$4" new="$5" want="$6" cc got
+    cc="$(mutant_build "$label" "$rel" "$n" "$old" "$new")"
+    case "$cc" in
+      FAIL:*) bad "$label BUILD:fail ($cc) -- an unbuilt mutant convicts nothing"; return;;
+    esac
+    mutant_differs "$cc" || { bad "$label INERT -- byte-identical to the base"; return; }
+    got="$(leg "$label" "$cc")"
+    if [ "$got" = "$want" ]; then
+      ok "$label reddens exactly [$(printf '%s' "$got" | tr '\n' '|')]"
+    else
+      bad "$label red set disagrees
+          want [$(printf '%s' "$want" | tr '\n' '|')]
+          got  [$(printf '%s' "$got" | tr '\n' '|')]"
+    fi
+  }
+
+  # M1 -- the q1 arm of qjoin stops saturating. E1 and E6 red, E2 GREEN.
+  mut_row qjoin-q1-no-saturate lib/typing/qtt.chiral 1 \
+    '((q1) (case b ((q0) (qw)) ((q1) (q1)) ((qw) (qw))))' \
+    '((q1) (case b ((q0) (q1)) ((q1) (q1)) ((qw) (qw))))' \
+    'case merge: a q1 cap burned in ONE arm only
+case merge across a pi binder: (1 c Cap) in one arm'
+
+  # M2 -- the mirror arm. E2 red, E1 and E6 GREEN. The other half of the 2x2.
+  mut_row qjoin-q0-no-saturate lib/typing/qtt.chiral 1 \
+    '((q0) (case b ((q0) (q0)) ((q1) (qw)) ((qw) (qw))))' \
+    '((q0) (case b ((q0) (q0)) ((q1) (q1)) ((qw) (qw))))' \
+    'case merge: the MIRROR, burned in the other arm'
+
+  # M3 -- an erased binder admits any usage. Section F, all three arrivals.
+  mut_row qfits-q0-accepts-all lib/typing/qtt.chiral 1 \
+    '((q0) (case computed ((q0) true) ((q1) false) ((qw) false)))' \
+    '((q0) true)' \
+    'erased let: (0 x 5) used once
+erased let: (0 x 5) used TWICE
+erased pi param: (0 n I64) used in the body'
+
+  # M4 -- the lam/pi binder usage audit never fires. Reaches sections C and E
+  # and F through the strip-binder side, which is the side whose message differs.
+  mut_row strip-binder-off lib/typing/kernel.chiral 1 \
+    '(false (ck-err (r-usage (subj-lam-binder) q (last-qty u))))' \
+    '(false (ck-ok (drop-last u)))' \
+    '(1 c Cap) used twice -- the binder audit still fires
+case merge across a pi binder: (1 c Cap) in one arm
+erased pi param: (0 n I64) used in the body'
+
+  # M5 -- the let binder usage audit never fires. The close-binder side, and the
+  # only falsifier the two section-D let rows and the leak-half control have.
+  mut_row close-binder-off lib/typing/kernel.chiral 1 \
+    '(false (ck-err (r-usage (subj-let-binder) q (last-qty ub))))' \
+    '(false (ck-ok (uadd (drop-last ub) (uscale q uv))))' \
+    'q1 let, burned twice -- the usage audit still fires
+q1 let, never burned -- the leak audit still fires
+case merge: a q1 cap burned in ONE arm only
+case merge: the MIRROR, burned in the other arm
+case merge: burned in NEITHER arm (the leak half)
+erased let: (0 x 5) used once
+erased let: (0 x 5) used TWICE'
+fi
 
 echo
 echo "linear mint (E159): $pass passed, $fail failed"
