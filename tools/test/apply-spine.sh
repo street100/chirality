@@ -332,8 +332,18 @@ fi
 
 # M3: step 3's guard never fires on a mismatch.  R5's falsifier: without it R5
 # would be a row no mutant reddens, which is GA-22's shape.
+# ⚑ REPOINTED BY E187.  The mismatch arm now calls `st-pois-defunc`, which
+# poisons through `st-add-pois` and STATES why, so `(false (st-add-pois st key))`
+# matched zero times and `mutate` graded this row `bad` on a stale pattern.  The
+# substitution and M3's pin are unmoved: the arm still registers the mismatch
+# instead of poisoning it.  ⚑ THE NEEDLE IS DOUBLE-QUOTED because the pinned
+# discriminant carries an apostrophe in `global's`; a single-quoted argument
+# cannot hold it, and a needle cut short of it leaves the tail behind, `sed`
+# writes a tree that does not compile, and the row is graded on a build failure
+# (GA-19 through a different door).
 if mutate M3 "lowering/upper/closconv.chiral" \
-   '(false (st-add-pois st key))' '(false (st-add-site st key (cs-g g k fields)))'; then
+   "(false (st-pois-defunc st key g \"family arity disagrees with the global's\"))" \
+   '(false (st-add-site st key (cs-g g k fields)))'; then
   run_mutant M3 "ok ok ok ok bad ok apply=30" "the mismatch is registered instead of poisoned"
 fi
 
