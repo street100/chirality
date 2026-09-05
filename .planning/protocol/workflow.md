@@ -57,19 +57,14 @@ No skill covers it, because it is ordinary work under the build rule.
 **If the change touches `lib/` or `prog/`, it is compiler source and owes the
 rebuild.** A comment-only edit counts.
 
-```
-. bin/chirality-resolve.sh
-chirality_blob_file "lib:prog" prog/compiler.prog > /tmp/blob.chiral
-(ulimit -s unlimited; bin/chirality-bin < /tmp/blob.chiral > /tmp/C1) && chmod +x /tmp/C1
-[ -s /tmp/C1 ] && (ulimit -s unlimited; /tmp/C1 < /tmp/blob.chiral > /tmp/C2) && cmp /tmp/C1 /tmp/C2
-```
-
-`build-new`, then test, then promote. Nothing replaces itself in place. Check the
-artifact is non-empty before the `cmp`, because two empty files compare equal and
-an unguarded `cmp` reports a fixpoint on a build that produced nothing. A
-fixpoint shows stability and says nothing about correctness: a compiler
-reproducing itself byte for byte is consistent with being wrong the same way
-twice.
+`docs/definitions/working-discipline.md` carries the recipe, and it is the only
+copy: `build-new`, then test, then promote, nothing replacing itself in place,
+generations built from the same blob until two consecutive ones are
+byte-identical, a non-empty check before every `cmp`, and a stop at `C4`. **A
+change that touched emission puts the first agreement at `C2 == C3`, so `C1 !=
+C2` is not a failure on its own** (E188, `032681f`). A fixpoint shows stability
+and says nothing about correctness: a compiler reproducing itself byte for byte
+is consistent with being wrong the same way twice.
 
 Everything outside the compiler runs with `chirality run FILE`.
 
