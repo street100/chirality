@@ -233,7 +233,7 @@ arc's live blocker.**
 2. **The `$kI_J` capture constructor's field types. EN-17, an open author call,
    opened 2026-09-04.** Research §7 finds both published shapes keeping
    constructor fields concrete, and the structural reason is that a capture
-   constructor (`ctor-name`, `lib/lowering/upper/closconv.chiral:1114`) is
+   constructor (`ctor-name`, `lib/lowering/upper/closconv.chiral:1181`) is
    applied at one site, so nothing forces its fields to merge, while the shared
    dispatcher's argument position is constrained by every family member at once.
    That is the opposite arrangement to the measured `$apply7`, so whether the two

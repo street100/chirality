@@ -60,7 +60,7 @@ The prior art erases **neither** side nominally: it makes the dispatcher
 polymorphic and lets the constructor stay concrete.
 
 **F2. The structural reason the two instances differ.** A capture constructor,
-spelled by `ctor-name` (`lib/lowering/upper/closconv.chiral:1114`), is applied at
+spelled by `ctor-name` (`lib/lowering/upper/closconv.chiral:1181`), is applied at
 exactly one site, its own definition site, so nothing forces its field types to
 merge with another constructor's. The shared dispatcher's argument position is
 constrained by every member of the family at once. Only the second is under

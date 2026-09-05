@@ -59,7 +59,7 @@ deleted. A third measurement is a mechanical census over the tree. All three are
     builds an application spine. Its `(declare)` sits below `arm-body`.
   - `g-subst-go` (`lib/lowering/upper/closconv.chiral:961-977`), which already
     states the arm's index layout.
-  - `SkReason` (`lib/lowering/skip-diag.chiral:11`), two constructors, consumed
+  - `SkReason` (`lib/lowering/skip-diag.chiral:15`), two constructors, consumed
     by `SkRec` (`lib/lowering/compile-back.chiral:238-239`) and `format-blame`
     (`lib/lowering/compile-all.chiral:38`).
   - The refusal precedent this element argues from: `compile-fn`
@@ -200,7 +200,7 @@ binary prints `direct: 30`, `apply : 0`, `sib   : -10`.
 | 6 | Where the poison decision is placed: at the site builder, or in a second pass over the families. | **RESOLVED — at the site builder, through one shared helper.** | All three builders take `sig`, and the key is the value being passed to `st-add-site`, so both numbers are in hand at the point of decision. A second pass would re-derive what the builder knew. One helper called by three builders pushes the invariant into the substrate rather than repeating a check three times, which is the shape [[definitions/pattern-boundary-sums]] and the tree's own directive prefer. |
 | 7 | Whether a global with no declared type can reach a `cs-g` site. | **RESOLVED — yes, through `fv-site`, and the guard catches it.** | `fv-site`'s arrow branch (`:858`) calls `st-add-site` without consulting `g`'s type at all; only the `fv-own` fallback reads it. `arity` returns `(Maybe I64)`, so `none` is one of the guard's two refusal cases. After the guard, `arm-body`'s `cs-g` case can assume a declared type. |
 | 8 | Whether `arm-body` should answer in `(Maybe Core)` — candidate (d). | **RESOLVED — no, and this overrides the example's recommendation on placement while keeping its judgment.** | The example's §6 chain is right about the cost: five frames and two accumulators (`build-arms` `:1118`, `apply-body` `:1124`, `synth-apply` `closconv-driver.chiral:201`, `synth-applies` `:212`, `synth-fams` `:220`, reached from `:285`), and a `(Maybe Core)` has to cross `core->term` as well. The example's judgment was that (a) needs a refusal channel to be right; decision 1 gives it one that costs nothing, because the poison channel already spans exactly those frames and already ends somewhere. Adding (d) as well would be a **second** channel for one condition. The refusal is kept; only its home moves earlier. |
-| 9 | `SkReason` needs a constructor or the blame is unnameable. | **RESOLVED — add `sk-defunc`, carrying the two names the site knows.** | `SkReason` has exactly two constructors (`skip-diag.chiral:11`) and neither says this. The boundary-sums directive says the classification travels as a value carrying the blame the site knows rather than a formatted string, so the constructor takes the global's name and the reason discriminant, not a sentence. `skwhy-name` (`:21`) and `skwhy-tag` (`:24`) each gain an arm. |
+| 9 | `SkReason` needs a constructor or the blame is unnameable. | **RESOLVED — add `sk-defunc`, carrying the two names the site knows.** | `SkReason` has exactly two constructors (`skip-diag.chiral:15`) and neither says this. The boundary-sums directive says the classification travels as a value carrying the blame the site knows rather than a formatted string, so the constructor takes the global's name and the reason discriminant, not a sentence. `skwhy-name` (`:25`) and `skwhy-tag` (`:28`) each gain an arm. |
 | 10 | ⚑ The gate's suite phase number. | **DEFERRED — to the standing author call, `records/author-calls.md:30`.** | The gate declares itself out with `# not-a-phase: <reason>`, the route `crypto.sh`, `tal-check.sh`, `apply-word.sh` and `capture-fields.sh` all take, which keeps `registration.sh` G2 and G4 green. `registration.sh` reads **8 of 21** scripts outside the dispatch table today; E188's gate makes it 9 of 22. ⚑ **The ordinal is corrected by the SPEC audit 2026-09-04, re-measured at HEAD:** eight `not-a-phase:` header declarations across twenty-one `tools/test/*.sh`, four of them waiting on the contested number (`crypto.sh:6`, `tal-check.sh:11`, `apply-word.sh:5`, `capture-fields.sh:6`), the other four out for structural reasons. `records/author-calls.md:30` already reads `display-calculus/C1C2`'s gate as the **fifth** when it exists, and C1C2's script does not exist yet, so whichever of the two lands first takes fifth and the other takes sixth. **This SPEC assigns no number and opens no new call.** A blank reason fails G4, so the declaration's reason is written out in §5. |
 | 11 | ⚑ `docs/definitions/bug-classes.md:85` carries `miscompilation` with mechanism *"typed assembly, checked at instruction level"* and state `unwired`. E188 is a measured instance the stated mechanism does not cover. | **DEFERRED — to a `doc-audit` run on `bug-classes.md`.** | The example flagged it as doc-tier residue for a later run, and it is not this element's write surface. Named in §6 so it is not lost. |
 
@@ -244,8 +244,17 @@ fixpoint shows stability and says nothing about correctness, so it is a
 precondition on landing and never the evidence.
 
 ### Step 1 — `SkReason` gains `sk-defunc`
-- **Target:** `lib/lowering/skip-diag.chiral` — `SkReason` (`:11`), `skwhy-name`
-  (`:21`), `skwhy-tag` (`:24`).
+
+⚑ **BUILT 2026-09-04. Every line coordinate in this SPEC was RE-TAKEN against the
+post-change tree so `ledger-lint` check R stays at zero, so a coordinate here now
+names the symbol's live line and not the line it sat on when the SPEC was
+written. The baseline PROSE is unedited: `SkReason` had two constructors and now
+has three, `arm-body` was at `:1051-1058` and is at `:1109-1125`, and the three
+`cs-g` site builders were at `:816`, `:844`, `:852`. What the implementation
+measured, including two corrections to §5's pins and a refutation of §1's
+sentence about EN-20's own fixture, is [[records/enforcement-arc]] EN-22.
+- **Target:** `lib/lowering/skip-diag.chiral` — `SkReason` (`:15`), `skwhy-name`
+  (`:25`), `skwhy-tag` (`:28`).
 - **Change:** a third constructor `(sk-defunc (name Str) (why Str))`, where
   `name` is the global at the site and `why` is one of two discriminants
   (`"no declared type"`, `"family arity disagrees with the global's"`). Add the
@@ -296,7 +305,7 @@ precondition on landing and never the evidence.
 ### Step 3 — the guard, at one place, called by three
 - **Target:** `lib/lowering/upper/closconv.chiral` — a new `st-add-gsite` beside
   `st-add-site` (`:670-672`), and the three builders that call it for a `cs-g`
-  site: `cwalk-app-head` (`:816`), `fv-own` (`:844`), `fv-site` (`:852`).
+  site: `cwalk-app-head` (`:844`), `fv-own` (`:871`), `fv-site` (`:879`).
 - **Change:** `st-add-gsite sig st key g k fields` computes
   `d = (cc-llen (peel-pi-doms key))` and consults `(arity sig g)`. On
   `(some ar)` with `(=i ar (+ k d))` it calls `st-add-site` as today; on
