@@ -30,6 +30,11 @@ this before starting either lane.
 | gate phases | **18, 19, 20** | **21, 22, 23** |
 | element numbers | **E184–E189** | **E190–E195** |
 
+`E189` is taken, 2026-09-05: the `op-mulhi` surface extern, minted for the AI lane's
+fixed-point multiply-accumulate. `docs/arcs/native-protocol-arc.md`'s crypto
+pipeline cites it as a route it refuses. Owned by neither arc. Lane A's band is now
+spent.
+
 Phases 1–7 and 13–17 are taken. 8–12 are names still owed to unported old-tree
 phases — **do not reuse them**; a number that once meant something else is worse
 than a fresh one.
