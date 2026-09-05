@@ -69,6 +69,13 @@ peers at once, and verifiable piecewise. It is also the reason `size` and
 `chunk` are separate fields: the parcel count is derivable from the two, so
 nothing carries a count that can disagree with them.
 
+⚑ **The four fields are what an asker holds. What crosses the wire is open,
+and §12 and §13 hold it.** The first version of this section had a router
+reading `size` and `chunk` before the bytes arrive. That is a level 4
+disclosure under §8's ladder and it contradicts the author's 2026-09-05 ruling
+that a hop learns nothing about what it carries. The field set survives the
+correction. Its wire form does not follow from it.
+
 **What a mark does not carry.** No location, no party, no time, no name, no
 transport and no path. A mark that carried any of them would let a router
 prefer one holder over another for a reason the address cannot justify, which
@@ -103,7 +110,9 @@ policy is a value and every new medium is one arm.
 2. The order is decidable from the value. The way list is the order, which is
    the same shape `fold-sgr` (`grid.chiral:232`) already has for style.
 3. `route` reads the mark's fields and never the bytes, so routing a value is
-   possible before holding any of it.
+   possible before holding any of it. ⚑ This property is stated for the
+   **asker's own** router. A hop reading those same fields is the level 4
+   disclosure §12 covers, and §8 records why the two cases separate.
 4. A way that cannot serve a mark returns an empty hop list, so the fold
    continues instead of failing. Refusal is a value.
 5. The table is data. A `.manifest` is pure declared data checked by the
@@ -178,18 +187,287 @@ Measured 2026-09-05 against `lib/lowering/tal/crossing-wraps.chiral:39-53`.
 | a bus among independently started processes | **blocked.** `sock-send-fd` has no crossing-wraps row, and `sock-listen` and `sock-accept` have no TAL body. There is no `bind` extern at all |
 | the three verbs, `Mark`, `Way`, `route` | nothing |
 
-## §8 · Open forks
+## §8 · The observer ladder
+
+What a party carrying traffic can learn, ordered by what hiding it costs. Each
+level is an open design item below, and §14 holds the primitives every level
+consumes.
+
+| level | what leaks | what hiding it costs | item |
+|---|---|---|---|
+| 1 | traffic exists | cover traffic, permanently | §9 |
+| 2 | size, timing, rate | padding and a cadence | §10 |
+| 3 | who talks to whom | sourceless packets plus destinationless hops | §11 |
+| 4 | which value is wanted | open research | §12 |
+| 5 | the value itself | encryption, and an envelope deciding who opens what | §13 |
+
+**The three-way tension.** Two of these three are available at once.
+
+| | content-addressed | a hop learns nothing | stateless |
+|---|---|---|---|
+| the ask in the clear | yes | **no** | yes |
+| per-link labels | yes | yes | **no**, a label needs setup |
+| broadcast on one bus | yes | yes | yes, and it never leaves that bus |
+
+**The implication, and it is the author's requirement that produces it.** The
+2026-09-05 ruling is that a hop learns nothing about what it carries. A hop
+learning nothing across a link requires per-link state, which requires a link,
+which puts a party at the floor of the model. §15's `R1` is the fork that
+records this, and the ruling reaches it.
+
+## §9 · Discovery as the cover stream
+
+**The idea.** Ordinary cover traffic is waste. Discovery is work that happens
+anyway. A real ask inserted into a discovery stream that was going to run costs
+the difference between the two, which is what makes it low cost.
+
+**Established.**
+
+- a discovery ask and a real ask have to be one shape on the wire. That is a
+  type-level property and it is cheap here.
+- **a cover ask has to be satisfiable.** A holder that can serve some asks and
+  never others learns which were real by which ones hit. This puts a floor
+  under how meaningless a cover ask is allowed to be.
+
+**The spectrum, and the whole design sits somewhere on it.**
+
+| a cover ask asks for | usefulness | what it leaks |
+|---|---|---|
+| marks a peer advertised | high. It fills the cache with real values | your interest, exactly |
+| marks adjacent to what is already held | medium. It prefetches plausibly | the neighbourhood of your interest |
+| marks drawn from a shared public set | low | nothing about you |
+| values no holder can serve | zero, and it fails the satisfiability rule above | nothing, and a holder separates real from cover trivially |
+
+**What would settle it.** A stated mix, and a ruling on whether the mix is a
+protocol constant or deployment policy.
+
+**Notes to cover.**
+
+- who chooses what a cover ask asks for, and out of what set
+- whether a peer answering a cover ask does useful work or wasted work
+- what a peer does with a value it fetched as cover: hold it, or drop it
+- whether cover asks are forwarded the way real ones are, and what that costs
+  every peer downstream
+- whether an idle instance is distinguishable from a busy one at any distance
+- how this interacts with §10, since cover is what fills the idle slots and the
+  cover rate is then the slot rate minus real traffic
+
+## §10 · Cadence
+
+**The idea.** The timing defence is a constant rate. Timing then carries no
+information, because the timing is a constant that the payload does not touch.
+
+**Established.**
+
+| property | what holds |
+|---|---|
+| timing leak | zero by construction, and it is a property that can be stated and gated |
+| latency | bounded and deterministic, at most one slot interval |
+| bandwidth | the slot rate, always, idle or busy |
+| speed | purchasable. The cadence is the price, so consistency and speed are one knob here |
+
+A schedule is a value. Emission is a total function of the schedule and the
+queue, so "this link leaks no timing" is checkable in the same way a total
+fold is.
+
+**What would settle it.** Whether the cadence is per link, per medium or per
+deployment, and what the queue does when it exceeds the slot rate.
+
+**Notes to cover.**
+
+- queue overflow is where the leak returns, and nothing here addresses it
+- backpressure under a fixed cadence, and whether a sender may signal it at all
+  without signalling load
+- whether a cadence is negotiated between two peers or declared unilaterally
+- a slot carries one parcel of one size, so a value spanning many slots leaks
+  its size through the span length unless the span is padded too
+- whether an instance that stops emitting is distinguishable from one that left
+- which clock this needs, and whether `lib/ports/clock.port` supplies it
+
+## §11 · Destinationless hops
+
+**The idea.** Sourceless packets are the easy half. The harder half is that a
+hop cannot know the destination, with the whole route committed at message
+creation.
+
+**Established.** Three things have to hold together.
+
+| requirement | mechanism |
+|---|---|
+| a hop learns only its next link | a layered header, each layer opened by exactly one hop |
+| a hop cannot tell where it sits in the path | the header is **fixed length and padded**. A header that shrinks per hop leaks position, and a hop that knows it is last knows the destination |
+| a hop has no function that could read further | the hop's view is a distinct type with one readable field. There is no destination field in the value, so this holds by construction |
+
+The third row is where this tree can enforce what the reference systems state
+as a convention. A hop is handed a value whose type has one field. Reading the
+payload is unavailable to it, in the sense that no function of that type
+exists, which is `lib/capability/secret.chiral`'s custody rule under E40
+pointed at wire fields.
+
+**What would settle it.** Who selects a path and from what knowledge, and what
+the maximum hop count is, since the header is padded to it on every message.
+
+**Notes to cover.**
+
+- the sender needs topology to build a route, and holding topology is itself
+  information about the sender
+- the maximum hop count is paid as padding on every message, including
+  one-hop messages
+- whether a reply retraces the path, and what a retraced path reveals
+- whether every parcel of a chunked mark takes one path or many
+- what a hop does when its next link is down. A hop that can report failure
+  back to the sender has learned something about the sender
+- whether a hop may refuse to forward, and how a refusal travels without
+  naming the refuser
+
+## §12 · Which value is wanted
+
+**The state, stated plainly.** This is private information retrieval. The cheap
+constructions cost far more than this model spends anywhere else, nothing
+deployed does it well, and the author has
+marked it as research. Content addressing hands this level out by
+construction, because the mark **is** the identifier of the content, so anyone
+who has seen that content recognises the ask. Encrypting the payload does
+nothing about it.
+
+**What is available short of solving it.**
+
+| partial | what it buys |
+|---|---|
+| ask only peers there is a link with | the leak is bounded to peers that were chosen |
+| per-link derived tags | one value asked on two links is unlinkable across them |
+| the cover mix from §9 | an observer sees which asks happened and cannot say which were real |
+
+None of those is a solution and each belongs in the doc as a mitigation.
+
+**Notes to cover.**
+
+- whether per-link derived tags earn their key schedule
+- whether a holder can serve a value without learning which value it served
+- an observer's confidence under a given cover mix is a number, and nobody has
+  computed it here
+- how much of this changes if the ask is for a chunk instead of a whole value
+
+## §13 · The envelope
+
+**The idea.** One parcel, several audiences, each reading its own slice, with
+who may open what carried in the type.
+
+| audience | what it may read |
+|---|---|
+| the hop | its next link, and the length |
+| the holder | which value is wanted |
+| the asker | the value |
+
+**Established.** The type-level claim: a hop is handed a value that has no
+field containing the payload. Opening it is unavailable instead of forbidden,
+which is the same distinction §11 draws and the same E40 precedent.
+
+**What would settle it.** How many sealed slices a parcel carries, since each
+one costs a key derivation, and whether the holder's slice and the asker's
+slice are one slice.
+
+**Notes to cover.**
+
+- nonce management across slices. One nonce reused across two slices under one
+  key is the classic failure, and a long-lived link key makes it easier to hit
+- replay of a sealed slice to a different hop
+- whether the envelope shape is fixed or varies per medium
+- **whether the type-level claim survives lowering.** The property has to hold
+  after erasure, and that is a real question for this tree rather than a
+  rhetorical one
+- what a hop does with a slice it cannot open, and whether malformed and
+  not-for-me are distinguishable to it
+
+## §14 · The primitives
+
+**The axis, and the author's ruling on it.** Compute belongs at message
+creation and at reading. The amount sent does not drive the public-key cost.
+
+| position | how often | what may sit here |
+|---|---|---|
+| per pairing | once per relationship, ever | public key work. The PQ KEM |
+| per message creation | once per message | symmetric key derivation, one per layer |
+| per hop | once per hop per message | one symmetric open |
+| per parcel | every parcel | one AEAD open |
+
+**The rule that falls out: no public-key operation sits on the forwarding
+path.**
+
+**The seven primitives.**
+
+| primitive | needed by | position | approximate size | state |
+|---|---|---|---|---|
+| collision-resistant hash | marks, the chunk tree, the KDF base | per parcel | 32 B out | **absent.** `native-protocol/N1`'s open hash slice |
+| KEM, PQ and classical hybrid | link establishment at pairing | per pairing | ~1.1 KB ciphertext, ~1.2 KB public key | absent |
+| AEAD | the payload, each envelope slice, each layer | per parcel | 16 B tag, 12 B nonce | **built.** `lib/crypto/chacha.chiral`, `lib/crypto/poly1305.chiral` |
+| KDF | per-layer and per-parcel keys from a link secret | per creation and per hop | 32 B out | absent, and it rides whichever hash is chosen |
+| signature, PQ | the mutable naming layer only | per claim | ~3.3 KB signature | absent, and **it never touches the fetch path**, because a hash is the integrity proof |
+| entropy | keys, nonces, cover selection | per use | one crossing | absent. `native-protocol/N2`, unstarted |
+| constant-time judgment | all six above | a compile-time property | none | `native-protocol/N5`, unstarted |
+
+Seven, and the tree holds one and a half of them.
+
+**Sizes, from memory.** Egress is blocked from this sandbox, so these carry the
+same VERIFY caveat `docs/decisions/decision-inspiration-policy.md` puts on its
+license floor. ML-KEM-768 public key ~1184 B and ciphertext ~1088 B. ML-DSA-65
+public key ~1952 B and signature ~3309 B. FALCON-512 signature ~666 B with a
+float dependency. SLH-DSA public key 32 B with a signature in the tens of
+kilobytes. X25519 public key 32 B. ChaCha20-Poly1305 tag 16 B.
+
+**The onion header problem, and it is the sharpest thing in this file.**
+Sphinx-style constant-size onion headers work by re-blinding one group element
+at each hop, which is 32 bytes total whatever the path length. ML-KEM has no
+equivalent re-randomisation, so that construction does not carry over.
+**Post-quantum constant-size onion routing is open research.**
+
+| option | header cost | what it gives up |
+|---|---|---|
+| one KEM ciphertext per hop | ~1.1 KB per hop, so ~3.3 KB at three hops | it fits nothing with a small MTU |
+| classical re-blinding for the route, PQ for the payload | ~32 B of route header | content stays PQ-safe. An adversary who records traffic today could de-anonymise the **route** after a quantum machine exists |
+| symmetric layered headers over PQ-established link keys | tens of bytes per layer, and zero public-key work on the forwarding path | the sender must already hold a key with every hop, so routing runs only through peers it has paired with |
+
+**The finding worth deciding on purpose.** The third option does exactly what
+the author's ruling asks: PQ runs once per link at pairing, message creation is
+symmetric derivation per layer, forwarding is one symmetric open, and reading
+is one symmetric open. **Pair-gating, which exists for access control, is also
+what puts a shared key on every hop, which is what lets the expensive privacy
+property be bought with symmetric primitives.** The thing that reads as a
+restriction is what makes the cost affordable.
+
+**Notes to cover.**
+
+- key rotation and re-pairing, and what a rotated link key does to values
+  already in flight
+- forward secrecy on a link, and whether a compromised link key exposes traffic
+  already recorded
+- replay protection, and the counter or window it needs
+- nonce management under a long-lived link key, which §13 also raises
+- denial of service. Unprivileged forwarding means anyone can make a peer work,
+  and §1 states forwarding as unprivileged
+- the entropy crossing is unstarted and every level of §8 consumes it
+- whether reach may state a requirement on the digest, or takes whatever
+  `native-protocol/N1` picks
+
+## §15 · Open forks
 
 | id | the fork | why it decides something |
 |---|---|---|
-| R1 | `ask` and `give` over a shared medium, or a party in the loop from the start | the second turns a query into a conversation, which puts identity and a handshake under the floor and moves the whole crypto arc ahead of the model |
+| R1 | `ask` and `give` over a shared medium, or a party in the loop from the start | the second turns a query into a conversation, which puts identity and a handshake under the floor and moves the whole crypto arc ahead of the model. ⚑ **The author's 2026-09-05 ruling reaches this fork.** §8 shows a hop learning nothing across a link requires per-link state, which requires a link. The fork stays open here because the author settles it, and §8 records that the requirement already implies one side |
 | R2 | forwarding unprivileged, or a peer opts in to relaying | unprivileged is stated in §1 and it makes a peer's cost unbounded by anyone else's asks |
 | R3 | the digest, and its width | it is `native-protocol/N1`'s slice and this roster consumes whatever that arc picks. Whether reach may state a requirement on it is the fork |
 | R4 | the parcel size, and whether one instance may hold two | `pool.port` puts the size in the type, so two sizes are two types. A tether and a bus with different bounds is the case that forces this |
 | R5 | whether `have` exists | ask and give are the floor. `have` saves everyone answering at once and adds a round trip. It is a real cost either way |
 | R6 | `Bus` as the word | against the tree's register of `wire`, `pool`, `grid` and `span` |
+| R7 | the cover mix | §9. Where on the usefulness-against-leak spectrum a cover ask sits, and whether the mix is a protocol constant or deployment policy |
+| R8 | the cadence's home | §10. Per link, per medium or per deployment, and what the queue does when it exceeds the slot rate |
+| R9 | the maximum hop count | §11. The header is padded to it on every message including one-hop messages, so the anonymity set and the standing overhead are the same number |
+| R10 | who selects a path | §11. The sender needs topology to build a route, and holding topology is information about the sender |
+| R11 | the onion header construction | §14. One KEM ciphertext per hop, classical re-blinding with a PQ payload, or symmetric layers over PQ-established link keys. The third is the only one that fits a small MTU and it constrains routing to paired peers |
+| R12 | how many envelope slices | §13. Each slice costs a key derivation, and whether the holder's slice and the asker's slice are one slice is part of it |
+| R13 | whether the type-level opening claim survives lowering | §13. The property has to hold after erasure. This is the one fork that is a question about this compiler instead of about the protocol |
 
-## §9 · Relation to the roster
+## §16 · Relation to the roster
 
 `.planning/OWN-WEB-GAP.md` lanes X, L and J are drawn against the earlier
 sketch and this file supersedes their content. Lane X's `Mark` and `Seal` split
@@ -197,5 +475,9 @@ survives. Lane L's identity, packet and link rows fall behind R1, because a
 model with no party in the floor needs none of them to fetch a value. Lane J
 collapses into §5, since a native medium is a `.port` and the tether is the
 one named exception.
+
+§8 through §14 are six open design items and none of them has a lane in that
+roster at all. The roster's lanes were drawn before the observer model existed.
+Rewriting them against this file is owed. It stays undone here.
 
 Rewriting those three lanes against this file is owed. It stays undone here.
