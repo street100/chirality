@@ -4,7 +4,7 @@ slug: unreachable-arm-reached
 title: **`arm-body`'s unreachable arm is reached, and an `$apply` arm returns a literal `0` as a whole function body**
 kind: BUILD-PROPER
 example: examples/E188-unreachable-arm-reached.md
-status: draft
+status: audited
 updated: 2026-09-04
 ---
 
