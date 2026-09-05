@@ -323,6 +323,31 @@ source in the change. Pathspec every commit.
   same arm chain of the same function, `(some (nt-word))` written over
   `(some (nt-bytes))` where M2 writes it over `(some (nt-i64))`, type-preserving
   in the same way, and M2 was measured built.
+  ⚑ **The analogy is checked rather than asserted** (SPEC audit 2026-09-04).
+  `nt-i64`, `nt-bytes` and `nt-word` are three nullary `NTalTy` constructors on
+  two adjacent lines (`lib/lowering/lowspec.chiral:31-32`), so both substitutions
+  are the same nullary-for-nullary swap and neither can move the typecheck. The
+  one consumer downstream is `ntalty->talty`
+  (`lib/lowering/compile-back.chiral:27-28`), a total one-to-one map, and
+  `tal-ty=?`'s first arm makes `tt-word` match everything
+  (`lib/lowering/tal/check.chiral:70`), so a widened signature type only makes the
+  tal check more accepting. **The one arm where `tt-bytes` and `tt-word` genuinely
+  diverge is unreachable**, which is the step the analogy alone leaves out:
+  `erase-instr`'s `i-const` case erases `tt-bytes` to `n-lit` and `tt-word` to
+  `n-const` (`lib/lowering/tal/erase.chiral:184-188`), while `tt-i64` erases to
+  `n-const` beside `tt-word` and M2 therefore moves nothing there. No `i-const`
+  in the tree carries `tt-bytes`: every emitter in `lower.chiral` hard-codes
+  `tt-i64`, `tt-str` or `tt-word` (`:240`, `:244`, `:257`, `:339`, `:405`), which
+  is what `erase.chiral:182-183`'s own comment already states. So M5 reaches no
+  codegen `tt-bytes` and its build risk is bounded by M2's, over a far smaller
+  set of values.
+  ⚑ **An unbuilt M5 fails loudly.** `run_mutant` scores a mutant that does not
+  assemble, build or run as `bad` with `BUILD:fail ... UNBUILT measures nothing`
+  (`tools/test/apply-word.sh:230-237`), and `bad` increments the failure counter
+  (`:99`). A `nobuild` is never a pass, so if this argument is wrong the gate
+  reddens instead of certifying R4 on a mutant that never ran, which is
+  [[records/gate-audit]] GA-19's rule. The implementer builds M5 first and
+  reports what it did.
 
   What is **derived**: every pinned four-token line in the table, for two
   reasons. The four rows and `tools/test/capture-fields.sh` do not exist, so no
@@ -332,7 +357,8 @@ source in the change. Pathspec every commit.
   than reproducing it.
   ⚑ **`lib/` is the scope of the needle count, and it is the scope that matters.**
   `mutate` copies `lib/` alone and greps the one file it mutates
-  (`tools/test/apply-word.sh:212-216`). M1's, M2's and M5's needle strings also
+  (`tools/test/apply-word.sh:208-216`, the `cp -a "$REPO/lib"` and the
+  single-file `grep -cF`). M1's, M2's and M5's needle strings also
   appear under `docs/`, in this SPEC and in two worked examples, and the harness
   never sees them.
 
@@ -386,9 +412,12 @@ source in the change. Pathspec every commit.
   was golden-pinned by R2 or R3, so **R2 ∧ R3 ⟹ R4** and no mutant in the
   four-mutant table reddened R4 alone. **`$k0_3` is pinned by neither golden.**
   R2 names `nt-i64` and `(nt-data "List" ((nt-str)))` and R3 names `nt-word`
-  against `t-pi`; `nt-bytes`, `nt-str` and the fourth site's `nt-i64` field appear
-  in no golden's constant, so R4's clause on those three fields is not entailed
-  by R2 ∧ R3, and the implication fails at the fourth site. M5 is the witness:
+  against `t-pi`, and both goldens are pinned to a **named** ctor, R2 to the
+  two-field one and R3 to the one-field one. **No golden pins any field of
+  `$k0_3`.** The types themselves recur, `nt-str` inside R2's own constant and
+  `nt-i64` as its first, and that is the point: a golden on `$k0_2` says nothing
+  about `$k0_3` carrying the same type, so R4's clause on the fourth site's three
+  fields is not entailed by R2 ∧ R3 and the implication fails there. M5 is the witness:
   `Bytes` lowers to the word while its source `Term` is `(t-primty "Bytes")`,
   which `no-ground-spelling?` does not admit, so `ctor-honest?` is
   false on `$k0_3` while `$clo0` still carries four ctors (R1 green), `$k0_2`'s
