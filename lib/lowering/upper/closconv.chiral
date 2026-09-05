@@ -677,6 +677,34 @@
   (lam (st key)
     (case (st-ensure-fam st key) ((cstate fs ho po) (cstate fs ho (key-add po key))))))
 
+; ---- the cs-g site guard (E188) --------------------------------------------
+; Every cs-g site records a family arity d = (cc-llen (peel-pi-doms key)) and a
+; global g whose own declared arity the site never consults.  arm-body's g-site
+; arm then addresses g's parameters as if arity = k + d.  Nothing established
+; that.  peel-pi-doms stops at the first non-Pi, so a callee-param SLOT whose
+; codomain is a type variable peels SHALLOWER than the global instantiated into
+; it (fv-site's arrow branch below), and the recorded d is then short.  The
+; other direction is unreachable: cwalk-app-head keys by g's own type after k
+; args and fv-own keys by g's own type at k = 0.
+;
+; Both numbers are in hand here, so the decision is taken here rather than in a
+; second pass that would re-derive what the builder knew.  A mismatch, or a
+; global with no declared type at all, POISONS the family through the channel
+; keep-fams (closconv-driver.chiral:96-106) already runs for an unsaturated
+; higher-order use: the family is dropped, the site is never rewritten, and
+; lower refuses the source def by name instead of arm-body emitting a wrong
+; value.  The refusal is family-wide, which is that channel's own granularity.
+;
+; After this runs every surviving cs-g site satisfies arity = k + d, which is
+; what makes arm-body's spine correct BY CONSTRUCTION rather than by assumption.
+(def st-add-gsite (-> SigV CState Core Str I64 (List (Pair I64 Core)) CState)
+  (lam (sig st key g k fields)
+    (case (arity sig g)
+      ((none)    (st-add-pois st key))
+      ((some ar) (case (=i ar (+ k (cc-llen(peel-pi-doms key))))
+                   (true  (st-add-site st key (cs-g g k fields)))
+                   (false (st-add-pois st key)))))))
+
 ; ---- reg-lam helpers --------------------------------------------------------
 
 ; captys = the ctx types at the lam's sorted free indices (each a Maybe Core).
@@ -827,9 +855,8 @@
                        ((some ar) (case (and (<i 0 (cc-llen(app-args t nil))) (<i (cc-llen(app-args t nil)) ar))
                                     (true (case (ty-of sig ctx t)
                                             ((some rem) (case (is-arrow rem)
-                                                          (true (st-add-site st rem
-                                                                  (cs-g g (cc-llen(app-args t nil))
-                                                                        (g-param-specs sig g (cc-llen(app-args t nil))))))
+                                                          (true (st-add-gsite sig st rem g (cc-llen(app-args t nil))
+                                                                  (g-param-specs sig g (cc-llen(app-args t nil)))))
                                                           (false st)))
                                             ((none) st)))
                                     (false st)))
@@ -845,7 +872,7 @@
   (lam (sig st ctx g a)
     (case (ty-of sig ctx a)
       ((some aty) (case (is-arrow aty)
-                    (true  (st-add-site st aty (cs-g g 0 nil)))
+                    (true  (st-add-gsite sig st aty g 0 nil))
                     (false st)))
       ((none) st))))
 
@@ -855,7 +882,7 @@
       ((c-global g)
         (case slot
           ((some d) (case (is-arrow d)
-                      (true  (st-add-site st d (cs-g g 0 nil)))
+                      (true  (st-add-gsite sig st d g 0 nil))
                       (false (fv-own sig st ctx g a))))
           ((none)   (fv-own sig st ctx g a))))
       (_ st))))
