@@ -1650,6 +1650,85 @@ def check_ab() -> list[str]:
     return errs
 
 
+def check_ac() -> list[str]:
+    """AC. LEDGER `built` against a PRE-IMPLEMENTATION pipeline state.
+
+    Added 2026-09-05. Check N already pairs the LEDGER against
+    docs/examples/INDEX.md, but it only fires on `built` against `design` and on
+    INDEX=`implemented` against a non-`built` ledger. The reverse leg was open:
+    an element the LEDGER calls `built` could sit at `audited` in the pipeline
+    index with nothing watching. E187 did. It landed and was promoted at
+    8d4009d, its catalog, ledger and enforcement-arc rows flipped at 98a9450,
+    and its INDEX row was skipped there because the author held the file. The
+    row stayed `audited (pre-run 2026-09-05)` and was found by hand, which is
+    the same way AB's class was found the day before.
+
+    Why the pair cannot both be true. The Status section of
+    docs/examples/INDEX.md defines its own vocabulary as one chain measuring one
+    thing, how ready this element is to be BUILT: `drafted` -> `reviewed` ->
+    `specced` -> `audited` -> `implemented`, with `audited` spelled out as
+    "spec audit passed; implement-ready". An element the LEDGER calls `built`
+    is not awaiting implementation. That is two documents contradicting each
+    other about one fact rather than the pointer-versus-snapshot lag check N's
+    docstring licenses, because the lag check N tolerates is a difference of
+    DISTANCE and these two states are on opposite sides of the event.
+
+    The pre-implementation set is those four chain rungs and nothing else, taken
+    from that section rather than guessed. Excluded on purpose:
+      * `implemented` -- the agreeing value, and check N already owns its
+        converse leg.
+      * `needs-rework` -- it marks the DRAFT invalidated by a later decision and
+        says nothing about readiness, so a built element can carry it honestly.
+      * `superseded` -- check N pairs it EXACTLY on both sides and owns it. It
+        can never reach here anyway, since it is outside the set.
+      * everything off-vocabulary the corpus actually carries (`part`, `impl`,
+        `built`, `minted`, `implemented-core`). A hedge is a cell somebody wrote
+        deliberately, and AB's rule holds: a check aimed at a guess passes by
+        looking at nothing.
+
+    A ledger row carrying the literal marker `UNRESOLVED` is honored the way
+    check N honors it: reported on every run, not failing the gate.
+    """
+    errs: list[str] = []
+    ledger = ROOT / "docs" / "elements" / "ledger.md"
+    index = ROOT / "docs" / "examples" / "INDEX.md"
+    if not ledger.exists() or not index.exists():
+        return errs
+    PRE = ("drafted", "reviewed", "specced", "audited")
+    ltext = ledger.read_text()
+    lstate: dict[int, str] = {}
+    flagged: set[int] = set()
+    for ln in ltext.splitlines():
+        cells = [c.strip() for c in ln.strip().strip("|").split("|")]
+        if len(cells) >= 3 and re.match(r"^\*{0,2}E\d+\*{0,2}$", cells[0]):
+            num = int(re.sub(r"\D", "", cells[0]))
+            lstate[num] = re.sub(r"[*`]", "", cells[2]).split()[0].lower()
+            if "UNRESOLVED" in ln:
+                flagged.add(num)
+    pipe: dict[int, str] = {}
+    for ln in index.read_text().splitlines():
+        cells = [c.strip() for c in ln.strip().strip("|").split("|")]
+        # INDEX header: | Element | Title | Kind | Ref | Status | Artifact |
+        if len(cells) >= 5 and re.match(r"^E\d+$", cells[0]):
+            st = re.sub(r"[*`]", "", cells[4]).strip()
+            if st:
+                pipe[int(cells[0][1:])] = st.split()[0].lower()
+    if not lstate or not pipe:
+        return errs
+    for n, ls in sorted(lstate.items()):
+        ps = pipe.get(n)
+        if ps is None or ls != "built" or ps not in PRE:
+            continue
+        if n in flagged:
+            print(f"  [AC] E{n} KNOWN disagreement (ledger=built, INDEX={ps}) "
+                  f"-- flagged in the row, not failing")
+            continue
+        errs.append(f"[AC] E{n} ledger=built but INDEX={ps} "
+                    f"(the pipeline index says this element is still awaiting "
+                    f"implementation)")
+    return errs
+
+
 def check_aa() -> list[str]:
     """AA. A superseded figure carries the date it measured (added 2026-09-04).
 
@@ -1736,7 +1815,8 @@ def main() -> int:
                      ("Y chirality verify", check_y),
                      ("Z planning tier tracked", check_z),
                      ("AA superseded figures", check_aa),
-                     ("AB ledger vs catalog build state", check_ab)):
+                     ("AB ledger vs catalog build state", check_ab),
+                     ("AC ledger built vs pre-impl pipeline state", check_ac)):
         try:
             errs = fn()
         except Vacuous as v:
