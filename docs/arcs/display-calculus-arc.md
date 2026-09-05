@@ -137,6 +137,57 @@ condition. A row that cannot say which half it is has not been scoped.
 
 ## Resume state
 
+### Checkpoint, 2026-09-04, session paused mid-pipeline
+
+`C1C2` cleared every gate except the last. The pipeline stands at:
+
+| stage | artifact | state |
+|---|---|---|
+| pre-run | `docs/examples/C1C2-style-round-trip.md` | `reviewed`, `f15e688` |
+| example audit | same file | PASS, `f15e688` |
+| SPEC | `docs/elements/specs/C1C2-style-round-trip-SPEC.md` | `audited`, `bf90ac6` |
+| SPEC audit | same file | PASS, every execution claim reproduced |
+| **implement** | `lib/`, `prog/`, `tools/test/` | **not started.** The run died at baseline capture on an API rate limit and wrote nothing. Working tree verified clean |
+
+**Resume by re-dispatching the implementation of the SPEC's change plan.** It
+needs no re-derivation: the SPEC's author ran steps 1 through 5 off-tree against
+scratch copies, compiled with `bin/chirality-bin`, and the SPEC audit reproduced
+all five claims independently in its own copy.
+
+The one requirement that governs the run: **the gate root exits 1 on today's
+unmodified tree and 42 after the two `parse-sgr` rows land.** Today's tree is
+mutant 1. Demonstrate both, in that order, in the commit message. A run that
+cannot show that transition has not built this element.
+
+Baselines to capture first and compare after: suite 373 passed 0 failed with 88
+compile-only roots and `gate PASSED`, Phase 16 at 38/0, Phase 17 at 20/0,
+`registration.sh` at 9/0 with 13 dispatch lines and 20 scripts and 7 PEND. The
+suite is memory-hungry on this box and [[status-ledger]] records it left
+deliberately unrun once over OOM history, so run it whole at each end and run
+only the affected phases between steps.
+
+Two things the SPEC leaves to the implementer, both settled here.
+`docs/elements/ledger.md` comes off the step 7 target list, because decision 5
+declines to reopen E111's row and routes the residue to `records/gate-audit.md`
+beside GA-25. And `banks/render:328` still enumerates the pre-correction tally,
+13 plus 6 plus 1 running with J and K unreached, against a header that now reads
+21 running and 1 unreached; step 7 makes the paragraph agree with the header.
+
+Nothing in the change enters the compiler's blob, verified twice at 812,351
+bytes over 17,335 lines, so it ships under a plain `chirality run` with no
+fixpoint. Step 6 lands that as a checked gate row on `render-doc.sh:555-566`,
+which is G9 plus its paired mutant M11. Re-verify on the real tree before and
+after; if a needle enters the blob, stop and promote nothing.
+
+Open and not blocking: the suite phase number is an author call carried in
+[[records/author-calls]], so the gate ships `# not-a-phase:` and claims no suite
+conformance. Two gate holes are measured and stated rather than closed. A
+reorder of `face-params`' output disagrees on 0 of 14,256 probes while the
+emitted bytes differ at character 3, so parameter order is guarded by nothing in
+either tier. Narrowing the `bg` upper bound to `-1` drops the asserted set to
+1,584 with exit 42 still, because every registry `bg` is `-1`.
+
+
 The cell-lane pre-run ran 2026-09-04 as `docs/examples/C01-typed-style-value.md`
 at `23f6830`, covering C1/C2/C4/C5 as one decision, on U13's precedent for a
 run that covers more than one row. **It went `superseded` the same day at
