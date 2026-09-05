@@ -39,13 +39,18 @@ was emptied to close.
 
 ## The harness
 
-Four skills. Each is one run, one element or one doc, one artifact, then stop.
+Seven skills. Each is one run, one unit of work, one artifact, then stop. The
+pipeline they run is `docs/decisions/decision-design-before-mint.md`:
+design, audit, mint, spec, audit, implement, with revisit reaching any of them.
 
 | skill | turns | writes |
 |---|---|---|
-| `worked-example` | a catalog element into a worked example | `docs/examples/E<NN>-<slug>.md` |
-| `pipeline-audit` | gates an example before speccing and a SPEC before implementing | the artifact under audit |
-| `example-to-spec` | a worked example into an implementation SPEC | `docs/elements/specs/E<NN>-<slug>-SPEC.md` |
+| `goal-open` | an ambition the repo already states into one goal | `docs/goals/<name>.md` |
+| `arc-open` | one goal condition into requirements and a roster | `docs/arcs/<name>-arc.md` |
+| `element-design` | one roster row into a design, before any `E#` exists | `docs/arcs/parts/<arc>-<id>.md` |
+| `pipeline-audit` | gates a design before it mints, and a SPEC before it is built | the artifact under audit |
+| `design-to-spec` | one minted element into an implementation SPEC | `docs/elements/specs/E<NN>-<slug>-SPEC.md` |
+| `revisit` | one settled artifact against one named trigger | the artifact, and a `records/` row |
 | `doc-audit` | one doc, semantic pass against its live authorities | the doc under audit |
 
 | tool | is |
