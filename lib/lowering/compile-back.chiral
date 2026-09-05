@@ -294,8 +294,11 @@
 ; br-ok (List NFn) / br-err msg. Reconstructs the lower inputs per def, compiles
 ; each to typed SSA under a program-wide CEnv, then erases every emitted TFn to
 ; the neutral NFns the emit image consumes.
-(def back-program (-> (List NDef) (List NData) (List NPrim) BR)
-  (lam (defs ndatas nprims)
+; E187: the fourth parameter is the SEED skip list.  lower-defs has held the
+; seat since E97 and back-program passed it `nil`; the entry now offers it, so
+; closconv's stated causes reach the message without reaching past this entry.
+(def back-program (-> (List NDef) (List NData) (List NPrim) (List SkRec) BR)
+  (lam (defs ndatas nprims dsk)
     (lower-defs (program-lits defs)
                 (app-ts (nprims->table nprims) prim-table)
-                (def-sigs defs) (ndatas->ddatas ndatas) defs nil nil)))
+                (def-sigs defs) (ndatas->ddatas ndatas) defs nil dsk)))

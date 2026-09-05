@@ -20,7 +20,7 @@
     (case (compile-front src entry)
       ((fr-err m) (ca-err m))
       ((fr-ok defs datas prims ports dsk)
-        (case (back-program defs datas prims)
+        (case (back-program defs datas prims dsk)
           ((br-err m) (ca-err m))
           ((br-ok fns lits skips)
             ; H8: the declared port manifest rides through to the emit gate --
