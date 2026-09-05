@@ -8,7 +8,11 @@
 (import "prelude/prelude")
 
 ; ---- Data types ----
-(data SkReason () (sk-extern (op Str)) (sk-callee (name Str)))
+; sk-defunc: a defunctionalization site refused at `collect` (E188).  `name` is
+; the global at the site; `why` is one of two discriminants, "no declared type"
+; or "family arity disagrees with the global's".  The blame the site knows
+; travels as a value, not as a formatted sentence.
+(data SkReason () (sk-extern (op Str)) (sk-callee (name Str)) (sk-defunc (name Str) (why Str)))
 (data SkRec () (mk-skrec (def-name Str) (why SkReason)))
 
 ; ---- Accessor functions (no nested-case in callers) ----
@@ -19,10 +23,10 @@
   (lam (r) (case r ((mk-skrec dn why) why))))
 
 (def skwhy-name (-> SkReason Str)
-  (lam (w) (case w ((sk-extern op) op) ((sk-callee name) name))))
+  (lam (w) (case w ((sk-extern op) op) ((sk-callee name) name) ((sk-defunc name why) name))))
 
 (def skwhy-tag (-> SkReason Str)
-  (lam (w) (case w ((sk-extern op) "extern") ((sk-callee name) "callee"))))
+  (lam (w) (case w ((sk-extern op) "extern") ((sk-callee name) "callee") ((sk-defunc name why) "defunc"))))
 
 ; ---- SkRec list append ----
 (def lapp-skip (-> (List SkRec) (List SkRec) (List SkRec))
