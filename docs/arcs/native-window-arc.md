@@ -3,7 +3,7 @@ node: arc-native-window
 layer: navigation
 related: [arcs/README, goals/native-stack, target-tomodachi, banks/port, decisions/decision-work-ids, records/author-calls, status-ledger, index]
 status: current
-updated: 2026-09-03
+updated: 2026-09-05
 ---
 
 # Arc: the native window
@@ -46,14 +46,19 @@ Grepped 2026-09-03: zero hits for xdg, seat, pointer or keyboard across
 4. **Resize is honored**: pool sizes negotiated at runtime instead of the
    demo's fixed 16384.
 
-## Rows
+## Roster
 
-| row | what | state | element |
-|---|---|---|---|
-| `native-window/W1` | the xdg-shell vocabulary | not started | `unminted` |
-| `native-window/W2` | seat input | not started | `unminted` |
-| `native-window/W3` | negotiated pool sizes | not started | `unminted` |
-| `native-window/W4` | text on screen, bitmap first | not started | `unminted` |
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `native-window/W1` | the xdg-shell vocabulary | shell | primitive | new | 1 | open | `unminted` |
+| `native-window/W2` | seat input: pointer and keyboard events decoded | input | primitive | new | 2 | open | `unminted` |
+| `native-window/W3` | negotiated pool sizes, so resize is honored | shell | law | new | 4 | open | `unminted` |
+| `native-window/W4` | text on screen, bitmap font first | text | primitive | new | 3 | open | `unminted` |
+
+### Coverage
+
+Every requirement is served: 1 by W1, 2 by W2, 3 by W4, 4 by W3. Every row
+serves one, and every `origin` is `new`: none of this exists in the tree.
 
 ## Resume state
 
