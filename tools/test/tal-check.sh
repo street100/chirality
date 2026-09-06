@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # tal-check.sh -- the typed-assembly floor checker, after the EN-09/EN-11
-# repairs.  The Phase 22 gate.
+# repairs.  Not a phase: see the header note below.
 #
-# PHASE 22, and 22 for the reason 18 was 18: 8-12 are names still OWED to
-# unported old-tree phases (run-tests.sh:18-22), and reusing one would make an
-# unported gate look ported.  3-6, 13-20 and 24 are taken, and 21 is left to
-# tools/test/crypto.sh, which was written first and whose registration is
-# already owed.
+# ⚑ THE PHASE-22 CLAIM IS RETIRED, 2026-09-06.  run-tests.sh is the only
+# authority for a phase number and a gate takes the first that collides with
+# nothing (decision: native tests and harnesses).  This gate holds no number
+# and does not dispatch: it exits 1 at `20 ok, 1 FAIL` on G18, whose subject
+# check.chiral has ENTERED the compiler closure -- records/lenses/problems.md
+# PRB-70.  Registering a red gate would turn the suite red on an open
+# question.  It registers when G18 is inverted or retired.
+
 #
 # not-a-phase: it claims 22, which is inside Lane B's reserved 21-23 band.
 # NOT YET REGISTERED: the run_phase line in run-tests.sh is owed to the
