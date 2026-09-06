@@ -372,10 +372,11 @@ gate tier owning itself.
 | `enforcement/N9` | effectful lowering: the effect row's tal shadow plus a preserve-check over the effect claim | floor | law | new | 2 | open | `E70` |
 | `enforcement/N10` | the gate tier becomes chirality: 10,719 lines of shell in `tools/test/` against 1,775 native, on the `prose-lint` precedent where the checks moved into a `.prog` and the shell kept only the front end | tooling | tool | new | 5 | open | `unminted` |
 | `enforcement/N11` | every gate row names a mutant that is actually run, checked mechanically rather than per gate by hand | tooling | tool | new | 6 | open | `unminted` |
+| `enforcement/N12` | the TFn census as a gate: fold `ck-prog` over every emitted TFn and report accept, reject and the four reject classes. Three record rows rest on this number and none can be re-run today. ⚑ It became buildable when E154's eleven collisions were prefixed away: measured 2026-09-06, **zero** names in `lowering/tal/check` collide with any module under `lib/`, so a probe imports the real checker instead of keeping a copy | tooling | tool | connect | 2 | open | `unminted` |
 
 ### Coverage
 
-**Every requirement is served.** 1 by N1 and N4; 2 by N6, N8 and N9; 3 by N2,
+**Every requirement is served.** 1 by N1 and N4; 2 by N6, N8, N9 and N12; 3 by N2,
 N3 and N5; 4 by N7; **5 by N10 and 6 by N11**, both opened 2026-09-06 on the
 author's ruling that tests and harnesses are native. `GAP-02` and `GAP-03`
 enumerated those two holes while the arc's band was spent and are closed by
