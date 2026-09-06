@@ -32,20 +32,30 @@ model, the register root, the cascade. [[goals/ownership-and-trust]] cites it.
 The design lives in [[secure-datum-model]], [[bootstrap]] and
 [[trust-boundary]], and those documents stay as they are.
 
-## Rows
+## Roster
 
 Three, and each state is the catalog's, read 2026-09-02.
 
-| row | what | state | element |
-|---|---|---|---|
-| `ownership/O1` | diverse double compilation, the trusting-trust climb | **CONTESTED and deferred.** The compare core is live at `lib/evidence/ddc.chiral` and imported by `lib/evidence/test-floor.chiral`. The driver it was paired with is evicted, and `ddc-bad-quorum` refuses a quorum of fewer than two legs of disjoint provenance, so on the measurement E166 records there is one leg left and this element cannot run | `E53` |
-| `ownership/O2` | the golden-semantics restructure: the kernel spec as the golden object, every executor first among executors | **PROVISIONAL 2026-07-26, revisitable.** `docs/definitions/tal-spec.md` shipped and the data form is live at `lib/lowering/tal/spec.chiral` with zero importers. Two chirality reference executors are built and unreached, `lib/evidence/interp.chiral` and `lib/lowering/tal/eval.chiral`. Its SPEC audit on 2026-08-31 returned BLOCKED | `E71` |
-| `ownership/O3` | the re-bootstrap artifact: the shipped form contains its own re-derivation, with no trusted binary in the forever story | **Requirement pinned in `.planning/SELF-HOST-PLAN.md`, nothing built.** Couples E71 and the E52 spec-size budget | `E72` |
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `ownership/O1` | diverse double compilation, the trusting-trust climb. **CONTESTED and deferred.** The compare core is live at `lib/evidence/ddc.chiral` and imported by `lib/evidence/test-floor.chiral`. The driver it was paired with is evicted, and `ddc-bad-quorum` refuses a quorum of fewer than two legs of disjoint provenance, so on the measurement E166 records there is one leg left and this element cannot run | quorum | law | new | 1 | open | `E53` |
+| `ownership/O2` | the golden-semantics restructure: the kernel spec as the golden object, every executor first among executors. **PROVISIONAL 2026-07-26, revisitable.** `docs/definitions/tal-spec.md` shipped and the data form is live at `lib/lowering/tal/spec.chiral` with zero importers. Two chirality reference executors are built and unreached, `lib/evidence/interp.chiral` and `lib/lowering/tal/eval.chiral`. Its SPEC audit on 2026-08-31 returned BLOCKED | golden | decision | new | 2 | open | `E71` |
+| `ownership/O3` | the re-bootstrap artifact: the shipped form contains its own re-derivation, with no trusted binary in the forever story. **Requirement pinned in `.planning/SELF-HOST-PLAN.md`, nothing built.** Couples E71 and the E52 spec-size budget | bootstrap | primitive | new | 4 | open | `E72` |
 
 The catalog's `OT` category holds 20 rows, measured 2026-09-02, and `E71`
 carries `?`. This arc names the three the track's own sentence in `README.md`
 points at. The other seventeen are unsorted and stay deferred with the track, so
 a row here claims no more than it says.
+
+### Coverage
+
+⚑ **Requirement 3 is served by no row**, enumerated as `GAP-08`: reaching the
+reference semantics in `lib/lowering/tal/spec.chiral` is adoption of a built
+thing, and every row here is deferred, so nothing schedules it.
+
+Requirements 1, 2 and 4 are served: 1 by O1, 2 by O2, 4 by O3. Every row serves
+one. **Every row is deferred by author call**, so the coverage states what would
+be scheduled if the track reopened.
 
 ## REQUIREMENTS
 

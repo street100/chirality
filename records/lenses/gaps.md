@@ -99,3 +99,17 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-05
 - owner:    none
 - from:     none
+
+### GAP-08 ownership-and-trust-arc requirement 3 has no roster row
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    arc
+- about:    ownership-and-trust/req3
+- claim:    docs/arcs/ownership-and-trust-arc.md REQUIREMENTS 3: "The reference semantics is reached."
+- measured: converting the arc to the 8-column roster on 2026-09-05 showed requirement 3 served by none of O1 to O3. It is adoption of a built thing rather than a deliverable, and the whole arc is deferred by author call, so nothing schedules it.
+- evidence: docs/arcs/ownership-and-trust-arc.md
+- checked:  2026-09-05
+- owner:    none
+- from:     none
