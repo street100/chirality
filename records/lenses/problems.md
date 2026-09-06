@@ -963,10 +963,10 @@
 - level:    doc
 - about:    records/README.md
 - claim:    records/README.md, Evidence is mandatory: "`evidence:` names files and line spans. A row nobody can re-run is worthless."
-- measured: measured 2026-09-05 over every live row in records/ and records/lenses/: **123 of 153 carry file:line evidence and name no command**. 30 name a re-runnable one (a tools/test gate, a python3 tool, git ls-files, find). A file:line span shows WHERE a thing was seen and does not reproduce the NUMBER: PRB-43 claims 1,475 of 1,481 TFns accept under two checker relaxations, and no gate in tools/test/ reproduces that census, so check AI can say the row is unverified and nobody can say what it reads today. This is why 60 AI findings cannot be closed by reading.
+- measured: **RE-MEASURED 2026-09-06: 66 rows name a command, against 30 when this row was filed.** 125 still carry file:line only. The 36 that moved were closed by writing the instrument rather than the number: `ledger-lint --census` for the span counts, printf-and-run fixtures for the compile probes, and named gates for the rest. ⚑ The single biggest remaining block is the TFn census, which three rows rest on and which is now buildable as `enforcement/N12`. ORIGINAL READING: measured 2026-09-05 over every live row in records/ and records/lenses/: **123 of 153 carry file:line evidence and name no command**. 30 name a re-runnable one (a tools/test gate, a python3 tool, git ls-files, find). A file:line span shows WHERE a thing was seen and does not reproduce the NUMBER: PRB-43 claims 1,475 of 1,481 TFns accept under two checker relaxations, and no gate in tools/test/ reproduces that census, so check AI can say the row is unverified and nobody can say what it reads today. This is why 60 AI findings cannot be closed by reading.
 - evidence: records/README.md, tools/test/tal-check.sh (the nearest gate, which measures 20 ok 1 FAIL and not the census), records/lenses/problems.md
-- checked:  2026-09-05
-- owner:    none
+- checked:  2026-09-06
+- owner:    enforcement/N12 for the census; the rest is per-row
 - from:     none
 
 ### PRB-70 G18 is a true positive: check.chiral entered the compiler closure
