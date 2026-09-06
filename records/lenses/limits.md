@@ -9,10 +9,10 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - note:     none
 - level:    doc
 - about:    tools/ledger-lint/ledger-lint.py
-- claim:    `ledger-lint` runs 19 checks.
+- claim:    `ledger-lint` runs 36 checks, A through AJ, re-measured 2026-09-05. It ran 19 when this row was written.
 - measured: H and M print `VACUOUS` and say so in the run's own output. H verified the idioms cheatsheet against `refine.py`, cut with the Python oracle. M guarded a scaffold-to-TUI symlink web dissolved by the migration. Both subjects are genuinely gone, which is why this is ACCEPTED and not OPEN. H is repointable at `lib/typing/refine.chiral:11` and `lib/module/loader.chiral:20`, both live; that repoint was measured against live files. M has no live subject.
-- evidence: `tools/ledger-lint/ledger-lint.py:450`, `:662`
-- checked:  2026-09-01
+- evidence: `tools/ledger-lint/ledger-lint.py:517` (check H), `:729` (check M)
+- checked:  2026-09-05
 - owner:    none
 - from:     BA-03
 
@@ -81,8 +81,8 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    the banks' detached convention is `ports.chiral` … (`:19`), a bare line span resolving against the last file named.
 - measured: 161 of the 862 spans are a bare `:NN` whose paragraph names no resolvable file. Before BA-02's ctx fix they were read against whatever file resolved last, sometimes hundreds of lines earlier and about a different module. ACCEPTED because abstaining is the only sound option: a bare span read against the wrong file is a guess, and CLAUDE.md forbids aiming a check at one. Recovering them means the docs naming the file in the paragraph. The check guessing harder is the thing this row forbids.
-- evidence: `tools/ledger-lint/ledger-lint.py:376`, `:458`
-- checked:  2026-09-01
+- evidence: `tools/ledger-lint/ledger-lint.py:369` (`_find_src`), `:379` (check G)
+- checked:  2026-09-05
 - owner:    none
 - from:     BA-21
 
@@ -207,8 +207,8 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    [[arcs/zero-python-arc]] treats the Python tier as tooling to be replaced, and enforcement requirement 5 counts its 4,786 lines in the 12,450 outside the language.
 - measured: the count is right and the shape is different from the shell's. Nine `.py` files under `tools/` make **zero** invocations of a classic Unix tool. Every `subprocess` call is to `git` (`tools/ledger-lint/ledger-lint.py:1038`, `:1047`, `:1588`; `tools/frontier/frontier.py:254`) or to `sys.executable` re-entering a tool in this tree (`tools/doc/doc.py:204`; `tools/capture/capture.py:225`, `:444`). The classic-tool jobs are done in process: 172 `re` operations, 60 sorts, 15 directory walks and 9 `hashlib` uses, of which `ledger-lint.py` holds 87 regex operations and 27 sorts. None of it runs inside a gate, so this tier has no 1a and no 1b, and a per-tool port is the only shape available. Accepted as a measurement rather than a defect.
-- evidence: `tools/ledger-lint/ledger-lint.py:1034-1048`, `:1586-1590`; `tools/frontier/frontier.py:250-254`; `tools/doc/doc.py:204`; `tools/capture/capture.py:225`, `:444`
-- checked:  2026-09-04
+- evidence: `tools/ledger-lint/ledger-lint.py:1046`, `:1055`, `:1597`, `:2097` (every subprocess call is to git); `tools/frontier/frontier.py:250-254`; `tools/doc/doc.py:204`
+- checked:  2026-09-05
 - owner:    none
 - from:     TC-10
 

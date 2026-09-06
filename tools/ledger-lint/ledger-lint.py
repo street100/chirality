@@ -2325,9 +2325,17 @@ def _finding_parts(e: str):
     m = re.match(r"\[([A-Z]{1,2})\]\s*(.*)", e.strip())
     if not m:
         return "?", "?", e
-    body = m.group(2)
+    chk, body = m.group(1), m.group(2)
+    # AI names two files: the lens or record the row lives in, and the file
+    # whose change made it unverified. Grouping on the first puts all 50 lens
+    # rows in one bucket, which is not a task. The unit of work is the file
+    # that MOVED: re-read it once and every row citing it can be re-verified.
+    if chk == "AI":
+        mv = re.search(r"and ([A-Za-z0-9_./-]+) changed", body)
+        if mv:
+            return chk, mv.group(1), body
     sm = _SUBJ.search(body)
-    return m.group(1), (sm.group(1) if sm else "?"), body
+    return chk, (sm.group(1) if sm else "?"), body
 
 
 def guide_next(all_errs, vacuous, scanned_tier=None):

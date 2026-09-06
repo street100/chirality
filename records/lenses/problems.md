@@ -135,8 +135,8 @@
 - about:    lib/ports/ports.chiral
 - claim:    checks G and R are the tree's line-citation gates.
 - measured: both walk `docs/**/*.md` and both require the citation to sit inside a backtick code span. `lib/` and `prog/` comments carry 59 line-numbered citations across 34 files, and not one is inside a code span or inside a doc. BA-13 is one of them: `(compile-emit.chiral:189)` in a `;` comment, bare parentheses. R could not reach it even with BA-02 fixed, and R's DEFINED-here limit rules it out a second time, because `native-lib` is defined in `lowering/tal/bytes.chiral:636` rather than in the file the comment cites. A gate for this class would be a third predicate. Neither existing one widens to reach it.
-- evidence: `lib/ports/ports.chiral:28`, `lib/lowering/tal/bytes.chiral:636`, `tools/ledger-lint/ledger-lint.py:373`, `:455`
-- checked:  2026-09-01
+- evidence: `lib/ports/ports.chiral:28`, `lib/lowering/tal/bytes.chiral:636`, `tools/ledger-lint/ledger-lint.py:379` (check G), `:443` (check R)
+- checked:  2026-09-05
 - owner:    none
 - from:     BA-19
 
@@ -149,8 +149,8 @@
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    the migration is complete and the map records where each original went.
 - measured: of 862 line-numbered citation spans in `docs/`, 294 name a file `_find_src` cannot open. They are pre-migration paths: `scaffold/lib/…`, `chirality/…`, and basenames whose file was deleted. G and R skip them by design, since naming an unbuilt file in residue is legitimate, so the count is the size of the class and not a defect list. Repointing them is a guess without the old tree, and `/workspace/metis-the-lang` is read-only reference. Nothing distinguishes a legitimately-unbuilt name from a rotted one today.
-- evidence: `tools/ledger-lint/ledger-lint.py:345`, `.planning/MIGRATION-MAP.tsv`
-- checked:  2026-09-01
+- evidence: `tools/ledger-lint/ledger-lint.py:369` (`_find_src`), `.planning/MIGRATION-MAP.tsv`
+- checked:  2026-09-05
 - owner:    none
 - from:     BA-20
 
@@ -163,8 +163,8 @@
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    worked examples are the design rationale for an element and are kept as written.
 - measured: with BA-02 fixed, G reports 17 and R 17, every one under `docs/examples/`. No doc under `banks/`, `definitions/`, `decisions/`, `modules/` or `elements/` fails either check. G's 17 are 12 citations of `ports.chiral` at lines 70 through 185 against a 63-line façade, which is the pre-split monolith and needs the old tree to repoint; 2 of `alloc.chiral` at line 43 against 35 lines; 2 of `compile-emit.chiral` at 322 through 348 against 330; and one of `diag.chiral` at 704 against 693. R's 17 each cite a live symbol at a line other than its definition, some off by a banner (`backend.chiral` line 37 for `be-base`, defined at 38; `kernel.chiral` line 91 for `KCat`, defined at 101) and some at a line the element's own commits moved, where the surrounding prose quotes the pre-change source. Repointing that second group would make the narrative describe the wrong file. `docs/decisions/decision-scope.md` already records the same tier stance for the `ours_source:` paths and calls a bulk rewrite its own call. Nothing repointed here. ⚑ Re-measured 2026-09-04: G reports 74 and R reports 132, and the class has spread past `docs/examples/`. G's 74 and R's 132 both land under `docs/elements/specs/` as well, which the 17-and-17 reading did not cover. The policy the row states is unchanged and nothing was repointed here; only the size of the class is newer. The structural fix stays `P4` and `UNASSIGNED`, because repointing by hand is undone by the next insertion, which is BA-13.
-- evidence: `python3 tools/ledger-lint/ledger-lint.py` checks G and R, `docs/decisions/decision-scope.md`:194`
-- checked:  2026-09-04
+- evidence: `python3 tools/ledger-lint/ledger-lint.py --only G,R`, `docs/decisions/decision-scope.md:194`
+- checked:  2026-09-05
 - owner:    none
 - from:     BA-22
 
@@ -177,8 +177,8 @@
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    check A is "ledger evidence paths exist".
 - measured: 5 issues, all module keys rather than paths: `surface/pretty`, `typing/pretty`, `surface/parse`, `typing/`. `is_pathish` accepts any token containing a slash, and `resolve` then tests `ROOT/surface/pretty`, which is nowhere a module lives. E181's row added the ones that fail today, so the check went red on a correct citation. It is the mirror of BA-02: a check whose resolver does not know the tree's own naming rule. `docs/decisions/decision-scope.md` still records check I as the only FAIL, which predates this. ⚑ Re-measured 2026-09-04: check A reports 0 issues, and the row stays OPEN because that is no fix. `is_pathish` at `tools/ledger-lint/ledger-lint.py:64` is unchanged since `ffffb9a`, and it still reads any token holding a slash as a filesystem path. What moved is the subject: `b5994d0` rewrote the ledger and the module keys it cites now sit in bold rather than inside the backtick code spans check A scans, so `typing/pretty` at `docs/definitions/status-ledger.md:66` is invisible to the check. The next module-key citation written inside a code span fires it again. Do not close this row on the green check.
-- evidence: `tools/ledger-lint/ledger-lint.py:64`, `docs/definitions/status-ledger.md:66`, `:68`
-- checked:  2026-09-04
+- evidence: `tools/ledger-lint/ledger-lint.py:64` (`is_pathish`), `docs/definitions/status-ledger.md:66`, `:68`
+- checked:  2026-09-05
 - owner:    none
 - from:     BA-23
 
@@ -905,8 +905,8 @@
 - about:    tools/test/map-integrity.sh
 - claim:    `tools/test/map-integrity.sh:7-8` reads "Not a suite phase: the map lives under `.planning/`, which is not tracked, so a fresh checkout has no map to check."
 - measured: `.planning/` has been tracked since 2026-09-01 by `docs/decisions/decision-ai-tier.md`. `git ls-files .planning | wc -l` returns **147**, and `git ls-files .planning/MIGRATION-MAP.tsv` returns the map itself, so a fresh checkout does have a map to check. This is the same false claim `ledger-lint` check Z drives to zero in the doc tier; Z scans `docs/` and `.claude/skills/` and reports 5 live instances, and it does not scan `tools/`, so this one is invisible to the lint. The exclusion may still be right for another reason. The reason written down is not.
-- evidence: `tools/test/map-integrity.sh:7-8`; `docs/decisions/decision-ai-tier.md`; `tools/ledger-lint/ledger-lint.py:1586-1590`
-- checked:  2026-09-04
+- evidence: `tools/test/map-integrity.sh:7-8`; `docs/decisions/decision-ai-tier.md`; `tools/ledger-lint/ledger-lint.py:1597`
+- checked:  2026-09-05
 - owner:    none
 - from:     TC-09
 
