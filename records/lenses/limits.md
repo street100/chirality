@@ -38,9 +38,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    source
 - about:    lib/ports/ports.chiral
 - claim:    nine port registries under `lib/ports/`, one per concern, with `ports/ports.chiral` as the façade.
-- measured: the file's own header says the split "is worth exactly 0 bytes at runtime", because the image is `native-lib` prepended to `link-lib` prepended to the object, unconditionally. Verified: `(let (image (app-tfn native-lib (app-tfn link-lib obj)))` with no reference to the declared port set. A program importing one registry and a program importing all nine emit the same size. So the port floor narrows what a module may NAME, and the H8 profile gate narrows what it may CALL, and neither narrows the emitted bytes. ACCEPTED because the header states it plainly. Recorded because two documents describe it as a floor without saying so.
-- evidence: `lib/ports/ports.chiral:26-30`, `lib/lowering/compile-emit.chiral:295`
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-06: unchanged, and the seam widened. `lib/ports/ports.chiral` has **46** importers under `lib/` and `prog/`. The file's own header still says the split is worth exactly 0 bytes at runtime, because the image is `native-lib` prepended to `link-lib` prepended to the object unconditionally. The floor is a naming boundary, which is why this is a limit at `accepted` and not a defect.
+- evidence: re-runnable: `grep -rl 'ports/ports' --include='*.chiral' lib/ prog/ | wc -l` returns 46. `lib/ports/ports.chiral`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-12
 

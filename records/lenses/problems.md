@@ -134,9 +134,9 @@
 - level:    source
 - about:    lib/ports/ports.chiral
 - claim:    checks G and R are the tree's line-citation gates.
-- measured: ⚑ citations repointed 2026-09-05 after ledger-lint.py grew ~400 lines; the measurement itself was NOT re-taken, so this row stays unverified. both walk `docs/**/*.md` and both require the citation to sit inside a backtick code span. `lib/` and `prog/` comments carry 59 line-numbered citations across 34 files, and not one is inside a code span or inside a doc. BA-13 is one of them: `(compile-emit.chiral:189)` in a `;` comment, bare parentheses. R could not reach it even with BA-02 fixed, and R's DEFINED-here limit rules it out a second time, because `native-lib` is defined in `lowering/tal/bytes.chiral:636` rather than in the file the comment cites. A gate for this class would be a third predicate. Neither existing one widens to reach it.
-- evidence: `lib/ports/ports.chiral:28`, `lib/lowering/tal/bytes.chiral:636`, `tools/ledger-lint/ledger-lint.py:379` (check G), `:443` (check R)
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-06: still true and the count grew. `lib/` and `prog/` comments carry **75** line-numbered citations across **35** files, against the 59 across 34 this row recorded. Checks G and R both walk `docs/**/*.md` and both require the citation inside a backtick code span, so not one of the 75 is read by any gate.
+- evidence: re-runnable: `grep -rhoE '[a-z0-9_/-]+\.(chiral|prog):[0-9]+' --include='*.chiral' --include='*.prog' lib/ prog/ | wc -l` returns 75. `tools/ledger-lint/ledger-lint.py:379` (check G), `:443` (check R)
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-19
 
@@ -204,9 +204,9 @@
 - level:    source
 - about:    lib/lowering/tal/check.chiral
 - claim:    the tree lowers through typed assembly before machine code.
-- measured: code does pass through TAL IR: `compile-emit` imports `lowering/tal/reify` and `lowering/x64/emit`. The check on that IR does not run. `ck-prog` and `ck-block` have zero callers. `ck-fn`'s only caller is `re-check` at `lib/lowering/upper/optimize.chiral:250`, and `optimize.chiral` has zero importers, so the one call site is unreachable. The compile path is `compile-front` then `compile-back` then `compile-emit`, and none of the three references a tal check. ⚑ Re-measured 2026-09-04, and the row stays OPEN. The unreachability is unchanged: `ck-prog` has zero callers, `ck-fn`'s only caller is `re-check` at `lib/lowering/upper/optimize.chiral:250`, `optimize.chiral` has zero importers, and `compile-emit` imports `lowering/tal/reify` and `lowering/x64/emit` and no tal check. Two blockers under it moved. `5b4fb71` prefixed eleven of the module's internal names `tck-`, so `lib/lowering/tal/check.chiral` loads beside `typing/kernel` without the `data redeclared: CkR` collision its own header at `:26` records, which is what wiring it needs. `ddfbc27` made `ck-prog` agree with the compiler and added Phase 22 as `tools/test/tal-check.sh`: 16 hand-built TFns, nine REJECT rows, three mutants. ⚑ Phase 22 is unregistered in `tools/test/run-tests.sh` by decision, the `crypto.sh` precedent, so the suite's 339 excludes it and it runs by hand. `tools/test/tal-check.sh:380` gate G17 pins this row's subject as a green assertion: no module under `lib/` or `prog/` imports both `typing/kernel` and `lowering/tal/check`.
-- evidence: `lib/lowering/tal/check.chiral:26`, `:289`, `:308`, `lib/lowering/upper/optimize.chiral:250`, `lib/lowering/compile-emit.chiral:14-18`, `tools/test/tal-check.sh:380`
-- checked:  2026-09-04
+- measured: RE-MEASURED 2026-09-06: still true. `ck-prog` and `ck-block` appear only inside `lib/lowering/tal/check.chiral` itself, 3 occurrences there and zero anywhere else under `lib/`. The TAL IR is on the compile path, `compile-emit` importing `lowering/tal/reify` and `lowering/x64/emit`, and the check over that IR is reached by nothing. ⚑ `check.chiral` has since ENTERED the compiler closure (PRB-70), so the module is compiled in while its entry point stays uncalled: the SEEDED rung exactly.
+- evidence: re-runnable: `grep -rn '(ck-prog\|(ck-block' --include='*.chiral' lib/` returns hits only in `lowering/tal/check.chiral`. `enforcement/N8`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-26
 
@@ -472,9 +472,9 @@
 - level:    source
 - about:    lib/lowering/upper/optimize.chiral
 - claim:    `records/lane-a-record.md:149` says `lowering/upper/optimize` "holds the only `ck-fn` call in the tree, at `:250`".
-- measured: REFUTED as stated. A second call sits inside `check.chiral` itself, in `ck-fns`, which `ck-prog` folds over the program. So `check.chiral` is the defining module and it calls its own `ck-fn`. The corrected claim is that `optimize.chiral:250` is the only call site outside `check.chiral`. The downstream conclusion survives unchanged: nothing on the compile path calls `ck-fn`.
-- evidence: `lib/lowering/upper/optimize.chiral:250`, `lib/lowering/tal/check.chiral:240-241`, `:250-256`, `:259-263`
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-06: the refutation holds and the sites moved. `(ck-fn ` now resolves to three places: `lib/lowering/upper/optimize.chiral:250` (the `re-check` this row was filed against), `lib/lowering/tal/check.chiral:303` inside `ck-fns`, which `ck-prog` folds over the program, and a comment at `lib/lowering/tal/sys-check.chiral:4`. So `optimize.chiral:250` was never the only call site, which is what this row established.
+- evidence: re-runnable: `grep -rn '(ck-fn ' --include='*.chiral' lib/` returns three hits. `lib/lowering/tal/check.chiral:303`, `lib/lowering/upper/optimize.chiral:250`
+- checked:  2026-09-06
 - owner:    none
 - from:     EN-02
 
