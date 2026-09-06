@@ -2127,13 +2127,7 @@ def check_aa() -> list[str]:
     return errs
 
 
-def main() -> int:
-    rc = preflight()
-    if rc:
-        return rc
-    all_errs: list[str] = []
-    vacuous: list[tuple] = []
-    for name, fn in (("A evidence paths", check_a),
+CHECKS = (("A evidence paths", check_a),
                      ("B principle numbers", check_b),
                      ("C CONTENTS counts", check_c),
                      ("D banks tier", check_d),
@@ -2168,16 +2162,209 @@ def main() -> int:
                      ("AG arc roster schema and coverage", check_ag),
                      ("AH roster state vs its artifact", check_ah),
                      ("AI rows whose evidence moved", check_ai),
-                     ("AJ the deferral rule", check_aj)):
+          ("AJ the deferral rule", check_aj))
+
+
+# ── the guide ─────────────────────────────────────────────────────────────────
+# A dump of 111 findings is a list nobody works. --next scans, groups the
+# findings by the single file each one is fixed in, ranks the groups, and hands
+# back ONE task with the protocol that governs it and the command that verifies
+# it. Work that task, run --next again, repeat. That is the loop the author
+# asked for: no bulk, single task, reselect.
+
+# tier 1 blocks other checks from running at all
+# tier 2 the spine, top down: goal, arc, roster, element
+# tier 3 citation and evidence truth
+# tier 4 counts and generated artifacts
+GUIDE = {
+    "AG": (1, "docs/arcs/README.md, `What an arc file carries` and `The roster`",
+           "The arc carries the 8-column roster (row what group kind origin req "
+           "state element) and the coverage check: every requirement served by a "
+           "row, every row serving a requirement. Until an arc has the `req` and "
+           "`state` columns, checks AG-coverage and AH cannot see it at all.",
+           "AG,AH"),
+    "AF": (2, "docs/goals/README.md and .claude/skills/goal-open",
+           "`## What done means` carries NUMBERED conditions, each checkable, each "
+           "naming its arc with [[arcs/<name>]] or saying it is unopened. An arc "
+           "cites a numbered condition, so an unnumbered goal cannot be served.",
+           "AF"),
+    "AE": (2, "docs/goals/README.md and docs/elements/README.md",
+           "A mint writes both the catalog row and the ledger row. An unbuilt "
+           "element is named by an arc, or enumerated in records/lenses/unspoken.md.",
+           "AE"),
+    "AC": (2, "docs/definitions/status-ledger.md",
+           "The ledger's build state and the pipeline state agree, or the "
+           "disagreement is recorded as a row that says which side is wrong.",
+           "AC"),
+    "N":  (2, "docs/definitions/status-ledger.md",
+           "Same as AC, and this one is already flagged in its row rather than "
+           "failing. Closing it means moving one side or retiring the row.",
+           "N"),
+    "AI": (3, "records/lenses/README.md, `Re-verifying`",
+           "A row whose `checked:` predates the last change to the files it cites "
+           "is unverified. Re-read the evidence, then either refresh `checked:` "
+           "with what you measured, or move the row's state. The `revisit` skill "
+           "is the run: one artifact, one trigger, a closed verdict set.",
+           "AI"),
+    "AJ": (3, "docs/definitions/working-discipline.md, the deferral rule",
+           "Every `E#` a doc names is already minted. Name a roster row instead.",
+           "AJ"),
+    "I":  (4, "tools/frontier/frontier.py",
+           "FRONTIER.md is generated. A source moved, so re-condense it: "
+           "`python3 tools/frontier/frontier.py condense`.",
+           "I"),
+    "C":  (4, "CONTENTS.md",
+           "The counts CONTENTS states match the tree.", "C"),
+}
+_DEFAULT = (3, "the check's own docstring in tools/ledger-lint/ledger-lint.py",
+            "See the finding text: it names both sides of the disagreement.", "")
+
+_SUBJ = re.compile(r"([A-Za-z0-9_./-]+\.(?:md|py|sh|chiral|prog|tsv))")
+
+
+def _finding_parts(e: str):
+    """(check, subject file, text). The subject is the file the fix lands in,
+    which is the first path the finding names."""
+    m = re.match(r"\[([A-Z]{1,2})\]\s*(.*)", e.strip())
+    if not m:
+        return "?", "?", e
+    body = m.group(2)
+    sm = _SUBJ.search(body)
+    return m.group(1), (sm.group(1) if sm else "?"), body
+
+
+def guide_next(all_errs, vacuous, scanned_tier=None):
+    groups: dict[tuple, list] = {}
+    for e in all_errs:
+        chk, subj, body = _finding_parts(e)
+        groups.setdefault((chk, subj), []).append(body)
+    if not groups:
+        print("\nledger-lint --next: nothing to select. Every check is clean or "
+              "named VACUOUS.")
+        for name, why in vacuous:
+            print(f"  VACUOUS {name}: {why}")
+        return 0
+
+    def rank(k):
+        chk, subj = k
+        tier = GUIDE.get(chk, _DEFAULT)[0]
+        return (tier, -len(groups[k]), chk, subj)
+
+    order = sorted(groups, key=rank)
+    chk, subj = order[0]
+    hits = groups[(chk, subj)]
+    tier, authority, shape, verify = GUIDE.get(chk, _DEFAULT)
+
+    print("\n" + "=" * 74)
+    print(f"NEXT TASK  —  check {chk}  —  {subj}")
+    print("=" * 74)
+    print(f"\n{len(hits)} finding(s) in this file, from one check. Fix THIS FILE "
+          f"only, then re-run --next.\n")
+    for h in hits[:30]:
+        print(f"  - {h}")
+    if len(hits) > 30:
+        print(f"  ... and {len(hits) - 30} more in the same file")
+    print(f"\nWHY THIS ONE\n  tier {tier}"
+          + ("  (it blocks other checks from running at all)" if tier == 1 else
+             "  (spine order: goal, then arc, then roster, then element)" if tier == 2 else
+             "  (citation and evidence truth)" if tier == 3 else
+             "  (counts and generated artifacts)")
+          + f"\n  {len(hits)} finding(s) close together in one file.")
+    print(f"\nTHE PROTOCOL\n  {authority}")
+    print(f"\nWHAT IN-PROTOCOL LOOKS LIKE")
+    for line in _wrap(shape, 70):
+        print(f"  {line}")
+    print(f"\nVERIFY\n  python3 tools/ledger-lint/ledger-lint.py --only "
+          f"{verify or chk}")
+    scope = (f"in tier {scanned_tier}" if scanned_tier else "across every check")
+    print(f"\nREMAINING {scope}\n  {len(all_errs)} finding(s) in {len(groups)} "
+          f"file-and-check group(s).")
+    if scanned_tier:
+        print(f"  Lower tiers were not scanned: nothing below tier {scanned_tier} "
+              f"can outrank this.")
+    by_check: dict[str, int] = {}
+    for (c, _), v in groups.items():
+        by_check[c] = by_check.get(c, 0) + len(v)
+    print("  " + ", ".join(f"{c} {n}" for c, n in sorted(by_check.items())))
+    print()
+    return 1
+
+
+def _wrap(text, width):
+    out, cur = [], ""
+    for w in text.split():
+        if len(cur) + len(w) + 1 > width:
+            out.append(cur)
+            cur = w
+        else:
+            cur = f"{cur} {w}".strip()
+    if cur:
+        out.append(cur)
+    return out
+
+
+def _run(checks, quiet=False):
+    errs: list[str] = []
+    vac: list[tuple] = []
+    for name, fn in checks:
+        try:
+            e = fn()
+        except Vacuous as v:
+            vac.append((name, str(v)))
+            continue
+        errs += e
+        if not quiet:
+            print(f"  [{'FAIL' if e else 'ok'}] {name} ({len(e)} issue(s))")
+    return errs, vac
+
+
+def main() -> int:
+    only = None
+    nxt = "--next" in sys.argv
+    for i, a in enumerate(sys.argv):
+        if a == "--only" and i + 1 < len(sys.argv):
+            only = {x.strip().upper() for x in sys.argv[i + 1].split(",")}
+    rc = preflight()
+    if rc:
+        return rc
+
+    # --next scans in TIER order and stops at the first tier that yields work.
+    # A full pass is ~45s, and the loop the author asked for runs it after every
+    # single fix. Scanning tier 1 alone answers "what is next" in a fraction of
+    # that, and the tier below cannot outrank what tier 1 already found.
+    order = CHECKS
+    if nxt:
+        for tier in (1, 2, 3, 4):
+            sel = [c for c in CHECKS
+                   if GUIDE.get(c[0].split()[0], _DEFAULT)[0] == tier]
+            if not sel:
+                continue
+            errs, vac = _run(sel, quiet=True)
+            if errs:
+                return guide_next(errs, vac, tier)
+        print("\nledger-lint --next: nothing to select. Every check that can "
+              "name a next task is clean.")
+        return 0
+
+    all_errs: list[str] = []
+    vacuous: list[tuple] = []
+    for name, fn in order:
+        code = name.split()[0]
+        if only and code not in only:
+            continue
         try:
             errs = fn()
         except Vacuous as v:
             vacuous.append((name, str(v)))
-            print(f"  [VACUOUS] {name} -- subject gone, checked nothing")
+            if not nxt:
+                print(f"  [VACUOUS] {name} -- subject gone, checked nothing")
             continue
         all_errs += errs
         status = "FAIL" if errs else "ok"
-        print(f"  [{status}] {name} ({len(errs)} issue(s))")
+        if not nxt:
+            print(f"  [{status}] {name} ({len(errs)} issue(s))")
+    if nxt:
+        return guide_next(all_errs, vacuous)
     if vacuous:
         print("\nchecked nothing, and named rather than counted as clean:\n")
         for name, why in vacuous:
