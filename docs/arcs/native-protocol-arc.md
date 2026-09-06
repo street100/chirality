@@ -57,7 +57,7 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
-| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class. slices 1 and 2 built and gated 2026-09-03, slices 3 and 4 open. ⚑ **The reference class is pre-quantum and [[goals/own-web]] condition 4 states a post-quantum target.** Measured 2026-09-05: zero mentions of post-quantum across this arc, `docs/examples/N01-crypto-kernels.md`, its SPEC and the checklist. `.planning/CRYPTO-MODEL.md` holds the re-scope, and slices 3 and 4 are specced against a suite the target abandons | kernels | primitive | new | 2 | building | `unminted` |
+| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class. slices 1 and 2 built and gated 2026-09-03, slices 3 and 4 open. ⚑ **The reference class is pre-quantum and [[goals/own-web]] condition 4 states a post-quantum target.** Measured 2026-09-05: zero mentions of post-quantum across this arc, `docs/examples/N01-crypto-kernels.md`, its SPEC and the checklist. `.planning/CRYPTO-MODEL.md` holds the re-scope, and slices 3 and 4 are specced against a suite the target abandons  ⚑ **MARKED 2026-09-06: pre-quantum.** Slices 1 and 2 are built and gated against WireGuard's suite, which is pre-quantum. [[goals/own-web]] condition 4 states a post-quantum target and `.planning/CRYPTO-MODEL.md` holds a re-scope with twelve decisions. The two built slices stand as pre-quantum work; N10 carries the re-scope. | kernels | primitive | new | 2 | building | `unminted` |
 | `native-protocol/N2` | the entropy crossing. not started | crossings | port | new | 3 | open | `unminted` |
 | `native-protocol/N3` | listen-side AF_INET, and UDP if the handshake wants it. not started | transport | port | new | 1 | open | `unminted` |
 | `native-protocol/N4` | the handshake and framing, Noise reference class, shrednet identity model as base. not started | transport | law | new | 1 | open | `unminted` |
@@ -66,12 +66,17 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
 | `native-protocol/N7` | Shamir over GF(256): split, reconstruct, quorum agreement, corrupted-share detection. pre-run done. Example `92b0660`, EXAMPLE audit PASS `0bd65dd`, `docs/examples/INDEX.md` row reads `reviewed`. SPEC not written | split | law | new | 5 | open | `unminted` |
 | `native-protocol/N8` | the split store: seal then split, distribution, the return track with disagreement handling. not started | split | primitive | new | 5 | open | `unminted` |
 | `native-protocol/N9` | the universal crossing trait: a crossing's TAL stub synthesized from its declared type, so a new port extends a table instead of TAL code. not started | crossings | law | new | 1 | open | `unminted` |
+| `native-protocol/N10` | the post-quantum re-scope: `.planning/CRYPTO-MODEL.md`'s twelve decisions applied to the kernel set, and what happens to N1's two built pre-quantum slices | kernels | decision | new | 2 | open | `unminted` |
 
 ### Coverage
 
-Every requirement is served: 1 by N3, N4 and N9; 2 by N1 and N6; 3 by N2; 4 by
-N5; 5 by N7 and N8. Every row serves one, and every `origin` is `new`: this arc
-builds a floor the tree does not have.
+Every requirement is served: 1 by N3, N4 and N9; 2 by N1, N6 and N10; 3 by N2;
+4 by N5; 5 by N7 and N8. Every row serves one, and every `origin` is `new`: this
+arc builds a floor the tree does not have.
+
+`N10` was opened 2026-09-06. The post-quantum question stood as an author call
+reading "what happens to the two built slices"; marking them pre-quantum and
+rostering the re-scope answers it without discarding measured work.
 
 ## Resume state
 

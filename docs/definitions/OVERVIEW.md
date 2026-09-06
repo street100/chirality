@@ -40,8 +40,8 @@ updated: 2026-09-06
 - **5.** The frame. A frame is a function of state and time. Unopened, and it holds no arc file.
       arc: UNOPENED
 
-### arc `display-calculus-arc`: 19 roster row(s)
-  state: open 19
+### arc `display-calculus-arc`: 20 roster row(s)
+  state: open 20
 
 ## enforcement
 
@@ -92,6 +92,9 @@ updated: 2026-09-06
 - **6.** A CPU is enough. The whole path above runs on a CPU. A GPU is an accelerator this goal doe
       arc: UNOPENED
 
+### arc `memory-discipline-arc`: 7 roster row(s)
+  state: built 1, open 6
+
 ### arc `scriba-arc`: 6 roster row(s)
   state: open 6
 
@@ -132,11 +135,11 @@ updated: 2026-09-06
 ### arc `native-document-arc`: 4 roster row(s)
   state: open 4
 
-### arc `native-protocol-arc`: 9 roster row(s)
-  state: building 1, open 8
+### arc `native-protocol-arc`: 10 roster row(s)
+  state: building 1, open 9
 
-### arc `native-window-arc`: 4 roster row(s)
-  state: open 4
+### arc `native-window-arc`: 6 roster row(s)
+  state: open 6
 
 ## own-web
 
@@ -239,15 +242,15 @@ updated: 2026-09-06
 
 ## Unscheduled
 
-48 unbuilt element(s) named by no arc. Each is territory with no ruling, and the unspoken lens is where that gets tracked.
+42 unbuilt element(s) named by no arc. Each is territory with no ruling, and the unspoken lens is where that gets tracked.
 
-  E22, E35, E36, E37, E38, E39, E41, E43, E44, E45, E46, E47, E48, E49, E54, E55, E57, E58, E59, E60, E61, E62, E63, E73, E74, E75, E77, E78, E80, E82, E83, E84, E85, E94, E102, E128, E142, E143, E149, E153, E162, E164, E165, E167, E169, E170, E171, E172
+  E35, E36, E37, E39, E41, E43, E44, E45, E46, E47, E48, E49, E54, E55, E57, E58, E59, E60, E61, E62, E63, E73, E74, E75, E77, E78, E80, E94, E102, E128, E142, E143, E149, E153, E162, E164, E165, E167, E169, E170, E171, E172
 
 ## The lenses
 
-- **problem** (PRB-): 69 row(s), 69 unreviewed. OPEN 69
+- **problem** (PRB-): 71 row(s), 71 unreviewed. OPEN 71
 - **gap** (GAP-): 18 row(s), 12 unreviewed. closed 6, open 12
 - **limit** (LIM-): 18 row(s), 18 unreviewed. accepted 18
 - **unspoken** (UNS-): 48 row(s), 48 unreviewed. open 48
 
-Roster rows across every arc: 198. Minted from them: 38.
+Roster rows across every arc: 209. Minted from them: 43.

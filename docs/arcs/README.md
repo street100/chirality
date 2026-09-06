@@ -181,6 +181,7 @@ when this table and an arc file disagree.
 | [[arcs/unit-lane-arc]] | [[goals/local-ai]] | 43 rows: `E196` and `E197` both built 2026-09-05, closing N8, N9, N10 and N43, 39 open | `E196-E239` |
 | [[arcs/vocabulary-arc]] | [[goals/own-web]] | 12 rows, none started. `F3`'s shard is built and unmeasured | none |
 | [[arcs/canvas-arc]] | [[goals/own-web]] | 16 rows, none started. Follows the vocabulary arc | none |
+| [[arcs/memory-discipline-arc]] | [[goals/local-ai]] | 7 rows, `E81` built and six open | `E81-E85`, minted |
 
 Four of the twenty hold a reserved `E` band, [[arcs/scriba-arc]] holds the
 `S` namespace and [[arcs/native-protocol-arc]] holds the `N` namespace.
