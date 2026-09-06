@@ -31,16 +31,25 @@ can find does not count.
 
 ## What done means
 
-1. Every claim a tracked document makes is measured and matching, or carries a
-   row saying it does not. A gate that cannot fail is repaired or deleted.
-2. An evaluator can build it from a clean clone: the BUILD RULE runs end to end
-   and the byte-compare holds.
-3. They can run the tests and read the result, and a green suite means what it
-   says.
-4. They can see what is built, what is designed and what is deferred without
-   reading `.planning/`.
-5. They can take a tool without taking the compiler. A text tool that ships the
-   x64 backend misrepresents the architecture to anyone who measures it.
+1. **Every claim a tracked document makes is measured and matching**, or carries
+   a row saying it does not, and a gate that cannot fail is repaired or deleted.
+   Observed by `ledger-lint` exiting 0 or each failing check carrying a row.
+   [[arcs/baseline-alignment-arc]] and [[arcs/presentability-arc]].
+2. **An evaluator can build it from a clean clone**: the BUILD RULE runs end to
+   end and the byte-compare holds. Observed by the generations converging on a
+   fresh clone. [[arcs/presentability-arc]] requirement 1, and
+   [[arcs/binary-split-arc]] row `B5` for the split binaries.
+3. **They can run the tests and read the result**, and a green suite means what
+   it says. Observed by every gate row naming a mutant that is actually run.
+   [[arcs/baseline-alignment-arc]] requirement 1.
+4. **They can see what is built, what is designed and what is deferred without
+   reading `.planning/`.** Observed by `docs/definitions/OVERVIEW.md`
+   regenerating clean over the goals, the arcs, the rosters and the four lenses.
+   [[arcs/presentability-arc]].
+5. **They can take a tool without taking the compiler.** A text tool that ships
+   the x64 backend misrepresents the architecture to anyone who measures it.
+   Observed as `^(end-module "` markers on the tool's blob.
+   [[arcs/binary-split-arc]].
 
 ## State
 
