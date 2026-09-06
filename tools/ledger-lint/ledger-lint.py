@@ -2412,6 +2412,48 @@ def _wrap(text, width):
     return out
 
 
+def census() -> None:
+    """The counts record rows state and cannot re-run.
+
+    PRB-69 measured 123 of 153 live rows naming a file:line and no command.
+    A span count is the commonest of them, and it depends entirely on what
+    counts as a span, which is why LIM-06's 862 and a plausible recount's 5,965
+    are seven times apart. This uses check G's OWN walker, so the number a row
+    cites is the number the gate reads."""
+    total = bare = bare_noctx = resolved = 0
+    for f in doc_tier():
+        ctx = None
+        for ln in f.read_text().splitlines():
+            if not ln.strip():
+                ctx = None
+            for span in re.findall(r"`([^`]+)`", ln):
+                span = span.strip()
+                pm = re.match(r"([A-Za-z0-9_/.-]+\.(?:py|chiral))"
+                              r"(?::(\d+)(?:[\u2013-](\d+))?)?$", span)
+                if pm:
+                    ctx = _find_src(pm.group(1))
+                    if pm.group(2):
+                        total += 1
+                        if ctx is not None:
+                            resolved += 1
+                    continue
+                if PATHSPAN.match(span):
+                    ctx = None
+                    continue
+                if re.match(r":(\d+)(?:[\u2013-](\d+))?$", span):
+                    total += 1
+                    bare += 1
+                    if ctx is None:
+                        bare_noctx += 1
+                    else:
+                        resolved += 1
+    print("# CITATION CENSUS over docs/, using check G's own walker")
+    print(f"  line-numbered spans:                  {total}")
+    print(f"    of those, bare `:NN`:               {bare}")
+    print(f"    bare with no file in the paragraph: {bare_noctx}")
+    print(f"  spans resolving to a file on disk:    {resolved}")
+
+
 def _run(checks, quiet=False):
     errs: list[str] = []
     vac: list[tuple] = []
@@ -2430,6 +2472,9 @@ def _run(checks, quiet=False):
 def main() -> int:
     only = None
     nxt = "--next" in sys.argv
+    if "--census" in sys.argv:
+        census()
+        return 0
     for i, a in enumerate(sys.argv):
         if a == "--only" and i + 1 < len(sys.argv):
             only = {x.strip().upper() for x in sys.argv[i + 1].split(",")}

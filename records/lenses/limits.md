@@ -80,9 +80,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    doc
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    the banks' detached convention is `ports.chiral` … (`:19`), a bare line span resolving against the last file named.
-- measured: ⚑ **RE-MEASUREMENT ATTEMPTED 2026-09-05 AND IT DOES NOT REPRODUCE.** Counting line-numbered citation spans over `docs/` with a plausible definition returns **5,965 spans and 817 bare-with-no-context**, against this row's 862 and 161: seven times and five times apart. The row states its numbers and not the instrument that produced them, so the difference cannot be read as drift or as a defect in either count. It is unreproducible rather than wrong, which is PRB-69 exactly. Closing it means writing the census as a command first. The original reading follows. 161 of the 862 spans are a bare `:NN` whose paragraph names no resolvable file. Before BA-02's ctx fix they were read against whatever file resolved last, sometimes hundreds of lines earlier and about a different module. ACCEPTED because abstaining is the only sound option: a bare span read against the wrong file is a guess, and CLAUDE.md forbids aiming a check at one. Recovering them means the docs naming the file in the paragraph. The check guessing harder is the thing this row forbids.
-- evidence: `tools/ledger-lint/ledger-lint.py:369` (`_find_src`), `:379` (check G)
-- checked:  2026-09-01
+- measured: **RE-MEASURED 2026-09-06 with a command, and the shape holds while every number moved.** `ledger-lint --census` uses check G's own walker, so the figure a row cites is the figure the gate reads: **4,653 line-numbered spans, 2,002 of them bare `:NN`, and 937 bare with no file in the paragraph.** This row read 862 and 161. ⚑ The old figures came from an instrument nobody wrote down, which is why a plausible recount on 2026-09-05 returned 5,965 and 817 and matched neither. The claim the row exists to carry is unchanged: a bare span read against the wrong file is a guess, and BA-02's ctx fix is what stopped it being read against whatever resolved last.
+- evidence: re-runnable: `python3 tools/ledger-lint/ledger-lint.py --census`. `tools/ledger-lint/ledger-lint.py:369` (`_find_src`), `:379` (check G, whose walker the census reuses)
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-21
 

@@ -148,23 +148,23 @@
 - level:    source
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    the migration is complete and the map records where each original went.
-- measured: ⚑ citations repointed 2026-09-05 after ledger-lint.py grew ~400 lines; the measurement itself was NOT re-taken, so this row stays unverified. of 862 line-numbered citation spans in `docs/`, 294 name a file `_find_src` cannot open. They are pre-migration paths: `scaffold/lib/…`, `chirality/…`, and basenames whose file was deleted. G and R skip them by design, since naming an unbuilt file in residue is legitimate, so the count is the size of the class and not a defect list. Repointing them is a guess without the old tree, and `/workspace/metis-the-lang` is read-only reference. Nothing distinguishes a legitimately-unbuilt name from a rotted one today.
-- evidence: `tools/ledger-lint/ledger-lint.py:369` (`_find_src`), `.planning/MIGRATION-MAP.tsv`
-- checked:  2026-09-01
+- measured: **RE-MEASURED 2026-09-06 with a command.** `ledger-lint --census` reports **4,653 line-numbered spans and 3,061 resolving to a file on disk**, so **1,592 do not resolve**. This row read 862 spans and 294 unresolvable. The ratio moved from about a third to about a third, and both absolute figures grew with the corpus. The class is unchanged: pre-migration paths (`scaffold/lib/...`, `chirality/...`) and basenames whose file was deleted, which G and R skip by design so the gate stays silent on them.
+- evidence: re-runnable: `python3 tools/ledger-lint/ledger-lint.py --census`. `tools/ledger-lint/ledger-lint.py:369` (`_find_src`), `.planning/MIGRATION-MAP.tsv`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-20
 
 ### PRB-12 34 citations under `docs/examples/` are stale, and repointing them is a policy call
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    source
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    worked examples are the design rationale for an element and are kept as written.
-- measured: ⚑ citations repointed 2026-09-05 after ledger-lint.py grew ~400 lines; the measurement itself was NOT re-taken, so this row stays unverified. with BA-02 fixed, G reports 17 and R 17, every one under `docs/examples/`. No doc under `banks/`, `definitions/`, `decisions/`, `modules/` or `elements/` fails either check. G's 17 are 12 citations of `ports.chiral` at lines 70 through 185 against a 63-line façade, which is the pre-split monolith and needs the old tree to repoint; 2 of `alloc.chiral` at line 43 against 35 lines; 2 of `compile-emit.chiral` at 322 through 348 against 330; and one of `diag.chiral` at 704 against 693. R's 17 each cite a live symbol at a line other than its definition, some off by a banner (`backend.chiral` line 37 for `be-base`, defined at 38; `kernel.chiral` line 91 for `KCat`, defined at 101) and some at a line the element's own commits moved, where the surrounding prose quotes the pre-change source. Repointing that second group would make the narrative describe the wrong file. `docs/decisions/decision-scope.md` already records the same tier stance for the `ours_source:` paths and calls a bulk rewrite its own call. Nothing repointed here. ⚑ Re-measured 2026-09-04: G reports 74 and R reports 132, and the class has spread past `docs/examples/`. G's 74 and R's 132 both land under `docs/elements/specs/` as well, which the 17-and-17 reading did not cover. The policy the row states is unchanged and nothing was repointed here; only the size of the class is newer. The structural fix stays `P4` and `UNASSIGNED`, because repointing by hand is undone by the next insertion, which is BA-13.
-- evidence: `python3 tools/ledger-lint/ledger-lint.py --only G,R`, `docs/decisions/decision-scope.md:194`
-- checked:  2026-09-04
+- measured: **FIXED, measured 2026-09-06.** `ledger-lint --only G,R` reports **0 and 0**. This row recorded 17 and 17, every one under `docs/examples/`, and asked whether repointing them was a policy call. They are gone, so the policy question is moot: nothing under `docs/examples/` fails either check today.
+- evidence: re-runnable: `python3 tools/ledger-lint/ledger-lint.py --only G,R` reports 0 and 0. `docs/decisions/decision-scope.md:194`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-22
 
