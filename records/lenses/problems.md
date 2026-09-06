@@ -22,9 +22,9 @@
 - level:    source
 - about:    lib/lowering/compile-all.chiral
 - claim:    `bin/chirality check FILE` is documented as "type-check (compile, discard the ELF)".
-- measured: `compile-all` maps `fr-err` (parse, elaborate, typecheck), `br-err` (lowering) and `elf-err` (emit) all to `ca-err`. `prog/compiler.prog` maps every `ca-err` to exit 1, and `cmd_check` reports any nonzero exit as `chirality check: FILE FAILED (exit 1)`. Reproduced with a well-typed program declaring `(profile p (ports halt) ...)` while calling `put`: the CLI printed `FAILED (exit 1)`, the same headline and the same exit code as `(def f (-> I64 I64 I64) (lam (n) n))`. The compiler's own message does survive to stderr (`E76 profile REFUSED emit: crossing put (wrap-put) is outside the declared profile port set`), so the reason survives. What is lost is the classification: nothing in the exit code or the CLI's verdict line separates the program's types from the emitter's verdict.
-- evidence: `lib/lowering/compile-all.chiral:17-38`, `bin/chirality:174-178`, `bin/chirality:192`
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-06: unchanged. `lib/lowering/compile-all.chiral` still maps all three failure classes onto one constructor: `fr-err` at `:21`, `br-err` at `:24` and `elf-err` at `:42`, each becoming `ca-err`. `prog/compiler.prog` maps every `ca-err` to exit 1, so a parse failure, a lowering failure and an emit failure are indistinguishable to a caller reading the exit code.
+- evidence: re-runnable: `grep -n 'fr-err\|br-err\|elf-err' lib/lowering/compile-all.chiral` returns `:21`, `:24`, `:42`, each mapping to `ca-err`. `lib/lowering/compile-all.chiral`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-05
 
@@ -106,9 +106,9 @@
 - level:    source
 - about:    prog/paren-audit.prog
 - claim:    `prog/` is "what chirality ships, as distinct from what it is".
-- measured: blob closures for the six top-level `.prog` roots, counted as `^(end-module "` markers and blob bytes: | root | modules | blob bytes | |---|---|---| | `prog/compiler.prog` | 58 | 772,967 | | `prog/paren-audit.prog` | 58 | 783,086 | | `prog/prose-lint.prog` | 58 | 780,557 | | `prog/wield.prog` | 58 | 774,101 | | `prog/test-runner.prog` | 61 | 865,722 | | `prog/resolve.prog` | 15 | 68,429 | `paren-audit` and `prose-lint` are text tools. They carry the whole compiler including the x64 backend and the ELF assembler because each imports `lowering/compile-all` for `read-fd-all`, a ten-line fd reader. A tools tier of `prelude/prelude`, `prelude/list`, `prelude/string`, `ports/fd`, `ports/stdio` resolves to 6 modules and 27,222 bytes, measured with a probe root. ⚑ Re-measured 2026-09-04 against `1fcb019`, by the same method. The shape holds and every figure moved, because E11 put `typing/totality` and `typing/totality-check` into the compiler's closure: | root | modules | blob bytes | |---|---|---| | `prog/compiler.prog` | 60 | 807,767 | | `prog/paren-audit.prog` | 60 | 817,886 | | `prog/prose-lint.prog` | 61 | 844,110 | | `prog/wield.prog` | 60 | 808,901 | | `prog/test-runner.prog` | 63 | 900,522 | | `prog/resolve.prog` | 15 | 69,581 | The 2026-09-01 column above stands as what it measured. `prose-lint` gained one module over the other text tools and still carries the x64 backend and the ELF assembler for a ten-line fd reader, so the row stays OPEN on its own terms.
-- evidence: `prog/paren-audit.prog:34`, `prog/prose-lint.prog:32`, `lib/lowering/compile-all.chiral:41-48`
-- checked:  2026-09-04
+- measured: RE-MEASURED 2026-09-06 and **the shape has changed: the four are no longer identical.** Counting `^(end-module "` markers per root: `test-runner` 65, `prose-lint` 63, and `wield`, `paren-audit` and `compiler` at 62 each. Twelve roots build in total, and the small ones are far below: `optimizer-census` 37, the three E185-E188 sweeps 27, `resolve` 15, `e196-encoding-sweep` 5, `e197-recording-sweep` 3. This row recorded four of six at an identical 58. **Three still coincide at 62**, so the concern holds in weakened form: a tool that ships the whole compiler closure misrepresents the architecture, and `binary-split/B1` owns it.
+- evidence: re-runnable: `. bin/chirality-resolve.sh; for r in prog/*.prog; do chirality_blob_file "lib:prog" $r | grep -c '^(end-module "'; done`. `docs/arcs/binary-split-arc.md`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-16
 
@@ -120,9 +120,9 @@
 - level:    source
 - about:    lib/module/resolve.chiral
 - claim:    a fix in one module is the tree's fix.
-- measured: `lib/module/resolve.chiral` named its own fd reader `slurp-fd` and its header says the rename is load-bearing: `compile-all` defines a `read-fd-all` of its own, the two modules meet in one blob via `lib/evidence/test-floor.chiral`, and two defs of one name is `duplicate label`. So someone already hit the consequence of BA-16 and moved their own name out of the way. The reader is still duplicated and `read-fd-all` still lives inside the compiler's closure.
-- evidence: `lib/module/resolve.chiral:58`, `lib/lowering/compile-all.chiral:47`
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-06: unchanged. `lib/module/resolve.chiral` still carries `slurp-fd` (4 occurrences) and `lib/lowering/compile-all.chiral` still defines its own `read-fd-all` (1). The collision was routed around by a local rename rather than by giving the reader one home, which is `binary-split/B1`'s subject: a text tool cannot import the reader without importing the compiler.
+- evidence: re-runnable: `grep -c slurp-fd lib/module/resolve.chiral` returns 4; `grep -c read-fd-all lib/lowering/compile-all.chiral` returns 1. `docs/arcs/binary-split-arc.md` row `B1`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-17
 
