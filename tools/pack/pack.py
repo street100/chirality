@@ -1040,16 +1040,28 @@ def mint_mode(arc, rid):
     if cells and re.fullmatch(r"`?E\d+`?", cells[-1]):
         die(f"{arc}/{rid} already minted as {cells[-1].strip('`')}. A row mints once")
 
+    # Bands may OVERLAP and are advisory (decision-lane-split, ruled 2026-09-06).
+    # A band says where to look first; it owns nothing. An arc with no band, or
+    # with a full one, mints the next number free tree-wide instead of stopping.
+    # Lane A's E184-E189 is spent and twelve arcs hold no band at all, and under
+    # the old rule that blocked 146 rows from ever minting.
+    taken = taken_numbers()
     band = band_of(atext)
-    if not band:
-        die(f"{os.path.relpath(ap, ROOT)} holds no reserved element block. "
-            f"decision-lane-split reserves the bands and an arc outside them gets "
-            f"one from the author: this row stays UNASSIGNED.")
-    free = sorted(set(range(band[0], band[1] + 1)) - taken_numbers())
-    if not free:
-        die(f"band E{band[0]}-E{band[1]} is full ({band[1]-band[0]+1} numbers, all "
-            f"taken). The arc needs a new block from the author.")
-    num = free[0]
+    num = None
+    if band:
+        free = sorted(set(range(band[0], band[1] + 1)) - taken)
+        if free:
+            num = free[0]
+        else:
+            print(f"[mint] band E{band[0]}-E{band[1]} is full; taking the next "
+                  f"number free tree-wide", file=sys.stderr)
+    if num is None:
+        num = max(taken) + 1 if taken else 1
+        while num in taken:
+            num += 1
+        if not band:
+            print(f"[mint] {arc} holds no band; taking the next number free "
+                  f"tree-wide", file=sys.stderr)
     eid = f"E{num}"
 
     # An unfilled template still carries every placeholder AND the §3 guidance

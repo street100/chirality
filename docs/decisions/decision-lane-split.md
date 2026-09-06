@@ -4,7 +4,7 @@ layer: decision
 status: DECIDED
 decided: 2026-08-31
 related: [decisions/decision-dispatch-cadence, decisions/decision-work-ids, arcs/README, arcs/diagnostics-arc, arcs/file-types-arc, arcs/enforcement-arc, arcs/transport-arc, arcs/text-tools-arc, arcs/zero-python-arc, arcs/unit-lane-arc, banks/unit, benchmarks/text-matcher-allocation, records/author-calls, elements/README, index]
-updated: 2026-09-02
+updated: 2026-09-06
 ---
 
 # Decision: two lanes, and what enforces the seam
@@ -33,7 +33,33 @@ this before starting either lane.
 `E189` is taken, 2026-09-05: the `op-mulhi` surface extern, minted for the AI lane's
 fixed-point multiply-accumulate. `docs/arcs/native-protocol-arc.md`'s crypto
 pipeline cites it as a route it refuses. Owned by neither arc. Lane A's band is now
-spent.
+spent, **and that no longer blocks anything**: see the ruling below.
+
+## Bands may overlap, and they are advisory
+
+**Ruled 2026-09-06 by the author: let overlap exist.** A band is where an arc's
+numbers *start*. It owns nothing exclusively, and two arcs may be handed the
+same range.
+
+That dissolves the exhaustion problem rather than managing it. Lane A's
+`E184-E189` is spent, and before this ruling [[arcs/enforcement-arc]] and
+[[arcs/diagnostics-arc]] could mint nothing at all while twelve other arcs held
+no band and carried 146 unminted rows between them. Under overlap none of that
+blocks: an arc mints the next number free **tree-wide**, and a band only says
+where to look first.
+
+**A collision is stopped by the allocator and the roster.** A band stops none.
+`pack.py <arc>/<id> --mint` reads both `docs/elements/catalog.md` and
+`docs/elements/ledger.md`, takes the lowest number free in either, and writes
+the roster row. The 2026-09-01 double-mint of `E173` happened because two
+sessions hand-picked a number out of one range; a band cannot prevent that and
+an allocator does. `ledger-lint` check AE fails an element present in one
+document and absent from the other, which is the same collision seen from the
+other side.
+
+**An arc with no band still mints.** It takes the next free number and records
+the range it landed in. [[decisions/decision-work-ids]] already gives its
+rows citable ids until then.
 
 **A third band, `E196-E239`, reserved 2026-09-05 for the unit lane.** 44 slots
 against the 42 rows `.planning/AI-LANE-GAP.md` tables, two of headroom. The
