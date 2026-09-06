@@ -1904,10 +1904,24 @@ def check_ag() -> list[str]:
         t = f.read_text()
         rows = _ARC_ROW.findall(t)
         reqs = set(re.findall(r"^(\d+)\.\s+\*\*", arc_req_section(t), re.M))
+        arcname0 = f.stem[:-4] if f.stem.endswith("-arc") else f.stem
         if not rows:
-            if "REQUIREMENT" in t:
+            if "REQUIREMENT" not in t:
+                continue
+            # An arc can legitimately carry no roster: tuning-arc is blocked
+            # whole by an author call, and its opening proposal measured that
+            # any row written now prejudges the call. Zero rows is honest when
+            # every requirement is ENUMERATED instead, which is the same escape
+            # a covered requirement gets below.
+            allg = _lens_about("gaps.md") | _lens_about("unspoken.md")
+            reqs0 = set(re.findall(r"^(\d+)\.\s+\*\*", arc_req_section(t), re.M))
+            missing = [r for r in sorted(reqs0, key=int)
+                       if f"{arcname0}/req{r}" not in allg]
+            if missing:
                 errs.append(f"[AG] {f.name} states REQUIREMENTS and carries no "
-                            f"roster table. Its work cannot be counted or cited")
+                            f"roster table, and requirement(s) "
+                            f"{', '.join(missing)} have no gap row either. Its "
+                            f"work cannot be counted or cited")
             continue
         cols = len([c for c in rows[0][1].split("|") if c.strip()]) + 1
         if cols < 8:
