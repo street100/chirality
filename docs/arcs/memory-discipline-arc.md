@@ -69,7 +69,7 @@ proves the first was right.
 3. **The reclamation discipline in the tree is reached.** `mem-region` has zero
    importers today.
 4. **One `alloc-region` runs on every backend.** The discipline is
-   ISA-agnostic; ISA-specific allocation assembly stays in `Mach` primitives.
+   ISA-agnostic, and ISA-specific allocation assembly stays in `Mach` primitives.
 
 ## Roster
 
@@ -81,7 +81,7 @@ proves the first was right.
 | `memory-discipline/M4` | `alloc-dps`: a destination-passing emit buffer, and `nb-bcat`'s quadratic goes | discipline | law | new | 1 | open | `E84` |
 | `memory-discipline/M5` | compose and grade: per-phase and per-runtime profile composition, with an optional static size bound from `E38` | compose | law | connect | 2 | open | `E85` |
 | `memory-discipline/M6` | `mem-region` is reached, or it moves to SEEDED with the reason. It is the only reclamation discipline in the tree and nothing imports it | discipline | tool | connect | 3 | open | `unminted` |
-| `memory-discipline/M7` | one `alloc-region` runs on every backend, with the ISA-specific allocation assembly left in `Mach` primitives | discipline | law | new | 4 | open | `unminted` |
+| `memory-discipline/M7` | one `alloc-region` runs on every backend, with ISA-specific allocation assembly left in `Mach` primitives | discipline | law | new | 4 | open | `unminted` |
 
 ### Coverage
 
