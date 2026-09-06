@@ -2,7 +2,7 @@
 node: frontier
 layer: generated
 tier: orientation
-updated: 2026-09-05
+updated: 2026-09-06
 ---
 
 # Design frontier — where things stand
@@ -14,13 +14,14 @@ updated: 2026-09-05
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 904364b64bccc0731aba4cd4012580c025f33e9beb253110b19cdbde072b6146 -->
+<!-- FRONTIER-SOURCES-SHA256: 1e1bc81fde19d162972edf7f35a6dfa6b4e3701c55da87814ca5c74cae79d31c -->
 <!-- sources: 165 files -->
 
 ## Decided recently
 
 ### Settled decision notes (docs/decision-*.md, newest first)
 
+- 2026-09-06 · decision-lane-split [DECIDED] — Decision: two lanes, and what enforces the seam
 - 2026-09-05 · decision-four-lenses [settled] — Decision: four lenses, each enumerated, each carrying an author marker
 - 2026-09-05 · decision-design-before-mint [settled] — Decision: minting is the graduation, and design happens before it
 - 2026-09-04 · decision-formulation-distinctness [draft] — Decision: two judges are distinct when their formulations differ
@@ -29,7 +30,6 @@ updated: 2026-09-05
 - 2026-09-03 · decision-quorum-store [DECIDED] — Decision: crypto and Shamir serve a split source-of-truth store
 - 2026-09-03 · decision-dispatch-cadence [settled] — Decision: dispatch cadence is serial
 - 2026-09-03 · decision-b-in-type [settled] — Decision: B lives in the type, not the packaging
-- 2026-09-02 · decision-lane-split [DECIDED] — Decision: two lanes, and what enforces the seam
 - 2026-09-01 · decision-work-ids [settled] — Decision: an arc names its work before the work has a number
 - 2026-09-01 · decision-self-verification-hierarchy [draft] — Decision: self-verification is a hierarchy, and the residue is named
 - 2026-09-01 · decision-scope [DECIDED] — Decision: the current track is self-hosting only
@@ -116,6 +116,7 @@ updated: 2026-09-05
 
 ### Last commits touching the frontier sources
 
+- 2026-09-06 f533365 — bands may overlap and are advisory: ruled 2026-09-06
 - 2026-09-05 e7770c0 — the four lenses, seeded from the tree, with a gate and a generated overview
 - 2026-09-05 8c202f8 — decision: four lenses, each enumerated, each carrying an author marker
 - 2026-09-05 011dfa1 — decision: minting is the graduation, and design happens before it
@@ -123,4 +124,3 @@ updated: 2026-09-05
 - 2026-09-05 a2130c5 — E197 is built: RecordRequest, its pricing law, and a gate with six mutants
 - 2026-09-05 69874b1 — E197 SPEC audit: the four probes, the twenty golden lines and all six mutants reproduce
 - 2026-09-05 e7c27e7 — requirement 4 closes on the wiring branch, and EN-24 carries the measurement
-- 2026-09-05 beaa237 — E197 SPEC: RecordRequest ships with its pricing, and the refinement decides literals only

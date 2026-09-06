@@ -2,7 +2,7 @@
 node: overview
 layer: generated
 tier: orientation
-updated: 2026-09-05
+updated: 2026-09-06
 ---
 
 # Overview: goal to element, with what each level carries
@@ -56,8 +56,8 @@ updated: 2026-09-05
 - **5.** Chirality's own tooling is chirality's. Observed as the ratio of lines outside the languag
       arc: enforcement-arc, independent-judgment-arc
 
-### arc `enforcement-arc`: 9 roster row(s)
-  state: built 3, open 6
+### arc `enforcement-arc`: 11 roster row(s)
+  state: built 3, open 8
 
 ## independent-judgment
 
@@ -98,7 +98,8 @@ updated: 2026-09-05
 ### arc `transport-arc`: 4 roster row(s)
   state: built 4
 
-### arc `tuning-arc`: 0 roster row(s)
+### arc `tuning-arc`: 5 roster row(s)
+  state: open 5
 
 ### arc `unit-lane-arc`: 43 roster row(s)
   state: built 4, open 39
@@ -244,9 +245,9 @@ updated: 2026-09-05
 
 ## The lenses
 
-- **problem** (PRB-): 68 row(s), 68 unreviewed. OPEN 68
-- **gap** (GAP-): 18 row(s), 18 unreviewed. open 18
+- **problem** (PRB-): 69 row(s), 69 unreviewed. OPEN 69
+- **gap** (GAP-): 18 row(s), 12 unreviewed. closed 6, open 12
 - **limit** (LIM-): 18 row(s), 18 unreviewed. accepted 18
 - **unspoken** (UNS-): 48 row(s), 48 unreviewed. open 48
 
-Roster rows across every arc: 191. Minted from them: 38.
+Roster rows across every arc: 198. Minted from them: 38.
