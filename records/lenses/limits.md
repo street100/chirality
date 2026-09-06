@@ -136,9 +136,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    doc
 - about:    tools/test/pretty.sh
 - claim:    `tools/test/pretty.sh:22-38` maps thirteen gate rows G1 to G13 onto seventeen mutants M1 to M17, and every one of the seventeen is named in a row heading.
-- measured: `bash tools/test/pretty.sh` reports **61 passed, 0 failed** in 6.4 s. The pre-dispatch grep predicted ~51 rows and 17 mutants; the mutant count is right and the row count is 61, of which 17 are mutant rows and 44 are gate rows. All seventeen mutants are EXECUTED. Fourteen go through `mutlib` (`tools/test/pretty.sh:103-117`), which copies `lib/` to scratch, refuses a symlinked scratch tree, and `cmp`s the mutated file against the tree so a stale anchor is reported as a FAIL instead of reading as a pass; three are inline (M10 over the eight sha256 pins, M11 over the registration grep, M14 over the cross-assertion scan). All seventeen changed the file they name. Sixteen redden a row the header attributes to them, measured by copying the whole tree to scratch, applying the mutant's own `sed` to that copy's `lib/`, and re-running the phase against it: M2 turns G2 red (and thirteen G1 goldens with it), M3 turns G3's width-40 row red, M4 turns G3's width-12 row red, M5 turns G4 red, M6 turns G5 red, M7 turns G6 red, M8 turns G7 red, M16 turns G11b red. M9, M12, M13, M15 and M17 convict compositionally: each re-runs the row's own predicate (`census` at `:473`, `closure` at `:552`, `code_only` at `:501`, `build_err` at `:89`) over the mutated tree, so the conviction is the gate row's own comparison with one input changed. M1 is GA-13.
-- evidence: `tools/test/pretty.sh:22-38`, `:89-94`, `:103-117`, `:199`, `:222`, `:250`, `:259`, `:275`, `:294`, `:311`, `:330`, `:399`, `:410`, `:414`, `:432`, `:439`, `:464`, `:486`, `:505`, `:573`
-- checked:  2026-09-04
+- measured: RE-RUN 2026-09-06: `bash tools/test/pretty.sh` reads **71 passed, 0 failed**, exit 0. The row's claim that it runs all seventeen of the mutants it names holds against a green gate.
+- evidence: re-runnable: `bash tools/test/pretty.sh` reads 71 passed, 0 failed. `tools/test/pretty.sh`
+- checked:  2026-09-06
 - owner:    none
 - from:     GA-12
 
@@ -150,9 +150,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    doc
 - about:    tools/test/face.sh
 - claim:    `tools/test/face.sh:56` reads that EVERY ROW CARRIES A NAMED MUTANT THAT IS RUN, and `:50-53` that the thirteenth mutant exists because G7(c)'s arity scan was the one row here nothing could redden.
-- measured: `bash tools/test/face.sh` reports **38 passed, 0 failed** in 2.5 s. The pre-dispatch grep predicted ~40 rows and 13 mutants; the mutant count is right and the row count is 38, of which 19 are mutant rows over 13 distinct mutants and 19 are gate rows. All thirteen are EXECUTED: nine through `mutlib` (`:133`), which carries the same scratch-tree and `cmp` guards as `pretty.sh`, and four inline (M8 over the five sha256 pins, M9 over the four registrations, M12 a declared seven-argument caller, M13 the arity scanner over a probe file). All thirteen changed what they name. Every one reddens the row the header attributes to it, measured the same way as GA-12 by re-running the whole phase against a mutated scratch tree: M1 turns G1 and G5 red, M2 turns G1 red, M3 turns G2 and G3 red, M4 and M5 each turn G4 red, M6 turns G4(b) red while leaving G4(a) byte-identical, which is exactly what `:475-477` predicts and the stated reason shape (b) exists at all; M7 turns G6 red and nothing else, the cell map staying put, which is the stated reason G6 is a raw-byte row; M10 and M11 break the G8 compiles. M8, M9 and M13 convict compositionally by re-running the row's own function (`sha_of`/`pin` at `:547-548`, `reg` at `:579`, `ARITY_AWK` through `arity_scan` at `:615`) over a changed input. Two rows carry no mutant and both are labelled controls: the fixture-builds row and G8's own control. This script is the shape the rule asks for.
-- evidence: `tools/test/face.sh:36-61`, `:133-147`, `:354`, `:370`, `:401`, `:449`, `:462`, `:478`, `:519`, `:547-568`, `:579-591`, `:615-641`, `:658`, `:671`, `:699`
-- checked:  2026-09-04
+- measured: RE-RUN 2026-09-06: `bash tools/test/face.sh` reads **38 passed, 0 failed**, exit 0. It honours the rule on all thirteen.
+- evidence: re-runnable: `bash tools/test/face.sh` reads 38 passed, 0 failed. `tools/test/face.sh`
+- checked:  2026-09-06
 - owner:    none
 - from:     GA-14
 
@@ -178,9 +178,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    doc
 - about:    tools/test/row.sh
 - claim:    `tools/test/row.sh:20-22` reads that every row that matters renders through `render-to-ansi` and READS THE EMITTED BYTE STREAM, and that every row carries a named mutant that is RUN. `:24-35` maps eight gate rows G1 to G8 onto thirteen mutants.
-- measured: `bash tools/test/row.sh` reports **41 passed, 0 failed**. The pre-dispatch grep predicted ~28 rows and 13 mutants; the mutant count is right and the row count is 41, of which 16 are mutant rows over 13 distinct mutants and 25 are gate rows. All thirteen are EXECUTED and all thirteen change the file they name, `mutlib` (`:125-136`) carrying the `cmp` guard that reports a stale anchor as a FAIL. Its `mutlib` omits the scratch-tree symlink check `pretty.sh:106-108` and `face.sh:136-138` both carry. Six of them go through `g4_mutant` (`:517-526`), which is the strongest form of the rule found in this pass: it re-runs `g4_report`, the same function that emitted the base rows, and asserts by NAME which constructor row went red. Measured red lists, one row each: M2 `r-stream`, M3 `r-face`, M11 `r-tree`, M4 `r-row`, M13 `r-table`, M10 `r-section`. The other seven convict by re-running the row's own predicate over a changed input (`census`, `sha_of` against the pin, `reg`, `g3_map`, `build_run`, `build_err`), and three of those were confirmed against the whole tree by copying the repository to scratch, applying the mutant's `sed` to that copy's `lib/`, and re-running the phase: M1 turns G3's cell map red, M6 turns G1's `apc.chiral` row red with `load: non-exhaustive case`, M7 turns G2 red at case 9, which is the case its own row names.
-- evidence: `tools/test/row.sh:20-35`, `:125-136`, `:361`, `:385`, `:418`, `:517-526`, `:531-556`, `:597-607`, `:622-630`, `:655-668`, `:683-689`, `:730-734`, `:752-757`
-- checked:  2026-09-04
+- measured: RE-RUN 2026-09-06: `bash tools/test/row.sh` reads **42 passed, 0 failed**, exit 0. It runs all thirteen and `g4_mutant` still names the row it convicts.
+- evidence: re-runnable: `bash tools/test/row.sh` reads 42 passed, 0 failed. `tools/test/row.sh`
+- checked:  2026-09-06
 - owner:    none
 - from:     GA-16
 
@@ -192,9 +192,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    doc
 - about:    tools/test/arity.sh
 - claim:    `tools/test/arity.sh:75-79` reads that a build which did not happen scores `nobuild` and never `bad`, and that no pinned line below ever expects that token, so a mutant that merely fails to compile cannot wear a red row and be read as a conviction. `tools/test/mutant.sh:19-40` names the four ways the measurement fails silently, and this idiom is a second implementation of the same rule.
-- measured: all four scripts ran green in this session: `arity.sh` **13 passed, 0 failed** in 12 s, `doc.sh` **26 passed, 0 failed**, `matcher.sh` **18 passed, 0 failed**, `render-doc.sh` **19 passed, 0 failed**. A green phase is what makes each declared pin the measured red set, and every row below reads off that. The idiom closes all four failures, three of them by an assertion and the fourth by the pin itself. (1) A mutation that matched nothing is refused by `cmp -s` against the tree under test, in every copy of `mutlib` (`arity.sh:161-163`, `matcher.sh:161-163`, `render-doc.sh:145-147`) and inline in `doc.sh:119-121`. (2) A mutant that did not build produces a token no pin holds: `verdict` scores `nobuild` per row group (`arity.sh:275`, `:283`, `:290`) or collapses the whole line to `BUILD:fail` (`matcher.sh:229`, `render-doc.sh:247`), and `doc.sh`'s `build_run` returns 255 (`doc.sh:64-74`). Read against every pin in the four files, five in `arity.sh` (`:361`, `:371`, `:382`, `:393`, `:402`), nine in `matcher.sh` (`:314-384`), seven in `render-doc.sh` (`:332-392`) and five case numbers 1, 3, 4, 8 and 14 in `doc.sh` (`:127`, `:131`, `:136`, `:190`, `:196`), no want string carries `nobuild`, `BUILD:fail` or 255. So the entry-point hazard is closed by string equality rather than by care, and a mutant that fails to build is reported as a FAIL of its own row. (3) A semantically inert mutant produces an all-`ok` line, which no pin holds either. (4) A red base is caught first: each script asserts `verdict "$REPO/lib"` equals `ALLOK` before any mutation (`arity.sh:300-301`, `matcher.sh:266-267`, `render-doc.sh:294-295`), and `doc.sh` runs its fixture over the real tree at `:97-100`. The want-verdict is computed by the function that emitted the base rows in all four: `verdict` takes the library directory as its only argument (`arity.sh:270`, `matcher.sh:227`, `render-doc.sh:245`) and `doc.sh` calls one `build_run` over one fixture for both legs (`:66`, `:97`, `:122`). Nothing is re-derived anywhere a mutation cannot reach.
-- evidence: `tools/test/arity.sh:75-79`, `:152-165`, `:270-293`, `:300-301`, `:325-334`; `tools/test/matcher.sh:146-160`, `:227-260`, `:266-267`, `:297-307`; `tools/test/render-doc.sh:131-145`, `:245-288`, `:294-295`, `:315-325`; `tools/test/doc.sh:64-74`, `:97-100`, `:109-125`
-- checked:  2026-09-04
+- measured: RE-RUN 2026-09-06: `bash tools/test/render-doc.sh` reads **20 passed, 0 failed**, exit 0. The full-line pin still closes all four silent failures.
+- evidence: re-runnable: `bash tools/test/render-doc.sh` reads 20 passed, 0 failed. `tools/test/render-doc.sh`
+- checked:  2026-09-06
 - owner:    none
 - from:     GA-18
 

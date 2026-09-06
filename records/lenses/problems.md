@@ -8,8 +8,8 @@
 - level:    source
 - about:    tools/test/check-cli.sh
 - claim:    the header of the gate says the cases "pin that it ACCEPTS well-typed source and REFUSES ill-typed source", and that a checker which only ever says OK is not a checker.
-- measured: 7 assertions. 3 positive, 4 negative. All four negatives are front-end refusals: two linear binder usage mismatches, one type mismatch, one unknown name. Zero exercise a lowering or emit refusal, which is where the E76 chokepoint, the H8 profile gate, duplicate label and the missing heapptr cell live. See BA-05 for why that matters.
-- evidence: `tools/test/check-cli.sh:41-60`
+- measured: RE-MEASURED 2026-09-06: `bash tools/test/check-cli.sh` reads **12 passed, 0 failed**, against the 7 assertions this row counted. The gate grew. ⚑ Whether any of the 5 new ones is an EMIT-stage refusal is not established here: the row's claim is that all negatives are front-end refusals, and confirming or refuting that needs the assertion list read case by case, which this re-run did not do.
+- evidence: re-runnable: `bash tools/test/check-cli.sh` reads 12 passed, 0 failed. `tools/test/check-cli.sh`
 - checked:  2026-09-01
 - owner:    none
 - from:     BA-04
