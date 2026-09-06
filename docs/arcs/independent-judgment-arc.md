@@ -3,7 +3,7 @@ node: arc-independent-judgment
 layer: navigation
 related: [arcs/README, goals/independent-judgment, decision-self-verification, decision-formulation-distinctness, decision-work-ids, certificate-discipline, records/tooling-classification, status-ledger, index]
 status: current
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Arc: judgment that does not rest on one formulation
@@ -85,15 +85,28 @@ Done when all five hold.
    2026-09-02 off FD-09: requirements 1 to 4 are all satisfiable while the
    statement every leg is judged against stays prose.
 
-## Rows
+## Roster
 
-| row | what | state | element |
-|---|---|---|---|
-| `independent-judgment/J1` | the distinctness criterion, written | drafted 2026-09-04 as [[decisions/decision-formulation-distinctness]], `status: draft` and awaiting the author. Requirement 1 | `unminted` |
-| `independent-judgment/J2` | `kernel-core` and `reflect-floor` wired, or moved to SEEDED with the reason | not started. Both are written with zero importers | `unminted` |
-| `independent-judgment/J3` | a second judgment core in a different formulation | not started. The whole of requirement 2 | `unminted` |
-| `independent-judgment/J4` | the two dead C legs retired or re-grounded | not started. `ddc-legc` and `ddc-legcc` have zero callers since the backend was dropped. The J1 draft answers half of it: neither can be re-grounded as a judgment leg | `unminted` |
-| `independent-judgment/J5` | the demanded statement given a form a check can read, and `JForm` completed or closed | not started. `SpecRule.statement` is a `Str`; totality and refinement have no form. FD-09 | `unminted` |
+Groups: `criterion` is what distinctness means, `core` is a second judgment
+core, and `form` is the statement a check can read.
+
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `independent-judgment/J1` | the distinctness criterion, written. Drafted 2026-09-04 as [[decisions/decision-formulation-distinctness]], `status: draft` and awaiting the author | criterion | decision | new | 1 | open | `unminted` |
+| `independent-judgment/J2` | `kernel-core` and `reflect-floor` wired, or moved to SEEDED with the reason. Both are written with zero importers | core | tool | connect | 2 | open | `unminted` |
+| `independent-judgment/J3` | a second judgment core in a different formulation | core | primitive | new | 2 | open | `unminted` |
+| `independent-judgment/J4` | the two dead C legs retired or re-grounded. `ddc-legc` and `ddc-legcc` have zero callers since the backend was dropped, and the J1 draft answers half of it: neither can be re-grounded as a judgment leg | core | decision | new | 3 | open | `unminted` |
+| `independent-judgment/J5` | the demanded statement given a form a check can read, and `JForm` completed or closed. `SpecRule.statement` is a `Str`; totality and refinement have no form. FD-09 | form | primitive | new | 5 | open | `unminted` |
+
+### Coverage
+
+⚑ **Requirement 4 is served by no row**, enumerated as `GAP-06`: `status-ledger`
+stopping its claim that every rung is enforcement against error is a document
+correction rather than an element, so whether it takes a row is an author call.
+
+Requirements 1, 2, 3 and 5 are served: 1 by J1, 2 by J2 and J3, 3 by J4, 5 by
+J5. Every row serves one. `J2` is `connect`: both cores are written and the gap
+is that nothing imports them.
 
 ## Resume state
 
