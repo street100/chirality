@@ -51,8 +51,17 @@ gate-that-cannot-fail error this repo names as cardinal.
 ## Rules
 
 - Do not mint a number that does not exist. Element bands are reserved in
-  `docs/decisions/decision-lane-split.md`; an arc with no block writes `UNASSIGNED`.
-- A new element's row lands in `docs/examples/INDEX.md` and in its arc file in
-  the same change that mints it.
+  `docs/decisions/decision-lane-split.md`; an arc with no block carries
+  arc-local roster ids per [[decisions/decision-work-ids]].
+- **Minting is the last step of the design stage.** It used to be the first act of work.
+  A unit of work is named in its arc's roster, worked up at
+  `docs/arcs/parts/<arc>-<id>.md`, and given an `E#` only when that design
+  passes audit. `pack.py <arc>/<id> --mint` writes the catalog row and the
+  ledger row the design's §6 produced, and the arc's roster row is the tracked
+  collision detector. [[decisions/decision-design-before-mint]] settled this on
+  2026-09-05, and the reason is that a catalog row demands seven facts at the
+  moment least is known.
+- A mint writes BOTH rows. `ledger-lint` check AE fails an element in the
+  catalog and not the ledger, or the reverse.
 - Element status does not originate here. [[status-ledger]] holds build state, on
   the rungs DESIGNED, SEEDED, IMPLEMENTED, ENFORCED.

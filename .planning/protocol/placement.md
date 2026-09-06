@@ -140,9 +140,10 @@ python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A
 tools/prose-lint/prose-lint.sh PATH...       # how it reads
 ```
 
-`ledger-lint` runs 35 checks, A through AJ. Measured 2026-09-05 it reports **110
-findings**: one `I`, three `AC`, and the 106 that AF, AG and AI reached on the
-day they landed. `H`, `M` and `AH` are recorded as checking nothing.
+`ledger-lint` runs 35 checks, A through AJ. Measured 2026-09-05 it reports **111
+findings**: three `AC`, one `I`, one `N` recorded as a known disagreement, and
+the 106 that AF, AG and AI reached on the day they landed. `H`, `M` and `AH` are
+recorded as checking nothing.
 
 **That jump measures reach.** Those claims were always wrong and sat where no
 check looked, which is the reading `docs/elements/README.md` already records for

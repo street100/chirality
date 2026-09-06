@@ -33,6 +33,18 @@ linked notes, one idea per note. Read the hub notes first, then follow links.
 commits, and where state lives. `MAP.md` is the tree contract. Neither is
 optional reading for someone changing the tree.
 
+The pipeline is `design -> audit -> MINT -> spec -> audit -> implement`, with
+`revisit` reaching any artifact in it
+([[decisions/decision-design-before-mint]]). Work is named in an arc's roster
+first, worked up in `docs/arcs/parts/`, and given an `E#` only when its design
+passes audit.
+
+What the project knows about itself sits in four enumerated lenses, problems,
+gaps, limits and unspoken territory ([[decisions/decision-four-lenses]]), held in
+`records/lenses/`. [[OVERVIEW]] is the generated view across goals, arcs, rosters
+and those lenses; it is written by `tools/lens/lens.py overview` and a hand edit
+to it is a defect.
+
 ## Reading order
 
 1. [[thesis]] is the one idea the whole language hangs on.

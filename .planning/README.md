@@ -35,7 +35,30 @@ Each states the operational procedure and cites the tracked document that holds
 the rule. Where the two disagree the tracked document wins, and the disagreement
 is a defect to fix here.
 
+## The harness
+
+Seven skills in `.claude/skills/`, each one run, one unit of work, one artifact,
+then stop. The pipeline they run is
+`docs/decisions/decision-design-before-mint.md`.
+
+| skill | turns |
+|---|---|
+| `goal-open` | an ambition the repo already states into one goal |
+| `arc-open` | one goal condition into requirements and a roster |
+| `element-design` | one roster row into a design, before any `E#` exists |
+| `pipeline-audit` | gates a design before it mints, and a SPEC before it is built |
+| `design-to-spec` | one minted element into an implementation SPEC |
+| `revisit` | one settled artifact against one named trigger |
+| `doc-audit` | one doc, semantic pass against its live authorities |
+
+`worked-example` and `example-to-spec` are retired.
+
 ## What does not go here
 
 A rule a person needs to read, a claim about the tree, and build state all have
 homes in `docs/` and `records/`. `protocol/placement.md` routes them.
+
+What the project knows about itself lives in `records/lenses/`: four enumerated
+lenses for problems, gaps, limits and unspoken territory, each row carrying an
+author marker. `docs/definitions/OVERVIEW.md` is the generated view over all of
+it, written by `tools/lens/lens.py overview`.

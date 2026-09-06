@@ -149,13 +149,39 @@ those three are ungated: open them and run them yourself. The tomodachi target
 is parked and its client has never spoken to a live compositor
 ([target-tomodachi](docs/definitions/target-tomodachi.md)).
 
+## What the project knows about itself
+
+Four lenses, each fully enumerated and each row citing what it is about
+([decision-four-lenses](docs/decisions/decision-four-lenses.md)):
+
+| lens | holds | the test |
+|---|---|---|
+| **problem** | the tree does something wrong | a fix is owed |
+| **gap** | something wanted that nothing schedules yet | it could be scheduled today |
+| **limit** | a shortfall against what the project claims | it bounds a cited claim |
+| **unspoken** | territory with no stated intent | nobody has ruled on it |
+
+Three of the four sit on one chain: unspoken becomes a gap when the work is
+wanted, a gap becomes a roster row when an arc takes it, a roster row mints.
+Every row also carries whether the author has been over it, and their words when
+they have. [`records/lenses/`](records/lenses/) holds them and
+[OVERVIEW](docs/definitions/OVERVIEW.md) is the generated view across all of it.
+
 ## How goals are handled
 
-Three tiers. A **goal** is a broad thing the project claims it is doing. An
-**arc** is the list of elements serving one goal, carrying that goal's
-requirements and its own resume state. An **element** is one catalog item, an
+Four tiers. A **goal** is a broad thing the project claims it is doing. An
+**arc** is the work serving one goal, carrying that goal's requirements, its
+roster and its own resume state. A **roster row** is one unit of work, cited as
+`<arc>/<id>` before it has a number. An **element** is one catalog item, an
 `E#`. An arc names every goal it serves, goals and arcs relate many to many, and
 an element belongs to exactly one arc.
+
+**Minting is the last step.** A roster row is worked up into a
+design under [`docs/arcs/parts/`](docs/arcs/parts/), and it gets an `E#` only
+when that design passes audit, because a catalog row demands title, reference,
+reference class, rationale, category, module and track at the moment least is
+known. [decision-design-before-mint](docs/decisions/decision-design-before-mint.md)
+settled that on 2026-09-05.
 
 Three rules keep it a record rather than an ambition:
 
@@ -166,9 +192,8 @@ Three rules keep it a record rather than an ambition:
   [status-ledger](docs/definitions/status-ledger.md), so a goal cannot grade
   itself.
 - **Work is named before it is scheduled.** An `E#` is minted into a reserved
-  band, and only three arcs of eighteen hold one. The other fifteen carry
-  arc-local ids instead, a row per unit of work, each mapping to an element or to
-  nothing. Naming work that has no number used to mean writing `UNASSIGNED` and
+  band, and most of the 22 arcs hold none. Those carry arc-local ids instead, a
+  row per unit of work, each mapping to an element or to nothing. Naming work that has no number used to mean writing `UNASSIGNED` and
   stopping, which made the work uncitable;
   [decision-work-ids](docs/decisions/decision-work-ids.md) settled the current
   rule on 2026-09-01.
@@ -242,9 +267,9 @@ is neither, so there is no `stdlib/` and no `compiler/`.
 | [`definitions/`](docs/definitions/) | one entry per named concept, 50 of them |
 | [`decisions/`](docs/decisions/) | one settled fork per entry, carrying its reason |
 | [`banks/`](docs/banks/) | the depth tier: one concept refracted into its shards and their homes |
-| [`goals/`](docs/goals/) and [`arcs/`](docs/arcs/) | eleven goals, and the arcs serving each. An arc file carries its own resume state |
+| [`goals/`](docs/goals/) and [`arcs/`](docs/arcs/) | 13 goals, and the 22 arcs serving them. An arc file carries its roster and its own resume state |
 | [`elements/`](docs/elements/) | the catalog, the ledger, and one SPEC per element |
-| [`examples/`](docs/examples/) | one worked example per element, conventional approach beside the chirality one |
+| [`examples/`](docs/examples/) | **closed.** 132 entries from the retired worked-example pipeline; they fold into `implementation/` |
 | [`records/`](records/) | a claim beside its measurement, with a state and a date |
 
 Two documents are written for an agent rather than a person and both are

@@ -30,12 +30,16 @@ exist to prevent.
 ## The loop
 
 1. **Orient from the arc file.** `docs/arcs/<name>-arc.md` carries the goal, the
-   reserved element band, the requirements, the element list with a state per
-   element, the resume state, and the constraints the arc works under. There is
-   no state file at the root and there is nothing else to read first.
-2. **Pick one stage of one element.** `protocol/workflow.md` has the five
-   stages and which command builds each bundle.
-3. **Scope it.** Name the element, the stage, the write surface, and the stop
+   reserved element band or its arc-local id scheme, the requirements, the
+   roster with a state per row, the resume state, and the constraints the arc
+   works under. There is no state file at the root and there is nothing else to
+   read first. `docs/definitions/OVERVIEW.md` is the generated view across every
+   arc when the question is which one to pick up.
+2. **Pick one stage of one unit of work.** `protocol/workflow.md` has the six
+   stages, the `revisit` stage that reaches any artifact, and which command
+   builds each bundle. Before the mint the unit is a roster row cited as
+   `<arc>/<id>`; after it, an `E#`.
+3. **Scope it.** Name the unit, the stage, the write surface, and the stop
    condition before writing a word of prompt.
 4. **Write the prompt.** The next section.
 5. **Dispatch one agent. Wait.**
@@ -66,8 +70,9 @@ itself.
 
 | claim | check |
 |---|---|
-| the artifact is filled | open it. All six sections, real surface syntax in the snippet |
-| the status flipped | the `docs/examples/INDEX.md` row |
+| the artifact is filled | open it. Every section, and §2's claims cited at `file:line` |
+| an element minted | its catalog row AND its ledger row. `ledger-lint` check AE |
+| the status flipped | the arc's roster row, `state` column |
 | a gate is green | run `tools/test/run-tests.sh` and read the phase, including its mutants |
 | the compiler was promoted | the build rule end to end, with the non-empty guard before the `cmp` |
 | a citation is right | open the cited file at the cited line |

@@ -13,12 +13,24 @@ Three tiers organise the work.
 | tier | what it is | where it lives |
 |---|---|---|
 | goal | a broad thing this project claims it is doing | `docs/goals/` |
-| arc | the list of elements that serve one goal, with its requirements | `docs/arcs/` |
+| arc | the work that serves one goal, with its requirements and roster | `docs/arcs/` |
+| roster row | one unit of work, cited as `<arc>/<id>` before it has a number | the arc's roster, worked up in `docs/arcs/parts/` |
 | element | one catalog item, an `E#` | `docs/elements/`, `docs/elements/catalog.md` |
 
 A goal file says what the goal claims, cites where the project claims it, names
 the arcs that serve it, and states what `done` means. An arc file names every
-goal it serves. An element belongs to exactly one arc.
+goal it serves.
+
+**A goal states done as NUMBERED conditions, each checkable, each naming its arc
+or saying it is unopened.** `ledger-lint` check AF fails a goal that does not.
+
+**An element belongs to exactly one arc, or the unspoken lens says nobody has
+ruled on it.** That invariant was unsatisfiable while 48 unbuilt elements sat
+orphaned; [[decisions/decision-four-lenses]] gave territory with no ruling a
+home, and check AE now refuses only silence.
+
+**Minting is the last step of the design stage**, per
+[[decisions/decision-design-before-mint]].
 
 Every goal below is derived from text already in the repo. The citation is in
 the goal file. A goal nobody has written down does not go here: it goes in the

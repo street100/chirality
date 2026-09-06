@@ -11,8 +11,9 @@ the mechanism.
 | `test/` | `scaffold/tests/run-native.sh` + its phase scripts | **runs**: `bin/chirality test`, 7 of 12 phases ported |
 | `paren-audit/` | `bin/paren-audit.py` | **runs** unchanged. ⚑ A chirality replacement exists, `prog/paren-audit.prog`. Equivalence against this Python is **unverified**, so the Python is still on disk and is not retired or deletable yet |
 | `syscall-map/` | `bin/syscall-map.py` | **runs**: referent column empty (Python oracle cut) |
-| `ledger-lint/` | `bin/ledger-lint.py` | **runs** (measured 2026-08-31): 19 checks A–S, 17 live, and 2 named VACUOUS by decision because the migration deleted their subject (H cheatsheet ops, M duplicate-module ratchet) |
-| `pack/` | `bin/metis-pack.py` | **runs** (measured 2026-08-31): `.planning/` and `docs/examples/` both resolve. The Python OURS baseline is CUT, so an E# row naming a compiler `.py` now gets a bundle that says the baseline is gone rather than a path |
+| `ledger-lint/` | `bin/ledger-lint.py` | **runs** (re-measured 2026-09-05): **35 checks A to AJ**, 32 live, 3 named VACUOUS because their subject is absent (H cheatsheet ops, M duplicate-module ratchet, AH no roster carries a state column yet). A full run takes about 50 seconds. The 19-checks-A-to-S figure this row carried was measured 2026-08-31 |
+| `pack/` | `bin/metis-pack.py` | **runs**. Every pipeline bundle and the scaffolder. Grew the pre-mint tier 2026-09-05 (`--goal`, `--arc`, `<arc>/<id>`, `--mint`, `--revisit`) per `docs/decisions/decision-design-before-mint.md`. The Python OURS baseline is CUT, so an E# row naming a compiler `.py` gets a bundle saying the baseline is gone rather than a path |
+| `lens/` | **new here**, 2026-09-05 | **runs**: the four lenses over what this repo knows about itself, problems, gaps, limits and unspoken territory. `check` is the schema gate, called by `ledger-lint` check AD; `author` prints what awaits a ruling; `overview` regenerates `docs/definitions/OVERVIEW.md`; `trace` and `new` are the query and the scaffolder. `docs/decisions/decision-four-lenses.md` |
 | `frontier/` | `bin/metis-frontier.py` | starts; needs the doc ecosystem |
 | `capture/` | `bin/metis-capture.py` | starts; needs `docs/banks/` + `.planning/capture/` |
 | `doc/` | `bin/metis-doc.py` | starts; needs `docs/banks/` + the CONFORMANCE-MAP |

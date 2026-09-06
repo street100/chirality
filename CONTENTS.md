@@ -148,6 +148,19 @@ proved and what it stubbed is kept in
 [docs/implementation/](docs/implementation/), with the findings ledger in
 [AUDIT.md](docs/implementation/AUDIT.md).
 
+## What the project knows about itself
+
+Four lenses, each fully enumerated, each row citing what it is about and whether
+the author has been over it: **problems** (present and wrong), **gaps** (wanted,
+unscheduled), **limits** (a shortfall against a claim, with five coverage
+states), and **unspoken** (territory with no ruling). They live in
+[`records/lenses/`](records/lenses/), the schema is
+[lenses/README](records/lenses/README.md), and
+[decision-four-lenses](docs/decisions/decision-four-lenses.md) is why there are
+four. [OVERVIEW](docs/definitions/OVERVIEW.md) is the generated view across
+goals, arcs, rosters and lenses; `tools/lens/lens.py` writes it and
+`ledger-lint` check AD gates the rows.
+
 ## Settled and open
 
 - Forks settled in `docs/decisions/` (27 notes): additive testable profiles
