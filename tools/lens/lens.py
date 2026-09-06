@@ -147,7 +147,15 @@ def check():
             errs.append(f"[LN] {where} {rid} has no evidence. A row nobody can "
                         f"re-run is worthless")
         else:
+            seen_p = set()
             for path in re.findall(r"([A-Za-z0-9_./-]+\.(?:chiral|prog|py|sh|md))", ev):
+                # A path inside a re-runnable command is not a repo citation.
+                # PRB-18 and PRB-19 carry `printf ... > /tmp/t.chiral && ...`,
+                # which is what makes them reproducible; an absolute path is by
+                # definition outside this tree.
+                if path.startswith("/") or path in seen_p:
+                    continue
+                seen_p.add(path)
                 if not os.path.exists(os.path.join(ROOT, path)) and \
                    not glob.glob(os.path.join(ROOT, "**", os.path.basename(path)),
                                  recursive=True):
