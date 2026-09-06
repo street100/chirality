@@ -967,3 +967,31 @@
 - checked:  2026-09-05
 - owner:    none
 - from:     none
+
+### PRB-70 G18 is a true positive: check.chiral entered the compiler closure
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    tools/test/tal-check.sh
+- claim:    tools/test/tal-check.sh G18 asserts `lowering/tal/check is OUTSIDE the compiler blob`, and its own comment says: "If it ever goes red, check.chiral has entered the blob and the BUILD RULE's build-new -> test -> promote applies to every edit of it."
+- measured: **IT WENT RED AND THE PREMISE HAS FLIPPED.** Measured 2026-09-06 on a blob built to its fixpoint: `grep -c 'def ck-prog'` returns **1**, and `lib/lowering/upper/optimize.chiral:17` and `lib/lowering/upper/eff-lower.chiral:20` both `(import "lowering/tal/check")`. So check.chiral is inside the closure and every edit to it owes the build rule. ⚑ **Present is not called.** `grep -rn '(ck-prog'` over lib/ and prog/ returns zero call sites outside its own definition, so the floor checker sits at SEEDED: compiled in, reached by nothing. That is enforcement requirement 2 half-moved, not met. G18 needs inverting to assert what the tree now wants, and the mutant harness below it assumes a scratch lib/ on the old premise.
+- evidence: tools/test/tal-check.sh:399-406, lib/lowering/upper/optimize.chiral:17, lib/lowering/upper/eff-lower.chiral:20, lib/lowering/tal/check.chiral
+- checked:  2026-09-06
+- owner:    enforcement/N8
+- from:     none
+
+### PRB-71 sock-send-fd is missing from crossing-wraps and nothing reaches a screen
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/lowering/tal/crossing-wraps.chiral
+- claim:    lib/lowering/tal/crossing-wraps.chiral carries one entry per lowered crossing, and prog/demo/ is described as running.
+- measured: `grep -c sock-send-fd` over crossing-wraps returns **0** while `prog/demo/wl-client.chiral:201` calls it and two profiles declare it in their port sets (`profile-tomodachi.chiral:31`, `profile-node-render.chiral:14`). A declared crossing with no wrapper entry does not lower, so **nothing in this tree reaches a screen**. It went unnoticed because no gate reads `prog/demo/`.
+- evidence: lib/lowering/tal/crossing-wraps.chiral, prog/demo/wl-client.chiral:201, prog/demo/profile-tomodachi.chiral:31, prog/demo/profile-node-render.chiral:14
+- checked:  2026-09-06
+- owner:    native-window/W5
+- from:     none

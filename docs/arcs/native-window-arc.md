@@ -3,7 +3,7 @@ node: arc-native-window
 layer: navigation
 related: [arcs/README, goals/native-stack, target-tomodachi, banks/port, decisions/decision-work-ids, records/author-calls, status-ledger, index]
 status: current
-updated: 2026-09-05
+updated: 2026-09-06
 ---
 
 # Arc: the native window
@@ -54,11 +54,19 @@ Grepped 2026-09-03: zero hits for xdg, seat, pointer or keyboard across
 | `native-window/W2` | seat input: pointer and keyboard events decoded | input | primitive | new | 2 | open | `unminted` |
 | `native-window/W3` | negotiated pool sizes, so resize is honored | shell | law | new | 4 | open | `unminted` |
 | `native-window/W4` | text on screen, bitmap font first | text | primitive | new | 3 | open | `unminted` |
+| `native-window/W5` | the fd-passing crossing lowers: `sock-send-fd` has no entry in `crossing-wraps.chiral`, so `wl-client.chiral:201` does not lower and nothing reaches a screen. `sock-listen`, `sock-accept` and `bind` are missing with it, and it is E29's unowned server half | shell | port | new | 1 | open | `unminted` |
+| `native-window/W6` | a gate reads `prog/demo/`, which is why W5 went unnoticed while the demos were described as running | shell | tool | new | 1 | open | `unminted` |
 
 ### Coverage
 
-Every requirement is served: 1 by W1, 2 by W2, 3 by W4, 4 by W3. Every row
-serves one, and every `origin` is `new`: none of this exists in the tree.
+Every requirement is served: 1 by W1, W5 and W6; 2 by W2; 3 by W4; 4 by W3.
+Every row serves one, and every `origin` is `new`: none of this exists in the
+tree.
+
+`W5` and `W6` were opened 2026-09-06. The fd-passing crossing sat as an author
+call reading "which arc owns it" when this is the arc whose whole subject is a
+window on a screen, and `wl-client.chiral` is its client. `PRB-71` holds the
+measurement.
 
 ## Resume state
 
