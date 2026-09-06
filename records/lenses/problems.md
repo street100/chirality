@@ -232,9 +232,9 @@
 - level:    source
 - about:    lib/typing/refine.chiral
 - claim:    a refinement that cannot be inhabited is refused.
-- measured: `(def bad (refine I64 (> 9223372036854775807)) 0)` passes `chirality check`. The same file at `9223372036854775806` and at `10` both give `load: cannot prove refinement`, so the gate is armed and only the extreme escapes. `c-atom` builds `s-gt` as `(max-lo lo (+ k 1))` and `s-lt` as `(min-hi hi (- k 1))`; at `I64_MAX` the `+1` wraps to `I64_MIN` and the bound inverts to TOP. The non-adjusting operators `>=` and `<=` are correct at the same extremes. A contradictory `{v > MAX and v < MIN}` compiles, links and runs. `.planning/audit/AUDIT-MAP.md` records this as D1, "UNSOUND if ported naively, open, no current bug"; the port happened without the guard, so the last clause is false. E11 ported the same arithmetic with the guard (`lib/typing/totality.chiral:257`, `:262`), so the obligation was written once, into the other element's contract.
-- evidence: `lib/typing/refine.chiral:118`, `:120`, `lib/typing/kernel.chiral:1349`, `:1488`, `lib/typing/totality.chiral:257`, `:262`
-- checked:  2026-09-01
+- measured: **RE-RUN 2026-09-06 against a fixpoint binary and CONFIRMED exactly.** `(def bad (refine I64 (> 9223372036854775807)) 0)` passes `chirality check` at exit 0. The same file at `9223372036854775806` and at `10` both fail with `load: cannot prove refinement`. So the bound wraps at the I64 maximum: the one value that should be impossible to satisfy is the one the checker accepts.
+- evidence: re-runnable: `printf '(def bad (refine I64 (> 9223372036854775807)) 0)' > /tmp/t.chiral && ORIG_DIR=/tmp bin/chirality check /tmp/t.chiral` exits 0; the same at `...806` exits 1. `lib/typing/kernel.chiral`, `lib/typing/refine.chiral`
+- checked:  2026-09-06
 - owner:    E09
 - from:     BA-28
 
@@ -668,8 +668,8 @@
 - level:    source
 - about:    lib/typing/kernel.chiral
 - claim:    refinement checking accepts a two-line minimum function. Found porting `tools/paren-audit/paren-audit.py` to `prog/paren-audit.prog`, which needed one and could not have one.
-- measured: `(let (m (case (<i a b) (true a) (false b))) m)` fails with "cannot prove refinement". The trigger needs all four at once: a `case`, a **computed** comparison as scrutinee rather than a `Bool` that arrived as a variable, arms returning **bound variables** rather than literals, and a `let`-bound result rather than a direct return. Any one of the four removed and it passes. `cond` fails identically, as expected, since it desugars to `case`. The first hypothesis in the investigation was REFUTED by its own diagnosis section; the mechanism is recorded there. Three coherent fixes exist and they differ in what they preserve, so this needs a blueprint rather than a patch.
-- evidence: `lib/typing/kernel.chiral:1439-1440`, `lib/typing/diag.chiral:20-25`, `:314-315`, `:346`, `lib/typing/pretty.chiral:15-20`, `prog/paren-audit.prog`, `.planning/FINDING-let-bound-case-refinement-2026-08-31.md`
+- measured: ⚑ **RE-RUN ATTEMPTED 2026-09-06 and the fixture no longer parses: `load: unknown name <i`.** The operator this row's trigger is written against is gone from the surface; the nearest live names are `op-lti` and `s-lt`. The row's four-part trigger, a `case` over a computed comparison inside a `let`, cannot be reproduced until the fixture is rewritten against a name that exists, so the finding is neither confirmed nor refuted and the date does not move.
+- evidence: re-runnable once rewritten: the current comparison spellings are `op-lti` (`lib/prelude/prelude.chiral`) and `s-lt`; `<i` resolves to nothing. `lib/typing/kernel.chiral`, `lib/typing/refine.chiral`
 - checked:  2026-09-01
 - owner:    none
 - from:     FD-02
