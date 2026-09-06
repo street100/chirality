@@ -45,39 +45,45 @@ work exists before the goal did.
 Four minimums, each one the author's own phrase, plus two conditions that
 qualify all four.
 
-**1. Full orchestration.** A gated multi-agent run executes end to end inside
+1. **Full orchestration.** A gated multi-agent run executes end to end inside
 this tree: match, gate, bind, fan out, combine, stop, and emit a typed
 `RunManifest` that a golden oracle accepts. It runs under `bin/chirality-bin`
 and the Linux syscall surface with no other language beneath it. Checkable by a
 phase in `tools/test/run-tests.sh` that runs the pipeline and asserts the
-conformance verdict.
+conformance verdict. [[arcs/transport-arc]] carries the reachability half
+and [[arcs/unit-lane-arc]] the model of computation beneath it.
 
-**2. TUI through scriba for full interaction.** Every part of a run is authored,
+2. **TUI through scriba for full interaction.** Every part of a run is authored,
 composed, fired, watched and revised from `prog/scriba/`, with no step that
 requires leaving the editor. Checkable by the S-series gates: author (S14),
-compose (S16), run-view (S15), token streaming (S17).
+compose (S16), run-view (S15), token streaming (S17). [[arcs/scriba-arc]].
 
-**3. A full framework for entirely chirality AI.** The model of computation the
+3. **A full framework for entirely chirality AI.** The model of computation the
 agents run under is chirality's own. Done means the `Flow` algebra is total and
 type-checked over every case, its skills are enumerable data, and a new skill is
 added by writing a value into the registry. Checkable by `flow-ty` covering
 every `Flow` constructor and by a registry entry compiling into the binary.
+[[arcs/unit-lane-arc]].
 
-**4. A wrap to use Python for fine tuning, creating, and a growing and changing
+4. **A wrap to use Python for fine tuning, creating, and a growing and changing
 set of interactions over transformer types, using ollama and llama.cpp for
 now.** Done means chirality holds a typed port for each of those verbs, the
 external side is reachable and reaped under linear obligation, and swapping
 ollama for llama.cpp changes a declared value. The shape of "external" is author
 call A in [[records/author-calls]] and it decides whether this minimum and
-[[goals/self-tooling]] conflict at all.
+[[goals/self-tooling]] conflict at all. [[arcs/tuning-arc]], which is blocked
+whole on that call and carries its four requirements as `GAP-14` to `GAP-17`.
 
-**5. Small models.** The run in criterion 1 uses models that fit the host, and
+5. **Small models.** The run in criterion 1 uses models that fit the host, and
 the decomposition rule is enforced rather than advised. Checkable when the
-tiny-step contract has a lint that can fail.
+tiny-step contract has a lint that can fail. **Unopened, and it holds no arc
+file**: the decomposition gate is [[arcs/unit-lane-arc]] requirement 5, and no
+row there covers the model-size half.
 
-**6. A CPU is enough.** The whole path above runs on a CPU. A GPU is an
+6. **A CPU is enough.** The whole path above runs on a CPU. A GPU is an
 accelerator this goal does not assume, and no criterion here is satisfied only
-on one.
+on one. **Unopened, and it holds no arc file.** It is a standing constraint on
+every other condition rather than work of its own.
 
 ## State
 
