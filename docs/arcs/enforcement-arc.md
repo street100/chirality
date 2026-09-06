@@ -352,6 +352,37 @@ Done when all six hold. Each is checkable, and the state beside it is measured
 ⚑ Requirement 3 is the one that gates the rest. E16's scope and E18's both
 stop short of it as written, so no element owns it.
 
+## Roster
+
+Nine rows. Five are the minted `E184-E188` band, four are older catalog rows
+this arc owns. Groups: `attribution` is what the compiler states about its own
+work, `floor` is the typed-assembly floor and its adoption, and `tooling` is the
+gate tier owning itself.
+
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `enforcement/N1` | attribution: every def's fate is stated by the compiler, with evidence, and checked | attribution | law | new | 1 | open | `E184` |
+| `enforcement/N2` | how the `$apply` dispatcher's erased domains are spelled at the lowering type level | attribution | primitive | new | 3 | open | `E185` |
+| `enforcement/N3` | the `$k<i>_<j>` capture constructor's field types: concrete, or the erased word | attribution | primitive | new | 3 | built | `E186` |
+| `enforcement/N4` | the `sk-defunc` blame channel: `closconv` states why it dropped a family | attribution | law | new | 1 | built | `E187` |
+| `enforcement/N5` | `arm-body`'s unreachable arm is reached, and an `$apply` arm returns a literal `0` | attribution | law | new | 3 | built | `E188` |
+| `enforcement/N6` | lowering: pure to tal, register and slot allocation, non-tail case outlining, preserve-check | floor | primitive | new | 2 | open | `E16` |
+| `enforcement/N7` | the optimizer's re-check runs, or the element says why it does not | floor | tool | connect | 4 | open | `E17` |
+| `enforcement/N8` | the typed-assembly checker and reference tal interpreter reach the shipping path | floor | tool | connect | 2 | open | `E18` |
+| `enforcement/N9` | effectful lowering: the effect row's tal shadow plus a preserve-check over the effect claim | floor | law | new | 2 | open | `E70` |
+
+### Coverage
+
+⚑ **Requirements 5 and 6 are served by no row**, and both holes are enumerated:
+`GAP-02` for requirement 5, chirality's own tooling being chirality's, and
+`GAP-03` for requirement 6, every gate row naming a mutant that is actually run.
+Neither is an element this arc can mint against its band today, and both are
+recorded rather than papered over.
+
+Requirements 1, 2, 3 and 4 are served: 1 by N1 and N4; 2 by N6, N8 and N9; 3 by
+N2, N3 and N5; 4 by N7. Every row serves one. `N7` and `N8` are `connect`: both
+subjects are built and unadopted, which is the defect this arc names.
+
 ## Resume state
 
 **2026-09-05: resume from `.planning/HANDOFF-2026-09-05.md`.** It supersedes
