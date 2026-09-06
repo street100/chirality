@@ -3,7 +3,7 @@ node: records-author-calls
 layer: record
 related: [records/README, records/consolidation-handoff, arcs/README, elements/README, decisions/decision-erased-word-level, index]
 status: current
-updated: 2026-09-04
+updated: 2026-09-06
 ---
 
 # Open author calls
@@ -23,7 +23,7 @@ where the tree does not settle the answer and a pass must stop.
 | P3 vs open-edges | P3's limit says the membrane's inward reach is open; `open-edges` records it largely answered |
 | `decision-split-checker` | `status: draft`, while PRINCIPLES states its content settled |
 | what a `docs/elements/` file holds | one file per element, one per band, or a tracked index. `docs/elements/README.md` states the fork |
-| Python: outside the tree, or inside it | [[goals/self-tooling]] and [[goals/local-ai]] point opposite ways, and the call decides whether they conflict at all. The two readings are below |
+| ~~Python: outside the tree, or inside it~~ | **RULED 2026-09-06: outside. No Python in the language.** The section below carries the ruling, and [[arcs/tuning-arc]] is unblocked |
 | A reserved element block for the nine arcs that have none | Transport, tuning, text-tools, independent-judgment, bridge and module-split write `UNASSIGNED` and stop, 16 rows in total. The three native-stack arcs, opened 2026-09-03, add 13 arc-local rows mapping to `unminted`. `docs/decisions/decision-lane-split.md` reserves `E184-E189` and `E190-E195` and nothing else. ⚑ **Widened 2026-09-04.** [[arcs/display-calculus-arc]], opened that day, adds 17 more arc-local rows mapping to `unminted`, so the standing call now covers ten arcs. ⚑ **Widened again 2026-09-05.** [[arcs/vocabulary-arc]] and [[arcs/canvas-arc]], opened that day under [[goals/own-web]], add 28 more, so it covers twelve |
 | When the native-stack track opens | [[decisions/decision-scope]] holds the current track to self-hosting only. The author stated [[goals/native-stack]] and its internal order on 2026-09-03, then opened [[arcs/native-protocol-arc]] the same day, in session, with a next-day target on the kernels. The window and document arcs sit unopened. ⚑ **Sharpened 2026-09-04.** The document arc's subject was restated that day as [[goals/display]], whose first condition [[arcs/display-calculus-arc]] carries, so what stays unopened under this row is the window arc plus four of the five display conditions. Whether the document arc survives at all is the merge row below |
 | `E184-E189` is one band and two focuses draw on it | [[arcs/enforcement-arc]] and [[arcs/diagnostics-arc]] both mint from it, `E184` is spent, and four numbers remain. Concurrent minting is the collision that produced two `E173`s. The work split is in `docs/decisions/decision-lane-split.md` |
@@ -185,8 +185,20 @@ Two readings survive that sentence and they permit different things.
 | Python as a spawned external process, its scripts living outside this repo | The whole of criterion 4, through E33's typed spawn, with [[goals/self-tooling]] intact and its file count still headed to zero. ollama and llama.cpp get wrapped by the same mechanism, so the author's "for now" clause needs one seam and not three | The training scripts live in a second repository. This tree cannot gate them and cannot claim them, so a capability the goal names is verified nowhere here |
 | `.py` files inside the tree, under a carve-out | The scripts are tracked, testable and versioned beside the chirality that calls them | [[goals/self-tooling]]'s done condition becomes false as written and has to be reworded, which `docs/goals/README.md` makes a decision before it is an edit. `tools/` cannot be deleted |
 
-Under reading one the two goals are independent. Under reading two one of them
-has to change. Nothing in the tree settles it, which is why a pass stops here.
+**RULED 2026-09-06 by the author: reading one. There is no Python in the
+language.** Python is a spawned external process, its scripts outside this repo,
+reached through a typed port under a linear reap obligation. There is no
+carve-out and `docs/goals/self-tooling.md` needs no rewording: no `.py` under
+`/workspace/chirality` stays literally true, and `tools/` is still deleted.
+
+The two goals were never in conflict; only the unmade call made them look it.
+[[goals/local-ai]] criterion 4 becomes port work, and the same seam serves
+ollama, llama.cpp and a training process, which is the author's "for now" clause
+needing one seam rather than three.
+
+⚑ This row stood open since the 2026-09-01 hoist and blocked
+[[arcs/tuning-arc]] entire, which carried zero rows for five days because either
+answer changed its first one. It is closed.
 
 The mechanism the first reading rests on is built: E33 `proc-spawn` returns one
 `SpawnRes` with a linear `Reap` obligation (`lib/runtime/proc.chiral`), and

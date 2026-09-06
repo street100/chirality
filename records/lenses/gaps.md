@@ -186,58 +186,58 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 
 ### GAP-14 tuning-arc requirement 1 has no roster row
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    closed
+- author:   ruled 2026-09-06
+- note:     "no fucking python in the language". Author call A ruled: Python is outside the tree, a spawned external process reached through a typed port.
 - level:    arc
 - about:    tuning/req1
 - claim:    docs/arcs/tuning-arc.md REQUIREMENTS 1: "Chirality holds a typed port for each verb the criterion names."
-- measured: the arc carries zero rows on purpose. Its opening proposal measured that the two readings of author call A share no first row, so any row written now prejudges the call. Blocked whole in records/author-calls.md.
+- measured: CLOSED 2026-09-06 by the roster tuning-arc could not write while the call was open. the arc carries zero rows on purpose. Its opening proposal measured that the two readings of author call A share no first row, so any row written now prejudges the call. Blocked whole in records/author-calls.md.
 - evidence: docs/arcs/tuning-arc.md, records/author-calls.md
-- checked:  2026-09-05
-- owner:    none
+- checked:  2026-09-06
+- owner:    tuning/U1 through tuning/U5
 - from:     none
 
 ### GAP-15 tuning-arc requirement 2 has no roster row
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    closed
+- author:   ruled 2026-09-06
+- note:     "no fucking python in the language". Author call A ruled: Python is outside the tree, a spawned external process reached through a typed port.
 - level:    arc
 - about:    tuning/req2
 - claim:    docs/arcs/tuning-arc.md REQUIREMENTS 2: "The external side is reaped under linear obligation."
-- measured: the arc carries zero rows on purpose. Its opening proposal measured that the two readings of author call A share no first row, so any row written now prejudges the call. Blocked whole in records/author-calls.md.
+- measured: CLOSED 2026-09-06 by the roster tuning-arc could not write while the call was open. the arc carries zero rows on purpose. Its opening proposal measured that the two readings of author call A share no first row, so any row written now prejudges the call. Blocked whole in records/author-calls.md.
 - evidence: docs/arcs/tuning-arc.md, records/author-calls.md
-- checked:  2026-09-05
-- owner:    none
+- checked:  2026-09-06
+- owner:    tuning/U1 through tuning/U5
 - from:     none
 
 ### GAP-16 tuning-arc requirement 3 has no roster row
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    closed
+- author:   ruled 2026-09-06
+- note:     "no fucking python in the language". Author call A ruled: Python is outside the tree, a spawned external process reached through a typed port.
 - level:    arc
 - about:    tuning/req3
 - claim:    docs/arcs/tuning-arc.md REQUIREMENTS 3: "Swapping ollama for llama.cpp changes a declared value."
-- measured: the arc carries zero rows on purpose. Its opening proposal measured that the two readings of author call A share no first row, so any row written now prejudges the call. Blocked whole in records/author-calls.md.
+- measured: CLOSED 2026-09-06 by the roster tuning-arc could not write while the call was open. the arc carries zero rows on purpose. Its opening proposal measured that the two readings of author call A share no first row, so any row written now prejudges the call. Blocked whole in records/author-calls.md.
 - evidence: docs/arcs/tuning-arc.md, records/author-calls.md
-- checked:  2026-09-05
-- owner:    none
+- checked:  2026-09-06
+- owner:    tuning/U1 through tuning/U5
 - from:     none
 
 ### GAP-17 tuning-arc requirement 4 has no roster row
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    closed
+- author:   ruled 2026-09-06
+- note:     "no fucking python in the language". Author call A ruled: Python is outside the tree, a spawned external process reached through a typed port.
 - level:    arc
 - about:    tuning/req4
 - claim:    docs/arcs/tuning-arc.md REQUIREMENTS 4: "The done condition of goals/self-tooling is still true."
-- measured: the arc carries zero rows on purpose. Its opening proposal measured that the two readings of author call A share no first row, so any row written now prejudges the call. Blocked whole in records/author-calls.md.
+- measured: CLOSED 2026-09-06 by the roster tuning-arc could not write while the call was open. the arc carries zero rows on purpose. Its opening proposal measured that the two readings of author call A share no first row, so any row written now prejudges the call. Blocked whole in records/author-calls.md.
 - evidence: docs/arcs/tuning-arc.md, records/author-calls.md
-- checked:  2026-09-05
-- owner:    none
+- checked:  2026-09-06
+- owner:    tuning/U1 through tuning/U5
 - from:     none
 
 ### GAP-18 zero-python-arc requirement 4 has no roster row

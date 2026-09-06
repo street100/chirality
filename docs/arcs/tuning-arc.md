@@ -3,7 +3,7 @@ node: arc-tuning
 layer: navigation
 related: [arcs/README, goals/local-ai, goals/self-tooling, records/author-calls, decision-work-ids, index]
 status: current
-updated: 2026-09-05
+updated: 2026-09-06
 ---
 
 # Arc: fine tuning and the transformer verbs
@@ -24,18 +24,25 @@ Criterion 4 of [[goals/local-ai]] carries the author's phrase for fine tuning,
 model creation, and a growing and changing set of interactions over transformer
 types, wrapping ollama and llama.cpp for now.
 
-## What blocks it, and it is the whole arc
+## The call that blocked it, and its answer
 
-Author call A in [[records/author-calls]]: Python outside the tree, or inside
-it. The two readings share no first row.
+**Author call A is RULED, 2026-09-06: Python is outside the tree.** It is a
+spawned external process, its scripts living outside this repo, reached through
+a typed port under a linear reap obligation. There is no carve-out.
 
-| reading | what this arc becomes |
-|---|---|
-| a spawned external process, its scripts living outside this repo | a ports arc over E33, which is BUILT native: `proc-spawn` returns one `SpawnRes` with a linear `Reap`, and the wrapper is registered in the crossing table. It mints no `.py` file and leaves [[goals/self-tooling]] intact |
-| `.py` files inside the tree, under a carve-out | a `tools/`-shaped arc, which [[goals/self-tooling]]'s done condition forbids as written. That condition would have to be reworded first, and `docs/goals/README.md` makes that a decision before it is an edit |
+This arc is therefore **a ports arc over `E33`**. `proc-spawn` returns one
+`SpawnRes` carrying a linear `Reap` (`lib/runtime/proc.chiral`), and
+`raw-proc-spawn` maps to `nb-run-cmd` at
+`lib/lowering/tal/crossing-wraps.chiral:54`, so the mechanism the roster rests on
+is already built.
 
-`docs/arcs/zero-python-arc.md` serves the goal that the second reading
-contradicts. Nothing is re-pointed between them until the call is made.
+[[goals/self-tooling]] needs no rewording: no `.py` under the tree stays
+literally true and [[arcs/zero-python-arc]] is unaffected. The two goals were
+never in conflict; the unmade call made them look it.
+
+⚑ This arc carried zero rows from 2026-09-02 to 2026-09-06 because either
+reading changed its first one. `GAP-14` through `GAP-17` enumerated the four
+requirements meanwhile and are closed by the roster below.
 
 ## What is measured today
 
@@ -66,17 +73,24 @@ Draft, and each is checkable once the arc can open.
 
 ## Roster
 
-**Zero rows, and that is the honest state.** The proposal that opened this arc
-measured that the two readings of author call A share no first row, so any row
-written now prejudges the call. The candidates under each reading are in the
-table above and neither is scheduled.
+Groups: `port` is the typed crossing per verb, `custody` is the reap obligation,
+and `swap` is the declared-value substitution.
+
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `tuning/U1` | the verb set, frozen: which of fine-tune, create and interact each get a port, and what each carries | port | decision | new | 1 | open | `unminted` |
+| `tuning/U2` | a typed port per verb over `E33`'s `proc-spawn`, one seam serving ollama, llama.cpp and a training process | port | port | connect | 1 | open | `unminted` |
+| `tuning/U3` | the external side reaped under linear obligation: a run that abandons the process fails to compile | custody | law | connect | 2 | open | `unminted` |
+| `tuning/U4` | the backend as a declared value, so swapping ollama for llama.cpp changes that value and nothing else | swap | primitive | new | 3 | open | `unminted` |
+| `tuning/U5` | a gate that asserts no `.py` entered the tree while this arc ran | swap | tool | new | 4 | open | `unminted` |
 
 ### Coverage
 
-All four requirements are served by no row, and all four are enumerated:
-`GAP-14` through `GAP-17` in `records/lenses/gaps.md`, each carrying the author
-marker so the blocked call is visible in the sweep. That is the whole coverage
-statement for an arc that is blocked entire.
+Every requirement is served: 1 by U1 and U2, 2 by U3, 3 by U4, 4 by U5. Every
+row serves one. `U2` and `U3` are `connect`: `proc-spawn` and its linear `Reap`
+are built at `lib/runtime/proc.chiral` and the gap is that no verb reaches them.
+
+`GAP-14` through `GAP-17` are closed by this roster.
 
 ## Resume state
 
