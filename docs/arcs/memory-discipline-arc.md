@@ -62,8 +62,8 @@ proves the first was right.
 
 ## REQUIREMENTS
 
-1. **Peak is the live set, not the total.** Observed as peak RSS on the
-   default-scope projection falling below this box's memory.
+1. **Peak is the live set.** Today it is the total ever allocated. Observed as
+   peak RSS on the default-scope projection falling below this box's memory.
 2. **A discipline is selected by profile**, per phase and per runtime, and the
    seam is erased at compile time by `specialize-singletons`.
 3. **The reclamation discipline in the tree is reached.** `mem-region` has zero
