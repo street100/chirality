@@ -178,14 +178,20 @@ judges the exit code, so the run is defended on every suite run and no longer
 rests on a measurement performed by hand once. Two of its five assertions are
 endpoint-bound and defer when the endpoint is silent.
 
-## Rows
+## Roster
 
-| row | what | state | element |
-|---|---|---|---|
-| `transport/T1` | restate the transport gap where it is recorded, against the 2026-09-02 measurement | done. `docs/goals/local-ai.md:110` landed in `9ef9448`; the orchestration-substrate row in [[status-ledger]] names the measured run and the absent gate. `records/author-calls.md` still carries the three-name reading and sits on another session's write surface, which moved its line number twice on 2026-09-02, so the citation names the file with no line number | `unminted` |
-| `transport/T2` | a phase in `tools/test/run-tests.sh` that compiles `prog/samples/e130_http_get.prog`, runs it, and compares the exit code against the 42 its own header specifies | done. Requirement 2. Phase 20 is `tools/test/transport.sh`, registered at `tools/test/run-tests.sh:324`. It blobs the root through `chirality_blob_file "lib:prog"`, compiles it with `bin/chirality-bin`, refuses an empty artifact, runs it under a `timeout` and asserts exit 42. The root is non-hermetic, so the phase probes `100.64.0.5:11434` once and defers this assertion when the probe is refused, under the ruling at `prog/samples/e130_http_get.prog:8-9` | `unminted` |
-| `transport/T3` | the same phase treatment for `prog/samples/e131_sse_socketpair.prog`, header exit 0, and for `prog/samples/stream-ollama.prog`, header exit 0 | done. Requirement 3. Phase 20 asserts exit 0 on `prog/samples/e131_sse_socketpair.prog`, hermetic and hard-gated, and exit 0 plus a non-empty stdout on `prog/samples/stream-ollama.prog`, which is endpoint-bound and deferred with T2's assertion. `chat-open` is reached only by the endpoint-bound one, so a box with no route gates `chat-read` and `chat-close` and defers the streaming open | `unminted` |
-| `transport/T4` | the same phase treatment for `prog/samples/e130_http_request_refused.prog`, header exit 42, as a negative control on T2 | done. Requirement 4. Phase 20 asserts exit 42 against `127.0.0.1:1`, hermetic and hard-gated on every run, under a `timeout` because a hang is the failure this row watches for. It is the phase's negative control, and it is why the phase carries no mutant harness | `unminted` |
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `transport/T1` | restate the transport gap where it is recorded, against the 2026-09-02 measurement. done. `docs/goals/local-ai.md:110` landed in `9ef9448`; the orchestration-substrate row in [[status-ledger]] names the measured run and the absent gate. `records/author-calls.md` still carries the three-name reading and sits on another session's write surface, which moved its line number twice on 2026-09-02, so the citation names the file with no line number | record | decision | connect | 1 | built | `unminted` |
+| `transport/T2` | a phase in `tools/test/run-tests.sh` that compiles `prog/samples/e130_http_get.prog`, runs it, and compares the exit code against the 42 its own header specifies. done. Requirement 2. Phase 20 is `tools/test/transport.sh`, registered at `tools/test/run-tests.sh:324`. It blobs the root through `chirality_blob_file "lib:prog"`, compiles it with `bin/chirality-bin`, refuses an empty artifact, runs it under a `timeout` and asserts exit 42. The root is non-hermetic, so the phase probes `100.64.0.5:11434` once and defers this assertion when the probe is refused, under the ruling at `prog/samples/e130_http_get.prog:8-9` | gate | tool | connect | 2 | built | `unminted` |
+| `transport/T3` | the same phase treatment for `prog/samples/e131_sse_socketpair.prog`, header exit 0, and for `prog/samples/stream-ollama.prog`, header exit 0. done. Requirement 3. Phase 20 asserts exit 0 on `prog/samples/e131_sse_socketpair.prog`, hermetic and hard-gated, and exit 0 plus a non-empty stdout on `prog/samples/stream-ollama.prog`, which is endpoint-bound and deferred with T2's assertion. `chat-open` is reached only by the endpoint-bound one, so a box with no route gates `chat-read` and `chat-close` and defers the streaming open | gate | tool | connect | 3 | built | `unminted` |
+| `transport/T4` | the same phase treatment for `prog/samples/e130_http_request_refused.prog`, header exit 42, as a negative control on T2. done. Requirement 4. Phase 20 asserts exit 42 against `127.0.0.1:1`, hermetic and hard-gated on every run, under a `timeout` because a hang is the failure this row watches for. It is the phase's negative control, and it is why the phase carries no mutant harness | gate | tool | connect | 4 | built | `unminted` |
+
+### Coverage
+
+Every requirement is served: 1 by T1, 2 by T2, 3 by T3, 4 by T4. Every row
+serves one. Every `origin` is `connect`: `http-request` and `chat-open` are
+built chirality defs and the whole arc is about reaching them from a gate.
 
 ### Two constraints on how T2 through T4 are built
 
