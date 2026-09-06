@@ -1753,6 +1753,327 @@ def check_ad() -> list[str]:
     return [ln for ln in r.stdout.splitlines() if ln.startswith("[LN]")]
 
 
+# ── the system's own goals, as checks ─────────────────────────────────────────
+# Each of AE..AJ enforces an invariant this tree STATES and nothing read. The
+# jump in findings when they land is not new breakage: those claims were always
+# wrong and sat where the checks did not reach. docs/elements/README.md records
+# the same reading for the 2026-09-01 jump from 3 failing checks to 7.
+
+_ARC_ROW = re.compile(r"^\|\s*`?([a-z0-9-]+/[A-Z]+\d+)`?\s*\|(.*)$", re.M)
+_ROSTER_STATES = ("open", "designed", "minted", "specced", "building", "built",
+                  "closed", "direct")
+
+
+def _arc_files():
+    d = ROOT / "docs" / "arcs"
+    return [f for f in sorted(d.glob("*-arc.md")) if not f.name.startswith("_")]
+
+
+def _goal_files():
+    d = ROOT / "docs" / "goals"
+    return [f for f in sorted(d.glob("*.md"))
+            if not f.name.startswith("_") and f.name != "README.md"]
+
+
+# 29 element rows are BOLD in their number cell (`| **E42** | **async** | ...`),
+# 23 in the ledger and 6 in the catalog. A regex anchored on `| E42 |` misses
+# every one and reports it as an unminted element. Measured 2026-09-05 after
+# check AE's first run named E42 as missing from a ledger that holds it.
+_EROW = re.compile(r"^\|\s*\*{0,2}E(\d+)\*{0,2}\s*\|", re.M)
+
+
+def _reserved_slots() -> set[int]:
+    """Numbers the catalog declares as reserved SLOTS rather than elements.
+    E114-E119 are the six CRY slots: ledger rows with no catalog row, by
+    design, so an asymmetry check has to know they are not elements."""
+    out: set[int] = set()
+    txt = (ROOT / "docs/elements/catalog.md").read_text()
+    for m in re.finditer(r"reserved[^.\n]{0,40}?slots?\s*\(E(\d+)[-\u2013]E?(\d+)\)",
+                         txt, re.I):
+        out |= set(range(int(m.group(1)), int(m.group(2)) + 1))
+    return out
+
+
+def _minted():
+    """(catalog set, ledger set) of E numbers, as ints, reserved slots removed."""
+    slots = _reserved_slots()
+    cat = {int(n) for n in _EROW.findall((ROOT / "docs/elements/catalog.md").read_text())}
+    led = {int(n) for n in _EROW.findall((ROOT / "docs/elements/ledger.md").read_text())}
+    return cat - slots, led - slots
+
+
+def _ledger_state():
+    st = {}
+    for ln in (ROOT / "docs/elements/ledger.md").read_text().splitlines():
+        m = re.match(r"\|\s*\*{0,2}E(\d+)\*{0,2}\s*\|\s*\*{0,2}([^|]*?)\*{0,2}\s*\|"
+                     r"\s*\*{0,2}([a-z]+)\*{0,2}\s*\|", ln)
+        if m and int(m.group(1)) not in st:
+            st[int(m.group(1))] = m.group(3)
+    return st
+
+
+def _lens_about(lens_file):
+    f = ROOT / "records" / "lenses" / lens_file
+    if not f.is_file():
+        return set()
+    return {m.group(1).strip() for m in
+            re.finditer(r"^- about:\s*(.+)$", f.read_text(), re.M)}
+
+
+def check_ae() -> list[str]:
+    """Element and arc, both directions.
+
+    docs/goals/README.md: "An element belongs to exactly one arc." That was
+    unsatisfiable until decision-four-lenses gave unspoken territory a home, so
+    the invariant now reads: an unbuilt element is named by an arc, OR it is
+    enumerated in the unspoken lens as territory with no ruling. Silence is the
+    only thing this refuses."""
+    errs = []
+    cat, led = _minted()
+    for n in sorted(cat - led):
+        errs.append(f"[AE] E{n} is in docs/elements/catalog.md and not in "
+                    f"docs/elements/ledger.md. A mint writes both rows")
+    for n in sorted(led - cat):
+        errs.append(f"[AE] E{n} is in docs/elements/ledger.md and not in "
+                    f"docs/elements/catalog.md. A mint writes both rows")
+
+    named = set()
+    for f in _arc_files():
+        named |= {int(x) for x in re.findall(r"\bE(\d+)\b", f.read_text())}
+    spoken = {a for a in _lens_about("unspoken.md")}
+    st = _ledger_state()
+    for n in sorted(cat):
+        if st.get(n) not in ("design", "flight"):
+            continue                       # built and superseded rows are history
+        if n in named:
+            continue
+        if f"E{n}" in spoken:
+            continue
+        errs.append(f"[AE] E{n} is unbuilt (ledger `{st.get(n)}`), no arc names it, "
+                    f"and no row in records/lenses/unspoken.md is about it. "
+                    f"Unscheduled work has to be visible somewhere")
+    return errs
+
+
+def check_af() -> list[str]:
+    """Every goal states what done means, in numbered checkable conditions, and
+    every condition names its arc or declares itself unopened.
+
+    docs/goals/README.md requires a goal to "state what `done` means", and
+    .claude/skills/goal-open enforces the numbered form. A condition nothing
+    schedules and nothing marks unopened is a claim with no plan and no
+    admission."""
+    errs = []
+    for f in _goal_files():
+        t = f.read_text()
+        m = re.search(r"^## What done means\s*$", t, re.M)
+        if not m:
+            errs.append(f"[AF] {f.name} has no `## What done means`. Nothing "
+                        f"states what done is for this goal")
+            continue
+        rest = t[m.end():]
+        n = re.search(r"^## ", rest, re.M)
+        sec = rest[:n.start()] if n else rest
+        conds = list(re.finditer(r"^(\d+)\.\s+(.+?)(?=^\d+\.\s|\Z)", sec, re.M | re.S))
+        if not conds:
+            errs.append(f"[AF] {f.name} `## What done means` carries no NUMBERED "
+                        f"conditions. A condition with no number cannot be cited "
+                        f"by an arc")
+            continue
+        for c in conds:
+            body = c.group(2)
+            if re.search(r"[Uu]nopened", body):
+                continue
+            if re.search(r"\[\[arcs/[a-z0-9-]+\]\]", body):
+                continue
+            errs.append(f"[AF] {f.name} done-condition {c.group(1)} names no arc "
+                        f"and does not say unopened")
+    return errs
+
+
+def check_ag() -> list[str]:
+    """An arc's roster against arcs/README.md's schema, and its coverage.
+
+    Coverage is the forcing function that keeps an arc from being thin: every
+    requirement served by a row, every row serving a requirement. It is only
+    decidable on a roster carrying the `req` and `state` columns, so an arc
+    predating that schema is reported once rather than per row."""
+    errs = []
+    cat, _ = _minted()
+    for f in _arc_files():
+        t = f.read_text()
+        rows = _ARC_ROW.findall(t)
+        reqs = set(re.findall(r"^(\d+)\.\s+\*\*", arc_req_section(t), re.M))
+        if not rows:
+            if "REQUIREMENT" in t:
+                errs.append(f"[AG] {f.name} states REQUIREMENTS and carries no "
+                            f"roster table. Its work cannot be counted or cited")
+            continue
+        cols = len([c for c in rows[0][1].split("|") if c.strip()]) + 1
+        if cols < 8:
+            errs.append(f"[AG] {f.name} roster has {cols} columns and the schema "
+                        f"in docs/arcs/README.md has 8 (row what group kind origin "
+                        f"req state element). {len(rows)} row(s) cannot be "
+                        f"coverage-checked")
+            continue
+        served = set()
+        for rid, rest in rows:
+            cells = [c.strip() for c in rest.strip().strip("|").split("|")]
+            state, elem = cells[-2], cells[-1].strip("`")
+            if state not in _ROSTER_STATES:
+                errs.append(f"[AG] {f.name} row {rid} state '{state}' is outside "
+                            f"({' '.join(_ROSTER_STATES)})")
+            if elem != "unminted":
+                m = re.fullmatch(r"E(\d+)", elem)
+                if not m:
+                    errs.append(f"[AG] {f.name} row {rid} element '{elem}' is not "
+                                f"`unminted` or an E number")
+                elif int(m.group(1)) not in cat:
+                    errs.append(f"[AG] {f.name} row {rid} claims {elem} and no "
+                                f"catalog row mints it")
+            rq = {x for x in re.findall(r"\d+", cells[-3])}
+            if not rq:
+                errs.append(f"[AG] {f.name} row {rid} serves no numbered "
+                            f"requirement. It is out of scope, or a requirement "
+                            f"is missing")
+            served |= rq
+        for r in sorted(reqs - served, key=int):
+            errs.append(f"[AG] {f.name} requirement {r} is served by no roster "
+                        f"row. It is a done-condition with no plan")
+    return errs
+
+
+def arc_req_section(t: str) -> str:
+    m = re.search(r"^## REQUIREMENTS\s*$", t, re.M)
+    if not m:
+        return ""
+    rest = t[m.end():]
+    n = re.search(r"^## ", rest, re.M)
+    return rest[:n.start()] if n else rest
+
+
+def check_ah() -> list[str]:
+    """A roster row's state against the artifact that state claims exists.
+
+    decision-design-before-mint puts one artifact behind each stage. A row that
+    says `designed` with no design is a state nothing backs."""
+    errs = []
+    parts = ROOT / "docs" / "arcs" / "parts"
+    specs = ROOT / "docs" / "elements" / "specs"
+    checked = 0
+    for f in _arc_files():
+        arc = f.stem[:-4] if f.stem.endswith("-arc") else f.stem
+        for rid, rest in _ARC_ROW.findall(f.read_text()):
+            cells = [c.strip() for c in rest.strip().strip("|").split("|")]
+            if len(cells) < 7:
+                continue
+            checked += 1
+            state, elem = cells[-2], cells[-1].strip("`")
+            local = rid.split("/")[-1]
+            if state in ("designed", "minted", "specced", "building", "built") \
+               and not (parts / f"{arc}-{local}.md").is_file():
+                errs.append(f"[AH] {f.name} row {rid} is `{state}` and "
+                            f"docs/arcs/parts/{arc}-{local}.md does not exist")
+            if state in ("specced", "building", "built") and elem.startswith("E") \
+               and not list(specs.glob(f"{elem}-*-SPEC.md")):
+                errs.append(f"[AH] {f.name} row {rid} is `{state}` and no "
+                            f"{elem}-*-SPEC.md exists")
+    if not checked:
+        raise Vacuous("no arc carries a roster with the state column yet")
+    return errs
+
+
+def check_ai() -> list[str]:
+    """A row whose evidence moved after it was last checked.
+
+    records/lenses/README.md and records/README.md both state the rule: "A row
+    whose `checked:` date predates the last change to the files it cites is
+    unverified." Nothing read it until now. The `revisit` skill works one off."""
+    import subprocess
+    # One `git log` per (row, path) made this check take minutes. The dates are
+    # per FILE, so they are looked up once and cached: a lint nobody can afford
+    # to run is worse than no lint.
+    cache: dict[str, str] = {}
+
+    def last_change(path: str) -> str:
+        if path not in cache:
+            r = subprocess.run(["git", "-C", str(ROOT), "log", "-1",
+                                "--format=%cs", "--", path],
+                               capture_output=True, text=True)
+            cache[path] = r.stdout.strip()
+        return cache[path]
+
+    errs = []
+    roots = [ROOT / "records"]
+    for d in roots:
+        for f in sorted(d.rglob("*.md")):
+            if f.name == "README.md":
+                continue
+            for blk in re.split(r"(?m)^(?=### )", f.read_text()):
+                if not blk.startswith("### "):
+                    continue
+                rid = blk.split("\n", 1)[0][4:].split()[0]
+                st = re.search(r"^- state:\s*(\S+)", blk, re.M)
+                if st and st.group(1) in ("RETIRED", "FIXED", "covered", "closed"):
+                    continue
+                ck = re.search(r"^- checked:\s*(\d{4}-\d{2}-\d{2})", blk, re.M)
+                ev = re.search(r"^- evidence:\s*(.+)$", blk, re.M)
+                if not (ck and ev):
+                    continue
+                for path in re.findall(
+                        r"([A-Za-z0-9_./-]+\.(?:chiral|prog|py|sh|md))", ev.group(1)):
+                    if not (ROOT / path).exists():
+                        continue
+                    last = last_change(path)
+                    if last and last > ck.group(1):
+                        rel = f.relative_to(ROOT)
+                        errs.append(f"[AI] {rel} {rid} checked {ck.group(1)} and "
+                                    f"{path} changed {last}. The row is unverified")
+                        break
+    return errs
+
+
+def check_aj() -> list[str]:
+    """The deferral rule, mechanised.
+
+    working-discipline: never defer to an `E#` that is not already minted. A
+    citation of an unminted number is a phantom dependency. Zero-padded artifact
+    names (E01-sexp-reader.md) and the endpoints of a reserved band (E184-E189)
+    are not citations of an element and are excluded."""
+    errs = []
+    cat, led = _minted()
+    # A reserved slot is DECLARED, so naming one is not a phantom dependency.
+    # The CRY slots E114-E119 are ledger rows the catalog names in prose.
+    minted = cat | led | _reserved_slots()
+    # ONE pass. Reading every doc twice, once for band endpoints and once for
+    # citations, doubled this check's share of the run for no gain.
+    srcs = [f for f in sorted(list((ROOT / "docs").rglob("*.md"))
+                              + list((ROOT / "records").rglob("*.md")))
+            if not f.name.startswith("_")]
+    texts = {f: f.read_text(errors="ignore") for f in srcs}
+    band_ends = set()
+    for text in texts.values():
+        for m in re.finditer(r"E(\d+)\s*[-\u2013]\s*E?(\d+)", text):
+            band_ends |= {int(m.group(1)), int(m.group(2))}
+    for src in srcs:
+        rel = src.relative_to(ROOT)
+        text = texts[src]
+        seen = set()
+        for m in re.finditer(r"(?<![\w/-])E(\d{1,3})\b", text):
+            raw = m.group(1)
+            if raw.startswith("0"):
+                continue                    # E01-… is an artifact filename, not a citation
+            n = int(raw)
+            if n in minted or n in band_ends or n in seen:
+                continue
+            seen.add(n)
+            line = text.count("\n", 0, m.start()) + 1
+            errs.append(f"[AJ] {rel}:{line} cites E{n} and no catalog or ledger "
+                        f"row mints it. The deferral rule forbids naming an "
+                        f"element that does not exist")
+    return errs
+
+
 def check_aa() -> list[str]:
     """AA. A superseded figure carries the date it measured (added 2026-09-04).
 
@@ -1841,7 +2162,13 @@ def main() -> int:
                      ("AA superseded figures", check_aa),
                      ("AB ledger vs catalog build state", check_ab),
                      ("AC ledger built vs pre-impl pipeline state", check_ac),
-                     ("AD the four lenses", check_ad)):
+                     ("AD the four lenses", check_ad),
+                     ("AE element and arc, both directions", check_ae),
+                     ("AF goal done-conditions", check_af),
+                     ("AG arc roster schema and coverage", check_ag),
+                     ("AH roster state vs its artifact", check_ah),
+                     ("AI rows whose evidence moved", check_ai),
+                     ("AJ the deferral rule", check_aj)):
         try:
             errs = fn()
         except Vacuous as v:

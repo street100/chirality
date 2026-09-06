@@ -58,7 +58,7 @@ design, audit, mint, spec, audit, implement, with revisit reaching any of them.
 | tool | is |
 |---|---|
 | `python3 tools/pack/pack.py E<#> …` | every pipeline bundle, and the scaffolder |
-| `python3 tools/ledger-lint/ledger-lint.py` | the mechanical doc worklist, checks A to V |
+| `python3 tools/ledger-lint/ledger-lint.py` | the mechanical doc worklist, checks A to AJ |
 | `python3 tools/doc/doc.py audit <node>` | one doc's audit bundle |
 | `python3 tools/lens/lens.py check \| author \| overview` | the four lenses, the author sweep, the generated orientation |
 | `tools/test/run-tests.sh` | the gating floor. A green line is a named phase here |

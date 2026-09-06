@@ -136,15 +136,26 @@ is the cheapest rule here and the one most often skipped.
 ## Before you commit
 
 ```
-python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A to AC
+python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A to AJ
 tools/prose-lint/prose-lint.sh PATH...       # how it reads
 ```
 
-`ledger-lint` runs 29 checks, A through AC. Measured 2026-09-05 it reports **4
-findings**, one `I` and three `AC`, with `H` and `M` recorded as checking
-nothing. The 255 this paragraph carried until 2026-09-05 was the count at the
-2026-09-01 consolidation and it was never re-measured. Compare the count and the
-per-check distribution before and after a change, so a change that adds none is
-visible, and read the distribution rather than the total: an `[ok]` line matches
-the same shape as a finding. Commit with a pathspec, `git commit -- <path>`, because a bare commit
+`ledger-lint` runs 35 checks, A through AJ. Measured 2026-09-05 it reports **110
+findings**: one `I`, three `AC`, and the 106 that AF, AG and AI reached on the
+day they landed. `H`, `M` and `AH` are recorded as checking nothing.
+
+**That jump measures reach.** Those claims were always wrong and sat where no
+check looked, which is the reading `docs/elements/README.md` already records for
+the 2026-09-01 jump from 3 failing checks to 7. Re-narrowing a check to make the
+number fall is the gate-that-cannot-fail error this repo names as cardinal.
+
+⚑ This paragraph read 255 findings until 2026-09-05. That figure was the count
+taken at the 2026-09-01 consolidation and it stood unmeasured for four days. It
+also counted the `[ok]` lines, which match the same shape as a finding.
+
+Compare the count **and the per-check distribution** before and after a change,
+so a change that adds none is visible. A full run takes about 50 seconds:
+AI shells out to git for each cited file's last-change date.
+
+Commit with a pathspec, `git commit -- <path>`, because a bare commit
 sweeps another agent's staged work and that has happened twice here.
