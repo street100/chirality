@@ -65,22 +65,28 @@ role type, no declared `State` or `Request` sum, no chunked-value commitment.
    accepting anything.** The bound rides the type, the way `pool.port:3-5` puts
    a size in the port type.
 
-## Rows
+## Roster
 
-| row | what | state | element |
-|---|---|---|---|
-| `vocabulary/M1` | the mark has a file kind and the loader checks it | not started. Behind the file-kind decision below | `unminted` |
-| `vocabulary/M2` | a generated document is a program that emits a mark, so the language is the template language | not started | `unminted` |
-| `vocabulary/M3` | the round-trip law and its gate | not started. Requirement 2 | `unminted` |
-| `vocabulary/M4` | an unknown mark is refused | not started | `unminted` |
-| `vocabulary/M5` | the version field, and a total handler over it | not started | `unminted` |
-| `vocabulary/M6` | a role carried, and no style | not started. Requirement 4 | `unminted` |
-| `vocabulary/F1` | closed element sums per context | not started. Absorbs `display-calculus/E1` | `unminted` |
-| `vocabulary/F2` | the size bound in the type | not started. Requirement 5 | `unminted` |
-| `vocabulary/F3` | node addressing | **the shard is built.** `apc.chiral:48` ships with two importers under `tools/`. Measuring its reach is the class of row `display-calculus/A1` is | `unminted` |
-| `vocabulary/F4` | one text form, and nothing renders from it | not started. Absorbs `display-calculus/E4` | `unminted` |
-| `vocabulary/F5` | two readers agree by construction, compared structurally | not started. `prog/manas/contract/golden.chiral` is the precedent | `unminted` |
-| `vocabulary/Q1` | the round-trip gate | not started. Pairs with M3 | `unminted` |
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `vocabulary/M1` | the mark has a file kind and the loader checks it. not started. Behind the file-kind decision below | mark | primitive | new | 2 | open | `unminted` |
+| `vocabulary/M2` | a generated document is a program that emits a mark, so the language is the template language. not started | mark | law | new | 2 | open | `unminted` |
+| `vocabulary/M3` | the round-trip law and its gate. not started. Requirement 2 | mark | law | new | 2 | open | `unminted` |
+| `vocabulary/M4` | an unknown mark is refused. not started | mark | law | new | 3 | open | `unminted` |
+| `vocabulary/M5` | the version field, and a total handler over it. not started | mark | primitive | new | 3 | open | `unminted` |
+| `vocabulary/M6` | a role carried, and no style. not started. Requirement 4 | mark | primitive | new | 4 | open | `unminted` |
+| `vocabulary/F1` | closed element sums per context. not started. Absorbs `display-calculus/E1` | form | primitive | new | 1 | open | `unminted` |
+| `vocabulary/F2` | the size bound in the type. not started. Requirement 5 | form | primitive | new | 5 | open | `unminted` |
+| `vocabulary/F3` | node addressing. **the shard is built.** `apc.chiral:48` ships with two importers under `tools/`. Measuring its reach is the class of row `display-calculus/A1` is | form | primitive | connect | 1 | open | `unminted` |
+| `vocabulary/F4` | one text form, and nothing renders from it. not started. Absorbs `display-calculus/E4` | form | law | new | 4 | open | `unminted` |
+| `vocabulary/F5` | two readers agree by construction, compared structurally. not started. `prog/manas/contract/golden.chiral` is the precedent | form | law | new | 2 | open | `unminted` |
+| `vocabulary/Q1` | the round-trip gate. not started. Pairs with M3 | gate | tool | new | 2 | open | `unminted` |
+
+### Coverage
+
+Groups are the mark itself, the document form, and the gate over both. Every
+requirement is served: 1 by F1 and F3; 2 by M1, M2, M3, F5 and Q1; 3 by M4 and
+M5; 4 by M6 and F4; 5 by F2. Every row serves one.
 
 ## Resume state
 
