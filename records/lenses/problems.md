@@ -8,9 +8,9 @@
 - level:    source
 - about:    tools/test/check-cli.sh
 - claim:    the header of the gate says the cases "pin that it ACCEPTS well-typed source and REFUSES ill-typed source", and that a checker which only ever says OK is not a checker.
-- measured: RE-MEASURED 2026-09-06: `bash tools/test/check-cli.sh` reads **12 passed, 0 failed**, against the 7 assertions this row counted. The gate grew. ⚑ Whether any of the 5 new ones is an EMIT-stage refusal is not established here: the row's claim is that all negatives are front-end refusals, and confirming or refuting that needs the assertion list read case by case, which this re-run did not do.
-- evidence: re-runnable: `bash tools/test/check-cli.sh` reads 12 passed, 0 failed. `tools/test/check-cli.sh`
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-06: unchanged, and the residue the 2026-09-06 partial re-run left is settled. `bash tools/test/check-cli.sh` reads **12 passed, 0 failed**, exit 0: the 7 assertions this row counted plus 5 mutant rows added 2026-09-05, so the CASE list is still the same 7 and the gate grew only by falsifiers. Read case by case, the 4 negatives are `linear cap used twice` and `linear cap dropped` (both wanting `linear binder usage mismatch`), `arity / type mismatch` (wanting `type mismatch`) and `unknown name`. All three messages are produced in `lib/typing/diag.chiral`, at `:364`, `:359` and `:419-423`, which is the typing front end. **Zero of the 4 reaches an emit-stage refusal**, so the claim holds in full and the row stays OPEN.
+- evidence: re-runnable: `bash tools/test/check-cli.sh` reads 12 passed, 0 failed and exits 0; its 4 negative cases are `tools/test/check-cli.sh:68-79`. `grep -n 'linear binder usage mismatch\|"type mismatch\|"unknown name' lib/typing/diag.chiral` puts all three refusal messages in the typing diagnostics. `tools/test/check-cli.sh`, `lib/typing/diag.chiral`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-04
 
@@ -44,15 +44,15 @@
 
 ### PRB-04 testing-floors still lists the cut external floors
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    doc
 - about:    docs/definitions/testing-floors.md
 - claim:    `docs/definitions/testing-floors.md` lists a rocq floor invoked as `chirality test-rocq`, GATING on well-formedness, and a python oracle floor invoked as `chirality test-python`, ADVISORY.
-- measured: external judgment is cut by author decision (CLAUDE.md, HANDOFF decision 5). `bin/chirality`'s dispatch accepts `compile`, `run`, `check`, `test`, `help` and nothing else. Neither subcommand exists. CLAUDE.md states the absence is deliberate: a subcommand dispatching to a floor this tree lacks is a gate that cannot fail.
-- evidence: `docs/definitions/testing-floors.md:50-51`, `bin/chirality:210-219`
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-06: **the claim no longer holds and the row closes.** `docs/definitions/testing-floors.md` was rewritten against the live tree on 2026-09-04 at `53c3d3a`. Both floor rows now read `CUT 2026-09-01` in the Command column with `none` in the Gates? column (`:70-71`), and a banner at `:10-20` states that `rocq/`, `scaffold/` and every `chirality/*.py` are absent from the tree and that `chirality test-native`, `chirality test-rocq`, `chirality test-python` and `chirality verify` name nothing. `test-rocq` and `test-python` now occur exactly once each in the whole file, inside that banner. `bin/chirality:210-219` dispatches `compile`, `run`, `check`, `test` and `help` and nothing else, so the note and the dispatch agree. The doctrine the row rested on is untouched: a subcommand dispatching to a floor this tree lacks is a gate that cannot fail (`docs/definitions/working-discipline.md`).
+- evidence: re-runnable: `grep -c 'test-rocq' docs/definitions/testing-floors.md` returns 1 and `grep -c 'test-python'` returns 1, both hits being the banner that says the command names nothing. `grep -c 'CUT 2026-09-01' docs/definitions/testing-floors.md` returns 2, one per cut floor row. `docs/definitions/testing-floors.md:10-20`, `:70-71`, `bin/chirality:210-219`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-08
 
@@ -949,9 +949,9 @@
 - level:    doc
 - about:    records/tooling-classification.md
 - claim:    the table above and both goal-tier documents read a gate tier of **6,915** lines and **12,450** lines outside the language, measured 2026-09-04 against `dda00b9`. This file's scope paragraph read **122** gate-tier `grep` invocations.
-- measured: three separate drifts, none of them a defect in the original count. **One.** Four commits after `acc70d6` (`ebec76a`, `d3ab4d3`, `3a71658`, `f7caf96`, all falsifier work on `tools/test/*.sh`) took the gate tier to **7,136** lines, so the surface outside the language reads **12,671** at `67d3d54` and the 12,450 is already behind. Neither figure was repointed: `tools/test/` was held by a concurrent gate pass and the target moves under it. **Two.** The same four commits added no classic-tool call site, so **506 stands as 504** under an independently written scanner following this file's stated rule, with `tools/test/doc.sh` at 47 against 48 and `tools/prose-lint/prose-lint.sh` at 23 against 24, one `sort` and one `wc` this pass could not place. Every other file and 17 of the 19 tools agree exactly, and the gate-tier four-tool count reproduces at **240** site for site. **Three.** The 122 above disagreed with this file's own per-tool table and is corrected to 119 in the same commit as this row.
-- evidence: `records/tooling-classification.md:36-46`; `docs/goals/enforcement.md:32-33`; `docs/arcs/enforcement-arc.md:74`, `:87-90`, `:130`; `git log acc70d6..67d3d54 -- tools/test/`
-- checked:  2026-09-04
+- measured: RE-MEASURED 2026-09-06: **the drift this row named has widened, and the gap is now larger than the original figure.** Taking the table's own tiers again today: the gate tier `tools/test/*.sh` is **26 files at 10,744 lines** where the table carries 18 at 6,915; Python under `tools/` is **10 files at 6,664** where it carries 9 at 4,786; `tools/prose-lint/prose-lint.sh` at **223** and `bin/chirality` plus `bin/chirality-resolve.sh` at **526** are both unchanged. The surface outside the language is therefore **39 files at 18,157 lines**, against the **12,450** that `records/tooling-classification.md:52-59`, `docs/goals/enforcement.md:47-48` and `docs/arcs/enforcement-arc.md:249-252` still carry, and against the **12,671** `docs/arcs/enforcement-arc.md:232` corrected to on 2026-09-05. Native `.prog` tooling holds at **782** over the same five files, so the whole move is on the outside half. **The third drift is repaired**: the scope paragraph reads 119 at `records/tooling-classification.md:38-46`. **The second drift cannot be re-taken.** It rested on an independently written call-site scanner, and `records/tooling-classification.md:48` records that the scanner was a session script and is not tracked, so 506 against 504 stands where this row left it. **Nothing here is a defect in any original count.** Each figure was true when taken and the target moves under it, which is the class this row exists to name.
+- evidence: re-runnable: `ls tools/test/*.sh | wc -l` returns 26 and `cat tools/test/*.sh | wc -l` returns 10744; `find tools -name '*.py' | wc -l` returns 10 and `find tools -name '*.py' | xargs wc -l | tail -1` returns 6664; `wc -l tools/prose-lint/prose-lint.sh bin/chirality bin/chirality-resolve.sh` returns 223, 220 and 306. Their sum is 18,157 against the 12,450 in the table. `records/tooling-classification.md:52-59`, `:38-48`; `docs/goals/enforcement.md:47-48`; `docs/arcs/enforcement-arc.md:232`, `:249-252`
+- checked:  2026-09-06
 - owner:    none
 - from:     TC-14
 
