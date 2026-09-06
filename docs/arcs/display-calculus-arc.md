@@ -3,7 +3,7 @@ node: arc-display-calculus
 layer: navigation
 related: [arcs/README, goals/display, arcs/native-document-arc, arcs/native-window-arc, banks/module, decisions/decision-display-numerics, decisions/decision-work-ids, decisions/decision-scope, records/author-calls, status-ledger, index]
 status: current
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Arc: the style calculus
@@ -108,32 +108,40 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
    navigable cursor row. ⚑ Its phase number is behind the standing
    suite-number call in [[records/author-calls]].
 
-## Rows
+## Roster
 
-| row | what | state | element |
-|---|---|---|---|
-| `display-calculus/C1` | typed property values, invalid states unconstructible. `primitive` | **built, in one tier.** `lib/protocol/grid.chiral:12` is `Attrs`, six named `Bool`s over the closed `Color` sum at `:6`; E111, `built`. The C01 pre-run is `superseded`. The residue is a conversion to the emit side's `Face`, taken over by `docs/examples/C1C2-style-round-trip.md` (pre-run 2026-09-04) | `unminted` |
-| `display-calculus/C2` | the cascade as a total ordered fold. `law` | **the fold is built and the law is unstated.** `apply-one` (`grid.chiral:215`) cases totally over `Sgr` and `fold-sgr` (`:232`) folds it in order. No gate feeds `face-sgr`'s bytes into it. The C01 pre-run is `superseded`; `docs/examples/C1C2-style-round-trip.md` (pre-run 2026-09-04) states the round-trip law | `unminted` |
-| `display-calculus/C3` | attachment by a pure function over the node, no selectors and no specificity. `law` | not started; C1's example measures that this witness needs no conflict rule, without settling C3 itself | `unminted` |
-| `display-calculus/C4` | the inherit sum wrapping every property value. `primitive` | not started. Covered by the C01 pre-run, which went `superseded` 2026-09-04; C1C2 does not take this row over. `Color`'s `color-default` (`grid.chiral:6`) is a default and `Face`'s `-1` is a sentinel, so neither is the constructor this row asks for | `unminted` |
-| `display-calculus/C5` | design tokens as typed bindings, and a theme as a root-supplied value. Cashes the `Mode.faces` shard `render.chiral:42-43` already carries and `command-loop.chiral:96` discards. `primitive` | not started. Covered by the C01 pre-run, which went `superseded` 2026-09-04; C1C2 does not take this row over. [[banks/render]] shard V measures the theme value as `absent` | `unminted` |
-| `display-calculus/C6` | the value expression algebra with the unit in the type. `primitive` | not started | `unminted` |
-| `display-calculus/C7` | the environment as a declared ADT. `primitive` | not started | `unminted` |
-| `display-calculus/C8` | state-driven style over a finite state sum. `law` | not started | `unminted` |
-| `display-calculus/C9` | the every-state gate: a property checked in every reachable rendering. `tool` | not started. ⚑ **The witness is proposed 2026-09-05: [[arcs/canvas-arc]] row `G5`.** A canvas declares a finite `State` because `G4` forbids a document from carrying computation, so behaviour is a closed sum with a total transition table. The cell lane's product measures 1 and a canvas's does not | `unminted` |
-| `display-calculus/C10` | resolution at compile time, as ordinary code the compiler evaluates. `law` | not started | `unminted` |
-| `display-calculus/C11` | declared invalidation: the dependency is the argument list. `law` | not started | `unminted` |
-| `display-calculus/C12` | shorthands as constructors that cannot reach an unnamed field. `primitive` | not started | `unminted` |
-| `display-calculus/E1` | closed element sums per context, so invalid nesting is unconstructible. `primitive` | not started | `unminted` |
-| `display-calculus/E2` | the semantic role as a required constructor field. `primitive` | not started | `unminted` |
-| `display-calculus/E3` | the accessibility tree derived by a total function. `law` | not started | `unminted` |
-| `display-calculus/E4` | every document has a text form, and nothing renders from it. `law` | not started | `unminted` |
-| `display-calculus/H6` | the property walk, run as a suite phase. `tool` | not started; same witness gap as C9, which it instantiates | `unminted` |
-| `display-calculus/A1` | the `Doc` to `Rendering` path is reached. `law` | measured 2026-09-04, and re-measured the same day: `grep -rn '"protocol/render-doc"' lib/ prog/` returns zero, and `dg-doc` (`lib/typing/diag.chiral:561`) has zero consumers outside its own file. ⚑ The scope is load-bearing. Two importers live under `tools/`, `tools/test/samples/e158_render.prog:58` and a heredoc probe at `tools/test/render-doc.sh:423`, and Phase 17 (`tools/test/run-tests.sh:268`) builds the first and runs it (`tools/test/render-doc.sh:110`). What this row asks for is a SHIPPING producer, and there is none. No `d-tag` in this tree reaches `lookup-face`. **Precondition for any C1 gate that can fail** | `unminted` |
-| `display-calculus/A2` | `Mode`'s `faces` reaches the renderer. `law` | measured 2026-09-04: `command-loop.chiral:96` discards it. The shard C5 cashes | `unminted` |
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `display-calculus/C1` | typed property values, invalid states unconstructible. **built, in one tier.** `lib/protocol/grid.chiral:12` is `Attrs`, six named `Bool`s over the closed `Color` sum at `:6`; E111, `built`. The C01 pre-run is `superseded`. The residue is a conversion to the emit side's `Face`, taken over by `docs/examples/C1C2-style-round-trip.md` (pre-run 2026-09-04) | cascade | primitive | new | 1 | open | `unminted` |
+| `display-calculus/C2` | the cascade as a total ordered fold. **the fold is built and the law is unstated.** `apply-one` (`grid.chiral:215`) cases totally over `Sgr` and `fold-sgr` (`:232`) folds it in order. No gate feeds `face-sgr`'s bytes into it. The C01 pre-run is `superseded`; `docs/examples/C1C2-style-round-trip.md` (pre-run 2026-09-04) states the round-trip law | cascade | law | new | 2 | open | `unminted` |
+| `display-calculus/C3` | attachment by a pure function over the node, no selectors and no specificity. not started; C1's example measures that this witness needs no conflict rule, without settling C3 itself | cascade | law | new | 2 | open | `unminted` |
+| `display-calculus/C4` | the inherit sum wrapping every property value. not started. Covered by the C01 pre-run, which went `superseded` 2026-09-04; C1C2 does not take this row over. `Color`'s `color-default` (`grid.chiral:6`) is a default and `Face`'s `-1` is a sentinel, so neither is the constructor this row asks for | cascade | primitive | new | 1 | open | `unminted` |
+| `display-calculus/C5` | design tokens as typed bindings, and a theme as a root-supplied value. Cashes the `Mode.faces` shard `render.chiral:42-43` already carries and `command-loop.chiral:96` discards. not started. Covered by the C01 pre-run, which went `superseded` 2026-09-04; C1C2 does not take this row over. [[banks/render]] shard V measures the theme value as `absent` | cascade | primitive | new | 4 | open | `unminted` |
+| `display-calculus/C6` | the value expression algebra with the unit in the type. not started | cascade | primitive | new | 1 | open | `unminted` |
+| `display-calculus/C7` | the environment as a declared ADT. not started | cascade | primitive | new | 4 | open | `unminted` |
+| `display-calculus/C8` | state-driven style over a finite state sum. not started | cascade | law | new | 5 | open | `unminted` |
+| `display-calculus/C9` | the every-state gate: a property checked in every reachable rendering. not started. ⚑ **The witness is proposed 2026-09-05: [[arcs/canvas-arc]] row `G5`.** A canvas declares a finite `State` because `G4` forbids a document from carrying computation, so behaviour is a closed sum with a total transition table. The cell lane's product measures 1 and a canvas's does not | cascade | tool | new | 5 | open | `unminted` |
+| `display-calculus/C10` | resolution at compile time, as ordinary code the compiler evaluates. not started | cascade | law | new | 2 | open | `unminted` |
+| `display-calculus/C11` | declared invalidation: the dependency is the argument list. not started | cascade | law | new | 2 | open | `unminted` |
+| `display-calculus/C12` | shorthands as constructors that cannot reach an unnamed field. not started | cascade | primitive | new | 1 | open | `unminted` |
+| `display-calculus/E1` | closed element sums per context, so invalid nesting is unconstructible. not started | element | primitive | new | 1 | open | `unminted` |
+| `display-calculus/E2` | the semantic role as a required constructor field. not started | element | primitive | new | 3 | open | `unminted` |
+| `display-calculus/E3` | the accessibility tree derived by a total function. not started | element | law | new | 3 | open | `unminted` |
+| `display-calculus/E4` | every document has a text form, and nothing renders from it. not started | element | law | new | 3 | open | `unminted` |
+| `display-calculus/H6` | the property walk, run as a suite phase. not started; same witness gap as C9, which it instantiates | gate | tool | new | 5 | open | `unminted` |
+| `display-calculus/A1` | the `Doc` to `Rendering` path is reached. measured 2026-09-04, and re-measured the same day: `grep -rn '"protocol/render-doc"' lib/ prog/` returns zero, and `dg-doc` (`lib/typing/diag.chiral:561`) has zero consumers outside its own file. ⚑ The scope is load-bearing. Two importers live under `tools/`, `tools/test/samples/e158_render.prog:58` and a heredoc probe at `tools/test/render-doc.sh:423`, and Phase 17 (`tools/test/run-tests.sh:268`) builds the first and runs it (`tools/test/render-doc.sh:110`). What this row asks for is a SHIPPING producer, and there is none. No `d-tag` in this tree reaches `lookup-face`. **Precondition for any C1 gate that can fail** | adoption | law | connect | 2 | open | `unminted` |
+| `display-calculus/A2` | `Mode`'s `faces` reaches the renderer. measured 2026-09-04: `command-loop.chiral:96` discards it. The shard C5 cashes | adoption | law | connect | 4 | open | `unminted` |
 
 The `kind` cell is the anti-monolith column of [[goals/display]]'s shape
 condition. A row that cannot say which half it is has not been scoped.
+
+### Coverage
+
+Groups are the cascade (`C`), the element vocabulary (`E`), the gate (`H`) and
+adoption of what is already built (`A`). Every requirement is served: 1 by C1,
+C4, C6, C12 and E1; 2 by C2, C3, C10, C11 and A1; 3 by E2, E3 and E4; 4 by C5,
+C7 and A2; 5 by C8, C9 and H6. Every row serves one. `A1` and `A2` are
+`connect`: both subjects are built and the gap is that nothing reaches them.
 
 ## Resume state
 
