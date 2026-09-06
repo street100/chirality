@@ -174,6 +174,29 @@ E150 anyway, and E150 is needed regardless. **So the library is the artifact and
 the entry shape can change later without touching a primitive.** This arc does not
 settle it, and does not need to.
 
+## Roster
+
+Four primitives. Their full prose is in the sections above; this is the countable
+form.
+
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `text-tools/P1` | the matcher, returning spans | primitive | primitive | new | 3 | built | `E173` |
+| `text-tools/P2` | match score | primitive | law | new | 3 | open | `unminted` |
+| `text-tools/P3` | edit script over two sequences | primitive | law | new | 3 | open | `unminted` |
+| `text-tools/P4` | the stable address | primitive | primitive | new | 3 | open | `unminted` |
+
+### Coverage
+
+⚑ **Requirements 1, 2 and 4 are served by no row**, and all three are
+enumerated: `GAP-11` for totality, `GAP-12` for purity, and `GAP-13` for
+differential verification against the tool each replaces. Each is a property
+every primitive must carry rather than a deliverable of its own, which is why
+the arc states them once instead of four times.
+
+Requirement 3 is served by P1 to P4. Every row serves one, and every `origin` is
+`new`.
+
 ## REQUIREMENTS
 
 1. **Every primitive is total.** A primitive whose cost is not bounded in its

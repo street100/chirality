@@ -141,3 +141,45 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-05
 - owner:    none
 - from:     none
+
+### GAP-11 text-tools-arc requirement 1 has no roster row
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    arc
+- about:    text-tools/req1
+- claim:    docs/arcs/text-tools-arc.md REQUIREMENTS 1: "Every primitive is total."
+- measured: converting the arc to the 8-column roster on 2026-09-05 showed requirement 1 served by none of P1 to P4. It is a property each primitive carries rather than a deliverable, which is why the arc states it once instead of four times.
+- evidence: docs/arcs/text-tools-arc.md
+- checked:  2026-09-05
+- owner:    none
+- from:     none
+
+### GAP-12 text-tools-arc requirement 2 has no roster row
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    arc
+- about:    text-tools/req2
+- claim:    docs/arcs/text-tools-arc.md REQUIREMENTS 2: "Every primitive is pure `->`. None reads a file or a directory."
+- measured: same conversion, same measurement: a per-primitive property rather than a row.
+- evidence: docs/arcs/text-tools-arc.md
+- checked:  2026-09-05
+- owner:    none
+- from:     none
+
+### GAP-13 text-tools-arc requirement 4 has no roster row
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    arc
+- about:    text-tools/req4
+- claim:    docs/arcs/text-tools-arc.md REQUIREMENTS 4: "Each replacement is verified against the tool it replaces on the same input."
+- measured: same conversion, same measurement: a differential obligation each primitive owes rather than a deliverable of its own.
+- evidence: docs/arcs/text-tools-arc.md
+- checked:  2026-09-05
+- owner:    none
+- from:     none
