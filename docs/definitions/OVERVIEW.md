@@ -15,11 +15,17 @@ updated: 2026-09-05
 
 ## bridge
 
-  `## What done means` carries no NUMBERED conditions
-
+- **1.** Inbound, B to A, verify. A C module "must never return a B derived value into A without fi
+      arc: bridge-arc
+- **2.** Outbound, A to B, confine. It "must never emit an A value into B without first confining i
+      arc: bridge-arc
+- **3.** Each obligation has a mutant that is actually run. A check aimed at a guess passes by look
+      arc: bridge-arc
+- **4.** The bridge is one elaborator instantiated with an evidence element rather than a bespoke b
+      arc: bridge-arc
 
 ### arc `bridge-arc`: 5 roster row(s)
-  state: ? 5
+  state: open 5
 
 ## display
 
@@ -35,54 +41,81 @@ updated: 2026-09-05
       arc: UNOPENED
 
 ### arc `display-calculus-arc`: 19 roster row(s)
-  state: ? 19
+  state: open 19
 
 ## enforcement
 
-  `## What done means` carries no NUMBERED conditions
+- **1.** A capability sits at ENFORCED, or its ledger row says why it does not. Observed on the fou
+      arc: enforcement-arc
+- **2.** A claim the compiler makes about its own work is carried as a value with evidence, and ref
+      arc: enforcement-arc
+- **3.** The typed-assembly floor runs on the shipping path. Observed by the floor checker and the 
+      arc: enforcement-arc
+- **4.** Every gate row has a named mutant that is actually run. A check aimed at a guess passes by
+      arc: enforcement-arc
+- **5.** Chirality's own tooling is chirality's. Observed as the ratio of lines outside the languag
+      arc: enforcement-arc, independent-judgment-arc
 
-
-### arc `enforcement-arc`: 0 roster row(s)
+### arc `enforcement-arc`: 9 roster row(s)
+  state: built 3, open 6
 
 ## independent-judgment
 
-  `## What done means` carries no NUMBERED conditions
-
+- **1.** What counts as a distinct formulation is written down, so a candidate leg can be judged ag
+      arc: independent-judgment-arc
+- **2.** A second judgment core exists in a different formulation, and the quorum runs both. Observ
+      arc: independent-judgment-arc
+- **3.** The quorum refuses what it should. Observed by `ddc-bad-quorum` firing on fewer than two l
+      arc: independent-judgment-arc
+- **4.** The demanded statement is a form a check can read. Observed by `JForm` completed or closed
+      arc: independent-judgment-arc
+- **5.** [[status-ledger]] stops saying every rung is enforcement against error. Observed by the le
+      arc: independent-judgment-arc
 
 ### arc `independent-judgment-arc`: 5 roster row(s)
-  state: ? 5
+  state: open 5
 
 ## local-ai
 
   PRB-31[OPEN/unreviewed]
 
-  `## What done means` carries no NUMBERED conditions
-
+- **1.** Full orchestration. A gated multi-agent run executes end to end inside this tree: match, g
+      arc: transport-arc, unit-lane-arc
+- **2.** TUI through scriba for full interaction. Every part of a run is authored, composed, fired,
+      arc: scriba-arc
+- **3.** A full framework for entirely chirality AI. The model of computation the agents run under 
+      arc: unit-lane-arc
+- **4.** A wrap to use Python for fine tuning, creating, and a growing and changing set of interact
+      arc: tuning-arc
+- **5.** Small models. The run in criterion 1 uses models that fit the host, and the decomposition 
+      arc: UNOPENED
+- **6.** A CPU is enough. The whole path above runs on a CPU. A GPU is an accelerator this goal doe
+      arc: UNOPENED
 
 ### arc `scriba-arc`: 6 roster row(s)
-  state: ? 6
+  state: open 6
 
 ### arc `transport-arc`: 4 roster row(s)
-  state: ? 4
+  state: built 4
 
 ### arc `tuning-arc`: 0 roster row(s)
 
 ### arc `unit-lane-arc`: 43 roster row(s)
-  state: ? 43
+  state: built 4, open 39
 
 ## module-split
 
 - **1.** A module's pieces have one type shape each. Where two halves differ in effect, cost or tie
-      arc: NO ARC, NOT MARKED UNOPENED
+      arc: module-split-arc
 - **2.** The trusted core's boundary is stated and holds. Which files are `kernel-core` and which a
-      arc: NO ARC, NOT MARKED UNOPENED
+      arc: module-split-arc
 - **3.** Cut modules rejoin through a typed connector, per [[joining-law]], rather than by a bare i
-      arc: NO ARC, NOT MARKED UNOPENED
+      arc: module-split-arc
 - **4.** A missing split is measurable. The law is a rule with a test, so a module that fails it is
-      arc: NO ARC, NOT MARKED UNOPENED
+      arc: module-split-arc
 
 ### arc `module-split-arc`: 4 roster row(s)
-  state: ? 4
+  state: open 4
 
 ## native-stack
 
@@ -96,13 +129,13 @@ updated: 2026-09-05
       arc: native-protocol-arc
 
 ### arc `native-document-arc`: 4 roster row(s)
-  state: ? 4
+  state: open 4
 
 ### arc `native-protocol-arc`: 9 roster row(s)
-  state: ? 9
+  state: building 1, open 8
 
 ### arc `native-window-arc`: 4 roster row(s)
-  state: ? 4
+  state: open 4
 
 ## own-web
 
@@ -118,74 +151,90 @@ updated: 2026-09-05
       arc: UNOPENED
 
 ### arc `canvas-arc`: 16 roster row(s)
-  state: ? 16
+  state: open 16
 
 ### arc `vocabulary-arc`: 12 roster row(s)
-  state: ? 12
+  state: open 12
 
 ## ownership-and-trust
 
-  `## What done means` carries no NUMBERED conditions
-
+- **1.** A quorum has two legs of disjoint provenance. Observed by `ddc-bad-quorum` firing on fewer
+      arc: ownership-and-trust-arc
+- **2.** The golden object is settled. The provisional ruling of E71, the kernel spec as the golden
+      arc: ownership-and-trust-arc
+- **3.** The reference semantics is reached. `lib/lowering/tal/spec.chiral` is imported by somethin
+      arc: ownership-and-trust-arc
+- **4.** The shipped artifact carries its own re-derivation, with no trusted binary in the forever 
+      arc: ownership-and-trust-arc
 
 ### arc `ownership-and-trust-arc`: 3 roster row(s)
-  state: ? 3
+  state: open 3
 
 ## presentability
 
 - **1.** Every claim a tracked document makes is measured and matching, or carries a row saying it 
-      arc: NO ARC, NOT MARKED UNOPENED
+      arc: baseline-alignment-arc, presentability-arc
 - **2.** An evaluator can build it from a clean clone: the BUILD RULE runs end to end and the byte-
-      arc: NO ARC, NOT MARKED UNOPENED
-- **3.** They can run the tests and read the result, and a green suite means what it says.
-      arc: NO ARC, NOT MARKED UNOPENED
+      arc: presentability-arc, binary-split-arc
+- **3.** They can run the tests and read the result, and a green suite means what it says. Observed
+      arc: baseline-alignment-arc
 - **4.** They can see what is built, what is designed and what is deferred without reading `.planni
-      arc: NO ARC, NOT MARKED UNOPENED
+      arc: presentability-arc
 - **5.** They can take a tool without taking the compiler. A text tool that ships the x64 backend m
-      arc: NO ARC, NOT MARKED UNOPENED
+      arc: binary-split-arc
 
-### arc `baseline-alignment-arc`: 0 roster row(s)
+### arc `baseline-alignment-arc`: 9 roster row(s)
+  state: open 9
 
 ### arc `binary-split-arc`: 5 roster row(s)
-  state: ? 5
+  state: open 5
 
 ### arc `presentability-arc`: 3 roster row(s)
-  state: ? 3
+  state: open 3
 
 ## readable-surface
 
-- **1.** A diagnostic tells the reader what to do. Not that something failed, and not only where. `
-      arc: NO ARC, NOT MARKED UNOPENED
+- **1.** A diagnostic tells the reader what to do, beyond that something failed and where. `docs/de
+      arc: diagnostics-arc
 - **2.** The convenient way is the safe way. Where a check is conservative and taxes safe code, tha
-      arc: NO ARC, NOT MARKED UNOPENED
+      arc: UNOPENED
 - **3.** No escape hatch that everyone takes. An opt-out annotation whose usage rate is high is a f
-      arc: NO ARC, NOT MARKED UNOPENED
-- **4.** Regularity holds at the surface. One shape, one meaning. File kinds, syntax and error voca
-      arc: NO ARC, NOT MARKED UNOPENED
+      arc: UNOPENED
+- **4.** Regularity holds at the surface. One shape, one meaning. Observed on the three current ins
+      arc: file-types-arc, diagnostics-arc
 
-### arc `diagnostics-arc`: 2 roster row(s)
-  state: ? 2
+### arc `diagnostics-arc`: 14 roster row(s)
+  state: built 6, open 8
 
-### arc `file-types-arc`: 0 roster row(s)
+### arc `file-types-arc`: 4 roster row(s)
+  state: open 4
 
 ## self-hosting
 
 - **1.** `bin/chirality-bin` compiles the blob to a binary that compiles the same blob to a byte-id
       arc: NO ARC, NOT MARKED UNOPENED
-- **2.** The binary is committed, with the tree and harness that rebuild it.
+- **2.** The binary is committed, with the tree and harness that rebuild it. Held by the same gates
       arc: NO ARC, NOT MARKED UNOPENED
-- **3.** Nothing replaces itself in place. Build-new, test, promote.
+- **3.** Nothing replaces itself in place. Build-new, test, promote. Held by the BUILD RULE, which 
       arc: NO ARC, NOT MARKED UNOPENED
 
 ## self-tooling
 
-  `## What done means` carries no NUMBERED conditions
+- **1.** No `.py` file anywhere under `/workspace/chirality`. Observed by a find over the tree retu
+      arc: zero-python-arc
+- **2.** `tools/` is deleted rather than emptied. Observed by the directory being absent. [[arcs/ze
+      arc: zero-python-arc
+- **3.** Every tool it held runs as a chirality program on the same test floor as the rest of the t
+      arc: zero-python-arc
+- **4.** The primitives those tools compose from exist. Observed by the coverage table in [[arcs/te
+      arc: text-tools-arc, text-tools-arc
 
-
-### arc `text-tools-arc`: 0 roster row(s)
+### arc `text-tools-arc`: 4 roster row(s)
   PRB-61[OPEN/unreviewed]
+  state: built 1, open 3
 
-### arc `zero-python-arc`: 0 roster row(s)
+### arc `zero-python-arc`: 9 roster row(s)
+  state: building 1, built 1, direct 1, open 6
 
 ## Unscheduled
 
@@ -196,8 +245,8 @@ updated: 2026-09-05
 ## The lenses
 
 - **problem** (PRB-): 68 row(s), 68 unreviewed. OPEN 68
-- **gap** (GAP-): 0 row(s), 0 unreviewed. empty
-- **limit** (LIM-): 15 row(s), 15 unreviewed. accepted 15
+- **gap** (GAP-): 18 row(s), 18 unreviewed. open 18
+- **limit** (LIM-): 18 row(s), 18 unreviewed. accepted 18
 - **unspoken** (UNS-): 48 row(s), 48 unreviewed. open 48
 
-Roster rows across every arc: 144. Minted from them: 7.
+Roster rows across every arc: 191. Minted from them: 38.
