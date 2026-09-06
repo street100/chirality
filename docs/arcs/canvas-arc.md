@@ -64,26 +64,36 @@ abstraction, no `.profile` file anywhere.
    for.
 5. **A lens is a reader and a view whose round trip closes**, gated per lens.
 
-## Rows
+## Roster
 
-| row | what | state | element |
-|---|---|---|---|
-| `canvas/G1` | a canvas is a pure view function, `(-> Env State Node)` | not started. `pretty.chiral` is the working instance over a different value | `unminted` |
-| `canvas/G2` | a canvas does not own its surface; a host places the display list | not started. Requirement 2 | `unminted` |
-| `canvas/G3` | the port set is the border, and nesting reduces it | not started. **The first `.profile` instance** | `unminted` |
-| `canvas/G4` | a document carries no computation: a closed `State` sum with a total transition table, and a closed `Request` sum | not started. **The highest-value invariant in this arc** | `unminted` |
-| `canvas/G5` | the declared `State` is the every-state witness | not started. Answers the open call in [[arcs/display-calculus-arc]] | `unminted` |
-| `canvas/G6` | a canvas asks for nothing on a document's behalf; a forbidden request is refused and the document still renders | not started | `unminted` |
-| `canvas/G7` | `Grant` at route formation, request honouring and ownership, proving permission and never identity | not started. `E40` custody is the precedent | `unminted` |
-| `canvas/G8` | one value, many hosts | not started. Terminal live, the rest behind the two blockers | `unminted` |
-| `canvas/P1` | a lens is a reader and a view beside the existing pair | not started | `unminted` |
-| `canvas/P2` | a lens re-spells the vocabulary and never extends it | not started | `unminted` |
-| `canvas/P3` | the round trip separates viewing from editing | not started | `unminted` |
-| `canvas/P4` | lenses come last | a stated ordering, and the reason this arc follows [[arcs/vocabulary-arc]] | `unminted` |
-| `canvas/Q2` | a host's closure carries no compiler, counted as `^(end-module "` markers | not started. `binary-split`'s method, `BA-16` | `unminted` |
-| `canvas/Q3` | the two-host gate, compared structurally | not started. Requirement 3 | `unminted` |
-| `canvas/Q4` | the hostile-document corpus, every refusal named | not started | `unminted` |
-| `canvas/Q5` | the every-state walk, run as a phase | not started. `display-calculus/H6` instantiated | `unminted` |
+Three groups: the canvas itself (`G`), lenses (`P`), and the gates that measure
+them (`Q`).
+
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `canvas/G1` | a canvas is a pure view function, `(-> Env State Node)`. `pretty.chiral` is the working instance over a different value | canvas | primitive | new | 1 | open | `unminted` |
+| `canvas/G2` | a canvas does not own its surface; a host places the display list | canvas | primitive | new | 2 | open | `unminted` |
+| `canvas/G3` | the port set is the border, and nesting reduces it. **The first `.profile` instance** | canvas | port | new | 1 | open | `unminted` |
+| `canvas/G4` | a document carries no computation: a closed `State` sum with a total transition table, and a closed `Request` sum. **The highest-value invariant in this arc** | canvas | primitive | new | 4 | open | `unminted` |
+| `canvas/G5` | the declared `State` is the every-state witness. Answers the open call in [[arcs/display-calculus-arc]] | canvas | law | new | 4 | open | `unminted` |
+| `canvas/G6` | a canvas asks for nothing on a document's behalf; a forbidden request is refused and the document still renders | canvas | law | new | 1 | open | `unminted` |
+| `canvas/G7` | `Grant` at route formation, request honouring and ownership, proving permission and never identity. `E40` custody is the precedent | canvas | port | connect | 1 | open | `unminted` |
+| `canvas/G8` | one value, many hosts. Terminal live, the rest behind the two blockers | canvas | law | new | 3 | open | `unminted` |
+| `canvas/P1` | a lens is a reader and a view beside the existing pair | lens | primitive | new | 5 | open | `unminted` |
+| `canvas/P2` | a lens re-spells the vocabulary and never extends it | lens | law | new | 5 | open | `unminted` |
+| `canvas/P3` | the round trip separates viewing from editing | lens | law | new | 5 | open | `unminted` |
+| `canvas/P4` | lenses come last: a stated ordering, and the reason this arc follows [[arcs/vocabulary-arc]] | lens | decision | new | 5 | open | `unminted` |
+| `canvas/Q2` | a host's closure carries no compiler, counted as `^(end-module "` markers. `binary-split`'s method, `BA-16` | gate | tool | connect | 2 | open | `unminted` |
+| `canvas/Q3` | the two-host gate, compared structurally | gate | tool | new | 3 | open | `unminted` |
+| `canvas/Q4` | the hostile-document corpus, every refusal named | gate | tool | new | 4 | open | `unminted` |
+| `canvas/Q5` | the every-state walk, run as a phase. `display-calculus/H6` instantiated | gate | tool | new | 4 | open | `unminted` |
+
+### Coverage
+
+Every requirement is served: 1 by G1, G3, G6 and G7; 2 by G2 and Q2; 3 by G8 and
+Q3; 4 by G4, G5, Q4 and Q5; 5 by P1 to P4. Every row serves one. `G7` and `Q2`
+are `connect`, each reusing a built thing (`E40` custody, `binary-split`'s
+closure count) rather than adding one.
 
 ## Resume state
 
