@@ -3,7 +3,7 @@ node: arc-tuning
 layer: navigation
 related: [arcs/README, goals/local-ai, goals/self-tooling, records/author-calls, decision-work-ids, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-05
 ---
 
 # Arc: fine tuning and the transformer verbs
@@ -64,12 +64,19 @@ Draft, and each is checkable once the arc can open.
 4. **The done condition of [[goals/self-tooling]] is still true**, or it was
    changed by a decision note that says so. Observed by reading both goal files.
 
-## Rows
+## Roster
 
 **Zero rows, and that is the honest state.** The proposal that opened this arc
 measured that the two readings of author call A share no first row, so any row
 written now prejudges the call. The candidates under each reading are in the
 table above and neither is scheduled.
+
+### Coverage
+
+All four requirements are served by no row, and all four are enumerated:
+`GAP-14` through `GAP-17` in `records/lenses/gaps.md`, each carrying the author
+marker so the blocked call is visible in the sweep. That is the whole coverage
+statement for an arc that is blocked entire.
 
 ## Resume state
 
