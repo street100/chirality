@@ -61,22 +61,28 @@ Done when all four hold.
    tier and dies with a worktree copy; the states a second reader needs live in
    this file. Observed by comparing the two.
 
-## Rows
+## Roster
 
 The checklist holds the full order. This file holds the rows in flight and their
 states.
 
-| row | what | state | element |
-|---|---|---|---|
-| `scriba/S1` | correct the two documents that carry `S18` as unbuilt | not started. `BA-43` holds the measurement | `S18` |
-| `scriba/S2` | buffer list and switching, with the `chat` slot retiring into it | not started. Gated on D-S3 in the checklist | `S19` |
-| `scriba/S3` | buffer-local state for an empty port set | not started. Gated on `S19` | `S20` |
-| `scriba/S4` | split the orchestrator into its own node, so the editor stops holding network authority | not started. The checklist measures 87 network references in the editor's blob | `S20b` |
-| `scriba/S5` | the `:` command registry as data | not started. Gated on `S19` | `S21` |
-| `scriba/S6` | init-file load | blocked. `init-loader.chiral` returns a default stub, and the row is gated on E132, runtime dynamic loading, which is unbuilt | `S11` |
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `scriba/S1` | correct the two documents that carry `S18` as unbuilt. not started. `BA-43` holds the measurement | record | decision | new | 4 | open | `S18` |
+| `scriba/S2` | buffer list and switching, with the `chat` slot retiring into it. not started. Gated on D-S3 in the checklist | buffers | primitive | new | 2 | open | `S19` |
+| `scriba/S3` | buffer-local state for an empty port set. not started. Gated on `S19` | buffers | primitive | new | 2 | open | `S20` |
+| `scriba/S4` | split the orchestrator into its own node, so the editor stops holding network authority. not started. The checklist measures 87 network references in the editor's blob | authority | primitive | new | 1 | open | `S20b` |
+| `scriba/S5` | the `:` command registry as data. not started. Gated on `S19` | commands | primitive | new | 2 | open | `S21` |
+| `scriba/S6` | init-file load. blocked. `init-loader.chiral` returns a default stub, and the row is gated on E132, runtime dynamic loading, which is unbuilt | config | law | new | 3 | open | `S11` |
 
 The local id and the `S#` stay paired for the life of the row, which is the
 invariant `docs/decisions/decision-work-ids.md` carries.
+
+### Coverage
+
+Every requirement is served: 1 by S4, 2 by S2, S3 and S5, 3 by S6, 4 by S1.
+Every row serves one, and every `origin` is `new`. `S6` is blocked on E132,
+which its own cell records.
 
 ## Resume state
 
