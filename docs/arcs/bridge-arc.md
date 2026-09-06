@@ -3,7 +3,7 @@ node: arc-bridge
 layer: navigation
 related: [arcs/README, goals/bridge, category-bridge, axis-typeability, decision-bridge-elaborator, decision-work-ids, certificate-discipline, split-role, status-ledger, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-05
 ---
 
 # Arc: the supervisory bridge
@@ -60,15 +60,28 @@ Done when all four hold.
    than a bridge written per referent
    ([[decisions/decision-bridge-elaborator]]).
 
-## Rows
+## Roster
 
-| row | what | state | element |
-|---|---|---|---|
-| `bridge/C1` | what a `(cat C)` module owes, written down as a decidable rule | not started. Requirement 1 and 2. `category-bridge` has the prose | `unminted` |
-| `bridge/C2` | `cat-fenced` gains its B and C arms, with a mutant | not started. Today `(_ none)` covers both | `unminted` |
-| `bridge/C3` | the modules that call themselves C in prose declare it instead | not started. `sys.chiral` and seven others | `unminted` |
-| `bridge/C4` | custody as the first evidence element | `E40` SEEDED and conforming; `E56` is "vapor beyond secret seed" | `E40`, `E56` |
-| `bridge/C5` | the bridge elaborator, one generic re-checker | not started. Open edge 12 owes it | `unminted` |
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `bridge/C1` | what a `(cat C)` module owes, written down as a decidable rule. `category-bridge` has the prose | obligation | law | new | 1 | open | `unminted` |
+| `bridge/C2` | `cat-fenced` gains its B and C arms, with a mutant. Today `(_ none)` covers both | obligation | law | new | 1 | open | `unminted` |
+| `bridge/C3` | the modules that call themselves C in prose declare it instead. `sys.chiral` and seven others | declaration | primitive | new | 1 | open | `unminted` |
+| `bridge/C4` | custody as the first evidence element. `E40` is SEEDED and conforming; `E56` is "vapor beyond secret seed" | evidence | primitive | connect | 2 | open | `E40`, `E56` |
+| `bridge/C5` | the bridge elaborator, one generic re-checker. Open edge 12 owes it | elaborator | tool | new | 4 | open | `unminted` |
+
+### Coverage
+
+⚑ **Requirement 3 is served by no row.** "Each has a mutant that is actually
+run" is a property C1 and C2 must carry, and neither row states it as its own
+deliverable. Closing this means either folding the mutant into C1 and C2's
+`req` cells, which makes requirement 3 unobservable on its own, or opening a
+row for it. That is an author call and it is recorded here rather than papered
+over.
+
+Requirements 1, 2 and 4 are served: 1 by C1, C2 and C3; 2 by C4; 4 by C5. Every
+row serves one. C4 is `connect` because `E40` is built and the gap is that
+nothing reaches it as evidence.
 
 ## Resume state
 

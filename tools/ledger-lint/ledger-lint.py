@@ -1923,14 +1923,18 @@ def check_ag() -> list[str]:
             if state not in _ROSTER_STATES:
                 errs.append(f"[AG] {f.name} row {rid} state '{state}' is outside "
                             f"({' '.join(_ROSTER_STATES)})")
+            # A row may cover more than one element: bridge/C4 is E40 and E56,
+            # the mirror of unit-lane N8 and N9 both minting as E196. Forcing one
+            # number per row would make a roster lie about what it covers.
             if elem != "unminted":
-                m = re.fullmatch(r"E(\d+)", elem)
-                if not m:
+                nums = re.findall(r"E(\d+)", elem)
+                if not nums:
                     errs.append(f"[AG] {f.name} row {rid} element '{elem}' is not "
                                 f"`unminted` or an E number")
-                elif int(m.group(1)) not in cat:
-                    errs.append(f"[AG] {f.name} row {rid} claims {elem} and no "
-                                f"catalog row mints it")
+                for num in nums:
+                    if int(num) not in cat:
+                        errs.append(f"[AG] {f.name} row {rid} claims E{num} and no "
+                                    f"catalog row mints it")
             rq = {x for x in re.findall(r"\d+", cells[-3])}
             if not rq:
                 errs.append(f"[AG] {f.name} row {rid} serves no numbered "
