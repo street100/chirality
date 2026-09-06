@@ -2298,10 +2298,14 @@ GUIDE = {
            "failing. Closing it means moving one side or retiring the row.",
            "N"),
     "AI": (3, "records/lenses/README.md, `Re-verifying`",
-           "A row whose `checked:` predates the last change to the files it cites "
-           "is unverified. Re-read the evidence, then either refresh `checked:` "
-           "with what you measured, or move the row's state. The `revisit` skill "
-           "is the run: one artifact, one trigger, a closed verdict set.",
+           "This is a REVISIT QUEUE rather than a defect list. A row here is "
+           "unverified: the files it cites moved after it was last checked. The "
+           "work is a `revisit` run per group, and it may need a compiler build "
+           "to re-take the measurement. **Repointing a citation is not "
+           "verifying a claim.** Move `checked:` only when the measurement was "
+           "re-taken; otherwise repoint the evidence, say so in `measured:`, "
+           "and leave the date, because a fresh date over a stale measurement "
+           "is the exact defect this check exists to catch.",
            "AI"),
     "AJ": (3, "docs/definitions/working-discipline.md, the deferral rule",
            "Every `E#` a doc names is already minted. Name a roster row instead.",
