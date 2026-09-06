@@ -112,7 +112,7 @@ blockers named above, plus the build rule that gates them all.
 | `binary-split/B2` | a way to import one crossing without the whole port floor. Blocker 2. `MAP.md` records the re-export as deliberate, so this is a design change | blocker-2 | port | new | 3 | open | `unminted` |
 | `binary-split/B3` | a root that stops at the front end, so a checker-only binary has something to build from. Blocker 3 | blocker-3 | primitive | new | 1 | open | `unminted` |
 | `binary-split/B4` | `.profile` gains an instance and a consumer, or the kind leaves `MAP.md`. Blocker 4, measured as `BA-10`. ⚑ **A consumer is proposed 2026-09-05: [[arcs/canvas-arc]] row `G3`**, where a canvas's port set is its border and the profile machinery already live at `kernel.chiral:60` and `compile-front.chiral:301` gets its first instance | blocker-4 | decision | new | 4 | open | `unminted` |
-| `binary-split/B5` | the split binaries each reproduce under the BUILD RULE, through blocker 4's GEN3 trap. It gates the other four | build-rule | law | new | 5 | open | `unminted` |
+| `binary-split/B5` | the split binaries each reproduce under the BUILD RULE, through blocker 4's GEN3 trap. It gates the other four | build-rule | law | new | 5, presentability/req6 | open | `unminted` |
 
 ### Coverage
 

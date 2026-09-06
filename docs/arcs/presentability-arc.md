@@ -62,8 +62,8 @@ is a wish.
 
 ⚑ **Requirements 1 and 3 are served by no row**, enumerated as `GAP-09` (the
 fresh-clone build running end to end) and `GAP-10` (every number in the spine
-current or dated). Requirement 6 is delegated to [[arcs/binary-split-arc]] and
-its `B5`, which the arc's own text records.
+current or dated). Requirement 6 is delegated to [[arcs/binary-split-arc]] row `B5`, whose `req`
+cell names `presentability/req6` so the delegation is checkable.
 
 Requirements 2, 4 and 5 are served: 2 by D1, 4 by D3, 5 by D2. Every row serves
 one, and every `origin` is `new`.

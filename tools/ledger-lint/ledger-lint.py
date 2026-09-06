@@ -1948,6 +1948,16 @@ def check_ag() -> list[str]:
         # cannot take. The gap row carries the author marker.
         arcname = f.stem[:-4] if f.stem.endswith("-arc") else f.stem
         gaps = _lens_about("gaps.md") | _lens_about("unspoken.md")
+        # A requirement can be DELEGATED: presentability requirement 6 is served
+        # by binary-split/B5, and one arc taking another's requirement is a real
+        # relation rather than a hole. A row serves a foreign requirement by
+        # writing `<arc>/req<N>` in its own req cell.
+        for other in _arc_files():
+            for _, orest in _ARC_ROW.findall(other.read_text()):
+                ocells = [c.strip() for c in orest.strip().strip("|").split("|")]
+                if len(ocells) >= 7:
+                    served |= set(re.findall(rf"{re.escape(arcname)}/req(\d+)",
+                                             ocells[-3]))
         for r in sorted(reqs - served, key=int):
             if f"{arcname}/req{r}" in gaps:
                 continue
