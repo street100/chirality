@@ -85,3 +85,17 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-05
 - owner:    none
 - from:     none
+
+### GAP-07 module-split-arc requirement 3 has no roster row
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    arc
+- about:    module-split/req3
+- claim:    docs/arcs/module-split-arc.md REQUIREMENTS 3: "A cut module rejoins through a typed connector rather than by a shared header."
+- measured: converting the arc to the 8-column roster on 2026-09-05 showed requirement 3 served by none of S1 to S4. It is a property the S1 cut must satisfy rather than a deliverable of its own.
+- evidence: docs/arcs/module-split-arc.md
+- checked:  2026-09-05
+- owner:    none
+- from:     none

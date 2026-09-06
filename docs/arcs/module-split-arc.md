@@ -73,14 +73,26 @@ Done when all four hold.
 4. **A missing split is findable mechanically.** The law has a decidable test
    and nothing runs it.
 
-## Rows
+## Roster
 
-| row | what | state | element |
-|---|---|---|---|
-| `module-split/S1` | `conv` leaves `kernel.chiral` | not started. `(-> I64 Value Value Bool)` against its neighbours' `(-> Sig Ctx Term ...)` | `unminted` |
-| `module-split/S2` | the trusted core's file boundary, stated | not started. `decision-split-checker` names five components, the tree has nine files and two are unreached | `unminted` |
-| `module-split/S3` | a check that finds an under-split module | not started. Requirement 4. The law's floor is decidable and unrun | `unminted` |
-| `module-split/S4` | the two unreached typing files wired or moved to SEEDED | not started. Shares its subject with `independent-judgment/J2`, which owns it | `unminted` |
+Groups: `boundary` is where a cut falls, and `check` is what finds a missing
+one.
+
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `module-split/S1` | `conv` leaves `kernel.chiral`. `(-> I64 Value Value Bool)` against its neighbours' `(-> Sig Ctx Term ...)` | boundary | primitive | new | 1 | open | `unminted` |
+| `module-split/S2` | the trusted core's file boundary, stated. `decision-split-checker` names five components, the tree has nine files and two are unreached | boundary | decision | new | 2 | open | `unminted` |
+| `module-split/S3` | a check that finds an under-split module. The law's floor is decidable and unrun | check | tool | new | 4 | open | `unminted` |
+| `module-split/S4` | the two unreached typing files wired or moved to SEEDED. Shares its subject with `independent-judgment/J2`, which owns it | boundary | tool | connect | 2 | open | `unminted` |
+
+### Coverage
+
+⚑ **Requirement 3 is served by no row**, enumerated as `GAP-07`: a cut module
+rejoining through a typed connector is a property S1's cut must satisfy rather
+than a deliverable of its own.
+
+Requirements 1, 2 and 4 are served: 1 by S1, 2 by S2 and S4, 4 by S3. Every row
+serves one. `S4` is `connect`: both files are written and nothing imports them.
 
 ## Resume state
 
