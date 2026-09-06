@@ -1988,10 +1988,23 @@ def check_ah() -> list[str]:
             # through worked-example, and docs/arcs/parts/ did not exist. Its
             # artifact is the retired corpus entry, so demanding a design for it
             # is demanding a document the pipeline of the day never wrote.
-            old_pipeline = elem.startswith("E") and list(
-                (ROOT / "docs" / "examples").glob(
-                    f"{elem[0]}{int(elem[1:]):02d}-*.md")) if re.fullmatch(
-                r"E\d+", elem) else False
+            # Four lanes mint into this pipeline, not one: E, U, S and N, per
+            # pack.py's source adapters. An exemption that only knew E called
+            # native-protocol/N1 undesigned while docs/examples/N01-*.md sat on
+            # disk.
+            # Four lanes mint into this pipeline, not one: E, U, S and N, per
+            # pack.py's source adapters. And a row can carry old-pipeline work
+            # while still reading `unminted`, because the retired corpus is
+            # keyed by the artifact tag rather than by a catalog row: the arc
+            # native-protocol/N1 has docs/examples/N01-crypto-kernels.md and no
+            # element. Both the element cell and the local id are checked.
+            old_pipeline = False
+            for tag in (elem, local):
+                em = re.fullmatch(r"([EUSN])(\d+)", tag)
+                if em and list((ROOT / "docs" / "examples").glob(
+                        f"{em.group(1)}{int(em.group(2)):02d}-*.md")):
+                    old_pipeline = True
+                    break
             if state in ("designed", "minted", "specced", "building", "built") \
                and not (parts / f"{arc}-{local}.md").is_file() \
                and not old_pipeline:

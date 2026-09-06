@@ -57,7 +57,7 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
-| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class. slices 1 and 2 built and gated 2026-09-03, slices 3 and 4 open. ⚑ **The reference class is pre-quantum and [[goals/own-web]] condition 4 states a post-quantum target.** Measured 2026-09-05: zero mentions of post-quantum across this arc, `docs/examples/N01-crypto-kernels.md`, its SPEC and the checklist. `.planning/CRYPTO-MODEL.md` holds the re-scope, and slices 3 and 4 are specced against a suite the target abandons | kernels | primitive | new | 2 | built | `unminted` |
+| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class. slices 1 and 2 built and gated 2026-09-03, slices 3 and 4 open. ⚑ **The reference class is pre-quantum and [[goals/own-web]] condition 4 states a post-quantum target.** Measured 2026-09-05: zero mentions of post-quantum across this arc, `docs/examples/N01-crypto-kernels.md`, its SPEC and the checklist. `.planning/CRYPTO-MODEL.md` holds the re-scope, and slices 3 and 4 are specced against a suite the target abandons | kernels | primitive | new | 2 | building | `unminted` |
 | `native-protocol/N2` | the entropy crossing. not started | crossings | port | new | 3 | open | `unminted` |
 | `native-protocol/N3` | listen-side AF_INET, and UDP if the handshake wants it. not started | transport | port | new | 1 | open | `unminted` |
 | `native-protocol/N4` | the handshake and framing, Noise reference class, shrednet identity model as base. not started | transport | law | new | 1 | open | `unminted` |
