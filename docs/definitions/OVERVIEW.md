@@ -193,8 +193,8 @@ updated: 2026-09-06
 ### arc `binary-split-arc`: 5 roster row(s)
   state: open 5
 
-### arc `presentability-arc`: 3 roster row(s)
-  state: open 3
+### arc `presentability-arc`: 6 roster row(s)
+  state: open 6
 
 ## readable-surface
 
@@ -248,9 +248,9 @@ updated: 2026-09-06
 
 ## The lenses
 
-- **problem** (PRB-): 71 row(s), 71 unreviewed. OPEN 71
+- **problem** (PRB-): 71 row(s), 71 unreviewed. FIXED 6, OPEN 65
 - **gap** (GAP-): 18 row(s), 12 unreviewed. closed 6, open 12
 - **limit** (LIM-): 18 row(s), 18 unreviewed. accepted 18
 - **unspoken** (UNS-): 48 row(s), 48 unreviewed. open 48
 
-Roster rows across every arc: 209. Minted from them: 43.
+Roster rows across every arc: 212. Minted from them: 43.

@@ -14,7 +14,7 @@ updated: 2026-09-06
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 1e1bc81fde19d162972edf7f35a6dfa6b4e3701c55da87814ca5c74cae79d31c -->
+<!-- FRONTIER-SOURCES-SHA256: 77f0cec0c046f7230a069baa34c5097e768b5a546617f11f691f27bc0fd1ffdf -->
 <!-- sources: 165 files -->
 
 ## Decided recently
@@ -116,6 +116,7 @@ updated: 2026-09-06
 
 ### Last commits touching the frontier sources
 
+- 2026-09-06 3e19dba — the last five author calls close: overlap, a stale row, and two directives
 - 2026-09-06 f533365 — bands may overlap and are advisory: ruled 2026-09-06
 - 2026-09-05 e7770c0 — the four lenses, seeded from the tree, with a gate and a generated overview
 - 2026-09-05 8c202f8 — decision: four lenses, each enumerated, each carrying an author marker
@@ -123,4 +124,3 @@ updated: 2026-09-06
 - 2026-09-05 2004fc6 — pack.py wrote the INDEX SPEC link one directory too shallow
 - 2026-09-05 a2130c5 — E197 is built: RecordRequest, its pricing law, and a gate with six mutants
 - 2026-09-05 69874b1 — E197 SPEC audit: the four probes, the twenty golden lines and all six mutants reproduce
-- 2026-09-05 e7c27e7 — requirement 4 closes on the wiring branch, and EN-24 carries the measurement
