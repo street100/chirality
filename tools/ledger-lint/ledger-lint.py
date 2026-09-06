@@ -1714,6 +1714,14 @@ def check_ac() -> list[str]:
             lstate[num] = re.sub(r"[*`]", "", cells[2]).split()[0].lower()
             if "UNRESOLVED" in ln:
                 flagged.add(num)
+    # A disagreement ENUMERATED in the limit lens is recorded rather than
+    # unnoticed, which is the escape AE and AG already give. E20, E26 and E101
+    # were measured in records/ledger-reconciliation.md and sat as prose that
+    # closed nothing.
+    for about in _lens_about("limits.md") | _lens_about("problems.md"):
+        am = re.fullmatch(r"E(\d+)", about.strip())
+        if am:
+            flagged.add(int(am.group(1)))
     pipe: dict[int, str] = {}
     for ln in index.read_text().splitlines():
         cells = [c.strip() for c in ln.strip().strip("|").split("|")]

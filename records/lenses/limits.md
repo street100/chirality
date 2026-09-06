@@ -211,3 +211,45 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-04
 - owner:    none
 - from:     TC-10
+
+### LIM-16 E20 ledger says built and the pipeline index says audited
+
+- state:    accepted
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    E20
+- claim:    docs/elements/ledger.md marks E20 `built`; docs/examples/INDEX.md marks it `audited`, awaiting implementation.
+- measured: records/ledger-reconciliation.md measured the two cells as naming different things. There is no nb-blit and no mmap-to-mprotect code loader under lib/; lib/module/loader.chiral is the compiler's module loader by its own header and the name is a collision. The mmap/mprotect pair in compile-emit is E89/E91's arena reserve-commit, never a W-to-X transition, and the W^X half is not held: x64/elf.chiral:59-60 emits one RWX PT_LOAD. Naming the surviving element is an author call.
+- evidence: records/ledger-reconciliation.md, lib/lowering/x64/elf.chiral:59-60
+- checked:  2026-09-05
+- owner:    none
+- from:     none
+
+### LIM-17 E26 ledger says built and the pipeline index says audited
+
+- state:    accepted
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    E26
+- claim:    docs/elements/ledger.md marks E26 `built`; docs/examples/INDEX.md marks it `audited`.
+- measured: records/ledger-reconciliation.md qualified it PARTIAL 2026-09-04. The crossing half is real, halt declared at lib/ports/process.port:14, and the typed alarm is not built: E42 built the shape instead and names the typed alarm as residue, hard-gated on E39, which is still `design`.
+- evidence: records/ledger-reconciliation.md, lib/ports/process.port:14
+- checked:  2026-09-05
+- owner:    none
+- from:     none
+
+### LIM-18 E101 ledger says built and the pipeline index says audited
+
+- state:    accepted
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    E101
+- claim:    docs/elements/ledger.md marks E101 `built`; docs/examples/INDEX.md marks it `audited`.
+- measured: records/ledger-reconciliation.md measured a genuine PARTIAL on E26's precedent. The element's title names two files: lib/surface/sexp.chiral landed in full and lib/surface/parse.chiral did not, its p-err still carrying a bare string with no position.
+- evidence: records/ledger-reconciliation.md, lib/surface/sexp.chiral:137
+- checked:  2026-09-05
+- owner:    none
+- from:     none
