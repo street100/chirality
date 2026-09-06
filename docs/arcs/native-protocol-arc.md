@@ -53,19 +53,25 @@ zero crypto kernels, zero listen-side AF_INET, zero UDP.
    reconstruct differently surface as a named disagreement
    ([[decisions/decision-quorum-store]]).
 
-## Rows
+## Roster
 
-| row | what | state | element |
-|---|---|---|---|
-| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class | slices 1 and 2 built and gated 2026-09-03, slices 3 and 4 open. ⚑ **The reference class is pre-quantum and [[goals/own-web]] condition 4 states a post-quantum target.** Measured 2026-09-05: zero mentions of post-quantum across this arc, `docs/examples/N01-crypto-kernels.md`, its SPEC and the checklist. `.planning/CRYPTO-MODEL.md` holds the re-scope, and slices 3 and 4 are specced against a suite the target abandons | `unminted` |
-| `native-protocol/N2` | the entropy crossing | not started | `unminted` |
-| `native-protocol/N3` | listen-side AF_INET, and UDP if the handshake wants it | not started | `unminted` |
-| `native-protocol/N4` | the handshake and framing, Noise reference class, shrednet identity model as base | not started | `unminted` |
-| `native-protocol/N5` | the constant-time judgment: a secret-dependent branch or index is refused mechanically | not started | `unminted` |
-| `native-protocol/N6` | the shared primitives module: word ops, LE codecs, field arithmetic; every kernel consumes it, slice 1 helpers migrate in | not started | `unminted` |
-| `native-protocol/N7` | Shamir over GF(256): split, reconstruct, quorum agreement, corrupted-share detection | pre-run done. Example `92b0660`, EXAMPLE audit PASS `0bd65dd`, `docs/examples/INDEX.md` row reads `reviewed`. SPEC not written | `unminted` |
-| `native-protocol/N8` | the split store: seal then split, distribution, the return track with disagreement handling | not started | `unminted` |
-| `native-protocol/N9` | the universal crossing trait: a crossing's TAL stub synthesized from its declared type, so a new port extends a table instead of TAL code | not started | `unminted` |
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `native-protocol/N1` | the kernels: an AEAD cipher, a hash, a key exchange, the WireGuard suite as reference class. slices 1 and 2 built and gated 2026-09-03, slices 3 and 4 open. ⚑ **The reference class is pre-quantum and [[goals/own-web]] condition 4 states a post-quantum target.** Measured 2026-09-05: zero mentions of post-quantum across this arc, `docs/examples/N01-crypto-kernels.md`, its SPEC and the checklist. `.planning/CRYPTO-MODEL.md` holds the re-scope, and slices 3 and 4 are specced against a suite the target abandons | kernels | primitive | new | 2 | built | `unminted` |
+| `native-protocol/N2` | the entropy crossing. not started | crossings | port | new | 3 | open | `unminted` |
+| `native-protocol/N3` | listen-side AF_INET, and UDP if the handshake wants it. not started | transport | port | new | 1 | open | `unminted` |
+| `native-protocol/N4` | the handshake and framing, Noise reference class, shrednet identity model as base. not started | transport | law | new | 1 | open | `unminted` |
+| `native-protocol/N5` | the constant-time judgment: a secret-dependent branch or index is refused mechanically. not started | custody | law | new | 4 | open | `unminted` |
+| `native-protocol/N6` | the shared primitives module: word ops, LE codecs, field arithmetic; every kernel consumes it, slice 1 helpers migrate in. not started | kernels | primitive | new | 2 | open | `unminted` |
+| `native-protocol/N7` | Shamir over GF(256): split, reconstruct, quorum agreement, corrupted-share detection. pre-run done. Example `92b0660`, EXAMPLE audit PASS `0bd65dd`, `docs/examples/INDEX.md` row reads `reviewed`. SPEC not written | split | law | new | 5 | open | `unminted` |
+| `native-protocol/N8` | the split store: seal then split, distribution, the return track with disagreement handling. not started | split | primitive | new | 5 | open | `unminted` |
+| `native-protocol/N9` | the universal crossing trait: a crossing's TAL stub synthesized from its declared type, so a new port extends a table instead of TAL code. not started | crossings | law | new | 1 | open | `unminted` |
+
+### Coverage
+
+Every requirement is served: 1 by N3, N4 and N9; 2 by N1 and N6; 3 by N2; 4 by
+N5; 5 by N7 and N8. Every row serves one, and every `origin` is `new`: this arc
+builds a floor the tree does not have.
 
 ## Resume state
 
