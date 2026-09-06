@@ -26,9 +26,25 @@ updated: 2026-09-03
 
 N semantically distinct judgment cores, each a different formulation of the rule
 set, run against the same input and required to agree. Disagreement is a
-refusal. One formulation with two emitters does not count: that is what the
+refusal. One formulation with two emitters fails the bar: that is what the
 `Mach`-to-C backend was, and it was dropped on 2026-09-01 for that reason
 (`d8bcec5`, `d0c5dd5`).
+
+1. **What counts as a distinct formulation is written down**, so a candidate leg
+   can be judged against it. Observed by the criterion being settled rather than
+   `status: draft`. [[arcs/independent-judgment-arc]] row `J1`.
+2. **A second judgment core exists in a different formulation**, and the quorum
+   runs both. Observed by two cores agreeing on the same input.
+   [[arcs/independent-judgment-arc]] rows `J2` and `J3`.
+3. **The quorum refuses what it should.** Observed by `ddc-bad-quorum` firing on
+   fewer than two live legs. [[arcs/independent-judgment-arc]] row `J4`.
+4. **The demanded statement is a form a check can read.** Observed by `JForm`
+   completed or closed, with `SpecRule.statement` no longer a bare `Str`.
+   [[arcs/independent-judgment-arc]] row `J5`.
+5. **[[status-ledger]] stops saying every rung is enforcement against error.**
+   Observed by the ledger distinguishing enforcement against error from
+   enforcement against an adversary. **No row serves this**, and the hole is
+   enumerated as `GAP-06`. [[arcs/independent-judgment-arc]].
 
 ## State
 
