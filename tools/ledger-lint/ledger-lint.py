@@ -1926,13 +1926,18 @@ def check_ag() -> list[str]:
             # A row may cover more than one element: bridge/C4 is E40 and E56,
             # the mirror of unit-lane N8 and N9 both minting as E196. Forcing one
             # number per row would make a roster lie about what it covers.
+            # Four lanes mint into this pipeline: E is the core catalog, and
+            # U, S and N are the user, scriba and native lanes pack.py's source
+            # adapters read from their own documents. scriba-arc holds the S
+            # namespace, so demanding an E number there rejects every row it has.
+            # A trailing letter is legal: pack.py's id regex allows S20b.
             if elem != "unminted":
-                nums = re.findall(r"E(\d+)", elem)
-                if not nums:
+                ids = re.findall(r"\b([EUSN])(\d+)([a-z]?)", elem)
+                if not ids:
                     errs.append(f"[AG] {f.name} row {rid} element '{elem}' is not "
-                                f"`unminted` or an E number")
-                for num in nums:
-                    if int(num) not in cat:
+                                f"`unminted` or a lane id (E/U/S/N)")
+                for lane, num, _sfx in ids:
+                    if lane == "E" and int(num) not in cat:
                         errs.append(f"[AG] {f.name} row {rid} claims E{num} and no "
                                     f"catalog row mints it")
             rq = {x for x in re.findall(r"\d+", cells[-3])}
