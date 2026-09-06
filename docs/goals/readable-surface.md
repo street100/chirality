@@ -3,7 +3,7 @@ node: goal-readable-surface
 layer: navigation
 related: [goals/README, arcs/diagnostics-arc, arcs/file-types-arc, design-principles, index]
 status: current
-updated: 2026-09-03
+updated: 2026-09-05
 ---
 
 # Goal: the surface is convenient without buying it back in escape hatches
@@ -32,17 +32,25 @@ without either sacrificing values or leaving escape hatches.
 
 ## What done means
 
-1. **A diagnostic tells the reader what to do.** Not that something failed, and
-   not only where. `docs/definitions/bug-classes.md` holds the classes the
-   compiler refuses; each should reach the reader as a message they can act on.
+1. **A diagnostic tells the reader what to do**, beyond that something failed
+   and where. `docs/definitions/bug-classes.md` holds the classes the compiler
+   refuses, and each should reach the reader as a message they can act on.
+   Observed by every `Reason` arm carrying evidence a reader can open.
+   [[arcs/diagnostics-arc]] rows `V1`, `V2` and `V4`.
 2. **The convenient way is the safe way.** Where a check is conservative and
-   taxes safe code, that is recorded as a debt against this goal, not absorbed
-   silently by the person writing the code.
+   taxes safe code, that is recorded as a debt against this goal rather than
+   absorbed silently by the person writing the code. Observed by each such tax
+   carrying a limit row with its coverage state. **Unopened, and it holds no
+   arc file**: `records/lenses/limits.md` is the home and nothing schedules the
+   sweep.
 3. **No escape hatch that everyone takes.** An opt-out annotation whose usage
-   rate is high is a failed default, and the measurement is the deliverable. If
-   the annotation is load-bearing it stays, and the goal records why.
-4. **Regularity holds at the surface.** One shape, one meaning. File kinds,
-   syntax and error vocabulary are the current instances.
+   rate is high is a failed default, and the measurement is the deliverable. An
+   annotation that is load-bearing stays and the goal records why. Observed by
+   a counted usage rate per annotation. **Unopened, and it holds no arc file.**
+4. **Regularity holds at the surface.** One shape, one meaning. Observed on the
+   three current instances: file kinds, syntax and the error vocabulary.
+   [[arcs/file-types-arc]] for the kinds, [[arcs/diagnostics-arc]] for the
+   vocabulary.
 
 ## State
 
