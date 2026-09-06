@@ -2039,6 +2039,11 @@ def check_ah() -> list[str]:
             # ceremony. transport/T1 to T4 are gate phases, built and green,
             # and demanding a pre-mint design for them demands a document the
             # work never owed.
+            # `direct` is terminal and carries no pipeline artifact by
+            # definition: working-discipline runs the pipeline for a row iff
+            # building it requires choosing between shapes the codebase does
+            # not already settle, and a forced shape is its own blueprint.
+            # E105, file write, is a syscall crossing built that way.
             if elem != "unminted" \
                and state in ("designed", "minted", "specced", "building", "built") \
                and not (parts / f"{arc}-{local}.md").is_file() \

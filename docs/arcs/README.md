@@ -73,7 +73,13 @@ so a citation made before the number existed survives it.
 | `kind` | `primitive` · `law` · `port` · `decision` · `tool` |
 | `origin` | `new` · `bind` (it exists and needs a surface) · `connect` (two built things need joining) |
 | `req` | the numbered §5 requirements this row serves |
-| `state` | `open` · `designed` · `minted` · `specced` · `building` · `built` · `closed` |
+| `state` | `open` · `designed` · `minted` · `specced` · `building` · `built` · `direct` · `closed` |
+
+`direct` is terminal and carries no design or SPEC. [[working-discipline]] runs
+the pipeline for a row iff building it requires choosing between shapes the
+codebase does not already settle, so a forced shape is its own blueprint.
+`zero-python/Z5` is the case: file write is a syscall crossing the kernel ABI
+fixes.
 | `element` | the `E#` once minted, or `unminted` |
 
 **The `state` column is the pipeline's authority for a row.** Build state on the

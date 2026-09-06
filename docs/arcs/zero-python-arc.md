@@ -3,7 +3,7 @@ node: arc-zero-python
 layer: navigation
 related: [arcs/README, goals/self-tooling, arcs/diagnostics-arc, arcs/file-types-arc, index]
 status: current
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Arc: zero Python
@@ -58,6 +58,32 @@ number rather than a new methodology. That file's own totals were taken on
 
 E173 is the one that matters: 142 sites against 27 and 20. A matcher unblocks
 more than the other two combined.
+
+## Roster
+
+Groups are the waves the section below orders. `enabler` rows are the elements
+the later waves need; `port` rows are the tool replacements themselves.
+
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `zero-python/Z1` | the total matcher, slice 1 built and gated by Phase 19. ⚑ Slice 2, the captures, is unbuilt | enabler | primitive | new | 3 | building | `E173` |
+| `zero-python/Z2` | `getdents64`, the directory walk | enabler | port | new | 1 | open | `E148` |
+| `zero-python/Z3` | argv. The capability exists via `/proc/self/cmdline` | enabler | port | new | 1 | open | `E150` |
+| `zero-python/Z4` | typed process spawn | enabler | port | new | 1 | built | `E33` |
+| `zero-python/Z5` | file write: a syscall crossing whose shape the kernel ABI forces, so it was built under the build rule with no blueprint | enabler | port | new | 1 | direct | `E105` |
+| `zero-python/Z6` | wave 0: the three tools buildable today, `scriba-run-smoke`, `paren-audit` and `scriba-edit-smoke`, 336 LOC | wave-0 | tool | new | 1 | open | `unminted` |
+| `zero-python/Z7` | wave 1: `syscall-map`, 244 LOC, behind `E150` | wave-1 | tool | new | 1 | open | `unminted` |
+| `zero-python/Z8` | wave 2: `doc`, `capture`, `frontier`, `pack` and `ledger-lint`, 3,868 LOC re-measured 2026-09-04, behind `E148`, `E150` and `E173`. `doc` first, smallest, and the audit programme runs on it | wave-2 | tool | new | 1 | open | `unminted` |
+| `zero-python/Z9` | delete `tools/` rather than empty it | wave-2 | decision | new | 2 | open | `unminted` |
+
+### Coverage
+
+⚑ **Requirement 4 is served by no row**, enumerated as `GAP-18`: every
+replacement running on the tree's own test floor is a property each ported tool
+carries rather than a deliverable of its own.
+
+Requirements 1, 2 and 3 are served: 1 by Z2 to Z8, 2 by Z9, 3 by Z1. Every row
+serves one, and every `origin` is `new`.
 
 ## Element list
 

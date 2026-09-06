@@ -239,3 +239,17 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-05
 - owner:    none
 - from:     none
+
+### GAP-18 zero-python-arc requirement 4 has no roster row
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    arc
+- about:    zero-python/req4
+- claim:    docs/arcs/zero-python-arc.md REQUIREMENTS 4: "Every replacement runs on the tree's own test floor."
+- measured: converting the arc to the 8-column roster on 2026-09-05 showed requirement 4 served by none of Z1 to Z9. It is a property each ported tool carries rather than a deliverable of its own.
+- evidence: docs/arcs/zero-python-arc.md
+- checked:  2026-09-05
+- owner:    none
+- from:     none
