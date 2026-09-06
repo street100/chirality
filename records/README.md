@@ -11,6 +11,17 @@ updated: 2026-09-01
 A checklist is one arc's standing list of things this repo says about itself, each
 paired with what was measured. One file per arc.
 
+**Live rows moved to the four lenses on 2026-09-05.**
+[[decisions/decision-four-lenses]] split what used to share every home: a
+problem, a gap, an honest limit and unspoken territory are four kinds of claim,
+and `lenses/` holds one enumerated file for each. A migrated row keeps its id and
+its place here, goes `RETIRED`, and points forward; the lens row carries the live
+state and names it in `from:`. **These files are the arc's history**, which is
+what the section below already says they are for.
+
+[[records/lenses/README]] is the schema. `python3 tools/lens/lens.py check` is
+what enforces it, and `ledger-lint` check AD runs it.
+
 These files are TRACKED, and since 2026-09-01 so is the agent tier
 ([[decision-ai-tier]]). They stay here because a record is written for a person:
 a claim this repo makes about itself beside what was measured. A finding written
@@ -83,10 +94,13 @@ so rather than carrying it forward.
 **Evidence is mandatory.** `evidence:` names files and line spans. A row nobody can
 re-run is worthless.
 
-**Elements.** Where a row needs an element to fix it, write `UNASSIGNED` and stop.
-Do not mint a number. `docs/decisions/decision-lane-split.md` reserves E184-E189 for Lane A and E190-E195 for
-Lane B. An arc with no reserved block gets one from the author, and CLAUDE.md's
-deferral rule forbids naming an element that does not exist.
+**Elements.** Where a row needs an element to fix it, name the arc-local roster
+row that owns it. `docs/decisions/decision-work-ids.md` replaced the anonymous
+`UNASSIGNED` form on 2026-09-01, and the lens schema refuses it outright.
+`docs/decisions/decision-lane-split.md` reserves the bands; an arc outside them
+gets one from the author, and the deferral rule in
+`docs/definitions/working-discipline.md` forbids naming an element that does not
+exist.
 
 ## Naming
 

@@ -233,15 +233,16 @@ programs and deletes the directory.
 
 | file | LOC |
 |---|---|
-| `tools/ledger-lint/ledger-lint.py` | 1128 |
-| `tools/pack/pack.py` | 806 |
+| `tools/ledger-lint/ledger-lint.py` | 1852 |
+| `tools/pack/pack.py` | 1522 |
 | `tools/frontier/frontier.py` | 651 |
 | `tools/capture/capture.py` | 620 |
-| `tools/doc/doc.py` | 330 |
+| `tools/lens/lens.py` | 404 |
+| `tools/doc/doc.py` | 331 |
 | `tools/paren-audit/paren-audit.py` | 154 |
 | `docs/examples/refs/*.py` | 502 |
 | `.planning/capture-fixtures/*.py` | 12 |
-| **total** | **4,203** |
+| **total** | **6,048** |
 
 **GONE — not carried by the migration, by decision**
 

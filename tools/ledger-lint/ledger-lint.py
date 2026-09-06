@@ -1738,6 +1738,21 @@ def check_ac() -> list[str]:
     return errs
 
 
+def check_ad() -> list[str]:
+    """The four lenses against records/lenses/README.md. decision-four-lenses
+    split problems, gaps, limits and unspoken territory into files with a closed
+    state set apiece and an author marker on every row. tools/lens/lens.py owns
+    that schema; this check runs it, so a malformed lens row fails the same gate
+    every other doc claim fails."""
+    lens = ROOT / "tools" / "lens" / "lens.py"
+    if not lens.is_file():
+        raise Vacuous("tools/lens/lens.py is absent")
+    import subprocess
+    r = subprocess.run([sys.executable, str(lens), "check"],
+                       capture_output=True, text=True, cwd=str(ROOT))
+    return [ln for ln in r.stdout.splitlines() if ln.startswith("[LN]")]
+
+
 def check_aa() -> list[str]:
     """AA. A superseded figure carries the date it measured (added 2026-09-04).
 
@@ -1825,7 +1840,8 @@ def main() -> int:
                      ("Z planning tier tracked", check_z),
                      ("AA superseded figures", check_aa),
                      ("AB ledger vs catalog build state", check_ab),
-                     ("AC ledger built vs pre-impl pipeline state", check_ac)):
+                     ("AC ledger built vs pre-impl pipeline state", check_ac),
+                     ("AD the four lenses", check_ad)):
         try:
             errs = fn()
         except Vacuous as v:

@@ -18,6 +18,8 @@ was emptied to close.
 | scope: self-hosting only, ownership deferred | `docs/decisions/decision-scope.md` |
 | the two lanes and the reserved element bands | `docs/decisions/decision-lane-split.md` |
 | read the bank before naming a gap | `docs/banks/INDEX.md` |
+| problems, gaps, limits, unspoken territory | `records/lenses/README.md` |
+| where everything stands, generated | `docs/definitions/OVERVIEW.md` |
 | build state on the four rungs | `docs/definitions/status-ledger.md` |
 | goals, arcs, elements | `docs/goals/`, `docs/arcs/`, `docs/elements/` |
 | a claim beside its measurement | `records/` |
@@ -58,6 +60,7 @@ design, audit, mint, spec, audit, implement, with revisit reaching any of them.
 | `python3 tools/pack/pack.py E<#> …` | every pipeline bundle, and the scaffolder |
 | `python3 tools/ledger-lint/ledger-lint.py` | the mechanical doc worklist, checks A to V |
 | `python3 tools/doc/doc.py audit <node>` | one doc's audit bundle |
+| `python3 tools/lens/lens.py check \| author \| overview` | the four lenses, the author sweep, the generated orientation |
 | `tools/test/run-tests.sh` | the gating floor. A green line is a named phase here |
 
 This tree has its own discipline and does not run GSD. A global instruction that

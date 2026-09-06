@@ -132,6 +132,13 @@ cites is unverified. `python3 tools/pack/pack.py --revisit` lists them, and the
 **Evidence is mandatory.** `evidence:` names files and line spans. A row nobody
 can re-run is worthless.
 
+**Field text migrated from a records row is carried verbatim.** A row is a
+record of what was claimed and what was measured, so rewriting its prose to suit
+a linter would falsify it. `problems.md` and `unspoken.md` carry `prose-lint`
+findings for that reason, and their baseline rows in
+`.planning/PROSE-BASELINE.tsv` are frozen at the migration. Prose written fresh
+into a lens is held to zero like any new file.
+
 **Write `ruled` only for a ruling the author actually gave.** `author: ruled`
 over an invented `note:` is the worst defect this format admits, because every
 later reader treats it as settled.

@@ -18,8 +18,9 @@ none of it is tracked by a tool. Measured 2026-09-05:
 | claim | measured |
 |---|---|
 | `records/` is checked | `ledger-lint` reads **one** of 14 records files, `conformance-map.md`, in checks E and Q. The other 13 hold **156 rows** that nothing checks |
-| the six-field row format holds | **49 of 169 rows carry none of the six fields**, concentrated in `lane-a-record` (14), `conformance-map` (13), `author-calls` (6) |
-| the four states hold | five rows carry free-text `state:` values outside the closed set, one of them the literal `<STATE>` from the README's own example |
+| a row is distinguishable from prose | **it is not.** 120 real rows sit beside **49 `###` headings that are prose section titles** (`### What`, `### The`, `### 1.`), and both wear the form the row format claims. Nothing mechanical can tell them apart |
+| the six-field row format holds | it does. All 120 real rows carry every field. ⚑ This row read "49 of 169 rows carry none of the six fields" when this decision was first written, which counted those 49 prose headings as malformed rows. The format was never the defect; its collision with ordinary markdown structure is |
+| the four states hold | **4 rows carry a `state:` outside the closed set**, all in `enforcement-arc.md`: one `ANSWERED 2026-09-04` and three that append a sentence of prose to a `FIXED` token |
 | an element belongs to exactly one arc | **48 unbuilt elements are named by no arc.** 74 more are built orphans, which is history and legitimate. 16 arc-owned elements have no ledger row |
 | `element:` resolves | 49 rows read `UNASSIGNED`, the form [[decisions/decision-work-ids]] replaced on 2026-09-01. `records/README.md` still instructs it |
 | gaps have a home | **8 of 22 arcs** carry a `What is missing` section |
@@ -137,10 +138,16 @@ byte-identical on a re-run, and a lint check that fails it stale.
 
 ## What this costs
 
-169 existing rows migrate. 49 of them carry no fields at all and cannot be
-sorted mechanically, so each needs a reading. The 15 `ACCEPTED` rows move to the
-limit lens leaving a pointer, the 48 orphaned elements seed the unspoken lens,
-and the prose under every goal's `## Honest limits` becomes `LIM-` rows.
+120 existing rows migrate. The 15 `ACCEPTED` rows move to the limit lens, the 68
+`OPEN` rows move to the problem lens, the 48 orphaned elements seed the unspoken
+lens, and the prose under every goal's `## Honest limits` becomes `LIM-` rows.
+
+**A migrated row keeps its old id and its old home.** `BA-03` stays in
+`records/baseline-alignment.md`, goes `RETIRED`, and points forward; the lens row
+carries the live state and names `BA-03` in its `from:` field. `records/README.md`
+already forbids renumbering a row that exists, because its id is cited elsewhere.
+The per-arc records files become the arc's history, which is what that file says
+they are for.
 
 Every migrated row lands at `author: unreviewed`, because none of them has been
 walked. That number is the honest size of the sweep this decision creates.
