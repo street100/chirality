@@ -3,7 +3,7 @@ node: goal-bridge
 layer: navigation
 related: [goals/README, thesis, axis-typeability, category-bridge, category-typed, category-untyped, decision-bridge-elaborator, certificate-discipline, split-role, splitting-law, joining-law, status-ledger, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-05
 ---
 
 # Goal: A governs B, and the bridge is what carries it
@@ -28,19 +28,25 @@ foundation documents.
 
 ## What done means
 
-[[category-bridge]] states two obligations, and they are the goal:
+[[category-bridge]] states two obligations, and they are the first two
+conditions. A module declaring `(cat C)` is held to both, the way a module
+declaring `(cat A)` is already held to its own.
 
-- **Inbound, B to A, verify.** A C module "must never return a B derived value
-  into A without first turning it into evidence."
-- **Outbound, A to B, confine.** It "must never emit an A value into B without
-  first confining it": stripped of what must not leak, carrying no live
-  capability into ungoverned substrate.
-
-Done when a module that declares `(cat C)` is held to both, the way a module
-declaring `(cat A)` is already held to its own, with a mutant that is actually
-run. And when the bridge is **one elaborator instantiated with an evidence
-element** rather than a bespoke bridge per referent
-([[decisions/decision-bridge-elaborator]]).
+1. **Inbound, B to A, verify.** A C module "must never return a B derived value
+   into A without first turning it into evidence." Observed by `cat-fenced`
+   answering for the C arms instead of `(_ none)`.
+   [[arcs/bridge-arc]] rows `C1`, `C2` and `C3`.
+2. **Outbound, A to B, confine.** It "must never emit an A value into B without
+   first confining it": stripped of what must not leak, carrying no live
+   capability into ungoverned substrate. Observed on the first evidence
+   element, custody. [[arcs/bridge-arc]] row `C4`.
+3. **Each obligation has a mutant that is actually run.** A check aimed at a
+   guess passes by looking at nothing. **No row serves this**, and the hole is
+   enumerated as `GAP-01`. [[arcs/bridge-arc]].
+4. **The bridge is one elaborator instantiated with an evidence element**
+   rather than a bespoke bridge per referent
+   ([[decisions/decision-bridge-elaborator]]). Observed by one generic
+   re-checker serving every referent. [[arcs/bridge-arc]] row `C5`.
 
 ## State
 
