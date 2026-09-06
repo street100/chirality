@@ -2,7 +2,7 @@
 # recording.sh -- the E197 gate: what a run is asked to record, judged over
 # twenty priced configurations, three compile probes and six mutants.
 #
-# not-a-phase: E197's number waits on the standing suite-phase-number call in
+# suite phase: registered 2026-09-06 under the native-tests ruling; run-tests.sh is the authority for the number.
 #   records/author-calls.md -- phases 8-12 are owed to unported old-tree phases,
 #   decision-lane-split reserves 21-23 for Lane B, and this lane holds no band.
 #

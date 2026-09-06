@@ -2,7 +2,7 @@
 # apply-spine.sh -- the E188 gate: an `$apply` arm for a defunctionalization
 # site whose `def-ctx` fails is the CALL SPINE, not the literal 0.
 #
-# not-a-phase: E188's number waits on the standing suite-phase-number call in
+# suite phase: registered 2026-09-06 under the native-tests ruling; run-tests.sh is the authority for the number.
 #   records/author-calls.md:30 -- four documents disagree about 21-23.
 #
 # ⚑ UNREGISTERED, AND IT CARRIES NO ROW SAYING SO.  `records/gate-audit.md`

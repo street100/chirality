@@ -18,30 +18,30 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 
 ### GAP-02 enforcement-arc requirement 5 has no roster row
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    closed
+- author:   ruled 2026-09-06
+- note:     "native tests and harnesses". The gate tier becomes chirality, not only the Python tools.
 - level:    arc
 - about:    enforcement/req5
 - claim:    docs/arcs/enforcement-arc.md REQUIREMENTS 5: "Chirality's own tooling is chirality's."
-- measured: converting the arc to the 8-column roster on 2026-09-05 showed requirement 5 served by none of N1 to N9. Every row is a compiler-side element and the requirement is about the gate tier, so it needs rows this arc has not written.
-- evidence: docs/arcs/enforcement-arc.md
-- checked:  2026-09-05
-- owner:    none
+- measured: RULED 2026-09-06 and measured the same day: **10,719 lines of shell in `tools/test/` against 1,775 native `.prog` lines.** The ruling widens this beyond zero-python, which covers the nine `.py` tools and not the shell gate tier. `prog/prose-lint.prog` and `prog/test-runner.prog` are the worked precedents: the checks moved into chirality and the shell kept only the front end. converting the arc to the 8-column roster on 2026-09-05 showed requirement 5 served by none of N1 to N9. Every row is a compiler-side element and the requirement is about the gate tier, so it needs rows this arc has not written.
+- evidence: tools/test/ (10,719 lines), prog/prose-lint.prog, prog/test-runner.prog, docs/goals/enforcement.md requirement 5, docs/arcs/zero-python-arc.md
+- checked:  2026-09-06
+- owner:    enforcement/N10
 - from:     none
 
 ### GAP-03 enforcement-arc requirement 6 has no roster row
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    closed
+- author:   ruled 2026-09-06
+- note:     "native tests and harnesses". Carried with GAP-02: a native harness is what makes a mutant checkable mechanically.
 - level:    arc
 - about:    enforcement/req6
 - claim:    docs/arcs/enforcement-arc.md REQUIREMENTS 6: "Every gate row names a mutant that is actually run."
 - measured: converting the arc to the 8-column roster on 2026-09-05 showed requirement 6 served by none of N1 to N9. It is a property every gate must carry rather than a deliverable, so whether it takes its own row is an author call.
 - evidence: docs/arcs/enforcement-arc.md
-- checked:  2026-09-05
-- owner:    none
+- checked:  2026-09-06
+- owner:    enforcement/N11
 - from:     none
 
 ### GAP-04 file-types-arc requirement 3 has no roster row

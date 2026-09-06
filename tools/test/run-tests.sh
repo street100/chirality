@@ -344,6 +344,28 @@ run_phase 20 "the transport path (a model call, E130 + E131)"     transport.sh
 # build per `verdict` call, six in the phase, measured at ~2.2 s each.
 run_phase 24 "the arity evidence (E182 r-arity)"                   arity.sh
 
+# ---- Phases 25-31: the gates that were waiting on a number -------------------
+# RULED 2026-09-06 by the author: native tests and harnesses, and this file is
+# the only authority for a phase number.  The rule is the one phase 24 already
+# applied by hand: a gate takes the first number that collides with nothing.
+# 8-12 stay owed to unported old-tree phases and 21-23 stay Lane B's, so 25 is
+# the first free.  tal-check.sh, crypto.sh and testing-floors.md each stated a
+# different answer for 21-23; they are corrected to point here rather than
+# restate it.
+#
+# Seven of the eight gates that declared `not-a-phase:` on this call are green
+# and register now.  tools/test/tal-check.sh is the eighth and stays out: it
+# exits 1 at `20 ok, 1 FAIL` on G18, and retiring G18 is an open author call
+# (records/enforcement-arc.md EN-25).  Registering a red gate would make the
+# suite red on a question nobody has answered.
+run_phase 25 "the apply dispatcher stated domains (E185)"           apply-word.sh
+run_phase 26 "the capture constructor's field types (E186)"        capture-fields.sh
+run_phase 27 "the sk-defunc blame channel (E187)"                  defunc-blame.sh
+run_phase 28 "arm-body's call spine (E188)"                        apply-spine.sh
+run_phase 29 "the Encoding sum and its arithmetic (E196)"          encoding.sh
+run_phase 30 "the RecordRequest sum and its pricing (E197)"        recording.sh
+run_phase 31 "the crypto kernels (N1 slices 1 and 2)"              crypto.sh
+
 # ---- registration: the witness for every dispatch line above ----------------
 # not-a-phase: this file IS the dispatch table; the block below invokes its witness.
 #

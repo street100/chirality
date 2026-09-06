@@ -370,17 +370,16 @@ gate tier owning itself.
 | `enforcement/N7` | the optimizer's re-check runs, or the element says why it does not | floor | tool | connect | 4 | open | `E17` |
 | `enforcement/N8` | the typed-assembly checker and reference tal interpreter reach the shipping path | floor | tool | connect | 2 | open | `E18` |
 | `enforcement/N9` | effectful lowering: the effect row's tal shadow plus a preserve-check over the effect claim | floor | law | new | 2 | open | `E70` |
+| `enforcement/N10` | the gate tier becomes chirality: 10,719 lines of shell in `tools/test/` against 1,775 native, on the `prose-lint` precedent where the checks moved into a `.prog` and the shell kept only the front end | tooling | tool | new | 5 | open | `unminted` |
+| `enforcement/N11` | every gate row names a mutant that is actually run, checked mechanically rather than per gate by hand | tooling | tool | new | 6 | open | `unminted` |
 
 ### Coverage
 
-⚑ **Requirements 5 and 6 are served by no row**, and both holes are enumerated:
-`GAP-02` for requirement 5, chirality's own tooling being chirality's, and
-`GAP-03` for requirement 6, every gate row naming a mutant that is actually run.
-Neither is an element this arc can mint against its band today, and both are
-recorded rather than papered over.
-
-Requirements 1, 2, 3 and 4 are served: 1 by N1 and N4; 2 by N6, N8 and N9; 3 by
-N2, N3 and N5; 4 by N7. Every row serves one. `N7` and `N8` are `connect`: both
+**Every requirement is served.** 1 by N1 and N4; 2 by N6, N8 and N9; 3 by N2,
+N3 and N5; 4 by N7; **5 by N10 and 6 by N11**, both opened 2026-09-06 on the
+author's ruling that tests and harnesses are native. `GAP-02` and `GAP-03`
+enumerated those two holes while the arc's band was spent and are closed by
+these rows. Every row serves one. `N7` and `N8` are `connect`: both
 subjects are built and unadopted, which is the defect this arc names.
 
 ## Resume state

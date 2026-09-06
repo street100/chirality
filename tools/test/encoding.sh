@@ -2,7 +2,7 @@
 # encoding.sh -- the E196 gate: the seam between a continuous value and a spike
 # train, judged over twenty swept configurations and four mutants.
 #
-# not-a-phase: E196's number waits on the standing suite-phase-number call in
+# suite phase: registered 2026-09-06 under the native-tests ruling; run-tests.sh is the authority for the number.
 #   records/author-calls.md -- four documents disagree about 21-23.
 #
 # ⚑ UNREGISTERED, AND IT CARRIES NO ROW SAYING SO. records/gate-audit.md GA-24

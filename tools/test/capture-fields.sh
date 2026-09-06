@@ -3,7 +3,7 @@
 # field types stay at the capture's OWN source type, and the erased word is
 # reached ONLY where that source type has no ground spelling.
 #
-# not-a-phase: E186's number waits on the standing author call -- four documents disagree about 21-23.
+# suite phase: registered 2026-09-06 under the native-tests ruling; run-tests.sh is the authority for the number.
 # ⚑ NO SUITE PHASE NUMBER IS ASSIGNED, and the row that would hold one is
 # already open.  `records/author-calls.md` carries a standing row, *Which suite
 # phase number a new gate takes*: `tools/test/run-tests.sh:332` and
@@ -11,7 +11,7 @@
 # `tools/test/tal-check.sh:5` claims 22, and `docs/definitions/testing-floors.md:69`
 # reads 21 the other way, while 8 through 12 stay owed to unported old-tree
 # phases.  E186 opens NO new call.  This gate takes the `crypto.sh` /
-# `tal-check.sh` / `apply-word.sh` route instead -- a `not-a-phase:` declaration
+# `tal-check.sh` / `apply-word.sh` route instead -- a `suite phase: registered 2026-09-06 under the native-tests ruling; run-tests.sh is the authority for the number.
 # with a reason, which keeps `tools/test/registration.sh` G2 and G4 green -- and
 # it runs BY HAND until the author settles the number.  It is the EIGHTH `PEND`
 # and the FOURTH script waiting on that one number.  A DEBT, discharged when the
