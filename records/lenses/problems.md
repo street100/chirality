@@ -246,9 +246,10 @@
 - level:    doc
 - about:    docs/banks/profile.md
 - claim:    a profile is a frozen conformance contract; `MAP.md` sorts `.profile` as a kind and `docs/banks/profile.md` describes requirement checking.
-- measured: ⚑ every `MAP.md` citation in this row was re-checked 2026-09-05 and still lands; the MEASUREMENT is not re-taken and needs the two `(target T (require run ...))` fixtures recompiled and their exit codes read, so the row stays unverified. `(target T (require run (-> I64 I64)))` with `run` absent, and the same with `run` present at the wrong type, both pass `chirality check` and emit an ELF. The conformance judgment (requirement to provider subtype) lived in `surface.py`, which was cut with the Python oracle; no chirality successor exists, and there is no ledger row or element number for one. Test phase 4's 31 assertions exercise the manifest grammar, not the judgment. Distinct from BA-10, which records that `.profile` has no instance.
-- evidence: `docs/banks/profile.md`, `MAP.md:5`, test phase 4
-- checked:  2026-09-01
+- measured: RE-RUN 2026-09-05 against `bin/chirality-bin` at its fixpoint (C1 == C2 == the tracked binary, 1,241,464 bytes). **Four cases, all exit 0.** A file holding only `(target Svc (require run (-> I64 I64)))` with no `run` anywhere: OK. With `run` at the declared type: OK. With `run` at `(-> I64 I64 I64)`, an arity mismatch: OK. With `run` as a bare `I64`: OK. So the requirement is checked against nothing at all, which is stronger than the original reading. It emits too: the same file plus `(def compile-main (-> I64 I64) (lam (n) 42))` compiles to a 33,144-byte ELF that runs and exits 42.
+- evidence: re-runnable: `printf '(target Svc (require run (-> I64 I64)))
+(def run I64 7)' > /tmp/t.chiral && ORIG_DIR=/tmp bin/chirality check /tmp/t.chiral` exits 0. `docs/banks/profile.md`, `MAP.md:5`, `tools/test/profile-target.sh` (phase 4, which tests parsing and not conformance)
+- checked:  2026-09-05
 - owner:    none
 - from:     BA-29
 
@@ -260,9 +261,10 @@
 - level:    source
 - about:    MAP.md
 - claim:    `MAP.md:5` "the resolver checks it" and `:37-40` the kind is "checked by the loader". The extension is the kind.
-- measured: ⚑ every `MAP.md` citation in this row was re-checked 2026-09-05 and still lands; the MEASUREMENT is not re-taken and needs a `.port` file holding a lambda and a `.manifest` with a computed body recompiled, so the row stays unverified. a `.port` file containing a lambda compiles. A `.manifest` file with a computed body compiles and runs. Neither the resolver nor the loader has an implementation of a kind check. The argument that a large fraction of the tree never enters the resolution space, so the bad state is unrepresentable, rests on this check existing.
-- evidence: `MAP.md:5`, `:37-40`, `bin/chirality-resolve.sh`, `lib/module/loader.chiral`
-- checked:  2026-09-01
+- measured: RE-RUN 2026-09-05 against the fixpoint binary. **Both hold.** A `.port` file carrying `(porttype Cap)`, an `extern`, and `(def illegal-in-a-port (-> I64 I64) (lam (n) n))` passes `chirality check` at exit 0, against `MAP.md:12` which fixes a `.port` as "declarations only, zero lambdas". A `.manifest` whose defs are a lambda and a call passes check, compiles, and the ELF runs at exit 7, against `MAP.md:14` and `:35-40` which fix a manifest as every `def` body a literal value with no `lam` and no computation. Neither the resolver nor the loader implements a kind check.
+- evidence: re-runnable: `printf '(def computed (-> I64 I64) (lam (n) n))
+(def compile-main (-> I64 I64) (lam (n) (computed 7)))' > /tmp/t.manifest && ORIG_DIR=/tmp bin/chirality compile /tmp/t.manifest && /tmp/t` exits 7. `MAP.md:5`, `:12`, `:35-40`, `bin/chirality-resolve.sh`, `lib/module/loader.chiral`
+- checked:  2026-09-05
 - owner:    none
 - from:     BA-30
 
