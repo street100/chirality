@@ -18,8 +18,23 @@ updated: 2026-09-03
 
 ## What done means
 
-Not stated in scope terms, because the track is deferred. The documents above
-carry the design.
+**The track is deferred**, so these conditions state what done would mean if it
+reopened. Every row in [[arcs/ownership-and-trust-arc]] is deferred by the same
+author call, and the arc's coverage says so.
+
+1. **A quorum has two legs of disjoint provenance.** Observed by
+   `ddc-bad-quorum` firing on fewer than two live legs.
+   [[arcs/ownership-and-trust-arc]] row `O1`.
+2. **The golden object is settled.** The provisional ruling of E71, the kernel
+   spec as the golden object with every executor first among executors, is
+   confirmed or replaced. [[arcs/ownership-and-trust-arc]] row `O2`.
+3. **The reference semantics is reached.** `lib/lowering/tal/spec.chiral` is
+   imported by something on a shipping path. **No row serves this**, and the
+   hole is enumerated as `GAP-08`. [[arcs/ownership-and-trust-arc]].
+4. **The shipped artifact carries its own re-derivation**, with no trusted
+   binary in the forever story. [[arcs/ownership-and-trust-arc]] row `O3`.
+
+The documents above carry the design.
 
 ## State
 
