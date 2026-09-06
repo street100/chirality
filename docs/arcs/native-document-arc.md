@@ -3,7 +3,7 @@ node: arc-native-document
 layer: navigation
 related: [arcs/README, goals/native-stack, arcs/native-window-arc, banks/text, decisions/decision-work-ids, decisions/decision-lane-split, records/author-calls, status-ledger, index]
 status: current
-updated: 2026-09-03
+updated: 2026-09-05
 ---
 
 # Arc: the native document
@@ -36,14 +36,19 @@ dynamism in the substrate, rendered in the native window. The design draft is
    finite, the gate walks every state and checks the property under test in
    each one.
 
-## Rows
+## Roster
 
-| row | what | state | element |
-|---|---|---|---|
-| `native-document/V1` | the document vocabulary, closed sums per context | not started | `unminted` |
-| `native-document/V2` | typed style values, and the cascade as a total ordered fold | not started | `unminted` |
-| `native-document/V3` | the state function, and the every-state gate | not started | `unminted` |
-| `native-document/V4` | the render seam into the window | not started | `unminted` |
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `native-document/V1` | the document vocabulary, closed sums per context | vocabulary | primitive | new | 2 | open | `unminted` |
+| `native-document/V2` | typed style values, and the cascade as a total ordered fold | style | law | new | 3 | open | `unminted` |
+| `native-document/V3` | the state function, and the every-state gate | style | tool | new | 3 | open | `unminted` |
+| `native-document/V4` | the render seam into the window | seam | primitive | new | 1 | open | `unminted` |
+
+### Coverage
+
+Every requirement is served: 1 by V4, 2 by V1, 3 by V2 and V3. Every row serves
+one, and every `origin` is `new`.
 
 ## Resume state
 
