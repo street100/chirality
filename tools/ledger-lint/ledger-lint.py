@@ -2020,7 +2020,13 @@ def check_ah() -> list[str]:
                         f"{em.group(1)}{int(em.group(2)):02d}-*.md")):
                     old_pipeline = True
                     break
-            if state in ("designed", "minted", "specced", "building", "built") \
+            # A row carrying no element was never in the element pipeline.
+            # working-discipline: everything that is not the compiler has no
+            # ceremony. transport/T1 to T4 are gate phases, built and green,
+            # and demanding a pre-mint design for them demands a document the
+            # work never owed.
+            if elem != "unminted" \
+               and state in ("designed", "minted", "specced", "building", "built") \
                and not (parts / f"{arc}-{local}.md").is_file() \
                and not old_pipeline:
                 errs.append(f"[AH] {f.name} row {rid} is `{state}` and "
