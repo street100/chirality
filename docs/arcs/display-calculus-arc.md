@@ -152,6 +152,8 @@ other two rows about a surface that exists and does not reach far enough.
 
 ## Resume state
 
+
+⚑ **2026-09-06: `R3` rostered here.** The span primitive was cited by [[arcs/canvas-arc]] and [[goals/own-web]] under a `display-calculus/` id and rostered by nothing. `C9`'s every-state witness is settled as `prog/scriba/`.
 ### Checkpoint, 2026-09-04, session paused mid-pipeline
 
 `C1C2` cleared every gate except the last. The pipeline stands at:

@@ -83,6 +83,8 @@ arc with no block gets one from the author.
 
 ## Resume state
 
+
+⚑ **2026-09-06: `D4`, `D5` and `D6` opened**, carrying the three `PRINCIPLES.md` claims that stood as author calls: P1's missing honest limit, P5's present tense over something the conformance map calls vapor, and P3's limit contradicting `open-edges`.
 **Where a session picks up.** Requirement 2, and specifically the `PRINCIPLES.md`
 half of BA-24. `PRINCIPLES.md:62` says "One atom with no exemptions" and `:89`
 says "the port-check is the type-check"; a pure `->` function performs a syscall

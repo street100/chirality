@@ -56,8 +56,8 @@ updated: 2026-09-06
 - **5.** Chirality's own tooling is chirality's. Observed as the ratio of lines outside the languag
       arc: enforcement-arc, independent-judgment-arc
 
-### arc `enforcement-arc`: 11 roster row(s)
-  state: built 3, open 8
+### arc `enforcement-arc`: 12 roster row(s)
+  state: built 3, open 9
 
 ## independent-judgment
 
@@ -253,4 +253,4 @@ updated: 2026-09-06
 - **limit** (LIM-): 18 row(s), 18 unreviewed. accepted 18
 - **unspoken** (UNS-): 48 row(s), 48 unreviewed. open 48
 
-Roster rows across every arc: 212. Minted from them: 43.
+Roster rows across every arc: 213. Minted from them: 43.

@@ -385,6 +385,8 @@ subjects are built and unadopted, which is the defect this arc names.
 
 ## Resume state
 
+
+⚑ **2026-09-06: three rows opened and the arc now serves all six requirements.** `N10` and `N11` came from the native-tests ruling, closing `GAP-02` and `GAP-03`. `N12` is the TFn census, which became buildable when E154's eleven collisions were prefixed away: zero names in `lowering/tal/check` collide with any module under `lib/` today, so a probe imports the real checker instead of copying it. **Nine record rows rest on that census and none can be re-run until `N12` exists**, which makes it the highest-leverage row here. `PRB-70` also measured `check.chiral` inside the compiler closure with `ck-prog` called by nothing, so `N8` is half-moved.
 **2026-09-05: resume from `.planning/HANDOFF-2026-09-05.md`.** It supersedes
 `.planning/HANDOFF-2026-09-04-EVENING.md`, which is kept for its measurements.
 That file carries the state, the six requirements in working order, the DCE

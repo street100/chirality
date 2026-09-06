@@ -70,6 +70,8 @@ measurement.
 
 ## Resume state
 
+
+⚑ **2026-09-06: `W5` and `W6` opened.** The fd-passing crossing is this arc's: `sock-send-fd` has no entry in `crossing-wraps.chiral` while `wl-client.chiral:201` calls it, so **nothing in this tree reaches a screen**, and no gate reads `prog/demo/`, which is why it went unnoticed. `PRB-71` holds the measurement. **Next: `W5`.**
 ⚑ **A blocker was measured 2026-09-05 and it sits under all four rows.**
 `lib/lowering/tal/crossing-wraps.chiral` carries 44 lowered crossings and
 `sock-send-fd` is absent from them, so `prog/demo/wl-client.chiral:201` does

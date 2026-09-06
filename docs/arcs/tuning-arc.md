@@ -94,6 +94,8 @@ are built at `lib/runtime/proc.chiral` and the gap is that no verb reaches them.
 
 ## Resume state
 
+
+⚑ **2026-09-06: unblocked.** Author call A ruled, Python is outside the tree, so this arc is a ports arc over `E33` and its roster below is its first. `GAP-14` to `GAP-17` closed with it. **Next: `tuning/U1`**, the verb set, which every other row waits on.
 **Where a session picks up.** Nowhere. The arc waits on author call A in
 [[records/author-calls]], which states the two readings and picks neither.
 

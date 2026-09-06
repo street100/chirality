@@ -91,6 +91,8 @@ M7. Every row serves one. `M5` and `M6` are `connect`: `E38`'s grading and
 
 ## Resume state
 
+
+⚑ **2026-09-06: opened.** The design was five slices deep in `.planning/MEMORY-DISCIPLINE-ARC.md` since 2026-08-05 with `E81` built and no tracked arc. **Next: `M2`, `alloc-region`**, the slice the dependency graph puts first above the seam.
 `E81` is built at `d6ad519` and `M2` is next, the slice the dependency graph
 puts first above the seam. `.planning/MEMORY-DISCIPLINE-ARC.md` holds the
 per-slice design, its gates and its sizes, and is the authority for how each

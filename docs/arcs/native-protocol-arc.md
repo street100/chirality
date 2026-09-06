@@ -80,6 +80,8 @@ rostering the re-scope answers it without discarding measured work.
 
 ## Resume state
 
+
+⚑ **2026-09-06: `N1` marked pre-quantum and `N10` opened.** Slices 1 and 2 are built and gated against WireGuard's suite, which is pre-quantum; `N10` carries `.planning/CRYPTO-MODEL.md`'s twelve-decision re-scope. `crypto.sh` registered as suite phase 31.
 N1 ran the full pipeline on 2026-09-03: example `77c3867`, EXAMPLE audit
 PASS `535c56f`, SPEC `f4f859e`, SPEC audit PASS `54d59b3`. Slice 1 landed the same
 day: `lib/crypto/chacha.chiral` green on both RFC 8439 vector rows in
