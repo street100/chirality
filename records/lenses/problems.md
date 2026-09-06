@@ -290,9 +290,9 @@
 - level:    source
 - about:    tools/test/run-tests.sh
 - claim:    the suite reports 303 assertions, 0 failed, and the `*_reject_*` fixtures exist to prove the compiler refuses what it should refuse.
-- measured: `tools/test/run-tests.sh:174` reads `case "$rb" in *_reject_*) continue`, so phase 7 skips every reject root instead of asserting that it fails. All 23 were run by hand and all 23 still reject, so this is 23 assertions behind one `continue` rather than a defect in the compiler. Separately, 47 of the 53 fixtures under `tools/test/samples/` are referenced by no script at all; `run-tests.sh:18-24` records phases 8, 9, 11 and 12 as `NOT PORTED -- script owed`. ⚑ Re-measured 2026-09-04: the suite reports 339 passed, 0 failed, 87 roots, `gate PASSED`, superseding the 303 the claim quotes. The skip is unchanged and now counted: phase 7 reads `case "$rb" in *_reject_*) r_skip=$((r_skip+1)); continue` and prints the tally as `known/negative`, so the skip is visible in the run rather than silent. Six of the 23 reject fixtures are `.prog` roots under `prog/samples/` and reach that line; the other 17 are `.chiral` files or sit under `tools/test/samples/`, which phase 7 never walks. `tools/test/samples/` now holds 56 top-level entries, 47 of them referenced by no script, one of which is the `_wip/` subdirectory carrying 46 more.
-- evidence: `tools/test/run-tests.sh:179`, `:18-24`, `tools/test/samples/`
-- checked:  2026-09-04
+- measured: RE-MEASURED 2026-09-06: still true, and the citation moved. `tools/test/run-tests.sh:179` reads `case "$rb" in *_reject_*) r_skip=$((r_skip+1)); continue ;; esac`, so phase 7 counts every reject root as skipped instead of asserting that it fails. The line was `:174` when this row was written.
+- evidence: re-runnable: `grep -n '_reject_' tools/test/run-tests.sh` returns the skip at `:179`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-32
 
@@ -500,9 +500,9 @@
 - level:    source
 - about:    tools/test/run-tests.sh
 - claim:    two documents cite `tools/test/run-tests.sh:280` as the line printing `compile-only: N roots built, N failed -- gates, but asserts nothing`.
-- measured: REFUTED. That line is `:298`. Line `:280` is the `run_phase 18` call for the term-printer gate. The quoted text is correct and only the citation is wrong, so this is the same class as EN-03. The 88 roots the claim was measured against were correct at the time; master now reports 87, after the C-leg fixture drop.
-- evidence: `tools/test/run-tests.sh:280`, `:298`, `docs/definitions/bug-classes.md:155`, `records/lane-a-record.md:191`
-- checked:  2026-09-01
+- measured: REFUTED, and RE-MEASURED 2026-09-06: the compile-only verdict line is now `:422`, having been `:298` when this row refuted the `:280` it was filed against. `run_phase 18` is at `:284`. The quoted text stays correct and only the citation was ever wrong, which is the EN-03 class: a line number that moved.
+- evidence: re-runnable: `grep -n 'roots built' tools/test/run-tests.sh` returns `:422`; `grep -n 'run_phase 18' ...` returns `:284`
+- checked:  2026-09-06
 - owner:    none
 - from:     EN-04
 
@@ -766,9 +766,9 @@
 - level:    source
 - about:    tools/test/run-tests.sh
 - claim:    `tools/test/mutant.sh:1-45` is the run-the-mutant rule made mechanical, and `docs/definitions/testing-floors.md:287` binds every gate row to a mutant that is RUN.
-- measured: `grep -n '^run_phase' tools/test/run-tests.sh` returns thirteen dispatch lines (`:144-147`, `:216`, `:225`, `:236`, `:252`, `:268`, `:284`, `:303`, `:326`, `:345`) and none of them names `mutant.sh`. The only occurrence of the string in that file is a comment at `:292` pointing a different element at a different harness. So the matrix runs by hand or it runs never. Two SPECs already rest a gate on it: E52 re-founds the surviving half of its conformance gate on `mutant.sh` (`docs/elements/specs/E52-certificate-split-SPEC.md:255`, `:311`) and E173 cites `mutant_differs` (`docs/elements/specs/E173-total-matcher-SPEC.md:399-401`). Cost measured today: `bash tools/test/mutant.sh --matrix` completed in **3m00s** wall clock, control green, seven mutants built at about 7 s each. The suite's own budget already carries phases costing more. ⚑ RE-MEASURED 2026-09-05 at `b12c29e`, and the standing is unchanged. `grep -n '^run_phase' tools/test/run-tests.sh` still returns thirteen dispatch lines and none of them names `mutant.sh`. `7662570` is the only change to this file since the row was written: it made `mutant_fixpoints` iterate to convergence rather than take one `cmp`, and it moves no cost here. The file's own 2026-09-05 note measures all seven declared mutants answering `C1 == C2` with ONE generation built each and the whole fixpoint stage at 28 s, unchanged, so the 3m00s this row priced still prices it. ⚑ WHAT DID CHANGE IS WHICH HALF OF THE FILE THE GAP COVERS. `ba62549` puts three DISPATCHED phases on this file as a library: `check-cli.sh`, `profile-target.sh` and `linear-mint.sh` each source it, and `mut_count`, `mut_sub`, `mutant_build` and `mutant_differs` now run twelve times on every suite run. What is still outside the gate is the MATRIX, the driver and its every-mutant-by-every-phase table, and this row is now that and nothing wider. LEFT OPEN, and the reason is not the cost. A phase for the matrix wants a phase NUMBER, and which number a new gate takes is a standing author call (`records/author-calls.md`, `docs/decisions/decision-lane-split.md:30`): 21 through 23 are Lane B's and 8 through 12 are owed to unported phases. `registration.sh` takes no number, and that route is open to the matrix too, but it costs three minutes on a four-minute suite and whether the suite pays that is the same call. This session is barred from making it.
-- evidence: `tools/test/run-tests.sh:144-147`, `:292`, `:345`; `tools/test/mutant.sh:154`; after the re-measurement `tools/test/mutant.sh:11-25`
-- checked:  2026-09-05
+- measured: RE-MEASURED 2026-09-06: still true for `mutant.sh`, and the surrounding count moved. `run-tests.sh` now carries **21** dispatch lines against 13 when this row was written, and none names `mutant.sh`. It declares `not-a-phase:` as a sourceable library plus a matrix driver a person runs by hand, which is a structural reason rather than a pending number.
+- evidence: re-runnable: `grep -c '^run_phase' tools/test/run-tests.sh` returns 21; `grep -n mutant.sh tools/test/run-tests.sh` returns nothing
+- checked:  2026-09-06
 - owner:    none
 - from:     GA-01
 
@@ -802,15 +802,15 @@
 
 ### PRB-58 four phase scripts have no dispatch line
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    source
 - about:    tools/test/run-tests.sh
 - claim:    `docs/definitions/testing-floors.md:69` records `tools/test/tal-check.sh` as unregistered in `run-tests.sh` by decision, on the `crypto.sh` precedent, so the suite's 339 excludes it.
-- measured: `ls tools/test/*.sh` lists eighteen scripts and `run-tests.sh` dispatches thirteen. The five outside the dispatch are `run-tests.sh` itself, `crypto.sh`, `tal-check.sh`, `map-integrity.sh` and `mutant.sh`. Two of the four carry a written decision (`crypto.sh`, `tal-check.sh`). `map-integrity.sh` is reached by a separate route: `docs/goals/self-hosting.md:58` names it beside `bin/chirality test` as a thing a person runs, and `records/baseline-alignment.md` BA-01 is its own row. `mutant.sh` carries no decision anywhere in `docs/`, and GA-01 is that gap. Assertion counts for the unregistered pair audited here: `crypto.sh` and `tal-check.sh` were left unmeasured by this pass. ⚑ RE-MEASURED 2026-09-05 at `b12c29e`, and every figure above has moved. `ls tools/test/*.sh` lists TWENTY-FOUR scripts, `run-tests.sh` dispatches thirteen, and ELEVEN are outside the dispatch table: `run-tests.sh` itself, `apply-spine.sh`, `apply-word.sh`, `capture-fields.sh`, `crypto.sh`, `defunc-blame.sh`, `encoding.sh`, `map-integrity.sh`, `mutant.sh`, `registration.sh` and `tal-check.sh`. ⚑ THE HALF THIS ROW MEASURED IS CLOSED AND THE ROW IS NOT. Every one of the eleven carries a `not-a-phase:` declaration with a reason, in its own header; `registration.sh` G2 fails a script on disk that carries none and G4 fails a reason that is blank, and M1 through M4 are the mutants that redden them. `126c842` and `9f6e563` did that. So "carries no decision anywhere" is true of nothing on disk today, `mutant.sh` included, and its declaration names GA-01. What is left is exactly what GA-24 said it did not close: whether any of the eleven SHOULD be dispatched. That is the standing suite-phase-number author call, 21 through 23 contested across four documents and 8 through 12 owed to unported phases, and this session is barred from making it. LEFT OPEN as the author call it is, with its figures corrected so the next reader is not working from eighteen and five.
-- evidence: `tools/test/run-tests.sh:144-147`, `:345`; `docs/definitions/testing-floors.md:69`; `docs/goals/self-hosting.md:58`; after the re-measurement `tools/test/registration.sh:26-46`, `:50-57`
-- checked:  2026-09-05
+- measured: **FIXED 2026-09-06.** This row measured eighteen scripts against thirteen dispatch lines, five outside. The tree now holds **26 scripts and 21 dispatch lines**, and the six outside are `run-tests.sh` itself, `registration.sh`, `mutant.sh`, `opt-census.sh`, `map-integrity.sh` and `tal-check.sh`. The first five declare out for structural reasons and `tal-check.sh` stays out on the open G18 question (PRB-70). Every gate that was waiting on a phase number registered at 25 through 31 under the native-tests ruling.
+- evidence: re-runnable: `bash tools/test/registration.sh` reads 9 passed, 0 failed at 21 dispatch lines
+- checked:  2026-09-06
 - owner:    none
 - from:     GA-10
 
@@ -872,15 +872,15 @@
 
 ### PRB-63 three written gate scripts have no dispatch line
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    source
 - about:    tools/test/run-tests.sh
 - claim:    `tools/test/crypto.sh:6-8` and `tools/test/tal-check.sh:11-15` each read NOT YET REGISTERED, with the `run_phase` line owed to the suite-owning session. `tools/test/map-integrity.sh:7-8` reads that it is not a suite phase.
-- measured: `grep -n '^run_phase' tools/test/run-tests.sh` returns thirteen dispatch lines at `:144-147`, `:216`, `:225`, `:236`, `:252`, `:268`, `:284`, `:303`, `:326` and `:345`, and none names any of the three. `crypto.sh` is 402 lines and gates the two RFC 8439 kernels; `tal-check.sh` is 474 lines and gates the typed-assembly floor checker after the EN-09 and EN-11 repairs; `map-integrity.sh` is 31 lines. So 907 lines of gate script are written and outside `bin/chirality test`. `records/gate-audit.md` GA-10 holds the five-outside-the-dispatch count and left `crypto.sh` and `tal-check.sh` unmeasured; this row measures them. Nothing was registered by this pass.
-- evidence: `tools/test/run-tests.sh:144-147`, `:345`; `tools/test/crypto.sh:6-8`; `tools/test/tal-check.sh:3`, `:5-9`, `:11-15`; `records/gate-audit.md` GA-10
-- checked:  2026-09-04
+- measured: **FIXED 2026-09-06.** The three written-but-undispatched gates this row named are dispatched: `crypto.sh` at phase 31, and the E185 to E188 gates at 25 through 28. `run-tests.sh` carries 21 dispatch lines against the thirteen this row counted, and the full suite reads 412 assertions passed, 0 failed with them in.
+- evidence: re-runnable: `grep -c '^run_phase' tools/test/run-tests.sh` returns 21; `tools/test/run-tests.sh` reads `gate PASSED`
+- checked:  2026-09-06
 - owner:    none
 - from:     TC-07
 
