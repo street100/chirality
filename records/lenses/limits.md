@@ -52,9 +52,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    source
 - about:    lib/evidence/ddc.chiral
 - claim:    already recorded as open edge 21. Cross-referenced here rather than restated.
-- measured: `ddc-fold`, `ddc-legs`, `ddc-compare`, `ddc-verdict-code`, `ddc-leg0`, `ddc-leg1`, `ddc-legc`, `ddc-legcc`, `LegOut` and the `DdcR` sum have zero callers and zero assertions in `lib`, `prog` or `tools` after `d0c5dd5` deleted `e166_ddc_legc.prog`. The only grep hit outside the file is a prose mention. The file stays reachable because `lib/evidence/test-floor.chiral:31` imports it for `bytes=?`, the tree's only byte comparator, used at `test-floor.chiral:113` and `:365`.
-- evidence: `lib/evidence/ddc.chiral:97-185`, `lib/evidence/test-floor.chiral:26`, `:31`, `docs/definitions/open-edges.md:657`
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-06: unchanged. `ddc-fold` and `ddc-compare` appear in exactly one file, `lib/evidence/ddc.chiral` itself, so the DDC half has zero callers. Kept on purpose: it is the quorum machinery [[goals/independent-judgment]] needs and nothing schedules yet.
+- evidence: re-runnable: `grep -rl 'ddc-fold\|ddc-compare' --include='*.chiral' lib/ prog/` returns only `lib/evidence/ddc.chiral`. `lib/evidence/ddc.chiral`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-14
 
@@ -66,9 +66,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    doc
 - about:    docs/definitions/open-edges.md
 - claim:    already recorded as open edge 22. Cross-referenced here rather than restated.
-- measured: `grep -rn 'memory/alloc-fixed' lib prog tools` returns nothing. Kept on purpose so a future program can take it or `alloc-growing`. No gate compiles it.
-- evidence: `docs/definitions/open-edges.md:696`
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-06: unchanged. `grep -rl 'memory/alloc-fixed' lib prog tools` returns **0** importers. Kept on purpose so a future program can take it or `alloc-growing`, and no gate compiles it. `memory-discipline/M6` is the row that would reach it or move it to SEEDED with a reason.
+- evidence: re-runnable: `grep -rl 'memory/alloc-fixed' lib prog tools | wc -l` returns 0. `lib/memory/alloc-fixed.chiral`, `docs/arcs/memory-discipline-arc.md`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-15
 
