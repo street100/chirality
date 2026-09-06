@@ -40,10 +40,10 @@ updated: 2026-09-05
    alone. **No row serves this**, and the hole is enumerated as `GAP-02`.
    [[arcs/enforcement-arc]].
 
-The measurement behind condition 5 follows.
+### The measurement behind condition 5
 
-**And chirality's own tooling is chirality's.** A tool that judges chirality
-source from outside the language is a floor this project does not own. Measured
+A tool that judges chirality source from outside the language is a floor this
+project does not own. Measured
 2026-09-04: **12,450 lines outside the language against 782 native.** The gate
 tier is 6,915 lines of shell, `prose-lint` is 223 with awk doing the matching,
 nine Python tools are 4,786, and the CLI and resolver are 526. The 782 is every
