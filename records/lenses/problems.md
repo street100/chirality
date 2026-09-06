@@ -951,3 +951,17 @@
 - checked:  2026-09-04
 - owner:    none
 - from:     TC-14
+
+### PRB-69 most record rows name no command that re-runs their measurement
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    doc
+- about:    records/README.md
+- claim:    records/README.md, Evidence is mandatory: "`evidence:` names files and line spans. A row nobody can re-run is worthless."
+- measured: measured 2026-09-05 over every live row in records/ and records/lenses/: **123 of 153 carry file:line evidence and name no command**. 30 name a re-runnable one (a tools/test gate, a python3 tool, git ls-files, find). A file:line span shows WHERE a thing was seen and does not reproduce the NUMBER: PRB-43 claims 1,475 of 1,481 TFns accept under two checker relaxations, and no gate in tools/test/ reproduces that census, so check AI can say the row is unverified and nobody can say what it reads today. This is why 60 AI findings cannot be closed by reading.
+- evidence: records/README.md, tools/test/tal-check.sh (the nearest gate, which measures 20 ok 1 FAIL and not the census), records/lenses/problems.md
+- checked:  2026-09-05
+- owner:    none
+- from:     none
