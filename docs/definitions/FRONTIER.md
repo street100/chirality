@@ -14,13 +14,15 @@ updated: 2026-09-05
 > ledger-lint check I flags it stale when a source moved. Statuses are
 > GRADIENTS (resolved in direction / shaped / open), not done/not-done.
 
-<!-- FRONTIER-SOURCES-SHA256: 088beee40d7f6da5f6aa410e5f313c0267523b498d56fa94810fb685b9d37cd5 -->
-<!-- sources: 163 files -->
+<!-- FRONTIER-SOURCES-SHA256: 904364b64bccc0731aba4cd4012580c025f33e9beb253110b19cdbde072b6146 -->
+<!-- sources: 165 files -->
 
 ## Decided recently
 
 ### Settled decision notes (docs/decision-*.md, newest first)
 
+- 2026-09-05 · decision-four-lenses [settled] — Decision: four lenses, each enumerated, each carrying an author marker
+- 2026-09-05 · decision-design-before-mint [settled] — Decision: minting is the graduation, and design happens before it
 - 2026-09-04 · decision-formulation-distinctness [draft] — Decision: two judges are distinct when their formulations differ
 - 2026-09-04 · decision-erased-word-level [settled] — Decision: the erased-word type lives at the lowering type level
 - 2026-09-04 · decision-display-numerics [settled] — Decision: display geometry is fixed point, and the scale rides the type
@@ -114,11 +116,11 @@ updated: 2026-09-05
 
 ### Last commits touching the frontier sources
 
+- 2026-09-05 e7770c0 — the four lenses, seeded from the tree, with a gate and a generated overview
+- 2026-09-05 8c202f8 — decision: four lenses, each enumerated, each carrying an author marker
+- 2026-09-05 011dfa1 — decision: minting is the graduation, and design happens before it
+- 2026-09-05 2004fc6 — pack.py wrote the INDEX SPEC link one directory too shallow
 - 2026-09-05 a2130c5 — E197 is built: RecordRequest, its pricing law, and a gate with six mutants
 - 2026-09-05 69874b1 — E197 SPEC audit: the four probes, the twenty golden lines and all six mutants reproduce
 - 2026-09-05 e7c27e7 — requirement 4 closes on the wiring branch, and EN-24 carries the measurement
 - 2026-09-05 beaa237 — E197 SPEC: RecordRequest ships with its pricing, and the refinement decides literals only
-- 2026-09-05 7cefae7 — E197 EXAMPLE audit: all 21 figures reproduced, and a fifth mutant
-- 2026-09-05 d2ec1ae — E197 pre-run: what a run is asked to record, measured before it is designed
-- 2026-09-05 44913ce — INDEX: 26 pipeline rows advanced, 3 left as findings
-- 2026-09-05 857a005 — E187's SPEC link resolved to docs/docs/
