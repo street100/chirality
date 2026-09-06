@@ -65,51 +65,64 @@ so splitting settles the field against a guess at the law. `N43` is arc-local
 per [[decisions/decision-work-ids]] and takes no second element number. Every
 other row reads `unminted`.
 
-| row | what | layer | kind | origin | element |
-|---|---|---|---|---|---|
-| `unit-lane/N1` | bind `op-mulhi` to a surface extern | L0 | primitive | bind | `unminted` |
-| `unit-lane/N2` | integer square root routine | L0 | law | new | `unminted` |
-| `unit-lane/N3` | saturating arithmetic wrapper | L0 | law | new | `unminted` |
-| `unit-lane/N4` | polynomial evaluation (Horner) for i-GELU/i-Softmax | L0 | law | new | `unminted` |
-| `unit-lane/N5` | scope `decision-display-numerics` to weight/state/accumulator/message scales | L0 | decision | new | `unminted` |
-| `unit-lane/N6` | quantity-typed state slot generalizing `Backend` | L1 | primitive | new | `unminted` |
-| `unit-lane/N7` | logical-step/timestamp time parameter carried in the type | L1 | primitive | new | `unminted` |
-| `unit-lane/N8` | `Encoding` sum (`Rate`/`Latency`/`Population`) | L2 | primitive | new | `E196` |
-| `unit-lane/N9` | encode/decode arithmetic over `Encoding` | L2 | law | new | `E196` |
-| `unit-lane/N10` | `RecordRequest` sum (`record-spikes`/`record-membrane`/`record-weights`) | L2 | primitive | new | `E197` |
-| `unit-lane/N43` | price a `RecordRequest` against the run it is aimed at | L2 | law | new | `E197` |
-| `unit-lane/N11` | unbounded trace type paired against `RunManifest`, parallel to `RawCall` | L2 | primitive | new | `unminted` |
-| `unit-lane/N12` | spike/graded payload message-width contract | L2 | law | new | `unminted` |
-| `unit-lane/N13` | typed I/O on `Expert`, closing the `sees`/`returns` deferral | L3 | primitive | new | `unminted` |
-| `unit-lane/N14` | `ty-eq` shape-equality fix | L3 | law | new | `unminted` |
-| `unit-lane/N15` | a Process-like porttype for a neuron unit, distinct from `Backend` | L3 | port | new | `unminted` |
-| `unit-lane/N16` | one ProcessModel implementation per backend for that unit | L3 | port | new | `unminted` |
-| `unit-lane/N32` | per-compartment decay-rate state: one slow-decaying state variable per compartment, the ALIF mechanism for multi-timescale processing | L3 | primitive | new | `unminted` |
-| `unit-lane/N35` | a `Modulator` unit kind: a small dedicated source with one output and large fan-out, holding no per-unit state, distinct from the neuron unit at N15 and from `Expert` | L3 | primitive | new | `unminted` |
-| `unit-lane/N17` | `Population` construct | L4 | primitive | new | `unminted` |
-| `unit-lane/N18` | `Projection`/connector construct, addressed to a compartment inside a unit | L4 | primitive | new | `unminted` |
-| `unit-lane/N19` | routing table (address down to a compartment, plus fan-out) | L4 | primitive | new | `unminted` |
-| `unit-lane/N20` | lift `Population`/`Projection` through `Flow`, reusing shards C/D | L4 | law | connect | `unminted` |
-| `unit-lane/N31` | branch-targeted inhibition: shunting inhibition vetoes one branch, a second routing target the topology layer must carry | L4 | primitive | new | `unminted` |
-| `unit-lane/N36` | construct a `Population` from a count, a unit model and parameters | L4 | law | new | `unminted` |
-| `unit-lane/N37` | wire a `Projection` from a pre-population, a post-population and a connector | L4 | law | new | `unminted` |
-| `unit-lane/N38` | connector vocabulary as a closed sum: all-to-all, one-to-one, fixed-probability, explicit list | L4 | primitive | new | `unminted` |
-| `unit-lane/N39` | assemble populations and projections into a network value the execution layer can run | L4 | primitive | new | `unminted` |
-| `unit-lane/N40` | dedication: a field on `Population` naming what the group is for | L4 | primitive | new | `unminted` |
-| `unit-lane/N21` | `Advance` sum (`advance-tick`/`advance-on-event`/`advance-hybrid`) | L5 | primitive | new | `unminted` |
-| `unit-lane/N22` | per-member membrane discipline (`->` pure step, `=>` boundary) | L5 | law | new | `unminted` |
-| `unit-lane/N23` | build the membrane once per member; `Advance` picks the trigger, no shared queue | L5 | decision | new | `unminted` |
-| `unit-lane/N30` | inward feedback edge: a somatic spike back-propagates into the member's own dendrite; `Advance` carries no constructor for a signal crossing back in | L5 | primitive | new | `unminted` |
-| `unit-lane/N24` | eligibility-trace type (per-synapse accumulator) | L6 | primitive | new | `unminted` |
-| `unit-lane/N25` | the learning-signal broadcast: one channel delivered through a fixed random projection whose weights are set once and never trained | L6 | law | new | `unminted` |
-| `unit-lane/N34` | the metaparameter channels: learning rate, inverse temperature and discount factor, declared values a modulator sets, separate from the error channel | L6 | primitive | new | `unminted` |
-| `unit-lane/N26` | a plasticity rule bound to a `Projection` (port), over a weight change or a structural placement change | L6 | port | new | `unminted` |
-| `unit-lane/N33` | a consolidation mode: an offline phase where structural plasticity reorganizes the network, distinct from the online updates N24-N26 assume | L6 | decision | new | `unminted` |
-| `unit-lane/N27` | `Expert`/`Flow`/`Skill` reused as the lane's composition layer | L7 | primitive | connect | `unminted` |
-| `unit-lane/N28` | `RunManifest`/golden oracle reused as the lane's audit record | L7 | primitive | connect | `unminted` |
-| `unit-lane/N29` | `SkillEntry` registry reused for population/skill entries | L7 | tool | connect | `unminted` |
-| `unit-lane/N41` | the running end of the corpus write path: `be-log` and the worker schema exist, and no database was found under `/workspace/manas` | L7 | tool | new | `unminted` |
-| `unit-lane/N42` | a neuron-layer acceptance gate, standing where `manifest-all-green?` stands for the deliberative layer | L7 | decision | new | `unminted` |
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `unit-lane/N1` | bind `op-mulhi` to a surface extern | L0 | primitive | bind | 1 | open | `unminted` |
+| `unit-lane/N2` | integer square root routine | L0 | law | new | 1 | open | `unminted` |
+| `unit-lane/N3` | saturating arithmetic wrapper | L0 | law | new | 1 | open | `unminted` |
+| `unit-lane/N4` | polynomial evaluation (Horner) for i-GELU/i-Softmax | L0 | law | new | 1 | open | `unminted` |
+| `unit-lane/N5` | scope `decision-display-numerics` to weight/state/accumulator/message scales | L0 | decision | new | 1 | open | `unminted` |
+| `unit-lane/N6` | quantity-typed state slot generalizing `Backend` | L1 | primitive | new | 1 | open | `unminted` |
+| `unit-lane/N7` | logical-step/timestamp time parameter carried in the type | L1 | primitive | new | 1 | open | `unminted` |
+| `unit-lane/N8` | `Encoding` sum (`Rate`/`Latency`/`Population`) | L2 | primitive | new | 1 | built | `E196` |
+| `unit-lane/N9` | encode/decode arithmetic over `Encoding` | L2 | law | new | 1 | built | `E196` |
+| `unit-lane/N10` | `RecordRequest` sum (`record-spikes`/`record-membrane`/`record-weights`) | L2 | primitive | new | 1 | built | `E197` |
+| `unit-lane/N43` | price a `RecordRequest` against the run it is aimed at | L2 | law | new | 1 | built | `E197` |
+| `unit-lane/N11` | unbounded trace type paired against `RunManifest`, parallel to `RawCall` | L2 | primitive | new | 1 | open | `unminted` |
+| `unit-lane/N12` | spike/graded payload message-width contract | L2 | law | new | 1 | open | `unminted` |
+| `unit-lane/N13` | typed I/O on `Expert`, closing the `sees`/`returns` deferral | L3 | primitive | new | 1 | open | `unminted` |
+| `unit-lane/N14` | `ty-eq` shape-equality fix | L3 | law | new | 1 | open | `unminted` |
+| `unit-lane/N15` | a Process-like porttype for a neuron unit, distinct from `Backend` | L3 | port | new | 1 | open | `unminted` |
+| `unit-lane/N16` | one ProcessModel implementation per backend for that unit | L3 | port | new | 1 | open | `unminted` |
+| `unit-lane/N32` | per-compartment decay-rate state: one slow-decaying state variable per compartment, the ALIF mechanism for multi-timescale processing | L3 | primitive | new | 1 | open | `unminted` |
+| `unit-lane/N35` | a `Modulator` unit kind: a small dedicated source with one output and large fan-out, holding no per-unit state, distinct from the neuron unit at N15 and from `Expert` | L3 | primitive | new | 1 | open | `unminted` |
+| `unit-lane/N17` | `Population` construct | L4 | primitive | new | 2 | open | `unminted` |
+| `unit-lane/N18` | `Projection`/connector construct, addressed to a compartment inside a unit | L4 | primitive | new | 2 | open | `unminted` |
+| `unit-lane/N19` | routing table (address down to a compartment, plus fan-out) | L4 | primitive | new | 2 | open | `unminted` |
+| `unit-lane/N20` | lift `Population`/`Projection` through `Flow`, reusing shards C/D | L4 | law | connect | 2 | open | `unminted` |
+| `unit-lane/N31` | branch-targeted inhibition: shunting inhibition vetoes one branch, a second routing target the topology layer must carry | L4 | primitive | new | 2 | open | `unminted` |
+| `unit-lane/N36` | construct a `Population` from a count, a unit model and parameters | L4 | law | new | 2 | open | `unminted` |
+| `unit-lane/N37` | wire a `Projection` from a pre-population, a post-population and a connector | L4 | law | new | 2 | open | `unminted` |
+| `unit-lane/N38` | connector vocabulary as a closed sum: all-to-all, one-to-one, fixed-probability, explicit list | L4 | primitive | new | 2 | open | `unminted` |
+| `unit-lane/N39` | assemble populations and projections into a network value the execution layer can run | L4 | primitive | new | 2 | open | `unminted` |
+| `unit-lane/N40` | dedication: a field on `Population` naming what the group is for | L4 | primitive | new | 2 | open | `unminted` |
+| `unit-lane/N21` | `Advance` sum (`advance-tick`/`advance-on-event`/`advance-hybrid`) | L5 | primitive | new | 3 | open | `unminted` |
+| `unit-lane/N22` | per-member membrane discipline (`->` pure step, `=>` boundary) | L5 | law | new | 3 | open | `unminted` |
+| `unit-lane/N23` | build the membrane once per member; `Advance` picks the trigger, no shared queue | L5 | decision | new | 3 | open | `unminted` |
+| `unit-lane/N30` | inward feedback edge: a somatic spike back-propagates into the member's own dendrite; `Advance` carries no constructor for a signal crossing back in | L5 | primitive | new | 3 | open | `unminted` |
+| `unit-lane/N24` | eligibility-trace type (per-synapse accumulator) | L6 | primitive | new | 4 | open | `unminted` |
+| `unit-lane/N25` | the learning-signal broadcast: one channel delivered through a fixed random projection whose weights are set once and never trained | L6 | law | new | 4 | open | `unminted` |
+| `unit-lane/N34` | the metaparameter channels: learning rate, inverse temperature and discount factor, declared values a modulator sets, separate from the error channel | L6 | primitive | new | 4 | open | `unminted` |
+| `unit-lane/N26` | a plasticity rule bound to a `Projection` (port), over a weight change or a structural placement change | L6 | port | new | 4 | open | `unminted` |
+| `unit-lane/N33` | a consolidation mode: an offline phase where structural plasticity reorganizes the network, distinct from the online updates N24-N26 assume | L6 | decision | new | 4 | open | `unminted` |
+| `unit-lane/N27` | `Expert`/`Flow`/`Skill` reused as the lane's composition layer | L7 | primitive | connect | 5 | open | `unminted` |
+| `unit-lane/N28` | `RunManifest`/golden oracle reused as the lane's audit record | L7 | primitive | connect | 5 | open | `unminted` |
+| `unit-lane/N29` | `SkillEntry` registry reused for population/skill entries | L7 | tool | connect | 5 | open | `unminted` |
+| `unit-lane/N41` | the running end of the corpus write path: `be-log` and the worker schema exist, and no database was found under `/workspace/manas` | L7 | tool | new | 5 | open | `unminted` |
+| `unit-lane/N42` | a neuron-layer acceptance gate, standing where `manifest-all-green?` stands for the deliberative layer | L7 | decision | new | 5 | open | `unminted` |
+
+### Coverage
+
+The `group` column is the layer graph `.planning/AI-LANE-GAP.md` draws, L0
+through L7, and the `req` column maps each layer onto the requirement it serves:
+L0 to L3 serve requirement 1, the unit abstraction; L4 serves 2, the network as
+a value; L5 serves 3, the advance discipline; L6 serves 4, local traces times a
+broadcast; L7 serves 5, the acceptance gate. Every requirement is served and
+every row serves one.
+
+⚑ **Reading the layers as a build order is wrong**, and the note names the two
+edges that run against the numbering: L7 drives the modulator at L3, and N30's
+spike crosses inward at L5.
 
 ## Resume state
 
