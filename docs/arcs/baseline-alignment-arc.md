@@ -3,7 +3,7 @@ node: arc-baseline-alignment
 layer: navigation
 related: [arcs/README, goals/presentability, records/baseline-alignment, records/README, index]
 status: current
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Arc: baseline alignment
@@ -69,15 +69,45 @@ The last section is the largest and it is the one that overlaps
 between arcs automatically, so a row can sit in both readings until an element
 claims it.
 
+## Roster
+
+Nine rows, one per section of the State table above, each serving a numbered
+requirement. **The roster is the work; the lens rows are the findings.** This
+arc's own first section draws that line, and a roster mirroring all 44 findings
+would collapse it.
+
+The `BA-` findings moved to the lenses on 2026-09-05
+([[decisions/decision-four-lenses]]): 32 to `records/lenses/problems.md` and 6 to
+`records/lenses/limits.md`, each carrying its old id in `from:`, each `BA-` row
+left in place and `RETIRED` with a pointer. Six are `FIXED` and stay as history.
+
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `baseline-alignment/AL1` | repair every gate that can pass by looking at nothing | gates | tool | new | 1 | open | `unminted` |
+| `baseline-alignment/AL2` | the `check` subcommand separates its three failure classes | gates | tool | new | 1 | open | `unminted` |
+| `baseline-alignment/AL3` | close the residue the gate repair left: what the repaired gates still cannot see | gates | tool | new | 1 | open | `unminted` |
+| `baseline-alignment/AL4` | `.profile` gains an instance, or a limit row says why it has none | kinds | decision | new | 2 | open | `unminted` |
+| `baseline-alignment/AL5` | every claim in a root document is measured or carried by a lens row | claims | decision | new | 3 | open | `unminted` |
+| `baseline-alignment/AL6` | dead and unreachable code: each deliberate one carries a limit row | claims | decision | new | 3 | open | `unminted` |
+| `baseline-alignment/AL7` | four of six roots carry the identical 58-module closure | structure | law | new | 3 | open | `unminted` |
+| `baseline-alignment/AL8` | what the compiler claims to enforce and does not | enforcement | law | connect | 3 | open | `unminted` |
+| `baseline-alignment/AL9` | `ledger-lint` exits 0, or each failing check carries a row saying why it cannot | gates | tool | new | 4 | open | `unminted` |
+
+### Coverage
+
+Every requirement is served: 1 by AL1, AL2 and AL3; 2 by AL4; 3 by AL5, AL6, AL7
+and AL8; 4 by AL9. Every row serves one. Every `origin` is `new` except AL8,
+which is `connect`: its subject is built and the gap is that nothing reaches it,
+which is the section this arc shares with [[goals/enforcement]].
+
 ## Ordering
 
 No element numbers are reserved for this arc, so nothing here can be scheduled
-as catalog work. The rows are the `BA-` ids in [[records/baseline-alignment]],
-which [[decisions/decision-work-ids]] settled on 2026-09-01 as the arc-local
-scheme for an arc with no band, and their `element:` field reads `UNASSIGNED`
-until a number is minted. An arc-local id claims identification and claims no
-place in a band or a catalog row, so `CLAUDE.md`'s deferral rule keeps its whole
-force over `E#`.
+as catalog work. Rows carry the arc-local ids above, per
+[[decisions/decision-work-ids]], which settled the scheme on 2026-09-01 for an
+arc with no band. An arc-local id claims identification and claims no place in a
+band or a catalog row, so the deferral rule in [[working-discipline]] keeps its
+whole force over `E#`.
 
 What can be done without a number: repairing a gate, correcting a document,
 deleting a claim. Three of the four requirements above are reachable that way.
