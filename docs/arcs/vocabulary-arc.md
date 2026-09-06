@@ -3,7 +3,7 @@ node: arc-vocabulary
 layer: navigation
 related: [arcs/README, goals/own-web, goals/display, arcs/canvas-arc, arcs/display-calculus-arc, arcs/file-types-arc, banks/text, decisions/decision-work-ids, records/author-calls, status-ledger, index]
 status: current
-updated: 2026-09-05
+updated: 2026-09-06
 ---
 
 # Arc: the document vocabulary
@@ -109,6 +109,14 @@ standing scope ruling whole.
 **One shard is built and unmeasured.** `F3`'s `block-id` reaches two importers
 under `tools/` and no shipping producer, which is the same condition
 `display-calculus/A1` records for the `Doc` to `Rendering` path.
+
+**`F1` closes the constructor set, and one question about it is unruled.**
+Nothing in this tree places a mark at a computed position. `Doc` and
+`Rendering` are both relative flow, and row-and-column placement lives at the
+surface tier in `lib/protocol/grid.chiral:21` and in the pixel demo. A chart, or
+any framed design surface, wants a constructor this roster has never been drawn
+against, and `canvas/P2` forbids a lens adding one. `UNS-49` in
+`records/lenses/unspoken.md` carries the measurement and awaits a ruling.
 
 **The design is `.planning/OWN-WEB-GAP.md`**, lanes M, F and P, and its §5
 carries the decisions this arc waits on.

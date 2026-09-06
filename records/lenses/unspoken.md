@@ -671,3 +671,17 @@
 - checked:  2026-09-05
 - owner:    none
 - from:     none
+
+### UNS-49 nothing places a mark at a computed position, and `vocabulary/F1` closes the set
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    row
+- about:    vocabulary/F1
+- claim:    docs/goals/own-web.md states the target as replacing the web design stack with one design language. `vocabulary/F1` closes the element sums per context, and `canvas/P2` states that a lens re-spells the vocabulary and never extends it.
+- measured: every document and display value in this tree is relative flow. `Doc` (`lib/prelude/doc.chiral:77`) has six constructors and its widest placement is an indent. `Rendering` (`lib/protocol/render.chiral:7`) has nine, and the ninth is horizontal composition whose own comment states its children start where the previous one ended (`lib/protocol/render.chiral:17-18`). Absolute placement lives at the surface tier only: `Cursor` carries a row and a column (`lib/protocol/grid.chiral:21`), and the pixel demo writes ARGB rows (`prog/demo/sprites.chiral:66`). The vocabulary roster carries twelve rows and none of them positions a mark. `display-calculus/C6`'s unit algebra is a layout algebra and names no data-domain-to-space family, which is the second half a chart needs. So a chart, and any framed design surface, wants a constructor F1 has never been drawn against, while P2 forbids the lens adding one. Unruled: whether the vocabulary owes a positioned mark, or whether framed placement is a second vocabulary and this is a limit.
+- evidence: docs/arcs/vocabulary-arc.md:72-83, docs/arcs/canvas-arc.md:83, lib/prelude/doc.chiral:77, lib/protocol/render.chiral:7, lib/protocol/grid.chiral:21, prog/demo/sprites.chiral:66
+- checked:  2026-09-06
+- owner:    none
+- from:     none

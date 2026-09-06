@@ -248,9 +248,9 @@ updated: 2026-09-06
 
 ## The lenses
 
-- **problem** (PRB-): 71 row(s), 71 unreviewed. FIXED 6, OPEN 65
+- **problem** (PRB-): 71 row(s), 71 unreviewed. FIXED 9, OPEN 62
 - **gap** (GAP-): 18 row(s), 12 unreviewed. closed 6, open 12
 - **limit** (LIM-): 18 row(s), 18 unreviewed. accepted 18
-- **unspoken** (UNS-): 48 row(s), 48 unreviewed. open 48
+- **unspoken** (UNS-): 49 row(s), 49 unreviewed. open 49
 
 Roster rows across every arc: 213. Minted from them: 43.
