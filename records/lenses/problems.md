@@ -360,9 +360,9 @@
 - level:    doc
 - about:    docs/elements/catalog.md
 - claim:    `records/consolidation-handoff.md` §3 called these dead citations — `.planning/METIS-PORT-SPEC.md` "present nowhere in the tree" and "four `.planning/scriba-examples/S1`–`S3` files that do not exist". The wider claim behind the consolidation is that a fresh clone can follow what a tracked document cites.
-- measured: not dead, and not this repo's. All eleven name files under `/workspace/manas/.planning/`, and all five exist on disk: `METIS-PORT-SPEC.md` (6 citations), `scriba-examples/S1-puffer.md` (2), `S1-puffer-AUDIT.md` (1), `S2-S3-rendering-loop.md` (1), `S2-S3-rendering-loop-AUDIT-v2.md` (1). The fragility is a different class: manas has no `.gitignore` rule for `.planning/` and tracks 45 files under it, but `git ls-files --error-unmatch` reports all five UNTRACKED, so they exist on one laptop's disk and a fresh clone of either repository reaches none of them. Two forms are also unopenable from this repo with manas present — `manas/.planning/...` at `S1-puffer-SPEC.md:6` and `[[../manas/.planning/...]]` at `:374`, `:375` are relative and resolve only from `/workspace/`. Not repaired: copying another repo's design spec in is an author call, and absolute `/workspace/manas/...` encodes one laptop's layout. Separately and genuinely dead: `docs/elements/specs/E94-form-type-capacity-SPEC.md:101` cites `.planning/E94-diagnostic.md`, which `find` locates in none of chirality, manas or metis-the-lang.
-- evidence: `docs/elements/catalog.md:222`, `docs/examples/E133-manas-core-types.md:37`, `docs/examples/E134-gate.md:39`, `docs/examples/E135-bind.md:42`, `docs/examples/E136-match-assemble-stop.md:35`, `docs/examples/E138-run-loop.md:39`, `docs/elements/specs/S1-puffer-SPEC.md:6`, `:374`, `:375`, `docs/elements/specs/S2-rendering-SPEC.md:6`, `:7`, `docs/elements/specs/E94-form-type-capacity-SPEC.md:101`, `records/consolidation-handoff.md`
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-06: unchanged. `/workspace/manas/.planning/METIS-PORT-SPEC.md` is still on disk and the citations still point outside this repository, into another tree's untracked working material. A fresh clone of chirality alone cannot follow any of them.
+- evidence: re-runnable: `ls /workspace/manas/.planning/METIS-PORT-SPEC.md` succeeds from this box and would not from a fresh clone. `docs/elements/catalog.md:222`, `docs/examples/E133-manas-core-types.md:37`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-38
 
@@ -612,9 +612,9 @@
 - level:    source
 - about:    lib/lowering/tal/check.chiral
 - claim:    none yet. The rename that made `lowering/tal/check` importable beside the compiler treated all eleven collisions alike, and for five of them that is a hand-patch over a different defect.
-- measured: `sig-assoc`, `find-data`, `ce-prims`, `ce-fns` and `ce-datas` were **byte-identical** in `lib/lowering/tal/check.chiral` and `lib/lowering/upper/lower.chiral` up to whitespace: the same association-list lookup, the same `DData` lookup, and three `CEnv` field accessors over the same `(cenv p f d l)` shape, whose type `lowering/tal/ssa.chiral` already declares for both. That is duplication rather than a conflict of meaning, so the `tck-` prefix leaves the tree with two copies of one function instead of one copy in one place. The other six are genuine homonyms and the prefix is right for them: `CkR`/`ck-ok`/`ck-err` name a different sum from `typing/kernel.chiral`'s, `CovR`/`cov-ok` a different sum from `surface/data.chiral`'s, and `find-ctor` walks `(List DCtor)` where the kernel's walks `(List Ctor)`. The extraction was deliberately **not** taken in the rename slice: `lower.chiral` is inside the compiler's blob, so lifting five defs out of it changes compiler source and owes `build-new → test → promote` with a fixpoint, which is a larger slice than making one module importable. E154's row already records the flat emitted-label namespace as the live, recurring, hand-patched defect this is the fifth instance of; per-module label mangling is the structural fix and remains unbuilt.
-- evidence: `lib/lowering/tal/check.chiral:20-35`, `:101-110`, `:51-53`, `lib/lowering/upper/lower.chiral:163-168`, `:192-194`, `lib/lowering/tal/ssa.chiral`, `docs/elements/catalog.md:480`
-- checked:  2026-09-03
+- measured: RE-MEASURED 2026-09-06: **unchanged, and the hand-patch is what makes it look fixed.** All five twins survive in `lib/lowering/tal/check.chiral` under a `tck-` prefix: `tck-sig-assoc`, `tck-find-data`, `tck-ce-prims`, `tck-ce-fns`, `tck-ce-datas`, one definition each, beside the unprefixed originals in `lib/lowering/upper/lower.chiral`. ⚑ A grep for the bare names in `check.chiral` returns zero, which reads as resolved and is a rename. The file's own header at `:20-30` calls them "byte-identical twins" whose "honest fix is a shared module", so the duplication stands and only the emitted-label collision was patched.
+- evidence: re-runnable: `for s in sig-assoc find-data ce-prims ce-fns ce-datas; do grep -c "^(def tck-$s" lib/lowering/tal/check.chiral; done` returns 1 five times. `lib/lowering/tal/check.chiral:20-30`, `lib/lowering/upper/lower.chiral:163-194`
+- checked:  2026-09-06
 - owner:    none
 - from:     EN-16
 
@@ -823,9 +823,9 @@
 - level:    source
 - about:    prog/resolve.prog
 - claim:    `docs/elements/catalog.md:117` (E87) reads that two providers are "pinned against each other and both live": `bin/chirality-resolve.sh`, the one the build rule uses, and `lib/module/resolve.chiral`, imported by `prog/resolve.prog` and `lib/evidence/test-floor.chiral`.
-- measured: the chirality provider is live as a library and dead as a tool. `grep -rIn 'resolve\.prog'` over the tree returns seven hits and every one is prose: two comments in `lib/module/resolve.chiral` (`:22`, `:406`), the E87 catalog row, `docs/examples/E172-NAME-MAP.md:141`, `docs/decisions/decision-lane-split.md:256`, `docs/arcs/binary-split-arc.md:41` and two size rows in `records/baseline-alignment.md`. No shell script, no gate phase and no `.prog` compiles or runs it. Against that, `grep -rIln 'chirality-resolve' tools bin` names **fifteen shell files**: `bin/chirality` and fourteen of the eighteen gate scripts. The four that do not are `check-cli.sh`, `linear-mint.sh`, `map-integrity.sh` and `profile-target.sh`. None of the resolver's nine classic-tool sites is a judgment, so its adoption on the build path waits on nothing in `arcs/independent-judgment-arc`.
-- evidence: `prog/resolve.prog:1-20`; `docs/elements/catalog.md:117`; `bin/chirality-resolve.sh:115-117`, `:138-140`, `:273-276`, `:304`
-- checked:  2026-09-04
+- measured: RE-MEASURED 2026-09-06: still true, and the shell count grew. `grep -rIn 'resolve\.prog'` outside the file itself returns **2** hits, both prose, so nothing executes it. Meanwhile **25** files under `tools/` and `bin/` source `bin/chirality-resolve.sh`, against the fifteen this row recorded. The chirality provider is live as a library and dead as a tool, and the shell one it would replace is reached more widely than when this was written.
+- evidence: re-runnable: `grep -rIn 'resolve\.prog' --include='*.sh' --include='*.chiral' --include='*.prog' .` returns 2 prose hits; `grep -rl 'chirality-resolve' tools/ bin/ | wc -l` returns 25. `prog/resolve.prog:1-20`, `bin/chirality-resolve.sh`
+- checked:  2026-09-06
 - owner:    none
 - from:     TC-03
 
