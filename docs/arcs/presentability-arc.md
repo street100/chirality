@@ -57,6 +57,9 @@ is a wish.
 | `presentability/D1` | reconcile the spine against the open problem rows in requirement 2 | claims | decision | new | 2 | open | `unminted` |
 | `presentability/D2` | `MAP.md` doc-role table gains `goals/`, `arcs/`, records | roles | decision | new | 5 | open | `unminted` |
 | `presentability/D3` | retire or build `chirality verify` and its 14 citations | claims | tool | new | 4 | open | `unminted` |
+| `presentability/D4` | `PRINCIPLES.md` P1 gains an honest limit. It is the broadest claim in the file and the only one without one | claims | decision | new | 2 | open | `unminted` |
+| `presentability/D5` | P5's present tense: "a split value whose only exit is a guarded combine-process" reads as built, and `records/conformance-map.md` calls it vapor beyond the seed. Either the tense moves or the limit is written | claims | decision | new | 2 | open | `unminted` |
+| `presentability/D6` | P3's limit says the membrane's inward reach is open and [[open-edges]] records it largely answered. Two tracked documents disagree about the same claim | claims | decision | new | 2 | open | `unminted` |
 
 ### Coverage
 
@@ -65,8 +68,14 @@ fresh-clone build running end to end) and `GAP-10` (every number in the spine
 current or dated). Requirement 6 is delegated to [[arcs/binary-split-arc]] row `B5`, whose `req`
 cell names `presentability/req6` so the delegation is checkable.
 
-Requirements 2, 4 and 5 are served: 2 by D1, 4 by D3, 5 by D2. Every row serves
-one, and every `origin` is `new`.
+Requirements 2, 4 and 5 are served: 2 by D1, D4, D5 and D6; 4 by D3; 5 by D2.
+Every row serves one, and every `origin` is `new`.
+
+`D4`, `D5` and `D6` were opened 2026-09-06. All three stood in
+[[records/author-calls]] as separate rows about `PRINCIPLES.md` claims that are
+unmeasured, present-tense for something unbuilt, or contradicted by another
+tracked document. That is requirement 2 exactly, "no reader-facing claim is
+false", and it needed rows rather than rulings.
 
 No element number is minted. This arc has no reserved block, and the deferral
 rule in [[working-discipline]] forbids naming an element that does not exist. An
