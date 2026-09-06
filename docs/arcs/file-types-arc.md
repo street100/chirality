@@ -49,16 +49,29 @@ Done when all six hold.
    registry** rather than a view of an existing one, so it adds a judgment in all
    but name, and the argument for that comes before any implementation.
 
-## Element list
+## Roster
 
-| element | title | state |
-|---|---|---|
-| E146 | value to source: the five emitters return `Doc` | not built. Imports `surface/pretty`, which E181 landed |
-| E163 | `.manifest`: a declared form, a derived codec, a round-trip gate against source | not built |
-| E183 | `.protocol`: the same law carried in bytes | not built. Minted 2026-08-31 by the diagnostics arc |
-| E190 | `.grammar`: the surface syntax as a declared signature | not built. Minted 2026-09-02 from this arc's own band, having been named a whole session with no row |
+Four rows, one per element, plus the two the arc named without minting. Groups:
+`kind` is a declared file kind, `codec` is what is derived from a declared form,
+and `emit` is the value-to-source path.
 
-Full element prose for E183 is in [[arcs/diagnostics-arc]], which minted it.
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `file-types/K1` | `.manifest`: a declared form, a derived codec, a round-trip gate against source | kind | primitive | new | 1 | open | `E163` |
+| `file-types/K2` | `.protocol`: the same law carried in bytes. Minted 2026-08-31 by [[arcs/diagnostics-arc]], which holds its prose | kind | primitive | new | 2 | open | `E183` |
+| `file-types/K3` | `.grammar`: the surface syntax as a declared signature. Minted 2026-09-02 from this arc's own band, having been named a whole session with no row | kind | primitive | new | 6 | open | `E190` |
+| `file-types/E1` | value to source: the five emitters return `Doc`. Imports `surface/pretty`, which E181 landed | emit | law | new | 5 | open | `E146` |
+
+### Coverage
+
+⚑ **Requirements 3 and 4 are served by no row**, and both are enumerated:
+`GAP-04` for requirement 3, codecs derived rather than hand-written, and
+`GAP-05` for requirement 4, each kind having a round-trip gate with a named
+mutant. Both are properties K1, K2 and K3 must each carry rather than
+deliverables of their own, so whether they take rows is an author call.
+
+Requirements 1, 2, 5 and 6 are served: 1 by K1, 2 by K2, 5 by E1, 6 by K3. Every
+row serves one, and every `origin` is `new`: no file kind here exists yet.
 
 ## Resume state
 

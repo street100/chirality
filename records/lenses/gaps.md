@@ -43,3 +43,31 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-05
 - owner:    none
 - from:     none
+
+### GAP-04 file-types-arc requirement 3 has no roster row
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    arc
+- about:    file-types/req3
+- claim:    docs/arcs/file-types-arc.md REQUIREMENTS 3: "Codecs are derived from the declared form rather than hand-written."
+- measured: converting the arc to the 8-column roster on 2026-09-05 showed requirement 3 served by none of K1, K2, K3 or E1. It is a property each declared kind must carry rather than a deliverable of its own.
+- evidence: docs/arcs/file-types-arc.md
+- checked:  2026-09-05
+- owner:    none
+- from:     none
+
+### GAP-05 file-types-arc requirement 4 has no roster row
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    arc
+- about:    file-types/req4
+- claim:    docs/arcs/file-types-arc.md REQUIREMENTS 4: "Each kind has a round-trip gate with a named mutant that is actually run."
+- measured: same conversion, same measurement: a property every kind carries rather than a row, so whether it takes one is an author call.
+- evidence: docs/arcs/file-types-arc.md
+- checked:  2026-09-05
+- owner:    none
+- from:     none
