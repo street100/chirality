@@ -78,9 +78,9 @@
 - level:    source
 - about:    MAP.md
 - claim:    `MAP.md` lists `.profile` as one of five extensions, "a named frozen port set", and excludes it from import probing because "a profile names a module set, which the build consumes and nothing imports". `bin/chirality-resolve.sh` repeats the reason: "the BUILD consumes it".
-- measured: `find . -name '*.profile'` outside `.git` returns nothing. Zero files. Grepping `bin/` and `tools/test/run-tests.sh` for `.profile` returns three hits and all three are the prose that excludes it from probing. Nothing in the build reads one. The `(profile ...)` form that is actually used is a top-level clause inside a `.chiral` file, parsed at `lib/surface/parse.chiral:717`, which is a different thing from the extension.
+- measured: RE-MEASURED 2026-09-05, unchanged: `find . -name '*.profile'` outside `.git` returns nothing. Zero files. Grepping `bin/` and `tools/test/run-tests.sh` for `.profile` returns three hits and all three are the prose that excludes it from probing. Nothing in the build reads one. The `(profile ...)` form that is actually used is a top-level clause inside a `.chiral` file, parsed at `lib/surface/parse.chiral:717`, which is a different thing from the extension.
 - evidence: `MAP.md:12`, `MAP.md:23`, `bin/chirality-resolve.sh:51`, `lib/surface/parse.chiral:717`
-- checked:  2026-09-01
+- checked:  2026-09-05
 - owner:    none
 - from:     BA-10
 
@@ -92,9 +92,9 @@
 - level:    doc
 - about:    MAP.md
 - claim:    `MAP.md` has a section titled "The two binaries" naming `bin/chirality` as the CLI front door and `bin/chirality-bin` as the compiler.
-- measured: `git ls-files bin/` returns three files. `bin/chirality` is a bash script, `bin/chirality-resolve.sh` is a bash library, and `bin/chirality-bin` is the one committed binary. There are 6 top-level `.prog` roots under `prog/` and 96 `.prog` files in total; the suite drives 87 roots. `bin/chirality` has no `build` subcommand: the build-new, test, promote rule lives only as prose in CLAUDE.md.
+- measured: `git ls-files bin/` returns three files. `bin/chirality` is a bash script, `bin/chirality-resolve.sh` is a bash library, and `bin/chirality-bin` is the one committed binary. RE-MEASURED 2026-09-05: **12** top-level `.prog` roots under `prog/` and **102** `.prog` files in total. ⚑ The 6 and the 96 this row carried were taken 2026-09-01 and both grew; the shape it names did not change. `bin/chirality` has no `build` subcommand: the build-new, test, promote rule lives only as prose in CLAUDE.md.
 - evidence: `MAP.md:89-92`, `bin/chirality:210-219`
-- checked:  2026-09-01
+- checked:  2026-09-05
 - owner:    none
 - from:     BA-11
 
@@ -246,7 +246,7 @@
 - level:    doc
 - about:    docs/banks/profile.md
 - claim:    a profile is a frozen conformance contract; `MAP.md` sorts `.profile` as a kind and `docs/banks/profile.md` describes requirement checking.
-- measured: `(target T (require run (-> I64 I64)))` with `run` absent, and the same with `run` present at the wrong type, both pass `chirality check` and emit an ELF. The conformance judgment (requirement to provider subtype) lived in `surface.py`, which was cut with the Python oracle; no chirality successor exists, and there is no ledger row or element number for one. Test phase 4's 31 assertions exercise the manifest grammar, not the judgment. Distinct from BA-10, which records that `.profile` has no instance.
+- measured: ⚑ every `MAP.md` citation in this row was re-checked 2026-09-05 and still lands; the MEASUREMENT is not re-taken and needs the two `(target T (require run ...))` fixtures recompiled and their exit codes read, so the row stays unverified. `(target T (require run (-> I64 I64)))` with `run` absent, and the same with `run` present at the wrong type, both pass `chirality check` and emit an ELF. The conformance judgment (requirement to provider subtype) lived in `surface.py`, which was cut with the Python oracle; no chirality successor exists, and there is no ledger row or element number for one. Test phase 4's 31 assertions exercise the manifest grammar, not the judgment. Distinct from BA-10, which records that `.profile` has no instance.
 - evidence: `docs/banks/profile.md`, `MAP.md:5`, test phase 4
 - checked:  2026-09-01
 - owner:    none
@@ -260,7 +260,7 @@
 - level:    source
 - about:    MAP.md
 - claim:    `MAP.md:5` "the resolver checks it" and `:37-40` the kind is "checked by the loader". The extension is the kind.
-- measured: a `.port` file containing a lambda compiles. A `.manifest` file with a computed body compiles and runs. Neither the resolver nor the loader has an implementation of a kind check. The argument that a large fraction of the tree never enters the resolution space, so the bad state is unrepresentable, rests on this check existing.
+- measured: ⚑ every `MAP.md` citation in this row was re-checked 2026-09-05 and still lands; the MEASUREMENT is not re-taken and needs a `.port` file holding a lambda and a `.manifest` with a computed body recompiled, so the row stays unverified. a `.port` file containing a lambda compiles. A `.manifest` file with a computed body compiles and runs. Neither the resolver nor the loader has an implementation of a kind check. The argument that a large fraction of the tree never enters the resolution space, so the bad state is unrepresentable, rests on this check existing.
 - evidence: `MAP.md:5`, `:37-40`, `bin/chirality-resolve.sh`, `lib/module/loader.chiral`
 - checked:  2026-09-01
 - owner:    none
