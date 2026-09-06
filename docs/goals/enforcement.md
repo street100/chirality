@@ -3,7 +3,7 @@ node: goal-enforcement
 layer: navigation
 related: [goals/README, arcs/enforcement-arc, status-ledger, testing-floors, index]
 status: current
-updated: 2026-09-03
+updated: 2026-09-05
 ---
 
 # Goal: what is built is gated, and what the compiler claims it checks
@@ -22,10 +22,25 @@ updated: 2026-09-03
 
 ## What done means
 
-A capability sits at ENFORCED or its ledger row says why it does not. A claim
-the compiler makes about its own work is carried as a value with evidence, and
-refused when it does not hold. Every gate row has a named mutant that is
-actually run.
+1. **A capability sits at ENFORCED, or its ledger row says why it does not.**
+   Observed on the four rungs in [[status-ledger]].
+   [[arcs/enforcement-arc]] rows `N1` and `N4`.
+2. **A claim the compiler makes about its own work is carried as a value with
+   evidence, and refused when it does not hold.** Observed by the judgment
+   vocabulary carrying the claim rather than a string.
+   [[arcs/enforcement-arc]] rows `N2`, `N3` and `N5`.
+3. **The typed-assembly floor runs on the shipping path.** Observed by the floor
+   checker and the optimizer's re-check running in the shipping compile.
+   [[arcs/enforcement-arc]] rows `N6`, `N7`, `N8` and `N9`.
+4. **Every gate row has a named mutant that is actually run.** A check aimed at
+   a guess passes by looking at nothing. **No row serves this**, and the hole is
+   enumerated as `GAP-03`. [[arcs/enforcement-arc]].
+5. **Chirality's own tooling is chirality's.** Observed as the ratio of lines
+   outside the language to native ones, and by reach rather than the ratio
+   alone. **No row serves this**, and the hole is enumerated as `GAP-02`.
+   [[arcs/enforcement-arc]].
+
+The measurement behind condition 5 follows.
 
 **And chirality's own tooling is chirality's.** A tool that judges chirality
 source from outside the language is a floor this project does not own. Measured
