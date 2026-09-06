@@ -50,17 +50,27 @@ is a wish.
    goal, and an evaluator who measures a 780 KB text tool draws a conclusion
    about the architecture.
 
-## Elements
+## Roster
 
-| row | what | state | element |
-|---|---|---|---|
-| `presentability/D1` | reconcile the spine against the open `BA-` rows in requirement 2 | not started | `unminted` |
-| `presentability/D2` | `MAP.md` doc-role table gains `goals/`, `arcs/`, records | not started | `unminted` |
-| `presentability/D3` | retire or build `chirality verify` and its 14 citations | not started | `unminted` |
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `presentability/D1` | reconcile the spine against the open problem rows in requirement 2 | claims | decision | new | 2 | open | `unminted` |
+| `presentability/D2` | `MAP.md` doc-role table gains `goals/`, `arcs/`, records | roles | decision | new | 5 | open | `unminted` |
+| `presentability/D3` | retire or build `chirality verify` and its 14 citations | claims | tool | new | 4 | open | `unminted` |
 
-No element number is minted. This arc has no reserved block, and `CLAUDE.md`'s
-deferral rule forbids naming an element that does not exist. An arc with no block
-gets one from the author.
+### Coverage
+
+⚑ **Requirements 1 and 3 are served by no row**, enumerated as `GAP-09` (the
+fresh-clone build running end to end) and `GAP-10` (every number in the spine
+current or dated). Requirement 6 is delegated to [[arcs/binary-split-arc]] and
+its `B5`, which the arc's own text records.
+
+Requirements 2, 4 and 5 are served: 2 by D1, 4 by D3, 5 by D2. Every row serves
+one, and every `origin` is `new`.
+
+No element number is minted. This arc has no reserved block, and the deferral
+rule in [[working-discipline]] forbids naming an element that does not exist. An
+arc with no block gets one from the author.
 
 ## Resume state
 

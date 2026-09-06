@@ -113,3 +113,31 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-05
 - owner:    none
 - from:     none
+
+### GAP-09 presentability-arc requirement 1 has no roster row
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    arc
+- about:    presentability/req1
+- claim:    docs/arcs/presentability-arc.md REQUIREMENTS 1: "Fresh-clone build. The BUILD RULE runs end to end."
+- measured: converting the arc to the 8-column roster on 2026-09-05 showed requirement 1 served by none of D1 to D3. It is a standing property of the tree rather than a deliverable.
+- evidence: docs/arcs/presentability-arc.md
+- checked:  2026-09-05
+- owner:    none
+- from:     none
+
+### GAP-10 presentability-arc requirement 3 has no roster row
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    arc
+- about:    presentability/req3
+- claim:    docs/arcs/presentability-arc.md REQUIREMENTS 3: "Every number in the spine is current or dated."
+- measured: same conversion, same measurement: a property every spine document carries rather than a row. Two instances were corrected in this session, placement.md's 255 and its check range.
+- evidence: docs/arcs/presentability-arc.md
+- checked:  2026-09-05
+- owner:    none
+- from:     none
