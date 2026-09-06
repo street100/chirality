@@ -21,11 +21,21 @@ updated: 2026-09-03
 
 ## What done means
 
-1. `bin/chirality-bin` compiles the blob to a binary that compiles the same blob
-   to a byte-identical binary. The fixpoint is verified with each artifact
-   checked non-empty first.
-2. The binary is committed, with the tree and harness that rebuild it.
-3. Nothing replaces itself in place. Build-new, test, promote.
+**This goal carries no arc, and that is its finished shape.** The BUILD RULE in
+[[working-discipline]] holds it on every change whose deliverable enters the
+compiler's import closure, so there is nothing to schedule. Each condition names
+the gate that maintains it, and [[goals/README]] states when this shape is
+legitimate.
+
+1. **`bin/chirality-bin` compiles the blob to a binary that compiles the same
+   blob to a byte-identical binary**, with each artifact checked non-empty
+   before the compare. Held by the BUILD RULE, measured by
+   `tools/test/map-integrity.sh` and `bin/chirality test`.
+2. **The binary is committed**, with the tree and harness that rebuild it. Held
+   by the same gates, observed by a fresh clone reproducing it.
+3. **Nothing replaces itself in place.** Build-new, test, promote. Held by the
+   BUILD RULE, which [[working-discipline]] states and which every compiler-source
+   change owes.
 
 ## State
 

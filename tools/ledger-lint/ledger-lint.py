@@ -1872,6 +1872,17 @@ def check_af() -> list[str]:
     schedules and nothing marks unopened is a claim with no plan and no
     admission."""
     errs = []
+    # A goal held by a standing gate carries no arc, and docs/goals/README.md
+    # states that is its finished shape: it says `none open` in the README table
+    # and check V reads that as the recorded reason. Its done-conditions are
+    # served by gates, so demanding an arc link on them demands a file the goal
+    # is correct not to have. goals/self-hosting is the case.
+    gated: set[str] = set()
+    gr = ROOT / "docs" / "goals" / "README.md"
+    if gr.is_file():
+        for gm in re.finditer(r"^\|\s*\[\[goals/([a-z0-9-]+)\]\].*?\|\s*none open",
+                              gr.read_text(), re.M):
+            gated.add(gm.group(1))
     for f in _goal_files():
         t = f.read_text()
         m = re.search(r"^## What done means\s*$", t, re.M)
@@ -1893,6 +1904,8 @@ def check_af() -> list[str]:
             if re.search(r"[Uu]nopened", body):
                 continue
             if re.search(r"\[\[arcs/[a-z0-9-]+\]\]", body):
+                continue
+            if f.stem in gated:
                 continue
             errs.append(f"[AF] {f.name} done-condition {c.group(1)} names no arc "
                         f"and does not say unopened")
