@@ -3,7 +3,7 @@ node: goal-module-split
 layer: navigation
 related: [goals/README, splitting-law, joining-law, axis-typeability, decision-split-checker, category-bridge, module-map, status-ledger, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-05
 ---
 
 # Goal: each module is one thing, down to the trusted core
@@ -31,14 +31,20 @@ updated: 2026-09-02
 
 1. **A module's pieces have one type shape each.** Where two halves differ in
    effect, cost or tier weight they are two modules, and where they do not the
-   split stays unmade.
+   split stays unmade. Observed by `conv` leaving `kernel.chiral`, its
+   `(-> I64 Value Value Bool)` against its neighbours' `(-> Sig Ctx Term ...)`.
+   [[arcs/module-split-arc]] row `S1`.
 2. **The trusted core's boundary is stated and holds.** Which files are
    `kernel-core` and which are untrusted producers, decided by the law rather
-   than by history.
+   than by history. Observed by the file list being written down and matching
+   the tree: `decision-split-checker` names five components and the tree has
+   nine files. [[arcs/module-split-arc]] rows `S2` and `S4`.
 3. **Cut modules rejoin through a typed connector**, per [[joining-law]], rather
-   than by a bare import.
+   than by a bare import. Observed on the `S1` cut. **No row schedules it**, and
+   the hole is enumerated as `GAP-07`. [[arcs/module-split-arc]].
 4. **A missing split is measurable.** The law is a rule with a test, so a module
-   that fails it is findable rather than argued about.
+   that fails it is findable rather than argued about. Observed by a check that
+   returns an under-split module. [[arcs/module-split-arc]] row `S3`.
 
 ## State
 
