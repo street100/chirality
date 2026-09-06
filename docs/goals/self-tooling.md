@@ -21,9 +21,18 @@ updated: 2026-09-03
 
 ## What done means
 
-No `.py` file anywhere under `/workspace/chirality`. `tools/` is deleted. Every
-tool it held runs as a chirality program on the same test floor as the rest of
-the tree.
+1. **No `.py` file anywhere under `/workspace/chirality`.** Observed by a find
+   over the tree returning nothing. [[arcs/zero-python-arc]] rows `Z6`, `Z7`
+   and `Z8`, behind the enablers `Z1` to `Z5`.
+2. **`tools/` is deleted rather than emptied.** Observed by the directory being
+   absent. [[arcs/zero-python-arc]] row `Z9`.
+3. **Every tool it held runs as a chirality program on the same test floor as
+   the rest of the tree.** Observed by each replacement having a phase in
+   `tools/test/run-tests.sh`. **No row serves this**, and the hole is
+   enumerated as `GAP-18`. [[arcs/zero-python-arc]].
+4. **The primitives those tools compose from exist.** Observed by the coverage
+   table in [[arcs/text-tools-arc]] holding: every classic tool a replacement
+   needs is a short composition. [[arcs/text-tools-arc]].
 
 ## State
 
