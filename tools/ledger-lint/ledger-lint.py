@@ -1984,8 +1984,17 @@ def check_ah() -> list[str]:
             checked += 1
             state, elem = cells[-2], cells[-1].strip("`")
             local = rid.split("/")[-1]
+            # Work built BEFORE decision-design-before-mint (2026-09-05) went
+            # through worked-example, and docs/arcs/parts/ did not exist. Its
+            # artifact is the retired corpus entry, so demanding a design for it
+            # is demanding a document the pipeline of the day never wrote.
+            old_pipeline = elem.startswith("E") and list(
+                (ROOT / "docs" / "examples").glob(
+                    f"{elem[0]}{int(elem[1:]):02d}-*.md")) if re.fullmatch(
+                r"E\d+", elem) else False
             if state in ("designed", "minted", "specced", "building", "built") \
-               and not (parts / f"{arc}-{local}.md").is_file():
+               and not (parts / f"{arc}-{local}.md").is_file() \
+               and not old_pipeline:
                 errs.append(f"[AH] {f.name} row {rid} is `{state}` and "
                             f"docs/arcs/parts/{arc}-{local}.md does not exist")
             if state in ("specced", "building", "built") and elem.startswith("E") \

@@ -3,7 +3,7 @@ node: arc-diagnostics
 layer: navigation
 related: [arcs/README, goals/readable-surface, status-ledger, arcs/enforcement-arc, records/diagnostics-arc-record, index]
 status: current
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # Arc: diagnostics and formatting
@@ -232,16 +232,43 @@ minted the same day from [[records/enforcement-arc]] EN-20, for the live
 wrong-code defect in `arm-body`'s unreachable arm. The next free number is E189,
 and `E189` is the last one left in the band.
 
-### Arc-local rows
+### The roster
 
-The band is shared with [[arcs/enforcement-arc]] and four numbers remain, so
-work this arc has named and not scheduled takes an arc-local id under
+The band `E184-E189` is shared with [[arcs/enforcement-arc]] and four numbers
+remain, so work this arc names and does not schedule takes an arc-local id under
 [[decisions/decision-work-ids]]. An id claims identification and nothing else.
-Promotion later assigns an `E#` and the local id does not move, so a citation
-made now survives the number arriving.
+Promotion assigns an `E#` and the local id does not move, so a citation made now
+survives the number arriving.
 
-| id | title | state | element |
-|---|---|---|---|
-| `diagnostics/D1` | the two provably unreachable `Judg` arms get a disposition | named 2026-09-02 by the E182 pre-run. `jg-tcon-arity` and `jg-ctor-arity` are refused by guards upstream, and one of them is spelled by a sha256-pinned fixture, so a deletion has to answer for the pin. These are the two arms E182 leaves standing | unminted |
-| `diagnostics/D2` | the `Reason` exhaustiveness claim becomes checkable | named 2026-09-02 by the E182 pre-run. `samples/e157_diag.prog:50` and `tools/test/doc.sh:230` both assert one value of every `Reason` arm, `dgt-all` is a hardcoded nine-value chain no `case` covers, and both files are sha256-pinned. A tenth arm degrades the claim to nine of ten with nothing going red | unminted |
+Groups: `values` is the error vocabulary, `layout` the `Doc` and `Rendering`
+algebra, `printer` the term printer, `faces` the face system, and `gate` the
+checks over all of it.
+
+| row | what | group | kind | origin | req | state | element |
+|---|---|---|---|---|---|---|---|
+| `diagnostics/V1` | diagnostics as typed values: a closed `Reason` sum with evidence | values | primitive | new | 1 | built | `E157` |
+| `diagnostics/V2` | the arity judgments carry their arity | values | primitive | new | 5 | built | `E182` |
+| `diagnostics/V3` | the two provably unreachable `Judg` arms get a disposition. `jg-tcon-arity` and `jg-ctor-arity` are refused by guards upstream, and one is spelled by a sha256-pinned fixture, so a deletion answers for the pin | values | decision | new | 5 | open | `unminted` |
+| `diagnostics/V4` | the `Reason` exhaustiveness claim becomes checkable. `dgt-all` is a hardcoded nine-value chain no `case` covers, and both asserting files are sha256-pinned, so a tenth arm degrades the claim with nothing going red | values | law | new | 5 | open | `unminted` |
+| `diagnostics/L1` | `Doc`: structured formatting, printf's template split from its flatten | layout | primitive | new | 2 | built | `E158` |
+| `diagnostics/L2` | `Rendering` gains horizontal composition, `r-row` and the width function it needs | layout | law | new | 2 | built | `E174` |
+| `diagnostics/L3` | a display-width table: what a column is, for text nobody in the tree has rendered yet | layout | primitive | new | 2 | open | `E177` |
+| `diagnostics/L4` | `r-table` gets real per-column widths. One value, two layouts is the defect | layout | law | new | 2 | open | `E178` |
+| `diagnostics/L5` | `str-sub` does not clamp: an out-of-range end index segfaults while a prelude comment claims otherwise | layout | law | new | 2 | open | `E176` |
+| `diagnostics/T1` | the term printer is repointed at the real `Term`, returns a `Doc`, and moves to `surface/pretty` | printer | primitive | new | 3 | built | `E181` |
+| `diagnostics/F1` | nested `r-face` restores the outer face: the ANSI renderer keeps a face stack | faces | law | new | 2 | built | `E175` |
+| `diagnostics/F2` | the face registry becomes the only source of a face, and an unknown name is an error | faces | law | new | 1 | open | `E179` |
+| `diagnostics/F3` | a face-aware incremental redraw, the hazard E175 creates | faces | law | new | 2 | open | `E180` |
+| `diagnostics/W1` | `.protocol`: a declared wire form, its derived codec, and a bytes round-trip gate | gate | primitive | new | 4 | open | `E183` |
+
+### Coverage
+
+Every requirement is served: 1 by V1 and F2; 2 by L1 to L5, F1 and F3; 3 by T1;
+4 by W1; 5 by V2, V3 and V4. Every row serves one. Every `origin` is `new`:
+this arc builds a vocabulary the tree did not have.
+
+⚑ The `E#` column carries the element each row minted as. Six are built, six are
+minted and open, and two are `unminted` arc-local rows. The per-element sections
+below hold the detail and the measurements.
+
 
