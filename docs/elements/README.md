@@ -33,6 +33,12 @@ a fresh clone got the goals, the arcs, the records and the build state, and then
 every element row those pointed at was missing. Six of those citations could not
 be followed from *this* clone either.
 
+**The shape fork is CLOSED, 2026-09-06, by author directive: close forking.**
+`catalog.md` and `ledger.md` stay as they are. `pack.py` reads both, `--mint`
+writes both, and `ledger-lint` check AE fails an element present in one and
+absent from the other, so the two-file shape is now gated rather than merely
+tolerated. One file per element and one per band are both refused.
+
 **Moved, not reshaped.** The shape question this file used to pose — one file per
 element, one per number band, or a single index — is still open and is still an
 author call. Changing location and changing shape in one step would make both

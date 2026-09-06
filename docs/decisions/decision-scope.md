@@ -9,6 +9,17 @@ updated: 2026-09-01
 
 # Decision: the current track is self-hosting only
 
+⚑ **Amended 2026-09-06: the native-stack track opened 2026-09-03.** The author
+opened [[arcs/native-protocol-arc]] in session that day and its `N1` slices 1
+and 2 are built and gated by `tools/test/crypto.sh`, which registers as suite
+phase 31. [[arcs/native-window-arc]], [[arcs/display-calculus-arc]],
+[[arcs/vocabulary-arc]] and [[arcs/canvas-arc]] opened after it under
+[[goals/native-stack]], [[goals/display]] and [[goals/own-web]]. This decision
+held the track to self-hosting only and the tree had already moved; recording
+that is what closes the standing call in [[records/author-calls]]. The
+ownership-and-trust track stays deferred, which is the other half this file
+settles and which nothing has moved.
+
 **Set by the author 2026-08-31.** Hoisted out of the root handoff on 2026-09-01,
 where it had been the most-cited sentence in the repository and lived in a file
 that a fresh clone was expected to read before anything else.
