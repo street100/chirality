@@ -72,12 +72,12 @@ Done when all four hold.
 
 ### Coverage
 
-⚑ **Requirement 3 is served by no row.** "Each has a mutant that is actually
-run" is a property C1 and C2 must carry, and neither row states it as its own
-deliverable. Closing this means either folding the mutant into C1 and C2's
-`req` cells, which makes requirement 3 unobservable on its own, or opening a
-row for it. That is an author call and it is recorded here rather than papered
-over.
+⚑ **Requirement 3 is served by no row**, and the hole is enumerated as
+`GAP-01` in `records/lenses/gaps.md`, awaiting a ruling. "Each has a mutant
+that is actually run" is a property C1 and C2 must carry, and neither states it
+as its own deliverable. Folding it into their `req` cells would make
+requirement 3 unobservable on its own, so whether it takes a row is an author
+call.
 
 Requirements 1, 2 and 4 are served: 1 by C1, C2 and C3; 2 by C4; 4 by C5. Every
 row serves one. C4 is `connect` because `E40` is built and the gap is that

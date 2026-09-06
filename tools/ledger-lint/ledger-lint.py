@@ -1941,9 +1941,19 @@ def check_ag() -> list[str]:
                             f"requirement. It is out of scope, or a requirement "
                             f"is missing")
             served |= rq
+        # A requirement no row serves is closed one of two ways: a row takes it,
+        # or the hole is ENUMERATED as a gap. That is the same escape AE gives
+        # an unscheduled element through the unspoken lens, and it is what stops
+        # the guide handing back a finding whose answer is an author call it
+        # cannot take. The gap row carries the author marker.
+        arcname = f.stem[:-4] if f.stem.endswith("-arc") else f.stem
+        gaps = _lens_about("gaps.md") | _lens_about("unspoken.md")
         for r in sorted(reqs - served, key=int):
+            if f"{arcname}/req{r}" in gaps:
+                continue
             errs.append(f"[AG] {f.name} requirement {r} is served by no roster "
-                        f"row. It is a done-condition with no plan")
+                        f"row and no gap row is about `{arcname}/req{r}`. It is "
+                        f"a done-condition with no plan and no admission")
     return errs
 
 
