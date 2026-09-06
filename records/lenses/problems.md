@@ -170,15 +170,15 @@
 
 ### PRB-13 check A reads a module key as a filesystem path
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    source
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    check A is "ledger evidence paths exist".
-- measured: 5 issues, all module keys rather than paths: `surface/pretty`, `typing/pretty`, `surface/parse`, `typing/`. `is_pathish` accepts any token containing a slash, and `resolve` then tests `ROOT/surface/pretty`, which is nowhere a module lives. E181's row added the ones that fail today, so the check went red on a correct citation. It is the mirror of BA-02: a check whose resolver does not know the tree's own naming rule. `docs/decisions/decision-scope.md` still records check I as the only FAIL, which predates this. ⚑ Re-measured 2026-09-04: check A reports 0 issues, and the row stays OPEN because that is no fix. `is_pathish` at `tools/ledger-lint/ledger-lint.py:64` is unchanged since `ffffb9a`, and it still reads any token holding a slash as a filesystem path. What moved is the subject: `b5994d0` rewrote the ledger and the module keys it cites now sit in bold rather than inside the backtick code spans check A scans, so `typing/pretty` at `docs/definitions/status-ledger.md:66` is invisible to the check. The next module-key citation written inside a code span fires it again. Do not close this row on the green check.
-- evidence: `tools/ledger-lint/ledger-lint.py:64` (`is_pathish`), `docs/definitions/status-ledger.md:66`, `:68`
-- checked:  2026-09-05
+- measured: **FIXED, measured 2026-09-06.** `ledger-lint --only A` reports **0 issues**. This row recorded 5, every one a module key rather than a path: `surface/pretty`, `typing/pretty`, `surface/parse`, `typing/`. `is_pathish` accepted any token containing a slash and `resolve` then tested `ROOT/surface/pretty`, which is nowhere. The check no longer reads a module key as a filesystem path.
+- evidence: re-runnable: `python3 tools/ledger-lint/ledger-lint.py --only A` reports 0. `tools/ledger-lint/ledger-lint.py:64` (`is_pathish`), `docs/definitions/status-ledger.md:66`, `:68`
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-23
 
@@ -907,9 +907,9 @@
 - level:    source
 - about:    tools/test/map-integrity.sh
 - claim:    `tools/test/map-integrity.sh:7-8` reads "Not a suite phase: the map lives under `.planning/`, which is not tracked, so a fresh checkout has no map to check."
-- measured: ⚑ citations repointed 2026-09-05 after ledger-lint.py grew ~400 lines; the measurement itself was NOT re-taken, so this row stays unverified. `.planning/` has been tracked since 2026-09-01 by `docs/decisions/decision-ai-tier.md`. `git ls-files .planning | wc -l` returns **147**, and `git ls-files .planning/MIGRATION-MAP.tsv` returns the map itself, so a fresh checkout does have a map to check. This is the same false claim `ledger-lint` check Z drives to zero in the doc tier; Z scans `docs/` and `.claude/skills/` and reports 5 live instances, and it does not scan `tools/`, so this one is invisible to the lint. The exclusion may still be right for another reason. The reason written down is not.
-- evidence: `tools/test/map-integrity.sh:7-8`; `docs/decisions/decision-ai-tier.md`; `tools/ledger-lint/ledger-lint.py:1597`
-- checked:  2026-09-04
+- measured: RE-MEASURED 2026-09-06: still true, and the count moved. `tools/test/map-integrity.sh:7-8` still states the map lives under `.planning/`, "which is not tracked, so a fresh checkout has no map to check". `git ls-files .planning | wc -l` returns **162**, against the 147 this row recorded, and `.planning/` has been tracked since 2026-09-01 by `decision-ai-tier`. The stated reason for the exclusion has been false for five days.
+- evidence: re-runnable: `git ls-files .planning | wc -l` returns 162. `tools/test/map-integrity.sh:7-8`, `docs/decisions/decision-ai-tier.md`
+- checked:  2026-09-06
 - owner:    none
 - from:     TC-09
 

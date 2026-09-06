@@ -10,9 +10,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    doc
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    `ledger-lint` runs 36 checks, A through AJ, re-measured 2026-09-05. It ran 19 when this row was written.
-- measured: H and M print `VACUOUS` and say so in the run's own output. H verified the idioms cheatsheet against `refine.py`, cut with the Python oracle. M guarded a scaffold-to-TUI symlink web dissolved by the migration. Both subjects are genuinely gone, which is why this is ACCEPTED and not OPEN. H is repointable at `lib/typing/refine.chiral:11` and `lib/module/loader.chiral:20`, both live; that repoint was measured against live files. M has no live subject.
-- evidence: `tools/ledger-lint/ledger-lint.py:517` (check H), `:729` (check M)
-- checked:  2026-09-05
+- measured: RE-MEASURED 2026-09-06: unchanged and confirmed. H and M both print `VACUOUS` in the run's own output. `ledger-lint` now runs **36** checks, A through AJ. H verified the idioms cheatsheet against `refine.py`, cut with the Python oracle; M guarded a scaffold-to-TUI symlink web the migration dissolved. Both subjects are genuinely gone, which is why this is a limit at `accepted` rather than a problem.
+- evidence: re-runnable: `python3 tools/ledger-lint/ledger-lint.py --only H,M` prints VACUOUS for both. `tools/ledger-lint/ledger-lint.py:517` (check H), `:729` (check M)
+- checked:  2026-09-06
 - owner:    none
 - from:     BA-03
 
@@ -206,9 +206,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - level:    doc
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    [[arcs/zero-python-arc]] treats the Python tier as tooling to be replaced, and enforcement requirement 5 counts its 4,786 lines in the 12,450 outside the language.
-- measured: ⚑ citations repointed 2026-09-05 after ledger-lint.py grew ~400 lines; the measurement itself was NOT re-taken, so this row stays unverified. the count is right and the shape is different from the shell's. Nine `.py` files under `tools/` make **zero** invocations of a classic Unix tool. Every `subprocess` call is to `git` (`tools/ledger-lint/ledger-lint.py:1038`, `:1047`, `:1588`; `tools/frontier/frontier.py:254`) or to `sys.executable` re-entering a tool in this tree (`tools/doc/doc.py:204`; `tools/capture/capture.py:225`, `:444`). The classic-tool jobs are done in process: 172 `re` operations, 60 sorts, 15 directory walks and 9 `hashlib` uses, of which `ledger-lint.py` holds 87 regex operations and 27 sorts. None of it runs inside a gate, so this tier has no 1a and no 1b, and a per-tool port is the only shape available. Accepted as a measurement rather than a defect.
-- evidence: `tools/ledger-lint/ledger-lint.py:1046`, `:1055`, `:1597`, `:2097` (every subprocess call is to git); `tools/frontier/frontier.py:250-254`; `tools/doc/doc.py:204`
-- checked:  2026-09-04
+- measured: RE-MEASURED 2026-09-06: unchanged and confirmed. Every `subprocess` call across the Python tier is to `git` and there are **five** of them; zero invoke a classic Unix tool. The shape differs from the shell tier's, which is the point of this row: the Python is replaceable without composing grep, sed, sort or awk first.
+- evidence: re-runnable: `grep -rhoE 'subprocess\.(run|Popen|call)' tools/*/*.py` returns 5, every one a git call. `tools/frontier/frontier.py:250-254`, `tools/doc/doc.py:204`
+- checked:  2026-09-06
 - owner:    none
 - from:     TC-10
 
