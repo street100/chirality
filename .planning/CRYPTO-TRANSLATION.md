@@ -257,6 +257,7 @@ Six things, and none of them exists today.
 | 4 | **the registry.** A closed set of admitted representations per object, each with its correspondence evidence | a closed set is what makes a new one a visible act |
 | 5 | **the invariance as a derived fact.** The security level stated once on the object, and no representation permitted to state one | an invariant restated in N places is an invariant that drifts |
 | 6 | **the refusal path.** A target below the floor, named and refused | §4 is the principle and this is its mechanism |
+| 7 | **zero allocation in the inner loop.** A streaming kernel on a tiny target cannot allocate per block, and this tree's arena never reclaims | §13 measures the floor at ~200 B and allocation is what decides whether an implementation reaches it |
 
 ## §11 · The post-quantum stack, staged
 
@@ -337,7 +338,244 @@ direction the ruling wants.
 | SLH-DSA-128s signature | 7,856 B |
 | SLH-DSA-256f signature | ~49,856 B |
 
-## §12 · Decisions owed by this frame
+## §12 · The two regimes, and what a key buys
+
+**A key that everyone must hold in order to verify is a published constant.**
+Universal verifiability means universal knowledge, so a keyed mark with a public
+key has exactly the security of the unkeyed function. That obstruction is total,
+and it reaches one object.
+
+| regime | who verifies | keyed | mark |
+|---|---|---|---|
+| a value published to strangers | anyone | **no** | 64 B |
+| private storage | the owner | yes | 32 B |
+| group storage | the group | yes | 32 B |
+| the transport, the handshake, the session | the parties | yes | |
+| a mutable pointer | anyone, against a public key | yes | |
+
+`REACH-MODEL` §10 already puts signatures on the mutable-pointer layer alone, so
+the architecture already carries the keyed naming layer. The keyless seam is the
+interface to strangers and it is one row.
+
+**Private storage never meets the seam.** One party holds the key, so the chunks,
+the authentication, the tree and the names are all keyed. A storage system pays
+the 64-byte mark only at the moment it publishes to someone it has no
+relationship with.
+
+That regime also defeats the malicious-preparer attack outright. An outsider who
+hands the owner a file cannot craft a colliding mark, **because the outsider
+cannot compute the owner's marks at all.** This is the randomized-hashing idea
+with the randomizer held by the verifying party, which is the party that makes it
+work.
+
+### What the key is worth
+
+Keying moves three terms at once.
+
+| | unkeyed, a public mark | keyed |
+|---|---|---|
+| rounds | full. 24 at `b = 1600`, 22 at `b = 800` | **6**, in a Farfalle construction |
+| capacity | `c = 512`, forced by birthday on the inner state | 128 to 256, and a full-state duplex pushes the rate toward `b` |
+| output | 64 B | a 32 B tag |
+
+**This is the largest optimization in the stack**, ahead of representation,
+windowing and materialization together.
+
+### The bulk path
+
+Kravatte and Xoofff are Farfalle instances over Keccak-p[1600] and Xoodoo, and
+their permutations run **6 rounds** apiece. The reduced count is sound because
+the construction is keyed, which is the keyed and unkeyed split appearing on
+rounds instead of on capacity. A duplex enciphers and authenticates in one
+permutation call per block, so authentication is close to free.
+
+Op counts per byte, derived off the estimated `k ≈ 9` and soft for that reason:
+
+| | ops per byte |
+|---|---|
+| an unkeyed mark, Keccak-f[1600] at `c = 512` | ~40 |
+| ChaCha20 keystream, 10 double rounds of 8 quarter-rounds at 12 ops | ~15 |
+| Farfalle expansion over Keccak-p[1600] at 6 rounds | **~7** |
+
+Hardware measurements point the same way, reporting SHA-3 about twice as
+energy-efficient as ChaCha20 for pseudo-random generation, because it yields more
+bits per round.
+
+⚑ **`.planning/CRYPTO-MODEL.md` `C10` leans yes on this evidence**: an AEAD over
+the same machine retires ChaCha20-Poly1305, on throughput and code reuse. It owes
+a measurement, since `k` is estimated and the Farfalle AEAD accounting needs both
+the compression and the expansion pass counted.
+
+### The round count as a type index earns its keep
+
+`.planning/CRYPTO-MODEL.md` §7 lists "shipping a reduced-round variant by
+accident" as a refusal and had no case behind it. There is one now, and it is
+unavoidable.
+
+| use | rounds |
+|---|---|
+| a public mark | 24 |
+| keyed bulk, in Farfalle | 6 |
+
+Both live in one binary over one permutation, and a 6-round permutation used for
+an unkeyed mark is broken. The round count as a type index makes them different
+types, so the confusion has no spelling.
+
+## §13 · The target floor
+
+| tier | what the device does | RAM |
+|---|---|---|
+| 0 | fetch and verify immutable values | **~200 B.** The Keccak-f[800] state is 100 B and absorbs in place, beside the 64-byte mark under comparison |
+| 1 | + verify signed mutable pointers | **~1 KB.** Hash-based verification streams: one chain value and two or three Merkle nodes live at once, and an 8 to 50 KB signature never becomes resident |
+| 2 | + bulk encrypt and decrypt | the permutation state, already counted |
+| 3 | + establish a confidential channel | **~3.4 KB, and this is the wall.** ML-KEM-1024 measures 3,332, 3,372 and 3,356 bytes of stack for keygen, encapsulation and decapsulation in the pqm4 stack-optimized build |
+
+**A 4 KB device runs the whole level-5 stack.** Below 4 KB the only capability
+lost is establishing a confidential channel, and private file storage needs none.
+
+Speed at the low end stays inside a small factor. Both members below give 256-bit
+collision resistance and a 64-byte mark.
+
+| | state | lanes | rate | on a 32-bit target |
+|---|---|---|---|---|
+| Keccak-f[800] | 100 B | 32-bit, native, and lighter on flash | 36 B | baseline |
+| Keccak-f[1600] | 200 B | 64-bit, wanting bit-interleaving | 136 B | ~1.7x faster per byte |
+
+### What dominates the byte count
+
+The permutation is the smallest term in the system.
+
+| term | size | movable |
+|---|---|---|
+| a PQ signature | 8 to 50 KB | **yes.** 2 to 3x from a stateful scheme, more from the Winternitz parameter |
+| the marks a value carries | 64 B times every reference | **yes, entirely.** Chunk size and tree fanout are ours |
+| the mark's own width | 64 B | no |
+| the permutation state | 100 to 200 B | barely, and it does not matter |
+
+Derived for a 1 GB value: at a 4 KB chunk size that is 262,144 leaf marks and
+16.8 MB, **1.7% overhead**. At 64 KB chunks it is 16,384 marks and 1 MB, **0.1%**.
+Chunk size alone moves mark overhead by 16x. A Merkle tree adds internal nodes at
+about `leaves / (f - 1)`, so a binary tree nearly doubles the node count where a
+fanout of 16 adds about 7%. That lever sits in
+`.planning/CRYPTO-MODEL.md` §2 layer 3, which is `unscoped`.
+
+### The blocker, which lies outside the mathematics
+
+**Allocation sets the floor.** The mathematics says 100 bytes of state. Whether an
+implementation runs in 200 bytes depends on whether the round loop allocates, and
+this tree's arena never reclaims. `docs/examples/N01-crypto-kernels.md` designed
+against it, holding round state in fixed-shape `data` and Bytes growth to one
+block plus one `bcat` per message block. A tiny target needs **zero allocation in
+the inner loop**, which is a requirement on the memory discipline rather than on
+the kernel. It lands on `lib/memory/mem-linear.chiral`, `mem-region.chiral` and
+the `Alloc` interface.
+
+⚑ **The named-lane argument has a limit.** Twenty-five lanes of 32 bits exceed any
+microcontroller register file, and a Cortex-M0+ has eight usable registers. Named
+lanes remove indexed indirection and leave load and store traffic in place.
+
+## §14 · Materialization, the third dial
+
+**A large object derived from a small seed by a total pure function costs the
+seed and the derivation.** This is already the dominant size technique in the
+reference class.
+
+| object | materialized | derived from | ratio |
+|---|---|---|---|
+| the ML-KEM public matrix `A` at k=4 | 16 polynomials of 256 coefficients at 12 bits, 6,144 B | the 32-byte seed `ρ`, expanded by SHAKE128 | ~190x |
+| an ML-KEM-1024 decapsulation key | 3,168 B expanded | a 64-byte seed | ~50x |
+| a hash-based scheme's `2^h` one-time keys | unbounded | one seed and a PRF | unbounded |
+| a Merkle authentication path | the full tree | traversal over a frontier | tunable |
+| Keccak round constants | a table | an 8-bit LFSR | the table goes |
+| Keccak `ρ` offsets and `π` | 25 entries and a mapping | `t(t+1)/2 mod w`, and `(x,y) → (y, 2x+3y)` | the tables go |
+| GF(256) log and antilog | 512 B | bit operations | the table goes, and the secret-indexed lookup with it |
+
+ML-KEM's 1,568-byte encapsulation key checks out against this exactly: 1,536
+bytes of `t̂` plus 32 bytes of `ρ`. Materializing `A` would make it 7.7 KB.
+
+**So there are three memory dials and they are independent.**
+
+| dial | is |
+|---|---|
+| `budget` | how much state the permutation has |
+| `access` | how much of that state is resident at once |
+| **`materialization`** | how much of a derivable structure is stored against recomputed |
+
+All three leave the security level alone, because a derived value is
+byte-identical either way. pqm4 measures the third one working: ML-KEM-1024
+decapsulation at 20,352 B in the clean build, 7,484 B speed-optimized and 3,356 B
+stack-optimized, one algorithm at one security level across a 6x memory range.
+
+**What the lens adds.** In pqm4 those are separate C implementations whose
+agreement rests on vectors and review. Here they are two representations of one
+object, so their agreement is the correspondence §2 owes and §7 tests. **The
+dangerous optimization becomes the checked one.** Four properties carry it: the
+membrane makes the derivation provably reproducible with no clock and no RNG,
+totality makes it terminate, erased indices keep the choice at compile time, and
+linearity holds a secret seed under custody.
+
+Deterministic derivation also protects a tree property.
+`docs/arcs/native-protocol-arc.md` requirement 3 records that every compiled path
+today is deterministic. If signing derives its randomness from the key and the
+message, entropy enters at key generation alone, so `N2`'s crossing is spent once
+per identity rather than once per operation.
+
+⚑ **Derivation concentrates authority.** A 64-byte seed that regenerates every key
+a device holds is the most concentrated authority in the system, and each
+derivation added makes it more so. That runs straight into
+`docs/decisions/decision-quorum-store.md` and `native-protocol/N7` and `N8`:
+**derivation and quorum-splitting are complements**, and the smaller the root of
+authority becomes the more it wants splitting.
+
+## §15 · What sits above, and why it is deferred
+
+A permissions layer, and through it a user model, is the one structural piece
+this stack does not reach. It is deferred, and
+`docs/decisions/decision-scope.md` already defers ownership.
+
+**The dependency looks circular and stratifies.** The rule that breaks it: **the
+crypto layer knows keys and never knows users.** A key names no person. A person
+is an interpretation of a key, held two layers up.
+
+| layer | knows | reads |
+|---|---|---|
+| 0 primitives | bytes and keys | nothing above |
+| 1 custody | that a key is secret. `E40`, `lib/capability/secret.chiral` | 0 |
+| 2 identity | a keypair with a mark | 1 |
+| 3 capability | what a holder of a token may do | 2 |
+| 4 user model | a person, possibly several identities | 3 |
+
+**A capability breaks the loop and an access list creates it.** An access list
+asks who the holder is and whether they are allowed, which needs the
+identity-to-user-to-permission lookup that closes the circle. A capability asks
+whether the token is held, which needs nothing above the token.
+`lib/ports/sock.port:54-74` records every cap linear, so a capability that cannot
+be copied is already the tree's idiom.
+
+`REACH-MODEL` states the same stratification: a party is a separate mechanism,
+layered above, and only a mutable answer needs one.
+
+The shape is one this tree already lives with. A self-hosting compiler looks
+circular and is not, because the bootstrap breaks it, and
+`docs/definitions/working-discipline.md` carries that rule. Crypto is the
+bootstrap here.
+
+**What has to hold now for the layer to land later without rework.**
+
+| what | why |
+|---|---|
+| nothing in the crypto layer names a user | the invariant that keeps the loop broken, and it belongs as a stated refusal |
+| domain separation stays extensible | a permission layer wants its own derivation domains, and §7's required separator field has to hold them |
+| keys derive hierarchically from one seed | sub-identities and delegation fall out of §14's hierarchy |
+| a signature can sign a statement about another key | delegation is the one thing every capability system needs |
+
+**The crypto layer is complete without the layer above it**, which is what makes
+the deferral safe. `decision-quorum-store` already holds a piece of the
+arbitration primitive in its honest form: two share subsets that reconstruct
+differently surface as a named disagreement, which surfaces a conflict without
+deciding it.
+
+## §16 · Decisions owed by this frame
 
 | id | decision |
 |---|---|
@@ -353,8 +591,13 @@ direction the ruling wants.
 | T10 | **stateful against stateless hash-based signature**, re-opened by §11. `C3`'s option set omits XMSS, LMS and HSS, and linearity reaches the in-program half of their objection |
 | T11 | the Winternitz parameter, and whether it is fixed or a declared trade |
 | T12 | build order between the signature staircase, which needs no new mathematics, and the KEM stack, which is where new mathematics enters |
+| T13 | **robustness against bits at one address width.** A 64-byte mark is either one 512-bit digest at 256-bit collision resistance, or two 256-bit digests from different designs concatenated at about 135 bits that survives one design breaking. Joux caps the second row and §16's sources price it |
+| T14 | the chunk size and the Merkle fanout, which move aggregate mark overhead by 16x and are the largest byte lever that is ours |
+| T15 | whether the bulk path is a Farfalle over the mark's permutation, which is `C10` restated with §12's evidence attached |
+| T16 | the materialization schedule: hand-written per device class, or computed at compile time from the target's declared budget |
+| T17 | the refusal that keeps §15's loop broken, and where it is enforced |
 
-## §13 · Notes to cover
+## §17 · Notes to cover
 
 - `k`, the ops per lane per round, carried from `.planning/CRYPTO-MODEL.md` §14
   and still estimated. Every ops-per-byte figure in §3 rests on it
@@ -379,3 +622,10 @@ direction the ruling wants.
   opening one key file
 - whether Ascon-p's exclusion is recorded as a ruling. At a 256-bit mark it is
   conformant at 40 bytes, and the maximize-security ruling is what removes it
+- the Farfalle AEAD op count with both the compression and the expansion pass,
+  which §12 leaves at the expansion alone
+- the keyed capacity bound stated properly, which §12 gives as a range
+- whether a 32-byte private mark and a 64-byte public mark are one type or two,
+  and what a value crossing between the regimes costs
+- the register pressure of 25 named lanes on an eight-register target, which §13
+  names and does not quantify
