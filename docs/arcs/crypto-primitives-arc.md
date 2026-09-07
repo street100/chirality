@@ -97,16 +97,22 @@ Three, and an ordering with no back-edges reads as a schedule.
    sits in `docs/translations/`, `tools/xlat/xlat.sh check` exits 0 on it, and
    `pipeline-audit` at TRANSLATE level passes. Observable: `ledger-lint` check AL
    green with one artifact per built primitive.
-2. **The permutation is a family parameterized only where the mathematics is.**
-   Observable: the module carries the lane width as an erased index, and carries
-   no parameter the published family lacks.
-3. **Every target reaches the same security level.** Observable: a configuration
-   whose state cannot hold its capacity fails to construct, and a gate row shows
-   the refusal.
-4. **Two representations of one object agree.** Observable: a differential gate
-   exists, names both representations, and runs in the suite.
-5. **The laws are tested beside the vectors.** Observable: a law gate exists
-   for at least one object and runs at the smallest member of its family.
+2. **The permutation is a family parameterized only where the mathematics is,
+   and a target below its floor fails to construct.** Observable: the module
+   carries the lane width as an erased index, carries no parameter the published
+   family lacks, and a gate row shows the refusal for a state that cannot hold
+   its capacity.
+3. **Correctness is checked by laws and by a differential, beside the vectors.**
+   Observable: a differential gate names two representations of one object and
+   runs in the suite; a law gate runs at the smallest member of a family; the
+   published vectors live in a declared form rather than in shell.
+4. **Randomness enters through one discipline and everything downstream of it is
+   deterministic and reproducible.** Observable: no module here reads entropy
+   directly, a randomness source is linear so it cannot be reused, and a key
+   derived from a seed reproduces byte-for-byte.
+5. **A primitive runs at the floor its target declared.** Observable: no
+   allocation in an inner loop, and the resident cost measured against the
+   declared budget rather than assumed.
 6. **Nothing in this arc names a user.** Observable: the crypto modules carry no
    identity, principal or permission type. `.planning/CRYPTO-TRANSLATION.md` §15
    states why this is the invariant that keeps the layer above stratified.
@@ -116,39 +122,57 @@ Three, and an ordering with no back-edges reads as a schedule.
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
 | `crypto-primitives/K1` | translate Keccak-f[b]: the family at `b = 25w`, `R = 12 + 2l`, its five steps, and what each carrier reaches. Everything below rests on it | translation | law | new | 1, 2 | open | `unminted` |
-| `crypto-primitives/K2` | the permutation module: named lanes, no array, the width as an erased index, the round count as a type index | permutation | primitive | new | 2, 3 | open | `unminted` |
+| `crypto-primitives/K2` | the permutation module: named lanes, no array, the width as an erased index, the round count as a type index | permutation | primitive | new | 2 | open | `unminted` |
 | `crypto-primitives/K3` | translate the sponge: absorb, squeeze, padding, domain separation, and the keyed against unkeyed capacity bound | translation | law | new | 1 | open | `unminted` |
-| `crypto-primitives/K4` | the sponge module: hash, XOF, MAC and KDF as configurations of `K2`, one machine, separated by domain | modes | primitive | new | 2, 3 | open | `unminted` |
-| `crypto-primitives/K5` | the mark: the digest a content address is, at the length the author ruled, with the refusal for a target below its floor | modes | primitive | new | 3 | open | `unminted` |
-| `crypto-primitives/K6` | the tree mode for chunked marks: fanout, chunk size, domain separation, and the aggregate cost each choice carries | tree | primitive | new | 3 | open | `unminted` |
+| `crypto-primitives/K4` | the sponge module: hash, XOF, MAC and KDF as configurations of `K2`, one machine, separated by domain | modes | primitive | new | 2 | open | `unminted` |
+| `crypto-primitives/K5` | the mark: the digest a content address is, at the length the author ruled, with the refusal for a target below its floor | modes | primitive | new | 2 | open | `unminted` |
+| `crypto-primitives/K6` | the tree mode for chunked marks: fanout, chunk size, domain separation, and the aggregate cost each choice carries | tree | primitive | new | 2 | open | `unminted` |
 | `crypto-primitives/K7` | translate a post-quantum KEM. The only place new mathematics enters: polynomial arithmetic, the NTT, sampling, compression | translation | law | new | 1 | open | `unminted` |
 | `crypto-primitives/K8` | translate a post-quantum signature, and settle stateful against stateless. Linearity reaches the in-program half of the stateful objection and not the durability half | translation | decision | new | 1 | open | `unminted` |
-| `crypto-primitives/K9` | the signature staircase: the one-time signature, the Merkle tree and the scheme over `K2`, introducing no new mathematics | asymmetric | primitive | new | 2 | open | `unminted` |
-| `crypto-primitives/K10` | the KEM module, behind `K7` | asymmetric | primitive | new | 2 | open | `unminted` |
+| `crypto-primitives/K9` | the signature staircase: the one-time signature, the Merkle tree and the scheme over `K2`, introducing no new mathematics | asymmetric | primitive | new | 1 | open | `unminted` |
+| `crypto-primitives/K10` | the KEM module, behind `K7` | asymmetric | primitive | new | 1 | open | `unminted` |
 | `crypto-primitives/K11` | the combiner: how two shared secrets become one | combine | law | new | 1 | open | `unminted` |
 | `crypto-primitives/K12` | the PAKE: a short human-carried secret authenticating an exchange | combine | law | new | 1 | open | `unminted` |
-| `crypto-primitives/K13` | the target declaration: what a target states beyond width, and the cost model that gives `best` a meaning | representation | decision | new | 3 | open | `unminted` |
-| `crypto-primitives/K14` | the representation registry and its admission test: what evidence a second encoding of one object supplies to be admitted | representation | law | new | 4 | open | `unminted` |
-| `crypto-primitives/K15` | the differential gate: two representations of one object agree, which is the floor `docs/definitions/testing-floors.md` records as cut | assurance | tool | new | 4 | open | `unminted` |
-| `crypto-primitives/K16` | the law gate: the field axioms, bijectivity and the representation round trip, run exhaustively at the smallest member of each family | assurance | tool | new | 5 | open | `unminted` |
+| `crypto-primitives/K13` | the target declaration: what a target states beyond width, and the cost model that gives `best` a meaning | representation | decision | new | 5 | open | `unminted` |
+| `crypto-primitives/K14` | the representation registry and its admission test: what evidence a second encoding of one object supplies to be admitted | representation | law | new | 3 | open | `unminted` |
+| `crypto-primitives/K15` | the differential gate: two representations of one object agree, which is the floor `docs/definitions/testing-floors.md` records as cut | assurance | tool | new | 3 | open | `unminted` |
+| `crypto-primitives/K16` | the law gate: the field axioms, bijectivity and the representation round trip, run exhaustively at the smallest member of each family | assurance | tool | new | 3 | open | `unminted` |
 | `crypto-primitives/K17` | the user-naming refusal: the crypto modules carry no identity, principal or permission type, and something checks it | representation | law | new | 6 | open | `unminted` |
+| `crypto-primitives/K18` | the randomness discipline: what consumes entropy, why a source is linear, and where deterministic derivation replaces a draw so `native-protocol/N2`'s crossing is spent once per identity | representation | law | new | 4 | open | `unminted` |
+| `crypto-primitives/K19` | the AEAD over the machine: a Farfalle or duplex mode at the keyed round count, which is the bulk path and the largest throughput lever in the stack | modes | primitive | new | 2 | open | `unminted` |
+| `crypto-primitives/K20` | zero allocation in the inner loop. `.planning/CRYPTO-TRANSLATION.md` §13 measures allocation as what sets the target floor, against `lib/memory/mem-linear.chiral`, `mem-region.chiral` and the `Alloc` interface | representation | law | new | 5 | open | `unminted` |
+| `crypto-primitives/K21` | materialization as the third memory dial beside `budget` and `access`: how much of a derivable structure is stored against recomputed, and whether the schedule is written or derived from the target | representation | decision | new | 5 | open | `unminted` |
+| `crypto-primitives/K22` | the regime split: a public mark is unkeyed and one length, a private or group mark is keyed and shorter, and whether they are one type or two | modes | decision | new | 2 | open | `unminted` |
+| `crypto-primitives/K23` | the domain separator: its encoding, whether the configuration rides in it, and the extension point the layer above needs | modes | law | new | 2 | open | `unminted` |
+| `crypto-primitives/K24` | the vector tier: the published constants as declared data rather than 403 lines of shell, which is `.planning/CRYPTO-MODEL.md` `C7` | assurance | tool | new | 3 | open | `unminted` |
+| `crypto-primitives/K25` | the lattice arithmetic a KEM needs: `Z_q` at its moduli, modular reduction, the NTT and its inverse, and rejection sampling. `native-protocol/N6` predates the post-quantum target and says field arithmetic generically | asymmetric | primitive | new | 2 | open | `unminted` |
 
 ### Coverage
 
 Every requirement is named by at least one row: 1 by `K1`, `K3`, `K7`, `K8`,
-`K11` and `K12`; 2 by `K1`, `K2`, `K4`, `K9` and `K10`; 3 by `K2`, `K4`, `K5`,
-`K6` and `K13`; 4 by `K14` and `K15`; 5 by `K16`; 6 by `K17`.
+`K9`, `K10`, `K11` and `K12`; 2 by `K1`, `K2`, `K4`, `K5`, `K6`, `K19`, `K22`,
+`K23` and `K25`; 3 by `K14`, `K15`, `K16` and `K24`; 4 by `K18`; 5 by `K13`,
+`K20` and `K21`; 6 by `K17`.
 
 Every row names at least one requirement. Every `origin` is `new`, and §3
 defends it: the permutation, the sponge, the tree, the PQ pair, the combiner and
-the PAKE have no module in `lib/`, and the representation and assurance machinery
-has no home anywhere. The two built modules `lib/crypto/chacha.chiral` and
-`lib/crypto/poly1305.chiral` belong to `native-protocol/N1` and no row here
-claims them.
+the PAKE have no module in `lib/`, and the representation, randomness and
+assurance machinery has no home anywhere. The two built modules
+`lib/crypto/chacha.chiral` and `lib/crypto/poly1305.chiral` belong to
+`native-protocol/N1` and no row here claims them.
+
+⚑ **Eight rows were added after the first coverage run, and the omission is
+worth recording.** `K18` through `K25` were found by walking
+`.planning/CRYPTO-TRANSLATION.md` against the roster, which the first pass never
+did: it built from `.planning/CRYPTO-MODEL.md` §2's `unscoped` column alone.
+Randomness, the bulk AEAD path, allocation, materialization, the regime split,
+the domain separator, the vector tier and the lattice arithmetic all had zero
+mentions. Working from one source and treating it as the whole object is the
+failure this tree keeps finding.
 
 ## Resume state
 
-Opened 2026-09-07 with 17 rows and 6 requirements, none designed.
+Opened 2026-09-07 with 25 rows and 6 requirements, none designed.
 
 The translation tier landed the same day and is what this arc runs on:
 `docs/translations/` with its README, `tools/xlat/xlat.sh`, `pipeline-audit` at

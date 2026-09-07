@@ -181,7 +181,7 @@ when this table and an arc file disagree.
 | [[arcs/unit-lane-arc]] | [[goals/local-ai]] | 43 rows: `E196` and `E197` both built 2026-09-05, closing N8, N9, N10 and N43, 39 open | `E196-E239` |
 | [[arcs/vocabulary-arc]] | [[goals/own-web]] | 12 rows, none started. `F3`'s shard is built and unmeasured | none |
 | [[arcs/canvas-arc]] | [[goals/own-web]] | 16 rows, none started. Follows the vocabulary arc | none |
-| [[arcs/crypto-primitives-arc]] | [[goals/own-web]] | 17 rows, none started. Opened 2026-09-07 on condition 4. Takes the layers `.planning/CRYPTO-MODEL.md` §2 marks `unscoped`, plus the translation and representation machinery. `native-protocol/N10` overlaps and the boundary is an author call | none |
+| [[arcs/crypto-primitives-arc]] | [[goals/own-web]] | 25 rows, none started. Opened 2026-09-07 on condition 4. Takes the layers `.planning/CRYPTO-MODEL.md` §2 marks `unscoped`, plus the translation and representation machinery. `native-protocol/N10` overlaps and the boundary is an author call | none |
 | [[arcs/memory-discipline-arc]] | [[goals/local-ai]] | 7 rows, `E81` built and six open | `E81-E85`, minted |
 
 Four of the twenty hold a reserved `E` band, [[arcs/scriba-arc]] holds the
