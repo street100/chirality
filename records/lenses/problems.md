@@ -134,9 +134,9 @@
 - level:    source
 - about:    lib/ports/ports.chiral
 - claim:    checks G and R are the tree's line-citation gates.
-- measured: RE-MEASURED 2026-09-06: still true and the count grew. `lib/` and `prog/` comments carry **75** line-numbered citations across **35** files, against the 59 across 34 this row recorded. Checks G and R both walk `docs/**/*.md` and both require the citation inside a backtick code span, so not one of the 75 is read by any gate.
-- evidence: re-runnable: `grep -rhoE '[a-z0-9_/-]+\.(chiral|prog):[0-9]+' --include='*.chiral' --include='*.prog' lib/ prog/ | wc -l` returns 75. `tools/ledger-lint/ledger-lint.py:379` (check G), `:443` (check R)
-- checked:  2026-09-06
+- measured: RE-MEASURED 2026-09-07: **still true, the count held, and both gate citations drifted.** `lib/` and `prog/` comments carry **75** line-numbered citations across **35** files, the same figure taken 2026-09-06 and up from the 59 across 34 this row opened with. `check_g` moved from `:379` to `:407` and `check_r` from `:443` to `:471`, +28 lines each under the `Owed` class `d5b8fad` inserted at `:106`; `git diff d5b8fad^ HEAD` touches neither function body. Both still iterate `doc_tier()` at `:174`, which walks `docs/**/*.md` and nothing else, and both still require the citation inside a backtick code span, so not one of the 75 is read by any gate. AK, the one check added since this row was last measured, reads `records/author-calls.md` and widens the corpus by nothing.
+- evidence: re-runnable: `grep -rhoE '[a-z0-9_/-]+\.(chiral|prog):[0-9]+' --include='*.chiral' --include='*.prog' lib/ prog/ | wc -l` returns 75, and the same with `-rl` returns 35. `tools/ledger-lint/ledger-lint.py:407` (check G), `:471` (check R), `:174` (`doc_tier`, the docs-only walk both use); commits `d5b8fad`, `e3ecd85`
+- checked:  2026-09-07
 - owner:    none
 - from:     BA-19
 
@@ -148,9 +148,9 @@
 - level:    source
 - about:    tools/ledger-lint/ledger-lint.py
 - claim:    the migration is complete and the map records where each original went.
-- measured: **RE-MEASURED 2026-09-06 with a command.** `ledger-lint --census` reports **4,653 line-numbered spans and 3,061 resolving to a file on disk**, so **1,592 do not resolve**. This row read 862 spans and 294 unresolvable. The ratio moved from about a third to about a third, and both absolute figures grew with the corpus. The class is unchanged: pre-migration paths (`scaffold/lib/...`, `chirality/...`) and basenames whose file was deleted, which G and R skip by design so the gate stays silent on them.
-- evidence: re-runnable: `python3 tools/ledger-lint/ledger-lint.py --census`. `tools/ledger-lint/ledger-lint.py:369` (`_find_src`), `.planning/MIGRATION-MAP.tsv`
-- checked:  2026-09-06
+- measured: **RE-MEASURED 2026-09-07: the figure that matters held and the corpus gained two.** `ledger-lint --census` reports **4,655 line-numbered spans and 3,063 resolving to a file on disk**, so **1,592 do not resolve**, the same 1,592 measured 2026-09-06 against 4,653 and 3,061. Neither commit touched the instrument: the tool at `d5b8fad^` prints the identical census over this tree, and `git diff d5b8fad^ HEAD` leaves `_find_src` and `check_g` alone. `_find_src` drifted from `:369` to `:397`, +28 lines under the new `Owed` class at `:106`. The class is unchanged: pre-migration paths (`scaffold/lib/...`, `chirality/...`) and basenames whose file was deleted, which G and R skip by design so the gate stays silent on them. ⚑ `docs/goals/presentability.md:96-97` still states the 294 and LIM-06's 161 as live figures, in a document this row may not edit. Reported and left standing.
+- evidence: re-runnable: `python3 tools/ledger-lint/ledger-lint.py --census` prints 4655 spans and 3063 resolving. The same run against `git show d5b8fad^:tools/ledger-lint/ledger-lint.py` prints the identical figures. `tools/ledger-lint/ledger-lint.py:397` (`_find_src`), `.planning/MIGRATION-MAP.tsv`, `docs/goals/presentability.md:96-97`; commits `d5b8fad`, `e3ecd85`
+- checked:  2026-09-07
 - owner:    none
 - from:     BA-20
 
