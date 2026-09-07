@@ -239,9 +239,14 @@ cmd_check() {
     if [ ! -f "$(_text "$id")" ]; then
       echo "  UNPINNED  $id is cited and not pinned"; bad=$((bad+1)); continue
     fi
+    n_at="$(grep -cF -- "$span" "$(_text "$id")" 2>/dev/null)"
     at="$(grep -nF -- "$span" "$(_text "$id")" 2>/dev/null | head -1 | cut -d: -f1)"
     if [ -z "$at" ]; then
       echo "  NOT FOUND $id:$ln \"$span\""; bad=$((bad+1))
+    elif [ "${n_at:-0}" -gt 1 ]; then
+      # A span occurring more than once resolves to whichever came first, which
+      # is a citation that points somewhere by accident. Quote a unique span.
+      echo "  AMBIGUOUS $id:$ln appears $n_at times -- \"$span\""; bad=$((bad+1))
     elif [ "$at" != "$ln" ]; then
       echo "  MOVED     $id:$ln is at :$at now -- \"$span\""; drift=$((drift+1))
     else

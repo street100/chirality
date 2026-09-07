@@ -14,52 +14,47 @@ updated: 2026-09-07
 
 ## 1. Source
 
-⚑ **This artifact is partial and says so.** Three of four gather slots are
-`UNRUN`, and the one pin it rests on is `transcribed` rather than `raw`.
-
 | slot | source | state |
 |---|---|---|
-| construction | `RFC8439`, **transcribed** | run |
-| properties | `RFC9771`, Properties of AEAD Algorithms | **UNRUN** |
-| limits | draft-irtf-cfrg-aead-limits-07 | **UNRUN** |
-| known-gaps | key commitment, partitioning oracles | **UNRUN** |
+| construction | `RFC8439`, raw, 2,579 lines | run |
+| properties | `RFC9771`, raw, 1,344 lines | run |
+| limits | `AEADLIMITS`, draft-irtf-cfrg-aead-limits-07, raw, 1,120 lines | run |
+| known-gaps | the partitioning-oracle literature | **UNRUN** |
 
-`RFC8439` was transcribed from the verbatim spans of a fetch on 2026-09-07,
-because raw egress is unavailable here. A binding obligation absent from the
-transcription may still be in the RFC, so §9's count is a floor.
+Binding obligations by source: 10 in `RFC8439`, 5 in `RFC9771`, 1 in
+`AEADLIMITS` which is the RFC 2119 boilerplate rather than a duty.
 
-**The properties slot is the one that matters most.** A session working this
-object from memory produced two of the property set. The published enumeration
-is the deliverable of §2 and remains unpinned, so §2 below covers the
-construction alone.
+⚑ **The known-gaps slot decides §8 and stands UNRUN.** §2 records that key
+commitment exists as a property and says nothing about whether this
+construction has it.
 
 ## 2. Object
 
 An AEAD is a keyed family with a partial inverse. `Seal : K × N × A × P → C`
-and `Open : K × N × A × C → P ∪ {⊥}`, with `⊥` naming exactly the complement of
-Seal's image under that key. The correctness law is
+and `Open : K × N × A × C → P ∪ {⊥}`, with `⊥` naming the complement of Seal's
+image under that key. The correctness law is
 `Open(k, n, a, Seal(k, n, a, p)) = p`.
 
-The construction, from the pin:
+The construction, from the pin. The one-time MAC key comes from a zeroth block,
+RFC8439:994 "The block counter is set to zero.", and the stream starts one
+block later, RFC8439:1250 "ciphertext = chacha20_encrypt(key, 1, nonce, plaintext)".
+The MAC covers associated data and ciphertext, each padded, under the rule
+RFC8439:1137 "padding1 -- the padding is up to 15 zero bytes, and it brings"
+the total to a multiple of 16, and padding2 carries the same rule. The output is RFC8439:825 "The output is a 128-bit tag."
 
-| | |
-|---|---|
-| the one-time MAC key | RFC8439:7 "The block counter is set to zero." |
-| encryption offset | RFC8439:14 "The ChaCha20 encryption is done with a block counter starting at 1." |
-| the MAC input | RFC8439:15 "mac_data = aad | pad16(aad) | ciphertext | pad16(ciphertext)" |
-| the padding rule | RFC8439:18 "the padding is up to 15 zero bytes, and it brings the total length so far to an integral multiple of 16." |
-| the sizes | RFC8439:19 "The key is 32 bytes, the nonce is 12 bytes, and the tag is 16 bytes." |
+**The precondition the object rests on**, ranked first by the RFC itself:
+RFC8439:1423 "document is the uniqueness of the nonce used in ChaCha20." Its
+consequence is stated rather than left to the reader, RFC8439:1430
+"Consequences of repeating a nonce: If a nonce is repeated, then both" the
+one-time key and the keystream repeat.
 
-**The precondition the whole object rests on**, ranked first by the RFC itself:
-RFC8439:22 "The most important security consideration in implementing this
-document is the uniqueness of the nonce used in ChaCha20."
-
-Its consequence is stated rather than left to the reader: RFC8439:23 "If a nonce
-is repeated, then both the one-time Poly1305 key and the keystream are identical
-between the messages."
-
-⚑ The formal notions this construction is proved against, and the twenty-plus
-further properties an AEAD may or may not have, wait on the `properties` slot.
+**The property set.** RFC 9771 defines **21** properties an AEAD may carry: 3
+conventional, 10 security, 8 implementation. Counted from the section headings
+in the pinned body. Two bear directly on the carriers below.
+Nonce misuse, RFC9771:549 "even if an adversary can repeat nonces in its encryption queries.",
+and streaming, RFC9771:790 "implemented with constant memory usage and a single one-direction".
+A third bounds what any translation can claim: key commitment, RFC9771:395
+"AEAD scheme guarantees that a ciphertext is a commitment to the" key.
 
 ## 3. Conventional
 
@@ -68,10 +63,10 @@ cannot carry, so each is a bug class.
 
 | obligation | in a C signature |
 |---|---|
-| nonce uniqueness, RFC8439:22 | a pointer the caller promises is fresh |
-| RFC8439:24 "The Poly1305 key MUST be unpredictable to an attacker." | a buffer anyone can fill |
-| RFC8439:26 "Tag truncation MUST NOT be done" | a length parameter |
-| RFC8439:25 "implementation MUST use a constant-time comparison function rather than relying on optimized but insecure library functions such as the C language's memcmp()." | a call site nothing checks |
+| nonce uniqueness, RFC8439:1423 | a pointer the caller promises is fresh |
+| RFC8439:1435 "The Poly1305 key MUST be unpredictable to an attacker." | a buffer anyone can fill |
+| tag truncation, RFC8439:1484 "MUST NOT be done." | a length parameter |
+| RFC8439:1478 "implementation MUST use a constant-time comparison function rather" than memcmp | a call site nothing checks |
 
 ## 4. Carriers
 
@@ -80,22 +75,19 @@ Precedent counts from `tools/xlat/xlat.sh carriers`, comments excluded.
 | obligation | carrier | precedent |
 |---|---|---|
 | nonce uniqueness | a linear `Nonce` yielded by a linear source, consumed by `seal` | linear binder, 142 uses. `lib/ports/pool.port:27` |
-| Poly1305 key unpredictable | one constructor at counter 0, with no path from arbitrary bytes | closed sum, 6 uses |
+| the one-time MAC key is unpredictable | one constructor at the zeroth block, no path from arbitrary bytes | closed sum, 6 uses |
 | no tag truncation | `Tag` as a fixed 16-byte type carrying no truncating operation | refinement, 8 uses. `lib/ports/sock.port:69` |
 | unverified plaintext never released | `OpenR` closed sum, case coverage checked | `lib/protocol/grid.chiral` `apply-one`, no default arm |
-| the kernel reads no clock and no RNG | `(cat A)` and the empty effect row by derivation | 15 modules |
+| the kernel reads no clock and no RNG | `(cat A)`, empty effect row by derivation | 15 modules |
 
-⚑ **One carrier is blocked.** Carrying the domain separator as an erased index
-on the sealed value walks into a measured lowering gap:
+⚑ **One carrier is blocked.** Carrying a domain separator as an erased index on
+the sealed value walks into a measured lowering gap:
 `lib/lowering/upper/specialize-singleton.chiral:99-118` matches a projector as
 exactly one `t-lam`, so an indexed function-bearing record does not lower.
 `Sealed` carries no function fields, which puts it in the class that does lower
-(`lib/memory/mem-region.chiral:31`), and that needs measuring rather than
-assuming.
+(`lib/memory/mem-region.chiral:31`), and that needs measuring.
 
 ## 5. Refusals
-
-Derived from §4. Each stops being constructible.
 
 | | |
 |---|---|
@@ -104,15 +96,14 @@ Derived from §4. Each stops being constructible.
 | opening against the wrong nonce | the nonce rides inside `Sealed` |
 | supplying the one-time MAC key directly | it has one constructor |
 | truncating the tag | no operation produces a shorter one |
-| reading a clock or an RNG inside the kernel | the effect row is empty by derivation |
+| reading a clock or an RNG in the kernel | the effect row is empty by derivation |
 
 ## 6. Invariant core
 
-The arithmetic does not move. Counter 0 for the MAC key, counter 1 for the
+The arithmetic does not move. The zeroth block for the MAC key, block 1 for the
 stream, the same MAC input in the same order, the same padding to a multiple of
-16, the same 64-bit little-endian lengths, the same 32, 12 and 16 byte sizes.
-**RFC 8439's published vectors apply unmodified**, which is what makes this a
-translation.
+16, the same little-endian lengths, the same 128-bit tag. **RFC 8439's
+published vectors apply unmodified**, which is what makes this a translation.
 
 ## 7. Laws and pins
 
@@ -122,27 +113,29 @@ translation.
 | a law | a tampered ciphertext or a tampered `aad` yields `op-bad` |
 | a pin | the published vectors, which fix the arbitrary constants. Constants carry no structure, so a vector is the only instrument that reaches them |
 
-The vector rows for this object already run: `tools/test/crypto.sh` at suite
-phase 31, registered at `tools/test/run-tests.sh:367`.
+The vector rows already run: `tools/test/crypto.sh` at suite phase 31,
+registered at `tools/test/run-tests.sh:367`.
 
 ## 8. Push
 
-Generated by crossing the properties this object lacks against the carriers
-available. **Partial, because the `properties` slot is `UNRUN`** and the
-property list is the left half of that cross.
+Generated by crossing the properties the object lacks against the carriers
+available. **The left half is incomplete while `known-gaps` is UNRUN.**
 
-What is visible from the construction alone: the object offers no protection
-against nonce reuse, and RFC8439:23 states the consequence. Linearity does not
-add a property to the object. It removes the ability to violate the
-precondition, which reaches the same safety by a route the standard cannot
-express.
+RFC9771:549 "even if an adversary can repeat nonces in its encryption queries."
+names the property class this construction sits outside, and RFC8439:1430
+states the consequence of reuse plainly. Linearity
+adds no property to the object. It removes the ability to violate the
+precondition, which reaches the same safety by a route the standard has no way
+to express.
+
+RFC9771:395 "AEAD scheme guarantees that a ciphertext is a commitment to the"
+key names key commitment. **No carrier here reaches it**, and whether this construction has it is the ungathered
+question. It is a property of the object rather than of the rendering.
 
 ## 9. Limits
 
-One binding obligation reaches no carrier: RFC8439:25 requires a constant-time
-comparison, and chirality has no timing model. The form argument holds, folding
-over all sixteen bytes before one comparison, and the typed claim does not.
-`native-protocol/N5` is the row that owns this.
-
-⚑ **This count is a floor.** It covers the binding obligations present in a
-transcription, over one of four gather slots.
+One binding obligation reaches no carrier. RFC8439:1478 "implementation MUST
+use a constant-time comparison function rather" than an optimized library
+function, and chirality has no timing model. The form argument holds, folding
+over all sixteen bytes before one comparison. The typed claim does not.
+`native-protocol/N5` owns this row.

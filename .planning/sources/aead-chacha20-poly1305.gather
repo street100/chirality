@@ -1,5 +1,4 @@
-# object: aead-chacha20-poly1305   slot<TAB>source<TAB>state<TAB>note
-construction	RFC8439	run	the algorithm itself
-properties	RFC9771	UNRUN	Properties of AEAD Algorithms, 23 properties
-limits	AEADLIMITS	UNRUN	draft-irtf-cfrg-aead-limits-07
-known-gaps	-	UNRUN	key commitment, partitioning oracles
+construction	RFC8439	run	RFC 8439, raw
+properties	RFC9771	run	Properties of AEAD Algorithms, 21 properties, raw
+limits	AEADLIMITS	run	draft-irtf-cfrg-aead-limits-07, raw
+known-gaps	-	UNRUN	partitioning oracles, key commitment of this construction
