@@ -6,13 +6,21 @@ are maintained by discipline, not substrate, so they rot silently (the exact
 failure chirality exists to eliminate, one level up). This is the mechanizable core
 of the fix: cross-check the claims that rotted against the tree.
 
-Checks (each independent; any failure -> exit 1):
+Checks (each independent; a check that finds a defect -> exit 1):
   A. Ledger evidence paths exist.   Every file-looking `code span` in
      docs/status-ledger.md resolves under repo root or scaffold/.
   B. No stale principle numbers.    A docs/ note whose frontmatter `updated:`
      is after the 2026-07-20 condensation must not cite P6/P7 (old-scheme only).
   C. CONTENTS counts match tree.    CONTENTS's "(N notes)" for decisions and its
      "three sequencing questions" match docs/decision-*.md and open-edges.
+
+Exit codes. The last line is a summary over three categories, and the code
+carries the same three:
+
+  0  clean. Nothing owed, nothing failing.
+  1  violations. A check found a defect.
+  2  nothing failing, but something is owed, or the run could not start
+     (preflight already used 2 for that: not clean, not a violation).
 
 Run from anywhere; resolves paths relative to the repo root (this file's ../).
 Fails loud, prints every violation. No deps beyond the stdlib.
@@ -93,6 +101,26 @@ class Vacuous(Exception):
     because an empty loop reporting `ok` is a gate that passes forever. The
     runner prints these under their own heading, the same way the test suite
     prints its unported phases."""
+
+
+class Owed(Exception):
+    """A check whose subject is STATE THE TREE OWES rather than a defect it
+    carries. Raised instead of returning findings, because an item nobody has
+    got to yet is a standing entry in a register and calling it a violation
+    makes the tool cry wolf over the ones that are.
+
+    `noun` is the register's own singular ("author call"), which the summary
+    counts and pluralises, so a second owed check names its own kind rather
+    than borrowing this one's. `items` is the register, one line per standing
+    row, written as an entry rather than an accusation.
+
+    The runner collects these apart from the violations, the same way it
+    collects Vacuous, and they take exit 2: see the header."""
+
+    def __init__(self, noun: str, items):
+        self.noun = noun
+        self.items = list(items)
+        super().__init__(f"{len(self.items)} {noun}(s) owed")
 
 
 def check_a() -> list[str]:
@@ -2187,10 +2215,16 @@ def check_ak() -> list[str]:
     them by routing the work to a roster row, which says where work will happen
     and leaves the fork standing.
 
-    This check FAILS while any row reads `unreviewed`, and that is the point: a
-    tree with undecided forks is not clean, and the gate has to say so. It goes
-    green by putting a fork to the author and recording the ruling, never by
-    routing the work somewhere."""
+    A row reading `unreviewed` is OWED rather than failing. The fork is state
+    the author has not settled, and only the author can settle it, so a worker
+    reading this as a defect has nothing to do about it. The tree still does not
+    report clean while one stands: Owed takes exit 2, which keeps a standing
+    fork distinguishable from a breakage instead of burying both under exit 1.
+    The register empties by putting a fork to the author and recording the
+    ruling, never by routing the work somewhere.
+
+    The one thing here that IS a defect stays a violation: a register whose rows
+    do not parse is a gate aimed at nothing."""
     f = ROOT / "records" / "author-calls.md"
     if not f.exists():
         raise Vacuous("records/author-calls.md is absent, so no call can be read")
@@ -2201,15 +2235,16 @@ def check_ak() -> list[str]:
                 f"`The state of a row` section states, so this check reads "
                 f"nothing. A gate aimed at nothing cannot fail: the format is "
                 f"the defect"]
-    errs = []
+    standing = []
     for state, name in rows:
         if state != "unreviewed":
             continue
         name = re.sub(r"[`\[\]]", "", name).strip()
-        errs.append(f"[AK] {rel} “{name}” is `unreviewed`. The author "
-                    f"has not decided this fork, and a pass that reaches it "
-                    f"stops")
-    return errs
+        standing.append(f"[AK] {rel} “{name}” stands `unreviewed`, "
+                        f"awaiting the author's ruling")
+    if standing:
+        raise Owed("author call", standing)
+    return []
 
 
 def check_aa() -> list[str]:
@@ -2396,17 +2431,17 @@ def _finding_parts(e: str):
     return chk, (sm.group(1) if sm else "?"), body
 
 
-def guide_next(all_errs, vacuous, scanned_tier=None):
+def guide_next(all_errs, vacuous, scanned_tier=None, owed=()):
     groups: dict[tuple, list] = {}
     for e in all_errs:
         chk, subj, body = _finding_parts(e)
         groups.setdefault((chk, subj), []).append(body)
     if not groups:
-        print("\nledger-lint --next: nothing to select. Every check is clean or "
-              "named VACUOUS.")
+        print("\nledger-lint --next: nothing to select. Every check is clean, "
+              "named VACUOUS, or standing as owed.")
         for name, why in vacuous:
             print(f"  VACUOUS {name}: {why}")
-        return 0
+        return _next_owed(owed)
 
     def rank(k):
         chk, subj = k
@@ -2451,6 +2486,26 @@ def guide_next(all_errs, vacuous, scanned_tier=None):
     print("  " + ", ".join(f"{c} {n}" for c, n in sorted(by_check.items())))
     print()
     return 1
+
+
+def _next_owed(owed) -> int:
+    """What --next says when the only thing left is owed.
+
+    An owed item is not a task --next can hand a worker: only the author settles
+    a fork, so routing to one would be handing back work nobody in the loop can
+    do. It is still not clean, so this is exit 2 rather than 0, and the register
+    is named with the authority that says how a row leaves it."""
+    if not owed:
+        return 0
+    for name, noun, items in owed:
+        code = name.split()[0]
+        authority = GUIDE.get(code, _DEFAULT)[1]
+        print(f"\n  {_plural(len(items), noun)} owed, and only the author can "
+              f"settle one. This is not a task a worker can take.")
+        print(f"  THE PROTOCOL\n    {authority}")
+        print(f"  SEE\n    python3 tools/ledger-lint/ledger-lint.py --only {code}")
+    print()
+    return 2
 
 
 def _wrap(text, width):
@@ -2508,19 +2563,57 @@ def census() -> None:
     print(f"  spans resolving to a file on disk:    {resolved}")
 
 
+def _owed_counts(owed):
+    """Total per register noun, in the order the checks raised them."""
+    counts: dict[str, int] = {}
+    for _name, noun, items in owed:
+        counts[noun] = counts.get(noun, 0) + len(items)
+    return counts
+
+
+def _plural(n: int, noun: str) -> str:
+    return f"{n} {noun}" + ("" if n == 1 else "s")
+
+
+def _verdict(all_errs, owed, vacuous) -> str:
+    """The tool's last word, as an overview over the three categories.
+
+    A binary verdict had one bucket for everything that was not clean, so an
+    author call awaiting a ruling read as a violation. Each category states its
+    own count and a category at zero is not printed, which keeps the line short
+    on a tree carrying one thing and honest on a tree carrying three.
+    `ledger-lint: clean` is what all three at zero says."""
+    parts = []
+    if all_errs:
+        parts.append(_plural(len(all_errs), "violation") + " found")
+    for noun, n in _owed_counts(owed).items():
+        parts.append(_plural(n, noun) + " owed")
+    if vacuous:
+        parts.append(_plural(len(vacuous), "check") + " that checked nothing")
+    if not parts:
+        return "ledger-lint: clean"
+    return "ledger-lint: " + ", ".join(parts)
+
+
 def _run(checks, quiet=False):
     errs: list[str] = []
     vac: list[tuple] = []
+    owed: list[tuple] = []
     for name, fn in checks:
         try:
             e = fn()
         except Vacuous as v:
             vac.append((name, str(v)))
             continue
+        except Owed as o:
+            owed.append((name, o.noun, o.items))
+            if not quiet:
+                print(f"  [OWED] {name} ({len(o.items)} standing)")
+            continue
         errs += e
         if not quiet:
             print(f"  [{'FAIL' if e else 'ok'}] {name} ({len(e)} issue(s))")
-    return errs, vac
+    return errs, vac, owed
 
 
 def main() -> int:
@@ -2542,20 +2635,23 @@ def main() -> int:
     # that, and the tier below cannot outrank what tier 1 already found.
     order = CHECKS
     if nxt:
+        owed_seen: list[tuple] = []
         for tier in (1, 2, 3, 4):
             sel = [c for c in CHECKS
                    if GUIDE.get(c[0].split()[0], _DEFAULT)[0] == tier]
             if not sel:
                 continue
-            errs, vac = _run(sel, quiet=True)
+            errs, vac, owed = _run(sel, quiet=True)
+            owed_seen += owed
             if errs:
                 return guide_next(errs, vac, tier)
         print("\nledger-lint --next: nothing to select. Every check that can "
               "name a next task is clean.")
-        return 0
+        return _next_owed(owed_seen)
 
     all_errs: list[str] = []
     vacuous: list[tuple] = []
+    owed: list[tuple] = []
     for name, fn in order:
         code = name.split()[0]
         if only and code not in only:
@@ -2567,23 +2663,39 @@ def main() -> int:
             if not nxt:
                 print(f"  [VACUOUS] {name} -- subject gone, checked nothing")
             continue
+        except Owed as o:
+            owed.append((name, o.noun, o.items))
+            if not nxt:
+                print(f"  [OWED] {name} ({len(o.items)} standing)")
+            continue
         all_errs += errs
         status = "FAIL" if errs else "ok"
         if not nxt:
             print(f"  [{status}] {name} ({len(errs)} issue(s))")
     if nxt:
-        return guide_next(all_errs, vacuous)
+        return guide_next(all_errs, vacuous, owed=owed)
     if vacuous:
         print("\nchecked nothing, and named rather than counted as clean:\n")
         for name, why in vacuous:
             print(f"  {name}\n    {why}")
+    if owed:
+        print("\nowed, and named rather than counted as failing:\n")
+        for _name, _noun, items in owed:
+            for it in items:
+                print(f"  {it}")
     if all_errs:
-        print("\nledger-lint: violations found\n")
+        print("\nviolations:\n")
         for e in all_errs:
             print(f"  {e}")
+    print("\n" + _verdict(all_errs, owed, vacuous))
+    # Three codes, because two cannot tell a breakage from a standing fork. If
+    # owed returned 1 forever the code would stop discriminating, and
+    # docs/definitions/working-discipline.md names a gate that cannot fail as
+    # the defect to avoid. The author's requirement that a tree with undecided
+    # forks does not report clean is what keeps it off 0.
+    if all_errs:
         return 1
-    print("\nledger-lint: clean")
-    return 0
+    return 2 if owed else 0
 
 
 if __name__ == "__main__":
