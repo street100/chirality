@@ -2,7 +2,7 @@
 node: overview
 layer: generated
 tier: orientation
-updated: 2026-09-06
+updated: 2026-09-07
 ---
 
 # Overview: goal to element, with what each level carries
@@ -248,7 +248,7 @@ updated: 2026-09-06
 
 ## The lenses
 
-- **problem** (PRB-): 71 row(s), 71 unreviewed. FIXED 9, OPEN 62
+- **problem** (PRB-): 71 row(s), 71 unreviewed. FIXED 12, OPEN 59
 - **gap** (GAP-): 18 row(s), 12 unreviewed. closed 6, open 12
 - **limit** (LIM-): 18 row(s), 18 unreviewed. accepted 18
 - **unspoken** (UNS-): 49 row(s), 49 unreviewed. open 49
