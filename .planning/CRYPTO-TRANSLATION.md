@@ -18,6 +18,7 @@ Author rulings, 2026-09-07.
 | **the guarantee is invariant across hardware** | §3. A weak device pays in time and footprint and reaches the same security level |
 | **a weaker device never settles for a lower guarantee** | §4. A target below the floor gets a refusal |
 | we give best representations | §2, §10. Optimization lives in the representation and leaves the object alone |
+| **the dynamism serves the highest security reachable, and what it adjusts is performance** | §3, §11. The output holds and the level holds at every target. A weak target pays in time |
 
 ---
 
@@ -110,7 +111,10 @@ A 50-byte permutation state is 0.6% of one small SLH-DSA signature. **The real
 per-byte cost of the security level is the mark's own length**, paid on every
 address, every reference and every holdings summary, permanently.
 
-`T9` carries the mark-length decision. Nothing in this file picks it.
+**`T9` is ruled: the 64-byte mark.** The maximize-security ruling takes the
+second row, and 256-bit collision resistance is a ceiling rather than a point,
+because NIST defines no category above it. The state floor of 100 bytes follows
+and is affordable at every target this project reaches.
 
 **What optimizes, ranked.**
 
@@ -130,8 +134,11 @@ other terms.
 | Xoodoo, Xoodyak's hash mode at rate 16 B and capacity 32 B | 48 B | 12 |
 | Keccak-f[400] | 50 B | 20 |
 
-`.planning/CRYPTO-MODEL.md` `C2` stands open. Ascon-p is out only at a 512-bit
-mark, where a 512-bit capacity exceeds its 320-bit state.
+⚑ **Ascon-p is out on the ruling and not on the mathematics.** At a 256-bit mark
+it is conformant at 40 bytes and it is the smallest of the three. The 64-byte
+mark demands a 512-bit capacity, which exceeds its 320-bit state. A ruling is
+revisitable and a mathematical elimination is permanent, so
+`.planning/CRYPTO-MODEL.md` `C2` closes against `T9` and reopens if `T9` moves.
 
 ## §4 · What a target below the floor gets
 
@@ -236,7 +243,7 @@ ones aimed at a structure the code does not carry.
 | §10 eliminations | holds |
 | §11 our own take | holds as the cascade. §1 here bounds what may be configured |
 | §12 what is in the tree | holds |
-| §13 decisions owed | `C8` is answered by the invariance ruling. `C2` stands open and §3 here gives it three conformant candidates |
+| §13 decisions owed | `C8` is answered by the invariance ruling and `C2` by `T9`. **`C3`'s option set is incomplete**, and §11 here adds the stateful schemes it omits |
 
 ## §10 · What specifying best representations needs
 
@@ -251,7 +258,86 @@ Six things, and none of them exists today.
 | 5 | **the invariance as a derived fact.** The security level stated once on the object, and no representation permitted to state one | an invariant restated in N places is an invariant that drifts |
 | 6 | **the refusal path.** A target below the floor, named and refused | §4 is the principle and this is its mechanism |
 
-## §11 · Decisions owed by this frame
+## §11 · The post-quantum stack, staged
+
+The invariance ruling transfers to the sponge for free and stops at the
+asymmetric layer.
+
+| layer | what flexes with the target | what the security level costs |
+|---|---|---|
+| sponge, symmetric | **time.** A small state does more permutation calls per byte | nothing on the wire. The digest is one size at every configuration |
+| PQ signature | nothing, by itself | **wire bytes.** The signature is the output and the level sets its size |
+
+A weak device raising its permutation count changes no byte of what it emits. A
+signature at a higher level enlarges what every party transmits and stores, so
+the asymmetric layer needs its own mechanism for the same principle.
+
+### The signature staircase
+
+**The whole signature side is stages over the permutation and introduces no new
+mathematics.**
+
+| stage | what | new mathematics |
+|---|---|---|
+| A | the permutation | the one object |
+| B | the sponge modes: hash, XOF, MAC, KDF | none |
+| C | the one-time signature, WOTS+ hash chains | none |
+| D | the Merkle tree | none |
+| E | the hypertree, or the key state | none |
+| F | the signature scheme | none |
+
+`.planning/CRYPTO-MODEL.md` §10 reaches the same finding for SLH-DSA and states
+it as a cost. Staged, each step is small, separately testable, and ordered.
+
+**The KEM is where new mathematics enters**: polynomial arithmetic over
+`Z_q[X]/(X^n + 1)`, the NTT and its inverse, rejection sampling, and
+compression. It is a separate stack and it sequences behind the staircase.
+
+### The stateful fork
+
+`.planning/CRYPTO-MODEL.md` `C3` offers ML-DSA against SLH-DSA with FALCON
+eliminated. **That option set omits the stateful schemes.** NIST SP 800-208
+approves XMSS, LMS, and the multi-tree HSS and XMSS^MT, and they are materially
+smaller: LMS and HSS stay below 8 KB where SPHINCS+ parameter sets exceed 10 KB
+and reach about 23 KB at the 128-bit level. LMS signatures run 8 bytes larger
+than XMSS at comparable parameters, and HSS adds 2 to 5 percent by tree count.
+
+They are held out of general use for one reason. SP 800-208 requires persistent,
+crash-consistent counters, records that key reuse from a counter reset is
+catastrophic and unrecoverable, requires key generation and signing inside
+hardware modules that cannot export key material, and approves them only for
+firmware and software signing at low signing volume.
+
+**The objection is a one-time-use property and §5 already carries one-time use
+in the type system.** A signing key consumed by use has no spelling for reuse,
+on the same carrier as the Poly1305 key.
+
+⚑ **Linearity reaches one of the two failure classes.** In-program reuse is
+removed. A crash between signing and persisting the counter, a restore from a
+backup, and two processes opening one key file are durability failures, and they
+stay open. `docs/decisions/decision-quorum-store.md` and the linear `Region`
+discipline are where that half is worked.
+
+### The size dial
+
+The Winternitz parameter trades signature size against hashing at a constant
+security level: a larger `w` shortens the signature and lengthens the chains.
+This is the invariance ruling applied inside a signature, and it moves in the
+direction the ruling wants.
+
+### Sizes, for scale
+
+| object | size |
+|---|---|
+| a mark at the 256-bit collision target | 64 B |
+| a permutation state at that target | 100 to 200 B |
+| ML-KEM-768 encapsulation key, ciphertext | 1,184 B, 1,088 B |
+| ML-KEM-1024 encapsulation key, ciphertext | 1,568 B, 1,568 B |
+| LMS and HSS signatures | below 8 KB |
+| SLH-DSA-128s signature | 7,856 B |
+| SLH-DSA-256f signature | ~49,856 B |
+
+## §12 · Decisions owed by this frame
 
 | id | decision |
 |---|---|
@@ -262,10 +348,13 @@ Six things, and none of them exists today.
 | T5 | whether the object and its representations are distinct types with an explicit map, or one type with the representation erased |
 | T6 | where the laws live: a `.manifest` of properties, a gate script, or types that carry them |
 | T7 | the smallest-member testing tier: whether Keccak-f[25] and its siblings are built as real modules or as test-only instances |
-| T9 | **the mark's length, 32 bytes or 64 bytes.** It sets the security level, the state floor follows from it, and it is a permanent per-address cost across the naming layer |
+| ~~T9~~ | **RULED 2026-09-07: the 64-byte mark.** 256-bit collision resistance, `c = 512`, Keccak-f[800] as the floor at 100 bytes. §3 carries the derivation and what it costs on every address |
 | T8 | whether a representation may be selected at runtime, or is fixed per moduleset. `.planning/CRYPTO-MODEL.md` §8 promises verification of any mark, and a moduleset-fixed representation narrows that to configurations the binary was built with |
+| T10 | **stateful against stateless hash-based signature**, re-opened by §11. `C3`'s option set omits XMSS, LMS and HSS, and linearity reaches the in-program half of their objection |
+| T11 | the Winternitz parameter, and whether it is fixed or a declared trade |
+| T12 | build order between the signature staircase, which needs no new mathematics, and the KEM stack, which is where new mathematics enters |
 
-## §12 · Notes to cover
+## §13 · Notes to cover
 
 - `k`, the ops per lane per round, carried from `.planning/CRYPTO-MODEL.md` §14
   and still estimated. Every ops-per-byte figure in §3 rests on it
@@ -285,3 +374,8 @@ Six things, and none of them exists today.
   and a representation sits below that layer
 - what a law looks like as a tested artifact in this tree, against
   `tools/test/`'s current shape
+- the durability half of the stateful-signature objection: a crash between
+  signing and persisting a counter, a restore from a backup, and two processes
+  opening one key file
+- whether Ascon-p's exclusion is recorded as a ruling. At a 256-bit mark it is
+  conformant at 40 bytes, and the maximize-security ruling is what removes it
