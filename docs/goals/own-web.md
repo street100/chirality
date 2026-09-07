@@ -44,9 +44,10 @@ nothing.
    and no authority. **Unopened, and it holds no arc file.** The design is
    `.planning/REACH-MODEL.md`.
 4. **The primitives.** Every layer's crypto is chirality's own, post-quantum,
-   with the configuration derived from the target. **Unopened, and it holds no
-   arc file.** The design is `.planning/CRYPTO-MODEL.md`, and
-   [[arcs/native-protocol-arc]] holds the rows it re-scopes.
+   with the configuration derived from the target. [[arcs/crypto-primitives-arc]],
+   opened 2026-09-07 with 17 rows. The design is `.planning/CRYPTO-MODEL.md`
+   and `.planning/CRYPTO-TRANSLATION.md`. [[arcs/native-protocol-arc]] holds the
+   wire rows, and whether its `N10` closes into the new arc is an author call.
 5. **The desktop.** A canvas is a layer of the environment rather than a window
    beside it. **Unopened, and it holds no arc file.** It is behind
    [[arcs/native-window-arc]] and the two blockers in the state section below.
