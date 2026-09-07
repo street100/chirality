@@ -18,6 +18,7 @@
 #   xlat gather OBJECT               an object's gather manifest and its state
 #   xlat bundle OBJECT               everything a translate run reads
 #   xlat check ARTIFACT              resolve every pinned-source citation
+#   xlat new OBJECT                  scaffold the nine-section artifact
 #
 # citation form, matching the tree's file:line idiom:
 #   ID:LINE "the quoted span"
@@ -261,6 +262,77 @@ cmd_check() {
   return 1
 }
 
+
+# ── new ──────────────────────────────────────────────────────────────────────
+# Scaffolds the nine sections `check` looks for. Writing the artifact by hand
+# risks a heading `check` cannot see, which would read as an absent stage.
+cmd_new() {
+  local obj="${1:-}"; [ -n "$obj" ] || die "usage: xlat new OBJECT"
+  local out="$ROOT/docs/translations/$obj.md"
+  [ -e "$out" ] && die "$out exists. Edit it, or use revisit against a trigger"
+  [ -f "$SRC/$obj.gather" ] || die "no manifest at .planning/sources/$obj.gather. The gather comes first"
+  mkdir -p "$ROOT/docs/translations"
+  cat > "$out" <<EOF
+---
+node: translation-$obj
+layer: reference
+related: [translations/README, definitions/working-discipline, index]
+status: draft
+updated: $(date -u +%Y-%m-%d)
+---
+
+# Translation: $obj
+
+> One published object rendered into this tree's forms. The mathematics is
+> external and stays external. Every quote below carries a pinned citation in
+> the form \`ID:LINE "span"\`, resolvable by \`tools/xlat/xlat.sh check\`.
+
+## 1. Source
+
+<!-- the gather manifest, and every UNRUN slot named as a hole -->
+
+## 2. Object
+
+<!-- the mathematics in its own terms: signature, laws, security notions,
+     preconditions. Quoted from pins, never from memory. -->
+
+## 3. Conventional
+
+<!-- the reference shape, and one bug class per baked-in assumption.
+     Generate this column from the binding obligations, not from a reading. -->
+
+## 4. Carriers
+
+<!-- each precondition mapped to a chirality form, with a lib/ precedent.
+     tools/xlat/xlat.sh carriers seeds this and names the lowering gaps. -->
+
+## 5. Refusals
+
+<!-- what stops being constructible, derived from section 4 -->
+
+## 6. Invariant core
+
+<!-- what stays byte-identical, which is what keeps the published vectors
+     valid. An empty section here means this is a redesign. -->
+
+## 7. Laws and pins
+
+<!-- the properties to test, and which vectors pin which arbitrary constants -->
+
+## 8. Push
+
+<!-- where the type system reaches past what the standard can enforce.
+     Generated: properties the object lacks, crossed with carriers available. -->
+
+## 9. Limits
+
+<!-- the binding obligations no carrier reaches, named one by one -->
+EOF
+  echo "xlat: scaffolded docs/translations/$obj.md"
+  echo "  next: xlat bundle $obj"
+  return 0
+}
+
 case "${1:-}" in
   sources)     shift; cmd_sources "$@" ;;
   pin)         shift; cmd_pin "$@" ;;
@@ -270,6 +342,7 @@ case "${1:-}" in
   gather)      shift; cmd_gather "$@" ;;
   bundle)      shift; cmd_bundle "$@" ;;
   check)       shift; cmd_check "$@" ;;
-  ""|-h|--help) sed -n '2,25p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
+  new)         shift; cmd_new "$@" ;;
+  ""|-h|--help) sed -n '2,26p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
   *)           die "unknown subcommand: $1" ;;
 esac

@@ -1,11 +1,13 @@
 ---
 name: pipeline-audit
 description: >-
-  Audit run for the chirality pipeline: one tool, two levels. DESIGN level gates a
+  Audit run for the chirality pipeline: one tool, three levels. DESIGN level gates a
   design artifact before the element mints (citation truth / phantom feature /
   shape honesty / decision discipline / mint-packet soundness); SPEC level gates a
   SPEC before implementation (citation truth / code-forces honesty / plan
-  sizing / gate soundness / residue). Use when asked to "audit the design",
+  sizing / gate soundness / residue); TRANSLATE level gates a translation before
+  it is relied on (pinned-quote truth / invariant core / obligation coverage /
+  carrier lowering / gather completeness). Use when asked to "audit the design",
   "audit E#", "audit the spec", or before promoting an artifact to the next stage.
 ---
 
@@ -17,7 +19,7 @@ The pipeline is **design → audit → MINT → spec → audit → implement**
 `docs/elements/specs/E<NN>-<slug>-SPEC.md`, and the build-state authority is
 `docs/definitions/status-ledger.md`.
 
-This skill is both gates: same tool, level picked by which artifact is under
+This skill is every gate: same tool, level picked by which artifact is under
 audit. Produce exactly **one** audited artifact per run, then **stop**.
 
 **The design gate is the one that mints.** On PASS it allocates the element
@@ -73,6 +75,21 @@ settle. Silence in a slice is never grounds for calling a citation wrong.
 | 4 | **Decision discipline** | a §5 RESOLVED cites no settled doc, a DEFERRED points at something unminted, or a NEEDS-AUTHOR was answered inside the run |
 | 5 | **Mint packet soundness** | §6's band is unreserved, a row is incomplete, the split reason does not hold, or it names an unminted `E#` |
 
+## The TRANSLATE charter
+
+Gates `docs/translations/<object>.md` before anything relies on it. The level
+exists because a translation rests on **external** material, which the doc tier
+has no other verifier for: `ledger-lint` check U resolves a quote against a
+tracked file and cannot reach an RFC.
+
+| # | check | fails when |
+|---|---|---|
+| 1 | **Pinned-quote truth** | `tools/xlat/xlat.sh check <artifact>` exits non-zero: a quote resolves nowhere, a cited source has no pin, or a stage is absent. A quote whose line moved is a FIX |
+| 2 | **Invariant core** | §6 is empty. The arithmetic moved, the published vectors no longer apply, and the artifact is a redesign wearing the wrong label |
+| 3 | **Obligation coverage** | a binding obligation from `xlat obligations` is neither carried in §4, declared unreachable in §9, nor deferred with a reason. A dropped MUST is the defect this check exists for |
+| 4 | **Carrier lowering** | §4 proposes a form that `xlat carriers` lists as a lowering gap, or a form with no `lib/` precedent and no note that it is new |
+| 5 | **Gather completeness** | a manifest slot reads `UNRUN` and §1 does not name it, or a pin is `transcribed` and §1 reads as though it were the source |
+
 ## The SPEC charter
 
 | # | check | fails when |
@@ -102,6 +119,8 @@ Work the checks in order. For every defect:
 python3 tools/pack/pack.py <arc>/<id> --mint    # DESIGN level: allocates the E#,
                                                 # writes catalog + ledger + the roster row
 python3 tools/pack/pack.py E<#> --mark audited  # SPEC level
+# TRANSLATE level: set the artifact's frontmatter status to `current`. It mints
+# nothing, because a translation is upstream of any roster row.
 ```
 
 **CLOSED**, design level only. The design's §3 found an empty delta and §6 mints

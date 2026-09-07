@@ -143,6 +143,9 @@ docs/
     parts/         one roster row worked up, before it has an element number
   elements/        the catalog, the ledger, and specs/ -- one per element.
                    A catalog row is written by the mint, at the end of design
+  translations/    one per published external object, rendered into this tree's
+                   forms. The mathematics stays external and every quote carries
+                   a pinned citation. tools/xlat/xlat.sh resolves them
   implementation/  the source tree described, as distinct from specified
   benchmarks/      measurements, with their dates
 records/           one per arc: a claim beside its measurement, with a state.

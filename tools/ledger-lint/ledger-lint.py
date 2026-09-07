@@ -2300,6 +2300,51 @@ def check_aa() -> list[str]:
     return errs
 
 
+def check_al() -> list[str]:
+    """AL. A translation's external quotes resolve into a pinned source.
+
+    Check U resolves a quote against a tracked file. A translation rests on
+    material outside this tree, so an RFC quote had no verifier at all and the
+    doc tier could carry a fabricated span with every gate green.
+    tools/xlat/xlat.sh check does the resolution. This check is what makes
+    running it a gate instead of a thing someone remembers.
+
+    docs/translations/README.md states the citation form, `ID:LINE "span"`, and
+    the rule its section 6 carries. An absent stage is reported here too: xlat
+    reports it, and a missing invariant core is what separates a translation
+    from a redesign.
+
+    Vacuous when docs/translations/ holds no artifact."""
+    import subprocess
+    tool = ROOT / "tools" / "xlat" / "xlat.sh"
+    if not tool.exists():
+        raise Vacuous("tools/xlat/xlat.sh is absent, so no external citation "
+                      "can be resolved")
+    d = ROOT / "docs" / "translations"
+    arts = sorted(x for x in d.glob("*.md") if x.name != "README.md") if d.is_dir() else []
+    if not arts:
+        raise Vacuous("docs/translations/ holds no artifact, so there is no "
+                      "external citation to resolve")
+    out: list[str] = []
+    for a in arts:
+        rel = a.relative_to(ROOT).as_posix()
+        try:
+            r = subprocess.run([str(tool), "check", str(a)], cwd=ROOT,
+                               capture_output=True, text=True, timeout=120)
+        except Exception as e:
+            out.append(f"[AL] {rel} could not be checked ({e})")
+            continue
+        if r.returncode == 0:
+            continue
+        for ln in (x.strip() for x in r.stdout.splitlines()):
+            if ln.startswith(("NOT FOUND", "UNPINNED", "MOVED", "ABSENT")):
+                out.append(f"[AL] {rel}: {ln}")
+            elif ln.startswith("NO CITATIONS"):
+                out.append(f"[AL] {rel} carries no pinned citation, so it rests "
+                           f"on a reading nobody can check")
+    return out
+
+
 CHECKS = (("A evidence paths", check_a),
                      ("B principle numbers", check_b),
                      ("C CONTENTS counts", check_c),
@@ -2336,7 +2381,8 @@ CHECKS = (("A evidence paths", check_a),
                      ("AH roster state vs its artifact", check_ah),
                      ("AI rows whose evidence moved", check_ai),
           ("AJ the deferral rule", check_aj),
-                     ("AK author calls awaiting a ruling", check_ak))
+                     ("AK author calls awaiting a ruling", check_ak),
+                     ("AL translation quotes resolve", check_al))
 
 
 # ── the guide ─────────────────────────────────────────────────────────────────
@@ -2399,6 +2445,15 @@ GUIDE = {
            "doubt the token is `unreviewed`, because a wrong `unreviewed` costs "
            "one re-confirmation and a wrong `ruled` corrupts the record.",
            "AK"),
+    "AL": (3, "docs/translations/README.md, and tools/xlat/xlat.sh",
+           "An external quote carries `ID:LINE \"span\"` and resolves into a "
+           "pin. Fix a MOVED line by repointing it at the line the span is "
+           "actually on. A NOT FOUND span was never in the pinned source and "
+           "the claim comes out. An UNPINNED source gets pinned with "
+           "`xlat pin`, never cited on trust. An ABSENT stage is filled, and "
+           "an empty invariant core means the artifact is a redesign rather "
+           "than a translation.",
+           "AL"),
     "I":  (4, "tools/frontier/frontier.py",
            "FRONTIER.md is generated. A source moved, so re-condense it: "
            "`python3 tools/frontier/frontier.py condense`.",
