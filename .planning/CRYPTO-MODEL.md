@@ -16,6 +16,7 @@ Author rulings, 2026-09-05.
 | we build our own take, splitting the primitives up and giving them native form | §11. A standard's named instantiation becomes a value in a table, and the machine is ours |
 | compute belongs at message creation and at reading | `REACH-MODEL` §11. No public-key work on the forwarding path |
 | **hardware scaling is automatic at the language level** | §8. A person states a numerical model only at an interop boundary between binaries |
+| **the language's idioms are followed verbatim, and they are the mechanism** | §11. Configuration cascades from target to parameters to types to refusals, and no layer restates the one before it |
 
 ---
 
@@ -32,6 +33,31 @@ class."* ChaCha20-Poly1305, BLAKE2s, X25519.
 That is a pre-quantum suite. Its four slices deliver a classical stack the
 stated target cannot ship on. **Slices 1 and 2 are built and gated against a
 reference class the target abandons**, which is `C1` below.
+
+**A post-quantum target threatens one of the suite's three layers.** Shor solves
+the discrete log outright and takes the classical asymmetric layer with it.
+Grover reaches everything else, and it buys only a quadratic speedup on
+unstructured search.
+
+| primitive | what a quantum adversary brings to it | verdict |
+|---|---|---|
+| X25519 | Shor, against the discrete log its security rests on | **genuinely dead** |
+| Ed25519 | Shor, on the same curve | dead. §2 records that it appears nowhere |
+| ChaCha20 | Grover, against a 256-bit key that already absorbs a quadratic speedup | **stands** |
+| Poly1305 | a Carter-Wegman MAC over a one-time key | **untouched** |
+| BLAKE2s | Grover, against a 256-bit digest | **stands on security grounds** |
+
+**So exactly one of N1's four slices is retired by the security finding.** Slice
+4 is X25519 and Shor takes it. Slices 1 and 2 are ChaCha20 and
+ChaCha20-Poly1305, and the table above leaves both standing. Slice 3 is BLAKE2s,
+displaced by §11's architecture, which makes a digest a configuration of our own
+machine. Shor and Grover have no part in that displacement.
+
+**`C1` reads as a correctness question and is a cost one.** Its current phrasing
+puts the built work under suspicion of being insecure. The real question is
+whether it is redundant under §11. Redundancy has a price and can be paid or
+declined. Insecurity has neither. `C1` stays open as the author's call, with
+that distinction attached to it.
 
 ## §2 · The primitive set
 
@@ -103,8 +129,23 @@ step needs no special case.
 | the linear layer, a value | θ | the Σ functions |
 | the constant schedule | an LFSR derivation | its own |
 | the lane permutation | derived from `rows` | identity, derived from `rows = 1` |
+| `budget`, which derives `rows` | large | small |
+| `access` | `full` | `windowed k` |
 
 Keccak-f[800] arrives free as `rows = 5, w = 32` for the 32-bit profile.
+
+**Memory is two dials and they are independent.**
+
+| dial | is |
+|---|---|
+| `budget` | the bytes available. `rows` is derived from it and a person never chooses it |
+| `access` | how much of the state is live at once: `full`, or `windowed k` |
+
+A large-state node may still want windowed access. A constrained one has no
+choice. Keccak sits at `budget = large, access = full`. Ascon's niche is
+`budget = small, access = windowed`, and §9 records that the niche is reached by
+configuring this machine. `k` here is the window size. §7's `k` is the
+ops-per-lane term and the two share a letter, which §14 records as owed.
 
 **Two instances is the point.** One instance proves nothing about whether the
 abstraction constrains anything, which is the tree's own rule about
@@ -175,6 +216,21 @@ It also answers the low-memory end honestly: **small memory intrinsically means
 many permutation calls per byte**, because the security floor is fixed. Memory
 buys throughput linearly and the exchange rate is set by `S`.
 
+**`access` moves the resident memory and leaves the security terms where
+`budget` and `S` put them.** `b`, `rate` and `c` are unchanged, so a windowed
+configuration has the same state size, the same capacity and the same security
+target as the full one at that `budget`. It holds fewer than `rows × 5` lanes
+live at any moment. Interoperation is untouched, because §8's mark names the
+configuration and verification reads the machine.
+
+⚑ **The work-per-byte row is derived at `access = full` and is underived under
+`access = windowed`.** The whole table above assumes every lane resident, with
+`k` counting what one lane costs per round. A window adds movement between the
+live lanes and the rest of the state, and this tree has measured neither `k` nor
+that movement. **No windowed figure is stated here**: no cell, no column, and
+the asymptote `k·R·8/w` stays the full-access one. §14 carries it as a note to
+cover.
+
 **The relationship rides as refinements over the indices.**
 
 | constraint | what it makes impossible |
@@ -194,16 +250,19 @@ buys throughput linearly and the exchange rate is set by `S`.
 | supplied by | fixes |
 |---|---|
 | the target's `NumProfile` | `w` |
-| the target's memory budget | `rows` |
+| the target's `budget` | `rows` |
+| the target's `access` | how much of the state is resident, `full` or windowed |
 | the security requirement | `c` |
 | derived from those | `rate` |
 | the chosen S-box | `R` |
 
-A person writes `hash`. The moduleset's target supplies the width and the
-budget and every other parameter is computed. This is the same seam the tree
-already has three times: memory disciplines are moduleset-configured,
-`NumProfile` makes width moduleset-configured, and `Mach` makes the backend an
-instance.
+A person writes `hash`. The moduleset's target supplies the width, the budget
+and the access pattern, and every other parameter is computed. The two memory
+dials are independent, so a large-state target may still declare windowed
+access; §4 carries both and §7 states what `access` changes. This is the same
+seam the tree already has three times: memory disciplines are
+moduleset-configured, `NumProfile` makes width moduleset-configured, and `Mach`
+makes the backend an instance.
 
 **This is the structural argument for a family and against a point.** A design
 fixed at one state size and one lane width cannot scale automatically, so
@@ -256,10 +315,23 @@ trades margin for state size and operation count on constrained hardware.
 | Ascon-p | ~63 | 12 | 8 B | **~95** |
 
 **Keccak is roughly three times cheaper per byte.** Its state is 7x larger and
-its rate 21x larger, so the larger permutation repays itself. **Ascon's win is
-memory alone**, which is worth little where 200 bytes of state is
-affordable and worth everything where it is not. That is precisely the axis §8
-scales along.
+its rate 21x larger, so the larger permutation repays itself.
+
+**Ascon's only win is memory, and that is evidence about the design space.** It
+is worth little where 200 bytes of state is affordable and worth everything
+where it is not, so what the result establishes is that **memory is an axis the
+family must expose**. It establishes nothing about which design ships.
+
+The property is reached by configuring the one machine of §4, at `budget =
+small, access = windowed`. Adopting a second design to reach it buys the same
+property and forfeits §8's derivation, since a design fixed at one state size
+supplies no dial for the target to turn.
+
+**This is the second reason behind §8's structural argument for a family and
+against a point.** The first is that a fixed state size and lane width cannot
+scale automatically. The second is that the low-memory end is a setting of the
+family. §8's closing sentence about Ascon-p holds unchanged and now has both
+reasons behind it.
 
 ## §10 · Eliminations, and one reframe
 
@@ -287,6 +359,36 @@ instantiation becomes a value in a table rather than the thing implemented.**
 
 Same machine, our configurations, and the conformant entries cost nothing extra
 because they are rows rather than implementations.
+
+### The cascade
+
+**The configuration cascades, and the cascade is where this design draws its
+power.** Each layer is derived from the one before it and nothing is restated.
+
+| layer | what it holds | stated in |
+|---|---|---|
+| the target | `NumProfile`, `budget`, `access`, the security requirement | §8 |
+| the parameters | `w`, `rows`, `c`, `rate`, `R` | §7, §8 |
+| the types | the round count as a type index, the rotation amount as a refinement, the state as named lanes | §4, §6, §7 |
+| the refusals | a parameter set that does not close, a configuration under its security target, a secret-dependent index, a cross-configuration agreement | §6, §7, §8 |
+
+**`cascade` is already this tree's word, and this is that concept at another
+layer.** `docs/examples/C01-typed-style-value.md:138` names the style cascade
+*"an ordered, incremental fold"*, resolving one face against its ancestor chain
+with the order living in the value. `docs/examples/C1C2-style-round-trip.md`
+builds the typed style layer on that fold and ties its two directions with one
+equation. The crypto cascade folds a target into a configuration under the same
+rule: ordered, incremental, total, each step reading only what the step before
+it produced. One sense of the word holds across both.
+
+**The idioms are the mechanism.** §5's three free steps cost nothing because the
+language removes them. §7's relationship rides as refinements over the indices,
+each constraint naming a thing that becomes unconstructible. §8's
+derivation-from-target is a seam the tree already has three times. The named
+instantiations above are rows in a table. §12 marks four idioms already in use
+in `lib/` and all four are load-bearing here. None of it is new machinery, and
+the model is their composition. Following what the language already does,
+verbatim, is what makes the configuration derivable at all.
 
 **The line, stated once.** Re-forming a scheme's internals as typed chirality
 pieces leaves the mathematics untouched. Changing the mathematics is a
@@ -321,14 +423,14 @@ accumulation room, so **`E189` stays unneeded and no kernel owes a fixpoint**.
 | id | decision |
 |---|---|
 | C1 | what happens to N1's four slices, two of them built and gated against a reference class the target abandons |
-| C2 | the machine's initial instances, and whether Ascon-p is one of them |
+| C2 | the machine's initial instances, and whether Ascon-p is one of them, read against a family that now carries `budget` and `access` |
 | C3 | the PQ signature: ML-DSA against SLH-DSA, with FALCON eliminated |
 | C4 | where each scheme's decompose-against-change line sits |
 | C5 | the hybrid combiner construction |
 | C6 | whether `N5` lands before the kernels, since scoping it after means writing every kernel twice |
 | C7 | vectors as a `.manifest` against shell |
 | C8 | the security target `S`, which fixes the capacity floor and therefore the whole curve |
-| C9 | how a target states its memory budget, which is the input §8's derivation lacks |
+| C9 | the shape of the `budget` declaration a target carries, now that §4 derives `rows` from it and stands `access` beside it |
 | C10 | whether ChaCha20 and Poly1305 are retired by an AEAD mode over the same machine |
 | C11 | the limb representation for field arithmetic, and whether a limb carries its bit bound |
 | C12 | whether the sponge's absorb and squeeze state is linear |
@@ -342,6 +444,14 @@ accumulation room, so **`E189` stays unneeded and no kernel owes a fixpoint**.
 - **`k`, the real ops per lane per round**, measured for each S-box and linear
   layer in this tree's instruction set. The whole §7 curve scales off it and it
   is estimated
+- **the work-per-byte relationship under `access = windowed`**, which §7 leaves
+  underived: the movement between the live window and the rest of the state is
+  unmeasured and no figure for it is stated
+- **the two `k`s.** §4's `access` dial spells its window size `k` and §7's `k`
+  is the ops-per-lane term. One of them owes a rename
+- **what a windowed state is made of.** §6 rests on a record of named lanes with
+  no array, and where the non-resident lanes live under `access = windowed` is
+  unsettled. §6's argument is stated at `access = full`
 - what one permutation call allocates, against the region work
 - the round-constant schedule derived against transcribed
 - how the domain separator is encoded, and whether the configuration rides in it
