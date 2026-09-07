@@ -270,15 +270,15 @@
 
 ### PRB-20 a bank refutes a real gap with a command that does not exist
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    doc
 - about:    docs/banks/profile.md
 - claim:    `docs/banks/profile.md:246` cites `chirality verify` to argue that the profile conformance gap is already covered.
-- measured: `bin/chirality` offers `compile`, `run`, `check`, `test`, `help`. There is no `verify`. It is cited in 14 places, four of them under `docs/banks/`. The banks are the repo's mandated pre-flight read: CLAUDE.md requires reading a feature's bank before naming a gap, because naming a phantom is the cardinal error here. This row is that rule inverted, a phantom command used to dismiss a gap that BA-29 shows is real. `docs/definitions/testing-floors.md` is dated 2026-09-01 and lists `chirality test-native` and `chirality test-rocq` as GATING floors; neither exists and there is no `rocq/` directory. Overlaps BA-08, which records the floors table; this row is about the bank.
-- evidence: `docs/banks/profile.md:246`, `bin/chirality`, `docs/definitions/testing-floors.md`
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-07: FIXED, and the cited line drifted. `f4364d3` (2026-09-04, "profile bank: there is no verify, and the conformance check it named is gone") rewrote Shard G. The bank's one bare `chirality verify` now sits at `docs/banks/profile.md:198` inside a build-state marked "partly present, corrected 2026-09-04" that records the absence and repoints at `chirality check FILE` (`:161`). The cited `:246` region now carries a cross-cut naming the `chirality-verify` requirement type, a hyphenated name in the profile language and no subcommand. The floors half moved with it: `docs/definitions/testing-floors.md:10-18` was rewritten 2026-09-04 into a note stating that `chirality test-native`, `chirality test-rocq`, `chirality test-python` and `chirality verify` name nothing, `rocq/` is still absent, and the table now carries a single GATING row which reaches `chirality test`. So the bank no longer refutes the gap. The wider count is not this row's: 29 bare uses of the phantom subcommand survive across `docs/`, `bin/`, `lib/`, `prog/` and `tools/`, one of them the bank's own corrective sentence, and `presentability/D3` owns retiring them.
+- evidence: re-runnable: `grep -n 'chirality verify' docs/banks/profile.md` returns one hit at `:198`, the corrective sentence; `grep -n 'test-rocq' docs/definitions/testing-floors.md` returns only `:16`, inside the note that says the name resolves to nothing; `grep -c GATING docs/definitions/testing-floors.md` returns 1
+- checked:  2026-09-07
 - owner:    none
 - from:     BA-31
 
@@ -346,9 +346,9 @@
 - level:    doc
 - about:    docs/examples/E181-pretty-term-doc.md
 - claim:    a worked example and its SPEC are the design rationale for an element and are kept as written, so their citations resolve.
-- measured: `HANDOFF-DIAGNOSTICS-ARC.md` was split into `records/diagnostics-arc-record.md` (binding decisions, traps) and `docs/arcs/diagnostics-arc.md` (live arc state) and deleted from the root. Six citations of it survive in the two E181 artifacts: three in the example (`:188` the blob-size quote, `:199` a binding decision, `:661` the empty-`cmp` trap) and three in the SPEC (`:454` the status table and Lane A queue, `:465` a promotion step, `:681` the chain and the arc's binding decisions). Each names a file that is not in the tree. Not repaired: both are frozen-rationale tier and `records/consolidation-handoff.md` §2 binds this class to record-do-not-chase, the same stance BA-22 takes for the other 34. Every other live citation of the deleted file was repointed in the same commit; `docs/decisions/decision-lane-split.md:5` and `records/diagnostics-arc-record.md:15` keep theirs as historical "was X, moved to Y" notes, which is correct.
-- evidence: `docs/examples/E181-pretty-term-doc.md:188`, `:199`, `:661`, `docs/elements/specs/E181-pretty-term-doc-SPEC.md:454`, `:465`, `:681`, `records/consolidation-handoff.md`
-- checked:  2026-09-01
+- measured: RE-MEASURED 2026-09-07: unchanged in shape, and the SPEC's three line citations drifted by one. `HANDOFF-DIAGNOSTICS-ARC.md` is still absent from the working tree and from `git ls-files`. Six citations of it survive, three per artifact. The example holds at `:188` (the blob-size quote), `:199` (a binding decision) and `:661` (the empty-`cmp` trap). The SPEC moved to `:455` (the status table and Lane A queue), `:466` (a promotion step) and `:682` (the chain and the arc's binding decisions), one line past the `:454`, `:465`, `:681` this row recorded, after `b08d94f` (2026-09-04) repointed sixteen other citations across nine docs and left these six alone. Still not repaired, and for the reason first recorded: both artifacts are frozen-rationale tier and `records/consolidation-handoff.md` §2 binds this class to record-do-not-chase, the same stance BA-22 takes for the other 34.
+- evidence: re-runnable: `grep -c HANDOFF-DIAGNOSTICS-ARC docs/examples/E181-pretty-term-doc.md docs/elements/specs/E181-pretty-term-doc-SPEC.md` returns 3 and 3, and `git ls-files | grep HANDOFF-DIAGNOSTICS` returns nothing. `records/consolidation-handoff.md`
+- checked:  2026-09-07
 - owner:    none
 - from:     BA-37
 
@@ -837,9 +837,9 @@
 - level:    source
 - about:    prog/paren-audit.prog
 - claim:    `prog/paren-audit.prog:10` reads that it is a port of `tools/paren-audit/paren-audit.py` (154 LOC), wave 0 of the zero-python arc.
-- measured: `prog/paren-audit.prog` is 244 lines and nothing invokes it. `tools/paren-audit/paren-audit.py` is 154 lines and still on disk. `tools/README.md:12` records the Python as running unchanged with equivalence against the chirality replacement **unverified**, so it is not retired and not deletable. `docs/goals/self-tooling.md:67-68` and `docs/arcs/zero-python-arc.md:97-99` carry the same. Its usage line, `prog/paren-audit.prog:7`, needs a directory walk it does not have: `find lib prog -name '*.chiral' | chirality run prog/paren-audit.prog`. The differential run that would retire the Python has never been taken.
-- evidence: `prog/paren-audit.prog:1-10`; `tools/paren-audit/paren-audit.py:1-12`; `tools/README.md:12`; `docs/arcs/zero-python-arc.md:97-99`
-- checked:  2026-09-04
+- measured: RE-MEASURED 2026-09-07: unchanged, and two of the three doc citations drifted. `wc -l` reads `prog/paren-audit.prog` at 244 and `tools/paren-audit/paren-audit.py` at 154, the figures this row recorded. Nothing invokes the chirality port: a grep for `paren-audit.prog` over `lib/`, `prog/`, `tools/` and `bin/` returns its own two usage-header lines `:7` and `:8` plus the `tools/README.md:12` row that names it, and no invocation. That README row still reads the Python as running unchanged with equivalence **unverified**, so it is not retired and not deletable, and its line number holds. The two other doc citations moved: the zero-python claim now sits at `docs/arcs/zero-python-arc.md:123-125` under "Resume state" while `:97-99` holds the E33/E105 supply table, and the self-tooling claim now sits at `docs/goals/self-tooling.md:76-77` while `:67-68` holds an honest limit about `.manifest`. Its usage line, `prog/paren-audit.prog:7`, still needs a directory walk it does not have: `find lib prog -name '*.chiral' | chirality run prog/paren-audit.prog`. The differential run that would retire the Python has still never been taken.
+- evidence: re-runnable: `wc -l prog/paren-audit.prog tools/paren-audit/paren-audit.py` returns 244 and 154; `grep -rn 'paren-audit.prog' lib/ prog/ tools/ bin/` returns three hits, none of them a call. `prog/paren-audit.prog:1-10`; `tools/README.md:12`; `docs/arcs/zero-python-arc.md:123-125`; `docs/goals/self-tooling.md:76-77`
+- checked:  2026-09-07
 - owner:    none
 - from:     TC-04
 
@@ -963,9 +963,9 @@
 - level:    doc
 - about:    records/README.md
 - claim:    records/README.md, Evidence is mandatory: "`evidence:` names files and line spans. A row nobody can re-run is worthless."
-- measured: **RE-MEASURED 2026-09-06: 66 rows name a command, against 30 when this row was filed.** 125 still carry file:line only. The 36 that moved were closed by writing the instrument rather than the number: `ledger-lint --census` for the span counts, printf-and-run fixtures for the compile probes, and named gates for the rest. ⚑ The single biggest remaining block is the TFn census, which three rows rest on and which is now buildable as `enforcement/N12`. ORIGINAL READING: measured 2026-09-05 over every live row in records/ and records/lenses/: **123 of 153 carry file:line evidence and name no command**. 30 name a re-runnable one (a tools/test gate, a python3 tool, git ls-files, find). A file:line span shows WHERE a thing was seen and does not reproduce the NUMBER: PRB-43 claims 1,475 of 1,481 TFns accept under two checker relaxations, and no gate in tools/test/ reproduces that census, so check AI can say the row is unverified and nobody can say what it reads today. This is why 60 AI findings cannot be closed by reading.
-- evidence: records/README.md, tools/test/tal-check.sh (the nearest gate, which measures 20 ok 1 FAIL and not the census), records/lenses/problems.md
-- checked:  2026-09-06
+- measured: **RE-MEASURED 2026-09-07: the claim holds and now has an instrument. 197 of 276 evidence fields name no command; 79 name one, 67 of those through the `re-runnable:` opener.** The population is every `### ` row under records/ and records/lenses/, the two READMEs excluded because their `evidence:` line is the schema template and not a row. The classifier counts as a command a `re-runnable:` opener, a `python3` or `bash` invocation, a bare `tools/test` gate script (a gate cited with a `:LINE` suffix is a span and does not count), a `git log`, `ls-files`, `grep`, `show`, `diff`, `rev-list` or `cat-file`, a `grep -`, `wc -l`, `find`, `chirality run|check|compile|test`, `printf`, `cmp`, `nm -`, `readelf`, `objdump`, `awk` or `sed -n`. ⚑ **This row exhibited the defect it names.** Its `evidence:` was three bare paths and no command, and one of those paths was the file the row lives in, so every edit anywhere in that file reddened check AI on this row and no re-measurement could ever clear it. The census below replaces the self-citation with the thing the claim is actually about. The two earlier figures on this row, 123 of 153 on 2026-09-05 and 66 against 125 on 2026-09-06, were taken by a method the row never stated and neither is reproducible; they stand as history, and 197 of 276 is the first reading with a pasteable instrument behind it. The largest remaining block is still the TFn census, which three rows rest on and which is buildable as `enforcement/N12`.
+- evidence: re-runnable: the census is `grep -rh '^- evidence:' records/ --exclude='READ*' | grep -cvE 're-runnable:|python3 |bash |tools/test/[a-z0-9-]+\.sh([^:]|$)|git (log|ls-files|grep|show|diff|rev-list|cat-file)|grep -|wc -l|find |chirality (run|check|compile|test)|printf |cmp |nm -|readelf|objdump|awk |sed -n'` and returns 197. Dropping the `v` from the second grep returns 79, and replacing `-cvE ...` with `wc -l` returns 276.
+- checked:  2026-09-07
 - owner:    enforcement/N12 for the census; the rest is per-row
 - from:     none
 
