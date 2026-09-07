@@ -74,42 +74,64 @@ arithmetic, and which codegen arms fire.
 Every target reaches the same guarantee. **Time and resident footprint are what
 vary.**
 
-The sponge gives this without being asked. `c ≥ 2S` fixes capacity from the
-security target alone, and rate is the surplus after security is paid. A small
-state keeps the whole capacity and buys a small rate, so it pays permutation
-calls per byte and its guarantee is untouched.
+The sponge gives this without being asked. Capacity is fixed by the security
+target alone and rate is the surplus after security is paid. A small state keeps
+the whole capacity and buys a small rate, so it pays permutation calls per byte
+and its guarantee is untouched.
 
-At `S = 256`, so `c = 512` bits, over the real Keccak family:
+**The bound carries two terms.** Generic collision work against a sponge is
+`2^min(n/2, c/2)`, with `n` the output length. Capacity alone fixes nothing.
+SHA3-256 runs `c = 512` and delivers 128-bit collision resistance, because its
+256-bit output caps it; the surplus capacity buys preimage and indifferentiability
+margin.
 
-| member | state | rounds | rate | ops per byte |
-|---|---|---|---|---|
-| Keccak-f[1600] | 200 B | 24 | 1088 b, 136 B | ~40 |
-| Keccak-f[800] | 100 B | 22 | 288 b, 36 B | ~138 |
-| Keccak-f[400] | 50 B | 20 | `b < c` | unreachable |
-| Ascon-p | 40 B | 12 | `b < c` | unreachable |
+So the mark's length sets the security level and the state floor follows from it.
 
-⚑ The ops-per-byte column is derived off `k ≈ 9` ops per lane per round, which
-`.planning/CRYPTO-MODEL.md` §14 records as estimated and never measured. The
-state, round and rate columns are published parameters.
+| target | mark | `c` | smallest Keccak member | state | rate |
+|---|---|---|---|---|---|
+| 128-bit collision | 256 b, 32 B | 256 | Keccak-f[400], 20 rounds | **50 B** | 144 b, 18 B |
+| 256-bit collision | 512 b, 64 B | 512 | Keccak-f[800], 22 rounds | **100 B** | 288 b, 36 B |
 
-**The floor is 100 bytes of permutation state.** Doubling to 200 bytes buys
-about 3.5x throughput. Below 100 bytes no Keccak member holds a 512-bit
-capacity.
+**128-bit collision resistance is a post-quantum level.** NIST Category 2 is
+defined as SHA-256 collision resistance. The BHT quantum collision algorithm
+reaches `2^(n/3)`, so `2^85` against a 256-bit digest, and it is discounted
+because it requires `2^85` of queryable quantum memory.
 
-Two findings follow.
+**The footprint lives elsewhere.** Two measurements against the state:
 
-**The no-downgrade principle is affordable.** Every target this project reaches
-has 100 bytes. Lightweight cryptography's 128-bit level is a throughput and
-energy choice, and state size does not force it.
+| | size |
+|---|---|
+| a 128-bit-target permutation state | 40 to 50 B |
+| ML-KEM-768 encapsulation key, ciphertext | 1,184 B, 1,088 B |
+| SLH-DSA-128s signature | 7,856 B |
+| SLH-DSA-256f signature | ~49,856 B |
 
-**The no-downgrade principle eliminates Ascon on the mathematics.** Ascon-p is a
-320-bit permutation and its entire standardized set is 128-bit security:
-Ascon-AEAD128 at `c = 192`, Ascon-Hash256 and Ascon-XOF128 at `c = 256`. It
-cannot reach a 512-bit capacity at any memory setting. Under a principle that
-declines to let a small device settle, Ascon serves no end that Keccak-f[800]
-does not serve at 100 bytes, and it stays available as a conformant entry for
-interoperation. `.planning/CRYPTO-MODEL.md` `C2` is answered by the principle
-rather than by preference.
+A 50-byte permutation state is 0.6% of one small SLH-DSA signature. **The real
+per-byte cost of the security level is the mark's own length**, paid on every
+address, every reference and every holdings summary, permanently.
+
+`T9` carries the mark-length decision. Nothing in this file picks it.
+
+**What optimizes, ranked.**
+
+| lever | effect |
+|---|---|
+| the keyed and unkeyed capacity split | large. The exact-security analysis of Ascon finds `c = 128` at `b = 320` sufficient for the NIST lightweight requirements, freeing a 192-bit rate. A MAC, an AEAD and a KDF should not pay the mark digest's capacity |
+| `access = windowed` | the genuine footprint dial. Resident memory falls below `b` and `c`, `rate` and the security target hold |
+| the representation | ops per byte move hard. State size holds |
+| the permutation's state size | 10 bytes across three candidates at one target |
+
+**At a 256-bit mark, three permutations are conformant** and the choice falls to
+other terms.
+
+| | state | rounds |
+|---|---|---|
+| Ascon-p, Ascon-Hash256 at `c = 256`, `n = 256` | 40 B | 12 |
+| Xoodoo, Xoodyak's hash mode at rate 16 B and capacity 32 B | 48 B | 12 |
+| Keccak-f[400] | 50 B | 20 |
+
+`.planning/CRYPTO-MODEL.md` `C2` stands open. Ascon-p is out only at a 512-bit
+mark, where a 512-bit capacity exceeds its 320-bit state.
 
 ## §4 · What a target below the floor gets
 
@@ -210,11 +232,11 @@ ones aimed at a structure the code does not carry.
 | §6 constant time by construction | holds, and §6 here states its limit |
 | **§7 the sponge relationship** | the curve holds. `c ≥ 2S` is the **unkeyed** bound, and Ascon-AEAD128 runs `c = 192` at 128-bit security because a keyed sponge draws security from the key. The keyed and unkeyed bounds owe a split |
 | §8 automatic hardware scaling | holds, and §3 here states what it is scaling and what it holds fixed |
-| §9 the two candidates | superseded by §3 here. The comparison assumed a security level per target |
+| §9 the two candidates | the comparison assumed a security level per target. Its throughput figures are derived at `b = 1600` and say nothing about the small-state operating point |
 | §10 eliminations | holds |
 | §11 our own take | holds as the cascade. §1 here bounds what may be configured |
 | §12 what is in the tree | holds |
-| §13 decisions owed | `C2` is answered by §3 here. `C8` is answered by the invariance ruling |
+| §13 decisions owed | `C8` is answered by the invariance ruling. `C2` stands open and §3 here gives it three conformant candidates |
 
 ## §10 · What specifying best representations needs
 
@@ -240,6 +262,7 @@ Six things, and none of them exists today.
 | T5 | whether the object and its representations are distinct types with an explicit map, or one type with the representation erased |
 | T6 | where the laws live: a `.manifest` of properties, a gate script, or types that carry them |
 | T7 | the smallest-member testing tier: whether Keccak-f[25] and its siblings are built as real modules or as test-only instances |
+| T9 | **the mark's length, 32 bytes or 64 bytes.** It sets the security level, the state floor follows from it, and it is a permanent per-address cost across the naming layer |
 | T8 | whether a representation may be selected at runtime, or is fixed per moduleset. `.planning/CRYPTO-MODEL.md` §8 promises verification of any mark, and a moduleset-fixed representation narrows that to configurations the binary was built with |
 
 ## §12 · Notes to cover
@@ -254,7 +277,9 @@ Six things, and none of them exists today.
 - whether `Keccak-f[25]` at `w = 1` degenerates usefully. Its rotation offsets
   are taken mod 1 and vanish, so ρ becomes the identity and the miniature tests
   less than the family does
-- the message buffer's footprint, which §3's floor of 100 bytes excludes
+- the message buffer's footprint, which §3's state floors exclude
+- the second preimage and preimage targets for a mark, which §3 states only for
+  collisions
 - where a representation's choice is recorded in a mark, if anywhere. §8 of
   `.planning/CRYPTO-MODEL.md` puts the configuration in the domain separator,
   and a representation sits below that layer
