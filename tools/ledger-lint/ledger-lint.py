@@ -2171,6 +2171,47 @@ def check_aj() -> list[str]:
     return errs
 
 
+# The row shape records/author-calls.md states in `The state of a row`: the
+# token alone in the first cell, the call's name in bold opening the second.
+_AUTHOR_CALL = re.compile(
+    r"^\|\s*`(unreviewed|ruled|dissolved)`\s*\|\s*\*\*(.+?)\*\*", re.M)
+
+
+def check_ak() -> list[str]:
+    """An author call nobody has decided.
+
+    records/author-calls.md registers the forks only the author can settle, and
+    records/lenses/README.md states the rule its tokens carry: "Write `ruled`
+    only for a ruling the author actually gave." Nothing read the register until
+    now. On 2026-09-06 all eighteen rows were struck through in one day, ten of
+    them by routing the work to a roster row, which says where work will happen
+    and leaves the fork standing.
+
+    This check FAILS while any row reads `unreviewed`, and that is the point: a
+    tree with undecided forks is not clean, and the gate has to say so. It goes
+    green by putting a fork to the author and recording the ruling, never by
+    routing the work somewhere."""
+    f = ROOT / "records" / "author-calls.md"
+    if not f.exists():
+        raise Vacuous("records/author-calls.md is absent, so no call can be read")
+    rel = f.relative_to(ROOT).as_posix()
+    rows = _AUTHOR_CALL.findall(f.read_text())
+    if not rows:
+        return [f"[AK] {rel} carries no row in the three-token shape its own "
+                f"`The state of a row` section states, so this check reads "
+                f"nothing. A gate aimed at nothing cannot fail: the format is "
+                f"the defect"]
+    errs = []
+    for state, name in rows:
+        if state != "unreviewed":
+            continue
+        name = re.sub(r"[`\[\]]", "", name).strip()
+        errs.append(f"[AK] {rel} “{name}” is `unreviewed`. The author "
+                    f"has not decided this fork, and a pass that reaches it "
+                    f"stops")
+    return errs
+
+
 def check_aa() -> list[str]:
     """AA. A superseded figure carries the date it measured (added 2026-09-04).
 
@@ -2259,7 +2300,8 @@ CHECKS = (("A evidence paths", check_a),
                      ("AG arc roster schema and coverage", check_ag),
                      ("AH roster state vs its artifact", check_ah),
                      ("AI rows whose evidence moved", check_ai),
-          ("AJ the deferral rule", check_aj))
+          ("AJ the deferral rule", check_aj),
+                     ("AK author calls awaiting a ruling", check_ak))
 
 
 # ── the guide ─────────────────────────────────────────────────────────────────
@@ -2310,6 +2352,18 @@ GUIDE = {
     "AJ": (3, "docs/definitions/working-discipline.md, the deferral rule",
            "Every `E#` a doc names is already minted. Name a roster row instead.",
            "AJ"),
+    "AK": (2, "records/author-calls.md, `The state of a row`, and "
+              "records/lenses/README.md, `The author axis`",
+           "Every row reads `ruled` with the author's own words or an explicit "
+           "author directive cited, or `dissolved` with the measurement that "
+           "removed the fork cited. A worker cannot close one of these: put the "
+           "fork to the author, then move the token and record the ruling "
+           "verbatim. **Routing the work to a roster row is not a ruling.** It "
+           "says where the work will happen and leaves the fork standing, which "
+           "is how all eighteen rows came to read closed on 2026-09-06. When in "
+           "doubt the token is `unreviewed`, because a wrong `unreviewed` costs "
+           "one re-confirmation and a wrong `ruled` corrupts the record.",
+           "AK"),
     "I":  (4, "tools/frontier/frontier.py",
            "FRONTIER.md is generated. A source moved, so re-condense it: "
            "`python3 tools/frontier/frontier.py condense`.",
