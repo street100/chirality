@@ -1,0 +1,26 @@
+RFC 8439 excerpt, transcribed from the verbatim spans returned by a WebFetch of
+https://www.rfc-editor.org/rfc/rfc8439.txt on 2026-09-07. This is NOT the RFC.
+It is what one session transcribed, and a span absent here may still be present
+in the source.
+
+2.6 Generating the Poly1305 Key Using ChaCha20
+The block counter is set to zero.
+poly1305_key_gen(key,nonce):
+   counter = 0
+   block = chacha20_block(key,counter,nonce)
+   return block[0..31]
+
+2.8 AEAD Construction
+The ChaCha20 encryption is done with a block counter starting at 1.
+mac_data = aad | pad16(aad) | ciphertext | pad16(ciphertext)
+mac_data |= num_to_8_le_bytes(aad.length)
+mac_data |= num_to_8_le_bytes(ciphertext.length)
+the padding is up to 15 zero bytes, and it brings the total length so far to an integral multiple of 16.
+The key is 32 bytes, the nonce is 12 bytes, and the tag is 16 bytes.
+
+4. Security Considerations
+The most important security consideration in implementing this document is the uniqueness of the nonce used in ChaCha20.
+If a nonce is repeated, then both the one-time Poly1305 key and the keystream are identical between the messages. This reveals the XOR of the plaintexts, because the XOR of the plaintexts is equal to the XOR of the ciphertexts.
+The Poly1305 key MUST be unpredictable to an attacker.
+implementation MUST use a constant-time comparison function rather than relying on optimized but insecure library functions such as the C language's memcmp().
+Tag truncation MUST NOT be done, and protocols MUST include the complete tag to minimize the opportunity for forgery.
