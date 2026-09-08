@@ -76,6 +76,14 @@ different published translation with its own theorem. The rewritten question ask
 defunctionalization's obligation and for the contrast against existential packing, and
 FD-18 answers it.
 
+**FD-19 answers R5 and leaves nothing of it open.** Two published disciplines put
+the boundary state in the artifact: a frame per block (the JVM, TAL, WebAssembly)
+or a type per definition (LLVM, Cranelift). The tree is on the second, `outline`
+already writes its one full frame as `name$k`'s `TalSig`, and the residue is
+PRB-75's three untyped forms. FD-19 also measured that Necula's POPL 1997 paper
+and Necula and Lee's PLDI 1998 paper are page scans at every copy reachable from
+this sandbox, so **R6 should not spend a fetch round on them**.
+
 **`decision-erased-word-level`** settles the LEVEL: the erased word lives at the
 lowering type level and `Core` gains no word spelling. R3 does not reopen the
 level.
@@ -103,7 +111,7 @@ R7 is last because E70 is unbuilt and gated on `decision-effect-facets`.
 | R2 | FD-16 |
 | R3 | FD-17 |
 | R4 | FD-18 |
-| R5 | UNRUN |
+| R5 | FD-19 |
 | R6 | UNRUN |
 | R7 | UNRUN |
 | translate | blocked on the gather |
