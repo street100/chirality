@@ -1,0 +1,50 @@
+<html><head><title>Eliminating Spurious Error Messages... (Abstract)</title></head><body>
+
+<h1>Eliminating Spurious Error Messages Using Exceptions,
+Polymorphism, and Higher-Order Functions</h1>
+
+<author>Norman Ramsey</author>
+
+<h3>Abstract</h3>
+<p>
+Many language processors make assumptions after detecting an error.
+If the assumptions are invalid,  processors may issue a cascade of
+error messages in which only 
+the first represents a true error in the input;  later messages
+are side effects of the original error.
+Eliminating such spurious error messages requires keeping track of
+values within the compiler that are not available because of a
+previously detected error.
+Examples include symbol-table entries, types, and intermediate
+code.
+<p>
+This paper presents a discipline for tracking unavailable values and
+avoiding cascading error 
+messages.
+The discipline extends the <em>error monad</em> described by
+Spivey and Wadler.
+The extension is expressed formally as
+a type constructor and combinators written in
+Standard&nbsp;ML.
+The type constructor distinguishes intermediate results that are
+unavailable because of a previously detected error.
+The combinators transform ordinary functions, which assume all
+intermediate results are available, into functions that silently propagate
+the unavailability of intermediate results.
+In an ML implementation, the ML type rules enforce
+the discipline; if the
+compiler writer does not account for a potentially unavailable value,
+the source code of the compiler does not type-check.
+<p>
+
+The cost of the discipline is negligible.
+In an experimental compiler, the discipline adds at most&nbsp;5--10% to
+total compile time, and about&nbsp;1% in the common case in which no
+errors are detected.
+<p>
+The full paper is available in 
+<a href=error.ps>PostScript</a> form (456K), or you can view an <a
+href=error.html>automatic translation to HTML</a> (89K), which is only
+slightly broken.
+
+</body></html>
