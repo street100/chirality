@@ -593,8 +593,8 @@
 ### PRB-43 six TFns survive both relaxations, and the repair shape is an author call
 
 - state:    OPEN
-- author:   unreviewed
-- note:     none
+- author:   ruled 2026-09-08
+- note:     RULED 2026-09-08 by the author: DISSOLVED. Both questions this row was opened on were already answered, so nothing here waits on the author. The argument-list question was ruled 2026-09-03 (`records/author-calls.md`, "The `ck-prog` repair shape") and `targs=?` shipped at `ddfbc27`; refuse-or-carry was ruled 2026-09-04 ([[decisions/decision-erased-word-level]]). The measurement moved with them: the six survivors do not reproduce as a set, and of them `$apply5`, `$apply6` and `$apply7` accept in full while `$apply4`, `emit-code` and `emit-args-res` refuse on the outlined-block callee `<name>$0`. The live residue is the `CEnv`-plumbing gap this row's `owner:` already carries, `enforcement/N12`, and it is work rather than a fork. ⚑ The one fork hiding inside this row is SPLIT OUT as PRB-73, the fail-fast question: `ck-instrs` (`lib/lowering/tal/check.chiral:225-230`) stops at the first `tck-err`, which is why three of the six are unobservable and why the four reject classes stay un-taken.
 - level:    source
 - about:    lib/lowering/upper/closconv.chiral
 - claim:    none. This row records what the diagnosis leaves behind.
@@ -1010,3 +1010,17 @@
 - checked:  2026-09-07
 - owner:    none
 - from:     none
+
+### PRB-73 ck-instrs stops at the first refusal, so no census can see past it
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/lowering/tal/check.chiral
+- claim:    `enforcement/N12` states the TFn census as folding `ck-prog` over every emitted TFn and reporting accept, reject and **the four reject classes**. Three record rows rest on that number.
+- measured: `ck-instrs` (`lib/lowering/tal/check.chiral:225-230`) returns `(tck-err m)` on the first failing instruction and never walks the rest, so a TFn's judgment carries exactly one refusal no matter how many it holds. The census inherits that bound: over the compiler's own blob it reads one class, `call: unknown tal function`, 32 of 1,582, and cannot say whether a second class survives behind the first. PRB-43 measured the concrete cost: of its six named survivors, `$apply4`, `emit-code` and `emit-args-res` refuse on the outlined-block callee `<name>$0` and are therefore unobservable at the ground-versus-data shape they were named for. So **the four reject classes are un-takeable by construction**, and no amount of census work reaches them while the checker stops at one. Fail-fast against collect-all is the fork, and it bounds what any instrument built on `ck-prog` can ever measure.
+- evidence: `lib/lowering/tal/check.chiral:225-230`, `lib/lowering/tal/check.chiral:308-312`, `docs/arcs/enforcement-arc.md` roster row `enforcement/N12`
+- checked:  2026-09-08
+- owner:    enforcement/N12
+- from:     PRB-43
