@@ -1066,3 +1066,17 @@
 - checked:  2026-09-08
 - owner:    none
 - from:     FD-18
+
+### PRB-77 the catalog calls preserve-check a translation validator, and the arity refutes it
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    docs/elements/catalog.md
+- claim:    `docs/elements/catalog.md:484`, E169: `preserve-check is ALREADY a translation validator -- it re-checks every compiled body against its declared type, per-compilation, which is structurally the technique CompCert uses for the passes it does not prove outright.`
+- measured: **False by arity, and [[records/findings]] FD-20 measured the definitions it fails.** A translation validator is a function of TWO programs. FD-20 pinned four statements of it: CompCert's `Validate(S, C)`, `check_function (rtl) (ltl) (env)` in `COMPCERTALLOC`, `V : Source x Target -> boolean` in `VALSCHED`, and `transf_c_program_correct` relating `Csem.semantics p` to `Asm.semantics tp`. `ck-prog` is `(-> CEnv Prog TckR)` (`lib/lowering/tal/check.chiral:308`) and both arguments are target-level, so accepting a program witnesses target well-typedness alone, which FD-20 places as TALTR's Corollary 6.3 over this target and nothing further. Re-checking a body against its DECLARED type is a target-internal judgment and the declared type is part of the same artifact, so no source program is consulted at any point. ⚑ **The tree already holds its own refutation as a measurement.** [[records/enforcement-arc]] EN-20: `arm-body`'s `(none)` arm emits `const 0`, the literal matched the declared return when the codomain was ground, `ck-prog` accepted, and the target returned `0` where the source returned `30`. A target-well-typedness check accepted a program that did not preserve the source's meaning, which is exactly the gap this catalog sentence claims is closed. ⚑ **And the honest version of the sentence is available.** FD-20 measured `lib/lowering/tal/eval.chiral` (187 lines) and `lib/evidence/interp.chiral` (109 lines) as the target and source halves a real validator would be built on, both with zero importers, re-measured 2026-09-08.
+- evidence: `docs/elements/catalog.md:484`, `lib/lowering/tal/check.chiral:308`, [[records/findings]] FD-20, [[records/enforcement-arc]] EN-20
+- checked:  2026-09-08
+- owner:    none
+- from:     FD-20
