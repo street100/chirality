@@ -1052,3 +1052,17 @@
 - checked:  2026-09-08
 - owner:    none
 - from:     FD-17
+
+### PRB-76 shape-eq collapses all non-arrow domains, and two author calls were its symptoms
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/lowering/upper/closconv.chiral
+- claim:    `lib/lowering/upper/closconv.chiral:337-340`: `NON-arrow type is one uniform word, so any two non-arrows are shape-equal ... This is what makes defunctionalization erasure-aware -- (-> A B), (-> I64 I64), (-> Str Bool) all share one family/key.`
+- measured: **The domains collapse and the codomains do not, and that asymmetry produced two author calls neither of which named it.** `shape-eq` (`:343-350`) opens `(case (is-arrow a) (false (not (is-arrow b))))`, so any two non-arrows answer `true` and `I64` is shape-equal to `Str`. `cod-key-eq` (`:365-376`) is finer on the same types: ground against ground goes through `core-eq`, exact, so `Bool` splits from `I64`. A family therefore merges over its domains and splits over its codomain. ⚑ **The consequence is E185 and E186.** If `(-> I64 I64)` and `(-> Str I64)` share one dispatcher then that dispatcher's parameter position has to accept both, so it must be spelled as the erased word, which is E185's whole subject. A capture constructor is applied at one site so its fields never merge, which is why E186 ruled them `concrete`. Both calls were resolving symptoms of this criterion. ⚑ **The comment above `shape-eq` overstates `arrow-key-eq`.** It reads that `(-> I64 I64)` and `(-> Str Bool)` share one key. They do not: `cod-key-eq` splits `Bool` from `I64`. The sentence describes `shape-eq` alone. ⚑ **The published criterion is finer, and the tree's has no published occupant.** [[records/findings]] FD-18 measured Pottier and Gauthier giving two data types and two dispatchers where the tree gives one of each (`POLYDEFUNCX:172-173`), and found no source treating a split criterion coarser than source arrow-type equality and finer than one indexed sum. Whether to split is the author's, and it is cheap if taken: FD-18 measured route one as costing zero new `TalTy` constructors, zero new `Instr` forms and zero change to `tal-ty=?`, because `tt-data`, `i-con` and `tt-case` already are the closed sum, its injections and its dispatch, and the whole-program charge is paid by `closconv-sig` running over one whole `Sig`.
+- evidence: `lib/lowering/upper/closconv.chiral:337-340`, `lib/lowering/upper/closconv.chiral:343-350`, `lib/lowering/upper/closconv.chiral:365-376`, [[records/findings]] FD-18, [[decisions/decision-erased-word-level]]
+- checked:  2026-09-08
+- owner:    none
+- from:     FD-18
