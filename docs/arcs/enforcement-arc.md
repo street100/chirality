@@ -3,7 +3,7 @@ node: arc-enforcement
 layer: navigation
 related: [arcs/README, goals/enforcement, status-ledger, arcs/diagnostics-arc, records/enforcement-arc, decisions/decision-erased-word-level, index]
 status: current
-updated: 2026-09-05
+updated: 2026-09-08
 ---
 
 # Arc: enforcement
@@ -85,6 +85,19 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    `tools/test/opt-census.sh` R3 asserts the shape positively, with M5 as its
    falsifier.
 
+   ⚑ **THE SHIPPING-PATH HALF EXPIRED 2026-09-08 AND THE CENSUS DID NOT.** The
+   author ruled that `lowering/tal/check` stays OUTSIDE the compiler closure
+   (`records/lenses/problems.md` PRB-70) and `b613a8f` cut the wiring, so **no
+   judgment of the floor runs on the shipping path**: `opt-tfns` adopts
+   `(fold t)` with nothing to consult. The census moved out with it and still
+   runs, against the same checker, from `prog/optimizer-census.prog`. Re-measured
+   at `38ecdba` over the blob the ruling left behind:
+   `census tfns=1548 ok=1517 err=31 defs=1518 skipped=10 unfolded-ok=1517`. Every
+   proportion above holds. One class, `call: unknown tal function`, first
+   instance `bput-u8`, and all 31 callees the refused TFn's own `<name>$0` block.
+   The 33 fewer defs are `check.chiral` leaving the blob. The `CEnv`-plumbing gap
+   is unchanged and is still what stands between here and `ck-prog`.
+
    E16's title names the preserve-check and three of its four deliverables are
    built; E18's checker and reference interpreter exist unreached.
 3. **The check agrees with the compiler it checks.** **Root-caused 2026-09-03**,
@@ -135,13 +148,29 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    here includes technical work.** G18's fate is an author call and carrying it
    out edits a gate script, so this requirement waits on more than a number.
 
+   ⚑ **G18 IS GREEN SINCE 2026-09-08, AND THE TREE MOVED RATHER THAN THE GATE.**
+   The author ruled that `lowering/tal/check` stays OUTSIDE the compiler closure
+   and that the wiring is the defect (`records/lenses/problems.md` PRB-70). G18
+   keeps its polarity: it was neither inverted nor retired. `b613a8f` repointed
+   the two importers at `lowering/tal/ssa`, where the typed IR they cited is
+   actually declared, and cut `re-check`. Measured at that commit,
+   `bash tools/test/tal-check.sh` exits 0 at **`21 ok, 0 FAIL`**, the row reading
+   `G18 lowering/tal/check is OUTSIDE the compiler blob (840440 bytes, 0
+   occurrences of 'def ck-prog')`. The two paragraphs above are the record of the
+   red period and stand as written. What is still open in this requirement is the
+   `$apply` work E185 owns and the author call below.
+
    The suite-phase-number author call is separate and still open: 21 through 23,
    contested across four documents ([[records/author-calls]]), and a session is
    barred from making it. Phase 22 sits outside `run-tests.sh`'s dispatch table
    under either answer, so the suite line does not carry it today.
 4. **The optimizer's re-check runs, or E17 says why it does not.**
-   **CLOSED 2026-09-05 on the first branch**, [[records/enforcement-arc]] EN-24,
-   and ⚑ **the closure is short of its own evidence**, two paragraphs down.
+   **REOPENED 2026-09-08 by the author's ruling**, `records/lenses/problems.md`
+   PRB-70 and commit `b613a8f`, stated in full in the last block of this
+   requirement. It read **CLOSED 2026-09-05 on the first branch**,
+   [[records/enforcement-arc]] EN-24, and ⚑ **the closure was short of its own
+   evidence**, two paragraphs down. Everything between here and that last block
+   is the record of the closure and stands as written.
    `lib/lowering/compile-back.chiral:16` imports `lowering/upper/optimize` and
    `lower-defs` hands every emitted TFn to `re-check`, adopting the residual
    only through `chk-ok`, which ck-fn has to form. Measured on the promoted
@@ -228,6 +257,42 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    EN-19's shape a second time: the `Checked` sum proves ck-fn ran and says
    nothing about meaning. Repairing `dead` is E17's remaining work and it is
    not this requirement's.
+
+   ⚑ **REOPENED 2026-09-08: THE WIRING THIS REQUIREMENT CLOSED ON IS CUT.** The
+   author ruled that `lowering/tal/check` stays OUTSIDE the compiler closure and
+   that the wiring is the defect (`records/lenses/problems.md` PRB-70). Three
+   measurements are named in the ruling. The wiring put `ck-fn` in the blob and
+   never `ck-prog`, so requirement 2's subject still has zero call sites. A
+   compiler with `re-check` forced to answer `chk-ok` emits a byte-identical blob
+   at 1,241,464 bytes, so the wiring bought no shipped byte. And keeping it
+   charged the BUILD RULE on every edit of `check.chiral` and cost
+   `tools/test/tal-check.sh` the scratch-`lib/` mutant harness G18 exists to
+   license.
+
+   Carried out at `b613a8f`. `lib/lowering/upper/eff-lower.chiral:20` and
+   `lib/lowering/upper/optimize.chiral:17` both cited `lowering/tal/check` for a
+   typed IR declared at `lib/lowering/tal/ssa.chiral:21-40`, and both are
+   repointed there. `re-check`, `Checked`, `chk-ok` and `chk-err` moved whole to
+   `prog/optimizer-census.prog`; `lower-defs`' `opt-tfns` adopts `(fold t)` with
+   no verdict to consult. The compiler rebuilt to `C1 == C2` at **1,220,984
+   bytes**, 20,480 fewer than the 1,241,464 above, which is `check.chiral`
+   leaving the blob; the blob itself is 840,440 bytes against 855,545 and holds
+   zero `def ck-prog`. `tools/test/run-tests.sh` reads **`412 passed, 0 failed`**,
+   `93 roots built, 0 failed`, gate PASSED, matching a pre-change baseline taken
+   in a clean worktree at HEAD. `tools/test/tal-check.sh` reads `21 ok, 0 FAIL`.
+
+   **What the requirement now needs.** The first branch is gone: no re-check runs
+   on the shipping path. The second branch is open and unwritten, because E17's
+   ledger row does not yet say why it does not run. The census survives as the
+   measurement it always was, taken from outside the closure:
+   `tools/test/opt-census.sh` at `38ecdba` reads **`opt-census: 8 passed, 0
+   failed`** over `census tfns=1548 ok=1517 err=31 defs=1518 skipped=10
+   unfolded-ok=1517`, four rows and four mutants, 7s wall against 49s. R5, R6 and
+   mutants M1 and M2 asserted the wiring and retired with it, and the fixtures
+   `tools/test/samples/opt_census_outline.prog` and `opt_census_control.prog`
+   were R5's subject and its control and are removed.
+   [[records/enforcement-arc]] EN-26 carries the measurement.
+
 5. **Chirality's own tooling is chirality's.** Measured 2026-09-05 at `67d3d54`:
    **12,671 lines outside the language** against **782 native**, every `.prog`
    file:
@@ -325,12 +390,26 @@ Done when all six hold. Each is checkable, and the state beside it is measured
    | `tal-check.sh` | **1** | `20 ok, 1 FAIL` on G18 |
    | `map-integrity.sh` | **1** | `869 rows, 176 stale` |
 
-   `tal-check.sh`'s red is requirement 3's: G18 asserts `lowering/tal/check`
+   ⚑ **THREE OF THE THIRTEEN MOVED BY 2026-09-08 AND THE TABLE ABOVE IS THE
+   2026-09-05 READING.** Re-measured at `38ecdba`:
+
+   | gate | exit | reads |
+   |---|---|---|
+   | `tal-check.sh` | 0 | `21 ok, 0 FAIL` |
+   | `opt-census.sh` | 0 | `8 passed, 0 failed` |
+   | `run-tests.sh` | 0 | `412 passed, 0 failed`, `93 roots built, 0 failed`, gate PASSED |
+
+   `tal-check.sh`'s red was requirement 3's: G18 asserts `lowering/tal/check`
    stays outside the compiler closure and requirement 4's wiring put it inside,
-   so the row is falsified correctly and retiring it is the author's call.
+   so the row was falsified correctly. The author ruled on 2026-09-08 that the
+   wiring is the defect (`records/lenses/problems.md` PRB-70), `b613a8f` cut it,
+   and G18 is green with its polarity unchanged. `opt-census.sh` lost the two
+   rows and two mutants that asserted that wiring and kept the four that measure
+   the census, so twelve checks became eight. `run-tests.sh`'s figure grew with
+   the gates added between the two dates.
    `map-integrity.sh`'s red is a separate defect dated 2026-08-31: 176 of its
-   869 `.planning/MIGRATION-MAP.tsv` rows point at paths the migration moved.
-   Neither is this requirement's subject and neither is fixed here. Whether any
+   869 `.planning/MIGRATION-MAP.tsv` rows point at paths the migration moved. It
+   is not this requirement's subject and it is not fixed here. Whether any
    of the thirteen *should* be dispatched is the suite-phase-number author call,
    the same one requirement 3 waits on ([[records/gate-audit]] GA-10, still OPEN
    for that reason).
@@ -372,7 +451,7 @@ gate tier owning itself.
 | `enforcement/N9` | effectful lowering: the effect row's tal shadow plus a preserve-check over the effect claim | floor | law | new | 2 | open | `E70` |
 | `enforcement/N10` | the gate tier becomes chirality: 10,719 lines of shell in `tools/test/` against 1,775 native, on the `prose-lint` precedent where the checks moved into a `.prog` and the shell kept only the front end | tooling | tool | new | 5 | open | `unminted` |
 | `enforcement/N11` | every gate row names a mutant that is actually run, checked mechanically rather than per gate by hand | tooling | tool | new | 6 | open | `unminted` |
-| `enforcement/N12` | the TFn census as a gate: fold `ck-prog` over every emitted TFn and report accept, reject and the four reject classes. Three record rows rest on this number. The instrument that still cannot be re-run is `ck-prog`, which has zero call sites anywhere under `lib/` or `prog/`, so the four reject classes stay un-taken. The `re-check` half does re-run: `prog/optimizer-census.prog` under `tools/test/opt-census.sh` (`7a62965`, `d7ccad8`) reads `census tfns=1582 ok=1550 err=32`, measured 2026-09-06. ⚑ It became buildable when E154's eleven collisions were prefixed away: measured 2026-09-06, **zero** names in `lowering/tal/check` collide with any module under `lib/`, so a probe imports the real checker instead of keeping a copy | tooling | tool | connect | 2 | open | `unminted` |
+| `enforcement/N12` | the TFn census as a gate: fold `ck-prog` over every emitted TFn and report accept, reject and the four reject classes. Three record rows rest on this number. The instrument that still cannot be re-run is `ck-prog`, which has zero call sites anywhere under `lib/` or `prog/`, so the four reject classes stay un-taken. The `ck-fn` half does re-run: `prog/optimizer-census.prog` under `tools/test/opt-census.sh` reads `census tfns=1548 ok=1517 err=31`, measured 2026-09-08 at `38ecdba`. It reads 1582/1550/32 before that date, over a blob that still carried `check.chiral`; PRB-70's ruling took the module out of the compiler closure and the probe imports it directly now. ⚑ It became buildable when E154's eleven collisions were prefixed away: measured 2026-09-06, **zero** names in `lowering/tal/check` collide with any module under `lib/`, so a probe imports the real checker instead of keeping a copy | tooling | tool | connect | 2 | open | `unminted` |
 
 ### Coverage
 
@@ -386,6 +465,7 @@ subjects are built and unadopted, which is the defect this arc names.
 ## Resume state
 
 
+⚑ **2026-09-08: requirement 4 is REOPENED and G18 is green.** The author ruled (`records/lenses/problems.md` PRB-70) that `lowering/tal/check` stays OUTSIDE the compiler closure and that the wiring is the defect. `b613a8f` repointed `eff-lower.chiral:20` and `optimize.chiral:17` at `lowering/tal/ssa`, where the typed IR they cited is declared, and cut `re-check`. The compiler is at `C1 == C2`, 1,220,984 bytes, blob 840,440. `tools/test/tal-check.sh` reads `21 ok, 0 FAIL`, `tools/test/run-tests.sh` reads `412 passed, 0 failed` with `93 roots built, 0 failed` and gate PASSED, unchanged from the pre-change baseline. `38ecdba` cut opt-census.sh's two wiring rows and two wiring mutants and kept the four census rows, re-pinned at `census tfns=1548 ok=1517 err=31 defs=1518 skipped=10 unfolded-ok=1517`, reading `8 passed, 0 failed`. **Requirement 4's second branch is what is owed next: E17's ledger row has to say why the re-check does not run, and nothing says it yet.** `N8` is no longer half-moved by the closure question; what it owes is the call site `ck-prog` has never had. EN-26 carries the measurement.
 ⚑ **2026-09-06: three rows opened and the arc now serves all six requirements.** `N10` and `N11` came from the native-tests ruling, closing `GAP-02` and `GAP-03`. `N12` is the TFn census, which became buildable when E154's eleven collisions were prefixed away: zero names in `lowering/tal/check` collide with any module under `lib/` today, so a probe imports the real checker instead of copying it. **Nine record rows rest on that census and none can be re-run until `N12` exists**, which makes it the highest-leverage row here. `PRB-70` also measured `check.chiral` inside the compiler closure with `ck-prog` called by nothing, so `N8` is half-moved.
 **2026-09-05: resume from `.planning/HANDOFF-2026-09-05.md`.** It supersedes
 `.planning/HANDOFF-2026-09-04-EVENING.md`, which is kept for its measurements.
@@ -645,10 +725,12 @@ still miss.
 
 [[goals/enforcement]] states the gap in its own State list: the typed-assembly
 floor is built and unadopted, and neither the floor checker nor the optimizer's
-re-check runs in the shipping compile. **Half of that sentence expired
-2026-09-05.** The optimizer's re-check runs on every compile, EN-24; the floor
-checker `ck-prog` still has no call site, which is requirement 2. These four
-elements are that sentence, and they are the reason the surviving half is true. Every count below was measured 2026-09-02 by
+re-check runs in the shipping compile. **Half of it expired 2026-09-05 and came
+back on 2026-09-08.** The optimizer's re-check ran on every compile from
+`5b7478f` to `b613a8f`, EN-24; the author's PRB-70 ruling cut it, so neither
+half runs today and the goal's sentence is true again as written. The floor
+checker `ck-prog` has never had a call site, which is requirement 2. These four
+elements are that sentence. Every count below was measured 2026-09-02 by
 grepping `(import "<key>")` over `lib/` and `prog/` and by walking the transitive
 import closure of `prog/compiler.prog`, which is 50 modules.
 
@@ -660,13 +742,13 @@ import closure of `prog/compiler.prog`, which is 50 modules.
 
 ### E17
 
-| E17 | **Optimizer: const-fold, DCE, specialize/partial-eval/pregen** | **Wired 2026-09-05, and the re-check runs.** `lib/lowering/compile-back.chiral:16` imports `lowering/upper/optimize`, and `lower-defs` const-folds every emitted TFn and adopts the residual only through `chk-ok`, which `re-check` cannot form without ck-fn judging it. **1,582 TFns per self-compile, 1,550 `chk-ok`, 32 `chk-err`**, un-folded baseline 1,550. The 254 lines are on the live path and `lowering/tal/check` came with them, so the module holding the re-check is loaded. ⚑ **`dead` IS EXCLUDED BY MEASUREMENT.** Wired whole, `optimize` reaches a fixpoint and the compiler miscompiles itself, `293 passed, 98 failed` with `91 roots built, 0 failed`; `fold` alone grades `tools/test/row.sh` at `42 passed, 0 failed` and `dead` alone at `33 passed, 9 failed`. `re-check` accepts the dead residual. [[records/enforcement-arc]] EN-24 | partial evaluation (Jones–Gomard–Sestoft) (`PAPER`) |
+| E17 | **Optimizer: const-fold, DCE, specialize/partial-eval/pregen** | **Wired 2026-09-05, and the re-check was cut 2026-09-08.** `lib/lowering/compile-back.chiral:16` imports `lowering/upper/optimize`, and `lower-defs` const-folds every emitted TFn. From `5b7478f` to `b613a8f` it adopted the residual only through `chk-ok`, which `re-check` could not form without ck-fn judging it, at **1,582 TFns per self-compile, 1,550 `chk-ok`, 32 `chk-err`**, un-folded baseline 1,550. PRB-70's ruling took `lowering/tal/check` back out of the compiler closure, so the fold's residual is adopted unjudged and the census runs from `prog/optimizer-census.prog` instead, at 1,548/1,517/31. The 254 lines are on the live path. ⚑ **`dead` IS EXCLUDED BY MEASUREMENT.** Wired whole, `optimize` reaches a fixpoint and the compiler miscompiles itself, `293 passed, 98 failed` with `91 roots built, 0 failed`; `fold` alone grades `tools/test/row.sh` at `42 passed, 0 failed` and `dead` alone at `33 passed, 9 failed`. `re-check` accepts the dead residual. [[records/enforcement-arc]] EN-24 | partial evaluation (Jones–Gomard–Sestoft) (`PAPER`) |
 
-| E17 | optimize | built | **Optimizer: const-fold, DCE, specialize/pregen.** 254 L, **imported by `compile-back.chiral:16` since 2026-09-05**, inside the compiler blob. The optimizer's re-check over tal runs on every compile, 1,550 `chk-ok` of 1,582 TFns. ⚑ The ledger's state cell files E17 `built`, and built here now means reached as well as present. What is left is the DCE pass, which miscompiles and which `re-check` accepts anyway, EN-24 | ←E18 |
+| E17 | optimize | built | **Optimizer: const-fold, DCE, specialize/pregen.** 254 L, **imported by `compile-back.chiral:16` since 2026-09-05**, inside the compiler blob. `fold` runs on every compile. The re-check that guarded it ran from 2026-09-05 to 2026-09-08 and was cut by PRB-70's ruling, so the module no longer carries `lowering/tal/check` in with it. ⚑ The ledger's state cell files E17 `built`, and built here now means reached as well as present. What is left is the DCE pass, which miscompiles and which `re-check` accepted anyway, EN-24, and requirement 4's second branch, which is unwritten | ←E18 |
 
 ### E18
 
-| E18 | **TAL checker + reference tal interpreter** | Split three ways, one part reached. `lib/lowering/tal/ir.chiral` (49 L) is built and inside the compiler's closure, with six importers: `lowering/mach/emit-core`, `lowering/tal/bytes`, `lowering/tal/reify`, `lowering/tal/sys-check`, `lowering/tal/sys-linkage`, `lowering/tal/sys`. The checker `lib/lowering/tal/check.chiral` (246 L) has two importers, `lowering/upper/optimize` with zero importers of its own and `lowering/upper/eff-lower` with one, `lib/module/sig-driver.chiral`, which itself has zero importers. The reference interpreter `lib/lowering/tal/eval.chiral` (187 L) has none. Everything except the IR is outside the compiler's closure. ⚑ The catalog's earlier wording said both importers of `check` were themselves unimported, and that is stale: `eff-lower` has an importer now, and the conclusion survives because that importer is itself dead. | Typed Assembly (Morrisett et al.) (`PAPER`) |
+| E18 | **TAL checker + reference tal interpreter** | Split three ways, one part reached. `lib/lowering/tal/ir.chiral` (49 L) is built and inside the compiler's closure, with six importers: `lowering/mach/emit-core`, `lowering/tal/bytes`, `lowering/tal/reify`, `lowering/tal/sys-check`, `lowering/tal/sys-linkage`, `lowering/tal/sys`. The checker `lib/lowering/tal/check.chiral` (246 L) had two importers under `lib/`, `lowering/upper/optimize` and `lowering/upper/eff-lower`; PRB-70's ruling repointed both at `lowering/tal/ssa` on 2026-09-08, so it has **zero importers under `lib/`** and one under `prog/`, the census probe `prog/optimizer-census.prog`. The reference interpreter `lib/lowering/tal/eval.chiral` (187 L) has none. Everything except the IR is outside the compiler's closure. ⚑ The catalog's earlier wording said both importers of `check` were themselves unimported, and that is stale: `eff-lower` has an importer now, and the conclusion survives because that importer is itself dead. | Typed Assembly (Morrisett et al.) (`PAPER`) |
 
 | E18 | tal | built | **TAL checker + reference tal interpreter.** The IR is reached (49 L, six importers, in the blob); the checker (246 L) and the reference interpreter (187 L) are outside the blob and run on nothing. Adopting the checker is what closes the goal's floor-is-unadopted bullet, and it is the same call site E16 owes. | →E16, ←E70 |
 
