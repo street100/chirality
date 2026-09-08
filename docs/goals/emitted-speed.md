@@ -119,10 +119,10 @@ cost of, so it sits beside them instead of standing as its own goal.
    name is P1's forgotten-syscall hole one level down, so an idiom recognized in
    the emitter sits underneath a named primitive and substitutes for none. Three
    sets carry the condition. The `Op` sum (`lib/prelude/prelude.chiral:36-39`)
-   declares fifteen constructors, the extern block (`:58-71`) binds fourteen,
-   and `op-bytes` (`lib/lowering/x64/mach.chiral:351-385`) encodes fifteen.
-   `op-mulhi` is the one difference: `:373` emits it as the signed one-operand
-   `imul` at `:319`, and no program can write it. Outside all three sits what a
+   declares fifteen constructors, the extern block (`:59-72`) binds fourteen,
+   and `op-bytes` (`lib/lowering/x64/mach.chiral:355-391`) encodes fifteen.
+   `op-mulhi` is the one difference: `:377` emits it as the signed one-operand
+   `imul` at `:321`, and no program can write it. Outside all three sits what a
    current ISA offers and the sum omits, which
    [[benchmarks/OPT-CANDIDATES-2026-09]] bucket C enumerates as **38 rows**:
    rotate, unsigned widening multiply, conditional move, byte swap,
@@ -175,8 +175,8 @@ budget is now a row in [[records/author-calls]].
 
 **Condition 6 was taken on 2026-09-08, after the exclusion that kept it out was
 measured wrong.** The arc had put bucket C outside itself by reading `C33` as a
-finishing job the surface never got. `lib/lowering/x64/mach.chiral:319` defines
-`x-imul-rcx-1op` as `48 F7 E9`, the one-operand **signed** `imul` that `:373`
+finishing job the surface never got. `lib/lowering/x64/mach.chiral:321` defines
+`x-imul-rcx-1op` as `48 F7 E9`, the one-operand **signed** `imul` that `:377`
 reaches for `op-mulhi`, and no unsigned `F7 /4` form exists anywhere in
 `lib/lowering/x64/`. The shape is therefore unsettled and `C33` is a row, which
 `X7` now carries together with `C17` and `C38` as one decision.
@@ -281,7 +281,7 @@ stands unmeasured**, and any single number summarizing it would be invented.
 - **The language names no operation that a current ISA has and this sum lacks.**
   All 38 bucket C rows read `absent`. `op-mulhi` is in the closed sum and
   reachable from nothing a program can write, `x-imul-rcx-1op`
-  (`lib/lowering/x64/mach.chiral:319`) encodes the signed one-operand `imul`,
+  (`lib/lowering/x64/mach.chiral:321`) encodes the signed one-operand `imul`,
   and no unsigned multiply path exists anywhere in the backend. So the fifteenth
   constructor is both unwritable and the wrong sign for what `C17` asks. What
   would close it is a design stage that decides the widening multiply's shape,

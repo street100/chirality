@@ -20,7 +20,7 @@ updated: 2026-09-01
   a byte class, bounded repetition, alternation, a zero-width assertion, and a
   line-state pass (inside/outside a fenced block, inside/outside an inline span).
 - **Kind:** BUILD-PROPER. Nothing in `lib/` matches text past
-  `str-find`/`str-find-from` (`lib/prelude/prelude.chiral:81-82`), which lower to
+  `str-find`/`str-find-from` (`lib/prelude/prelude.chiral:84-85`), which lower to
   the naive scan `nb-bfind-from` (`lib/lowering/tal/bytes.chiral:355-380`:
   `nb-match` at offset `i`, else recurse at `i+1`).
 - **Why chirality needs its own:** two live consumers, both measured.

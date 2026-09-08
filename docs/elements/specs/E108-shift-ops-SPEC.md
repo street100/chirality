@@ -11,7 +11,7 @@ updated: 2026-08-12
 # E108 SPEC — `shr` / `sar` right-shift surface externs
 
 > ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 3 steps are executable at HEAD.
-> `lib/prelude/prelude.chiral:70-71` carries `shr` and `sar`. Bucket and
+> `lib/prelude/prelude.chiral:71-72` carries `shr` and `sar`. Bucket and
 > evidence: `records/spec-tier-triage.md`. This file was not rewritten and its
 > `status:` was not changed.
 
@@ -22,7 +22,7 @@ updated: 2026-08-12
 ## 1. Deliverable
 
 - **After this runs:** two new lines in `lib/prelude/prelude.chiral`, right after
-  `shl` at `:69` — `(extern shr (-> I64 I64 I64))` (logical / zero-fill) and
+  `shl` at `:70` — `(extern shr (-> I64 I64 I64))` (logical / zero-fill) and
   `(extern sar (-> I64 I64 I64))` (arithmetic / sign-fill) — so surface programs
   can call `(shr a k)` and `(sar a k)` and have them type-check, interpret, and
   native-compile. B1's current `load: unknown name sar` gap closes.
@@ -54,7 +54,7 @@ updated: 2026-08-12
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
-| 1 | Should E108 touch any layer besides the prelude extern? | RESOLVED — surface-only. | Every internal layer is pre-wired by the Euclidean-division lowering that already emits `sar`/`shr`; verified at `prelude.chiral:70`, `impl_pure.py:66-67`, `native.py:63/70`, `optimize.py:705`, `tal-erase.chiral:101-102`, `mach-x64.chiral:321/323`. The extern is the only missing face. |
+| 1 | Should E108 touch any layer besides the prelude extern? | RESOLVED — surface-only. | Every internal layer is pre-wired by the Euclidean-division lowering that already emits `sar`/`shr`; verified at `prelude.chiral:71`, `impl_pure.py:66-67`, `native.py:63/70`, `optimize.py:705`, `tal-erase.chiral:101-102`, `mach-x64.chiral:321/323`. The extern is the only missing face. |
 | 2 | `shr` logical vs `sar` arithmetic — are the semantics settled? | RESOLVED. | Settled by the existing interp arms `impl_pure.py:66-67`: `shr` masks to unsigned then shifts (zero-fill); `sar` keeps the sign-propagating shift (sign-fill). Count masked `&63` on both — no undefined-behavior cliff. Two distinct names by design (boundary-sums; the shift kind is a `ctor`, never a signedness accident). |
 | 3 | Migrate `poll.chiral:bit?` to the new op in this run? | DEFERRED to §6 residue. | The extern is the element; the call-site rewrite is optional polish, not required for the gate. |
 
@@ -64,7 +64,7 @@ No NEEDS-AUTHOR items. §4 is fully unblocked.
 
 ### Step 1 — Add the two surface externs
 - **Target:** `lib/prelude/prelude.chiral` — immediately after the `shl` extern at
-  `:59`, inside the `; i64 (bitwise)` block.
+  `:60`, inside the `; i64 (bitwise)` block.
 - **Change:** insert, mirroring the E96 band/bor/bxor/shl formatting:
   ```chirality
   (extern shr (-> I64 I64 I64))             ; shift right, logical    (zero-fill)

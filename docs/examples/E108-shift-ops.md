@@ -95,7 +95,7 @@ you when a value's signedness changes elsewhere.
 ## 5. Chirality example (fleshed)
 
 The whole element is these two lines, added in `prelude.chiral` right after the
-existing `shl` extern (`:69`), mirroring the E96 band/bor/bxor/shl block exactly:
+existing `shl` extern (`:70`), mirroring the E96 band/bor/bxor/shl block exactly:
 
 ```chirality
 ; ---------------------------------------------------------------- i64 (bitwise)
@@ -142,7 +142,7 @@ After E108, keyed by bit index instead of a power-of-two mask:
 ## 6. Use / modify notes
 
 - **Lands in:** `lib/prelude/prelude.chiral` (two `(extern …)` lines beside `shl`
-  at `:59`). No other file changes — verify (do not re-add) the existing
+  at `:60`). No other file changes — verify (do not re-add) the existing
   `impl_pure.py:66-67`, `native.py:63/70`, `optimize.py:705`,
   `tal-erase.chiral:101-102`, `mach-x64.chiral:321/323` entries.
 - **Conformance target:** a probe `(band (shr a k) 1)` / `(sar a k)` must

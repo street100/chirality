@@ -59,10 +59,10 @@ requirement 3 below carries the gap instead of a number.
 
 Condition 6 is unobserved by any instrument this tree runs. Three sets carry it.
 The `Op` sum (`lib/prelude/prelude.chiral:36-39`) declares fifteen constructors,
-the extern block (`:58-71`) binds fourteen, and `op-bytes`
-(`lib/lowering/x64/mach.chiral:351-385`) encodes fifteen. `op-mulhi` is the one
-difference, and the difference is worse than a missing name. `:373` reaches it
-through `x-imul-rcx-1op` (`:319`, `48 F7 E9`), the one-operand **signed**
+the extern block (`:59-72`) binds fourteen, and `op-bytes`
+(`lib/lowering/x64/mach.chiral:355-391`) encodes fifteen. `op-mulhi` is the one
+difference, and the difference is worse than a missing name. `:377` reaches it
+through `x-imul-rcx-1op` (`:321`, `48 F7 E9`), the one-operand **signed**
 `imul`, and a grep for the unsigned `F7 /4` form over `lib/lowering/x64/`
 returns nothing. The backend therefore holds a signed high-word multiply and
 reaches no unsigned one, and the two answers differ whenever either operand's
@@ -103,14 +103,14 @@ condition 6 opens on a second absence.
 |---|---|---|---|
 | representation | `is-enum`: every constructor nullary gives an immediate tag, and any fielded constructor boxes the whole type. `Q4` and `St` are both single-constructor | `lib/lowering/tal/erase.chiral:75`, against `lib/crypto/chacha.chiral:42-45,48` | IMPLEMENTED |
 | representation | `ti-cona`, the only way to write a cell's fields | `lib/lowering/tal/ir.chiral:23` | IMPLEMENTED |
-| representation | the allocation itself: `emit-instr`'s `ti-cona` arm calls `alo-cell` on the bound `Alloc`, and `x-galo` sizes the cell `8 * (1 + fields)`, so a `Q4` is 40 B and an `St` is 136 B | `lib/lowering/mach/emit-core.chiral:151`, `lib/lowering/x64/mach.chiral:509,511` | IMPLEMENTED |
+| representation | the allocation itself: `emit-instr`'s `ti-cona` arm calls `alo-cell` on the bound `Alloc`, and `x-galo` sizes the cell `8 * (1 + fields)`, so a `Q4` is 40 B and an `St` is 136 B | `lib/lowering/mach/emit-core.chiral:151`, `lib/lowering/x64/mach.chiral:515,517` | IMPLEMENTED |
 | representation | `tt-word`, the uniform erased word, representation-compatible with every one-word type | `lib/lowering/tal/ssa.chiral:21-22`, matched by `tal-ty=?` at `lib/lowering/tal/check.chiral:68-70` | built, [[banks/erasure]] shard F |
 | boundary | the single-slot return: `ti-ret` carries one `src` and `TalSig` one `ret` | `lib/lowering/tal/ir.chiral:43`, `lib/lowering/tal/ssa.chiral:44` | IMPLEMENTED |
 | boundary | the hand-written proof that the same arithmetic allocates nothing when the four lanes travel as parameters across a self tail call: `sB`, `qround`'s body verbatim, 0 B over 8,000,000 quarter rounds | `tools/bench/crypto-kernel.sh`, against `lib/crypto/chacha.chiral:50-56` | measured 2026-09-07 |
 | operations | the `Op` sum: fifteen constructors, closed, matched exhaustively by every consumer, and every one a scalar 64-bit operation | `lib/prelude/prelude.chiral:36-39` | IMPLEMENTED |
-| operations | the extern block, binding fourteen of the fifteen at the surface. `mulhi` is the one with no `(extern …)` line, so no program can write it | `lib/prelude/prelude.chiral:58-71` | IMPLEMENTED |
-| operations | everything below the surface already accepting `mulhi`: `op-name` gives the string, `op-parse` takes it back, `op-bytes` encodes it, the immediate form dispatches it, and `x64-clobbers` has its entry | `lib/prelude/prelude.chiral:49`, `lib/lowering/tal/erase.chiral:100`, `lib/lowering/x64/mach.chiral:373,1025,1445` | IMPLEMENTED |
-| operations | what `op-mulhi` actually emits: `x-imul-rcx-1op`, the bytes `48 F7 E9`, the one-operand **signed** `imul`. A grep over `lib/lowering/x64/` for the unsigned `F7 /4` form returns nothing | `lib/lowering/x64/mach.chiral:319`, commented at `:313` as the optimizer's magic-division prim | IMPLEMENTED, and it is the wrong sign for what `C17` asks |
+| operations | the extern block, binding fourteen of the fifteen at the surface. `mulhi` is the one with no `(extern …)` line, so no program can write it | `lib/prelude/prelude.chiral:59-72` | IMPLEMENTED |
+| operations | everything below the surface already accepting `mulhi`: `op-name` gives the string, `op-parse` takes it back, `op-bytes` encodes it, the immediate form dispatches it, and `x64-clobbers` has its entry | `lib/prelude/prelude.chiral:49`, `lib/lowering/tal/erase.chiral:100`, `lib/lowering/x64/mach.chiral:377,1033,1455` | IMPLEMENTED |
+| operations | what `op-mulhi` actually emits: `x-imul-rcx-1op`, the bytes `48 F7 E9`, the one-operand **signed** `imul`. A grep over `lib/lowering/x64/` for the unsigned `F7 /4` form returns nothing | `lib/lowering/x64/mach.chiral:321`, commented at `:313` as the optimizer's magic-division prim | IMPLEMENTED, and it is the wrong sign for what `C17` asks |
 | operations | the rotate as four operations: `rotl32` is `(band (bor (shl x n) (shr x (- 32 n))) M32)`, rotating at 32 bits inside a 64-bit lane, and `qround` is `4 x (add32=2, bxor=1, rotl32=4)` = 28 ops | `lib/crypto/chacha.chiral:24-25`, counted at [[benchmarks/crypto-kernel-allocation]] §3 | measured 2026-09-07 |
 | operations | the one built consumer that routed around the gap: Poly1305 sizes its limbs at 26 bits so signed `I64` holds every intermediate and the comment records "no mulhi" as the consequence | `lib/crypto/poly1305.chiral:11-14`, five 26-bit limbs at `:45-57` | built, gated |
 | operations | `ti-prim` binary, so a unary operation has no erased representation and `erase-prim` refuses any `Op` without exactly two operands. A rotate is binary and wants none of that, which is why `B6` sits under `C3` to `C6` and under neither of this arc's operation rows | `lib/lowering/tal/ir.chiral:21`, refused at `lib/lowering/tal/erase.chiral:153-157` | IMPLEMENTED |
@@ -179,7 +179,7 @@ requires choosing between shapes the codebase does not already settle.
 
 Two examples mark the line. `C13`, an unsigned less-than, settles nothing: the
 sum already carries the signed `op-lti` with its encoding at
-`lib/lowering/x64/mach.chiral:369`, so the unsigned row copies a shape the tree
+`lib/lowering/x64/mach.chiral:373`, so the unsigned row copies a shape the tree
 has into a new constructor and edits the four places bucket C's own preamble
 names. That is a finishing job and it is consumed as ordinary work. `B3`, a
 location vocabulary, is genuine design: it decides whether the IR can name a
@@ -189,8 +189,8 @@ place other than a slot, and nothing in the tree settles it.
 reading was measured wrong.** It said a surface binding for `mulhi` was one
 `extern` the surface never got, because everything below the surface already
 accepts the string. Measured 2026-09-08: `x-imul-rcx-1op`
-(`lib/lowering/x64/mach.chiral:319`) is the bytes `48 F7 E9`, the one-operand
-**signed** `imul`, `:373` is where `op-mulhi` reaches it, and grep finds no
+(`lib/lowering/x64/mach.chiral:321`) is the bytes `48 F7 E9`, the one-operand
+**signed** `imul`, `:377` is where `op-mulhi` reaches it, and grep finds no
 unsigned `F7 /4` form anywhere under `lib/lowering/x64/`. Binding what is there
 therefore ships a primitive whose high word differs from the unsigned one
 whenever either operand's top bit is set, and the unsigned high word is what
@@ -243,8 +243,8 @@ from the dependency instead of rediscovering it.
    removing a cell moves cost somewhere nothing counts today.
 5. **The three in-tree operation sets agree, and a gate checks the agreement.**
    Observed: one check over the `Op` sum (`lib/prelude/prelude.chiral:36-39`),
-   the extern block (`:58-71`) and `op-bytes`
-   (`lib/lowering/x64/mach.chiral:351-385`) that fails when they disagree
+   the extern block (`:59-72`) and `op-bytes`
+   (`lib/lowering/x64/mach.chiral:355-391`) that fails when they disagree
    constructor for constructor, registered in `tools/test/run-tests.sh` under a
    phase number so it runs without anyone remembering to run it. It fails today
    on `op-mulhi`, which is the one difference the three sets hold, and a check
@@ -274,7 +274,7 @@ from the dependency instead of rediscovering it.
 | `emitted-speed/X4` | the per-pass switch: one transformation turned on alone and graded against the self-hosting fixpoint without editing the pipeline, which is how `dead`'s `33 passed, 9 failed` was taken | grading | tool | new | 2 | open | `unminted` |
 | `emitted-speed/X5` | the outside control: a `gcc -O2` figure for one real kernel measured against `bin/chirality-bin`, under the host-block, honest-spread and anti-fold conventions `docs/benchmarks/README.md` states. The harness behind every earlier ratio, `scaffold/bench/`, was evicted with the Python backend on 2026-08-31 | control | tool | new | 3 | open | `unminted` |
 | `emitted-speed/X6` | the residual instrument: `x-alo` traffic separated from `x-galo` traffic in the counter, and the stack-slot traffic a de-boxed product moves, so the claim about what the cells cost is measured | control | tool | new | 4 | open | `unminted` |
-| `emitted-speed/X7` | the widening multiply's shape, which is `C33`, `C17` and `C38` as one decision because they cannot be settled apart: the tree's high word is signed (`lib/lowering/x64/mach.chiral:319`) where the workload wants unsigned, and `C38`'s two-slot form is what `B15`'s single-slot return stands against. Unsigned alone, signed and unsigned as two constructors, and one operation defining two slots are the live shapes, and this row names the decision without taking it | operations | decision | new | 5, 6 | built | `E189` |
+| `emitted-speed/X7` | the widening multiply's shape, which is `C33`, `C17` and `C38` as one decision because they cannot be settled apart: the tree's high word is signed (`lib/lowering/x64/mach.chiral:321`) where the workload wants unsigned, and `C38`'s two-slot form is what `B15`'s single-slot return stands against. Unsigned alone, signed and unsigned as two constructors, and one operation defining two slots are the live shapes, and this row names the decision without taking it | operations | decision | new | 5, 6 | built | `E189` |
 | `emitted-speed/X8` | the rotate's name and its width: `C1` and `C2` name a left and a right rotate and the sum names neither, `C35` recognizes the idiom in the emitter and names no operation, and `rotl32` (`lib/crypto/chacha.chiral:24-25`) rotates at 32 bits inside a 64-bit lane, so what width a named rotate carries is open against `C32` and `B8` | operations | primitive | new | 6 | open | `unminted` |
 | `emitted-speed/X9` | the three-set agreement gate: one check reading the `Op` sum, the extern block and `op-bytes` and failing when they disagree, and whether it reads source text the way `tools/ledger-lint` does or the compiler's own structures the way `prog/optimizer-census.prog` does, given that `tools/test/opt-census.sh` is built and unregistered because it takes no phase number | operations | tool | new | 5 | open | `unminted` |
 

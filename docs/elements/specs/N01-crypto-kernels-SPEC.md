@@ -60,9 +60,9 @@ updated: 2026-09-03
 
   | shard | what is built | where |
   |---|---|---|
-  | integer externs | `+ - * / % =i <i <=i` and `band bor bxor shl shr sar` | `lib/prelude/prelude.chiral:58-71` |
-  | bytes externs | `blen bget bslice bcat brepeat` | `lib/prelude/prelude.chiral:93-97` |
-  | LE serialization | `pack-u32` / `unpack-u32` | `lib/prelude/prelude.chiral:98-99`, LE per `lib/lowering/compile-emit.chiral:29` and `lib/protocol/wire.chiral:3` |
+  | integer externs | `+ - * / % =i <i <=i` and `band bor bxor shl shr sar` | `lib/prelude/prelude.chiral:59-72` |
+  | bytes externs | `blen bget bslice bcat brepeat` | `lib/prelude/prelude.chiral:96-100` |
+  | LE serialization | `pack-u32` / `unpack-u32` | `lib/prelude/prelude.chiral:101-102`, LE per `lib/lowering/compile-emit.chiral:29` and `lib/protocol/wire.chiral:3` |
   | guarded byte read | `at-byte` | `lib/text/matcher.chiral:310-314` |
   | result idiom | fallible `sock-*` carrying `*-err` constructors | E29, `docs/examples/E29-sockets.md` |
   | totality shapes | countdown to a constant bound; index under `blen` | `docs/definitions/totality.md` |

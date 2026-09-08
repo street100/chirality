@@ -409,7 +409,7 @@ typedef struct {
 ; one; `bool-eq` is `render.chiral:202`, and `grid.chiral` importing
 ; `protocol/render` inverts the tier and charges `vt-parser.chiral` for it. The
 ; clean version is `bool-eq` moving to `lib/prelude/prelude.chiral` beside `not`
-; (`:137`), and that file IS inside the compiler's blob: the blob built in this
+; (`:140`), and that file IS inside the compiler's blob: the blob built in this
 ; run carries `(def not (-> Bool Bool)` at its own line 137, so a def added
 ; there owes the fixpoint rebuild M3 licenses this element out of. §6 hands the
 ; prelude move to a follow-on and states its price.

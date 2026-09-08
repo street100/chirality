@@ -61,7 +61,7 @@ identical runs. No figure here is a `memory.peak` reading, so no figure here is 
 lower bound for that reason.
 
 **What the counter establishes.** It counts bytes handed out by `x-alo` and
-`x-galo` (`lib/lowering/x64/mach.chiral:477,509`), the only two allocation paths
+`x-galo` (`lib/lowering/x64/mach.chiral:483,515`), the only two allocation paths
 a compiled program takes. A zero from it means no cell was constructed on the
 measured path. It says nothing about stack traffic, register pressure or spill,
 and this file measures none of those.

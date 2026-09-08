@@ -40,7 +40,7 @@ updated: 2026-09-03
 - **The working constraint, restated from the arc:** zero compiler changes.
   The surface integer type is signed `I64`; the available integer externs are
   `+ - * / % =i <i <=i` and `band bor bxor shl shr sar`
-  (`lib/prelude/prelude.chiral:58-71`; `shr` is logical zero-fill, `sar`
+  (`lib/prelude/prelude.chiral:59-72`; `shr` is logical zero-fill, `sar`
   arithmetic sign-fill). There is no `mulhi` surface binding and none may be
   added. Every product the kernels form must therefore fit signed 63 bits,
   which forces small-limb field arithmetic.
@@ -65,7 +65,7 @@ updated: 2026-09-03
   2. **Everything serializes little-endian**: ChaCha20 state words, BLAKE2s
      words, the Poly1305 tag, X25519 scalars and coordinates. The tree already
      owns an LE u32 pair: `pack-u32` / `unpack-u32`
-     (`lib/prelude/prelude.chiral:98-99`), documented LE where the ELF emitter
+     (`lib/prelude/prelude.chiral:101-102`), documented LE where the ELF emitter
      uses them (`lib/lowering/compile-emit.chiral:29`) and where the wire
      protocol does (`lib/protocol/wire.chiral:3`).
   3. **Reduction is multiply-by-a-small-constant; division never appears.** Poly1305

@@ -209,7 +209,7 @@ Three spellings exist: `bool-eq` (`render.chiral:202`), `booleq`
 retires the second and leaves the first where it is.
 
 `lib/prelude/prelude.chiral` is inside the compiler's blob, verified twice in
-this run: `not` is defined at `prelude.chiral:137`, and the blob built from
+this run: `not` is defined at `prelude.chiral:140`, and the blob built from
 `prog/compiler.prog` carries `(def not (-> Bool Bool)` at its own line 137. A def
 added there owes `build-new → test → promote` and the byte-compare with a
 non-empty check. **That is the single change in reach of this element that would

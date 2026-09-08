@@ -83,7 +83,7 @@ quoted back in the `wants` verdicts of buckets A and F as `B1` to `B4`:
 3. no location vocabulary. `Instr` at `lib/lowering/tal/ssa.chiral:26-34` has a
    `dst` slot index per constructor and offers no move, spill or phi.
 4. `ti-cona` always allocates. There is no field-update or reuse form, and
-   `x-galo` at `lib/lowering/x64/mach.chiral:509-511` sizes a cell as
+   `x-galo` at `lib/lowering/x64/mach.chiral:515-517` sizes a cell as
    `8 * (1 + fields)`.
 
 ## Bucket A. The classical pass catalogue
@@ -110,14 +110,14 @@ change it wants.
 | A11 | A | store merging | fuses adjacent narrow stores into one wide store | `GCCPASSES:374` pass_store_merging, `GOSSA:484` memcombine | absent. The `pack-u32` write runs are the shape | optimizer, backend | |
 | A12 | A | copy propagation and copy elimination | forwards a copy's source to its uses and drops the copy | `GOSSA:459` copyelim, `GCCPASSES` pass_copy_prop | absent, and it wants `B3`. Neither instruction set has a move form, so a copy has no representation to eliminate | IR | |
 | A13 | A | value range propagation | derives an interval per value and discharges tests against it | `GCCPASSES:237` pass_vrp, `GOSSA:471` prove | absent. For source-derived facts it wants `B9`, the refinement drop at `lib/lowering/compile-front.chiral:69` | optimizer, type system | |
-| A14 | A | bounds-check elimination | removes an index guard a range fact discharges | `GOSSA:480` check bce | partial. Constant-divisor guard elision only, `x-div-imm` at `lib/lowering/x64/mach.chiral:905` | optimizer, backend | |
+| A14 | A | bounds-check elimination | removes an index guard a range fact discharges | `GOSSA:480` check bce | partial. Constant-divisor guard elision only, `x-div-imm` at `lib/lowering/x64/mach.chiral:911` | optimizer, backend | |
 | A15 | A | redundant test elimination | drops a comparison an earlier comparison already settled | `MLTONSSA` redundantTests | absent | optimizer | |
 | A16 | A | useless-value elimination | drops a value and the tuple slot holding it when no consumer inspects either | `MLTONSSA:63` useless | absent | optimizer | |
 | A17 | A | sinking to uses | moves a computation down to the block that consumes it | `LLVMPASSES:548` sink, `GOSSA:498` tighten | absent | optimizer | |
 | A18 | A | hoisting of common code | lifts a computation both arms perform to the block above them | `LLVMPASSES` gvn-hoist, `GCCPASSES` pass_rtl_hoist | absent | optimizer | |
 | A19 | A | constant hoisting | materializes an expensive constant once and shares the register | `LLVMPASSES:425` consthoist | absent | optimizer, backend | ? `x-mov-rax-imm` is already one instruction |
-| A20 | A | redundant load elimination | drops a load whose value a live slot already holds | `CRANELIFT:344` replace_redundant_loads | partial. Pattern A of `x64-peep`, the recognizer `peep-hit` at `lib/lowering/x64/mach.chiral:1237` | backend | |
-| A21 | A | strength reduction | replaces an expensive operator with a cheaper one on the same value | `LLVMPASSES` slsr, `GCCPASSES` pass_strength_reduction | partial. Power-of-two division and modulo only, `pow2-k` at `lib/lowering/x64/mach.chiral:885` | backend | |
+| A20 | A | redundant load elimination | drops a load whose value a live slot already holds | `CRANELIFT:344` replace_redundant_loads | partial. Pattern A of `x64-peep`, the recognizer `peep-hit` at `lib/lowering/x64/mach.chiral:1245` | backend | |
+| A21 | A | strength reduction | replaces an expensive operator with a cheaper one on the same value | `LLVMPASSES` slsr, `GCCPASSES` pass_strength_reduction | partial. Power-of-two division and modulo only, `pow2-k` at `lib/lowering/x64/mach.chiral:891` | backend | |
 | A22 | A | magic-number constant division | turns division by a constant into a multiply-high and a shift | `GCCPASSES:373` pass_optimize_widening_mul, Cranelift `opts/div_const.rs` | encodings present, pass absent. Inventory §3 row 14 | optimizer, backend | |
 | A23 | A | byte-swap idiom recognition | recognizes a shift-and-or chain as a byte reversal | `GCCPASSES:275` pass_optimize_bswap | absent, and it wants a unary prim form, since `ti-prim` is binary | optimizer, backend | |
 | A24 | A | widening multiply recognition | recognizes a full-width product and emits the two-register form | `GCCPASSES:373` | absent. `op-mulhi` is the unused half of the shape | optimizer, backend | |
@@ -192,7 +192,7 @@ Count: 14.
 | A68 | A | dead global and unreachable symbol pruning | drops a definition nothing reaches | `MLTONSSA` removeUnused | present. `prune-fix` at `lib/lowering/compile-back.chiral:214`, `filter-erasable` at `:185`, `drop-pruned` at `lib/lowering/upper/specialize-singleton.chiral:228` | optimizer | |
 | A69 | A | global constant merging | shares one copy of a repeated constant | `LLVMPASSES` constmerge, `MLTONSSA` duplicateGlobals | partial. `program-lits` at `lib/lowering/compile-back.chiral:124` dedupes string literals and nothing else | optimizer, backend | |
 | A70 | A | dispatcher collapse for defunctionalized families | turns an `$apply<i>` dispatch on a known closure tag into a direct call | bucket 1 applied to `closconv-sig` | absent. `dispatch` folds a known constructor inside a `TFn`, and the closure tag reaching the dispatcher is an interprocedural fact | optimizer | |
-| A71 | A | tail call elimination | replaces a tail call with argument placement and a jump | `LLVMPASSES:555` tailcallelim, `GCCPASSES:381` pass_tail_calls | present. `tail-call-of` plus `x-tca` at `lib/lowering/x64/mach.chiral:1047`. Demoted past six arguments | backend | |
+| A71 | A | tail call elimination | replaces a tail call with argument placement and a jump | `LLVMPASSES:555` tailcallelim, `GCCPASSES:381` pass_tail_calls | present. `tail-call-of` plus `x-tca` at `lib/lowering/x64/mach.chiral:1055`. Demoted past six arguments | backend | |
 | A72 | A | whole-program visibility as a starting point | every interprocedural pass sees the entire program with no link-time machinery | `LLVMPASSES` function-import, the LTO family | present by construction. `load-source-batched` builds one `Sig` for the whole batch | optimizer | |
 
 Count: 18.
@@ -230,9 +230,9 @@ Count: 15.
 | A92 | A | stack slot coloring and frame compaction | reuses one stack slot for values whose ranges do not overlap | `GOSSA` stackalloc.go, `GCCPASSES` pass_live_range_shrinkage | absent. `frame` at `lib/lowering/x64/mach.chiral:53` rounds `8 * nregs` and reuses nothing. This is the slot-retiring allocator ratified in `docs/implementation/rd-packed-cert.md` with zero code written | backend | |
 | A93 | A | flag allocation | schedules the condition-code register as a resource | `GOSSA:506` flagalloc | partial. The fused compare-branch owns the flags across a taken jump, locally | backend | |
 | A94 | A | instruction scheduling | reorders independent instructions to hide latency | `GOSSA:504` schedule, `GCCPASSES:514` pass_sched | absent. The parked menu at `docs/benchmarks/OPTIMIZATIONS-TODO.md:53-54` makes it wait on counters | backend | |
-| A95 | A | machine peephole | rewrites a short emitted instruction window | `GCCPASSES` pass_peephole2 | present. `x64-peep`, `lib/lowering/x64/mach.chiral:1313` | backend | |
-| A96 | A | addressing-mode folding | folds an offset or an index into the memory operand | `GOSSA:489` addressing modes, `GCCPASSES` pass_fold_mem_offsets | partial. `x-load-field` at `lib/lowering/x64/mach.chiral:439` folds the field displacement and nothing wider | backend | |
-| A97 | A | immediate operand folding | folds a known constant into the instruction encoding | `GCCPASSES` pass_combine | present. `bini-body`, `lib/lowering/x64/mach.chiral:961` | backend | |
+| A95 | A | machine peephole | rewrites a short emitted instruction window | `GCCPASSES` pass_peephole2 | present. `x64-peep`, `lib/lowering/x64/mach.chiral:1321` | backend | |
+| A96 | A | addressing-mode folding | folds an offset or an index into the memory operand | `GOSSA:489` addressing modes, `GCCPASSES` pass_fold_mem_offsets | partial. `x-load-field` at `lib/lowering/x64/mach.chiral:445` folds the field displacement and nothing wider | backend | |
+| A97 | A | immediate operand folding | folds a known constant into the instruction encoding | `GCCPASSES` pass_combine | present. `bini-body`, `lib/lowering/x64/mach.chiral:967` | backend | |
 | A98 | A | shrink wrapping | builds the frame only on the paths that need it | `GCCPASSES` pass_thread_prologue_and_epilogue | absent. `x-prologue` at `lib/lowering/x64/mach.chiral:65` always builds a frame | backend | |
 | A99 | A | leaf-frame omission | skips the frame for a function that calls nothing | `GCCPASSES` pass_leaf_regs | absent | backend | |
 | A100 | A | branch shortening and relaxation | picks the smallest encoding that reaches the target | `GCCPASSES` pass_shorten_branches | partial. `x-jne8` and `x-jmp8` at `lib/lowering/x64/mach.chiral:271-273` are rel8 with distances computed at emit time | backend | |
@@ -293,14 +293,14 @@ IR.
 
 ## Bucket C. The `Op` sum and the surface bindings
 
-`lib/prelude/prelude.chiral:36-39` declares fifteen constructors and `:58-71`
+`lib/prelude/prelude.chiral:36-39` declares fifteen constructors and `:59-72`
 binds fourteen of them at the surface. Every operation a current ISA offers and
 this set lacks is a row here. Two structural facts shape the whole bucket.
 
 The sum is closed and every consumer matches it exhaustively, so one new
 constructor edits `op-name` (`lib/prelude/prelude.chiral:44`), `op-parse`
 (`lib/lowering/tal/erase.chiral:91`), `op-bytes`
-(`lib/lowering/x64/mach.chiral:351-387`) and the clobber table (`:1433`). That
+(`lib/lowering/x64/mach.chiral:355-393`) and the clobber table (`:1443`). That
 is the cost of every C row that adds a constructor, and what it buys is a name
 for something the machine can do. C35 to C37 recognize three of these idioms in
 the emitter and name nothing. An operation the backend emits and the language
@@ -330,14 +330,14 @@ here.
 | C14 | A | unsigned less-or-equal | the same | bucket 3 | absent | surface, IR, backend | |
 | C15 | A | unsigned division | divides two words as unsigned | bucket 3, x86 `div` against `idiv` | absent. `x-idiv-rcx` at `lib/lowering/x64/mach.chiral:195` is the signed form, and the Euclidean correction at `x-div-fix` exists to fix its sign | surface, IR, backend | |
 | C16 | A | unsigned modulo | the same | bucket 3 | absent | surface, IR, backend | |
-| C17 | A | unsigned multiply-high | the high word of an unsigned product | bucket 3, x86 `mul` against `imul` | absent. `op-mulhi` encodes the signed one-operand `imul` at `lib/lowering/x64/mach.chiral:319` | surface, IR, backend | |
+| C17 | A | unsigned multiply-high | the high word of an unsigned product | bucket 3, x86 `mul` against `imul` | absent. `op-mulhi` encodes the signed one-operand `imul` at `lib/lowering/x64/mach.chiral:321` | surface, IR, backend | |
 | C18 | A | signed minimum and maximum | picks the smaller or larger of two words | bucket 3 | absent, and it wants C7 to avoid a branch | surface, IR, backend | |
 | C19 | A | unsigned minimum and maximum | the same, unsigned | bucket 3 | absent | surface, IR, backend | |
 | C20 | A | absolute value | the magnitude of a word | bucket 3 | absent, and it wants `B6` | surface, IR, backend | |
 | C21 | A | bitwise complement | inverts every bit | bucket 3, x86 `not` | absent, and it wants `B6`. Expressible as `bxor` against negative one, which is C37's case | surface, IR, backend | |
 | C22 | A | negation | the additive inverse | bucket 3, x86 `neg` | absent as an op, and it wants `B6`. `x-neg-rax` at `lib/lowering/x64/mach.chiral:267` exists for the division correction | surface, IR, backend | |
 | C23 | A | sign extension from a narrower width | widens with the sign bit | bucket 3, x86 `movsx` | absent, and it wants B8 to have a narrower width to widen from | surface, IR, type system | |
-| C24 | A | zero extension from a narrower width | widens with zeros | bucket 3, x86 `movzx` | partial. `x-movzx-byte` at `lib/lowering/x64/mach.chiral:625` does it for one byte inside `ti-bget` and nothing exposes it as an operation | IR, backend | |
+| C24 | A | zero extension from a narrower width | widens with zeros | bucket 3, x86 `movzx` | partial. `x-movzx-byte` at `lib/lowering/x64/mach.chiral:631` does it for one byte inside `ti-bget` and nothing exposes it as an operation | IR, backend | |
 | C25 | A | bit test | reads one bit into the flags | bucket 3, x86 `bt` | absent | surface, IR, backend | ? a shift and a mask already fuse to two instructions |
 | C26 | A | double-precision shift | shifts a 128-bit pair by a count | bucket 3, x86 `shld` and `shrd` | absent, and it wants `C38` | surface, IR, backend | |
 | C27 | A | word-width load from a byte cell | reads eight bytes of a `Bytes` payload as one word | bucket 3 and bucket 4 | absent. `ti-bget` reads one byte, and `unpack-u32` is a library call through `prim2lib` | IR, backend | |
@@ -347,7 +347,7 @@ here.
 | C31 | A | block fill | writes one byte value across a run | bucket 3, x86 `rep stosb` | absent. `brepeat` routes to `nb-brepeat` | IR, backend | |
 | C32 | A | a native 32-bit integer type | gives the surface and the IR a width that matches the algorithms | bucket 3, and the measured ChaCha lanes | absent. `add32` and `rotl32` at `lib/crypto/chacha.chiral:20-25` exist only to emulate it, at three and four operations each | surface, IR, type system, backend | |
 | C33 | A | a surface binding for `mulhi` | gives the fifteenth constructor a name a program can write | bucket 3. The inventory records `op-mulhi` with no `(extern mulhi ...)` anywhere | absent. Everything below the surface already accepts it: `op-parse` takes the string, `op-bytes` encodes it, the clobber table has its entry | surface | |
-| C34 | A | shift semantics for an out-of-range count | states what `shl` by 64 or more means, so the cheap encoding stays correct | bucket 5's semantics-first rule applied to bucket 3 | open. x86 masks the count to six bits and `x-shl-cl` at `lib/lowering/x64/mach.chiral:331` inherits that. No document in `docs/` states the language's answer | surface, type system | |
+| C34 | A | shift semantics for an out-of-range count | states what `shl` by 64 or more means, so the cheap encoding stays correct | bucket 5's semantics-first rule applied to bucket 3 | open. x86 masks the count to six bits and `x-shl-cl` at `lib/lowering/x64/mach.chiral:335` inherits that. No document in `docs/` states the language's answer | surface, type system | |
 | C35 | A | backend recognition of the rotate idiom | matches `(bor (shl x n) (shr x (- w n)))` and emits one rotate | bucket 3, the emitter half of C1 | absent, and it names no operation. It costs no change to the closed sum | backend | |
 | C36 | A | backend recognition of the narrow-width idiom | matches a mask against a width constant and emits the narrow-register form | bucket 3, the emitter half of C32 | absent, and it names no operation. `band` against 4294967295 is one x86 `mov` between 32-bit registers | backend | |
 | C37 | A | backend recognition of the complement idiom | matches `bxor` against negative one and emits `not` | bucket 3, the emitter half of C21 | absent, and it names no operation | backend | |

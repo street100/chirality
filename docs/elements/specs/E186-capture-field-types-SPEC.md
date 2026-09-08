@@ -136,7 +136,7 @@ table states, so the standing disposition holds without being forced.
 fourth site** (noted 2026-09-04 by this revision). The fourth site captures
 `Bytes`, `Str` and `I64`, three `t-primty` shapes on arms `term->ntalty` already
 carries (`lib/lowering/compile-front.chiral:63-65`), reachable in a plain fixture
-through `str->bytes` (`lib/prelude/prelude.chiral:88`) and `blen` (`:93`). It
+through `str->bytes` (`lib/prelude/prelude.chiral:91`) and `blen` (`:96`). It
 adds one `DataDecl` ctor to `datas->n`'s input and no demand on `sp`, so
 decision 2's measurement holds unchanged at four sites.
 

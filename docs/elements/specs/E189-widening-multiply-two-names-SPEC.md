@@ -86,16 +86,16 @@ does not exist. No sixth site carries the whole sum.
 | target | the design assumed | the file admits | verdict |
 |---|---|---|---|
 | `lib/prelude/prelude.chiral:36-39` | the closed `Op` sum, 15 constructors, `op-mulhi` at `:38` | exactly that | agrees |
-| `lib/prelude/prelude.chiral:44-50` | `op-name`, the `op-mulhi` arm at `:49` | exactly that | agrees |
-| `lib/prelude/prelude.chiral:58-71` | the extern block, 14 `I64` entries, no `mulhi` | exactly that. The 14 are `+ - * / % =i <i <=i band bor bxor shl shr sar`, so 14 of the sum's 15 names bind and `mulhi` is the one that does not | agrees |
-| `lib/prelude/prelude.chiral:53-54` | not named by the design | `op-cmp?` is a **sixth** `case op`, and it ends in a wildcard `_`. `op-mulhu` falls into it and answers `false` | constrains |
+| `lib/prelude/prelude.chiral:44-51` | `op-name`, the `op-mulhi` arm at `:49` | exactly that | agrees |
+| `lib/prelude/prelude.chiral:59-72` | the extern block, 14 `I64` entries, no `mulhi` | exactly that. The 14 are `+ - * / % =i <i <=i band bor bxor shl shr sar`, so 14 of the sum's 15 names bind and `mulhi` is the one that does not | agrees |
+| `lib/prelude/prelude.chiral:54-55` | not named by the design | `op-cmp?` is a **sixth** `case op`, and it ends in a wildcard `_`. `op-mulhu` falls into it and answers `false` | constrains |
 | `lib/lowering/tal/erase.chiral:91-107` | `op-parse`, the `"mulhi"` arm at `:100` | exactly that. The chain is 15 nested `(false (case …` arms closed by one tail at `:107` | constrains |
 | `lib/lowering/tal/erase.chiral:152-157` | `erase-prim` enforcing arity 2, cited as `:153-157` | the `declare` is at `:152` and the `def` at `:153`. `mulhu` is binary, so the arity gate admits it with no edit | agrees |
-| `lib/lowering/x64/mach.chiral:313`, `:319` | the comment already reading `signed`, and `x-imul-rcx-1op` as `(bc3 (b1 72) (b1 247) (b1 233))` | exactly that. 233 is `0xE9` | agrees |
-| `lib/lowering/x64/mach.chiral:355-385` | `op-bytes`, the `op-mulhi` arm at `:373`, mid-list | exactly that. `op-shl` at `:385` is the terminal arm and carries the closing parens | agrees |
-| `lib/lowering/x64/mach.chiral:965-1025` | one immediate arm at `:1025` | `op-mulhi` at `:1025` is the **terminal** arm of `bini-body` and carries the four closing parens that end the `case`, the `lam` and the `def` | constrains |
-| `lib/lowering/x64/mach.chiral:1193-1203` | not named by the design | `fjc-cc` is a **seventh** `case op`, wildcard-terminated at `:1203`. Its only caller is `x-fjc` at `:1213`, dispatched from the fused compare-branch path that `fused-of` gates on `op-cmp?` (`lib/lowering/mach/emit-core.chiral:379-392`, the guard at `:383`) | constrains |
-| `lib/lowering/x64/mach.chiral:1433-1453` | one clobber key at `:1445`, the set `clb-rdx-rcx` at `:1405`, priced by the comment at `:1387` | all three exactly. The key test at `:1445` is a nested `or` over `bin:mulhi`, `bini:mulhi` and `bpt`. The **fall-through at `:1453` is `clb-rcx`**, which is `{3}` and omits `rdx` | constrains |
+| `lib/lowering/x64/mach.chiral:313`, `:321` | the comment already reading `signed`, and `x-imul-rcx-1op` as `(bc3 (b1 72) (b1 247) (b1 233))` | exactly that. 233 is `0xE9` | agrees |
+| `lib/lowering/x64/mach.chiral:359-391` | `op-bytes`, the `op-mulhi` arm at `:377`, mid-list | exactly that. `op-shl` at `:391` is the terminal arm and carries the closing parens | agrees |
+| `lib/lowering/x64/mach.chiral:971-1033` | one immediate arm at `:1033` | `op-mulhi` at `:1033` is the **terminal** arm of `bini-body` and carries the four closing parens that end the `case`, the `lam` and the `def` | constrains |
+| `lib/lowering/x64/mach.chiral:1201-1211` | not named by the design | `fjc-cc` is a **seventh** `case op`, wildcard-terminated at `:1211`. Its only caller is `x-fjc` at `:1221`, dispatched from the fused compare-branch path that `fused-of` gates on `op-cmp?` (`lib/lowering/mach/emit-core.chiral:379-392`, the guard at `:383`) | constrains |
+| `lib/lowering/x64/mach.chiral:1443-1464` | one clobber key at `:1455`, the set `clb-rdx-rcx` at `:1415`, priced by the comment at `:1395` | all three exactly. The key test at `:1455` is a nested `or` over `bin:mulhi`, `bini:mulhi` and `bpt`. The **fall-through at `:1464` is `clb-rcx`**, which is `{3}` and omits `rdx` | constrains |
 | `lib/lowering/mach/emit-core.chiral:156-161` | not named by the design | the clobber key is built as `(str-cat "bin:" (op-name op))` and `(str-cat "bini:" (op-name op))`. `op-name`'s new arm is what makes the new clobber key exist | agrees |
 | `lib/lowering/compile-back.chiral:280-289` | `lowerable-prim?` admitting everything `op-parse` accepts | exactly that: `:282` calls `op-parse` first. No edit is owed here | agrees |
 | `lib/lowering/upper/optimize.chiral:60-67` | `fold-prim` models neither `mulhi` nor the six bitwise ops | exactly that. It dispatches on `Str`, matches five names and answers `(none)` for every other | agrees |
@@ -110,7 +110,7 @@ owed by this run.
 
 1. **The closed sum forbids splitting steps 1 through 3.** Three exhaustive
    `case op` matches cover every constructor with no wildcard: `op-name`
-   (`prelude.chiral:46-50`), `op-bytes` (`mach.chiral:355-385`) and `bini-body`
+   (`prelude.chiral:46-51`), `op-bytes` (`mach.chiral:355-385`) and `bini-body`
    (`mach.chiral:965-1025`). Adding the constructor without all three arms leaves
    a match non-exhaustive and the tree does not compile. The three files land in
    **one commit** and pay **one** build-rule cycle between them.
@@ -124,7 +124,7 @@ owed by this run.
    `op-mulhu` above it leaves that tail where it is; inserting below it moves
    four parens onto a new line for no gain.
 4. **Two wildcard `case op` sites absorb the new constructor silently, and both
-   are safe.** `op-cmp?` (`prelude.chiral:53-54`, the wildcard on `:54`) answers `false` for `op-mulhu`,
+   are safe.** `op-cmp?` (`prelude.chiral:54-55`, the wildcard on `:55`) answers `false` for `op-mulhu`,
    which is correct: `mulhu` is no comparison. `fjc-cc`
    (`mach.chiral:1193-1203`) is reached only through the fused compare-branch
    path, which `fused-of` gates on `op-cmp?` at `emit-core.chiral:383`, so the
@@ -175,10 +175,10 @@ makes §4's three compiler rebuilds affordable inside a registered phase.
 
 ### Step 1: the surface names and the sum
 - **Target:** `lib/prelude/prelude.chiral`, at `Op` (`:36-39`), `op-name`
-  (`:44-50`), the extern block (`:58-71`).
+  (`:44-51`), the extern block (`:59-72`).
 - **Change:** `(op-mulhu)` into the sum immediately after `(op-mulhi)` on `:38`.
   `((op-mulhu) "mulhu")` into `op-name` immediately after the `op-mulhi` arm on
-  `:49`. Two extern lines after `:71`, both `(-> I64 I64 I64)`, commented the way
+  `:49`. Two extern lines after `:72`, both `(-> I64 I64 I64)`, commented the way
   `shr` and `sar` are: `mulhi` as the signed high 64 of the product and `mulhu`
   as the unsigned high 64.
 - **Insertion position, and why it is stated rather than assumed:** `op-mulhu`
@@ -201,21 +201,21 @@ makes §4's three compiler rebuilds affordable inside a registered phase.
 
 ### Step 3: the machine layer
 - **Target:** `lib/lowering/x64/mach.chiral`, at the synthetic-prim block
-  (`:311-319`), `op-bytes` (`:355-385`), `bini-body` (`:965-1025`), the clobber
-  comment (`:1387`) and `x64-clobbers` (`:1433-1453`).
+  (`:311-321`), `op-bytes` (`:359-391`), `bini-body` (`:971-1033`), the clobber
+  comment (`:1395`) and `x64-clobbers` (`:1443-1464`).
 - **Change:**
   1. `(def x-mul-rcx-1op Bytes (bc3 (b1 72) (b1 247) (b1 225)))   ; mul rcx`
-     after `:319`. 225 is `0xE1`.
+     after `:321`. 225 is `0xE1`.
   2. The comment at `:313` gains the second name: `mulhi` is the signed high 64
      and `mulhu` the unsigned high 64, both leaving it in `rdx`.
-  3. `((op-mulhu) (bcat x-mul-rcx-1op x-mov-rax-rdx))` after `:373`. The
+  3. `((op-mulhu) (bcat x-mul-rcx-1op x-mov-rax-rdx))` after `:377`. The
      `x-mov-rax-rdx` tail at `:197` is shared with `op-mulhi` and is correct for
      both: `MUL r/m64` and `IMUL r/m64` both write `RDX:RAX`.
   4. `((op-mulhu) (bcat (x-mov-rcx-imm imm) (op-bytes op)))` immediately
-     **before** `:1025`, so the terminal arm keeps its closing parens.
-  5. The `or` chain at `:1445` gains `bin:mulhu` and `bini:mulhu`, with the two
+     **before** `:1033`, so the terminal arm keeps its closing parens.
+  5. The `or` chain at `:1455` gains `bin:mulhu` and `bini:mulhu`, with the two
      extra closing parens the nesting needs.
-  6. The comment at `:1387` gains the `mulhu` row beside the `mulhi` one, same
+  6. The comment at `:1395` gains the `mulhu` row beside the `mulhi` one, same
      `{2,3}`.
 - **Size:** ~6 logical edits, about 12 lines in a blank-line-separated file. M.
 
@@ -256,7 +256,7 @@ run either way. A `C2 == C3` that follows is still a correct build.
   literal so the **immediate** path (`bini:mulhu`, `mach.chiral:1025`) is
   emitted. Operands with the top bit set are built with `(shl 1 63)` and
   `(- 0 1)` so no literal-parsing question enters the gate. `i64->str`
-  (`prelude.chiral:84`) prints them.
+  (`prelude.chiral:87`) prints them.
 - **It needs the promoted compiler**, because `mulhu` does not parse until step 3
   lands. So it cannot be committed before commit 1 is promoted.
 - **Does it owe a second fixpoint?** It touches `prog/`, and the tree already

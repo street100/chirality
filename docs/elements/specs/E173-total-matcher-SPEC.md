@@ -62,7 +62,7 @@ this run minted none.
 
   | shard | what is built | where |
   |---|---|---|
-  | A | `str-len` `str-sub` `str-find` `str-find-from` `str-cat` `str->bytes` `blen` `bget` `bslice` `bcat` | `lib/prelude/prelude.chiral:75-101`, extern |
+  | A | `str-len` `str-sub` `str-find` `str-find-from` `str-cat` `str->bytes` `blen` `bget` `bslice` `bcat` | `lib/prelude/prelude.chiral:78-104`, extern |
   | B | eleven derived string ops, `str-cmp` over `su-cmp-bytes` | `lib/prelude/string.chiral:91-92` |
   | C | `length` `append` `filter` `foldl` `any-list`, `list-sort` (`lib/prelude/list.chiral:143`), `list-dedup-adj` (`:184-186`) | `lib/prelude/list.chiral` |
   | | `Ord` as `(lt) (eq) (gt)` | `lib/prelude/ord.chiral:14` |
@@ -86,7 +86,7 @@ this run minted none.
   eleven under `lib/` and `text` is absent from them. `MAP.md:104-120` lists the `lib/`
   directories and has no row for it. Nothing in the tree names a `Span`, a
   `Pat`, or a matcher. The whole floor today is `str-find` / `str-find-from`
-  (`lib/prelude/prelude.chiral:81-82`), which lower to the naive scan
+  (`lib/prelude/prelude.chiral:84-85`), which lower to the naive scan
   `nb-bfind-from` (`lib/lowering/tal/bytes.chiral:355-380`).
 
 - **True delta:** one directory, one module of ≈ 220 lines, one `MAP.md` row,

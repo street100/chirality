@@ -1,7 +1,7 @@
 ---
 row: emitted-speed/X7
 arc: emitted-speed
-title: the widening multiply's shape, which is `C33`, `C17` and `C38` as one decision because they cannot be settled apart: the tree's high word is signed (`lib/lowering/x64/mach.chiral:319`) where the workload wants unsigned, and `C38`'s two-slot form is what `B15`'s single-slot return stands against. Unsigned alone, signed and unsigned as two constructors, and one operation defining two slots are the live shapes, and this row names the decision without taking it
+title: the widening multiply's shape, which is `C33`, `C17` and `C38` as one decision because they cannot be settled apart: the tree's high word is signed (`lib/lowering/x64/mach.chiral:321`) where the workload wants unsigned, and `C38`'s two-slot form is what `B15`'s single-slot return stands against. Unsigned alone, signed and unsigned as two constructors, and one operation defining two slots are the live shapes, and this row names the decision without taking it
 kind: decision
 origin: new
 req: 5, 6
@@ -53,22 +53,22 @@ owed. §6 carries it as residue.
 | what exists | where | rung | reached by |
 |---|---|---|---|
 | the `Op` sum, fifteen constructors, closed, declared by a comment as matched exhaustively by every consumer | `lib/prelude/prelude.chiral:36-39`, `op-mulhi` at `:38` | IMPLEMENTED | every stage below the erase boundary |
-| `op-name`, giving `op-mulhi` the string `"mulhi"` | `lib/prelude/prelude.chiral:47-50`, the arm at `:49` | IMPLEMENTED | the clobber-key rebuild at the emit site |
-| the extern block, **fourteen** lines over `I64`, holding no `mulhi` | `lib/prelude/prelude.chiral:58-71` | IMPLEMENTED | every program |
+| `op-name`, giving `op-mulhi` the string `"mulhi"` | `lib/prelude/prelude.chiral:47-51`, the arm at `:49` | IMPLEMENTED | the clobber-key rebuild at the emit site |
+| the extern block, **fourteen** lines over `I64`, holding no `mulhi` | `lib/prelude/prelude.chiral:59-72` | IMPLEMENTED | every program |
 | `op-parse`, taking `"mulhi"` back into the sum at the erase boundary | `lib/lowering/tal/erase.chiral:91-107`, the arm at `:100` | IMPLEMENTED | `erase-prim` at `:153-157` |
-| `op-bytes`, encoding all fifteen | `lib/lowering/x64/mach.chiral:351-385`, `op-mulhi` at `:373` | IMPLEMENTED | the tal emitter |
-| **what `op-mulhi` emits**: `x-imul-rcx-1op`, the bytes `48 F7 E9`, which is `F7 /5`, the one-operand **signed** `imul`. The arm then keeps `rdx` and drops `rax` | `lib/lowering/x64/mach.chiral:319`, grouped at `:311` under the optimizer's synthetic prims, the arm at `:373`. The comment at `:313` already reads `mulhi = signed high 64 of rax*rcx`, so the sign was recorded in the backend and read by nobody upstream | IMPLEMENTED, and its sign is the finding | `op-bytes` |
-| the immediate form, dispatching `op-mulhi` through the register form | `lib/lowering/x64/mach.chiral:1025` | IMPLEMENTED | `x-bini` at `:1029` |
-| the clobber entry: the keys `bin:mulhi` and `bini:mulhi` mapped to the `rdx`/`rcx` set | the key dispatch at `lib/lowering/x64/mach.chiral:1445`, the set `clb-rdx-rcx` defined at `:1405`, priced by the comment at `:1387` | IMPLEMENTED | the allocator-free slot machine |
-| `op-mul`, the low half: `x-imul` is `48 0F AF C1`, the two-operand `imul rax, rcx` | `lib/lowering/x64/mach.chiral:147`, the arm at `:357` | IMPLEMENTED | `op-bytes` |
+| `op-bytes`, encoding all fifteen | `lib/lowering/x64/mach.chiral:355-391`, `op-mulhi` at `:377` | IMPLEMENTED | the tal emitter |
+| **what `op-mulhi` emits**: `x-imul-rcx-1op`, the bytes `48 F7 E9`, which is `F7 /5`, the one-operand **signed** `imul`. The arm then keeps `rdx` and drops `rax` | `lib/lowering/x64/mach.chiral:321`, grouped at `:311` under the optimizer's synthetic prims, the arm at `:377`. The comment at `:313` already reads `mulhi = signed high 64 of rax*rcx`, so the sign was recorded in the backend and read by nobody upstream | IMPLEMENTED, and its sign is the finding | `op-bytes` |
+| the immediate form, dispatching `op-mulhi` through the register form | `lib/lowering/x64/mach.chiral:1033` | IMPLEMENTED | `x-bini` at `:1037` |
+| the clobber entry: the keys `bin:mulhi` and `bini:mulhi` mapped to the `rdx`/`rcx` set | the key dispatch at `lib/lowering/x64/mach.chiral:1455`, the set `clb-rdx-rcx` defined at `:1415`, priced by the comment at `:1395` | IMPLEMENTED | the allocator-free slot machine |
+| `op-mul`, the low half: `x-imul` is `48 0F AF C1`, the two-operand `imul rax, rcx` | `lib/lowering/x64/mach.chiral:147`, the arm at `:361` | IMPLEMENTED | `op-bytes` |
 | the surface path any extern takes: `expr-app` turns an `lc-prim` into an `i-prim` carrying the extern's own name as a `Str`, and `lowerable-prim?` admits everything `op-parse` accepts, ahead of the byte-library, `bget`, `blen` and `str-len` fallbacks it also admits | `lib/lowering/upper/lower.chiral:275-289`, `mk-call` at `:220`, `lib/lowering/compile-back.chiral:280-289` | IMPLEMENTED | every compile |
-| the signedness precedent: `shr` and `sar` are two names over one type, both `(-> I64 I64 I64)`, and the doc states the rule as the shift kind being a **name**, where "the choice between zero-fill and sign-fill is spelled at the call site" | `lib/prelude/prelude.chiral:70-71`, `docs/examples/E108-shift-ops.md:74-79` | IMPLEMENTED, E108 | every program |
+| the signedness precedent: `shr` and `sar` are two names over one type, both `(-> I64 I64 I64)`, and the doc states the rule as the shift kind being a **name**, where "the choice between zero-fill and sign-fill is spelled at the call site" | `lib/prelude/prelude.chiral:71-72`, `docs/examples/E108-shift-ops.md:74-79` | IMPLEMENTED, E108 | every program |
 
 ### What is absent, each proved by a grep run on 2026-09-08
 
 | what is absent | how the absence was measured |
 |---|---|
-| **any unsigned `F7 /4` path in the backend.** `F7 /4` is `mul`, whose ModRM byte over `rcx` is `E1`, decimal 225 | `grep -n "b1 225" lib/lowering/x64/*.chiral` returns one line, `lib/lowering/x64/mach.chiral:621`, which is `48 83 E1 F8`, `and rcx, -8`. No other file under `lib/lowering/x64/` carries the byte |
+| **any unsigned `F7 /4` path in the backend.** `F7 /4` is `mul`, whose ModRM byte over `rcx` is `E1`, decimal 225 | `grep -n "b1 225" lib/lowering/x64/*.chiral` returns one line, `lib/lowering/x64/mach.chiral:627`, which is `48 83 E1 F8`, `and rcx, -8`. No other file under `lib/lowering/x64/` carries the byte |
 | a second backend that would also need the arm | `lib/lowering/c/` does not exist |
 | a fold law or a reference-machine arm for `mulhi` | `fold-prim` computes `+ - * / %` and answers `none` for every other name (`lib/lowering/upper/optimize.chiral:60-67`); `fold-cmp` the three comparisons (`:68-73`); `eval-prim` computes the same five and answers `v-i64 0` for everything else (`lib/lowering/tal/eval.chiral:85-95`). `mulhi` and the six bitwise operations are alike unmodelled there |
 | a two-result instruction form | `ti-prim` is `(dst I64) (op Op) (a I64) (b I64)`, one destination and exactly two operands (`lib/lowering/tal/ir.chiral:21`); `erase-prim` refuses any `Op` without exactly two operands with `native prim needs 2 operands` (`lib/lowering/tal/erase.chiral:153-157`); `ti-ret` carries one `src` (`lib/lowering/tal/ir.chiral:43`); `TalSig` carries one `ret` (`lib/lowering/tal/ssa.chiral:44`) |
@@ -182,7 +182,7 @@ another row, so the tree settles nothing and this row runs the full pipeline.
   names two. `op-mulhi` keeps its constructor, its bytes and its emission, and
   gains the extern `mulhi`. `op-mulhu` is added beside it with the extern
   `mulhu`. Both externs are `(-> I64 I64 I64)`, which is the `sar` and `shr`
-  shape verbatim (`lib/prelude/prelude.chiral:70-71`).
+  shape verbatim (`lib/prelude/prelude.chiral:71-72`).
 - **Costs:** Shape A's cost plus one extern line. Same three files, same single
   fixpoint, because the two names land in one edit to one closed sum.
 - **Forbids:** it forbids reading the sign off an operand's declared type, which
@@ -216,7 +216,7 @@ another row, so the tree settles nothing and this row runs the full pipeline.
   at `docs/benchmarks/OPT-CANDIDATES-2026-09.md:284`).
 - **Buys:** one multiply where Shape B costs two. The one-operand form already
   computes both halves into `rdx:rax` and the current arm discards `rax`
-  (`lib/lowering/x64/mach.chiral:373`), so the saving is real and it is one
+  (`lib/lowering/x64/mach.chiral:377`), so the saving is real and it is one
   instruction. Both halves are reachable under Shape B as `(mul a b)` and
   `(mulhu a b)`, at the price of computing the product twice.
 - **Forbids:** taking it here would settle what `emitted-speed/X2` owns, on a
@@ -258,7 +258,7 @@ buys one instruction and answers a question `emitted-speed/X2` owns.
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
 | 1 | Signed, unsigned, or both | **RESOLVED → both.** | [[goals/emitted-speed]] `:115` tests every operation the machine offers, and [[working-discipline]] `:134-146` fixes the form of the answer: an operation the backend emits that the language cannot write is P1's hole one level down. The machine offers two. Shape A leaves one of them in that state |
-| 2 | What type does an unsigned high word return into, when `I64` is signed and every extern in the block is typed over it | **RESOLVED → `(-> I64 I64 I64)`, the same type the signed one takes.** | E108 settled the general rule for exactly this collision and the tree has run on it since: `shr` and `sar` are two total `(-> I64 I64 I64)` externs, the shift kind is a **name**, and "the choice between zero-fill and sign-fill is spelled at the call site" (`docs/examples/E108-shift-ops.md:74-79`, the externs at `lib/prelude/prelude.chiral:70-71`). The reading of the operands belongs to the operation's name and the word is a bit pattern under both. A signedness-carrying type would put the choice back into a declaration the reader may not be looking at, which is the C shape E108 records and refuses (`docs/examples/E108-shift-ops.md:59-72`) |
+| 2 | What type does an unsigned high word return into, when `I64` is signed and every extern in the block is typed over it | **RESOLVED → `(-> I64 I64 I64)`, the same type the signed one takes.** | E108 settled the general rule for exactly this collision and the tree has run on it since: `shr` and `sar` are two total `(-> I64 I64 I64)` externs, the shift kind is a **name**, and "the choice between zero-fill and sign-fill is spelled at the call site" (`docs/examples/E108-shift-ops.md:74-79`, the externs at `lib/prelude/prelude.chiral:71-72`). The reading of the operands belongs to the operation's name and the word is a bit pattern under both. A signedness-carrying type would put the choice back into a declaration the reader may not be looking at, which is the C shape E108 records and refuses (`docs/examples/E108-shift-ops.md:59-72`) |
 | 3 | Whether the unsigned result is usable without an unsigned comparison | **RESOLVED → yes, at a residue the tree already carries.** | `shr`, `band`, `bor`, `bxor` and `shl` can each set the top bit today, so a word whose unsigned meaning exceeds the signed range is already producible and already orders wrongly under `<i`. `mulhu` adds a producer of that residue and no new kind of it. `C13`, the unsigned less-than, is what closes it, and [[arcs/emitted-speed-arc]] `:180-186` already disposes `C13` as a finishing job consumed as ordinary work, because `op-lti` gives it a shape to copy. The element text owes the residue in its own words |
 | 4 | Whether the widening multiply defines two slots | **DEFERRED → `emitted-speed/X2`.** | `C38` names `B15` as its dependency ([[benchmarks/OPT-CANDIDATES-2026-09]] `:354`, `:284`) and `X2` is the row that decides what a function may return. Shape B leaves `C38` open and takes nothing from it. `C38`'s row names `C8`, `C9`, `C17` and `C26` as what the two-slot form would let exist (`:354`); Shape B closes `C17` by a separate constructor, and the other three still want the second slot for something a widening multiply does not produce, a carry out for `C8` and `C9` (`:324-325`) and a 128-bit pair for `C26` (`:342`) |
 | 5 | Whether this row mints a fresh number or amends `E189` | **DEFERRED → `E189`, through a `revisit` run.** | `E189` is minted, its state is `design` and nothing is built against it ([[elements/catalog]] `:505`, [[elements/ledger]] `:327`). Its subject is this subject, measured short. `revisit` is the run this tree built for a settled artifact against a named trigger and its verdict set already holds `AMEND` and `RESCOPE`, so no author call is owed. The trigger is the 2026-09-08 measurement in §2. `E187` is the in-tree precedent for re-scoping an unbuilt element in place ([[elements/catalog]] `:503`) |
@@ -289,24 +289,24 @@ disposes it inside the pipeline.
 - **Catalog row**, replacing `docs/elements/catalog.md:505`:
 
   ```
-  | E189 | **The widening multiply's two names: `mulhi` signed, `mulhu` unsigned** | Not built. The `Op` sum carries `op-mulhi` (`lib/prelude/prelude.chiral:36-39`, the constructor at `:38`) and the extern block binds fourteen of the fifteen (`:58-71`). Measured 2026-09-08: `op-mulhi` emits `x-imul-rcx-1op`, the bytes `48 F7 E9` (`lib/lowering/x64/mach.chiral:319`, reached at `:373`), which is `F7 /5`, the one-operand SIGNED `imul`, and a grep for the unsigned `F7 /4` form over `lib/lowering/x64/` returns nothing. So binding the constructor that exists names the signed high half and leaves the unsigned one absent from the machine layer, one ModRM byte away. The element adds `op-mulhu` with the bytes `48 F7 E1`, and binds both names as `(-> I64 I64 I64)` externs on the `shr`/`sar` precedent, where the reading of the operands rides the operation's name (E108, `docs/examples/E108-shift-ops.md:74-79`). Two recorded demands, one per sign: `.planning/AI-LANE-NUMERICS.md:66` wants the signed half for fixed-point multiply-accumulate, and `C17` wants the unsigned one, landing in `crypto-primitives/K25`, which is open. Neither is built on the day this lands, and what earns the pair is the machine capability plus `docs/goals/emitted-speed.md:115`. Residue carried in the element's own text: an unsigned high word can return with its top bit set and every comparison in the sum is signed, which `C13` closes and which `shr`, `band`, `bor`, `bxor` and `shl` already produce. Two slots stay out of scope and belong to `C38` through `emitted-speed/X2`. Three `lib/` files inside the compiler's blob, so the full BUILD RULE applies: build-new, test, promote, fixpoint verified. Designed by `emitted-speed/X7`. | `OURS`; ~E96, ~E108 |
+  | E189 | **The widening multiply's two names: `mulhi` signed, `mulhu` unsigned** | Not built. The `Op` sum carries `op-mulhi` (`lib/prelude/prelude.chiral:36-39`, the constructor at `:38`) and the extern block binds fourteen of the fifteen (`:59-72`). Measured 2026-09-08: `op-mulhi` emits `x-imul-rcx-1op`, the bytes `48 F7 E9` (`lib/lowering/x64/mach.chiral:321`, reached at `:377`), which is `F7 /5`, the one-operand SIGNED `imul`, and a grep for the unsigned `F7 /4` form over `lib/lowering/x64/` returns nothing. So binding the constructor that exists names the signed high half and leaves the unsigned one absent from the machine layer, one ModRM byte away. The element adds `op-mulhu` with the bytes `48 F7 E1`, and binds both names as `(-> I64 I64 I64)` externs on the `shr`/`sar` precedent, where the reading of the operands rides the operation's name (E108, `docs/examples/E108-shift-ops.md:74-79`). Two recorded demands, one per sign: `.planning/AI-LANE-NUMERICS.md:66` wants the signed half for fixed-point multiply-accumulate, and `C17` wants the unsigned one, landing in `crypto-primitives/K25`, which is open. Neither is built on the day this lands, and what earns the pair is the machine capability plus `docs/goals/emitted-speed.md:115`. Residue carried in the element's own text: an unsigned high word can return with its top bit set and every comparison in the sum is signed, which `C13` closes and which `shr`, `band`, `bor`, `bxor` and `shl` already produce. Two slots stay out of scope and belong to `C38` through `emitted-speed/X2`. Three `lib/` files inside the compiler's blob, so the full BUILD RULE applies: build-new, test, promote, fixpoint verified. Designed by `emitted-speed/X7`. | `OURS`; ~E96, ~E108 |
   ```
 
 - **Ledger row**, replacing `docs/elements/ledger.md:327`:
 
   ```
-  | E189 | mul-prims | design | **The widening multiply's two names: `mulhi` signed, `mulhu` unsigned.** `op-mulhi` sits in the closed `Op` sum (`lib/prelude/prelude.chiral:36-39`) and emits the one-operand signed `imul`, `48 F7 E9` (`lib/lowering/x64/mach.chiral:319`, reached at `:373`); no unsigned `F7 /4` path exists anywhere under `lib/lowering/x64/`, measured 2026-09-08. The element adds `op-mulhu` with `48 F7 E1` and binds both as `(-> I64 I64 I64)` externs, signedness riding the name on the `shr`/`sar` precedent. Re-scoped from "`op-mulhi`'s surface extern" by `emitted-speed/X7`, whose §2 measured the original subject short: binding what exists ships the signed product where `C17` asks for the unsigned one. Three `lib/` files, full BUILD RULE with a fixpoint. | ~E96, ~E108 |
+  | E189 | mul-prims | design | **The widening multiply's two names: `mulhi` signed, `mulhu` unsigned.** `op-mulhi` sits in the closed `Op` sum (`lib/prelude/prelude.chiral:36-39`) and emits the one-operand signed `imul`, `48 F7 E9` (`lib/lowering/x64/mach.chiral:321`, reached at `:377`); no unsigned `F7 /4` path exists anywhere under `lib/lowering/x64/`, measured 2026-09-08. The element adds `op-mulhu` with `48 F7 E1` and binds both as `(-> I64 I64 I64)` externs, signedness riding the name on the `shr`/`sar` precedent. Re-scoped from "`op-mulhi`'s surface extern" by `emitted-speed/X7`, whose §2 measured the original subject short: binding what exists ships the signed product where `C17` asks for the unsigned one. Three `lib/` files, full BUILD RULE with a fixpoint. | ~E96, ~E108 |
   ```
 
 - **Size.** Three `lib/` files and roughly fourteen edited lines, plus a probe
   and a gate. `lib/prelude/prelude.chiral` takes about four: one constructor into
-  the sum at `:38-39`, one arm at `:49` inside `op-name` (`:44-50`), and two
-  extern lines after `:71`. `lib/lowering/tal/erase.chiral` takes about two: one
+  the sum at `:38-39`, one arm at `:49` inside `op-name` (`:44-51`), and two
+  extern lines after `:72`. `lib/lowering/tal/erase.chiral` takes about two: one
   arm in the `op-parse` chain at `:91-107`, with the nesting tail.
   `lib/lowering/x64/mach.chiral` takes about eight: one byte constant beside
-  `:319`, one arm at `:373` inside `op-bytes` (`:351-385`), one immediate arm at
-  `:1025`, one clobber key at `:1445`, and the two comment blocks at `:311-313`
-  and `:1387` extended to name the second operation. The basis is the arm count
+  `:321`, one arm at `:377` inside `op-bytes` (`:355-391`), one immediate arm at
+  `:1033`, one clobber key at `:1455`, and the two comment blocks at `:311-313`
+  and `:1395` extended to name the second operation. The basis is the arm count
   measured in §2: three exhaustive matches over the sum, one `op-parse` chain,
   one clobber key, and no second backend, since `lib/lowering/c/` does not exist.
   A probe under `prog/` and a gate under `tools/test/` are new files whose

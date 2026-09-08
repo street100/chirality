@@ -173,7 +173,7 @@ catalog row.**
 
 6. **Byte-length-as-column is already the tree's incumbent answer, and already
    documented as wrong.** `str-len` is a raw extern `(-> Str I64)`
-   (`prelude/prelude.chiral:75`) over a byte string. `rnd-emit-headers` uses it as a
+   (`prelude/prelude.chiral:78`) over a byte string. `rnd-emit-headers` uses it as a
    column advance; so does `str-pad` (`prelude/string.chiral:209`), which
    `doc.chiral`'s `nl-indent` builds indentation from. And `cursor-row-col`
    (`render.chiral`) carries a **KNOWN LIMITATION (do not half-fix)** comment saying

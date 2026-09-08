@@ -52,7 +52,7 @@ updated: 2026-08-01
     exactly what the builder lifts into a type).
   - `lib/bytes-tal.chiral` (the floor library) + the native arena cells (E21/
     E25); the prelude byte externs `blen`/`bget`/`bslice`/`bcat`/`brepeat`
-    (`prelude.chiral:47–51`) — the behavior oracle for the builder-backed ops.
+    (`prelude.chiral:47–52`) — the behavior oracle for the builder-backed ops.
   - **E9's fragment:** bare-var symbolic bounds landed (2026-07-06) — `bput`'s
     `(refine I64 (>= 0) (< n))` and byte-range `(< 256)` discharge today;
     expression bounds do not (edge 3).

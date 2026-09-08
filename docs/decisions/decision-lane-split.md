@@ -316,7 +316,7 @@ enforcement against diagnostics is the shared band, and that is an author call.
 ### Two ownership lines stay unmeasured
 
 - **E176's repair site.** `str-sub` is an extern at
-  `lib/prelude/prelude.chiral:80`, mapped to `nb-bslice` at
+  `lib/prelude/prelude.chiral:83`, mapped to `nb-bslice` at
   `lib/lowering/tal/erase.chiral:114`. Whether the fix is a guard in
   `lib/prelude/string.chiral` or a change under `lib/lowering/` decides whether
   diagnostics reaches enforcement's tree. The element has no SPEC and nothing

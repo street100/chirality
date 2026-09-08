@@ -63,7 +63,7 @@ profiles into one permitted port set.
 | G3 | `manifest-offender` | `lib/lowering/compile-emit.chiral:260` | object fns plus the port manifest | `Maybe Str` | H8, the declared profile's frozen port set |
 | G4 | `first-dup-go` | `lib/lowering/compile-emit.chiral:177` | the image | `Maybe Str` | refuses a label collision between object code and the linked runtime |
 | 14 | `emit-program` | `lib/lowering/mach/emit-core.chiral:537` | `(List TIFn)` | `(List Asm)` | target-independent codegen against the `Mach` record. Five selection rewrites live inside it and are tabled below |
-| 15 | `x64-peep` | `lib/lowering/x64/mach.chiral:1313` | `(List Asm)` | `(List Asm)` | byte-level peephole. Pattern A (`peep-hit`, `:1237`) drops a `mov rax,[slot]` that follows a `mov [slot],rax` on the same displacement. Pattern B (`peep-hit-rcx`, `:1277`) turns the rcx reload into a three-byte `mov rcx,rax` |
+| 15 | `x64-peep` | `lib/lowering/x64/mach.chiral:1321` | `(List Asm)` | `(List Asm)` | byte-level peephole. Pattern A (`peep-hit`, `:1245`) drops a `mov rax,[slot]` that follows a `mov [slot],rax` on the same displacement. Pattern B (`peep-hit-rcx`, `:1285`) turns the rcx reload into a three-byte `mov rcx,rax` |
 | 16 | `assemble` | `lib/lowering/mach/asm-reloc.chiral:161` | `(List Asm)` | `(Pair Bytes offsets)` | label placement then relocation resolution against an ordered `Map` |
 | 17 | `assemble-elf` | `lib/lowering/compile-emit.chiral:142` | code bytes | ELF bytes | prepends the 224-byte entry stub (`entry-stub-v2`, `:59`), which reserves 64 GiB `PROT_NONE`, commits a 256 KiB prefix, stores the four arena cells, and calls the entry |
 
@@ -74,11 +74,11 @@ erased IR, and each has a `Mach` face op behind it.
 
 | Rewrite | Recognizer | Machine op | What it replaces |
 |---|---|---|---|
-| immediate operand folding | `cenv-get` in `emit-instr`, `lib/lowering/mach/emit-core.chiral:146-161`; fact update at `cenv-step`, `:46` | `bini` / `binir` | a slot load of a second operand that a preceding `ti-const` defined. `bini-body` (`lib/lowering/x64/mach.chiral:961`) picks the imm32 encodings, and falls back to materializing the constant in rcx |
-| lookup table | `table-of`, `lib/lowering/mach/emit-core.chiral:288` | `ltb` (`lib/lowering/x64/mach.chiral:1093`) | a compare chain over an unboxed enum whose arms all bind nothing and return a constant. No bounds check, because tags are dense by declaration order |
-| jump table | `jtb-codes`, `lib/lowering/mach/emit-core.chiral:337` | `jtb` (`lib/lowering/x64/mach.chiral:1157`) | the compare chain for four or more non-constant arms over a dense unboxed scrutinee |
-| fused compare and branch | `fused-of`, `lib/lowering/mach/emit-core.chiral:379` | `fcp` / `fci` / `fjc` (`lib/lowering/x64/mach.chiral:1177`, `:1181`, `:1213`) | setcc, the bool slot write, and the reload. One cmp feeds both `Bool` arms |
-| tail call | `tail-call-of`, `lib/lowering/mach/emit-core.chiral:428` | `tca` (`lib/lowering/x64/mach.chiral:1047`) | call plus epilogue, for the shape `(t-seq (ti-call dst f args) (ti-ret dst))`. Demoted to call plus ret past six arguments |
+| immediate operand folding | `cenv-get` in `emit-instr`, `lib/lowering/mach/emit-core.chiral:146-161`; fact update at `cenv-step`, `:46` | `bini` / `binir` | a slot load of a second operand that a preceding `ti-const` defined. `bini-body` (`lib/lowering/x64/mach.chiral:967`) picks the imm32 encodings, and falls back to materializing the constant in rcx |
+| lookup table | `table-of`, `lib/lowering/mach/emit-core.chiral:288` | `ltb` (`lib/lowering/x64/mach.chiral:1101`) | a compare chain over an unboxed enum whose arms all bind nothing and return a constant. No bounds check, because tags are dense by declaration order |
+| jump table | `jtb-codes`, `lib/lowering/mach/emit-core.chiral:337` | `jtb` (`lib/lowering/x64/mach.chiral:1165`) | the compare chain for four or more non-constant arms over a dense unboxed scrutinee |
+| fused compare and branch | `fused-of`, `lib/lowering/mach/emit-core.chiral:379` | `fcp` / `fci` / `fjc` (`lib/lowering/x64/mach.chiral:1185`, `:1189`, `:1221`) | setcc, the bool slot write, and the reload. One cmp feeds both `Bool` arms |
+| tail call | `tail-call-of`, `lib/lowering/mach/emit-core.chiral:428` | `tca` (`lib/lowering/x64/mach.chiral:1055`) | call plus epilogue, for the shape `(t-seq (ti-call dst f args) (ti-ret dst))`. Demoted to call plus ret past six arguments |
 
 ### Transformations that live inside the x64 target
 
@@ -87,8 +87,8 @@ target-independent pass sees.
 
 | Transformation | Seat | Condition |
 |---|---|---|
-| power-of-two strength reduction | `pow2-k` at `lib/lowering/x64/mach.chiral:885`, used by `x-div-imm` (`:905`) and `x-mod-imm` (`:925`) | a constant divisor that is a power of two. Euclidean division makes `sar` and `and` exact with no correction |
-| constant-divisor guard elision | `x-div-imm` (`:905`) and `x-mod-imm` (`:925`) | a constant divisor outside `{0, -1}` drops the test/ud2 and the cmp/-1 branch. `d = 1` and `d = -1` collapse with no idiv. `d = 0` keeps the deliberate trap |
+| power-of-two strength reduction | `pow2-k` at `lib/lowering/x64/mach.chiral:891`, used by `x-div-imm` (`:911`) and `x-mod-imm` (`:931`) | a constant divisor that is a power of two. Euclidean division makes `sar` and `and` exact with no correction |
+| constant-divisor guard elision | `x-div-imm` (`:911`) and `x-mod-imm` (`:931`) | a constant divisor outside `{0, -1}` drops the test/ud2 and the cmp/-1 branch. `d = 1` and `d = -1` collapse with no idiv. `d = 0` keeps the deliberate trap |
 | byte-op inlining | `erase-prim` at `lib/lowering/tal/erase.chiral:152-168` | `bget`, `blen` and `str-len` become the machine ops `n-bget` and `n-blen` instead of calls into the one-instruction `nb-*` wrappers |
 
 ### What is compiled in and never called
@@ -139,14 +139,14 @@ cell's fields, and it always allocates a fresh one.
 
 | Constructor | Surface binding | Where |
 |---|---|---|
-| `op-add`, `op-sub`, `op-mul`, `op-div`, `op-mod` | `+`, `-`, `*`, `/`, `%` | `lib/prelude/prelude.chiral:58-62` |
-| `op-eqi`, `op-lti`, `op-lei` | `=i`, `<i`, `<=i` | `lib/prelude/prelude.chiral:63-65` |
-| `op-band`, `op-bor`, `op-bxor` | `band`, `bor`, `bxor` | `lib/prelude/prelude.chiral:66-68` |
-| `op-shl`, `op-shr`, `op-sar` | `shl`, `shr`, `sar` | `lib/prelude/prelude.chiral:69-71` |
+| `op-add`, `op-sub`, `op-mul`, `op-div`, `op-mod` | `+`, `-`, `*`, `/`, `%` | `lib/prelude/prelude.chiral:59-63` |
+| `op-eqi`, `op-lti`, `op-lei` | `=i`, `<i`, `<=i` | `lib/prelude/prelude.chiral:64-66` |
+| `op-band`, `op-bor`, `op-bxor` | `band`, `bor`, `bxor` | `lib/prelude/prelude.chiral:67-69` |
+| `op-shl`, `op-shr`, `op-sar` | `shl`, `shr`, `sar` | `lib/prelude/prelude.chiral:70-72` |
 | `op-mulhi` | none | `grep -n "mulhi" lib/prelude/prelude.chiral` returns `:38` and `:49`, the sum member and its name in `op-name`. There is no `(extern mulhi ...)` anywhere |
 
 So fourteen of the fifteen have a surface binding. `op-mulhi` has an x86
-encoding at `lib/lowering/x64/mach.chiral:319` and a clobber entry at `:1387`,
+encoding at `lib/lowering/x64/mach.chiral:321` and a clobber entry at `:1395`,
 and `op-parse` (`lib/lowering/tal/erase.chiral:91`) accepts the string
 `"mulhi"`. `grep -rniI "mulhi" lib prog` finds it in
 `lib/prelude/prelude.chiral` and `lib/lowering/x64/mach.chiral` and in no other
@@ -162,7 +162,7 @@ operation the backend encodes and the language does not name.
 | typed SSA | `i-call dst f srcs ty` for a global, `i-prim dst op srcs ty` for an extern | the choice is made by `mk-call` (`lib/lowering/upper/lower.chiral:220`) inside `emit-call` (`:285`) |
 | neutral | `n-call dst fname args` | `lib/typing/erased-nf.chiral:31` |
 | erased | `ti-call dst fname args` | `lib/lowering/tal/ir.chiral:24` |
-| bytes | `mach-cal`, which owns register args and the SysV stack zone past six | `lib/lowering/x64/mach.chiral:1637` |
+| bytes | `mach-cal`, which owns register args and the SysV stack zone past six | `lib/lowering/x64/mach.chiral:1648` |
 
 A higher-order application does not lower. `expr-app`'s default arm answers
 `er-skip "higher-order application"` (`lib/lowering/upper/lower.chiral:283`),
@@ -198,9 +198,9 @@ with something else, and none of them copies a body:
 The allocation is introduced at `i-con` and becomes machine code at
 `alo-cell`. The live `Alloc` instance is `alloc-growing`
 (`lib/memory/alloc-growing.chiral:18`), bound in `lib/lowering/x64/emit.chiral:11`,
-so `alo-cell` is `x-galo` (`lib/lowering/x64/mach.chiral:509`). The size is
+so `alo-cell` is `x-galo` (`lib/lowering/x64/mach.chiral:515`). The size is
 decided by one expression, `(let (sz (* 8 (+ 1 (length I64 fs))))` at
-`lib/lowering/x64/mach.chiral:511`: one word for the tag plus one word per
+`lib/lowering/x64/mach.chiral:517`: one word for the tag plus one word per
 field. Four fields give 40 bytes, sixteen fields give 136.
 
 Reproduced 2026-09-07 by `tools/bench/crypto-kernel.sh sites`, which counts the
@@ -213,7 +213,7 @@ Reproduced 2026-09-07 by `tools/bench/crypto-kernel.sh sites`, which counts the
 
 The static-arena instance `alloc-fixed` (`lib/memory/alloc-fixed.chiral`) has
 zero importers, recorded at `lib/memory/alloc.chiral:5-7`. Its `x-alo`
-counterpart computes the same size at `lib/lowering/x64/mach.chiral:483`. The
+counterpart computes the same size at `lib/lowering/x64/mach.chiral:489`. The
 arena reclaims nothing: `heapptr` only advances.
 
 ### Loops, and back-edges
@@ -226,7 +226,7 @@ ends the block and branches never rejoin. Iteration is tail recursion.
 One place identifies a back-edge. `tail-call-of`
 (`lib/lowering/mach/emit-core.chiral:428`) matches
 `(t-seq (ti-call dst f args) (ti-ret dst))` and emits argument placement plus
-`tca`, a frame teardown and a `jmp` (`x-tca`, `lib/lowering/x64/mach.chiral:1047`).
+`tca`, a frame teardown and a `jmp` (`x-tca`, `lib/lowering/x64/mach.chiral:1055`).
 It does not distinguish a self-call from a mutual one, and it records nothing:
 its result is a `(Maybe (Pair Str (List I64)))` consumed inside `emit-code`.
 No pass above the emitter carries a loop-header fact.
@@ -267,9 +267,9 @@ Three pieces of the register-discipline design are built:
 
 | Piece | Seat | State |
 |---|---|---|
-| the clobber table | `x64-clobbers`, `lib/lowering/x64/mach.chiral:1433`, behind the `clb` face at `lib/lowering/mach/mach.chiral:57` | built. Maps an op key to the argument-register indices it may write |
-| accumulator residency at the byte level | `x64-peep`, `lib/lowering/x64/mach.chiral:1313` | built and live. `emit` passes it at `lib/lowering/x64/emit.chiral:11` |
-| parameter residency | `res-find`/`res-kill-args`/`res-init` at `lib/lowering/mach/emit-core.chiral:75-137`, `binr`/`binir`/`fcpr`/`fcir`/`ldr` at `lib/lowering/x64/mach.chiral:1521`, `:1531`, `:1539`, `:1545`, `:1553` | built and unreachable. `res-init` (`lib/lowering/mach/emit-core.chiral:133`) returns an empty map unless its `on` flag is true; `emit-program` receives `false` from `emit-with-peep` (`:564-567`) and `true` only from `emit-with-param` (`:570-573`), whose only caller is `emit-param` (`lib/lowering/x64/emit.chiral:14`), which nothing calls |
+| the clobber table | `x64-clobbers`, `lib/lowering/x64/mach.chiral:1443`, behind the `clb` face at `lib/lowering/mach/mach.chiral:57` | built. Maps an op key to the argument-register indices it may write |
+| accumulator residency at the byte level | `x64-peep`, `lib/lowering/x64/mach.chiral:1321` | built and live. `emit` passes it at `lib/lowering/x64/emit.chiral:11` |
+| parameter residency | `res-find`/`res-kill-args`/`res-init` at `lib/lowering/mach/emit-core.chiral:75-137`, `binr`/`binir`/`fcpr`/`fcir`/`ldr` at `lib/lowering/x64/mach.chiral:1532`, `:1542`, `:1550`, `:1556`, `:1564` | built and unreachable. `res-init` (`lib/lowering/mach/emit-core.chiral:133`) returns an empty map unless its `on` flag is true; `emit-program` receives `false` from `emit-with-peep` (`:564-567`) and `true` only from `emit-with-param` (`:570-573`), whose only caller is `emit-param` (`lib/lowering/x64/emit.chiral:14`), which nothing calls |
 
 ## 3. What the Python eviction removed
 
@@ -289,17 +289,17 @@ checked against the self-hosted tree.
 | 3 | branch folding on a known constructor | yes | `dispatch`, `lib/lowering/upper/optimize.chiral:130`, reached from `fold-block` at `:119` |
 | 4 | CSE / value numbering | no | `grep -rniI "cse" lib prog --include=*.chiral --include=*.prog` returns only `RdcSeg`, `DecSet` and `nb-tcsets`, none of them a pass. There is no common-subexpression pass in the tree |
 | 5 | dead code elimination | present, excluded | `dead` exists at `lib/lowering/upper/optimize.chiral:192` and is in the compiler blob. `opt-tfns` (`lib/lowering/compile-back.chiral:247`) applies `fold` alone. The exclusion is by measurement, recorded at `lib/lowering/compile-back.chiral:228-238` |
-| 6 | operand folding to immediate forms | yes | `emit-instr` plus `cenv-step`, `lib/lowering/mach/emit-core.chiral:146-161` and `:46`; `bini-body`, `lib/lowering/x64/mach.chiral:961` |
-| 7 | power-of-two strength reduction | yes | `pow2-k`, `lib/lowering/x64/mach.chiral:885` |
-| 8 | constant-divisor guard elision | yes | `x-div-imm` (`lib/lowering/x64/mach.chiral:905`) and `x-mod-imm` (`:925`) |
-| 9 | tail-call optimization | yes | `tail-call-of`, `lib/lowering/mach/emit-core.chiral:428`; `x-tca`, `lib/lowering/x64/mach.chiral:1047` |
-| 10 | switch lowering to a lookup table | yes | `table-of`, `lib/lowering/mach/emit-core.chiral:288`; `x-ltb`, `lib/lowering/x64/mach.chiral:1093` |
-| 11 | compare and branch fusion | yes | `fused-of`, `lib/lowering/mach/emit-core.chiral:379`; `x-fcp` (`lib/lowering/x64/mach.chiral:1177`), `x-fci` (`:1181`), `x-fjc` (`:1213`) |
-| 12 | byte-level peephole | yes | `x64-peep`, `lib/lowering/x64/mach.chiral:1313`, live through `emit` at `lib/lowering/x64/emit.chiral:11` |
+| 6 | operand folding to immediate forms | yes | `emit-instr` plus `cenv-step`, `lib/lowering/mach/emit-core.chiral:146-161` and `:46`; `bini-body`, `lib/lowering/x64/mach.chiral:967` |
+| 7 | power-of-two strength reduction | yes | `pow2-k`, `lib/lowering/x64/mach.chiral:891` |
+| 8 | constant-divisor guard elision | yes | `x-div-imm` (`lib/lowering/x64/mach.chiral:911`) and `x-mod-imm` (`:931`) |
+| 9 | tail-call optimization | yes | `tail-call-of`, `lib/lowering/mach/emit-core.chiral:428`; `x-tca`, `lib/lowering/x64/mach.chiral:1055` |
+| 10 | switch lowering to a lookup table | yes | `table-of`, `lib/lowering/mach/emit-core.chiral:288`; `x-ltb`, `lib/lowering/x64/mach.chiral:1101` |
+| 11 | compare and branch fusion | yes | `fused-of`, `lib/lowering/mach/emit-core.chiral:379`; `x-fcp` (`lib/lowering/x64/mach.chiral:1185`), `x-fci` (`:1189`), `x-fjc` (`:1221`) |
+| 12 | byte-level peephole | yes | `x64-peep`, `lib/lowering/x64/mach.chiral:1321`, live through `emit` at `lib/lowering/x64/emit.chiral:11` |
 | 13 | totality-licensed compile-time evaluation (`_total_const_call`) | no | `grep -rniI "comptime" lib prog` and `grep -rniI "total-const" lib prog` both return nothing. `tot-gate` (`lib/typing/totality-check.chiral:153`) is imported once, by `lib/lowering/compile-front.chiral:24`, and its result is a `TotalR` verdict consumed at `lib/lowering/compile-front.chiral:371`. No optimizer reads a totality proof |
-| 14 | magic-multiply constant division | encodings yes, pass no | `x-imul-rcx-1op` at `lib/lowering/x64/mach.chiral:319`, `x-sar-cl` at `:321`, `x-shr-cl` at `:323`, and the `op-mulhi` arm inside `op-bytes` (`:351-387`) at `:373`. `grep -rniI "divmagic" lib prog` returns nothing, and `mulhi` appears in no source file outside `lib/prelude/prelude.chiral` and `lib/lowering/x64/mach.chiral`, so nothing constructs the sequence |
+| 14 | magic-multiply constant division | encodings yes, pass no | `x-imul-rcx-1op` at `lib/lowering/x64/mach.chiral:321`, `x-sar-cl` at `:325`, `x-shr-cl` at `:327`, and the `op-mulhi` arm inside `op-bytes` (`:355-393`) at `:377`. `grep -rniI "divmagic" lib prog` returns nothing, and `mulhi` appears in no source file outside `lib/prelude/prelude.chiral` and `lib/lowering/x64/mach.chiral`, so nothing constructs the sequence |
 | 15 | real register allocation | no | section 2 above. The header claim at `lib/lowering/x64/mach.chiral:7-9` still describes the shipping emitter |
-| 16 | control-flow jump tables | yes | `jtb-codes`, `lib/lowering/mach/emit-core.chiral:337`; `x-jtb`, `lib/lowering/x64/mach.chiral:1157` |
+| 16 | control-flow jump tables | yes | `jtb-codes`, `lib/lowering/mach/emit-core.chiral:337`; `x-jtb`, `lib/lowering/x64/mach.chiral:1165` |
 | 19 | autospec, the bounded auto-pregen policy | no | `grep -rniI "autospec" lib prog` returns nothing. `specialize-raw` (`lib/lowering/upper/optimize.chiral:249`) is the pregen primitive and has no call site |
 
 ### The campaign's named apparatus
@@ -323,8 +323,8 @@ checked against the self-hosted tree.
 
 | Document | What it describes | Built? |
 |---|---|---|
-| `docs/implementation/reg-disciplines.md` | four register disciplines and one conformance gate. It reports rd-truthful, rd-cache and rd-param as BUILT at `:21-33`, and its build order marks steps 1 to 3 DONE at `:70-84` | partly. The clobber table (step 2) and the residency machinery (step 3) are in the self-hosted tree at `lib/lowering/x64/mach.chiral:1433` and `lib/lowering/mach/emit-core.chiral:68-137`. rd-cache is the shipping path. rd-truthful and rd-param are built and have no caller. The gate the document calls "the enforcement" (`tests/test_regdisc.py`, `:6`) does not exist in this tree, so the conformance claim at `:60-66` is unwitnessed here |
-| `docs/implementation/rd-packed-cert.md` | the move-script placement certificate and its forward-symbolic-walk checker | no. `:3` reads RATIFIED and `docs/benchmarks/OPTIMIZATIONS-TODO.md:10` reads "zero code written". The three structural facts it leans on are all present: terminator-only code (`lib/lowering/tal/ir.chiral:41-46`), the SSA counter (`lib/lowering/upper/lower.chiral:161`), and the clobber table as data (`lib/lowering/x64/mach.chiral:1433`). Its citations point at the old tree's paths (`lib/tal-ir.chiral`, `optimize.py`, `mach-x64.chiral`) |
+| `docs/implementation/reg-disciplines.md` | four register disciplines and one conformance gate. It reports rd-truthful, rd-cache and rd-param as BUILT at `:21-33`, and its build order marks steps 1 to 3 DONE at `:70-84` | partly. The clobber table (step 2) and the residency machinery (step 3) are in the self-hosted tree at `lib/lowering/x64/mach.chiral:1443` and `lib/lowering/mach/emit-core.chiral:68-137`. rd-cache is the shipping path. rd-truthful and rd-param are built and have no caller. The gate the document calls "the enforcement" (`tests/test_regdisc.py`, `:6`) does not exist in this tree, so the conformance claim at `:60-66` is unwitnessed here |
+| `docs/implementation/rd-packed-cert.md` | the move-script placement certificate and its forward-symbolic-walk checker | no. `:3` reads RATIFIED and `docs/benchmarks/OPTIMIZATIONS-TODO.md:10` reads "zero code written". The three structural facts it leans on are all present: terminator-only code (`lib/lowering/tal/ir.chiral:41-46`), the SSA counter (`lib/lowering/upper/lower.chiral:161`), and the clobber table as data (`lib/lowering/x64/mach.chiral:1443`). Its citations point at the old tree's paths (`lib/tal-ir.chiral`, `optimize.py`, `mach-x64.chiral`) |
 
 ## 4. What measurement exists
 

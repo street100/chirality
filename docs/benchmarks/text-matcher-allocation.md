@@ -54,7 +54,7 @@ subject.
 ## The instrument, and why every figure below is a lower bound
 
 The runtime is a bump allocator with **no reclamation anywhere**. `x-galo`
-(`lib/lowering/x64/mach.chiral:509`) advances `heapptr` by `sz = 8 * (1 +
+(`lib/lowering/x64/mach.chiral:515`) advances `heapptr` by `sz = 8 * (1 +
 fields)` and stores; the only other motion is `nb-arena-grow`
 (`lib/lowering/tal/sys.chiral:174`) doubling the committed prefix of a 64 GiB
 `PROT_NONE` reservation from a 262,144 B floor

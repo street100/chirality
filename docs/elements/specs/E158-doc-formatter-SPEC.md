@@ -100,8 +100,8 @@ updated: 2026-08-31
     **`lib/prelude/list.chiral`** — `reverse` `:33`, signature
     `(-> (0 A (type 0)) (List A) (List A))`, so the call is `(reverse Str xs)`
     with the **erased** first argument written.
-  - **`lib/prelude/prelude.chiral`** — `str-len` `:75`, `str-eq` `:76`,
-    `str-cat` `:83`, `i64->str` `:84`.
+  - **`lib/prelude/prelude.chiral`** — `str-len` `:78`, `str-eq` `:79`,
+    `str-cat` `:86`, `i64->str` `:87`.
   - **`tools/test/run-tests.sh`.** `run_phase()` at `:112`; registered phases
     3,4,5,6 at `:131-134` and **13 at `:187`** (`diag.sh`, E157). Its header
     (`:8-9`) states that 8–12 are names still owed, which is why E157 took 13.

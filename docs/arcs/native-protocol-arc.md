@@ -28,7 +28,7 @@ Measured 2026-09-03.
 | `lib/ports/sock.port:54-74` | the socket registry: unix listen and accept, AF_INET client connect, send, recv, fd passing, socketpair, poll. Every cap linear |
 | `lib/protocol/inet.chiral` | dotted-quad parse and the sockaddr_in packer, pure. The header names WireGuard as the transport crypto the current path borrows |
 | `lib/capability/secret.chiral` | Secret custody, E40. Its own header: "No crypto here" |
-| `lib/prelude/prelude.chiral:66-71` | band, bor, bxor, shl, shr, sar as surface externs |
+| `lib/prelude/prelude.chiral:67-72` | band, bor, bxor, shl, shr, sar as surface externs |
 | `lib/prelude/prelude.chiral:38` | op-mulhi exists in the lowering op sum with no surface extern |
 
 ## What is missing

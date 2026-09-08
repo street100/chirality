@@ -86,7 +86,7 @@ Nine names moved: `Reason` 122 to 121, `dg-subject-name` 159 to 161,
   - `Subject` at `:80`, twelve arms, with `dg-subject-name` (`:161`) and
     `dg-subject-tag` (`:178`) already casing all twelve. `subj-data` and
     `subj-ctor` are the two subjects the detection sites already pass.
-  - `i64->str`, the prelude extern at `lib/prelude/prelude.chiral:84`, already
+  - `i64->str`, the prelude extern at `lib/prelude/prelude.chiral:87`, already
     called from `diag.chiral:670`. The new message needs no new dependency.
   - `check-tcon` (`lib/typing/kernel.chiral:1036`), whose length guard is the
     line above its refusal, and `con-check` (`:1091`), whose guard sits five

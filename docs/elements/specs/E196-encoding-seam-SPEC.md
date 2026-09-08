@@ -45,7 +45,7 @@ both probes were re-run on it with output identical to the first pass.
   no shard is an encoding: shard B is the `Ty`/`Shape` payload type and shard G
   is the `Backend` model crossing, both above this layer.
 - **What the change composes with:** `prelude/prelude` for the fourteen integer
-  ops at `lib/prelude/prelude.chiral:57-70` and `i64->str`, `prelude/list` for `List`, `ports/stdio` for `put`. The
+  ops at `lib/prelude/prelude.chiral:58-71` and `i64->str`, `prelude/list` for `List`, `ports/stdio` for `put`. The
   module binds no extern of its own and every function in it is `->`.
 - **True delta:** one new module, one new root, one new gate script. Three files,
   all new, none under `lib/`.
