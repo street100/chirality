@@ -66,23 +66,25 @@ Five conditions. None of them holds an arc file today.
    90 arena cells per 64-byte block, the whole block function allocates 5,776 B,
    and the same ARX arithmetic carrying its four lanes as parameters allocates
    zero bytes and runs 3.1 to 3.4x faster at quiet load.
-   [[benchmarks/OPT-CANDIDATES-2026-09]] names the cause as blocker `B4`:
-   `ti-cona` always allocates, and the IR has no field-update or reuse form.
-   Observed: `tools/bench/crypto-kernel.sh alloc` reporting a zero delta for the
-   round subject, which is also the observable
+   [[benchmarks/OPT-CANDIDATES-2026-09]] names what holding it requires as
+   `B4`: `ti-cona` always allocates, and the IR has no field-update or reuse
+   form. Observed: `tools/bench/crypto-kernel.sh alloc` reporting a zero delta
+   for the round subject, which is also the observable
    [[arcs/crypto-primitives-arc]] requirement 5 states for
    `crypto-primitives/K20`. **Unopened, and it holds no arc file.**
 
-3. **Each of the nine blockers closes, or carries a recorded refusal.**
-   [[benchmarks/OPT-CANDIDATES-2026-09]] lists 221 candidates walked out of
-   seven pinned pass catalogues, and its blocker table holds about 45 of them
-   behind nine enablers: no interprocedural constant fact, no loop form, no
+3. **Each of the nine enablers the candidate walk discovered is built, or
+   carries a recorded refusal.** [[benchmarks/OPT-CANDIDATES-2026-09]] lists 221
+   candidates walked out of seven pinned pass catalogues, and about 45 of them
+   want one of nine enablers: no interprocedural constant fact, no loop form, no
    location vocabulary, no non-allocating product, no CFG, the binary-only
    `ti-prim`, the single-slot return, and the refinement and quantity drops at
-   the peel. All nine classify as category A, so no floor holds any family below
-   A, and 213 of the 221 rows are A with zero B among them. Observed: every row
-   of that blocker table reading as a built enabler or as a recorded refusal.
-   **Unopened, and it holds no arc file.**
+   the peel. Each of the nine is a capability this substrate does not reach
+   today, and [[working-discipline]] rules on how that is recorded. All nine
+   classify as category A, so no floor holds any family below A, and 213 of the
+   221 rows are A with zero B among them. Observed: every row of that enabler
+   table reading as a built enabler or as a recorded refusal. **Unopened, and it
+   holds no arc file.**
 
 4. **A shipped native tool runs inside a declared budget.**
    `prog/prose-lint.prog` measures 15.1x slower than the mawk tool it replaces,
@@ -162,7 +164,7 @@ scalar 64-bit operation.
 | `chacha-xor`, the stream path | 1.8 MB/s at 16 KiB falling to 0.41 MB/s at 128 KiB, allocation per doubling growing 2.87x, 3.21x, 3.51x toward the 4x a quadratic gives | 2026-09-07 | the same binary |
 | `prose-lint` against mawk | 15.1x slower, band 7.8x to 18.5x, 1.11 GB allocated to scan 609,872 B, OOM-killed at the default scope | 2026-09-02 | self-hosted, `bin/chirality-bin` sha256 prefix `ac8de63e5687fad4` |
 | the optimizer itself | seventeen transformations and five gates from text to bytes. `dead`, `optimize`, `specialize`, `emit-truthful` and `emit-param` are compiled in and never called | 2026-09-07 | self-hosted, the same binary as the crypto row |
-| the candidate surface | 221 candidates over seven pinned catalogues: 213 A, 7 C, 1 A+C, zero B. Nine blockers hold about 45 of them | listed 2026-09-07, annotated 2026-09-08 | a reading of the self-hosted tree |
+| the candidate surface | 221 candidates over seven pinned catalogues: 213 A, 7 C, 1 A+C, zero B. About 45 of them want one of nine enablers | listed 2026-09-07, annotated 2026-09-08 | a reading of the self-hosted tree |
 
 ### Two numbers, both true
 

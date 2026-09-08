@@ -18,6 +18,13 @@ candidate a later stage rejects costs one row, and a candidate never listed
 costs the whole opportunity in silence. Rows marked doubtful are kept on
 purpose.
 
+**An absence on this list is a requirement this walk discovered, and `status
+here` names the row that carries it.** The first reading of the list reported
+about forty-five rows as blocked behind nine blockers, which counted the reach
+of this substrate as a deficit. `docs/definitions/working-discipline.md`, under
+"A capability the substrate lacks is a finding", rules on that reading. Every
+figure, count and category below is the one that was measured.
+
 ## How to read a row
 
 | field | content |
@@ -27,9 +34,14 @@ purpose.
 | candidate | what the literature calls it |
 | what it does | one or two sentences |
 | source | the bucket, and the catalogue or file the row came from |
-| status here | `absent`, `present`, `partial`, `blocked` with the blocker named, or `moot` |
+| status here | `absent`, `present`, `partial`, `wants` with the row it requires named, or `moot` |
 | touches | surface, IR, optimizer, backend, type system. Two rows outside the compiler take `tooling` and `runtime` |
 | doubtful | a mark and one clause where the row may not apply |
+
+`wants` names the row a candidate requires and this compiler does not have, so
+the verdict states what the substrate reaches today. `blocked` is left on the
+three readings where an outside constraint holds: `perf_event_open` is
+unavailable in this microVM, at `B13`, `D18`, and in `A40`'s `perf` sentence.
 
 `moot` is the fifth value the field list did not name. It marks a pass that
 answers a question this tree does not pose: float canonicalization on a target
@@ -62,8 +74,8 @@ scalar, loop, interprocedural and machine chapters; GHC and flambda carry the
 functional-language chapters that a C-shaped catalogue omits; MLton carries the
 whole-program SSA chapter; Go and Cranelift carry the compact backend.
 
-The four IR limitations the inventory records are the spine of bucket B, and
-each is quoted back in the `blocked` verdicts of buckets A and F:
+The four IR facts the inventory records are the spine of bucket B, and each is
+quoted back in the `wants` verdicts of buckets A and F as `B1` to `B4`:
 
 1. no interprocedural constant fact. A call kills the constant environment, so
    the literal `10` at `lib/crypto/chacha.chiral:128` never reaches `rounds`.
@@ -78,8 +90,8 @@ each is quoted back in the `blocked` verdicts of buckets A and F:
 
 Seven pass lists, walked row by row. A pass that this IR could carry today is
 listed with its seat. A pass that this IR cannot carry is listed anyway, with
-the blocker named, because a blocked pass is the argument for the IR change
-that unblocks it.
+the row it requires named, because such a pass is the argument for the IR
+change it wants.
 
 ### A-i. Scalar and local
 
@@ -96,8 +108,8 @@ that unblocks it.
 | A9 | A | aggressive and bit-tracking DCE | removes computations whose bits nothing observes | `LLVMPASSES` adce, bdce | absent | optimizer | |
 | A10 | A | dead store elimination | removes a store that a later store overwrites with nothing between | `GOSSA:483` dse | absent | optimizer | ? every `ti-bput` writes a freshly allocated cell |
 | A11 | A | store merging | fuses adjacent narrow stores into one wide store | `GCCPASSES:374` pass_store_merging, `GOSSA:484` memcombine | absent. The `pack-u32` write runs are the shape | optimizer, backend | |
-| A12 | A | copy propagation and copy elimination | forwards a copy's source to its uses and drops the copy | `GOSSA:459` copyelim, `GCCPASSES` pass_copy_prop | blocked by limitation 3. Neither instruction set has a move form, so a copy has no representation to eliminate | IR | |
-| A13 | A | value range propagation | derives an interval per value and discharges tests against it | `GCCPASSES:237` pass_vrp, `GOSSA:471` prove | absent, and blocked for source-derived facts by the refinement drop at `lib/lowering/compile-front.chiral:69` | optimizer, type system | |
+| A12 | A | copy propagation and copy elimination | forwards a copy's source to its uses and drops the copy | `GOSSA:459` copyelim, `GCCPASSES` pass_copy_prop | absent, and it wants `B3`. Neither instruction set has a move form, so a copy has no representation to eliminate | IR | |
+| A13 | A | value range propagation | derives an interval per value and discharges tests against it | `GCCPASSES:237` pass_vrp, `GOSSA:471` prove | absent. For source-derived facts it wants `B9`, the refinement drop at `lib/lowering/compile-front.chiral:69` | optimizer, type system | |
 | A14 | A | bounds-check elimination | removes an index guard a range fact discharges | `GOSSA:480` check bce | partial. Constant-divisor guard elision only, `x-div-imm` at `lib/lowering/x64/mach.chiral:905` | optimizer, backend | |
 | A15 | A | redundant test elimination | drops a comparison an earlier comparison already settled | `MLTONSSA` redundantTests | absent | optimizer | |
 | A16 | A | useless-value elimination | drops a value and the tuple slot holding it when no consumer inspects either | `MLTONSSA:63` useless | absent | optimizer | |
@@ -107,7 +119,7 @@ that unblocks it.
 | A20 | A | redundant load elimination | drops a load whose value a live slot already holds | `CRANELIFT:344` replace_redundant_loads | partial. Pattern A of `x64-peep`, the recognizer `peep-hit` at `lib/lowering/x64/mach.chiral:1237` | backend | |
 | A21 | A | strength reduction | replaces an expensive operator with a cheaper one on the same value | `LLVMPASSES` slsr, `GCCPASSES` pass_strength_reduction | partial. Power-of-two division and modulo only, `pow2-k` at `lib/lowering/x64/mach.chiral:885` | backend | |
 | A22 | A | magic-number constant division | turns division by a constant into a multiply-high and a shift | `GCCPASSES:373` pass_optimize_widening_mul, Cranelift `opts/div_const.rs` | encodings present, pass absent. Inventory §3 row 14 | optimizer, backend | |
-| A23 | A | byte-swap idiom recognition | recognizes a shift-and-or chain as a byte reversal | `GCCPASSES:275` pass_optimize_bswap | absent, and blocked by the binary-only `ti-prim` form | optimizer, backend | |
+| A23 | A | byte-swap idiom recognition | recognizes a shift-and-or chain as a byte reversal | `GCCPASSES:275` pass_optimize_bswap | absent, and it wants a unary prim form, since `ti-prim` is binary | optimizer, backend | |
 | A24 | A | widening multiply recognition | recognizes a full-width product and emits the two-register form | `GCCPASSES:373` | absent. `op-mulhi` is the unused half of the shape | optimizer, backend | |
 | A25 | A | zero-argument CSE | shares the nullary values a backend keeps re-materializing | `GOSSA:465` zero arg cse | absent | optimizer | ? this target has no global base pointer to share |
 | A26 | A | freeze and undef canonicalization | gives an undefined value one canonical form | `LLVMPASSES` canon-freeze | moot. The floor has no undefined value; a trap is chosen instead | | |
@@ -118,12 +130,12 @@ Count: 26.
 
 | # | cat | candidate | what it does | source | status here | touches | doubtful |
 |---|---|---|---|---|---|---|---|
-| A27 | A | jump threading | redirects a branch whose outcome an earlier branch already determined | `LLVMPASSES` jump-threading, dfa-jump-threading; `GCCPASSES` pass_thread_jumps | blocked by limitation 2 and by the missing CFG. `TCode` at `lib/lowering/tal/ir.chiral:41-46` has no label or jump form | IR, optimizer | |
-| A28 | A | tail duplication and trace formation | copies a joined tail into each predecessor to expose straight-line work | `GCCPASSES` pass_tracer, pass_duplicate_computed_gotos | blocked, same | IR, optimizer | |
-| A29 | A | basic block layout | orders blocks so the hot edge falls through | `GOSSA:503` layout, `GCCPASSES` pass_reorder_blocks | blocked, same. Emission walks the `TCode` tree in source order | IR, backend | |
+| A27 | A | jump threading | redirects a branch whose outcome an earlier branch already determined | `LLVMPASSES` jump-threading, dfa-jump-threading; `GCCPASSES` pass_thread_jumps | wants `B2` and `B5`. `TCode` at `lib/lowering/tal/ir.chiral:41-46` has no label or jump form | IR, optimizer | |
+| A28 | A | tail duplication and trace formation | copies a joined tail into each predecessor to expose straight-line work | `GCCPASSES` pass_tracer, pass_duplicate_computed_gotos | wants the same two | IR, optimizer | |
+| A29 | A | basic block layout | orders blocks so the hot edge falls through | `GOSSA:503` layout, `GCCPASSES` pass_reorder_blocks | wants the same two. Emission walks the `TCode` tree in source order | IR, backend | |
 | A30 | A | empty block trimming and block merging | deletes a block that only jumps onward | `GOSSA:509` trim, `GCCPASSES` pass_cleanup_cfg | moot under the tree shape | | |
 | A31 | A | critical edge splitting | breaks an edge from a multi-successor block into a multi-predecessor block | `GOSSA:500` critical | moot. Branches never rejoin, per the inventory's loops section | | |
-| A32 | A | if-conversion and conditional-move selection | turns a short branch into a predicated computation | `GOSSA:481` branchelim, `GCCPASSES` pass_if_conversion, `LLVMPASSES` select-optimize | blocked. There is no select form in either IR and no conditional-move op in the `Op` sum | IR, backend | |
+| A32 | A | if-conversion and conditional-move selection | turns a short branch into a predicated computation | `GOSSA:481` branchelim, `GCCPASSES` pass_if_conversion, `LLVMPASSES` select-optimize | wants `B7` and `C7`. There is no select form in either IR and no conditional-move op in the `Op` sum | IR, backend | |
 | A33 | A | branch folding on a known scrutinee | selects the arm a known constructor picks | `MLTONSSA:118` knownCase2 | present. `dispatch`, `lib/lowering/upper/optimize.chiral:130` | optimizer | |
 | A34 | A | switch lowering to a lookup table | replaces a compare chain over an enum with an indexed load | `GCCPASSES` pass_convert_switch | present. `table-of`, `lib/lowering/mach/emit-core.chiral:288` | backend | |
 | A35 | A | switch lowering to a jump table | replaces a compare chain with an indexed jump | `GCCPASSES` pass_lower_switch | present. `jtb-codes`, `lib/lowering/mach/emit-core.chiral:337` | backend | |
@@ -131,32 +143,32 @@ Count: 26.
 | A37 | A | short circuit | shortens a boolean chain that a phi immediately consumes | `GOSSA:461` short circuit | absent | optimizer | ? the surface `cond` already lowers to nested `case` |
 | A38 | A | unreachable code elimination | deletes code no entry reaches | `CRANELIFT` unreachable_code, `LLVMPASSES` unreachableblockelim | partial. `prune-fix` at `lib/lowering/compile-back.chiral:214` works at function granularity | optimizer | |
 | A39 | C | branch probability annotation | marks the likely edge so layout and scheduling can use it | `GOSSA:502` likelyadjust | absent, and there is no profile to read | optimizer | |
-| A40 | A | profile-guided optimization | feeds measured counts back into inlining, layout and unrolling | `LLVMPASSES` pgo-instr-gen, pgo-instr-use; `GCCPASSES:172` neighbourhood pass_ipa_profile | blocked. No counter instrument exists in the tree, and `perf` is blocked in this sandbox per `docs/benchmarks/OPTIMIZATIONS-TODO.md:57-58` | optimizer, backend | |
+| A40 | A | profile-guided optimization | feeds measured counts back into inlining, layout and unrolling | `LLVMPASSES` pgo-instr-gen, pgo-instr-use; `GCCPASSES:172` neighbourhood pass_ipa_profile | absent, and it wants `B13`. No counter instrument exists in the tree, and `perf` is blocked in this sandbox per `docs/benchmarks/OPTIMIZATIONS-TODO.md:57-58` | optimizer, backend | |
 
 Count: 14.
 
 ### A-iii. Loops
 
-Every row here carries the same primary blocker. Iteration is tail recursion,
+Every row here wants the same enabler. Iteration is tail recursion,
 `tail-call-of` at `lib/lowering/mach/emit-core.chiral:428` is the one place a
 back-edge is identified, and it records nothing.
 
 | # | cat | candidate | what it does | source | status here | touches | doubtful |
 |---|---|---|---|---|---|---|---|
-| A41 | A | loop-invariant code motion | hoists a computation whose operands do not change across iterations | `GCCPASSES:137` pass_lim, `MLTONSSA:49` loopInvariant1 | blocked by limitation 2. Named on the parked menu at `docs/benchmarks/OPTIMIZATIONS-TODO.md:44-46` | IR, optimizer | |
-| A42 | A | loop unrolling | replicates the body so per-iteration overhead is paid less often | `LLVMPASSES:634` loop-unroll, `MLTONSSA:67` loopUnroll1 | blocked by limitation 2. The ten-iteration `rounds` recursion at `lib/crypto/chacha.chiral:76-80` is the case | IR, optimizer | |
-| A43 | A | loop unswitching | lifts a loop-invariant test out and duplicates the loop per outcome | `MLTONSSA` loopUnswitch, `GCCPASSES` pass_tree_unswitch | blocked by limitation 2 | IR, optimizer | |
-| A44 | A | loop rotation and header copying | turns a top-tested loop into a bottom-tested one | `GOSSA:508` loop rotate, `GCCPASSES` pass_ch | blocked by limitation 2 | IR, optimizer | |
-| A45 | A | induction variable canonicalization and elimination | rewrites derived counters in terms of one canonical variable | `LLVMPASSES` indvars, `GCCPASSES` pass_iv_canon, pass_iv_optimize | blocked by limitation 2 | IR, optimizer | |
-| A46 | A | loop deletion, peeling and bound splitting | removes or reshapes a loop whose trip count is known or whose body is dead | `LLVMPASSES` loop-deletion, loop-bound-split | blocked by limitation 2 | IR, optimizer | |
-| A47 | A | loop fusion, distribution, interchange and jam | reorders whole loop nests for locality | `LLVMPASSES` loop-fusion, loop-distribute, loop-interchange, loop-unroll-and-jam; `GCCPASSES` pass_graphite | blocked twice: limitation 2, and no array subscript vocabulary | IR, optimizer | ? this tree has no affine array indexing to reorder |
-| A48 | A | loop idiom recognition | recognizes a copy or fill loop and emits one block operation | `LLVMPASSES` loop-idiom | blocked by limitation 2 and by the missing block-copy op. The byte-library copy recursions are the shape | IR, backend | |
-| A49 | A | software pipelining | overlaps iterations to hide latency | `GCCPASSES` pass_sms | blocked by limitation 2 and by the absent scheduler | IR, backend | |
-| A50 | A | loop introduction from self tail recursion | recognizes a self tail call as a local loop and gives it a header | `MLTONSSA` introduceLoops | absent. This is limitation 2's enabler wearing a pass name | IR, optimizer | |
+| A41 | A | loop-invariant code motion | hoists a computation whose operands do not change across iterations | `GCCPASSES:137` pass_lim, `MLTONSSA:49` loopInvariant1 | wants `B2`. Named on the parked menu at `docs/benchmarks/OPTIMIZATIONS-TODO.md:44-46` | IR, optimizer | |
+| A42 | A | loop unrolling | replicates the body so per-iteration overhead is paid less often | `LLVMPASSES:634` loop-unroll, `MLTONSSA:67` loopUnroll1 | wants `B2`. The ten-iteration `rounds` recursion at `lib/crypto/chacha.chiral:76-80` is the case | IR, optimizer | |
+| A43 | A | loop unswitching | lifts a loop-invariant test out and duplicates the loop per outcome | `MLTONSSA` loopUnswitch, `GCCPASSES` pass_tree_unswitch | wants `B2` | IR, optimizer | |
+| A44 | A | loop rotation and header copying | turns a top-tested loop into a bottom-tested one | `GOSSA:508` loop rotate, `GCCPASSES` pass_ch | wants `B2` | IR, optimizer | |
+| A45 | A | induction variable canonicalization and elimination | rewrites derived counters in terms of one canonical variable | `LLVMPASSES` indvars, `GCCPASSES` pass_iv_canon, pass_iv_optimize | wants `B2` | IR, optimizer | |
+| A46 | A | loop deletion, peeling and bound splitting | removes or reshapes a loop whose trip count is known or whose body is dead | `LLVMPASSES` loop-deletion, loop-bound-split | wants `B2` | IR, optimizer | |
+| A47 | A | loop fusion, distribution, interchange and jam | reorders whole loop nests for locality | `LLVMPASSES` loop-fusion, loop-distribute, loop-interchange, loop-unroll-and-jam; `GCCPASSES` pass_graphite | wants two things: `B2`, and an array subscript vocabulary | IR, optimizer | ? this tree has no affine array indexing to reorder |
+| A48 | A | loop idiom recognition | recognizes a copy or fill loop and emits one block operation | `LLVMPASSES` loop-idiom | wants `B2` and a block-copy op. The byte-library copy recursions are the shape | IR, backend | |
+| A49 | A | software pipelining | overlaps iterations to hide latency | `GCCPASSES` pass_sms | wants `B2` and a scheduler | IR, backend | |
+| A50 | A | loop introduction from self tail recursion | recognizes a self tail call as a local loop and gives it a header | `MLTONSSA` introduceLoops | absent. This is `B2` wearing a pass name | IR, optimizer | |
 | A51 | A | exitification | floats a loop's exit path into a join so the loop body stays small | `GHCPIPELINE:263` CoreDoExitify | absent | optimizer | |
 | A52 | A | liberate case | unrolls one iteration so a scrutinee that is constant per call becomes known | `GHCPIPELINE:478` liberateCase | absent | optimizer | |
-| A53 | A | loop and SLP vectorization | packs independent scalar work into vector operations | `LLVMPASSES:550` slp-vectorizer, `GCCPASSES` pass_vectorize | blocked three ways: limitation 2, no vector type in `TalTy`, no vector op in the `Op` sum | IR, backend, type system | |
-| A54 | A | loop-carried check hoisting | proves an index guard once for a whole traversal | `GOSSA:480` check bce | blocked by limitation 2 and by the refinement drop | IR, type system | |
+| A53 | A | loop and SLP vectorization | packs independent scalar work into vector operations | `LLVMPASSES:550` slp-vectorizer, `GCCPASSES` pass_vectorize | wants three things: `B2`, a vector type in `TalTy`, a vector op in the `Op` sum | IR, backend, type system | |
+| A54 | A | loop-carried check hoisting | proves an index guard once for a whole traversal | `GOSSA:480` check bce | wants `B2` and the refinement fact the peel drops | IR, type system | |
 
 Count: 14.
 
@@ -166,13 +178,13 @@ Count: 14.
 |---|---|---|---|---|---|---|---|
 | A55 | A | inlining | copies a callee body into its caller | `GCCPASSES:175` pass_ipa_inline, `CRANELIFT:204` inline, `FLAMBDA:188` the inlining chapter | absent. Inventory §2: no pass inlines a function body. Named on the parked menu at `docs/benchmarks/OPTIMIZATIONS-TODO.md:42-43` | optimizer | |
 | A56 | A | partial inlining and hot-cold splitting | inlines the hot prefix and leaves the cold remainder outlined | `LLVMPASSES` partial-inliner, hotcoldsplit | absent, and it wants the profile A40 lacks | optimizer | |
-| A57 | A | interprocedural constant propagation | propagates a constant argument into the callee body | `GCCPASSES:172` pass_ipa_cp | blocked by limitation 1 | optimizer | |
+| A57 | A | interprocedural constant propagation | propagates a constant argument into the callee body | `GCCPASSES:172` pass_ipa_cp | wants `B1` | optimizer | |
 | A58 | A | specialization on a constant argument | clones a callee against known arguments and rewrites the site | `GHCPIPELINE:304` CoreDoSpecConstr, `FLAMBDA:939` | machinery present, uncalled. `specialize-raw` at `lib/lowering/upper/optimize.chiral:249` has no call site. Named as autospec on the parked menu | optimizer | |
 | A59 | A | static argument transformation | drops a recursive parameter that every call passes unchanged | `GHCPIPELINE:199` CoreDoStaticArgs | absent. `rounds`'s state-independent arguments are the case | optimizer | |
 | A60 | A | call arity analysis | eta-expands a function to the arity its call sites actually use | `GHCPIPELINE:256` CoreDoCallArity | absent | optimizer | ? closure conversion has already flattened application |
 | A61 | A | contification | turns a function called from one return context into a continuation in its caller | `MLTONSSA:54` contify1 | absent. The outlined `<name>$<n>` functions from `outline` at `lib/lowering/upper/lower.chiral:311` are exactly this shape | optimizer | |
 | A62 | A | dead argument elimination | removes a parameter no callee body reads | `LLVMPASSES` deadargelim, `FLAMBDA:1120` | partial. Arguments at a callee's `q=0` positions are dropped by `tnc-keep` at `lib/lowering/compile-front.chiral:136`; a live-typed unused parameter survives | optimizer | |
-| A63 | A | named return value and return slot optimization | writes a result into the caller's storage with no intermediate | `GCCPASSES` pass_nrv, pass_return_slot | absent, and blocked by the single-slot return | IR, optimizer | |
+| A63 | A | named return value and return slot optimization | writes a result into the caller's storage with no intermediate | `GCCPASSES` pass_nrv, pass_return_slot | absent, and it wants `B15`, the multi-value return | IR, optimizer | |
 | A64 | A | function merging and identical code folding | collapses two functions with the same body into one symbol | `LLVMPASSES:124` mergefunc, `GCCPASSES` pass_ipa_icf | absent. The synthesized `$apply<i>` dispatchers and the `<name>$<n>` outlines are the corpus to test it on | optimizer | |
 | A65 | A | devirtualization | replaces an indirect call whose target is known with a direct one | `GCCPASSES` pass_ipa_devirt, `LLVMPASSES` wholeprogramdevirt | partial. `sp-rw` at `lib/lowering/upper/specialize-singleton.chiral:124-132` devirtualizes a singleton dictionary at the `Term` level | optimizer | |
 | A66 | A | interprocedural pure and const discovery | proves a callee has no side effect so its call can move or vanish | `GCCPASSES` pass_ipa_pure_const, pass_local_pure_const | present in the type. The module category and the arrow carry it, so no analysis runs | type system | |
@@ -190,7 +202,7 @@ Count: 18.
 | # | cat | candidate | what it does | source | status here | touches | doubtful |
 |---|---|---|---|---|---|---|---|
 | A73 | A | scalar replacement of aggregates | splits a record into its fields and keeps them in registers or slots | `LLVMPASSES:724` sroa, `GCCPASSES:252` pass_sra | absent. The measured `Q4` and `St` cells are the case | optimizer, IR | |
-| A74 | A | unboxing of arguments and returns | passes a product's fields instead of a pointer to it | `FLAMBDA:939` unboxing of specialised arguments, `:1016` unboxing of closures | absent, and blocked by limitation 4 and the single-slot return | IR, optimizer | |
+| A74 | A | unboxing of arguments and returns | passes a product's fields instead of a pointer to it | `FLAMBDA:939` unboxing of specialised arguments, `:1016` unboxing of closures | absent, and it wants `B4` and `B15` | IR, optimizer | |
 | A75 | A | constructed product result with worker-wrapper | splits a function that returns a box into a worker returning the fields and a wrapper that boxes | `GHCPIPELINE:174` CoreDoCpr with CoreDoWorkerWrapper | absent. `qround` returning a `Q4` is exactly the shape the transform targets | IR, optimizer | |
 | A76 | A | demand and strictness analysis | discovers which arguments a function forces | `GHCPIPELINE:495` CoreDoDemand | moot for the strictness half; the language is strict. The boxity half that CPR consumes is the live part | optimizer | |
 | A77 | A | argument flattening | passes each field of a tuple argument as its own parameter | `MLTONSSA` flatten, localFlatten, deepFlatten | absent. `sB` in the crypto benchmark is this transform applied by hand, and it allocated zero bytes | IR, optimizer | |
@@ -211,10 +223,10 @@ Count: 15.
 
 | # | cat | candidate | what it does | source | status here | touches | doubtful |
 |---|---|---|---|---|---|---|---|
-| A88 | A | register allocation | assigns values to physical registers with spills where they do not fit | `GOSSA:507` regalloc, `GCCPASSES:518` pass_ira | blocked by limitation 3. The header at `lib/lowering/x64/mach.chiral:7-9` still describes the shipping emitter | IR, backend | |
-| A89 | A | register coalescing | removes a move by giving both ends the same register | `GOSSA:459` copyelim | blocked by limitation 3 | IR, backend | |
-| A90 | A | rematerialization | recomputes a cheap value instead of spilling it | `GOSSA:501` phi tighten | blocked by limitation 3 | IR, backend | |
-| A91 | A | live-range splitting and spill placement | breaks a long range so the pressure peak is local | LLVM and GCC allocators both | blocked by limitation 3 | IR, backend | |
+| A88 | A | register allocation | assigns values to physical registers with spills where they do not fit | `GOSSA:507` regalloc, `GCCPASSES:518` pass_ira | wants `B3`. The header at `lib/lowering/x64/mach.chiral:7-9` still describes the shipping emitter | IR, backend | |
+| A89 | A | register coalescing | removes a move by giving both ends the same register | `GOSSA:459` copyelim | wants `B3` | IR, backend | |
+| A90 | A | rematerialization | recomputes a cheap value instead of spilling it | `GOSSA:501` phi tighten | wants `B3` | IR, backend | |
+| A91 | A | live-range splitting and spill placement | breaks a long range so the pressure peak is local | LLVM and GCC allocators both | wants `B3` | IR, backend | |
 | A92 | A | stack slot coloring and frame compaction | reuses one stack slot for values whose ranges do not overlap | `GOSSA` stackalloc.go, `GCCPASSES` pass_live_range_shrinkage | absent. `frame` at `lib/lowering/x64/mach.chiral:53` rounds `8 * nregs` and reuses nothing. This is the slot-retiring allocator ratified in `docs/implementation/rd-packed-cert.md` with zero code written | backend | |
 | A93 | A | flag allocation | schedules the condition-code register as a resource | `GOSSA:506` flagalloc | partial. The fused compare-branch owns the flags across a taken jump, locally | backend | |
 | A94 | A | instruction scheduling | reorders independent instructions to hide latency | `GOSSA:504` schedule, `GCCPASSES:514` pass_sched | absent. The parked menu at `docs/benchmarks/OPTIMIZATIONS-TODO.md:53-54` makes it wait on counters | backend | |
@@ -248,28 +260,28 @@ Count: 7.
 
 ## Bucket B. The IR limitations, as candidates in themselves
 
-Each row here is an enabler. It buys nothing on its own and it unblocks a
-family that bucket A lists separately. The first four are the limitations the
+Each row here is an enabler. It buys nothing on its own, and a family bucket A
+lists separately wants it. The first four are the limitations the
 inventory recorded; the rest surfaced while walking the catalogues against this
 IR.
 
 | # | cat | candidate | what it does | source | status here | touches | doubtful |
 |---|---|---|---|---|---|---|---|
-| B1 | A | an interprocedural fact environment | gives each function a summary a caller's constant environment can survive into | inventory limitation 1 | absent. `fold`'s `cenv` pops the destination at `i-call` (`lib/lowering/upper/optimize.chiral:90`) and `cenv-step` kills it at `lib/lowering/mach/emit-core.chiral:46`. Unblocks A57, A58, A59, A70, and the totality rows F1 to F4 | IR, optimizer | |
-| B2 | A | a loop form with a recorded back-edge | names a self or mutual tail call as a loop header above the byte emitter | inventory limitation 2 | absent. `tail-call-of` identifies the shape and returns a `Maybe` consumed inside `emit-code`. Unblocks A41 to A54 | IR, optimizer | |
-| B3 | A | a location vocabulary | adds move, spill, reload and phi to the instruction set so a value can live somewhere other than its slot | inventory limitation 3 | absent. `Instr` at `lib/lowering/tal/ssa.chiral:26-34` gives every constructor a `dst` slot index. Unblocks A12, A88 to A92, and B19 | IR, backend | |
-| B4 | A | a non-allocating product form | adds field update, cell reuse, or an unboxed multi-field value | inventory limitation 4 | absent. `ti-cona` is the only way to write a cell's fields. Unblocks A73 to A79, D1 to D5, F7 to F10, F24 | IR, backend | |
-| B5 | A | a control-flow graph with labels and joins | lets a branch rejoin, which the tree-shaped `Block` and `TCode` forbid | bucket 1, from `GOSSA` and `GCCPASSES` needing a CFG for most of their pipeline | absent. Unblocks A3, A27, A28, A29, A32 | IR | ? terminator-only blocks are a named structural asset, so this row trades one invariant for a family |
-| B6 | A | a unary prim form | lets an instruction carry one operand | bucket 3, from the ISA gaps | blocked today by shape. `erase-prim` at `lib/lowering/tal/erase.chiral:153-157` refuses any `Op` without exactly two operands, and `ti-prim` at `lib/lowering/tal/ir.chiral:21` has fields `a` and `b`. Typed SSA already allows it: `i-prim` carries a `(List I64)`. Unblocks C3 to C6, C20 to C23 | IR, backend | |
-| B7 | A | a select form | a three-operand choose, from which a conditional move falls out | bucket 1, `GOSSA:481` branchelim | absent. Unblocks A32 and C7 | IR, backend | |
-| B8 | A | a sub-word integer type | adds a 32-bit or narrower type to `TalTy` | bucket 3, and the measured `band M32` masking | absent. `TalTy` at `lib/lowering/tal/ssa.chiral:21-22` has five members and every integer is `tt-i64`. Unblocks C33, and removes two of `add32`'s three operations at `lib/crypto/chacha.chiral:20` | IR, type system, backend | |
-| B9 | A | fact-carrying lowering | carries refinement and quantity facts through the peel into tal | bucket 5, and `docs/benchmarks/TRAIT-OPTS.md`'s open half | absent, with two exact seats. The type peel lowers a refinement to its base at `lib/lowering/compile-front.chiral:69`, and the Pi-chain peel keeps `dom` and drops the quantity `q` at `:85`. Unblocks A13, A14, F7 to F10, F15 to F21 | type system, IR | |
-| B10 | A | per-definition totality classification | records which definitions are proven total instead of one verdict for the signature | bucket 5 | absent. `TotalR` at `lib/typing/totality-check.chiral:131` is `tot-proven` or one `tot-holdout`, so there is no per-function fact to key a fold on. Unblocks F1 to F5 | type system, optimizer | |
+| B1 | A | an interprocedural fact environment | gives each function a summary a caller's constant environment can survive into | inventory §2, fact 1 | absent. `fold`'s `cenv` pops the destination at `i-call` (`lib/lowering/upper/optimize.chiral:90`) and `cenv-step` kills it at `lib/lowering/mach/emit-core.chiral:46`. Wanted by A57, A58, A59, A70, and the totality rows F1 to F4 | IR, optimizer | |
+| B2 | A | a loop form with a recorded back-edge | names a self or mutual tail call as a loop header above the byte emitter | inventory §2, fact 2 | absent. `tail-call-of` identifies the shape and returns a `Maybe` consumed inside `emit-code`. Wanted by A41 to A54 | IR, optimizer | |
+| B3 | A | a location vocabulary | adds move, spill, reload and phi to the instruction set so a value can live somewhere other than its slot | inventory §2, fact 3 | absent. `Instr` at `lib/lowering/tal/ssa.chiral:26-34` gives every constructor a `dst` slot index. Wanted by A12, A88 to A92, and B19 | IR, backend | |
+| B4 | A | a non-allocating product form | adds field update, cell reuse, or an unboxed multi-field value | inventory §2, fact 4 | absent. `ti-cona` is the only way to write a cell's fields. Wanted by A73 to A79, D1 to D5, F7 to F10, F24 | IR, backend | |
+| B5 | A | a control-flow graph with labels and joins | lets a branch rejoin, which the tree-shaped `Block` and `TCode` forbid | bucket 1, from `GOSSA` and `GCCPASSES` needing a CFG for most of their pipeline | absent. Wanted by A3, A27, A28, A29, A32 | IR | ? terminator-only blocks are a named structural asset, so this row trades one invariant for a family |
+| B6 | A | a unary prim form | lets an instruction carry one operand | bucket 3, from the ISA gaps | absent by shape today. `erase-prim` at `lib/lowering/tal/erase.chiral:153-157` refuses any `Op` without exactly two operands, and `ti-prim` at `lib/lowering/tal/ir.chiral:21` has fields `a` and `b`. Typed SSA already allows it: `i-prim` carries a `(List I64)`. Wanted by C3 to C6, C20 to C23 | IR, backend | |
+| B7 | A | a select form | a three-operand choose, from which a conditional move falls out | bucket 1, `GOSSA:481` branchelim | absent. Wanted by A32 and C7 | IR, backend | |
+| B8 | A | a sub-word integer type | adds a 32-bit or narrower type to `TalTy` | bucket 3, and the measured `band M32` masking | absent. `TalTy` at `lib/lowering/tal/ssa.chiral:21-22` has five members and every integer is `tt-i64`. Wanted by C33, and removes two of `add32`'s three operations at `lib/crypto/chacha.chiral:20` | IR, type system, backend | |
+| B9 | A | fact-carrying lowering | carries refinement and quantity facts through the peel into tal | bucket 5, and `docs/benchmarks/TRAIT-OPTS.md`'s open half | absent, with two exact seats. The type peel lowers a refinement to its base at `lib/lowering/compile-front.chiral:69`, and the Pi-chain peel keeps `dom` and drops the quantity `q` at `:85`. Wanted by A13, A14, F7 to F10, F15 to F21 | type system, IR | |
+| B10 | A | per-definition totality classification | records which definitions are proven total instead of one verdict for the signature | bucket 5 | absent. `TotalR` at `lib/typing/totality-check.chiral:131` is `tot-proven` or one `tot-holdout`, so there is no per-function fact to key a fold on. Wanted by F1 to F5 | type system, optimizer | |
 | B11 | A+C | a cost model | orders two verified candidates | `docs/benchmarks/OPTIMIZATIONS-TODO.md:73-76` | absent | optimizer | |
-| B12 | A | a semantic equivalence oracle | decides whether a rewritten straight-line window computes the same function | `docs/benchmarks/OPTIMIZATIONS-TODO.md:67-72` | absent. `re-check` proves types and says nothing about meaning. Unblocks A104, A105, F28 | optimizer | |
-| B13 | C | a counter or profile instrument | measures where the time actually goes | inventory §4, and `docs/benchmarks/OPTIMIZATIONS-TODO.md:57-58` | blocked in this sandbox. `perf_event_open` is unavailable in the microVM. Unblocks A39, A40, A56, A94 | tooling | |
+| B12 | A | a semantic equivalence oracle | decides whether a rewritten straight-line window computes the same function | `docs/benchmarks/OPTIMIZATIONS-TODO.md:67-72` | absent. `re-check` proves types and says nothing about meaning. Wanted by A104, A105, F28 | optimizer | |
+| B13 | C | a counter or profile instrument | measures where the time actually goes | inventory §4, and `docs/benchmarks/OPTIMIZATIONS-TODO.md:57-58` | blocked in this sandbox. `perf_event_open` is unavailable in the microVM. Wanted by A39, A40, A56, A94 | tooling | |
 | B14 | C | a timing gate inside the test suite | makes a regression fail rather than print | inventory §4: no wall-clock or instruction-count instrument runs inside `tools/test/run-tests.sh` | absent | tooling | |
-| B15 | A | a multi-value return form | lets a function return more than one slot | bucket 1, from A63 and A75 | absent. `ti-ret` at `lib/lowering/tal/ir.chiral:43` carries one `src` and `TalSig` at `lib/lowering/tal/ssa.chiral:44` carries one `ret`. Unblocks A63, A74, A75, C38 | IR | |
+| B15 | A | a multi-value return form | lets a function return more than one slot | bucket 1, from A63 and A75 | absent. `ti-ret` at `lib/lowering/tal/ir.chiral:43` carries one `src` and `TalSig` at `lib/lowering/tal/ssa.chiral:44` carries one `ret`. Wanted by A63, A74, A75, C38 | IR | |
 | B16 | A | an allocation group form | lets several constructions in one straight-line run share one bump check | bucket 4, from the sixteen-instruction `Q4` site | absent. Each `ti-cona` emits its own compare against `heapend` | IR, backend | |
 | B17 | A | a vector type and vector operations | adds a wide register class and its ops | bucket 1, A53 | absent | IR, type system, backend | ? a permutation-shaped workload may reach further with narrower changes |
 | B18 | A | a flat indexed array form | adds a value that holds n words with an index operation | bucket 5, and the erased-index rows | absent. A `Bytes` payload is the only indexable storage, reached one byte at a time | IR, surface, type system | |
@@ -289,8 +301,12 @@ The sum is closed and every consumer matches it exhaustively, so one new
 constructor edits `op-name` (`lib/prelude/prelude.chiral:44`), `op-parse`
 (`lib/lowering/tal/erase.chiral:91`), `op-bytes`
 (`lib/lowering/x64/mach.chiral:351-387`) and the clobber table (`:1433`). That
-is the cost of every C row that adds a constructor. The alternative is C35 to
-C37: recognize the idiom in the backend and add no constructor at all.
+is the cost of every C row that adds a constructor, and what it buys is a name
+for something the machine can do. C35 to C37 recognize three of these idioms in
+the emitter and name nothing. An operation the backend emits and the language
+does not name is the hole `docs/definitions/working-discipline.md` rules on, so
+those three rows sit beneath a constructor and substitute for none. `op-mulhi`
+is the case already in this tree, and C33 is the row that names it.
 
 `ti-prim` is binary. A unary operation has no representation in the erased IR
 regardless of whether the sum names it, which is why B6 sits under so many rows
@@ -300,13 +316,13 @@ here.
 |---|---|---|---|---|---|---|---|
 | C1 | A | rotate left | rotates a word left by a count | bucket 3, x86 `rol` | absent. `rotl32` at `lib/crypto/chacha.chiral:24` spends four operations on what one instruction does | surface, IR, backend | |
 | C2 | A | rotate right | the same, rightward | bucket 3, x86 `ror` | absent | surface, IR, backend | |
-| C3 | A | byte swap | reverses byte order in a word | bucket 3, x86 `bswap` | absent, and blocked by B6. Every little-endian pack and unpack in the byte library is the consumer | surface, IR, backend | |
-| C4 | A | count leading zeros | counts high zero bits | bucket 3, x86 `lzcnt` and `bsr` | absent, blocked by B6 | surface, IR, backend | |
-| C5 | A | count trailing zeros | counts low zero bits | bucket 3, x86 `tzcnt` and `bsf` | absent, blocked by B6 | surface, IR, backend | |
-| C6 | A | population count | counts set bits | bucket 3, x86 `popcnt` | absent, blocked by B6 | surface, IR, backend | |
-| C7 | A | conditional move | selects one of two words on a condition with no branch | bucket 3, x86 `cmov` | absent, and blocked by B7. Also the constant-time primitive a cipher wants | surface, IR, backend | |
-| C8 | A | add with carry | adds two words plus a carry bit | bucket 3, x86 `adc` | absent, and blocked by the single-slot result: the carry out has nowhere to go | surface, IR, backend | |
-| C9 | A | subtract with borrow | the same, subtracting | bucket 3, x86 `sbb` | absent, blocked the same way | surface, IR, backend | |
+| C3 | A | byte swap | reverses byte order in a word | bucket 3, x86 `bswap` | absent, and it wants `B6`. Every little-endian pack and unpack in the byte library is the consumer | surface, IR, backend | |
+| C4 | A | count leading zeros | counts high zero bits | bucket 3, x86 `lzcnt` and `bsr` | absent, and it wants `B6` | surface, IR, backend | |
+| C5 | A | count trailing zeros | counts low zero bits | bucket 3, x86 `tzcnt` and `bsf` | absent, and it wants `B6` | surface, IR, backend | |
+| C6 | A | population count | counts set bits | bucket 3, x86 `popcnt` | absent, and it wants `B6` | surface, IR, backend | |
+| C7 | A | conditional move | selects one of two words on a condition with no branch | bucket 3, x86 `cmov` | absent, and it wants `B7`. Also the constant-time primitive a cipher wants | surface, IR, backend | |
+| C8 | A | add with carry | adds two words plus a carry bit | bucket 3, x86 `adc` | absent, and it wants `C38`: the carry out has nowhere to go | surface, IR, backend | |
+| C9 | A | subtract with borrow | the same, subtracting | bucket 3, x86 `sbb` | absent, and it wants the same | surface, IR, backend | |
 | C10 | A | bit deposit | scatters low bits of a source into a mask's set positions | bucket 3, x86 `pdep` | absent | surface, IR, backend | ? BMI2 availability is a target question this tree has not asked |
 | C11 | A | bit extract | gathers a mask's selected bits into the low end | bucket 3, x86 `pext` | absent | surface, IR, backend | ? same |
 | C12 | A | bit field extract | extracts a run of bits given a start and a length | bucket 3, x86 `bextr` | absent | surface, IR, backend | ? expressible as a shift and a mask, so this is a code-size row |
@@ -317,13 +333,13 @@ here.
 | C17 | A | unsigned multiply-high | the high word of an unsigned product | bucket 3, x86 `mul` against `imul` | absent. `op-mulhi` encodes the signed one-operand `imul` at `lib/lowering/x64/mach.chiral:319` | surface, IR, backend | |
 | C18 | A | signed minimum and maximum | picks the smaller or larger of two words | bucket 3 | absent, and it wants C7 to avoid a branch | surface, IR, backend | |
 | C19 | A | unsigned minimum and maximum | the same, unsigned | bucket 3 | absent | surface, IR, backend | |
-| C20 | A | absolute value | the magnitude of a word | bucket 3 | absent, blocked by B6 | surface, IR, backend | |
-| C21 | A | bitwise complement | inverts every bit | bucket 3, x86 `not` | absent, blocked by B6. Expressible as `bxor` against negative one, which is C37's case | surface, IR, backend | |
-| C22 | A | negation | the additive inverse | bucket 3, x86 `neg` | absent as an op, blocked by B6. `x-neg-rax` at `lib/lowering/x64/mach.chiral:267` exists for the division correction | surface, IR, backend | |
+| C20 | A | absolute value | the magnitude of a word | bucket 3 | absent, and it wants `B6` | surface, IR, backend | |
+| C21 | A | bitwise complement | inverts every bit | bucket 3, x86 `not` | absent, and it wants `B6`. Expressible as `bxor` against negative one, which is C37's case | surface, IR, backend | |
+| C22 | A | negation | the additive inverse | bucket 3, x86 `neg` | absent as an op, and it wants `B6`. `x-neg-rax` at `lib/lowering/x64/mach.chiral:267` exists for the division correction | surface, IR, backend | |
 | C23 | A | sign extension from a narrower width | widens with the sign bit | bucket 3, x86 `movsx` | absent, and it wants B8 to have a narrower width to widen from | surface, IR, type system | |
 | C24 | A | zero extension from a narrower width | widens with zeros | bucket 3, x86 `movzx` | partial. `x-movzx-byte` at `lib/lowering/x64/mach.chiral:625` does it for one byte inside `ti-bget` and nothing exposes it as an operation | IR, backend | |
 | C25 | A | bit test | reads one bit into the flags | bucket 3, x86 `bt` | absent | surface, IR, backend | ? a shift and a mask already fuse to two instructions |
-| C26 | A | double-precision shift | shifts a 128-bit pair by a count | bucket 3, x86 `shld` and `shrd` | absent, blocked by the single-slot result | surface, IR, backend | |
+| C26 | A | double-precision shift | shifts a 128-bit pair by a count | bucket 3, x86 `shld` and `shrd` | absent, and it wants `C38` | surface, IR, backend | |
 | C27 | A | word-width load from a byte cell | reads eight bytes of a `Bytes` payload as one word | bucket 3 and bucket 4 | absent. `ti-bget` reads one byte, and `unpack-u32` is a library call through `prim2lib` | IR, backend | |
 | C28 | A | word-width store into a byte cell | writes eight bytes in one store | bucket 3 and bucket 4 | absent. `ti-bput` writes one byte. The measured 944 B tail of `chacha-block` is sixteen `pack-u32` results and fifteen `bcat` results | IR, backend | |
 | C29 | A | block copy | copies a run of bytes with one operation | bucket 3, x86 `rep movsb` | absent. `bcat` is a library call into `nb-bcat` | IR, backend | |
@@ -332,9 +348,9 @@ here.
 | C32 | A | a native 32-bit integer type | gives the surface and the IR a width that matches the algorithms | bucket 3, and the measured ChaCha lanes | absent. `add32` and `rotl32` at `lib/crypto/chacha.chiral:20-25` exist only to emulate it, at three and four operations each | surface, IR, type system, backend | |
 | C33 | A | a surface binding for `mulhi` | gives the fifteenth constructor a name a program can write | bucket 3. The inventory records `op-mulhi` with no `(extern mulhi ...)` anywhere | absent. Everything below the surface already accepts it: `op-parse` takes the string, `op-bytes` encodes it, the clobber table has its entry | surface | |
 | C34 | A | shift semantics for an out-of-range count | states what `shl` by 64 or more means, so the cheap encoding stays correct | bucket 5's semantics-first rule applied to bucket 3 | open. x86 masks the count to six bits and `x-shl-cl` at `lib/lowering/x64/mach.chiral:331` inherits that. No document in `docs/` states the language's answer | surface, type system | |
-| C35 | A | backend recognition of the rotate idiom | matches `(bor (shl x n) (shr x (- w n)))` and emits one rotate | bucket 3's alternative to a constructor | absent. Costs no change to the closed sum | backend | |
-| C36 | A | backend recognition of the narrow-width idiom | matches a mask against a width constant and emits the narrow-register form | bucket 3's alternative to C32 | absent. `band` against 4294967295 is one x86 `mov` between 32-bit registers | backend | |
-| C37 | A | backend recognition of the complement idiom | matches `bxor` against negative one and emits `not` | bucket 3's alternative to C21 | absent | backend | |
+| C35 | A | backend recognition of the rotate idiom | matches `(bor (shl x n) (shr x (- w n)))` and emits one rotate | bucket 3, the emitter half of C1 | absent, and it names no operation. It costs no change to the closed sum | backend | |
+| C36 | A | backend recognition of the narrow-width idiom | matches a mask against a width constant and emits the narrow-register form | bucket 3, the emitter half of C32 | absent, and it names no operation. `band` against 4294967295 is one x86 `mov` between 32-bit registers | backend | |
+| C37 | A | backend recognition of the complement idiom | matches `bxor` against negative one and emits `not` | bucket 3, the emitter half of C21 | absent, and it names no operation | backend | |
 | C38 | A | a two-result prim form | lets one operation define two slots, which the full product, the carry chain and the divide-modulo pair all want | bucket 3, aggregated | absent. Depends on B15. It is what would let C8, C9, C17 and C26 exist at all | IR | |
 
 **Bucket C total: 38.**
@@ -354,14 +370,14 @@ count of 35 operations per byte, and an in-tree non-allocating control running
 
 | # | cat | candidate | what it does | source | status here | touches | doubtful |
 |---|---|---|---|---|---|---|---|
-| D1 | A | unbox a product returned from a function | returns `Q4`'s four lanes in slots so the cell is never built | bucket 4, §1a: eighty `Q4` at 40 B and ten `St` at 136 B per block, 4,560 B in `rounds` alone | absent, blocked by limitation 4 and B15. `sB` is the hand-written proof that the same arithmetic allocates zero | IR, optimizer | |
+| D1 | A | unbox a product returned from a function | returns `Q4`'s four lanes in slots so the cell is never built | bucket 4, §1a: eighty `Q4` at 40 B and ten `St` at 136 B per block, 4,560 B in `rounds` alone | absent, and it wants `B4` and `B15`. `sB` is the hand-written proof that the same arithmetic allocates zero | IR, optimizer | |
 | D2 | A | sink an allocation into the arm that consumes it | builds a cell only on the path that keeps it | bucket 4, §1c: the `Q4` site is 16 instructions on the taken path | absent | optimizer | |
-| D3 | A | reuse the bump-top cell when the producer is the only consumer | writes the new value over the cell just allocated | bucket 4, and the arena's own shape | absent, blocked by limitation 4 | IR, backend | |
+| D3 | A | reuse the bump-top cell when the producer is the only consumer | writes the new value over the cell just allocated | bucket 4, and the arena's own shape | absent, and it wants `B4` | IR, backend | |
 | D4 | A | hoist the bump check across an allocation group | pays one compare against `heapend` for a run of constructions with a known total size | bucket 4, §1c: `x-galo` emits its own compare and `lea` per site | absent, wants B16 | backend | |
 | D5 | A | construct a cell from live values without the slot round trip | writes fields from where the values already are | bucket 4, §1c: the lanes arrive from `[rbp-…]` slots and the cell is a second copy | absent, wants B3 | backend | |
 | D6 | A | give the arena a reclaim or rewind point | returns bytes the program can prove are dead | bucket 4: `heapptr` only advances, and 0.120 to 0.135 s of a 0.484 s median is kernel time faulting 578 MB of fresh arena | absent | runtime, backend | |
 | D7 | A | replace the quadratic accumulator with a sized output buffer | writes each block into one preallocated buffer | bucket 4, the stream section: `chacha-xor` allocates 295 to 1,191 B per message byte across four sizes, and both allocation and time climb toward 4x per doubling | absent | surface, optimizer | |
-| D8 | A | extend a byte cell in place when it is the bump top | appends with no copy and no new cell | bucket 4, and the linearity row F7 | absent, blocked by limitation 4 | IR, backend | |
+| D8 | A | extend a byte cell in place when it is the bump top | appends with no copy and no new cell | bucket 4, and the linearity row F7 | absent, and it wants `B4` | IR, backend | |
 | D9 | A | lift a top-level constant definition into static data | emits the bytes once at a fixed address | bucket 4: a top-level `(def name Bytes ...)` is re-evaluated at every reference, 336 B per reference for a 32-byte key and 88 B for a 12-byte nonce | absent. This is A84 with a measurement attached | optimizer, backend | |
 | D10 | A | memoize a top-level definition at first reference | evaluates once at run time and caches | bucket 4, the same measurement | absent | runtime | ? D9 subsumes it wherever the definition is total and closed |
 | D11 | A | build a serialized block with word stores | replaces sixteen `pack-u32` and fifteen `bcat` with wide writes into one cell | bucket 4, §1a: the 944 B tail of `chacha-block` | absent, wants C27 and C28 | optimizer, backend | |
@@ -396,10 +412,10 @@ optimizer reads it. `TotalR` is one verdict for the signature, which is B10.
 
 | # | cat | candidate | what it does | source | status here | touches | doubtful |
 |---|---|---|---|---|---|---|---|
-| F1 | A | compile-time evaluation licensed by a termination proof | runs a proven-total function on constant arguments at compile time with no fuel and no step limit | bucket 5. Already named in `docs/benchmarks/TRAIT-OPTS.md`'s totality row and as ledger item 13 | absent, blocked by B10 and B1. Zig's comptime and C++ `constexpr` both bound the same risk with fiat or fuel, and a total language reaches it by forbidding partiality. This tree can have it in a partial language | optimizer, type system | |
-| F2 | A | full unrolling licensed by the termination proof | unrolls a recursion on a constant argument to completion, with the proof standing in for a trip-count analysis | bucket 5, applied to A42 | absent, blocked by B10 and B1. `(rounds s0 10)` at `lib/crypto/chacha.chiral:128` is the case, and A42's usual blocker (limitation 2) does not apply, because unrolling a proven-total recursion needs no loop form | optimizer | |
-| F3 | A | hoisting a call out of an arm, licensed by totality | moves a total pure call above a branch with no divergence risk | bucket 5, applied to A18 and A41 | absent, blocked by B10. In C the same move needs a proof the call terminates and has no effect, which is why LICM is conservative about calls | optimizer | |
-| F4 | A | memoizing a pure call across the build | caches one evaluation of a total call and reuses it for every identical site | bucket 5. Named in the parked menu as the memoized comptime evaluator | absent, blocked by B10 | optimizer | |
+| F1 | A | compile-time evaluation licensed by a termination proof | runs a proven-total function on constant arguments at compile time with no fuel and no step limit | bucket 5. Already named in `docs/benchmarks/TRAIT-OPTS.md`'s totality row and as ledger item 13 | absent, and it wants `B10` and `B1`. Zig's comptime and C++ `constexpr` both bound the same risk with fiat or fuel, and a total language reaches it by forbidding partiality. This tree can have it in a partial language | optimizer, type system | |
+| F2 | A | full unrolling licensed by the termination proof | unrolls a recursion on a constant argument to completion, with the proof standing in for a trip-count analysis | bucket 5, applied to A42 | absent, and it wants `B10` and `B1`. `(rounds s0 10)` at `lib/crypto/chacha.chiral:128` is the case, and A42's usual requirement (`B2`) does not apply, because unrolling a proven-total recursion needs no loop form | optimizer | |
+| F3 | A | hoisting a call out of an arm, licensed by totality | moves a total pure call above a branch with no divergence risk | bucket 5, applied to A18 and A41 | absent, and it wants `B10`. In C the same move needs a proof the call terminates and has no effect, which is why LICM is conservative about calls | optimizer | |
+| F4 | A | memoizing a pure call across the build | caches one evaluation of a total call and reuses it for every identical site | bucket 5. Named in the parked menu as the memoized comptime evaluator | absent, and it wants `B10` | optimizer | |
 | F5 | A | speculating both arms of a branch | evaluates both sides when both are total and cheap, then selects | bucket 5, and C7 | absent | optimizer, backend | ? it wants a select form and a cost model before it is worth anything |
 | F6 | A | partial evaluation of an interpreter against a program | the first Futamura projection, with the totality proof replacing the fuel limit | bucket 5. Named in `docs/benchmarks/TRAIT-OPTS.md`'s specialization row | absent. `specialize-raw` is the mechanism and the policy is the open half | optimizer | |
 
@@ -409,16 +425,16 @@ Count: 6.
 
 A `1`-quantity binder is a static single-owner proof. Perceus and Lean both
 reach the same reuse through a runtime refcount test; here the fact is in the
-kernel judgment. Every row is blocked twice: quantities are dropped by `peel-pi`
-at `lib/lowering/compile-front.chiral:85`, which keeps `dom` and discards `q`,
-and there is no field-update form.
+kernel judgment. Every row wants two changes: quantities are dropped by
+`peel-pi` at `lib/lowering/compile-front.chiral:85`, which keeps `dom` and
+discards `q`, and there is no field-update form.
 
 | # | cat | candidate | what it does | source | status here | touches | doubtful |
 |---|---|---|---|---|---|---|---|
-| F7 | A | in-place field update with no alias analysis | writes through a linear binder's cell instead of allocating a new one | bucket 5. Named in `docs/benchmarks/TRAIT-OPTS.md`'s linearity row | absent, blocked by B9 and limitation 4 | IR, type system, backend | |
-| F8 | A | in-place byte-cell extension at the bump top | appends to a linear `Bytes` value that is the last cell allocated | bucket 5, and the measured quadratic in D7 | absent, blocked the same way. The bump-top test is a pointer comparison, which the arena makes trivially decidable | IR, backend | |
-| F9 | A | arena rewind at a linear value's last use | pops the bump pointer back when a linear cell is consumed and nothing can alias it | bucket 5, and D6 | absent, blocked by B9. Neither a collector nor a refcount is needed for it, which is the part no catalogue carries | IR, runtime | ? it needs the last use to be the bump top, so it applies to a stack-shaped subset |
-| F10 | A | destination-passing for a linear result | lets a caller supply the cell the callee writes into | bucket 5, and D5 | absent, blocked by B9 and limitation 4 | IR, surface | |
+| F7 | A | in-place field update with no alias analysis | writes through a linear binder's cell instead of allocating a new one | bucket 5. Named in `docs/benchmarks/TRAIT-OPTS.md`'s linearity row | absent, and it wants `B9` and `B4` | IR, type system, backend | |
+| F8 | A | in-place byte-cell extension at the bump top | appends to a linear `Bytes` value that is the last cell allocated | bucket 5, and the measured quadratic in D7 | absent, and it wants the same two. The bump-top test is a pointer comparison, which the arena makes trivially decidable | IR, backend | |
+| F9 | A | arena rewind at a linear value's last use | pops the bump pointer back when a linear cell is consumed and nothing can alias it | bucket 5, and D6 | absent, and it wants `B9`. Neither a collector nor a refcount is needed for it, which is the part no catalogue carries | IR, runtime | ? it needs the last use to be the bump top, so it applies to a stack-shaped subset |
+| F10 | A | destination-passing for a linear result | lets a caller supply the cell the callee writes into | bucket 5, and D5 | absent, and it wants `B9` and `B4` | IR, surface | |
 | F11 | A | eliding a defensive copy at a crossing | skips a copy that only exists because ownership was unclear | bucket 5 | absent | IR, backend | ? no measurement here shows such a copy today |
 
 Count: 5.
@@ -436,17 +452,17 @@ Count: 3.
 ### F-iv. Refinements
 
 A refinement lowers to its base at `lib/lowering/compile-front.chiral:69`,
-inside the type peel `term->ntalty`. That single arm is the blocker under every
-row here, and it is B9's first seat.
+inside the type peel `term->ntalty`. That single arm is what every row here
+wants changed, and it is B9's first seat.
 
 | # | cat | candidate | what it does | source | status here | touches | doubtful |
 |---|---|---|---|---|---|---|---|
 | F15 | A | bounds-check elision from a refinement | drops an index guard the type already discharged | bucket 5. Named in `docs/benchmarks/TRAIT-OPTS.md`'s refinement row | partial above lowering, absent below it. `mem-put-checked` at `lib/memory/mem-linear.chiral:26` carries the bound in the type, and the fact stops at the peel | type system, optimizer | |
-| F16 | A | Euclidean correction elision | drops the sign-fix sequence when the dividend is proven non-negative | bucket 5, the same row | absent, blocked by B9. `x-mod-fix` at `lib/lowering/x64/mach.chiral:241` is the seven-instruction sequence in question | backend, type system | |
-| F17 | A | guarded-read elision | drops a three-way range guard on a byte read the type already bounds | bucket 5, applied to `cc-at` at `lib/crypto/chacha.chiral:30-35`, which runs on every byte of key, nonce and message | absent, blocked by B9 | type system, backend | |
-| F18 | A | unsigned reasoning from a non-negativity proof | uses the unsigned compare and the logical shift where the type proves the value non-negative | bucket 5, and C13 | absent, blocked by B9 | type system, backend | |
-| F19 | A | width narrowing from a range proof | drops the mask when a value is proven to fit a narrower width | bucket 5, and the measured `band M32` in `add32` and `rotl32` | absent, blocked by B9 and B8 | type system, IR, backend | |
-| F20 | A | shift-count elision | drops a count mask when the type proves the count is in range | bucket 5, and C34 | absent, blocked by B9 | type system, backend | |
+| F16 | A | Euclidean correction elision | drops the sign-fix sequence when the dividend is proven non-negative | bucket 5, the same row | absent, and it wants `B9`. `x-mod-fix` at `lib/lowering/x64/mach.chiral:241` is the seven-instruction sequence in question | backend, type system | |
+| F17 | A | guarded-read elision | drops a three-way range guard on a byte read the type already bounds | bucket 5, applied to `cc-at` at `lib/crypto/chacha.chiral:30-35`, which runs on every byte of key, nonce and message | absent, and it wants `B9` | type system, backend | |
+| F18 | A | unsigned reasoning from a non-negativity proof | uses the unsigned compare and the logical shift where the type proves the value non-negative | bucket 5, and C13 | absent, and it wants `B9` | type system, backend | |
+| F19 | A | width narrowing from a range proof | drops the mask when a value is proven to fit a narrower width | bucket 5, and the measured `band M32` in `add32` and `rotl32` | absent, and it wants `B9` and `B8` | type system, IR, backend | |
+| F20 | A | shift-count elision | drops a count mask when the type proves the count is in range | bucket 5, and C34 | absent, and it wants `B9` | type system, backend | |
 | F21 | A | a proof-carrying `Op` | attaches to each operation the refinement its cheap encoding requires, so the encoding choice is a type check | bucket 5, generalizing F16 to F20 | absent | type system, IR | ? it changes the closed sum's shape, which every consumer matches |
 
 Count: 7.
@@ -490,8 +506,8 @@ available: the census over every emitted `TFn` still runs, gated by
 
 | # | cat | candidate | what it does | source | status here | touches | doubtful |
 |---|---|---|---|---|---|---|---|
-| F28 | A | an untrusted search-based optimizer | lets an enumerative, stochastic or model-proposed rewriter run outside the trusted base | bucket 5. Named in `docs/benchmarks/OPTIMIZATIONS-TODO.md:61-84` | absent, blocked by B12. `re-check` proves types and says nothing about meaning | optimizer | |
-| F29 | A | a checked register allocator | lets an untrusted allocator propose placements and a small checker verify them | bucket 5, and B19. Ratified at `docs/implementation/rd-packed-cert.md` | designed, zero code, blocked by B3 | optimizer, backend | |
+| F28 | A | an untrusted search-based optimizer | lets an enumerative, stochastic or model-proposed rewriter run outside the trusted base | bucket 5. Named in `docs/benchmarks/OPTIMIZATIONS-TODO.md:61-84` | absent, and it wants `B12`. `re-check` proves types and says nothing about meaning | optimizer | |
+| F29 | A | a checked register allocator | lets an untrusted allocator propose placements and a small checker verify them | bucket 5, and B19. Ratified at `docs/implementation/rd-packed-cert.md` | designed, zero code, and it wants `B3` | optimizer, backend | |
 | F30 | A | translation validation for the byte emitter | checks each emitted artifact against its tal source, closing the last trusted gap | bucket 5. Named in `docs/benchmarks/OPTIMIZATIONS-TODO.md:81-84` | absent. `lib/lowering/tal/eval.chiral` is the differential oracle and no module imports it | optimizer, backend | |
 | F31 | C | the self-hosting fixpoint as a pass acceptance gate | grades a pass by whether the compiler still compiles itself correctly | bucket 5 | present as a practice, absent as a mechanism. It is how `dead` was excluded, and B21 is the switch that would make it repeatable | tooling | |
 | F32 | A | determinism as an admission criterion for a new pass | refuses a pass whose iteration order is unstable, because byte-identity is the self-host's own gate | bucket 5, and ledger element 11 | present as a convention. No check rejects a nondeterministic pass at admission | tooling, optimizer | |
@@ -507,26 +523,26 @@ Count: 7.
 | bucket | what it drew from | count |
 |---|---|---|
 | A | the classical pass catalogue, seven pinned pass lists | 110 |
-| B | the four IR limitations and the enablers found beside them | 21 |
+| B | the four IR facts and the enablers found beside them | 21 |
 | C | the `Op` sum and the surface bindings | 38 |
 | D | the measured profile | 18 |
 | F | this language's own structure | 34 |
 | | **total** | **221** |
 
-Blocked rows, by the limitation that blocks them:
+Rows that want an enabler, by the enabler:
 
-| blocker | rows |
+| enabler | rows |
 |---|---|
-| limitation 1, no interprocedural fact | A57, and F1 to F4 in part |
-| limitation 2, no loop form | A41 to A49, A53, A54 |
-| limitation 3, no location vocabulary | A12, A88 to A91, and F29 |
-| limitation 4, no non-allocating product | A74, D1, D3, D8, F7, F8, F10 |
-| the missing CFG, beyond the four | A27, A28, A29, A32 |
-| the binary-only prim form | A23, C3 to C6, C20 to C23 |
-| the single-slot return | A63, C8, C9, C26, C38 |
-| the refinement drop at the peel | A13, A54, F15 to F21 |
-| the collapsed totality verdict | F1 to F4 |
-| no counter instrument in this sandbox | A39, A40, A56, A94, D18 |
+| B1, no interprocedural fact | A57, and F1 to F4 in part |
+| B2, no loop form | A41 to A49, A53, A54 |
+| B3, no location vocabulary | A12, A88 to A91, and F29 |
+| B4, no non-allocating product | A74, D1, D3, D8, F7, F8, F10 |
+| B5, the CFG, beyond the four | A27, A28, A29, A32 |
+| B6, the binary-only prim form | A23, C3 to C6, C20 to C23 |
+| B15, the single-slot return | A63, C8, C9, C26, C38 |
+| B9, the refinement drop at the peel | A13, A54, F15 to F21 |
+| B10, the collapsed totality verdict | F1 to F4 |
+| B13, no counter instrument in this sandbox | A39, A40, A56, A94, D18 |
 
 Rows carrying a doubtful mark: 21.
 
@@ -620,12 +636,12 @@ Three pairings look like twins and are single-category families.
   sequence and the elision are both provable. `idiv`'s data-dependent latency is
   the C question, and no row here asks it.
 
-### 3. The blockers
+### 3. The enablers
 
-Nine enablers block about 45 rows. An enabler's category is a floor for the
-family behind it.
+About 45 rows want one of nine enablers. An enabler's category is a floor for
+the family behind it.
 
-| blocker | row | cat | floor for | binds |
+| enabler | row | cat | floor for | binds |
 |---|---|---|---|---|
 | no interprocedural fact | B1 | A | A57, A58, A59, A70, F1 to F4 | no |
 | no loop form | B2 | A | A41 to A54 | no |
@@ -652,7 +668,7 @@ constrains nothing. Two of the nine move something other than a category.
 
 Two enablers outside the seven carry their own floors.
 
-| blocker | row | cat | floor for | binds |
+| enabler | row | cat | floor for | binds |
 |---|---|---|---|---|
 | the collapsed totality verdict | B10 | A | F1 to F5 | no |
 | no counter instrument in this sandbox | B13 | C | A39 | yes, on A39 alone |
@@ -688,8 +704,8 @@ stage sees the residue.
 ## What this list does not do
 
 It does not rank, score, or order. It does not estimate what any row is worth.
-It does not claim that a `blocked` row is worth unblocking, only that the
-blocker is the reason it cannot be tried today. Several rows overlap on purpose:
+It does not claim that a row's enabler is worth building, only that the enabler
+is what the row requires before it can be tried. Several rows overlap on purpose:
 A73, A75, D1 and F24 all attack the same measured cells from four different
 catalogue traditions, and the next stage decides whether that is one candidate
 or four.

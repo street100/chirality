@@ -152,8 +152,8 @@ than a slot, and nothing in the tree settles it.
 Three families the candidate list holds are deliberately **out of this arc**.
 `B4`'s wider family beyond the measured cells, the Bytes-path tail (`C27`,
 `C28`, `D11`, the 944 B of `pack-u32` and `bcat` in `chacha-block`) and the
-whole blocker table serve condition 3, which stays unopened.
-⚑ **`rd-packed` is blocked on a change nobody had recorded.**
+whole enabler table serve condition 3, which stays unopened.
+⚑ **`rd-packed` wants a change nobody had recorded.**
 [[benchmarks/OPTIMIZATIONS-TODO]] names it the campaign's resumption entry point
 with its certificate format ratified and zero code written, and the inventory
 establishes that the IR has no location vocabulary, so `B19` depends on `B3`.
@@ -219,9 +219,9 @@ the counter reads one number for both allocators and no instrument counts slot
 traffic.
 
 **Two conditions of this goal are taken and three are left.** Condition 3, the
-nine blockers, is the whole optimizer program: nine enablers holding about 45
-rows, over a list its own author says needs a triage and an evaluation stage
-first. An arc taking it would be the candidate list transcribed. Condition 4
+nine enablers, is the whole optimizer program: nine capabilities that about 45
+rows specify, over a list its own author says needs a triage and an evaluation
+stage first. An arc taking it would be the candidate list transcribed. Condition 4
 cannot be observed at all, because its budget is OWED and its observable is a
 gate row that fails when the tool exceeds it, which is a gate that cannot fail
 under `docs/decisions/decision-scope.md`. Condition 5 is doc-tier work that

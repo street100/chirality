@@ -3,7 +3,7 @@ node: implementation-optimizer-inventory
 layer: implementation
 related: [implementation/README, implementation/reg-disciplines, implementation/rd-packed-cert, benchmarks/README, benchmarks/OPT-LEDGER, benchmarks/OPTIMIZATIONS-TODO, benchmarks/OPT-CHECKLIST, arcs/enforcement-arc, index]
 status: measured
-updated: 2026-09-07
+updated: 2026-09-08
 ---
 
 # The optimization surface of the self-hosted compiler
@@ -105,6 +105,11 @@ target-independent pass sees.
 
 ## 2. What the IR affords
 
+An absence recorded in this section is a fact about what this substrate reaches
+today, and `docs/definitions/working-discipline.md` rules on how such a record
+is read. Nothing here is a shortfall against another compiler, and no reference
+implementation stands behind these lines.
+
 ### The two TAL instruction sets
 
 There are two, joined by erasure. `lib/lowering/tal/ssa.chiral` is the typed
@@ -146,6 +151,8 @@ and `op-parse` (`lib/lowering/tal/erase.chiral:91`) accepts the string
 `"mulhi"`. `grep -rniI "mulhi" lib prog` finds it in
 `lib/prelude/prelude.chiral` and `lib/lowering/x64/mach.chiral` and in no other
 file, so no source program and no pass produces one today.
+`docs/definitions/working-discipline.md` carries this as the worked case of an
+operation the backend encodes and the language does not name.
 
 ### How a call is represented
 
