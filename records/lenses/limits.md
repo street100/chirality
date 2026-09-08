@@ -256,7 +256,7 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 
 ### LIM-19 E16 names register allocation as a deliverable and nregs is a high-water counter
 
-- state:    accepted
+- state:    to-plan
 - author:   unreviewed
 - note:     none
 - level:    element
@@ -265,5 +265,5 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - measured: **There is no register allocator, so the second deliverable is a slot count and a prologue.** [[records/findings]] FD-19 measured it and this row re-took it: `nregs` (`lib/lowering/tal/ssa.chiral:40`) is the fresh-register high-water mark, `ck-fn` binds and ignores it, `optimize` threads it unchanged through `fold` (`:140`) and `dead` (`:192`), and its one real consumer is `emit-core.chiral:533` handing it to `(mach-pro m)` (`mach.chiral:64`), which emits one stack slot per SSA register. Grepped over `lib/lowering/`: zero occurrences of colouring, interference or liveness outside `optimize.chiral:142`'s DCE fixpoint, and the single `spill` string is a comment at `emit-core.chiral:423` about the outgoing stack zone. So slot allocation exists in its most trivial form and register allocation does not exist at all. ⚑ **This is a wording defect rather than a build defect.** One slot per SSA register is a correct strategy and nothing here says the tree should have an allocator. What the row records is that a deliverable named in the element's own title is counted among the three that are built. ⚑ **And it bears on the conformance queue.** FD-19 measured the published position that where allocators exist they CONSUME the register types: CompCert's is an external oracle and `transf_function` hands `type_function`'s `regenv` to the validator (`COMPCERTALLOC`). So an allocator added later is the natural consumer of exactly the type information `.planning/TAL-CONFORMANCE-QUEUE.md` is about, and adding one before the types are total would be building the consumer first.
 - evidence: `docs/elements/catalog.md` E16, `lib/lowering/tal/ssa.chiral:40`, `lib/lowering/mach/emit-core.chiral:533`, `lib/lowering/mach/mach.chiral:64`, [[records/findings]] FD-19
 - checked:  2026-09-08
-- owner:    E16
+- owner:    none
 - from:     FD-19
