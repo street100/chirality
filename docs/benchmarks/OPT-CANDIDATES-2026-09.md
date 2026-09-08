@@ -466,11 +466,27 @@ Count: 6.
 
 ### F-vi. The certificate discipline
 
-`re-check` at `lib/lowering/upper/optimize.chiral:250` adopts a residual only
-through `chk-ok`, which `ck-fn` must form. This is the structural fact that
-separates this tree from CompCert's position: a verified transformer must be
-conservative once, and a checked artifact lets the producer be reckless every
-time.
+`chk-ok` carries a `TFn` that cannot be formed without `ck-fn` judging it. That
+is the structural fact separating this tree from CompCert's position: a verified
+transformer must be conservative once, and a checked artifact lets the producer
+be reckless every time.
+
+⚑ **Amended 2026-09-08. The guard is no longer on the shipping path.** This
+section read that `re-check` at `lib/lowering/upper/optimize.chiral:250` adopts
+every residual through `chk-ok`. PRB-70's ruling moved `Checked` and `re-check`
+to `prog/optimizer-census.prog:75-76` so `lowering/tal/check` stays outside the
+compiler closure, and `opt-tfns` at `lib/lowering/compile-back.chiral:247-250`
+now applies `(fold t)` unjudged. Only two comments at
+`lib/lowering/upper/optimize.chiral:18` and `:21` remain there.
+
+**The classification below is unaffected, and the reason matters.** `F28` to
+`F30` are category A because their properties are provable, which is the test
+`docs/definitions/category-bridge.md` states. Where the check currently runs is
+a question about the trusted base rather than about typeability, and the two
+were collapsed once already in this file's first reading. The discipline stays
+available: the census over every emitted `TFn` still runs, gated by
+`tools/test/opt-census.sh`. Measured for the ruling, forcing the guard to answer
+`chk-ok` emits a byte-identical blob, so it bought no shipped byte.
 
 | # | cat | candidate | what it does | source | status here | touches | doubtful |
 |---|---|---|---|---|---|---|---|
