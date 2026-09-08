@@ -1,0 +1,2653 @@
+COCV'04
+Preliminary
+VersionInto the Loops:
+Practical Issues in Translation Validation for
+Optimizing Compilers
+Benjamin Goldberg Lenore Zuck Clark Barrett1
+;
+2ACSys Group, Department of Computer Science, New York Unive
+rsity
+Abstract
+Translation Validation is a technique for ensuring that the
+target code produced by a trans-
+lator is a correct translation of the source code. Rather tha
+n verifying the translator it-
+self, translation validation validates the correctness of
+each translation, generating a formal
+proof that it is indeed a correct. Recently, translation val
+idation has been applied to prove
+the correctness of compilation in general, and optimizatio
+ns in particular.
+Tvoc
+, a tool for the Translation Validation of Optimizing Compil
+ers developed by the
+authors and their colleagues, successfully handles many op
+timizations employed by Intel's
+ORC compiler.
+Tvoc
+, however, is somewhat limited when dealing with loop reorde
+ring
+transformations. First, in the theory upon which it is based
+, separate proof rules are needed
+for different categories of loop reordering transformatio
+ns. Second,
+Tvoc
+has difculties
+dealing with
+combinations
+of optimizations that are performed on the same block of code
+.
+Finally,
+Tvoc
+relies on information, provided by the compiler, indicatin
+g which optimiza-
+tions have been performed (in the case of the current ORC, thi
+s instrumentation is fortu-
+nately part of the compiler).
+This paper addresses all the issues above. It presents a unif
+orm proof rule that encom-
+passes all reordering transformations performed by the Int
+el ORC compiler, describes a
+methodology for translation validation in the presence of c
+ombinations of optimizations,
+and presents heuristics for determining which optimizatio
+ns occurred (rather than relying
+on the compiler for this information).
+Key words:
+Translation validation, formal methods, loop optimizatio
+ns,
+ORC, fusion, distribution.
+1Email:fgoldberg,zuck,barrettg@cs.nyu.edu2This research was supported in part by and NSF grants CCR-030
+6538 and CCR-0098299 and
+ONR grant N00014-99-1-0131.This
+is
+a
+preliminary
+version.
+The
+final
+version
+will
+b e
+published
+in
+Electronic
+Notes
+in
+Theoretical
+Computer
+Science
+URL:
+www.elsevier.nl/loca te/ ent cs
+Goldberg,
+Zuck,
+and
+Barrett1 Introduction
+Translation Validation (TV) is a technique for ensuring tha
+t the target code emitted
+by a translator - such as a compiler - is a correct translation
+of the source code.
+Because of the (well-documented) difculties of verifying
+an entire compiler, i.e.
+ensuring that it generates the correct target code for every
+possible valid source
+program, translation validation can be used to validate eac
+h run of the compiler,
+comparing the actual source and target codes.
+There has been considerable work in this area, by these autho
+rs and others, to
+develop TV techniques for optimizing compilers that utiliz
+e
+structure preserving
+transformations, i.e. optimizations which do not greatly c
+hange the structure of the
+program (e.g. dead code elimination, loop-invariant code m
+otion, copy propaga-
+structure modifying
+transformations, such
+as loop reordering transformations (e.g. interchange, til
+ing), that do signicantly
+previous publica-
+tions, the authors and their students have described a proto
+type tool,
+Tvoc
+, that was
+developed for performing translation validation on the Int
+el Open Research Com-
+piler (ORC) which performs a large number of transformation
+s of both categories
+[ZPFG03,ZPF+
+Although
+Tvoc
+is able to perform TV in the presence of a number of different
+structure preserving and structure modifying optimizatio
+ns, it has suffered from the
+following drawbacks:fflTvoc
+does not use a single unied proof rule for validating loop re
+ordering trans-
+formations, but rather relies on several proof rules of diff
+erent forms depending
+on the particular optimization being applied. Specically
+,
+Tvoc
+uses different
+proof rules for interchange, tiling, and skewing than it doe
+s for fusion and dis-
+tribution. From a scientic (and engineering) perspective
+, a single proof-rule to
+handle all loop reordering transformations would be more sa
+tisfying.fflTvoc
+has difculty handling
+combinations
+of structure preserving and structure
+modifying optimizations. This is a serious drawback since o
+ften one transforma-
+tion is performed on the code solely to enable a subsequent tr
+ansformation.fflTvoc
+uses information produced by the compiler that indicates wh
+ich loop opti-
+mizations have been performed. Fortunately, ORC does produ
+ce a le containing
+such information after every compilation, and thus no addit
+ional instrumentation
+of the compiler is required. Although this information is ne
+ver relied upon by
+Tvoc
+to support a proof that the compilation is correct, it is used
+by
+Tvoc
+to
+suggest the proof method to use on a particular section of cod
+e.
+In this paper we describe our approaches to solving the above
+problems, which
+are currently being implemented. Briey stated, the soluti
+ons are as follows:fflWe have generalized the proof rule used for interchange, til
+ing, and skewing so
+that it now works for fusion and distribution as well. As a sid
+e benet, the proof
+rule now captures additional loop transformations such as p
+eeling and software
+pipelining.
+2
+Goldberg,
+Zuck,
+and
+Barrett
+fflWhen presented with the target codeTthat reects a series of transformations
+of the source codeS, such that no intermediate versions of the code (e.g. after
+individual transformations) are available,
+Tvoc
+will synthesize a series of inter-
+mediate versions of the code, based on what transformations
+it believes were
+performed. That is, it will generate synthetic intermediat
+e versionsI
+1,I
+2,:
+:
+: I
+n,
+which might possibly not have been created by the compiler at
+all.
+Tvoc
+will
+then validate that the translation fromStoI
+1, the translation fromI
+jtoI
+j
++1for
+eachj, and the translation fromI
+ntoTare correct.fflIn order to avoid having
+Tvoc
+rely on information produced by the compiler to
+determine which optimizations were actually performed, we
+have developed a
+set of heuristics that are used to generate this information
+given only the source
+and target code. Heuristics were previously used in this way
+for the TV of structure preserving transformations in gcc. I
+n this paper, we
+describe the heuristics we use for the TV of structure modify
+ing transformations,
+specically loop reordering transformations.
+The paper is organized as follows. Section 2 provides the nec
+essary background
+for understanding our TV work in the validation of individua
+l structure modifying
+transformations. Section 3 describes how the proof rule tha
+t we have used for loop
+optimizations such as interchange and tiling can be general
+ized to include a wider
+variety of loop transformations including fusion, alignme
+nt, peeling, and unrolling.
+Section 4 describes the kinds of combinations of optimizati
+ons that ORC performs,
+and our techniques for validating such combinations using t
+he creation of synthetic
+intermediate versions of the code. Section 5 presents the he
+uristics that we have
+developed in order to determine, in the absence of any sugges
+tions by the compiler,
+which optimizations have been performed. Finally, Section
+6 concludes.
+2 Background
+This section is a summary of our previous work on Tvoc. We refe
+r the reader to
+[ZPFG03,ZPF+
+2.1 Transition Systems
+In order to discuss the formal semantics of programs, we intr
+oduce
+transition sys-
+tems
+,
+TS
+'s, a variant of the
+transition systems
+Transition SystemS
+=
+h
+V ;
+O
+;
+
+;
+
+iis a state machine consisting of: a setVof
+state variables
+; a
+setO
+
+Vof
+observable variables
+; an
+initial conditioncharacterizing the ini-
+tial states of the system; and a
+transition relation, relating a state to its possible
+successors. The variables are typed, and a
+state
+of a
+TS
+is a type-consistent inter-
+pretation of the variables. For a statesand a variablex
+2
+V, we denote bys
+[
+x
+]the value thatsassigns tox. The transition relation refers to both unprimed and
+primed versions of the variables, where the primed versions
+refer to the values of
+the variables in the successor states, while unprimed versi
+ons of variables refer to
+their value in the pre-transition state. Thus, e.g., the tra
+nsition relation may include
+3
+Goldberg,
+Zuck,
+and
+Barretty
+0
+=
+y
++
+1 to denote that the value of the variableyin the successor state is
+greater by one than its value in the old (pre-transition) sta
+te. We assume that each
+transition system has a variablethat describes the program location counter.
+While it is possible to assign a transition relation to each s
+tatement separately,
+we prefer to use a
+generalized
+transition relation, describing the effect of executing
+several statements along a path of a program. Consider the fo
+llowing basic block:
+B0:
+n <- 500
+y <- 0
+w <- 1
+IF !(n >= w) GOTO B2
+B1:
+There are two disjuncts in the transition relation associat
+ed with this block. The
+rst describes the
+B0
+to
+B1
+path, which is
+=
+B0
+^
+n
+0
+=
+500
+^
+y
+0
+=
+0
+^
+w
+0
+=
+1
+^
+n
+0
+
+w
+0
+^
+
+0
+=
+B1, and the second describes the
+B0
+to
+B2
+path, which is
+=
+B0
+^
+n
+0
+=
+500
+^
+y
+0
+=
+0
+^
+w
+0
+=
+1
+^
+n
+0
+<
+w
+0
+^
+
+0
+=
+B2. The transition
+relation is then the disjunction of all such generalized tra
+nsition relations.
+The observable variables are the variables we care about, wh
+ere we treat each
+I/O device as a variable, and each I/O operation, including e
+xternal procedure calls,
+removes/appends elements to the corresponding variable. I
+f desired, we can also
+include among the observable variables the history of exter
+nal procedure calls for a
+selected set of procedures. When comparing two systems, we w
+ill require that the
+observable variables in the two systems match.
+A computation of a
+TS
+is a maximal (possibly innite) sequence of states
+:
+s
+0
+;
+s
+1
+;
+:
+:
+:
+;starting with a state that satises the initial condition su
+ch that every
+two consecutive states are related by the transition relati
+on.
+A transition systemTis called
+deterministic
+if the observable part of the initial
+condition uniquely determines the rest of the computation.
+We restrict our attention
+to deterministic transition systems and the programs which
+generate such systems.
+Thus, to simplify the presentation, we do not consider here p
+rograms whose be-
+havior may depend on additional inputs which the program rea
+ds throughout the
+computation. It is straightforward to extend the theory and
+methods to such inter-
+mediate input-driven programs.
+LetP
+S
+=
+h
+V
+S
+;
+O
+S
+;
+
+S
+;
+
+S
+iandP
+T
+=
+h
+V
+T
+;
+O
+T
+;
+
+T
+;
+
+T
+ibe two
+TS
+'s, to which
+we refer as the
+source
+and
+target
+TS
+'s, respectively. Two such systems are called
+comparable
+if there exists a one-to-one correspondence between the obs
+ervables ofP
+Sand those ofP
+T. To simplify the notation, we denote byX
+2
+O
+Sandx
+2
+O
+Tthe corresponding observables in the two systems. A source s
+tatesis dened to be
+compatible
+with the target statet, ifsandtagree on their observable parts. That is,s
+[
+X
+]
+=
+t
+[
+x
+]for everyx
+2
+O
+T. We say thatP
+Tis a
+correct translation
+(
+renement
+)
+ofP
+Sif they are comparable and, for every
+T
+:
+t
+0
+;
+t
+1
+;
+:
+:
+:a computation ofP
+Tand
+every
+S
+:
+s
+0
+;
+s
+1
+;
+:
+:
+:a computation ofP
+Ssuch thats
+0is compatible witht
+0, then
+Tis terminating (nite) iff
+Sis and, in the case of termination, their nal states are
+4
+Goldberg,
+Zuck,
+and
+Barrettcompatible. Note that the renement is an equivalence relat
+ion. We useP
+T
+
+S
+Sto denote thatP
+Tis a correct translation ofP
+S.
+We distinguish between
+structure preserving
+optimizations, that admit a clear
+mapping of control and data values in the target program to co
+rresponding control
+and data values in the source program, and
+structure modifying
+optimizations that
+admit no such clear mapping. Most high-level optimizations
+are structure preserv-
+ing, while most loop optimizations are structure modifying
+(notable examples are
+skewing, unrolling, and peeling, that can actually be handl
+ed by both our structure
+modifying and structure preserving proof approaches.)
+2.2 Translation Validation of Structure Preserving Optimi
+zations
+LetP
+S
+=
+h
+V
+S
+;
+O
+S
+;
+
+S
+;
+
+S
+iandP
+T
+=
+h
+V
+T
+;
+O
+T
+;
+
+T
+;
+
+T
+ibe comparable
+TS
+'s, whereP
+Sis the
+source
+andP
+Tis the
+target
+. In order to establish thatP
+Tis a correct trans-
+lation ofP
+Sfor the cases that the structure ofP
+Tdoes not radically differ from the
+structure ofP
+S, we use a proof rule,
+Val
+, which is inspired by the computational
+roving properties of a sin-
+gle program. Rule
+Val
+ZPF+
+simpler verication conditions) provides a proof methodol
+ogy by which one can
+prove that one program
+renes
+another. This is achieved by establishing a
+control
+mapping
+from target to source locations, a
+data abstraction
+mapping from source
+variables to (possibly guarded) expressions over the targe
+t variables, and proving
+that these abstractions are maintained along basic executi
+on paths of the target pro-
+gram.
+In
+Val
+, each
+TS
+is assumed to have a
+cut-point
+set, i.e., a set of blocks that
+includes all initial and terminal blocks, as well as at least
+one block from each of
+the cycles in the programs' control ow graph. A
+simple path
+is a path connecting
+two cut-points, and containing no other cut-point as an inte
+rmediate node. For each
+simple path, we can (automatically) construct the transiti
+on relation of the path.
+Typically, such a transition relation contains the conditi
+on which enables this path
+to be traversed and the data transformation effected by the p
+ath.
+Rule
+Val
+constructs a set of verication conditions, one for each sim
+ple tar-
+get path, whose aggregate consists of an inductive proof of t
+he correctness of the
+translation between source and target. Roughly speaking, e
+ach verication condi-
+tion states that, if the target program can execute a simple p
+ath, starting with some
+conditions correlating the source and target programs, the
+n at the end of the execu-
+tion of the simple path, the conditions correlating the sour
+ce and target programs
+still hold. The conditions consist of the control mapping, t
+he data mapping, and,
+possibly, some invariant assertion holding at the target co
+de.
+Somewhat related to our approach is the work on
+comparison checking
+where
+executions of unoptimized and optimized versions of code ar
+e compared on par-
+depends on nding
+data and control mappings between a source and a target on par
+ticular inputs, and
+mismatches are reported to detect optimization errors. Com
+parison checking has
+5
+Goldberg,
+Zuck,
+and
+Barrettmainly been used for structure preserving optimizations.
+2.3 Translation Validation of Reordering Transformations
+Structure modifying transformations are those that admit n
+o natural mapping be-
+tween the states of the source and target programs at each cut
+point. In particular,
+A reordering transformation is a structure modifying trans
+formation that merely
+changes the order of execution of the code, without adding or
+deleting any execu-
+t preserves the relative
+execution order of the source and target of that dependence,
+and thus preserves
+the meaning of the program. Reordering transformations cov
+er many of the loop
+transformations, including fusion, distribution, interc
+hange, tiling, unrolling, and
+reordering of statements within a loop body.
+Consider the generic loop in Fig. 1.
+fori
+1
+=
+L
+1
+;
+H
+1do:
+:
+:fori
+m
+=
+L
+m
+;
+H
+mdoB
+(
+i
+1
+;
+:
+:
+: ;
+i
+m
+)Fig. 1. A General Loop
+Schematically, we can describe such a loop as 
+fori
+2
+Iby
+IdoB
+(
+i
+) wherei
+=
+(
+i
+1
+;
+:
+:
+: ;
+i
+m
+)is the list of nested loop indices, andIis the set of the values
+assumed byithrough the different iterations of the loop. The setIcan be charac-
+terized by a set of linear inequalities. For example, for the
+loop of Fig. 1,I
+=
+f
+(
+i
+1
+;
+:
+:
+: ;
+i
+m
+)
+j
+L
+1
+
+i
+1
+
+H
+1
+^
+
+
+
+^
+L
+m
+
+i
+m
+
+H
+m
+g
+:The relation
+Iis the ordering by which the various points ofIare traversed.
+For example, for the loop of Fig. 1, this ordering is the lexic
+ographic order onI.
+In general, a loop transformation has the form:
+fori
+2
+Iby
+IdoB
+(
+i
+)
+=
+)forj
+2
+Jby
+JdoB
+(
+F
+(
+j
+))(1)
+In such a transformation, we may possibly change the domain o
+f the loop indices
+fromItoJ, the names of loop indices fromitoj, and possibly introduce an
+additional linear transformation in the loop's body, chang
+ing it from the sourceB
+(
+i
+)to the targetB
+(
+F
+(
+j
+)).
+In [ZPF+
+Permute
+in Fig. 2. For details, soundness,
+and examples, see [ZPF+
+In order to apply rule
+Permute
+to a given case, it is necessary to identifyF(andF
+
+1) and validate Premises R1R3 of Rule
+Permute
+. Premises R1 and R2
+6
+Goldberg,
+Zuck,
+and
+Barrett
+R1:
+8
+i
+2
+I
+:
+9
+j
+2
+J
+:
+i
+=
+F
+(
+j
+)R2:
+8
+j
+1
+6
+=
+j
+2
+2
+J
+:
+F
+(
+j
+1
+)
+6
+=
+F
+(
+j
+2
+)R3:
+8
+i
+1
+;
+i
+2
+2
+I
+:
+i
+1
+
+I
+i
+2
+^
+F
+
+1
+(
+i
+2
+)
+
+J
+F
+
+1
+(
+i
+1
+)
+=
+)
+B
+(
+i
+1
+);
+B
+(
+i
+2
+)
+
+B
+(
+i
+2
+);
+B
+(
+i
+1
+)
+fori
+2
+Iby
+IdoB
+(
+i
+)
+forj
+2
+Jby
+JdoB
+(
+F
+(
+j
+))
+Fig. 2. Permutation Rule
+Permute
+for Reordering Transformations
+establish thatFis a bijection, and premise R3 establishes that no dependenc
+es are
+violated by the transformation. The identication ofFcan be provided to us by the
+compiler, once it determines which of the relevant loop opti
+mizations it chooses
+to apply. In Intel's ORC compiler, a
+.l
+(dot ell) le contains a description of the
+loop optimizations applied in the run of the optimizer.
+Tvoc
+gleans this informa-
+tion, veries that indeed the optimized code follows the ind
+icated optimization,
+and constructs the validation conditions. These condition
+s are then passed to the
+theorem prover
+CVC Lite
+Rule
+Permute
+, as presented here, only deals with transformations which r
+e-
+order the execution of the entire loop's body. Some optimiza
+tions, such as software
+pipelining and fusion/distribution, seem to fall outside t
+he scope of this proof rule.
+The next section shows how Rule
+Permute
+can be used to handle such optimiza-
+tions as well.
+3 Generalization of Rule Permute
+Rule
+Permute
+, as formulated in the last section, only covers transformat
+ions from
+a single loop to a single loop and requires that there be a bije
+ction between the
+iterations in one loop and the iterations in the other.
+Consider a more general
+loop structure
+, consisting of several simple loops,
+possibly each over a different index domain, where each iter
+ation consists of sev-
+eral sub-bodies. Such a loop structure may be transformed
+into another loop
+structure. For example, in a typical loop fusion transforma
+tion, there are two sim-
+ple loops (usually over the same index domain), that are tran
+sformed into a single
+simple loop, with each iteration consisting of two sub-bodi
+es, one from each of the
+original iterations. Other transformations, such as peeli
+ng and software pipelin-
+ing, can also be viewed as such loop structure transformatio
+ns (we outline some
+examples below.)
+Our thesis is that, after some pre-processing, we can view th
+ese types of trans-
+formations as instantiations of the reordering transforma
+tion studied in Subsec-
+tion 2.3, and use Rule
+Permute
+to validate them.
+7
+Goldberg,
+Zuck,
+and
+Barrett3.1 From Loop Structures into Simple Loops
+Formally, a
+loop structure
+consists of:
+(i) a setI
+1
+;
+:
+:
+: ;
+I
+nof index domains;
+(ii) for everyk
+=
+1
+;
+:
+:
+: ;
+n, a total ordering
+I
+koverI
+k's elements;
+(iii) for everyk
+=
+1
+;
+:
+:
+: ;
+n, a numberm
+kand a sequence ofm
+kbodiesf
+B
+k
+`
+g
+m
+k
+`
+=1The code for such a loop structure is shown in Fig. 3.
+fori
+2
+I
+1by
+I
+1doB
+1
+1
+(
+i
+);
+:
+:
+:
+;
+B
+1
+m
+1
+(
+i
+)fori
+2
+I
+2by
+I
+2doB
+2
+1
+(
+i
+);
+:
+:
+:
+;
+B
+2
+m
+2
+(
+i
+)
+:
+:
+:fori
+2
+I
+kby
+I
+kdoB
+k
+1
+(
+i
+);
+:
+:
+:
+;
+B
+k
+m
+k
+(
+i
+)Fig. 3. An Execution of a Loop Structure
+Obviously, any loop of of the form of Fig. 1 in Subsection 2.3 c
+orresponds to
+a single line in Fig. 3. Consider a typical loop fusion exampl
+e, where the input is
+given by a loop structure withk
+=
+2,I
+1
+=
+I
+2, andm
+1
+=
+m
+2
+=
+1. The fused loop
+is then a loop structure, withJ
+=
+I
+1,m
+=
+2,B
+1
+(
+j
+)
+=
+B
+1, andB
+2
+(
+j
+)
+=
+B
+1.
+We can also refer to a loop structure as a simple loop of the for
+m
+forii
+2
+I Iby
+I IdoB
+(
+ii
+)by dening:I I
+=
+k
+[
+`
+=1
+f
+`
+g
+
+I
+`
+
+f
+1
+;
+:
+:
+: ;
+m
+`
+g
+B
+(
+`
+1
+;
+i
+1
+;
+t
+1
+)
+=
+B
+`
+1
+t
+1
+(
+i
+)and letting(
+`
+1
+;
+i
+1
+;
+t
+1
+)
+
+I I
+(
+`
+2
+;
+i
+2
+;
+t
+2
+)when(
+`
+1
+<
+`
+2
+)
+_
+(
+`
+1
+=
+`
+2
+^
+i
+1
+
+I
+`
+1
+i
+2
+)
+_
+((
+`
+1
+;
+i
+1
+)
+=
+(
+`
+2
+;
+i
+2
+)
+^
+(
+t
+1
+<
+t
+2
+))Thus, loop structures (as described in Fig. 3) can be convert
+ed into simple loops,
+and Rule
+Permute
+can be applied on transformations applied to them.
+3.2 Some Frequent Transformations between Loop Structures
+We describe some of the most commonly used loop transformati
+ons from the point
+of view of loop structures, and show the iteration domain, or
+dering, and bijectionF(andF
+
+1
+tions from
+simple loops into simple loops.
+8
+Goldberg,
+Zuck,
+and
+BarrettLoop Fusion
+The source and target for generic loop fusion is described in
+Fig. 4, parts (a) and
+(b) respectively. For the source domain, we takeI I
+=
+f
+1
+;
+:
+:
+: ;
+k
+g
+
+f
+1
+;
+:
+:
+: ;
+N
+g
+
+f
+1
+g, with
+I Idened by the usual lexicographical ordering. Similarly, f
+or the
+target domain, we takeJ
+J
+=
+f
+1
+g
+
+f
+1
+;
+:
+:
+: ;
+N
+g
+
+f
+1
+;
+:
+:
+: ;
+k
+gwith
+J Jdened
+by the usual lexicographical ordering. The functionF
+:
+J
+J
+!
+I Iis dened
+byF
+(1
+;
+i;
+`
+)
+=
+(
+`;
+i;
+1), andF
+
+1
+(
+`;
+i;
+1)
+=
+(1
+;
+i;
+`
+). Note that in order to verify
+Premise R3 of Rule
+Permute
+, it sufces to show that for all(1
+;
+i
+1
+;
+`
+1
+)
+;
+(1
+;
+i
+2
+;
+`
+2
+)
+2
+J
+J, ifi
+1
+>
+i
+2and`
+1
+<
+`
+2, thenB
+`
+1
+(
+i
+1
+);
+B
+`
+2
+(
+i
+2
+)
+
+B
+`
+2
+(
+i
+2
+);
+B
+`
+1
+(
+i
+1
+)for i1=1,N
+B1(i1)
+.
+.
+.
+for ik=1,N
+Bk(ik)
+(a) Loop-1
+for j=1,N
+B1(j)
+.
+.
+.
+Bk(j)
+(b) Loop-2
+for i=1,N
+B(i)
+(c) Loop-3
+for j=1,N by k
+B(j)
+B(j+1)
+.
+.
+.
+B(j+k-1)
+(d) Unrolled
+for i1=1,N1B1(i1)
+.
+.
+.
+for ik=1,NkBk(ik)
+(e) Loop-4
+for j0=1,p
+B1(j0)
+for j1=p+1,N1B1(j1)
+for j2=1,N2B2(j2)
+.
+.
+.
+for jk
+
+1=1,Nk
+
+1Bk
+
+1(jk
+
+1)
+for jk=1,q
+Bk(jk)
+for jk
++1=q+1,NkBk(jk
++1)
+(f) Peeled
+for i1=L1,H1B1(i1)
+.
+.
+.
+for ik=Lk,HkBk(ik)
+(g) Unaligned
+for i1=L1,H1B1(i1)
+.
+.
+.
+for ir=1,Hr-Lr+1
+Br(ir)
+.
+.
+.
+for ik=Lk,KkBk(ik)
+(h) Aligned
+Fig. 4. Loop Transformations
+Loop Distribution
+Loop distribution is the inverse of loop fusion. Thus, we can
+take part (b) of Fig. 4
+for Before Distribution, and part (a) of Fig. 4 for After D
+istribution. The iter-
+ation domain and the ordering are just like the fusion case wi
+th the roles reversed,
+and so areFandF
+
+1. The verication condition remains the same.
+Loop Unrolling
+Generic loop unrolling is described in Fig. 4 parts (c) and (d
+), where we assumekdividesN. Here, the source domain isI I
+=
+f
+1
+g
+
+f
+1
+;
+:
+:
+: ;
+N
+g
+
+f
+1
+g, the
+9
+Goldberg,
+Zuck,
+and
+Barretttarget domain isJ
+J
+=
+f
+1
+g
+
+f
+1
+;
+k
++
+1
+;
+:
+:
+: ;
+N
+
+k
++
+1
+g
+
+f
+1
+;
+:
+:
+: ;
+k
+g, and both
+I Iand
+J Jare the usual lexicographical ordering. We then deneF
+(1
+;
+j;
+t
+)
+=
+(1
+;
+j
++
+t
+
+1
+;
+1), andF
+
+1
+(1
+;
+i;
+1)
+=
+(1
+;
+b
+i
+k
+c
+k
++
+1
+;
+i
+
+b
+i
+k
+c
+k
+). Note that Premise R3
+of Rule
+Permute
+is then trivially true.
+Loop Peeling
+For generic loop peeling, consider the source and target in F
+ig. 4 parts (e) and (f)
+respectively. Here we take:I I
+=
+k
+[
+`
+=1
+f
+`
+g
+
+f
+1
+; : : :
+; N
+`
+g
+
+f
+1
+g
+J
+J
+=
+k
++1
+[
+`
+=0
+f
+`
+g
+
+f
+L
+(
+`
+)
+; : : :
+; H
+(
+`
+)
+g
+
+f
+1
+g
+F
+
+1
+(
+`; i;
+1)
+=
+8
+>
+>
+>
+<
+>
+>
+>
+:
+(0
+; i;
+1)
+`
+=
+1
+^
+i
+
+p
+(
+k
++
+1
+; i;
+1)
+`
+=
+k
+^
+i
+>
+q
+(
+`; i;
+1)otherwise
+whereL
+(1)
+=
+p
++
+1;
+L
+(
+k
++
+1)
+=
+q
++
+1;and for all other`;
+L
+(
+`
+)
+=
+1;andH
+(0)
+=
+p
+;
+H
+(
+k
+)
+=
+q
+;
+H
+(
+k
++
+1)
+=
+N
+k
+;and for every other`;
+H
+(
+`
+)
+=
+N
+`.
+Both
+I Iand
+J Jare the usual lexicographical ordering, and, again, Premis
+e
+R3 of Rule
+Permute
+is trivially true.
+Loop Alignment
+For generic loop alignment, consider the source and target i
+n Fig. 4 parts (g) and
+(h) respectively. Here we take:I I
+=
+k
+[
+`
+=1
+f
+`
+g
+
+f
+L
+`
+;
+:
+:
+: ;
+H
+`
+g
+
+f
+1
+g
+J
+J
+=
+k
+[
+`
+=1
+f
+`
+g
+
+f
+f
+`
+(
+L
+`
+)
+;
+:
+:
+: ;
+f
+`
+(
+H
+`
+)
+g
+
+f
+1
+g
+F
+(
+`;
+i;
+1) = (
+`;
+f
+
+1
+`
+(
+i
+)
+;
+1)
+F
+
+1
+(
+`;
+i;
+1) = (
+`;
+f
+`
+(
+i
+)
+;
+1)wheref
+r
+(
+i
+)
+=
+i
+
+L
+r
++
+1,f
+
+1
+r
+(
+i
+)
+=
+i
++
+L
+r
+
+1, and for every`
+6
+=
+r,f
+`
+(
+i
+)
+=
+f
+
+1
+`
+(
+i
+)
+=
+i.
+Both
+I Iand
+J Jare the usual lexicographical ordering, and, again, Premis
+e
+R3 of Rule
+Permute
+is trivially true.
+4 Combinations
+As mentioned above, a real compiler may apply
+several
+optimizations to transform
+a source programSinto a target programT. In such cases, we rst obtain (or
+10
+Goldberg,
+Zuck,
+and
+Barrettguess) the sequence of individual transformations, and the
+n synthesize a series of
+intermediate versions of the code,S
+=
+I
+0
+;
+I
+1
+;
+:
+:
+: ;
+I
+n
+=
+Tbased on these trans-
+formations. We then must validate the transformation fromI
+jtoI
+j
++1for everyj
+=
+0
+;
+:
+:
+: ;
+n
+
+1, and validate thatI
+nis indeedT. In this section, we illustrate
+this approach by assuming the sequence of transformations i
+s given by the com-
+piler. In the next section, we discuss heuristics for what to
+do if the sequence of
+transformations is not given.
+for i=0 to 99 do
+for i=0 to 99 do
+(a) SourceS
+=
+I
+0
+for i=1 to 99 do
+(b) TargetT
+=
+I
+3Fig. 5. Input and Output
+Consider the source and target program in Fig. 5 (this is an ac
+tual transforma-
+tion performed by the ORC compiler). The source contains two
+consecutive loops
+overI
+=
+[0
+::
+99]with the usual<ordering. Suppose now that the sequence of op-
+timizations applied is alignment followed by peeling follo
+wed by fusion as shown
+in Fig. 6:I
+1aligns the second loop;I
+2peels the rst iteration of the rst loop and
+the last iteration of the second loop; andI
+3
+=
+Tfuses the loops.
+for i=0 to 99 do
+for i=1 to 100 do
+(a)I
+1(Alignment)
+for i=1 to 99 do
+for i=1 to 99 do
+(b)I
+2(Peeling)
+for i=1 to 99 do
+(c)I
+3(Fusion)
+Fig. 6. Stages of Optimizations
+To show the correctness of each of the stages, we use Rule
+Permute
+, applied to
+the loop structures, as described in Section 3. For example,
+the last (and hardest)
+11
+Goldberg,
+Zuck,
+and
+Barrettstage of fusion, amounts to showing thatn
+1
+>
+n
+2
+=
+)
+a
+[
+n
+1
++
+1
+]
+:=
+x
++
+5
+;
+a
+[
+n
+2
+]
+:=
+a
+[
+n
+2
+]
++
+a
+[
+n
+2
++
+1
+]
+
+a
+[
+n
+2
+]
+:=
+a
+[
+n
+2
+]
++
+a
+[
+n
+2
++
+1
+];
+a
+[
+n
+1
++
+1
+]
+:=
+x
++
+5
+;which can be easily established.
+Typically, the compiler performs one or more loop optimizat
+ions in order to
+enable further global (structure preserving) optimizatio
+ns. For example, the last
+stageI
+3in Fig. 6 can be further optimized by performing scalar repla
+cement, loop-
+invariant code motion, and copy propagation to obtain the co
+de shown in Fig. 7.
+y := x + 5;
+for i=1 to 99 do
+Fig. 7. After Structure Preserving Optimizations
+This can be handled by adding one additional verication sta
+ge using the Rule
+Val
+(for structure preserving optimizations) as discussed in S
+ection 2. Thus, the
+overall approach consists of three steps. First, a candidat
+e sequence ofnloop trans-
+formations is xed. Second, intermediate representationsI
+1throughI
+nare synthe-
+sized and the correctness of each transformation is veried
+using Rule
+Permute
+.
+Finally, the equivalence ofI
+nand the targetTis validated using Rule
+Val
+.
+5 Heuristics
+In this section, we describe techniques that we use to try to d
+etermine, in the ab-
+sence of information provided by the compiler, the sequence
+of loop optimizations
+that might have been performed on the source code in order to p
+roduce target code.
+Because we are still in the early stages of devising heuristi
+cs to infer the trans-
+formations that occurred, we make the following simplifyin
+g (but not unreasonable)
+assumptions:fflWe know the
+mapping
+from each loop structure in the source to each loop struc-
+ture in the target  that is, for each loop structure in the sou
+rce code, we know
+which loop structure in the target resulted from it. This is g
+enerally fairly easy to
+determine from contextual information (e.g., procedure re
+ferred to, conditional
+branch, variables referenced, etc.).fflWe have some knowledge about the
+order
+in which compilers perform some
+transformations to enable others, since most transformati
+ons follow commonly
+known sequences of transformations.
+12
+Goldberg,
+Zuck,
+and
+Barrett5.1 General Approach
+Our general approach, combining heuristics with the synthe
+sis of intermediate ver-
+sions of the code, is to apply the algorithm below to each loop
+structure in the
+source and the corresponding loop structure in the target.
+Input
+: Source loop structureSand target loop structureT.
+Output
+: Valid or fail.
+Algorithm
+ffl
+I
+:=
+S
+fflWhile!(
+I
+
+T
+)do
+Opt
+:=
+NextOpt
+(
+I ;
+T
+);NextOpttakes as input an intermediate loop structure
+and a target loop structure, and returns a possible next opti
+mization that can be
+performed to bring the intermediate code closer to the targe
+t code, or?if none
+exists; obviously, this is the part that contains the heuris
+tics.IfOpt
+=
+?, return with failure.
+I
+0
+:=
+Opt
+(
+I
+), creating a new intermediate form resulting from the guesse
+d
+optimization.Use Rule
+Permute
+or Rule
+Val
+to establishI
+0
+
+I. If validation fails, exit with
+failure.
+end whilefflexit with Valid
+One issue, of course, is termination of the above loop. Since
+we are generating
+intermediate versions of the code which may not actually hav
+e been generated by
+the compiler, it is conceivable that this process may be non-
+terminating (consider,
+for example, repeatedly applying loop fusion followed by lo
+op distribution  which
+are essentially inverse functions). However, in practice,
+this will not happen. We
+exploit our knowledge of the sequence of optimizations that
+compilers typically
+perform to limit the possible optimizations that we are gues
+sing the compiler might
+have performed at each step. Thus, for example, if distribut
+ion has already been
+performed on a certain part of the loop structure,NextOptcould be prevented
+from subsequently choosing fusion as a guessed optimizatio
+n on that same part
+of the loop structure. Finally, since compilers typically p
+erform a short sequence of
+optimizations on any single loop, we place a bound on the numb
+er of intermediate
+versions that we are willing to create and the number of itera
+tions of the loop.
+Although we have considered using backtracking to try multi
+ple sequences of
+guessed optimizations to reach the actual optimized versio
+n of a loop structure gen-
+erated by the compiler, our rst set of experiments will be pe
+rformed without using
+backtracking. We expect that the forms of the unoptimized an
+d actual optimized
+versions of the loop will provide a sufciently good guide to
+our creation of inter-
+mediate versions that backtracking won't be necessary.
+13
+Goldberg,
+Zuck,
+and
+Barrett5.2 Criteria for Selecting the Next Optimization
+The criteria upon which our selection of the next optimizati
+on is based are the
+following:
+(i) Has the number of loops changed
+(ii) Has the nesting depth of a loop changed?
+(iii) Has the body size of a loop changed (i.e. have more state
+ments been added to
+the body of a loop)?
+(iv) Have the bounds of a loop iteration changed?
+(v) Has the use of a loop index variable changed in the body of a
+use (e.g. has i
+been replaced by i+1 in array subscripts)?
+(vi) Has a non-unit step been introduced in a loop (e.g. for i
+= 1 to N step k)?
+These criteria are useful because different loop optimizat
+ions exhibit different com-
+binations of the criteria. Our rst attempt at a heuristic or
+ders the tests in the order
+specied above, but we expect to rene this ordering through
+experimentation.
+The loop optimizations that our tool is expected to recogniz
+e, along with the
+changes they produce, are as follows.fflPeeling adds a new loop and changes the loop bounds of both the
+new loop and
+the original loop.fflAlignment causes a change in the loop bounds and a constant to
+be added to each
+occurrence of the loop index variable in the body of the loop.fflUnrolling causes an increase in the size of a loop body and a no
+n-unit step to
+appear in the iteration.fflTiling results in an increase in the nesting depth of a loop, a
+non-unit step in the
+(new) outer loops, and a change in the loop bounds of the inner
+iterations.fflInterchange causes the order of the loop index variables in a
+rray subscripts to be
+changed, and possibly causes a change in the loop bounds.fflFusion causes a decrease in the number of loops and an increas
+e in the body size
+of a loop.fflDistribution causes an increase in the number of loops and an
+decrease in the
+body size of a loop.
+In the next section, we provide more details, motivated by ou
+r example from Sec-
+tion 4.
+5.3 TheNextOptHeuristic
+One of the benets of our generalized representation of a loo
+p structure, described
+in Section 3, is that the representation of the source and tar
+get loops in this frame-
+work lends itself to providing clues to the transformations
+that occurred. Rather
+than give a complete denition ofN extO ptfor all possible transformations (which
+we are still working on), we motivate our work here by describ
+ing howN extO pt14
+Goldberg,
+Zuck,
+and
+Barrettwould behave on the example in Fig. 5.
+The source code in Fig. 5 can be represented as the generalize
+d loop structure
+forii
+2
+I Iby
+I IdoB
+(
+ii
+)
+;whereI I
+=
+(
+f
+1
+g
+
+f
+0
+:
+:
+:
+99
+g
+
+f
+1
+g
+)
+[
+(
+f
+2
+g
+
+f
+0
+:
+:
+:
+99
+g
+
+f
+1
+g
+)
+:The target code in Fig. 5 can be represented by
+forj j
+2
+J
+Jby
+J JdoB
+(
+j j
+)
+;whereJ
+J
+=
+(
+f
+1
+g
+
+f
+0
+g
+
+f
+1
+g
+)
+[
+(
+f
+2
+g
+
+f
+1
+:
+:
+:
+99
+g
+
+f
+2
+g
+)
+[
+(
+f
+3
+g
+
+f
+99
+g
+
+f
+1
+g
+)
+:Note that we recognize a single occurrence of a loop body as a c
+ollapsed loop of
+one iteration  in particular, we recognize the rst line of t
+he target code as an
+instance of the body of the rst loop of the source withi
+=
+0, and the last line of
+the target code as an instance of the body of the second loop of
+the source withi
+=
+99. This representation, along with a cursory examination of t
+he source and
+target loop bodies, makes the following easy to see:
+(i) InI I, the last element of each triplet is 1, but inJ
+Jthere are triplets whose
+last element is 2. This indicates that the number of blocks ha
+s increased inside
+a simple loop within the target loop structure, something th
+at occurs when
+either fusion or unrolling occurs.
+(ii) Since the range of middle elements in neitherI InorJ
+Jcontains a step
+(.e.gf
+1
+;
+k
++
+1
+;
+2
+k
++
+1
+;
+:::
+g), it is unlikely that unrolling has occurred. This
+can also be seen by noticing that the bodies of the simple loop
+in the target
+that has increased in size (i.e. in the number of blocks withi
+n the loop) are
+not copies of each other with different array indices. Thus,
+it is unlikely that
+unrolling produced this set of blocks.
+(iii) The range of rst elements ofI Iisf
+1
+;
+2
+g, while the range of rst elements ofJ
+Jisf
+1
+;
+2
+;
+3
+g. This situation, indicating an increase in the number of sim
+ple
+loops in the target loop structure over the source loop struc
+ture, can only occur
+with peeling or distribution.
+(iv) Since distribution would cause a reduction in the range
+of third elements ofJ
+Jas compared toI I and that has not happened in this case  it is unlikely
+that distribution has occurred.
+(v) The range of the middle elements (i.e. the range of values
+of the loop index
+variables) inJ
+Jisf
+0
+::
+100
+gwhile the range of the middle elements ofI Iisf
+0
+::
+99
+g. An increase in the upper bound for the loop index variables,
+or a
+decrease in the lower bound, indicates that alignment may ha
+ve occurred (it
+15
+Goldberg,
+Zuck,
+and
+Barrettcould also indicate skewing, but the relationship betweenI IandJ
+Jwhen
+skewing occurs is substantially different than what we see h
+ere).
+Once these observations are made, we are left with a set of opt
+imizations 
+namely fusion, peeling, and alignment  that are candidates
+for being considered
+as the rst optimization performed on the way from the source
+to the target.
+Because alignment and peeling are considered enabling tran
+sformations for fu-
+sion, and not vice-versa, it makes sense for
+NextOpt
+to choose either alignment
+or peeling as the optimization to use in the construction of t
+he next intermediate
+version of the code (this is an instance of where our knowledg
+e of compilers is
+exploited in the heuristic). Although the Intel ORC compile
+r actually performed
+alignment followed by peeling on this example, a heuristic c
+hoice of peeling be-
+fore alignment in the validation process will work.
+By choosing peeling, we will construct the next intermediat
+e version of the
+code,I
+0, to be:
+for i=1 to 99 do
+for i=0 to 98 do
+Thus,I I
+0, the iteration space forI
+0, is dened byI I
+0
+=
+f
+(1
+;
+0
+;
+1)
+g [
+(
+f
+2
+g  f
+1
+:
+:
+:
+99
+g  f
+1
+g
+)
+[
+(
+f
+3
+g  f
+0
+:
+:
+:
+98
+g  f
+1
+g
+)
+[ f
+(4
+;
+99
+;
+1)
+gNow, comparingI I
+0withJ
+J, it becomes clear that alignment is required on the
+second loop inI I
+0.
+5.4 Implementation Status
+We are in the process of adding these heuristics to the
+Tvoc
+tool, and thus do not
+have experimental results yet to indicate how effective our
+heuristics are. Once the
+implementation has reached the point where it will work on a v
+ariety of loop trans-
+formations, we will use the implementation to evaluate our h
+euristics and to tune
+our strategy, particularly with respect to the order in whic
+h the criteria described
+above are applied.
+6 Conclusion
+This paper describes three improvements to our translation
+validation approach for
+optimizing compilers. First, we presented a generalized ru
+le for accommodating a
+wider class of loop transformations. Next, we showed how com
+binations of opti-
+mizations can be handled by synthesizing intermediate vers
+ions of the code and val-
+idating each optimization individually. Finally, we descr
+ibed preliminary heuristics
+for guessing the sequence of optimizations, given only the s
+ource and target code.
+16
+Goldberg,
+Zuck,
+and
+BarrettWe are currently integrating all of these improvements into
+our
+Tvoc
+tool. As
+we do so, we plan to improve our heuristics and continue using
+real examples to
+increase the power and scope of translation validation tech
+niques.
+Acknowledgement.
+As always, we would like to thank Amir Pnueli for many
+helpful discussions. Ying Hu has supplied us with examples o
+f ORC's optimiza-
+tions that were beyond the capabilities of previous version
+s of
+Tvoc
+.
+References
+Compilers Principles, Techniques, and
+Tools
+. Addison Wesley, 1988.
+Optimizing Compilers for Modern
+Architectures
+. Morgan Kaufmann, 2002.
+Proc. Symposia in Applied
+Mathematics
+, 19:1932, 1967.
+e effects of code
+improving transformations. In
+Proceedings of International Conference on
+Parallel Architectures and Compilation Techniques
+, pages 118123, 1998.
+hecking: An approach
+to avoid debugging of optimized code. In
+ACM SIGSOFT Symposium on
+Foundations of Software Engineering
+, volume 1687 of
+Lect. Notes in Comp.
+Sci.
+Springer-Verlag, pages 268284, 1999.
+d testing optimizers
+through comparison checking. In
+Proceedings of COCV 2002
+, J. Knoop and
+W. Zimmerman eds.,
+ENTCS
+, 65(2), 2002.
+Advanced Compiler Design & Implementation
+. Morgan
+Kaufmann, 1997.
+compiler. In
+Proceedings
+of the ACM SIGPLAN Conference on Principles of Programming L
+anguages
+Design and Implementation (PLDI) 2000
+, pages 8395, 2000.
+n validation. In
+TACAS'98
+,
+pages 151166, 1998.
+ting validity checker.
+In
+Proc.14
+thIntl. Conference on Computer Aided Verication (CAV'02)
+,
+volume 2404 of
+Lect. Notes in Comp. Sci.
+Springer-Verlag, pages 500504,
+2002.
+orithm. In
+Proc. of the
+SIGPLAN '91 Symp. on Programming Language Design and Implem
+entation
+,
+pages 3344, 1991.
+17
+Goldberg,
+Zuck,
+and
+Barrett
+High Performance Compilers for Parallel Computing
+. Addison-
+Wesley Publishing Company, 1995.
+ldberg. Voc: A
+translation validator for optimizing compilers. In
+Journal of Universal
+Computer Science
+, 9(2), 2003.
+[ZPF+
+rett, Yi Fang, and
+Ying Hu. Translation and run-time validation of optimized c
+ode. To appear in
+Journal of Formal Methods in System Design
+. Preliminary version in
+ENTCS
+,
+70(4), 2002.
+18

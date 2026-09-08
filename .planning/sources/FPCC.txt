@@ -1,0 +1,1879 @@
+Foundational Proof-Carrying CodeAndrew W. AppelPrinceton University
+AbstractProof-carrying code is a framework for the mechani-
+cal verication of safety properties of machine language
+programs, but the problem arises of
+quis custodiat ip-
+sos custodes
+who will verify the verier itself? Founda-
+tional proof-carrying code is verication from the small-
+est possible set of axioms, using the simplest possible ver-
+ier and the smallest possible runtime system. I will de-
+scribe many of the mathematical and engineering prob-
+lems to be solved in the construction of a foundational
+proof-carrying code system.1 IntroductionWhen you obtain a piece of software  a shrink-
+wrapped application, a browser plugin, an applet, an OS
+kernel extension  you might like to ascertain that it's safe
+to execute: it accesses only its own memory and respects
+the private variables of the API to which it's linked. In a
+Java system, for example, the byte-code verier can make
+such a guarantee, but only if there's no bug in the verier
+itself, or in the just-in-time compiler, or the garbage col-
+lector, or other parts of the Java virtual machine (JVM).
+If a compiler can produce Typed Assembly Language
+resentation of the program we can guarantee safety  but
+only if there's no bug in the typing rules, or in the type-
+checker, or in the assembler that translates TAL to ma-
+chine language. Fortunately, these components are signif-
+icantly smaller and simpler than a Java JIT and JVM.
+a mathematical proof about the machine-language pro-
+gram itself, and this guarantees safety  but only if there's
+no bug in the verication-condition generator, or in the
+logical axioms, or the typing rules, or the proof-checker.
+This research was supported in part by DARPA award F30602-99-
+1-0519 and by National Science Foundation grant CCR-9974553.
+To appear in LICS '01,
+16th Annual IEEE Symposium on Logic in Com-
+puter Science,
+Jume 16, 2001.What is the minimum possible size of the components
+that must be trusted in a PCC system? This is like ask-
+ing, what is the minimum set of axioms necessary to
+prove a particular theorem? A foundational proof is one
+from just the foundations of mathematical logic, without
+additional axioms and assumptions; foundational proof-
+carrying code is PCC with trusted components an order
+of magnitude smaller than previous PCC systems.
+Conventional proof-carrying code.
+showed how to specify and verify safety properties of
+machine-language programs to ensure that an untrusted
+program does no harm  does not access unauthorized
+resources, read private data, or overwrite valuable data.
+The provider of a PCC program must provide both the
+executable code and a machine-checkable proof that
+this code does not violate the safety policy of the host
+computer. The host computer does not run the given code
+until it has veried the given proof that the code is safe.
+the machine-checkable proofs are written in a logic with
+a built-in understanding of a particular type system. More
+formally, type constructors appear as primitives of the
+logic and certain lemmas about these type constructors
+are built into the verication system. The semantics of
+the type constructors and the validity of the lemmas con-
+cerning them are proved rigorously but without mechnical
+verication by the designers of the PCC verication sys-
+tem. We will call this type-specialized PCC.
+A PCC system must understand not only the language
+of types, but also the machine language for a particular
+condition generator (VCgen) to derive, for each program,
+a
+verication condition
+ a logical formula that if true
+guarantees the safety of the program. The code producer
+must prove, and the code consumer must check the proof
+of, the verication condition. (Both producer and con-
+sumer independently run the VCgen to derive the right
+formula for the given program.)
+The VCgen is a fairly large program (23,000 lines of C
+the machine instructions of the program, expands the sub-
+stitutions of its machine-code Hoare logic, examines the
+formal parameter declarations to derive function precon-
+ditions, and examines result declarations to derive post-
+conditions. A bug in the VCgen will lead to the wrong
+formula being proved and checked.
+The soundness of a PCC system's typing rules and
+VCgen can, in principle, be proved as a metatheo-
+rem. Human-checked proofs of type systems are almost
+actual type systems used in PCC systems, then of their
+simplied abstractions. But constructing a mechanically-
+checkable correctness proof of a full VCgen would be a
+daunting task.
+Foundational PCC.
+Unlike type-specialized PCC, the
+avoids any commitment to a particular type system and
+avoids using a VC generator. In foundational PCC the op-
+erational semantics of the machine code is dened in a
+logic that is suitably expressive to serve as a foundation
+of mathematics. We use higher-order logic with a few ax-
+ioms of arithmetic, from which it is possible to build up
+most of modern mathematics. The operational semantics
+easily dened in higher-order logic. In foundational PCC
+the code provider must give both the executable code plus
+a proof in the foundational logic that the code satises
+the consumer's safety policy. The proof must explicitly
+dene, down to the foundations of mathematics, all re-
+quired concepts and explicitly prove any needed proper-
+ties of these concepts.
+Foundational PCC has two main advantages over type-
+specialized PCC  it is more exible and more secure.
+Foundational PCC is more exible because the code pro-
+ducer can explain a novel type system or safety argu-
+ment to the code consumer. It is more secure because the
+trusted base can be smaller: its trusted base consists only
+of the foundational verication system together with the
+denition of the machine instruction semantics and the
+safety policy. A verication system for higher-order logic
+In our research project at Princeton University (with
+the help of many colleages elsewhere) we are building
+a foundational PCC system, so that we can specify and
+automatically prove and check the safety of machine-
+language programs. In this paper I will explain the com-
+ponents of the system.2 Choice of logic and frameworkTo do machine-checked proofs, one must rst choose
+a logic and a logical framework in which to manipulate
+the logic. The logic that we use is Church's higher-order
+logic with axioms for arithmetic; we represent our logic,
+because it naturally produces proof objects that we can
+send to a consumer.
+The Twelf system allows us to specify constructors of
+our object logic. Our object logic has types
+tp
+; its prim-
+itive types are propositions
+o
+and numbers
+num
+;thereis
+an
+arrow
+constructor to build function types, and
+pair
+to build tuples. For any object-logic type
+T
+, object-logic
+expressions of that type have metalogical type
+tm
+T
+.Fi-
+nally, for any formula
+A
+we can talk about proofs of
+A
+,
+which belong to the metalogical type
+pf(
+A
+)
+.tp : type.
+tm : tp -> type.
+o: tp. num: tp.
+arrow: tp -> tp -> tp.
+%infix right 14 arrow.
+pair: tp -> tp -> tp.
+pf : tm o -> type.We have object-logic constructors
+lam
+(to construct
+functions),
+@
+(to apply a function to an argument, written
+inx),
+imp
+(logical implication), and
+forall
+(universal
+quantication):lam: (tm T1 -> tm T2) -> tm (T1 arrow T2).
+@ : tm (T1 arrow T2) -> tm T1 -> tm T2.
+%infix left 20 @.
+imp : tm o -> tm o -> tm o.
+%infix right 10 imp.
+forall : (tm T -> tm o) -> tm o.The trick of using
+lam
+and
+@
+to coerce between met-
+alogical functions
+tm T1 -> tm T2
+and object-logic
+functions
+tm (T1 arrow T2)
+is described by Harper,
+so that we can quantify over them using
+forall
+;thatis,
+the type of
+F
+in
+predicate(F)
+must
+be
+tm T
+for some
+T
+such as
+num arrow num
+, but can-
+not be
+tm T1 -> tm T2
+.
+We have introduction and elimination rules for these
+constructors (rules for pairing omitted here):beta_e: {P: tm T -> tm o}
+pf(P (lam F @ X)) -> pf(P (F X)).
+beta_i: {P: tm T -> tm o}
+pf(P (F X)) -> pf(P (lam F @ X)).
+imp_i: (pf A -> pf B) -> pf (A imp B).
+imp_e: pf (A imp B) -> pf A -> pf B.2
+forall_i:
+({X:tm T}pf(A X)) -> pf(forall A).
+forall_e:
+pf(forall A) -> {X:tm T}pf(A X).
+-> pf B.Our proofs don't need extensionality or the general axiom
+of choice.
+Once we have dened the constructors of the logic,
+we can dene lemmas and new operators as denitions
+in Twelf:and:tmo->tmo->tmo=
+[A][B]
+%infix right 12 and.
+and_i : pf A -> pf B -> pf (A and B) =
+and_e1 : pf (A and B) -> pf A =
+imp_e (forall_e p1 A)
+Of course, the dened lemmas are checked by machine
+(the Twelf type checker), and need not be trusted in the
+same way that the core inference rules are. Our interactive
+logic.3 Specifying machine instructionsWe start by modeling a specic von Neumann ma-
+chine, such as the Sparc or the Pentium. A machine state
+comprises a
+register bank
+and a
+memory
+, each of which
+is a function from integers (addresses) to integers (con-
+tents). Every register of the instruction-set architecture
+(ISA) must be assigned a number in the register bank: the
+general registers, the oating-point registers, the condi-
+tion codes, and the program counter. Where the ISA does
+not specify a number (such as for the PC) we use an arbi-
+trary index:
+r
+0:
+r0
+1:
+r1
+.
+.
+.
+31:
+r31
+32:
+fp0
+.
+.
+.
+63:
+fp31
+64:
+cc
+65:
+PC
+unused
+.
+.
+.
+m
+0:
+1:
+2:
+.
+.
+.
+A single step of the machine is the execution of one in-
+struction. We can specify instruction execution by giving
+a step relation
+(
+r
+;
+m
+)
+7!
+(
+r0;
+m0)
+that describes the relation
+between the prior state
+(
+r
+;
+m
+)
+and the state
+(
+r0;
+m0)
+of the
+machine after execution.
+For example, to describe the instruction
+r1 
+r2+
+r3we might start by writing,
+(
+r
+;
+m
+)
+7!
+(
+r0;
+m0)
+
+r0(
+1
+)=
+r
+(
+2
+)+
+r
+(
+3
+)
+^
+(
+8
+x
+6
+=
+1
+:
+r0(
+x
+)=
+r
+(
+x
+))
+^
+m0=
+m
+In fact, we can dene add
+(
+i
+;
+j
+;
+k
+)
+as this predicate on
+four arguments
+(
+r
+;
+m
+;
+r0;
+m0)
+:
+add
+(
+i
+;
+j
+;
+k
+)=
+l
+r
+;
+m
+;
+r0;
+m0:
+r0(
+i
+)=
+r
+(
+j
+)+
+r
+(
+k
+)
+^
+(
+8
+x
+6
+=
+i
+:
+r0(
+x
+)=
+r
+(
+x
+))
+^
+m0=
+m
+Similarly, we can dene the instruction
+ri 
+m
+[
+rj+
+c
+]
+as
+load
+(
+i
+;
+j
+;
+c
+)=
+l
+r
+;
+m
+;
+r0;
+m0:
+r0(
+i
+)=
+m
+(
+r
+(
+j
+)+
+c
+)
+^
+(
+8
+x
+6
+=
+i
+:
+r0(
+x
+)=
+r
+(
+x
+))
+^
+m0=
+m
+But we must also take account of instruction fetch and
+decoding. Suppose, for example, that the add instruction
+is encoded as a 32-bit word, containing a 6-bit eld with
+opcode 3 denoting
+add,
+a 5-bit eld denoting the destina-
+tion register
+i
+, and 5-bit elds denoting the source regis-
+ters
+j
+;
+k
+:
+3
+i
+j
+k
+26 21 16 5 0The load instruction might be encoded as,
+12
+i
+j
+c
+26 21 16 0Then we can say that some number
+w
+decodes to an
+instruction
+instr
+iff,
+3
+decode
+(
+w
+;
+instr
+)
+
+(
+9
+i
+;
+j
+;
+k
+:
+0
+
+i
+<
+25^
+0
+
+j
+<
+25^
+0
+
+k
+<
+25^
+w
+=
+3
+
+226+
+i
+
+221+
+j
+
+216+
+k
+
+20^
+instr
+=
+add
+(
+i
+;
+j
+;
+k
+))
+_
+(
+9
+i
+;
+j
+;
+c
+:
+0
+
+i
+<
+25^
+0
+
+j
+<
+25^
+0
+
+c
+<
+216^
+w
+=
+12
+
+226+
+i
+
+221+
+j
+
+216+
+c
+
+20^
+instr
+=
+load
+(
+i
+;
+j
+;
+sign-extend
+(
+c
+)))
+_
+:::
+with the ellipsis denoting the many other instructions of
+the machine, which must also be specied in this formula.
+this idea up to the instruction set of a real machine. Real
+machines have large but semiregular instruction sets; in-
+stead of a single global disjunction, the decode relation
+can be factored into operands, addressing modes, and so
+on. Real machines don't use integer arithmetic, they use
+modular arithmetic, which can itself be specied in our
+higher-order logic. Some real machines have multiple
+program counters (e.g., Sparc) or variable-length instruc-
+tions (e.g., Pentium), and these can also be accommo-
+dated.
+Our description of the decode relation is heavily fac-
+tored by higher-order predicates (this would not be pos-
+sible without higher-order logic). We have specied the
+execution behavior of a large subset of the Sparc archi-
+tecture (without register windows or oating-point). For
+PCC, it is sufcient to specify a subset of the machine ar-
+chitecture; any unspecied instruction will be treated by
+the safety policy as illegal, which may be inconvenient for
+compilers that want to generate that instruction, but which
+cannot compromise safety.
+Our Sparc specication has two components, a syn-
+tactic part (the decode relation) and a semantic part (the
+denitions of
+add, load,
+etc.). The syntactic part is de-
+rived from a 151-line specication written in the SLED
+our translator expands this to 1035 lines of higher-order
+logic, as represented in Twelf; but we believe that a more
+concise and readable translation would produce only 500
+600 lines. The semantic part is about 600 lines of logic,
+including the denition of modular arithmetic.4 Specifying safetyOur step relation
+(
+r
+;
+m
+)
+7!
+(
+r0;
+m0)
+is deliberately par-
+tial; some states have no successor state. In these states
+the program counter
+r
+(PC)
+points to an illegal instruction.
+Now we will proceed to make it even more partial, by
+dening as illegal those instructions that violate our safety
+policy.
+For example, suppose we wish to specify a safety pol-
+icy that only
+readable
+addresses will be loaded, where
+the predicate
+readable
+is given some suitable denion
+such as
+readable
+(
+x
+)=
+0
+
+x
+<
+1000
+cies that are more interesting than this one).
+We can add a new conjunct to the semantics of the
+load
+instruction,
+load
+(
+i
+;
+j
+;
+c
+)=
+l
+r
+;
+m
+;
+r0;
+m0:
+r0(
+i
+)=
+m
+(
+r
+(
+j
+)+
+c
+)
+^
+readable
+(
+r
+(
+j
+)+
+c
+)
+^
+(
+8
+x
+6
+=
+i
+:
+r0(
+x
+)=
+r
+(
+x
+))
+^
+m0=
+m
+.
+Now, in a machine state where the program counter points
+to a load instruction that violates the safety policy, our
+step relation
+7!
+does not relate this state to any succes-
+sor state (even though the real machine knows how to
+execute it).
+Using this partial step relation, we can dene safety; a
+given state is safe if, for any state reachable in the Kleene
+closure of the step relation, there is a successor state:
+safe-state
+(
+r
+;
+m
+)=
+8
+r0;
+m0:
+(
+r
+;
+m
+7!r0;
+m0)
+)9
+r00;
+m00:
+r0;
+m07!
+r00;
+m00A program is just a sequence of integers (representing
+machine instructions); we say that a program
+p
+is loaded
+at a location
+start
+in memory
+m
+if
+loaded
+(
+p
+;
+m
+;
+start
+)=
+8
+i
+2
+dom
+(
+p
+)
+:
+m
+(
+i
++
+start
+)=
+p
+(
+i
+)
+Finally (assuming that programs are written in
+position-independent code), a program is
+safe
+if, no mat-
+ter where we load it in memory, we get a safe state:
+safe
+(
+p
+)=
+8
+r
+;
+m
+;
+start
+:
+loaded
+(
+p
+;
+m
+;
+start
+)
+^
+r
+(PC)=
+start
+)
+safe-state
+(
+r
+;
+m
+)
+The important thing to notice about this formulation is
+that
+there is no verication-condition generator
+. The syn-
+tax and semantics of machine instructions, implicit in a
+VCgen, have been made explicit  and much more con-
+cise  in the step relation. But the Hoare logic of machine
+instructions and typing rules for function parameters, also
+implicit in a VCgen, must now be proved as lemmas 
+about which more later.
+4
+5 Proving safetyIn a sufciently expressive logic, as we all know, prov-
+ing theorems can be a great deal more difcult than
+merely stating them  and higher-order logic is certainly
+expressive. For guidance in proving safety of machine-
+language programs we should not particularly look to pre-
+vious work in formal verication of program correctness.
+Instead, we should think more of type checking: auto-
+matic proofs of decidable safety properties of programs.
+The key advances that makes it possible to generate
+proofs automatically are
+typed intermediate languages
+typed assembly language
+ventional compilers type-check the source program, then
+throw away the types (using the lambda-calculus principle
+of
+erasure
+) and then transform the program through pro-
+gressively lower-level intermediate representations until
+they reach assembly language and then machine lan-
+guage, a type-preserving compiler uses typed intermedi-
+ate languages at each level. If the program type-checks
+at a low level, then it is safe, regardless of whether the
+previous (higher-level) compiler phases might be buggy
+on some inputs. As the program is analyzed into smaller
+pieces at the lower levels, the type systems become pro-
+gressively more complex, but the type theory of the
+1990's is up to the job of engineering the type systems.    source code
+Compiler
+Front-end
+IR (or byte codes)
+Optimizer
+lower-level IR
+Code
+Generator
+assembly-level IR
+native machine code
+Register
+Allocator
+type-
+check
+     source code
+Compiler
+Front-end
+IR (or byte codes)
+Type-preserving
+Optimizer
+typed lower-level IR
+Type-preserving
+Code Generator
+typed assembly lang.
+proof-carrying 
+native machine code
+Type-preserving
+Reg. Allocator
+type-
+check
+type-
+check
+type-
+check
+proof
+checkType-preserving Compiler
+Conventional CompilerTAL was originally designed to be used in a certify-
+ing compiler, but one that certies the assembly code and
+uses a trusted assembler to translate to machine code. But
+we can use TAL to help generate proofs in a PCC system
+that directly veries the machine code. In such a system,
+the proofs are typically by induction, with induction hy-
+potheses such as, whenever the program-counter reaches
+location
+l
+, the register 3 will be a pointer to a pair of in-
+tegers. These local invariants can be generated from the
+TAL formulation of the program, but in a PCC system
+they can be checked in machine code without needing to
+trust the assembler.
+Typing rules for machine language.
+In important in-
+sight in the development of PCC is that one can write
+type-inference rules for machine language and machine
+m
+`
+x
+:
+t1
+t2
+m
+`
+m
+(
+x
+)
+:
+t1^
+m
+(
+x
++
+1
+)
+:
+t2meaning that if
+x
+has type
+t1
+t2in memory
+m
+ meaning
+that it is a pointer to a boxed pair  then the contents of
+location
+x
+will have type
+t1and the contents of location
+x
++
+1 will have type
+t2.
+Proofs of safety in PCC use the local induction hy-
+potheses at each point in the program to prove that the
+program is typable. This implies, by a type-soundness ar-
+gument, that the program is therefore safe.
+If the type system is given by syntactic inference rules,
+the proof of type soundness is typically done by syntac-
+tic subject reduction  one proves that each step of com-
+putation preserves typability and that typable states are
+safe. The proof involves structural induction over typing
+derivations. In conventional PCC, this proof is done in the
+metatheory, by humans.
+In foundational PCC we wish to include the type-
+soundness proof inside the proof that is transmitted to
+the code consumer because (1) it's more secure to avoid
+reliance on human-checked proofs and (2) that way we
+avoid restricting the protocol to a single type system. But
+in order to do a foundational subject-reduction theorem,
+we would need to build up the mathematical machinery to
+manipulate typing derivations as syntactic objects, all rep-
+resented inside our logic using foundational mathematical
+concepts  sets, pairs, and functions. We would need to
+do case analyses over the different ways that a given type
+judgement might be derived. While this can all be done,
+we take a different approach to proving that typability im-
+plies safety.
+We take a semantic approach. In a semantic proof one
+assigns a meaning (a semantic truth value) to type judge-
+ments. One then proves that if a type judgement is true
+then the typed machine state is safe. One further proves
+that the type inference rules are sound, i.e., if the premises
+are true then the conclusion is true. This ensures that
+derivable type judgements are true and hence typable ma-
+chine states are safe.
+The semantic approach avoids formalizing syntactic
+type expressions. Instead, one formalizes a type as a set
+of semantic values. One denes the operator
+
+as a func-
+tion taking two sets as arguments and returning a set. The
+5
+above type inference rule for pair projection can then be
+replaced by the following semantic lemma in the founda-
+tional proof:j
+=x
+:mt1
+t2
+j
+=m
+(
+x
+)
+:mt1^
+m
+(
+x
++
+1
+)
+:mt2Although the two forms of the application type-
+inference rule look very similar they are actually signif-
+icantly different. In the second rule
+t1and
+t2range over
+semantic sets rather than type expressions. The relationj
+=in the second version is dened directly in terms of a
+semantics for assertions of the form
+x
+:mt
+. The second
+rule is actually a lemma to be proved while the rst rule
+is simply a part of the denition of the syntactic relation
+`
+. For the purposes of foundational PCC, we view the se-
+mantic proofs as preferable to syntactic subject-reduction
+proofs because they lead to shorter and more manageable
+foundational proofs. The semantic approach avoids the
+need for any formalization of type expressions and avoids
+the formalization of proofs or derivations of type judge-
+ments involving type expressions.5.1 Semantic models of typesBuilding semantic models for type systems is inter-
+esting and nontrivial. In a rst attempt, Amy Felty and
+datatypes) call-by-value language with records, address
+arithmetic, polymorphism and abstract types, union and
+intersection types, continuations and function pointers,
+and covariant recursive types.
+Our simplest semantics is set-theoretic: a type is a set
+of values. But what is a value? It is not a syntactic con-
+struct, as in lambda-calculus; on a von Neumann machine
+we wish to use a more natural representation of values that
+corresponds to the way procedures and data structures are
+represented in practice. This way, our type theory can
+match reality without a layer of simulation in between.
+We can represent a value as a pair
+(
+m
+;
+x
+)
+,where
+m
+is a
+memory and
+x
+is an integer (typically representing an ad-
+dress).
+To represent a pointer data structure that occupies a
+certain portion of the machine's memory, we let
+x
+be the
+root address of that structure. For example, the boxed pair
+of integers
+h
+5
+;
+7
+i
+represented at address 108 would be rep-
+resented as the value
+(
+f
+108
+7!
+5
+;
+109
+7!
+7
+g
+;
+108
+)
+.
+5
+7
+108
+m
+x
+108 
+109 
+To represent a function value, we let
+x
+be the entry ad-
+dress of the function; here is the function
+f
+(
+x
+)=
+x
++
+1,
+assuming that arguments and return results are passed in
+register 1:
+1111
+4070
+r1 := 
+r1+1
+jump(
+r7)
+200
+m
+x
+200 
+201 
+This model of values would be sufcient in a semantics
+of statically allocated data structures, but to have dynamic
+heap allocation we must be able to indicate the set
+a
+of
+allocated addresses, such that any modication of mem-
+ory outside the allocated set will not disturb already al-
+located values. A
+state
+is a pair
+(
+a
+;
+m
+)
+, and a value is a
+pair
+((
+a
+;
+m
+)
+;
+x
+)
+of state and root-pointer. The allocset
+a
+is virtual: it is not directly represented at run time, but is
+existentially quantied.
+Limitations.
+model heap allocation, but we could not model mutable
+record-elds; and though our type system could describedatatype 'a list = nil
+| :: of 'a * 'a listwe could not handle recursions where the type being de-
+ned occurs in a negative (contravariant) position, as indatatype exp = APP of exp * exp
+| LAM of
+exp
+-> expwhere the boxed occurrence of
+exp
+is a negative occur-
+rence. Contravariant recursion is occasionally useful in
+ML, but it is the very essence of object-oriented program-
+ming, so these limitations (no mutable elds, no con-
+travariant recursion) are quite restrictive.5.2 Indexed model of recursive typesIn more recent work, David McAllester and I have
+shown how to make an indexed semantic model that can
+ing that a type is a set of values, we say that it is a set of
+pairs
+h
+k
+;
+v
+i
+where
+k
+is an approximation index and
+v
+is a
+value. The judgement
+h
+k
+;
+v
+i2
+t
+means, 
+v
+approximately
+has type
+t
+, and any program that runs for fewer than
+k
+in-
+structions can't tell the difference. The indices
+k
+allow
+the construction of a well founded recursion, even when
+modeling contravariant recursive types.
+The type system works both for von Neumann ma-
+chines and for
+l
+-calculus; here I will illustrate the latter.
+We dene a
+type
+as a set of pairs
+h
+k
+;
+v
+i
+where
+k
+is a non-
+negative integer and
+v
+is a value and where the set
+t
+is
+6
+such that if
+h
+k
+;
+v
+i2
+t
+and 0
+
+j
+
+k
+then
+h
+j
+;
+v
+i2
+t
+.For
+any closed expression
+e
+and type
+t
+we write
+e
+:kt
+if
+e
+is
+safe for
+k
+steps and if whenever
+e
+7!jv
+for some value
+v
+with
+j
+<
+k
+we have
+h
+k
+
+j
+;
+v
+i2
+t
+;thatis,
+e
+:kt
+8
+j
+8
+e0:
+0
+
+j
+<
+k
+^
+e
+7!je0^
+nf
+(
+e0)
+)
+h
+k
+
+j
+;
+e0i2
+t
+where nf
+(
+e0)
+means that
+e0is a normal form  has no suc-
+cessor in the call-by-value small-step evaluation relation.
+We start with denitions for the sets that represent the
+types:?fg
+>fh
+k
+;
+v
+ij
+k
+
+0
+g
+int
+fh
+k
+;
+0
+i
+;
+h
+k
+;
+1
+i
+;:::
+j
+k
+
+0
+g
+t1
+t2fh
+k
+;
+(
+v1;
+v2)
+ij8
+j
+<
+k
+:
+h
+j
+;
+v1i2
+t1^h
+j
+;
+v2i2
+t2g
+s
+!
+t
+fh
+k
+;
+l
+x
+:
+e
+ij8
+j
+<
+k
+8
+v
+:
+h
+j
+;
+v
+i2
+s
+)
+e
+[
+v
+=
+x
+]
+:jt
+g
+µF
+fh
+k
+;
+v
+ij h
+k
+;
+v
+i2
+Fk
++
+1(
+?
+)
+gNext we dene what is meant by a typing judgement.
+Given a mapping
+G
+from variables to types, we write
+Gj
+=
+ke
+:
+a
+to mean that
+8
+s
+:
+s
+:kG
+)
+s
+(
+e
+)
+:ka
+where
+s
+(
+e
+)
+is the result of replacing the free variables in
+e
+with their values under substitution
+s
+. To drop the index
+k
+,wedene
+Gj
+=e
+:
+a
+8
+k
+:
+Gj
+=
+ke
+:
+a
+Soundness theorem:
+It is trivial to prove from these
+denitions that ifj
+=e
+:
+a
+and
+e
+7!e0then
+e0is not
+stuck, that is,
+e07!
+e00.
+Well founded type constructors.
+We dene the notion
+of a well founded type constructor. Here I will not give
+the formal denition, but state the informal property that
+if
+F
+is well founded and
+x
+:
+F
+(
+t
+)
+,thentoextractfrom
+x
+a value of type
+t
+, or to apply
+x
+to a value of type
+t
+,must
+take at least one execution step. The constructors
+
+and
+!
+are well founded.
+Typing rules.
+Proofs of theorems such as the following
+are not too lengthy:
+Gj
+=p1(
+e
+)
+:
+t1Gj
+=p2(
+e
+)
+:
+t2
+Gj
+=e
+:
+t1
+t2Gj
+=e
+:
+t1
+t2
+Gj
+=p1(
+e
+)
+:
+t1Gj
+=e1:
+a
+!
+bGj
+=e2:
+a
+Gj
+=e1e2:
+b
+Finally, for any well founded type-constructor
+F
+,wehave
+equirecursive types:
+µF
+=
+F
+(
+µF
+)
+.
+extension of the result to types and values on von Neu-
+mann machines.5.3 Mutable eldsOur work on mutable elds is still in a preliminary
+stage. Amal Ahmed, Roberto Virga, and I are investigat-
+ing the following idea. Our semantics of immutable elds
+viewed a state as a pair
+(
+a
+;
+m
+)
+of a memory
+m
+and a set
+a
+of allocated addresses. To allow for the update of ex-
+isting values, we enhance
+a
+to become a nite map from
+locations to types. The type
+a
+(
+l
+)
+at some location
+l
+speci-
+es what kinds of updates at that location will preserve all
+existing typing judgements. Then, as before, a type is a
+predicate on states
+(
+a
+;
+m
+)
+and root-pointers
+x
+of type inte-
+ger. In our object logic, we would write the types of these
+logical objects as,
+allocset
+=
+numn!
+type
+value
+=
+allocset
+
+memory
+
+num
+type
+=
+num
+
+value
+!
+o
+The astute reader will notice that the metalogical type of
+type is recursive, and in a way that has an inconsistent
+cardinality: the set of types must be bigger than itself.
+This problem had us stumped for over a year, but we now
+have a tentative solution that replaces the type (in the al-
+locset) with the G¨
+odel number of a type. We hope to re-
+port on this result soon; we are delayed by our general
+practice of machine-checking our proofs in Twelf before
+submitting papers for publication, which in this case has
+saved us from some embarrassment.5.4 Typed machine language
+a level to do proof-carrying code directly. Kedar Swadi,
+Gang Tan, Roberto Virga, and I have been designing
+a lower-level representation, called
+typed machine lan-
+guage
+, that will serve as the interface between compilers
+and our prover. In fact, we hope that a clean enough def-
+inition of this language will shift most of the work from
+the prover to the compiler's type-checker.
+In order to avoid overspecializing the typed machine
+language (TML) with language-specic constructs such
+as records and disjoint-union variants, our TML will use
+very low-level typing primitives such as union types, in-
+tersection types, offset (address-arithmetic) types, and de-
+7
+pendent types. This will make type-checking of TML dif-
+cult; we will need to assume that each compiler will have
+a source language with a decidable type system, and that
+translation of terms (and types) will yield a witness to the
+type-checking of the resultant TML representation.
+Abstract machine instructions.
+One can view ma-
+chine instructions at many levels of abstraction:
+1. At the lowest level, an instruction is just an integer,
+an opcode encoding.
+2. At the next level, it implements a relation on raw ma-
+chine states
+(
+r
+;
+m
+)
+7!
+(
+r0;
+m0)
+.
+3. At a higher level, we can say that the Sparc
+add
+in-
+struction implements a machine-independent notion
+of
+add,
+and similarly for other instruction.
+4. Then we can view
+add
+as manipulating not just regis-
+ters, but local variables (which may be implemented
+in registers or in the activation record).
+5. We can view this instruction as one of various typed
+instructions on typed values; in the usual view,
+add
+has type int
+
+int
+!
+int, but the address-arithmetic
+add
+has type
+(
+t0
+t1
+:::
+
+tn)
+
+const
+(
+i
+)
+!
+(
+ti
+ti
++
+1
+:::
+
+tn)
+for any
+i
+.
+y0 : 
+t0y1 : 
+t1y2 : 
+t2y3 : 
+t3108
+m
+x
+x
++2
+110
+6. Finally, we can specialize this typed
+add
+to the par-
+ticular context where some instance of it appears, for
+example by instantiating the
+i
+,
+n
+,and
+tiin the previ-
+ous example.
+Abstraction level 1 is used in the statement of the theorem
+(safety of a machine-language program
+p
+). Abstraction
+level 5 is implicitly used in conventional proof-carrying
+tic models for each of these levels, and then proving lem-
+mas that can convert between assertions at the different
+levels.
+Hoare logic.
+In reasoning about machine instructions at
+a higher level of abstraction, notions from Hoare logic
+are useful: preconditions, postconditions, and substition.
+Without adding any new axioms, we can dene a notion
+of predicates on states to serve as preconditions and post-
+conditions, and substitution as a relation on predicates.
+But this can rapidly become inefcient, leading to proofs
+that are quadratic or exponential in size. Kedar Swadi,
+Roberto Virga, and I have taken some steps in lemma-
+teresting related work has been done in Compaq SRC's
+Software engineering practices.
+We dene all of these
+abstraction levels in order to modularize our proofs. Since
+our approach to PCC shifts most of the work to the hu-
+man prover of static, machine-checkable lemmas about
+the programming language's type system, we nd it im-
+perative to use the same software engineering practices in
+implementing proofs as are used in building any large sys-
+tem. The three most important practices are (1) abstrac-
+tion and modularity, (2) abstraction and modularity, and
+(3) abstraction and modularity. At present, we have about
+thirty thousand lines of machine-checked proofs, and we
+would not be able to build and maintain the proofs without
+a well designed modularization.6 Pruning the runtime systemJust as bugs in the compiler (of a conventional system)
+or the proof checker (of a PCC system) can create security
+holes, so can bugs in the runtime system: the garbage col-
+lector, debugger, marshaller/unmarshaller, and other com-
+ponents. An important part of research in Foundational
+PCC is to move components from the runtime system to
+the type-checkable user code. Then, any bugs in such
+components will either be detected by type-checking (or
+proof-checking), or will be type-safe bugs that may cause
+incorrect behavior but not insecure behavior.
+Garbage collectors do two strange things that have
+made them difcult to express in a type-safe language:
+they allocate and deallocate arenas of memory contain-
+ing many objects of different types, and they traverse (and
+copy) objects of arbitrary user-chosen types. Daniel Wang
+the motto,
+Garbage collection
+=
+Regions
++
+Intensional types.
+8
+be applied to the problem of garbage collection, as no-
+ticed in important recent work by Walker, Crary, and Mor-
+sional type calculi of originally developed by Harper and
+region operators and management of pointer sharing; re-
+intensional type system.
+Other potentially unsafe parts of the runtime system
+are ad hoc implementations of
+polytypic
+functions  those
+that work by induction over the structure of data types
+ such as polymorphic equality testers, debuggers, and
+marshallers (a.k.a. serializers or picklers). Juan Chen and
+I have developed an implementation of polytypic primi-
+tives as a transformation on the typed intermediate repre-
+lRtrans-
+typic functions to be typechecked, but unlike their calcu-
+lus, ours does not require dependent types in the typed
+intermediate language and is thus simpler to implement.7 ConclusionOur goal is to reduce the size of the trusted comput-
+ing base of systems that run machine code from untrusted
+sources. This is an engineering challenge that requires
+work on many fronts. We are fortunate that during the
+last two decades, many talented scientists have built the
+mathematical infrastructure we need  the theory and im-
+plementation of logical frameworks and automated theo-
+rem provers, type theory and type systems, compilation
+and memory management, and programming language
+design. The time is ripe to apply all of these advances
+as engineering tools in the construction of safe systems.References
+in Twelf. www.cs.princeton.edu/
+
+appel/twelf-tutorial,
+February 2000.
+curity policies in proof-carrying code. Technical Report
+TR-636-01, Princeton University, March 2001.
+types and machine instructions for proof-carrying code. In
+POPL '00: The 27th ACM SIGPLAN-SIGACT Symposium
+on Principles of Programming Languages
+, pages 243253.
+ACM Press, January 2000.
+model of recursive types for foundational proof-carrying
+code. Technical Report TR-629-00, Princeton University,
+October 2000.
+Efcient substitution in hoare logic expressions. In
+4th In-
+ternational Workshop on Higher-Order Operational Tech-
+niques in Semantics (HOOTS 2000)
+. Elsevier, September
+2000. Electronic Notes in Theoretical Computer Science
+41(3).
+polytypic polymorphism. Technical Report CS-TR-635-
+01, Princeton University, March 2001.
+Blau, Ken Cline, and Mark Plesko. A certifying compiler
+for Java. In
+Proceedings of the 2000 ACM SIGPLAN Con-
+ference on Programming Language Design and Implemen-
+tation (PLDI '00)
+. ACM Press, June 2000.
+sis. In
+ACM SIGPLAN International Conference on Func-
+tional Programming Languages
+, September 1999.
+tial explosion: Generating compact verication conditions.
+In
+POPL 2001: The 28th ACM SIGPLAN-SIGACT Sym-
+posium on Principles of Programming Languages
+, pages
+193205. ACM Press, January 2001.
+framework for dening logics.
+Journal of the ACM
+,
+40(1):143184, January 1993.
+phism using intensional type analysis. In
+Twenty-second
+Annual ACM Symp. on Principles of Prog. Languages
+,
+pages 130141, New York, Jan 1995. ACM Press.
+instruction syntax and semantics in higher-order logic. In
+17th International Conference on Automated Deduction
+,
+June 2000.
+scavenging. In
+ACM SIGPLAN Conference on Program-
+ming Language Design and Implementation (PLDI'01)
+,
+page to appear, June 2001.
+From System F to typed assembly language.
+ACM Trans.
+on Programming Languages and Systems
+, 21(3):527568,
+May 1999.
+24th ACM
+SIGPLAN-SIGACT Symposium on Principles of Program-
+ming Languages
+, pages 106119, New York, January
+1997. ACM Press.
+Compiling with Proofs
+.PhDthe-
+sis, School of Computer Science, Carnegie Mellon Univer-
+sity, Pittsburgh, PA, September 1998.9
+tems. In A. Bundy, editor,
+Proceedings of the 12th Inter-
+national Conference on Automated Deduction
+, pages 811
+815, Nancy, France, June 1994. Springer-Verlag LNAI
+814.
+urmann. System descrip-
+tion: Twelf  a meta-logical framework for deductive sys-
+tems. In
+The 16th International Conference on Automated
+Deduction
+. Springer-Verlag, July 1999.
+andez. Specifying rep-
+resentations of machine instructions.
+ACMTrans.onPro-
+gramming Languages and Systems
+, 19(3):492524, May
+1997.
+typed call-by-value
+l
+-calculus using a stack of regions. In
+Twenty-rst ACM Symposium on Principles of Program-
+ming Languages
+, pages 188201. ACM Press, January
+1994.
+memory management via static capabilities.
+ACM Trans.
+on Programming Languages and Systems
+, 22(4):701771,
+July 2000.
+garbage collectors. In
+POPL 2001: The 28th ACM
+SIGPLAN-SIGACT Symposium on Principles of Program-
+ming Languages
+, pages 166178. ACM Press, January
+2001.10

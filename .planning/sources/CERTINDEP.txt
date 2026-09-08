@@ -1,0 +1,1940 @@
+Towards Compiler-Independent Certifying CompilationDan Grossman Greg Morrisett
+Department of Computer Science
+Cornell UniversityAbstract
+Certifying compilation allows a compiler to produce anno-
+tations which prove that target code abides by a specified
+safety policy. An independent verifier can check the code
+without needing to trust the compiler. For such a system
+to be generally useful, the safety policy should be expressive
+enough to allow different compilers to effectively produce
+certifiable code.
+In this work, we use our experience in writing a certifying
+compiler to suggest general design principles which should
+allow concise yet expressive certificates. As an extended ex-
+ample, we present our compiler's translation of the control
+flow of Popcorn, a high-level language with function point-
+ers and exception handlers, to
+TALx86
+, a typed assembly
+language with registers, a stack, memory, and code blocks.
+This example motivates techniques for controlling certificate
+size and verification time.
+We quantify the effectiveness of techniques for reducing
+the overhead of certifying compilation by measuring the ef-
+fects their use has on a real Popcorn application, the com-
+piler itself. The selective use of these techniques can change
+certificate size and verification time by well over an order of
+magnitude.
+1 Background
+A certifying compiler takes high-level source code and pro-
+duces target code with a
+certificate
+which ensures that the
+target code respects a desired safety or security policy. To
+date, certifying compilers have primarily concentrated on
+producing certificates of type safety. For example, Sun's
+javac
+compiler maps Java source code to statically typed
+Java Virtual Machine Language (JVML) code. The JVML
+code includes typing annotations that a dataflow analysis-
+based verifier can use to ensure that the code is type safe.
+However, both the instructions and the type system of
+JVML are relatively high-level and are specifically tailored
+to Java. Consequently, JVML is ill-suited for compiling
+a variety of source-level programming languages to high-
+performance code. For example, JVML provides only high-
+level method-call and method-return operations. Also, it
+provides no provision for performing general tail-calls on
+methods. Therefore, JVML cannot be used as a target for
+certifying compilers of functional programming languages
+such as Scheme that require tail-call elimination.
+In addition, current platforms for JVML either interpret
+programs or compile them further to native code. To achieve
+acceptable performance seems to demand compilation with
+a good deal of optimization. To avoid security or safety
+holes, the translation from JVML to native code should also
+be certifying so that we may easily verify the safety of the
+resulting code.
+Another example of a certifying compiler is Necula and
+small, type-safe subset of C to high-performance DEC Al-
+pha assembly language. The key novelty of Touchstone is
+that the certificate it produces is a formal \proof" that the
+code is type-correct. Checking the proof for type-correctness
+is relatively easy, especially when compared to the
+ad hoc
+verification process of the JVML. As such, the Touchstone
+certificates provide a higher degree of trustworthiness.
+The proofs of the Touchstone system are represented us-
+vantage of using LF to encode the proofs is that, from an im-
+plementation perspective, it is easy to change the type sys-
+tem of the target language. In particular, the proof checker
+is parameterized by a set of primitive axioms and inference
+rules that effectively define the type system. The checker
+itself does not need to change if these rules are changed.
+Consequently, the use of LF makes it easy to change type
+systems to adapt to different source languages or different
+compilation strategies.
+Nonetheless, while changing the type system is easy for
+the implementor, doing so obligates one to an enormous
+proof burden: Every change requires a proof of the sound-
+ness of the type system with respect to the underlying ma-
+chine's semantics. Constructing such proofs is an extremely
+difficult task.
+1.1 An Alternative Approach
+The goal of our work is to make it easy for certifying com-
+pilers to produce provably type-correct code without having
+to change the type system of the target language. Towards
+this end, we have been studying the design and implementa-
+tion of general-purpose type systems suitable for assembly
+constructs that support certifying compilation of a number
+of orthogonal programming language features.
+Our current work focuses on the design of an extremely
+expressive type system for the Intel IA32 assembly language
+and a verifier that we call
+TALx86
+possible, we have avoided baking in high-level language ab-
+stractions like procedures, exception handlers, or objects.
+We also have not baked in compiler-specific abstractions
+such as activation records or calling conventions. Rather,
+thetypesystemof
+TALx86
+provides a number of primi-
+tive type constructors, like parametric polymorphism, la-
+bel types, existential types, products, recursive types, etc.
+that may be used to encode language features and compiler
+invariants. These type constructors have either been well
+studied in other contexts or modeled and proven sound by
+our group.
+In addition, we and others have shown how to encode a
+number of important language and compiler features using
+our type constructors. For example, our encoding of pro-
+cedures easily supports tail-call optimizations because the
+control-flow transfers are achieved through simple machine-
+level jumps. In other words, we did not have to change the
+type system of
+TALx86
+to support these optimizations. In
+this respect,
+TALx86
+provides an attractive target for certi-
+fying compilers.
+1.2 The Problem
+Unfortunately, there is a particularly difficult engineering
+tradeoff that arises when a certifying compiler targets a
+general purpose type system like
+TALx86
+: Encoding high
+level language features, compiler invariants, and optimiza-
+tions into primitive type constructors results in extremely
+large types and typing annotations {
+often orders of mag-
+nitude larger than the code itself
+. Thus, there is a very real
+danger that our noble goal of using one general-purpose type
+system will be defeated by practical considerations of space
+and time.
+going even further than we do with respect to minimizing
+potential soundness errors. In particular, they have recently
+proposed formally specifying the type system in terms that
+relate directly to the underlying machine semantics. By em-
+bedding the policy in a higher-order logical framework, they
+hope that compilers may define their own type systems and
+formally prove them sound with respect to the underlying
+semantics. This work is a promising direction for developing
+an infrastructure that is truly independent of the source lan-
+guage and compiler. However, it is clear that an even more
+primitive approach than ours will only exacerbate the prob-
+lems with respect to certificate size and verification time.
+The work presented here is essentially a case study
+in writing a certifying compiler that targets the general-
+purpose typed assembly language
+TALx86
+. The source lan-
+guage for our compiler, called Popcorn, shares much of its
+syntax with C, but it has a number of advanced language
+features including first-class parametric polymorphism, non-
+regular algebraic datatypes with limited pattern matching,
+function pointers, exceptions, first-class abstract data types,
+modules, etc. Indeed, the language is suitably high-level
+that we have easily ported various ML libraries to Popcorn
+and constructed the certifying compiler for Popcorn in Pop-
+corn itself.
+Although the
+TALx86
+type system is very expressive, it
+is far from a \universal typed assembly language". How-
+ever, we have found that it is expressive enough to allow a
+reasonable translation of Popcorn's linguistic features. Be-
+cause the compiler's invariants are encoded in the primitive
+typing constructs of
+TALx86
+, the most difficult aspect of ef-
+ficient, scalable verification is handling the potentially enor-
+mous size of the target-level types. We use our experience
+to suggest general techniques for controlling this overhead
+that we believe transcend the specifics of our system. The
+efficacy of these techniques is demonstrated quantitatively
+for the libraries and compiler itself. In particular, the size
+of the type annotations and the time needed to verify the
+libraries and compiler itself are essentially linear in the size
+of the object code.
+In the next section, we give a taxonomy for general ap-
+proaches to reducing typing annotation overhead and fur-
+ther discuss other projects related to certifying compilation.
+Then in Section 3 we summarize relevant aspects of the
+TALx86
+type system, annotations, and verification process.
+We then show how these features are used to encode the
+provably safe compilation of the control-flow aspects of Pop-
+corn, including procedures and exceptions. This extended
+example demonstrates that an expressive type system can
+allow a reasonable compilation strategy for an unknown lan-
+guage. It also shows qualitatively that if handled naively,
+type annotation size becomes unwieldy. In Section 4, we
+use the example to analyze several approaches that we have
+examined for reducing type annotation overhead. Section 5
+presents the quantitative results of our investigation, where
+we conclude that the
+TALx86
+approach scales to a medium-
+size application and that almost all of the techniques con-
+tribute significantly to reducing the overheads of certifying
+compilation. Finally, we summarize our conclusions as a col-
+lection of guidelines for designers of low-level safety policies.
+2 Approaches to Efficient Certification
+Keeping annotation size small and verification time short
+in the presence of optimizations and advanced source lan-
+guages is an important requirement for a practical system
+that relies on certified code. In this section, we classify some
+approaches to managing the overhead of certifying compi-
+lation and discuss their relative merits. None of the ap-
+proaches are mutually exclusive; any system will probably
+have elements of all of them.
+The \Bake it in" Approach
+If the type system only sup-
+ports one way of compiling something, then compilers do not
+need to write down that they are using that way. For exam-
+ple, the type system could fix a calling convention and re-
+quire compilers to group code blocks into procedures. Both
+the
+javac
+and Touchstone compilers use this approach.
+Baking in assumptions about procedures eliminates the
+need for any annotations describing the interactions between
+procedures. However, it inhibits some inter-procedural opti-
+mizations (such as inter-procedural register allocation) and
+makes it difficult to compile languages with other control
+features, such as exception handlers. In general, the \bake
+it in" approach reflects particular source features into the
+target language rather than providing low-level constructors
+suitable for encoding a variety of source constructs.
+Even very general frameworks inevitably bake in more
+than the underlying machine requires, however. Although
+the work by Appel and Felty aims to remove all such restric-
+tions, doing so soundly is extremely difficult. For example,
+their current system does not allow a memory location to be
+written twice. This restriction not only effectively limits the
+current applicability to purely functional source languages,
+but it inhibits implementation strategies as common as us-
+ingacallstack.
+The \Don't optimize" Approach
+If a complicated analysis
+is necessary to prove an optimization safe, then the rea-
+2
+soning involved must be encoded in the annotations. For
+example, when compiling dynamically typed languages such
+as Scheme, dynamic type tests are in general necessary to
+ensure type safety. A simple strategy is to simply perform
+the appropriate type test before every operation. With this
+approach, a verifier can easily ensure safety with a mini-
+mum of annotations. This is the essence of the verification
+atively small annotations and fast verification, but at the
+price of performance and flexibility.
+In contrast, an optimizing compiler may attempt to elim-
+inate the dynamic checks by performing, for instance, a
+will require a more sophisticated type system to convince
+the verifier that type tests are unnecessary. In general, such
+type systems require additional annotations to make verifi-
+cation tractable. For example, the Touchstone type system
+supports static verification of array bounds checks, but re-
+quires additional invariants and proof terms to support the
+optimization.
+Another common example is record initialization. An
+easy way to prove that memory is properly initialized is
+to write to the memory in the same basic block in which
+the memory is allocated. Proving that other instruction
+schedules are safe may require dataflow annotations which
+describe the location of uninitialized memory.
+Unoptimized code also tends to be more uniform which
+in turn makes the annotations more uniform. For example,
+if a callee-save register is always pushed onto the stack by
+the callee (even when the register is not used), then the
+annotations that describe the stack throughout the program
+will have more in common. Such techniques can improve the
+results of the \Compression" approach (discussed below) at
+the expense of efficiency.
+The \Reconstruction" Approach
+If it is easy for the veri-
+fier to infer a correct annotation, then such annotations can
+be elided. For example, Necula shows how simple techniques
+may be used for automatically reconstructing large portions
+It is important that verification time not unduly suf-
+fer, however. For this reason, code producers should know
+the effects that annotation elision can have. Unfortunately,
+in expressive systems such as
+TALx86
+, many forms of type
+reconstruction are intractable or undecidable. The verifier
+could provide some simple heuristics or default guesses, but
+such maneuvers are weaker forms of the \bake it in" ap-
+proach.
+The \Compression" Approach
+Given a collection of anno-
+tations, we could create a more concise representation that
+contains the same information. One technique for producing
+a compact wire format is to run a standard program such
+as
+gzip
+on a serialized version. If the repetition in the an-
+notations manifests itself as repetition in the byte stream,
+this technique can be amazingly effective. However, it does
+not help improve the time or space required for verification
+if the byte stream is uncompressed prior to processing.
+A slightly more domain-specific technique is to create
+a binary encoding that shares common subterms between
+annotations. This approach is effectively common subex-
+pression elimination on types. Since the verifier is aware of
+this sharing, it can exploit it to consume less space. There
+is an interesting trade-off with respect to in-place modifica-
+tion. If a simplification (such as converting an annotation
+to a canonical form for internal use) is sound in all contexts,
+then it can be performed once on the shared term. However,
+if a transformation is context-dependent, the verifier must
+make a copy in the presence of sharing.
+Work on reducing the size of JVML annotations have
+ple, these projects have found ways to exploit similarities
+across an entire archive of class files. Also, they carefully
+design the wire format so that downloading and verification
+may be pipe-lined. The
+TALx86
+encoding does not currently
+have this property, but there is nothing essential to the lan-
+guage that prevents it.
+Shao
+et al.
+offs of sharing in the context of typed intermediate lan-
+guages. They suggest a consistent use of hash-consing (es-
+sentially on-line common subexpression elimination), ex-
+plicit substitution, and de Bruijn indices as a solution. The
+problem of managing low-level types during compilation is
+quite similar to the problem of managing them during ver-
+ification, but in the case of type-directed compilation it is
+appropriate to specialize the task to the compiler.
+The \Abbreviation" Approach
+The next step beyond sim-
+ple sharing is to use
+higher-order
+annotations to factor out
+common portions. Such annotations are essentially func-
+tions at the level of types. This approach was suggested
+by Tarditi
+et al.
+Section 3, this approach can exploit similarities that shar-
+ing cannot. Furthermore, higher-order annotations make it
+relatively easy for a compiler writer to express high-level
+abstractions within the type system of the target language.
+In our experience, using abbreviations places no additional
+burden on the compiler writer since she is already reason-
+ing in terms of these abstractions. However, if the verifier
+must expand the abbreviations in order to verify the code,
+no gain in verification space is achieved and verification time
+may suffer.
+In our system, we use
+all
+of these approaches to reduce
+annotation size and verification time. However, we have at-
+tempted to minimize the \bake it in" and \don't optimize"
+approaches in favor of the other techniques. Unlike
+javac
+,
+ECC or Touchstone,
+TALx86
+makes no commitment to call-
+ing convention or data representation. In fact, it has no
+built-in notion of functions; all control flow is just between
+blocks of code. The design challenge for
+TALx86
+, then, is
+to provide generally useful constructors that compilers can
+use in novel ways to encode the safety of their compilation
+strategy.
+However, as a type system,
+TALx86
+does \bake in" more
+than a primitive logical description of the machine. For
+example, it builds in a distinction between integers and
+pointers. Also, memory locations are statically divided into
+code and data (although extensions support run-time code
+expressive low-level safety policies, we have relied on a rig-
+orous, informal proof of soundness and a procedural imple-
+mentation of the verifier. This approach has allowed us to
+examine the feasibility of compiler-independent safety poli-
+cies on a far larger scale than has been previously possible.
+In essence, the motivation for our compiler is to stress
+the implementation of all these ideas with a medium-size ap-
+plication. In that vein, the compiler consists of 39 modules;
+3
+3 Compiling to TALx86: An Extended Example
+In this section, we briefly review the structure of the
+TALx86
+type system, its annotations, and the process of verification.
+More thorough discussions of the underlying formalism may
+details relevant to our study.
+A
+TALx86
+object file consists of Intel IA32 assembly lan-
+guage instructions and data. As in a conventional assembly
+language, the instructions and data are organized into la-
+beled sequences. Unlike conventional assembly language,
+some labels are equipped with a typing annotation. The
+typing annotations on the labels of instruction sequences,
+called
+code types
+, specify a typing pre-condition that must
+be satisfied before control may be transferred to the la-
+bel. The pre-condition specifies, among other things, the
+types of registers and stack slots. For example, if the code
+type annotating a label
+L
+is
+f
+eax:int4, ebx:S(3), ecx:^
+*[int4,int4]
+g
+, then control may only be transferred to
+the address denoted by
+L
+when the register
+eax
+contains a
+4-byte integer, the register
+ebx
+contains the integer value 3,
+and the register
+ecx
+contains a pointer to a pair of 4-byte
+integers.
+Verification of code proceeds by taking each labeled in-
+struction sequence and building a typing context that as-
+sumes registers have values with types as specified by the
+pre-condition. Each instruction is then type-checked, in se-
+quence, under the current set of context assumptions, pos-
+sibly producing a new context. For most instructions, the
+verifier can automatically infers a suitable typing post con-
+dition in a style similar to data-flow analysis or strongest
+post-conditions. Some instructions require additional anno-
+tations to help the verifier. For example, in some settings,
+it is necessary to explicitly coerce values to an isomorphic
+type or super type or to explicitly instantiate polymorphic
+type variables.
+Not all labels require a typing annotation. However, code
+blocks without annotations may be checked multiple times
+under different contexts, depending upon the control-flow
+paths of the program. To ensure termination of verification,
+the type-checker requires annotations on labels that are (a)
+moved into a register, the stack, or data structure (
+e.g.
+ex-
+ception handlers), (b) are the targets of backwards branches
+(
+e.g.
+loop headers), or (c) are exported from the object file
+module (
+e.g.
+function entry points.) These restrictions en-
+sure that verification of an object file terminates.
+As in a conventional compiler, our certifying compiler
+translates the high-level control flow constructs of Popcorn
+into suitable collections of labeled instruction sequences with
+appropriate low-level control transfers. For present pur-
+poses, control flow in Popcorn takes one of three forms:
+ffl
+An intra-procedural jump (e.g., loops and conditionals)
+ffl
+A function call or return
+ffl
+An invocation of the current exception handler
+Currently, our compiler only performs intra-procedural
+optimizations, so the code types for function entry labels
+are quite uniform and can be derived systematically from
+the source-level function's type. For simplicity, we discuss
+these code types first. We then discuss the code types for
+labels internal to functions, focusing on why they are more
+complicated than function entries. We emphasize that the
+distinction between the different flavors of code labels (func-
+tion entries, internal labels, exception handlers) is a Popcorn
+convention encoded in the pre-conditions and is in no way
+specific to
+TALx86
+. (Indeed, we have constructed other toy
+compilers that use radically different conventions.)
+In what follows, we present relevant
+TALx86
+constructs as
+necessary, but for the purposes of this paper, it is sufficient
+to treat the types as low-level syntax for describing pre-
+conditions. Our purpose is not to dwell on the artifacts of
+TALx86
+or its relative expressiveness. Rather, we want to
+give an intuitive feeling for the following claims which we
+believe transcend
+TALx86
+:
+ffl
+If the safety policy does not bake in data and control
+flow abstractions, then the annotations the compiler
+uses to encode them can become large.
+ffl
+In fact, the annotations describing compiler conven-
+tions consume much more space than the annotations
+that are specific to a particular source program.
+ffl
+Although the compiler convention annotations are
+large, they are also very uniform and repetitious,
+though they become less so in the presence of opti-
+mizations.
+Because of this focus, we purposely do not explain some of
+the aspects of the annotations other than to mention the
+general things they are encoding. The reader interested in
+3.1 Function Entry Labels
+As a running example, we consider a Popcorn function
+foo
+which takes one parameter, an
+int
+, and returns an
+int
+.
+The Popcorn type
+int
+is compiled to the
+TALx86
+type
+int4
+.
+Arithmetic operations are allowed on values of this type but
+treating them as pointers is not. Our compiler uses the
+standard C calling convention for the IA32. Under this con-
+vention, the parameters are passed on the stack, the caller
+pops the parameters, the return address is shallowest on the
+stack, and the return value is passed in register EAX. All
+of these specifics are encoded in
+TALx86
+by giving
+foo
+this
+pre-condition:
+foo:
+8
+s:Ts.
+f
+esp:
+f
+esp: int4::s eax:int4
+g
+::int4::s
+g
+The pre-condition for
+foo
+concerns only ESP (the stack
+pointer) and requires that this register point to a stack that
+contains a return address (which itself has a pre-condition),
+then an
+int4
+(
+i.e.
+the parameter), and then some stack,
+s
+. The return address expects an
+int4
+in register EAX
+and the stack to have shape
+int4::s
+. The pre-condition is
+polymorphic over the \rest" of the stack as indicated by the
+forall-quantification over the stack-type variables
+s
+.This
+allows a caller to abstract the current type of the stack upon
+entry, and ensure that the type is preserved upon return.
+Types in
+TALx86
+are classified into kinds (types of types),
+so that we do not confuse \standard" types such as
+int4
+with non-standard types such as stack types. To maintain
+the distinction, we must label the bound type variable
+s
+with its kind (
+Ts
+).
+Notice that our annotation already includes much more
+information than it would need to if the safety policy dic-
+tated a calling convention. In that case, we would presum-
+ably just give the parameter types and return type of the
+function.
+4
+Our annotation does not quite describe the standard
+C calling convention. In particular, the standard requires
+EBX, ESI, and EDI to be callee-save. (It also requires EBP,
+traditionally the frame pointer, to be callee-save. Our com-
+piler uses EBP for the exception handler.) We encode callee-
+save registers using polymorphism:1foo:
+8
+s:Ts a1:T4 a2:T4 a3:T4
+.
+f
+esp:
+f
+esp: int4::s eax:int4 ebx:a1 esi:a2 edi:a3
+g
+::int4::s
+ebx:a1 esi:a2 edi:a3
+g
+This pre-condition indicates that for any standard types
+a1
+,
+a2
+,
+a3
+,2the appropriate registers must have those types
+before
+foo
+is called and again when the return address is
+invoked. This annotation restricts the behavior of
+foo
+to
+preserve these registers since it does not know of any other
+values with these types. Notice that if we wish to use differ-
+ent conventions about which registers should be callee-saves,
+then we need only change the pre-condition on
+foo
+.Inpar-
+ticular, we do not need to change the underlying type system
+of
+TALx86
+.
+Much more detail is required to encode our compiler's
+translation of exception handling, so we just sketch the main
+ideas. We reserve register EBP to point into the middle of
+the stack where a pointer to the current exception handler
+resides. This handler expects an exception packet in register
+EAX. Since
+foo
+might need to raise an exception, its pre-
+condition must encode this strategy. Also, it must encode
+that if
+foo
+returns normally, the exception handler is still in
+EBP. In the arcane syntax of
+TALx86
+, we express all these
+details as follows:
+foo:
+8
+s1:Ts s2:Ts
+a1:T4 a2:T4 a3:T4.
+f
+esp:
+f
+esp: int4::s1@
+f
+esp:s2 eax:exn
+g
+::s2
+ebp:
+f
+esp:s2 eax:exn
+g
+::s2
+eax:int4
+ebx:a1 esi:a2 edi:a3
+g
+::int4::s1@
+f
+esp:s2 eax:exn
+g
+::s2
+g
+ebp:
+f
+esp:s2 eax:exn
+g
+::s2
+ebx:a1 esi:a2 edi:a3
+g
+We urge the reader not to focus on the details other than
+to notice that none of the additions are particular to
+foo
+,
+nor would it be appropriate for a safety policy to bake in
+this specific treatment of exception handlers. Also, we have
+assumed there is a type
+exn
+for exception packets.
+TALx86
+does not provide this type directly, so our compiler must
+Each of the four occurrences of
+exn
+above should in fact be
+replaced by the typing expression
+9
+but in the interest of type-setting, we spare the reader the
+result.
+For the sake of completeness, we offer a final amendment
+to make this pre-condition correct. Our compiler schedules
+function calls while some heap records may be partially ini-
+tialized. This strategy is better than the \don't optimize"
+approach of always initializing records within a basic block,
+but it requires that we convince the verifier that no aliases to
+1Here and below, underlining is for emphasis; it is not part of
+TALx86
+.2The kind
+T4
+includes all types whose values fit in a register.partially initialized records escape. For reasons not relevant
+to this discussion, the pre-condition for
+foo
+must be poly-
+morphic over two
+capability variables
+to work:
+foo:
+8
+s1:Ts s2:Ts e1:Tcap e2:Tcap
+a1:T4 a2:T4 a3:T4.
+f
+esp:
+f
+esp: int4::s1@
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+ebp:
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+eax:int4
+ebx:a1 esi:a2 edi:a3
+g
+::int4::s1@
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+g
+ebp:
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+ebx:a1 esi:a2 edi:a3
+g
+In short, because our compiler has complicated inter-
+procedural invariants, the naive encoding into
+TALx86
+is
+anything but concise. (The unconvinced reader is invited
+to encode a function which takes a function pointer as a pa-
+rameter.) However, the only parts particular to our example
+function
+foo
+are the return type, which is written once, and
+the parameter types, which are written twice. Moreover,
+even these parts are the same for all functions that take and
+return integer values.
+3.2 Internal Labels
+In this section, we present the pre-conditions for labels that
+are only targets of intra-procedural jumps. For simplicity,
+we only discuss labels in functions that do not declare any
+local exception handlers. This special case is by far the most
+common, so it is worth considering explicitly. Because our
+compiler does perform intra-procedural optimizations, most
+relevantly register allocation, the pre-conditions for internal
+labels are less uniform than those for function entry labels.
+Specifically, they must encode several properties about the
+program point that the label designates:
+ffl
+A local variable may reside in a register or on the stack.
+ffl
+Some stack slots may not hold live values, so along
+different control-flow paths to the label, a stack slot
+may have values of different types.
+ffl
+Some callee-save values may be stored on the stack
+while others remain in registers.
+ffl
+Some heap records may be partially initialized.
+First we describe the relevant aspects of our term trans-
+lation. Any callee-save values that cannot remain in reg-
+isters are stored on the stack in the function prologue and
+restored into registers in the function epilogue. The space
+for this storage is just shallower than the return address. Lo-
+cal variables that do not fit in registers are stored in \spill
+slots" that are shallowest on the stack. The number of spill
+slots remains constant in the body of a function. This strat-
+egy is fairly normal, but it is far too specific to be dictated
+by
+TALx86
+. Indeed, our original Popcorn compiler did not
+perform register allocation and simply pushed and popped
+variables on the stack as needed.
+The pre-condition for internal labels gives the type and
+location (register or spill slot) for each live local variable. If a
+stack slot is not live, we must still give it some \placeholder"
+type so that the stack type describes a stack of the correct
+5
+size. Different control-flow paths may use the same stack slot
+for temporary variables of different types. In these cases, no
+single type can serve as this placeholder.
+TALx86
+provides
+a a primitive type
+top4
+which is a super-type of all types
+of kind
+T4
+. We give this type to the dead stack slots at the
+control-flow join and the appropriate subtyping on control
+transfers is handled implicitly by the verifier.
+In addition to live variables, all of the invariants involving
+the stack, the exception handler, etc. must be preserved as
+control flows through labels, so this information looks much
+like it does for function entry labels.
+For example, suppose our function
+foo
+uses all of the
+callee-save registers and needs three spill slots. Further-
+more, suppose that at an internal label
+l
+there are two live
+variables, both of type
+int4
+, one in register ESI and one in
+the middle spill slot. Then a correct pre-condition for
+l
+is:
+l:
+8
+s1:Ts s2:Ts e1:Tcap e2:Tcap a1:T4 a2:T4 a3:T4.
+f
+esp:
+top4::int4::top4::a3::a2::a1
+::
+f
+esp: int4::s1@
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+ebp:
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+eax:int4
+ebx:a1 esi:a2 edi:a3
+g
+::int4::s1@
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+g
+ebp:
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+esi: int4
+g
+Our register allocator tries not to use callee-save registers
+so that functions do not have to save and restore them. For
+example, suppose registers ESI and EDI are not used in
+a function. Then internal labels will encode that a value of
+type
+a1
+is on the stack in the appropriate place, ESI contains
+a value of type
+a2
+,andEDIcontainsavalueoftype
+a3
+.
+If one or more records were partially initialized on entry
+to
+l
+, then the pre-condition would have a more complicated
+capability; the details of this strategy are not important.
+What should be clear at this point is that the type anno-
+tation for a given internal label will be considerably less
+uniform than that of a function entry point.
+4 Recovering Conciseness
+Continuing the examples from the previous section, we de-
+scribe and critique three techniques for reducing the size of
+annotations. The next section quantifies the effectiveness of
+these and other techniques.
+4.1 Sharing Common Subterms
+Since the annotations repeat information, we can greatly
+reduce their total size by replacing identical terms with a
+pointer to a shared term. This technique is common referred
+to as \hash consing". As an example, consider again the pre-
+condition for the function
+foo
+which takes and returns an
+int
+:
+type exn =
+9
+foo:
+8
+s1:Ts s2:Ts e1:Tcap e2:Tcap a1:T4 a2:T4 a3:T4.
+f
+esp:
+f
+esp: int4::s1@
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+ebp:
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+eax:int4
+ebx:a1 esi:a2 edi:a3
+g
+::int4::s1@
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+g
+ebp:
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+ebx:a1 esi:a2 edi:a3
+g
+Removing some common subterms by hand, we can
+represent the same information with the following pseudo-
+annotation:
+1=
+9
+3=
+f
+esp:s2 eax:
+1
+cap:e2
+g
+::s2
+4 = int4::s1@
+3
+5=
+f
+esp:
+4
+ebp:
+3
+eax:int4
+ebx:a1 esi:a2 edi:a3 cap:
+2
+g
+::
+4
+foo:
+8
+s1:Ts s2:Ts e1:Tcap e2:Tcap a1:T4 a2:T4 a3:T4.
+f
+esp:
+5
+ebp:
+3
+ebx:a1 esi:a2 edi:a3 cap:
+2
+g
+Other pre-conditions can share subterms with this one.
+For example, the pre-condition for
+l
+from the previous sec-
+tion can be re-written as:
+l:
+8
+s1:Ts s2:Ts e1:Tcap e2:Tcap a1:T4 a2:T4 a3:T4.
+f
+esp: top4::int4::top4::a3::a2::a1::
+5
+ebp:
+3
+cap:
+2
+esi:int4
+g
+Despite exploiting significant sharing, this example illus-
+trates some limitations of sharing common subterms. First,
+we would like to share all the occurrences of \
+s1:Ts s2:Ts
+... a3:T4
+", but whether or not we can do so depends on
+the abstract syntax of the language. Second, pre-conditions
+for functions with different parameter types or return types
+cannot exploit subterms 4 or 5.
+4.2 Parameterized Abbreviations
+TALx86
+provides user-defined (
+i.e.
+compiler-defined) higher-
+order type constructors. These functions from types to types
+have several uses. In particular, they are necessary to en-
+code source-level type constructors, such as array, list, or
+object types. Here we show how to use higher-order type
+constructors to define parameterized abbreviations. Such
+abbreviations can be used to share common patterns that
+hash-consing of subterms cannot, but for our verifier, it is
+difficult to exploit abbreviations during verification.
+Since every function entry pre-condition created by Pop-
+corn is the same except for its parameter types and return
+types, we can create a parameterized abbreviation that de-
+scribes the generic situation. Then at each function entry
+label, we apply the abbreviation to the appropriate types.
+type F = fn params:Ts ret:T4
+.
+8
+s1:Ts s2:Ts e1:Tcap e2:Tcap a1:T4 a2:T4 a3:T4.
+f
+esp:
+f
+esp: params
+@s1@
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+ebp:
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+eax: ret
+ebx:a1 esi:a2 edi:a3
+g
+::params
+@s1@
+f
+esp:s eax:exn cap:e2
+g
+::s2
+g
+ebp:
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+ebx:a1 esi:a2 edi:a3
+6
+g
+foo: F int4::se int4
+The only new feature other than the abbreviation is the
+type
+se
+which describes empty stacks. We use it here to
+terminate a list of parameter types. The use of abbrevia-
+tions greatly simplifies the structure of the compiler because
+it centralizes invariants such as calling conventions. In ad-
+dition, abbreviations make it easier to print out meaningful
+error messages when a type-error is encountered.
+It is not clear how a compiler-independent verifier could
+exploit an abbreviation like
+F
+during verification time. Sup-
+pose the first instruction in block
+foo
+increments the in-
+put parameter. The verifier must check that given the pre-
+condition
+F int4::se int4
+, it must be safe to perform an
+increment on the value on top of the stack. This verification
+requires inspecting the result of the abbreviation application
+since the verifier does not know that the argument
+int4::se
+describes the top of the stack. As we show in the section on
+experimental results, using abbreviations sometimes slows
+down verification because of this phenomenon.
+The abbreviation
+F
+can be used often because all func-
+tion entry pre-conditions are similar. To use abbreviations
+for internal labels, we must capture the additional properties
+that distinguish these pre-conditions. In addition to
+F
+'s pa-
+rameters, we also need parameters for the spill slots, the live
+registers, and something to do with partial initialization is-
+sues. We also use a primitive type constructor for combining
+two pre-conditions. That way we can pass in the live regis-
+ters as one pre-condition and merge it with a pre-condition
+that describes the reserved registers.
+type L =
+fn params:Ts ret:T4 spills:Ts part:Tcap regs:Tpre
+.
+8
+s1:Ts s2:Ts e1:Tcap e2:Tcap a1:T4 a2:T4 a3:T4.
+f
+esp:
+spills
+@a3::a2::a1
+::
+f
+esp: params@
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+ebp:
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+eax: ret
+ebx:a1 esi:a2 edi:a3
+g
+::params@
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+g
+ebp:
+f
+esp:s2 eax:exn cap:e2
+g
+::s2
+cap: &[part
+,e1,e2]
+g
+& regs
+l: L int4::se int4
+top4::int4::top4::se ce
+f
+esi:int4
+g
+L
+is correct, but it is only useful for labels in functions
+where all three callee-save values are stored on the stack.
+With a \don't optimize" approach, we could make all func-
+tions meet this description, but we lose most of the advan-
+tages of callee-save registers as a result. A better approach
+is to provide 23= 8 different abbreviations, one for each
+combination of callee-save values being stored on the stack.
+In fact, we only need four such abbreviations since our reg-
+ister allocator uses the callee-save registers in a fixed order.
+Since the compiler is the creator of the abbreviations, this
+specialization is possible and appropriate.
+4.3 Eliding Pre-conditions
+Recall that the verifier checks a code block by assuming its
+pre-condition is true and then processing each instruction in
+turn, checking it for safety and computing a pre-condition
+for the remainder of the block. At a control transfer to
+another block, it suffices to ensure that the current pre-
+condition implies the pre-condition on the destination label.
+TALx86
+takes a \reconstruction" approach by allowing
+many label pre-conditions to be elided. To check a control
+transfer to a block with an elided pre-condition, the verifier
+simply uses the current pre-condition at the source of the
+transfer to check the target block. Hence if a block with
+elided pre-condition has multiple control flow predecessors,
+it is verified multiple times under (possibly) different pre-
+conditions.
+To ensure termination of verification, we must prohibit
+annotation-free loops in the control flow graph. For this
+reason,
+TALx86
+allows a pre-condition to be elided only if
+the block is only the target of forward jumps. Even with
+this restriction, the number of times a block is checked is
+the number of
+paths
+through the control-flow graph to the
+block such that no block on the path has an explicit pre-
+condition. This number can be exponential in the number
+of code blocks, so it is unwise to elide explicit pre-conditions
+indiscriminantly. As the next section demonstrates, an ex-
+ponential number of paths is rare, but it does occur and it
+can have disastrous effects on verification time.
+The approach taken by our compiler is to set an
+elision
+threshold
+,
+T
+, and insist that no code block is verified more
+than
+T
+times. Notice that
+T
+= 0 means all labels have ex-
+plicit pre-conditions and
+T
+= 1 means all merge points have
+explicit pre-conditions. For higher values of
+T
+, we expect
+space requirements to decrease, but verification time to in-
+crease. Given a value for
+T
+, we might like to minimize the
+number of labels that have explicit pre-conditions. Unfortu-
+nately, this problem is NP-Complete for
+T
+
+3. Currently,
+the compiler does a simple greedy depth-first traversal of
+the control-flow graph, leaving off pre-conditions until the
+threshold demands otherwise.
+5 Experimental Results
+In this section, we present what we consider to be the first
+quantitative study on the practicality of certifying a real
+program using a type system not specifically designed for
+the compiler or source language. We conclude that tar-
+geting compiler-independent safety policies is practical and
+scalable, but that careful use of appropriate techniques can
+significantly reduce verification space and time.
+Our example is the Popcorn compiler itself. This choice
+saves us the effort of writing a compiler and an application.
+It also suggests that our application is useful and our source
+language is realistic. Of course, studying a new applica-
+tion written by ourselves in our own language makes many
+comparisons impossible. Since we are more interested in
+studying the overheads of compiling to expressive low-level
+safety policies than in producing excellent code, we find this
+approach attractive.
+The compiler consists of 39 Popcorn source files compiled
+separately. The more interesting optimizations performed
+the elimination of fully redundant null-checks for object
+dereferences. The entire compiler is roughly 18,000 lines
+7
+of source code and compiles to 816 kilobytes of object code
+(335 kilobytes after running
+strip
+).
+The sizes we report include the sum across files of all
+annotations, not just those for code labels. They do not
+include interface information used for type-safe linking. All
+execution times were measured on a 266MHz Pentium II
+running Windows NT 4.0. The verifier and assembler are
+We first show that naive choices in the annotation lan-
+guage and compiler can produce a system with unacceptable
+space and/or time overhead. Then we show that our actual
+implementation avoids these pitfalls. Next we adjust var-
+ious parameters and disable various techniques to discover
+the usefulness of individual approaches and how they inter-
+act. Finally, we discuss how the overhead of
+TALx86
+could
+be lowered further by extending the successful techniques to
+other aspects of the system.
+5.1 Two Bad Approaches
+A simple encoding of the
+TALx86
+annotations is insufficient.
+First, consider a system where we do not use the abbrevi-
+ations developed in Section 4, our type annotations repeat
+types rather than sharing them, and we put types on all
+code labels. Then the total annotation size for our program
+is over 4.5 megabytes, several times the size of the object
+code. As for verification time, if we make no attempt to
+share common subterms created during verification, then it
+takes 59 seconds to verify all of the files.
+A second possibility is to remove as many pre-conditions
+as possible. That is, we only put an explicit pre-condition
+on a code label if the label is used as a call destination, a
+backwards branch destination, or a first-class value. Indeed,
+the total size of our annotations drops to 1.85 megabytes.
+However,theverifiernowcheckssomecodeblocksavery
+large number of times. Total verification time rises to 18
+minutes and 30 seconds.
+These two coarse experiments yield some immediate con-
+clusions. First, the actual amount of safety information de-
+scribing a compiled program is large so we would like to ab-
+breviate it. Second, the number of loop-free paths through
+our application code is, in places, much larger than the size
+of the code. Therefore, it is unwise to make verification time
+proportional to the number of loop-free paths as the second
+approach does.
+The latter conclusion is important for certified code
+frameworks (such as proof-carrying code) that construct ver-
+ification conditions at verification time via a form of weakest
+structed condition can have exponential size by creating a
+different logical clause for every loop-free path. For a com-
+piler to exploit the weakness of such a pre-condition, it would
+need to have optimized based on an exponential amount of
+path-sensitive information. We conclude that constructing
+weakest pre-conditions in this way is impractical and waste-
+ful. We propose that such systems should use the annota-
+tions to guide the construction of the verification condition.
+5.2 A Usable System
+Having shown how bad matters can get, we now present the
+actual overhead that our system achieves. First we identify
+the main techniques used and the overall annotation size and
+verification time that result. Then we show that verification
+time is roughly proportional to file size which suggests that
+0.01
+0.1
+1
+10
+100 1000 10000 100000 1000000Total File Size (bytes)Verification Time (secs)Figure 1: Verification Time vs. File Size
+our approach should scale to larger applications. Finally, we
+partition the source code into several styles, show that the
+overhead is reasonable for all of them, and discuss salient
+differences.
+Unlike the \straw man" systems constructed above, the
+real encoding of
+TALx86
+annotations uses several tables to
+share common occurrences. Specifically, uses of identifiers,
+types, kinds, and coercions are actually indices into the ap-
+propriate table which contains the annotation. The code
+producer avoids duplicates when constructing the table. The
+benefit of this approach is proportional to the amount of rep-
+etition; there is a small penalty for annotations that occur
+only once. We call this technique \sharing"; more specifi-
+cally it is full common subexpression elimination on types
+at the file level.
+Since this sharing will not create parameterized abbrevi-
+ations, we also use the abbreviations developed in Section 3.
+We set the elision threshold to four. At this value,
+many forward control flow points will not need explicit pre-
+conditions, but no block is verified more than a small number
+of times.
+Finally, the verifier uses \hash consing" to share types
+that are created during verification. That is, when creat-
+ing a new type, the verifier consults a table to see if it has
+encountered the type previously. If so, it uses the type in
+the table. Moreover, reductions on higher-order type con-
+structors are performed in a lazy manner: in particular, we
+use a weak-head normalization strategy with memoization
+to avoid both unnecessary reductions and duplicated reduc-
+tions. As such, other uses of the type will not have to re-
+compute the reduction. Because of complications with the
+scope of abbreviations, the hash consing table is emptied
+before verifying each file. If memory becomes scarce, we
+could empty the table at any point, but this measure has
+not been necessary in practice. Note that the use of hash
+consing cannot affect the size of explicit annotations.
+With this system, total annotation size drops from 4.5
+megabytes to 419 kilobytes and verification time is reduced
+from 59 to 34.5 seconds. As for compilation time, our com-
+piler takes 40 seconds to compile the Popcorn source files
+into ASCII
+TALx86
+files which are essentially Microsoft As-
+sembler (MASM) style files augmented with annotations. A
+separate tool takes 23 seconds to assemble all of these files;
+8
+Style
+Object Code (kB)
+Annotations (kB)
+Verification Time (sec)
+Size Ratio
+Time Ratio
+Polymorphic Libraries
+36.4
+19.6
+1.19
+.54
+46.9
+Monomorphic Libraries
+34.8
+15.1
+.94
+.43
+53.1
+Mostly Type Definitions
+45.7
+30.6
+1.29
+.67
+58.9
+Machine-generated
+148.4
+82.0
+6.30
+.55
+36.6
+Compilation
+550.0
+271.4
+22.3
+.49
+36.8
+Figure 2: Effect of Different Code Styles
+this time includes the creation of the binary encoding of the
+annotations with sharing. As we add more optimizations to
+our compiler, we expect compilation time to increase more
+than verification time. The latter may actually decrease as
+object code size decreases.
+Performing
+gzip
+compression on the 419 kilobytes of an-
+notations reduces their size to 163 kilobytes. The ratio of
+compression is similar to that for our object files; the un-
+stripped files compress from 816 to 252 kilobytes and the
+stripped files compress from 335 to 102 kilobytes.
+A desirable property is that verification time is gener-
+ally proportional to file size. In theory,
+TALx86
+verification
+could take exponential time, so we are pleased to see that
+empirically this has not occurred. Figure 1 plots verification
+time against total size (object code plus annotations) for all
+of the files in the compiler. The time stays roughly pro-
+portional as file size grows by over an order of magnitude.
+Small files take proportionally longer to verify because of
+start-up costs and the overhead of using a hash cons table.
+Such files take just a fraction of a second to verify, so we
+consider these costs insignificant.
+So far we have presented results for the entire compiler
+as a whole. By analyzing the results for different styles of
+code we can gain additional insight. Of course, all of the
+code is in the same source language, compiled by the same
+compiler, and written by the authors. Nonetheless, we can
+partition the files into several broad categories:
+ffl
+Polymorphic library files: These files provide generally
+useful utilities such as iterators over generic container
+types. Examples include files for lists, dictionaries, sets,
+and re-sizing arrays.
+ffl
+Monomorphic library files: Examples include files for
+bit vectors and command-line argument processing.
+ffl
+Datatype files: These files primarily define types used
+by the compiler and provide only simple code to create
+or destruct instances of the type. Examples include
+files for the abstract syntax of Popcorn, the compiler's
+intermediate language, an abstract syntax for
+TALx86
+,
+and an environment maintained while translating from
+the intermediate language to
+TALx86
+.
+ffl
+Machine-generated files: These files include the scan-
+ner and the parser. Compared to other styles of code,
+they are characterized by a small number of large func-
+tions which contain switch statements with many cases.
+They also have large constant arrays.
+ffl
+Compilation files: These files actually do the compila-
+tion. Examples include files for type-checking, register
+allocation, and printing the output.
+Figure 2 summarizes the annotation size and verification
+time relative to the categorization.3The \Size Ratio" is
+annotation size divided by the object code size. The \Time
+Ratio" is the sum of the two sizes divided by the verification
+time.
+Most importantly, all of the size ratios are well within
+a factor of two and the time ratios are even closer to each
+other. We conclude that the overhead of producing provably
+safe machine code is not dominated by any particular style
+of code we have written. Even so, the results differ enough
+to make some interesting distinctions.
+The datatype files have the largest (worst) size ratio and
+largest (best) time ratio. The former is because type def-
+initions are compiled into annotations which describe the
+corresponding
+TALx86
+types, but there is no associated ob-
+ject code. The size ratio can actually be arbitrarily high as
+the amount of code in a source file goes to zero. The time
+ratio is also not surprising; the time-consuming part of ver-
+ification is checking that each instruction is safe given its
+context.
+The relatively high size ratio for machine-generated code
+is an artifact of how parsers are generated. Essentially, all of
+the different token types are put into a large union. The code
+which processes tokens is therefore filled with annotations
+which coerce values into and out of this union.
+The annotation size overhead for polymorphism is
+slightly larger than we expected. At the source level, a single
+type modifier lists the type variables for an entire function.
+Since
+TALx86
+has no notion of function, all of the labels for
+such a function must express their type variables.4Further-
+more, control transfers between these labels must explicitly
+instantiate the additional type variables.
+Finally, the time ratio is noticeably smaller (worse) for
+the compilation code. This style of code contains a much
+higher proportion of function calls. (Libraries have mostly
+leaf procedures. Machine-generated code has large func-
+tions.) Because of the complicated type instantiations that
+occur at a call site, these instructions take the most time to
+verify.
+5.3 Effectiveness of Individual Techniques
+So far we have shown that our system achieves reasonable
+performance and uses a number of techniques for controlling
+annotation overhead, but we have not seen which of the
+techniques are effective. In this section, we examine what
+happens if we selectively disable some of these techniques.
+Figure 3 summarizes the total annotation size when the
+elision threshold is four and the other techniques are used
+selectively. We discuss this data in detail below. When
+\Sharing" is no, we do not use tables for sharing types and
+3The sum of the verification times is slightly less than the time to
+verify all the files together due to secondary effects.4Pre-conditions can still be elided, fortunately.9
+Annotation Size (kB)
+Verification Time (sec)
+Sharing
+Abbreviations
+Uncompressed
+Compressed (kB)
+No hash consing
+Hash consing
+no
+no
+2041
+155
+50
+38
+no
+yes
+793
+132
+42
+36
+yes
+no
+503
+205
+37.5
+34.5
+yes
+yes
+419
+163
+40.5
+34.5
+Figure 3: Effect of Abbreviations, Sharing Subterms, and Hash Consing
+coercions. Instead, we repeat the types directly in the an-
+notations. We still share identifiers so that the lengths of
+strings is insignificant. If \Abbreviations" is no, then all
+abbreviations are fully expanded before the annotations are
+written. \Uncompressed" is the total size of all the anno-
+tations. \Compressed" is the sum of the result of running
+gzip
+on each file's annotations separately. The final two
+columns give total execution time with and without hash
+consing enabled.
+We first discuss the effect of sharing and abbreviations
+on the explicit annotation size. Both techniques appear very
+effective if we ignore the effect of
+gzip
+. Abbreviations alone
+reduce size by a factor of three whereas sharing alone reduces
+size by a factor of four. Using abbreviations and sharing re-
+duces size by about another fifteen percent as compared to a
+system with just sharing. Hence neither technique subsumes
+the other, but they do recover much of the same repetition.
+However, if what we really care about is the size of anno-
+tations that must be sent to a code consumer, then we should
+consider running
+gzip
+. It is clear that
+gzip
+is extremely
+effective; our worst result for compressed annotations is a
+factor of two better than our best result for uncompressed
+annotations. More subtle is the fact that
+gzip
+achieves a
+smaller result when sharing is
+not
+used in our binary encod-
+ing. This surprising result is a product of how our tables
+are implemented and how
+gzip
+performs compression. In
+short,
+gzip
+constructs its own tables and uses a much more
+compact format than our encoding. Worse, our tables hide
+repetition from
+gzip
+which looks for common strings. We
+conclude that if annotation size is the primary concern, then
+the binary encoding should remain \
+gzip
+-friendly".
+Abbreviations are actually much more effective than the
+data in the figure indicates. The compiler's abbreviations
+are only used for code pre-conditions, so optimization on this
+one aspect of annotation size must eventually demonstrate
+Amdahl's Law. We considered what the total annotation
+size would be if we removed
+all
+explicit code pre-conditions.
+Of course, the result of this drastic measure is unverifiable,
+but it provides a lower bound for the effectiveness of the
+abbreviations.5The total size is still 377 kilobytes, so ab-
+breviations reduced the size of code pre-conditions by about
+a factor of three.
+We now discuss the effect of the techniques on verifica-
+tion time. Here
+gzip
+is useless since our verifier works on
+uncompressed annotations. Without hash consing, sharing
+significantly reduces verification time. While the verifier un-
+der these conditions does not share types that it creates dur-
+ing verification, it does share types that originally occur in
+the annotations. The result suggests that these types cover
+many of those used during verification.6Without sharing,
+5Actually, there are a few other places where the abbreviations
+are used, such as when a polymorphic function is instantiated at a
+function type, but such situations are exceedingly rare in our code.6Parsing time is a small but noticeable fraction of the difference.abbreviations are a great help since they recover the most
+common occurrences. However, with sharing, abbreviations
+actually
+hurt
+verification time. Essentially, the additional
+gains in sharing are outweighed by the time to expand the
+abbreviations during verification.
+With hash consing, the different verification times are
+much closer to each other. Effectively, using a table redis-
+covers any sharing, so without sharing initially we only have
+to pay the cost to achieve this rediscovery. More interest-
+ingly, the penalty for using abbreviations goes away. We
+believe this result is due to the fact that with hash consing,
+any abbreviation applied to the same argument only needs
+to be expanded once and then the result can be used in
+multiple places.
+Using hash consing reduces verification time significantly,
+but only with a careful implementation of the hashing. For
+example, if we give our hash cons table a size near a power
+of two (as number theory warns against), verification time
+takes longer than without hash consing at all. The good
+news is that optimizing the verifier can sometimes be re-
+duced to fundamental properties of data structures. The
+bad news is this fact means the difference between verifica-
+tion times under different parameters is more brittle than
+we would like.
+As explained in the previous section,
+TALx86
+code blocks
+that are only targets of forward branches do not need an-
+notations, but they will be re-verified along every unanno-
+tated control-flow path. Given an elision threshold
+T
+,our
+compiler ensures that no block will be verified more than
+T
+times. Subject to this constraint, it uses a simple greedy al-
+gorithm to leave annotations off labels. Figure 4 shows the
+effect of changing the value of
+T
+. Sharing and abbreviations
+are both used.
+The left chart in Figure 4 shows that total annotation
+size drops by over fifteen percent as
+T
+is 1 instead of 0.
+We conclude that low-level systems should not require pre-
+conditions on all blocks. However, the additional space sav-
+ings as
+T
+is given values larger than 8 are quite small. This
+fact justifies the use of
+T
+= 4 for the other data presented.
+The other charts in Figure 4 show the verification time
+for different values of
+T
+. Verification time initially drops as
+T
+gets the value 1 instead of 0. This phenomenon indicates
+that it takes a lot of time to process an explicit annotation
+and compare it to a pre-condition. As
+T
+takes values 2, 4,
+8, and 16, verification time rises noticeably but only by a
+few seconds. We conclude that this range of values allow
+for different reasonable time-space trade-offs. As
+T
+takes
+larger values, verification time rises sharply. Although very
+few additional blocks have their pre-conditions elided, these
+blocks are then checked a very large number of times. In
+fact, for large
+T
+, the time spent verifying different files varies
+drastically since most files do not have any such blocks.
+10
+0
+100
+200
+300
+400
+500
+6000
+1
+2
+4
+8
+16
+100
+100
+0
+100
+0
+0
+infini
+t
+yElision ThresholdAnnotation Size (kB)
+Uncompressed
+Compressed
+0
+5
+10
+15
+20
+25
+30
+35
+40
+45
+0124816Elision ThresholdVerification Time (secs)
+0
+100
+200
+300
+400
+500
+600
+700
+800
+100 1000 10000 infinityElision ThresholdVerification Time (secs)Figure 4: Effect of Elision Threshold
+5.4 Useful Extensions
+We have presented a system where uncompressed safety an-
+notations consume roughly half the space of the object code
+they describe, and we have given techniques (sharing, ab-
+breviations, and elision) that help in this regard. Now we
+investigate whether the current system is the best we can
+hope to achieve or if the techniques could contribute more
+to reducing the
+TALx86
+overhead. By moving beyond what
+the current system supports, we demonstrate the latter con-
+clusion.
+First, we notice that sharing common subterms was so
+effective because it shares type annotations across an entire
+file. The file level is currently the best we can do because
+we compile each file separately. In a scenario where all of
+the object files are packaged together, it may be reasonable
+to share annotations in a single table for the entire package.
+Although our current tools cannot process such a package,
+we are able to generate it by hand and measure its size.
+The total size drops from 419 kilobytes to 338 kilobytes. We
+conclude that different files in our project have many similar
+annotations; we should be able to exploit this property to
+further reduce overhead.
+Second, the annotations that describe what coercions ap-
+ply at each instruction are not currently shared. While there
+are common occurrences in the annotations, some of the
+most common only take one byte to represent, so sharing
+these annotations must carefully avoid increasing space re-
+quirements.
+Third, verification time suffers significantly from mem-
+ory allocation and garbage collection. Although we have
+implemented hash consing to address this bottleneck, Shao
+et al.
+to suggest that two other devices, de Bruijn indices and ex-
+plicit substitutions, can further improve performance. Un-
+fortunately, modifying our verifier to use these techniques
+is non-trivial, so we relegate such an investigation to future
+work.
+Fourth, some well-chosen uses of type reconstruction
+could eliminate many of the explicit annotations. For exam-
+ple, if the verifier performed unification of (first-order) type
+variables, then the compiler could eliminate all of the type
+applications at control transfer points. This elision would
+improve our annotation size to 330 kilobytes. (We com-
+puted this figure by eliding the instantiations even though
+the verifier cannot process the result.) More importantly, re-
+construction approaches improve the size even in the pres-
+ence of
+gzip
+; the compressed annotations drop from 163
+kilobytes to 141 kilobytes in this case.
+In summary, the
+TALx86
+system shows that techniques
+such as sharing and elision make certified code scalable and
+practical, but even
+TALx86
+could use these techniques more
+aggressively to achieve lower overhead.
+6 Conclusions
+Our Popcorn compiler encodes the safety of its output in
+TALx86
+. As a Popcorn application itself, it also serves as the
+largest application we know of that has been compiled to a
+safe machine language. Because we believe safety policies
+should not be tailored to a particular compiler, we encode
+the aspects of Popcorn compilation relevant to safety in the
+more primitive constructs of
+TALx86
+. Wehavefoundthat
+the most important factor in the scalability of certifying
+compilation is the size of code pre-conditions.
+Based on our experience, we present the following conclu-
+sions for compiler-independent low-level code certification
+systems.
+ffl
+Common subexpression elimination of explicit annota-
+tions is a practical necessity. Sharing terms created
+during verification is also helpful, but it is important
+to carefully manage the overheads inherent in doing so.
+ffl
+Parameterized abbreviations can be usefully exploited
+by compilers to encode their invariants. Although ab-
+breviations improve the size of explicit annotations, it
+is more difficult to exploit abbreviations during verifi-
+cation.
+ffl
+Serial compression utilities, such as
+gzip
+, are very help-
+ful, but they are not a complete substitute for other
+techniques. Moreover, if good compression is a system
+requirement, one should understand the compression
+algorithm when designing the uncompressed format.
+ffl
+Overhead should never be proportional to the number
+of loop-free control-flow paths in a program.
+We believe these suggestions should assist other projects
+avoid common pitfalls and focus on the important factors
+for achieving expressiveness and scalability.
+11
+Acknowledgments
+Much of the
+TALx86
+infrastructure was written by other
+members of the TAL research group. Fred Smith con-
+tributed greatly to the prototype Popcorn compiler used
+for bootstrapping. We proved that optimal annotation eli-
+sion is NP-complete for an elision threshold greater than
+five; David Kempe refined the claim to include all thresh-
+olds greater than two.
+References
+of types and machine instructions for proof-carrying code.
+In
+Twenty-Seventh ACM Symposium on Principles of Pro-
+gramming Languages
+, Boston, MA, January 2000. To ap-
+pear.
+Jazz: An efficient compressed format for Java archive files.
+In
+CASCON'98
+, November 1998.
+ments to graph coloring register allocation.
+ACM Transac-
+tions on Progamming Languages and Systems
+, 16(3):428{
+455, May 1994.
+kins, and P. Markstein. Register allocation via coloring.
+Computer Languages
+, 6:47{57, 1981.
+lescing.
+ACM Transactions on Progamming Languages and
+Systems
+, 18(3):300{324, May 1996.
+In
+ACM International Conference on Functional Program-
+ming
+, pages 172{182, Paris, France, September 1999.
+ular assembly language. In
+Twenty-Sixth ACM Symposium
+on Principles of Programming Languages
+, pages 250{261,
+San Antonio, TX, January 1999.
+defining logics.
+Journal of the ACM
+, 40(1):143{184, 1993.
+run-time code generation. In
+ACM Workshop on Par-
+tial Evaluation and Semantics-Based Program Manipula-
+tion
+, pages 60{74, San Antonio, TX, January 1999.
+98-1661, Department of Computer Science, Cornell Univer-
+sity, Ithaca, NY, January 1998.
+The Objective Caml system, documentation,
+and user's guide
+, 1998.
+Richard Samuels, Frederick Smith, David Walker, Stephanie
+Weirich, and Steve Zdancewic. TALx86: A realistic typed
+assembly language. In
+Second ACM SIGPLAN Workshop
+on Compiler Support for System Software
+, pages 25{35, At-
+lanta, GA, 1999. Published as INRIA Technical Report 0288,
+March, 1999.
+Stack-based typed assembly language. In
+Workshop on
+Types in Compilation
+, volume 1473 of
+Lecture Notes in
+Computer Science
+, pages 28{52, Kyoto, Japan, March 1998.
+Springer-Verlag.
+From System F to typed assembly language. In
+Twenty-Fifth
+ACM Symposium on Principles of Programming Languages
+,
+pages 85{97, San Diego, CA, January 1998.
+From system F to typed assembly language.
+ACM Trans-
+actions on Progamming Languages and Systems
+, 21(3):528{
+569, May 1999.
+tation of a certifying compiler. In
+ACMConferenceon
+Programming Language Design and Implementation
+, pages
+333{344, Montreal, Canada, June 1998.
+validation of proofs. In
+Thirteenth Symposium on Logic in
+Computer Science
+, Indianapolis, IN, June 1998.
+ACM Con-
+ference on Programming Language Design and Implementa-
+tion
+, pages 247{258, Atlanta, GA, May 1999.
+plementing typed intermediate languages. In
+Third ACM In-
+ternational Conference on Functional Programming
+, pages
+313{323, Baltimore, MD, September 1998.
+Technical Report TR99-1773, Department of Computer Sci-
+ence, Cornell University, Ithaca, NY, October 1999.
+and P. Lee. TIL: a type-directed optimizing compiler for
+ML. In
+ACM Conference on Programming Language Design
+and Implementation
+, pages 181{192, Philadelphia, PA, May
+1996.
+type system for Scheme.
+ACM Transactions on Progamming
+Languages and Systems
+, 19(1):87{152, January 1997.12

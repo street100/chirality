@@ -1,0 +1,3204 @@
+VOC: A Methodology for the Translation Validation of
+Optimizing CompilersLenore Zuck
+New York University, United States
+zuck@cs.nyu.edu
+Amir Pnueli
+Weizmann Institute of Science, Israel an
+d New York University, United States
+amir@cs.nyu.edu
+Yi Fang
+yifang@cs.nyu.edu
+Benjamin Goldberg
+New York University, United States
+goldberg@cs.nyu.eduAbstract:
+There is a growing awareness, both in industry and academia, of the crucial
+role of formally verifying the translation from high-level source-code into low-level ob-
+optimizing compiler, as one would verify any other large program, is not feasible due to
+its size, ongoing evolution and modication, and, possibly, proprietary considerations.
+Translation validation
+is a novel approach that oers an alternative to the verication
+itself, one constructs a validation tool which, after
+every
+run of the compiler, formally
+conrms that the target code produced in the run is a correct translation of the source
+program. The paper presents
+voc
+, a methodology for the translation validation of
+structure preserving
+optimizations, for
+which we establish a simulation relation between the source and target code based on
+computational induction, and
+structure modifying
+optimizations, for which we develop
+specialized permutation rules. The paper also describes
+a prototype trans-
+lation validator tool that automatically produces verication conditions for the global
+optimizations of the SGI Pro-64 compiler.
+Key Words:
+translation validation, optimizing compilers, SGI Pro-64,
+voc-64
+,global
+Category:
+D2.4, D3.4, I6.41 IntroductionThere is a growing awareness, both in industry and academia, of the crucial
+role of formally proving the correctness of safety-critical portions of systems.
+Most verication methods focus on veri
+cation of specication with respect to
+Journal of Universal Computer Science, vol. 9, no. 3 (2003), 223-247
+submitted: 26/6/02, accepted: 13/3/03, appeared: 28/3/03
+  
+J.UCS
+is to prove that the high-level specicat
+ion is correctly implemented in low-
+level code, one needs to verify the comp
+iler which performs the translations.
+Verifying the correctness of modern optimizing compilers is challenging because
+of the complexity and recongurability of the target architectures, as well as the
+sophisticated analysis and optimization algorithms used in the compilers.
+Formally verifying a full-edged optimizing compiler, as one would verify
+any other large program, is not feasible, due to its size, evolution over time, and,
+possibly, proprietary considerations.
+Translation Validation
+is a novel approach
+that oers an alternative to the verication of translators in general and of
+compilers in particular. Using the translation validation approach, rather than
+verify the compiler itself one constructs a
+validating tool
+which, after every run
+of the compiler, formally conrms that the target code produced is a correct
+translation of the source program.
+The introduction of new families of microprocessor architectures, such as
+the EPIC family exemplied by the Intel
+IA-64 architecture, places an even
+heavier responsibility on optimizing comp
+ilers. Compile-time dependence analy-
+sis and instruction scheduling is required to exploit instruction-level parallelism
+in order to compete with other architectures, such as the super-scalar class of
+machines where the hardware determines dependences and reorders instructions
+at run-time. As a result, a new family of sophisticated optimizations have been
+developed and incorporated into comp
+ilers targeted at EPI
+C architectures.
+CVT
+,that
+succeeded in automatically verifying trans
+lations involving a
+pproximately 10,000
+lines of source code in about 10 minutes. The success of
+CVT
+critically depends
+on some simplifying assumptions that restrict the source and target to programs
+with a single external loop, and assume a very limited set of optimizations.
+restrictive languages allowing, for exampl
+e, nested loops. They also considered a
+more extensive set of optimizations. Ho
+wever, the methods proposed there were
+restricted to
+structure preserving
+optimizations, and could not directly deal with
+more aggressive optimizations such as
+loop distribution
+and
+loop tiling
+that are
+often used in more advanced optimizing compilers.
+Our ultimate goal is to develop a methodology for the translation validation
+of advanced optimizing compilers, with a
+n emphasis on EPIC-targeted compilers
+and the aggressive optimizations characteristic to such compilers. Our methods
+will handle an extensive set of optimizations and can be used to implement fully
+automatic certiers for a wide range of compilers, ensuring an extremely high
+level of condence in the compiler in areas, such as safety-critical systems and
+compilation into silicon, where correctness is of paramount concern.224Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+1.1 Overview
+In this paper, we describe the initial steps towards our goal:
+
+the development of the theory of a
+Correct translation
+;
+
+a general proof rule for translation validation of
+structure preserving
+opti-
+mizations;
+
+voc-64
+, a tool that implements the proof rule for the IR (Intermediate
+Representation) to IR translation of an EPIC compiler (the SGI Pro-64);
+
+a proof rule for dealing with many
+structure modifying
+transformations;
+Section 2 describes our formal model and theory of correct translation. In
+general terms, we rst give common semantics to the source and target lan-
+guages using the formalism of
+Transition Systems
+(
+TS
+s). The notion of a target
+code
+T
+being a correct implementation of a source code
+S
+is then dened in
+terms of
+reÞnement
+, stating that every computation of
+T
+corresponds to some
+computation of
+S
+with matching values of the corresponding variables. In Figure
+1 we present the process of renement as completion of a mapping diagram.Compiler
+Semantics
+Mapping
+Mapping
+Refinement
+Optimizing
+Semantic
+S
+:Source
+Sem(S)
+Sem(T)
+T
+: TargetFigure 1:
+Renement Completes the Picture
+We distinguish between
+structure preserving
+optimizations, which admit a
+clear mapping of control points in the target program to corresponding control
+points in the source program, and
+structure modifying
+optimizations that admit
+no such mapping.
+Structure Preserving optimizations, which cover most high-level optimiza-
+tions, are the focus of Section 3. Our general approach for dealing with these
+optimizations is to establish a correspondence between the target and source
+code, based on
+reÞnement
+, and to prove it by
+simulation
+. According to this ap-
+proach, we establish a
+reÞnement mapping
+indicating how the relevant source
+variables correspond to the target variables or expressions. The proof is then225Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+broken into a set of
+veriÞcation conditions
+(also called
+proof obligations
+), each
+claiming that a segment of target execu
+tion corresponds to a segment of source
+execution. In some of the cases, the proof obligations are not valid by themselves,
+and thus it is necessary to introduce
+auxiliary invariants
+which provably hold
+at selected points in the program. The proof obligations are then shown to be
+valid under the assumption of the auxiliary invariants.
+For some optimizations the validating tool needs additional information that
+species which optimizing transformations have been applied in the current
+translation. This additional information can either be provided by the com-
+piler or inferred by a set of heuristics a
+nd analysis techniques (some described
+in Section 4.) The renement proof rule we present in Section 3 uses
+invariant
+assertions
+, which the validation tool generat
+es at selected control points using
+a set of heuristics. The verication conditions are then be augmented by these
+invariants.
+In Section 4 we describe
+voc-64
+, our prototype tool that generates,
+fully
+automatically
+, the verication conditions for all global optimizations of the SGI
+Pro-64 compiler.
+voc-64
+builds on the theory developed in Section 3, while
+using heuristics to generate the correct program annotations that allow for the
+construction of the auxiliary invariants. The verication conditions produced by
+voc-64
+can be sent to
+CVT
+A more challenging category of optimizations that is not covered in Section 3
+is that of structure modifying optimizations and includes, e.g.,
+loop distribution
+and
+fusion
+,
+loop tiling
+,and
+loop interchange
+. For this class, it is often impossible
+to apply the renement-based rule since there are often no control points where
+the states of the source and target programs can be compared. We identify a
+large class of these optimizations, namely the
+reordering transformations
+,and
+present in Section 5
+permutation rules
+that allow for their eective translation
+validation. We then show in Section 6 that, while loop unrolling falls naturally
+into the category of reordering transfo
+rmation and can be dea
+lt with by the per-
+mutation rule, it can also be dealt with by the structure preserving methodology
+of Section 3.
+One of the side-products we anticipate from this work is the formulation of
+validation-oriented instrumentation, which will instruct writers of future com-
+pilers how to incorporate into the optimization modules appropriate additional
+outputs which will facilitate validation. This will lead to a theory of construction
+of
+self-certifying
+compilers.
+1.2 Related Work
+covers some important aspects of our work. For one, it extends the source pro-
+grams considered from single-loop programs to programs with arbitrarily nested226Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+loop structure. An additional important feature is that the method requires no
+compiler instrumentation at all, and applies various heuristics to recover and
+identify the optimizations performed and the associated renement mappings.
+method described in the report, it can only be applied to structure-preserving
+optimizations. In contrast, our work can also be applied to structure-modifying
+optimizations, such as the ones associated with aggressive loop optimizations,
+which are a major component of optimiz
+ations for modern architectures.
+however, the work there does not deal with optimizations.
+translation validation, where an important contribution is the ability to handle
+pointers in the source program. However, the method proposed there assumes
+full
+do not purport to establish full correctness of a translation but are only inter-
+ested in certain safety properties. How
+ever, the techniques of program analysis
+described there are very relevant to the
+automatic generation of renement map-
+abstract-interpret
+ation for certication of assembly code that uses the analysis
+of the source code and the debugging information.
+by rewrite rules with CTL formulae as side conditions, which allow for gener-
+ation of correct optimizations, but not for verication of (possibly incorrect)
+ing code generation while correct translation between input program and code.
+They focus on code selection and instru
+ction scheduling for SIMD machines.
+Somewhat similar to our approach, in the treatment of structure modifying
+tract geometric model, on which loop data reuse transformations are checked to
+preserve semantics. preserving equivalence conditions can be checked that . How-
+ever, this work focuses on source-to-source transformations that are manually
+applied in embedded system design, while the focus of our work is optimizations
+that are automatically generated by compilers.2 The ModelThe compiler receives a
+source program
+written in some high-level language,
+translates it into an
+Intermediate Representation (IR)
+, and then applies a series
+of optimizations to the program  starting with classical architecture-independent
+global
+optimizations, and then architecture-dependent ones such as register allo-
+cation and instruction scheduling. Typically, these optimizations are performed227Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+in several passes (up to 15 in some compilers), where each pass applies a certain
+type of optimization. In this section we b
+riey describe the intermediate code,
+which we assume to be the input and output language of the optimization phase
+of the compiler, and the transition system model which is our formal model.
+2.1 Intermediate Code
+Theintermediatecodeisathree-
+address code. It is described by a
+ßow graph
+,
+which is a graph representation of the th
+ree-address code.
+Each node in the ow
+graph represents a
+basic block
+, that is, a sequence of statements that is executed
+in its entirety and contains no branches. The edges of the graph represent the
+ow of control.
+Example 1
+Fig. 2 shows some C code, its translation by the SGI Pro-64 into
+intermediate code, and the corresponding ow graph. The code computes the
+integer square root of
+n
+.
+int n, y, w;
+n = 500;
+y=0;
+w=1;
+while (w <= n)
+{
+w = w+2*y+3;
+y = y+1;
+}
+B0 n <- 500
+y<-0
+w<-1
+B1 WHILE (w <= n)
+B2 BLOCK
+w <- w+2*y+3
+y<-y+1
+END
+BLOCK
+B4(terminal) (initial)
+B0
+B1
+B4
+B2(a) Source Code (b) Intermediate Representation (c) Flowgraph
+Figure 2:
+Source Code, IR, and Flow Graph
+2.2 Transition Systems
+In order to present the formal semantics of source and intermediate code we in-
+troduce
+transition systems
+,
+TS
+s, a variant of the
+transition systems
+A
+Transition System
+S
+=
+
+V,
+O
+,,
+
+is a state machine consisting of:
+
+V
+asetof
+state variables
+,
+
+O
+V
+asetof
+observable variables
+,228Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+
+
+an
+initial condition
+characterizing the initial states of the system, and
+
+
+a
+transition relation
+, relating a state to its possible successors.
+The variables are typed, and a
+state
+of a
+TS
+is a type-consistent interpretation
+of the variables. For a state
+s
+and a variable
+x
+
+V
+,wedenoteby
+s
+[
+x
+that
+s
+assigns to
+x
+. The transition relation refers to both unprimed and primed
+versions of the variables, where the primed versions refer to the values of the
+variables in the successor states, while unprimed versions of variables refer to
+their value in the pre-transition state. Thus, e.g., the transition relation may
+include 
+y=
+y
++ 1 to denote that the value of the variable
+y
+in the successor
+state is greater by one than its value in the old (pre-transition) state.
+The observable variables are the variables we care about, where we treat each
+I/O device as a variable, and each I/O o
+peration removes/appends elements to
+the corresponding variable. If desired, we can also include among the observables
+the history of external procedure calls
+for a selected set of procedures. When
+comparing two systems, we will require that the observable variables in the two
+systems match.
+A computation of a
+TS
+is a maximal nite or innite sequence of states
+
+:
+s0,s1,... ,
+starting with a state that satises the initial condition such that
+every two consecutive states are relat
+ed by the transition relation. I.e.,
+s0|
+=
+
+and
+
+si,si
++1|
+=
+
+for every
+i
+,0
+
+i
++1
+<
+|
+
+|1.
+Example 2
+We translate the intermediate code in Fig. 2 into a
+TS
+.Thesetof
+state variables
+V
+includes the observables
+n
+and
+y
+, and the local variable
+w
+.We
+also include in
+V
+the control variable (program counter)
+
+that points to the
+next statement to be executed. The range of
+
+is
+{
+B0
+,
+B1
+,
+B2
+,
+B4
+}
+. The initial
+condition, given by
+
+:
+
+=
+B0
+, states that the program starts at location (i.e.
+block)
+B0
+. As observables, we take
+O
+=
+{
+n
+,
+y
+}
+.
+The transition relation
+
+can be presented as the disjunction of four disjuncts
+
+=
+01
+12
+21
+14,where
+ijdescribes all possible moves from
+Bi
+to
+Bj
+without passing through intermediate blocks.
+For example,
+21is:(
+
+=2)
+
+(
+w=
+w
++2
+
+y
++3)
+
+(
+y=
+y
++1)
+
+(
+=1)When describing a transition relation, we mention only variables whose values
+are changed. Thus, we omit from
+21the clause
+n=
+n
+since
+n
+is not changed in
+the transition.
+A computation of the program starts with
+B0
+, continues to
+B1
+,thencyclesto
+B2
+and back to
+B1
+several times, and nally terminates at
+B4
+. The state reached
+at each block is described by the v
+alues assigned to the variables.
+1|
+
+|
+,the
+length of
+
+, is the number of states in
+
+.When
+
+is innite, its length is
+
+.229Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+A transition system
+T
+is called
+deterministic
+if the observable part of the initial
+condition uniquely determines the rest of the computation. That is, if
+T
+has two
+computations
+s0,s1,...
+and
+t0,t1,...
+such that the observable part (values of the
+observable variables) of
+s0agrees with the observable part of
+t0, then the two
+computations are identical. We restrict our attention to deterministic transition
+systems and the programs which generate such systems. Thus, to simplify the
+presentation, we do not consider here programs whose behavior may depend on
+additional inputs which the program reads throughout the computation. It is
+straightforward to extend the theory and methods to such intermediate input-
+driven programs.
+The translation of an intermediate code into a
+TS
+is straightforward; we
+therefore assume that all code we are
+dealing with here is described by a
+TS
+.
+2.3 Comparison and Renement between
+TS
+s
+Let
+PS=
+
+VS,
+OS,S,S
+and
+PT=
+
+VT,
+OT,T,T
+be two
+TS
+s, to which we
+refer as the
+source
+and
+target
+TS
+s, respectively. Such two systems are called
+comparable
+if there exists a one-to-one corresp
+ondence between the observables
+of
+PSand those of
+PT. To simplify the notation, we denote by
+X
+OSand
+x
+OTthe corresponding observables in the two systems. A source state
+s
+is dened to be
+compatible
+with the target state
+t
+,if
+s
+and
+t
+agree on their
+observable parts. That is,
+s
+[
+X
+]=
+t
+[
+x
+x
+OT.Wesaythat
+PTis
+a
+correct translation
+(
+reÞnement
+)of
+PSif they are comparable and, for every
+T:
+t0,t1,...
+a computation of
+PTand every
+S:
+s0,s1,...
+a computation of
+PSsuch that
+s0is compatible with
+t0,
+Tis terminating (nite) i
+Sis and, in the
+case of termination, their nal states are compatible.
+Our goal is to provide an automated method that will establish (or refute)
+that a given target code correctly impl
+ements a given source code, where both
+are expressed as
+TS
+s.3 VOC: Structure-Prese
+rving TransformationsWe use the term structure preserving transformation without giving it a rigor-
+ous denition. Roughly speaking, we use to the term to cover all transformations
+that can be dealt with by Floyd-like methodologies, i.e., structure preserving
+transformation allow the assignment of control points where the values of ob-
+servable variables can be matched, such that each loop includes at least one
+control point. These transformation cover most of the global optimizations (in-
+cluding loop-invariant code motion) and do not cover loop transformation such
+as interchange, reversal, and tiling.
+Let
+PS=
+
+VS,
+OS,S,S
+and
+PT=
+
+VT,
+OT,T,T
+be comparable
+TS
+s,
+where
+PSis the
+source
+and
+PTis the
+target
+. In order to establish that
+PTis a230Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+correct translation of
+PSfor the cases that
+PTis derived from
+PSby structure
+preserving transformations, we introduce a proof rule,
+Validate
+. The rule is in-
+for proving properties of a single program. Rule
+Validate
+provides a proof
+methodology by which one can prove that one program
+reÞnes
+another. This
+is achieved by establishing a
+control mapping
+from target to source locations, a
+data abstraction
+mapping from source to target variables, and proving that these
+abstractions are maintained along basic execution paths of the target program.
+The proof rule is presented in Fig. 3. There, each
+TS
+is assumed to have a
+cut-
+point set
+CP
+. This is a set of blocks that includes the initial and terminal block,
+as well as at least one block from each of the cycles in the programs control ow
+graph. A
+simple path
+is a path connecting two cut-points, and containing no
+other cut-point as an intermediate node. For each simple path leading from
+Bi
+and
+Bj
+,
+ijdescribes the transition relation between blocks
+Bi
+and
+Bj
+. Typically,
+such a transition relation contains the condition which enables this path to be
+traversed, and the data transformation eected by the path. Note that, when
+the path from
+Bi
+to
+Bj
+passes through blocks that are not in the cut-point set,
+ijis a compressed transition relation that can be computed by the composition
+of the intermediate transition relation on the path from
+Bi
+to
+Bj
+.
+The invariants
+iin part (2) are program annotations that are expected to
+hold whenever execution visits block
+Bi
+. They often can be derived from the data
+ow analysis carried out by an optimizing compiler. Intuitively, their role is to
+carry information in between basic blocks. Note that we allow the data abstrac-
+tion
+
+in part (3) to be partial, and to include guards (the
+pis.) The motivation
+for allowing
+
+to be partial is to accommodate situations which occur, for ex-
+ample, in dead code elimination, where source variables have no corresponding
+target variables. The motivation for allowing
+
+to contain guards is to accom-
+modate situations occurring, for example, in loop invariant code motion where,
+at some points of the execution, source variables have no correspondence in the
+target while at other points they do. The guards, thus, describe the conditions
+under which the source variables can be dened using target variables.
+The verication conditions assert th
+at at each (target) transition from
+Bi
+to
+Bj2, if the assertion
+iand the data abstraction hold before the transition,
+and the transition takes place, then after the transition there exist new source
+variables that reect the corresponding transition in the source, and the data
+abstraction and the assertion
+jhold in the new state. Hence,
+iis used as a
+hypothesis at the antecedent of the implication
+Cij. In return, the validator also
+has to establish that
+jholds after the transition. Thus, as part of the verication
+eort, we conrm that the proposed assertions are indeed inductive and hold
+whenever the corresponding block is vis
+ited. Since the assertion mentions only
+2Recall that we assume that a path described by the transition is simple.231Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+1. Establish a
+control abstraction
+
+:
+CPT
+CPSthat maps initial and
+terminal blocks of the target into the initial and terminal blocks of
+the source.
+2. For each basic block
+Bi
+in
+CPT,forman
+invariant
+ithat may refer
+only to concrete (target) variables.
+3. Establish a
+data abstraction
+
+:(
+p1
+V1=
+e1)
+ ··· 
+(
+pn
+Vn=
+en)
+assigning to
+some
+non-control sourc
+e state variables
+Vi
+VSan
+expression
+eiover the target state variables, conditional on the (tar-
+get) boolean expression
+pi.Notethat
+
+may contain more than one
+clause for the same variable. It is required that, for every
+observable
+source variable
+V
+OS(whose target counterpart is
+v
+) and every
+terminal target block
+B,
+
+implies that
+V
+=
+v
+at
+B.
+4. For each pair of basic blocks
+Bi
+and
+Bj
+such that there is a simple
+path from
+Bi
+to
+Bj
+in the control graph of
+PT,let
+Paths
+(
+
+(
+i
+)
+,
+(
+j
+))
+be the set of simple source paths connecting block
+B
+
+(
+i
+)to
+B
+
+(
+j
+).
+We form the verication condition
+Cij:
+i
+
+
+Tij
+VS:(
+_
+
+Paths
+(
+
+(
+i
+)
+,
+(
+j
+))S)
+
+
+
+j,
+where
+Sis the transition relation for the simple source path
+
+.
+5. Establish the validity of all the generated verication conditions.
+Figure 3:
+The Proof Rule
+Validatetarget variables, their validity sho
+uld depend solely on the target code.
+In most cases, the primed source var
+iables can be easily determined from
+the code, and the existential quantication in verication condition (4) can be
+eliminated. This is because, in the case that
+E
+contains no free occurrences of
+the variable
+x, the implication
+q
+
+x:(
+x=
+E
+
+r
+) is validity-equivalent to
+the implication
+q
+
+(
+x=
+E
+)
+
+r
+. However, this may not always be the case. In
+some transformations there is no bijectio
+n between the dierent paths connecting
+two control points in the source and the paths connecting the corresponding (via
+
+1) control points in the target. Another case where the identication of the
+primed source variables is not easily determined from the code is when the data
+abstraction
+
+is partial. We present below an example for such cases. We are
+therefore forced to leave the ex
+istential quantier in (4).
+In Appendix A we prove the soundness of the rule. In Section 4 we describe
+voc-64
+ a tool, currently being developed at NYU, to automatically generate
+verication conditions (VCs) for programs being compiled by the SGI Pro-64
+compiler. Verication of the VCs that are generated by
+voc-64
+can be performed
+by
+CVT
+, which was developed for the
+Sacres
+232Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+cannot be handled by
+CVT
+can be handled by other theorem provers. We have
+been using STeP [MAB+
+similar capabilities.
+Before we describe
+voc-64
+and its capabilities, we give an example of an
+application of
+Validate
+as generated by
+voc
+. For readability, the output here
+is slightly edited, but is essentially as produced by the tool. In the next section,
+we describe the tool in more detail.
+Examples of the Application of
+Validate
+Our rst example is derived using
+voc-64
+which is described in Section 4. Here
+we sketch some of the relevant outputs. Consider the program of Fig. 2 after a
+series of optimizations: Constant folding, copy propagation, dead code elimina-
+tion, control ow graph optimization (loop inversion), and strength reduction.
+A simplied version of the resulting code, where we renamed some variables, is
+in Fig. 4. The annotation (
+1, denoted
+phi1
+) is supplied by the compiler (see
+Section 4).
+B0 N <- 500
+Y<-0
+W<-1
+B1 WHILE (W <= N)
+B2 BLOCK
+W<-W+2*Y+3
+Y<-Y+1
+END
+BLOCK
+B4(a) Input ProgramB0 .t264 <- 0
+y<-0
+w<-1
+B1
+{
+phi1: .t264 = 2 * y
+}
+w <- .t264 + w + 3
+y<-y+1
+.t264 <- .t264 + 2
+IF (w <= 500) GOTO B1
+B2(b) Optimized CodeFigure 4:
+Example 1: Source and Annotated Target Programs
+To validate the program, we use the control mapping
+
+=
+{
+0
+
+
+
+0
+,
+1
+
+
+
+2
+,
+2
+
+
+
+4
+}
+,
+and the data abstraction
+
+:
+
+(
+PC
+=
+
+(
+pc
+))
+
+(
+pc
+ff
+=0
+
+Y
+=
+y
+)
+
+(
+pc
+ff
+=0
+
+W
+=
+w
+)
+
+(
+pc
+ff
+=
+0
+
+N
+=
+500
+)
+
+where variable names in upper case denote source (abstract) variables, and lower
+case letters denote their target (concrete) counterparts. Note that we always
+include in
+
+the control mapping
+PC
+=
+
+(
+pc
+).233Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+The verication condition
+C01obtained for the simple path from
+B0
+to
+B1
+,
+after simplication (including the removal of the existential quantier), is:
+C01:
+
+
+T01
+
+S02
+
+1where
+T01is dened by:
+
+(
+pc
+=0)
+
+(
+.t
+264=0)
+
+(
+y=
+0
+)
+
+(
+w=
+1
+)
+
+(
+pc=
+1
+)
+
+and
+S02is dened by:
+
+(
+PC
+=0)
+
+(
+Y=0)
+
+(
+W=1)
+
+(
+N= 500)
+
+(
+Nfi
+W)
+
+(
+PC=2)
+
+We also have:
+:
+
+(
+PC=
+
+(
+pc))
+
+(
+Y=
+y)
+
+(
+W=
+w)
+
+(
+N=
+500
+)
+
+and
+
+1:(
+.t
+264=2
+fl
+y). The other verication conditions are constructed sim-
+ilarly. They are all trivial to verify.
+Our second example demonstrates the n
+eed for the existential quantier in
+the VC. Consider the following source and target programs:
+B0I<-0
+B1X<-A+B
+IF !(I=0) GOTO B3
+B2I<-X
+GOTO B4
+B3I<-I+X
+B4Y<-A+I
+IF (I<100) GOTO B1
+B5(a) Input ProgramB0 i <- 0
+x<-a+b
+B1
+{
+phi:
+x=a+b
+}
+i<-i+x
+if (i < 100) goto B1
+B2 y <- a + i
+B3(b) Optimized CodeFigure 5:
+Example 2: Source and Annotated Target Programs
+To validate this transformation using
+Validate
+, we use the control mapping
+
+=
+{
+0
+
+
+
+0
+,
+1
+
+
+
+1
+,
+3
+
+
+
+5
+}
+, and the data abstraction
+
+:(
+PC
+=
+
+(
+pc
+))
+
+I
+=
+i
+
+A
+=
+a
+
+B
+=
+b
+
+(
+pc
+ff
+=
+1
+
+X
+=
+x
+
+Y
+=
+y
+)
+The verication condition
+C11obtained for the simple path from
+B1
+to
+B1
+requires computing
+S11, which is a disjunction of the transition relations of the234Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+path
+B1
+
+B3
+
+B4
+
+B1
+and the path
+B1
+
+B2
+
+B4
+
+B1
+.Consequently,we
+obtain
+S11=
+PC
+=1
+
+PC=1
+
+
+
+
+
+(
+I
+=0
+
+A
++
+B<
+100
+
+I=
+A
++
+B
+
+X=
+A
++
+B
+
+Y=2
+A
++
+B
+
+A=
+A
+
+B=
+B
+)
+
+(
+I
+ff
+=0
+
+I
++
+A
++
+B<
+100
+
+I=
+I
++
+A
++
+B
+
+X=
+A
++
+B
+
+Y=
+I
++2
+A
++
+B
+
+A=
+A
+
+B=
+B
+)
+
+
+
+
+
+While for
+T11we have:
+T11=(
+i
++
+x<
+100
+
+i=
+i
++
+x
+
+x=
+x
+
+y=
+y
+
+a=
+a
+
+b=
+b
+)
+Thus, the verication condition
+C11is
+1
+
+
+T11
+I,X,Y,A,B:
+
+1
+
+S11. Here, the existential quantie
+r cannot be immediately removed,
+since there are two possible paths in the source, both implying dierent values
+for the primed source variables. (This, of course, assumes the validator cannot
+attempt to reconcile the two branches on its own without a theorem provers)4 VOC-64: A translation Validator for the SGI Pro-64
+CompilerThis section presents an overview of the components of
+voc-64
+: the parser and
+the generators of cut-point sets, simple paths, transition relations, invariants,
+data abstraction, control mapping, and verication conditions. Thus,
+voc-64
+performs its own control- and data-ow analyses, providing a cross-check of the
+analyses of the compiler. The description of the components includes exam-
+ples of the tools output using the source program of Fig. 2 and its target of
+Fig. 4. The documentation for
+voc-64
+and examples of complete runs are in
+http://www.cs.nyu.edu/validation/tvoc
+.
+Parser (
+wh.cxx
+and
+wh.h
+).
+The intermediate language of the SGI Pro-64 com-
+piler is WHIRL. After each round of optimization, the compiler outputs ASCII
+formatted WHIRL code, which can be rea
+d by a parser and translated back into
+a graphic representation.
+Cut-Point Set(
+ts
+more.cxx
+).
+voc-64
+computes cut-point sets,
+CP
+SET
+,forboth
+source and target as follows. The cut-point sets include initial and terminal
+blocks. For each loop, the rst block loops body will be chosen as cut-point.
+For the example of the previous section,
+voc-64
+computes the cut-point set
+{
+0
+,
+2
+,
+4
+}
+for the source, and
+{
+0
+,
+1
+,
+2
+}
+for the target.
+Control Mapping (
+ts
+more.cxx
+)
+voc-64
+maps each initial and terminal loca-
+tion of the target to initial and terminal locations of the source.235Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+Since we are dealing with structure preserving optimization, it is not hard
+to establish one-to-one correspondence between loops in the target and loops in
+the source. Thus each cut-point of a ta
+rget loop is mapped to the cut-point of
+the corresponding source loop.
+For our example,
+voc-64
+produces
+{
+0->0,1->2,2->4
+}
+.
+Paths (
+ts
+more.cxx
+).
+voc-64
+computes sets
+CP
+PATHS
+of paths for each source
+and target. The set includes all
+simple
+paths (and cycles) between two points
+in the appropriate
+CP
+SET
+, i.e., paths that do not contain as intermediate points
+any other point in
+CP
+SET
+.
+For our example,
+voc-64
+computes (for the source)
+CP
+PATHS
+=
+{
+B0
+
+B1
+
+B2
+,
+B2
+
+B1
+
+B2
+,
+B0
+
+B1
+
+B4
+,
+B2
+
+B1
+
+B4
+}
+Transition Relation
+For each path
+Bi
+
+Bj
+in
+CP
+PATHS
+,
+voc-64
+computes
+the
+ij,whichis
+ijwithout the control information (which is implicit) The
+output is
+Ps(i,j)
+for source, and
+Pt(i,j)
+for target, which consists of a set of
+equalities over the appropriate variables and the branch conditions. Thus,
+x
+ijis
+a conjunct of the terms in
+Px(i,j)
+, together with
+
+=
+i
+
+=
+j
+. For example,
+for
+Ps(0,2)
+voc-64
+produces
+(N = 500) & (Y = 0) & (W = 1) & (1 <= 500)
+Invariants (
+ts.cxx
+).
+voc-64
+computes two types of invariant assertions for each
+basic block. One type is derived from the reachable denitions (obtained by
+data ow analysis). These invariants help
+voc-64
+handle optimizations as copy
+propagation and code motion. The other type is derived from loop induction
+variables. These invariants help
+voc-64
+handle optimizations such as strength
+reduction.
+In Appendix B we describe how
+voc-64
+computes invariants of the rst type.
+However, we observed that the invaria
+nts so derived canno
+t handle strength
+reduction, which led us to generate invariants that build on the loop induction
+variables. This is accomplished by computing, for loop induction variables
+i
+and
+j
+whose initial values are
+i0and
+j0respectively, and that get incremented in each
+iteration by
+c1and
+c2respectively, the invariant
+j
+=
+c2/c1fl
+i
++(
+j0
+i0fl
+c2/c1).
+Data Abstraction (
+ts
+more.cxx
+).
+The data abstraction that
+voc-64
+computes
+is a set (conjunction) of implications of the form
+pc
+=
+i
+
+(
+v
+=
+V
+)). These
+implications are computed for each basic block
+Bi
+.Thatis,
+voc-64
+computes,
+for each target block
+B
+(
+i
+), equalities of the type
+v
+=
+V
+.Let
+alpha
+(
+i
+)denote
+the equalities for target block
+Bi
+. For each target block
+Bj
+that leads into
+Bi
+,
+voc-64
+computes the set of such equalities that are preserved in the path from
+Bj
+into
+Bi
+,sothat
+alpha
+(
+i
+) is the intersection of all such sets from all incoming
+paths. The computation of
+alpha
+(
+i
+) is described in Fig. 6.236Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+repeat for every
+path from Bj to Bi
+beta(j,i) := {(v = V) s.t.
+i
+
+
+Tji
+S
+(
+j
+)
+
+(
+i
+)
+(
+v
+=
+V
+)
+}
+alpha(i) := intersection
+beta(j,i)
+for all paths from Bj to Bi
+until
+sets st
+abilizeFigure 6:
+Computation of
+alpha
+(
+i
+)
+The computation is successful when each target path has a unique source
+path that maps to it. Currently,
+voc-64
+does not handle data abstraction for
+cases when a single target path maps into multiple source paths.
+In our example, we obtain in the data abstraction, both (
+pc
+=1)
+
+(
+y
+=
+y
+)
+and (
+pc
+=2)
+
+(
+y
+=
+y
+).
+Generation of Verication Conditions
+TheconstructionoftheVCsisusu-
+ally straightforward. An interesting case is, however, when there are multiple
+paths connecting two cut-points in both source and target. Assume that the
+cut-point set includes
+Bi
+and
+Bj
+. Assume further that there are
+m
+dierent
+paths from
+Bi
+to
+Bj
+, each contributing a disjunct
+Pkto
+T
+i,j, and that there
+are
+n
+dierent paths from
+B
+
+(
+i
+)to
+B
+
+(
+j
+), each contributing a disjunct
+Qto
+S
+
+(
+i
+)
+,
+(
+j
+).Then
+voc-64
+generates
+m
+VCs
+Ck
+ij,
+k
+=1
+,...,m
+,eachoftheform
+i
+
+
+Pk
+VS:
+ffn
+
+=1Q
+
+
+j.5 Validating Loop Reordering TransformationsA
+reordering transformation
+is any program transformation that merely changes
+the order of execution of the code, without adding or deleting any executions
+ependence if it preserves the relative
+execution order of the source and target o
+f that dependence, and thus preserves
+the meaning of the program. Reordering transformations cover many of the loop
+transformations, including fusion, distribution, interchange, tiling, unrolling, and
+reordering of statements within a loop body.
+In this section we review the reordering loop transformations and propose
+permutation rules that the validator may use to deal with these transforma-
+tions.
+5.1 Overview of Reordering Loop Transformations
+Consider a loop of the form described in Fig. 7. Schematically, we can describe237Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+for
+i1=
+L1to
+H1do
+...
+for
+im=
+Lmto
+Hmdo
+B
+(
+i1,...,im)
+end
+...
+end
+Figure 7:
+A General Loop
+suchaloopintheform
+for i
+I
+by
+ffiIdo
+B
+(
+i
+)
+where
+i
+=(
+i1,...,im) is the list of nested loop indices, and
+I
+is the set of the
+values assumed by
+i
+through the dierent iterations of the loop. The set
+I
+can be
+characterized by a set of linear inequalities. For example, for the loop of Fig. 7,
+I
+is
+I
+=
+{
+(
+i1,...,im)
+|
+L1
+i1
+H1 ··· 
+Lm
+im
+Hm}
+The relation
+ffiIis the ordering by which the various points of
+I
+are traversed.
+For example, for the loop of Fig. 7, this ordering is the lexicographic order on
+I
+.
+In general, a loop transformation has the following form:
+for i
+I
+by
+ffiIdo
+B
+(
+i
+)=
+ffl
+for j
+J
+by
+ffiJdo
+B
+(
+F
+(
+j
+)) (1)
+In such a transformation, we may possibly change the domain of the loop indices
+from
+I
+to
+J
+, the names of loop indices from
+i
+to
+j
+, and possibly introduce an
+additional linear transformation in the loops body, changing it from the source
+B
+(
+i
+) to the target body
+B
+(
+F
+(
+j
+)).
+An example of such transformation is
+loop reversal
+which can be described as
+for
+i
+=1
+to
+N
+do
+B
+(
+i
+)=
+ffl
+for
+j
+=
+N
+to
+1
+do
+B
+(
+j
+)
+For this example,
+I
+=
+J
+=[1
+..N
+F
+is the identity, and the
+two orders are given by
+i1ffiIi2ffl
+i1<i2and
+j1ffiJj2ffl
+j1>j2,
+respectively.
+Since we expect the source and target programs to execute the same instances
+of the loops body (possibly in a dierent order), we should guarantee that the
+mapping
+F
+:
+J
+
+
+I
+is a bijection from
+J
+to
+I
+, i.e. a 1-1 onto mapping. Often,238Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+this guarantee can be ensured by displaying the inverse mapping
+F
+1:
+I
+
+
+J
+,
+which for every value of
+i
+I
+provides a unique value of
+F
+1(
+i
+)
+J
+.
+Some common examples of transformations which fall into the class consid-
+ered here are presented in Fig. 8 and Fig. 9. For each transformation, we describe
+the source loop, target loop, set of loop control variables for source (
+I
+)andtar-
+get (
+J
+), their ordering (
+ffiIand
+ffiJ), and the bijection
+F
+:
+J
+
+
+I
+. For tiling we
+assume that
+c
+divides
+n
+and
+d
+divides
+m
+.
+Interchange
+skewing
+Source
+for i1=
+1
+,
+ndo
+for i2=
+1
+,
+mdo
+B
+(
+i1,i2)
+for i1=
+1
+,
+ndo
+for i2=
+1
+,
+ndo
+B
+(
+i1,i2)
+Target
+for j1=
+1
+,
+mdo
+for j2=
+1
+,
+ndo
+B
+(
+j2,j1)
+for j1=
+1
+,
+ndo
+for j2=
+j1+
+1
+,
+j1+
+ndo
+B
+(
+j2,j2
+j
+1)
+I
+{
+1
+,...,n
+}×{
+1
+,...,m
+}
+{
+1
+,...,n
+}×{
+1
+,...,n
+}
+J
+{
+1
+,...,m
+}×{
+1
+,...,n
+}
+{
+(
+j1,j2):1
+
+j1
+n
+
+j1+1
+
+j2
+j1+
+n
+}
+i<i
+i
+<
+lex
+i
+i
+<
+lex
+i
+j>j
+j
+<
+lex
+j
+j
+<
+lex
+j
+F
+(
+j
+)
+(
+j2,j1)
+(
+j1,j2
+j1)
+F
+1(
+i
+)
+(
+i2,i1)
+(
+i1,i1+
+i2)
+Figure 8:
+Some Loop Transformations
+Reversal
+Tiling
+Source
+for i
+=
+1
+,
+ndo
+B
+(
+i
+)
+for i1=
+1
+,
+ndo
+for i2=
+1
+,
+mdo
+B
+(
+i1,i2)
+Target
+for j
+=
+n
+,
+1do
+B
+(
+j
+)
+for j1=
+1
+,
+nbyc
+for j2=
+1
+,
+mbyd
+for j3=
+j1,
+j1+
+c
+
+1
+for j4=
+j2,
+j2+
+d
+
+1
+B
+(
+j3,j4)
+I
+{
+1
+,...,n
+}
+{
+1
+,...,n
+}×{
+1
+,...,m
+}
+J
+{
+1
+,...,n
+}
+{
+(
+j1,j2,j3,j3):1
+
+j1
+nj1
+1mod
+c
+
+j1
+j3<j1+
+c
+
+1
+
+j2
+mj2
+1mod
+d
+
+j2
+j4<j2+
+d
+}
+i
+Ii
+i<i
+i
+<
+lex
+i
+j
+Jj
+j>j
+j
+<
+lex
+j
+F
+(
+j
+)
+j
+(
+j3,j4)
+F
+1(
+i
+)
+i
+(
+c
+i
+1
+
+1
+c
++1
+,d
+i
+2
+
+1
+d
++1
+,i1,i2)
+Figure 9:
+Some Loop Transformations239Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+5.2 Permutation Rules
+The simulation-based proof method discussed in previous sections assumes that
+the source and target have similar structures and that the order between compu-
+tation segments is essentially preserved in the translation. Since the transforma-
+tions considered here may radically reorder the order between computations, we
+can no longer use rule
+Validate
+for their validation. Therefore, we develop in
+this section a rule called the permutation rule for validating reordering trans-
+formations. The soundness of the permutation rule is established separately.
+Usually, structure-modifying optimizations are applied to small localized sec-
+tions of the source program, while the rest of the program is only optimized
+by structure-preser
+ving transformations. Therefore, the general validation of a
+translation will combine these two techniques.
+There are two requirements we wish to establish in order to justify the trans-
+formation described in (1).
+1. The mapping
+F
+is a bijection from
+J
+onto
+I
+.Thatis,
+F
+establishes a 1-1
+correspondence between elements of
+J
+and the elements of
+I
+.
+2. For every
+i1ffiIi2such that
+F
+1(
+i1)
+JF
+1(
+i2),
+B
+(
+i1);
+B
+(
+i2)
+
+B
+(
+i2);
+B
+(
+i1).
+This requirement is based on the observation that in the source computation,
+B
+(
+i1) is executed before
+B
+(
+i2) while the corresponding
+B
+(
+i1) is executed after
+B
+(
+i2) in the target computation. The overall results will be the same if all of
+these permutation relations hold between pairs of iterations whose order of
+execution is reversed between source and target.
+These requirements are summarized in rule
+permute
+, presented in Fig. 10.
+R1
+.
+
+i
+I
+:
+
+j
+J
+:
+i
+=
+F
+(
+j
+)
+R2
+.
+
+j1ff
+=
+j2J
+:
+F
+(
+j1)
+ff
+=
+F
+(
+j2)
+R3
+.
+
+i1,
+i2I
+:
+i1ffiIi2
+F
+1(
+i1)
+JF
+1(
+i2)=
+ffl
+B
+(
+i1);
+B
+(
+i2)
+
+B
+(
+i2);
+B
+(
+i1)
+for i
+I
+by
+ffiIdo
+B
+(
+i
+)
+
+for j
+J
+by
+ffiJdo
+B
+(
+F
+(
+j
+))
+Figure 10:
+Permutation Rule
+permute
+for reordering transformations
+In order to apply rule
+permute
+to a given case, it is necessary to identify the
+function
+F
+(and
+F
+1) and validate premises R1-R3. The identication of
+F
+can
+be provided to us by the compiler, once it determines which of the relevant loop
+optimizations it chooses to apply. Of course, the validator will need to verify that240Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+F
+is a bijection and that the source and target bodies relate to each other as
+prescribed by the rule. Alternately, we ca
+n develop heuristics which can attempt
+to identify these functions based on a comparison of the source and target codes.
+In most of the applications, the functions
+F
+and
+F
+1are based on linear
+expressions. For these cases, premis
+es R1-R3 can be automatically validated
+using any implementation of linear integer
+arithmetic decision procedures, such
+as the ones contained in ICS, CVC or PVS.
+The techniques presented here only dealt
+with transformations which reorder
+the execution of the entire loops body. They can be easily generalized to deal
+with cases where the loops body is partitioned into several segments, and each
+of the segments is moved to a dierent ite
+ration. Such transformations occur in
+the case of loop fusion and distribution as well as loop pipelining.6 A Note on Loop UnrollingA schematic loop unrolling is in Fig. 11 (where we assume
+c>
+1.) There are
+L1: i = 1
+L2: B(i); i=i+1;
+if (i<=n) goto L2
+L3:
+L1: B(1); ...; B(n mod c)
+if (n < c) goto L5
+L3: i = (n mod c) + 1;
+L4: B(i); B(i+1); ... ; B(i+c-1);
+i=i+c; if (i < n) goto L4
+L5:
+(1) Source Program (b) Target Program
+Figure 11:
+Loop Unrolling
+several strategies for dealing with loop unrolling. One is to design a premutaion-
+like rule that deals with it directly. Another is to consider loop unrolling as a
+special case of tiling an
+n
+×
+1 array with tiles of size
+c
+, and then unrolling the
+innermost loop. A third approach, which we pursue here, is to consider loop
+unrolling as a structure-preserving transformation and apply
+Validate
+to it.
+The formal treatment of the loop unrolling optimization was considered rst
+by Raya Leviathan, who has suggested the application of rule
+Validate
+to the
+STeP
+in order
+to conduct a deductive verication of the example we bring below. The reason
+we repeat this example here is in order to show how
+voc
+can complete this
+validation task in a fully automatic manner.
+For a simple path between two cut-points in the target,
+voc
+nds its cor-
+responding execution in the source and checks whether the branch conditions241Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+of the two paths are logically equivalent. To this end, we allow that the source
+paths used in
+Validate
+include non-simple paths, bounding the number of sim-
+ple paths composed to derive each non-simple path to
+c
+,where
+c
+is the unrolling
+constant. We demonstrate the approach on the C-code and its translation de-
+scribed in Fig. 12.CCode
+void unroll(int n)
+{
+int i;
+for(i=0; i<n; i++)
+}
+Source Code (IR)
+B0 i <- 0
+B1 WHILE (i < n)
+i<-i+1
+B3 RETURN
+Target
+B0 IF !(0 < n) GOTO B6
+B1 i <- 0
+t1 <- &a
+t2 <- n MOD 3
+IF (t2 = 0) GOTO B4
+t1 <- t1 + 8
+i<-i+1
+IF (t2 = 1) GOTO B4
+t1 <- t1 + 8
+i<-i+1
+B4 IF !(i < n) GOTO B6
+B5 t10 <- t1
+t11 <- t1 + 8
+t12 <- t1 + 16
+t20 <- i
+t21 <- i + 1
+t22 <- i + 2
+t1 <- t1 + 24
+i<-i+3
+IF (i < n)
+GOTO B5
+B6 RETURNFigure 12:
+A Loop Unrolling Example
+voc-64
+generated the control mapping
+{
+0
+
+
+
+0
+,
+5
+
+
+
+2
+,
+6
+
+
+
+3
+}
+, the data abstrac-
+tion
+N
+=
+n
+
+(
+>
+1
+
+(
+I
+=
+i
+)) and the invariants
+0:
+t
+5:(
+t
+1=8
+·
+i
++&
+a
+)
+
+(
+i<n
+)
+
+((
+n
+
+i
+)mod3=0)
+6:(
+t
+1=8
+·
+i
++&
+a
+)
+
+((
+n
+
+i
+)mod3=0)
+For example, for
+C56=
+5
+
+
+T56
+VS:
+S23
+
+
+6,where
+S23is the non-simple path
+B2
+
+B2
+
+B2
+
+B3
+which visits four cut-points (two of
+which are intermediate).
+voc-64
+generated for
+T56:
+
+(
+
+=5)
+
+(
+=6)
+
+i=
+i
++3)
+
+(
+t
+1=
+t
+1 + 24)
+
+([
+t
+1]=
+i
+)
+
+([
+t
+=
+i
++1)
+
+([
+t
+=
+i
++2)
+
+(
+i
++3
+fi
+n
+)
+
+and for (non-simple)
+S23:
+
+
+[8
+·
+I
++&
+A
+]=
+I
+)
+
+([8
+·
+(
+I
++2)+&
+A
+]=
+I
++2)
+
+([8
+·
+(
+I
++1)+&
+A
+]=
+I
++1)
+
+(
+
+=2)
+
+(
+I=
+I
++3)
+
+(
+I
++1
+<N
+)
+
+(
+I
++2
+<N
+)
+
+(
+I
++3
+fi
+N
+)
+
+(
+=3)
+
+
+
+this example of loop unrolling, and veries it using rule
+Validate
+.Infact,in242Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+one case the validation failed, showing that Trimaran generated target code that
+could possibly cause a segmentation fault, although the source code would not
+have.7 Summary and Future WorkThis paper presented
+voc
+, the theoretical framework for translation validation of
+optimizing compilers. We described
+voc-64
+, a tool we are developing to perform
+automatic translation validation for the SGI Pro-64 compiler, and gave examples
+of the VCs it generates.
+voc-64
+currently generates verication conditions for all
+the classical global optimizations of the SGI Pro-64, as well as for loop unrolling.
+We also presented permutation rules for
+dealing with reordering loop trans-
+formations. We are currently working on extending
+voc
+to accommodate the
+permutation rules.
+We have recently connected
+voc-64
+to the theorem prover
+ICS
+that veries the verication condition generated by
+voc-64
+. We are working on
+extensions to the theorem prover
+CVC
+proofs to the permutation rules used for loop optimizations.
+Our approach has a few weaknesses. It does not check for exceptions (over-
+and under-ow, zero-divide, out of bound array references, etc.) These may cause
+both false negative and false positive validation results. Similarly, the approach
+does not check for exceptions that are introduced, or eliminated, during the
+compilation. These may only cause false negatives. Finally, the ability of our
+approach to check correctness of algebraic simplications is limited by the power
+of the decision procedure employed by the theorem prover we use.
+The work presented here does not deal with pointers, aliasing, and procedure
+calls. We intend to remedy this soon. We have also embarked on developing
+the theory for dealing with instruction scheduling and other machine-dependent
+optimizations, as well as on developing techniques for run-time validation of
+aggressive optimizations that cannot be validated by static tools.AcknowledgementsWe would like to thank Clark Barrett for many helpful discussions and com-
+ments. We would also like to thank the referees for their diligent comments on
+this paper.
+This research was supported in part by NSF grant CCR-0098299, ONR grant
+N00014-99-1-0131, and the John von Neumann Minerva Center for Verication
+of Reactive Systems.243Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+References
+Optimizing Compilers for Modern Archi-
+tectures
+. Morgan Kaufmann, 2002.
+Compilers Principles, Techniques,
+and Tools
+. Addison Wesley, 1988.
+Proc. Symposia in Applied
+Mathematics
+, 19:1932, 1967.
+atre, S. Owre, H. Rueß, and N. Shankar. ICS: integrated canonizer
+and solver. In
+Proc.
+13rdIntl. Conference on Computer Aided Verication
+(CAV01), volume 2102 of
+Lect. Notes in Comp. Sci.
+, Springer-Verlag
+, 2001.
+ing CTL. In
+Proc. of Compiler Optimization meets Compiler Vericaiton
+(COCV) 2002
+, Electronic Notes in Theoretical Computer Science (ENTCS),
+volume 65, issue 2.
+Systems. In
+Proc. of Compiler Optimization meets Compiler Vericaiton
+(COCV) 2002
+, Electronic Notes in Theoretical Computer Science (ENTCS),
+volume 65, issue 2.
+Correct Sys-
+tem Design
+, volume 1710 of
+Lect. Notes in Comp. Sci.
+, Springer-Verlag,
+pages 201230, 1999.
+[MAB+
+on,
+L. De Alfaro, H. Devarajan, H. Sipma, and T.E. Uribe. STeP: The Stanford
+Temporal Prover. Technical Report STAN-CS-TR-94-1518, Dept. of Comp.
+Sci., Stanford University, Stanford, California, 1994.
+Advanced Compiler Design & Implementation
+. Morgan
+Kaufmann, 1997.
+Proc. 24th ACM Symp. Princ. of
+Prog. Lang.
+, pages 106119, 1997.
+Proceedings
+of the ACM SIGPLAN Conference on Principles of Programming Languages
+Design and Implementation (PLDI) 2000
+, pages 8395, 2000.
+compilers. In
+Proceedings of the ACM SIGPLAN Conference on Principles
+of Programming Languages Design and Implementation (PLDI) 1998
+, pages
+333344, 1998.
+ity formulas by small-domains instantiations. In
+In N. Halbwachs and
+D. Peled, editors, Proc.
+11stIntl. Conference on Computer Aided Verica-
+tion (CAV99), volume 1633 of
+Lect. Notes in Comp. Sci.
+, Springer-Verlag
+,
+pages 455469, 1999.
+automatic verication of a compilation process.
+Software Tools for Tech-
+nology Transfer
+, 2(2):192201, 1998.
+In B.
+Steen, editor, Proc.
+4thIntl. Conference on Tools and Algorithms for the
+Construction and Analysis of Systems (TACAS98), volume 1384 of
+Lect.
+Notes in Comp. Sci.
+, Springer-Verlag
+, pages 151166, 1998.
+compilers by computational induction. Technical report, Courant Institute
+of Mathematical Sciences, New York University, 2000.
+Compilers. Technical report, Computer Science Department, NYU244Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+(CIMS/CS/NYU.) Available in
+www.cs.nyu.edu/validator/pubs.html
+http://www.cs.nyu.edu/validator/pubs.html
+In
+Proc. 4thIntl. Conference on Verication, Model Checking, and Ab-
+stract Interpretation (VMCAI03)
+, volume 2575 of
+Lect. Notes in Comp.
+Sci.
+, Springer-Verlag, pages 4155, 2003.
+Pro-
+ceedings of the Run-Time Result Verication Workshop
+, Trento, July 2000.
+Validity Checker. In
+Proc.
+14thIntl. Conference on Computer Aided Veri-
+cation (CAV02)
+, volume 2404 of
+Lect. Notes in Comp. Sci.
+Springer-Verlag,
+pages 500504, 2002.
+ric Model Checking: An Automatic Verication Technique for Loop and
+Data Reuse Transformations. In
+Proc. of Compiler Optimization meets
+Compiler Vericaiton (COCV) 2002
+, Electronic Notes in Theoretical Com-
+puter Science (ENTCS), volume 65, issue 2.
+manual (draft). Technical report, Comp. Sci. Laboratory, SRI International,
+Menlo Park, CA, 1993.
+The Mathematica Book
+. Cambridge University Press, 1999.
+Supercompiler for Parallel and Vector Comput-
+ers
+. Addison-Wesley. 1991.
+Loop Optimizations in Optimizing Compilers. Technical report,
+CIMS/CS/NYU. Available in
+www.cs.nyu.edu/validator/pubs.html
+http://www.cs.nyu.edu/validator/pubs.html
+Technical report, Weizmann Institute of Science, 2000.A Soundness of
+ValidateLet
+PS=
+
+VS,
+OS,S,S
+and
+PT=
+
+VT,
+OT,T,T
+be two comparable de-
+terministic
+TS
+s. Let
+CPSand
+CPTbe the sets of cut-points of
+PSand
+PTre-
+spectively. Assume that the control mapping
+
+, the data abstraction
+
+,andthe
+invariants
+is are all dened. Assume further that all verication conditions
+Cij(for every
+i
+and
+j
+such that there is a simple path in
+PTleading from
+Bi
+to
+Bj
+)
+have been established. We proceed to show that
+PTis a correct translation of
+PS.
+Let
+T:
+s1,s2,...
+be a nite or innite computation of
+PT, which visits blocks
+Bi1,
+Bi2,...
+, respec-
+tively. Obviously
+Bi1is in
+CPTand if the computation is nite (terminating)
+then its last block is also in
+CPT245Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+Tcan be decomposed into a fusion3of simple paths
+
+T:(
+Bj1,...,
+Bj2)
+fi
+flffi
+fflT
+1
+(
+Bj2,...,
+Bj3)
+fi
+flffi
+fflT
+2···
+such that
+Bj1=
+Bi1,every
+Bjkis in the cut-point set
+CPT,andthepath
+Tm=
+Bjm,...,
+Bjm
++
+1is simple. Since all VCs are assumed to hold, we have that
+Cjkjk
++1:
+jk
+
+
+Tjkjk
++1
+VS:(
+
+
+Paths
+(
+
+(
+jk)
+,
+(
+jk
++
+))S)
+
+
+
+jk
++1holds for every
+k
+=1
+,
+2
+,...
+.
+We can show that there exists a computation of
+PS:
+S:
+S1,...,S2,...,
+such that
+S1visits cut-point
+B
+
+(
+j1),
+S2visits cut-point
+B
+
+(
+j2), and so on, and
+such that the source state visiting cut-point
+B
+
+(
+jr) is compatible with the target
+state visiting cut-point
+Bjr, for every
+r
+=0
+,
+1
+,...
+.
+Consider now the case that the target computation is terminating. In this
+case, the last state
+srof
+Tvisits some terminal cut-point
+Bjr. It follows that
+the computation
+Sis also nite, and its last state
+Sm(
+Tand
+Sare often
+of dierent lengths) visits cut-point
+B
+(
+
+(
+jr)) and is compatible with
+sr.Thus,
+every terminating target computation corresponds to a terminating source com-
+putation with compatible nal states.
+In the other direction, let
+S:
+S0,...,Snbe a terminating source computa-
+tion. Let
+T:
+s0,s1,...
+be the unique (due to determinism) target computation
+evolving from the initial state
+s0which is compatible with
+S0.If
+Tis terminat-
+ing then, by the previous line of arguments, its nal state must be compatible
+with the last state of
+S.If
+Tis innite, we can follow the previously sketched
+construction and obtain another source computation
+
+S:
+
+S0,
+
+S1,...
+which is in-
+nite and compatible with
+S.Sinceboth
+S0and
+
+S0are compatible with
+s0they
+have an identical observable part. Th
+is contradicts the assumption that
+PSis
+deterministic and can have at most a single computation with a given observable
+part of its initial state.
+It follows that every terminating source computation has a compatible ter-
+minating target computation.B Generating Invariants from Data Flow AnalysisInvariants that are generated by data ow analysis are of denitions that are car-
+ried out into a basic blocks by all its predecessors. We outline here the procedure
+that generates these invariants.
+3concatenation which does not duplicate the node which appears at the end of the
+rst path and the beginning of the second path246Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...
+For a basic block
+B
+, dene:
+kill
+(
+B
+): setof
+B
+s assignments
+y
+=
+e
+(¯
+x
+)
+some of whose terms are redened later in
+B
+gen
+(
+B
+):setof
+B
+s assignments
+y
+=
+e
+(¯
+x
+)
+none of whose terms are redened later in
+B
+Both
+kill
+(
+B
+)and
+gen
+(
+B
+) are easy to construct.
+voc-64
+constructs two other
+sets,
+in
+(
+B
+), that is the set of invariants upon entry to
+B
+,and
+out
+(
+B
+), that is the
+set of invariants upon exit from
+B
+. These two sets are computed by the procedure
+described in Fig. 13, where
+pred
+(
+B
+) is the set of all blocks leading into
+B
+.For every block B
+in(B) init {if BB is i
+nitial
+then set of
+u
+=
+u0for every variable
+u
+else
+emptyset}
+out(B) init
+emptyset
+repeat for every block B
+out(B) := (in(B)
+\
+kill(B))
+
+gen(B)
+in(B) :=
+Tp
+
+pred
+Bout(p)
+until all
+sets
+stabilizeFigure 13:
+Procedure to Compute Invariants
+Set operations and comparisons are performed syntactically. An obvious en-
+hancement to our tool is perform those operations semantically. Another possible
+enhancement is to add inequalities to the computed invariants, which are readily
+available from the data ow analysis.
+voc-64
+computed invariants for both source and target. In optimizations
+such as code sinking, or even for constant folding together combined with dead
+code elimination, these invariants are used, though theoretically not necessary.247Zuck L., Pnueli A., Fang Y., Goldberg B.: VOC: A Methodology ...

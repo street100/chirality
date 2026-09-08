@@ -84,6 +84,18 @@ PRB-75's three untyped forms. FD-19 also measured that Necula's POPL 1997 paper
 and Necula and Lee's PLDI 1998 paper are page scans at every copy reachable from
 this sandbox, so **R6 should not spend a fetch round on them**.
 
+**FD-20 answers R6 and forks the queue's remaining work.** A checker that accepts a
+target program witnesses progress and preservation for that target under its own type
+system, which names no source term. Certifying compilation attests the same target-only
+policy, and Necula prices it himself as too coarse to catch an optimizer error. Every
+published route to a preservation claim is a function of TWO programs: `Validate(S, C)`
+and `V : Source x Target -> boolean` against `ck-prog`'s `(-> CEnv Prog TckR)`. **The fork
+is which relation is preserved.** A typed claim of FD-15's shape puts `[[t]]` in its own
+conclusion and cannot be written without the total type translation FD-15 found missing.
+A semantic claim of CompCert's shape names no type translation and needs an operational
+semantics for each side; `lib/lowering/tal/eval.chiral` is the target half and it has zero
+importers. R6's question text was checked against the row and stands unchanged.
+
 **`decision-erased-word-level`** settles the LEVEL: the erased word lives at the
 lowering type level and `Core` gains no word spelling. R3 does not reopen the
 level.
@@ -112,6 +124,6 @@ R7 is last because E70 is unbuilt and gated on `decision-effect-facets`.
 | R3 | FD-17 |
 | R4 | FD-18 |
 | R5 | FD-19 |
-| R6 | UNRUN |
+| R6 | FD-20 |
 | R7 | UNRUN |
 | translate | blocked on the gather |
