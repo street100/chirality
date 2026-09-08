@@ -119,10 +119,12 @@ cost of, so it sits beside them instead of standing as its own goal.
    name is P1's forgotten-syscall hole one level down, so an idiom recognized in
    the emitter sits underneath a named primitive and substitutes for none. Three
    sets carry the condition. The `Op` sum (`lib/prelude/prelude.chiral:36-39`)
-   declares fifteen constructors, the extern block (`:59-72`) binds fourteen,
-   and `op-bytes` (`lib/lowering/x64/mach.chiral:355-391`) encodes fifteen.
-   `op-mulhi` is the one difference: `:377` emits it as the signed one-operand
-   `imul` at `:321`, and no program can write it. Outside all three sits what a
+   declares sixteen constructors, the extern block (`:59-74`) binds sixteen,
+   and `op-bytes` (`lib/lowering/x64/mach.chiral:355-391`) encodes sixteen.
+   **The three sets agree, and 2026-09-08 is the first day they did.** The one
+   difference was `op-mulhi`, reachable from no surface binding and emitting the
+   signed `imul` alone, and `E189` closed it by binding `mulhi` and adding
+   `op-mulhu` beside it. Outside all three sits what a
    current ISA offers and the sum omits, which
    [[benchmarks/OPT-CANDIDATES-2026-09]] bucket C enumerates as **38 rows**:
    rotate, unsigned widening multiply, conditional move, byte swap,
