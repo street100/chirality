@@ -47,7 +47,7 @@ in the same change that creates it. `.planning/` is for working detail — chang
 plans, decision tables, SPEC bodies — that may legitimately die with the worktree.
 
 ### 2. `E176` — `str-sub` is unclamped and SEGFAULTS. This is the sharpest thing open.
-`prelude/prelude.chiral:80` is a raw extern with no bounds behaviour;
+`prelude/prelude.chiral:83` is a raw extern with no bounds behaviour;
 `(str-sub "abc" 0 999995)` exits **139**. `prelude/string.chiral:14` says
 *"str-sub clamps, so a too-long prefix is just false"* and **`str-starts-with` is
 built on that false comment**, so it segfaults for any prefix longer than its

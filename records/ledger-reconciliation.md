@@ -242,9 +242,9 @@ and NOT gated, on the same rule.
 
 | E# | live source says |
 |---|---|
-| E21 | the entry stub mmaps and stores `heapptr`/`heapbase`/`heapend`/`heapreserve` (`compile-emit.chiral:34-98`); the bump advance is `x-lea-bump` (`x64/mach.chiral:443`, `:473`) |
-| E24 | the subject is the x86-64 emitter, as the AB pass measured. `x-div-guarded`/`x-mod-guarded` wrap `cqo`/`idiv` with the #DE guards at `x64/mach.chiral:173-189`, `:299-307`, dispatched at `:363` |
-| E25 | `[len][payload]` is the live cell for `Str` and `Bytes` alike: `tal/bytes.chiral:8`, `tal/ir.chiral:15`, `x64/mach.chiral:605`, `:733` |
+| E21 | the entry stub mmaps and stores `heapptr`/`heapbase`/`heapend`/`heapreserve` (`compile-emit.chiral:34-98`); the bump advance is `x-lea-bump` (`x64/mach.chiral:449`, `:479`) |
+| E24 | the subject is the x86-64 emitter, as the AB pass measured. `x-div-guarded`/`x-mod-guarded` wrap `cqo`/`idiv` with the #DE guards at `x64/mach.chiral:173-189`, `:299-307`, dispatched at `:367` |
+| E25 | `[len][payload]` is the live cell for `Str` and `Bytes` alike: `tal/bytes.chiral:8`, `tal/ir.chiral:15`, `x64/mach.chiral:611`, `:739` |
 | E31 | `nb-sys-poll-t` at `tal/sys.chiral:302` and `nb-pollfd-fill-t` at `:310`, registered at `:1339`. The surface wrappers the row called E51-gated landed: `poll2` at `sock.port:71`, `nb-poll` at `:74` |
 | E33 | `lib/runtime/proc.chiral:1` names itself E33 and owns `proc-spawn` over fork+execve+wait4; crossing row `raw-proc-spawn` to `nb-run-cmd` at `crossing-wraps.chiral:54`; imported by `evidence/harness.chiral:7` |
 | E51 | `impl_ports` is gone from the tree and CPython is off the compile path. The `wrap-*` E51 wrappers are `tal/sys-linkage.chiral`, imported at `compile-emit.chiral:17` and read at `:204` |
@@ -255,7 +255,7 @@ and NOT gated, on the same rule.
 | E100 | `field-erased?` at `closconv.chiral:765`, applied at `:1018`, `:1054` and `closconv-driver.chiral:162` |
 | E106 | `SockVec` linear in both fields at `capability/lincoll.chiral:26-28`, `sv-push` at `:31`, `CountR` at `:37` |
 | E107 | four fd-backed closes lower: `sock-close`/`lsock-close`/`fd-close` at `crossing-wraps.chiral:42-44`, `pool-close` at `:53` |
-| E108 | `shr`/`sar` externs at `prelude/prelude.chiral:70-71`, Op ctors and names at `:38`, `:49` |
+| E108 | `shr`/`sar` externs at `prelude/prelude.chiral:71-72`, Op ctors and names at `:38`, `:49-50` |
 | E109 | `bput-u16-le` at `tal/bytes.chiral:628` |
 | E110 | `nb-sys-open-rw-t` hardcodes `O_RDWR\|O_NOCTTY\|O_CLOEXEC` = `0x80102` at `tal/sys.chiral:646-658` |
 | E113 | `pool-read` at `pool.port:30` under an `E113/E120` comment, crossing row `crossing-wraps.chiral:52`, called at `grid.chiral:194` |

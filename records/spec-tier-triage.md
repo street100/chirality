@@ -250,7 +250,7 @@ in the tree: those 31 are the ones a scheduler would pick up.
 | `E104-pty-crossings-SPEC` | 0/6 | `lib/ports/pty.port:14-20` carries the `Pty` porttype and its result sums. |
 | ⚑ `E106-linear-cap-collection-SPEC` | 0/5 | `lib/capability/lincoll.chiral:26-81` carries `SockVec`, `sv-drain`, `mux-step`. |
 | ⚑ `E107-cap-close-SPEC` | 0/3 | `lib/lowering/tal/crossing-wraps.chiral:42-44` carries all three E107 pairs, commented E107. |
-| ⚑ `E108-shift-ops-SPEC` | 0/3 | `lib/prelude/prelude.chiral:70-71` carries `shr` and `sar`. |
+| ⚑ `E108-shift-ops-SPEC` | 0/3 | `lib/prelude/prelude.chiral:71-72` carries `shr` and `sar`. |
 | ⚑ `E109-bput-u16-le-SPEC` | 0/2 | `lib/lowering/tal/bytes.chiral:628` carries `bput-u16-le`. |
 | `E11-totality-checker-SPEC` | 0/6 | `lib/typing/totality.chiral:365-371`. |
 | ⚑ `E110-cloexec-pty-SPEC` | 0/2 | `lib/lowering/tal/sys.chiral` `nb-sys-open-rw-t` has the O_CLOEXEC constant 524546. |
@@ -322,7 +322,7 @@ in the tree: those 31 are the ones a scheduler would pick up.
 | `E93-lowering-multi-pass-SPEC` | 0/1 | The pre-scan invariant is documented in `lib/lowering/compile-back.chiral`. |
 | ⚑ `E94-form-type-capacity-SPEC` | 0/5 | `lib/module/load-batch.chiral` exists. |
 | `E95-effectful-mutual-recursion-SPEC` | 0/0 | A diagnosis record with no step list; its follow-on E97 landed. |
-| `E96-bitwise-ops-SPEC` | 0/4 | `lib/prelude/prelude.chiral:66-68` carries `band`/`bor`/`bxor`. |
+| `E96-bitwise-ops-SPEC` | 0/4 | `lib/prelude/prelude.chiral:67-69` carries `band`/`bor`/`bxor`. |
 | `E97-skip-chain-diagnostics-SPEC` | 0/4 | `lib/lowering/skip-diag.chiral` exists and `SkReason` is at `:11`. |
 | `E98-honest-crossing-table-SPEC` | 0/5 | The crossing table is live at `lib/lowering/tal/crossing-wraps.chiral`. |
 | `E99-ioctl-out-cells-SPEC` | 0/8 | The winsize/termios wrappers are live; every step names `scaffold/lib/`. |
