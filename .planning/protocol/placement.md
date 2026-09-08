@@ -138,11 +138,11 @@ is the cheapest rule here and the one most often skipped.
 ## Before you commit
 
 ```
-python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A to AM
+python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A to AN
 tools/prose-lint/prose-lint.sh PATH...       # how it reads
 ```
 
-`ledger-lint` runs 39 checks, A through AM. Measured 2026-09-05 it reported **111
+`ledger-lint` runs 40 checks, A through AN. Measured 2026-09-05 it reported **111
 findings**: three `AC`, one `I`, one `N` recorded as a known disagreement, and
 the 106 that AF, AG and AI reached on the day they landed. `H`, `M` and `AH` are
 recorded as checking nothing.

@@ -4,7 +4,7 @@ description: >-
   Doc-tier audit for chirality: one doc per run, claim-beside-authority. Use when
   asked to "audit a doc/bank/note", "bring a doc current", "check the banks",
   or after code/pipeline changes that may have rotted documentation. Mechanical
-  rot is pre-sorted by tools/ledger-lint/ledger-lint.py (checks A to AM); this run handles the
+  rot is pre-sorted by tools/ledger-lint/ledger-lint.py (checks A to AN); this run handles the
   semantic residue via tools/doc/doc.py audit bundles.
 ---
 

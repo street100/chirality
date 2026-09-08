@@ -61,7 +61,7 @@ design, audit, mint, spec, audit, implement, with revisit reaching any of them.
 | tool | is |
 |---|---|
 | `python3 tools/pack/pack.py E<#> …` | every pipeline bundle, and the scaffolder |
-| `python3 tools/ledger-lint/ledger-lint.py` | the mechanical doc worklist, checks A to AM |
+| `python3 tools/ledger-lint/ledger-lint.py` | the mechanical doc worklist, checks A to AN |
 | `python3 tools/doc/doc.py audit <node>` | one doc's audit bundle |
 | `python3 tools/lens/lens.py check \| author \| overview` | the four lenses, the author sweep, the generated orientation |
 | `tools/xlat/xlat.sh` | pins an external source, resolves a translation's quotes into it, and lists what the tree quotes without a pin |

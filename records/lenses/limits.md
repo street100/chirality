@@ -267,3 +267,17 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-08
 - owner:    none
 - from:     FD-19
+
+### LIM-20 check AI reads git commit dates, so any history rewrite invalidates the register
+
+- state:    accepted
+- author:   unreviewed
+- note:     none
+- level:    doc
+- about:    tools/ledger-lint/ledger-lint.py
+- claim:    `records/lenses/README.md` and `records/README.md` both state the rule check AI enforces, quoted in its own docstring: `A row whose checked: date predates the last change to the files it cites is unverified.`
+- measured: **AI reads git commit dates, so a history rewrite invalidates every row at once and the check cannot tell a real staleness from the rewrite.** `check_ai` (`tools/ledger-lint/ledger-lint.py:2129-2135`) resolves a cited path's last change with `git log -1 --format=%cs -- <path>`, cached per file. That is the repository's record of when a file moved, not a fact about the file's content. Measured 2026-09-08: this session's history was collapsed into a single commit dated that day, and AI went from **2 violations to 79** with no row's content and no cited file's content having changed. The other twelve violations in that run were the pre-existing `[R]`, `[F]` and `[AC]` set. ⚑ **The cost is that the register goes quiet by going loud.** A genuinely stale row is now one of 79 identical-looking lines, so the signal AI exists to give is unreadable until something re-dates the rows. A squash, a rebase, a fresh shallow clone or a filesystem restore all reproduce it. ⚑ **Not proposing the fix here.** Content hashing, an explicit `verified-against:` field, or accepting the coupling and re-verifying after a rewrite are three shapes and this row picks none.
+- evidence: `tools/ledger-lint/ledger-lint.py:2117-2135`, `records/lenses/README.md`, `records/README.md`
+- checked:  2026-09-08
+- owner:    none
+- from:     none
