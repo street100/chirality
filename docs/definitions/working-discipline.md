@@ -109,6 +109,41 @@ error in this repository.
 
 If a concept has no bank, build one rather than guess.
 
+## A capability the substrate lacks is a finding
+
+**This tree is designing a language, and the primitive set is an open question
+it answers by building against itself.** Work that runs into something the
+substrate cannot express has produced a result. Record it as a discovered
+requirement, with the workload that discovered it and the citation that proves
+the absence.
+
+**The word `blocked` is wrong for it.** A candidate that needs a loop form is
+specifying a loop form. Calling the requirement a blocker reads as an obstacle
+standing between the tree and a reference implementation, and there is no such
+reference. The measurement stays whatever it measured. What it is evidence of
+is the substrate's current reach.
+
+A worked case. `records/findings.md` FD-13 and
+`docs/benchmarks/crypto-kernel-allocation.md` measured the crypto path at 13.1
+MB/s against a static 35 ops per byte, with 5,776 bytes allocated per 64-byte
+block. Reported as a deficit, that is a compiler falling 33x short of C.
+Reported honestly, crypto is the first workload to ask this substrate for a
+rotate, a native 32-bit lane, and a product that crosses a call without a cell,
+and the number is what the asking cost.
+
+**PRINCIPLES P1 decides the form the answer takes.** The `Op` sum at
+`lib/prelude/prelude.chiral:36-39` models what the machine can do, and P1's
+example is a sandbox with a hole at exactly the syscalls it forgot. An operation
+the backend emits that the language does not name is that hole one level down,
+so recognizing an idiom in the emitter is an implementation detail underneath a
+named primitive and never a substitute for one. Naming it also makes it
+reachable by the checks above: a constant-time judgment can reason about
+`op-rot` and cannot reason about a shift and a shift and an or that an emitter
+happens to fuse.
+
+`op-mulhi` is the miniature case, present in the sum, emitted by the backend,
+and reachable from no surface binding.
+
 ## The element pipeline
 
 `design → audit → MINT → spec → audit → implement`, with `revisit` reaching any
