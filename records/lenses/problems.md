@@ -1015,7 +1015,7 @@
 
 - state:    OPEN
 - author:   unreviewed
-- note:     none
+- note:     ⚑ DEFERRED to research, 2026-09-08 by the author. The fork was put to the author and the author routed it to a `research` run before ruling, on the ground that fail-fast against collect-all is settled practice in published checkers and this tree should read what they do before choosing. The row stays `unreviewed`: routing to research says where the answer comes from and leaves the fork standing, which is the defect `records/author-calls.md` records for 2026-09-06. The ruling lands here when the `FD` row lands in `records/findings.md`.
 - level:    source
 - about:    lib/lowering/tal/check.chiral
 - claim:    `enforcement/N12` states the TFn census as folding `ck-prog` over every emitted TFn and reporting accept, reject and **the four reject classes**. Three record rows rest on that number.
