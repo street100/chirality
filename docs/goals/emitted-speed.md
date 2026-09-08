@@ -45,7 +45,9 @@ either one is a decision `docs/decisions/` holds first, per [[goals/README]].
 
 ## What done means
 
-Five conditions. None of them holds an arc file today.
+Six conditions. [[arcs/emitted-speed-arc]] holds conditions 1 and 2. The other
+four hold no arc file. The sixth is the operation set the other five measure the
+cost of, so it sits beside them instead of standing as its own goal.
 
 1. **The shipping compiler carries a cost figure against a control outside the
    tree.** Every `gcc` ratio in this tree was measured on the evicted
@@ -55,7 +57,7 @@ Five conditions. None of them holds an arc file today.
    `scaffold/` is absent from this tree. Observed: one doc under
    `docs/benchmarks/` whose figures name `bin/chirality-bin` by sha256, carry a
    host and a date, and quote a band against a named outside control.
-   **Unopened, and it holds no arc file.**
+   **Held by [[arcs/emitted-speed-arc]] requirement 3, row `X5`.**
    ⚑ **The ratio this condition should reach is OWED.** The 2026-08-02 band
    measured a backend that no longer exists, so it is a record of something else
    and sets no target, and no other figure in the tree sets one either.
@@ -71,7 +73,8 @@ Five conditions. None of them holds an arc file today.
    form. Observed: `tools/bench/crypto-kernel.sh alloc` reporting a zero delta
    for the round subject, which is also the observable
    [[arcs/crypto-primitives-arc]] requirement 5 states for
-   `crypto-primitives/K20`. **Unopened, and it holds no arc file.**
+   `crypto-primitives/K20`. **Held by [[arcs/emitted-speed-arc]] requirement 1,
+   rows `X1`, `X2` and `X3`.**
 
 3. **Each of the nine enablers the candidate walk discovered is built, or
    carries a recorded refusal.** [[benchmarks/OPT-CANDIDATES-2026-09]] lists 221
@@ -109,6 +112,43 @@ Five conditions. None of them holds an arc file today.
    in its own text, and the README's list matching the directory.
    **Unopened, and it holds no arc file.**
 
+6. **Every operation the machine offers is named or refused, and every name the
+   `Op` sum carries reaches the surface.** [[working-discipline]] section "A
+   capability the substrate lacks is a finding" is the frame, and `PRINCIPLES.md`
+   P1 fixes the form: an operation the backend emits that the language does not
+   name is P1's forgotten-syscall hole one level down, so an idiom recognized in
+   the emitter sits underneath a named primitive and substitutes for none. Three
+   sets carry the condition. The `Op` sum (`lib/prelude/prelude.chiral:36-39`)
+   declares fifteen constructors, the extern block (`:58-71`) binds fourteen,
+   and `op-bytes` (`lib/lowering/x64/mach.chiral:351-385`) encodes fifteen.
+   `op-mulhi` is the one difference: `:373` emits it as the signed one-operand
+   `imul` at `:319`, and no program can write it. Outside all three sits what a
+   current ISA offers and the sum omits, which
+   [[benchmarks/OPT-CANDIDATES-2026-09]] bucket C enumerates as **38 rows**:
+   rotate, unsigned widening multiply, conditional move, byte swap,
+   count-leading-zeros, count-trailing-zeros, popcount, add-with-carry, bit
+   deposit and extract, the unsigned comparisons and divisions, and a native
+   32-bit lane. What the gap costs is a count. ChaCha20's `qround` is 28
+   operations here, `4 x (add32=2, bxor=1, rotl32=4)`
+   ([[benchmarks/crypto-kernel-allocation]] section 3), and a machine holding a
+   rotate and a 32-bit lane pays one apiece for the three, so 12. That is an
+   operation count and it is unrelated to the 2.2 to 2.3x wall clock the same
+   document reports. Observed in two halves. First, the three in-tree sets
+   agreeing constructor for constructor, which a script reads out of two files
+   and which finds exactly one difference today. Second, every bucket C row
+   reading as a named operation or as a recorded refusal, where `C35`, `C36` and
+   `C37` recognize an idiom in the emitter, name no operation, and therefore
+   close none of `C1`, `C21` and `C32`. **Unopened, and it holds no arc file.**
+   ⚑ **The baseline this is complete against is OWED.** `C10` and `C11`
+   record that BMI2 availability is a target question this tree has not asked,
+   and `C34` records that no document states what a shift by 64 or more means.
+   The control box carries `bmi1`, `bmi2`, `adx` and `popcnt` in
+   `/proc/cpuinfo`, read 2026-09-08, and one host's flag list settles no
+   baseline. What would set it is a statement in
+   `docs/decisions/` naming the instruction set the emitted code may assume. No
+   threshold is owed here. The disposal is built or refused, which needs no
+   number.
+
 ## Its relation to the arc that already holds part of this
 
 [[arcs/memory-discipline-arc]] rows `M3` (`E83`, alloc-reuse) and `M4` (`E84`,
@@ -133,6 +173,16 @@ gate-that-cannot-fail shape `docs/decisions/decision-scope.md` names. The arc
 refused it on that ground rather than shipping a check aimed at a guess. The
 budget is now a row in [[records/author-calls]].
 
+**Condition 6 stands unopened too, and the arc excludes it by its own rule.**
+That arc schedules a row iff building it requires choosing between shapes the
+codebase does not already settle, and on that ground it puts bucket C outside
+itself, reading `C33` as a finishing job the surface never got. The rule sorts
+those 38 rows and disposes of none of them, so the condition is untouched by it.
+An arc that took condition 6 would open on the one row that is genuine design:
+what a widening multiply's shape is, given that `C38` wants an operation
+defining two slots and `B15` records the single-slot return standing against it.
+This goal names that as the opening question and settles nothing about it.
+
 No standing gate holds this goal, which is **a hole rather than the finished
 shape** [[goals/self-hosting]] carries: the 2026-09-01 ruling makes the suite's
 wall clock a printed number that sets no bar.
@@ -141,7 +191,8 @@ This section carries no element rows and no roster.
 
 ## State
 
-Stated 2026-09-08, unbuilt, no arc open. [[status-ledger]] carries the native
+Stated 2026-09-08, unbuilt. One arc is open, [[arcs/emitted-speed-arc]], and it
+takes two of the six conditions. [[status-ledger]] carries the native
 backend at IMPLEMENTED with its own caveat that the benchmark run behind it
 predates the migration and has not been re-run.
 
@@ -224,5 +275,17 @@ stands unmeasured**, and any single number summarizing it would be invented.
   worth, no order, and several rows attacking the same measured cells from four
   catalogue traditions. Its own closing section says so. A triage and an
   evaluation stage both stand between that list and any scheduled work.
-- **Every condition here is unopened.** Five conditions, zero arcs, and the two
-  the 2026-09-07 measurements make actionable are condition 1 and condition 2.
+- **The language names no operation that a current ISA has and this sum lacks.**
+  All 38 bucket C rows read `absent`. `op-mulhi` is in the closed sum and
+  reachable from nothing a program can write, `x-imul-rcx-1op`
+  (`lib/lowering/x64/mach.chiral:319`) encodes the signed one-operand `imul`,
+  and no unsigned multiply path exists anywhere in the backend. So the fifteenth
+  constructor is both unwritable and the wrong sign for what `C17` asks. What
+  would close it is a design stage that decides the widening multiply's shape,
+  and this goal decides none of it: unsigned alone, signed and unsigned as two
+  constructors, and one operation defining two slots are three live shapes, and
+  the third depends on the single-slot return `B15` records.
+- **Four of six conditions are unopened.** [[arcs/emitted-speed-arc]] took
+  conditions 1 and 2 on 2026-09-08, which are the two the 2026-09-07
+  measurements make actionable. Conditions 3, 4, 5 and 6 hold no arc, and the
+  Arcs section above records the reason for each.

@@ -52,7 +52,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/native-stack]] | in flight: protocol arc opened 2026-09-03, window and document unopened | [[arcs/native-protocol-arc]], [[arcs/native-window-arc]], [[arcs/native-document-arc]] |
 | [[goals/display]] | stated 2026-09-04, unbuilt: the calculus arc opened, four conditions unopened | [[arcs/display-calculus-arc]] |
 | [[goals/own-web]] | stated 2026-09-05, unbuilt: two arcs opened, three conditions unopened | [[arcs/vocabulary-arc]], [[arcs/canvas-arc]] |
-| [[goals/emitted-speed]] | stated 2026-09-08, unbuilt: five conditions, all unopened | an arc is owed for conditions 1 and 2, none open today |
+| [[goals/emitted-speed]] | stated 2026-09-08, unbuilt: one arc opened, four conditions unopened | [[arcs/emitted-speed-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
 
 `independent-judgment` carries an arc as of 2026-09-01 and still has no element.
@@ -102,8 +102,8 @@ depends on a crypto floor that [[benchmarks/crypto-kernel-allocation]] measured
 as violated on 2026-09-07. It is separate from [[goals/self-hosting]] because
 that goal claims a fixpoint and is held by a standing gate with no arc, and
 separate from [[goals/enforcement]] because that one claims a check runs rather
-than what a compiled program costs. It carries no arc yet and its own Arcs
-section records that as a hole. [[arcs/memory-discipline-arc]] holds the nearest
+than what a compiled program costs. [[arcs/emitted-speed-arc]] takes conditions 1 and 2, and
+four of the six stand unopened. [[arcs/memory-discipline-arc]] holds the nearest
 scheduled work, under [[goals/local-ai]] and against peak RSS, and the goal file
 states the overlap.
 
