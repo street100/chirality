@@ -1,0 +1,1564 @@
+Higher-Order and Symbolic Computation, 11, 363-397 (1998)
+c
+1998 Kluwer Academic Publishers, Boston. Manufactured in The Netherlands.
+Definitional Interpreters
+*
+for Higher-Order Programming Languages
+**
+JOHN C. REYNOLDS
+Systems and Information Science, Syracuse University
+Abstract.Higher-order programming languages (i.e., languages in which procedures or labels can occur as
+values) are usually defined by interpreters that are themselves written in a programming language based on the
+lambda calculus (i.e., an applicative language such as pure LISP). Examples include McCarthy's definition of
+LISP, Landin's SECD machine, the Vienna definition of PL/I, Reynolds' definitions of GEDANKEN, and recent
+unpublished work by L. Morris and C. Wadsworth. Such definitions can be classified according to whether the
+interpreter contains higher-order functions, and whether the order of application (i.e., call by value versus call by
+name) in the defined language depends upon the order of application in the defining language. As an example,
+we consider the definition of a simple applicative programming language by means of an interpreter written in a
+similar language. Definitions in each of the above classifications are derived from one another by informal but
+constructive methods. The treatment of imperative features such as jumps and assignment is also discussed.
+Keywords:programming language, language definition, interpreter, lambda calculus, applicative language,
+higher-order function, closure, order of application, continuation, LISP, GEDANKEN, PAL, SECD machine,
+J-operator, reference.
+1. Introduction
+An important and frequently used method of defining a programming language is to give an
+interpreter for the language that is written in a second, hopefully better understood language.
+(We will call these two languages thedefinedanddefininglanguages, respectively.) In this
+paper, we will describe and classify several varieties of such interpreters, and show how
+they may be derived from one another by informal but constructive methods. Although
+our approach to "constructive classification" is original, the paper is basically an attempt to
+review and systematize previous work in the field, and we have tried to make the presentation
+accessible to readers who are unfamiliar with this previous work.
+(Of course, interpretation can provide an implementation as well as a definition, but there
+are large practical differences between these usages. Definitional interpreters often achieve
+clarity by sacrificing all semblance of efficiency.)
+We begin by noting some salient characteristics of programming languages themselves.
+The features of these languages can be divided usefully into two categories:applicative
+features, such as expression evaluation and the definition and application of functions,
+andimperativefeatures, such as statement sequencing, labels, jumps, assignment, and
+*
+Work supported by Rome Air Force Development Center Contract No. 30602-72-C-0281 and ARPA Contract
+No. DAHC04-72-C-0003. This paper originally appeared in the Proceedings of the ACM National Conference,
+volume 2, August, 1972, ACM, New York, pages 717-740.
+**
+Current address: Department of Computer Science, Carnegie Mellon University, Pittsburgh, PA 15213, USA.
+e-mail: John.Reynolds@cs.cmu.edu
+364REYNOLDS
+procedural side-effects. Most user-oriented languages provide features in both categories.
+Although machine languages are usually purely imperative, there are few "higher-level"
+languages that are purely imperative. (IPL/V might be an example.) On the other hand,
+there is at least one well-known example of a purely applicative language: LISP (i.e., the
+an extended language including imperative features). There are also several more recent,
+designed by starting with an applicative language and adding imperative extensions.
+Purely applicative languages are often said to be based on a logical system called the
+by treating each type of expression as an abbreviation for some expression of the lambda
+calculus. Indeed, this kind of reducibility could be taken as a precise definition of the
+notion of "purely applicative." However, as we will see, although an unsugared applicative
+language is syntactically equivalent to the lambda calculus, there is a subtle semantic
+difference. Essentially, the semantics of the "real" lambda calculus implies a different
+"order of application" (i.e., normal-order evaluation) than most applicative programming
+languages.
+A second useful characterization is the notion of ahigher-orderprogramming language.
+In analogy with mathematical logic, we will say that a programming language ishigher-
+orderif procedures or labels can occur as data, i.e., if these entities can be used as arguments
+to procedures, as results of functions, or as values of assignable variables. A language that
+is not higher-order will be calledfirst-order.
+In ALGOL and its various descendents, procedures and labels can be used as procedure
+arguments, and in more recent languages such as PL/I and ALGOL 68, they may also be
+used as function results and assignable values, subject to certain "scope" restrictions (which
+are imposed to preserve a stack discipline for the storage allocation of the representations
+of functions and labels). However, the unrestricted use of procedures and labels as data is
+permitted in only a handful of languages which sacrifice efficiency for generality: LISP
+(in most of its interpretive implementations), ISWIM, PAL, GEDANKEN, and (roughly)
+POP-2.
+With regard to current techniques of language definition, there is a substantial disparity
+i.e., one can give an effective method for transforming a program in the defined language
+into a logical statement of the relation between its inputs and outputs. However, it has not
+yet been possible to apply this approach to higher-order languages. (Although recent work
+Almost invariably, higher-order languages have been defined by the approach discussed
+in this paper, i.e., by giving interpreters that are themselves written in a programming
+can be characterized as a logical definition of a first-order interpreter for a higher-order
+language.) Moreover, even when the defined language contains imperative features, the
+defining language is usually purely applicative (probably because applicative languages are
+well suited for computations with symbolic expressions). Examples include McCarthy's
+DEFINITIONAL INTERPRETERS365
+and C. Wadsworth.
+(There are a few instances of definitional interpreters that fall outside the conceptual
+framework developed in this paper. A broader review of the field is given by deBakker
+[21].)
+These examples exhibit considerable variety, ranging from very concise and abstract
+interpreters to much more elaborate and machine-like ones. To achieve a more precise
+classification, we will introduce two criteria. First, we ask whether the defining language is
+higher-order, or more precisely, whether any of the functions that comprise the interpreter
+either accept or produce values that are themselves functions.
+The second criterion involves the notion oforder of application. In designing any language
+that allows the use of procedures or functions, one must choose between two orders of
+application which are called (following ALGOL terminology)call by valueandcall by
+name. Even when the language is purely applicative, this choice will affect the meaning
+of some, but not all, programs that can be written in the language. Remembering that an
+interpreter is a specific program, we obtain our second criterion: Does the meaning of the
+interpreter depend upon the order of application chosen for the defining language?
+These two criteria establish four possible classes of interpreters, each of which contains
+one or more of the examples cited earlier:
+Order-of-Use of higher-order functions:
+application
+dependence:yes no
+yesdirect interpreter McCarthy's
+for GEDANKEN definition of LISP
+noMorris-Wadsworth SECD machine,
+method Vienna definition
+The main goal of this paper is to illustrate and relate these classes of definitional inter-
+preters. In the next section we will introduce a simple applicative language, which we will
+use as the defining language and also, with several restrictions, as the defined language.
+Then we will present a simple interpreter that uses higher-order functions and is order-of-
+application dependent, and we will transform this interpreter into examples of the three
+remaining classes. Finally, we will consider the problem of adding imperative features to
+the defined language (while keeping the defining language purely applicative).
+366REYNOLDS
+2. A Simple Applicative Language
+In an applicative language, the meaningful phrases of a program are calledexpressions, the
+process of executing or interpreting these expressions is calledevaluation, and the result of
+evaluating an expression is called avalue. However, as is evident from a simple arithmetic
+expression such asx+y, different evaluations of the same expression can produce different
+values, so that the process of evaluation must depend upon something more than just the
+expression being evaluated. It is evident that this "something more" must specify a value
+for every variable that might occur in the expression (more precisely, occur free). We will
+call such a specification anenvironment, and say that itbindsvariables to values.
+It is also evident that the evaluation process may involve the creation of new environments
+'
+from old ones. Supposex,...,xare variables,v,...,vare values, andeandeare
+1n1n
+'
+environments. Ifespecifies the valuevfor eachx, and behaves the same way asefor all
+ii
+'
+other variables, then we will say thateis theextensionofethat binds thex's to thev's.
+ii
+The simplest expressions in our applicative language areconstantsandvariables. The
+evaluation of a constant always gives the same value, regardless of the environment. We
+will not specify the set of constants precisely, but will assume that it contains the integers
+and the Boolean constantstrueandfalse. The evaluation of a variable simply produces the
+value that is bound to that variable by the environment. In the programs in this paper we
+will denote variables by alphanumeric strings, with occasional superscripts and subscripts.
+If our language is going to involve functions, then we must have a form of expression
+whose evaluation will cause the application of function to its arguments. Ifr,r,...,r
+01n
+are expressions, thenr(r,...,r)is anapplication expression, whoseoperatorisr
+01n0
+and whoseoperandsarer,...,r. The evaluation of an application expression in an
+1n
+environment proceeds as follows:
+1. The subexpressionsr,r,...,rare evaluated in the same environment to obtain
+01n
+valuesf,a,...,a.
+1n
+2. Iffis not a function ofnarguments, then an error stop occurs.
+3. Otherwise, the functionfisappliedto the argumentsa,...,a, and if this application
+1n
+produces a result, then the result is the value of the application expression.
+There are several assumptions hiding behind this description that need to be made explicit:
+1. A "function ofnarguments" is a kind of value that can be subjected to the process of
+being "applied" to a sequence ofnvalues called "arguments".
+2. For some functions and arguments, the process of application may never produce a
+result, either because the process does not terminate (i.e., it runs on forever), or because
+it causes an error stop. Similarly, for some expressions and environments, the process
+of evaluation may never produce a value.
+3. In a purely applicative language, the application of the same function to the same
+sequence of arguments will always have the same effect, i.e., both the result that is
+produced, and the prior question of whether any result is produced, depend only upon
+the function and its arguments. Similarly, the evaluation of the same expression in the
+same environment will always have the same effect.
+DEFINITIONAL INTERPRETERS367
+4. During the evaluation of an application expression, the application process does not
+begin until after the operator and all of its operands have been evaluated. This is the
+call-by-valueorder of application mentioned in the introduction. In the alternative order
+of application, known ascall by name, the application process would begin as soon as
+the operator had been evaluated, and each operand would only be evaluated when (and
+if) the function being applied actually depended upon its value. This distinction will
+be clarified below.
+5. Although we have specified that all of the subexpressionsr,...,rare to be evaluated
+0n
+before the application process begins we have not specified the relative order in which
+these subexpressions are to be evaluated. In a purely applicative language, this choice
+has no effect. (A slight exception occurs if the evaluation of one subexpression never
+terminates while the evaluation of another gives an error stop.) However, the choice will
+become significant when we start adding imperative features to the defined language.
+In anticipation of this extension, we will assume that the subexpressions are evaluated
+successively from left to right.
+Next, we must have a form of expression whose evaluation will produce a function.
+Ifx,...,xare variables andris an expression, then(x,...,x).ris alambda
+1n1n
+expression, whoseformal parametersarex,...,xand whose body isr. (The parentheses
+1n
+may be omitted if there is only one formal parameter.) The evaluation of a lambda expression
+withnformal parameters always terminates and always produces a function ofnarguments.
+To describe this function, we must specify what will happen when it is applied to its
+arguments.
+Suppose thatfis the function obtained by evaluating(x,...,x).rin an environment
+1n
+e. Then the application offto the argumentsa,...,awill cause the evaluation of the
+1n
+bodyrin the environment that is the extension ofethat binds eachxto the corresponding
+i
+a. If this evaluation produces a value, then the value becomes the result of the application
+i
+off.
+The key point is that the environment in which the body is evaluated during application is
+an extension of the earlier environment in which the lambda expression was evaluated (rather
+than the more recent environment in which the application takes place). As a consequence, if
+a lambda expression contains global variables (i.e., variables that are not formal parameters),
+its evaluation in different environments can produce different functions. For example, the
+lambda expressionx.x+ycan produce an incrementing function, an identity function
+(for the integers), or a decrementing function, when evaluated in environments that bindy
+to the values 1, 0, or1respectively.
+Nowadays, it is generally accepted that this behavior of lambda expressions and environ-
+ments is a basic characteristic of a well-designed higher-order language. Its importance is
+that it permits functional data to depend upon the partial results of a program.
+Having introduced application and lambda expressions, we may now clarify the distinc-
+tion between call by value and call by name. Consider the evaluation of an application
+expressionr(r,...,r)in an environmente, and suppose that the value of the oper-
+01na
+atorris a functionfthat was originally created by evaluating the lambda expression
+0
+(x,...,x).rin an environmente. (Possibly this lambda expression isritself, but
+1n0
+more generallyrmay be a non-lambda expression whose functional value was created
+0
+368REYNOLDS
+earlier in the computation.) When call by value is used, the following steps will occur
+during the evaluation of the application expression:
+1.ris evaluated in the environmenteto obtain the function valuef.
+0a
+2.r,...,rare evaluated in the environmenteto obtain argumentsa,...,a.
+1na1n
+3.ris evaluated in the extension ofethat binds eachxto the correspondinga,to
+ii
+obtain the value of the application expression.
+When call by name is used, the same expressions are evaluated in the same environments.
+But the evaluations of the operandsr,...,rwill occur at a later time and may occur a
+1n
+different number of times. Specifically, instead of being evaluated before step (3), each
+operandris repeatedly evaluated during step (3), each time that its valueais actually
+ii
+used (as a function to be applied, a Boolean value determining a branch, or an argument of
+a primitive operation).
+At first sight, since the evaluation of the same expression in the same environment al-
+ways produces the same effect, it would appear that the result of a program in a purely
+applicative language should be unaffected by changing the order of application (although
+it is evident that the repeated evaluation of operands occurring with call by name can be
+grossly inefficient). But this overlooks the possibility that "repeatedly" may mean "never".
+During step (3) of the evaluation ofr(r,...,r), it may happen that certain arguments
+01n
+aare never used, so that the corresponding operandsrwill never be evaluated under call
+ii
+by name. Now suppose that the evaluation of one of thesernever terminates (or gives an
+i
+error stop). Then the evaluation of the original application expression will terminate under
+call by name but not call by value. In brief, changing the order of application can affect the
+value of an application expression when the function being applied is independent of some
+of its arguments and the corresponding operands are nonterminating.
+(In ALGOL the distinction between call by value and call by name also involves a change
+in "coercion conventions". However, this change is irrelevant in the absence of assignment.)
+In the defined language, we will consider only the use of call by value, but in the defin-
+ing language we will consider both orders of application. In particular, we will inquire
+whether the above-described situation occurs in our interpreters, so that changing the order
+of application in the defining language can affect the meaning of the defined language.
+We now introduce some additional kinds of expressions. Ifr,randrare expressions,
+pca
+thenifrthenrelseris asimple conditional expression, whosepremissisr, whose
+pcap
+conclusionisr, and whosealternativeisr. The evaluation of a conditional expression
+ca
+in an environmentebegins with the evaluation of its premissrin the same environment.
+p
+Then, depending upon whether the value of the premiss istrueorfalse, the value of the
+conditional expression is obtained by evaluating either the conclusionror the alternative
+c
+rine. Any other value of the premiss causes an error stop.
+a
+It is also convenient to use a LISP-like notation for "multiple" conditional expressions.
+Ifr,...,randr,...,rare expressions, then
+p1pnc1cn
+(r->r,r,->r,...,r->r)
+p1c1p2c2pncn
+is amultiple conditional expression, with the same meaning as the following sequence of
+simple conditional expressions:
+DEFINITIONAL INTERPRETERS369
+ifrthenrelse ifrthenrelseifrthenrelse error.
+p1c1p2c2pncn
+in ALGOL. Ifx,...,xare variables, andr,...,randrare expressions, then
+1n1nb
+letx=randandx=rinr
+11nnb
+is aletexpression, whosedeclared variablesarex,...,x, whosedeclaring expressions
+1n
+arer,...,r, and whosebodyisr. (We will call each pairx=radeclaration.) The
+1nbii
+evaluation of aletexpression in an environmentebegins with the evaluation of its declaring
+expressionsrin the same environment. Then the value of theletexpression is obtained by
+i
+evaluating its bodyrin the environment that is the extension ofethat binds each declared
+b
+variablexto the value of the corresponding declaring expressionr.
+ii
+It should be noted that the extended environment only affects the evaluation of the body,
+not the declaring expressions. For example, in an environment that bindsxto 4, the value
+ofletx=x+1andy=x1inxyis 15. As a consequence,letexpressions cannot be
+used (at least directly) to define recursive functions. One might expect, for instance, that
+letf=x.ifx=0then1elsexf(x1)in
+would create an extended environment in whichfwas bound to a recursive function (for
+computing the factorial). But in fact, the occurrence offinside the declaring expression
+will not "feel" the binding offto the value of the declaring expression, so that the resulting
+function will not call itself recursively.
+To overcome this problem, we introduce a second kind of block-like expression. If
+x,...,xare variables,l,...,lare lambda expressions, andris an expression, then
+1n1nb
+letrecx=landandx=linr
+11nnb
+is arecursiveletexpression, whosedeclared variablesarex,...,x, whosedeclaring
+1n
+expressionsarel,...,l, and whosebodyisr. The value of a recursiveletexpression
+1nb
+'
+in an environmenteis obtained by evaluating its body in an environmentewhich satisfies
+'
+the following property:eis the extension ofethat binds each declared variablexto the
+i
+function obtained by evaluating the corresponding declaring lambda expressionlin the
+i
+'
+environmente.
+''
+There is a circularity in the property "eis the...in the environmente" that is char-
+acteristic of recursion, and that prevents this property from being an explicit definition of
+'
+e. To be rigorous, we would have to show that there actually exists an environment that
+satisfies this property, and also deal with the possibility that this environment might not be
+unique. The mathematical techniques needed to achieve this rigor are beyond the scope
+defines recursiveletexpressions more explicitly.
+(It is possible to generalize recursiveletexpressions by allowing arbitrary declaring
+expressions. We have chosen not to do so, since the generalization would considerably
+complicate some of the definitional interpreters, and is not unique.)
+To maintain generality, we have avoided specifying the set of data that can occur as the
+result of expression evaluation (beyond asserting that this set should contain functions and
+370REYNOLDS
+the Boolean valuestrueandfalse). However, it is evident that our language must contain
+basic (i.e., built-in) operations and tests for manipulating this data. For example, if integers
+are to occur as data, we will need at least an incrementing operation and a test for integer
+equality. More likely, we will want all of the usual arithmetic operations and tests. If some
+form of structured data is to be used, we will need operations for constructing and analyzing
+the structures, and tests for classifying them.
+Regardless of the specific nature of the data, there are three ways to introduce basic
+operations and tests into our applicative language:
+1. We may introduce constants denoting the basic functions (whose application will per-
+form the basic operations and tests).
+2. We may introducepredefined variablesdenoting the basic functions. These variables
+differ from constants in that the programmer can redefine them with his own decla-
+rations. They are specified by introducing aninitial environment, to be used for the
+evaluation of the entire program, that binds the predefined variables to their functional
+values.
+3. We may introduce special expressions whose evaluation will perform the basic oper-
+ations and tests. Since this approach is used in most programming languages (and in
+mathematical notation), we will frequently use the common forms of arithmetic and
+Boolean expressions without explanation.
+3. The Defined Language
+Although our defining language will use all of the features described in the previous section,
+along with appropriate basic operations and tests, the defined language will be considerably
+more limited, in order to avoid complications that would be out of place in an introductory
+paper. Specifically:
+1. Functions will be limited to a single argument. Thus all applicative expressions will
+have a single operand, and all lambda expressions will have a single formal parameter.
+2. Only call by value will be used.
+3. Only simple conditional expressions will be used.
+4. Nonrecursiveletexpressions will be excluded.
+5. All recursiveletexpressions will contain a single declaration.
+6. Values will be integers, booleans, and functions. The only basic operations and tests
+will be functions for incrementing integers and for testing integer equality, denoted by
+the predefined variablessuccandequal, respectively.
+The reader may accept an assurance that these limitations will eliminate a variety of
+tedious complications without evading any intellectually significant problems. Indeed,
+with slight exceptions, the eliminated features can be regarded as syntactic sugar, i.e., they
+DEFINITIONAL INTERPRETERS371
+4. Abstract Syntax
+We now turn our attention to the defining language. To permit the writing of interpreters, the
+values used in the defining language must include expressions of the defined language. At
+first sight, this suggests that we should use character strings as values denoting expressions,
+but this approach would enmesh us in questions of grammar and parsing that are beyond the
+Instead, we use the approach ofabstract syntax
+In this approach, it is assumed that programs are "really" abstract, hierarchically structured
+data objects, and that the character strings that one actually reads into the computer are
+simply representations of these abstract objects (in the same sense that digit strings are
+representations of integers). Thus the problems of grammar and parsing can be set aside as
+"input editing". (Of course, this does not eliminate these problems, but it separates them
+We are left with two closely related problems: how to define sets of abstract expressions
+(and other structured data to be used by the interpreters), and how to define the basic
+functions for constructing, analyzing, and classifying these objects. Both problems are
+solved by introducing three forms ofabstract-syntax equations. (A more elaborate defined
+language would require a more complex treatment of abstract syntax, as given in Reference
+case letter strings denote basic functions.
+LetS,S,...,Sbe upper-case letter strings anda,...,abe lowercase letter strings.
+01n1n
+Then arecord equationof the form
+S=[a:S,...,a:S]
+011nn
+implies that:
+1.Sis a set, disjoint from any other set defined by a record equation, whose members
+0
+are records withnfields in which the value of theith field belongs to the setS.
+i
+(Mathematically,Sis a disjoint set in one-to-one correspondence with the Cartesian
+0
+productSS.)
+1n
+2. Eacha(is a predefined variable which) denotes theselectorfunction that accepts a
+i
+member ofSand produces itsith field value.
+0
+3. Letsbe the string obtained fromSby lowering the case of each character. Thens?
+000
+denotes theclassifierfunction that tests whether its argument belong toS, andmk-s
+00
+denotes the constructor function ofnarguments (belonging to the setsS,...,S)that
+1n
+creates a record inSfrom its field values.
+0
+For example, the record equation
+opr: EXP,opnd
+implies that an application expression (i.e., a member of APPL) is a two-field record whose
+field values are both expressions (i.e., members of EXP). It also implies thatoprand
+opndare selector functions that produce the first and second field values of an application
+372REYNOLDS
+expression, thatappl?is a classifier function that tests whether a value is an application
+expression, and thatmk-applis a two-argument constructor function that constructs an
+application expression from its field values. It is evident that ifrandrare expressions,
+12
+oprmk-appl(r,r)=r
+121
+opndmk-appl(r,r)=r,
+122
+and ifappl?(r)istrue,
+mk-applopr(r),opnd(r)=r.
+The remaining forms of abstract syntax equations are theunion equation:
+S=SS,
+01n
+which implies thatSis the union of setsS,...,S, and thefunction equation:
+01n
+S=S,...,S->S,
+01nr
+which implies thatSis the set ofn-argument functions that accept arguments inS,...,S
+01n
+and produce results inS. (More precisely,Sis the set ofn-argument functionsfwith
+r0
+the property that iffis applied to arguments in the setsS,...,S, and iffterminates
+1n
+without an error stop, then the result offbelongs toS.)
+r
+We may now use these forms of abstract syntax equations to define the principal set of
+data used by our interpreters, i.e., the set EXP of expressions of the defined language:
+EXP = CONSTcupVA RcupAPPLcupLAMBDAcupCONDcupLETREC
+opr: EXP,opnd
+fp: VAR,body
+prem: EXP,conc: EXP,altr
+dvar: VAR,dexp: LAMBDA,body
+A cumbersome but fairly accurate translation into English is that an expression (i.e., a
+member of EXP) is one of the following:
+1. A constant (a member of CONST),
+2. A variable (a member of VAR),
+3. An application expression (a member of APPL), which consists of an expression called
+its operator (selected by the basic functionopr) and an expression called its operand
+(selected byopnd),
+4. A lambda expression (a member of LAMBDA), which consists of a variable called its
+formal parameter (selected byfp) and an expression called its body (selected bybody),
+DEFINITIONAL INTERPRETERS373
+5. A conditional expression (a member of COND), which consists of an expression called
+its premiss (selected byprem) and an expression called its conclusion (selected byconc)
+and an expression called its alternative (selected byaltr),
+6. A recursiveletexpression (a member of LETREC), which consists of a variable called its
+declared variable (selected bydvar), a lambda expression called its declaring expression
+(selected bydexp), and an expression called its body (selected bybody).
+We have purposely left the sets CONST and VAR unspecified. For CONST, we will
+assume only that there is a basic functionconst?which tests whether its argument is a
+constant, and a basic functionevconwhich maps each constant into the value that it denotes.
+For VAR, we will assume that there is a basic functionvar?which tests whether its argument
+is a variable, that variables can be tested for equality (of the variables themselves, not their
+values), and that two particular variables are denoted by the quoted strings "succ" and
+"equal".
+We must also define the abstract syntax of two other data sets that will be used by our
+interpreter. The first is the set VAL of values of the defined language:
+VAL = INTEGERcupBOOLEANcupFUNVAL
+FUNVAL = VAL->VAL.
+One must be careful not to confuse values in the defined and defining languages. Strictly
+speaking, VAL is a subset of the values of the defining language whose membersrepresent
+the values of the defined language. However, since the variety of values provided in the
+defining language is richer than in the defined language, we have been able to represent
+each defined-language value by the same defining-language value. In our later interpreters
+this situation will change, and it will become more evident that VAL is a set of value
+representations.
+Finally, we must define the set ENV of environments. Since the purpose of an environment
+is to specify the value that is bound to each variable, the simplest approach is to assume
+that an environment is a function from variables to values, i.e.,
+ENV = VAR->VAL.
+Within the various interpreters that we will present, each variable will range over some
+set defined by abstract syntax equations. For clarity, we will use different variables for
+different sets, as summarized in the following table:
+Variable Range Variable Range
+'
+rEXPeeENV
+'
+xzVA RccCONT
+'''
+lLAMBDAmmmMEM
+abVA LrfREF
+fFUNVALnINTEGER
+(The sets CONT, MEM, and REF will be defined later.)
+374REYNOLDS
+5. A Meta-Circular Interpreter
+Our first interpreter is a straightforward transcription of the informal language definition
+we have already given. Its central component is a functionevalthat produces the value of
+an expressionrin a environmente:
+eval=(r, e).I.1
+const?(r)->evcon(r),I.2
+var?(r)->e(r),I.3
+appl?(r)->eval(opr(r),e)eval(opnd(r),e),I.4
+lambda?(r)->evlambda(r, e),I.5
+cond?(r)->ifeval(prem(r),e)I.6
+theneval(conc(r),e)elseeval(altr(r),e),I.7
+'
+letrec?(r)->letrece=I.8
+'
+x.ifx=dvar(r)thenevlambda(dexp(r),e)elsee(x)I.9
+'
+ineval(body(r),e)I.10
+evlambda=(l, e). a.evalbody(l),ext(fp(l),a,e)I.11
+ext=(z, a, e). x.ifx=zthenaelsee(x). I.12
+The subsidiary functionevlambdaproduces the value of a lambda expressionlin an
+environmente. (We have extracted it as a separate function since it is called from two
+places, in lines I.5 and I.9.) The subsidiary functionextproduces the extension of an
+environmentethat binds the variablezto the valuea. It should be noted that, in the
+evaluation of a recursiveletexpression (lines I.8 to I.10), the circularity in the definition of
+''
+the extended environmenteis handled by makingea recursive function. (However, it is
+a rather unusual recursive function which, instead of calling itself, calls another function
+evlambda, to which it provides itself as an argument.)
+The functionevaldoes not define the meaning of the predefined variables. For this
+purpose, we introduce the "main" functioninterpret, which causes a complete programr
+to be evaluated in an initial environmentinitenvthat maps each predefined variable into the
+corresponding basic function:
+interpret=r.eval(r,initenv)I.13
+initenv=x.x="succ"->a.succ(a),I.14
+...
+x="equal"->a. b.equal(a, b). I.15
+...
+In the last line we have used a trick called Currying (after the logician H. Curry) to
+solve the problem of introducing a binary operation into a language where all functions
+must accept a single argument. (The referee comments that although "Currying" is tastier,
+"Sch "onfinkeling" might be more accurate.) In the defined language,equalis a function
+which accepts a single argumentaand returns another function, which in turn accepts a
+single argumentband returnstrueorfalsedepending upon whethera=b. Thus in the
+defined language, one would write(equal(a))(b)instead ofequal(a, b).
+DEFINITIONAL INTERPRETERS375
+(Each of our interpreters will consist of a sequence of function declarations. We will
+assume that these are implicitly embedded in a recursiveletexpression whose body is
+interpret(R), whereRis the program to be interpreted.)
+We have coined the word "meta-circular" to indicate the basic character of this interpreter:
+It defines each feature of the defined language by using the corresponding feature of the
+defining language. For example, whenevalis applied to an application expression (lambda
+expression, conditional expression, recursiveletexpression) of the defined language, it
+evaluates an application expression (lambda expression, conditional expression, recursive
+letexpression) in the defining language. Similarly, the initial environment defines the basic
+functions of the defined language in terms of the same functions in the defining language.
+In one sense, this situation is not undesirable. For the reader who already has a thorough
+and correct understanding of the defining language, a meta-circular definition will provide
+a concise and complete description of the defined language. (Of course this is a rather
+vacuous accomplishment when the defined language is a subset of the defining language.)
+The problem is that any misunderstandings about the defining language are likely to be
+carried over to the defined language intact. For example, if we were to assume that in
+the defining language, the functionsuccdecreases an integer by one, or that a conditional
+expression gives the same result when the value of its premiss is non-Boolean as when
+it isfalse, the above interpreter would lead us to the same assumptions about the defined
+language.
+These particular difficulties are easily overcome; we could define functions such assucc
+in terms of elementary mathematics, and we could insert explicit tests for erroneous values.
+But there are three objections to meta-circularity that are much more serious:
+1. The meta-circular interpreter does not shed much light on the nature of higher-order
+functions. For this purpose, we would prefer an interpreter of a higher-order defined
+language that was written in a first-order defining language.
+2. Changing the order of application used in the defining language induces a similar change
+in the defined language. To see this, suppose thatevalis applied to an application
+expressionr(r)of the defined language. Then the result ofevalwill be obtained by
+01
+evaluating the application expression (line I.4)
+eval(r,e)eval(r,e)
+01
+in the defining language. If call by value is used in the defining language, theneval(r,e)
+1
+will be evaluated before the functional value ofeval(r,e)is applied. But evaluating
+0
+eval(r,e)interprets the evaluation ofr, and applying the value ofeval(r,e)interprets
+110
+the application of the value ofr. Thus in terms of the defined language,rwill be
+01
+evaluated before the value ofris applied, i.e., call by value will be used in the defined
+0
+language.
+On the other hand, if call by name is used in the defining language, then the application
+of the functional value ofeval(r,e)will begin as soon aseval(r,e)has been evaluated,
+00
+and the operandeval(r,e)will only be evaluated when and if the function being applied
+1
+depends upon its value. In terms of the defined language, the application of the value of
+rwill begin as soon asrhas been evaluated, and the operandrwill only be evaluated
+001
+376REYNOLDS
+when and if the function being applied depends upon its value, i.e., call by name will
+be used in the defined language.
+3. Suppose we wish to extend the defined language by introducing the imperative features
+of labels and jumps (including jumps out of blocks). As far as is known, it is impossible
+to extend the meta-circular definition straightforwardly to accommodate these features
+(without introducing similar features into the defining language).
+In the following sections we will develop transformations of the meta-circular interpreter
+that will meet the first two of these objections. Then we will find that the transformation
+designed to meet the second objection also meets the third.
+It should be emphasized that, although these transformations are motivated by their ap-
+plication to interpreters, they are actually applicable to any program written in the defining
+language, and their validity depends entirely upon the properties of the defining language.
+6. Elimination of Higher-Order Functions
+Our first task is to modify the meta-circular interpreter so that none of the functions that
+comprise this interpreter accept arguments or produce results that are functions. An exam-
+ination of the abstract syntax shows that this goal will be met if we can replace the two sets
+FUNVAL and ENV by sets of values that are not functions. Specifically, the new members
+of these sets will be records thatrepresentfunctions.
+We first consider the set FUNVAL. Since the new members of this set are to be records
+rather than functions, we can no longer apply these members directly to arguments. Instead
+we will introduce a new functionapplythat will "interpret" the new members of FUNVAL.
+Specifically, iffis a record in FUNVAL that represents a functionfand ifais any
+newold
+member of VAL, thenapply(f,a) will produce the same result asf(a). Assuming
+newold
+for the moment that we will be able to defineapply, we must replace each application of
+a member of FUNVAL (to an argumenta) by an application ofapply(to the member of
+FUNVAL and the argumenta). In fact, the only such application occurs in line I.4, which
+must become
+'
+appl?(r)->applyeval(opr(r),e),eval(opnd(r),e). I.4
+To decide upon the form of the new members of FUNVAL, we recall that whenever a
+function is obtained by evaluating a lambda expression, the function will be determined
+by two items of information: (1) the lambda expression itself, and (2) the values that were
+bound to the global variables of the lambda expression at the time of its evaluation. It is
+evident that these items of information will be sufficient to represent the function. This
+suggests that the new set FUNVAL should be a union of disjoint sets of records, one set
+for each lambda expression whose value belonged to the old FUNVAL, and that the fields
+of each record should contain values of the global variables of the corresponding lambda
+expression.
+In fact, the meta-circular interpreter contains four lambda expressions (indicated by solid
+underlining) that produce members of FUNVAL. The following table gives their locations
+and global variables, and the equations defining the new sets of records that will represent
+DEFINITIONAL INTERPRETERS377
+their values. (The connotations of the set and selector names we have chosen will become
+apparent when we discuss the role of these entities in the interpretation of the defined
+language.)
+Location Global Variables New Record Equation
+I.11leCLOSR=[lam: LAMBDA,en
+I.14 none SC=[]
+I.15 (outer) none EQ1=[]
+I.15 (inner)aEQ2=[arg1
+Thus the new set FUNVAL will be
+FUNVAL = CLOSRcupSCcupEQ1cupEQ2,
+and the overall structure ofapplywill be:
+apply=(f, a).
+closr?(f)-> ,
+sc?(f)-> ,
+eq1?(f)-> ,
+eq2?(f)-> .
+Our remaining task is to replace each of the four solidly underlined lambda expressions
+by appropriate record-creation operations, and to insert expressions in the branches ofapply
+that will interpret the corresponding records. The lambda expression in line I.11 must be
+replaced by an expression that creates a CLOSR-record containing the value of the global
+variableslande:
+'
+evlambda=(l, e).mk-closr(l, e). I.11
+Nowapply(f, a)must produce the result of applying the function represented byfto
+the argumenta. Whenfis a CLOSR-record, this result may be obtained by evaluating the
+body
+evalbody(l),ext(fp(l),a,e)
+of the replaced lambda expression in an appropriate environment. This environment must
+bind the formal parameteraof the replaced lambda expression to the value ofaand must bind
+the global variableslandeof the lambda expression to the same value as the environment
+in which the CLOSR-recordfwas created. Since the latter values are stored in the fields
+off,wehave:
+apply=(f, a).
+closr?(f)->leta=aandl=lam(f)ande=en(f)
+inevalbody(l),ext(fp(l),a,e),
+....
+378REYNOLDS
+(In this particular case, but not in general, the declarationa=ais unnecessary, since the
+formal parameter of the replaced lambda expression and the second formal parameter of
+applyare the same variable. From now on, we will omit such vacuous declarations.)
+A similar treatment (somewhat simplified since there are no global variables) of the
+lambda expression in I.14 and the outer lambda expression in I.15 gives:
+'
+initenv=x.x="succ"->mk-sc(),I.14
+...
+'
+x="equal"->mk-eq1()I.15
+...
+and
+apply=(f, a).
+closr?(f)->letl=lam(f)ande=en(f)
+inevalbody(l),ext(fp(l),a,e),
+sc?(f)->succ(a),
+eq1?(f)->b.equal(a, b),
+eq2?(f)-> .
+Finally, we must replace the lambda expression that originally occurred as the inner
+expression in I.15. Although we have already moved this expression into the body ofapply
+(since it was the body of a previously replaced lambda expression), the same basic treatment
+can be applied to the new occurrence, giving:
+apply=(f, a).
+closr?(f)->letl=lam(f)ande=en(f)
+inevalbody(l),ext(fp(l),a,e),
+sc?(f)->succ(a),
+eq1?(f)->mk-eq2(a),
+eq2?(f)->letb=aanda=arg1(f)inequal(a, b).
+(Note that the declaration relating formal parameters is not vacuous in this case.)
+The entire transformation that converts FUNVAL from a set of functions to a set of records
+has been informally justified by appealing to an understanding of the defining language,
+without regard to the meaning or use of the particular program being transformed. But now
+it is illuminating to examine the different kinds of records in FUNVAL in terms of their
+role in the interpretation of the defined language. The records in the set CLOSR represent
+functional values that are produced by evaluating the lambda expressions occurring in the
+defined language programs. They are equivalent to the objects calledFUNARG triplets
+in LISP andclosures
+sets SC and EQ1 represent the basic functionssuccandequal. Finally, the records in EQ2
+represent the functions that are created by applyingequalto one argument.
+A similar transformation can be used to "defunctionalize" the set ENV of environments.
+To interpret the new members of ENV, we will introduce a interpretive functionget, with
+the property that iferepresents an environmenteandxis a member of VAR, then
+newold
+DEFINITIONAL INTERPRETERS379
+get(e,x)=e(x). Applications ofgetmust be inserted at the three points (in lines
+newold
+I.3, I.9, and I.12) in the interpreter where environments are applied to variables:
+'
+var?(r)->get(e, r),I.3
+.
+.
+.
+'
+'
+x.ifx=dvar(r)thenevlambda(dexp(r),e)elseget(e, x)I.9
+.
+.
+.
+'
+ext=(z, a, e). x.ifx=zthenaelseget(e, x). I.12
+Next, there are three lambda expressions that produce environments; they are indicated by
+broken underlining which we have carefully preserved during the previous transformations.
+The following table gives their locations and global variables, and the equations defining
+the new sets of records that will represent their values:
+Location Global Variables New Record Equation
+''
+I.14-15none INIT=[]
+'
+I.12zaeSIMP=[bvar: VAR,bval: VAL,old
+''
+I.9reeREC=[letx: LETREC,old: ENV,new
+Thus the new set of environment representations is:
+ENV = INITcupSIMPcupREC.
+Replacement of the three environment-producing lambda expressions gives:
+''''
+letrec?(r)->letrece=mk-rec(r, e, e)I.8-9
+.
+.
+.
+''
+ext=(z, a, e).mk-simp(z, a, e)I.12
+.
+.
+.
+''''
+initenv=mk-init(), I.14-15
+and the environment-interpreting function is:
+get=(e, x).
+init?(e)->x="succ"->mk-sc(),x="equal"->mk-eq1(),
+simp?(e)->letz=bvar(e)anda=bval(e)ande=old(e)
+in ifx=zthenaelseget(e, x),
+'
+rec?(e)->letr=letx(e)ande=old(e)ande=new(e)
+'
+in ifx=dvar(r)thenevlambda(dexp(r),e)elseget(e, x).
+'
+But now we are faced with a new problem. By eliminating the lambda expression in I.9,
+we have created a recursiveletexpression
+380REYNOLDS
+''
+letrece=mk-rec(r, e, e)
+that violates the structure of the defining language, since its declaring subexpression is no
+longer a lambda expression. However, there is still an obvious intuitive interpretation of
+'
+this illicit construction: it bindseto a "cyclic" record, whose last field is (a pointer to) the
+record itself.
+If we accept this interpretation, then whenevereis a member of REC, we will have
+new(e)=e. This allows us to replace the only occurrence ofnew(e)bye, so that the
+penultimate line ofgetbecomes:
+'
+rec?(e)->letr=letx(e)ande=old(e)ande=e.
+But now our program no longer contains any references to the cyclicnewfields, so that
+these fields can be deleted from the records in REC. Thus the record equation for REC is
+reduced to:
+letx: LETREC,old,
+and the offending recursiveletexpression becomes:
+'''''
+letrec?(r)->lete=mk-rec(r, e). I.8-9
+At this point, once we have collected the bits and pieces produced by the various trans-
+formations, we will have obtained an interpreter that no longer contains any higher-order
+functions. However, it is convenient to make a few simplications:
+1.letexpressions can be eliminated by substituting the declaring expressions for each
+occurrence of the corresponding declared variables in the body.
+'
+2. Line I.11can be eliminated by replacing occurrences ofevlambdabymk-closr.
+''
+3. Line I.12can be eliminated by replacing occurrences ofextbymk-simp.
+''''
+4. Lines I.14-15can be eliminated by replacing occurrences ofinitenvbymk-init().
+Thus we obtain our second interpreter:
+FUNVAL = CLOSRcupSCcupEQ1cupEQ2
+lam: LAMBDA,en
+arg1
+ENV = INITcupSIMPcupREC
+bvar: VAR,bval: VAL,old
+letx: LETREC,old
+DEFINITIONAL INTERPRETERS381
+interpret=r.evalr,mk-init()II.1
+eval=(r, e).II.2
+const?(r)->evcon(r),II.3
+var?(r)->get(e, r),II.4
+appl?(r)->applyeval(opr(r),e),eval(opnd(r),e),II.5
+lambda?(r)->mk-closr(r, e),II.6
+cond?(r)->ifeval(prem(r),e)II.7
+theneval(conc(r),e)elseeval(altr(r),e),II.8
+letrec?(r)->eval(body(r),mk-rec(r, e))II.9
+apply=(f, a).II.10
+closr?(f)->II.11
+evalbody(lam(f)),mk-simp(fp(lam(f)),a,en(f)),II.12
+sc?(f)->succ(a),II.13
+eq1?(f)->mk-eq2(a),II.14
+eq2?(f)->equal(arg1(f),a)II.15
+get=(e, x).II.16
+init?(e)->x="succ"->mk-sc(),x="equal"->mk-eq1(),II.17
+simp?(e)->ifx=bvar(e)thenbval(e)elseget(old(e),x),II.18
+rec?(e)->ifx=dvar(letx(e))II.19
+thenmk-closr(dexp(letx(e)),e)elseget(old(e),x). II.20
+Just as with FUNVAL, we may examine the different kinds of records in ENV with regard
+to their role in the interpretation of the defined language. The unique record in INIT has
+no subfields, while the records in SIMP and REC each have one field (selected byold) that
+is another member of ENV. Thus environments in our second interpreter are linear lists (in
+which each element specifies the binding of a single variable), and the unique record in
+INIT serves as the empty list.
+It is easily seen thatget(e, x)searches such a list to find the binding of the variablex.
+Whengetencounters a record in SIMP, it comparesxwith thebvarfield, and if a match
+occurs, it returns the value stored in thebvalfield. When get encounters a record in REC,
+it comparesxwithdvar(letx(e))(the declared variable of the recursiveletexpression
+that created the binding), and if a match occurs, it returns the value obtained by evaluating
+dexp(letx(e))(the declaring subexpression of the same recursiveletexpression) in the
+environmente. The fact thateincludes the very binding that is being "looked up" reflects
+the essential recursive characteristic that the declaring subexpression should "feel" the effect
+of the declaration in which it is embedded. Whengetencounters the empty list, it compares
+xwith each of the predefined variables, and if a match is found, it returns the appropriate
+value.
+The definition ofgetreveals the consequences of our restricting recursiveletexpressions
+by requiring that their declaring subexpressions should be lambda expressions. Because of
+this restriction, the declaring subexpressions are always evaluated by the trivial operation
+of forming a closure. Therefore, the functiongetalways terminates, since it never calls any
+other recursive function, and can never call itself more times than the length of the list that
+382REYNOLDS
+it is searching. (On the other hand, if we had permitted arbitrary declaring subexpressions,
+line II.20 would containeval(dexp(letx(e)),e)instead ofmk-closr(dexp(letx(e)),e).
+This seemingly slight modification would convertgetinto a function that might run on
+forever, as for example, when looking up the variablekin an environment created by the
+defined-language constructionletreck=k+1in.)
+The second interpreter is similar in style, and in many details, to McCarthy's definition of
+of recursiveletexpressions instead of label expressions, and the use of predefined variables
+instead of variables with flagged property lists.
+7. Continuations
+The transition from the meta-circular interpreter to our second interpreter has not elimi-
+nated order-of-application dependence. It can easily be seen that a change in the order of
+application used in the defining-language expression (in II.5)
+applyeval(opr(r),e),eval(opnd(r),e)
+will cause a similar change for all application expressions of the defined language.
+To eliminate this dependence, we must first identify the circumstances under which an
+arbitrary program in the defining language will be affected by the order of application. The
+essential effect of switching from call by value to call by name is to postpone the evaluation
+of the operands of application expressions (and declaring subexpressions ofletexpressions),
+and to alter the number of times these operands are evaluated. We have already seen that in
+a purely applicative language, the only way in which this change can affect the meaning of
+a program is to avoid the evaluation of a nonterminating operand. Now suppose we define
+an expression to beseriousif there is any possibility that its evaluation might not terminate.
+Then a sufficient condition for order-of-application independence is that a program should
+contain no serious operands or declaring expressions.
+Next, suppose that we can divide the functions that may be applied by our program into
+seriousfunctions, whose application may sometimes run on forever, andtrivialfunctions,
+whose application will always terminate. (Of course, it is well-known that one cannot
+effectively decide whether an arbitrary function will always terminate, but one can still
+establish this classification in a "fail-safe" manner, i.e., classify a function as serious unless
+it can be shown to terminate for all arguments.) Then an expression will only be serious
+if its evaluation can cause the application of a serious function, and a program will be
+independent of order-of-application if no operand or declaring expression can cause such
+an application.
+At first sight, this condition appears to be so restrictive that it could not be met in a
+nontrivial program. As can be seen with a little thought, the condition implies that whenever
+some function calls a serious function, the calling function must return the same result as
+the called function, without performing any further computation. But any function that
+calls a serious function must be serious itself. Thus by induction, as soon as any serious
+function returns a result, every function must immediately return the same result, which
+must therefore be the final result of the entire program.
+DEFINITIONAL INTERPRETERS383
+Nevertheless, there is a method for transforming an arbitrary program into one that meets
+our apparently restrictive condition. The underlying idea has appeared in a variety of
+f(except the main
+old
+program) by a new serious functionfthat accepts an additional argumentccalled a
+new
+continuation. The continuation will be a function itself, andfis expected to compute
+new
+the same result asf, apply the continuation to this result, and then return the result of
+old
+the continuation, i.e.,
+f(x,...,x,c)=cf(x,...,x).
+new1nold1n
+This introduction of continuations provides an additional "degree of freedom" that can
+be used to meet the condition of order-of-application independence. Essentially, instead
+of performing further actions after a serious function has returned, one embeds the further
+actions in the continuation that is passed to the serious function.
+To transform our second interpreter, we must first classify its functions. Since the defined
+language contains expressions and functions whose evaluation and application may never
+terminate, the defining-language functionsevalandapplyare serious and must be altered
+to accept continuations. On the other hand, since we have seen thatgetalways terminates,
+it is trivial and will not be altered. (Note that this situation would change if the defined
+language permitted recursiveletexpressions with arbitrary declaring subexpressions.)
+Bothevalandapplyproduce results in the set VAL, so that the arguments of continua-
+tions will belong to this set. The result of a continuation will always be the value of the
+entire program being interpreted, which will also belong to the set VAL. Thus the set of
+continuations is:
+CONT = VAL->VA L.
+(In a more complicated interpreter in which different serious functions produced different
+kinds of results, we would introduce different kinds of continuations.)
+The overall form of our transformed interpreter will be:
+'
+interpret=r.eval(r,mk-init(), a. a)II.1
+'
+eval=(r, e, c).II.2
+'
+apply=(f, a, c).II.10
+get=same as in Interpreter II. II.16-20
+Note that the "main level" call ofevalbyinterpretprovides an identity function as the
+initial continuation.
+We must now alter each branch ofevalandapplyto apply the continuationcto the
+former results of these functions. In lines II.3, 4, 6, 13, 14, and 15, the branches evaluate
+expressions which are not serious, and which are therefore permissible operands. Thus in
+these cases, we may simply apply the continuationcto each expression:
+384REYNOLDS
+'
+eval=(r, e, c).II.2
+'
+const?(r)->c(evcon(r)),II.3
+'
+var?(r)->c(get(e, r)),II.4
+.
+.
+.
+'
+lambda?(r)->c(mk-closr(r, e)), ...II.6
+'
+apply=(f, a, c).... ,II.10
+'
+sc?(f)->c(succ(a)),II.13
+'
+eq1?(f)->c(mk-eq2(a)),II.14
+'
+eq2?(f)->c(equal(arg1(f),a)). II.15
+In lines II.9 and II.12, the branches evaluate expressions that are serious themselves
+but contain no serious operands. By themselves, these expressions are permissible, but
+they must not be used as operands in applications of the continuation. The solution is
+straightforward; instead of applying the continuationcto the result ofeval, we passcas an
+argument toeval, i.e., we "instruct"evalto applycbefore returning its result:
+'
+letrec?(r)->eval(body(r),mk-rec(r, e),c)II.9
+.
+.
+.
+'
+closr?(f)->II.11
+'
+evalbody(lam(f)),mk-simp(fp(lam(f)),a,en(f)),c. II.12
+The most complex part of our transformation occurs in the branch of eval that evaluates
+application expressions in line II.5. Here we must perform four serious operations:
+1. Evaluate the operator.
+2. Evaluate the operand.
+3. Apply the value of the operator to the value of the operand.
+4. Apply the continuationcto the result of (3).
+Moreover, we must specify explicitly that these operations are to be done in the above order.
+This will insure that the defined language uses call by value, and also that the subexpressions
+of an application expression are evaluated from left to right (operator before operand).
+The solution is to callevalto perform operation (1), to give this call ofevala continuation
+that will callevalto perform operation (2), to give the second call ofevala continuation that
+will callapplyto perform (3), and to giveapplya continuation (the original continuationc)
+that will perform (4). Thus we have:
+'
+appl?(r)->evalopr(r),e,f.evalopnd(r),e,a.apply(f, a, c). II.5
+A similar approach handles the branch that evaluates conditional expressions in lines II.7
+and 8. Here there are three serious operations to be performed successively:
+DEFINITIONAL INTERPRETERS385
+1. Evaluate the premiss.
+2. Evaluate the conclusion or the alternative, depending on the result of (1).
+3. Apply the continuationcto the result of (2).
+The transformed branch is:
+'
+cond?(r)->evalprem(r),e,II.7
+'
+b.ifbtheneval(conc(r),e,c)elseeval(altr(r),e,c). II.8
+Combining the scattered pieces of our transformed interpreter, we have:
+'
+interpret=r.eval(r,mk-init(), a. a)II.1
+'
+eval=(r, e, c).II.2
+'
+const?(r)->c(evcon(r)),II.3
+'
+var?(r)->c(get(e, r)),II.4
+'
+appl?(r)->evalopr(r),e,f.evalopnd(r),e,a.apply(f, a, c),II.5
+'
+lambda?(r)->c(mk-closr(r, e)),II.6
+'
+cond?(r)->evalprem(r),e,II.7
+'
+b.ifbtheneval(conc(r),e,c)elseeval(altr(r),e,c),II.8
+'
+letrec?(r)->eval(body(r),mk-rec(r, e),c)II.9
+'
+apply=(f, a, c).II.10
+'
+closr?(f)->II.11
+'
+evalbody(lam(f)),mk-simp(fp(lam(f)),a,en(f)),c,II.12
+'
+sc?(f)->c(succ(a)),II.13
+'
+eq1?(f)->c(mk-eq2(a)),II.14
+'
+eq2?(f)->c(equal(arg1(f),a))II.15
+get=same as in Interpreter II. II.16-20
+At this stage, since continuations are functional arguments, we have achieved order-of-
+application independence at the price of re-introducing higher-order functions. Fortunately,
+we can now "defunctionalize" the set CONT in the same way as FUNVAL and ENV. To
+interpret the new members of CONT we introduce a functioncontsuch that ifcrepresents
+new
+the continuationcandais a member of VAL thencont(c,a)=c(a). The
+oldnewold
+application ofcontmust be introduced at each point inevalandapplywhere a continuation
+''''''
+is applied to a value, i.e., in lines II.3,4,6,13,14, and 15.
+There are four lambda expressions, indicated by solid underlining, that create continu-
+ations. The following table gives their locations and global variables, and the equations
+defining the new sets of records that will represent their values:
+386REYNOLDS
+Location Global Variables New Record Equation
+'
+II.1none FIN=[]
+'
+II.5(outer)recEVOPN=[ap: APPL,en: ENV,next
+'
+II.5(inner)fcAPFUN=[fun: VAL,next
+'
+II.8recBRANCH=[cn: COND,en: ENV,next
+By replacing these lambda expressions by record-creation operations and moving their
+bodies into the new functioncont(withinletexpressions that rebind their formal parameters
+and global variables appropriately), we obtain a third interpreter, which is independent of
+order-of-application and does not use higher-order functions:
+CONT = FINcupEVOPNcupAPFUNcupBRANCH
+ap: APPL,en: ENV,next
+fun: VAL,next
+cn: COND,en: ENV,next
+FUNVAL, ENV, etc. = same as in Interpreter II.
+interpret=r.eval(r,mk-init(),mk-fin())
+eval=(r, e, c).
+const?(r)->cont(c,evcon(r)),
+var?(r)->cont(c,get(e, r)),
+appl?(r)->eval(opr(r),e,mk-evopn(r, e, c)),
+lambda?(r)->cont(c,mk-closr(r, e)),
+cond?(r)->eval(prem(r),e,mk-branch(r, e, c)),
+letrec?(r)->eval(body(r),mk-rec(r, e),c)III
+apply=(f, a, c).
+closr?(f)->
+evalbody(lam(f)),mk-simp(fp(lam(f)),a,en(f)),c,
+sc?(f)->cont(c,succ(a)),
+eq1?(f)->cont(c,mk-eq2(a)),
+eq2?(f)->contc,equal(arg1(f),a)
+cont=(c, a).
+fin?(c)->a,
+evopn?(c)->letf=aandr=ap(c)ande=en(c)andc=next(c)
+ineval(opnd(r),e,mk-apfun(f, c)),
+apfun?(c)->letf=fun(c)andc=next(c)inapply(f, a, c),
+branch?(c)->letb=aandr=cn(c)ande=en(c)andc=next(c)
+in ifbtheneval(conc(r),e,c)elseeval(altr(r),e,c)
+get=same as in Interpreter II.
+DEFINITIONAL INTERPRETERS387
+From their abstract syntax, it is evident that continuations in our third interpreter are linear
+lists, with the unique record in FIN acting as the empty list, and thenextfields in the other
+records acting as link fields. In effect, a continuation is a list of instructions to be interpreted
+by the functioncont. Each instruction accepts a "current value" (the second argument of
+cont) and produces a new value that will be given to the next instruction. The following list
+gives approximate meanings for each type of instruction:
+FIN: The current value is the final value of the program. Halt.
+EVOPN: The current value is the value of an operator. Evaluate the operand of the appli-
+cation expression in theapfield, using the environment in theenfield. Then obtain a
+new value by applying the current value to the value of the operand.
+APFUN: The current value is the value of an operand. Obtain a new value by applying the
+function stored in thefunfield to the current value.
+BRANCH: The current value is the value of a premiss. If it istrue(false) obtain a new
+value by evaluating the conclusion (alternative) of the conditional expression stored in
+thecnfield, using the environment in theenfield.
+Each of the three serious functions,eval,apply, andcont, does a branch on the form of
+its first argument, performs trivial operations such as field selection, record creation, and
+environment lookup, and then calls another serious function. Thus our third interpreter
+is actually a state-transition machine, whose states each consist of the name of a serious
+function plus a list of its arguments.
+erable difference in detailed mechanisms. (Very roughly, one can construct the continuation
+by merging Landin's stack and control and concatenating this merged stack with the dump.)
+8. Continuations with Higher-Order Functions
+In transforming Interpreter I into Interpreter III, we have moved from a concise, abstract
+definition to a more complex machine-like one. If clarity consists of the avoidance of
+subtle characteristics of the defining language, then Interpreter III is certainly clearer than
+Interpreter I. But if clarity consists of conciseness and the absence of unnecessary com-
+plexity, then the reverse is true. The machine-like character of Interpreter III includes a
+variety of "cogs and wheels" that are quite arbitrary, i.e., one can easily construct equivalent
+interpreters (such as the SECD machine) with different cogs and wheels.
+In fact, these "cogs and wheels" were introduced when we defunctionalized the sets
+FUNVAL, ENV, and CONT, since we replaced the functions in these sets by representations
+that were correct, but not unique. Had we chosen different representations, we would have
+obtained an equivalent but quite different interpreter.
+This suggests the desirability of retaining the use of higher-order functions,providing
+these entities can be given a mathematically rigorous definition that is independent of any
+388REYNOLDS
+specific representation. Fortunately, such a definition has recently been provided by D.
+theory and topology. (The central technical problem that Scott has solved is to define
+functions that are not only higher-order, but alsotypeless, so that any function may be
+applied to any other function, including itself.) Although a description of this work would
+be beyond the scope of this paper, we may summarize its main implication for definitional
+interpreters: Scott has developed a mathematical model of the lambda calculus, which is
+thereby a model for a purely applicative higher-order defining language. But the defining
+language modelled by Scott uses call by name rather than call by value. (In terms of the
+lambda calculus, it uses normal order of evaluation.) Thus to apply Scott's work to a defined
+language that uses call by value, we need a definitional interpreter that retains higher-order
+functions but is order-of-application independent.
+An obvious approach to this goal is to introduce continuations directly into the meta-
+circular interpreter. At first sight, this appears to be straightforward. Referring back to
+Interpreter I, we see that the functionevalis obviously serious, whileevlambda,extand
+initenvare trivial. (evlambdais trivial since the evaluation of lambda expressions always
+terminates.) Apparentlyevalis the only function that must accept continuations.
+But when we transform the branch ofevalthat evaluates application expressions, the
+construction described in the previous section seems to give:
+appl?(r)->evalopr(r),e,f.evalopnd(r), e, a. c(f(a)).
+Unfortunately, the subexpressionc(f(a))is not independent of the order-of-application,
+since the evaluation of the operandf(a)may never terminate, while the functioncmay be
+independent of its argument.
+The difficulty is that the class of serious functions must include every potentially nonter-
+minating function that may be applied during the execution of the interpreter; in addition
+toeval, this class contains the members of the set FUNVAL of defined-language functional
+values. Thus we must modify the functions in FUNVAL to accept continuations:
+FUNVAL = VAL, CONT->VA L,
+replacing each functionfby anfsuch thatf(a, c)=c(f(a)). This allows
+oldnewnewold
+us to replace the order-dependent expressionc(f(a))by the order-independent expression
+f(a, c). Of course, we must add continuations as an extra formal parameter to each lambda
+expression that creates a member of FUNVAL.
+(A similar modification of the functions in ENV is unnecessary, since it can be shown that
+the functions in this set always terminate. Just as withget, this depends on the exclusion of
+recursiveletexpressions with arbitrary declaring subexpressions.)
+Once the necessity of altering FUNVAL has been realized, the transformation of Inter-
+preter I follows the basic lines described in the previous section. We omit the details and
+state the final result:
+DEFINITIONAL INTERPRETERS389
+VAL = INTEGERcupBOOLEANcupFUNVAL
+FUNVAL = VAL, CONT->VA L
+ENV = VAR->VA L
+CONT = VAL->VA L
+interpret=r.eval(r,initenv, a. a)
+eval=(r, e, c).
+const?(r)->c(evcon(r)),
+var?(r)->c(e(r)),
+appl?(r)->evalopr(r),e,f.eval(opnd(r), e, a. f(a, c)),
+lambda?(r)->c(evlambda(r, e)),IV
+cond?(r)->evalprem(r),e,
+b.ifbtheneval(conc(r),e,c)elseeval(altr(r),e,c),
+'
+letrec?(r)->letrece=
+'
+x.ifx=dvar(r)thenevlambda(dexp(r),e)elsee(x)
+'
+ineval(body(r),e,c)
+evlambda=(l, e).(a, c).evalbody(l),ext(fp(l),a,e),c
+ext=(z, a, e). x.ifx=zthenaelsee(x)
+initenv=x.x="succ"->(a, c).c(succ(a)),
+''
+x="equal"->(a, c).c(b, c).c(equal(a, b)).
+almost as concise as the meta-circular interpreter, yet it offers the advantages of order-of-
+application independence and, as we will see in the next section, extensibility to accommo-
+date imperative control features.
+(The zealous reader may wish to verify that defunctionalization and the introduction of
+continuations are commutative, i.e., by replacing FUNVAL, ENV, and CONT by appropriate
+nonfunctional representations, one can transform Interpreter IV into Interpreter III.)
+9. Escape Expressions
+We now turn to the problem of adding imperative features to the defined language (while
+keeping the defining language purely applicative). These features may be divided into two
+classes:
+1. Imperative control mechanisms, e.g., statement sequencing, labels and jumps.
+2. Assignment.
+We will first introduce control mechanisms and then consider assignment.
+At first sight, this order of presentation seems facetious. In a language without assignment,
+it seems pointless to jump to a label, since there is no significant way for the part of the
+Landin introduced an imperative control mechanism that is more general than labels and
+390REYNOLDS
+jumps, and that significantly enhances the power of a language without assignment. The
+specific mechanism that he introduced was called a J-operator, but in this paper we will
+develop a slightly simpler mechanism called an escape expression.
+If (in the defined language)xis a variable andris an expression, then
+escapexinr
+is anescape expression, whoseescape variableisxand whosebodyisr. The evaluation
+of an escape expression in an environmenteproceeds as follows:
+1. The bodyris evaluated in the environment that is the extension ofethat bindsxto a
+function called theescape function.
+2. If the escape function is never applied during the evaluation ofr, then the value ofr
+becomes the value of the escape expression.
+3. If the escape function is applied to an argumenta, then the evaluation of the bodyris
+aborted, andaimmediately becomes the value of the escape expression.
+Essentially, an escape function is a kind of label, and its application is a kind of jump. The
+greater generality lies in the ability to pass arguments while jumping.
+(Landin's J-operator can be defined in terms of the escape expression by regardingletg=
+J x. rinras an abbreviation forescapehin letg=x. h(r)inr, wherehis
+1010
+a new variable not occurring inrorr. Conversely, one can regardescapeginras an
+01
+abbreviation forletg=J x. xinr.)
+In order to extend our interpreters to handle escape expressions, we begin by extending
+the abstract syntax of expressions appropriately:
+EXP =...cupESCP
+escv: VAR,body
+It is evident that in each interpreter we must add a branch toevalthat evaluates the new
+kind of expression.
+First consider Interpreter IV. Since an escape expression is evaluated by evaluating its
+body in an extended environment that binds the escape variable to the escape function, and
+since the escape function must be represented by a member of the set FUNVAL = VAL,
+CONT->VAL, we have
+eval=(r, e, c).... ,
+'
+escp?(r)->evalbody(r),ext(escv(r),(a, c). ...,e),c,
+'
+where the value of(a, c). ...must be the member of FUNVAL representing the escape
+function.
+DEFINITIONAL INTERPRETERS391
+Sinceevalis a serious function, its result, which is obtained by applying the continuation
+cto the value of the escape expression, must be the final result of the entire program being
+interpreted. This means thatcitself must be a function that will accept the value of the
+escape expression and carry out the interpretation of the remainder of the program. But the
+member of FUNVAL representing the escape function is also serious, and must therefore
+also produce the final result of the entire program. Thus to abort the evaluation of the body
+and treat the argumentaas the value of the escape expression, it is only necessary for the
+'
+escape function ignore its own continuationc, and to apply the higher-level continuationc
+toa. Thus we have:
+eval=(r, e, c).... ,
+'
+escp?(r)->evalbody(r),ext(escv(r),(a, c).c(a),e),c.
+The extension of Interpreter III is essentially similar. In this case, we must add to the set
+FUNVAL a new kind of record that represents escape functions:
+FUNVAL =...cupESCF
+cn
+These records are created in the new branch ofeval:
+eval=(r, e, c).... ,
+escp?(r)->evalbody(r),mk-simp(escv(r),mk-escf(c),e),c,
+and are interpreted by a new branch ofapply:
+apply=(f, a, c).... ,
+escf?(f)->cont(cn(f),a).
+From the viewpoint of this interpreter, it is clear that the escape expression is a signif-
+icant extension of the defined language, since it introduces the possibility of embedding
+continuations in values.
+(The reader should be warned that either of the above interpreters is a more precise
+definition of the escape expression than the informal English description given beforehand.
+For example, it is possible that the evaluation of the body of an escape expression may
+not cause the application of the escape function, but may produce the escape function (or
+some function that can call the escape function) as its value. It is difficult to infer the
+consequences of such a situation from our informal description, but it is precisely defined
+by either of the interpreters. In fact, the possibility that an escape function may propagate
+outside of the expression that created it is a powerful facility that can be used to construct
+control-flow mechanisms such as coroutines and nondeterministic algorithms.)
+When we consider Interpreters I and II, we find an entirely different situation. The ability
+to "jump" by switching continuations is no longer possible. An escape function must still be
+represented by a member of FUNVAL, but now this implies that, if the function terminates
+without an error stop, then its result must become the value of the application expression
+that applied the function. As far as is known, there is no way to define the escape expression
+392REYNOLDS
+by adding branches to Interpreter I or II (except by the "cheat" of adding imperative control
+the information that was explicitly available in the continuations of Interpreters III and IV
+is implicit in the recursive structure of Interpreters I and II, and in this form it cannot be
+manipulated with sufficient flexibility.
+We have asserted that the escape mechanism encompasses less general control mecha-
+nisms such as labels and jumps. The following description outlines the way in which these
+more specialized operations can be expressed in terms of the escape expression. (A more
+1. In the next section we will introduce assignment in such a way that assignments can
+be executed during the evaluation of expressions. In this situation it is unnecessary to
+make a semantic distinction between expressions and statements; any statement can be
+regarded as an expression whose evaluation produces a dummy value.
+2. A label-free sequence of statementss;;scan be regarded as an abbreviation for
+1n
+the expression
+(x. ... x.x)(s)(s).
+1nn1n
+The effect is to evaluate the statements sequentially from left to right, ignoring the value
+of all but the last.
+3. Ifs,...,sare label-free statement sequences, andl,...,lare labels, then a block
+0n1n
+of the form
+begins,l:s;;l:send
+011nn
+can be regarded as an abbreviation for
+escapegin letrecl=x. g(s;;s)andl=x. g(s;;s)
+11n22n
+andandl=x. g(s)in(s;;s)
+nn0n
+(wheregandxare new variables not occurring in the original block). The effect is
+that each label denotes a function that ignores its argument, evaluates the appropriate
+sequence of statements, and then escapes out of the enclosing block.
+4. An expression of the formgotorcan be regarded as an abbreviation forr(0), i.e., a
+jump to a label becomes an application of the function denoted by the label to a dummy
+argument.
+10. Assignment
+Although the basic concept of assignment is well understood by any competent programmer,
+a surprising degree of care is needed to combine this concept with the language features
+we have discussed previously. Intuitively, the notion of assignment presupposes that the
+DEFINITIONAL INTERPRETERS393
+operations that are performed during the evaluation of a program will occur in a definite
+temporal order. Some of these operations willassignvalues to "variables". Other operations
+may be affected by these assignments; specifically, an operation may depend upon the value
+most recently assigned to each "variable", which we will call the value currentlypossessed
+by the "variable".
+This suggests that for each instant during program execution, there should be an entity
+which specifies the set of "variables" that are present and the values that they currently
+possess. We will call such an entity amemory, and denote the set of possible memories by
+MEM.
+The main subtlety is to realize that the "variables" discussed here are distinct from the
+variablesused in previous sections. This is necessitated by the fact that most programming
+languages permit situations (such as might arise from the use of "call by address") in which
+severalvariablesdenote the same "variable", in the sense that assignment to one of them
+will change the value possessed by all. This suggests that a "variable" is actually a new
+kind of object to which avariablecan be bound. Henceforth, we will call these new objects
+referencesrather than "variables". (Other terms used commonly in the literature areL-value
+andname.) We will denote the set of references by REF.
+Abstractly, the nature of references and memories can be characterized by specifying an
+initial memory and four functions:
+initmem: Contains no references.
+nextref(m): Produces a reference not contained in the memorym.
+augment(m, a): Produces a memory containing the new referencenextref(m)plus the
+references already inm. The new reference possesses the valuea, while the remaining
+references possess the same values as inm.
+update(m,rf,a): Produces a memory containing the same references asm. The refer-
+encerf(assuming it is present) possesses the valuea, while the remaining references
+possess the same value as inm.
+lookup(m,rf): Produces the value possessed by the referencerfin memorym.
+A simple "implementation" can be obtained by numbering references in the order of their
+number
+count: INTEGER,possess: INTEGER->
+initmem=mk-mem(0, n.0)
+nextref=m.mk-ref(count(m)+1)
+augment=(m, a).mk-memcount(m)+1,
+n.ifn=count(m)+1thenaelse(possess(m))(n)
+update=(m,rf,a).mk-memcount(m),
+n.ifn=number(rf)thenaelse(possess(m))(n)
+lookup=(m,rf).(possess(m))(number(rf)).
+394REYNOLDS
+Our next task is to introduce memories into our interpreters. Although any of our inter-
+preters could be so extended, we will only consider Interpreter IV.
+It is evident that the operation of evaluating a defined-language expression will now
+'
+depend upon a memorymand will produce a (possibly) altered memorym. Thus the
+functionevalwill acceptmas an additional argument. However, because of the use of
+''
+continuations,mwill not be part of the result ofeval. Instead,mwill be passed on as an
+additional argument to the continuation that is applied byevalto perform the remainder of
+program execution.
+In a similar manner, the application of a defined-language function will depend upon and
+produce memories. Thus each function in the set FUNVAL will accept a memory as an
+additional argument, and will also pass on a memory to its continuation.
+On the other hand, there are particular kinds of expressions, specifically constants, vari-
+ables, and lambda expressions, whose evaluation cannot cause assignments. For this reason,
+the functionsevconandevlambda, and the functions in the set ENV, will not accept or pro-
+duce memories.
+These considerations lead to the following interpreter, in which memories propagate
+through the various operations in a manner that correctly reflects the temporal order of
+execution:
+VAL = INTEGERcupBOOLEANcupFUNVAL
+FUNVAL = VAL, MEM, CONT->VA L
+ENV = VAR->VA L
+CONT = MEM, VAL->VA L
+interpret=r.eval(r,initenv,initmem,(m, a).a)
+eval=(r, e, m, c).
+const?(r)->c(m,evcon(r)),
+var?(r)->c(m, e(r)),
+appl?(r)->evalopr(r),e,m,
+''
+(m,f).eval(opnd(r),e,m,
+''''
+(m,a).f(a, m,c)),
+lambda?(r)->c(m,evlambda(r, e)),
+cond?(r)->evalprem(r),e,m,
+'''
+(m,b).ifbtheneval(conc(r),e,m,c)elseeval(altr(r),e,m,c),
+'
+letrec?(r)->letrece=
+'
+x.ifx=dvar(r)thenevlambda(dexp(r),e)elsee(x)
+'
+ineval(body(r),e,m,c),
+'''
+escp?(r)->evalbody(r),ext(escv(r),(a, m,c).c(m,a),e),m,c
+evlambda=(l, e).(a, m, c).evalbody(l),ext(fp(l),a,e),m,c
+ext=(z, a, e). x.ifx=zthenaelsee(x)
+initenv=x.x="succ"->(a, m, c).c(m,succ(a)),
+''''
+x="equal"->(a, m, c).cm, (b, m,c).c(m,equal(a, b)).
+DEFINITIONAL INTERPRETERS395
+At this stage, although we have "threaded" memories through the operations of our
+interpreter, we have not yet introduced references, nor any operations that alter or depend
+upon memories. To proceed further, however, we must distinguish between two approaches
+to assignment, each of which characterizes certain programming languages.
+In the "L-value" approach, in each context of the evaluation process where a value would
+occur, a reference (i.e., L-value) possessing that value occurs instead. Thus, for example,
+expressions evaluate to references, functional arguments and results are references, and
+environments bind variables to references. (In richer languages, references would occur
+instead of values in still other contexts, such as array elements.) This approach is used in the
+occur in certain kinds of contexts, while values always occur in others) in such languages
+In the "reference" approach, references are introduced as a new kind of value, so that
+either references or "normal" values can occur in any meaningful context. This approach
+either approach can be accommodated by the various styles of interpreter discussed in
+this paper, we will limit ourselves to incorporating the reference approach into the above
+extension of Interpreter IV. We first augment the set of values appropriately:
+VAL = INTEGERcupBOOLEANcupFUNVALcupREF.
+Next we introduce basic operations for creating, assigning, and evaluating references.
+For simplicity, we will make these operations basic functions, denoted by the predefined
+variablesref,set, andval. The following is an informal description:
+ref(a): Accepts a valueaand returns a new reference initialized to possessa.
+(set(rf))(a): Accepts a referencerfand a valuea. The valueais assigned torfand also
+returned as the result. (Because of our restriction to functions of a single argument, this
+function is Curried, i.e.,setacceptsrfand returns a function that acceptsa.)
+val(rf): Accepts a referencerfand returns its currently possessed value.
+To introduce these new functions into our interpreter, we extend the initial environment
+as follows:
+initenv=x.
+x="ref"->(a, m, c).c(augment(m, a),nextref(m)),
+''''
+x="set"->(rf,m,c).cm, (a, m,c).c(update(m,rf,a),a),
+x="val"->(rf,m,c).c(m,lookup(m,rf)).
+The main shortcoming of the reference approach is the incessant necessity of using the
+functionval. This problem can be alleviated by introducingcoercionconventions, as
+in appropriate contexts. However, since these conventions can be treated as abbreviations,
+they do not affect the basic structure of the definitional interpreters.
+396REYNOLDS
+11. Directions Of Future Research
+Within this paper we have tried to present a systematic, self-contained, and reasonably
+complete description of the current state of the art of definitional interpreters. We conclude
+with a brief (and hopeful) list of possible future developments:
+1. It would still be very desirable to be able to define higher-order languages logically rather
+than interpretively, particularly if such an approach can lead to practical correctness
+ 13,
+language using call by name rather than call by value.
+2. It should be possible to treat languages with multiprocessing features, or other features
+that involve "controlled ambiguity". An initial step is the work of the IBM Vienna
+refined syntactic type structure. Ideally, such a treatment should be meta-circular, in
+the sense that the type structure used in the defined language should be adequate for the
+defining language.
+4. The conciseness of definitional interpreters makes them powerful tools for language
+design, particularly when one wishes to add new capabilities to a language with a
+minimum of increased complexity. Of particular interest (at least to the author) are the
+problems of devising better type systems and of generalizing assignment (for example,
+by permitting memories to be embedded in values.)
+References
+1. McCarthy, John. Recursive functions of symbolic expressions and their computation by machine, part I.
+Communications of the ACM, 3(4):184-195, April 1960.
+2. Landin, Peter J. The next 700 programming languages.Communications of the ACM, 9(3):157-166, March
+1966.
+3. Evans, Jr., Arthur. PAL - A language designed for teaching programming linguistics. InProceedings of
+23rd National ACM Conference, pages 395-403. Brandin/Systems Press, Princeton, New Jersey, 1968.
+4. Reynolds, John C. GEDANKEN - A simple typeless language based on the principle of completeness and
+the reference concept.Communications of the ACM, 13(5):308-319, May 1970.
+5. Church, Alonzo.The Calculi of Lambda-Conversion, volume 6 ofAnnals of Mathematics Studies. Princeton
+University Press, Princeton, New Jersey, 1941.
+6. Curry, Haskell Brookes and Feys, Robert.Combinatory Logic, Volume 1. Studies in Logic and the Founda-
+tions of Mathematics. North-Holland, Amsterdam, 1958. Second printing 1968.
+7. Landin, Peter J. A-calculus approach. In Leslie Fox, editor,Advances in Programming and Non-Numerical
+Computation: Proceedings of A Summer School, pages 97-141. Oxford University Computing Laboratory
+and Delegacy for Extra-Mural Studies, Pergamon Press, Oxford, England, 1966.
+8. Floyd, Robert W. Assigning meanings to programs. In J. T. Schwartz, editor,Mathematical Aspects of
+Computer Science, volume 19 ofProceedings of Symposia in Applied Mathematics, pages 19-32, New York
+City, April 5-7, 1966. American Mathematical Society, Providence, Rhode Island, 1967.
+9. Manna, Zohar. The correctness of programs.Journal of Computer and System Sciences, 3(2):119-127,
+May 1969.
+10. Hoare, C. A. R. An axiomatic basis for computer programming.Communications of the ACM, 12(10):576-
+11. Gries, David, editor.Programming Methodology. Springer-Verlag, New York, 1978.
+DEFINITIONAL INTERPRETERS397
+12. Scott, Dana S. Outline of a mathematical theory of computation. Technical Monograph PRG-2, Program-
+ming Research Group, Oxford University Computing Laboratory, Oxford, England, November 1970. A
+preliminary version appeared in Proceedings of the Fourth Annual Princeton Conference on Information
+Sciences and Systems (1970), 169-176.
+13. Scott, Dana S. Lattice theory, data types and semantics. In Randell Rustin, editor,Formal Semantics of
+Programming Languages: Courant Computer Science Symposium 2, pages 65-106, New York University,
+New York, September 14-16, 1970. Prentice-Hall, Englewood Cliffs, New Jersey, 1972.
+14. Scott, Dana S. Models for various type-free calculi. In Patrick Suppes, Leon Henkin, Athanase Joja,
+and Gr. C. Moisil, editors,Logic, Methodology and Philosophy of Science IV: Proceedings of the Fourth
+International Congress, volume 74 ofStudies in Logic and the Foundations of Mathematics, pages 157-187,
+Bucharest, Romania, August 29-September 4, 1971. North-Holland, Amsterdam, 1973.
+15. Scott, Dana S. Continuous lattices. In F. William Lawvere, editor,Toposes, Algebraic Geometry and Logic,
+volume 274 ofLecture Notes in Mathematics, Dalhousie University, Halifax, Nova Scotia, January 16-19,
+1971. Springer-Verlag, Berlin, 1972.
+16. Milner, Robin. Implementation and applications of Scott's logic for computable functions. InProceedings of
+an ACM Conference on Proving Assertions about Programs, pages 1-6, Las Cruces, New Mexico, January
+6-7, 1972. ACM, New York. SIGPLAN Notices Volume 7, Number 1 and SIGACT News, Number 14.
+17. Burstall, Rodney M. Formal description of program structure and semantics in first order logic. In Bernard
+Meltzer and Donald Michie, editors,Machine Intelligence 5, pages 79-98. Edinburgh University Press,
+Edinburgh, Scotland, 1969.
+18. Lucas, Peter, Lauer, Peter E., and Stigleitner, H. Method and notation for the formal definition of program-
+ming languages. Technical Report TR 25.087, IBM Laboratory Vienna, June 28, 1968. Revised July 1,
+1970.
+19. Reynolds, John C. GEDANKEN - a simple typeless language which permits functional data structures and
+coroutines. Report ANL-7621, Applied Mathematics Division, Argonne National Laboratory, Argonne,
+Illinois, September 1969.
+20. Morris, F. Lockwood. The next 700 formal language descriptions.Lisp and Symbolic Computation, 6(3-
+4):249-257, November 1993. Original manuscript dated November 1970.
+21. de Bakker, Jaco W. Semantics of programming languages. In Julius T. Tou, editor,Advances in Information
+Systems Science, volume 2, chapter 3, pages 173-227. Plenum Press, New York, 1969.
+22. Park, David M. R. Fixpoint induction and proofs of program properties. In Bernard Meltzer and Donald
+Michie, editors,Machine Intelligence 5, pages 59-78. Edinburgh University Press, Edinburgh, 1969.
+23. Feldman, Jerome and Gries, David. Translator writing systems.Communications of the ACM, 11(2):77-113,
+February 1968.
+24. McCarthy, John. Towards a mathematical science of computation. In Cicely M. Popplewell, editor,Infor-
+mation Processing 62: Proceedings of IFIP Congress 1962, pages 21-28, Munich, August 27-September
+1, 1962. North-Holland, Amsterdam, 1963.
+25. Wozencraft, John M. and Evans, Jr., Arthur. Notes on programming linguistics. Technical report, Department
+of Electrical Engineering, Massachusetts Institute of Technology, Cambridge, Massachusetts, February
+1971.
+26. van Wijngaarden, Adriaan . Recursive definition of syntax and semantics. In T. B. Steel, Jr., editor,
+Formal Language Description Languages for Computer Programming: Proceedings of the IFIP Working
+Conference on Formal Language Description Languages, pages 13-24, Baden bei Wien, Austria, September
+15-18, 1964. North-Holland, Amsterdam, 1966.
+27. Morris, Jr., James H. A bonus from van Wijngaarden's device.Communications of the ACM, 15(8):773,
+August 1972.
+28. Fischer, Michael J. Lambda calculus schemata. InProceedings of an ACM Conference on Proving Assertions
+about Programs, pages 104-109, Las Cruces, New Mexico, January 6-7, 1972. ACM, New York.
+29. Landin, Peter J. A correspondence between ALGOL 60 and Church's lambda-notation.Communications
+of the ACM, 8(2-3):89-101, 158-165, February-March 1965.
+30. Barron, D.W., Buxton, John N., Hartley, D.F., Nixon, E., and Strachey, Christopher. The main features of
+CPL.The Computer Journal, 6:134-143, July 1963.
+31. van Wijngaarden,Adriaan, Mailloux, B.J., Peck, J.E.L., and Koster, C.H.A. Report on the algorithmic
+language ALGOL 68.Numerische Mathematik, 14(2):79-218, 1969.
+32. Cheatham, Jr., T.E., Fischer, Alice, and Jorrand, P. On the basis for ELF - an extensible language facility.
+In1968 Fall Joint Computer Conference, volume 33, Part Two ofAFIPS Conference Proceedings, pages
+937-948, San Francisco, December 9-11, 1968. Thompson Book Company, Washington, D.C.

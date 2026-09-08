@@ -56,7 +56,7 @@ One question each, one `research` run each, one `FD` row each in
 | R1 | What does the type-preservation theorem state, phase by phase, in the F-to-TAL translation, and what obligation does each phase carry? | the property itself. Everything below depends on it |
 | R2 | Where do production compilers lose source types on the way down, and what do they give up by doing it? | whether `LCore`'s erasure is a defect or a costed choice |
 | R3 | When a target type system is coarser than the source, what published mechanisms discharge the resulting soundness obligation, and what does each cost the producer, the checker and the runtime? | `tt-word`, `tal-ty=?`'s wildcard, E185, `decision-erased-word-level` |
-| R4 | How is closure conversion typed, and what must the target type system express to state its result? | `closconv`, the `$apply` dispatchers, the `$k` capture constructors, PRB-45/46/49 |
+| R4 | What is the type-preservation obligation of defunctionalization as a closure-conversion strategy, how does it differ from the existential-packing obligation, and what does each require of the target type system? | `closconv`, the `$apply` dispatchers, the `$k` capture constructors, PRB-45/46/49 |
 | R5 | What must a block boundary carry for a target-level checker to be complete, and what obligation does that put on the producer? | PRB-73, and the producer half FD-14 did not reach |
 | R6 | What does accepting a target program witness, and how do certifying compilers relate the source and the target? | what `preserve-check` means in E16's and E70's titles |
 | R7 | How does an effect claim survive lowering, and what carries it at the target level? | E70, PRB-53 |
@@ -68,6 +68,13 @@ when the state at every block boundary is written in the artifact under check,
 and one that derives its own environment stops at the first refusal, is made
 total, or poisons and suppresses. R5 takes the producer half only: what has to
 be declared, how it is verified, and what it costs the pass that emits it.
+
+**R4's question was rewritten on 2026-09-08, the way R3's was.** It asked how closure
+conversion is typed, which presumes the existential-packing translation is the one this
+tree instantiates. FD-15 measured that it is not: `closconv` defunctionalizes, which is a
+different published translation with its own theorem. The rewritten question asks for
+defunctionalization's obligation and for the contrast against existential packing, and
+FD-18 answers it.
 
 **`decision-erased-word-level`** settles the LEVEL: the erased word lives at the
 lowering type level and `Core` gains no word spelling. R3 does not reopen the
@@ -95,7 +102,7 @@ R7 is last because E70 is unbuilt and gated on `decision-effect-facets`.
 | R1 | FD-15 |
 | R2 | FD-16 |
 | R3 | FD-17 |
-| R4 | UNRUN |
+| R4 | FD-18 |
 | R5 | UNRUN |
 | R6 | UNRUN |
 | R7 | UNRUN |

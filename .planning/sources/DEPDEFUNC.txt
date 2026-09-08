@@ -1,0 +1,1344 @@
+Defunctionalization with Dependent Types
+YULONG HUANG,University of Cambridge, UK
+JEREMY YALLOP,University of Cambridge, UK
+Thedefunctionalizationtranslation that eliminates higher-order functions from programs forms a key part
+of many compilers. However, defunctionalization for dependently-typed languages has not been formally
+studied.
+We present the rst formally-specied defunctionalization translation for a dependently-typed language
+and establish key metatheoretical properties such as soundness and type preservation. The translation is
+suitable for incorporation into type-preserving compilers for dependently-typed languages.
+CCS Concepts:*Theory of computation->Type theory;Program semantics;*Software and its engineering
+->Compilers.
+Additional Key Words and Phrases: compilation, type preservation, type systems, dependent types
+ACM Reference Format:
+Yulong Huang and Jeremy Yallop. 2023. Defunctionalization with Dependent Types.Proc. ACM Program. Lang.
+7, PLDI, Article 127 ( June 2023),23pages.https://doi.org/10.1145/3591241
+1 INTRODUCTION
+Types are increasingly used not merely forclassication(i.e. in identifying a subset of programs
+with desirable properties), but forcompilation. Atype-preserving compiler, organised as a series of
+e.g.Bowman and Ahmed 2018;Bowman et al.
+2018;Morrisett et al.1999;Tarditi et al.1996;Xi and Harper 2001
+and Blott 1989
+2007Tarditi et al.1996
+tions between intermediate languages can increase condence in correctness of the compilation
+Patrignani et al. 2019].
+As type systems increase in sophistication, dening type-preserving presents new challenges.
+Some of the most signicant arise in the compilation ofdependently-typedlanguages such as
+Bove et al.2009Brady 2013Coq Development Team 2022
+systems are suciently expressive to support arbitrary computation. It has proved dicult to adapt
+long-studied translations such ascontinuation-passing styleconversion,closure conversion, and
+conversion intoadministrative normal form
+Barthe and Uustalu 2002;Bowman and Ahmed 2018;Bowman et al.2018;Koronkevich et al.2022].
+Another such translation,defunctionalization, which eliminates higher-order functions from pro-
+e.g.
+et al.2005;Podlovics et al.2021;Weeks 2006
+*
+We use dierent colours and fonts to distinguish dierent languages, and recommend reading this paper in colour.
+Authors' addresses:Yulong Huang, University of Cambridge, Cambridge, UK, yh419@cam.ac.uk;Jeremy Yallop, University
+of Cambridge, Cambridge, UK, jeremy.yallop@cl.cam.ac.uk.
+This work is licensed under a Creative Commons Attribution 4.0 International License.
+2023 Copyright held by the owner/author(s).
+2475-1421/2023/6-ART127
+https://doi.org/10.1145/3591241
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+*
+Kovcs 2020;Wadler
+Sulzmann et al.
+Barthe et al.1999;
+Brassel 2011;Pettyjohn
+127
+127:2 Yulong Huang and Jeremy Yallop
+Bell et al.1997;Nielsen 2000;Pottier and Gauthier
+2004
+1
+as Idris. However, to date no type-preserving variant of the defunctionalization translation for
+dependently-typed languages has been developed.
+This work meets that need, introducing a typed defunctionalization translation for a dependently-
+typed language, and establishing its fundamental properties. As with previous work that has adapted
+similar program translations to support dependent types, we have encountered and resolved various
+diculties that do not arise in simply-typed settings. In particular, the need to preserve universe
+sizes (used by dependently-typed languages to avoid inconsistencies), and to preserve reduction
+(used to establish type equality) make a straightforward adaption of the standard defunctionalization
+unfeasible.
+Contributions.The central contribution of this paper is the rst type-preserving defunctionaliza-
+tion translation for a dependently typed language. In more detail,
+*S2shows that the type-preserving defunctionalization translations used for simply typed
+languages (S2.1) do not extend to a dependently-typed setting (S2.3), and presents an abstract
+translation suited to dependently-typed langauges (S2.4).
+*S3has the technical development of our type-preserving defunctionalization translation. S3.3
+formally denes the abstract translation and S3.4and S3.5establish key meta-theoretical
+properties such as soundness, type preservation, and consistency.
+Finally, S4summarises related work on type-preserving compilation and on defunctionalization.
+We also provide an implementation of our translation as supplementary material.
+2 OVERVIEW
+2.1 Defunctionalization
+Thedefunctionalizationtranslation turns higher-order programs into rst-order programs, by
+replacing the function arrow-->-with a rst-order data type-
+each abstraction .in the source program with a constructor applicationwhereis a
+constructor of--andare the free variables of the abstraction, and replaces each application
+ with$, where the inx operator$mapsback to.
+Here is an example. The polymorphiccomposefunction contains three abstractions, here labeled
+F1,F2, andF3.
+c o m p o s e : : ( b->c )->( a->b )->( a->c )
+c o m p o s e =f->g->x->f ( g x )
+F3
+F2
+F1
+Defunctionalizingcomposeproduces a data typewith one constructor for each abstraction.
+Here->separates constructor arguments:F2has one argument of typebc, corresponding tof
+inF2above, andF3has two arguments, corresponding tofandginF3.
+d a t a() a bw h e r e
+F 1 : : ( bc )( ab )
+F 2 : : ( bc )->( ab )
+F 3 : : ( bc )->( ab )->
+FollowingPottier and Gauthier[2004produced by defunctionalization is a
+generalized algebraic data type(GADT), in which the return type of each constructor can have a
+1
+https://github.com/idris-lang/Idris-dev/blob/v1.3.4/src/IRTS/Defunctionalise.hs
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+-. Defunctionalization replaces
+( ac )
+( ac )
+( ac )
+Defunctionalization with Dependent Types 127:3
+distinct instantiation of the type parameters, and constructor types can involve type variables (such
+asbin the type ofF3) that do not appear in return types.
+Defunctionalization also produces an operator$that maps the constructors ofto the bodies
+of the corresponding abstractions:
+($) : : ( ab )->a->b
+F 1$f = F 2 f
+F 2 f$g = F 3 f g
+F 3 f g$x = f$( g$x )
+Here$mapsF1and the argumenttoF2 x, since the body of the abstractionF1isF2, withxfree.
+Similarly, it mapsF3tof$(g$x)because the body ofF3isf (g x).
+Finally, defunctionalization replaces->withandF1withF1incomposeitself:
+c o m p o s e _ : : ( bc )( ab )
+c o m p o s e _ = F 1
+Previous work on defunctionalization in typed settings has examined a variety of languages, from
+Nielsen 2000Bell et al.1997Pottier
+and Gauthier 2004
+types, from simple algebraic datatypes for simply-typed functions, to the more powerfulgeneralized
+algebraic data types for polymorphism.
+Might the same approach, extended to yet more powerful data types, support defunctionalization
+of dependently-typed programs? Polymorphic functions abstract over types and defunctionalize to
+GADTs indexed by types. By analogy, might dependent functions, which abstract over expressions,
+defunctionalize to inductive families indexed by expressions?
+2.2 Inductive Families
+generalize both ordinary inductive data types and generalized algebraic data types by permitting
+indexing by expressions.
+The constructor of each inductive family may return an instantiation of the family instantiated
+Norell 2008
+of the inductive family of nite sets,Fin, are indexed by natural numbersn:
+dataFin:N->Setwhere
+0
+fzero: -n:N"->Fin(sucn)
+fsuc: -n:N"->Finn->Fin(sucn)
+The constructorfzeroconstructs an element of typeFin(sucn) for anyn, whilefsucconstructs an
+element of typeFin(sucn) from an element of typeFinn.
+In general, inductive families (without parameters) have the following form:
+dataD:(y:T)->. . .->(y:T)->Setwhere
+11
+c:A
+11
+c:A
+12
+. . .
+whereDis an inductive family inSetindexed by expressions of typeT,. . .,T. For each constructor
+c, it takes a number of arguments(z:S)and constructs an element of typeDt. . .t, where
+eachtis an expression of typeT. Concretely, eachAtakes the following form:
+(z:S)->. . .->(z:S)->Dt. . .t.
+111
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+( ac )
+Dybjer 1994]
+1
+1
+127:4 Yulong Huang and Jeremy Yallop
+The arguments toDandcare dependently typed:Tcan mentiony. . .y, andScan
++1
+mentionz. . .z.
+1
+To ensure that inductive family denitions are consistent, Agda imposes additional restrictions.
+First,universe checkingrejects inductive denitions with impredicative constructors -- that is,
+denitions whose constructors inhabit a larger universe than the data types themselves. More
+concretely, for a data type such asDabove, the universe of every argument typeS(i.e. the type
+ofS) should be smaller thanSetto pass the universe check. Without this restriction, inductive
+families can be used to encode Girard's paradox.
+Second,positivity checkingrejects inductive families that contain references to themselves in
+non-strictly-positive positions. Without this restriction, inductive families such as the following
+Fixcan be used to build recursive denitions that violate consistency, such asbad:
+dataFix:Set->Setwhere
+fix:forall-a"->(Fixa->a)->Fixa
+bad:forall-a"->a
+bad=f(fixf)wheref:forall-a"->Fixa->a
+f(fixg) =g(fixg)
+Strict positivity imposes two conditions on the constructor typesAof an inductive family denition
+D. First, whereDappears, it must not be indexed by expressions involvingDitself. Second, in the
+argument typesS,Dmust not occur to the left of function arrows.
+These requirements around strict positivity and universes are shared by many dependently-
+de Moura et al. 2015Timany and Sozeau 2017].
+2.3 Problems Extending Defunctionalization to Dependent Types
+At rst glance, extending defunctionalization to support dependent functions, targeting inductive
+families, appears straightforward. As an example, we consider the defunctionalization of the
+following fully-dependentcomposefunction, written in Agda, with all arguments explicit for
+clarity:
+compose: (A:Set)->(B:A->Set)->(C: (x:A)->B x->Set)->
+(f: (y:A)->(z:B y)->C y z)->(g: (x:A)->B x)->(x:A)->
+C x(g x)
+compose=A->B->C->f->g->x->f x(g x)
+Adapting Pottier and Gauthier's recipe, we start by dening an inductive familyto represent
+dependent functions, just as the GADTrepresents non-dependent functions:
+data: (A:Set)->(A->Set)->Setwhere
+Each dependent function type:.  (written(x : A)->f xin Agda) in the original program
+will be defunctionalized toA f.
+Next, we add a constructor tofor each lambda abstraction in the original program. For example,
+theF6constructor corresponds to the innermost abstraction, with free variablesA,B,C,fandg:
+F6: (A:Set)->
+(B:A(_->Set))->
+(C:A(x->(B$x) (_->Set)))->
+(f:A(y->(B$y) (z->C$y$z)))->
+(g:A(x->B$x))->
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+1+1
+Coq Development Team 2022],
+Defunctionalization with Dependent Types 127:5
+A(x->
+C$x$(g$x))
+Finally, we add a case for each constructor to the denition of$:
+F6A B C f g$x=f$x$(g$x)
+Appendix A in the extended version of the paper gives the full denitions. Unfortunately, although
+these denitions are type-correct, they do not satisfy Agda's additional checks.
+First,universe checkingrejects the denition ofF6because in the type ofBthe second argument
+of(i.e._->Set) inhabits the universeSet, which is larger thanSet.
+1
+Second,positivity checkingrejects the denition ofF6because in the type ofC,is indexed by
+an expression involving.
+Finally, Agda'stermination checkingrejects the denition of$because the case forF6is not
+structurally terminating.
+2.3.1 A Simpler Example.The example above suggests that although defunctionalization apparently
+extends naturally to dependent types, the extension suers from consistency problems. In fact,
+the situation is more grave: even if we do not make use of dependency, the same problems with
+universes and positivity arise.
+For example, here is a simply-typedcomposefunction, based on xed typesA,B, andC:
+compose: (B->C)->(A->B)->(A->C)
+compose=f->g->x->f(g x)
+Defunctionalizingcomposeproduces an inductive familyand correspondingapplyfunction$:
+data__:Set->Set->Setwhere
+F1: (BC)(AB)(AC)
+F2: (BC)->(AB)(AC)
+F3: (BC)->(AB)->(AC)
+_$_:forall-A B"->(AB)->A->B
+F1$f=F2f
+F2f$g=F3f g
+F3f g$x=f$(g$x)
+Unfortunately, the simple denitionsuers from the same problems as the more dependent.
+First, universe checking rejects the constructorF1, because the typeBCinhabits the universe
+Set, which is larger thanSet. Second, in the type ofF1,is indexed byitself, so the denition
+1
+fails positivity checking. Finally, theF3case of$fails termination checking because the arguments
+to the recursive call are not structurally smaller than the parameters.
+2.3.2 An Expressivity Mismatch.We might note that the Agda's restrictions are only fairly crude
+syntactic approximations of semantic properties, that programs that breach them are not necessarily
+"incorrect". A similar approach has been taken byAhrens et al.[2018
+byWeirich and Casinghino[2010
+However, we do not favour taking o the safety guards in this way for the code generated
+by defunctionalization. In our view, the fact that Agda rejects the inductive families generated
+by defunctionalization suggests that inductive families are ill suited to the task. For example,
+the universe restriction that rejects the constructors ofdoes not apply to the closures that
+correspond to those constructors in the source program: there is nothing requiring a free variable in
+an abstraction body to inhabit a smaller universe than the function itself. The additional restriction
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+127:6 Yulong Huang and Jeremy Yallop
+::=( {f:B->C,g:A->B},x:A->f@
+3
+( {f:B->C},g:(A->B) ->{f,g}:A->C),
+23
+( {},f:(B->C) ->{f}:-> (A->B) ->A->C)
+12
+compose::={}
+1
+Fig. 1. Defunctionalized simply-typed composition
+arises from an expressivity mismatch: the universe restriction is only needed when inductive
+families are not used in a closure-like fashion -- e.g. when constructor arguments are extracted.
+2.4 Abstract Defunctionalization
+The examples above suggest that the extension of defunctionalization to dependent types istype-
+preserving. It is also possible to show that it ismeaning-preserving. AsPottier and Gauthier[2006]
+observe, when defunctionalization produces a single polymorphic apply function, it coincides with
+the untyped defunctionalization translation. Pottier and Gauthier use this coincidence to prove
+that the typed translation is meaning-preserving by lifting a proof about the untyped translation.
+We might similarly lift the proof to the dependently-typed setting to establish the correctness of
+the extended translation.
+Since the extended defunctionalization translation appears to preserve types and meanings, it is
+disappointing that it falls foul of Agda's various restrictions. How might we build a translation that
+does not violate these checks?
+We choose to follow the direction taken byMinamide et al.[1996Bowman and Ahmed
+[2018abstract closure conversion, which studies closure conversion for a specialized target
+language with new constructs for representing closures and closure types. Closure conversion into
+these constructs captures the essence of the translation, while avoiding the unnecessary restrictions
+imposed by more concrete settings. Similarly, we will dene a target language, theDefunctionalized
+Calculus of Constructions(DCC), in the style of lambda calculus, but with a new construct for
+defunctionalizedlabels(representing indexes into alabel context) in place of lambda abstractions.
+Fig.1shows the result of defunctionalizing the simply-typedcomposefunction to DCC, which
+looks and behaves like the conventional defunctionalization presented in S2.1. In our translation
+into DCC, each abstraction .is replaced with alabel expression{y}whereis the label's
+identier andyare the abstraction's free variables. The function bodyis stored in a separate
+label contextindexed by the label identier, along with its typing information.
+In Fig.1, the label contexthas three entries, one for each abstraction in the originalcompose
+function. Each entry corresponds to one case of the$function in the conventional defunctionaliza-
+tion. For example,arises from the translation of:. (
+3
+in the denition of$: it has two free variablesf:B->Candg:A->B, a bound variablex, and a
+@@@
+bodyf(gx). As we shall see, a label application{f,g}
+3
+the application(F3 f g)$xreduces to the corresponding right hand sidef$(g$x).
+It is straightforward to add dependent types to this scheme, but some care is needed to dene
+the transformation and show that it has the desired meta-theoretical properties. In particular, as we
+shall see, the transformation needs to consider the entire derivation tree rather than just the source
+language expression (S3.3.2), and we need to use a version of the source language with explicit
+substitutions (S3.4) to make the type-preservation proof go through. These challenges arise only in
+defunctionalization in a dependently typed setting, which has not been previously studied.
+2
+We assume that,, andare base types here.
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+(g@x):C),
+2
+ii
+), and corresponds to theF3case
+@@
+Nreduces tof(gN), just as
+Defunctionalization with Dependent Types 127:7
+3 DEFUNCTIONALIZING WITH DEPENDENT TYPES
+Having informally introduced the key concepts and motivated our abstract defunctionalization
+translation, we now turn to the technical details. The next few sections introduce our source
+language, the calculus of constructions (S3.1), our target language, thedefunctionalizedcalculus of
+constructions (S3.2), and the defunctionalizion translation that links them (S3.3). We then establish
+the soundness of the translation (S3.4) and prove the consistency of the target language (S3.5).
+Proofs of the lemmas and theorems in this section can be found in the extended version of this
+Huang and Yallop 2023a].
+3.1 Calculus of Constructions
+an expressive dependently-typed lambda calculus that serves as a basis for several programming
+languages and proof assistants. Our main departure from the original presentation of CC is in
+following the approach taken byLuo[1990
+Agda, Lean, Coq, and F*, by extending CC with a Martin-Lf style hierarchy of universes.
+Here is an example CC denition, compose, which represents the fully dependent composition
+function for functionsand:
+compose::=:. :(:.). :(
+00
+ :(:.(:  .  )). :(:. ).
+:.  ( )
+The expression component. . .  .. .  ( )of this denition is unremarkable; all
+the interest is in the dependencies of types on arguments. In particular, the result type  of
+depends on's argumentsandand the result type of
+a practical programming language, bothand the type arguments,andwould be passed
+implicitly, but our minimal calculus does not support implicit arguments.)
+Fig.2ashows the syntax of CC. The expressions of CC are variablesx(drawn from an innite
+set of names), universes, dependent function typesx:A.B, applicationsL M, and abstractions
+x:A.M. A CC contextis a telescope of variable-expression pairs.
+CC has four judgements:
+(1) reduction (Fig.2b)
+(2) type membership (Fig.2c)
+|-M:A
+(3) context formation (Fig.2d)
+|-
+(4) equivalence (Fig.2e)
+|-A==B
+There is a single reduction rule (Fig.2b), for-reduction,(x:A.N)MN[M/x]. We write
+*
+LMto mean thatLreduces toMin a sequence with zero or more steps.
+CC's rules for typing (Fig.2c) and context formation (Fig.2d) are dened by mutual induction.
+The type of a variableisif:is present in the well-formed context(ty-Var). The type of
+a universeis(ty-Universe), and the type ofx:A.Bis the higher universe among universes
++1
+ofand(ty-Pi). Ifhas typein some contextextended with:, thenx:A.Mhas the
+dependent function typex:A.B(ty-Lambda). Applications have types[/], since the output
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+Coquand and Huet 1988],
+:.:  .).
+0
+depends on's argument. (In
+127:8 Yulong Huang and Jeremy Yallop
+Expressions, , , , ::=||x:A.B|L M|x:A.M
+Universes::=
+Contexts::=. |,x:A
+(a) Syntax
+red-Beta
+(x:A.N)MN[M/x]
+(b) Reduction
+|-M:A
+|-
+x:Ain|-
+ty-Var
+|-:
+|-x:A
++1
+|-A:,x:A|-B:
+|-M:x:A.B|-N:A
+ty-Pi
+|-x:A.B:
+|-M N:B[N/x]
+(, )
+,x:A|-M:B|-M:A|-B:U|-A==B
+ty-Lambda
+|-x:A.M:x:A.B|-M:B
+(c) Typing
+|-
+|- |-A:U
+wf-Empty
+|-,x:A
+|- .
+(d) Context formation
+|-M==N
+*
+Lx:A.L
+*
+LN
+*
+MM
+*
+MN
+|-L==Mx
+eq-Reduce
+eq-Eta1
+|-L==M
+|-L==M
+(e) Equivalence
+Fig. 2. The Calculus of Constructions (CC)
+of a function type may depend on the argument(ty-Apply). Finally, if an expressionhas type
+andis equivalent to, thenalso has type(ty-Eqiv).
+A contextiswell-formed(written|-) if every variable in it is associated with a valid type --
+that is, the associated expression's type is a universe in the context.
+We make use of two shorthands, writing|-A:Uto mean that|-A:Uforsome(which
+means thatis a type), andA->Bto stand for the-typex:A.Bwheredoes not depend on
+. For simplicity, we omit base types such as the unit type1and the natural numbersNfrom the
+formal denition, but we will use them freely in examples.
+In CC, two expressions areequivalent(Fig.2e) if they reduce to the same expression (eq-Reduce)
+or are-equivalent as dened by two symmetric ruleseq-Eta1andeq-Eta2. Undereq-Eta1,
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+(Reduction)
+(Typing)
+ty-Universe
+ty-Apply
+ty-Eqiv
+(Well-formedness)
+wf-Cons
+(Equivalence)
+*
+LL
+*
+Mx:A.M
+|-Lx==M
+eq-Eta2
+|-L==M
+i
+Defunctionalization with Dependent Types 127:9
+andare equivalent ifreduces to an abstractionx:A.L,reduces to some, andL==Mx,
+andeq-Eta2Bowman and Ahmed 2018;Bowman et al. 2018].
+One useful property of CC is as follows: if|-M:A, then
+Coquand and Huet 1988;Luo 1990].
+3.2 Defunctionalized Calculus of Constructions
+Fig.3ashows the syntax of our target language, the Defunctionalized Calculus of Constructions
+(DCC). As in CC, DCC expressions include variablesx, universesU, dependent function types
+Px:A.B, and applicationsL@M. Unlike CC, DCC contains rst-class function labels{M}instead
+of lambda abstractions.
+A label expression{M}is a label namesupplied with a list of zero or more expressionsM
+(standing forM,. . .,M) assigned to its free variables. Label names,,. . .are disjoint from
+1n
+variable names, as we emphasize using a dierent font.
+There are two varieties of context in DCC. As in CC, type contextsGassociate variablesxwith
+typesA. Label denition contextspair label names with their associated data:( {x:A},x:A->
+M:B). Herex:Arecords the type of the (possibly empty) telescope of free variables that the label
+takes,(x:A) ->Bspecies the label type, andMis the expression to which the label reduces when
+applied to an argument. Note that types in a type contextGmay refer to labels,,. . .in the
+label context, but not vice versa.
+DCC has four judgements:
+(1) reduction (Fig.3b)
+|-MN
+(2) type membership (Fig.3c)
+;G|-M:A
+(3) context formation (Fig.3d)
+|-;G
+(4) equivalence (Fig.3e)
+|-A==B
+3.2.1 Reduction.There is a single reduction rule (Fig.3b), for label application: the application of
+the label{M}to the argumentNreduces toL[M/x,N/x], whereLis the body of the entry for
+in the label context andMis the closure of. A reduction sequence is noted as|-MN, which
+meansMreduces toNin zero or more steps.
+Substitutions for variables, universes,-types and applications in DCC follow the conventional
+denition. Substitutions for labels are
+{M} [N/x]{M[N/x] },
+whereM[N/x]is syntactic sugar forM[N/x],. . .,M[N/x].
+1n
+3.2.2 Type Judgements.DCC's type judgements are of the form;G|-M:A, and typing rules are
+given in Fig.3c. Rules for variables, universes,-types, applications, and conversion are identical
+to their counterpart rules in CC, so we focus on the rule for labels. A label term{M}is well-typed
+in;Gif the following conditions are satised.
+(1) The context;Giswell-formed.
+(2)( {x:A},x:A->M:B)is present in.
+(3) The length of the two listsMandx:Aare equal.
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+|-A:U. Furthemore, CC is type
+12
+12
+*
+127:10 Yulong Huang and Jeremy Yallop
+UniversesU::=U
+i
+ExpressionsA,B,L,M,N::=x|U|Px:A.B|L@M|{M}
+Type contextsG::=.|G,x:A
+Label contexts::=.|,( {x:A},x:A->M:B)
+DCC contexts;G
+(a) Syntax
+|-MN
+( {x:A},x:A->L:B) in
+d-red-Beta
+|-{M}@NL[M/x,N/x]
+(b) Reduction
+;G|-M:A
+x:AinG
+|-;G
+|-;G
+d-ty-Universe
+d-ty-Var
+;G|-U:U
+ii+1
+;G|-x:A
+;G|-A:U
+;G|-M:Px:A.B
+i
+;G,x:A|-B:U
+;G|-N:A
+j
+d-ty-Pi
+;G|-Px:A.B:U
+;G|-M@N:B[N/x]
+max(i,j)
+;G|-M:A
+;G|-M:A
+;G|-B:U
+( {x:A},x:A->M:B) in
+d-ty-Label
+;G|-{M}:Px:A[M/x].B[M/x]
+;G|-M:B
+(c) Typing
+|-;G
+;x:A,x:A|-M:B
+d-wf-Label
+d-wf-Empty
+|-.;.
+|-,( {x:A},x:A->M:B);.
+(d) Context and label context formation
+|-M==N
+*
+|-LN
+*
+|-MN
+d-eq-Reduce
+|-L==M
+*
+*
+|-LL
+|-L{N}
+**
+|-MM|-M{N}
+( {x:A},x:A->N:B) in( {x:A},x:A->N:B) in
+@@
+|-N[N/x] ==Mx|-Lx==N[N/x]
+d-eq-Eta1
+|-L==M|-L==M
+(e) Equivalence
+Fig. 3. The Defunctionalized Calculus of Constructions (DCC)
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+(Reduction)
+(Typing)
+d-ty-Apply
+i
+|-A==B
+d-ty-Eqiv
+(Well-formedness)
+;G|-A:U
+i
+d-wf-Type
+|-;G,x:A
+(Equivalence)
+d-eq-Eta2
+Defunctionalization with Dependent Types 127:11
+(4)All expressions inMare well-typed, and their types match the specied types of free variables
+A.
+Specically, condition (4) means:
+;G|-M:A,
+11
+;G|-M:A[M/x],
+2211
+. . .,
+;G|-M:A[M/x,. . .,M/M
+nn11n-1
+EachAdepends onx,. . .,x, soM,. . .,Mneed to be substituted inAin the type judgement
+i+11i1i
+forM. The type of{M}isPx:A[M/x].B[M/x].
+i+1
+Note that values of free variablesMare substituted inPx:A.B, the specied type of the label. We
+use[M/x]as a syntactic sugar of[M/x,. . .,M/x], and conditions (3) and (4) are abbreviated
+11nn
+to;G|-M:Aas a convention.
+The DCC judgement for well-formed contexts is|-;Gand its rules are given in Fig.3d. A
+context iswell-formedif every variable in the type context is associated with a valid type (in the
+previous context;G), and every label is associated with a well-typed data. In other words, if we
+have( {x:A},x:A->M:B),Mshould have the typeBas specied in the context formed by
+the previous label context and the free variables inM(namely
+Two termsLandMare equivalent (Fig.3e) if they both reduce to the same termNin a reduction
+sequence or they are-equivalent. DCC's-equivalence rules are similar to that of CC. Rule
+(d-eq-Eta1) denes thatLandMare equivalent ifLreduces to a label{N},Mreduces toM,
+( {x:A},x:A->N:B)is found in the label context, andMxis equivalent toN[N/x].
+Rules (d-eq-Eta1) and (d-eq-Eta2) are symmetrical.
+Both the type context and the label context have the weakening property: a well-typed expression
+is still well-typed in an extended type or label context (by induction on the type derivation rules).
+Lemma 3.1 (Type weakening).If;G|-M:A,;G|-B:U, andxis fresh, then;G,x:B|-M:A.
+i
+Lemma 3.2 (Label weakening).If;G|-M:C,;x:A,x:A|-N:B, andis fresh, then
+,( {x:A},x:A->N:B);G|-M:C.
+i
+DCC is type-safe and consistent (we establish these properties in S3.5). In addition, it is suciently
+expressive to support thecomposefunction, but we must write it in defunctionalized style, since
+the calculus does not support lambda abstraction. There is one entry in the label contextfor
+eachin the CC denition of compose:
+@@@@
+::=( {A,B,C,f,g},x:A-> (fx)gx:(Cx)gx),
+5
+. . .,
+( {A:U},B:(Px:A.U) ->{A,B}:PC.Pf.Pg.Px.(Cx)gx),
+1002
+( {},A:U->{A}:PB.PC.Pf.Pg.Px.(C@x)@g@x)
+001
+and the denition of compose itself is simply a projection of a closed label from the context:
+compose::={}
+0
+The full denition appears in Appendix B in the extended version of the paper.
+3.3 The Defunctionalization Translation
+Fig.4shows the translation. It consists of two parts: a transformation[[-]]for expressions and a
+meta-function[[-]]that extracts function denitions from the source program. The expression
+transformation produces the target program and the meta-function[[-]]gives a label context.
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+].
+n-1
+i+1
+;x:A,x:A).
+@
+i
+@@
+@@@
+127:12 Yulong Huang and Jeremy Yallop
+|-M:AM
+t-Var
+|-:
+|-x:Ax
++1
+|-A:A
+|-L:x:A.BL
+,x:A|-B:B
+|-M:A
+t-Pi
+|-x:A.B:Px:A.B
+|-L M:B[M/x]L@M
+(, )
+(:A.M)=x:A
+|-x:Ax
+t-Lambda
+|-:A.M:x:A.B{x}
+i
+(a) Defunctionalization of expressions
+|-M:A
+|-A:U
+d-Var
+|-x:A|-:
++1
+|-A:
+A
+,x:A|-B:
+B
+d-Pi
+|-x:A.B:cup
+AB
+(, )
+|-A:U,x:A|-M:B
+AM
+(:A.M)=x:A|-A:UA
+,x:A|-M:BM|-x:A.B:UPx:A.B
+|-:A.M:x:A.Bcup,( {x:A},x:A->M:B)
+AMi
+|-M:x:A.B
+1
+|-N:A
+2
+|-B[N/x]:U
+|-A==B
+3
+d-Apply
+|-M N:B[N/x]cupcup|-M:Bcup
+123
+(b) Extraction of function definitions
+Fig. 4. The Defunctionalization Translation
+3.3.1 Expression Transformation.
+Definition 3.3.The expression transformation[[-]]takes a well-typed term in CC and an implicit
+argument of that term's type derivation. We dene[[]]M, whereMis given by a new judgement
+of the form|-M:AM(Fig.4a).
+The transformation simply transcribes the variables, universes,-types, applications, and base
+types and values in CC to their counterparts in DCC compositionally. Functions in the source
+language are translated into labels in the target language.
+Defunctionalization requires a unique correspondence between each label and each source-
+program function. We use a convention that every lambda in the transformation's inputis tagged
+with a unique identier(inN), and its corresponding label's name is.
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+(Expression transformation)
+t-Universe
+U
+i
+M
+t-Apply
+|-M:AM
+|-B:U
+|-A==B
+t-Eqiv
+|-M:BM
+(Function extraction)
+d-Universe
+.
+d-Lambda
+|-M:A
+|-B:U
+B
+d-Eqiv
+B
+i
+Defunctionalization with Dependent Types 127:13
+The transformation turns a function:A.Minto a label{x}, wherexcome from the function's
+i
+free variables(t-Lambda). The meta-function FV (see Denition3.4) computes all free variables
+and their types involved in a well-typed CC-expression. Note that FV is dierent fromfv, the
+conventional free variable function that computes all theunbound variablesin an expression. In
+dependently typed languages, the type of a free variable may contain other free variables, and their
+types may still contain other free variables, and so on! Therefore, FV()must recursively work
+out all the variables needed forto be well-typed.
+Definition 3.4.FV()takes|-M:A, the type judgement of, as an implicit argument. It
+rstly computes all the unbound variables,. . ., inand in, then calls itself recursively on
+1
+types of these variables, and nally returns the union of all free variables and their types it found.
+FV()=FV(FV(
+1
+wherefv(fv()=,. . .,
+1
+|-:,. . .,|-
+11
+:,. . ., :.
+ 11
+Here, the union of two type contextscupisappended with all the variable-expression pairs
+121
+:that only appear in, preserving their order. Intuitively,(M)computes all the variables
+2
+needed to correctly type. Therefore,is still well-typed in its free-variable context(M).
+Lemma 3.5.If|-M:A, then(M) |-M:A.
+3.3.2 Extracting Function Definitions.
+Definition 3.6.[[-]]takes a well-typed CC term and implicitly its type derivation. We dene
+[[]], whereis given by a new judgement of the form|-M:A(Fig.4b).
+In a simply typed system, the only thing[[-]]has to do is nding every function:A.Min
+the source program and placing them in the label contextin the following form
+( {x:A},x:A->M:B)
+where{x:A},x:A,M, andBrespectively correspond to the free variables(:)in the function,
+the bound variable:, the function body, and the return type.
+Alas, types may index over functions in our dependent type theory, and functions may appear in
+the type of an expression, even if the expression itself does not contain that function! For example,
+consider the following triple(, , )in CC (with built-in natural numbers and addition).
+., :( -> ) ->, ::( -> ).(:  .1+ ( ))
+0
+(:  .1+)
+(:  .2+)
+is a family of types indexed by -> functions and
+(:  .1+ ( )). According to the rule (ty-Apply), the inferred type ofis
+((:  .1+ ( )))[(:  .1+)/]
+=(:  .(1+ (:  .1+))),
+which reduces to(:  .2+). We have|-M:N, yetcontains a function that is not inor
+! We should include this new function in, as it guarantees that we will never be in a situation
+where we need a non-existent label in[[]]to type[[]]. In other words, the transformation
+defunctionalizes not just the source-language expression, but its entire type derivation tree.
+Hence, we arrive at the rules in Fig.4b. Type derivations of universes do not involve functions at
+all (d-Universe). Function denitions in a variableare just the denitions in its type(d-Var).
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+:
+constructs an element of type
+127:14 Yulong Huang and Jeremy Yallop
+Denitions in a dependent function type:.are theunionof denitions inand(d-Pi).
+The union here is dened in the same way as the union of contexts (see Denition3.4), and there is
+no ambiguity since dierent functions correspond to dierent label names.
+Denitions in an applicationM Nare the union of denitions in,, and[/], since the
+substitution[/]may create new function denitions (d-Apply). For a lambda abstraction
+:A.M, the denitions it contains are the union of denitions inand inappended with,
+the denition of itself (d-Lambda). Ifhas typeby the conversion rule, then the denitions
+involved in the derivation of|-M:Bare the union of denitions in the derivation of|-M:A
+and denitions in(d-Eqiv).
+We dene thesubset relationof label contexts to help state further denitions and theorems.
+Definition 3.7.For two well-formed label contextsand
+1212i
+A->N:B)in,( {x:A},x:A->N:B)is also in.
+1i2
+The notion of subsets gives a stronger weakening property to DCC: a well-typed expression is
+still well-typed in a larger label context.
+Lemma 3.8 (Label context weakening (subsets)).If;G|-M:A,|-, andsubseteq, then
+1
+;G|-M:A.
+2
+Since the transformation defunctionalizes the entire type derivation tree of an expression, if
+|-M:A, then all elements in[[A]]are also in[[M]]. We can prove this property by induction
+on the type derivation rules.
+Lemma 3.9.For any well-typed expression|-M:Ain CC,[[A]]subseteq [[M]].
+The expression transformation and the process of extracting function denitions ([[-]]and
+[[-]]) act pointwise on CC contexts. In other words,
+[[.]].,[[, :]][[]],x:[[]],
+[[.]].,[[, :]][[]] [[]].
+0
+Now, we can see that the (tagged) composition function. . . .. .  ( )
+transforms to{}, a label with no free variables supplied, since the function is closed. The label
+0
+contextfor composition can be derived from the function extraction judgements with the sketch
+derivation tree shown below.
+5
+, , ,  , |- .  ( )( {A,B,C,f,g},x:_-> (fx)gx:_)
+5
+45
+, , , |-. .  ( ). . .,( {A,B,C,f},g:_->
+4
+345
+, , |- .. .  ( ). . .,( {A,B,C},f:_->{A,B,C,f}:_)
+3
+2345
+, |- . .. .  ( ). . .,( {A,B},C:_->{A,B,C}:_)
+2
+12345
+|- . . .. .  ( ). . .,( {A},B:_->{A,B}:_)
+1
+012345
+. |-. . . .. .  ( ). . .,( {},A:_->{A}:_)
+0
+3.4 Soundness
+We consider dependently typed defunctionalizationcorrectif for all base types, values, and
+programsof type,
+**
+. |-M:A==>cup|-Mvwherev==v.
+GM
+In other words, if a closed programevaluates to a base-type value, thenMevaluates to a
+base-type valuevthat is equivalent tov. This property follows as a corollary of thepreservation of
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+i
+,subseteqif for all( {x:A},x:
+212
+12345
+@@@
+d-Lambda
+{A,B,C,f,g}:_)
+5
+d-Lambda
+4
+d-Lambda
+3
+d-Lambda
+2
+d-Lambda
+1
+Defunctionalization with Dependent Types 127:15
+  ::=. . . |{->
+|-:
+|-::. |-:,:|-:|-:
+s-ty-Apply
+|- :{->}|-{->}:{->}
+s-red-Var1
+{->}
+{->}
+s-red-Universe
+{->}(:.){->}
+s-red-Apply
+( ) {->}({->}) ({->})
+( (:.) {->})({->}) {->}
+|-==
+**
+(:.) {->}(:.
+**
+|-{->}==|-=={
+s-eq-Closure1
+|-==|-==
+Fig. 5. New syntax and rules in CC
+reduction sequences, which states that
+**
+==>cupcup|-MM
+GMN
+wherecupcup|-M==N.
+GMN
+Ideally, we could show this property by showing that the transformation preserves all small-step
+reductions, followed by an induction on the number of reduction steps in a sequence.
+However, CC's meta-language substitution(:.)[/]creates a new function denition
+when it substitutes an expression into a free variable of a function. So, for a reduction sequence
+. . .in CC, somemay contain function denitions that do not exist inor.
+1
+Consequently, not alltranslate into well-typed DCC expressionsMin(cupcup) ;G,
+which makes the standard approach infeasible. Moreover, preservation of reduction sequences is a
+key lemma for showing type preservation, since CC's typing rules involve equivalence and the
+equivalence rule (eq-Reduce) is dened with reductions.
+Fortunately, meta-theoretic substitution is the only means of creating new function denitions
+in CC's reduction sequences. There would be no problem if the source language did not evaluate
+substitutions into functions but kept them as primitive expressions. To apply this observation we
+dene a helper language CC, which is an extension of CC withexplicit substitutions[Abadi et al.
+1991does not reduce substitutions of expressions into functions.
+Since CCextends CC, every CC expression is trivially a CCexpression. We denote this trivial
+transformation from CC to CCas. Then, we dene the defunctionalization transformation from
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+}
+(Typing)
+s-ty-Subst
+(Reduction)
+s-red-Var2
+s-red-Beta
+s-red-Closure
+(Equivalence)
+) {->}
+->}
+s-eq-Closure2
+,
+1
+iGMM
+1n
+127:16 Yulong Huang and Jeremy Yallop
+CCto DCC in a similar way as that from CC to DCC - an expression transformation[[-]]and a
+meta-function[[-]]for extracting denitions. Next, we show thatand defunctionalization for
+CCpreserve reduction sequences and they commute with the transformation from CC into DCC.
+As a corollary, defunctionalization from CC to DCC preserves reduction sequences. In other words,
+we show that the following diagram commutes for all CC-expressionsand(contexts omitted).
+*
+*
+==
+[[ - ]]
+[[ - ]]
+[[-]][[-]][[-]]
+*
+==
+M MN
+CCis an extension of CC with new syntax, type derivation rules, reduction rules, and equivalence
+rules (Fig.5). We write CCexpressions in a  ,
+extends the CC syntax withsyntactic substitutionsof the form
+Type rules for variables, universes,-types, functions, and equivalence in CCare the same
+as the standard rules in CC, except that the type of an application is{->}with the
+syntactic substitution. The type of a substitution{->}is the type ofwithsubstituted by
+(s-ty-Subst).
+CChas ve reduction rules for substitutions, which are the standard meta-theoretic substitution
+rules for variables, universes,-types, and applications internalised into the language. Note that the
+meta-theoretic substitution in the CC's original beta-reduction rule(:.){->}is
+also replaced by the syntactic one. CCdoes not reduce substitutions into functions, but it-reduces
+them when they are applied to arguments (s-red-Closure). We write{->, ->}for
+a substitution followed by another substitution({->}){->}, and{->}for a
+11
+sequence of substitutions( ( ({->}){->}) . . . ){->}.
+1122
+Like in CC, two terms in CCare equivalent if they-reduce to the same expression or are
+-equivalent. In addition, CChas two symmetric rules (s-eq-Closure1) and (s-eq-Closure2)
+for determining when a sequence of substitutions into a function(:.) {->}is equivalent
+to another expression. This is essentially a variant of the-equivalence rules that is compatible
+with substitutions -(:.) {->}is equivalent toif applyingtois equivalent to the
+function bodywithbeing substituted for.
+Now, we dene the defunctionalization transformation from CCto DCC, which is the transfor-
+mation from CC to DCC extended with the following two rules. We use[[-]]and[[-]]to stand
+for the expression transformation and the metafunction for extracting function denitions, and we
+apply the convention of tagging lambdas with unique identiers(inN)as usual.
+|-:M
+,:|-:M|-:N
+s-t-Subst
+|-{->}:{->}M[N/x]
+|-:
+,:|-:|-:
+12
+|-{->}:{->}cup
+12
+The transformation turns a syntactic substitution in CCinto a meta-theoretic substitution
+in DCC (s-t-Subst); the function denitions in a substitution{->}are the union of the
+denitions inand(s-d-Subst). Since substitutions into functions do not reduce in CC, the
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+to avoid ambiguity. CC
+{->}.
+1122
+22
+(Expression transformation)
+(Function extraction)
+s-d-Subst
+Defunctionalization with Dependent Types 127:17
+transformation from it into DCC have the following strong properties by denition, which are not
+true for the transformation from CC into DCC.
+*
+==>[[]]subseteq[[]](1)
+[[{->}]]=[[]][[[]]/x].(2)
+Next, we show that the transformation preserves small step reductions in CC- if a CCprogram
+reduces toin one step, then the translated programMevaluates toNin a sequence.
+Lemma 3.10 (Preservation of small step reductions).If|-:and, then
+*
+[[]]cup[[]]|-MN.
+The transformation preserves sequences of reductions, and the proof follows from a trivial
+induction on the number of small steps in the sequence.
+Lemma 3.11 (Preservation of reduction seqences (CC)).If|-:and, then
+*
+[[]]cup[[]]|-MN.
+The transformation is also coherent, i.e. it preserves the equivalence relation in CC.
+Lemma 3.12 (Coherence (CC)).If|-:,|-:, and|-==, then|-M==N, where
+=[[]]cup[[]]cup[[]].
+Recall thatdenotes the trivial transformation from CC to CC. This trivial transformation
+commutes with the two term transformations by denition.
+[[()]]=[[]]
+In addition, function denitions in[[()]]is a subset of the denitions in[[]], because new
+function denitions appear in CC's type derivation trees as results of substitutions, but this does
+not happen in CC.
+[[()]]subseteq [[]]
+We show thatalso preserves sequences of reductions. As a convention, we writefor()
+when there is no ambiguity.
+Lemma 3.13 (Preservation of reduction seqences ()).If|-, then|-
+where|-==.
+We can nally prove the preservation of reduction sequences for dependently typed defunction-
+alization (from CC to DCC) using the lemmas above.
+Lemma 3.14 (Preservation of reduction seqences).For alland, if|-M:AandMN,
+then we have
+*
+cupcup|-MM,
+GMN
+*
+cupcup|-MN
+GMN
+for someMwhere(cupcup)=( [[]],[[M]],[[N]])and(M,N)=( [[M]],[[N]] ).
+GMN
+Since ground types and values do not contain functions,[[]]=., and the correctness of the
+transformation is just a special case of Lemma3.14.
+Corollary 3.15.(Correctness) For all ground typesand valuesof type,
+**
+. |-M:AMv==>cup|-Mvwherev==v.
+GM
+The proof of type-preservation requires three lemmas:substitution,preservation of reduction
+sequences, andcoherence. Lemma3.14established that dependently-typed defunctionalization pre-
+serves reduction sequences with the help of CC, and now we prove the remaining two lemmas in a
+similar way. The substitution lemma states that defunctionalization is compatible with substitutions.
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+*
+(3)
+(4)
+**
+*
+(5)
+(6)
+127:18 Yulong Huang and Jeremy Yallop
+Lemma 3.16 (Substitution).If,x:A|-M:Band|-N:A, then|- [[M[N/x] ]] ==M[N/x],
+where=cupcupcup[N/x].
+GMNM
+The coherence lemma states that defunctionalization is compatible with CC's coherence judge-
+ments.
+Lemma 3.17 (Coherence).If|-M:A,|-N:A, and|-M==N, then|-M==N, where
+=cupcup.
+GMN
+Finally, we show type preservation with an induction on CC's type derivation rules.
+Theorem 3.18 (Type preservation).For all well-typed programsM,
+|-M:A==>cup;G|-M:A,
+GM
+where(,)=( [[]],[[M]])and(G,M,A)=( [[]],[[M]],[[A]] ).
+GM
+3.5 Consistency and Type Safety of DCC
+;G|-M:AM
+b-Var
+;G|-x:Ax;G|-U:U
+ii+1
+;G|-A:UA
+i
+;G,x:A|-B:UB
+j
+b-Pi
+;G|-Px:A.B:Ux:A.B
+max(i,j)
+( {x:A},x:A->M:B) in ;G|-M:A
+;G|-A:UA;G,x:A|-M:BM
+;G|-{M}:Px:A[M/x].B[M/x]x:A[M/x].M[M/x]
+;G|-L:Px:A.BL
+;G|-M:A
+;G|-M:AM
+|-A==B
+b-Apply
+@
+;G|-LM:B[M/x]L M;G|-M:BM
+Fig. 6. Backward transformation
+As a dependent type theory, DCC should be type-safe when it acts as a programming language
+and consistent when interpreted as a logic. FollowingBoulier et al.[2017Bowman and Ahmed
+[2018backward transformationfrom DCC
+to CC and showing that it preserves reduction sequences, so that reducing an expression in DCC is
+equivalent to reducing an expression in CC. The transformation is type-preserving and turns the
+logical interpretation offalsein DCC into that of CC, so that valid proofs (i.e. well-typed programs)
+in DCC correspond to valid proofs in CC. This reduces the problem of proving the type safety and
+other words, we show that DCC can be modelled by CC in a consistent and meaning-preserving
+way. Type preservation for the backward transformation also requires thesubstitution,preservation
+of reduction sequences, andcoherencelemmas, similar to the proof of Theorem3.18, whose proofs
+are straightforward.
+We dene the backward transformation[[-]]with a new judgement (Fig.6) of the form;G|-M:
+AMand[[M]]. The translation maps variables, universes,-types, and applications back
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+(Backward transformation)
+b-Universe
+M
+b-Label
+M;G|-B:U
+i
+b-Eqiv
+Coquand and Huet 1988
+Defunctionalization with Dependent Types 127:19
+to their corresponding forms in CC, and maps label expressions{M}where( {x:A},x:A->
+M:B) inintox:A[M/x].M[M/x]-- a function with all of its free-variable values substituted
+in, where,, andstand for[[A]],[[M]], and[[M]]respectively (b-Label). Intuitively,[[-]]
+decompiles a label back to the function it represents. The backward transformation also acts
+pointwise on type contexts.
+In CC, the interpretation of the logicalfalseisx:.x. There is no closed expression with the
+0
+falsetype. In DCC, the interpretation offalseisPx:U.x, so the backward transformation preserves
+0
+falseness by denition.
+Next, we show that the backward transformation is compatible with substitutions. As a conven-
+tion in this section, we writefor[[M]]when there is no ambiguity.
+Lemma 3.19 (Backward transformation compatible with substitutions).If;G,x:A|-
+M:Band;G|-N:A, then[[M[N/x]]]=M[N/x].
+Similar to proofs in Section S3.4, we show preservation of reduction sequences by showing that
+the transformation preserves small-step reductions. Using that, we show the coherence lemma for
+the backward transformation, and then the type preservation.
+**
+Lemma 3.20.If;G|-M:Aand|-MN, thenMN.
+Lemma 3.21.If;G|-M:A,;G|-N:A, and|-M==N, then|-M==N.
+Lemma 3.22.If;G|-M:A, then|-M:A.
+As a corollary of Lemma3.20and Lemma3.22, DCC is type-safe and consistent since CC is.
+*
+Theorem 3.23 (Type safety).If;.|-M:A, then|-Mvfor some irreducible valuev.
+That is, type safety guarantees that every well-typed closed DCC term reduces to a value in a
+nite number of steps.
+Theorem 3.24 (Consistency).There is no pair of a label contextand DCC termMsuch that
+;.|-M:PA:U.A.
+Interpreting DCC as a logic, the termPA:U.A(which produces a term of any typeA) corresponds
+tofalse; it is backward-transformed to: ., the representation offalsein CC. Consistency of
+DCC means that there is no closed term of typePA:U.A; if there were, then translation would yield
+a corresponding term in CC, and CC would also be inconsistent.
+4 RELATED WORK
+Type-Preserving Compilation.Type-preserving compilation was initially developed for optimizing
+compilation and verifying the compiled code; it has been used extensively in compilers of simply-
+typed and polymorphic languages, and occasionally for dependently-typed languages. For example,
+Tarditi et al.[1996
+directed code optimization of loops, garbage collections, and polymorphic function calls, and
+Morrisett et al.[1999
+language TAL.Xi and Harper[2001
+limited form of dependent types that serves as a compilation target for Dependent ML.
+Guillemette and Monnier[2008
+a dierent approach, building typed intermediate representations using generalized algebraic data
+types and using the type system of the host language (GHC Haskell) to verify that each compiler
+phase preserves types. Embedding typed transformations in this way is a popular technique
+in the functional programming community, exemplied in work byCarette et al.[2009
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+127:20 Yulong Huang and Jeremy Yallop
+presents type-preserving CPS transformations of an embedded language along with type-preserving
+optimizations based on partial evaluation.
+Necula[1997
+It relies on an external logical framework to check the correctness of proofs attached with the code.
+Bowman and collaborators have developed several type-preserving translations for dependently-
+Bowman et al.2018Bowman
+and Ahmed 2018
+Koronkevich et al. 2022].
+Defunctionalization.Defunctionalization was rst presented byReynolds[1972
+Cejtin et al.2000;Chin and Darlington
+1996Wang and Appel 2001
+Yallop and White 2014].
+Defunctionalization was originally presented as an untyped translation. Using a family of
+monomorphicapplyfunctions to make simply-typed defunctionalization type-preserving is a
+Bell et al.1997;Cejtin et al.2000;Nielsen 2000;Tolmach and
+Oliva 1998].Danvy and Nielsen[2001
+Formalization of defunctionalization has up to this point focused on proving type preservation and
+correctness of the transformation.Bell et al.[1997
+programs is type preserving.Nielsen[2000
+semantics, andBanerjee et al.[2001
+Pottier and Gauthier[2004
+System F extended with GADTs.
+Closure Conversion.Like defunctionalization,closure conversiontransformations also involve
+representing a closure as a rst-order value that pairs a kind of code identier with a collection of
+Ahmed 2018;Minamide et al.1996
+alization involves a globally-dened map indexed by code identiers (such as anapplyfunction
+or our label environment), these closure conversions instead locally transform functions into
+code-and-environment pairs that can then be applied using a standard elimination rule. However,
+e.g.Appel 1992;Siek 2012
+top-level, making the transformation more similar to defunctionalization.
+Closure conversion plays a key role in compilers for many functional languages, including
+Steele Jr 1978Mauny and Surez 1986
+Leshchinskiy et al.2006
+semantic properties, such as correctness of closure conversion in the presence of mutable state and
+Mates et al.2019
+Paraskevopoulou and Appel 2019].
+Refunctionalization.Our backward translation (See S3.5) is related torefunctionalization[Danvy
+and Millikin 2009
+target applicationsM@Nwith source applicationsM N, and labels{M}with abstractions
+(x:A.M) [M/x]based on their implementations( {x:A},x:A
+ACKNOWLEDGMENTS
+We thank David Sheets, Andrs Kovcs, Marcelo Fiore, and the anonymous reviewers for helpful
+comments, and Andreas Rossberg for shepherding the paper.
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+Minamide et al.[1996]),
+Reynolds 1972
+Bowman and
+Cejtin et al.2000],
+->M:B)in the label context.
+Defunctionalization with Dependent Types 127:21
+IMPLEMENTATION
+Huang and Yallop 2023b
+tionalization translation of S3, written in OCaml and compiled to run in a web browser using
+js_of_ocaml[Vouillon and Balat 2014
+and DCC (S3.2) terms, abstract defunctionalization (S3.3) and backwards translation from DCC to
+CC (S3.5), allowing the interested reader to experiment with the eects of the translation on real
+examples. We include several ready-made examples, including dependent composition, dependent
+pairs and nite sets.
+Martn Abadi, Luca Cardelli, Pierre-Louis Curien, and Jean-Jacques Lvy. 1991. Explicit Substitutions.J. Funct. Program.1, 4
+(1991), 375-416.https://doi.org/10.1017/S0956796800000186
+Benedikt Ahrens, Peter LeFanu Lumsdaine, and Vladimir Voevodsky. 2018. Categorical structures for type theory in
+univalent foundations.Log. Methods Comput. Sci.14, 3 (2018).https://doi.org/10.23638/LMCS-14(3:18)2018
+Andrew W. Appel. 1992.Compiling with Continuations. Cambridge University Press.
+Anindya Banerjee, Nevin Heintze, and Jon G. Riecke. 2001. Design and Correctness of Program Transformations Based on
+Control-Flow Analysis. InTheoretical Aspects of Computer Software, 4th International Symposium, TACS 2001, Sendai,
+Japan, October 29-31, 2001, Proceedings (Lecture Notes in Computer Science, Vol. 2215), Naoki Kobayashi and Benjamin C.
+Pierce (Eds.). Springer, 420-447.https://doi.org/10.1007/3-540-45500-0_21
+Gilles Barthe, John Hatcli, and Morten Heine Srensen. 1999. CPS Translations and Applications: The Cube and Beyond.
+High. Order Symb. Comput.12, 2 (1999), 125-170.https://doi.org/10.1023/A:1010000206149
+Gilles Barthe and Tarmo Uustalu. 2002. CPS translating inductive and coinductive types. InProceedings of the 2002 ACM
+SIGPLAN Workshop on Partial Evaluation and Semantics-Based Program Manipulation (PEPM '02), Portland, Oregon, USA,
+January 14-15, 2002, Peter Thiemann (Ed.). ACM, 131-142.https://doi.org/10.1145/503032.503043
+Jerey M. Bell, Franoise Bellegarde, and James Hook. 1997. Type-Driven Defunctionalization. InProceedings of the 1997 ACM
+SIGPLAN International Conference on Functional Programming (ICFP '97), Amsterdam, The Netherlands, June 9-11, 1997,
+Simon L. Peyton Jones, Mads Tofte, and A. Michael Berman (Eds.). ACM, 25-37.https://doi.org/10.1145/258948.258953
+Simon Boulier, Pierre-Marie Pdrot, and Nicolas Tabareau. 2017. The next 700 syntactical models of type theory. In
+Proceedings of the 6th ACM SIGPLAN Conference on Certied Programs and Proofs, CPP 2017, Paris, France, January 16-17,
+2017, Yves Bertot and Viktor Vafeiadis (Eds.). ACM, 182-194.https://doi.org/10.1145/3018610.3018620
+Ana Bove, Peter Dybjer, and Ulf Norell. 2009. A Brief Overview of Agda - A Functional Language with Dependent Types. In
+Theorem Proving in Higher Order Logics, 22nd International Conference, TPHOLs 2009, Munich, Germany, August 17-20,
+2009. Proceedings (Lecture Notes in Computer Science, Vol. 5674), Stefan Berghofer, Tobias Nipkow, Christian Urban, and
+Makarius Wenzel (Eds.). Springer, 73-78.https://doi.org/10.1007/978-3-642-03359-9_6
+William J. Bowman and Amal Ahmed. 2018. Typed closure conversion for the calculus of constructions. InProceedings of the
+39th ACM SIGPLAN Conference on Programming Language Design and Implementation, PLDI 2018, Philadelphia, PA, USA,
+June 18-22, 2018, Jerey S. Foster and Dan Grossman (Eds.). ACM, 797-811.https://doi.org/10.1145/3192366.3192372
+William J. Bowman, Youyou Cong, Nick Rioux, and Amal Ahmed. 2018. Type-preserving CPS translation ofandtypes
+is not not possible.Proc. ACM Program. Lang.2, POPL (2018), 22:1-22:33.https://doi.org/10.1145/3158110
+Edwin C. Brady. 2013. Idris, a general-purpose dependently typed programming language: Design and implementation.J.
+Funct. Program.23, 5 (2013), 552-593.https://doi.org/10.1017/S095679681300018X
+Bernd Brassel. 2011.Implementing Functional Logic Programs by Translation into Purely Functional Programs. Ph. D.
+Dissertation.https://macau.uni-kiel.de/receive/diss_mods_00007056
+Jacques Carette, Oleg Kiselyov, and Chung-chieh Shan. 2009. Finally tagless, partially evaluated: Tagless staged interpreters
+for simpler typed languages.J. Funct. Program.19, 5 (2009), 509-543.https://doi.org/10.1017/S0956796809007205
+Henry Cejtin, Suresh Jagannathan, and Stephen Weeks. 2000. Flow-Directed Closure Conversion for Typed Languages. In
+Programming Languages and Systems, 9th European Symposium on Programming, ESOP 2000, Held as Part of the European
+Joint Conferences on the Theory and Practice of Software, ETAPS 2000, Berlin, Germany, March 25 - April 2, 2000, Proceedings
+(Lecture Notes in Computer Science, Vol. 1782), Gert Smolka (Ed.). Springer, 56-71.https://doi.org/10.1007/3-540-46425-5_4
+Wei-Ngan Chin and John Darlington. 1996. A Higher-Order Removal Method.LISP Symb. Comput.9, 4 (1996), 287-322.
+The Coq Development Team. 2022. The Coq Reference Manual.https://coq.inria.fr/distrib/current/refman/.
+Thierry Coquand and Grard P. Huet. 1988. The Calculus of Constructions.Inf. Comput.76, 2/3 (1988), 95-120.https:
+//doi.org/10.1016/0890-5401(88)90005-3
+Olivier Danvy and Kevin Millikin. 2009. Refunctionalization at work.Sci. Comput. Program.74, 8 (2009), 534-549.https:
+//doi.org/10.1016/j.scico.2007.10.007
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+3.1)
+127:22 Yulong Huang and Jeremy Yallop
+Olivier Danvy and Lasse R. Nielsen. 2001. Defunctionalization at Work. InProceedings of the 3rd international ACM SIGPLAN
+conference on Principles and practice of declarative programming, September 5-7, 2001, Florence, Italy. ACM, 162-174.
+https://doi.org/10.1145/773184.773202
+Leonardo Mendona de Moura, Soonho Kong, Jeremy Avigad, Floris van Doorn, and Jakob von Raumer. 2015. The Lean
+Theorem Prover (System Description). InAutomated Deduction - CADE-25 - 25th International Conference on Automated
+Deduction, Berlin, Germany, August 1-7, 2015, Proceedings (Lecture Notes in Computer Science, Vol. 9195), Amy P. Felty and
+Aart Middeldorp (Eds.). Springer, 378-388.https://doi.org/10.1007/978-3-319-21401-6_26
+Peter Dybjer. 1994. Inductive Families.Formal Aspects Comput.6, 4 (1994), 440-465.https://doi.org/10.1007/BF01211308
+Louis-Julien Guillemette and Stefan Monnier. 2008. A type-preserving compiler in Haskell. InProceeding of the 13th ACM
+SIGPLAN international conference on Functional programming, ICFP 2008, Victoria, BC, Canada, September 20-28, 2008,
+James Hook and Peter Thiemann (Eds.). ACM, 75-86.https://doi.org/10.1145/1411204.1411218
+Yulong Huang and Jeremy Yallop. 2023a. Defunctionalization with Dependent Types. arXiv:2304.04574
+Yulong Huang and Jeremy Yallop. 2023b. Defunctionalization with Dependent Types: Artifact.https://doi.org/10.5281/
+zenodo.7709681.
+Paulette Koronkevich, Ramon Rakow, Amal Ahmed, and William J. Bowman. 2022. ANF preserves dependent types up to
+extensional equality.Journal of Functional Programming32 (2022), e12.https://doi.org/10.1017/S0956796822000090
+Andrs Kovcs. 2020. Elaboration with rst-class implicit function types.Proc. ACM Program. Lang.4, ICFP (2020),
+101:1-101:29.https://doi.org/10.1145/3408983
+Roman Leshchinskiy, Manuel M. T. Chakravarty, and Gabriele Keller. 2006. Higher Order Flattening. InComputational
+Science - ICCS 2006, 6th International Conference, Reading, UK, May 28-31, 2006, Proceedings, Part II (Lecture Notes in
+Computer Science, Vol. 3992), Vassil N. Alexandrov, G. Dick van Albada, Peter M. A. Sloot, and Jack J. Dongarra (Eds.).
+Springer, 920-928.https://doi.org/10.1007/11758525_122
+Zhaohui Luo. 1990.An extended calculus of constructions. Ph. D. Dissertation. University of Edinburgh, UK.https:
+//hdl.handle.net/1842/12487
+Phillip Mates, Jamie Perconti, and Amal Ahmed. 2019. Under Control: Compositionally Correct Closure Conversion
+with Mutable State. InProceedings of the 21st International Symposium on Principles and Practice of Programming
+Languages, PPDP 2019, Porto, Portugal, October 7-9, 2019, Ekaterina Komendantskaya (Ed.). ACM, 16:1-16:15.https:
+//doi.org/10.1145/3354166.3354181
+Michel Mauny and Ascnder Surez. 1986. Implementing Functional Languages in the Categorical Abstract Machine.
+InProceedings of the 1986 ACM Conference on LISP and Functional Programming, LFP 1986, Cambridge, Massachusetts,
+USA, August 4-6, 1986, William L. Scherlis, John H. Williams, and Richard P. Gabriel (Eds.). ACM, 266-278.https:
+//doi.org/10.1145/319838.319869
+Yasuhiko Minamide, J. Gregory Morrisett, and Robert Harper. 1996. Typed Closure Conversion. InConference Record of
+POPL'96: The 23rd ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages, Papers Presented at the
+Symposium, St. Petersburg Beach, Florida, USA, January 21-24, 1996, Hans-Juergen Boehm and Guy L. Steele Jr. (Eds.).
+ACM Press, 271-283.https://doi.org/10.1145/237721.237791
+J. Gregory Morrisett, David Walker, Karl Crary, and Neal Glew. 1999. From system F to typed assembly language.ACM
+Trans. Program. Lang. Syst.21, 3 (1999), 527-568.https://doi.org/10.1145/319301.319345
+George C. Necula. 1997. Proof-Carrying Code. InConference Record of POPL'97: The 24th ACM SIGPLAN-SIGACT Symposium
+on Principles of Programming Languages, Papers Presented at the Symposium, Paris, France, 15-17 January 1997, Peter Lee,
+Fritz Henglein, and Neil D. Jones (Eds.). ACM Press, 106-119.https://doi.org/10.1145/263699.263712
+Lasse R Nielsen. 2000. A denotational investigation of defunctionalization.BRICS Report Series7, 47 (2000).
+Ulf Norell. 2008. Dependently Typed Programming in Agda. InAdvanced Functional Programming, 6th International School,
+AFP 2008, Heijen, The Netherlands, May 2008, Revised Lectures (Lecture Notes in Computer Science, Vol. 5832), Pieter W. M.
+Koopman, Rinus Plasmeijer, and S. Doaitse Swierstra (Eds.). Springer, 230-266.https://doi.org/10.1007/978-3-642-04652-
+0_5
+Zoe Paraskevopoulou and Andrew W. Appel. 2019. Closure conversion is safe for space.Proc. ACM Program. Lang.3, ICFP
+(2019), 83:1-83:29.https://doi.org/10.1145/3341687
+Marco Patrignani, Amal Ahmed, and Dave Clarke. 2019. Formal Approaches to Secure Compilation: A Survey of Fully
+Abstract Compilation and Related Work.ACM Comput. Surv.51, 6 (2019), 125:1-125:36.https://doi.org/10.1145/3280984
+Greg Pettyjohn, John Clements, Joe Marshall, Shriram Krishnamurthi, and Matthias Felleisen. 2005. Continuations from
+generalized stack inspection. InProceedings of the 10th ACM SIGPLAN International Conference on Functional Programming,
+ICFP 2005, Tallinn, Estonia, September 26-28, 2005, Olivier Danvy and Benjamin C. Pierce (Eds.). ACM, 216-227.https:
+//doi.org/10.1145/1086365.1086393
+Peter Podlovics, Csaba Hruska, and Andor Pnzes. 2021. A Modern Look at GRIN, an Optimizing Functional Language Back
+End.Acta Cybernetica(Feb. 2021).https://doi.org/10.14232/actacyb.282969
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.
+Defunctionalization with Dependent Types 127:23
+Franois Pottier and Nadji Gauthier. 2004. Polymorphic typed defunctionalization. InProceedings of the 31st ACM SIGPLAN-
+SIGACT Symposium on Principles of Programming Languages, POPL 2004, Venice, Italy, January 14-16, 2004, Neil D. Jones
+and Xavier Leroy (Eds.). ACM, 89-98.https://doi.org/10.1145/964001.964009
+Franois Pottier and Nadji Gauthier. 2006. Polymorphic typed defunctionalization and concretization.High. Order Symb.
+Comput.19, 1 (2006), 125-162.https://doi.org/10.1007/s10990-006-8611-7
+John C. Reynolds. 1972. Denitional interpreters for higher-order programming languages. InProceedings of the ACM
+annual conference, ACM 1972, 1972, Volume 2, John J. Donovan and Rosemary Shields (Eds.). ACM, 717-740.https:
+//doi.org/10.1145/800194.805852
+Jeremy Siek. 2012. The Essence of Closure Conversion.http://siek.blogspot.com/2012/07/essence-of-closure-conversion.
+html.
+Guy Lewis Steele Jr. 1978.RABBIT: A Compiler for SCHEME. Master's thesis. MIT.
+Martin Sulzmann, Manuel M. T. Chakravarty, Simon L. Peyton Jones, and Kevin Donnelly. 2007. System F with type
+equality coercions. InProceedings of TLDI'07: 2007 ACM SIGPLAN International Workshop on Types in Languages Design
+and Implementation, Nice, France, January 16, 2007, Franois Pottier and George C. Necula (Eds.). ACM, 53-66.https:
+//doi.org/10.1145/1190315.1190324
+David Tarditi, J. Gregory Morrisett, Perry Cheng, Christopher A. Stone, Robert Harper, and Peter Lee. 1996. TIL: A Type-
+Directed Optimizing Compiler for ML. InProceedings of the ACM SIGPLAN'96 Conference on Programming Language
+Design and Implementation (PLDI), Philadephia, Pennsylvania, USA, May 21-24, 1996, Charles N. Fischer (Ed.). ACM,
+181-192.https://doi.org/10.1145/231379.231414
+Amin Timany and Matthieu Sozeau. 2017. Consistency of the Predicative Calculus of Cumulative Inductive Constructions
+(pCuIC).CoRRabs/1710.03912 (2017). arXiv:1710.03912 http://arxiv.org/abs/1710.03912
+Andrew P. Tolmach and Dino Oliva. 1998. From ML to Ada: Strongly-Typed Language Interoperability via Source Translation.
+J. Funct. Program.8, 4 (1998), 367-412.http://journals.cambridge.org/action/displayAbstract?aid=44181
+Jrme Vouillon and Vincent Balat. 2014. From bytecode to JavaScript: the Js_of_ocaml compiler.Softw. Pract. Exp.44, 8
+(2014), 951-972.https://doi.org/10.1002/spe.2187
+Philip Wadler and Stephen Blott. 1989. How to Make ad-hoc Polymorphism Less ad-hoc. InConference Record of the Sixteenth
+Annual ACM Symposium on Principles of Programming Languages, Austin, Texas, USA, January 11-13, 1989. ACM Press,
+60-76.https://doi.org/10.1145/75277.75283
+Daniel C. Wang and Andrew W. Appel. 2001. Type-preserving garbage collectors. InConference Record of POPL 2001: The
+28th ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages, London, UK, January 17-19, 2001, Chris
+Hankin and Dave Schmidt (Eds.). ACM, 166-178.https://doi.org/10.1145/360204.360218
+Stephen Weeks. 2006. Whole-Program Compilation in MLton. InProceedings of the 2006 Workshop on ML(Portland, Oregon,
+USA)(ML '06). Association for Computing Machinery, New York, NY, USA, 1.https://doi.org/10.1145/1159876.1159877
+Stephanie Weirich and Chris Casinghino. 2010. Generic Programming with Dependent Types. InGeneric and Indexed
+Programming - International Spring School, SSGIP 2010, Oxford, UK, March 22-26, 2010, Revised Lectures (Lecture Notes in
+Computer Science, Vol. 7470), Jeremy Gibbons (Ed.). Springer, 217-258.https://doi.org/10.1007/978-3-642-32202-0_5
+Hongwei Xi and Robert Harper. 2001. A Dependently Typed Assembly Language. InProceedings of the Sixth ACM SIGPLAN
+International Conference on Functional Programming (ICFP '01), Firenze (Florence), Italy, September 3-5, 2001, Benjamin C.
+Pierce (Ed.). ACM, 169-180.https://doi.org/10.1145/507635.507657
+Jeremy Yallop and Leo White. 2014. Lightweight Higher-Kinded Polymorphism. InFunctional and Logic Programming - 12th
+International Symposium, FLOPS 2014, Kanazawa, Japan, June 4-6, 2014. Proceedings (Lecture Notes in Computer Science,
+Vol. 8475), Michael Codish and Eijiro Sumii (Eds.). Springer, 119-135.https://doi.org/10.1007/978-3-319-07151-0_8
+Received 2022-11-10; accepted 2023-03-31
+Proc. ACM Program. Lang., Vol. 7, No. PLDI, Article 127. Publication date: June 2023.

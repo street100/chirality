@@ -1,0 +1,1277 @@
+Polymorphic Typed Defunctionalization
+*
+Fran,cois Pottier
+Francois.Pottier@inria.fr
+Abstract
+Defunctionalizationis a program transformation that aims
+to turn a higher-order functional program into a first-order
+one, that is, to eliminate the use of functions as first-class
+values. Its purpose is thus identical to that ofclosure conver-
+sion. It differs from closure conversion, however, by storing
+atag, instead of a code pointer, within every closure. De-
+functionalization has been used both as a reasoning tool and
+as a compilation technique.
+Defunctionalization is commonly defined and studied in
+the setting of a simply-typedlam-calculus, where it is shown
+that semantics and well-typedness are preserved. It has been
+observed that, in the setting of a polymorphic type system,
+such as ML or System F, defunctionalization is not type-
+preserving. In this paper, we show that extending System
+F withguarded algebraic data typesallows recovering type
+preservation. This result allows adding defunctionalization
+to the toolbox of type-preserving compiler writers.
+1 Introduction
+transformation that aims to turn a higher-order functional
+program into a first-order one, that is, to eliminate the use
+of functions as first-class values. Let us begin with a rough,
+machine-oriented description of it. Under the assumption
+that the entire source program is available, a distinct tag is
+associated with everylam-abstraction, or, in other words, with
+every code block. Then, a function value is represented by a
+closurecomposed of thetagassociated with its code and of
+avalue environment. The generic code in charge of function
+application, which we refer to asapplyin the following, per-
+forms case analysis on the tag and jumps to the associated
+code block, making the contents of the value environment
+available to it. The reader may notice that defunctional-
+ization is a close cousin ofclosure conversion. In fact, to a
+certain extent, closure conversion may be viewed as a par-
+ticular implementation of defunctionalization, whereby tags
+happen to be code pointers, and case analysis of a tag is
+replaced with a single indirect jump. One reported advan-
+tage of defunctionalization over closure conversion is that,
+due to the idiosyncrasies of branch prediction on modern
+processors, the cost of an indirect jump may exceed that of
+a simple case analysis followed by a direct jump.
+*
+INRIA, BP 105, F-78153 Le Chesnay Cedex, France.
+*
+Nadji Gauthier
+Nadji.Gauthier@inria.fr
+Closure conversion versus defunctionalization in a
+typed settingEven though defunctionalization and clo-
+sure conversion appear conceptually very close, they dif-
+fer when viewed as transformations overtypedprograms.
+view closure conversion as a type-preserving transformation.
+There, the type of a closure is a pair of a first-order func-
+tion type and of a record type, packed within anexistential
+type, so that closures whose value environments have dif-
+ferent structure may still receive identical types. Minamide
+et al.deal with both simply-typed and type-passing, poly-
+morphiclam-calculi. The case of a type-erasure polymorphic
+lam,
+on the other hand, has been studied mainly in asimply-typed
+sumtypes: closure
+construction becomes injection, while the case analysis in-
+volved by application becomes elimination. (If one wishes to
+avoid recursive types, one must in fact employalgebraic data
+types, rather than anonymous sum types.) When the source
+language is ML, the source program is typically turned into a
+simply-typed program by applyingmonomorphizationprior
+-
+tion involves code duplication, whose cost may be difficult
+bined algorithm that performs on-demand monomorphiza-
+tion during defunctionalization. This may limit the amount
+of duplication required, but performs identically in the worst
+case. When the source language is ML with polymorphic
+recursion or System F, monomorphization becomes impos-
+sible, because an infinite amount of code duplication might
+be required. In that case, no type-preserving definition of
+defunctionalization was known to date.
+The difficulty with polymorphismWhy is it difficult
+to define defunctionalization for a typed, polymorphiclam-
+calculus? The problem lies in the definition ofapply, the
+central function that remains in the defunctionalized pro-
+gram, whose task is to perform dispatch based on tags. Its
+parameters are a closurefand a valuearg; its task is to
+simulate the application of the source function encoded by
+fto the source value encoded byarg, and to return its re-
+sult. In other words, ifedenotes the image of the source
+expressionethrough defunctionalization, we intend to de-
+fineeeasapplye e. Now, assume that defunction-
+1212
+alization is type-preserving, and thattdenotes the im-
+age of the source typetthrough defunctionalization. Then,
+ifehas typet->tandehas typet, we find that,
+11221
+forapplye eto be well-typed,applymust have type
+12
+t->t->t->t. Furthermore, becauseemay
+12121
+be arbitrary, this should hold for all typestandt. The
+12
+most natural way to satisfy this requirement is to arrangeshould commute with type substitutions, sot->tmust
+forapplyto have typeforallaa.a->a->a->aand
+121212
+to ensure that.commutes with substitution of types for
+type variables.
+Now, what is the code forapply? It should be of the
+form
+LAMa.LAMa.lamf:a->a.lamarg:a.casefofc-
+12121
+where -ccontains one clause for every tag, that is, for ev-
+erylam-abstraction that appears in the source program. The
+right-hand side of every such clause is the body of the asso-
+ciatedlam-abstraction, renamed so that its formal parameter
+isarg. For the sake of illustration, let us assume that the
+source program contains thelam-abstractionslamx.x+ 1 and
+lamx.notx, whose types areint->intandbool->bool, and
+whose tags aresuccandnot, respectively. (These are closed
+functions, so the corresponding closures have an empty value
+environment. This does not affect our argument.) Then, the
+definition ofapplyshould contain the following clauses:
+succ->arg+ 1
+not->notarg
+However, within System F, these clauses are incompatible:
+they make different assumptions about the type ofarg, and
+produce values of different types. In fact, forapplyto
+be well-typed, everylam-abstraction in the source program
+must produce a value of typea, under the assumption
+2
+that its argument is of typea. In the absence of any
+1
+further hypotheses aboutaanda, this amounts to re-
+12
+quiring everylam-abstraction in the source program to have
+typeforallaa.a->a, which cannot hold in general! This
+1212
+explains why it does not seem possible to define a type-
+preserving notion of defunctionalization for System F.
+The standard, limited workaroundThe workaround
+2, 15, 16, 3, 11,
+apply. Instead of defining a single,
+polymorphic function, one introduces a family of monomor-
+phic functions, indexed by ground typestandt, each
+12
+member of which has typet->t->t->t. The
+1212
+point is that the definition ofapplylists only the tags
+t->t
+12
+whose associatedlam-abstractions have typet->t. Con-
+12
+tinuing our example, the definition ofapplyshould
+int->int
+contain a case forsucc, but none fornot. Conversely, the
+definition ofapplydeals withnot, but not withsucc.
+bool->bool
+It is now easy to check that all clauses in the definition
+ofapplyare type compatible, so that the function is
+t->t
+12
+well-typed. Then, exploiting the fact thatemust have a
+1
+groundtype of the formt->t, one defineseeas
+1212
+applye e. Thus, defunctionalization in a simply-
+12
+t->t
+12
+typed setting is not only type-preserving, but alsotype-
+directed. We note that.no longer commuteswith sub-
+stitution of types for type variables. Indeed, every distinct
+arrow type in the source program must now map to a dis-
+tinct algebraic data type in the target program. As a re-
+sult, there is no natural way of translating non-ground ar-
+row types. These remarks explain why the approach fails in
+the presence of polymorphism.
+Our solutionIn the present paper, we suggest another
+way out of this problem. We keep a singleapplyfunction,
+2
+whose type isforallaa.a->a->a->a, as initially sug-
+121212
+gested above. We also insist that the translation of types
+12
+beArrowt t, for some distinguished, binary algebraic
+12
+data type constructorArrow. There remains to find a suit-
+ableextensionof System F where the definition ofapplyis
+well-typed, that is, where every clause does produce a value
+of typea, under the assumption thatargis of typea.
+21
+The key insight is that, in order to make this possible, we
+must acquire further hypotheses aboutaanda. For in-
+12
+stance, in the case of thesuccbranch, we might reason as
+follows. If this branch is taken, thenfissucc, sosucchas
+typeArrowaa, that is, it encodes a source function of
+12
+typea->a. However, we know that thelam-abstraction
+12
+associated with the tagsucc, namelylamx.x+ 1, has type
+int->int, so it is natural to assign typeArrow int int
+to the data constructorsucc. Combining these two facts,
+we find that, if the branch is taken, then we must have
+Arrowaa=Arrow int int, that is,a=intanda=int.
+1212
+Under these extra typing hypotheses, it should be possible to
+prove thatarg+ 1 has typeaunder the assumption that
+2
+arghas typea. Then, by dealing with every clause in an
+1
+analogous manner, it should be possible to establish that
+applyis well-typed.
+The ingredients that make this solution possible are sim-
+ple. First, we need the data constructorssuccandnot, which
+are associated with the algebraic data typeArrow, to be as-
+signed typesArrow int intandArrow bool bool, respectively.
+Please note that, ifArrowwas a standard (ML-style) al-
+gebraic data type, then the nullary data constructorssucc
+andnotwould necessarily have typeforallaa.Arrowaa.
+1212
+Second, when performing case analysis over a value of
+typeArrowaa, we need the branch associated withsucc
+12
+(resp.not) to be typechecked under the extra assump-
+tionArrowaa=Arrow int int(resp.Arrowaa=
+1212
+Arrow bool bool). Such a mechanism is quite natural: it is
+reminiscent of theinductive typesfound in the calculus of in-
+language setting asguarded recursive data types
+first-class phantom typesguarded al-
+gebraic data types. The termguardedstems from Xi, Chen,
+and Chen's observation that they may be encoded in terms
+of recursive types, sum types, andconstrainedexistential
+types.
+ContributionsThe main contribution of this paper is a
+proof that defunctionalization may be viewed as a type-
+preserving transformation from System F, extended with
+guarded algebraic data types, into itself. We also observe,
+but do not explicitly prove, that the same property holds
+of ML, extended with polymorphic recursion and guarded
+algebraic data types.
+It is interesting to note that, because our version of de-
+functionalization employs a single, polymorphicapplyfunc-
+tion, it is not type-directed. In other words, type infor-
+mation in the source program is used to construct a type
+derivation for the target program, but does not influence the
+latter's structure. Put another way, it is possible to prove
+that our version of defunctionalization coincides with an un-
+typed version of defunctionalization, up to erasure of all type
+annotations. This makes it possible to first prove that the
+transformation is meaning-preserving in an untyped setting,
+then lift this result to the typed setting. These proofs form
+the paper's second contribution. They appear to be new:
+typed setting.
+Road mapThe paper is laid out as follows. Section 2 de-
+fines an extension of System F with guarded algebraic data
+types. Section 3 defines defunctionalization of well-typed
+programs. In Section 4, we prove that defunctionalization
+preserves well-typedness. In Section 5, we define defunction-
+alization of untyped programs, prove that it preserves their
+meaning, and prove that this result carries over to defunc-
+tionalization of typed programs. Section 6 contains some
+closing remarks.
+2 The type system
+In this section, we define an extension of System F with
+guarded algebraic data types, which serves both as the
+source and target language for our version of defunction-
+alization. Our presentation of the type system is identical
+ferences. First, we replace pattern matching with a simple
+caseconstruct, which is sufficient for our purposes. Second,
+we adopt an implicit introduction style for type variables,
+so that type variables are not explicitly listed in typing en-
+vironments, and types or typing environments do not have
+a notion of well-formedness.
+Atype signatureTconsists of an arbitrary set ofal-
+gebraic data type constructorsT, each of which carries a
+nonnegative arity. The definitions that follow are relative
+to a type signature. We letarange over a denumerable set
+oftype variablesandrrange over an arbitrary set ofrecord
+labels. The syntax oftypesis as follows:
+t::=a
+|t->t
+| foralla.t
+| {r-: -t}
+|Tt-
+Types include type variables, arrow types, universal types,
+record types, and algebraic data types. In the universal
+typeforalla.t, the type variableais bound withint. In the
+record type{r-: -t}, -rmust be a vector of distinct record
+labels, while -tis a vector of types of the same length. We
+write -r: -tfor the vector of bindings obtained by associating
+elements of -r, in order, to elements of -t. Vectors of bindings
+are identified up to reordering. (In the following, we employ
+similar notation for vectors of bindings of the form -x: -t,
+e-: -t, -c: -t, and for conjunctions of equations -t= -t.) In
+12
+the algebraic data typeTt-, the length of the vector -tmust
+match the arity ofT.
+AconstraintCorDis a conjunction of type equations
+of the formt=t. Anassignmentis a total mapping from
+type variables to ground types. An assignmentsatisfiesan
+equation if and only if it maps both of its members to the
+same ground type; an assignment satisfies a conjunction of
+equations if and only if it satisfies all of its members. A
+constraintCentailsa constraintD(which we writeC
+D) if and only if every assignment that satisfiesCsatisfies
+D. Two constraints areequivalentif and only if they entail
+each other. Constraints serve as hypotheses within typing
+judgements; entailment allows exploiting them. Entailment
+is decidable; seee.g.
+Adata signatureDconsists of an arbitrary set ofdata
+constructorsK, each of which carries a closedtype scheme
+3
+of the formforalla-D.t-->Tt-. In such a type scheme, the
+1
+type variables -aare bound withinD, -t, and -t. The length
+1
+of the vector -tis the arity of the data constructorK. The
+definitions that follow are relative to (a type signature and)
+a data signature.
+Letxandyrange over a denumerable set ofterm vari-
+ables. The syntax ofexpressionse, also known asterms, and
+ofclausescis as follows:
+e::=x
+|lamx:t.e
+|e e
+|LAMa.e
+|e t
+|letx=eine
+|letrecx-: -t= -eine
+| {r-= -e}
+|e.r
+|Kt-e-
+|caseeoftc
+c::=Ka-x-->e
+The language is an extension of the polymorphiclam-calculus
+with recursive definitions, constructs for creating and ac-
+cessing records, and constructs for building and inspecting
+algebraic data structures. (In Section 5, where we present an
+operational semantics for this programming language, type
+abstractions and recursive definitions are restricted to val-
+ues; for the moment, however, this is irrelevant.) The in-
+jection constructKt-e-requires the data constructorKto
+be fully applied. Thus, partial applications ofKare not
+valid expressions: they must be encoded viah-expansion.
+This choice simplifies the definition of defunctionalization,
+because it means that onlylam-abstractions have arrow types.
+Incaseconstructs, the clauses' result typetis explicitly
+given, so as to preserve the property that every expression
+has at most one type, up to equivalence, with respect to
+a given typing environment. (We do not, however, make
+use of that property.) We assume that, for some algebraic
+data type constructorT, every data constructorKassoci-
+ated withTis selected by one and only one clause in -c.
+In a clauseKa-x-->e, the type variables -aand the term
+variables -xare bound withine.
+Atyping environmentG is a mapping of term variables to
+types, typically written as a sequence of bindings of the form
+x:t. Atyping judgementis of the formC,G|-e:t. We
+identify typing judgements up to constraint equivalence. A
+typing judgement isvalidif and only if it admits a derivation
+using the rules of Figure 1. InTAbs, the notationa#C,G
+requires the type variableanot to appear free withinCor G.
+All rules butData,Clause,Conv, andWeakenare stan-
+dard (System F) rules.Data's first premise looks up the
+type scheme associated with the data constructorKin the
+current data signature. Its second and third premises check
+that the constraintDis satisfied and that the arguments -e
+have type -t, as required by the type scheme. Both of these
+checks are in fact relative to an instance of the type scheme
+where the type arguments -tare substituted for the quan-
+2
+tifiers -a, as well as to the current hypothesisC.Datamay
+be viewed as a combination of the standard rules for (con-
+strained) type application and value application.Clause's
+first premise looks up the type scheme associated withK
+anda-converts it so that its universal quantifiers coincide
+with the type variables -aintroduced by the clause at hand.
+Its second premise requires these type variables to be fresh,
+App
+C,G|-e:t
+Abs11
+Var
+C,G;x:t|-e:tC,G|-e:tC,G|-e:t a#C,GC,G|-e:foralla.t
+122
+C,G|-x: G(x)
+C,G|-lamx:t.e:t->tC,G|-ee
+11212
+LetLetRec
+C,G|-e:tC,G;x:t|-e:tC,G; -x: -t|-e-: -t C,G; -x: -t|-e:tC,G|-e-: -t
+11122
+C,G|-letx=eine:tC,G|-letrecx-: -t= -eine:tC,G|- {r-= -e}:{r-: -t}
+122
+Data
+K::foralla-D.t-->Tt-
+Proj
+C,G|-e:{r:t; -r: -t}C -a->t-D C,G|-e- -a->t-tC,G|-e:tC,G|-c-:t->t
+2
+C,G|-e.r:tC,G|-Kt-e-:T -a->t-tC,G|-caseeoftc:t
+2
+Clause
+K::foralla-D.t-->Tt-a-#C,G,t-, t
+12Conv
+CDt-= -t,G; -x: -t|-e:tC,G|-e:tCt=tC,G; G|-e:t x#e
+12
+C,G|-Ka-x-->e:Tt-->t
+2
+Figure 1: The type system
+so that they behave as abstract types within the clause'st.e:t->tto satisfy dom(G) = fv(lamx.e). Thanks to the
+right-hand sidee, and do not escape their scope. Its thirdpresence ofWeaken, this assumption does not cause any
+premise typecheckseunder the extra hypothesisDt-= -t,
+12
+which is obtained from the knowledge that the value beingalization is independent of the manner in whichWeakenis
+examined, which by assumption has typeTt-, is an appli-
+2
+cation ofK. This extra hypothesis may provide partial orour notion of defunctionalization is not type-directed, a fact
+complete information about the type variables -a, in effect
+making them semi-abstract or concrete.Convallows re-
+placing thetwith the typet, provided they are provably
+12
+equal under the assumptionC. It is analogous to the subtyp-type signatureT, which containsTas well as a fresh binary
+ing rule in a constraint-based type system. The presence ofalgebraic data type constructorArrow. The effect of the
+Weakenis perhaps surprising, since this rule is admissible.translation on types is particularly simple: the native arrow
+It is intended as a hint to the defunctionalization algorithm
+not to include the value ofxwithin closures allocated insideformers are preserved.
+e; see Section 3.
+of course essential, it is not explicitly exploited in the present
+paper. We only make use of the following lemma, which
+allows weakening a judgement's constraint and replacing its
+typing environment with an equivalent one. When G and G
+have the same domain, we view G= G as a conjunction of
+type equations.
+Lemma 2.1C,G|-e:tandCCandCG= G
+implyC,G|-e:t.
+3 Defunctionalization
+Defunctionalization is a global program transformation: it
+is necessary that all functions that appear in the source pro-
+gram be known and labeled in a unique manner. Thus, in
+the following, we consider a fixed termp, which we refer
+to as thesource program. We require everylam-abstraction
+that appears withinpto carry a distinctlabelm; we write
+m
+lamx:t.efor such a labeled abstraction. We requirepto be
+well-typed under the empty constrainttrueand the empty
+environment, and consider a fixed derivation of the judge-
+menttrue,|-p:t. We letTandDstand for the type
+p
+and data signatures under whichpis defined.
+In the derivation oftrue,|-p:t, we require every
+p
+instance ofAbswhose conclusion is of the formC,G|-lamx:
+4
+->t
+2TAbsTApp
+1
+:tC,G|-LAMa.e:foralla.tC,G|-e ta->tt
+211
+Record
+1Case
+2112
+2122
+Weaken
+11212
+C,G|-e:tC,G;x:t; G|-e:t
+2112
+112
+loss of generality. This restriction ensures that defunction-
+employed in the type derivation. This in turn ensures that
+which we establish and exploit later on (Lemma 5.6). The
+restriction is otherwise inessential.
+The transformed program is defined under an extended
+type constructor is translated toArrow, while all other type
+a=a
+t->t=Arrowt t
+1212
+foralla.t=foralla.t
+{r-: -t}={r-:t-}
+Tt-=Tt-
+The type translation function extends in a compositional
+manner to vectors of types, typing environments, con-
+straints, type schemes, and data signatures.
+The transformed program is defined under a transformed
+and extended data signatureD, which is defined as follows.
+First,DcontainsD. Second, for everylam-abstraction that
+appears withinpand whose typing subderivation ends with
+m
+C,G|-lamx:t.e:t->t,
+112
+Dcontains a unary data constructor
+m::foralla-C.{G} ->Arrowt t,
+12
+where -astands for the free type variables of the above judge-
+ment, that is, ftv(C,G, t, t), ordered in a fixed, arbitrary
+12
+manner. We point out thatGis a typing environment,
+that is, a mapping from term variables to types; we assume
+that term variables form a subset of record labels, which
+allows us to form the record type{G}.
+Abs
+Var
+C,G;x:t|-e:tea-= ftv(C,G, t, t)C,G|-e:t->teC,G|-e:te
+12
+C,G|-x: G(x)x
+m
+C,G|-lamx:t.e:t->tma-{G}
+112
+TAbsTApp
+C,G|-e:tea#C,GC,G|-e:foralla.te
+C,G|-LAMa.e:foralla.tLAMa.eC,G|-e ta->tt
+11
+LetRecRecordProj
+C,G; -x: -t|-e-: -te-C,G; -x: -t|-e:te
+C,G|-letrecx-: -t= -eine:tletrecx-:t-= -eineC,G|- {r-= -e}:{r-: -t}{r-= -e}C,G|-e.r:te.r
+Data
+K::foralla-D.t-->Tt-C -a->t-D
+12
+C,G|-e- -a->t-te-
+2
+C,G|-Kt-e-:T -a->t-tKt-e-
+2212
+Clause
+K::foralla-D.t-->Tt-a-#C,G,t-, t
+12Conv
+CDt-= -t,G; -x: -t|-e:teC,G|-e:t
+1211212
+C,G|-Ka-x-->e:Tt-->tKa-x-->eC,G|-e:teC,G;x:t; G|-e:te
+2
+Figure 2: Term translation
+We may now define a compositional term translation as
+follows. In the following, letapplybe a fresh term variable.tion, there remains to wrap the termpwithin an appropri-
+The translation is defined by a new judgement, of the formate definition ofapply. Lettstand for
+C,G|-e:te, whose derivation rules are given in Fig-
+ure 2. It is immediate to check thatC,G|-e:teimplies
+C,G|-e:t. Conversely, given a derivation ofC,G|-e:t,
+there exists a unique expressionesuch that the judgement
+C,G|-e:teis the conclusion of a derivation of the
+same shape. We refer toeas the image ofethrough de-
+functionalization. In the following, we refer to the image of
+pthrough defunctionalization asp. It is obtained from the
+derivation oftrue,|-p:tthat was fixed above.
+p
+The only two interesting rules in the definition of the
+translation areAbsandApp. Indeed, all other rules pre-
+serve the structure of the expression at hand, using the type
+translation defined above to deal with type annotations.
+Abstranslates everylam-abstraction to an injection, mak-
+ing closure allocation explicit. The data constructor (or,in
+other words, the closure's tag) ism, the unique label that
+was assigned to thislam-abstraction. Its type arguments, -a,
+are all of the type variables that appear free in the typing
+judgement. (By convention, these must be ordered in the
+same way as in the type scheme associated with the data
+constructormin the data signatureD.) Its value argu-
+ment is a record that stores the values currently associated
+with all of the term variables that are bound by the environ-
+ment G. We write{G}as a short-hand for the record term
+{y=y}, where the left-handyis interpreted as a
+yindom(G)
+record label, while the right-handyis a term variable. This
+record is the closure's value environment. One might think
+that it is inefficient to save all of the term variables in G
+into the closure, rather than only those that appear free in
+lamx:t.e. However, ifWeakenis used eagerly in the original
+1
+type derivation, these must in fact coincide, so no efficiency
+is lost. This trick simplifies our notation. As announced in
+the introduction,Apptranslates function applications into
+invocations ofapply.
+5
+App
+1211221
+12
+C,G|-ee:tapplyt tee
+12212
+12
+Let
+C,G|-e:teC,G;x:t|-e:te
+11122
+12
+etC,G|-letx=eine:tletx=eine
+1122
+12
+C,G|-e-: -te-C,G|-e:{r:t; -r: -t}e
+Case
+C,G|-e:teC,G|-c-:t->tc-
+112
+C,G|-caseeoftc:tcaseeoftc
+222
+Weaken
+eCt=tC,G; G|-e:tex#e
+2112
+To complete the definition of the program transforma-
+apply
+foralla.foralla.Arrowaa->a->a.
+121212
+Letfandargbe fresh term variables. Letaandabe fresh
+12
+type variables. Then, the translation of the source program
+p, which we writep, is the target program
+letrecapply:t=
+apply
+LAMa.LAMa.
+12
+lamf:Arrowaa.
+12
+lamarg:a.
+1
+casefofac
+2p
+inp,
+where, for everylam-abstraction that appears withinpand
+whose enriched typing subderivation ends with
+Abs
+C,G;x:t|-e:tea-= ftv(C,G, t, t)
+1212
+,
+m
+C,G|-lamx:t.e:t->tma-{G}
+112
+the vector -ccontains the clause
+p
+ma-{G} ->letx=argine.
+As announced in the introduction,applyexamines the clo-
+sure's tag in order to determine which code to execute. The
+clause associated with the tagmre-introduces the type and
+term variables, namely -a, G, andx, that must be in scope
+for the function's code, namelye, to make sense. (Again,
+the type variables -amust be ordered in the same way as
+in the type scheme associated withm.) We write{G}as
+a short-hand for the record pattern{y=y}. The
+yindom(G)
+use of pattern matching is not, strictly speaking, part of our
+language: we writeKa-{r-= -x} ->eas syntactic sugar for
+Ka-env->letx-=env.r-ine, where we use vector notation
+to succinctly represent multipleletdefinitions.
+Our definition of defunctionalization is now complete.ward, but it is perhaps worth explaining why every clause
+Although, for the sake of simplicity, we have identified thein the definition ofapplyis well-typed. Let us consider, for
+source and target languages, it is easy to check that everyinstance, the clause associated withm. Because the type
+defunctionalized program is first-order, as desired. Indeed,
+all function applications in such a program must be doubleArrowabool, the clause's right-hand side is typechecked un-
+applications ofapply, aletrec-bound, binary function.
+ExampleFor the sake of illustration, we give a short ex-
+ample program together with its defunctionalized version.
+plementation of sets as characteristic functions, then builds
+the singleton set{1}and tests whether 2 is a member of
+it. It makes use of a polymorphic equality function = of
+typeforalla.a->a->booland of the Boolean "or" combinator
+||of typebool->bool->bool. Applications of these two
+primitive operations are not affected by the translation.
+m
+1
+letempty= LAMa.lamx:a.false in
+mm
+23
+letinsert= LAMa.lamx:a.lams:a->bool.
+m
+4
+lamy:a.(=a x y)||(s y)in
+insert int1 (empty int) 2
+The empty setemptyhas typeforalla.a->bool. The insertion
+functioninserthas typeforalla.a->(a->bool)->(a->bool).
+The complete program has typebool. Its defunctionalized
+counterpart is defined under the following data signature,
+wheresetastands forArrowabool.
+m::forallatrue.{} ->seta
+1
+m::forallatrue.{} ->Arrowa(Arrow(seta) (seta))
+2
+m::forallatrue.{x:a} ->Arrow(seta) (seta)
+3
+m::forallatrue.{x:a;s:seta} ->seta
+4
+The type scheme associated withmspecifies the structure
+i
+of the value environment found in every closure taggedm,
+i
+as well as the type of the function that every such closure
+encodes. Closures formed usingmormcarry an empty
+12
+value environment, because they encode closed functions.
+On the other hand, closures formed usingmormcarry
+34
+a nonempty value environment, because the corresponding
+lam-abstractions have free term variables. The type schemes
+associated withmandmare similar to those usually as-
+14
+signed to the data constructorsnilandcons, which makes
+apparent the fact that sets built usingemptyandinsertbe-
+come lists after defunctionalization. The defunctionalized
+program is given below:
+letrecapply:t=
+apply
+LAMa.LAMa.
+12
+lamf:Arrowaa.
+12
+lamarg:a.
+1
+casefof
+|ma{} ->letx=argin false
+1
+|ma{} ->letx=arginma{x}
+23
+|ma{x} ->lets=arginma{x;s}
+34
+|ma{x;s} ->lety=argin
+4
+(=a x y)||(applyabools y)
+a
+2
+in
+letempty= LAMa.ma{}in
+1
+letinsert= LAMa.ma{}in
+2
+apply(apply(apply(insert int) 1) (empty int)) 2
+As before, we use punning, that is, we write{x}for the pat-
+tern or expression{x=x}and{x;s}for{x=x;s=s}.
+6
+For the sake of brevity, we have omitted the type arguments
+toapplyin the last line. Most of the code is straightfor-
+4
+scheme associated withmisforallatrue.{x:a;s:seta} ->
+4
+der the extra hypothesisa=abool=a, and under a
+12
+typing environment that ends witharg:a;x:a;s:seta.
+1
+After bindingytoarg, the typing environment ends with
+x:a;s:seta;y:a. Thus,yhas typea, which
+11
+by hypothesis equalsa. Hence, byConv,yhas type
+a. It is then straightforward to check that the expression
+(=a x y)||(applyabools y) has typebool. However, by hy-
+pothesis,boolequalsa, so the clause's right-hand side has
+2
+the expected typea. All other clauses may be successfully
+2
+typechecked in a similar manner: although not all of them
+have typebool, all have typea. Lemma 4.2 carries out the
+2
+proof in the general case.
+4 Type preservation
+We now prove that defunctionalization, as defined in Sec-
+tion 3, preserves types. As illustrated by the above ex-
+ample, the proof is not difficult. In the following, for the
+sake of brevity, we writeapply,f, andargfor the bindings
+apply:t,f:Arrowaa, andarg:a, respectively.
+apply121
+We use this notation inlam-abstractions and in typing envi-
+ronments.
+Our first lemma states that if an expressioneis well-
+typed, then its image through defunctionalizationemust be
+well-typed as well, under a constraint, a typing environment,
+and a type given by the type translation. Of course, the
+typing environment must be extended with a binding for
+apply, which is used in the translation of applications.
+Lemma 4.1C,G|-e:teimpliesC,apply;G|-e:
+t.
+Proof.By structural induction on the derivation ofC,G|-
+e:te. In each case, we use the notations of Figure 2.
+We explicitly deal with value abstraction and application
+only; all other cases are straightforward.
+m
+CaseAbs. The rule's conclusion isC,G|-lamx:
+t.e:t->tma-{G}(1). Its premises areC,G;x:
+112
+t|-e:te(2) and -a= ftv(C,G, t, t) (3). By
+1212
+(1), (3), and by definition of the data signatureD, we
+havem::foralla-C.{G} ->Arrowt t(4). Further-
+12
+more, by reflexivity of entailment, we haveCC(5).
+Last, byVarandRecord, we haveC,apply;G|-
+{G}:{G}(6). ApplyingDatato (4), (5), and (6), we
+findC,apply;G|-ma-{G}:Arrowt t, that is,
+12
+C,apply;G|-ma-{G}:t->t.
+12
+CaseApp. The rule's conclusion isC,G|-ee:
+12
+tapplyt tee. Its premises areC,G|-e:
+2121
+12
+t->te(1) andC,G|-e:te(2).
+1221
+12
+VaryieldsC,apply;G|-apply:t. By defini-
+apply
+tion oftand byTApp, this impliesC,apply;G|-
+apply
+applyt t:Arrowt t->t->t, that is,
+121212
+C,apply;G|-applyt t:t->t->t->
+12121
+t(3). Furthermore, applying the induction hypothesis
+2
+to (1) and (2) yieldsC,apply;G|-e:t->t(4) and
+12
+1
+C,apply;G|-e:t(5). ByApp, (3), (4), and (5)
+1
+2
+implyC,apply;G|-applyt tee:t.
+122
+12
+The second lemma states thatapplyitself is well-typedLast, we restrict the syntax of programs by requiring, in
+and has typet, as desired. Becauseapplyis recursive,
+apply
+this assertion holds under the bindingapply:t.
+apply
+Lemma 4.2true,apply|-LAMaa.lamf.lamarg.casefofac:
+122p
+t.
+apply
+Proof.We must prove that every clause in -cis well-typed.
+p
+Thus, let us consider alam-abstraction that appears withinp
+and whose enriched typing subderivation ends with
+Abs
+C,G;x:t|-e:tea-= ftv(C,G, t, t)
+1212
+.
+m
+C,G|-lamx:t.e:t->tma-{G}
+112
+By applying Lemma 4.1 to the first premise, we obtain
+C,apply;G;x:t|-e:t. Then, Lemma 2.1,
+12
+Conv, andWeakenyieldCt=at=
+112
+a,apply;arg;G;x:a|-e:a. ByLet, this implies
+212
+Ct=at=a,apply;arg;G|-letx=argine:
+1122
+a(1). Now, by definition of the data signatureD, we
+2
+havem::foralla-C.{G} ->Arrowt t(2). Last, by
+12
+construction, we have -a#aa(3). ApplyingClause
+12
+to (1), (2), and (3) yieldstrue,apply;arg|-ma-{G} ->
+letx=argine:Arrowaa->a. Now, because this
+122
+holds for everylam-abstraction that appears withinp, and by
+definition of -c, we have establishedtrue,apply;arg|-c-:
+pp
+Arrowaa->a. The result follows byWeaken,Case,
+122
+Abs, andTAbs.
+It is now easy to conclude that the image of the source
+programpunder defunctionalization is well-typed.
+Theorem 4.1true,|-p:t.
+p
+Proof.Applying Lemma 4.1 to the judgementtrue,|-p:
+tpyieldstrue,apply|-p:t(1). The result follows
+pp
+from Lemma 4.2 and from (1) byLetRec.
+5 Meaning preservation
+We now prove that defunctionalization preserves the mean-
+ing of programs, as defined by a call-by-value operational
+semantics. Because our notion of defunctionalization is not
+type-directed, we are able to proceed in two steps, as fol-
+lows. First, we define defunctionalization ofuntypedpro-
+grams, and prove that it preserves meaning. We emphasize
+that working in an untyped setting makes such a statement
+particularly simple and general. Second, exploiting the fact
+that the two notions of defunctionalization coincide modulo
+type erasure, we easily lift this result back to a typed set-
+ting. This approach appears more general than those found
+In the following, we slightly amend the definition of the
+programming language in three ways. First, we introduce
+two new syntactic classes, namelyvaluesvandvalues or
+variablesw. The former class contains functions, records,
+and algebraic data structures, while the latter includes vari-
+ables in addition. We restrict the right-hand sides ofletrec
+definitions to be values: this restriction is standard in a call-
+by-value setting. Second, we placelam-,let-, orcase-bound
+term variables, writtenx, andletrec-bound term variables,
+writtenX, in distinct syntactic classes. This choice, while
+not essential, simplifies somea-conversion arguments. We
+refer to an expression that does not have any free variables of
+the former (resp. latter) class asx-closed (resp.X-closed).
+7
+many places, values or variableswinstead of arbitrary ex-
+pressionse. This design, which is reminiscent of Flanaganet
+al.'sA
+siveness, but simplifies our proofs by makingletxine
+the only evaluation context. Because the amendments de-
+scribed in this paragraph have nothing to do with the type
+preservation result presented in the previous sections, we
+have chosen not to introduce them earlier on.
+5.1 Untyped defunctionalization
+We first define the untyped language. It is the type free
+counterpart of the typed language presented in Section 2,
+with the amendments described above.
+e::=ww::=x
+|w w|X
+|letx=eine|v
+-
+v::=lamx.e
+|letrecX= -vine
+|Kw-
+|w.r
+| {r-= -w}
+|casewofc-
+-
+c::=Kx-->eS::=X= -v
+Next, we define a call-by-value, small-step operational se-
+mantics. The objects of reduction are not expressions, but
+configurationsof the formS / e, where astoreSis a set of
+bindings of (distinct)letrec-class term variables tox-closed
+values. As usual, the term variables in the domain of the
+storeSare considered bound in the configurationS / e. In
+fact, the notationS / emay be viewed as a shorthand for
+letrecSine. The use of a store allows describing the dynam-
+ics ofletrecdefinitions in a straightforward manner. The
+operational semantics, a rewriting system on closed config-
+urations, is defined by the following standard rules.
+S /(lamx.e)v->S /x->ve
+S /letx=vine->S /x->ve
+S /{r=v; -r= -v}.r->S / v
+S /caseKv-of(Kx-->e)|c-->S / -x->v-e
+---
+S /letrecX= -vine->S;X= -v / eifX#S
+S;X=v / X->S;X=v / v
+S/ e->S/ e
+1122
+S/letx=eine->S/letx=eine
+1122
+We may now define untyped defunctionalization. As in
+the typed case, we consider a fixed closed programp, in
+which everylam-abstraction carries a unique tag. We do not,
+however, requirepto be well-typed. The translation of ex-
+pressions is defined, in an inductive manner, in Figure 3. All
+cases are trivial, exceptAbs, which translateslam-abstraction
+to closure construction, andApp, which translates function
+application to invocations ofapply. Please note that the re-
+lationis in fact a function, defined for all subexpressions
+ofp. We writepfor the image ofpthrough it. Then, the
+complete defunctionalized programpis defined as
+letrecapply=lamf.lamarg.casefofc-inp,
+p
+m
+where, for every abstraction of the formlamx.ethat appears
+withinp, -ccontains the clause
+p
+m{fv(lamx.e)} ->letx=argine,
+whereeis defined byee.
+App
+VarAbs
+e
+1
+m
+xxlamx.em{fv(lamx.e)}
+ee
+1212
+LetRecRecord
+v-v-eew-w-www-w-
+--
+letrecX= -vineletrecX= -vine{r-= -w}{r-= -w}w.rw.rKw-Kw-
+Case
+wwc-c-
+casewofc-casewofc-
+Figure 3: Untyped term translation
+5.2 Untyped meaning preservation
+In order to establish that untyped defunctionalization pre-
+serves meaning, we exhibit a simulation between closed
+source configurations and their defunctionalized versions.
+Roughly speaking, the desired simulation is the closure of
+the translationunder substitution of (x-closed) values
+for (x-class) program variables. More precisely, let us define
+the relationby the same rules that define(that is, by
+the rules of Figure 3, where every occurrence is ofis re-
+placed with), extended with the following new rule, which
+subsumesAbs:
+SimAbs
+m
+lamx.em{y-}
+x-subseteqy-
+v,-v-x-closed -vv-
+lamx. -x->v-em{ -x->v-y}
+The notation{ -x->v-y}stands for the record expression
+{y- -x->v-y}. In short,SimAbsextendsAbsby trans-
+lating not only functionsthat appear in the source program,
+but also the functionsthat appear at runtime, where some of
+the free variables have been instantiated with runtime val-
+ues, that is,x-closed values. It is immediate to check that
+extends, as stated by the following lemma.
+Lemma 5.1eeimpliesee.
+Furthermore,is closed under substitution, as desired.
+Lemma 5.2Leteeandvv, wherevandvare
+x-closed. Then,x->vex->veholds.
+Last,preserves values.
+Lemma 5.3Ifveholds, theneis a value.
+We extendto stores and to (closed) configurations as fol-
+lows:
+StoreConfig
+-
+applyinXv-v-SSee
+--
+X= -vapply;X= -vS / eS/ e
+Above, and in the following, we useapplyto stand for the
+store bindingapply=lamf.lamarg.casefofc-. We are now
+p
+ready to prove thatis a simulation.
+8
+Let
+eeeeeee
+212
+1212
+applyeeletx=eineletx=eine
+1212
+ProjData
+Clause
+ee
+Kx-->eKx-->e
+Lemma 5.4 (Simulation)This diagram commutes:
+S/ e
+S/ e
+11
+11
++
+S/ eS/ e
+22
+22
+Proof.By induction on the derivation ofS/ e->S/ e.
+1122
+We give only the most interesting case, namely that ofb-
+reduction.
+Caseeis (lamx.e)vandex->ve. Examining the
+12
+hypothesisS/(lamx.e)vS/ e, we find thatemust be of
+1
+111
+the formapply(m{ -x->v-y})v, where -yis fv(lamx.e) (1),
+m
+x-subseteqy-holds (2),e -x->v-e(3), -vand -varex-closed
+m
+and satisfy -vv-(4), andvvholds (5).
+Because we are dealing with closed configurations,eis
+1
+x-closed, which implies thatehas no free (x-class) variables
+other thanx. Given (3), this implies that the free variables
+ofeform a subset of -x {x}. Given (1), this yields -ysubseteqx-.
+m
+Given (2), -yand -xmust coincide, so we may write{ -x->
+v-y}as{y-= -v}.
+Now, by definition, -ccontains a clause of the form
+p
+m{y-} ->letx=argine, whereeis defined byee.
+m
+mmm
+This allows us to build the following reduction sequence:
+S/ e
+11
+=S/apply(m{y-= -v})v
+1
++
+->S/casem{y-= -v}of(m{y-} ->letx=vine)|. . .
+1m
+->S/letx=vin -y->v-e
+1m
+sincevand -varex-closed and, by (1),xiny-holds
+->S/x->v -y->v-e
+1m
+There remains to verify that the simulation holds. By
+Lemma 5.1, we haveee. By (4), (5), and Lemma 5.2,
+m
+m
+x->v -y->v-ex->v -y->v-e, that is,
+m
+m
+ex->v -y->v-e. The result follows byConfig.
+2
+m
+Given a closed expressione, we writeeif and only if
+the configurationemptyset/ eadmits an infinite reduction sequence;
+we writeeif and only ifemptyset/ ereduces to a configuration
+whose right-hand component is a value. Then, the fact that
+defunctionalization preserves meaning, in an untyped set-
+ting, is stated by the next theorem.
+Theorem 5.1pimpliesp.pimpliesp.
+Proof.To begin, let us notice that, by definition,pis
+letrecapplyinp. Thus, the configurationemptyset/preduces, in
+one step, toapply/ p. Furthermore, by Lemma 5.1,Store,
+andConfig,emptyset/ papply/ pholds.
+Now, assumepdiverges. Then,emptyset/ padmits an infinite
+reduction sequence. By Lemma 5.4, so doesapply/ p, hence
+so doesemptyset/p, which proves thatpdiverges.
+Last, assumepconverges to a configuration of the formimplements such a semantics. Our treatment of mutually
+S / v. By the same argument as above,pmust then reduce
+to a configuration that simulatesS / v. By Lemma 5.3, the
+right-hand component of that configuration must be a value,The reader may notice that the simply-typed version of
+hencepconverges to a value.
+The theorem states that defunctionalization preserves
+the termination behavior of the program. It does not ap-
+ply to programs that go wrong; however, they are of little
+interest, since, in a realistic setting, they should be ruled out
+by some sound type system. Of course, if desired, it would
+be possible to prove that defunctionalization also preserves
+the property of going wrong.
+5.3 Typed meaning preservation
+We now sketch how the meaning preservation result may be
+lifted, if desired, to a typed setting. (The task is simple
+enough that it does not, in our opinion, warrant a detailed
+development.) Naturally, we consider the type system pre-
+sented in Section 2; however, any other type system would
+do just as well, provided it is powerful enough to encode
+typed defunctionalization and has a type erasure semantics.
+We begin by restricting the typed language defined in
+Section 2 so as to reflect the restrictions imposed on the
+untyped language at the beginning of Section 5. Further-
+more, we restrict type abstraction to values, that is, we
+replace the construct LAMa.ewith LAMa.v. Indeed, we do not
+wish LAM-abstractions to suspend computation, because they
+are erased when going down to the untyped language.
+Next, we define a typed operational semantics for the
+language, which is identical to the untyped semantics of
+Section 5, except type information is kept track of. The
+two semantics are related by a simpletype erasureproperty,
+stated as follows. Given a typed expressione, letebe its
+untyped counterpart, obtained by erasing all type informa-
+tion. Then, we have:
+Lemma 5.5Lettrue,|-p:t. Then,pimpliesp ,
+p
+andpimpliesp .
+Last, we have insisted earlier that our version of defunc-
+tionalization is not type-directed. In other words, it com-
+mutes with type erasure. This is stated by the following
+lemma, whose proof is straightforward:
+Lemma 5.6Lettrue,|-p:t. Then,pisp.
+p
+Using Theorem 5.1 as well as the previous two Lemmas,
+it is now straightforward to establish the correctness of typed
+defunctionalization. To conclude, types do not help estab-
+lish the correctness of defunctionalization; on the contrary,
+we believe it is pleasant to get them out of the way, so as to
+obtain a stronger result (Theorem 5.1).
+6 Discussion
+It is worth noting that recursive or mutually recursive func-
+tions in the source program do not cause any extra diffi-
+culty. Indeed, a set of mutually recursive bindings whose
+9
+right-hand sides arelam-abstractions is mapped to a set of
+mutually recursive bindings whose right-hand sides are clo-
+sures, that is, applications of data constructors to records
+of variables--in other words, values. Even under a call-by-
+value evaluation regime, mutually recursive definitions of
+values make perfect sense; see the semantics given in Sec-
+tion 5.1. The strict functional language Objective Caml
+recursive function definitions corresponds to Morrisett and
+Harper'sfixpack
+defunctionalization described in the introduction is moreef-
+ficient than the one presented in this paper, because special-
+izingapplywith respect to ground typestandtallows
+12
+setting up smaller dispatch tables. In fact, specialization
+is a simple way of exploiting the flow information provided
+for the source program by the type system. Our version of
+defunctionalization is na"ive, and includes no such optimiza-
+tion. It is straightforward, however, to perform specializa-
+tion in a similar way. Indeed, iftandtare arbitrary
+12
+(non-ground) types, whose free type variables are -a, then
+one may define a specialized functionapply, whose
+existsa.t-->t
+12
+type isforalla.-t->t->t->t, and whose code is
+1212
+identical to that ofapply, except it contains branchesonly
+for the tags corresponding to source functions whose type
+is an instance oft->t. The resulting program is still
+12
+tem equipped with guarded algebraic data types supports
+identification and elimination of dead branches: they are
+the branches whose typing hypothesis is inconsistent. Thus,
+whereas, in the simply-typed case, type-based specialization
+was mandatory in order to achieve type preservation, it is
+now optional.
+Another source of inefficiency in our presentation of de-
+functionalization is our na"ive treatment of multiple-argu-
+ment functions. Indeed, we have adopted the view that all
+functions are unary. As a result, applying a (curried) func-
+tion to multiple arguments causes the allocation of several
+intermediate closures, which immediately become garbage.
+In practice, it is possible to address this issue by defining yet
+more versions ofapply, specialized for 2,3, . . .arguments,
+and to use these specialized versions at every call site where
+multiple arguments are available at once.
+The specialization techniques described in the previous
+two paragraphs may be combined, without compromising
+our type preservation result. This yields defunctionalized
+programs containing many highly specialized versions of
+apply, each of which typically has few branches. Thus, this
+approach may allow producing reasonably small dispatch ta-
+bles, by exploiting type information only, instead of relying
+on a separate closure analysis.
+Defunctionalization may be viewed not only as a compi-
+lation technique, but also as a tool that helps programmers
+transform programs and reason about them. Danvy and
+encoding, which means that it allows reasoning in terms of
+data structures instead of higher-order functions. This is
+nicely illustrated by the case of thesprintffunction, whose
+type is notoriously difficult to express in ML, because the
+value of its first argument dictates the number and types
+way of expressingsprintfin ML by encoding format spec-
+ifiers as first-class functions. More recently, Xi, Chen, and
+sprintfmay be expressed in a more
+direct style, whereby format specifiers are data structures,
+in an extension of ML with guarded algebraic data types.
+We point out that the latter code is but a defunctionalizedRR1992-49, ENS Lyon, 1992.
+version of the former: it could, in principle, have been de-
+rived from it in a systematic manner. Thus, type-preserving
+defunctionalization may be viewed as a tool to turn existing
+ML programs that use clever continuation-based tricks to
+work around the limitations of ML's type system back into
+perhaps more natural, first-order programs, expressed in an
+extension of ML with guarded algebraic data types.
+References
+Design and correctness of program transformations
+based on control-flow analysis. InInternational Sym-
+posium on Theoretical Aspects of Computer Software
+(TACS), volume 2215 ofLecture Notes in Computer
+Science, pages 420-447. Springer Verlag, October 2001.
+Type-driven defunctionalization. InACM International
+Conference on Functional Programming (ICFP), Au-
+gust 1997.
+Weeks. Flow-directed closure conversion for typed
+languages. InEuropean Symposium on Programming
+(ESOP), volume 1782 ofLecture Notes in Computer
+Science, pages 56-71. Springer Verlag, March 2000.
+types. Technical Report 1901, Cornell University, 2003.
+Journal of Func-
+tional Programming, 8(6):621-625, November 1998.
+ization at work. InACM International Conference
+on Principles and Practice of Declarative Programming
+(PPDP), pages 162-174, September 2001.
+Matthias Felleisen. The essence of compiling with con-
+tinuations. InACM Conference on Programming Lan-
+guage Design and Implementation (PLDI), pages 237-
+247, 1993.
+Harper. Typed closure conversion. InACM Symposium
+on Principles of Programming Languages (POPL),
+pages 271-283, January 1996.
+version for recursively-defined functions (extended ab-
+stract). InInternational Workshop on Higher Order
+Operational Techniques in Semantics (HOOTS), vol-
+ume 10 ofElectronic Notes in Theoretical Computer
+Science. Elsevier Science, 1998.
+Glew. From system F to typed assembly language.
+ACM Transactions on Programming Languages and
+Systems, 21(3):528-569, May 1999.
+functionalization. Technical Report RS-00-47, BRICS,
+December 2000.
+10
+e
+system coq: Rules and properties. Research Report
+-
+order programming languages.Higher-Order and Sym-
+bolic Computation, 11(4):363-397, December 1998.
+.
+Higher-Order and Symbolic Computation, 11(4):355-
+361, December 1998.
+closure analysis using algebraic types. InWorkshop on
+Types in Compilation (TIC), June 1997.
+to Ada: Strongly-typed language interoperability via
+source translation.Journal of Functional Programming,
+8(4):367-412, July 1998.
+dent types. InInternational Workshop on Practical
+Aspects of Declarative Languages (PADL), volume 1551
+ofLecture Notes in Computer Science, pages 228-242.
+Springer Verlag, January 1999.
+recursive datatype constructors. InACM Symposium
+on Principles of Programming Languages (POPL), Jan-
+uary 2003.
