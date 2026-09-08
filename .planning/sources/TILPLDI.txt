@@ -1,0 +1,1210 @@
+TIL: A Type-Directed Optimizi
+D. Tarditi, G. Morrisett, P. Cheng, C. Stone, R. Harper, and P. Lee
+School of Computer Science
+Carnegie Mellon University
+5000 Forbes Avenue
+Pittsburgh, PA 15213-3891
+1Introduction
+We are investigating a new approach to compiling Standard
+ML SML based on four key technologies:intensionalpoly-
+morphism23,nearly tag-free garbage collection
+conventional functional language optimization,andloop op-
+timization.To explore the practicality of our approach, we
+have constructed a compiler for SML called TIL, and are
+thus far encouraged by the results: On DEC ALPHA work-
+stations, programs compiled by TIL are roughly three times
+faster, do one-fth the total heap allocation, and use one-
+half the physical memory of programs compiled bySMLof
+New Jersey SMLNJ. However, our results are still pre-
+liminary | wehave not yet investigated howtoimprove
+compile time TIL takes about eight times longer to compile
+programs than SMLNJ. Also, wehave not yet implemented
+the full module system of SML, although we do provide sup-
+port for structures and separate compilation.Finally,we
+expect the performance of programs compiled by TIL to im-
+prove signicantly as we tune the compiler and implement
+more optimizations.
+Twokey issues in the compilation of advanced languages
+such as SML are the presence ofgarbage collectionandtype
+variables. Most compilers use a universal representation for
+values of unknown or variable type. In particular, values are
+forced to t into a tagged machine word values larger than
+amachine word are represented as pointers to tagged, heap-
+allocated objects. This approach supports fast garbage col-
+lection and ecient polymorphic functions, but can result in
+inecientcodewhentypes are known at compile time. Even
+with recent advances in SML compilation, such as Leroy's
+represenalues must be placed in a uni-
+versal representation before being stored in updateable data
+This researchwas sponsored in part by the Advanced Research
+Projects Agency CSTO under the title \The Fox Project: Advanced
+Languages for Systems Software", ARPA Order No. C533, issued by
+ESCENS under Contract No. F19628-95-C-0050,andinpartby the
+National Science Foundation under Grant No. CCR-9502674, and in
+part by the Isaac Newton Institute for Mathematical Sciences, Cam-
+bridge, England.David Tarditi was also partly supported byan
+AT&T Bell Labs PhD Scholarship. The views and conclusions con-
+tained in this document are those of the authors and should not be in-
+terpreted as representing ocial policies, either expressed or implied,
+of the Advanced Research Projects Agency, the U.S. Government, the
+National Science Foundation or AT&T.
+To appear in the ACM SIGPLAN '96 Conference on
+Programming Language Design and Implementation
+ng Compiler for ML
+structures e.g., arrays or recursive data structures e.g.,
+lists.
+Intensional polymorphismandtag-free garbage collection
+eliminate the need to use a universal representation when
+compiling polymorphic languages. TIL uses these technolo-
+gies to representmany data values \naturally".For ex-
+ample, TIL provides tag-free, unallocated, word-sized in-
+tegers aligned, unboxed oating-point arrays and unallo-
+cated multi-argument functions. These natural representa-
+tions and calling conventions not only improve the perfor-
+mance of SML programs, but also allowthemtointeroperate
+with legacy code written in languages suchasCandFortran.
+When types are unknown at compile time, TIL may produce
+machine code which is slower and bigger than conventional
+approaches. This is because types must be constructed and
+passed to polymorphic functions, and polymorphic functions
+must examine the types at run-time to determine appropri-
+ate execution paths.However, when types are known at
+compile time, no overhead is incurred to support polymor-
+phism or garbage collection.
+Because these technologies make polymorphic functions
+slower, it becomes important to eliminate as many polymor-
+phic functions at compile time as is possible. Inlining and
+uncurrying are well-known techniques for eliminating poly-
+morphic and higher-order functions. Wehave found that
+for the benchmarks used here, these techniques eliminate all
+polymorphic functions and all but a few higher-order func-
+tions when programs are compiled as a whole.
+Wehave also found that applying traditional loop op-
+timizations to recursive functions, such as common sub-
+expression elimination and invariantremoval, is important.
+In fact, these optimization reduce execution time byame-
+dian of 39.
+An important property of TIL is that all optimizations
+and the key transformations are performed ontyped inter-
+mediate languageshence the name TIL. Maintaining cor-
+rect type information throughout optimization is necessary
+to support both intensional polymorphism and garbage col-
+lection, both of which require type information at run time.
+By using strongly-typed intermediate languages, weensure
+that type information is maintained in a principled fash-
+ion, instead of relying uponad hocinvariants. In fact, us-
+ing the intermediate forms of TIL, an \untrusted" compiler
+can produce fully optimized intermediate code, and a client
+can automatically verify the type integrityofthecode. We
+have found that this ability has a strong engineering benet:
+type-checking the output of each optimization or transfor-
+mation helps us identify and eliminate bugs in the compiler.
+In the remainder of this paper, we describe the technolo-
+gies used by TIL in detail, giveanoverview of the structure
+of TIL, present a detailed example showing how TIL com-
+piles ML code, and give performance results of code pro-
+duced by TIL.
+2Overview of the Technologies
+This section contains a high-level overview of the technolo-
+gies we use in TIL.
+2.1Intensional Polymorphism
+In
+representations due to polymorphism, separate compilation,
+abstract datatypes, and garbage collection. It also supports
+ecient calling conventions multiple arguments passed in
+registers and tag-free polymorphic, structural equality.
+With intensional polymorphism, types are constructed
+and passed as values at run time to polymorphic functions,
+and these functions can branch based on the types.For
+example, when extracting a value from an array, TIL uses a
+typecaseexpression to determine the type of the array and
+to select the appropriate specialized subscript operation:
+x:array,i:int=
+typecaseof
+int= intsubx, i
+|oat= floatsubx, i
+|ptr = ptrsubx, i
+If the type of the array can be determined at compile-time,
+then an optimizer can eliminate thetypecase:
+suboat,!floatsuba,5
+However, intensional polymorphism comes with two costs.
+First, wemust construct and pass representations of types to
+polymorphic functions at run time. Furthermore, wemust
+compile polymorphic functions to support any possible rep-
+resentation and inserttypecaseconstructs to select the ap-
+propriate code paths. Hence, the code we generate for poly-
+morphic functions is both bigger and slower, and minimizing
+polymorphism becomes quite important.
+Second, in order to use type information at run time, for
+both intensional polymorphism and tag-free garbage collec-
+tion, wemust propagate types through each stage of compi-
+lation. To address this second problem, almost all compila-
+tion stages, including optimization and closure conversion,
+are expressed as type-directed, type-preserving translations
+to strongly-typed intermediate languages.
+The key diculty with using typed intermediate lan-
+guages is formulating a type system that is expressive enough
+to statically type check terms that branchontypes at run
+time, suchassub.Thetype system used in TIL is based
+on the approach suggested b
+Types themselves are represented as expressions in a simply-
+typed-calculus extended with an inductively generated
+base kind the monotypes, and a corresponding induction
+elimination form.The induction elimination form is es-
+sentially a \Typecase" at the type level this allows us to
+write type expressions that track the run-time control ow
+of term-leveltypecaseexpressions. Nevertheless, the type
+system used by TIL remains bothsoundanddecidable.This
+implies that at any stage during optimization, we can auto-
+matically verify the type integrity of the code.
+2.2Conventional and Loop-Oriented Opti-
+mizations
+Program optimization is crucial to reducing the cost of in-
+tensional polymorphism,improving loops and recursivefunc-
+tions, and eliminating higher-order and polymorphic func-
+tions.TIL employs optimizations found in conventional
+functional language compilers, including inlining, uncurry-
+ing, dead-code elimination, and constant-folding. In addi-
+tion, TIL does a set of generalized \loop-oriented" optimiza-
+tions to improve recursive functions. These optimizations in-
+clude common-subexpression elimination, invariantremoval,
+and array-bound check removal. In spite of the large num-
+ber of dierent optimizations, each optimization produces
+type-correct code.
+TIL applies optimizations across entire compilation units.
+This makes it more likely that inlining and uncurrying will
+eliminate higher-order functions, which are likely to interfere
+with the loop-oriented optimizations. Since the optimiza-
+tions are applied to entire compilation units whichmaybe
+whole programs, we paid close attention to algorithmic e-
+ciency of individual optimization passes. Most of the passes
+haveanONlogNworst-case asymptotic complexity ex-
+cluding checking types for equality, whereNis program
+size.
+2.3Nearly Tag-Free Garbage Collection
+Nearly tag-free garbage collection uses type information to
+eliminate data representation restrictions due to garbage
+collection.The basic idea is to record enough represen-
+tation information at compile time so that, at any point
+where a garbage collection can occur, it is possible to deter-
+mine whether or not values are pointers and hence must be
+traced by the garbage collector. Recording the information
+at compile time makes it possible for code to use untagged
+representations. Unlike so-called conservative collectors see
+y TIL is
+sucient to collect all unreachable objects.
+Collection is \nearly" tag-free because tags are placed
+only on heap-allocated data structures records and arrays
+values in registers, on the stack, and within data structures
+remain tagless.We construct the tags for monomorphic
+records and arrays at compile time. For records or arrays
+with unknown componenttypes, wemay need to construct
+tags partially at run time. As with other polymorphic oper-
+ations, weuseintensional polymorphism to construct these
+tags.
+Registers and components of stack frames are not tagged.
+Instead, we generate tables at compile time that describe
+the layout of registers and stack frames. We associate these
+tables with the addresses of call sites within functions at
+compile time. When garbage collection is invoked, the col-
+lector scans the stack, using the return address of each frame
+as an index into the table. The collector looks up the lay-
+out of eachstack-frame to determine which stacklocations
+to trace. We record additional liveness information for each
+variable to avoid tracing pointers that are no longer needed.
+This approachiswell-understood for monomorphic lan-
+ollowing Tolmach
+e extended it to a polymorphic language as follows:
+when a variable whose type is unknown is saved in a stack
+frame, the type of the variable is also saved in the stack
+frame. However, unlikeTolmach, weevaluate substitutions
+2
+of ground types for type variables eagerly instead of lazily.
+This is due in part for tec Chapter
+void a class of space leaks that might
+result with lazy substitution.
+3Compilation Phases of TIL
+Figure 1 shows the various compilation phases of TIL. The
+phases through and including closure conversion use a typed
+intermediate language. The phase after closure conversion
+use an untyped language where variables are annotated with
+garbage collection information. The low-level phases of the
+compiler use languages where registers are annotated with
+garbage collection information.
+The following sections describe the phases of TIL and
+the intermediate languages they use in more detail.
+3.1Front-end
+The rst phase of TIL uses the front-end of the ML Kit
+ype check SML source
+code. The Kit produces annotated abstract syntax for all of
+SML and then compiles a subset of this abstract syntax to
+an explicitly-typed core language called Lambda. The com-
+pilation to Lambda eliminates pattern matching and various
+derived forms.
+We extended Lambda to support signatures, structures
+modules, and separate compilation. Each source module
+is compiled to a Lambda module with an explicit list of
+imported modules and their signatures.Imported signa-
+tures may include transparent denitions of types dened in
+other modules hence TIL supports a limited form oftranslu-
+centmanifestttly, the mapping to
+Lambda does not handle signatures, nested structures, or
+functors. In principle, however, all of these constructs are
+supported by TIL's intermediate languages.
+3.2Lmli and Type-Directed Optimizations
+ML
+Lmli, which stands fortensionally polymor-
+i
+phic language that provides explicit support for construct-
+ing, passing, and analyzing types at run-time. We use these
+constructs in the translation of Lambda to Lmli to provide
+ecient data representations for user-dened datatypes, multi-
+argument functions, tag-free polymorphic equality, and spe-
+cialized arrays.
+After the conversion from Lambda to Lmli, TIL performs
+a series of type-directed optimizations. SML provides only
+single-argument functions multiple arguments are passed in
+a record. The rst optimization, argument attening, trans-
+lates each function whichtakes a record as an argumentto
+a function whichtakes the components of the record as mul-
+tiple arguments. These arguments are passed in registers,
+avoiding allocation to create the record and memory op-
+erations to access record components. If a function takes
+an argumentofvariable type, then weusetypecaseto
+determine the proper calling convention, according to the
+instantiation ofat run time.
+As with functions, datatype constructors in SML take
+a single argument. For example, the cons data construc-
+tor :: for anlist takes a single record, consisting of
+anvalue and anlistvalue. Naively, such a construc-
+tor is represented as a pair consisting of a tag e.g.,cons,
+and a pointer to the record containing thevalue and the
+listvalue. The tag is a small integer value used to distin-
+guish among the constructors of a datatype e.g.,nilvs.
+::. Constructor attening rewrites all constructors that
+take records as arguments so that the components of the
+records are attened.In addition, constructor attening
+eliminates tag components when they are unneeded.For
+example, cons applied tohd,tlis simply represented as a
+pointer to the pairhd,tl, since suchapointer can always
+be distinguished fromnil. If the constructor takes an argu-
+ment of unknown type, then weusetypecaseto determine
+the proper representation, according to the instantiation of
+at run time.
+Because lists are used often in SML, the SMLNJ com-
+piler also attens cons cells and other constructors. How-
+ev
+vents programmers from abstracting the type of these con-
+structors, in order to prevent representation mismatches be-
+tween denitions of abstract datat
+contrast, TIL supports fully abstract datatype components,
+but uses intensional polymorphism to determine representa-
+tions of abstract datatypes, potentially at run time.
+In addition to specializing calling conventions and datatypes,
+the conversion from Lambda to Lmli makes polymorphic
+equality explicit as a term in the language. Also, arrays are
+specialized into one of three cases: int arrays, oat arrays,
+and pointer arrays.Intensional polymorphism is used to
+select the appropriate creation, subscript, and update oper-
+ations for polymorphic arrays.
+Finally,TILboxes all oating pointvalues, except for
+values stored in oating-point arrays.Wechose to box
+oats to make record operations faster, since typical SML
+code manipulates many records but few oats.The is-
+sue is that oating-pointvalues are 64 bits, while other
+scalars and pointers are 32 bits. If oats were unboxed, then
+record oset calculations could not always be done at com-
+pile time. Fortunately, the optimizer later eliminates un-
+ecessary boxunbox operations during the constant-folding
+phase, so straight-line oating point code still runs fast.
+In all, the combination of type-directed optimizations re-
+duce running times by roughly 40 and allocation by 50
+wever, much of this improvement can
+be realized by other techniques For example, SMLNJ uses
+Leroy's unboxing technique to achieve comparable improve-
+ments for calling convenantage of our
+approach is that weuseasinglemechanism intensional
+polymorphism to specialize calling conventions, atten con-
+structors, unbox oating-pointarrays, and eliminating tags
+for both polymorphic equality and garbage collection.
+3.3Optimizations
+TIL employs an extensive set of optimizations. The opti-
+mizations include most of those typically done by compilers
+for functional languages.They also include loop-oriented
+optimizations, suchasinvariant removal, applied to recur-
+sive functions.
+TIL rst translates Lmli to a subset of Lmli called Bform.
+Bform, based on A-Normal-F
+termediate language than Lmli that facilitates optimization.
+The translation from Lmli names all intermediate computa-
+tions and binds them to variables byalet-construct. It
+also names all potentially heap-allocated values, including
+strings, records and functions.Finally, it allows nested
+3
+Front end
+Conversion to Lmli
+Type-directed
+Typed intermediate
+optimization
+languages
+Conventional and
+loop optimizations
+Closure conversion
+Conversion to untyped
+language with gc info.
+Conversion to RTL
+Registers annotated
+with gc info
+Register allocation
+Assembly
+Figure 1: Phases of the TIL compiler
+parse, elaborate, eliminate
+pattern matching
+introduce intensional polymorphism,
+choose data representations
+flatten args,
+flatten constructors,
+box floats
+do inlining, uncurrying, constant-
+folding, CSE, invariant removal,
+etc.
+close functions,
+choose environment representations
+calculate gc info for variables,
+choose representation for types
+choose machine representation
+for variables, introduce tagging
+for records and arrays
+do graph-coloring register
+allocation, construct tables for gc
+4
+letexpressions only within switches branch expressions.
+Hence, the translation from Lmli to Bform linearizes andalwaystrueat that point.
+names nested computations and values.
+After translation to Bform, TIL performs the following
+conventional transformations:
+alpha-conversion:Bound variables are uniquely re-TIL assigns alet-bound variable and the expression
+named.
+dead-code elimination:unreferenced, pure expres-
+sions and functions are eliminated.
+uncurrying:Curried functions are transformed to
+multi-argument functions, when possible.
+constant folding:Arithmetic operations, switches,
+and typecases on constantvalues are reduced, as well
+as projections from known records.
+sinking:Pure expressions used in only one branchof
+a switch are pushed into that branch. However, such
+expressions are not pushed into function denitions.
+inlining:Non-escaping functions that are called only
+once are always inlined. Small, non-recursive functions
+are inlined in a bottom-up pass. Recursive functions
+are never directly inlined.
+inlining switchcontinuations:The continuation of
+a switch is inlined when all but one branch raises an
+exception. For example, the expression
+let x = if y theneelse raisee
+23
+ine
+4
+end
+is transformed to
+if y then let x =eineend else raisee.
+243
+This makes expressions ineavailable withinefor
+24
+optimizations like common sub-expression elimination.
+minimizingx:Mutually-recursive functions are bro-
+ken into sets of strongly connected components. This
+improves inlining and dead code elimination, by sepa-
+rating non-recursive and recursive functions.
+In addition to these standard functional language trans-
+formations, TIL also applies loop-oriented optimizations to
+recursive functions:
+common subexpression elimination CSE:Given
+an expression
+let x =e
+1
+ine
+2
+end
+ifeis pure or the only eect it mayhave is to raise an
+1
+exception, then all occurrences ofeineare replaced
+12
+withx. The only expressions that are excluded from
+CSE are side-eecting expressions and function calls.
+eliminating redundant switches:Given an expres-
+sion
+let x = if z then
+let y = if z theneelsee
+12
+in ...
+the nestedifstatement is replaced bye, sincezis
+1
+invariantremoval:Using the call graph, we calcu-
+late the nesting depth of each function. Nesting-depth
+is analogous to loop-nesting depth in languages likeC.
+it binds a nesting depth equal to that of the nearest
+enclosing function. For every pure expressione, if all
+free variables ofehave a nesting depth less thane, TIL
+moves the denition oferight after the denition of
+the free variable with the highest lexical nesting depth.
+hoisting:All constant expressions are hoisted to the
+top of the program. An expression is a constant ex-
+pression if it uses only constants or variables bound to
+constant expressions.
+eliminating redundant comparisons:A set of sim-
+ple arithmetic relations of the formxyis propagated
+top-down through the program. A \rule-of-signs" ab-
+stract interpretation is used to determine signs of vari-
+ables.This information is used to eliminate array-
+bounds checks and other tests.
+TIL applies the optimizations as follows: rst, it per-
+forms a round of reduction optimizations, including dead-
+code elimination, constant folding, inlining functions called
+once, CSE, eliminating redundant switches, and invariant
+removal. These optimizations do not increase program size
+and should result in faster code. It iterates these optimiza-
+tions until no further reductions occur. Then it performs
+switch-continuation inlining, sinking, uncurrying, compar-
+ison elimination, x minimizing, and inlining.The entire
+process, starting with the reduction optimizations, is iter-
+ated two or more times.
+3.4Closure conversion
+TIL uses a type-directed, abstract closure conversion in the
+style suggested b
+convert Lmli-Bform programs to to Lmli-Closure programs.
+Lmli-Closure is an extension of Lmli-Bform that provides
+constructs for explicitly constructing closures and their en-
+vironments.
+For each escaping Bform function, TIL generates a closed
+piece of code, a type environment,andavalue environment.
+The code takes the free type variables and free value vari-
+ables of the original function as extra arguments. The types
+and values corresponding to these free variables are placed in
+records. These records are paired with the code to form an
+abstract closure. TIL uses a at environment representation
+for type and value environmen
+For known functions, TIL generates closed code but avoids
+creating environments or a closure. Folloe
+modify the call sites of known functions to pass free variables
+as additional arguments.
+TIL closes over only variables which are function argu-
+ments or are bound within functions. The locations of other
+\top-level" variables are resolved at compile-time through
+traditional linking, so their values do not need to be stored
+in a closure.
+5
+3.5Conversion to an untyped language
+To simplify the conversion to low-level assembly code, TIL
+translates Lmli-Closure programs to an untyped language
+called Ubform. Ubform is a much simpler language than
+Lmli, since similar type-level and term-level constructs are
+collapsed to the same term-level constructor.For exam-
+ple, in the translation from Lmli-Closure to Ubform, TIL
+replacestypecasewith a conventionalswitchexpression.
+This simplies generation of low-level code, since there are
+many fewer cases.
+TIL annotates variables withrepresentation information
+that tells the garbage collector what kinds of values variables
+must contain e.g., pointers, integers, oats, or pointers to
+code. The representation of a variablexmay be unknown
+at compile time, in which case the representation informa-
+tion is the name of the variableythat will contain the type
+ofxat run time.
+3.6Conversion to RTL
+Next TIL converts Ubform programs to RTL,a register-transfer
+language similar to ALPHA or other RISC-style assembly
+language. RTL provides an innite number of pseudo-registers
+each of which is annotated with representation informa-
+tion.Representation information is extended to include
+locatives, which are pointers into the middle of objects.
+Pseudo-registers containing locatives are never live across a
+point where garbage collection can occur. RTL also provides
+heavy-weight function call and return mechanisms, and a
+form of interprocedural goto for implementing exceptions.
+The conversion of Ubform to RTL decides whether Ub-
+form variables will be represented as constants, labels, or
+pseudo-registers. It also eliminates exceptions, inserts tag-
+ging operations for records and arrays, and inserts garbage
+collection checks.
+3.7Register allocation and assembly
+Before doing register allocation, TIL converts RTL programs
+to ALPHA assembly language with extensions similar to
+those for RTL. Then TIL uses conventional graph-coloring
+register allocation to allocate physical registers for the pseudo-
+registers.It also generates tables describing layout and
+garbage collection information for eachstackframe,asde-
+scribed in Section 2.3. Finally, TIL generates actual ALPHA
+assembly language and invokes the system assembler, which
+does instruction scheduling and creates a standard object
+le.
+4An example
+This section shows an ML function as it passes through theFigure 7 shows the actual DEC ALPHA assembly lan-
+various stages of TIL. The following SML code denes a dot
+product function that is the inner loop of the integer matrix
+multiply benchmark:
+val sub2 : 'a array2 * int * int - 'a
+fun dotcnt,sum=
+if cntbound then
+let val sum'=sum+sub2A,i,cnt*sub2B,cnt,j
+in dotcnt+1,sum'
+end
+else sum
+The functionsub2is a built-in 2-d array subscript function
+which the front end expands to
+fun sub2 fcolumns,rows,vg, s :int, t:int =
+if s 0 orelse s=rows orelse t0 orelse
+t=columns then raise Subscript
+else unsafe
+sub1v,s * columns + t
+Figures 2 through 7 show the actual intermediate code
+created asdotandsub2pass through the various stages
+of TIL. For readability,wehave renamed variables, erased
+type information, and performed some minor optimizations,
+such as eliminating selections of elds from known records.
+Figure 2 shows the functions after they have been con-
+verted to Lmli. Thesub2function takes a type as an ar-
+gument. A function parameterized byatype is written as
+t., while a function parameterized byavalue is written as
+i.In thedotfunction, thesub2function is rst applied to
+atypeand then applied to its actual values. Each function
+takes only one argument, often a record, from which elds
+are selected. The qualityofcodeatthislevel is quite poor:
+there are eight function applications, four record construc-
+tions, and numerous checks for array bounds.
+Figure 3 shows the Lmli fragment after it has been con-
+verted to Lmli-Bform. Functions have been transformed to
+takemultiple arguments instead of records and every inter-
+mediate compuation is named.
+Figure 4 shows the Lmli-Bform fragment after it has been
+optimized. All the function applications in the body of the
+loop have been eliminated.psubaiav,ais an applica-
+tion of the unsafe integer array subscript primitive. All of
+the comparisons for array bounds checking have been safely
+eliminated, and the body of the loop consists of 9 expres-
+sions. This loop could be improved even further wehaveyet
+to implementany form of strength reduction and induction
+variable elimination.
+Figure 5 shows the Lmli-Bform fragment after it has been
+converted to Ubform. Eachvariable is now annotated with
+representation information,tobeusedby the garbage col-
+lector.INTdenotes integers andTRACEdenotes pointers to
+tagged objects.The function is nowclosed, since it was
+closure converted before converting to Ubform.
+Figure 6 shows the Ubform fragment after it has been
+converted to RTL. Every pseudo-register is now annotated
+with precise representation information for the collector.
+The representation information has been extended to in-
+cludeLOCATIVE, which denotes pointers into the middle of
+tagged objects.Locatives cannot be live across garbage-
+collection points. The*indicates points where thepsubai
+primitive has been expanded to twoRTL instructions. This
+indicates that induction-variable elimination would also be
+protable at the RTL level. Thereturninstruction's operand
+is a pseudo-register containing the return address.
+guage generated for thedotfunction.Thecodebetween
+L1andL3corresponds to the RTL code. The other code
+is epilogue and prologue code for entering and exiting the
+function. Note that no tagging operations occur anywhere
+in this function.
+5Performance
+In this section, we compare the performance of programs
+compiled by TIL against programs compiled by the SMLNJ
+6
+sub2 =
+let fix f =ty.
+let fix g =arg.
+let a = 0 arg
+s = 1 arg
+t = 2 arg
+columns = 0 a
+rows = 1 a
+v = 2 a
+check =
+let test1 = plstis,0
+in Switchenum test of
+1=.enum1
+|0=.
+let test2 = pgteis,rows
+in Switchenum test2 of
+1=.enum1
+|0=.
+let test3 = plstit,0
+inSwitchenum test3 of
+1=.enum1
+|0=.pgteit,columns
+end
+end
+end
+in Switchenum check of
+1=.raise Subscript
+|0=.unsafefv,t + s * columnsg
+end
+in g
+in f
+end
+fix dot=
+i.let cnt = 0 i
+sum = 1 i
+d = plsticnt,bound
+inSwitchenum d
+of1=.let sum' = sum +
+fA,i,cntg*
+fB,cnt,jg
+indotfcnt+1,sum'g
+end
+|0=.sum
+end
+Figure 2: After conversion to Lmli
+sub2 = ...
+fix dot =cnt,sum.
+let test = plsticnt, bound
+r=
+Switchenum test of
+1=.
+b = aA,i,cnt
+d = cB,cnt,j
+e = b*d
+f = sum+e
+g = cnt+1
+h = dotg,f
+in h
+end
+|0=.sum
+inr
+end
+Figure 3: Lmli-Bform before optimization
+fix dot =
+cnt,sum.
+let test = plsticnt,bound
+r = Switchenum test of
+1=
+.
+let a = t1 + cnt
+b = psubaiav,a
+c = columns * cnt
+d=j+c
+e = psubaibv,d
+f = b*e
+g = sum+f
+h = 1+cnt
+i = doth,g
+ini
+end
+|0=.sum
+inr
+end
+Figure 4: Lmli-Bform after optimization
+fix dot =
+bound:INT,columns:INT,bv:TRACE,av:TRACE,t1:INT,
+j:INT,cnt:INT,sum:INT.
+let test:INT = pgttibound,cnt
+r:INT =
+Switchint test of
+1=
+let a:INT = t1 + cnt
+b:INT = psubaiav,a
+c:INT = columns * cnt
+d:INT = j + c
+e:INT = psubaibv,d
+f:INT = b*e
+g:INT = sum+f
+h:INT = 1+cnt
+i:INT = dotbound,columns,bv,
+av,t1,j,h,g
+in i
+end
+| 0 = sum
+inr
+end : INT
+Figure 5: After conversion to Ubform
+7
+dotboundINT,columnsINT,bvTRACE,
+avTRACE,t1INT,jINT,cntINT,
+sumINT,
+fL0:pgt bound INT , cntINT , testINT
+bne testINT,L1
+mv sumINT,result INT
+br L2
+L1:addl t1INT , cntINT , aINT
+*s4add aINT , avTRACE , t2LOCATIVE
+*ldl bINT , 0t2LOCATIVE
+mull columnsINT , cntINT , c INT
+addl jINT , cINT , d INT
+*s4add d INT , bvTRACE , t3LOCATIVE
+*ldl e INT , 0t3 LOCATIVE
+mullv b INT , e INT , fINT
+addlv sumINT , f INT , g INT
+addlv cntINT , 1 , h INT
+trapb
+mv h INT,cntINT
+mv g INT,sumINT
+br L0
+L2:return retregLABELg
+Figure 6: After conversion to RTL
+compiler. We measure execution time, heap allocation, phys-
+ical memory requirements, executable size, and compile time.
+We also measure the eect of loop optimizations. Further
+T
+5.1Benchmarks
+Table 1 describes the benchmark programs, which range in
+size from 62 lines to about 2000 lines of code. Some of these
+programs have been used previously for measuring ML per-
+hmarks cover a range of appli-
+cation areas including scientic computing, list-processing,
+systems programming, and compilers.
+We compiled the programs as single closed modules. For
+Lexgen and Simple, which are standard bence
+eliminated functors by hand because TIL does not yet sup-
+port the full SML module language.Because whole pro-
+grams were given to the compiler, we found that the opti-
+mizer naturally eliminated all polymorphic functions. Con-
+sequently, for this benchmark suite, there was no run-time
+cost to support intensional polymorphism.
+We extended the built-in ML types with safe 2-dimensionalldq$9, 16$sp
+arrays. The 2-d array operations do bounds checking on each
+dimension and then use unsafe 1-d array operations. Arrays
+are stored in column-major order.
+5.2Comparison against SMLNJ
+We compared the performance of TIL against SMLNJ in
+several dimensions: execution time, total heap allocation,
+physical memory footprint, the size of the executable, and
+compilation time.
+For TIL, we compiled programs with all optimizations
+enabled. For SMLNJ, we compiled programs using the de-
+fault optimization settings. We used a recentinternal release
+of SMLNJ a variantofversion 1.08, since it produces code
+that is about 35 faster than the current standard release
+.ent Lv2851dot205955
+$bound,$
+ results$result,$0
+ return addr$retreg,$26
+ destroys:$0$1$2$3$4$5$6$7$27
+Lv2851dot205955:
+.mask 1  26, -32
+.frame $sp, 32, $26
+.prologue 1
+ldgp$gp, $27
+lda$sp, -32$sp
+stq$26, $sp
+stq$8, 8$sp
+stq$9, 16$sp
+mov$26, $27
+L1:
+cmplt$6, $0, $8
+bne$8, L2
+mov$7, $1
+br$31, L3
+L2:
+addl$4, $6, $8
+s4addl$8, $3, $8
+ldl$8, $8
+mull$1, $6, $9
+addl$5, $9, $9
+s4addl$9, $2, $9
+ldl$9, $9
+mullv$8, $9, $8
+addlv$7, $8, $7
+addlv$6, 1, $6
+trapb
+br$31, L1
+L3:
+mov$1, $0
+mov$27, $26
+ldq$8, 8$sp
+lda$sp, 32$sp
+ret$31, $26, 1
+.end Lv2851dot205955
+Figure 7: Actual DEC ALPHA assembly language
+8
+Programlines
+Checksum241Checksum fragmentfromtheFohecksums on a 4096-byte
+array.
+FFT246Fast fourier transform, multiplying polynomials up to degree 65,536
+Knuth-Bendix618An implementation of the Knuth-Bendix completion algorithm.
+Lexgen1123
+ML.
+Life146The game of Life implemen
+Matmult62Integer matrix multiply, on 200x200 integer arrays.
+PIA2065The PerspectiveInv
+perspective video image.
+Simple870
+Table 1: Benchmark Programs
+TIL always prexes a set of operations on to eachmod-
+ule that it compiles, in order to facilitate optimization. This
+\inline" prelude contains 2-d array operations, commonly-
+used list functions, and so forth.Toavoid handicapping
+SMLNJ, we created separate copies of the benchmark pro-
+grams for SMLNJ, and placed equivalent \prelude" code
+at the beginning of each program byhand.
+Since TIL creates stand-alone executables, weusedthe
+exportFnfacility of SMLNJ to create stand-alone programs.
+TheexportFnfunction of SMLNJ dumps part of the heap
+to disk and throws away the interactive system.
+We measured execution time on DEC ALPHA AXP 3000-
+300LX workstations, running OSF1, version 2.0, using the
+UNIXgetrusagefunction. For SMLNJ, we started timing
+after the heap had been reloaded. For TIL, we measured the
+entire execution time of the process, including load time. We
+made 5 runs of each program on an unloaded workstation
+and chose the lowest execution time. Eachworkstation had
+96MBytes of physical memory, so paging was not a factor in
+the measurements.
+We measured total heap allocation by instrumenting the
+TIL run-time system to count the bytes allocated. We used
+existing instrumentation in the SMLNJ run-time system.
+We measured the maximum amountofphysical memory
+during execution usinggetrusage.Weusedthesizepro-
+gram to measure the size of executables for TIL. For SMLNJ,
+we used thesizeprogram to measure the size of the run-
+time system and then added the size of the heap created
+byexportFn. Finally,we measured end-to-end compilation
+time, including time to assemble les produced byTIL.
+Figures 8 through 11 present the measurements the raw
+numbers are in Appendix??. For eachbenchmark, mea-
+surements for TIL were normalized to those for SMLNJ
+and then graphed. SMLNJ performance is the 100 mark
+on all the graphs.
+Figure 8 presents relative running times. On average,
+programs compiled by TIL run 3.3 times faster than pro-
+grams compiled by SMLNJ. In fact, all programs except
+Knuth-BendixandLifeare substantially faster when com-
+piled by TIL. We speculate that less of a speed-up is seen
+forKnuth-BendixandLifebecause they makeheavy use of
+list-processing, which SMLNJ does a good job of compiling.
+Figure 9 compares the relativeamounts of heap alloca-
+tion. On average, the amount of data heap-allocated bythe
+TIL program is about 17 of the amount allocated bythe
+SMLNJ program. This is not surprising, because TIL uses
+astack while SMLNJ allocates frames on the heap.
+Description
+125
+100
+75
+50
+25
+lexgen
+CksumFFTKBLifeMmultPIASIMPLE
+Figure 8: TIL Execution Time RelativetoSMLNJ
+Figure 10 presents the relative maximum amounts of
+physical memory used. On average, TIL programs use half
+the memory used by SMLNJ programs. We see that oating-
+point programs use the least amount of memory relativeto
+comparable SMLNJ programs. We speculate that this is
+due to TIL's abilitytokeep oating values unboxed when
+stored in arrays.
+TIL stand-alone programs are about half the size of stand-
+alone heaps and the runtime system of SMLNJ. The dier-
+ence in size is mostly due to the dierent sizes of the runtime
+systems and standard libraries for the two compilers. TIL's
+runtime system is about 100K, while SMLNJ's runtime is
+about 425K. The program sizes for TIL conrm that gener-
+ating tables for nearly tag-free garbage collection consumes
+a modest amount of space, and that the inlining strategy
+used by TIL produces code of reasonable size.
+Figure 11 compares compilation times for TIL and SMLNJ.
+SMLNJ does much better than TIL when it comes to com-
+pilation time, compiling about eight times faster. However,
+wehaveyet to tune TIL for compilation speed.
+5.3Loop-Oriented Optimizations
+We also investigated the eect of the loop-oriented optimiza-
+tions CSE, invariantremoval, hoisting, comparison elimi-
+nation, and redundant switch elimination. For eachbench-
+mark, we compared performance with the loop optimiza-
+9
+100
+75
+50
+25
+Lexgen
+CksumFFTKBLifeMmultPIASIMPLE
+Figure 9: TIL Heap Allocation Relative to SMLNJ
+100
+75
+50
+25
+Lexgen
+CksumFFTKBLifeMmultPIASIMPLE
+Figure 10: TIL Physical Memory Used Relative to SMLNJ
+2000
+1500
+1000
+500
+100
+Lexgen
+CksumFFTKBLifeMmultPIASIMPLE
+Figure 11: Til Compilation Time Relative to SMLNJ
+Exec timeExec time
+optnoopt
+Heap AllocHeap Alloc
+optnoopt
+125
+100
+75
+50
+25
+Lexgen
+CksumFFTKBLifeMmultPIASIMPLE
+Figure 12: Eects of Loop Optimizations
+tions against performance without the loop optimizations.
+Figure 12 presents the ratios of execution time with the loop
+optimizations to execution time without the loop optimiza-
+tions, and similar ratios for total heap allocation. The loop
+optimizations reduce execution time by 0 to 83, with a
+median reduction of 39.The eect on heap allocation
+ranges from an increase of 20 to a decrease of 96.5, with
+a median decrease of 10.
+Formatmult, the matrix multiplication function is small
+enough that the optimizer inlines it, making the array di-
+mensions known. If the array dimensions are held unknown,
+then the loop optimizations speed upmatmultby a factor of
+2.5.
+6Related Work
+Morrisonet al.used an \ad-hoc" approach to implement
+polymorphism in their implemen
+particular, they passed representations of types to polymor-
+phic routines at run-time to determine behavior. However,
+to our knowledge, Napier '88 did not use types to implement
+tag-free garbage collection. Also, there is no description of
+the internals of the Napier '88 compiler, nor is there an ac-
+count of the performance of code generated by the compiler.
+Peyton Jones and Launchbury suggested that types could
+be used to unboxv
+However, they only supported a limited set of \unboxed
+types" ints and oats and restricted these types from in-
+stantiating type variables.Later, Leroy suggested a gen-
+eral approach for unboxing values based on the ML type
+Leroy's approach has been extended and
+implemen
+compiler. It does not support unboxed arraycomponents
+nor attened, recursive datatypes. Tolmacbined
+Leroy's approach with tag-free garbage collection. However,
+he used anad hocapproach to propagate type information
+to the collector.
+Other researchers have suggested that polymorphism should
+be eliminated enyle
+ents separate compilation
+of a polymorphic denition from its uses. In contrast, in-
+tensional polymorphism, and in particular the intermediate
+10
+forms of TIL, support separate compilation of polymorphicReferences
+denitions, though wehaveyet to takeadvantage of this.
+Tag-free garbage collection was originally proposed for
+monomorphic languages likePascal, but has been used else-
+ype
+information with return addresses on the stac
+suggested extending this technique to ML by using unica-
+ved Appel's algorithm
+ere im-
+plemented due to the complexity of the algorithms and the
+overhead of performing unication during garbage collec-
+tion.
+Aditya, Flood, and Hicks used type-passing to support
+tly,
+Tolmacted a type-passing garbage collec-
+tion algorithm for ML. Our approach diers from others
+by using \nearly" tag-free collection. In particular, records
+and arrays on the heap are tagged. Another dierence is
+that we calculate type environmentseagerly, while the other
+implementations construct type environmentslazilyduring
+garbage collection.
+Loop-oriented optimizations are well-known for imper-
+ativwever, few results are reported for
+Lisp, Sc
+common-subexpression elimination optimizations similar to
+ours. Appel found that CSE was not useful in the SMLNJ
+compiler. Serrano restricted CSE to pure expressions, while
+our CSE handles expressions whichmay raise exceptions.
+7Conclusions and future work
+Our results show that for core-SML programs compiled as
+a whole, intensional polymorphism can remove restrictions
+on data representation, yet cost literally nothing due to the
+eectiveness of optimization. They also show that loop op-
+timizations can improve program performance signicantly.
+These results suggest that ML can be compiled as well as
+conventional languages suchasPascal. TIL produces code
+that is similar in many important respects to code produced
+byPascal and C compilers. For example, most function calls
+are known, since few higher-order functions are left, integers
+are untagged, and most code is monomorphic.
+There are numerous areas that wewould liketoinvesti-
+gate further. Wewould like to explore the eect of separate
+compilation. With separate compilation, polymorphic func-
+tions may be compiled separately from their uses, leading to
+some cost for intensional polymorphism. Wewould liketo
+measure this cost and explore what kinds of optimizations
+can reduce it.
+Another direction wewould liketoinvestigate is howthis
+approach performs for larger programs. Wewould liketo
+add support for more of the ML module system, since large
+ML programs make extensive use of the module system. We
+would also like to improve TIL's compile times, so that large
+programs can also be compiled as a whole.
+Finally,wewould like to continue improving the per-
+formance of ML programs.Wewould like to extend our
+register allocation strategy along the lines of Cho
+Wewould also liketoinvestigate more
+loop optimizations, such as strength-reduction, induction-
+variable elimination, and loop unrolling. On a more specu-
+lative note, wewould like to explore stack allocation of data
+structures.
+ya, Christine Flood, and James Hicks. Garbage
+collection for strongly-typed languages using run-time type
+reconstruction
+vi Sethi, and Jerey D. Ullman.Com-
+pilers: Principles, Techniques, and Tools. AddisonWesley
+Publishing Company, 1986.
+Journal of Func-
+tional Programming, 34:391429, October 1993.
+time tags aren't necessary.Lisp and
+Symbolic Computation, 2:153162, 1989.
+Compiling with Continuations. Cam-
+bridge University Press, 1992.
+vid Tarditi.
+A lexical analyzer generator for Standard ML. Distributed
+with Standard ML of New Jersey, 1989.
+eter Lee, and Brian
+Milnes. Signatures for a network protocol stack: A systems
+edal, Nick Rothwell, Mads Tofte, and David N.
+Turner. The ML Kit, Version 1. Technical Report 9314,
+DIKU, 1993.
+h. NESL: A nested data-parallel language
+version 2.6. Technical Report CMU-CS-93-129, School of
+Computer Science, Carnegie Mellon University, April 1993.
+t conservative garbage
+. Branquart and J. Lewi. A scheme for storage allocation
+and garbage collection for Algol-68. InAlgol-68 Implementa-
+tion. North-Holland Publishing Company, Amsterdam, 1970.
+t for the
+programming language Pascal. Master's thesis, University
+of Arizona, 1975.
+red C. Chow. Minimizing register usage penaltyatproce-
+dure calls. InProceedings of the ACM SIGPLAN '88 Con-
+ferenceonProgramming Language Design and Implementa-
+tion, pages 8594, Atlanta, Georgia, June 1988. ACM.
+eiser, B. Hayes, H. Boehm, D. Bobrow,
+and S. Shenker. Combining generational and conservative
+garbage collection: Framework and implementations.In
+ConferenceRecord of the 17th Annual ACM SIGPLAN-
+SIGACT Symposium on Principles of Programming Lan-
+guages,SanFrancisco, California, January 1990. ACM.
+an, Eliot Moss, and Richard Hudson. Compiler
+support for garbage collection in a statically typed language.
+InProceedings of the ACM SIGPLAN '92 Conferenceon
+Programming Language Design and Implementation,pages
+273282, San Francisco, CA, June 1992. ACM.
+an, David Tarditi, and Eliot Moss.Memory-
+System Performance of Programs with Intensive Heap Al-
+location.Transactions on Computer Systems, August 1995.
+anadham and Arvind. SIMPLE: An exercise in fu-
+ture scientic programming. Technical Report Computation
+Structures Group Memo 273, MIT, Cambridge, MA, July
+1987. Simultaneously published as IBMT. J. Watson Re-
+search Center Research Report 12686, Yorktown Heights,
+NY.
+, Bruce F. Duba, and Matthias
+Felleisen. The essence of compiling with continuations. In
+ag-free garbage collection in strongly
+typed programming languages. InProceedings of the ACM
+SIGPLAN '91 ConferenceonProgramming Language De-
+sign and Implementation, pages 165176, Toronto, Canada,
+June 1991. ACM.
+11
+hael Gloger. Polymorphic type
+reconstruction for garbage collection without tags. InPro-
+ceedings of the 1992 ACM Conference on Lisp and Func-
+tional Programming, pages 5365, San Francisco, California,hagen, April 1993. Master Dissertation.
+June 1992. ACM.
+eyton Jones, and Patrick M. San-
+som. Unboxing using specialisation. In D. Turner K. Ham-
+mond, P.M. Sandom, editor,Functional Programming, 1994.
+Springer-Verlag, 1995.
+ype-theoretic ap-
+proach to higher-order modules with sharing. In POPL '94
+37
+phism using intensional type analysis. InConferenceRecord
+of the 22nd Annual ACM SIGPLAN-SIGACT Symposium
+on Principles of Programming Languages, pages 130141,
+San Francisco, California, January 1995. ACM.
+ritz Henglein and Jesper Jrgensen. Formally optimal box-
+. Jones. Partial evaluation for dictionary-freeoverload-
+ing. Research Report YALEUDCSRR-959, Yale Univer-
+sity, New Haven, Connecticut, USA, April 1993.
+eyton Jones and John Launchbury.Unboxed values
+as rst-class citizens. InProceedings of the Conferenceon
+Functional Programming and Computer Architecture,vol-
+ume 523 ofLecture Notes on Computer Science, pages 636
+666. ACM, Springer-Verlag, 1991.
+vid Kranz, Richard Kelsey, Jonathan Rees, Paul Hudak,
+James Philbin, and Norman Adams. ORBIT: An Optimizing
+Compiler for Scheme. InProceedings of the SIGPLAN '86
+Symposium on Compiler Construction, pages 219233, Palo
+Alto, California, June 1986. ACM.
+vier Leroy.Unboxed objects and polymorphic typing.
+InConferenceRecord of the 19th Annual ACM SIGPLAN-
+SIGACT Symposium on Principles of Programming Lan-
+guages, pages 177188, Albuquerque, NM, January 1992.
+ACM.
+vier Leroy. Manifest types, modules, and separate compi-
+37
+30Proceedings of the 1994 ACM Conference on Lisp and Func-
+tional Programming, Orlando, Florida, June 1994. ACM.
+ofte, and Robert Harper.The Deni-
+tion of StandardML. MIT Press, 1990.
+Typed clo-
+sure conversion. InConferenceRecord of the 23rdAnnual
+ACM SIGPLAN-SIGACT Symposium on Principles of Pro-
+gramming Languages, St. Petersburg, Florida, January 1996.
+ACM.
+Compiling with Types. PhD thesis, School of
+Computer Science, Carnegie Mellon University, Pittsburgh,
+PA, December 1995. Published as Technical Report CMU-
+CS-95-226.
+elleisen, and Robert Harper. Ab-
+stract models of memory management. InACM Confer-
+enceonFunctional Programming and Computer Architec-
+ture, pages 6677, La Jolla, June 1995.
+wn.
+An ad hoc approach to the implementation of polymorphism.
+ACM Transactions on Programming Languages and Sys-
+tems, 133:342371, July 1991.
+36Proceedings of the ACM SIGPLAN '93 ConferenceonPro-
+gramming Language Design and Implementation,Albu-
+querque, New Mexico, June 1993. ACM.
+37ConferenceRecord of the 21st Annual ACM SIGPLAN-
+SIGACT Symposium on Principles of Programming Lan-
+guages,Portland, Oregon, January 1994. ACM.
+oulsen. Representation analysis for ecient
+implementation of polymorphism. Technical report, Depart-
+ment of Computer Science DIKU, University of Copen-
+Elements of Functional Programming.
+Addison-Wesley, Reading, Massachusetts, 1989.
+ual Serrano and Pierre Weis. 1+1 = 1: an optimizing
+CAML compiler. Technical Report 2264, INRIA, June 1994.
+Compiling Standard ML for Ecient Execu-
+tion on Modern Machines. PhD thesis, Princeton University,
+Princeton, New Jersey,November 1994.
+ype-based compiler
+for Standard ML. InProceedings of the ACM SIGPLAN '95
+ConferenceonProgramming Language Design and Imple-
+mentation, pages 116129, La Jolla, California, June 1994.
+ACM.
+eter Steenkiste. Advanced register allocation.InPeter Lee,
+editor,Topics in AdvancedLanguage Implementation. MIT
+Press, 1990.
+The C++ Programming Language, 2nd
+Edition. Addison-Wesley, 1991.
+vid R. Tarditi.Optimizing ML. PhD thesis, School of
+Computer Science, Carnegie Mellon University, 1996. Forth-
+coming.
+olmach. Tag-free garbage collection using explicit
+t
+augh, Patrick McAndrew, and Greg Michaelson.
+Parallel implementations from function prototypes: a case
+study.Technical Report Computer Science 904, Heriot-
+Watt University,Edinburgh, August 1990.
+.L. Wodon. Methods of garbage collection for Algol-68. In
+Algol-68 Implementation. North-Holland Publishing Com-
+pany, Amsterdam, 1970.
+12

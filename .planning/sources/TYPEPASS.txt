@@ -1,0 +1,1667 @@
+Intensional Polymorphism in Typ e-Erasure Semantics
+Karl Crary Stephanie Weirich Greg Morrisett
+Cornell University
+Abstract
+Intensional polymorphism, the ability to dispatch to dif-
+ferent routines based on types at run time, enables a va-
+riety of advanced implementation techniques for poly-
+morphic languages, including tag-free garbage collec-
+tion, unboxed function arguments, polymorphic mar-
+shalling, and flattened data structures. To date, lan-
+guages that support intensional polymorphism have re-
+quired a type-passing (as opposed to type-erasure) in-
+terpretation where types are constructed and passed
+to polymorphic functions at run time. Unfortunately,
+type-passing suffers from a number of drawbacks; it re-
+quires duplication of constructs at the term and type
+levels, it prevents abstraction, and it severely compli-
+cates polymorphic closure conversion.
+We present a type-theoretic framework that supports
+intensional polymorphism, but avoids many of the dis-
+advantages of type passing. In our approach, run-time
+type information is represented by ordinary terms. This
+avoids the duplication problem, allows us to recover ab-
+straction, and avoids complications with closure conver-
+sion. In addition, our type system provides another im-
+provement in expressiveness; it allows unknown types
+to be refined in place thereby avoiding certain beta-
+expansions required by other frameworks.
+1 Introduction
+Type-directed compilers use type information to enable
+optimizations and transformations that are impossible
+12,
+for some languages such as Modula-3 and ML face the
+difficulty that some type information cannot be known
+at compile time. For example, polymorphic code in ML
+may operate on inputs of typeawhereais not only
+unknown, but may in fact be instantiated by a variety
+of different types.
+In order to use type information in contexts where it
+cannot be provided statically, a number of advanced
+implementation techniques process type information at
+used in two ways: behind the scenes, typically by tag-
+code, for a variety of purposes such as efficient data
+we focus on the latter area of applications.
+To lay a solid foundation for programs that analyze
+types at run time, Harper and Morrisett devised an in-
+ML
+ternal language, calledlam, that supports the first-class
+i
+1
+intensional analysisof types (following earlier work by
+ML
+lamlanguage and its derivatives
+i
+were then used extensively in the high-performance ML
+ML
+mary novelty oflamis the presence of "typecase" oper-
+i
+ators at the level of terms and types, that allow compu-
+tations and type expressions to depend upon the values
+of other type expressions at run time.
+Supporting intensional type analysis (and the use of
+type information at run time in general) seems to re-
+quire semantics where types are constructed and passed
+to polymorphic functions during computation. How-
+ever, there are a number of practical and theoretical
+reasons why type-passing is unattractive:
+ML
+*A type-passing language such aslamrequires that
+i
+type informationalwaysbe constructed and passed
+to polymorphic functions. This can result in con-
+siderable overhead if types are rarely examined at
+run time, and, as we discuss later, it makes ab-
+straction impossible.
+*Type passing results in considerable complexity in
+language semantics, due in large part to the num-
+ber of semantic devices that must be duplicated
+for both terms and types. For example, in seman-
+a central device is a formal heap in which data is
+stored; in a type-erasure framework one such heap
+1
+"Intensional" since types are analyzed by the structure of
+their names, rather than by what terms they contain. This is
+critical for practicality.
+suffices, but when types are passed it is necessarymost type systems abstraction may be achieved by hid-
+to add a second heap (and all the attendant ma-ing the identity of types either through parametric poly-
+chinery) for type data.
+*Type passing also greatly complicates low-level in-
+termediate languages, again due in large part to the
+duplication of computational devices at the type
+level, and also to the need to support mixed-phase
+devices (constructs with both type and term level
+components). This can pose a serious problem for
+typed intermediate languages, because these de-
+vices can disrupt the essential symmetries on which
+elegant type systems depend. For example, a type-
+passing semantics for Typed Assembly Language
+and initializing types, which in turn requires the
+typing machinery for allocation and initialization
+to be lifted an additional level into the kind struc-
+ture.
+*As a particularly important example of the preced-
+ing issue, type passing severely complicates typed
+closure conversion (compare the type-passing sys-
+tem of Minamideet al.
+system of Morrisettet al.
+framework, the partial application of a polymor-
+phic function to a type may still be considered aML
+value (since the application has no run-time sig-
+nificance), which means that closed code may sim-
+ply be instantiated with its type environment when
+a closure is created. In a type-passing frame-
+work, the instantiation with a type environment
+can have some run-time effect, so it must be de-
+layed until the function is invoked. Consequently,
+closures must include a type environment, necessi-
+tating complicated mechanisms including abstract
+In this paper we propose a typed calculus, calledlam,
+R
+that ameliorates the problems of type passing without
+sacrificing intensional type analysis. If run-time type
+dispatch is to be supported, then clearly on some level
+types must be passed. The fundamental idea behind our
+approach is to construct and passtermsthat represent
+types instead of the types themselves. The connection
+between a typetand its term representationeis made
+in the static semantics by assigningethe special type
+R(t). Semantically, we may interpretR(t)asasingle-
+ton type that contains only the representation oft.
+This framework resolves the difficulties with type pass-
+ing semantics discussed above. In particular, as rep-
+resentations of types are simply terms, we can use the
+pre-existing term operations to deal with run-time type
+information in languages and their semantics. Further-
+more, we can eliminate the difficulties associated with
+polymorphic closure conversion, as we show in Section
+4. Finally, our approach enables the choicenotto pass
+representations. In turn, this allows us to eliminate the
+overhead of constructing and passing representations of
+types where it is not necessary.
+Perhaps more importantly, the ability not to pass types
+allows abstraction and parametricity to be recovered. In
+ever, when all types are passed and may be analyzed
+ML
+(as inlam), the identity of types cannot be hidden and
+i
+consequently abstraction is impossible. In contrast, in
+lama type can be analyzed only when its representation
+R
+is available at run time, so abstraction can be achieved
+simply by not supplying type representations.
+For example, consider the typeexistsa.a.Whenalltypes
+may be analyzed, this type implements adynamictype;
+an expression of this type provides an object of some
+unknown type, and that unknown type's identity can
+be determined at run time by analyzinga.Inlam,as
+R
+in most other type systems, this implements an ab-
+stract type (in this particular example, a useless ab-
+stract type), because no representation ofais provided.
+Dynamic types are implemented inlamby including a
+R
+representation of the unknown type, as inexistsa. R(a)xa.
+1.1 Expressiveness
+In the interest of clarity of presentation, we expresslam
+R
+as an extension of Harper and Morrisett'slamand fo-
+i
+cus on their differences. The principal difference is the
+restriction of type analysis to those types for which rep-
+resentations are provided. This does not diminish the
+ML
+expressiveness of our calculus;lammay be translated in
+i
+a straightforward syntax-directed manner intolam.
+R
+Moreover, thelamcalculus incorporates an additional
+R
+ML
+improvement in expressiveness overlamthat is inde-
+i
+ML
+pendent of explicit type passing: Inlam, information
+i
+gained by analyzing a type is not propagated to other
+variables having that type. Consequently, when analyz-
+ing a typeawith the interest of processing an object
+with typea, it is necessary to create a function with
+argument typeaand then apply that function to the
+object of interest. In other words, the type system of
+ML
+lamrequires the use of beta-expansions that are not op-
+i
+erationally necessary. Inlamwe resolve this shortcoming
+R
+by strengthening the typing rule for typecase so that it
+refines types in place.
+1.2 Overview
+The remainder of this paper is organized as follows: In
+ML
+Section 2 we review thelamcalculus. We then present,
+i
+in Section 3, ourlamcalculus and discuss its formal se-
+R
+mantics, including representation terms,R-types, and
+the strengthened typecase rule. In Section 4, we discuss
+the simplification of polymorphic closure conversion by
+explicit type passing. We end with related work and
+conclusions in Sections 5 and 6. In the appendices we
+relate our typed semantics to an untyped one through
+type erasure (Appendix A), discuss the analysis of quan-
+tified types (Appendix B), and provide the complete
+dynamic and static semantics.
+2
+2 Intensional Type Analysis
+Suppose we wanted to store an array of booleans. Most
+computer architectures require that memory accesses
+are a word at a time, but it is a terrible waste of space
+to store booleans as integers. The solution is to "pack"
+32 booleans into one word and use bit manipulations
+to retrieve the correct value. So, to subscript from a
+boolean array, we would use the following function:
+fn (a,i) =?
+sub(a,i div 32) && (1!!(i mod 32)) !? 0
+This is fine when we know a given array contains
+boolean values, but we would like code that is poly-12
+morphic over the type of array to be able to use this
+mechanism. In essence, we need to define a new array
+constructor,PackedArray, which will produce an array
+of integers to hold booleans, and an ordinary array for
+other types. We also need an associated subscript oper-
+ation,packedsub, so that when the array is of booleans,
+bitsubis called. This can be done with intensional type
+analysis, where in both cases an argument type is ex-
+amined with a "typecase" form:
+a]=
+Typecaseaof
+--a]
+val packedsub :foralla.aa=
+a
+typecaseaof
+bool =? bitsub
+--=? sub
+ML
+2.1 Thelamcalculus
+i
+To formalize the tools of intensional type analysis, we
+ML
+begin by summarizing Harper and Morrisett'slamcal-
+i
+ML
+lamcalculus provides these tools in a
+i
+form that is relatively simple, but already quite power-
+ful.
+ML
+The syntax oflamappears below (modified slightly for
+i
+ML
+presentation). The backbone oflamis a predicative
+i
+variant of Girard'sF
+w
+foralla:k.sranges only over type constructors and "small"
+types (i.e., monotypes), which do not include the quan-
+tified types. The type analysis operators areTyperec
+andtypecaseat the constructor and term levels.
+(kinds)k:: =Ty p e|k->k
+12
+'
+(cons)c:: =a|int|c->c|cxc|
+1212
+lama:k.c|cc|
+12
+Typerecc(c,c,c)
+int->x
+(types)s:: =c|s->s|sxs|foralla:k.s
+1212
+(terms)e:: =x|i|lamx:s.e|fixf:s.v|ee|
+12
+<e,e>|pe|pe|
+1212
+Lambdaa:k.v|e[c]|
+typecase[a.s]cof
+int=>e
+int
+b->g=>e
+->
+bxg=>e
+x
+(values)v:: =x|i|lamx:s.e|fixx:s.v|
+<v,v>|Lambdaa:k.v
+Occasionally, for brevity, we will writetypecaseterms
+astypecase[a.s]c(e,bg.e,bg.e).
+int->x
+ML
+As an example of the use of type analysis inlam,con-
+i
+sider the functiontostring, presented in Figure 1. With
+the addition of another base type,string, to the lan-
+guage, this function usestypecaseto produce a string
+representation of a data object. For example, the call
+tostring[int
+vide any information about the implementation of func-
+tions, we just return the word "function" when one is
+encountered, as in the call:
+tostring[(int->int)xint]<lamx:int.x+1,3>
+which returns
+"<function, 3>".
+When the argument totostringis a product type, the
+function calls itself recursively. In this branch, the type
+variablesbandgare bound to the types of the first and
+second components of the tuple, so that the recursive
+call can be instantiated with the correct type.
+fixtostring:(foralla:Ty p e.a->string).
+Lambdaa:Ty p e.
+typecase[d.d->string]aof
+int=>int2string
+string=>lamobj:string.obj
+b->g=>
+lamobj:(b->g)."function"
+bxg=>
+lamobj:(bxg).
+"!"^(tostring[b](pobj))^
+1
+","^(tostring[g](pobj))^"?"
+2
+Figure 1: The functiontostring
+Thetypecaseform also has a type annotation to make
+it possible to type check it without type inference; the
+a.st,
+thetypecasecomputes a value with types[t/a
+this denotes the capture-avoiding substitution oftfor
+ains). In this example, each arm returns a function
+fromdtostring,wheredis replaced by the appropriate
+3
+type, such asintin theintbranch, andbxgin the
+product branch.
+With this intuition, the typing rule fortypecaseis the
+natural one (but we will see that this is somewhat re-
+strictive):
+G|-c:Ty p eG,a:Ty p e|-stype
+G|-e:s[int/a]
+int
+G,b:Ty p e,g:Ty p e|-e:s[b->g/a]
+->
+G,b:Ty p e,g:Ty p e|-e:s[bxg/a]
+x
+G|-(typecase[a.s]cof):s[c/a]
+int=>e
+int
+b->g=>e
+->
+bxg=>e
+x
+Often, to compute the result typesof atypecaseex-
+pression the constructor-levelTyperecon the argument
+awill be required.Typerecallows the creation of new
+types by similar intensional analysis. Several examples
+type-directed data layout, marshalling and unboxing.
+While recursion in the term-leveltypecaseis handled
+byfix, at the the constructor level there is no such
+mechanism. For this reason,Typerecis essentially a
+"fold" operation (or catamorphism) over inductively de-
+fined types. It provides primitive recursion by calling it-
+self recursively on all of the components of the argument
+type. Also unliketypecase, where the branches explic-
+itly bind arguments for the components of the type, the
+candcbranches ofTyperecare constructor func-
+->x
+tions. For example, if the argument of aTyperecoper-
+ation iscxc, then that operation reduces to itsc
+12x
+branch (a constructor function of four arguments) ap-
+plied to the componentscandc, and to the result of
+12
+recursively computing theTyperecoperation on those
+components.
+Typerec(cxc)(c,c,c)=
+12int->x
+ccc
+x12
+(Typerecc(c,c,c))
+1int->x
+(Typerecc(c,c,c))
+2int->x
+The kinding rule forTyperecis again the natural one.
+To compute a constructor of kindk, present a type ar-
+gument and three branches returningkconstructors:
+G|-c:Ty p eG|-c:k
+int
+G|-c:Ty p e->Ty p e->k->k->k
+->
+G|-c:Ty p e->Ty p e->k->k->k
+x
+G|-Typerecc(c,c,c):k
+int->x
+3Thelamcalculus
+R
+Figure 2 presents the syntax oflam, which we describe
+R
+in detail in the following section.
+(kinds)k::=Ty p e|k->k
+'
+(cons)c::=int|a|lama:k.c|cc|c->c|
+1212
+cxc|foralla:k.c|existsa:k.c|R(c)|
+12
+Typerecc(c,c,c,c,c,c)
+intx->Rforallexists
+(terms)e::=x|i|<e,e>|pe|pe|ee|
+121212
+e[c]|lamx:c.e|Lambdaa:k.v|fixf:c.v|
+packeasexistsa.chidingc|
+12
+unpack<a, x>=eine|
+12
+R|R(e,e)|R(e,e)|
+int->12x12
+R(e)|R(c)|R(c)|
+Rforallexists
+typecase[d.c]eof
+R=>e
+intint
+R(x, y)as(b->g)=>e
+->->
+R(x, y)as(bxg)=>e
+xx
+R(x)asR(b)=>e
+RR
+R=>e
+forallforall
+R=>e
+existsexists
+(values)v::=x|i|<v,v>|v[c]|
+12
+lamx:c.e|Lambdaa:k.v|fixf:c.v|
+packvasexistsa.chidingc|
+12
+R|R(v,v)|R(v,v)|
+int->12x12
+R(v)|R(c)|R(c)
+Rforallexists
+Figure 2: Syntax oflam
+R
+3.1 Term Representations of Types
+The key feature we add to the term language oflamis the
+R
+representations of types as terms, which remain when
+the types themselves are ultimately erased. The base
+type,int, has a corresponding representation constant
+R. Likewise, inductive types have inductively defined
+int
+representations; the typeint->intis represented by the
+termR(R,R).
+->intint
+Accordingly, the argument to the term leveltypecase
+is the representation of a type, instead of a type. For
+example, if the argumenteis of the formR(e,e), the
+->12
+arrow branch (e) is taken. The type variablesband
+->
+gare still bound to the types thateanderepresent,
+12
+but, because we need not only the component types but
+also their representations,xandyare bound to toe
+1
+ande. This is reflected in the following rule of the
+2
+operational semantics:
+typecase[d.c](R(e,e)) (e,bgxy.e,...)
+->12int->
+|->->e[D(e),D(e),e,e/b,g,x,y]
+->1212
+The operationD(.) in this rule converts a representation
+to the type that it denotes (Appendix, Figure 5). The
+rest of our dynamic semantics is formalized in Figure 4.
+It is presented as a call-by-value, small step operational
+semantics.
+Inordertoassignatypetotheserepresentationsof
+types, we have extended the type level oflamwith the
+R
+Rconstruct, where the representation of a typetis
+given the typeR(t), and extended the static semantics
+4
+accordingly. For example, the formation rule for theThe reason we could not do this inlamis that we need
+representation of function types is
+G|-e:R(t)G|-e:R(t)
+1122
+(rep)
+->
+G|-R(e,e):R(t->t)
+->1212
+which says that if the two subterms,eande,aretype
+12
+representations oftandt,thenR(e,e) will be a
+12->12
+representation oft->t.
+12
+As an example of the use oflam,thetostringfunction
+R
+from the previous section can be transliterated intolam
+R
+by requiring it to take an additional term argument,x
+a
+for the representation of the argument type:
+fixtostring:(foralla:Ty p e.R(a)->a->string).
+Lambdaa:Ty p e.lamx:R(a).
+a
+typecase[d.a->string]xof
+a
+R=>int2string
+int
+R=>lamobj:string.obj
+string
+R(x, y)asb->g=>
+->
+lamobj:b->g."function"
+R(x, y)asbxg=>
+x
+lamobj:bxg.
+"!"^(tostring[b]x(pobj))^
+1
+","^(tostring[g]y(pobj))^"?"
+2
+The static semantics we have defined ensures that these
+R-types are singular types; for each one there is exactly
+one value which inhabits it. This allows us to express
+constraints between types and their representations at
+a very fine level. For instance, in thetostringexample,
+the representation argument must be the representation
+ofthetypeoftheobject.
+Furthermore, as we have added a new way to form types
+to the constructor language, we must add another term
+construct,R(.), to form the representation of represen-
+R
+tation types. We also extendtypecasewith an extra
+branch to handle these terms andTyperecto handle
+R-types.
+3.2 In-place Refinement of Types
+ML
+The typing rules oflamquite often forces an inefficient
+i
+use oftypecase.Inthetostringexample in section 2, we
+were required to create closures in each of the branches
+of thetypecase. It would be more efficient if we could
+lift the lambdas outside of thetypecaseand have each
+branch of thetypecasereturn astring.Wecouldthen
+write this function as:
+fixtostring:(foralla:Ty p e.R(a)->a->string).
+Lambdaa:Ty p e.lamx:R(a).lamobj:a.
+a
+typecase[d.string]xof
+a
+R=>int2stringobj
+int
+R=>obj
+string
+R(x, y)asb->g=>
+->
+"function"
+R(x, y)asbxg=>
+x
+"!"^(tostring[b]x(pobj))^
+1
+","^(tostring[g]y(pobj))^ "?"
+2
+ML
+i
+thetypeofobjto change based upon which branch of
+thetypecaseis selected. All we know in the product
+branch is thatobjis of typea, not a tuple. In order to
+project from it in the recursive calls, we need to update
+thetypeofobjto reflect the fact that we know thata
+isbxgin the product branch.
+With the right enhancement to the static semantics
+this is possible. We have held off the discussion of the
+lam'stypecaseformation rule in order to emphasize this
+R
+point. The basic idea is that in some casestypecase
+increases our knowledge of the argument type. We sep-
+arate the formation rule into situations wheretypecase
+gives us new information, such as when the argument is
+of typeR(a), and when it does not, such as when the
+argument is of typeR(t->t). In the inference rule
+12
+for type checking atypecaseterm, when the argument
+is of typeR(a), we refine types containingato reflect
+the gain in information, as shown below. For simplicity,
+only some of the rule is included (the complete rule can
+be found in Figure 8):
+'
+G,a:Ty p e,G|-e:R(a)
+PROD
+'
+G,G[int/a]|-e[int/a]:c[int,/a, d]
+int
+'
+G,b:Ty p e,g:Ty p e,G[b->g/a],x:R(b),
+y:R(g)|-e[b->g/a]:c[b->g, b->g/a, d]
+->
+.
+.
+.
+'
+G,a:Ty p e,G|-typecase[d.c]e(e,bgxy.e,...):c[a/d]
+int->
+For example, to typecheck theebranch, we substitute
+->
+bxgforaeverywhere, including the surrounding con-
+2
+text.Consequently the types of the variables bound
+in the context will be refined by that substitution. Be-
+ML
+causelamonly makes this substitution in the return
+i
+type of the branch, and not in the context, in order to
+propagate this information one must abstract over all
+variables of interest.
+When we know more about the argument because of
+the singularity of theR-types, we can deduce statically
+which branch of thetypecasewill be taken. Therefore
+we do not need to typecheck the other branches at all,
+leading to a much simpler rule. For example, if we know
+the argument is of typeR(t->t), we only need to
+12
+examine theebranch, as in the rule:
+->
+G|-e:R(t->t)
+12
+G,x:R(t),y:R(t)|-e[t,t/b , g]:c[t->t/d]
+12->1212
+G|-typecase[d.c]e(e,bgxy.e,...):c[t->t/d]
+int->12
+3.3 Impredicativity
+ML
+A final minor difference betweenlamandlamis that
+R
+i
+we have chosen to makelamimpredicative. We do this
+R
+because our interest inlamis for compilation where it is
+R
+difficult in some cases (such as typed closure conversion,
+2
+The substitution forais applied within the branches them-
+selves in order to avoid creating a hole in the scope ofa.In
+practice, a typechecker would implement this by a local type
+definition, rather than by substitution.
+5
+JudgmentMeaning
+G|-c:kcis a valid constructor of kindk
+G|-c=c:kcandcare equal constructors
+1212
+G|-e:teis a term of typet
+Figure 3: Judgments oflam
+R
+see Section 4) to avoid impredicativity. Also for the
+support of closure conversion we have added existential
+types.
+ML
+So, unlikelam, there is no distinction between types
+i
+and constructors; everything is a constructor. Because
+of this increase in the number of constructors,Typerec
+must now include branches for universal and existen-
+tial types. However, in order to retain strong normal-
+ization, this analysis is limited only to the outermost
+operator, and does not provide any information about
+thebodyofthetype. WehavealsoaddedRandR
+forallexists
+to the term level to represent these types, and have ex-
+tendedtypecaseto include branches for them. These
+constructs are essentially base representations and can-
+not provide any further information, sotypecaseas well
+is limited to the outermost operator. We discuss how
+to relax this in Appendix B.
+3.4 Properties of the Formal Semantics
+Formally, the static semantics oflamconsists of a collec-
+R
+tion of rules for deriving judgments of the forms shown
+in Figure 3. In these judgments, G is a unified type
+and kind context, mapping either constructor variables
+(a, b, ...) to kinds, or term variables (x, y, ...)totypes.
+The full formal static and operational semantics oflam
+R
+appear in Figures 4-9, and from them we can prove
+several useful properties aboutlam.
+R
+First, we would like to prove the decidability oflamtype-
+R
+checking. The difficult part of the that is equivalence
+checking for constructors. Based upon the equivalence
+rules in Figure 7 we can define a notion of constructor
+reduction to a normal form in an obvious manner. This
+reduction relation can be proved to be strongly normal-
+izing and confluent (in a manner similar to Morrisett
+is decidable. Therefore we can state the following theo-
+rem:
+Theorem 3.1 (Decidability)It is decidable whether
+or notG|-e:tis derivable inlam.
+R
+Next, we would like to show that the static semantics
+guarantees safety; that is, if a term type checks, then
+the operational semantics will not getstuck, where a
+term that is not a value, and for which no rule of our
+operational semantics applies, isstuck:
+*'
+Theorem 3.2 (Type Safety)Ifemptyset|-e:tande|->->e
+'
+theneis not stuck.
+The proof of this theorem is standard, relying on the
+usual progress, subject reduction and substitution lem-
+mas.
+4 Polymorphic Typed Closure Conversion
+As a final example, we consider typed closure conver-
+sion in alam-like framework. The key idea behind clo-
+R
+sure conversion is to shift from a substitution-based
+model of execution to an environment-based model via
+a source-to-source translation. In particular, all func-
+tions are replaced with explicit closures which are rep-
+resented within the language as pairs consisting of a
+lam-abstraction (the code of the closure), and a tuple (the
+environment of the closure). The environment contains
+values for the free variables of the function. The code
+abstracts the environment as well as the arguments of
+the function and is thus closed. Hence, the code may be
+hoisted to the top-level, allocated at compile time, and
+shared among all substitution instances. Application is
+rewritten so that the code of a closure is first applied to
+its environment and then to its arguments.
+In the monomorphic case no discrepancy arises between
+sion. An existential type is used to hold the type of
+the closure's environment abstract, so a closure for a
+t->tfunction is given the typeexistsa.((txa)->t)xa.
+1212
+However, with the introduction of polymorphism, sig-
+nificant differences arise between type-passing and type-
+erasure. The issue stems from the fact that functions
+may contain not only free value variables, but also free
+type variables, and closed code must abstract these as
+well. Closures must then provide somehow for apply-
+ing such code to the appropriate type variables. In a
+type-erasure setting, application to type arguments has
+no run-time effect, so the partial application of code
+to the appropriate type variables may be performed
+when closures are created. Consequently, the possi-
+bility of free type variables does not figure into the
+type of a closure, and so closures have the same type
+(existsa.((txa)->t)xa) as before.
+12
+However, in a type-passing semantics, the application to
+type arguments is a run-time operation and so such ap-
+plications must be suspended until the closure is called.
+Thus, it is necessary for the closure to include a type en-
+vironment as well as a value environment. The kind of
+the type environment must be hidden (as did the type of
+the value environment in the monomorphic case), and
+the closure's type must enforce the requirement that
+the code be applied only to the proper type environ-
+ment (see Minamideet al.
+of why). The former requires the use of abstract kinds
+This results in a closure having the considerably more
+complicated type (again, see Minamideet al.
+6
+formalization of the necessary type theory):
+existsk:Kind.existsa:Ty p e.existsb:k.
+tenvvenvtenvtenv
+(forallg:k=b.(txa)->t)xa
+tenvtenv1venv2venv
+In the above type,kabstracts the kind of the type
+tenv
+environment,aabstracts the type of the value of the
+venv
+value environment, andbprovides the type environ-
+tenv
+ment. The code type then takes a type environmentg
+of kindkas an argument, butgis constrained (using
+tenv
+translucent types) to be the appropriate environment,
+b.
+tenv
+Since our framework is one of type-erasure, type en-
+vironments may be resolved by partial application, re-
+sulting in the simpler type for closures. However, it is
+instructive to examine the details. Suppose the func-
+tion to be closure converted is the functionf=lamx:t.e
+1
+with typet->tand suppose further that the function
+12
+contains free occurrences of the type variableaand its
+representationx:R(a).
+a
+First the function is rewritten in closed form as:
+'
+f:foralla.(txR(a))->t
+12
+=Lambdaa. lamy:(txR(a)).e[py, py/x, x]
+112a
+'
+Then (at run time)fis instantiated with the type en-
+vironment (that is,a):
+'''
+f:(txR(a))->t=f[a]
+12
+Finally, a closure is created:
+'''''
+f=pack<f,x>asexistsb.((txb)->t)xb
+a12
+hidingR(a)
+Consider what has become of the mechanisms for type-
+''
+passing closure conversion: The type offrequires that
+it be applied (for its second argument) only to the rep-
+resentation ofa. So the translucency mechanism ap-
+pears again, suggesting that translucency is inherent in
+type-passing closure conversion. However, this version
+of translucency has two advantages; the necessary type
+theory is simpler, and the translucency is completely
+hidden by the existential packaging in the eventual clo-
+sure. On the other hand, abstract kinds do not appear
+in the process, suggesting them to be an artifact of true
+type-passing (but see Appendix B).
+5 Related Work
+Closely related to our work is the work of Minamide on
+lifting of type parameters for tag-free garbage collection
+ters out of code so they could be preallocated at compile
+time. His lifting procedure required the maintenance
+of interrelated constraints between type parameters to
+retain type soundness, and he used a system similar
+to ours that makes explicit the passing of type param-
+eters in order to simplify the expression of such con-
+straints. The principal difference between Minamide's
+system and ours is that Minamide did not consider in-
+tensional type analysis or first-class polymorphism. Mi-
+namide's system also makes a distinction between type
+representations (which he callsevidence,following Jones
+lamtype representations
+R
+are fully first-class.
+The issue of type parameter lifting is an important one
+for compilers based onlam. The construction of type
+R
+representations at run time would likely lead to signifi-
+cant cost and should in practice be lifted out to compile
+time whenever possible. (Unfortunately, in the pres-
+ence of polymorphic recursion, whichlamsupports, it
+R
+cannot always be possible.) Mechanisms for lifting such
+lifting have been developed by Minamide (in the work
+Duboisat al.
+to polymorphic functions when compiling ad-hoc poly-
+morphism. However, their system differs from ours and
+Minamide's in that no mechanism is provided for con-
+necting representations to the types they denote, and
+consequently, information gained by analyzing type rep-
+resentations does not propagate into the type system.
+tensional type analysis that is similar in some ways to
+MLML
+lam.Likelam, Duggan's system passes types implicitly
+ii
+and allows for the intensional analysis of types at the
+term level. Duggan's system does not support inten-
+ML
+sional type analysis at the constructor level, aslamand
+i
+lamdo, but it adds a facility for defining type classes (us-
+R
+ing union and recursive kinds) and allows type analysis
+to be restricted to members of such classes.
+6 Conclusions and Future Directions
+We have presented a type-theoretic framework that sup-
+ports the passing and analysis of type information at
+run time, but that avoids the shortcomings associated
+with previous such frameworks (e.g., duplication of con-
+structs, lack of abstraction, and complication of closure
+conversion). This new framework makes it feasible to
+use intensional type analysis in settings where the short-
+comings previously made it impractical.
+For example, Morrisettet al.
+mechanisms for low-level intermediate and target lan-
+guages that allow type information to be used all the
+way to the end of compilation. It would be desirable,
+in a system based on those mechanisms, to be able
+to exploit fully that type information using intensional
+type analysis. Unfortunately, the shortcomings of type-
+passing semantics made it incompatible with some of
+those low-level typing mechanisms. This unfortunate
+incompatibility has made it infeasible to use the mech-
+anisms of Morrisettet al.in type-analyzing compilers
+it infeasible to use intensional type analysis in the end-
+this paper makes it possible to unify these two lines of
+work for the first time.
+In pursuance of this aim, an important direction for fu-
+ture work is to extend the mechanisms oflaminto lower-
+R
+7
+level typed intermediate languages such as typed as-Interpretation fonctionelle et
+in such research is how to analyze the more compli-superieur. PhD thesis, Universite Paris VII, 1972.
+cated types used in typed assembly language, and how
+to perform type-directed dispatch without an atomic
+typecaseconstruct. Another issue to explore is bet-
+ter mechanisms for analysis of quantified types (some
+initial ideas appear in Appendix B), and whether such
+mechanisms are merited in practice.
+Another important question is whether a parametricity
+lam.
+R
+ML
+Polymorphism is clearly non-parametric inlam, but the
+i
+lowering of type analysis to explicit term-level represen-
+tatives makes it plausible that some sort of parametric-
+ity could be shown forlam. In other words, we discussedFourth
+R
+at an intuitive level in Section 1 how the explicit pass-European Symposium on Programming, volume 582
+ing of types restores the ability to abstract types thatofLecture Notes in Computer Science, Rennes,
+ML
+was discarded bylam; it would be interesting to exploreFrance, 1992. Springer-Verlag.
+i
+how that intuition may be formalized.
+References
+gion inference to von Neumann machines via region
+representation inference. InTwenty-Third ACM
+SIGACT-SIGPLAN Symposium on Principles of
+Programming Languages, pages 171-183, St. Pe-
+tersburg, Jan. 1996.
+and types. Technical Report CSR-118-82, Depart-
+ment of Computer Science, University of Edin-
+burgh, June 1982.
+of PL/CV3.ACM Transactions on Programming
+Languages and Systems, 6(1):94-117, Jan. 1984.
+Sch"urmann. Primitive recursion for higher-
+order abstract syntax. InThird International
+Conference on Typed Lambda Calculi and Applica-
+tions, volume 1210 ofLecture Notes in Computer
+Science, pages 147-163, Nancy, France, Apr. 1997.
+Springer-Verlag. Extended version published
+as Carnegie Mellon University technical report
+CMU-CS-96-172.
+polymorphism. InTwenty-Second ACM SIGACT-
+SIGPLAN Symposium on Principles of Program-
+ming Languages, pages 118-129, San Francisco,
+Jan. 1995.
+defined marshalling in polymorphic languages. In
+Second Workshop on Types in Compilation, Mar.
+1998.
+etation de
+G"odel a l'analyse, et son application al'elimination
+de coupures dans l'analyse et la theorie des types.
+In J. E. Fenstad, editor,Proceedings of the Sec-From System F to typed assembly language. In
+ond Scandinavian Logic Symposium, pages 63-92.
+North-Holland Publishing Co., 1971.
+elimination des coupures de l'arithmetique d'ordre
+approach to higher-order modules with sharing.
+InTwenty-First ACM SIGACT-SIGPLAN Sym-
+posium on Principles of Programming Languages,
+pages 123-137, Portland, Oregon, Jan. 1994.
+phism using intensional type analysis. InTwenty-
+Second ACM SIGACT-SIGPLAN Symposium on
+Principles of Programming Languages, pages 130-
+141, San Francisco, Jan. 1995.
+ing. InNineteenth ACM SIGACT-SIGPLAN Sym-
+posium on Principles of Programming Languages,
+pages 177-188, 1992.
+mitted for publication. Earlier version published
+as "Compilation Based on a Calculus for Explicit
+Type-Passing" in theSecond Fuji International
+Workshop on Functional and Logic Programming,
+1996.
+Typed closure conversion. InTwenty-Third ACM
+SIGACT-SIGPLAN Symposium on Principles of
+Programming Languages, pages 271-283, St. Pe-
+tersburg, Florida, Jan. 1996.
+have existential type.ACM Transactions on Pro-
+gramming Languages and Systems, 10(3):470-502,
+July 1988.
+Compiling with Types.PhDthesis,
+Carnegie Mellon University, School of Computer
+Science, Pittsburgh, Pennsylvania, Dec. 1995.
+stract models of memory management. InCon-
+ference on Functional Programming Languages and
+Computer Architecture, 1995.
+management for polymorphic languages. In A. D.
+Gordon and A. M. Pitts, editors,Higher Order
+Operational Techniques in Semantics. Cambridge
+University Press, 1997.
+R. Harper, and P. Lee. The TIL/ML compiler:
+Performance and safety through types. InWork-
+shop on Compiler Support for Systems Software,
+Tucson, Feb. 1996.
+Twenty-Fifth ACM SIGACT-SIGPLAN Sympo-
+sium on Principles of Programming Languages,
+8
+pages 85-97, San Diego, Jan. 1998. Extended ver-A.1 Syntax of Untyped Calculus
+sion published as Cornell University technical re-
+port TR97-1651.
+ric polymorphism. InInformation Processing '83,
+pages 513-523. North-Holland, 1983. Proceedings
+of the IFIP 9th World Computer Congress.
+InTwenty-Fourth ACM SIGACT-SIGPLAN Sym-
+posium on Principles of Programming Languages,
+pages 15-26, Paris, Jan. 1997.
+Second Workshop on Types in Compilation, Mar.
+1998.
+1997 ACM SIGPLAN International Conference on
+Functional Programming, pages 85-98, Amster-
+dam, June 1997.
+In1997 Workshop on Types in Compilation,Am-
+sterdam, June 1997. ACM SIGPLAN. Published
+as Boston College Computer Science Department
+Technical Report BCCS-97-03.
+R. Harper, and P. Lee. TIL: A type-directed opti-
+mizing compiler for ML. In1996 ACM SIGPLAN
+Conference on Programming Language Design and
+Implementation, pages 181-192, May 1996.
+plicit type parameters. InACM Conference on
+Lisp and Functional Programming, pages 1-11, Or-
+lando, June 1994.
+A Untyped Calculus
+Although the formal static and operational semanticsintintintint
+forlamare for a typed language, we would like to em-
+R
+phasize the point that types are unnecessary for compu-->xx
+tation and can safely be erased. To do this we exhibit an
+o
+untyped language,lam, a translation oflamto this lan-
+RR
+guage through type erasure, and the following theorem,
+which states that execution in the untyped language
+mirrors execution in the typed language:
+*o*o
+Theorem A.11. Ife|->->ethene|->->e.
+1212
+o*
+2. Ifemptyset|-e:tande|->->uthen there existsesuch
+112
+*o
+thate|->->eande=u.
+122
+From this theorem and type safety forlamit follows that
+R
+our untyped semantics is safe.
+o*
+Corollary A.2Ifemptyset|-e:tande|->->uthenuis not
+stuck.
+(terms)u:: =x|i|lamx.u|fixf.w|uu|
+12
+<u,u>|pu|pu|
+1212
+R|R(u,u)|R(u,u)|
+int->12x12
+R(u)|R|R|
+Rforallexists
+typecaseuof
+R=>u
+intint
+R(x, y)=>u
+->->
+R(x, y)=>u
+xx
+R(x)=>u
+RR
+R=>u
+forallforall
+R=>u
+existsexists
+(values)w:: =x|i|<w,w>|lamx.u|fixf.w|
+12
+R|R(w,w)|R(w,w)|
+intx12->12
+R(w)|R|R
+Rforallexists
+A.2 Type Erasure
+o
+x=x
+o
+i=i
+o
+oo
+<e,e>=<e,e>
+1212
+o
+o
+(pe)=pe
+ii
+o
+o
+(lamx:c.e)=lamx.e
+o
+o
+(Lambdaa:k.v)=v
+o
+o
+(fixf:c.v)=fixf.v
+o
+oo
+(ee)=ee
+1212
+oo
+e[c]=e
+o
+'o
+packeaschidingc=e
+o
+oo
+unpack<a, x>=eine=(lamx.e)e
+1221
+o
+R=R
+intint
+o
+oo
+R(e,e)=R(e,e)
+->12->12
+o
+oo
+R(e,e)=R(e,e)
+x12x12
+o
+o
+R(e)=R(e)
+R1R1
+o
+R(c)=R
+forallforall
+o
+R(c)=R
+existsexists
+o
+(typecase[d.c]eof=typecaseeof
+o
+R=>eR=>e
+o
+R(x, y)asR(x, y)=>e
+->->->
+o
+(b->g)=>eR(x, y)=>e
+o
+R(x, y)asR(x)=>e
+xRR
+o
+(bxg)=>eR=>e
+xforallforall
+o
+R(x)asR=>e
+Rexistsexists
+R(b)=>e
+R
+R=>e
+forallforall
+o
+R=>e)
+existsexists
+o
+A.3 Operational Semantics oflam
+R
+(lamx:c.u)w|->->u[w/x]
+''
+(fixf:c.w)w|->->(w[fixf:c.w/f])w
+p<w,w>|->->wp<w,w>|->->w
+11212122
+typecaseR(u,xy.u,
+intintx
+xy.u,x.u,u,u)|->->u
+->Rforallexistsint
+9
+typecase(R)) (u,xy.u,
+forallintx
+xy.u,x.u,u,u)|->->u
+->Rforallexistsforall
+typecase(R)(u,xy.u,
+existsintx
+xy.u,x.u,u,u)|->->u
+->Rforallexistsexists
+typecase(R(w,w)) (u,xy.u,
+x12intx
+xy.u,x.u,u,u)|->->u[w,w/x, y]
+->Rforallexistsx12
+typecase(R(w,w)) (u,xy.u,
+->12intx
+xy.u,x.u,u,u)|->->u[w,w/x, y]
+->Rforallexists->12
+typecase(R(w)) (u,xy.u,
+Rintx
+xy.u,x.u,u,u)|->->u[w/x]
+->RforallexistsR
+'
+'
+u|->->u
+1
+1u|->->u
+''
+uu|->->uuwu|->->wu
+122
+1
+'
+'
+u|->->u
+1
+1u|->->u
+''
+<u,u>|->-><u,u><w, u>|->-><w, u>
+122
+1
+''
+u|->->uu|->->u
+''
+pu|->->pupu|->->pu
+1122
+'
+'
+u|->->u
+1
+1u|->->u
+''
+R(u,u)|->->R(u,u)R(w, u)|->->R(w, u)
+->12->2->->
+1
+'
+u|->->u
+1
+1u|->->u
+''
+R(u,u)|->->R(u,u)R(w, u)|->->R(w, u)
+x12x2xx
+1
+'
+u|->->u
+'
+R(u)|->->R(u)
+RR
+'
+u|->->u
+typecaseu(u,xy.u,xy.u,x.u,u,u)|->->
+intx->Rforallexists
+'
+typecaseu(u,xy.u,xy.u,x.u,u,u)
+intx->Rforallexists
+B Analysis of Quantified Types
+The analysis of quantified types inlam,aspresentedin
+R
+this paper, is limited to the outermost operator; that
+is, aTyperecortypecasewill determine that a type
+is aforallorexiststype, but will not provide any information
+about the body of the type. The principal reasons for
+this decision are that support for full analysis of quanti-
+fied types detracts from the elegance of the type theory,
+and that experience from the TIL/ML compiler suggests
+that such support may not be needed in practice. (In
+ML
+fact, the TIL/ML compiler uses a variant oflamthat
+i
+handles quantified types in a manner relatively similar
+tolam.) In this section we briefly explore what would be
+R
+required to extendlamto support full analysis of quan-
+R
+tified types.
+Adding term-level representations for quantified types
+is straightforward. The representation forforalla:k.cmust
+carry information expressing how to produce the ap-
+propriatecgiven an appropriateaof kindk.Forex-
+ample, a member ofR(foralla:Ty p e.c) would be built by
+a constructorRthat takes a function with type
+forallTyp e
+foralla:Ty p e.R(a)->R(c). Representations of polymorphic
+types at any other kindkwould be built by an analo-
+gous constructorRorR. Note that this requires
+forallkexistsk
+an infinite collection of such constructors, two for each
+kind.
+Analysis of types is also straightforward if quantifi-
+cation is restricted toTy p e, or to any finite set of
+kinds. In that case, the appropriate branches can be
+added to theTyperecandtypecaseoperations, and
+each branch would return the appropriate representa-
+tion function discussed above. General quantification
+could be handled, at the expense of additional com-
+plexity, by adding kind variables, term representations
+of kinds, and aKindrecfacility for analyzing such repre-
+sentations. With such additions, the quantifier branches
+would return a kind representation and the appropriate
+representation function.
+However, with such a mechanism in place, the amount
+of useful analysis that can be performed is still quite lim-
+ited. Type analyzing code may apply the representation
+function to an argument and analyze its output, but it
+could not analyze the function itself. This makes it im-
+possible, for example, to print quantified types. The
+modal type theory of Despeyrouxet al.
+for precisely this sort of application; it provides mech-
+anisms for primitive recursion on higher-order syntax
+and might provide a solution to this problem.
+Also, allowing any analysis of quantified tyes byTyperec
+sacrifices strong normalizations of type expressions. (An
+isomorphism betweenTy p eandTy p e->Ty p ecan be
+built, permitting the encoding of the untyped lambda
+calculus.) A modal type discipline holds some promise
+of a solution to this problem as well.
+10
+(lamx:c.e)v|->->e[v/xa:k.v)[c]|->->v[c/a]p<v,v>|->->vp<v,v>|->->v
+''
+(fixf:c.v)v|->->(v[fixf:c.v/f])v
+unpack<a, x>=(packvasexistsb.chidingc)ine|->->e[c,v/a,x]
+typecase[d.c]R(e,bgxy.e,bgxy.e,bx.e,e,e)|->->e
+intint
+'
+typecase[d.c](R(c)) (e,bgxy.e,bgxy.e,bx.e,e,e)|->->e
+forallint
+'
+typecase[d.c](R(c)) (e,bgxy.e,bgxy.e,bx.e,e,e)|->->e
+existsint
+typecase[d.c](R(v,v)) (e,bgxy.e,bgxy.e
+->12int->xRforallexists->1212
+typecase[d.c](R(v,v)) (e,bgxy.e,bgxy.e
+x12int->xRforallexistsx2212
+typecase[d.c](R(v)) (e,bgxy.e,bgxy.e,bx.e,e,e)|->->e[D(v),v/b,x]
+Rint->
+'
+''
+e|->->e
+1
+1e|->->ee|->->e
+'''
+ee|->->eeve|->->vee[c]|->->e[c]pe|->->pe<e,e>|->-><e,e><v, e>|->-><v, e>
+122ii122
+1
+'
+e|->->e
+'
+packeasexistsb.chidingc|->->packeasexistsb.chidingcunpack<a, x>=eine|->->unpack<a, x>=eine
+121
+'
+e|->->e
+typecase[d.c]e(e,bgxy.e,bgxy.e,bx.e,e,e)|->->R(e,e)|->->R(e,e)
+int->x
+'
+typecase[d.c]e(e,bgxy.e,bgxy.e
+int->xRforallexists
+'
+'
+e|->->e
+1
+e|->->e1
+''
+R(v, e)|->->R(v, e)R(e,e)|->->R(e,e)R(v, e)|->->R(v, e)R(e)|->->R(e)
+->->x12x
+1
+Figure 4: Operational Semantics forlam
+D(R)=
+int
+D(R(e,e)) =D(e)xD(e)
+x12
+D(R(e,e)) =D(e)->D(e)
+->12
+D(R(e)) =R(D(e))
+R
+D(R(c)) =c
+forall
+D(R(c)) =c
+exists
+Figure 5: Translating representations to types
+11212122
+''
+(fixf:c.v)[c]|->->(v[fixf:c.v/fc]
+12222
+->xRforallexistsint
+->xRforallexistsforall
+->xRforallexistsexists
+,bx.e,e,e)|->->e[D(v),D(v),v,v/b,g,x,y]
+,bx.e,e,e)|->->e[D(v),D(v),v,v/b,g,x,y]
+xRforallexistsR
+'
+''
+e|->->e
+1
+e|->->e1e|->->e
+'''
+1
+'
+e|->->e
+'
+222
+'
+e|->->e
+1
+1
+'
+Rforallexists->12->2
+1
+,bx.e,e,e)
+''
+e|->->ee|->->e
+''
+2xxRR
+R
+int
+12
+12
+11
+G|-c:k
+(int)(G(a)=k)(var)(arrow)
+G|-int:Ty p eG|-a:k
+G|-c:Ty p eG|-c:Ty p eG,a:k|-c:k
+121
+(prod)
+G|-cxc:Ty p eG|-lama:k.c:k->kG|-cc:k
+121
+G|-c:Ty p e
+G,a:k|-c:Ty p eG,a:k|-c:Ty p e
+(R)
+G|-R(c):Ty p eG|-foralla:k.c:Ty p eG|-existsa:k.c:Ty p e
+G|-c:Ty p eG|-c:kG|-c:Ty p e->Ty p e->k->k->k
+int
+G|-c:Ty p e->Ty p e->k->k->kG|-c
+xR
+G|-Typerecc(c,c
+int->xRforallexists
+Figure 6: Constructor formation
+G|-c=c:k
+12
+''
+G,a:k|-c:kG|-c:k
+12
+'
+G|-(lama:k.c)c=c[c/a]:kG|-lama:k.ca=c:k->k
+1212
+G|-c:k
+G|-c:Ty p e->Ty p e->k->k->k
+->
+G|-c:Ty p e->Ty p e->k->k->k
+x
+G|-c:Ty p e->k->k
+R
+G|-Typerec(int)(c,c,c,c,c,c)=c:k
+int->xRforallexistsint
+G|-Typerec(foralla:k.c)(c
+int->xRforallexistsforall
+G|-Typerec(existsa:k.c)(c
+int->xRforallexistsexists
+G|-c:Ty p eG|-c:Ty p eG|-c:k
+1
+G|-c:Ty p e->Ty p e->k->k->k
+->
+G|-c:Ty p e->Ty p e->k->k->k
+x
+G|-c:Ty p e->k->k
+R
+G|-Typerec(c->c)(c,c,c,c,c,c)=
+12int->xRforallexists
+ccc(Typerecc(c,c,c,c,c,c))(Typerecc(c,c,c,c,c,c)) :k
+->121int->xRforallexists2int->xRforallexists
+G|-Typerec(cxc)(c,c,c,c,c,c)=
+12int->xRforallexists
+ccc(Typerecc(c,c,c,c,c,c))(Typerecc(c,c,c,c,c,c)) :k
+x121int->xRforallexists2int->xRforallexists
+G|-c:Ty p eG|-c:k
+G|-c:Ty p e->Ty p e->k->k->k
+->
+G|-c:Ty p e->Ty p e->k->k->k
+x
+G|-c:Ty p e->k->k
+R
+G|-Typerec(R(c)) (c,c,c,c,c,c)=cc(Typerecc(c,c,c,c,c,c)) :k
+int->xRforallexistsRint->xRforallexists
+Figure 7: Constructor equivalence (selected rules)
+G|-c:Ty p eG|-c:Ty p e
+12
+G|-c->c:Ty p e
+12
+G|-c:k->kG|-c:k
+2
+11221
+(fn)(app)
+12122
+(forall)(exists)
+->
+:Ty p e->k->kG|-c:kG|-c:k
+forallexists
+(trec)
+,c,c,c,c):k
+G|-c:k->k
+12
+a/inDom(G)
+112
+int
+G|-c:kG|-c:k
+forallexists
+,c,c,c,c,c)=c:k
+,c,c,c,c,c)=c:k
+2int
+G|-c:kG|-c:k
+forallexists
+int
+G|-c:kG|-c:k
+forallexists
+12
+G|-e:c
+G|-e:cG|-e:c
+(int)(G(x)=c)(var)
+G|-i:intG|-x:c
+'''
+G|-e:c->cG|-e:cG|-e:foralla:k.c
+12
+(app)
+G|-ee:cG|-e[c]:c[c/a]G|-lamx:c.e:c->c
+12
+G,a:k|-e:cG,f:c|-e:cG|-c:Ty p e
+(tfn)
+G|-Lambdaa:k.e:foralla:k.cG|-fixf:c. e:c
+''
+G,a:k|-c:Ty p eG|-c:kG|-e:c[c/a]
+(pack)
+'
+G|-packeasexistsa:k.chidingc:existsa:k.c
+G|-e:R(c)G|-e:R(c)G|-e:R(c)G|-e:R(c)
+112
+(re p)
+int
+G|-R:R(int)G|-R(e,e):R(c->c)G|-R(e,e):R(cxc)
+int->121
+G|-e:R(c)
+G|-foralla:k.c:Ty p eG|-existsa:k.c:Ty p e
+(re p)
+R
+G|-R(e):R(R(c))G|-R(foralla:k.c):R(foralla:k.c)G|-R(existsa:k.c):R(existsa:k.c)
+Rforall
+'
+G|-e:cG|-c=c:k
+G|-e:c
+Figure 8: Term formation (except typecase)
+G|-e:cxc
+1122
+12
+(pair)
+(sel)
+i
+G|-<e,e>:cxcG|-pe:c
+1212ii
+''
+G,x:c|-e:cG|-c:Ty p e
+G|-c:k
+(tapp)(fn)
+'''
+'''
+(c=foralla:k...a:k.c->c,n>=0) (fix)
+11nn
+''
+G|-e:existsa:k.cG,a:k, x:c|-e:c
+12
+(unpack)
+G|-unpack<a, x>=eine:c
+12
+21122
+(re p)
+(re p)
+x
+->
+2x1212
+(re p)(re p)
+forallexists
+exists
+'
+(equiv)
+13
+G|-e:c
+G|-e:R(int)G|-e:c[int/b]
+G|-typecase[d.c]e(e,bgxy.e,bgxy.e,bx.e,e,e):c[int/d]
+int->
+G|-e:R(c->c)G,x:R(c),y:R(c)|-e[c,c/b , g]:c[c->c/d]
+1212
+G|-typecase[d.c]e(e,bgxy.e,bgxy.e,bx.e,e,e):c[c->c/d]
+int->
+G|-e:R(cxc)G,x:R(c),y:R(c)|-e[c,c/b , g]:c[cxc/d]
+1212x1212
+G|-typecase[d.c]e(e,bgxy.e,bgxy.e,bx.e,e,e):c[cxc/d]
+int->
+''
+G|-e:R(R(c)) G,x:R(c)|-e[c/b]:c[R(c)/d]
+G|-typecase[d.c]e(e,bgxy.e,bgxy.e,bx.e,e,e):c[R(c)/d]
+int->
+'
+G|-e:R(foralla:k.c)G|-e:c[foralla:k.c/d]
+G|-typecase[d.c]e(e,bgxy.e,bgxy.e,bx.e,e,e):c[foralla:k.c/d]
+int->
+'
+G|-e:R(existsa:k.c)G|-e:c[existsa:k.c/d]
+G|-typecase[d.c]e(e,bgxy.e,bgxy.e,bx.e,e,e):c[existsa:k.c/d]
+int->
+''
+G,a:Ty p e,G|-e:R(a)G(G[int/a])|-e[int/a]:c[int, int/a, d]
+'
+G,b:Ty p e,g:Ty p e,(G[b->g/a]),x:R(b),y:R(g)|-e[b->g/a]:c[b->g, b->g/a, d]
+'
+G,b:Ty p e,g:Ty p e,(G[bxg/a]),x:R(b),y:R(g)|-e[bxg/a]:c[bxg, bxg/a, d]
+'
+G,b:Ty p e,(G[R(b)/a]),x:R(b)|-e[R(b)/a]:c[R(b),R(b)/a, d]
+R
+'
+G,a:Ty p e,G|-e:c[a/d]G
+forall
+'
+G,a:Ty p e,G|-typecase[d.c]e(e,bgxy.e,bgxy.e,bx.e,e,e):c[a/d]
+int
+'
+G|-e:R(c)G|-e:c[int/d]
+G,b:Ty p e,g:Ty p e,x:R(b),y:R(g)|-e:c[b->g/d]
+G,b:Ty p e,g:Ty p e,x:R(b),y:R(g)|-e:c[bxg/d]
+G,b:Ty p e,x:R(b)|-e:c[R(b)/d]
+'
+G|-e:c[c/d]G
+forall
+G|-typecase[d.c]e(e,bgxy.e,bgxy.e,bx.e,e,e):c[c/d]
+int->
+Figure 9: Term Formation (typecase)
+int
+(tcase)
+int
+xRforallexists
+->1212
+(tcase)
+->
+xRforallexists12
+(tcase)
+x
+xRforallexists12
+''
+R
+(tcase)
+R
+'
+xRforallexists
+'
+forall
+(tcase)
+forall
+'
+xRforallexists
+'
+exists
+(tcase)
+exists
+'
+xRforallexists
+int
+->
+x
+'
+,a:Ty p e,G|-e:c[a/d]
+exists
+(tcase)
+a
+->xRforallexists
+int
+->
+x
+R
+'
+|-e:c[c/d]
+exists
+(tcase)
+'
+xRforallexists
+14

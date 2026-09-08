@@ -1,0 +1,2947 @@
+System F with Type Equality Coercions
+Including post-publication Appendix
+January 19, 2011
+Martin SulzmannManuel M. T. ChakravartySimon Peyton Jones Kevin Donnelly
+School of ComputingComputer Science & EngineeringMicrosoft Research Ltd
+National University of SingaporeUniversity of New South WalesCambridge, England
+sulzmann@comp.nus.edu.sgchak@cse.unsw.edu.au{simonpj,t-kevind}@microsoft.com
+Abstract
+We introduce SystemF, which extends System F with support
+C
+for non-syntactic type equality. There are two main extensions: (i)
+explicit witnesses for type equalities, and (ii) open, non-parametric
+type functions, given meaning by top-level equality axioms. Unlikeated types and GADTs, and allows us to deal with some exotic
+System F,Fis expressive enough to serve as a target for severalfunctional-dependency programs that GHC currently rejects on the
+C
+different source-language features, including Haskell'snewtype,
+generalised algebraic data types, associated types, functional de-
+pendencies, and perhaps more besides.
+NOTE: this version has a substantial Appendix, written subse-
+quent to the publication of the paper, giving a simplified ver-
+sion of System FC. This version is much closer to the one used
+in GHC.
+Categories and Subject DescriptorsProgramming Lan-
+guagesLog-
+ics and Meanings of Programs
+Type structure
+General TermsLanguages, Theory
+KeywordsTyped intermediate language, advanced type features
+1. Introduction
+The polymorphic lambda calculus, System F, is popular as a highly-
+expressive typed intermediate language in compilers for functional
+languages. However, language designers have begun to experiment
+with a variety of type systems that are difficult or impossible toit is parametrised over a decision procedure for checking con-
+extended GHC's intermediate language with GADTs as well, evenpendencies, already define such decision procedures.
+though GADTs are arguably an over-sophisticated addition to a
+typed intermediate language. But when it came to associated types,
+even with this richer intermediate language, the translation became
+extremely clumsy or in places impossible.
+In this paper we resolve this problem by presenting SystemF(X),
+C
+a super-set of F that is bothmore foundationalandmore powerful
+than addingad hocextensions to System F such as GADTs or as-
+sociated types.F(X) uses explicit type-equality coercions as wit-
+C
+Abridged version appears inThe Third ACM SIGPLAN Workshop
+on Types in Language Design and Implementation (TLDI'07), Jan-
+uary 16, 2007, Nice, France, ACM Press.
+1
+nesses to justify explicit type-cast operations. Like types, coercions
+are erased before running the program, so they are guaranteed to
+have no run-time cost.
+This single mechanism allows a very direct encoding of associ-
+grounds that they have no System-F translation (S2). Our specific
+contributions are these:
+*
+We give a formal description of SystemF, our new intermedi-
+C
+ate language, including its type system, operational semantics,
+soundness result, and erasure properties (S3). There are two dis-
+tinct extensions. The first, explicit equality witnesses, gives a
+system equivalent in power to System F + GADTs (S3.2); the
+second introduces non-parametric type functions, and adds sub-
+stantial new power, well beyond System F + GADTs (S3.3).
+*
+A distinctive property ofF's type functions is that they are
+C
+open(S3.4). Here we use "open" in the same sense that Haskell
+type classes are open: just as a newly defined type can be
+made an instance of an existing class, so inFwe can extend
+C
+an existing type function with a case for the new type. This
+property is crucial to the translation of associated types.
+*
+The system is very general, and its soundness requires that the
+axioms stated as part of the program text areconsistent(S3.5).
+That is why we call the systemF(X): the "X" indicates that
+C
+sistency, rather than baking in a particular decision procedure.
+(We often omit the "(X)" for brevity.) Conditions identified in
+earlier work on GADTs, associated types, and functional de-
+*
+A major goal is thatFshould be apracticalcompiler inter-
+C
+mediate language. We have paid particular attention to ensuring
+thatFprograms are robust to program transformation (S3.8).
+C
+*
+It must obviously bepossibleto translate the source language
+into the intermediate language; but it is also highly desirable
+that it bestraightforward. We demonstrate thatFhas this
+C
+property, by sketching a type-preserving translation of two
+source language idioms, namely GADTs (Section 4) and as-
+sociated types (Section 5). The latter, and the corresponding
+translation for functional dependencies, are more general than
+all previous type-preserving translations for these features.
+SystemFhas no new foundational content: rather, it is an intrigu-
+C
+ing and practically-useful application of techniques that have been
+well studied in the type-theory community. Several other calculi
+exist that might in principle be used for our purpose, but they gen-
+erally do not handle open type functions, are less robust to trans-
+2011/1/19
+formation, and are significantly more complicated. We defer a com-representing GADTs by ordinary algebraic data types encapsulat-
+parison with related work untilS6.
+To substantiate our claim thatFis practical, we have implementedSpecifically, we translate the GADTExpto an ordinary algebraic
+C
+it in GHC, a state-of-the-art compiler for Haskell, including bothdata type, where each variant is parametrised by a coercion:
+GADTs and associated (data) types. This is not just a prototype;
+FnowisGHC's intermediate language.
+C
+Fdoes not strive to do everything; rather we hope that it strikes
+C
+an elegant balance between expressiveness and complexity. While
+our motivating examples were GADTs and associated types, we
+believe thatFmay have much wider application as a typed target
+C
+for sophisticated HOT (higher-order typed) source languages.
+2. The key ideas
+No compiler usespureSystem F as an intermediate language,
+because some source-language constructs can only be desugared
+into pure System F by very heavy encodings. A good example is
+the algebraic data types of Haskell or ML, which are made more
+complicated in Haskell because algebraic data types can capture
+existential type variables. To avoid heavy encoding, most compilers
+invariably extend System F by adding algebraic data types, data
+constructors, andcaseexpressions. We will useFto describe
+A
+System F extended in this way, where the data constructors are12
+of higher kind, and type constructor applications can be partial.
+Over the last few years, source languages (notably Haskell) have
+started to explore language features that embodynon-syntacticor
+definitionaltype equality. These features include functional depen-
+translate into System F -- and yet the alternative of simply ex-
+tending System F by adding functional dependencies, GADTs, and
+associated types, seems wildly unattractive. Where would one stop?
+In the rest of this section we informally present SystemF, an
+C
+extension of System F that resolves the dilemma. We show how it
+can serve as a target for each of the three examples. The formal
+details are presented inS3. Throughout we usetypewriter font
+for source-code, anditalicsforF.
+C
+2.1 GADTs
+Consider the following simple type-safe evaluator, often used as the
+poster child of GADTs, written in the GADT extension of Haskell
+supported by GHC:
+data Exp a where
+Zero :: Exp Int
+Succ :: Exp Int -? Exp Int
+Pair :: Exp b -? Exp c -? Exp (b, c)
+eval :: Exp a -? a
+eval Zero = 0
+eval (Succ e) = eval e + 1
+eval (Pair x y) = (eval x, eval y)
+main = eval (Pair (Succ Zero) Zero)
+The key point about this program, and the aspect that is hard tosions have nooperationaleffect, but they serve to explain to the
+express in System F, is that in theZerobranch ofeval, the typetype system when a value of one type (hereInt) should be treated
+variableais the same asInt, even though the two are syntacticallyas another (herea), and provide evidence for this equivalence. In
+quite different. That is why the0in theZerobranch is well-typedgeneral, the formeIghas typetife:tandg: (t~t). So,
+in a context expecting a result of typea.
+Rather than extend the intermediate language with GADTs them-
+selves -- GHC's pre-F"solution" -- we instead propose a gen-
+C
+eral mechanism of parameterising functions withtype equalities,
+writtens~s, witnessed bycoercions.Coercion types are passed
+12
+around using System F's existing type passing facilities and enablecan be translated toF.
+2
+ing such type equality coercions.
+dataExp:*->*where
+Zero:foralla.(a~Int)=>Exp a
+Succ:foralla.(a~Int)=>Exp Int->Exp a
+Pair:forallabc.(a~(b,c))=>Exp b->Exp c->Exp a
+So far, this is quite standard; indeed, several authors present
+GADTs in the source language using a syntax involving explicit
+the equality constraints are extra type arguments to the constructor,
+which must be given when the constructor is applied, and which
+are brought into scope by pattern matching. The "=>" is syntac-
+tic sugar, and we sloppily omitted the kind of the quantified type
+variables, so the type ofZerois really this:
+Zero:foralla:* .forall(co:a~Int).Exp a
+Herearanges overtypes, of kind*, whilecoranges overcoercions,
+of kinda~Int. An important property of our approach is that
+coercions are types, and hence,equalitiest~tare kinds.An
+equality kindt~tcategorises all coercion types that witness the
+12
+interchangeability of the two typestandt. So, our slogan is
+12
+propositions as kinds,andproofs as (coercion) types.
+Coercion types may be formed from a set of elementary coer-
+cions that correspond to the rules of equational logic; for example,
+Int: (Int~Int)is an instance of the reflexivity of equality and
+symco: (Int~a), withco: (a~Int), is an instance of symme-
+try. A call of the constructorZeromust be given a type (to instan-
+tiatea) and a coercion (to instantiateco), thus for example:
+Zero Int Int:Exp Int
+As indicated above, regular types likeInt, when interpreted as
+coercions, witness reflexivity.
+Just like value arguments, the coercions passed to a constructor
+when it is built are made available again by pattern matching. Here,
+then, is the code ofevalinF:
+C
+eval= Lambdaa:* .lame:Exp a.
+caseeof
+Zero(co:a~Int)->
+0Isymco
+'
+Succ(co:a~Int) (e:Exp Int)->
+'
+(eval Int e+ 1)Isymco
+Pair(b:*) (c:*) (co:a~(b,c))
+(e:Exp b) (e:Exp c)->
+12
+(eval b e,eval c e)Isymco
+12
+The formLambdaa:* .eabstracts over types, as usual. In the first al-
+ternative of thecaseexpression, the pattern binds the coercion
+type argument ofZerotoco. We use the symmetry of equality
+in(symco)to get a coercion fromInttoaand use that to cast the
+type of0toa, using thecast expression0Isymco. Cast expres-
+2112
+eval Int(Zero Int Int))is of typeIntas required byeval's sig-
+nature. We shall discuss coercion types and their kinds in more de-
+tail inS3.2.
+In a similar manner, the recently-proposed extended algebraic data
+C
+2011/1/19
+2.2 Associated types
+Associated types are a recently-proposed extension to Haskell'sIn short, SystemFsupports a very direct translation of associated
+that are associated with a type class. Here is a standard example:there are several obvious extensions to the latter paper that cannot
+class Collects c where
+type Elem c -- associated type synonym
+empty :: c
+insert :: Elem c -? c -? c
+The classCollectsabstracts over a family of containers, where
+the representation type of the container,c, defines (or constrains)
+the type of its elementsElem c. That is,Elemis a type-level func-
+tion that transforms the collection type to the element type. Just
+asinsertis non-parametric - its implementation varies depend-
+ing onc- so isElem. For example, a list container can contain
+elements of any type supporting equality, and a bit-set container
+might represent a collection of characters:
+instance Collects BitSet where
+-type Elem BitSet = Char; ..."
+ing each class into a record type, called a dictionary, contain-
+ing the class methods, (2) converting each instance into a dic-
+tionary value, and (3) passing such dictionaries to whichever
+function mentions a class in its signature. For example, a func-
+tion of typenegate :: Num a =? a -? awill translate to
+negate:NumDict a->a->a, whereNumDictis the record
+generated from the classNum.
+A record only encapsulates values, so what to do about associ-
+ated types, such asElemin the example? The system given in
+eter of the class's dictionary type, provided the class and instance
+the classCollectstranslates to dictionary typeCollectsDict c e,
+whereerepresentsElem cand where all occurrences ofElem c
+of the method signatures have been replaced by the new type
+parametere. So, the (System F) type forinsertwould now be
+CollectDict c e->e->c->c. The required type transforma-
+tions become more complex when associated types occur in data
+types; the data types have to be rewritten substantially during trans-
+lation, which can be a considerable burden in a compiler.
+Type equality coercions enable a far more direct translation. Here
+is the translation ofCollectsintoF:
+C
+typeElem:*->*
+dataCollectsDict c=
+Collects{empty:c;insert:Elem c->c->c}
+The dictionary type is as in a translation without associated types.
+Thetypedeclaration inFintroduces a newtype function. An
+C
+instance declaration forCollectsis translated to (a) a dictionary
+transformer for the values and (b) an equality axiom that describes
+(part) of the interpretation for the type functionElem. For example,
+here is the translation intoFof theCollects Bitsetinstance:
+C
+axiomelemBS:Elem BitSet~Char
+dCollectsBS:CollectsDict Bitset
+dCollectsBS=...
+Theaxiomdefinition introduces a new, namedcoercion constant,
+elemBS, which serves as a witness of the equality asserted by
+the axiom; here, that we can convert between types of the form
+Elem BitSetandChar. Using this coercion, we caninsertthe
+character 'b' into aBitSetby applying the coercionelemBS
+backwards to 'b', thus:
+('b'I(symelemBS)) :Elem BitSet
+3
+This argument fits the signature ofinsert.
+C
+be translated into System F at all, even clumsily, andFsupports
+C
+them too, as we sketch in Section 5.
+2.3 Functional dependencies
+Functional dependencies are another popular extension of Haskell's
+encode a function over typesFas a relation, thus
+class F a b -- a -? b
+instance F Int Bool
+However, some programs involving functional dependencies are
+impossible to translate into System F. For example, a useful idiom
+in type-level programming is to abstract over the co-domain of a
+type function by way of an existential type, thebin this example:
+data T a = forall b. F a b =? MkT (b -? b)
+In this Haskell declaration,MkTis the constructor of typeT, captur-
+ing an existential type variableb. One might hope that the following
+function would type-check:
+combine :: T a -? T a -? T a
+combine (MkT f) (MkT f') = MkT (f . f')
+After all, since the typeafunctionally determinesb,fandf'
+must have the same type. Yet GHC rejects this program, because
+it cannot be translated into SystemF, becausefandf'each
+A
+have distinct, existentially-quantified types, and there is no way to
+express their (non-syntactic) identity inF.
+A
+It is easy to translate this example intoF, however:
+C
+typeF1 :*->*
+dataFDict:*->*->*where
+F:foralla b.(b~F1a)=>FDict a b
+axiomfIntBool:F1Int~Bool
+dataT:*->*where
+MkT:foralla b.FDict a b->(b->b)->T a
+combine:T a->T a->T a
+combine(MkT b(F(co:b~F1a))f)
+''''
+(MkT b(F(co:b~F1a))f)
+'
+=MkT a b(F a b co) (f.(fId))
+2
+where
+''
+d: (b~b) =coosymco
+1
+''
+d: (b->b~b->b) =d->d
+211
+The functional dependency is expressed as a type functionF1, with
+one equality axiom per instance. (In general there might be many
+functional dependencies for a single class.) The dictionary for class
+Fincludes a witness that indeedbis equal toF1a, as you can see
+from the declaration of constructorF. When pattern matching in
+combine, we gain access to these witnesses, and can use them to
+'
+castfso that it has the same type asf. (To construct the witness
+dwe use the coercion combinatorssym.and. o ., which represent
+1
+symmetry and transitivity; and fromdwe build the witnessd.)
+12
+Even in the absence of existential types, there are reasonable source
+programs involving functional dependencies that have no System F
+translation, and hence are rejected by GHC. We have encountered
+this problem in real programs, but here is a boiled-down example,
+using the same classFas before:
+class D a where - op :: F a b =? a -? b "
+instance D Int where - op _ = True "
+The crucial point is that the contextF a bof the signature ofop
+constrains the parameter of the enclosing type classD. This be-
+comes a problem when typing the definition ofopin the instanceD
+2011/1/19
+Int. InD's dictionaryDDict, we haveop:forallb.C a b->a->b
+withbuniversally quantified, but in the instance declaration, we
+would need to instantiatebwithBool. The instance declaration for
+Dcannot be translated into System F. UsingF, this problem is
+C
+easily solved: the coercion in the dictionary forFenables the result
+ofopto be cast to typebas required.
+To summarise, a compiler that uses translation into System F (or
+F) must reject some reasonable (albeit slightly exotic) programs
+A
+involving functional dependencies, and also similar programs in-
+volving associated types. The extra expressiveness of SystemF
+C
+solves the problem neatly.
+2.4 Translatingnewtype
+Fis extremely expressive, and can support language features be-|typeS:k->i
+C
+yond those we have discussed so far. Another example are Haskell|axiomC:s~s
+98'snewtypedeclarations:
+newtype T = MkT (T -? T)
+In Haskell, this declaresTto be isomorphic toT-?T, but there is no
+good way to express that in System F. In the past, GHC has handled
+this with anad hochack, butFallows it to be handled directly,
+C
+by introducing a new axiom
+axiomCoT: (T->T)~T
+2.5 Summary
+In this section we have shown that System F is inadequate as
+a typed intermediate language for source languages that embody
+non-syntactic type equality -- and Haskell has developed several
+such extensions. We have sketchily introduced SystemFas a
+C
+solution to these difficulties. We will formalise it in the next section.
+3. SystemF(X)
+C
+The main idea inF(X) is that we pass around explicit evidence
+C
+for type equalities, in just the same way that System F passes types
+explicitly. Indeed, inFthe evidencegfor a type equalityisa
+C
+type; we use type abstraction for evidence abstraction, and type
+application for evidence application. Ultimately, we erase all types
+before running the program, and thereby erase all type-equality
+evidence as well, so the evidence passing has no run-time cost.
+However, that is not the only reason that it is better to represent
+evidence as atyperather than as aterm, as we discuss inS3.10.
+Figure 1 defines the syntax of SystemF, while Figures 2 and 3
+C
+n
+give its static semantics. The notationa(wheren>=0) means
+the sequencea. . .a; the "n" may be omitted when it is unim-
+1n
+portant. Moreover, we use comma to mean sequence extension as
+nn+1
+follows:a, a,a. We usefv(x)to denote the free vari-
+n+1
+ables of a structurex, which may be an expression, type term, or
+environment.
+3.1 Conventional features
+SystemFis a superset of System F. The syntax of types and
+C
+kinds is given in Figure 1. Like F,Fis impredicative, and has
+C
+no stratification of types into polytypes and monotypes. The meta-
+variablesf,r,s,t,u, andgall range over types, and hence
+also over coercions. However, we adopt the convention that we
+user,s,t, anduin places where we can only have regular
+types (i.e., no coercions), and we usegin places where we can
+only have coercion types. We useffor types that can take either
+form. This choice of meta-variables is only a convention to aid the
+reader; formally, the coercion typing and kinding rules enforce the
+appropriate restrictions.
+Our system allows types of higher kind; hence the type application
+formtt. However, like Haskell but unlikeF w, our system has no
+12
+type-level lambda, and type equality is syntactic identity (modulo
+4
+Symbol Classes
+a, b, c, co-> <type variable>
+x, f-> <term variable>
+C-> <coercion constant>
+T-> <value type constructor>
+S-> <n-ary type function>
+n
+K-> <data constructor>
+Declarations
+pgm->decl;e
+decl->dataT:k->*where
+K:foralla:k.forallb:i.s->Ta
+n
+n
+12
+Sorts and kinds
+d->TY|COSorts
+k, i->*|k->k|s~sKinds
+1212
+Types and Coercions
+d->a|TAtom of sortTY
+g->c|CAtom of sortCO
+n
+f, r, s, t, u, g->a|C|T|ff|Sf| foralla:k. f
+12n
+|symg|gog|gf|leftg|rightg
+@
+12
+|g~g|rightcg|leftcg|gIg
+We user,s,t, andufor regular types,gfor coercions, andffor both.
+Syntactic sugar
+Typesk=>s== forall:k. s
+Terms
+u->x|KVariables and data constructors
+e->uTerm atoms
+|Lambdaa:k. e|e fType abstraction/application
+|lamx:s. e|eeTerm abstraction/application
+12
+|letx:s=eine
+12
+|caseeofp->e
+12
+|eIgCast
+p->Kb:kx:sPattern
+Environments
+Gamma->e|Gamma, u:s|Gamma, d:k|Gamma, g:k|Gamma, S:k
+n
+Atop-level environmentbinds only type constructors,
+T , S, data constructorsK, and coercion constantsC.
+n
+Figure 1:Syntax of SystemF(X)
+C
+alpha-conversion). This choice has pervasive consequences; it gives
+a remarkable combination of economy and expressiveness, but
+leaves some useful higher-kinded types out of reach. For example,
+there is no way to write the type constructor(lama.Either a Bool).
+Value type constructorsTrange over (a) the built-in function type
+constructor, (b) any other built-in types, such asInt, and (c) alge-
+braic data types. We regard a function types->sas the curried
+12
+application of the built-in function type constructor to two argu-
+ments, thus(->)ss. Furthermore, although we give the syntax
+12
+of arrow types and quantified types in an uncurried way, we also
+sometimes use the following syntactic sugar:
+n
+f->f==f-> . . . ->f->f
+r1nr
+n
+foralla.f== foralla. . . foralla.f
+1n
+2011/1/19
+Gamma|-s:k
+TY
+d:kinGamma Gamma|-k:TY
+k
+(TyVar)(TyApp)
+Gamma|-d:k
+TY
+nn
+(S:k->i)inGamma Gamma|-s:k
+nTY
+(TySCon)
+n
+Gamma|-Ss:i
+TYn
+Gamma|-
+CO
+a:kinGamma Gamma|-k:TYg:s~tinGamma
+k
+(CoRefl)
+Gamma|-a:a~a
+CO
+Gamma, a:k|-g:s~t
+CO
+Gamma|-k:TYa/infv(Gamma)Gamma|-u:k
+(CoAllT)
+k
+Gamma|-foralla:k. g:foralla:k. s~foralla:k. tGamma|-guu/as~u/bt
+CO
+nn
+Gamma|-g:s~tGamma|-Ss:k
+COTYn
+(SComp)(Sym)
+nnn
+Gamma|-Sg:Ss~St
+COnnn
+Gamma|-g:s~tGamma|-g:s~t
+CO111CO222
+(Comp)Gamma|-ss:k(Left)(Right)
+TY12
+Gamma|-gg:ss~tt
+CO121212
+'
+Gamma|-g:k~kGamma|-g:s~s
+CO12CO12
+(CompC)Gamma|-k:CO(LeftC)k=>s(RightC)k=>s
+k1
+'
+Gamma|-g=>g: (k=>s)~(k=>s)
+CO1122
+Gamma|-g:s~tGamma|-g:s~t
+CO111CO222
+(~)
+Gamma|-g~g: (s~s)~(t~t)
+CO121212
+Gamma|-e:s
+e
+u:sinGammaGamma|-e:sGamma|-p->e:s->tGamma|-e:sGamma, x:s|-e:s
+ep
+(Var)(Case)
+Gamma|-u:sGamma|-caseeofp->e:tGamma|-letx:s=eine:s
+ee
+Gamma|-e:sGamma|-g:s~t
+eCO
+(Cast)(Abs)
+Gamma|-eIg:t
+e
+Gamma|-lamx:s. e:s->sGamma|-ee:s
+Gamma, a:k|-e:sGamma|-k:d a/infv(Gamma)Gamma|-e:foralla:k.sGamma|-k:dGamma|-f:k
+ek
+(AbsT)
+Gamma|-Lambdaa:k. e:foralla:k.s
+e
+Gamma|-p->e:s->t
+p
+K:foralla:k.forallb:i.s->TainGammathu/a,b:th(i),x:th(s)|-e:t
+(Alt)
+Gamma|-Kb:th(i)x:th(s)->e:Tu->t
+p
+'
+Gamma|-decl: Gamma
+Gamma|-s:*Gamma|-k:TY
+TYk
+(Data)
+Gamma|-(dataT:kwhereK:s) : (T:k,K:s)
+Gamma|-k:TYGamma|-k:CO
+k
+(Type)(Coerce)
+Gamma|-(typeS:k) : (S:k)Gamma|-(axiomC:k) : (C:k)
+Figure 2:Typing rules for SystemF(X)
+5
+Gamma|-s:k->kGamma|-s:k
+TY112TY21
+Gamma|-ss:k
+TY122
+Gamma, a:k|-s:*Gamma|-k:d a/infv(Gamma)
+TYk
+(TyAll)
+Gamma|-foralla:k. s:*
+TY
+g:s~t
+(CoVar)
+Gamma|-g:s~t
+CO
+Gamma|-g:foralla:k. s~forallb:k. t
+CO
+(CoInstT)
+TY
+@
+CO
+Gamma|-g:s~s
+CO112
+Gamma|-g:s~t
+CO
+Gamma|-g:s~s
+(Trans)
+CO223
+Gamma|-symg:t~s
+CO
+Gamma|-gog:s~s
+CO1213
+Gamma|-g:ss~ttGamma|-g:ss~tt
+CO1212CO1212
+Gamma|-leftg:s~tGamma|-rightg:s~t
+CO11CO22
+k=>sk=>s
+1111
+Gamma|-g:~Gamma|-g:~
+COCO
+2222
+Gamma|-leftcg:k~kGamma|-rightcg:s~s
+CO12CO12
+'
+Gamma|-g:kGamma|-g:k~k
+CO1CO2
+(CastC)
+'
+Gamma|-gIg:k
+CO12
+e111e22
+(Let)
+e1122
+Gamma|-s:*Gamma|-e:s->s
+TYxe121
+Gamma, x:s|-e:s(App)Gamma|-e:s
+xee22
+exxe121
+ekd
+(AppT)
+Gamma|-e f:sf/a
+e
+e
+Gamma|-pgm:s
+Gamma|-decl: GammaGamma = Gamma,Gamma
+d0d
+Gamma|-e:s
+(Pgm)
+Gamma|-decl;e:s
+k
+0
+C
+2011/1/19
+Gamma|-k:d
+k
+(Star)
+Gamma|-*:TY
+k
+Gamma|-k:TYGamma|-k:TY
+k1k2
+(FunK)
+Gamma|-k->k:TY
+k12
+Gamma|-s:kGamma|-s:k
+TY1TY2
+(EqTy)
+Gamma|-s~s:CO
+k12
+Gamma|-g:COGamma|-g:CO
+k1k2
+(EqCo)
+Gamma|-g~g:CO
+k12
+Figure 3:Kinding rules for SystemF(X)
+C
+Analgebraic data typeTis introduced by a top-leveldatadec-
+laration, which also introduces itsdata constructors. The type of a
+data constructorKtakes the form
+nn
+K:foralla:k.forallb:i.s->Ta
+The firstnquantified type variablesaappear in the same order in
+the return typeTa. The remaining quantified type variables bind
+either existentially quantified type variables, or (as we shall see)
+coercions.
+Types are classified bykindsk, using the|-judgement in Fig-
+TY
+ure 2. Temporarily ignoring the kinds~s, the structure of kinds
+12
+is conventional:*is the kind of proper types (that is, the types that
+a term can have), while higher kinds take the formk->k. Kinds
+12
+guide type application by way of Rule (TyApp). Finally, the rules
+for judgements of the formGamma|-k:d, given in Figure 3, ensure
+k
+the well-formedness of kinds. Heredis eitherTYfor kinds formed
+from arrows and*, orCOfor coercion kinds of forms~s. The
+12
+conclusions of Rule (EqTy) and (EqCo) appear to overlap, but an
+actual implementation can deterministically decide which rule to
+apply, choosing (EqCo) iffghas the formf~f.
+112
+The syntax of terms is largely conventional, as are their type rules
+which take the formGamma|-e:s. As in F, every binder has an
+e
+explicit type annotation, and type abstraction and application are
+also explicit. There is acaseexpression to take apart values built
+with data constructors. The patterns of a case expression are flat --
+there are no nested patterns -- and bind existential type variables,
+coercion variables, and value variables. For example, suppose
+K:foralla:* .forallb:* .a->b->(b->Int)->T a
+Then acaseexpression that deconstructsKwould have the form
+'
+caseeofK(b:*) (v:a) (x:b) (f:b->Int)->e
+Note that only the existential type variablebis bound in the pattern.
+To see why, one need only realise thatK's type is isomorphic to:
+K:foralla:* .(existsb:* .(a,b,(b->Int)))->T a
+3.2 Type equality coercions
+We now describe the unconventional features of our system. To
+begin with, consider the fragment of SystemFthat omits type
+C
+functions (i.e.,typeandaxiomdeclarations). This fragment is
+sufficient to serve as a target for translating GADTs, and so is of
+interest in its own right. We return to type functions inS3.3.
+The essential addition to plain F (beyond algebraic data types andPROOF. The first task is to show thatGamma|-f:f~f(1) for
+higher kinds) is an infrastructure to construct, pass, and applytype-
+equality coercions.InF, a coercion,g, is a special sort of typederiveGamma|-g/afs/af~s/affrom the derivation for
+C
+6
+whose kind takes the unusual forms~s. We can use such a
+12
+coercion to cast an expressione:sto typesusing thecast
+12
+expression(eIg); see Rule (Cast) in Figure 2. Our intuition for
+equality coercions is anextensionalone:
+g:s~sis evidence that a value of typescan be used in
+121
+any context that expects a value of types, and vice versa.
+2
+By "can be used", we mean that running the program after type
+erasure will not go wrong. We stress that this is only an intuition;
+the soundness of our system is proved without appealing to any
+semantic notion of whats~s"means". We use the symbol
+12
+"~" rather than "=", to avoid suggesting that the two types are
+intensionally equal.
+since they certainly do not have kind*-- and hence the term-level
+syntax for type abstraction and application (Lambdaa.eande f) also
+serves for coercion abstraction and application. However, coercions
+have their own kinding judgement|-, given in Figure 2. The type
+CO
+of a term often has the formforallco:(s~s).f, wherefdoes not
+12
+mentionco. We allow the standard syntactic sugar for this case,
+writing it thus:(s~s)=>f(see Figure 1). Incidentally, note
+12
+that although coercions are types, they do not classify values. This
+is standard inF; for example, there are no values whose type has
+w
+kind*->*.
+More complex coercions can be built by combining or transform-
+ing other coercions, such that every syntactic form corresponds to
+an inference rule of equational logic. We have the reflexivity of
+equality for a given types(witnessed by the type itself), symme-
+try 'symg', transitivity 'gog', type composition 'gg', and
+1212
+decomposition 'leftg' and 'rightg'. The typing rules for these
+coercion expressions are given in Figure 2.
+Here is an example, taken fromS2. Suppose a GADTExprhas a
+constructorSuccwith type
+Succ:foralla:* .(a~Int)=>Exp Int->Exp a
+(notice the use of the syntactic sugark=>s). Then we can con-
+struct a value of typeExp Intthus:Succ Int Int e. The sec-
+ond argumentIntis a regular type used as a coercion witness-
+ing reflexivity -- i.e., we haveInt: (Int~Int)by Rule (CoRefl).
+Rule (CoRefl) itself only covers type variables and constructors,
+but in combination with Rule (Comp), the reflexivity of complex
+types is also covered. More interestingly, here is a function that
+decomposes a value of typeExp a:
+foo:foralla:* .Exp a->a->a
+= Lambdaa:* . lame:Exp a. lamx:a.
+caseeof
+'
+Succ(co:a~Int) (e:Exp Int)->
+'
+(foo Int e0 + (xIco))Isymco
+Thecasepattern binds the coercionco, which provides evidence
+thataandIntare the same type. This evidence is needed twice,
+once to castx:atoInt, and once to coerce theIntresult back to
+a, via the coercion(symco).
+Coercion composition allows us to "lift" coercions through arbi-
+we have a coerciong:(s~s)then the coercionTreegis ev-
+12
+idence thatTrees~Trees, using rules (Comp) and (CoRefl)
+12
+and (CoVar). More generally, our system has the following theo-
+rem.
+'
+THEOREM1 (Lifting).IfGamma|-g:s~sandGamma|-f:k,
+CO12TY
+'
+thenGamma|-g/afs/af~s/af, for any typef, including
+CO12
+'''
+polytypes, whereGamma = Gamma, a:ksuch thatadoes not appear inGamma.
+CO
+all (well-formed) typesf(proof by induction onf). Then, we can
+CO12
+2011/1/19
+(1) by replacing each (CoRefl) step with the derivation steps forforalla:* .(Elema~a)-- Not well-formedF!
+Gamma|-g:s~s.
+CO12
+For example, ifg:s~sthen
+12
+forallb. g->Int: (forallb. s->Int)~(forallb. s->Int)
+12
+Dually decomposition enables us to take evidence apart. For ex-
+ample, assumeg:Trees~Trees; then,(rightg)is evidence
+12
+thats~s, by rule (Right). Decomposition is necessary for the
+12
+translation of GADT programs toF, but is problematic in ear-
+C
+course, on algebraic types being injective; i.e.,Trees=Trees
+12
+iffs=s. Notice, too, thatTreeby itself is a coercion relating
+12
+two types of higher kind.
+Similarly, one can compose and decompose equalities over poly-
+types, using rules (CoAllT) and (CoInstT). For example,
+g:(foralla.a->Int)~(foralla.a->b)
+|-gBool: (Bool->Int)~(Bool->b)
+@
+CO
+This simply says that if the two polymorphic functions are inter-
+changeable, then so are their instantiations atBool.
+Rules (CompC), (LeftC), and (RightC) are analogous to (Comp),
+(Left), and (Right): they allow composition and decomposition of
+a type of formk=>f, wherekis a coercion kind. These rules are
+essential to allow us to validate this consequence of Theorem 1:
+s~I nt=>T ree s
+11
+~
+g:s~s|-(g~Int=>Treeg) :
+12CO
+s~I nt=>T ree s
+22
+Even thoughk=>fis is sugar forforall:k. f, we cannot generalise
+(CoAllT) to cover (CompC) because the former insists that the two
+kinds are identical.
+We will motivate the need for rules (~) and (CastC) when dis-
+cussing the dynamic semantics (S3.7).
+3.3 Type functions
+Our last step extends the power ofFby addingtype functions
+C
+andequality axioms, which are crucial for translating associated
+types, functional dependencies, and the like. A type functionS
+n
+is introduced by a top-leveltypedeclaration, which specifies its
+n
+kindk->i, but says nothing about itsinterpretation. The index
+nindicates thearityofS. The syntax of types requires thatS
+n
+always appears applied to its full complement ofnarguments (S3.6
+explains why). The arity subscript should be considered part of the
+name of the type constructor, although we will often elide it, writing
+Elem srather thanElems, for example.
+1
+A type function is given its interpretation by one or more equality
+axioms. Each axiom introduces a coercion constant, whose kind
+specifies the types between which the coercion converts. Thus:
+axiomelemBitSet:Elem BitSet~Char
+introduces the named coercion constantelemBitSet. Given an
+expressione:Elem BitSet, we can use the axiom via the coercion
+constant as in the casteIelemBitSet, which is of typeChar.
+We often want to state axioms involving parametric types, thus:
+axiomelemList: (foralle:* .Eleme~(foralle:* .e)
+This is the axiom generated from the instance declaration for
+CollectseinS2.2. To use this axiom as a coercion, say, for lists of
+integers, we need to apply the coercion constant to a type argument:
+elemList Int: (ElemInt~Int)
+which appeals to Rule (CoInstT) of Figure 2. We have already seen
+the usefulness of (CoInstT) towards the end ofS3.2, and here we
+simply re-use it. It may be surprising that we use one quantifier
+on each side of the equality, instead of quantifying over the entireDEFINITION1 (Value type).A typesis avalue typeif it is of form
+equality as in
+7
+C
+One could add such a construct, but it is simply unnecessary. We
+already have enough machinery, and when thought of as a logical
+relation, the form with a quantifier on each side makes perfect
+sense.
+3.4 Type functions are open
+A crucial property of type functions is that they areopen, orexten-
+sible. A type functionSmay take an argument of kind*(or*->*,
+etc), and, since the kind*is extensible, we cannot write out all
+the cases forSat the moment we introduceS. For example, imag-
+ine that a library module contains the definition of theCollects
+class (S2.2). Then a client imports this module, defines a new typeT
+(thereby adding a new constant to the extensible kind*), and wants
+to makeTan instance ofCollects. InFthis is easy by simply
+C
+writing in the client module
+import CollectsLib
+instance Collects T where -type Elem T = E; ..."
+where we assume thatEis the element type of the collection type
+T. In short, open type functions are absolutely required to support
+modular extensibility.
+We do not argue thatalltype functions should be open; it would
+certainly be possible to extendFwith non-extensible kind decla-
+C
+rations and closed type functions. Such an extension would be use-
+ful; consider the well-worn example of lists parametrised by their
+length, which we give in source-code form to reduce clutter:
+kind Nat = Z -- S Nat
+data Seq a (n::Nat) where
+Nil :: Seq a Z
+Cons :: a -? Seq a n -? Seq a (S n)
+app :: Seq a n -? Seq a m -? Seq a (Plus n m)
+app Nil ys = ys
+app (Cons x xs) ys = Cons x (app xs ys)
+type Plus :: Nat -? Nat -? Nat
+Plus Z b = b
+Plus (S a) b = S (Plus a b)
+Whilst we can translate this intoF, we would be forced to give
+C
+Plusthe kind*->*->*, which allows nonsensical forms like
+Plus Int Bool. Furthermore, the non-extensibility ofNatwould
+allow induction, which is not available inFprecisely because
+C
+kind*is extensible.
+Other closely-related languages support closed type functions; for
+Omega
+we focus on open-ness, since it is one ofF's most distinctive
+C
+features and is crucial to translating associated types.
+3.5 Consistency
+In SystemF(X), we refine the equational theory of types by
+C
+giving non-standard equality axioms.So what is to prevent us
+declaring unsound axioms?For example, one could easily write
+a program that would crash, using the coercion constant introduced
+by the following axiom:
+axiomutterlybogus:Int~Bool
+(whereIntandBoolare both algebraic data types). There are many
+ad hocways to restrict the system to exclude such cases. The most
+general way is this: we require that the axioms, taken together, are
+consistent. We essentially adapt the standard notion of consistency
+foralla.uorTu.
+2011/1/19
+DEFINITION2 (Consistency).Gammaisconsistentiff
+1. IfGamma|-g:Ts~u, anduis a value type, thenu=Tt.
+CO
+2. IfGamma|-g:foralla:k. s~u, anduis a value type, thenu=foralla:k. t.
+CO
+That is, if there is a coercion connecting twovaluetypes -- al-
+gebraic data types, built-in types, functions, or foralls -- then the
+outermost type constructors must be the same. For example, there
+can be no coercion of typeBool~Int. It is clear that the consis-
+tency ofGammais necessary for soundness, and it turns out that it is also
+sufficient (S3.7).
+Consistency is only required of thetop-levelenvironment, however
+(Figure 1). For example, consider this function:
+f=lam(g:I nt~Bool).1 + (T rueIg)
+It uses the bogus coerciongto cast anIntto aBool, sofwould
+crash if called. But there is no problem, becausethe function can
+never be called; to do so, one would have to produce evidence that
+IntandBoolare interchangeable. The proof inS3.7 substantiates
+this intuition.
+Nevertheless, consistency is absolutely required for the top-level
+environment, but alas it is an undecidable property. That is why we
+call the system "F(X)": it is parametrised by a decision procedure
+C
+X for determining consistency. There is no "best" choice for X, so
+instead of baking a particular choice into the language, we have
+left the choice open. Each particular source-program construct that
+exploits type equalities comes with its own decision procedure --
+or, alternatively, guaranteesby constructionto generate only con-
+sistent axioms, so that consistency need never be checked. All the
+applications we have implemented so far take the latter approach.
+For example, GADTs generate no axioms at all (Section 4); new-
+types generate exactly one axiom per newtype; and associated types
+are constrained to generate a non-overlapping rewrite system (Sec-
+tion 5).
+3.6 Saturation of type functions
+We remarked earlier that applications of type functionsSare
+n
+required to be saturated. The reason for this insistence is, again,
+consistency. We definitely want to allow abstract types to be non-
+injective; for example:
+axiomc1 :SInt~Bool
+1
+axiomc2 :SBool~Bool
+1
+Here, bothSIntandSBoolare represented by theBooltype.
+11
+But now we can form the coercion(c1o(symc2))which has type
+SInt~SBool, and from that we must not be able to deduce
+11
+(viaright) thatInt~Bool, because that would violate consistency!
+Applications of type functions are therefore syntactically distin-
+guished so thatrightandleftapply only to ordinary type applica-
+tion (Rules (Left) and (Right) in Figure 2), and not to applications
+of type functions. The same syntactic mechanism prevents a par-
+tial type-function application from appearing as a type argument,
+thereby instantiating a type variable with a partial application -- in
+effect, type variables of higher-kind range only over injective type
+constructors.
+However, it is perfectly acceptable for a type function to have an
+arity of 1, say, but a higher kind of*->*->*. For example:
+typeHS:*->*->*
+1
+axiomc1 :HSInt~
+1
+axiomc2 :HSBool~Maybe
+1
+An application ofHSto one type is saturated, although it has kind
+*->*and can be applied (via ordinary type application) to anotherWhen a data constructor has a higher-rank type, in which the
+type.
+8
+3.7 Dynamic semantics and soundness
+The operational semantics ofFis shown in Figure 4. In the
+C
+expression reductions we omit the type annotations on binders to
+save clutter, but that is mere abbreviation.
+An unusual feature of our system, which we share with Crary's
+stratified intocvaluesandplain values; their syntax is in Figure 4.
+Evaluation reduces a closed term to acvalue, or diverges. A cvalue
+is either aplain valuev(an abstraction or saturated constructor
+application), or it is a value wrapped in a single cast, thusvIg
+(Figure 4). The latter form is needed because we cannot reduce a
+term to a plain value without losing type preservation; for exam-
+ple, we cannot reduce(TrueIg), whereg:Bool~Sany further
+without changing its type fromStoBool.
+However, there are four situations when a cvalue will not do,
+namely as the function part of a type, coercion, or function ap-
+plication, or as the scrutinee of acaseexpression. Rules (TPush),
+(CPush), (Push) and (KPush) deal with those situations, by pushing
+the coercion inside the term, turning the cast into a plain value. No-
+tice that all four rules leave thecontext(the application or case ex-
+pression) unchanged; they rewrite the function or case scrutinee re-
+spectively. Nevertheless, the context is necessary to guarantee that
+the type of the rewritten term is a function or data type respectively.
+Rules (TPush) and (Push) are quite straightforward. Rule (CPush)
+is rather like (Push), but at the level of coercions. It is this rule that
+forces us to add the forms(g~g),(gIg),(leftcg), and
+1212
+(rightcg)to the language of coercions. We will shortly provide an
+example to illustrate this point.
+The final rule, (KPush), is more complicated. Here is an example,
+stripped of thecasecontext, whereCons:foralla.a->a->a,
+andgInt~S Bool:
+(C ons I nt ee)Ig-->C ons(S Bool) (eIrightg)
+121
+(eIg))
+2
+The coercion wrapped around the application ofConsis pushed in-
+side to wrap each of its components. (Of course, an implementation
+does none of this, because types and coercions are erased.) The type
+preservation of this rule relies on Theorem 1 in Section 3.2, which
+guarantees thateIth(r)has the correct type.
+ii
+The rule is careful to cast thecoercionarguments as well as the
+valuearguments. Here is an example, taken from Section 2.3:
+F:foralla b.(b~F1a)=>FDict a b
+g:FDict Int Bool~FDict c d
+f:Bool~F1Int
+Now, stripped of thecasecontext, rule (KPush) describes the
+following transition:
+(F Int Boolf)Ig-->F c d(fI(g~F1g))
+21
+whereg= right (leftg)andg= rightg. The coercion argu-
+12
+mentfis cast by the strange-looking coerciong~F1g, whose
+21
+kind is(Bool~F1I nt)~(d~F1c). That is why we need rule (~)
+in Figure 2, so that we can type such coercions.
+We derived all three "push" rules in a systematic way. For example,
+'
+for (Push) we asked whate(involvingeandg) would ensure that
+'
+((lamx.e)Ig) =lamy.e. The reader may like to check that if the
+left-hand side of each rule is well-typed (in the top-level context)
+then so is the right-hand side.
+argument types are themselves quantified, a good deal of book-
+2011/1/19
+Values:
+Plain valuesv::= Lambdaa.e|lamx.e|Ksfe
+Cvaluescv::=vIg|v
+Evaluation contexts:
+'
+e-->e
+E|E e|E t|EIg|caseEofp->rhs
+'
+Ee-->Ee
+Expression reductions:
+(TBeta) (Lambdaa.e)f-->f/ae
+'
+(Beta) (lamx.e)e-->e/xe
+'
+(Case)case(Ksfe)of. . . Kbx->e. . .-->f/b,e/xe
+(Comb) (vIg)Ig-->vI(gog)
+12
+(TPush) ((Lambdaa:k. e)Ig)f-->(Lambdaa:k.(eIga))f
+whereg: (foralla:k. s)~(forallb:k. s)
+(CPush) ((Lambdaa:k. e)Ig)f-->(Lambdaa:k.aIg)/ae)Ig))f
+whereg: (k=>s)~(k=>s)
+'
+(Push) ((lamx.e)Ig)e-->(lamy.yIg)/xeIg))e
+whereg= sym (right (leftg))- coercion for argument
+(KPush)case(KsfeIg)ofp->rhs-->case(Ktfe)ofp->rhs
+whereg:Ts~Tt
+Figure 4:Operational semantics
+keeping is needed. For example, suppose that
+K:foralla:*.(a~Int=>a->Int)->T a
+g:T s~T s
+12
+e: (s~Int)=>s->Int
+11
+Then, according to rule (KPush) we find (as before we strip off the
+casecontext)
+'
+(K se)Ig-->K s(eIg)
+12
+'
+whereg= (rightg~Int)=>rightg->Int, which is obtained
+by substitutingtg/ain(a~Int)=>a->Int. Now sup-
+pose that we later reduce the (sub)-expression
+'''
+(eIg)g
+wheree= Lambdab:(s~Int). lamx:s.xIb. Before we can apply3
+11
+'
+rule (CPush) we have to determine the kind ofg. It is straight-
+forward to deduce that
+'
+g: (s~Int=>s->Int)~(s~Int=>s->Int)
+1122
+Hence, via (CPush) we find that
+'''
+((Lambdab:(s~Int). lamx:s. xIb)Ig)g
+11
+''
+-->(Lambdac:(s~Int).(lamx:s. xI(cIg))Ig)g
+2112
+'
+whereg= sym (leftcg),g: (s~Int)~(s~Int),g=
+11122
+'
+rightcgandg: (s->Int)~(s->Int).
+212
+9
+'
+'
+12
+@
+12
+'''
+12
+''
+g= sym (leftcg)- coercion for argument
+1
+g= rightcg- coercion for result
+2
+'
+12
+1
+g= rightg- coercion for result
+2
+''
+n
+K:foralla:k.forallb:i.r->Ta
+fIth(u~u)ifb:u~u
+'i12i12
+f=
+i
+fotherwise
+i
+'
+e=eIth(r)
+ii
+i
+thg/a,f/b
+iiii
+g= right (left. . .(leftg))
+i
+n-i
+Notice that forms(g~g),(gIg),(leftcg), and(rightcg)only
+1212
+appear during the reduction ofFprograms. In case we restrictF
+CC
+types to be rank 1 none of these forms are necessary.
+THEOREM2 (Progress and subject reduction).Suppose that a top-
+level environmentGammais consistent, andGamma|-e:s. Then eithereis
+e
+'''
+a cvalue, ore-->eandGamma|-e:sfor some terme.
+e
+PROOF. By structural induction one. The interesting case is for
+application. SupposeGamma|-ee:s. ThenGamma|-e:t->sand
+e12e1
+Gamma|-e:t. Then there are three well-typed possibilities fore:
+e2
+1.eis not a cvalue. Then by the induction hypothesis,ecan take
+11
+a (type-preserving) step.
+2.eis is a plain value which, to be well typed, must be of form
+1
+lamx.e. Hence we can take a (Beta) step.
+3.eisvIg. By consistencyvmust have a function type. Since
+1
+vis a value,vmust be of formlamx.e, so we can take a type-
+3
+preserving step using (Push).
+The other cases can be proved in a similar way. For example,
+supposeGamma|-caseeofp->e:t. ThenGamma|-e:sand
+ee
+Gamma|-p->e:s->t. As before, we can distinguish among the
+p
+following three well-typed possibilities for case expressions:
+1.eis not a cvalue. Then by the induction hypothesis,ecan take
+a (type-preserving) step.
+2011/1/19
+2.eis a plain value which, to be well typed, must be of form3.9 Type and coercion erasure
+''
+Ksfe. Hence we can take a (Case) step (we assume that
+case expressions have exhaustive alternatives).
+'''
+3.eisvIgwhereg:Ts~Tt(i.e.s=Tt). By consistency
+''
+and sincevis a value,vmust be of formKsfewhere
+K:foralla:k.forallb:i.r->Ta. It is straightforward to verify that
+'''''
+Ktfeis of typeTtwhere
+fIth(u~u)ifb:u~u
+i12i12
+'
+f=
+i
+fotherwise
+i
+'''
+e=eIth(r)
+i
+ii
+thg/a,f/b
+iiii
+g= right (left. . .(leftg))
+i
+n-i
+Hence, we can take a type-preserving step using (KPush).
+COROLLARY1 (Syntactic Soundness).LetGammabe consistent top-
+*
+level environment andGamma|-e:s. Then eithere-->cvand
+e
+Gamma|-cv:sfor some cvaluecv, or the evaluation diverges.
+e
+We give a call-by-name semantics here, but a call-by-value seman-
+tics would be equally easy: simply extend the syntax of evaluation
+contexts with the formv E, and restrict the argument of rule (Beta)
+to be a cvalue.
+In general, evaluation affectsexpressionsonly, not types. Since co-
+ercions are types, it follows that coercions are not evaluated either.
+This means that we can completely avoid the issue of normalisation
+of coercions, what a coercion "value" might be, and so on.
+3.8 Robustness to transformation
+One of our major concerns was to make it easy for a compiler to1
+transform and optimise the program. For example, consider this1
+fragment:
+lamx.casexof{T1->letz=y+ 1in...;...}
+A good optimisation might be to float the let-binding out of the
+lambda, thus:
+letz=y+ 1inlamx.casexof{T1->...;...}
+But suppose thatx:T aandy:a, and that the pattern match onT1
+refinesatoInt. Then the floated form is type-incorrect, because the
+let-binding is now out of the scope of the pattern match. This is a
+real problem for any intermediate language in which equality is im-The other cases can be proved in a similar way. For example,
+plicit. InF, however,ywill be cast toIntusing a coercion that issupposeGamma|-caseeofp->e:t. ThenGamma|-e:sand
+C
+bound by the pattern match onT1. So the type-incorrect transfor-
+mation is prevented, because the binding mentions a variable bound
+by the match; and better still, we can perform the optimisation in a
+type-correct way by abstracting over the variable to get this:
+'
+letz=lamg.(yIg) + 1
+'
+inlamx.casexof{T1g->letz=zgin...;...}
+The inner let-binding obviously cannot be floated outside, because
+it mentions a variable bound by the match.
+Another useful transformation is this:
+(casexofp->e)arg=casexofp->earg
+iiii
+This is valid inF, but not in the more implicit language LH, for
+C
+In summary, we believe thatF's obsessively-explicit form makesThe dynamic semantics of Figure 4 makes all the coercions in the
+C
+it easy to write type-preserving transformations, whereas doing soprogram bigger and bigger. This is not a run-time concern, because
+is significantly harder in a language where type equality is moreof erasure, but it might be a concern for compiler transformations.
+implicit.
+10
+SystemFpermits syntactic type erasure much as plain System
+C
+F does, thereby providing a solid guarantee that coercions impose
+absolutely no run-time penalty. Like types, coercions simply pro-
+vide a statically-checkable guarantee that there will be no run-time
+crash.
+o
+Formally, we can define an erasure functione, which erases all
+types and coercions from the term, and prove the standard erasure
+straction to a trivial term abstraction, and type application to term
+application to the unit value; this standard device preserves ter-
+mination behaviour in the presence ofseq, or with call-by-value
+semantics. The only difference from plain F is that we also erase
+casts.
+o
+oo
+x=x(lamx:f. e)=lamx.e
+oo
+oo
+K=K(ee)=ee
+1212
+o
+oo
+o
+(Lambdaa:k. e)=lama.e(eIg)=e
+ooo
+(e s)=e()(Ka:kx:f)=Kax
+o
+oo
+(letx:s=eine)=letx=eine
+1212
+oo
+oo
+(caseeofp->e)=caseeofp->e
+1212
+THEOREM3.Suppose that a top-level environmentGammais consistent,
+o
+andGamma|-e:s. Then, (a) eithereis a cvalue andeis a value
+e111
+oooo
+or (b) we havee-->eand eithere-->eore=e.
+121212
+PROOF. Proof by structural induction one. It is straightforward to
+o
+verify that ifeis a cvalue thaneis a value. Hence, we only need
+to focus on case (b).
+The interesting case is application. Suppose we haveGamma|-ee:s
+e12
+andee-->e(in one step). Then either (a)ecan take a step
+1231
+(in which case the result follows by induction), or (b)eis a cvalue.
+1
+The latter has two sub-cases: either (b.1)eis a plain value or (b.2)
+it is of form(vIg).
+'
+In case (b.1), sinceecan take a step,emust be of formlamx.e
+1
+1
+o
+so thateecan take a (Beta) step. But then(ee)can also
+1212
+take a (Beta) step. We need an auxiliary substitution lemma, that
+oo
+o''
+e/xee/xe, and then we are done.
+22
+11
+In case (b.2),eis of form(vIg), and by consistencyvmust
+111
+'
+have a function type, and hence must be of the formlamx.e. Hence
+1
+eecan take a (Push) step. Taking a (Push) step leaves the erasure
+12
+of the term unchanged, modulo alpha conversion, which gives the
+result.
+ee
+Gamma|-p->e:s->t. As before, the only interesting case is ifeis
+p
+a cvalue, otherwise, the result follows by induction. There are again
+two sub-cases to consider: (b.1)eis a plain value or (b.2)eis of the
+from(vIg).
+'
+In case (b.1),emust be of the formKsfe, since thecase
+o
+expression can take a step. But thencaseeofp->ecan take a
+(Case) step and we are done.
+'
+In case (b.2), by consistency we find thateis of the formKsfeI
+g. Then, we can take a (KPush) step. This leaves the erasure of the
+term unchanged and we are done.
+COROLLARY2 (Erasure soundness).For an well-typed System
+*o*o
+Fterme, we havee-->eiffe-->e.
+C11212
+Fortunately there are many type-preserving simplifications that can
+2011/1/19
+be performed on coercions, such as:
+syms=s
+left (Tree Int) =Tree
+eIs=e
+and so on. The compiler writer is free (but not obliged) to use such
+identities to keep the size of coercions under control.
+In this context, it is interesting to note the connection of type-
+equality coercions to the notion of proof objects in machine-
+supported theorem proving. Coercion terms are essentially proof
+objects of equational logic and the above simplification rules, as
+well the manipulations performed by rules, such as (PushK), cor-
+respond to proof transformations.
+3.10 Summary and observations
+Fis an intensional type theory, like F: that is,every term encodes
+C
+its own typing derivation. This is bad for humans (because the
+terms are bigger) but good for a compiler (because type checking
+is simple, syntax-directed, and decidable). An obvious question is
+this: could we maintain simple, syntax-directed, decidable type-
+checking forFwith less clutter? In particular, a coercion is an
+C
+explicit proof of a type equality; could we omit the coercions,
+retaining only their kinds, and reconstructing the proofs on the fly?
+No, we could not. Previous work showed that such proofs can in-
+setting is much more general because of our type functions, which
+in turn are necessary to support the source-language extensions we
+seek. Reconstructing an equality proof amounts to unification mod-
+ulo an equational theory (E-unification), which is undecidable even
+dropping the explicit proofs encoded by coercions would render
+type checking undecidable (see Appendix B for a formal proof).
+Why do we express coercions astypes, rather than asterms? The
+latter is more conventional; for example, GADTs can be used to
+data Eq a b where - EQ :: Eq a a "
+Fturns this idea on its head, instead using equality evidence to
+C
+encode GADTs. This is good for several reasons. First,Fis more
+C
+foundational than System F plus GADTs. Second,Fexpresses
+C
+equality evidence intypes, which permit erasure; GADTs encode
+equality evidence asvalues, and these values cannot be erased.
+Why not? Because in the presence of recursion, the mere existence
+of an expression of typeEq a bis not enough to guarantee thatais
+the same asb, becausebothas any type. Instead, one mustevaluate
+evidence before using it, to ensure that it converges, or else provide
+a meta-level proof that asserts that the evidence always converges.
+In contrast, our language of types deliberately lacks recursion, and
+hence coercions can be trusted simply by virtue of being well-12
+kinded.
+4. Translating GADTs
+WithFin hand, we now sketch the translation of a source lan-
+C
+guage supporting GADTs intoF. As highlighted inS2.1, the key
+C
+idea is to turn type equalities into coercion types. This approach
+strongly resembles the dictionary-passing translation known from
+type equalities into values, rather, we turn them into types.''
+We do not have space to present a full source language supporting
+GADTs, but instead sketch its main features; other papers give full
+following syntax of types:
+Polytypesp->h| foralla.p
+Constrained typesh->t|t~t=>h
+Monotypest->a|t->t|Tt
+11
+We deliberately re-useF's syntaxt~tto describe GADT
+C12
+type equalities. These equality constraints are used in the source-
+language type of data constructors. For example, theSucccon-
+structor fromS2.1 would have type
+Succ:foralla.(a~Int)=>Int->Expa
+Notice that this alreadyisanFtype.
+C
+To keep the presentation simple, we use a non-syntax-directed
+translation scheme based on the judgement
+'
+C; Gamma|-e:p e
+GADT
+We read it as "assuming constraintCand type environmentGamma,
+the source-language expressionehas typep, and translates to the
+'
+Fexpressione". The translation scheme can be made syntax-
+C
+Cconsists
+of a set of named type equalities:
+C->e|C, c:t~t
+12
+The most interesting translation rules are shown in Figure 5, where
+we assume for simplicity that all quantified GADT variables are
+of kind*. The Rules (Var), (forall-Intro), and (forall-Elim), dealing
+with variables and the introduction and elimination of polymor-
+phic types, are standard for translating Hindley/Milner to System
+types, Rules (C-Intro) and (C-Elim), relate to the standard type-
+abstraction and application, equality constraints induce type ab-
+straction and application.
+The translation of pattern clauses in Rule (Case) is as expected. We
+replace each GADT constructor by an appropriateFconstructor
+C
+which additionally carries coercion types representing the GADT
+type equalities. We assume that source patterns are already flat.
+Rule (Eq) applies the cast construct to coerce types. For this, we
+need a coerciongwitnessing the equality of the two types, and we
+simply re-use theFjudgementGamma|-g:t~tfrom Figure 2. In
+CCO12
+this context,gis an "output" of the judgement, a coercion whose
+syntactic structure describes the proof oft~t. In other words,
+12
+C|-g:t~trepresents the GADT condition that the equality
+CO12
+context "Cimpliest~t".
+12
+Finding agis decidable, using an algorithm inspired by the uni-
+"Cimpliest~t" holds ifth(t) =th(t)wherethis the most
+1212
+general unifier ofC. W.l.o.g., we neglect the case thatChas no
+unifier, i.e.Cis unsatisfiable. Program parts which make use of
+unsatisfiable constraints effectively represent dead-code.
+Roughly, the type coercion construction procedure proceeds as
+follows. Given the assumption setCand our goalt~twe perform
+the following calculations:
+'''
+Step 1: We normalise the constraintsC=c:t~tto the
+solvedformg:a~uwherea< aandfv(a)capfv( u) =emptyset
+ii+1
+by decomposing with Rule (Right) (we neglect higher-kinded
+types for simplicity) and applying Rule (Sym) and (Trans). We
+assume some suitable ordering among variables with<and
+disallow recursive types.
+''
+Step 2: Normalisec:t~twherecis fresh to the solved form
+12
+'''
+g:a~uwherea< a.
+jj+1
+Step 3: Match the resulting equations from Step 2 against equa-
+tions from Step 1.
+Step 4: We obtaingby reversing the normalisation steps in Step 2.
+Failure in any of the steps implies thatC|-g:t~tdoes
+CO12
+not hold for anyg. A constraint-based formulation of the above
+2011/1/19
+C; Gamma|-
+GADT
+(x:p)inGamma
+(Var)(Eq)
+C; Gamma|-x:p x
+GADT
+'
+C; Gamma|-e:p ea/infv(C,Gamma)
+GADT
+(forall-Intro)(C-Intro)
+'
+C; Gamma|-e:foralla.p Lambdaa:*. e
+GADT
+'
+C; Gamma|-e:foralla.p e
+GADT
+(forall-Elim)(C-Elim)
+'
+C; Gamma|-et /ap et
+GADT
+C; Gamma|-p->e:p->p p->e
+GADT
+'''
+K::foralla,b.t~t=>t->Taacapb=emptysetfv(t ,t,t) =fv(a,b)thu/a
+'''
+C,c:th(t)~th(t); Gamma,x:th(t)|-e:t ecfresh
+(Alt)
+''
+C; Gamma|-Kx->e:Tu->t K(b:*) (c:th(t)~th(t)) (x:th(t))->e
+GADT
+Figure 5:Type-Directed GADT toFTranslation (interesting cases)
+To illustrate the algorithm, let's considerC={ca~b, c:
+12
+b=c}andca~c, witha < b < c.
+3
+Step 1: NormalisingCyields{rightc:a~b, c:b=c}in an
+12
+intermediate step. We apply rule (Trans) to obtain the solved formspeaking, the Rules (C-Intro) and (C-Elim) are used in a more gen-
+{(rightc)oc:a~c, c:b=c}
+122
+Step 2: Normalisingca~cyields(rightc) :a~c.
+33
+Step 3: We can matchrightc:a~cagainst(rightcoc) :a~c.
+312
+Step 4: Reversing the normalisation steps in Step 2 yieldsc=
+3
+tcoc, as|-~.
+12CO
+The following result can be straightforwardly proven by induction
+over the derivation.
+'
+LEMMA1 (Type Preservation).LetC;emptyset |-e:t e.
+GADT
+'
+Then,C|-e:t.
+e
+InS3.5, we saw that only consistentFprograms are sound. It
+C
+is not hard to show that this the case for GADTFprograms, as
+C
+GADT programs only make use of syntactic (a.k.a. Herbrand) type
+equality, and so, require no type functions at all.
+THEOREM4 (GADT Consistency).Ifdom(Gamma)contains no type
+variables or coercion constants, andGamma|-g:s~s, then
+CO12
+s=s(i.e. the two are syntactically identical).
+12
+The proof is by induction on the structure ofg. Consistency is an
+immediate corollary of Theorem 4. Hence, all GADTFprograms
+C
+are sound. From the Erasure Soundness Corollary 2, we can imme-
+diately conclude that the semantics of GADT programs remains
+o
+unchanged (whereeiseafter type erasure).
+''*
+LEMMA2.Letemptyset;emptyset |-e:t e. Then,eaeviff
+GADT
+o*
+eaevwherevis some base value, e.g. integer constants.
+5. Translating Associated Types
+InS2.2, we claimed thatFpermits a more direct and more general
+C
+type-preserving translation of associated types than the translation
+sociated types toFis almost embarrassingly simple, especially
+C
+given the translation of GADTs toFfromS4. In the following,
+C
+we outline the additions required to the standard translation of type
+5.1 Translating expressions
+To translate expressions, we need to add three rules to the standardInterestingly, we need this rule also for the translation as soon as
+12
+'
+e:p e
+''
+C; Gamma|-e:t eC|-g:t~t
+GADTCO
+''
+C; Gamma|-e:t eIg
+GADT
+'
+C, c:t~t; Gamma|-e:h e
+12GADT
+'
+C; Gamma|-e:t~t=>h Lambda(c:t~t). e
+GADT1212
+'
+C; Gamma|-e:t~t=>h eC|-g:t~t
+GADT12CO12
+'
+C; Gamma|-e:h eg
+GADT
+''
+'''
+''
+GADT
+'''
+C
+Figure 5 of the GADT translation. Rule (Eq) permits casting ex-
+pression with types including associated types to equal types where
+the associated types have been replaced by their definition. Strictly
+eral setting during associated type translation than during GADT
+translation. Firstly, the setCcontains not only equalities, but both
+equality and class constraints. Secondly, in the GADT translation
+only GADT data constructors carry equality constraints, whereas
+in the associated type translation, any function can carry equality
+constraints.
+5.2 Translating class predicates
+In the standard translation, predicates are translated to dictionaries
+by a judgementCflDt n. In the presence of associated
+D
+types, we have to handle the case where the type argument to a
+predicate contains an associated type. For example, given the class
+class Collects c where
+type Elem c -- associated type synonym
+empty :: c
+insert :: Elem c -? c -? c
+we might want to define
+sumColl :: (Collects c, Num (Elem c))
+=? c -? Elem c
+sumColl c = sum (toList c)
+which sums the elements of a collection, provided these elements
+are members of theNumclass; i.e., provided we haveNum (Elem
+c). Here we have an associated type as a parameter to a class
+constraint. Wherever the functionsumCollis used, we will have
+to check the constraintNum (Elem c), which will require a cast
+of the resulting dictionary ifcis instantiated. We achieve this by
+adding the following rule:
+CflD t w C|-g:D t=D t
+D1TY12
+(Subst)
+CflD t wIg
+D2
+It permits to replace type class arguments by equal types, where
+the coerciongwitnessing the equality is used to adapt the type of
+the dictionaryw, which in turn witnesses the type class instance.
+we admit qualified constructor signatures in GADT declarations.
+2011/1/19
+5.3 Translating declarations
+Strictly speaking, we also have to extend the translation rules for
+class and instance definitions, as these can now declare and define
+associated types. However, the extension is so small that we omit
+the formal rules for space reasons. In summary, each declaration
+of an associated type in a type class turns into the declaration of
+a type function inF, and each definition of an associated type
+C
+in an instance turns into an equalityaxiominF. We have seen
+C
+examples of this inS2.2.
+5.4 Observations
+In the translation of associated types, it becomes clear whyF
+C
+includes coercions over type constructors of higher kind. Consider
+the following class of monads with references:
+class Monad m =? RefMonad m where
+type Ref m :: * -? *
+newRef :: a -? m (Ref m a)
+readRef :: Ref m a -? m a
+writeRef :: Ref m a -? a -? m ()
+This class may be instantiated for theIOmonad and theSTmonad.
+The associated typeRefis of higher-kind, which implies that the
+coercions generated from its definitions will also be higher kinded.w
+The translation of associated types to plain System F imposes two
+S
+namely (1) that equality constraints for annparameter type class
+must have type variables as the firstnarguments to its associated
+types and (2) that class method signatures cannot constrain type
+class parameters. Both constraints can be lifted in the translation to
+F.
+C
+5.5 Guaranteeing consistency for associated types
+How do we know that the axioms generated by the source-program
+associated types and their instance declarations are consistent? The
+answer is simple. The source-language type system for associated
+types only makes sense if the instance declarations obey certain
+easy to guarantee that the axioms derived from the source program
+are consistent. In this section we briefly sketch why this is the case.
+The axiom generated by an instance declaration for an associated
+1
+type has the formC: (foralla:*.S s)~(foralla:*.s). where (a)sdoes
+121
+not refer to any type function, (b)fv(s) = a, and (c)fv(s)subseteqa.
+12
+We call an axiom of this form arewrite axiom, and a set of such
+axioms defines a rewrite system among types.
+Now, the source language rules ensure that this rewrite system is
+confluentandterminating, using the standard meaning of these
+sdownsto mean thatscan be rewritten to
+121
+sby zero or more steps, wheresis a normal form. Then we
+22
+prove that each type has a canonical normal form:
+THEOREM5 (Canonical Normal Forms).LetGammabe well-formed,
+'
+terminating and confluent. Then,Gamma|-g:s~siffsdownsand
+CO121
+1
+'''
+sdownssuch thats=s.
+2
+212
+Using this result we can decide type equality via a canonical normal
+form test, and thereby prove consistency:
+COROLLARY3 (AT Consistency).IfGammacontains only rewrite ax-
+ioms that together form a terminating and confluent rewrite system,
+thenGammais consistent.
+For example, assumeGamma|-g:Ts~Ts. Then, we find
+CO1122
+''''
+TsdownsandTsdownssuch thats=s. None of the rewrite
+1122
+1212
+1
+For simplicity, we here assume unary associated types that do not range
+over higher-kinded types.
+13
+''
+''
+rules affectTorT. Hence,smust have the shapeTsands
+121
+12
+1
+''
+the shapeTs. Immediately, we find thatT=Tand we are
+212
+2
+done.
+We can state similar results for type functions resulting from func-
+tional dependencies. Again, the canonical normal form property is
+the key to obtain consistency. While sufficient the canonical nor-
+mal form property is not a necessary condition. Consider the non-
+confluent but consistent environmentGamma ={c:SI nt~S, c:
+1122
+(foralla:* .Sa~(foralla:* .Sa}. We find thatGamma|-g:SI nt~
+11CO1
+S. But there existsSI ntdownSI ntandSdownSwhere
+21122
+SI nt/=S. Similar observations can be made for ill-formed,
+12
+consistent environments.
+6. Related Work
+System F with GADTs.
+typed calculuslamtogether with a translation from an implicitly
+2,Gm
+typed source language supporting GADTs. Their calculus has the
+typing rules for GADTs built in, just like Pottier & Regis-Gianas's'
+Fis the
+C
+result of a search for an alternative.
+Encoding GADTs in plain System F and F.There are several
+of GADTs in plain System F with (boxed) existential types. We
+believe that these primitive encoding schemes are not practical
+and often non-trivial to achieve. We discuss this in more detail in
+Appendix A.
+An encoding of a restricted subset of GADT programs in plain
+System F
+w
+limited patterns of recursion.
+Intentional type analysis and beyond.Harper and Morrisett's vi-
+ML
+culuslam, which was already sufficiently expressive for a large
+i
+range of GADT programs, although GADTs only became popular
+alised the approach significantly by enabling the analysis of source
+language types in the intermediate language and by providing a
+type erasure semantics, among other things. LX's type analysis is
+sufficiently powerful to expressclosedtype functions which must
+be primitive recursive. This is related, but different toF(X), where
+C
+type functions areopenand need not be terminating (see also Ap-
+pendix B).
+ML
+lamin a different direction than
+i
+LX, such that they arrived at a fully reflexive calculus; i.e., one
+that can analyse the type of any runtime value of the calculus. In
+particular, they can analyse types of higher kind, an ability that was
+also crucial in the design ofF(X). However, Trifonov et al.'s work
+C
+ML
+corresponds tolamand LX in that it applies toclosed, primitive-
+i
+recursive type functions.
+Calculi with explicit proofs.
+the calculus LH to represent programs in the style of Dependent
+ML. LH's type terms include lambdas, and its definitional equality
+therefore includes a beta rule, whereasF's definitional equality is
+C
+simpler, being purely syntactic. LH's propositional equality enables
+explicit proofs of type equality, much as inF(X). These explicit
+C
+proofs are the basis for the definition ofretyping functionsthat play
+a similar role to our cast expressions. In contrast, FC's propositional
+equality lacks some of LH's equalities, namely those including cer-
+tain forms of inductive proofs as well as type equalities whose re-
+typings have a computational effect. The price for LH's added ex-
+pressiveness is that retypings -- even if they amount to the iden-
+tity on values -- can incur non-trivial runtime costs and (together
+with LH types) cannot be erased without meta-level proofs that as-
+2011/1/19
+sert that particular forms of retypings are guaranteed to be identityin its full glory in GHC, a widely used, state-of-the-art, highly op-
+functions.
+Another significant difference is that in LH, as in LX, type func-
+tions areclosedand must beprimitive recursive; whereas inF(X),
+C
+they are open and need not be terminating. These properties are
+very important in our intended applications, as we argued in Sec-
+tion 3.4. Finally,F(X) admits optimising transformations that are
+C
+not valid in LH, as we discussed in Section 3.8.
+tire proof system into typed intermediate and assembly languages,
+such that program transformations preserve proofs. Their type lan-
+guage TL resembles the calculus of inductive constructions (CIC)
+and, among other things, can express retypings witnessed by ex-
+much more expressive and complex thanF(X) and, like LH, does
+C
+not support open type functions.
+Coercion-based subtyping.
+inserting coercions during type inference for an ML-like languages.
+However, Mitchell's coercion are not identities, but perform coer-
+cions between different numeric types and so forth. A more recent
+ationally identities to model type refinement for type inference in
+systems that go beyond Hindley/Milner.
+Much closer toF
+C
+add a notion of coercions to System F to translate languages featur-
+ing inheritance polymorphism. In contrast toF, their coercions
+C
+model a subsumption relationship, and hence are not symmetric.
+Moreover, their coercions are values, not types. Nevertheless, they
+introduce coercion combinators, as we do, but they don't consider
+decomposition, which is crucial to translating GADTs. The focus
+of their paper is the translation of an extended version of Cardelli
+& Wegner's Fun, and in particular, the coherence properties of that
+translation.
+subtyping. It shares the distinction between plain values and co-
+ercion values with our system, but does not require quantification
+over coercions, nor does it consider decomposition.
+Intuitionistic type theory, dependent types, and theorem provers.
+to dependently typed calculi as they are used in theorem provers;
+ercion terms are a simple instance of the proof terms of logical
+for extending the presented system in the direction of more power-
+Translucency and singleton kinds.In the work on ML-style
+module systems, type equalities are represented as singleton kinds,
+a wide range of type class programs including associated types. K. Crary. Typed compilation of inclusive subtyping. InProc. of
+Hence, there is clearly an overlap withF(X) equality axioms,
+C
+which we use to represent associated types. Nevertheless, the cur-
+rent formulation of modular type classes covers only a subset of the
+type class programs supported by Haskell systems, such as GHC.
+We leave a detailed comparison of the two approaches to future
+work.
+7. Conclusions and further work
+We showed that explicit evidence for type equalities is a convenient
+mechanism for the type-preserving translation of GADTs, associa-
+tive types, and functional dependencies. We implementedF(X)
+C
+14
+timising Haskell compiler. At the same time, we re-implemented
+GHC's support fornewtypes and GADTs to work as outlined in
+S2 and added support for associated (data) types. Consequently, this
+implementation instantiates the decision procedure for consistency,
+"X", to a combination of that described in Section 4 and 5. TheF-
+C
+version of GHC is nowthemain development version of GHC and
+supports our claim thatF(X) is a practical choice for a production
+C
+system.
+An interesting avenue for future work is to find good source lan-
+guage features to expose more of the power ofFto programmers.
+C
+Acknowledgements
+We thank James Cheney, Karl Crary, Roman Leshchinskiy, Dan
+Licata, Conor McBride, Benjamin Pierce, Franc,ois Pottier, Robert
+Harper, and referees for ICFP'06, POPL'07 and TLDI'07 for their
+helpful comments on previous versions of this paper. We are grate-
+ful to Stephanie Weirich for interesting discussions during the gen-
+esis ofF, to Lennart Augustsson for a discussion on encoding
+C
+associated types in System F, and to Andreas Abel for pointing out
+References
+ M. Abadi, L. Cardelli, and P.-L. Curien. Formal parametric
+polymorphism. InProc. of POPL '93, pages 157-170, New York,
+NY, USA, 1993. ACM Press.
+ F. Baader and T. Nipkow.Term rewriting and all that. Cambridge
+University Press, 1999.
+ A. I. Baars and S. D. Swierstra. Typing dynamic typing. InProc. of
+ICF'02, pages 157-166. ACM Press, 2002.
+ V. Breazu-Tannen, T. Coquand, C. Gunter, and A. Scedrov. Inheri-
+tance as implicit coercion.Information and Computation, 93(1):172-
+221, July 1991.
+ M. M. T. Chakravarty, G. Keller, and S. Peyton Jones. Associated
+type synonyms. InProc. of ICFP '05, pages 241-253, New York,
+NY, USA, 2005. ACM Press.
+ M. M. T. Chakravarty, G. Keller, S. Peyton Jones, and S. Marlow.
+Associated types with class. InProc. of POPL '05, pages 1-13. ACM
+Press, 2005.
+ C. Chen, D. Zhu, and H. Xi. Implementing cut elimination: A case
+study of simulating dependent types in Haskell. InProc. of PADL'04,
+volume 3057 ofLNCS, pages 239-254. Springer-Verlag, 2004.
+ G. Chen. Coercive subtyping for the calculus of constructions. In
+Proc. of POPL'03, pages 150-159, New York, NY, USA, 2003. ACM
+Press.
+ J. Cheney and R. Hinze. A lightweight implementation of generics
+and dynamics. InProc. of Haskell Workshop'02, pages 90-104. ACM
+Press, 2002.
+ J. Cheney and R. Hinze. First-class phantom types. TR 1901, Cornell
+University, 2003.
+ICFP'00, pages 68-81, New York, NY, USA, 2000. ACM Press.
+ K. Crary and S. Weirich. Flexible type analysis. InProc. of ICFP'99,
+pages 233-248. ACM Press, 1999.
+ N. Dershowitz and J.-P. Jouannaud.Handbook of Theoretical
+Computer Science (Volume B: Formal Models and Semantics),
+chapter 6: Rewrite Systems. Elsevier Science Publishers, 1990.
+ D. Dreyer, K. Crary, and R. Harper. A type system for higher-order
+modules. InProc. of POPL'03, pages 236-249, New York, NY, USA,
+2003. ACM Press.
+ D. Dreyer, R. Harper, and M. M. T. Chakravarty. Modular type
+classes. InProc. of POPL '07. ACM Press, 2007. To appear.
+2011/1/19
+ G. J. Duck, S. Peyton Jones, P. J. Stuckey, and M. Sulzmann. Sound M. Sulzmann, G. J. Duck, S. Peyton Jones, and P. J. Stuckey.
+and decidable type inference for functional dependencies. InProc.
+of (ESOP'04), number 2986 in LNCS, pages 49-63. Springer-Verlag,Journal of Functional Programming, 2006. To appear.
+2004.
+ C. V. Hall, K. Hammond, S. L. Peyton Jones, and P. L. Wadler. TypeGADTs via Herbrand constraint abduction.http://www.comp.
+classes in Haskell.ACM Trans. Program. Lang. Syst., 18(2):109-138,nus.edu.sg/sulzmann, July 2006.
+1996.
+ R. Harper, F. Honsell, and G. Plotkin. A Framework for Definingrecursive data types to existential types. Technical Report TR22/04,
+Logics. InProc. of LICS'87, pages 194-204. IEEE Computer SocietyThe National University of Singapore, 2004.
+Press, 1987.
+ R. Harper and J. C. Mitchell. On the type structure of Standardalgebraic data types. InProc. of FLOPS'06, volume 3945 ofLNCS,
+ML.ACM Transactions on Programming Languages and Systems,
+15(2):211-252, 1993.
+ R. Harper and G. Morrisett. Compiling polymorphism usinganalysis. InProc. of ICFP'00, pages 82-93, New York, NY, USA,
+intensional type analysis. InProc. of POPL'95, pages 130-141.2000. ACM Press.
+ACM Press, 1995.
+ M. P. Jones. Type classes with functional dependencies. Inpages 58-67. ACM Press, 2000.
+Proceedings of the 9th European Symposium on Programming (ESOP
+2000), number 1782 in Lecture Notes in Computer Science. Springer-
+Verlag, 2000.
+ R. Kiessling and Z. Luo. Coercions in Hindley-Milner systems.
+InTypes for Proofs and Programs: Third International Workshop,
+TYPES 2003, number 3085 in LNCS, pages 259-275, 2004.
+ J. Lassez, M. Maher, and K. Marriott. Unification revisited. In
+Foundations of Deductive Databases and Logic Programming.
+Morgan Kauffman, 1987.
+ K. Laufer and M. Odersky. Polymorphic type inference and abstract"
+data types.ACM Transactions on Programming Languages and
+Systems, 16(5):1411-1430, 1994.
+ D. R. Licata and R. Harper. A formulation of Dependent ML with
+explicit equality proofs. Technical Report CMU-CS-05-178, Carnegie
+Mellon University, Dec. 2005.
+ P. Martin-Lof."Intuitionistic Type Theory. Bibliopolis.Napoli, 1984.
+ C. McBride and J. McKinna. The view from the left.Journal of
+Functional Programming, 14(1):69-111, 2004.
+ J. Mitchell. Polymorphic type inference and containment. InLogical"Leibniz" equality
+Foundations of Functional Programming, pages 153-193. Addison-
+Wesley, 1990.
+ J. C. Mitchell. Coercion and type inference. InProc of POPL'84,
+pages 175-185. ACM Press, 1984.
+ E. Pasalic.The Role of Type Equality in Meta-Programming. PhD
+thesis, Oregon Health & Science University, OGI School of Science
+& Engineering, September 2004.
+ S. Peyton Jones, D. Vytiniotis, S. Weirich, and G. Washburn. Simple
+unification-based type inference for GADTs. InProc. of ICFP'06,
+pages 50-61. ACM Press, 2006.
+ B. Pierce.Types and programming languages. MIT Press, 2002.
+ B. Pierce, S. Dietzen, and S. Michaylov. Programming in higher-order
+typed lambda-calculi. Technical report, Carnegie Mellon University,
+1989.
+ E. L. Post. Recursive unsolvability of a problem of Thue.Journal of
+Symbolic Logic, 12:1--1, 1947.
+ F. Pottier and Y. Regis-Gianas. Stratified type inference for'
+generalized algebraic data types. InProceedings of the 33rd
+ACM SIGPLAN-SIGACT Symposium on Principles of Programming
+Languages, pages 232-244. ACM Press, 2006.
+ Z. Shao, V. Trifonov, B. Saha, and N. Papaspyrou. A type system
+for certified binaries.ACM Trans. Program. Lang. Syst., 27(1):1-45,
+2005.
+ T. Sheard. Languages of the future. InOOPSLA '04: Companion
+to the 19th Annual ACM SIGPLAN Conference on Object-Oriented
+Programming Systems, Languages, and Applications, pages 116-119,
+New York, NY, USA, 2004. ACM Press.
+15
+Understanding functional dependencies via constraint handling rules.
+ M. Sulzmann, T. Schrijvers, and P. J. Stuckey. Type inference for
+~
+ M. Sulzmann and M. Wang. A systematic translation of guarded
+ M. Sulzmann, J. Wazny, and P. J. Stuckey. A framework for extended
+pages 47-64. Springer-Verlag, 2006.
+ V. Trifonov, B. Saha, and Z. Shao. Fully reflexive intensional type
+ S. Weirich. Type-safe cast (functional pearl). InProc. of ICFP'00,
+ H. Xi, C. Chen, and G. Chen. Guarded recursive datatype
+constructors. InProc. of POPL '03, pages 224-235, New York,
+NY, USA, 2003. ACM Press.
+A. Primitive Translation of GADTs
+We attempt a primitive translation (encoding) of GADTs to Sys-
+tem F with (boxed) existential types (for convenience we will use
+Haskell extended with rank-n types and existentials). We provide
+evidence that such an encoding is sometimes hard to achieve.
+The gist of the primitive encoding idea is to model type equality
+a~bvia safe coercion functions. Effectively, a pair of embed-
+ding/projection functions. Each type castgIeis then turned into
+the function applicationg e. To ensure correctness of this encod-
+ing scheme, we need to guarantee that at run-time each coerciong
+evaluates to the identity.
+There are two approaches known in the literature to encode such
+newtype EQ a b =
+Proof - apply :: forall f . f a -? f b "
+refl :: EQ a a
+refl = Proof id
+newtype Flip f a b = Flip - unFlip :: f b a "
+symm :: EQ a b -? EQ b a
+symm p = unFlip (apply p (Flip refl))
+trans :: EQ a b -? EQ b c -? EQ a c
+trans p q = Proof (apply q . apply p)
+list p = Proof (unList . apply p . List)
+We also provide a few sample type coercion functions. As pointed
+to define "decomposition" functions such as
+The alternative method is to represent type equality as follows.
+type EQ a b = (a-?b,b-?a)
+refl :: EQ a a
+refl = (id,id)
+sym :: EQ a b -? EQ b a
+sym (f,g) = (g,f)
+trans :: EQ a b -? EQ b c -? EQ a c
+trans (f1,g1) (f2,g2) = (f2.f1,g1.g2)
+list (f,g) = (map f, map g)
+2011/1/19
+The advantage is that decomposition is possible for some types butWe inject theavalue into theEitherdata type, apply the incoming
+not for all as will see at the end of this section. Though, many (ifcoercing function and then extract thecvalue. It is easy to verify
+not all) realistic GADT programs can be translated based on thisthat the invariant is satisfied.
+representation is that it may incur a severe run-time penalty. Con-
+sider the definition oflistwhere we have to apply the coercion
+functions to each element.
+is a finite map from keys to values whose structure depends on the
+type of keys, here encoded as products and sums in GADT variants:
+data Either a b where
+Left :: a -? Either a b
+Right :: b -? Either a b
+data Trie k v where
+TUnit ::
+Maybe v -? Trie () v
+TSum :: forall k1 k2.
+Trie k1 v -? Trie k2 v -? Trie (Either k1 k2) v
+TProd :: forall k1 k2.
+Trie k1 (Trie k2 v) -? Trie (k1, k2) v
+A trie for a unit type is maybe one value, a trie for a sum is a
+product of tries, and a trie for a product is a composition of tries.
+An important operation on tries is the merging of two maps with
+the same domain and co-domain.
+merge :: (v -? v -? v)
+-? Trie k v -? Trie k v -? Trie k v
+merge c (TUnit Nothing ) (TUnit Nothing ) =
+TUnit Nothing
+merge c (TUnit Nothing ) (TUnit (Just v')) =
+TUnit (Just v')
+merge c (TUnit (Just v)) (TUnit Nothing ) =
+TUnit (Just v)
+merge c (TUnit (Just v)) (TUnit (Just v')) =
+TUnit (Just (c v v'))
+merge c (TSum ta tb) (TSum ta' tb') =
+TSum (merge c ta ta') (merge c tb tb')
+merge c (TProd ta) (TProd ta') =
+TProd (merge (merge c) ta ta')
+The second two last equations are interesting. The patterns of
+the first and second argument constrainktoEither k1 k2and
+Either k1' k2', respectively. Hence, we have
+''
+Either k1 k2=k=Either k1k2
+''
+from which we can followk1=k1andk2=k2. The point is
+that to translate the above toF, we need to construct a coercion
+C
+that witness these equalities, we need decomposition.
+To encode the trie example, we need (among others) a function
+decomp :: EQ (Either a b) (Either c d) -? EQ a b
+But it seems impossible to define such a function if we use Leibniz
+equality.
+Let's consider the "other" type equality representation. To ensure
+correctness of the encoding scheme, we need to maintain the in-
+variant that for any type coercion functioncoerce :: EQ a b
+-? EQ c dwe have thatcoerceapplied to a pair of identity
+functions yields another pair of identity functions. We are more
+lucky here, a functiondecomp:: EQ (Either a b) (Either c
+d) -? EQ a cwith the above property is actually definable.
+For simplicity, we only give parts of the definition ofdecomp.
+decomp1 :: (Either a b -? Either c d) -? (a-?c)
+decomp1 f = " a -? case (f (Left a)) of
+Left c -? c
+16
+There are many other examples which can be translated using the
+that all practical examples can be encoded. Though, not every
+decomposition function is definable. Here is the (contrived) critical
+example.
+data Foo a where
+K :: Foo a
+data Erk a b c where
+I :: c -? Erk a a c
+f :: Erk (Foo a) (Foo Int) a -? a
+f (I x) = x + 1
+First, we convince ourselves that the above program is well-typed.
+The patternI xin combination with the type annotation implies
+thatFoo a=Foo Int. By decomposition, we conclude thata=
+Int. Thus, the program textx + 1can be given typeInt. Hence,
+the above is well-typed. To translate the above, we need to define
+a function of typeEQ (Foo a) (Foo Int) -? EQ a Int. We
+claim it is impossible to define such a function with satisfies the
+invariant. It suffices to show that a function
+decompFoo :: (Foo a-?Foo Int)-?(a-?Int)
+with the property thatdecompFoo ( x-?x)evaluates tox-?xis
+not definable.
+The problem here is that a value of typeacannot be injected into a
+value of typeFoo a. So, clearly the incoming function of typeFoo
+a-?Foo Intis useless. Effectively, we could omit the function
+parameter altogether. Parametricity tells us that any function of type
+a-?Intmust be a constant function. Hence,decompFooapplied to
+any function of typeFoo a-?Foo Intyields a constant function.
+Hence, an encoding of the above critical example is impossible.
+In fact, the "decomposition" problem is hardly surprising given that
+class Foo a where foo :: a-?Int
+foo _ = 2
+bar = foo
+we are unable to translate functionbar. The program text demands
+a dictionary forFoo abut the annotation only supplies a dictionary
+for. This is the wrong way around. The instance declara-
+tion tells us how to constructgivenFoo abut the other
+direction does not hold in general.
+B. Complexity of Type Checking
+Previous calculi for GADTs, such aslam
+2,Gm
+did not pass evidence for coercions explicitly, but deduced the
+equality between types at coercion points implicitly during type
+checking. We call such calculicalculi with implicit evidence.This
+raises the question whether it is necessary to construct and pass
+evidence explicitly inF, or whether we could not have made it
+C
+into an implicit calculus. To answer this question, we define an
+implicit variant ofF, which we callFand show that type
+CC
+i
+checking forFis undecidable. More precisely, we show that
+C
+i
+reconstructing explicit coercion terms, which amount to proofs
+justifying coercions, is undecidable forF.
+C
+i
+The difference betweenFandFis simply the following: wher-
+CC
+i
+everFhas a coercion typegof kinds~s,Fonly gives the
+C12C
+i
+equality kind in curly braces; i.e.,{s~s}. Hence,
+12
+2011/1/19
+Gamma|-e:sGamma|-g:s~t
+eCO
+(Cast)
+i
+Gamma|-(eI{s~t}) (eIg) :t
+e
+Gamma|-e:foralla:k.sGamma|-k:TYGamma|-t:k
+ekTY
+(AppT)
+TY
+Gamma|-(e t) (e t) :st /a
+e
+Gamma|-e:foralla:(t~u).s
+e
+(AppT)Gamma|-(t~u) :COGamma|-f:t~u
+COkCO
+Gamma|-(e{t~u}) (e f) :sf/a
+e
+Figure 6:Modified typing rules for SystemF
+C
+i
+*
+castseIgturn intoeI{s~s}and
+12
+*
+type applicationsegturn intoe{s~s}.
+12
+It's obviously straight forward to turn anFprogram into anF
+CC
+i
+program. The converse, recovering anFprogram fromF, re-
+CC
+i
+quires a type-directed translation, that we obtain from the typing
+rules of Figure 2 by turning the expression typing rules into trans-
+lation rules. We replace the Rules (AppT) and (Cast) by those in
+Figure 6; for all other rules, the translation is the identity. The mod-
+ified Rules (Cast) and (AppT) use the judgementGamma|-g:s~t
+iCOCO
+to re-computeg. As we will see next, computinggfrom a kinds~t
+is, in the general case, undecidable.
+THEOREM6 (Undecidability of coercion reconstruction inF).
+C
+i
+Given an environmentGammaand anFexpressione, computing the
+C
+i
+'
+correspondingFexpressioneand its typesas determined by
+C
+'
+Gamma|-e e:sis not decidable.
+e
+PROOF. We show that the reconstruction of coercion types for
+Fexpressions includes the word problem for A-ground theories,
+C
+i
+defined over a signatureFincluding the binary symbolPlusand a
+set ofF-equationsEthat are all ground (i.e, variable-free), except
+for the associativity ofPlus. More concretely, we have
+kk
+1n
+F={S:*->*, . . . ,S:*->*,
+1n
+Plus:*->*->*}
+k
+where*->*indicates thatSisk-ary. Furthermore, we have
+i
+E={s=t, . . . , s=t,
+11mm
+Plus(Plus a b)c) =Plus a(Plus b c))}
+where thesandtare terms overF.
+ii
+We representFandEinF's type language as follows:
+C
+k
+1
+typeS:*->*
+1
+.
+.
+.
+k
+n
+typeS:*->*
+n
+typePlus:*->*->*
+dataTerm:*->*where
+k
+1
+kk
+11
+Sv:foralla.Nat a->Nat(Sa)
+11
+.
+.
+.
+k
+1
+kk
+nn
+Sv:foralla.Nat a->Nat(Sa)
+nn
+Plusv:foralla b.Nat a->Nat b->Nat(Plus a b)
+axiomax:s=t
+111
+.
+.
+.
+axiomax:s=t
+mmm
+axiomassoc:
+(foralla b c.Plus(Plus a b)c)~(foralla b c.Plus a(Plus b c))
+The data typeTermenables us to construct any (ground)F-term
+by reflection from the structurally identicalFexpression using
+C
+17
+Term's constructors. For example, ifSandSare nullary, we
+12
+have thatPlusv SvSv:Term(Plus SS). Ifsis anF-term,
+1212
+we denote the structurally identicalFexpression withsand have
+C
+s:Terms.
+The word problem for the A-ground theoryEover the signatureF
+amounts to testing for two arbitraryF-termssandtwhethers=
+tunderE. We represent this as anFtype checking problem by
+C
+i
+typing the cast expressionsI{s~t}in the context of the above
+Fdeclarations corresponding toFandE. The undecidability
+C
+of the word problem implies the undecidability ofFtyping, or
+C
+i
+more precisely, that the judgementGamma|-g:s~tin the premise
+CO
+ofF's Rule (Cast) cannot be realised by an effective decision
+Ci
+i
+procedure whengis unknown.
+It remains the question whether there exists a restriction onF
+C
+i
+equality axioms that excludes encoding problems, such as the word
+problem for A-ground theories, but is still sufficient for translating
+GADTs, associated types, functional dependencies, and so forth.
+Given the range of FD programs supported by GHC and the anal-
+proach.
+2011/1/19
+Sorts and kinds
+k, i->*|k->kKinds
+12
+Types and Coercions
+d->a|T|Int|Float|(-?)|(+?)
+k
+n
+g->c|Cg
+n
+r, s, t, u->d|tt|St| foralla:k. t
+12n
+n
+g, d->g|t|gg|Sg| foralla:k. g
+12n
+|symg|gog|gs|leftg|rightg
+@
+12
+f->t|g
+Environments
+Gamma->e|Gamma, bind
+bind->x:s|K:s
+|a:k|T:k|S:k
+n
+|Ca:k:s~s|c:s~s
+1212
+Abbreviations
+f->f==(-?)ff
+1212
+f~f=>f==(+?)fff
+123123
+k
+Gamma==(-?):*->*->*,
+0
+(+?):k->k->*->*,
+k
+Int:*,Float:*
+Terms
+e->. . .|Lambdac:s~s.e
+12
+Declarations
+pgm->decl;e
+decl->dataT:k->*where
+K:foralla:k.forallb:i.(s~s)=>s->Ta
+12
+n
+|typeS:k->i
+n
+|axiomCa:k:s~s
+12
+Figure 7:Syntax of Simplified SystemF(X)
+C
+C. Simplifying static and operational semantics
+Returning to the paper in March 2009, we experimented with a less
+heavily-overloaded way of presentingF, which we give in this
+C
+appendix.
+The simplified syntax forFappears in Figure 7. The main differ-
+C
+ences compared to Figure 1 are:
+*
+Coercions and types share some common structure, but have
+separate syntactic definitions. This is slightly more intuitive
+than conflating the two syntactic categories because certain
+syntactic forms only make sense for coercions. On the other
+hand, typesarecoercions and hence the type syntax is a sub-
+grammar of the coercion syntax.
+*
+We no longer have two sorts of kinds. Instead we have two
+forms of quantification and instantiation (one for types and one
+for coercions).
+*
+We have syntax for functions that accept coercions,s~s=>
+12
+s, and for coercions between such types,g~g=>g. This
+3123
+is achieved through a kind indexed family of constructors+?,
+k
+each of kindk->k->*->*. We writef~f=>fas
+123
+a syntactic sugar for the application(+?)ffffor some
+k123
+appropriatek. This saves us from having to introduce separate
+cases for well-formed types of the forms~s=>s, saves
+123
+us from having to introduce corresponding coercion introduc-
+tion and coercion projection forms and saves us from having to
+introduce separate coercion optimization rules for coercions be-Finally, the rule for pushing coercions down case expression scru-
+tween such types. We already have all this functionality throughtinees (rule (KPush)) is modified by transitively composing three
+the ordinary type or coercion application and projectio rules.coercions and crucially relying on the lifting theorem.
+18
+*
+The syntactic forms:g~g,gIgandleftcg,rightcgof
+12
+Figure 1 are entirely removed in favor of the new and easier to
+understand and formalize constructs, discussed in the previous
+point.
+*
+Since syntactic formss~sare no longer kinds, we have
+12
+extended the syntax of termseand environmentsGammato include
+abstractions and bindings for coercions.
+*
+The types of constructors in declarations now explicitly mark
+the universally quantified variablesa, the existential type vari-
+ablesband the coercion argumentss~s, whereas previously
+12
+existential and coercion arguments were represented using a
+common form of binding.
+*
+We still have instantiation of coerciongtbut we also have
+@
+n
+saturated instantiations of axioms:Cg. In fact, the latter
+accept not simply types but coercions. This extension does not
+add expressiveness, but is required for coercion normalization
+in order to yield more "canonical" normal forms.
+C.1 Typing rules
+We present the simplified typing rules in Figure 8.
+The judgementGamma|-s:kchecks thatsis a well-formed type,
+TY
+whereas the judgementGamma|-g:s~schecks thatgis a well-
+CO12
+formed coercion between typessands.
+12
+The rules forGamma|-s:kare standard. The only interesting
+TY
+rule is (TyCoFun) which checks the well-formedness of a coercion
+function types~s=>s, by checking thatsandsare well-
+12312
+formed types of the same kind, and thatsis well-formed of kind
+3
+*.
+Most of the rules forGamma|-g:s~sare simplifications of
+CO12
+the originalFrules. The rules of Figure 1 (CompC), (LeftC),
+C
+(RightC), (~) and (CastC) are no longer present.
+Thanks to the common syntax of types and coercions but their care-
+ful separation via the|-and|-judgements, the lifting theorem
+TYCO
+can be stated as:
+THEOREM7 (Lifting for simplified system).IfGamma,(a:k)|-s:
+aTY
+kandGamma|-g:s~swhereGamma|-s:k, thenGamma|-
+CO12TY1,2aCO
+g/afs/af~s/af.
+12
+The main typing relation is given with the judgementGamma|-e:s
+e
+in Figure 9 which is mostly the same as in Figure 2, except that we
+treat coercion abstractions and applications explicitly. We use ". . . "
+for the rules in Figure 9 that remain unchanged.
+C.2 Operational semantics
+We now turn to the operational semantics, where we demonstrate
+that the modifications to the syntax and typing rules are adequate
+to ensure type soundnes via progress and preservation. The opera-
+tional semantics is given in Figure 10 and is very to the semantics of
+the originalF. There exist however several differences, compared
+C
+to the original semantics.
+Rule (TPush) is simpler to implement, as it does not require the
+introduction ofgin the scope of the quantified variableaas the
+original rule did.
+Rule (CPush), that pushes coercions down coercion functions, is
+different as well. Assuming that the type of the expression(Lambdac:s~
+1
+s. e)iss~s=>s, the coerciongcoerces this type to
+2123
+'''''
+s~s=>s. Moreoverdis a coercion ofs~s. Hence, we
+12312
+need to apply(Lambdac:s~s. e)to a suitable coercions~swhich
+1212
+is constructed using projectionsg,gandd. Finally, the result type
+12
+'
+sis coerced tosusing projectiong.
+33
+3
+2011/1/19
+Gamma|-s:k
+TY
+(TyVar)d:kinGamma(TyApp)
+Gamma|-d:k
+TY
+nn
+(S:k->i)inGamma Gamma|-s:k
+nTY
+(TySCon)
+n
+Gamma|-Ss:i
+TYn
+Gamma|-g:s~s
+CO
+Gamma|-t:kGamma|-g:s~tGamma|-g:s~sGamma|-g:s~s
+TYCO
+(CoRefl)(Sym)
+Gamma|-t:t~tGamma|-symg:t~sGamma|-gog:s~s
+COCO
+Ca:k:s~tinGamma Gamma|-g:s~sGamma|-s:k
+c:s~tinGamma
+(CoVar)(CoAx)
+Gamma|-c:s~t
+CO
+Gamma, a:k|-g:s~t a/infv(Gamma)
+CO
+(CoAll)(CoInst)
+Gamma|-foralla:k. g:foralla:k. s~foralla:k. t
+CO
+Gamma|-g:s~tGamma|-Ss:k
+CO
+(SComp)
+Gamma|-Sg:Ss~St
+CO
+Gamma|-g:s~t
+CO111
+(Comp)Gamma|-g:s~tGamma|-ss:k(Left)Gamma|-g:ss~tt(Right)Gamma|-g:ss~tt
+CO222TY12
+Gamma|-gg:ss~tt
+CO121212
+Figure 8:Typing rules for Simplified SystemF(X)
+Gamma|-e:s
+e
+(Var). . .(Case). . .(Let). . .(Cast). . .(Abs). . .(App). . .
+Gamma, a:k|-e:s a/infv(Gamma)Gamma|-e:foralla:k.sGamma|-t:k
+e
+(AbsT)
+Gamma|-Lambdaa:k. e:foralla:k.s
+e
+Gamma, c:s~s|-e:sGamma|-s:k c/infv(Gamma)Gamma|-e:s~s=>sGamma|-g:s~s
+12eTY1,2
+(AbsCo)
+Gamma|-Lambdac:s~s. e:s~s=>s
+e1212
+Gamma|-p->e:s->t
+p
+K:foralla:k.forallb:i.s~s=>s->TainGammathu/a,b:i,c:th(s)~th(s),x:th(s)|-e:t
+12
+(Alt)
+Gamma|-Kb:ic:th(s)~th(s)x:th(s)->e:Tu->t
+p1
+'
+Gamma|-decl: Gamma
+Gamma|-s:*
+TY
+(Data)
+Gamma|-(dataT:kwhereK:s) : (T:k,K:s)
+Gamma,a:k|-s:kGamma,a:k|-s:k
+(Type)(Coerce)
+Gamma|-(typeS:k) : (S:k)Gamma|-(axiomCa:k:s~s) : (C:k)
+Figure 9:Simplified expression typing rules for SystemF(X)
+19
+Gamma|-s:k->kGamma|-s:k
+TY112TY21
+Gamma|-ss:k
+TY122
+Gamma, a:k|-s:* a/infv(Gamma)
+TY
+(TyAll)
+Gamma|-foralla:k. s:*
+TY
+12
+CO112CO223
+(Trans)
+CO1213
+nnn
+CO12TYi
+nn
+n
+Gamma|-Cgs/as~s/at
+CO12
+Gamma|-u:kGamma|-g:foralla:k. s~forallb:k. t
+TYCO
+Gamma|-guu/as~u/bt
+@
+CO
+nn
+TYn
+nnn
+nnn
+Gamma|-s, t:kGamma|-s, t:k
+TY11TY11
+CO1212CO1212
+Gamma|-leftg:s~tGamma|-rightg:s~t
+CO11CO22
+C
+eTY
+(AppT)
+Gamma|-e t:st /a
+e
+e12CO12
+(AppCo)
+Gamma|-e g:s
+e
+12e
+2
+Gamma|-pgm:s
+Gamma|-decl: Gamma
+d
+Gamma = Gamma,Gamma
+0d
+Gamma|-e:s
+e
+TY1TY2
+(Pgm)
+Gamma|-decl;e:s
+0
+12
+C
+2011/1/19
+Values:. . . as before . . .
+Evaluation contexts:. . . as before . . .
+Expression reductions:. . . as before, except:
+'
+(Push) ((lamx.e)Ig)e-->(lamx.e) (eIsymg)Ig
+''
+g: (s->s)~(s->s)
+12
+12
+(TPush) ((Lambdaa:k. e)Ig)s-->((Lambdaa:k. e)s)I(g@s)
+g: (foralla:k. s)~(forallb:k. s)
+12
+(CPush) ((Lambdac:s~s. eIg)d-->(Lambdac:s~s. e) (godosymg)Ig
+12
+''
+d:s~s
+12
+'''
+g: (s~s=>s)~(s~s=>s)
+123
+123
+(KPush)case(KssfeIg)ofp->rhs-->case(Ktsfe)ofp->rhs
+e
+g:Ts~Tt
+n
+K:foralla:k.forallb:i.u~u=>r->Ta
+12
+Figure 10:Operational semantics of simplifiedF(X)
+C.3 Coercion normalization
+During type inference, GHC's type checker producesFcode that
+C
+is well-typed, but may contain large coercion terms that can easily
+be simplified to smaller terms, more suitable for debugging. In
+Figure 11 we provide a normalization procedure.
+Most of the coercion rules are simple congruences. The interesting
+rule is (CReact), which finds a coercion that can react, and applies
+the relation to yield a simpler coercion. This is achieved through
+the equivalence relation==between coercions, which is the identity
+modulo reassociation of coercion compositions. In the same rule
+we write~gfor a transitive composition of all coercions in the vector
+(which could also be empty), and similarly forg. The rules for
+2
+push uses of symmetry to the top of the derivation, eliminate uses of
+symmetry transitively composed, and perform other optimizations.
+Rules (TransPushAx) and (TransPushSymAx) deserve some expla-
+nation. Consider the situation where we have
+Gamma =C(a:*->*) :C a~forallxy.a x->a y
+N
+C:T()~M aybe
+T
+Suppose we were given:
+(sym (CM aybe))o(C(symC))o(CT) :
+@
+NTN
+(forallxy.M aybe x->M aybe y)~(forallxy.T()x->T()y)
+Then we would like to simplify the coercion, using the reaction
+sequence in Figure 12.
+The rules for normalization are not ad-hoc in the sense that they are
+designed to validate the following proposition.
+PROPOSITION1.IfGamma|-g:t~tandtare value types and
+121,2
+*
+there are no coercion variables bound inGammatheng-->dsuch that
+dbelongs in the coercion value syntax:
+d::=g|t|dd| foralla:k. d|symd|dod
+1212
+In particular, notice that in this syntax there exist no elimination
+forms.
+However, notice that not all elimination forms can be removed
+without some possibility for rewriting. For example, consider the
+20
+'
+12
+whereg= right (leftg)- coercion for argument
+1
+g= rightg- coercion for result
+2
+12123
+'
+whereg:s~s= left (leftg)
+11
+1
+'
+g:s~s= right (leftg)
+22
+2
+'
+g:s~s= rightg
+33
+3
+''
+e
+'ii
+wherefsymd/a,s/bu)ofod/a,s/bu)
+ieiie
+i12
+'
+e=eId/a,s/br
+iiei
+i
+d:s~t= right (left. . .(leftg))
+iii
+n-i
+C
+following axiom set:
+Ca:H a~I nt
+0
+Ca:F a~G a
+1
+Ca:F a~List a
+2
+Ca:G a~List(H a)
+3
+Consider then:
+right ( sym (CI nt)o(CI nt)o(CI nt))
+213
+Ideally we would like to simply obtainsym (CI nt), but without
+0
+appealing to some rewriter of the top-level axiom set this is impos-
+sible.
+2011/1/19
+Evaluation contextsG::=* |G g|g G|CgGg|symG|SgGg|G@t|Gog|goG
+| foralla:k.G|leftG|rightG
+Delta(G g) = Delta(G)
+Delta(g G) = Delta(G)
+Delta(CgGg) = Delta(G)
+12
+Delta(symG) = Delta(G)
+Delta(SgGg) = Delta(G)
+n
+12
+Delta(Gt) = Delta(G)
+@
+Gamma|-g-->g
+Gamma,Delta(G)|-g g
+(CReact)
+Gamma|-Gg-->Gg
+Gamma|-g g
+(SymRefl)Gamma|-symt t
+(SymAll)Gamma|-sym (foralla:k.g) foralla:k.symg
+n
+(SymFun)Gamma|-sym (Sg) Ssymg
+nn
+(SymApp)Gamma|-sym (gg) (symg) (symg)
+12
+(SymLeft)Gamma|-sym (leftg) left (symg)
+(SymRight)Gamma|-sym (rightg) right (symg)
+(SymTrans)Gamma|-sym (gog) (symg)o(symg)
+12
+(SymSym)Gamma|-sym (symg) g
+(SymInst)Gamma|-sym (gt) (symg)(t)
+@
+(RedLeft)Gamma|-left (gg) g
+121
+(RedRight)Gamma|-right (gg) g
+122
+(RedInst)Gamma|-(foralla:k.g)t t /ag
+@
+(RedReflLeft)Gamma|-tog g
+(RedReflRight)Gamma|-got g
+(TrPushAll)Gamma|-(foralla:k.g)o(foralla:k.g) (foralla:k.gog)
+12
+nn
+(TrPushFun)Gamma|-(Sg)o(Sg) (S(gog))
+nnn
+12
+(TrPushApp)Gamma|-(gg)o(gg) (gog) (gog)
+12341
+(TrPushAxL)Gamma|-tg/ao(Cg) C(g
+1212
+(TrPushAxR)Gamma|-(Cg)oug/a C(g
+1212
+(TrPushSymAxL)Gamma|-ug/ao(sym (Cg)) (sym (C(gosymg)))whereCa:k:t~uinGamma
+12
+(TrPushSymAxR)Gamma|-((sym (Cg))otg/a (sym (C((symg)og))))whereCa:k:t~uinGamma
+12
+(TrPushAxSym)Gamma|-(Cg)o(sym (Cg)) tgo(symg)/awhereCa:k:t~uinGamma
+121
+(TrPushSymAx)Gamma|-(sym (Cg))o(Cg) u
+12
+Type-directed rules for open coercions
+(EtaAllL)Gamma|-(foralla:k.g)og (foralla:k.g)o(foralla:k.ga)whereGamma|-g:foralla:k.s~ foralla:k.s
+1
+(EtaAllR)Gamma|-go(foralla:k.g) (foralla:k.ga)o(foralla:k.g)whereGamma|-g:foralla:k.s~ foralla:k.s
+12
+(EtaCompL)Gamma|-(gg)og (gg)o((leftg) (rightg))whereGamma|-g:ss~ss
+123123331234
+(EtaCompR)Gamma|-go(gg) ((leftg) (rightg))o(gg)whereGamma|-g:ss~ss
+123
+(TrPushInst)Gamma|-(g@t)o(g@t) (gog)@twhereGamma|-g:foralla:k.s~foralla:k.s
+121
+(TrPushLeft)Gamma|-(leftg)o(leftg) left (gog)whereGamma|-g:ss~ss
+12
+(TrPushRight)Gamma|-(rightg)o(rightg) right (gog)whereGamma|-g:ss~ss
+12
+(RedTypeDirRefl)Gamma|-g t
+Figure 11:Normalization
+21
+n
+1212
+Delta(Gog) = Delta(G)
+Delta(goG) = Delta(G)
+Delta(foralla:k.G) = (a:k),Delta(G)
+Delta(leftG) = Delta(G)
+Delta(rightG) = Delta(G)
+'
+'
+'
+12
+n
+12
+21
+@
+12
+n
+12
+324
+og)whereCa:k:t~uinGamma
+og)whereCa:k:t~uinGamma
+21
+21
+2
+asubseteqf tv(t)
+gog/awhereCa:k:t~uinGamma
+12
+asubseteqf tv(u)
+@
+12212
+@
+12112
+andGamma|-s, s:k
+13
+112311234
+andGamma|-s, s:k
+13
+2112
+andGamma|-g:foralla:k.s~foralla:k.s
+223
+1211234
+andGamma|-g:ss~ss
+23456
+1211234
+andGamma|-g:ss~ss
+23456
+whereGamma|-g:t~t
+2011/1/19
+(sym (CM aybe))o(C(symC))o(CT)-->
+N
+(sym (CM aybe))oC(symCoT)-->
+NN
+(sym (CM aybe))oC(symC)-->. . .
+NN
+Figure 12:Sample normalization sequence
+22
+TN
+T
+T
+2011/1/19

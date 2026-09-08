@@ -1,0 +1,1695 @@
+CompilingPolymorphismUsingIntensionalTypeAnalysis
+y
+Robert Harper
+School of Computer Science
+Carnegie Mellon University
+Pittsburgh, PA 15213-3891
+Abstract
+Traditional techniques for implementing polymorphism use
+auniversal representation for objects of unknown type.Of-
+ten, this forces a compiler to use universal representations
+even if the types of objects are known.We examine an al-
+ternative approach for compiling polymorphism where types
+are passed as arguments to polymorphic routines in order to
+determine the representationofan object.Thisapproach
+allows monomorphic code to use natural, ecient represen-
+tations, supports separate compilation of polymorphic de-
+nitions and, unlike coercion-based implementations of poly-
+morphism, natural representations can be used for mutable
+objects such as refs and arrays.
+Weareparticularlyinterestedinthetypingproperties
+of an intermediate language that allows run-time type anal-
+ysistobecodedwithinthelanguage.Thisallowsusto
+compile many representation transformations and manylan-
+guage features without adding new primitive operations to
+the language.In this paper, we provide a core target lan-
+guage where type-analysis operators can be coded within the
+language and the types of such operators can be accurately
+tracked.The target language is powerful enough to code a
+variety of useful features, yet type checking remains decid-
+able.Weshowhow to translate an ML-like languageinto
+the target language so that primitive operators can analyze
+types to produce ecient representations.We demonstrate
+the power of the \user-level" operators by coding attened
+tuples, marshalling, type classes, and a form of typedynamic
+within the language.
+1Introduction
+Manycompilersassumeauniversalor\boxed"represen-
+tationofasinglemachinewordifthetypeofavalueis
+unknown.This allows the compiler to generate one simple
+ThisworkwassponsoredbytheAdvancedResearchProjects
+Agency,CSTO,underthetitle\TheFoxProject:Advanced De-
+velopment of Systems Software", ARPA Order No.8313, issued by
+ESDAVS under Contract No. F1962891C0168.
+y
+E-mail: rwh@cs.cmu.edu
+z
+E-mail: jgmorris@cs.cmu.edu
+z
+GregMorrisett
+piece of code to manipulate the value.But boxed represen-
+tationsoftenrequiremorespaceandprovidelessecient
+access than natural representations.For example, an array
+ofsmall unknown objects,such as booleansorcharacters,
+is represented as an arrayofwords, wasting the majorityof
+the space.An object larger than a word, such as a double-
+precision oating-pointvalue,is allocated and a pointer is
+used in place of the value.Consequently, accessing the value
+requiresanadditionalmemoryaccess.Aswordsizesin-
+crease from 32 to 64-bits, and memory latencies increase, it
+becomes increasingly important to minimize boxing.
+InmodernprogramminglanguagessuchasModula-3,
+Standard ML SML, and Haskell, unknown types and thus
+boxed representations arise because of twokey language fea-
+tures:types imported from a separately compiled program
+unit and types within polymorphic routines.Polymorphic
+values are particularly troublesome because we can simulta-
+neouslyviewthem as having any one of an innite number
+of monomorphic types.For example, a polymorphic routine
+thatmapsafunctionacrosstheelementsofanarraycan
+be simultaneously seen as a function that works on boolean
+arrays and a function that works on real arrays.The routine
+can thus be used in place of a function that was compiled
+knowing whether the argument arraycontains booleansor
+reals.Consequently,monomorphicroutinesareforcedto
+use the same representationsaspolymorphic routinesand
+the entire program pays the price of the increased space and
+execution-time overheads of the universal representations.
+1.1CoercionImplementations
+The problem with polymorphism stems from the assumption
+thatviewinga polymorphic value as a monomorphic value
+should have no computational eect.Recentwork byLeroy
+tia-
+tion of a polymorphic value should correspond to arun-time
+coercionfrom the universal representation to the appropri-
+atespecializedrepresentation.Atfunctiontypes,thisre-
+quiresthedualcoercionforthefunctionargumentthat
+converts specialized representations to the universal repre-
+sentation.For example, when the identity function of type
+8:!isinstantiatedtohavetypeint!int,acoer-
+cion is generated that takes an integer argument, boxes it,
+passesittothe identity function,andunboxes theresult.
+This approachallows monomorphic code to use the natural,
+ecient representations.
+Leroy's coercions produce an isomorphic copyofadata
+structure.Forexample,tocoerceatuple,weprojectthe
+components of the tuple, boxunbox them, and then form a
+new tuple.Unfortunately, copying coercions are impracticalFurthermore, Jones reports that this approachdoesnotlead
+for large data structures since the cost of making the copyof-
+ten outweighs the benets of the unboxed representation as
+pointed out by LeroMore problematically,
+copying coercions do not work for mutable data structuresthere is no way to eliminate the polymorphism when sepa-
+suchasarrays.If wemake a copyofthevalue to box the
+components then updates to the copy will not be reected
+in the original array and vice versa.
+1.2TypePassing
+An alternative approach to coercions, rst suggested by the
+Napier '88 implemenypes that are
+unknownatcompile-timetoprimitiveoperationsatlink-
+time or even run-time.Then the primitive operations can
+analyze the type in order to select the appropriate code to
+manipulate the natural representation of an object.For ex-
+ample, a polymorphic subscript function for arrays mightbe
+compiled into the following pseudo-code:
+sub=:typecaseof
+boolboolsub
+jrealrealsub
+jboxedsub
+Here,subis a function that takes atypeargument, and
+doesacaseanalysistodeterminethe appropriatespecial-
+ized subscript function that should be returned.For exam-
+ple,subboolreturnsthebooleansubscriptfunctionthat
+expects an array of bits, whilesubreal
+point subscript function that expects a double-word aligned
+array of oating pointvalues.For all other types, we assume
+the arrayhasboxed components and thus return the boxed
+subscript function.
+If thesuboperationis instantiatedwith a type that is
+known at compile-time or link-time, then the overhead of
+the case analysis can be eliminated by duplicating and spe-
+cializingthe denition ofsubat the appropriate type.For
+example,thesourceexpression\subhx4i+3:14"willbe
+compiledtothetargetexpression\subrealhx4i+3:14"
+sincetheresultofthesuboperationisconstrainedtobe
+areal.Ifthedenitionofsubisinlinedintothetarget
+expressionandsomesimplereductionsarepeformed,this
+yields the optimized expression \realsubhx4i+3:14".Thus,
+parameterizing the primitive operations bytype provides a
+single, consistent methodology for type analysis at compile-
+time, link-time, and run-time.
+In languages where polymorphic denitions are restricted
+to \computational values" essentially constants and func-
+tions, polymorphic denitions can always be duplicated and
+specialized or even inlined.Lazy languages suchasHaskell
+satisfythisconstraint,andWrighthasdetermined empir-
+icallythatsucharestrictiondoesnoteectthevastma-
+joritLanguages like core-SML and
+Haskell only allow polymorphic values to arise as the result
+ofa\let"bindingandrestrictthetypeofsuchvaluesto
+be prenex-quantied. That is, the type must be of the form
+8::::wherecontains no quantier. Thus, the only
+1n
+thing that can be done to a polymorphic value is to instan-
+tiate it.Since the scope of aletis closed,it is possible to
+determine all of the instantiations of the polymorphic value
+at compile time and eliminateallpolymorphism through du-
+plication andd specialization.Such an approach is used, for
+instance, by Blellochet al.
+more recently by Jones to eliminate Haskell ov
+to excessive code-blowup.
+Unfortunately, eliminating all of the polymorphism in a
+programisnotalwayspossibleorpratical.Inparticular,
+rately compiling a denition from its uses because it is im-
+possible to determine the types at which the denition will
+potentially be used.This prevents us from separately com-
+piling polymorphic libraries or polymorphic denitions en-
+tered at a top-level loop.Furthermore, in languages that al-
+low polymorphic values to be \rst-class" suc
+atcompile-time.Therefore,weviewduplicationandspe-
+cialization as an important optimization, but consider some
+run-time type analysis to still be necessary for practical lan-
+guage implementation.
+1.3Type-CheckingTypeAnalysis
+In this paper, we showhow to compile ML-like polymorphic
+languagestoatargetlanguagewhererun-time type anal-
+ysis maybeusedby the primitive operations to determine
+the representation of a data structure.We are particularly
+interestedinthetypingpropertiesofalanguagethatal-
+lowsrun-timetypeanalysis.Thesubdenitionaboveis
+ill-typedinMLbecauseitmustsimultaneouslyhavethe
+typesboolarrayint!bool,realarrayint!real,as
+wellas8:boxedarrayint!.Sinceboolarrayand
+realarrayare nullary constructorsandnotinstantiationsof
+boxedarray,itisclearthatthereisnoMLtypethat
+unies all of these types.
+Our approach to this problem is to consider a type sys-
+tem that provides analysis of types via a type-level \Type-
+case" construct.For example, thesubdenition abovecan
+be assigned a type of the form:
+8:SpclArrayint!
+where the specialized array constructorSpclArrayis dened
+usingTypecaseas follows:
+SpclArray=Typecaseof
+boolboolarray
+jrealrealarray
+jboxedarray
+The denition of the constructor parallels the denition of
+the term:If the parameteris instantiated tobool,then
+the resulting type isboolarrayand if the parameter is instan-
+tiated toreal, the resulting type isrealarray.
+In its full generality, our target language allows types to
+be analyzed not just by case analysis, but also via primitive
+recursion.Thisallowsmoresophisticatedtransformations
+to be coded within the language, yet type checking for the
+target language remains decidable.An example of a more
+sophisticated translation made possible by primitiverecur-
+sion is one where arrays of tuples are represented as tuples of
+arrays.For example, an arrayofboolrealis represented as
+a pair of aboolarrayand arealarray.This representation al-
+lows the boolean components of the arraytobepacked and
+allowstherealcomponentstobenaturallyaligned.The
+subscript operation for this representation is dened using
+a recursivetypecaseconstruct calledtyperecin the following
+manner:
+typerecsubbool=boolsub
+jsubreal=realsub
+jsub=
+12
+hhx yiii:hsubhx iisubhy iii
+12
+jsub=boxedsub
+Ifsubis given a product type,, it returns a function
+12
+thattakesapairofarrayshx yiandanindexiand
+returnsthe pairofvalues from both arrays atthatindex,
+recursively calling thesuboperation at the typesand.
+12
+The type of thissuboperation is:
+8:RecArrayint!
+where the recursive, specialized array constructorRecArray
+is dened using a type-level \Typerec":
+TyperecRecArraybool=boolarray
+jRecArrayreal=realarray
+jRecArray=
+12
+RecArrayRecArray
+12
+jRecArray=boxedarray
+Again, the denition of the constructor parallels the deni-
+tion of thesuboperation.If the parameter is instantiated to
+bool, then the resulting type isboolarray.If the parameter
+is instantiated with, then the resulting type is the
+12
+product ofRecArrayRecArray.
+12
+Run-time type analysis can be used to provide other use-, assumingxdoes not occur in the domain of ;.
+fullanguagemechanismsbesidesecientrepresentations.
+Inparticular,adhocpolymorphicoperators,suchasthe
+equalityoperatorofSML,oranoverloadedoperatorex-
+portedfromaHaskelltypeclass,canbedirectlyimple-
+mented in our target language without the need to tag val-
+ues.Furthermore, the static constraints of SML's equality
+typesandHaskell'stypeclassesmaybecodedusingour
+Typerecconstruct.Our target language is alsoableto ex-
+press\marshalling"ofdata structures and aform oftype
+dynamic.
+In Section 2we describethe type-analysis approachto
+compilation as a type-based translation from a source lan-
+ML
+guage,Mini-ML,toourtargetlanguage,.Thekey
+i
+ML
+properties ofare stated,and a few illustrative exam-
+i
+ples involvingtyperecandTyperecare given. In Section 3 we
+showhowmanyinteresting and useful language constructs
+can be coded usingtyperec, including attened representa-
+tions, marshalling, type classes, and typedynamic.In Sec-
+tion 4 we discuss related work, and in Section 5 we summa-
+rize and suggest directions for future research.
+2Type-DirectedCompilation
+In order to take full advantage of type information during
+compilation,we consider translationsof typing derivations
+from the implicitly-typed ML core language to an explicitly-
+typed target language, following the interpretation of poly-
+morphism suggested by Harper and Mitc
+h captures manyof
+theessentialfeaturesoftheMLcorelanguage.Thetar-
+MLML
+get language,, is an extension of, also known as
+i
+evariant of Girard'sF
+!
+enriched with primitives for intensional type analysis.
+2.1SourceLanguage:Mini-ML
+The source language for our translations is a variantofMini-
+The syntax of Mini-ML is dened by the following
+grammar:
+monotypes::=tjintj!j
+1212
+polytypes::=j8t:
+termse::=xjnjheeijejej
+1212
+x: ejeejletx=vine
+12
+valuesv::=xjnjhvvijx: e
+12
+Monotypes are either type variables t,int,arrowtypes,
+or binary product types.Polytypes also known astype
+schemes are either monotypes or prenex quantied types.
+Wewrite8t:::t:to represent the polytype8t::8t:.
+1n1n
+ThetermsofMini-MLeconsistofidentiers,numerals
+n, pairs, rst and second projections, abstractions, appli-
+cations, andletexpressions.Values v are a subset of the
+terms and include identiers, integer values, pairs of values,
+and abstractions.
+The static semantics for Mini-ML is given in Figure 1 as
+aseriesofinferencerules.Therulesallowustoderivea
+judgement of the form  ;.e:where  is a set of free
+type variables and ; is a type assignment mapping identiers
+0
+to polytypes.W=tto denote the substitution of
+0
+the typefor the type variabletin the type expression.
+0
+Weuseto denote the union of two disjoint sets of
+0
+type variables,  and , and ;fx:gto denote the type
+assignment that extends ; so thatxis assigned the polytype
+Let-bound expressions are restricted to values so that our
+translation, whichmakes type abstraction explicit, is correct
+see below.
+ML
+2.2TargetLanguage:
+i
+ML
+The target languageof our translations,,is based on
+i
+ML
+evariant of Girard'sF
+!
+The essential departure from the impredicative systems of
+Girard and Reynolds is that the quantier8t:ranges only
+over \small" types,or \monotypes",which do not include
+the quantied types.This calculus is sucientfortheinter-
+pretation of ML-style polymorphism see Harper and Mitchell
+ML
+t.The language
+i
+ML
+extendswithintensionalorstructural
+phism, that allowsnon-parametric functionsto bedened
+byintensional analysis of types.
+ML
+The four syntactic classes for,kindsk, construc-
+i
+tors , types , and terms e, are given below:
+kinds::=j!
+12
+con's::=tjIntj!jj
+1212
+t:::jj
+12
+Typerecofjj
+!
+i
+types::=Tjintj!jj
+1212
+8t:::
+termse::=xjnjx::ej@eej
+12
+1212
+12
+heeijejej
+12
+12
+t::: ejej
+typerecoft:ejeje
+!
+i
+Kinds classify constructors, and types classify terms.Con-
+structorsofkindname\smalltypes"or\monotypes".
+The monotypes are generated fromIntand variables bythe
+FTV=t=t
+nn11
+var
+ ;fx:8t:::t:g.x:=t
+1nnn
+ ;.e: ;.e:
+1122
+pair
+ ;.heei:
+1212
+ ;fx:g.e:
+12
+abs
+ ;. x: e:!
+12
+ft:::tg;.v:
+1
+ ;fx:8t:::t:g.e:
+let
+ ;.letx=vine:
+Figure 1:Mini-ML Typing Rules
+constructors!and. The application and abstraction con-structure of a monotype.
+structors correspond to the function kind!.Types
+12
+ML
+ininclude the monotypes, and are closed under prod-rules for deriving judgements of the following forms, where
+i
+ucts, function spaces, and polymorphic quantication.We
+distinguishconstructorsfromtypes,writingTforthe
+type corresponding to the constructor.The terms are an
+explicitly-typed-calculus with explicit constructor abstrac-
+tion and application forms.
+The ocial syntax of terms shows that the primitiveop-
+erations of the language are provided with type information
+thatmaybeusedatrun-time.Forexample,thepairing
+12
+operationisheei,wheree:,reectingthe fact
+12ii
+that there is potentially a pairing operation at each pair
+of types.In a typical implementation, the pairing operation
+isimplementedbycomputingthesizeofthecomponents
+from the types, allocating a suitable chunk of memory, and
+copying the parameters into that space.However, there is!
+noneedtotagtheresultingvaluewithtypeinformation
+12
+because the projection operations e are correspond-
+i
+ingly indexed bythetypes of the components so that the ap-
+propriate chunk of memory can be extracted from the tuple.
+Similarly, the application primitive@ee is indexed by
+12
+1
+the domain type of the functionand is used to determine
+the calling sequence for the function.Of course,primitive
+operations can ignore the type if a universal representation
+is used.Consequently, the implementor can decide whether
+to use a natural or universal representation.Weuseasim-
+plied term syntax without the types when the information
+is apparent from the context.However,it is importantto
+bear in mind that the type information is present in the fully
+explicit form of the calculus.
+TheTyperecandtyperecformsprovidetheabilityto
+deneconstructorsandtermsbystructuralinductionon
+monotypes.These forms may be thought of as eliminatory
+forms for the kind  at the constructor and term level.The
+introductory forms are the constructors of kind  there are
+no introductory forms at the term level in order to preserve
+At the term leveltyperecmay
+be thought of as a generalization oftypecasethat provides
+forthedenitionofaterm by inductiononthestructure
+of a monotype.At the constructor levelTyperecprovides a
+similarability to dene a constructor by induction on the
+1
+In general, application could also depend upon the range type,
+but our presentation is simplied greatly by restricting the depen-
+dency to the domain type.
+int ;.n:int
+=t
+11
+ ;.e:
+12
+i=12
+ ;.e:
+ii
+00
+ ;.e:! ;.e:
+12
+app
+ ;.ee:
+12
+0
+n
+0
+1n
+ML
+Thestaticsemanticsofconsistsofacollectionof
+i
+ is a kind assignment, mapping type variables t to kinds,
+and;isatype assignment, mapping term variables to types.
+.::is a constructor of kind
+.::andareequivalent constructors
+1212
+.is a valid type
+.andareequivalent types
+1212
+ ;.e:eis a term of type
+Theformationrulesforconstructorsarelargelystan-
+dard, with the exception of theTyperecform:
+.:: .::
+i
+.:: !!!!
+.:: !!!!
+.Typerecofjj::
+!
+i
+The whole constructor has kindif the constructor to be
+analyzed,, is of kind  i.e., a monotype,is of kind,
+i
+andandare eachofkind!!!!.
+!
+The constructor equivalence rules see Figure 2 axiom-
+atizedenitional equality
+of-conversion together with recursion equations governing
+theTyperecform.Conceptually,Typerecselects,,or
+i
+according to the head-constructor of the normal form of
+!
+and passes it the components ofand the \unrolling" of
+theTyperecon the components.The level ofconstructors
+and kinds is a variation of Godel'sTEvery construc-
+tor,,has a unique normal form,NF,with respectto
+the obvious notion of reduction derived from the equivalence
+This reduction relation is conuent,
+from which it follows that constructor equivalence is decid-
+The type formation, type equivalence, and term forma-
+ML
+tion rules forare omitted due to lack of space, but can
+i
+The rules of type equiv-
+alencedene theinterpretationToftheconstructor
+as a type.For example,TIntintandT!
+12
+T!T.Thus,Ttakes us from a constructor which
+12
+namesatype to the actual type.The term formation rules
+are standard with the exception of thetyperecform, which
+00
+ft::g.::.::
+12
+0
+.t:::=t::
+1221
+.:: .
+1
+.:: !!!!
+!
+.Typerec!ofjjTyperecofjj Typerecofjj ::
+12!!12
+i
+.TyperecofjjTyperecofjj Typerecofjj ::
+12!12
+i
+Figure 2:Constructor Equivalence
+is governed by the following rule:
+.:: ft::g. ;.e:Int=t
+i
+ ;.e:8tt:::t=t!t=t!!tt=t
+!121212
+ ;.e:8tt:::t=t!t=t!tt=t
+121212
+ ;.typerecoft:ejeje=t
+!
+i
+The argument constructormust be of kind , and the re-
+sult type of thetyperecexpression is determined as a func-
+tion ofthe argument constructor,namely the substitution
+offortin the type expression.The \t:pro-
+videsthetypeinformationneededtochecktheconstruct
+withoutinfererence.Typicallytheconstructorvariablet
+occurs inas the argumentofaTyperecexpression so that
+=tisdetermined byarecursiveanalysisof.Similar
+to normalization of aTyperecconstructor, the evaluation of
+atyperecexpression selectse,e,oreaccording to the
+!
+i
+head constructor of the normal form ofand passes it the
+components ofand the \unrolling" of thetyperecon the
+components.
+ML
+Type checking forreduces to equivalence checking
+i
+fortypesandconstructors.Inviewofthedecidabilityof
+constructorequivalence,wehavethefollowingimportant
+result:
+Proposition2.1It is decidable whether or not ;.e:
+ML
+is derivable in.
+i
+Toxtheinterpretation oftyperec,we specify a call-by-
+ML
+value, natural semantics foras a relationof the form
+i
+e,!vwherevis a closed with respect to both type and
+valuevariables,syntacticvalue.Valuesarederivedfrom
+the following grammar:
+12
+v::=njx::ejhvvijt::: e
+22
+Type abstractions are values, reecting the fact that evalu-
+ation does not proceed under .
+Figure 3 denes the evaluation relation with a series of
+axioms and inference rules.The semantics uses an auxiliary
+0
+judgment,,!, not formally dened here that deter-
+mines the normal forms of constructors.During evaluation,
+we only need to determine normal forms of closed construc-
+tors of kind .This amounts to evaluating constructors of
+the formTyperec::: and yorienting the equiva-
+12
+lences of Figure 2 to the right and adding the appropriate
+congruences.
+The rest of the semantics is standard except for the eval-
+uationofatyperecexpressionwhichproceedsasfollows:
+.::
+i
+.:: !!!!
+!
+.:: !!!!
+.Typerec Intofjj::
+!
+ii
+:: .::
+2
+i
+.:: !!!!
+1!2!
+ii
+1!2!
+ii
+First, the normal form of the constructor argument is deter-
+mined. Once the normal form is determined, the appropriate
+subexpression is selected and applied to any argument con-
+structors.The resulting function is in turn applied to the
+\unrolling" of thetyperecat each of the argument construc-
+tors.Some simple examples usingtyperecmay be found at
+the end of this subsection.
+The semantics uses meta-level substitution of closed val-
+ues for variables and closed constructors for type variables.
+Inalower-levelsemanticswheresubstitutionismadeex-
+plicit,an environmentwould be needed not only for value
+variables, but also for type variables.Tolmac
+many of the issues involved in implementing such a language.
+Proposition2.2 Type PreservationIf.e:
+ande,!v, then.v:.
+Byinspectionofthevaluetypingrules,onlyappropriate
+valuesoccupyappropriatetypesandthusevaluationwill
+not \gowrong".In particular,itis possibleto showthat
+when evaluating well-typed programs, we only use theproj
+00
+evaluation rule whenandand we only use
+12
+12
+0
+theapprule when.Furthermore, programs written
+ML
+inpurei.e.,withoutgeneralrecursionoperatorsor
+i
+recursivetypes always terminate.
+Proposition2.3 TerminationIfeis an expression such
+that.e:, then there exists a valuevsuch thate,!v.
+Afewsimpleexampleswillhelptoclarifytheuseof
+typerec.The functionsizeofof type8t:::intthat computes
+the \size" of values of a type can be dened as follows.
+0
+sizeof=t:::typerectoft:intejeje
+!
+i
+where
+e=1
+i
+e=t:::t:::x:int:x:int:1
+!1212
+e=t:::t:::x:int:x:int:x+x
+121212
+Here we assume that arrowtypes are boxed and thus have
+size one.It is easy to checkthatsizeofhas the type8t:::int.
+Notethatinaparametricsettingthistypecontainsonly
+constant functions.
+As another example, Girard's formulation of SystemF
+includes a distinguished constant0of typefor eachtype
+including variable types.Wemay dene an analogue of
+these constants usingtyperecas follows:
+00
+zero=t:::typerectoft:Ttejeje
+!
+i
+e,!ve,!
+112
+valv,!vpair
+12
+heei,!hvv
+121
+00
+e,!x::ee,!ve,!t::: e
+12
+00
+v=xe,!v
+=te,!v
+apptapp
+@ee,!ve,!vtyperecoft:ejeje,!v
+12
+,!!
+12
+typerecoft:ejeje,!v
+1!1
+i
+typerecoft:ejeje,!v
+2!2
+i
+=t=t
+21
+@@evv,!v
+!1212
+trec-fn
+typerecoft:ejeje,!v
+!
+i
+Figure 3:Operational Semantics for
+where
+e=0
+i
+e=t:::t:::z:Tt:z:Tt:x:Tt:z
+!12112212
+e=t:::t:::z:Tt:z:Tt:hzzi
+12112212
+It is easy to check thatzerohas type8t:::Tt, the \empty"
+typeinSystemFandrelatedsystems.Thepresenceof
+typerecviolates parametricitytoachieve a more exible pro-
+gramming language.
+To simplify the presentation we usually dene terms such
+aszeroandsizeofusing recursion equations, rather than as
+atyperecexpression.The denitions ofzeroandsizeofare
+given in this form as follows:
+sizeofInt=1
+sizeof=sizeof+sizeof
+1212
+sizeof!=1
+12
+zeroInt=0
+zero=hzerozeroi
+1212
+zero!=x:T:zero
+1212
+Whenever adenition is presented in this formwetacitly
+assert that it can be formalized usingtyperec.
+ML
+2.3TranslatingMini-MLinto
+i
+ML
+A compiler from Mini-ML tois specied by a relation
+i
+ ;.e:ethat carries the meaning that  ;.e:
+sts
+is a derivable typing in Mini-ML and that the translation of
+the source termedetermined by that typing derivation is
+s
+ML
+theexpressione.Since the translation depends upon
+t
+i
+the typing derivation, it is possible to have many dierent
+translations of a given expression.However, all of the trans-
+lationschemesweconsiderarecoherentinthesensethat
+anytwotyping derivations produce observationally equiva-
+2
+len
+Here, we give a straightforward compiler whose purpose
+istomaketypesexplicitsothattheprimitiveoperations
+such as pairing and projection can potentially analyze their
+types at run-time.This simple translation does not utilize
+2
+We omit explicit consideration of the coherence of our translations
+here.
+00
+12
+ve,!hvvi
+212
+proji=12
+1212
+ie,!v
+2i
+i
+0
+,!Inte,!v
+i
+trec-int
+!
+i
+,!
+12
+typerecoft:ejeje,!v
+1!1
+i
+typerecoft:ejeje,!v
+2!2
+i
+=t=t
+21
+@@evv,!v
+1212
+trec-pair
+typerecoft:ejeje,!v
+!
+i
+ML
+i
+typerecorTyperec, but subsequent translations takeadvan-
+tage of these constructs.
+Webeginby dening a translation from Mini-ML types
+ML
+toconstructors, writtenjj:
+i
+jtj=t
+jintj=Int
+j!j=!jjjj
+1212
+jj=jjjj
+1212
+The translation is extended to map Mini-ML type schemes
+ML
+totypes as follows:
+i
+jj=Tjj
+s
+j8t:j=8t:::jj
+ss
+Finally,we writejjfor the kind assignment mappingtto
+the kind  for eacht2, andj;jfor the type assignment
+mappingxtoj;xjfor eachx2dom;.
+s
+Proposition2.4The typetranslation commutes with sub-
+stitution:
+j=t=tj=jj=tjj=tjj
+nn11nn1n
+The term translation is given in Figure 4 as a series of
+inferencerulesthat parallelthe typingrulesforMini-ML.
+Thevarruleturns Mini-MLimplicitinstantiationoftype
+ML
+variables intoexplicit type application.Operationally,
+i
+thiscorrespondstopassingthetypestothepolymorphic
+valueatrun-time.Theletrulemakestheimplicittype
+abstractionoftheboundexpressionexplicit.Thetrans-
+lation of-abstraction, application, pairing, and projection
+is straightforward except that these primitive operations are
+labelled with their types.
+Thetranslationmaybecharacterizedby thefollowing
+type preservation property.
+00
+Theorem 2.5If ;.e:e, thenjjj;j.e:jj.
+Givenastandard,call-by-valueoperationalsemanticsfor
+Mini-ML with the value restriction,and given the strati-
+cation between monotypes and polytypes in both Mini-ML
+ML
+and,itispossibletomodifyastandardbinarylog-
+i
+icalrelations-styleargumentforthesimply-typedlambda
+w the correctness of the
+FTV=t=t
+nn11
+var
+ ;fx:8t:::t:g.x:=t=t
+1nnn11
+00
+ ;.e:e ;.e:e
+1122
+12
+pair
+00jjjj
+ss
+12
+ ;.heei:heei
+1212
+12
+0
+ ;fx:g.e:e
+12
+absapp
+0
+ ;. x: e:!x:jj:e
+121s
+ft:::tg;.v:e
+1
+ ;fx:8t:::t:g.e:e
+1n
+let
+ ;.letx=vine:
+0
+j8t:::t:j
+ns
+1
+@x:8t:::::t
+1
+Figure 4:Translation from Mini-ML to
+translation.That is,wemay show that at base type, if a
+ML
+Mini-ML program computes a value, then itstransla-
+i
+tion computes the same value.
+Inthepresenceofcomputationaleectssuchasnon-
+termination,ifwedidnotrestricttheboundexpression
+inalettobeavalue,thenthetranslationwouldbein-
+ML
+correct since evaluation indoes not proceed under -
+i
+abstractions.In other words, the expression might diverge
+or print \hello" while its translation would not.
+3ApplicationsofTypeAnalysis
+In this section, we showhowtoimplementavariety of useful
+and interesting constructs by extending the simple transla-
+ML
+tion from Mini-ML toto take advantage oftyperecand
+i
+Typerec.Wehave already shown how simple operations like
+ML
+sizeofandzerocanbedenedin.Theseoperations
+i
+canbeexporteddirectlytoMini-MLasconstantsofthe
+appropriatetype.Inthefollowingsubsections,wedene
+new operations that may be exported to Mini-ML and mod-
+ify the standard translation to change the representation of
+various types.
+3.1Flattening
+Weconsiderthe\at"representationofMini-MLtuples
+inwhichnestedtuplesarerepresentedbyasequenceof
+\atomic"valuesforthepresentpurposes,anynon-tuple
+is regarded as \atomic".To simplify the developmentwe
+give a translation in which nested binary tuples are repre-
+sentedinright-associatedform,sothat,forexample,the
+ML
+Mini-ML type intintintwill be compiled to the
+i
+typeintintint.The compilation makes use of inten-
+sional type analysis at both the term and constructor levels.
+We begin by modifying the type translation on Mini-ML
+tuples:
+jj=Prodjjjj
+1212
+HereProdisaconstructorofkind!!dened
+belowas:
+ProdInt=Int
+Prod!=!
+abab
+Prod=Prod
+abab
+int ;.n:intn
+xjjjj
+1n
+0
+ ;.e:e
+12
+i=12
+jjjj
+0
+ss
+12
+ ;.e:e
+ii
+i
+0000
+ ;.e:!e ;.e:e
+12
+12
+0
+jj00
+s
+ ;.ee:@ee
+12
+12
+00
+n
+1
+00
+2
+000
+:::jj:et:::::t:::e
+ns1n
+21
+ML
+i
+Informally, the constructorProdcomputes the right-associated
+form of a product of twotypes.For example,
+jintintintj=ProdProdIntIntInt
+and
+jintintintj=ProdIntProdIntInt
+and the equation
+.ProdProdIntIntIntProdIntProdIntInt
+ML
+is derivable in.
+i
+The term translation is modied bychanging the behav-
+ior of thepairandrules:
+00
+ ;.e:e ;.e:e
+1122
+12
+00
+ ;.heei:mkpairjjjjee
+121212
+12
+0
+ ;.e:e
+12
+i=12
+0
+ ;.e:projjjjje
+ii12
+i
+The modied translation makes use of three auxiliary func-
+tions,mkpair,projandproj, with the following types:
+12
+mkpair:8tt:: :Tt!Tt!TProdtt
+121212
+proj:8tt:: :TProdtt!Tt
+12121
+1
+proj:8tt:: :TProdtt!Tt
+12122
+2
+Themkpairoperation is dened as follows, using the \unof-
+cial" syntax of the language:
+mkpairInt=x:TInt:y:T:hx yi
+mkpair!=x:T!:
+abab
+y:T:hx yi
+mkpair=x:T:y:T:
+abab
+hxmkpairxyi
+1b2
+The verication thatmkpairhas the required type proceeds
+by caseanalysison the form ofitsrst argument,relying
+on the dening equations forProd.For example, wemust
+check thatmkpairIntype
+TInt!T!TProdInt
+whichfollowsfromthe denitionofmkpairIntand the
+fact that
+TProdIntintT:
+Similarly,wemust checkthatmkpairype
+ab
+T!T!TProd
+abab
+which follows from its denition, the derivability of the equa-
+tion
+TProdTTProd
+aa
+bb
+and, inductively, the fact thatmkpairypeT!
+bb
+T!TProd.
+b
+The operationsprojandprojare dened as follows:
+12
+projInt=x:TProdInt:x
+1
+1
+proj!=x:TProd!:x
+aa1
+bb
+1
+proj=x:TProd:
+aa
+bb
+1
+hxprojxi
+12
+b
+1
+projInt=x:TProdInt:x
+2
+2
+proj!=x:TProd!:x
+abab2
+2
+proj=x:TProd:
+abab
+2
+projx
+b2
+2
+Thevericationthattheseconstructorshavetherequired
+type is similar to that ofmkpair,keeping in mind the equa-
+tions governingT; andProd;;.
+One advantage of controlling data representation in this
+manner isthat it becomespossibletosupport atype-safe
+form of casting that we call aview.Let us dene two Mini-
+ML typesandto besimilar,,itheyhave the
+1212
+same representation |i.e.,ijjis denitionally equivalent
+1
+ML
+tojjin.If,thenevery value of typeis also a
+2121
+i
+value of type, and vice-versa.For example, in the case of
+2
+the right-associative representationofnestedtuplesabove,
+wehavethatiandareequivalentmodulo
+1212
+associativityoftheproductconstructor,andavalueofa
+nested product type is a value of every other association
+of that type.
+In contrast to coercion implementations of type equiva-
+lence, such an approach to views is compatible with mutable
+types i.e.,arrays and refs in the sense thatrefis equiv-
+1
+alenttorefiis equivalentto.This means that we
+212
+may freely intermingle updates with views of complex dataof kind !.
+structures, capturing some of the expressiveness ofCcasts
+without sacricing type safety.
+The right-associated representation does not capture all
+aspects of \atness".In particular, access to components is
+not constant time, given a standard implementation of the
+pairingand projectionoperations.This maybeovercome
+ML
+by extendingwithn-tuples tuples of variablearity,
+i
+and modifying the interpretation of the product type appro-
+priately.A rigorous formulation of the target language ex-
+tended withn-tuples is tedious, but appears to be straight-
+forward.
+3.2Marshalling
+Ohori and Kato give an extension of ML with primitives for
+distributed computing in a heterogeneous environmen
+Their extension has two essentialfeatures:oneisamech-
+anismforgeneratinggloballyunique names\handles"or
+\capabilities"thatareusedasproxiesforfunctionspro-
+videdbyservers.Theotherisamethodforrepresenting
+arbitrary values in a form suitable for transmission through
+a network. Integers are considered transmissible, as are pairs
+of transmissible values, but functions cannot be transmitted
+due to the heterogeneous environment and are thus repre-
+sented by proxy using unique identiers.These identiers
+areassociatedwiththeirfunctionsbyaname serverthat
+maybecontactedthroughaprimitiveaddressingscheme.
+In this section wesketchhowavariant of Ohori and Kato's
+representation scheme can be implemented using intensional
+polymorphism.
+ML
+To accommodate Ohori and Kato's primitives the
+i
+language is extended with a primitive constructorIdof kind
+! and a corresponding type constructorid, linked
+bytheequationTIdidT.TheTyperecand
+typerecprimitivesareextendedintheobviouswaytoac-
+count for constructors of the formId.For example, the
+following constructor equivalence is added:
+.:: .::
+i
+.:: !!!!
+!
+.:: !!
+id
+Typerec Idofjjj
+!
+iid
+Typerecofjjj
+!
+idiid
+The primitivesnewidandrpcare added with the follow-
+ing types:
+newid:8tt:::TTrant!TTrant!
+1212
+TTran!tt
+12
+rpc:8tt:::TTran!tt!
+1212
+TTrant!TTrant
+12
+whereTranis a constructor coded usingTyperecas follows:
+TranInt=Int
+Tran!=Id!TranTran
+1212
+Tran=TranTran
+1212
+TranId=Id
+The constructorTranto a constructor where each
+arrowiswrappedbyanIdconstructor.Thus,valuesof
+typeTTrantain functions and are therefore
+transmissible.It is easy to check thatTranis a constructor
+From an abstract perspective,newidmaps a function on
+transmissible representations to a transmissible representa-
+tionofthefunctionandrpcisitsleftinverse.Opera-
+tionally,newidtakesa function between transmissibleval-
+ues, generates a new, globally unique identier and tells the
+name server to associate that identier with the function on
+the local machine.For example, the unique identier might
+consistofthemachine'snamepairedwiththeaddressof
+the function.Therpcoperation takes a proxy identier of a
+remote function, and a transmissible argumentvalue.The
+nameserveriscontactedtodiscovertheremotemachine
+where the value actually lives.The argumentvalue is sent
+to this machine, the function associated with the identier
+is applied to the argument, and the result of the function is
+transmitted back as the result of the operation.
+The compilation of Ohori and Kato's distribution prim-
+ML
+itives into this extension ofrelies critically on a \mar-
+i
+shalling" operationMthat convertsavalue to its transmissi-
+ble representation and an \unmarshalling" operationUthat
+converts a value from its transmissible representation.The
+types of these operations can be easily expressed in terms ofnon-Voidconstructoris denitionally equal toEq
+Tran:
+M:8t:::Tt!TTrant
+U:8t:::TTrant!Tt
+The operations themselves can be dened as followsusing
+3
+the unocial syntax oftyperec:
+MInt=x:int:x
+M!f:T!:
+1212
+newid
+12
+x:TTran:
+1
+MfUx
+21
+Mx:T:
+1212
+hMxMxi
+1122
+MIdx:TId:x
+1
+UInt=x:int:x
+U!f:TId!TranTran:
+1212
+x:T:
+1
+UrpcfMx
+2121
+Ux:TTranTran:
+1212
+hUxUxi
+1122
+UIdx:TId:x
+Atarrowtypes,Mconverts the function to one that takes
+and returns transmissible types and then allocates and asso-
+ciates a new identier with this function vianewid.Corre-
+spondingly,Utakes an identier and a marshalled argument,
+performs anrpcon the identier and argument,takes the
+result and unmarshalls it.
+TheMandUfunctionsareusedinthetranslationof
+clientphrasesthatimportaserver'sfunctionandinthe
+translationofserverphrasesthatexportfunctions.The
+for further details.
+3.3TypeClasses
+ThelanguageHaskellprovidestheabilitytodenea
+classoftypeswithassociatedoperationscalledmethods.
+The canonical example is the class of types that admit equal-
+ity also known as equalityt
+Consider adding a distinguished typevoidwith associ-
+ML
+atedconstructorVoidtoinsuchawaythatvoidis
+i
+\empty".That is,no closed value has typevoid.Wecan
+encode a type class denition byusingTyperecto map types
+in the class to themselves and types not in the class tovoid.
+In thisfashion,Typerecmaybeusedtocompute apredi-
+cate or in general ann-ary relation on types.Denitional
+equality can be used to determine membership in the class.
+For example, the class of types that admit equalitycan
+be dened usingTyperecas follows:
+Eq:: !
+EqInt=Int
+EqBool=Bool
+Eq=EqEq
+1212
+Eq!=Void
+12
+EqVoid=Void
+3
+To compute M and U using the ocial syntax, wehave to use a
+single typerec that returns a pair holding the two functions for that
+type.
+Here,Eqserves as a predicate on types in the sense that a
+ifis a constructor that does not contain the constructor
+!;;.
+The equality method can be coded usingtyperecas fol-
+lows,where we assume primitive equality functions forint
+andbooland omit some type labels for simplicity:
+eqInt=eqint
+eqBool=eqbool
+eq=x:y:eqEqxyand
+12111
+eqEqxy
+222
+eq!=x:void:y:void:false
+12
+eqVoid=x:void:y:void:false
+It is straightforward to verify that:
+eq:8t:::TEqt!TEqt!bool
+Consequently,eqeecan be well typed only ifeande
+1212
+havetypes that are denitionally equal toTEq.The en-
+coding is not entirely satisfactory becauseeq!
+12
+be a well-typed expression.However, the function resulting
+fromevaluationofthisexpressioncanonlybeappliedto
+values of typevoid.Since no suchvalues exist, the function
+can never be applied.
+3.4Dynamics
+In the presence ofintensionalpolymorphism a predicative
+form of the typedynamicy be dened to be the exis-
+tential type9t:::Tt. The typing rules for existential types
+are as follows:
+ft::g..::
+ ;.e:=t
+ ;.packewithas9t::::9t:::
+0
+. ;.e:9t:::
+1
+0
+ft::g;fx:g.e:
+2
+0
+ ;.abstypeeist:: x:ineend:
+12
+Thepackoperationintroducesexistentialsby packaginga
+typewithavalue.Theabstypeoperationeliminatesexis-
+tentials by allowing the type and value to be unpacked and
+used within a certain scope.
+Under this interpretation, the introductory formdynamice
+stands forpackewithas9t:::Tt.The eliminatory form,
+typecasedofejeje,whered:dynamic,e:,and
+!
+ii
+ee:8tt:::,isdenedasfollows:
+!12
+00
+abstypedist::x:Ttin typerectoft:ejejeend
+!
+i
+0
+Heree=t:::t:::x::x::ett,andsimi-
+1212!12
+!
+0
+larly fore.
+This form of dynamic type only allows values of monomor-
+phic types to be made dynamic, consistent with the sepa-
+ML
+ration between constructors and types in.The possi-
+i
+ML
+bilities for enrichingto admit impredicativequantiers
+i
+andhenceaccountforthefullpowerofdynamictyping
+including non-termination are discussed in the conclusion.
+4RelatedWork
+There are two traditional interpretations of polymorphism,
+theexplicitst
+in whichtypes arepassed to polymorphic operations,and
+theimplicitstyleduetoMilnerinwhichtypesare
+erasedpriortoexecution.In theirstudy ofthetype the-
+ory of Standard ML Harper and Mitchell
+an explicitly-typed interpretation of ML polymorphism has
+better semantic propertiesand scalesmoreeasilyto cover
+the full language.Harper and Mitchell formulated a pred-
+icativetype theory, XML, a theory of dependenttypes aug-
+mented with a universe of small types, adequate for captur-
+ing many aspects of Standard ML. This type theory was re-
+ned by Harper, Mitcvides the
+basis for this work.The idea of intensional type analysis ex-
+ploited here was inspired by the w
+fromwhichtheterm \intensionalanalysis"istaken.The
+rules fortyperec, and the need forTyperec,arederived from
+the \universe elimination" rules in NuPRL described only
+in unpublished work of Constable.
+Theideaofpassingtypestopolymorphicfunctionsis
+exploited by Morrisonetal.tation of
+Napier '88.Types are used atrun-time to specializedata
+representations in roughly the manner described here.The
+authors do not, however, provide a rigorous account of the
+type theory underlying their implementation technique. The
+workofOhorioncompilingrecordoperationsissim-
+ilarlybasedonatype-passinginterpretationofpolymor-
+phism, and was an inspiration for the presentwork.Ohori's
+solution isad hocin the sense that no general type-theoretic
+frameworkisproposed,butmanyofthekeyideasinhis
+workarepresenthere.Joneshasproposedageneral
+frameworkforpassingdataderivedfromtypesto\quali-
+ed" polymorphic operations,calledevidencepassing.His
+approach diers from ours in that whereas we pass types to
+polymorphic operations, that are then free to analyze them,
+Jones passes code corresponding to a proof that a type sat-
+ises the constraints of the qualication.From a practical
+point of view it appears that both mechanisms can be used
+to solve similar problems, but the exact relationship between
+the two approaches is not clear.
+Recently Dugganand Opheland Thattehave
+independently suggested semantics for type classes that are
+similarinspirittoourproposal.Inparticularbothap-
+proaches represent the restriction of a class as a user-dened,
+possibly recursive, kind denition in a predicative language.
+Both sets of authors are concerned with providing asource-
+level overloading facility and consequently examine hard is-
+sues suchastype inference and open-scoped denitions that
+do not directly concern us, since we are primarily concerned
+withatarget-leveltype-analysis facility.Theimplementa-
+tion technique proposed by Duggan and Ophel is similar to
+ours in that polymorphic routines are passed type names at
+run-time and atypecaseconstruct is used to determine the
+behavior of an overloaded operation.As with type classes
+andJones'squaliedtypes,itappearsthatwecancode
+manyoftheirkinddenitionsusingTyperecwiththeap-
+proachsketched in Section 3.3.However,Typereccan also
+be used totransformtypes  a facility crucial for represen-
+tationtransformationssuchasatteningand marshalling.
+That is, neither Duggan and Ophel nor Thatte provide a fa-
+cility for coding constructors suchasProdorTranthat map
+types to types.
+Anumber of authors have considered problems pertain-
+ingtorepresentationanalysisinthe presenceofpolymor-
+phism. The boxing interpretation of polymorphism has been
+studied byPeyton Jones and Launchy Lero
+byPoulsenbyHengleinandJrgensenandby
+verhead of box-
+ingandunboxingatrun-time.Allbuttherstofthese
+approaches involvecopying coercions.Of a broadly similar
+nature is the work on \soft" t
+thatseektoimprovedatarepresentationsthroughglobal
+analysis techniques.All of these methods are based on the
+use of program analysis techniques to reduce the overhead of
+box and tag manipulation incurred by the standard compi-
+lation method for polymorphic languages.Many including
+the soft type systems, but not Leroy's system rely on global
+analysis for their eectiveness.In contrast we propose a new
+approachtocompilingpolymorphismthataordscontrol
+over data representation without compromising modularity.
+Finally,atype-passinginterpretationofpolymorphism
+is exploited byTolmactation of a tag-
+free garbage collection algorithm.Tolmach's results demon-
+strate that it is feasible to build a run-time system for ML
+in whichnotype information is associated with data in the
+4
+heap.Morrisett, Harper, and Fe a semantic
+framework for discussing garbage collection, and provide a
+proof of correctness of Tolmach's algorithm.
+5SummaryandFutureDirections
+Wehave presented a type-theoretic framework for express-
+ing computations that analyze types at run-time.The key
+feature of our framework is the use of structural induction on
+types at both the term and type level.This allows us to ex-
+press the typing properties of non-trivial computations that
+perform intensional type analysis.When viewed as an inter-
+mediate language for compiling ML programs, muchofthe
+type analysis in the translations can be eliminated prior to
+run-time. In particular, the prenex quantication restriction
+of ML ensures good binding-time separation between type
+arguments and value arguments and the \value restriction"
+on polymorphic functions, together with the well-founded-
+ness of type induction, ensures that a polymorphic instan-
+tiation always terminates.This provides important oppor-
+tunitiesforoptimization.Forexample,ifatypevariable
+toccurring as the parameter of a functor is the subject of
+intensional type analysis, then thetypereccan be simplied
+when the functor is applied andtbecomes known. Similarly,
+link-time specialization is possible whenevertis dened in
+aseparately-compiledmodule.Inductiveanalysisoftype
+variablesarisingfromlet-stylepolymorphism isordinarily
+handled at run-time, but itispossibleto expand eachin-
+stance and perform type analysis in each case separately.
+The type theory considered hereextends readily to in-
+ductivelydenedtypessuchaslistsandtrees.However,
+extendingtyperecandTyperecto handle generally recursive
+types is problematic because of the negative occurrence of
+inarecursive constructor.In particular, termination can
+no longer be guaranteed, which presents problems not only
+for optimization but also for type checking.
+The restriction to predicative polymorphism is sucient
+forcompilingMLprograms.Morerecentlanguagessuch
+epower to admit impred-
+icativepolymorphism,inwhichquantiedtypesmaybe
+4
+However, types are passed independently as data and associated
+with code.
+instantiatedbyquantiedtypes.BothGirard'sand
+It is natural to consider whether the methods proposed here
+may be extended to the impredicative case.Since the uni-
+versal quantier maybeviewed as a constant of kind !
+!,similarproblems ariseasforrecursivetypes.In
+particular,wemayextendtypeanalysistothequantied
+case,butonlyattheexpenseoftermination,duetothe
+negative occurrence of  in the kind of the quantier.Ad
+hocsolutions are possible,but in general it appears neces-
+sary to sacrice termination guarantees.
+Compilingpolymorphism usingintensionaltype analy-
+sisenablesdatarepresentationsthatareimpossibleusing
+type-freetechniques.Settingasidetheadditionalexpres-
+siveness of the present approach, it is interesting to consider
+the performance of a type-passing implementation of ML as
+compared to the type-free approac
+As pointed out byTolmacype-passing implemen-
+tation need not maintain tag bits on values for the sakeof
+garbagecollection.Theonlyremaininguseoftagbitsin
+SMLNJ is for polymorphic equality, which can readily be
+implemented using intensional type analysis.Thus tag bits
+can be eliminated, leading to a considerable space savings.
+On the other hand, it costs time and space to pass type argu-
+ments at run-time, and it is not clear whether type analysis
+is cheaper in practice than carrying tag bits.An empirical
+study of the relative performance of the two approaches is
+currently planned by the second author, and will be reported
+elsewhere.
+The combination of intensional polymorphism and exis-
+tential tteresting questions.On the
+one hand, the typedynamicy be dened in terms of
+existentials.Onthe other hand,dataabstractionmaybe
+violated since a \client" of an abstraction may perform in-
+tensionalanalysisontheabstracttype,whichisreplaced
+at run-time by the implementation type of the abstraction.
+Thissuggeststhatitmaybeadvantageoustodistinguish
+two kinds of types, those that are analyzable and those that
+arenot.In thiswayparametricityandrepresentationin-
+dependence can be enforcedby restricting the useoftype
+analysis.
+The idea of intensional analysis of types bears some re-
+semblance to the notion ofreectionemay think
+oftype-passingasa\reication"ofthemeta-levelnotion
+of types.It is interesting to speculate that the type theory
+proposed here is but a special case of a fully reectivetype
+theory.The reective viewpointmayprovide a solution to
+the problem ofintensionalanalysisofrecursive and quan-
+tiedtypessince,presumably,types wouldbereiedin a
+syntactic form that is more amenable to analysis|using
+rst-order, rather than higher-order, abstract syntax.
+Acknowledgments
+We are grateful to Martn Abadi, Andrew Appel, Lars Birkedal,
+LucaCardelli,MatthiasFelleisen,AndrzejFilinski,Mark
+Jones, Simon Peyton Jones, Mark Leone, Phil Wadler, Jean-
+nette Wing and the reviewers for their comments and sug-
+gestions.
+References
+1M. Abadi, L. Cardelli, B. Pierce, and G. Plotkin.Dynamic
+typing in a statically-typed language.InProceedings of the
+SixteenthAnnualACMSymposiumonPrinciplesofPro-
+gramming Languages, Austin.ACM, January 1989.
+2M. Abadi, L. Cardelli, B. Pierce, and G. Plotkin.Dynamic
+typing in a statically-typed language.ACM Transactions on
+ProgammingLanguagesandSystems,132:237268,Apr.
+1991.Revised version of1.
+3A. Aiken, E. Wimmers, and T. K. Lakshman.Soft typing
+with conditional types.InTwenty-First ACM Symposium
+onPrinciplesofProgrammingLanguages,pages163173,
+Portland, OR, Jan. 1994.
+4S. F. Allen, R. L. Constable, D. J. Howe, and W. E. Aitken.
+Thesemanticsofreectedproof.InFifthSymposiumon
+Logic in Computer Science, pages 95106, Philadelphia, PA,
+June 1990. IEEE.
+5A. W. Appel.CompilingwithContinuations.Cambridge
+University Press, 1992.
+6G. Blelloch, S. Chatterjee, J. C. Hardwick, J. Sipelstein, and
+M. Zagha. Implementation of a portable nested data-parallel
+language.InProceedingsoftheFourthACMSIGPLAN
+Symposium on Principles and Practice of Parallel Program-
+ming, pages 102111, May1993.
+7V. Breazu-Tannen, T. Coquand, C. A. Gunter, and A. Sce-
+drov.Inheritanceasimplicitcoercion.Informationand
+Computation, 93:172221, 1991.
+8L. Cardelli.Phase distinctions in type theory.Unpublished
+manuscript.
+9L.Cardelli.Typefulprogramming.TechnicalReport45,
+DEC Systems Research Center, 1989.
+10R. Cartwright and M. Fagan.Soft typing.InProc.SIG-
+PLAN'91ConferenceonProgrammingLanguageDesign
+and Implementation, pages 278292. ACM, June 1991.
+11D. Clement, J. Despeyroux, T. Despeyroux, and G. Kahn. A
+simple applicative language:Mini-ML. In1986 ACM Conf.
+on LISP and Functional Prog., 1986.
+12R. L. Constable. Intensional analysis of functions and types.
+TechnicalReportCSR11882,Computer ScienceDepart-
+ment, University of Edinburgh, June 1982.
+13R.L.ConstableandD.R.Zlatin.Thetypetheoryof
+PLCV3.ACMTransactionsonProgammingLanguages
+and Systems, 71:7293, Jan. 1984.
+14D. Duggan and J. Ophel.Kinded parametric overloading.
+Technical Report CS-94-35, UniversityofWaterloo, Depart-
+mentofComputerScience,September1994.Supersedes
+CS-94-15 and CS-94-16, March 1994, and CS-93-32, August
+1993.
+15H. Friedman.Equalitybetween functionals.In R. Parikh,
+editor,Logic Colloquium '75, Studies in Logic and the Foun-
+dations of Mathematics, pages 2237. North-Holland, 1975.
+16J.-Y.Girard.Uneextensiondel'interpretationdeGodel
+a l'analyse, et son application al'elimination des coupures
+dans l'analyse et la theorie des types. In J. E. Fenstad, editor,
+Proceedingsof the SecondScandinavian Logic Symposium,
+Studies in Logic and the Foundations of Mathematics, pages
+6392. North-Holland, 1971.
+17J.-Y. Girard.InterpretationFonctionnelleetElimination
+des Coupures dans l'Arithmetique d'OrdreSuperieure. PhD
+thesis, UniversiteParis VII, 1972.
+18K. Godel.Uber eine bisher nochnichtbenutzte Erweiterung
+des niten Standpunktes.Dialectica, 12:280287, 1958.
+19C. A. Gunter, E. L. Gunter, and D. B. MacQueen. Comput-
+ing ML equality kinds using abstract interpretation.Infor-
+mation and Computation, 1072:303323, Dec. 1993.
+20R. Harper and J. C. Mitchell. On the type structure of Stan-
+dardML.ACMTransactionsonProgammingLanguages
+and Systems, 152:211252, April 1993.
+21R. Harper, J. C. Mitchell, and E. Moggi. Higher-order mod-38A. Ohori.A compilation method for ML-style polymorphic
+ules and the phase distinction.InSeventeenth ACM Sym-
+posium on Principles of Programming Languages,SanFran-
+cisco, CA, January 1990.
+22R. Harper and G. Morrisett. Compiling polymorphism using39A. Ohori and K. Kato.Semantics for communication prim-
+intensional type analysis.Technical Report CMUCS94
+185, School of Computer Science, Carnegie Mellon Univer-
+sity,Pittsburgh,PA, September1994.Also published as
+Fox Memorandum CMUCSFOX9407.
+23N. Heintze.Set-based analysis of ML programs.InProc.
+1994ACMConf.onLISPandFunctionalProgramming,
+pages 306317, Orlando, FL, June 1994. ACM.
+24F. Henglein and J. Jrgensen.Formally optimal boxing.In
+Twenty-First ACMSymposiumonPrinciples of Program-
+ming Languages, pages 213226, Portland, OR, Jan. 1994.mentation of polymorphism.Technical report, Department
+ACM.
+25P. Hudak, S. L. P. Jones, and P.Wadler. Report on the pro-
+gramming language Haskell, version 1.2.SIGPLAN Notices,
+275, May 1992.
+26M. Jones.Coherence for qualied types.Research Report
+YALEUDCSRR-989,YaleUniversity,NewHaven,Con-
+necticut, USA, September 1993.
+27M. Jones. Partial evaluation for dictionary-free overloading.
+InACM Conference on Partial Evaluation and Semantics-44B. C. Smith. Reection and semantics in LISP. InEleventh
+BasedProgram Manipulation, 1994.
+28M. P. Jones.QualiedTypes: Theory and Practice. PhD the-
+sis, Programming Research Group, Oxford UniversityCom-
+puting Laboratory, July 1992.Currently available as Tech-
+nicalMonographPRG-106,OxfordUniversityComputing
+Laboratory, Programming Research Group, 11 Keble Road,
+Oxford OX1 3QD, U.K. email: library@comlab.ox.ac.uk.
+29S.P.JonesandJ.Launchbury.Unboxedvaluesasrst-
+class citizens.InProc.Conf. on Functional Programming
+and Computer Architecture,volume 523 ofLecture Notes in
+ComputerScience,pages636666.ACM,Springer-Verlag,
+1991.
+30X. Leroy.Unboxed objects and polymorphic typing. InCon-
+ferenceRecord of the Nineteenth Annual ACM SIGPLAN-
+SIGACTSymposiumonPrinciplesofProgrammingLan-
+guages,Albuquerque,pages177188.ACM Press,January
+1992.
+31P.Martin-Lof.Aboutmodels for intuitionistictypetheo-
+ries and the notion of denitionalequality.In S. Kanger,
+editor,Proceedings of the ThirdScandinavian Logic Sympo-
+sium, Studies in Logic and the Foundations of Mathematics,
+pages 81109. North-Holland, 1975.
+32R.Milner.Atheoryoftypepolymorphisminprogram-
+ming languages.Journal of Computer and System Sciences,
+17:348375, 1978.
+33R. Milner, M. Tofte, and R. Harper.The Denition of Stan-
+dardML. MIT Press, 1990.
+34J. Mitchell and R. Harper. The essence of ML. InFifteenth
+ACM Symposium on Principles of Programming Languages,
+San Diego, California, Jan. 1988.
+35J. C. Mitchell and G. Plotkin. Abstract types have existential
+type.ACMTransactionsonProgammingLanguagesand
+Systems, 103:470502, 1988.
+36G. Morrisett, M. Felleisen, and R. Harper. Abstract models
+of memory management. In preparation, Oct. 1994.
+37R. Morrison, A. Dearle, R. C. H. Connor, and A. L. Brown.
+An ad hoc approach to the implementation of polymorphism.
+ACM Transactions on Progamming Languages and Systems,
+133:342371, July 1991.
+record calculi. InNineteenth ACM Symposium on Principles
+ofProgrammingLanguages,pages154165,Albuquerque,
+NM, Jan. 1992. Association for Computing Machinery.
+itives in a polymorphic language.InTwentieth ACM Sym-
+posium on Principles of Programming Languages, pages 99
+112, Charleston, SC, Jan. 1993. Association for Computing
+Machinery.
+40G. Plotkin.Lambda-denability in the full type hierarchy.
+In J. P. Seldin and J. R. Hindley, editors,To H. B. Curry:
+EssaysinCombinatoryLogic,LambdaCalculusandFor-
+malism, pages 363373. Academic Press, 1980.
+41E. R. Poulsen.Representation analysis for ecient imple-
+ofComputerScienceDIKU,UniversityofCopenhagen,
+Apr. 1993. Master Dissertation.
+42J.C.Reynolds.Towardsatheoryoftypestructure.In
+Colloq. sur la Programmation,volume 19 ofLectureNotes
+in Computer Science, pages 408423. Springer-Verlag, 1974.
+43Z. Shao.Compiling StandardMLforEcientExecution on
+Modern Machines. PhD thesis, Princeton University, Prince-
+ton, NJ, November 1994.
+ACM Symposium on Principles of Programming Languages,
+pages 2335, 1984.
+45R.Statman.Completeness,invariance,andlambda-
+denability.Journal of Symbolic Logic, 47:1726, 1982.
+46R. Statman. Logical relations and the typed-calculus.In-
+formation and Control, 65:8597, 1985.
+47S. Stenlund.Combinators,-terms and ProofTheory.D.
+Reidel, 1972.
+48W. W. Tait. Intensional interpretation of functionals of nite
+type.Journal of Symbolic Logic, 322:187199, June 1967.
+49S.R.Thatte.Quasi-statictyping.InSeventeenthACM
+Symposium on Principles of Programming Languages,pages
+367381, San Francisco, CA, Jan. 1990.
+50S. R. Thatte.Semantics of type classes revisited.InProc.
+1994ACM Conferenceon LISPandFunctionalProgram-
+ming, pages 208219, Orlando, June 1994. ACM.
+51A. Tolmach.Tag-free garbage collection using explicit type
+parameters.InProc. 1994 ACM Conference on LISP and
+FunctionalProgramming,pages111,Orlando,FL,June
+1994. ACM.
+52A. K. Wright. Polymorphism for imperative languages with-
+out imperativetypes.Technical Report TR93200, Depart-
+mentofComputerScience,Rice University,Houston, TX,
+Feb. 1993. To appear,Lisp and Symbolic Computation.
+53A. K. Wright and R. Cartwright. A practical soft type system
+for Scheme.InProc1994ACM ConferenceonLISPand
+Functional Programming, pages 250262, Orlando, FL, June
+1994. ACM.

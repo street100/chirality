@@ -55,7 +55,7 @@ One question each, one `research` run each, one `FD` row each in
 |---|---|---|
 | R1 | What does the type-preservation theorem state, phase by phase, in the F-to-TAL translation, and what obligation does each phase carry? | the property itself. Everything below depends on it |
 | R2 | Where do production compilers lose source types on the way down, and what do they give up by doing it? | whether `LCore`'s erasure is a defect or a costed choice |
-| R3 | How is polymorphism represented at the assembly level, and what are the published alternatives to collapsing it to a uniform word? | `tt-word`, `tal-ty=?`'s wildcard, E185, `decision-erased-word-level` |
+| R3 | When a target type system is coarser than the source, what published mechanisms discharge the resulting soundness obligation, and what does each cost the producer, the checker and the runtime? | `tt-word`, `tal-ty=?`'s wildcard, E185, `decision-erased-word-level` |
 | R4 | How is closure conversion typed, and what must the target type system express to state its result? | `closconv`, the `$apply` dispatchers, the `$k` capture constructors, PRB-45/46/49 |
 | R5 | What must a block boundary carry for a target-level checker to be complete, and what obligation does that put on the producer? | PRB-73, and the producer half FD-14 did not reach |
 | R6 | What does accepting a target program witness, and how do certifying compilers relate the source and the target? | what `preserve-check` means in E16's and E70's titles |
@@ -71,8 +71,14 @@ be declared, how it is verified, and what it costs the pass that emits it.
 
 **`decision-erased-word-level`** settles the LEVEL: the erased word lives at the
 lowering type level and `Core` gains no word spelling. R3 does not reopen the
-level. It asks what the published alternatives to a uniform word ARE, which the
-decision's own survey section leaves at split.
+level.
+
+**FD-16** settled what R3 originally asked. Collapsing to a uniform word is
+ordinary production practice and every surveyed compiler does it, so the
+alternatives question is closed. What FD-16 left open is the discharge: the two
+surveyed systems keeping a checked target over a coarser type language charge
+the producer a runtime cast at every use site, and the tree charges nothing. R3
+was rewritten to that question on 2026-09-08 and FD-17 answers it.
 
 ## Order, and why
 
@@ -88,7 +94,7 @@ R7 is last because E70 is unbuilt and gated on `decision-effect-facets`.
 |---|---|
 | R1 | FD-15 |
 | R2 | FD-16 |
-| R3 | UNRUN |
+| R3 | FD-17 |
 | R4 | UNRUN |
 | R5 | UNRUN |
 | R6 | UNRUN |
