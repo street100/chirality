@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<title>Ascon &ndash; Specification</title>
+
+<meta charset="utf-8" />
+<meta name="author" content="Christoph Dobraunig, Maria Eichlseder, Florian Mendel, Martin Schläffer" />
+<meta name="description" content="Ascon - A Family of Authenticated Encryption Algorithms" />
+<meta name="keywords" content="ascon, caesar, authenticated encryption, sponge" />
+<meta name="robots" content="index, follow" />
+
+<link rel="stylesheet" href="css/default.css" type="text/css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro%7CNoto+Serif" />
+</head>
+
+
+<body>
+<div id="boundingbox">
+  <div  id="nav">
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li id="current"><a href="specification.html">Specification</a></li>
+      <li><a href="implementations.html">Implementations</a></li>
+      <li><a href="publications.html">Publications</a></li>
+      <li><a href="resources.html">Resources</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+  </div>
+
+  <!-- content starts -->
+  <br style="clear: both" />
+  <div id="content-wrap">
+
+    <!-- content head -->
+    <div id="content-head">
+      <h1 id="pagetitle"><span class="sc">Ascon</span></h1>
+      <h2 id="pagesubtitle">Specification</h2>
+    </div>
+
+
+    <!-- content main -->
+    <div id="content-main">
+
+      <p>
+      The <span class="sc">Ascon</span> family is specified in <a href="https://doi.org/10.6028/NIST.SP.800-232">NIST SP 800-232</a>: "Ascon-based Lightweight Cryptography Standards for Constrained Devices: Authenticated Encryption, Hash, and Extendable Output Functions".
+      </p>
+
+      <p>
+      The original authenticated encryption (AEAD) and hashing schemes (Hash, XOF) <span class="sc">Ascon</span> as submitted to the LWC project are specified in the <a href="https://doi.org/10.1007/s00145-021-09398-9">Journal of Cryptology article</a>, the <a href="files/asconv12-nist.pdf">NIST submission</a>, and the <a href="files/asconv12.pdf">CAESAR submission</a>.
+      Additionally, pseudorandom functions (PRF) and message authentication codes (MAC) are specified in the <a href="https://doi.org/10.1007/978-3-031-58868-6_15">CT-RSA 2024 paper</a>.
+      </p>
+
+      <p>
+      NIST's draft standard is similar, but not identical to the submission. 
+      Changes include the selection of a subset of schemes (with new names and IV constants); changing the mode to little-endian bit order; adding a customizable hash variant; and other flexible implementation options.
+      Below, we provide a brief overview of the standardized schemes.
+      For full details including the round constant and IV values, the little-endian bit ordering, padding rules, or the almost identical decryption mode, we refer to <a href="https://doi.org/10.6028/NIST.SP.800-232">NIST SP 800-232</a>.
+      </p>
+      <!-- TODO maybe enumerate functions (overview table) -->
+
+      <h3><span class="sc">Ascon</span>'s Permutation</h3>
+      <p>
+      All <span class="sc">Ascon</span> family members use the same lightweight permutation.
+      This permutation iteratively applies an SPN-based round transformation for up to 16 rounds;
+      the standardized modes of operation use 
+      12 rounds in <span class="sc">Ascon</span>-<i>p</i>[12],
+      and
+      8 rounds  in <span class="sc">Ascon</span>-<i>p</i>[8].
+
+      The round transformation consists of the following three steps which operate on a 320-bit state divided into 5 words <i>S</i><sub>0</sub>, <i>S</i><sub>1</sub>,  <i>S</i><sub>2</sub>, <i>S</i><sub>3</sub>, <i>S</i><sub>4</sub> of 64 bits each:
+      </p>
+
+      <ul>
+        <li><span class="mark">Addition of Round Constants</span>: <span class="sc">xor</span>s a round-specific 1-byte constant to word <i>S</i><sub>2</sub>.</li>
+        <li><span class="mark">Nonlinear Substitution Layer</span>: applies a 5-bit S-box 64 times in parallel in a bit-sliced fashion (vertically, across words).</li>
+        <li><span class="mark">Linear Diffusion Layer</span>: <span class="sc">xor</span>s different rotated copies of each word (horizontally, within each word).</li>
+      </ul>
+
+      <div style='text-align:center'>
+      <div class="multifigure">
+        <div style="float:left; width: 50%; padding: 10px;">
+          <figure>
+            <a class="figlink" href="images/state_vertical.pdf"><img class="figlink" alt="Sbox layer in Ascon sponge state" src="images/state_vertical_small.png"/></a>
+          </figure>
+          <figure>
+            <a class="figlink" href="images/sbox.pdf"><img class="figlink" alt="Ascon 5-bit sbox"   src="images/sbox_small.png"/></a>
+            <figcaption>
+              <span class="sc">Ascon</span>'s S-box &nbsp;
+              <!--[<a href="images/sbox.pdf">pdf</a>]-->
+              <!--[<a href="images/sbox.tex">tex</a>] -->
+              [<a href="images/asconfigures.zip">tex</a>]
+              [<a href="images/sbox_instructions.c">C instructions</a>]
+            </figcaption>
+          </figure>
+        </div>
+        <div style="float:left; width: 50%; padding: 10px;">
+          <figure>
+            <a class="figlink" href="images/state_horizontal.pdf"><img class="figlink" alt="Linear layer in Ascon sponge state" src="images/state_horizontal_small.png"/></a>
+          </figure>
+          <figure>
+            <i>S</i><sub>0</sub> := <i>S</i><sub>0</sub> &oplus; (<i>S</i><sub>0</sub> &#8921; 19) &oplus; (<i>S</i><sub>0</sub> &#8921; 28)<br style="line-height: 150%;"/>
+            <i>S</i><sub>1</sub> := <i>S</i><sub>1</sub> &oplus; (<i>S</i><sub>1</sub> &#8921; 61) &oplus; (<i>S</i><sub>1</sub> &#8921; 39)<br style="line-height: 150%;"/>
+            <i>S</i><sub>2</sub> := <i>S</i><sub>2</sub> &oplus; (<i>S</i><sub>2</sub> &#8921; &nbsp;&nbsp;1) &oplus; (<i>S</i><sub>2</sub> &#8921; &nbsp;&nbsp;6)<br style="line-height: 150%;"/>
+            <i>S</i><sub>3</sub> := <i>S</i><sub>3</sub> &oplus; (<i>S</i><sub>3</sub> &#8921; 10) &oplus; (<i>S</i><sub>3</sub> &#8921; 17)<br style="line-height: 150%;"/>
+            <i>S</i><sub>4</sub> := <i>S</i><sub>4</sub> &oplus; (<i>S</i><sub>4</sub> &#8921; &nbsp;&nbsp;7) &oplus; (<i>S</i><sub>4</sub> &#8921; 41)<br style="line-height: 150%;"/>
+            <br style="line-height: 200%;"/>
+            <figcaption>
+              <span class="sc">Ascon</span>'s linear layer
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+      <p style="margin-top: 0px;">
+        <span class="sc">Ascon</span>'s permutation:
+        &oplus; denotes <span class="sc">xor</span>,
+        &#8857; denotes <span class="sc">and</span>,
+        <!--, not &#x25BD;-->
+        &#8921; is rotation to the right.
+      </p>
+      </div>
+
+
+
+
+
+      <h3>Authenticated Encryption with <span class="sc">Ascon-AEAD128</span></h3>
+      <p>
+      <span class="sc">Ascon</span> uses a <a href="http://sponge.noekeon.org/" target="_blank">duplex-based</a> mode of operation for authenticated encryption. The key, tag and nonce length is 128 bits.
+      The sponge operates on a state of 320 bits, with message blocks of 128 bits.
+      <!--</p>
+      <p>-->
+      The encryption process is split into four phases:
+      </p>
+      <ol>
+        <li><span class="mark">Initialization</span>: initializes the state with the key <i>K</i>&nbsp; and nonce <i>N</i>.</li>
+        <li><span class="mark">Associated Data Processing</span>: updates the state with associated data blocks <i>A<sub>i</sub></i>&nbsp;.</li>
+        <li><span class="mark">Plaintext Processing</span>: injects plaintext blocks <i>P<sub>i</sub></i>&nbsp; into the state and extracts ciphertext blocks <i>C<sub>i</sub></i>&nbsp;.</li>
+        <li><span class="mark">Finalization</span>: injects the key <i>K</i>&nbsp; again and extracts the tag <i>T</i>&nbsp; for authentication.</li>
+      </ol>
+
+      <div style='text-align:center'>
+        <figure>
+          <a class="figlink" href="images/aead_encrypt.pdf"><img class="figlink" alt="Ascon's duplex mode for authenticated encryption"   src="images/aead_encrypt_small.png"/></a><br/>
+          <a class="figlink" href="images/aead_decrypt.pdf"><img class="figlink" alt="Ascon's duplex mode for authenticated decryption"   src="images/aead_decrypt_small.png"/></a>
+          <figcaption>
+            <span class="sc">Ascon-AEAD128</span> authenticated <span class="mark">encryption</span> (top) and <span class="mark">decryption</span> (bottom) &nbsp; &nbsp;
+            <!--[<a href="images/aead_encrypt.pdf">pdf</a>]-->
+            <!--[<a href="images/aead_encrypt.tex">tex</a>]-->
+            [<a href="images/asconfigures.zip">tex</a>]
+          </figcaption>
+        </figure>
+      </div>
+
+      <p>
+      After each injected block (except the last plaintext block), the core
+      permutation <span class="sc">Ascon</span>-<i>p</i>[8] is applied to the complete state.
+      During initialization and finalization, a stronger permutation <span class="sc">Ascon</span>-<i>p</i>[12] with more rounds is used.
+      <!--
+      The numbers of rounds <i>a</i> and <i>b</i>, as well as the sponge's rate and capacity, depend on the <span class="sc">Ascon</span> variant. The recommended parameters are:
+      -->
+      </p>
+      <table class="nice numbers">
+        <caption>Parameters for <span class="sc">Ascon</span> authenticated encryption</caption>
+        <thead>
+          <tr><th scope="col" rowspan="2">Cipher</th><th scope="col" class="filler"></th><th scope="col" colspan="5">Bit size of</th><th scope="col" class="filler"> </th><th scope="col" colspan="2">Rounds</th></tr>
+          <tr><th></th><th>key</th><th>nonce</th><th>tag</th><th>rate</th><th>capacity</th><th></th><th><i>p</i>[12]</th><th><i>p</i>[8]</th></tr>
+        </thead>
+        <tbody>
+          <!-- <tr><td><span class="sc">Ascon</span>-128</td><td></td><td>128</td><td>128</td><td>128</td><td>64</td><td>256</td><td></td><td>12</td><td>6</td></tr> -->
+        <tr><td><span class="sc">Ascon-AEAD128</span></td><td></td><td>128</td><td>128</td><td>128</td><td>128</td><td>192</td><td></td><td>12</td><td>8</td></tr>
+        </tbody>
+      </table>
+
+
+      <h3>Hashing with <span class="sc">Ascon-Hash256</span> and <span class="sc">Ascon-(C)XOF128</span></h3>
+      <p>
+      The <span class="sc">Ascon</span> family includes
+      the hash functions <span class="sc">Ascon-Hash</span> and the extendable output functions <span class="sc">Ascon-XOF128</span> with its customizable variant <span class="sc">Ascon-CXOF128</span>.
+      The hashing modes use the same lightweight 320-bit permutation as the authenticated encryption modes.
+      All variants use similar <a href="http://sponge.noekeon.org/" target="_blank">sponge-based</a> modes of operation and provide 128-bit security when using a hash size of at least 256 bits.
+      </p>
+      <div style='text-align:center'>
+        <figure>
+          <a class="figlink" href="images/hash.pdf"><img class="figlink" alt="Ascon's sponge mode for hashing: Ascon-Hash256 and Ascon-XOF128"   src="images/hash_small.png"/></a>
+          <a class="figlink" href="images/cxof.pdf"><img class="figlink" alt="Ascon's sponge mode for customizable hashing: Ascon-CXOF128"   src="images/cxof_small.png"/></a>
+          <figcaption>
+            Hashing mode for <span class="sc">Ascon-Hash256</span>, <span class="sc">Ascon-XOF128</span> (top) and <span class="sc">Ascon-CXOF128</span> (bottom) &nbsp; &nbsp;
+            [<a href="images/asconfigures.zip">tex</a>]
+          </figcaption>
+        </figure>
+      </div>
+
+      <p>
+      The hashing modes absorb the message <i>M</i>&nbsp; in 64-bit blocks <i>M<sub>i</sub></i>&nbsp;
+      and finally squeeze the hash value <i>H</i>&nbsp; in 64-bit blocks <i>H<sub>i</sub></i>&nbsp;.
+
+      The customizable variant additionally absorbs a customization string <i>Z</i>&nbsp; in 64-bit blocks <i>Z<sub>i</sub></i>&nbsp; before the message <i>M</i>.
+
+      After each absorbed or squeezed block, the
+      permutation <span class="sc">Ascon</span>-<i>p</i>[12] is applied to the state.
+      </p>
+      <table class="nice numbers">
+        <caption>Parameters for <span class="sc">Ascon</span> hashing</caption>
+        <thead>
+          <tr><th scope="col" rowspan="2">Algorithm</th><th scope="col" class="filler"></th><th scope="col" colspan="3">Bit size of</th><th scope="col" class="filler"> </th><th scope="col" colspan="1">Rounds</th></tr>
+          <tr><th></th><th>hash output</th><th>rate</th><th>capacity</th><th></th><th><i>p</i>[12]</th></tr>
+        </thead>
+        <tbody>
+        <tr><td><span class="sc">Ascon-Hash256 </span></td><td></td><td>256      </td><td>64</td><td>256</td><td></td><td>12</td></tr>
+        <tr><td><span class="sc">Ascon-XOF128  </span></td><td></td><td>arbitrary</td><td>64</td><td>256</td><td></td><td>12</td></tr>
+        <tr><td><span class="sc">Ascon-CXOF128 </span></td><td></td><td>arbitrary</td><td>64</td><td>256</td><td></td><td>12</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

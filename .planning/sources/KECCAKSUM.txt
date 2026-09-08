@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Keccak Team</title>
+
+    <base href="https://keccak.team/" />
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="shortcut icon" href="assets/img/favicon.png" />
+
+    <meta name="description" content="">
+
+    <!-- CSS -->
+    <link rel="stylesheet" type="text/css" href="assets/css/preload.css">
+    <link rel="stylesheet" type="text/css" href="fonts/fonts.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/vendors.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/style-blue.css" title="default">
+    <link rel="stylesheet" type="text/css" href="assets/css/width-full.css" title="default">
+    <link rel="stylesheet" type="text/css" href="assets/css/highlight/xcode.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/style.css">
+
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+        <script src="assets/js/html5shiv.min.js"></script>
+        <script src="assets/js/respond.min.js"></script>
+    <![endif]-->
+
+    <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+    });
+    </script>
+</head>
+
+<!-- Preloader -->
+<div id="preloader">
+    <div id="status">&nbsp;</div>
+</div>
+
+<div class="sb-site-container">
+<div class="boxed">
+
+<header id="header-full-top" class="hidden-xs header-full">
+    <nav class="top-nav">
+        <ul class="top-nav-social hidden-sm">
+            <li><a href="news.atom" class="animated fadeIn animation-delay-6 rss"><i class="fa fa-rss"></i></a></li>
+            <li><a href="https://twitter.com/KeccakTeam" class="animated fadeIn animation-delay-7 twitter"><i class="fa fa-twitter"></i></a></li>
+            <li><a href="https://github.com/KeccakTeam" class="animated fadeIn animation-delay-8 git"><i class="fa fa-github"></i></a></li>
+        </ul>
+    </nav>
+    <div class="container">
+        <div class="header-full-title">
+            <h1 class="animated fadeInRight"><a href="index.html">Team <span>Keccak</span></a></h1>
+            <p class="animated fadeInRight">
+            Guido Bertoni<sup>3</sup>, Joan Daemen<sup>2</sup>, Seth Hoffert, Michaël Peeters<sup>1</sup>, Gilles Van Assche<sup>1</sup> and Ronny Van Keer<sup>1</sup><br />
+            <sup>1</sup><a href="http://www.st.com/">STMicroelectronics</a> - <sup>2</sup><a href="http://www.ru.nl/english/">Radboud University</a> - <sup>3</sup><a href="https://www.securitypattern.com/">Security Pattern</a>
+            </p>
+        </div>
+    </div>
+</header> <!-- header-full -->
+<nav class="navbar navbar-default navbar-header-full navbar-dark yamm navbar-static-top" role="navigation" id="header">
+    <div class="container">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+            <span class="sr-only">Toggle navigation</span>
+            <i class="fa fa-bars"></i>
+            </button>
+            <a id="ar-brand" class="navbar-brand hidden-lg hidden-md hidden-sm" href="index.html">Team <span>Keccak</span></a>
+        </div> <!-- navbar-header -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li><a href="index.html">Home</a></li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Design</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Schemes</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="keccak.html">Keccak</a></li>
+                                <li><a href="ketje.html">Ketje</a></li>
+                                <li><a href="keyak.html">Keyak</a></li>
+                                <li><a href="kangarootwelve.html">KangarooTwelve</a></li>
+                                <li><a href="turboshake.html">TurboSHAKE</a></li>
+                                <li><a href="kravatte.html">Kravatte</a></li>
+                                <li role="presentation" class="divider"></li>
+                                <li><a href="xoofff.html">Xoofff</a></li>
+                                <li><a href="xoodyak.html">Xoodyak</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Constructions</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="sponge_duplex.html">Sponge, duplex and variants</a></li>
+                                <li><a href="farfalle.html">Farfalle</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Permutations</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="keccakp.html">Keccak-<i>p</i></a></li>
+                                <li><a href="xoodoo.html">Xoodoo</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Analysis</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li><a href="crunchy_contest.html">Crunchy contest</a></li>
+                        <li><a href="ketje_contest.html">Ketje contest</a></li>
+                        <li><a href="third_party.html">Third-party cryptanalysis</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Implementation</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li class="dropdown-submenu">
+                            <a href="javascript:void(0);" class="has_children">Software</a>
+                            <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                                <li><a href="software.html">Implementations</a></li>
+                                <li><a href="sw_performance.html">Performance figures</a></li>
+                                <li><a href="binaries.html">Binaries</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="hardware.html">Hardware</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" data-hover="dropdown">Documentation</a>
+                    <ul class="dropdown-menu dropdown-menu-left animated-2x animated fadeIn">
+                        <li><a href="specifications.html">Specifications</a></li>
+                        <li><a href="papers.html">Our papers</a></li>
+                        <li><a href="third_party.html">Third-party cryptanalysis</a></li>
+                        <li role="presentation" class="divider"></li>
+                        <li><a href="figures.html">Figures</a></li>
+                        <li><a href="glossary.html">Glossary</a></li>
+                        <li role="presentation" class="divider"></li>
+                        <li><a href="archives.html">Archives</a></li>
+                    </ul>
+                </li>
+
+                <li><a href="team.html">About us</a></li>
+
+            </ul>
+        </div><!-- navbar-collapse -->
+    </div><!-- container -->
+</nav>
+
+<header class="main-header">
+<div class="container">
+<h1 class="page-title"><span class='sc'>Keccak</span> specifications summary</h1>
+</div>
+</header>
+<div class="container">
+<p><span class='sc'>Keccak</span> (pronounced [k&#603;t&#643;ak], like “ketchak”) is a family of sponge functions that has been standardized in the form of SHAKE128 and SHAKE256 extendable output functions and of SHA3-224 to SHA3-512 hash functions in <a href="specifications.html#FIPS_202">FIPS 202</a>, as well as cSHAKE128, cSHAKE256 and other functions in <a href="specifications.html#SP_800_185">NIST SP 800-185</a>. The text below is a quick description of <span class='sc'>Keccak</span> using pseudo-code. In no way should this introductory text be considered as a formal and reference description of <span class='sc'>Keccak</span>. Instead the goal here is to present <span class='sc'>Keccak</span> with emphasis on readability and clarity. For a more formal description, the reader is invited to read the <a href="files/Keccak-reference-3.0.pdf">reference specifications</a> or the <a href="specifications.html#FIPS_202">FIPS 202</a> standard.</p>
+<p>As a complement, one can also have a look at some simple implementations focused on readability and clarity, such as:</p>
+<ul>
+<li>Markku-Juhani O. Saarinen's <a href="https://github.com/mjosaarinen/tiny_sha3">tiny_sha3</a>;</li>
+<li>our own readable and compact implementation <a href="https://github.com/XKCP/XKCP/blob/master/Standalone/CompactFIPS202/C/Keccak-readable-and-compact.c">in C</a> or <a href="https://github.com/XKCP/XKCP/blob/master/Standalone/CompactFIPS202/Python/CompactFIPS202.py">in Python</a>.</li>
+</ul>
+<h1>Structure of <span class='sc'>Keccak</span></h1>
+<p><span class='sc'>Keccak</span> is a family of hash functions that is based on the <a href="sponge_duplex.html">sponge construction</a>, and hence is a sponge function family. In <span class='sc'>Keccak</span>, the underlying function is a permutation chosen in a set of seven <span class='sc'>Keccak</span>-$f$ permutations, denoted <span class='sc'>Keccak</span>-$f[b]$, where $b \in \{25, 50, 100, 200, 400, 800, 1600\}$ is the width of the permutation. The width of the permutation is also the width of the state in the sponge construction.</p>
+<p>The state is organized as an array of $5 \times 5$ lanes, each of length $w \in \{1, 2, 4, 8, 16, 32, 64\}$ and $b=25w$. When implemented on a 64-bit processor, a lane of <span class='sc'>Keccak</span>-$f[1600]$ can be represented as a 64-bit CPU word.</p>
+<p>We obtain the <span class='sc'>Keccak</span>$[r,c]$ sponge function, with parameters capacity $c$ and bitrate $r$, if we apply the sponge construction to <span class='sc'>Keccak</span>-$f[r+c]$ and by applying a specific padding to the message input.</p>
+<h1>Pseudo-code description of the permutations</h1>
+<p>We first start with the description of <span class='sc'>Keccak</span>-$f$ in the pseudo-code below. The number of rounds $n$ depends on the permutation width, and is given by $n = 12+2l$, where $2^l = w$. This gives 24 rounds for <span class='sc'>Keccak</span>-$f[1600]$.</p>
+<pre><code>Keccak-f[b](A) {
+  for i in 0…n-1
+    A = Round[b](A, RC[i])
+  return A
+}
+
+Round[b](A,RC) {
+  # θ step
+  C[x] = A[x,0] xor A[x,1] xor A[x,2] xor A[x,3] xor A[x,4],   for x in 0…4
+  D[x] = C[x-1] xor rot(C[x+1],1),                             for x in 0…4
+  A[x,y] = A[x,y] xor D[x],                           for (x,y) in (0…4,0…4)
+
+  # ρ and π steps
+  B[y,2*x+3*y] = rot(A[x,y], r[x,y]),                 for (x,y) in (0…4,0…4)
+
+  # χ step
+  A[x,y] = B[x,y] xor ((not B[x+1,y]) and B[x+2,y]),  for (x,y) in (0…4,0…4)
+
+  # ι step
+  A[0,0] = A[0,0] xor RC
+
+  return A
+}
+</code></pre>
+<p>In the pseudo-code above, the following conventions are in use. All the operations on the indices are done modulo 5. <code>A</code> denotes the complete permutation state array, and <code>A[x,y]</code> denotes a particular lane in that state. <code>B[x,y]</code>, <code>C[x]</code>, <code>D[x]</code> are intermediate variables. The constants <code>r[x,y]</code> are the rotation offsets (see <a href="keccak_specs_summary.html#rotationOffsets">Table 2</a>), while <code>RC[i]</code> are the round constants (see <a href="keccak_specs_summary.html#roundConstants">Table 1</a>). <code>rot(W,r)</code> is the usual bitwise cyclic shift operation, moving bit at position <code>i</code> into position <code>i+r</code> (modulo the lane size).</p>
+<h1>Pseudo-code description of the sponge functions</h1>
+<p>Then, we present the pseudo-code for the <span class='sc'>Keccak</span>$[r,c]$ sponge function, with parameters capacity $c$ and bitrate $r$. We assume for simplicity that $r$ is a multiple of the lane size, as this is the case for the standard instances.</p>
+<p>The description below assumes that the input <code>M</code> is represented as a string of bytes <code>Mbytes</code> followed by a number (possibly zero, at most 7) of trailing bits <code>Mbits</code>. The standard instances typically add a few trailing bits for domain separation. When made of bytes, the input of these functions then becomes <code>Mbytes</code>, while <code>Mbits</code> is solely determined by the instance used, see <a href="keccak_specs_summary.html#suffixes">Table 3</a>.</p>
+<pre><code>Keccak[r,c](Mbytes || Mbits) {
+  # Padding
+  d = 2^|Mbits| + sum for i=0..|Mbits|-1 of 2^i*Mbits[i]
+  P = Mbytes || d || 0x00 || … || 0x00
+  P = P xor (0x00 || … || 0x00 || 0x80)
+
+  # Initialization
+  S[x,y] = 0,                               for (x,y) in (0…4,0…4)
+
+  # Absorbing phase
+  for each block Pi in P
+    S[x,y] = S[x,y] xor Pi[x+5*y],          for (x,y) such that x+5*y &lt; r/w
+    S = Keccak-f[r+c](S)
+
+  # Squeezing phase
+  Z = empty string
+  while output is requested
+    Z = Z || S[x,y],                        for (x,y) such that x+5*y &lt; r/w
+    S = Keccak-f[r+c](S)
+
+  return Z
+}
+</code></pre>
+<p>In the pseudo-code above, <code>d</code> is the delimited suffix, which encodes the trailing bits <code>Mbits</code> and its length. The padded message <code>P</code> is organised as an array of blocks <code>Pi</code>, themselves organized as arrays of lanes. The variable <code>S</code> holds the state as an array of lanes. The <code>||</code> operator denotes the usual string concatenation. See also the page on <a href="keccak_bits_and_bytes.html">bit and byte conventions</a> for more details.</p>
+<h1>Standard instances</h1>
+<p>The parameters defining the standard instances are given in the table below.</p>
+<div class="row">
+  <div class="col-sm-2">&nbsp;</div>
+  <div class="col-sm-8">
+<table class="table table-striped table-bordered" id="suffixes">
+<tr>
+<td></td>
+<th class="right"><i>r</i></th>
+<th class="right"><i>c</i></th>
+<th>Output length (bits)</th>
+<th>Security level (bits)</th>
+<th><code>Mbits</code></th>
+<th><code>d</code></th>
+</tr>
+<tr>
+<th>SHAKE128</th>
+<td class="right">1344</td>
+<td class="right">256</td>
+<td class="right">unlimited</td>
+<td class="right">128</td>
+<td>1111</td>
+<td><code>0x1F</code></td>
+</tr>
+<tr>
+<th>SHAKE256</th>
+<td class="right">1088</td>
+<td class="right">512</td>
+<td class="right">unlimited</td>
+<td class="right">256</td>
+<td>1111</td>
+<td><code>0x1F</code></td>
+</tr>
+<tr>
+<th>SHA3-224</th>
+<td class="right">1152</td>
+<td class="right">448</td>
+<td class="right">224</td>
+<td class="right">112</td>
+<td>01</td>
+<td><code>0x06</code></td>
+</tr>
+<tr>
+<th>SHA3-256</th>
+<td class="right">1088</td>
+<td class="right">512</td>
+<td class="right">256</td>
+<td class="right">128</td>
+<td>01</td>
+<td><code>0x06</code></td>
+</tr>
+<tr>
+<th>SHA3-384</th>
+<td class="right">832</td>
+<td class="right">768</td>
+<td class="right">384</td>
+<td class="right">192</td>
+<td>01</td>
+<td><code>0x06</code></td>
+</tr>
+<tr>
+<th>SHA3-512</th>
+<td class="right">576</td>
+<td class="right">1024</td>
+<td class="right">512</td>
+<td class="right">256</td>
+<td>01</td>
+<td><code>0x06</code></td>
+</tr>
+<th>cSHAKE128</th>
+<td class="right">1344</td>
+<td class="right">256</td>
+<td class="right">unlimited</td>
+<td class="right">128</td>
+<td>00</td>
+<td><code>0x04</code></td>
+</tr>
+<tr>
+<th>cSHAKE256</th>
+<td class="right">1088</td>
+<td class="right">512</td>
+<td class="right">unlimited</td>
+<td class="right">256</td>
+<td>00</td>
+<td><code>0x04</code></td>
+</tr>
+<tr>
+<caption><strong>Table 3: the parameters of the standard FIPS 202 and SP 800-185 instances.</strong> The values of <code>Mbits</code> and <code>d</code> assume that the input to these functions is made of bytes.</caption>
+</table>
+</div>
+  <div class="col-sm-2">&nbsp;</div>
+</div>
+
+<p>The value of the capacity <i>c</i> and of the suffix <code>Mbits</code> jointly provide <em>domain separation</em> between the different instances. Because their input to <span class='sc'>Keccak</span> never collide, domain-seprated instances will give unrelated outputs and act as independent functions.</p>
+<p>The <em>customizable</em> extendable-output functions cSHAKE128 and cSHAKE256 from <a href="specifications.html#SP_800_185">SP 800-185</a> have their own domain separation mechanism. In addition to the main input, these functions accept a <em>function name</em> input (defined by NIST) and a <em>customization string</em> input (user-defined). When these two additional inputs are both the empty string, cSHAKE128 and cSHAKE256 fall back on their corresponding SHAKE functions. The functions KMAC128, KMACXOF128, TupleHash128, TupleHashXOF128, ParallelHash128, ParallelHashXOF128 are defined on top of cSHAKE128, and similarly for KMAC256, KMACXOF256, TupleHash256, TupleHashXOF256, ParallelHash256, ParallelHashXOF256.</p>
+<h1>Appendices</h1>
+<h2>Round constants</h2>
+<p>The round constants <code>RC[i]</code> are given in the table below for the maximum lane size 64. For smaller sizes, they are simply truncated. The formula can be found in the <a href="files/Keccak-reference-3.0.pdf">reference specifications</a>.</p>
+<div class="row">
+  <div class="col-sm-2">&nbsp;</div>
+  <div class="col-sm-8">
+<table class="table table-striped table-bordered" id="roundConstants">
+<tr>
+<th>RC[0]</th><td>0x0000000000000001</td><th>RC[12]</th><td>0x000000008000808B</td>
+</tr>
+<tr>
+<th>RC[1]</th><td>0x0000000000008082</td><th>RC[13]</th><td>0x800000000000008B</td>
+</tr>
+<tr>
+<th>RC[2]</th><td>0x800000000000808A</td><th>RC[14]</th><td>0x8000000000008089</td>
+</tr>
+<tr>
+<th>RC[3]</th><td>0x8000000080008000</td><th>RC[15]</th><td>0x8000000000008003</td>
+</tr>
+<tr>
+<th>RC[4]</th><td>0x000000000000808B</td><th>RC[16]</th><td>0x8000000000008002</td>
+</tr>
+<tr>
+<th>RC[5]</th><td>0x0000000080000001</td><th>RC[17]</th><td>0x8000000000000080</td>
+</tr>
+<tr>
+<th>RC[6]</th><td>0x8000000080008081</td><th>RC[18]</th><td>0x000000000000800A</td>
+</tr>
+<tr>
+<th>RC[7]</th><td>0x8000000000008009</td><th>RC[19]</th><td>0x800000008000000A</td>
+</tr>
+<tr>
+<th>RC[8]</th><td>0x000000000000008A</td><th>RC[20]</th><td>0x8000000080008081</td>
+</tr>
+<tr>
+<th>RC[9]</th><td>0x0000000000000088</td><th>RC[21]</th><td>0x8000000000008080</td>
+</tr>
+<tr>
+<th>RC[10]</th><td>0x0000000080008009</td><th>RC[22]</th><td>0x0000000080000001</td>
+</tr>
+<tr>
+<th>RC[11]</th><td>0x000000008000000A</td><th>RC[23]</th><td>0x8000000080008008</td>
+</tr>
+<caption><strong>Table 1: The round constants RC[i]</strong></caption>
+</table>
+</div>
+  <div class="col-sm-2">&nbsp;</div>
+</div>
+
+<h2>Rotation offsets</h2>
+<p>The rotation offsets <code>r[x,y]</code> are given in the table below. The formula can be found in the <a href="files/Keccak-reference-3.0.pdf">reference specifications</a>.</p>
+<div class="row">
+  <div class="col-sm-3">&nbsp;</div>
+  <div class="col-sm-6">
+<table class="table table-bordered" id="rotationOffsets">
+<tr>
+<td></td>
+<th>x = 3</th>
+<th>x = 4</th>
+<th>x = 0</th>
+<th>x = 1</th>
+<th>x = 2</th>
+</tr>
+<tr>
+<th>y = 2</th>
+<td class="right">25</td>
+<td class="right">39</td>
+<td class="right">3</td>
+<td class="right">10</td>
+<td class="right">43</td>
+</tr>
+<tr>
+<th>y = 1</th>
+<td class="right">55</td>
+<td class="right">20</td>
+<td class="right">36</td>
+<td class="right">44</td>
+<td class="right">6</td>
+</tr>
+<tr>
+<th>y = 0</th>
+<td class="right">28</td>
+<td class="right">27</td>
+<td class="right">0</td>
+<td class="right">1</td>
+<td class="right">62</td>
+</tr>
+<tr>
+<th>y = 4</th>
+<td class="right">56</td>
+<td class="right">14</td>
+<td class="right">18</td>
+<td class="right">2</td>
+<td class="right">61</td>
+</tr>
+<tr>
+<th>y = 3</th>
+<td class="right">21</td>
+<td class="right">8</td>
+<td class="right">41</td>
+<td class="right">45</td>
+<td class="right">15</td>
+</tr>
+<caption><strong>Table 2: the rotation offsets</strong></caption>
+</table>
+</div>
+  <div class="col-sm-3">&nbsp;</div>
+</div></div>
+<footer id="footer">
+    Unless otherwise specified, the contents and files within the domain keccak.team are &copy; 2008-2026
+    <a href="team.html">Guido Bertoni, Joan Daemen, Seth Hoffert, Michaël Peeters, Gilles Van Assche and Ronny Van Keer</a>.
+    <br/>
+    Webmaster: <a href="http://viguier.nl">Benoit Viguier</a>.
+</footer>
+
+</div> <!-- boxed -->
+</div> <!-- sb-site -->
+
+<div id="back-top">
+    <a href="#header"><i class="fa fa-chevron-up"></i></a>
+</div>
+
+<!-- Scripts -->
+<!-- Compiled in vendors.js -->
+<!--
+<script src="assets/js/jquery.min.js"></script>
+<script src="assets/js/jquery.cookie.js"></script>
+<script src="assets/js/imagesloaded.pkgd.min.js"></script>
+<script src="assets/js/bootstrap.min.js"></script>
+<script src="assets/js/bootstrap-switch.min.js"></script>
+<script src="assets/js/wow.min.js"></script>
+<script src="assets/js/slidebars.min.js"></script>
+<script src="assets/js/jquery.bxslider.min.js"></script>
+<script src="assets/js/holder.js"></script>
+<script src="assets/js/buttons.js"></script>
+<script src="assets/js/jquery.mixitup.min.js"></script>
+<script src="assets/js/circles.min.js"></script>
+<script src="assets/js/masonry.pkgd.min.js"></script>
+<script src="assets/js/jquery.matchHeight-min.js"></script>
+-->
+
+<script src="assets/js/vendors.js"></script>
+
+<!--<script type="text/javascript" src="assets/js/jquery.themepunch.tools.min.js?rev=5.0"></script>
+<script type="text/javascript" src="assets/js/jquery.themepunch.revolution.min.js?rev=5.0"></script>-->
+
+<script src="assets/js/DropdownHover.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/holder.js"></script>
+<script src="assets/js/home_info.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script src="asset/css/highlight/highlight.pack.js"></script>
+<script>
+hljs.configure({
+  languages: ['python']
+})
+
+hljs.initHighlightingOnLoad();
+</script>
+
+</body>
+
+</html>
