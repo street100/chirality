@@ -183,6 +183,7 @@ when this table and an arc file disagree.
 | [[arcs/canvas-arc]] | [[goals/own-web]] | 16 rows, none started. Follows the vocabulary arc | none |
 | [[arcs/crypto-primitives-arc]] | [[goals/own-web]] | 25 rows, none started. Opened 2026-09-07 on condition 4. Takes the layers `.planning/CRYPTO-MODEL.md` §2 marks `unscoped`, plus the translation and representation machinery. `native-protocol/N10` overlaps and the boundary is an author call | none |
 | [[arcs/memory-discipline-arc]] | [[goals/local-ai]] | 7 rows, `E81` built and six open | `E81-E85`, minted |
+| [[arcs/emitted-speed-arc]] | [[goals/emitted-speed]] | 6 rows, none started. Opened 2026-09-08 on conditions 1 and 2. Takes construction and leaves residency to [[arcs/memory-discipline-arc]] at the `Alloc` seam. Conditions 3, 4 and 5 stay unopened, and condition 4's budget is an owed author call | none |
 
 Four of the twenty hold a reserved `E` band, [[arcs/scriba-arc]] holds the
 `S` namespace and [[arcs/native-protocol-arc]] holds the `N` namespace.
