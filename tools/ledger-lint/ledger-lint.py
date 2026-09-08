@@ -114,13 +114,19 @@ class Owed(Exception):
     than borrowing this one's. `items` is the register, one line per standing
     row, written as an entry rather than an accusation.
 
+    `count` is the register's standing total where `items` summarises it
+    instead of enumerating it. AN's four lenses hold 151 standing rows and
+    report five lines, so the summary counts 151 and the report stays readable.
+    It defaults to the enumeration, which is AK's case.
+
     The runner collects these apart from the violations, the same way it
     collects Vacuous, and they take exit 2: see the header."""
 
-    def __init__(self, noun: str, items):
+    def __init__(self, noun: str, items, count: int | None = None):
         self.noun = noun
         self.items = list(items)
-        super().__init__(f"{len(self.items)} {noun}(s) owed")
+        self.count = len(self.items) if count is None else count
+        super().__init__(f"{self.count} {noun}(s) owed")
 
 
 def check_a() -> list[str]:
@@ -2383,6 +2389,92 @@ def check_am() -> list[str]:
     return out
 
 
+# The lens row shape records/lenses/README.md states: `### <ID> <title>` opens a
+# row and `- author:` is one of its fields. tools/lens/lens.py owns the parse and
+# check AD runs it; the walk is repeated here because a scan over author VALUES
+# cannot see the row whose field is missing, which is the one defect AN owns.
+_LENS_FILES = ("problems.md", "gaps.md", "limits.md", "unspoken.md")
+_LENS_HEAD = re.compile(r"^### (\S+)", re.M)
+_LENS_AUTHOR = re.compile(r"^- author:[ \t]*(.*)$", re.M)
+
+
+def _lens_rows(text: str):
+    """(id, author value or None, line) for every row of one lens file."""
+    heads = list(_LENS_HEAD.finditer(text))
+    for i, m in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
+        am = _LENS_AUTHOR.search(text[m.end():end])
+        yield (m.group(1), am.group(1).strip() if am else None,
+               text.count("\n", 0, m.start()) + 1)
+
+
+def check_an() -> list[str]:
+    """AN. A lens row awaiting the author's ruling.
+
+    AK reads records/author-calls.md, and that register is one of two. The other
+    is the lens tier: records/lenses/README.md, `The author axis`, puts an
+    `author:` marker on every row of problems.md, gaps.md, limits.md and
+    unspoken.md. Measured 2026-09-08, those four hold 157 rows and 151 read
+    `unreviewed` against the 11 AK reports, so 140 standing forks sat outside
+    every worklist a session reads. tools/lens/lens.py check validates the
+    marker's FORMAT and counts no backlog. tools/lens/lens.py overview writes a
+    per-lens count into one generated document, which no gate reads.
+
+    A row reading `unreviewed` is OWED for the reason AK gives: the fork is
+    state only the author can settle, so a worker reading it as a defect has
+    nothing to do about it. The register is reported as a count per lens plus
+    the total, with the command that lists the rows, because 151 accusations
+    bury every other finding in the run.
+
+    A malformed marker belongs to AD, through lens.py's `[LN]` rules, and is not
+    re-reported here. A row carrying NO `author:` field is a violation: the axis
+    the schema requires is absent, so a value scan skips the row in silence and
+    the register is aimed at nothing on it. A violation outranks the owed count
+    and suppresses it, because a register that does not read cleanly cannot be
+    trusted to total.
+
+    Vacuous when records/lenses/ holds none of the four files."""
+    d = ROOT / "records" / "lenses"
+    files = [d / n for n in _LENS_FILES if (d / n).exists()]
+    if not files:
+        raise Vacuous("records/lenses/ holds none of the four lens files, so "
+                      "no author marker can be read")
+    errs: list[str] = []
+    per_lens: list[tuple] = []
+    total = 0
+    for f in files:
+        rel = f.relative_to(ROOT).as_posix()
+        seen = pend = 0
+        for rid, au, ln in _lens_rows(f.read_text()):
+            seen += 1
+            if au is None:
+                errs.append(f"[AN] {rel}:{ln} {rid} carries no `author:` field. "
+                            f"records/lenses/README.md, `The author axis`, puts "
+                            f"a marker on every row, and a row without one is a "
+                            f"register aimed at nothing")
+                continue
+            if au == "unreviewed":
+                pend += 1
+        total += seen
+        per_lens.append((rel, pend, seen))
+    if not total:
+        return errs + [f"[AN] records/lenses/ carries no row in the "
+                       f"`### <ID> <title>` shape records/lenses/README.md "
+                       f"states, so this check reads nothing. A gate aimed at "
+                       f"nothing cannot fail: the format is the defect"]
+    if errs:
+        return errs
+    standing = sum(p for _, p, _ in per_lens)
+    if not standing:
+        return []
+    lines = [f"[AN] {rel} {p} of {n} row(s) stand `unreviewed`, awaiting the "
+             f"author's ruling" for rel, p, n in per_lens if p]
+    lines.append(f"[AN] {standing} of {total} lens row(s) stand across the four "
+                 f"lenses. `python3 tools/lens/lens.py author` lists them, row "
+                 f"by row, with the state and subject of each")
+    raise Owed("lens ruling", lines, count=standing)
+
+
 CHECKS = (("A evidence paths", check_a),
                      ("B principle numbers", check_b),
                      ("C CONTENTS counts", check_c),
@@ -2421,7 +2513,8 @@ CHECKS = (("A evidence paths", check_a),
           ("AJ the deferral rule", check_aj),
                      ("AK author calls awaiting a ruling", check_ak),
                      ("AL translation quotes resolve", check_al),
-                     ("AM quoted external sources are pinned", check_am))
+                     ("AM quoted external sources are pinned", check_am),
+                     ("AN lens rows awaiting a ruling", check_an))
 
 
 # ── the guide ─────────────────────────────────────────────────────────────────
@@ -2484,6 +2577,17 @@ GUIDE = {
            "doubt the token is `unreviewed`, because a wrong `unreviewed` costs "
            "one re-confirmation and a wrong `ruled` corrupts the record.",
            "AK"),
+    "AN": (2, "records/lenses/README.md, `The author axis`, and "
+              "records/author-calls.md, `The state of a row`",
+           "Every lens row reads `ruled <YYYY-MM-DD>` with the author's own "
+           "words in `note:`, or `unreviewed`. A worker cannot close one of "
+           "these: put the fork to the author, then move the marker and record "
+           "the ruling verbatim. `python3 tools/lens/lens.py author` is the "
+           "sweep, grouped by lens. **A row is not ruled by being scheduled.** "
+           "Giving a `GAP-` row an owner says where the work will happen and "
+           "leaves the question of whether the project wants it standing, which "
+           "is the same defect AK records against records/author-calls.md.",
+           "AN"),
     "AL": (3, "docs/translations/README.md, and tools/xlat/xlat.sh",
            "An external quote carries `ID:LINE \"span\"` and resolves into a "
            "pin. Fix a MOVED line by repointing it at the line the span is "
@@ -2597,10 +2701,10 @@ def _next_owed(owed) -> int:
     is named with the authority that says how a row leaves it."""
     if not owed:
         return 0
-    for name, noun, items in owed:
+    for name, noun, _items, count in owed:
         code = name.split()[0]
         authority = GUIDE.get(code, _DEFAULT)[1]
-        print(f"\n  {_plural(len(items), noun)} owed, and only the author can "
+        print(f"\n  {_plural(count, noun)} owed, and only the author can "
               f"settle one. This is not a task a worker can take.")
         print(f"  THE PROTOCOL\n    {authority}")
         print(f"  SEE\n    python3 tools/ledger-lint/ledger-lint.py --only {code}")
@@ -2666,8 +2770,8 @@ def census() -> None:
 def _owed_counts(owed):
     """Total per register noun, in the order the checks raised them."""
     counts: dict[str, int] = {}
-    for _name, noun, items in owed:
-        counts[noun] = counts.get(noun, 0) + len(items)
+    for _name, noun, _items, count in owed:
+        counts[noun] = counts.get(noun, 0) + count
     return counts
 
 
@@ -2706,9 +2810,9 @@ def _run(checks, quiet=False):
             vac.append((name, str(v)))
             continue
         except Owed as o:
-            owed.append((name, o.noun, o.items))
+            owed.append((name, o.noun, o.items, o.count))
             if not quiet:
-                print(f"  [OWED] {name} ({len(o.items)} standing)")
+                print(f"  [OWED] {name} ({o.count} standing)")
             continue
         errs += e
         if not quiet:
@@ -2764,9 +2868,9 @@ def main() -> int:
                 print(f"  [VACUOUS] {name} -- subject gone, checked nothing")
             continue
         except Owed as o:
-            owed.append((name, o.noun, o.items))
+            owed.append((name, o.noun, o.items, o.count))
             if not nxt:
-                print(f"  [OWED] {name} ({len(o.items)} standing)")
+                print(f"  [OWED] {name} ({o.count} standing)")
             continue
         all_errs += errs
         status = "FAIL" if errs else "ok"
@@ -2780,7 +2884,7 @@ def main() -> int:
             print(f"  {name}\n    {why}")
     if owed:
         print("\nowed, and named rather than counted as failing:\n")
-        for _name, _noun, items in owed:
+        for _name, _noun, items, _count in owed:
             for it in items:
                 print(f"  {it}")
     if all_errs:
