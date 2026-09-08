@@ -530,9 +530,10 @@
 - about:    lib/lowering/tal/check.chiral
 - claim:    [[arcs/enforcement-arc]] requirement 3 records `ck-prog` accepting 743 of 1,504 TFns and rejecting 761 (50.6%), in four classes: 392 `ret`, 187 `con`, 107 `case on non-data register`, 75 `argument arity`.
 - measured: RE-MEASURED 2026-09-06: the shape moved on both halves and the row stays OPEN on one of them. **The four classes no longer reproduce.** Their cause was repaired at `ddfbc27` (2026-09-03): `targs=?` went into `tal-ty=?`'s `tt-data` arm (`lib/lowering/tal/check.chiral:90-95`) and `ck-scrut-dn` gave `ck-term`'s case arm the `tt-word` recovery (`:139-146`), the two repairs EN-09 and EN-11 named. **A census is committed now, for a different instrument.** `prog/optimizer-census.prog` and `tools/test/opt-census.sh` landed at `7a62965` and `d7ccad8` (2026-09-05) and re-derive the SHIPPING path's census over the compiler's own blob: `census tfns=1582 ok=1550 err=32 defs=1551 skipped=10 unfolded-ok=1550`, one class, `call: unknown tal function`, zero `ret`, zero `con`, zero `case on non-data register`, zero `argument arity`. ⚑ **The `ck-prog` census is still a reverted probe, which is why this row stays OPEN.** That instrument folds `ck-prog` whole-program; the committed one runs `re-check` per TFn on the shipping `CEnv` (`lib/lowering/compile-back.chiral:239-246`). `ck-prog` has zero callers today, so this row's own four counts cannot be re-taken, and `enforcement/N12` still owns that at `open` / `unminted`.
+⚑ **HALF ANSWERED 2026-09-08, and the row stays OPEN on the other half, which now has an owner.** The four classes half is closed by this row's own 2026-09-06 re-measurement and re-verified today: both `ddfbc27` repairs are live, `ck-scrut-dn:139-145` and `targs=?` at `:75`, and PRB-41 and PRB-42 are marked FIXED against them. **The instrument half stands.** `ck-prog` still has zero callers, so this row's four counts cannot be re-taken, and the committed census (`prog/optimizer-census.prog`) folds `ck-fn` per TFn rather than `ck-prog` whole-program. `owner:` is set to `enforcement/N12`, the row opened for exactly that census.
 - evidence: re-runnable: `tools/test/opt-census.sh` reads `opt-census: 12 passed, 0 failed` and its R2 pins `tfns=1582 ok=1550 err=32`. `prog/optimizer-census.prog`, `tools/test/opt-census.sh`, `lib/lowering/tal/check.chiral`, `lib/lowering/compile-back.chiral`
 - checked:  2026-09-06
-- owner:    none
+- owner:    enforcement/N12
 - from:     EN-08
 
 ### PRB-39 the `ret` class is the checker: an erased type-argument list, 389 of 389
@@ -565,13 +566,14 @@
 
 ### PRB-41 the `case on non-data register` class is the checker lacking the recovery the lowering has, 105 of 105
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    source
 - about:    lib/lowering/upper/lower.chiral
 - claim:    requirement 3 counts the `case on non-data register` class and leaves the side that is wrong unnamed.
 - measured: THE CHECKER, in all 105. Every one is a scrutinee register typed `tt-word`. Zero are the other path to that same message, an unbound scrutinee register. The lowering performs a B1 recovery: `case-sty` calls `ctor-data` to read the data name out of the first arm's constructor whenever the scrutinee's tal type fails to be `tt-data`. That recovery stays inside the lowering's own bookkeeping and reaches the emitted instruction at no point, so the register keeps `tt-word` in the TFn. `ck-term`'s case arm carries no `tt-word` arm and falls through to its catch-all. The refusal contradicts the checker's own `tal-ty=?`, whose first arm makes `tt-word` compatible with every type. Giving `ck-term` the same `ctor-data` walk over `ce-datas` turns all 105 into accepts. Minimal rejecting TFn: `(tfn "sel" ((tt-word)) (tt-i64) (block nil (tt-case 0 ...)))`; respelling that parameter `(tt-data "Lst" nil)` makes the identical body accept. Its source twin, a case over a value read out of a polymorphic field, compiles, emits, links and runs correctly.
+⚑ **FIXED, and verified live 2026-09-08.** The repair this row's attribution called for shipped at `ddfbc27` (2026-09-03) and is in the tree today: `ck-scrut-dn` (`lib/lowering/tal/check.chiral:139-145`) carries a `(tt-word)` arm that reads the data name out of the first branch's constructor through `ctor-dn`, which is the B1 recovery the row measured the lowering having and the checker lacking. `ck-term`'s case arm reaches it at `:261`. The 105 were the checker in all 105 and the checker now has the recovery.
 - evidence: `lib/lowering/upper/lower.chiral:168-188`, `:304-306`, `:347-355`, `lib/lowering/tal/check.chiral:210-222`, `:67-69`, `lib/lowering/tal/ssa.chiral:17-20`
 - checked:  2026-09-03
 - owner:    none
@@ -579,13 +581,14 @@
 
 ### PRB-42 the `argument arity` class splits, 70 to the checker and 5 to the lowering
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    source
 - about:    lib/lowering/upper/lower.chiral
 - claim:    requirement 3 counts the `argument arity` class and leaves the side that is wrong unnamed.
 - measured: SPLITS 70 to the checker and 5 to the lowering. As counted, the 75 are 73 the erased argument list of EN-09 reaching `ck-app` through `ck-args`, all of them zero arguments against one, plus one data-name mismatch and one ground-type mismatch. Relaxing that one checker relation flips 70 of the 75 to accepts and leaves 5, which is where the split lives: the relaxation unmasks two rejects the argument-list failure had been hiding, because `ck-args` returns on its first failing position. Those two are the lowering, and they are a real defect. `build-binders` allocates a fresh register for every erased binder position and emits no instruction defining it, on the stated ground that a `q=0` binder has zero runtime uses; `outline` then passes the whole binder environment as the outlined call's arguments, so that undefined register is passed. The enclosing TFn's `params` holds the kept list, so nothing binds it there either. They are `emit-code` (4 params, undefined register 4) and `emit-args-res` (3 params, undefined register 3), where in both the offending index equals the parameter count, which is the first register `build-binders` allocates. The emitted native code reads an undefined register and the program still computes correctly, because the callee reads that argument at no point. The remaining 3 of the 5 sit inside `$apply` dispatchers and belong with the residue in EN-13. Minimal rejecting TFn: a caller of one parameter whose body is `(i-call 1 "inner" (0 2) (tt-i64))` where register 2 is bound by nothing; inserting a definition of register 2 makes it accept. Its source twin, an erased binder over a non-tail case, compiles, emits, links and runs correctly.
+⚑ **FIXED on its checker half, and verified live 2026-09-08.** The relaxation the row's split called for shipped at `ddfbc27` and is in the tree today: `targs=?` sits in `tal-ty=?`'s `tt-data` arm at `lib/lowering/tal/check.chiral:75`, so the 73 zero-against-one erased argument lists no longer refuse and the 70 flip to accepts. ⚑ **The 5 the row assigns to the lowering are not owed here.** PRB-43 measured that set as failing to reproduce and was ruled DISSOLVED on 2026-09-08; its live residue is the `CEnv`-plumbing gap that `enforcement/N12` carries.
 - evidence: `lib/lowering/upper/lower.chiral:383-397`, `:308-317`, `:399-406`, `lib/lowering/tal/check.chiral:99-107`, `:109-117`, `:237-242`
 - checked:  2026-09-03
 - owner:    none
