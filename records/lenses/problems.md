@@ -1086,8 +1086,12 @@
 - state:    OPEN
 - author:   unreviewed
 - note:     none
+- level:    source
+- about:    lib/prelude/prelude.chiral
 - claim:    `lib/prelude/prelude.chiral:87` declares `(extern i64->str (-> I64 Str))`, a total function over `I64` with no refinement narrowing its domain. Seventeen modules under `lib/` call it.
 - measured: **2026-09-08: one input kills the process. `(put (i64->str (shl 1 63)))` dies with SIGSEGV, exit 139**, under the promoted compiler at `f639acf` and under every generation built during `E189`. Isolated with a two-line probe, and the control `(put (i64->str (- 0 1)))` prints `-1` and exits 0. The cause is in the TAL implementation: `erase.chiral:118` binds the extern to `nb-i64s`, whose body at `lib/lowering/tal/bytes.chiral:294-309` takes the negative branch through `(ti-prim 7 (op-sub) 1 0)`, which is `0 - n`. For `INT64_MIN` that wraps to `INT64_MIN` again, so the value stays negative, the digit loop never reaches its bound, and the write runs off the cell. **The defect predates `E189`** and was found by it: `E189`'s gate needs `2^63` as an operand, so `prog/e189-widening-multiply.prog` routes around it with 16-nibble unsigned hex rather than widening its own write surface, and says so at its `:16-21`.
 - evidence: `lib/prelude/prelude.chiral:87`, `lib/lowering/tal/erase.chiral:118`, `lib/lowering/tal/bytes.chiral:294-309`, `prog/e189-widening-multiply.prog:16-21`, commit `c86b007`
 - checked:  2026-09-08
+- owner:    none
+- from:     none
 - element:  UNASSIGNED. No roster row holds it. `emitted-speed/X8` and `X9` are the nearest open rows and neither reaches the prelude's string layer

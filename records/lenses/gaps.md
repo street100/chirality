@@ -295,3 +295,17 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-08
 - owner:    none
 - from:     none
+
+### GAP-22 the T1 rung that ttype's none arm routes to is not built
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/lowering/upper/lower.chiral
+- claim:    `docs/decisions/decision-preserve-check.md`, settled 2026-09-08: a preserve-check is two rungs, and `ttype`'s `Maybe` is `PRINCIPLES.md` §5's tier line. A `(some t)` is **T0**, the typeable region where one source of truth is correct because the type is the proof. A `(none)` is **T1**, where proof has run out and the claim is carried by a source evaluator and a target evaluator required to agree.
+- measured: **T1 is not built, so today a `(none)` drops the definition instead of routing it.** `ttype` (`lib/lowering/upper/lower.chiral:35`) is `(-> UT (Maybe TalTy))` and answers `(none)` for function types and for `u-other`. [[records/findings]] FD-16 measured no production compiler occupying that position: every surveyed translation is total on its input or aborts wholesale, and the one production partiality, a HotSpot C2 bailout, keeps the refused method running from an already-verified class file. Here the definition leaves the artifact `ck-prog` reads, and `lib/lowering/compile-back.chiral:268-269` already records the cost, `a reachable skipped def surfaces as a missing label at emit`. ⚑ **Both halves of T1 exist and neither is reached.** FD-20 measured `lib/lowering/tal/eval.chiral` (187 lines, the target evaluator) and `lib/evidence/interp.chiral` (109 lines, the source evaluator), each with zero importers, as the two independent writers §5's rung table requires for T1 to buy anything. ⚑ **This is coverage owed rather than a defect to fix in `ttype`.** The arm is the right shape and its header already half-names the routing, `or none (stays upper)`. What is missing is the destination. FD-20 also measured that the claim T1 would carry cannot be stated as FD-15's typed lemma, since that puts `[[τ]]` in its own conclusion and needs the total translation T0 covers.
+- evidence: `lib/lowering/upper/lower.chiral:35`, `lib/lowering/compile-back.chiral:268-269`, `lib/lowering/tal/eval.chiral`, `lib/evidence/interp.chiral`, [[decisions/decision-preserve-check]], [[records/findings]] FD-16, [[records/findings]] FD-20
+- checked:  2026-09-08
+- owner:    none
+- from:     FD-20
