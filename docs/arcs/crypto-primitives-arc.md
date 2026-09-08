@@ -121,7 +121,7 @@ Three, and an ordering with no back-edges reads as a schedule.
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
-| `crypto-primitives/K1` | translate Keccak-f[b]: the family at `b = 25w`, `R = 12 + 2l`, its five steps, and what each carrier reaches. Everything below rests on it | translation | law | new | 1, 2 | open | `unminted` |
+| `crypto-primitives/K1` | translate Keccak-f[b]: the family at `b = 25w`, `R = 12 + 2l`, its five steps, and what each carrier reaches. Everything below rests on it | translation | law | new | 1, 2 | designed | `unminted` |
 | `crypto-primitives/K2` | the permutation module: named lanes, no array, the width as an erased index, the round count as a type index | permutation | primitive | new | 2 | open | `unminted` |
 | `crypto-primitives/K3` | translate the sponge: absorb, squeeze, padding, domain separation, and the keyed against unkeyed capacity bound | translation | law | new | 1 | open | `unminted` |
 | `crypto-primitives/K4` | the sponge module: hash, XOF, MAC and KDF as configurations of `K2`, one machine, separated by domain | modes | primitive | new | 2 | open | `unminted` |
