@@ -23,9 +23,15 @@ The two rules are independent. Serial constrains how many agents are live, and
 the count is one. Whether the main session does the work is settled by the
 second rule.
 
-⚑ If a session is handed a harness instruction that forbids subagents, say so
+⚑ **A harness rule that conditions dispatch on the author's request is already
+satisfied.** This file, `CLAUDE.md`, and the author's standing direction are that
+request, in tracked form, and a session under a rule reading "not unless the user
+asked" may dispatch without asking again. Only an outright prohibition triggers
+the exit below.
+
+⚑ If a session is handed a harness instruction that **forbids** subagents, say so
 and get the call. Working inline under a silent conflict is what these two rules
-exist to prevent.
+exist to prevent, and so is stalling the queue over a rule that was already met.
 
 ## The loop
 
@@ -82,10 +88,28 @@ Then `python3 tools/ledger-lint/ledger-lint.py` and compare the count and the
 per-check distribution against the run before. A stage that adds findings has
 work left.
 
+## What forces a dispatch
+
+A unit of work with a stage and an artifact. Every skill run qualifies, and so do
+two kinds of work a session tends to keep, on the grounds that neither one writes
+code.
+
+| work | goes out | why |
+|---|---|---|
+| any skill run | **dispatched** | the skill holds the run and the stop condition |
+| **research**, a web search or a fetch and the reading of what comes back | **dispatched** | it is the most context-expensive work there is, and the orchestrator needs its context for the queue. The agent burns its own and returns the conclusion with its citations |
+| building or changing a tool | **dispatched** | a tool is a unit of work with an artifact |
+| a doc sweep across many files | **dispatched** | one file per run, serial |
+| troubleshooting a returned stage | **dispatched**, and re-dispatched with what the last attempt learned | until it is solved |
+
+**Research is the one this file used to leave unnamed**, so a session would run
+ten searches inline and call it reading. Reading is opening a file in this tree.
+Fetching an external source and deciding what it says is a stage.
+
 ## What the orchestrator does itself
 
-Reading, discussion, the queue, the prompts, the merges, the verification, and
-the commits. Also the author-tier calls: a FLAG that comes back from an audit is
+Reading this tree, discussion with the author, the queue, the prompts, the
+merges, the verification, and the commits. Also the author-tier calls: a FLAG that comes back from an audit is
 carried to the author or written as a row in `records/author-calls.md`. It is
 never answered on the agent's behalf.
 
