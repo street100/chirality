@@ -120,11 +120,20 @@ instead of assuming an answer.
 
 ## Arcs
 
-None open on 2026-09-08. **This is a hole rather than the finished shape**
-[[goals/self-hosting]] carries: no standing gate holds this goal, because the
-2026-09-01 ruling makes the suite's wall clock a printed number that sets no
-bar. One arc is owed for condition 1 and condition 2, which are the two the
-2026-09-07 measurements make actionable today.
+[[arcs/emitted-speed-arc]], opened 2026-09-08, takes **condition 1 and
+condition 2**, which are the two the 2026-09-07 measurements make actionable. It
+carries four requirements and six roster rows under arc-local ids `X1` to `X6`.
+
+**Conditions 3, 4 and 5 stand unopened**, and the arc records why for each.
+Condition 4 is the one to watch: its budget is owed, so its observable is a gate
+row that fails when a tool exceeds a bar nobody has set, which is the
+gate-that-cannot-fail shape `docs/decisions/decision-scope.md` names. The arc
+refused it on that ground rather than shipping a check aimed at a guess. The
+budget is now a row in [[records/author-calls]].
+
+No standing gate holds this goal, which is **a hole rather than the finished
+shape** [[goals/self-hosting]] carries: the 2026-09-01 ruling makes the suite's
+wall clock a printed number that sets no bar.
 
 This section carries no element rows and no roster.
 
