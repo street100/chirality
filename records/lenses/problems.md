@@ -1038,3 +1038,17 @@
 - checked:  2026-09-08
 - owner:    none
 - from:     FD-16
+
+### PRB-75 three value-defining Instr forms carry no type, and ssa.chiral says every one does
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/lowering/tal/ssa.chiral
+- claim:    `lib/lowering/tal/ssa.chiral:24-25`: `one typed SSA instruction. Every value-defining form carries its result type annotation (ty), so the checker re-verifies independently of the kernel.`
+- measured: **Three value-defining forms carry no `ty`, so the claim is false for exactly the forms where the artifact records nothing.** `Instr` has eight constructors (`ssa.chiral:26-33`). Four carry `ty`: `i-const`, `i-prim`, `i-call`, `i-con`. Of the remaining four, `i-bput` defines no value, and `i-bnew`, `i-bget` and `i-blen` each bind a `dst` while carrying no annotation. The checker supplies their types from its own constants at `lib/lowering/tal/check.chiral:215-218`: `i-bnew` yields `(tt-bytes)`, `i-bget` yields `(tt-i64)` whatever was stored, `i-blen` yields `(tt-i64)`, and `i-bput` requires its value at `(tt-i64)`. So for these forms the checker does not re-verify against the artifact, it invents the answer, which is the opposite of the sentence above. ⚑ **A laundering path follows, and its reachability is UNMEASURED.** `tal-ty=?` (`check.chiral:68-77`) has `tt-word` matching `tt-i64`, so a register holding an erased value satisfies `i-bput`'s check, and `i-bget` returns it typed `(tt-i64)` unconditionally. A value whose source type was `tt-str` can therefore enter the heap erased and leave it an integer with every step accepted. Whether the lowering ever drives a non-`i64` through `Bytes` is not measured here, so the mechanism is confirmed and the instance is not. ⚑ **This is where the published discharge goes.** [[records/findings]] FD-17 measured that the JVM puts `checkcast` and WebAssembly GC puts `ref.cast` at exactly the heap-read position, and that none of the five surveyed mechanisms discharges a coarse target type inside the checker's equality relation, which is where `tal-ty=?` does it.
+- evidence: `lib/lowering/tal/ssa.chiral:24-25`, `lib/lowering/tal/ssa.chiral:26-33`, `lib/lowering/tal/check.chiral:215-218`, `lib/lowering/tal/check.chiral:68-77`, [[records/findings]] FD-17, [[records/findings]] FD-15
+- checked:  2026-09-08
+- owner:    none
+- from:     FD-17
