@@ -181,6 +181,25 @@ TRANSLATE level, and `ledger-lint` check AL. Three raw pins are in
 `docs/translations/aead-chacha20-poly1305.md`, at `status: draft` and never
 audited, with 12 citations resolving and its `known-gaps` gather slot `UNRUN`.
 
+**The roster holds two kinds of row and they dispatch differently.** A
+translation row (`K1`, `K3`, `K7`, `K8`, `K11`, `K12`) runs the `translate`
+skill off `tools/xlat/xlat.sh bundle <object>`, and its artifact lands in
+`docs/translations/`. Every other row runs `element-design` off
+`python3 tools/pack/pack.py crypto-primitives/K<n>`, which is verified working
+and returns a DESIGN bundle. Dispatching a translation row into `element-design`
+would produce a design for an object nobody has read.
+
+⚑ **A translation row needs its gather manifest and its pins before it can be
+dispatched.** `.planning/sources/` holds one manifest, for the AEAD, and three
+raw pins. `K1` has neither, so its first act is the gather: name the four slots,
+pin what exists, and declare what does not.
+
+⚑ **`.planning/REACH-MODEL.md` was never walked against this roster.** The arc
+was built from `.planning/CRYPTO-MODEL.md` and `.planning/CRYPTO-TRANSLATION.md`
+alone. `K5`, `K6` and `K22` all touch the naming layer that model owns, and the
+same omission produced the eight rows §Coverage records. It is the obvious next
+sweep and it has not been run.
+
 **Next, in order.** Audit that artifact at TRANSLATE level, which closes the loop
 on a gate that has never run against real work. Then `K1`, because everything
 under this arc rests on the permutation and its family is the one place the
