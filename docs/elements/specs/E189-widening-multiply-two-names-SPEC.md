@@ -3,7 +3,7 @@ element: E189
 slug: widening-multiply-two-names
 title: "The widening multiply's two names: `mulhi` signed, `mulhu` unsigned"
 design: arcs/parts/emitted-speed-X7.md
-status: draft
+status: audited
 updated: 2026-09-08
 ---
 
@@ -13,6 +13,14 @@ updated: 2026-09-08
 > `docs/arcs/parts/emitted-speed-X7.md` made the design decisions and an audit
 > gated them at `857f99d` before this element minted. An implementation run
 > follows THIS file.
+>
+> ⚑ **SPEC-level audit 2026-09-08 at `c1829f3`: PASS.** Every `file:line` below
+> was reopened, `G4`'s identity was rederived and its six goldens recomputed in
+> both Python and bash, `48 F7 E1` was disassembled a fourth time, and the build
+> baseline was rerun end to end. Four FIXes landed: the retired `pack.py`
+> citations, the test-baseline date, a deterministic observable for `G5`, and a
+> third rung for `M3`. The status flip is owed separately, for the reason §5
+> gives.
 
 **Every `file:line` below was opened on 2026-09-08 at `35c844c`**, on a clean
 worktree. A concurrent session has been committing to this tree all day and the
@@ -22,16 +30,21 @@ here differs from the design's, §2 says so in its own row. HEAD moved to
 `.planning/TAL-CONFORMANCE-QUEUE.md` and `docs/decisions/decision-preserve-check.md`
 and no target below, and every line was re-checked against it.
 
-`python3 tools/pack/pack.py E189 --spec` **did not run.** It dies at
-`tools/pack/pack.py:595` with `no drafted example examples/E189-*.md`, because
-`spec_mode` still reads the retired `docs/examples/` pipeline and E189 is the
-first element minted under `docs/decisions/decision-design-before-mint.md` to
-reach this stage. The bundle below was assembled by hand from the same sources
-that mode would have printed. The tool gap is residue in §5 and this run did not
-touch the tool. Two consequences: this file was written from the template at
-`docs/elements/specs/_TEMPLATE.md` instead of being scaffolded, and the roster
-row at `docs/arcs/emitted-speed-arc.md:277` still reads `designed` where the
-pack would have flipped it to `specced`.
+`python3 tools/pack/pack.py E189 --spec` **did not run.** At the time of writing
+it died with `no drafted example examples/E189-*.md`, because `spec_mode` still
+read the retired `docs/examples/` pipeline and E189 is the first element minted
+under `docs/decisions/decision-design-before-mint.md` to reach this stage. The
+bundle below was assembled by hand from the same sources that mode would have
+printed, and this file was written from the template at
+`docs/elements/specs/_TEMPLATE.md` instead of being scaffolded.
+
+⚑ **That half of the tool gap closed one commit later, and the SPEC audit
+measured it.** `c1829f3` repointed `spec_mode`, now at
+`tools/pack/pack.py:684-693`, at `pipeline_artifact`, which answers
+`('design', 'docs/arcs/parts/emitted-speed-X7.md')` for E189. The line citations
+this paragraph carried retire with the gap. What survives is the roster row at
+`docs/arcs/emitted-speed-arc.md:277`, which still reads `designed` where the pack
+would have flipped it to `specced`, and the post-audit flip, which §5 carries.
 
 ## 1. Deliverable
 
@@ -270,8 +283,11 @@ run either way. A `C2 == C3` that follows is still a correct build.
   `run-tests.sh` is the only authority for a phase number, which is the rule
   phase 24 already states there.
 - **Baseline:** `bash tools/test/run-tests.sh` exits 0 at `assertions: 412
-  passed, 0 failed`, last recorded 2026-09-07 (`records/lenses/problems.md:419`).
-  `mulhu` does not parse, so a probe calling it does not compile.
+  passed, 0 failed` with `93 roots built, 0 failed` and gate PASSED, last
+  recorded 2026-09-08 at `records/enforcement-arc.md:310`, after `b613a8f` and
+  `38ecdba`. `records/lenses/problems.md:419` carries the same figure from
+  2026-09-06 and `docs/implementation/optimizer-inventory.md:335` from
+  2026-09-07. `mulhu` does not parse, so a probe calling it does not compile.
 - **Expected:** the same run green with the probe compiling as a Phase 7 root
   and phase 32 reporting its own tally, `mul-widen: N passed, 0 failed`.
 
@@ -313,7 +329,14 @@ six rows below are chosen so that three properties are separable.
   (`tools/test/encoding.sh:24-32`).
 - **G5** both call forms are emitted. The register form and the immediate form
   are two arms (`mach.chiral:373` and `:1025`) and two clobber keys, so at least
-  one row of each is required and the probe's own output says which row is which.
+  one row of each is required. **The probe's own output cannot settle this.** It
+  reports each row's source shape, and which arm the compiler took is
+  `emit-core.chiral:154-161`'s decision, made on whether the operand resolves to
+  a tracked value. So G5 reads the emitted bytes. `bini-body`'s `op-mulhu` arm
+  materializes through `x-mov-rcx-imm` (`mach.chiral:855`), which is `48 B9`
+  followed by an 8-byte immediate, so the immediate form in the probe's ELF is
+  `48 B9`, eight bytes, `48 F7 E1`, and the register form is a `48 F7 E1` with no
+  such prefix. G5 counts both and fails on a zero in either column.
 
 ### Mutants, each actually run
 
@@ -343,10 +366,22 @@ with **that** binary.
   allocator actually places a live value in `rdx` depends on register pressure at
   the site. The implementation run **measures** whether M3 moves the probe. If it
   does not, the probe is enlarged with a value held live across the multiply and
-  added to the result, and it is re-measured. If it still does not move, M3 is
-  reported as UNCONVICTED with the measurement beside it and a row in
-  `records/`, because a mutant claimed and not convicted is worse than one named
-  honestly.
+  added to the result, and it is re-measured.
+  ⚑ **A deterministic observable exists, and it is the third rung.**
+  `x64-clobbers` (`mach.chiral:1433-1453`) is a pure function of the key string
+  that `emit-core.chiral:156-161` builds from `op-name`, so M3 changes its answer
+  for `bin:mulhu` and `bini:mulhu` by construction: `{2,3}` becomes `{3}`. A row
+  reading that answer under both trees convicts M3 whatever the allocator does
+  with `rdx`. The ladder is three rungs: the probe as written, the probe enlarged
+  with values held live across the multiply, then `x64-clobbers`'s own answer.
+  UNCONVICTED is reachable only after all three, and it still carries the
+  measurement beside it and a row in `records/`, because a mutant claimed and not
+  convicted is worse than one named honestly.
+  ⚑ **The third rung's mechanism is the implementation run's to choose.** A
+  `prog/` probe importing `lowering/x64/mach` is one shape and
+  `lib/lowering/x64/emit.chiral:2` is the precedent, but E154's colliding
+  top-level names are a live hazard that `prog/e188-apply-spine.prog:17-19` names
+  from experience, and this file did not measure whether `mach` collides.
 - **M4 `probe-calls-mulhi-twice`**, in a scratch `prog/`, the probe's `mulhu`
   calls become `mulhi`. No compiler rebuild. Every disagreement row collapses.
   This convicts the **golden** instead of the backend: it proves G3's four rows
@@ -398,16 +433,22 @@ This is `render-doc.sh`'s G9-plus-M11 pair (`:558-580`).
 
 ### Owed by this run's own findings
 
-- **`tools/pack/pack.py --spec` cannot serve a design-minted element.**
-  `spec_mode` at `:589-596` requires `docs/examples/<tag>-*.md`, which the
-  design-before-mint pipeline never writes; `mint_mode` at `:1101` ends by
-  telling the author to run exactly the mode that then dies. Every element minted
-  from `docs/arcs/parts/` hits this, so E189 is the first of a class. The fix is
-  a tool change and this run's write surface is the SPEC. **No roster row holds
-  it.**
+- **`tools/pack/pack.py --mark audited` cannot serve a design-minted element.**
+  ⚑ The `--spec` half of this gap is CLOSED. `c1829f3` repointed `spec_mode`
+  (`tools/pack/pack.py:684-693`) at `pipeline_artifact`, which resolves E189 to
+  `docs/arcs/parts/emitted-speed-X7.md`. The post-audit flip did not move with
+  it. `mark_mode` (`tools/pack/pack.py:651-681`) is still example-tier: it looks
+  the element up in `docs/examples/INDEX.md`, wants a row whose status cell reads
+  `specced`, and dies at `:681` with `INDEX row for E189 not found`. E189 has no
+  such row, because a design-minted element registers in its arc roster. Every
+  element minted from `docs/arcs/parts/` hits this, so E189 is the first of a
+  class. The fix is a tool change and this run's write surface is the SPEC.
+  **No roster row holds it.**
 - **The roster row still reads `designed`.** `docs/arcs/emitted-speed-arc.md:277`
-  would read `specced` had the pack run. The flip is owed to whoever repairs the
-  tool or to a hand edit of the arc, and this run did not touch the arc.
+  would read `specced` had the pack run. With `spec_mode` repaired a `--spec` run
+  now flips it and leaves this file alone (`pack.py:722-723`), so the flip is
+  owed to that run or to a hand edit of the arc. Neither this run nor its audit
+  touched the arc.
 
 ### Follow-on
 
