@@ -1,12 +1,19 @@
-; optimizer-census.prog -- re-derives the shipping optimizer's re-check census
-; over the compiler's own blob.
+; optimizer-census.prog -- the typed-assembly checker's census over the TFns the
+; shipping compiler emits.
 ;
-; `lib/lowering/compile-back.chiral:239` (`opt-tfns`) is the one call site of
-; `re-check` on the shipping path: `lower-defs` hands every TFn `compile-fn`
-; emits to `(re-check ce (fold t))` and adopts the residual only through
-; `chk-ok`. This root replicates that per-def loop with the SAME inputs
-; `back-program` builds, reads the compiler blob on stdin, and prints what the
-; loop saw.
+; `lib/lowering/compile-back.chiral`'s `opt-tfns` is the shipping path: for every
+; TFn `compile-fn` emits, `lower-defs` adopts `(fold t)`. This root replicates
+; that per-def loop with the SAME inputs `back-program` builds, runs `ck-fn`
+; (`lib/lowering/tal/check.chiral:289`) over each residual, reads the compiler
+; blob on stdin, and prints what the checker saw.
+;
+; ⚑ THE CHECKER IS IMPORTED HERE AND NOWHERE UNDER `lib/`. The author ruled on
+; 2026-09-08 (records/lenses/problems.md PRB-70) that `lowering/tal/check` stays
+; OUTSIDE the compiler closure, which `tools/test/tal-check.sh` G18 asserts. This
+; root is a `prog/` leaf and is not in `prog/compiler.prog`'s closure, so the
+; census runs against the real checker with G18 green. `re-check` and `Checked`
+; below used to live in `lib/lowering/upper/optimize.chiral` and were the single
+; thing holding the checker in the blob; they moved here whole.
 ;
 ; ⚑ IT EXISTS BECAUSE THE FIGURE IT PRINTS WAS NOT REPRODUCIBLE. EN-24 credits
 ; `1,582 TFns, 1,550 chk-ok, 32 chk-err` to a probe that was never committed,
@@ -20,14 +27,14 @@
 ; is the rule `prog/e188-apply-spine.prog` states for its own R4 and
 ; `prog/e197-recording-sweep.prog` follows.
 ;
-; ⚑ IT DOES NOT CALL `opt-tfns`, AND THAT IS DELIBERATE. `opt-tfns` returns the
-; adopted TFns and discards the verdict, so a census taken through it could
-; count nothing. This root re-runs `re-check` itself and keeps both halves.
+; ⚑ IT DOES NOT CALL `opt-tfns`, AND THAT IS DELIBERATE. `opt-tfns` computes no
+; verdict at all now, so a census taken through it could count nothing. This
+; root runs `re-check` itself and keeps both halves.
 ;
 ; ⚑ `dead` IS EXCLUDED HERE BECAUSE IT IS EXCLUDED ON THE SHIPPING PATH.
-; `optimize` is `re-check ce (dead (fold fn))`; what `opt-tfns` ships is
-; `re-check ce (fold t)`. EN-24 measured `dead` as a live miscompile. This root
-; measures the path that ships, so it folds and does not DCE.
+; `optimize` is `dead (fold fn)`; what `opt-tfns` ships is `fold t`. EN-24
+; measured `dead` as a live miscompile. This root measures the path that ships,
+; so it folds and does not DCE.
 ;
 ; ---- the output -------------------------------------------------------------
 ;
@@ -42,8 +49,8 @@
 (import "prelude/prelude")
 (import "lowering/compile-front")
 (import "lowering/compile-back")
-(import "lowering/upper/optimize")            ; imported in its own right: unwiring the
-                                              ; shipping path must not disturb this probe
+(import "lowering/upper/optimize")            ; fold -- the shipping rewrite
+(import "lowering/tal/check")                 ; ck-fn -- the judge, outside the closure
 (import "ports/stdio")
 (import "ports/fd")
 
@@ -63,6 +70,12 @@
 ; the instance behind it has to be carried beside it.
 (data ECls () (ecls (msg Str) (n I64) (first Str)))
 (data Cen () (cen (tfns I64) (oks I64) (errs (List ECR)) (uoks I64) (skips I64)))
+
+; ---- the judgement, lifted out of lib/lowering/upper/optimize.chiral ---------
+; `chk-ok` carries a TFn that cannot be formed without ck-fn having judged it.
+(data Checked () (chk-ok (v TFn)) (chk-err (msg Str)))
+(declare re-check (-> CEnv TFn Checked))
+(def re-check (lam (ce t) (case (ck-fn ce t) ((tck-ok env) (chk-ok t)) ((tck-err m) (chk-err m)))))
 
 (def tfn-name (-> TFn Str) (lam (t) (case t ((tfn nm ps ret body nr) nm))))
 

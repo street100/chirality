@@ -13,7 +13,7 @@
 ; ===========================================================================
 
 (import "lowering/upper/lower")               ; LCore / LCArm / TalTy / CEnv / TalSig / compile-fn
-(import "lowering/upper/optimize")             ; E17: optimize / Checked -- the preserve-check on the live path
+(import "lowering/upper/optimize")             ; E17: fold -- the tal->tal rewrite on the live path
 (import "lowering/tal/erase")           ; erase-fn : (List DData) TFn -> XF ; NFn
 (import "lowering/lowspec")             ; NTalTy / NCore / NArm / NDef
 (import "prelude/map")
@@ -218,31 +218,36 @@
       (false (case (prune-fix primnames kept) ((pair kept2 skips2)
         (pair kept2 (lapp-skip skips skips2))))))))))
 
-; ---- E17: the optimizer's preserve-check, on the shipping path ---------------
-; `re-check` (`lib/lowering/upper/optimize.chiral:250`) hands a residual TFn to
-; `ck-fn` and returns a `Checked`.  `chk-ok` carries a TFn that cannot be formed
-; without ck-fn having judged it, so adopting a rewrite and checking it are one
-; step.  This is the call site the check was written for; before it, `optimize`,
-; `specialize` and `re-check` had none anywhere in `lib/` or `prog/`.
+; ---- E17: the optimizer's fold, on the shipping path -------------------------
+; Every TFn `compile-fn` emits passes through `fold`
+; (`lib/lowering/upper/optimize.chiral`) and the residual is adopted.
 ;
 ; ⚑ THE REWRITE IS `fold` ALONE, AND `dead` IS EXCLUDED BY MEASUREMENT.
-; `optimize` is `re-check ce (dead (fold fn))`.  Wired whole, the compiler
-; reaches a fixpoint and miscompiles itself: `tools/test/run-tests.sh` runs
-; `293 passed, 98 failed` against a promoted `C2 == C3`, with `91 roots built,
-; 0 failed` -- every program still compiles and many compute the wrong value.
-; Attributed by two single-pass builds over `tools/test/row.sh`: `fold` alone is
-; `42 passed, 0 failed`, `dead` alone is `33 passed, 9 failed`, so the defect is
-; the DCE pass and not the folder.  `re-check` accepts the dead-code residual
-; anyway, which is EN-24: the `Checked` sum enforces that ck-fn ran, and ck-fn
-; is not strong enough to see the value change.  Repairing `dead` is E17's
-; remaining work and it is not this call site's.
-(declare opt-tfns (-> CEnv (List TFn) (List TFn)))
-(def opt-tfns (lam (ce ts)
+; `optimize` is `dead (fold fn)`.  Wired whole, the compiler reaches a fixpoint
+; and miscompiles itself: `tools/test/run-tests.sh` runs `293 passed, 98 failed`
+; against a promoted `C2 == C3`, with `91 roots built, 0 failed` -- every program
+; still compiles and many compute the wrong value.  Attributed by two
+; single-pass builds over `tools/test/row.sh`: `fold` alone is `42 passed, 0
+; failed`, `dead` alone is `33 passed, 9 failed`, so the defect is the DCE pass
+; and the folder is clean.  Repairing `dead` is E17's remaining work and it is
+; not this call site's.
+;
+; ⚑ THE `chk-ok` GUARD THAT USED TO SIT HERE IS GONE, BY THE AUTHOR'S RULING
+; OF 2026-09-08 (records/lenses/problems.md PRB-70).  It ran `ck-fn` over each
+; folded residual and fell back to the un-folded `t` on refusal, which put
+; `lowering/tal/check` inside the compiler closure and reddened
+; `tools/test/tal-check.sh` G18.  Measured for the ruling: forcing that guard to
+; answer `chk-ok`, which is what this loop now does, emits a byte-identical blob
+; at 1,241,464 bytes.  The 32 refusals it fell back on were all one shape, a TFn
+; calling its own outlined `<name>$0` block whose signature `lower-defs` never
+; puts in the `CEnv`, so the guard bought no shipped byte.  The census over the
+; emitted TFns still runs, from outside the closure:
+; `prog/optimizer-census.prog` under `tools/test/opt-census.sh`.
+(declare opt-tfns (-> (List TFn) (List TFn)))
+(def opt-tfns (lam (ts)
   (case ts
     (nil nil)
-    ((cons t r)
-      (cons (case (re-check ce (fold t)) ((chk-ok v) v) ((chk-err m) t))
-            (opt-tfns ce r))))))
+    ((cons t r) (cons (fold t) (opt-tfns r))))))
 
 (declare lower-defs (-> (List Str) (List (Pair Str TalSig)) (List (Pair Str TalSig)) (List DData) (List NDef) (List TFn) (List SkRec) BR))
 (def lower-defs (lam (lits prims fnsigs datas defs acc skips)
@@ -264,7 +269,7 @@
           ; missing label at emit, not a whole-program abort.
           ((le-skip er)        (lower-defs lits prims fnsigs datas r acc
                                 (cons (mk-skrec name (sk-extern er)) skips)))
-          ((le-ok main extra)  (lower-defs lits prims fnsigs datas r (lapp-tfn acc (opt-tfns ce (cons main extra))) skips))))))))))))
+          ((le-ok main extra)  (lower-defs lits prims fnsigs datas r (lapp-tfn acc (opt-tfns (cons main extra))) skips))))))))))))
 
 ; ---- skip-chain diagnostics pure helpers (E97) ------------------------------
 ; Check if an op name is in the erasure-lowerable set (op-parse ∪ prim2lib ∪ inline cases)

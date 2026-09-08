@@ -3,23 +3,34 @@
 ; optimize.py fold (:216)/_fold_block (:132)/_fold_prim (:44), dead (:456)/
 ; _dead_block (:424)/_uses_in_block (:61), specialize (:506)/_remap_block (:465).
 ; Each pass is a PURE (->) transform (an "optimization" that read a file or
-; reordered I/O would be untypeable), and the preserve-check moves INTO the
-; signature: optimize/specialize return a Checked result sum whose c-ok cannot be
-; formed without ck-fn (E18) re-judging the residual. optimize.py stays the oracle.
-;
-; This operates on the TYPED tal IR that optimize.py rewrites and E18 checks (NOT
-; tal-ir.chiral's erased ti-* IR -- the example predates E16/E18 landing). It
-; IMPORTS tal-check (E18) for that IR + the real ck-fn, so re-check is wired end to
-; end. Folds are BIT-IDENTICAL to runtime (chirality I64 wraps two's-complement, div is
+; reordered I/O would be untypeable). optimize.py stays the oracle. Folds are
+; BIT-IDENTICAL to runtime (chirality I64 wraps two's-complement, div is
 ; Euclidean -- same as optimize.py's wrap64/i64_div). Meaning-preserving only; no
 ; cost claim (that is E38).
+;
+; The IR is the TYPED tal SSA declared at lowering/tal/ssa.chiral:21-40 (TalTy,
+; Instr, Block, TalTerm, Branch, TFn), the same declaration the checker and the
+; interpreter consume. tal-ir.chiral's erased ti-* IR is a different floor.
+;
+; ⚑ THE PRESERVE-CHECK IS OUTSIDE THIS MODULE, BY THE AUTHOR'S RULING OF
+; 2026-09-08 (records/lenses/problems.md PRB-70). This file used to import
+; lowering/tal/check for the IR above plus ck-fn, and returned a Checked sum
+; whose chk-ok could only be formed by ck-fn judging the residual. The import
+; was what carried the typed-assembly checker into the compiler closure and
+; reddened tools/test/tal-check.sh G18. Three measurements behind the ruling: a
+; compiler with re-check forced to answer chk-ok emitted a byte-identical blob
+; at 1,241,464 bytes, so the wiring bought no shipped byte; ck-prog still had
+; zero call sites, so the checker's entry point was in the blob and unreached;
+; and the wiring charged the BUILD RULE on every edit of check.chiral. optimize
+; and specialize hand back a plain TFn. The checker runs from outside the
+; closure, over the TFns this pipeline emits: prog/optimizer-census.prog under
+; tools/test/opt-census.sh is where that census is taken.
 (import "prelude/prelude")
-(import "lowering/tal/check")
+(import "lowering/tal/ssa")
 
-; constant facts for folding; static-arg bindings for specialize; the check result.
+; constant facts for folding; static-arg bindings for specialize.
 (data CVal () (cv-i (n I64)) (cv-c (cn Str)))
 (data SVal () (sv-i (n I64)) (sv-con (dn Str) (cn Str)))
-(data Checked () (chk-ok (v TFn)) (chk-err (msg Str)))
 
 ; ---- generic helpers ---------------------------------------------------------
 (declare olen (-> (0 A (type 0)) (List A) I64))
@@ -245,10 +256,10 @@
         (dead (fold (tfn (str-cat name "#spec") (sel-params params unbound) ret
                          (block (oapp Instr (mk-entry bound bindings remap) rins) rterm) nregs)))))))))))))
 
-; ---- re-check + optimize pipeline (the preserve-check in the signature) -------
-(declare re-check (-> CEnv TFn Checked))
-(def re-check (lam (ce t) (case (ck-fn ce t) ((tck-ok env) (chk-ok t)) ((tck-err m) (chk-err m)))))
-(declare optimize (-> CEnv TFn Checked))
-(def optimize (lam (ce fn) (re-check ce (dead (fold fn)))))
-(declare specialize (-> CEnv TFn (List (Pair I64 SVal)) Checked))
-(def specialize (lam (ce fn bindings) (re-check ce (specialize-raw fn bindings))))
+; ---- the optimize pipeline ---------------------------------------------------
+; Both entry points hand back a plain TFn. The residual is judged from outside
+; this module (PRB-70, the header above).
+(declare optimize (-> TFn TFn))
+(def optimize (lam (fn) (dead (fold fn))))
+(declare specialize (-> TFn (List (Pair I64 SVal)) TFn))
+(def specialize (lam (fn bindings) (specialize-raw fn bindings)))

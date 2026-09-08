@@ -17,7 +17,7 @@
 ; Pure, total-shaped. The row algebra (subset / dedup-union) is E12's effects.chiral.
 
 (import "prelude/prelude")
-(import "lowering/tal/check")   ; the CHECKER's typed IR: Block / Instr / TalTerm / Branch
+(import "lowering/tal/ssa")     ; the typed tal IR: Block / Instr / TalTerm / Branch
 (import "typing/effects")     ; row-sub (containment), mem-str, row-join
 
 ; ================================================================ def_rows view
