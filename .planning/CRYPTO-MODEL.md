@@ -8,7 +8,7 @@ The question this answers: **what the full primitive set is, given a
 post-quantum target, and what form it takes so the language derives a
 configuration from the hardware instead of a person choosing one.**
 
-Author rulings, 2026-09-05.
+Author rulings. The first five are 2026-09-05 and the last is 2026-09-07.
 
 | ruling | consequence |
 |---|---|
@@ -17,6 +17,7 @@ Author rulings, 2026-09-05.
 | compute belongs at message creation and at reading | `REACH-MODEL` §11. No public-key work on the forwarding path |
 | **hardware scaling is automatic at the language level** | §8. A person states a numerical model only at an interop boundary between binaries |
 | **the language's idioms are followed verbatim, and they are the mechanism** | §11. Configuration cascades from target to parameters to types to refusals, and no layer restates the one before it |
+| **the five step mappings are each their own primitive** | §4. The family is the layer above them, and a fusion of two steps is a composition there that owes a proof of equality. `.planning/CRYPTO-TRANSLATION.md` `T1` |
 
 ---
 
@@ -64,7 +65,7 @@ that distinction attached to it.
 | layer | primitives | state |
 |---|---|---|
 | 0 word | width-indexed words, wrap ops, rotations, LE and BE codecs | `native-protocol/N6`'s row exists. Unscoped |
-| 1 permutation | the machine of §4, with at least two instances | unscoped |
+| 1 permutation | §4's five step primitives, and the family over them | unscoped |
 | 2 modes | hash, XOF, MAC, KDF, all sponge modes over layer 1 | unscoped |
 | 3 tree | a Merkle construction for chunked marks | unscoped |
 | 4 AEAD | ChaCha20-Poly1305 | **built.** `C10` asks whether it survives |
@@ -103,66 +104,128 @@ agreeing with the index by construction.
 with `M32` on every operation because 32-bit lanes live inside signed `I64`.
 Over a width-indexed word that masking is the profile's business.
 
-## §4 · The permutation machine
+## §4 · The permutation primitives, and the family over them
 
-Keccak and Ascon are the same shape at different row counts. Both apply a
-**bitsliced 5-bit S-box across five lanes**, computed with boolean operations
-on whole words.
+**Author ruling, 2026-09-07.** The five step mappings are each their own
+primitive with its own signature. The family is the layer above them, and a
+fusion of two steps is a composition at that layer which owes a proof of
+equality. `.planning/CRYPTO-TRANSLATION.md` `T1` carries the ruling and what it
+buys. This section is written to it. An earlier draft presented one machine with
+four slots, and `records/findings.md` `FD-13` measured six defects in it against
+three pins.
 
-| | lanes | arrangement | has a lane-permutation step |
+### Which level the machine sits at
+
+**FIPS 202 publishes two levels and derives the lower one from the upper.** The
+upper is FIPS202:14 "The generalization of the KECCAK-f [b] permutations that is defined in this Standard by converting the number of rounds nr to an input parameter", written Keccak-p[b, nr] and defined at FIPS202:15 "the permutation is defined for any b in {25, 50, 100, 200, 400, 800, 1600} and any positive integer nr". The lower is FIPS202:26 "KECCAK-f [b] = KECCAK-p[b, 12 + 2l]."
+
+**The machine sits at the p level**, which is where a round count as an input
+parameter is legitimate. At the f level `R = 12 + 2l` is a definition and a free
+round count is forbidden. So `R = 12 + 2l` is the boundary between the two
+levels rather than a cell in an instance table, and an instance calling itself
+Keccak-f[b] owes that derivation. `docs/arcs/parts/crypto-primitives-K1.md` §5
+chose the same level for the translation and gives three reasons for it.
+
+### The five primitives
+
+A round is five step mappings, FIPS202:15 "consists of a sequence of five transformations, which are called the step mappings", applied in the order θ, ρ, π, χ, ι. **Both instances apply a bitsliced 5-bit S-box across five lanes**,
+computed with boolean operations on whole words, and both XOR a round constant
+into one lane. Those two positions are where the shapes agree.
+
+| primitive | what it is | Keccak-p | Ascon-p |
 |---|---|---|---|
-| Keccak-f[1600] | 25 | **5 rows of 5**, `w` = 64 | yes, to move data between rows |
-| Keccak-f[800] | 25 | 5 rows of 5, `w` = 32 | yes |
-| Ascon-p | 5 | **1 row of 5**, `w` = 64 | no, because one row needs no cross-row movement |
+| θ, the column parity | FIPS202:21 "is to XOR each bit in the state with the parities of two columns in the array". Five parities, one rotation, XOR back into every lane. It crosses lanes | present | **absent** |
+| ρ, the rotation | FIPS202:22 "is to rotate the bits of each lane by a length, called the offset, which depends on the fixed x and y coordinates of the lane". It stays inside one lane | one rotation per lane, offsets taken mod `w` | a XOR of two rotated copies: ASCONSPEC:102 "<i>S</i><sub>0</sub> := <i>S</i><sub>0</sub> &oplus; (<i>S</i><sub>0</sub> &#8921; 19) &oplus; (<i>S</i><sub>0</sub> &#8921; 28)" |
+| π, the lane permutation | FIPS202:23 "[x, y, z]= A[(x + 3y) mod 5, x, z]", whose effect is FIPS202:23 "is to rearrange the positions of the lanes" | present | **absent** |
+| χ, the S-box | FIPS202:24 "is to XOR each bit with a non-linear function of two other bits in its row" | KECCAKSUM:188 "  A[x,y] = B[x,y] xor ((not B[x+1,y]) and B[x+2,y]),", at fixed y | its own, chosen for stronger per-round properties: ASCONSPEC:76 "applies a 5-bit S-box 64 times in parallel in a bit-sliced fashion (vertically, across words)." |
+| ι, the round constant | one lane, KECCAKSUM:191 "  A[0,0] = A[0,0] xor RC" | an LFSR derivation | one byte, ASCONSPEC:75 "s a round-specific 1-byte constant to word <i>S</i><sub>2</sub>." |
 
-So one machine covers both: **`rows` rows of 5 lanes of width `w`**, an S-box
-across each row, a linear layer, a round constant. **The lane permutation is a
-function of `rows` and becomes the identity at `rows = 1`**, so Ascon's missing
-step needs no special case.
+**Ascon's round fills three of the five positions.** ASCONSPEC:71 "The round transformation consists of the following three steps which operate on a 320-bit state divided into 5 words" of 64 bits each, and the three are the constant, the S-box and ASCONSPEC:77 "Linear Diffusion Layer".
 
-| the machine carries | Keccak-f[1600] | Ascon-p |
-|---|---|---|
-| `rows` | 5 | 1 |
-| lane width `w` | 64 | 64 |
-| rounds, a type index | 24 | 12 |
-| the S-box, a value | χ | its own, chosen for stronger per-round properties |
-| the linear layer, a value | θ | the Σ functions |
-| the constant schedule | an LFSR derivation | its own |
-| the lane permutation | derived from `rows` | identity, derived from `rows = 1` |
-| `budget`, which derives `rows` | large | small |
-| `access` | `full` | `windowed k` |
+**Ascon's linear step occupies ρ's position.** It stays inside one word,
+ASCONSPEC:77 "s different rotated copies of each word (horizontally, within each word)." θ crosses lanes and Ascon has no cross-lane step at all. Pairing the two
+under one name is what left ρ with nowhere to go, so the mispairing and the
+missing step were one defect. ⚑ The name *the Σ functions* an earlier draft used
+is dropped. The designers' page calls the step the Linear Diffusion Layer, and
+the Σ spelling comes from a PDF that maps the glyph to S, which no pin here
+resolves.
 
-Keccak-f[800] arrives free as `rows = 5, w = 32` for the 32-bit profile.
+⚑ **Every Ascon claim in this section rests on the designers' specification
+page.** NIST SP 800-232 was fetched and could not be read in this sandbox: it
+draws its body text from CID-keyed fonts, and this sandbox has no `pdftotext`
+and no PDF library. The standard itself has not been read here.
+
+### The family over the primitives
+
+An instance names a lane geometry, a step set and a round count.
+
+| | Keccak-p[1600, nr] | Keccak-p[800, nr] | Ascon-p[nr] |
+|---|---|---|---|
+| lanes | 25 | 25 | 5 |
+| `planes` of 5 lanes | 5 | 5 | 1 |
+| lane width `w` | 64 | 32 | 64 |
+| `R` at its f member | 24 | **22** | it has no f member. 12 and 8 are the standardized counts |
+| θ | present | present | absent |
+| ρ | the offset table | the same table mod 32 | the two-rotation XOR |
+| π | present | present | absent |
+| χ | Keccak's S-box | the same | its own |
+| ι | the LFSR derivation | the same | its own byte constants |
+| `budget`, which derives `planes` | large | large | small |
+| `access` | `full` | `full` | `windowed k` |
+
+**Keccak-f[800] is 22 rounds and does not arrive free.** KECCAKSUM:171 "is given by $n = 12+2l$, where $2^l = w$. This gives 24 rounds for" fixes the law and attaches 24 to f[1600]. At `w = 32` the exponent `l` is 5 and the law gives 22.
+Setting `planes` and `w` while leaving `R` at 24 produces a different
+permutation. The round count travels with `w` and is derived rather than
+carried.
+
+**One plane does not give Ascon-p.** π's formula holds no plane-count term to
+specialize, and its source index at `y = 0` reads a lane at every `y`, so a
+one-plane state has no π to restrict. Ascon's round omits θ and π; it does not
+instantiate them at the identity. Choosing the identity at one plane is a free
+choice available to the family, and deriving it from the plane count is the half
+that fails.
+
+**So Ascon-p is a composition at the family layer**, and under the ruling above
+an instance that drops or fuses primitives owes an equality proof against the
+primitives it claims to compose. This tree holds no such proof and states none.
+`crypto-primitives/K2` is the row that discovers how many families there are and
+`C2` is the call. `crypto-primitives/K15` and `crypto-primitives/K16` are the
+rows that would run such a proof as a gate.
+
+**Terminology.** `planes` is FIPS 202's own word for what this parameter counts:
+FIPS202:11 "plane For a state array of a KECCAK-p permutation with width b, a sub-array of b/5 bits with a constant y coordinate." The standard reserves *row* for something else, FIPS202:11 "row For a state array, a sub-array of five bits with constant y and z coordinates.", which is the sub-array χ works across. An earlier
+draft of this model called the 5-lane sub-array a row, colliding with both.
 
 **Memory is two dials and they are independent.**
 
 | dial | is |
 |---|---|
-| `budget` | the bytes available. `rows` is derived from it and a person never chooses it |
+| `budget` | the bytes available. `planes` is derived from it and a person never chooses it |
 | `access` | how much of the state is live at once: `full`, or `windowed k` |
 
 A large-state node may still want windowed access. A constrained one has no
 choice. Keccak sits at `budget = large, access = full`. Ascon's niche is
-`budget = small, access = windowed`, and §9 records that the niche is reached by
-configuring this machine. `k` here is the window size. §7's `k` is the
+`budget = small, access = windowed`, and §9 records what reaching that niche by
+configuring this family costs. `k` here is the window size. §7's `k` is the
 ops-per-lane term and the two share a letter, which §14 records as owed.
 
 **Two instances is the point.** One instance proves nothing about whether the
-abstraction constrains anything, which is the tree's own rule about
-abstractions earning their keep.
+abstraction constrains anything, which is the tree's own rule about abstractions
+earning their keep. Whether the second instance is Ascon-p or a second member of
+the Keccak family is `C2`, and §9 carries the evidence for it.
 
 ## §5 · Implying the computation
 
-Of the five steps in a Keccak-shaped round, three cost less than they appear to
-and two are the real work.
+Of the five primitives §4 separates, three cost less than they appear to and two
+are the real work. The names are §4's.
 
 | step | what it does | cost |
 |---|---|---|
-| the linear layer | column parity across five, one rotation, XOR back into every lane | **real** |
-| the rotation layer | rotate each lane by a fixed per-position offset | **cheaper.** The table lookup and the index arithmetic disappear against named lanes. The rotation itself stays three ops, because the closed `Op` sum has no rotate and the backend emits shift, shift, or |
-| the lane permutation | move lane (x,y) to (y, 2x+3y) | **free.** Pure reindexing. Nothing is computed |
-| the S-box | the only nonlinear step | **real**, and the largest single cost |
-| the round constant | XOR into one lane | **free.** Derivable from the LFSR at compile time |
+| θ, the column parity | column parity across five, one rotation, XOR back into every lane | **real** |
+| ρ, the rotation | rotate each lane by a fixed per-position offset | **cheaper.** The table lookup and the index arithmetic disappear against named lanes. The rotation itself stays three ops, because the closed `Op` sum has no rotate and the backend emits shift, shift, or |
+| π, the lane permutation | move lane (x,y) to (y, 2x+3y), which is KECCAKSUM:185 "  B[y,2*x+3*y] = rot(A[x,y], r[x,y])," read forward | **free.** Pure reindexing. Nothing is computed |
+| χ, the S-box | the only nonlinear step | **real**, and the largest single cost |
+| ι, the round constant | XOR into one lane | **free.** Derivable from the LFSR at compile time |
 
 ## §6 · Constant time by construction
 
@@ -170,8 +233,8 @@ and two are the real work.
 
 | what follows | why |
 |---|---|
-| the lane permutation costs nothing | it is which field is read next |
-| the rotation layer needs no table | one rotate-by-literal per named lane |
+| π costs nothing | it is which field is read next |
+| ρ needs no table | one rotate-by-literal per named lane |
 | no bounds check appears anywhere | there is no index to check |
 | **a secret-dependent index has no spelling** | there is no index at all |
 | the round is straight-line and total | no branch, so nothing to balance |
@@ -187,21 +250,28 @@ sampling rather than the permutation.
 
 | | |
 |---|---|
-| state | `b = rows × 5 × w` |
+| state | `b = planes × 5 × w` |
 | rate | `rate = b − c` |
 | security | `c ≥ 2 × S` |
 | work per permutation | `≈ lanes × k × R` |
-| **work per output byte** | `(rows × 5 × k × R × 8) / (rows × 5 × w − c)` |
+| **work per output byte** | `(planes × 5 × k × R × 8) / (planes × 5 × w − c)` |
 | memory | `b / 8` bytes |
 
 **Capacity is the one term that does not scale.** `c ≥ 2S` is fixed by the
 security target, so **rate is the surplus after security is paid** and growing
 the state grows only the rate.
 
-Derived at `w = 64`, `S = 128` so `c = 256`, `k ≈ 9`, `R = 24`. ⚑ `k` is
-estimated from the step counts in §5 and has never been measured.
+Derived at `w = 64`, `S = 128` so `c = 256`, `k ≈ 9`, `R = 24`. `R` follows
+`w` through §4's `12 + 2l` and the plane count does not enter it, which is why
+one `R` serves the whole column.
 
-| rows | state | rate | ops per byte |
+⚑ **Two terms in that derivation are unbacked.** `k` is estimated from the
+step counts in §5 and has never been measured, so every ops-per-byte figure
+below is an estimate and §14 carries it. And `12 + 2l` is published over the
+seven widths at 25 lanes, FIPS202:15 "b 25 50 100 200 400 800 1600 w 1 2 4 8 16 32 64 l 0 1 2 3 4 5 6", so `R` at a plane count other than 5 is this
+model's extrapolation and no published law covers it. §14 carries that too.
+
+| planes | state | rate | ops per byte |
 |---|---|---|---|
 | 1 | 320 b | 8 B | ~135 |
 | 5 | **1600 b** | 168 B | **~32** |
@@ -219,7 +289,7 @@ buys throughput linearly and the exchange rate is set by `S`.
 **`access` moves the resident memory and leaves the security terms where
 `budget` and `S` put them.** `b`, `rate` and `c` are unchanged, so a windowed
 configuration has the same state size, the same capacity and the same security
-target as the full one at that `budget`. It holds fewer than `rows × 5` lanes
+target as the full one at that `budget`. It holds fewer than `planes × 5` lanes
 live at any moment. Interoperation is untouched, because §8's mark names the
 configuration and verification reads the machine.
 
@@ -235,7 +305,7 @@ cover.
 
 | constraint | what it makes impossible |
 |---|---|
-| `rate + c = rows × 5 × w` | a parameter set that does not close |
+| `rate + c = planes × 5 × w` | a parameter set that does not close |
 | `c ≥ 2 × S` | a configuration that silently misses its security target |
 | `R ≥ rounds-for(sbox, S)` | a round count below what its S-box needs |
 | a required domain-separator field | building a sponge without saying what it is for, which deletes cross-purpose reuse structurally |
@@ -250,11 +320,11 @@ cover.
 | supplied by | fixes |
 |---|---|
 | the target's `NumProfile` | `w` |
-| the target's `budget` | `rows` |
+| the target's `budget` | `planes` |
 | the target's `access` | how much of the state is resident, `full` or windowed |
 | the security requirement | `c` |
 | derived from those | `rate` |
-| the chosen S-box | `R` |
+| the chosen S-box's floor, and `12 + 2l` where the instance is an f member | `R` |
 
 A person writes `hash`. The moduleset's target supplies the width, the budget
 and the access pattern, and every other parameter is computed. The two memory
@@ -267,9 +337,12 @@ makes the backend an instance.
 **This is the structural argument for a family and against a point.** A design
 fixed at one state size and one lane width cannot scale automatically, so
 adopting it as the base forfeits the property. Keccak-f[b] is defined across
-lane widths 1 through 64 with one offset table taken mod `w`, so the 8, 32 and
-64-bit members are one module. Ascon-p is one point, which is why it is a
-second instance rather than the base.
+the seven lane widths 1 through 64 with one offset table taken mod `w`, so the
+8, 32 and 64-bit members are one module. **The width dial carries the round
+count with it**: `R = 12 + 2l` moves when `w` moves, which is why §4 states the
+derivation and why Keccak-f[800] is 22 rounds. Ascon-p is one point and cannot
+be the base. Whether it is a second instance of this family or a second design
+is `C2`, since §4 measures its round as dropping θ and π.
 
 **Interoperation needs no negotiation.** `REACH-MODEL` §3's mark carries an
 `alg` field.
@@ -297,7 +370,7 @@ free**, because nothing else has to reproduce it.
 | | rounds | best attacks reach | margin |
 |---|---|---|---|
 | Keccak-f[1600] | 24 | 5 to 6 for collisions and preimages, practical ones at 3 to 5 | **~4x** |
-| Ascon-p | 12 | 7 on the AEAD, varying by variant, some in restricted key classes | **~1.7x** |
+| Ascon-p[12] | 12 | 7 on the AEAD, varying by variant, some in restricted key classes | **~1.7x** |
 
 Keccak carries a four-year public competition plus thirteen further years of
 attention. Ascon's proven bounds cover three rounds, with four rounds shown to
@@ -314,24 +387,33 @@ trades margin for state size and operation count on constrained hardware.
 | Keccak-f[1600] | ~216 | 24 | 168 B | **~31** |
 | Ascon-p | ~63 | 12 | 8 B | **~95** |
 
-**Keccak is roughly three times cheaper per byte.** Its state is 7x larger and
-its rate 21x larger, so the larger permutation repays itself.
+⚑ **Both ops-per-round figures are estimates and neither has been measured.**
+They are counted the way §7's `k` is counted, and §14 carries `k` as owed. Every
+ops-per-byte number in this table inherits that, so the ratio between the two
+columns is what the table supports and the absolute figures are not.
+
+**Keccak is roughly three times cheaper per byte** on those estimates. Its state
+is 7x larger and its rate 21x larger, so the larger permutation repays itself.
 
 **Ascon's only win is memory, and that is evidence about the design space.** It
 is worth little where 200 bytes of state is affordable and worth everything
 where it is not, so what the result establishes is that **memory is an axis the
 family must expose**. It establishes nothing about which design ships.
 
-The property is reached by configuring the one machine of §4, at `budget =
-small, access = windowed`. Adopting a second design to reach it buys the same
-property and forfeits §8's derivation, since a design fixed at one state size
-supplies no dial for the target to turn.
+**The memory property is reached by the family at `planes = 1`, `w = 64`,
+`budget = small, access = windowed`**, which is a 320-bit state. That
+configuration is a different permutation from Ascon-p: §4 measures that it keeps
+θ and π where Ascon's round has neither, so it inherits none of Ascon's
+cryptanalysis and the margin table above covers it nowhere. Adopting Ascon-p
+instead buys the same state size and forfeits §8's derivation, since a design
+fixed at one state size supplies no dial for the target to turn. Both halves of
+that trade are `C2`, and §14 carries the unanalyzed member as a hole.
 
 **This is the second reason behind §8's structural argument for a family and
 against a point.** The first is that a fixed state size and lane width cannot
 scale automatically. The second is that the low-memory end is a setting of the
-family. §8's closing sentence about Ascon-p holds unchanged and now has both
-reasons behind it.
+family. §8's closing sentence about Ascon-p now hands its status to `C2`, and
+both reasons stand behind it.
 
 ## §10 · Eliminations, and one reframe
 
@@ -368,7 +450,7 @@ power.** Each layer is derived from the one before it and nothing is restated.
 | layer | what it holds | stated in |
 |---|---|---|
 | the target | `NumProfile`, `budget`, `access`, the security requirement | §8 |
-| the parameters | `w`, `rows`, `c`, `rate`, `R` | §7, §8 |
+| the parameters | `w`, `planes`, `c`, `rate`, `R` | §7, §8 |
 | the types | the round count as a type index, the rotation amount as a refinement, the state as named lanes | §4, §6, §7 |
 | the refusals | a parameter set that does not close, a configuration under its security target, a secret-dependent index, a cross-configuration agreement | §6, §7, §8 |
 
@@ -423,14 +505,14 @@ accumulation room, so **`E189` stays unneeded and no kernel owes a fixpoint**.
 | id | decision |
 |---|---|
 | C1 | what happens to N1's four slices, two of them built and gated against a reference class the target abandons |
-| C2 | the machine's initial instances, and whether Ascon-p is one of them, read against a family that now carries `budget` and `access` |
+| C2 | the family's initial instances, and whether Ascon-p is one of them or a second design. §4 measures its round as dropping θ and π, so it is a composition owing an equality proof rather than the family at `planes = 1`. The family at `planes = 1` is the other candidate and §9's margin table reaches it nowhere |
 | C3 | the PQ signature: ML-DSA against SLH-DSA, with FALCON eliminated |
 | C4 | where each scheme's decompose-against-change line sits |
 | C5 | the hybrid combiner construction |
 | C6 | whether `N5` lands before the kernels, since scoping it after means writing every kernel twice |
 | C7 | vectors as a `.manifest` against shell |
 | C8 | the security target `S`, which fixes the capacity floor and therefore the whole curve |
-| C9 | the shape of the `budget` declaration a target carries, now that §4 derives `rows` from it and stands `access` beside it |
+| C9 | the shape of the `budget` declaration a target carries, now that §4 derives `planes` from it and stands `access` beside it |
 | C10 | whether ChaCha20 and Poly1305 are retired by an AEAD mode over the same machine |
 | C11 | the limb representation for field arithmetic, and whether a limb carries its bit bound |
 | C12 | whether the sponge's absorb and squeeze state is linear |
@@ -447,6 +529,12 @@ accumulation room, so **`E189` stays unneeded and no kernel owes a fixpoint**.
 - **the work-per-byte relationship under `access = windowed`**, which §7 leaves
   underived: the movement between the live window and the rest of the state is
   unmeasured and no figure for it is stated
+- **`R` at a plane count other than 5.** `12 + 2l` is published over the seven
+  widths at 25 lanes and §7's curve varies the plane count, so the round count
+  every row of that table uses is this model's extrapolation
+- **the security of the family at `planes = 1`.** §9's margin table covers
+  Keccak-f[1600] and Ascon-p[12]. A one-plane Keccak-shaped permutation is
+  neither, and §9 now reaches for it as the low-memory configuration
 - **the two `k`s.** §4's `access` dial spells its window size `k` and §7's `k`
   is the ops-per-lane term. One of them owes a rename
 - **what a windowed state is made of.** §6 rests on a record of named lanes with

@@ -579,7 +579,7 @@ deciding it.
 
 | id | decision |
 |---|---|
-| T1 | fidelity target: faithful to the specification's algorithm, or faithful to the mathematics the algorithm computes |
+| ~~T1~~ | **RULED 2026-09-07: the mathematics, realized as separated primitives.** The five step mappings are each their own primitive with its own signature. The family is the layer above them, and any fusion is a composition there that owes a proof of equality. The fork read as a fidelity philosophy and it is a factoring: separated steps reproduce the published order for free, and they are what gives requirement 3's differential gate two representations to compare |
 | T2 | the cost model of §10, item 1 |
 | T3 | what a target declares, beyond `NumProfile`'s width |
 | T4 | the admission test a representation passes |
