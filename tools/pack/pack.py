@@ -931,7 +931,7 @@ def design_mode(arc, rid, scaffold=True):
 
     outl = target_outlines(line)
     if outl:
-        out.append("## 9. Live target outlines\n" + outl)
+        out.append("## 9. Live target outlines\n" + "\n\n".join(outl))
 
     out.append("## 10. Next\nYour artifact is scaffolded at "
                f"`docs/arcs/parts/{arc}-{rid}.md`. Fill §1-§6. §3 may close the row "
