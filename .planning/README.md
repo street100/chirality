@@ -37,7 +37,7 @@ is a defect to fix here.
 
 ## The harness
 
-Seven skills in `.claude/skills/`, each one run, one unit of work, one artifact,
+Eight skills in `.claude/skills/`, each one run, one unit of work, one artifact,
 then stop. The pipeline they run is
 `docs/decisions/decision-design-before-mint.md`.
 
@@ -50,6 +50,7 @@ then stop. The pipeline they run is
 | `design-to-spec` | one minted element into an implementation SPEC |
 | `revisit` | one settled artifact against one named trigger |
 | `doc-audit` | one doc, semantic pass against its live authorities |
+| `translate` | one published external object into this tree's forms |
 
 `worked-example` and `example-to-spec` are retired.
 

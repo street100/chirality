@@ -145,6 +145,10 @@ allocator at scale; the native suite's own wall clock), see
   claim this repo makes about itself beside what was measured, with a state and a
   date. The one doc tier any agent may extend or amend without asking; the rules
   are in the hub. Seeded with [[records/baseline-alignment]].
+- Translations: `docs/translations/` holds one published external object per
+  file, rendered into this tree's forms. The mathematics stays external and
+  every quote resolves into a pinned source. Its README states the nine
+  sections; `tools/xlat/xlat.sh` and `ledger-lint` check AL enforce them.
 - Provenance and open work: [[dump-integration]], [[open-edges]], [[resolution-patterns]]
 
 ## Convention

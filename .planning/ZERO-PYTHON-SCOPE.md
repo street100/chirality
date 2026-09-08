@@ -1,7 +1,12 @@
 # Zero Python: the scope
 
 **2026-08-31.** Goal, standing instruction: **no `.py` anywhere in
-`/workspace/chirality`**. This is the work, sized per file, with what each one
+`/workspace/chirality`**.
+
+⚑ **2026-09-07: `tools/xlat/xlat.sh` was written in shell for this rule**, 353
+lines, and `tools/README.md` records that shell is no more chirality than Python
+is, so it owes the same route. The file count below is unchanged and no `.py`
+was added; `ledger-lint.py` grew by checks AK and AL. This is the work, sized per file, with what each one
 needs from the language and in what order it can be done.
 
 14 files, 4,654 LOC (was 4,629; `pack.py` grew 806 → 831 in the round-off pass

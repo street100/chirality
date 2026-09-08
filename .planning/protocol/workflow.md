@@ -10,6 +10,8 @@ holds the run.
 goal        docs/goals/<name>.md                      goal-open
 arc         docs/arcs/<name>-arc.md                   arc-open
 ─────────────────────────────────────────────────── pre-mint, no E# exists ──
+translate   docs/translations/<object>.md              translate
+audit       the translation                           pipeline-audit TRANSLATE
 design      docs/arcs/parts/<arc>-<id>.md             element-design
 audit       the design                                pipeline-audit
 MINT        catalog + ledger + the roster row         the audit's PASS
@@ -20,6 +22,11 @@ implement   lib/, prog/, a gate                       no skill. See below
 ─────────────────────────────────────────────────────────────────────────────
 revisit     any artifact above, against one trigger   revisit
 ```
+
+**A translation runs only where the reference class is a published external
+object**, and it is upstream of a roster row: an object can be translated before
+anyone decides which row builds it. `docs/translations/README.md` holds the nine
+sections and `tools/xlat/xlat.sh` pins the sources every quote resolves into.
 
 **Minting is the graduation.** A unit of work is named in the arc's roster when
 the arc opens, cited as `<arc>/<id>` per

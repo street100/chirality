@@ -32,6 +32,7 @@ or `.claude/skills/`. `docs/decisions/decision-ai-tier.md` draws that line.
 | what is built, on the four rungs | `docs/definitions/status-ledger.md` | ENFORCED, IMPLEMENTED, SEEDED, DESIGNED |
 | a claim beside what was measured | `records/<arc>.md` | a `###` block, six fields |
 | a fork only the author can settle | `records/author-calls.md` | one row, with why it blocks |
+| a published external object rendered into our forms | `docs/translations/<object>.md` | nine sections, ending in the limits no carrier reaches |
 
 Most of these are produced by a tool rather than by hand. A bank is scaffolded
 by `python3 tools/doc/doc.py new-bank <name> E# E#`, which pre-seeds the
@@ -136,11 +137,11 @@ is the cheapest rule here and the one most often skipped.
 ## Before you commit
 
 ```
-python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A to AJ
+python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A to AL
 tools/prose-lint/prose-lint.sh PATH...       # how it reads
 ```
 
-`ledger-lint` runs 35 checks, A through AJ. Measured 2026-09-05 it reports **111
+`ledger-lint` runs 38 checks, A through AL. Measured 2026-09-05 it reported **111
 findings**: three `AC`, one `I`, one `N` recorded as a known disagreement, and
 the 106 that AF, AG and AI reached on the day they landed. `H`, `M` and `AH` are
 recorded as checking nothing.

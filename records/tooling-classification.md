@@ -24,6 +24,11 @@ Row format, states and the rules for adding, changing and retiring a row are in
 Measured 2026-09-04 against `dda00b9`, with `lib/`, `prog/`, `bin/` and `tools/`
 clean in `git status`. `tools/test/run-tests.sh` was not run.
 
+⚑ **The corpus grew on 2026-09-07 and this classification still carries the older count.**
+`tools/xlat/xlat.sh` joined it, 353 lines of shell, and `tools/ledger-lint/ledger-lint.py`
+gained checks AK and AL. Every per-tool figure below is the 2026-09-04 count and
+excludes both. No Python file was added.
+
 ## Scope, and what a call site is
 
 The corpus is every shell file under `tools/` and `bin/` plus every Python file

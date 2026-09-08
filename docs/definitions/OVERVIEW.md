@@ -150,12 +150,15 @@ updated: 2026-09-07
 - **3.** Reach. One instance gets a value from another with no global namespace and no authority. U
       arc: UNOPENED
 - **4.** The primitives. Every layer's crypto is chirality's own, post-quantum, with the configurat
-      arc: UNOPENED
+      arc: crypto-primitives-arc, native-protocol-arc
 - **5.** The desktop. A canvas is a layer of the environment rather than a window beside it. Unopen
       arc: UNOPENED
 
 ### arc `canvas-arc`: 16 roster row(s)
   state: open 16
+
+### arc `crypto-primitives-arc`: 25 roster row(s)
+  state: open 25
 
 ### arc `vocabulary-arc`: 12 roster row(s)
   state: open 12
@@ -248,9 +251,9 @@ updated: 2026-09-07
 
 ## The lenses
 
-- **problem** (PRB-): 71 row(s), 71 unreviewed. FIXED 12, OPEN 59
+- **problem** (PRB-): 72 row(s), 72 unreviewed. FIXED 12, OPEN 60
 - **gap** (GAP-): 18 row(s), 12 unreviewed. closed 6, open 12
 - **limit** (LIM-): 18 row(s), 18 unreviewed. accepted 18
 - **unspoken** (UNS-): 49 row(s), 49 unreviewed. open 49
 
-Roster rows across every arc: 213. Minted from them: 43.
+Roster rows across every arc: 238. Minted from them: 43.
