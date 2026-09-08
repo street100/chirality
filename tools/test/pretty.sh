@@ -460,19 +460,23 @@ else bad "G8(b) typing/diag does not import surface/pretty"; fi
 # (c) FIVE gate scripts and THREE fixtures, byte-unchanged. Pinning four while
 # exercising one is the same hole, one file smaller -- so every pin is checked
 # and M10 moves EACH of them in turn.
-# ⚑ Five of the eight have been re-taken since E181 wrote them, all on
-# 2026-09-04: `row.sh`'s and `render-doc.sh`'s when GA-17's and GA-22's repairs
-# added M14 and M13, and `doc.sh`'s, `samples/e158_doc.prog`'s, `row.sh`'s,
-# `face.sh`'s and `render-doc.sh`'s when GA-23's repair rewrote doc.sh and its
-# fixture. That repair is a cascade and it terminates here: row.sh and face.sh
-# carry doc.sh's pair, render-doc.sh carries row.sh's and face.sh's, and this
-# file is pinned by nothing. A pin re-taken in the commit that moves the file is
-# the loud path these rows exist to force.
-PINS="ec0d72f3793459af9719e8eeb8816e065c9d5b9efd49110251ebf2e4ed8cd8fd  diag.sh
-76d943af6dfddbc4c834c7bb2c2488d114f23c09bc11cba2fd4ba392bf22f028  doc.sh
-526349487f73f076be71ec24e536db22774945c1d9558d78e7b157690d5af5a7  row.sh
-27a70f561e8fa53392a56bd49c269aac87b9180cdbb90cf6541ee30249e53f34  face.sh
-2f43b8ef7a5f4a73d70df4160f6f65df2851a4bd3f92b66ad90692ae3787ea6e  render-doc.sh
+# ⚑ Five of the eight were re-taken on 2026-09-04: `row.sh`'s and
+# `render-doc.sh`'s when GA-17's and GA-22's repairs added M14 and M13, and
+# `doc.sh`'s, `samples/e158_doc.prog`'s, `row.sh`'s, `face.sh`'s and
+# `render-doc.sh`'s when GA-23's repair rewrote doc.sh and its fixture. Five
+# were re-taken again on 2026-09-08: `diag.sh`'s when PRB-70's ruling moved the
+# `Checked` sum out of `lib/lowering/upper/optimize.chiral` into
+# `prog/optimizer-census.prog` and E157 G5 repointed at the new home, and
+# `doc.sh`'s, `row.sh`'s, `face.sh`'s and `render-doc.sh`'s behind it. That
+# repair is a cascade and it terminates here: row.sh and face.sh carry doc.sh's
+# pair, render-doc.sh carries row.sh's and face.sh's, and this file is pinned by
+# nothing. A pin re-taken in the commit that moves the file is the loud path
+# these rows exist to force.
+PINS="938897ecf553c73fb0ea80ed05afca43b96363861cdf53f8496caf78ac21509f  diag.sh
+4e20eb0a80d42a9a08745cbe2991cd2924315c361713194d31f1277cb371b405  doc.sh
+0918f1500bdb928aa6fde3ee56a55ee019ccdf20fbdd3cde87ed6f09406c5da1  row.sh
+c2c315368aec82d894b69ffd4f76ac1723dd3a95d96c80ac5a77717b9c806f29  face.sh
+09746f68526ea6424561a4cee30c59744e8b9bd7ce4ede6ac6df9b16bebef2e5  render-doc.sh
 713fe84d51c149d491edf8289a5799206f44b0e925a28dc7f123ba3f7ab4171c  samples/e157_diag.prog
 2a319302e79f4bf012b72f7f870069742df340d93618f6314d67c0a08d27eea8  samples/e158_doc.prog
 a0cf04d8cb91a5bbc4f143c1315e406558f22d5c97ce76f83c8a5f53f02e75fd  samples/e174_row.prog"

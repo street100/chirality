@@ -247,7 +247,7 @@ keep() {  # keep FILE PATTERN DESC
 }
 keep lib/surface/parse.chiral          '(step-err (msg Str))'   "StepR keeps its Str payload"
 keep lib/module/load-batch.chiral      '(batch-err  (msg Str))' "BatchR keeps its Str payload"
-keep lib/lowering/upper/optimize.chiral '(chk-err (msg Str))'   "Checked keeps its Str payload"
+keep prog/optimizer-census.prog        '(chk-err (msg Str))'    "Checked keeps its Str payload"
 keep lib/lowering/compile-front.chiral '(fr-err (msg Str))'     "FrontR keeps its Str payload"
 keep lib/surface/data.chiral           '(pos-bad (reason Str))' "PosR keeps its Str payload"
 # decision 2: lowering/tal/check has its OWN verdict sum with its own Str
@@ -265,16 +265,19 @@ keep lib/lowering/tal/check.chiral     '(tck-err (msg Str))'    "tal/check still
 # `ck-prog` still has no call site anywhere in lib/ or prog/ (enforcement-arc
 # requirement 2), verified 2026-09-05.
 #
-# `optimize.chiral` DOES have an importer, and this comment claimed otherwise
-# until 2026-09-05. `5b7478f` added `(import "lowering/upper/optimize")` at
-# lib/lowering/compile-back.chiral:16, so requirement 4's module is on the
-# shipping path and `lowering/tal/check` entered the compiler closure with it.
-# The count stays zero because compile-back reaches tal/check transitively
-# rather than directly, and cannot import `typing/kernel` at all (the TalTerm
-# collision, compile-back.chiral:12). tools/test/opt-census.sh is the gate over
-# that wiring. tools/test/tal-check.sh's G17 holds the same count and its :78
-# prose carries the same stale claim; retiring G18 is an author call
-# (enforcement-arc requirement 3) and that file is left to it.
+# ⚑ THE `Checked` ROW ABOVE READS `prog/optimizer-census.prog` FROM 2026-09-08.
+# The sum lived at `lib/lowering/upper/optimize.chiral:22` from E17 until the
+# author's PRB-70 ruling took `lowering/tal/check` back out of the compiler
+# closure; `re-check` and `Checked` moved to the census probe whole. The
+# invariant is what it always was: a sum outside E157's widening keeps its Str
+# payload, and the widening did not sweep it.
+#
+# The count stays zero, and the reason changed with it. Only
+# `prog/optimizer-census.prog` imports `lowering/tal/check` now, and it imports
+# no `typing/kernel`. `lib/lowering/compile-back.chiral` reaches neither: it
+# still imports `lowering/upper/optimize` for `fold`, and optimize points at
+# `lowering/tal/ssa` for the typed IR. tools/test/tal-check.sh G18 asserts the
+# closure claim and reads green.
 both="$(cd "$REPO" && grep -RIl 'import "lowering/tal/check"' lib prog 2>/dev/null \
          | while read -r f; do grep -q 'import "typing/kernel"' "$f" 2>/dev/null && echo "$f"; done | wc -l)"
 if [ "$both" -eq 0 ]; then ok "no module imports both typing/kernel and lowering/tal/check (nothing has wired it yet)"

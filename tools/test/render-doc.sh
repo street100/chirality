@@ -490,14 +490,18 @@ echo "=== E158c4 G8: the four existing gates are byte-unchanged, and Phase 17 ru
 # already pins diag.sh; this pins all four, so a later element cannot quietly
 # reword one of them and leave this gate's expectations describing a file that
 # no longer exists. A pin re-taken in the commit that moves the file is the loud
-# path this row exists to force. Two re-takes since the element, both on
+# path this row exists to force. Three re-takes since the element. Two on
 # 2026-09-04: `row.sh`'s when GA-17's repair added its M14, and `doc.sh`'s,
 # `row.sh`'s and `face.sh`'s together when GA-23's repair rewrote doc.sh and its
-# fixture and both neighbours carry that pair's pins.
-PINS="ec0d72f3793459af9719e8eeb8816e065c9d5b9efd49110251ebf2e4ed8cd8fd  diag.sh
-76d943af6dfddbc4c834c7bb2c2488d114f23c09bc11cba2fd4ba392bf22f028  doc.sh
-526349487f73f076be71ec24e536db22774945c1d9558d78e7b157690d5af5a7  row.sh
-27a70f561e8fa53392a56bd49c269aac87b9180cdbb90cf6541ee30249e53f34  face.sh"
+# fixture and both neighbours carry that pair's pins. One on 2026-09-08, all
+# four at once: PRB-70's ruling moved the `Checked` sum out of
+# `lib/lowering/upper/optimize.chiral` into `prog/optimizer-census.prog`,
+# `diag.sh`'s E157 G5 row repointed at the new home, and the cascade ran
+# diag.sh -> doc.sh -> row.sh -> face.sh -> here.
+PINS="938897ecf553c73fb0ea80ed05afca43b96363861cdf53f8496caf78ac21509f  diag.sh
+4e20eb0a80d42a9a08745cbe2991cd2924315c361713194d31f1277cb371b405  doc.sh
+0918f1500bdb928aa6fde3ee56a55ee019ccdf20fbdd3cde87ed6f09406c5da1  row.sh
+c2c315368aec82d894b69ffd4f76ac1723dd3a95d96c80ac5a77717b9c806f29  face.sh"
 pin_check() {  # pin_check DIR -> "" when every pin matches, else the offenders
   local dir="$1" n h
   echo "$PINS" | while read -r h n; do
