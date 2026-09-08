@@ -35,6 +35,13 @@ property the author stated. Whether the gap is a defect or a costed choice is
 what the queue's first three slices decide, and no row in the tree settles it
 today.
 
+## The ruling that orders the rest, 2026-09-08
+
+`docs/decisions/decision-preserve-check.md`: a preserve-check is BOTH rungs, and
+`ttype`'s `Maybe` is the line. `some` is T0 and the typed route prevents; `none`
+is T1 and the two-evaluator agreement detects. `ck-prog` is neither, because both
+its arguments are target-level. The remaining slices are read against that split.
+
 ## The vehicle
 
 TAL is a published external object, so the synthesis is a `translate` run
