@@ -1024,3 +1024,17 @@
 - checked:  2026-09-08
 - owner:    enforcement/N12
 - from:     PRB-43
+
+### PRB-74 tal-ty=? is not transitive, so the checker's equality is not an equivalence
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/lowering/tal/check.chiral
+- claim:    `docs/decisions/decision-erased-word-level.md:44` gives as its FIRST reason for keeping the erased word out of the kernel's `conv` relation: `Conversion is an equivalence relation, so it is transitive. A Word that converts with I64 and with (List Str) makes I64 convert with (List Str), which collapses the source type system.` `lib/lowering/tal/check.chiral:65-66` names `tal-ty=?` word-compatibility rather than nominal equality, and `lib/lowering/tal/ssa.chiral:23` says every value-defining form carries its result type annotation so the checker re-verifies independently of the kernel.
+- measured: **`tal-ty=?` is not transitive, and the decision above is the argument for why that matters.** By its own arms at `lib/lowering/tal/check.chiral:68-77`: the `tt-word` arm returns `true` against every `b`, so `(tal-ty=? tt-i64 tt-word)` is `true` and `(tal-ty=? tt-word tt-str)` is `true`, while the `tt-i64` arm sends `tt-str` to the `_` arm, so `(tal-ty=? tt-i64 tt-str)` is `false`. The relation the checker uses in place of type equality is therefore not an equivalence. It escapes the source-type-system collapse the decision names by exactly the property that stops it being an equality at all. ⚑ **The production analogue IS an equivalence.** [[records/findings]] FD-16 measured GHC's `Cmm/Type.hs` `weak_eq`, the closest shape in a shipping compiler, partitioning its types into three classes, and it runs only in the lint. ⚑ **And FD-16 measured the discharge the tree does not pay.** The two surveyed systems that keep a checked target over a type language coarser than the source, the JVM and the WebAssembly GC proposal, charge the producer a runtime cast at every use site. `tal-ty=?` admits the collapse in the checker and charges nothing.
+- evidence: `lib/lowering/tal/check.chiral:68-77`, `docs/decisions/decision-erased-word-level.md:44`, [[records/findings]] FD-16, [[records/findings]] FD-15
+- checked:  2026-09-08
+- owner:    none
+- from:     FD-16
