@@ -120,8 +120,8 @@ The suite figures are the last measured run, 2026-09-01, recorded in
 built with verified fixpoints and unpromoted, so a run today may differ.
 
 `chirality check` is the compiler's own front end with the ELF thrown away. One
-front end, so there is no second checker to drift. Each demo is a file of two to
-four lines. Open it and see exactly what was checked.
+front end, so there is no second checker to drift. Each demo is a file of one to
+three lines. Open it and see exactly what was checked.
 
 ```
 $ chirality check prog/demo/_ref.chiral      # refinement: out of range
@@ -192,7 +192,7 @@ Three rules keep it a record rather than an ambition:
   [status-ledger](docs/definitions/status-ledger.md), so a goal cannot grade
   itself.
 - **Work is named before it is scheduled.** An `E#` is minted into a reserved
-  band, and most of the 22 arcs hold none. Those carry arc-local ids instead, a
+  band, and most of the 25 arcs hold none. Those carry arc-local ids instead, a
   row per unit of work, each mapping to an element or to nothing. Naming work that has no number used to mean writing `UNASSIGNED` and
   stopping, which made the work uncitable;
   [decision-work-ids](docs/decisions/decision-work-ids.md) settled the current
@@ -202,7 +202,7 @@ Three rules keep it a record rather than an ambition:
 |---|---|---|
 | the language compiles and checks itself | none | held, maintained by the build rule |
 | chirality writes its own tooling, and no Python remains | `diagnostics`, `file-types`, `text-tools`, `zero-python` | `E184-E189`, `E190-E195`, `P1-P4`, `T1` |
-| the surface is convenient without buying it back in escape hatches | `diagnostics`, `file-types` | `E184-E189` and `E190-E195`, the only two reserved bands |
+| the surface is convenient without buying it back in escape hatches | `diagnostics`, `file-types` | `E184-E189` and `E190-E195`, two of the four reserved bands |
 | what is built is gated, and the compiler checks what it claims | `enforcement` | `E184-E189`, shared with `diagnostics` |
 | what this repo says about itself is true | `baseline-alignment`, `binary-split`, `presentability` | `BA-`, `B1`, `D1` |
 | judgment that does not rest on one formulation | `independent-judgment` | `J1` |
@@ -212,9 +212,10 @@ Three rules keep it a record rather than an ambition:
 | the ownership and trust model | `ownership-and-trust` | `O1`. Deferred by author decision, [decision-scope](docs/decisions/decision-scope.md) |
 | full genuine local AI on small models | `scriba`, `text-tools`, `transport`, `tuning` | the `S` namespace, `P1-P4`, `T1`, `U1`. Blocked on two author calls in [`records/author-calls.md`](records/author-calls.md) |
 
-⚑ **Fifteen arcs of eighteen cannot mint an `E#`**, so most of what this project
-intends is named and citable without being scheduled. Two arc-local namespaces
-collide today: `transport` and `zero-python` both open at `T1`.
+⚑ **Twenty arcs of twenty-five hold no reserved element band**, so most of
+what this project intends is named and citable without being scheduled. Two
+arc-local namespaces collide today: `transport` and `zero-python` both open at
+`T1`.
 
 ## Scope
 
@@ -238,7 +239,7 @@ all of it.
 | every unit is a process with a type | the pure/process bit is carried through the front end | the three refusing rules have zero callers | E171 |
 | cost is in the type | QTT and refinement run in the checker; E11's `tot-gate` is called at `compile-front.chiral:340` | no termination judgment exists in `diag.chiral`, and the one source declaring a `(total)` profile is ungated | mint the judgment, or drop termination from the claim |
 | crossings are named and closed | 9 port registries, `ports/ports.chiral` has 118 importers, 2026-09-03 | timing, cache pressure and speculation have no port | name it open |
-| readable and self-hosting | self-hosts, byte-identical fixpoint | 14 Python files remain, 4,949 lines. Kernel and runtime rows are design | E173, E148, E150 |
+| readable and self-hosting | self-hosts, byte-identical fixpoint | 15 Python files remain, 7,592 lines. Kernel and runtime rows are design | E173, E148, E150 |
 | judgment frozen, the rest re-checkable | `reflect-floor.chiral` and `kernel-core.chiral` are written | zero importers | wire, or mark seeded |
 
 ## The tree
@@ -252,7 +253,7 @@ is neither, so there is no `stdlib/` and no `compiler/`.
 | [`lib/`](lib/) | 105 importable modules in thirteen groups: `prelude` `typing` `surface` `module` `lowering` `ports` `capability` `memory` `runtime` `protocol` `evidence` `text` `crypto` |
 | [`prog/`](prog/) | what chirality ships, as distinct from what it is, plus `demo/` `samples/` `scriba/` `manas/` `agent/` |
 | [`bin/`](bin/) | `chirality` is the CLI front door. `chirality-bin` is the compiler: a blob on stdin, an ELF on stdout |
-| [`tools/`](tools/) | one folder per tool. Nine of them are the Python still being replaced |
+| [`tools/`](tools/) | one folder per tool. Ten of them are the Python still being replaced |
 | [`docs/`](docs/) | the design base and the element pipeline |
 | [`records/`](records/) | what we measured about ourselves |
 | `.planning/` | the agent tier: navigation, protocol, queues |
@@ -264,12 +265,12 @@ is neither, so there is no `stdlib/` and no `compiler/`.
 
 | tier | holds |
 |---|---|
-| [`definitions/`](docs/definitions/) | one entry per named concept, 50 of them |
+| [`definitions/`](docs/definitions/) | one entry per named concept, 51 of them |
 | [`decisions/`](docs/decisions/) | one settled fork per entry, carrying its reason |
 | [`banks/`](docs/banks/) | the depth tier: one concept refracted into its shards and their homes |
-| [`goals/`](docs/goals/) and [`arcs/`](docs/arcs/) | 13 goals, and the 22 arcs serving them. An arc file carries its roster and its own resume state |
+| [`goals/`](docs/goals/) and [`arcs/`](docs/arcs/) | 14 goals, and the 25 arcs serving them. An arc file carries its roster and its own resume state |
 | [`elements/`](docs/elements/) | the catalog, the ledger, and one SPEC per element |
-| [`examples/`](docs/examples/) | **closed.** 132 entries from the retired worked-example pipeline; they fold into `implementation/` |
+| [`examples/`](docs/examples/) | **closed.** 133 entries from the retired worked-example pipeline; they fold into `implementation/` |
 | [`records/`](records/) | a claim beside its measurement, with a state and a date |
 
 Two documents are written for an agent rather than a person and both are
