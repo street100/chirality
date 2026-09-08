@@ -1,0 +1,1258 @@
+The addition of continuation primitives to polymorphicwhich the ML-like strategies coincide. The ML-like CPS
+languages has not, however, been an unalloyed success. Inform is a proper subset of the standard CPS form, and hence
+particular, a very natural typing discipline for first-class con-the two variants of the standard strategy and the two vari-
+Since the semantics of first-class continuations may be ex-terms in ML-like CPS form. However, the standard call-
+pressed by conversion into continuation-passing style, it isby-value (call-by-name) and ML-like call-by-value (call-by-
+natural to investigate their typing properties by consideringname) strategies donotcoincide on terms in ML-like CPS
+the relation between the type of a term and the type of itsform. We define a strict CPS form on which all four strate-
+CPS transform. Work in this area was initiated by Meyer
+and Wand for a call-by-value interpretation of the simply-With this in mind, we define a CPS conversion algorithm
+typed
+et. al.
+work, the authors extended these analyses to implicit poly-terms in strict CPS form. It turns out that we can use the stan-
+In this paper, we conduct a systematic investigation of
+the typing properties of CPS conversion forF+control,
+!
+the higher-order polymorphic-calculus of Girard and
+callcc
+andabort. Extensions and variations ofFlie at the core of
+!
+extendFwith control primitives in order to illustrate the
+!
+role of impure programming language features in the anal-
+ysis of typing properties of realistic programming languages.
+(Similar issues and trade-offs arise with mutable data struc-
+for related discussion.)
+We consider two classes of evaluation strategies for
+F+control, each with a call-by-value and a call-by-name
+!
+variant. Under the standard strategies, type abstractions
+are values and type applications are significant evaluation
+steps. These strategies are compatible with extensions to the
+language involving primitive operations that are sensitive to
+type information e.g., storage allocation operations that
+determine the size of the allocation based on the type of the
+argument. The ML-like strategies are inspired by implicit
+polymorphism. Under these strategies, evaluation proceeds
+beneath type abstractions. This limits the ability of primi-
+tive operations to use types because types are no longer al-
+ways ground types. (In particular, they may contain free type
+variables.) The full language enjoys the subject reduction
+property for complete programs evaluated under the standard
+strategies and the ML-like call-by-name strategy, but only a
+restricted language enjoys this property when interpreted un-
+der the ML-like call-by-value strategy.
+The focus of our study is on the typing properties of
+CPS conversion ofF+control, following the seminal work
+!
+et. al.
+et. al.
+style sub-languages ofF. The standard CPS language is
+!
+the largest sub-language ofFon which the by-value and
+!
+by-name variants of the standard strategies coincide, andof answers. We makeabortandcallccprimitives taking
+the ML-like CPS language is the largest sub-language on
+ants of the ML-like strategy coincide with each other on
+gies coincide.
+for each of the standard strategies that preserves typing in
+a generalization of the Meyer-Wand sense, and which yields
+dard call-by-name algorithm to handle the ML-like call-by-
+name strategy case as well. Such a result can be achieved for
+the ML-like call-by-value strategy only if we restrict atten-
+Gamma
+tion to a restrictionF+controlin which type abstractions
+!
+are limited to values. On this fragment, the ML-like and
+standard strategies coincide, and hence the standard CPS al-
+gorithms may be used for the ML-like interpretations. How-
+ever, the standard CPS conversion algorithms do not ade-
+quately reflect the spirit of the ML-like strategies, and we
+therefore consider variant transforms that do embody this
+spirit but which yield terms in a relaxed CPS form in-
+troduced solely for this purpose.
+2 The LanguageF+control
+!
+The languageF+controlis the extension of the pureF
+!!
+language by two primitive control operators,callcc(Gamma)and
+A
+abort(Gamma). By pure we mean that the language has no
+A
+effect producing terms where an effect is something other
+than a simple value computation. Effects include side ef-
+fects (i.e., assignment), non-termination, and non-local con-
+trol changes. For the purposes of this paper, when we say
+something is pure, we mean it does not contain any control
+operators.
+Denition 2.1 (Syntax)
+KindsK::=OmegajK)K
+C onstructorsA::=ffjujA!Aju:K:Aj
+u:K:AjAA
+TermsM::=xjx:A:MjMMj
+Lambdau:K:MjMfAgj
+callcc(M)jabort(M)
+AA
+C onstr: C ontextsDelta::=;jDelta;u:K
+T erm C ontextsGamma::=;jGamma;x:A
+The meta-variableuranges overconstructor variables,
+and the meta-variablexranges overterm variables. The con-
+structorffis a distinguished base type, representing the type
+one type and term argument each as a technical device to
+simplify the direct semantics. The more usual definitions ofThe expression[]is called a hole; an evaluation context
+abortandcallccas special constants can be recovered byhas exactly one occurrence of a hole. IfEis an evaluation
+using the following definitions:
+abort=Lambdau:Omega:x:ff:abort(x)
+u
+callcc=Lambdau:Omega:x:((v:Omega:u!v)!u):callcc(x)
+u
+Note that due to the greater expressiveness of theFtype
+!
+system, it is not necessary to introduce athrowoperator or a
+The typing rules forF+controlappear in the appendix.
+!
+3 Operational Semantics for
+F+control
+!
+In this section, we introduce the two main evaluation strate-
+gies forF+control, each with a call-by-value and a call-by-specify how to reduce (by one step) each possible kind of re-
+!
+name variant.
+The standard strategies treat constructor abstractions asthe reduction rules are as follows:
+values and constructor applications as significant compu-
+tation steps. Standard strategies in this sense are used in
+extensions that make significant uses of types at run time
+expressions are kept distinct from their instances, the anoma-
+lies that arise in implicitly polymorphic languages in the
+occur.
+The ML-like strategies are inspired by the operational
+structor abstractions, leading to a once-for-all-instances eval-
+uation of polymorphic terms. Constructor application is re-
+tained as a computation step, but its force is significantly at-
+tenuated by the fact that type expressions may have free type
+variables in them, precluding primitives that inductively an-
+alyze their type arguments. The superficial efficiency im-
+provement gained by evaluating beneath type abstractions
+comes at considerable cost since it is incompatible with ex-
+tensions such as mutable data structures and control opera-
+3.1 Notation
+The definitions of these strategies make use of Plotkins no-
+tion of asyntactic value
+evaluation context
+To specify a strategy using this method, we first give a gram-
+mar which defines three syntactic categories:V, a set ofval-
+ues,R, a set ofredices, andE, a set ofevaluation contexts.
+As an example, the grammar used to specify a call-by-value
+strategy for the simply-typed fragment ofFis as follows:
+!
+V aluesV::=xjx:A:M
+RedicesR::=(x:A:M)V
+Evaluation C ontextsE::=[]jEMjVE
+context, we writeE[M]for the result of filling the hole in
+EwithM, possibly incurring capture of free variables inM.
+Aprogramis a closed termPof typeff. Unless we
+say otherwise, programs and terms are drawn from the full
+F+controllanguage and typed usingF+control. Pure
+!!
+programs and terms can be considered to be drawn from and
+typed usingF.
+!
+We will arrange things so that a programPcan only be
+represented in at most one way asE[R]whereEis an eval-
+uation context andRis a redex. IfPcan be so represented,
+thenEis said to be theprogram contextofP, whileRis
+said to be thecurrent redexofP.IfPcan not be so repre-
+sented, it is considered to be in normal form for the strategy.
+In order to complete the specification of a strategy, we must
+dex given its surrounding context. For the example strategy,
+E[(x:A:M)V],!E[[V=x]M]
+It should be noted that in all the strategies we consider, val-
+ues are in normal form for that strategy. We say that a pro-
+Lambda
+gramPevaluatesto a valueViffP,!V,i.e.,iffVis the
+terminus of a maximal one-step evaluation sequence starting
+atP.
+3.2 Standard Strategies
+We consider two standard evaluation strategies,call-by-
+valueandcall-by-name. In both cases constructor abstrac-
+tions are values, and constructors applications are significant
+computation steps. The two variants differ from one another
+in the treatment of ordinary applications.
+3.2.1 Call-By-Value (CBV) Strategy
+The standard call-by-value strategy is defined as follows:
+V::=xjx:A:MjLambdau:K:M
+R::=(x:A:M)Vj(Lambdau:K:M)fAgj
+abort(M)jcallcc(M)
+AA
+E::=[]jEMjVEjEfAg
+E[(x:A:M)V],!E[[V=x]M]
+cbv
+E[(Lambdau:K:M)fAg],!E[[A=u]M]
+cbv
+E[abort(M)],!M
+Acbv
+E[callcc(M)],!
+Acbv
+E[M(Lambdau:Omega:x:A:abort(E[xu=FTV(A))
+u
+Theorem 3.1 (Decomposition)IfMis a closed, well-typed
+term of typeA, then eitherMis a CBV value, or else there
+exists a unique CBV evaluation contextE, a unique CBV
+redexR, and a type expressionBsuch that
+1.M=E[R];
+2.F+control';;;R:B;
+!
+3.F+control';;x:BE[x]:A.
+!
+Theorem 3.2 (Subject Reduction)IfPis a program, and
+P,!Q, thenQis a program.
+cbv
+Proof:IfP,!Q, then by the decomposition theorem
+cbv
+P=E[R]for some CBV evaluation contextEand CBV
+redexRsuch thatF+control';;x:BE[x]:ffand
+!
+F+control';;;R:Bfor some typeB. Using this, it
+!
+is straightforward to verify that each of the evaluation rules
+preserves typing.
+It follows from these two theorems that a terminating CBV
+evaluation sequence starting from a program terminates with
+a CBV value of typeff CBV evaluation does not get
+stuck. The restriction of CBV evaluation to pure programs
+is a particularfi-reduction strategy. It follows from the strong
+normalization property ofF
+!
+pure programs terminates. Termination of CBV evaluation
+for fullF+controlwill be established in Section 5. The
+!
+following property of CBV evaluation will be important to
+that argument.
+Lemma 3.3Any innite CBV evaluation sequence starting
+from a program contains innitely manyfi-reduction steps.
+Proof:IfE[C(M)],!E[C(M)]whereC;C
+AcbvA
+fabort;callccgandE[C(M)]is a program thenMis a
+A
+proper subterm ofM.
+3.2.2 Call-By-Name (CBN) Strategy
+The standard call-by-name strategy is defined as follows:
+V::=x:A:MjLambdau:K:M
+R::=(x:A:M)Mj(Lambdau:K:M)fAgj
+abort(M)jcallcc(M)
+AA
+E::=[]jEMjEfAg
+E[(x:A:M)M],!E[[M=x]M]
+cbn
+E[(Lambdau:K:M)fAg],!E[[A=u]M]
+cbn
+E[abort(M)],!M
+Acbn
+E[callcc(M)],!
+Acbn
+E[M(Lambdau:Omega:x:A:abort(E[xu=FTV(A))
+u
+The decomposition and subject reduction theorems (stateduation on pure terms must terminate; by the decomposition
+above for the CBV strategy) can be proved in a similar waytheorem, the terminus must be a ML-CBV value of typeff.
+for the call-by-name strategy case. The analysis of termi-The subject reduction property cannot be extended to
+nation is identical. Once again, an infinite CBN evaluationfullF+control, for essentially the same reasons that type
+sequence must contain infinitely manyfisteps.
+3.3 ML-like Strategies
+An evaluation strategy is said to beML-likeif it evaluates
+under constructor abstractions. We shall consider two ML-
+like strategies, a call-by-value variant, designatedML-CBV,
+and a call-by-name variant, designatedML-CBN.
+3.3.1 ML-CBV Strategy
+The ML-like call-by-value strategy is defined as follows:
+V::=xjx:A:MjLambdau:K:V
+R::=(x:A:M)Vj(Lambdau:K:V)fAgj
+abort(M)jcallcc(M)
+AA
+E::=[]jEMjVEjLambdau:K:EjEfAg
+E[(x:A:M)V],!E[[V=x]M]
+mlGammacbv
+E[(Lambdau:K:V)fAg],!E[[A=u]V]
+mlGammacbv
+E[abort(M)],!M
+AmlGammacbv
+E[callcc(M)],!
+AmlGammacbv
+E[M(Lambdau:Omega:x:A:abort(E[xu=FTV(A))
+u
+Notice that a constructor abstraction is a ML-CBV value
+only if its body is a ML-CBV value and that ML-CBV eval-
+uation contexts may extend within the scopes of constructor
+abstractions. The decomposition property for the ML-CBV
+strategy is somewhat more complex than that for the stan-
+dard CBV strategy due to the possibility of evaluation under
+constructor abstractions.
+Theorem 3.4 (Decomposition)IfMis a well-typed, closed
+term of typeA, then eitherMis a ML-CBV value, or there
+exists a unique ML-CBV evaluation contextE, a unique ML-
+CBV redexR, a constructor contextDelta, and a type expression
+Bsuch that
+1.M=E[R];
+2.F+control'Delta;;R:B;
+!
+3.F+control';;;E[N]:Afor any termNsuch
+!
+thatF+control'Delta;;N:B.
+!
+Notice that the typing condition onEis strictly weaker than
+the conditionF+control'Delta;x:BE[x]:A.
+!
+Theorem 3.5 (Subject Reduction forF)IfPis a pure
+!
+program andP,!Q, thenQis a pure program.
+mlGammacbv
+Proof:Follows from the fact that the restriction of the ML-
+CBV strategy to terms ofFis a particularfi-reduction strat-
+!
+egy and from subject reduction forF.
+!
+Similarly, sinceFis strongly normalizing, ML-CBV eval-
+!
+!
+soundness fails for the extension of ML withcallcc[8,
+ting, letPbe a program of the formE[callcc(M)],
+A
+whereEis a ML-CBV evaluation context of the form
+E[Lambdat:Omega:[]], and consider the evaluation stepP,!
+mlGammacbv
+E[M(Lambdau:x:A:abort(E[x]))]. To prove that typing is
+u
+preserved, it suffices to show thatDelta;t:Omega;u:Omega;;E[x]:A
+(for some constructor contextDelta). But this is strictly strongerCareful examination of ML-CBN evaluation contexts re-
+than the condition onEgiven by the decomposition theo-
+rem, as remarked above. This observation may be turned
+into a counterexample to subject reduction by a simple adap-abstraction is ready to be instantiated. I.e., there is a se-
+taking advantage of the call-by-value strategy to simulate theone constructor abstraction, which will result in that abstrac-
+sequential semantics of the MLletconstruct.
+A simple way to avoid the counterexample is to rule outegy so that we instantiate constructor abstractions whenever
+programs with non-trivial evaluation steps lying within thepossible before evaluating inside them, we will never evalu-
+Gamma
+scope of a constructor abstraction. LetF+controldenote
+!
+the restriction ofF+controlin which terms of the form
+!
+Lambdau:K:MwhereMis not a ML-CBV value are excluded.
+This suffices to recover subject reduction in the presence of
+the control operators.
+Gamma
+Theorem 3.6 (Subject Reduction forF+control)IfPis
+!
+Gamma
+aF+controlprogram, andP,!Q, thenQis a
+mlGammacbv
+!
+Gamma
+F+controlprogram.
+!
+Careful inspection reveals that the CBV and ML-CBV
+Gamma
+strategies coincide onF+controlprograms. Consequently,
+!
+Gamma
+termination of ML-CBV evaluation onF+controlpro-
+!
+grams follows from termination of CBV evaluation on pro-
+grams. Moreover, any CPS transform for CBV will suffice
+Gamma
+as a CPS transform for ML-CBVF+controlprograms.
+!
+Gamma
+The fact that the two strategies coincide onF+control
+!
+is unfortunate: we have simply eliminated the parts of the
+language on which CBV and ML-CBV differ so as to ensure
+soundness. However, it does not seem possible to give a CPS
+would seem to indicate that CPS transforms alone are not
+sufficient to characterize the difference between CBV and
+ML-CBV.
+3.3.2 ML-CBN Strategy
+The ML-like call-by-name strategy is defined as follows:terms is not very important since programs must be restricted
+V::=x:A:MjLambdau:K:V
+R::=(x:A:M)Mj(Lambdau:K:V)fAgj
+abort(M)jcallcc(M)
+AA
+E::=[]jEMjLambdau:K:EjEfAg
+E[(x:A:M)M],!E[[M=x]M]
+mlGammacbn
+E[(Lambdau:K:V)fAg],!E[[A=u]V]
+mlGammacbn
+E[abort(M)],!M
+AmlGammacbn
+E[callcc(M)],!
+AmlGammacbn
+E[M(Lambdau:Omega:x:A:abort(E[xu=FTV(A))
+u
+As with ML-CBV, evaluation may proceed under constructor
+abstractions resulting in a similarly complex decompositioncase is problematic for much the same reasons as in the ML-CBV case.
+theorem. Although we can easily show subject reduction and
+termination for the pure language, this prevents us in much
+the same way as in the ML-CBV case from obtaining subject
+reduction in the presence of control operators. We could, as
+Gamma
+before, simply consider the restricted languageF+control
+!
+but there is a better alternative in the call-by-name case.
+veals that whenever we evaluate under a constructor abstrac-
+tion in a well-typed, closed term of monomorphic type, that
+quence of beta-reduction steps, each of which instantiates
+tion being instantiated. Thus, if we alter our evaluation strat-
+ate inside a constructor abstraction when dealing with a well-
+typed, closed term of monomorphic type. The new strategy,
+which we will call ML-CBNis defined as follows:
+V::=x:A:MjLambdau:K:V
+R::=(x:A:M)Mj(Lambdau:K:M)fAgj
+abort(M)jcallcc(M)
+AA
+E::=[]fAg:::fAgj(EM)fAg:::fAgjLambdau:K:E
+nn
+E[(x:A:M)M],!E[[M=x]M]
+mlGammacbn
+E[(Lambdau:K:M)fAg],!E[[A=u]M]
+mlGammacbn
+E[abort(M)],!M
+AmlGammacbn
+E[callcc(M)],!
+AmlGammacbn
+E[M(Lambdau:Omega:x:A:abort(E[xu=FTV(A))
+u
+Note that the only difference between ML-CBN and ML-
+CBNis that they do constructor abstraction instantiations
+at different times. Although this effects subject reduction,
+it does not really alter the meaning of programs. We will
+make this explicit in the next section where we show that the
+erasures of these two strategies are the same. Unlike for ML-
+CBN, subject reduction holds for ML-CBN. (A decomposi-
+tion theorem similar to that of the CBV case can be obtained
+by restricting attention to monomorphic terms.)
+Surprisingly, ML-CBNand CBN coincide on monomor-
+phically typed terms in the sense that both strategies make
+precisely the same reductions. (The case of polymorphic
+to be of monomorphic type in order to add in the control
+operators.) Accordingly, we will not investigate the ML-
+CBN() strategy further, considering it to be the same as the
+CBN one. (In particular, any CPS transform for CBN will
+suffice as a CPS transform for ML-CBN programs.)
+3.3.3 Relation of ML-like Strategies to ML
+The ML-like strategies may be related to their untyped coun-
+ffi
+terparts by way of the following notion of theerasureMof
+If we restricted ourselves to the pure language, we could allow pro-
+grams to have polymorphic type. However, giving a CPS transform for this
+a termM:
+ffi
+x=x
+ffiffiffiffiffi
+(x:A:M)=x:M(MN)=MN
+ffiffiffiffi
+(Lambdau:K:M)=M(MfAg)=M
+ffiffi
+(abort(M))=abort(M)
+A
+ffiffi
+(callcc(M))=callcc(M)
+A
+ffi
+Erasure is extended to evaluation contexts by defining[]=
+[].
+Theorem 3.7 (Simulation)LetMbe a well-typed closed
+term.
+;
+ffiffi
+1. ifM,!N, thenM,!N.
+mlGammacbv
+ucbv
+;
+ffi
+2. ifM,!N(M,!N), thenM,!
+mlGammacbnmlGammacbn
+ucbn
+ffi
+N.
+ffiLambda
+3. ifM,!N, thenNsuch thatM,!N
+ucbv
+mlGammacbv
+ffi
+andN=N.
+ffiLambda
+4. ifM,!N, thenNsuch thatM,!
+ucbn
+mlGammacbn
+Lambdaffi
+N(M,!N)andN=N.
+mlGammacbn
+Theorem 3.8 (Equivalence)LetPandPbe programs
+ffiffiLambda
+such thatP=P. Then ifP,!Q, and
+mlGammacbn
+LambdaLambda
+P,!QthenR;Rsuch thatQ,!R,
+mlGammacbnmlGammacbn
+Lambdaffiffi
+Q,!R, andR=R.
+mlGammacbn
+4 Transform Target Languages
+In the untyped case, the target language of a CPS transform
+is a restricted subset of the original language without any
+control operators. Terms in this restricted subset are said
+to be in untyped CPS form. This subset has the property
+that the (untyped) call-by-value and call-by-name evaluation
+strategies coincide. That is, exactly the samefi-reductions
+occur regardless of which strategy is used. This subset also
+has the property that it is closed under call-by-value and call-
+by-name reductions.
+4.1 Standard CPS Form
+An analogue of untyped CPS form, which we will callstan-
+dard CPS form, exists for the standard strategies. The gram-O.
+mar for this restricted subset ofFis as follows:
+!
+Standard C P S valuesW::=xjx:A:NjLambdau:K:N
+Standard C P S termsN::=WjNWjNfAg
+Note that terms in standard CPS form may not containcallcc
+orabort.
+Lemma 4.1IfN(W) is a standard CPS term (standard
+CPS value) then[W=x]N([W=x]W) is also a standard
+CPS term (standard CPS value).
+Theorem 4.2 (Standard CPS form properties)
+1. Standard CPS form is closed under CBV and CBN re-
+ductions.
+2. If
+Nis a standard CPS term thenN,!Niff
+cbv
+N,!N.
+cbn
+3. CBV or CBN evaluation of well-typed, closed standard
+CPS terms terminates in a standard CPS value.
+4.2 ML-CPS Form
+ML-CBV and ML-CBN do not coincide on standard CPS
+terms. To see this, consider the following standard CPS term:
+(x:(u:K:A):x)(Lambdau:K:(y:A:y)c)
+ML-CBV will do the innermost redex first while ML-CBN
+will do the outermost one first. An analogue of untyped CPS
+form for the ML-like strategies, which we callML-CPS form
+is defined as follows:
+ML-CPS valuesX::=xjx:A:OjLambdau:K:X
+ML-CPS termsO::=XjOXjLambdau:K:OjOfAg
+As in the standard CPS form case, it can be shown that
+ML-CBV and ML-CBN coincide on ML-CPS terms and that
+ML-CPS is closed under ML-CBV and ML-CBN reductions.
+ffi
+Note that ifOis an ML-CPS term, thenOis an untyped
+ffi
+CPS term, and ifXis an ML-CPS value, thenXis an un-
+typed CPS value.
+It is easy to see that every ML-CPS term is a standard CPS
+term, and that every ML-CPS value is a standard CPS value.
+A little checking shows that ML-CPS form is closed under
+CBV and CBN reductions so we have that CBV and CBN
+coincide on ML-CPS terms as well.
+Theorem 4.3 (ML-CPS form properties)
+1. ML-CPS form is closed under CBV, CBN, ML-CBV, and
+ML-CBN reductions.
+2. IfOis a ML-CPS term thenO,!Oiff
+mlGammacbv
+O,!O.
+mlGammacbn
+3. IfOis a ML-CPS term thenO,!OiffO,!
+cbvcbn
+4. CBV, CBN, ML-CBV, or ML-CBN evaluation of well-
+typed, closed ML-CPS terms terminates in a ML-CPS
+value.
+4.3 Strict CPS Form
+Neither of the pairs CBV/ML-CBV nor CBN/ML-CBN co-
+incide on terms in ML-CPS form. To see this, consider the
+ML-CPS termLambdau:K:(x:A:x)c. This term is irreducible un-
+der CBV and CBN (since constructor abstractions are val-
+ues), but is reducible under both ML-CBV and ML-CBN
+(since evaluation proceeds under constructor abstraction).If we assume that constructorfi-reductions do no work
+By further restricting ML-CPS (in particular, by banning all
+non-value constructor abstractions), we may obtain a subset
+of ML-CPS calledstrict CPS form, on which all four strate-
+gies coincide:
+Strict CPS valuesY::=xjx:A:QjLambdau:K:Y
+Strict CPS termsQ::=YjQYjQfAg
+Theorem 4.4 (Strict CPS form properties)
+1. Strict CPS form is closed under CBV, CBN, ML-CBV,
+and ML-CBN reductions.
+2. IfNis a strict CPS term then ifN,!Nunder one of
+CBV, CBN, ML-CBV, or ML-CBN, then it does so under
+all of them.
+3. CBV, CBN, ML-CBV, or ML-CBN evaluation of well-
+typed, closed strict CPS terms terminates in a strict CPS
+value.
+4.4 Relaxed ML-CPS Form
+As we shall see in the next section, the CPS conversion al-
+gorithms for the standard strategies yield terms in strict CPSused as a ML-CBV CPS transform on the restricted subset
+form, and consequently any of the four evaluation methodsF+controland the CBN CPS transform can be used as
+may be used on the converted terms. As was explained in
+section 3, these algorithms can be used as CPS conversionML-like transforms for larger subsets ofF+controlthan
+algorithms for the ML-like strategies on certain restrictedthese is problematic.
+subsets ofF+control.
+!
+However, it is enlightening to consider alternate algo-
+rithms specifically tailored to the ML-like strategies. As we
+shall see below, these transforms yield terms of the form
+k(xfAg), wherekandxare variables, which is not in ML-
+CPS form. Inrelaxed ML-CPS formsuch applications are
+allowed, reflecting the philosophy that constructor applica-
+tions are insignificant at run time. As with ML-CPS, erased
+relaxed ML-CPS terms (values) are untyped CPS terms (val-
+ues). Relaxed ML-CPS form is defined as follows:
+Relaxed ML-CPS valuesZ::=xjx:A:SjLambdau:K:ZjZfAg
+Relaxed ML-CPS termsS::=ZjSZjLambdau:K:SjSfAg
+The set of terms in relaxed ML-CPS form is closed under
+ML-CBV and ML-CBN reduction. However, ML-CBV and
+ML-CBN do not coincide on this subset because of terms
+such as(x:A:x)((Lambdau:K:Z)A)in which there is a construc-
+tor application in the argument position that would be re-
+duced under ML-CBV, but not under ML-CBN. Their era-
+sures do coincide, however, in the same sense that ML-CBN
+and ML-CBNcoincided.
+Theorem 4.5 (Equivalence)LetPandPbe relaxed ML-
+ffiffiLambda
+CPS programs such thatP=P. Then ifP,!
+mlGammacbv
+Lambda
+Q, andP,!QthenR;Rsuch that
+mlGammacbn
+LambdaLambdaffiffi
+Q,!R,Q,!R, andR=R.
+mlGammacbvmlGammacbn
+and have no side effects then ML-CBV and ML-CBN pro-
+duce the same results on programs in this subset. This is
+a reasonable assumption for ML-like strategies because the
+normal implementation for such strategies is to erase then
+apply the untyped strategy.
+5 Conversion to
+Continuation-Passing Style
+In this section, we consider the conversion of terms of
+F+controlinto continuation-passing style for each of the
+!
+evaluation strategies. We present CPS transforms for the
+two standard strategies for the fullF+controllanguage. As
+!
+discussed in section 3, the CBV CPS transform can also be
+Gamma
+!
+a ML-CBNtransform on monomorphic terms. Producing
+!
+Although the standard transforms can be used to transform
+terms under the ML-like strategies, they are somewhat unsat-
+isfactory in that they do not fully capture the essence of the
+ML-like strategies, namely that constructor applications are
+not significant computation steps. We consider two more sat-
+isfactory alternative ML-like CPS transforms which do em-
+body this fact at the cost of being limited to terms of the
+Gamma
+F+controllanguage.
+!
+5.1 Transformation of Constructors
+There are four constructor transformations, corresponding to
+the four evaluation strategies introduced in section 3. The
+transformations differ only in the treatment of the function
+types (call-by-name and call-by-value variants) and in the
+treatment of quantified types (standard and ML-like vari-
+ants).
+Denition 5.1 (Constructor Transforms)
+Lambda
+jAj=(A!ff)!ff
+Lambda
+ff=ff
+Lambda
+u=u
+Function types, call-by-value:
+LambdaLambda
+(A!A)=A!jAj
+Function types, call-by-name:
+Lambda
+(A!A)=jAj!jAj
+Quantied types, standard interpretation:
+Lambda
+(u:K:A)=u:K:jAj
+Quantied types, ML-like interpretation:
+LambdaLambda
+(u:K:A)=u:K:A
+LambdaLambda
+(u:K:A)=u:K:A
+LambdaLambdaLambda
+(AA)=AA
+The constructor transforms are extended to contextsGammaby
+LambdaLambda
+definingGamma(x)=AandjGammaj(x)=jAjwheneverGamma(x)=
+A. The following properties apply to all four variants of the
+constructor transformation.
+Theorem 5.2 (Constructor Well-formedness Preservation)
+Lambda
+1. IfF'DeltaA:K, thenF'DeltaA:K.
+!!
+2. IfF'DeltaA:Omega, thenF'DeltajAj:Omega.
+!!
+Theorem 5.3 (Constructor Equality Preservation)
+LambdaLambda
+1. IfF'DeltaA=A:K, thenF'DeltaA=A:
+!!
+K.
+2. IfF'DeltaA=A:Omega, thenF'DeltajAj=
+!!
+jAj:Omega.
+Theorem 5.4 (Compositionality)
+LambdaLambdaLambda
+([A=u]A)=[A=u]A.
+5.2 Notation
+In addition to the transforms for constructors given above,
+Lambda
+each CPS transform has a transform for values,(Gamma), and a
+transform for terms,jGammaj. Keep in mind that the set of val-Lambda
+ues varies from strategy to strategy. As a notational conve-
+nience, we drop the identifying subscripts on transform op-
+erators when refering to the current transform being defined.
+As a proof tool, we will need to introduce an optimized ver-
+sion of the transform we are defining. We will denote the op-
+?
+timized value transform using(Gamma)and the optimized term
+transform relative to continuationYbyjGammajto prevent con-
+Y
+fusion with the non-optimized transform.
+The CPS transforms are defined by induction on typing
+derivations inF+control, yielding terms in a suitable CPS
+!
+form. The typing rules ofF+controlare almost syntax-
+!
+directed  any two typing derivations for a given term and
+context differ only in the use of the type equality rule. Con-
+sequently, since our transforms ignore the type equality rule,
+they are coherent in the sense that ifF+control'Delta; Gamma
+!
+M:A, andF+control'Delta; GammaM:A, then the trans-
+!
+forms determined by each of these typing derivations are
+equivalent up to constructor equality. Since the evaluation
+rules forF+controlare independent of constructors, we are
+!
+justified in ignoring this distinction, and simply writejMjfor
+the CPS transform obtained by a canonical choice of typing
+derivation forM.
+New variables introduced by the transform are assumed
+to be chosen so as to avoid capture. In cases where more
+than one clause of the transform applies (this only occurs in
+the optimized versions), the first one listed is to be chosen.
+Where clear, we have omitted subderivations and the details
+of how recusion is done on the type derivation of the term.
+5.3 Standard CPS Transforms
+5.3.1 Call-by-Value
+The definition of the CBV CPS transform is given in Table 1.
+Theorem 5.5 (CBV CPS Typing)IfF+control'Delta; Gamma
+!
+M:A, thenjMjexists and is a strict CPS value such that
+LambdaLambda
+F'Delta; GammajMj:jAj.IfMis a CBV value, thenM
+!
+LambdaLambda
+exists and is a strict CPS value such thatF'Delta; GammaM:
+!
+Lambda
+A.
+In the following theorem we writejPjfor the call-
+V
+by-value CPS transform ofPapplied to the continuation
+Vwith so-called administrative redices (in the sense of
+Theorem 5.6 (CBV Simulation)IfPis a program and
+Lambda
+P,!Q, thenjPj,!jQj. Moreover, each
+cbvx:ff:xx:ff:x
+fi
+fi-step induces at least onefi-step on the converted form.
+Theorem 5.7For any programP,
+1. There exists a unique CBV valueVsuch thatP,!
+cbv
+V.
+LambdaLambda
+2. IfP,!VthenjPj(x:ff:x),!VwhereVis
+cbvfi
+LambdaLambda
+such thatV,!V.
+fi
+The proofs of this and subsequent simulation theorems are interesting
+(particularly in the presence of control operators), but rather involved. A
+more complete account will be given in the full paper.
+LambdaLambda
+jDelta; GammaV:Aj=k:A!ff: k V
+LambdaLambdaLambda
+jDelta; GammaMM:Aj=k:A!ff:jMj(x:(A!A):jMj(x:A:xxk))
+whereDelta; GammaM:A!AandDelta; GammaM:A
+jDelta; GammaMfAg:[A=u]Aj=k:([A=u]A)!ff:jMj(x:(u:K:A):xfAgk)
+LambdaLambda
+jDelta; Gammaabort(M):Aj=k:ff!ff:jMj(m:ff:m)
+A
+LambdaLambda
+jDelta; Gammacallcc(M):Aj=k:A!ff:jMj(m:((u:Omega:A!u)!A):
+A
+m(Lambdau:Omega:l:(A!u)!ff:l(x:A:k:u!ff:k x))k)
+jDelta; GammaM:Aj=jMj;whereDelta; GammaM:AandDeltaA=A:Omega
+Lambda
+(Delta; Gammax:A)=x
+LambdaLambda
+(Delta; Gammax:A:M:A!A)=x:A:jMj
+Lambda
+(Delta; GammaLambdau:K:M:u:K:A)=Lambdau:K:jMj
+LambdaLambda
+(Delta; GammaV:A)=V;whereDelta; GammaV:AandDeltaA=A:Omega
+Table 1: CBV CPS Transform forF+control
+jDelta; Gammax:Aj=x
+Lambda
+jDelta; GammaMM:Aj=k:A!ff:jMj(x
+whereDelta; GammaM:A!AandDelta; GammaM:A
+Lambda
+jDelta; Gammacallcc(M):Aj=k:A!ff:jMj(m
+A
+LambdaLambdaLambda
+Y=l:(u:Omega:A!u)!ff:l(Lambdau:Omega:l:(A!u)!ff:l(x:jAj:k:u!ff:x k))
+Lambda
+(Delta; Gammax:A:M:A!A)=x:jAj:jMj
+Table 2: CBN CPS Transform forF+control(Selected Clauses)
+LambdaLambdaLambda
+LambdaLambdaLambda
+!
+Lambda
+:(A!A):xjMjk)
+Lambda
+:((u:Omega:A!u)!A):m Y k);where
+!
+5.3.2 Call-by-Name
+The standard call-by-name semantics also admits a conver-
+sion into CPS sharing essentially the same properties as are
+enjoyed by the standard call-by-value transform. We have
+only to switch to the call-by-name variant of the construc-
+tor transform and modify the CBV transform by replacing
+the variable, application, andcallccclauses by the clauses in
+Table 2. Note that in call-by-name variables are no longer
+considered values.
+Theorem 5.8 (CBN CPS Typing)IfF+control'Delta; Gammaa similar manner. As before, the transform is based on the
+!
+M:A, thenjMjexists and is a strict CPS value such thatstandard strategy CPS transform (CBN) with some differ-
+Lambda
+F'Delta;jGammajjMj:jAj.IfMis a CBN value, thenM
+!
+exists and is a strict CPS value such thatF'Delta;jGammaj
+!
+LambdaLambda
+M:A.
+Theorem 5.9LetPbe a program.
+LambdaLambdaLambda
+1. There exists a unique CBN valueVsuch thatP,!
+cbn
+V.
+LambdaLambda
+2. IfP,!VthenjPj(x:ff:x),!VwhereVis
+cbnfi
+LambdaLambda
+such thatV,!V.
+fi
+5.4 Alternative ML-like CPS Transforms
+The constructor transforms for the standard strategies are
+Lambda
+based on the definition(u:K:A)=u:K:jAj, expressing
+the idea that constructor applications are serious compu-
+Gamma
+a continuation. However, for terms ofF+controlthere
+!
+are no such non-trivial computations (the continuation is al-
+ways immediately invoked with a value), and hence we may
+contemplate eliminating the continuation argument entirely.
+This would make constructor application a trivial computa-
+tion step, resulting in a far more ML-like transform. This
+LambdaLambdaboth call-by-value and call-by-name variants  validate sub-
+suggests the alternative definition(u:K:A)=u:K:Ain
+the constructor transformation, and a corresponding change
+to the constructor abstraction and construction application
+transforms for terms.
+5.4.1 Call-by-Value
+The definition of the alternative ML-CBV CPS transform is
+the same as for the standard CBV CPS transform, with the
+following differences. First, we employ the ML-like defi-
+Lambda
+nition of the(Gamma)transform on constructors; in particular,
+LambdaLambda
+(u:K:A)=u:K:A. Second, we take the clauses given
+in Table 3 for constructor abstraction and application and for
+callcc, leaving the remainder as for the standard CBV strat-
+egy.
+Gamma
+Theorem 5.10 (ML-CBV CPS Typing)IfF+control'
+!
+Delta; GammaM:A, thenjMjexists and is a relaxed CPS valueproblematic but uninteresting because it is (almost) identi-
+GammaLambda
+such thatF'Delta; GammajMj:jAj.
+!
+A careful inspection of this transform reveals that it is es-
+sentially a typed version of the usual untyped call-by-value
+CPS transform. Its correctness follows from this plus the
+known correctness of the untyped CBV CPS transform.
+Gamma
+Theorem 5.11 (ML-CBV Simulation)IfF+control'
+!
+ffiLambdaffi
+Delta; GammaM:A, thenjMj,!jMj.
+ucbv
+j
+5.4.2 Call-by-Name (ML-CBN)
+An alternative ML-CBNCPS transform can be obtained in
+ences. The differences include using the ML-like version of
+the constructor transform and the two alternative constructor
+application and abstraction transform rules from the previ-
+ous section. The only other difference is that we take the
+following term as the definition ofjDelta; Gammacallcc(M):Aj:
+A
+k:A!ff:jMj(m:((u:Omega:A!u)!A):m Y k);
+where
+LambdaLambda
+Y=l:(u:Omega:A!u)!ff:l(Lambdau:Omega:x:jAj:k:u!ff:x k)
+Gamma
+Theorem 5.12 (ML-CBNCPS Typing)IfF+control'
+!
+Delta; GammaM:A, thenjMjexists and is a relaxed CPS value
+Gamma
+such thatF'Delta;jGammajjMj:jAj.
+!
+Gamma
+Theorem 5.13 (ML-CBNSimulation)IfF+control'
+!
+ffiLambdaffi
+Delta; GammaM:A, thenjMj,!jMj.
+ucbn
+j
+6 Conclusion
+We have presented a systematic study of the typing prop-
+erties of CPS conversion forF+controlunder four dif-
+!
+ferent semantic interpretations. The standard strategies
+ject reduction, are terminating, and admit faithful, type-
+preserving transformations into continuation-passing style.
+We conclude that the standard strategies are semantically un-
+problematic, at least when viewed from the point of view of
+compilation and typing. These strategies have the significant
+advantage of being extensible to a more sophisticated set
+of primitive operations, in particular, those that make non-
+trivial use of type information at run time.
+On the other hand, the ML-like call-by-value strategy
+is problematic F+control, when evaluated under this
+!
+strategy, fails to be sound, and hence cannot admit a type-
+preserving, faithful transformation into CPS. Such a trans-
+Gamma
+formation is possible for the fragmentF+controlin which
+!
+constructor abstractions are limited to values, which is con-
+The ML-like call-by-name strategy (ML-CBN) is un-
+cal to the standard call-by-name strategy. It only differs on
+jDelta; GammaMfAg:[A=u]Bj=kA=u]B)!ff:jMj(m:(u:K:B):k(mfAg))
+LambdaLambda
+jDelta; Gammacallcc(M):Aj=k:A!ff:jMj(m:((u:Omega:A!u)!A):
+A
+m(Lambdau:Omega:x:A:k:u!ff:k x)k)
+LambdaLambda
+(Delta; GammaLambdau:K:V:u:K:A)=Lambdau:K:V
+Table 3: ML-CBV CPS Transform forF+control(Selected Clauses)
+polymorphic terms. The difference is not very interestingNineteenth
+because it conveys no extra power or expressiveness over the
+standard call-by-name strategy.
+We are grateful to Olivier Danvy, Andrzej Filinski, and
+Timothy Griffin for their comments and suggestions.
+References
+in Abadi, Luca Cardelli, Benjamin Pierce, and Gordon
+Plotkin. Dynamic typing in a statically-typed language. In
+Proceedings of the Sixteenth Annual ACM Symposium on
+Principles of Programming Languages, Austin. ACM, Jan-
+uary 1989.
+Compiling with Continuations. Cambridge
+University Press, 1992.
+closure-passing style. InSixteenth ACM Symposium on Prin-
+ciples of Programming Languages, pages 293302, Austin,
+TX, January 1989.
+DEC SRC, 1989.
+to Standard ML. Technical Report CMU-CS-90-186, School
+of Computer Science, Carnegie Mellon University, December
+1990.
+erard Huet. The Calculus of Construc-
+tions.Information and Computation, 76(2/3):95120, Febru-
+ary/March 1988.
+Type Assignment in Program-
+ming Languages. PhD thesis, Edinburgh University, 1985.
+first-class continuations in ML. InEighteenth ACM Sym-
+posium on Principles of Programming Languages, January
+1991.
+The Calculi of-CS Conversion: A
+v
+Syntactic Theory of Control and State in Imperative Higher-
+Order Programming Languages. PhD thesis, Indiana Univer-
+sity, Bloomington, IN, 1987.
+the SECD machine, and the-calculus. InFormal Descrip-
+tion of Programming Concepts III. North-Holland, 1986.
+and Bruce Duba. Reasoning with continuations. InFirst Sym-
+posium on Logic in Computer Science. IEEE, June 1986.
+LambdaLambdaLambda
+LambdaLambda
+!
+ACM Symposium on Principles of Programming Languages,
+pages 2738, Albuquerque, NM, January 1992. ACM SIG-
+PLAN/SIGACT.
+e. In
+P. Odifreddi, editor,Logic and Computation, volume 31 of
+The APIC Series, pages 123203. Academic Press, 1990.
+Interpr'etation Fonctionelle etElimination
+des Coupures dans lArithm'etique dOrdre Superieure. PhD
+thesis, Universite Paris VII, 1972.
+Edinburgh LCF: A Mechanized Logic of Computation, vol-
+ume 78 ofLecture Notes in Computer Science. Springer-
+Verlag, 1979.
+Seventeenth ACM Symposium on Principles of Programming
+Languages, San Francisco, CA, January 1990. ACM, ACM.
+simulations. Tech. memo., AT&T Bell Laboratories, 1992. in
+preparation.
+first-class continuations in ML. Revised and expanded version
+Journal of Functional Programming.
+signment and cps conversion. In Olivier Danvy and Carolyn
+Talcott, editors,Proceedings of the ACM SIGPLAN Workshop
+on Continuations CW92, pages 1322, Stanford, CA 94305,
+June 1992. Department of Computer Science, Stanford Uni-
+versity. Published as technical report STANCS921426.
+of Standard ML.ACM Transactions on Programming Lan-
+guages and Systems, ?(?):??, ? 1992? (To appear. See
+Wand. Obtaining coroutines from continuations.Journal of
+Computer Languages, 11:143153, 1986.
+erard Huet, editor.Logical Foundations of Functional Pro-
+gramming. University of Texas at Austin Year of Program-
+ming Series. Addison-Wesley, 1990.
+N. Adams. Orbit: An optimizing compiler for Scheme. In
+Proc. SIGPLAN Symposium on Compiler Construction, pages
+219233. ACM SIGPLAN, 1986.
+Twentieth ACM
+Symposium on Principles of Programming Languages, Jan-
+uary 1993.
+and assignment. InEighteenth ACM Symposium on Princi-
+ples of Programming Languages, pages 291302, Orlando,
+FL, January 1991. ACM SIGACT/SIGPLAN.
+lego: A preliminary users manual. Technical Report LFCS-
+TN-27, Laboratory for the Foundations of Computer Science,
+Edinburgh University, October 1989.
+in typed lambda calculi (summary). In Rohit Parikh, editor,
+Logics of Programs, volume 224 ofLecture Notes in Com-
+puter Science, pages 219224. Springer-Verlag, 1985.
+ming languages.Journal of Computer and System Sciences,
+17:348375, 1978.
+The Denition
+of Standard ML. MIT Press, 1990.
+Fif-
+teenth ACM Symposium on Principles of Programming Lan-
+guages, San Diego, California, January 1988.
+ment.Information and Computation, 76(2/3):211249, 1988.
+Extracting Constructive Content from Classi-
+cal Proofs. PhD thesis, Cornell University, Ithaca, NY, August
+1990.
+Fs programs from
+!
+proofs in the calculus of constructions. InSixteenth ACM
+Symposium on Principles of Programming Languages, 1989.
+phic type reconstruction.Fundamenta Informaticae, 199?
+To appear. Preliminary version available as Technical Report
+CMUCS92105, School of Computer Science, Carnegie
+Mellon University, Pittsburgh, Pennsylvania, January 1992.
+eval and polymorphism. InTAPSOFT 89, Proceedings of
+the International Joint Conference on Theory and Practice
+in Software Development, Barcelona, Spain, pages 345359.
+Springer-Verlag LNCS 352, March 1989.
+calculus.Theoretical Computer Science, 1:125159, 1975.
+ML. Technical Report TR 89-1068, Computer Science De-
+partment, Cornell University, Ithaca, NY, December 1989.
+programming languages. InConference Record of the 25th
+National ACM Conference, pages 717740, Boston, August
+1972. ACM.
+Colloq. sur la Programmation, volume 19 ofLecture Notes in
+Computer Science, pages 408423. Springer-Verlag, 1974.
+morphism. In R. E. A. Mason, editor,Information Processing
+83, pages 513523. Elsevier Science Publishers B. V., 1983.
+nical Report Memo 474, MIT AI Laboratory, 1978.
+Denotational Semantics: The Scott-Strachey Ap-
+proach to Programming Language Theory. MIT Press, 1977.
+matical semantics for handling full jumps. Technical Report
+Technical Monograph PRG11, Oxford University Comput-
+ing Laboratory, 1974.
+Operational Semantics and Polymorphic Type
+Inference. PhD thesis, Edinburgh University, 1988. Avail-
+able as Edinburgh University Laboratory for Foundations of
+Computer Science Technical Report ECSLFCS8854.
+In-
+formation and Computation, 89:134, November 1990.
+proach to type soundness. Technical Report TR91160, De-
+partment of Computer Science, Rice University, July 1991.
+To appear,Information and Computation.
+A Rules forF+control
+!
+Denition A.1 (Constructor Context Formation Rules)
+;(C-EMPTY)
+Deltaudom(Delta)
+(C-EXTEND)
+Delta;u:K
+Denition A.2 (Term Context Formation Rules)
+Delta
+(T-EMPTY)
+Delta;
+DeltaGammaDeltaA:Omegaxdom(Gamma)
+(T-EXTEND)
+DeltaGamma;x:A
+Denition A.3 (Constructor Formation Rules)
+Delta
+(C-ANS)
+Deltaff:Omega
+Delta
+(C-VA R)
+Deltau:Delta(u)
+DeltaA:OmegaDeltaA:Omega
+(C-ARR)
+DeltaA!A:Omega
+Delta;u:KA:Omega
+(C-ALL)
+Deltau:K:A:Omega
+Delta;u:KA:K
+(C-ABS)
+Deltau:K:A:K)K
+DeltaA:K)KDeltaA:K
+(C-APP)
+DeltaAA:K
+Denition A.4 (Constructor Equality Rules)
+DeltaA:K
+(REFL)
+DeltaA=A:K
+DeltaA=A:K
+(SYMM)
+DeltaA=A:K
+DeltaA=A:KDeltaA=A:K
+(TRANS)
+DeltaA=A:K
+DeltaA=A:OmegaDeltaA=A:Omega
+(C-ARR-EQ)
+DeltaA!A=A!A:Omega
+Delta;u:KA=A:Omega
+(C-ALL-EQ)
+Deltau:K:A=u:K:A:Omega
+Delta;u:KA=A:K
+(C-ABS-EQ)
+Deltau:K:A=u:K:A:K)K
+DeltaA=A:K)KDeltaA=A:K
+DeltaAA=AA:K
+(C-APP-EQ)
+Delta;u:KA:KDeltaA:K
+(C-BETA)
+Delta(u:K:A)A=[A=u]A:K
+DeltaA:K)Kudom(Delta)
+(C-ETA)
+Deltau:K:A u=A:K)K
+Denition A.5 (Term Formation Rules)
+DeltaGamma
+(T-VA R)
+Delta; Gammax:Gamma(x)
+Delta; Gamma;x:AM:A
+(T-ABS)
+Delta; Gammax:A:M:A!A
+Delta; GammaM:A!ADelta; GammaM:A
+(T-APP)
+Delta; GammaMM:A
+Delta;u:K;GammaM:ADeltaGamma
+(T-CABS)
+Delta; GammaLambdau:K:M:u:K:A
+Delta; GammaM:u:K:ADeltaA:K
+(T-CAPP)
+Delta; GammaMfAg:[A=u]A
+DeltaA:OmegaDelta; GammaM:ff
+(T-ABORT)
+Delta; Gammaabort(M):A
+A
+Delta; GammaM:(u:Omega:A!u)!Au=FTV(A)
+Delta; Gammacallcc(M):A
+A
+(T-CALLCC)
+Delta; GammaM:ADeltaA=A:Omega
+(T-EQ)
+Delta; GammaM:A
+Lemma A.6 (Properties ofF+controltyping)
+!
+1. ifF+control'DeltaGammathenF+control'Delta
+!!
+2. ifF+control'DeltaA:KthenF+control'Delta
+!!
+3. ifF+control'DeltaA=A:KthenF+control'Delta
+!!
+A:KandF+control'DeltaA:K
+!
+4. ifF+control'Delta; GammaM:AthenF+control'DeltaGamma
+!!
+andF+control'DeltaA:Omega
+!
+Explicit Polymorphism and CPS Conversion
+Lambday
+Robert Harper
+School of Computer Science
+Carnegie Mellon University
+Pittsburgh, PA 15213
+Abstract
+We study the typing properties of CPS conversion for an ex-
+tension ofFwith control operators. Two classes of evalu-
+!
+ation strategies are considered, each with call-by-name and
+call-by-value variants. Under the standard strategies, con-
+structor abstractions are values, and constructor applications
+can lead to non-trivial control effects. In contrast, the ML-
+like strategies evaluate beneath constructor abstractions, re-
+flecting the usual interpretation of programs in languages
+based on implicit polymorphism. Three continuation passing
+style sub-languages are considered, one on which the stan-
+dard strategies coincide, one on which the ML-like strategies
+coincide, and one on which all the strategies coincide. Com-
+positional, type-preserving CPS transformation algorithms
+are given for the standard strategies, resulting in terms on
+which all evaluation strategies coincide. This has as a corol-
+lary the soundness and termination of well-typed programs
+under the standard evaluation strategies. A similar result is
+obtained for the ML-like call-by-name strategy. In contrast,
+such results are obtained for the call-by value ML-like strat-
+egy only for a restricted sub-language in which constructor
+abstractions are limited to values.
+Lambda
+This work was sponsored by the Defense Advanced Research Projects
+Agency, CSTO, under the title The Fox Project: Advanced Devel-
+opment of Systems Software, ARPA Order No. 8313, issued by
+ESD/AVS under Contract No. F1962891C0168. Electronic mail ad-
+dress:rwh@cs.cmu.edu.
+y
+Supported by a National Science Foundation Graduate Fellowship.
+Electronic mail address:mdl@cs.cmu.edu.
+Mark Lillibridge
+1 Introduction
+Among the many advances in the theory and practice of
+programming language design, the concepts of polymor-
+of particular interest. The use of polymorphism in a practical
+This style of polymorphism, calledimplicitpolymorphism,
+is based on the idea that programs are type-free, with types
+interpreted as predicates expressing properties of programs
+under evaluation. Numerous extensions of these ideas have
+a few).
+Although implicit polymorphism is appealingly simple
+and natural, it does not scale well to more sophisticated lan-
+based instead on the notion ofexplicitpolymorphism intro-
+types are an intrinsic part of the programming notation;
+in particular, polymorphic abstraction and application are
+expression-forming operations. Some of the convenience
+of implicit polymorphism may be restored by allowing the
+omission of certain forms of type information, provided that
+it can be unambiguously recovered by atype reconstruction
+A type discipline is primarily a means of enforcing lev-
+with the static structure and properties of programs. Mat-
+ters of control are elegantly addressed using the method of
+continuations. The semantics of control operations may be
+for reifying continuations. Conversion into continuation-
+passing style (CPS) is a useful compilation technique for
+ations are central to eliciting the computational content of

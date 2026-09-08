@@ -86,7 +86,7 @@ R7 is last because E70 is unbuilt and gated on `decision-effect-facets`.
 
 | slice | state |
 |---|---|
-| R1 | UNRUN |
+| R1 | FD-15 |
 | R2 | UNRUN |
 | R3 | UNRUN |
 | R4 | UNRUN |

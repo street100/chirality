@@ -1,0 +1,980 @@
+TA L x 8 6: A Realistic Typ ed Assembly Language
+dagger
+Greg Morrisett Karl CraryNeal Glew Dan Grossman Richard Samuels
+Frederick Smith David Walker Stephanie Weirich Steve Zdancewic
+Cornell University
+Abstract
+The goal of typed assembly language (TAL) is to pro-
+vide a low-level, statically typed target language that
+is better suited than Java bytecodes for supporting
+a wide variety of source languages and a number of
+important optimizations. In previous work, we for-
+malized idealized versions of TAL and proved impor-
+tant safety properties about them. In this paper, we
+present our progress in defining and implementing a
+realistic typed assembly language calledTA L x 8 6.The
+TA L x 8 6instructions comprise a relatively complete
+fragment of the Intel IA32 (32-bit 80x86 flat model)
+assembly language and are thus executable on pro-
+cessors such as the Intel Pentium. The type system
+for the language incorporates a number of advanced
+features necessary for safely compiling large programs
+to good code.
+To motivate the design of the type system, we
+demonstrate how various high-level language features2. It is difficult (or, at the least, inefficient) to
+are compiled toTA L x 8 6. For this purpose, we presentcompile high-level languages other than Java to
+a type-safe C-like language called Popcorn.
+1 Intro duction
+The ability to type-check low-level or object code,
+such as Java Virtual Machine Language (JVML)
+ify the preservation of an important class of safety
+properties when untrusted code is added to the sys-
+tem. For example, a web browser can check memory
+safety to ensure that applets do not corrupt arbitrary
+data. Indeed, the entire JDK 1.2 security model de-
+pends crucially on the ability of the JVML type sys-
+tem to prevent untrusted code from by-passing run-
+time checks that are needed to enforce the high-level
+*
+This material is based on work supported in part by the
+AFOSR grant F49620-97-1-0013, ARPA/RADC grant F30602-
+1-0317, NSF grant CCR-9708915, and National Science Foun-more, the need for rapid compilation limits the
+dation Graduate Fellowships. Any opinions, findings, and con-
+clusions or recommendations expressed in this publication are
+those of the authors and do not reflect the views of these agen-
+cies.
+dagger
+Carnegie Mellon University
+1
+*
+security policy.
+To support portability and type-checking, the
+JVML was defined at a relatively high level of ab-
+straction as a stack-based abstract machine. The
+language was engineered to make type-checking rela-
+tively easy. However, the JVML design suffers from
+a number of drawbacks:
+1. Semantic errors have been uncovered in the
+JVML verifier and its English specification.
+on constructing anex post factoformal model
+of the language so that a type-soundness theo-
+rem can be proven. A by-product of this work
+is that we now know the design could have been
+considerably improved had a formal model been
+constructed in conjunction with the design pro-
+cess.
+JVML. For instance, approaches for compiling
+languages with parametric polymorphism have
+other example, definitions of languages such as
+in a space-efficient manner. However, the lim-
+itations of JVML necessitate that control-flow
+stacks for such languages be explicitly encoded
+as heap-allocated ob jects.
+3. Although the JVML was designed for ease of
+interpretation, in practice, just-in-time (JIT)
+compilers are used to achieve acceptable perfor-
+mance. Since the JIT translation to native code
+happensafterverification, an error in the com-
+piler can introduce a security hole. Further-
+quality of code that a JIT compiler produces.
+To address these concerns, we have been studying
+the design and implementation of type systems for
+machine languages. The goal of our work is to iden-
+tify typing abstractions that have general utility for
+encoding a variety of high-level language constructs
+and security policies, but that do not interfere with
+optimization. Such abstractions are necessary even
+in very expressive contexts such as proof-carrying-
+ically typed, RISC-based assembly language called
+TAL, showed that a simple functional language could
+be compiled to TAL, and proved that the type sys-
+tem for TAL was sound: well-typed assembly pro-
+grams could not violate the primitive typing abstrac-
+tions. In later work, we described various extensions
+to support stack-allocation of activation records (and
+were extremely simple so as to keep the formalism
+manageable.
+In this paper, we informally describeTA L x 8 6,
+a statically typed variant of the Intel IA32 (32-bit
+80x86 flat model) assembly language. TheTA L x 8 6
+type system is considerably more advanced than the
+type systems we have described previously. In addi-
+tion to providing support for stack-allocation, sepa-
+rate type-checking and linking, and a number of ba-
+sic type constructors (e.g., records, tagged unions,
+arrays,etc.), the type system supports higher-order
+and recursive type constructors, arbitrary data repre-
+sentation, and a rich kind structure that allows poly-
+morphism for different "kinds" of types.
+To demonstrate the utility of these features, we also
+describe a high-level language called Popcorn and a
+compiler that maps Popcorn toTA L x 8 6.Popcornisa
+safe C-based language that provides support for first-
+class polymorphism, abstract types, tagged unions,
+exceptions, and a simple module system. Ultimately,
+Popcorn will support other C-like features such as
+stack-allocated data and "flattened" data structures.
+We begin by giving a brief overview of the process
+of compiling a Popcorn program toTA L x 8 6,verify-
+ing the output of the compiler, and creating an exe-
+cutable. We then discuss the salient details of Pop-
+corn. Finally, we present theTA L x 8 6type system
+by showing how Popcorn programs can be translated
+to type-correctTA L x 8 6code. We close by discussing
+planned extensions.
+The current software release forTA L x 8 6and Pop-
+corn is available athttp://www.cs.cornell.edu/
+talc.
+2
+2TALx86To o l s
+This section describes how theTA L x 8 6tools (listed
+in Table 1) are used together to develop safe native
+programs. As a running example, we assume the Pop-
+corn source for an application is in two files,foo.pop
+andmain.pop.
+First Popcorn compiles each file separately. If
+there are no syntax or type errors, then six new files
+are generated:foo.tal,fooi.tali,fooe.tali,
+main.tal,maini.tali,andmaine.tali.The
+.talfiles contain IA32 assembly language with type
+annotations, as described in Section 4. A.talfile
+also records what values it imports and exports by
+listing typedinterfacefiles. Anyexterndeclara-
+tions are compiled into the corresponding import in-
+terface file (i.tali). Non-static types and values
+are compiled into the corresponding export interface
+file (e.tali).
+Next we can run theTA L x 8 6type-checker (called
+talc)onfoo.talandmain.talseparately. This
+step verifies that theTA L x 8 6code is type-safe, given
+the context implied by the corresponding import file.
+If the Popcorn compiler is implemented correctly,
+type-checking the individual.talfiles that it pro-
+duces will never fail. By runningtalc, however, we
+are no longer assuming that the Popcorn compiler
+produces safe code.
+The link-verifier checks that multiple.talfiles
+make consistent assumptions about the values and
+types they share. Popcorn code may fail to link-
+check, just as traditional ob ject files may fail to
+link, due to missing or multiple definitions. Un-
+like a traditional linker, the link-verifier also checks
+that files agree on thetypesof all shared values.
+Link-verification guarantees that several.talfiles
+are type-safe after being linked together. See Glew
+The.talfiles can be assembled and linked with
+traditional tools. They are compatible with MASM
+(Microsoft's Macro Assembler) except that MASM
+fails on long lines. We have developed an assembler
+without this deficiency.
+Finally, to produce a stand-alone executable some
+additional trusted files are linked. One component is
+the Boehm-Demers-Weiser conservative garbage col-
+ment. There is also a small runtime environment that
+provides essential features such as I/O. Although the
+runtime cannot be written inTA L x 8 6,thetypesofits
+values can, so the runtime is revealed to applications
+via a typed interface file.
+We have described the build cycle for an executable
+in detail. In practice, the tools compose these steps
+TA L x 8 6tools
+talcType-checks aTA L x 8 6file.
+link-verifierVerifies that linking a set ofTA L x 8 6files together is safe.
+assemblerAssembles aTA L x 8 6file to produce a COFF or ELF object file.
+popcornCompiles Popcorn toTA L x 8 6.
+schemeCompiles a small subset of Scheme toTA L x 8 6. Written in Popcorn.
+Table 1: Components of theTA L x 8 6implementation
+by default, providing the programmer a build inter-
+face similar to those in traditional, unsafe systems.while (true)
+Although Popcorn is the only "serious" compiler
+targetingTA L x 8 6at this time,TA L x 8 6is not specifi-
+cally designed for Popcorn. In fact, we have written
+a compiler for a small part of Scheme, thus demon-
+strating the feasibility of compiling a higher-order,
+dynamically typed language.
+3Popcorn
+In this section, we briefly summarize the features of
+Popcorn. This discussion provides a starting point
+for the following section on compiling toTA L x 8 6.
+safe features, such as pointer arithmetic, the address
+operator, and pointer casts, are missing. Compiling
+these features safely would impose a significant per-
+formance penalty on all Popcorn code. Popcorn does
+have several advanced features not in C such as ex-
+ceptions and parametric polymorphism. It does not
+have objects for reasons discussed in the Future Work
+section. In addition, we avoid various Java-style se-
+mantic decisions for efficiency reasons. For exam-
+ple, compiling Java correctly requires run-time type
+checks on array updates, and its precise exception
+semantics prevents some standard optimizations.
+3.1 Control Flow
+The basic control constructs of Popcorn, such asif,
+while,for,do,break,andcontinue, are identical
+to those in C except that test expressions must have
+1
+typebool.
+Popcorn'sswitchconstruct differs from C in that
+execution never "falls through" cases. Furthermore,
+a default case is required unless the other cases are
+exhaustive. The argument of a switch test expression
+can be anint,char,union,orexception. For exam-
+ple, we could find the first occurrence of the character
+'a'in an array:
+1
+The result type of relational and logical operators isbool.
+3
+int i = 0, answer;
+{
+case 'a': answer = i;
+break; // break from while
+default: i++;
+}
+Array subscripts are bounds-checked at run time (see
+Section 4.4); the above example will exit immediately
+ifarrdoes not contain an'a'.
+Exceptions may have different types and exception
+handlers may switch on the name of an exception, as
+in Java. However, exception names are not hierarchi-
+cal.
+3.2 Data
+Currently, the simple types of Popcorn arebool,
+char,short,int,string,andunsignedvariants of
+the numeric types. We intend to add floating point
+numbers and long integers soon. Unlike C, strings
+are not null-terminated. Arrays carry their size to
+support bounds-checks. A specialsizeconstruct re-
+trieves the size of an array or string.
+Popcorn also has tuples which are useful for encod-
+ing anonymous structures and multiple return values.
+Thenewconstruct creates a new tuple (as well as new
+structandunionvalues). For example, the follow-
+ing code performs component-wise doubling of a pair
+of ints:
+*(int,int) x = new (3, 4);
+*(int,int) dbl = new (x.1+x.1, x.2+x.2);
+Popcorn has two kinds of structure definitions:
+structand?struct. They resemblestruct *in
+C. The difference betweenstructand?structis
+that values of types defined withstructcannot be
+null, which is a primitive construct in the language.
+Values of types defined with?structare checked for
+null on field access; failure causes the program to exit
+immediately.
+Unions in Popcorn are more like ML datatypes
+than C unions. Each variant consists of a tag and
+an associated type (possibly void). For example,
+union tree
+{void Leaf; int Numleaf; *(tree,tree)Node};
+Any value of auniontype is in a particular variant,
+as determined by its tag, and may not be treated
+otherwise. We useswitchto determine the variant
+of an expression and bind the corresponding value to
+a variable. Continuing our example, we can write:
+int sum(tree e){
+switch e{
+case Leaf: return 0;
+case Numleaf(x): return x;
+case Node(x): return sum(x.1)+sum(x.2);
+}
+}
+3.3 Parametric Polymorphism
+Popcorn function,struct,?struct,anduniondec-
+larations may all be parameterized over types. For
+example, we can define lists as:
+?struct !'a?list{'a hd; !'a?list tl;}
+To declare that a variablexholds a list of ints, we
+instantiate the type parameter:!int?list x.Ex-
+plicit type instantiation on expressions is not nec-
+essary; for example,new list(3,null)has type
+!int?list. Having polymorphic functions means we
+can write a length function that works on any type of
+list. Polymorphism is particularly useful with func-
+tion pointers. For example, we can write a map func-
+tion:
+!'b?list map('b f('a), !'a?list l){
+if (l == null) return null;
+return new list(f(l.hd), map(f, l.tl));
+}
+A call to this function could look like:
+!int?list x;
+...
+!string?list y = map(int_to_string, x);
+4 An Overview ofTALx86
+In this section, we give an overview of the featuresIn the rest of this section, we assume that the syn-
+found inTA L x 8 6and describe via example how those
+features may be used. In particular, we show how
+Popcorn code may be compiled to well-typedTA L x 8 6.
+TA L x 8 6uses the syntax of MASM for instructions
+and data, and augments it with syntax for type an-
+notations necessary for verification. The type anno-discussion of manyTA L x 8 6features, including excep-
+tations can be broken into the following classes:
+4
+1. Import and export interface information - used
+for separately type-checking ob ject files.
+2. Type constructor declarations - used to declare
+new types and type abbreviations.
+3. Typing preconditions on code labels - used to
+specify the types that registers must have before
+control may enter the associated code.
+4. Types on data labels - used to specify the type
+of a static data item.
+5. Typing coercions on instruction operands - used
+to coerce values of one type to another.
+6. Macro instructions - used to encapsulate small
+instruction sequences so that the type-checker
+treats the sequence as an atomic action.
+The most important of these are the typing precon-
+ditions on code labels (3). These annotations are of
+the general form:
+foralla:k...a:k.{r:t,...,r:t}
+11mm11nn
+and are used by the type-checker to ensure that, if
+control is ever transferred to the corresponding label,
+then registersrthroughrwill contain values of
+1n
+typestthroughtrespectively. The bound type
+1n
+vari abl es,a,...,a, allow the types on the regis-
+1m
+ters to be polymorphic. One must explicitly instanti-
+ate a polymorphic precondition before control can be
+transferred to the corresponding label. As we will see,
+TA L x 8 6supports different "kinds" of types. Conse-
+quently, each type-variable is explicitly labeled with
+akindkso that we may check that only appropriate
+types are used to instantiate the bound type vari-
+ables.
+Given a typing precondition for a code label, the
+type-checker verifies that the instructions in the asso-
+ciated code block are type-correct under the assump-
+tions thata,...,aareabstracttypes, and thatr
+1mi
+has typet. By treating the type variables as ab-
+i
+stract types, we ensure that the code will be type-
+correct for any appropriate instantiation.
+tax and semantics of MASM instructions and data
+will be apparent, and focus our attention on the typ-
+ing annotations and abstractions. We show how var-
+ious high-level features from Popcorn may be com-
+piled toTA L x 8 6. Due to space limitations, we omit
+tions, static data, higher-order types, and interfaces.
+4.1 Basics
+Our first example uses a loop to calculate the sum of
+the firstnnatural numbers:
+int i = n+1;
+int s = 0;
+while(--i ? 0)
+s+=i;
+We could translate the above fragment to the fol-
+lowingTA L x 8 6code, assumingnis initially in register
+ecx:
+mov eax,ecx ; i = n
+inc eax ; ++i
+mov ebx,0 ; s = 0
+jmp test
+body:{eax: B4, ebx: B4}
+add ebx,eax ; s += i
+test:{eax: B4, ebx: B4}
+dec eax ; --i;
+cmp eax,0 ; i ? 0
+jg body
+In this example, the label preconditions say the
+same thing: "control transfer to this code cannot oc-
+cur unless registerseaxandebxhaveB4val ues (4-
+byte integers) in them." The type-checker uses these
+constraints to check that the operands to each in-
+struction in each block are safe.
+Assume for our example that we knowecxinitially
+contains aB4. Then after the first instruction,eax
+also has aB4. The increment is therefore legal; it is
+not legal to increment pointers. The third instruction
+puts aB4inebx. Hence the verifier is assured that the
+precondition for jumping to the test label is satisfied.
+The test label requires aB4inebxeven though it
+does not use the value because it transfers control to
+bodywhich does use it.
+Now consider writing a function:
+int sum(int n){
+// previous example is the body
+return s;
+}
+Of course, the function must have some way to
+return to the caller. Assume for the moment that
+the caller places the return address in registerebp.
+In the code below, the typing precondition assumes
+thatecxcontains a 4-byte integer andebpcontains
+a code label with its own precondition. In particular,
+the type annotationebp:{eax: B4}should be read,
+"ebpcontains a pointer to code that expects aB4in
+eax."
+5
+sum:{ecx: B4, ebp:{eax: B4}}
+!as above?
+body:{eax: B4, ebx: B4, ebp:{eax: B4}}
+!as above?
+test:{eax: B4, ebx: B4, ebp:{eax: B4}}
+dec eax ; --i;
+cmp eax,0 ; i ? 0
+jg body ; if so, goto body
+mov eax,ebx ; otherwise,
+jmp ebp ; return s
+The finaljmpverifies becauseeaxcontains aB4.
+(Notice it would verify even without the preceding
+movinstruction; type soundness does not guarantee
+algorithmic correctness.) The type on thesumlabel
+describes a non-standard calling convention with the
+argument inecx, the return address inebp,andthe
+result ineax. Such calling conventions are typically
+used for leaf procedures in an optimizing compiler.
+One way to "call"sumis to usejmp.
+mov ebp,after
+mov ecx,10
+jmp sum
+after:{eax: B4}
+!code that uses result?
+The code explicitly moves the return address
+(after)intoebp, moves the integer argument into
+ecx,andthenjumpstosum. The jump type-checks
+because the precondition onsumrequires an integer
+inecxand a return address inebpthat expects an
+integer ineax.
+4.2 Stacks and Function Calls
+To support richer and more realistic calling conven-
+tions,TA L x 8 6has a control-flow stack abstraction
+and stack types. The following examples demonstrate
+how these types are used. For a theoretical discus-
+The standard C calling convention on Win32 re-
+quires that the return address be placed on top of
+2
+the stack,followed by the arguments. Before return-
+ing, a function pops the return address. The caller is
+3
+responsible for popping the arguments.
+TA L x 8 6describes the shape of the stack as a list of
+types, whereserepresents an empty stack and ifs
+is a stack type, thent::sis the type that describes
+stacks where the top-most element has typetand
+the rest of the stack is described bys. For example,
+2
+Stacks "grow" towards lower addresses; the "top" is the
+lowest address.
+3
+Also,ebpis callee-save; we will incorporate this shortly.
+{eax: B4}::B4::B4::se
+is the type of a stack with three elements: a return
+address expecting aB4ineaxand then twoB4val ues.
+If a register points to a stack (asespgenerally does),
+we writeesp: sptrswheresis a stack type.
+If we give oursumfunction the type{esp: sptr
+{eax: B4}::B4::se}, then we can only callsum
+when the stack contains exactly the return address
+and the argument. Clearly we would like calls tosum
+to type-check regardless of the depth of the stack. To
+overcome this problem,TA L x 8 6supportsstack poly-
+morphismto abstract portions of the stack. For ex-
+ample, we could assignsumthe type:
+forallr:Ts.
+{esp: sptr{eax: B4, esp: sptr B4::r}::B4::r}
+which says, "for any stack shaper,sumcan be called
+wheneverespcontainsapointertoastackwitha
+suitable return address, followed by an integer, fol-
+lowedbyastackwithshaper." The code associated
+withsumis verified treatingras an abstract type.
+Notice that ifsumreturns by jumping to the given
+return address, the stack must have the same shape
+as on input except without the return address. In-
+deed, a much stronger property holds sincesumis
+type-checked holdingrabstract: The input stack cor-
+responding torwill remain unmodified throughout
+assured thatsumwill not read or modify the caller's
+local data (or that of its caller,etc.).
+Returning to our example,mov eax,ecxat the be-
+ginning ofsumwould now become,
+so as to load the integer argument from the stack
+intoeax. The finaljmpwould be replaced withretn,
+which pops the return address and then jumps to it.
+Acalltosummust now have an additional annotation
+that instantiatesrwith the actual stack type (not in-
+cluding the input argument, which is not part ofr).
+A simple example is:
+main:{esp: se}
+push 42 ; hidden on stack
+push 10 ; input argument
+call tapp(sum, !B4::se?)
+after:
+!code after?
+Thecallinstruction pushes the return address
+(after) before jumping, and thetappinstantiates
+rwithB4::se.
+Usually a call will occur in a context where part of
+the stack is already abstract, so the instantiation of
+rwill use a stack variable in scope at the call site.add ecx, ecx ; x.1+x.1 in ecx
+Indeed,rcan be instantiated with a stack type con-
+tainingr! In this respect,TA L x 8 6supports a form of
+6
+polymorphic recursion. For example, Figure 1 shows
+a recursive implementation ofsum. The recursive call
+says that the stack now has one moreB4and return
+address on it.
+We can also use polymorphism to encode callee-
+save registers into the calling convention. To force
+sumto preserve the value inebp,werequirethatebp
+has a value of distinct abstract typeaon entry and
+exit. We would write:
+foralla:T4r:Ts.
+{ebp:a, esp: sptr{ebp:a, ...}, ...}
+whereT4means thatacan be any 4-byte type. A call
+would now have to instantiateaandrappropriately.
+TA L x 8 6supports addition of constants to stack
+pointers, and values may be written into arbitrary
+non-abstract stack slots. Thus, it is not necessary to
+replace a value on the stack via a sequence of pushes
+and pops; the element can be directly overwritten.
+Additional constructs in the stack-typing discipline
+ofTA L x 8 6support other compiler tasks. For in-
+stance, to compile Popcorn exceptions, the code gen-
+erator needs to pop off a dynamic amount of data
+from the control stack. To support this,TA L x 8 6pro-
+vides a limited form of pointers into the middle of
+the stack. These limited pointers are also sufficient
+to support displays (static links) for compiling lan-
+guages such as Pascal. However, they are not suffi-
+cient to support general stack-allocation of data.
+4.3 Memory Allocation
+To support general heap allocation of data,TA L x 8 6
+provides additional constructs that we now explore,
+beginning with tuples. Recall our Popcorn tuple code
+from Section 3:
+*(int,int) x = new (3, 4);
+*(int,int) dbl = new (x.1+x.1, x.2+x.2);
+At the assembly level, creating a new pair involves
+two separate tasks: allocating memory and initializ-
+ing the fields. ThisTA L x 8 6code corresponds to the
+preceding Popcorn:
+push eax ; save x
+int sum(int n){sum:forallr:Ts.{esp: sptr{eax: B4, esp: sptr B4::r}::B4::r}
+if (n==0)
+return 0;jne tapp(iffalse, !r?)
+elsemov eax,0
+return n+sum(n-1);retn
+}iffalse:forallr:Ts.{esp: sptr{eax: B4, esp: sptr B4::r}::B4::r}
+dec ebx
+push ebx
+; recursive call instantiatesrusing current stack shape
+call tapp(sum, !
+add esp,4
+retn
+Figure 1: Recursive Function with C Calling Convention
+add ecx,ecx ; x.2+x.2 in ecx
+Themalloc"instruction" is actually a macro that
+expands to code that allocates memory of the appro-
+priate size. This routine puts a pointer to the newly-
+allocated space intoeax. The verifier then knows
+thateaxcontains a pointer touninitializedfields as
+specified in the typing annotation![:B4,:B4]?.
+Tracking initialization is important for safety be-
+cause fields may themselves be pointers, and the type
+system should prevent dereferencing an uninitialized
+pointer. To do this, the type of every field has a
+variance, one ofu,r,w,orrw, standing for unini-
+tialized, read-only, write-only, and read-write respec-
+tively. The type system does not allow uninitialized
+fields to be read. However, uninitialized fields may be
+written with a value of the appropriate type, and then
+the field is changed to a read-write field. Sub-typing
+allows a read-write field to be used as read-only or
+write-only.
+Here are the first three lines of our example where
+the comment describes the type that the verifier as-
+signs toeaxafter each instruction:
+uu
+,B4]
+rwu
+,B4]
+rwrw
+,B4]
+For example, the second type says, "a pointer to a
+tuple with two fields, an initializedB4, followed by
+an uninitializedB4." Of course, these pointer types
+can appear anywhereB4can, such as in part of a
+stack type or label type.
+7
+{eax: B4, esp: sptr B4::r}::B4::r?)
+TA L x 8 6places no restrictions on the order in which
+fields are initialized, nor does it require that all fields
+be initialized before passing the pointer to another
+function. It is possible for a field to be "initialized"
+more than once by creating an alias. For example:
+mov ecx, eax ; ecx aliases eax
+In this code, when the contents ofeaxare moved
+intoecx,ecxisassignedthesametypeaseax.The
+two stores thus initialize the same field twice. This
+aliasing does not lead to a type unsoundness because
+thetwovalueshavethesametype. Sincethetypesys-
+tem does not track aliasing, some semantically mean-
+ingful optimizations cannot be expressed in code that
+type-checks. For instance, the verifier rejects the fol-
+lowing code because it assumes that the field[ecx+0]
+is uninitialized:
+mov ecx, eax ; ecx aliases eax
+Though it would be possible to augmentTA L x 8 6
+to conservatively track aliasing, doing so would fur-
+ther complicate the type system. Thus far, we have
+favored this simpler approach.
+Finally, thoughTA L x 8 6supports explicit alloca-
+tion and deallocation of stack-allocated objects, it
+does not support general purpose pointers to stack-
+allocated ob jects. In contrast, general purpose point-
+ers to heap-allocated ob jects are supported, but ex-able, in which case the size of the array is unknown.
+plicit deallocation is not. Rather, we link theTA L x 8 6Furthermore, as with other type expressions,sis a
+code against a conservative garbage collector so thatpurelystaticconstruct used only for verification --
+unreachable ob jects may be reclaimed. To sup-
+port explicit deallocation would require an extensiveshow, this gives us the flexibility to place the run-
+4.4 Arrays
+Support for arrays inTA L x 8 6is perhaps the most
+complicated feature in the language. The critical is-
+sue is that array sizes and array indices cannot always
+be determined statically, yet to preserve type-safety,
+we must ensure that any index lies between 0 and
+thephysicalsizeofthearray.TA L x 8 6provides a
+very flexible mechanism for tracking the size of an
+array without requiring that the size be placed in a
+pre-determined position.
+Array subscript and update require special macro
+instructions (asubandaupd) which take an array
+pointer, the size of the array, an integer offset, and
+foraupd, a value to place in the array. The macros
+expand into code sequences that perform a bounds
+check, exit immediately when the index is out of
+bounds, and otherwise perform the appropriate sub-
+script or update operation. Because the array bounds
+checks are not separated from the subscript or up-
+date operations, an optimizer cannot eliminate or re-
+schedule them. Also, no pointers into the middle of
+arrays are allowed by the current type system, further
+limiting optimization.
+To support arrays, theTA L x 8 6type system in-
+cludes two new type constructors. The first,S(s),
+is called asingletontype, wheresis a compile-time
+expression corresponding to an integer. The primary
+purpose of singleton types is to statically track the ac-
+tual integer value of a register or word in memory. For
+instance, ifeaxhas typeS(3), then the value ineax
+must be equal to 3 (i.e., it is drawn from the single-
+ton set{3}). As with other kinds of type expressions,
+integer type expressions can be polymorphic. Thus,
+ifecxhas typeS(a), then we cannot determine stat-
+ically the (integer) value contained inecx. However,
+ifebxalso has typeS(a), then the type system can
+conclude that the contents of the two registers are
+equal. The type system treats singleton integer types
+as subtypes ofB4so that they may be used whenever
+aB4is required.
+The second new type constructor is of the form
+v
+array(s,t)wheretis the type of the array ele-
+ments,vis their variance, andsis a type expressionthough this is the default representation used by our
+that represents the size of the array. Notice thats
+could be a constant, in which case the size of the
+array is known statically, or it could be a type vari-"unboxed" when the Popcorn array does not escape.
+8
+it isnotavailable as a run-time value. As we shall
+time array size anywhere we want instead of in some
+fixed position. Furthermore, if the size of the array
+can be determined statically, then the size need not
+be tracked at run-time.
+Thecrucialissueistoenforcethepropertythat
+only a run-time integer value equal to the size of the
+array is passed toasuboraupdfor the appropriate
+bounds check. In particular, if the array has type
+v
+array(s,t), then the integer passed as the size of
+the array must have typeS(s). For example, the
+followingTA L x 8 6code increments index 2 of a size 5
+array ofB4val ues:
+rw
+lab:{eax: array(5, B4), ebx: S(5)}
+mov ecx, 2
+; array size in ebx, element size is 4.
+asub edx, eax, 4, ecx, ebx
+inc edx
+; array size in ebx, element size is 4.
+aupd eax, 4, ecx, edx, ebx
+This example may only be used on arrays of size 5. To
+support arrays whose size is unknown statically, we
+must introduce an integer type variable and quantify
+over it to achieve "size polymorphism":
+rw
+lab:foralls:Sint.{eax: array(s,B4), ebx: S(s)}
+(The instructions do not need to change.)
+Our compiler represents all Popcorn arrays as a
+pointer to a data structure containing the (run-time)
+size followed by the array elements. Anexistential
+type is used to tie the type of the run-time size with
+the type of the array as in:
+rrw
+existss:Sint.^*[S(s),array(s,B4)]
+The type reads as "there exists some integerssuch
+that I am a pointer to a structure containing an in-
+teger equal tos, followed bysB4values." Using an
+existential to package the run-time size with the ar-
+ray, we can pass the data structure to any function,
+or place it in any data structure and yet maintain
+enough information that we can always perform a
+checked subscript or update on the array. Notice that
+compiler, it is not required byTA L x 8 6.Inparticular,
+the run-time size and the underlying array could be
+?struct int_list{
+int hd;
+len:forallr:Ts.
+int_list tl;
+{esp: sptr{eax: B4, esp: sptr 'int_list::r}::'int_list::r}
+}
+mov eax, 0 ; i=0 in eax
+int len(int_list lst){
+int i = 0;
+jmp tapp(test, !
+while (lst != null){
+body:forallr:Ts.{
+++i;
+inc eax ; ++i
+lst = lst.tl;
+}
+fallthru !r?
+return i;
+test:forallr:Ts.{esp: ..., eax: B4, ebx:'int_list}
+}
+btagi ne, ebx, 0, tapp(body,!r?) ; check if ebx is null (0)
+retn ; otherwise return
+Figure 2: List of Integers Implementation
+When the size of the array is known at compile-time,to a pair of an integer and anintlist.
+an optimizer could avoid storing the size entirely.
+Finally, there are two ways to create arrays in
+TA L x 8 6. An n-tuple of values, all of some typet
+and variancev, may be coerced to an array of type
+v
+array(n,t). Second, the trusted runtime provides
+a function which takes an integernand a valuex
+of typetand returns an array of sizenwith each
+element initialized tox.
+We are currently working to eliminate theasuband
+aupdmacros and to expose the bounds checks so that
+an optimizer could eliminate them. To do so requires
+supporting a more expressive symbolic language of
+static integer expressions within the type system and
+the ability to prove inequalities between such expres-
+4.5 Sums and Recursive Types
+To demonstrateTA L x 8 6sums and recursive types, we
+now consider implementing a linked list of integers
+(see Figure 2). There are two critical points here:
+First, a list is fundamentally asum type:avalueof
+type list is either null or a pointer to a tuple, and
+we must ensure that the code works in either case.
+Second, the list type is recursive.
+The Popcorn code has a?structdefinition for lists
+and alenfunction which calculates a list's length.
+TheTA L x 8 6code has a corresponding type definition
+and corresponding code. TheTA L x 8 6type definitionTheTA L x 8 6type annotations take far less space than
+says a value can be coerced to have typeintlistif
+it is either the singleton value 0 (for null) or a pointerallows the typing preconditions to be dropped for cer-
+9
+rwrw
+,'int_list]?
+r?)
+rwrw
+,'int_list]}
+rwrw
+,'intlist]
+Upon entry to thelenlabel, the integer variable
+iis initialized to 0 and placed in registereax.The
+list argument is placed inebxand the code jumps
+to the loop test. The test coercesebxfrom the
+typeintlistto its representation type, namely
+the corresponding sum type. The next instruction,
+btagi, is a macro instruction that tests whetherebx
+is not equal (ne) to 0, and if so, branches to the
+body. The macro expands into a simple compare and
+branch. The type-checker verifies that the register be-
+ing tested has a sum type, and using the value tested
+against, refines the type of the register. In particular,
+at the labelbody, we are allowed to make the stronger
+assumption thatebxis in fact a pointer, and not null.
+This assumption allows theoper-
+ation to verify, which has the effect of settingebxto
+the tail of the list.
+Our current Popcorn compiler generates more
+na"ive code. The list is tested for null once as part
+of the while test, and then again when the tail of the
+list is selected. However, it is clear that an optimizing
+compiler can use dataflow analysis to determine that
+the second check is redundant. What is not as clear is
+whether an optimizing compiler can easily maintain
+the appropriate typing annotations.
+4.6 Making Types Smaller
+we have suggested so far. For example, the verifier
+tain labels. In particular, labels that serve only as1. A binary ob ject file format to replaceTA L x 8 6's
+forward branch targets need no typing precondition.
+The verifier simply re-verifies the corresponding codeboth space and parsing time. It will also pro-
+block for each branch. The restriction to forward
+branches ensures termination of the verifier.
+The verifier also supports type abbreviations so
+that the common sub-terms of types may be ab-
+stracted. For example, Popcorn gives the same type
+to everystring. Rather than repeat this type every-
+where, Popcorn defines astrabbreviation and uses
+it in place of the unabbreviated form:
+rrw
+type !str =existss:Sint.^*[S(s),array(s,B1)]?
+Another source of repetition is the code types. For
+example, our code types essentially repeat the type
+of the stack twice, once for the stack and once for
+the type of the return address. We can abstract the
+calling convention with a function abbreviation:
+type !F = fn ret:T4 s:Ts.
+{esp: sptr{eax: ret, esp: sptr s}::s}?
+For example, the fully expanded type of the polymor-
+phic map function is the rather unwieldy:
+map:foralla:T4b:T4r:Ts.
+{esp: sptr
+{eax:('listb),
+'
+esp:sptr(forallr:Ts.
+'
+{esp: sptr{eax:besp: sptra::r}
+'
+::a::r})
+::('lista)::r}
+'
+::(forallr:Ts.
+'
+{esp: sptr{eax:besp: sptra::r}
+'
+::a::r})
+::('lista)::r}
+but with the above abbreviation becomes:
+map:foralla:T4b:T4r:Ts.
+F ('listb)
+''
+((forallr:Ts. Fb(a::r))::('lista)::r)
+which is smaller, more readable, and in practice faster
+to verify.
+5 Summary and Future Work
+We have described the currently available tools for
+producingTA L x 8 6, including a compiler for the C-
+like language Popcorn. Through examples, we have
+demonstrated howTA L x 8 6ensures the safety of as-
+sembly code, even in the presence of advanced struc-
+tures and optimizations.
+Planned extensions to our system will both add
+tools and increase the expressiveness of the languages.
+They include:
+10
+current ASCII format. This format will save
+vide a better setting for evaluating verifier per-
+formance.
+2. Support for floating point and MMX instruc-
+tions. We do not expect this to be difficult.
+3. Support for run-time code generation, as devel-
+oped by Trevor Jim and Like Hornoff at the
+an extension to Popcorn called Cyclone makes
+these features available at a higher level. We
+are currently working through some minor inter-
+operability issues.
+4. A more advanced dependent type system to al-
+low bounds-check elimination when it can be
+proven that it is safe to do so.
+5. Support for object abstractions inTA L x 8 6.To
+support objects inTA L x 8 6requires either hav-
+ing ob ject types or typing constructs to trans-
+late object types into. Having object types in
+TA L x 8 6would restrictTA L x 8 6to OO languages
+compatible with that object model. While a
+lot of research has been done on translating ob-
+ject types, these translations either sacrifice the-
+oretical properties or introduce run-time over-
+head. We are currently investigating a new ef-
+ficient object encoding that involves sub-typing,
+F-bounded quantification, and self quantifiers.
+6 Acknowledgments
+We thank Chris Hawblitzel who wrote the first ver-
+sion of Popcorn. Trevor Jim and Luke Hornoff pro-
+vided invaluable feedback on the system in addition
+to adding support for run-time code generation.
+References
+in Abadi and Raymie Stata. A type sys-
+tem for Java bytecode subroutines. InTwenty-
+Fifth ACM SIGPLAN-SIGACT Symposium on Prin-
+ciples of Programming Languages, pages 149-160,
+San Diego, California, USA, January 1998.
+The MLJ User Guide, 1998.
+lection in an uncooperative environment.Software
+Practice and Experience, 18(9):807-820, 1988.
+tain parametricity results. Technical Report CMU-119, Paris, France, 1997.
+CS-98-185, Carnegie Mellon University, Pittsburgh,
+Pennsylvania, USA, December 1998.
+Typed memory management in a calculus of capa-
+bilities. InTwenty-Sixth ACM SIGPLAN-SIGACT
+Symposium on Principles of Programming Lan-
+guages, pages 262-275, San Antonio, Texas, USA,
+January 1999.
+and modular assembly language. InTwenty-Sixth
+ACM SIGPLAN-SIGACT Symposium on Principles
+of Programming Languages, pages 250-261, San An-
+tonio, Texas, USA, January 1999.
+and run-time code generation. InACM Workshop
+on Partial Evaluation and Semantics-Based Program
+Manipulation, pages 60-74, San Antonio, Texas,
+USA, January 1999.
+5
+Rees. Revisedreport on the algorithmic lan-
+guage Scheme.ACM SIGPLAN Notices, 33(9):26-
+76, September 1998. With H. Abelson, N. I. Adams,
+IV,D.H.Bartley,G.Brooks,R.K.Dybvig,D.P.
+Friedman, R. Halstead, C. Hanson, C. T. Haynes, E.
+Kohlbecker,D.Oxley,K.M.Pitman,G.J.Rozas,
+G. L. Steele, Jr., G. J. Sussman, and M. Wand.
+The C
+Programming Language. Prentice-Hall, Englewood
+Cliffs, NJ 07632, USA, second edition, 1988.
+llin.The Java Virtual
+Machine Specification. Addison-Wesley, 1996.
+Walker. Stack-based typed assembly language. In
+Workshop on Types in Compilation, volume 1473
+ofLecture Notes in Computer Science, pages 28-52,
+Kyoto, Japan, March 1998.
+Glew. From System F to typed assembly language
+(extended version). Technical Report TR97-1651,
+Department of Computer Science, Cornell Univer-
+sity, Ithaca, New York, USA, November 1997.
+Glew.FromSystemFtotypedassemblylanguage. In
+Twenty-Fifth ACM SIGPLAN-SIGACT Symposium
+on Principles of Programming Languages, pages 85-
+97, San Diego, California, USA, January 1998.
+Liskov. Parameterized types for Java. InTwenty-
+Fourth ACM SIGPLAN-SIGACT Symposium on
+Principles of Programming Languages, pages 132-
+145, Paris, France, 1997.
+Twenty-
+Fourth ACM SIGPLAN-SIGACT Symposium on
+11
+Principles of Programming Languages, pages 106-
+type system for Java bytecode subroutines. In
+Twenty-Sixth ACM SIGPLAN-SIGACT Symposium
+on Principles of Programming Languages, pages 70-
+78, San Antonio, Texas, USA, January 1999.
+Translating theory into practice. InTwenty-Fourth
+ACM SIGPLAN-SIGACT Symposium on Principles
+of Programming Languages, pages 146-159, Paris,
+France, January 1997.
+Formal Underpinnings of
+Java. Vancouver, Canada, October 1998.
+ray bound checking through dependent types. In
+ACM SIGPLAN Conference on Programming Lan-
+guage Design and Implementation, pages 249-257,
+Montreal, Canada, June 1998.
+in practical programming. InTwenty-Sixth ACM
+SIGPLAN-SIGACT Symposium on Principles of
+Programming Languages, pages 214-227, San Anto-
+nio, Texas, USA, January 1999.

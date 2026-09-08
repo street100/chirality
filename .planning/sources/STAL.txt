@@ -1,0 +1,1422 @@
+Stack-Based Typed Assembly Language
+Greg Morrisett Karl Crary Neal Glew David Walker
+Cornell University
+Abstract
+In previous work, we presented aTyped Assembly Language(TAL). TAL is sufficiently ex-
+pressive to serve as a target language for compilers of high-level languages such as ML. Moreover,
+TAL's type system is powerful enough to encode source-level abstractions such as closures and
+abstract data types, yet flexible enough to admit most traditional low-level optimizations.
+The compiler presented in our original work was based on acontinuation-passing style(CPS)
+transform, which eliminated the need for a control stack by heap allocating activation records.
+However, modern architectures and most compilers are based on stack allocation of these records.
+This paper presents STAL, an extension of TAL with stack constructs and stack types to support
+the stack allocation style. We show that STAL is sufficiently expressive to support languages
+such as Java, Pascal, and ML; constructs such as exceptions and displays; and optimizations
+such as tail call elimination and callee-saves registers.
+This paper makes two additional contributions. First, it formalizes the typing connection be-
+tween CPS-based compilation and stack-based compilation. The latter is seen as a continuation-
+passing style where continuation closures are unboxed by the caller and the continuation's en-
+vironment is placed on the stack. Second, it illustrates how STAL can formally model calling
+conventions by specifying them as formal translations of source function types to STAL types.
+1 Introduction and Motivation
+Statically typed source languages have efficiency and software engineering advantages over their
+the properties of typed languages more extensively than their predecessors by preserving type
+information computed in the front end through a series of typed intermediate languages. These
+18, 31, 17,
+cases, without types, these transformations are less effective or simply impossible. Furthermore,
+the type translation partially specifies the corresponding term translation and often captures the
+critical concerns in an elegant and succinct fashion. Strong type systems not only describe but also
+enforce many important invariants. Consequently, developers of type-based compilers may invoke
+a type-checker after each code transformation, and if the output fails to type-check, the developer
+*
+This material is based on work supported in part by the AFOSR grant F49620-97-1-0013, ARPA/RADC grant
+F30602-96-1-0317, ARPA/AF grant F30602-95-1-0047, and AASERT grant N00014-95-1-0985. Any opinions, find-
+ings, and conclusions or recommendations expressed in this publication are those of the authors and do not reflect
+the views of these agencies.
+1
+*
+knows that the compiler contains an internal error. Although type-checkers for decidable type
+systems will not catch all compiler errors, they have proven themselves valuable debugging tools in
+Despite the numerous advantages of compiling with types, until recently, no compiler propagated
+type information through the final stages of code generation. The TIL/ML compiler, for instance,
+preserves types through approximately 80% of compilation but leaves the remaining 20% untyped.
+Many of the complex tasks of code generation including register allocation and instruction schedul-
+ing are left unchecked and types cannot be used to specify or explain these low-level code transfor-
+mations.
+These observations motivated our exploration of very low-level type systems and corresponding
+proved that its type system was sound with respect to an operational semantics. We demonstrated
+the expressiveness of this type system by sketching a type-preserving compiler from an ML-like
+language to TAL. The compiler ensured that well-typed source programs were always mapped to
+well-typed assembly language programs and that they preserved source level abstractions such as
+user-defined abstract data types and closures. Furthermore, we claimed that the type system of TAL
+did not interfere with many traditional compiler optimizations including inlining, loop-unrolling,
+register allocation, instruction selection, and instruction scheduling.
+However, the compiler we presented was critically based on acontinuation-passing styletransform,
+which eliminated the need for a control stack. In particular, activation records were represented
+Figure 1 shows the TAL code our heap-based compiler would produce for the recursive factorial
+computation. Each function takes an additional argument which represents the control stack as
+a continuation closure. Instead of "returning" to the caller, a function invokes its continuation
+closure by jumping directly to the code of the closure, passing the environment of the closure and
+the result in registers.
+Allocating continuation closures on the heap has many advantages over a conventional stack-based
+implementation. First, it is straightforward to implement control primitives such as exceptions,
+first-class continuations, or user-level lightweight coroutine threads when continuations are heap
+have better space properties, primarily because it is easier to share environments. Third, there
+is a unified memory management mechanism (namely the garbage collector) for allocating and
+that, at least for SML/NJ, the locality lost by heap-allocating stack frames is negligible.
+Nevertheless, there are also compelling reasons for providing support for stacks. First, Appel
+and Shao's work did not consider imperative languages, such as Java, where the ability to share
+environments is greatly reduced nor did it consider languages that do not require garbage collection.
+of continuations (as in SML/NJ) can have substantial overhead due to a loss of locality. Third,
+stack-based activation records can have a smaller memory footprint than heap-based activation
+records. Finally, many machine architectures have hardware mechanisms that expect programs
+to behave in a stack-like fashion. For example, the Pentium Pro processor has an internal stack
+that it uses to predict return addresses for procedures so that instruction pre-fetching will not be
+2
+typed assembly language(TAL) and
+control stack.
+Clearly, compiler writers must weigh a complex set of factors before choosing stack allocation,
+heap allocation, or both. The target language must not constrain these design decisions. In this
+paper, we explore the addition of a stack to our typed assembly language in order to give compiler
+writers the flexibility they need. Our stack typing discipline is remarkably simple, but powerful
+enough to compile languages such as Pascal, Java, or ML without adding high-level primitives
+to the assembly language. More specifically, the typing discipline supports stack allocation of
+temporary variables and values that do not escape, stack allocation of procedure activation frames,
+exception handlers, and displays, as well as optimizations such as callee-saves registers. Unlike
+control-flow point, nor does it require new high-level primitives for procedure call/return. Instead,
+our assembly language continues to have low-level RISC-like primitives such as loads, stores, and
+jumps. However, source-level stack allocation, general source-level stack pointers, general pointers
+into either the stack or heap, and some advanced optimizations cannot be typed.
+A key contribution of the type structure is that it provides a unifying declarative framework for
+specifying procedure calling conventions regardless of the allocation strategy. In addition, the
+framework further elucidates the connection between a heap-based continuation-passing style com-
+piler, and a conventional stack-based compiler. In particular, this type structure makes explicit the
+notion that the only differences between the two styles are that, instead of passing the continuation
+as a boxed, heap-allocated tuple, a stack-based compiler passes the continuation unboxed in reg-
+isters and the environments for continuations are allocated on the stack. The general framework
+makes it easy to transfer transformations developed for one style to the other. For instance, we
+stack-based compiler as instances of a more general CPS transformation that is independent of the
+continuation representation.
+2 Overview of TAL and CPS-Based Compilation
+In this section, we briefly review our original proposal for typed assembly language (TAL) and sketch
+how a polymorphic functional language, such as ML, can be compiled to TAL in a continuation-
+passing style, where continuations are heap-allocated.
+Figure 2 gives the syntax for TAL. Programs (P) are triples consisting of a heap, register file, and
+instruction sequence. Heaps map labels to heap values which are either tuples of word-sized values
+or code sequences. Register files map registers to word-sized values. Instruction sequences are
+lists of instructions terminated by either ajmporhaltinstruction. The context Delta binds the free
+type variables of G inforall[Delta].G, and of both G and
+bindsain the following instructions. We consider syntactic ob jects to be equivalent up to alpha-
+conversion, and consider label assignments, register assignments, heaps, and register files equivalent
+up to reordering of labels and registers. Register names do not alpha-convert. The notationX
+denotes a sequence of zero or moreXs, and|.|denotes the length of a sequence.
+The instruction set consists mostly of conventional RISC-style assembly operations, including arith-
+metic, branches, loads, and stores. One exception, theunpackinstruction, strips the quantifier from
+the type of an existentially typed value and introduces a new type variable into scope. On an un-
+3
+Iincode[Delta]G.I. The instructionunpack[a, r],v
+~
+(H,{},I)where
+H=
+lfact:
+code[]{r1:<>,r2:int,r3:t}.
+k
+bneq r2,lnonzero
+unpack[a,r3],r3 %
+ld r4,r3(0) %
+ld r1,r3(1) %
+mov r2,1
+jmp r4 %
+lnonzero:
+code[]{r1:<>,r2:int,r3:t}.
+k
+sub r4,r2,1 %
+malloc r5[int,t]
+k
+st r5(0),r2 %
+st r5(1),r3 %
+11
+1
+malloc r3[forall[].{r1:<int,t>,r2:int},<int,t>]%create cont closure inr3
+k
+mov r2,lcont
+st r3(0),r2 %
+st r3(1),r5 %
+mov r2,r4 %
+1
+1
+mov r3,pack[<int,t>,r3]ast
+k
+k
+jmp lfact %
+lcont:
+1
+1
+code[]{r1:<int,t>,r2:int}.
+k
+ld r3,r1(0) %
+ld r4,r1(1) %
+mul r2,r3,r2 %
+unpack[a,r4],r4 %
+ld r3,r4(0) %
+ld r1,r4(1) %
+jmp r3 %
+lhalt:
+code[]{r1:<>,r2:int}.
+mov r1,r2
+halt[int]
+andI=
+malloc r1[]
+malloc r2[]
+malloc r3[forall[].{r1:<>,r2:int},<>]
+mov r4,lhalt
+st r3(0),r4 %
+st r3(1),r2 %
+mov r2,6 %
+mov r3,pack[<>,r3]ast
+k
+jmp lfact %
+11
+andt=existsa.<forall[].{r1:a,r2:int},a>
+k
+Figure 1: Typed Assembly Code for Factorial
+4
+zero branch: callk(inr3)with1
+pro jectkcode
+pro jectkenvironment
+jump tokwith{r1=env,r2=1}
+n-1
+%create environment for cont inr5
+storeninto environment
+storekinto environment
+1
+k
+store cont code
+store environment<n, k>
+arg :=n-1
+%abstract the type of the environment
+recursive call with{r1=env,r2=n-1,r3=cont}
+%r2contains (n-1)!
+retrieven
+retrievek
+nx(n-1)!
+unpackk
+pro jectkcode
+pro jectkenvironment
+jump tokwith{r1=env,r2=n!}
+%halt with result inr1
+%create an empty environment (<>)
+%create another empty environment
+%create halt closure inr3
+store cont code
+store environment<>
+load argument (6)
+%abstract the type of the environment
+begin fact with{r1=<>,r2=6,r3= haltcont}
+typest::=a|int|forall[Delta].G|<t,...,t>|existsa.t
+initialization flagsf::= 0|1
+label assignmentsPS ::={l:t,...,l:t}
+11
+type assignmentsDelta ::=.|a,Delta
+register assignmentsG ::={r:t,...,r:t}
+11
+registersr::=r1| ...|rk
+word valuesw::=l|i|?t|w[t]|pac k[t, w]ast
+smal l valuesv::=r|w|v[t]|pac k[t, v]ast
+heap valuesh::=<w,...,w>|code[Delta]G.I
+1
+heapsH::={l|->->h,...,l|->->h}
+1
+register filesR::={r|->->w,...,r|->->w}
+1
+instructionsi::=aopr,r,v|bopr, v|ldr,r(i)|mallocr[~t]|
+dsds
+movr,v|str(i),r|unpack[a, r],v|
+d
+arithmetic ops aop::=add|sub|mul
+branch ops bop::=beq|bneq|bgt|blt|bgte|blte
+instruction sequencesI::=i;I|jmpv|halt[t]
+programsP::= (H, R, I)
+Figure 2: Syntax of TAL
+typed machine, this is implemented by an ordinary move. The other non-standard instruction is
+malloc, which is explained below. Evaluation is specified as a deterministic rewriting system that
+The types for TAL consist of type variables, integers, tuple types, existential types, and polymorphic
+code types. Tuple types contain initialization flags (either 0 or 1) that indicate whether or not
+components have been initialized. For example, if registerrhas type<int,int>,thenitcontains
+a label bound in the heap to a pair that can contain integers, where the first component may
+not have been initialized, but the second component has. In this context, the type system allows
+the second component to be loaded, but not the first. If an integer value is stored intor(0) then
+11
+afterwardsrhas the type<int,int>, reflecting the fact that the first component is now initialized.
+The instructionmallocr[t,...,t
+1n
+its label in registerr.
+Code types (forall[a,...,a].G) describe code blocks (code[a,...,a]G.I), which are instruction se-
+1n
+quences, that expect a register file of type G and in which the type variablesa,...,aare held
+abstract. In other words, G serves as a register file pre-condition that must hold before control
+may be transferred to the code block. Code blocks have no post-condition because control is either
+terminated via ahaltinstruction or transferred to another code block.
+The type variables that are abstracted in a code block provide a means to write polymorphic code
+5
+f
+1f
+n
+n
+1
+nn
+nn
+'
+'
+n
+1nn
+1nn
+dsd
+01
+1n
+1n
+sequences. For example, the polymorphic code block
+code[a]{r1:a,r2:forall[].{r1:<a,a>}}.
+malloc r3
+st r3
+st r3
+mov r1
+jmp r2
+roughly corresponds to a CPS version of the SML functionfn(x:a)=?(x,x). The block expects
+upon entry that registerr1contains a value of the abstract typea,andr2contains a return
+address (or continuation label) of typeforall[].{r1:<a,a>}. In other words, the return address
+requires registerr1to contain an initialized pair of values of typeabefore control can be returned
+to this address. The instructions of the code block allocate a tuple, store into the tuple two copies of
+the value inr1, move the pointer to the tuple into
+to "return" the tuple to the caller. If the code block is bound to a labell, then it may be invoked
+by simultaneously instantiating the type variable and jumping to the label (e.g.,jmpl[int]).
+Source languages like ML have nested higher-order functions that might contain free variables and
+thus requireclosuresto represent functions. At the TAL level, we represent closures as a pair
+consisting of a code block label and a pointer to an environment data structure. The type of the
+type of the environment and the pair to form an existential type.
+All functions, including continuation functions introduced during CPS conversion, are thus repre-
+sented as existentials. For example, once CPS converted, a source function of typeint-><>has
+1
+type (int,(<> ->void))->void.After closures are introduced, the code will have type:
+existsa.<(a,int,existsa.<(a,<>)->void,a>)->void,a>
+1122
+Finally, at the TAL level the function will be represented by a value with the type:
+existsa.<forall[].{r1:a,r2:int,r3:existsa.<forall[].{r1:a,r2:<>},a>},a>
+112
+Here,ais the abstracted type of the closure's environment. The code for the closure requires that
+1
+the environment be passed in registerr1, the integer argument inr2, and the continuation inr3.
+The continuation is itself a closure whereais the abstracted type of its environment. The code
+2
+for the continuation closure requires that the environment be passed inr1and the unit result of
+the computation inr2.
+To apply a closure at the TAL level, we first use theunpackoperation to open the existential
+package. Then the code and the environment of the closure pair are loaded into appropriate
+registers, along with the argument to the function. Finally, we use a jump instruction to transfer
+control to the closure's code.
+Figure 1 gives the CPS-based TAL code for the following ML expression which computes six
+factorial:
+let fun fact n = if n = 0 then 1 else n * (fact(n - 1)) in fact 6 end
+1
+Thevoidreturn types are intended to suggest the non-returning aspect of CPS code.
+6
+11
+[a, a]
+(0),r1
+(1),r1
+,r3
+11
+r1and then jump to the return address in order
+pac kthe
+21
+1111
+2
+21
+typest::=... |ns
+stack typess::=r|nil|t::s
+type assignmentsDelta ::=... |r,Delta
+register assignmentsG ::={r:t,...,r:t,sp:s}
+11
+word valuesw::=... |w[s]|ns
+smal l valuesv::=... |v[s]
+register filesR::={r|->->w,...,r|->->w,sp|->->S}
+11
+stacksS::=nil|w::S
+instructionsi::=... |salloc
+Figure 3: Additions to TAL for Simple Stacks
+3 Adding Stacks to TAL
+In this section, we show how to extend TAL to achieve a Stack-based Typed Assembly Language
+(STAL). Figure 3 defines the new syntactic constructs for the language. In what follows, we
+informally discuss the dynamic and static semantics for the modified language, leaving formal
+treatment to Appendix A.
+Operationally, we model stacks (S) as lists of word-sized values. Uninitialized stack slots are filled
+with nonsense (ns). Register files now include a distinguished register,sp, which represents the
+current stack. There are four new instructions that manipulate the stack. Thesallocninstruction
+placesnwords of nonsense on the top of the stack. In a conventional machine, assuming stacks
+grow towards lower addresses, ansallocinstruction would correspond to subtractingnfrom the
+current value of the stack pointer. Thesfreeninstruction removes the topnwords from the
+stack, and corresponds to addingnto the current stack pointer. Thesldr,sp(i) instruction loads
+th
+theiword of the stack into registerr,whereasthesst sp(i),rstores registerrinto theiword.
+Note, the instructionsldandstcannot be used with the stack pointer.
+A program becomesstuckif it attempts to execute:
+*sfreenand the stack does not contain at leastnwords,
+*sldr,sp(i) and the stack does not contain at leasti+1 words or else theiword of the
+stack isns,or
+*sst sp(i),rand the stack does not contain at leasti+1 words.
+As in the original TAL, the typing rules for the modified language prevent well-formed programs
+from becoming stuck.
+Stacks are described bystack types(s), which includenilandt::s. The latter represents a stack
+of the formw::Swherewhas typetandShas types. Stack slots filled with nonsense have type
+ns. Stack types also include stack type variables (
+stack type. The ability to abstract stacks is critical for supporting procedure calls and is discussed
+in detail later.
+7
+nn
+nn
+n|sfreen|sldr,sp(i)|sst sp(i),r
+ds
+th
+th
+r) which may be used to abstract the tail of a
+As before, the register file for the abstract machine is described by a register file type (G) mapping
+registers to types. However, G also maps the distinguished registersptoastacktypes. Finally,
+code blocks and code types support polymorphic abstraction over both types and stack types.
+One of the uses of the stack is to save temporary values during a computation. The general
+problem is to save on the stacknregisters, sayr
+1
+computatione, and then restore the temporary values to their respective registers. This would be
+accomplished by the following instruction sequence where the comments (delimited by%) show the
+stack's type at each step of the computation.
+sallocn
+sst sp(0),r
+1
+.
+.
+.
+sst sp(n-1),r
+n12n
+code fore
+sldr,sp(0)
+1
+.
+.
+.
+sldr,sp(n-1)%t::t::...::t::s
+n
+sfreen
+If, upon entry,rhas typetand the stack is described bys,andifthecodeforeleaves the state
+ii
+of the stack unchanged, then this code sequence is well-typed. Furthermore, the typing discipline
+does not place constraints on the order in which the stores or loads are performed.
+It is straightforward to model higher-level primitives, such aspushandpop. The former can be
+seen as simplysalloc1 followed by a store tosp(0), whereas the latter is a load fromsp(0) followed
+bysfree1. Also, a "jump-and-link" or "call" instruction which automatically moves the return
+address into a register or onto the stack can be synthesized from our primitives. To simplify the
+presentation, we did not include these instructions in STAL; a practical implementation, however,
+would need a full set of instructions appropriate to the architecture.
+The stack is commonly used to save the current return address, and temporary values across
+procedure calls. Which registers to save and in what order is usually specified by a compiler-
+specific calling convention. Here we consider a simple calling convention where it is assumed there
+is one integer argument and one unit result, both of which are passed in registerr1, and the return
+address is passed in the registerra. When invoked, a procedure may choose to place temporaries
+on the stack as shown above, but when it jumps to the return address, the stack should be in the
+same state as it was upon entry. Naively, we might expect the code for a function obeying this
+calling convention to have the following STAL type:
+forall[].{r1:int,sp:s,ra:forall[].{r1:<>,sp:s}}
+Notice that the type of the return address is constrained so that the stack must have the same
+shape upon return as it had upon entry. Hence, if the procedure pushes any arguments onto the
+stack, it must pop them off.
+However, this typing is unsatisfactory for two reasons. The first problem is that there is nothing
+preventing the procedure from popping off values from the stack and then pushing new values (of
+8
+throughr,oftypestthrought, perform some
+n1n
+%s
+%ns::ns::...::ns::s
+%t::ns::...::ns::s
+1
+%t::t::...::t::s
+%t::t::...::t::s
+12n
+%t::t::...::t::s
+12n
+12n
+%s
+the appropriate type) onto the stack. In other words, the caller's stack frame is not protected
+from the function's code. The second problem is much worse: such a function can only be invoked
+from states where the stack is exactly described by
+procedure from two different points in the program. In particular, there is no way for the procedure
+to push its return address on the stack and jump to itself.
+The solution to both problems is to abstract the type of the stack using a stack type variable:
+forall[r].{r1:int,sp:r,ra:forall[].{r1:int,sp:r}}
+To invoke a function with this type, the caller must instantiate the bound stack type variablerwith
+the current type of the stack. As before, the function can only jump to the return address when
+the stack is in the same state as it was upon entry. However, the first problem above is addressed
+because the type checker treatsras an abstract stack type while checking the body of the code.
+Hence, the code cannot perform ansfree,sld,orsston the stack. It must first allocate its own
+space on the stack, only this space may be accessed by the function, and the space must be freed
+2
+before returning to the caller.The second problem is solved because the stack type variable may
+be instantiated in different ways. Hence multiple call sites with different stack states, including
+recursive calls, may now invoke the function. In fact, a recursive call will usually instantiate the
+stack variable with a different type than the original call because unless it is a tail call, it will need
+to store its return address on the stack.
+Figure 4 gives stack-based code for the factorial example of the previous section. The function
+is invoked by moving its environment (an empty tuple) intor1, the argument intor2,andthe
+return address label intoraand jumping to the labellfact. Notice that the nonzero branch must
+save the argument and current return address on the stack before jumping to thefactlabel in a
+recursive call. It is interesting to note that the stack-based code is quite similar to the heap-based
+code of Figure 1. Indeed, the code remains in a continuation-passing style, but instead of passing
+the continuation as a heap-allocated tuple, the environment of the continuation is passed in the
+stack pointer and the code of the continuation is passed in the return address register.
+To more fully appreciate the correspondence, consider the type of the TAL version oflfactfrom
+Figure 1:
+forall[].{r1:<>,r2:int,r3:existsa.<forall[].{r1:a,r2:int},a>}
+We could have used an alternative approach where we pass the components of the continuation
+closure unboxed in separate registers. To do so, the caller must unpack the continuation and the
+function must abstract the type of the continuation's environment resulting in a quantifier rotation:
+forall[a].{r1:<>,r2:int,r3:forall[].{r1:a,r2:int},r4:a}
+Now, it is clear that the STAL code, which has type
+forall[r].{r1:<>,r2:int,ra:forall[].{sp:r,r1:int},sp:r}
+is essentially the same! Indeed, the only difference between a CPS-based compiler, such as SML/NJ,
+and a conventional stack-based compiler, is that for the latter, continuation environments are
+allocated on a stack. Our type system describes this well-known connection elegantly.
+2
+formal proof is difficult.
+9
+s. Thiseffectivelypreventsinvocationofthe
+11
+(H,{sp|->->nil},I)where
+H=
+lfact: code[r]{r1:<>,r2:int,sp:r,ra:t}. % main entry point for factorial
+bneq r2,lnonzero[r]
+mov r1,1 % result is 1
+jmp ra % return
+lnonzero: code[r]{r1:<>,r2:int,sp:r,ra:t}. % code forn/=0
+sub r3,r2,1 %
+salloc 2 % save
+sst sp(0),r2
+sst sp(1),ra
+mov r2,r3 % recursive call
+mov ra,lcont[r]
+jmp lfact[int::t::r]
+r
+lcont: code[r]{r1:int,sp:int::t::r}. % return point of recursive call
+r
+sld r2,sp(0) % restore
+sld ra,sp(1)
+sfree 2
+mul r1,r2,r1 % result is
+jmp ra % return
+lhalt: code[]{r1:int,sp:nil}.
+halt[int]
+I=
+malloc r1[]
+mov r2,6 % argument
+mov ra,lhalt % return address for initial call
+jmp lfact[nil]
+andt=forall[].{r1:int,sp:r}
+r
+Figure 4: STAL Factorial Example
+10
+r
+%ifn=0continue
+r
+n-1
+nand return address to stack
+f act(n-1)
+nand return address
+nxf act(n-1)
+% environment
+Our techniques can be applied to other calling conventions and do not appear to inhibit most
+optimizations. For instance, tail calls can be eliminated in CPS simply by forwarding a continuation
+closure to the next function. If continuations are allocated on the stack, we have the mechanisms
+to pop the current activation frame off the stack and to push any arguments before performing the
+tail call. Furthermore, the type system is expressive enough to type this resetting and adjusting
+for any kind of tail call, not just a self tail call. As another example, some CISC-style conventions
+place the environment, the argument(s), and return address on the stack, and return the result on
+the stack. With this convention, the factorial code would have type:
+forall[r].{sp:<>::int::forall[]{sp:int::r}::r}
+Callee-saves registers (registers whose values must be preserved across function calls) can be handled
+in the same fashion as the stack pointer. In particular, the function holds abstract the type of the
+callee-saves register and requires that the register have the same type upon return. For instance,
+if we wish to preserve registerr3across a call to factorial, we would use the type:
+forall[r, a].{r1:<>,r2:int,r3:a,ra:forall[]{sp:r,r1:int,r3:a},sp:r}
+Translating this type back in to a boxed, heap allocated closure, we obtain:
+forall[a].{r1:<>,r2:int,r3:a,ra:existsb.<forall[]{r1:b,r2:int,r3:a},b>}
+respondence enables transformations developed for heap-based compilers to be used in traditional
+stack-based compilers and vice versa. The generalization to multiple callee-saves registers and other
+calling conventions should be clear. Indeed, we have found that the type system of STAL provides
+a concise way to declaratively specify a variety of calling conventions.
+4Exceptions
+We now consider how to implement exceptions in STAL. We will find that a calling convention
+for function calls in the presence of exceptions may be derived from the heap-based CPS calling
+convention, just as was the case without exceptions. However, implementing this calling convention
+will require that the type system be made more expressive by addingcompoun dstack types. This
+additional expressiveness will turn out to have uses beyond exceptions, allowing most compiler-
+introduced uses of pointers into the midst of the stack.
+4.1 Exception Calling Conventions
+In a heap-based CPS framework, exceptions are implemented by passing two continuations: the
+usual continuation and anexception continuation.Code raises an exception by jumping to the
+latter. For an integer to unit function, this calling convention is expressed as the following TAL
+type (ignoring the outer closure and environment):
+1
+forall[].{r1:int,ra:existsa.<forall[].{r1:<>,r2:a},a>,re:existsa.<forall[].{r1:exn,r2:a},a>}
+11
+11
+11
+111
+22
+12
+Again, the caller might unpack the continuations:
+forall[a,a].{r1:int,ra:forall[].{r1:a,r2:<>},ra:a,re:forall[].{r1:a,r2:exn},re:a}
+121
+Then the caller might attempt to place the continuation environments on stacks, as before:
+forall[r,r].{r1:int,ra:forall[].{sp:r,r1:<>},sp:r,re:forall[].{sp:r,r1:exn},sp:r}(illegal)
+1211
+Unfortunately, this calling convention uses two stack pointers, and STAL has only one stack.
+Observe, though, that the exception continuation's stack is necessarily a tail of the ordinary con-
+tinuation's stack. This observation leads to the following calling convention for exceptions with
+stacks:
+forall[r,r].{sp:ror,r1:int,ra:forall[].{sp:ror,r1:<>},re:ptr(r),re:forall[].{sp:r,r1:exn}}
+12121222
+This type uses some two new constructs we now add to STAL (see Figure 5). Whensandsare
+stack types, the stack typesosis the result of appending the two types. Thus, in the above
+12
+type, the function is presented with a stack with typeror, all of which is expected by the regular
+continuation, but only a tail of which (r) is expected by the exception continuation. Sincerand
+2
+rare quantified, the function may still be used for any stack so long as the exception continuation
+2
+accepts some tail of that stack.
+To raise an exception, the exception is placed in
+continuation. This requires cutting the actual stack down to just that expected by the exception
+continuation. Since the length ofris unknown, this can not be done bysfree. Instead, a pointer
+1
+to the desired position in the stack is supplied inre,andismovedintosp.Thetypeptr(s)isthe
+type of pointers into the stack at a position where the stack has types. Such pointers are obtained
+simply by movingspinto a register.
+4.2 Compound Stacks
+The additional syntax to support exceptions is summarized in Figure 5. The new type constructors
+were discussed above. The word valueptr(i) is used by the operational semantics to represent
+pointers into the stack; the element pointed to is
+Figure 7 for details.) Of course, on a real machine, these would be implemented by actual pointers.
+The instructionsmovr,spandmov sp,rsave and restore the stack pointer, and the instructions
+ds
+sldr,r(i)andsstr(i),rallow for loading from and storing to pointers.
+dsds
+The introduction of pointers into the stack raises a delicate issue for the typing system. When the
+stack pointer is copied into a register, changes to the stack are not reflected in the type of the copy,
+and can invalidate a pointer. Consider the following incorrect code:
+%begin withsp:t::s,sp|->->w::S(t/=ns)
+mov r1,sp % r1:ptr(t::s)
+sfree1%sp:s,sp|->->S
+salloc1%sp:ns::s,sp|->->ns::S
+sld r2,r1(0)%r2:tbutr2|->->ns
+3
+Some language implementations use a separate exception stack; with some minor modifications, this calling
+convention would be satisfactory for such implementations.
+12
+''
+122
+'
+22
+3
+'
+12
+12
+1
+r1and the control is transfered to the exception
+'
+iwords from the bottom of the stack. (See
+typest::=... |ptr(s)
+stack typess::=... |sos
+12
+word valuesw::=... |ptr(i)
+instructionsi::=... |movr,sp|mov sp,r|sldr,r(i)|sstr(i),r
+d
+Figure 5: Additions to TAL for Compound Stacks
+When execution reaches the final line,r1still has typeptr(t::s), but this type is no longer consistent
+with the state of the stack; the pointer inr1points tons.
+To prohibit erroneous loads of this sort, the type system requires that the pointerrbevalidin
+the instructionssldr,r(i),sstr(i),r,andmov sp,r. An invariant of our system is that the
+dsds
+type ofspalways describes the current stack, so using a pointer into the stack will be sound if that
+pointer's type is consistent withsp's type. Supposesphas typesandrhas typeptr(s), thenr
+is valid ifsis a tail ofs(formally, if there exists somessuch thats=sos). If a pointer is
+21
+invalid, it may be neither loaded from nor moved into the stack pointer. In the above example the
+load will be rejected becauser1's typet::sis not a tail ofspstype,ns::s.
+4.3 Using Compound Stacks
+Recall the type for a function in the presence of exceptions:
+forall[r,r].{sp:ror,r1:int,ra:forall[].{sp:ror,r1:<>},re:ptr(r),re:forall[].{sp:r,r1:exn}}
+12121222
+An exception may be raised within the body of such a function by restoring the handler's stack from
+'
+reand jumping to the handler. A new exception handler may be installed by copying the stack
+'
+pointer toreand making forthcoming function calls with the stack type variables instantiated to
+nilandror. Calls that do not install new exception handlers would attach their frames tor
+12
+and pass onrunchanged.
+2
+Since exceptions are probably raised infrequently, an implementation could save a register by storing
+the exception continuation's code pointer on the stack, instead of in its own register. If this
+convention were used, functions would expect stacks with the typero(t::r) and exception
+pointers with the typeptr(t::r)wheret
+handler2handler2
+This last convention illustrates a use for compound stacks that goes beyond implementing excep-
+tions. We have a general tool for locating data of typetamidst the stack by using the calling
+convention:
+forall[r,r].{sp:ro(t::r),r1:ptr(t::r),...}
+121
+One application of this tool would be for implementing Pascal with displays. The primary limitation
+of this tool is that if more than one piece of data is stored amidst the stack, although quantification
+may be used to avoid specifying the precise locations of that data, function calling conventions
+would have to specify in whatorderdata appears on the stack. It appears that this limitation
+could be removed by introducing a limited form of intersection type, but we have not yet explored
+the ramifications of this enhancement.
+13
+sdsds
+s
+s
+12
+''
+12
+'
+'
+1
+1handler2
+=forall[].{sp:r,r1:exn}.
+22
+5 Related and Future Work
+uations by instruction sequences and store shapes by descriptions of the structure of the run-time
+stack." However, Reynolds was primarily concerned with using functors to express an intermediate
+language of a semantics-based compiler for Algol, whereas we are primarily concerned with type
+structure for general-purpose target languages.
+system for a subset of the Java Virtual Machine language. In particular, their type system ensures
+that for any program control point, the Java stack is of the same size each time that control point is
+reached during execution. Consequently, procedure call must be a primitive construct (which it is
+in JVML). In contrast, our treatment supports polymorphic stack recursion, and hence procedure
+calls can be encoded with existing assembly-language primitives.
+lexically scoped containers that have a LIFO ordering on their lifetimes, much like the values on
+a stack. As in our approach, polymorphic recursion on abstracted region variables plays a critical
+role. However, unlike the ob jects in our stacks, regions are variable-sized, and ob jects need not
+be allocated into the region which was most recently created. Furthermore, there is only one
+allocation mechanism in Tofte's system (the stack of regions) and no need for a garbage collector.
+In contrast, STAL only allows allocation at the top of the stack and assumes a garbage collector for
+heap-allocated values. However, the type system for STAL is considerably simpler than the type
+system of Tofte et al., as it requires no effect information in types.
+ventions and checking that implementations respect these conventions. They are able to specify
+features such as a variable number of arguments that our formalism does not address. However,
+their model is explicitly tied to a stack-based calling convention and does not address features such
+as exception handlers. Furthermore, their approach does not integrate the specification of calling
+conventions with a general-purpose type system.
+Although our type system is sufficiently expressive for compilation of a number of source languages,
+it falls short in several areas. First, it cannot support general pointers into the stack because of
+the ordering requirements; nor can stack and heap pointers be unified so that a function taking a
+tuple argument can be passed either a heap-allocated or a stack-allocated tuple. Second, threads
+and advanced mechanisms for implementing first-class continuations such as the work by Hieb et
+However, we claim that the framework presented here is a practical approach to compilation. To
+substantiate this claim, we are constructing a compiler called TALC that maps the KML program-
+chitecture. We have found it straightforward to enrich the target language type system to include
+support for other type constructors, such as references, higher-order constructors, and recursive
+types. The compiler uses an unboxed stack allocation style of continuation passing, as discussed in
+this paper.
+Although we have discussed mechanisms for typing stacks at the assembly language level, our
+techniques generalize to other languages. The same mechanisms, including the use of polymorphic
+14
+recursion to abstract the tail of a stack, can be used to introduce explicit stacks in higher level
+calculi. An intermediate language with explicit stacks would allow control over allocation at a point
+where more information is available to guide allocation decisions.
+6 Summary
+We have given a type system for a typed assembly language with both a heap and a stack. Our
+language is flexible enough to support the following compilation techniques: CPS using both heap
+allocation and stack allocation, a variety of procedure calling conventions, displays, exceptions, tail
+call elimination, and callee-saves registers.
+A key contribution of the type system is that it makes procedure calling conventions explicit and
+provides a means of specifying and checking calling conventions that is grounded in language theory.
+The type system also makes clear the relationship between heap allocation and stack allocation of
+continuation closures, capturing both allocation strategies in one calculus.
+References
+tation, 5:189-219, 1992.
+clsoures.Journal of Functional Programming, 1(1), January 1993.
+Compiling with Continuations. Cambridge University Press, 1992.
+on Principles of Programming Languages, pages 293-302, Austin, January 1989.
+International Symposium on Programming Language Implementation and Logic Programming, pages 1-13, New
+York, August 1991. Springer-Verlag. Volume 528 ofLecture Notes in Computer Science.
+Symposium on Principles of Programming Languages, pages 298-310, San Francisco, January 1995.
+93/14, Department of Computer Science, University of Copenhagen, 1993.
+representation inference. InTwenty-Third ACM Symposium on Principles of Programming Languages, pages
+171-183, St. Petersburg, January 1996.
+Information and Computation, 93:172-221, 1991.
+KML Reference Manual. Department of Computer Science, Cornell University, 1996.
+Conference on Functional Programming, pages 125-135, Amsterdam, June 1997.
+transformations. InACM SIGPLAN International Conference on Functional Programming, pages 85-98, Ams-
+terdam, June 1997.
+collection. InTwenty-First ACM Symposium on Principles of Programming Languages, pages 1-14, January
+1994.
+allocation.ACM Transactions on Computer Systems, 13(3):244-273, August 1995.
+15
+Lisp and Symbolic Compu-
+Sixteenth ACM Symposium
+Third
+Twenty-Second ACM
+ACM SIGPLAN International
+uations. InACM SIGPLAN Conference on Programming Language Design and Implementation, pages 66-77,
+June 1990. Published asSIGPLAN Notices, 25(6).
+Intel Architecture Optimization Manual. Intel Corporation, P.O. Box 7641, Mt. Prospect, IL,
+60056-7641, 1997.
+Scheme. InProceedings of the ACM SIGPLAN '86 Symposium on Compiler Construction, pages 219-233, June
+1986.
+Programming Languages, pages 177-188, Albuquerque, January 1992.
+llin.The Java Virtual Machine Specification. Addison-Wesley, 1996.
+Principles of Programming Languages, pages 271-283, St. Petersburg, January 1996.
+safety through types. InWorkshop on Compiler Support for Systems Software, Tucson, February 1996.
+Twenty-Fifth ACM Symposium on Principles of Programming Languages, San Diego, January 1998. Extended
+version published as Cornell University technical report TR97-1651, November 1997.
+Compiling with Types. PhD thesis, Carnegie Mellon University, 1995. Published as CMU
+Technical Report CMU-CS-95-226.
+Haskell compiler: a technical overview. InProc. UK Joint Framework for Information Technology (JFIT)
+Technical Conference, July 1993.
+Principles of Programming Languages, pages 25-36, San Francisco, January 1995.
+513-523. North-Holland, 1983. Proceedings of the IFIP 9th World Computer Congress.
+1997. ACM SIGPLAN. Published as Boston College Computer Science Dept. Technical Report BCCS-97-03.
+ACM SIGPLAN International Conference on Functional
+Programming, pages 85-98, Amsterdam, June 1997.
+in Abadi. A type system for java bytecode subroutines. InTwenty-Fifth ACM Symposium
+on Principles of Programming Languages, San Diego, January 1998.
+for ML. InACM SIGPLAN Conference on Programming Language Design and Implementation, pages 181-192,
+Philadelphia, May 1996.
+InTwenty-First ACM Symposium on Principles of Programming Languages, pages 188-201, January 1994.
+August 1980.
+16
+Computer J., 6(4):308-20, 1964.
+Nineteenth ACM Symposium on Principles of
+Twenty-Third ACM Symposium on
+Twenty-Second ACM Symposium on
+Information Processing '83, pages
+Workshop on Types in Compilation, Amsterdam, June
+lam-calculus using a stack of regions.
+Proceedings of the1980 LISP Conference, pages 19-28,
+A Formal STAL Semantics
+This appendix contains a complete technical description of our calculus, STAL. The STAL abstract
+The syntax appears in Figure 6. The operational semantics is given as a deterministic rewriting
+system in Figure 7. The notationa[b/c
+notationa{b|->->c}represents map update:
+'
+{b|->->c,b|->->c,...,b|->->c}{b|->->c}={b|->->c, b|->->c,...,b|->->c}
+11nn
+{b|->->c,...,b|->->c}{b|->->c}={b|->->c, b|->->c,...,b|->->c}b/in{b,...,b}
+11nn
+To make the presentation simpler for the branching rules, some extra notation is used for expressing
+sequences of type and stack type instantiations. We introduce a new syntactic class (ps)fortype
+sequences:
+ps::=.|t, ps|s, ps
+The notationw[ps
+I[ps/
+I[./.]=
+I[t, ps/a,
+I[s, ps/r,
+The static semantics is similar to TAL's but requires extra judgments for definitional equality
+of types, stack types, and register file types and uses a more compositional style for instructions.
+Definitional equality is needed because two stack types (such as (int::nil)o(int::nil)andint::int::nil)
+may be syntactically different but represent the same type. The judgments are summarized in
+Figure 8, the rules for type judgments appear in Figure 9, and the rules for term judgments appear
+'
+in Figures 10 and 11. The notation Delta,Delta denotes appending Deltato the front of Delta, that is:
+.,Delta=Delta
+'
+(a,Delta),Delta=a,(Delta,Delta)
+'
+(r,Delta),Delta=r,(Delta,Delta)
+As with TAL, STAL is type sound:
+Theorem A.1 (Type Soundness)If|-Pand
+This theorem is proved using the following two lemmas.
+Lemma A.2 (Sub ject Reduction)If|-Pand
+A well-formed terminal state has the form (H, R{r1|->->w},halt[t
+that|-H:PS and PS;.|-w:twval.
+Lemma A.3 (Progress)If|-Pthen eitherPis a wel l-formed terminal state or there existsP
+'
+such thatP|->-->P.
+17
+bforcina.The
+11nn
+11nn1n
+I
+I[t/a][ps/Delta]
+I[s/r][ps/Delta]
+'
+'
+'
+*''
+P|->-->PthenPis not stuck.
+''
+P|->-->Pthen|-P.
+'
+typest::=a|int|ns|forall[Delta].G|<t,...,t>|existsa.t|ptr(s)
+stack typess::=r|nil|t::s|sos
+initialization flagsf::= 0|1
+label assignmentsPS ::={l:t,...,l:t}
+11
+type assignmentsDelta ::=.|a,Delta|r,Delta
+register assignmentsG ::={r:t,...,r:t,sp:s}
+11
+registersr::=r1| ... |rk
+word valuesw::=l|i|ns|?t|w[t]|w[s]|pac k[t, w]ast|ptr(i)
+smal l valuesv::=r|w|v[t]|v[s]|pac k[t, v]ast
+heap valuesh::=<w,...,w>|code[Delta]G.I
+1
+heapsH::={l|->->h,...,l|->->h}
+1
+register filesR::={r|->->w,...,r|->->w,sp|->->S}
+1
+stacksS::=nil|w::S
+instructionsi::=aopr,r,v|bopr, v|ldr,r(i)|mallocr[~t]|
+d
+movr,v|mov sp,r|movr,sp|sallocn|
+d
+sfree
+sst sp
+unpack
+arithmetic ops aop::=add|sub|mul
+branch ops bop::=beq|bneq|bgt|blt|bgte|blte
+instruction sequencesI::=i;I|jmpv|halt[t]
+programsP::= (H, R, I)
+Figure 6: Syntax of STAL
+18
+f
+1
+f
+n
+n
+1
+12
+nn
+nn
+'
+'
+n
+1nn
+1nn
+sds
+sd
+n|sldr,sp(i)|sldr,r(i)|
+dds
+(i),r|sstr(i),r|str(i),r|
+sdsds
+[a, r],v
+d
+(H, R, I)|->-->Pwhere
+ifI=thenP=
+'
+addr,r,v;I(H, R{r|->->R(r)+R(v)},I)
+dsds
+and similarly for
+''
+beqr, v;I(H, R, I)
+whenR(r)/=0and similarly for
+'''
+beqr, v;I(H, R, I[ps/Delta])
+^
+whenR(r)=0whereR(v)=l[psH(l)=code[Delta]G.I
+and similarly for
+'
+jmpv(H, R, I[ps/Delta])
+^
+whereR(v)=l[psH(l)=code[Delta]G.I
+'
+ldr,r(i);I(H, R{r|->->w},I)
+dsdi
+whereR(r)=landH(l)=<w,...,w>and 0<=i<n
+s
+'
+mallocr[t,...,t];I(H{l|->-> <?t,...,?t>},R{r|->->l},I)
+d1n1
+wherel/inH
+'
+^
+movr,v;I(H, R{r|->->R(v)},I)
+dd
+'
+movr,sp;I(H, R{r|->->ptr(|S|)},I)
+dd
+'
+mov sp,r;I(H, R{sp|->->w::...::w::nil},I)
+sj
+whereR(sp)=w
+n1
+andR(r)=ptr(j)with0<=j<=n
+s
+'
+sallocn;I(H, R{sp|->->ns::...::ns::R(sp)},I)
+'
+sfreen;I(H, R{sp|->->S},I)
+whereR(sp)=w
+1n
+'
+sldr,sp(i);I(H, R{r|->->w},I)
+ddi
+whereR(sp)=w
+0n-1
+'
+sldr,r(i);I(H, R{r|->->w},I)
+dsdj-i
+whereR(r)=ptr(j)andR(sp)=w::...::w::nil
+s
+and 0<=i<j<=n
+'
+sst sp(i),r;I(H, R{sp|->->w::...::w::R(r)::S},I)
+s0
+whereR(sp)=w
+0i
+'
+sstr(i),r;I(H, R{sp|->->w::...::w::R(r)::w::...::w::nil},I)
+dsn
+whereR(r)=ptr(j)andR(sp)=w::...::w::nil
+d
+and 0<=i<j<=n
+'
+str(i),r;I(H{l|->-> <w,...,w,R(r),w,...,w>},R,I)
+ds0
+whereR(r)=landH(l)=<w,...,w>and 0<=i<n
+d
+'
+unpack[a, r],v;I(H, R{r|->->w},I[t/a])
+dd
+^
+whereR(v)=pac k[t, w]ast
+R(r)when
+w
+^
+WhereR(v)=
+'
+^
+R(v)[t
+'
+^
+pac k[t,R(v)]astwhenv=pac k[t, v]ast
+Figure 7: Operational Semantics of STAL
+19
+'
+^
+mulandsub
+bneq,blt,etc.
+''
+bneq,blt,etc.
+'
+'
+0n-1
+'
+nd
+'
+'
+'
+1
+::...::w::nil
+'
+n
+'
+::...::w::S
+'
+::...::w::niland 0<=i<n
+'
+n1
+'
+i-1s
+::...::w::Sand 0<=i
+'
+j-i+1sj-i-11
+n1
+'
+i-1si+1n-1
+0n-1
+'
+'
+v=r
+whenv=w
+'
+v=v[t]
+'''
+JudgementMeaning
+Delta|-ttis a valid type
+Delta|-ssis a valid stack type
+|-PSPS is a valid heap type
+(no context is used because heap types must be closed)
+Delta|-GG is a valid register file type
+Delta|-t=ttandtare equal types
+1212
+Delta|-s=ssandsare equal stack types
+1212
+Delta|-G=GGand Gare equal register file types
+1212
+Delta|-t<=ttis a subtype oft
+121
+Delta|-G<=GGis a register file subtype of G
+121
+|-H:PSthe heapHhas type PS
+PS|-S:sthe stackShas types
+PS|-R:Gthe register fileRhas type G
+PS|-h:thvalthe heap valuehhas typet
+PS; Delta|-w:twvalthe word valuew
+f
+PS; Delta|-w:tfwvalthe word valuew
+(i.e.,whas type
+PS; Delta; G|-v:tthe small valuevhas typet
+''
+PS; Delta; G|-i=>Delta;Ginstructionirequires a context of type PS; Delta; G
+and produces a context of type PS; Delta;G
+PS; Delta; G|-IIis a valid sequence of instructions
+|-PPis a valid program
+Figure 8: Static Semantics of STAL (judgments)
+20
+2
+2
+has typet
+f
+has flagged typet
+torwis ?tandfis 0)
+''
+Delta|-tDelta|-s|-PSDelta|-G
+Delta|-t=tDelta|-s=s
+Delta|-tDelta|-s|-{l
+11nn
+Delta|-t=tDelta|-s=sDelta|-G=G
+121212
+Delta|-t=tDelta|-t=tDelta|-t=t
+211223
+Delta|-t=tDelta|-t=t
+1213
+(ainDelta)
+Delta|-a=a
+'
+Delta,Delta|-G=G
+12
+''
+Delta|-forall[Delta].G=forall[Delta].GDelta|-<t,...,t>=<t,...,t>
+12
+a,Delta|-t=t
+12
+Delta|-existsa.t=existsa.tDelta|-ns=nsDelta|-ptr(s)=ptr(s)
+12
+(rinDelta)
+Delta|-r=r
+Delta|-t=tDelta|-s=s
+1212
+Delta|-t::s=t::s
+1122
+Delta|-s
+Delta|-nilos=s
+Delta|-tDelta|-sDelta|-s
+Delta|-(t::s)os
+1212
+Delta|-sDelta|-sDelta|-s
+1
+Delta|-(sos)os
+123123
+'
+Delta|-s=s
+Delta|-{sp:s, r|->->t,...,r|->->t}={sp:s,r:t,...,r:t}
+11n
+Delta|-t<=tDelta|-G<=G
+1212
+Delta|-t=tDelta|-t<=tDelta|-t<=t
+12
+Delta|-t<=t
+12
+Delta|-t
+ff
+f
+i-1i+1
+11f
+n
+Delta|-<t,...,t,t,t,...,t><=<t,...,t,t,t,...,t>
+1i-1ii+1n
+''
+Delta|-s=sDelta|-t=t(for 1<=i<=n)Delta|-t(forn<i<=m)
+i
+i
+Delta|-{sp:s, r:t,...,r:t}<={
+11mm
+Figure 9: Static Semantics of STAL, Judgments for Types
+21
+.|-t
+i
+Delta|-G=G
+|->->t,...,l|->->t}Delta|-G
+Delta|-s=sDelta|-s=sDelta|-s=s
+211223
+Delta|-s=sDelta|-s=s
+1213
+Delta|-int=int
+'
+Delta|-t=t
+i
+i
+f
+ff
+1f'1'n
+n
+1n1n
+Delta|-s=s
+12
+12
+Delta|-nil=nil
+''
+Delta|-s=sDelta|-s=s
+12
+12
+''
+Delta|-sos=sos
+12
+12
+Delta|-s
+Delta|-sonil=s
+12
+=t::(sos)
+23
+=so(sos)
+'
+Delta|-t=t
+i
+i
+'''
+n1n
+1n
+1223
+Delta|-t<=t
+13
+i
+ff
+f
+i-1i+1
+10f
+n
+1i-1ii+1n
+i
+(m>=n)
+'''
+sp:s,r:t,...,r:t}
+1n
+n
+1
+|-P|-H:PS PS|-S:sPS|-R:G
+|-H:PS PS|-R:G PS;.;G|-I
+|-PSPS|-h:thval
+|-(H, R, I)|-{l|->->h,...,l|->->h}:PS
+1
+PS;.|-w:twval PS|-S:s
+PS|-nil:nil
+PS|-S:sPS;.|-w:twval (for 1<=i<=n)
+ii
+PS|-{sp|->->S, r|->->w,...,r|->->w
+11mm11nn
+f
+PS|-h:thval PS; Delta|-w:twval PS; Delta|-w:t
+f
+i
+PS;.|-w:tfwval
+i
+i
+f
+1f
+n
+PS|-<w,...,w>:<t,...,t>hvalPS|-code[Delta]G.I:forall[Delta].Ghval
+1n
+n
+1
+Delta|-t<=t
+12
+(PS(l)=
+PS; Delta|-l:twval
+2
+'
+Delta|-tPS; Delta|-w:forall[a,Delta].Gwval
+'
+PS; Delta|-w[t]:forall[Delta].G[t/a
+'
+Delta|-tPS; Delta|-w:t[t/a
+'
+PS; Delta|-pac k[t, w]asexistsa.t:existsa.twvalPS; Delta|-ns:nswval
+Delta|-s
+PS; Delta|-ptr(i):ptr(s)wval
+Delta|-t
+0
+PS; Delta|-?t:tfwval
+(G(r)=t)
+PS; Delta; G|-r:t
+''
+Delta|-tPS; Delta; G|-v:forall[a,Delta].G
+''
+PS; Delta; G|-v[t]:forall[Delta].G[t/a]
+Delta|-tPS; Delta; G|-v:t[t/a]
+PS; Delta; G|-pac k[t, v]asexistsa.t:existsa.t
+Delta|-t=tPS; Delta|-w:twvalDelta|-t=tPS; Delta; G|-v:t
+.|-t=tPS|-h:thval
+12
+122
+PS|-h:thvalPS; Delta|-w:twvalPS; Delta; G|-v:t
+1
+Figure 10: STAL Static Semantics, Term Constructs except Instructions
+22
+ii
+(PS ={l:t,...,l:t})
+11nn
+1nn
+PS|-w::S:t::s
+(m>=n)
+}:{sp:s, r:t,...,r:t}
+fwval PS;Delta;G|-v:t
+Delta|-G PS;Delta;G|-I
+t)
+1
+PS; Delta|-i:intwval
+'
+Delta|-sPS; Delta|-w:forall[r,Delta].Gwval
+'
+PS; Delta|-w[s]:forall[Delta].G[s/r
+'
+(|s|=i)
+PS; Delta|-w:twval
+f
+PS; Delta|-w:tfwval
+PS; Delta|-w:twval
+PS; Delta; G|-w:t
+''
+Delta|-sPS; Delta; G|-v:forall[r,Delta].G
+''
+PS; Delta; G|-v[s]:forall[Delta].G[s/r]
+'
+''
+2122
+11
+''
+PS; Delta; G|-i=>Delta;GPS; Delta; G|-I
+PS; Delta; G|-r:int
+s
+PS; Delta; G|-aopr,r,v=>Delta; G{r:int}
+dsd
+PS; Delta; G|-r:intPS; Delta; G|-v:forall[].GDelta|-G<=G
+11212
+PS; Delta; G|-bop
+1
+ff
+0
+PS; Delta; G|-r:<t,...,t
+s
+0n-1
+PS; Delta; G|-ldr,r(i)=>Delta; G{r:t}
+ds
+Delta|-t
+PS; Delta; G|-mallocr[t,...,t]=>Delta; G{r:<t,...,t>}
+1
+PS; Delta; G|-v:t
+PS; Delta; G|-movr,v=>Delta; G{r:t}
+dd
+PS; Delta; G|-movr,sp=>Delta; G{r:ptr(s)}
+d
+PS; Delta; G|-r:ptr(s)Delta|-s=sos
+s2
+PS; Delta; G|-mov sp,r=>Delta; G{sp:s}
+s
+PS; Delta; G|-sallocn=>Delta; G{sp:ns::...::ns::s}
+Delta|-s=t::...::t
+10n-12
+PS; Delta; G|-sfreen=>Delta; G{sp:s}
+Delta|-s=t::...::t::s
+10i2
+PS; Delta; G|-sldr,sp(i)=>Delta; G{r:t}
+d
+PS; Delta; G|-r:ptr(s)Delta|-s
+s3123
+Delta|-s=t::...::t::s
+30i4
+PS; Delta; G|-sldr,r(i)=>Delta; G{r:t}
+ds
+Delta|-s=t::...::t::sPS; Delta; G|-r:t
+10i2
+PS; Delta; G|-sst sp(i),r=>Delta; G{sp:t::...::t::t::s}
+s0
+PS; Delta; G|-r:ptr(s) PS;Delta;G|-r:t
+d3
+Delta|-s=sosDelta|-s=t::...::t::s
+12330i4
+Delta|-s=t::...::t::t::s
+50i-1
+PS; Delta; G|-sstr(i),r=>Delta; G{sp:sos,r:ptr(s)}
+ds2
+f
+f
+n-1
+0
+PS; Delta; G|-r:<t,...,t>
+d
+0n-1
+f
+0
+PS; Delta; G|-str(i),r=>Delta; G{r:<t,...,t,t,t,...,t>}
+dsd
+0
+PS; Delta; G|-v:existsa.t
+PS; Delta; G|-unpack[a, r],v=>a,Delta; G{r:t}
+d
+''''
+Delta|-G<=G
+PS; Delta; G|-i=>Delta;GPS; Delta;G|-I
+1212
+PS; Delta; G|-i;IPS; Delta; G|-jmpvPS; Delta; G|-halt[t]
+Figure 11: STAL Static Semantics, Instructions
+23
+PS; Delta; G|-v:int
+r, v=>Delta; G
+1
+n-1
+>
+(f=1and0<=i<n)
+i
+di
+i
+00
+n
+1n
+(G(sp)=s)
+d
+132
+(G(sp)=s)
+1
+2
+(G(sp)=s)
+n
+::s
+(G(sp)=s)
+1
+2
+(G(sp)=sand0<=i)
+1
+di
+=sos
+(G(sp)=sand0<=i)
+1
+di
+s
+(G(sp)=sand0<=i)
+1
+i-12
+s
+4
+(G(sp)=sand0<=i)
+1
+5d5
+PS; Delta; G|-r:t
+si
+(0<=i<n)
+fff
+i-1i+1
+n-1
+1
+i-1ii+1n-1
+(a/inDelta)
+d
+PS; Delta; G|-v:forall[].GDelta|-tPS; Delta; G|-r1:t
+1

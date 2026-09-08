@@ -1,0 +1,1735 @@
+Toward a Foundational Typed Assembly Language
+Karl Crary
+Carnegie Mellon University
+AbstractDespite the increasing interest in grid computing, a re-
+maining obstacle to its growth is the (understandable) reluc-
+We present the design of a typed assembly language called
+tance of computer owners to download and execute software
+TALT that supports heterogeneous tuples, disjoint sums,
+from developers they do not know or trust, and may not
+and a general account of addressing modes. TALT also im-
+have even heard of. This has limited the practical use of
+plements the von Neumann model in which programs are
+grid computing to the small number of potential users that
+stored in memory, and supports relative addressing. Type
+have been able to obtain the trust of thousands of computer
+safety for execution and for garbage collection are shown
+owners they do not know.
+by machine-checkable proofs. TALT is the first formalized
+typed assembly language to provide any of these features.
+this obstacle by developing a system for trustless dissemi-
+nation of software. In the ConCert framework, a machine
+owner installs a "steward" program that ensures the safety
+Categories and Subject Descriptors
+of any downloaded software. When a new grid application
+is obtained for execution (other parts of the ConCert frame-
+Programming Languages
+work determine when and how this takes place), that ap-
+and Features;
+plication is expressed in the form ofcertified code,in which
+Logics and Meanings of Programs
+the executable code is accompanied by a certificate prov-
+and Verifying and Reasoning about Programs.
+ing that the code is safe. The steward then verifies that the
+certificate is valid before permitting the code to be executed.
+General Terms
+The form of certified code used in the prototype ConCert
+Languages, Security, Verification
+oped primarily at Cornell. TALx86 specializes TAL to the
+Keywords
+Intel IA-32 architecture
+ber of constructs not supported in the theoretical system.
+Typed assembly language, proof-carrying code
+Although certified code eliminates the need to trust the
+developers of grid applications, there remains the need to
+1 Introduction
+trust the soundness of the steward. For TALx86 (other
+production-quality certified code systems such as the Java
+The proliferation of low-cost computing hardware and the
+ubiquity of the Internet has created a situation where a huge
+need for trust stems from four issues:
+amount of computing power is both idle and--in principle--
+accessible to developers. The goal of exploiting these idle
+1. TALx86's safety is justified informally (by analogy to
+computational resources has existed for years, and, begin-
+TAL and other work), not by any rigorous proof.
+2. The safety of TAL (and TALx86 by analogy) is given
+have successfully made profitable use of idle computational
+in terms of an abstract machine. Although this ab-
+resources on the Internet. More recently, this paradigm, now
+stract machine is very low-level for a type system, in
+calledgrid computing,has elicited serious interest among
+a few ways it is still somewhat high-level compared to
+the concrete architecture, and obscures some important
+ducting low-cost supercomputing.
+issues thereof.
+This material is based on work supported in part by NSF grants CCR-
+9984812 and CCR-0121633. Any opinions, findings, and conclusions
+3. The safety proofs that exist are given in written form,
+or recommendations in this publication are those of the authors and
+and consequently checking their veracity is error-prone
+do not reflect the views of this agency.
+and can be done only by experts.
+Permission to make digital or hard copies of all or part of this work for
+personal or classroom use is granted without fee provided that copies
+4. One must trust that the TALx86 type checking soft-
+are not made or distributed for profit or commercial advantage and
+ware correctly implements its type system.
+that copies bear this notice and the full citation on the first page. To
+copy otherwise, to republish, to post on servers or to redistribute to
+lists, requires prior specific permission and/or a fee.
+To a certain extent, the need to trust the steward under
+POPL'03,January 15-17, 2002, New Orleans, Louisiana, USA.
+these conditions is not a serious obstacle. Machine owners
+Copyright 2002 ACM 1-58113-628-5/03/0001 ...$5.00
+routinely trust the safety of a great variety of applications
+1
+Popularly known as the "x86" architecture.
+1
+and have far less formal basis for doing so. Moreover, afor all those issues that pertain to the type system (in-
+certain amount of trust is required in any case, since very fewcluding nearly all central issues), so this second stage
+participants will personally inspect any of the componentsis a type-free simulation argument.
+of the system before using it. Nevertheless, minimizing the
+This topic of this paper is the first stage of this effort. The
+system's trusted computing base is always a laudable goal.
+second is currently underway.
+For grid computing, however, the desire to minimize
+trust in the steward goes beyond such general considera-
+1.1 TALT
+tions. The key issue isextensibility.Our aim is to enable
+the establishment of a decentralized grid computing fabric
+This paper presents a new typed assembly language called
+available for a wide array of participants. For this purpose,
+TALT ("TAL Two"). The aims of TALT are threefold:
+it is implausible to imagine that a single type system will suf-
+First, TALT is intended to provide sufficient expressive
+fice for all potential grid applications. Furthermore, it is also
+power to serve as the target language for certifying compilers
+implausible (and indeed undesirable) that a single trusted
+for expressive, high-level languages (in particular, Standard
+agent would check the soundness of all proposed new type
+systems. Thus, it is necessary that the basic steward can
+operational semantics is intended to account, to the great-
+be safely extended with new type systems from untrusted
+est extent possible, for the central issues of execution on
+sources.
+the actual hardware, so that the second stage of the founda-
+The natural way to achieve this is usingfoundational
+tional safety proof discussed above is a simple (albeit lengthy
+certified code,in which the entire safety argument, down to
+and tedious) simulation argument. Third, TALT is intended
+a safety policy expressed in terms of the concrete architec-
+to be fully formalized and enjoy a machine-checkable type
+ture, is given in machine-checkable form. In its incarnation
+safety proof.
+We begin our discussion with an overview of how TALT
+complete proof of its safety. In our proposed foundational
+accomplishes each of these aims:
+TAL, a program's safety argument is broken into two parts:
+The first portion, a self-certified type system, is the specifi-
+ExpressivenessIn order to provide the expressive power
+cation of a type system and a machine-checkable proof that
+necessary to compile practical, high-level programming lan-
+it satisfies an established safety policy. This portion would
+generally be independent of any particular application. The
+heterogeneous tuples (i.e.,tuples in which not all fields have
+second portion is the application's typing derivation in a
+the same size), recursive types, disjoint sums, and arrays.
+certified type system.
+(Due to space considerations, discussion of arrays is omit-
+In this model, any grid application developer could de-
+ted in this paper, and appears instead in the companion
+vise his or her own type system sufficient to certify his or
+her applications. Whenever a steward encountered a cer-
+ports these constructs using a formalized type theory, rather
+tified application referring to an unknown type system, the
+than using specialized code in the type checker.
+steward would automatically download the type system, ver-
+TALT provides all the expressive power of the original
+ify its safety proof, and thereafter accept applications with
+published TALx86, with the exception of TAL's initializa-
+valid typing derivations in that type system.
+tion flags, which are replaced by another, slightly less gen-
+This model addresses each of the four issues demand-
+eral mechanism (Section 2.2.2). Most later enhancements of
+ing trust of the new type system. The first three issues are
+TALx86 are not supported in TALT, although many could
+clearly dealt with by the use of complete, machine-checkable
+be added without difficulty.
+proofs. By packaging applications with typing derivations,
+as opposed to type annotations, the fourth issue is also ad-
+dressed: a single proof checker can check derivations for anyCompleteness
+type system, and no new checker need ever be employed.ified in terms of a low-level abstract machine, including an
+The aim of this work is to implement a first example
+stack. This brings TAL nearly to as low a level as possible
+of foundational typed assembly language for the Intel IA-
+without committing to the details of an architecture. How-
+32 architecture, and also to build a flexible foundation on
+ever, the TAL machine model did not include a program
+which a variety of other type systems may be built. Accord-
+counter; instead, it included a stream of input instructions
+ingly, we have broken the development of our system into
+that served as a surrogate for the program counter. On any
+two stages (in the model of Hamid,et al.'sdevelopment of
+branch instruction, the machine would discard the current
+stream of instructions and copy in the instructions at the
+branch address. TALT, on the other hand, includes an ex-
+The first stage develops a general typed assembly lan-
+plicit program counter.
+guage that is not (very) specific to any architecture.
+A program counter must be part of the model to address
+This general language is given an operational seman-
+a few important issues: On the concrete architecture, it is
+tics, and itsabstractsafety is established by machine-
+possible in principle to write into the code just ahead of
+checkable proofs of type preservation and progress. The
+the program counter. This is rarely permitted in practice,
+safety of garbage collection is also established at this
+of course, but even so, since programs are in fact stored in
+level (Section 4).
+memory, it is an essential part of a foundational safety proof
+to explicitly address the issue. The requisite argument is not
+The second stage shows that the abstract operational
+difficult (TALT follows most standard practice and makes
+semantics maps correctly onto the concrete architec-
+the code read-only), but the machine model must include
+ture. The general type system is designed to account
+an explicit program counter to make the argument at all.
+The operational semantics of TAL is spec-
+An explicit program counter is also necessary to account
+for the notion of relative addressing, which is particularly
+unit values
+important on the IA-32 where most control transfers (includ-
+values
+ing all conditional jumps) are relative. Finally, an explicit
+program counter, or, more precisely, the fact that each in-
+addresses
+struction is individually addressable, allows for a truecall
+cond. codes
+instruction in which the return address is taken from the
+program counter.
+memories
+register filesR::={r1|->->v, . . . ,rN|->->v,fl|->->cc}
+as part of its trusted computing base. This makes the
+states
+garbage collector effectively a part of the architecture. Ac-
+cordingly, there is no need to prove that the collector itself is
+safe, but it is necessary to show that programs adhere to the
+Figure 1: Untyped TALT Syntax
+system accounts for these invariants, and using those invari-
+ants we prove that type safety is not disrupted by garbage
+This paper is organized as follows: We begin in Section 2
+collection (Section 4).
+by presenting the basic TALT language, and in Section 3
+In the interest of simplicity, the version of TALT in thiswe present extensions supporting disjoint sums and relative
+paper provides only a few representative arithmetic opera-addressing. In Section 4 we give our formalization of GC
+tions (add, subtract, and compare). We also omit any dis-safety. Section 5 discusses the pragmatics of our machine-
+cussion of floating point; this is because the IA-32's imple-checked proofs. Concluding remarks follow in Section 6.
+mentation of floating point (using register stacks) is very
+idiosyncratic. We foresee no fundamental difficulties in ex-
+2 Basic TALT
+tending TALT in either direction.
+TALT also follows stack-based TAL in viewing the stack
+We begin our presentation of the basic TALT language by
+as a separate unbounded resource, rather than as just a des-
+presenting its untyped fragment in four parts: First we
+ignated area of memory. This dramatically simplifies the
+present the structure of values, second we present the ma-
+chine model, third we discuss the instruction set, and fourth
+dational safety proof to show that the TALT stack can be
+we give its operational semantics. Following this, we present
+mapped onto the concrete stack. The principal issue in do-
+the type system. Throughout this section we will remark
+ing so is stack overflow, which we address in Section 6.
+on the differences between TALT and TAL for the benefit
+of those readers familiar with the latter; readers unfamiliar
+Machine-Checkable Proofswith TAL may skip these remarks.
+We adopt the following notational conventions:W
+with the usual LF methodology, TALT typing judgements
+stands for the size of the machine word (measured in bytes,
+correspond to LF types, typing rules correspond to LF
+4 for the IA-32);i,j,k,mandnrange over nonnegative
+constants, and TALT typing derivations correspond to LFintegers;bitranges over{0,1};branges over bytes (i.e.,
+terms. The validity of a typing derivation can then be veri-integers modulo 256); andBranges over words (i.e.,inte-
+8W
+fied by type checking.
+gers modulo 2
+Of central importance to this effort are the type safety
+expressions to be identical. However, section identifiers (l)
+meta-theorems (progress, type preservation, and GC safety).
+and registers (r) will not be considered variables and will
+These are expressed in Twelf in relational form as logic pro-
+not alpha-vary; the only variables appearing in TALT will
+be type constructor variables ().
+tal functions, and are therefore valid meta-proofs. This is
+2.1 Untyped TALT
+discussed in detail in Section 5.
+ValuesTAL separated its collection of values into two syn-
+tactic classes, called "heap" and "word" values.This syn-
+It is important to note that decidable checking of typabil-
+tactic distinction determined what could fit into a register.
+ity isnotan aim for TALT. Unlike TAL and TALx86, TALT
+In TALT, we combine these into a single syntactic class of
+is a type assignment (or Curry-style) system; values contain
+values that may vary in size, and use types rather than syn-
+none of the type annotations they carry in explicitly typed
+tax to determine how they may be used.
+(or Church-style) systems such as TAL. This means that
+The syntax of type-free TALT appears in Figure 1. Val-
+checking the typability of TALT programs requires type in-
+ues are simply sequences of zero or moreunit values,each of
+ference, and since TALT's type system is polymorphic, this
+which is exactly one byte in size. We construct values from
+means that typability checking is almost certainly undecid-
+unit values to ensure that any byte (including bytes in the
+middle of an atomic object) may be addressed, and to make
+Consequently, the safety certificate for a TALT pro-
+it easy to compute the size of any value. Note that it is
+gram is an entire typing derivation, rather than--as it is in
+not merely a cosmetic change to eliminate word values but
+TALx86--a collection of type annotations from which one
+add unit values; unlike TAL's word values, unit values are
+can reconstruct a typing derivation. However, this is largely
+just a matter of presentation; a TALT typing derivation con-
+2
+TAL also included a third class called "small" values. These
+tains little information that would not appear in type anno-
+were not truly values at all, and were renamed "operands" in later
+tations, and we conjecture that what overhead remains can
+k
+u::=b|junk|a:i|:i
+v::=<u, . . . , u>
+1n
+a::=l+n
+cc::={cf|->->bit,zf|->->bit}
+H::={l|->->v, . . . , l|->->v}
+11nn
+1N
+M::= (H, R, a)
+). As usual, we consider alpha-equivalent
+2
+never objects of interest by themselves and are used only to
+construct values.
+registers
+By a convenient abuse of notation, we will also often
+operands
+write values in the form<v, . . . , v>, representing the ap-
+1n
+destinationsd::=rdest(r)|mdest(m, o, n)
+pending of several values.
+conditions::=eq|neq|lt|lte|gt|gte
+There are four forms of value that we may consider
+atomic: literal bytesb, junk values, addressesa(which
+instructions::=addd, o, o
+k
+areWbytes in length), and instruction encodings. The
+k
+metavariableranges over allk-byte instruction encodings.
+At this level of abstraction, it is not appropriate to specify
+k
+the possible values for; instead, instead we assume the
+k
+encodings to instructions (), which we discuss a bit later.
+can have multiple encodings, nor need it be surjective.
+code
+Literals and junk values are one byte in size, and are
+represented directly as unit value constructs. However, ad-
+dresses and (usually) instruction encodings have size greater
+than one byte. Thus, the latter two forms of unit value rep-
+resents bytes taken from larger atomic values:a:irepresents
+k
+theith byte of the addressa, and:irepresents theith byte
+from its identifier. This is formalized using two predicates;
+k
+of the instruction encoding. Wheniis out of the appro-
+hseg(l) holds iflresides in the heap segment and conversely
+priate range, these constructs are considered junk values.
+forcseg. The heap segment is traced by the collector and is
+We will rarely need to deal with subcomponents of ad-
+read/write; the code segment is not traced and is read-only.
+k
+dresses and instructions, so for most purposesaandcan
+Newly allocated sections always appear in the heap segment.
+be viewed as value forms, using the abbreviations:
+The Instruction SetThe basic TALT instruction set is
+def
+a=<a:0, . . . , a:(W1)>
+given in Figure 2. With the exception ofmalloc(which
+def
+kk
+k
+=<:0, . . . , :(k1)>
+is implemented by the run-time system, rather than the ar-
+chitecture), the instructions should be familiar to any pro-
+We also writeBfor the encoding ofBin bytes; on a little-grammer of the IA-32. Note that instructions are given in
+endian architecture such as the IA-32,B=<b, . . . , b>Intel-style (destination first) notation. Note also that the
+W10
+whereBisbb. . . b.load and store instructions of TAL are omitted; they are re-
+01W1
+placed by themovinstruction used with appropriate address-
+ing modes. Code sequences (I) are not used in the TALT
+Machine ModelLike TAL, the TALT machine model con-
+operational semantics, but will arise in the type checking
+tains a memory and register file, but it replaces TAL's
+rules.
+stream of input instructions with an explicit program
+Our notation for operands and destinations is more
+counter. We also augment the state with a collection of con-
+novel. The operandim(v) indicates an immediate operand,
+dition codes (indicating the carry and zero flags here, but it
+and the operandrco(r) indicates that the operand is the
+would not be difficult to add more), which it is convenient
+contents of the registerr. The contents of memory are
+to consider as part of the register file, contained in a flag
+obtained using the operandmco(m, o, n), whereois a sub-
+(fl) register. The TALT register file has a fixed collection
+3
+operand providing an address;nindicates a fixed offset from
+ofNgeneral-purpose registers,r1throughrN.(TAL, on
+that address at which to read, andmindicates the size of the
+the other hand, assumed an infinite supply of registers.)
+operand to be read (typicallyW). Similarly,rdest(r) indi-
+The TALT memory is broken intosections,identified by
+cates that the destination for the instruction is the register
+section identifiersl. A section represents an area of memory
+r, andmdest(m, o, n) indicates that the destination (of size
+that is known to be contiguous. Distinct sections, however,
+m) is in memory, with the address indicated by the operand
+appear in an unknown order in memory, possibly with inter-
+oplus offsetn.
+vening gaps. Thus, we view the TALT memory as a map-
+In order to make TALT as elegant and as general as pos-
+ping of section identifiers to values (since values are simply
+sible, no effort has been made to limit the available operands
+sequences of bytes). Any byte in memory can be addressed
+or operand/instruction combinations to those actually sup-
+(subject to the limitations of the garbage collector) by com-
+ported on the IA-32 (or any other) architecture. (For exam-
+bining a section identifierlwith a numeric offsetninto the
+ple, no real architecture permits arbitrary chaining of indi-
+section to produce an addressl+n.
+rection through nesting of memory operands as TALT does;
+When we consider garbage collection in Section 4, it will
+and few sizes of memory reads are permitted.) It is more
+be necessary for us to distinguish between the heap (which
+elegant to include a variety of unsupported possibilities, and
+the collector manages) and the remainder of memory. We
+to note that these unsupported instructions are simply not
+refer to these portions as the heap and code segments. In
+in the range of the decoding function.
+anticipation of this development, we make a few remarks
+now. We view the segment that a section resides in to be
+an intrinsic property of the section that may be determinedOperational SemanticsThe operational semantics are
+given in Figure 3. The main judgement isM|->->M, indicat-
+3
+On the IA-32,Nis 7, since the stack pointer is treated specially
+ing that the machine stateMsteps to the machine stateM.
+(Section 2.3).
+r::=r1|    |rN
+o::=im(v)|rco(r)|mco(m, o, n)
+12
+|cmpo, o
+12
+|jcc, o
+|jmpo
+|mallocn, d
+|movd, o
+|subd, o, o
+12
+I::=|;I
+Figure 2: Instructions
+'
+'
+'
+M|->->MwhenM= (H, R, a)
+k
+H(a) =<, . . .>and:
+k'
+thenMis:provided that:
+''
+addd, o, o(H, R{fl|->->cc}, a+k)MoDOWNB
+1211
+MoDOWNB
+22
+B+B=B(cc)
+123
+'
+Md:=BDOWN(H, R)
+3
+cmpo, o(H, R{fl|->->cc}, a+k)MoDOWNB
+1211
+MoDOWNB
+22
+BB=B(cc)
+123
+'
+jcc, o(H, R, a)R(fl)
+'
+MoDOWNa
+jcc, o(H, R, a+k)notR(fl)
+'
+'
+jmpo(H, R, a)MoDOWNa
+''
+mallocn, d(H, R, a+k)lis fresh andhseg(l)
+n
+(H{{l|->->junk}}, R, a)d:=l+0DOWN(H, R)
+''
+movd, o(H, R, a+k)MoDOWNv
+'
+Md:=vDOWN(H, R)
+'
+subd, o, o(H, R{fl|->->cc}, a+k)MoDOWNB
+1211
+MoDOWNB
+22
+BB=B(cc)
+123
+'
+Md:=BDOWN(H, R)
+3
+Operand Resolution
+'
+(H, R, a)oDOWNaH(a) =<v, v, v> |v|=n|v|=m
+Mim(v)DOWNv(H, R, a)rco(r)DOWNR(r)(H, R, a)mco(m, o, n)DOWNv
+Destination Propagation
+|v|=W
+(H, R, a)rdest(r) :=vDOWN(H, R{r|->->v})
+'
+'
+(H, R, a)oDOWNl+nH(l) =<v, v, v> |v|=n+n|v|=|v|=mhseg(l)
+1231
+(H, R, a)mdest(m, o, n) :=vDOWN(H{l|->-> <v, v, v>}, R)
+1
+Condition Satisfaction
+cceqiffcc(zf) = 1ccneqiffcc(zf) = 0
+ccltiffcc(cf) = 1ccgteiffcc(cf) = 0
+cclteiffcc(cf) = 1orcc(zf) = 1ccgtiffcc(cf) = 0andcc(zf) = 0
+Definitions
+def
+|<u, . . . , u>|=n
+1n
+def
+H(l+n)=vwhereH(l) =<v, v>and|v|=n
+21
+def
+(l+n) +k=l+(n+k)
+def
+n
+v=<v, . . . , v>
+ntimes
+Figure 3: Operational Semantics
+'
+''
+'
+'
+'
+12312
+2
+2
+3
+21
+kindsK::=Ttypes
+|Titypes of sizei
+types::=type variable
+|B0null value
+|B1bytes
+|tuples
+12
+|box() pointers
+Figure 5: Type Abbreviations
+|mbox() mutable pointers
+|code(G) code values
+|G->0 code pointers
+Note that unlike in TAL, a product space doesnotcon-
+| forall:K.universal quant.
+tain pointers to tuples; in TALT the pointer is made explicit
+| exists:K.existential quant.
+with its own type constructor (box, below). This is one fac-
+|andintersection type
+12
+tor necessary to combine TAL's heap and word values; since
+|orunion type
+12
+tuples and pointers to tuples have different types, they need
+|nstop (nonsense) type
+not be distinguished by syntactic class, as in TAL.
+|voidbottom (empty) type
+Three different types are provided for pointers:box()
+|.recursive type
+is the type of ordinary pointers to,mbox() is the type of
+mutable pointers, and G->0 is the type of code pointers.
+r. f. types G ::={r1:, . . . ,rN:}
+1N
+Each pointer type provides different privileges:boxis co-
+mem. types PS ::={l:, . . . , l:}
+11nn
+variant but immutable,mboxis mutable but invariant, and
+contexts D ::=:K, . . . , :K
+11nn
+only code pointers may be jumped to. A subtyping rule is
+provided for promoting mutable pointers to covariant ones.
+A series of instructions can be given the typecode(G)
+Figure 4: Type Syntax
+when it is executable provided the register file has type G.
+The function space G->0 contains executable code pointers;
+G->0 is likebox(code(G)), except that the pointer must
+There are three main auxiliary judgements to discuss; with
+point into the code segment.
+them established, and using some auxiliary definition given
+Universal and existential quantifiers, intersection types,
+in the figure, the operational semantics should be entirely
+union types, and recursive types are standard (for a Curry-
+unsurprising.
+style system). The top type (ns) contains any value of size 1.
+The resolution of operands is formalized by the judge-
+(Wider top types may be defined by exponents ofns.) The
+mentMoDOWNv, which indicates that in machine stateM,
+bottom type (void) is empty. Several useful abbreviations
+the operandoresolves to valuev. Propagation of computed
+(including a word-sized topnsw) are defined in Figure 5.
+results to their destinations is formalized by the judgement
+There are two kinds for TALT types: the kindTcontains
+Md:=vDOWN(H, R), which indicates that in machine state
+all types, and the sized kindTicontains those types whose
+M, when a destinationdis assigned the valuev, the resulting
+elements all have sizei. For example,B0belongs toT0,
+memory and register file areHandR. Finally, conditions
+B1belongs toT1, andbelongs toT(i+j) if:Ti
+(for the conditional jumpjcc) are handled by the proposi-
+'
+and:Tj. The various pointer types all belong toTW.
+tioncc, which is true if and only if the condition codes
+Uninhabited types may vacuously belong to more than one
+ccsatisfy the condition.
+sized kind (e.g.,B0andB1belongs toT0andT1, andvoid
+A few other points of notation merit comment. Note that
+vacuously belongs to anyTi), but any inhabited type has
+the arithmetic equations in the semantics specify a condition
+at most one sized kind.
+code result as well as the numeric result. The condition code
+Register file types give the type for each register (other
+results are determined in the usual manner: the carry flag
+thanfl). In a well-formed register file type, each register's
+(cf) is set when the operation generates a carry or borrow
+type must have kindT W. Every register must be included,
+(formally, when the denormalized result lies outside the al-
+so no width subtyping rules need be included. Instead, when
+lowable range), and the zero flag (zf) is set when the result
+a register's value is irrelevant it may be given the typensw,
+is zero. Map update is writtenH{l|->->v}for memories
+and promotion tonswcan be done using depth subtyping.
+and similarly for register files. Map extension (for memories
+Heap types give a type for each section.
+only) is writtenH{{l|->->v}}, whenlis fresh.
+2.2.1 Static Semantics
+2.2 The Type System
+The collection of judgements in the TALT static semantics
+The types of TALT appear in Figure 4. The base types
+is given in Figure 6. There are thirteen total judgements.
+areB0which is the type of the zero-length value (<>), and
+Due to space considerations, the complete set of rules is
+B1which is the type of byte literals. The most important
+not given here, but appears in the companion technical re-
+type constructor is the product space,, which contains
+12
+values consisting of two adjacent values, having typesand
+1
+rules are unsurprising and are given only in the Appendix.
+. Since appending of values is associative and has a unit
+2
+Two judgements are for subtyping, one for ordinary types
+(namely<>), products are also associative and have a (left
+and one for register file types; the latter simply applies the
+and right) unit (namelyB0); these equivalences are realized
+former pointwise to each register's type.
+by a collection of subtyping rules.
+def
+0
+=B0
+def
+n+1n
+=
+def
+W
+int=B1
+def
+W
+nsw=ns
+'
+'
+|-MD; PS|-H: PS
+D; PS|-v:(for 1in)
+|-PS; PS|-H: PS; PS|-R: G
+cseg(l); PS; G|-H(l+n
+D; PS|- {l|->->v, . . . , l|->->v}:{l:, . . . , l:}
+1
+|-(H, R, l+n)
+D; PS|-R: G
+where:
+def
+kkk
+k
+1n1
+nD; PS|-v:D|-:T W(for 1iN)
+iii
+<, . . . ,>. . .
+n
+n
+11
+D; PS|- {r1|->->v, . . . ,rN|->->v,fl|->->cc}
+D; PS|-v:
+D; PS|- <>:B0D; PS|- <b>:B1D; PS|- <u>:ns
+D; PS; G|-o:
+D|-G D; PS; G|-v
+D; PS|-v:D; PS|-v:
+1122
+D; PS|-v:
+D; PS|- <v, v>:D; PS|-v:code(G)
+1212
+D; PS; G|-im(v) :D; PS; G|-rco(r) :
+D|-PS(l)D|-PS(l)
+1212
+D; PS; G|-o:box() D|-:TnD|-:Tm
+D|-:TnD|-:Thseg(l)
+12
+D; PS|-l+n:mbox()
+2
+D; PS; G|-o:D|-
+D|-PS(l)D|-:TnD|-:T
+1212
+D; PS|-l+n:box()
+2
+D; PS; G|-d:->G
+D|-PS(l)code(G) D|-:TnD|-Gcseg(l)
+D; PS|-l+n: G->0
+D; PS; G|-rdest(r) :->G{r:}
+(D, :K); PS|-v:
+D; PS|-v:D; PS|-v:
+12
+D; PS; G|-o:mbox() D|-:TnD|-:Tm
+D; PS|-v:forall:K.D; PS|-v:and
+12
+D; PS; G|-mdest(m, o, n) :->G
+D; PS|-v:D|-
+112
+D; PS|-v:
+2
+Figure 7: Typing Rules (except instructions)
+The remaining judgements are for typing. Three are for
+JudgementInterpretation
+typing values, operands, and destinations; two are for typing
+D|-:Kis well-formed with kindK
+code (the second is an auxiliary judgement for typing tuple
+D|-GG is well-formed
+initialization code); and the final three judgements are for
+D|-PSPS is well-formed
+typing machine states and their top-level components. Since
+D|-is a subtype of
+1212
+pointers may appear anywhere and the type of a pointer
+D|-GGGis a subtype of G
+1212
+depends on the type of the value it points to, each typing
+D; PS|-v:valuevhas type
+judgement (except state typing) includes a memory type
+D; PS; G|-o:operandohas type
+as part of the context. Operands, destinations, and code
+'
+D; PS; G|-d:->Gpropagation of a value having
+can also refer to registers, so their typing judgements also
+typeto destinationdresults
+include a register file type in the context. The TALT typing
+'
+in a register file with type G
+rules appear in Figures 7 and 8 and are discussed below.
+D; PS; G|-IcodeIis executable when the
+register file has type G
+Machine StatesThe typing rules for machine states are
+D; PS; G|-
+essentially the same as those of TAL. A state is well-formed
+Iinitsr:mbox()discussed in Section 2.2.2
+if there exists a memory type PS and register file type G
+''
+D; PS|-H: PSHis well-formed with type PS
+with respect to which the memory, register file, and pro-
+D; PS|-R: GRis well-formed with type G
+4
+|-MMis well-formed
+The state typing judgement omits a memory type because the full
+machine state is closed. Although the full memory is also closed, the
+memory typing judgement still includes a memory type as part of the
+context because it is occasionally necessary to type check a memory
+Figure 6: Static Judgements
+under weakened assumptions.
+ii
+1nn11nn
+1N
+:{r1:, . . . ,rN:}
+1N
+G(r) =
+12312
+D; PS; G|-mco(m, o, n) :
+2
+112
+D; PS; G|-o:
+2
+'
+D|-:TW
+12312
+2
+4
+gram counter may be consistently typed. To type check the
+program counter, the current codeIis looked up in mem-
+D; PS; G|-o:intD; PS; G|-o:int
+ory at the program counter's address and type checked. The
+D; PS; G|-d:int->GD; PS; G|-I
+memory's series of bytes is converted to a code sequence by
+from single instructions to series of instructions.
+D; PS; G|-o:intD; PS; G|-o:intD; PS; G|-I
+Two aspects of this will change in future developments.
+First, we will add a second state typing rule for typing the in-
+termediate states of tuple initialization (Section 2.2.2). Sec-
+D; PS; G|-o: G->0 D; PS; G|-I
+for relative addressing (Section 3.2).
+ValuesMost of the value typing rules are self-explanatory,
+but the rules for pointers merit discussion. A pointer with
+offsetnmay be given the typebox() when the section it
+2
+D; PS; G|-o:D; PS; G|-d:->GD; PS; G|-I
+points to can be given typeand all elements ofhave
+121
+sizen(i.e.,they are skipped by the offset). Pointerslinto
+the heap segment may be given the stronger typembox(),
+2
+provided that PS(l) is a subtypeanda supertype of.
+D; PS; G|-o:intD; PS; G|-o:int
+12
+This ensures that when ais written back into the heap
+D; PS; G|-d:int->GD; PS; G|-I
+2
+object, the object still has type PS(l), so the heap's type is
+unchanged.
+The value typing rules tell far from the entire story. Most
+of the flexibility of the TALT type system is provided by its
+subtyping rules. Subtyping provides the introduction facil-
+ity for existential, union, and recursive types; the elimina-
+G(r) =exists:K.(D, :K); PS; G{r:} |-I
+tion facility for universal, intersection, and recursive types;
+associativity and identity rules for products; and distribu-
+tivity rules for intersection and union types and void. There
+are about fifty subtyping rules in all, listed in Appendix A;
+Figure 8: Instruction Typing Rules (except allocation)
+in the interest of brevity, we will discuss individual rules
+only as they arise.
+(The TAL instructionunpackis obtained by combining a
+Operands and DestinationsSince an operand may be
+movinstruction with this rule.)
+drawn from a register, the operand typing judgement in-
+cludes the register file's type in its context. Similarly, since
+2.2.2 Allocation and Initialization
+a destination may be a register, propagation of a value to a
+destination can change the register file type, and hence the
+The most complicated TALT typing rule is formalloc. A
+destination typing judgement includes register file types for
+newly allocated tuple begins filled with junk and is then
+before and after.
+initialized field-by-field. As a tuple is initialized, its type
+The typing rules for memory operands and destinations
+must change to reflect its new components. This means that
+are novel. Using the associativity and identity subtyping
+initialization is incompatible with our usual rule for memory
+5
+rules for products,one casts the pointer's type in the form
+writes.
+(m)box(), whereis the operand's type, and
+12321
+TAL provided an elegant way to handle this using "ini-
+andare the types of the left and right residual values.
+3
+tialization flags," in which the a newly allocated tuple is
+The sizes are checked using kinds:must have kindTnto
+1
+essentially stamped with its ultimate type and any initial-
+match the offset, andmust have kindTmto match the
+2
+operand size. Note that unlike register destinations, mem-
+addressed the aliasing problem because any aliases could
+ory destinations are forbidden to change the data's type;
+have weaker views of a tuple, but not incompatible ones.
+allowing changes would be unsound due to the possibility of
+Moreover, since TAL conflates the mechanisms of pointers
+aliasing.
+and tuples, TAL can track the initialization of a tuple on a
+field-by-field basis. Thus, TAL permits the interleaving of
+InstructionsWith much of the type system moved into the
+initialization with other computation.
+rules for operands and destinations, the typing rules for in-
+Unfortunately, (field-by-field) initialization flags are in-
+structions given in Figure 8 should be largely as expected.
+compatible with TALT because of TALT's decoupling of
+The final two rules merit comment. The first is a subtyp-
+pointers and tuples. Moreover, the flexibility afforded by
+ing rule for code; it states that ifItype checks under as-
+initialization flags appears rarely to be used in practice.
+'
+sumptions Gthen it also type checks under the stronger
+Therefore, as an expedient alternative, TALT requires that
+assumptions G. The second rule is the elimination rule for
+a newly allocated object be fully initialized before any other
+existential types. When a register contains a value of exis-
+computation takes place. During this uninterrupted initial-
+tential type, it allows that value to be unpacked in place.
+ization, it is easy to maintain the invariant that no aliases
+to the new object exist. A more powerful account of initial-
+5
+Althoughmboxis invariant, it does respect symmetric subtyping
+'''
+(that is,mbox()mbox() whenand), so associativity
+and identity for products can be applied beneath anmbox.have not explored such an extension.
+12
+''
+D; PS; G|-addd, o, o;I
+12
+12
+D; PS; G|-cmpo, o;I
+12
+D; PS; G|-jcc, o;I
+D; PS; G|-o: G->0
+D; PS; G|-jmpo;I
+''
+D; PS; G|-movd, o;I
+12
+''
+D; PS; G|-subd, o, o;I
+12
+''
+D; PS; G|-ID|-GG
+D; PS; G|-I
+D; PS; G|-I
+n
+D; PS; G{r:nsw} |-Iinitsr:mbox(ns)
+types
+D; PS; G|-mallocn,rdest(r);I
+D|-
+123
+'
+D|-:TnD|-:TmD|-:Tm
+B < BB > B
+12
+2
+''
+D; PS; G|-o:D; PS; G|-Iinitsr:mbox()
+13
+22
+D; PS|-B:set(B)D; PS|-B:set(B)
+D; PS; G|-mov mdest(m,rco(r), n), o;Iinitsr:mbox()
+set(B)
+=
+D; PS; G{r:mbox()} |-I
+set(B)
+<
+D; PS; G|-Iinitsr:mbox()
+set(B)
+>
+set(B)andset(B)void
+=
+set(B)andset(B)void
+=
+Figure 9: Allocation/Initialization Typing Rules
+set(B)andset(B)void
+<
+set(B)
+<1
+set(B)
+>1
+set(B)
+=1
+The rules implementing this mechanism appear in Fig-
+set(B)
+=1
+ure 9. The first rule provides that when an object is allo-
+cated and its pointer is placed in registerr, type checking
+moves into a special mode in whichr's type can be updated,
+butrcannot be used for any other purpose (the latter is en-
+forced by giving it typensw). After a series of initializing
+moves, the final rule is used to makeran ordinary pointer
+type G->0. This is possible by givinglthe type:
+and shift back into the ordinary type checking mode. An ad-
+ditional (ugly) rule for type checking machine states in the
+it expresses the invariants of initialization so that the Type
+This makes it possible to structure TALT code with any
+Preservation property can be established.
+desired forward and backward jumps, without needing to
+insert arbitrary breaks for typing purposes. More impor-
+2.3 Stacks
+tantly, since any executable address can be given a type
+in this manner, TALT can support a truecallinstruction
+TALT supports stacks using type mechanism essentially
+in which the return address is obtained from the program
+counter. Details of thecallinstruction appear in the tech-
+ety of its special instructions have been folded into TALT's
+operand/destination mechanism. The full details appear in
+3 Extensions
+any discussion of stacks in the body of this paper beyond a
+few remarks here.
+3.1 Disjoint Sums
+Since TALT already has the notions of a null object (<>)
+and of concatenation of objects in memory (), there is no
+The standard implementation of a disjoint sum type, say
+need to introduce special types (niland::) as in stack-
+int+ (intint), is as a pointer to a tuple whose leading
+based TAL. There is, however, a need for a special kind:
+field is a tag identifying the arm of the sum. In TALx86,
+since the stack's type must determine its size, and TALT
+this idiom is supported directly by a special type for dis-
+types do not always do so (e.g.,B0orB1), we require a kind of
+joint sums. In TALT, we decompose it into its primitive
+types whose size are determined (though possibly unknown,
+components:
+as for variables of kindTD). This kind, calledTD, is rarely
+First we add the notion of a singleton type, written
+useful aside from stacks, so for practical purposes it serves
+set(B), containing only the integerB. With it, we can
+=
+as the kind of stack types.
+easily construct a type that faithfully characterizes this en-
+coding:
+2.4 Multiple Entry Points
+box(set(0)
+=
+One facility provided by TALT that may not immediately
+be obvious is the ability to jump into the middle of a block
+An element of this type is either a pointer to anintfollowing
+of code, which is impossible in TAL. Operationally it is
+a zero tag, or a pointer to anintintfollowing a one tag.
+clear that one can jump to any valid address. What is less
+Figure 10 gives the typing rules and some pertinent sub-
+obvious is that such jumps can be well-typed. Suppose
+typing rules forset, and also for the upper and lower sub-
+range typessetandset, which will be useful shortly. By
+H(l) =<v, v>
+codemorecode
+themselves, these rules are not sufficient, however, because
+although the type above accurately expressed the members
+where, for simplicity,<v, v>andvare each
+codemorecodemorecode
+of a disjoint sum, it is not immediately useful.
+executable with register file type G, and suppose|v|=n.
+code
+The problem is the absence of an elimination rule for
+We wish to assignla type so that bothl+0 andl+nhave
+union types. We may load the tag word from offset 0 into
+::=   |set(B)|set(B)|set(B)
+=<>
+D; PS|-B:set(B)
+=
+''
+''
+<>
+int
+int
+int
+<
+>
+>
+set(B) (ifBB)
+<212
+set(B) (ifBB)
+>212
+set(B) (ifB< B)
+<212
+set(B) (ifB> B)
+>212
+Figure 10: Integer Ranges
+n
+code(G)and(nscode(G))
+int)orbox(set(1)intint) ()
+=
+=
+<>
+if the branch is skipped,omust also have the type,
+and clause 7 proves that both cannot simultaneously be true.
+instructions::=   |cmpjcco, o, , o
+123
+Therefore, if the branch is skipped we may conclude thatr
+has type(clause 10). A similar argument shows that if
+2
+eq,Bneq,B
+==set(B)
+=
+satunsat
+the branch is taken, we may conclude thatrhas type
+neq,Beq,B
+==set(B)orset(B)
+<>
+satunsat(clause 9).
+gte,B
+lt,B
+==set(B)
+<
+satunsat
+For example, supposerhas type () and we wish to jump
+gt,B
+lte,B
+==set(B)orset(B)
+<=
+satunsat
+if the tag is zero using
+gt,B
+lte,B
+==set(B)
+>
+satunsat
+gte,B
+lt,B
+cmpjcc mco(W,rco(r),0),im(0),eq, o
+==set(B)orset(B)
+>=
+satunsat
+The first six clauses are easily established (using the argu-
+D; PS; G|-o:int(1)
+1
+ment above for clause 1);andwork out to beset(0)
+D; PS; G|-o:set(B) (2)
+2=
+andset(1). It remains to show that
+D; PS; G|-rco(r) :or(3)=
+12
+D|-or:TW
+12
+'set
+=
+D; PS; G{r:} |-o:(5)
+11
+1
+'
+D; PS; G{r:} |-o:
+21
+2
+and
+,B
+'
+D|-andvoid(7)
+1
+unsat
+,B
+'
+D|-andvoid
+2
+sat
+It is easy to obtain the first using distributivity and the
+D; PS; G|-o: (G{r:})->0 (9)
+31
+contradiction subtyping rulesset(B)andset(B)void
+D; PS; G{r:} |-I(10)
+2
+andset(B)andset(B)void. For the second, observe
+=
+D; PS; G|-cmpjcco, o, , o;I
+123thatset(1)
+=
+latter contradiction subtyping rule. Thus, we may continue
+type checking with a refined type forrin each branch.
+Figure 11: Union Elimination
+In the more general case ofn-ary sums, we may wish
+to case-analyze a sum using binary search to execute logn
+comparisons rather thann1. This can be done using
+the disjoint union, since:
+the same rule by choosing an inequality comparison rather
+box(set(0)int)orbox(set(1)intint)
+==than equality. To set up the rule, it is necessary to use the
+(distributingoroverbox)
+associativity of union types to cast ann-ary sum in the form
+box((set(0)int)or(set(1)intint))
+of a single union type in which one arm is incompatible with
+==
+(distributingorover)
+branching and the other with not branching.
+box((set(0)orset(1))(intor(intint)))
+==
+(promotion ofsettoint)
+=
+3.2 Relative Addressing
+box(int(intor(intint)))
+Given the TALT machine model, PC-relative addressing is
+Then, by comparing the tag to zero, we may determine (dy-
+not difficult to add operationally. We simply add a new
+namically) which arm of the disjoint union the object be-
+operand formpcrel(n) and the operand resolution rules:
+longs to. However, with the rules discussed so far, there is
+no way to take advantage of that information in the static
+(H, R, a)pcrel(+n)DOWNa+n
+typing, so there is no way to access the variant constituents
+of the disjoint union.
+and
+To make it possible to eliminate union types, we add a
+new instructioncmpjcc. Operationally,cmpjcco, o, , ois
+123
+identical to the two-instruction sequencecmpo, o;jcc, o.
+123
+For the type system, however, matters are trickier. Rela-
+What is special about this (pseudo-)instruction is its typing
+tive addressing creates a situation in which code (and there-
+rule.
+fore values in general) may have a certain type only when it
+Supposer:or, andris used in the comparison of
+12
+resides in a particular location, at least when viewed naively.
+otoo. (In the example above,rhas type (), and the
+12
+This situation is undesirable for two reasons: First, making
+comparison is ofmco(W,rco(r),0) toim(0) using condition
+the typing rules aware of the locations in which values re-
+eq.) The idea of the rule is to eliminater's union type by
+side would require wide-scale changes to the type system
+providing a static proof thatrcannot have typewhen the
+2
+that would lessen its elegance. Second, the resulting type
+branch is taken, and thatrcannot have typewhen the
+1
+system would be very unlike conventional type systems in
+branch is skipped. It follows thatrcan be given typefor
+1
+which a value's type does not depend on where it is written.
+the branch, andfor the non-branch.
+2
+To preserve the type system in its current form, we in-
+Consider thecmpjcctyping rule, given in Figure 11.
+troduce a technical device we calldelocalization.We employ
+Clauses 1 and 2 ensure that the comparison itself is permis-
+a functiondelocto convert relative addresses to absolute
+sible, and indicate that the value being compared against is
+ones. For example:
+the numberB. In the event the branch is taken,omust
+1
+,B,B
+have the type, andif it is not.
+deloc(a,pcrel(+n)) =im(a+n)
+satunsat
+Clause 3 identifies the union type of interest,or. It
+12
+deloc(a,pcrel(n)) =im(a) (wherea+n=a)
+follows thatrhas either typeor type. Clause 5 then
+12
+deloc(a,im(v)) =im(v)
+re-types the first operand in the first hypothetical circum-
+deloc(a,rco(r)) =rco(r)
+'
+stance. Thus, ifrhas type, thenohas type. However,
+11
+1deloc(a,mco(m, o, n)) =mco(m,deloc(a, o), n)
+,B
+1
+unsat
+1
+jump
+''
+=
+12
+(0)and(set(0)orset(0))void
+<>
+set(1)andset(0)void
+==
+=<
+>
+set(0) and then the result follows by the
+>
+2
+'
+a+n=a
+'
+(H, R, a)pcrel(n)DOWNa
+''
+Code is always type checked in delocalized form, so no typing
+rule need be provided for relative operands. Consequently,
+the typing rules for instruction can be preserved without
+change.
+The burden of delocalization is assumed in thecodetyp-
+D; PS|-v:(for 1inwherehseg(l))
+ing rule, where values are converted to code sequences for
+D; PS|-v:(for 1inwherecseg(l))
+type checking. Recall the rule from Figure 8:
+D; PS|- {l|->->v, . . . , l|->->v}:{l:, . . . , l:}
+1
+D|-G D; PS; G|-v
+(old)
+where PS= PS{lindom(PS)|cseg(l)}
+D; PS|-v:code(G)
+va) to account
+Figure 12: Modified Rules for GC Safety
+for delocalization:
+k
+k
+<, v>a=deloc(a,va+k)
+<>a=
+Additionally, since the TALT operational semantics does
+not account for garbage collection, we must prove an addi-
+Second, since the typing rule does not know where in mem-
+tional result showing that garbage collection does not dis-
+oryvlies, it is permitted to assume any address (just as
+rupt typability.
+it may assume any register file type) and it records the as-
+Like TALx86, TALT is designed for use with the Boehm-
+sumption in the type:
+there is no need to maintain any tagging invariants in order
+D|-G D; PS; G|-va
+to assist the collector in distinguishing pointers from inte-
+(new)
+D; PS|-v:code(a,G)
+gers. However, oneGC safetycondition must be maintained
+The typecode(a,G) should be read as "code that may be
+executed when the register file has type G,providedit residesEvery live heap object must be reachable by a
+at addressa."chain of pointers from the root set.
+The obligation is discharged in the typing rule for code
+A pointer is permitted to reach an object by pointing any-
+pointers, which admits only properly delocalized pointers as
+where from the object's beginning to its end.Our root set
+code pointers:
+is the collection of values in the register file and stack.
+If this condition is not maintained, the only consequence
+D|-PS(l)code(l+n,G)
+is that live objects may be garbage collected. Therefore,
+D|-:TnD|-Gcseg(l)
+(new)
+for our purposes we define aliveobject to be one whose
+D; PS|-l+n: G->0
+presence is required for the state to be well-typed. Our
+main GC result then will be a proof that garbage collecting
+Note that if a code block is delocalized at an address other
+unreachable objects cannot break typability of the state.
+than where it resides, that address cannot be given a code
+pointer type.In order to satisfy the GC safety condition, we impose
+The only other change that must be made to the typethe following two invariants on well-typed TALT code:
+system is that the top-level state typing rule must be mod-
+1. The code segment contains no (non-accidental) point-
+ified in the obvious manner to account for delocalization:
+ers into the heap segment.
+|-PS; PS|-H: PS; PS|-R: G
+2. Immediate operands contain no (non-accidental) point-
+cseg(l); PS; G|-H(l+nl+n)
+ers into the heap segment.
+|-(H, R, l+n)
+Invariant 1 is necessary because the code segment is not
+part of the collector's root set. Invariant 2 is not stricly
+4 GC Safety
+speaking necessary but is not burdensome either; if an
+operand is part of an instruction in the code segment then
+The principal safety results for TALT, as usual, are Progress
+invariant 2 follows from invariant 1, and if not the instruc-
+and Type Preservation:
+tion is useless anyway. The invariant is imposed because it
+'
+dramatically simplifies the development to follow, since it
+Theorem 4.1 (Progress)If|-MthenM|->->M, for
+'
+means there is no need to formalize how to look for pointers
+someM.
+in code values.
+These invariants are achieved by replacing the typing
+Theorem 4.2 (Type Preservation)If|-MandM|->->
+''
+rules for immediate operands and memories with the rules
+Mthen|-M.
+in Figure 12, which strip all heap sections from the memory
+The Progress proof is by induction on the typing deriva-
+type when typing code sections and immediate operands.
+tion. The Type Preservation proof is by case analysis on the
+To formalize the GC safety theorem, we need a definition
+evaluation derivation, with an outer induction on the typ-
+of unreachability:
+ing derivation (to handle the register file subsumption and
+6
+existential unpacking rules).
+Interior pointers are not permitted by Boehm and Chase's speci-
+D; PS|-v:
+D; PS; G|-im(v) :
+iii
+iii
+1nn11nn
+6
+Definition 4.3SupposeSis a set of heap section identi-
+fiers. ThenSisH-reachablefromvifvcan be written in
+lines purpose
+the form<v,l+n, v>for somelinSandn |H(l)|.
+12
+210 Properties of canonical forms
+252 Properties of conditions
+A section is unreachable from the memory as a whole if
+320 Properties of memory lookup/update/extension
+every section that can reach it is either untraced (i.e.,in the
+349 Instruction decode lemmas
+code segment) or unreachable itself:
+361 Size lemmas
+372 Properties of register file lookup/update
+Definition 4.4SupposeSis a set of heap section identi-
+399 Properties of values
+fiers. ThenSisunreachablefromHif for everylindom(H),
+407 Equality lemmas
+eithercseg(l) orlinSorSis notH-reachable fromH(l).
+429 Properties of natural number arithmetic
+515 Validity (well-behavedness of derivations)
+Definition 4.5SupposeSis a set of heap section identi-
+537 Canonical Forms lemma
+fiers. ThenSisunreachablein (H, R, a) if:
+548 Lemmas regarding type formation
+Sis unreachable fromH, and
+592 Progress
+713 Weakening and strengthening of memory types
+for everyr,Sis notH-reachable fromR(r), and
+844 Operand/destination lemmas
+925 Type Preservation
+Sis notH-reachable fromR(sp).
+1119 GC Safety
+1245 Properties of binary arithmetic
+Note that the definition of unreachability is not deter-
+ministic. WhenSis unreachable inM,Scan be as small
+as the empty set. The definition is crafted in this manner
+Table 1: Safety Proof Breakdown
+because we cannot predict what objects will actually be col-
+lected by a conservative collector. Instead, we prove our
+result for all unreachable sets, thereby covering whatever
+In each of these cases, the last argument (with the "-" mode)
+the collector turns out to do.
+is the sole output argument.
+Theorem 4.6 (GC Safety)SupposeSis unreachable inA proof of a meta-theorem so encoded is a logic program
+(H, R, a)and suppose that|-(H, R, a). Then|-(H\S, R, a),whose type is the relational encoding of the theorem. The
+whereH\S=H(dom(H)\S).program can then (in principle) be given derivations in the
+input arguments and unification variables in the output ar-
+The proof is by induction on the typing derivation.
+guments and executed to obtain the resulting derivations. A
+logic program represents a valid meta-proof if the execution
+always runs to a successful conclusion.
+5 Machine-Checked Proofs
+The Twelf totality checker verifies that the logic program
+is in fact total, with assistance from the programmer in iden-
+The results of this paper are formalized as machine-checked
+tifying the induction variable(s). This consists of checking
+three facts:
+malization is to encode the TALT syntax, type system, and
+1. Mode checking: output arguments (and input argu-
+ments become types and derivations become terms. This
+ments to subcalls) are fully determined.
+process is standard, so we will not belabor it here.
+2. Termination checking: the induction variable(s) de-
+Once the language is formalized, we can state and prove
+crease in all recursive calls.
+the principal meta-theorems: Progress, Type Preservation,
+and GC Safety. A meta-theorem statement is encoded as
+3. Totality checking: in every case analysis, all cases are
+covered.
+principal meta-theorem statements become:
+For details, the reader is referred to Pfenning and
+progress : machineok M
+-? stepsto M M' -? type.
+The specification of TALT in LF consists of 2081 lines
+%mode progress +D1 -D2.
+of Twelf code, and the complete proof of Theorems 4.1, 4.2
+and 4.6 consists of 10137 lines of Twelf code (including com-
+preservation : machineok M
+ments). A breakdown of the proof code for the interested
+-? stepsto M M'
+reader is given in Table 1. The full proof takes approxi-
+-? machineok M' -? type.
+mately three minutes to check in Twelf 1.3R3 on a Pentium 3
+%mode preservation +D1 +D2 -D3.
+with 128 megs of RAM.
+collectok : collect M M'
+-? machineok M6 Conclusion
+-? machineok M' -? type.
+TALT provides an elegant, expressive, and fully formalized
+%mode collectok +D1 +D2 -D3.
+type system for assembly language. The machine-checkable
+For instance, theprogresstheorem is a relation betweensafety theorems of Section 5 provide a complete safety ar-
+machineok Mderivations andstepsto M M'derivations, andgument for TALT programs in terms of a safety policy ex-
+so forth. The%modedeclaration following each statement in-pressed (by the operational semantics) at the assembly lan-
+guage level. To complete a foundational TAL system, this
+Proof Components
+work must be combined with a proof that the TALT oper-Design and Implementation, pages 89-98, Philadelphia,
+ational semantics maps correctly on the concrete architec-Pennsylvania, May 1996.
+ture. TALT is designed so that this latter stage of the proof
+implementation is a type-free simulation argument.
+garbage-collector-safe C compilation.The Journal of C
+TALT is also designed to be easily adaptable to other
+Language Translation, 4(2):126-141, December 1992.
+architectures. The general architectural constants (big-
+endian vs. little-endian, the number of registers, and the
+size of the machine word) are parameters to the language
+an uncooperative environment.Software Practice and
+and can easily be changed. New instructions can also eas-
+Experience, 18(9):807-820, September 1988.
+ily be added; in fact, given the generality of the TALT
+operand/destination mechanism, many "new" instructions
+may already be present. This means that the primary bur-
+national Workshop on Grid Computing, volume 1971 of
+den of specializing TALT to an architecture is accounting
+Lecture Notes in Computer Science, Bangalore, India,
+for its idiosyncrasies (e.g.,the IA-32's treatment of float-
+December 2000. Springer-Verlag.
+ing point, or the delay slots following jumps on many RISC
+architectures).
+Weeks. Flow-directed closure conversion for typed
+One issue not addressed in TALT is the issue of pro-
+languages. InEuropean Symposium on Programming,
+cessor exceptions and faults (e.g.,division by zero, stack
+March 2000.
+overflow, or various floating-point exceptions). These can
+be prohibitively expensive to prevent dynamically, and are
+difficult to prevent statically. Fortunately, for our purposes
+Robert Harper, Jason Liszka, Tom Murphy VII, and
+they can be safely ignored, assuming that the occurrence of
+Frank Pfenning. Trustless grid computing in Con-
+an exception aborts the program, because a program that is
+Cert. Technical Report CMU-CS-02-152, Carnegie Mel-
+no longer running is certainly safe.
+lon University, School of Computer Science, June 2002.
+The issue of stack overflow is a little bit more involved,
+because we must ensure that any stack that overflows will
+cause the stack overflow exception. We can do so by follow-
+Blau. A certifying compiler for Java. In2000 SIG-
+7
+ing the standard practice of precedingthe stack in memory
+PLAN Conference on Programming Language Design
+by at least one (typically many) unmapped memory pages.
+and Implementation, pages 95-107, Vancouver, British
+Anypushinstruction that overflows the stack will there-
+Columbia, June 2000.
+fore hit an unmapped page and cause the exception. The
+http://www.cs.cmu.edu/~concert, Septem-
+sallocinstruction, which increases the stack's size by an
+ber 2001.
+arbitrary amount, is a bit trickier because it could skip all
+the unmapped pages and land in accessible memory. We can
+prevent this by limitingsallocto one page at a time and
+language. Technical Report CMU-CS-02-196, Carnegie
+forcing it to touch the top of the stack aspushdoes. This
+Mellon University, School of Computer Science, Decem-
+ensures that any overflowingsallocwill hit the unmapped
+ber 2002.
+page.
+To assist in the development of TALT programs, we have
+low-level programming langauges. InTwenty-Sixth In-
+also designed an explicitly typed variant of TALT, called
+ternational Colloquium on Automata, Languages, and
+XTALT, that enjoys decidable type checking. XTALT adds
+Programming, volume 1644 ofLecture Notes in Com-
+type annotations to sections and replaces TALT's subtyp-
+puter Science, pages 40-54, Prague, Czech Republic,
+ing with explicit coercions. We are implementing an assem-
+July 1999. Springer-Verlag.
+bler that typechecks XTALT programs, generates the cor-
+responding TALT derivations, and compresses them using
+combined with Dunfield's Standard ML to Popcorn com-
+fan Monnier, and Zhaozhong Ni. A syntactic ap-
+proach to foundational proof-carrying code. InSeven-
+complete certifying compiler from Standard ML to TALT.
+teenth IEEE Symposium on Logic in Computer Science,
+A direct Standard ML to TALT compiler is also underway.
+Copenhagen, Denmark, July 2002.
+References
+framework for defining logics.Journal of the ACM,
+40(1):143-184, January 1993.
+model of types and machine instructions for proof-
+carrying code. InTwenty-Seventh ACM Symposium on
+Developer's Manual, 2001. Order numbers 245470-
+Principles of Programming Languages, pages 243-253,
+245472.
+Boston, January 2000.
+on Grid Computing, volume 2242 ofLecture Notes in
+1996 SIGPLAN Conference on Programming Language
+Computer Science, Denver, Colorado, November 2001.
+7
+Springer-Verlag.
+assuming a downward growing stack
+First Inter-
+IA-32 Intel Architecture Software
+Second International Workshop
+The Java Virtual Ma-
+chine Specification. Addison-Wesley, 1996.scription: Twelf -- a meta-logic framework for deduc-
+tive systems. InSixteenth International Conference on
+Automated Deduction, volume 1632 ofLecture Notes in
+man, Richard Samuels, Frederick Smith, David Walker,
+Computer Science, pages 202-206, Trento, Italy, July
+Stephanie Weirich, and Steve Zdancewic. TALx86: A
+1999. Springer-Verlag.
+realistic typed assembly language. InSecond Work-
+shop on Compiler Support for System Software, At-
+lanta, May 1999.Guide, Version 1.3R4, 2002. Available electronically at
+http://www.cs.cmu.edu/~twelf.
+Walker. Stack-based typed assembly language.Jour-
+nal of Functional Programming, 12(1):43-88, Januarytermination checking for higher-order logic programs.
+2002. An earlier version appeared in the 1998 Work-InEuropean Symposium on Programming, volume 1058
+shop on Types in Compilation, volume 1473 of LectureofLecture Notes in Computer Science, pages 296-310,
+Notes in Computer Science.Link"oping, Sweden, April 1996. Springer-Verlag.
+Glew. From System F to typed assembly language.Deductive Systems. PhD thesis, Carnegie Mellon Uni-
+ACM Transactions on Programming Languages andversity, School of Computer Science, Pittsburgh, Penn-
+Systems, 21(3):527-568, May 1999. An earlier versionsylvania, October 2000.
+appeared in the 1998 Symposium on Principles of Pro-
+gramming Languages.
+November 2000.
+of untrusted software. InTwenty-Eighth ACM Sympo-
+Alias types. InEuropean Symposium on Programming,
+sium on Principles of Programming Languages, pages
+Berlin, Germany, March 2000.
+142-154, London, January 2001.
+to Ada: Strongly-typed language interoperability via
+framework. In G'erard Huet and Gordon Plotkin, ed-
+source translation.Journal of Functional Programming,
+itors,Logical Frameworks, pages 149-181. Cambridge
+8(4):367-412, July 1998.
+University Press, 1991.
+F are equivalent and undecidable.Annals of Pure and
+menting the meta-theory of deductive systems. In
+Applied Logic, 98(1-3):111-156, 1999.
+Eleventh International Conference on Automated De-
+duction, volume 607 ofLecture Notes in Computer Sci-
+ence, pages 537-551, Saratoga Springs, New York, June
+1992. Springer-Verlag.
+Twelf User's
+Automating the Meta Theory of
+http://setiathome.ssl.berkeley.edu,
+A Type Formation and Subtyping Rules
+D|-c:K
+D|-:TD|-:TD|-:TDD|-:TD
+1
+D|-: D()D|-B0:T0D|-B1:T1D|-B:NumD|-
+1
+D|-:TiD|-:Tj
+12
+D|-:TD|-:T
+D|-:T(i+j)D|-box() :TWD|-mbox() :TWD|-sptr() :TW
+12
+D|-GD|-x:NumD|-x:NumD|-x:Num
+D|-G
+D|-code(a,G) :TD|-G->0 :TWD|-set(x) :TWD|-set(x) :TWD|-set(x) :TW
+=
+'
+D, :K|-:TD|-c:KD|-c/K
+D, :K|-:T
+'
+(Kin {TD,Ti})
+'
+D|- forall:K.:TD|- forall:K.:K
+D, :T|-:TD|-. /K
+D, :T|-:T
+D|-ns:T1D|-void:TiD|-.:TD|-.
+D|-:TD|-:TD|-:TDD|-:TD|-:TD|-
+12121
+D|-and:TD|-and:TDD|-and:TDD|-and:Ti
+121212
+D|-:TD|-:TiD|-:TD|-:TD|-:TiD|-
+121212D|-:TDD|-:Ti
+D|-and:TiD|-or:TD|-or:Ti
+121212
+D|-
+12
+D|-
+1
+D|-D|-
+1223
+D|-D|-D|-
+131
+'''''
+D|-GGD|-GGD|-
+''
+D|-code(a,G)code(a,G)D|-G->0G->0D|-box()box()D|-mbox()mbox()
+'''
+D, :K|-
+D|-D|-:TDD|-:TD
+'''
+D|-sptr()sptr()D|- forall:K. forall:K.
+D, :K|-:TD|-c:KD, :K|-:TD|-c:K
+D|- forall:K.c/D|-c/ exists:K.D|- forall:K.
+D, :T|-:T
+D|-:Ti
+D|-:T
+i
+D|-nsD|-voidD|-. /.D|-.. /
+D|-D|-
+D|-:TD|-:T
+12
+21
+D|-andD|-andD|-and
+1212112
+D|-:TiD|-:Ti
+D|-:T
+1
+D|-orD|-and(or)(and)or(and)D|-(
+21212121212
+D|-(or)()or()D|-(or)
+121212
+D|-:TD|-:T
+D|-voidvoidD|-voidvoidD|-mbox()box()
+D|-()()D|-B0D|-B0
+123123
+D|-set(B)intD|-set(B)intD|-set(B)int
+=<
+set(B)andset(B)voidset(B)andset(B)voidset(B)andset(B)voidD|-int exists:Num.set()
+=<=><>
+BBBB
+B< B
+121212
+set(B)set(B)set(B)set(B)set(B)set(B)set(B)set(B)
+<1<2>1>2=1<
+'
+D|-GG
+'
+D|-(for 1iN) D|-
+i
+i
+'''
+D|- {r1:, . . . ,rN:,sp:}  {r1:, . . . ,rN:
+1N
+N
+1
+212
+:TD|-:TD
+212
+D|-:TD
+<>
+D, :K|-:TD, :K|-:Ti
+D|- exists:K.:TD|- exists:K.:Ti
+(Kin {TD,Ti})
+:K
+:TDD|-:TiD|-:T
+212
+12
+:Ti
+D|-:TD|-:TD
+''
+D|-
+2
+12
+''
+2
+12
+D|-D|-
+''
+'
+D, :K|-
+D|- exists:K. exists:K.
+(/in)(/in)
+D|- exists:K.
+D, :T|-:T
+D|-:T
+2
+D|-or
+2112
+'
+1
+1
+''''
+)and()(and)(and)
+1212
+()or()
+12
+D|-()()
+123123
+D|-B0D|-B0
+>
+=
+B> B
+12
+2=1>2
+'
+,sp:}

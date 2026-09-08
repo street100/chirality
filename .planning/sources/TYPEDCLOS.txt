@@ -1,0 +1,1515 @@
+ous environment representations such as those used bythe
+ellashybrid strategies such
+as those suggested b
+in a uniform framework.
+The second stageclosurerepresentationis a type-based
+translation in which the implementation of closures is de-type-check the resulting programs because polymorphism
+termined. The main idea is to representclosures as objects
+(in contrast to the proposed representation ofobjects as clo-
+suresollowing Pierce and Te consider
+objects to be packages of existential type consisting of a sin-Section  we giveanoverview of closure conversion and
+gle method (the code part of the closure) together with athe typing issues involved for the simply-typed-calculus.
+single instance variable (the environment part) whose type
+(the environment representation) is held abstract. This cap-transform for the simply-typed case. In Section  wegivean
+tures the critical "privacy" propertyofenvironment repre-
+sentations for closures. In the simply-typed case wemake
+direct use of Pierce and Turner's model of objects. In the
+polymorphic case wemust in addition exploit the notion of.
+translucencymanifest typesype
+of a polymorphic closure.
+The correctness of both the abstract closure conversion
+and the closure representation stages are proved using the
+method of logical relations. The main idea is to define a
+type-indexed family of simulation relations that establish a
+correspondence between the source and target terms of the
+translation. Once a suitable system of relations has been
+defined it is relatively straightforward to proveby induction
+on the definition of the compilation relation that the source
+and target of the translation are related from whichwemay
+conclude that a closed program and its compilation evaluate
+to the same result. Due to a lack of space the proofs of
+correctness are omitted here. However full details are given
+in the companion tec
+Closure conversion is discussed in descriptions of various
+related toariables in
+the bodies of-abstractions but differs by making the rep-
+resentation of the environment explicit as a data structure.
+Making the environment explicit is important because it ex-
+poses environment construction and variable lookup to an
+optimizer. Furthermore Shao and Appel show that not all
+environment represen
+thus choosing a good environment representation is an im-
+portant part of compilation. Wand and Stecve
+consider two optimizations of the basic closure conversion
+strategy calledselectiveandlightweightclosure conversion
+and provide a correctness proof for each of these in an un-
+tand's work into a typed
+setting and provides correctness proofs for Wand's opti-
+mizations. Hannan's translation is given like ours as a de-
+ductive system but like-lifting he does not consider the
+important issue of environment representation (preferring an
+abstract account) nor does he consider the typing proper-
+ties of the closure-converted code. Finally neither Wand nor
+Hannan consider closure conversion under a type-passing in-
+terpretation of polymorphism.
+Wehave put the ideas in this paper to practical use in
+two separate compilers for ML: one compiler is being used
+to study novel approaches to tag-free garbage collection and
+the other compiler provides a general framework for analyz-
+ing types at run time to determine the shapes of objects.
+Propagating types through closure conversion is necessary
+for both compilers so that types can be examined at run
+time.Wehave also found that typed closure conversion
+along with our other type-preserving translations made it
+possible to find and eliminate compiler bugs since we can au-
+tomatically type-check the output of each compiler phase.
+Some compilers for ML based on representation analysis
+ype information through closure
+conversion.However their information is not enough to
+is implemented by coercions and all polymorphic types are
+represented byasingletype.
+The remainder of this paper is organized as follows: In
+In Section  we provide the details of our type-preserving
+overview of closure conversion and the typing issues involved
+for the predicative fragment of the polymorphic-calculus.
+The formal development of this conversion is given in Section
+Overview of SimplyTyped Closure Conversion
+The main ideas of closure conversion may be illustrated by
+considering the following ML program:
+let val x =
+val y =
+val z =
+val f =w. x  y  w
+in
+f
+end
+The functionfcontains free variablesxandybutnotz.
+Wemay eliminate the references to these variables from the
+body offby abstracting on an environmentenv and replac-
+ingxandyby references to the environment. In compen-
+sation a suitable environmentcontaining the bindings forx
+andymust be passed tofbefore it is applied. This leads
+to the following translation:
+let val x =
+val y =
+val z =
+val f = (env.w. (#x env)  (#y env)  w)
+fx=x, y=yg
+in
+f
+end
+References toxandyin the body offare replaced by
+projections (field selections)#xand#ythat access the corre-
+sponding component of the environment. Since the code for
+fis closed it may be hoisted out of the enclosing definition
+and defined at the top-level. We ignore this "hoisting" phase
+and instead concentrate on the process of closure conversion.
+These simple translations fail to delay the application of
+the code to its environment under call-by-value evaluation.
+A natural representation of a delayed application or closure
+is an ordered pair(code, env)consisting of the code to-
+gether with its environment.Application of a closure to
+an argument proceeds by projecting the code part from the
+closure and applying it simultaneously to the environment
+and the argument according to some calling convention. For
+example:
+let val x =
+val y =
+val z =
+val code =env.w. #x(env)  #y(env)  w
+val env =fx=x, y=yg
+val f = (code, env)
+in
+(# f) (# f)
+end
+But sincecodehas a type of the formo!o!o where
+ve
+ois the type of the environmentenv the closure as a
+ve
+whole would havetype (o!o!o)Thetao showing
+veve
+the type of the environment explicitly.That violates the
+"privacy" of the environment representation. As a result
+using this translation on a well-typed source program will
+not in general result in a well-typed target program. For
+example consider the following ML source program with
+typeint!int:
+let val y =
+in
+if true then
+x. xy
+else
+z. z
+end
+Performing the translation above yields:
+let val y =
+in
+if true then
+(env.x. x  #y(e),fy=yg)
+else
+(env.z. z,fg)
+end
+This program fails to type-check because thethen-arm of
+theif-expression has type (fy:intg!int!int)Thetafy:intg
+while theelse-arm has type (fg !int!int)Thetafg.
+In order to preservetypes in the target language the
+representation of the environmentmay be hidden using ex-
+istential tes the typing rules for exis-
+tentials. Apackoperation pairs a typeowith a valueeas
+an existential holdingoabstract as a type variablet.An
+openoperation takesapackageeand opens it binding the
+abstract type totand the value of the package toxwithin
+the scope ofe. The abstract typetis constrained so that
+it cannot leave the scope of theopenconstruct hence the
+restriction thattnot appear in the free type variables ofoe.
+Usingpackwe can hide the type of the environment for
+a closure value as follows:
+packowith(code;env)ast:(t!o!o)Thetat:
+veveveve
+A closure of typeo!ois represented as a package of type
+t:(t!o!o)Thetatwhere the type of the environment
+veveve
+(o) is held abstract ast.Under this translation the
+veve
+example abovewould be translated to:
+let val y =
+in
+if true then
+packfy:intgwith (env.x. x#y(env),fy=yg)
+ast:(t!int!int)Thetat
+veveve
+else
+packfgwith (env.z. z,fg)
+ast:(t!int!int)Thetat
+veveve
+end
+Since the types of the arms of theif-expression agree the
+target code is well-typed with typet:(t!int!int)Theta
+veve
+t.
+ve
+An applicationee'is correspondingly translated to the
+expression
+open e astwith z :(t!o!o)Thetat
+veveve
+in
+(# z) (# z) e'
+end
+whichopens the package extracts the code and environ-
+ment and applies the code to the environment and the ar-
+gument.
+This representation of closures bears a striking resem-
+blance to the model of objects suggested byPierceand
+Type of the form
+t:tThetao[ttis the type of the instance variable(s) and
+o[type of the method(s). According to the forego-
+ing account closures may be thought of as objects with one
+instance variable (the environment) and one method (the
+code).
+AFormal Account of SimplyTyped Closure Conversion
+In this section we present the details of closure conversion for
+the call-by-value simply-typed-calculus. The conversion
+is described in increasing detail by three stages: The first
+stageabstract closureconversionconverts each function to
+a closure but holds the representation of the closure abstract.
+To simplify the presentation some freedom is allowed in the
+construction of environments but no shared environments
+are used. The second stageenvironment sharing adds more
+structure to the translation thereby allowing environments
+to be shared. The third stageclosurerepresentation makes
+the representation of closures explicit through the use of
+translucent sums. Each stage is defined as a type-directed
+translation and the correctness of the translations is estab-
+lished using logical relations.
+The syntax of the source language is defined as follows:
+Typeso::=bjo!o
+Expressionse::=cjxjx:o: ejee
+Valuesv::=cjx:o: e
+Types (o) consist of base types (b) and function types (!).
+Expressions (e) consist of constants (c) of base type vari-
+ables abstractions and applications. WeuseGammatodenote
+asequenceof type bindings of the formfx:o;:::;x:og
+nn
+(n) where thexare distinct. The judgementGamma'e:o
+i
+asserts that the expressionehas typeounder the type as-
+signment Gamma and is derived from the standard typing rules of
+the simply-typed-calculus. We define the dynamic seman-
+tics of the language using a judgement of the forme,!v(e
+evaluates tov). The judgement is derived from the following
+standard inference rules for call-by-value evaluation:
+e,!x:o:e e,!ve[v=x],!v
+v,!v
+ee,!v
+The results of this paper easily extended to other source types
+including products and sums.
+Delta; Gamma'e:t:oe
+Delta; Gamma'e:oe[o=t]
+Delta]ftg;Gamma]fx:oeg'e:oe(tFTV(oe);tDelta)
+Delta; Gamma'packowitheast:oe
+Delta; Gamma'openeastwithxine:oe
+Figure : Typing Rules for Existentials
+.Abstract Closure Conversion
+cl
+The target language for abstract closure conversionis
+defined as follows:
+Typeso::=bjo!ojhoTheta:::Thetaoijcode(o;o;o)
+nve
+Exp'se::=cjxjeejhe;:::;eijss(e)j
+ni
+x:o:x:o:ejhhe;eii
+veve
+Valuesv::=cjx:o:x:o:ejhv;:::;vijhhv;vii
+veven
+In the introduction we informally presented closures as par-
+tial applications. As noted we wish to delay this partial ap-
+plication until the closure is applied to an argument so that
+the code and environment remain separate and the code can
+be shared among each instantiation of the closure. There-
+fore in this account of closure conversion we representthe
+delayed partial application as an abstract closure of the form
+hhe; eiiwhereeis the code andeis the environment. This
+veve
+allows us to distinguish between delayed partial applications
+(closures) and closure application (ee). Code expressions
+x:o:x:o:e are a restricted form of closed-expressions
+veve
+that abstract both an environment(x) and an argument
+ve
+(x). The types of code expressions are also distinguished
+from the types of closures and are written ascode(o;o;o)
+ve
+whereoo andoare the types of the environment the
+ve
+argument and the return value respectively.
+cl
+The typing rules forare standard except for code and
+closures which are defined as follows:
+fx:o;x:og'e:o
+veve
+Gamma'x:o:x:o:e:code(o;o;o)
+veveve
+Gamma'e:code(o;o;o)Gamma'e:o
+veveve
+Gamma'hhe; eii:o!o
+ve
+Since we require code to be closed in order that it maybe
+hoisted to the top level onlyx:o(the environment) and
+veve
+x:o(the argument) can be assumed when typing the body
+of the code.
+Evaluation of closures and application proceeds as fol-
+lows:
+e,!ve,!v
+hhe;eii,!hhv;vii
+e,!hhx:o:x:o:e; viie,!ve[v=x;v=x],!v
+veveveveve
+ee,!v
+We define abstract closure conversion as a type-directed
+cl
+translation from the source language toin Figure . The
+translation is formulated as a deductive system with judge-
+ments of the form Gamma;x:oe;eandGamma;x:oGamma;e
+ve
+where Gamma and Gammaare source type assignmentsois a source
+typeeis a source expression andeandeare target
+ve
+expressions. The variablexis considered as the current ar-
+gument while the other free variables in a source expressionstitutions (fl) mapping variables to their respectiveclassof
+should be in Gamma and accessed through the currentenviron-
+ment in the translation.The judgementGamma;x:oe;e
+asserts thateis the translation ofeunder the assump-
+tion that Gamma]fx:og'e:ofor someo. The judgement
+Gamma;x:oGamma;easserts thateis an expression that eval-
+veve
+uates to the environment corresponding to Gammaunder the as-
+sumption that each binding in Gammaoccurs in Gamma]fx:og. Note
+that the order of bindings in Gamma is important and thus it is
+considered to be a sequence and not a set.
+In a translated expressionxis always used to hold the
+ve
+currentlocalenvironment.Consequently the translation
+th
+rule (env) maps a source variablexfound in theiposition
+i
+th
+of type assignment Gamma to theiprojection of the environment
+variablex while the rule (arg) translates the argument
+ve
+variablexto itself.
+The translation of an abstraction produces a closure con-
+sisting of code and an environment. To construct the envi-
+ronment wechoose a type assignmentGammasuchthatGamma;x:o
+Gamma;eis derivable via the (context) rule and Gamma;x:o
+ve
+e;e.Thesetwo constraints can be summarized bysaying
+that every binding in Gammacan also be found in Gamma]fx:og.
+In a more detailed formulation Gammawould be obtained from
+Gamma]fx:ogvia the application ofstrengtheningandexchange
+rules. Furthermore Gammais required to contain bindings for all
+of the free variables in the original functionx:o: e.The
+environment itself is constructed via the (context)rule by
+translating eachofthevariables occurring in Gamma(namely
+x;DeltaDeltaDelta;x) to the target expressionse;DeltaDeltaDelta;e. The result-
+nn
+ing expressions are placed in a tuple (he;:::;ei) to form
+n
+the environment data structure of the closure. The environ-
+ment has typehoThetaDelta Delta DeltaThetaoiwhichwe summarize by writing
+n
+jGammaj.
+To produce the code of the closure we translate the
+body of the source function under the strengthened assump-
+tions Gamma;x:o producing the body of the codee and then
+we abstract the environment and argument resulting in
+x:jGammaj:x:o: e.
+ve
+Using a dummy argument(x:b) to translate an entire
+closed program it is easy to proveby induction on the
+derivation of the translation that the translation preserves
+the type of a program.
+Theorem If;'e:oand;;x:be;ethen;'e:o.
+Toprove the operational correctness of the translation
+weuseatype-indexed family of logical relations relating
+closed source expressions to closed target expressions ()
+and closed source values to closed target values (ss). The
+relations are defined by induction on source types as follows:
+eeiffe,!vande,!vandvssv
+oo
+cssc
+b
+vssvifffor allvssvvvvv.
+o!ooo
+We extend the relation to finite source (fl) and target sub-
+values. These relations are defined as follows:
+flss[hv;:::;vi=x;v=x]
+nve
+fx:o;:::;x:og;x:o
+nn
+ifffl(x)ssvfor inandfl(x)ssv.
+ioio
+i
+(const)Gamma;x:oc;c(arg)Gamma;x:ox;x
+Gamma;x:oGamma;eGamma;x:oe;e
+ve
+(abs)
+Gamma;x:ox:o:e;hhx:jGammaj:x:o: e;e
+veve
+Gamma;x:ox;e:::Gamma;x:ox;e
+(context)
+Gamma;x:ofx:o;:::;x:og;he;:::;ei
+nn
+Figure : Simply-Typed Abstract Closure Conversion
+Theorem  (Operational Correctness)Letflssfl.
+Gamma;x:o
+IfGamma]fx:og'e:oandGamma;x:oe;e thenfl(e)
+o
+fl(e).
+This theorem and the definition of the relations imply
+that for a closed program with a base type the results of
+evaluation of the original program and its translation are
+the same.
+.Sharing Environments
+Some implementations of functional programming languages
+use environments with nested structures that may share
+some portions of the environment with other closures. Shar-
+ing environments decreases the amount of space consumed
+by a closure and decreases the time to construct the closure's
+environment. However sharing can also require extra in-
+structions to access a variable's binding in the environment.
+Furthermore sharing environments naively can lead to space
+problems in the presence of a standard tracing garbage col-
+lector. In this section we extend our closure conversion to
+allow for but not require shared environments. Wedosoby
+adding extra structure to the typing contexts of the trans-
+lation judgement and use this extra structure to guide the
+vironments.Wethen
+showhow the resulting translation subsumes a wide variety
+of environment representations used in practice.
+In the previous section translation judgements were of
+the form Gamma;x:oe;ewhere Gamma was aflattype assign-
+ment of the formfx:o;:::;x:og. Here we add extra
+nn
+structure to the translation judgementbyusingnestedtype
+assignments defined as follows:
+Theta::=fx:ogjhTheta;:::;Thetai
+m
+A nested type assignment is either a single type binding
+or a sequence of nested type assignments.The environ-
+ment corresponding to the type assignment Theta is represented
+in the target language bytypejThetajwherejfx:ogj=oand
+jhTheta;:::;Thetaij=hjThetajTheta:::ThetajThetaji. Clearlywe can obtain
+mm
+a non-nested type assignment (Gamma) from a nested type assign-
+ment (Theta) simply by dropping the extra structure. Hence
+we consider Theta to representanestedtype assignmentaswell
+as its corresponding flat type assignment.
+The relevant translation rules for closure conversion with
+nested environments are given in Figure . The other trans-
+lation rules are the same as in Figure  replacing Gamma with
+Theta.
+The (arg) rule translates a nested type assignmentcon-
+sisting of only the current argumenttothevariable itself.
+(env)fx:o;:::;x:og;x:ox;ss(x)
+nniive
+Gamma;x:oe;eGamma;x:oe;e
+(app)
+iiGamma;x:oee;ee
+nn
+(Gamma]fx:og'x:o)
+ii
+n
+The (env) rule gives us the currentenvironment directly as
+xallowing us to avoid creating a copy. This rule coupled
+ve
+with the (env-tuple) rule allows us to construct shared envi-
+ronments as nested tuples. If we translate Theta toeunder the
+type assignmentTheta then the (subenv) rule lets us translate
+i
+Thetatoe[ss(x)=xype assignmentwhich contains
+iveve
+th
+Thetaas theicomponent. Variablexis translated as a nested
+i
+type assignmentfx:ogby(var).
+Nested type assignments are flexible enough to repre-
+sentvarious environment representations used in practice.
+For example the Categorical Abstract Mac
+uses linked lists to representenvironments. This is reflected
+in our framework by restricting the shape of nested type as-
+signments and by restricting the (env-tuple) rule to "cons"
+the current argumentonto the currentenvironment:
+(CAM context)Theta::=fx:ogjhfx:og;Thetai
+cc
+(env-tuple)Theta;x:ohx:o;Thetai;hx; xi
+ccve
+The advantage of the CAM strategy is that the cost of the
+construction of a new environment is constant. However
+in the worst case accessing values in the environmenttakes
+time proportional to the length of the environment.
+In contrast the Fvironments with no
+sharing. The closure conversion of Figure  accurately mod-
+els the environment strategy of the FAM if wechoose a spe-
+cific strengthening strategy in the (abs) rule where only the
+free variables of the function are preserved in the resulting
+closure's environment. The advantage of the FAM environ-
+ment representation is that the cost of variable lookup is
+always constant and the representation is "safe for space"
+wever constructing
+the environment for a closure takes time proportional to the
+number of free variables in the function and closures cannot
+share portions of their environment.
+Clearly there are a variety of other strategies for form-
+ing environments.For example the shared closure strat-
+egy described b
+space can also be formulated in our framework. However
+to determine a good representation for each closure's envi-
+ronment requires a good deal more information including
+an estimate as to howmany times eachvariable is accessed
+when garbage collection can occur what garbage collection
+algorithm is usedetc.
+.Closure Representation
+Abstract closure conversion chooses an environment repre-
+sentation for each closure and makes the construction of clo-
+sures explicit. However abstract closure conversion makes
+(arg)fx:og;x:ofx:og;x(env)Theta;x:oTheta;x(var)
+Theta;x:oTheta;e
+i
+(subenv)(env-tuple)
+hTheta;:::;Thetai;x:oTheta;e[ss(x)=x]
+niveve
+Figure : Simply-Typed Closure Conversion using Nested Environments
+the extraction of the code and environment in an application
+implicit in the operational semantics. Ideally these extrac-
+tion operations should be explicit so that an optimizer can
+eliminate redundant projections. For instance if the same
+closure is repeatedly applied to some arguments in a loop
+we should be able to extract the code and environmentof
+the closure one time name these values and then use these
+names within the loop.
+We therefore define a target languagewith existential
+types as follows:
+Typeso::=bjtjhoTheta:::Thetaoijcode(o;o;o)jt:o
+nve
+Exp'se::=cje(e;e)jx:o:x:o:ejhe;:::;eij
+veven
+ss(e)jpackowitheasoj
+i
+openeastwithx:oine
+cl
+This language is the same asexcept for the addition
+of package values of typet:othat pair an abstract type (t)
+with a value of typeo.Function types (!) are no longer
+necessary because they can be represented using other type
+constructors (namelyandcode(o;o;o)). In order to
+ve
+prevent the partial application of the code to its environ-
+ment we restrict applications to the forme(e;e). The
+typing rules and evaluation ofpackandopenexpressions
+cl
+We begin by defining a translation fromtotypes
+denotedjojand defined as follows:
+jbj=b
+jhoTheta:::Thetaoij=hjojTheta:::Thetajoji
+nn
+jcode(o;o;o)j=code(joj;joj;joj)
+veve
+jo!oj=t:hcode(t;joj;joj)Thetati:
+veveve
+The translation of an arrowtype is a pair consisting of codeenvironment so that their representations remain private to
+and an environment with the environmenttype (t) held
+ve
+abstract using an existential.
+cl
+The translation mappingterms toterms is sum-
+marized in Figure . The translation defines judgements of
+cl
+the form Gammae:o;ewhere Gammaeandoare atype
+assignment expression and type respectively andeis a
+expression.The interesting rules are (closure)and (app).
+cl
+The other rules (not shown) simply map the othercon-
+structs to theircounterparts. A closure is translated to a
+pair of the code and the environmentpacked with the type
+of the environment. The translation of an application ex-
+tracts from a package the pair of a code and an environment
+and applies the code to the environment and the argument.
+It is easy prove that the translation preserves the type
+of a program up to the translation of the type. Wedoso
+by first extending the type translation to type assignments
+writing:
+jfx:o;:::;x:ogj=fx:joj;:::;x:jojg
+nnnn
+Theta;x:ofx:og;e
+ve
+Theta;x:ox;e
+Theta;x:oTheta;eDeltaDeltaDeltaTheta;x:oTheta;e
+nn
+Theta;x:ohTheta;:::;Thetai;he;:::;ei
+nn
+Theorem IfGamma'e:oandGammae:o;e then;;jGammaj'
+e:joj.
+Operational correctness of the translation is proven using
+clcl
+logical relations betweenandexpressionsand
+cl
+values andandsubstitutions. The definition of
+relations and the proof of the operational correctness are
+found in the tec
+Overview of Polymorphic Closure Conversion
+Closure conversion for a language with ML-style (i.e.pred-
+icativws a similar pattern
+to the simply-typed case but with the additional complica-
+tion that wemust account for free type variables as well
+as free value variables in the code of an abstraction and
+both value abstractions (-terms) and type abstractions (Lambda-
+terms) induce the creation of closures. In this section we
+giveanoverview of the typing difficulties encountered when
+closure converting value abstractions. The treatmentoftype
+abstractions is similar (see Section  for details).
+To eliminate free occurrences of type variables and or-
+dinary variables from the code we abstract with respect to
+atype environment and a value environment replacing free
+variables by references to the appropriate environment. By
+abstracting both free type variables and free value variables
+the code becomes closed and can be hoisted to the top level.
+The abstracted code is then "partially applied" to suitable
+representations of the type and value environments to form a
+polymorphic closure. As in the simply-typed case we need a
+data structure to representthedelayed partial application of
+the code to its environments. Also we need to abstract both
+thekindof the type environment and thetypeof the value
+the closure. Without the abstraction weruninto the same
+typing problems that we encountered with the simply-typed
+case.
+As a running example consider the expression:
+x:t.(x:t,y:t, z:int)
+of typet!(tThetatThetaint)wheretandtare free type
+variables andyandzare free value variables of typetand
+intrespectively. After closure conversion this expression is
+translated to the partial application
+let val code =
+Lambdatenv ::ft::Omega,t::Omegag.
+venv :fy:#ttenv, z:intg.
+x:(#ttenv).(x, #y venv, #z venv)
+in
+codeft=t,t=tgfy=y, z=zg
+end
+Gammae:code(o;o;o);eGammae:o;e
+ve
+(closure)
+Gammahhe; eii:o!o;packjojwithhe;eiasjo!oj
+ve
+Gammae:o!o;e
+(app)Gammaee:o
+openeastwithx:hcode(t;joj;joj)Thetatiin(ssx)(ssx; e)
+veve
+Figure : Important Rules of Simply-Typed Closure Representation
+Thecodeabstracts type environment(tenv) and value en-
+vironment(venv) arguments. The actual type environment
+ft=t,t=tg is a constructor record with kindft::Omegat::Omegag
+where Omega is the kind of monotypes. The actual value envi-
+ronmentfy=y, z=zgis a record with typefy:t, z:intg.
+However to keep the code closed so that it may be hoisted
+all references to free type variables in the type ofvenvmust
+come fromtenv.Thus we givevenvthe typefy:#ttenv,
+z:intg. Similarly the code's argumentxis given the type
+#ttenv. Consequentlythecodepart of the closure is ations are based on the idea oftranslucent sumsman-
+closed expression of closed typeoewhere
+oe=tenv::ft::Omega,t::Omegag.
+fy:#ttenv, z:intg!
+(#ttenv)!((#ttenv)Theta(#ttenv)Thetaint)
+It is easy to check that the entire expression has type
+t!(tThetatThetaint) and thus the type of the original function
+is preserved.
+Wemust now translate the partial application of thecode
+to it environments into a data structure. The structure must
+be "mixed-phased" because it needs to hold a type (the type
+environment) as well as values (the code and value environ-
+ment). A first attempt is to represent the data structure as
+a packagee where
+e= packft=t,t=tgwith (code,fy=y, z=zg)
+ast::.oeThetao
+teteve
+andcodeis the code of the closure above and
+=ft::Omega,t::Omegag
+te
+o=fy:#tt, z:intg
+vete
+It is easy to verify thateis well-typed under the typing rule
+forpack.
+Unfortunately there is a problem with this approach:
+an application ofeto some argumente:tmustopenthe
+package to extract the code type and value environments
+prior to the call:
+openeast::with z:oeThetao
+teteve
+in
+(# z)t(# z)e
+te
+end
+Although this is the "obvious" translation of application it
+failstobewell-typed! The difficulty is thateis of typet
+whereas the expression(# z)t(# z)has type:
+te
+(#tt)!((#tt)Theta(#tt)Thetaint).
+tetete
+Sincetis abstracttis not provably equivalentto#tt
+tete
+and this translation of application fails to typecheck.
+veve
+ve
+ve
+ve
+Gammae:o;e
+;(xDom(Gamma))
+ve
+The problem is that existentials provide a certain kind
+of mixed-phase data structure where the type portionmust
+be abstract. We can use this to hide representations but
+here we need to know what the type environment actually
+is in order to determine the type of the closure. In short
+we need a mixed-phase data structure that does not hide its
+type component.
+This same problem has been encountered in the study
+of the ML-liktsolu-
+ifest typeshprovide the power of both existentials
+(weak sums) and transparent sums (strong sums). By as-
+cribing the translucent sum type
+t=ft=t,t=tg.oeThetao
+teve
+to the closure the equationt=ft=t,t=tgis propagated
+te
+into the scope of the abstraction so that in particular#t
+t=#tft=t,t=tg=t and thus the translation of
+te
+application is type correct.
+The next step is to hide the representation of the value
+environmentaswe did in the simply-typed case. If wesimply
+abstract the typeofrom the abovetype expression we
+ve
+obtain
+t=ft=t,t=tg.t::Omega.oeThetat
+teveve
+wheretis the abstract type of the value environment.
+ve
+However this fails to maketype sense because wehave ab-
+stracted the type of the value environment in the closure
+but not the corresponding argumenttype of the code of the
+closure. The translation of application is ill-typed because
+the value environment has abstract typet but the domain
+ve
+type of(# z)tisfy:t, z:intg.Sincetis abstract
+teve
+these twotypes are considered distinct. In order to simul-
+taneously abstract the type of the value environmentand
+the corresponding argumenttype in the code weneedto
+replace both types with the same abstract typet.Todo
+ve
+this wemust show that the twotypes are equivalent. This
+can be accomplished by requiring that the formal type envi-
+ronment argument(tenv) is only instantiated with the type
+environmentt. One waytoachieve this is to perform the
+te
+application of the code tot but the goal of closure con-
+te
+version is todelaysuch partial applications. An alternative
+approach is to use translucency again andcoercethe code
+so that it has the typeoe where:
+oe=tenv=t::.
+tete
+fy:#ttenv, z:intg!
+(#ttenv)!((#ttenv)Theta(#ttenv)Thetaint)
+Adding the constrainttenv=tto the type of the code
+te
+has the effect of performing the type application at thetype-
+level but delays the application at theterm-level. Note that
+oeis a super-type of the original code typeoeaccording to
+the rules of the translucent sum calculus.Consequently
+the code remains the same (i.e. closed) and can still be
+hoisted to the top level. In contrast if we had performed
+the type application the resulting code would not be closed
+(containing free references tot).
+te
+Sincetenv=tandt=ft=t,t=tg it follows that
+tete
+tenv=ft=t,t=tgand thus(#ttenv)=t. Consequently
+ii
+the data structure holding the components of the closure can
+be coerced to the equivalenttype:
+t=ft=t,t=tg.oeThetafy:t,z:intg
+te
+whereoeis
+oe=tenv=t::.fy:t,z:intg!
+tete
+t!(tThetatThetaint)
+Since this equivalenttype makes no mention of the type
+environmenttexcept in the constraintfortenvwemay
+te
+drop the constraintont abstract the type of the value
+te
+environment(fy:t,z:intg) and abstract the kind of the
+type environmentto obtain the closure type:
+te
+k:t::k:t::Omega.oeThetat
+teteteveve
+where
+oe=tenv=t::k.t!t!(tThetatThetaint)
+teteve
+It is easy to deriveatype-preserving translation of appli-
+cation corresponding to this representation of closures. We
+simplyopenall of the existentials and pass the type envi-
+ronment value environment and argument to the code.
+Careful consideration of the foregoing discussion reveals
+that only limited use is made of translucency. The equa-
+tional constraintontis dropped from the existential (to
+te
+ensure privacy of environment representation) and the uni-
+versally quantified variabletenvdoes not occur in the scope
+of the abstraction. This suggests that a substantially sim-
+pler mechanism than the full translucent sum calculus is
+more appropriate for closure conversion. Hence weintro-
+duce a special type writteno)oe of functions that must
+be applied to the constructoroto yield a value of typeoe.
+The following two rules govern this new type constructor:
+Delta'o::Delta; Gamma'e:t:::oeDelta; Gamma'e:o)oe
+Delta; Gamma'e:o)oe[o=t]Delta; Gamma'eo:oe
+The first rule restricts the domain of type application to the
+specific constructoro. This corresponds to restricting the
+type tot=o:oeand propagating the equivalencet=ointo
+oe. The actual type application foro)oeis permitted only
+for constructors equivalenttoo. These two rules naturally
+come from the necessity of delaying type applications for
+closure conversion. Using this notation the type translation
+ofo!obecomes
+k:t::k:t::Omega:(t)t!o!o)Thetat:
+teteteveteveve
+The type of closures abstracts the kind of the type en-
+vironment and the type of the value environment ensuring
+that these maybechosen separately for each closure in the
+system. As in the simply-typed case wehave obtained an
+"object oriented" representation of polymorphic closures by
+exploiting a combination of the type systems proposed by
+Pierce and Ty Harper and Lil-
+AFormal Account of Polymorphic Closure Conversion
+In this section we present closure conversion for the predica-
+tive subset of the second order-calculus. It has been argued
+that the predicative fragment captures the "essence" of ML-
+style polymorphism since there is a stratification between
+monotypes (types not involving a quantifier) and polytypes
+and instantiation of type variables is restricted to mono-
+te it easy to use logical
+relations to argue correctness in the same fashion as wedid
+for the simply-typed-calculus.
+The syntax of our source languageis defined as fol-
+lows:
+Kinds::= Omega
+Constructorso::=bjtjo!o
+Typesoe::=ojoe!oejt:::oe
+Expressionse::=cjxjx:oe:ejLambdat:::ejeejeo
+Valuesv::=cjx:oe:ejLambdat:::e
+The type constructors (o) are described by kinds (). There
+is only one kind (Omega) for but subsequent languages havea
+richer kind structure so weintroduce kinds here for unifor-
+mity. Closed constructors of kind Omega correspond to a subset
+of types (the monotypes) in particular the types that do
+not include quantifiers. Thus constructors of kind Omega can
+be injected into types. Weleave this injection implicit and
+treatoas both a constructor and a type.
+A kind assignment Delta is a sequence that maps type vari-
+ables to kinds and is of the formft::;:::;t::g(n).
+nn
+Typing judgements are of the form Delta; Gamma'e:oewhere the
+free type variables of Gammaeandoeare contained in the do-
+main of Delta and the free value variables ofeare contained
+in the domain of Gamma. A typing judgement is derived from the
+standard typing rules of the second-order-calculus (see for
+.Abstract Closures
+As in the simply typed case we break closure conversion
+into abstract closure conversion and closure representation
+stages. The abstract closure conversion stage forcon-
+verts both-abstractions and Lambda-abstractions into abstract
+closures consisting of code a type environmentandavalue
+environment.
+;cl
+The syntax of the target languageis defined as fol-
+lows:
+Kinds::=OmegajhTheta:::Thetai
+Con'so::=bjtjo!ojhoTheta:::Thetaoij
+n
+ho;:::;oijssoj
+ni
+Typesoe::=ojoe!oejt:::oejhoeTheta:::Thetaoeij
+n
+vcode(t::;oe;oe;oe)j
+teteve
+tcode(t::;oe;t::; oe)
+teteve
+Exp'se::=cjxjeejeojhe;:::;eijssej
+ni
+Lambdat:::x:oe:x:oe:ej
+teteveve
+Lambdat:::x:oe:Lambdat:::ejhhe;o;eii
+teteveve
+A product kindhTheta:::Thetaiis used to specify the
+n
+shape of type environments just as a product type specifies
+the shape of value environments. Given constructorsowith
+i
+kind the constructorho;:::;oihas kindhTheta:::Thetai
+inn
+and is used as a type environment consisting ofo;:::;oin
+n
+a translated program.
+The material on environment sharing carries over in a straight
+forward manner.
+There are twotypes of codes: the code for ordinary ab-Gammamust be chosen as subsets of the current assignments
+straction Lambdat:::x:oe:x:oe:e and the code for type
+teteveve
+abstraction Lambdat:::x:oe:Lambdat:::e.Codes takeatype
+teteveve
+environment a value environment and a type or value argu-
+ment respectively.Weintroduce the typesvcodeandtcode
+to distinguish the types of codes from the types of closures
+and to avoid partial applications of codes. Intuitivelythey
+correspond to standard types as follows:
+vcode(t::;oe;oe;oe)sst:::oe!oe!oe
+teteveteteve
+tcode(t::;oe;t::; oe)sst:::oe!t:::oe
+teteveteteve
+Only types excludingvcode andtcodecan be named
+as a constructor. An abstract closurehhe;o;eiiconsists of
+acodeeatype environment constructoroandavalue
+environmente.
+;cl
+For the typing of kind assignments (Delta) map type
+variables to kinds while type assignments (Gamma) map value
+variables to types. The judgements of the static semantics
+are as follows:
+Delta'o::ois a well-formed constructor of kind.
+Delta'oeoeis a well-formed type.
+Delta'ojo::oandoare equivalent constructors.
+Delta'oejoeoeandoeare equivalenttypes.
+Delta; Gamma'e:oeeis a well-formed expression of typeoe.
+The formation rules of types are standard. Wehavetoin-
+troduce definitional equality of constructors and types to
+account for projections of constructors from product kinds.
+They consist of the equivalence rules for projections below
+as well as the standard rules for equivalence and congruence.
+Delta'ssho;:::;oijo::
+inii
+Delta'hss(o);:::;ss(o)ijo::hTheta:::Thetai
+nn
+The typing rules for expressions are standard except for the
+rules for codes and closures. They are defined in Figure .
+We require that code values be closed with respect to both
+type variables as well as value variables. This allows us to
+hoist code out of inner definitions to the top level.
+Abstract closure conversion foris formulated as a
+;cl
+type-directed translation toby the deductivesystemin
+Figures  and . The judgementDelta;Deltaoe;oemeans
+envarg
+thatoeis the translation ofoewhere Deltais a kind assign-
+env
+ment corresponding to a type environment and Deltais a
+arg
+kind assignment corresponding to a type argument(ifany).
+This judgement also implicitly defines a translation from
+constructors to constructors since source-level constructors
+(o) are a subset of types (oe) and the translation maps con-
+structors to constructors. In translated programs the type
+variabletis used for type environments.
+te
+The judgementDelta;Delta;Gamma;Gammae;emeans
+envargenvarg
+eis a translation ofewhere Deltaand Deltaare as in the
+envarg
+type translation and Gammaand Gammaare type assignments
+envarg
+corresponding to the value environment and value argument
+respectively.Atype environment corresponding to Deltaand
+env
+avalue environment corresponding to Gammaare implemented
+env
+in the target language bytypes of the formjDeltajandjGammaj
+envenv
+respectively defined below.
+jft::;:::;t::gj=hTheta:::Thetai
+nnn
+jfx:oe;:::;x:oegj=hoeTheta:::Thetaoei
+nnn
+The most interesting rules are the term translations of
+value and type abstractions.In each case an appropri-
+ate type environment and value environmentmust be con-
+structed as part of the closure. Thus assignments Deltaand
+env
+env
+Delta]Deltaand Gamma]Gammarespectively. These assignments
+envargenvarg
+must be chosen so that all of the free value variables of the
+term are contained in Gammaand further all of the free type
+env
+variables of the term and the value environmentmust be
+contained in Delta.
+env
+The primary subtlety in these rules is that weneedtwo
+type assignments Gammaand Gammato describe the value envi-
+envenv
+ronment of the closure depending upon the context. Gamma
+env
+is constructed from the context Delta;Delta;Gamma;Gammaand is
+envargenvarg
+used to build the environmentein the context where we
+ve
+are constructing the closure. In contrast Gammais obtained
+env
+from Gammavia the translation Delta;;Gamma;Gammaand cor-
+envenvenvenv
+responds to the type of the value environment in the context
+of the closure itself.
+The type correctness of the translation is proved byin-
+duction on the derivation of the translation.
+Theorem  (Type Correctness)IfDelta;Delta;Gamma;Gamma
+envargenvarg
+e;eandDelta]Delta;Gamma]Gamma'e:oethenft::jDeltajg]
+envargenvargteenv
+Delta;fx:jGammaGamma'e:oewhereDelta;Deltaoe;oe
+argveenvarg
+envarg
+Delta;DeltaGamma;GammaandDelta;DeltaGamma;Gamma.
+envargenvenvargarg
+envarg
+We can prove the operational correctness of the trans-
+lation using logical relations in the same fashion as wedid
+for the simply typed case because the source language is
+restricted to the predicative polymorphism.
+.Closure Representation
+In this section we present closure representation for the sec-
+ond order language. Weusetypes with existentialkindsto
+abstract the representation of type environments and exis-
+tential types to abstract the representation of value environ-
+ments. Further weintroduce the typeoe)oe derived from
+translucenttypes to solvethetyping problems discussed in
+the overview.
+The target language for polymorphic closure representa-
+;
+tion called is defined as follows:
+Kinds::=kjOmegajhTheta:::Thetai
+n
+Typesoe::=bjtjhoeTheta:::Thetaoeijhoe;:::;oeijssoej
+nni
+t:::oejoe)oejoe!oejt:::oejk:oe
+Exp'se::=xjcjx:oe:ejeejLambdat:::ejeoej
+he;:::;eijssej
+ni
+packoewitheasoej
+openeast::withx:oeine
+packwitheasoej
+openeaskwithx:oeine
+There is no distinction between types and constructors for
+;
+because type application is no longer restricted to just
+;
+monotypes.needs this impredicativity because some
+monotypes from the source language are translated into types
+with quantifiers. To simplify the language weprovide full
+abstractions (and Lambda) instead of codes which abstract more
+than one argument at a time.
+Toprovide types with existential kinds we need to in-
+troduce kind variableskand kind contexts for the typing
+;
+judgements of. A kind contextKis simply a sequence
+of kind variablesfk;:::;kg(n). The typing judge-
+n
+ments of the language consist of the following:
+K;Delta'oe::oehas kind.
+K;Delta'oejoe::oeandoeare equal types of kind.
+K;Delta;Gamma'e:oeehas typeoe.
+ft::g;fx:oe;x:oeg'e:oe
+teteveve
+Delta; Gamma'Lambdat:::x:oe:x:oe:e:vcode(t::;oe;oe;oe)
+teteveve
+ft::;t::Omegag;fx:oeg'e:oe
+tete
+Delta; Gamma'Lambdat:::x:oe:Lambdat::Omega:e:tcode(t::;oe;t;oe)
+teteveve
+Delta; Gamma'e:vcode(t::;oe;oe;oe)Delta'o:Delta; Gamma'e:oe[o=t]
+teteve
+Delta; Gamma'hhe;o;eii:(oe!oe)[o=t]
+Delta; Gamma'e:tcode(t::;oe;t;oe)Delta'o:Delta; Gamma'e:oe[o=t]
+teteve
+Delta; Gamma'hhe;o;eii:(t:o)[o=t]
+Figure : Typing Rules for Code and Closures
+Delta;Deltab;bft::Omega;:::;t::Omegag;Deltat;sst
+envarg
+Delta;Deltat;t
+envarg
+Delta;Deltaoe;oeDelta;Deltaoe;
+envargenvarg
+Delta;Deltaoe!oe;oe!oe
+envarg
+Delta;Deltat;oDeltaDeltaDeltaDelta;Deltat;o
+envarg
+Delta;Deltaft::Omega;:::;t::Omegag;ho;:::;oi
+envarg
+Delta;Deltaoe;oeDeltaDeltaDeltaDelta;Deltaoe;oe
+envarg
+Delta;Deltafx:oe;:::;x:oeg;fx:oe;:::;x:oeg
+envargn
+Figure : Polymorphic Abstract Closure Conversion: Types and Type Assignments
+(const)Delta;Delta;Gamma;Gammac;c
+envargenvarg
+(env)Delta;Delta;fx:oe;:::;x:oeg;Gammax;ssx
+envarg
+(arg)Delta;Delta;Gamma;Gammax;x(xDom(Gamma))
+envargenvarg
+Delta;Delta;Gamma;GammaDelta;o
+envargenvargteenvargenvargve
+env
+Delta;;Gamma;GammaDelta;;oe;oe
+envenvenvenv
+(abs)
+Delta;;;Gamma;fx:oege;e
+envenv
+Delta;Delta;Gamma;Gammax:oe:e;hhLambdat::jDeltaj:x:jGammaj:x:oe:e;o;eii
+envargenvarg
+Delta;Delta;Gamma;GammaDelta;oDelta;Delta;Gamma;GammaGamma;e
+envargenvarg
+env
+Delta;;Gamma;Gamma
+(tabs)
+envenvenv
+Delta;Delta;Gamma;GammaLambdat::Omega:e;hhLambdat::jDeltaj:x:jGammaj:Lambdat::Omega:e;o;eii
+envargenvarg
+Delta;Delta;Gamma;Gammae;
+envargenvarg
+(app)
+Delta;Delta;Gamma;Gammaee;ee
+envargenvarg
+Delta;Delta;Gamma;Gammae;eDelta;Deltaoe;oe
+envargenvarg
+(tapp)
+Delta;Delta;Gamma;Gammaeoe;eoe
+envargenvarg
+Delta;Delta;Gamma;Gammax;e
+envargenvargi
+(context)
+Delta;Delta;Gamma;Gammafx:oe;:::;x:oeg;he;:::;ei
+envargenvarg
+Figure : Polymorphic Abstract Closure Conversion: Terms
+teteve
+veve
+teteve
+tevete
+te
+tevete
+te
+nargiite
+(tDom(Delta))
+arg
+oeDelta;Delta]ft::Omegagoe;oe
+envarg
+Delta;Deltat::: oe;t::: oe
+envarg
+envargn
+n
+n
+n
+envargn
+n
+nn
+n
+nnargiive
+arg
+Delta;Delta;Gamma;GammaGamma;e
+env
+teveteve
+envenv
+teenvargenvargve
+env
+Delta;ft::Omegag;Gamma;;e;e
+envenv
+teveteve
+envenv
+eDelta;Delta;Gamma;Gammae;e
+envargenvarg
+envarg
+i
+nn
+n
+The definition of the formation rules definitional equal-to study novel approaches to tag-free garbage collection and
+ityoftypes and typing rules are standard except that poly-the other compiler provides a general framework for analyz-
+morphic typet:::oecan be instantiated too)oe[o=t
+typeowith kindas described in the overview. The details
+of the typing rules are found in the tec
+We define the closure representation stage as a type-
+;cl;
+directed translation fromto.We begin by defining
+a translation from source constructors and types to target
+type as follows:
+jtj=t
+jbj=b
+jhoe;:::;oeij=hjoej;:::;joeji
+nn
+jssoej=ssjoej
+ii
+jhoeTheta:::Thetaoeij=hjoejTheta:::Thetajoeji
+nn
+jvcode(t::; oe;oe;oe)j=t:::joej!joej!joej
+veve
+jtcode(t::; oe;s::;oe)j=t:::joej!s:::joej
+veve
+joe!oej=k:t::k:t::Omega:h(t)t!joej!joej)Thetati
+js:::oej=k:t::k:t::Omega:h(t)t!s:::joej)Thetati
+The code types are translated to the corresponding types
+described in the previous section. The translation of a func-
+tion type abstracts the kind of the type environmentk and
+the type of the value environmentt.Thetype environment
+tis paired with the code by using an existential type. Since
+the type of a code is instantiated byt only the type envi-
+ronment of the closure can be given to the code. The code
+and the value environment are paired as in the simply-typed
+case. The translation ofhas the same structure as that of
+an arrowtype.
+The translation of expressions is summarized in Figure .
+The kind of the type environment the type environment
+and the type of the value environment are packed with the
+pair of the code and the value environment. In the transla-
+tion of applications the type environment is obtained from
+a closure byanopenexpression and the code and the value
+environment are obtained by projections.Then the type
+environment the value environment and the argumentof
+application are passed to the code.
+The type correctness of the translation is proven byin-
+duction on the derivation of the translation.The typing
+rules foroe)oeare essential to prove the cases for the
+translations of closures.
+Theorem  (Type Correctness)IfDelta; Gammae:oe;e
+then;;Delta;jGammaj'e:joej.
+The operational correctness of the translation can be
+proven using logical relations as in the simply typed case.
+However the definition of the relations is more complicated
+because of the presence of polymorphic types and types of
+;cl
+the formss(oe) in the language. The relations and the
+i
+proof appear in the tec
+Summary and Conclusions
+Wehave presented a type-theoretic account of closure con-
+version for the simply-typed and polymorphic-calculi. Our
+translations are unique in that they map well-typed source
+terms to well-typed target terms. This facilitates correctness
+proofs allows other type-directed transforms suchasCPS
+conversion or unboxing to be applied after closure conver-
+sion and supports run-time examination of types for tag-free
+garbage collection.
+Wehave put the ideas in this paper to practical use in
+two separate compilers for ML: one compiler is being used
+ing types at run time to determine the shapes of objects.
+Propagating types through closure conversion is necessary
+for both compilers so that types can be examined at run
+time.For simplicity the current implementations of our
+compilers use abstract closure conversion. As many com-
+pilers our compilers avoid creation of closures for known-
+functions. Such optimization does not introduce any prob-
+lem.
+Lightweight closure conversion proposed byWand and
+Stecy also be formulated as type-preserving trans-
+lation as our closure conversions. However the definition of
+translation may become complicated because the typeofthe
+closure as well as the translation of abstraction depends on
+which free variables passed directly.
+In some implementation a closure is represented by fold-
+ing code pointer into the environmenh repre-
+sentation maybeformulated as abstract closure conversion
+with some modifications. However closure representation
+for such closures seems to need more powerful type system.
+Acknowledgements
+Wewould like to thank Andrzej Filinski Mark Leone Ben-
+jamin Pierce and David Tarditi for their comments and
+suggestions.
+References
+.-L. Curien and J.-J.Levy. Explicit
+substitutions. InACM Symp. on Principles of Programming
+Languages .
+Compiling with Continuations.Cambridge
+University Press .
+tinuation-passing closure-
+passing style. InACM Symp. on Principles of Programming
+Languages .
+t for the program-
+ming language Pascal. Master's thesis University of Arizona
+.
+hine.Polymorphism
+() .
+.-L. Curien and M. Mauny. The categorical
+abstract machine. InFunctional Programming Languages
+and Computer Architecture pages - .
+riedman. Equalitybetween functionals. In R. Parikh
+editorLogic Colloquium '. Norh-Holland .
+ype system for closure conversion. InThe
+Workshop on Types for Program Analysis.
+ism and
+CPS conversion. InACM Symp. on Principles of Program-
+ming Languages.
+ype-theoretic approach
+to higher-order modules. InACM Symp. on Principles of
+Programming Languages pages - .
+Standard
+ML.Technical Report ECS-LFCS-- Laboratory for
+the Foundations of Computer Science Edinburgh University
+Mar. .
+hell. On the type structure of Stan-
+dard ML.ACM Transaction on Programming Languages
+and Systems () .
+Delta; Gammae:vcode(t::;oe;oe;oe);eDelta; Gammae:oe;e
+tete
+ve
+(vcl)
+Delta; Gammahhe; o; eii:oe!oe;pack
+ve
+Delta; Gammae:oe!oe;eDelta; Gammae:oe;e
+Delta; Gammaee:oe;opene
+(app)
+withy:ht)t!joej!joejThetati
+in(ssy)t(ssy)e
+Delta; Gammae:tcode(t::;oe;t::; oe);eDelta; Gammae:oe;e
+tete
+ve
+(tcl)
+Delta; Gammahhe; o; eii:t:::oe;pack;joj;joejwithhe;eiasjt:::oej
+ve
+Delta; Gammae
+Delta; Gammae o:oe[o=t];openeask;t;t
+(tapp)
+withy:ht)t!t:::joejThetati
+in(ssy)t(ssy)joj
+Figure : Closure Representation
+intensional type analysis. InACM Symp. on Principles of
+Programming Languages pages - .
+bda lifting: Transforming programs to re-
+cursive equations. InFunctional Programming Language and
+Computer Architecture LNCS  pages -. Springer-
+Verlag .
+. Hudak. Realistic compilation by program
+translation -detailed summary -. InACM Symp. on Prin-
+ciples of Programming Languages pages - .
+heme.
+InProc. of the SIGPLAN ' Symp. on Compiler Construc-
+tion .
+. Landin. The mechanical evaluation of expressions.Com-
+puter Journal :- .
+y.Unboxed objects and polymorphic typing. InACM
+Symp. on Principles of Programming Languages .
+y. Manifest types modules and separate compila-
+tion. InACM Symp. on Principles of Programming Lan-
+guages pages - .
+Proc. ACM
+Conf. Lisp and Functional Programming pages -
+. Revised v].
+ofte and R. Harper.The Definition of Stan-
+dardML. MIT Press .
+yped closure
+conversion. Technical Report CMU-CS-- School of
+Computer Science Carnegie Mellon University July .
+hell and G. D. Plotkin. Abstract types haveexis-
+tential type.ACM Transaction on Programming Languages
+and Systems () .
+elleisen and R. Harper. Abstract models
+of memory management. InFunctional Programming Lan-
+guages and Computer Architecture pages - June .
+wn. An
+ad hoc approach to the implementation of polymorphism.
+ACM Transaction on Programming Languages and Systems
+() .
+yle polymorphic
+record calculi. InACM Symp. on Principles of Programming
+Languages .
+veve
+ve
+;joj;joejwithhe;eiasjoe!oej
+teve
+ve
+ask;t;t
+teteve
+teveve
+te
+veve
+ve
+teve
+ve
+:t:::oe;e
+teteve
+teveve
+te
+urner. Simple type-theoretic foun-
+dations for object-oriented programming.Journal of Func-
+tional Programming ():- Apr. . A preliminary
+version appeared in Principles of Programming Languages
+ and as UniversityofEdinburgh technical report ECS-
+LFCS-- under the title "Object-Oriented Program-
+ming Without RecursiveTypes".
+bda-definability in the full type hierarchy.
+InTo H.B.Curry: Essays on Combinatory Logic Lambda
+Calculus and Formalism. Academic Press .
+. Objects as closures. InProc. ACM Conf. Lisp
+and Functional Programming .
+terpreters for higher-order
+programming languages. InProceedings of the Annual ACM
+Conference pages - .
+t closure represen-
+tations. InProc. ACM Conf. Lisp and Functional Program-
+ming .
+ype-based compiler for Stan-
+dard ML. InProgramming Language Design and Its imple-
+menation pages - .
+Completeness invariance and lambda-
+definability.Journal of Symbolic Logic :- .
+yped-calculus.In-
+formation and Control  .
+heme. Master's
+thesis MIT .
+ait. Intensional interpretation of functionals of finite
+type.Journal of Symbolic Logic () .
+olmach. Tag-free garbage collection using explicit type
+parameters. InProc. ACM Conf. Lisp and Functional Pro-
+gramming pages - June .
+and and P. Steckler. Selective and lightweight closure
+conversion. InACM Symp. on Principles of Programming
+Languages .
+Typed Closure Con
+Lambda
+Yasuhiko MinamideGreg MorrisettRobert Harper
+Research Institute for Mathematical SciencesSchool of Computer ScienceSchool of Computer Science
+Kyoto UniversityCarnegie Mellon UniversityCarnegie Mellon University
+Kyoto - JapanPittsburgh PA -Pittsburgh PA -
+nan@kurims.kyoto-u.ac.jpjgmorris@cs.cmu.edurwh@cs.cmu.edu
+Abstract
+We study the typing properties ofclosureconversionfor
+simply-typed and polymorphic-calculi . Unlikemostac-
+counts of closure conversion which only treat the untyped
+-calculus we translate well-typed source programs to well-
+typed target programs. This allows later compiler phases to
+take advantage of types for representation analysis and tag-
+free garbage collection and it facilitates correctness proofs.
+Our account of closure conversion for the simply-typed lan-
+guage takes advantage of a simple model of objects bymap-
+ping closures toexistentials.Closure conversion for the
+polymorphic language requires additional type machinery
+namelytranslucencyin the style of Harper and Lillibridge's
+module calculus to express the type of a closure.
+Introduction
+Closureconversion
+transformation that achieves a separation between code and
+data.Functions with free variables are replaced bycode
+abstracted on an extra environment parameter. Free vari-
+ables in the body of the function are replaced by references
+to the environment. The abstracted code is "partially ap-
+plied" to an explicitly constructed environmentproviding
+the bindings for these variables. This "partial application"
+of the code to its environment is in fact suspended until the
+function is actually applied to its argument; the suspended
+application is called a "closure" a data structure containing
+pure code and a representation of its environment.
+A critical decision in closure conversion is the choice of
+representation of the environment as a data structure --
+for example whether to use a "flat" "linked" or hybrid
+representation.This decision is influenced by a desire to
+minimize closure creation time the space consumed byan
+environment and the time to access a given variable in an
+environment property of closure con-
+version is that the representation of the environmentispri-
+vateto the closure and is not visible from the outside. This
+affords considerable flexibility in the representation of envi-
+Lambda
+This researchwas performed while the author was visiting the
+Fox Project at Carnegie Mellon University.
+To appear POPL '.
+version
+ronments and is thus exploited to good advantage byShao
+and and Stec
+Most accounts consider closure conversion as a transfor-
+mation tountypedterms irrespective of whether or not the
+source term is t
+pilers that make little or no use of types in the backendor
+at run time. However when compiling typed languages it is
+often advantageous to propagate type information through
+each stage of the compiler and to make use of types at link
+or even run time. For example Leroy's representation analy-
+ypes to determine procedure calling conven-
+ta-
+tion of types at run time to access components of a record.
+In current compilers these phases must occurbeforeclosure
+conversion because the output of closure conversion is un-
+typed. Compilation strategies for polymorphic languages
+such as those proposed by Morrisonet al.
+ypes at run time to
+support unboxed representations and non-parametric oper-
+ators including printing and structural equality.Tag-free
+polymorphic programming languages also relies upon types
+at run time to determine the size and the pointers of ob-
+jects. To support any of these implementation strategies it
+is necessary to propagate type informationthroughclosure
+conversion and into the generated code. Consequentlythe
+purpose of this paper is to showhow closure conversion can
+be formulated as atype-preserving transform.
+We are therefore interested intype-basedtransformations
+as a basis for compiling polymorphic languages. The crucial
+idea is to define a compiler as a series of transformations on
+both the program and its type possibly relying on type in-
+formation to guide the transformation itself. Each stage of
+the compiler is thus viewed as a type-preserving translation
+between typed intermediate languages. Examples of such
+translations are given by Lero
+to the practical advantages of propagating type information
+through the stages of a compiler type-directed translation
+also facilitates correctness proofs by defining the invariants
+of the transformation as a type-indexed family oflogical re-
+lations
+We describe closure conversion in two stages. The first
+stageabstract closureconversionis a type-based transla-
+tion from the source language into a target language with
+explicit closures. The translation is described as a deductive
+system in which the representation of the environmentmay
+be chosen independently for each closure. In this wayvari-

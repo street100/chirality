@@ -1,0 +1,3203 @@
+*
+From System F to Typed Assembly Language
+(Extended Version)
+Greg Morrisett David Walker Karl Crary Neal Glew
+Cornell University
+December 7,1998
+Abstract
+We motivate the design of a staticallytyped assembly language(TAL) and present a type-
+preserving translation from System F to TAL. The TAL we present is based on a conventional
+RISC assembly language, but its static type system provides support for enforcing high-level
+language abstractions, such as closures, tuples, and objects, as well as user-defined abstract data
+types. The type system ensures that well-typed programs cannot violate these abstractions. In
+addition, the typing constructs place almost no restrictions on low-level optimizations such as
+register allocation, instruction selection, or instruction scheduling.
+Our translation to TAL is specified as a sequence of type-preserving transformations, includ-
+ing CPS and closure conversion phases; type-correct source programs are mapped to type-correct
+assembly language. A key contribution is an approach to polymorphic closure conversion that is
+considerably simpler than previous work. The compiler and typed assembly language provide a
+fully automatic way to produceproof car r yi ng code, suitable for use in systems where untrusted
+and potentially malicious code must be checked for safety before execution.
+1 Intro duction
+Compiling a source language to a statically typed intermediate language has compelling advantages
+over a conventional untyped compiler. An optimizing compiler for a high-level language such as
+ML may make as many as 20 passes over a single program, performing sophisticated analyses and
+optimizations require type information in order to succeed, and even those that do not often benefit
+to typecheck intermediate code provides an invaluable tool for debugging new transformations and
+*
+This material is based on work supported in part by the AFOSR grant F49620-97-1-0013, ARPA/RADC grant
+F30602-96-1-0317, ARPA/AF grant F30602-95-1-0047, and AASERT grant N00014-95-1-0985. Any opinions, find-
+ings, and conclusions or recommendations expressed in this publication are those of the authors and do not reflect
+the views of these agencies.
+1
+Today a small number of compilers work with typed intermediate languages in order to realize
+conceptual line where types are lost. For instance, the TIL/ML compiler preserves type information
+through approximately 80% of compilation, but the remaining 20% is untyped.
+We show how to eliminate the untyped portions of a compiler and by so doing, extend the approach
+of compiling with typed intermediate languages to typedtargetlanguages. The target language
+in this paper is a strongly typed assembly language (TAL) based on a generic RISC instruction
+set. The type system for the language is surprisingly standard, supporting tuples, polymorphism,
+existentials, and a very restricted form of function pointer, yet it is sufficiently powerful that
+we can automatically generate well-typed and efficient code from high-level ML-like languages.
+Furthermore, we claim that the type system does not seriously hinder low-level optimizations such
+as register allocation, instruction selection, instruction scheduling, and copy propagation.
+TAL not only allows us to reap the benefits of types throughout a compiler, but it also enables a
+practical system for executing untrusted code both safely and efficiently. For example, as suggested
+the kernel. The kernel could typecheck the TAL code to ensure that the code never accesses
+hidden resources within the kernel, always calls kernel routines with the right number and types
+1
+of arguments,etc., and then assemble and dynamically link the code into the kernel.However,
+SPIN currently requires the user to write the extension in a single high-level language (Modula-
+3) and use a single trusted compiler (along with cryptographic signatures) in order to ensure the
+safety of the extension. In contrast, a kernel based on a typed assembly language could support
+extensions written in a variety of high-level languages using a variety of untrusted compilers, as
+the safety of the resulting assembly code can be checked independently of the source code or
+the compiler. Furthermore, critical inner-loops could be hand-written in assembly language in
+order to achieve optimal performance. TAL could also be used to support extensible web-browsers,
+extensible servers, active networks, or any other "kernel" where security, performance, and language
+independence are desired.
+ever, SFI requires the insertion of extra "sandboxing" code, corresponding to dynamic type tests,
+to ensure that the extension is safe. In contrast, TAL does not have the overhead of the additional
+sandboxing code, as typechecking is performed offline.
+With regard to these security properties, TAL is an instance of Necula and Lee'sproof carryin g code
+be encoded using extensions to first-order predicate logic, and proofs of relevant security properties
+restrictions on code sequences or instruction scheduling, whereas TAL has a small number of such
+restrictions (see Section 6.2). However, in general there is no complete algorithm for constructing
+the proof that the code satisfies the desired security properties. In contrast, we provide a fully
+automatic procedure for generating typed assembly language from a well-formed source term.
+1
+Of course, while type safety implies many important security properties such as memory safety, there are a variety
+of other important security properties, such as termination, that do not follow from type safety.
+2
+1.1 Overview
+In order to motivate the typing constructs in TAL and to justify our claims about its expressiveness,
+we spend much of this paper sketching a compiler from a variant of the polymorphiclam-calculus to
+TAL. The eager reader may wish to glance at Figure 26 for a sample TAL program.
+Our compiler is structured as five translations between six typed calculi:
+CPS-conversionClosure conversionHoistingAllocationCode generation
+FKCHA
+lamlamlamlamlamTA L
+Each of these calculi is used as a first-class programming calculus in the sense that each translation
+accepts any well-typed program of its input calculus; it does not assume that the input is the
+output from the preceding translation. This allows the compiler to aggressively optimize code
+between any of the translation steps. The inspiration for the phases and their ordering is derived
+that types are used throughout compilation.
+The rest of this paper proceeds by describing each of the languages and translations in our compiler
+in full detail. We give the syntax and static semantics of each language as well as type-directed and
+F
+type-preserving translations between them. Section 2 presentslam, the compiler's source language.
+K
+Section 3 presents the first intermediate language,lam, and gives a typed CPS translation to it based
+C
+language,lam, and gives a typed closure translation based on, but considerably simpler than, the
+A
+lamintermediate
+language and a translation that makes allocation and initialization of data structures explicit. At
+this point in compilation, the intermediate code is essentially in alam-calculus syntax for assembly
+A
+and defines a translation fromlamto TAL. In Section 7 we show the type correctness of the compiler
+and in Section 8 we discuss extensions to TAL to support language constructs not considered here.
+2SystemF
+F
+The source language for our compiler,lam
+F
+polymorphiclam-calculus)augmentedwithproductsandrecursiononterms. Thesyntaxforlam
+appears below:
+typest::=a|int|t->t|foralla.t|<t,...,t>
+121n
+termse::=x|i|fixx(x:t):t.e|ee|Lambdaa.e|e[t]|
+11212
+<e,...,e>|p(e)|epe|if0(e,e,e)
+1ni12123
+primitivesp::= +|-|x
+type contextsDelta ::=a,...,a
+1n
+value contextsG ::=x:t,...,x:t
+11nn
+F
+In order to simplify the presentation,lamhas only integers as a base type (ranged over by the
+~
+metavariablei). We useXto denote a vector of syntactic ob jects drawn fromX. For instance,
+3
+FTV(t)subseteqDelta
+Delta|-t
+F
+(G(x)=t)
+Delta; G|-x:tDelta; G|-i:int
+FF
+Delta|-tDelta|-tDelta; G{x:t->t,x:t}|-e:t
+F1F21211F2
+(x, x/inG)
+1
+Delta; G|-fixx(x:t):t.e:t->t
+F11212
+Delta; G|-e:t->tDelta; G|-e:t
+F112F21
+Delta; G|-ee:t
+F122
+'
+Delta|-tDelta; G|-e:foralla.t
+Delta{a};G|-e:t
+FFF
+(a/inDelta)
+'
+Delta; G|-Lambdaa.e:foralla.tDelta; G|-e[t]:t[t/a]
+FF
+Delta; G|-e:<t,...,t>
+Delta; G|-e:t
+F1n
+Fii
+(1<=i<=n)
+Delta; G|-<e,...,e>:<t,...,t>Delta; G|-p(e):t
+F1n1nFii
+Delta; G|-e:intDelta; G|-e:tDelta; G|-e:t
+Delta; G|-e:intDelta; G|-e:int
+F1F2F3
+F1F2
+Delta; G|-epe:intDelta; G|-if0(e,e,e):t
+F12F123
+F
+Figure 1: Static Semantics oflam
+<~t>is shorthand for a product type<t,...,t>.Thetermfixx(x:t):t.erepresents a recursively-
+1n112
+defined functionxwith argumentxof typetand bodye. Hence, bothxandxare bound within
+111
+e. Similarly,ais bound inefor Lambdaa.eand bound intforforalla.t. As usual, we consider syntactic
+ob jects to be equivalent up to alpha-conversion of bound variables.
+F
+We interpretlamwith a conventional call-by-value operational semantics (not presented here). The
+static semantics (given in Figure 1) is specified as a set of inference rules for concluding judgments
+of the form Delta; G|-e:twhereDeltaisacontextcontainingthefreetypevariablesofG,e,andt;Gis
+F
+a context that assigns types to the free variables ofe;andtisthetypeofe. A judgment Delta|-t
+F
+asserts that typetis well-formed under type context Delta.
+As a running example, we will consider the compilation of the following computation of 6 factorial:
+(fixf(n:int):int.if0(n,1,nxf(n-1))) 6.
+3CPSConversion
+The first compilation stage is conversion to continuation-passing style (CPS). This stage names all
+intermediate computations and eliminates the need for a control stack. All unconditional control
+transfers, including function invocation and return, are achieved via function call. The target
+4
+K
+calculus for this phase islam:
+typest::=a|int|forall[a~].(~t)->void|<~t>
+termse::=v[~t](~v)|if0(v, e,e)|halt[t]v|letx=vine|
+12
+letx=p(v)ine|letx=vpvine
+i12
+valuesv::=x|i|<~v>|fixx[a~](x:t,...,x:t).e
+11nn
+primitivesp::= +|-|x
+type contextsDelta ::=a,...,a
+1n
+value contextsG ::=x:t,...,x:t
+11nn
+K
+Code inlamis nearly linear: it consists of a series of let bindings followed by a function call. The
+exception to this is theif0construct, which is still a tree containing two expressions.
+K
+Inlamthere is only one abstraction mechanism (fix), which abstracts both type and value variables,
+thereby simplifying the rest of the compiler. The correspondingforalland->types are also combined.
+However, we abbreviateforall[].(~t)->voidas (~t)->void.
+FK
+Unlike inlam, functions inlamdo not return values; instead, they invoke continuations. The function
+notation "->void" is intended to suggest this fact. Execution is completed by the constructhalt[t]v,
+which accepts a result valuevof typetand terminates the computation. Typically, this construct
+is used by the top-level continuation. Since expressions never return values, typing judgments for
+expressions do not state types. Instead, the judgment Delta; G|-eindicates that the expressioneis
+K
+well-formed under type and value contexts Delta and G. Aside from these issues, the static semantics
+K
+forlamis completely standard and appears in Figure 2.
+FK
+3.1 Translatinglamtolam
+guishes between static (or "administrative")b-redices and dynamic ones. They use this in a one-
+pass translation that produces an efficient CPS value and prove the resulting valuebh-equivalent to
+their translation so that it is "properly tail-recursive" (i.e.,so that the unnecessaryh-expansions
+of tail-recursive functions are eliminated). Our translation uses both the two-level system and the
+tail-recursion optimizations. Harper and Lillibridge discuss the typing properties of CPS conversion
+of Faugmented with callcc and abort primitives. We used their call-by-value translation to guide
+w
+our translation. Note that a real implementation would uncurry a type abstraction followed by a
+value abstraction during the translation, creating a single polymorphic function.
+FKF
+ThetypetranslationK[[.lamtypes tolamtypes is given in Figure 3. For anylamtype
+K
+t,N[[tlamtype for at-continuation, which is (K[[t->void. The translation of
+terms (Figures 4 and 5) is given by three judgments. Full programs are translated by the judgment
+cps
+|-e:te, which asserts thateis a correct CPS conversion of the programe.Mostofthe
+FFcpscpsF
+work is done by two other judgments: one for terms in tailcall positions and another for all other
+positions.
+*
+cps
+The non-tailcall translation is given by the judgment Delta; G|-e:te.Theresult,e,isa
+FFcpscps
+static function that takes a static continuation representing the rest of the program and invokes it
+5
+FTV(t)subseteqDelta
+Delta|-t
+K
+(G(x)=t)
+Delta; G|-x:tDelta; G|-i:int
+KK
+Delta; G|-v:t
+Kii
+Delta; G|-<v,...,v>:<t,...,t>
+K1n1n
+Delta{a~}|-tDelta{a~};G{x:forall[a~](~t)->void,x:t,...,x:t}|-e
+Ki11nnK
+(x, x/inG,a/inDelta)
+ii
+Delta; G|-fixx[a~](x:t,...,x:t).e:forall[a~](~t)->void
+K11nn
+Delta|-sDelta; G|-v:forall[a,...,a].(t,...,t)->voidDelta; G|-v:t[~s/~a]
+KiK1n1mKjj
+Delta; G|-v[s,...,s](v,...,v)
+K1n1m
+Delta; G|-v:intDelta; G|-eDelta; G|-eDelta; G|-v:t
+KK1K2K
+Delta; G|-if0(v, e,e)Delta; G|-halt[t]v
+K12K
+Delta; G|-v:tDelta; G{x:t}|-e
+KK
+(x/inG)
+Delta; G|-letx=vine
+K
+Delta; G|-v:<t,...,t>Delta; G{x:t}|-e
+K1niK
+(x/inG,1<=i<=n)
+Delta; G|-letx=p(v)ine
+Ki
+Delta; G|-v:intDelta; G|-v:intDelta; G{x:int}|-e
+K1K2K
+(x/inG)
+Delta; G|-letx=vpvine
+K12
+K
+Figure 2: Static Semantics oflam
+def
+K[[a]]=a
+def
+K[[int]]=int
+def
+K[[t->t]]=(K[[t]],N[[t->void
+1212
+def
+K[[foralla.t]]=forall[a].(N[[t->void
+def
+K[[<t,...,t>]]=<K[[t]],...,K[[t]]>
+1n1n
+def
+N[[t]]=(K[[t->void
+FK
+Figure 3: Type Translation fromlamtolam
+6
+*
+cps
+'
+emptyset;emptyset|-e:te
+F
+cps
+'
+|-e:te@(lamy.halt[K[[ty)
+F
+(G(x)=t)
+**
+cpscps
+Delta; G|-x:tlamk.k@xDelta; G|-i:intlamk.k@i
+FF
+t
+cps
+'
+Delta|-tDelta|-tDelta; G{x:t->t,x:t}|-e:te
+F1F21211F2
+(x, x/inG)
+1
+*
+cps
+'
+Delta; G|-fixx(x:t):t.e:t->tlamk.k@(fixxx:K[[t]],c:N[[t.e@c)
+F11212112
+**
+cpscps
+''
+Delta; G|-e:t->teDelta; G|-e:te
+F112F21
+12
+*
+cps
+''
+Delta; G|-ee:tlamk.e@(lamy.e@(lamy.yy,fixz:K[[t.k@z)))
+F12212122
+12
+t
+cps
+'
+Delta{a};G|-e:te
+F
+(a/inDelta)
+*
+cps
+'
+Delta; G|-Lambdaa.e:foralla.tlamk.k@(fix[a](c:N[[t.e@c)
+F
+*
+cps
+''
+Delta|-tDelta; G|-e:foralla.te
+FF
+*
+cps
+'''
+Delta; G|-e[t]:t[t/a]lamk.e@(lamy.y[K[[tfixz:K[[t[t/a.k@z))
+F
+*
+cps
+'
+Delta; G|-e:te
+Fii
+i
+*
+cps
+Delta; G|-<e,...,e>:<t,...,t>
+F1n1n
+'''
+lamk.e@(lamy.e@...e@(lamy.k@<y,...,y>)...)
+1n1n
+12n
+*
+cps
+'
+Delta; G|-e:<t,...,t>>e
+F1n
+(1<=i<=n)
+*
+cps
+'
+Delta; G|-p(e):tlamk.e@(lamy.letz=p(y)ink@z)
+Fiii
+**
+cpscps
+''
+Delta; G|-e:inteDelta; G|-e:inte
+F1F2
+12
+*
+cps
+''
+Delta; G|-epe:intlamk.e@(lamy.e@(lamy.letz=ypyink@z))
+F121212
+12
+*tt
+cpscpscps
+'''
+Delta; G|-e:inteDelta; G|-e:teDelta; G|-e:te
+F1F2F3
+123
+*
+cps
+Delta; G|-if0(e,e,e):t
+F123
+'
+lamk.e@(lamy.letc=fixz:K[[t.k@zin
+1
+''
+if0(y, e@c, e@c))
+23
+FK
+Figure 4: Term Translation fromlamtolam(except tailcalls)
+7
+(G(x)=t)
+tt
+cpscps
+Delta; G|-x:tlamc.cx)Delta; G|-i:intlamc.ci)
+FF
+t
+cps
+'
+Delta|-tDelta|-tDelta; G{x:t->t,x:t}|-e:te
+F1F21211F2
+(x, x/inG)
+1
+t
+cps
+'''
+Delta; G|-fixx(x:t):t.e:t->tlamc.cfixxx:K[[t]],c:N[[t.e@c)
+F11212112
+**
+cpscps
+''
+Delta; G|-e:t->teDelta; G|-e:te
+F112F21
+12
+t
+cps
+''
+Delta; G|-ee:tlamc.e@(lamy.e@(lamy.yy,c)))
+F1221212
+12
+t
+cps
+'
+Delta{a};G|-e:te
+F
+(a/inDelta)
+t
+cps
+'
+Delta; G|-Lambdaa.e:foralla.tlamc.cfix[a](c:N[[t.e@c)
+F
+*
+cps
+''
+Delta|-tDelta; G|-e:foralla.te
+FF
+t
+cps
+''
+Delta; G|-e[t]:t[t/a]lamc.e@(lamy.y[K[[tc))
+F
+*
+cps
+'
+Delta; G|-e:te
+Fii
+i
+t
+cps
+Delta; G|-<e,...,e>:<t,...,t>
+F1n1n
+'''
+lamc.e@(lamy.e@...e@(lamy.c<y,...,y>))...)
+1n1n
+12n
+*
+cps
+'
+Delta; G|-e:<t,...,t>>e
+F1n
+(1<=i<=n)
+t
+cps
+'
+Delta; G|-p(e):tlamc.e@(lamy.letz=p(y)incz))
+Fiii
+**
+cpscps
+''
+Delta; G|-e:inteDelta; G|-e:inte
+F1F2
+12
+t
+cps
+''
+Delta; G|-epe:intlamc.e@(lamy.e@(lamy.letz=ypyincz)))
+F121212
+12
+*tt
+cpscpscps
+'''
+Delta; G|-e:inteDelta; G|-e:teDelta; G|-e:te
+F1F2F3
+123
+t
+cps
+'''
+Delta; G|-if0(e,e,e):tlamc.e@(lamy.if0(y, e@c, e@c))
+F123
+123
+FK
+Figure 5: Tailcall Term Translation fromlamtolam
+8
+t
+cps
+with the result of computinge. The tailcall translation is given by the judgment Delta; G|-e:t
+FFF
+e.Itsresult,e, is similar except that it is a static function taking adynamiccontinuation
+cpscps
+K
+(that is, a continuation coded inlam).
+Throughout the translation, static functions and applications are denoted bylamx.eande@e,and
+12
+K
+dynamic functions and applications are written inlamsyntax. The static variablesk,yandyand
+i
+'
+the dynamic variablesc,candz, which are used internally by the translation, are always assumed
+fresh. An underscore is used in place of unreferenced variables.
+cps
+''
+Lemma 3.1emptyset;emptyset|-e:tif and only if there existsesuch that|-e:te.
+FF
+cps
+''
+Lemma 3.2 (CPS Conversion Type Correctness)If|-e:tethenemptyset;emptyset|-e.
+FK
+These lemmas and the others like it are proved by induction on the source derivations.
+K
+When applied to the factorial example, this translation yields the followinglamterm:
+(fixfn:int,k:(int)->void).
+if0(n, k,
+letx=n-1in
+fx,fixy:int).
+letz=nxy
+inkz))))
+,fixn:int).halt[int]n)
+4 Simplified Polymorphic Closure Conversion
+The second compilation stage is closure conversion, which separates program code from data. This
+is done in two steps. Most of the work is done in the first step, closure conversion proper, which
+rewrites all functions so that they are closed. In order to do this, any variables from the context
+that are used in the function must be taken as additional arguments. These additional arguments
+are collected in an environment, which is paired with the (now closed) code to make a closure. In
+the second step, hoisting, closed function code is lifted to the top of the program, achieving the
+desired separation between code and data. We begin with closure conversion proper; the hoisting
+step is considered in Section 4.1.
+Our approach to typed closure conversion is based on that of Minamideet al.
+with the same type but different free variables (and therefore different environment types) were
+naively closure converted, the types of their closures would not be the same. To prevent this,
+closures are givenexistential
+However, we propose an approach to polymorphic closure conversion that is considerably simpler
+than that of Minamideet al.which requires both abstract kinds and translucent types. Both of
+these mechanisms arise because Minamideet al.desire atype-passinginterpretation of polymor-
+phism where types are constructed and passed to polymorphic functions at run-time. Under a
+9
+typest::=a|int|forall[a~].(~t)->void|<~t>|existsa.t
+termse::=v(~v)|if0(v, e,e)|halt[t]v|letx=vine|letx=p(v)ine|
+12i
+letx=vpvine|let[a, x]=unpackvine
+12
+'
+valuesv::=x|i|<~v>|v[t]|pac k[t, v]asexistsa.t|fixcodex[a~](x:t,...,x:t).e
+11nn
+primitivesp::= +|-|x
+type contextsDelta ::=a,...,a
+1n
+value contextsG ::=x:t,...,x:t
+11nn
+C
+Figure 6: Syntax oflam
+type-passing interpretation, polymorphic instantiation cannot be treated via substitution, as this
+requires making a copy of the code at run-time. Instead, a closure is constructed that consists of
+closed code, a value environment mapping variables to values, and atype environmentmapping
+type variables to types.
+In our approach, we assume atype-erasureinterpretation of polymorphism as inThe Definition
+of Standard MLi.e.,
+making a copy of the code with the types substituted for the type variables). As types will ul-
+timately be erased from terms for execution, the "copies" can (and will) be represented by the
+same term. This avoids the need for abstract kinds (since there are no type environments), as
+well as translucent types. A type-erasure interpretation is not without its costs: It precludes some
+i.e.,they
+must be syntactically attached to value abstractions).
+To support this interpretation, we consider the partial application of functions to type arguments
+~
+to be values. For example, supposevhas the typeforall[a,~b].(~t)->voidwhere the type variables
+~
+a~are intended for the type environment and the type variablesbare intended for the function's
+type arguments. If~sis a vector of types to be used for the type environment, then the partial
+C
+~
+instantiationv[~sforall[b].(~t[~s/~a])->void. The syntax oflamis
+KC
+otherwise similar tolamand appears in Figure 6. The static semantics oflamappears in Figure 7.
+Notice in particular that the bodyeof a function expressionfixcodex[a~](x:t,...,x:t).emust
+11nn
+typecheck given only the type and value contextsa~and{x:(t,...,t)->void,x:t,...,x:t},
+1n11nn
+which result from thefixcodeabstraction. In other words, code must be closed.
+The closure conversion algorithm is formalized as a type-directed translation in Figures 8 and 9.
+K
+The translation oflamtypesisdenotedbyC[[.|-
+K
+clos
+ee, which asserts thateis a correct closure conversion of the terme,andvaluesare
+cpscloscloscps
+clos
+translated by the judgment Delta; G|-v:tv, which asserts thatvis a correct closure
+Kcpsclosclos
+conversion of the valuev.Thevariablesz,xandx, which are used internally by the
+cpscodeenv
+translation, are always assumed fresh.
+The key to the translation is the treatment of function types:
+def
+C[[forall[a~].(t,...,t)->void]]=existsb.<forall[a~].(b,C[[t]],...,C[[t->void,b>
+1n1n
+The existentially-quantified variablebis the type of the value environment for the closure. The
+10
+FTV(t)subseteqDelta
+Delta|-t
+C
+(G(x)=t)
+Delta; G|-x:tDelta; G|-i:int
+CC
+Delta; G|-v:t
+Cii
+Delta; G|-<v,...,v>:<t,...,t>
+C1n1n
+~
+Delta|-sDelta; G|-v:forall[a,b].(~t)->void
+CC
+~
+Delta; G|-v[s]:forall[b].(~t[s/a])->void
+C
+'
+Delta|-tDelta; G|-v:t[t/a]
+CC
+''
+Delta; G|-pac k[t, v]asexistsa.t:existsa.t
+C
+a~|-ta~;{x:forall[a~].(~t)->void,x:t,...,x:t}|-e
+Ci11nnC
+Delta; G|-fixcodex[a~](x:t,...,x:t).e:forall[a~].(~t)->void
+C11nn
+Delta; G|-v:forall[].(t,...,t)->voidDelta; G|-v:t
+C1nCii
+Delta; G|-v(v,...,v)
+C1n
+Delta; G|-v:intDelta; G|-eDelta; G|-e
+CC1C2
+Delta; G|-if0(v, e,e)
+C12
+Delta; G|-v:t
+C
+Delta; G|-halt[t]v
+C
+Delta; G|-v:tDelta; G{x:t}|-e
+CC
+(x/inG)
+Delta; G|-letx=vine
+C
+Delta; G|-v:<t,...,t>Delta; G{x:t}|-e
+C1niC
+(x/inG,1<=i<=n)
+Delta; G|-letx=p(v)ine
+Ci
+Delta; G|-v:intDelta; G|-v:intDelta; G{x:int}|-e
+C1C2C
+(x/inG)
+Delta; G|-letx=vpvine
+C12
+Delta; G|-v:existsa.tDeltaa;G{x:t}|-e
+CC
+(x/inG,a/inDelta)
+let[a, x]=unpackvine
+C
+Figure 7: Static Semantics oflam
+11
+def
+C[[a]]=a
+def
+C[[int]]=int
+def
+C[[forall[a~].(t,...,t)->void]]=existsb.<forall[a~].(b,C[[t]],...,C[[t->void,b>
+1n1n
+def
+C[[<t,...,t>]]=<C[[t]],...,C[[t]]>
+1n1n
+KC
+Figure 8: Type Translation fromlamtolam
+closure itself is a pair consisting of a piece of code that is instantiated with the type environment,
+and the value environment. The instantiated code takes as arguments the type arguments and
+value arguments of the original abstraction, as well as the value environment of the closure.
+clos
+''
+Lemma 4.1emptyset;emptyset|-eif and only if there existsesuch thatemptyset;emptyset|-ee
+KK
+clos
+''
+Lemma 4.2 (Closure Conversion Type Correctness)Ifemptyset;emptyset|-eethenemptyset;emptyset|-e.
+KC
+4.1 Hoisting
+After closure conversion, all functions are closed and may be hoisted out to the top-level without
+difficulty. In a real compiler, these two phases would be combined but we have separated them
+HC
+here for simplicity. After hoisting, programs belong to a calculus,lam, that is similar tolamexcept
+thatfixcodeis no longer a value. Instead, code blocks are defined at the top-level by aletrecprefix,
+A
+which is called aheapin anticipation oflamand TAL. A new value form,labels(l), is used to refer
+H
+to those code blocks. The syntax oflamappears in Figure 10.
+These changes require a small change to the typing system. In addition to typing values, we also
+must assign heap types (ranged over by PS) to heaps. These heap types are added to value and term
+typing judgments as an additional context and are passed unmodified through each typing rule.
+There are also two new judgments: the judgment|-Pindicates that the programPis well-formed,
+H
+and the judgment PS|-b:l|->->tindicates that the blockbgives the labelltypetassuming the
+H
+H
+heap has type PS. The static semantics oflamappear in Figure 11; rules that appear identically
+C
+(except for the addition of heap types) in the static semantics oflamare omitted for brevity.
+hst
+CH
+The translation of full programs fromlamtolamis given by the judgment|-ee,which
+Ccloshst
+states thateis the hoisted version of the programe. No translation is required for types. The
+hstclos
+translation rules are exactly as expected and are omitted in the interest of brevity.
+hst
+Lemma 4.3emptyset;emptyset|-eif and only if there existsPsuch that|-eP.
+CC
+hst
+Lemma 4.4 (Hoisting Type Correctness)If|-ePthen|-P.
+CH
+In Figure 12 appears the factorial example after the closure conversion and hoisting translations
+are applied and some simple optimizations are performed (beta reduction and copy propagation).
+12
+''
+~
+Delta|-tG={y:t,...,y:t}Delta=b
+Ki1m
+1m
+clos
+'
+Deltaa~x:t,x:t,...,x:t]|-ee
+code11nnK
+(x, x/inG,a/inDelta)
+ii
+clos
+Delta; G|-fixx[a~](x:t,...,x:t).e:t
+K11nncode
+~
+pac k[t,<v[b],v>]asC[[t]]
+envcodeenvcode
+wheret=forall[a~].(t,...,t)->void
+code1n
+''
+t=<C[[t]],...,C[[t]]>
+env
+m
+1
+v=<y,...,y>
+env1m
+~
+v=fixcodex[b, ~a](x:t,x:C[[t]],...,x:C[[t.
+codecodeenvenv11nn
+~
+letx=pac k[t,<x[b],x>]asC[[t]]in
+envcodeenvcode
+lety=p(x)in
+11env
+.
+.
+.
+'
+lety=p(x)ine
+mmenv
+closclos
+''
+Delta; G|-v:forall[a,...,a].(t,...,t)->voidvDelta|-sDelta; G|-v:t[~s/~a]v
+K1m1nKiKii
+i
+clos
+Delta; G|-v[s,...,s](v,...,v)e
+K1m1n
+'
+wheree=let[a,z]=unpackvin
+env
+letx=p(z)in
+code1
+letx=p(z)in
+env2
+''
+x[C[[s...[C[[sx,v,...,v)
+code1menv
+1n
+(G(x)=t)
+closclos
+Delta; G|-x:txDelta; G|-i:inti
+KK
+clos
+'
+Delta; G|-v:tv
+Kii
+i
+clos
+''
+Delta; G|-<v,...,v>:<t,...,t><v,...,v>
+K1n1n
+n
+1
+closclosclos
+'''
+Delta; G|-v:intvDelta; G|-eeDelta; G|-ee
+KK1K2
+12
+clos
+'''
+Delta; G|-if0(v, e,e)if0(v,e,e)
+K12
+12
+clos
+'
+Delta; G|-v:tv
+K
+clos
+'
+Delta; G|-halt[t]vhalt[C[[tv
+K
+closclos
+''
+Delta; G|-v:tvDelta; G{x:t}|-ee
+KK
+(x/inG)
+clos
+''
+Delta; G|-letx=vineletx=vine
+K
+closclos
+''
+Delta; G|-v:<t,...,t>vDelta; G{x:t}|-ee
+K1niK
+(x/inG,1<=i<=n)
+clos
+''
+Delta; G|-letx=p(v)ineletx=p(v)ine
+Kii
+closclosclos
+'''
+Delta; G|-v:intvDelta; G|-v:intvDelta; G{x:int}|-ee
+K1K2K
+12
+(x/inG)
+clos
+'''
+Delta; G|-letx=vpvineletx=vpvine
+K12
+12
+KC
+Figure 9: Term Translation fromlamtolam
+13
+typest::=a|int|forall[a~].(~t)->void|<~t>|existsa.t
+termse::=v(~v)|if0(v, e,e)|halt[t]v|letx=vine|letx=p(v)ine|
+12i
+letx=vpvine|let[a, x]=unpackvine
+12
+'
+valuesv::=x|l|i|<~v>|v[t]|pac k[t, v]asexistsa.t
+blocksb::=l|->->code[a~](x:t,...,x:t).e
+11nn
+~
+programsP::=letrecbine
+primitivesp::= +|-|x
+type contextsDelta ::=a,...,a
+1n
+value contextsG ::=x:t,...,x:t
+11nn
+heap typesPS ::=l:t,...,l:t
+11nn
+H
+Figure 10: Syntax oflam
+(PS(l)=t)
+PS; Delta; G|-l:t
+H
+a~|-tPS;a~;{x:t,...,x:t}|-e
+Hi11nnH
+PS|-l|->->code[a~](x:t,...,x:t).e:l|->-> forall[a~].(t,...,t)->void
+H11nn1n
+emptyset|-tPS|-b:l|->->tPS;emptyset;emptyset|-e
+PS=l:t,...,l:t
+HiHiiiH
+11nn
+|-letrecb,...,binel/=lwhenj/=k
+jk
+H1n
+H
+Figure 11: New Rules in the Static Semantics oflam
+14
+letrecl|->->(*main factorial code block*)
+fact
+codeenv:<>,n:int,k:t).
+k
+if0(n,(*true branch: continue with 1*)
+let[b, k]=unpackkin
+unpack
+letk=p(k)in
+code0unpack
+letk=p(k)
+env1unpack
+in
+k(k,1),
+codeenv
+(*false branch: recurse withn-1*)
+letx=n-1in
+'
+(*compute factorial ofn-1 and continue tok*)
+l(env,x,pac k[<int,t>,<l,<n, k>>]ast))
+factkcon tk
+l|->->(*code block for continuation after factorial computation*)
+con t
+codeenv:<int,t>,y:int).
+k
+(*open the environment*)
+letn=p(env)in
+0
+letk=p(env)in
+1
+(*continue withnxy*)
+letz=nxyin
+let[b, k]=unpackkin
+unpack
+letk=p(k)in
+code0unpack
+letk=p(k)
+env1unpack
+in
+k(k,z)
+codeenv
+l|->->(*code block for top-level continuation*)
+halt
+codeenv:<>,n:int).halt[int](n)
+in
+l(<>,6,pac k[<>,<l,<>>]ast)
+facthaltk
+wheretisexistsa.<(a,int)->void,a>
+k
+H
+Figure 12: Factorial inlam
+15
+f
+1f
+n
+typest::=a|int|forall[a~].(~t)->void|<t,...,t>|existsa.t
+n
+1
+initialization flagsf::= 0|1
+~~~
+termse::=letdinv(~v)|letdin if0(v, e,e)|letdinhalt[t]v
+12
+declarationsd::=x=v|x=p(v)|x=vpv|[a, x]=unpackv|
+i12
+'
+x=mal loc[~t]|x=v[i]<-v
+'
+valuesv::=x|l|i|v[t]|pac k[t, v]asexistsa.t
+blocksb::=l|->->code[a~](x:t,...,x:t).e
+11nn
+~
+programsP::=letrecbine
+primitivesp::= +|-|x
+type contextsDelta ::=a,...,a
+1n
+value contextsG ::=x:t,...,x:t
+11nn
+heap typesPS ::=l:t,...,l:t
+11nn
+A
+Figure 13: Syntax oflam
+5 Explicit Allocation
+H
+Thelamintermediate language still has an atomic constructor for forming tuples, but machines
+must allocate space for a tuple and fill it out field by field; the allocation stage makes this process
+AH
+explicit. The syntax oflam, the target calculus of this stage, is similar to that oflam, and appears
+in Figure 13. Note that there is no longer a value form for tuples. The creation of ann-element
+tuple becomes a computation that is separated into an allocation step andninitialization steps.
+For example, ifvandvare integers, the pair<v,v>is created as follows (where types have been
+0101
+added for clarity):
+00
+letx:<int,int>=mal loc[int,int]
+0
+10
+x:<int,int>=x[0]<-v
+100
+11
+x:<int,int>=x[1]<-v
+11
+.
+.
+.
+The "x=mal loc[int,inti.e.,label)
+0
+of the tuple tox. The "0" superscripts on the types of the fields indicate that the fields are
+0
+uninitialized, and hence no pro jection may be performed on those fields. The "x=x[0]<-v"
+100
+step updates the first field of the tuple with the valuevand binds the address of the tuple tox.
+01
+Note thatxis assigned a type where the first field has a "1" superscript, indicating that this field
+1
+is initialized. Finally, the "x=x[1]<-v" step initializes the second field of the tuple withvand
+111
+11
+binds the address of the tuple tox, which is assigned the fully initialized type<int,int>. Hence,
+bothpandpare allowed onx.
+01
+Like all the intermediate languages of the compiler, this code sequence need not be atomic; it
+may be rearranged or optimized in any well-typed manner. The initialization flags on the types
+ensure that a field cannot be pro jected unless it has been initialized. Furthermore, the syntactic
+value restriction ensures there is no unsoundness in the presence of polymorphism. However, it is
+important to note thatx[i]<-vis interpreted as an imperative operation, and thus at the end of
+the sequence,x,x,andxare all aliases for the same location, even though they have different
+01
+(but compatible) types. Consequently, the initialization flags do not prevent a field from being
+16
+tuple is initialized exactly once, but we have avoided these approaches in the interest of a simpler
+type system.
+A
+The static semantics forlamare given in Figure 14. Figure 15 presents the type translation from
+HA
+lamtolam. All that happens is that initialization flags are added to each field of tuple types:
+def
+11
+A[[<t,...,t>]]=<A[[t]],...,A[[t]]>
+1n1n
+The term translation appears in Figure 16. In this translation, values are translated to both a
+value and a series of declarations that are used to construct that value. For non-tuple values, that
+series of declarations will be null (denoted bye). The variablesy, which are used internally by
+i
+'
+~~
+the translation, are always assumed fresh. WheneisletdinE, we writeletdineto mean
+'
+~~
+letd,dinE.
+alloc
+''
+Lemma 5.1|-Pif and only if there existsPsuch that|-PP.
+HH
+alloc
+''
+Lemma 5.2 (Allocation Type Correctness)If|-PPthen|-P.
+HA
+The factorial example after application of the explicit allocation translation appears in Figure 17.
+6 Typed Assembly Language
+A
+The final compilation stage, code generation, convertslamto TAL. All of the ma jor typing constructs
+A
+in TAL are present inlamand, indeed, code generation is largely syntactic. To summarize the type
+structure at this point, there is a combined abstraction mechanism that may simultaneously abstract
+a type environment, a set of type arguments, and a set of value arguments. Values of these types
+may be partially applied to type environments and remain values. There are existential types to
+support closures and other data abstractions. Finally, there aren-tuples with flags on the fields
+indicating whether the field has been initialized.
+AA
+A key technical distinction betweenlamand TAL is thatlamuses alpha-varying variables, whereas
+2
+TAL uses register names, which like labels on records, donotalpha-vary.Following standard
+practice, we assume an infinite supply of registers. Mapping to a language with a finite number of
+registers may be performed by spilling registers into a tuple, and reloading values from this tuple
+when necessary.
+One of the consequences of this aspect of TAL is that a register calling convention must be used
+in code generation, and that calling convention must be made explicit in the types. Hence TAL
+includes the typeforall[a~]{r1:t,...,rn:t}, which is used to describe entry points of code blocks (i.e.,
+1n
+A
+code labels) and is the TAL analog of thelamfunction type,forall[a~].(t,...,t)->void.Thekey
+1n
+difference is that we assign fixed registers to the arguments of the code. Intuitively, to jump to
+a block of code of this type, the type variablesa~must be suitably instantiated, and registersr1
+throughrnmust contain values of typetthrought, respectively.
+1n
+2
+Indeed, the register file may be viewed as a record, and register names as field labels for this record.
+17
+FTV(t)subseteqDelta
+Delta|-t
+A
+(G(x)=t)(PS(l)=t)
+PS; Delta; G|-x:tPS; Delta; G|-l:tPS; Delta; G|-i:int
+AAA
+~
+Delta|-sPS; Delta; G|-v:forall[a,b].(~t)->void
+AA
+~
+PS; Delta; G|-v[s]:forall[b].(~t[s/a])->void
+A
+'
+Delta|-tPS; Delta; G|-v:t[t/a]
+AA
+''
+PS; Delta; G|-pac k[t, v]asexistsa.t:existsa.t
+A
+PS; Delta; G|-v:forall[].(t,...,t)->voidPS; Delta; G|-v:t
+A1nAii
+PS; Delta; G|-let inv(v,...,v)
+A1n
+PS; Delta; G|-v:intPS; Delta; G|-ePS; Delta; G|-e
+AA1A2
+PS; Delta; G|-let in if0(v, e,e)
+A12
+PS; Delta; G|-v:t
+A
+PS; Delta; G|-let in halt[t]v
+A
+~
+PS; Delta; G|-v:tPS; Delta; G{x:t}|-letdine
+AA
+(x/inG)
+~
+PS; Delta; G|-letx=v,dine
+A
+f
+1f
+n~
+PS; Delta; G|-v:<t,...,t>PS; Delta; G{x:t}|-letdine
+AiA
+n
+1
+(f=1,x/inG,1<=i<=n)
+i
+~
+PS; Delta; G|-letx=p(v),dine
+Ai
+~
+PS; Delta; G|-v:intPS; Delta; G|-v:intPS; Delta; G{x:int}|-letdine
+A1A2A
+(x/inG)
+~
+PS; Delta; G|-letx=vpv,dine
+A12
+~
+PS; Delta; G|-v:existsa.tPS; Deltaa;G{x:t}|-letdine
+AA
+(x/inG,a/inDelta)
+~
+PS; Delta; G|-let[a, x]=unpackv,dine
+A
+00
+~
+Delta|-tPS; Delta; G{x:<t,...,t>} |-letdine
+AiA
+1n
+(x/inG)
+~
+PS; Delta; G|-letx=mal loc[t,...,t],dine
+A1n
+f
+1f'
+n
+PS; Delta; G|-v:<t,...,t>PS; Delta; G|-v:t
+AAi
+1n
+ff
+f
+i-1i+1
+1
+1f
+n~
+PS; Delta; G{x:<t,...,t,t,t,...,t>} |-letdine
+A
+in
+1i-1i+1
+(x/inG,1<=i<=n)
+'
+~
+PS; Delta; G|-letx=v[i]<-v,dine
+A
+a~|-tPS;a~;{x:t,...,x:t}|-e
+Ai11nnA
+PS|-l|->->code[a~](x:t,...,x:t).e:l|->-> forall[a~].(t,...,t)->void
+A11nn1n
+emptyset|-tPS|-b:l|->->tPS;emptyset;emptyset|-e
+PS=l:t,...,l:t
+AiAiiiA
+11nn
+|-letrecb,...,binel/=lwhenj/=k
+A1njk
+A
+Figure 14: Static Semantics oflam
+18
+def
+A[[a]]=a
+def
+A[[int]]=int
+def
+A[[forall[a~].(~t)->void]]=forall[a~].(A[[~t->void
+def
+11
+A[[<t,...,t>]]=<A[[t]],...,A[[t]]>
+1n1n
+def
+A[[existsa.t]]=existsa.A[[t]]
+HA
+Figure 15: Type Translation fromlamtolam
+Another technical point is that registers may contain onlywordvalues, which are integers, pointers
+into the heap (i.e.,labels), and instantiated or packed word values. Tuples and code blocks are
+largevalues and must be heap allocated. In this manner, TAL makes the layout of data in memory
+explicit.
+In the remainder of this section, we present the syntax of TAL (Section 6.1), its dynamic semantics
+A
+(Section 6.2), and its full static semantics (Section 6.3). Finally, we sketch the translation fromlam
+to TAL (Section 6.4).
+6.1 TAL Syntax
+We present the full syntax of TAL in Figure 18. A TAL abstract machine orprogramconsists of
+a heap, a register file and a sequence of instructions. The heap is a mapping of labels to heap
+values, which are tuples and code. The register file is a mapping of registers (ranged over by the
+metavariabler) to word values. Heaps, register files, and their respective types are not considered
+syntactically correct if they repeat labels or registers. Whenrappears inR, the notationR{r|->->w}
+represents the register fileRwith therbinding replaced withw, and a similar notation is used for
+register file types; ifrdoes not appear inR, the indicated binding is merely added, as usual.
+Although heap values are not word values, the labels that point to them are. The other word values
+are integers, instantiations of word values, existential packages, and junk values (?t), which are
+used by the operational semantics to represent uninitialized data. A small value is either a word
+value, a register, or an instantiated or packed small value. The distinction between word and small
+values is drawn because a register must contain a word, not another register. Code blocks are linear
+sequences of instructions that abstract a set of type variables, and state their register assumptions.
+The sequence of instructions is always terminated by ajmporhaltinstruction. Expressions that
+differ only by alpha-variation (of type variables) are considered identical, as are programs that
+differ only in the order of fields in a heap or register file.
+6.2 TAL Operational Semantics
+The operational semantics of TAL is presented in Figure 19 as a deterministic rewriting system
+'
+P|->-->Pthat maps programs to programs. Although, as discussed above, we ultimately intend
+a type-erasure interpretation, we do not erase the types from the operational semantics presented
+here, so that we may more easily state and prove a sub ject reduction theorem (Lemma 6.1). The
+19
+(G(x)=t)(PS(l)=t)
+allocalloc
+PS; Delta; G|-x:tx, ePS; Delta; G|-l:tl, e
+HH
+alloc
+PS; Delta; G|-i:inti, e
+H
+alloc
+'
+~
+PS; Delta; G|-v:tv,d
+Hiii
+i
+alloc
+~~
+PS; Delta; G|-<v,...,v>:<t,...,t>y,(d,...,d,
+H1n1nn1n
+y=mal loc[A[[t]],...,A[[t,
+01n
+'
+y=y[1]<-v,
+10
+1
+.
+.
+.
+'
+y=y[n]<-v)
+nn-1
+n
+alloc
+'
+~~
+Delta|-sPS; Delta; G|-v:forall[a,b](~t)->voidv,d
+HH
+'
+~~
+PS; Delta; G|-v[s]:forall[b](~t[s/a])->voidv[A[[s,d
+H
+alloc
+''
+~
+Delta|-tPS; Delta; G|-v:t[t/a]v,d
+HH
+alloc
+''''
+~
+PS; Delta; G|-pac k[t, v]asexistsa.t:existsa.tpac k[A[[t]],v]asA[[existsa.t]],d
+H
+allocalloc
+''
+~~
+PS; Delta; G|-v:forall[].(t,...,t)->voidv,dPS; Delta; G|-v:tv,d
+H1nHiii
+i
+alloc
+'''
+~~~
+PS; Delta; G|-v(v,...,v)letd,d,...,dinv(v,...,v)
+H1n1n
+n
+1
+allocallocalloc
+'''
+~
+PS; Delta; G|-v:intv,dPS; Delta; G|-eePS; Delta; G|-ee
+HH1H2
+12
+alloc
+'''
+~
+PS; Delta; G|-if0(v, e,e)letdin if0(v,e,e)
+H12
+12
+alloc
+'
+~
+PS; Delta; G|-v:tv,d
+H
+'
+~
+PS; Delta; G|-halt[t]vletdin halt[A[[tv
+H
+allocalloc
+''
+~
+PS; Delta; G|-v:tv,dPS; Delta; G{x:t}|-ee
+HH
+(x/inG)
+alloc
+''
+~
+PS; Delta; G|-letx=vineletd, x=vine
+H
+allocalloc
+''
+~
+PS; Delta; G|-v:<t,...,t>v,dPS; Delta; G{x:t}|-ee
+H1niH
+(x/inG,1<=i<=n)
+alloc
+''
+~
+PS; Delta; G|-letx=p(v)ineletd, x=p(v)ine
+Hii
+allocallocalloc
+'''
+~~
+PS; Delta; G|-v:intv,dPS; Delta; G|-v:intv,dPS; Delta; G{x:int}|-ee
+H11H22H
+12
+(x/inG)
+alloc
+'''
+~~
+PS; Delta; G|-letx=vpvineletd,d,x=vpvine
+H1212
+12
+allocalloc
+''
+~
+PS; Delta; G|-v:existsa.tv,dPS; Deltaa;G{x:t}|-ee
+HH
+(x/inG,a/inDelta)
+alloc
+''
+~
+PS;let[a, x]=unpackvineletd,[a, x]=unpackvine
+alloc
+'
+a~|-tPS;a~;{x:t,...,x:t}|-ee
+Hi11nnH
+alloc
+PS|-l|->->code[a~](x:t,...,x:t).e:l|->-> forall[a~].(t,...,t)->void
+H11nn1n
+'
+l|->->code[a~](x:A[[t]],...,x:A[[t.e
+11nn
+allocalloc
+''
+emptyset|-tPS|-b:l|->->tbPS;emptyset;emptyset|-ee
+PS=l:t,...,l:t
+HiHiiiH
+i11nn
+alloc
+'''
+l/=lwhenj/=k
+jk
+|-letrecb,...,bineletrecb,...,bine
+H1n
+1n
+HA
+Figure 16: Term Translation fromlamtolam
+20
+letrecl|->->codeenv:<>,n:int,k:t).
+factk
+let in if0(n,
+let[b, k]=unpackk
+unpack
+k=p(k)
+code0unpack
+k=p(k)
+env1unpack
+ink(k,1),
+codeenv
+letx=n-1
+y=mal loc[int,t]
+5k
+y=y[1]<-n
+65
+y=y[2]<-k
+76
+1111
+y=mal loc[(<int,t>,int)->void,<int,t>,]
+8
+kk
+y=y[1]<-l
+98con t
+y=y[2]<-y
+1097
+11
+inl(env,x,pac k[<int,t>,y]ast))
+fact10k
+k
+11
+l|->->codeenv:<int,t>,y:int).
+con t
+k
+letn=p(env)
+0
+k=p(env)
+1
+z=nxy
+[b, k]=unpackk
+unpack
+k=p(k)
+code0unpack
+k=p(k)
+env1unpack
+ink(k,z)
+codeenv
+l|->->codeenv:<>,n:int).let in halt[int](n)
+halt
+in
+lety=mal loc[]
+0
+y=mal loc[]
+1
+y=mal loc[(<>,int)->void,<>]
+2
+y=y[1]<-l
+32halt
+y=y[2]<-y
+431
+inl(y,6,pac k[<>,y]ast)
+fact04k
+1
+1
+wheretisexistsa.<(a,int)->void,a>
+k
+A
+Figure 17: Factorial inlam
+21
+f
+1f
+n
+typest::=a|int|forall[a~].G|<t,...,t>|existsa.t
+n
+1
+initialization flagsf::= 0|1
+heap typesPS ::={l:t,...,l:t}
+11nn
+register file typesG ::={r:t,...,r:t}
+11nn
+type contextsDelta ::=a~
+registersr::=r1|r2|r3| ...
+'
+word valuesw::=l|i|?t|w[t]|pac k[t, w]ast
+'
+smal l valuesv::=r|w|v[t]|pac k[t, v]ast
+heap valuesh::=<w,...,w>|code[a~]G.S
+1n
+heapsH::={l|->->h,...,l|->->h}
+11nn
+register filesR::={r|->->w,...,r|->->w}
+11nn
+instructionsi::=addr,r,v|bnzr, v|ldr,r[i]|mallocr[~t]|movr,v|
+dsdsdd
+mulr,r,v|str[i],r|subr,r,v|unpack[a, r],v
+dsdsdsd
+instruction sequencesS::=i;S|jmpv|halt[t]
+programsP::= (H, R, S)
+Figure 18: Syntax of TAL
+well-formed terminal configurations of the rewriting system have the form (H, R{r1|->->w},halt[t]).
+This corresponds to a machine state where the registerr1contains the value computed by the
+computation. All other terminal configurations are considered to be "stuck" programs.
+If we erase the types from the instructions, then their meaning is intuitively clear and there is a
+one-to-one correspondence with conventional assembly language instructions. The two exceptions
+to this are theunpackandmallocinstructions, which are discussed below.
+th
+Intuitively, theldr,r[iicomponent (counting from 0) of the tuple bound
+ds
+to the label inr, and places this word value inr.Conversely,str[i],rplaces the word value in
+sdds
+th
+rat theiposition of the tuple bound to the label inr. The instructionjmpv,wherevis a value
+sd
+of the forml[~tl, instantiating the abstracted
+type variables oflwith~t.Thebnzr, vinstruction tests the value inrto see if it is zero. If so,
+then control continues with the next instruction. Otherwise control is transferred tovas with the
+jmpinstruction.
+''
+The instructionunpack[a, r],v,wherevis a value of the formpac k[t,v]ast,isevaluatedby
+d
+'
+substitutingtforain the remainder of the sequence of instructions currently being executed,
+'
+and by binding the registerrto the valuev. If types are erased, theunpackinstruction can be
+d
+implemented with amovinstruction.
+A
+As at thelamlevel,mallocr[t,...,t
+d1n
+the address of this tuple tor. Of course, real machines do not provide a primitivemallocin-
+d
+struction. Our intention is that, as types are erased,mallocis expanded into a fixed instruction
+sequence that allocates a tuple of the appropriate size. Because this instruction sequence is ab-
+stract, it prevents optimization from re-ordering and interleaving these underlying instructions with
+22
+(H, R, S)|->-->Pwhere
+ifS=thenP=
+''
+^
+addr,r,v;S(H, R{r|->->R(r)+R(v)},S)
+dsds
+and similarly formulandsub
+''
+bnzr, v;S(H, R, S)
+whenR(r)=0
+'''
+bnzr, v;S(H, R, S[~t/~a])
+^
+whenR(r)=iandi/=0whereR(v)=l[~t]
+''
+andH(l)=code[a~]G.S
+'
+jmpv(H, R, S[~t/~a])
+^
+whereR(v)=l[~t]
+'
+andH(l)=code[a~]G.S
+''
+ldr,r[i];S(H, R{r|->->w},S)
+dsdi
+whereR(r)=l
+s
+andH(l)=<w,...,w>with 0<=i<n
+0n-1
+''
+mallocr[t,...,t];S(H{l|->-> <?t,...,?t>},R{r|->->l},S)
+d1n1nd
+wherel/inH
+''
+^
+movr,v;S(H, R{r|->->R(v)},S)
+dd
+''
+str[i],r;S(H{l|->-> <w,...,w,R(r),w,...,w>},R,S)
+ds0i-1si+1n-1
+whereR(r)=l
+d
+andH(l)=<w,...,w>with 0<=i<n
+0n-1
+''
+unpack[a, r],v;S(H, R{r|->->w},S[t/a])
+dd
+'
+^
+whereR(v)=pac k[t, w]ast
+R(r)whenv=r
+wwhenv=w
+^
+WhereR(v)=
+''
+^
+R(v)[tv=v[t]
+''''
+^
+pac k[t,R(v)]astwhenv=pac k[t, v]ast
+Figure 19: Operational Semantics of TAL
+the surrounding TAL code. However, this is the only instruction sequence that is abstract in TAL.
+Real machines also have a finite amount of heap space. It is straightforward to link our TAL to a
+collector would require introducing tags so that we may distinguish pointers from integers, or else
+framework.
+6.3 TAL Static Semantics
+The static semantics for TAL appears in Figures 21 and 22 and consists of thirteen judgments,
+summarized in Figure 20 and elaborated briefly below. The static semantics is inspired by and
+23
+JudgmentMeaning
+Delta|-ttypetis a well-formed type
+TAL
+|-PShtypePS is a well-formed heap type
+TAL
+Delta|-G rftypeG is a well-formed register file type
+TAL
+Delta|-t<=ttypetis a subtype oft
+TAL1212
+Delta|-G<=GrftypeGis register file subtype of G
+TAL1212
+|-H:PSheapHis a well-formed heap of heap type PS
+TAL
+PS|-R:G regfileRis a well-formed register file of register file type G
+TAL
+PS|-h:thvalhis a well-formed heap value of typet
+TAL
+PS; Delta|-w:twvalwis a well-formed word value of typet
+TAL
+ff
+PS; Delta|-w:tfwvalwis a well-formed word value of flagged typet
+TAL
+(i.e.,whas typetorwis ?tandfis 0)
+PS; Delta; G|-v:tvis a well-formed small value of typet
+TAL
+PS; Delta; G|-SSis a well-formed instruction sequence
+TAL
+|-PPis a well-formed program
+TAL
+Figure 20: TAL Static Semantic Judgments
+->forall
+follows the conventions of Morrisett and Harper'slam
+gc
+The first five judgments state well-formedness and subtyping of various sorts of types. Each of
+these judgments are relative to a type context except the heap type well-formedness judgment;
+heaps and heap types are required to be closed, so no type context is used. Next are two judgments
+for assigning types to heaps and to register files; neither heaps nor register files may contain free
+type variables, but register files may contain references to the heap.
+The next four judgments are for assigning types to values. In addition to one rule for each sort
+of value, there is a rule for assigningflagged typesto word values: the junk value ?tmay not
+0
+be assigned any regular type, but it may be assigned the flagged typet. Each value sort may
+contain references to the heap, all but heap values may contain free type variables, but (as discussed
+above) only small values may contain registers. The final two judgments assert well-formedness of
+instruction sequences and programs.
+A few additional words are merited on the two subtyping judgments. Neither of these are intended
+to support subtyping in the usual sense, although they could be expanded to do so. Instead, they
+are used to allow the forgetting of information in particular places where necessary. The subtyping
+judgment makes it possible to forget that a field of a tuple has been initialized. This is used in
+the sub ject reduction argument (Lemma 6.1) where it is sometimes necessary that references to an
+initialized tuple be given the old uninitialized type. The register file subtyping judgment makes it
+possible to forget the types of some registers. This makes it possible to jump to a code block when
+"too many" registers are defined.
+The following two lemmas and their corollary establish type safety for TAL. Their proofs appear
+in Appendix A.
+''
+Lemma 6.1 (Sub ject Reduction)If|-PandP|->-->P,then|-P.
+TALTAL
+24
+Delta|-ttype|-PShtype Delta|-Grftype
+TALTALTAL
+FTV(t)subseteqDeltaemptyset|-ttype
+TALi
+(type)(heap-type)
+Delta|-ttype|-{l:t,...,l:t}htype
+TALTAL11nn
+Delta|-ttype
+TALi
+(reg-type)
+Delta|-{r:t,...,r:t}rftype
+TAL11nn
+Delta|-t<=ttype Delta|-G<=Grftype
+TAL12TAL12
+Delta|-ttypeDelta|-t<=ttype Delta|-t<=ttype
+TALTAL12TAL23
+(reflex)(trans)
+Delta|-t<=ttypeDelta|-t<=ttype
+TALTAL13
+Delta|-ttype
+TALi
+(0-1)
+ffff
+ff
+i-1i+1i-1i+1
+11
+1f0f
+nn
+Delta|-<t,...,t,t,t,...,t><=<t,...,t,t,t,...,t>type
+TAL
+1i-1ii+1n1i-1ii+1n
+Delta|-ttype (for 1<=i<=m)
+TALi
+(weaken)
+(m>=n)
+Delta|-{r:t,...,r:t}<={r:t,...,r:t}rftype
+TAL11mm11nn
+|-P|-H:PSheap PS|-R:G regfile
+TALTALTAL
+|-H:PSheap PS|-R:G regfile PS;emptyset;G|-S
+TALTALTAL
+(prog)
+|-(H, R, S)
+TAL
+|-PShtype PS|-h:thval
+TALTALii
+(heap)
+(PS ={l:t,...,l:t})
+11nn
+|-{l|->->h,...,l|->->h}:PSheap
+TAL11nn
+PS;emptyset|-w:twval (for 1<=i<=m)
+TALii
+(reg)
+(m>=n)
+PS|-{r|->->w,...,r|->->w}:{r|->->t,...,r|->->t}regfile
+TAL11mm11nn
+f
+PS|-h:thval PS; Delta|-w:twval PS; Delta|-w:tfwval PS;Delta;G|-v:t
+TALTALTALTAL
+f
+i
+PS;emptyset|-w:tfwval
+a~|-Grftype PS;a~;G|-S
+TALi
+TALTAL
+i
+(tuple)(code)
+f
+1f
+n
+PS|-<w,...,w>:<t,...,t>hvalPS|-code[a~]G.S:forall[a~].Ghval
+TAL1nTAL
+1n
+'
+Delta|-t<=ttype
+TAL
+'
+(label)(int)
+(PS(l)=t)
+PS; Delta|-l:twvalPS; Delta|-i:intwval
+TALTAL
+~
+Delta|-ttype PS; Delta|-w:forall[a,b].Gwval
+TALTAL
+(tapp-word)
+~
+PS; Delta|-w[t]:forall[b].G[t/a
+TAL
+'
+Delta|-ttype PS; Delta|-w:t[t/a
+TALTAL
+(pack-word)
+''
+PS; Delta|-pack[t, w]asexistsa.t:existsa.twval
+TAL
+Delta|-ttype
+PS; Delta|-w:twvalTAL
+TAL
+(init)(uninit)
+f0
+PS; Delta|-w:tfwvalPS; Delta|-?t:tfwval
+TALTAL
+PS; Delta|-w:twval
+TAL
+(reg-val)(word-val)
+(G(r)=t)
+PS; Delta; G|-r:tPS; Delta; G|-w:t
+TALTAL
+'
+~
+Delta|-ttype PS; Delta; G|-v:forall[a,b].G
+TALTAL
+(tapp-val)
+'
+~
+PS; Delta; G|-v[t]:forall[b].G[t/a]
+TAL
+'
+Delta|-ttype PS; Delta; G|-v:t[t/a]
+TALTAL
+(pack-val)
+''
+PS; Delta; G|-pack[t, v]asexistsa.t:existsa.t
+TAL
+Figure 21: Static Semantics of TAL (except instructions)
+25
+PS; Delta; G|-S
+TAL
+PS; Delta; G|-r:intPS; Delta; G|-v:int
+TALsTAL
+PS; Delta; G{r:int}|-S
+dTAL
+(s-arith)
+(arithin{add,mul,sub})
+PS; Delta; G|-arithr,r,v;S
+TALds
+'
+PS; Delta; G|-r:intPS; Delta; G|-v:forall[].G
+TALTAL
+'
+Delta|-G<=Grftype PS; Delta; G|-S
+TALTAL
+(s-bnz)
+PS; Delta; G|-bnzr, v;S
+TAL
+f
+f
+n-1
+0
+PS; Delta; G|-r:<t,...,t>PS; Delta; G{r:t}|-S
+TALsdiTAL
+0n-1
+(s-ld)
+(f=1,0<=i<n)
+i
+PS; Delta; G|-ldr,r[i];S
+TALds
+00
+Delta|-ttype PS; Delta; G{r:<t,...,t>} |-S
+TALidTAL
+1n
+(s-malloc)
+PS; Delta; G|-mallocr[t,...,t];S
+TALd1n
+PS; Delta; G|-v:tPS; Delta; G{r:t}|-S
+TALdTAL
+(s-mov)
+PS; Delta; G|-movr,v;S
+TALd
+f
+f
+n-1
+0
+PS; Delta; G|-r:<t,...,t>PS; Delta; G|-r:t
+TALdTALsi
+0n-1
+fff
+f
+i-1i+1
+0n-1
+1
+PS; Delta; G{r:<t,...,t,t,t,...,t>} |-S
+dTAL
+i
+0i-1i+1n-1
+(s-sto)
+(0<=i<n)
+PS; Delta; G|-str[i],r;S
+TALds
+PS; Delta; G|-v:existsa.tPS; Deltaa;G{r:t}|-S
+TALdTAL
+(s-unpack)
+(a/inDelta)
+PS; Delta; G|-unpack[a, r],v;S
+TALd
+''
+PS; Delta; G|-v:forall[].GDelta|-G<=Grftype
+TALTAL
+(s-jmp)
+PS; Delta; G|-jmpv
+TAL
+PS; Delta; G|-r1:t
+TAL
+(s-halt)
+PS; Delta; G|-halt[t]
+TAL
+Figure 22: Static Semantics of TAL instructions
+26
+def
+T[[a]]=a
+def
+T[[int]]=int
+def
+T[[forall[a~].(t,...,t)->void]]=forall[a~].{r1:T[[t]],...,rn:T[[t]]}
+1n1n
+def
+f>
+fff
+n
+1n
+1
+T[[<t,...,t]]=<T[[t]],...,T[[t]]>
+n
+1n
+1
+def
+T[[existsa.t]]=existsa.T[[t]]
+def
+T[[x:t,...,x:t]]={r1:T[[t]],...,rn:T[[t]]}
+11nn1n
+A
+Figure 23: Type Translation fromlamto TAL
+''
+Lemma 6.2 (Progress)If|-P, then either there existsPsuch thatP|->-->PorPis of the
+TAL
+form(H, R{r1|->->w},halt[t]).
+'*'
+Corollary 6.3 (Type Safety)If|-P, then there is no stuckPsuch thatP|->-->P.
+TAL
+6.4 Code Generation
+A
+The type translation,T[[.lamto TAL is straightforward. The only point of interest is the
+translation of function types, which must assign registers to value arguments:
+def
+T[[forall[a~](t,...,t)->void]]=forall[a~]{r1:T[[t]],...,rn:T[[t]]}
+1n1n
+The term translation appears in Figures 24 and 25. In this translation, values are translated to
+small values, terms are translated to pairs of instruction sequences and heaps, blocks are translated
+to heaps, and programs are translated to programs. The translation for terms needs to heap allocate
+the false branch ofif0expressions, which requires the use of a fresh label. In the other translations
+of the compiler, variables used internally by the translation have always been assumed fresh, but,
+since labels have global scope, choosing fresh labels is not necessarily simple. Consequently, the
+translation handles fresh label generation explicitly by supplying a set of used labels to the term
+and block translation judgments. The translation uses the notation|G|, representing the number
+of bindings in G, and the notationsHandPS, representing the sets of labels bound inHand PS.
+Informally, terms are translated to instruction sequences as follows:
+*x=vis mapped tomovr,v.
+x
+*x=p(v) is mapped to the sequencemovr,v;ldr,r[i-1]
+ixxx
+*x=vpvis mapped to the sequencemovr,v;arithr,r,vwherearithis the appro-
+12x1xx2
+priate arithmetic instruction.
+*[a, x]=unpackvis mapped tounpack[a, r],v.
+x
+*x=mal loc[~tmallocr[~t].
+x
+27
+(1<=i<=n)
+TAL
+PS; Delta;{x:t,...,x:t}|-x:tri
+11nnAii
+(PS(l)=t)
+TALTAL
+PS; Delta; G|-l:tlPS; Delta; G|-i:inti
+AA
+TAL
+'
+~
+Delta|-sPS; Delta; G|-v:forall[a,b].(~t)->voidv
+AA
+TAL
+'
+~
+PS; Delta; G|-v[s]:forall[b].(~t[s/a])->voidv[T[[s
+A
+TAL
+''
+Delta|-tPS; Delta; G|-v:t[t/a]v
+AA
+TAL
+''''
+PS; Delta; G|-pac k[t, v]asexistsa.t:existsa.tpac k[T[[t]],v]asT[[existsa.t]]
+A
+TAL
+a~|-tPS;a~;{x:t,...,x:t}|-e|LS, H
+Ai11nnA
+TAL
+PS|-l|->->code[a~](x:t,...,x:t).e:l|->-> forall[a~].(t,...,t)->void|L
+A11nn1n
+H, l|->->code[a~]{r1:T[[t]],...,rn:T[[t]]}.S
+1n
+TAL
+PS|-b:l|->->t|LHemptyset|-t
+Aiiii-1iAi
+TAL
+L=PScupHH
+i1i
+PS;emptyset;emptyset|-e|LS, H
+An
+PS=l:t,...,l:t
+11nn
+TAL
+|-letrecb,...,bine((H,...,H,H),emptyset,S)
+A1n1n
+l/=lwhenj/=k
+jk
+A
+Figure 24: Program Translation fromlamto TAL (except terms)
+'
+*x=v[i]<-vis mapped to the sequence:
+'
+movr,v;movr,v;str[i-1],r
+xtempxtemp
+*v(v,...,v) is mapped to the sequence:
+1n
+movr,v;...;movr,v;mov r1,r;...;mov rn, r;jmpv
+temp1tempntemptemp
+1n1n
+Note that the arguments cannot be moved immediately into the registersr1, ...,rn because
+those registers may be used in later arguments.
+*if0(v, e,e) is mapped to the sequence:
+12
+movr,v;bnzr,l[a~];S
+temptemp1
+wherelis bound in the heap tocode[a~]G.S, the translation ofeisS,thefreetypevariables
+2ii
+ofeare contained ina~, and G is the register file type corresponding to the free variables of
+2
+e.
+2
+*halt[t]vis mapped to the sequencemov r1,v;halt[t]
+TAL
+''
+Lemma 6.4|-Pif and only if there existsPsuch that|-PP
+AA
+TAL
+''
+Lemma 6.5 (TAL Conversion Type Correctness)Ifb|-PPthen|-P.
+ATAL
+28
+TALTAL
+''
+PS; Delta; G|-v:forall[].(t,...,t)->voidvPS; Delta; G|-v:tv
+A1nAii
+i
+(|G|=k)
+TAL
+PS; Delta; G|-let inv(v,...,v)|L
+A1n
+''
+(mov r(k+1),v;...;mov r(k+n),v;
+1n
+'
+mov r1,r(k+1);...;mov rn,r(k+n);jmpv),e
+TAL
+'
+PS; Delta; G|-v:intv
+A
+TALTAL
+l/inLcupHcupH
+12
+PS; Delta; G|-e|LS,HPS; Delta; G|-e|LcupHS,H
+A111A2122
+r=r(|G|+1)
+TAL
+PS; Delta; G|-let in if0(v, e,e)|L
+A12
+Delta=a~
+(movr, v;bnzr, l[a~];S),(H,H,l|->->code[a~]T.S)
+1122
+TAL
+'
+PS; Delta; G|-v:tv
+A
+TAL
+'
+PS; Delta; G|-let in halt[t]v|L(mov r1,v;halt[T[[t,e
+A
+TALTAL
+'
+~
+PS; Delta; G|-v:tvPS; Delta; G{x:t}|-letdine|LS, H
+r=r(|G|+1)
+AA
+TAL
+'
+x/inG
+~
+PS; Delta; G|-letx=v,dine|L(movr, v;S),H
+A
+r=r(|G|+1)
+TALTAL
+f
+1f'
+n~
+PS; Delta; G|-v:<t,...,t>vPS; Delta; G{x:t}|-letdine|LS, H
+f=1
+AiA
+n
+1i
+TAL
+'
+x/inG
+~
+PS; Delta; G|-letx=p(v),dine|L(movr, v;ldr, r[i-S),H
+Ai
+1<=i<=n
+TALTAL
+''
+r=r(|G|+1)
+PS; Delta; G|-v:intvPS; Delta; G|-v:intv
+A1A2
+12
+TAL
+arith=add
+~+
+PS; Delta; G{x:int}|-letdine|LS, H
+A
+arith=sub
+-
+TAL
+''
+~
+PS; Delta; G|-letx=vpv,dine|L(movr, v;arithr, r, v;S),H
+A12p
+12
+arith=mul
+x
+x/inG
+TALTAL
+r=r(|G|+1)
+'
+~
+PS; Delta; G|-v:existsa.tvPS; Deltaa;G{x:t}|-letdine|LS, H
+AA
+x/inG
+TAL
+'
+~
+PS; Delta; G|-let[a, x]=unpackv,dine|L(unpack[a, r],v;S),H
+A
+a/inDelta
+TAL
+00
+~
+Delta|-tPS; Delta; G{x:<t,...,t>} |-letdine|LS, H
+r=r(|G|+1)
+AiA
+1n
+TAL
+x/inG
+~
+PS; Delta; G|-letx=mal loc[t,...,t],dine|L
+A1n
+(malloc[T[[t]],...,T[[tS),H
+1n
+TALTAL
+f
+1f''
+n
+PS; Delta; G|-v:<t,...,t>vPS; Delta; G|-v:tv
+A1A2i
+n12
+1
+r=r(|G|+1)
+TAL
+ff
+f
+i-1i+1
+11f
+n~
+'
+PS; Delta; G{x:<t,...,t,t,t,...,t>} |-letdine|LS, H
+A
+nr=r(|G|+2)
+1i-1ii+1
+TAL
+x/inG
+~
+PS; Delta; G|-letx=v[i]<-v,dine|L
+A12
+''''
+1<=i<=n
+(movr, v;movr,v;str[i-1],r;S),H
+12
+A
+Figure 25: Term Translation fromlamto TAL
+29
+Before the resulting TAL code may be run on a real machine, a compiler must perform a final
+register allocation step to ensure that the TAL code runs with the number of registers supplied
+by the machine. This may be viewed as a type-preserving optimization within the framework
+of TAL. A clever register allocator could greatly improve the performance of the output code by
+choosing registers in order to make moves unnecessary. A practical compiler would want to perform
+intelligent register allocation as well as other traditional low-level optimizations such as improving
+instruction selection and scheduling, strength reduction, common subexpression elimination, flow-
+control optimizations, and dead code elimination. Each of these may be implemented as a type-
+6.5 TAL Factorial
+The factorial computation translated into TAL appears in Figure 26. To obtain the code shown, a
+few standard optimizations were applied; in particular, a clever (but automatable) register alloca-
+tion and the removal of redundant moves. If the efficiency of this version is unsatisfactory, a more
+F
+efficient, tail-recursive version of factorial could be coded inlam, or a highly optimized version could
+be hand-coded in TAL:
+lloop:
+code[]{r1:int,r2:int}.%r1: the product so far,r2: the next number to be multiplied
+bnz r2,lnonzero %check if done
+halt[int]%halt with result inr1
+lnonzero:
+code[]{r1:int,r2:int}.
+mul r1,r1,r2 %multiply next number
+sub r2,r2,1 %decrement the counter
+jmp lloop
+lfact:
+code[]{r1:int}.%compute factorial ofr1
+mov r2,r1 %set up for loop
+mov r1,1
+jmp lloop
+withS=mov r1,6; jmp lfact.
+7 Compiler Type Correctness
+We have presented a compiler for System F which translates programs through a series of four
+intermediate lambda calculi before finally generating typed assembly language. The full compiler
+may then be defined by the judgment|-e:tP:
+F
+cpscloshstallocTAL
+|-e:teemptyset;emptyset|-ee|-eP|-PP|-PP
+FcpsKcpsclosCcloshstHhstallocAalloc
+|-e:tP
+F
+For each translation we have given a type correctness lemma. A corollary of these type correctness
+lemmas is the type correctness of the entire compiler:
+30
+(H,{},S)where
+H=
+lfact:
+code[]{r1:<>,r2:int,r3:t}.
+k
+bnz r2,lnonzero
+unpack[a,r3],r3 %zero branch: callk(inr3)with1
+pro jectkcode
+pro jectkenvironment
+mov r2,1
+jmp r4 %jump with{r1=env,r2=1}
+lnonzero:
+code[]{r1:<>,r2:int,r3:t}.
+k
+sub r4,r2,1 %n-1
+malloc r5[int, t]%create environment for cont inr5
+k
+storeninto environment
+storekinto environment
+1111
+malloc r3[forall[].{r1:<int,t>,r2:int},<int,t>]%create cont closure inr3
+kk
+mov r2,lcont
+store cont code
+store environment<n, k>
+mov r2,r4 %arg :=n-1
+11
+mov r3,pack[<int,t>,r3]ast%abstract the type of the environment
+k
+k
+jmp lf%jump tokwith{r1=env,r2=n-1,r3=cont}
+lcont:
+11
+code[]{r1:<int,t>,r2:int}.%r2contains (n-1)!
+k
+retrieven
+retrievek
+mul r2,r3,r2 %nx(n-1)!
+unpack[a,r4],r4 %unpackk
+pro jectkcode
+pro jectkenvironment
+jmp r3 %jump tokwith{r1=env,r2=n!}
+lhalt:
+code[]{r1:<>,r2:int}.
+mov r1,r2
+halt[int]%halt with result inr1
+andS=
+malloc r1[]%create an empty environment (<>)
+malloc r2[]%create another empty environment
+malloc r3[forall[].{r1:<>,r2:int},<>]%create halt closure inr3
+mov r4,lhalt
+store cont code
+store environment<>
+mov r2,6 %load argument (6)
+mov r3,pack[<>,r3]ast%abstract the type of the environment
+k
+jmp lfact %begin fact with{r1=<>,r2=6,r3= haltcont}
+11
+andt=existsa.<forall[].{r1:a,r2:int},a>
+k
+Figure 26: Typed Assembly Code for Factorial
+31
+Lemma 7.1emptyset;emptyset|-e:tif and only if there existsPsuch that|-e:tP
+FF
+Lemma 7.2 (Compiler Type Correctness)If|-e:tPthen|-P
+FTAL
+8 Extensions and Practice
+We claim that the framework presented here is a practical approach to compilation. To substantiate
+this claim, we are constructing a compiler called TALC that maps the KML programming language
+We have found it straightforward to enrich the target language type system to include support
+for other type constructors, such as references, higher-order constructors, and recursive types. We
+omitted discussion of these features here in order to simplify the presentation.
+Although this paper describes a CPS-based compiler, we opted to use a stack-based compilation
+model in the TALC compiler. Space considerations preclude a complete discussion of the details
+needed to support stacks, but the primary mechanisms are as follows: The size of the stack and the
+types of its contents are specified bystack types,and code blocks indicate stack types describing
+the state of the stack they expect. Since code is typically expected to work with stacks of varying
+size, functions may quantify over stack type variables, resulting in stack polymorphism.
+Efficient support for disjoint sums and arrays also requires considerable additions to the type
+system. For sums, the critical issue is making the pro jection and testing of tags explicit. In a naive
+implementation, the connection between a sum and its tag is forgotten once the tag is loaded. For
+arrays the issue is that the index for a subscript or update operation must be checked to see that it
+is in bounds. Exposing the bounds check either requires a fixed code sequence, thereby constraining
+optimization, or else the type system must be strengthened so that some (decidable) fragment of
+arithmetic can be encoded in the types. Sums may also be implemented with either of the above
+techniques, or by using abstract types to tie sums to their tags. In the TALC compiler, in order
+to retain a simple type system and economical typechecking, we have initially opted for fixed code
+sequences but are exploring the implications of the more complicated type systems.
+Finally, since we chose a type-erasure interpretation of polymorphism, adding floats to the language
+to unbox floats in arrays and within compilation units, which is easily done in our framework.
+9 Summary
+We have given a compiler from System F to a statically typed assembly language. The type system
+for the assembly language ensures that source level abstractions such as closures and polymorphic
+functions are enforced at the machine-code level. Furthermore, the type system does not preclude
+aggressive low-level optimization, such as register allocation, instruction selection, or instruction
+scheduling. In fact, programmers concerned with efficiency can hand-code routines in assembly,
+as long as the resulting code typechecks. Consequently, TAL provides a foundation for high-
+performance computing in environments where untrusted code must be checked for safety before
+being executed.
+32
+Acknowledgements
+We are grateful to Martin Elsman,Ulfar Erlingsson, Dan Grossman, Robert Harper, Jason Hickey,
+Dexter Kozen, Frederick Smith, Stephanie Weirich, and Steve Zdancewic for their many helpful
+comments and suggestions.
+References
+type reconstruction. InACM Conference on Lisp and Functional Programming, pages 12-23, Orlando, June
+1994.
+Compilers: Principles, Techniques, and Tools. Addison-
+Wesley, 1986.
+Compiling with Continuations. Cambridge University Press, 1992.
+Sixteenth ACM Symposium
+on Principles of Programming Languages, pages 293-302, Austin, January 1989.
+Third
+International Symposium on Programming Language Implementation and Logic Programming, pages 1-13, New
+York, August 1991. Springer-Verlag. Volume 528 ofLecture Notes in Computer Science.
+bers, and Susan Eggers. Extensibility, safety and performance in the SPIN operating system. InFifteenth ACM
+Symposium on Operating Systems Principles, pages 267-284, Copper Mountain, December 1995.
+93/14, Department of Computer Science, University of Copenhagen, 1993.
+representation inference. InTwenty-Third ACM Symposium on Principles of Programming Languages, pages
+171-183, St. Petersburg, January 1996.
+Software Practice and
+Experience, 18(9):807-820, September 1988.
+Information and Computation, 93:172-221, 1991.
+KML Reference Manual. Department of Computer Science, Cornell University, 1996.
+ACM SIGPLAN International
+Conference on Functional Programming, pages 125-135, Amsterdam, June 1997.
+Mathematical
+Structures in Computer Science, 2(4):361-391, December 1992.
+transformations. InACM SIGPLAN International Conference on Functional Programming, pages 85-98, Ams-
+terdam, June 1997.
+Proceedings of the ACM Conference on Proving Assertions about
+Programs, pages 104-109, 1972.
+etation de G"odel a l'analyse, et son application al'elimination de
+coupures dans l'analyse et la theorie des types. In J. E. Fenstad, editor,Proceedings of the Second Scandinavian
+Logic Symposium, pages 63-92. North-Holland Publishing Co., 1971.
+Interpretation fonctionelle et elimination des coupures de l'arithmetique d'ordre superieur.
+PhD thesis, Universite Paris VII, 1972.
+Theoretical Computer Science, 50:1-102, 1987.
+Twentieth ACM Symposium
+on Principles of Programming Languages, pages 206-219, Charleston, January 1993.
+33
+Scheme. InProceedings of the ACM SIGPLAN '86 Symposium on Compiler Construction, pages 219-233, June
+1986.
+Computer J., 6(4):308-20, 1964.
+LISP and Symbolic Computation, 8(4):293-341,
+December 1995.
+Nineteenth ACM Symposium on Principles of
+Programming Languages, pages 177-188, Albuquerque, January 1992.
+Workshop on Types in Compilation, Amsterdam, June
+1997. ACM SIGPLAN. Published as Boston College Computer Science Dept. Technical Report BCCS-97-03.
+llin.The Java Virtual Machine Specification. Addison-Wesley, 1996.
+The Definition of Standard ML (Revised).
+MIT Press, 1997.
+Twenty-Third ACM Symposium on
+Principles of Programming Languages, pages 271-283, St. Petersburg, January 1996.
+ACM Transactions on Progam-
+ming Languages and Systems, 10(3):470-502, July 1988.
+safety through types. InWorkshop on Compiler Support for Systems Software, Tucson, February 1996.
+Gordon and A.M. Pitts, editors,Higher Order Operational Techniques in Semantics, Publications of the Newton
+Institute. Cambridge University Press, 1997.
+Compiling with Types. PhD thesis, Carnegie Mellon University, 1995. Published as CMU
+Technical Report CMU-CS-95-226.
+Twenty-Fourth ACM Symposium on Principles of Programming Lan-
+guages, pages 106-119, Paris, 1997.
+Proceedings of Operating
+System Design and Implementation, pages 229-243, Seattle, October 1996.
+Haskell compiler: a technical overview. InProc. UK Joint Framework for Information Technology (JFIT)
+Technical Conference, July 1993.
+Theoretical Computer Science, 1:125-159,
+1975.
+Programming Symposium,volume 19 ofLecture Notes
+in Computer Science, pages 408-425, New York, 1974.
+Twenty-Fourth ACM Symposium on Principles of
+Programming Languages, pages 15-26, Paris, January 1997.
+Workshop on Types in Compilation, Amsterdam, June
+1997. ACM SIGPLAN. Published as Boston College Computer Science Dept. Technical Report BCCS-97-03.
+ACM SIGPLAN International Conference on Functional
+Programming, pages 85-98, Amsterdam, June 1997.
+for ML. InACM SIGPLAN Conference on Programming Language Design and Implementation, pages 181-192,
+Philadelphia, May 1996.
+Information and Computation, 89:1-34, November 1990.
+ACM Conference on Lisp and
+Functional Programming, pages 1-11, Orlando, June 1994.
+ACM Conference on Lisp and Functional Programming, pages 61-78,
+Nice, June 1990.
+34
+Programming Concepts
+and Methods, Sea of Galilee, Israel, April 1990. North Holland. IFIP TC 2 Working Conference.
+Mathematical Foundations of Computer Science, volume 711 ofLNCS,
+Gdansk, Poland, August 1993. Springer-Verlag.
+InFourteenth ACM Symposium on Operating Systems Principles, pages 203-216, Asheville, December 1993.
+editor,Proceedings Mathematical Foundations of Programming Semantics '91, volume 598 ofLecture Notes in
+Computer Science, pages 294-311. Springer-Verlag, 1992.
+LISP and Symbolic Computation, 8(4), December 1995.
+35
+A Soundness of TAL
+'
+Lemma A.1 (Context Strengthening)IfDeltasubseteqDeltathen:
+'
+1. IfDelta|-ttypethenDelta|-ttype
+TALTAL
+'
+2. IfDelta|-t<=ttypethenDelta|-t<=ttype.
+TAL12TAL12
+Proof:
+Part 1 is immediate by (type). Part 2 is by induction on derivations.
+'
+Lemma A.2 (Subtyping Regularity)IfDelta|-t<=ttypethenDelta|-ttypeandDelta|-
+TALTALTAL
+'
+ttype.
+Proof:
+By induction on derivations.
+Lemma A.3 (Heap Extension)If|-H:PSheap,emptyset|-ttype,PS{l:t}|-h:thval,
+TALTALTAL
+andl/inHthen:
+1.|-PS{l:t}htype
+TAL
+2.|-H{l|->->h}:PS{l:t}heap
+TAL
+3. IfPS|-R:G regfilethenPS{l:t}|-R:Gregfile
+TALTAL
+4. IfPS; Delta; G|-SthenPS{l:t};Delta;G|-S
+TALTAL
+5. IfPS|-h:shvalthenPS{l:t}|-h:shval
+TALTAL
+ff
+6. IfPS; Delta|-w:sfwvalthenPS{l:t};Delta|-w:sfwval
+TALTAL
+7. IfPS; Delta|-w:swvalthenPS{l:t};Delta|-w:swval
+TALTAL
+8. IfPS; Delta; G|-v:sthenPS{l:t};Delta;G|-v:s
+TALTAL
+Proof:
+Part 1 is immediate by (heap-type). Part 2 follows from parts 1 and 5. Parts 3-8 are by
+induction on derivations.
+Lemma A.4 (Heap Update)If|-H:PSheap,emptyset|-t<=PS(l) type,andPS{l:t}|-h:t
+TALTALTAL
+then:
+1.|-PS{l:t}htype
+TAL
+36
+2.|-H{l|->->h}:PS{l:t}heap
+TAL
+3. IfPS|-R:G regfilethenPS{l:t}|-R:Gregfile
+TALTAL
+4. IfPS; Delta; G|-SthenPS{l:t};Delta;G|-S
+TALTAL
+5. IfPS|-h:shvalthenPS{l:t}|-h:shval
+TALTAL
+ff
+6. IfPS; Delta|-w:sfwvalthenPS{l:t};Delta|-w:sfwval
+TALTAL
+7. IfPS; Delta|-w:swvalthenPS{l:t};Delta|-w:swval
+TALTAL
+8. IfPS; Delta; G|-v:sthenPS{l:t};Delta;G|-v:s
+TALTAL
+Proof:
+Part 1 is immediate by (heap-type) and Subtyping Regularity. Part 2 follows from parts 1
+and 5. Parts 3-8 are by induction on derivations. The only interesting case is the case for
+the rule (label). The derivation must end:
+'
+Delta|-s<=stype
+TAL
+''
+(PS(l)=s)
+'
+PS; Delta|-l:swval
+TAL
+''
+Ifl/=lthen clearly the inference also holds for PS{l:t}. Supposel=l. By hypothesis and
+'
+Context Strengthening, we deduce Delta|-t<=stype. Then the conclusion may be proven
+TAL
+with the (trans) rule:
+''
+Delta|-t<=stype Delta|-s<=stype
+TALTAL
+Delta|-t<=stype
+TAL
+(PS{l:t}(l)=t)
+PS{l:t};Delta|-l:swval
+TAL
+Lemma A.5 (Register File Update)IfPS|-R:GregfileandPS;emptyset|-w:twvalthen
+TALTAL
+PS|-R{r|->->w}:G{r:t}regfile.
+TAL
+Proof:
+SupposeRis{r|->->w,...,r|->->w}and G is{r|->->t,...,r|->->t}wherermay or may
+11nn11mm
+not be in{r,...,r}.SincePS|-R:G,bytherule(reg)itmustbethecasethatn>=m
+1nTAL
+and PS;emptyset|-w:twval (for all 1<=i<=nand somet,...,t). So certainly forisuch
+TALiim+1n
+thatr/=r,PS;emptyset|-w:twval, and by hypothesis PS;emptyset|-w:twval so by rule (reg)
+iTALiiTAL
+PS|-R{r|->->w}:G{r|->->t}regfile.
+TAL
+Lemma A.6 (Canonical Heap Forms)IfPS|-h:thvalthen:
+TAL
+1. Ift=forall[a~].Gthen:
+(a)h=code[a~]G.S
+(b)PS;~a;G|-S
+TAL
+f
+f
+0n-1
+2. Ift=<t,...,t>then:
+0n-1
+(a)h=<w,...,w>
+0n-1
+37
+f
+i
+(b)PS;emptyset|-w:tfwval
+TALi
+i
+Proof:
+By inspection.
+Lemma A.7 (Canonical Word Forms)If|-H:PS heapandPS;emptyset|-w:twvalthen:
+TALTAL
+1. Ift=int thenw=i.
+2. Ift=forall[b,...,b].Gthen:
+1m
+(a)w=l[s,...,s]
+1n
+'
+(b)H(l)=code[a,...,a,b,...,b]G.S
+1n1m
+'
+(c)G=G[~s/~a]
+'
+(d)PS;a,...,a,b,...,b;G|-S
+1n1mTAL
+f
+f
+n-1
+0
+3. Ift=<t,...,t>then:
+0n-1
+(a)w=l
+(b)H(l)=<w,...,w>
+0n-1
+f
+i
+(c)PS;emptyset|-w:tfwval
+TALi
+i
+''''
+4. Ift=existsa.tthenw=pac k[t,w]asexistsa.tandPS;emptyset|-w:t[t/a.
+TAL
+Proof:
+1. By inspection.
+2. By induction on the derivation of PS;emptyset|-w:twval: The derivation must end
+TAL
+with either the (label) or the (tapp-word) rule. Suppose the former. Thenw=l,
+''
+~
+PS(l)=tandemptyset|-t<=forall[b].G type. Inspection of the subtyping rules then reveals
+TAL
+'
+~~
+thatt=forall[b].G. Since|-H: PS heap, we may deduce that PS|-H(l):forall[b].Ghval.
+TALTAL
+The conclusion follows by Canonical Heap Forms.
+'
+Alternatively, suppose the derivation ends with (tapp-word). Thenw=w[s
+'''
+~
+PS;emptyset|-w:forall[a,b].Gwval with G = G[s/a
+TAL
+3. The derivation PS;emptyset|-w:twval must be shown by use of the (label) rule. Thus,
+TAL
+f
+f
+0n-1
+''
+w=l,PS(l)=tandemptyset|-t<=<t,...,t>type. Let us say thatf<=fand 1<=0.
+TAL
+0n-1
+'
+'
+f
+f
+n-1
+'
+0
+Then inspection of the subtype rules reveals thattmust be of the form<t,...,t>
+0n-1
+'
+withf<=f(for each 0<=i<=n-1). Since|-H: PS heap, we may deduce that
+iTAL
+i
+'
+'
+f
+f
+n-1
+0
+PS|-H(l):<t,...,t>hval. ThusH(l)=<w,...,w>and PS;emptyset|-w:
+TAL0n-1TALi
+0n-1
+'
+f
+f
+i
+i
+tfwval by Canonical Heap Forms. It remains to show that PS;emptyset|-w:tfwval for
+TALi
+ii
+'
+all 0<=i<=n-1. Supposef=1 andf= 0 (otherwise the conclusion is immediate).
+i
+i
+1
+Then PS;emptyset|-w:tfwval is shown by the (init) rule, which also permits the deduction
+TALi
+i
+0
+of PS;emptyset|-w:tfwval.
+TALi
+i
+4. By inspection.
+^^
+Lemma A.8 (RTyping)IfPS|-R:GregfileandPS;emptyset;G|-v:tthenPS;emptyset|-R(v):
+TALTALTAL
+twval.
+38
+Proof:
+The proof is by induction on the syntax ofv.Cases:
+v=w: Immediate.
+v=r: The only rule that can typevis (reg-val) and this rule requirest=G(r). The only rule
+that can typeRis (reg) and this rule requires PS;emptyset|-R(r):twval, the conclusion follows
+TAL
+^
+sinceR(r)=R(r).
+'''
+~
+v=v[svis (tapp-val), sot=forall[b].G[s/aemptyset;G|-v:
+TAL
+'''
+~^~
+forall[a,b].G. By induction we deduce PS;emptyset|-R(v):forall[a,b].Gwval, and then the rule (tapp-
+TAL
+'''
+~
+^^
+word) proves PS;emptyset|-R(v)[s]:forall[b].G[s/aR(v[s
+TAL
+'
+^
+R(v)[s].
+'''
+v=pac k[s, v]asexistsa.t: The only rule that can typevis (pack-val), sot=existsa.tand PS;emptyset;G|-
+TAL
+''''
+^
+v:t[s/aemptyset|-R(v):t[s/a
+TAL
+'''
+^
+(pack-word) proves PS;emptyset|-pac k[s,R(v)]asexistsa.t:existsa.twval. The result follows since
+TAL
+''''
+^^
+R(pac k[s, v]asexistsa.t)=pac k[s,R(v)]asexistsa.t.
+Lemma A.9 (Canonical Forms)If|-H:PS hval,PS|-R:G regfile,andPS;emptyset;G|-v:t
+TALTALTAL
+then:
+^
+1. Ift=int thenR(v)=i.
+2. Ift=forall[b,...,b].Gthen:
+1m
+^
+(a)R(v)=l[s,...,s]
+1n
+'
+(b)H(l)=code[a,...,a,b,...,b]G.S
+1n1m
+'
+(c)G=G[~s/~a]
+'
+(d)PS;a,...,a,b,...,b;G|-S
+1n1mTAL
+f
+f
+n-1
+0
+3. Ift=<t,...,t>then:
+0n-1
+^
+(a)R(v)=l
+(b)H(l)=<w,...,w>
+0n-1
+f
+i
+(c)PS;emptyset|-w:tfwval
+TALi
+i
+''
+^
+4. Ift=existsa.tthenR(v)=pac k[t,w]asexistsa.tandPS;emptyset|-w:t[t/a.
+TAL
+Proof:
+^
+Immediate fromRTyping and Canonical Word Forms.
+~
+Lemma A.10 (Type Substitution)Ifb|-ttypethen:
+TALi
+~~
+1. IfPS;a,~b;G|-SthenPS;b~t/~a]|-S[~t/~a]
+TALTAL
+~~
+2. IfPS;a,~b;G|-v:tthenPS;b~t/~a]|-v[~t/~a]:t[~t/~a]
+TALTAL
+~~
+3. IfPS;a,~b|-w:twvalthenPS;b|-w[~t/~a]:t[~t/~a
+TALTAL
+39
+~~
+4. Ifa,~b|-G<=Grftypethenb|-G[~t/~a]<=G[~t/~a
+TAL12TAL12
+~~
+5. Ifa,~b|-t<=ttypethenb|-t[~t/~a]<=t[~t/~a
+TAL12TAL12
+~~
+6. Ifa,~b|-t|-typethenb|-t[~t/~a
+TALTALTAL
+Proof:
+By induction on derivations. The only interesting case the case for the rule (type):
+~
+FTV(t)subseteq{a,~b}
+~
+a,~b|-ttype
+TAL
+~
+The hypothesis must also be proven with the rule (type), soFTV(t)subseteq{b}. Consequently:
+i
+FTV(t[~t/~a])subseteqFTV(t)\{a~}cup(FTV(t))
+i
+i
+~~
+subseteq{a,~b}\{a~{b}
+~
+={b}
+~
+Hence we may proveb|-t[~t/~a
+TAL
+Lemma A.11 (Register File Weakening)
+IfDelta|-G<=GrftypeandPS; Delta|-R:GregfilethenPS; Delta|-R:Gregfile.
+TAL12TAL1TAL2
+Proof:
+By inspection of the rules (weaken) and (reg).
+''
+Lemma A.12 (Sub ject Reduction)If|-PandP|->-->Pthen|-P.
+TALTAL
+Proof:
+Phas the form (H, R, i;S)or (H, R,jmpv). LetTDbe the derivation of|-P.Consider
+TAL
+the following cases forjmpori:
+casejmp:TDhas the form:
+''
+PS;emptyset;G|-v:forall[].Gemptyset|-G<=Grftype
+TALTAL
+|-H:PSheap PS|-R:GregfilePS;emptyset;G|-jmpv
+TALTALTAL
+|-P
+TAL
+'''
+^
+By the operational semantics,P=(H, R, S[~s/ ~aR(v)=l[~sH(l)=code[a~]G.S.
+Then:
+1.|-H: PS heap is inTD.
+TAL
+'
+2. Fromemptyset|-G<=Grftype and PS|-R: G regfile it follows by Register File Weakening
+TALTAL
+'
+that PS|-R:Gregfile.
+TAL
+''''
+3. By Canonical Forms it follows from PS;emptyset;G|-v:forall[].Gthat G=G[~s/~a
+TAL
+'''
+PS;~a;G|-S. By Type Substitution we conclude PS;emptyset;G|-S[~s/~a].
+TALTAL
+40
+caseadd,mul,sub:TDhas the form
+PS;emptyset;G|-r:intPS;emptyset;G|-v:int
+TALsTAL
+'
+PS;emptyset;G|-S
+TAL
+|-H:PSheap PS|-R:GregfilePS;emptyset;G|-arithr,r,v;S
+TALTALTALpds
+|-P
+TAL
+''''
+where G=G{r:int}. By the operational semantics,P=(H, R,S)whereR=R{r|->->
+dd
+^
+R(r)pR(v)}. Then:
+s
+1.|-H: PS heap is inTD.
+TAL
+^
+2. By Canonical Forms it follows thatR(r)andR(v) are integer literals, and therefore
+s
+''
+^
+PS;emptyset|-R(r)pR(v) wval. We conclude PS|-R:Gregfile by Register File Update.
+TALsTAL
+'
+3. PS;emptyset;G|-Sis inTD.
+TAL
+casebnz:TDhas the form:
+'
+PS;emptyset;G|-r:intPS;emptyset;G|-v:forall[].G
+TALTAL
+'
+emptyset|-G<=Grftype PS;emptyset;G|-S
+TALTAL
+|-H:PSheap PS|-R:G regfilePS;emptyset;G|-bnzr, v;S
+TALTALTAL
+|-P
+TAL
+''
+IfR(r)=0thenP=(H, R, S)and|-Pfollows since PS;emptyset;G|-Sis inTD. Otherwise
+TALTAL
+the reasoning is exactly as in the case forjmp.
+caseld:TDhas the form
+0<=i<=n-1f=1
+i
+ff
+n-1
+0
+PS;emptyset;G|-r:<t,...,t>
+TALs
+0n-1
+'
+PS;emptyset;G|-S
+TAL
+|-H:PS heap PS|-R:G regfilePS;emptyset;G|-ldr,r[i];S
+TALTALTALds
+|-P
+TAL
+''''
+where G=G{r:t}. By the operational semantics,P=(H, R,S)whereR=R{r|->->w},
+didi
+R(r)=l,H(l)=<w,...,w}and 0<=i<m. Then:
+s0m-1
+1.|-H: PS heap is inTD.
+TAL
+ff
+n-1
+0
+2. By Canonical Forms it follows from PS;emptyset;G|-r:<t,...,t>thatm=nand
+TALs
+0n-1
+f
+j
+PS;emptyset|-w:tfwval for 0<=j<n.Sincef= 1 it must be the case (by inspection
+TALji
+j
+'
+of the (init) rule) that PS;emptyset|-w:twval. By Register File we conclude PS|-R:
+TALiiTAL
+'
+Gregfile.
+'
+3. PS;emptyset;G|-Sis inTD.
+TAL
+casemalloc:TDhas the form
+'
+emptyset|-ttype PS;emptyset;G|-Stype
+TALiTAL
+|-H:PS heap PS|-R:G regfilePS;emptyset;G|-mallocr[t,...,t];S
+TALTALTALd1n
+|-P
+TAL
+00''
+wheres=<t,...,t>,PS=PS{l:s},andG=G{r:s}. By the operational semantics,
+d
+1n
+'''''
+P=(H,R,S)whereH=H{l|->-> <?t,...,?t>},R=R{r|->->l},andl/inH. Then:
+1nd
+41
+'
+1. By the (tuple) and (uninit) rules we may deduce PS|-<?t,...,?t>hval :s.By
+TAL1n
+''
+Heap Extension it follows that|-H:PSheap.
+TAL
+'
+2. By the (type), (reflex), and (label) rules we may deduce that PS;emptyset|-l:swval. By
+TAL
+'
+Heap Extension we deduce that PS|-R: G regfile and it follows by Register File
+TAL
+'''
+Update that PS|-R:Gregfile.
+TAL
+''
+3. By Heap Extension, PS;emptyset;G|-S.
+TAL
+casemov:TDhas the form
+'
+PS;emptyset;G|-v:tPS;emptyset;G|-S
+TALTAL
+|-H:PS heap PS|-R:G regfilePS;emptyset;G|-movr, v;S
+TALTALTAL
+|-P
+TAL
+''''
+^
+where G=G{r:t}. By the operational semantics,P=(H, R,S)whereR=R{r|->->R(v)}.
+Then:
+1.|-H: PS heap is inTD.
+TAL
+^^
+2. ByRTyping it follows from PS;emptyset;G|-v:tthat PS;emptyset|-R(v):twval. Using
+TALTAL
+''
+Register File Update we conclude that PS|-R:Gregfile.
+TAL
+'
+3. PS;emptyset;G|-Sis inTD.
+TAL
+casest:TDhas the form
+0<=i<=n-1PS;emptyset;G|-r:s
+TALd0
+'
+PS;emptyset;G|-r:tPS;emptyset;G|-S
+TALsiTAL
+|-H:PSheap PS|-R:G regfilePS;emptyset;G|-str[i],r;S
+TALTALTALds
+|-P
+TAL
+where:
+f
+f
+n-1
+0
+s=<t,...,t>
+0
+0n-1
+fff
+f
+i-11i+1n-1
+0
+s=<t,...,t,t,t,...,t>
+1
+0in-1
+i-1i+1
+'
+G=G{r:s}
+d1
+''
+By the operational semantics,P=(H,R,S)where
+'
+H=H{l|->-> <w,...,w,R(r),w,...,w>}
+0i-1si+1m-1
+andR(r)=l,H(l)=<w,...,w>,and0<=i<m. Then:
+d0m
+1. Since PS;emptyset;G|-r:s,itmustbethecasethatG(r)=sand thus since PS|-
+TALd0d0TAL
+R: G regfile andR(r)=lwe may deduce PS;emptyset|-l:swval. The latter judgment
+dTAL0
+''
+must be proven with the (label) rule, henceemptyset|-s<=stype where PS(l)=s.Note
+TAL0
+00
+that it follows from Subtyping Regularity and the definition ofsthatemptyset|-ttype
+0TALj
+for each 0<=j<n.
+'
+Let us say thatf<=fand 1<=0. Inspection of the subtyping rules reveals thatsmust
+0
+'
+'
+f
+f
+n-1
+0'
+be of the form<t,...,t>withf<=f.Let:
+j
+0n-1j
+'''
+'
+ff
+f
+f
+'i-11i+1n-1
+0
+s=<t,...,t,t,t,...,t>
+1i
+0i-1i+1n-1
+42
+'''
+Thenemptyset|-s<=stype andemptyset|-s<=stype. Since|-H:PSheap,wemay
+TALTAL1TAL
+101
+'
+f
+j
+''
+deduce thatm=nand PS;emptyset|-w:tfwval for 0<=j<n.LetPS=PS{r:s}.By
+TALjd
+j1
+'
+f
+j
+'
+Heap Update it follows that PS;emptyset|-w:tfwval.
+TALj
+j
+'
+^
+UsingRTyping and Heap Update, we may deduce that PS;emptyset|-R(r):twval and,
+TALsi
+by applying the (init) and (tuple) rules, we may conclude:
+''
+PS;emptyset|-<w,...,w,R(r),w,...,w>:shval
+TAL0i-1si+1m-1
+1
+''
+Hence|-H:PSheap by Heap Update.
+TAL
+''
+2. By Heap Update we may deduce PS|-R: G. Recall thatemptyset|-s<=stype. Thus,
+TALTAL1
+1
+''
+PS;emptyset|-l:swval, and by Register File Update we may conclude that PS|-R:
+TAL1TAL
+'
+Gregfile (sinceR=R{r|->->l}).
+d
+''
+3. By Heap Update, PS;emptyset;G|-S.
+TAL
+caseunpack:TDhas the form
+''
+PS;emptyset;G|-v:existsa.tPS;a;G{r:t}|-S
+TALTAL
+|-H:PS heap PS|-R:G regfilePS;emptyset;G|-unpack[a, r],v;S
+TALTALTAL
+|-P
+TAL
+'''''
+By the operational semantics,P=(H, R,S)whereR=R{r|->->w},S=S[t/a
+'
+^
+R(v)=pac k[t, w]asexistsa.t. Then:
+1.|-H: PS heap is inTD.
+TAL
+''
+2. By Canonical Forms it follows from PS;emptyset;G|-v:existsa.tthat PS;emptyset|-w:t[t/a
+TALTAL
+''''
+Let G=G{r:t[t/a]}. By Register File Update if follows that PS|-R:Gregfile.
+TAL
+'''
+3. By Type Substitution it follows from PS;a;G{r:t}|-Sthat PS;emptyset;G|-S.
+TALTAL
+''
+Lemma A.13 (Progress)If|-Pthen either there existsPsuch thatP|->-->PorPis of
+TAL
+the form(H, R{r1|->->w},halt[t])(and, moreover,PS;emptyset|-w:twvalfor somePSsuch that
+TAL
+|-H:PS heap).
+TAL
+Proof:
+SupposeP=(H, R, S). LetTDbe the derivation of|-P. The proof is by cases on the
+fullTAL
+first instruction ofS.
+full
+casehalt:TDhas the form:
+PS;emptyset;G|-r1:t
+TAL
+|-H:PS heap PS;emptyset|-R:GregfilePS;emptyset;G|-halt[t]
+TALTALTAL
+|-(H, R,halt[t])
+TAL
+^^^
+ByRTyping we may deduce thatR(r1) is defined and PS;emptyset|-R(r1):twval. In other
+TAL
+'
+words,R=R{r1|->->w}and PS;emptyset|-w:twval.
+TAL
+43
+caseadd,mul,sub:TDhas the form:
+PS;emptyset;G|-r:intPS;emptyset;G|-v:int...
+TALsTAL
+|-H:PSheap PS;emptyset|-R:GregfilePS;emptyset;G|-arithr,r,v;S
+TALTALTALpds
+|-(H, R, S)
+TALfull
+By Canonical Forms,R(r)andR(v) each represent integer literals. HenceP|->-->(H, R{r|->->
+sd
+^
+R(r)pR(v)},S).
+s
+casebnz:TDhas the form:
+'
+PS;emptyset;G|-r:intPS;emptyset;G|-v:forall[].G...
+TALTAL
+|-H:PS heap PS;emptyset|-R:G regfilePS;emptyset;G|-bnzr, v;S
+TALTALTAL
+|-(H, R, S)
+TALfull
+^
+By Canonical Forms,R(r) is an integer literal andR(v)=l[s,...,sH(l)=
+1n
+'''
+code[a,...,a].G.S.IfR(r)= 0thenP|->-->(H, R, S). IfR(r)/=0thenP|->-->
+1n
+'
+(H, R, S[~s/~a]).
+casejmp:TDhas the form:
+'
+PS;emptyset;G|-v:forall[].G...
+TAL
+|-H:PS heap PS;emptyset|-R:G regfilePS;emptyset;G|-jmpv;S
+TALTALTAL
+|-(H, R, S)
+TALfull
+'''
+^
+By Canonical Forms,R(v)=l[s,...,sH(l)=code[a,...,a].G.S. HenceP|->-->
+1n1n
+'
+(H, R, S[~s/~a]).
+caseld:TDhas the form:
+ff
+n-1
+0
+PS;emptyset;G|-r:<t,...,t> ...
+TALs
+0n-1
+(1<=i<n)
+|-H:PSheap PS;emptyset|-R:G regfilePS;emptyset;G|-ldr,r[i];S
+TALTALTALds
+|-(H, R, S)
+TALfull
+By Canonical Forms,R(r)=lwithH(l)=<w,...,w>. HenceP|->-->(H, R{r|->->
+s0n-1d
+w},S).
+i
+casemalloc: SupposeSis of the formmallocr[t,...,t];S.ThenP|->-->(H{l|->->
+full1n
+<?t,...,?t>},R{r|->->l, S)forsomel/inH.
+1n
+casemov:TDhas the form:
+PS;emptyset;G|-v:t...
+TAL
+|-H:PS heap PS;emptyset|-R:G regfilePS;emptyset;G|-movr, v;S
+TALTALTAL
+|-(H, R, S)
+TALfull
+^^^
+ByRTyping,R(v) is defined. HenceP|->-->(H, R{r|->->R(v),S).
+casest:TDhas the form:
+ff
+n-1
+0
+PS;emptyset;G|-r:<t,...,t>
+TALd
+0n-1
+PS;emptyset;G|-r:t...
+TALsi
+(1<=i<n)
+|-H:PS heap PS;emptyset|-R:G regfilePS;emptyset;G|-str[i],r;S
+TALTALTALds
+|-(H, R, S)
+TALfull
+^
+By Canonical Forms,R(r)=lwithH(l)=<w,...,w>.ByRTyping,R(r) is defined.
+d0n-1s
+HenceP|->-->(H{l|->-> <w,...,w,R(r),w,...,w>},R,S).
+0i-1si+1n-1
+44
+caseunpack:TDhas the form:
+PS;emptyset;G|-v:existsa.t...
+TAL
+|-H:PSheap PS;emptyset|-R:GregfilePS;emptyset;G|-unpack[a, r],v;S
+TALTALTAL
+|-(H, R, S)
+TALfull
+''
+^
+By Canonical Forms,R(v)=pac k[t,w]asexistsa.t. HenceP|->-->(H, R{r|->->w},S[t/a]).
+45
