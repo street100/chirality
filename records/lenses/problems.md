@@ -972,8 +972,8 @@
 ### PRB-70 G18 is a true positive: check.chiral entered the compiler closure
 
 - state:    OPEN
-- author:   unreviewed
-- note:     none
+- author:   ruled 2026-09-08
+- note:     RULED 2026-09-08 by the author: the checker stays OUTSIDE the compiler closure and the wiring is the defect. G18 keeps its polarity and is not inverted and not retired. Measured for the ruling: the typed tal IR the two importers say they want, `TalTy` / `Instr` / `Block` / `TalTerm` / `Branch` / `TFn`, is declared at `lib/lowering/tal/ssa.chiral:21-40` and not in `check.chiral`, which imports ssa for it. So `eff-lower.chiral:20` and `optimize.chiral:17` both carry a mis-citation, and repointing them at `lowering/tal/ssa` costs one line each and changes no behaviour. What is left holding `check.chiral` in the closure is `re-check` (`optimize.chiral:249-250`), the single `ck-fn` call site, and it goes. ⚑ The ruling reopens enforcement requirement 4, whose closure rests on that call. Accepted with three measurements behind it: the wiring put `ck-fn` in the blob and never `ck-prog`, so requirement 2's subject still has zero call sites; a compiler with `re-check` forced to answer `chk-ok` emits a byte-identical blob at 1,241,464 bytes, so the wiring buys no shipped byte; and keeping it charges the BUILD RULE on every edit of `check.chiral` and costs `tal-check.sh` the scratch-`lib/` mutant harness that G18 exists to license. `tools/test/opt-census.sh` gated the wiring at `12 passed, 0 failed` and retires with it, and `optimize.chiral:6-8`'s claim that the preserve-check lives in the signature comes out with it. Splitting the four-line `ck-prog` wrapper at `check.chiral:308-312` into another file was refused as the shape that turns G18's grep green with the checker still in the blob.
 - level:    source
 - about:    tools/test/tal-check.sh
 - claim:    tools/test/tal-check.sh G18 asserts `lowering/tal/check is OUTSIDE the compiler blob`, and its own comment says: "If it ever goes red, check.chiral has entered the blob and the BUILD RULE's build-new -> test -> promote applies to every edit of it."
