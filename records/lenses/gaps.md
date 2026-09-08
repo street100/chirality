@@ -253,3 +253,45 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-05
 - owner:    none
 - from:     none
+
+### GAP-19 the live environment names itself a goal and no goal file holds it
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    goal
+- about:    docs/definitions/live-environment.md
+- claim:    docs/definitions/live-environment.md:11-14 "The first large application planned on chirality is a live, self-modifying environment used for everything a personal computing environment is used for, opened first as a flexible AI-orchestration layer. This is the hub note for that goal." Its two invariants at :23-29 are residential, the environment is the program and extends in its own language live with no edit-compile-run seam, and mesh, the substrate is isolated typed processes over ports.
+- measured: swept 2026-09-08 by grep over docs/goals/ and docs/arcs/*.md for live-environment, residential and self-modif. Zero hits in either tier. Fourteen goal files exist and the nearest two carry a slice each: docs/goals/local-ai.md:56 condition 2 puts scriba over the parts of one run, and docs/goals/own-web.md:51 condition 5 puts a canvas inside the environment. Neither states the residential invariant, so a hub note points at a goal tier that holds nothing for it. Four settled decisions lean on the note by name: decision-user-layer-extensibility, decision-reflective-floor, decision-brokers and decision-deployment-custody.
+- evidence: docs/definitions/live-environment.md:11-14, :23-29; docs/goals/local-ai.md:56; docs/goals/own-web.md:51; docs/decisions/decision-user-layer-extensibility.md
+- checked:  2026-09-08
+- owner:    none
+- from:     none
+
+### GAP-20 the user layer carries 53 rows of work and no goal covers it
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    goal
+- about:    .planning/USER-LAYER-TRACKER.md
+- claim:    docs/decisions/decision-scope.md:80-84, under Honest limit: "The scope sentence names two clauses, in-scope and deferred, and some real work falls in neither. The user layer is the known instance: `docs/decisions/` legitimates it, no `U#` row exists in the catalog or ledger, and work on it stopped mid-audit on 2026-08-30." The same paragraph closes by separating an unclassified body of work from a deferred one and puts the user layer outside what that decision covers.
+- measured: three tracked planning documents carry the work and no goal file names any of them. USER-LAYER-GAP.md:4 mints the outline on 2026-08-30, USER-LAYER-TRACKER.md:7 counts 53 rows in its own lane, and USER-LAYER-PIPELINE-PLAN.md sorts every row into a track with a serial queue. The tracker holds a live NOW section whose last dispatched position dates to 2026-08-30, and decision-user-layer-extensibility.md is the settled decision the whole body rests on. This is the shape docs/benchmarks/OPTIMIZATIONS-TODO.md held for five weeks before docs/goals/emitted-speed.md opened: a resumption document with a named entry point and nothing in the goal tier above it. `tools/lens/lens.py overview` walks goals that exist and reports UNOPENED per condition, so it reaches none of this.
+- evidence: docs/decisions/decision-scope.md:80-84; .planning/USER-LAYER-GAP.md:4-10; .planning/USER-LAYER-TRACKER.md:3-11; docs/decisions/decision-user-layer-extensibility.md:9-11
+- checked:  2026-09-08
+- owner:    none
+- from:     none
+
+### GAP-21 cost carried in the type is a principle and no goal condition owns it
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    goal
+- about:    PRINCIPLES.md:51
+- claim:    PRINCIPLES.md:51 heads principle 2, "Everything is a process, and the type is the whole cost", and :60-64 states that every effect and every unit of fuel shows up in the type. docs/definitions/thesis.md:22 restates it as the second application of the thesis. README.md carries "cost is in the type" as a row of its claims table.
+- measured: swept 2026-09-08 across the fourteen goal files. No done-condition names the grade structure. docs/definitions/status-ledger.md, item 3 under the heading "Sharpest designed-vs-real gaps", reads "Cost is settled-on-paper, unbuilt. `lib/typing/qtt.chiral` still carries only 0/1/ω; the typed-cost thesis has no grade structure yet." Cover exists at two tiers below a goal and neither claims the project is doing the work: UNS-05 records that E38 is unbuilt and no arc names it, and docs/goals/emitted-speed.md:201 bounds it as an honest limit of a different claim, which is what the compiled artifact costs. docs/goals/enforcement.md:25 condition 1 reaches the ledger row for a capability and stops short of building one.
+- evidence: PRINCIPLES.md:51-74; docs/definitions/thesis.md:22; docs/definitions/status-ledger.md, heading "Sharpest designed-vs-real gaps" item 3; docs/elements/catalog.md:165; records/lenses/unspoken.md:59-72; docs/goals/emitted-speed.md:201-205
+- checked:  2026-09-08
+- owner:    none
+- from:     none
