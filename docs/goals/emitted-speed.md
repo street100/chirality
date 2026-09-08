@@ -138,7 +138,7 @@ cost of, so it sits beside them instead of standing as its own goal.
    and which finds exactly one difference today. Second, every bucket C row
    reading as a named operation or as a recorded refusal, where `C35`, `C36` and
    `C37` recognize an idiom in the emitter, name no operation, and therefore
-   close none of `C1`, `C21` and `C32`. **Unopened, and it holds no arc file.**
+   close none of `C1`, `C21` and `C32`. **Taken 2026-09-08 by [[arcs/emitted-speed-arc]]**, rows `X7`, `X8` and `X9`.
    ⚑ **The baseline this is complete against is OWED.** `C10` and `C11`
    record that BMI2 availability is a target question this tree has not asked,
    and `C34` records that no document states what a shift by 64 or more means.
@@ -162,9 +162,9 @@ instead of assuming an answer.
 
 ## Arcs
 
-[[arcs/emitted-speed-arc]], opened 2026-09-08, takes **condition 1 and
-condition 2**, which are the two the 2026-09-07 measurements make actionable. It
-carries four requirements and six roster rows under arc-local ids `X1` to `X6`.
+[[arcs/emitted-speed-arc]], opened 2026-09-08, takes **conditions 1, 2 and 6**.
+It carries six requirements and nine roster rows under arc-local ids `X1` to
+`X9`.
 
 **Conditions 3, 4 and 5 stand unopened**, and the arc records why for each.
 Condition 4 is the one to watch: its budget is owed, so its observable is a gate
@@ -173,15 +173,18 @@ gate-that-cannot-fail shape `docs/decisions/decision-scope.md` names. The arc
 refused it on that ground rather than shipping a check aimed at a guess. The
 budget is now a row in [[records/author-calls]].
 
-**Condition 6 stands unopened too, and the arc excludes it by its own rule.**
-That arc schedules a row iff building it requires choosing between shapes the
-codebase does not already settle, and on that ground it puts bucket C outside
-itself, reading `C33` as a finishing job the surface never got. The rule sorts
-those 38 rows and disposes of none of them, so the condition is untouched by it.
-An arc that took condition 6 would open on the one row that is genuine design:
-what a widening multiply's shape is, given that `C38` wants an operation
-defining two slots and `B15` records the single-slot return standing against it.
-This goal names that as the opening question and settles nothing about it.
+**Condition 6 was taken on 2026-09-08, after the exclusion that kept it out was
+measured wrong.** The arc had put bucket C outside itself by reading `C33` as a
+finishing job the surface never got. `lib/lowering/x64/mach.chiral:319` defines
+`x-imul-rcx-1op` as `48 F7 E9`, the one-operand **signed** `imul` that `:373`
+reaches for `op-mulhi`, and no unsigned `F7 /4` form exists anywhere in
+`lib/lowering/x64/`. The shape is therefore unsettled and `C33` is a row, which
+`X7` now carries together with `C17` and `C38` as one decision.
+
+It landed in this arc rather than a second one on a back-edge. `C38` wants an
+operation defining two slots and names `B15`, the single-slot return, and `X2`
+is the row deciding what a function may return, so `X7` and `X2` settle one
+thing from opposite ends.
 
 No standing gate holds this goal, which is **a hole rather than the finished
 shape** [[goals/self-hosting]] carries: the 2026-09-01 ruling makes the suite's

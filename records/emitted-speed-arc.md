@@ -16,7 +16,7 @@ Row format, states and the rules for adding, changing and retiring a row are in
 
 The arc's roster lives in [[arcs/emitted-speed-arc]], opened 2026-09-08 on
 [[goals/emitted-speed]]. Its reserved element block is **none**, so its rows
-carry arc-local ids `X1` to `X6` per
+carry arc-local ids `X1` to `X9` per
 `docs/decisions/decision-work-ids.md`.
 
 ## What the optimization survey claimed, and what holds
