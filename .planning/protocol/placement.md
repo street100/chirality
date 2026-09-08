@@ -31,6 +31,7 @@ or `.claude/skills/`. `docs/decisions/decision-ai-tier.md` draws that line.
 | a new element row | `docs/elements/catalog.md` and `docs/elements/ledger.md`, both, written by the mint |
 | what is built, on the four rungs | `docs/definitions/status-ledger.md` | ENFORCED, IMPLEMENTED, SEEDED, DESIGNED |
 | a claim beside what was measured | `records/<arc>.md` | a `###` block, six fields |
+| an answer to a question about the outside world | `records/findings.md` | an `FD` row, with the sources pinned under `.planning/sources/` |
 | a fork only the author can settle | `records/author-calls.md` | one row, with why it blocks |
 | a published external object rendered into our forms | `docs/translations/<object>.md` | nine sections, ending in the limits no carrier reaches |
 
@@ -137,11 +138,11 @@ is the cheapest rule here and the one most often skipped.
 ## Before you commit
 
 ```
-python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A to AL
+python3 tools/ledger-lint/ledger-lint.py     # claims against the tree, checks A to AM
 tools/prose-lint/prose-lint.sh PATH...       # how it reads
 ```
 
-`ledger-lint` runs 38 checks, A through AL. Measured 2026-09-05 it reported **111
+`ledger-lint` runs 39 checks, A through AM. Measured 2026-09-05 it reported **111
 findings**: three `AC`, one `I`, one `N` recorded as a known disagreement, and
 the 106 that AF, AG and AI reached on the day they landed. `H`, `M` and `AH` are
 recorded as checking nothing.

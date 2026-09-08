@@ -2345,6 +2345,44 @@ def check_al() -> list[str]:
     return out
 
 
+def check_am() -> list[str]:
+    """AM. An external source this tree quotes is pinned.
+
+    Check U resolves a quote against a tracked file and AL resolves one inside
+    docs/translations/. Neither reaches a quotation attributed to an RFC, a FIPS
+    publication or a draft anywhere else in the doc tier, so a sentence saying a
+    standard says X could stand with nobody having read it.
+
+    tools/xlat/xlat.sh unpinned does the scan. The rule is narrow on purpose: a
+    source merely NAMED needs no pin, since a passing mention is not a claim
+    about what the document says. A source named on a line that also carries a
+    quotation of twenty characters or more is a claim, and it needs the bytes.
+
+    Measured 2026-09-07 when this check landed: 12 sources named, 2 quoted, both
+    pinned.
+
+    Vacuous when the tool is absent."""
+    import subprocess
+    tool = ROOT / "tools" / "xlat" / "xlat.sh"
+    if not tool.exists():
+        raise Vacuous("tools/xlat/xlat.sh is absent, so no external source can "
+                      "be resolved")
+    try:
+        r = subprocess.run([str(tool), "unpinned"], cwd=ROOT,
+                           capture_output=True, text=True, timeout=180)
+    except Exception as e:
+        raise Vacuous(f"xlat unpinned could not run ({e})")
+    if r.returncode == 0:
+        return []
+    out: list[str] = []
+    for ln in (x.rstrip() for x in r.stdout.splitlines()):
+        parts = ln.split()
+        if len(parts) == 3 and parts[1] == "no" and parts[2] == "YES":
+            out.append(f"[AM] {parts[0]} is quoted in the doc tier and has no "
+                       f"pin. Pin it with `xlat pin`, or drop the quotation")
+    return out
+
+
 CHECKS = (("A evidence paths", check_a),
                      ("B principle numbers", check_b),
                      ("C CONTENTS counts", check_c),
@@ -2382,7 +2420,8 @@ CHECKS = (("A evidence paths", check_a),
                      ("AI rows whose evidence moved", check_ai),
           ("AJ the deferral rule", check_aj),
                      ("AK author calls awaiting a ruling", check_ak),
-                     ("AL translation quotes resolve", check_al))
+                     ("AL translation quotes resolve", check_al),
+                     ("AM quoted external sources are pinned", check_am))
 
 
 # ── the guide ─────────────────────────────────────────────────────────────────
@@ -2454,6 +2493,12 @@ GUIDE = {
            "an empty invariant core means the artifact is a redesign rather "
            "than a translation.",
            "AL"),
+    "AM": (3, "tools/xlat/xlat.sh unpinned, and records/findings.md",
+           "A standard quoted in the doc tier is pinned, so the quotation can "
+           "be resolved against the bytes. Run the `research` skill: it pins "
+           "every source it leans on and writes an `FD` row. A source merely "
+           "named needs no pin; a source quoted does.",
+           "AM"),
     "I":  (4, "tools/frontier/frontier.py",
            "FRONTIER.md is generated. A source moved, so re-condense it: "
            "`python3 tools/frontier/frontier.py condense`.",

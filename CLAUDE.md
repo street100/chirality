@@ -42,7 +42,7 @@ was emptied to close.
 
 ## The harness
 
-Eight skills. Each is one run, one unit of work, one artifact, then stop. The
+Nine skills. Each is one run, one unit of work, one artifact, then stop. The
 pipeline they run is `docs/decisions/decision-design-before-mint.md`:
 design, audit, mint, spec, audit, implement, with revisit reaching any of them.
 
@@ -56,14 +56,15 @@ design, audit, mint, spec, audit, implement, with revisit reaching any of them.
 | `revisit` | one settled artifact against one named trigger | the artifact, and a `records/` row |
 | `doc-audit` | one doc, semantic pass against its live authorities | the doc under audit |
 | `translate` | one published external object into this tree's forms | `docs/translations/<object>.md` |
+| `research` | one question about the outside world, with its sources pinned | an `FD` row in `records/findings.md` |
 
 | tool | is |
 |---|---|
 | `python3 tools/pack/pack.py E<#> …` | every pipeline bundle, and the scaffolder |
-| `python3 tools/ledger-lint/ledger-lint.py` | the mechanical doc worklist, checks A to AL |
+| `python3 tools/ledger-lint/ledger-lint.py` | the mechanical doc worklist, checks A to AM |
 | `python3 tools/doc/doc.py audit <node>` | one doc's audit bundle |
 | `python3 tools/lens/lens.py check \| author \| overview` | the four lenses, the author sweep, the generated orientation |
-| `tools/xlat/xlat.sh` | pins an external source, and resolves a translation's quotes into it |
+| `tools/xlat/xlat.sh` | pins an external source, resolves a translation's quotes into it, and lists what the tree quotes without a pin |
 | `tools/test/run-tests.sh` | the gating floor. A green line is a named phase here |
 
 This tree has its own discipline and does not run GSD. A global instruction that

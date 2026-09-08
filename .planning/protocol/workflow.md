@@ -10,6 +10,7 @@ holds the run.
 goal        docs/goals/<name>.md                      goal-open
 arc         docs/arcs/<name>-arc.md                   arc-open
 ─────────────────────────────────────────────────── pre-mint, no E# exists ──
+research    an FD row in records/findings.md          research
 translate   docs/translations/<object>.md              translate
 audit       the translation                           pipeline-audit TRANSLATE
 design      docs/arcs/parts/<arc>-<id>.md             element-design

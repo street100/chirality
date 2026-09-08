@@ -19,6 +19,7 @@
 #   xlat bundle OBJECT               everything a translate run reads
 #   xlat check ARTIFACT              resolve every pinned-source citation
 #   xlat new OBJECT                  scaffold the nine-section artifact
+#   xlat unpinned                    external sources this tree names, and their pins
 #
 # citation form, matching the tree's file:line idiom:
 #   ID:LINE "the quoted span"
@@ -338,6 +339,57 @@ EOF
   return 0
 }
 
+
+# ── unpinned ─────────────────────────────────────────────────────────────────
+# Every external source the tree's own prose names, beside whether it is pinned.
+# The worklist half. The gate half is ledger-lint check AM, which fails only on
+# an attributed quotation: a source named on a line that also quotes it.
+#
+# ugrep's --exclude-dir is a no-op here even with a glob, so the pinned bodies
+# are filtered out by path instead. Scanning them would count every RFC they
+# cite as one this tree names.
+_SRCPAT='RFC ?[0-9]{3,5}|FIPS ?[0-9]{3}|SP ?800-[0-9]{1,3}|draft-[a-z0-9-]{6,}'
+
+_scan() {
+  grep -rnE -- "$_SRCPAT" \
+    "$ROOT/docs" "$ROOT/records" "$ROOT/.planning" "$ROOT/CLAUDE.md" "$ROOT/MAP.md" \
+    2>/dev/null | grep -v '/\.planning/sources/'
+}
+
+_is_pinned() {
+  local id="$1" m
+  for m in "$SRC"/*.meta; do
+    [ -e "$m" ] || continue
+    [ "$(basename "$m" .meta)" = "$id" ] && return 0
+    grep -qiF -- "$id" "$m" 2>/dev/null && return 0
+  done
+  return 1
+}
+
+cmd_unpinned() {
+  local scan named n=0 miss=0 id pin q
+  scan="$(_scan)"
+  named="$(printf '%s\n' "$scan" | grep -oE -- "$_SRCPAT" | tr -d ' ' | sort -u)"
+  [ -n "$named" ] || { echo "xlat: the tree's prose names no external source"; return 0; }
+  echo "=== external sources this tree names ==="
+  printf '  %-34s %-8s %s\n' SOURCE PINNED QUOTED
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    n=$((n+1))
+    if _is_pinned "$id"; then pin=yes; else pin=no; fi
+    if printf '%s\n' "$scan" | grep -F -- "$id" | grep -qE '"[^"]{20,}"'; then q=YES; else q=no; fi
+    printf '  %-34s %-8s %s\n' "$id" "$pin" "$q"
+    { [ "$pin" = no ] && [ "$q" = YES ]; } && miss=$((miss+1))
+  done <<EOF
+$named
+EOF
+  echo
+  echo "xlat: $n source(s) named, $miss quoted without a pin"
+  [ "$miss" = 0 ] && return 0
+  echo "  A source quoted without a pin is a claim about a document nobody here has read."
+  return 1
+}
+
 case "${1:-}" in
   sources)     shift; cmd_sources "$@" ;;
   pin)         shift; cmd_pin "$@" ;;
@@ -348,6 +400,7 @@ case "${1:-}" in
   bundle)      shift; cmd_bundle "$@" ;;
   check)       shift; cmd_check "$@" ;;
   new)         shift; cmd_new "$@" ;;
-  ""|-h|--help) sed -n '2,26p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
+  unpinned)    shift; cmd_unpinned "$@" ;;
+  ""|-h|--help) sed -n '2,27p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//' ;;
   *)           die "unknown subcommand: $1" ;;
 esac

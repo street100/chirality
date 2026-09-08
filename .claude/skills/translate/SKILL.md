@@ -52,6 +52,11 @@ Four slots are the floor, and the AEAD walk found the fourth by its absence:
 ungathered source that reads as an absence is the failure this manifest exists
 to prevent.
 
+**The gather is a `research` run.** Dispatch one per slot: it searches, pins
+what it finds with `raw` origin, and writes an `FD` row saying what the source
+settles and what it leaves open. A slot whose sources come back empty is a
+declared `UNRUN` with a reason rather than a blank.
+
 `pin` never fetches. Obtain the bytes, then:
 
 ```
