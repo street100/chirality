@@ -21,10 +21,11 @@ Usage:
     tools/lens/lens.py check          schema + citations. ledger-lint calls this
     tools/lens/lens.py author         what is awaiting a ruling, across all four
     tools/lens/lens.py overview       regenerate docs/definitions/OVERVIEW.md
+    tools/lens/lens.py overview --check   compare only, write nothing, exit 1 on drift
     tools/lens/lens.py trace <unit>   what a goal/arc/row/element carries
     tools/lens/lens.py new <lens> <title>    append a scaffolded row, next id
 """
-import os, re, sys, glob, subprocess, datetime, hashlib
+import os, re, sys, glob, subprocess, datetime, hashlib, difflib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 LENSDIR = os.path.join(ROOT, "records/lenses")
@@ -264,7 +265,7 @@ def lens_for(unit):
     return hits
 
 
-def overview():
+def overview_body():
     el_state = {}
     for ln in open(LEDGER):
         m = re.match(r"\|\s*E(\d+)\s*\|\s*([^|]*?)\s*\|\s*([a-z]+)\s*\|", ln)
@@ -342,9 +343,52 @@ def overview():
                  f"{un} unreviewed. "
                  + (", ".join(f"{k} {v}" for k, v in sorted(byst.items())) or "empty"))
     L += ["", f"Roster rows across every arc: {tot_rows}. Minted from them: {tot_el}.", ""]
-    body = "\n".join(L)
+    return "\n".join(L)
+
+
+UPDATED = re.compile(r"^updated: \d{4}-\d{2}-\d{2}$", re.M)
+
+
+def substantive(body):
+    """One body with its `updated:` date blanked, for comparison only.
+
+    The header stamps the day the build ran, so a file generated yesterday
+    differs from a build today on that one line and on nothing else. Comparing
+    the blanked form is what stops `--check` reporting a midnight crossing as
+    drift, and stops the write path rewriting a file whose only change is the
+    date. A tree that has not moved did not update the overview, so the date
+    already on disk is the honest one."""
+    return UPDATED.sub("updated: -", body)
+
+
+def overview(check=False):
+    """Build the body, then decide whether it needs to reach disk.
+
+    `check` is the read-only path: it compares, reports, and writes nothing.
+    Both paths take their body from overview_body(), so a check cannot pass on
+    a body the write would not have produced."""
+    body = overview_body()
+    have = open(OVERVIEW).read() if os.path.exists(OVERVIEW) else ""
+    built, disk = body.split("\n"), have.split("\n")
+    if substantive(body) == substantive(have):
+        print(f"[overview] docs/definitions/OVERVIEW.md is current, "
+              f"{len(built)} lines. Nothing written")
+        return 0
+    d = [t for t in difflib.unified_diff(disk, built, "on-disk", "built",
+                                         n=1, lineterm="")]
+    n = sum(1 for t in d if t[:1] in ("+", "-") and t[:3] not in ("+++", "---"))
+    verb = "DRIFTED" if check else "CHANGED"
+    print(f"[overview] docs/definitions/OVERVIEW.md {verb}: on disk "
+          f"{len(disk)} lines, built {len(built)}, {n} line(s) differ")
+    for t in d[:40]:
+        print("  " + t)
+    if len(d) > 40:
+        print(f"  ... {len(d) - 40} more diff line(s)")
+    if check:
+        return 1
     open(OVERVIEW, "w").write(body)
-    print(f"[overview] wrote docs/definitions/OVERVIEW.md ({len(L)} lines)")
+    print(f"[overview] wrote docs/definitions/OVERVIEW.md ({len(built)} lines)")
+    return 0
 
 
 def trace(unit):
@@ -399,7 +443,7 @@ def main():
     elif cmd == "author":
         author_view()
     elif cmd == "overview":
-        overview()
+        sys.exit(overview(check="--check" in sys.argv[2:]))
     elif cmd == "trace":
         trace(sys.argv[2] if len(sys.argv) > 2 else "")
     elif cmd == "new":
