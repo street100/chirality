@@ -607,15 +607,15 @@
 ### PRB-44 five of `check.chiral`'s eleven collisions are duplication, and the honest fix is a shared module
 
 - state:    OPEN
-- author:   unreviewed
-- note:     none
+- author:   ruled 2026-09-08
+- note:     RULED 2026-09-08 by the author on the principles: **the fix is E154, and a shared module is a shorter denylist rather than a model.** `PRINCIPLES.md` §1's own example is this shape, `a seccomp filter is only as complete as the syscall table it enumerates. The fix is never a longer denylist; it is a model that covers the whole surface`. The `tck-` prefix enumerates the eleven names that collide today, so it is a denylist, and extracting five of them into a shared module closes five names and leaves the mechanism running. §4 gives the same answer from the cost side, `do not enforce good behavior by listing the bad and forbidding it`, and `docs/elements/catalog.md` E154 already diagnoses the inverted gradient in its own words: `when a shared name cannot be defined twice safely, modules write prefixed clones instead of importing`. So this row's title, and `lib/lowering/tal/check.chiral:20-30`'s `their honest fix is a shared module`, both under-shoot by one rung and are superseded here. ⚑ **The denylist is longer than E154's row counts.** That row says hand-patched three times; measured 2026-09-08 the live census is at least eight: `gate-contains`, `agent-ok2xx`, `cmd-types.chiral:2`'s inlining, `check.chiral`'s eleven `tck-`, `lib/typing/diag.chiral:27`'s wholesale `dg-` which names itself the same hand-patch for the same defect, E152's `ms-take`/`ms-drop`/`ms-merge`/`ms-sort-n` shipped as the E154-prefixed internals, `ar-str-cmp`/`cb-str-cmp` which E151's ledger row already calls E154 in the wild, and the clone set `puf-length`/`puf-reverse`, `se-length`/`se-reverse`, `list-nth` twice and `str-cmp` four times. ⚑ **What the five twins measured at, so the work is priced.** Token-normalized against `lib/lowering/upper/lower.chiral`, four of the five are identical modulo the prefix and `find-data` differs only in a bound variable, `ctors` against `cs`. There is no drift and no conflict of meaning to reconcile. ⚑ **The prefix stays load-bearing until E154 lands, and its reason moved 2026-09-08.** PRB-70's ruling took `check.chiral` out of the compiler blob, so `prog/optimizer-census.prog:51,53` is now the one place in the tree that co-blobs it with `lower.chiral`. Removing the prefix before E154 breaks the census gate. This row stays `OPEN` against E154 rather than closing, because nothing is built.
 - level:    source
 - about:    lib/lowering/tal/check.chiral
 - claim:    none yet. The rename that made `lowering/tal/check` importable beside the compiler treated all eleven collisions alike, and for five of them that is a hand-patch over a different defect.
 - measured: RE-MEASURED 2026-09-06: **unchanged, and the hand-patch is what makes it look fixed.** All five twins survive in `lib/lowering/tal/check.chiral` under a `tck-` prefix: `tck-sig-assoc`, `tck-find-data`, `tck-ce-prims`, `tck-ce-fns`, `tck-ce-datas`, one definition each, beside the unprefixed originals in `lib/lowering/upper/lower.chiral`. ⚑ A grep for the bare names in `check.chiral` returns zero, which reads as resolved and is a rename. The file's own header at `:20-30` calls them "byte-identical twins" whose "honest fix is a shared module", so the duplication stands and only the emitted-label collision was patched.
 - evidence: re-runnable: `for s in sig-assoc find-data ce-prims ce-fns ce-datas; do grep -c "^(def tck-$s" lib/lowering/tal/check.chiral; done` returns 1 five times. `lib/lowering/tal/check.chiral:20-30`, `lib/lowering/upper/lower.chiral:163-194`
-- checked:  2026-09-06
-- owner:    none
+- checked:  2026-09-08
+- owner:    E154
 - from:     EN-16
 
 ### PRB-45 the `$kI_J` capture constructor's field types are a second instance, and a separate call
