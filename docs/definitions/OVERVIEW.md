@@ -2,7 +2,7 @@
 node: overview
 layer: generated
 tier: orientation
-updated: 2026-09-07
+updated: 2026-09-08
 ---
 
 # Overview: goal to element, with what each level carries
@@ -42,6 +42,19 @@ updated: 2026-09-07
 
 ### arc `display-calculus-arc`: 20 roster row(s)
   state: open 20
+
+## emitted-speed
+
+- **1.** The shipping compiler carries a cost figure against a control outside the tree. Every `gcc
+      arc: UNOPENED
+- **2.** Building a product stops forcing an allocation. Measured 2026-09-07 by [[benchmarks/crypto
+      arc: UNOPENED
+- **3.** Each of the nine blockers closes, or carries a recorded refusal. [[benchmarks/OPT-CANDIDAT
+      arc: UNOPENED
+- **4.** A shipped native tool runs inside a declared budget. `prog/prose-lint.prog` measures 15.1x
+      arc: UNOPENED
+- **5.** A cost figure in this tree names the backend that produced it. [[implementation/optimizer-
+      arc: UNOPENED
 
 ## enforcement
 
@@ -158,7 +171,7 @@ updated: 2026-09-07
   state: open 16
 
 ### arc `crypto-primitives-arc`: 25 roster row(s)
-  state: open 25
+  state: designed 1, open 24
 
 ### arc `vocabulary-arc`: 12 roster row(s)
   state: open 12
@@ -251,7 +264,7 @@ updated: 2026-09-07
 
 ## The lenses
 
-- **problem** (PRB-): 72 row(s), 72 unreviewed. FIXED 12, OPEN 60
+- **problem** (PRB-): 73 row(s), 71 unreviewed. FIXED 12, OPEN 61
 - **gap** (GAP-): 18 row(s), 12 unreviewed. closed 6, open 12
 - **limit** (LIM-): 18 row(s), 18 unreviewed. accepted 18
 - **unspoken** (UNS-): 49 row(s), 49 unreviewed. open 49
