@@ -365,6 +365,7 @@ run_phase 28 "arm-body's call spine (E188)"                        apply-spine.s
 run_phase 29 "the Encoding sum and its arithmetic (E196)"          encoding.sh
 run_phase 30 "the RecordRequest sum and its pricing (E197)"        recording.sh
 run_phase 31 "the crypto kernels (N1 slices 1 and 2)"              crypto.sh
+run_phase 32 "the widening multiply, both names (E189)"          mul-widen.sh
 
 # ---- registration: the witness for every dispatch line above ----------------
 # not-a-phase: this file IS the dispatch table; the block below invokes its witness.

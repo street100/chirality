@@ -312,11 +312,15 @@
 
 ; mulhi = signed high 64 of rax*rcx (one-operand imul leaves it in rdx);
 
+; mulhu = unsigned high 64 of rax*rcx (one-operand mul leaves it in rdx too);
+
 ; sar/shr take their count from cl (rcx) -- the slot form; bini emits the
 
 ; imm8 forms when the count is a tracked constant (the generated shape).
 
 (def x-imul-rcx-1op Bytes (bc3 (b1 72) (b1 247) (b1 233)))   ; imul rcx
+
+(def x-mul-rcx-1op Bytes (bc3 (b1 72) (b1 247) (b1 225)))    ; mul rcx
 
 (def x-sar-cl Bytes (bc3 (b1 72) (b1 211) (b1 248)))         ; sar rax, cl
 
@@ -371,6 +375,8 @@
       ((op-lei)   (bcat x-cmp-rcx (x-setcc 159)))
 
       ((op-mulhi) (bcat x-imul-rcx-1op x-mov-rax-rdx))
+
+      ((op-mulhu) (bcat x-mul-rcx-1op x-mov-rax-rdx))
 
       ((op-sar)   x-sar-cl)
 
@@ -1022,6 +1028,8 @@
 
                  (false (bcat (x-mov-rcx-imm imm) (op-bytes op)))))
 
+      ((op-mulhu) (bcat (x-mov-rcx-imm imm) (op-bytes op)))
+
       ((op-mulhi) (bcat (x-mov-rcx-imm imm) (op-bytes op))))))
 
 
@@ -1386,6 +1394,8 @@
 
 ;   mulhi: one-operand imul writes rdx:rax, operand in rcx -> {2,3}
 
+;   mulhu: one-operand mul writes rdx:rax, operand in rcx -> {2,3}
+
 ;   bpt: value loads through rdx, index through rcx -> {2,3}
 
 ;   default {3}: every op whose second operand or scratch is rcx (generic
@@ -1442,7 +1452,8 @@
 
         (true clb-div)
 
-        (false (case (or (str-eq k "bin:mulhi") (or (str-eq k "bini:mulhi") (str-eq k "bpt")))
+        (false (case (or (str-eq k "bin:mulhi") (or (str-eq k "bini:mulhi")
+                     (or (str-eq k "bin:mulhu") (or (str-eq k "bini:mulhu") (str-eq k "bpt")))))
 
           (true clb-rdx-rcx)
 

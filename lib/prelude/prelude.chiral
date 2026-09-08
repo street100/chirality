@@ -35,7 +35,7 @@
 ; dispatch, no "unknown prim" defensive halt, hence no spurious effect to track.
 (data Op ()
   (op-add) (op-sub) (op-mul) (op-div) (op-mod)
-  (op-eqi) (op-lti) (op-lei) (op-mulhi) (op-sar) (op-shr) (op-band)
+  (op-eqi) (op-lti) (op-lei) (op-mulhi) (op-mulhu) (op-sar) (op-shr) (op-band)
   (op-bor) (op-bxor) (op-shl))
 
 ; the canonical name of an op -- the inverse of op-parse. Used only to rebuild
@@ -46,7 +46,8 @@
     (case op
       ((op-add) "+")   ((op-sub) "-")   ((op-mul) "*")   ((op-div) "/")
       ((op-mod) "%")   ((op-eqi) "=i")  ((op-lti) "<i")  ((op-lei) "<=i")
-      ((op-mulhi) "mulhi") ((op-sar) "sar") ((op-shr) "shr") ((op-band) "band")
+      ((op-mulhi) "mulhi") ((op-mulhu) "mulhu") ((op-sar) "sar")
+      ((op-shr) "shr") ((op-band) "band")
       ((op-bor) "bor") ((op-bxor) "bxor") ((op-shl) "shl"))))
 
 ; is this a comparison op (the ops the fused compare-branch path handles)?
@@ -69,6 +70,8 @@
 (extern shl (-> I64 I64 I64))             ; shift left
 (extern shr (-> I64 I64 I64))             ; shift right, logical    (zero-fill)
 (extern sar (-> I64 I64 I64))             ; shift right, arithmetic (sign-fill)
+(extern mulhi (-> I64 I64 I64))           ; high 64 of a*b, signed
+(extern mulhu (-> I64 I64 I64))           ; high 64 of a*b, unsigned
 
 ; ---------------------------------------------------------------- str
 

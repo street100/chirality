@@ -98,13 +98,14 @@
   (false (case (str-eq op "<i")    (true (some (op-lti)))
   (false (case (str-eq op "<=i")   (true (some (op-lei)))
   (false (case (str-eq op "mulhi") (true (some (op-mulhi)))
+  (false (case (str-eq op "mulhu") (true (some (op-mulhu)))
   (false (case (str-eq op "sar")   (true (some (op-sar)))
   (false (case (str-eq op "shr")   (true (some (op-shr)))
   (false (case (str-eq op "band")  (true (some (op-band)))
   (false (case (str-eq op "bor")   (true (some (op-bor)))
   (false (case (str-eq op "bxor")  (true (some (op-bxor)))
   (false (case (str-eq op "shl")   (true (some (op-shl)))
-  (false (none)))))))))))))))))))))))))))))))))
+  (false (none)))))))))))))))))))))))))))))))))))
 
 ; every other lowerable prim is a call into the chirality-authored byte library
 (declare prim2lib-table (List (Pair Str Str)))

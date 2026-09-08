@@ -1,0 +1,98 @@
+; e189-widening-multiply.prog -- the E189 probe: six rows of the widening
+; multiply, each printed with BOTH its operands and BOTH answers.
+;
+; It ASSERTS NOTHING and always exits 0. Every comparison lives in bash, in
+; `tools/test/mul-widen.sh`. A probe that derives its own verdict is green under
+; any mutant that changes what the verdict says, which is the shape the SPEC's
+; §4 requires and the shape `tools/test/encoding.sh` already uses.
+;
+; Each line carries `a`, `b`, `mulhi a b` and `mulhu a b`, so the driver can
+; re-derive the wrapping identity
+;
+;     mulhi == mulhu - (a < 0 ? b : 0) - (b < 0 ? a : 0)   (mod 2^64)
+;
+; from the row's own operands without reading a pinned golden.
+;
+; ⚑ THE FIELDS ARE 16 HEX NIBBLES, NOT `i64->str`, AND THAT IS MEASURED.
+; The SPEC says `i64->str` prints them. It does not: R6's operand is 2^63 and
+; `(put (i64->str (shl 1 63)))` SEGFAULTS under the promoted compiler and under
+; every generation built here. The defect predates this element and belongs to
+; `i64->str`, not to the multiply, so the probe routes around it instead of
+; widening its own write surface. `$((16#...))` in bash reads the field back as
+; a wrapped 64-bit value, which is the arithmetic G4 needs anyway.
+;
+; ⚑ BOTH CALL FORMS ARE EMITTED. `emit-instr` (lowering/mach/emit-core.chiral
+; :152-161) picks `bini:<op>` when the SECOND operand is a tracked constant and
+; `bin:<op>` otherwise. R3 to R6 pass a literal (or a `(- 0 1)` that fold-prim
+; folds) and take the immediate arm at mach.chiral:1031; R1 and R2 route their
+; second operand through `e189-hide`, whose result is a call value no pass can
+; track, and take the register arm at mach.chiral:379. The driver reads the
+; emitted bytes rather than trusting this comment.
+;
+; ⚑ IT IMPORTS ONLY `prelude/prelude` AND `ports/stdio`. Nothing under
+; `lowering/` -- E154's colliding top-level names are why
+; `prog/e188-apply-spine.prog:17-19` stays clear of that tier, and this probe
+; needs nothing from it.
+(import "prelude/prelude")
+(import "ports/stdio")
+
+; runtime-opaque identity: `(band n 0)` is 0 for every `n`, and fold-prim
+; (lowering/upper/optimize.chiral:60-67) models only + - * / %, so no pass
+; turns this into a tracked constant. Forces the register call form.
+(declare e189-hide (-> I64 I64 I64))
+(def e189-hide (lam (n x) (bor (band n 0) x)))
+
+; unsigned 16-nibble hex, most significant first. `shr` is the logical shift,
+; so the sign bit does not smear and 2^63 prints as 8000000000000000.
+(declare e189-nib (-> I64 Str))
+(def e189-nib (lam (d) (str-sub "0123456789abcdef" d (+ d 1))))
+
+(declare e189-hex-go (-> I64 I64 Str))
+(def e189-hex-go (lam (v i)
+  (case (=i i 0)
+    (true "")
+    (false (str-cat (e189-hex-go (shr v 4) (- i 1)) (e189-nib (band v 15)))))))
+
+(declare e189-hex (-> I64 Str))
+(def e189-hex (lam (v) (e189-hex-go v 16)))
+
+(declare e189-line (-> Str I64 I64 I64 I64 Str))
+(def e189-line (lam (tag a b hi hu)
+  (str-cat "==E189== "
+  (str-cat tag
+  (str-cat " "
+  (str-cat (e189-hex a)
+  (str-cat " "
+  (str-cat (e189-hex b)
+  (str-cat " "
+  (str-cat (e189-hex hi)
+  (str-cat " "
+  (str-cat (e189-hex hu) "\n"))))))))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    ; R1: 2^32 * 2^32, both readings agree. Register form.
+    (do (put (e189-line "R1" (shl 1 32) (e189-hide n (shl 1 32))
+               (mulhi (shl 1 32) (e189-hide n (shl 1 32)))
+               (mulhu (shl 1 32) (e189-hide n (shl 1 32)))))
+    ; R2: 2^40 * 2^40, both readings agree. Register form.
+    (do (put (e189-line "R2" (shl 1 40) (e189-hide n (shl 1 40))
+               (mulhi (shl 1 40) (e189-hide n (shl 1 40)))
+               (mulhu (shl 1 40) (e189-hide n (shl 1 40)))))
+    ; R3: -1 * 3. Signed -1, unsigned 2. Immediate form.
+    (do (put (e189-line "R3" (- 0 1) 3
+               (mulhi (- 0 1) 3)
+               (mulhu (- 0 1) 3)))
+    ; R4: 3 * -1, the same disagreement with the operands swapped.
+    (do (put (e189-line "R4" 3 (- 0 1)
+               (mulhi 3 (- 0 1))
+               (mulhu 3 (- 0 1))))
+    ; R5: -1 * -1. Signed 0, unsigned -2.
+    (do (put (e189-line "R5" (- 0 1) (- 0 1)
+               (mulhi (- 0 1) (- 0 1))
+               (mulhu (- 0 1) (- 0 1))))
+    ; R6: 2^63 * 2. Signed -1, unsigned 1.
+    (do (put (e189-line "R6" (shl 1 63) 2
+               (mulhi (shl 1 63) 2)
+               (mulhu (shl 1 63) 2)))
+    0))))))))
