@@ -17,6 +17,7 @@ Usage, PRE-MINT (no element number exists yet — decision-design-before-mint):
                                               #   write the catalog and ledger rows from §6
 Usage, POST-MINT:
     tools/pack/pack.py E13 --spec        # spec stage -> docs/elements/specs/E13-<slug>-SPEC.md
+    tools/pack/pack.py E13 --spec <slug> # ... naming the slug instead of deriving it
     tools/pack/pack.py E13 --audit spec  # read-only audit bundle for the SPEC
     tools/pack/pack.py E13 --audit       # audits the furthest artifact that exists
     tools/pack/pack.py E13 --kb          # standalone scoped kb slices for any run
@@ -29,6 +30,11 @@ Usage, RECONSIDERING:
 The example stage is RETIRED. `pack.py E13 <slug>` still scaffolds a
 docs/examples/ artifact and that path is kept only for the 132 files already
 there; new work runs the design stage above.
+
+The POST-MINT modes read whichever tier holds the element's rationale — see
+pipeline_artifact(). An element worked up before 2026-09-05 has an example; one
+minted from a design has docs/arcs/parts/<arc>-<id>.md and never gets one, and
+its registry is the arc roster rather than docs/examples/INDEX.md.
 
 An element marked `status: superseded` (its work reshaped into a DIFFERENT
 element, named by `superseded_by:`) is REFUSED at every stage — see
@@ -223,6 +229,79 @@ def examples_for(tag):
     return exs
 
 
+def design_rows(eid):
+    """Every (arc, rid, abspath) whose roster row's element cell reads this id.
+
+    The roster is the only pointer from an element number back to its design:
+    decision-work-ids cites a row as <arc>/<id> and decision-design-before-mint
+    puts its design at docs/arcs/parts/<arc>-<id>.md. Rows written before the
+    design tier carry an E# with no part file, and one E# can sit in two rosters
+    (E173, E196), so the FILE existing is the test and every hit is returned in
+    arc order.
+    """
+    out = []
+    for f in sorted(glob.glob(os.path.join(ARCDIR, "*-arc.md"))):
+        arc = os.path.basename(f)[:-len("-arc.md")]
+        for line in roster_all(open(f).read()):
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if not cells or cells[-1].strip("`") != eid:
+                continue
+            rid = cells[0].strip("`").partition("/")[2]
+            p = os.path.join(PARTSDIR, f"{arc}-{rid}.md")
+            if rid and os.path.exists(p):
+                out.append((arc, rid, p))
+    return out
+
+
+def pipeline_artifact(eid, tag):
+    """The element's RATIONALE artifact: (kind, relpath, text, origin).
+
+    Two tiers can hold one. Before 2026-09-05 an element was worked up in a
+    docs/examples/ artifact and 133 of those are on disk; since
+    decision-design-before-mint the work is designed BEFORE the number exists,
+    at docs/arcs/parts/<arc>-<id>.md, and no example is ever written for it.
+
+    The EXAMPLE WINS where one exists. It is what the SPEC beside it was built
+    from and what that SPEC's filename is spelled from, so preferring the design
+    for an element that has both would repoint 133 elements' primary input and
+    rename their SPEC files — a repointing, not a repair. The design is the
+    fallback, and for an element minted from one it is the only rationale there
+    is. `origin` is (arc, rid) for a design and None for an example: the design
+    tier's registry is the arc roster, not docs/examples/INDEX.md.
+    """
+    exs = examples_for(tag)
+    if exs:
+        return ("example", os.path.relpath(exs[0], ROOT), open(exs[0]).read(), None)
+    for arc, rid, p in design_rows(eid):
+        return ("design", os.path.relpath(p, ROOT), open(p).read(), (arc, rid))
+    return (None, "", "", None)
+
+
+def slugify(title):
+    """A filename slug from a title cell: markup dropped, apostrophes closed up,
+    the joining words dropped, the first five words kept."""
+    t = re.sub(r"[`*_]", "", title).replace("'", "").replace("\u2019", "")
+    words = [w for w in re.split(r"[^A-Za-z0-9]+", t.lower()) if w]
+    drop = {"the", "a", "an", "of", "and", "or", "its", "is", "as", "to", "for", "in"}
+    return "-".join(([w for w in words if w not in drop] or words)[:5]) or "untitled"
+
+
+def spec_slug(tag, kind, rel, title):
+    """The `<slug>` in docs/elements/specs/<tag>-<slug>-SPEC.md.
+
+    An example spells it in its own filename. A design does not: its filename is
+    the roster id, which is stable but says nothing about the subject. So a
+    design-sourced element takes the slug from a SPEC already on disk — a re-run,
+    or one written by hand, keeps its file instead of growing a second one — and
+    otherwise from the catalog title, deterministically."""
+    if kind == "example":
+        return os.path.basename(rel)[len(tag) + 1:-3]
+    specs = sorted(glob.glob(os.path.join(SPECDIR, f"{tag}-*-SPEC.md")))
+    if specs:
+        return os.path.basename(specs[0])[len(tag) + 1:-len("-SPEC.md")]
+    return slugify(title)
+
+
 def _frontmatter(path):
     """The YAML block between the leading `---` fences, or "" if there is none."""
     m = re.match(r"^---\n(.*?)\n---\n", open(path).read(), re.S)
@@ -252,6 +331,7 @@ def superseded_stop(eid, tag):
     """
     hits = []
     for path in (examples_for(tag)
+                 + [p for _a, _r, p in design_rows(eid)]
                  + sorted(glob.glob(os.path.join(SPECDIR, f"{tag}-*-SPEC.md")))):
         fm = _frontmatter(path)
         if re.search(r"^status:\s*superseded\s*$", fm, re.M):
@@ -490,16 +570,29 @@ finish with `python3 tools/pack/pack.py E<#> --mark audited`."""
 
 
 def audit_mode(eid, tag, title, row, row_kind, level):
-    exs = examples_for(tag)
-    if not exs:
-        die(f"no example examples/{tag}-*.md to audit — run the pre-run first")
-    slug = os.path.basename(exs[0])[len(tag) + 1:-3]
-    ex = open(exs[0]).read()
+    kind, rel, art, origin = pipeline_artifact(eid, tag)
+    if not kind:
+        die(f"nothing to audit for {eid}: no example examples/{tag}-*.md and no design "
+            f"under docs/arcs/parts/ reached from a roster row naming it — the design "
+            f"run comes first")
+    slug = spec_slug(tag, kind, rel, title)
     spec_path = os.path.join(SPECDIR, f"{tag}-{slug}-SPEC.md")
     if not level:  # default: audit the furthest artifact that exists
-        level = "spec" if os.path.exists(spec_path) else "example"
+        level = ("spec" if os.path.exists(spec_path)
+                 else "example" if kind == "example" else "design")
+    if level == "design":
+        if not origin:
+            die(f"{eid} was worked up in an example, not a design — the pre-spec gate "
+                f"for it is `--audit example`")
+        print(f"[audit] {eid} was designed as {origin[0]}/{origin[1]}; running the "
+              f"DESIGN gate on it", file=sys.stderr)
+        part_audit_mode(*origin)
+        return
     if level not in ("example", "spec"):
-        die("--audit takes: example | spec")
+        die("--audit takes: design | example | spec")
+    if level == "example" and kind != "example":
+        die(f"{eid} has no worked example — it was designed at {rel}. Its pre-spec gate "
+            f"is `python3 tools/pack/pack.py {origin[0]}/{origin[1]} --audit`")
 
     out = [f"# AUDIT BUNDLE ({level.upper()}) — {cat_label(eid)}: {title}",
            "Read THIS ONLY; grep only to chase a specific claim the bundle "
@@ -510,11 +603,11 @@ def audit_mode(eid, tag, title, row, row_kind, level):
            f"## 1. Catalog row\n{row}\n\n**kind**={row_kind}"]
 
     if level == "example":
-        out.append(f"## 2. ARTIFACT UNDER AUDIT — examples/{tag}-{slug}.md\n\n{ex.strip()}")
+        out.append(f"## 2. ARTIFACT UNDER AUDIT — {rel}\n\n{art.strip()}")
         hits = conf_rows(eid)
         out.append(f"## 3. Conformance-map rows naming {eid} (build-state authority)\n"
                    + ("\n".join(hits) if hits else "(none — postdates the map snapshot)"))
-        body, notes, caveat = kb_slices(eid, [ex])
+        body, notes, caveat = kb_slices(eid, [art])
         out.append(f"## 4. KB slices — {len(notes)} notes resolved from the example's "
                    f"anchors\n{caveat}\n\n{body}")
         out.append("## 5. chirality idioms & vocabulary (syntax-legality reference)\n"
@@ -525,16 +618,16 @@ def audit_mode(eid, tag, title, row, row_kind, level):
         sp = open(spec_path).read()
         out.append(f"## 2. ARTIFACT UNDER AUDIT — docs/elements/specs/{tag}-{slug}-SPEC.md"
                    f"\n\n{sp.strip()}")
-        out.append(f"## 3. Its example (the rationale it must not contradict) — "
-                   f"docs/examples/{tag}-{slug}.md\n\n{ex.strip()}")
+        out.append(f"## 3. Its {kind} (the rationale it must not contradict) — "
+                   f"{rel}\n\n{art.strip()}")
         hits = conf_rows(eid)
         out.append(f"## 4. Conformance-map rows naming {eid} (build-state authority)\n"
                    + ("\n".join(hits) if hits else "(none — postdates the map snapshot)"))
-        sec = target_outlines(sp + "\n" + ex)
+        sec = target_outlines(sp + "\n" + art)
         out.append("## 5. Live targets (outlines)\n"
                    + ("\n\n".join(sec) or "(no lib/, prog/ or tools/ paths named)"))
         out.append("## 6. Test baseline\n" + test_baseline())
-        body, notes, caveat = kb_slices(eid, [sp, ex])
+        body, notes, caveat = kb_slices(eid, [sp, art])
         out.append(f"## 7. KB slices — {len(notes)} notes; every RESOLVED citation "
                    f"is checked against these\n{caveat}\n\n{body}")
     print("\n\n".join(out))
@@ -544,6 +637,7 @@ def kb_mode(eid, tag, title):
     """Standalone scoped-kb fetch: slices seeded from whatever artifacts exist."""
     seeds, names = [], []
     for p in sorted(glob.glob(os.path.join(ROOT, "docs", "examples", f"{tag}-*.md"))) + \
+             [d for _a, _r, d in design_rows(eid)] + \
              sorted(glob.glob(os.path.join(SPECDIR, f"{tag}-*-SPEC.md"))):
         seeds.append(open(p).read())
         names.append(os.path.relpath(p, ROOT))
@@ -587,30 +681,33 @@ def mark_mode(eid, tag, state, no_index):
     die(f"INDEX row for {eid} not found")
 
 
-def spec_mode(eid, tag, title, row, row_kind, no_index):
-    """example -> spec: print the spec input bundle, scaffold the SPEC artifact,
-    flip the element's INDEX row to `specced`."""
-    exs = examples_for(tag)
-    if not exs:
-        die(f"no drafted example examples/{tag}-*.md — run the worked-example pre-run first")
-    ex_path = exs[0]
-    slug = os.path.basename(ex_path)[len(tag) + 1:-3]
-    ex = open(ex_path).read()
+def spec_mode(eid, tag, title, row, row_kind, no_index, slug_arg=""):
+    """rationale -> spec: print the spec input bundle, scaffold the SPEC
+    artifact, flip the element's registry row to `specced`. Which registry is
+    which tier's: the INDEX row for an element worked up in an example, the arc
+    roster row for one designed under docs/arcs/parts/."""
+    kind, rel, art, origin = pipeline_artifact(eid, tag)
+    if not kind:
+        die(f"no rationale artifact for {eid}: no example examples/{tag}-*.md and no "
+            f"design at docs/arcs/parts/<arc>-<id>.md reached from a roster row whose "
+            f"element cell reads {eid}. A SPEC is written from one of the two")
+    slug = slug_arg or spec_slug(tag, kind, rel, title)
+    label = "The drafted example" if kind == "example" else "The design"
 
     out = [f"# SPEC BUNDLE — {cat_label(eid)}: {title}",
-           "Read THIS ONLY. The example below is your primary input; the map rows are "
+           "Read THIS ONLY. The artifact below is your primary input; the map rows are "
            "the build-state authority; the outlines show the live targets. Grep/read "
            "the repo only for a specific body or fact an outline lacks.",
            f"## 1. Catalog row\n{row}\n\n**kind**={row_kind}",
-           f"## 2. The drafted example — examples/{tag}-{slug}.md (PRIMARY INPUT)\n\n{ex.strip()}"]
+           f"## 2. {label} — {rel} (PRIMARY INPUT)\n\n{art.strip()}"]
 
     hits = conf_rows(eid)
     out.append(f"## 3. Conformance-map rows naming {eid} (authoritative build-state)\n"
                + ("\n".join(hits) if hits
                   else f"(none — {eid} postdates the map snapshot; treat as BUILD)"))
-    sec = target_outlines(ex)
+    sec = target_outlines(art)
     out.append("## 4. Live targets (outlines)\n"
-               + ("\n\n".join(sec) or "(no lib/, prog/ or tools/ paths named in the example)"))
+               + ("\n\n".join(sec) or "(no lib/, prog/ or tools/ paths named in the artifact)"))
     out.append("## 5. Test baseline — your §5 green line starts here\n" + test_baseline())
 
     out.append("## 6. Next\nYour SPEC is scaffolded (frontmatter filled) at "
@@ -631,11 +728,23 @@ def spec_mode(eid, tag, title, row, row_kind, no_index):
         repl = {"E<NN>": tag, "<slug>": slug, "<human title>": hd,
                 "SELF-HOST | REPLACE-CRUTCH | BUILD-PROPER": row_kind,
                 "<YYYY-MM-DD>": datetime.date.today().isoformat()}
+        if origin:
+            # the template's frontmatter `design:` and its opening blockquote both
+            # spell the design as <arc>-<id>; only this tier can resolve them.
+            repl["<arc>-<id>"] = f"{origin[0]}-{origin[1]}"
         for a, b in repl.items():
             t = t.replace(a, b)
         open(dest, "w").write(t)
         print(f"\n[scaffold] wrote docs/elements/specs/{tag}-{slug}-SPEC.md", file=sys.stderr)
 
+    # ---- the registry row: status -> specced ----
+    if origin:
+        # A design-minted element has no INDEX row: docs/examples/INDEX.md is the
+        # retired tier's registry and the roster is this one's. ledger-lint check
+        # AH pairs a `specced` row against a SPEC on disk, so the flip belongs to
+        # the run that writes the SPEC.
+        roster_flip(origin, ("designed", "minted"), "specced", no_index)
+        return
     # ---- INDEX row: status -> specced, artifact cell gains the SPEC link ----
     idx = open(INDEX).read().splitlines()
     patched = None
@@ -975,6 +1084,22 @@ def set_roster_state(arc, rid, state, element=None):
           + (f", element {element}" if element else ""), file=sys.stderr)
 
 
+def roster_flip(origin, want, state, no_index):
+    """Advance a roster row's state cell, refusing a predecessor that is not one
+    of `want` — the roster's half of what mark_mode does to an INDEX row."""
+    arc, rid = origin
+    line, cells = roster_row(open(arc_path(arc)).read(), arc, rid)
+    st = cells[-2] if len(cells) >= 2 else ""
+    if st not in want:
+        print(f"[roster] {arc}/{rid} state {st!r} not {'/'.join(want)} — artifact "
+              f"written, state left", file=sys.stderr)
+    elif no_index:
+        print(f"[roster] --no-index: NOT editing the roster. {arc}/{rid} owes "
+              f"{st} -> {state}", file=sys.stderr)
+    else:
+        set_roster_state(arc, rid, state)
+
+
 def part_audit_mode(arc, rid):
     dest = os.path.join(PARTSDIR, f"{arc}-{rid}.md")
     if not os.path.exists(dest):
@@ -1099,7 +1224,9 @@ def mint_mode(arc, rid):
     print(f"[mint] APPENDED at end of file. Move each row into its section by hand: "
           f"the catalog sorts by kind and the ledger by category.", file=sys.stderr)
     print(f"\nMinted **{eid}** for {arc}/{rid}. Next: "
-          f"`python3 tools/pack/pack.py {eid} --spec`")
+          f"`python3 tools/pack/pack.py {eid} --spec`, which reads THIS row's design "
+          f"at docs/arcs/parts/{arc}-{rid}.md — the element has no worked example and "
+          f"never gets one.")
 
 
 def goal_mode(name):
@@ -1402,7 +1529,7 @@ def main():
         refclass = "/".join(dict.fromkeys(re.findall(r"OURS|SPEC|PAPER|IMPL", refcol))) or "?"
 
     if "--spec" in sys.argv:
-        spec_mode(eid, tag, title, row, row_kind, no_index)
+        spec_mode(eid, tag, title, row, row_kind, no_index, slug)
         return
     if "--audit" in sys.argv:
         audit_mode(eid, tag, title, row, row_kind, pos[1] if len(pos) > 1 else "")
