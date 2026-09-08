@@ -466,13 +466,14 @@
 
 ### PRB-34 `optimize.chiral:250` is not the only `ck-fn` call site
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    source
 - about:    lib/lowering/upper/optimize.chiral
 - claim:    `records/lane-a-record.md:149` says `lowering/upper/optimize` "holds the only `ck-fn` call in the tree, at `:250`".
 - measured: RE-MEASURED 2026-09-06: the refutation holds and the sites moved. `(ck-fn ` now resolves to three places: `lib/lowering/upper/optimize.chiral:250` (the `re-check` this row was filed against), `lib/lowering/tal/check.chiral:303` inside `ck-fns`, which `ck-prog` folds over the program, and a comment at `lib/lowering/tal/sys-check.chiral:4`. So `optimize.chiral:250` was never the only call site, which is what this row established.
+⚑ **FIXED 2026-09-08, and the claim had become false a second way.** `records/lane-a-record.md:165` still read `holds the only ck-fn call in the tree, at :250`. PRB-70's ruling removed `re-check` from `optimize.chiral` at `b613a8f`, so that module now holds **no** `ck-fn` call at all. Measured today, `(ck-fn ` resolves to `lib/lowering/tal/check.chiral:303` inside `ck-fns`, `prog/optimizer-census.prog:78`, and a comment at `lib/lowering/tal/sys-check.chiral:4`. The cell is corrected in place and carries both refutations.
 - evidence: re-runnable: `grep -rn '(ck-fn ' --include='*.chiral' lib/` returns three hits. `lib/lowering/tal/check.chiral:303`, `lib/lowering/upper/optimize.chiral:250`
 - checked:  2026-09-06
 - owner:    none
@@ -929,13 +930,14 @@
 
 ### PRB-67 the reference tal interpreter is the tree's strongest formulation asset and no arc rows it
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    source
 - about:    lib/lowering/tal/eval.chiral
 - claim:    `docs/arcs/independent-judgment-arc.md:38-42` lists what is in the tree already for the independence axes: `lib/evidence/ddc.chiral` at 213 lines with 1 importer, `lib/typing/kernel-core.chiral` at 60 lines with 0, and `lib/typing/reflect-floor.chiral` at 54 lines with 0.
 - measured: RE-MEASURED 2026-09-06: unchanged and still omitted. `lib/lowering/tal/eval.chiral` is **187 lines with zero importers** and `:1-2` describes it as the reference tal interpreter. The arc's own table at `docs/arcs/independent-judgment-arc.md` lists `ddc.chiral` (213 lines, 1 importer), `kernel-core.chiral` (60, 0) and `reflect-floor.chiral` (54, 0), and omits the strongest member. ⚑ The arc names the omission in its prose at `:125` and has never put it in the table.
+⚑ **FIXED 2026-09-08, on both halves and by different means.** The title's claim that no arc rows it is now false: `enforcement/N13` rows `lib/lowering/tal/eval.chiral` by name, opened at `8e97473` on [[records/findings]] FD-20 and `docs/decisions/decision-preserve-check.md`, which place it as the TARGET half of a preserve-check's T1 rung with `lib/evidence/interp.chiral` (109 lines, zero importers) as its source half. The omission half is repaired in place: the table at `docs/arcs/independent-judgment-arc.md:40-42` now carries the row, which its own `:125` had been contradicting.
 - evidence: re-runnable: `wc -l lib/lowering/tal/eval.chiral` returns 187; `grep -rl 'lowering/tal/eval' --include='*.chiral' lib/ prog/` returns nothing. `lib/lowering/tal/eval.chiral:1-20`, `docs/arcs/independent-judgment-arc.md:125`
 - checked:  2026-09-06
 - owner:    none

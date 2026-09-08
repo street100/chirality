@@ -162,7 +162,7 @@ the compiler's import closure at all.**
 | module | LOC | what it was for |
 |---|---|---|
 | `typing/totality` | 387 | termination |
-| `lowering/upper/optimize` | 254 | holds the only `ck-fn` call in the tree, at `:250` |
+| `lowering/upper/optimize` | 254 | ⚑ **corrected 2026-09-08.** This cell read `holds the only ck-fn call in the tree, at :250`, and it was false when written and is false again differently now. PRB-34 measured three `(ck-fn ` sites on 2026-09-06, so the module never held the only one. PRB-70's ruling then removed `re-check` at `b613a8f`, so **`optimize` holds no `ck-fn` call at all**; the sites today are `lowering/tal/check.chiral:303` inside `ck-fns`, `prog/optimizer-census.prog:78`, and a comment at `lowering/tal/sys-check.chiral:4` |
 | `lowering/tal/check` | 246 | **the preserve check** |
 | `lowering/tal/eval` | 187 | reference tal interpreter |
 | `lowering/upper/eff-lower` | 183 | effectful lowering |

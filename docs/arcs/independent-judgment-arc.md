@@ -40,6 +40,7 @@ them, and the ledger says so.
 | `lib/evidence/ddc.chiral` | 213 | 1 | the quorum machinery. `prov-disjoint`, `leg2-disjoint`, `ddc-compare`, and the refusal `ddc-bad-quorum` for fewer than two legs of disjoint provenance |
 | `lib/typing/kernel-core.chiral` | 60 | 0 | written, unreached. It holds the judgment's own decomposition, and that is inert too |
 | `lib/typing/reflect-floor.chiral` | 54 | 0 | written, unreached |
+| `lib/lowering/tal/eval.chiral` | 187 | 0 | ⚑ **added 2026-09-08, and this table omitted it until now while `:125` below said so.** The reference tal interpreter, and by line count the largest unreached member here. [[records/findings]] FD-20 measured it as the TARGET half of a preservation check's T1 rung, whose source half is `lib/evidence/interp.chiral` at 109 lines and also zero importers. `docs/decisions/decision-preserve-check.md` settles that pairing and `enforcement/N13` rows it |
 
 ⚑ Measured 2026-09-02, `records/findings.md` FD-09. `kernel-core` carries
 `(data JForm () (j-check) (j-infer) (j-conv) (j-usage) (j-data) (j-membrane))`,
