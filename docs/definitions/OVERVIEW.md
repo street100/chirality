@@ -27,6 +27,20 @@ updated: 2026-09-08
 ### arc `bridge-arc`: 5 roster row(s)
   state: open 5
 
+## coding-agent
+
+- **1.** Orchestration. The area the author named as the one they care most about. A coding turn is
+      arc: coding-turn-arc
+- **2.** Routes. A coding request reaches the right step, the right tool grant and the right model,
+      arc: UNOPENED
+- **3.** Features. The agent reaches a codebase rather than a path it was handed. Two counts are ze
+      arc: UNOPENED
+- **4.** Keybinds. A coding turn is fired, watched, interrupted and revised from scriba's own entry
+      arc: UNOPENED
+
+### arc `coding-turn-arc`: 9 roster row(s)
+  state: designed 1, open 8
+
 ## display
 
 - **1.** The calculus. Style is a typed value resolved by total functions, and a property holds in 
@@ -46,15 +60,20 @@ updated: 2026-09-08
 ## emitted-speed
 
 - **1.** The shipping compiler carries a cost figure against a control outside the tree. Every `gcc
-      arc: UNOPENED
+      arc: emitted-speed-arc
 - **2.** Building a product stops forcing an allocation. Measured 2026-09-07 by [[benchmarks/crypto
-      arc: UNOPENED
-- **3.** Each of the nine blockers closes, or carries a recorded refusal. [[benchmarks/OPT-CANDIDAT
+      arc: crypto-primitives-arc, emitted-speed-arc
+- **3.** Each of the nine enablers the candidate walk discovered is built, or carries a recorded re
       arc: UNOPENED
 - **4.** A shipped native tool runs inside a declared budget. `prog/prose-lint.prog` measures 15.1x
       arc: UNOPENED
 - **5.** A cost figure in this tree names the backend that produced it. [[implementation/optimizer-
       arc: UNOPENED
+- **6.** Every operation the machine offers is named or refused, and every name the `Op` sum carrie
+      arc: emitted-speed-arc
+
+### arc `emitted-speed-arc`: 9 roster row(s)
+  state: built 1, open 8
 
 ## enforcement
 
@@ -69,8 +88,8 @@ updated: 2026-09-08
 - **5.** Chirality's own tooling is chirality's. Observed as the ratio of lines outside the languag
       arc: enforcement-arc, independent-judgment-arc
 
-### arc `enforcement-arc`: 12 roster row(s)
-  state: built 3, open 9
+### arc `enforcement-arc`: 17 roster row(s)
+  state: built 3, open 14
 
 ## independent-judgment
 
@@ -258,15 +277,15 @@ updated: 2026-09-08
 
 ## Unscheduled
 
-42 unbuilt element(s) named by no arc. Each is territory with no ruling, and the unspoken lens is where that gets tracked.
+40 unbuilt element(s) named by no arc. Each is territory with no ruling, and the unspoken lens is where that gets tracked.
 
-  E35, E36, E37, E39, E41, E43, E44, E45, E46, E47, E48, E49, E54, E55, E57, E58, E59, E60, E61, E62, E63, E73, E74, E75, E77, E78, E80, E94, E102, E128, E142, E143, E149, E153, E162, E164, E165, E167, E169, E170, E171, E172
+  E35, E36, E37, E39, E41, E44, E45, E46, E47, E48, E49, E54, E55, E57, E58, E59, E60, E61, E62, E63, E73, E74, E75, E77, E78, E80, E94, E102, E128, E142, E143, E149, E153, E162, E164, E165, E167, E170, E171, E172
 
 ## The lenses
 
-- **problem** (PRB-): 73 row(s), 71 unreviewed. FIXED 12, OPEN 61
-- **gap** (GAP-): 18 row(s), 12 unreviewed. closed 6, open 12
-- **limit** (LIM-): 18 row(s), 18 unreviewed. accepted 18
+- **problem** (PRB-): 78 row(s), 75 unreviewed. FIXED 17, OPEN 61
+- **gap** (GAP-): 22 row(s), 16 unreviewed. closed 6, open 15, scheduled 1
+- **limit** (LIM-): 20 row(s), 20 unreviewed. accepted 19, to-plan 1
 - **unspoken** (UNS-): 49 row(s), 49 unreviewed. open 49
 
-Roster rows across every arc: 238. Minted from them: 43.
+Roster rows across every arc: 261. Minted from them: 44.
