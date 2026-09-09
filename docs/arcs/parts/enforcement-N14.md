@@ -418,15 +418,18 @@ the gate measure the live path and are correct under every answer to both.
   2026-09-06 overlap ruling in [[records/author-calls]] makes a band advisory,
   so `pack.py --mint` takes the lowest number free tree-wide. Measured
   2026-09-09 over `docs/elements/catalog.md` and `docs/elements/ledger.md`, that
-  is **`E191`**, which lands inside Lane B's advisory `E190-E195` and collides
-  with nothing.
+  is **191**, which lands inside Lane B's advisory `E190-E195` and collides with
+  nothing. It is written as **191** rather than as an element citation, because
+  the deferral rule forbids naming a number no catalog or ledger row mints and
+  `ledger-lint` check AJ enforces that mechanically. `E<NN>` below is the number
+  `pack.py --mint` recomputes at mint time.
 - **Catalog row**, columns `E# | Element | State / location | Reference (class) | Track`:
 
-  `| E191 | **The peel census: what the live type translation excludes, measured and gated.** `term->ntalty` (`lib/lowering/compile-front.chiral:58-79`) is the type translation on the shipping path and `ttype` (`lib/lowering/upper/lower.chiral:35`) has zero call sites, so the region a preservation lemma would exclude is the peel's refusals and not `ttype`'s. A committed root re-derives `bridge-sig`'s loop over any program and reports globals, lowered, and the refusals by position and by failing leaf, beside `back-program`'s three skip channels classified through `skwhy-tag`. A gate pins the compiler's own figures and reddens when the region moves. FD-20 measured the total type translation as the precondition of a typed preservation claim; this states which region the tree's translation is total over, with a number behind it | Not built. Measured 2026-09-09: 63 roots, 22,742 globals, **zero** refused; 4,902 extern signatures, **153** refused, all `(t-primty "Pty")`, owned by E107's owed binding; 347 skip records, of which 182 are `compile-back.chiral:270`'s term-level `le-skip`. Nothing in the tree re-derives any of it | `OURS` (`prog/optimizer-census.prog` + `tools/test/opt-census.sh`, the same shape one stage earlier); CompCert's per-pass validators (`PAPER`, FD-20) | SH |`
+  `| E<NN> | **The peel census: what the live type translation excludes, measured and gated.** `term->ntalty` (`lib/lowering/compile-front.chiral:58-79`) is the type translation on the shipping path and `ttype` (`lib/lowering/upper/lower.chiral:35`) has zero call sites, so the region a preservation lemma would exclude is the peel's refusals and not `ttype`'s. A committed root re-derives `bridge-sig`'s loop over any program and reports globals, lowered, and the refusals by position and by failing leaf, beside `back-program`'s three skip channels classified through `skwhy-tag`. A gate pins the compiler's own figures and reddens when the region moves. FD-20 measured the total type translation as the precondition of a typed preservation claim; this states which region the tree's translation is total over, with a number behind it | Not built. Measured 2026-09-09: 63 roots, 22,742 globals, **zero** refused; 4,902 extern signatures, **153** refused, all `(t-primty "Pty")`, owned by E107's owed binding; 347 skip records, of which 182 are `compile-back.chiral:270`'s term-level `le-skip`. Nothing in the tree re-derives any of it | `OURS` (`prog/optimizer-census.prog` + `tools/test/opt-census.sh`, the same shape one stage earlier); CompCert's per-pass validators (`PAPER`, FD-20) | SH |`
 
 - **Ledger row**, CG section, columns `E# | Module | State | Title | Cites | Track`:
 
-  `| E191 | peel-census | design | **The peel census: the region the live type translation excludes.** `prog/peel-census.prog` re-derives `bridge-sig`'s peel (`lib/lowering/compile-front.chiral:344-353`) over any program and `tools/test/peel-census.sh` pins it; `not-a-phase:`, on the `opt-census.sh` route. Measured 2026-09-09: 0 refusals over 22,742 globals, 153 over 4,902 extern signatures all `(t-primty "Pty")`, 347 skip records in three channels | E16, E107, E123, E184 | SH |`
+  `| E<NN> | peel-census | design | **The peel census: the region the live type translation excludes.** `prog/peel-census.prog` re-derives `bridge-sig`'s peel (`lib/lowering/compile-front.chiral:344-353`) over any program and `tools/test/peel-census.sh` pins it; `not-a-phase:`, on the `opt-census.sh` route. Measured 2026-09-09: 0 refusals over 22,742 globals, 153 over 4,902 extern signatures all `(t-primty "Pty")`, 347 skip records in three channels | E16, E107, E123, E184 | SH |`
 
 - **Size.** Four files touched, one of them new-in-`prog/`, one new-in-`tools/test/`.
   `prog/peel-census.prog` at **200 to 260 lines**, basis: the working probes this
@@ -443,7 +446,8 @@ the gate measure the live path and are correct under every answer to both.
   cycle is owed**, which M5's `opt-census` run and `tools/test/run-tests.sh`
   together are the check on.
 - **The rows the mint writes into the arc.** `enforcement/N14` moves to
-  `designed` with element `E191`, and its `kind` cell moves from `primitive` to
+  `designed` with the element the mint allocates, and its `kind` cell moves from
+  `primitive` to
   `tool`: the deliverable is an instrument and a statement, and no primitive is
   added. The roster's `what` cell keeps its text and gains the correction, since
   the row's premise is what §3 measured against.
@@ -454,5 +458,5 @@ the gate measure the live path and are correct under every answer to both.
   PRB-75, PRB-76, PRB-77 · `enforcement/N12`, `N13`, `N15`, `N16`, `N17` ·
   E16, E107, E123, E184 · `.planning/TAL-CONFORMANCE-QUEUE.md`
 
-Every `E#` named here is already minted. `E191` is the number this packet
-allocates and `pack.py --mint` is what writes it.
+Every `E#` named here is already minted. 191 is the number free today and
+`pack.py --mint` is what allocates and writes it.
