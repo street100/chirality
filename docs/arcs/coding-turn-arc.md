@@ -157,7 +157,7 @@ which is integer already and says so in its own header at
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
-| `coding-turn/A1` | a tool as a closed sum: the arm a call decodes to, carrying the tool's name and its declared parameter schema, so the four inline `Json` schemas at `prog/agent/agent.chiral:99-147` are derived from the value instead of written beside it | G1 | primitive | new | 1 | open | `unminted` |
+| `coding-turn/A1` | a tool as a closed sum: the arm a call decodes to, carrying the tool's name and its declared parameter schema, so the four inline `Json` schemas at `prog/agent/agent.chiral:99-147` are derived from the value instead of written beside it | G1 | primitive | new | 1 | designed | `unminted` |
 | `coding-turn/A2` | the four built tools reached through the `A1` value: `fs-read` (`tools-fs.chiral:50`), `fs-write` (`:62`), `fs-edit` (`:88`) and `ag-bash` (`agent.chiral:60`) dispatched by `case` over the sum, replacing the `str-eq` chain at `agent.chiral:361-374` | G1 | primitive | bind | 1 | open | `unminted` |
 | `coding-turn/A3` | `assemble-prompt` (`assemble.chiral:48-57`) renders the granted tool names into the prompt it already binds `tools` to build, so the section count moves from six to seven | G2 | primitive | bind | 2 | open | `unminted` |
 | `coding-turn/A4` | the grant checked at the one dispatch point, an ungranted call yielding a typed refusal the caller cases, the shape `bind-config` already takes with `bind-miss` at `bind.chiral:52-69` | G2 | law | connect | 1, 2 | open | `unminted` |
@@ -166,15 +166,16 @@ which is integer already and says so in its own header at
 | `coding-turn/A7` | the tool call recorded in `RunManifest` (`types.chiral:166`), carrying which tool fired and whether the grant admitted it, so `manifest-all-green?` (`flow.chiral:1422`) reads a coding turn | G4 | primitive | connect | 4 | open | `unminted` |
 | `coding-turn/A8` | `overflow-guard` (`stop.chiral:20`) called where a tool result enters the next prompt, so a turn is bounded by the window and not only by the step budget at `agent.chiral:411` | G5 | law | connect | 5 | open | `unminted` |
 | `coding-turn/A9` | a phase running a coding-turn root against a stated exit contract, the treatment `transport/T2` to `T4` gave the five transport roots, reusing `transport.sh`'s DEFER ruling for the endpoint it needs | G6 | tool | connect | 6 | open | `unminted` |
+| `coding-turn/A10` | the tool call decoded into an arm carrying its typed arguments, so `arg-get` (`prog/agent/agent.chiral:306`) leaves the four `do-*` bodies. Opened 2026-09-08 by `coding-turn/A1`'s design, §5 decision 1: the enumeration `tools-json` folds over needs a nullary kind, so the decoded call is a second value | G1 | primitive | new | 1 | open | `unminted` |
 
 ### Coverage
 
 Run 2026-09-08 against the table above.
 
-- **Every requirement is served.** 1 by `A1`, `A2` and `A4`; 2 by `A3` and
-  `A4`; 3 by `A5` and `A6`; 4 by `A7`; 5 by `A8`; 6 by `A9`. No requirement is
-  unscheduled.
-- **Every row serves a requirement.** All nine name at least one. No row is out
+- **Every requirement is served.** 1 by `A1`, `A2`, `A4` and `A10`; 2 by `A3`
+  and `A4`; 3 by `A5` and `A6`; 4 by `A7`; 5 by `A8`; 6 by `A9`. No requirement
+  is unscheduled.
+- **Every row serves a requirement.** All ten name at least one. No row is out
   of scope.
 - **Every `origin` is defensible.** Six rows are `bind` or `connect`, which is
   what a tree this built should produce. The three `new` rows carry the burden:
@@ -217,11 +218,16 @@ Run 2026-09-08 against the table above.
 ## Resume state
 
 Opened 2026-09-08 against `docs/goals/coding-agent.md`, committed the same day.
-Nine rows, none started, none designed, none minted. The next stage is
-`element-design` on one row.
+Ten rows. `A1` is **designed** (`docs/arcs/parts/coding-turn-A1.md`, 2026-09-08),
+and the next stage on it is `pipeline-audit` at DESIGN level, then the mint. Its
+design takes a SPEC rather than `direct`: four shapes were weighed and three
+rejected with measured reasons.
 
-`A1` is the row to design first. `A2`, `A4` and `A5` each carry the value it
-defines, and the two back-edges that inform `A6` and `A8` both run into it.
+`A10` was opened by that design, §5 decision 1, and is the only row this arc
+gained after opening. The nine others are untouched.
+
+`A1` was the row to design first because `A2`, `A4` and `A5` each carry the value
+it defines, and the two back-edges that inform `A6` and `A8` both run into it.
 
 Every measurement above was taken against the working tree on 2026-09-08 and
 each cites its own `file:line`. Three counts hold this arc's premise and every
