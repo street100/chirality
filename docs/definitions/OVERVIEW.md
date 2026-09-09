@@ -2,7 +2,7 @@
 node: overview
 layer: generated
 tier: orientation
-updated: 2026-09-08
+updated: 2026-09-09
 ---
 
 # Overview: goal to element, with what each level carries
@@ -38,8 +38,8 @@ updated: 2026-09-08
 - **4.** Keybinds. A coding turn is fired, watched, interrupted and revised from scriba's own entry
       arc: UNOPENED
 
-### arc `coding-turn-arc`: 9 roster row(s)
-  state: designed 1, open 8
+### arc `coding-turn-arc`: 10 roster row(s)
+  state: designed 1, open 9
 
 ## display
 
@@ -73,7 +73,7 @@ updated: 2026-09-08
       arc: emitted-speed-arc
 
 ### arc `emitted-speed-arc`: 9 roster row(s)
-  state: built 1, open 8
+  state: built 1, designed 1, open 7
 
 ## enforcement
 
@@ -89,7 +89,7 @@ updated: 2026-09-08
       arc: enforcement-arc, independent-judgment-arc
 
 ### arc `enforcement-arc`: 17 roster row(s)
-  state: built 3, open 14
+  state: built 3, designed 1, open 13
 
 ## independent-judgment
 
@@ -283,9 +283,9 @@ updated: 2026-09-08
 
 ## The lenses
 
-- **problem** (PRB-): 78 row(s), 75 unreviewed. FIXED 17, OPEN 61
-- **gap** (GAP-): 22 row(s), 16 unreviewed. closed 6, open 15, scheduled 1
-- **limit** (LIM-): 20 row(s), 20 unreviewed. accepted 19, to-plan 1
-- **unspoken** (UNS-): 49 row(s), 49 unreviewed. open 49
+- **problem** (PRB-): 80 row(s), 77 unreviewed. FIXED 18, OPEN 62
+- **gap** (GAP-): 24 row(s), 18 unreviewed. closed 6, open 17, scheduled 1
+- **limit** (LIM-): 21 row(s), 21 unreviewed. accepted 19, to-plan 2
+- **unspoken** (UNS-): 51 row(s), 51 unreviewed. open 51
 
-Roster rows across every arc: 261. Minted from them: 44.
+Roster rows across every arc: 262. Minted from them: 44.

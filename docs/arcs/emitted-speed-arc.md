@@ -332,19 +332,70 @@ condition 5**, which asks it of every doc under `docs/benchmarks/`.
 ## Resume state
 
 Opened 2026-09-08 with 6 rows and 4 requirements. Amended the same day to take
-condition 6, at **9 rows and 6 requirements**, none designed.
+condition 6, at **9 rows and 6 requirements**.
 
-**Next, in order.** `X5` first, because the back-edge says so: the
-outside-control figure has to exist before the pass lands or the two halves
-confound each other. Then `X1`, because `X2` and `X3` both rest on what a
-single-constructor product is. `X9` stands outside that chain and fails against
-the tree as it is, so it can run at any point. `X7` waits on `X2`, which is the
-`operations` back-edge read from the other end. `X8` depends on no row here.
-Every row runs `element-design` off
+**State on 2026-09-09.** `X7` is **built** as `E189`: the widening multiply has
+two names, `mulhi` signed on `48 F7 E9` and `mulhu` unsigned on `48 F7 E1`, both
+`(-> I64 I64 I64)` on the `E108` precedent. It ran the whole pipeline in one
+day: design `96b5bdc`, audit PASS `857f99d`, a `revisit` on the already-minted
+`E189` returning RESCOPE `35c844c`, SPEC `118bf6d`, build `c86b007`. Fixpoint
+landed at `C1 == C2` as predicted, the suite reads 422 passed 0 failed across 21
+phases with 94 roots, and phase 32 `mul-widen` reads 10 passed 0 failed with all
+four mutants convicted. **Requirement 5's three-set gate now finds zero
+differences** for the first time: the `Op` sum carries 16 constructors, the
+extern block binds 16, `op-bytes` encodes 16.
+
+`X8` is **designed** at `455bfb4` and awaits `pipeline-audit` at DESIGN level.
+Its call is two rotate constructors at 64 bits. The encoding was pinned by local
+disassembly: `rol %cl,%rax` is `48 D3 C0`, digit `/0`; `ror` is `48 D3 C8`,
+digit `/1`. ⚑ **It buys the measured workload nothing.** A native 64-bit rotate
+does not give `rotl32`, because the wrapped bits land at bit 32 and above and a
+mask drops them, so ChaCha20's quarter round stays at four operations. Its
+scheduled consumer is `crypto-primitives/K2`, whose Keccak-f round runs 25 ρ
+rotations plus 5 in θ on 64-bit lanes. `X8` mints fresh rather than claiming
+`E115`, which `docs/elements/ledger.md:355` reserves as a slot with no catalog
+row and a `?` track that is an author call.
+
+`X1` through `X6` and `X9` stand open.
+
+**Next, in order.** `X8`'s DESIGN audit, then its SPEC and build on the path
+`E189` proved. Then `X5`, because the back-edge says the outside-control figure
+has to exist before a pass lands or the two halves confound each other. Then
+`X1`, since `X2` and `X3` both rest on what a single-constructor product is.
+`X9` stands outside that chain and fails against the tree as it is, so it can
+run at any point. Every row runs `element-design` off
 `python3 tools/pack/pack.py emitted-speed/X<n>`.
 
-⚑ **Two of this arc's five sources went stale the day it opened, and this run
-corrected neither.** The `chk-ok` guard left the shipping call site by the
+**The pipeline's tooling was repaired on 2026-09-08 and 09, and `E189` is why.**
+`pack.py`'s post-mint half read the retired `docs/examples/` tier, so `--spec`,
+`--audit spec` and `--mark` all died for a design-minted element while the mint
+printed a `Next:` command that could not run. Repaired at `c1829f3` and
+`cc8f1db`, each proven against `HEAD` by differential run over the
+example-bearing elements. `pack.py:934` also crashed on every bundle reaching
+its section 9, fixed at `96b5bdc`.
+
+⚑ **A gate broke under `E189` and the suite could not see it.**
+`tools/test/opt-census.sh` takes no phase number and is run by hand, so
+`c86b007` reported the suite green while that gate read `2 passed, 2 failed, 4
+mutants unmeasured`. Every count had moved by exactly one, the signature of a
+clean addition. Re-pinned at `71eb931`, now 8 passed 0 failed. A gate nothing
+runs cannot report that it broke.
+
+**Seven lens rows landed 2026-09-09 from an author discussion** and none is a
+roster row here: `PRB-79`, `PRB-80`, `GAP-23`, `GAP-24`, `LIM-21`, `UNS-50`,
+`UNS-51` at `a1168e5`. They are the numeric-bounds territory, and
+[[goals/emitted-speed]] **condition 3** already names the refinement and
+quantity drops at the peel among its nine enablers while holding no arc file.
+That condition is the next `arc-open`, and this arc does not take it: its six
+requirements observe allocation, per-pass grading, an outside control,
+instrumentation, three-set agreement and operation names, and none would observe
+a fact-carrying lowering.
+
+⚑ **Two of this arc's five sources went stale the day it opened. Both are now
+repaired**, `optimizer-inventory.md` by a `doc-audit` at `71eb931` and
+`OPT-CANDIDATES-2026-09.md` §F-vi by a `revisit` at `e0e9e4a`, whose finding was
+that a citation-repoint pass corrects line numbers and does not read the prose
+leaning on them. The record of what went stale follows.** The `chk-ok` guard left the shipping call site by the
 author's `PRB-70` ruling of 2026-09-08, landing at `b613a8f` and `38ecdba`, so
 `lowering/tal/check` is outside the compiler closure and `opt-tfns` adopts
 `(fold t)` with nothing to consult. `docs/implementation/optimizer-inventory.md`
