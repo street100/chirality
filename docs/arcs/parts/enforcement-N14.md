@@ -5,7 +5,7 @@ title: `ttype` (`lib/lowering/upper/lower.chiral:35`, `(-> UT (Maybe TalTy))`) b
 kind: tool
 origin: new
 req: 2
-status: blocked
+status: draft
 updated: 2026-09-09
 ---
 
@@ -23,6 +23,15 @@ updated: 2026-09-09
 - **Serves:** requirement 2 of [[arcs/enforcement-arc]], "**The typed-assembly
   floor runs on the shipping path.**"
 - **Goal:** [[goals/enforcement]], condition 3.
+
+⚑ **Rescoped 2026-09-09 by [[records/enforcement-arc]] EN-28.** The row's first
+branch is struck. The author ruled that the 84-line partition is neither retired
+nor repaired ([[records/author-calls]]), so `ttype` becoming total is off this
+row and the fifteen dead names go out inside E184's build cycle.
+[[decisions/decision-def-partition]] carries the partition the tree should have,
+and §3 of that document measures it as **E184's R1**. What stays here is the
+second branch: the region the live translation excludes, measured by an
+instrument the tree carries and stated with the number behind it.
 
 FD-20 measured the total type translation as the precondition of writing a
 typed preservation claim down at all, which is why the row sits under
@@ -211,6 +220,9 @@ runs.
 
 ### Shape A: enrich `TalTy` so `ttype` becomes total
 
+⚑ **REFUSED 2026-09-09 by the author** ([[records/author-calls]], decision 2
+below). Kept here as the record of what was considered.
+
 - **Form:** give `TalTy` (`lib/lowering/tal/ssa.chiral:21-22`, five
   constructors) a spelling for arrows and universes, so `ttype`'s `u-other` arm
   has a target and the `(Maybe ...)` in its declaration can go.
@@ -308,6 +320,12 @@ runs.
 
 ### Shape E: retire the unreached partition
 
+⚑ **REFUSED 2026-09-09 by the author** ([[records/author-calls]], decision 2
+below), as a standalone shape. The fifteen names still go, inside E184's build
+cycle rather than on their own, which is
+[[decisions/decision-def-partition]] §5. The cost line below is why: a
+standalone deletion spends a BUILD RULE cycle to change no emitted byte.
+
 - **Form:** delete `UT`, `LowBind`, `Lowdef`, `LowRes`, `ttype`, `ttype-list`,
   `any-dep?`, `any-eff?`, `any-quant?`, `doms-lower?`, `types-lower?`,
   `skip-reason`, `eligible?`, `lower-def` and `lower-all` from
@@ -387,13 +405,16 @@ Three reasons, in order of weight.
    adds is a number nobody can quietly lose.
 2. **It ships a gate outside the dispatch table**, the fifth in this arc to do
    so, and the standing suite-phase-number call gets no cheaper.
-3. **It leaves `ttype` where it is.** Under decision 2 the function may later be
-   retired or repaired, and the census is indifferent to either.
+3. **It leaves `ttype` where it is.** ⚑ **Corrected 2026-09-09 by EN-28.** This
+   read "under decision 2 the function may later be retired or repaired". The
+   author ruled neither. The fifteen dead names go out inside E184's build cycle
+   ([[decisions/decision-def-partition]] §5), and the census is indifferent to
+   the timing.
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
 | 1 | Whether `docs/decisions/decision-preserve-check.md`'s tier line moves off `ttype` | **NEEDS-AUTHOR** | The decision is `status: settled` and reads "`ttype`'s `Maybe` is P5's tier boundary written into the code", with T1 covering "the region where `ttype` answers `none`". M1 measures that function at zero call sites and M2 measures the live translation's `(none)` region as empty on definitions, so T1's region as the decision draws it is empty and `enforcement/N13` would build against it. The decision's substance is untouched by this: EN-20's `const 0` case sits inside the `(some t)` region and T1 still convicts it, which is a different job from the one the decision assigns. A session may not rewrite a settled decision, and redrawing T1's region changes what `N13` is built against. The measurement is in §2; the ruling is the author's |
-| 2 | Whether the 84-line unreached partition in `lower.chiral` is retired or repaired | **NEEDS-AUTHOR** | Shape E against Shape A, and the tree points both ways. `docs/elements/catalog.md:449` instructs mirroring the porttype legs into `ttype`, which M7 measures as never done, and `docs/decisions/decision-preserve-check.md` plus GAP-22 are written over the function, so two settled documents want it kept. M1 measures fifteen names with zero consumers and `lower.chiral:1-16`'s stated reason for keeping them is a differential against a CUT oracle, so the measurement wants it gone. Either answer costs a BUILD RULE cycle on a blob module and neither changes an emitted byte |
+| 2 | Whether the 84-line unreached partition in `lower.chiral` is retired or repaired | **RULED 2026-09-09 → NEITHER** | The author: *fix the partitioning the proper way obviously. if its not the original partition and we're going to do it differently outline it and doc*. Shapes A and E are both refused and the deliverable is the partition the tree should actually have, outlined and documented. That landed as [[decisions/decision-def-partition]], which measures the proper partition as **E184's R1** and mints nothing: the classes are enumerated from the live tree, the carrier is one classification over the closure's def set before `specialize-singletons` renames, the home is `lib/lowering/skip-diag.chiral` beside the `SkReason`/`SkRec` it completes, and the fifteen dead names are retired inside E184's build cycle. Three findings the outline produced are owed to E184's SPEC stage: R2's three skipped classes are the wrong set, `compile-back.chiral:271` files 182 term-level failures under `sk-extern`, and no committed instrument re-derives any def-level count. ⚑ The original rationale, kept: Shape E against Shape A, and the tree points both ways. `docs/elements/catalog.md:449` instructs mirroring the porttype legs into `ttype`, which M7 measures as never done, and `docs/decisions/decision-preserve-check.md` plus GAP-22 are written over the function, so two settled documents want it kept. M1 measures fifteen names with zero consumers and `lower.chiral:1-16`'s stated reason for keeping them is a differential against a CUT oracle, so the measurement wants it gone. Either answer costs a BUILD RULE cycle on a blob module and neither changes an emitted byte |
 | 3 | Which of FD-17's five discharges T0 takes | **DEFERRED → `enforcement/N15`** | FD-17's `element:` field reads "the choice among the five is the author's call" and `docs/decisions/decision-preserve-check.md` reads "Not settled here: which discharge T0 takes". All five land on `tal-ty=?`, which is `N15`'s subject. §4 Shape B prices them and states the coercion tension; this row rules none of it |
 | 4 | Whether `shape-eq` splits | **DEFERRED → `enforcement/N16`** | PRB-76 and FD-18 are that row's, and the roster row names the criterion as its subject. It bears on this row only through Shape B |
 | 5 | Whether the `Pty` region is closed | **DEFERRED → E107** | `docs/elements/ledger.md:202` carries the owed `pty-close` native binding on E107, which is minted and `built`. M6 measures no crossing entry for any of the three externs, and `lib/ports/pty.port:30-35` states the deferral in the source. Closing the type-level list ahead of the bindings moves the refusal from the peel to emit |
@@ -405,6 +426,14 @@ Three reasons, in order of weight.
 Decisions 1 and 2 set `status: blocked` and earn rows in
 [[records/author-calls]]. Neither blocks the element §6 mints: the census and
 the gate measure the live path and are correct under every answer to both.
+
+⚑ **Both are answered and the artifact is unblocked, 2026-09-09.** Decision 1 was
+answered by [[records/enforcement-arc]] EN-27, which amended
+[[decisions/decision-preserve-check]] so the two rungs stack over one program;
+its [[records/author-calls]] row stays `unreviewed`, which is the author's to
+change. Decision 2 was ruled NEITHER and discharged by
+[[decisions/decision-def-partition]]. `status:` moves from `blocked` to `draft`,
+and the next stage is a DESIGN-level `pipeline-audit`.
 
 ## 6. The mint packet
 
