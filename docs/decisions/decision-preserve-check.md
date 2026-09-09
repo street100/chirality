@@ -39,8 +39,13 @@ neither region is a region of anything that runs. The live type translation is
 `term->ntalty` (`lib/lowering/compile-front.chiral:58-79`), which answered
 `(none)` on **zero of 22,742 globals** across 63 roots, and its image passes
 through `ntalty->talty` (`lib/lowering/compile-back.chiral:24`), declared
-`(-> NTalTy TalTy)` with no `Maybe` to answer with. **No type translation on the
-shipping path has a refusal region for a tier line to run through.** What the
+`(-> NTalTy TalTy)` with no `Maybe` to answer with. `term->ntalty` does carry a
+refusal region, in its `t-primty` fallthrough and its `_` arm, and that region is
+**empty over the definitions the two rungs range over**. Its only refusals are
+**153 of 4,902 extern signatures, 3.1%**, every one the leaf `(t-primty "Pty")`
+owned by E107's owed native binding, and an extern carries no body for either
+rung to range over. **So no type translation on the shipping path has a refusal
+region a tier line could partition this program by.** What the
 typed route leaves uncarried is the value, and the tree has measured two ways
 past it. `tal-ty=?`'s first arm makes `tt-word` match every one-word type
 (`lib/lowering/tal/check.chiral:68-70`), and `term->ntalty` hands `t-var` and
