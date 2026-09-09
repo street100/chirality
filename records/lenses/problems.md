@@ -1135,3 +1135,17 @@
 - owner:    crypto-primitives/K2
 - from:     none
 - element:  unminted. `crypto-primitives/K2` is the permutation module row and inherits the choice directly. `crypto-primitives/K13` is the target declaration row, which is where width would become a stated term of a target.
+
+### PRB-81 the compiler labels 182 body-compile failures as extern refusals
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/lowering/compile-back.chiral
+- claim:    `docs/elements/catalog.md` E184 R2: `skipped`'s reason is itself a closed sum carrying evidence, `extern-with-no-wrapper naming the op`, `type-does-not-peel naming which type and where`, `callee-cascade naming the chain`, and E157's rule applies unchanged so a `str-cat`'d sentence here reintroduces what E157 removed.
+- measured: **The compiler labels a body-compile failure as an extern refusal, 182 times.** `lib/lowering/compile-back.chiral:271` wraps EVERY term-level `le-skip` as `(mk-skrec name (sk-extern er))`, and `lib/lowering/skip-diag.chiral:28` renders `sk-extern` as the tag `"extern"`. Measured by [[records/enforcement-arc]] EN-28 over 69 roots: the term-level channel produces **182** records in three classes (`higher-order application` 162, `lambda stays upper` 10, `body is not a lambda chain` 10), and `filter-erasable` produces **5** genuine extern-with-no-wrapper refusals. All 187 carry the same constructor and the same tag, so **182 of 187 things the compiler calls an extern refusal are not one**, a 97% misattribution on that tag. ⚑ **Mechanical rather than cosmetic.** A reader or a gate counting `extern` skips reads 187 where 5 is the true figure, and the three real classes have no tag at all. E184's R2 names three reason constructors, and this is why one of them is doing four jobs. ⚑ **Mints nothing.** [[decisions/decision-def-partition]] settles that the partition is E184's R1 identically, so this is R2's evidence half and E184 owes it.
+- evidence: `lib/lowering/compile-back.chiral:271`, `lib/lowering/skip-diag.chiral:28`, `lib/lowering/skip-diag.chiral:15-16`, [[records/enforcement-arc]] EN-28, [[decisions/decision-def-partition]]
+- checked:  2026-09-09
+- owner:    E184
+- from:     EN-28
