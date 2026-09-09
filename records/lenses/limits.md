@@ -281,3 +281,17 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-08
 - owner:    none
 - from:     none
+
+### LIM-21 the Poly1305 kernel's whole arithmetic argument is a comment, where the claim is that the type is the proof
+
+- state:    to-plan
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/crypto/poly1305.chiral:11-14
+- claim:    `PRINCIPLES.md:51` is principle 2, everything is a process and the type is the whole cost, and `:155` states the tree's own reading of where one source of truth suffices: `of truth is right when the thing is provable (P2, the type is the proof) and wrong` otherwise. `lib/typing/refine.chiral:13-18` is the machinery that would hold a numeric bound in a type.
+- measured: **2026-09-09: the correctness argument for the most bound-sensitive kernel in the tree is prose, and a reader is what checks it.** `lib/crypto/poly1305.chiral:11-14` carries the whole of it: five 26-bit limbs in the donna shape, a block add lifting an `h` limb toward `2^27`, each product in `f-mul` under `2^53`, each five-term sum with its weight-5 folds under `21 * 2^53 < 2^58`, signed `I64` holding every intermediate with no `mulhi`. The derivation was reproduced on 2026-09-09 and it is forced: with `n` limbs of `b` bits over `2^130 - 5` the worst intermediate runs about `n * 5 * 2^(2b)` against 63 usable bits, so `n = 4` at `b = 33` needs 70.3 bits and overflows, `n = 6` at `b = 22` fits and pays 36 partial products against 25, and `n = 5` at `b = 26` fits at 56.6 bits and divides 130 exactly. **26 is forced by the arithmetic, so the 40 percent occupancy of each 64-bit word is a consequence of the modulus and no part of it is a preference.** None of that reaches a type. The limbs are plain `I64`, and the module's own preamble at `:3` already says the preconditions are stated rather than typed under the `N01` SPEC decision. `GAP-23` and `GAP-24` are the two absences behind this and neither alone closes it, which is why nothing owns it yet.
+- evidence: `lib/crypto/poly1305.chiral:3`, `lib/crypto/poly1305.chiral:11-14`, `PRINCIPLES.md:51`, `PRINCIPLES.md:155`, `lib/typing/refine.chiral:13-18`
+- checked:  2026-09-09
+- owner:    none
+- from:     none

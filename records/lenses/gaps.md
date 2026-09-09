@@ -309,3 +309,31 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-08
 - owner:    enforcement/N13
 - from:     FD-20
+
+### GAP-23 the refinement domain has no transfer functions, so no operation moves a value through it
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/typing/refine.chiral
+- claim:    `lib/typing/refine.chiral:1-7` states what `E9` built: interval-with-holes plus symbolic `(op,level)` facts, emptiness decided first so vacuous truth is structural, pure and total, providing `entails` and `Constraint` to `E10`. `Constraint` (`:13-18`) carries an inclusive floor, an inclusive ceiling, a hole list and symbolic bounds keyed by operand level, which is an interval-with-holes domain in the abstract-interpretation sense.
+- measured: **2026-09-09: the domain is built and nothing propagates through it.** What the file exports decides entailment between two constraints already in hand. Nothing derives a constraint from an operation applied to constrained operands. Given `a` in `[0, 2^26)` and `b` in `[0, 2^26)` the tree cannot derive `a + b` in `[0, 2^27)`, because an operator type has no way to depend on its operands' ranges: `+` is bound as `(extern + (-> I64 I64 I64))` at `lib/prelude/prelude.chiral:59` and carries no index over the domain. The missing piece is the transfer function, one per operation, and it is what every consumer of a range fact needs before carrying the fact is worth anything. `docs/benchmarks/OPT-CANDIDATES-2026-09.md:112` records `A13`, value range propagation, as absent and pointing at the same seat by way of `B9`. Schedulable today: the domain, the decision procedure and the consumers are all in this tree. `PRB-79` records that the one deferral naming an owner names the wrong one, and `docs/goals/emitted-speed.md:79-90` condition 3 already states the obligation over the nine enablers this seat belongs to, unopened and holding no arc file.
+- evidence: `lib/typing/refine.chiral:1-7`, `lib/typing/refine.chiral:13-18`, `lib/prelude/prelude.chiral:59`, `docs/benchmarks/OPT-CANDIDATES-2026-09.md:112`, `lib/crypto/poly1305.chiral:11-14`
+- checked:  2026-09-09
+- owner:    none
+- from:     none
+
+### GAP-24 `B9` has two exact seats, nine candidates want it, and no roster holds it
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/lowering/compile-front.chiral
+- claim:    `docs/benchmarks/OPT-CANDIDATES-2026-09.md:278` states `B9`, fact-carrying lowering, as carrying refinement and quantity facts through the peel into tal, absent with two exact seats, wanted by `A13`, `A14`, `F7` to `F10` and `F15` to `F21`. `:543` and `:653-654` restate the two seats with their consumer lists, and `:664` states that `B9` climbs a tier.
+- measured: **2026-09-09: both seats read as described, and the facts are discarded before any pass below could spend them.** `lib/lowering/compile-front.chiral:69` is `((t-refine base atoms) (term->ntalty base))`: it binds `atoms` and lowers the refinement to its base, its own comment giving the reason as `E125`, that a refinement is proof-irrelevant and erased at runtime. `:85` is `((t-pi q s dom cod) (case (peel-pi cod) ((peeled ps c) (peeled (cons dom ps) c))))`: it binds the quantity `q` and the multiplicity `s` and keeps only `dom`. So every source-derived range fact and every source-derived quantity dies at the erasure seam. Nothing schedules the repair, and the tree already knows it. `docs/goals/emitted-speed.md:79-90` is condition 3, each of the nine enablers built or carrying a recorded refusal, and it names `the refinement and quantity drops at the peel` as one of the nine, closing with `Unopened, and it holds no arc file.` A search of `docs/arcs/` and `records/` for `B9` returns no row, and `docs/arcs/emitted-speed-arc.md:215-265` observes allocation, per-pass grading, an outside control, instrumentation, three-set agreement and operation names across its six requirements, since that arc opened on conditions 1, 2 and 6. None of the six would observe a fact-carrying lowering. `GAP-23` is the typing half of the same absence and this is the lowering half.
+- evidence: `lib/lowering/compile-front.chiral:69`, `lib/lowering/compile-front.chiral:85`, `docs/benchmarks/OPT-CANDIDATES-2026-09.md:278`, `docs/benchmarks/OPT-CANDIDATES-2026-09.md:653-654`, `docs/arcs/emitted-speed-arc.md:215-265`
+- checked:  2026-09-09
+- owner:    none
+- from:     none

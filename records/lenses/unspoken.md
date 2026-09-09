@@ -685,3 +685,31 @@
 - checked:  2026-09-06
 - owner:    none
 - from:     none
+
+### UNS-50 deriving a reduction schedule from the modulus has never been named here, and `C11` stops one question short
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    doc
+- about:    .planning/CRYPTO-MODEL.md
+- claim:    `.planning/CRYPTO-MODEL.md:517` opens `C11` as `the limb representation for field arithmetic, and whether a limb carries its bit bound`. That is the narrow form of the question. It asks whether the bound is carried and says nothing about what would be derived from it once it is.
+- measured: **2026-09-09: no document in this tree states an intent either way.** A search of `docs/`, `records/` and `.planning/` for fiat-crypto, lazy reduction, carry schedule and interval analysis finds no statement of intent. `carry chain` occurs three times and every occurrence describes what a built kernel already does (`docs/examples/N01-crypto-kernels.md:73`, `:236`, `docs/elements/specs/N01-crypto-kernels-SPEC.md:171`), and `docs/benchmarks/OPT-CANDIDATES-2026-09.md:354` names `C38`, a two-result prim form the carry chain wants, which is an operation and no schedule. The move itself has an external precedent: a synthesis tool derives limb size, carry schedule and reduction points from the modulus, proves the bounds, and emits C. What would distinguish it here is where the bound lives. A bound in the type survives into the typed-assembly floor, where a synthesis tool discharges its proof before the C is written and the emitted code carries nothing. **A derived schedule is also a constant-time consequence.** A reduction inserted because a runtime value grew is a secret-dependent branch, and one placed from the type's bound is compile-time by construction, which reinforces the subject `docs/arcs/native-protocol-arc.md:64` gives `native-protocol/N5`. `LIM-21` is the worked instance already hand-proved in a comment. Unruled: whether this tree wants a derived reduction schedule at all, and whether `C11` is a step toward one or the whole of what is wanted. ⚑ **fiat-crypto is the precedent named in the discussion and `.planning/sources/` pins nothing for it**, so the external claim above is stated without a citation and a `research` run owes the pin before anything leans on it.
+- evidence: `.planning/CRYPTO-MODEL.md:517`, `docs/arcs/native-protocol-arc.md:64`, `docs/benchmarks/OPT-CANDIDATES-2026-09.md:354`, `docs/elements/specs/N01-crypto-kernels-SPEC.md:171`, `lib/crypto/poly1305.chiral:11-14`
+- checked:  2026-09-09
+- owner:    none
+- from:     none
+
+### UNS-51 headroom in flight and vacancy at rest are one word here, and they are two resources
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    doc
+- about:    PRINCIPLES.md
+- claim:    `PRINCIPLES.md:149` is principle 5, where proof runs out, split the truth and require agreement, and `:202` reads an elimination as a P5 problem inside P5's own territory. An evidence twin under that principle occupies space wherever it is put.
+- measured: **2026-09-09: the tree speaks of limb slack as one quantity and it is two, with different owners.** Slack in a limb between reductions is headroom in flight: `lib/crypto/poly1305.chiral:11-14` budgets it explicitly, each five-term sum with its weight-5 folds sitting under `21 * 2^53 < 2^58` against the 63 usable bits, and a pass that spends it defers a reduction. Slack in a value at rest is vacancy: the same limbs occupy 26 bits of a 64-bit word and the remaining bits are read by nothing. A `P5` evidence twin placed in vacancy occupies bits the arithmetic has already given up, and the same twin placed in headroom takes the reduction budget away from the arithmetic. The two want different passes, since one spends a budget and the other fills a hole, and this tree has stated neither. Unruled: whether either pass is wanted, and whether at-rest vacancy is a place the evidence tier is permitted to write at all. `UNS-50` holds the other half, which is who would place the reductions once the budget is being spent deliberately.
+- evidence: `PRINCIPLES.md:149`, `PRINCIPLES.md:202`, `lib/crypto/poly1305.chiral:11-14`, `lib/typing/refine.chiral:13-18`
+- checked:  2026-09-09
+- owner:    none
+- from:     none

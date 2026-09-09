@@ -1105,3 +1105,33 @@
 - owner:    none
 - from:     none
 - element:  UNASSIGNED. No roster row holds it. `emitted-speed/X8` and `X9` are the nearest open rows and neither reaches the prelude's string layer
+
+### PRB-79 `refine.chiral` defers its own second half to `E41`, which is region types
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/typing/refine.chiral:7
+- claim:    `lib/typing/refine.chiral:7` closes the file's header with its non-goal and routes it: `Non-goal: the full-predicate REFACTOR (solver, inter-variable arith) -> E41.` That arrow is the one pointer the typing tier gives for who owns arithmetic over the refinement domain, and `:1-7` establishes that what E9 built is the decision procedure alone.
+- measured: **2026-09-09: `E41` is a different subject and will never build it.** `docs/elements/catalog.md:168` gives `E41` as `Region types (retire runtime offset/bounds checks)`, edge 3, reference class `region calculus (Tofte–Talpin)`, track SH. Regions are a memory-lifetime discipline. That element carries no predicate solver, no arithmetic over `Constraint` (`lib/typing/refine.chiral:13-18`), and nothing that would derive one interval from another. So a reader following the deferral lands on an element whose title, reference class and edge are all about storage, and the deferred half stays unowned: a search of `docs/arcs/` for a roster row over inter-variable arithmetic returns none, and `GAP-23` records the absence. Recording the misdirected pointer is a fact about the tree, and this row defers nothing of its own.
+- evidence: `lib/typing/refine.chiral:1-7`, `lib/typing/refine.chiral:13-18`, `docs/elements/catalog.md:168`
+- checked:  2026-09-09
+- owner:    none
+- from:     none
+- element:  `E41` is minted and is the wrong destination, so it is cited here and is no part of the fix. No roster row holds the subject.
+
+### PRB-80 the three-permutation ranking has no word-width column, and this substrate charges for width
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    doc
+- about:    .planning/CRYPTO-TRANSLATION.md
+- claim:    `.planning/CRYPTO-TRANSLATION.md:128` states that at a 256-bit mark three permutations are conformant and the choice falls to other terms, then ranks them in one table at `:131-135` on two columns, state and rounds: Ascon-p at 40 B and 12 rounds, Xoodoo at 48 B and 12, Keccak-f[400] at 50 B and 20. `:125` gives the reading the table serves, `ops per byte move hard. State size holds`.
+- measured: **2026-09-09: lane width is a term this substrate charges for on every operation, and the ranking has no column for it.** Every lane in this tree is an `I64`, so a permutation whose lanes are narrower pays a mask wherever the value must wrap. Measured in the built kernel: `add32` (`lib/crypto/chacha.chiral:20`) is `(band (+ a b) M32)`, two prim applications against the one a 64-bit lane add costs, and `rotl32` (`:24-25`) is `(band (bor (shl x n) (shr x (- 32 n))) M32)`, five prim applications against the three the 64-bit rotate idiom costs. `docs/arcs/parts/emitted-speed-X8.md:358` counts the same expression as four operations with the constant subtract folded, and records that a 64-bit rotate primitive buys nothing here, because the wrapped bits of a 32-bit value land at bit 32 and above and a mask drops them. That design also records the 32-bit lane as `C32` and `B8` and states `docs/arcs/emitted-speed-arc.md` does not schedule it, so the cost stands for as long as the ranking is used. The fix owed is the column, and it is owed whichever way the column falls. ⚑ **No candidate's lane width is asserted here.** `.planning/sources/` pins `ASCONSPEC` and `FIPS202` and holds no Xoodoo specification; the only occurrence of the name under the pins is a navigation link in `KECCAKSUM.txt:106`. Turning this into a ranking needs a `research` run that pins each candidate's lane width first.
+- evidence: `.planning/CRYPTO-TRANSLATION.md:125`, `.planning/CRYPTO-TRANSLATION.md:128`, `.planning/CRYPTO-TRANSLATION.md:131-135`, `lib/crypto/chacha.chiral:20`, `lib/crypto/chacha.chiral:24-25`, `docs/arcs/parts/emitted-speed-X8.md:358`, `.planning/sources/KECCAKSUM.txt:106`
+- checked:  2026-09-09
+- owner:    crypto-primitives/K2
+- from:     none
+- element:  unminted. `crypto-primitives/K2` is the permutation module row and inherits the choice directly. `crypto-primitives/K13` is the target declaration row, which is where width would become a stated term of a target.
