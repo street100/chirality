@@ -5,9 +5,12 @@
 # then the root sort), both times silently, which is why this is a script.
 #
 # not-a-phase: it reads .planning/MIGRATION-MAP.tsv and a person runs it after a move.
-# (records/tooling-classification.md TC-09 disputes the reason given below.)
-# Not a suite phase: the map lives under .planning/, which is not tracked, so a
-# fresh checkout has no map to check. Run it after any move.
+# Corrected 2026-09-08 (PRB-65). This read "the map lives under .planning/, which
+# is not tracked, so a fresh checkout has no map to check", and that has been
+# false since .planning/ was tracked on 2026-09-01 by decision-ai-tier. Measured
+# today: `git ls-files .planning | wc -l` returns 327. A fresh checkout DOES have
+# the map. TC-09 raised the dispute and the line above carries the true reason,
+# which is that a person runs this after a move. Run it after any move.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
 MAP="$ROOT/.planning/MIGRATION-MAP.tsv"
