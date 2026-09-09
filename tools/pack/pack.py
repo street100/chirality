@@ -648,11 +648,85 @@ def kb_mode(eid, tag, title):
           f"{len(notes)} notes resolved.\n{caveat}\n\n{body}")
 
 
+def mark_design(eid, tag, state, origin, no_index):
+    """`--mark` for an element MINTED FROM A DESIGN: the SPEC's own frontmatter
+    is the whole record, and there is no roster write.
+
+    Why no roster write, when the roster is this tier's registry everywhere
+    else. Its state column has no `audited` rung — docs/arcs/README.md spells
+    the vocabulary `open · designed · minted · specced · building · built ·
+    direct · closed`, and ledger-lint check AH reads exactly those five middle
+    values. `audited` means implement-ready, and the roster's next rung after
+    the `specced` spec_mode writes is `building`, which belongs to the run that
+    starts the build. So the row stays `specced` and the SPEC carries the gate,
+    which is where the audited SPECs already on disk carry it.
+
+    That leaves the SPEC frontmatter playing the INDEX row's part, so
+    `--no-index` suppresses it and prints what is owed, the way it does for an
+    INDEX row.
+
+    THE PREDECESSOR CHECK IS THE ROSTER ROW, read but not written. E189 is
+    `built` with its SPEC already `audited`; without the check a `--mark
+    audited` against it would rewind a finished element to implement-ready. A
+    row past the spec gate is refused before anything is opened for writing.
+    """
+    arc, rid = origin
+    if state == "reviewed":
+        die(f"{eid} was minted from docs/arcs/parts/{arc}-{rid}.md and has no worked "
+            f"example, so there is no example audit to pass and no `drafted` row to "
+            f"flip. This tier's design gate ends at `pack.py {arc}/{rid} --mint`; its "
+            f"spec gate is `--mark audited`")
+    _line, cells = roster_row(open(arc_path(arc)).read(), arc, rid)
+    rst = cells[-2] if len(cells) >= 8 else ""
+    if rst in ("building", "built", "closed", "direct"):
+        die(f"REFUSED: roster {arc}/{rid} is `{rst}` — {eid} is already past the spec "
+            f"gate. `--mark audited` is the flip INTO implement-ready and would rewind "
+            f"it. Nothing written")
+    specs = sorted(glob.glob(os.path.join(SPECDIR, f"{tag}-*-SPEC.md")))
+    if not specs:
+        die(f"no SPEC to mark audited for {eid}")
+    rel = os.path.relpath(specs[0], ROOT)
+    m = re.search(r"^status:\s*(\S+)\s*$", _frontmatter(specs[0]), re.M)
+    st = m.group(1) if m else ""
+    if st == "audited":
+        print(f"[mark] {rel} is already `audited` — nothing to flip "
+              f"(roster {arc}/{rid} `{rst}`)", file=sys.stderr)
+        return
+    # the scaffold writes `draft` from the template and a hand-written SPEC may
+    # sit at `specced`; anything else is a state this flip does not come after.
+    if st not in ("draft", "specced"):
+        die(f"{rel} status {st!r} — expected 'draft' or 'specced'; not marked")
+    if no_index:
+        print(f"[mark] --no-index: NOT editing the SPEC. {rel} owes "
+              f"{st} -> audited", file=sys.stderr)
+        return
+    sp = open(specs[0]).read()
+    open(specs[0], "w").write(
+        re.sub(r"^status:\s*\S+\s*$", "status: audited", sp, count=1, flags=re.M))
+    print(f"[mark] {rel}: {st} -> audited (roster {arc}/{rid} stays `{rst}`; the "
+          f"roster has no `audited` rung and `building` is the implement run's)",
+          file=sys.stderr)
+
+
 def mark_mode(eid, tag, state, no_index):
     """Post-audit status flip: reviewed (example audit passed) or audited
-    (spec audit passed; also flips the SPEC's frontmatter)."""
+    (spec audit passed; also flips the SPEC's frontmatter).
+
+    Two tiers, and the flip goes to whichever registry this element has — the
+    same split spec_mode makes, read off the same pipeline_artifact() origin. An
+    element worked up before 2026-09-05 has a docs/examples/INDEX.md row and
+    that row is what moves, below. One minted from a design has no INDEX row and
+    never gets one (decision-design-before-mint; MAP.md has docs/examples/ CLOSED
+    to new writes), so asking the INDEX for it died with a row-not-found that
+    read like a missing row rather than a retired tier, and SPEC_CHARTER's
+    closing command could not run at all. mark_design() handles that tier.
+    """
     if state not in ("reviewed", "audited"):
         die("--mark takes: reviewed (example audit passed) | audited (spec audit passed)")
+    origin = pipeline_artifact(eid, tag)[3]
+    if origin:
+        mark_design(eid, tag, state, origin, no_index)
+        return
     want = "drafted" if state == "reviewed" else "specced"
     if state == "audited":
         specs = sorted(glob.glob(os.path.join(SPECDIR, f"{tag}-*-SPEC.md")))
