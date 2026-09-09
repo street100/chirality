@@ -141,8 +141,11 @@ reachable by the checks above: a constant-time judgment can reason about
 `op-rot` and cannot reason about a shift and a shift and an or that an emitter
 happens to fuse.
 
-`op-mulhi` is the miniature case, present in the sum, emitted by the backend,
-and reachable from no surface binding.
+`op-mulhi` was the miniature case, present in the sum, emitted by the backend,
+and reachable from no surface binding. `E189` closed it on 2026-09-08 by binding
+`mulhi` and adding `op-mulhu` beside it, which is what the rule above predicts:
+the machine offered two high halves and the language named neither, so the
+answer was to complete the model.
 
 ## The element pipeline
 

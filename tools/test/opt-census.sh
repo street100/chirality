@@ -274,7 +274,7 @@ run_mutant() {
   fi
 }
 
-# M3 is the accept-count regression: 1517 down to 353. R4 stays green, because
+# M3 is the accept-count regression: 1518 down to 353. R4 stays green, because
 # folded and un-folded fall together, which is why R2 cannot be dropped in
 # favour of R4.
 run_mutant "M3 call-lookup-in-prims" \
@@ -282,7 +282,7 @@ run_mutant "M3 call-lookup-in-prims" \
   's|(case (tck-sig-assoc (tck-ce-fns ce) f)|(case (tck-sig-assoc (tck-ce-prims ce) f)|'
 
 # M4 is the one mutant R4 convicts alone in kind: `ok` falls to 1503 while
-# `unfolded-ok` holds at 1517, so the fold is now losing acceptances. It also
+# `unfolded-ok` holds at 1518, so the fold is now losing acceptances. It also
 # splits the single class into three.
 run_mutant "M4 fold-const-mistyped" \
   "ok bad bad bad census=1549/1504/45 cls=3" "lowering/upper/optimize.chiral" \
