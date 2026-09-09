@@ -8,24 +8,30 @@ updated: 2026-09-08
 
 # The optimization surface of the self-hosted compiler
 
-An inventory taken at `ea31370` on 2026-09-07. It answers what is here. It
-ranks nothing, proposes nothing, and names no gap. Where something is absent
-the absence is recorded with the command that establishes it.
+An inventory taken at `ea31370` on 2026-09-07 and re-measured against
+`8c72746` on 2026-09-08. It answers what is here. It ranks nothing, proposes
+nothing, and names no gap. Where something is absent the absence is recorded
+with the command that establishes it.
 
 The subject is the compiler that `prog/compiler.prog` lowers to: the binary at
-`bin/chirality-bin`, 1,241,464 bytes, sha256 prefix `7d971a30c0bfda52fc2d952b`
-as reported by `tools/bench/crypto-kernel.sh` on 2026-09-07. Its own blob is
-855,545 bytes as assembled by `bin/chirality-resolve.sh` from `lib:prog` on the
-same day.
+`bin/chirality-bin`, 1,220,984 bytes, sha256 prefix `3b0f809a96fe84cde7289d40`,
+over a blob of 841,089 bytes as assembled by `bin/chirality-resolve.sh` from
+`lib:prog`. Both figures were taken on 2026-09-08. The survey read 1,241,464
+bytes at `7d971a30c0bfda52fc2d952b` over a blob of 855,545 bytes on 2026-09-07,
+before `lowering/tal/check` left the compiler closure at `b613a8f` and before
+E189 landed at `c86b007`.
 
 ## 1. Every pass that exists
 
 `prog/compiler.prog:16-20` reads source from fd 0, calls `compile-all`, and
-writes the ELF to fd 1. `compile-all` (`lib/lowering/compile-all.chiral:19-20`)
-is three calls in sequence: `compile-front`, `back-program`, `emit-elf-m`.
+writes the ELF to fd 1. `compile-all` (`lib/lowering/compile-all.chiral:18`)
+is three calls in sequence: `compile-front` at `:20`, `back-program` at `:23`,
+`emit-elf-m` at `:34`.
 
-Seventeen transformations run on the way from text to bytes, and five gates sit
-between them. A gate rewrites nothing and answers a verdict.
+Seventeen transformations run on the way from text to bytes, and four gates sit
+between them. A gate rewrites nothing and answers a verdict. A fifth stood
+between passes 8 and 9 until 2026-09-08, and the row for pass 8 records where it
+went.
 
 ### The front half, `compile-front` (`lib/lowering/compile-front.chiral:366-373`)
 
@@ -42,16 +48,16 @@ between them. A gate rewrites nothing and answers a verdict.
 pure externs alongside. `ports-manifest` (`:296`) intersects the declared
 profiles into one permitted port set.
 
-### The back half, `back-program` (`lib/lowering/compile-back.chiral:327-331`)
+### The back half, `back-program` (`lib/lowering/compile-back.chiral:332-336`)
 
 | # | Pass | Seat | Consumes | Produces | What it does |
 |---|---|---|---|---|---|
 | 6 | `program-lits` | `lib/lowering/compile-back.chiral:124` | `(List NDef)` | `(List Str)` | interns every string literal, first-occurrence order, deduped through an ordered `Map` (`dedup-str`, `:118`) |
 | 7 | `compile-fn` | `lib/lowering/upper/lower.chiral:412` | `LCore` | `TFn` plus outlined extras | typed SSA emission. A monotonic `ssa-fresh` counter (`:161`) gives single assignment. A non-tail `case` is outlined into a synthesized `<name>$<n>` function whose parameters are the enclosing binder env plus the scrutinee (`outline`, `:311`). An erased `q=0` binder gets a defined placeholder (`build-binders`, `:398`) |
-| 8 | `fold`, adopted through `re-check` | `lib/lowering/compile-back.chiral:240` (`opt-tfns`), transform at `lib/lowering/upper/optimize.chiral:129` | `TFn` | `TFn` | constant folding and propagation over a per-block register environment, comparison folding to a nullary `Bool` constructor, and static case dispatch on a known constructor (`dispatch`, `lib/lowering/upper/optimize.chiral:130`). The residual is adopted only through `chk-ok`, which `re-check` (`:250`) cannot form without `ck-fn` (`lib/lowering/tal/check.chiral:290`) judging it |
+| 8 | `fold`, adopted unjudged | `lib/lowering/compile-back.chiral:247` (`opt-tfns`), transform at `lib/lowering/upper/optimize.chiral:140` | `TFn` | `TFn` | constant folding and propagation over a per-block register environment, comparison folding to a nullary `Bool` constructor, and static case dispatch on a known constructor (`dispatch`, `lib/lowering/upper/optimize.chiral:130`). `opt-tfns` applies `(fold t)` and adopts the residual with no verdict to consult. The `chk-ok` guard that stood here until 2026-09-08 is gone by the author's ruling in `records/lenses/problems.md` PRB-70, which keeps `lowering/tal/check` outside the compiler closure; the header at `lib/lowering/compile-back.chiral:235-245` records that forcing that guard to answer `chk-ok` emitted a byte-identical blob, and routes the census to `prog/optimizer-census.prog` |
 | 9 | `filter-erasable` | `lib/lowering/compile-back.chiral:185` | `(List TFn)` | kept `TFn`s plus `SkRec`s | dry-run erase; a function carrying a prim outside the native subset is dropped with the offending op named |
 | 10 | `prune-fix` | `lib/lowering/compile-back.chiral:214` | `(List TFn)` | kept `TFn`s plus `SkRec`s | fixpoint cascade: a function calling a label no longer present is dropped, and its callers with it |
-| 11 | `erase-fn` | `lib/lowering/tal/erase.chiral:271` | `TFn` | `NFn` | drops the `TalTy` annotations, flattens `Block`/`TalTerm` into seq-structured code, resolves a constructor name to its declaration-order tag (`ctor-tag`, `:59`), decides immediate against boxed (`is-enum`, `:75`), parses a prim op name once into the closed `Op` sum (`op-parse`, `:91`), routes every other lowerable prim to a `nb-*` library call (`prim2lib`, `:139`), and rewrites a bound crossing into a call of its E51 wrapper (`erase-instr-onto`, `:213`) |
+| 11 | `erase-fn` | `lib/lowering/tal/erase.chiral:272` | `TFn` | `NFn` | drops the `TalTy` annotations, flattens `Block`/`TalTerm` into seq-structured code, resolves a constructor name to its declaration-order tag (`ctor-tag`, `:59`), decides immediate against boxed (`is-enum`, `:75`), parses a prim op name once into the closed `Op` sum (`op-parse`, `:91`), routes every other lowerable prim to a `nb-*` library call (`prim2lib`, `:140`), and rewrites a bound crossing into a call of its E51 wrapper (`erase-instr-onto`, `:213`) |
 
 ### The emit half, `emit-elf-m` (`lib/lowering/compile-emit.chiral:292-323`)
 
@@ -95,9 +101,9 @@ target-independent pass sees.
 
 | Symbol and seat | What it is | Evidence |
 |---|---|---|
-| `dead` (`lib/lowering/upper/optimize.chiral:192`) | the DCE pass | `opt-tfns` ships `(re-check ce (fold t))`. The header at `lib/lowering/compile-back.chiral:228-238` records the measurement: wired whole, the compiler miscompiles itself at `293 passed, 98 failed`, `fold` alone grades `42 passed, 0 failed` and `dead` alone `33 passed, 9 failed` |
-| `optimize` (`lib/lowering/upper/optimize.chiral:263`) | the whole pipeline, `re-check ce (dead (fold fn))` | grep for `(optimize ` across `lib` and `prog` returns only comment lines |
-| `specialize` (`lib/lowering/upper/optimize.chiral:265`), `specialize-raw` (`:249`), the `rmap-*` renaming family (`:206-212`) | partial evaluation and its SSA renamer | grep for `(specialize ` across `lib` and `prog` returns only comment lines. `(def rmap-block` is present in the compiler blob exactly once and reachable from `specialize-raw` alone |
+| `dead` (`lib/lowering/upper/optimize.chiral:192`) | the DCE pass | `opt-tfns` ships `(fold t)`. The header at `lib/lowering/compile-back.chiral:225-233` records the measurement: wired whole, the compiler miscompiles itself at `293 passed, 98 failed`, `fold` alone grades `42 passed, 0 failed` and `dead` alone `33 passed, 9 failed` |
+| `optimize` (`lib/lowering/upper/optimize.chiral:263`) | the whole pipeline, `dead (fold fn)` | grep for `(optimize ` across `lib` and `prog` returns nothing |
+| `specialize` (`lib/lowering/upper/optimize.chiral:265`), `specialize-raw` (`:249`), the `rmap-*` renaming family (`:195-223`) | partial evaluation and its SSA renamer | grep for `(specialize ` across `lib` and `prog` returns only comment lines. `(def rmap-block` is present in the compiler blob exactly once and reachable from `specialize-raw` alone |
 | `emit-truthful` (`lib/lowering/x64/emit.chiral:8`) and `emit-param` (`:14`) | the two unreachable emit entries | `emit-elf-m` calls `emit` (`:11`). grep for `emit-param` and `emit-truthful` across `lib`, `prog`, `tools` and `bin` returns their definitions and documentation references, no call site |
 | `row-check` (`lib/lowering/upper/eff-lower.chiral:144`), `eff-gate` (`:175`), `sysface` (`:155`) | the effect-row half | the only importer is `lib/module/sig-driver.chiral:24`, which nothing on the compile path imports. `grep -c "(def row-check"` over the compiler blob returns 0 |
 | `conform-vecs` (`lib/lowering/tal/spec.chiral:71`) and `tal-spec` (`:125`) | the spec-as-golden half | no module under `lib` or `prog` imports `lowering/tal/spec`. `grep -c "(def conform-vecs"` over the compiler blob returns 0 |
@@ -113,8 +119,11 @@ implementation stands behind these lines.
 ### The two TAL instruction sets
 
 There are two, joined by erasure. `lib/lowering/tal/ssa.chiral` is the typed
-SSA form that lowering produces and `ck-fn` checks.
-`lib/lowering/tal/ir.chiral` is the type-erased form the emitter consumes.
+SSA form that lowering produces and that `ck-fn`
+(`lib/lowering/tal/check.chiral:290`) is written against; since 2026-09-08 that
+checker runs from `prog/optimizer-census.prog` alone, outside the compiler
+closure. `lib/lowering/tal/ir.chiral` is the type-erased form the emitter
+consumes.
 `lib/typing/erased-nf.chiral` is the neutral transport between them.
 
 | IR | Types | Instructions | Terminators |
@@ -134,7 +143,7 @@ cell's fields, and it always allocates a fresh one.
 
 ### The closed `Op` sum
 
-`lib/prelude/prelude.chiral:36-39` declares fifteen constructors. A
+`lib/prelude/prelude.chiral:36-39` declares sixteen constructors. A
 `ti-prim` carries an `Op`, so every consumer matches it exhaustively.
 
 | Constructor | Surface binding | Where |
@@ -143,16 +152,25 @@ cell's fields, and it always allocates a fresh one.
 | `op-eqi`, `op-lti`, `op-lei` | `=i`, `<i`, `<=i` | `lib/prelude/prelude.chiral:64-66` |
 | `op-band`, `op-bor`, `op-bxor` | `band`, `bor`, `bxor` | `lib/prelude/prelude.chiral:67-69` |
 | `op-shl`, `op-shr`, `op-sar` | `shl`, `shr`, `sar` | `lib/prelude/prelude.chiral:70-72` |
-| `op-mulhi` | none | `grep -n "mulhi" lib/prelude/prelude.chiral` returns `:38` and `:49`, the sum member and its name in `op-name`. There is no `(extern mulhi ...)` anywhere |
+| `op-mulhi`, `op-mulhu` | `mulhi`, `mulhu` | `lib/prelude/prelude.chiral:73-74` |
 
-So fourteen of the fifteen have a surface binding. `op-mulhi` has an x86
-encoding at `lib/lowering/x64/mach.chiral:321` and a clobber entry at `:1395`,
-and `op-parse` (`lib/lowering/tal/erase.chiral:91`) accepts the string
-`"mulhi"`. `grep -rniI "mulhi" lib prog` finds it in
-`lib/prelude/prelude.chiral` and `lib/lowering/x64/mach.chiral` and in no other
-file, so no source program and no pass produces one today.
-`docs/definitions/working-discipline.md` carries this as the worked case of an
-operation the backend encodes and the language does not name.
+So all sixteen have a surface binding, and they have had one since E189 landed
+at `c86b007` on 2026-09-08. `op-mulhi` encodes the one-operand signed `imul` at
+`lib/lowering/x64/mach.chiral:321`, reached at `:377`; `op-mulhu` encodes the
+one-operand unsigned `mul` at `:323`, reached at `:379`; both take the clobber
+entry at `:1455-1456`, documented at `:1395-1397`; and `op-parse`
+(`lib/lowering/tal/erase.chiral:91`) accepts both strings at `:100-101`.
+`grep -rniI "mulhi" lib prog` now finds it in `lib/prelude/prelude.chiral`,
+`lib/lowering/x64/mach.chiral`, `lib/lowering/tal/erase.chiral`, the header of
+`lib/crypto/poly1305.chiral` and `prog/e189-widening-multiply.prog`, so a source
+program produces one.
+
+⚑ `docs/definitions/working-discipline.md:144-145` still reads that `op-mulhi`
+is "present in the sum, emitted by the backend, and reachable from no surface
+binding". The externs at `lib/prelude/prelude.chiral:73-74` are what that
+sentence says does not exist. The source is the authority above this document
+and this row follows it; the sentence in the definitions tier is left for its
+own audit.
 
 ### How a call is represented
 
@@ -240,9 +258,9 @@ one caller inside the module passes a literal: `(rounds s0 10)` at
 No pass sees that 10 as a fact about `rounds`. Two constant environments exist
 and both stop at a call:
 
-- `fold`'s `cenv` (`lib/lowering/upper/optimize.chiral:36-44`) is per-`TFn` and
+- `fold`'s `cenv` (`lib/lowering/upper/optimize.chiral:47-55`) is per-`TFn` and
   is threaded down a block. Its `i-call` arm pops the destination's fact and
-  learns nothing about the callee (`fold-instr`, `:90`).
+  learns nothing about the callee (`fold-instr` at `:96`, the arm at `:101`).
 - `emit-instr`'s `cenv` (`lib/lowering/mach/emit-core.chiral:18-61`) is
   per-function and per-block; `cenv-step` (`:46`) kills the destination of
   every defining instruction, and a `ti-call` defines its destination.
@@ -285,10 +303,10 @@ checked against the self-hosted tree.
 | # | Campaign item | In the self-hosted compiler | Evidence |
 |---|---|---|---|
 | 1 | intrinsic inlining of `bget`/`blen` | yes | `erase-prim`, `lib/lowering/tal/erase.chiral:152-168` |
-| 2 | constant folding and propagation | yes | `fold`, `lib/lowering/upper/optimize.chiral:140`, wired at `lib/lowering/compile-back.chiral:244` |
+| 2 | constant folding and propagation | yes | `fold`, `lib/lowering/upper/optimize.chiral:140`, wired at `lib/lowering/compile-back.chiral:247` |
 | 3 | branch folding on a known constructor | yes | `dispatch`, `lib/lowering/upper/optimize.chiral:130`, reached from `fold-block` at `:119` |
-| 4 | CSE / value numbering | no | `grep -rniI "cse" lib prog --include=*.chiral --include=*.prog` returns only `RdcSeg`, `DecSet` and `nb-tcsets`, none of them a pass. There is no common-subexpression pass in the tree |
-| 5 | dead code elimination | present, excluded | `dead` exists at `lib/lowering/upper/optimize.chiral:192` and is in the compiler blob. `opt-tfns` (`lib/lowering/compile-back.chiral:247`) applies `fold` alone. The exclusion is by measurement, recorded at `lib/lowering/compile-back.chiral:228-238` |
+| 4 | CSE / value numbering | no | `grep -rniI "cse" lib prog --include=*.chiral --include=*.prog` returns the type names `RdcSeg` and `DecSet`, the `tcsets` termios family (`TCSETS`, `tcsetattr`, `nb-sys-tcsets`, `nb-tcsets`) and `act-decsets`, none of them a pass. There is no common-subexpression pass in the tree |
+| 5 | dead code elimination | present, excluded | `dead` exists at `lib/lowering/upper/optimize.chiral:192` and is in the compiler blob. `opt-tfns` (`lib/lowering/compile-back.chiral:247`) applies `fold` alone. The exclusion is by measurement, recorded at `lib/lowering/compile-back.chiral:225-233` |
 | 6 | operand folding to immediate forms | yes | `emit-instr` plus `cenv-step`, `lib/lowering/mach/emit-core.chiral:146-161` and `:46`; `bini-body`, `lib/lowering/x64/mach.chiral:967` |
 | 7 | power-of-two strength reduction | yes | `pow2-k`, `lib/lowering/x64/mach.chiral:891` |
 | 8 | constant-divisor guard elision | yes | `x-div-imm` (`lib/lowering/x64/mach.chiral:911`) and `x-mod-imm` (`:931`) |
@@ -297,7 +315,7 @@ checked against the self-hosted tree.
 | 11 | compare and branch fusion | yes | `fused-of`, `lib/lowering/mach/emit-core.chiral:379`; `x-fcp` (`lib/lowering/x64/mach.chiral:1185`), `x-fci` (`:1189`), `x-fjc` (`:1221`) |
 | 12 | byte-level peephole | yes | `x64-peep`, `lib/lowering/x64/mach.chiral:1321`, live through `emit` at `lib/lowering/x64/emit.chiral:11` |
 | 13 | totality-licensed compile-time evaluation (`_total_const_call`) | no | `grep -rniI "comptime" lib prog` and `grep -rniI "total-const" lib prog` both return nothing. `tot-gate` (`lib/typing/totality-check.chiral:153`) is imported once, by `lib/lowering/compile-front.chiral:24`, and its result is a `TotalR` verdict consumed at `lib/lowering/compile-front.chiral:371`. No optimizer reads a totality proof |
-| 14 | magic-multiply constant division | encodings yes, pass no | `x-imul-rcx-1op` at `lib/lowering/x64/mach.chiral:321`, `x-sar-cl` at `:325`, `x-shr-cl` at `:327`, and the `op-mulhi` arm inside `op-bytes` (`:355-393`) at `:377`. `grep -rniI "divmagic" lib prog` returns nothing, and `mulhi` appears in no source file outside `lib/prelude/prelude.chiral` and `lib/lowering/x64/mach.chiral`, so nothing constructs the sequence |
+| 14 | magic-multiply constant division | encodings yes, pass no | `x-imul-rcx-1op` at `lib/lowering/x64/mach.chiral:321`, `x-sar-cl` at `:325`, `x-shr-cl` at `:327`, and the `op-mulhi` arm inside `op-bytes` (`:355-393`) at `:377`. `grep -rniI "divmagic" lib prog` returns nothing. E189 bound `mulhi` and `mulhu` as externs on 2026-09-08, so the name is now reachable from source, but no pass builds a reciprocal and no divisor is rewritten into a multiply |
 | 15 | real register allocation | no | section 2 above. The header claim at `lib/lowering/x64/mach.chiral:7-9` still describes the shipping emitter |
 | 16 | control-flow jump tables | yes | `jtb-codes`, `lib/lowering/mach/emit-core.chiral:337`; `x-jtb`, `lib/lowering/x64/mach.chiral:1165` |
 | 19 | autospec, the bounded auto-pregen policy | no | `grep -rniI "autospec" lib prog` returns nothing. `specialize-raw` (`lib/lowering/upper/optimize.chiral:249`) is the pregen primitive and has no call site |
@@ -307,13 +325,13 @@ checked against the self-hosted tree.
 | Campaign artifact | State here | Evidence |
 |---|---|---|
 | `optimize.py` | gone | `find . -name "optimize.py"` returns nothing |
-| `test_regdisc.py`, the conformance gate | gone, with no replacement | `grep -rn "regdisc" tools bin prog` returns nothing. `ls tools/test/*.sh` lists 26 scripts and none of them is a register-discipline gate |
+| `test_regdisc.py`, the conformance gate | gone, with no replacement | `grep -rn "regdisc" tools bin prog` returns nothing. `ls tools/test/*.sh` lists 27 scripts and none of them is a register-discipline gate |
 | `NativeBackend(discipline=…)`, the discipline selector | replaced by three named entry points, one of them reachable | `emit-truthful` (`lib/lowering/x64/emit.chiral:8`), `emit` (`:11`), `emit-param` (`:14`). The call at `lib/lowering/compile-emit.chiral:307`, inside `emit-elf-m`, is to `emit`. There is no name-keyed selector and no `(regs …)` profile clause |
 | rd-truthful | built, uncalled | `emit-truthful`, `lib/lowering/x64/emit.chiral:8`. Its peephole argument `rd-truthful` (`:6`) is the identity |
 | rd-cache | built and live | `emit`, `lib/lowering/x64/emit.chiral:11`, passing `x64-peep` |
 | rd-param | built, uncalled | the residency map at `lib/lowering/mach/emit-core.chiral:68-137`, its five machine ops, and `emit-param` at `lib/lowering/x64/emit.chiral:14`. `res-init` returns the empty map on the shipping path |
 | rd-packed | not built | `docs/implementation/rd-packed-cert.md:3` reads "Status: RATIFIED 2026-08-02". `docs/benchmarks/OPTIMIZATIONS-TODO.md:8-10` reads "design done, zero code written". `grep -rn "rd-packed" lib prog tools bin` returns nothing outside `docs/` |
-| SSA renaming machinery (`_remap_block`) | ported, uncalled | `rmap-block` and its family at `lib/lowering/upper/optimize.chiral:201-212`. Present in the compiler blob once, reachable only from `specialize-raw` |
+| SSA renaming machinery (`_remap_block`) | ported, uncalled | `rmap-block` and its family at `lib/lowering/upper/optimize.chiral:195-223`. Present in the compiler blob once, reachable only from `specialize-raw` |
 | `_check_single_assignment` at every pass entry | not ported as a check | `grep -rniI "single-assignment\|single assignment" lib prog` returns the design note at `lib/lowering/upper/lower.chiral:110-111` and nothing executable. SSA is produced by the monotonic counter at `lib/lowering/upper/lower.chiral:161`. `cenv-step` (`lib/lowering/mach/emit-core.chiral:22-23`) states that its soundness does not assume SSA |
 | preserve-check as the transform license | ported, and OUT of the compiler since 2026-09-08 | `Checked` and `re-check` were at `lib/lowering/upper/optimize.chiral:22` and `:250`, adopted at `lib/lowering/compile-back.chiral:244`, from `5b7478f` to `b613a8f`. The author ruled (`records/lenses/problems.md` PRB-70) that `lowering/tal/check` stays outside the compiler closure, so both moved to `prog/optimizer-census.prog` and `opt-tfns` adopts `(fold t)` unjudged. The census over the emitted TFns is still gated by `tools/test/opt-census.sh` |
 | the differential floor (`TalMachine`) | present, unwired | `lib/lowering/tal/eval.chiral` is 187 lines and no module under `lib` or `prog` imports it |
@@ -323,7 +341,7 @@ checked against the self-hosted tree.
 
 | Document | What it describes | Built? |
 |---|---|---|
-| `docs/implementation/reg-disciplines.md` | four register disciplines and one conformance gate. It reports rd-truthful, rd-cache and rd-param as BUILT at `:21-33`, and its build order marks steps 1 to 3 DONE at `:70-84` | partly. The clobber table (step 2) and the residency machinery (step 3) are in the self-hosted tree at `lib/lowering/x64/mach.chiral:1443` and `lib/lowering/mach/emit-core.chiral:68-137`. rd-cache is the shipping path. rd-truthful and rd-param are built and have no caller. The gate the document calls "the enforcement" (`tests/test_regdisc.py`, `:6`) does not exist in this tree, so the conformance claim at `:60-66` is unwitnessed here |
+| `docs/implementation/reg-disciplines.md` | four register disciplines and one conformance gate. It reports rd-truthful, rd-cache and rd-param as BUILT at `:21-33`, and its build order marks steps 1 to 3 DONE at `:70-85` | partly. The clobber table (step 2) and the residency machinery (step 3) are in the self-hosted tree at `lib/lowering/x64/mach.chiral:1443` and `lib/lowering/mach/emit-core.chiral:68-137`. rd-cache is the shipping path. rd-truthful and rd-param are built and have no caller. The gate the document calls "the enforcement" (`tests/test_regdisc.py`, `:6`) does not exist in this tree, so the conformance claim at `:60-66` is unwitnessed here |
 | `docs/implementation/rd-packed-cert.md` | the move-script placement certificate and its forward-symbolic-walk checker | no. `:3` reads RATIFIED and `docs/benchmarks/OPTIMIZATIONS-TODO.md:10` reads "zero code written". The three structural facts it leans on are all present: terminator-only code (`lib/lowering/tal/ir.chiral:41-46`), the SSA counter (`lib/lowering/upper/lower.chiral:161`), and the clobber table as data (`lib/lowering/x64/mach.chiral:1443`). Its citations point at the old tree's paths (`lib/tal-ir.chiral`, `optimize.py`, `mach-x64.chiral`) |
 
 ## 4. What measurement exists
@@ -332,9 +350,9 @@ checked against the self-hosted tree.
 
 | Instrument | What it measures | Last run |
 |---|---|---|
-| `tools/test/run-tests.sh` | the behavioural floor: 20 dispatched phases plus inline behavioural cases and a compile-only root sweep | 2026-09-07 in this survey: `assertions: 412 passed, 0 failed`, `compile-only: 93 roots built, 0 failed`, `chirality test: gate PASSED` |
-| `tools/test/opt-census.sh` | four rows over the typed-assembly checker's census of what the compiler emits, plus four mutants. Pins `defs=1518 skipped=10`, `tfns=1548 ok=1517 err=31`, and one error class whose every callee is the refused TFn's own `$0` block | re-pinned 2026-09-08 at `38ecdba` and reads `8 passed, 0 failed`. It read six rows, six mutants and 1582/1550/32 until PRB-70's ruling took `check.chiral` out of the compiler blob; the two rows and two mutants that asserted the wiring retired with it. Unregistered: it takes no phase number and is run by hand, stated in its header |
-| `prog/optimizer-census.prog` | the census the gate reads. Imports `lowering/tal/check` in its own right since 2026-09-08 and carries `re-check` and the `Checked` sum, runs `ck-fn` per TFn over a compiler blob, and prints `tfns/ok/err/defs/skipped/unfolded-ok` plus an error class list. Asserts nothing and always exits 0 | built as a Phase 7 root by the 2026-09-07 suite run above |
+| `tools/test/run-tests.sh` | the behavioural floor: 21 dispatched phases plus inline behavioural cases and a compile-only root sweep | re-run 2026-09-08 at `8c72746`: `assertions: 422 passed, 0 failed`, `compile-only: 94 roots built, 0 failed`, `chirality test: gate PASSED`. The survey read 412 and 93 over 20 phases on 2026-09-07, before E189 added phase 32 |
+| `tools/test/opt-census.sh` | four rows over the typed-assembly checker's census of what the compiler emits, plus four mutants. Pins `defs=1518 skipped=10`, `tfns=1548 ok=1517 err=31`, and one error class whose every callee is the refused TFn's own `$0` block | re-pinned 2026-09-08 at `38ecdba`, where it read `8 passed, 0 failed`. Re-run 2026-09-08 at `8c72746` it reads `2 passed, 2 failed, 4 mutants unmeasured`: the census is now `defs=1519 skipped=10 tfns=1549 ok=1518 err=31`, which E189 moved at `c86b007` without the pins moving with it, so R1 and R2 are red, and the four mutants stay unmeasured because the gate holds a mutant graded against a red base to measure nothing. R3 and R4 hold. It read six rows, six mutants and 1582/1550/32 until PRB-70's ruling took `check.chiral` out of the compiler blob; the two rows and two mutants that asserted the wiring retired with it. Unregistered: it takes no phase number and is run by hand, stated in its header |
+| `prog/optimizer-census.prog` | the census the gate reads. Imports `lowering/tal/check` in its own right since 2026-09-08 and carries `re-check` and the `Checked` sum, runs `ck-fn` per TFn over a compiler blob, and prints `tfns/ok/err/defs/skipped/unfolded-ok` plus an error class list. Asserts nothing and always exits 0 | built as a Phase 7 root by the suite run above |
 | `tools/test/tal-check.sh` | the tal checker's own rows | green as of 2026-09-08 at `21 ok, 0 FAIL`. It read `20 ok, 1 FAIL` on G18 from `5b7478f` to `b613a8f`; `records/enforcement-arc.md` EN-25 and EN-26 record both readings |
 
 ### Benchmarks
@@ -345,13 +363,13 @@ checked against the self-hosted tree.
 | `docs/benchmarks/language-performance.md` | the campaign headline: arith 1.38x, bytesum 5.2x, states 6.7x of `gcc -O2` | Python-hosted. It sources every figure to `scaffold/bench/RESULTS-2026-08-01.md` at `:23-24` and `:75`, and states the Python loader-and-trampoline arrangement at `:63` | 2026-08-02, restated 2026-08-10 |
 | `docs/benchmarks/OPT-CHECKLIST.md`, `OPT-LEDGER.md`, `OPTIMIZATIONS-TODO.md`, `TRAIT-OPTS.md` | the campaign's worklist, ledger, continuation contract and trait survey | Python-hosted throughout. `OPT-CHECKLIST.md:17` speaks of "ports of `optimize.py`"; `OPT-LEDGER.md`'s enforcement table cites `optimize.py:218`, `native.py:521` and `test_backend.py` | closed 2026-08-02 |
 | `docs/benchmarks/growing-allocator-scale.md` | the reserve-commit arena from 16 MiB to 32 GiB, checksum-as-exit-code per rung | self-hosted. Its run header names "Compiler: B1, 790904 bytes (md5 `2e2da0bedff04f17492138c9ba56d581`)" | 2026-08-10 |
-| `docs/benchmarks/test-suite-wall-clock.md` | the native suite's own cost | self-hosted, and superseded. `docs/benchmarks/README.md:20-21` records that every figure in it predates the 2026-08-31 migration and stops short of being a baseline for the current tree | before 2026-08-31 |
+| `docs/benchmarks/test-suite-wall-clock.md` | the native suite's own cost | self-hosted, and superseded. `docs/benchmarks/README.md:18-19` records that every figure in it predates the 2026-08-31 migration and stops short of being a baseline for the current tree | before 2026-08-31 |
 | `docs/benchmarks/text-matcher-prose-lint.md` | `prog/prose-lint.prog` against mawk over 81 files and 609,872 B: 15.1x slower, 1.11 GB allocated, OOM-killed at the default scope | self-hosted. `:89` names `bin/chirality-bin`, sha256 `ac8de63e5687fad4…` | 2026-09-02 |
 | `docs/benchmarks/text-matcher-allocation.md` | where that 1.11 GB goes, one subject per pipeline stage under a 2 GB cgroup. Matcher 86.8%, `blank-spans` 6.8%, `str-split` 6.3% | self-hosted. `:36` names `bin/chirality-bin`, sha256 `ac8de63e5687fad4…` | 2026-09-02 |
 | `docs/benchmarks/crypto-kernel-allocation.md` | what `lib/crypto/chacha.chiral` costs per byte and whether `Q4` and `St` survive as arena cells | self-hosted. `:42` names `bin/chirality-bin`, sha256 `7d971a30c0bfda52fc2d952b…` | 2026-09-07 |
 
 The line between the two backends is otherwise unmarked in `docs/benchmarks/`.
-`README.md` there describes five docs and the directory holds twelve.
+`README.md` there describes five docs and the directory holds thirteen.
 
 ### The instruments themselves
 
@@ -364,5 +382,5 @@ The line between the two backends is otherwise unmarked in `docs/benchmarks/`.
 There is no wall-clock or instruction-count instrument that runs inside
 `tools/test/run-tests.sh`. Its wall clock is printed and sets no bar, per the
 2026-09-01 ruling cited at `docs/benchmarks/README.md:29`. There are no
-hardware performance counters: `docs/benchmarks/OPTIMIZATIONS-TODO.md:57-58`
+hardware performance counters: `docs/benchmarks/OPTIMIZATIONS-TODO.md:55-56`
 records them as blocked in the sandbox and owed on bare metal.

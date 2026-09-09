@@ -54,8 +54,8 @@
 # All four are judged from `prog/optimizer-census.prog`'s stdout, built from the
 # lib/ under measurement and run over the TRACKED lib/'s compiler blob.
 #
-#   R1  the census root builds, runs, and reports defs=1518 skipped=10
-#   R2  the census is tfns=1548 ok=1517 err=31
+#   R1  the census root builds, runs, and reports defs=1519 skipped=10
+#   R2  the census is tfns=1549 ok=1518 err=31
 #   R3  ONE error class, `call: unknown tal function`, n=31, first bput-u8, and
 #       every one of the 31 unknown callees is the refused TFn's OWN outlined
 #       block `<name>$0`
@@ -101,7 +101,7 @@
 #   M6  strip-lams-off-by-one   `compile-fn` peels one lambda too many
 #
 # ⚑ M4 IS WHAT SEPARATES R4 FROM R2. A folded residual the check refuses drops
-# `ok` while `unfolded-ok` holds at 1517, which is the one shape a row reading
+# `ok` while `unfolded-ok` holds at 1518, which is the one shape a row reading
 # only the accept count cannot tell from a smaller program.
 #
 # ⚑ M5 MOVES R3 AND NOTHING ELSE. Every count holds, the message holds, the
@@ -139,10 +139,10 @@ bad() { echo "  FAIL  $1"; fail=$((fail+1)); }
 # ─── the pins ───────────────────────────────────────────────────────────────
 # Reproduced 2026-09-08 by prog/optimizer-census.prog over the compiler's own
 # blob, the blob the PRB-70 ruling left behind.
-WANT_DEFS=1518
+WANT_DEFS=1519
 WANT_SKIP=10
-WANT_TFNS=1548
-WANT_OK=1517
+WANT_TFNS=1549
+WANT_OK=1518
 WANT_ERR=31
 WANT_MSG="call: unknown tal function"
 WANT_FIRST="bput-u8"
@@ -278,21 +278,21 @@ run_mutant() {
 # folded and un-folded fall together, which is why R2 cannot be dropped in
 # favour of R4.
 run_mutant "M3 call-lookup-in-prims" \
-  "ok bad bad ok census=1548/353/1195 cls=1" "lowering/tal/check.chiral" \
+  "ok bad bad ok census=1549/353/1196 cls=1" "lowering/tal/check.chiral" \
   's|(case (tck-sig-assoc (tck-ce-fns ce) f)|(case (tck-sig-assoc (tck-ce-prims ce) f)|'
 
 # M4 is the one mutant R4 convicts alone in kind: `ok` falls to 1503 while
 # `unfolded-ok` holds at 1517, so the fold is now losing acceptances. It also
 # splits the single class into three.
 run_mutant "M4 fold-const-mistyped" \
-  "ok bad bad bad census=1548/1503/45 cls=3" "lowering/upper/optimize.chiral" \
+  "ok bad bad bad census=1549/1504/45 cls=3" "lowering/upper/optimize.chiral" \
   's|(i-const dst (tt-i64) v)|(i-const dst (tt-str) v)|'
 
 # M5 moves R3 and NOTHING ELSE. Every count holds, the message holds, the first
 # instance holds, and the callee behind each of the 31 stops being the refused
 # TFn's own `$0` block. A row pinning the three numbers alone passes it whole.
 run_mutant "M5 outline-suffix" \
-  "ok ok bad ok census=1548/1517/31 cls=1" "lowering/upper/lower.chiral" \
+  "ok ok bad ok census=1549/1518/31 cls=1" "lowering/upper/lower.chiral" \
   's|(str-cat (str-cat name "\$") (i64->str ncase))|(str-cat (str-cat name "@") (i64->str ncase))|g'
 
 # M6 is R1's falsifier: every def now skips, `defs=1518 skipped=1518`, and the
