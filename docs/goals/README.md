@@ -53,7 +53,7 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 | [[goals/display]] | stated 2026-09-04, unbuilt: the calculus arc opened, four conditions unopened | [[arcs/display-calculus-arc]] |
 | [[goals/own-web]] | stated 2026-09-05, unbuilt: two arcs opened, three conditions unopened | [[arcs/vocabulary-arc]], [[arcs/canvas-arc]] |
 | [[goals/emitted-speed]] | stated 2026-09-08, unbuilt: one arc opened, four conditions unopened | [[arcs/emitted-speed-arc]] |
-| [[goals/coding-agent]] | stated 2026-09-08, half built and unscheduled: all four conditions unopened | none open, and see the paragraph below |
+| [[goals/coding-agent]] | stated 2026-09-08, half built: one arc opened, three conditions unopened | [[arcs/coding-turn-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
 
 `independent-judgment` carries an arc as of 2026-09-01 and still has no element.
@@ -118,10 +118,10 @@ filesystem reach, least-privilege over what a step may touch, and the routes and
 keybinds that make it usable. The tree cuts them apart in code:
 `prog/agent/agent.chiral` runs a tool-call turn and uses none of the engine, and
 no file under `prog/manas/` reads the `tools` field it declares. Its arcs column
-reads `none open` because all four of its done-conditions are unopened and no
-arc file exists yet, which is **not** the standing-gate shape
-[[goals/self-hosting]] carries: no rule maintains this goal on every change, and
-the goal's own first honest limit says the absence is scheduling owed.
+carries [[arcs/coding-turn-arc]], opened the same day against condition 1.
+Conditions 2, 3 and 4 hold no arc, which is **not** the standing-gate shape
+[[goals/self-hosting]] carries: no rule maintains them on every change, and the
+goal's own first honest limit says the absence is scheduling owed.
 
 [[goals/ownership-and-trust]] carries an arc as of 2026-09-02 and every row in
 it is deferred. The arc holds three minted elements, `E53`, `E71` and `E72`,

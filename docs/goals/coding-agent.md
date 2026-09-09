@@ -116,8 +116,8 @@ Four conditions, one per area the author named. None holds an arc file.
    and `prog/manas/core/stop.chiral`'s `overflow-guard` (`:20`) and `stop-policy`
    (`:25`) have no caller outside their own file, so a coding turn that outgrows
    the context window has no guard on it. Done when the first two counts are
-   nonzero and a coding turn emits a `RunManifest`. **Unopened, and it holds no
-   arc file.**
+   nonzero and a coding turn emits a `RunManifest`. **[[arcs/coding-turn-arc]]**,
+   opened 2026-09-08.
 
 2. **Routes.** A coding request reaches the right step, the right tool grant and
    the right model, and the choice is a value that can be shown. Observable in
@@ -159,11 +159,14 @@ Four conditions, one per area the author named. None holds an arc file.
 
 ## Arcs
 
-`none open`. The goal was stated 2026-09-08 and every condition above is
-unopened, so no arc file exists to list. This is not the standing-gate shape
-[[goals/self-hosting]] carries: no rule maintains this goal on every change, and
-the absence of an arc is scheduling owed rather than a finished shape. It is the
-first honest limit below.
+| arc | covers | state |
+|---|---|---|
+| [[arcs/coding-turn-arc]] | condition 1, orchestration | opened 2026-09-08, nine rows, none started |
+
+Conditions 2, 3 and 4 hold no arc file. That is not the standing-gate shape
+[[goals/self-hosting]] carries: no rule maintains them on every change, and the
+absence is scheduling owed rather than a finished shape. It is the first honest
+limit below.
 
 This section carries no element rows and no roster.
 
@@ -193,10 +196,10 @@ field; no caller of `overflow-guard` or `stop-policy`; no read of `Pipeline`'s
 
 ## Honest limits
 
-**Nothing schedules any of this.** Four conditions, four `Unopened`, no arc
-file, and `docs/goals/README.md` records `none open` for it. The goal states an
-ambition and books no work against it. That is the largest gap in this file and
-it is deliberate: this run opened the goal and was not to open an arc.
+**Three of the four conditions schedule nothing.** [[arcs/coding-turn-arc]]
+opened 2026-09-08 against condition 1 and carries nine rows, none started.
+Conditions 2, 3 and 4 hold no arc file, so routes, features and keybinds are
+stated here and booked nowhere.
 
 **No gate can fail on the agent.** `prog/samples/agent-probe.prog` drives a full
 `agent-run` tool-call turn and its `compile-main` ends in `0` unconditionally:
