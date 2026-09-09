@@ -136,8 +136,10 @@ Four conditions, one per area the author named. None holds an arc file.
    unbuilt with zero `getdents` occurrences under `lib/` (re-verified
    2026-09-08), so there is no directory enumeration and therefore no glob, no
    repomap and no file explorer; and `lib/text/matcher.chiral`, 602 lines gated
-   by suite Phase 19, is imported by nothing under `prog/`. Done when E148 is
-   built and a search over a directory tree runs from a tool the agent holds.
+   by suite Phase 19, is imported by exactly one program under `prog/`, the
+   prose linter at `prog/prose-lint.prog:43`, and by no tool the agent holds.
+   Done when E148 is built and a search over a directory tree runs from a tool
+   the agent holds.
    E148 and E149 are minted at `docs/elements/catalog.md:463-464`, so this
    condition defers only to elements that exist. **Unopened, and it holds no arc
    file.**
@@ -189,7 +191,8 @@ Absent, and each count is the observation in the condition it belongs to: no
 import from `prog/agent/` into `prog/prapanca/` or back; no read of the `tools`
 field; no caller of `overflow-guard` or `stop-policy`; no read of `Pipeline`'s
 `stop` on the flat path; no directory enumeration; no consumer of
-`lib/text/matcher.chiral`; no keybind reaching `prog/agent/`.
+`lib/text/matcher.chiral` other than the prose linter; no keybind reaching
+`prog/agent/`.
 
 [[status-ledger]] is the authority for what is built on the four rungs and
 [[records/README]] for a claim beside its measurement.
@@ -232,10 +235,15 @@ hand-maintained manifest or index file (`docs/elements/catalog.md:463`). Both
 reference harnesses the author named are built on file discovery, so this is the
 single count that puts their baseline out of reach.
 
-**The matcher is built and used by nothing.** `lib/text/matcher.chiral` is 602
-lines, gated by suite Phase 19, and imported by no file under `prog/`. The
-search half of condition 3 has its engine sitting unwired rather than missing,
-which makes it a wiring gap and not a build gap.
+**The matcher is built and reaches no tool.** `lib/text/matcher.chiral` is 602
+lines, gated by suite Phase 19. Its one consumer under `prog/` is the prose
+linter (`prog/prose-lint.prog:43`), so the engine is proven in use and reaches
+nothing the agent holds. The search half of condition 3 is a wiring gap rather
+than a build gap.
+
+⚑ **This row read "used by nothing" until 2026-09-09**, which was false when
+written. The claim entered from a dispatch brief and was propagated rather than
+measured. `decision-tool-capability` caught it.
 
 **The keybind namespace rests on a document outside this repository, and that
 document does not name scriba.** The author stated the discipline as "each layer
