@@ -63,7 +63,7 @@ the tree's most load-bearing term.
   asked for by name; anything dense is aggregated into rate bins at 25 ms or
   50 ms before it is written down.
 - **This tree already carries the digest/unbounded split the case needs.**
-  `ExpertCall` (`prog/manas/core/types.chiral:131`) is described in its own
+  `ExpertCall` (`prog/prapanca/core/types.chiral:131`) is described in its own
   comment as "the DIGEST-ONLY conformance record kept bounded for the
   manifest". `RawCall` (`:152`) is the unbounded sibling threaded out beside
   it, and the comment states the reason: "so the manifest's round-trip schema
@@ -195,7 +195,7 @@ the run. That is
 
 ⚑ **`RunManifest` cannot absorb the digest, and this is a finding rather than a
 question.** Its fifteen fields are the golden manifest's fifteen top-level keys
-(`prog/manas/core/types.chiral:166`), and `RawCall`'s own comment says the
+(`prog/prapanca/core/types.chiral:166`), and `RawCall`'s own comment says the
 split exists so "the manifest's round-trip schema stays unchanged". Adding a
 recording field to `RunManifest` breaks the conformance surface that comment
 protects. E197 touches neither type.
@@ -471,7 +471,7 @@ same finding E196's audit made when it added its own third mutant.
      encoding which-of-N is a sum in disguise.** No `Population` type exists:
      that is `unit-lane/N17`, unminted. The precedent inside this tree cuts
      both ways. `Expert` carries `sees` and `returns` as `Str` by explicit
-     deferral (`prog/manas/core/types.chiral:63`, "prose descriptors here
+     deferral (`prog/prapanca/core/types.chiral:63`, "prose descriptors here
      (typed I/O is target work)"), and `unit-lane/N13` is the row that closes
      that same deferral. So shipping `Str` here mints a second instance of a
      debt the lane already has a row for. Blocking on N17 instead costs E197 its

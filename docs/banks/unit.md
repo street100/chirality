@@ -10,7 +10,7 @@ updated: 2026-09-04
 # Bank: unit
 
 > The monolith this refracts: the agent, the model call, the neuron, the actor,
-> the microservice, the LLM chain. Nineteen shards across `prog/manas/` (7,289
+> the microservice, the LLM chain. Nineteen shards across `prog/prapanca/` (7,289
 > lines over 40 files) and `prog/scriba/` (manas-mode.chiral, manas-runview.chiral).
 > Eight of eleven catalog elements (E133-E141) are dated "built"; the whole
 > subtree is compiled by `tools/test/run-tests.sh` Phase 7 and executed by none
@@ -29,13 +29,13 @@ gap.
 
 | measured | figure | command |
 |---|---|---|
-| lines under `prog/manas/` | **7,289** across 40 files | `wc -l prog/manas/**/*.chiral` |
-| `.prog` fixture roots under `prog/manas/` | **18**, every one compiling `compile-main` | `find prog/manas -name '*-test.prog'` |
-| roots under `prog/samples/` naming manas | **21** (`manas-*-live.prog`, `manas-run-conform.prog`, `manas-flow-conform.prog`, `agent-probe.prog`, `manas-parse-robust-test.prog`) | `find prog/samples -iname '*manas*' -o -iname '*agent-probe*'` |
-| of those, executed by any `tools/test/*.sh` phase | **0** | `grep -rn 'manas-run-conform\|manas-flow-conform\|agent-probe' tools/test/` |
+| lines under `prog/prapanca/` | **7,289** across 40 files | `wc -l prog/prapanca/**/*.chiral` |
+| `.prog` fixture roots under `prog/prapanca/` | **18**, every one compiling `compile-main` | `find prog/prapanca -name '*-test.prog'` |
+| roots under `prog/samples/` naming prapanca | **21** (`prapanca-*-live.prog`, `prapanca-run-conform.prog`, `prapanca-flow-conform.prog`, `agent-probe.prog`, `prapanca-parse-robust-test.prog`) | `find prog/samples -iname '*prapanca*' -o -iname '*agent-probe*'` |
+| of those, executed by any `tools/test/*.sh` phase | **0** | `grep -rn 'prapanca-run-conform\|prapanca-flow-conform\|agent-probe' tools/test/` |
 | E-numbers E133-E146 cited in `records/conformance-map.md` | **0** | `grep -n 'E13[3-9]\|E14[0-6]' records/conformance-map.md` |
-| Phase 20's five executed roots that import `manas/*` | **0** | `grep -n '^(import' prog/samples/{e130_http_get,stream-ollama,e131_sse_framing,e131_sse_socketpair,e130_http_request_refused}.prog 2>/dev/null \| grep manas` |
-| `lib/backend.chiral`, the map's own citation for the model-backend seam | **absent** (the file is `prog/manas/backend.chiral`) | `find . -iname backend.chiral` |
+| Phase 20's five executed roots that import `prapanca/*` | **0** | `grep -n '^(import' prog/samples/{e130_http_get,stream-ollama,e131_sse_framing,e131_sse_socketpair,e130_http_request_refused}.prog 2>/dev/null \| grep prapanca` |
+| `lib/backend.chiral`, the map's own citation for the model-backend seam | **absent** (the file is `prog/prapanca/backend.chiral`) | `find . -iname backend.chiral` |
 
 ---
 
@@ -56,7 +56,7 @@ through every shard in this bank:
 
 - **The shape is a value.** `Expert`, `Flow`, `PureFn`, `Skill`, `GateRule` are
   category-A data, `(data ...)` records with named constructors and zero
-  crossings. `prog/manas/core/types.chiral`'s own header states it for the
+  crossings. `prog/prapanca/core/types.chiral`'s own header states it for the
   whole file: zero logic, holding no definitions, accessors or crossings of
   any kind. An `Expert`'s
   `sees` and `returns` fields are `Str`: prose descriptors the header names as
@@ -66,7 +66,7 @@ through every shard in this bank:
   They resolve a unit's slot to a bound model, assemble its prompt, cross the
   `Backend` port, and fold the answer into a record. This half carries every
   effect, every port, every altitude span a unit has, and it belongs to
-  `prog/manas/`'s own module structure the way any other process does.
+  `prog/prapanca/`'s own module structure the way any other process does.
 
 **A unit IS NOT a chirality module.** `docs/banks/module.md` §1 states what a
 module is: "a process with a type, packaged, versioned, composed, replaced,"
@@ -77,7 +77,7 @@ structural equality over a `Str`/`I64`/`List` record. The splitting law's
 "same type shape" test plays no part in it. The module bank's shard 5 (individuation by
 type) simply does not apply to a value that has no type beyond `Expert`
 itself. What DOES belong to `banks/module` is the second half of the split:
-`prog/manas/pipeline/runner.chiral` and the rest of the interpreting
+`prog/prapanca/pipeline/runner.chiral` and the rest of the interpreting
 machinery are `.chiral` files carrying `def`/`data`/`extern`/`porttype`
 declarations, elaborated into the checker's `Sig` exactly like any other
 module. So "the agent" collapses into two existing concepts rather than
@@ -110,7 +110,7 @@ does carry: a `manas profile (breaker + batch driver)` row at CONFORMS
 tagged E67, and a `lib/backend.chiral (model-server seam)` row at CONFORMS
 with no E#, whose own note says the file "belongs to slice F" (orchestration).
 ⚑ **That second row's path is stale.** `lib/backend.chiral` does not exist;
-the file is `prog/manas/backend.chiral`, moved (or always misfiled) across the
+the file is `prog/prapanca/backend.chiral`, moved (or always misfiled) across the
 2026-08-31 migration the way `.planning/MANAS-STATE-VS-GOAL.md`'s `scaffold/`
 citations were. The verdict (CONFORMS) reads true against the live file; the
 path does not resolve. Every other shard's state below is either the ledger's
@@ -119,41 +119,41 @@ taxonomy) or a direct measurement against the tree, named as such.
 
 **A fourth state, past the usual three.** `docs/banks/render.md` established
 it: fixture-reached, a shard whose only caller is a root a test phase
-compiles without running, one state further than built, unreached, absent. The manas subtree is in a
+compiles without running, one state further than built, unreached, absent. The prapanca subtree is in a
 state one step past that. Its 18 `*-test.prog` roots and the 21
-`prog/samples/manas-*` roots are all swept by Phase 7's
+`prog/samples/prapanca-*` roots are all swept by Phase 7's
 `grep -rl '^(def compile-main' lib prog`, which compiles each one and
 discards stdout (`>/dev/null`): they gate on compiling and assert nothing.
 Unlike render's shard K (compiled AND run by Phase 17), no phase anywhere in
-`tools/test/run-tests.sh` executes a manas root. The one exception is
+`tools/test/run-tests.sh` executes a prapanca root. The one exception is
 historical rather than mechanical: `docs/goals/local-ai.md` records a single
-hand-run on 2026-09-02 of `prog/samples/manas-run-conform.prog` and
-`manas-flow-conform.prog` against a live mesh endpoint, each exiting per its
+hand-run on 2026-09-02 of `prog/samples/prapanca-run-conform.prog` and
+`prapanca-flow-conform.prog` against a live mesh endpoint, each exiting per its
 own header, neither wired into any gate before or since. Below, **compiled**
 names this state precisely: present, imported, forms a complete program,
 compiled every suite pass, executed by none of it.
 
 | | shard | home | state |
 |---|---|---|---|
-| **A** | **the unit itself**: `Expert`, one record: id, lens, sees, returns, slot, tools | `prog/manas/core/types.chiral:66-68` | **compiled.** E133, ledger "built." `sees`/`returns` are `Str` prose by explicit deferral (`:64`, "typed I/O is target work"). Zero crossings, zero logic, by the file's own header. Map is silent |
-| **B** | **the payload type**: `Ty`, `Shape` (`sh-prose` / `sh-list` / `sh-rec`), `Arrow` | `prog/manas/core/flow.chiral:32-77` | **compiled.** No E#, absent from the manas-layer table and from every ledger/catalog row measured. `ty-eq` compares by name only (`str-eq`), so two `Ty` values with the same name and different `Shape` are indistinguishable to the checker below (§5). Map is silent |
-| **C** | **composition**: `Flow`, seven constructors, and `flow-ty : Flow -> (Maybe Arrow)`, the pure compositional checker | `prog/manas/core/flow.chiral:140-233` | **compiled.** No E#, no ledger row, no catalog row, no conformance-map row: `Flow`/`flow-ty` do not appear in any of the four authorities this tree keeps. Only the later `PureFn` additions on top of it (below) carry an informal "BUILT + tested" tag. `flow-ty` is total over all seven constructors, verified by reading every `case` arm (`flow.chiral:212-233`) |
-| **D** | **the flat predecessor**: `Pipeline`, `Order` (fan-out / chain / branch), lifted by `pipeline->flow` | `prog/manas/core/types.chiral:52-55` (Order), `:82-89` (Pipeline), `flow.chiral:239-244` (the lift) | **compiled.** E133 (Pipeline, Order). `pipeline->flow` always emits one `flow-gate`, so `Order`'s three arms are carried in the type and only `order-fan-out`'s shape (a whole GATE block) is what the lift actually exercises; `order-chain` and `order-branch` are unread by it |
-| **E** | **activation**: `GateRule`, `GateDecision`, `run-gate`, pure `->` | `prog/manas/core/gate.chiral:114-139` | **compiled.** E134, ledger "built." Total: an unrecognized condition falls to `else false` (`condition-fires`, `gate.chiral:72`). The membrane proves no `=>` reaches it; the router decides in code and a model never chooses |
-| **F** | **the slot binding**: `Config`, `Binding`, `bind-config`, `bind-ok` / `bind-miss` | `prog/manas/core/bind.chiral:52-69` | **compiled.** E135, ledger "built." A missing slot is a value (`bind-miss`, carrying the config id and every missing slot); it never raises an exception |
-| **G** | **the model crossing**: `Backend` as a linear porttype, `be-chat`, `be-chat-stream`, `be-peek` | `prog/manas/backend.chiral`, `porttype Backend` at `:32`, `be-chat` at `:116` | **compiled, and once live.** E137 (Backend linear, "DONE 2026-08-16"), E144/E145 (the carrier + laundering peel), ledger "built." A real crossing happened: five roots under `prog/samples/` were compiled and executed against `100.64.0.5:11434` on 2026-09-02 (`docs/goals/local-ai.md`, `records/baseline-alignment` BA-42), but none of those five imports `manas/*` (measured above); the crossing they exercised is the generic HTTP transport; this shard's own crossing sits elsewhere. `Backend`'s own live crossing is the 2026-09-02 hand-run of `manas-run-conform.prog`, unrepeated since |
-| **H** | **naming and reuse**: `Skill`, `skill-base` / `skill-spec`, specialize as context injection | `prog/manas/core/skill.chiral:37-39` | **compiled.** No E#. Ledger/catalog silent; only `.planning/MANAS-SKILL-GROWER.md` (agent tier) names it. `resolve-skill` is fuel-bounded by the library size (`skill-count + 1`), so a cyclic `base` chain returns `none` rather than looping (`skill.chiral:78-96`) |
-| **I** | **termination, two mechanisms sharing one name-space**: `StopPolicy` (the closed sum a `Skill`/run carries) vs `stop-policy` (a per-call decision function) | `StopPolicy` at `types.chiral:57-60`; `stop-policy` at `prog/manas/core/stop.chiral:25-29` | **compiled.** E136 for `stop.chiral`'s two functions (`overflow-guard`, `stop-policy`); E133 for the `StopPolicy` data type. ⚑ The two are unrelated mechanisms that share a name modulo case: the data type is what `run-flow-stop` and `Skill` carry (`stop-single` / `stop-capped` / `stop-until-dry`); the function decides one specific pipeline's per-expert retry by a hardcoded `"sharpen"`/`"example"` substring match. Neither calls the other |
-| **J** | **the discipline**: `lint-expert`, `lint-pool` (static), `manifest-all-green?` (runtime, the tiny-model-green acceptance gate) | `prog/manas/core/flow.chiral:1359-1432` | **compiled.** No E#. `lint-expert` flags a lens that conjoins asks (`" and "`, `" then "`, `" & "`, `";"`), one over 160 characters, or an empty `sees`; advisory, and it never blocks a run. `manifest-all-green?` is the runtime twin: routing-error strings OR any `parsed-ok=false` call OR zero fired calls all read non-green (`routing-error?`, `:1414-1421`, closing a real masked-pass bug the comment names, Audit F1) |
-| **K** | **the record**: `RunManifest`, `ExpertCall`, `RawCall`, and E141's golden conformance oracle | `types.chiral:131-182` (the data), `prog/manas/contract/manifest.chiral` (the codec), `prog/manas/contract/golden.chiral` (`manifest-conforms`) | **compiled.** E141, ledger "built." The oracle compares STRUCTURE only (pipeline-id, config-id, routing, fired-expert-ids, per-call expert-id/slot/bound-model) and ignores every non-deterministic field (shas, timestamps, durations, prose) by explicit decision, stated in the file's own header |
-| **L** | **the corpus sink**: `be-log`, LOG-01 and LEARN-01, fire-and-forget POSTs to a worker distinct from the model endpoint | `prog/manas/pipeline/log.chiral` | **compiled, live once.** E139, ledger "built + LIVE." The worker itself, `/workspace/manas/manas-worker`, sits **outside this repository entirely**: a sibling project, Python, reached only over HTTP. `docs/goals/local-ai.md` records a verified SELECT-back against it on 2026-08-16 (1 interaction + 6 expert_calls rows, 0 empty text); nothing re-verifies it since, and no suite phase reaches it |
-| **M** | **the conversational layer**: `Intent`, `ConvState`, `Routed` (router.chiral); `Plan` (orchestrate.chiral); `Chunk`/`Divided`/`Origin` (divide.chiral); `SkillEgress`/`Audit` (egress.chiral) | `prog/manas/chatter/{router,orchestrate,divide,egress}.chiral` | **compiled, unevenly grounded.** `router.chiral`'s C1-C4 slice (`Intent`, `route-message`, `intent->skill`) is E-less but carries an informal "BUILT + tested" ledger row. Everything past it, C5/C6 (`ConvState`, `Routed`, compound-intent `split-conjunctions`), `orchestrate.chiral`'s `Plan`, `divide.chiral`'s structural/semantic divider, and `egress.chiral`'s typed audit parse, appear in **zero** of catalog, ledger, or conformance-map. The only citation for any of it is `.planning/CHATTER-STATE.md`, an agent-tier document `working-discipline.md` names as non-authoritative for build state |
+| **A** | **the unit itself**: `Expert`, one record: id, lens, sees, returns, slot, tools | `prog/prapanca/core/types.chiral:66-68` | **compiled.** E133, ledger "built." `sees`/`returns` are `Str` prose by explicit deferral (`:64`, "typed I/O is target work"). Zero crossings, zero logic, by the file's own header. Map is silent |
+| **B** | **the payload type**: `Ty`, `Shape` (`sh-prose` / `sh-list` / `sh-rec`), `Arrow` | `prog/prapanca/core/flow.chiral:32-77` | **compiled.** No E#, absent from the manas-layer table and from every ledger/catalog row measured. `ty-eq` compares by name only (`str-eq`), so two `Ty` values with the same name and different `Shape` are indistinguishable to the checker below (§5). Map is silent |
+| **C** | **composition**: `Flow`, seven constructors, and `flow-ty : Flow -> (Maybe Arrow)`, the pure compositional checker | `prog/prapanca/core/flow.chiral:140-233` | **compiled.** No E#, no ledger row, no catalog row, no conformance-map row: `Flow`/`flow-ty` do not appear in any of the four authorities this tree keeps. Only the later `PureFn` additions on top of it (below) carry an informal "BUILT + tested" tag. `flow-ty` is total over all seven constructors, verified by reading every `case` arm (`flow.chiral:212-233`) |
+| **D** | **the flat predecessor**: `Pipeline`, `Order` (fan-out / chain / branch), lifted by `pipeline->flow` | `prog/prapanca/core/types.chiral:52-55` (Order), `:82-89` (Pipeline), `flow.chiral:239-244` (the lift) | **compiled.** E133 (Pipeline, Order). `pipeline->flow` always emits one `flow-gate`, so `Order`'s three arms are carried in the type and only `order-fan-out`'s shape (a whole GATE block) is what the lift actually exercises; `order-chain` and `order-branch` are unread by it |
+| **E** | **activation**: `GateRule`, `GateDecision`, `run-gate`, pure `->` | `prog/prapanca/core/gate.chiral:114-139` | **compiled.** E134, ledger "built." Total: an unrecognized condition falls to `else false` (`condition-fires`, `gate.chiral:72`). The membrane proves no `=>` reaches it; the router decides in code and a model never chooses |
+| **F** | **the slot binding**: `Config`, `Binding`, `bind-config`, `bind-ok` / `bind-miss` | `prog/prapanca/core/bind.chiral:52-69` | **compiled.** E135, ledger "built." A missing slot is a value (`bind-miss`, carrying the config id and every missing slot); it never raises an exception |
+| **G** | **the model crossing**: `Backend` as a linear porttype, `be-chat`, `be-chat-stream`, `be-peek` | `prog/prapanca/backend.chiral`, `porttype Backend` at `:32`, `be-chat` at `:116` | **compiled, and once live.** E137 (Backend linear, "DONE 2026-08-16"), E144/E145 (the carrier + laundering peel), ledger "built." A real crossing happened: five roots under `prog/samples/` were compiled and executed against `100.64.0.5:11434` on 2026-09-02 (`docs/goals/local-ai.md`, `records/baseline-alignment` BA-42), but none of those five imports `manas/*` (measured above); the crossing they exercised is the generic HTTP transport; this shard's own crossing sits elsewhere. `Backend`'s own live crossing is the 2026-09-02 hand-run of `prapanca-run-conform.prog`, unrepeated since |
+| **H** | **naming and reuse**: `Skill`, `skill-base` / `skill-spec`, specialize as context injection | `prog/prapanca/core/skill.chiral:37-39` | **compiled.** No E#. Ledger/catalog silent; only `.planning/MANAS-SKILL-GROWER.md` (agent tier) names it. `resolve-skill` is fuel-bounded by the library size (`skill-count + 1`), so a cyclic `base` chain returns `none` rather than looping (`skill.chiral:78-96`) |
+| **I** | **termination, two mechanisms sharing one name-space**: `StopPolicy` (the closed sum a `Skill`/run carries) vs `stop-policy` (a per-call decision function) | `StopPolicy` at `types.chiral:57-60`; `stop-policy` at `prog/prapanca/core/stop.chiral:25-29` | **compiled.** E136 for `stop.chiral`'s two functions (`overflow-guard`, `stop-policy`); E133 for the `StopPolicy` data type. ⚑ The two are unrelated mechanisms that share a name modulo case: the data type is what `run-flow-stop` and `Skill` carry (`stop-single` / `stop-capped` / `stop-until-dry`); the function decides one specific pipeline's per-expert retry by a hardcoded `"sharpen"`/`"example"` substring match. Neither calls the other |
+| **J** | **the discipline**: `lint-expert`, `lint-pool` (static), `manifest-all-green?` (runtime, the tiny-model-green acceptance gate) | `prog/prapanca/core/flow.chiral:1359-1432` | **compiled.** No E#. `lint-expert` flags a lens that conjoins asks (`" and "`, `" then "`, `" & "`, `";"`), one over 160 characters, or an empty `sees`; advisory, and it never blocks a run. `manifest-all-green?` is the runtime twin: routing-error strings OR any `parsed-ok=false` call OR zero fired calls all read non-green (`routing-error?`, `:1414-1421`, closing a real masked-pass bug the comment names, Audit F1) |
+| **K** | **the record**: `RunManifest`, `ExpertCall`, `RawCall`, and E141's golden conformance oracle | `types.chiral:131-182` (the data), `prog/prapanca/contract/manifest.chiral` (the codec), `prog/prapanca/contract/golden.chiral` (`manifest-conforms`) | **compiled.** E141, ledger "built." The oracle compares STRUCTURE only (pipeline-id, config-id, routing, fired-expert-ids, per-call expert-id/slot/bound-model) and ignores every non-deterministic field (shas, timestamps, durations, prose) by explicit decision, stated in the file's own header |
+| **L** | **the corpus sink**: `be-log`, LOG-01 and LEARN-01, fire-and-forget POSTs to a worker distinct from the model endpoint | `prog/prapanca/pipeline/log.chiral` | **compiled, live once.** E139, ledger "built + LIVE." The worker itself, `/workspace/manas/manas-worker`, sits **outside this repository entirely**: a sibling project, Python, reached only over HTTP. `docs/goals/local-ai.md` records a verified SELECT-back against it on 2026-08-16 (1 interaction + 6 expert_calls rows, 0 empty text); nothing re-verifies it since, and no suite phase reaches it |
+| **M** | **the conversational layer**: `Intent`, `ConvState`, `Routed` (router.chiral); `Plan` (orchestrate.chiral); `Chunk`/`Divided`/`Origin` (divide.chiral); `SkillEgress`/`Audit` (egress.chiral) | `prog/prapanca/chatter/{router,orchestrate,divide,egress}.chiral` | **compiled, unevenly grounded.** `router.chiral`'s C1-C4 slice (`Intent`, `route-message`, `intent->skill`) is E-less but carries an informal "BUILT + tested" ledger row. Everything past it, C5/C6 (`ConvState`, `Routed`, compound-intent `split-conjunctions`), `orchestrate.chiral`'s `Plan`, `divide.chiral`'s structural/semantic divider, and `egress.chiral`'s typed audit parse, appear in **zero** of catalog, ledger, or conformance-map. The only citation for any of it is `.planning/CHATTER-STATE.md`, an agent-tier document `working-discipline.md` names as non-authoritative for build state |
 | **N** | **the cockpit**: `prog/scriba/manas-mode.chiral` (S14, `ManasDoc`/`ManasEdit`), `manas-runview.chiral` (S15, `RunView`), S16 compose, S17 streaming | `prog/scriba/manas-mode.chiral` (1,034 L), `manas-runview.chiral` (256 L) | **compiled, and reached from the real scriba binary.** No conformance-map/ledger build-state row for S14-S17; `docs/goals/local-ai.md` is the authority: SPECs and examples exist under `docs/elements/specs/` and `docs/examples/`, and "the six scriba roots compile under Phase 7." Unlike shards A-M, this one IS reached from a shipping program: `vim-mode.chiral` imports `ManasDoc`/`RunView` into its own mode sum, `init-loader.chiral:616` registers a "manas" mode with faces, and `scriba-main.prog` is the root `bin/scriba` builds from. `.planning/MANAS-STATE-VS-GOAL.md` §8 and its own remaining-work section contradict each other on whether this shard is started; treated here as a lead, and this bank does not read it as a source |
-| **O** | **the registry**: `SkillEntry`, `all-skills`, `plannable-skills`, enumerable data | `prog/manas/profile/skills.chiral:22-27` (`SkillEntry`), `:34` (`all-skills`) | **compiled.** No E#, informal "BUILT + tested." This is `docs/goals/local-ai.md` criterion 3's own evidence: "a new skill is added by writing a value into the registry" |
-| **P** | **the flat control loop**: `cycle-step` (the circuit breaker), `run-recorded`, `run-batch`, `drive-batch`; the thin one-turn loop `run-cycle` | `prog/manas/manas.chiral`, `prog/manas/coordinator.chiral` | **compiled.** E67, CONFORMANCE-MAP CONFORMS (the only manas-orchestration row the map carries under its own number). `cycle-step` is expressed as one `fsm.chiral` transition (shard below), so the whole stop/continue decision for a batch run is one Mealy step |
-| **Q** | **the general FSM substrate**: `Step`, `drive`, `run-fsm`, a Mealy engine parametric over state/event/output | `prog/manas/fsm.chiral` | **compiled.** E66, "already chirality." Total, no domain knowledge of HTTP or manas: `cycle-step` (shard P) is its one instance in this tree |
-| **R** | **persistence, total codecs**: `flow->json`/`json->flow` (`flow-persist.chiral`), `pipeline->json`/`config->json` (`pipeline/persist.chiral`) | `prog/manas/core/flow-persist.chiral`, `prog/manas/pipeline/persist.chiral` | **compiled.** No E#. Reused verbatim by shard H's `Skill` codec and shard N's scriba author mode (`command-loop.chiral` imports `pipeline/persist` for the value-to-buffer path) |
-| **S** | **the self-extension wall**: `accept-gate` (decode, then `flow-ty`, then admit), `tool-builder-flow`, `project-builder` | `prog/manas/core/builder.chiral` | **compiled.** No E#, no ledger row; only `.planning/MANAS-SKILL-GROWER.md` names it (SG4/SG5). `accept-gate` is the wall between a model's emitted text and the skill library: every failure path (`json-parse-str`, `json->flow`, `flow-ty`) folds to `none`; nothing an agent emits is trusted before it decodes and type-checks |
+| **O** | **the registry**: `SkillEntry`, `all-skills`, `plannable-skills`, enumerable data | `prog/prapanca/profile/skills.chiral:22-27` (`SkillEntry`), `:34` (`all-skills`) | **compiled.** No E#, informal "BUILT + tested." This is `docs/goals/local-ai.md` criterion 3's own evidence: "a new skill is added by writing a value into the registry" |
+| **P** | **the flat control loop**: `cycle-step` (the circuit breaker), `run-recorded`, `run-batch`, `drive-batch`; the thin one-turn loop `run-cycle` | `prog/prapanca/manas.chiral`, `prog/prapanca/coordinator.chiral` | **compiled.** E67, CONFORMANCE-MAP CONFORMS (the only manas-orchestration row the map carries under its own number). `cycle-step` is expressed as one `fsm.chiral` transition (shard below), so the whole stop/continue decision for a batch run is one Mealy step |
+| **Q** | **the general FSM substrate**: `Step`, `drive`, `run-fsm`, a Mealy engine parametric over state/event/output | `prog/prapanca/fsm.chiral` | **compiled.** E66, "already chirality." Total, no domain knowledge of HTTP or manas: `cycle-step` (shard P) is its one instance in this tree |
+| **R** | **persistence, total codecs**: `flow->json`/`json->flow` (`flow-persist.chiral`), `pipeline->json`/`config->json` (`pipeline/persist.chiral`) | `prog/prapanca/core/flow-persist.chiral`, `prog/prapanca/pipeline/persist.chiral` | **compiled.** No E#. Reused verbatim by shard H's `Skill` codec and shard N's scriba author mode (`command-loop.chiral` imports `pipeline/persist` for the value-to-buffer path) |
+| **S** | **the self-extension wall**: `accept-gate` (decode, then `flow-ty`, then admit), `tool-builder-flow`, `project-builder` | `prog/prapanca/core/builder.chiral` | **compiled.** No E#, no ledger row; only `.planning/MANAS-SKILL-GROWER.md` names it (SG4/SG5). `accept-gate` is the wall between a model's emitted text and the skill library: every failure path (`json-parse-str`, `json->flow`, `flow-ty`) folds to `none`; nothing an agent emits is trusted before it decodes and type-checks |
 
 ⚑ **Two elements are catalogued and unbuilt, and both bound this bank's near
 future.** E142 (trust-zone capability tokens) and E143 (dependent
@@ -183,7 +183,7 @@ already names `backend-open` once, buried in its own §5 residue list of
 "every cap has an ambient mint": `adopt-fd`, `adopt-pty`, `env-open`,
 `secret-seal`, `backend-open`, `pool-create`, `sock-connect`/`sock-listen`/
 `socketpair`. `Backend` (shard G) is that same porttype, declared in
-`prog/manas/backend.chiral` rather than under `lib/ports/`, so the port
+`prog/prapanca/backend.chiral` rather than under `lib/ports/`, so the port
 bank's "nine registries" undercounts by at least one live linear porttype.
 `backend-open : (=> Str Backend)` mints from a bare `Str`, so `Backend`'s
 non-forgeability sits at the same "0 of 4" mark the port bank's §5 measures
@@ -269,7 +269,7 @@ today it does not (§6).
 | a model-call abstraction | `be-chat`/`be-chat-stream` (shard G), a linear porttype over an OpenAI-compatible contract. Swapping Ollama for llama.cpp changes the base URL a `Config` carries; the type stays fixed either way |
 | a neuron / a differentiable unit | absent, and honestly so. `Tensor` and `tensor` are grep-clean across `lib/` and `prog/` (`docs/goals/local-ai.md`); nothing in this tree differentiates anything. §5 states what closing this gap would need |
 | an actor (mailbox, isolated state, message-passing) | a unit here holds no state across calls; `RunManifest` (shard K) is the accumulated record; an actor's internal memory is a different shape entirely. The nearest actor-shaped thing is `Backend` (shard G), a linear handle threaded exactly once per call, closer to a session token than a mailbox |
-| a microservice (a network boundary, its own deploy) | the model server (shard G) and the corpus worker (shard L) are the two real network boundaries, and both are OUTSIDE this repository: an OpenAI-compatible endpoint and `/workspace/manas/manas-worker`. Nothing inside `prog/manas/` is a microservice; it is the typed client of two |
+| a microservice (a network boundary, its own deploy) | the model server (shard G) and the corpus worker (shard L) are the two real network boundaries, and both are OUTSIDE this repository: an OpenAI-compatible endpoint and `/workspace/manas/manas-worker`. Nothing inside `prog/prapanca/` is a microservice; it is the typed client of two |
 | an LLM chain (LangChain-shaped: prompt template, output parser, chain composition) | `assemble-prompt` (shard A's Expert plus `assemble.chiral`) is the template; `parse-findings` / `SkillEgress` (shard M) is the output parser; `Flow` + `flow-ty` (shard C) is the chain, except the chain type-checks before it runs rather than failing mid-execution |
 | a workflow engine (DAG, retries, backoff) | `Flow`'s five structural constructors (chain, fan, branch, gate, step) are the DAG; `StopPolicy` (shard I) is the retry policy; there is no backoff; every retry here is capped and local, on a fixed schedule rather than a timed one |
 | a supervisor tree | `cycle-step` (shard P) IS one, expressed as a single Mealy transition (shard Q) rather than a tree of processes: a consecutive-failure counter that halts a batch. It supervises calls only; nothing in this tree supervises a crashed process the way an actor-system supervisor does |
@@ -315,7 +315,7 @@ today it does not (§6).
 
 6. **The allocation gap threatens every unit in this bank at scale, and no
    arc owns it.** `records/author-calls.md`: "~1,747 B of arena per input
-   byte, no reclamation on any compiled path... it blocks manas and scriba
+   byte, no reclamation on any compiled path... it blocks prapanca and scriba
    from running once transport lands." A `RunManifest` (shard K) and a
    `ConvState` (shard M) are both unbounded-growth values over a bounded-state
    substrate; nothing in this bank measures how many turns a conversation
@@ -358,7 +358,7 @@ today it does not (§6).
    tree has a value that is written once and a signal that is read once, and
    the two never meet in a second pass. **The reading does not hold. It is a
    stretch**, and the reason is structural rather than conceptual: nothing in
-   `prog/manas/` closes the loop the three-factor shape requires: a learning
+   `prog/prapanca/` closes the loop the three-factor shape requires: a learning
    signal has to reach back and revise an eligibility trace; this engine's
    manifest only ever appends.
 

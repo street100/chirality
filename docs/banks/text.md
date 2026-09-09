@@ -55,7 +55,7 @@ The three monoliths this gets confused with, and what they actually are here:
 | **I** | encodings: UTF-8, JSON | `lib/protocol/utf8.chiral`, `json.chiral` | **built** |
 | **J** | reaching a corpus: directory walk, argv | `lib/ports/`, owed | **E148** and **E150**, both `design` |
 | **K** | the typed buffer a document lives in | `prog/scriba/puffer.chiral`, `(Puffer A)` | **built**. `puffer-value` hands the typed value out |
-| **L** | text steps inside an orchestration | `prog/manas/core/flow.chiral`, `flow-pure` / `PureFn` | **built**, but `PureFn` is a **closed sum of six** concrete predicates |
+| **L** | text steps inside an orchestration | `prog/prapanca/core/flow.chiral`, `flow-pure` / `PureFn` | **built**, but `PureFn` is a **closed sum of six** concrete predicates |
 
 ## 3. Cross-cuts — where a text shard IS another concept's shard
 
@@ -78,7 +78,7 @@ that is not about text at all.
 - **L is a shard of the orchestration layer.** A text step and a model step are
   both `Flow` nodes with a typed arrow, checked by the same `flow-ty`. This is why
   doc tooling and AI orchestration are the same engine — see
-  [[arcs/text-tools-arc]] and `prog/manas/core/flow.chiral`.
+  [[arcs/text-tools-arc]] and `prog/prapanca/core/flow.chiral`.
 
 ## 4. Native → chirality translation (the anti-misfire table)
 
@@ -128,7 +128,7 @@ Read this before saying chirality lacks a text feature.
   `prog/prose-lint.prog`, which prints them as explicit NOT-CHECKED rows so the
   gap is visible on every run. Closing it is outside slice 1.
 - **`PureFn` is closed at six constructors.** A new text step means editing
-  `manas/core/flow.chiral` and recompiling. This is the ease-of-use wall, and
+  `prapanca/core/flow.chiral` and recompiling. This is the ease-of-use wall, and
   opening it is D's second job.
 - **`ty-text` is declared "the opaque escape hatch (any not-yet-modelled
   payload)"** in its own comment. Every unmodelled payload lands there and

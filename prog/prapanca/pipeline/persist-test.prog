@@ -1,0 +1,83 @@
+; persist-test.prog — P1 round-trip unit gate for the pure JSON codec.
+;
+; Proves encode->show->parse->decode->encode is a FIXPOINT over every compiled-in
+; Pipeline (all-pipelines) and Config (all-profiles): a faithful round-trip, at
+; string level (avoids needing a structural eq). Plus negative tests: malformed
+; JSON decodes to `none`, never a silent default. Pure — no PTY, no network, no
+; fork. compile-main returns 0 iff every assertion passes (exit 0).
+;
+; Build+run (fast, ~seconds — the codec closure only):
+;   chirality run prog/prapanca/pipeline/persist-test.prog
+
+(import "prelude/prelude")               ; Bool, Str, List, Unit, and, str-eq, unit
+(import "protocol/json")                  ; Json (+ ctors), json-show, json-parse-str
+(import "prapanca/pipeline/persist")               ; the codec under test
+(import "prapanca/pipeline/compose"); all-pipelines
+(import "prapanca/profile/profiles"); all-profiles
+
+; ─── round-trip invariant: encode -> show -> parse -> decode -> encode is a fixpoint
+
+(def pipeline-rt (-> Pipeline Bool)
+  (lam (p)
+    (let ((s1 (json-show (pipeline->json p))))
+      (case (json-parse-str s1)
+        (none false)                                   ; must parse
+        ((some jv)
+          (case (json->pipeline jv)
+            (none false)                               ; must decode (some, not none)
+            ((some p2) (str-eq s1 (json-show (pipeline->json p2))))))))))
+
+(def config-rt (-> Config Bool)
+  (lam (c)
+    (let ((s1 (json-show (config->json c))))
+      (case (json-parse-str s1)
+        (none false)
+        ((some jv)
+          (case (json->config jv)
+            (none false)
+            ((some c2) (str-eq s1 (json-show (config->json c2))))))))))
+
+(def pipelines-all-rt (-> (List Pipeline) Bool)
+  (lam (ps) (case ps
+    (nil true)
+    ((cons h t) (and (pipeline-rt h) (pipelines-all-rt t))))))
+
+(def configs-all-rt (-> (List Config) Bool)
+  (lam (cs) (case cs
+    (nil true)
+    ((cons h t) (and (config-rt h) (configs-all-rt t))))))
+
+; ─── negative tests: malformed JSON decodes to `none` (rejects, never defaults) ─
+
+; a pipeline object missing the required "when" key.
+(def bad-pipeline Json
+  (j-obj (cons (pair "kind" (j-str "pipeline"))
+          (cons (pair "id"   (j-str "x")) nil))))
+
+; a config object missing the required "bindings" key.
+(def bad-config Json
+  (j-obj (cons (pair "id" (j-str "x")) nil)))
+
+(def neg-pipeline-ok (-> Unit Bool)
+  (lam (_) (case (json->pipeline bad-pipeline) (none true) ((some p) false))))
+
+(def neg-config-ok (-> Unit Bool)
+  (lam (_) (case (json->config bad-config) (none true) ((some c) false))))
+
+; an unknown ORDER tag is rejected (not silently mapped to a default).
+(def neg-order-ok (-> Unit Bool)
+  (lam (_) (case (json->order (j-str "bogus")) (none true) ((some o) false))))
+
+; an unknown STOP kind is rejected.
+(def neg-stop-ok (-> Unit Bool)
+  (lam (_) (case (json->stop (j-obj (cons (pair "kind" (j-str "wat")) nil)))
+    (none true) ((some s) false))))
+
+; ─── entry: 0 iff every round-trip + every negative test passes ──────────────
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (and (and (pipelines-all-rt all-pipelines) (configs-all-rt all-profiles))
+               (and (and (neg-pipeline-ok unit) (neg-config-ok unit))
+                    (and (neg-order-ok unit) (neg-stop-ok unit))))
+      (true 0)
+      (false 1))))

@@ -31,8 +31,8 @@ updated: 2026-08-22
 - **After this runs:** `scaffold/lib/string-utils.chiral` is the sole definer of
   `str-cmp`, `str-contains`, `str-lower`, `str-upper`, `str-trim`, `str-replace`
   and `str-pad`; the seven surviving ad-hoc copies across `ty-cmp`, `row-infer`,
-  `asm-reloc`, `compile-back`, `manas/core/match`, `manas/chatter/router`,
-  `manas/core/flow` (plus the dead copy in `TUI/scriba/help.chiral`) are **deleted
+  `asm-reloc`, `compile-back`, `prapanca/core/match`, `prapanca/chatter/router`,
+  `prapanca/core/flow` (plus the dead copy in `TUI/scriba/help.chiral`) are **deleted
   and replaced by `(import "string-utils")`**, the two surplus `(data Ord ())`
   re-declarations in `ty-cmp`/`row-infer` go with them, and
   `tools/ledger-lint/ledger-lint.py`'s `OWNERSHIP_BASELINE` is ratcheted down to match
@@ -54,9 +54,9 @@ updated: 2026-08-22
   - **E154** (per-module label namespace). E151b *pays* the flat-namespace cost
     by hand, seven times; it does not remove the cost.
   - The **three** remaining **prefix-dodged** `str-contains` clones —
-    `gate-contains` (`manas/core/gate.chiral:20`, comment `:16-19`), `str-has`
-    (`manas/core/stop.chiral:15`, comment `:11-14`) and a *second* `str-has`
-    (`manas/core/flow.chiral:266`, uncommented — audit-measured, the SPEC first
+    `gate-contains` (`prapanca/core/gate.chiral:20`, comment `:16-19`), `str-has`
+    (`prapanca/core/stop.chiral:15`, comment `:11-14`) and a *second* `str-has`
+    (`prapanca/core/flow.chiral:266`, uncommented — audit-measured, the SPEC first
     counted two). They are not bare-name duplicates, the L ratchet does not see
     them, and the first two carry comments saying the prefix exists only to
     dodge the flat label space → home is **E154**.
@@ -93,10 +93,10 @@ updated: 2026-08-22
   | `(def str-cmp ` | 3 | `string-utils:80` (owner) · `ty-cmp:34` · `row-infer:35` |
   | `ar-str-cmp` / `cb-str-cmp` | 2 | `asm-reloc:79` · `compile-back:128` (prefix-dodged, same function) |
   | `(data Ord ()` | 4 | `collections:156` (owner) · `ty-cmp:16` · `row-infer:21` · `TUI/samples/collections:156` (E155) |
-  | `(def str-contains ` | 3 | `string-utils:22` · `manas/core/match:19` · `TUI/scriba/help:198` |
-  | `gate-contains` / `str-has` | **3** | `manas/core/gate:20` · `manas/core/stop:15` · `manas/core/flow:266` (prefix-dodged, same function; the flow copy was missed in the first census — audit-measured) |
-  | `(def str-lower ` | 2 | `string-utils:105` · `manas/chatter/router:46` |
-  | `(def str-trim ` | 2 | `string-utils:152` · `manas/core/flow:430` |
+  | `(def str-contains ` | 3 | `string-utils:22` · `prapanca/core/match:19` · `TUI/scriba/help:198` |
+  | `gate-contains` / `str-has` | **3** | `prapanca/core/gate:20` · `prapanca/core/stop:15` · `prapanca/core/flow:266` (prefix-dodged, same function; the flow copy was missed in the first census — audit-measured) |
+  | `(def str-lower ` | 2 | `string-utils:105` · `prapanca/chatter/router:46` |
+  | `(def str-trim ` | 2 | `string-utils:152` · `prapanca/core/flow:430` |
   | `(def str-pad ` | **0** | absent from the whole tree |
 
   Importers: `ty-cmp` — **none**. `row-infer` — `sig-driver.chiral` only.
@@ -117,7 +117,7 @@ updated: 2026-08-22
 | 1 | `str-pad` — in or out of E151b? | **RESOLVED — IN**, as its own purely-additive commit (**Step 5**; the decision first said "Step 6, last in the order", which contradicted §4 — Step 5 is `str-pad`, Step 6 is the coupled app-side unit and is last) | It is an *addition*, not a retirement, so it carries none of the fixpoint exposure of Steps 1–2 and cannot be sequenced-blocked by them. Putting it out would need a follow-on element; none exists, and minting one for a 15-line function would be a phantom dep (CLAUDE.md deferral rule). Catalog row E151 names it explicitly. |
 | 2 | `str-contains` argument order: owner is `(needle s)`, `match.chiral:19` and `help.chiral:198` are `(haystack needle)` | **RESOLVED — flip the OWNER to `(haystack needle)`** | Haystack-first is the tree's settled convention, three ways: `prelude`'s `(extern str-find (-> Str Str I64))` is used as `(str-find s needle)` **inside the owner's own body** (`string-utils.chiral:24`); the owner's sibling `str-replace` is already `(haystack needle replacement)` (`string-utils.chiral:160`, in the `:159-165` header block); and both other definitions plus both prefix-dodged clones use haystack-first. The owner is the outlier against its own callee. |
 | 3 | Does flipping #2 overturn `match.chiral:15-18` ("NOT imported from string-utils … (SPEC decision #3)")? | **RESOLVED — superseded by construction, not overridden** | That decision rests on two stated grounds: reversed arg order, and "importing it would double-define the name in a combined leaf blob". #2 removes the first; deleting the local def (rather than importing alongside it) removes the second. The decision's *conclusion* — don't import while both hold — is untouched; its premises stop holding. Nothing in it is reversed. |
-| 4 | Atomic or incremental? | **RESOLVED — incremental, but in three coupled groups, not eight independent commits** | The constraint is per-blob. Measured: `asm-reloc`+`compile-back` convert together in the compiler blob and self-reproduce; `ty-cmp` and `row-infer` never co-occur (no common importer) and convert independently. **But the app-side is genuinely coupled**: `match`, `router` and `flow` all land in the `manas/chatter/turn` blob, so importing `string-utils` into *any one* of them collides with the other two's local defs. Measured verdict from adding the import to `match.chiral` alone: `duplicate label (an object def collides with the linked runtime): str-trim`. Those three are therefore ONE commit. |
+| 4 | Atomic or incremental? | **RESOLVED — incremental, but in three coupled groups, not eight independent commits** | The constraint is per-blob. Measured: `asm-reloc`+`compile-back` convert together in the compiler blob and self-reproduce; `ty-cmp` and `row-infer` never co-occur (no common importer) and convert independently. **But the app-side is genuinely coupled**: `match`, `router` and `flow` all land in the `prapanca/chatter/turn` blob, so importing `string-utils` into *any one* of them collides with the other two's local defs. Measured verdict from adding the import to `match.chiral` alone: `duplicate label (an object def collides with the linked runtime): str-trim`. Those three are therefore ONE commit. |
 | 5 | Does lowering the `data Ord` baseline need E155 first? | **RESOLVED — no; E151b's own target is 4 → 2** | `collections:156` is the owner's and stays; the fourth is `TUI/samples/collections.chiral`, an A3 **symlink** copy owned by **E155**. Sequencing is unnecessary — the two ratchets overlap by one file, which `tools/ledger-lint/ledger-lint.py:489-491` already records as honest rather than double-counted. |
 | 6 | How does a source edit to `asm-reloc`/`compile-back` reach `scaffold/build/blob.chiral`? (the brief's named unverified gap) | **RESOLVED — measured, and the premise it rested on was wrong** | `blob.chiral` is **not** hand-ordered. `scaffold/tools/selfhost.py:34-53` `build_blob()` is a post-order DFS over `(import …)` from five roots (`sys-linkage`, `compile-front`, `compile-back`, `compile-emit`, `compile-all`). `bin/chirality-resolve.sh`'s `chirality_blob` runs the identical algorithm in **pure shell, no Python**, and reproduces `blob.chiral` byte-for-byte for the same sources (verified; the only diff is that the committed local `blob.chiral` is **stale** — see §7). So the recipe is one line and placement is automatic; the example's "hand-ordered blob, placement is a live decision" is false for `blob.chiral`. |
 | 7 | Should the blob be regenerated with the fully-native `scaffold/build/resolve` instead of the shell? | **DEFERRED — home: `.planning/HANDOFF-SELF-WIELD.md:68`** ("import-DFS in chirality (`lib/source-fs`) … full shell-resolver replacement") | Measured: `scaffold/build/resolve` is **single-root** — `printf 'sys-linkage\ncompile-front\n…' \| resolve` exits 1. The compiler blob needs five roots, so the no-Python path today is the shell `chirality_blob`, which `bin/scriba` already sanctions. This is a tracked remaining slice, not a phantom dep. |
@@ -261,7 +261,7 @@ something. `scaffold/build/` is gitignored; regenerate, never commit.
      once this step lands (audit-measured against `check_l`'s own source set:
      `scaffold/lib/**` + `TUI/**` minus `scaffold/lib/scriba/`).
 - **Why one commit:** measured — adding the import to `match.chiral` alone, with
-  `router`/`flow` untouched, fails the `manas/chatter/turn` blob with
+  `router`/`flow` untouched, fails the `prapanca/chatter/turn` blob with
   `duplicate label (an object def collides with the linked runtime): str-trim`.
   All three modules are in that blob. There is no valid intermediate state.
 - **Size:** M (−40 lines across 4 chirality modules, +4 imports, 1 signature flip,
@@ -286,7 +286,7 @@ are measured, not predicted.**
 | **3** | `{ chirality_blob scaffold/lib ty-cmp; echo '(def compile-main (-> I64 I64) (lam (n) 42))'; } \| B1` | ELF exits **42** ✅ | — (`ty-cmp` is not in the compiler blob). 2026-09-04: pre-migration scaffold/ path. |
 | **4** | `{ chirality_blob scaffold/lib sig-driver; echo '(def compile-main …42…)'; } \| B1` | ELF exits **42** ✅ | — (`row-infer` is not in the compiler blob). 2026-09-04: pre-migration scaffold/ path. |
 | **5** | `{ chirality_blob scaffold/lib string-utils; cat tools/test/samples/e151_string_stdlib.prog; } \| B1` | ELF exits **0** ✅ (pre-change baseline confirmed) | —. 2026-09-04: pre-migration scaffold/ path. |
-| **6** | `manas/chatter/turn`, `manas/chatter/divide`, `manas/chatter/orchestrate`, `manas/core/flow-test`, `manas/chatter/turn-test`, and `{ chirality_blob scaffold/lib prelude manas/core/types manas/core/match manas/core/assemble manas/core/stop; cat tools/test/samples/e136_core.prog; }` | `turn`/`divide`/`orchestrate` → **42**; `flow-test` → **0**; `turn-test` → **0**; `e136_core` → **0** — all four ✅ measured **identical before and after** the conversion (audit re-ran the full three-import variant, not just the one-import probe) | —. 2026-09-04: pre-migration scaffold/ path. |
+| **6** | `prapanca/chatter/turn`, `prapanca/chatter/divide`, `prapanca/chatter/orchestrate`, `prapanca/core/flow-test`, `prapanca/chatter/turn-test`, and `{ chirality_blob scaffold/lib prelude prapanca/core/types prapanca/core/match prapanca/core/assemble prapanca/core/stop; cat tools/test/samples/e136_core.prog; }` | `turn`/`divide`/`orchestrate` → **42**; `flow-test` → **0**; `turn-test` → **0**; `e136_core` → **0** — all four ✅ measured **identical before and after** the conversion (audit re-ran the full three-import variant, not just the one-import probe) | —. 2026-09-04: pre-migration scaffold/ path. |
 | **all** | — | `bash tools/test/run-tests.sh` (GATING); `python3 tools/ledger-lint/ledger-lint.py` clean | — |
 
 - **Gate teeth — measured by mutation, not asserted.** Each claim below was
@@ -294,7 +294,7 @@ are measured, not predicted.**
   - Step 3 without the `(import "string-utils")` line → `B1` exits 1,
     `load: unknown name Ord`. The leaf gates catch a missing import. ✅
   - Step 6 with the import added to `match.chiral` **alone** → the
-    `manas/chatter/turn` blob fails `duplicate label (an object def collides with
+    `prapanca/chatter/turn` blob fails `duplicate label (an object def collides with
     the linked runtime): str-trim`. The coupling claim is real. ✅
   - Step 6 **without** decision #2's argument flip → `e136_core` exits **1**
     (`e136_core.chiral:64` asserts `(str-contains <assembled prompt> "the doc")`).
@@ -343,8 +343,8 @@ are measured, not predicted.**
   - `TUI/samples/collections.chiral:156`'s `Ord` → **E155** (A3 duplicate-module
     **symlink** to `scaffold/lib/collections.chiral`, not a hardlink; `data Ord`
     stops at 2 until E155 lands).
-  - `gate-contains` (`manas/core/gate.chiral:20`) and the **two** `str-has` copies
-    (`manas/core/stop.chiral:15`, `manas/core/flow.chiral:266`) → **E154**; the
+  - `gate-contains` (`prapanca/core/gate.chiral:20`) and the **two** `str-has` copies
+    (`prapanca/core/stop.chiral:15`, `prapanca/core/flow.chiral:266`) → **E154**; the
     first two are self-documented as prefix dodges for the flat emitted-label
     space, the `flow` one is undocumented.
   - The prefix dodges E151b *creates no more of* but also cannot remove — every

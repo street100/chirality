@@ -124,7 +124,7 @@ appending to a `-record.md` mechanical rather than manual.
 A payload type plus the discipline that mints an id and preserves it across an
 edit. **Not merely a missing function**, which is why it is last and hardest.
 
-`prog/manas/core/flow.chiral` has `ty-span`, and a span is a *position*.
+`prog/prapanca/core/flow.chiral` has `ty-span`, and a span is a *position*.
 Positions rot the way line numbers rot, and that rot is four rows in
 [[records/baseline-alignment]] already: BA-13, BA-20 (294 citations naming a path
 that does not exist), BA-21 (161 bare `:NN` spans with no subject a check can
@@ -203,7 +203,7 @@ Requirement 3 is served by P1 to P4. Every row serves one, and every `origin` is
    input cannot be typed here, per `PRINCIPLES.md` §2.
 2. **Every primitive is pure `->`.** None reads a file or a directory. Corpus
    access is the caller's, which is what makes each testable without a fixture
-   tree, and what makes each a `flow-pure` step in `manas/core/flow.chiral`.
+   tree, and what makes each a `flow-pure` step in `prapanca/core/flow.chiral`.
 3. **The coverage table holds.** Every row is a short composition, or the
    primitive set is wrong and this arc changes rather than the table.
 4. **Each replacement is verified against the tool it replaces on the same

@@ -59,8 +59,8 @@ A generic helper written wherever it was first needed, because there was no shel
   conflated "definitions of the exact name" with "ad-hoc comparators" and was stale
   either way. The `ledger-lint` check L baseline was slack by one as a result — it
   recorded 4 where the exact-name count is 3, so a new duplicate would have passed.)*
-- `str-lower` lives in `manas/chatter/router.chiral:46`; `str-trim` in
-  `manas/core/flow.chiral:430` — **text primitives homed inside the orchestration app.**
+- `str-lower` lives in `prapanca/chatter/router.chiral:46`; `str-trim` in
+  `prapanca/core/flow.chiral:430` — **text primitives homed inside the orchestration app.**
 - ~12 generic prefixed clones (`puf-length`, `puf-reverse`, `se-length`, `se-reverse`,
   `list-nth`×2, `rnd-append-list`, `rules-append`, …).
 - The only sort in 88 lib modules is an insertion sort private to `row-infer.chiral:106`.

@@ -1,0 +1,57 @@
+; ================================================================ prapanca ASSEMBLE / prompt
+; E136, Wave 2 (METIS-PORT-SPEC §1). Build one agent's prompt string from its
+; Expert lens/sees/returns + the document + extra inputs + retrieved context.
+; PURE (->) string building — str-cat / str-join, no crossing. LEAF discipline:
+; context is (List Str) (already-extracted content lines), NOT (List Hit) — so no
+; backend/http import leaks in and this stays a pure leaf. Types (Expert) are E133.
+
+(import "prelude/prelude")             ; str-cat
+(import "prelude/list")
+(import "prelude/string")
+(import "prapanca/core/types")    ; Expert (expert id lens sees returns slot tools)
+
+; one "k: v" line from an extra-input pair.
+(def pair-line (-> (Pair Str Str) Str)
+  (lam (p) (case p ((pair k v) (str-cat k (str-cat ": " v))))))
+
+; render the extra-inputs alist as newline-joined "k: v" lines (foldl+append —
+; map-list does not lower in a leaf blob; SPEC decision #4).
+(def render-extra (-> (List (Pair Str Str)) Str)
+  (lam (extra)
+    (str-join "\n"
+      (foldl (Pair Str Str) (List Str)
+        (lam (acc p) (append Str acc (cons (pair-line p) nil)))
+        nil extra))))
+
+; assemble-prompt: labeled sections built by nested str-cat. Pure.
+;
+; ⚑ SECTION NAMES ARE PROMPT CONTENT (fixed 2026-08-22). The first header used to read "# Lens",
+; which is prapanca jargon for an expert's one narrow line of thought — internally exact, and to a
+; 0.5b simply a NOUN sitting at the top of its prompt. Measured: asked "tell me a few things about
+; qtt", the research fractal answered about CAMERA LENSES — "Lens theory examines how various
+; elements such as lenses and images work together to form our visual experiences… focal length,
+; power, or curvature of surfaces". The same leak is visible across the other skills in earlier
+; transcripts ("adopting the new lens would improve our understanding"; code-test producing "the
+; extended focus of the telescope's objective is too wide"), so it was corrupting EVERY leaf of
+; EVERY skill, and it reads as model thinness rather than as a bug in our own scaffolding.
+;
+; The headers are now plain instruction words that cannot be mistaken for subject matter. Our
+; vocabulary stays ours — `Expert`'s field is still `lens`, the docs still say lens — but the
+; model is shown a task, not a topic. Nothing structural changes: same sections, same order, same
+; values; only the six literal labels differ.
+(def sec-task    Str "# Your task\n")
+(def sec-sees    Str "# You are given\n")
+(def sec-doc     Str "# Input\n")
+(def sec-extra   Str "# Additional context\n")
+(def sec-context Str "# Reference material\n")
+(def sec-return  Str "# Answer with\n")
+(def assemble-prompt (-> Expert Str (List (Pair Str Str)) (List Str) Str)
+  (lam (ex doc extra ctx)
+    (case ex
+      ((expert id lens sees returns slot tools)
+        (str-cat (str-cat sec-task    (str-cat lens "\n\n"))
+        (str-cat (str-cat sec-sees    (str-cat sees "\n\n"))
+        (str-cat (str-cat sec-doc     (str-cat doc  "\n\n"))
+        (str-cat (str-cat sec-extra   (str-cat (render-extra extra) "\n\n"))
+        (str-cat (str-cat sec-context (str-cat (str-join "\n" ctx) "\n\n"))
+                 (str-cat sec-return returns))))))))))

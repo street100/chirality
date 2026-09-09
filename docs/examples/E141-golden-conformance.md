@@ -34,7 +34,7 @@ updated: 2026-08-15
   not responses" rule) + the two real golden manifests in
   `orchestrator/golden/*.json` (the conformance ground truth).
 - **Key findings:**
-  1. The `RunManifest` type (E133, `manas/core/types.chiral`) already models the
+  1. The `RunManifest` type (E133, `prapanca/core/types.chiral`) already models the
      golden field-for-field: 15 top-level fields, `ExpertCall` with 9, `Binding`
      for the `config_binds` slot-map. Deserialization is pure field-digging over
      a parsed `Json`; no new types.
@@ -101,10 +101,10 @@ def conforms(golden, actual):
 ## 5. Chirality example (fleshed)
 
 ```chirality
-; ---- manas/contract/manifest.chiral : deserialize + accessors (pure ->) --------
+; ---- prapanca/contract/manifest.chiral : deserialize + accessors (pure ->) --------
 (import "prelude")
 (import "json")              ; Json, obj-get, as-str/as-int/as-bool/as-arr
-(import "manas/core/types")  ; RunManifest, ExpertCall, Binding  (E133 — imported, not redefined)
+(import "prapanca/core/types")  ; RunManifest, ExpertCall, Binding  (E133 — imported, not redefined)
 
 ; obj-get composed with a typed reader: a required field, as a (Maybe X).
 (def og-str (-> Json Str (Maybe Str))
@@ -155,7 +155,7 @@ def conforms(golden, actual):
     ;   final_yield, generated_at …
     (some (run-manifest run-id "" "" "" "" "" "" nil "" nil nil nil nil "" ""))))))  ; sketch
 
-; ---- manas/contract/golden.chiral : structural conformance (pure ->) -----------
+; ---- prapanca/contract/golden.chiral : structural conformance (pure ->) -----------
 ; accessors live in manifest.chiral (imported here) — no name is redefined.
 
 ; compare TWO expert-call lists on the STABLE per-call fields only, pairwise

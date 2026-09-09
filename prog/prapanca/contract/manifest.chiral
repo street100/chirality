@@ -1,0 +1,334 @@
+; ============================================================ prapanca manifest I/O
+; E141, Wave 6 (METIS-PORT-SPEC §8). Deserialize a golden run-manifest JSON into
+; a typed RunManifest, and expose the accessors the conformance oracle reads.
+; PURE (->) throughout — a manifest is dug field-by-field out of an ALREADY-PARSED
+; Json (json-parse stays json.chiral's job, decision #3), so the membrane PROVES
+; this touches no port. A missing/mistyped required field folds to `none` at the
+; boundary — no partial RunManifest ever flows downstream (errors-as-values, not
+; an exception). No floats: num-ctx / duration-ms are I64, shas / timestamps Str.
+; Types (RunManifest/ExpertCall/Binding) are E133 — imported, NEVER redefined.
+
+(import "prelude/prelude")             ; I64, Str, Bool, List, Pair, Maybe, str-eq, case
+(import "prelude/list")
+(import "protocol/json")                ; Json, obj-get, as-str/as-int/as-bool/as-arr
+(import "prapanca/core/types")    ; RunManifest, ExpertCall, Binding, RawCall
+
+; ------------------------------------------------------------- typed field-diggers
+; obj-get composed with a typed reader: a REQUIRED field, as a (Maybe X). A missing
+; key OR a wrong JSON shape both fold to none (the caller cannot tell them apart —
+; both are "this manifest does not conform to the schema").
+(def og-str (-> Json Str (Maybe Str))
+  (lam (j k) (case (obj-get j k) (none none) ((some v) (as-str v)))))
+(def og-int (-> Json Str (Maybe I64))
+  (lam (j k) (case (obj-get j k) (none none) ((some v) (as-int v)))))
+(def og-bool (-> Json Str (Maybe Bool))
+  (lam (j k) (case (obj-get j k) (none none) ((some v) (as-bool v)))))
+(def og-arr (-> Json Str (Maybe (List Json)))
+  (lam (j k) (case (obj-get j k) (none none) ((some v) (as-arr v)))))
+
+; ------------------------------------------------------------- homogeneous arrays
+; a JSON array of strings -> (Maybe (List Str)); ANY non-string element => none.
+; Structural recursion on the list (decreasing) — total.
+(def js-str-list (-> (List Json) (Maybe (List Str)))
+  (lam (xs)
+    (case xs
+      (nil (some nil))
+      ((cons h t)
+        (case (as-str h)
+          (none none)
+          ((some s)
+            (case (js-str-list t)
+              (none none)
+              ((some rest) (some (cons s rest))))))))))
+
+; a JSON array of ints -> (Maybe (List I64)); any non-number element => none.
+(def js-int-list (-> (List Json) (Maybe (List I64)))
+  (lam (xs)
+    (case xs
+      (nil (some nil))
+      ((cons h t)
+        (case (as-int h)
+          (none none)
+          ((some n)
+            (case (js-int-list t)
+              (none none)
+              ((some rest) (some (cons n rest))))))))))
+
+; ------------------------------------------------------------- expert_calls[]
+; one expert_calls[] ENTRY -> (Maybe ExpertCall). 9 fields dug in ctor order; any
+; missing/mistyped field => none.
+(def ec-from-json (-> Json (Maybe ExpertCall))
+  (lam (j)
+    (case (og-str j "expert_id") (none none) ((some eid)
+    (case (og-str j "slot") (none none) ((some slot)
+    (case (og-str j "bound_model") (none none) ((some bm)
+    (case (og-int j "num_ctx") (none none) ((some nc)
+    (case (og-str j "prompt_sha256") (none none) ((some psha)
+    (case (og-str j "response_sha256") (none none) ((some rsha)
+    (case (og-bool j "parsed_ok") (none none) ((some pok)
+    (case (og-bool j "accepted_into_merge") (none none) ((some acc)
+    (case (og-int j "duration_ms") (none none) ((some dur)
+      (some (expert-call eid slot bm nc psha rsha pok acc dur))))))))))))))))))))))
+
+; a JSON array of expert_calls -> (Maybe (List ExpertCall)); any bad entry => none.
+(def ec-list-from-json (-> (List Json) (Maybe (List ExpertCall)))
+  (lam (xs)
+    (case xs
+      (nil (some nil))
+      ((cons h t)
+        (case (ec-from-json h)
+          (none none)
+          ((some ec)
+            (case (ec-list-from-json t)
+              (none none)
+              ((some rest) (some (cons ec rest))))))))))
+
+; ------------------------------------------------------------- config_binds{}
+; config_binds is a JSON OBJECT (slot -> {model, num_ctx}); each field becomes a
+; Binding carrying the slot the JSON had as its KEY (JSON-map -> chirality (List
+; Binding), per E133's note). Object insertion order is preserved by the parser;
+; order is irrelevant to conformance (config-binds is IGNORED, decision #1).
+(def binding-from-field (-> (Pair Str Json) (Maybe Binding))
+  (lam (kv)
+    (case kv
+      ((pair slot v)
+        (case (og-str v "model")
+          (none none)
+          ((some m)
+            (case (og-int v "num_ctx")
+              (none none)
+              ((some nc) (some (binding slot m nc))))))))))
+
+(def binds-from-fields (-> (List (Pair Str Json)) (Maybe (List Binding)))
+  (lam (fs)
+    (case fs
+      (nil (some nil))
+      ((cons h t)
+        (case (binding-from-field h)
+          (none none)
+          ((some b)
+            (case (binds-from-fields t)
+              (none none)
+              ((some rest) (some (cons b rest))))))))))
+
+(def binds-from-json (-> Json (Maybe (List Binding)))
+  (lam (j)
+    (case j
+      ((j-obj fs) (binds-from-fields fs))
+      (_ none))))
+
+; ------------------------------------------------------------- combined diggers
+; array-typed fields: obj-get the array, then homogenise it.
+(def og-str-list (-> Json Str (Maybe (List Str)))
+  (lam (j k) (case (og-arr j k) (none none) ((some xs) (js-str-list xs)))))
+(def og-int-list (-> Json Str (Maybe (List I64)))
+  (lam (j k) (case (og-arr j k) (none none) ((some xs) (js-int-list xs)))))
+(def og-ec-list (-> Json Str (Maybe (List ExpertCall)))
+  (lam (j k) (case (og-arr j k) (none none) ((some xs) (ec-list-from-json xs)))))
+(def og-binds (-> Json Str (Maybe (List Binding)))
+  (lam (j k) (case (obj-get j k) (none none) ((some v) (binds-from-json v)))))
+
+; ------------------------------------------------------------- manifest-from-json
+; the 15-field spine. Each field is dug in RunManifest ctor order; the FIRST
+; missing/mistyped field short-circuits to none. Closes with the run-manifest
+; constructor. PURE (->).
+(def manifest-from-json (-> Json (Maybe RunManifest))
+  (lam (j)
+    (case (og-str j "run_id") (none none) ((some run-id)
+    (case (og-str j "request") (none none) ((some request)
+    (case (og-str j "doc_path") (none none) ((some doc-path)
+    (case (og-str j "artifact_path") (none none) ((some artifact-path)
+    (case (og-str j "pipeline_id") (none none) ((some pipeline-id)
+    (case (og-str j "pipeline_choice") (none none) ((some pipeline-choice)
+    (case (og-str j "routing_decision") (none none) ((some routing-decision)
+    (case (og-str-list j "fired_expert_ids") (none none) ((some fired-expert-ids)
+    (case (og-str j "config_id") (none none) ((some config-id)
+    (case (og-binds j "config_binds") (none none) ((some config-binds)
+    (case (og-int-list j "context_chunks_used") (none none) ((some context-chunks-used)
+    (case (og-ec-list j "expert_calls") (none none) ((some expert-calls)
+    (case (og-str-list j "combiner_patches") (none none) ((some combiner-patches)
+    (case (og-str j "final_yield") (none none) ((some final-yield)
+    (case (og-str j "generated_at") (none none) ((some generated-at)
+      (some (run-manifest
+              run-id request doc-path artifact-path pipeline-id pipeline-choice
+              routing-decision fired-expert-ids config-id config-binds
+              context-chunks-used expert-calls combiner-patches final-yield
+              generated-at))))))))))))))))))))))))))))))))))
+
+; ------------------------------------------------------------- accessors
+; the RunManifest fields the oracle + tests read. Positional binders a1..a15 (15
+; fields, ctor order) to keep the pattern hard to miscount; each accessor returns
+; exactly one. Defined ONCE here — golden.chiral + the test import them.
+(def manifest-pipeline-id (-> RunManifest Str)
+  (lam (m) (case m ((run-manifest a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) a5))))
+(def manifest-routing-decision (-> RunManifest Str)
+  (lam (m) (case m ((run-manifest a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) a7))))
+(def manifest-fired-expert-ids (-> RunManifest (List Str))
+  (lam (m) (case m ((run-manifest a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) a8))))
+(def manifest-config-id (-> RunManifest Str)
+  (lam (m) (case m ((run-manifest a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) a9))))
+(def manifest-expert-calls (-> RunManifest (List ExpertCall))
+  (lam (m) (case m ((run-manifest a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) a12))))
+
+; the ExpertCall STABLE fields (expert-id / slot / bound-model). 9 binders e1..e9.
+(def ec-expert-id (-> ExpertCall Str)
+  (lam (c) (case c ((expert-call e1 e2 e3 e4 e5 e6 e7 e8 e9) e1))))
+(def ec-slot (-> ExpertCall Str)
+  (lam (c) (case c ((expert-call e1 e2 e3 e4 e5 e6 e7 e8 e9) e2))))
+(def ec-bound-model (-> ExpertCall Str)
+  (lam (c) (case c ((expert-call e1 e2 e3 e4 e5 e6 e7 e8 e9) e3))))
+
+; ============================================================ manifest-to-json (E139)
+; The PURE serializer — the byte-for-byte inverse of manifest-from-json above. Same
+; 15 top-level keys, same 9 ExpertCall keys, same config_binds SHAPE (a JSON OBJECT
+; slot -> {model,num_ctx}, cased on j-obj by binds-from-json), so
+;   manifest-from-json (json-parse-str (json-show (manifest-to-json m)))
+; round-trips a conforming manifest back to itself. PURE (->) — the membrane PROVES
+; building the JSON body touches no port; the crossing is be-log's job (pipeline/log).
+; No floats: num-ctx / duration-ms / chunk ids are I64 -> i64->str -> j-num lexeme.
+; Arrays are built with foldl+append, NOT map-list (map-list does not lower in a leaf
+; blob — E134 FLAG; chat-body follows the same discipline).
+
+; a (List Str) -> a JSON array of strings. Order preserved (append at the tail).
+(def strs->jarr (-> (List Str) Json)
+  (lam (xs)
+    (j-arr (foldl Str (List Json)
+             (lam (acc s) (append Json acc (cons (j-str s) nil)))
+             nil xs))))
+
+; a (List I64) -> a JSON array of numbers (each I64 -> i64->str -> j-num lexeme).
+(def ints->jarr (-> (List I64) Json)
+  (lam (xs)
+    (j-arr (foldl I64 (List Json)
+             (lam (acc n) (append Json acc (cons (j-num (i64->str n)) nil)))
+             nil xs))))
+
+; one ExpertCall -> its 9-field JSON object (inverse of ec-from-json's keys/order).
+(def ec-to-json (-> ExpertCall Json)
+  (lam (c)
+    (case c
+      ((expert-call eid slot bm nc psha rsha pok acc dur)
+        (j-obj
+          (cons (pair "expert_id" (j-str eid))
+          (cons (pair "slot" (j-str slot))
+          (cons (pair "bound_model" (j-str bm))
+          (cons (pair "num_ctx" (j-num (i64->str nc)))
+          (cons (pair "prompt_sha256" (j-str psha))
+          (cons (pair "response_sha256" (j-str rsha))
+          (cons (pair "parsed_ok" (j-bool pok))
+          (cons (pair "accepted_into_merge" (j-bool acc))
+          (cons (pair "duration_ms" (j-num (i64->str dur)))
+                nil))))))))))))))
+
+; a (List ExpertCall) -> a JSON array of expert-call objects.
+(def ecs->jarr (-> (List ExpertCall) Json)
+  (lam (xs)
+    (j-arr (foldl ExpertCall (List Json)
+             (lam (acc c) (append Json acc (cons (ec-to-json c) nil)))
+             nil xs))))
+
+; config_binds is a JSON OBJECT slot -> {model,num_ctx} (binds-from-json cases on
+; j-obj), so each Binding becomes an OBJECT FIELD keyed by its slot — not an array
+; element. The slot the JSON had as its key is carried in the Binding (E133 note).
+(def binding->field (-> Binding (Pair Str Json))
+  (lam (b)
+    (case b
+      ((binding slot model nc)
+        (pair slot
+          (j-obj (cons (pair "model" (j-str model))
+                  (cons (pair "num_ctx" (j-num (i64->str nc)))
+                        nil))))))))
+
+(def binds->jobj (-> (List Binding) Json)
+  (lam (xs)
+    (j-obj (foldl Binding (List (Pair Str Json))
+             (lam (acc b) (append (Pair Str Json) acc (cons (binding->field b) nil)))
+             nil xs))))
+
+; manifest-to-json : the 15-field spine, ctor order, keys matching manifest-from-json.
+(def manifest-to-json (-> RunManifest Json)
+  (lam (m)
+    (case m
+      ((run-manifest run-id request doc-path artifact-path pipeline-id
+                     pipeline-choice routing-decision fired-expert-ids config-id
+                     config-binds context-chunks-used expert-calls combiner-patches
+                     final-yield generated-at)
+        (j-obj
+          (cons (pair "run_id" (j-str run-id))
+          (cons (pair "request" (j-str request))
+          (cons (pair "doc_path" (j-str doc-path))
+          (cons (pair "artifact_path" (j-str artifact-path))
+          (cons (pair "pipeline_id" (j-str pipeline-id))
+          (cons (pair "pipeline_choice" (j-str pipeline-choice))
+          (cons (pair "routing_decision" (j-str routing-decision))
+          (cons (pair "fired_expert_ids" (strs->jarr fired-expert-ids))
+          (cons (pair "config_id" (j-str config-id))
+          (cons (pair "config_binds" (binds->jobj config-binds))
+          (cons (pair "context_chunks_used" (ints->jarr context-chunks-used))
+          (cons (pair "expert_calls" (ecs->jarr expert-calls))
+          (cons (pair "combiner_patches" (strs->jarr combiner-patches))
+          (cons (pair "final_yield" (j-str final-yield))
+          (cons (pair "generated_at" (j-str generated-at))
+                nil))))))))))))))))))))
+
+; ============================================================ worker log bodies (E139)
+; The PURE serializers for the manas-worker persistence seam: a completed
+; RunManifest -> the worker's /internal/log (LOG-01) + /internal/log/expert
+; (LEARN-01) request bodies (manas-worker app.py LogRequest / ExpertCallRequest).
+; PURE (->) — building the body touches no port; the CROSSING is be-log's job
+; (pipeline/log). These are DISTINCT from manifest-to-json: that is the manifest's
+; own round-trip schema; these two map the manifest ONTO the worker's interactions
+; / expert_calls table columns (worker db.py SCHEMA_SQL). The worker's int columns
+; (parsed_ok / accepted_into_merge, 0/1) take a chirality Bool through bool->i64.
+
+; a chirality Bool -> the worker's 0/1 integer column value.
+(def bool->i64 (-> Bool I64) (lam (p) (case p (true 1) (false 0))))
+
+; LOG-01 interactions row: session_id + role="assistant" (run_log.py:36) +
+; content = "{request}\n\n---\n\n{final_yield}" (run_log.py:35) + routing_decision
+; + context_chunks_used (List I64 -> JSON int array). corpus_eligible is OMITTED:
+; the worker column is Optional (defaults 0), and the chirality RunManifest carries no
+; corpus_eligible field (dropped per core/types.chiral §RunManifest). used_response /
+; user_edited stay NULL worker-side (post-hoc). session-id is caller-supplied — an
+; interactions row is keyed by SESSION, which may span many runs (run_log.py:33).
+(def interaction-json (-> Str RunManifest Json)
+  (lam (sid m)
+    (case m
+      ((run-manifest run-id request doc-path artifact-path pipeline-id
+                     pipeline-choice routing-decision fired-expert-ids config-id
+                     config-binds context-chunks-used expert-calls combiner-patches
+                     final-yield generated-at)
+        (j-obj
+          (cons (pair "session_id" (j-str sid))
+          (cons (pair "role" (j-str "assistant"))
+          (cons (pair "content" (j-str (str-cat request (str-cat "\n\n---\n\n" final-yield))))
+          (cons (pair "routing_decision" (j-str routing-decision))
+          (cons (pair "context_chunks_used" (ints->jarr context-chunks-used))
+                nil))))))))))
+
+; LEARN-01 expert_calls row: one per fired expert. Built from BOTH the manifest's
+; ExpertCall (the digest-only conformance record: parsed_ok / accepted_into_merge /
+; duration_ms) AND the run's parallel RawCall (the raw training text: prompt +
+; raw_response — the worker's TEXT-NOT-NULL corpus columns). run_id is caller-supplied
+; (neither record carries one — it is a per-CALL row; the run key comes from the run).
+; expert_id / slot / bound_model come from the RawCall (captured at the actual call;
+; equal to the ExpertCall's by construction). sees_digest is OMITTED (worker Optional).
+; The manifest's ExpertCall STAYS digest-only (E141 golden round-trip untouched) — the
+; real corpus text flows through RawCall, sourced from the live run (core/types.chiral).
+(def expert-call-json (-> Str ExpertCall RawCall Json)
+  (lam (rk ec rc)
+    (case ec
+      ((expert-call eid slot bm nc psha rsha pok acc dur)
+        (case rc
+          ((raw-call reid rslot rmodel prompt response)
+            (j-obj
+              (cons (pair "run_id" (j-str rk))
+              (cons (pair "expert_id" (j-str reid))
+              (cons (pair "slot" (j-str rslot))
+              (cons (pair "bound_model" (j-str rmodel))
+              (cons (pair "prompt" (j-str prompt))
+              (cons (pair "raw_response" (j-str response))
+              (cons (pair "parsed_ok" (j-num (i64->str (bool->i64 pok))))
+              (cons (pair "accepted_into_merge" (j-num (i64->str (bool->i64 acc))))
+              (cons (pair "duration_ms" (j-num (i64->str dur)))
+                    nil))))))))))))))))

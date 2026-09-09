@@ -273,7 +273,7 @@ mechanic here at all, or a data layout inside one process.
 SpiNNaker2 carries 16K routing entries with a 32-bit source filter. One packet
 in, many out, decided by a table keyed on source.
 
-Chirality: the `Flow` algebra's `flow-fan` at `prog/manas/core/flow.chiral` is a
+Chirality: the `Flow` algebra's `flow-fan` at `prog/prapanca/core/flow.chiral` is a
 fan-out over a decided set. Whether that is the same mechanic at a different
 scale is open.
 

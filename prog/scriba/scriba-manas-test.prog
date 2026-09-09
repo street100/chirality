@@ -6,8 +6,8 @@
 ;
 ; Build+run (fast, ~seconds — the manas-mode closure only, no full scriba tree):
 ;   . bin/chirality-resolve.sh
-;   chirality_blob scaffold/lib scriba/manas-mode manas/profile/profiles \
-;     manas/profile/doc-refine manas/core/types > blob
+;   chirality_blob scaffold/lib scriba/manas-mode prapanca/profile/profiles \
+;     prapanca/profile/doc-refine prapanca/core/types > blob
 ;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
 ;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
 ;   cat TUI/scriba/scriba-manas-test.chiral >> blob; echo >> blob
@@ -15,9 +15,9 @@
 
 (import "prelude/prelude")
 (import "scriba/manas-mode")             ; ManasDoc, ManasEdit, apply-edit, gate-has?
-(import "manas/core/types")       ; Config, Binding, GateRule, Order, StopPolicy, Pipeline
-(import "manas/profile/profiles") ; smoke-local-config, config-id
-(import "manas/profile/doc-refine"); doc-refine-pipeline, pipeline-gate
+(import "prapanca/core/types")       ; Config, Binding, GateRule, Order, StopPolicy, Pipeline
+(import "prapanca/profile/profiles") ; smoke-local-config, config-id
+(import "prapanca/profile/doc-refine"); doc-refine-pipeline, pipeline-gate
 
 ; ─── accessors (E133 types have no accessors; add exactly what the tests need) ─
 

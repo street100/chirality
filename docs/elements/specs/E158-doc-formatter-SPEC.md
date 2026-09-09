@@ -45,7 +45,7 @@ updated: 2026-08-31
     times. One `case` over six constructors when a consumer appears.
   - **`typing/pretty.chiral`** — see decision 12. It is a **rewrite**, not a
     signature change, and it must not ride this gate.
-  - **`prog/manas/core/assemble.chiral`** (`:48-57`, the ten-deep `str-cat`) — the
+  - **`prog/prapanca/core/assemble.chiral`** (`:48-57`, the ten-deep `str-cat`) — the
     loudest instance and the least load-bearing consumer. A follow-on commit in
     `prog/`, after `Doc` is proven on `Reason`.
   - **E146's five emitters** returning `Doc` — accepted and **already enacted on
@@ -110,7 +110,7 @@ updated: 2026-08-31
     `build_run`, `refuse_msg`, and a `grep -R` name census (G6, `:282`).
 
 - **The defect, measured (not paraphrased):**
-  - `prog/manas/core/assemble.chiral` — `def assemble-prompt` at **`:48`**, the
+  - `prog/prapanca/core/assemble.chiral` — `def assemble-prompt` at **`:48`**, the
     ten-deep `str-cat` nest at **`:52-57`**, closing `))))))))))`.
     ⚑ *Correction:* the example says `:47-57`; the catalog row (`catalog.md:470`) says
     `:51-56`. Measured, the def opens at 48 and the nest runs 52-57.

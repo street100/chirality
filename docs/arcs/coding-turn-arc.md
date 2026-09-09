@@ -23,7 +23,7 @@ updated: 2026-09-08
 ## Why this arc exists
 
 The engine and the coding agent are two working halves in one tree and neither
-reaches the other. `prog/manas/` is 9,990 lines, 7,741 of them `.chiral`, and
+reaches the other. `prog/prapanca/` is 9,990 lines, 7,741 of them `.chiral`, and
 no file in it executes a tool. `prog/agent/agent.chiral` is 452 lines that run
 a whole tool-call turn against a live endpoint and import nothing from the
 engine, a choice its own header states at `:12-16`. The condition asks for one
@@ -32,7 +32,7 @@ bounded by the tool grant its `Expert` already declares.
 
 Both halves of the condition are already named in the tree and neither is
 wired. `Expert.tools` is declared least-privilege at
-`prog/manas/core/types.chiral:64-65`, bound at seven destructuring sites and
+`prog/prapanca/core/types.chiral:64-65`, bound at seven destructuring sites and
 read at none of them, so a grant nothing reads permits everything. `Flow` has
 seven constructors and not one of them fires a tool, so there is no engine node
 for a granted step to be. What this arc schedules is the joining, plus the two
@@ -47,7 +47,7 @@ this territory.
 - [[banks/unit]] refracts the agent, the model call and the LLM chain. Its
   shard A is the `Expert` record; its cross-cut C1 already reads a `Config` as a
   grant table, "authority is the ports you hold" at the orchestration layer.
-  Its shard S is `prog/manas/core/builder.chiral`, and that file's
+  Its shard S is `prog/prapanca/core/builder.chiral`, and that file's
   `accept-gate`, `tool-builder-flow` and `tool-builder-author` decode and
   type-check **new `Flow` values a model emitted** (`builder.chiral:43-51`,
   `:77-78`). It is the self-extension wall. It builds no tool schema and
@@ -69,25 +69,25 @@ four definitions, and for that subtree they rest on no prior row.
 |---|---|---|---|
 | G1 tool-as-value | four tool schemas built inline as `Json`, and a dispatch that is a `str-eq` chain over four literal names | `prog/agent/agent.chiral:99-147`, `:361-374` | IMPLEMENTED |
 | G1 | the four native tools themselves, 96 lines plus one crossing | `prog/agent/tools-fs.chiral:50`, `:62`, `:88`; `ag-bash` at `prog/agent/agent.chiral:60` over `raw-proc-spawn`/`wait` | IMPLEMENTED |
-| G1 | `PureFn`, a closed sum of six deterministic string transforms, which is the engine's only non-model step and crosses nothing | `prog/manas/core/flow.chiral:119-138` | SEEDED |
-| G2 the grant | `Expert.tools`, declared least-privilege, default read-only nil | `prog/manas/core/types.chiral:64-65`, record at `:66-68` | SEEDED |
+| G1 | `PureFn`, a closed sum of six deterministic string transforms, which is the engine's only non-model step and crosses nothing | `prog/prapanca/core/flow.chiral:119-138` | SEEDED |
+| G2 the grant | `Expert.tools`, declared least-privilege, default read-only nil | `prog/prapanca/core/types.chiral:64-65`, record at `:66-68` | SEEDED |
 | G2 | the field bound at seven destructuring sites across four files and read at zero | `assemble.chiral:51`, `flow.chiral:1336`, `:1338`, `plan.chiral:46`, `:47`, `doc-refine.chiral:17`, `:19` | SEEDED |
-| G2 | one profile granting it in earnest, with prose stating the reason | `prog/manas/profile/code-test.chiral:39-40`, grant at `:50` | SEEDED |
-| G2 | `assemble-prompt` binds `tools` and emits six sections, none of them the grant, so a model is never told what it may use | `prog/manas/core/assemble.chiral:48-57` | IMPLEMENTED |
-| G3 the engine | `Flow`, seven constructors. `flow-step` makes one model call, `flow-pure` applies a `PureFn`. None executes a tool | `prog/manas/core/flow.chiral:140-153` | SEEDED |
-| G3 | `flow-ty : Flow -> (Maybe Arrow)`, total over all seven, the pure compositional checker | `prog/manas/core/flow.chiral:212` | SEEDED |
-| G3 | `ty-eq` compares the name alone by `str-eq`, so a chain seam agrees on names and stays silent on the shape those names carry | `prog/manas/core/flow.chiral:77` | SEEDED |
-| G3 | `Ty`, `Shape` with three arms (`sh-prose`, `sh-list`, `sh-rec`), `Arrow`, and `refine-ok` validating a step's output against the declared shape by decode success | `prog/manas/core/flow.chiral:42`, `:46`, `:71`, `:355` | SEEDED |
-| G3 | the membrane holds around the engine: `run-gate` is `->`, `Backend` is a linear porttype threaded through every result carrier, `run-pipeline`'s effect row is exactly `(be-chat)` | `gate.chiral:114`, `prog/manas/backend.chiral:32`, `pipeline/runner.chiral:187-188` | IMPLEMENTED |
-| G3 | the coding turn as it runs today: one recursion on a step budget, importing prelude, http, json and tools-fs and nothing under `prog/manas/` | `prog/agent/agent.chiral:17-20`, `:410-438`, choice stated at `:12-16` | IMPLEMENTED |
+| G2 | one profile granting it in earnest, with prose stating the reason | `prog/prapanca/profile/code-test.chiral:39-40`, grant at `:50` | SEEDED |
+| G2 | `assemble-prompt` binds `tools` and emits six sections, none of them the grant, so a model is never told what it may use | `prog/prapanca/core/assemble.chiral:48-57` | IMPLEMENTED |
+| G3 the engine | `Flow`, seven constructors. `flow-step` makes one model call, `flow-pure` applies a `PureFn`. None executes a tool | `prog/prapanca/core/flow.chiral:140-153` | SEEDED |
+| G3 | `flow-ty : Flow -> (Maybe Arrow)`, total over all seven, the pure compositional checker | `prog/prapanca/core/flow.chiral:212` | SEEDED |
+| G3 | `ty-eq` compares the name alone by `str-eq`, so a chain seam agrees on names and stays silent on the shape those names carry | `prog/prapanca/core/flow.chiral:77` | SEEDED |
+| G3 | `Ty`, `Shape` with three arms (`sh-prose`, `sh-list`, `sh-rec`), `Arrow`, and `refine-ok` validating a step's output against the declared shape by decode success | `prog/prapanca/core/flow.chiral:42`, `:46`, `:71`, `:355` | SEEDED |
+| G3 | the membrane holds around the engine: `run-gate` is `->`, `Backend` is a linear porttype threaded through every result carrier, `run-pipeline`'s effect row is exactly `(be-chat)` | `gate.chiral:114`, `prog/prapanca/backend.chiral:32`, `pipeline/runner.chiral:187-188` | IMPLEMENTED |
+| G3 | the coding turn as it runs today: one recursion on a step budget, importing prelude, http, json and tools-fs and nothing under `prog/prapanca/` | `prog/agent/agent.chiral:17-20`, `:410-438`, choice stated at `:12-16` | IMPLEMENTED |
 | G4 the record | `ExpertCall`, `RawCall`, `RunManifest`, and `manifest-all-green?` reading a run's health off values | `types.chiral:131`, `:152`, `:166`; `flow.chiral:1422` | SEEDED |
 | G4 | what the coding turn returns instead: `(Pair Str Str)`, answer and transcript, with no manifest, no gate and no linear `Backend` | `prog/agent/agent.chiral:410`, `:440-452` | IMPLEMENTED |
-| G5 the guard | `stop.chiral` is 30 lines and both its defs are `->`: `overflow-guard`, an integer chars/4 estimate against `num_ctx`, and `stop-policy`, a `"sharpen"`/`"example"` substring match. Neither has a caller outside the file | `prog/manas/core/stop.chiral:20`, `:25` | SEEDED |
+| G5 the guard | `stop.chiral` is 30 lines and both its defs are `->`: `overflow-guard`, an integer chars/4 estimate against `num_ctx`, and `stop-policy`, a `"sharpen"`/`"example"` substring match. Neither has a caller outside the file | `prog/prapanca/core/stop.chiral:20`, `:25` | SEEDED |
 | G5 | the only bound on a coding turn today: an integer step budget decremented once per turn | `prog/agent/agent.chiral:411`, `:428`, `:434` | IMPLEMENTED |
 | G6 the gate | Phase 20 compiles five roots under `prog/samples/`, runs each and judges it against the exit code its own header states, deferring the two that need the endpoint under a recorded ruling | `tools/test/transport.sh:165-194`, `tools/test/run-tests.sh:305-326` | ENFORCED |
-| G6 | no `prog/agent/` or `prog/manas/` path appears in any `tools/test/*.sh`. Phase 7 sweeps every root carrying `compile-main`, compiles it and runs none | `tools/test/run-tests.sh:172-180` | SEEDED |
+| G6 | no `prog/agent/` or `prog/prapanca/` path appears in any `tools/test/*.sh`. Phase 7 sweeps every root carrying `compile-main`, compiles it and runs none | `tools/test/run-tests.sh:172-180` | SEEDED |
 | G6 | `agent-probe.prog` drives a full `agent-run` tool-call turn and its `compile-main` returns `0` whatever came back | `prog/samples/agent-probe.prog:11-17` | SEEDED |
-| G6 | no `*.golden.json` exists in the tree, and two conform roots name an absent path under a directory the 2026-08-31 migration removed | `prog/samples/manas-run-conform.prog:66`, `prog/samples/manas-flow-conform.prog:71` | SEEDED |
+| G6 | no `*.golden.json` exists in the tree, and two conform roots name an absent path under a directory the 2026-08-31 migration removed | `prog/samples/prapanca-run-conform.prog:66`, `prog/samples/prapanca-flow-conform.prog:71` | SEEDED |
 
 Two facts from that table govern the roster. `stop-policy` decides a retry by
 matching `"sharpen"` and `"example"` in an expert id, which answers a
@@ -96,7 +96,7 @@ doc-refine question and no coding-turn question, so this arc takes
 is imported by exactly two roots, `prog/samples/agent-probe.prog:9` and
 `prog/samples/self-extend-probe.prog:13`. `prog/scriba/chat.chiral:3` names
 `agent/agent.chiral` in a comment and its import list at `:21-24` reaches
-`manas/chatter/turn` instead, so no shipping program holds the coding turn.
+`prapanca/chatter/turn` instead, so no shipping program holds the coding turn.
 
 ## What is missing, and its structure
 
@@ -114,8 +114,8 @@ is imported by exactly two roots, `prog/samples/agent-probe.prog:9` and
 | edge | direction | what crosses |
 |---|---|---|
 | G3 to G5 | against | `stop.chiral` is the most primitive module in this arc: 30 lines, importing only `prelude/prelude`, both defs `->`. The ordering puts it last and its input is the largest and latest thing the run produces, the size of a tool result. Built bottom-up, the guard lands with nothing to measure |
-| G3 to G1 and G2 | against | the seam types the tool result, and what a tool may return depends on which tool ran, which is the grant's business. `Ty` at `prog/manas/core/flow.chiral:42`, `Shape` at `prog/manas/core/flow.chiral:46` and `Arrow` at `prog/manas/core/flow.chiral:71` sit below both, the three arms of the shape sum name no bytes, and `ty-eq` at `prog/manas/core/flow.chiral:77` compares names only. So `read` returning file contents and `bash` returning stdout can share a `Ty` name today and disagree in shape with nothing to say so |
-| G6 to G1 | against | the gate is last in the order and is the precondition for observing any group before it. `prog/samples/agent-probe.prog:11-17` runs a full tool-call turn now and returns `0` unconditionally, and no `prog/agent/` or `prog/manas/` path is named by any `tools/test/*.sh`. Until G6 lands, every requirement below is checked by reading source instead of by running anything |
+| G3 to G1 and G2 | against | the seam types the tool result, and what a tool may return depends on which tool ran, which is the grant's business. `Ty` at `prog/prapanca/core/flow.chiral:42`, `Shape` at `prog/prapanca/core/flow.chiral:46` and `Arrow` at `prog/prapanca/core/flow.chiral:71` sit below both, the three arms of the shape sum name no bytes, and `ty-eq` at `prog/prapanca/core/flow.chiral:77` compares names only. So `read` returning file contents and `bash` returning stdout can share a `Ty` name today and disagree in shape with nothing to say so |
+| G6 to G1 | against | the gate is last in the order and is the precondition for observing any group before it. `prog/samples/agent-probe.prog:11-17` runs a full tool-call turn now and returns `0` unconditionally, and no `prog/agent/` or `prog/prapanca/` path is named by any `tools/test/*.sh`. Until G6 lands, every requirement below is checked by reading source instead of by running anything |
 
 ## REQUIREMENTS
 
@@ -126,32 +126,32 @@ is imported by exactly two roots, `prog/samples/agent-probe.prog:9` and
    count, zero today.
 2. **The `Expert.tools` grant is read, at both altitudes.** Observed as a read
    count moving from zero across the seven bind sites listed above. The
-   assembled prompt (`prog/manas/core/assemble.chiral:48-57`) names the granted
+   assembled prompt (`prog/prapanca/core/assemble.chiral:48-57`) names the granted
    tools, and a call to a tool outside the grant yields a value the caller cases
    instead of executing.
 3. **A coding turn is more than one node in the engine.** Observed twice:
    `prog/agent/agent.chiral`'s import list at `:17-20` names a path under
-   `prog/manas/`, and `flow-ty` (`prog/manas/core/flow.chiral:212`) returns
+   `prog/prapanca/`, and `flow-ty` (`prog/prapanca/core/flow.chiral:212`) returns
    `some` over the turn's `Flow`, whose node count is greater than one. Today
    the turn is the single recursion at `:410-438`.
 4. **A coding turn emits a `RunManifest`.** Observed as a root that prints or
-   writes a manifest whose `ExpertCall` list (`prog/manas/core/types.chiral:131`)
+   writes a manifest whose `ExpertCall` list (`prog/prapanca/core/types.chiral:131`)
    is non-empty and names the tools fired. Today the turn returns `(Pair Str Str)`
    at `prog/agent/agent.chiral:410`.
 5. **`overflow-guard` has a caller on the path a tool result grows.** Observed
    as `grep -rn 'overflow-guard' lib prog` returning a hit outside
-   `prog/manas/core/stop.chiral`. It returns zero such hits today.
+   `prog/prapanca/core/stop.chiral`. It returns zero such hits today.
 6. **A gate fails when a coding turn breaks.** Observed as a phase in
    `tools/test/run-tests.sh` naming a root that drives a coding turn and
    comparing its exit code against a stated contract. Today
-   `grep -rn 'prog/agent\|prog/manas' tools/test/` returns zero, and
+   `grep -rn 'prog/agent\|prog/prapanca' tools/test/` returns zero, and
    `prog/samples/agent-probe.prog:17` returns `0` unconditionally.
 
 The shape condition in [[goals/coding-agent]] governs every row below: no
 route, rank or selection may assume a float. No row here introduces a score.
 The one arithmetic this arc reaches is `overflow-guard`'s chars/4 estimate,
 which is integer already and says so in its own header at
-`prog/manas/core/stop.chiral:2-7`.
+`prog/prapanca/core/stop.chiral:2-7`.
 
 ## Roster
 
@@ -193,9 +193,9 @@ Run 2026-09-08 against the table above.
 ### What this arc does not take
 
 - **Condition 2, Routes.** The `Pipeline` record's `stop` field is discarded at
-  `prog/manas/pipeline/plan.chiral:49-50`, and reading it is named in
+  `prog/prapanca/pipeline/plan.chiral:49-50`, and reading it is named in
   [[goals/coding-agent]] condition 2's own done clause. No pipeline in
-  `prog/manas/profile/` names a file operation, so routing a coding request has
+  `prog/prapanca/profile/` names a file operation, so routing a coding request has
   nothing to route to; that is condition 2 as well. Selecting a tool set by
   model size is a selection under the shape condition and belongs there.
 - **Condition 3, Features.** E148 and the directory enumeration under it, and
@@ -232,7 +232,7 @@ it defines, and the two back-edges that inform `A6` and `A8` both run into it.
 Every measurement above was taken against the working tree on 2026-09-08 and
 each cites its own `file:line`. Three counts hold this arc's premise and every
 one is zero: reads of `Expert.tools`, `Flow` constructors that execute a tool,
-and `tools/test/*.sh` references to `prog/agent/` or `prog/manas/`.
+and `tools/test/*.sh` references to `prog/agent/` or `prog/prapanca/`.
 
 **NEEDS-AUTHOR-1.** Verbatim: "Condition 1 names three counts and its done
 clause takes two. Does requirement 5, `overflow-guard` reached, gate this arc's

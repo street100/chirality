@@ -1,4 +1,4 @@
-> **ARCHIVED 2026-09-01. Superseded by `docs/definitions/status-ledger.md` (build state) and `.planning/archive/HANDOFF-RUNG1-FIXPOINT.md` (the arc that closed it).** The cockpit shipped: it is `prog/scriba/` and `prog/manas/`. What this file proposed exists as code.
+> **ARCHIVED 2026-09-01. Superseded by `docs/definitions/status-ledger.md` (build state) and `.planning/archive/HANDOFF-RUNG1-FIXPOINT.md` (the arc that closed it).** The cockpit shipped: it is `prog/scriba/` and `prog/prapanca/`. What this file proposed exists as code.
 
 ---
 node: assessment

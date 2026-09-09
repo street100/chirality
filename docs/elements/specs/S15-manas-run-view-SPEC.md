@@ -85,13 +85,13 @@ Imports (the pure-core set in commit 1; the driver adds two in commit 2):
 (import "prelude")                     ; Str, Bool, I64, List, Pair, Maybe, str-cat, str-eq, i64->str, cons, nil
 (import "render")                      ; Rendering, r-face, r-lines, r-text
 (import "manas-mode")                  ; mf-row, mh-row, join-comma, rrows-append  (S14 helpers, reused)
-(import "manas/core/types")            ; ExpertOutcome, Expert, Binding, RunManifest, CombinerOutcome
+(import "prapanca/core/types")            ; ExpertOutcome, Expert, Binding, RunManifest, CombinerOutcome
 ; --- added in commit 2 (the effectful driver) ---
 (import "backend")                     ; backend (the Backend ctor), Backend
-(import "manas/pipeline/plan")         ; plan-run, PlanOutcome, assemble-manifest, ids-of-experts, bnd-model, exp-slot
-(import "manas/pipeline/runner")       ; call-expert, call-combiner, gather-findings
-(import "manas/profile/profiles")      ; smoke-local-config  (the crafted config the sample fires)
-(import "manas/profile/doc-refine")    ; doc-refine-pipeline, expert-pool  (the crafted pipeline + pool)
+(import "prapanca/pipeline/plan")         ; plan-run, PlanOutcome, assemble-manifest, ids-of-experts, bnd-model, exp-slot
+(import "prapanca/pipeline/runner")       ; call-expert, call-combiner, gather-findings
+(import "prapanca/profile/profiles")      ; smoke-local-config  (the crafted config the sample fires)
+(import "prapanca/profile/doc-refine")    ; doc-refine-pipeline, expert-pool  (the crafted pipeline + pool)
 ```
 
 Import reachability is the S14-proven path: the scriba resolver's libdir is hardcoded
@@ -172,7 +172,7 @@ ordered before `vim-command-run`/`command-loop-inner` so both can reference them
 
 A B1 test root mirroring `scriba-test-b1.chiral`'s idiom (functions returning an I64
 exit code; `compile-main` ANDs them; exit 0 = pass). Imports `manas-runview` +
-`manas/core/types` and asserts `runview-render` over three hand-built `RunView` values
+`prapanca/core/types` and asserts `runview-render` over three hand-built `RunView` values
 (§8.1). **No network, no fork, no PTY** — the whole point of the pure render core.
 
 ### 2.6 No other file changes
@@ -538,7 +538,7 @@ exhaustive-`case` arms land together so the coverage checker stays satisfied).
 1. **`manas-runview: RunView/RunPhase/RvCall + runview-render pure core + faces + unit test`**
    — new `manas-runview.chiral` with the §3 sums + `outcome-row`/`phase-tag`/
    `runview-render`/`rv-*` helpers (pure imports only: prelude, render, manas-mode,
-   manas/core/types); the two `default-faces` entries in `render.chiral` (§2.2); new
+   prapanca/core/types); the two `default-faces` entries in `render.chiral` (§2.2); new
    `scriba-runview-test.chiral` (§8.1). **Gate:** the test ELF exits 0 (§1 leg 1). Does
    not touch the scriba graph (`manas-runview` is still an orphan), so `bin/scriba` is
    unchanged.

@@ -1,0 +1,90 @@
+; router-test.prog — PURE (mesh-free) unit gate for the C1 chatter router.
+;
+; route-message + intent->skill are PURE value transforms — no PTY, no network, no
+; fork, no backend touch. This asserts a TABLE of representative messages route to the
+; expected Intent AND (where applicable) the expected skill NAME, prints each routing,
+; and compile-main returns 0 IFF every routing assertion holds (exit 0).
+;
+; Build+run (deterministic, no mesh):
+;   chirality run prog/prapanca/chatter/router-test.prog
+
+(import "prelude/prelude")               ; Bool, and, case, str-eq, str-cat, do, unit, Unit
+(import "prapanca/chatter/router")  ; Intent, route-message, intent->skill, intent-name
+(import "ports/ports")                 ; put  (stdout only — mesh-free)
+
+; the routed intent-name for a message.
+(def route-name (-> Str Str) (lam (m) (intent-name (route-message m))))
+; the routed skill NAME (or "(none)" when the intent routes to no skill).
+(def route-skill (-> Str Str)
+  (lam (m) (case (intent->skill (route-message m)) (none "(none)") ((some s) s))))
+
+; ─── the routing table (message, expected intent-name, expected skill) ──────────
+(def msg-analyze   Str "sort these flagged items: 1. a benchmark result 2. a hunch about erlang")
+(def msg-decide    Str "should I use a persistent tree or a snapshot array?")
+(def msg-transform Str "summarize this paragraph for me")
+(def msg-factual   Str "what is a monad?")
+(def msg-social    Str "hi there, thanks!")
+(def msg-empty     Str "")
+(def msg-unknown   Str "asldkfj qwerty zxcv")
+
+; ─── O0: capitalized / shouted inputs now route (case-insensitive marker matching) ──
+(def msg-cap-social  Str "Hello")
+(def msg-cap-social2 Str "Hey there")
+(def msg-shout-anal  Str "SORT THESE: 1. a benchmark result 2. a hunch about erlang")
+
+; one assertion: message routes to expected intent-name AND expected skill.
+(def routes-to (-> Str Str Str Bool)
+  (lam (m exp-name exp-skill)
+    (and (str-eq (route-name m) exp-name) (str-eq (route-skill m) exp-skill))))
+
+; ─── C6a follow-up resolution (mesh-free, PURE) ──────────────────────────────────
+; A bare follow-up ("the second one") routes to unknown context-FREE, but resolves to the
+; PRIOR turn's Intent once conversation memory (ConvState) is threaded. That delta is C6a.
+(def followup-ok (-> Unit Bool)
+  (lam (_)
+    (let ((cs (conv-update (conv-empty) (in-analyze) "sort these..." "I sorted them.")))
+      (and (str-eq (intent-name (resolve-intent (conv-empty) "the second one")) "unknown")
+           (str-eq (intent-name (resolve-intent cs "the second one")) "analyze")))))
+
+; O0: a MIXED-CASE follow-up ("What about the second one?") still resolves against the prior
+; turn's Intent — is-followup? lowercases before matching the followup markers.
+(def followup-case-ok (-> Unit Bool)
+  (lam (_)
+    (let ((cs (conv-update (conv-empty) (in-analyze) "sort these..." "I sorted them.")))
+      (str-eq (intent-name (resolve-intent cs "What about the second one?")) "analyze"))))
+
+; ─── print each routing (message → intent (skill)) ──────────────────────────────
+(def show-route (=> Str Unit)
+  (lam (m)
+    (put (str-cat "  " (str-cat (route-name m)
+         (str-cat " (" (str-cat (route-skill m)
+         (str-cat ")  <=  " (str-cat m "\n")))))))))
+
+; ─── entry: 0 iff every routing assertion holds (prints the table first) ────────
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (do (put "-- chatter router: message -> intent (skill) --\n")
+    (do (show-route msg-analyze)
+    (do (show-route msg-decide)
+    (do (show-route msg-transform)
+    (do (show-route msg-factual)
+    (do (show-route msg-social)
+    (do (show-route msg-empty)
+    (do (show-route msg-unknown)
+    (do (show-route msg-cap-social)
+    (do (show-route msg-cap-social2)
+    (do (show-route msg-shout-anal)
+    (case (and (routes-to msg-analyze     "analyze"   "evidence-sift")
+          (and (routes-to msg-decide      "decide"    "decision")
+          (and (routes-to msg-transform   "transform" "doc-edit")
+          (and (routes-to msg-factual     "factual"   "research")
+          (and (routes-to msg-social      "social"    "(none)")
+          (and (routes-to msg-empty       "clarify"   "(none)")
+          (and (routes-to msg-unknown     "unknown"   "(none)")
+          (and (routes-to msg-cap-social  "social"    "(none)")     ; O0: "Hello"
+          (and (routes-to msg-cap-social2 "social"    "(none)")     ; O0: "Hey there"
+          (and (routes-to msg-shout-anal  "analyze"   "evidence-sift") ; O0: "SORT THESE: ..."
+          (and (followup-ok unit)
+               (followup-case-ok unit))))))))))))     ; O0: mixed-case follow-up (closes 11 (and)
+      (true 0)
+      (false 1)))))))))))))))

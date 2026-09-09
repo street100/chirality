@@ -21,7 +21,7 @@
 ; holds that a `Str` encoding which-of-N is a sum in disguise. No `Population`
 ; type exists: that is arcs/unit-lane-arc row N17 at L4, unminted, and an L2 row
 ; blocking on an L4 one inverts the lane. The in-tree precedent is `Expert`'s
-; `sees` and `returns` at prog/manas/core/types.chiral:63, whose own closing row
+; `sees` and `returns` at prog/prapanca/core/types.chiral:63, whose own closing row
 ; N13 is also unminted. Shipping `Str` here mints a second instance of that
 ; debt, recorded rather than absorbed.
 ;

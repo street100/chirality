@@ -139,7 +139,7 @@ def run_gate(rules, doc, extra_inputs):
 
 ## 5. Chirality example (fleshed)
 
-Imports `prelude` (str/bool/bytes prims) and the already-built `manas/core/types`
+Imports `prelude` (str/bool/bytes prims) and the already-built `prapanca/core/types`
 (`GateRule`, `GateDecision`) and `collections` (`filter`, `map-list`, `concat`,
 `str-join`). Every arrow is `->`; there is no `=>` anywhere. `case` is exhaustive.
 
@@ -154,7 +154,7 @@ Imports `prelude` (str/bool/bytes prims) and the already-built `manas/core/types
 
 (import "prelude")             ; I64, Str, Bool, Pair, List, str-find, str-eq, <=i, and/or/not, cond
 (import "collections")         ; filter, map-list, concat, str-join
-(import "manas/core/types")    ; GateRule (gate-rule condition expert-ids), GateDecision
+(import "prapanca/core/types")    ; GateRule (gate-rule condition expert-ids), GateDecision
 
 ; ------------------------------------------------------------- string predicates
 ; does haystack contain needle? str-find returns -1 when absent (string-utils:20).
@@ -289,7 +289,7 @@ Imports `prelude` (str/bool/bytes prims) and the already-built `manas/core/types
 ## 6. Use / modify notes
 
 - **Lands in:** `scaffold/lib/manas/core/gate.chiral` (NEW — Wave 2). Imports
-  `prelude`, `collections`, and `manas/core/types` (E133). No `ports`, no
+  `prelude`, `collections`, and `prapanca/core/types` (E133). No `ports`, no
   `backend`, no crossing — the whole file is `->`.
 - **Conformance target:** reproduce the `doc-refine` GATE block
   (`orchestration/processes.md`): a doc that cites code/paths fires

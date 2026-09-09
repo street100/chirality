@@ -21,13 +21,13 @@ work.
 ## Why this arc exists
 
 Criterion 1 of [[goals/local-ai]] asks for a gated multi-agent run end to end
-under `bin/chirality-bin`. The substrate is 9,930 lines under `prog/manas/`,
+under `bin/chirality-bin`. The substrate is 9,930 lines under `prog/prapanca/`,
 37 `.chiral` modules and 18 `.prog` roots, measured 2026-09-02. Phase 7 of
 `tools/test/run-tests.sh` sweeps every root in the tree compile-only, and when
 this arc opened no phase in the suite performed a model call. So the largest
 body of built code in the repository was gated on whether it parses and lowers,
 and on nothing else. Phase 20 judges the transport path's five roots.
-`prog/manas/` stays compile-only.
+`prog/prapanca/` stays compile-only.
 
 ## What was measured, 2026-09-02, and it moved the premise three times
 
@@ -44,7 +44,7 @@ externs when E130 and E131 landed.
 | `chat-open` | a chirality `def` at `lib/protocol/http.chiral:773`. E131 is BUILT in the catalog |
 | `backend-open` | still an extern, and erased to `nb-id` at `lib/lowering/tal/erase.chiral:123`, so a crossing entry is the wrong home for it |
 
-Every extern declared under `lib/protocol/` and `prog/manas/` is either crossed
+Every extern declared under `lib/protocol/` and `prog/prapanca/` is either crossed
 or erased: `backend-close`, `backend-open`, `be-base` and `be-peek` erase,
 `close` crosses. That measurement is `BA-42` in [[records/baseline-alignment]],
 and T1 is the repair.

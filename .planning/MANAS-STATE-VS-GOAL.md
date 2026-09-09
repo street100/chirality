@@ -152,7 +152,7 @@ backend + run, gate S14+S15+E134+E135). Slice 12's Tier-1 colorer is the seed.
 3. **Backend porttype** (E137) — worth it, ripples coordinator/manas callers.
 4. **Zone tokens** (E142) — `PreflightResult` sum first (E135), token upgrade later.
 5. **Streaming** — no new types; the `(=> Str Unit)` on-delta threads through as today.
-6. **File home** — `scaffold/lib/manas/` inside chirality; import `manas/core/gate`.
+6. **File home** — `scaffold/lib/manas/` inside chirality; import `prapanca/core/gate`.
 
 ## 6b. Compiler FLAGs surfaced during the build (for the "then debug" pass)
 

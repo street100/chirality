@@ -389,7 +389,7 @@ which is the Skill-Config model bump that touches the MoE golden.
 - **SERIAL. One agent at a time.** Never a parallel batch (standing user directive). Wait for
   each to return verified+committed before the next.
 - **Build recipes: use CHATTER-STATE verbatim** — the mesh-free chatter test blob (closure
-  `manas/chatter/{orchestrate,turn,router} manas/profile/skills`; use `profile/skills` NOT
+  `prapanca/chatter/{orchestrate,turn,router} prapanca/profile/skills`; use `profile/skills` NOT
   `core/skill`), and the **committed-resolver** scriba build (`echo 'scriba/scriba-main' |
   resolve`). Python compiles NOTHING.
 - **B1/E137 gotchas:** flat `case`; nullary ctors WITH parens in patterns; exhaustive `case`;

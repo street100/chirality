@@ -17,7 +17,7 @@ updated: 2026-08-15
 ## 1. Deliverable
 
 - **After this runs:** `scaffold/lib/manas/core/bind.chiral` exists — a pure (`->`)
-  module that imports `prelude`, `collections`, and `manas/core/types` (E133) and
+  module that imports `prelude`, `collections`, and `prapanca/core/types` (E133) and
   defines `binding-slot`, `lookup-binding`, `slot-missing?`, and
   `bind-config : (-> Config (List Str) BindResult)`. It resolves the deduped SLOTS
   a run needs against a `Config` profile: `bind-ok bindings` if every needed slot
@@ -44,7 +44,7 @@ updated: 2026-08-15
     `filter (-> (0 A) (-> A Bool) (List A) (List A))`,
     `foldl (-> (0 A) (0 B) (-> B A B) B (List A) B)`,
     `append (-> (0 A) (List A) (List A) (List A))`.
-  - `manas/core/types` (E133) — `Binding` (`(binding (slot Str) (model Str)
+  - `prapanca/core/types` (E133) — `Binding` (`(binding (slot Str) (model Str)
     (num-ctx I64))`), `Config` (`(config (id Str) (binds (List Binding)))`), and
     `BindResult` (`(bind-ok (bindings (List Binding)))` / `(bind-miss (missing-slots
     (List Str)) (config-id Str))`). Imported, NOT redefined.
@@ -70,10 +70,10 @@ No NEEDS-AUTHOR blocks §4 — all four resolve from the element brief / METIS-P
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — write `scaffold/lib/manas/core/bind.chiral`
-- **Target:** `scaffold/lib/manas/core/bind.chiral` (NEW; the `manas/core/` path
+- **Target:** `scaffold/lib/manas/core/bind.chiral` (NEW; the `prapanca/core/` path
   already exists from E133/E134).
 - **Change:** the example §5 snippet essentially verbatim —
-  `(import "prelude")` / `(import "collections")` / `(import "manas/core/types")`,
+  `(import "prelude")` / `(import "collections")` / `(import "prapanca/core/types")`,
   then:
   1. `binding-slot (-> Binding Str)` — `(case b ((binding s m n) s))` (the slot key).
   2. `lookup-binding (-> (List Binding) Str (Maybe Binding))` — `find` over the
@@ -93,7 +93,7 @@ No NEEDS-AUTHOR blocks §4 — all four resolve from the element brief / METIS-P
 ### Step 2 — the behavioral test entry
 - **Target:** `scaffold/tests/samples/e135_bind.chiral` (kept, per the brief, so it
   can become an E141-era harness case).
-- **Change:** `(import "prelude")` + `(import "manas/core/bind")` +
+- **Change:** `(import "prelude")` + `(import "prapanca/core/bind")` +
   `(import "collections")` (for `find`), local helpers `binding-model`, `model-for`
   (find a slot's bound model in a `(List Binding)`, `""` if absent), `len-binds`
   (list length), `mem-str` (id ∈ `(List Str)`), and
@@ -107,7 +107,7 @@ No NEEDS-AUTHOR blocks §4 — all four resolve from the element brief / METIS-P
   - **verifier-only** — binds only cheap-verifier; ask for `{combiner}` → assert
     `bind-miss` carrying `"combiner"`.
   Exit `0` iff all three assertions hold, else `1`. Exit-code test (no `print`), so
-  no linkage libs beyond `manas/core/bind`.
+  no linkage libs beyond `prapanca/core/bind`.
 - **Size:** ~S.
 
 ## 5. Conformance gate
@@ -126,7 +126,7 @@ No NEEDS-AUTHOR blocks §4 — all four resolve from the element brief / METIS-P
 - **Green line:** 709 → 709 python test-functions (the new bind test is a native
   sample driven by the B1/resolve recipe, not a pytest); ledger-lint's pre-existing
   fails unchanged.
-- **Done when:** a blob importing `manas/core/bind` compiles under B1 to a running
+- **Done when:** a blob importing `prapanca/core/bind` compiles under B1 to a running
   ELF, and `e135_bind.chiral` runs to exit `0` with all three assertions holding.
 
 ## 6. Residue & links

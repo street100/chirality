@@ -1,4 +1,4 @@
-; e136_core.chiral — E136 conformance: the manas pure-core remainder (all pure ->).
+; e136_core.chiral — E136 conformance: the prapanca pure-core remainder (all pure ->).
 ;
 ; Exercises match-pipeline (WHEN keyword-overlap routing), assemble-prompt (pure
 ; prompt building) and the stop pair (overflow-guard + stop-policy). Pure exit
@@ -12,10 +12,10 @@
 ;                 or decision"                     (line 277)
 
 (import "prelude/prelude")
-(import "manas/core/types")
-(import "manas/core/match")     ; match-pipeline, pipeline-id, str-contains
-(import "manas/core/assemble")  ; assemble-prompt
-(import "manas/core/stop")      ; overflow-guard, stop-policy
+(import "prapanca/core/types")
+(import "prapanca/core/match")     ; match-pipeline, pipeline-id, str-contains
+(import "prapanca/core/assemble")  ; assemble-prompt
+(import "prapanca/core/stop")      ; overflow-guard, stop-policy
 
 ; a Pipeline with only id + WHEN populated (gate/experts empty, single-pass).
 (def mk (-> Str Str Pipeline)

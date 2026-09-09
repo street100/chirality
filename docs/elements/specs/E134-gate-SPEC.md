@@ -17,7 +17,7 @@ updated: 2026-08-15
 ## 1. Deliverable
 
 - **After this runs:** `scaffold/lib/manas/core/gate.chiral` exists — a pure (`->`)
-  module that imports `prelude`, `collections`, and `manas/core/types` (E133) and
+  module that imports `prelude`, `collections`, and `prapanca/core/types` (E133) and
   defines `str-contains`, `has-key`, the four gate predicates (`has-code-or-paths`,
   `has-spec`, `has-sibling-docs`, `has-examples`), `condition-fires`, the
   first-wins `dedup-str` (`elem-str` + `dedup-go`), and `run-gate :
@@ -44,7 +44,7 @@ updated: 2026-08-15
     `map-list (-> (0 A) (0 B) (-> A B) (List A) (List B))`,
     `concat (-> (0 A) (List (List A)) (List A))`,
     `str-join (-> Str (List Str) Str)`.
-  - `manas/core/types` (E133) — `GateRule` (`(gate-rule (condition Str)
+  - `prapanca/core/types` (E133) — `GateRule` (`(gate-rule (condition Str)
     (expert-ids (List Str)))`) and `GateDecision` (`(gate-fired (expert-ids
     (List Str)) (reason Str))` / `(gate-no-match (reason Str))`). Imported, NOT
     redefined.
@@ -72,10 +72,10 @@ No NEEDS-AUTHOR blocks §4 — all four resolve from the element brief / settled
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — write `scaffold/lib/manas/core/gate.chiral`
-- **Target:** `scaffold/lib/manas/core/gate.chiral` (NEW; the `manas/core/` path
+- **Target:** `scaffold/lib/manas/core/gate.chiral` (NEW; the `prapanca/core/` path
   already exists from E133).
 - **Change:** the example §5 snippet essentially verbatim —
-  `(import "prelude")` / `(import "collections")` / `(import "manas/core/types")`,
+  `(import "prelude")` / `(import "collections")` / `(import "prapanca/core/types")`,
   then:
   1. `str-contains (-> Str Str Bool)` = `(<=i 0 (str-find haystack needle))`.
   2. `has-key (-> (List (Pair Str Str)) Str Bool)` — linear `str-eq` scan.
@@ -96,7 +96,7 @@ No NEEDS-AUTHOR blocks §4 — all four resolve from the element brief / settled
 ### Step 2 — the behavioral test entry
 - **Target:** `scaffold/tests/samples/e134_gate.chiral` (kept, per the brief, so it
   can become the E141-era test).
-- **Change:** `(import "manas/core/gate")` + `(import "ports")` (for `print`) +
+- **Change:** `(import "prapanca/core/gate")` + `(import "ports")` (for `print`) +
   a local `mem (-> Str (List Str) Bool)`, and `(def compile-main (=> I64 I64) …)`
   that builds the four-rule `doc-refine` ruleset as a `(List GateRule)` and asserts:
   - **case a** — doc with a fenced block + a `foo/bar` path, extra-inputs
@@ -123,7 +123,7 @@ No NEEDS-AUTHOR blocks §4 — all four resolve from the element brief / settled
 - **Green line:** 709 → 709 python test-functions (the new gate test is a native
   sample driven by the B1/resolve recipe, not a pytest); ledger-lint's
   pre-existing fails unchanged.
-- **Done when:** a blob importing `manas/core/gate` compiles under B1 to a running
+- **Done when:** a blob importing `prapanca/core/gate` compiles under B1 to a running
   ELF, and `e134_gate.chiral` runs to exit `0` with both PASS lines printed.
 
 ## 6. Residue & links

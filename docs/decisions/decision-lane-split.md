@@ -252,7 +252,7 @@ deleting `tools/`.** Neither lane does that; both exist so it can be done. Not
 ## The four focuses, 2026-09-02
 
 The two lanes above are two arcs of seven. The author settled the work into four
-focuses so that scriba and manas can move forward. Those two are the destination.
+focuses so that scriba and prapanca can move forward. Those two are the destination.
 Neither is the work.
 
 | focus | arcs | element block |
@@ -279,7 +279,7 @@ evidence column names what was read.
 
 | arc | writes | evidence |
 |---|---|---|
-| transport | `prog/manas/`, `prog/agent/agent.chiral`, `prog/samples/e130_*.prog`, `e131_*.prog`, `stream-ollama.prog`, a new phase in `tools/test/run-tests.sh` | the nine importers of `protocol/http`. Rows `T2` to `T4` each owe a gated root and a phase that judges it |
+| transport | `prog/prapanca/`, `prog/agent/agent.chiral`, `prog/samples/e130_*.prog`, `e131_*.prog`, `stream-ollama.prog`, a new phase in `tools/test/run-tests.sh` | the nine importers of `protocol/http`. Rows `T2` to `T4` each owe a gated root and a phase that judges it |
 | text-tools | `lib/text/` | one file, `matcher.chiral`. `prog/prose-lint.prog` is its only consumer |
 | diagnostics | `lib/typing/diag.chiral`, `lib/surface/pretty.chiral`, `lib/protocol/render.chiral`, `lib/protocol/render-doc.chiral`, a consumer under `prog/` | `Judg` is `diag.chiral:99`, which E182 reshapes. `lookup-face` is in `render.chiral`, which E179 and E180 reach. The adoption row owes a consumer outside `lib/` |
 | zero-python | `tools/`, plus one port root under `prog/` per tool | `prog/prose-lint.prog` and `prog/paren-audit.prog` are the two ports that exist |
@@ -338,7 +338,7 @@ Measured 2026-09-02 in [[benchmarks/text-matcher-allocation]], on the tree at
 | what `9f46c6c` cut, min-of-3 under a 2 GB cgroup | peak 1,111,728,128 to 466,821,120 B, 58.0%. The matching term 67.1% |
 | the same projection with those per-term deltas applied | ~6.3 GB. Projected. The default scope has never been run |
 
-This blocks manas and scriba from running once transport lands, and no arc holds
+This blocks prapanca and scriba from running once transport lands, and no arc holds
 it. Enforcement is one candidate, because a bound the machine ignores is an
 enforcement failure. Its own arc is another. The call is a row in
 [[records/author-calls]] and this section decides nothing.

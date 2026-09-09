@@ -140,7 +140,7 @@ fractal — each branch/backtrack a nested, streamable node. STOP loops the root
 
 ## 7. Slices (each a later single-lens agent; core-type + engine)
 1. **DONE 2026-08-17 (`5eef5b4`) — Flow type + `flow-ty` + `flow-gate` (additive).**
-   New `manas/core/flow.chiral` (Flow/Ty/Arrow/flow-ty/pipeline->flow/run-flow) +
+   New `prapanca/core/flow.chiral` (Flow/Ty/Arrow/flow-ty/pipeline->flow/run-flow) +
    `flow-test.chiral` + `manas-flow-conform.chiral`. `run-flow`'s flow-gate arm is a
    **literal `(run-pipeline …)`** call (runner.chiral UNTOUCHED) → conformance by
    construction. Gates green: (a) flow-ty unit test exit 0 (doc-refine→ty-doc→ty-doc,

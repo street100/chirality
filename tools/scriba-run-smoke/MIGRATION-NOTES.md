@@ -7,13 +7,13 @@ a time) at a running scriba and greps the drained frames.
 `exec ./bin/scriba` — `bin/scriba` is a
 build-and-run wrapper that was NOT in this slice's migration list. And scriba would
 not launch anyway: `prog/scriba/scriba-main.prog` does not compile, because it
-imports `manas/core/*`, `manas/chatter/*`, `manas/pipeline/*` and `manas/profile/*`,
-and only `prog/manas/{backend,coordinator,fsm,manas}` were migrated. The manas
+imports `prapanca/core/*`, `prapanca/chatter/*`, `prapanca/pipeline/*` and `prapanca/profile/*`,
+and only `prog/prapanca/{backend,coordinator,fsm,manas}` were migrated. The prapanca
 subtree is a separate slice.
 
 Changed: the hardcoded launcher became `SCRIBA_CMD`, and with it unset the child
 says so on stderr and exits 2 instead of exec'ing into the old tree. Nothing else.
 
-Unblocking it needs, in order: the manas subtree migrated → `scriba-main.prog`
+Unblocking it needs, in order: the prapanca subtree migrated → `scriba-main.prog`
 compiles → a launcher (the old `bin/scriba`) ported or `SCRIBA_CMD` pointed at
 `bin/chirality run prog/scriba/scriba-main.prog`.

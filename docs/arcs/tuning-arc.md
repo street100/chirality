@@ -50,7 +50,7 @@ Four absences, measured 2026-09-01 and unchanged on 2026-09-02.
 
 | what | measured |
 |---|---|
-| the worker-side verbs | `prog/manas/backend.chiral` records `train-start` and `train-status` as documented and unbuilt. Nothing in this tree names them |
+| the worker-side verbs | `prog/prapanca/backend.chiral` records `train-start` and `train-status` as documented and unbuilt. Nothing in this tree names them |
 | a float type | `lib/protocol/json.chiral` keeps numbers as their raw lexeme and says why. `F64` and `Float` are grep-clean under `lib/surface/` and `lib/typing/` |
 | a tensor form | `tensor` is grep-clean under `lib/` and `prog/` |
 | autodiff | nothing in the tree differentiates anything |

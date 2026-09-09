@@ -32,7 +32,7 @@ the canonical which-of-N.
 
 | site | what it flattens |
 |---|---|
-| `manas/core/assemble.chiral:51-56` | an LLM prompt — sections, roles, provenance — as a 10-deep nested `str-cat` closing `))))))))))` |
+| `prapanca/core/assemble.chiral:51-56` | an LLM prompt — sections, roles, provenance — as a 10-deep nested `str-cat` closing `))))))))))` |
 | `pretty.chiral` (45 L) | a term printer that hardcodes `parens`/`sp` and goes straight to `Str`. **Imported by nobody** |
 | every log / status line | `str-cat` chains; no padding or alignment until `str-pad` landed in E151 |
 

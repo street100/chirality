@@ -8,9 +8,9 @@ Changed: an argv guard, so a bare invocation prints usage instead of an
 `IndexError` traceback. Nothing else.
 
 Blocked for the same reason as `scriba-run-smoke`: there is no scriba ELF to hand
-it. `prog/scriba/scriba-main.prog` imports `manas/core/*`, `manas/chatter/*`,
-`manas/pipeline/*`, `manas/profile/*`; only four manas modules were migrated. Once
-the manas subtree lands:
+it. `prog/scriba/scriba-main.prog` imports `prapanca/core/*`, `prapanca/chatter/*`,
+`prapanca/pipeline/*`, `prapanca/profile/*`; only four prapanca modules were migrated. Once
+the prapanca subtree lands:
 
 ```
 bin/chirality compile prog/scriba/scriba-main.prog -o /tmp/scriba

@@ -16,7 +16,7 @@ updated: 2026-08-15
 
 ## 1. Deliverable
 
-- **After this runs:** `manas/contract/manifest.chiral` gains
+- **After this runs:** `prapanca/contract/manifest.chiral` gains
   `manifest-to-json : (-> RunManifest Json)` (PURE — the byte-for-byte inverse of
   E141's `manifest-from-json`, plus its array/object helpers), and a new
   `scaffold/lib/manas/pipeline/log.chiral` defines
@@ -35,13 +35,13 @@ updated: 2026-08-15
   (bundle §3). Treated as BUILD: no `be-log`, no `manifest-to-json` exist
   (`backend.chiral` grep-clean of `be-log`; `manifest.chiral` deserializes only).
 - **Live code this composes with (name, do NOT respec):**
-  - `manas/contract/manifest.chiral` (E141) — `manifest-from-json` + the field
+  - `prapanca/contract/manifest.chiral` (E141) — `manifest-from-json` + the field
     keys/shape this inverts (`config_binds` as a JSON **object** slot→{model,
     num_ctx}; the 15 top-level + 9 `ExpertCall` keys); the imports (`prelude`,
-    `json`, `manas/core/types`) are already present.
-  - `manas/contract/golden.chiral` (E141) — `manifest-conforms`, the round-trip
+    `json`, `prapanca/core/types`) are already present.
+  - `prapanca/contract/golden.chiral` (E141) — `manifest-conforms`, the round-trip
     assertion oracle.
-  - `manas/core/types.chiral` (E133) — `RunManifest` / `ExpertCall` / `Binding`
+  - `prapanca/core/types.chiral` (E133) — `RunManifest` / `ExpertCall` / `Binding`
     ctors (imported, never redefined).
   - `json.chiral` — `Json` ctors (`j-obj`/`j-arr`/`j-str`/`j-num`/`j-bool`),
     `json-show`, `json-parse-str`; `j-num` takes a `Str` lexeme.
@@ -68,9 +68,9 @@ No NEEDS-AUTHOR; nothing blocks §4.
 
 ## 4. Change plan (ordered, commit-sized)
 
-### Step 1 — `manifest-to-json` (pure serializer) in `manas/contract/manifest.chiral`
+### Step 1 — `manifest-to-json` (pure serializer) in `prapanca/contract/manifest.chiral`
 - **Target:** `scaffold/lib/manas/contract/manifest.chiral` — ADD after the
-  deserializer/accessor block. `json`/`prelude`/`manas/core/types` are already
+  deserializer/accessor block. `json`/`prelude`/`prapanca/core/types` are already
   imported; `foldl`/`append` live in `collections.chiral` (NOT `prelude`), which
   `manifest.chiral` does not yet import — so ADD `(import "collections")`.
 - **Change:** add, in order — `strs->jarr : (-> (List Str) Json)`,
@@ -84,11 +84,11 @@ No NEEDS-AUTHOR; nothing blocks §4.
   example §5 snippet verbatim.
 - **Size:** M
 
-### Step 2 — `be-log` (effectful crossing) in a new `manas/pipeline/log.chiral`
+### Step 2 — `be-log` (effectful crossing) in a new `prapanca/pipeline/log.chiral`
 - **Target:** `scaffold/lib/manas/pipeline/log.chiral` — NEW FILE.
 - **Change:** imports `prelude` (`str->bytes`), `backend` (`Backend`, `be-url`),
   `http` (`http-request`, `HttpR`), `json` (`json-show`),
-  `manas/contract/manifest` (`manifest-to-json`). Define
+  `prapanca/contract/manifest` (`manifest-to-json`). Define
   `be-log : (=> Backend RunManifest Str Unit)` =
   `manifest-to-json` → `json-show` → `str->bytes` →
   `http-request "POST" (be-url b "/internal/log")`, `case` the `HttpR`, return
@@ -117,9 +117,9 @@ No NEEDS-AUTHOR; nothing blocks §4.
   linking `http`.
 - **Tests to add:**
   - `scaffold/tests/samples/e139_roundtrip.chiral` — PURE, exit-code oracle, no
-    linkage. Recipe: `chirality_blob scaffold/lib manas/contract/manifest
-    manas/contract/golden json > blob`; append the sample; B1; run; exit 0.
-  - `be-log`-lowers gate — `chirality_blob scaffold/lib manas/pipeline/log > blob` +
+    linkage. Recipe: `chirality_blob scaffold/lib prapanca/contract/manifest
+    prapanca/contract/golden json > blob`; append the sample; B1; run; exit 0.
+  - `be-log`-lowers gate — `chirality_blob scaffold/lib prapanca/pipeline/log > blob` +
     linkage libs (`tal-ir crossing-wraps sys-check target-linux sys-tal
     sys-linkage`) + a compile-main that calls `be-log`; B1 exits 0 (NOT run — no
     endpoint).

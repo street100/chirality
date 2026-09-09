@@ -123,7 +123,7 @@ there is no second copy to fall out of sync."* **The work here is plumbing what
 exists to somewhere addressable, not new analysis.**
 
 **Finding 3 — "which crossings" is derivable in THREE inequivalent senses, and
-the schema must name which one it holds.** Measured on `prog/manas/backend.chiral`:
+the schema must name which one it holds.** Measured on `prog/prapanca/backend.chiral`:
 
 - **(a) crossings the module BINDS** — its own `extern` forms with an effectful
   arrow. `ty-crosses` says **exactly one**: `backend-open (=> Str Backend)`

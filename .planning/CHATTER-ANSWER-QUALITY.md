@@ -38,12 +38,12 @@ check that what we ASKED for is what the seam will ACCEPT.
 
 ## Change 1 — the return instruction must follow the leaf's `out-ty`
 
-`call-expert` (`manas/pipeline/runner.chiral:88`, and its twin `call-expert-stream:108`) appends to
+`call-expert` (`prapanca/pipeline/runner.chiral:88`, and its twin `call-expert-stream:108`) appends to
 **every** leaf prompt, unconditionally:
 
 > "Return ONLY a JSON array of objects, each with string fields \"kind\", \"target\", \"body\". No prose."
 
-`refine-ok` (`manas/core/flow.chiral`) — the seam that then JUDGES the answer — wants something
+`refine-ok` (`prapanca/core/flow.chiral`) — the seam that then JUDGES the answer — wants something
 different per type:
 
 | out-ty                                  | refine-ok accepts        | the runner asks for | coherent? |
@@ -64,8 +64,8 @@ in §(b) above exists to clean that up.
 derive the instruction from it — the table above IS the mapping, because it is `refine-ok`'s own
 definition read in the other direction.
 
-*Files:* `manas/pipeline/runner.chiral` (`call-expert` + `call-expert-stream` signatures + the
-instruction), `manas/core/flow.chiral` (pass `oty` at the two call sites). *Test:* pure — the
+*Files:* `prapanca/pipeline/runner.chiral` (`call-expert` + `call-expert-stream` signatures + the
+instruction), `prapanca/core/flow.chiral` (pass `oty` at the two call sites). *Test:* pure — the
 instruction for each Ty; plus live — a `ty-text` leaf returning prose that refine-oks.
 **CONFORM-check:** prompts are not pinned by `manifest-conforms` (verified when the header fix
 landed: `CONFORM: true`), so no golden churn is expected. If one appears, STOP.
@@ -104,7 +104,7 @@ bodies comes from, and F4/F6 then filter it back out.
 
 An assessment is **metadata about** an answer. It does not belong in the value path.
 
-*Files:* `manas/profile/research.chiral` (and the same shape in `decision`, `doc-edit`; `code-test`
+*Files:* `prapanca/profile/research.chiral` (and the same shape in `decision`, `doc-edit`; `code-test`
 already ends in its proposer and is the model to copy). *Dep:* do AFTER Change 1 — the emits
 widening exists partly because JSON-shaped prose was already mangled, and some of this may
 evaporate.

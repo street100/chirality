@@ -440,7 +440,7 @@ from 8 exact to **6**.
      choice rather than a free one. Two measurements bear on it. `MAP.md`'s own
      `lib/` tree lists twelve directories and the filesystem holds thirteen, so
      that listing is already one behind and gains a second gap here. And every
-     shard [[banks/unit]] refracts sits under `prog/manas/`, including the closed
+     shard [[banks/unit]] refracts sits under `prog/prapanca/`, including the closed
      sums `Expert`, `Flow` and `StopPolicy` and the `Backend` porttype the bank
      records as an anomaly for living outside `lib/ports/`. `prog/` is what
      chirality ships and `lib/` is what it is, so an application-domain sum for a

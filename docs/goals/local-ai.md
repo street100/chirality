@@ -93,14 +93,14 @@ Measured 2026-09-01 against this tree.
 
 | what | evidence |
 |---|---|
-| The pure orchestration core | `prog/manas/core/{types,gate,bind,match,assemble,stop}.chiral`. Catalog E133, E134, E135, E136, all implemented 2026-08-15 |
-| The multi-agent run loop | `prog/manas/pipeline/{plan,runner,guarded}.chiral`, catalog E138 |
-| The run record crossing and profiles | `prog/manas/{contract/manifest,profile/profiles,profile/doc-refine}.chiral`, catalog E139 and E140 |
-| Golden run-manifest conformance | `prog/manas/contract/{manifest,golden}.chiral`, catalog E141 |
-| A linear `Backend` handle | `prog/manas/backend.chiral` `porttype Backend`, on the E144 string carrier with the E145 `be-peek` laundering peel, both built 2026-08-16 |
-| The `Flow` algebra, recursive | `prog/manas/core/flow.chiral`, 1,373 lines. Seven constructors: `flow-step`, `flow-gate`, `flow-fan`, `flow-chain`, `flow-branch`, `flow-pure`, `flow-branch-pure`. Branch carries its own `backtrack` Flow, so consolidate-and-audit is paired into the type |
-| A skill registry as data | `prog/manas/profile/skills.chiral` `SkillEntry`, over seven skill profiles under `prog/manas/profile/` |
-| The chatter layer | `prog/manas/chatter/{router,turn,divide,egress,orchestrate}.chiral`, 2,057 lines |
+| The pure orchestration core | `prog/prapanca/core/{types,gate,bind,match,assemble,stop}.chiral`. Catalog E133, E134, E135, E136, all implemented 2026-08-15 |
+| The multi-agent run loop | `prog/prapanca/pipeline/{plan,runner,guarded}.chiral`, catalog E138 |
+| The run record crossing and profiles | `prog/prapanca/{contract/manifest,profile/profiles,profile/doc-refine}.chiral`, catalog E139 and E140 |
+| Golden run-manifest conformance | `prog/prapanca/contract/{manifest,golden}.chiral`, catalog E141 |
+| A linear `Backend` handle | `prog/prapanca/backend.chiral` `porttype Backend`, on the E144 string carrier with the E145 `be-peek` laundering peel, both built 2026-08-16 |
+| The `Flow` algebra, recursive | `prog/prapanca/core/flow.chiral`, 1,373 lines. Seven constructors: `flow-step`, `flow-gate`, `flow-fan`, `flow-chain`, `flow-branch`, `flow-pure`, `flow-branch-pure`. Branch carries its own `backtrack` Flow, so consolidate-and-audit is paired into the type |
+| A skill registry as data | `prog/prapanca/profile/skills.chiral` `SkillEntry`, over seven skill profiles under `prog/prapanca/profile/` |
+| The chatter layer | `prog/prapanca/chatter/{router,turn,divide,egress,orchestrate}.chiral`, 2,057 lines |
 | scriba, the editor | 26 modules and 6 roots under `prog/scriba/`. Two measurements dated 2026-08-21 disagree and both are recorded: `.planning/SCRIBA-PRIMITIVE-CHECKLIST.md` §0 gives 8,380 of 9,366 non-test lines live in the binary against the committed tree at `1cafe80`, and `.planning/SCRIBA-STATE.md` gives 8,738 of 9,724 against a working tree with a concurrent session's edits in it. Both put 986 lines written and inert |
 | The scriba cockpit surfaces | `docs/examples/S14`, `S15`, `S16`, `S17` with SPECs under `docs/elements/specs/`. The six scriba roots compile under Phase 7 (`tools/test/run-tests.sh:166-168`) |
 | The Ollama wire shape | `lib/protocol/http.chiral:600` reads Ollama's `message.content`, `:610` takes either the OpenAI delta or the Ollama field, and `:258` handles Ollama's chunked transfer with no content length |
@@ -115,7 +115,7 @@ Measured 2026-09-01 against this tree.
 |---|---|
 | A run that reaches a model server | Re-measured 2026-09-02 as `BA-42` in [[records/baseline-alignment]]: `http-request` and `chat-open` are chirality `def`s over the socket caps since E130 and E131, and `backend-open` erases rather than crossing, so the crossing-table gap this row used to name is closed. The run landed 2026-09-02: five roots under `prog/samples/` were compiled with `bin/chirality-bin` and executed on host `claude-sandbox`, each returning its header's success code, covering a non-streaming call, a streaming call and a hermetic refusal. That is the first native model call in this tree; the live runs recorded in `.planning/MANAS-STATE-VS-GOAL.md` are the CPython ones, taken through a transport that is cut. What is owed is a gate: Phase 7 of `tools/test/run-tests.sh` sweeps every root compile-only and no phase executes one. [[arcs/transport-arc]] holds it. UNASSIGNED |
 | Buffer list and switching, `S19` | The `Scriba` state record that gates it is BUILT, 2026-08-23, `prog/scriba/editor-state.chiral`. This row read `S18` unbuilt until 2026-09-02 and that is `BA-43`. [[arcs/scriba-arc]] holds the S-series states |
-| Fine tuning, model creation, the interaction set | `prog/manas/backend.chiral:17` records `train-start` and `train-status` as documented and unbuilt on the worker side. Nothing in this tree names them. Blocked on author call A. UNASSIGNED |
+| Fine tuning, model creation, the interaction set | `prog/prapanca/backend.chiral:17` records `train-start` and `train-status` as documented and unbuilt on the worker side. Nothing in this tree names them. Blocked on author call A. UNASSIGNED |
 | Directory enumeration | E148 `getdents64` plus `stat`. Not built, zero occurrences under `lib/`, re-verified 2026-08-31 |
 | The `.manifest` module kind | E163, minted and unbuilt. Two `.manifest` files sit on disk, `prog/climb.manifest` and `lib/lowering/tal/target-linux.manifest`, and `MAP.md` declares the kind. The loader check that makes it a kind is the owed half |
 | Value back to source | E146, unbuilt. `S14`'s SPEC decision D7 defers config write-back to it, so authoring a config in scriba can read and cannot yet save |
@@ -149,13 +149,13 @@ criterion 5, and it is a text tool in shape, which is [[arcs/text-tools-arc]].
 ## Honest limits
 
 **The engine has never run in this tree. The transport under it has.** Nine
-thousand nine hundred and thirty lines under `prog/manas/` compile and lower,
+thousand nine hundred and thirty lines under `prog/prapanca/` compile and lower,
 and Phase 7 of `tools/test/run-tests.sh` gates them on compiling. Phase 20,
 `tools/test/transport.sh`, registered at `tools/test/run-tests.sh:324`, gates
 `lib/protocol/http.chiral`'s transport path through five roots under
 `prog/samples/`: each is compiled with `bin/chirality-bin`, refused if the
 artifact is empty, run under a `timeout`, and judged against the exit code its
-own header specifies. That phase leaves `prog/manas/` compile-only. Every "live
+own header specifies. That phase leaves `prog/prapanca/` compile-only. Every "live
 verified" line in `.planning/MANAS-STATE-VS-GOAL.md` was measured through the
 CPython transport that the migration cut. Until 2026-09-02 this limit was
 written as three externs missing from the crossing table, which E130 and E131
@@ -163,11 +163,11 @@ had already made false; `BA-42` in [[records/baseline-alignment]] holds the
 re-measurement. Criterion 1 remains unmet. Phase 20 performs no pipeline run. It
 emits no `RunManifest` and asserts no conformance verdict, which is what
 criterion 1 asks a phase for. Two roots already carry that shape.
-`prog/samples/manas-run-conform.prog` reads a frozen golden off disk, runs
+`prog/samples/prapanca-run-conform.prog` reads a frozen golden off disk, runs
 `guarded-run` live against `100.64.0.5:11434`, and its header gives exit 0 iff
 `manifest-conforms` accepts the actual `RunManifest` against that golden, 1 on
 non-conformance and 90, 91 or 92 on an IO, parse or deserialize failure.
-`prog/samples/manas-flow-conform.prog` is its twin through `run-flow` over
+`prog/samples/prapanca-flow-conform.prog` is its twin through `run-flow` over
 `pipeline->flow doc-refine-pipeline`, with the same exit contract. Both name
 their golden at
 `/workspace/chirality-the-lang/scaffold/tests/golden/manas-smoke-doc-refine.golden.json`,

@@ -493,7 +493,7 @@ measurement has **not** been retaken against them, so the five results below are
 dated evidence rather than a present-tense claim.
 
 1. a `(-> I64 I64)` def calling the `=>` extern `backend-open`
-   (`prog/manas/backend.chiral:37`, `(=> Str Backend)`) — compiles, **exit 42**;
+   (`prog/prapanca/backend.chiral:37`, `(=> Str Backend)`) — compiles, **exit 42**;
 2. a `(-> I64 I64)` def calling the bound crossing `put`
    (`lib/ports/stdio.port:11`, `(=> Str Unit)`) — compiles, **and
    writes to stdout**;

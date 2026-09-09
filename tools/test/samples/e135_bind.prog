@@ -1,4 +1,4 @@
-; e135_bind.chiral — E135 conformance: manas config binding, the "add backends" seam.
+; e135_bind.chiral — E135 conformance: prapanca config binding, the "add backends" seam.
 ;
 ; Builds THREE Config profiles inline (orchestration/configs.md) and binds the SAME
 ; slot set {cheap-verifier, reasoner, combiner} under each — the config-swap /
@@ -16,7 +16,7 @@
 
 (import "prelude/prelude")             ; str-eq, =i, +, cond, List, Pair, Bool
 (import "prelude/list")         ; find
-(import "manas/core/bind")     ; bind-config, Binding, Config, BindResult (via types)
+(import "prapanca/core/bind")     ; bind-config, Binding, Config, BindResult (via types)
 
 ; the model a binding resolves
 (def binding-model (-> Binding Str)

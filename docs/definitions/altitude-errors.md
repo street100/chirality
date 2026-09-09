@@ -60,7 +60,7 @@ Still leaking, and this is the current instance list rather than the 2026-08 one
 | helper | copies | where |
 |---|---|---|
 | `list-nth` | 2 | `lib/evidence/interp.chiral:50`, `prog/scriba/list-utils.chiral:14` |
-| `dedup-str` | 2 | `lib/lowering/compile-back.chiral:117`, `prog/manas/core/gate.chiral:105` |
+| `dedup-str` | 2 | `lib/lowering/compile-back.chiral:117`, `prog/prapanca/core/gate.chiral:105` |
 | `se-length` | 1 | `prog/scriba/str-edit.chiral:30` |
 | `se-reverse` | 1 | `prog/scriba/str-edit.chiral:26` |
 | `ins-uniq` | 1, private | `lib/lowering/upper/closconv.chiral:40` |

@@ -270,15 +270,15 @@ in the tree: those 31 are the ones a scheduler would pick up.
 | `E13-debruijn-SPEC` | 0/4 | The core `Term` and its de-Bruijn ops live in `lib/typing/kernel.chiral`. |
 | ⚑ `E130-http-native-SPEC` | 0/4 | `lib/protocol/http.chiral:101,134,357,437` carry `parse-url`, `format-request`, `parse-response`, `http-request`. |
 | `E131-sse-stream-SPEC` | 0/5 | Frontmatter already reads `implemented`; every step names `scaffold/`. |
-| `E133-manas-core-types-SPEC` | 0/1 | `prog/manas/core/` exists. |
-| `E134-gate-SPEC` | 0/2 | `prog/manas/core/` exists. |
-| `E135-bind-SPEC` | 0/2 | `prog/manas/core/` exists. |
-| `E136-match-assemble-stop-SPEC` | 0/4 | `prog/manas/core/match.chiral:25`, `assemble.chiral:14-48`, `stop.chiral:15`. |
-| `E138-run-loop-SPEC` | 0/4 | `prog/manas/pipeline/plan.chiral`, `runner.chiral`, `guarded.chiral` all exist. |
-| `E139-be-log-SPEC` | 0/3 | `prog/manas/pipeline/log.chiral` exists. |
+| `E133-manas-core-types-SPEC` | 0/1 | `prog/prapanca/core/` exists. |
+| `E134-gate-SPEC` | 0/2 | `prog/prapanca/core/` exists. |
+| `E135-bind-SPEC` | 0/2 | `prog/prapanca/core/` exists. |
+| `E136-match-assemble-stop-SPEC` | 0/4 | `prog/prapanca/core/match.chiral:25`, `assemble.chiral:14-48`, `stop.chiral:15`. |
+| `E138-run-loop-SPEC` | 0/4 | `prog/prapanca/pipeline/plan.chiral`, `runner.chiral`, `guarded.chiral` all exist. |
+| `E139-be-log-SPEC` | 0/3 | `prog/prapanca/pipeline/log.chiral` exists. |
 | `E14-pretty-printer-SPEC` | 0/3 | The printer is live at `lib/surface/pretty.chiral`; E181 replaced its body wholesale and moved the module key. |
-| `E140-profiles-docrefine-SPEC` | 0/4 | `prog/manas/profile/profiles.chiral:15-29`, `doc-refine.chiral:16-23`. |
-| `E141-golden-conformance-SPEC` | 0/3 | `prog/manas/contract/` exists. |
+| `E140-profiles-docrefine-SPEC` | 0/4 | `prog/prapanca/profile/profiles.chiral:15-29`, `doc-refine.chiral:16-23`. |
+| `E141-golden-conformance-SPEC` | 0/3 | `prog/prapanca/contract/` exists. |
 | `E144-str-porttype-carrier-SPEC` | 0/3 | Frontmatter already reads `implemented`. |
 | `E15-reference-interpreter-SPEC` | 0/4 | `lib/evidence/interp.chiral:50-100`. |
 | ⚑ `E151-ord-dedup-SPEC` | 0/7 | `lib/prelude/string.chiral:209` carries `str-pad`; `lib/typing/row-infer.chiral:103` adopts `list-dedup-adj`. |
@@ -330,7 +330,7 @@ in the tree: those 31 are the ones a scheduler would pick up.
 | `S13-vim-modes-SPEC` | 0/0 | `prog/scriba/vim-mode.chiral` exists; no frontmatter, no step list. |
 | `S14-manas-author-mode-SPEC` | 0/0 | `prog/scriba/manas-mode.chiral` + `scriba-manas-test.prog` exist. |
 | `S15-manas-run-view-SPEC` | 0/0 | `prog/scriba/manas-runview.chiral` + `scriba-runview-test.prog` exist. |
-| `S16-manas-compose-SPEC` | 0/0 | `prog/manas/pipeline/compose.chiral` exists. |
+| `S16-manas-compose-SPEC` | 0/0 | `prog/prapanca/pipeline/compose.chiral` exists. |
 | `S17-manas-token-streaming-SPEC` | 0/0 | `prog/scriba/scriba-runview-stream-test.prog` exists. |
 | `S18-scriba-record-SPEC` | 0/2 | `prog/scriba/editor-state.chiral` exists and cites S18 at `:3`; `dispatch.chiral:37,45` adopt it. Frontmatter still reads `specced`. |
 | `S2-rendering-SPEC` | 0/9 | `lib/protocol/render.chiral:263,718,778,786` carry `diff-node` and all three `render-to-ansi*`. |

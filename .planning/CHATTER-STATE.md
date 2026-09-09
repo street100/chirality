@@ -57,7 +57,7 @@ mesh.
   factual→`research`; social/clarify/unknown → `none`, no skill); `intent-name`
   for display. Marker vocabularies are per-category substring lists
   (`social-markers`, `decide-markers`, …). Pure, total, additive; imports only
-  prelude + `manas/core/flow`.
+  prelude + `prapanca/core/flow`.
 - **Tested:** `router-test.chiral` (deterministic) — 7 representative messages route
   to the expected intent + skill; exit 0.
 
@@ -333,14 +333,14 @@ blocked) — earlier C6b/O2 "egress-blocked" notes were unverified assumptions.
 ### Deterministic mesh-free chatter test (router / turn)
 ```
 . bin/chirality-resolve.sh
-chirality_blob scaffold/lib manas/chatter/turn manas/chatter/router manas/profile/skills > blob
+chirality_blob scaffold/lib prapanca/chatter/turn prapanca/chatter/router prapanca/profile/skills > blob
 cat scaffold/lib/manas/chatter/turn-test.chiral >> blob   # (or router-test.chiral)
 echo >> blob
 for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
 ulimit -s unlimited
 ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
 ```
-**DO NOT add `manas/core/skill` to the closure** — it collides with `profile/skills`
+**DO NOT add `prapanca/core/skill` to the closure** — it collides with `profile/skills`
 on `skill-by-name`. The chatter closure needs only `profile/skills`.
 
 ### scriba build (COMMITTED resolver only)

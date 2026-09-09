@@ -1,4 +1,4 @@
-; e134_gate.chiral — E134 conformance: the manas GATE / N2 router (pure ->).
+; e134_gate.chiral — E134 conformance: the prapanca GATE / N2 router (pure ->).
 ;
 ; Builds the doc-refine GATE ruleset (orchestration/processes.md) as a
 ; (List GateRule) and drives run-gate on two inputs:
@@ -11,7 +11,7 @@
 ; membrane already PROVES no backend call — this test checks the ROUTING decision.
 
 (import "prelude/prelude")
-(import "manas/core/gate")     ; run-gate, GateRule, GateDecision (via types)
+(import "prapanca/core/gate")     ; run-gate, GateRule, GateDecision (via types)
 (import "ports/ports")               ; print (=> Str Unit)
 
 ; membership of an id in a (List Str)

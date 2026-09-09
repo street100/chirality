@@ -65,9 +65,9 @@ No NEEDS-AUTHOR — every question is derivable from SPEC §8 + the golden + a v
 
 ## 4. Change plan (ordered, commit-sized)
 
-### Step 1 — `manas/contract/manifest.chiral` (deserialize + accessors)
+### Step 1 — `prapanca/contract/manifest.chiral` (deserialize + accessors)
 - **Target:** new file `scaffold/lib/manas/contract/manifest.chiral`
-- **Change:** import `prelude` / `json` / `manas/core/types`. Define:
+- **Change:** import `prelude` / `json` / `prapanca/core/types`. Define:
   - typed field-diggers `og-str`/`og-int`/`og-bool`/`og-arr` (`obj-get` + `as-*`);
   - `js-str-list`/`js-int-list : (List Json) -> (Maybe (List X))` (structural
     recursion; any mistyped element → `none`);
@@ -85,9 +85,9 @@ No NEEDS-AUTHOR — every question is derivable from SPEC §8 + the golden + a v
   - All pure `->`. No float. Exhaustive `case`.
 - **Size:** M
 
-### Step 2 — `manas/contract/golden.chiral` (structural conformance)
+### Step 2 — `prapanca/contract/golden.chiral` (structural conformance)
 - **Target:** new file `scaffold/lib/manas/contract/golden.chiral`
-- **Change:** import `prelude` / `manas/core/types` / `manas/contract/manifest`
+- **Change:** import `prelude` / `prapanca/core/types` / `prapanca/contract/manifest`
   (for the accessors). Define `str-list-eq`, `ec-struct-eq`, `ec-list-match`
   (pairwise, length-checked), and `manifest-conforms : (-> RunManifest RunManifest
   Bool)` comparing exactly the decision-#1 STRUCTURAL set. Pure `->`.
@@ -105,8 +105,8 @@ No NEEDS-AUTHOR — every question is derivable from SPEC §8 + the golden + a v
   differing ONLY in IGNORED fields (run-id/request/pipeline-choice/patches/
   final-yield/generated-at + per-call prompt-sha/duration) = true. Exit 0 iff all
   hold, else 1.
-- **Build recipe:** `chirality_blob scaffold/lib ports json collections manas/core/types
-  manas/contract/manifest manas/contract/golden > blob`, append the test source,
+- **Build recipe:** `chirality_blob scaffold/lib ports json collections prapanca/core/types
+  prapanca/contract/manifest prapanca/contract/golden > blob`, append the test source,
   `B1 < blob > elf`, run. (ports for the file read — verified sufficient.)
 - **Size:** M
 

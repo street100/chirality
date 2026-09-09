@@ -79,7 +79,7 @@ role type, no declared `State` or `Request` sum, no chunked-value commitment.
 | `vocabulary/F2` | the size bound in the type. not started. Requirement 5 | form | primitive | new | 5 | open | `unminted` |
 | `vocabulary/F3` | node addressing. **the shard is built.** `apc.chiral:48` ships with two importers under `tools/`. Measuring its reach is the class of row `display-calculus/A1` is | form | primitive | connect | 1 | open | `unminted` |
 | `vocabulary/F4` | one text form, and nothing renders from it. not started. Absorbs `display-calculus/E4` | form | law | new | 4 | open | `unminted` |
-| `vocabulary/F5` | two readers agree by construction, compared structurally. not started. `prog/manas/contract/golden.chiral` is the precedent | form | law | new | 2 | open | `unminted` |
+| `vocabulary/F5` | two readers agree by construction, compared structurally. not started. `prog/prapanca/contract/golden.chiral` is the precedent | form | law | new | 2 | open | `unminted` |
 | `vocabulary/Q1` | the round-trip gate. not started. Pairs with M3 | gate | tool | new | 2 | open | `unminted` |
 
 ### Coverage

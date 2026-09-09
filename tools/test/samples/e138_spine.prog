@@ -23,9 +23,9 @@
 
 (import "prelude/prelude")
 (import "prelude/list")               ; find, str-eq
-(import "manas/pipeline/plan")       ; plan-run, assemble-manifest, PlanOutcome, ids-of-experts, bnd-model, elem-str (via gate)
-(import "manas/profile/doc-refine")  ; doc-refine-pipeline, expert-pool
-(import "manas/profile/profiles")    ; smoke-local-config, cheap-local-config
+(import "prapanca/pipeline/plan")       ; plan-run, assemble-manifest, PlanOutcome, ids-of-experts, bnd-model, elem-str (via gate)
+(import "prapanca/profile/doc-refine")  ; doc-refine-pipeline, expert-pool
+(import "prapanca/profile/profiles")    ; smoke-local-config, cheap-local-config
 
 ; --------------------------------------------------------------- test accessors
 ; membership over a (List Str) (elem-str is in gate, imported via plan; alias here

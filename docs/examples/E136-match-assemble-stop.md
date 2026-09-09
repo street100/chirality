@@ -95,7 +95,7 @@ def stop_policy(expert_id, i):
 ; ---- match.chiral : route a request to a pipeline by WHEN keyword overlap ----
 (import "prelude")            ; str-len, str-find, str-sub, <=i, <i, =i, +, cond/else
 (import "collections")        ; foldl, filter, append
-(import "manas/core/types")   ; Pipeline, PipelineMatch (match-found/none/tied)
+(import "prapanca/core/types")   ; Pipeline, PipelineMatch (match-found/none/tied)
 
 ; str-contains COPIED from gate.chiral (E134): (str-contains haystack needle) —
 ; does haystack contain needle? Not imported from string-utils (its arg order is

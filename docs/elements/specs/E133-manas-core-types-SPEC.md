@@ -51,7 +51,7 @@ No NEEDS-AUTHOR blocks §4. Q1/Q4 resolve from settled docs; Q2/Q3 are deferred 
 ## 4. Change plan (ordered, commit-sized)
 
 ### Step 1 — write `scaffold/lib/manas/core/types.chiral`
-- **Target:** `scaffold/lib/manas/core/types.chiral` (NEW; create the `manas/core/` path).
+- **Target:** `scaffold/lib/manas/core/types.chiral` (NEW; create the `prapanca/core/` path).
 - **Change:** the example §5 snippet verbatim — `(import "prelude")` then the 17
   `data` decls (`GateRule`, `GateDecision`, `Binding`, `Config`, `Order`,
   `StopPolicy`, `Expert`, `Finding`, `Pipeline`, `PipelineMatch`, `BindResult`,
@@ -62,14 +62,14 @@ No NEEDS-AUTHOR blocks §4. Q1/Q4 resolve from settled docs; Q2/Q3 are deferred 
 
 ## 5. Conformance gate
 
-- **Golden behavior:** a blob importing `manas/core/types` compiles under B1 to a
+- **Golden behavior:** a blob importing `prapanca/core/types` compiles under B1 to a
   running ELF (the types resolve, no unknown-type / arity error); and the field set
   is complete — every golden top-level key (15) + every `expert_calls[]` key (9)
   maps to a `RunManifest`/`ExpertCall` field. The *populate-from-JSON-loses-no-field*
   property is proven at E141 (the deserializer), not here — E133 only owes the shape.
 - **Tests to add:** none behavioral at this stage (pure types have no runtime
   behavior). The gate is a **compile smoke**: a tiny `scaffold/tests/` blob or the
-  E141 harness imports `manas/core/types` and B1 accepts it. The real conformance
+  E141 harness imports `prapanca/core/types` and B1 accepts it. The real conformance
   test (`manifest-conforms` over the two goldens) lands in E141.
 - **Green line:** 709 → 709 (no new behavioral test at the pure-types stage;
   E141 adds the conformance tests); ledger-lint's pre-existing C/F/I fails unchanged.

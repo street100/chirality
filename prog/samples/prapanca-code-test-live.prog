@@ -1,0 +1,138 @@
+; manas-code-test-live.chiral -- T1 LIVE gate: the code-test FRACTAL runs tiny-model-green,
+; and a SPECIALIZATION of it runs green with its context reaching the model.
+;
+; Actuates the whole code-test fractal (code-test.chiral) against the mesh (100.64.0.5:11434)
+; under code-test-config (every slot on the 0.5b `qwen2.5:0.5b`). Two live cases:
+;
+;   FRACTAL -- run-flow-stop code-test-flow (stop-single) on a small code snippet. Proof:
+;     (a) manifest-all-green? = true (every tiny step ran GREEN on the 0.5b -- no typed-seam
+;         refine-fail, every call parsed-ok), AND
+;     (b) the manifest shows the fractal executed: 1 (perspectivist) + 2N (per-angle chain,
+;         reasoner+proposer once EACH of N angles) + 2 (backtrack consolidate+audit). N is
+;         re-parsed from the perspectivist's raw output (raws[0]). Prints N + the call count.
+;
+;   SPECIALIZE -- library [skill-base "code-test" code-test-flow (stop-single)] +
+;     specialize-skill "code-test" "code-test-unit" "CONTEXT: generate UNIT tests only, one assertion each".
+;     run-skill "code-test-unit" resolves the base flow, injects the context as context-0 into
+;     `extra`, runs the fractal on the 0.5b. Proof: green AND the unit-test context string appears
+;     in a SENT PROMPT (grep the raws' prompts) -- the specialization reached the model.
+;
+; Backend is a q1 linear handle: opened once per case, threaded through, discharged with
+; backend-close (moved exactly once -- B1 enforces it).
+;
+; Exit 0 iff BOTH cases pass. If the mesh is DOWN, be-chat returns chat-bad => parsed_ok=false
+; => manifest-all-green? = false => this reports NON-green honestly (a real signal, not a fake).
+;
+; Build (closure = code-test + skill + ports; append the sys leaves):
+;   . bin/chirality-resolve.sh
+;   chirality_blob "lib:prog" prapanca/profile/code-test prapanca/core/skill ports > blob
+;   cat scaffold/samples/manas-code-test-live.chiral >> blob; echo >> blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
+;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
+(import "prelude/prelude")                ; str-cat, str-len, i64->str, +, =i, <=i, and, case, do, let
+(import "prapanca/backend")                ; backend-open / backend-close (E137 linear porttype)
+(import "prapanca/core/flow")        ; run-flow-stop, manifest-all-green?, manifest-calls,
+                                  ; parse-perspectives, Perspective
+(import "prapanca/core/types")       ; StopPolicy (stop-single), RawCall, RunManifest, ExpertCall
+(import "prapanca/core/skill")       ; Skill (skill-base), specialize-skill, run-skill
+(import "prapanca/profile/code-test"); code-test-flow, code-test-pool, code-test-config
+(import "ports/ports")                  ; put
+
+; ---------------------------------------------------------- the run inputs (small -- tiny-model friendly)
+(def the-code Str
+  "def clamp(x, lo, hi):\n    if lo > hi:\n        raise ValueError(\"lo > hi\")\n    if x < lo:\n        return lo\n    if x > hi:\n        return hi\n    return x\n")
+(def the-extra (List (Pair Str Str))
+  (cons (pair "spec" "clamp(x, lo, hi) returns x bounded into [lo, hi]")
+  (cons (pair "language" "python")
+        nil)))
+
+; ---------------------------------------------------------- evidence accessors
+(def raw-prompt   (-> RawCall Str) (lam (r) (case r ((raw-call e s m p rp) p))))
+(def raw-response (-> RawCall Str) (lam (r) (case r ((raw-call e s m p rp) rp))))
+(def bool->str (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
+(declare rawlen (-> (List RawCall) I64))
+(def rawlen (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (rawlen t))))))
+(declare ecall-len (-> (List ExpertCall) I64))
+(def ecall-len (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (ecall-len t))))))
+(declare persp-count (-> (List Perspective) I64))
+(def persp-count (lam (ps) (case ps (nil 0) ((cons h t) (+ 1 (persp-count t))))))
+
+; N = the perspectives the branch actually ran (re-parse raws[0] = the perspectivist output).
+(def n-perspectives (-> (List RawCall) I64)
+  (lam (raws)
+    (case raws
+      (nil 0)
+      ; R3: a MODEL perspectivist's fan is CAPPED, so the expected call count is over the
+      ; perspectives actually RUN, not over every line the model emitted.
+      ((cons r0 rest)
+        (let ((emitted (persp-count (parse-perspectives (raw-response r0)))))
+          (case (<i max-model-perspectives emitted) (true max-model-perspectives) (false emitted)))))))
+
+; does ANY sent prompt contain the marker? (the specialization-reached-the-model probe)
+(declare any-prompt-has (-> (List RawCall) Str Bool))
+(def any-prompt-has
+  (lam (raws marker)
+    (case raws
+      (nil false)
+      ((cons r rest)
+        (case (str-has (raw-prompt r) marker)
+          (true true)
+          (false (any-prompt-has rest marker)))))))
+
+; ---------------------------------------------------------- FRACTAL case (=>)
+; expected total calls = 1 (perspectivist) + 2N (per-angle chain: reasoner+proposer) + 2 (backtrack).
+(def report-fractal (=> RunManifest (List RawCall) I64)
+  (lam (m raws)
+    (let ((n (n-perspectives raws)))
+      (let ((calls (ecall-len (manifest-calls m))))
+        (let ((expected (+ 1 (+ (+ n n) 2))))
+          (let ((green (manifest-all-green? m)))
+            (do (put (str-cat "FRACTAL perspectives (N): " (str-cat (i64->str n) "\n")))
+            (do (put (str-cat "FRACTAL per-angle calls (reasoner+proposer, once each): " (str-cat (i64->str (+ n n)) "\n")))
+            (do (put "FRACTAL backtrack calls (collect-angles [code] + audit): 2\n")
+            (do (put (str-cat "FRACTAL total manifest calls: " (str-cat (i64->str calls)
+                       (str-cat " (expected 1+2N+2 = " (str-cat (i64->str expected) ")\n")))))
+            (do (put (str-cat "FRACTAL manifest-all-green? (tiny-model-green on 0.5b): " (str-cat (bool->str green) "\n")))
+                (case (and green (and (<=i 1 n) (=i calls expected))) (true 0) (false 1)))))))))))))
+
+(def run-fractal-demo (=> I64 I64)
+  (lam (_)
+    (case (run-flow-stop (backend-open "http://100.64.0.5:11434")
+             code-test-flow (stop-single)
+             "code-test fractal: angles -> per-angle reason+propose -> consolidate+audit"
+             nil code-test-pool code-test-config the-code the-extra)
+      ((run-r y m raws b2)
+        (do (backend-close b2) (report-fractal m raws))))))
+
+; ---------------------------------------------------------- SPECIALIZE case (=>)
+(def the-marker Str "UNIT tests only")
+(def code-test-lib (List Skill)
+  (cons (skill-base "code-test" code-test-flow (stop-single))
+  (cons (specialize-skill "code-test" "code-test-unit" "CONTEXT: generate UNIT tests only, one assertion each")
+        nil)))
+
+(def report-specialize (=> RunManifest (List RawCall) I64)
+  (lam (m raws)
+    (let ((green (manifest-all-green? m)))
+      (let ((found (any-prompt-has raws the-marker)))
+        (do (put (str-cat "SPECIALIZE prompts sent: " (str-cat (i64->str (rawlen raws)) "\n")))
+        (do (put (str-cat "SPECIALIZE manifest-all-green? (0.5b): " (str-cat (bool->str green) "\n")))
+        (do (put (str-cat "SPECIALIZE unit-context present in a sent prompt: " (str-cat (bool->str found) "\n")))
+            (case (and green found) (true 0) (false 1)))))))))
+
+(def run-specialize-demo (=> I64 I64)
+  (lam (_)
+    (case (run-skill (backend-open "http://100.64.0.5:11434")
+             "code-test-unit" code-test-lib
+             "code-test fractal specialized to unit tests"
+             nil code-test-pool code-test-config the-code the-extra)
+      ((run-r y m raws b2)
+        (do (backend-close b2) (report-specialize m raws))))))
+
+; ---------------------------------------------------------- entry (effectful)
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((a (run-fractal-demo 0)))
+      (let ((b (run-specialize-demo 0)))
+        (case (=i (+ a b) 0) (true 0) (false 1))))))

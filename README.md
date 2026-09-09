@@ -251,7 +251,7 @@ is neither, so there is no `stdlib/` and no `compiler/`.
 | | |
 |---|---|
 | [`lib/`](lib/) | 105 importable modules in thirteen groups: `prelude` `typing` `surface` `module` `lowering` `ports` `capability` `memory` `runtime` `protocol` `evidence` `text` `crypto` |
-| [`prog/`](prog/) | what chirality ships, as distinct from what it is, plus `demo/` `samples/` `scriba/` `manas/` `agent/` |
+| [`prog/`](prog/) | what chirality ships, as distinct from what it is, plus `demo/` `samples/` `scriba/` `prapanca/` `agent/` |
 | [`bin/`](bin/) | `chirality` is the CLI front door. `chirality-bin` is the compiler: a blob on stdin, an ELF on stdout |
 | [`tools/`](tools/) | one folder per tool. Ten of them are the Python still being replaced |
 | [`docs/`](docs/) | the design base and the element pipeline |

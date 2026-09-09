@@ -73,7 +73,7 @@ No NEEDS-AUTHOR items. §4 is unblocked.
   `count-hits` over all pipelines for `best`; `best = 0` → `match-none listing`;
   else `filter` the pipelines whose count equals `best` (winners) and case:
   single winner → `match-found w (pipeline-when w)`, ≥2 → `match-tied (ids-of
-  winners) listing`. Imports: prelude, collections, manas/core/types.
+  winners) listing`. Imports: prelude, collections, prapanca/core/types.
 - **Size:** ~M
 
 ### Step 2 — `scaffold/lib/manas/core/assemble.chiral`
@@ -82,7 +82,7 @@ No NEEDS-AUTHOR items. §4 is unblocked.
   prompt by nested `str-cat` of labeled sections (Lens / You see / Document /
   Extra / Context / Return); `render-extra` folds the `(List (Pair Str Str))` to
   `k: v` lines joined by `\n`; context `(List Str)` joined by `\n`. Imports:
-  prelude, collections, manas/core/types.
+  prelude, collections, prapanca/core/types.
 - **Size:** ~S
 
 ### Step 3 — `scaffold/lib/manas/core/stop.chiral`

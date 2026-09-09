@@ -63,7 +63,7 @@ updated: 2026-08-15
   1. **The types are already built (E133).** `Config`/`Binding`, `Pipeline`,
      `Expert`, `GateRule`, `Order` (`order-fan-out`/`order-chain`/`order-branch`),
      `StopPolicy` (`stop-single`/`stop-capped`/`stop-until-dry`) all live in
-     `manas/core/types`. E140 imports them and adds ONLY values + `find`-based
+     `prapanca/core/types`. E140 imports them and adds ONLY values + `find`-based
      lookups — no type redefinition.
   2. **num_ctx is part of every Binding (silent-truncation WALL).** Ollama
      silently truncates past its 2k–4k default, so each Binding names an explicit
@@ -143,7 +143,7 @@ Two files. `profiles.chiral` — the four Config values + `profile-by-id`:
 ; (Config/Binding) are E133 — imported, never redefined.
 (import "prelude")             ; str-eq, List, Maybe
 (import "collections")         ; find
-(import "manas/core/types")    ; Config (config id binds), Binding (binding slot model num-ctx)
+(import "prapanca/core/types")    ; Config (config id binds), Binding (binding slot model num-ctx)
 
 ; config id accessor (E133 has no accessors; add the one we need)
 (def config-id (-> Config Str)
@@ -200,7 +200,7 @@ Two files. `profiles.chiral` — the four Config values + `profile-by-id`:
 ; find-based lookups + single-ctor accessors. Types are E133 — imported.
 (import "prelude")             ; str-eq, List, Maybe
 (import "collections")         ; find
-(import "manas/core/types")    ; Pipeline, Expert, GateRule, Order, StopPolicy
+(import "prapanca/core/types")    ; Pipeline, Expert, GateRule, Order, StopPolicy
 
 ; ---------------------------------------------------------- Expert pool accessors
 (def expert-id (-> Expert Str)
@@ -278,7 +278,7 @@ Two files. `profiles.chiral` — the four Config values + `profile-by-id`:
 - **Lands in:** `scaffold/lib/manas/profile/profiles.chiral` (the four Configs +
   `profile-by-id`) and `scaffold/lib/manas/profile/doc-refine.chiral` (the pipeline
   + Expert pool + `expert-by-id`/`expert-slot-of`). Both import `prelude`,
-  `collections`, `manas/core/types`. Both pure `->`, no ports, no crossing.
+  `collections`, `prapanca/core/types`. Both pure `->`, no ports, no crossing.
 - **Conformance target:** the INTEGRATION test proves the real payload flows
   through the pure core. (1) `match-pipeline <a doc-refine-ish request>
   (cons doc-refine-pipeline nil)` → `match-found` doc-refine. (2) `run-gate

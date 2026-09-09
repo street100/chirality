@@ -11,8 +11,8 @@
 ; findings fix; the LIVE path is exercised by manas-run/manas-run-conform.)
 
 (import "prelude/prelude")                  ; str-eq, =i, and, +, List, Bool
-(import "manas/core/types")         ; Finding (finding kind target body)
-(import "manas/pipeline/runner")    ; parse-findings
+(import "prapanca/core/types")         ; Finding (finding kind target body)
+(import "prapanca/pipeline/runner")    ; parse-findings
 
 ; ------------------------------------------------------------- finding accessors
 (def f-kind   (-> Finding Str) (lam (f) (case f ((finding k tg bd) k))))

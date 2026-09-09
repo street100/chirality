@@ -22,14 +22,14 @@
 (import "protocol/render")                      ; Rendering, r-face, r-lines, r-text, render-to-ansi-full
 (import "ports/ports")                       ; put (=> Str Unit) — the on-delta terminal-write (S17; coordinator.chiral:20)
 (import "scriba/manas-mode")                  ; mf-row, mh-row, join-comma, rrows-append  (S14 helpers, reused)
-(import "manas/core/types")            ; ExpertOutcome, Expert, Binding, Config, Pipeline, RunManifest, CombinerOutcome
+(import "prapanca/core/types")            ; ExpertOutcome, Expert, Binding, Config, Pipeline, RunManifest, CombinerOutcome
 ; --- the effectful driver's deps (commit 2) ---
 (import "prelude/list")
-(import "manas/backend")                     ; backend (the Backend ctor), Backend
-(import "manas/pipeline/plan")         ; plan-run, PlanOutcome, assemble-manifest, ids-of-experts, bnd-model, exp-slot, yield-of
-(import "manas/pipeline/runner")       ; call-expert, call-combiner, call-expert-stream, call-combiner-stream, gather-findings (S17 twins)
-(import "manas/profile/profiles")      ; smoke-local-config  (the crafted config the sample fires)
-(import "manas/profile/doc-refine")    ; doc-refine-pipeline, expert-pool, expert-id  (the crafted pipeline + pool)
+(import "prapanca/backend")                     ; backend (the Backend ctor), Backend
+(import "prapanca/pipeline/plan")         ; plan-run, PlanOutcome, assemble-manifest, ids-of-experts, bnd-model, exp-slot, yield-of
+(import "prapanca/pipeline/runner")       ; call-expert, call-combiner, call-expert-stream, call-combiner-stream, gather-findings (S17 twins)
+(import "prapanca/profile/profiles")      ; smoke-local-config  (the crafted config the sample fires)
+(import "prapanca/profile/doc-refine")    ; doc-refine-pipeline, expert-pool, expert-id  (the crafted pipeline + pool)
 
 ; ─── §3.1 the three sums ─────────────────────────────────────────────────────
 

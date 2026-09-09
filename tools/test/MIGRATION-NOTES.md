@@ -179,8 +179,8 @@ gate, so the list cannot rot silently.
 
 Two departures, both already recorded beside the list in `run-tests.sh`:
 
-- the six `scriba-*` / `flow-view-test` roots left when the manas subtree landed
-  (slice 4). They were never broken — they imported twelve manas keys that
+- the six `scriba-*` / `flow-view-test` roots left when the prapanca subtree landed
+  (slice 4). They were never broken — they imported twelve prapanca keys that
   resolved to nothing, and nothing in them was edited to fix it.
 - `t5_vt_parser.prog` and `t6_apc_roundtrip.prog` **left in E174.** The old note
   called all three remaining entries "pre-existing TUI breakage"; two of them

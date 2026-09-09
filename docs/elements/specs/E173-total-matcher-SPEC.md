@@ -49,7 +49,7 @@ this run minted none.
   classes (`lib/protocol/utf8.chiral` owns those); leftmost-first / lazy
   semantics (slice 2); the score, the edit script and the stable address (shards
   E, F and G of [[banks/text]], all unnumbered); opening `PureFn`
-  (`prog/manas/core/flow.chiral:103`), which the bank calls D's second job.
+  (`prog/prapanca/core/flow.chiral:103`), which the bank calls D's second job.
 
 ## 2. Baseline (what already exists)
 
@@ -145,7 +145,7 @@ facts close it, and each is independently sufficient.
 
 Pointing the same way, without being needed: [[banks/text]] `:121-123` records
 that `PureFn` is closed at six constructors, that a new text step means editing
-`prog/manas/core/flow.chiral` (the sum is declared at `:103`) and recompiling,
+`prog/prapanca/core/flow.chiral` (the sum is declared at `:103`) and recompiling,
 and that **opening that wall is D's second job**. A compile-time-fixed pattern
 set does not open it.
 
@@ -499,7 +499,7 @@ measurement exists. It mints no element and this SPEC does not plan it.
     19 sites, all with small literal bounds. No constructor is owed.
   - **A byte-set `Cls` constructor over a 256-bit bitmap.** A pure speedup
     that changes no arm of `pd`. Home: this module, when a measurement asks.
-  - **Opening `PureFn`** (`prog/manas/core/flow.chiral:129`), which
+  - **Opening `PureFn`** (`prog/prapanca/core/flow.chiral:129`), which
     [[banks/text]] calls D's second job. Outside slice 1 and unscheduled.
   - **Shards E (score), F (edit script) and G (stable address)** of
     [[banks/text]], all unnumbered. [[arcs/text-tools-arc]] has no reserved element

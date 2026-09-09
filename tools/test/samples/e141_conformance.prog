@@ -1,4 +1,4 @@
-; e141_conformance.chiral — E141 conformance: the manas golden-manifest test oracle.
+; e141_conformance.chiral — E141 conformance: the prapanca golden-manifest test oracle.
 ;
 ; Two halves, one exit-code oracle (exit 0 iff every assertion holds, else 1):
 ;
@@ -24,9 +24,9 @@
 
 (import "prelude/prelude")
 (import "protocol/json")                    ; json-parse
-(import "manas/core/types")        ; RunManifest, ExpertCall, Binding
-(import "manas/contract/manifest") ; manifest-from-json + accessors
-(import "manas/contract/golden")   ; manifest-conforms
+(import "prapanca/core/types")        ; RunManifest, ExpertCall, Binding
+(import "prapanca/contract/manifest") ; manifest-from-json + accessors
+(import "prapanca/contract/golden")   ; manifest-conforms
 (import "ports/ports")                   ; open-rw, read, adopt-fd, fd-close
 
 ; ---------------------------------------------------------- file-read helpers (=>)

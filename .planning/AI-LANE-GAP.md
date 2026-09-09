@@ -232,7 +232,7 @@ This pass moves one more. L4 moves by +300, for the five rows in the
 construction group and dedication (N36-N40): two constructor functions, a
 closed connector sum, a network-assembly value, and a dedication field.
 
-The tree is 44,682 lines. `prog/manas/` is 9,990 of it. The estimate above
+The tree is 44,682 lines. `prog/prapanca/` is 9,990 of it. The estimate above
 is roughly 10% of the tree and about 45% of manas's own size, smaller than
 manas itself because L7, the layer closest to manas, is nearly all
 `connect`.
@@ -312,7 +312,7 @@ alone decided the verdict. A hit naming a different domain's homonym
 counted as no hit: `Network` on sockets (`lib/ports/sock.port`,
 `lib/protocol/http.chiral`), `Projection` on data-shape projection
 (`lib/prelude/list.chiral:160`, `lib/typing/effects.chiral:29`), `router` on
-chat dispatch (`prog/manas/chatter/router`), `Advance` on the English word
+chat dispatch (`prog/prapanca/chatter/router`), `Advance` on the English word
 (`lib/surface/sexp.chiral:81`, `lib/protocol/render.chiral:451`), `trace` on
 the type-checker's conversion trace or the stdio debug port
 (`lib/typing/kernel-core.chiral:34`, `lib/ports/stdio.port:12`),
@@ -329,7 +329,7 @@ the type-checker's conversion trace or the stdio debug port
 | row | hit | why it holds at `new` |
 |---|---|---|
 | N4 | `lib/lowering/tal/bytes.chiral:388`, a Horner-scheme byte decode | decodes an integer from eight bytes; not a polynomial evaluator over arbitrary coefficients for i-GELU/i-Softmax |
-| N14 | `prog/manas/core/flow.chiral:75-77`, `ty-eq` defined and used from `prog/manas/core/flow-test.prog:38` | `ty-eq` exists and is reached; the row wants a shape-equality bug fixed inside it, not `ty-eq` built |
+| N14 | `prog/prapanca/core/flow.chiral:75-77`, `ty-eq` defined and used from `prog/prapanca/core/flow-test.prog:38` | `ty-eq` exists and is reached; the row wants a shape-equality bug fixed inside it, not `ty-eq` built |
 | N22 | `lib/typing/effects.chiral:1-6`, "the effect membrane" gating `->` against `=>` | the same two symbols, a general purity system already wired everywhere; no per-member, per-neuron application of it exists |
 
 Zero rows moved. The 34 remaining `origin: new` rows returned no hit under

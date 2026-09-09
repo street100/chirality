@@ -38,23 +38,23 @@ updated: 2026-08-15
   the catalog row is BUILD (`Not built — no fan-out runner in chirality`). This is
   glue-over-built-shards, not new algorithm.
 - **Live code this composes with (name, do NOT respec):**
-  - `manas/core/types` (E133) — `Expert`, `Binding`, `Config`, `Pipeline`,
+  - `prapanca/core/types` (E133) — `Expert`, `Binding`, `Config`, `Pipeline`,
     `ExpertOutcome` (`expert-ok`/`expert-bad`), `CombinerOutcome`
     (`combiner-ok`/`combiner-bad`), `Finding` (`finding`), `ExpertCall`
     (`expert-call`, 9 fields), `RunManifest` (`run-manifest`, 15 fields),
     `GateRule`, `GateDecision`, `PipelineMatch`, `BindResult`.
-  - `manas/core/match` (E136) — `match-pipeline : (-> Str (List Pipeline)
+  - `prapanca/core/match` (E136) — `match-pipeline : (-> Str (List Pipeline)
     PipelineMatch)`, `pipeline-id`.
-  - `manas/core/gate` (E134) — `run-gate : (-> (List GateRule) Str
+  - `prapanca/core/gate` (E134) — `run-gate : (-> (List GateRule) Str
     (List (Pair Str Str)) GateDecision)`, `dedup-str`, `elem-str`.
-  - `manas/core/bind` (E135) — `bind-config : (-> Config (List Str) BindResult)`.
-  - `manas/core/assemble` (E136) — `assemble-prompt : (-> Expert Str
+  - `prapanca/core/bind` (E135) — `bind-config : (-> Config (List Str) BindResult)`.
+  - `prapanca/core/assemble` (E136) — `assemble-prompt : (-> Expert Str
     (List (Pair Str Str)) (List Str) Str)`.
   - `backend` — `be-chat : (=> Backend Str (List Msg) ChatR)` (plain-data Backend),
     `Msg`, `msg`, `ChatR` (`chat-ok`/`chat-bad`).
   - `manas` (E67) — `cycle-step : (-> I64 Turn (Step I64 Turn))`, `Turn`, `turn`,
     `Outcome` (`produced`/`failed`); `fsm` — `Step`, `step-go`, `step-halt`.
-  - `manas/profile/{doc-refine,profiles}` (E140, TEST ONLY) —
+  - `prapanca/profile/{doc-refine,profiles}` (E140, TEST ONLY) —
     `doc-refine-pipeline`, `expert-pool`, `smoke-local-config`,
     `cheap-local-config`, and their accessors.
 - **True delta:** the fan-out-and-merge glue — `PlanOutcome` (a new boundary sum),
@@ -80,9 +80,9 @@ doc/precedent (RESOLVED) or waits on an already-minted element (DEFERRED).
 
 ## 4. Change plan (ordered, commit-sized)
 
-### Step 1 — `manas/pipeline/plan.chiral` (the pure spine)
-- **Target:** new file. Imports `prelude`, `collections`, `manas/core/types`,
-  `manas/core/match`, `manas/core/gate`, `manas/core/bind`. NO backend.
+### Step 1 — `prapanca/pipeline/plan.chiral` (the pure spine)
+- **Target:** new file. Imports `prelude`, `collections`, `prapanca/core/types`,
+  `prapanca/core/match`, `prapanca/core/gate`, `prapanca/core/bind`. NO backend.
 - **Change:** mint `PlanOutcome` (`plan-ok`/`plan-no-route`/`plan-no-fire`/
   `plan-unbound`). Private accessors `exp-id`/`exp-slot`/`cfg-id`/`pipe-gate`/
   `pipe-combiner`/`find-expert`/`bnd-model`/`bnd-ctx`/`ids-of-experts`/`slots-of`/
@@ -97,9 +97,9 @@ doc/precedent (RESOLVED) or waits on an already-minted element (DEFERRED).
   `map-list`, no float, exhaustive `case`.
 - **Size:** ~L
 
-### Step 2 — `manas/pipeline/runner.chiral` (the effectful shell)
+### Step 2 — `prapanca/pipeline/runner.chiral` (the effectful shell)
 - **Target:** new file. Imports `prelude`, `collections`, `backend`,
-  `manas/core/assemble`, `manas/pipeline/plan`.
+  `prapanca/core/assemble`, `prapanca/pipeline/plan`.
 - **Change:** `call-expert : (=> Backend Expert Str (List (Pair Str Str)) Str
   ExpertOutcome)` (assemble-prompt ctx=nil → be-chat → `expert-ok`/`expert-bad`);
   `render-findings : (-> (List Finding) Str)`; `call-combiner : (=> Backend Expert
@@ -111,9 +111,9 @@ doc/precedent (RESOLVED) or waits on an already-minted element (DEFERRED).
   `assemble-manifest`; `gather-findings : (-> (List ExpertOutcome) (List Finding))`.
 - **Size:** ~M
 
-### Step 3 — `manas/pipeline/guarded.chiral` (breaker composition)
-- **Target:** new file. Imports `prelude`, `collections`, `manas/core/types`,
-  `manas`, `fsm`, `manas/pipeline/runner`.
+### Step 3 — `prapanca/pipeline/guarded.chiral` (breaker composition)
+- **Target:** new file. Imports `prelude`, `collections`, `prapanca/core/types`,
+  `manas`, `fsm`, `prapanca/pipeline/runner`.
 - **Change:** `manifest-calls`/`call-parsed-ok` accessors; `call->turn`
   (parsed-ok=false → `(failed 0 "")`), `calls->turns`, `fold-breaker : (-> I64
   (List Turn) I64)` (runs `cycle-step` from the incoming count, halts early on a
@@ -122,8 +122,8 @@ doc/precedent (RESOLVED) or waits on an already-minted element (DEFERRED).
 - **Size:** ~S
 
 ### Step 4 — `scaffold/tests/samples/e138_spine.chiral` (the network-free gate)
-- **Target:** new test. Imports `prelude`, `collections`, `manas/pipeline/plan`,
-  `manas/profile/doc-refine`, `manas/profile/profiles`. NO backend → pure blob.
+- **Target:** new test. Imports `prelude`, `collections`, `prapanca/pipeline/plan`,
+  `prapanca/profile/doc-refine`, `prapanca/profile/profiles`. NO backend → pure blob.
 - **Change:** `compile-main : (=> I64 I64)` asserting (A) `plan-run` over a
   code+spec doc through `[doc-refine-pipeline]` + `expert-pool` + `smoke-local-config`
   → `plan-ok` with fired ⊇ {claim-vs-source, anchor-sharpen, coverage-vs-spec} and
@@ -143,7 +143,7 @@ doc/precedent (RESOLVED) or waits on an already-minted element (DEFERRED).
   (the membrane proves its row is exactly the backend crossings).
 - **Tests to add:** `scaffold/tests/samples/e138_spine.chiral` (pure blob, no
   linkage; exit 0 with a negative control). Plus the B1 lowering check of
-  `manas/pipeline/runner` (+ linkage libs) as the effectful-compiles gate.
+  `prapanca/pipeline/runner` (+ linkage libs) as the effectful-compiles gate.
 - **Green line:** 709 test functions → the sample suite gains `e138_spine`
   (exit-code test); ledger-lint clean.
 - **Done when:** (a) `B1 < resolve(runner) + linkage` exits 0 ("RUNNER B1 OK");

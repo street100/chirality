@@ -21,14 +21,14 @@
 ;               (deserializer rejects an incomplete record — no partial manifest).
 ;
 ; Recipe (per the E139 SPEC gate):
-;   chirality_blob "lib:prog" manas/contract/manifest manas/contract/golden json > blob
+;   chirality_blob "lib:prog" prapanca/contract/manifest prapanca/contract/golden json > blob
 ;   cat tools/test/samples/e139_roundtrip.chiral >> blob ; B1 < blob > elf ; run.
 
 (import "prelude/prelude")                 ; str-eq, i64->str, case, and, not
 (import "protocol/json")                    ; json-show, json-parse-str
-(import "manas/core/types")        ; RunManifest, ExpertCall, Binding
-(import "manas/contract/manifest") ; manifest-to-json (E139) + manifest-from-json (E141)
-(import "manas/contract/golden")   ; manifest-conforms
+(import "prapanca/core/types")        ; RunManifest, ExpertCall, Binding
+(import "prapanca/contract/manifest") ; manifest-to-json (E139) + manifest-from-json (E141)
+(import "prapanca/contract/golden")   ; manifest-conforms
 
 ; ---------------------------------------------------------- the round-trip pipeline
 ; manifest-to-json -> json-show -> json-parse-str -> manifest-from-json. Any failure

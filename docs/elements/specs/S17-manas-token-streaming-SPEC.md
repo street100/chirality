@@ -19,7 +19,7 @@ contract.
 **Gate:** S15 (`prog/scriba/manas-runview.chiral` — the run-view frame S17 upgrades:
 `RunView`/`RunPhase`/`RvCall`, `runview-render` `:109`, `fan-render` `:190`,
 `runview-drive` `:218`, `repaint-runview` `:178`, `rv-with-calls` `:140`,
-`len-rvcall` `:154` — all shipped) + `be-chat-stream` (`prog/manas/backend.chiral:155`
+`len-rvcall` `:154` — all shipped) + `be-chat-stream` (`prog/prapanca/backend.chiral:155`
 — the primitive threaded; its 4th arg is the `(=> Str Unit)` on-delta, returns the
 same `ChatR` as `be-chat`). Both landed. Seed: `coordinator.chiral:37-42` `run-cycle`
 (the proven `(lam (d) (put d))` on-delta over `be-chat-stream`) + `stream-ollama.chiral`
@@ -171,7 +171,7 @@ name `call-expert-stream`/`call-combiner-stream` (same module, no new import lin
 ### 2.3 `TUI/scriba/scriba-runview-stream-test.chiral` — **NEW** (the unit gate)
 
 A B1 test root mirroring `scriba-runview-test.chiral` (functions → `I64` exit code;
-`compile-main` ANDs them; exit 0 = pass). Imports `manas-runview` + `manas/core/types`
+`compile-main` ANDs them; exit 0 = pass). Imports `manas-runview` + `prapanca/core/types`
 and asserts `runview-render` over an `rv-streaming` `RunView` (the open-row prefix +
 `phase-tag`) plus the unchanged S15 settle rows. **No network, no fork, no PTY** — the
 whole point of the pure render core. Detailed §8.1.

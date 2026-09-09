@@ -1,0 +1,59 @@
+; manas-builder-live.chiral -- SG4 LIVE gate: the tool-builder author runs on the mesh 0.5b,
+; and its emitted text is put THROUGH the accept-gate. Reports the outcome HONESTLY.
+;
+; Actuates tool-builder-flow (builder.chiral) against the mesh (100.64.0.5:11434) under
+; tool-builder-config (the `author` slot on qwen2.5:0.5b) on a skill REQUEST. Takes the
+; author's YIELD (the emitted text) and runs accept-gate on it, then PRINTS:
+;   - the emitted text length,
+;   - whether the gate ACCEPTED (some) or REJECTED (none) it.
+;
+; HONEST FINDING (expected): a 0.5b almost never emits a whole valid, well-typed Flow JSON
+; in one shot — it emits prose / partial / mistyped JSON that the gate REJECTS (`none`).
+; That REJECT is the gate CORRECTLY PROTECTING THE LIBRARY, not a failure. So this sample
+; PASSES (exit 0) as long as the gate BEHAVED (returned a decided some|none) — it does NOT
+; fake an accept. If the mesh is DOWN the call fails, the yield is empty, and the gate
+; rejects it (honestly non-accepted). The real lesson, reported below: emitting a WHOLE
+; Flow in one author step likely needs a bigger model OR the builder decomposing the emit
+; into tiny steps (a fan of {kind}/{arrow}/{child} sub-emits) — future work, SG-later.
+;
+; Build (closure = builder + ports; append the sys leaves):
+;   . bin/chirality-resolve.sh
+;   chirality_blob "lib:prog" prapanca/core/builder ports > blob
+;   cat scaffold/samples/manas-builder-live.chiral >> blob; echo >> blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
+;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
+(import "prelude/prelude")                ; str-cat, str-len, i64->str, case, do, let, some, none
+(import "prapanca/backend")                ; backend-open / backend-close (E137 linear porttype)
+(import "prapanca/core/flow")        ; run-flow-stop
+(import "prapanca/core/types")       ; StopPolicy (stop-single)
+(import "prapanca/core/builder")     ; tool-builder-flow, tool-builder-pool, tool-builder-config, accept-gate
+(import "ports/ports")                  ; put
+
+; ---------------------------------------------------------- the skill request (the doc the author sees)
+(def the-request Str
+  "Author a Flow for a skill that reads a document and proposes ONE minimal edit. Emit it as Flow JSON keyed by kind: a chain of two steps, ty-doc->ty-patch then ty-patch->ty-verdict.\n")
+
+; ---------------------------------------------------------- report: run the gate on the emitted text, honestly
+(def report-builder (=> Str I64)
+  (lam (emitted)
+    (do (put (str-cat "BUILDER author emitted length: " (str-cat (i64->str (str-len emitted)) "\n")))
+    (case (accept-gate emitted)
+      ((some f)
+        (do (put "BUILDER accept-gate: ACCEPTED (the emitted Flow decoded AND type-checked)\n")
+        (do (put "BUILDER note: a 0.5b rarely emits a whole valid+typed Flow; this one did.\n")
+            0)))
+      (none
+        (do (put "BUILDER accept-gate: REJECTED (none) -- the wall correctly kept un-decoded/ill-typed output OUT of the library\n")
+        (do (put "BUILDER note: REJECT is a PASS for the safety mechanism. Emitting a WHOLE Flow in one author step likely needs a bigger model or the builder decomposing the emit into tiny sub-steps (SG-later).\n")
+            0)))))))                                     ; gate DECIDED (some|none) either way -> exit 0
+
+; ---------------------------------------------------------- entry (effectful)
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (run-flow-stop (backend-open "http://100.64.0.5:11434")
+             tool-builder-flow (stop-single)
+             "tool-builder: emit a Flow JSON for the requested skill"
+             nil tool-builder-pool tool-builder-config the-request nil)
+      ((run-r y m raws b2)
+        (do (backend-close b2) (report-builder y))))))

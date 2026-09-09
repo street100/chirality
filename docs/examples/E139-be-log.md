@@ -34,8 +34,8 @@ updated: 2026-08-15
 - **Reference class:** OURS/SPEC — `METIS-PORT-SPEC.md §1` (the `be-log` effect
   row: `"be-log"` = POST `/internal/log`; all `be-*` sit atop the `http-request`
   transport) + `§8` (the 15 `RunManifest` fields being serialized) + the E141
-  siblings `manas/contract/manifest.chiral` (the deserializer + accessors this
-  inverts) and `manas/contract/golden.chiral` (`manifest-conforms`, the round-trip
+  siblings `prapanca/contract/manifest.chiral` (the deserializer + accessors this
+  inverts) and `prapanca/contract/golden.chiral` (`manifest-conforms`, the round-trip
   assertion).
 - **Key findings:**
   1. **`manifest-to-json` is the exact inverse of `manifest-from-json` (E141).**
@@ -98,9 +98,9 @@ def log_run(base, manifest: dict, run_dir: str):
 The clear-cut example — real chirality surface syntax, copy-and-modify ready.
 
 ```chirality
-; ---- manas/contract/manifest.chiral : ADD manifest-to-json (pure ->) ------------
+; ---- prapanca/contract/manifest.chiral : ADD manifest-to-json (pure ->) ------------
 ; Lives BESIDE E141's manifest-from-json (same module, imports already present:
-; prelude, json, manas/core/types). Reuses the RunManifest/ExpertCall/Binding
+; prelude, json, prapanca/core/types). Reuses the RunManifest/ExpertCall/Binding
 ; ctors; defines NO name E141 already defined.
 
 ; a (List Str) -> a JSON array of strings. foldl+append (NOT map-list: does not
@@ -182,12 +182,12 @@ The clear-cut example — real chirality surface syntax, copy-and-modify ready.
           (cons (pair "generated_at" (j-str generated-at))
                 nil)))))))))))))))))))))
 
-; ---- manas/pipeline/log.chiral : be-log (effectful =>) --------------------------
+; ---- prapanca/pipeline/log.chiral : be-log (effectful =>) --------------------------
 (import "prelude")                 ; str->bytes
 (import "backend")                 ; Backend, be-url
 (import "http")                    ; http-request, HttpR
 (import "json")                    ; json-show
-(import "manas/contract/manifest") ; manifest-to-json
+(import "prapanca/contract/manifest") ; manifest-to-json
 
 ; be-log : POST the run record to {base}/internal/log. Effect row ("http-request").
 ; The response is ignored — logging is fire-and-forget (a failed POST must not

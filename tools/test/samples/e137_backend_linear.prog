@@ -8,7 +8,7 @@
 ;
 ; Exit: 42 = the chained be-peek bases both equal the original URL; 20 = mismatch.
 (import "prelude/prelude")
-(import "manas/backend")
+(import "prapanca/backend")
 
 ; be-peek b -> (base1 . b2); be-peek b2 -> (base2 . b3); use both bases (qw) while
 ; threading b2->b3 (q1) exactly once each, then discharge b3 via backend-close.

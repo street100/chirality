@@ -1,0 +1,111 @@
+; skills.chiral — the SKILL REGISTRY: every Flow-based fractal skill, paired with its natural
+; config, so a cockpit (scriba) can ENUMERATE, VIEW, and RUN them. The flat-Pipeline catalog
+; (all-pipelines = [doc-refine], all-profiles = the 4 base configs) predates the L0/skill-grower
+; Flow work and never listed these — this registry is what surfaces them.
+;
+; PURE: just values (the Flow trees + Configs already defined in the profiles). No effect here.
+; Additive: imports the profiles, defines nothing they own.
+
+(import "prelude/prelude")                              ; List, Pair, cons, nil, some, none, str-eq, case
+(import "prapanca/core/flow")                      ; Flow
+(import "prapanca/core/types")                     ; Config
+(import "prapanca/profile/doc-edit")               ; doc-edit-flow, doc-edit-config
+(import "prapanca/profile/code-test")              ; code-test-flow, code-test-config
+(import "prapanca/profile/evidence-sift")          ; evidence-sift-flow, evidence-sift-config
+(import "prapanca/profile/evidence-sift-refined")  ; evidence-sift-refined-flow (reuses evidence-sift-config)
+(import "prapanca/profile/research")               ; research-flow, research-config
+(import "prapanca/profile/deep-research")          ; deep-research-flow/config/pool — the FRACTAL research (R2)
+(import "prapanca/profile/decision")               ; decision-flow, decision-config
+
+; one registry row: display name + the Flow + its Config + its Expert pool + a sample input doc
+; (so a cockpit can RUN it with one keystroke).
+(data SkillEntry ()
+  (skill-entry (name Str) (flow Flow) (config Config) (pool (List Expert)) (sample Str)))
+(def skill-entry-name   (-> SkillEntry Str)          (lam (s) (case s ((skill-entry n f c p d) n))))
+(def skill-entry-flow   (-> SkillEntry Flow)         (lam (s) (case s ((skill-entry n f c p d) f))))
+(def skill-entry-config (-> SkillEntry Config)       (lam (s) (case s ((skill-entry n f c p d) c))))
+(def skill-entry-pool   (-> SkillEntry (List Expert))(lam (s) (case s ((skill-entry n f c p d) p))))
+(def skill-entry-sample (-> SkillEntry Str)          (lam (s) (case s ((skill-entry n f c p d) d))))
+
+; sample inputs (a numbered list for the pure evidence-sift-refined; a doc/question for the others).
+(def flags-doc Str "Prior cheap-pass flags to sort:\n1. The 2019 benchmark logged a 37 percent throughput gain (table 4, measured).\n2. The library was probably inspired by an older Erlang design.\n3. CVE-2021-1234 was patched in release 2.3.0, per the published changelog.\n4. Users likely prefer the new API because it feels cleaner.\n")
+
+; the registry, in display order (evidence-sift-refined is the deterministic model-free one).
+(def all-skills (List SkillEntry)
+  (cons (skill-entry "doc-edit"              doc-edit-flow              doc-edit-config              doc-edit-pool
+          "Improve this sentence: the quick brown fox jump over the lazy dog.\n")
+  (cons (skill-entry "code-test"             code-test-flow             code-test-config             code-test-pool
+          "def clamp(x, lo, hi): return max(lo, min(x, hi))\n")
+  (cons (skill-entry "evidence-sift"         evidence-sift-flow         evidence-sift-config         evidence-sift-pool
+          flags-doc)
+  (cons (skill-entry "evidence-sift-refined" evidence-sift-refined-flow evidence-sift-config         evidence-sift-refined-pool
+          flags-doc)
+  (cons (skill-entry "research"              research-flow              research-config              research-pool
+          "Research question: is Rust a good choice for writing a small operating-system kernel?\n")
+  (cons (skill-entry "deep-research"         deep-research-flow         deep-research-config         deep-research-pool
+          "Tell me about some different specific ways that type theory developed in programming\n")
+  (cons (skill-entry "decision"              decision-flow              decision-config              decision-pool
+          "Decision: which structure for the editor's undo stack?\nOptions: (A) a persistent tree, (B) a snapshot array, (C) a command log.\n") nil))))))))
+
+; the display names (catalog SKILLS group).
+(declare skill-names (-> (List SkillEntry) (List Str)))
+(def skill-names
+  (lam (ss) (case ss (nil nil) ((cons s rest) (cons (skill-entry-name s) (skill-names rest))))))
+
+; name -> entry (a miss is a value: none).
+(declare skill-by-name (-> Str (List SkillEntry) (Maybe SkillEntry)))
+(def skill-by-name
+  (lam (nm ss)
+    (case ss
+      (nil none)
+      ((cons s rest)
+        (case (str-eq (skill-entry-name s) nm)
+          (true (some s))
+          (false (skill-by-name nm rest)))))))
+
+; ─── O3: the plannable skill MENU ───────────────────────────────────────────────
+; A sibling of all-skills carrying just (skill-name, one-line human description) — the
+; menu the pure planner (O1) and the future model planner (O5) range over to PICK a
+; skill. It is metadata ONLY: no SkillEntry ctor change, so scriba's catalog match
+; sites are untouched. Names MUST match all-skills exactly (guarded by a no-drift test
+; that resolves every name via skill-by-name against all-skills).
+; DC-1a: the sift option the planner ranges over is the REFINED (model-free, deterministic)
+; variant — the plain model `evidence-sift` is DROPPED from the menu (a 0.5b per-item verdict is
+; a coin-flip; the refined path is pure-code + emits the rich two-track sentence). evidence-sift
+; STAYS in all-skills (runnable directly + the router's route-table target); it is only removed
+; from the PLANNABLE menu. Menu = 6 (R2 added deep-research: the fractal variant, for a broad ask
+; that wants expanding rather than answering in one pass).
+(def plannable-skills (List (Pair Str Str))
+  (cons (pair "doc-edit"              "improve or rewrite a piece of text")
+  (cons (pair "code-test"            "review code and propose tests for it")
+  (cons (pair "evidence-sift-refined" "sort claims into evidence vs speculation")
+  (cons (pair "research"             "answer one open question")
+  (cons (pair "deep-research"        "research a BROAD question in depth: expand it into specific sub-questions, research each, consolidate")
+  (cons (pair "decision"             "weigh options and recommend one") nil)))))))
+
+; the menu's names, in order (mirrors skill-names' explicit recursion).
+(declare plannable-names (-> (List (Pair Str Str)) (List Str)))
+(def plannable-names
+  (lam (ps) (case ps (nil nil) ((cons p rest) (case p ((pair nm ds) (cons nm (plannable-names rest))))))))
+
+; name -> its one-line description (a miss is a value: none). Mirrors skill-by-name's
+; recursion: a top-level helper walks the menu (no letrec — the scaffold uses declare+def).
+(declare plannable-desc-go (-> Str (List (Pair Str Str)) (Maybe Str)))
+(def plannable-desc-go
+  (lam (nm ps)
+    (case ps
+      (nil none)
+      ((cons p rest)
+        (case p ((pair pn pd)
+          (case (str-eq pn nm) (true (some pd)) (false (plannable-desc-go nm rest)))))))))
+(declare plannable-desc (-> Str (Maybe Str)))
+(def plannable-desc (lam (nm) (plannable-desc-go nm plannable-skills)))
+
+; the 6 new skill configs (union into the catalog's CONFIGS group alongside all-profiles).
+(def all-skill-configs (List Config)
+  (cons doc-edit-config
+  (cons code-test-config
+  (cons evidence-sift-config
+  (cons research-config
+  (cons deep-research-config
+  (cons decision-config nil)))))))

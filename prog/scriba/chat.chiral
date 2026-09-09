@@ -16,12 +16,12 @@
 ; goes through `turn-seq` — the same routed entry `:chat` and `:ask` use — so the FILE
 ; buffer's content is divided, assigned and consolidated like any other message.
 ;
-; Deps: prelude, puffer (Puffer, puffer-value, Zipper), manas/chatter/{turn,router}.
+; Deps: prelude, puffer (Puffer, puffer-value, Zipper), prapanca/chatter/{turn,router}.
 
 (import "prelude/prelude")
 (import "scriba/puffer")
-(import "manas/chatter/turn")      ; turn-seq — the ROUTED entry (replaces the single-model agent call)
-(import "manas/chatter/router")    ; ConvState (conv-empty) — a send is one-shot, so it starts from empty memory
+(import "prapanca/chatter/turn")      ; turn-seq — the ROUTED entry (replaces the single-model agent call)
+(import "prapanca/chatter/router")    ; ConvState (conv-empty) — a send is one-shot, so it starts from empty memory
 
 ; The mesh endpoint. The MODEL is no longer named here: which model answers is now a
 ; per-skill Config decision inside the routed pipeline, not a constant in the editor.

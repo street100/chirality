@@ -1,7 +1,7 @@
 # S16 — manas compose (pick a pipeline, bind a config, pre-flight, dispatch) — IMPLEMENTATION SPEC
 
 > ⚑ **TRIAGE 2026-09-04 — DONE-ALREADY.** 0 of 0 steps are executable at HEAD.
-> `prog/manas/pipeline/compose.chiral` exists. Bucket and evidence:
+> `prog/prapanca/pipeline/compose.chiral` exists. Bucket and evidence:
 > `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
 > was not changed.
 
@@ -101,17 +101,17 @@ Imports (all shipped):
 
 ```
 (import "prelude")                 ; Str, Bool, List, Pair, Maybe, str-eq, cons, nil, some, none
-(import "manas/core/types")        ; Pipeline, Expert, Config, BindResult
-(import "manas/core/bind")         ; bind-config
-(import "manas/core/gate")         ; dedup-str
-(import "manas/core/match")        ; pipeline-id
-(import "manas/profile/profiles")  ; all-profiles, config-id
-(import "manas/profile/doc-refine"); doc-refine-pipeline, expert-pool, expert-by-id, expert-slot-of
+(import "prapanca/core/types")        ; Pipeline, Expert, Config, BindResult
+(import "prapanca/core/bind")         ; bind-config
+(import "prapanca/core/gate")         ; dedup-str
+(import "prapanca/core/match")        ; pipeline-id
+(import "prapanca/profile/profiles")  ; all-profiles, config-id
+(import "prapanca/profile/doc-refine"); doc-refine-pipeline, expert-pool, expert-by-id, expert-slot-of
 ```
 
 Import reachability is the E135/E140-proven path: the manas library sits under the
 resolver libdir `scaffold/lib/manas/*`; `compose.chiral` is a sibling of `plan.chiral`
-under `manas/pipeline/`. No new search-path work.
+under `prapanca/pipeline/`. No new search-path work.
 
 Contents (defined in §3): `ids-slots`, `pipeline-slots`, `compose-preflight`,
 `all-pipelines`, `pipeline-by-id`, `pipeline-ids`, `config-ids`.
@@ -156,7 +156,7 @@ wiring:
 
 `compose-enter` and `compose-fire` are new top-level `def`s ordered **before**
 `vim-command-run` (like `runview-fire`), so the entry arm can reference them. One new
-import: `(import "manas/pipeline/compose")` for `compose-preflight`/`all-pipelines`/
+import: `(import "prapanca/pipeline/compose")` for `compose-preflight`/`all-pipelines`/
 `pipeline-by-id`/`pipeline-ids`/`config-ids`. `join-comma` (S14, `manas-mode.chiral`),
 `profile-by-id`/`all-profiles` (`profiles.chiral`), `backend`/`rv-endpoint`/`rv-req`/
 `rv-doc`/`rv-extra`/`runview-drive`/`runview-render` (S15, `manas-runview.chiral`) are
@@ -166,8 +166,8 @@ already in `default-faces` (added by S15) — **no render.chiral edit**.
 ### 2.4 `scaffold/tests/samples/s16_compose.chiral` — **NEW** (the unit gate)
 
 An exit-code test sample mirroring `e135_bind.chiral` (`compile-main (=> I64 I64)`,
-returns 0 iff all assertions hold). Imports `manas/pipeline/compose` +
-`manas/core/types` + `manas/profile/{profiles,doc-refine}` and asserts the three §1
+returns 0 iff all assertions hold). Imports `prapanca/pipeline/compose` +
+`prapanca/core/types` + `prapanca/profile/{profiles,doc-refine}` and asserts the three §1
 leg-1 properties. **No PTY, no network, no fork.** Detailed §8.1.
 
 ### 2.5 No other file changes
@@ -508,7 +508,7 @@ its labels together for coverage). **No coverage-atomic mode commit** — S16 ad
    blob compiles (`Prompt` coverage stays exhaustive).
 
 3. **`scriba: :compose dispatch (compose-enter + compose-fire, gate on bind-ok) + PTY smoke`**
-   — `command-loop.chiral`: `(import "manas/pipeline/compose")`, `compose-enter` +
+   — `command-loop.chiral`: `(import "prapanca/pipeline/compose")`, `compose-enter` +
    `compose-fire` (§4.1/§4.2), the `:compose` arm in `vim-command-run` (§4.3). This
    pulls the compose core into the scriba blob (already effectful via
    `runview-fire`), so `bin/scriba` grows here. **Gate:** `bin/scriba` builds (exit 0);

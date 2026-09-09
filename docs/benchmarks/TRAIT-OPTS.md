@@ -228,7 +228,7 @@ invisible to them.
   first Futamura projection waiting to happen: specialize the run loop to a
   concrete static `trans` function and the event dispatch collapses to
   straight-line transitions — the states kernel's `sk-next`-shaped code is
-  exactly what falls out. Same shape: the manas coordinator's fixed tool
+  exactly what falls out. Same shape: the prapanca coordinator's fixed tool
   table, HTTP route dispatch, any static config. What's missing is not
   mechanism but **policy**: when does the toolchain auto-specialize?
   That's the staging-modality decision (Fork C, decision-graded-kernel) —

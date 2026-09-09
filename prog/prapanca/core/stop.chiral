@@ -1,0 +1,30 @@
+; ================================================================ prapanca STOP / loop control
+; E136, Wave 2 (METIS-PORT-SPEC §1/§7). Two pure (->) decisions the run loop sits
+; on: overflow-guard (does the assembled prompt fit num_ctx? chars/4 estimate,
+; integer arithmetic — no float crosses the seam) and stop-policy (should this
+; expert loop again? 1-indexed). The cap (3) lives INSIDE the policy — a different
+; pipeline supplies a different policy (stop-deep/stop-quick), no magic constant.
+; PURE (->): the membrane PROVES neither decision crosses the backend seam.
+
+(import "prelude/prelude")             ; str-find, str-len, <=i, <i, or, cond, /
+
+; str-contains COPIED from gate.chiral (E134), named str-has here so match.chiral's
+; own str-contains and this one do not collide as duplicate top-level defs when
+; the two leaves are resolved into one blob. (str-has haystack needle) — does
+; haystack contain needle? (SPEC decision #3.)
+(def str-has (-> Str Str Bool)
+  (lam (haystack needle) (<=i 0 (str-find haystack needle))))
+
+; chars/4 token estimate >= num_ctx => would overflow. Pure integer arithmetic —
+; same as the Python driver, no float. (SPEC §1.)
+(def overflow-guard (-> Str I64 Bool)
+  (lam (prompt num-ctx) (<=i num-ctx (/ (str-len prompt) 4))))
+
+; sharpen/example experts loop-until-dry, capped at 3; everything else single-pass.
+; str-has expert-id "sharpen" = does the expert id contain "sharpen". (SPEC §7.)
+(def stop-policy (-> Str I64 Bool)
+  (lam (expert-id iteration)
+    (cond
+      ((or (str-has expert-id "sharpen") (str-has expert-id "example"))
+       (<i iteration 3))
+      (else false))))

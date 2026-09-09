@@ -1,4 +1,4 @@
-> **ARCHIVED 2026-09-01. Superseded by `.planning/CHATTER-DC-FIXES.md` and by `prog/manas/chatter/`.** The shape this file drew is the shape that got built, so the code is the map.
+> **ARCHIVED 2026-09-01. Superseded by `.planning/CHATTER-DC-FIXES.md` and by `prog/prapanca/chatter/`.** The shape this file drew is the shape that got built, so the code is the map.
 
 # How a message flows — the general-chat pipeline shape (2026-08-18)
 

@@ -137,7 +137,7 @@ documentation into the abstract syntax as a typed value.
 | `cons` / `nil` | The list type |
 | Single-field wrapper collapse | `SyscallRegistry` around a list adds a level and no information |
 
-Field names are the type's own, verbatim. No transformation. `prog/manas/contract/manifest.chiral`
+Field names are the type's own, verbatim. No transformation. `prog/prapanca/contract/manifest.chiral`
 is 334 L of hand-written field-diggers and its `run-id` against `run_id` mismatch is
 exactly the `fieldLabelModifier` knob this avoids.
 

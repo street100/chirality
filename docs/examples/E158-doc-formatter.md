@@ -35,7 +35,7 @@ updated: 2026-08-31
 - **Why metis needs its own:** because every formatter in the tree flattens at
   the construction site, and once flattened the structure is gone for good.
   Two measured instances:
-  - `prog/manas/core/assemble.chiral:47-57` builds an LLM prompt — six named
+  - `prog/prapanca/core/assemble.chiral:47-57` builds an LLM prompt — six named
     sections with provenance — as a nest of `str-cat` closing `))))))))))`.
     The sections exist in the author's head and nowhere in the value.
   - `lib/typing/pretty.chiral` (51 lines) is a `Term -> Str` printer that
@@ -55,7 +55,7 @@ updated: 2026-08-31
   narrowest-first-line invariant; Lindig, *Strictly Pretty* (2000), the same
   algorithm for a **strict, non-lazy** language, which is what chirality is.
   Secondary `OURS`: `lib/typing/diag.chiral` (E157, 469 L), `lib/protocol/render.chiral`,
-  `lib/typing/pretty.chiral`, `prog/manas/core/assemble.chiral`.
+  `lib/typing/pretty.chiral`, `prog/prapanca/core/assemble.chiral`.
 
 **Finding 1 — the algebra's whole content is one union, and the union is the
 part you must not expose.** Wadler's `Doc` has a `<|>` alternative whose
@@ -155,7 +155,7 @@ msg = f"{kind} redeclared: {name}"          # structure destroyed here
 print(textwrap.fill(msg, width=80))         # …and guessed at again here
 ```
 
-And the tree's own instance, `prog/manas/core/assemble.chiral:47-57` — six
+And the tree's own instance, `prog/prapanca/core/assemble.chiral:47-57` — six
 sections, real provenance, one expression:
 
 ```metis

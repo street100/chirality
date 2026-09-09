@@ -190,7 +190,7 @@ The renderer (`manas-doc-render`) already SHOWS every level. Editable now:
    **Tab-completion**, not a scrollable/inline candidate list — you type a prefix +
    ⇥. A real list view is polish, not cataloged (not a phantom). **Still open (the
    "different setups" depth):** pipelines/configs remain **static compiled-in
-   values** (`scaffold/lib/manas/profile/*`, `manas/pipeline/compose.chiral`) — no
+   values** (`scaffold/lib/manas/profile/*`, `prapanca/pipeline/compose.chiral`) — no
    **on-disk** library to add/save setups without recompiling. That's persistence =
    gap 4. `:compose` still fires from `all-pipelines`, not a currently-edited doc.
 3. **Edit coverage — SLICE A DONE 2026-08-16 (`91f452c`); slices B/C/D open.**
@@ -220,7 +220,7 @@ The renderer (`manas-doc-render`) already SHOWS every level. Editable now:
 4. **PERSISTENCE DONE 2026-08-16 (P1–P4) — the setup library ships.** Edit a setup,
    save it under a name, browse saved setups, reload + run — the whole loop closes.
    Plan/detail: `.planning/SCRIBA-PERSIST-PLAN.md`.
-   - **P1** (`ecf638f`) pure JSON codec `manas/pipeline/persist.chiral` (total encoders +
+   - **P1** (`ecf638f`) pure JSON codec `prapanca/pipeline/persist.chiral` (total encoders +
      decoders, reuses `json.chiral`; round-trip fixpoint over the static library).
    - **P2** (`f65ec90`) `:w <path>` saves the edited doc as JSON (`doc->json` +
      `save-string-to-path`, crossing-free).

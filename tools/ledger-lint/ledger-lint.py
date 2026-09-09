@@ -721,8 +721,8 @@ def check_k() -> list[str]:
 #  that the moment it ran — the reason a ratchet beats a prose claim.)
 # E151b Step 6 pins the other three retired names at their post-change count of 1.
 # The trailing space in each pattern makes it an EXACT-NAME match: the prefix-dodged
-# clones `gate-contains` (manas/core/gate.chiral), `str-has` (manas/core/stop.chiral)
-# and the second `str-has` (manas/core/flow.chiral) are deliberately NOT counted —
+# clones `gate-contains` (prapanca/core/gate.chiral), `str-has` (prapanca/core/stop.chiral)
+# and the second `str-has` (prapanca/core/flow.chiral) are deliberately NOT counted —
 # they are different names, they belong to E154, and a pattern that caught them would
 # be pinning work this element does not do.
 OWNERSHIP_BASELINE = {r"^\(def str-cmp ": 1, r"^\(data Ord \(\)": 2,

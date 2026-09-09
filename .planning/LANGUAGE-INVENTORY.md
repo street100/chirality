@@ -56,7 +56,7 @@ the point, and also why the gaps below are gaps rather than bindings.
 | len · eq · substring · find · concat · int→str · str→int | HAVE | 7 externs + `str->i64` |
 | starts-with · strip-prefix · contains · split · join | HAVE | `string-utils.chiral` (39 L) + `collections.chiral` |
 | **Ordering (`str-cmp → Ord`)** | **MINTED E151** | **Defined 4 separate times** — `ty-cmp.chiral:34`, `row-infer.chiral:35`, `asm-reloc.chiral:79`, `compile-back.chiral:128`. Every `Map` keyed by `Str` needs a comparator and there is no canonical one |
-| **case ops · trim** | **MINTED E151** | `str-lower` lives in `manas/chatter/router.chiral:46`; `str-trim` lives in `manas/core/flow.chiral:430` — **text primitives homed inside the orchestration app** because there is no string module to put them in |
+| **case ops · trim** | **MINTED E151** | `str-lower` lives in `prapanca/chatter/router.chiral:46`; `str-trim` lives in `prapanca/core/flow.chiral:430` — **text primitives homed inside the orchestration app** because there is no string module to put them in |
 | replace · pad · repeat(Str) · index-of-any | GAP | `brepeat` exists for Bytes only |
 | **Format / interpolation / printf** | GAP | every message is hand-built with `str-cat` chains |
 | Regex | DELIBERATE-ish | nothing uses it; the boundary-sums discipline prefers parsers over patterns. Reconsider only with a real consumer |

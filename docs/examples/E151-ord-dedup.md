@@ -61,7 +61,7 @@ updated: 2026-08-22
   **What consolidation does and does not buy.** It does *not* turn divergence into
   a syntax error — the opposite is true today: adding `(import "string-utils")` to a
   module that already defines `str-cmp` **double-defines the name in a combined leaf
-  blob** (`prog/manas/core/match.chiral:15-18`, a shipped SPEC decision — the
+  blob** (`prog/prapanca/core/match.chiral:15-18`, a shipped SPEC decision — the
   same note also records that `string-utils`' `str-contains` takes its arguments in
   the reverse order, `(needle s)` vs `(haystack needle)`; the *other* ad-hoc copy of
   that name, `TUI/scriba/help.chiral:198`, takes `(haystack needle)` as well — so
@@ -205,7 +205,7 @@ class StrMap:
   `(import "string-utils")` *cost* something, so the cheap move is to write a
   prefixed copy — which is exactly what `ar-str-cmp` (`asm-reloc.chiral:79`) and
   `cb-str-cmp` (`compile-back.chiral:128`) are, and what
-  `manas/core/match.chiral:15-18` records as a shipped SPEC decision. The pressure
+  `prapanca/core/match.chiral:15-18` records as a shipped SPEC decision. The pressure
   is not hypothetical or limited to functions: **constructors share the same flat
   space too** — co-blobbing `qtt.chiral` (`(data Qty () (q0) (q1) (qw))`, `:14`) with
   `effects.chiral` (`(data Qtt () (q0) (q1) (qw))`, `:32`) yields

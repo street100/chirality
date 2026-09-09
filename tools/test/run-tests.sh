@@ -165,8 +165,8 @@ run_phase 6 "linear mint discipline (E159 binder + arrow)"     linear-mint.sh
 #                             milestone". The wrapper is registered in
 #                             crossing-wraps; the extern does not lower.
 #
-# The six scriba-* / flow-view-test roots left this list when the manas subtree
-# landed (slice 4).  They were never broken -- they imported twelve manas keys
+# The six scriba-* / flow-view-test roots left this list when the prapanca subtree
+# landed (slice 4).  They were never broken -- they imported twelve prapanca keys
 # that resolved to nothing.  Nothing in them was edited to fix it.
 echo
 echo "=== Phase 7: downstream roots compile (the apps lib/ can break) ==="

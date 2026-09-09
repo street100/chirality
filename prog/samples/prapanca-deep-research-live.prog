@@ -1,0 +1,76 @@
+; manas-deep-research-live.chiral — the FRACTAL, live: one broad ask -> N specific questions ->
+; a full research run per question -> one consolidated answer.
+;
+; The pure gate proves the composition type-checks and that the pool closes. What only the mesh can
+; show is that the nesting RUNS: that the expander produces several questions, that each one drives
+; a whole research fractal of its own (so the call count is the composite's, not one skill's), and
+; that every leaf comes back green on the 0.5b.
+;
+; ASSERTED (structural, robust to what the model actually says):
+;   (a) N >= 2 questions came out of the expansion — it EXPANDED, it did not restate;
+;   (b) manifest-all-green? — every leaf, at both levels, ran clean on the tiny model;
+;   (c) the call count is the COMPOSITE's: 1 (expand) + sum over questions of (1 + 2*Mi) + 1
+;       (audit). Since Mi (each question's angle count) is the model's choice, the check is
+;       structural: calls must exceed the count a SINGLE research run could produce for the same
+;       N, i.e. calls > 1 + 2N + 1 — the shallow path's shape. That inequality is the whole claim
+;       of this skill, and it cannot hold by accident.
+; PRINTED: the counts, and the consolidated answer, so a human can read what the depth bought.
+;
+; Build (closure = deep-research + skill + ports; append the sys leaves):
+;   . bin/chirality-resolve.sh
+;   chirality_blob "lib:prog" prapanca/profile/deep-research prapanca/core/skill ports > blob
+;   cat scaffold/samples/manas-deep-research-live.chiral >> blob; echo >> blob
+;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
+;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
+;   ulimit -s unlimited; ./scaffold/build/B1 < blob > t.elf && chmod +x t.elf && ./t.elf; echo $?
+
+(import "prelude/prelude")
+(import "prapanca/backend")                     ; backend-open / backend-close (E137 linear porttype)
+(import "prapanca/core/types")            ; RunManifest, ExpertCall, RawCall, StopPolicy
+(import "prapanca/core/flow")             ; run-flow-stop, manifest-all-green?, manifest-calls, stop-single, parse-perspectives
+(import "prapanca/profile/deep-research") ; deep-research-flow, deep-research-pool, deep-research-config
+(import "prapanca/pipeline/runner")       ; RunR (run-r)
+(import "ports/ports")                       ; put
+
+(def endpoint Str "http://100.64.0.5:11434")
+(def bool->str (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
+(def the-ask Str "Tell me about some different specific ways that type theory developed in programming")
+
+(declare ecall-len (-> (List ExpertCall) I64))
+(def ecall-len (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (ecall-len t))))))
+(declare praw-len (-> (List RawCall) I64))
+(def praw-len (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (praw-len t))))))
+
+; the expander's raw is the FIRST call of the run; its response parses into the questions.
+(def first-raw-response (-> (List RawCall) Str)
+  (lam (raws) (case raws (nil "") ((cons r rest) (case r ((raw-call e s m p rp) rp))))))
+(declare persp-len (-> (List Perspective) I64))
+(def persp-len (lam (ps) (case ps (nil 0) ((cons h t) (+ 1 (persp-len t))))))
+
+; how many questions the fan ACTUALLY ran: the parser keeps every line the expander emitted, but
+; a MODEL perspectivist is capped (R3), so the fan is min(parsed, max-model-perspectives).
+(def fanned (-> I64 I64)
+  (lam (parsed) (case (<i max-model-perspectives parsed) (true max-model-perspectives) (false parsed))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (do (put "DEEP-RESEARCH LIVE — one broad ask, a research fractal per question\n")
+    (case (run-flow-stop (backend-open endpoint) deep-research-flow (stop-single)
+            "deep: type theory" nil deep-research-pool deep-research-config the-ask nil)
+      ((run-r yield m raws b2)
+        (do (backend-close b2)
+        (let ((qs (fanned (persp-len (parse-perspectives (first-raw-response raws))))))
+        (let ((calls (ecall-len (manifest-calls m))))
+        (let ((green (manifest-all-green? m)))
+        (let ((shallow (+ 1 (+ (+ qs qs) 1))))     ; what ONE research run over the same N would cost
+          (do (put (str-cat "  questions fanned   : " (str-cat (i64->str qs)
+                     (str-cat "   (of " (str-cat (i64->str (persp-len (parse-perspectives (first-raw-response raws))))
+                       (str-cat " emitted; the model fan is capped at " (str-cat (i64->str max-model-perspectives) ")\n")))))))
+          (do (put (str-cat "  total calls        : " (str-cat (i64->str calls)
+                     (str-cat "   (a single-level run over " (str-cat (i64->str qs)
+                       (str-cat " would be " (str-cat (i64->str shallow) ")\n")))))))
+          (do (put (str-cat "  all-green (0.5b)   : " (str-cat (bool->str green) "\n")))
+          (do (put (str-cat "  consolidated yield : " (str-cat yield "\n")))
+            (case (and (<=i 2 qs) (and green (<i shallow calls)))
+              (true  (do (put "DEEP-RESEARCH live gate: PASS\n") 0))
+              (false (do (put "DEEP-RESEARCH live gate: FAIL\n") 1)))))))))))))))))

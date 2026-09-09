@@ -167,7 +167,7 @@ scriba. Serial, verify+fold each (the established cadence):
   applied ONE LEVEL UP to the tool-builder (SG4) — no new mechanism. Additive helper
   **`project-builder : (-> Str Str Skill)`** = `(specialize-skill "tool-builder" new-name
   project-context)` in `scaffold/lib/manas/core/builder.chiral` (builder now imports
-  `manas/core/skill`; no cycle — skill never imports builder). `run-skill` injects the
+  `prapanca/core/skill`; no cycle — skill never imports builder). `run-skill` injects the
   project context (language/code idioms) into the author step's prompt via the `extra`
   channel, identical to the object-level path. PURE gate `builder-sg5-test.chiral` (library =
   `[skill-base "tool-builder" tool-builder-flow (stop-single), project-builder
@@ -189,7 +189,7 @@ scriba. Serial, verify+fold each (the established cadence):
   `branch:<perspectivist>`; a branch's two sub-flows sit under labelled
   `per-perspective:`/`backtrack:` headers; composites indent depth+1) + `flow-view-render`
   (pure Rendering, reuses the S14 `mf-row`/`mh-row` faces). command-loop imports
-  `manas/core/flow-persist` (SG1 `json->flow`) + `flow-view`; a **`:flow <path>`** arm
+  `prapanca/core/flow-persist` (SG1 `json->flow`) + `flow-view`; a **`:flow <path>`** arm
   (`flow-load-view`, sibling of `manas-load-doc`) reads (load-bytes) → parses (json-parse) →
   decodes (json->flow, total — rejects malformed/unknown-kind) → flattens + paints, landing in
   Normal with the fractal on screen + a status line; any stage failure beeps + paints the

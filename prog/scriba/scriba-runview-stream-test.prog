@@ -8,7 +8,7 @@
 ;
 ; Build+run (fast, ~seconds — the manas-runview closure only, no full scriba tree):
 ;   . bin/chirality-resolve.sh
-;   chirality_blob scaffold/lib scriba/manas-runview manas/core/types > blob
+;   chirality_blob scaffold/lib scriba/manas-runview prapanca/core/types > blob
 ;   for l in tal-ir crossing-wraps sys-check target-linux sys-tal sys-linkage; do \
 ;     cat scaffold/lib/$l.chiral >> blob; echo >> blob; done
 ;   cat TUI/scriba/scriba-runview-stream-test.chiral >> blob; echo >> blob
@@ -17,7 +17,7 @@
 (import "prelude/prelude")
 (import "protocol/render")                  ; Rendering (r-lines / r-face / r-text) — to dig rows
 (import "scriba/manas-runview")           ; RunView, RunPhase (rv-streaming), runview-render, streaming-row, phase-tag, rv-*
-(import "manas/core/types")        ; ExpertOutcome (expert-ok / expert-bad)
+(import "prapanca/core/types")        ; ExpertOutcome (expert-ok / expert-bad)
 
 ; ─── Rendering extractors (dig the tree runview-render produces) ─────────────
 

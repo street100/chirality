@@ -10,10 +10,10 @@
 ; PROVES no network call; this checks the RESOLUTION. Mirrors e135_bind.chiral.
 
 (import "prelude/prelude")                   ; str-eq, =i, +, and, cond, List, Bool
-(import "manas/pipeline/compose")    ; compose-preflight, pipeline-slots
-(import "manas/core/types")          ; BindResult (bind-ok/bind-miss), Config, Binding
-(import "manas/profile/profiles")    ; smoke-local-config
-(import "manas/profile/doc-refine")  ; doc-refine-pipeline, expert-pool
+(import "prapanca/pipeline/compose")    ; compose-preflight, pipeline-slots
+(import "prapanca/core/types")          ; BindResult (bind-ok/bind-miss), Config, Binding
+(import "prapanca/profile/profiles")    ; smoke-local-config
+(import "prapanca/profile/doc-refine")  ; doc-refine-pipeline, expert-pool
 
 ; length of a (List Str)
 (def len-str (-> (List Str) I64)

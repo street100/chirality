@@ -1,0 +1,74 @@
+; ================================================ prapanca run-loop breaker composition
+; E138, Wave 4 (METIS-PORT-SPEC §9). guarded-run = run-pipeline with E67's circuit
+; breaker folded in. cycle-step (manas.chiral) is the pure control policy: a
+; consecutive-backend-failure counter that halts at the limit. Here the breaker
+; OBSERVES the run — each fired expert whose call did NOT parse (parsed-ok=false, a
+; be-chat failure recorded in the manifest) is a failure Turn; fold-breaker runs
+; cycle-step from the incoming count and stops early on a trip. Returns the post-run
+; failure count paired with the yield + manifest, so a caller batching runs (the
+; run-batch analog) can trip the circuit across runs. Structural fold -> total.
+
+(import "prelude/prelude")               ; I64, Pair, List
+(import "prelude/list")
+(import "prapanca/core/types")      ; RunManifest, ExpertCall, RawCall
+(import "prapanca/manas")                 ; cycle-step, Turn, turn, produced, failed
+(import "prapanca/fsm")                   ; Step, step-go, step-halt
+(import "prapanca/pipeline/runner") ; run-pipeline
+
+; ----------------------------------------------------------------- accessors
+; the expert-calls of a run record; whether one call's model response parsed.
+(def manifest-calls (-> RunManifest (List ExpertCall))
+  (lam (m) (case m
+    ((run-manifest rid rq dp ap pid pc rd fids cid cb ccu ec cp fy ga) ec))))
+
+(def call-parsed-ok (-> ExpertCall Bool)
+  (lam (c) (case c
+    ((expert-call eid slot bm nc ps rs pk am dm) pk))))
+
+; ----------------------------------------------------------------- calls -> turns
+; a call that did not parse is a backend failure the breaker counts; a parsed call
+; is a success (resets the counter). prompt/text are "" — the breaker reads only the
+; outcome shape (manas.chiral's outcome-failed).
+(def call->turn (-> ExpertCall Turn)
+  (lam (c)
+    (case (call-parsed-ok c)
+      (true  (turn "" (produced "")))
+      (false (turn "" (failed 0 ""))))))
+
+(def calls->turns (-> (List ExpertCall) (List Turn))
+  (lam (cs)
+    (foldl ExpertCall (List Turn)
+      (lam (acc c) (append Turn acc (cons (call->turn c) nil)))
+      nil cs)))
+
+; ----------------------------------------------------------------- the breaker fold
+; run cycle-step from the incoming failure count over the run's turns; halt early on
+; a trip (return the tripping count). Structural recursion on the turn list -> total.
+(declare fold-breaker (-> I64 (List Turn) I64))
+(def fold-breaker
+  (lam (fails turns)
+    (case turns
+      (nil fails)
+      ((cons t rest)
+        (case (cycle-step fails t)
+          ((step-go   f2 outs) (fold-breaker f2 rest))
+          ((step-halt f2 outs) f2))))))
+
+; ----------------------------------------------------------------- guarded-run
+; run-pipeline with the breaker folded in. E137: threads the linear Backend handle
+; out in GRunR (post-run fail count + yield + manifest BESIDE the fresh handle) so
+; the caller (the entry sample / scriba) discharges it via backend-close. Row:
+; (be-chat) (via run-pipeline).
+; raws = the (List RawCall) the run produced (real per-expert prompt/response text),
+; threaded out beside the manifest so the caller can hand it to be-log (LEARN-01
+; corpus). It is a plain list — not linear — so it rides alongside the q1 handle.
+(data GRunR ()
+  (grun-r (fails I64) (yield Str) (manifest RunManifest) (raws (List RawCall)) (1 b Backend)))
+(def guarded-run
+  (=> (1 b Backend) I64 Str (List Pipeline) (List Expert) Config Str (List (Pair Str Str))
+      GRunR)
+  (lam (b fails req pipes pool config doc extra)
+    (case (run-pipeline b req pipes pool config doc extra)
+      ((run-r yield m raws b2)
+        (grun-r (fold-breaker fails (calls->turns (manifest-calls m)))
+                yield m raws b2)))))

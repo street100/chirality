@@ -51,7 +51,7 @@ scaffold/lib/alloc-growing.metis	lib/memory/alloc-growing.chiral	chiral	map §5 
 scaffold/lib/alloc.metis	lib/memory/alloc.chiral	chiral	map §5 | default (has lambdas)
 scaffold/lib/arena.metis	lib/memory/arena.chiral	chiral	map §5 | default (has lambdas)
 scaffold/lib/asm-reloc.metis	lib/lowering/mach/asm-reloc.chiral	chiral	map §5 | default (has lambdas)
-scaffold/lib/backend.metis	prog/manas/backend.chiral	chiral	map §5 silent; manas model-backend contract -> prog/manas/ | default (has lambdas)
+scaffold/lib/backend.metis	prog/prapanca/backend.chiral	chiral	map §5 silent; manas model-backend contract -> prog/prapanca/ | default (has lambdas)
 scaffold/lib/bytes-tal.metis	lib/lowering/tal/bytes.chiral	chiral	map §5 | default (has lambdas)
 scaffold/lib/c-assemble.metis	{DELETED 2026-09-01 -- was lib/lowering/c/assemble.chiral}	chiral	dropped with the C backend (d8bcec5 the modules, d0c5dd5 the fixtures): a second target under one formulation, never a second judgment core. The brace form is how this map marks a new_path that is not one checkable path; a blank new_path does NOT work, map-integrity.sh collapses tab runs and silently PASSES such a row. Original reason: task rule 'same shape for c/' -> drop the c- prefix | default (has lambdas)
 scaffold/lib/climb.metis	prog/climb.manifest	manifest	MAP-vs-TEST CONFLICT: map §5 lists climb.prog, but climb has no compile-main and is pure data ('a CHECKABLE MANIFEST', its own header) -> derived .manifest, kept in map's prog/ dir | zero (lam, zero ^(extern
@@ -64,7 +64,7 @@ scaffold/lib/compile-driver-c.metis	{DELETED 2026-09-01 -- was prog/compiler-c.p
 scaffold/lib/compile-driver.metis	prog/compiler.prog	prog	map §5 | entry: ^(def compile-main
 scaffold/lib/compile-emit.metis	lib/lowering/compile-emit.chiral	chiral	map §5 silent; emit image (NFn -> ELF) -> lowering/ root | default (has lambdas)
 scaffold/lib/compile-front.metis	lib/lowering/compile-front.chiral	chiral	map §5 silent; front-half image of the source->native pipeline -> lowering/ root | default (has lambdas)
-scaffold/lib/coordinator.metis	prog/manas/coordinator.chiral	chiral	map §5 silent; manas coordinator loop -> prog/manas/ | default (has lambdas)
+scaffold/lib/coordinator.metis	prog/prapanca/coordinator.chiral	chiral	map §5 silent; manas coordinator loop -> prog/prapanca/ | default (has lambdas)
 scaffold/lib/crossing-wraps.metis	lib/lowering/tal/crossing-wraps.chiral	chiral	map §5 | default (has lambdas) | RELOCATED 2026-08-31: declared no crossing (LAYOUT ports/ rule)
 scaffold/lib/data.metis	lib/surface/data.chiral	chiral	map §5 | default (has lambdas)
 scaffold/lib/ddc.metis	lib/evidence/ddc.chiral	chiral	map §5 | default (has lambdas)
@@ -75,7 +75,7 @@ scaffold/lib/emit-c.metis	{DELETED 2026-09-01 -- was lib/lowering/c/emit.chiral}
 scaffold/lib/emit-core.metis	lib/lowering/mach/emit-core.chiral	chiral	map §5 | default (has lambdas)
 scaffold/lib/emit-x64.metis	lib/lowering/x64/emit.chiral	chiral	task rule -> lowering/x64/emit (map §5 kept the affix; see findings) | default (has lambdas)
 scaffold/lib/erased-nf.metis	lib/typing/erased-nf.chiral	chiral	map §5 | zero (lam, zero ^(extern  [OVERRIDE: test says .manifest, but LAYOUT defines .manifest as 'pure data; the replacement for JSON/TOML config' and this file declares ADTs/tal defs -> module]
-scaffold/lib/fsm.metis	prog/manas/fsm.chiral	chiral	map §5 body directs it: 'it is manas/runtime/fsm until a second consumer appears' (importers: manas only) | default (has lambdas)
+scaffold/lib/fsm.metis	prog/prapanca/fsm.chiral	chiral	map §5 body directs it: 'it is manas/runtime/fsm until a second consumer appears' (importers: manas only) | default (has lambdas)
 scaffold/lib/harness.metis	lib/evidence/harness.chiral	chiral	map §5 | default (has lambdas)
 scaffold/lib/http.metis	lib/protocol/http.chiral	chiral	map §5 | default (has lambdas)
 scaffold/lib/inet.metis	lib/protocol/inet.chiral	chiral	map §5 | default (has lambdas) | RELOCATED 2026-08-31: declared no crossing (LAYOUT ports/ rule)
@@ -92,7 +92,7 @@ scaffold/lib/mach-c.metis	{DELETED 2026-09-01 -- was lib/lowering/c/mach.chiral}
 scaffold/lib/mach-listing.metis	lib/lowering/listing/mach.chiral	chiral	task rule 'same shape for listing/' -> lowering/listing/mach | default (has lambdas)
 scaffold/lib/mach-x64.metis	lib/lowering/x64/mach.chiral	chiral	task rule -> lowering/x64/mach (map §5 kept the affix; see findings) | default (has lambdas)
 scaffold/lib/mach.metis	lib/lowering/mach/mach.chiral	chiral	map §5 | default (has lambdas)
-scaffold/lib/manas.metis	prog/manas/manas.chiral	chiral	map §5 silent; the manas program -> prog/manas/ | default (has lambdas)
+scaffold/lib/manas.metis	prog/prapanca/manas.chiral	chiral	map §5 silent; the manas program -> prog/prapanca/ | default (has lambdas)
 scaffold/lib/mem-linear.metis	lib/memory/mem-linear.chiral	chiral	map §5 | default (has lambdas)
 scaffold/lib/mem-region.metis	lib/memory/mem-region.chiral	chiral	map §5 | default (has lambdas)
 scaffold/lib/optimize.metis	lib/lowering/upper/optimize.chiral	chiral	map §5 | default (has lambdas)
@@ -625,57 +625,57 @@ scaffold/bench/TRAIT-OPTS.md	docs/benchmarks/TRAIT-OPTS.md	md	slice 7 | doc hois
 scaffold/docs/orchestration.md	docs/implementation/orchestration.md	md	slice 7 | doc hoist, sorted by role
 scaffold/docs/rd-packed-cert.md	docs/implementation/rd-packed-cert.md	md	slice 7 | doc hoist, sorted by role
 scaffold/docs/reg-disciplines.md	docs/implementation/reg-disciplines.md	md	slice 7 | doc hoist, sorted by role
-scaffold/lib/manas/chatter/divide-test.metis	prog/manas/chatter/divide-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/chatter/divide.metis	prog/manas/chatter/divide.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/chatter/egress-test.metis	prog/manas/chatter/egress-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/chatter/egress.metis	prog/manas/chatter/egress.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/chatter/orchestrate-test.metis	prog/manas/chatter/orchestrate-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/chatter/orchestrate.metis	prog/manas/chatter/orchestrate.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/chatter/router-test.metis	prog/manas/chatter/router-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/chatter/router.metis	prog/manas/chatter/router.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/chatter/turn-test.metis	prog/manas/chatter/turn-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/chatter/turn.metis	prog/manas/chatter/turn.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/contract/golden.metis	prog/manas/contract/golden.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/contract/manifest.metis	prog/manas/contract/manifest.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/core/assemble.metis	prog/manas/core/assemble.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/core/bind.metis	prog/manas/core/bind.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/core/builder-sg5-test.metis	prog/manas/core/builder-sg5-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/core/builder-test.metis	prog/manas/core/builder-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/core/builder.metis	prog/manas/core/builder.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/core/flow-persist-test.metis	prog/manas/core/flow-persist-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/core/flow-persist.metis	prog/manas/core/flow-persist.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/core/flow-test.metis	prog/manas/core/flow-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/core/flow.metis	prog/manas/core/flow.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/core/gate.metis	prog/manas/core/gate.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/core/match.metis	prog/manas/core/match.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/core/skill-test.metis	prog/manas/core/skill-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/core/skill.metis	prog/manas/core/skill.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/core/stop.metis	prog/manas/core/stop.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/core/types.metis	prog/manas/core/types.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/pipeline/compose.metis	prog/manas/pipeline/compose.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/pipeline/guarded.metis	prog/manas/pipeline/guarded.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/pipeline/log.metis	prog/manas/pipeline/log.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/pipeline/persist-test.metis	prog/manas/pipeline/persist-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/pipeline/persist.metis	prog/manas/pipeline/persist.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/pipeline/plan.metis	prog/manas/pipeline/plan.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/pipeline/runner.metis	prog/manas/pipeline/runner.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/profile/code-test-test.metis	prog/manas/profile/code-test-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/profile/code-test.metis	prog/manas/profile/code-test.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/profile/decision-test.metis	prog/manas/profile/decision-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/profile/decision.metis	prog/manas/profile/decision.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/profile/deep-research-test.metis	prog/manas/profile/deep-research-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/profile/deep-research.metis	prog/manas/profile/deep-research.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/profile/doc-edit-test.metis	prog/manas/profile/doc-edit-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/profile/doc-edit.metis	prog/manas/profile/doc-edit.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/profile/doc-refine.metis	prog/manas/profile/doc-refine.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/profile/evidence-sift-refined.metis	prog/manas/profile/evidence-sift-refined.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/profile/evidence-sift-test.metis	prog/manas/profile/evidence-sift-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/profile/evidence-sift.metis	prog/manas/profile/evidence-sift.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/profile/profiles.metis	prog/manas/profile/profiles.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/profile/research-test.metis	prog/manas/profile/research-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/profile/research.metis	prog/manas/profile/research.chiral	chiral	slice 4 | map: no entry -> module | default
-scaffold/lib/manas/profile/skills-test.metis	prog/manas/profile/skills-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
-scaffold/lib/manas/profile/skills.metis	prog/manas/profile/skills.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/chatter/divide-test.metis	prog/prapanca/chatter/divide-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/chatter/divide.metis	prog/prapanca/chatter/divide.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/chatter/egress-test.metis	prog/prapanca/chatter/egress-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/chatter/egress.metis	prog/prapanca/chatter/egress.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/chatter/orchestrate-test.metis	prog/prapanca/chatter/orchestrate-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/chatter/orchestrate.metis	prog/prapanca/chatter/orchestrate.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/chatter/router-test.metis	prog/prapanca/chatter/router-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/chatter/router.metis	prog/prapanca/chatter/router.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/chatter/turn-test.metis	prog/prapanca/chatter/turn-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/chatter/turn.metis	prog/prapanca/chatter/turn.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/contract/golden.metis	prog/prapanca/contract/golden.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/contract/manifest.metis	prog/prapanca/contract/manifest.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/assemble.metis	prog/prapanca/core/assemble.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/bind.metis	prog/prapanca/core/bind.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/builder-sg5-test.metis	prog/prapanca/core/builder-sg5-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/core/builder-test.metis	prog/prapanca/core/builder-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/core/builder.metis	prog/prapanca/core/builder.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/flow-persist-test.metis	prog/prapanca/core/flow-persist-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/core/flow-persist.metis	prog/prapanca/core/flow-persist.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/flow-test.metis	prog/prapanca/core/flow-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/core/flow.metis	prog/prapanca/core/flow.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/gate.metis	prog/prapanca/core/gate.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/match.metis	prog/prapanca/core/match.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/skill-test.metis	prog/prapanca/core/skill-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/core/skill.metis	prog/prapanca/core/skill.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/stop.metis	prog/prapanca/core/stop.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/core/types.metis	prog/prapanca/core/types.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/compose.metis	prog/prapanca/pipeline/compose.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/guarded.metis	prog/prapanca/pipeline/guarded.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/log.metis	prog/prapanca/pipeline/log.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/persist-test.metis	prog/prapanca/pipeline/persist-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/pipeline/persist.metis	prog/prapanca/pipeline/persist.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/plan.metis	prog/prapanca/pipeline/plan.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/pipeline/runner.metis	prog/prapanca/pipeline/runner.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/code-test-test.metis	prog/prapanca/profile/code-test-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/code-test.metis	prog/prapanca/profile/code-test.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/decision-test.metis	prog/prapanca/profile/decision-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/decision.metis	prog/prapanca/profile/decision.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/deep-research-test.metis	prog/prapanca/profile/deep-research-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/deep-research.metis	prog/prapanca/profile/deep-research.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/doc-edit-test.metis	prog/prapanca/profile/doc-edit-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/doc-edit.metis	prog/prapanca/profile/doc-edit.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/doc-refine.metis	prog/prapanca/profile/doc-refine.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/evidence-sift-refined.metis	prog/prapanca/profile/evidence-sift-refined.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/evidence-sift-test.metis	prog/prapanca/profile/evidence-sift-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/evidence-sift.metis	prog/prapanca/profile/evidence-sift.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/profiles.metis	prog/prapanca/profile/profiles.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/research-test.metis	prog/prapanca/profile/research-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/research.metis	prog/prapanca/profile/research.chiral	chiral	slice 4 | map: no entry -> module | default
+scaffold/lib/manas/profile/skills-test.metis	prog/prapanca/profile/skills-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
+scaffold/lib/manas/profile/skills.metis	prog/prapanca/profile/skills.chiral	chiral	slice 4 | map: no entry -> module | default
 agent/agent.metis	prog/agent/agent.chiral	chiral	slice 8 | no entry -> module
 agent/tools-fs.metis	prog/agent/tools-fs.chiral	chiral	slice 8 | no entry -> module
 scaffold/demo/_eff.metis	prog/demo/_eff.chiral	chiral	slice 8 | no entry -> module
@@ -744,27 +744,27 @@ scaffold/samples/e42_supervisor_control.metis	prog/samples/e42_supervisor_contro
 scaffold/samples/enum-tag.metis	prog/samples/enum-tag.chiral	chiral	slice 8 | no entry -> module
 scaffold/samples/exit42.metis	prog/samples/exit42.chiral	chiral	slice 8 | no entry -> module
 scaffold/samples/exit7.metis	prog/samples/exit7.chiral	chiral	slice 8 | no entry -> module
-scaffold/samples/manas-builder-live.metis	prog/samples/manas-builder-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-chatter-live.metis	prog/samples/manas-chatter-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-code-test-live.metis	prog/samples/manas-code-test-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-decision-live.metis	prog/samples/manas-decision-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-deep-research-live.metis	prog/samples/manas-deep-research-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-divide-live.metis	prog/samples/manas-divide-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-doc-edit-live.metis	prog/samples/manas-doc-edit-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-evidence-sift-live.metis	prog/samples/manas-evidence-sift-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-evidence-sift-refined-live.metis	prog/samples/manas-evidence-sift-refined-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-flow-branch-live.metis	prog/samples/manas-flow-branch-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-flow-conform.metis	prog/samples/manas-flow-conform.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-flow-green-live.metis	prog/samples/manas-flow-green-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-flow-live.metis	prog/samples/manas-flow-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-flow-stop-live.metis	prog/samples/manas-flow-stop-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-parse-robust-test.metis	prog/samples/manas-parse-robust-test.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-project-builder-live.metis	prog/samples/manas-project-builder-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-research-live.metis	prog/samples/manas-research-live.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-run-conform.metis	prog/samples/manas-run-conform.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-run-log.metis	prog/samples/manas-run-log.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-run.metis	prog/samples/manas-run.prog	prog	slice 8 | entry -> program
-scaffold/samples/manas-skill-live.metis	prog/samples/manas-skill-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-builder-live.metis	prog/samples/prapanca-builder-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-chatter-live.metis	prog/samples/prapanca-chatter-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-code-test-live.metis	prog/samples/prapanca-code-test-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-decision-live.metis	prog/samples/prapanca-decision-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-deep-research-live.metis	prog/samples/prapanca-deep-research-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-divide-live.metis	prog/samples/prapanca-divide-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-doc-edit-live.metis	prog/samples/prapanca-doc-edit-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-evidence-sift-live.metis	prog/samples/prapanca-evidence-sift-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-evidence-sift-refined-live.metis	prog/samples/prapanca-evidence-sift-refined-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-flow-branch-live.metis	prog/samples/prapanca-flow-branch-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-flow-conform.metis	prog/samples/prapanca-flow-conform.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-flow-green-live.metis	prog/samples/prapanca-flow-green-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-flow-live.metis	prog/samples/prapanca-flow-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-flow-stop-live.metis	prog/samples/prapanca-flow-stop-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-parse-robust-test.metis	prog/samples/prapanca-parse-robust-test.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-project-builder-live.metis	prog/samples/prapanca-project-builder-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-research-live.metis	prog/samples/prapanca-research-live.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-run-conform.metis	prog/samples/prapanca-run-conform.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-run-log.metis	prog/samples/prapanca-run-log.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-run.metis	prog/samples/prapanca-run.prog	prog	slice 8 | entry -> program
+scaffold/samples/manas-skill-live.metis	prog/samples/prapanca-skill-live.prog	prog	slice 8 | entry -> program
 scaffold/samples/multi-def.metis	prog/samples/multi-def.chiral	chiral	slice 8 | no entry -> module
 scaffold/samples/self-extend-probe.metis	prog/samples/self-extend-probe.prog	prog	slice 8 | entry -> program
 scaffold/samples/slices4_open_create.metis	prog/samples/slices4_open_create.prog	prog	slice 8 | entry -> program

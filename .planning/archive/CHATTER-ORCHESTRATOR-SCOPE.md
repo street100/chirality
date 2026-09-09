@@ -442,7 +442,7 @@ leg wherever possible (mirroring C1–C6b). Ordered so the **dead-end dies first
 
 Do NOT reinvent — use the exact recipes in `.planning/CHATTER-STATE.md`:
 - **Deterministic mesh-free chatter test** (router/turn/orchestrate) — the
-  `chirality_blob … turn router profile/skills` recipe (with the `manas/core/skill`
+  `chirality_blob … turn router profile/skills` recipe (with the `prapanca/core/skill`
   collision warning: use `profile/skills`, NOT `core/skill`).
 - **scriba build (COMMITTED resolver only)** — `echo 'scriba/scriba-main' | resolve`,
   then B1; recompile scriba after ANY Flow/PureFn ctor change (`flow-view.chiral`

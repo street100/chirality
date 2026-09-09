@@ -54,7 +54,7 @@ binary, which is HEAD's.
   not touch.
 - **The pattern this mirrors, and does not modify.** [[banks/unit]] shard K is
   `RunManifest`, `ExpertCall` and `RawCall`, the bounded record beside its
-  unbounded sibling (`prog/manas/core/types.chiral:131`, `:152`, `:166`).
+  unbounded sibling (`prog/prapanca/core/types.chiral:131`, `:152`, `:166`).
   E197 is that same split one layer down and it writes into neither type:
   `RunManifest`'s fifteen fields are the golden manifest's fifteen top-level
   keys, and `RawCall`'s own comment says the split exists so the manifest's
@@ -75,7 +75,7 @@ narrower than the audit left it, which decision 2 records.
 
 | # | Question | Disposition | Rationale / owner |
 |---|---|---|---|
-| 1 | `population` as `Str` against a `Population` type | **DEFERRED, and it stays `Str`** | `unit-lane/N17` is the `Population` construct and it reads `unminted` at L4. E197 is an L2 row, so waiting on N17 makes a lower layer block on a higher one. The in-tree precedent is `Expert`'s `sees`/`returns` (`prog/manas/core/types.chiral:63`, "prose descriptors here (typed I/O is target work)"), whose closing row `unit-lane/N13` is also unminted. Nothing is deferred to a name that does not exist: N17 is a roster row with no element, so the residue is recorded in §6 with no element attached, on E196 decision 4's precedent |
+| 1 | `population` as `Str` against a `Population` type | **DEFERRED, and it stays `Str`** | `unit-lane/N17` is the `Population` construct and it reads `unminted` at L4. E197 is an L2 row, so waiting on N17 makes a lower layer block on a higher one. The in-tree precedent is `Expert`'s `sees`/`returns` (`prog/prapanca/core/types.chiral:63`, "prose descriptors here (typed I/O is target work)"), whose closing row `unit-lane/N13` is also unminted. Nothing is deferred to a name that does not exist: N17 is a roster row with no element, so the residue is recorded in §6 with no element attached, on E196 decision 4's precedent |
 | 2 | The refinement on `sample-every` | **RESOLVED: `(refine I64 (> 0))` ships, and the engine's reach is measured here rather than assumed** | Measured below: the predicate is decided for a literal and for a value already at the refined type, and refused for every computed argument including `(+ 20 5)`. That is decidable enough to ship and it costs the sweep one configuration, which §5 converts into a stronger gate row. The example's three-way choice for the interval-exceeds-the-run case is closed by decision 3's `v-empty`, so no smart constructor and no stated precondition is owed |
 | 3 | `I64` or `VolumeR` | **RESOLVED: `VolumeR`, with `v-ok` and `v-empty` and no third arm** | `docs/definitions/pattern-boundary-sums.md` is the directive and E196 applied it to `DecodeR` (`prog/unit/encoding.chiral:63`). A request that commissions nothing is a reason that exists at the pricing. `v-unbounded` is dropped with its cost measured below: detecting the wrap needs an overflow primitive this tree has no binding for, and the wall sits past any writable sample count |
 | 4 | Whether `rr-samples` belongs to E197 | **RESOLVED: it ships, and the element covers `unit-lane/N10` plus one law the roster has no row for** | The arc's own reason for pairing N8 and N9 applies here verbatim: a constructor's fields and its arithmetic constrain each other, and splitting them settles one against a guess at the other. Measured below, both of this element's remaining decisions are consequences of the pricing arithmetic and neither survives without it. The cost is stated and not hidden: the roster carries no volume-law row, the mint is the arc session's event, and this run does not open one. §6 carries it |
@@ -188,7 +188,7 @@ Every step below was executed off-tree in this run against a copy of `lib/` and
   `rr-interval : (-> RecordRequest (Maybe I64))` whose `record-spikes` arm is
   `none`; and `rr-fields : (-> RecordRequest I64)`. Adapts the example §5
   snippet with decision 2's refinement and decision 3's result sum. No
-  `(module …)` form, matching the `prog/manas/` and `prog/unit/encoding.chiral`
+  `(module …)` form, matching the `prog/prapanca/` and `prog/unit/encoding.chiral`
   precedent.
 - ⚑ **`rr-wrap` must be defined above `rr-samples`.** It is a plain `def` with
   no `declare`, and the `case` on a `Bool` takes E196's spelling,
@@ -426,7 +426,7 @@ over R1 to R6 and M1 to M6, `tools/test/registration.sh` still prints
     `Population` construct at L4 and it reads `unminted`, so nothing is deferred
     to a name that does not exist and no element is attached. Shipping `Str`
     mints a second instance of the debt `Expert` already carries at
-    `prog/manas/core/types.chiral:63`, whose closing row `unit-lane/N13` is also
+    `prog/prapanca/core/types.chiral:63`, whose closing row `unit-lane/N13` is also
     unminted. Both are recorded here so the second instance is visible when N13
     or N17 is minted.
   - **A `sample-every` computed at run time** (decision 2). The engine decides

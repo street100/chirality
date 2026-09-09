@@ -1,0 +1,177 @@
+; ============================================ prapanca research — a FRACTAL template (T2)
+; T2 of the TEMPLATE LIBRARY (MANAS-SKILL-GROWER.md L249) and its KEY primitive: a
+; hand-authored fractal skill that RESEARCHES a QUESTION — fanning it over the distinct
+; ANGLES it needs (definitions / prior-art / counter-evidence / open-questions), then
+; SYNTHESIZING the per-angle findings into ONE answer tracked by angle, then AUDITING that
+; answer for gaps. A research question is not answered by a single pass; it is answered by
+; investigating each angle on its own track and only then combining. It is the
+; audit/backtrack pattern promoted into its own reusable skill.
+;
+; Built at the NARROW-LINE-OF-THOUGHT grain — one focused reasoning move per leaf (not a
+; token, not a multi-part question), sized for a 0.5b. Every expert is a read-only
+; PRODUCER of a reasoning move / an assessment / a synthesis / a verdict, so the whole
+; fractal runs tiny-model-green.
+;
+; The shape (the fractal pair, MANAS-SKILL-GROWER L18):
+;   research-flow = flow-branch
+;     perspectivist  "emit the research angles this question needs (definitions/prior-art/
+;                     counter-evidence/open-questions)"                    -> ty-perspectives
+;     in-ty          ty-doc                                             ; the question arrives as a doc
+;     per-perspective = flow-chain [                                    ; ONE sub-pipeline per angle
+;        research-investigate  "investigate THIS angle — reason what is known"     -> ty-text  (reasoner)
+;        research-assess       "assess confidence in that finding, with one reason" -> ty-verdict (auditor)
+;     ]
+;     backtrack = flow-chain [                                          ; collect + gap audit
+;        flow-pure (pf-collect-angles "angle")  ; CODE combiner: joined per-angle yields -> one
+;                                               ; {kind,target,body} finding per angle -> ty-findings
+;        research-audit      "audit the answer for gaps — any angle unanswered or unsupported?"     -> ty-verdict (auditor)
+;     ]
+; flow-ty derives the whole arrow: research-flow : ty-doc -> ty-verdict (the backtrack's cod).
+;
+; The ANGLES are the point: the question is fanned over its distinct angles, each investigated
+; on its OWN track (never conflated), then the CODE combiner collects them into ty-findings
+; tracked BY angle (target="angle-<n>", one finding per angle, bodies JSON-escaped). It is code
+; because a live 0.5b asked for that structure hallucinated the schema; collecting an already-
+; joined list is symbol-manipulation, not text-understanding. The auditor then checks the
+; ANSWER: is any angle left unanswered or unsupported, is any conclusion a gap.
+;
+; STRICTLY ADDITIVE — parallel to evidence-sift.chiral / code-test.chiral / doc-edit.chiral;
+; evidence-sift / code-test / doc-edit / doc-refine / profiles / flow / skill are UNTOUCHED.
+; Only new defs live here (research.chiral) + research-test.prog + a live sample. Every `lens`
+; is ONE small ask (no " and " / " then " / ";" / " & ", <=160 chars, non-empty `sees`) so
+; lint-expert returns nil for each — one narrow line of thought per leaf.
+;
+; Composes:
+;   types.chiral  — Expert (+ ctor), Config, Binding (the run surface; imported, never redefined).
+;   flow.chiral   — Flow ctors (flow-branch/flow-chain/flow-step) + Ty ctors (ty-doc/ty-text/
+;                  ty-findings/ty-verdict/ty-perspectives). The fractal is a VALUE built from these.
+
+(import "prelude/prelude")               ; List, cons, nil
+(import "prapanca/core/types")      ; Expert (expert id lens sees returns slot tools), Config, Binding
+(import "prapanca/core/flow")       ; Flow (flow-branch/flow-chain/flow-step/flow-pure), PureFn (pf-collect-angles), Ty (ty-doc/ty-text/ty-findings/ty-verdict/ty-perspectives)
+
+; ---------------------------------------------------------- the tiny-step experts
+; Each (expert id lens sees returns slot tools). LENS is ONE narrow reasoning move
+; (lint-clean); SEES is rich context; TOOLS is least-privilege (read only — researching a
+; question never writes). Ids are unique across the closure (prefixed "research-" — no
+; collision with evidence-sift's / code-test's / doc-edit's pools).
+
+; perspectivist ⊕ : emit the research angles the branch fans over (one sub-pipeline each).
+; A research question needs distinct angles — definitions, prior art, counter-evidence, open
+; questions; this names the angles the question needs, one per angle.
+(def research-perspectivist Expert
+  (expert "research-perspectivist"
+    "emit the research angles this question needs: definitions, prior-art, counter-evidence, open-questions"
+    "{ question, context }"
+    "objects, each {kind:\"angle\", body:\"<the angle to investigate>\"}"
+    "perspectivist"
+    (cons "read" nil)))
+
+; reasoner : for THE angle in hand, investigate it — reason what is known about the question
+; from this angle (a single narrow move). out-ty is ty-text (a free reasoning move is PROSE) —
+; NOT ty-findings. ty-findings' seam validator (refine-ok) demands a decodable JSON array of
+; objects; a 0.5b's prose reasoning intermittently lacks it, refine-failing the seam, and the
+; branch SILENTLY SWALLOWS that per-angle chain (empty-manifest, routing lost) — so the angle
+; vanishes while manifest-all-green? still reads true off the composite. Typing this narrow
+; reasoning ty-text (lenient non-empty, evidence-sift/code-test/doc-edit's proven-green seam)
+; keeps every angle on its own track.
+(def research-investigate Expert
+  (expert "research-investigate"
+    "investigate THIS angle of the question — reason what is known"
+    "{ question, angle, context }"
+    "a short reasoning: what is known about the question from this angle, and why"
+    "reasoner"
+    (cons "read" nil)))
+
+; auditor ⊕ : assess the confidence of that finding — how well-supported is it — with the
+; reason. A per-angle verdict (an assessment is a judgment, so it rides the auditor slot).
+; `emits` RESTATES the finding it judges: this step is the LAST in the per-angle chain, and
+; chain-run forwards only the last yield — so whatever this does not carry is DISCARDED before
+; the backtrack combiner ever sees it (DC-1b slice 4). A bare "high|medium|low + reason" would
+; leave the code combiner collecting confidence lines instead of research.
+(def research-assess Expert
+  (expert "research-assess"
+    "assess confidence in that finding, with one reason"
+    "{ angle, finding }"
+    "the finding in one line, then: high|medium|low confidence + one reason"
+    "auditor"
+    (cons "read" nil)))
+
+; NOTE (DC-1b slice 4): there is no `research-synthesize` model combiner any more. A live 0.5b
+; asked to "synthesize, tracked by angle, as {kind,target,body}" HALLUCINATED the schema
+; (`[{"answerContent":…}]`, fenced) and the egress parse floored. Structuring an already-joined
+; list is symbol-manipulation, not text-understanding, so the COMBINE is now CODE — a flow-pure
+; `pf-collect-angles` in the backtrack (below). Per-angle REASONING stays model.
+
+; auditor ⊕ : audit the ANSWER for gaps — is any angle left unanswered, is any conclusion
+; unsupported across the synthesized findings?
+(def research-audit Expert
+  (expert "research-audit"
+    "audit the answer for gaps: any angle unanswered or unsupported?"
+    "{ answer, angles }"
+    "verdict: complete|has-gaps + one reason"
+    "auditor"
+    (cons "read" nil)))
+
+; the pool: the 4 tiny-step experts research fires, in declaration order (the 5th, the combiner,
+; is now code — see the note above).
+(def research-pool (List Expert)
+  (cons research-perspectivist
+  (cons research-investigate
+  (cons research-assess
+  (cons research-audit nil)))))
+
+; ---------------------------------------------------------- the fractal Flow
+; per-perspective : a 2-step chain run ONCE PER angle — investigate the angle, then assess
+; confidence. dom = ty-doc (the angle-injected question), seam ty-text (the investigation is
+; prose; see research-investigate), cod = ty-verdict. Type-checks: cod(investigate)=ty-text ==
+; dom(assess)=ty-text.
+(def research-per-perspective Flow
+  (flow-chain (cons (flow-step "research-investigate" ty-doc  ty-text)
+              (cons (flow-step "research-assess"      ty-text ty-verdict) nil))))
+
+; backtrack : COLLECT the per-angle findings (code) -> audit for gaps (model). dom = ty-verdict
+; (the joined per-angle assessments), seam ty-findings (one finding per angle, target="angle-<n>"),
+; cod = ty-verdict. Type-checks: cod(collect)=ty-findings == dom(audit)=ty-findings.
+(def research-backtrack Flow
+  (flow-chain (cons (flow-pure (pf-collect-angles "angle") ty-verdict ty-findings)
+              (cons (flow-step "research-audit"           ty-findings ty-verdict) nil))))
+
+; research-flow : the fractal. flow-ty derives (arrow ty-doc <backtrack-cod=ty-verdict>).
+(def research-flow Flow
+  (flow-branch "research-perspectivist" ty-doc
+    research-per-perspective
+    research-backtrack))
+
+; ---------------------------------------------------------- R1 : the NESTABLE variant
+; research-answer-flow — the same fractal, yielding the ANSWER instead of the verdict about it.
+;
+; A Flow's cod is its last step's cod, so `research-flow` ends at its audit and yields a thin
+; judgement line. That is right at the TOP of a turn (the audit is what the consolidator reports)
+; and wrong INSIDE one: a nested use consumes the yield as its material, and material is what the
+; combiner produced, not the sentence grading it. `branch-run` feeds each sub-run's yield into the
+; parent's backtrack, so a nested `research-flow` would hand its parent five audit lines and throw
+; the research away — the same shape of loss DC-1b found one level down.
+;
+; So: identical branch, identical per-angle chain, identical CODE combiner, minus the terminal
+; audit step. cod = ty-findings, which is exactly what the parent's own `pf-collect-angles` reads
+; (unwrap-chunk parses a findings array and takes its bodies), so the two levels compose with no
+; adapter. Auditing happens ONCE, at the top, over the consolidated whole — which is the only
+; place a "did this answer the question?" judgement has the whole question in view.
+;
+; Additive: `research-flow` is untouched, so the single-question path and its golden are unmoved.
+(def research-answer-flow Flow
+  (flow-branch "research-perspectivist" ty-doc
+    research-per-perspective
+    (flow-pure (pf-collect-angles "angle") ty-verdict ty-findings)))
+
+; ---------------------------------------------------------- the tiny-model Config
+; binds EVERY slot research-pool uses (perspectivist / reasoner / auditor) to the
+; 0.5b smoke tier — the whole fractal runs on the tiny model. Additive Config; the four shared
+; profiles (profiles.chiral) are UNTOUCHED. Selecting THIS config IS the model choice. auditor
+; is bound once and used twice (the per-angle assess + the gap audit).
+(def research-config Config
+  (config "research-smoke"
+    (cons (binding "perspectivist" "qwen2.5:0.5b" 16384)
+    (cons (binding "reasoner"      "qwen2.5:0.5b" 16384)
+    (cons (binding "auditor"       "qwen2.5:0.5b" 16384) nil)))))

@@ -1,4 +1,4 @@
-> **ARCHIVED 2026-09-01. Superseded by `prog/manas/chatter/egress.chiral`, which is the contract as built.** A contract proposal outlives its usefulness the moment the code exists; read the module.
+> **ARCHIVED 2026-09-01. Superseded by `prog/prapanca/chatter/egress.chiral`, which is the contract as built.** A contract proposal outlives its usefulness the moment the code exists; read the module.
 
 # DC-0b — the F1 per-skill EGRESS CONTRACT (D1) (2026-08-20)
 

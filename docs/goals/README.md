@@ -117,7 +117,7 @@ claims the thing that acts on one, which is tool use inside the type system,
 filesystem reach, least-privilege over what a step may touch, and the routes and
 keybinds that make it usable. The tree cuts them apart in code:
 `prog/agent/agent.chiral` runs a tool-call turn and uses none of the engine, and
-no file under `prog/manas/` reads the `tools` field it declares. Its arcs column
+no file under `prog/prapanca/` reads the `tools` field it declares. Its arcs column
 carries [[arcs/coding-turn-arc]], opened the same day against condition 1.
 Conditions 2, 3 and 4 hold no arc, which is **not** the standing-gate shape
 [[goals/self-hosting]] carries: no rule maintains them on every change, and the

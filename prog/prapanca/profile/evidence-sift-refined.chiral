@@ -1,0 +1,78 @@
+; ============================================ evidence-sift-refined — the REFINEMENT PASS applied
+; The evidence-sift per-item classify was a MODEL verdict ("is this evidence or speculation?").
+; On a 0.5b that is symbol-manipulation routed through a language model — a coin-flip (measured:
+; 1/5 correct on a two-arm rubric). The refinement pass splits that ONE leaf into its two honest
+; halves:
+;   EXTRACT (model, ty-text)  — isolate THIS perspective's flagged item sentence. Text-understanding
+;                               — a 0.5b is reliable at it (measured 5/5).
+;   DECIDE  (flow-pure, code) — scan the isolated sentence for citation markers; present -> evidence,
+;                               absent -> speculation. Symbol-manipulation — runs as CODE, so it is
+;                               DETERMINISTIC and always correct, never a model call.
+; The judgment (what counts as a citation) lives in `citation-markers` (code), not in a prompt. The
+; model never decides; it only quotes. That is "it shouldn't be reasoning" made structural.
+;
+; STRICTLY ADDITIVE — reuses evidence-sift's perspectivist / consolidate / audit / pool / config
+; verbatim (imported, never redefined); adds ONE extractor expert + the flow-pure decide step.
+;
+; Composes:
+;   types.chiral  — Expert (+ ctor).
+;   flow.chiral   — Flow (flow-branch/flow-chain/flow-step/flow-pure), Ty, PureFn (pf-has-any).
+;   evidence-sift.chiral — the reused experts + pool + config.
+
+(import "prelude/prelude")                    ; List, cons, nil
+(import "prapanca/core/types")           ; Expert (+ expert ctor)
+(import "prapanca/core/flow")            ; Flow ctors incl. flow-pure, Ty (ty-doc/ty-text/ty-verdict/ty-findings), PureFn (pf-has-any)
+(import "prapanca/profile/evidence-sift"); evidence-sift-perspectivist/consolidate/audit, evidence-sift-pool, evidence-sift-config
+
+; ---------------------------------------------------------- the citation rubric (CODE, not a prompt)
+; A sentence is EVIDENCE iff it carries a citation/measurement/record marker. This closed list IS
+; the decision criterion — deterministic, auditable, and outside the model.
+(def citation-markers (List Str)
+  (cons "CVE" (cons "changelog" (cons "table" (cons "measured" (cons "benchmark"
+  (cons "percent" (cons "per the" (cons "release" (cons "logged" nil))))))))))
+
+; the refined pool = evidence-sift's pool unchanged (the per-item extract is now CODE — a model
+; extract on the 0.5b returned empty JSON / meta ~3/4 of the time and silently defaulted to a
+; verdict; the perspectivist already isolated the item, so extraction is a pure string op).
+(def evidence-sift-refined-pool (List Expert) evidence-sift-pool)
+
+; ---------------------------------------------------------- the refined fractal
+; per-perspective : EXTRACT-LINE (flow-pure, pull the injected "Perspective: <item>" line) then
+; DECIDE (flow-pure, citation-marker scan). ZERO model calls per item — the perspectivist is the
+; only model step. Seam: cod(extract-line)=ty-text == dom(decide)=ty-text. An unextractable line
+; is "" -> refine-fails ty-text -> the angle routes NON-green (visible), never a silent default.
+(def evidence-sift-refined-per-perspective Flow
+  (flow-chain (cons (flow-pure (pf-line-after "Perspective: ") ty-doc ty-text)
+              (cons (flow-pure (pf-has-any citation-markers "evidence" "speculation") ty-text ty-verdict) nil))))
+
+; backtrack : ALSO code now — the refinement pass carried into the combiner + auditor slots.
+;   consolidate (was a model combiner) -> flow-pure pf-tally: the per-item verdicts are already
+;     code-structured (kind:evidence|speculation), so "sort into two tracks" is a COUNT, not a
+;     model call. Emits a two-track findings summary.
+;   audit (was a model auditor) -> flow-pure pf-all-present. HONEST SCOPE (Audit F2): a
+;     deterministic code partition CANNOT miscategorize by construction, so there is no semantic
+;     error for an audit to catch here — and pf-all-present, seeing only the tally, structurally
+;     cannot recompute correctness anyway. This step is therefore a WELL-FORMEDNESS check on the
+;     consolidation (both tracks emitted → "well-formed", else "malformed"), NOT a semantic
+;     correctness guard. Do NOT read "well-formed" as "the classification is right"; the real
+;     safety net is the acceptance gate (structural aborts route non-green), the typed seams, and
+;     determinism. Labelled accurately so it gives no false assurance.
+; Net: for the numbered-LIST flow (the shipped evidence-sift-refined-flow) there are ZERO model
+; calls — perspectivist (pf-split-numbered), extract (pf-line-after), decide, consolidate and audit
+; are ALL code. The model-EXTRACT half described in the header applies only to the PROSE branch
+; (flow-branch + parse-perspectives, per the flow note below). Every DECISION (classify,
+; consolidate) is code; the audit is a code well-formedness check.
+(def evidence-sift-refined-backtrack Flow
+  (flow-chain (cons (flow-pure (pf-tally "evidence" "speculation" "evidence-track" "speculation-track") ty-verdict ty-findings)
+              (cons (flow-pure (pf-all-present (cons "evidence-track" (cons "speculation-track" nil)) "well-formed" "malformed") ty-findings ty-verdict) nil))))
+
+; evidence-sift-refined-flow : the input is a numbered LIST of flagged items, so the perspectivist
+; (split doc -> items) is a STRING op, not text-understanding — a 0.5b model perspectivist mangled
+; it (garbled fragments, 1-3 of 4 items/run). flow-branch-pure with pf-split-numbered splits it
+; deterministically => the WHOLE fractal is model-free and end-to-end CORRECT for list input. The
+; model perspectivist (flow-branch + robust parse-perspectives) stays for unstructured prose.
+; flow-ty derives (arrow ty-doc ty-verdict).
+(def evidence-sift-refined-flow Flow
+  (flow-branch-pure (pf-split-numbered) ty-doc
+    evidence-sift-refined-per-perspective
+    evidence-sift-refined-backtrack))

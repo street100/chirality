@@ -21,8 +21,8 @@
 (import "prelude/prelude")                 ; Str, Bool, I64, List, Pair, cons, nil, or, str-cat, str-len, str-sub, str-find, str-eq, =i, <i, <=i, +, -, case
 (import "prelude/list")
 (import "protocol/render")                  ; Rendering (+ r-text/r-face/r-lines)
-(import "manas/chatter/turn")      ; Lane (+ lane-label/after/audit/reply) — the turn's own structure (DC-4b)
-(import "manas/chatter/router")    ; ConvState (+ conv-empty)
+(import "prapanca/chatter/turn")      ; Lane (+ lane-label/after/audit/reply) — the turn's own structure (DC-4b)
+(import "prapanca/chatter/router")    ; ConvState (+ conv-empty)
 
 ; ─── the state ───────────────────────────────────────────────────────────────
 ; One transcript row: what you said, the turn's tag ("analyze" / "compound(2)"), the fused reply,

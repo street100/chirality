@@ -135,10 +135,10 @@ backend**, so a test over it links nothing):
 ; NO backend import -> this leaf links nothing, so the spine test is a pure blob.
 (import "prelude")
 (import "collections")          ; foldl, filter, find, append, reverse
-(import "manas/core/types")     ; Expert, Binding, Config, Pipeline, ExpertOutcome, CombinerOutcome, ExpertCall, RunManifest, PlanOutcome? (minted here)
-(import "manas/core/match")     ; match-pipeline, pipeline-id
-(import "manas/core/gate")      ; run-gate, dedup-str, elem-str
-(import "manas/core/bind")      ; bind-config
+(import "prapanca/core/types")     ; Expert, Binding, Config, Pipeline, ExpertOutcome, CombinerOutcome, ExpertCall, RunManifest, PlanOutcome? (minted here)
+(import "prapanca/core/match")     ; match-pipeline, pipeline-id
+(import "prapanca/core/gate")      ; run-gate, dedup-str, elem-str
+(import "prapanca/core/bind")      ; bind-config
 
 ; the plan: WHO fires + on WHAT model, or a routing-failure VALUE (boundary sum).
 (data PlanOutcome ()
@@ -211,8 +211,8 @@ module B1 lowers with the http linkage libs):
 ; = plan-run (pure) -> fan-out -> call-combiner -> assemble-manifest (pure). => .
 (import "prelude") (import "collections")
 (import "backend")                  ; be-chat, Msg, msg, ChatR   (=> http crossings)
-(import "manas/core/assemble")      ; assemble-prompt
-(import "manas/pipeline/plan")      ; plan-run, assemble-manifest, PlanOutcome, exp-slot, bnd-model, ...
+(import "prapanca/core/assemble")      ; assemble-prompt
+(import "prapanca/pipeline/plan")      ; plan-run, assemble-manifest, PlanOutcome, exp-slot, bnd-model, ...
 
 ; one expert call: assemble the SEES prompt (ctx nil — no retrieval, first cut),
 ; be-chat, wrap. parse-findings is trivial (whole response as one raw finding).
@@ -261,7 +261,7 @@ module B1 lowers with the http linkage libs):
 ```chirality
 (import "manas")                    ; cycle-step, Turn, turn, produced, failed
 (import "fsm")                      ; Step, step-go, step-halt
-(import "manas/pipeline/runner")    ; run-pipeline
+(import "prapanca/pipeline/runner")    ; run-pipeline
 
 ; each expert-call's parsed-ok=false counts as a backend failure for the breaker;
 ; fold-breaker runs cycle-step from the incoming count, halting early on a trip.

@@ -20,11 +20,11 @@
 
 (import "prelude/prelude")
 (import "prelude/list")
-(import "manas/profile/profiles")   ; smoke-local-config, cheap-local-config
-(import "manas/profile/doc-refine")  ; doc-refine-pipeline, expert-pool, expert-by-id, expert-slot-of, pipeline-gate
-(import "manas/core/gate")          ; run-gate, dedup-str
-(import "manas/core/bind")          ; bind-config
-(import "manas/core/match")         ; match-pipeline, pipeline-id
+(import "prapanca/profile/profiles")   ; smoke-local-config, cheap-local-config
+(import "prapanca/profile/doc-refine")  ; doc-refine-pipeline, expert-pool, expert-by-id, expert-slot-of, pipeline-gate
+(import "prapanca/core/gate")          ; run-gate, dedup-str
+(import "prapanca/core/bind")          ; bind-config
+(import "prapanca/core/match")         ; match-pipeline, pipeline-id
 
 ; id membership in a (List Str)
 (def has-id (-> Str (List Str) Bool)

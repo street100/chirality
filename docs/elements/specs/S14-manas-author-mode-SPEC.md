@@ -63,9 +63,9 @@ the total decision/transform functions, plus the value renderer (which is pure
 ```
 (import "prelude")
 (import "render")                      ; Rendering, r-face, r-lines, r-text
-(import "manas/core/types")            ; Config, Binding, GateRule, Order, StopPolicy, Pipeline, Expert
-(import "manas/profile/profiles")      ; smoke/cheap/quality-local/quality Configs, all-profiles, profile-by-id, config-id
-(import "manas/profile/doc-refine")    ; doc-refine-pipeline, expert-pool, expert-by-id, expert-id, pipeline-gate
+(import "prapanca/core/types")            ; Config, Binding, GateRule, Order, StopPolicy, Pipeline, Expert
+(import "prapanca/profile/profiles")      ; smoke/cheap/quality-local/quality Configs, all-profiles, profile-by-id, config-id
+(import "prapanca/profile/doc-refine")    ; doc-refine-pipeline, expert-pool, expert-by-id, expert-id, pipeline-gate
 ```
 
 The import path is proven reachable: the scriba resolver's libdir is

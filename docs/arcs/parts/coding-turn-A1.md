@@ -44,18 +44,18 @@ LLM chain" into nineteen shards. Four shards touch this row and none of them is
 a tool.
 
 - **Shard A**, the unit itself, is the `Expert` record at
-  `prog/manas/core/types.chiral:66-68`, whose `tools` field is the least-privilege
+  `prog/prapanca/core/types.chiral:66-68`, whose `tools` field is the least-privilege
   grant declared at `:64-65`. It is a `(List Str)`, so the grant spells tool
   names in the same untyped currency the dispatch does.
-- **Shard B** is the payload type, `Ty` at `prog/manas/core/flow.chiral:42`,
+- **Shard B** is the payload type, `Ty` at `prog/prapanca/core/flow.chiral:42`,
   `Shape` at `:46` and `ShField` at `:47`. The bank's own row records that
   `ty-eq` at `:77` compares by name alone, so two `Ty` values with one name and
   different `Shape` are indistinguishable below it.
 - **Shard R** is persistence: `purefn->json` at
-  `prog/manas/core/flow-persist.chiral:110` renders a closed sum totally into
+  `prog/prapanca/core/flow-persist.chiral:110` renders a closed sum totally into
   `Json`, and `json->purefn` at `:167` reads it back. This is the tree's own
   precedent for deriving JSON from a sum's arms.
-- **Shard S** is the self-extension wall, `prog/manas/core/builder.chiral`.
+- **Shard S** is the self-extension wall, `prog/prapanca/core/builder.chiral`.
   `accept-gate` at `:43` decodes a model's emitted text and runs `flow-ty` over
   it before admitting it to the skill library; `tool-builder-flow` at `:77` and
   `tool-builder-author` at `:61` are the pipeline that authors one. It type-checks
@@ -75,32 +75,32 @@ grant is `coding-turn/A3` and `A4`.
 | the parsed call, carrying its arguments as an un-decoded JSON string | `prog/agent/agent.chiral:276`, `(data Call () (call (id Str) (name Str) (args Str)))` | IMPLEMENTED | `parse-turn` at `:285` |
 | `arg-get`, re-parsing that string once per argument at each use | `prog/agent/agent.chiral:306` | IMPLEMENTED | the four `do-*` at `:322`, `:329`, `:339`, `:352`, and `arg-or` at `:383` |
 | the four native tools themselves | `prog/agent/tools-fs.chiral:50`, `:62`, `:88`; `ag-bash` at `prog/agent/agent.chiral:61` over the `raw-proc-spawn`/`wait` crossings at `:46-47` | IMPLEMENTED | `dispatch-tool` |
-| `PureFn`, a closed sum of six deterministic string transforms, each arm carrying its own typed arguments | `prog/manas/core/flow.chiral:129-137` | SEEDED | `run-pure` at `:456`, cased exhaustively; `flow-pure` and `flow-branch-pure` arms of `Flow` at `:140-153` |
-| `Shape`, three arms, and the seam check that decides a payload against one | `Shape` at `prog/manas/core/flow.chiral:46`, `shape-ok-json` at `:328`, `shape-ok` at `:349`, `refine-ok` at `:355` | SEEDED | `run-pipeline` through the seam check |
-| `Expert.tools`, the grant, a `(List Str)` | `prog/manas/core/types.chiral:64-65`, record at `:66-68` | SEEDED | bound at seven destructuring sites, read at zero |
-| the grant's own spelling of the vocabulary: **26 occurrences of `(cons "read" nil)`** across `prog/manas/profile/` and `prog/manas/core/builder.chiral:67`, over 30 declared experts. `"read"` is the only tool name any expert is granted | `prog/manas/profile/code-test.chiral:50`, `:65`, `:74`, `:89` and 22 more | SEEDED | nothing reads it |
-| the agent's stated import boundary: `prog/agent/agent.chiral` imports `prelude/prelude`, `protocol/http`, `protocol/json` and `agent/tools-fs`, and its header states the refusal to reach `prog/manas/` and why | `prog/agent/agent.chiral:11-15`, imports at `:17-20` | IMPLEMENTED | two roots, `prog/samples/agent-probe.prog:9` and `prog/samples/self-extend-probe.prog:13` |
+| `PureFn`, a closed sum of six deterministic string transforms, each arm carrying its own typed arguments | `prog/prapanca/core/flow.chiral:129-137` | SEEDED | `run-pure` at `:456`, cased exhaustively; `flow-pure` and `flow-branch-pure` arms of `Flow` at `:140-153` |
+| `Shape`, three arms, and the seam check that decides a payload against one | `Shape` at `prog/prapanca/core/flow.chiral:46`, `shape-ok-json` at `:328`, `shape-ok` at `:349`, `refine-ok` at `:355` | SEEDED | `run-pipeline` through the seam check |
+| `Expert.tools`, the grant, a `(List Str)` | `prog/prapanca/core/types.chiral:64-65`, record at `:66-68` | SEEDED | bound at seven destructuring sites, read at zero |
+| the grant's own spelling of the vocabulary: **26 occurrences of `(cons "read" nil)`** across `prog/prapanca/profile/` and `prog/prapanca/core/builder.chiral:67`, over 30 declared experts. `"read"` is the only tool name any expert is granted | `prog/prapanca/profile/code-test.chiral:50`, `:65`, `:74`, `:89` and 22 more | SEEDED | nothing reads it |
+| the agent's stated import boundary: `prog/agent/agent.chiral` imports `prelude/prelude`, `protocol/http`, `protocol/json` and `agent/tools-fs`, and its header states the refusal to reach `prog/prapanca/` and why | `prog/agent/agent.chiral:11-15`, imports at `:17-20` | IMPLEMENTED | two roots, `prog/samples/agent-probe.prog:9` and `prog/samples/self-extend-probe.prog:13` |
 
 ### Three measurements that decide §4
 
 1. **No tool sum exists anywhere.** `grep -rn '(data Tool' prog lib` returns
    zero. The constructor count requirement 1 names is zero, confirmed.
 2. **`Shape` has no primitive-type arm and its record arm is unread.**
-   `sh-prose` at `prog/manas/core/flow.chiral:46` is documented at `:43-44` as
+   `sh-prose` at `prog/prapanca/core/flow.chiral:46` is documented at `:43-44` as
    "the genuinely opaque case (any text is a valid value)", which is a statement
    about a payload. The four schemas each declare the JSON type `"string"`
    separately at `prog/agent/agent.chiral:103`. And `shape-ok-json`'s record arm at
-   `prog/manas/core/flow.chiral:339` reads `((sh-rec fs) (case j ((j-obj kvs) true) (_ false)))`:
+   `prog/prapanca/core/flow.chiral:339` reads `((sh-rec fs) (case j ((j-obj kvs) true) (_ false)))`:
    it binds the field list and discards it, checking only that the payload is an
    object. `Shape` carries no per-field description and no `required` list, and
    the schemas at `prog/agent/agent.chiral:107-124` need both.
-3. **Reaching `Shape` from `prog/agent/` costs the whole manas core.**
-   `Shape` lives in `prog/manas/core/flow.chiral`, whose imports at `:22-30`
-   include `manas/core/types`, `manas/core/bind`, `manas/backend` (the linear
-   `Backend` porttype at `prog/manas/backend.chiral:32`) and
-   `manas/pipeline/runner`. `prog/agent/agent.chiral:11-15` states the choice not
-   to reach `prog/manas/` and names the E100 residual as the reason. Importing
-   `Shape` imports the whole manas core and its linear porttype into the agent
+3. **Reaching `Shape` from `prog/agent/` costs the whole prapanca core.**
+   `Shape` lives in `prog/prapanca/core/flow.chiral`, whose imports at `:22-30`
+   include `prapanca/core/types`, `prapanca/core/bind`, `prapanca/backend` (the linear
+   `Backend` porttype at `prog/prapanca/backend.chiral:32`) and
+   `prapanca/pipeline/runner`. `prog/agent/agent.chiral:11-15` states the choice not
+   to reach `prog/prapanca/` and names the E100 residual as the reason. Importing
+   `Shape` imports the whole prapanca core and its linear porttype into the agent
    blob.
 
 ## 3. The delta
@@ -127,7 +127,7 @@ refuses none of the omissions. That is exactly the drift
 which-of-N is a sum wearing a disguise, and information present at point A
 re-derived at point B belongs in a constructor field.
 
-`PureFn` at `prog/manas/core/flow.chiral:129-137` is the closest existing shape
+`PureFn` at `prog/prapanca/core/flow.chiral:129-137` is the closest existing shape
 and it is **not coverage**. Every one of its six arms is a pure string transform
 applied by `run-pure` at `:456`; no arm crosses the membrane, none names a file
 or a process, and `Expert.tools` goes unread anywhere near it. It is the
@@ -157,7 +157,7 @@ both jobs.
   `all-tools : (List Tool)`. One boundary decoder,
   `tool-of-name : (-> Str (Maybe Tool))`. `tools-json` becomes a fold of
   `tool->json` over `all-tools`, on the `purefn->json` precedent at
-  `prog/manas/core/flow-persist.chiral:110`.
+  `prog/prapanca/core/flow-persist.chiral:110`.
 - **Costs:** the arguments stay an un-decoded `Str` past the boundary, so
   `arg-get` at `prog/agent/agent.chiral:306` survives this row; what changes is
   that its key comes off `tool-params` instead of a literal. The `"type":"string"`
@@ -177,7 +177,7 @@ both jobs.
 ### Shape B: the call as a closed sum, arms carrying decoded arguments
 
 - **Form:** `(data Tool () (t-read (path Str)) (t-write (path Str) (content Str)) (t-edit (path Str) (needle Str) (repl Str)) (t-bash (command Str)))`,
-  the `PureFn` shape at `prog/manas/core/flow.chiral:129-137` copied exactly.
+  the `PureFn` shape at `prog/prapanca/core/flow.chiral:129-137` copied exactly.
 - **Costs:** it cannot be enumerated. `all-tools`, which `tools-json` folds over,
   needs one inhabitant per arm, and `(t-write ? ?)` has none without fabricated
   strings. So the schema array needs either a second type that *is* the kind, or
@@ -194,18 +194,18 @@ both jobs.
 ### Shape C: a record of name plus a schema expressed as the existing `Shape`
 
 - **Form:** `(data Tool () (tool (name Str) (params Shape)))`, reusing `Shape` at
-  `prog/manas/core/flow.chiral:46` and its `sh-rec` arm as the record of named
+  `prog/prapanca/core/flow.chiral:46` and its `sh-rec` arm as the record of named
   fields.
 - **Costs, measured in §2:** `Shape` carries no per-field description, and all
   eight descriptions at `prog/agent/agent.chiral:136-146` are prose the model
   reads; it carries no `required` list, which every one of the four schemas emits
   at `:109`, `:115` and `:123`; and `sh-prose` is an opaque-payload marker
-  (`prog/manas/core/flow.chiral:43-44`), where each schema declares the JSON
+  (`prog/prapanca/core/flow.chiral:43-44`), where each schema declares the JSON
   `"string"` type at `:103`. Its own validator discards the field list
-  (`prog/manas/core/flow.chiral:339`). The import cost is decisive: `Shape` drags
-  `manas/core/types`, `manas/core/bind`, `manas/backend`'s linear porttype and
-  `manas/pipeline/runner` (`prog/manas/core/flow.chiral:22-30`) into a blob whose
-  own header refuses `prog/manas/` for a stated reason (`prog/agent/agent.chiral:11-15`).
+  (`prog/prapanca/core/flow.chiral:339`). The import cost is decisive: `Shape` drags
+  `prapanca/core/types`, `prapanca/core/bind`, `prapanca/backend`'s linear porttype and
+  `prapanca/pipeline/runner` (`prog/prapanca/core/flow.chiral:22-30`) into a blob whose
+  own header refuses `prog/prapanca/` for a stated reason (`prog/agent/agent.chiral:11-15`).
 - **Forbids:** nothing this row wants forbidden. It is an open record, so the
   name stays a `Str` and `dispatch-tool` keeps its chain.
 - **Rejected.** It pays the largest import cost in the set to reach a type that
@@ -232,15 +232,15 @@ both jobs.
   carries none of the three at an import cost the agent's header already refused;
   Shape D leaves the drift the row exists to close. Shape A makes `tools-json` a
   total function over `all-tools`, on the `purefn->json` precedent at
-  `prog/manas/core/flow-persist.chiral:110`, and makes the accepted name set and
+  `prog/prapanca/core/flow-persist.chiral:110`, and makes the accepted name set and
   the offered name set one value.
 
 | # | Question | Disposition | Rationale / owner |
 |---|---|---|---|
 | 1 | Does the sum carry the decoded arguments? | RESOLVED, no | The enumeration `all-tools` that `tools-json` folds over needs one inhabitant per arm, and an arm carrying `(path Str)` has none without a fabricated value. §4 Shape B. The decoded-call carrier is a second value; no roster row in [[arcs/coding-turn-arc]] owns it, and a design run does not edit the arc. **A row is owed and this design would open it**: `coding-turn/A10`, "the tool call decoded into an arm carrying its typed arguments, so `arg-get` (`prog/agent/agent.chiral:306`) leaves the `do-*` bodies", group G1, serving requirement 1. |
-| 2 | Where does the value live? | RESOLVED | A new leaf module `prog/agent/tool.chiral` importing `prelude/prelude` and `protocol/json` only. `prog/agent/agent.chiral:11-15` refuses `prog/manas/` imports, so the value cannot live under `prog/manas/core/`; and `prog/manas/core/flow.chiral:25` already imports `protocol/json`, so a leaf over prelude and json is importable from either side without a new crossing. `coding-turn/A5` needs `Tool` visible from `prog/manas/core/flow.chiral`, and this placement is the one that admits it. |
+| 2 | Where does the value live? | RESOLVED | A new leaf module `prog/agent/tool.chiral` importing `prelude/prelude` and `protocol/json` only. `prog/agent/agent.chiral:11-15` refuses `prog/prapanca/` imports, so the value cannot live under `prog/prapanca/core/`; and `prog/prapanca/core/flow.chiral:25` already imports `protocol/json`, so a leaf over prelude and json is importable from either side without a new crossing. `coding-turn/A5` needs `Tool` visible from `prog/prapanca/core/flow.chiral`, and this placement is the one that admits it. |
 | 3 | Does `tc-line` collapse in this row or in `coding-turn/A2`? | RESOLVED, this row | `A2`'s text claims `dispatch-tool` at `prog/agent/agent.chiral:361-374` and nothing else. `tc-line` at `:389-403` executes no tool: it reads a name and a parameter name, which is exactly what this row's value carries, and it is `->` where `dispatch-tool` is `=>`, so it consumes the sum at no effect cost. Leaving a second `str-eq` chain over the sum's own vocabulary standing is the finding [[pattern-boundary-sums]] describes. A design audit that disagrees moves it to `A2`, and the value is unchanged either way. |
-| 4 | Does the `(List Str)` grant at `prog/manas/core/types.chiral:64-65` become `(List Tool)`? | DEFERRED to `coding-turn/A3` and `coding-turn/A4` | Both rows exist in [[arcs/coding-turn-arc]]'s roster. Retyping the grant is reading the grant, which is requirement 2. This row leaves all 26 sites alone. |
+| 4 | Does the `(List Str)` grant at `prog/prapanca/core/types.chiral:64-65` become `(List Tool)`? | DEFERRED to `coding-turn/A3` and `coding-turn/A4` | Both rows exist in [[arcs/coding-turn-arc]]'s roster. Retyping the grant is reading the grant, which is requirement 2. This row leaves all 26 sites alone. |
 | 5 | Does a schema-as-value emit `json_schema` / `response_format` to the backend? | DEFERRED, out of arc | A backend change. It is a consequence of Shape A, recorded in §4 as one line, and no row in this arc owns it. |
 
 No NEEDS-AUTHOR. [[arcs/coding-turn-arc]]'s one open author call, `NEEDS-AUTHOR-1`,
@@ -260,7 +260,7 @@ is about requirement 5 and `overflow-guard`, and does not touch requirement 1.
   this design names none.
 - **Catalog row**, on the live five-column header at `docs/elements/catalog.md:90`:
 
-  `| E<NN> | **A tool as a closed sum** — `(data Tool () (t-read) (t-write) (t-edit) (t-bash))` in a new `prog/agent/tool.chiral`, with `tool-name` / `tool-desc` / `tool-params` total off the sum, `all-tools` the enumeration, and `tool-of-name : (-> Str (Maybe Tool))` the boundary decode. `tools-json` becomes a fold of `tool->json` over `all-tools`, so the schema array the model is sent is a function of the value. | Not built — the tool constructor count is zero (`grep -rn '(data Tool' prog lib` returns zero, 2026-09-08). The vocabulary is spelled in five unrelated places today: the schema array (`prog/agent/agent.chiral:136-146`), the `arg-get` keys in the four `do-*` (`:322-359`), `dispatch-tool`'s `str-eq` chain (`:361-374`), `tc-line`'s second chain (`:389-403`), and 26 `(List Str)` grant sites under `prog/manas/profile/`. | `OURS`; [[pattern-boundary-sums]], the standing 2026-08-09 directive; the in-tree precedents are the closed `Op` sum (E70), `PureFn` (`prog/manas/core/flow.chiral:129-137`) and its total codec `purefn->json` (`prog/manas/core/flow-persist.chiral:110`) (`IMPL`) | SH |`
+  `| E<NN> | **A tool as a closed sum** — `(data Tool () (t-read) (t-write) (t-edit) (t-bash))` in a new `prog/agent/tool.chiral`, with `tool-name` / `tool-desc` / `tool-params` total off the sum, `all-tools` the enumeration, and `tool-of-name : (-> Str (Maybe Tool))` the boundary decode. `tools-json` becomes a fold of `tool->json` over `all-tools`, so the schema array the model is sent is a function of the value. | Not built — the tool constructor count is zero (`grep -rn '(data Tool' prog lib` returns zero, 2026-09-08). The vocabulary is spelled in five unrelated places today: the schema array (`prog/agent/agent.chiral:136-146`), the `arg-get` keys in the four `do-*` (`:322-359`), `dispatch-tool`'s `str-eq` chain (`:361-374`), `tc-line`'s second chain (`:389-403`), and 26 `(List Str)` grant sites under `prog/prapanca/profile/`. | `OURS`; [[pattern-boundary-sums]], the standing 2026-08-09 directive; the in-tree precedents are the closed `Op` sum (E70), `PureFn` (`prog/prapanca/core/flow.chiral:129-137`) and its total codec `purefn->json` (`prog/prapanca/core/flow-persist.chiral:110`) (`IMPL`) | SH |`
 
 - **Ledger row**, on the header at `docs/elements/ledger.md:78`:
 
@@ -270,14 +270,14 @@ is about requirement 5 and `overflow-guard`, and does not touch requirement 1.
   - **New**, `prog/agent/tool.chiral`, **90 to 120 lines**. Basis: two data
     declarations, four total functions over a four-arm sum, one enumeration, one
     decoder, and one `Json` renderer. The comparable is `purefn->json` plus
-    `json->purefn` at `prog/manas/core/flow-persist.chiral:110-190`, roughly 80
+    `json->purefn` at `prog/prapanca/core/flow-persist.chiral:110-190`, roughly 80
     lines for a six-arm sum with richer fields, in a file of 414 lines.
   - **Edited**, `prog/agent/agent.chiral`, net **-30 to -40 lines**. `prop-str`,
     `params1`, `params2`, `params3`, `fn-obj`, `tool-obj` and `tools-json` at
     `:101-147` are 47 lines and leave; `tc-line` at `:389-403` is 15 lines and
     becomes about 5; one import is added. `fld1` through `fld4` and `solo` at
     `:80-97` stay: the message builders at `:153-199` use all five.
-  - `prog/agent/tools-fs.chiral` is untouched. Nothing under `prog/manas/` is
+  - `prog/agent/tools-fs.chiral` is untouched. Nothing under `prog/prapanca/` is
     touched: the grant is `coding-turn/A3` and `A4`.
 - **Track:** SH.
 - **Next step:** `pipeline-audit` at DESIGN level, then the mint. The row takes a

@@ -1,0 +1,94 @@
+; ================================================================ prapanca MATCH / route
+; E136, Wave 2 (METIS-PORT-SPEC §1/§3.1). Route a request to a pipeline by a pure
+; keyword-overlap COUNT against each pipeline's WHEN text. PURE (->) — the membrane
+; PROVES routing never crosses the backend seam, so no model call (and no
+; hallucination) can steer WHICH pipeline runs. No float: the score is an integer
+; overlap count, never a cosine. Errors are VALUES: the closed PipelineMatch sum
+; (found / none / tied) — never an exception, never a silent first-wins. Types
+; (Pipeline / PipelineMatch) are E133 — imported, never redefined.
+
+(import "prelude/prelude")             ; str-len, str-find, str-sub, <=i, <i, =i, +, cond
+(import "prelude/list")
+(import "prapanca/core/types")    ; Pipeline, PipelineMatch (match-found/none/tied)
+(import "prelude/string")        ; str-contains (E151b: the owner, no longer a local copy)
+
+; ------------------------------------------------------------- string predicate
+; str-contains is IMPORTED from string-utils, the owner (E151b). The local copy
+; that used to live here is RETIRED. The old note's two grounds both lapsed:
+; string-utils' arg order was the outlier and E151b flipped IT to the tree's
+; haystack-first convention, and the "would double-define the name in a combined
+; leaf blob" hazard is what DELETING the copy (rather than importing alongside
+; it) removes. Nothing in the old decision was reversed — its premises stopped
+; holding, so the conclusion no longer applies.
+
+; ------------------------------------------------------------- pipeline accessors
+(def pipeline-id (-> Pipeline Str)
+  (lam (p) (case p ((pipeline id whn g o eids cmb stp yd) id))))
+(def pipeline-when (-> Pipeline Str)
+  (lam (p) (case p ((pipeline id whn g o eids cmb stp yd) whn))))
+
+(def imax (-> I64 I64 I64) (lam (a b) (cond ((<i a b) b) (else a))))
+
+; ------------------------------------------------------------- request tokenizer
+; split at every occurrence of a space into pieces; a local structural recursion
+; on the shrinking suffix. (The old reason — "importing str-split would drag in
+; string-utils' reverse-order str-contains" — lapsed with E151b: string-utils IS
+; imported now and its str-contains IS haystack-first. Retiring split-go in
+; favour of str-split is a behaviour-neutral cleanup nobody has cataloged, so it
+; stays put rather than riding along on an ownership commit.)
+(declare split-go (-> Str Str (List Str)))
+(def split-go
+  (lam (sep s)
+    (let ((i (str-find s sep)))
+      (cond ((<i i 0) (cons s nil))
+            (else (cons (str-sub s 0 i)
+                        (split-go sep (str-sub s (+ i (str-len sep)) (str-len s)))))))))
+
+; significant request words: split on space, keep length >= 4 (drop a/is/to/it).
+(def sig-words (-> Str (List Str))
+  (lam (req) (filter Str (lam (w) (<=i 4 (str-len w))) (split-go " " req))))
+
+; overlap COUNT: how many significant words occur in this WHEN text (integer).
+; str-contains whn w = does the WHEN text contain this request word.
+(def count-hits (-> (List Str) Str I64)
+  (lam (words whn)
+    (foldl Str I64
+      (lam (acc w) (cond ((str-contains whn w) (+ acc 1)) (else acc)))
+      0 words)))
+
+; ------------------------------------------------------------- listings (foldl+append)
+; id->when listing (foldl+append; map-list does NOT lower in a leaf blob, decision #4).
+(def listing-of (-> (List Pipeline) (List (Pair Str Str)))
+  (lam (pipes)
+    (foldl Pipeline (List (Pair Str Str))
+      (lam (acc p) (append (Pair Str Str) acc
+                     (cons (pair (pipeline-id p) (pipeline-when p)) nil)))
+      nil pipes)))
+
+(def ids-of (-> (List Pipeline) (List Str))
+  (lam (pipes)
+    (foldl Pipeline (List Str)
+      (lam (acc p) (append Str acc (cons (pipeline-id p) nil)))
+      nil pipes)))
+
+; ------------------------------------------------------------- the router proper
+; highest count wins -> match-found; all-zero -> match-none; tie at top -> match-tied.
+(def match-pipeline (-> Str (List Pipeline) PipelineMatch)
+  (lam (req pipes)
+    (let ((words   (sig-words req))
+          (listing (listing-of pipes)))
+      (let ((best (foldl Pipeline I64
+                    (lam (acc p) (imax acc (count-hits words (pipeline-when p))))
+                    0 pipes)))
+        (cond
+          ((=i best 0) (match-none listing))
+          (else
+            (let ((winners (filter Pipeline
+                             (lam (p) (=i (count-hits words (pipeline-when p)) best))
+                             pipes)))
+              (case winners
+                (nil (match-none listing))                 ; total; unreachable
+                ((cons w rest)
+                  (case rest
+                    (nil        (match-found w (pipeline-when w)))
+                    ((cons a b) (match-tied (ids-of winners) listing))))))))))))

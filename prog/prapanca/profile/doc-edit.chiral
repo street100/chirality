@@ -1,0 +1,126 @@
+; ==================================================== prapanca doc-edit — the FRACTAL template (SG3)
+; SG3 of the skill-grower (MANAS-SKILL-GROWER.md L5): the FIRST object-level FRACTAL skill —
+; a real branch⇄backtrack composition of TINY STEPS that PRODUCES proposed edits. Applying an
+; edit is the deferred WRITE effect (L6, out of scope) — every expert here is a read-only
+; producer of a proposed patch / a verdict, so the whole fractal runs on a 0.5b (tiny-model-green).
+;
+; The shape (the fractal pair, MANAS-SKILL-GROWER L1):
+;   doc-edit-flow = flow-branch
+;     perspectivist  "list 2-4 editing angles for this doc"      -> ty-perspectives
+;     in-ty          ty-doc
+;     per-perspective = flow-chain [                              ; ONE sub-pipeline per angle
+;        doc-edit-proposer  "propose ONE minimal edit for THIS angle" -> ty-patch   (editor)
+;        doc-edit-checker   "does this edit fix the angle without collateral?" -> ty-verdict (reasoner)
+;     ]
+;     backtrack = flow-chain [                                   ; collect + audit
+;        flow-pure (pf-collect-angles "edit")   ; CODE combiner: joined per-angle yields ->
+;                                               ; one {kind,target,body} per angle -> ty-findings
+;        doc-edit-audit       "audit the merged edits: contradiction or gap?" -> ty-verdict (auditor)
+;     ]
+; flow-ty derives the whole arrow: doc-edit-flow : ty-doc -> ty-verdict (the backtrack's cod).
+;
+; STRICTLY ADDITIVE — parallel to doc-refine.chiral; doc-refine / profiles / flow / skill are
+; UNTOUCHED. Only new defs live here (doc-edit.chiral) + doc-edit-test.prog + a live sample.
+; Every `lens` is ONE small ask (no " and " / " then " / ";" / " & ", <=160 chars, non-empty
+; `sees`) so lint-expert returns nil for each — the whole point: tiny steps a 0.5b can answer.
+;
+; Composes:
+;   types.chiral  — Expert (+ ctor), Config, Binding (the run surface; imported, never redefined).
+;   flow.chiral   — Flow ctors (flow-branch/flow-chain/flow-step) + Ty ctors (ty-doc/ty-patch/
+;                  ty-verdict/ty-perspectives). The fractal is a VALUE built from these.
+
+(import "prelude/prelude")               ; List, cons, nil
+(import "prapanca/core/types")      ; Expert (expert id lens sees returns slot tools), Config, Binding
+(import "prapanca/core/flow")       ; Flow (flow-branch/flow-chain/flow-step/flow-pure), PureFn (pf-collect-angles), Ty (ty-doc/ty-patch/ty-findings/ty-verdict/ty-perspectives)
+
+; ---------------------------------------------------------- the tiny-step experts
+; Each (expert id lens sees returns slot tools). LENS is ONE small ask (lint-clean);
+; SEES is non-empty context; TOOLS is least-privilege (read only — producing a proposed
+; patch never writes; applying it is the deferred L6 write effect). Ids are unique across
+; the closure (prefixed "doc-edit-" — no collision with doc-refine's pool).
+
+; perspectivist ⊕ : emit the editing angles the branch fans over (one sub-pipeline each).
+(def doc-edit-perspectivist Expert
+  (expert "doc-edit-perspectivist"
+    "list 2 to 4 distinct editing angles for this document, each one short angle"
+    "{ doc }"
+    "objects, each {kind:\"angle\", body:\"<the editing angle>\"}"
+    "perspectivist"
+    (cons "read" nil)))
+
+; editor ⊕ : propose ONE minimal edit for the angle in hand (a proposed patch, not applied).
+(def doc-edit-proposer Expert
+  (expert "doc-edit-proposer"
+    "propose ONE minimal edit for THIS angle"
+    "{ doc, angle }"
+    "one minimal proposed edit as a patch"
+    "editor"
+    (cons "read" nil)))
+
+; reasoner : a per-angle audit of that one edit — does it fix the angle without collateral?
+; `emits` RESTATES the edit it judged: this is the LAST step in the per-angle chain and
+; chain-run forwards only the last yield, so an edit this verdict does not carry is DISCARDED
+; before the backtrack combiner sees it (DC-1b slice 4).
+(def doc-edit-checker Expert
+  (expert "doc-edit-checker"
+    "does this edit fix the angle without collateral?"
+    "{ angle, proposed_edit, doc }"
+    "the proposed edit, then: fixes|collateral + one reason"
+    "reasoner"
+    (cons "read" nil)))
+
+; NOTE (DC-1b slice 4): there is no `doc-edit-consolidate` model combiner any more — the
+; COMBINE is code (a flow-pure `pf-collect-angles` in the backtrack, below), so the merged
+; result is one tracked finding PER ANGLE rather than a model-fused patch a 0.5b cannot
+; reliably produce. Per-angle PROPOSING and CHECKING stay model.
+
+; auditor ⊕ : audit the merged patch — is there a contradiction or a gap across the angles?
+(def doc-edit-audit Expert
+  (expert "doc-edit-audit"
+    "audit the merged edits: any contradiction or gap?"
+    "{ merged_patch }"
+    "verdict: clean|issue + one reason"
+    "auditor"
+    (cons "read" nil)))
+
+; the pool: the 4 tiny-step experts doc-edit fires, in declaration order (the 5th, the combiner,
+; is now code — see the note above).
+(def doc-edit-pool (List Expert)
+  (cons doc-edit-perspectivist
+  (cons doc-edit-proposer
+  (cons doc-edit-checker
+  (cons doc-edit-audit nil)))))
+
+; ---------------------------------------------------------- the fractal Flow
+; per-perspective : a 2-step chain run ONCE PER angle — propose the edit, then check it.
+; dom = ty-doc (the angle-injected doc), seam ty-patch, cod = ty-verdict. Type-checks:
+; cod(proposer)=ty-patch == dom(checker)=ty-patch.
+(def doc-edit-per-perspective Flow
+  (flow-chain (cons (flow-step "doc-edit-proposer" ty-doc   ty-patch)
+              (cons (flow-step "doc-edit-checker"  ty-patch ty-verdict) nil))))
+
+; backtrack : COLLECT the per-angle proposals (code) -> audit the merge (model). dom =
+; ty-verdict — what the branch actually hands it is the joined per-angle CHECKER verdicts, so
+; the declared dom now says so (it said ty-patch, which was never what arrived). Seam
+; ty-findings (one finding per angle), cod = ty-verdict. Type-checks: cod(collect)=ty-findings
+; == dom(audit)=ty-findings.
+(def doc-edit-backtrack Flow
+  (flow-chain (cons (flow-pure (pf-collect-angles "edit") ty-verdict ty-findings)
+              (cons (flow-step "doc-edit-audit"          ty-findings ty-verdict) nil))))
+
+; doc-edit-flow : the fractal. flow-ty derives (arrow ty-doc <backtrack-cod=ty-verdict>).
+(def doc-edit-flow Flow
+  (flow-branch "doc-edit-perspectivist" ty-doc
+    doc-edit-per-perspective
+    doc-edit-backtrack))
+
+; ---------------------------------------------------------- the tiny-model Config
+; binds EVERY slot doc-edit-pool uses (perspectivist / editor / reasoner / auditor)
+; to the 0.5b smoke tier — the whole fractal runs on the tiny model. Additive Config; the four
+; shared profiles (profiles.chiral) are UNTOUCHED. Selecting THIS config IS the model choice.
+(def doc-edit-config Config
+  (config "doc-edit-smoke"
+    (cons (binding "perspectivist" "qwen2.5:0.5b" 16384)
+    (cons (binding "editor"        "qwen2.5:0.5b" 16384)
+    (cons (binding "reasoner"      "qwen2.5:0.5b" 16384)
+    (cons (binding "auditor"       "qwen2.5:0.5b" 16384) nil))))))

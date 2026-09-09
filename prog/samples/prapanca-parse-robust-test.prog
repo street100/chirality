@@ -1,0 +1,36 @@
+; manas-parse-robust-test -- DETERMINISTIC (mesh-free) regression for parse-perspectives'
+; robustness. A 0.5b perspectivist routinely emits MALFORMED, multi-line JSON (missing
+; brace, ```json fences); the old line-fallback shredded that array into one junk
+; "perspective" per line (```json, [, ], }, "kind"-enum values). parse-perspectives now
+; recovers each object's "target"/"body" value and skips structural scaffolding.
+; Asserts: from the exact malformed shape a 0.5b produced, the recovered items include the
+; real sentences (benchmark, changelog), contain NO structural junk ("```json"/"["), and
+; number <= 5 (no shredding). Guards two bugs found by testing: the shredding, and a
+; str-sub (str START END) misuse that read out-of-bounds and SEGFAULTED. Exit 0 iff PASS.
+;
+; Build: chirality_blob "lib:prog" prapanca/core/flow ports > blob ; append this + sys leaves ; B1.
+
+(import "prelude/prelude")
+(import "prapanca/core/flow")   ; parse-perspectives, Perspective, persp-question, str-has
+(import "ports/ports")
+; the EXACT malformed multi-line JSON shape the 0.5b emitted (missing brace, code fences)
+(def malformed Str "```json\n[\n{\"kind\": \"image-file\", \"target\": \"prior_pass_flags\"},\n{\"kind\": \"sentence-group\", \"target\": \"2019 benchmark logged a 37 percent throughput gain (table 4, measured).\"},\n{\"kind\": \"reference\", \"target\": \"CVE patched per the published changelog\"},\n{\"kind\": \"sentence-group\", \"target\": \"users likely prefer the cleaner API\"}\n]\n```")
+(declare dump (-> (List Perspective) I64))
+(def dump (lam (ps) (case ps (nil 0) ((cons p rest) (do (put (str-cat "  ITEM: <<" (str-cat (persp-question p) ">>\n"))) (dump rest))))))
+(declare pcount (-> (List Perspective) I64))
+(def pcount (lam (ps) (case ps (nil 0) ((cons p rest) (+ 1 (pcount rest))))))
+(declare has-item (-> (List Perspective) Str Bool))
+(def has-item (lam (ps sub) (case ps (nil false) ((cons p rest) (case (str-has (persp-question p) sub) (true true) (false (has-item rest sub)))))))
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((ps (parse-perspectives malformed)))
+      (do (put (str-cat "recovered count: " (str-cat (i64->str (pcount ps)) "\n")))
+      (let ((_ (dump ps)))
+        (case (and (has-item ps "benchmark")
+              (and (has-item ps "changelog")
+              (and (not (has-item ps "```json"))
+              (and (not (has-item ps "["))
+              ; F4: the enum/id field value "prior_pass_flags" (no space) is NOT promoted to an item.
+              (and (not (has-item ps "prior_pass_flags")) (<=i (pcount ps) 4))))))
+          (true (do (put "PARSE ROBUST: PASS (real items only, no shredding, no enum junk)\n") 0))
+          (false (do (put "PARSE ROBUST: FAIL\n") 1))))))))

@@ -1,0 +1,495 @@
+; turn-test.prog — the C2 TURN LOOP gate. DETERMINISTIC, mesh-free where possible, exit 0.
+;
+; Three proofs:
+;   (1) PURE templated replies — no-skill-reply for social / clarify / unknown returns the
+;       expected NON-EMPTY template (a keyword str-has per intent). No backend, no run.
+;   (2) ROUTING half — route-message of a numbered-list "sort these..." message classifies
+;       in-analyze and intent->skill = "evidence-sift" (the route table points analyze at the
+;       MODEL skill). Pure.
+;   (3) DETERMINISTIC FULL TURN (route -> dispatch -> run -> verbalize), ZERO mesh — run
+;       run-skill-turn directly against the model-free "evidence-sift-refined" skill on the SAME
+;       numbered list; assert manifest-all-green? = true AND verbalize returns a non-empty string;
+;       close the linear backend. evidence-sift-refined's fractal is model-free (flow-branch-pure
+;       split + extract/decide/tally/audit all code), so this end-to-end run is deterministic.
+;
+; HONEST SEPARATION: the route table sends in-analyze to "evidence-sift" (the model perspectivist
+; variant); the deterministic full-turn exercises "evidence-sift-refined" (the pure variant) so the
+; end-to-end proof needs no mesh. Same input document; different registry entry by design.
+;
+; Build+run:
+;   chirality run prog/prapanca/chatter/turn-test.prog
+
+(import "prelude/prelude")                 ; Bool, Unit, unit, and, case, str-eq, str-cat, do, some, none
+(import "prapanca/backend")                 ; backend-open, backend-close
+(import "prapanca/pipeline/runner")   ; RunR (run-r)
+(import "prapanca/core/flow")         ; manifest-all-green?, str-has, str-nonempty
+(import "prapanca/chatter/router")    ; Intent (+ ctors), route-message, intent->skill, intent-name; C6a: ConvState (+ conv-empty/conv-state), resolve-intent, conv-update; C6b: split-conjunctions
+(import "prapanca/chatter/orchestrate"); O2: Plan (+ ctors plan-single), intent->plan, plan-of-intent, plan-tag
+(import "prapanca/chatter/turn")      ; verbalize-run, run-skill-turn, execute-plan, turn; C6b: turn-seq; O4b: fan-collect, fuse-template; O5: plan-message
+(import "ports/ports")                   ; put
+
+(def bool->str (-> Bool Str) (lam (b) (case b (true "true") (false "false"))))
+
+; the numbered-list message — carries the "sort " marker (routes in-analyze) AND the exact item
+; sentences evidence-sift-refined is proven green on (so the full turn is deterministic).
+(def the-msg Str
+  "sort these prior flags:\n1. The 2019 benchmark logged a 37 percent throughput gain (table 4, measured).\n2. The library was probably inspired by an older Erlang design.\n3. CVE-2021-1234 was patched in release 2.3.0, per the published changelog.\n4. Users likely prefer the new API because it feels cleaner.\n")
+
+; the unreachable endpoint (connection refused) — forces plan-message's model planner (O5) to fall
+; back to the O1 PURE planner, making the whole `turn` path DETERMINISTIC again. Defined up here
+; because O5's rewire routes turn/turn-seq through plan-message (which dials the mesh), so the social/
+; clarify template legs below MUST run at a dead endpoint to stay mesh-free + deterministic.
+(def dead-endpoint Str "http://127.0.0.1:1")
+
+; ─── (1) O2 plan-reply via `turn` (deterministic via the O5 dead-endpoint fallback) ──
+; no-skill-reply is GONE (O2). The social / clarify templates now flow through orchestrate's
+; plan-reply, executed by `turn` -> execute-plan: a social message resolves in-social -> plan-reply
+; social-reply; a thin message resolves in-clarify -> plan-reply clarify-reply. O5 NOTE: `turn` now
+; dials the mesh to PLAN (plan-message), so this leg runs at dead-endpoint -> plan-message falls back
+; to plan-of-intent -> the SAME plan-reply template path (byte-identical to pre-O5, and it proves the
+; O5 fallback preserves the honest floor). (unknown no longer returns a template — O1 maps it to
+; plan-single "research", a mesh skill, so it is NOT asserted here.)
+(def planreply-ok (=> I64 Bool)
+  (lam (_)
+    (let ((social-resp  (turn dead-endpoint (conv-empty) "hello")))
+    (let ((clarify-resp (turn dead-endpoint (conv-empty) "ok")))
+      (do (put (str-cat "PLAN-REPLY social  : " (str-cat social-resp "\n")))
+      (do (put (str-cat "PLAN-REPLY clarify : " (str-cat clarify-resp "\n")))
+          (and (str-has social-resp  "route")       ; social-reply carries "route each ask to a pipeline"
+               (str-has clarify-resp "bit more")))))))) ; clarify-reply carries "say a bit more"
+
+; ─── (1b) O6 SOCIAL FAST-PATH — social bypasses the model planner (deterministic even LIVE) ──
+; The O6 model bump made the planner capable enough to name skills for a bare "hello" (a plan-fan
+; instead of the social floor). turn's O6 fast-path routes social/clarify through the PURE plan
+; (plan-of-intent), NEVER dialing the model. So `turn` on "hello" returns the social template even at
+; a REACHABLE endpoint — this leg uses the LIVE mesh URL yet stays DETERMINISTIC + MESH-FREE precisely
+; because the fast-path opens no backend (a plan-fan would have dialed and returned model prose). This
+; is the committed proof the greeting no longer hits the model. (planreply-ok above uses dead-endpoint;
+; here the live URL makes the bypass the ONLY reason no model prose comes back.)
+(def social-fastpath-ok (=> I64 Bool)
+  (lam (_)
+    (let ((resp (turn "http://100.64.0.5:11434" (conv-empty) "hello")))
+      (do (put (str-cat "SOCIAL fast-path (live URL, no dial): " (str-cat resp "\n")))
+          (and (str-has resp "route")             ; the social template, NOT a model fan synth
+               (not (str-has resp "From ")))))))  ; a fan fuse-template would carry "From <skill>:"
+
+; ─── (2) ROUTING half (mesh-free) ───────────────────────────────────────────────
+(def routing-ok (-> Unit Bool)
+  (lam (_)
+    (and (str-eq (intent-name (route-message the-msg)) "analyze")
+         (case (intent->skill (route-message the-msg))
+           (none false)
+           ((some s) (str-eq s "evidence-sift"))))))
+
+; ─── (3) DETERMINISTIC FULL TURN via the model-free skill (ZERO mesh) ────────────
+; run-skill-turn threads the OPENED backend into run-flow-stop (inlined into the call per the
+; E137 linear discipline); the returned handle b2 is closed here. all-green + CONVERSATIONAL
+; prose prove route -> dispatch -> run -> verbalize-run end-to-end, deterministically. The
+; model-free run yields evidence=2, speculation=2 on the-msg, so C3 must produce a SENTENCE
+; carrying "evidence", "speculation", and "2" — and must NOT dump raw JSON ("kind" / "[{").
+(def full-turn-ok (=> I64 Bool)
+  (lam (_)
+    (case (run-skill-turn (backend-open "http://100.64.0.5:11434") "evidence-sift-refined" the-msg nil)
+      ((run-r y m raws b2)
+        (do (backend-close b2)
+        (let ((green (manifest-all-green? m)))
+          (let ((resp (verbalize-run (route-message the-msg) m raws)))
+            (do (put (str-cat "FULL-TURN all-green: " (str-cat (bool->str green) "\n")))
+            (do (put (str-cat "FULL-TURN response : " (str-cat resp "\n")))
+                (and green
+                (and (str-nonempty resp)
+                (and (str-has resp "evidence")
+                (and (str-has resp "speculation")
+                (and (str-has resp "2")
+                (and (not (str-has resp "kind"))
+                     (not (str-has resp "[{")))))))))))))))))
+
+; ─── (3b) O2 REGRESSION — execute-plan reproduces the skill path BYTE-IDENTICAL ──
+; The O2 rewire must NOT change the single-skill answer. Drive the NEW execute-plan on a
+; plan-single "evidence-sift-refined" (the model-free skill) with intent in-analyze + conv-empty
+; (extra = nil, exactly as run-skill-turn is called in full-turn-ok) and assert the response equals
+; the EXACT sentence C3 has always produced for the-msg (evidence=2, speculation=2). Same input,
+; same skill, same verbalize framing -> byte-identical prose, now via the Plan executor. ZERO mesh.
+(def exp-analyze Str "I sorted the flagged items: 2 supported by evidence, 2 held as speculation.")
+(def execplan-regression-ok (=> I64 Bool)
+  (lam (_)
+    (let ((resp (execute-plan "http://100.64.0.5:11434"
+                  (conv-empty) (in-analyze) (plan-single "evidence-sift-refined") the-msg)))
+      (do (put (str-cat "EXEC-PLAN response : " (str-cat resp "\n")))
+          (str-eq resp exp-analyze)))))
+
+; ─── (3c) O4a PLAN-CHAIN — execute-plan runs a chain of K skills, K fresh backends ──
+; The O4a deliverable: a plan-chain of TWO model-free skills ("evidence-sift-refined" twice) runs
+; SEQUENTIALLY through the refactored execute-plan (endpoint-threaded), each step opening its OWN
+; fresh backend (E137), threading ConvState, verbalizing per-skill, and combining into ONE tagged,
+; newline-joined string. ZERO mesh (evidence-sift-refined is model-free). The combined reply is
+; asserted BYTE-EXACT: two "evidence-sift-refined: <sorted sentence>" lines joined by "\n" — which
+; proves BOTH sub-skills ran, BOTH verbalized to the sorted-items sentence, BOTH tagged with the
+; skill name. Also assert the sorted sentence is present (the per-step evidence-sift-refined result).
+(def exp-chain Str
+  (str-cat "evidence-sift-refined: " (str-cat exp-analyze
+    (str-cat "\nevidence-sift-refined: " exp-analyze))))
+(def execplan-chain-ok (=> I64 Bool)
+  (lam (_)
+    (let ((resp (execute-plan "http://100.64.0.5:11434"
+                  (conv-empty) (in-analyze)
+                  (plan-chain (cons "evidence-sift-refined" (cons "evidence-sift-refined" nil)))
+                  the-msg)))
+      (do (put (str-cat "EXEC-CHAIN response : " (str-cat resp "\n")))
+          (and (str-has resp exp-analyze)                    ; the evidence-sift-refined sorted sentence
+          (and (str-has resp "evidence-sift-refined:")       ; tagged per skill
+               (str-eq resp exp-chain)))))))                 ; BYTE-EXACT: two tagged steps, newline-joined
+
+; ─── (3d) O4b PLAN-FAN — fan-collect + fuse-template + full plan-fan via execute-plan ──
+; Four legs, all mesh-free (the MODEL synth prose leg needs the 0.5b mesh; egress is blocked in
+; sandbox, so a plan-fan through execute-plan lands on the fuse-template FALLBACK — which is EXACTLY
+; the degradation path O4b must guarantee):
+;   (a) fan-collect over two model-free skills -> TWO survivors, each carrying the sorted sentence.
+;   (b) DROP-FAILED — fan-collect over [good, no-such-skill] -> exactly ONE survivor, no crash.
+;   (c) fuse-template on a hand-built labeled list -> one reply naming BOTH sources + BOTH outputs.
+;   (d) full plan-fan through execute-plan -> the fused (fallback) reply, BYTE-EXACT: two labeled
+;       "From evidence-sift-refined: <sorted>" lines — proving both sub-runs ran + the synth fell
+;       back to fuse-template when the mesh was unreachable.
+
+; helpers over a survivor list (List (Pair Str Str)).
+(declare fan-len (-> (List (Pair Str Str)) I64))
+(def fan-len (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (fan-len t))))))
+(declare fan-nth-out (-> (List (Pair Str Str)) I64 Str))
+(def fan-nth-out
+  (lam (xs i)
+    (case xs
+      (nil "")
+      ((cons h t) (case (=i i 0) (true (case h ((pair n o) o))) (false (fan-nth-out t (- i 1))))))))
+
+; (3a) fan-collect over two model-free skills -> 2 survivors, each the sorted sentence.
+(def fan-collect-ok (=> I64 Bool)
+  (lam (_)
+    (let ((survivors (fan-collect "http://100.64.0.5:11434"
+                        (cons "evidence-sift-refined" (cons "evidence-sift-refined" nil))
+                        (conv-empty) the-msg)))
+      (do (put (str-cat "FAN-COLLECT survivors: " (str-cat (bool->str (=i (fan-len survivors) 2)) "\n")))
+          (and (=i (fan-len survivors) 2)
+          (and (str-eq (fan-nth-out survivors 0) exp-analyze)
+               (str-eq (fan-nth-out survivors 1) exp-analyze)))))))
+
+; (3b) DROP-FAILED — a bad skill name yields a non-green (missing) sub-run that is DROPPED, not crashed.
+(def fan-drop-ok (=> I64 Bool)
+  (lam (_)
+    (let ((survivors (fan-collect "http://100.64.0.5:11434"
+                        (cons "evidence-sift-refined" (cons "no-such-skill" nil))
+                        (conv-empty) the-msg)))
+      (do (put (str-cat "FAN-DROP survivors : " (str-cat (bool->str (=i (fan-len survivors) 1)) "\n")))
+          (and (=i (fan-len survivors) 1)
+               (str-eq (fan-nth-out survivors 0) exp-analyze))))))
+
+; (3c) fuse-template on a hand-built labeled list -> one reply naming BOTH sources + BOTH outputs. PURE.
+(def fuse-ok (-> Unit Bool)
+  (lam (_)
+    (let ((fused (fuse-template
+                   (cons (pair "alpha" "OUT-A") (cons (pair "beta" "OUT-B") nil)))))
+      (and (str-has fused "alpha")
+      (and (str-has fused "beta")
+      (and (str-has fused "OUT-A")
+      (and (str-has fused "OUT-B")
+           (str-has fused "From "))))))))
+
+; (3d) full plan-fan through execute-plan -> fused fallback reply, BYTE-EXACT + DETERMINISTIC.
+; The model synth is the PRIMARY path, but its prose is non-deterministic (and needs the mesh). To
+; assert a BYTE-EXACT result independent of whether the 0.5b mesh is reachable, this leg drives the
+; executor at an UNREACHABLE endpoint (127.0.0.1:1 -> connection refused -> be-chat returns chat-bad
+; -> fan-synth FALLS BACK to fuse-template). That is exactly the degradation path O4b must guarantee:
+; both sub-runs still ran (fan-collect never dials for a model-free skill), and the fallback fuses
+; them into one labeled reply. (The live model-prose leg is exercised on the mesh, not asserted here.)
+; (dead-endpoint is defined near the top, reused by the O5 plan-message fallback legs.)
+(def exp-fan Str
+  (str-cat "From evidence-sift-refined: " (str-cat exp-analyze
+    (str-cat "\nFrom evidence-sift-refined: " exp-analyze))))
+(def execplan-fan-ok (=> I64 Bool)
+  (lam (_)
+    (let ((resp (execute-plan dead-endpoint
+                  (conv-empty) (in-analyze)
+                  (plan-fan (cons "evidence-sift-refined" (cons "evidence-sift-refined" nil))
+                            "Combine these into one overview.")
+                  the-msg)))
+      (do (put (str-cat "EXEC-FAN response  : " (str-cat resp "\n")))
+          (and (str-has resp exp-analyze)                    ; the evidence-sift-refined sorted sentence
+          (and (str-has resp "From evidence-sift-refined:")  ; labeled per source (fuse-template fallback)
+               (str-eq resp exp-fan)))))))                   ; BYTE-EXACT: two labeled survivors, newline-joined
+
+; ─── (3e) O5 MODEL PLANNER — dead-endpoint fallback to the pure planner (DETERMINISTIC) ──
+; plan-message opens a fresh backend and be-chats the 0.5b to PICK a Plan. Its output on the mesh is
+; non-deterministic (verified + reported live, NOT asserted here). The COMMITTED deterministic proof
+; is the DEGRADATION path: at an UNREACHABLE endpoint (127.0.0.1:1 -> connection refused -> chat-bad)
+; plan-message MUST fall back to EXACTLY the O1 pure planner (plan-of-intent) for that message —
+; mirroring O4b's dead-endpoint synth fallback. the-msg routes analyze, so both sides are
+; plan-single "evidence-sift-refined" (DC-1a; plan-tag "single:evidence-sift-refined"). Asserted
+; via plan-tag equality (both sides move together, so the equality is DC-1a-agnostic).
+(def planmsg-fallback-ok (=> I64 Bool)
+  (lam (_)
+    (let ((p (plan-message dead-endpoint (conv-empty) the-msg)))
+      (do (put (str-cat "PLAN-MSG (dead endpoint) tag: " (str-cat (plan-tag p) "\n")))
+          (str-eq (plan-tag p) (plan-tag (plan-of-intent (conv-empty) the-msg)))))))
+
+; ─── (3f) DC-1a — a full `turn` on an analyze message routes to evidence-sift-refined + the RICH
+; sorted sentence, DETERMINISTICALLY + END-TO-END. At dead-endpoint the O5 model planner falls back
+; to plan-of-intent, which (DC-1a) now maps in-analyze -> plan-single "evidence-sift-refined" (was
+; the model "evidence-sift", a 0.5b coin-flip that verbalized generic/JSON). So the whole turn is
+; mesh-free + BYTE-EXACT: resolve-intent -> plan-message(dead)->fallback -> evidence-sift-refined ->
+; verbalize-analyze -> the two-track sentence. This is the committed proof of the DC-1a win end-to-end
+; (the pieces are proved above; this asserts they compose through `turn` itself).
+(def turn-analyze-ok (=> I64 Bool)
+  (lam (_)
+    (let ((resp (turn dead-endpoint (conv-empty) the-msg)))
+      (do (put (str-cat "TURN analyze (dead endpoint): " (str-cat resp "\n")))
+          (str-eq resp exp-analyze)))))
+
+; ─── (4) C6a FOLLOW-UP RESOLUTION via ConvState (mesh-free, PURE) ────────────────
+; Prove conversation memory THREADS: a bare follow-up ("what about the second one?")
+; resolves against the PRIOR turn's Intent instead of routing context-free to unknown —
+; the exact delta that makes the chat "get somewhere". THREE assertions:
+;   (a) turn 1 (the numbered list) routes analyze fresh (baseline);
+;   (b) THE ONE-SHOT GAP — the follow-up, routed context-FREE (conv-empty), has no markers
+;       of its own and falls to in-unknown (proving the pre-check is what saves it);
+;   (c) C6a — after folding turn 1 into ConvState (conv-update), resolve-intent REUSES
+;       in-analyze for the follow-up. (b) != (c) IS the conversation memory, deterministic.
+(def followup-msg Str "what about the second one?")
+(def followup-ok (-> Unit Bool)
+  (lam (_)
+    (let ((cs1 (conv-update (conv-empty) (route-message the-msg) the-msg "I sorted the flagged items.")))
+      (and (str-eq (intent-name (resolve-intent (conv-empty) the-msg)) "analyze")
+      (and (str-eq (intent-name (resolve-intent (conv-empty) followup-msg)) "unknown")
+           (str-eq (intent-name (resolve-intent cs1 followup-msg)) "analyze"))))))
+
+; ─── (5) C6b COMPOUND-INTENT DECOMPOSITION (the last chatter slice) ──────────────
+; Two legs, both mesh-free:
+;   (a) the PURE splitter — a compound message splits into the right ORDERED parts, and a
+;       PLAIN message splits to exactly ONE part (the REGRESSION GUARD: zero behavior change
+;       on the common case). Each part routes to the expected intent IN ORDER (a compound
+;       "what is X then should i Y" is a factual sub-turn THEN a decide sub-turn).
+;   (b) the SEQUENCED runner, run deterministically — a compound of NO-SKILL routes runs with
+;       NO mesh: "hi there then what about the second one?" fires TWO sub-turns; part 2 is a
+;       bare follow-up that REUSES part 1's intent via the threaded ConvState (had ConvState
+;       NOT carried, part 2 would route context-free to in-unknown — the "pipeline for that yet"
+;       template — which the reply must NOT contain). The final ConvState carries turn-count 2,
+;       proving both sub-turns folded into memory. Each part opened its own FRESH Backend (E137).
+
+(declare len-parts (-> (List Str) I64))
+(def len-parts (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (len-parts t))))))
+(declare nth-part (-> (List Str) I64 Str))
+(def nth-part
+  (lam (xs i) (case xs (nil "") ((cons h t) (case (=i i 0) (true h) (false (nth-part t (- i 1))))))))
+(def conv-turn-count (-> ConvState I64)
+  (lam (cs) (case cs ((conv-empty) 0) ((conv-state li lm lr tc) tc))))
+
+; (5a) the PURE splitter + per-part routing order.
+(def splitter-ok (-> Unit Bool)
+  (lam (_)
+    (and (=i (len-parts (split-conjunctions "research X then decide Y")) 2)
+    (and (str-eq (nth-part (split-conjunctions "research X then decide Y") 0) "research X")
+    (and (str-eq (nth-part (split-conjunctions "research X then decide Y") 1) "decide Y")
+    (and (=i (len-parts (split-conjunctions "a and then b and then c")) 3)
+    (and (=i (len-parts (split-conjunctions "x; y")) 2)
+    ; REGRESSION GUARD — a plain message is ONE part (unchanged one-shot):
+    (and (=i (len-parts (split-conjunctions "just a plain message")) 1)
+    ; per-part routing, IN ORDER: factual sub-turn THEN decide sub-turn:
+    (and (str-eq (intent-name (route-message (nth-part (split-conjunctions "what is a monad then should i use it") 0))) "factual")
+         (str-eq (intent-name (route-message (nth-part (split-conjunctions "what is a monad then should i use it") 1))) "decide"))))))))))
+
+; (5b) the SEQUENCED runner, deterministic. O5 NOTE: turn-seq -> turn -> plan-message now dials the
+; mesh to plan, so this runs at dead-endpoint -> plan-message falls back to the pure planner per part,
+; making the no-skill (social) parts fully deterministic (byte-identical to pre-O5).
+(def compound-msg Str "hi there then what about the second one?")
+(def seq-ok (=> I64 Bool)
+  (lam (_)
+    (case (turn-seq dead-endpoint (conv-empty) compound-msg)
+      ((pair cs2 resp)
+        (do (put (str-cat "SEQ combined reply : " (str-cat resp "\n")))
+        (do (put (str-cat "SEQ final turns    : " (str-cat (bool->str (=i (conv-turn-count cs2) 2)) "\n")))
+            (and (str-has resp "social:")                    ; tagged decomposition — compound => per-part intent tags
+            (and (str-has resp "route")                      ; part 1 got the social template
+            (and (not (str-has resp "pipeline for that"))    ; part 2 did NOT fall to unknown => it REUSED social via threaded ConvState
+                 (=i (conv-turn-count cs2) 2))))))))))       ; both sub-turns folded into the final memory
+
+; ─── (6) DC-2b — THE TURN IS A BRANCH over chunks (mesh-free, deterministic) ─────
+; Two compound messages that differ by ONE marker, both run at the dead endpoint so every leg is
+; deterministic (the model planner, the divider port and fan-synth all fall back):
+;   msg-seq uses " and then "  -> SEQUENCING: chunk 2 DEPENDS on chunk 1, so it runs against the
+;                                 RUNNING ConvState and REUSES chunk 1's intent (analyze).
+;   msg-par uses ", and also " -> PARALLEL: chunk 2 is an INDEPENDENT sibling, so it runs against
+;                                 the ENTRY ConvState, cannot see chunk 1's result, and therefore
+;                                 routes on its OWN (context-free) markers -> unknown.
+; The two fused replies differing by exactly that label IS the context-grant rule, observed. Both
+; must also carry chunk 1's real specialist output (the two-track sentence) and fuse TWO lanes —
+; proving two sub-runs happened and were consolidated, not concatenated by luck.
+; DC-3b adds a third line to each: the consolidator now reads every lane's AUDIT and NAMES the
+; lanes whose verdict was flagged or never recorded, so a degraded lane can no longer be fused as
+; if it were clean. chunk 1 (evidence-sift-refined, audit "well-formed") is never named.
+(def msg-seq Str (str-cat the-msg " and then what about the second one?"))
+(def msg-par Str (str-cat the-msg ", and also what about the second one?"))
+
+(declare count-lines-go (-> Str I64 I64 I64))
+(def count-lines-go
+  (lam (s i acc)
+    (case (=i i (str-len s))
+      (true acc)
+      (false (count-lines-go s (+ i 1)
+               (case (str-eq (str-sub s i (+ i 1)) "\n") (true (+ acc 1)) (false acc)))))))
+(def line-count (-> Str I64) (lam (s) (+ 1 (count-lines-go s 0 0))))
+
+(def branch-ok (=> I64 Bool)
+  (lam (_)
+    (case (turn-seq dead-endpoint (conv-empty) msg-seq)
+      ((pair cs-s resp-s)
+        (case (turn-seq dead-endpoint (conv-empty) msg-par)
+          ((pair cs-p resp-p)
+            (do (put (str-cat "BRANCH seq (dep -> reuses intent):\n" (str-cat resp-s "\n")))
+            (do (put (str-cat "BRANCH par (independent -> own intent):\n" (str-cat resp-p "\n")))
+                (and (str-has resp-s exp-analyze)          ; chunk 1's REAL specialist output ...
+                (and (str-has resp-p exp-analyze)          ; ... in both
+                (and (=i (line-count resp-s) 3)            ; two fused lanes + the DC-3b caveat
+                (and (=i (line-count resp-p) 3)
+                (and (not (str-has resp-s "From research:")) ; dependent chunk REUSED analyze -> the sift skill ...
+                (and (str-has resp-p "From research:")     ; ... independent chunk routed unknown -> research
+                ; DC-3b — the consolidator reads the AUDIT, not just the prose: the lane that
+                ; produced nothing verifiable is NAMED, and the clean lane is not.
+                (and (str-has resp-s "(unverified: evidence-sift-refined)")
+                (and (str-has resp-p "(unverified: research)")
+                (and (not (str-has resp-p "unverified: research, "))
+                (and (=i (conv-turn-count cs-s) 2)          ; every chunk folded into memory
+                     (=i (conv-turn-count cs-p) 2)))))))))))))))))))
+
+; ─── (7) DC-4a — the per-specialist CONTEXT GRANT (pure) ─────────────────────────
+; `extra` is rendered verbatim into every leaf prompt (assemble.chiral's "# Extra"), so what a
+; chunk is granted is literally what its specialist reads. Three properties, decided in code:
+;   (a) an INDEPENDENT chunk is granted NO sibling key at all — min-privilege by construction;
+;   (b) a DEPENDENT chunk is granted its dep's TYPED result (findings + audit word) and NOT the
+;       dep's rendered prose — the sentence "I sorted the flagged items…" must not appear;
+;   (c) the ENTRY conversation (the user's own prior turn) reaches both — it belongs to the turn,
+;       not to a lane.
+(def lane-eg SkillEgress
+  (egress (cons (finding "evidence" "" "2") (cons (finding "speculation" "" "2") nil))
+          (audit-ok "well-formed")))
+(def lane-0 ChunkOut (chunk-out "analyze" exp-analyze lane-eg))
+(def lanes (List ChunkOut) (cons lane-0 nil))
+(def prior-cs ConvState (conv-update (conv-empty) (in-factual) "what is a monad" "A monad is a monoid."))
+
+(declare grant-get (-> (List (Pair Str Str)) Str Str))
+(def grant-get
+  (lam (g k)
+    (case g
+      (nil "")
+      ((cons pr rest) (case pr ((pair kk vv) (case (str-eq kk k) (true vv) (false (grant-get rest k)))))))))
+(declare grant-has (-> (List (Pair Str Str)) Str Bool))
+(def grant-has
+  (lam (g k)
+    (case g
+      (nil false)
+      ((cons pr rest) (case pr ((pair kk vv) (case (str-eq kk k) (true true) (false (grant-has rest k)))))))))
+
+(def grant-ok (-> Unit Bool)
+  (lam (_)
+    (let ((indep (grant-for prior-cs nil lanes)))
+      (let ((dep (grant-for prior-cs (cons 0 nil) lanes)))
+        (and (not (grant-has indep "prior_analyze"))         ; (a) no sibling key at all
+        (and (grant-has dep "prior_analyze")                 ; (b) the dep's TYPED result ...
+        (and (str-has (grant-get dep "prior_analyze") "evidence")
+        (and (str-has (grant-get dep "prior_analyze") "audit: well-formed")
+        (and (not (str-has (grant-get dep "prior_analyze") "I sorted the flagged items"))  ; ... not its prose
+        (and (str-eq (grant-get indep "prior-message") "what is a monad")                   ; (c) the real
+             (str-eq (grant-get dep "prior-message") "what is a monad"))))))))))) ; conversation, both
+
+; ─── (8) DC-3a — the M2 ESCALATION LADDER (D2 = code-prior) ──────────────────────
+; (a) the ladder itself, PURE: a marker (or the clarify threshold, or C6a's follow-up reuse) makes
+;     the rung `sure`; only the honest catch-all is `residue`, and only residue reaches the model.
+; (b) the OBSERVABLE consequence: an ANALYZE message run through `turn` at the LIVE mesh URL now
+;     completes with ZERO dials — the planner is skipped because code was sure, and
+;     evidence-sift-refined is model-free — so the answer is BYTE-EXACT. Before DC-3a this call
+;     went to the qwen3:4b planner, whose pick (and therefore this string) was not deterministic.
+;     That is the ladder's whole point, asserted rather than described.
+(def ladder-ok (-> Unit Bool)
+  (lam (_)
+    (let ((cs1 (conv-update (conv-empty) (route-message the-msg) the-msg "I sorted the flagged items.")))
+      (and (str-eq (routed-name (routed-of (conv-empty) "hello")) "social")
+      (and (str-eq (routed-name (routed-of (conv-empty) the-msg)) "analyze")
+      (and (str-eq (routed-name (routed-of (conv-empty) "ok")) "clarify")
+      (and (str-eq (routed-name (routed-of (conv-empty) "what about the second one?")) "residue")
+           ; C6a's reuse is deterministic, so a resolved follow-up is code-CERTAIN, not residue:
+           (str-eq (routed-name (routed-of cs1 "what about the second one?")) "analyze"))))))))
+
+(def ladder-nodial-ok (=> I64 Bool)
+  (lam (_)
+    (let ((resp (turn "http://100.64.0.5:11434" (conv-empty) the-msg)))
+      (do (put (str-cat "LADDER analyze @ live URL (no planner dial): " (str-cat resp "\n")))
+          (str-eq resp exp-analyze)))))
+
+; ─── (9) F2 — a division into ONE specialist is not a division ───────────────────
+; The predicate the collapse rests on, tested where it is decidable (PURE). Measured case: two
+; halves of one question, both routing to `research` -> true (collapse). A genuine two-specialist
+; division -> false (branch). The collapse itself is additionally scoped to PORT-invented
+; divisions; that leg needs the mesh and is exercised by the live sample.
+(def ch-unknown-a Chunk (mk-chunk "perspectives on type theory" "" (in-unknown) nil (org-model)))
+(def ch-unknown-b Chunk (mk-chunk "ways it manifests in programming" "" (in-unknown) nil (org-model)))
+(def ch-analyze   Chunk (mk-chunk "sort these claims" "" (in-analyze) nil (org-model)))
+(def ch-decide    Chunk (mk-chunk "should i adopt it" "" (in-decide) nil (org-model)))
+
+(def one-specialist-ok (-> Unit Bool)
+  (lam (_)
+    (and (one-specialist? (conv-empty) (cons ch-unknown-a (cons ch-unknown-b nil)))   ; both -> research
+    (and (not (one-specialist? (conv-empty) (cons ch-analyze (cons ch-decide nil))))  ; sift vs decision
+    (and (one-specialist? (conv-empty) (cons ch-analyze nil))                         ; a single chunk, trivially
+         (str-eq (chunk-skill-prior (conv-empty) ch-unknown-a) "research"))))))       ; the prior it compares on
+
+; ─── (10) R4 — DEPTH routing: a survey ask reaches the FRACTAL skill ─────────────
+; `intent->plan` maps an intent to one skill and cannot see the message, so depth is a second
+; code-decided axis. A plain factual question still gets `research`; a message carrying a
+; MULTIPLICITY marker gets `deep-research`. Both decisions are markers, not judgements, and both
+; are mesh-free — assign-plan only dials for the residue rung.
+(def depth-ok (-> Unit Bool)
+  (lam (_)
+    (and (wants-depth? "Tell me about some different specific ways that type theory developed")
+    (and (wants-depth? "compare and contrast the two designs")
+    (and (not (wants-depth? "what is a monad"))
+    (and (not (wants-depth? "tell me about monads"))          ; NOT a depth marker: too common
+    (and (str-eq (plan-tag (assign-plan dead-endpoint (conv-empty)
+                             "what is a monad")) "single:research")     ; factual, no depth -> one answer
+         ; a depth marker RECLAIMS the residue rung: no factual marker here, but "different ways"
+         ; says the answer is plural, which beats a planner guess.
+         (str-eq (plan-tag (assign-plan dead-endpoint (conv-empty)
+                             "the different ways type theory shows up")) "single:deep-research"))))))))
+
+(def depth-plan-ok (=> I64 Bool)
+  (lam (_)
+    (let ((tag (plan-tag (assign-plan dead-endpoint (conv-empty)
+                 "Tell me some different perspectives on type theory"))))
+      (do (put (str-cat "R4 depth plan: " (str-cat tag "\n")))
+          (str-eq tag "single:deep-research")))))
+
+; ─── entry: 0 iff all proofs pass ────────────────────────────────────────────────
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (let ((pure (and (routing-ok unit) (and (followup-ok unit) (splitter-ok unit)))))
+      (do (put (str-cat "PURE (routing + C6a follow-up + C6b splitter): " (str-cat (bool->str pure) "\n")))
+      (do (put (str-cat "C6a follow-up resolution: " (str-cat (bool->str (followup-ok unit)) "\n")))
+      (do (put (str-cat "C6b splitter + route-order: " (str-cat (bool->str (splitter-ok unit)) "\n")))
+    (do (put (str-cat "DC-4a context grant (min-privilege): " (str-cat (bool->str (grant-ok unit)) "\n")))
+    (do (put (str-cat "DC-3a ladder (code-prior; residue only): " (str-cat (bool->str (ladder-ok unit)) "\n")))
+    (do (put (str-cat "F2 one-specialist? (not a division): " (str-cat (bool->str (one-specialist-ok unit)) "\n")))
+    (do (put (str-cat "R4 depth markers (survey -> fractal): " (str-cat (bool->str (depth-ok unit)) "\n")))
+      (let ((pr (planreply-ok 0)))
+      (let ((sfp (social-fastpath-ok 0)))
+      (let ((reg (execplan-regression-ok 0)))
+      (let ((chain (execplan-chain-ok 0)))
+      (let ((full (full-turn-ok 0)))
+      (let ((seq (seq-ok 0)))
+      (let ((fanc (fan-collect-ok 0)))
+      (let ((fand (fan-drop-ok 0)))
+      (let ((fuse (fuse-ok unit)))
+      (let ((fanx (execplan-fan-ok 0)))
+      (let ((pmfb (planmsg-fallback-ok 0)))
+      (let ((tanl (turn-analyze-ok 0)))
+      (let ((brn (branch-ok 0)))
+      (let ((lad (ladder-nodial-ok 0)))
+        (case (and pure (and pr (and sfp (and reg (and chain (and full (and seq
+              (and fanc (and fand (and fuse (and fanx (and pmfb (and tanl (and brn (and (grant-ok unit) (and (ladder-ok unit) (and lad (and (one-specialist-ok unit) (and (depth-ok unit) (depth-plan-ok 0))))))))))))))))))))
+          (true  (do (put "chatter gate (DC + F fixes + R4 depth routing): PASS\n") 0))
+          (false (do (put "chatter gate (DC + F fixes + R4 depth routing): FAIL\n") 1)))))))))))))))))))))))))))

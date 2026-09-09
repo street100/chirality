@@ -36,11 +36,11 @@ before the goal did.
   and `fs-edit` at `:88` in 96 lines, and `prog/agent/agent.chiral:60` declares
   `ag-bash` over the `raw-proc-spawn`/`wait` crossings. Four tools, native, no
   interpreter under any of them.
-- `prog/manas/core/types.chiral:63-68` declares the permission half already:
+- `prog/prapanca/core/types.chiral:63-68` declares the permission half already:
   "TOOLS is least-privilege (a list of permitted tool names, default read-only =
   nil)", carried as the `Expert` record's `tools` field. What a step may touch is
   a declared value in this tree.
-- `prog/manas/core/match.chiral:5-6` states the routing stance this goal
+- `prog/prapanca/core/match.chiral:5-6` states the routing stance this goal
   inherits: "No float: the score is an integer overlap count, never a cosine",
   with the membrane proving no model call can steer which pipeline runs.
 
@@ -60,8 +60,8 @@ goals rather than one. `prog/agent/agent.chiral` runs a tool-call turn today and
 uses **none** of the engine — no `be-chat`, no `Flow`, no `RunManifest`, no
 gate, no `StopPolicy`, no linear `Backend` — and its own header states the
 choice at `:12-16`: "backend.chiral's be-chat is the non-tool reference and is
-NOT used here". In the other direction, no file under `prog/manas/` executes a
-tool: `prog/manas/core/types.chiral`'s `tools` field is read at zero sites,
+NOT used here". In the other direction, no file under `prog/prapanca/` executes a
+tool: `prog/prapanca/core/types.chiral`'s `tools` field is read at zero sites,
 measured 2026-09-08. Two working halves, neither reaching the other, is where
 the source itself is cut.
 
@@ -78,7 +78,7 @@ goal: **no route, rank or selection may assume a float.**
 > lexemes. Any routing scheme that needs a score has to answer for that."
 
 The tree has answered it once and that answer is the pattern:
-`prog/manas/core/match.chiral:5-6` routes by an integer keyword-overlap count
+`prog/prapanca/core/match.chiral:5-6` routes by an integer keyword-overlap count
 and says in its own header why it is not a cosine. Three consequences, each
 checkable:
 
@@ -91,7 +91,7 @@ checkable:
    `match.chiral`'s header is the form. A score with no stated arithmetic is a
    float waiting to be found.
 3. **A tie is a value, not a first-wins.** `PipelineMatch` is a closed sum over
-   found / none / tied (`prog/manas/core/match.chiral:6-8`), and any selection
+   found / none / tied (`prog/prapanca/core/match.chiral:6-8`), and any selection
    added under this goal closes the same way.
 
 The author's other constraint stated in the same breath — "Small models, and a
@@ -108,12 +108,12 @@ Four conditions, one per area the author named. None holds an arc file.
    A coding turn is decomposed across the engine rather than run as one loop, and
    each step holds only the tools it was granted. Three counts are zero today and
    each is the observation: `prog/agent/agent.chiral` imports nothing under
-   `prog/manas/` and says so at `:12-16`; the `Expert` record's `tools` field is
+   `prog/prapanca/` and says so at `:12-16`; the `Expert` record's `tools` field is
    bound at seven destructuring sites across four files
-   (`prog/manas/core/assemble.chiral:51`, `prog/manas/core/flow.chiral:1336` and
-   `:1338`, `prog/manas/pipeline/plan.chiral:46` and `:47`,
-   `prog/manas/profile/doc-refine.chiral:17` and `:19`) and read at none of them;
-   and `prog/manas/core/stop.chiral`'s `overflow-guard` (`:20`) and `stop-policy`
+   (`prog/prapanca/core/assemble.chiral:51`, `prog/prapanca/core/flow.chiral:1336` and
+   `:1338`, `prog/prapanca/pipeline/plan.chiral:46` and `:47`,
+   `prog/prapanca/profile/doc-refine.chiral:17` and `:19`) and read at none of them;
+   and `prog/prapanca/core/stop.chiral`'s `overflow-guard` (`:20`) and `stop-policy`
    (`:25`) have no caller outside their own file, so a coding turn that outgrows
    the context window has no guard on it. Done when the first two counts are
    nonzero and a coding turn emits a `RunManifest`. **[[arcs/coding-turn-arc]]**,
@@ -121,11 +121,11 @@ Four conditions, one per area the author named. None holds an arc file.
 
 2. **Routes.** A coding request reaches the right step, the right tool grant and
    the right model, and the choice is a value that can be shown. Observable in
-   two places: `prog/manas/core/match.chiral` routes by integer overlap against a
-   pipeline's WHEN text and no pipeline in `prog/manas/profile/` names a file
+   two places: `prog/prapanca/core/match.chiral` routes by integer overlap against a
+   pipeline's WHEN text and no pipeline in `prog/prapanca/profile/` names a file
    operation, so a coding request has nothing to route to; and the `Pipeline`
    record's `stop` field is never read on the flat run path —
-   `prog/manas/pipeline/plan.chiral:49-50` define only `pipe-gate` and
+   `prog/prapanca/pipeline/plan.chiral:49-50` define only `pipe-gate` and
    `pipe-combiner`, and both bind `stp` and discard it. Done when a coding request
    routes to a coding pipeline under the shape condition above, and the `stop`
    field is read where the run decides to continue. **Unopened, and it holds no
@@ -181,12 +181,12 @@ Built, and measured in this tree on 2026-09-08:
 | A native tool-call loop | `prog/agent/agent.chiral`, 452 lines, over `http-request` and `lib/protocol/json.chiral`, carrying four tool schemas at `:99-147` |
 | Four native tools | `fs-read`, `fs-write`, `fs-edit` in `prog/agent/tools-fs.chiral` (96 lines), and `ag-bash` at `prog/agent/agent.chiral:60` over `raw-proc-spawn`/`wait` |
 | One real turn, run | `prog/samples/agent-probe.prog` drives `agent-run` against `qwen3:8b` at `100.64.0.5:11434`, one tool-call turn, all chirality |
-| A float-free routing precedent | `prog/manas/core/match.chiral`, integer overlap count, closed `PipelineMatch` sum |
-| A declared least-privilege grant | `prog/manas/core/types.chiral:63-68`, and `prog/manas/profile/code-test.chiral:50` granting `(cons "read" nil)` |
+| A float-free routing precedent | `prog/prapanca/core/match.chiral`, integer overlap count, closed `PipelineMatch` sum |
+| A declared least-privilege grant | `prog/prapanca/core/types.chiral:63-68`, and `prog/prapanca/profile/code-test.chiral:50` granting `(cons "read" nil)` |
 | The editor the agent is to be driven from | `prog/scriba/`, 26 modules and 6 roots, compiled under suite Phase 7. [[goals/local-ai]] holds its state, which is the authority for it |
 
 Absent, and each count is the observation in the condition it belongs to: no
-import from `prog/agent/` into `prog/manas/` or back; no read of the `tools`
+import from `prog/agent/` into `prog/prapanca/` or back; no read of the `tools`
 field; no caller of `overflow-guard` or `stop-policy`; no read of `Pipeline`'s
 `stop` on the flat path; no directory enumeration; no consumer of
 `lib/text/matcher.chiral`; no keybind reaching `prog/agent/`.
@@ -204,14 +204,14 @@ stated here and booked nowhere.
 **No gate can fail on the agent.** `prog/samples/agent-probe.prog` drives a full
 `agent-run` tool-call turn and its `compile-main` ends in `0` unconditionally:
 it prints `AGENT-ANSWER:` and the model's text, then returns success whatever
-came back. No `prog/agent/` or `prog/manas/` path appears in any
+came back. No `prog/agent/` or `prog/prapanca/` path appears in any
 `tools/test/*.sh`, verified 2026-09-08, so suite Phase 7 sweeps both
 compile-only. There is no assertion in this tree that a coding turn can fail.
 No roster row holds that work.
 
 **Least-privilege tool grants are declared and inert.**
-`prog/manas/core/types.chiral:64-65` calls `tools` least-privilege and
-`prog/manas/profile/code-test.chiral:39-40` says of its own grant "TOOLS is
+`prog/prapanca/core/types.chiral:64-65` calls `tools` least-privilege and
+`prog/prapanca/profile/code-test.chiral:39-40` says of its own grant "TOOLS is
 least-privilege (read only — producing a proposed test never writes; running it
 is a later effect)", granting `(cons "read" nil)` at `:50`. The field is bound at
 seven destructuring sites and read at zero. The tree's own
@@ -220,7 +220,7 @@ Move is enforced, and Delegate, Revoke and the broker's grant/revoke/audit
 (E43) are design. A grant nothing reads permits everything.
 
 **The context-window guard is written and unreached.**
-`prog/manas/core/stop.chiral` states in its header that `overflow-guard` answers
+`prog/prapanca/core/stop.chiral` states in its header that `overflow-guard` answers
 "does the assembled prompt fit num_ctx" on an integer chars/4 estimate, and
 `overflow-guard` (`:20`) and `stop-policy` (`:25`) have no caller outside that
 file. A coding agent reads files into its context, so this is the guard the

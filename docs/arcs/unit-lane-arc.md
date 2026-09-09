@@ -25,7 +25,7 @@ neuron population and a transformer instance under the same abstraction.
 
 ## What is in the tree already
 
-[[banks/unit]] holds the refraction. Measured 2026-09-04: 21 existing manas
+[[banks/unit]] holds the refraction. Measured 2026-09-04: 21 existing prapanca
 shards, of which 16 are written and unreached by any gate.
 
 ## What is missing

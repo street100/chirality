@@ -1,0 +1,134 @@
+; ==================================================== prapanca doc-refine pipeline
+; E140, Wave 5 (OURS: orchestration/{processes,agents}.md). The doc-refine
+; Pipeline + its 7-agent Expert pool as typed VALUES — not .md prose. GATE
+; conditions literally carry E134's keywords (code/path, spec/req, sibling,
+; example) so run-gate routes correctly. Pure data + find-based lookups +
+; single-ctor accessors. Types (Pipeline/Expert/GateRule/Order/StopPolicy) are
+; E133 — imported, never redefined. E138 (the runner) turns doc-refine's fired
+; expert ids -> slots via expert-by-id + expert-slot-of.
+
+(import "prelude/prelude")             ; str-eq, List, Maybe
+(import "prelude/list")
+(import "prapanca/core/types")    ; Pipeline, Expert, GateRule, Order, StopPolicy
+
+; ---------------------------------------------------------- Expert pool accessors
+; the id / the SLOT an expert binds to (E133 has no accessors; add what we need).
+(def expert-id (-> Expert Str)
+  (lam (e) (case e ((expert id lens sees returns slot tools) id))))
+(def expert-slot-of (-> Expert Str)
+  (lam (e) (case e ((expert id lens sees returns slot tools) slot))))
+
+; ---------------------------------------------------------- pipeline accessor
+; the GATE rules of a pipeline (E136 has pipeline-id/pipeline-when; add gate).
+(def pipeline-gate (-> Pipeline (List GateRule))
+  (lam (p) (case p ((pipeline id whn g o eids cmb stp yd) g))))
+
+; ---------------------------------------------------------- the 7 doc-refine experts
+; Each (expert id lens sees returns slot tools), fields verbatim from agents.md.
+; SLOT is load-bearing (E135 binds it): claim-vs-source -> cheap-verifier; the
+; five reasoning lenses -> reasoner; curate-merge -> combiner.
+
+(def claim-vs-source Expert
+  (expert "claim-vs-source"
+    "does each cited symbol / path / fact actually exist in its named source?"
+    "{ doc_claims[], source_files[] }"
+    "finding[]{ location, cited, verdict: exists|missing|mismatch, evidence }"
+    "cheap-verifier"
+    (cons "read" (cons "grep" nil))))
+
+(def coverage-vs-spec Expert
+  (expert "coverage-vs-spec"
+    "is any required item from the spec absent from the doc?"
+    "{ doc, spec_or_requirements }"
+    "gap[]{ requirement_id, present: bool, note }"
+    "reasoner"
+    (cons "read" (cons "grep" nil))))
+
+(def cross-doc-drift Expert
+  (expert "cross-doc-drift"
+    "does this doc contradict a sibling doc it is coupled to?"
+    "{ doc, sibling_docs[] }"
+    "drift[]{ claim_here, claim_there, stale_side: here|there|unknown }"
+    "reasoner"
+    (cons "read" (cons "grep" nil))))
+
+(def anchor-sharpen Expert
+  (expert "anchor-sharpen"
+    "replace ONE vague pointer with its precise real anchor (fn name / section / line)"
+    "{ doc_rows[], source_files[] }"
+    "sharpened[]{ row, old_pointer, new_anchor }"
+    "reasoner"
+    (cons "read" (cons "grep" nil))))
+
+(def example-completeness Expert
+  (expert "example-completeness"
+    "is a needed example missing, or a present one under-specified vs the target state?"
+    "{ doc, target_state }"
+    "example_gap[]{ topic, state: missing|thin, suggested_shape }"
+    "reasoner"
+    (cons "read" nil)))
+
+(def example-organization Expert
+  (expert "example-organization"
+    "are the examples grouped / ordered coherently?"
+    "{ doc_examples }"
+    "reorg[]{ current_location, proposed_grouping }"
+    "reasoner"
+    (cons "read" nil)))
+
+(def curate-merge Expert
+  (expert "curate-merge"
+    "merge fired agents' findings into the doc: apply fixes + sharpened text, curate to in-scope only, flag anything cross-doc for a separate pass"
+    "{ doc, findings[] from the fired agents }"
+    "revised_doc + leftover_flags[]"
+    "combiner"
+    (cons "read" (cons "write" nil))))
+
+; the pool: the 7 agents doc-refine fires, in declaration order.
+(def expert-pool (List Expert)
+  (cons claim-vs-source
+  (cons coverage-vs-spec
+  (cons cross-doc-drift
+  (cons anchor-sharpen
+  (cons example-completeness
+  (cons example-organization
+  (cons curate-merge nil))))))))
+
+; ---------------------------------------------------------- expert lookup
+; expert-by-id: find an Expert by id (Maybe Expert — a miss is a VALUE). E138
+; maps each fired id -> its slot via this + expert-slot-of.
+(def expert-by-id (-> Str (List Expert) (Maybe Expert))
+  (lam (want pool)
+    (find Expert (lam (e) (str-eq (expert-id e) want)) pool)))
+
+; ---------------------------------------------------------- the doc-refine GATE
+; the sparse GATE block (processes.md doc-refine): each condition carries E134's
+; substring keyword (code/path, spec/req, sibling, example) so condition-fires
+; routes it (gate.chiral:70-77). Fire only what applies.
+(def doc-refine-gate (List GateRule)
+  (cons (gate-rule "cites code/paths?"
+          (cons "claim-vs-source" (cons "anchor-sharpen" nil)))
+  (cons (gate-rule "maps to a spec/reqs?"
+          (cons "coverage-vs-spec" nil))
+  (cons (gate-rule "coupled to sibling docs?"
+          (cons "cross-doc-drift" nil))
+  (cons (gate-rule "carries examples?"
+          (cons "example-completeness" (cons "example-organization" nil)))
+        nil)))))
+
+; ---------------------------------------------------------- the doc-refine Pipeline
+; (pipeline id when gate order expert-ids combiner stop yield-desc). ORDER =
+; fan-out (fire all, combiner merges); STOP = stop-until-dry capped at 8 (chirality
+; totality forbids an unbounded loop; the pipeline-level STOP is the loop that
+; dominates the single-pass audits — SPEC decision #2). COMBINER = curate-merge.
+(def doc-refine-pipeline Pipeline
+  (pipeline "doc-refine"
+    "a doc must be checked against reality, sharpened, and its examples completed/organized"
+    doc-refine-gate
+    order-fan-out
+    (cons "claim-vs-source" (cons "coverage-vs-spec" (cons "cross-doc-drift"
+     (cons "anchor-sharpen" (cons "example-completeness"
+     (cons "example-organization" (cons "curate-merge" nil)))))))
+    "curate-merge"
+    (stop-until-dry 8)
+    "revised_doc + cross-doc-drift flags"))

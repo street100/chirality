@@ -18,7 +18,7 @@ the mechanism.
 | `frontier/` | `bin/metis-frontier.py` | starts; needs the doc ecosystem |
 | `capture/` | `bin/metis-capture.py` | starts; needs `docs/banks/` + `.planning/capture/` |
 | `doc/` | `bin/metis-doc.py` | starts; needs `docs/banks/` + the CONFORMANCE-MAP |
-| `scriba-edit-smoke/` | `bin/scriba-edit-smoke.py` | starts; needs a scriba ELF (blocked on the manas slice) |
+| `scriba-edit-smoke/` | `bin/scriba-edit-smoke.py` | starts; needs a scriba ELF (blocked on the prapanca slice) |
 | `scriba-run-smoke/` | `bin/scriba-run-smoke.py` | starts; needs a scriba launcher (same block). **Not ported**: no chirality replacement exists, though `.planning/ZERO-PYTHON-SCOPE.md` puts it in wave 0, portable today |
 | `prose-lint/` | **new here** | the checks moved to chirality, `prog/prose-lint.prog`; `prose-lint.sh` is now the front end only (ranking, baseline, `--regress`, per-line output, code-skipping), and 3 checks print NOT-CHECKED pending E173 |
 

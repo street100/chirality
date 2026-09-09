@@ -131,7 +131,7 @@ prevent."
 2026-07-15 — the first running slice of `modules-custody`, which the ledger
 still lists wholesale under "DESIGNED — docs only, no code": "custody-split /
 redundancy / datum-policy (all of [[modules-custody]])"); the entire
-orchestration substrate (json/http+SSE/backend/fsm/manas/coordinator, proven
+orchestration substrate (json/http+SSE/backend/fsm/prapanca/coordinator, proven
 live per `ASSESSMENT-selfhost-cockpit.md`); mmap/munmap sys crossings and the
 completed E21 arena; and the suite grew 191 → 281. None of it is on the ledger.
 A reader using the ledger as directed now gets a *false negative* on custody —

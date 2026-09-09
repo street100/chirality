@@ -13,16 +13,16 @@
 ;
 ; Deps: prelude (Str, Bool, I64, List, Maybe, str-eq, =i, cons, nil)
 ;       render (Rendering, r-face, r-lines, r-text — the value renderer, §5)
-;       manas/core/types (Config, Binding, GateRule, Order, StopPolicy, Pipeline, Expert)
-;       manas/profile/profiles  (Config values — pulled into the blob for the loop entry)
-;       manas/profile/doc-refine (expert-pool, expert-by-id, doc-refine-pipeline)
+;       prapanca/core/types (Config, Binding, GateRule, Order, StopPolicy, Pipeline, Expert)
+;       prapanca/profile/profiles  (Config values — pulled into the blob for the loop entry)
+;       prapanca/profile/doc-refine (expert-pool, expert-by-id, doc-refine-pipeline)
 
 (import "prelude/prelude")
 (import "protocol/render")
-(import "manas/core/types")
-(import "manas/profile/profiles")
-(import "manas/profile/doc-refine")
-(import "manas/pipeline/persist")  ; pipeline->json, config->json (P1 pure codec)
+(import "prapanca/core/types")
+(import "prapanca/profile/profiles")
+(import "prapanca/profile/doc-refine")
+(import "prapanca/pipeline/persist")  ; pipeline->json, config->json (P1 pure codec)
 
 ; ─── The two sums ────────────────────────────────────────────────────────────
 

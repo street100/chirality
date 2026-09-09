@@ -60,7 +60,7 @@ number would go, per the deferral rule.
 **What.** Give `http-request`, `backend-open` and `chat-open` a runtime referent,
 so the built engine runs in this tree.
 
-**Why first.** 9,930 lines under `prog/manas/` and 26 modules under `prog/scriba/`
+**Why first.** 9,930 lines under `prog/prapanca/` and 26 modules under `prog/scriba/`
 compile and lower today and have nothing to run against: none of those three
 externs appears in `lib/lowering/tal/crossing-wraps.chiral`. Every "live verified"
 line in `.planning/MANAS-STATE-VS-GOAL.md` was measured through the CPython
@@ -119,7 +119,7 @@ BUILT native (`lib/runtime/proc.chiral`, `raw-proc-spawn` to `nb-run-cmd` at
 it is a `tools/`-shaped arc that `goals/self-tooling` forbids. The two readings
 share no first row.
 
-**What is measured today.** `prog/manas/backend.chiral:17` records `train-start`
+**What is measured today.** `prog/prapanca/backend.chiral:17` records `train-start`
 and `train-status` as documented and unbuilt on the worker side, and nothing in
 this tree names them. There is no float type (`lib/protocol/json.chiral:4`; `F64`
 and `Float` grep-clean under `lib/surface/` and `lib/typing/`), no tensor form
@@ -132,11 +132,11 @@ chirality to do it.
 ## 4. What this proposal does NOT propose
 
 - **No new framework arc.** The framework criterion is largely built and naming a
-  gap here would be a phantom feature. `prog/manas/core/flow.chiral:114-127`
+  gap here would be a phantom feature. `prog/prapanca/core/flow.chiral:114-127`
   carries seven `Flow` constructors including `flow-branch`, whose `backtrack`
   field pairs consolidate-and-audit into the type, and `flow-branch-pure` for a
   deterministic split. Recursion is in the type, so a branch is a sub-pipeline.
-  `prog/manas/profile/skills.chiral` is the enumerable registry over seven skill
+  `prog/prapanca/profile/skills.chiral` is the enumerable registry over seven skill
   profiles. Four of the five L0 rows in `.planning/MANAS-SKILL-GROWER.md` are
   therefore already answered by the tree; row 5, the tiny-step lint, is the one
   that is genuinely absent, and it belongs with `text-tools` in shape.

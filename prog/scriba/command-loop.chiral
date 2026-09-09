@@ -29,13 +29,13 @@
 (import "scriba/minipuffer")
 (import "scriba/vim-mode")
 (import "lowering/tal/bytes")
-(import "manas/pipeline/compose")  ; S16 — compose-preflight, all-pipelines, pipeline-by-id, pipeline-ids, config-ids
-(import "manas/core/flow-persist")  ; SG6 — json->flow (SG1's total Flow decoder)
+(import "prapanca/pipeline/compose")  ; S16 — compose-preflight, all-pipelines, pipeline-by-id, pipeline-ids, config-ids
+(import "prapanca/core/flow-persist")  ; SG6 — json->flow (SG1's total Flow decoder)
 (import "scriba/flow-view")                ; SG6 — flow-outline-nodes, flow-view-render (render a saved Flow, read-only)
-(import "manas/profile/skills")     ; the SKILL REGISTRY — all-skills, skill-names, skill-by-name, all-skill-configs
-(import "manas/chatter/turn")       ; C4 — turn, the general-chatter entry; C6b — turn-seq; DC-4b — turn-seq-view + TurnView/Lane (the turn's structure, surfaced)
+(import "prapanca/profile/skills")     ; the SKILL REGISTRY — all-skills, skill-names, skill-by-name, all-skill-configs
+(import "prapanca/chatter/turn")       ; C4 — turn, the general-chatter entry; C6b — turn-seq; DC-4b — turn-seq-view + TurnView/Lane (the turn's structure, surfaced)
 (import "scriba/chat-view")                ; ChatView (+ cv-*), Exchange, chat-render — CHAT's state and its pure renderer
-(import "manas/chatter/router")     ; C5 — route-message + intent-name (per-turn intent TAG); C6a — ConvState (+ conv-empty), resolve-intent, conv-update
+(import "prapanca/chatter/router")     ; C5 — route-message + intent-name (per-turn intent TAG); C6a — ConvState (+ conv-empty), resolve-intent, conv-update
 
 ; ─── R6 forward declares ────────────────────────────────────────────────────
 ; command-loop-inner references handle-find-file / handle-save-buffer before

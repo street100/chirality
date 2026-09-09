@@ -75,7 +75,7 @@ No NEEDS-AUTHOR blocks §4. Decision #2's residue has a named home; proceed.
 - **Target:** NEW file — `config-id`, `smoke-local-config`, `cheap-local-config`,
   `quality-local-config`, `quality-config`, `all-profiles`, `profile-by-id`.
 - **Change:** copy example §5 `profiles.chiral` verbatim. Imports `prelude`,
-  `collections`, `manas/core/types`. Models/num-ctx from `configs.md` (Decision #5
+  `collections`, `prapanca/core/types`. Models/num-ctx from `configs.md` (Decision #5
   sources). `profile-by-id` via `find` over `config-id`.
 - **Size:** S.
 
@@ -106,8 +106,8 @@ No NEEDS-AUTHOR blocks §4. Decision #2's residue has a named home; proceed.
 - **Size:** M.
 
 ### Step 4 — B1 compile + run + INDEX patch
-- Resolve the leaf blob (`chirality_blob scaffold/lib manas/profile/profiles
-  manas/profile/doc-refine manas/core/gate manas/core/bind manas/core/match`),
+- Resolve the leaf blob (`chirality_blob scaffold/lib prapanca/profile/profiles
+  prapanca/profile/doc-refine prapanca/core/gate prapanca/core/bind prapanca/core/match`),
   strip test imports, append, `B1 < blob`, run, iterate to exit 0. Patch the INDEX
   E140 row to `implemented`. NOTE: gate+match both define `str-contains` in one
   blob — verify the resolver/compiler tolerates the identical redefinition; if

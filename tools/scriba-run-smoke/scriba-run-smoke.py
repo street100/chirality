@@ -6,8 +6,8 @@ if pid == 0:
     # THE LAUNCHER IT DRIVES DOES NOT EXIST YET. In the old tree this ran
     # `exec ./bin/scriba` -- a build-and-run
     # wrapper that was NOT in this slice's migration list; and scriba itself does
-    # not compile here, because it imports the manas subtree (manas/core/*,
-    # manas/chatter/*, manas/pipeline/*, manas/profile/*), a separate slice.
+    # not compile here, because it imports the prapanca subtree (prapanca/core/*,
+    # prapanca/chatter/*, prapanca/pipeline/*, prapanca/profile/*), a separate slice.
     # SCRIBA_CMD is the seam: point it at a launcher when there is one.
     cmd = os.environ.get("SCRIBA_CMD")
     if not cmd:

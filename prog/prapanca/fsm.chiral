@@ -1,0 +1,51 @@
+; A general finite-state-machine engine over the prelude's List/Pair.
+;
+; A machine is a Mealy transition (-> S E (Step S O)): given a state and an
+; event it either continues in a new state, or halts in a final state, and in
+; either case emits zero or more outputs. State, event, and output are all
+; abstract -- the orchestration cycle (backend requests in, actions out) is one
+; instance, but nothing here knows about HTTP or prapanca. This is the reusable
+; control spine the profile layer stands on.
+
+(import "prelude/prelude")
+(import "prelude/list")
+
+; The result of one transition. Two constructors, so a machine cannot forget to
+; say whether it is done: continue, or halt.
+(data Step ((S (type 0)) (O (type 0)))
+  (step-go   (next S)  (out (List O)))
+  (step-halt (final S) (out (List O))))
+
+; drive: fold events through the transition, threading an emitted-output
+; accumulator kept in reverse (O(1) prepend via rev-onto) and flipped once at
+; the end. Recurses structurally on the event list; halts early on step-halt,
+; discarding any remaining events.
+(declare drive
+  (-> (0 S (type 0)) (0 E (type 0)) (0 O (type 0))
+      (-> S E (Step S O)) S (List E) (List O) (Pair S (List O))))
+
+(def drive
+  (lam (S E O trans st evs acc)
+    (case evs
+      (nil (pair st (reverse O acc)))
+      ((cons e rest)
+        (case (trans st e)
+          ((step-go ns outs)
+            (drive S E O trans ns rest (rev-onto O outs acc)))
+          ((step-halt fs outs)
+            (pair fs (reverse O (rev-onto O outs acc)))))))))
+
+; run-fsm: drive a machine from an initial state over a list of events,
+; returning the final state paired with all outputs in emission order.
+(def run-fsm
+  (-> (0 S (type 0)) (0 E (type 0)) (0 O (type 0))
+      (-> S E (Step S O)) S (List E) (Pair S (List O)))
+  (lam (S E O trans st evs)
+    (drive S E O trans st evs nil)))
+
+; projections off the run result -- named so callers never index the pair.
+(def fsm-state (-> (0 S (type 0)) (0 O (type 0)) (Pair S (List O)) S)
+  (lam (S O r) (case r ((pair s o) s))))
+
+(def fsm-output (-> (0 S (type 0)) (0 O (type 0)) (Pair S (List O)) (List O))
+  (lam (S O r) (case r ((pair s o) o))))

@@ -4,7 +4,7 @@
 ; This is the milestone that closes A3+A5: a chat round-trip with no Python in
 ; the run path. Non-hermetic (needs the endpoint up); confirming, not adversarial.
 (import "prelude/prelude")
-(import "manas/backend")
+(import "prapanca/backend")
 
 (def compile-main (=> I64 I64)
   (lam (n)

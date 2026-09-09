@@ -6,15 +6,15 @@
 ; only SURFACES the fractal in the cockpit.
 ;
 ; PURE: flow-outline-nodes is a total flatten (no effect, no mesh — even though
-; the imported manas/core/flow links the run engine, it is never CALLED here);
-; the render is a pure Rendering builder. Strictly ADDITIVE — manas/core/flow and
+; the imported prapanca/core/flow links the run engine, it is never CALLED here);
+; the render is a pure Rendering builder. Strictly ADDITIVE — prapanca/core/flow and
 ; manas-mode are untouched; only new defs live here.
 
 (import "prelude/prelude")            ; Str, I64, List, cons, nil, str-cat, case, +, *, <i
 (import "prelude/list")
 (import "protocol/render")             ; Rendering (+ r-lines)
 (import "scriba/manas-mode")         ; OutlineNode (onode), Focus (foc-field), mf-row, mh-row, spaces
-(import "manas/core/flow")    ; Flow (+ 5 ctors), Ty
+(import "prapanca/core/flow")    ; Flow (+ 5 ctors), Ty
 
 ; A flow node: a depth + a display label. focus = a harmless placeholder — SG6 is
 ; read-only (no selection / no edit), so every node carries (foc-field "flow");

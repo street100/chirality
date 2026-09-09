@@ -129,7 +129,7 @@ def bind_config(pipeline, config, expert_ids):
 ## 5. Chirality example (fleshed)
 
 Imports `prelude` (`str-eq`, `Maybe`, `List`, `Bool`) and the already-built
-`manas/core/types` (`Binding`, `Config`, `BindResult`) and `collections` (`find`,
+`prapanca/core/types` (`Binding`, `Config`, `BindResult`) and `collections` (`find`,
 `filter`, `foldl`, `append`). Every arrow is `->`; there is no `=>` anywhere.
 `case` is exhaustive. Accumulation uses `foldl`/`filter`/`find`/`append` — NOT
 `map-list`, which does not lower in an isolated leaf blob on this branch (E134's
@@ -146,7 +146,7 @@ finding).
 
 (import "prelude")             ; str-eq, and/or/not, cond, List, Pair, Bool, Maybe
 (import "collections")         ; find, filter, foldl, append
-(import "manas/core/types")    ; Binding (binding slot model num-ctx), Config, BindResult
+(import "prapanca/core/types")    ; Binding (binding slot model num-ctx), Config, BindResult
 
 ; ------------------------------------------------------------- binding accessor
 ; the SLOT a binding resolves. Pattern-match the single ctor; pure. num-ctx and
@@ -222,7 +222,7 @@ finding).
 ## 6. Use / modify notes
 
 - **Lands in:** `scaffold/lib/manas/core/bind.chiral` (NEW — Wave 2). Imports
-  `prelude`, `collections`, and `manas/core/types` (E133). No `ports`, no
+  `prelude`, `collections`, and `prapanca/core/types` (E133). No `ports`, no
   `backend`, no crossing — the whole file is `->`.
 - **Conformance target:** reproduce the config-swap property from
   `orchestration/configs.md`: binding the slot set `{cheap-verifier, reasoner,

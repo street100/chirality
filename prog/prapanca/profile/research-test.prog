@@ -1,0 +1,71 @@
+; research-test.prog — T2 PURE unit gate for the research FRACTAL (research.chiral).
+;
+; Mesh-free (no PTY, no network, no fork): proves the pure typing + tiny-step discipline.
+;   (1) flow-ty research-flow = (some (arrow ty-doc ty-verdict)) — the fractal type-checks
+;       end to end (perspectivist -> per-angle chain investigate->assess -> synthesize+audit).
+;       PRINTS the derived arrow.
+;   (2) lint-pool research-pool = ALL CLEAN — every one of the 5 experts is a genuine narrow
+;       line of thought (no conjoined/too-long lens, non-empty sees). PRINTS the total flag
+;       count (0 — every leaf a genuine tiny step).
+; compile-main returns 0 iff both hold (exit 0). Builds via the header recipe below.
+;
+; Build+run (fast — links flow's backend/runner closure but never CALLS it; flow-ty / lint-pool
+; are pure, so mesh-free at runtime):
+;   chirality run prog/prapanca/profile/research-test.prog
+
+(import "prelude/prelude")                    ; Bool, Unit, unit, and, case, do, let, str-cat, i64->str, cons, nil
+(import "prapanca/core/flow")            ; flow-ty, arrow-dom, arrow-cod, ty-name, ty-eq, ty-doc, ty-verdict, ty-findings,
+                                      ; lint-pool, lint-expert   (the pure typing + lint surface)
+(import "prapanca/profile/research")     ; research-flow, research-answer-flow (R1), research-pool
+(import "ports/ports")                      ; put
+
+; ─── (1) flow-ty: the fractal derives (arrow ty-doc ty-verdict), and PRINT it ─────
+(def arrow-ok (=> Unit Bool)
+  (lam (_)
+    (case (flow-ty research-flow)
+      (none (do (put "flow-ty research-flow: none (ILL-TYPED)\n") false))
+      ((some ar)
+        (do (put (str-cat "flow-ty research-flow: "
+                   (str-cat (ty-name (arrow-dom ar))
+                     (str-cat " -> " (str-cat (ty-name (arrow-cod ar)) "\n")))))
+            (and (ty-eq (arrow-dom ar) ty-doc)
+                 (ty-eq (arrow-cod ar) ty-verdict)))))))
+
+; ─── (1b) R1: the NESTABLE variant yields the ANSWER (ty-findings), not the verdict ─────
+; The whole point of the variant — a nested use consumes the yield as material, so the material
+; has to survive. Same dom, same experts; only the cod differs from research-flow.
+(def answer-arrow-ok (=> Unit Bool)
+  (lam (_)
+    (case (flow-ty research-answer-flow)
+      (none (do (put "flow-ty research-answer-flow: none (ILL-TYPED)\n") false))
+      ((some ar)
+        (do (put (str-cat "flow-ty research-answer-flow: "
+                   (str-cat (ty-name (arrow-dom ar))
+                     (str-cat " -> " (str-cat (ty-name (arrow-cod ar)) "\n")))))
+            (and (ty-eq (arrow-dom ar) ty-doc)
+                 (ty-eq (arrow-cod ar) ty-findings)))))))
+
+; ─── (2) lint-pool: every expert a narrow tiny step (0 flags total), PRINT the count ─────
+; total flags across the pool = sum of each expert's flag-list length. all-clean iff 0.
+(declare flags-len (-> (List Str) I64))
+(def flags-len (lam (xs) (case xs (nil 0) ((cons h t) (+ 1 (flags-len t))))))
+(declare pool-flags (-> (List (Pair Str (List Str))) I64))
+(def pool-flags
+  (lam (rows)
+    (case rows
+      (nil 0)
+      ((cons p rest) (case p ((pair id fl) (+ (flags-len fl) (pool-flags rest))))))))
+
+(def lint-ok (=> Unit Bool)
+  (lam (_)
+    (let ((n (pool-flags (lint-pool research-pool))))
+      (do (put (str-cat "lint-pool research-pool total flags: "
+                 (str-cat (i64->str n) " (expected 0 — all narrow tiny steps)\n")))
+          (=i n 0)))))
+
+; ─── entry ────────────────────────────────────────────────────────────────────
+(def compile-main (=> I64 I64)
+  (lam (n)
+    (case (and (arrow-ok unit) (and (answer-arrow-ok unit) (lint-ok unit)))
+      (true (do (put "research PURE gate: PASS\n") 0))
+      (false (do (put "research PURE gate: FAIL\n") 1)))))

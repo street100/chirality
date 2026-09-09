@@ -125,7 +125,7 @@ Every step was executed off-tree in this run against a copy of `lib/` and
   encoders `enc-rate-of`, `enc-latency-of`, `enc-tuning`, `enc-counts` and the
   constructor `enc-population-of`. Adapts the example §5 snippet with decision 1's
   extra field and decision 2's result sum. No `(module …)` form, matching the
-  `prog/manas/` precedent, which carries none.
+  `prog/prapanca/` precedent, which carries none.
 - **Two syntax facts the example's snippet does not carry**, both measured here:
   `let` binds in the double-paren form `(let ((x e)) …)` that `lib/prelude/list.chiral`
   uses, and `enc-fired` is new, because the `maxfire` column §5 needs did not
