@@ -3,7 +3,7 @@ node: arc-enforcement
 layer: navigation
 related: [arcs/README, goals/enforcement, status-ledger, arcs/diagnostics-arc, records/enforcement-arc, decisions/decision-erased-word-level, decisions/decision-def-partition, index]
 status: current
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 # Arc: enforcement
@@ -441,7 +441,7 @@ and its adoption, and `tooling` is the gate tier owning itself.
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
-| `enforcement/N1` | attribution: every def's fate is stated by the compiler, with evidence, and checked ⚑ **E184's R1 is the tree's def partition, established 2026-09-09 by [[decisions/decision-def-partition]]** and by [[records/enforcement-arc]] EN-28. That document is the outline the author asked for when ruling the 84-line `lower.chiral` partition neither retired nor repaired, and it lands entirely on R1 through R7, so **no second element is minted for the partition**. Three findings it owes this row's SPEC stage: **R2's three skipped classes are the wrong set** (it names `type-does-not-peel`, measured at 0 of 22,742 on definitions with no record produced; it omits `body-does-not-lower`, measured at 182 of the 347 refusals; and E187 added a fourth `SkReason` constructor after E184 minted); `lib/lowering/compile-back.chiral:271` files all 182 term-level failures as `(sk-extern er)`, which `lib/lowering/skip-diag.chiral:28` renders as the tag `"extern"`, and that is the mechanical cause of the five misattributed citations; and no committed instrument re-derives any def-level count, which `enforcement/N14` is now scoped to fix first. The 84 dead lines are retired inside this element's build cycle | attribution | law | new | 1 | open | `E184` |
+| `enforcement/N1` | attribution: every def's fate is stated by the compiler, with evidence, and checked ⚑ **E184's R1 is the tree's def partition, established 2026-09-09 by [[decisions/decision-def-partition]]** and by [[records/enforcement-arc]] EN-28. That document is the outline the author asked for when ruling the 84-line `lower.chiral` partition neither retired nor repaired, and it lands entirely on R1 through R7, so **no second element is minted for the partition**. Three findings it owes this row's SPEC stage: **R2's three skipped classes are the wrong set** (it names `type-does-not-peel`, measured at 0 of 22,742 on definitions with no record produced; it omits `body-does-not-lower`, measured at 182 of the 347 refusals; and E187 added a fourth `SkReason` constructor after E184 minted); `lib/lowering/compile-back.chiral:271` files all 182 term-level failures as `(sk-extern er)`, which `lib/lowering/skip-diag.chiral:28` renders as the tag `"extern"`, and that is the mechanical cause of the five misattributed citations; and no committed instrument re-derives any def-level count, which `enforcement/N14` is now scoped to fix first. The 84 dead lines are retired inside this element's build cycle ⚑ **A fourth finding, 2026-09-10: R1's domain is amended and the SPEC stage is barred from spelling it.** R1, R6 and R7 each carry a ⚑ dated 2026-09-10 under `#### The seven requirements`, and [[records/enforcement-arc]] EN-29 is the run. The domain of the fate function stays the author's, priced at two options by [[records/findings]] FD-21 | attribution | law | new | 1 | open | `E184` |
 | `enforcement/N2` | how the `$apply` dispatcher's erased domains are spelled at the lowering type level | attribution | primitive | new | 3 | open | `E185` |
 | `enforcement/N3` | the `$k<i>_<j>` capture constructor's field types: concrete, or the erased word | attribution | primitive | new | 3 | built | `E186` |
 | `enforcement/N4` | the `sk-defunc` blame channel: `closconv` states why it dropped a family | attribution | law | new | 1 | built | `E187` |
@@ -579,6 +579,60 @@ remove; `skipped <reason>`. The `erased-by-design` arm is required rather than
 optional: a type-level def is not a failed lowering, and without that arm every
 ratio built on the fates is noise.
 
+⚑ **THE DOMAIN IS FALSIFIED AND THE CLOSED SUM IS CONFIRMED, MEASURED 2026-09-09
+BY [[records/findings]] FD-21.** Ten pinned sources. Six systems read at their own
+sources: DWARF 5, ECMA-426 source maps, LLVM's debug-info rules, LLVM's machine
+outliner, GHC's cost centres, AutoFDO, plus Graf and Peyton Jones on selective
+lambda lifting.
+
+**What this requirement fixes as the domain.** *Every def in the compiler's
+closure*, which R6 below and [[decisions/decision-def-partition]] §1 both read as
+the set standing before `specialize-singletons`.
+
+**The artifact carries names that set does not contain.** `lift-lifted`
+(`lib/lowering/upper/specialize-singleton.chiral:195`) builds a new global
+`<gname>$<i>` out of a field body, **13 of them on `prog/compiler.prog`**, and
+`outline` (`lib/lowering/upper/lower.chiral:311-319`) builds `<name>$<ncase>`,
+which `lib/lowering/compile-back.chiral:272` adopts whole as `(cons main extra)`,
+**40 outlined extras across 1,509 lowered defs** (`docs/examples/E184-def-fate-sum.md` §1 M-A
+and M-D). A function whose domain is the pre-pass set cannot claim a label the
+emitted program carries.
+
+**`PRINCIPLES.md` §1 names this shape and its example is the argument.** *"A
+seccomp filter is only as complete as the syscall table it enumerates. The fix is
+never a longer denylist; it is a model that covers the whole surface, so 'deny by
+default' actually means everything."* The pre-pass def set is the enumerated
+table and the artifact's name set is the surface. An arm added to the sum while
+the domain stays fixed closes nothing, because a created name sits outside the
+function before any arm is reached. A fifth arm **over a widened domain** is the
+other move and it is DWARF's: a created entity enters with its own identity and a
+typed field naming its origin (DWARF5:6070), and an entity with no pre-pass
+existence carries no origin field at all (DWARF5:6148-6154). One sum spends two
+of its arms on the two levels, so what stays open is which set the function ranges
+over.
+
+**One clause survives with an occupant.** *Closed sum, no `_` arm* is shipped by
+LLVM, which annotates every instruction that has no source location with one of
+four named values, compiler-generated, dropped, unknown and temporary, and detects
+an unannotated absence in a coverage-tracking build (LLVMDBGUP:166-194). That is
+this clause with a checker behind it, at instruction granularity.
+
+**What this requirement stops asserting: the domain.** FD-21 finds **no occupant**
+for the pre-pass set alone as the domain of a total per-definition sum, and prices
+the two occupied shapes: the pre-pass set plus what the pass created, which is
+DWARF's, and the post-pass set, which is the one system shipping the clause above.
+That is decision 1 in `docs/examples/E184-def-fate-sum.md` §6 and it stays the
+author's. Spelling `FateRec`'s domain is barred to the SPEC stage until it is
+ruled.
+
+**And *exactly one fate* is contingent on the same ruling.** `alloc-growing` is
+the source of a `specialized-into` relation and is skipped at `compile-fn` (M-D),
+so it takes two arms under the pre-pass domain and one under the post-pass domain.
+FD-21 records that nothing surveyed decides whether a definition that survives a
+pass and is also the origin of a created one takes one arm or two, because DWARF's
+abstract instance root sits in a different sum from the arms a concrete instance
+carries.
+
 **R2. Reasons carry evidence, not strings.** `skipped`'s reason is itself a closed
 sum: extern-with-no-wrapper naming the op; type-does-not-peel naming which type and
 where; callee-cascade naming the chain. E157's rule applies unchanged, and a
@@ -610,12 +664,67 @@ misreading that made the earlier measurement worthless. The pre-run may recommen
 splitting R6 into its own element; if it does, that split mints its rows in the
 same change.
 
+⚑ **THE RENAMING THIS REQUIREMENT IS BUILT ON IS NOT WHAT THE PASS DOES,
+MEASURED TWICE ON 2026-09-09.** [[records/findings]] FD-21 and
+`docs/examples/E184-def-fate-sum.md` §1 M-D.
+
+**In the tree.** `lift-lifted`
+(`lib/lowering/upper/specialize-singleton.chiral:195`) lifts a field body into a
+NEW global named `<gname>$<i>`, and `prune-live` (`:227`) deletes the singleton
+and its projectors only where `gs-refs` finds no surviving reference. `x64` stands
+beside `x64$0` whenever anything still refers to it, so the pass performs a create
+and a delete. On `prog/compiler.prog` it creates **13** names and offers **44**
+for pruning.
+
+**In the published survey.** No surveyed pass renames and no surveyed system
+carries a rename mapping. DWARF, LLVM and GHC each give a created definition its
+own identity in the artifact's namespace and relate it to its origin through a
+field or a tag, and DWARF keeps the original entry even where zero copies of it
+survive (DWARF5:6056-6060). The one source matching this requirement's
+prescription is Graf and Peyton Jones' selective lambda lifting, which threads an
+expander mapping through the pass (SELLAM:1071); the object it lifts is a LOCAL
+binding the transformation consumes (SELLAM:353), so the original has no separate
+fate to keep. `lift-lifted` lifts out of a global that survives, which is the case
+lambda lifting does not have.
+
+**What stands.** The pass produces a relation and something has to carry it, and
+the failure this requirement names is real: get the relation wrong and
+monomorphized singletons read as failures. One clause was verified at HEAD and
+stands as written, the ordering. `lib/lowering/compile-front.chiral:373` composes
+`(bridge-sig (closconv-sig (specialize-singletons sig)) name)`, and the peel it
+reaches at `:349` is `peel-globals`
+(`lib/lowering/compile-front.chiral:226-233`), so the pass does run before
+peel.
+
+**What goes.** The word *renaming*, the *rename mapping* this requirement asked
+the pass to emit, and its standing as the element's design fork. FD-21's occupied
+shape is a relation across a creation with the created entity in the domain, which
+makes the fork R1's domain question above. `docs/examples/E184-def-fate-sum.md` §6
+keeps this requirement inside E184 for that reason, so the split flagged at mint
+is closed and no element is minted for it.
+
 **R7. Conservation, checked inside the compile, plus an exit.** The fates
 partition the closure's def set: exactly one per def, and folding them reproduces
 the emitted set. A def with no fate, or with two, fails the compile. That is the
 line between attribution and logging. `bin/chirality` has compile / run / check /
 test and no exit for the report, so one is owed, and the gate that reads it is a
 chirality program on E168's test floor rather than a shell script.
+
+⚑ **THE FOLD CARRIES R1's DOMAIN AND MOVES WITH IT, AND THE FAIL-THE-COMPILE
+HALF HAS NO OCCUPANT. MEASURED 2026-09-09 BY [[records/findings]] FD-21.** *The
+closure's def set* is R1's set, so R1's ⚑ reaches this sentence unedited: the
+emitted set this requirement folds to carries the 40 outlined labels and the 13
+created globals, and no pre-pass def is named by any of them.
+
+Nothing in the ten pinned sources states a conservation obligation of this shape.
+LLVM's coverage-tracking mode is the nearest, and it detects a missing annotation
+while the compilation succeeds (LLVMDBGUP:190-194). Nothing surveyed prices
+computing the domain in two stages, which is what decision 1's option (ii) costs.
+So conservation is this tree's own requirement and it stands unpriced against
+prior art.
+
+What stands: conservation is the line between attribution and logging, and the
+report exit is owed.
 
 #### Cost
 

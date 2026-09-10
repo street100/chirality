@@ -6,7 +6,7 @@ kind: BUILD-PROPER
 reference_class: OURS
 ours_source: (none)
 status: drafted
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 # E184 — **Attribution: every def's fate is stated by the compiler, with evidence, and checked**
@@ -690,6 +690,37 @@ the conservation check. Every line citation was read at `309994c`.
      `x64` and `mach-galo` have no fate when the pass deleted them.
      The measurement favours (ii) on honesty, because it is the only one where
      every name in the artifact is in the domain, and (i) on cost. **Author.**
+
+     ⚑ **PRICED 2026-09-09 BY [[records/findings]] FD-21, AND THE OPTION SET IS
+     TWO.** Six systems read at their own sources, ten pins. **(i) has no
+     occupant**: not one of them carries a single total function from a pre-pass
+     definition set into one closed sum, and every one is two-level with the
+     created definition holding its own identity plus a typed field naming its
+     origin. **(ii) is DWARF's shape**, and the `ft-created` arm is published: a
+     concrete instance tree may hold entries with no counterpart in the abstract
+     instance tree, and those entries carry no `DW_AT_abstract_origin` and hold
+     all their own attributes (DWARF5:6148-6154). **(iii) is the shape of the one
+     system that ships R1's total closed sum**, LLVM over the post-pass set
+     (LLVMDBGUP:166-194). The discriminator FD-21 measures is whether the
+     consumer has to name a source entity the artifact no longer contains; three
+     of R1's four arms (`specialized-into`, `erased-by-design`, `skipped`) name
+     definitions with no emitted artifact entity at all. Applying that
+     discriminator to this tree is the author's act and this run does not take
+     it. The sentence above favouring (i) on cost has lost its subject.
+
+     ⚑ **A SUB-QUESTION OPENS INSIDE THE DOMAIN CALL.** DWARF splits creators by
+     mechanism and gives each one its own construct: an inlined instance reusing
+     the origin field, an out-of-line instance reusing it under a different tag
+     and owner (DWARF5:6188-6214), and a trampoline carrying its own attribute
+     naming the target subroutine (DWARF5:6270-6280). `outline` extracts one case
+     from one definition and so has exactly one origin, which is DWARF's
+     out-of-line-instance construct; LLVM's machine outliner merges N candidate
+     sites into one function, sets no origin field, and discards the body's
+     attribution (LLVMOUTLINER:950, :1002-1020). So whether
+     `specialize-singletons`' creations and `outline`'s creations take one arm or
+     two travels with the domain, and FD-21 records that nothing surveyed decides
+     whether a definition that survives a pass and is also the origin of a created
+     one takes one arm or two. **Author.**
   2. **`SkHead`'s width.** Sixteen arms mirroring `Term` make the peel channel
      total and put a second copy of `Term`'s shape in the lower image, which is
      the *say it once* tension [[protocol/tone]] names. Three arms
