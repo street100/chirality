@@ -229,8 +229,27 @@ def examples_for(tag):
     return exs
 
 
+_ELEMENT_CELL = re.compile(r"`?E\d+`?(?:\s*,\s*`?E\d+`?)*")
+
+
+def row_elements(cell):
+    """Every E# a roster row's element cell names, in cell order.
+
+    ONE ROW CAN CARRY TWO ELEMENTS. `bridge/C4` reads ``E40`, `E56`` because
+    custody minted twice against the one row, and a whole-cell comparison
+    against a single id matched neither of them. This is the mirror of the case
+    design_rows already tolerates, where one element sits in two rosters.
+
+    The cell must be a comma-separated list of E# and nothing else. A row from
+    before the schema landed ends in prose, and prose naming an E# parses here
+    as no elements rather than as a mint.
+    """
+    cell = cell.strip()
+    return re.findall(r"E\d+", cell) if _ELEMENT_CELL.fullmatch(cell) else []
+
+
 def design_rows(eid):
-    """Every (arc, rid, abspath) whose roster row's element cell reads this id.
+    """Every (arc, rid, abspath) whose roster row's element cell names this id.
 
     The roster is the only pointer from an element number back to its design:
     decision-work-ids cites a row as <arc>/<id> and decision-design-before-mint
@@ -244,7 +263,7 @@ def design_rows(eid):
         arc = os.path.basename(f)[:-len("-arc.md")]
         for line in roster_all(open(f).read()):
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
-            if not cells or cells[-1].strip("`") != eid:
+            if not cells or eid not in row_elements(cells[-1]):
                 continue
             rid = cells[0].strip("`").partition("/")[2]
             p = os.path.join(PARTSDIR, f"{arc}-{rid}.md")
@@ -1055,8 +1074,9 @@ def design_mode(arc, rid, scaffold=True):
             f"a design run works a row that exists")
     # The element cell is LAST in every roster shape, the 6-column rows written
     # before the schema landed included. Index 7 misses those.
-    if cells and re.fullmatch(r"`?E\d+`?", cells[-1]):
-        print(f"[note] {arc}/{rid} already carries {cells[-1].strip('`')}. The design "
+    minted = row_elements(cells[-1]) if cells else []
+    if minted:
+        print(f"[note] {arc}/{rid} already carries {', '.join(minted)}. The design "
               f"stage is behind it; use --spec", file=sys.stderr)
 
     terms = _terms_from(cells)
@@ -1236,8 +1256,12 @@ def mint_mode(arc, rid):
     ap = arc_path(arc)
     atext = open(ap).read()
     line, cells = roster_row(atext, arc, rid)
-    if cells and re.fullmatch(r"`?E\d+`?", cells[-1]):
-        die(f"{arc}/{rid} already minted as {cells[-1].strip('`')}. A row mints once")
+    # A row carrying TWO elements is the case this guard used to fail open on:
+    # the fullmatch missed ``E40`, `E56`` and let the row mint a third time,
+    # after which set_roster_state's element write replaced both with the one.
+    minted = row_elements(cells[-1]) if cells else []
+    if minted:
+        die(f"{arc}/{rid} already minted as {', '.join(minted)}. A row mints once")
 
     # Bands may OVERLAP and are advisory (decision-lane-split, ruled 2026-09-06).
     # A band says where to look first; it owns nothing. An arc with no band, or
