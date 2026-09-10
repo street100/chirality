@@ -219,8 +219,17 @@ name nothing names, two false comments, no gate.
 ## 4. The shapes
 
 The tree does **not** settle this. `docs/decisions/decision-lane-split.md:339`
-says so in as many words: *"nothing settles it."* Four forms, and the primitive
+says so in as many words: *"nothing settles it."* Five forms, and the primitive
 half and the consumer half are listed separately because they compose freely.
+
+⚑ **Shape E was added 2026-09-10, and the four that preceded it were an
+incomplete set.** `.planning/BOUNDS-AUTHOR-CALLS.md` §3.4 item 1 (`d9902a2`)
+measured that this section offered four shapes and omitted a fifth the
+principles do not distinguish from the chosen one: *"Clamp-and-return absorbs
+the caller's error; clamp-and-trap (a checked abort that names the bad call)
+closes the same crossing and keeps the signal. P1's 'gated shut', P3's membrane
+and P4's physics are each satisfied by both."* Shape E is that shape, given the
+same treatment as A, B, C and D, and §5 is re-tested against it below.
 
 ### The primitive half
 
@@ -288,6 +297,103 @@ half and the consumer half are listed separately because they compose freely.
   form [[design-principles]] and this row's own premise reject: the defect
   *is* that a safety property was asserted in prose rather than enforced.
 
+#### Shape E: a checked trap in `nb-bslice-t`, at the same lowering site
+
+- **Form:** Shape A's branch structure with the opposite arm bodies. Where A
+  returns a clamped slice, E calls a routine that never returns: `nb-arena-fail`
+  (`lib/lowering/tal/sys.chiral:118-122`, one `ti-sys 231` and a sentinel
+  `ti-ret`) under its own status, or `wrap-halt`
+  (`lib/lowering/tal/sys-linkage.chiral:71-79`) with a message. `nb-bslice`
+  becomes total on its in-range domain and ends the process outside it. The
+  surface extern is untouched: `(extern str-sub (-> Str I64 I64 Str))` stays a
+  pure arrow, and so does `bslice`.
+- **Constructible today.** Measured, because two things could have forbidden it
+  and neither does.
+  - **The routine can reach a fail.** `lib/lowering/compile-emit.chiral:295`
+    builds one image, `native-lib ++ link-lib ++ obj`, and `:168-170` records
+    that the three share **one flat label namespace**. `nb-arena-fail-t` is in
+    `sys-lib` (`lib/lowering/tal/sys.chiral:1308`, `:1340`) and `wrap-halt-t` in
+    `link-lib` (`lib/lowering/tal/sys-linkage.chiral:98`), so a `ti-call` by name
+    out of `native-lib` resolves.
+  - **The precedent is in this tree and it is this defect.** `nb-arena-commit-t`
+    calls `nb-arena-fail` on a ceiling overrun (`lib/lowering/tal/sys.chiral:139-141`)
+    and `nb-pool-create-t` on `size <= 0` (`:1020-1021`). The file states the
+    doctrine at `:1006-1009`: *"A real bounds violation is a corpse: on size<=0
+    or off/len out of range the body takes the arena-fail shape
+    (exit_group(-EINVAL), never returns) — the externs' return types carry no
+    error arm …, so a fatal exit is control flow, not a value sentinel."* An
+    out-of-range index already aborts here.
+  - **It costs the surface types nothing.** The E76 chokepoint has two bindings.
+    H7 requires every `ti-sys` in the whole image to name a registered function
+    with a matching number, and `nb-arena-fail → 231` is already registered
+    (`lib/lowering/tal/target-linux.manifest:57`). H8, the profile port set, is
+    scanned over the object program's own reified fns and **explicitly not the
+    byte runtime**: *"A crossing the substrate itself reaches (nb-arena-grow ->
+    nb-sys-mprotect) is not charged to the composition, because it is not a port
+    the composition chose"* (`lib/lowering/compile-emit.chiral:283-287`, and the
+    call is `(manifest-offender ports obj)` at `:298`). So E needs no
+    `crossing-wraps` row, no profile edit, no `=>`, and no change at any of the
+    250 call sites.
+- **Costs:** the same TAL edit in the same trapped routine as A, so the same
+  build price: emission inside `prog/compiler.prog`'s closure, first agreement
+  `C2 == C3`, gen3 mandatory (`lib/lowering/tal/bytes.chiral:134-144`). On top
+  of that, four that are E's alone.
+  - **It cannot name the bad call.** `nb-bslice-t` has three parameters and no
+    source location, no caller identity, and no literal it can index: `ti-lit`
+    addresses the *object program's* literal cell (`lib/lowering/tal/ir.chiral:25`)
+    and the byte runtime is linked into every program, so a message is built one
+    `ti-bput` per character, the pattern `wrap-halt-t` uses for its single
+    newline (`lib/lowering/tal/sys-linkage.chiral:74-79`). E can say which
+    primitive and which bound. Which of 250 sites called it, it cannot say.
+  - **The trap fires inside the compiler.** `prog/compiler.prog` is a program
+    that slices strings, so a stale guard anywhere becomes a compiler that exits
+    on a floor status. `lib/typing/diag.chiral`'s ten-arm `Reason`
+    (`.planning/LANGUAGE-INVENTORY.md:125`) has no arm for it and the message is
+    not a diagnostic.
+  - **The status is ad hoc.** The tree's fail codes are `1` and `2`
+    (`lib/lowering/tal/sys.chiral:127-128`) and `-22` (`:1020`). No document
+    lists them and nothing registers a new one.
+  - **It buys nothing the type records**, exactly as A does not: three
+    comparisons at 250 sites, and no seat carries the cost.
+- **Forbids:** the silent over-read **and** the silent truncation. Shape A's own
+  Forbids reads *"an out-of-range call can no longer be detected"*; E is the
+  shape that keeps the detection. What it forbids in exchange is every use of
+  `str-sub` that today survives on a wrong answer: the 87 C2 sites resting on
+  unaudited local guards (§2) stop being guard-dependent and become
+  abort-dependent, so a guard that is wrong today returns garbage and tomorrow
+  kills the process. It forbids `str-find`'s `-1` reaching a `start` unchecked
+  (`lib/prelude/string.chiral:27`), which is live. And it forbids the two
+  consumers outright under Shape α: `str-starts-with` with a too-long prefix
+  traps instead of returning `false`, so the consumer half **must** be β.
+- **Reaches:** both surface names, all 250 call sites, one routine. Identical
+  to A.
+- **⚑ The type stays silent about the abort, and the mark that would carry it is
+  the wrong mark.** The live Pi is
+  `(t-pi (q Qty) (s Seat) (dom Term) (cod Term))` (`lib/surface/syntax.chiral:21`):
+  no row seat, no totality-mark seat. The carrier that has them,
+  `(q, row, grades⟨…⟩, totality-mark, dom, cod)`, is the target and not the
+  present (`docs/decisions/decision-effect-facets.md:78-80`), and the same
+  decision homes partiality there: *"`totality` keeps the partiality mark"*
+  (`:107`). **`nb-bslice` could not carry that mark.** The mark is
+  `docs/decisions/decision-graded-kernel.md:51-58`'s: *"Total by default,
+  partiality is the marked climb"*, discharged by *"structural recursion plus
+  strict positivity plus case coverage"*. It is a **termination** property and
+  `nb-bslice` terminates. `docs/definitions/status-ledger.md:190` puts that
+  pillar at IMPLEMENTED, classifying and refusing only under a `(total)`
+  profile. So the mark neither describes the trap nor would catch it.
+
+  The honest surface form is a different shape and it was measured too.
+  Declaring `(extern str-sub (=> Str I64 I64 Str))` with a `crossing-wraps` row
+  makes `str-sub` a port every profile must list. Four probes today against the
+  committed `bin/chirality-bin`: `halt` is `(extern halt (-> (0 A (type 0)) (=> Str A)))`
+  (`lib/ports/process.port:14`); a `(-> I64 I64)` def whose body calls it checks
+  **OK**, so the crossing does **not** propagate to callers through the type; the
+  same source under `(profile p (ports print) (target t))` fails with
+  `E76 profile REFUSED emit: crossing halt (wrap-halt) is outside the declared profile port set`;
+  and adding `halt` to the port list makes it pass. So the surface route's price
+  is every profile in the tree, charged at emit rather than at check. The
+  substrate route pays none of that price, and buys none of that containment.
+
 ### The consumer half
 
 #### Shape α: delete the reason, keep the function
@@ -317,7 +423,16 @@ re-deriving it.
 
 ## 5. The call
 
-- **Chosen, primitive half: Shape A**, clamp in `nb-bslice-t`.
+- **Primitive half: the site is settled and the shape is not.** ⚑ **Re-tested
+  2026-09-10 against Shape E and the choice did not survive as written.** The
+  four reasons below are what this design offered for Shape A. Each of them is
+  a reason against B, C or D, and **not one of them separates A from E**: E
+  repairs the same routine, reaches the same 250 sites under both surface
+  names, is constructible today (§4, measured), rewrites no call site, and is
+  no convention. The site under `lib/lowering/` stands. Which of the two total
+  repairs lands there is **NEEDS-AUTHOR**, carried below.
+
+- **Was chosen, primitive half: Shape A**, clamp in `nb-bslice-t`.
 
   The reason is a measurement rather than a preference, and it is the one
   `docs/decisions/decision-lane-split.md:339` said nothing settled. **There is
@@ -332,19 +447,51 @@ re-deriving it.
   buildable**, and the thing it needs is named as a roster row below rather
   than deferred to a number that does not exist.
 
-  **The clamp is all three cases, not one.** `j` to `len`, `i` to `0`, then `i`
-  to `j`. The `start < 0` case is measured in §2 and is unscheduled anywhere
-  else; repairing two of three would repeat exactly the half-repair this row
-  was opened to finish.
+  **The repair is all three cases, not one.** `j` to `len`, `i` to `0`, then
+  `i` to `j`. The `start < 0` case is measured in §2 and is unscheduled
+  anywhere else; repairing two of three would repeat exactly the half-repair
+  this row was opened to finish. This holds under A and under E alike: the
+  branch set is the same and only the arm bodies differ.
 
-- **Chosen, consumer half: Shape β**, and it is not optional.
+- **⚑ A versus E, re-tested, and the one measurement that separates them.**
+  The four reasons above discriminate B, C and D and are silent on E, so the
+  paragraph they support was an argument for a set of one drawn from a set of
+  four. Against the widened set exactly one asymmetry is measured rather than
+  preferred, and it is in this design's own §2: **87 call sites (class C2) rest
+  on local guards nobody has checked**, and §2 states that auditing them *"is
+  not this run's work and is not this element's work either"*. That statement
+  survives Shape A, which turns a bad guard into a truncated value. It does not
+  survive Shape E, which turns a bad guard into a process exit, so E's true
+  scope is `E176` **plus** an 87-site guard audit that no roster row holds. The
+  other direction is equally measured and equally real: Shape A's own Forbids
+  reads *"an out-of-range call can no longer be detected"*, and those same 87
+  guards are what a trap would find. The same measurement reads as a cost from
+  one side and as the point from the other, which is what makes it the author's
+  and not this design's.
+
+  **Not ruled here.** Whether a clamp discharges the bug class or hides it is
+  `records/author-calls.md:364`, `unreviewed`, and the clamp-versus-trap fork is
+  `.planning/BOUNDS-AUTHOR-CALLS.md` §3.4 item 1. This design answers neither.
+  It closes the gap that item named: the fork now has both of its arms written
+  in the same form, so the question the author is asked is a real two-way
+  choice. `status: blocked` already, and this widens what is blocked from a
+  sequencing question to the primitive half itself.
+
+- **Chosen, consumer half: Shape β**, and it is not optional. **This survives
+  the widened set and it survives it harder.**
 
   Under Shape A alone, `str-starts-with` and `complete-prefix` keep returning
   the right answer for a reason they did not choose, and no test in the tree
   distinguishes the clamped primitive from the unclamped one at those sites. β
   makes each consumer correct on its own terms, which is what makes the pair
   one unit rather than a primitive with a comment edit attached. `α` is
-  subsumed: both comments are rewritten either way.
+  subsumed: both comments are rewritten either way. Under Shape E the argument
+  stops being about witnessing and becomes about correctness: `str-starts-with`
+  passes `(str-len prefix)` against `s`, so under a trap a too-long prefix is a
+  process exit where the tree expects `false`, and `complete-prefix` is the same
+  call at `prog/scriba/completion.chiral:10`. β is required by A and **forced**
+  by E, so the consumer half is settled either way and the primitive half is
+  what the author holds.
 
 - **`origin` is `pair`**, per [[decisions/decision-primitive-with-consumer]]:
   *"A `pair` row names both halves in its `what` cell: the primitive, and the
@@ -369,7 +516,8 @@ re-deriving it.
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
-| 1 | Which of the four shapes repairs the primitive | **RESOLVED** | One routine, two surface names: `lib/lowering/tal/erase.chiral:115`. Shape A is the only form that reaches both. This settles the ownership line left open at `docs/decisions/decision-lane-split.md:336-341`: the repair site is under `lib/lowering/`, so diagnostics does reach enforcement's tree for this element |
+| 1 | Which of the five shapes repairs the primitive | **PARTLY RESOLVED, and ⚑ re-opened between two of them 2026-09-10** | **The site is settled.** One routine, two surface names: `lib/lowering/tal/erase.chiral:115`. Only a repair at `nb-bslice` reaches both, which refuses B, C and D and settles the ownership line left open at `docs/decisions/decision-lane-split.md:336-341`: the repair site is under `lib/lowering/`, so diagnostics does reach enforcement's tree for this element. **The shape at that site is not settled.** Shape A and Shape E occupy the same site with the same reach and the same build price, and no reason in this design separates them. See row 9 |
+| 9 | **Clamp (A) or trap (E) at `nb-bslice`** | **NEEDS-AUTHOR** | Opened by `.planning/BOUNDS-AUTHOR-CALLS.md` §3.4 item 1 (`d9902a2`), which measured that this design's §4 held four shapes and omitted the fifth. Both are total repairs at one site; the principles satisfy both (P1, P3, P4, per that section); the one measured asymmetry is §2's 87 unaudited C2 guards, which A absorbs and E converts into process exits. The class question behind it is `records/author-calls.md:364` and stays `unreviewed`. **This design rules neither** |
 | 2 | Does the clamp cover `start < 0` as well as `end > len` | **RESOLVED** | Measured in §2: `(str-sub "abcdef" (- 0 2) 3)` returns 5 and reads before the buffer. Same routine, same defect, and [[working-discipline]]'s build rule makes a second pass over this file expensive enough that splitting it is the wrong economy |
 | 3 | Does the repair cover `bslice` | **RESOLVED** | It cannot avoid it. `lib/lowering/tal/erase.chiral:115` maps both names to `nb-bslice`. The catalog and ledger rows must stop saying `str-sub` alone |
 | 4 | Is the refined signature the right end state | **DEFERRED** to roster row `text-tools/L6`, **which does not yet exist and is not opened by this run** | §2 measured the refined form constructible only over an erased index, and `Str` is `t-primty` with no index (`lib/surface/syntax.chiral:29`). A length-indexed `Str` is a language element belonging to [[arcs/text-tools-arc]] and its bank shard A, not to this arc. Per [[working-discipline]]'s deferral rule this names a row and no `E#`. **The row is owed and this design does not open it**, because a design run may write only its own artifact; opening it is reported as work owed |
@@ -428,8 +576,10 @@ names the orphan, with the mint declared a no-op. This is that run.
 
 - **Elements:** **one, and it already exists.** The primitive half and the
   consumer half are one element because they are unbuildable apart: Shape β's
-  guard is only correct once the primitive is total, and Shape A's clamp is
-  unwitnessed without a consumer that stops depending on the old behaviour.
+  guard is only correct once the primitive is total, and a total primitive is
+  unwitnessed without a consumer that stops depending on the old behaviour
+  (under Shape A) or unshippable without one (under Shape E, which would trap
+  at both consumer sites).
   The precedent for one element over a pair is
   `docs/arcs/parts/part-split-PS1.md` §6, cited by
   [[decisions/decision-primitive-with-consumer]].
@@ -454,12 +604,20 @@ names the orphan, with the mint declared a no-op. This is that run.
 - **Roster:** `diagnostics/L5` moves `open` → `designed`, which
   `tools/pack/pack.py` wrote into `docs/arcs/diagnostics-arc.md:257` as a side
   effect of the bundle command. **That edit is the tool's, not this run's.**
-- **Size:** four files, and the estimate's basis is given per file.
+- **Size:** four files, and the estimate's basis is given per file. ⚑ **The
+  table below is Shape A's.** Shape E touches the same four files at the same
+  scale: its `nb-bslice-t` arms call a fail routine instead of allocating an
+  empty slice, which is fewer TAL instructions per arm, and it adds one
+  registry consideration (`nb-arena-fail` reused under a distinct status, or a
+  new `ti-sys 231` row beside `lib/lowering/tal/target-linux.manifest:57`). The
+  gate row changes shape: assertions over returned lengths become assertions
+  over exit statuses. Nothing in the size estimate turns on the fork, so the
+  packet is not re-derived for E.
 
   | file | change | lines | basis |
   |---|---|---|---|
   | `lib/lowering/tal/bytes.chiral` | two further clamps in `nb-bslice-t`, `:147-160` | **+25 to +40** | the existing single clamp is 4 lines of `ti-tcase` plus its arms at `:150-155`; two more comparisons with the same shape, plus register renumbering, plus the comment at `:128-132` rewritten to state what is now covered |
-  | `lib/prelude/string.chiral` | `str-starts-with` gains its own guard; `:14` rewritten | **+4 to +6** | one `cond` over `(<=i (str-len prefix) (str-len s))` around a 3-line body |
+  | `lib/prelude/string.chiral` | `str-starts-with` (`:15`) gains its own guard, and the false comment above it is rewritten | **+4 to +6** | one `cond` over `(<=i (str-len prefix) (str-len s))` around a 3-line body |
   | `prog/scriba/completion.chiral` | `complete-prefix` calls `str-starts-with`, or gains the same guard; `:5-7` rewritten | **+3 to +6** | a 3-line body and a 3-line comment |
   | `tools/test/<new>.sh` + a `.prog` fixture | the gate: three range cases × two surface names, plus a mutant per clamp arm | **+120 to +200** | `tools/test/doc.sh` is 26 assertions; `tools/test/render-doc.sh` is 19 assertions with 11 mutants. This gate is nearer the smaller of those in assertion count and carries 3 mutants |
 
