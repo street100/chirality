@@ -57,7 +57,7 @@ and `emit` is the value-to-source path.
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
-| `file-types/K1` | `.manifest`: a declared form, a derived codec, a round-trip gate against source | kind | primitive | new | 1 | designed | `E163` |
+| `file-types/K1` | `.manifest`: a declared form, a derived codec, a round-trip gate against source | kind | primitive | new | 1 | open | `E163` |
 | `file-types/K2` | `.protocol`: the same law carried in bytes. Minted 2026-08-31 by [[arcs/diagnostics-arc]], which holds its prose | kind | primitive | new | 2 | open | `E183` |
 | `file-types/K3` | `.grammar`: the surface syntax as a declared signature. Minted 2026-09-02 from this arc's own band, having been named a whole session with no row | kind | primitive | new | 6 | open | `E190` |
 | `file-types/E1` | value to source: the five emitters return `Doc`. Imports `surface/pretty`, which E181 landed | emit | law | new | 5 | open | `E146` |
