@@ -75,6 +75,49 @@ row serves one, and every `origin` is `new`: no file kind here exists yet.
 
 ## Resume state
 
+**Where a session picks up, 2026-09-10: `element-design` on `file-types/K1`.**
+Not `design-to-spec`. A spec run on **E163** was dispatched and refused at step
+one by the tool itself: `python3 tools/pack/pack.py E163 --spec` reports "no
+rationale artifact for E163 ... A SPEC is written from one of the two", and
+`--audit spec` refuses identically. E163 is an **orphan of the pipeline change**:
+minted under the old flow, it has no `docs/examples/E163-*.md` and no row in
+`docs/examples/INDEX.md`, and [[decisions/decision-design-before-mint]] retired
+the example stage on 2026-09-05, so it never will get one. Its roster row `K1`
+carries the element and no design artifact exists at
+`docs/arcs/parts/file-types-K1.md`. **The design run must be told the mint is a
+no-op**, because E163 already holds its number.
+
+⚑ **Measured for that run, 2026-09-10, and each changes its scope.**
+
+- **The precedent `MAP.md` names does not exist.** `MAP.md:39-41` says the loader
+  checks the kind "the same way `.prog` is a checked projection of
+  `compile-main`". There is no such check: `lib/module/resolve.chiral:405-407`
+  records that the entry and its protocol moved out to `prog/resolve.prog`, and
+  the projection is **E172**, ledger state `design`, unbuilt. K1 either invents
+  the check or builds one with E172.
+- **The extension layer is live and the structural layer is not.**
+  `bin/chirality-resolve.sh:65` probes `.manifest` and
+  `lib/module/resolve.chiral:218-245` resolves it, so a manifest is a working
+  import target today. Nothing tests any `def` body.
+- **The two `.manifest` files disagree with the stated test.**
+  `lib/lowering/tal/target-linux.manifest` (62 lines, one `def`, pure
+  constructor spine) passes. `prog/climb.manifest` (79 lines) passes on the `def`
+  test but also carries three `data` declarations and an `import`, so the check
+  owes an explicit admitted-form set and a ruling on whether a manifest may
+  import computation. It carries **no `(module …)` datasheet**, so a check keyed
+  inside the datasheet refuses it, and it is **imported and referenced by
+  nothing** across `bin/ lib/ prog/ tools/`. Whether it is a conformance target
+  or is deleted is author-tier.
+- **`MAP.md`'s own open question is misnamed.** `MAP.md:42-44` raises `sys-tal`;
+  the file is `lib/lowering/tal/sys.chiral`, 64 defs over 1,343 lines with 674
+  carrying `t-seq`/`ti-ret`. E172's rename already happened.
+- **The catalog and ledger premise is stale in a narrowing direction.**
+  `docs/elements/catalog.md:475` and `docs/elements/ledger.md:305` both say
+  `target-linux.chiral` "already IS one". That file is now
+  `target-linux.manifest`, so it already carries the extension and the delta is
+  smaller than the rows state.
+
+
 **Design session 2026-09-02, author-led.** The arc's framing widened: a kind is a
 **view** of the term language rather than a subset a predicate admits, and it is
 legitimate when it round-trips, which is what requirement 4's gate already
