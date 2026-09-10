@@ -71,23 +71,68 @@ so `element-design` on that row produces the missing artifact and the mint step
 is a no-op. `docs/arcs/file-types-arc.md`'s resume state records that route and
 the five measurements it turned up.
 
-## What is owed, and it is not decided here
+## What is owed, and it splits by state
 
-**Whether every orphan has a roster row is unmeasured.** E163 does; the other 46
-were not checked. An orphan with a row takes E163's route. An orphan with no row
-needs one, which is an `arc-open` or an arc amendment, and for an element minted
-years into a track that may be an arc nobody has opened.
+**The three populations owe different work, and treating them alike is the
+error this section exists to prevent.**
 
-Three shapes, none chosen:
+### The 17 `built` orphans: serial audit and adjustment, never a rerun
 
-1. **Route each orphan through `element-design` on its roster row**, as E163
-   does. Correct per the pipeline and costs one design run per element.
-2. **Let `pack.py --spec` accept a minted element with no rationale artifact**,
-   writing the SPEC from the catalog and ledger rows. Cheaper and weaker: the
-   design stage is what measures the baseline, and skipping it is what
-   `decision-design-before-mint` exists to prevent.
-3. **Triage first.** Count how many of the 47 hold a roster row before choosing,
-   since that number decides whether 1 is 47 dispatches or 47 plus an arc.
+These elements are **implemented**. The work exists in the tree, and in most
+cases it was audited under the old flow before it landed. What is missing is the
+rationale artifact, not the deliverable.
+
+**Do not run `element-design`, `design-to-spec` or an implementation pass on any
+of them.** A design run on built work is the phantom-feature error
+`docs/definitions/working-discipline.md` names as the cardinal one, and its §3
+empty-delta close is the pipeline catching that error rather than a route to
+take deliberately. Re-speccing implemented work produces a change plan aimed at
+a tree that already carries it, which is exactly the DEAD and DONE-ALREADY
+buckets `records/spec-tier-triage.md` measured across 129 SPECs.
+
+What they owe instead is **an audit of the record against the tree, and an
+adjustment where the two disagree.** One element per run, serially, per
+`docs/decisions/decision-dispatch-cadence.md`. Per element: open the catalog row
+and the ledger row, open what is actually in `lib/` or `prog/`, and correct the
+rows where they disagree. `doc-audit` is the skill shaped for this; the
+implementation pipeline is not.
+
+The output is a corrected row and a `records/` line, not a new artifact under
+`docs/elements/specs/`.
+
+### The 47 `design` orphans: a rationale artifact, then the ordinary pipeline
+
+These are minted, unbuilt, and unspeccable. They need what the retired stage
+would have produced. E163's route is the model: `element-design` on the roster
+row that already carries the element, after which the mint step is a no-op
+because the number is held.
+
+**The prerequisite nobody has measured: whether each of the 47 holds a roster
+row.** E163 does. The other 46 were not checked. An orphan with a row costs one
+design run; an orphan without one needs a row first, which is an `arc-open` or
+an arc amendment, and for an element minted deep in a track that may be an arc
+nobody has opened. **Count that before choosing anything**, since it decides
+whether this is 47 dispatches or 47 plus arc work.
+
+### The 9 blank-state orphans: triage first
+
+The ledger carries no state for them. Which of the two populations above they
+join is unknown, and reading the tree for each is the first step.
+
+## What was considered and rejected
+
+**Letting `pack.py --spec` write from the catalog and ledger rows** when no
+rationale artifact exists. Cheaper and weaker: the design stage is what measures
+the baseline, and skipping it is precisely what
+`docs/decisions/decision-design-before-mint.md` exists to prevent. It would also
+manufacture SPECs for the built population, which is the rerun this file rules
+out.
+
+**A sweep.** Whatever the route, it runs one element at a time.
+`docs/decisions/decision-dispatch-cadence.md` is the authority and
+`records/consolidation-handoff.md` records the case that established it: a
+consolidation pass dispatched over all 138 remaining files at once, stopped for
+that reason.
 
 ⚑ **Author-tier.** Whether an element minted under the old flow keeps its number
 when its design run finds an empty delta. `element-design` §3 can close a row
