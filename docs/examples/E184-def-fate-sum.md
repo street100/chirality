@@ -691,6 +691,54 @@ the conservation check. Every line citation was read at `309994c`.
      The measurement favours (ii) on honesty, because it is the only one where
      every name in the artifact is in the domain, and (i) on cost. **Author.**
 
+     ⚑ **RULED 2026-09-10 BY THE AUTHOR: (ii), AND DELETION IS NEVER A FATE.**
+     The author's words: *there is a specific recheck means, and that is
+     inherently done in a modular and reproducible way where specialized-into is
+     the only way and over time more specializations are built*. The domain is
+     the pre-pass set plus what the pass created. A definition that leaves the
+     globals list leaves **through `ft-specialized`, naming its successors**, and
+     there is no other exit. (iii) is refused on that ground: `x64` and
+     `mach-galo` having no fate when the pass deleted them is the ungoverned
+     departure `PRINCIPLES.md` §1 forbids, and no arm added elsewhere closes it.
+
+     ⚑ **The ruling is measured, and the measurement is why it costs nothing to
+     make.** Every deletion in this tree is already a specialization consequence:
+     `process-mk` (`lib/lowering/upper/specialize-singleton.chiral:202`) builds
+     the prune list as `(cons gname (projs->names ps))`, the singleton global plus
+     its projections, and `prune-live` (`:227`) drops a name only where `gs-refs`
+     finds no surviving reference. A name is deleted **because** its content was
+     lifted into `$i` globals and its projections rewritten onto them. So
+     `ft-specialized` is not an arm awaiting an extension. It is the honest name
+     for exactly the population that separated (ii) from (iii).
+
+     ⚑ **The closed sum survives a growing compiler, and this is the clause that
+     makes R1's closure honest.** A new specialization is a new **instance** in
+     `ft-specialized`'s `(List Str)`, never a new arm. The sum stays closed with
+     no `_` arm while the specialization set grows without bound, so R1 is not a
+     promise to keep editing the sum as passes are added.
+
+     ⚑ **The recheck is a property of the mechanism.** Modular: the account is
+     per-pass and composes. Reproducible: the same input yields the same account.
+     [[records/findings]] FD-23 measured the one verified compiler in its survey,
+     CakeML, doing exactly this, a name map threaded through the backend and
+     unioned with four later passes' own stubs.
+
+     ⚑ **A spelling this opens, and the SPEC stage owes it a decision.** The
+     author names E33's process spawn as the same shape, and it is: `proc.chiral`
+     declares `(data Reap ())` with `(child (1 reap Reap) (io Bytes))` and its
+     comment reads *a linear obligation to wait on a child. Dropping it is a type
+     error*. A child leaves its parent only through an obligation that must be
+     consumed, which is what this ruling makes a definition do. R7 currently
+     **checks** conservation with a fold that fails the compile, and E184's own
+     text calls that the line between attribution and logging. A linear
+     `ft-specialized` would make the unaccounted departure **unrepresentable**
+     instead, which is why FD-22 found GCC's nearest equivalent partial by
+     construction: a record can be forgotten and an obligation cannot. Two things
+     the SPEC must face: a `Reap` is consumed by one waiter while
+     `ft-specialized` names N successors, so it is a fan-out rather than a
+     handoff; and linearity inside the compiler's own source is a commitment
+     about how those passes are written rather than only about what they record.
+
      ⚑ **PRICED 2026-09-09 BY [[records/findings]] FD-21, AND THE OPTION SET IS
      TWO.** Six systems read at their own sources, ten pins. **(i) has no
      occupant**: not one of them carries a single total function from a pre-pass
