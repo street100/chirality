@@ -249,6 +249,16 @@ Order is forced by dependency, not preference.
 4. **P4 addressing** — wants a decision before an example, because it changes a
    payload type that `Flow` already uses.
 
-**Owed from the author:** a reserved element block, or a ruling that this arc
-mints into an existing one. Until then P2, P3 and P4 stay unnumbered and cannot
-be scheduled.
+**That blocker is spent, 2026-09-06.** This section read "owed from the author: a
+reserved element block ... until then P2, P3 and P4 stay unnumbered and cannot be
+scheduled." Author call B was ruled that day: a band is advisory, and an arc
+without one mints the next number free tree-wide, which `pack.py --mint`
+implements. Nothing here waits on a block.
+
+**Pulled forward 2026-09-10, and the reason is not this arc's own.**
+[[goals/coding-agent]]'s edit tool is `P3` and `P4` wearing another name. Today
+`fs-edit` (`prog/shilpa/tools-fs.chiral:88`) is read, first-occurrence
+`str-splice`, write: a positional replace with no address that survives an edit.
+`P4` is that address and `P3` is the edit script over it. The order stands as
+written, `P4`'s decision before `P3`'s build, because `P4` changes a payload type
+`Flow` already uses.

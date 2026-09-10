@@ -116,6 +116,13 @@ files exist in the tree, `prog/climb.manifest` and
 `lib/lowering/tal/target-linux.manifest`, so the kind is seeded and unenforced.
 When E163 lands, the carrier changes and this ruling is superseded in place.
 
+⚑ **E163 is scheduled rather than indefinite, as of 2026-09-10.** This document
+created four configuration surfaces by ruling that configuration lives inside
+each part, and [[decisions/decision-part-layout]] named the parts that carry
+them. Deferring E163 means writing four JSON readers to discard. The element is
+already minted and its ledger state is `design`, so its next stage is
+`design-to-spec` rather than a design run.
+
 ## What this rejects
 
 **A second config format.** A TOML reader is roughly 250 lines built to be
