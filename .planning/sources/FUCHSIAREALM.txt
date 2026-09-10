@@ -1,0 +1,6136 @@
+
+
+
+
+
+
+
+
+
+<!doctype html>
+<html 
+      lang="en"
+      dir="ltr">
+  <head>
+    <meta name="google-signin-client-id" content="157101835696-ooapojlodmuabs2do2vuhhnf90bccmoi.apps.googleusercontent.com"><meta name="google-signin-scope"
+          content="profile email"><meta property="og:site_name" content="Fuchsia">
+    <meta property="og:type" content="website"><meta name="theme-color" content="#263238"><meta charset="utf-8">
+    <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+
+    <link rel="manifest" href="/_pwa/fuchsia/manifest.json"
+          crossorigin="use-credentials">
+    <link rel="preconnect" href="//www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="//fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="//www.google-analytics.com" crossorigin><link rel="stylesheet" href="//fonts.googleapis.com/css?family=DM+Sans:400,500,700|Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,500,700&display=swap">
+      <link rel="stylesheet"
+            href="//fonts.googleapis.com/css2?family=Material+Icons&family=Material+Symbols+Outlined&display=block"><link rel="stylesheet" href="https://www.gstatic.com/devrel-devsite/prod/v5e941f15ff6710591bee254538202655020220785b40a3f4d932e94adb9f6037/fuchsia/css/app.css">
+      <link rel="shortcut icon" href="https://www.gstatic.com/devrel-devsite/prod/v5e941f15ff6710591bee254538202655020220785b40a3f4d932e94adb9f6037/fuchsia/images/favicon.png">
+    <link rel="apple-touch-icon" href="https://www.gstatic.com/devrel-devsite/prod/v5e941f15ff6710591bee254538202655020220785b40a3f4d932e94adb9f6037/fuchsia/images/touchicon-180.png"><link rel="canonical" href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/realms"><link rel="search" type="application/opensearchdescription+xml"
+            title="Fuchsia" href="https://fuchsia.dev/s/opensearch.xml">
+      <link rel="alternate" hreflang="en"
+          href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/realms" /><link rel="alternate" hreflang="x-default" href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/realms" /><link rel="alternate" hreflang="zh-Hans"
+          href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/realms?hl=zh-cn" /><link rel="alternate" hreflang="zh-Hant"
+          href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/realms?hl=zh-tw" /><title>Realms &nbsp;|&nbsp; Fuchsia</title>
+
+<meta property="og:title" content="Realms &nbsp;|&nbsp; Fuchsia"><meta property="og:url" content="https://fuchsia.dev/fuchsia-src/concepts/components/v2/realms"><meta property="og:locale" content="en"><script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    
+    "headline": "Realms"
+  }
+</script>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+
+    </head>
+  <body class="color-scheme--light"
+        template="page"
+        theme="fuchsia-theme"
+        type="article"
+        
+        
+        
+        layout="docs"
+        
+        
+        
+        
+        
+        display-toc
+        pending>
+  
+    <devsite-progress type="indeterminate" id="app-progress"></devsite-progress>
+  
+  
+    <a href="#main-content" class="skip-link button">
+      
+      Skip to main content
+    </a>
+    <section class="devsite-wrapper">
+      <devsite-cookie-notification-bar></devsite-cookie-notification-bar>
+        <devsite-header role="banner">
+  
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="devsite-header--inner" data-nosnippet>
+  <div class="devsite-top-logo-row-wrapper-wrapper">
+    <div class="devsite-top-logo-row-wrapper">
+      <div class="devsite-top-logo-row">
+        <button type="button" id="devsite-hamburger-menu"
+          class="devsite-header-icon-button button-flat material-icons gc-analytics-event"
+          data-category="Site-Wide Custom Events"
+          data-label="Navigation menu button"
+          visually-hidden
+          aria-label="Open menu">
+        </button>
+        
+<div class="devsite-product-name-wrapper">
+
+  <a href="/" class="devsite-site-logo-link gc-analytics-event"
+   data-category="Site-Wide Custom Events" data-label="Site logo" track-type="globalNav"
+   track-name="fuchsia" track-metadata-position="nav"
+   track-metadata-eventDetail="nav">
+  
+  <picture>
+    
+    <img src="https://www.gstatic.com/devrel-devsite/prod/v5e941f15ff6710591bee254538202655020220785b40a3f4d932e94adb9f6037/fuchsia/images/lockup.svg" class="devsite-site-logo" alt="Fuchsia">
+  </picture>
+  
+</a>
+
+
+
+</div>
+        <div class="devsite-top-logo-row-middle">
+          <div class="devsite-header-upper-tabs">
+            
+              
+              
+  <devsite-tabs class="upper-tabs">
+
+    <nav class="devsite-tabs-wrapper" aria-label="Upper tabs">
+      
+        
+          <tab  class="devsite-active">
+            
+    <a href="https://fuchsia.dev/fuchsia-src/get-started/learn"
+    class="devsite-tabs-content gc-analytics-event "
+      track-metadata-eventdetail="https://fuchsia.dev/fuchsia-src/get-started/learn"
+    
+       track-type="nav"
+       track-metadata-position="nav - discover"
+       track-metadata-module="primary nav"
+       aria-label="Discover, selected" 
+       
+         
+           data-category="Site-Wide Custom Events"
+         
+           data-label="Tab: Discover"
+         
+           track-name="discover"
+         
+       >
+    Discover
+  
+    </a>
+    
+  
+          </tab>
+        
+      
+        
+          <tab  >
+            
+    <a href="https://fuchsia.dev/reference"
+    class="devsite-tabs-content gc-analytics-event "
+      track-metadata-eventdetail="https://fuchsia.dev/reference"
+    
+       track-type="nav"
+       track-metadata-position="nav - reference"
+       track-metadata-module="primary nav"
+       
+       
+         
+           data-category="Site-Wide Custom Events"
+         
+           data-label="Tab: Reference"
+         
+           track-name="reference"
+         
+       >
+    Reference
+  
+    </a>
+    
+  
+          </tab>
+        
+      
+        
+          <tab  >
+            
+    <a href="https://fuchsia.dev/whats-new/release-notes"
+    class="devsite-tabs-content gc-analytics-event "
+      track-metadata-eventdetail="https://fuchsia.dev/whats-new/release-notes"
+    
+       track-type="nav"
+       track-metadata-position="nav - what&#39;s new"
+       track-metadata-module="primary nav"
+       
+       
+         
+           data-category="Site-Wide Custom Events"
+         
+           data-label="Tab: What&#39;s new"
+         
+           track-name="what&#39;s new"
+         
+       >
+    What&#39;s new
+  
+    </a>
+    
+  
+          </tab>
+        
+      
+        
+          <tab  >
+            
+    <a href="https://fuchsia.dev/fuchsia-src/development"
+    class="devsite-tabs-content gc-analytics-event "
+      track-metadata-eventdetail="https://fuchsia.dev/fuchsia-src/development"
+    
+       track-type="nav"
+       track-metadata-position="nav - fuchsia platform"
+       track-metadata-module="primary nav"
+       
+       
+         
+           data-category="Site-Wide Custom Events"
+         
+           data-label="Tab: Fuchsia platform"
+         
+           track-name="fuchsia platform"
+         
+       >
+    Fuchsia platform
+  
+    </a>
+    
+  
+          </tab>
+        
+      
+    </nav>
+
+  </devsite-tabs>
+
+            
+           </div>
+          
+<devsite-search
+    enable-signin
+    enable-search
+    enable-suggestions
+      enable-query-completion
+    
+    
+    project-name="Fuchsia"
+    tenant-name="Fuchsia"
+    
+    
+    
+    
+    
+    >
+  <form class="devsite-search-form" action="https://fuchsia.dev/s/results" method="GET">
+    <div class="devsite-search-container">
+      <button type="button"
+              search-open
+              class="devsite-search-button devsite-header-icon-button button-flat material-icons"
+              
+              aria-label="Open search"></button>
+      <div class="devsite-searchbox">
+        <input
+          aria-activedescendant=""
+          aria-autocomplete="list"
+          
+          aria-label="Search"
+          aria-expanded="false"
+          aria-haspopup="listbox"
+          autocomplete="off"
+          class="devsite-search-field devsite-search-query"
+          name="q"
+          
+          placeholder="Search"
+          role="combobox"
+          type="text"
+          value=""
+          >
+          <div class="devsite-search-image material-icons" aria-hidden="true">
+            
+          </div>
+          <div class="devsite-search-shortcut-icon-container" aria-hidden="true">
+            <kbd class="devsite-search-shortcut-icon">/</kbd>
+          </div>
+      </div>
+    </div>
+  </form>
+  <button type="button"
+          search-close
+          class="devsite-search-button devsite-header-icon-button button-flat material-icons"
+          
+          aria-label="Close search"></button>
+</devsite-search>
+
+        </div>
+
+        
+
+          
+
+          
+
+          
+
+          
+
+          
+<devsite-language-selector>
+  <ul role="presentation">
+    
+    
+    <li role="presentation">
+      <a role="menuitem" lang="en"
+        >English</a>
+    </li>
+    
+    <li role="presentation">
+      <a role="menuitem" lang="zh_cn"
+        >中文 – 简体</a>
+    </li>
+    
+    <li role="presentation">
+      <a role="menuitem" lang="zh_tw"
+        >中文 – 繁體</a>
+    </li>
+    
+  </ul>
+</devsite-language-selector>
+
+
+          
+
+        
+
+        
+          <devsite-user 
+                        
+                        
+                        
+                        id="devsite-user">
+            
+              
+              <span class="button devsite-top-button" aria-hidden="true" visually-hidden>Sign in</span>
+            
+          </devsite-user>
+        
+        
+        
+      </div>
+    </div>
+  </div>
+
+
+
+  <div class="devsite-collapsible-section
+    ">
+    <div class="devsite-header-background">
+      
+        
+          <div class="devsite-product-id-row"
+           >
+            <div class="devsite-product-description-row">
+              
+                
+                <div class="devsite-product-id">
+                  
+                  
+                  
+                    <ul class="devsite-breadcrumb-list"
+  >
+  
+  <li class="devsite-breadcrumb-item
+             ">
+    
+    
+    
+      
+        
+  <a href="https://fuchsia.dev/fuchsia-src/get-started/learn"
+      
+        class="devsite-breadcrumb-link gc-analytics-event"
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Lower Header"
+      
+        data-value="1"
+      
+        track-type="globalNav"
+      
+        track-name="breadcrumb"
+      
+        track-metadata-position="1"
+      
+        track-metadata-eventdetail=""
+      
+    >
+    
+          Learn about Fuchsia
+        
+  </a>
+  
+      
+    
+  </li>
+  
+</ul>
+                </div>
+                
+              
+              
+            </div>
+            
+          </div>
+          
+        
+      
+      
+        <div class="devsite-doc-set-nav-row">
+          
+          
+            
+            
+  <devsite-tabs class="lower-tabs">
+
+    <nav class="devsite-tabs-wrapper" aria-label="Lower tabs">
+      
+        
+          <tab  >
+            
+    <a href="https://fuchsia.dev/fuchsia-src/get-started/learn"
+    class="devsite-tabs-content gc-analytics-event "
+      track-metadata-eventdetail="https://fuchsia.dev/fuchsia-src/get-started/learn"
+    
+       track-type="nav"
+       track-metadata-position="nav - get started"
+       track-metadata-module="primary nav"
+       
+       
+         
+           data-category="Site-Wide Custom Events"
+         
+           data-label="Tab: Get started"
+         
+           track-name="get started"
+         
+       >
+    Get started
+  
+    </a>
+    
+  
+          </tab>
+        
+      
+        
+          <tab  class="devsite-active">
+            
+    <a href="https://fuchsia.dev/fuchsia-src/concepts"
+    class="devsite-tabs-content gc-analytics-event "
+      track-metadata-eventdetail="https://fuchsia.dev/fuchsia-src/concepts"
+    
+       track-type="nav"
+       track-metadata-position="nav - concepts"
+       track-metadata-module="primary nav"
+       aria-label="Concepts, selected" 
+       
+         
+           data-category="Site-Wide Custom Events"
+         
+           data-label="Tab: Concepts"
+         
+           track-name="concepts"
+         
+       >
+    Concepts
+  
+    </a>
+    
+  
+          </tab>
+        
+      
+        
+          <tab  >
+            
+    <a href="https://fuchsia.dev/fuchsia-src/contribute/community/get-involved"
+    class="devsite-tabs-content gc-analytics-event "
+      track-metadata-eventdetail="https://fuchsia.dev/fuchsia-src/contribute/community/get-involved"
+    
+       track-type="nav"
+       track-metadata-position="nav - community"
+       track-metadata-module="primary nav"
+       
+       
+         
+           data-category="Site-Wide Custom Events"
+         
+           data-label="Tab: Community"
+         
+           track-name="community"
+         
+       >
+    Community
+  
+    </a>
+    
+  
+          </tab>
+        
+      
+        
+          <tab  >
+            
+    <a href="https://fuchsia.dev/fuchsia-src/contribute/governance/governance"
+    class="devsite-tabs-content gc-analytics-event "
+      track-metadata-eventdetail="https://fuchsia.dev/fuchsia-src/contribute/governance/governance"
+    
+       track-type="nav"
+       track-metadata-position="nav - governance"
+       track-metadata-module="primary nav"
+       
+       
+         
+           data-category="Site-Wide Custom Events"
+         
+           data-label="Tab: Governance"
+         
+           track-name="governance"
+         
+       >
+    Governance
+  
+    </a>
+    
+  
+          </tab>
+        
+      
+        
+          <tab  >
+            
+    <a href="https://fuchsia.dev/fuchsia-src/glossary"
+    class="devsite-tabs-content gc-analytics-event "
+      track-metadata-eventdetail="https://fuchsia.dev/fuchsia-src/glossary"
+    
+       track-type="nav"
+       track-metadata-position="nav - glossary"
+       track-metadata-module="primary nav"
+       
+       
+         
+           data-category="Site-Wide Custom Events"
+         
+           data-label="Tab: Glossary"
+         
+           track-name="glossary"
+         
+       >
+    Glossary
+  
+    </a>
+    
+  
+          </tab>
+        
+      
+    </nav>
+
+  </devsite-tabs>
+
+          
+          
+        </div>
+      
+    </div>
+  </div>
+
+</div>
+
+
+
+  
+
+  
+</devsite-header>
+        <devsite-book-nav scrollbars >
+          
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="devsite-book-nav-filter"
+     >
+  <span class="filter-list-icon material-icons" aria-hidden="true"></span>
+  <input type="text"
+         placeholder="Filter"
+         
+         aria-label="Type to filter"
+         role="searchbox">
+  
+  <span class="filter-clear-button hidden"
+        data-title="Clear filter"
+        aria-label="Clear filter"
+        role="button"
+        tabindex="0"></span>
+</div>
+
+<nav class="devsite-book-nav devsite-nav nocontent" data-nosnippet
+     aria-label="Side menu">
+  <div class="devsite-mobile-header">
+    <button type="button"
+            id="devsite-close-nav"
+            class="devsite-header-icon-button button-flat material-icons gc-analytics-event"
+            data-category="Site-Wide Custom Events"
+            data-label="Close navigation"
+            aria-label="Close navigation">
+    </button>
+    <div class="devsite-product-name-wrapper">
+
+  <a href="/" class="devsite-site-logo-link gc-analytics-event"
+   data-category="Site-Wide Custom Events" data-label="Site logo" track-type="globalNav"
+   track-name="fuchsia" track-metadata-position="nav"
+   track-metadata-eventDetail="nav">
+  
+  <picture>
+    
+    <img src="https://www.gstatic.com/devrel-devsite/prod/v5e941f15ff6710591bee254538202655020220785b40a3f4d932e94adb9f6037/fuchsia/images/lockup.svg" class="devsite-site-logo" alt="Fuchsia">
+  </picture>
+  
+</a>
+
+
+</div>
+  </div>
+
+  <div class="devsite-book-nav-wrapper">
+    <div class="devsite-mobile-nav-top">
+      
+        <ul class="devsite-nav-list">
+          
+            <li class="devsite-nav-item">
+              
+  
+  <a href="/fuchsia-src/get-started/learn"
+    
+       class="devsite-nav-title gc-analytics-event
+              
+              devsite-nav-active"
+    
+
+    
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Tab: Discover"
+      
+        track-name="discover"
+      
+    
+     data-category="Site-Wide Custom Events"
+     data-label="Responsive Tab: Discover"
+     track-type="globalNav"
+     track-metadata-eventDetail="globalMenu"
+     track-metadata-position="nav">
+  
+    <span class="devsite-nav-text" tooltip >
+      Discover
+   </span>
+    
+  
+  </a>
+  
+
+  
+              
+                <ul class="devsite-nav-responsive-tabs">
+                  
+                    
+                    
+                    
+                    <li class="devsite-nav-item">
+                      
+  
+  <a href="/fuchsia-src/get-started/learn"
+    
+       class="devsite-nav-title gc-analytics-event
+              
+              "
+    
+
+    
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Tab: Get started"
+      
+        track-name="get started"
+      
+    
+     data-category="Site-Wide Custom Events"
+     data-label="Responsive Tab: Get started"
+     track-type="globalNav"
+     track-metadata-eventDetail="globalMenu"
+     track-metadata-position="nav">
+  
+    <span class="devsite-nav-text" tooltip >
+      Get started
+   </span>
+    
+  
+  </a>
+  
+
+  
+                    </li>
+                  
+                    
+                    
+                    
+                    <li class="devsite-nav-item">
+                      
+  
+  <a href="/fuchsia-src/concepts"
+    
+       class="devsite-nav-title gc-analytics-event
+              
+              devsite-nav-active"
+    
+
+    
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Tab: Concepts"
+      
+        track-name="concepts"
+      
+    
+     data-category="Site-Wide Custom Events"
+     data-label="Responsive Tab: Concepts"
+     track-type="globalNav"
+     track-metadata-eventDetail="globalMenu"
+     track-metadata-position="nav">
+  
+    <span class="devsite-nav-text" tooltip menu="_book">
+      Concepts
+   </span>
+    
+  
+  </a>
+  
+
+  
+                    </li>
+                  
+                    
+                    
+                    
+                    <li class="devsite-nav-item">
+                      
+  
+  <a href="/fuchsia-src/contribute/community/get-involved"
+    
+       class="devsite-nav-title gc-analytics-event
+              
+              "
+    
+
+    
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Tab: Community"
+      
+        track-name="community"
+      
+    
+     data-category="Site-Wide Custom Events"
+     data-label="Responsive Tab: Community"
+     track-type="globalNav"
+     track-metadata-eventDetail="globalMenu"
+     track-metadata-position="nav">
+  
+    <span class="devsite-nav-text" tooltip >
+      Community
+   </span>
+    
+  
+  </a>
+  
+
+  
+                    </li>
+                  
+                    
+                    
+                    
+                    <li class="devsite-nav-item">
+                      
+  
+  <a href="/fuchsia-src/contribute/governance/governance"
+    
+       class="devsite-nav-title gc-analytics-event
+              
+              "
+    
+
+    
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Tab: Governance"
+      
+        track-name="governance"
+      
+    
+     data-category="Site-Wide Custom Events"
+     data-label="Responsive Tab: Governance"
+     track-type="globalNav"
+     track-metadata-eventDetail="globalMenu"
+     track-metadata-position="nav">
+  
+    <span class="devsite-nav-text" tooltip >
+      Governance
+   </span>
+    
+  
+  </a>
+  
+
+  
+                    </li>
+                  
+                    
+                    
+                    
+                    <li class="devsite-nav-item">
+                      
+  
+  <a href="/fuchsia-src/glossary"
+    
+       class="devsite-nav-title gc-analytics-event
+              
+              "
+    
+
+    
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Tab: Glossary"
+      
+        track-name="glossary"
+      
+    
+     data-category="Site-Wide Custom Events"
+     data-label="Responsive Tab: Glossary"
+     track-type="globalNav"
+     track-metadata-eventDetail="globalMenu"
+     track-metadata-position="nav">
+  
+    <span class="devsite-nav-text" tooltip >
+      Glossary
+   </span>
+    
+  
+  </a>
+  
+
+  
+                    </li>
+                  
+                </ul>
+              
+            </li>
+          
+            <li class="devsite-nav-item">
+              
+  
+  <a href="/reference"
+    
+       class="devsite-nav-title gc-analytics-event
+              
+              "
+    
+
+    
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Tab: Reference"
+      
+        track-name="reference"
+      
+    
+     data-category="Site-Wide Custom Events"
+     data-label="Responsive Tab: Reference"
+     track-type="globalNav"
+     track-metadata-eventDetail="globalMenu"
+     track-metadata-position="nav">
+  
+    <span class="devsite-nav-text" tooltip >
+      Reference
+   </span>
+    
+  
+  </a>
+  
+
+  
+              
+            </li>
+          
+            <li class="devsite-nav-item">
+              
+  
+  <a href="/whats-new/release-notes"
+    
+       class="devsite-nav-title gc-analytics-event
+              
+              "
+    
+
+    
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Tab: What&#39;s new"
+      
+        track-name="what&#39;s new"
+      
+    
+     data-category="Site-Wide Custom Events"
+     data-label="Responsive Tab: What&#39;s new"
+     track-type="globalNav"
+     track-metadata-eventDetail="globalMenu"
+     track-metadata-position="nav">
+  
+    <span class="devsite-nav-text" tooltip >
+      What&#39;s new
+   </span>
+    
+  
+  </a>
+  
+
+  
+              
+            </li>
+          
+            <li class="devsite-nav-item">
+              
+  
+  <a href="/fuchsia-src/development"
+    
+       class="devsite-nav-title gc-analytics-event
+              
+              "
+    
+
+    
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Tab: Fuchsia platform"
+      
+        track-name="fuchsia platform"
+      
+    
+     data-category="Site-Wide Custom Events"
+     data-label="Responsive Tab: Fuchsia platform"
+     track-type="globalNav"
+     track-metadata-eventDetail="globalMenu"
+     track-metadata-position="nav">
+  
+    <span class="devsite-nav-text" tooltip >
+      Fuchsia platform
+   </span>
+    
+  
+  </a>
+  
+
+  
+              
+            </li>
+          
+          
+          
+        </ul>
+      
+    </div>
+    
+      <div class="devsite-mobile-nav-bottom">
+        
+          
+          <ul class="devsite-nav-list" menu="_book">
+            <li class="devsite-nav-item"><a href="/fuchsia-src/concepts"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li>
+
+  <li class="devsite-nav-item"><a href="/fuchsia-src/concepts/software_model"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Software model</span></a></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Principles</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/principles/simple"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Simple</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/principles/secure"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Secure</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/principles/updatable"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Updatable</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/principles/performant"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Performant</span></a></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Accessibility</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/accessibility/accessibility_framework"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Accessibility Framework</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/accessibility/semantics"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Semantics</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/accessibility/accessibility-focus"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Accessibility Focus</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/accessibility/tts"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Text-to-speech for accessibility</span></a></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Components</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/introduction"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Introduction to components</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/component_manager"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Component manager</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/component_manifests"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Component manifests</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/subpackaging"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Subpackaging</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/lifecycle"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Lifecycle</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/topology"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Topology</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/identifiers"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Identifiers</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/realms"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Realms</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/environments"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Environments</span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Capabilities</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities/configuration"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Configuration capabilities</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities/dictionary"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Dictionary capabilities</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities/directory"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Directory capabilities</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities/event"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Event capabilities</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities/protocol"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Protocol capabilities</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities/resolver"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Resolver capabilities</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities/runner"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Runner capabilities</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities/service"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Service capabilities</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities/storage"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Storage capabilities</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities/life_of_a_protocol_open"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Life of a protocol open</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/capabilities/availability"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Availability</span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Using runners</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/elf_runner"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>ELF runner</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/driver_runner"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Driver runner</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/starnix"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Starnix</span></a></li></ul></div></li></ul></div></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/configuration"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Configuration</span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Diagnostics</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/diagnostics"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li></ul></div></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Internals</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/contribute/governance/rfcs/0093_component_manifest_design_principles"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Component manifest design principles</span></a></li></ul></div></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Analogies and Comparisons</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/components_vs_processes"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Components vs. processes</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/components/v2/components_as_classes"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Object-Oriented Design for Components</span></a></li></ul></div></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Drivers</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/drivers"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/drivers/driver_framework"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Driver framework (DFv2)</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/drivers/drivers_and_nodes"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Drivers and nodes</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/drivers/driver_binding"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Driver binding</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/drivers/driver_communication"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Driver communication</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/drivers/mapping-a-devices-memory-in-a-driver"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Mapping a device&#39;s memory in a driver</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/drivers/driver-dispatcher-and-threads"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Driver dispatcher and threads</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/drivers/driver-dispatcher-performance"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Driver dispatcher performance</span></a></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Filesystems</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/filesystems/filesystems"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Filesystem architecture</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/filesystems/minfs"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>MinFS</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/filesystems/blobfs"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>BlobFS</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/filesystems/random-access-compression"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Random access compression in BlobFS</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/filesystems/dotdot"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>&#34;dot dot&#34; (..) considered harmful</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/filesystems/block_devices"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Block devices</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/filesystems/zxcrypt"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>zxcrypt</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/filesystems/life_of_an_open"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Life of an open</span></a></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Memory</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/memory/address_spaces"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Address spaces</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/memory/memory_reclamation"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Memory reclamation</span></a></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Process</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item
+           devsite-nav-experimental"><a href="/fuchsia-src/concepts/process/overview"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span><span class="devsite-nav-icon material-icons"
+        data-icon="experimental"
+        data-title="Experimental!"
+        aria-hidden="true"></span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/process/core_libraries"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Core libraries</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/process/namespaces"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Namespaces</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/process/sandboxing"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Sandboxing</span></a></li><li class="devsite-nav-item
+           devsite-nav-experimental"><a href="/fuchsia-src/concepts/process/jobs"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Jobs</span><span class="devsite-nav-icon material-icons"
+        data-icon="experimental"
+        data-title="Experimental!"
+        aria-hidden="true"></span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Booting</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/process/everything_between_power_on_and_your_component"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Everything between power on and your component</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/process/process_creation"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Process creation</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/process/program_loading"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Program loading</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/process/userboot"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Userspace bootstrapping</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/process/why_fuchsia_devices_reboot"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Why Fuchsia devices reboot</span></a></li></ul></div></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>FIDL</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/fidl/overview"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/fidl/life-of-a-handle"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Life of a handle</span></a></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Kernel</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/concepts"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Zircon concepts</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/zx_and_lk"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Zircon and LK</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/libc"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>C library (libc)</span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Kernel objects</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/handles"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Handles</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/rights"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Rights</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/signals"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Signals</span></a></li></ul></div></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>System calls</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/life_of_a_syscall"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Life of a Fuchsia syscall</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/vdso"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>vDSO (libzircon)</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/system"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Fuchsia system interface</span></a></li></ul></div></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Scheduling</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/kernel_scheduling"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Zircon scheduling</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/fair_scheduler"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Fair scheduler</span></a></li></ul></div></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Runtime lock</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/lockdep"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Runtime lock validation</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/lockdep-design"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Lock validation design</span></a></li></ul></div></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Security</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/safestack"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Safe stack</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/shadow_call_stack"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Shadow call stack</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/cprng"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Random number generator</span></a></li></ul></div></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Errors and exceptions</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/errors"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Errors</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/exceptions"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Exceptions</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/kernel_internal_errors"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Kernel internal errors</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/ipc_limits"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>IPC Limits</span></a></li></ul></div></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Waiting</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/timer_slack"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Timer slack</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/clock_transformations"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Clock transformations</span></a></li></ul></div></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Time</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/time/overview"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/time/boot"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Boot time</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/time/monotonic"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Monotonic time</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/time/local"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Local</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/time/language_support"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Language Support</span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>UTC</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/time/utc/overview"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/time/utc/architecture"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Architecture</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/time/utc/algorithms"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Algorithms</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/time/utc/behavior"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Behavior</span></a></li></ul></div></li></ul></div></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Tracing</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/tracing-system"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Fuchsia tracing system</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/tracing-provider-buffering-modes"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Tracing provider buffering modes</span></a></li></ul></div></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/entropy_quality_tests"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Entropy quality tests</span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Jitterentropy</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/jitterentropy"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Jitterentropy library</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/jitterentropy/config-basic"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Basic configuration</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/jitterentropy/config-tuning"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Tuning the configuration</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/jitterentropy/entropy_collection_todos"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Entropy collection TODOs</span></a></li></ul></div></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/suspend"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Suspend</span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Advanced</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/kernel_invariants"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Kernel invariants</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/sysret_problem"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Avoiding a problem with the SYSRET</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/watchdog"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Hardware watchdog timers</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/kernel/kernel_thread_signaling"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Kernel Thread Signaling</span></a></li></ul></div></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Packages</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/packages"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/packages/package"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Fuchsia packages</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/packages/package_url"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Fuchsia package URLs</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/packages/fuchsia_package_server"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Fuchsia package server</span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Software updates</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/packages/ota"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>OTA updates</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/packages/update_pkg"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>The update package</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/packages/software_update_system"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Software update system</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/packages/garbage_collection"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Garbage collection</span></a></li></ul></div></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Power framework</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/power/intro"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>An introduction to Power Framework</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/power/intro/basic_suspend_prevention"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Basic suspend prevention</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/power/intro/basic_pipeline_processing"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Basic pipeline processing</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/power/intro/basic_suspend_resume"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Taking action on suspend or resume</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/power/intro/advanced"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Advanced usage</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/power/intro/advanced_minimize_leases_wo_timeouts"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Minimizing wake leases without timeouts</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/power/intro/advanced_minimize_leases_timeouts"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Minimizing wake leases with timeouts</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/power/intro/in_depth_overview"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Power framework in-depth</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/power/intro/power_dag"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Power DAG</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/power/intro/running_the_dag"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Running the DAG</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/power/intro/observing"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Observing without impacting</span></a></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Software Assembly</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/software_assembly/overview"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Security</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/security/verified_execution"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Verified Execution</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/security/merkleroot"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Fuchsia merkle roots</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/security/trust_stores"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>TLS trust stores</span></a></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Starnix</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/starnix"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/starnix/kernel"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Starnix Kernel</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/starnix/syscalls"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Making Linux syscalls in Fuchsia</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/starnix/containers"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Starnix container</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/starnix/vfs"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Starnix Virtual File System (VFS)</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/starnix/signals"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Signal translation in Starnix</span></a></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>User interface</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/ui-client"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>User Interface Client</span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Scenic</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/scenic"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Flatland</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/scenic/flatland"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/scenic/flatland/timeline"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Flatland timeline</span></a></li></ul></div></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/scenic/life_of_a_pixel"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Life of a pixel</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/scenic/life_of_a_flatland_image"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Life of a Flatland image</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/scenic/frame_scheduling"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Frame Scheduling</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/scenic/views"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>View System</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/scenic/input"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Pointer input</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/scenic/color_spaces"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Color spaces</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/scenic/display"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Display</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/scenic/screen_capture"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Screen Capture</span></a></li></ul></div></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Input</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/input"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/input/mouse"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Mouse</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/input/mouse_scroll"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Mouse Scroll</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/input/focus"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Focus</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/input/hit_testing"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Hit Testing</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/input/semantic_visibility"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Semantic Visibility</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/input/scene_root"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Scene Root</span></a></li><li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Testing</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/ui/input/testing"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li></ul></div></li></ul></div></li></ul></div></li>
+
+  <li class="devsite-nav-item
+           devsite-nav-expandable"><div class="devsite-expandable-nav">
+      <a class="devsite-nav-toggle" aria-hidden="true"></a><div class="devsite-nav-title devsite-nav-title-no-path" tabindex="0" role="button">
+        <span class="devsite-nav-text" tooltip>Versioning</span>
+      </div><ul class="devsite-nav-section"><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/versioning"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Overview</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/versioning/api_levels"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>API levels</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/versioning/compatibility"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Compatibility</span></a></li><li class="devsite-nav-item"><a href="/fuchsia-src/concepts/versioning/release"
+        class="devsite-nav-title"
+      ><span class="devsite-nav-text" tooltip>Release</span></a></li></ul></div></li>
+          </ul>
+        
+        
+          
+    
+  
+    
+  
+    
+  
+    
+  
+        
+        
+          
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+        
+      </div>
+    
+  </div>
+</nav>
+          
+        </devsite-book-nav>
+      
+      <section id="gc-wrapper">
+        <main role="main" id="main-content" class="devsite-main-content"
+            
+              has-book-nav
+              has-sidebar
+            >
+          <div class="devsite-sidebar">
+            <div class="devsite-sidebar-content">
+                
+                <devsite-toc class="devsite-nav"
+                            role="navigation"
+                            aria-label="On this page"
+                            depth="2"
+                            scrollbars
+                            data-nosnippet
+                  ></devsite-toc>
+                <devsite-recommendations-sidebar class="nocontent devsite-nav" data-nosnippet>
+                </devsite-recommendations-sidebar>
+            </div>
+          </div>
+          <devsite-content>
+            
+              
+
+
+
+
+
+
+
+
+
+
+<article class="devsite-article">
+  
+  
+  
+  
+  
+
+  <div class="devsite-article-meta nocontent" role="navigation" data-nosnippet>
+    
+    
+    <ul class="devsite-breadcrumb-list"
+  
+    aria-label="Breadcrumb">
+  
+  <li class="devsite-breadcrumb-item
+             ">
+    
+    
+    
+      
+        
+  <a href="https://fuchsia.dev/"
+      
+        class="devsite-breadcrumb-link gc-analytics-event"
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Breadcrumbs"
+      
+        data-value="1"
+      
+        track-type="globalNav"
+      
+        track-name="breadcrumb"
+      
+        track-metadata-position="1"
+      
+        track-metadata-eventdetail="Fuchsia"
+      
+    >
+    
+          Fuchsia
+        
+  </a>
+  
+      
+    
+  </li>
+  
+  <li class="devsite-breadcrumb-item
+             ">
+    
+      
+      <div class="devsite-breadcrumb-guillemet material-icons" aria-hidden="true"></div>
+    
+    
+    
+      
+        
+  <a href="https://fuchsia.dev/fuchsia-src/get-started/learn"
+      
+        class="devsite-breadcrumb-link gc-analytics-event"
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Breadcrumbs"
+      
+        data-value="2"
+      
+        track-type="globalNav"
+      
+        track-name="breadcrumb"
+      
+        track-metadata-position="2"
+      
+        track-metadata-eventdetail=""
+      
+    >
+    
+          Discover
+        
+  </a>
+  
+      
+    
+  </li>
+  
+  <li class="devsite-breadcrumb-item
+             ">
+    
+      
+      <div class="devsite-breadcrumb-guillemet material-icons" aria-hidden="true"></div>
+    
+    
+    
+      
+        
+  <a href="https://fuchsia.dev/fuchsia-src/concepts"
+      
+        class="devsite-breadcrumb-link gc-analytics-event"
+      
+        data-category="Site-Wide Custom Events"
+      
+        data-label="Breadcrumbs"
+      
+        data-value="3"
+      
+        track-type="globalNav"
+      
+        track-name="breadcrumb"
+      
+        track-metadata-position="3"
+      
+        track-metadata-eventdetail=""
+      
+    >
+    
+          Concepts
+        
+  </a>
+  
+      
+    
+  </li>
+  
+</ul>
+    
+  </div>
+  
+    <h1 class="devsite-page-title" tabindex="-1">
+      Realms<devsite-actions hidden data-nosnippet>
+    <devsite-llm-tools></devsite-llm-tools></devsite-actions>
+  
+      
+    </h1>
+  <div class="devsite-page-title-meta"><devsite-view-release-notes></devsite-view-release-notes></div>
+  
+
+  <devsite-toc class="devsite-nav"
+    depth="2"
+    devsite-toc-embedded
+    >
+  </devsite-toc>
+  
+    
+  <div class="devsite-article-body clearfix
+  ">
+
+  
+    
+    
+<!-- original source of this page: https://cs.opensource.google/fuchsia/fuchsia/+/main:docs/concepts/components/v2/realms.md -->
+
+<!-- The header above is automatically added to this file. Do not modify anything above this line. -->
+
+
+
+<p>A 
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+          <a href="/docs/glossary#realm"><abbr data-title="Realm: A subtree of component instances in the component instance tree. Acts as a container for component instances and capabilities in the subtree.">Realm</abbr></a>
+          
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+   is the term for any 
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+          <a href="/docs/glossary#component"><abbr data-title="Component: Components are the common abstraction that defines how all software is described, sandboxed, and executed on a Fuchsia system.">Component</abbr></a>
+          
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+   and its
+
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+          <a href="/docs/glossary#child-component-instance"><abbr data-title="Child component instance: A child component instance is a component instance that is owned by another instance, the parent.">children</abbr></a>
+          
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+  . In other words, realm is another
+word for any sub-tree of the
+
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+          <a href="/docs/glossary#component-instance-tree"><abbr data-title="Component instance tree: A tree structure that represents the runtime state of parent-child relationships component instances.">component instance tree</abbr></a>
+          
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+  .</p>
+
+<p>Component instances may contain <a href="#child-component-instances">children</a>. Each
+
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+          <a href="/docs/glossary#child-component-instance"><abbr data-title="Child component instance: A child component instance is a component instance that is owned by another instance, the parent.">child component instance</abbr></a>
+          
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+   in turn
+defines its own 
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+          <a href="/docs/glossary#sub-realm"><abbr data-title="Sub-realm: A sub-realm is the realm corresponding to a child component instance.">sub-realm</abbr></a>
+          
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+  . The union of these
+sub-realms, along with the
+
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+          <a href="/docs/glossary#parent-component-instance"><abbr data-title="Parent component instance: A parent component instance is a component instance that owns other instances called child component instances">parent component instance</abbr></a>
+          
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+  , is
+equivalent to a subtree. Therefore, it is common to conceive of a realm as a
+component instance along with its set of children.</p>
+
+<p>Realms play a special role in the component framework. A realm is an
+<em>encapsulation boundary</em> for component instances. This means:</p>
+
+<ul>
+<li>Realms act as a 
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+          <a href="/docs/glossary#capability"><abbr data-title="Capability: A value that combines an object reference and a set of rights.">capability</abbr></a>
+          
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+   boundary. It&#39;s up to
+the realm to decide whether a capability originating in the realm can be
+
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+          <a href="/docs/glossary#capability-routing"><abbr data-title="Capability routing: A way for one component instance to give capabilities to another component instance.">routed</abbr></a>
+          
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+   to component instances
+outside of the realm. This is accomplished through an <a href="https://fuchsia.dev/reference/cml#expose"><code translate="no" dir="ltr">expose</code></a>
+declaration in a <a href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/component_manifests.md">component manifest</a>.</li>
+<li>The internal structure of a sub-realm is opaque to the parent component
+instance. For example, the sub-realm could be structured either as one or
+multiple component instances, and from the perspective of the parent
+component instance this looks the same as long as the sub-realm
+<a href="https://fuchsia.dev/reference/cml#expose">exposes</a> the same set of capabilities.</li>
+</ul>
+
+<p>A realm also acts as an <em>ownership boundary</em>, that is, a child component
+instance is the root of a sub-realm that is owned by the parent, who controls
+its existence. See <a href="#child-component-instances">Child component instances</a> for
+more information.</p>
+
+<h2 id="example" data-text="Example" tabindex="-1">Example</h2>
+
+<p>Here is an example of a realm with a capability routed through it:</p>
+
+<p><br><img src="/static/fuchsia-src/concepts/components/v2/images/realm_example.png" alt="Component tree diagram showing 'fuchsia.Echo' protocol routing from 'echo' up to 'shell' and down to 'echo_tool'."><br></p>
+
+<p>In this example, the <code translate="no" dir="ltr">shell</code> component has two children: <code translate="no" dir="ltr">tools</code> and <code translate="no" dir="ltr">services</code>.
+<code translate="no" dir="ltr">services</code> has two children, <code translate="no" dir="ltr">logger</code> and <code translate="no" dir="ltr">echo</code>, while <code translate="no" dir="ltr">tools</code> has one child
+<code translate="no" dir="ltr">echo_tool</code>. Components encapsulate their children, so while the <code translate="no" dir="ltr">shell</code>
+component sees its own children, it has no direct knowledge of its grandchildren
+<code translate="no" dir="ltr">echo_tool</code>, <code translate="no" dir="ltr">logger</code>, or <code translate="no" dir="ltr">echo</code>. Nevertheless, all of these component instances
+are considered part of the <code translate="no" dir="ltr">shell</code> realm.</p>
+
+<p>The arrows illustrate the path of an <code translate="no" dir="ltr">fuchsia.Echo</code> service capability that is
+routed through the realm from <code translate="no" dir="ltr">echo</code> to <code translate="no" dir="ltr">echo_tool</code>. The upward arrows
+correspond to <a href="https://fuchsia.dev/reference/cml#expose"><code translate="no" dir="ltr">expose</code></a> declarations, while the downward arrows
+represent <a href="https://fuchsia.dev/reference/cml#offer"><code translate="no" dir="ltr">offer</code></a> declarations. The <code translate="no" dir="ltr">expose</code> declarations cause
+<code translate="no" dir="ltr">fuchsia.Echo</code> to be exposed outside of the capability boundary of the
+corresponding realms. For example, if <code translate="no" dir="ltr">services</code> did not expose <code translate="no" dir="ltr">fuchsia.Echo</code>,
+<code translate="no" dir="ltr">shell</code> would not be aware that <code translate="no" dir="ltr">fuchsia.Echo</code> exists, and could not offer the
+service to its children or access it at runtime.</p>
+
+<p>For a more detailed walkthrough of capability routing with this example, see the
+<a href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/component_manifests.md#examples">component manifest capability routing example</a>.</p>
+
+<h2 id="child-component-instances" transformation="converted" data-text="Child component instances" tabindex="-1">Child component instances</h2>
+
+<p>Component instances may contain children. Child component instances are
+considered part of the parent instance&#39;s definition and are wholly owned by the
+parent. This has the following implications:</p>
+
+<ul>
+<li>A component instance decides what children it contains, and when its
+children are created and destroyed.</li>
+<li>A component instance cannot exist without its parent.</li>
+<li>A component instance may not execute unless its parent is executing.</li>
+<li>A component instance determines the capabilities available to its children
+by making <a href="https://fuchsia.dev/reference/cml#offer"><code translate="no" dir="ltr">offer</code></a> declarations to them.</li>
+<li>A component instance has some degree of control over the behavior of its
+children. For example, a component instance may bind to capabilities exposed
+from the child&#39;s realm through the <a href="#realm-framework-protocol"><code translate="no" dir="ltr">Realm</code></a>
+framework service, or set hooks to intercept child lifecycle events. This
+control is not absolute, however. For example, a component instance cannot
+use a capability from a sub-realm that was not explicitly exposed to it.</li>
+</ul>
+
+<p>There are two varieties of child component instances, <a href="#static-children">static</a>
+and <a href="#dynamic-children">dynamic</a>.</p>
+
+<h3 id="static-children" transformation="converted" data-text="Static children" tabindex="-1">Static children</h3>
+
+<p>A <em>static child</em> is a component instance that was statically declared in the
+component&#39;s <a href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/component_manifests.md">manifest</a> by a <a href="https://fuchsia.dev/reference/cml#children"><code translate="no" dir="ltr">children</code></a>
+declaration. This declaration is necessary and sufficient to establish the child
+component instance&#39;s existence.</p>
+
+<p>Typically, a child should be statically declared unless it has a reason to be
+dynamic (see <a href="#dynamic-children">Dynamic children</a>). When a child is statically
+declared, its definition and capabilities can be audited and capabilities can be
+statically routed from it.</p>
+
+<p>A static child is defined, foremost, by two pieces of information:</p>
+
+<ul>
+<li>The child instance&#39;s <em>name</em>. The name is local to the parent component
+instance, and is used to form <a href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/identifiers.md#monikers">monikers</a>. It is valid to declare
+multiple children with the same URL and different names.</li>
+<li>The child instance&#39;s <a href="/docs/concepts/components/v2/identifiers#component-urls">component URL</a>.</li>
+</ul>
+
+<p>For information on providing additional configuration information to child
+declarations, see <a href="https://fuchsia.dev/reference/cml#children">children</a>.</p>
+
+<h3 id="dynamic-children" transformation="converted" data-text="Dynamic children" tabindex="-1">Dynamic children</h3>
+
+<p>A <em>dynamic child</em> is a component instance that was created at runtime in a
+<a href="#collections">component collection</a>. A dynamic child is always scoped
+to a particular collection. Dynamic children can be used to support use cases
+where the existence or cardinality of component instances cannot be determined
+in advance. For example, a testing realm might declare a collection in which
+test component instances can be created.</p>
+
+<p>Most of the metadata to create a dynamic child is identical to that used to
+declare a static instance, except that it&#39;s provided at runtime. The name of a
+dynamic child is implicitly scoped to its collection; thus it is possible to
+have two dynamic children in two different collections with the same name.</p>
+
+<p>Capabilities cannot be statically routed from dynamic instances. This is an
+inherent restriction: there&#39;s no way to statically declare a route from a
+capability exposed by a dynamic instance. However, certain capabilities can be
+routed from the collection as a whole. TODO: service directories as an example</p>
+
+<h3 id="collections" transformation="converted" data-text="Component collections" tabindex="-1">Component collections</h3>
+
+<p>A <em>collection</em> is a container for <a href="#dynamic-children">dynamic children</a> that
+may be created and destroyed at runtime using the
+<a href="#realm-framework-protocol">Realm</a> framework service.</p>
+
+<p>Collections support two modes of <em>durability</em>:</p>
+
+<ul>
+<li><em>Transient</em>: The instances in a <em>transient</em> collection are automatically
+destroyed when the instance containing the collection is stopped.</li>
+<li><em>Single Run</em>: The instances in a <em>single run</em> collection are started when
+they are created, and destroyed when they are stopped. This means that the
+instances in a single run collection can only be run once.</li>
+</ul>
+
+<p>For more information about component execution and persistence, see
+<a href="/docs/concepts/components/v2/lifecycle">lifecycle</a>.</p>
+
+<p>Collections are declared in the <a href="https://fuchsia.dev/reference/cml#collections"><code translate="no" dir="ltr">collections</code></a> section of a
+component manifest. When an <a href="https://fuchsia.dev/reference/cml#offer"><code translate="no" dir="ltr">offer</code></a> declaration targets a collection,
+the offered capability is made available to every instance in the collection.
+Some capabilities can be exposed or offered from the collection as a whole, as
+an aggregation over the corresponding capabilities exposed by the instances in
+the collection.</p>
+
+<p>TODO: service directories as an example</p>
+
+<h4 id="example_2" data-text="Example" tabindex="-1">Example</h4>
+
+<p>The following diagram illustrates a realm with a collection:</p>
+
+<p><br><img src="/static/fuchsia-src/concepts/components/v2/images/collection_example.png" alt="Collection example"><br></p>
+
+<p>In this example, the <code translate="no" dir="ltr">shell</code> component declares a static child <code translate="no" dir="ltr">console</code> and a
+collection <code translate="no" dir="ltr">(tools)</code>, highlighted by the grey background (the <code translate="no" dir="ltr">()</code> notation
+denotes a collection). <code translate="no" dir="ltr">(tools)</code> contains two dynamic instances, <code translate="no" dir="ltr">ls</code> and
+<code translate="no" dir="ltr">grep</code>. These instances are dynamic children of <code translate="no" dir="ltr">shell</code>, scoped to <code translate="no" dir="ltr">(tools)</code>.
+The use of a collection implies that the existence of <code translate="no" dir="ltr">ls</code> and <code translate="no" dir="ltr">grep</code> is not
+known in advance. This is plausible if you imagine that <code translate="no" dir="ltr">ls</code> and <code translate="no" dir="ltr">grep</code> are
+command-line tools that are instantiated on demand as the user requests them.</p>
+
+<p>The example also illustrates a capability routing path with the arrows. First,
+<code translate="no" dir="ltr">console</code> <a href="https://fuchsia.dev/reference/cml#expose">exposes</a> <code translate="no" dir="ltr">fuchsia.Console</code> to its parent <code translate="no" dir="ltr">shell</code>, which
+<a href="https://fuchsia.dev/reference/cml#offer">offers</a> it to <code translate="no" dir="ltr">(tools)</code>. <code translate="no" dir="ltr">fuchsia.Console</code> then becomes available for
+any component instance in the collection to <a href="https://fuchsia.dev/reference/cml#use">use</a> -- it does not need to be
+routed to the dynamic instances independently.</p>
+
+<h2 id="environments" transformation="converted" data-text="Environments" tabindex="-1">Environments</h2>
+
+<p>Every realm is assigned an <a href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/environments.md">environment</a>, which configures certain
+choices the framework makes for components in a realm. For example,
+<a href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/capabilities/runner.md">runner capabilities</a> are registered to an environment, which makes
+them available to any component instance in the realm. Read
+<a href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/environments.md">Environments</a> for information on what properties are configurable
+through the environment.</p>
+
+<h2 id="realm-framework-protocol" transformation="converted" data-text="The Realm framework protocol" tabindex="-1">The Realm framework protocol</h2>
+
+<p>There is a <a href="https://fuchsia.dev/fuchsia-src/concepts/components/v2/capabilities/protocol.md#framework">framework protocol</a> available to every
+component, <a href="https://fuchsia.dev/reference/fidl/fuchsia.component#Realm"><code translate="no" dir="ltr">fuchsia.component.Realm</code></a>. The <code translate="no" dir="ltr">Realm</code> protocol provides
+APIs for a component instance to manage the children in its realm, such as
+binding to children and creating dynamic children. See the linked FIDL
+definitions for full documentation.</p>
+
+<!-- The footer below is automatically added to this file. Do not modify anything below this line. -->
+
+<div class="align-right">
+<a href="https://issues.fuchsia.dev/issues/new?component=1439230&template=1881640&description=Issue%20on:%20https://fuchsia.dev/docs/concepts/components/v2/realms.md" title="Report a bug or suggest improvements on this page"><span class="material-icons" style="font-size: 18px" aria-hidden="true" translate="no">bug_report</span></a>
+<a href="https://cs.opensource.google/fuchsia/fuchsia/+/main:docs/concepts/components/v2/realms.md" title="View the source code of this page"><span class="material-icons" style="font-size: 18px" aria-hidden="true" translate="no">code</span></a>
+<a href="https://ci.android.com/edit?repo=fuchsia/fuchsia/main&file=docs/concepts/components/v2/realms.md&cloneRepo=fuchsia/fuchsia:refs/heads/main&fullPath=fuchsia/docs/concepts/components/v2/realms.md" title="Edit the source code of this page"><span class="material-icons" style="font-size: 18px" aria-hidden="true" translate="no">edit</span></a>
+</div>
+
+  
+
+  
+</div>
+
+  
+    
+    
+    
+  
+
+  <div class="devsite-floating-action-buttons"></div></article>
+
+
+<devsite-content-footer class="nocontent" data-nosnippet>
+  <p>Except as otherwise noted, the content of this page is licensed under the <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 License</a>, and code samples are licensed under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache 2.0 License</a>. For details, see the <a href="https://developers.google.com/site-policies">Google Developers Site Policies</a>. Java is a registered trademark of Oracle and/or its affiliates.</p>
+  <p>Last updated 2026-07-09 UTC.</p>
+</devsite-content-footer>
+
+
+<devsite-notification
+>
+</devsite-notification>
+
+
+  
+<div class="devsite-content-data">
+  
+  
+    <template class="devsite-content-data-template">
+      [[["Easy to understand","easyToUnderstand","thumb-up"],["Solved my problem","solvedMyProblem","thumb-up"],["Other","otherUp","thumb-up"]],[["Missing the information I need","missingTheInformationINeed","thumb-down"],["Too complicated / too many steps","tooComplicatedTooManySteps","thumb-down"],["Out of date","outOfDate","thumb-down"],["Samples / code issue","samplesCodeIssue","thumb-down"],["Other","otherDown","thumb-down"]],["Last updated 2026-07-09 UTC."],[],[]]
+    </template>
+  
+</div>
+            
+          </devsite-content>
+        </main>
+        <devsite-footer-promos class="devsite-footer">
+          
+            
+          
+        </devsite-footer-promos>
+        <devsite-footer-linkboxes class="devsite-footer">
+          
+            
+<nav class="devsite-footer-linkboxes nocontent"
+     aria-label="Footer links"
+     data-nosnippet>
+  
+</nav>
+          
+        </devsite-footer-linkboxes>
+        <devsite-footer-utility class="devsite-footer">
+          
+            
+
+<div class="devsite-footer-utility nocontent" data-nosnippet>
+  
+
+  
+  <nav class="devsite-footer-utility-links" aria-label="Utility links">
+    
+    <ul class="devsite-footer-utility-list">
+      
+      <li class="devsite-footer-utility-item
+                 ">
+        
+        
+        <a class="devsite-footer-utility-link gc-analytics-event"
+           href="//policies.google.com/terms"
+           data-category="Site-Wide Custom Events"
+           data-label="Footer Terms link"
+         >
+          Terms
+        </a>
+        
+      </li>
+      
+      <li class="devsite-footer-utility-item
+                 ">
+        
+        
+        <a class="devsite-footer-utility-link gc-analytics-event"
+           href="//policies.google.com/privacy"
+           data-category="Site-Wide Custom Events"
+           data-label="Footer Privacy link"
+         >
+          Privacy
+        </a>
+        
+      </li>
+      
+      <li class="devsite-footer-utility-item
+                 glue-cookie-notification-bar-control">
+        
+        
+        <a class="devsite-footer-utility-link gc-analytics-event"
+           href="#"
+           data-category="Site-Wide Custom Events"
+           data-label="Footer Manage cookies link"
+         
+           aria-hidden="true"
+         >
+          Manage cookies
+        </a>
+        
+      </li>
+      
+    </ul>
+    
+    
+<devsite-language-selector>
+  <ul role="presentation">
+    
+    
+    <li role="presentation">
+      <a role="menuitem" lang="en"
+        >English</a>
+    </li>
+    
+    <li role="presentation">
+      <a role="menuitem" lang="zh_cn"
+        >中文 – 简体</a>
+    </li>
+    
+    <li role="presentation">
+      <a role="menuitem" lang="zh_tw"
+        >中文 – 繁體</a>
+    </li>
+    
+  </ul>
+</devsite-language-selector>
+
+  </nav>
+</div>
+          
+        </devsite-footer-utility>
+        <devsite-panel>
+          
+        </devsite-panel>
+        
+      </section>
+      </section>
+    <devsite-sitemask></devsite-sitemask>
+    <devsite-snackbar></devsite-snackbar>
+    <devsite-tooltip ></devsite-tooltip>
+    <devsite-heading-link></devsite-heading-link>
+    <devsite-analytics>
+      
+        <script type="application/json" analytics>[{&#34;dimensions&#34;: {&#34;dimension6&#34;: false, &#34;dimension1&#34;: &#34;Signed out&#34;, &#34;dimension4&#34;: &#34;en&#34;, &#34;dimension2&#34;: false, &#34;dimension3&#34;: &#34;en&#34;}, &#34;gaid&#34;: &#34;UA-127897021-4&#34;, &#34;metrics&#34;: {&#34;ratings_value&#34;: &#34;metric1&#34;, &#34;ratings_count&#34;: &#34;metric2&#34;}, &#34;purpose&#34;: 0}]</script>
+<script type="application/json" tag-management>{&#34;at&#34;: &#34;True&#34;, &#34;ga4&#34;: [{&#34;id&#34;: &#34;G-E0J15V8K19&#34;, &#34;purpose&#34;: 0}], &#34;ga4p&#34;: [{&#34;id&#34;: &#34;G-E0J15V8K19&#34;, &#34;purpose&#34;: 0}], &#34;gtm&#34;: [], &#34;parameters&#34;: {&#34;internalUser&#34;: &#34;False&#34;, &#34;language&#34;: {&#34;machineTranslated&#34;: &#34;False&#34;, &#34;requested&#34;: &#34;en&#34;, &#34;served&#34;: &#34;en&#34;}, &#34;pageType&#34;: &#34;article&#34;, &#34;projectName&#34;: &#34;Fuchsia&#34;, &#34;signedIn&#34;: &#34;False&#34;, &#34;tenant&#34;: &#34;fuchsia&#34;, &#34;recommendations&#34;: {&#34;sourcePage&#34;: &#34;&#34;, &#34;sourceType&#34;: 0, &#34;sourceRank&#34;: 0, &#34;sourceIdenticalDescriptions&#34;: 0, &#34;sourceTitleWords&#34;: 0, &#34;sourceDescriptionWords&#34;: 0, &#34;experiment&#34;: &#34;&#34;}, &#34;experiment&#34;: {&#34;ids&#34;: &#34;&#34;}}}</script>
+      
+    </devsite-analytics>
+    
+    
+    
+    
+<script nonce="vRbbNVGHdlaVK0utIBtumUo9TCZRTr">
+  
+  (function(d,e,v,s,i,t,E){d['GoogleDevelopersObject']=i;
+    t=e.createElement(v);t.async=1;t.src=s;E=e.getElementsByTagName(v)[0];
+    E.parentNode.insertBefore(t,E);})(window, document, 'script',
+    'https://www.gstatic.com/devrel-devsite/prod/v5e941f15ff6710591bee254538202655020220785b40a3f4d932e94adb9f6037/fuchsia/js/app_loader.js', '[32,"en",null,"/js/devsite_app_module.js","https://www.gstatic.com/devrel-devsite/prod/v5e941f15ff6710591bee254538202655020220785b40a3f4d932e94adb9f6037","https://www.gstatic.com/devrel-devsite/prod/v5e941f15ff6710591bee254538202655020220785b40a3f4d932e94adb9f6037/fuchsia","https://fuchsia-dot-devsite-v2-prod-3p.appspot.com",null,null,["/_pwa/fuchsia/manifest.json","https://www.gstatic.com/devrel-devsite/prod/v5e941f15ff6710591bee254538202655020220785b40a3f4d932e94adb9f6037/images/video-placeholder.svg","https://www.gstatic.com/devrel-devsite/prod/v5e941f15ff6710591bee254538202655020220785b40a3f4d932e94adb9f6037/fuchsia/images/favicon.png","https://www.gstatic.com/devrel-devsite/prod/v5e941f15ff6710591bee254538202655020220785b40a3f4d932e94adb9f6037/fuchsia/images/lockup.svg","https://fonts.googleapis.com/css?family=DM+Sans:400,500,700|Roboto:300,400,400italic,500,500italic,700,700italic|Roboto+Mono:400,500,700&display=swap"],1,null,[1,6,8,12,14,17,21,25,50,52,63,70,75,76,80,87,91,92,93,97,98,100,101,102,103,104,105,107,108,109,110,112,113,116,117,118,120,122,124,125,126,127,129,130,131,132,133,134,135,136,138,140,141,147,148,149,151,152,156,157,158,159,161,163,164,168,169,170,179,180,182,183,186,191,193,196],"AIzaSyCNm9YxQumEXwGJgTDjxoxXK6m1F-9720Q","AIzaSyCc76DZePGtoyUjqKrLdsMGk_ry7sljLbY","fuchsia.dev","AIzaSyB9bqgQ2t11WJsOX8qNsCQ6U-w91mmqF-I","AIzaSyAdYnStPdzjcJJtQ0mvIaeaMKj7_t6J_Fg",null,null,null,["Experiments__reqs_query_experiments","CloudShell__cloud_code_overflow_menu","Profiles__enable_page_saving","MiscFeatureFlags__enable_firebase_utm","Cloud__enable_cloudx_experiment_ids","DevPro__enable_code_assist","Profiles__enable_playlist_community_acl","MiscFeatureFlags__developers_footer_dark_image","Search__enable_dynamic_content_confidential_banner","EngEduTelemetry__enable_engedu_telemetry","DevPro__enable_google_one_card","Cloud__fast_free_trial","MiscFeatureFlags__enable_explicit_template_dependencies","MiscFeatureFlags__fix_lower_breadcrumbs","Cloud__enable_cloud_shell","SignIn__enable_l1_signup_flow","DevPro__enable_free_benefits","DevPro__enable_credits_banner","DevPro__remove_eu_tax_intake_form","Cloud__enable_legacy_calculator_redirect","Profiles__enable_callout_notifications","TpcFeatures__proxy_prod_host","Profiles__enable_developer_profiles_callout","MiscFeatureFlags__enable_project_variables","Profiles__enable_dashboard_curated_recommendations","Concierge__enable_pushui","MiscFeatureFlags__enable_framebox_badge_methods","Profiles__enable_purchase_prompts","MiscFeatureFlags__enable_explain_this_code","BookNav__enable_tenant_cache_key","Concierge__enable_remove_info_panel_tags","Profiles__enable_join_program_group_endpoint","Profiles__enable_complete_playlist_endpoint","Search__enable_page_map","Cloud__enable_cloud_shell_fte_user_flow","Analytics__enable_clearcut_logging","Search__enable_ai_search_summaries_for_all","DevPro__enable_nvidia_credits_card","Profiles__enable_awarding_url","MiscFeatureFlags__enable_appearance_cookies","Cloud__cache_serialized_dynamic_content","Profiles__enable_developer_profile_pages_as_content","TpcFeatures__enable_unmirrored_page_left_nav","Profiles__enable_targeted_hero","AIStudioInteractionsToggle__interactions_are_default","Cloud__enable_free_trial_server_call","DevPro__enable_g1_ineligible_redirect","DevPro__enable_google_payments","DevPro__enable_enterprise","Cloud__enable_cloud_dlp_service","Search__enable_ai_eligibility_checks","DevPro__enable_developer_subscriptions","CloudShell__cloud_shell_button","MiscFeatureFlags__remove_cross_domain_tracking_params","DevPro__enable_vertex_credit_card","MiscFeatureFlags__enable_variable_operator","Concierge__enable_actions_menu","DevPro__enable_firebase_workspaces_card","Profiles__enable_profile_collections","Profiles__enable_completecodelab_endpoint","Profiles__enable_developer_profile_benefits_ui_redesign","DevPro__enable_embed_profile_creation","DevPro__enable_devpro_offers","DevPro__enable_google_payments_buyflow","Search__enable_suggestions_from_borg","MiscFeatureFlags__gdp_dashboard_reskin_enabled","MiscFeatureFlags__developers_footer_image","Profiles__enable_user_type","Profiles__enable_auto_apply_credits","Profiles__enable_public_developer_profiles","Profiles__enable_stripe_subscription_management","Concierge__enable_devsite_llm_tools","Profiles__require_profile_eligibility_for_signin","DevPro__enable_cloud_innovators_plus","MiscFeatureFlags__enable_variable_operator_index_yaml","DevPro__enable_g1_integration","Profiles__enable_release_notes_notifications","MiscFeatureFlags__enable_view_transitions","Analytics__enable_devpro_interaction_logging","DevPro__enable_devsite_captcha","Profiles__enable_completequiz_endpoint","Profiles__enable_recognition_badges"],null,null,"AIzaSyA58TaKli1DculwmAmbpzLVGuWc8eCQgQc","https://developerscontentserving-pa.googleapis.com","AIzaSyDWBU60w0P9hEkr29kkksYs8Z7gvZ8u_wc","https://developerscontentsearch-pa.googleapis.com",2,4,null,"https://developerprofiles-pa.googleapis.com",[32,"fuchsia","Fuchsia","fuchsia.dev",null,"fuchsia-dot-devsite-v2-prod-3p.appspot.com",null,null,[null,null,null,null,null,null,null,null,null,null,null,[1],null,null,null,null,null,null,[1],null,null,null,null,null,null,null,null,null,null,[1],[1]],null,[44,null,null,null,null,null,"/images/lockup.svg","/images/json-ld-logo.png",null,null,null,1,null,null,null,null,null,null,null,null,null,1,null,null,null,"/images/lockup-dark-theme.svg",[]],[],null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,[44,null,null,null,null,null,"/images/lockup.svg","/images/json-ld-logo.png",null,null,null,1,null,null,null,null,null,null,null,null,null,1,null,null,null,"/images/lockup-dark-theme.svg"],null,null,null,null,null,null,null,[[null,null,null,null,null,null,[null,[["docType","Choose a content type",[["Guide",null,null,null,null,null,null,null,null,"Workflow"],["Overview",null,null,null,null,null,null,null,null,"Concept"],["ApiReference",null,null,null,null,null,null,null,null,"Reference"]]],["category","Choose a topic",[["FuchsiaBuild",null,null,null,null,null,null,null,null,"Build"],["FuchsiaDevelopment",null,null,null,null,null,null,null,null,"Development"],["FuchsiaFidl",null,null,null,null,null,null,null,null,"FIDL"],["FuchsiaHardwareAndDrivers",null,null,null,null,null,null,null,null,"Hardware and drivers"],["FuchsiaKernel",null,null,null,null,null,null,null,null,"Kernel"],["FuchsiaPowerAndPerformance",null,null,null,null,null,null,null,null,"Power and performance"],["FuchsiaSDK",null,null,null,null,null,null,null,null,"SDK"],["FuchsiaSecurityAndCompliance",null,null,null,null,null,null,null,null,"Security and compliance"],["FuchsiaStarnix",null,null,null,null,null,null,null,null,"Starnix"],["FuchsiaSystems",null,null,null,null,null,null,null,null,"Fuchsia systems"],["FuchsiaTestAndDebug",null,null,null,null,null,null,null,null,"Test and debug"],["FuchsiaTools",null,null,null,null,null,null,null,null,"Tools"]]]]]],[1,1]],[[["UA-127897021-4"],["UA-127897021-3"],null,null,["UA-127897021-5"],null,null,[["G-E0J15V8K19"],null,null,[["G-E0J15V8K19",1]]],[["UA-127897021-4",1]],null,[["UA-127897021-5",1]],null,1],[[6,8],[3,4],[1,1],[4,5],[2,2]],[[2,2],[1,1]]],null,4],null,null,1,1,"https://developerscontentinsights-pa.googleapis.com","AIzaSyC11xEGtFhkmSh_iF6l_itbxnFz2GrIBOg","AIzaSyAXJ10nRF73mmdSDINgkCNX5bbd2KPcWm8","https://developers.googleapis.com",null,null,"AIzaSyCjP0KOnHfv8mwe38sfzZJMOnqE3HvrD4A",null,null,"https://developers.googleapis.com"]')
+  
+</script>
+
+    <devsite-a11y-announce></devsite-a11y-announce>
+  </body>
+</html>
