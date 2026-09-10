@@ -178,19 +178,85 @@ implementation pipeline is not.
 The output is a corrected row and a `records/` line, not a new artifact under
 `docs/elements/specs/`.
 
-### The 47 `design` orphans: a rationale artifact, then the ordinary pipeline
+### The `design` orphans: a full review and mint, in a dedicated session
 
-These are minted, unbuilt, and unspeccable. They need what the retired stage
-would have produced. E163's route is the model: `element-design` on the roster
-row that already carries the element, after which the mint step is a no-op
-because the number is held.
+These are minted, unbuilt and unspeccable. The number is the only thing they
+hold. No design was ever audited before them, because the stage that would have
+produced one was retired, so each owes the pipeline from its first stage.
 
-**The prerequisite nobody has measured: whether each of the 47 holds a roster
-row.** E163 does. The other 46 were not checked. An orphan with a row costs one
-design run; an orphan without one needs a row first, which is an `arc-open` or
-an arc amendment, and for an element minted deep in a track that may be an arc
-nobody has opened. **Count that before choosing anything**, since it decides
-whether this is 47 dispatches or 47 plus arc work.
+**A dispatched `element-design` run is the wrong instrument, and E163 measured
+why.** One was dispatched 2026-09-10 against roster row `file-types/K1`. It
+returned an artifact carrying five author calls: `prog/climb.manifest`'s
+standing, whether a manifest may import computation, whether `GAP-04` and
+`GAP-05` take rows of their own, the wiring-view fork, and whether Lane B may
+write the fence into `parse`, `kernel` and `loader`. That is most of the design,
+and an agent can take none of it. The five hold rows in [[records/author-calls]]
+at `14e1e03`, and the artifact was reverted at `9325095`.
+
+The same run stated the delta narrower than it is, by taking the arc's word that
+`lib/lowering/tal/target-linux.manifest` conforms. It does not. It fails
+`.planning/MANIFEST-DESIGN-MAP.md` requirement 4, which cites that file as the
+reason the requirement exists: seven rows carry `16` at `:30-35` and `:60`, and
+only comments tell them apart, which `sexp.chiral` drops at the lexer. It fails
+requirement 3 as well, since `sys-row` is applied positionally.
+
+**The route is a dedicated session with the author, structuring the design back
+and forth before any artifact is written.** An orphan's design is where the
+shapes get chosen, and the choosing is what the retired stage never recorded. An
+agent can measure the tree for that session. It cannot settle a fork inside one,
+and a design run that meets a fork has already left its own scope.
+
+**Do not flip the roster row.** `open` beside an `E#` already says the number is
+held and the pipeline is owed: [[arcs/README]] `:76` makes `open` the first
+state, `:83` puts the `E#` in the element cell once minted, and `:65` fixes the
+id across the mint. `docs/elements/ledger.md:29` glosses `design` as `unbuilt`,
+so it asserts no stage either. The cataloging already says what these rows owe.
+`pack.py` flips `open` to `designed` when it scaffolds a design, which erased
+that on the one row carrying it. K1 was flipped and restored.
+
+**The roster-row prerequisite, measured at `9325095`.** Of the 46 `design`
+orphans, **14 hold a roster row** whose element cell carries the number and
+**32 hold none**. Of those 32, **27 are named in no arc file at all**, so they
+have no home to be reviewed in and some need an arc nobody has opened. The
+figure moves as work lands: it read 47 earlier the same day, and
+[[arcs/diagnostics-arc]] designing `L5` gave E176 an artifact and dropped it to
+46. Run the recipe rather than quoting the number.
+
+```
+import importlib.util, glob, os, re, sys
+spec = importlib.util.spec_from_file_location("pack", "tools/pack/pack.py")
+pack = importlib.util.module_from_spec(spec); sys.argv = ["pack.py"]; spec.loader.exec_module(pack)
+homed = {}
+for f in sorted(glob.glob(os.path.join(pack.ARCDIR, "*-arc.md"))):
+    arc = os.path.basename(f)[:-len("-arc.md")]
+    text = open(f).read()
+    for line in pack.roster_all(text):
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        for e in pack.row_elements(cells[-1]):
+            homed.setdefault(e, []).append(arc + "/" + cells[0].strip("`").partition("/")[2])
+named = {e for f in glob.glob(os.path.join(pack.ARCDIR, "*-arc.md"))
+         for e in re.findall(r"\bE\d+\b", open(f).read())}
+state = {}
+for ln in open("docs/elements/ledger.md"):
+    c = [x.strip() for x in ln.strip().strip("|").split("|")]
+    if len(c) >= 3 and re.match(r"^\*{0,2}E\d+\*{0,2}$", c[0]):
+        state.setdefault(re.sub(r"\D", "", c[0]), re.sub(r"[*`]", "", c[2]).split()[0].lower())
+nums = [m.group(1) for m in (re.match(r"^\| E(\d+) ", l) for l in open("docs/elements/catalog.md")) if m]
+orph = [n for n in nums if pack.pipeline_artifact("E%s" % n, "E%02d" % int(n))[0] is None
+        and state.get(n) == "design"]
+have = [n for n in orph if "E" + n in homed]
+none = [n for n in orph if "E" + n not in homed]
+print("design orphans %d | with a roster row %d | without %d | of those, in no arc at all %d"
+      % (len(orph), len(have), len(none), len([n for n in none if "E" + n not in named])))
+```
+
+```
+design orphans 46 | with a roster row 14 | without 32 | of those, in no arc at all 27
+```
+
+So the 32 need a home before they need anything else, which is an `arc-open` or
+an arc amendment. Homing is the first work, and it is separable from the design
+sessions that follow it.
 
 ### There is no third population
 
