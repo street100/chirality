@@ -3,7 +3,7 @@ node: decision-def-partition
 layer: decision
 related: [decision-preserve-check, decision-erased-word-level, decision-design-before-mint, arc-enforcement, records-findings, banks/erasure, status-ledger, index]
 status: settled
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 # Decision: what a definition's fate is, and who owns the partition
@@ -80,6 +80,39 @@ reached at `:373`), because that pass rewrites `x64` into `x64$0` and the fate
 relation has to cross the renaming. E184's R6 is that requirement and names it
 the design fork.
 
+⚑ **THE ORDER IS BACKWARDS ON BOTH HALVES AND THE DOMAIN IS RULED. 2026-09-10.**
+The channel table above reads that `peel-def` acts on the front's global set
+*before `specialize-singletons` renames*, and the paragraph above fixes the domain
+as the set standing before that pass *because that pass rewrites `x64` into
+`x64$0`*. Both halves were measured at HEAD `838c311` for this run.
+
+- **Peel runs after the pass.** `lib/lowering/compile-front.chiral:373` composes
+  `(bridge-sig (closconv-sig (specialize-singletons sig)) name)`, and the peel it
+  reaches at `:349` is `peel-globals` (`:226-233`).
+- **The pass creates and deletes.** `lift-lifted`
+  (`lib/lowering/upper/specialize-singleton.chiral:195`) lifts a field body into a
+  NEW global `<gname>$<i>`, **13** on `prog/compiler.prog`. `process-mk` (`:202`)
+  offers the singleton global and every projector for pruning, **44** on the same
+  program, and `prune-live` (`:227`) hands `drop-pruned` only the names `gs-refs`
+  finds no surviving reference for. `x64` stands beside `x64$0` wherever a
+  reference survives.
+- **The domain is the pre-pass def set plus what the pass created**, computed in
+  two stages, with a fifth arm `ft-created (by Str)`, and a definition leaving the
+  globals list leaves through `ft-specialized` naming its successors. The ruling is
+  `docs/examples/E184-def-fate-sum.md` §6 decision 1, the row is `ruled` in
+  [[records/author-calls]], the runs are [[records/enforcement-arc]] EN-29 and
+  EN-30, and the live requirement text is `docs/arcs/enforcement-arc.md`
+  `#### The seven requirements`.
+
+**The section's conclusion stands and the measurement strengthens it.** Three
+sequential filters over three different sets cannot name what a later pass
+invents, and the back half invents too: `outline`
+(`lib/lowering/upper/lower.chiral:311-319`) builds `<name>$<ncase>`, which
+`lib/lowering/compile-back.chiral:272` adopts whole as `(cons main extra)`, 40
+extras across 1,509 lowered defs. R6 keeps one clause, that the two stages are a
+pass boundary neither R1 nor R7 names, and its object is a created-name-and-origin
+relation where this section wrote a rename mapping.
+
 ## 2. The classes, enumerated from the live tree
 
 ### The dead vocabulary, and why none of it survives
@@ -113,6 +146,14 @@ Producers are named beside each class. Counts are `docs/arcs/parts/enforcement-N
 | `skipped: callee-cascade <root>` | `prune-pass` → `(sk-callee cn)` | **160**, eight callees, largest `be-chat-stream` 40 |
 | `skipped: defunctionalization-refused <why>` | `st-pois-defunc`, E187 | 0 in this tree. E187 measured 0 cause clauses in the self-compile |
 | `skipped: type-does-not-peel <where>` | `peel-def`'s `(none)` arms | **0** on definitions, and no record is produced when it fires |
+
+⚑ **`specialized-into`'s cell says the pass rewrites, and the pass creates and
+deletes. 2026-09-10.** §1's ⚑ carries the measurement and its citations. Two of the
+numbers the cell calls unmeasured are read from the source at 13 created and 44
+offered for pruning; how many survive `prune-live` is still unmeasured and F3
+stands. This class list also predates R1's fifth arm, `ft-created (by Str)` for a
+name with no pre-pass existence, and a new specialization enters `ft-specialized`'s
+list as an instance, so the sum stays closed as passes are added.
 
 Total refused: **347 of 22,742, 1.53%**.
 
@@ -158,6 +199,16 @@ is the failure the design stage exists to prevent.**
 | identity survives `specialize-singletons`' renaming | **R6** |
 | conservation: one fate per def, folding to the emitted set, checked in the compile | **R7** |
 
+⚑ **The R6 row names an object R6 no longer has, and the identity claim below
+holds. 2026-09-10.** What R6 requires is the created-name-and-origin relation
+across the two-stage domain, produced by the creating pass and carried the rest of
+the way: §1's ⚑ and `docs/arcs/enforcement-arc.md` R6. R1's row absorbs the
+relation, its carrier and the monomorphized-singletons failure mode, and R7's row
+folds over the two-stage domain where it read the closure's def set. **The
+identity itself was re-tested against the ruled domain and survives.** Every
+clause of this document still lands on one of the seven requirements; what moved
+is what three of them say. No second element is minted.
+
 **The partition IS that requirement**, read against a measurement E184 did not
 have when it minted on 2026-09-01. Every clause of it lands on one of the seven,
 so the answer to "upstream, overlapping or identical" is identical.
@@ -191,6 +242,16 @@ its own importers already are. Three facts decide it.
   fourth import, which is the one new edge.
 - E184's R5 already places the cascade rooting there, beside E97's blame chain,
   and the catalog row states that as its reason.
+
+⚑ **The home holds under the ruled two-stage domain and the new-edge count rises
+from one to three. 2026-09-10.** `lib/lowering/skip-diag.chiral` imports
+`prelude/prelude` alone, so any producer imports it with no cycle. Stage two seats
+a creator in each half of the compiler, so the edges owed are
+`lib/lowering/compile-front.chiral`,
+`lib/lowering/upper/specialize-singleton.chiral` for `lift-lifted`, and
+`lib/lowering/upper/lower.chiral` for `outline`.
+`docs/examples/E184-def-fate-sum.md` §6 places every sum and accessor here and
+reads this section as needing no reopening.
 
 **The conservation check needs a seat that sees the whole closure**, which is
 `lib/lowering/compile-all.chiral`. That module is where the record dies today:
@@ -234,6 +295,12 @@ tree instead of two.
   `enforcement/N15`'s and the author's, unchanged.
 - **The count of `specialized-into`.** No channel measures the renaming pass
   today, and E184's R6 is the fork that decides how it is carried.
+
+  ⚑ **The pass creates and deletes, and the fork R6 named is ruled. 2026-09-10.**
+  §1's ⚑ carries both. The created and offered counts are read at 13 and 44; the
+  surviving count is what no channel measures, which is F3. What stays unsettled
+  is the two arm-count sub-questions in `docs/examples/E184-def-fate-sum.md`
+  §6 decision 1, and they are the author's.
 - **The three stale citations naming `ttype` as live.** `docs/definitions/status-ledger.md`'s
   "Lowering: pure fragment → tal" row, `lib/lowering/lowspec.chiral:27` and
   `lib/lowering/compile-front.chiral:324` all name `ttype` where the live
