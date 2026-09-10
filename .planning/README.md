@@ -13,7 +13,7 @@ tracked, so a fresh clone and every worktree see the same thing.
 | `ROADMAP.md` | the long road, a spine with backflow |
 | `archive/` | spent material kept because something still cites it |
 | `audit/`, `capture/`, `capture-fixtures/`, `handoffs/`, `projects/` | the older sorted tiers |
-| the flat `*.md` at top level | mostly unsorted legacy from 2026-07 and 2026-08, and a few live working files. `README-PLAN.md` is the live discussion relay `protocol/placement.md` names; `FILE-KIND-STRUCTURES.md` (2026-09-02) holds the semantic split the file kinds follow from; `MANIFEST-DESIGN-MAP.md` holds `.manifest`'s own design |
+| the flat `*.md` at top level | mostly unsorted legacy from 2026-07 and 2026-08, and a few live working files. `PIPELINE-REPAIR-QUEUE.md` (2026-09-09) is the live queue for the audit stage the pipeline stalled at, and it spans four arcs so no one arc holds it; `README-PLAN.md` is the live discussion relay `protocol/placement.md` names; `FILE-KIND-STRUCTURES.md` (2026-09-02) holds the semantic split the file kinds follow from; `MANIFEST-DESIGN-MAP.md` holds `.manifest`'s own design |
 
 The flat top level is a backlog of 72 entries and `records/consolidation-handoff.md`
 holds the queue that sorts it. Several of those files are still load bearing:
