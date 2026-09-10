@@ -163,7 +163,8 @@ Four conditions, one per area the author named. None holds an arc file.
 
 | arc | covers | state |
 |---|---|---|
-| [[arcs/coding-turn-arc]] | condition 1, orchestration | opened 2026-09-08, nine rows, none started |
+| [[arcs/coding-turn-arc]] | condition 1, decomposition | opened 2026-09-08, rescoped 2026-09-09, 13 rows |
+| [[arcs/tool-authority-arc]] | condition 1, the grant | opened 2026-09-09, 12 rows |
 
 Conditions 2, 3 and 4 hold no arc file. That is not the standing-gate shape
 [[goals/self-hosting]] carries: no rule maintains them on every change, and the
@@ -200,7 +201,9 @@ field; no caller of `overflow-guard` or `stop-policy`; no read of `Pipeline`'s
 ## Honest limits
 
 **Three of the four conditions schedule nothing.** [[arcs/coding-turn-arc]]
-opened 2026-09-08 against condition 1 and carries nine rows, none started.
+opened 2026-09-08 against condition 1's decomposition half and carries 13
+rows after the 2026-09-09 rescope; [[arcs/tool-authority-arc]] carries the
+grant half in 12.
 Conditions 2, 3 and 4 hold no arc file, so routes, features and keybinds are
 stated here and booked nowhere.
 
