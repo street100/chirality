@@ -441,7 +441,7 @@ and its adoption, and `tooling` is the gate tier owning itself.
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
-| `enforcement/N1` | attribution: every def's fate is stated by the compiler, with evidence, and checked ⚑ **E184's R1 is the tree's def partition, established 2026-09-09 by [[decisions/decision-def-partition]]** and by [[records/enforcement-arc]] EN-28. That document is the outline the author asked for when ruling the 84-line `lower.chiral` partition neither retired nor repaired, and it lands entirely on R1 through R7, so **no second element is minted for the partition**. Three findings it owes this row's SPEC stage: **R2's three skipped classes are the wrong set** (it names `type-does-not-peel`, measured at 0 of 22,742 on definitions with no record produced; it omits `body-does-not-lower`, measured at 182 of the 347 refusals; and E187 added a fourth `SkReason` constructor after E184 minted); `lib/lowering/compile-back.chiral:271` files all 182 term-level failures as `(sk-extern er)`, which `lib/lowering/skip-diag.chiral:28` renders as the tag `"extern"`, and that is the mechanical cause of the five misattributed citations; and no committed instrument re-derives any def-level count, which `enforcement/N14` is now scoped to fix first. The 84 dead lines are retired inside this element's build cycle ⚑ **A fourth finding, 2026-09-10: R1's domain is amended and the SPEC stage is barred from spelling it.** R1, R6 and R7 each carry a ⚑ dated 2026-09-10 under `#### The seven requirements`, and [[records/enforcement-arc]] EN-29 is the run. The domain of the fate function stays the author's, priced at two options by [[records/findings]] FD-21 | attribution | law | new | 1 | open | `E184` |
+| `enforcement/N1` | attribution: every def's fate is stated by the compiler, with evidence, and checked ⚑ **E184's R1 is the tree's def partition, established 2026-09-09 by [[decisions/decision-def-partition]]** and by [[records/enforcement-arc]] EN-28. That document is the outline the author asked for when ruling the 84-line `lower.chiral` partition neither retired nor repaired, and it lands entirely on R1 through R7, so **no second element is minted for the partition**. Three findings it owes this row's SPEC stage: **R2's three skipped classes are the wrong set** (it names `type-does-not-peel`, measured at 0 of 22,742 on definitions with no record produced; it omits `body-does-not-lower`, measured at 182 of the 347 refusals; and E187 added a fourth `SkReason` constructor after E184 minted); `lib/lowering/compile-back.chiral:271` files all 182 term-level failures as `(sk-extern er)`, which `lib/lowering/skip-diag.chiral:28` renders as the tag `"extern"`, and that is the mechanical cause of the five misattributed citations; and no committed instrument re-derives any def-level count, which `enforcement/N14` is now scoped to fix first. The 84 dead lines are retired inside this element's build cycle ⚑ **A fourth finding, 2026-09-10: R1's domain is amended and the SPEC stage is barred from spelling it.** R1, R6 and R7 each carry a ⚑ dated 2026-09-10 under `#### The seven requirements`, and [[records/enforcement-arc]] EN-29 is the run. The domain of the fate function stays the author's, priced at two options by [[records/findings]] FD-21 ⚑ **That bar is LIFTED 2026-09-10: the domain is ruled.** [[records/author-calls]] carries the row at `ruled` (`0ffa1ae`) and the ruling is `docs/examples/E184-def-fate-sum.md` §6 decision 1: the domain is the pre-pass def set plus what the pass created, and deletion is never a fate. [[records/enforcement-arc]] EN-30 is the run. R1, R6 and R7 each gain a second ⚑ under `#### The seven requirements`; R6 survives on one restated clause, the two-stage domain's construction at the pass boundary; the SPEC stage may now spell `FateRec`'s domain. What stays the author's is two arm-count sub-questions | attribution | law | new | 1 | open | `E184` |
 | `enforcement/N2` | how the `$apply` dispatcher's erased domains are spelled at the lowering type level | attribution | primitive | new | 3 | open | `E185` |
 | `enforcement/N3` | the `$k<i>_<j>` capture constructor's field types: concrete, or the erased word | attribution | primitive | new | 3 | built | `E186` |
 | `enforcement/N4` | the `sk-defunc` blame channel: `closconv` states why it dropped a family | attribution | law | new | 1 | built | `E187` |
@@ -633,6 +633,62 @@ pass and is also the origin of a created one takes one arm or two, because DWARF
 abstract instance root sits in a different sum from the arms a concrete instance
 carries.
 
+⚑ **THE DOMAIN IS RULED 2026-09-10 AND THE BAR ON THE SPEC STAGE LIFTS.**
+[[records/author-calls]] carries the row *"The domain of E184's fate function, and
+whether a deleted definition keeps a fate"* at `ruled` (`0ffa1ae`), and the ruling
+with its measurements is `docs/examples/E184-def-fate-sum.md` §6 decision 1.
+
+**The domain is option (ii): the pre-pass def set plus what the pass created**,
+computed in two stages. Option (iii) is refused because `x64` and `mach-galo`
+having no fate once the pass deleted them is the ungoverned departure
+`PRINCIPLES.md` §1 forbids. Option (i) was already dead at [[records/findings]]
+FD-21, with no occupant in six systems.
+
+**Deletion is never a fate.** A definition that leaves the globals list leaves
+through `ft-specialized` naming its successors, and there is no other exit. Read
+at HEAD `0ffa1ae` for this run rather than carried from the ruling: `process-mk`
+(`lib/lowering/upper/specialize-singleton.chiral:202`) builds the prune list as
+`(cons gname (projs->names ps))`, the singleton global plus its projectors, and
+`prune-live` (`:227`) hands `drop-pruned` only the names `gs-refs` finds no
+surviving reference for. A name is deleted **because** its content was lifted
+into `$i` globals and its projections rewritten onto them, so every departure
+from the globals list is already a specialization consequence and the ruling
+costs no new machinery. The two back-end deleters are already inside the fate
+system: `prune-pass` files `(mk-skrec (tfn-nm f) (sk-callee cn))` at
+`lib/lowering/compile-back.chiral:204-211`, and `filter-erasable` files
+`(mk-skrec (tfn-nm f) (sk-extern op))` at `:191` on its `(some op)` arm. Its
+silent `none` arm at `:189` still drops with no record, which is M-C's finding
+and R3's obligation rather than a second exit from the globals list.
+
+**The arm list grows to five and the sum stays closed.** Option (ii) carries
+`ft-created (by Str)` for a name with no pre-pass existence, which is DWARF's
+published shape: a concrete instance tree may hold entries with no counterpart in
+the abstract instance tree, and those carry no `DW_AT_abstract_origin`
+(DWARF5:6148-6154). Closure survives a growing compiler because **a new
+specialization is a new instance in `ft-specialized`'s `(List Str)` and never a
+new arm**. So *closed sum, no `_` arm* stops being a promise to keep editing the
+sum as passes are added. FD-23 measured CakeML doing this shape, a name map
+threaded through the backend and unioned with four later passes' own stubs, which
+is the modular and reproducible recheck the ruling names.
+
+**What the SPEC stage may now do.** Spell `FateRec`'s domain. The bar EN-29 put
+on it is lifted.
+
+**What stays the author's, and it is two arm-count questions rather than the
+domain.** Both are the 2026-09-09 sub-question ⚑ in
+`docs/examples/E184-def-fate-sum.md` §6 decision 1 and neither is ruled.
+(a) Whether `specialize-singletons`' creations and `outline`'s creations take one
+arm or two: `outline` extracts one case from one definition and so has exactly one
+origin, DWARF's out-of-line-instance construct (DWARF5:6188-6214), while LLVM's
+machine outliner merges N candidate sites into one function and sets no origin
+field (LLVMOUTLINER:950, :1002-1020). (b) Whether a definition that survives the
+pass and is also the origin of a created one takes one arm or two. The ruling
+narrows (b) without closing it: `ft-specialized` is stated as the exit of a
+**departure**, and `alloc-growing` does not depart, because `prune-live` keeps it
+wherever `gs-refs` finds a reference and E188's example measures it reaching
+`compile-fn` and being skipped there (M-D). Reading that as *one arm, `skipped`*
+is the author's act and this run does not take it.
+
 **R2. Reasons carry evidence, not strings.** `skipped`'s reason is itself a closed
 sum: extern-with-no-wrapper naming the op; type-does-not-peel naming which type and
 where; callee-cascade naming the chain. E157's rule applies unchanged, and a
@@ -703,6 +759,46 @@ makes the fork R1's domain question above. `docs/examples/E184-def-fate-sum.md` 
 keeps this requirement inside E184 for that reason, so the split flagged at mint
 is closed and no element is minted for it.
 
+⚑ **R6 SURVIVES ON ONE CLAUSE, AND THAT CLAUSE IS RESTATED. 2026-09-10.** The
+domain question that took R6's standing as the design fork is ruled (R1's ⚑
+above), so what is left of this requirement is testable, and it was tested rather
+than kept.
+
+**What the ruling absorbs into R1.** The relation and its carrier: a departing
+definition's successors ride `ft-specialized` and a created name's origin rides
+`ft-created`. The failure mode this requirement named, monomorphized singletons
+reading as failures, is the failure `ft-specialized` exists to prevent and R1
+states it. The word *renaming*, the rename mapping this requirement asked the
+pass to emit, and the fork standing all went at [[records/enforcement-arc]] EN-29.
+
+**What is R6's own, stated by no other requirement.** Option (ii)'s priced cost is
+*a domain the compiler has to compute in two stages*, and neither R1 nor R7 says
+where the two stages come from. They come from a pass boundary, and this is the
+requirement that fixes it. Stage one is `sig-globals` as `specialize-singletons`
+receives it. Stage two is the set of names a creating pass added, together with
+each name's origin, which only the pass that added them holds. So the original
+prescription's **shape** stands with its object replaced: produced by the pass
+that performs the creation, and carried the rest of the way. The object is the
+created-name-and-origin relation where it was a rename mapping.
+
+**Two creators sit on that obligation, in two halves of the compiler.**
+`lift-lifted` (`lib/lowering/upper/specialize-singleton.chiral:195`) creates
+`<gname>$<i>` in the front, **13** on `prog/compiler.prog`. `outline`
+(`lib/lowering/upper/lower.chiral:311-319`) creates `<name>$<ncase>` in the back
+and `lib/lowering/compile-back.chiral:272` adopts it whole as
+`(cons main extra)`, **40** outlined extras across 1,509 lowered defs (M-A, M-D).
+The carry therefore crosses peel and the whole lowering, and it is what makes the
+domain two-stage in fact and not only in name.
+
+**The ordering clause is what makes stage one readable, and it was verified
+again at HEAD `0ffa1ae`.** `lib/lowering/compile-front.chiral:373` composes
+`(bridge-sig (closconv-sig (specialize-singletons sig)) name)`, and the peel it
+reaches at `:349` is `peel-globals`
+(`lib/lowering/compile-front.chiral:226-233`). Under a pre-pass domain that
+ordering fixed nothing the fate function reads. Under the ruled domain it fixes
+the seam: everything `specialize-singletons` receives is stage one, and
+everything downstream of it that invents a name is stage two.
+
 **R7. Conservation, checked inside the compile, plus an exit.** The fates
 partition the closure's def set: exactly one per def, and folding them reproduces
 the emitted set. A def with no fate, or with two, fails the compile. That is the
@@ -726,6 +822,54 @@ prior art.
 What stands: conservation is the line between attribution and logging, and the
 report exit is owed.
 
+⚑ **THE FOLD IS RE-TESTED AGAINST THE RULED TWO-STAGE DOMAIN, 2026-09-10. ONE
+PHRASE IS WRONG, THE SHAPE HOLDS, AND ONE COST IS NEW.**
+
+**Wrong: *the closure's def set*.** R1's 2026-09-09 ⚑ fixed that phrase as the
+set standing before `specialize-singletons`, and this requirement inherited it
+unedited. The ruled domain is the pre-pass set plus what the pass created, so the
+set these fates partition is the two-stage domain of R1's ⚑ above and this
+sentence should say so.
+
+**Right and unchanged: the fold is a flat set compare.** Decision 1 prices option
+(ii) that way, and the tree agrees on both halves. Every emitted label is inside
+the domain, because the 40 outlined extras enter at stage two through
+`lib/lowering/compile-back.chiral:272` (M-A) and the 13 created globals enter at
+stage one through `lib/lowering/upper/specialize-singleton.chiral:195` (M-D).
+Every departure from the domain already carries a fate: the specializer's
+deletions take `ft-specialized` (`:202`, `:227`), `prune-pass` files
+`(mk-skrec (tfn-nm f) (sk-callee cn))` at `lib/lowering/compile-back.chiral:204-211`,
+and `filter-erasable` files `(mk-skrec (tfn-nm f) (sk-extern op))` at `:191`. So
+`fold` compares two sets and walks no tree, which is what option (i) would have
+cost. The one hole is `filter-erasable`'s silent `none` arm at `:189`, which drops
+with no record; §6 decision 5 measures that arm firing **zero** times on
+`prog/compiler.prog` (`1549 - 1547 = 2`, both cascade), and it is the departure
+this fold is built to catch rather than a counter-example to it.
+
+**New, and this requirement is where it lands: the fold has a seat, and the seat
+moved.** Stage two closes only after `outline` has run, which is inside
+`lower-defs` in the back. *Checked inside the compile* therefore means after the
+back end has assembled both stages, so no front-end seat can carry it. EN-29's
+reading stands unchanged: nothing in the ten pins prices computing a domain in
+two stages, and this cost is this tree's own.
+
+**Still open, and the SPEC stage owns it rather than the author.** Whether *a def
+with no fate, or with two, fails the compile* is spelled as a checked fold or as
+a linear obligation. The author names E33's process spawn as the same shape:
+`lib/runtime/proc.chiral:25-33` declares `(data Reap ())` with
+`(child (1 reap Reap) (io Bytes))` under the comment *a linear obligation to wait
+on a child. Dropping it is a type error*. A fold detects an unaccounted departure
+after the fact; a linear `ft-specialized` makes it unrepresentable, which is the
+same reason [[records/findings]] FD-22 found GCC's nearest equivalent partial by
+construction. Two things the SPEC must face, from §6 decision 1's fifth ⚑: a
+`Reap` is consumed by one waiter while `ft-specialized` names N successors, so it
+is a fan-out; and linearity inside the compiler's own source is a commitment
+about how those passes are written. This run leaves the choice open and takes
+neither side.
+
+**Unchanged: *exactly one per def*.** It carries R1's two remaining arm-count
+sub-questions and nothing else.
+
 #### Cost
 
 Roughly 150 to 250 LOC across five modules. Three signature changes: `peel-def`,
@@ -734,6 +878,19 @@ fates. Plus build-new → test → promote with the fixpoint verified and the St
 precondition checked first. **Needs the full pipeline** (worked example → audit →
 SPEC → audit → implement): the fate taxonomy is a taxonomy, and R6 is a genuine
 fork.
+
+⚑ **TWO CLAUSES HERE ARE FALSIFIED, AND THE ESTIMATE IS LEFT STANDING BESIDE ITS
+MEASUREMENT. 2026-09-10.** `specialize-singletons` **emitting its rename relation**
+is struck: the pass creates and deletes and emits no rename ([[records/enforcement-arc]]
+EN-29, M-D). The signature it owes is the created-name-and-origin relation of R6's
+second ⚑, and `outline` owes the same relation in the back. **R6 is a genuine fork**
+is struck: the fork was the domain and the domain is ruled (R1's second ⚑). The
+element still needs the full pipeline, because the taxonomy is a taxonomy and two
+arm-count sub-questions are the author's. The **150 to 250 LOC across five modules**
+estimate stays as written and is the prediction it was; `docs/examples/E184-def-fate-sum.md`
+§6 measures the spelling at **nine blob modules and eleven signature or data changes**,
+**380 to 520 LOC**, and the delta between the two is calibration data the SPEC stage
+records rather than overwrites.
 
 #### Why the element exists
 
