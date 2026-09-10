@@ -6,11 +6,11 @@
 ; possible because fs-write now opens with open-create (tools-fs), so the
 ; write tool creates a file that did not exist. The program has no imports and
 ; no externs, so it compiles with a bare `B1 < src > elf` (no linkage files).
-; Compile: resolve agent/agent + tal-ir + crossing-wraps + sys-check +
+; Compile: resolve shilpa/turn + tal-ir + crossing-wraps + sys-check +
 ; target-linux + sys-tal + sys-linkage + this file (entry compile-main), B1.
-; Mirrors agent-probe.chiral / bin/scriba verbatim.
+; Mirrors shilpa-probe.chiral / bin/scriba verbatim.
 (import "prelude/prelude")
-(import "agent/agent")
+(import "shilpa/turn")
 
 (def compile-main (=> I64 I64)
   (lam (n)

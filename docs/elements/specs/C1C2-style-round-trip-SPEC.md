@@ -158,7 +158,7 @@ fail to compile.
 declares two constructors with refined fields and `:28` declares a third. Every
 occurrence of `exited`, `signaled` and `reap` in `lib/` and `prog/` is a `case`
 pattern (`proc.chiral:144`, `:148`; `lib/evidence/harness.chiral:18`, `:19`;
-`prog/samples/a5_proc_spawn.prog:16`, `:20`), and `prog/agent/agent.chiral:43-44`
+`prog/samples/a5_proc_spawn.prog:16`, `:20`), and `prog/shilpa/turn.chiral:43-44`
 redeclares the same sum with plain `I64` fields. **Nothing in the tree constructs
 a refined constructor field.** The pattern ships as a declaration and a
 destructuring.

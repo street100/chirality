@@ -279,7 +279,7 @@ evidence column names what was read.
 
 | arc | writes | evidence |
 |---|---|---|
-| transport | `prog/prapanca/`, `prog/agent/agent.chiral`, `prog/samples/e130_*.prog`, `e131_*.prog`, `stream-ollama.prog`, a new phase in `tools/test/run-tests.sh` | the nine importers of `protocol/http`. Rows `T2` to `T4` each owe a gated root and a phase that judges it |
+| transport | `prog/prapanca/`, `prog/shilpa/turn.chiral`, `prog/samples/e130_*.prog`, `e131_*.prog`, `stream-ollama.prog`, a new phase in `tools/test/run-tests.sh` | the nine importers of `protocol/http`. Rows `T2` to `T4` each owe a gated root and a phase that judges it |
 | text-tools | `lib/text/` | one file, `matcher.chiral`. `prog/prose-lint.prog` is its only consumer |
 | diagnostics | `lib/typing/diag.chiral`, `lib/surface/pretty.chiral`, `lib/protocol/render.chiral`, `lib/protocol/render-doc.chiral`, a consumer under `prog/` | `Judg` is `diag.chiral:99`, which E182 reshapes. `lookup-face` is in `render.chiral`, which E179 and E180 reach. The adoption row owes a consumer outside `lib/` |
 | zero-python | `tools/`, plus one port root under `prog/` per tool | `prog/prose-lint.prog` and `prog/paren-audit.prog` are the two ports that exist |

@@ -27,13 +27,13 @@ imports either.
 Four places already carry pieces of the claim, which is why the work exists
 before the goal did.
 
-- `prog/agent/agent.chiral:1` names itself "the Pi-minimal tool-call loop", and
+- `prog/shilpa/turn.chiral:1` names itself "the Pi-minimal tool-call loop", and
   its 452 lines drive an OpenAI-compatible endpoint over `http-request` (E130)
   and `lib/protocol/json.chiral`, parse the model's `tool_call`, dispatch it,
   append the result, and loop until the model answers. The agent's turn is
   already native.
-- `prog/agent/tools-fs.chiral` defines `fs-read` at `:50`, `fs-write` at `:62`
-  and `fs-edit` at `:88` in 96 lines, and `prog/agent/agent.chiral:60` declares
+- `prog/shilpa/tools-fs.chiral` defines `fs-read` at `:50`, `fs-write` at `:62`
+  and `fs-edit` at `:88` in 96 lines, and `prog/shilpa/turn.chiral:60` declares
   `ag-bash` over the `raw-proc-spawn`/`wait` crossings. Four tools, native, no
   interpreter under any of them.
 - `prog/prapanca/core/types.chiral:63-68` declares the permission half already:
@@ -56,7 +56,7 @@ system, filesystem reach, least-privilege over what a step may touch, and the
 routes and keybinds that make it usable at a keyboard.
 
 The tree already cuts them apart in code, which is the evidence this is two
-goals rather than one. `prog/agent/agent.chiral` runs a tool-call turn today and
+goals rather than one. `prog/shilpa/turn.chiral` runs a tool-call turn today and
 uses **none** of the engine — no `be-chat`, no `Flow`, no `RunManifest`, no
 gate, no `StopPolicy`, no linear `Backend` — and its own header states the
 choice at `:12-16`: "backend.chiral's be-chat is the non-tool reference and is
@@ -107,7 +107,7 @@ Four conditions, one per area the author named. None holds an arc file.
 1. **Orchestration.** The area the author named as the one they care most about.
    A coding turn is decomposed across the engine rather than run as one loop, and
    each step holds only the tools it was granted. Three counts are zero today and
-   each is the observation: `prog/agent/agent.chiral` imports nothing under
+   each is the observation: `prog/shilpa/turn.chiral` imports nothing under
    `prog/prapanca/` and says so at `:12-16`; the `Expert` record's `tools` field is
    bound at seven destructuring sites across four files
    (`prog/prapanca/core/assemble.chiral:51`, `prog/prapanca/core/flow.chiral:1336` and
@@ -155,7 +155,7 @@ Four conditions, one per area the author named. None holds an arc file.
    `vm-normal` at `prog/scriba/command-loop.chiral:278`. The `:` line at
    `prog/scriba/command-loop.chiral:1813` carries 21 ex commands, of which
    `:chat`, `:ask`, `:manas`, `:run`, `:compose`, `:flow` and `:load` reach the AI
-   half and **none** reaches `prog/agent/`. Done when `agent-run` is reachable
+   half and **none** reaches `prog/shilpa/`. Done when `agent-run` is reachable
    from a binding rather than only from a `.prog` root, and the entry key it takes
    collides with no outer layer. **Unopened, and it holds no arc file.**
 
@@ -180,19 +180,19 @@ Built, and measured in this tree on 2026-09-08:
 
 | what | evidence |
 |---|---|
-| A native tool-call loop | `prog/agent/agent.chiral`, 452 lines, over `http-request` and `lib/protocol/json.chiral`, carrying four tool schemas at `:99-147` |
-| Four native tools | `fs-read`, `fs-write`, `fs-edit` in `prog/agent/tools-fs.chiral` (96 lines), and `ag-bash` at `prog/agent/agent.chiral:60` over `raw-proc-spawn`/`wait` |
-| One real turn, run | `prog/samples/agent-probe.prog` drives `agent-run` against `qwen3:8b` at `100.64.0.5:11434`, one tool-call turn, all chirality |
+| A native tool-call loop | `prog/shilpa/turn.chiral`, 452 lines, over `http-request` and `lib/protocol/json.chiral`, carrying four tool schemas at `:99-147` |
+| Four native tools | `fs-read`, `fs-write`, `fs-edit` in `prog/shilpa/tools-fs.chiral` (96 lines), and `ag-bash` at `prog/shilpa/turn.chiral:60` over `raw-proc-spawn`/`wait` |
+| One real turn, run | `prog/samples/shilpa-probe.prog` drives `agent-run` against `qwen3:8b` at `100.64.0.5:11434`, one tool-call turn, all chirality |
 | A float-free routing precedent | `prog/prapanca/core/match.chiral`, integer overlap count, closed `PipelineMatch` sum |
 | A declared least-privilege grant | `prog/prapanca/core/types.chiral:63-68`, and `prog/prapanca/profile/code-test.chiral:50` granting `(cons "read" nil)` |
 | The editor the agent is to be driven from | `prog/scriba/`, 26 modules and 6 roots, compiled under suite Phase 7. [[goals/local-ai]] holds its state, which is the authority for it |
 
 Absent, and each count is the observation in the condition it belongs to: no
-import from `prog/agent/` into `prog/prapanca/` or back; no read of the `tools`
+import from `prog/shilpa/` into `prog/prapanca/` or back; no read of the `tools`
 field; no caller of `overflow-guard` or `stop-policy`; no read of `Pipeline`'s
 `stop` on the flat path; no directory enumeration; no consumer of
 `lib/text/matcher.chiral` other than the prose linter; no keybind reaching
-`prog/agent/`.
+`prog/shilpa/`.
 
 [[status-ledger]] is the authority for what is built on the four rungs and
 [[records/README]] for a claim beside its measurement.
@@ -204,10 +204,10 @@ opened 2026-09-08 against condition 1 and carries nine rows, none started.
 Conditions 2, 3 and 4 hold no arc file, so routes, features and keybinds are
 stated here and booked nowhere.
 
-**No gate can fail on the agent.** `prog/samples/agent-probe.prog` drives a full
+**No gate can fail on the agent.** `prog/samples/shilpa-probe.prog` drives a full
 `agent-run` tool-call turn and its `compile-main` ends in `0` unconditionally:
 it prints `AGENT-ANSWER:` and the model's text, then returns success whatever
-came back. No `prog/agent/` or `prog/prapanca/` path appears in any
+came back. No `prog/shilpa/` or `prog/prapanca/` path appears in any
 `tools/test/*.sh`, verified 2026-09-08, so suite Phase 7 sweeps both
 compile-only. There is no assertion in this tree that a coding turn can fail.
 No roster row holds that work.

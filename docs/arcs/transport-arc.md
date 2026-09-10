@@ -88,7 +88,7 @@ and in the tree.
 | `prog/samples/e131_sse_socketpair.prog` | 54 | writes a canned SSE stream into a socketpair, wraps the far end as a `ChatStream`, loops `chat-read` asserting `hello`, `world`, `chunk-done`, then `chat-close` on a done handle and a dead handle. Exit 0, or 2 on mismatch | 3, in part | yes |
 | `prog/samples/stream-ollama.prog` | 29 | `chat-open "POST" .../v1/chat/completions` then a `chat-read` loop, exit 0 on clean `[DONE]`, 1 on any `chunk-err`. Model `qwen2.5:0.5b` | 3, the rest | no, needs the endpoint |
 | `prog/samples/e131_sse_framing.prog` | 57 | pure framing golden over hardcoded `Bytes`, no socket | supporting | yes |
-| `prog/samples/agent-probe.prog` | 17 | a full `agent-run` tool-call turn against `qwen3:8b` at `100.64.0.5:11434` | beyond the four below | no |
+| `prog/samples/shilpa-probe.prog` | 17 | a full `agent-run` tool-call turn against `qwen3:8b` at `100.64.0.5:11434` | beyond the four below | no |
 
 ### Five roots compile and run
 
@@ -237,7 +237,7 @@ the repair.
 - Requirement 3's `chat-open` is reached only by the endpoint-bound root, so on
   a box with no route the streaming open is deferred and only `chat-read` and
   `chat-close` stay gated, by `prog/samples/e131_sse_socketpair.prog`.
-- `prog/samples/agent-probe.prog` carries no assertion. It is the sixth root and
+- `prog/samples/shilpa-probe.prog` carries no assertion. It is the sixth root and
   it sits beyond the four requirements.
 
 **What has stopped blocking it.** Four things.

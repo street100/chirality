@@ -54,7 +54,7 @@ Four of its seven reported disagreements do not exist. Recorded because a triage
 that over-reports is the same defect class as a ledger that is stale.
 
 - **E129** and **E130** already read `built`. Both are reached: `inet.chiral` has
-  seven importers, `http.chiral` nine including `prog/agent/agent.chiral`.
+  seven importers, `http.chiral` nine including `prog/shilpa/turn.chiral`.
 - **E45** already carried its SEEDED annotation.
 - **E24** is correct as `built`. The triage searched `lib/prelude/prelude.chiral`
   for `div`, `mod`, `divmod` and `try-div` and found none. E24's subject is the

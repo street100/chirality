@@ -2,7 +2,7 @@
 ; save-puffer (write a puffer's content back to disk). R6 wiring.
 ;
 ; Uses the ALREADY-NATIVE file crossings from ports.chiral — open-rw, open-create,
-; read, write-fd, adopt-fd, fd-close — exactly like agent/tools-fs.chiral. Zero new
+; read, write-fd, adopt-fd, fd-close — exactly like shilpa/tools-fs.chiral. Zero new
 ; syscalls, zero new crossings. find-file uses open-rw (O_RDWR|O_NOCTTY|O_CLOEXEC,
 ; NO O_CREAT/O_TRUNC: opens an EXISTING file only). save-puffer uses open-create
 ; (O_RDWR|O_CREAT|O_TRUNC|O_NOCTTY|O_CLOEXEC, mode 0644) so a save truncates the

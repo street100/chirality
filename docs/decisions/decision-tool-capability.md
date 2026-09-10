@@ -27,7 +27,7 @@ ports does not qualify, and `MAP.md:75-77` names the three files moved out for
 exactly that reason: `crossing-wraps` to `lowering/tal/`, `inet` and `term` to
 `protocol/`.
 
-The built tools sit on the far side of that test. `prog/agent/tools-fs.chiral`
+The built tools sit on the far side of that test. `prog/shilpa/tools-fs.chiral`
 is 96 lines carrying two imports, `prelude/prelude` and `ports/ports` at
 `:21-22`, and zero externs. `fs-edit` at `:88` declares nothing and reaches
 every crossing through `fs-read` and `fs-write`.
@@ -116,7 +116,7 @@ can be handed descriptors and stop there.
 Two measurements qualify the table.
 
 **The built spike hands every tool naming authority anyway.** `fs-read` at
-`prog/agent/tools-fs.chiral:50` takes a `Str` path and calls `open-rw` itself at
+`prog/shilpa/tools-fs.chiral:50` takes a `Str` path and calls `open-rw` itself at
 `:52`; `fs-write` at `:62` takes a path and calls `open-create` at `:64`. The
 header at `:11-13` records that `open-create` was chosen so the write tool can
 create a new file. So the tools that need no naming authority hold it today, and
@@ -134,10 +134,10 @@ and the goal toolset's single `write` tool spans both.
 `MAP.md:86` says it: nothing checks the placement rule. The consequence for this
 decision is measurable. **21 files outside `lib/ports/` declare an `extern`**,
 and six of them re-declare a crossing that carries naming authority:
-`prog/agent/agent.chiral:46` re-declares `raw-proc-spawn`, and five samples under
+`prog/shilpa/turn.chiral:46` re-declares `raw-proc-spawn`, and five samples under
 `prog/samples/` re-declare `open-rw`.
 
-`prog/agent/agent.chiral:23-26` records why the agent does it: `tools-fs.chiral`
+`prog/shilpa/turn.chiral:23-26` records why the agent does it: `tools-fs.chiral`
 and `proc.chiral` both define a `nul-byte` global, so importing both collides in
 the blob. The reason is good and the effect stands. A module reaches naming
 authority by writing one line, and importing the narrow registry buys nothing
@@ -175,7 +175,7 @@ names no `E#` for it. The absence is recorded without a number.
 | `lib/ports/pty.port:47` | `spawn-in-pty (=> Bytes Bytes I64)` | ELF bytes and a slave path. You can spawn only what you already hold |
 
 The pty spawn already has the capability shape. The proc spawn does not.
-`prog/agent/agent.chiral:61-63` shows what the difference costs: `ag-bash` hands
+`prog/shilpa/turn.chiral:61-63` shows what the difference costs: `ag-bash` hands
 `/bin/sh -c` and the model's string to `raw-proc-spawn`, which is the widest
 authority in the tree reached from a tool schema.
 

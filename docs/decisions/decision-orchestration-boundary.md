@@ -61,15 +61,15 @@ own configuration. Three exist, under names the tree already spells.
 
 | prog | is | what it takes |
 |---|---|---|
-| `prog/agent/` | the coding agent | the directory, which it already occupies |
+| `prog/shilpa/` | the coding agent | the directory, which it already occupies |
 | `prog/chatter/` | the conversational assistant | `prapanca/chatter/` plus `prapanca/profile/` as its config |
 | `prog/scriba/` | the TUI | unchanged |
 
-`prog/agent/` is a spike today: 548 lines across `agent.chiral` and
+`prog/shilpa/` is a spike today: 548 lines across `turn.chiral` and
 `tools-fs.chiral`, zero rows in `docs/elements/catalog.md`,
 `docs/elements/ledger.md`, `docs/definitions/status-ledger.md` and
 `records/conformance-map.md`, and reached by two roots,
-`prog/samples/agent-probe.prog:9` and `prog/samples/self-extend-probe.prog:13`.
+`prog/samples/shilpa-probe.prog:9` and `prog/samples/self-extend-probe.prog:13`.
 `prog/scriba/chat.chiral:3` and `prog/scriba/file-io.chiral:5` mention it in
 comments and import nothing from it. A spike taking over a directory costs the
 tree nothing today, which is why the name is claimed now.

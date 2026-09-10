@@ -676,8 +676,8 @@ scaffold/lib/manas/profile/research-test.metis	prog/prapanca/profile/research-te
 scaffold/lib/manas/profile/research.metis	prog/prapanca/profile/research.chiral	chiral	slice 4 | map: no entry -> module | default
 scaffold/lib/manas/profile/skills-test.metis	prog/prapanca/profile/skills-test.prog	prog	slice 4 | map: entry -> program | entry: ^(def compile-main
 scaffold/lib/manas/profile/skills.metis	prog/prapanca/profile/skills.chiral	chiral	slice 4 | map: no entry -> module | default
-agent/agent.metis	prog/agent/agent.chiral	chiral	slice 8 | no entry -> module
-agent/tools-fs.metis	prog/agent/tools-fs.chiral	chiral	slice 8 | no entry -> module
+agent/agent.metis	prog/shilpa/turn.chiral	chiral	slice 8 | no entry -> module
+agent/tools-fs.metis	prog/shilpa/tools-fs.chiral	chiral	slice 8 | no entry -> module
 scaffold/demo/_eff.metis	prog/demo/_eff.chiral	chiral	slice 8 | no entry -> module
 scaffold/demo/_recurse-ceiling.metis	prog/demo/_recurse-ceiling.prog	prog	slice 8 | entry -> program
 scaffold/demo/_ref.metis	prog/demo/_ref.chiral	chiral	slice 8 | no entry -> module
@@ -704,7 +704,7 @@ scaffold/demo/verify-total.metis	prog/demo/verify-total.chiral	chiral	slice 8 | 
 scaffold/demo/wl-client.metis	prog/demo/wl-client.chiral	chiral	slice 8 | no entry -> module
 scaffold/samples/a5_be_chat.metis	prog/samples/a5_be_chat.prog	prog	slice 8 | entry -> program
 scaffold/samples/a5_proc_spawn.metis	prog/samples/a5_proc_spawn.prog	prog	slice 8 | entry -> program
-scaffold/samples/agent-probe.metis	prog/samples/agent-probe.prog	prog	slice 8 | entry -> program
+scaffold/samples/agent-probe.metis	prog/samples/shilpa-probe.prog	prog	slice 8 | entry -> program
 scaffold/samples/boxed-a.metis	prog/samples/boxed-a.chiral	chiral	slice 8 | no entry -> module
 scaffold/samples/boxed-b.metis	prog/samples/boxed-b.chiral	chiral	slice 8 | no entry -> module
 scaffold/samples/e103_pty_roundtrip.metis	prog/samples/e103_pty_roundtrip.prog	prog	slice 8 | entry -> program

@@ -1,9 +1,9 @@
-; agent.chiral — A4: the Pi-minimal tool-call loop.
+; turn.chiral — A4: the Pi-minimal tool-call loop.
 ;
 ; Drives an OpenAI-compatible endpoint over the already-native http-request
 ; (E130): sends a tiny system prompt + 4 tool schemas (read/write/edit/bash),
 ; parses the model's tool_call from the JSON response, dispatches to the
-; already-built fs-read/fs-write/fs-edit (agent/tools-fs.chiral, A1) and a bash
+; already-built fs-read/fs-write/fs-edit (shilpa/tools-fs.chiral, A1) and a bash
 ; tool over the raw-proc-spawn/wait crossings (the A2 nb-run-cmd/nb-wait TAL),
 ; appends the tool result, and loops until the model returns a final answer
 ; (content, no tool call).
@@ -17,7 +17,7 @@
 (import "prelude/prelude")
 (import "protocol/http")
 (import "protocol/json")
-(import "agent/tools-fs")
+(import "shilpa/tools-fs")
 
 ; ---- native process spawn (the bash tool substrate, A2 shape) -------------
 ; The raw-proc-spawn / wait externs route to nb-run-cmd / nb-wait (crossing-wraps,

@@ -42,7 +42,7 @@ all. Current paths are current until a migration moves them.
 |---|---|
 | `prog/prapanca/` | `prog/prapanca/`, since `b6065d1` on 2026-09-08 |
 | `prog/indriya/` | absent. Nothing in the tree occupies the layer |
-| `prog/shilpa/` | `prog/agent/` |
+| `prog/shilpa/` | `prog/shilpa/`, renamed from `prog/agent/` on 2026-09-09 |
 | `prog/samvada/` | `prog/prapanca/chatter/` plus `prog/prapanca/profile/` |
 | `prog/scriba/` | `prog/scriba/` |
 
@@ -72,7 +72,7 @@ file read.
 Scriba already holds tools, and already paid the duplication.
 `prog/scriba/file-io.chiral` calls `open-rw` at `:56` and `:116` and
 `open-create` at `:179` and `:200`. Its header at `:4-7` names the source:
-`exactly like agent/tools-fs.chiral`. Two parts have written one file-open
+`exactly like shilpa/tools-fs.chiral`. Two parts have written one file-open
 shape twice, in the two directories the tool layer would otherwise have to pick
 between.
 
@@ -80,10 +80,10 @@ What the layer holds:
 
 | piece | what stands today |
 |---|---|
-| the tool vocabulary as a value | `coding-turn/A1` (`docs/arcs/coding-turn-arc.md:160`) is designed against exactly this: the four inline `Json` schemas at `prog/agent/agent.chiral:99-147` derived from a value instead of written beside it |
+| the tool vocabulary as a value | `coding-turn/A1` (`docs/arcs/coding-turn-arc.md:160`) is designed against exactly this: the four inline `Json` schemas at `prog/shilpa/turn.chiral:99-147` derived from a value instead of written beside it |
 | the declared schemas | those same 49 lines, written by hand |
-| the wire protocol | `prog/agent/agent.chiral:167`, `:201`, `:241`. Three code sites in one file |
-| the implementations | `prog/agent/tools-fs.chiral`, 96 lines, two imports at `:21-22`, zero externs, three tools: `fs-read` at `:50`, `fs-write` at `:62`, `fs-edit` at `:88` |
+| the wire protocol | `prog/shilpa/turn.chiral:167`, `:201`, `:241`. Three code sites in one file |
+| the implementations | `prog/shilpa/tools-fs.chiral`, 96 lines, two imports at `:21-22`, zero externs, three tools: `fs-read` at `:50`, `fs-write` at `:62`, `fs-edit` at `:88` |
 
 ### 4. The line between `prog/indriya/` and [[arcs/tool-authority-arc]]
 
@@ -111,38 +111,38 @@ it.
 A tool written before the mechanism lands holds whatever the port floor hands it
 today, and the built spike shows what that comes to.
 [[decisions/decision-tool-capability]] §4 measures `fs-read` calling `open-rw`
-itself at `prog/agent/tools-fs.chiral:52` and `fs-write` calling `open-create`
+itself at `prog/shilpa/tools-fs.chiral:52` and `fs-write` calling `open-create`
 at `:64`, so the two tools that need no naming authority hold it anyway. The
 layer can be built on the floor as it stands. What it gets from the mechanism
 landing is that the grant becomes real.
 
 ### 5. `prog/shilpa/` is the spike renamed, and three things leave it
 
-Today, as `prog/agent/`, it is a spike. Measured 2026-09-09:
+Today, as `prog/shilpa/`, it is a spike. Measured 2026-09-09:
 
 | what | measurement |
 |---|---|
-| lines | 548, across `agent.chiral` at 452 and `tools-fs.chiral` at 96 |
+| lines | 548, across `turn.chiral` at 452 and `tools-fs.chiral` at 96 |
 | rows in `docs/elements/catalog.md` | 0 |
 | rows in `docs/elements/ledger.md` | 0 |
 | rows in `docs/definitions/status-ledger.md` | 0 |
 | rows in `records/conformance-map.md` | 0 |
-| roots that reach it | 2: `prog/samples/agent-probe.prog:9` and `prog/samples/self-extend-probe.prog:13` |
+| roots that reach it | 2: `prog/samples/shilpa-probe.prog:9` and `prog/samples/self-extend-probe.prog:13` |
 
-A grep for `prog/agent` across those four files returns nothing. Renaming a
+A grep for `prog/shilpa` across those four files returns nothing. Renaming a
 directory with no ledger row and two probe roots costs the tree one import
 rewrite.
 
 Three statements follow. This document makes them and performs none.
 
 **1. The tool-call wire protocol moves to `prog/indriya/`.**
-`prog/agent/agent.chiral` is the only module in the tree that puts a `tools`
+`prog/shilpa/turn.chiral` is the only module in the tree that puts a `tools`
 array into a request, at `:201`, and the only one that reads `tool_calls` back,
 at `:167` and `:241`. A tree-wide grep for either token over `.chiral` and
 `.prog` returns those three code lines and five comments. That protocol is what
 every consumer with a tool needs, and it is the shared piece.
 
-**2. The duplicated transport goes.** `prog/agent/agent.chiral:11-14` records
+**2. The duplicated transport goes.** `prog/shilpa/turn.chiral:11-14` records
 why the agent builds its own request body:
 
 ```
@@ -163,7 +163,7 @@ are `:11-15`, with the E100 sentence at `:11-14`. The repoint belongs to that
 arc's owner, and this document leaves it there.
 
 **3. `ag-bash` is deleted, and no design replaces it.**
-`prog/agent/agent.chiral:61-63` hands `/bin/sh -c` plus the model's string to
+`prog/shilpa/turn.chiral:61-63` hands `/bin/sh -c` plus the model's string to
 `raw-proc-spawn`, which [[decisions/decision-tool-capability]] §7 calls the
 widest authority in the tree reached from a tool schema.
 
@@ -281,7 +281,7 @@ written by this document.
    supervisor, and that is a different prog's authority. Carried from
    [[decisions/decision-tool-capability]] call 2. It governs
    `tool-authority/TA2`, it decides whether the `raw-proc-spawn` re-declaration
-   at `prog/agent/agent.chiral:46` is a defect or a workaround, and it decides
+   at `prog/shilpa/turn.chiral:46` is a defect or a workaround, and it decides
    whether a `prog/indriya/` implementation may take a path at all.
 
 2. **`prog/prapanca/manas.chiral`.** Its header at `:1-6` calls it "the
@@ -309,8 +309,9 @@ That call stays with the decision that opened it.
 
 ## Honest limit
 
-No directory moved. `prog/indriya/` does not exist, `prog/agent/` still reads
-`agent`, `prog/prapanca/chatter/` and `prog/prapanca/profile/` are where they
+One directory moved: `prog/agent/` is now `prog/shilpa/`, with `agent.chiral`
+renamed `turn.chiral`. `prog/indriya/` does not exist, `prog/prapanca/chatter/`
+and `prog/prapanca/profile/` are where they
 were, and `compose.chiral:18-19` is still the live boundary violation
 [[decisions/decision-orchestration-boundary]] named. Nothing here is checked by
 anything, the same limit that decision and

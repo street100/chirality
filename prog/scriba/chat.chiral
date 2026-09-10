@@ -1,6 +1,6 @@
 ; chat.chiral — I1 (revised): the chat window. A dedicated, persistent `*chat*`
 ; buffer that the user swaps to (C-x C-a) while a file stays open, fullscreen.
-; C-c C-c sends the FILE buffer's content as context to the agent (agent/agent.chiral,
+; C-c C-c sends the FILE buffer's content as context to the agent (shilpa/turn.chiral,
 ; the A4 Pi-minimal tool-call loop) and appends the reply to the chat buffer.
 ; The file buffer is never the target of an insert, and never re-prompted.
 ;

@@ -174,7 +174,7 @@ their golden at
 a path absent from this tree, and no `*.golden.json` file exists anywhere under
 it, measured 2026-09-02. Neither basename appears in `tools/test/run-tests.sh`
 or in any `tools/test/*.sh`; Phase 7 sweeps both compile-only, as roots that
-define `compile-main`. `prog/samples/agent-probe.prog` is a third, a full
+define `compile-main`. `prog/samples/shilpa-probe.prog` is a third, a full
 `agent-run` tool-call turn against `qwen3:8b`, and it carries no assertion. No
 arc holds that work.
 

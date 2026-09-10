@@ -31,8 +31,8 @@ gap.
 |---|---|---|
 | lines under `prog/prapanca/` | **7,289** across 40 files | `wc -l prog/prapanca/**/*.chiral` |
 | `.prog` fixture roots under `prog/prapanca/` | **18**, every one compiling `compile-main` | `find prog/prapanca -name '*-test.prog'` |
-| roots under `prog/samples/` naming prapanca | **21** (`prapanca-*-live.prog`, `prapanca-run-conform.prog`, `prapanca-flow-conform.prog`, `agent-probe.prog`, `prapanca-parse-robust-test.prog`) | `find prog/samples -iname '*prapanca*' -o -iname '*agent-probe*'` |
-| of those, executed by any `tools/test/*.sh` phase | **0** | `grep -rn 'prapanca-run-conform\|prapanca-flow-conform\|agent-probe' tools/test/` |
+| roots under `prog/samples/` naming prapanca | **21** (`prapanca-*-live.prog`, `prapanca-run-conform.prog`, `prapanca-flow-conform.prog`, `shilpa-probe.prog`, `prapanca-parse-robust-test.prog`) | `find prog/samples -iname '*prapanca*' -o -iname '*shilpa-probe*'` |
+| of those, executed by any `tools/test/*.sh` phase | **0** | `grep -rn 'prapanca-run-conform\|prapanca-flow-conform\|shilpa-probe' tools/test/` |
 | E-numbers E133-E146 cited in `records/conformance-map.md` | **0** | `grep -n 'E13[3-9]\|E14[0-6]' records/conformance-map.md` |
 | Phase 20's five executed roots that import `prapanca/*` | **0** | `grep -n '^(import' prog/samples/{e130_http_get,stream-ollama,e131_sse_framing,e131_sse_socketpair,e130_http_request_refused}.prog 2>/dev/null \| grep prapanca` |
 | `lib/backend.chiral`, the map's own citation for the model-backend seam | **absent** (the file is `prog/prapanca/backend.chiral`) | `find . -iname backend.chiral` |

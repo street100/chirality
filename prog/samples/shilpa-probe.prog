@@ -1,12 +1,12 @@
-; agent-probe.chiral -- drive agent-run (A4) against shredtower ollama on the
+; shilpa-probe.chiral -- drive agent-run (A4) against shredtower ollama on the
 ; tailnet (100.64.0.5:11434), one real tool-call turn, all-chirality, zero CPython.
 ; The prompt forces a bash tool_call: the model emits tool_calls -> dispatch-tool
 ; -> do-bash -> ag-bash -> raw-proc-spawn -> nb-run-cmd -> /bin/sh -c ->
 ; captured stdout -> role:tool message -> the model answers with the output.
-; Compile: chirality_blob "lib:prog" agent/agent, append the 5 linkage libs, append
+; Compile: chirality_blob "lib:prog" shilpa/turn, append the 5 linkage libs, append
 ; this file (entry compile-main), B1. Mirrors bin/scriba verbatim.
 (import "prelude/prelude")
-(import "agent/agent")
+(import "shilpa/turn")
 
 (def compile-main (=> I64 I64)
   (lam (n)
