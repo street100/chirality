@@ -11,7 +11,7 @@ updated: 2026-09-09
 - goals: [[goals/coding-agent]], condition 1: "A coding turn is decomposed
   across the engine rather than run as one loop, and each step holds only the
   tools it was granted."
-- reserved element block: `none`, so rows carry arc-local ids per
+- reserved element block: **`E240-E259`**, [[decisions/decision-lane-split]], reserved 2026-09-10 for the coding agent and the tools under it. Rows keep their arc-local ids per [[decisions/decision-work-ids]], which survive the mint
   [[decisions/decision-work-ids]]. This arc spells the letters `TA`, for tool
   authority: `tool-authority/TA1` upward. `TA` is free tree-wide, verified
   2026-09-09. Author call B was ruled 2026-09-06, "let overlap exist", so a band

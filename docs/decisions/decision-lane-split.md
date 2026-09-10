@@ -69,6 +69,24 @@ citing by a spec, and that is the gap this band closes: [[arcs/unit-lane-arc]]
 carries the roster, and its 42 rows can now be cited once an element is
 minted for one. Every row stays `unminted` until then.
 
+**A fourth band, `E240-E259`, reserved 2026-09-10 for the coding agent and the
+tools under it.** 20 slots against 31 rows currently open across
+[[arcs/coding-turn-arc]] (13), [[arcs/tool-authority-arc]] (12) and
+[[arcs/part-split-arc]] (6), so it is deliberately short of the roster: bands
+are advisory since author call B, an arc mints the next free number tree-wide,
+and a band that guesses high reserves numbers nobody spends. It closes the same
+gap the unit-lane band closed, which is that
+[[decisions/decision-work-ids]] allows arc-local ids only until a row needs
+citing by a spec.
+
+**And a band for [[arcs/text-tools-arc]], `E260-E263`**, four slots against
+`P2`, `P3`, `P4` and E173's second slice. That arc's resume state carried "owed
+from the author: a reserved element block ... until then P2, P3 and P4 stay
+unnumbered and cannot be scheduled" from before author call B was ruled on
+2026-09-06, so it declared three rows unschedulable for four days after the
+ruling that unblocked them. The band is written here because the arc asked for
+one; the ruling already meant it did not need one.
+
 Phases 1–7 and 13–17 are taken. 8–12 are names still owed to unported old-tree
 phases — **do not reuse them**; a number that once meant something else is worse
 than a fresh one.

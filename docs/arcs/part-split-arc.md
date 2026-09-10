@@ -11,7 +11,7 @@ updated: 2026-09-09
 - goals: [[goals/module-split]], condition 1: "**A module's pieces have one type
   shape each.** Where two halves differ in effect, cost or tier weight they are
   two modules, and where they do not the split stays unmade."
-- reserved element block: `none`, so rows carry arc-local ids per
+- reserved element block: **`E240-E259`**, [[decisions/decision-lane-split]], reserved 2026-09-10 for the coding agent and the tools under it. Rows keep their arc-local ids per [[decisions/decision-work-ids]], which survive the mint
   [[decisions/decision-work-ids]]. This arc spells the letters `PS`, for part
   split: `part-split/PS1` upward. `PS` is free tree-wide, verified 2026-09-09.
   Author call B was ruled 2026-09-06, so a band is advisory and an arc without

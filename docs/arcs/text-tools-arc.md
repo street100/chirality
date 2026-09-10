@@ -9,7 +9,7 @@ updated: 2026-09-01
 # Arc: the text primitives
 
 - goal: [[goals/self-tooling]]
-- reserved element block: **none**. Its rows are `P1` to `P4`, the arc-local id
+- reserved element block: **`E260-E263`**, [[decisions/decision-lane-split]], reserved 2026-09-10. Its rows are `P1` to `P4`, the arc-local id
   scheme [[decisions/decision-work-ids]] settles and this arc invented first.
 - serves: [[arcs/zero-python-arc]] (the nine tools it replaces),
   [[arcs/binary-split-arc]] (what a tool binary carries)
