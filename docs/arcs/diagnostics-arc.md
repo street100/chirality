@@ -254,7 +254,7 @@ checks over all of it.
 | `diagnostics/L2` | `Rendering` gains horizontal composition, `r-row` and the width function it needs | layout | law | new | 2 | built | `E174` |
 | `diagnostics/L3` | a display-width table: what a column is, for text nobody in the tree has rendered yet | layout | primitive | new | 2 | open | `E177` |
 | `diagnostics/L4` | `r-table` gets real per-column widths. One value, two layouts is the defect | layout | law | new | 2 | open | `E178` |
-| `diagnostics/L5` | `str-sub` does not clamp: an out-of-range end index segfaults while a prelude comment claims otherwise | layout | law | new | 2 | open | `E176` |
+| `diagnostics/L5` | `str-sub` does not clamp: an out-of-range end index segfaults while a prelude comment claims otherwise | layout | law | new | 2 | designed | `E176` |
 | `diagnostics/T1` | the term printer is repointed at the real `Term`, returns a `Doc`, and moves to `surface/pretty` | printer | primitive | new | 3 | built | `E181` |
 | `diagnostics/F1` | nested `r-face` restores the outer face: the ANSI renderer keeps a face stack | faces | law | new | 2 | built | `E175` |
 | `diagnostics/F2` | the face registry becomes the only source of a face, and an unknown name is an error | faces | law | new | 1 | open | `E179` |
