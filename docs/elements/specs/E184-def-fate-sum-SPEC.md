@@ -96,7 +96,7 @@ files push back.
 | `lib/typing/kernel.chiral:1319` | the exhaustiveness refusal decision 3 uses as its instrument | `(false (tc-err (r-judged (subj-none) (jg-nonexhaustive))))`, inside `finish-case` | agrees |
 | `lib/typing/diag.chiral:135`, `:749-751` | `r-skipped`'s payload, `dg-chain-doc` reading `skwhy-tag` and `skwhy-name` | exactly those. `dg-chain-doc` is `:741-754` | agrees |
 | `lib/lowering/compile-all.chiral:17`, `:36` | `CAllR` two arms, the `elf-ok` arm discarding `skips` | `CAllR` at `:17`; the `elf-ok` arm is **`:36`** and the `elf-err` arm `:42-44`. The design's §6 correction table already repointed the minted row's `:34-38` and it is right | agrees |
-| `lib/lowering/compile-front.chiral:373` | `(bridge-sig (closconv-sig (specialize-singletons sig)) name)` | exactly that, with `peel-globals` reached at `:349` inside `bridge-sig` (`:344-354`) | agrees |
+| `lib/lowering/compile-front.chiral:373` | `(bridge-sig (closconv-sig (specialize-singletons sig)) name)` | exactly that. `bridge-sig` is `:344-354` and its `let` at `:349` is where the peel runs | agrees |
 | FD-25's blast radius: 27 call sites, all inside `compile-front.chiral` | nothing outside that file calls the six functions | 45 occurrences in `compile-front.chiral`; every occurrence elsewhere is a comment (`closconv.chiral:1004`, `:1030`, `:1101`, four `prog/` and `tools/test/samples/` headers) | agrees |
 | `tools/test/opt-census.sh` | `defs=1519 skipped=10 tfns=1549` | re-run 2026-09-11: `census tfns=1549 ok=1518 err=31 defs=1519 skipped=10 unfolded-ok=1518`, `8 passed, 0 failed`, 7 s. The pins the design derived M-A from hold at HEAD | agrees |
 | `lib/lowering/upper/specialize-singleton.chiral:229` | `specialize-singletons` returns a bare `Sig` | exactly that. The design cites `:229-232`, which spans `specialize-singletons` at `:229` and `sp-finish` at `:230-232` | agrees |
@@ -282,11 +282,14 @@ compare equal, so the non-empty guard runs before every `cmp`.
 - **Target:** `lib/lowering/upper/lower.chiral` at `:125-131`, the 19 sites, and
   `:22-105`; `lib/lowering/compile-back.chiral:271`.
 - **Change:** the seven `(reason Str)` fields become `(site SkLow)` and the 19
-  sites construct arms, with `:309` and `:358` sharing `sl-case-nondata` because
-  they are one refusal reached from `expr` and from `tail`. `:246` and `:249`
-  take two arms over one message, which is E157's Judg shape
-  (`lib/typing/diag.chiral:12-18`) and not a duplicate: `SkLow` is a site code and
-  two sites carrying one field are two sites. The 84 unreached lines at `:22-105`
+  sites construct arms. One `sl-case-nondata` arm covers both
+  `lib/lowering/upper/lower.chiral:309` and
+  `lib/lowering/upper/lower.chiral:358`, which are one refusal reached down two
+  paths. Two arms cover `lib/lowering/upper/lower.chiral:246` and
+  `lib/lowering/upper/lower.chiral:249`, which carry one message between them.
+  That is E157's Judg shape (`lib/typing/diag.chiral:12-18`) and not a
+  duplicate: `SkLow` is a site code, and two sites carrying one field are two
+  sites. The 84 unreached lines at `:22-105`
   are deleted, which is [[decisions/decision-def-partition]] §5 and the author's
   2026-09-09 ruling in [[records/author-calls]]. `compile-back.chiral:271` wraps
   `(sk-extern (sklow-text er))`, so the message stays byte-identical and
@@ -368,9 +371,10 @@ compare equal, so the non-empty guard runs before every `cmp`.
 - **Target:** `lib/lowering/compile-back.chiral:184`, `:204`, `:213`, `:252-275`.
 - **Change:** `lower-defs` accumulates `(pair label def-name)` beside `acc` from
   the `(cons main extra)` it already holds at `:272`, and threads it into
-  `filter-erasable` (`:255`) and `prune-fix` (`:256`), which passes it to
-  `prune-pass`. The two channels then key their records by definition where they
-  key them by emitted label today.
+  the two calls at `:255` and `:256` of the same file, which reach
+  `filter-erasable` and `prune-fix`; `prune-fix` hands it to `prune-pass`. The
+  two channels then key their records by definition where they key them by
+  emitted label today.
 - **The sizing call, with C3 as its reason:** the threaded
   `(List (Pair Str Str))` over a sixth `TFn` field. Four signatures in one file
   against 18 sites in eight files, two of which sit outside the compiler blob and
@@ -388,8 +392,8 @@ compare equal, so the non-empty guard runs before every `cmp`.
 - **Target:** `lib/lowering/skip-diag.chiral` (the `Fate` and `FateRec`
   declarations, `FateRec` retiring `SkRec`), `lib/lowering/compile-back.chiral:126`
   (`BR`), `:332` (`back-program`), `lib/lowering/compile-front.chiral:319-321`
-  (`FR`), `lib/lowering/compile-all.chiral:17` (`CAllR`), `:36` (the `elf-ok`
-  arm), `lib/typing/diag.chiral:135` (`r-skipped`),
+  (`FR`), `lib/lowering/compile-all.chiral:17` where `CAllR` is declared and
+  `:36` where the `elf-ok` arm is, `lib/typing/diag.chiral:135` (`r-skipped`),
   `lib/lowering/upper/closconv-driver.chiral:145` (`CCOut`'s `dsk`).
 - **Change:** `Fate` takes five arms, `ft-emitted (labels (List Str))`,
   `ft-specialized (into (List Str))`, `ft-created (by Str)`, `ft-erased` and
