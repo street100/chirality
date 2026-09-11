@@ -6,7 +6,7 @@ kind: primitive
 origin: pair
 req: 1
 status: blocked
-updated: 2026-09-10
+updated: 2026-09-11
 ---
 
 # enforcement/N18: the bounds relation has no carrier, and the vocabulary already refuses the half that has one
@@ -133,6 +133,38 @@ full-predicate REFACTOR (solver, inter-variable arith) -> E41."* `E41` is minted
 (`docs/elements/catalog.md:168`) at ledger state `design`
 (`docs/elements/ledger.md:167`).
 
+⚑ **2026-09-11: that arrow lands short of this row on both halves, and the owner
+is `enforcement/N22`.** Trigger: `records/lenses/problems.md` `PRB-82`, settled
+2026-09-10 against `docs/elements/specs/E41-region-types-SPEC.md`,
+`status: audited` since 2026-08-02. That SPEC's §1 (`:29-42`) scopes E41's
+refinement half to a **linear** arith-expression bound, *"a sum of atoms"*
+against an atom, `(<= (+ o s) cap)`, and its non-goals list *"the
+**general/nonlinear** refinement solver"*. §3 decision 2 (`:75`) reads
+*"RESOLVED: E41 owns it"* for that sum alone and names E22's refined cursor and
+E25's byte-cell faces as the consumers it owns it for. `(str-len s)` is a
+saturated application and not a sum of atoms, and the `=>` binder scope carries
+no arithmetic at all, so **both halves of §4 Shape 3 fall outside `E41` on
+`E41`'s own words.** `enforcement/N22` is the row that holds them, opened in
+`docs/arcs/enforcement-arc.md` on 2026-09-10 at `origin` `pair`, `req` 1, state
+`open`, and `PRB-79` and `PRB-82` both read `owner: enforcement/N22`. What
+`lib/typing/refine.chiral:7` should read: the linear sum to `E41`, the
+application operand and the `=>` binder scope to `enforcement/N22`. That comment
+is compiler source inside the blob and is left standing under
+[[working-discipline]]'s build rule. E41's SPEC additionally carries a
+2026-09-04 NEEDS-REPLAN triage over its Step 1 home
+(`records/spec-tier-triage.md`), which moves where the linear sum gets built and
+moves no ownership.
+
+⚑ **Shape 3's substance survives this and was re-tested at HEAD `bffa265`.**
+`operand-ok?` (`lib/typing/kernel.chiral:1390-1394`) still admits `(v-lit-i k)`
+and a spine-`nil` `(v-ne (n-var lvl) …)` and nothing else. `Constraint`'s `sym`
+field is still `(List (Pair SymOp I64))` under the comment *"symbolic bounds
+keyed by operand level"* (`lib/typing/refine.chiral:13-18`), so entailment over
+an application still needs a term-keyed fact. Neither file is emission, so the
+price stays `C1 == C2`. E41's sum-of-atoms bound ranges over those same level
+keys and delivers no term key, so building it would not discharge Shape 3's cost
+either. Only the ownership sentences are refuted.
+
 ### The consumer half, measured
 
 `records/bounds-residue.md` `BR-06` measured **134** `str-sub` calls and **108**
@@ -190,6 +222,13 @@ already exist.** The relation is `E41`'s declared subject by
 routine's repair is `E176`. What is left unowned is the statement in item 5 and
 the question of whether anything else is owed at all, which §5 carries to the
 author.
+
+⚑ **2026-09-11: the relation is `enforcement/N22`'s subject and not `E41`'s.**
+`docs/elements/specs/E41-region-types-SPEC.md` §1 and §3 decision 2 put the
+application operand and the `=>` binder scope outside `E41`, and `PRB-82` opened
+`enforcement/N22` on them. §2's ⚑ carries the measurement. The verdict's own
+shape is unchanged and gets stronger: the mechanism is owned by a row that
+exists, which is what this paragraph claimed and could not yet cite.
 
 ## 4. The shapes
 
@@ -268,6 +307,16 @@ carrier shape landing first.
   the tree; a roster row is owed for it and this run does not open one, and does
   not coin an id for it, on `BR-03`'s evidence.
 
+  ⚑ **2026-09-11: the Owner reads `enforcement/N22`, and the narrower question
+  was named from `E41`'s side.** `docs/elements/specs/E41-region-types-SPEC.md`
+  is the artifact this bullet said did not exist: its §1 (`:29-42`) scopes
+  `E41`'s arithmetic to the linear sum `(<= (+ o s) cap)` and puts the
+  general solver in its non-goals, which leaves a saturated application outside
+  it, and the binder scope carries no arithmetic to be inside it either.
+  `enforcement/N22` was opened on that measurement on 2026-09-10 and carries
+  both halves of this shape's Form. §2's ⚑ carries the citation. This shape's
+  Form, Costs and Forbids are unchanged.
+
 ### Shape 4: a `Judg` arm for bounds, with the check elsewhere
 
 - **Form:** one constructor in `(data Judg ())` at `lib/typing/diag.chiral:99`
@@ -320,6 +369,15 @@ carrier shape landing first.
   holds open for exactly this case, a capability whose enabling element is
   minted and unbuilt.
 
+  ⚑ **2026-09-11: the ledger row names `enforcement/N22` and not `E41`.**
+  `docs/elements/specs/E41-region-types-SPEC.md` puts the operand widening
+  outside `E41`, §2's ⚑ carries it, and `PRB-82` opened `enforcement/N22` to
+  hold it. The Form is otherwise unchanged: the row still names `operand-ok?`
+  as the mechanical blocker. The Forbids sentence's last clause now reads that
+  the enabling work is a roster row rather than a minted element, which is what
+  [[working-discipline]]'s deferral rule prescribes for unminted work and is a
+  stronger statement than the one it replaces.
+
 ### How the shapes depend on the open calls
 
 | shape | under author call 2 going to enforcement | under call 2 going elsewhere | under call 3, clamp discharges the class | under call 3, clamp does not discharge |
@@ -331,9 +389,28 @@ carrier shape landing first.
 | 5 | `E176`'s, not this row's | `E176`'s | this is the discharge | this is not a discharge |
 | 6 | this row writes it | the row moves whole and writes it there | the row closes after `E176` builds | the row stays open behind 3 |
 
+⚑ **2026-09-11: row 3 reads `enforcement/N22` in all four columns, and the owed
+row is opened.** `docs/elements/specs/E41-region-types-SPEC.md` puts both halves
+of Shape 3 outside `E41`, §2's ⚑ carries it, and `enforcement/N22` was opened on
+2026-09-10. So the cells read `enforcement/N22`'s, with no second row owed
+beside it. Whether `N22` itself moves arc under author call 2 in this table,
+`records/author-calls.md:363`, is that call's and this run does not take it. The
+other five rows are untouched by this trigger.
+
 ## 5. The call
 
 - **Chosen: Shape 6, with Shape 3 as the mechanism and its ownership deferred.**
+
+  ⚑ **2026-09-11: the deferral has an owner and the call now reads "Shape 6,
+  with Shape 3 as the mechanism, owned by `enforcement/N22`."** When this line
+  was written the widening was routed to `E41` by a comment and no artifact
+  named it from `E41`'s side. `docs/elements/specs/E41-region-types-SPEC.md`,
+  `status: audited`, is that artifact, and it excludes both halves of Shape 3;
+  `PRB-82` opened `enforcement/N22` on 2026-09-10 to hold them. §2's ⚑ carries
+  the measurement. **The choice itself is unchanged.** Shape 6 is still what is
+  buildable at this row today, for the reason stated below, and `N22` being
+  `open` and `unminted` is exactly the state that keeps Shape 3 out of reach
+  here.
 
   The reason is a measurement. Every route to the bounds relation terminates at
   `operand-ok?` (`lib/typing/kernel.chiral:1390-1394`), which admits two value
@@ -373,6 +450,18 @@ carrier shape landing first.
 | 7 | The stale `250` in this row's `what` cell | **REPORTED, not edited**, and routed | `records/bounds-residue.md` `BR-06` measured 134 + 108 = **242** with the method stated, re-verified here, and routes the count to `E176`'s SPEC stage together with two other stale statements in the same cells |
 | 8 | **Which arc owns the bounds class** | **NEEDS-AUTHOR** | `records/author-calls.md:363`, `unreviewed`. Carried verbatim below. The §4 table states what each shape does under either answer. If the call goes against enforcement this artifact moves with the row |
 | 9 | **Is a clamp an enforcement outcome, or does it discharge the class by hiding it** | **NEEDS-AUTHOR** | `records/author-calls.md:364`, `unreviewed`, and the same fork as `docs/arcs/parts/diagnostics-L5.md` §5 question 9, clamp against trap. It governs `E176`'s repair shape, which is a different row. It governs this row only in one place: whether anything beyond Shape 6 is owed here after `E176` builds. §6 states the packet under both answers |
+
+⚑ **2026-09-11: questions 4 and 5 are re-dispositioned, and the other seven are
+untouched by this trigger.** **Question 4**, *who owns widening the refinement
+fragment*, splits: `E41` owns the linear sum `(<= (+ o s) cap)` by its own SPEC's
+§3 decision 2, and the widening this design needs, a saturated application
+admitted as an operand plus the `=>` binder scope, is `enforcement/N22`'s.
+**Question 5** now reads **RESOLVED, and the row is `enforcement/N22`**: it was
+named by an artifact after all, `docs/elements/specs/E41-region-types-SPEC.md`
+§1's non-goals read from `E41`'s side, and the row was opened on that
+measurement on 2026-09-10. The reason this design declined to coin an id stands
+and was the right call: `BR-03` measured what coining `text-tools/L6` cost, and
+the id that landed came from the arc that owns it. §2's ⚑ carries the citations.
 
 ### NEEDS-AUTHOR, carried verbatim
 
@@ -440,6 +529,16 @@ decides it, and `E41` owns widening it. A design run may not write
 `docs/elements/ledger.md`, so this is the packet's instruction to the stage that
 can.
 
+⚑ **2026-09-11: the row to write names `enforcement/N22` as the owner of the
+widening.** `docs/elements/specs/E41-region-types-SPEC.md` puts the application
+operand and the `=>` binder scope outside `E41`, §2's ⚑ carries it, and `PRB-82`
+opened `enforcement/N22` on 2026-09-10. The rest of the instruction stands
+verbatim: the relation between an index and its buffer is not expressible, and
+`operand-ok?` at `lib/typing/kernel.chiral:1390-1394` is the one function that
+decides it. The stage that writes the ledger row writes `enforcement/N22`, which
+is `open` and `unminted`. [[working-discipline]]'s deferral rule bars an `E#`
+here.
+
 ### The element owed, and the answer it waits on
 
 **If author call 9 rules that a clamp discharges the class**, this row closes
@@ -451,6 +550,15 @@ Shape 6's ledger row as its residue.
 element is owed, and it is owed **behind `E41`** rather than at this row. Its
 shape, written so the mint step can execute it once `E41` is built and once
 call 8 says which arc holds it:
+
+⚑ **2026-09-11: it is owed behind `enforcement/N22`, and `N22` is unminted.**
+`docs/elements/specs/E41-region-types-SPEC.md` puts Shape 3's two halves outside
+`E41`, §2's ⚑ carries it, and building `E41` would leave this element as blocked
+as it is today. So the mint step executes the packet below once `enforcement/N22`
+is designed, minted and built, and once call 8 says which arc holds this row. The
+packet's own content is unchanged by this trigger: its catalog row, ledger row,
+size estimate and gate all describe the carrier and the judgment, and none of
+them names `E41`.
 
 - **Elements:** one. The carrier and the judgment constrain each other: a
   `Judg` arm with no issuing rule is half a row, and a bound that names a buffer
@@ -483,6 +591,11 @@ call 8 says which arc holds it:
 - **A roster row for whether a saturated application is inside `E41`'s scope**,
   §5 question 5. No arc holds it. This run does not open it and does not name it
   with an id.
+
+  ⚑ **2026-09-11: opened, and the enforcement arc holds it.**
+  `enforcement/N22`, `docs/arcs/enforcement-arc.md`, 2026-09-10, `origin` `pair`,
+  `req` 1, state `open`, `unminted`. Its next stage is `element-design`. This
+  bullet stops being work owed elsewhere.
 - **The `38`, the `250`, and `records/enforcement-arc.md` EN-31's `:97-110`
   span**, §5 questions 6 and 7. Reported here, written by the stages that own
   those files.
