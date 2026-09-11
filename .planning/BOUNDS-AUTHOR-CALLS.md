@@ -418,7 +418,521 @@ sixth condition without touching the principle.
 
 ## Call 2: Which arc owns the bounds class
 
-Not yet written.
+**PROPOSAL. Not a ruling.** The row at `records/author-calls.md:363` stays
+`unreviewed`. Written 2026-09-10 against the tree at `26577e1`. No file outside
+this one was written by the run that produced this section, and no roster row
+was moved.
+
+### 2.1 The call, quoted verbatim
+
+From `records/author-calls.md:363`, the row's second and third cells entire:
+
+> **Which arc owns the bounds class** · Opened 2026-09-10 by the same revisit. |
+> Enforcement: the missing artifacts are a judgment and a gate, requirements 1
+> and 6's subjects. Diagnostics: `E176` and `diagnostics/L5` already own the
+> routine, and splitting one defect across two arcs is the collision `arc-open`
+> exists to catch. Text-tools: [[banks/text]] shard A owns the slice territory
+> and `text-tools/L6`, the length-indexed `Str`, is already owed there.
+> [[decisions/decision-primitive-with-consumer]] explicitly does not rule on a
+> pair whose halves sit in different arcs. `enforcement/N18` is written on the
+> judgment-and-gate reading; if the call goes the other way the row moves whole
+> and keeps its id
+
+The defect itself is established and is not re-derived here: `str-sub`, `bslice`
+and `bget` read outside their buffers today, measured against the committed
+binary and recorded at `records/enforcement-arc.md` EN-31 (`:354`).
+
+Three things committed since the row was written are taken as given. **Call 1's
+result** (§1.2 above): `docs/goals/enforcement.md:16-17` cites `PRINCIPLES.md`
+§3 inside the goal's own claim section, and §3 is where space becomes a port.
+**The arena precedent**: `lib/lowering/tal/sys.chiral:1006-1009` already rules
+that *"A real bounds violation is a corpse: on size<=0 or off/len out of range
+the body takes the arena-fail shape (exit_group(-EINVAL), never returns)"*, with
+`nb-arena-fail-t` a live `ti-sys 231` at `:118-122` reached by
+`nb-arena-commit-t` at `:139-141`. **And `diagnostics/L5` §5 no longer holds as
+written**: its shape set is five, and clamp-versus-trap at `nb-bslice` is
+question 9, `NEEDS-AUTHOR`. Whichever arc owns the class, the repair shape is
+unsettled, and that is **call 3**'s territory, not reopened here.
+
+### 2.2 What each candidate arc actually holds today
+
+An arc's claim on this class is only as good as the requirements it already
+carries, so each is measured on its goal, its requirements, its rows and the
+tree its work lands in.
+
+**Enforcement** — `docs/arcs/enforcement-arc.md`.
+
+| | measured |
+|---|---|
+| goal | [[goals/enforcement]] (`:12`), whose claim section cites `PRINCIPLES.md` §3 (`docs/goals/enforcement.md:16-17`) |
+| band | `E184-E189`, shared with diagnostics (`:13`). **Spent**: `E189` is built (`docs/elements/ledger.md:327`), and `records/enforcement-arc.md:356` records the band spent with `docs/decisions/decision-lane-split.md:327` barring two focuses from minting from it concurrently |
+| requirement 1 | *"A capability sits at ENFORCED, or its ledger row says why it does not."* Inherited verbatim from the goal (`:42-48`). Its open half is a `design` row stating why, over 66 rows |
+| requirement 6 | *"Every gate row names a mutant that is actually run."* Inherited from the goal and from `docs/definitions/testing-floors.md:261` (`:372-374`) |
+| the `safety` group | added 2026-09-10, the arc's fourth: *"What the compiler refuses about a program's own memory access … none of them holds a rule that refuses an out-of-range index"* (`:482-488`) |
+| rows | `N18` safety · primitive · `pair` · req **1, 3** (`:509`); `N19` floor · law · `pair` · req 2, 3 (`:510`); `N20` safety · tool · new · req **1** (`:511`); `N21` tooling · tool · new · req **6** (`:512`). All four `unminted` |
+| tree | *"`lib/lowering/` at top level …, `lib/lowering/upper/` …, `lib/lowering/tal/` (`ir`, `check`, `eval`), `bin/chirality`"* (`decision-lane-split.md:305`), and `:306`: *"Enforcement's whole footprint is `lib/lowering/` plus `bin/chirality`."* |
+
+⚑ **The row's own account of which requirements is wrong, and the error is not
+cosmetic.** The call says the judgment and the gate are *"requirements 1 and
+6's subjects"*. Measured, `N18` serves 1 and 3 and `N21` serves 6, so the two
+halves are carried by two rows against three requirements, and requirement 3,
+*"The check agrees with the compiler it checks"*, is named by neither side of
+the call. Neither requirement 1 nor requirement 6 states a memory property:
+requirement 1 is satisfied by a ledger row that says why, and requirement 6 is a
+quality check over gate rows that exist. Whether requirement 6 can see a class
+with zero rows is **call 5** and is not analysed here.
+
+**Diagnostics** — `docs/arcs/diagnostics-arc.md`.
+
+| | measured |
+|---|---|
+| goals | [[goals/readable-surface]] (what it is built *for*) and [[goals/self-tooling]] (what it is built *out of*) (`:11`) |
+| band | the same `E184-E189` (`:12`), and `:232-233` reads *"The next free number is E189, and `E189` is the last one left in the band"*, which `docs/elements/ledger.md:327` now measures built |
+| requirements | five (`:48-70`). Requirement 2 is *"Layout is deferred, and the algebra stays closed. `lib/prelude/doc.chiral` has six constructors and no seventh."* Requirement 5 is *"The error-quality rows are closed. E182 arity evidence (closed 2026-09-02), E176 `str-sub`, E179 face registry."* |
+| the row | `diagnostics/L5`, group `layout`, kind `law`, origin `new`, req **2**, state `designed`, element **`E176`** (`:257`) |
+| coverage | *"2 by L1 to L5"* (`:266`) |
+| tree | `lib/typing/diag.chiral`, `lib/surface/pretty.chiral`, `lib/protocol/render.chiral`, `render-doc.chiral`, a consumer under `prog/` (`decision-lane-split.md:302`); plus Lane A's may-write list, which names `lib/prelude/string.chiral` **(E176)** at `:153` |
+
+⚑ **This arc reaches the defect through two cells and neither states a
+property.** The roster cell says requirement 2, which is the closed-`Doc`-algebra
+requirement and has nothing to do with memory. Requirement 5 reaches `E176` by
+number, as a row to be closed. So diagnostics owns the **routine**, its element,
+its design and its gate, and carries no requirement that a bound holds. Its goal
+does name the defect, once, in `## State`: *"`str-sub` reads past its buffer and
+reports the read length while `string.chiral:14` claims in a comment that it
+clamps … a regularity violation"* (`docs/goals/readable-surface.md:60-64`).
+Under the strict test §1.2 established, a `## State` sentence is description and
+not a claim, and none of that goal's four done-conditions (`:34-56`) observes
+memory.
+
+**Text-tools** — `docs/arcs/text-tools-arc.md`.
+
+| | measured |
+|---|---|
+| goal | [[goals/self-tooling]] (`:11`), whose claim section cites `decision-scope` and an author call and **no principle at all** (`docs/goals/self-tooling.md:11-19`) |
+| band | `E260-E263`, reserved 2026-09-10 (`:12`). `decision-lane-split.md:82-83`: *"four slots against `P2`, `P3`, `P4` and E173's second slice"* — all four spoken for |
+| requirements | four (`:200-210`). Requirement 1: *"Every primitive is total. A primitive whose cost is not bounded in its input cannot be typed here, per `PRINCIPLES.md` §2."* |
+| rows | **four**: `P1` (`E173`, built), `P2`, `P3`, `P4`, all `unminted` (`:184-187`). There is no `L6` |
+| shard A | *"the byte/string floor … `blen`, `bget`, `bslice`, `bcat` \| `lib/prelude/prelude.chiral`, extern \| **built**. `str-sub` is unclamped, E176 / BA-35"* (`docs/banks/text.md:47`), and the limits line at `:138` reads the same and ends *"E176, BA-35"* |
+| tree | `lib/text/` — *"one file, `matcher.chiral`"* (`decision-lane-split.md:301`) |
+
+⚑ **The text-tools side rests on a row that is in no roster.** A grep over the
+tree for `text-tools/L6` returns four hits and all four are other files citing
+it: `docs/arcs/enforcement-arc.md:509`, `docs/arcs/parts/diagnostics-L5.md:523`,
+`records/author-calls.md:363`, and §3.4 of this file. The arc's own roster holds
+`P1` to `P4`, and `decision-work-ids.md:85-92` fixes the letter: *"The id
+alphabet is the arc's own … `text-tools` keeps `P` for primitive."* `L` is
+diagnostics' letter, running `L1` to `L5` (`docs/arcs/diagnostics-arc.md:253-257`).
+So `text-tools/L6` is a row name coined in diagnostics' alphabet, continuing
+diagnostics' numbering, and filed against an arc that does not carry it. The
+design that coined it says so in its own disposition cell: *"**DEFERRED** to
+roster row `text-tools/L6`, **which does not yet exist and is not opened by this
+run**"* (`docs/arcs/parts/diagnostics-L5.md:523`). And the thing the side
+actually cites, shard A, routes the defect to **`E176`** in both places it
+records it, which is diagnostics' element and not a text-tools row.
+
+⚑ **Text-tools requirement 1 is nonetheless the only requirement in any of the
+three arcs that states a property a bounds-unsafe primitive violates**, and it is
+served by no row: `GAP-11`, *"converting the arc to the 8-column roster on
+2026-09-05 showed requirement 1 served by none of P1 to P4"*
+(`records/lenses/gaps.md:145-156`, `docs/arcs/text-tools-arc.md:191-195`).
+
+**The write-set measurement, which is the part none of the three sides carries.**
+`decision-lane-split.md:296-306` fixes a tree per arc. Against it, the four
+artifacts this class needs sit in four places:
+
+| what the class needs | where it lives | whose write set |
+|---|---|---|
+| a `Judg` arm that can say a bound | `lib/typing/diag.chiral:97-110`, 38 constructors and none says bounds | **diagnostics'** (`decision-lane-split.md:302`, and `:306`: *"`lib/typing/` belongs to diagnostics. The enforcement arc names no path under it"*) — yet `enforcement/N18` names exactly this file |
+| the repair site | `lib/lowering/tal/bytes.chiral`, `nb-bslice-t` (`docs/arcs/parts/diagnostics-L5.md` §5) | enforcement's **directory** and not one of the three `tal/` files its write set names (`ir`, `check`, `eval`); the element that holds it is diagnostics' `E176` |
+| an index for a bound to reference | `lib/surface/syntax.chiral:29`, `Str` is `t-primty` | no arc's |
+| shard A's externs | `lib/prelude/prelude.chiral:83` and `:97` | no arc's. `decision-lane-split.md:309` shows the tree already handling one such file by naming it: *"`lib/prelude/doc.chiral` is written by no arc"* |
+| the precedent that already refuses a bound | `lib/lowering/tal/sys.chiral:1006-1009`, `:118-122` | enforcement's directory, no arc's named file |
+| the gate | a new phase under `tools/test/` | Lane A's, *"new Lane-A gates"* (`:153`) |
+
+`decision-lane-split.md:336-341` left this open in so many words and for this
+exact element: *"**E176's repair site.** … Whether the fix is a guard in
+`lib/prelude/string.chiral` or a change under `lib/lowering/` decides whether
+diagnostics reaches enforcement's tree. The element has no SPEC and nothing
+settles it."* `diagnostics/L5` settled the **site**, under `lib/lowering/`, and
+settled no ownership with it.
+
+**What moving `enforcement/N18` would cost, measured rather than repeated.** The
+row says it *"moves whole and keeps its id"* under `decision-work-ids`. Measured
+against that document, the cheap half is real and the phrase is false for both
+destinations.
+
+*Cheap, and this is what "moves whole" correctly names.* The row is `unminted`,
+so `docs/goals/README.md:27`'s *"An element belongs to exactly one arc"* has
+nothing to bind yet, no catalog row moves, no ledger row moves, and
+`records/lenses/unspoken.md` gains nothing.
+
+*Not free.*
+
+1. **The citable name is `<arc>/<id>`** (`decision-work-ids.md:48`), so the arc
+   half changes at every citation. Fourteen exist, in four files:
+   `docs/arcs/enforcement-arc.md` ×5 (`:486`, `:509`, `:523`, `:545`, `:550`),
+   `records/enforcement-arc.md` ×3 (`:354`, `:355`, `:357`),
+   `records/author-calls.md:363`, and this file ×5.
+2. **Three of them sit in a file that is appended and not rewound**
+   (`docs/arcs/README.md:113-114`): `records/enforcement-arc.md` EN-31. A moved
+   row leaves EN-31 naming `enforcement/N18` permanently, correct as history and
+   stale as a pointer.
+3. **One sits in `records/author-calls.md`**, which no run writing this file may
+   touch.
+4. **The id letter does not travel.** `decision-work-ids.md:85-96` gives
+   text-tools `P`, so `text-tools/N18` breaks that table and `text-tools/P5`
+   breaks `records/README`'s *"Never renumber a row that already exists. Its ID
+   is cited elsewhere"*, quoted at `decision-work-ids.md:54-56`. Diagnostics has
+   `V`, `L`, `T`, `F` and `W` (`docs/arcs/diagnostics-arc.md:249-263`) and `L5`
+   is taken. The invariant `decision-work-ids` actually protects is that
+   **promotion to an `E#`** does not change the id (`:53-56`); it says nothing
+   about transfer between arcs.
+5. **The `req` cell does not travel.** `N18` reads `1, 3` against enforcement's
+   six. Diagnostics has five and text-tools four, and
+   `docs/arcs/README.md:96-102`'s coverage check requires every row to name at
+   least one requirement of the arc it sits in, or it is *"out of scope, or §5 is
+   missing one"*.
+6. **The `group` cell does not travel.** `safety` was created for this row
+   (`docs/arcs/enforcement-arc.md:482-488`) and exists in no other arc.
+7. **`N20` either goes with it or is stranded.** The `safety` group holds two
+   rows, `N18` and `N20` (`:486`), and `N20` is the census of which prelude
+   externs read at a caller-supplied index (`:511`). Moving one leaves a one-row
+   group whose subject is the row that left.
+
+### 2.3 The three sides as the tree states them
+
+**Enforcement.**
+
+| what the tree says | where |
+|---|---|
+| the arc opened a fourth group for this subject because none of the three standing ones *"holds a rule that refuses an out-of-range index"* | `docs/arcs/enforcement-arc.md:482-488` |
+| `N18` is written here, as `pair`, on the judgment-and-gate reading, and `N18` through `N21` are its rows | `:509-512`, `:523` |
+| *"`N18` is the row to design first, because it is the one whose subject the tree has already built for another"* carrier | `records/enforcement-arc.md:357` |
+| requirement 2's closure *"CAN CLOSE WHOLE AND A MEMORY-SAFETY HOLE STILL SHIPS"* | `docs/arcs/enforcement-arc.md:104-123` |
+| the goal this arc serves cites `PRINCIPLES.md` §3, the principle that puts space on the membrane | `docs/goals/enforcement.md:16-17`, `PRINCIPLES.md:88-90`, `:103-105` |
+| the tree the repair lands in is this arc's whole footprint | `decision-lane-split.md:305-306` |
+
+**Diagnostics.**
+
+| what the tree says | where |
+|---|---|
+| `E176` is this arc's element, `diagnostics/L5` its row, `designed` | `docs/arcs/diagnostics-arc.md:257`, `docs/arcs/parts/diagnostics-L5.md` |
+| `E176` is the arc's declared next action | `docs/arcs/diagnostics-arc.md:83` |
+| requirement 5 names `E176` as one of three rows whose closure the requirement is | `:66-70` |
+| the roster's own contract calls a collision the thing the coverage check catches: every row's `origin` *"defensible from §3 … the phantom-feature error, caught here rather than four stages later"* | `docs/arcs/README.md:100-102` |
+| `PRB-24`'s owner cell reads `E176` | `records/lenses/problems.md:328-339` |
+
+**Text-tools.**
+
+| what the tree says | where |
+|---|---|
+| shard A is *"the byte/string floor"* and holds `str-sub`, `bslice` and `bget` | `docs/banks/text.md:47` |
+| the length-indexed `Str` is *"a language element belonging to [[arcs/text-tools-arc]] and its bank shard A, not to this arc"* | `docs/arcs/parts/diagnostics-L5.md:523` |
+| requirement 1 is totality, per `PRINCIPLES.md` §2 | `docs/arcs/text-tools-arc.md:202-203` |
+| the arc can mint today and enforcement cannot | `docs/arcs/text-tools-arc.md:12`, against `records/enforcement-arc.md:356` |
+
+⚑ **The minting asymmetry is not a discriminator and the call does not say so.**
+Author call B was ruled 2026-09-06: *"a band is advisory, and an arc without one
+mints the next number free tree-wide, which `pack.py --mint` implements"*
+(`docs/arcs/text-tools-arc.md:252-256`). So a spent band does not stop enforcement
+from minting and a reserved band does not help text-tools, whose four slots are
+already spoken for.
+
+⚑ **A fourth thing the tree has done with this exact shape of question, which
+the call's three candidates do not include.** `records/author-calls.md:64`:
+*"**Which arc owns the allocation gap** · ⚑ **Routed 2026-09-06 to
+[[arcs/memory-discipline-arc]], and routing is not a ruling.** An arc was opened
+to hold the work, which answers where the work goes and leaves the fork this row
+states standing. Back at `unreviewed`."* The arc file states the same from its
+own side: the call *"carried it as 'which arc owns the allocation gap' with two
+arguable routes, when what it needed was an arc file"*
+(`docs/arcs/memory-discipline-arc.md:19-21`). Both halves of that precedent
+matter here: a new arc answered where the work goes, and the author call it came
+from is still open.
+
+### 2.4 The principle-by-principle test
+
+`PRINCIPLES.md` is the authority under test. Bare line numbers are that file.
+`:3-6` fixes its subject: *"The semantics and type system in the design base …
+have to satisfy these."* Arc, roster, row, group, requirement and owner appear
+nowhere in the document. §1.4 established that fact against a goal-tier question;
+against a placement question it is sharper, and the result below is mostly
+silence reported as silence.
+
+#### P1, to control everything, you have to be able to express everything
+
+**Silent on the call.**
+
+> "Anything that can happen outside it is, by definition, ungoverned, a hole, and
+> intent does not close holes." (`:25-26`)
+
+§1.4 established that this puts the class inside what must be governed. It says
+nothing about which roster records the obligation, because no document tier is in
+its scope. The seccomp figure (`:46-50`) argues that a model must cover a whole
+surface; read onto the instrument it argues that the defect must be owned
+*somewhere*, which no side of this call disputes.
+
+**Where a side expected it to bear and it does not.** The diagnostics side's
+strongest sentence is that *"splitting one defect across two arcs is the
+collision `arc-open` exists to catch"*. P1's hole is a gap in the framework's
+expressiveness. A defect recorded in two rosters is not a hole in the framework;
+it is bookkeeping, and the authority against it is `docs/arcs/README.md:96-102`'s
+coverage check, a document rule. Saying P1 does not supply it is the result.
+
+**On the Honest limit.** §3.3 established that P1 carries no paragraph labelled
+*Honest limit* and that its qualifying paragraph is the reflective floor
+(`:34-43`), whose subject is in-place judgment mutation. That holds here and is
+not re-derived.
+
+#### P2, everything is a process, and the type is the whole cost
+
+**Silent on the call, and it supplies one argument the call does not carry.**
+
+> "The unit of computation is a process with a type. Function, value, statement,
+> declaration are special cases of process, not separate kinds of thing."
+> (`:51-54`)
+
+Under P2 the declaration and the routine are **one object**, not two artifacts in
+two trees. `(extern str-sub (-> Str I64 I64 Str))`
+(`lib/prelude/prelude.chiral:83`) and `nb-bslice-t`
+(`lib/lowering/tal/bytes.chiral`) are the type and the process of a single
+thing. That is `decision-primitive-with-consumer`'s `pair` origin (`:84-92`)
+arriving from the principles rather than from the roster, and it argues that the
+halves are not separable at all — which strengthens the premise the call shares
+with every side and picks no side.
+
+**On the Honest limit** (`:66-69`). Over-approximate cost, and the mediator's own
+budget. Neither bears on which document holds a row, and saying so is the result.
+
+#### P3, govern the ports, not the outputs; the interior is free
+
+**Decides the subject, as §1.4 established. It is the only principle that offers
+a placement rule at all, and the rule's axis is the code tree.**
+
+> "A directory named for a subject rather than for boundaries is a category
+> error: `lib/ports/` holds files that *declare* a crossing and nothing else, and
+> three modules that merely computed over crossings moved out because being
+> *about* ports is subject matter. A module's interface is the boundaries it
+> names; **a design question is answered by asking which boundary it moves**."
+> (`:98-105`)
+
+This is as close as `PRINCIPLES.md` comes to telling anyone where a thing goes,
+and it is about directories and modules. Applied on its own terms the boundary is
+space — *"the boundary with the substrate you are running on"* (`:103-105`) — and
+the code that moves it is `lib/lowering/tal/`, which `decision-lane-split.md:306`
+puts in enforcement whole. Applied to the roster it does not select among the
+three, because all three arcs are named for subjects: errors, text tools, and
+what the compiler claims. P3's own sentence says that naming a thing for its
+subject rather than its boundary is the category error, which means the axis the
+call offers is not the axis P3 discriminates on. That is a finding rather than a
+verdict, and it is the sharpest thing any principle says here.
+
+**On the Honest limit** (`:107-117`): *"'closed and named' is only as complete as
+the channel model."* Its enumerated residue is the grade domains' mechanization,
+E38, and the info-flow seat. Neither is placement. No bearing.
+
+#### P4, the safe path should be the cheap path
+
+**Silent, and one clause cuts against reading it onto the instrument at all.**
+
+> "The model is physics, not policy: nothing forbids a wild outcome, the dynamics
+> from P2's cost gradient just do not trend toward it, so code settles into the
+> cheap, checkable region on its own." (`:129-132`)
+
+P4 governs how a shape presents to a **writer**, and a roster has no gradient and
+no author paying ceremony. Its denylist sentence (`:125-126`) reads onto the
+instrument by the same analogy P1's seccomp figure does and adds nothing. Its
+Honest limit (`:134-142`) is about a conservative checker taxing safe code, which
+§3.3 read onto the repair choice and which reaches nothing here.
+
+Saying P4 is silent is the result. It is also the principle `goals/readable-surface`
+cites in its claim section (`docs/goals/readable-surface.md:11-20`), so the arc
+with the most-developed claim on the routine is served by a goal whose cited
+principle has nothing to say about this class.
+
+#### P5, where proof runs out, split the truth and require agreement
+
+**Silent, and its one analogous clause is an analogy this test declines to lean
+on.**
+
+> "the writers must be independent, not just the copies. One writer updating all
+> N gets agreement that is all wrong." (`:172`, the T1 row)
+
+Read onto the instrument that is a caution about two arcs recording one property
+with no independent writer, which is the diagnostics side's collision argument in
+other words. The subject of the row is a held truth with copies, not a roster,
+and §1.4 already placed a range check at T0, inside P2's regime, citing
+`docs/banks/memory.md:257-259`. Naming the analogy and not resting on it is the
+discipline §1.4 applied to P1's seccomp figure.
+
+**Its one genuinely bearing clause is about visibility.**
+
+> "Do what you can, and name it. … where finite resources force a lower rung, the
+> shortfall is a visible fact in the type, not a silent hole." (`:191-195`)
+
+Applied to placement it asks that an unowned class be visible rather than silent.
+That is already satisfied: the row exists, `unreviewed`, and `N18` through `N21`
+carry the work in the open. P5 asks for the state the tree is in and picks no
+owner.
+
+**On the Honest limit** (`:202-208`). Zeroing on drop, and a construct the
+paragraph itself demotes to a seed. No bearing.
+
+#### The Open edges section
+
+**None of the five names placement, arcs, or ownership**, which §1.4 and §3.3
+established over the same list (`:215-259`) and this section does not re-derive.
+
+One structural reading is new and bears directly. The closing paragraph is the
+only place in `PRINCIPLES.md` where a question is answered by saying it is not a
+principle's to answer:
+
+> "**Govern the mediator, resolved structurally not as a principle.** … The
+> answer is not a sixth principle that says verify the checker, and it is not a
+> quorum." (`:250-259`)
+
+It then points at two decision documents and a definition. That is the document's
+own worked model for a question of this shape: it declines, says so in its own
+text, and names where the answer lives. Call 2 is that shape, and
+`docs/decisions/` is where this tree puts such answers.
+
+### 2.5 What the principles do NOT settle
+
+**Placement is a question the principles do not reach at all, and that is the
+finding rather than a shortfall in the test.** `PRINCIPLES.md:3-6` fixes the
+subject as the semantics and the type system. All five are silent on the call.
+One, P3, offers a placement rule whose axis is the code tree rather than the
+roster (`:98-105`), and applied on that axis it points at `lib/lowering/tal/`,
+which is enforcement's directory and is not where enforcement's named files are.
+What reaches placement instead is a set of document rules, and they leave eight
+specific things open.
+
+1. **What `decision-primitive-with-consumer`'s silence actually leaves open.** Its
+   own section reads: *"**Which arc holds a pair whose halves sit in different
+   arcs.** [[arcs/README]] already allows a goal to take work from several arcs
+   and the relation is many to many. A pair spanning two arcs is a scheduling
+   question, not a new fork"* (`:126-128`). Measured, the sentence cites the wrong
+   relation. `docs/arcs/README.md:31-33` makes **arc↔goal** many to many — *"one
+   arc can supply two goals at once, and one goal can take work from several
+   arcs"* — while `docs/goals/README.md:27` makes **element↔arc** exactly one.
+   This call is about the second relation and the decision answered with the
+   first. So the many-to-many rule does **not** make the call a non-question and
+   does not permit an answer either way: it is about an axis the call does not
+   touch. What the decision does settle is that the two halves are one unit,
+   `origin: pair` (`:84-92`), and one unit occupies one roster row, which makes
+   the call sharper rather than looser.
+
+2. **Whether the call bites before the row mints.** `docs/goals/README.md:27`
+   binds elements. `enforcement/N18` and `N20` are `unminted` and `text-tools/L6`
+   is not a row anywhere, so nothing in the tree is violated today and the
+   invariant arrives the day the row mints. No principle and no document says
+   whether a question that does not yet bite is answered now or at mint, and the
+   tree's two nearest precedents point opposite ways:
+   `docs/decisions/decision-design-before-mint.md` puts the design before the
+   number, and `records/author-calls.md:64` shows a placement call routed and left
+   open.
+
+3. **Whether a new arc is a fourth candidate.** The call offers three.
+   `records/author-calls.md:64` and `docs/arcs/memory-discipline-arc.md:19-21`
+   record the tree doing a fourth thing on the same shape of question and
+   recording explicitly that *"routing is not a ruling"*. No principle reaches it,
+   and the precedent cuts both ways: the arc got written and the row stayed
+   `unreviewed`.
+
+4. **Whether a goal's cited authority selects the arc.** Call 1 established that
+   `docs/goals/enforcement.md:16-17` cites `PRINCIPLES.md` §3 in its claim
+   section. Measured against the other two: `goals/readable-surface` cites
+   `PRINCIPLES.md` §4 and `design-principles` (`:11-28`), and `goals/self-tooling`
+   cites `decision-scope` and an author call and no principle at all (`:11-19`).
+   So exactly one of the three goals cites the principle that covers the subject.
+   `docs/arcs/README.md:31-33` says an arc names every goal it serves and says
+   nothing about a goal's cited authority reaching down into arc membership.
+   **This is the precise point at which Call 1's result tilts Call 2 and does not
+   settle it.**
+
+5. **Whether the code tree decides.** §2.2 measures the four artifacts in four
+   places, one of them (`lib/typing/diag.chiral`) inside a candidate's write set
+   while a different candidate's row names it. Nothing says whether an arc owns a
+   class because it owns the tree the repair lands in.
+   `decision-lane-split.md:336-341` left exactly this open for `E176` and the
+   `diagnostics/L5` design settled the site without settling the ownership.
+
+6. **Whether `text-tools/L6` may be cited before it exists.**
+   `docs/definitions/working-discipline.md:75-83` forbids deferring to an unminted
+   `E#` and directs a run to *"Name a roster row instead"*, and
+   `decision-work-ids.md:64-66` says an arc-local id *"claims identification"*. A
+   row in no roster identifies nothing, and three documents now defer to
+   `text-tools/L6`. Whether the deferral rule's relief extends to a row name never
+   written into an arc is unstated, and it is what makes the text-tools side
+   unmeasurable as the call states it.
+
+7. **Whether a class may be owned before its extent is measured.**
+   `enforcement/N20` is the census of which prelude externs read at a
+   caller-supplied index and which clamp (`docs/arcs/enforcement-arc.md:511`).
+   Until it runs, the population is two measured entries — `nb-bslice` under two
+   surface names, and `bget` — out of an unmeasured set. Nothing says whether an
+   arc takes a class whose size no instrument has reported.
+
+8. **Whether `N18`'s `req` cell is right where it sits.** It reads `1, 3` and the
+   call argues 1 and 6. Requirement 3 is *"The check agrees with the compiler it
+   checks"*, which is about the tal checker against the compiler and not about a
+   bound. Whether a judgment able to say a bound serves requirement 3 at all is
+   an arc-internal question the coverage check would have to answer, and no
+   principle reaches it. It is named here because the call's own framing of which
+   requirements are at stake does not match the roster's.
+
+### 2.6 The proposal
+
+**PROPOSAL.** Put to the author that the principles reach none of this call, and
+that as the row states it the choice is not three-way, because one candidate is
+measurably unavailable and a second holds the routine rather than the class. On
+text-tools: the side rests on `text-tools/L6`, and that row is in no roster
+(`docs/arcs/text-tools-arc.md:184-187` holds `P1` to `P4`), its letter is
+diagnostics' (`decision-work-ids.md:85-92` gives text-tools `P`), and the design
+that coined it says in its own disposition cell that it *"does not yet exist and
+is not opened by this run"* (`docs/arcs/parts/diagnostics-L5.md:523`), while
+shard A, the thing the side actually cites, routes the defect to `E176` in both
+places it records it (`docs/banks/text.md:47`, `:138`); so the text-tools side is
+an argument for a row somebody still has to write, and writing it is a separate
+act on the author's ruling. On diagnostics: its claim on the **routine** is real
+and nothing in this call proposes to move it — `E176`, `diagnostics/L5` and the
+gate stay where they are — but its claim on the **class** is carried by no
+requirement it holds, since the row's `req` cell is 2, the closed-`Doc`-algebra
+requirement (`docs/arcs/diagnostics-arc.md:52-58`, `:257`), and requirement 5
+reaches `E176` by number as a row to close (`:66-70`). On enforcement: it is the
+only candidate whose requirements are the ones under argument, and the row's
+account of which ones is wrong in a way worth correcting before a ruling, since
+`N18` serves 1 and 3 and `N21` serves 6 (`:509`, `:512`) rather than one row
+serving 1 and 6. So the proposal is that **the class stays on enforcement and the
+row does not move**, on the narrow ground that it is the only candidate carrying
+requirements about the artifacts, that its goal is the one whose claim section
+cites the principle covering the subject (`docs/goals/enforcement.md:16-17`,
+Call 1), and that the tree the repair lands in is its whole footprint
+(`decision-lane-split.md:305-306`); and that the residue the author should be
+handed with it is not a fourth candidate but a measured fact: the four artifacts
+sit in four trees and only one is inside a candidate's named file list (§2.2), so
+whatever is ruled, `decision-lane-split`'s write-set table and
+`docs/arcs/README.md:74`'s stale `origin` list are both owed an amendment that no
+run has authority to make here. What carries the proposal is not a principle:
+`PRINCIPLES.md:3-6` excludes the tier, P1, P2, P4 and P5 are silent, and P3's one
+placement rule is about directories (`:98-105`) and points at `lib/lowering/tal/`
+rather than at a roster. What carries it is `docs/arcs/README.md:96-102`'s
+coverage check, which makes a row's home a claim about the requirements it
+serves rather than about subject matter, and
+`decision-primitive-with-consumer:84-92`'s `pair`, which makes the two halves one
+unit and therefore one roster's.
+
+**What would falsify it.** A ruling that a class belongs to whichever arc owns
+the tree its repair lands in settles it for enforcement immediately and makes
+§2.2's write-set table the whole answer rather than the residue, which would mean
+this proposal reached the right result by the wrong instrument. In the other
+direction, a `text-tools/L6` row actually written into
+`docs/arcs/text-tools-arc.md` against a requirement it serves makes the
+text-tools side measurable and kills the proposal's first leg outright; and a
+ruling on **call 1** that the goal's cited `PRINCIPLES.md` §3 does not reach the
+space-is-a-port clause removes the second of the three grounds above, leaving
+enforcement's case resting on requirements and the write set alone.
 
 ---
 
