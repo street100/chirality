@@ -1150,3 +1150,17 @@
 - checked:  2026-09-09
 - owner:    E184
 - from:     EN-28
+
+### PRB-82 refine.chiral routes the solver refactor to E41, which is region types
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/typing/refine.chiral
+- claim:    `lib/typing/refine.chiral:7`: `Non-goal: the full-predicate REFACTOR (solver, inter-variable arith) -> E41.` `docs/arcs/parts/enforcement-N18.md` §4 Shape 3 rests on that line, routing the widening of `operand-ok?`'s admissible operand to E41 and declining to open a row on the strength of it.
+- measured: **E41 is about region-based memory management and its rows say nothing about a refinement solver.** `docs/elements/catalog.md` reads `E41 | Region types (retire runtime offset/bounds checks) | discipline lib only; edge 3 | region calculus (Tofte-Talpin) (PAPER)`, and `docs/elements/ledger.md` reads `E41 | regions | design | Region types (retire runtime offset/bounds checks)`. Neither mentions predicates, entailment, a solver or inter-variable arithmetic. Tofte and Talpin's region calculus is a memory-allocation discipline, so the reference class does not carry the subject either. ⚑ **The two subjects meet only at the phrase `bounds checks`.** A region type retires a bounds check by making the allocation's extent static; a refinement solver retires one by proving the index in range. Same symptom, different mechanism, and the tree's own `arc-open` collision rule is about exactly this. ⚑ **What rests on it.** `enforcement/N18` §4 Shape 3 is the enabling change every other shape in that design terminates at, and §5 chose Shape 6 **with Shape 3 as the mechanism and its ownership deferred**. That design states the residue in its own words: whether an application, as distinct from inter-variable arithmetic, is inside E41's scope `is named by no artifact in the tree`. This row is that artifact. Until it is settled, the widening has no owner: E41 by a comment whose element is about something else, or a row nobody has opened.
+- evidence: `lib/typing/refine.chiral:7`, `docs/elements/catalog.md` E41, `docs/elements/ledger.md` E41, `docs/arcs/parts/enforcement-N18.md` §4 Shape 3 and §5, [[records/findings]] FD-26
+- checked:  2026-09-10
+- owner:    none
+- from:     none
