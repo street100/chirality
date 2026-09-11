@@ -338,7 +338,9 @@ enforcement against diagnostics is the shared band, and that is an author call.
   `lib/lowering/tal/erase.chiral:114`. Whether the fix is a guard in
   `lib/prelude/string.chiral` or a change under `lib/lowering/` decides whether
   diagnostics reaches enforcement's tree. The element has no SPEC and nothing
-  settles it. `FD-01` in `records/findings.md` holds the measurement.
+  settles it. `PRB-47` in `records/lenses/problems.md` holds the measurement,
+  moved there from the now-retired `FD-01` on 2026-09-05. `PRB-24` there is a
+  second live row on the same defect and carries `E176` as its owner.
 - **file-types' emitters under `prog/`.** The arc's may-write list carries the
   phrase and names no file. This pass did not locate E146's five emitters.
 
