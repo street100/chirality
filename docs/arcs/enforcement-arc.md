@@ -542,6 +542,18 @@ PRB-76 name N15, N17 and N16.
 
 ## Resume state
 
+⚑ **2026-09-10: E184 is paperwork-current and blocked on TWO author decisions, in that order.** The
+domain was ruled 2026-09-10 ([[records/author-calls]], `ruled`) and EN-30 lifted the SPEC bar, so
+what stands in front of E184's SPEC is decisions 2 and 3 of
+`docs/examples/E184-def-fate-sum.md` §6. **Rule 3 first**: [[records/findings]] FD-25 measured that
+ruling 3 collapses or restores 2 while ruling 2 first settles nothing. Four of the seven decisions
+are already closed by the tree's own text, decisions 1 and 5 are ruled by the author, and the two
+arm-count sub-questions hold their own register row. **Nothing else bars the SPEC.** Every text
+carrying the falsified pre-pass domain or the rename reading was repointed 2026-09-10: the four
+mint-row copies (`403aaed`), `docs/decisions/decision-def-partition.md` (EN-32, `49fc335`,
+`fef80ac`) and `docs/examples/INDEX.md` (`9c767a1`). The research behind the two standing decisions
+is FD-21 through FD-25, 66 pins.
+
 ⚑ **2026-09-10: RESCOPE. A primitive lies about its own bounds and no requirement here reached it.** Trigger: `docs/arcs/parts/diagnostics-L5.md` (`a14b298`), the design of `diagnostics/L5`. Before this run a grep over this file's 907 lines for *bounds*, *overread*, *memory safety*, *out-of-range*, `str-sub` and `bslice` returned **zero hits**, and no requirement cited [[bug-classes]]. That is the finding, and it is not a `str-sub` bug report: `E176` owns the routine's repair and this arc owns the class, the gate and the reach. Four rows opened, `N18` through `N21`, and a fourth group `safety` with them. Three rows amended in place: requirement 2's closure buys type preservation and would accept the out-of-range copy, requirement 6 is satisfied by a gate tier whose entire contact with the primitive is safe by accident, and `enforcement/N17`'s stated boundary excluded a hand-written `TIFn` two lines below the spans it names. **What this arc's own thesis makes of it.** Everything is a type carried from upper to lower before translation to machine code, and this defect passes every stage of that carriage: it type-checks at the surface (`(-> Str I64 I64 Str)` says nothing about range), it lowers to a well-typed `TIFn`, `ck-prog` would accept it, and it emits a read outside the buffer. `docs/goals/enforcement.md`'s State section already draws the line the rows are written against: *"A bug class comes off the list when it can be stated as a judgment and a gate fails when the judgment stops holding. Anything short of that is a bug the language happens to catch today."* [[records/enforcement-arc]] EN-31 carries the run.
 
 ⚑ **FIVE AUTHOR CALLS, RAISED 2026-09-10 AND ANSWERED BY NOBODY HERE.** A revisit that resolves its own call has taken the author's decision. Each carries both sides. **Rows in [[records/author-calls]] are owed and this run's write surface did not include that file.**
