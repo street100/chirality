@@ -123,9 +123,9 @@ why this decision names the pair rather than the primitive.
 
 ## What this does not rule on
 
-**Which arc holds a pair whose halves sit in different arcs.** [[arcs/README]]
-already allows a goal to take work from several arcs and the relation is many to
-many. A pair spanning two arcs is a scheduling question, not a new fork.
+**Which arc holds a pair whose halves sit in different arcs.** [[goals/README]]
+`:27` makes an element belong to exactly one arc, so the seat has to be picked
+and this document does not pick it. The question is left open.
 
 **The 47 orphan elements.** They are minted already and their defect is a
 retired stage rather than a missing consumer. `39be4bb` measures them and lays

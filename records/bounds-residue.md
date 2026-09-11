@@ -25,19 +25,19 @@ from a dispatched run and has not been independently re-measured, which
 
 ### BR-01 the pairing decision declines a question by citing the wrong relation
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `docs/decisions/decision-primitive-with-consumer.md:126-128` declines to rule on which arc holds a pair whose halves sit in different arcs, and gives as its reason that "[[arcs/README]] already allows a goal to take work from several arcs and the relation is many to many".
-- measured: verified here 2026-09-10. `docs/arcs/README.md:31-33` makes **arc to goal** many to many, in those words. The question is **element to arc**, which `docs/goals/README.md:27` makes exactly one: "An element belongs to exactly one arc." The decline cites a rule about a different axis, so the paragraph's stated support does not hold. The ruling itself, that a gap is scheduled as a pair, is untouched by this. The narrow repair is to repoint the sentence at `docs/goals/README.md:27` and say the question is left open rather than dissolved by a many-to-many rule.
-- evidence: `docs/decisions/decision-primitive-with-consumer.md:124-128`, `docs/arcs/README.md:31-33`, `docs/goals/README.md:25-29`
+- measured: verified here 2026-09-10. `docs/arcs/README.md:31-33` makes **arc to goal** many to many, in those words. The question is **element to arc**, which `docs/goals/README.md:27` makes exactly one: "An element belongs to exactly one arc." The decline cites a rule about a different axis, so the paragraph's stated support does not hold. The ruling itself, that a gap is scheduled as a pair, is untouched by this. The narrow repair is to repoint the sentence at `docs/goals/README.md:27` and say the question is left open rather than dissolved by a many-to-many rule. FIXED 2026-09-10: the decision moved. Its scope paragraph now cites `docs/goals/README.md:27`, the element-to-arc relation the question is actually about, and says the seat has to be picked and this document does not pick it. The ruling, the author's two verbatim quotes, the three-defect section, the `origin: pair` specification and the frontmatter are untouched. Written to the working tree by a run with no commit authority, so no commit carries it yet.
+- evidence: `docs/decisions/decision-primitive-with-consumer.md:126-128` as repaired, `docs/arcs/README.md:31-33`, `docs/goals/README.md:25-29`
 - checked:  2026-09-10
 - element:  none
 
 ### BR-02 the roster contract does not define the `origin` value two rows already carry
 
-- state:    OPEN
+- state:    FIXED
 - claim:    `docs/arcs/README.md:74` defines `origin` as `new` · `bind` (it exists and needs a surface) · `connect` (two built things need joining).
-- measured: verified here 2026-09-10. `docs/decisions/decision-primitive-with-consumer.md` added a fourth value, `pair`, on 2026-09-10, and the contract file was never amended. Two rows already carry it, `enforcement/N18` and `enforcement/N19` (`docs/arcs/enforcement-arc.md:509`, `:510`), and `docs/arcs/parts/diagnostics-L5.md` carries `origin: pair` in its frontmatter. So the coverage check at `docs/arcs/README.md:96-102`, which requires every row's `origin` to be defensible, has no definition for the value under it. Four separate dispatched runs reported this and none had it in write scope.
-- evidence: `docs/arcs/README.md:74`, `:96-102`, `docs/decisions/decision-primitive-with-consumer.md:84-92`, `docs/arcs/enforcement-arc.md:509-510`
+- measured: verified here 2026-09-10. `docs/decisions/decision-primitive-with-consumer.md` added a fourth value, `pair`, on 2026-09-10, and the contract file was never amended. Two rows already carry it, `enforcement/N18` and `enforcement/N19` (`docs/arcs/enforcement-arc.md:509`, `:510`), and `docs/arcs/parts/diagnostics-L5.md` carries `origin: pair` in its frontmatter. So the coverage check at `docs/arcs/README.md:96-102`, which requires every row's `origin` to be defensible, has no definition for the value under it. Four separate dispatched runs reported this and none had it in write scope. FIXED 2026-09-10: the contract moved. `docs/arcs/README.md:74` now carries `pair` as a fourth `origin` value in the decision's own words, and the coverage check states when a `pair` row is defensible. Both cite [[decisions/decision-primitive-with-consumer]] so the two cannot drift again. The arc table, the enforcement rows and `diagnostics-L5` were not touched. Written to the working tree by a run with no commit authority, so no commit carries it yet.
+- evidence: `docs/arcs/README.md:74` and `:100-104` as repaired, `docs/decisions/decision-primitive-with-consumer.md:84-92`, `docs/arcs/enforcement-arc.md:509-510`
 - checked:  2026-09-10
 - element:  none
 

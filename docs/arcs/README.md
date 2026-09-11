@@ -71,7 +71,7 @@ so a citation made before the number existed survives it.
 | `what` | one line, specific enough that two people would build the same thing |
 | `group` | which group of §4 |
 | `kind` | `primitive` · `law` · `port` · `decision` · `tool` |
-| `origin` | `new` · `bind` (it exists and needs a surface) · `connect` (two built things need joining) |
+| `origin` | `new` · `bind` (it exists and needs a surface) · `connect` (two built things need joining) · `pair` (a primitive and the consumer that exercises it, both named in `what`, both cited, per [[decisions/decision-primitive-with-consumer]]) |
 | `req` | the numbered §5 requirements this row serves |
 | `state` | `open` · `designed` · `minted` · `specced` · `building` · `built` · `direct` · `closed` |
 
@@ -99,7 +99,9 @@ thin:
   or §5 is missing one;
 - every row's `origin` is defensible from §3. A row marked `new` whose work §3
   shows already built is the phantom-feature error, caught here rather than four
-  stages later.
+  stages later. A `pair` row is defensible when §3 measures the absence of the
+  primitive **and** names the consumer that wants it, per
+  [[decisions/decision-primitive-with-consumer]].
 
 ### `parts/`
 
