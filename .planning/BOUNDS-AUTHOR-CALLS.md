@@ -1321,7 +1321,58 @@ membrane and P3 would read the other way.
 
 ## Call 4: Does the typed-assembly floor owe a bounds obligation
 
-Not yet written.
+Not yet written. **Two inputs are recorded here first, because both arrived after
+the call was opened and both change what the run has to establish.**
+
+### Author direction, 2026-09-10, verbatim
+
+> "typed assembly is the most hardened example of a type system i think? and so
+> as we design the upper we need to make sure that even though the bit is
+> everything from upper -> lower, the correctness is focused around the lower.
+> It's too valuable of a focal point to ever not build around the correctness of"
+
+and, immediately after, the correction that conditions it:
+
+> "well theres nuance because it's our homebrew typed assembly not actual typed
+> assembly"
+
+So the direction is that correctness anchors at the floor rather than at the
+surface, and the qualifier is that this tree's floor is its own construction and
+may not be credited with the published line's hardening on the strength of
+sharing its name.
+
+### What the tree measures against that, 2026-09-10
+
+Four measurements, taken when the direction was given. Each one is a reason the
+call cannot be answered from the floor's current self-description.
+
+| what | measured |
+|---|---|
+| the reference class is unrendered | `docs/translations/` holds one file, `aead-chacha20-poly1305.md`. Typed assembly has never been through the `translate` stage, though it is exactly the published external object that stage exists for, with `pipeline-audit` at TRANSLATE level gating it |
+| the lineage is uncited | a grep over `lib/lowering/tal/*.chiral` for the literature returns zero. No author, no system, no paper. The name is borrowed and the debt is unstated |
+| the golden object says it is provisional | `lib/lowering/tal/spec.chiral:4` reads `PROVISIONAL (2026-08-02, revisitable — the branch is the author's call)`, names `docs/tal-spec.md` as the trust root, cites its own path as the pre-migration `lib/tal-spec.chiral`, and lists "the Python reference" among the executors it validates, which was cut |
+| the floor is not reached | `docs/definitions/bug-classes.md:85` gives miscompilation as covered by "typed assembly, checked at instruction level" and marks it **unwired**, because `lowering/tal/check` is not in the compiler binary. That is [[arcs/enforcement-arc]] requirement 2, open |
+
+### What this obliges the call 4 run to do
+
+**Establish what published typed assembly actually guarantees before asking what
+our floor owes.** The call as written offers two options, target well-typedness
+as the whole claim, or a bounds obligation on top. Call 3's fork was missing its
+third option and the same risk stands here: if the published line that carries
+index and bound relations at the assembly level is a *different* system from the
+one this floor is named after, then the call's two options are the wrong two and
+the run's job is to say so rather than to pick.
+
+That is a question about the outside world with sources to pin, so it is the
+`research` skill's, and `records/findings.md` is where its answer lands. **It is
+not to be answered from memory.** This note names the question and does not
+answer it.
+
+**The standing risk this direction creates.** Anchoring correctness at the floor
+is a claim about a component that is built, provisional, uncited and unreached.
+Until requirement 2 closes, "build around the correctness of the lower" describes
+an intention rather than a property, and any row written on the strength of it
+inherits that gap.
 
 ---
 
