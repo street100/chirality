@@ -1114,12 +1114,12 @@
 - level:    source
 - about:    lib/typing/refine.chiral:7
 - claim:    `lib/typing/refine.chiral:7` closes the file's header with its non-goal and routes it: `Non-goal: the full-predicate REFACTOR (solver, inter-variable arith) -> E41.` That arrow is the one pointer the typing tier gives for who owns arithmetic over the refinement domain, and `:1-7` establishes that what E9 built is the decision procedure alone.
-- measured: **2026-09-09: `E41` is a different subject and will never build it.** `docs/elements/catalog.md:168` gives `E41` as `Region types (retire runtime offset/bounds checks)`, edge 3, reference class `region calculus (Tofte–Talpin)`, track SH. Regions are a memory-lifetime discipline. That element carries no predicate solver, no arithmetic over `Constraint` (`lib/typing/refine.chiral:13-18`), and nothing that would derive one interval from another. So a reader following the deferral lands on an element whose title, reference class and edge are all about storage, and the deferred half stays unowned: a search of `docs/arcs/` for a roster row over inter-variable arithmetic returns none, and `GAP-23` records the absence. Recording the misdirected pointer is a fact about the tree, and this row defers nothing of its own.
-- evidence: `lib/typing/refine.chiral:1-7`, `lib/typing/refine.chiral:13-18`, `docs/elements/catalog.md:168`
-- checked:  2026-09-09
-- owner:    none
+- measured: **2026-09-09: `E41` is a different subject and will never build it.** `docs/elements/catalog.md:168` gives `E41` as `Region types (retire runtime offset/bounds checks)`, edge 3, reference class `region calculus (Tofte–Talpin)`, track SH. Regions are a memory-lifetime discipline. That element carries no predicate solver, no arithmetic over `Constraint` (`lib/typing/refine.chiral:13-18`), and nothing that would derive one interval from another. So a reader following the deferral lands on an element whose title, reference class and edge are all about storage, and the deferred half stays unowned: a search of `docs/arcs/` for a roster row over inter-variable arithmetic returns none, and `GAP-23` records the absence. Recording the misdirected pointer is a fact about the tree, and this row defers nothing of its own. ⚑ **2026-09-10: the measurement above is half right, and the half that is wrong is load-bearing.** `docs/elements/specs/E41-region-types-SPEC.md` is `status: audited`, and its §1 deliverable is a *"**linear arith-expression bound**"*, a *"sum of atoms"* against an atom, `(<= (+ o s) cap)`, in `refine.py`'s entailment, with §3 decision 2 reading *"**RESOLVED: E41 owns it**"* and naming E22's refined cursor and E25's byte-cell faces as the consumers it owns it for. So E41 does carry arithmetic over `Constraint`, and it is the catalog row and the ledger row that omit the subject. What that SPEC puts outside E41 is *"the **general/nonlinear** refinement solver"*, in its own non-goals. The repoint this row asks for therefore splits two ways: the linear sum stays E41's, and the rest of `refine.chiral:7`'s `full-predicate REFACTOR` is `enforcement/N22`'s, which is a saturated application admitted as a refinement atom's operand plus a `=>` value binder visible to the atoms of the seats after it.
+- evidence: `lib/typing/refine.chiral:1-7`, `lib/typing/refine.chiral:13-18`, `docs/elements/catalog.md:168`, `docs/elements/specs/E41-region-types-SPEC.md:29-42` (§1 deliverable and non-goals), `:75` (§3 decision 2), `docs/arcs/enforcement-arc.md` `enforcement/N22`
+- checked:  2026-09-10
+- owner:    `enforcement/N22`
 - from:     none
-- element:  `E41` is minted and is the wrong destination, so it is cited here and is no part of the fix. No roster row holds the subject.
+- element:  `E41` is minted and owns the linear sum alone, so it is cited here and is half of the fix. `enforcement/N22` holds the other half and is `unminted`.
 
 ### PRB-80 the three-permutation ranking has no word-width column, and this substrate charges for width
 
@@ -1159,8 +1159,64 @@
 - level:    source
 - about:    lib/typing/refine.chiral
 - claim:    `lib/typing/refine.chiral:7`: `Non-goal: the full-predicate REFACTOR (solver, inter-variable arith) -> E41.` `docs/arcs/parts/enforcement-N18.md` §4 Shape 3 rests on that line, routing the widening of `operand-ok?`'s admissible operand to E41 and declining to open a row on the strength of it.
-- measured: **E41 is about region-based memory management and its rows say nothing about a refinement solver.** `docs/elements/catalog.md` reads `E41 | Region types (retire runtime offset/bounds checks) | discipline lib only; edge 3 | region calculus (Tofte-Talpin) (PAPER)`, and `docs/elements/ledger.md` reads `E41 | regions | design | Region types (retire runtime offset/bounds checks)`. Neither mentions predicates, entailment, a solver or inter-variable arithmetic. Tofte and Talpin's region calculus is a memory-allocation discipline, so the reference class does not carry the subject either. ⚑ **The two subjects meet only at the phrase `bounds checks`.** A region type retires a bounds check by making the allocation's extent static; a refinement solver retires one by proving the index in range. Same symptom, different mechanism, and the tree's own `arc-open` collision rule is about exactly this. ⚑ **What rests on it.** `enforcement/N18` §4 Shape 3 is the enabling change every other shape in that design terminates at, and §5 chose Shape 6 **with Shape 3 as the mechanism and its ownership deferred**. That design states the residue in its own words: whether an application, as distinct from inter-variable arithmetic, is inside E41's scope `is named by no artifact in the tree`. This row is that artifact. Until it is settled, the widening has no owner: E41 by a comment whose element is about something else, or a row nobody has opened.
-- evidence: `lib/typing/refine.chiral:7`, `docs/elements/catalog.md` E41, `docs/elements/ledger.md` E41, `docs/arcs/parts/enforcement-N18.md` §4 Shape 3 and §5, [[records/findings]] FD-26
+- measured: **E41 is about region-based memory management and its rows say nothing about a refinement solver.** `docs/elements/catalog.md` reads `E41 | Region types (retire runtime offset/bounds checks) | discipline lib only; edge 3 | region calculus (Tofte-Talpin) (PAPER)`, and `docs/elements/ledger.md` reads `E41 | regions | design | Region types (retire runtime offset/bounds checks)`. Neither mentions predicates, entailment, a solver or inter-variable arithmetic. Tofte and Talpin's region calculus is a memory-allocation discipline, so the reference class does not carry the subject either. ⚑ **The two subjects meet only at the phrase `bounds checks`.** A region type retires a bounds check by making the allocation's extent static; a refinement solver retires one by proving the index in range. Same symptom, different mechanism, and the tree's own `arc-open` collision rule is about exactly this. ⚑ **What rests on it.** `enforcement/N18` §4 Shape 3 is the enabling change every other shape in that design terminates at, and §5 chose Shape 6 **with Shape 3 as the mechanism and its ownership deferred**. That design states the residue in its own words: whether an application, as distinct from inter-variable arithmetic, is inside E41's scope `is named by no artifact in the tree`. This row is that artifact. Until it is settled, the widening has no owner: E41 by a comment whose element is about something else, or a row nobody has opened. ⚑ **SETTLED 2026-09-10 by E41's own SPEC, and the answer is a split.** `docs/elements/specs/E41-region-types-SPEC.md` (`status: audited`) §1 scopes that element's refinement half to a *"**linear arith-expression bound**"*, a sum of atoms against an atom, and lists *"the **general/nonlinear** refinement solver"* in its non-goals; §3 decision 2 reads *"**RESOLVED: E41 owns it**"* for that sum and names E22's cursor and E25's byte-cell faces as its consumers. **Two things follow.** First, the measurement above is true of the catalog and the ledger and false of the element: E41 does carry arithmetic over `Constraint`, and its two one-line rows omit it. Second, the widening is still outside E41, on the SPEC's own words: a saturated application is not a sum of atoms, and a binder's scope carries no arithmetic at all. **This contradicts `docs/arcs/parts/enforcement-N18.md` §5 question 5**, which recorded the narrower question as *"named by no artifact in the tree"*; the SPEC is that artifact, read from E41's side. `enforcement/N22` is the row, opened in `docs/arcs/enforcement-arc.md` on 2026-09-10 at `origin` `pair`, `req` 1, `state` `open`. `lib/typing/refine.chiral:7` is compiler source inside the blob and is left standing under [[working-discipline]]'s build rule. **What it should read**: the linear sum `(<= (+ o s) cap)` goes to E41, and the application operand and the `=>` binder scope go to `enforcement/N22`.
+- evidence: `lib/typing/refine.chiral:7`, `docs/elements/catalog.md` E41, `docs/elements/ledger.md` E41, `docs/elements/specs/E41-region-types-SPEC.md:29-42`, `:75`, `docs/arcs/parts/enforcement-N18.md` §4 Shape 3 and §5, `docs/arcs/enforcement-arc.md` `enforcement/N22`, [[records/findings]] FD-26
+- checked:  2026-09-10
+- owner:    `enforcement/N22`
+- from:     none
+
+### PRB-83 check AE reads a prose mention as arc membership
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    tools/ledger-lint/ledger-lint.py
+- claim:    `docs/goals/README.md:27` states the invariant check AE enforces, and `tools/ledger-lint/ledger-lint.py:1866-1872` says the check refuses silence: an unbuilt element is named by an arc, or the unspoken lens carries it.
+- measured: **AE tests a spelling.** `:1883` builds its `named` set with `re.findall(r"\bE(\d+)\b", f.read_text())` over the whole arc file, so any occurrence anywhere counts as belonging. `docs/arcs/tool-authority-arc.md:274` names E148 and E149 inside its boundary section, saying `ls` and `find` "need naming authority for a reason this arc does not address", which is the arc REFUSING them, and AE reads it as coverage. Three more of the same shape: `scriba/S6` is blocked on E132 rather than owning it, `docs/arcs/enforcement-arc.md` calls E154 "E154's fifth instance", and that same file says of E169 "no arc names it (UNS-45)" while the mention itself satisfies AE. Several arc-local row ids spell `E1` to `E4` at `docs/arcs/display-calculus-arc.md:127-130` and count too. `:1888` also skips `built` and `superseded` outright, which drops 95 of the 144 unrostered elements before any test runs. Measured 2026-09-10: **42 of 186 catalog elements hold a roster row and 144 hold none**, while AE reports nothing. The fix is to test roster membership, which `tools/pack/pack.py`'s `row_elements` already parses.
+- evidence: `tools/ledger-lint/ledger-lint.py:1866-1872`, `:1883`, `:1888`, `docs/arcs/tool-authority-arc.md:274`, `docs/goals/README.md:27`, `records/homing-triage.md`, `tools/pack/pack.py` `row_elements` (`6e9c76a`)
+- checked:  2026-09-10
+- owner:    none
+- from:     none
+
+### PRB-84 one word carries two deferrals, and the tree reads the wrong one
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    doc
+- about:    docs/decisions/decision-scope.md
+- claim:    `docs/decisions/decision-scope.md` defers the ownership-and-trust track and `docs/elements/ledger.md:36-38` bars `OT` work from current work and its documents from audit.
+- measured: **Ruled by the author 2026-09-10: that deferral is an implementation deferral and says nothing about planning.** Homing an element is planning, so a deferred element still takes a roster row. The tree had read the single word the other way and acted on it: `docs/arcs/ownership-and-trust-arc.md:45-48` declines rows for seventeen elements because they "stay deferred with the track", and 13 unrostered `design` orphans were suppressed from the homing queue on the same reading. No vocabulary in the tree separates the two senses, so the next reader repeats it.
+- evidence: `docs/arcs/ownership-and-trust-arc.md:45-48`, `docs/elements/ledger.md:36-38`, `records/author-calls.md` the row "Whether the orphan program reaches the `OT` track", ruled at `d307682`
+- checked:  2026-09-10
+- owner:    none
+- from:     none
+
+### PRB-85 the one-arc invariant is written in three places and the author ruled it wrong
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    doc
+- about:    docs/goals/README.md
+- claim:    `docs/goals/README.md:27` states "An element belongs to exactly one arc, or the unspoken lens says nobody has ruled on it."
+- measured: **Ruled by the author 2026-09-10: elements do not belong to only one arc.** The sentence has three homes and correcting it is a migration rather than an edit. It is prose at `docs/goals/README.md:27`; it is logic in `ledger-lint` check AE; and it is quoted verbatim as the `claim` field of **48 rows** in `records/lenses/unspoken.md`, each of which then measures against it. E44 was flagged an author call only because of it, its three components being totality to enforcement and non-interference and tier weight to ownership-and-trust, and the ruling dissolves the flag rather than answering it. `CLAUDE.md` opens by saying a second statement of a rule drifts from the first; the discipline covers that file and stops at the door of every other.
+- evidence: `docs/goals/README.md:27`, `tools/ledger-lint/ledger-lint.py` `check_ae`, `records/lenses/unspoken.md` (48 rows carrying the sentence), `records/homing-triage.md` question G
+- checked:  2026-09-10
+- owner:    none
+- from:     none
+
+### PRB-86 nothing measures the goal-arc-element chain
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    tools/lens/lens.py
+- claim:    `docs/arcs/README.md:28-29` makes the chain the model: an arc is elements assembled toward one goal, an element is one catalog item. `docs/definitions/OVERVIEW.md` is the generated view across every arc, and `ledger-lint` runs forty-odd checks.
+- measured: **The spine of the model is unmeasured.** 42 of 186 catalog elements hold a roster row and 144 hold none, measured 2026-09-10 at `d307682`; 106 of the 144 are named in no arc file at all. Nothing in the tree reported it, and it surfaced only because a session wrote a throwaway script. Both ends of the chain have holes: `docs/goals/self-hosting.md:70` says the goal carries no arc and none is owed, which by construction leaves 55 built elements with nowhere to sit, and `docs/arcs/terminal-arc.md` was opened 2026-09-10 serving a goal that states no terminal condition. PRB-83 is why the one check aimed at this reports nothing. A generated coverage view belongs beside `lens.py overview`, and the rungs it should report are settled by the author's rulings of 2026-09-10.
+- evidence: `docs/arcs/README.md:28-29`, `docs/goals/self-hosting.md:70`, `records/homing-triage.md`, `docs/arcs/terminal-arc.md` FLAG 1, [[records/lenses/problems]] PRB-83
 - checked:  2026-09-10
 - owner:    none
 - from:     none
