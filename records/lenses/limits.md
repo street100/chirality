@@ -295,3 +295,17 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-09
 - owner:    none
 - from:     none
+
+### LIM-22 check AI is keyed on whole files, so repairing one row stales every row citing it
+
+- state:    accepted
+- author:   unreviewed
+- note:     none
+- level:    doc
+- about:    tools/ledger-lint/ledger-lint.py
+- claim:    `records/lenses/README.md` and `records/README.md` state the rule check AI enforces, quoted in its own docstring: `A row whose checked: date predates the last change to the files it cites is unverified.` `records/lenses/README.md`'s `Changing a row` rule prescribes bumping `checked:` when a row is repaired.
+- measured: **AI resolves a FILE, so repairing one row stales every row that cites the file holding it, and the prescribed repair is net worse on the count.** `check_ai`'s `last_change` (`tools/ledger-lint/ledger-lint.py:2129-2135`) runs `git log -1 --format=%cs -- <path>` per cited path and caches per file, so the granularity is the file rather than the row or the claim. Measured 2026-09-11 by the `enforcement/N18` revisit: bumping `PRB-82`'s `checked:` cleared PRB-82's own AI row and **raised three others**, `BR-10`, `FD-24` and `FD-26`, each of which cites `records/lenses/problems.md`; appending EN-34 to `records/enforcement-arc.md` raised `BR-03` and `EN-33` the same way. Net 125 to 131 for a repair the README prescribes. ⚑ **The blast radius is the register's own shape.** 85 citations of the lens files sit across six record files, `baseline-alignment` 32, `enforcement-arc` 19, `findings` 17, `tooling-classification` 10, `gate-audit` 4 and `bounds-residue` 3, so any lens edit can stale any of them. The four lenses being one file each is what turns a row-level repair into a file-level event. ⚑ **Distinct from [[records/lenses]] LIM-20**, which is the same check reading git dates so a history rewrite invalidates the register wholesale. That row is about the date SOURCE and this one is about the KEY. Both make a real staleness unreadable, and the two compose: after the 2026-09-08 history collapse the register carried 79 false rows, and each honest repair since has added more. ⚑ **Not proposing the fix.** Per-row content hashing, a `verified-against:` field naming a span rather than a file, splitting the lenses into a file per row, or accepting the coupling are four shapes and this row picks none.
+- evidence: `tools/ledger-lint/ledger-lint.py:2117-2135`, `records/lenses/README.md`, `records/README.md`, `records/enforcement-arc.md` EN-34
+- checked:  2026-09-11
+- owner:    none
+- from:     none
