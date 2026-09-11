@@ -464,3 +464,4 @@ and that a disagreement above this document is FLAGGED.
 
 The catalog's §OWED carries the rest, including three `lib/` headers that still name evicted
 Python as live. This pass writes only these two files, so none of that is fixed here.
+| E198 | bounds-census | design | **The caller-indexed byte-access census over the prelude's 34 externs.** Requirement 1 of [[arcs/enforcement-arc]] cannot say why the capability is not at ENFORCED while its extent is uncounted. Two roots plus one gate; measures and asserts, repairs nothing. `E176` keeps `nb-bslice`'s repair. | `enforcement/N20`, EN-31, BR-06 | SH |

@@ -144,14 +144,25 @@ value, a sentinel, a silent unrelated value, and process death.
 
 **Nothing in `lib/`, `prog/` or `tools/` re-derives any row of the census
 table above.** `grep -rn 'str-sub\|bslice' tools/test/` returns nine files, every
-hit in range (EN-31), and `tools/test/run-tests.sh` reads `412 passed, 0 failed`
-with all seven members as measured.
+hit in range (EN-31), and `tools/test/run-tests.sh` reads **`422 passed, 0
+failed`**, `94 roots built, 0 failed`, gate PASSED, with all seven members as
+measured. ⚑ The `412` this paragraph and §3 carried until the design audit is
+`38ecdba`'s reading, inherited from the arc rather than re-run here. Run whole
+during the audit: `c86b007` added Phase 32, `mul-widen.sh`, which contributes
+`10 passed, 0 failed`, and 412 + 10 = 422. The suite is green and indifferent at
+either number, which is the point this paragraph rests on.
 
 ### Honest limits of this measurement
 
-- **The domain is the prelude's 34.** `grep -rn '^(extern '` over `lib/` and
-  `prog/` returns **73** externs across 20 files. The other 39 are ports and
-  syscall faces and are outside the row's words.
+- **The domain is the prelude's 34.**
+  `grep -rn --include='*.chiral' --include='*.prog' '^(extern '` over `lib/` and
+  `prog/` returns **73** externs across 20 files, and `lib/ports/*.port` declares
+  **51** more across 9 files. The other 39 here, and all 51 of those, are ports
+  and syscall faces and are outside the row's words. ⚑ The extension filter is
+  load-bearing and this bullet printed the command without it until the design
+  audit: the bare `grep -rn '^(extern '` over the same two directories returns
+  **124** across 29 files, which is the two populations summed. The 73 is right
+  and the command beside it was not.
 - **The routine population is larger than the reachable-from-prelude set.**
   `ti-bget` and `ti-bput` occur **51** times in `lib/lowering/tal/bytes.chiral`
   and **24** times in `lib/lowering/tal/sys.chiral`. Most sit in routines
@@ -173,7 +184,7 @@ row refuses: *"Committed, re-runnable, not a session probe."*
    compiled and run by hand. They are gone when this session ends.
 3. **Nothing reddens when the population changes.** A 35th extern, a new
    `prim2lib` row, a guard added to `nb-unpack32` or removed from `nb-bslice`
-   all leave `412 passed, 0 failed` untouched. This is requirement 6's own
+   all leave `422 passed, 0 failed` untouched. This is requirement 6's own
    blind spot turned on a class with no gate row, which `enforcement/N21`
    states as a separate row and does not fix here.
 4. **The outcome vocabulary exists nowhere as a value.** `docs/definitions/bug-classes.md:46`
@@ -206,7 +217,7 @@ one half and covers neither the extern enumeration nor the behavioural half.
   propagates into the callee's parameter at the same position, and a hit is a
   tainted register in the index seat of `ti-bget` / `ti-bput` or the length seat
   of `ti-bnew`.
-- **Costs:** one new `prog/` root, so Phase 7's sweep goes 93 → 94. Estimated
+- **Costs:** one new `prog/` root, so Phase 7's sweep goes 94 → 95. Estimated
   260-320 lines on `prog/optimizer-census.prog`'s 225-line basis plus the taint
   fixpoint that file has no counterpart for.
 - **Forbids:** it says nothing about what happens at runtime. A `ti-tcase` on a
@@ -222,7 +233,7 @@ one half and covers neither the extern enumeration nor the behavioural half.
   it N times, recording exit code and stdout per case. EN-31's method, promoted
   from a session probe to a committed pair. The separate process per case is
   required: a bounds violation is SIGSEGV and takes the process with it.
-- **Costs:** one new root, 60-90 lines, plus the gate. Phase 7 goes 94 → 95 if
+- **Costs:** one new root, 60-90 lines, plus the gate. Phase 7 goes 95 → 96 if
   taken beside A.
 - **Forbids:** it cannot enumerate. Every case is a name somebody already wrote
   down, so the instrument is blind to the member it was not told about, which is
@@ -257,7 +268,7 @@ one half and covers neither the extern enumeration nor the behavioural half.
   does; the gate asserts that the two halves agree on the membership list and
   pins the outcome per member. A member the structural half finds and the
   behavioural half has no case for is a red row.
-- **Costs:** two roots, Phase 7 goes 93 → 95, plus the gate.
+- **Costs:** two roots, Phase 7 goes 94 → 96, plus the gate.
 - **Forbids:** it still does not prove a guard correct, and it does not repair
   anything. `E176` keeps `nb-bslice`'s repair whole.
 - **Reaches:** both halves of the row's sentence. Neither A nor B alone does.
@@ -349,9 +360,23 @@ added to it. This design opens no new author call.
   - **Build cost:** no `lib/` change, so the first agreement is `C1 == C2`.
     Two new roots enter Phase 7's automatic sweep
     (`tools/test/run-tests.sh:175-176`, `grep -rl '^(def compile-main' lib prog`),
-    taking it 93 → 95 compile-only roots. The gate carries a `not-a-phase:`
-    declaration on the route eight sibling gates take, so `run-tests.sh`'s
-    `412 passed, 0 failed` does not move. No build was run by this design.
+    taking it 94 → 96 compile-only roots. ⚑ The 93 this packet carried until
+    the design audit is `38ecdba`'s reading and was already behind when this
+    design was written: `c86b007` added `prog/e189-widening-multiply.prog` on
+    2026-09-08. Re-derived at this design's own commit and at HEAD, both 94:
+    103 files carry `^(def compile-main` under `lib/` and `prog/`, six are
+    `*_reject_*` skips and three are `KNOWN_FAIL` entries. The gate carries a
+    `not-a-phase:` declaration on the route **five** sibling gates take,
+    `map-integrity.sh`, `mutant.sh`, `opt-census.sh`, `registration.sh` and
+    `tal-check.sh`, beside `run-tests.sh` itself, which is the table. ⚑ The
+    eight this packet carried until the design audit never held at any commit in
+    range: `b2837f2` registered seven gates under the native-tests ruling before
+    `38ecdba`, and `registration.sh` reads `6 of 27 scripts are outside the
+    dispatch table by their own declaration` at HEAD. The route is forced rather
+    than chosen, because registering instead would take the suite-phase-number
+    author call a session is barred from making, and `registration.sh` G6
+    refuses the reserved 21-23 band. So the suite's assertion count does not
+    move. No build was run by this design.
 - **Related:** [[arcs/enforcement-arc]] requirement 1, [[banks/verification]],
   [[banks/text]], [[banks/memory]], [[records/enforcement-arc]] EN-31,
   `records/bounds-residue.md` BR-06, `docs/arcs/parts/diagnostics-L5.md`,
