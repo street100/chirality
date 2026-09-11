@@ -542,6 +542,16 @@ PRB-76 name N15, N17 and N16.
 
 ## Resume state
 
+⚑ **2026-09-10, later: E184's LAST BLOCKING DECISION IS RULED AND THE SPEC STAGE IS OPEN.** Decision 3
+is ruled **retype the producer**: `term->ntalty`, `term->ntalty-list` and `term->ncore` become result
+sums, the `(_ (none))` arms at `lib/lowering/compile-front.chiral:72` and `:134` go, and
+`lib/typing/kernel.chiral:1319` becomes the instrument. Decision 2 follows with no separate ruling,
+because removing the `_` arms forces one arm per unnamed head, so `SkHead`'s width is settled by the
+compiler rather than by a count. The cost is accepted and named: 12 enclosing functions in one blob
+module, and 3 sinks that today drop a whole entity must say what they dropped. **All seven of the
+worked example's decisions are now closed**, four by the tree's own text and three by the author.
+[[records/author-calls]] carries each with its reason. **Next stage is `design-to-spec` on E184.**
+
 ⚑ **2026-09-10: E184 is paperwork-current and blocked on TWO author decisions, in that order.** The
 domain was ruled 2026-09-10 ([[records/author-calls]], `ruled`) and EN-30 lifted the SPEC bar, so
 what stands in front of E184's SPEC is decisions 2 and 3 of
