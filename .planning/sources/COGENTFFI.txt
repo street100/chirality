@@ -1,0 +1,1932 @@
+
+
+Overcoming Restraint: Composing Verification of Foreign Functions with Cogent
+
+Report GitHub Issue
+
+×
+
+Title:
+
+Content selection saved. Describe the issue below:
+
+Description:
+
+Submit without GitHub
+Submit in GitHub
+
+arXiv is now an independent nonprofit!
+Learn more
+×
+
+Back to arXiv
+
+Why HTML?
+
+Report Issue
+
+Back to Abstract
+
+Download PDF
+
+Abstract.
+
+1 Introduction
+
+2 Cogent
+
+2.1 Language Design and Examples
+
+2.2 Dynamic Semantics
+
+2.3 Typing and Type Preservation
+
+2.4 Frame Requirements
+
+2.5 Refinement
+
+2.5.1 Update to C Refinement
+
+2.5.2 Semantic Correspondence
+
+2.5.3 Monomorphisation
+
+2.5.4 Shallow Embedding
+
+2.6 Overall Refinement
+
+2.7 Requirements on Abstract Types
+
+2.8 Summary of Requirements
+
+3 Arrays
+
+3.1 Specification and Implementation
+
+3.2 Proving Refinement
+
+3.2.1 Abstractions
+
+3.2.2 Value Typing
+
+3.2.3 Refinement Relations
+
+3.2.4 Refinement
+
+4 Generic Loops
+
+5 Composing Verification of Cogent and C
+
+5.1 Verifying C Parts of BilbyFs
+
+5.2 Binary Search
+
+6 Related Work
+
+7 Conclusion
+
+Acknowledgements
+
+References
+
+License: CC BY 4.0
+
+arXiv:2102.09920v4 [cs.PL] 21 Dec 2021
+
+Overcoming Restraint: Composing Verification of Foreign Functions with Cogent
+
+CCS: General and reference VerificationCCS: Software and its engineering Formal software verificationCCS: Software and its engineering FunctionalityCCS: Software and its engineering InteroperabilityCCS: Software and its engineering CompilersCCS: Theory of computation Logic and verificationPrice: 15.00DOI: 10.1145/3497775.3503686poplws22cppmain-p28-pISBN: 978-1-4503-9182-5/22/01Conference: Proceedings of the 11th ACM SIGPLAN International Conference on Certified Programs and Proofs; January 17–18, 2022; Philadelphia, PA, USAProceedings of the 11th ACM SIGPLAN International Conference on Certified Programs and Proofs (CPP ’22), January 17–18, 2022, Philadelphia, PA, USA
+
+Louis Cheung
+
+Affiliation: University of Melborune, Melbourne, Victoria, Australia
+
+email: lfcheung@student.unimelb.edu.au
+
+,
+Liam O’Connor
+
+Affiliation: University of Edinburgh, Edinburgh, Scotland
+
+email: l.oconnor@ed.ac.uk
+
+and
+Christine Rizkallah
+
+Affiliation: University of Melbourne, Melbourne, Victoria, Australia
+
+email: christine.rizkallah@unimelb.edu.au
+
+© , 2022
+
+Abstract.
+
+Cogent is a restricted functional language designed to
+reduce the cost of developing verified systems code. Because
+of its sometimes-onerous restrictions, such as the lack of support for recursion
+and its strict uniqueness type system, Cogent provides an escape hatch in the form of a
+foreign function interface (FFI) to C code.
+This poses a problem when verifying Cogent programs, as imported C components do not enjoy the same level of static guarantees
+that Cogent does. Previous verification of file systems implemented in Cogent merely assumed that their C components were
+correct and that they preserved the invariants of Cogent’s type system.
+In this paper, we instead prove such obligations. We demonstrate how they smoothly compose with existing Cogent theorems, and result in a correctness theorem of the overall
+Cogent-C system. The Cogent FFI constraints ensure that key invariants of Cogent’s type system are maintained even when calling C code. We verify reusable higher-order and polymorphic functions including a generic loop combinator and array iterators and demonstrate their application to several examples including binary search and the BilbyFs file system.
+We demonstrate the feasibility of verification of mixed Cogent-C systems, and provide some insight into verification of
+software comprised of code in multiple languages with differing levels of static guarantees.
+
+Keywords:
+compilers, verification, type-systems, language interoperability, data-structures
+
+1. Introduction
+
+Cogent (16) is a restricted purely functional language with a certifying compiler (21, 16) designed to ease creating verified operating systems components (3). It has a foreign function interface (FFI) that enables implementing parts of a system in C. Cogent’s main restrictions are the purposeful lack of recursion or loops, which ensures totality,
+and its uniqueness type system, which enforces a uniqueness invariant that, among other benefits, guarantees memory safety.
+
+Even in the restricted target domains of Cogent, real programs contain some amount of iteration, primarily over data structures such as buffers.
+This is achieved through Cogent’s principled FFI:
+engineers provide data structures and their associated operations, including iterators,
+in a special dialect of C, and import them into Cogent, including in formal reasoning.
+This special C code, called template C, can refer to Cogent data types and functions, and is translated into standard C along with the Cogent program by the Cogent compiler.
+As long as the C components respect Cogent’s foreign function interface —
+i.e., are correct, memory-safe and respect the uniqueness invariant —
+the Cogent framework guarantees that correctness properties proved on high-level specs also apply to the compiler output.
+
+Two real-world Linux file systems have been implemented in Cogent — ext2 and BilbyFs — and key operations of BilbyFs have been verified (3). This prior work demonstrates Cogent’s suitability as a systems programming language and as a verification framework that reduces the cost of verification.
+The implementations of these file systems import an external C library of data structures, which include fixed-length arrays and iterators for implementing loops, as well as Cogent stubs for accessing a range of the Linux kernel’s internal APIs. This library was carefully designed to ensure compatibility with Cogent’s FFI constraints,
+but was previously left unverified — only the Cogent parts of these file system operations were proven correct, and statements of the underlying C correctness and FFI constraints defining Cogent-C interoperability were left as assumptions.
+
+To fully verify a system written in Cogent and C,
+one needs to provide manually-written abstractions of the C parts,
+and manually prove refinement through Cogent’s FFI.
+The effort required for this manual verification remains substantial, but the
+reusability of these libraries allows this cost to be amortised across different systems.
+
+In this paper, we eliminate several of these assumptions by verifying
+the array implementation and key iterators used in the BilbyFs file system (Section 3),
+and discharging the conditions imposed by Cogent’s FFI (Section 5).
+We also verify a generic-loop combinator (Section 4) and its application to binary search.
+This demonstrates that it is possible and relatively straightforward for the C
+components of a real-world Cogent-C system to satisfy Cogent’s FFI conditions.
+The compiler-generated refinement and preservation proofs
+compose with manual C proofs at each intermediate level
+up to Cogent’s generated shallow embedding, and verify some example Cogent-C programs.
+
+As arrays and loops are extremely common in Cogent programming, our proofs are highly
+reusable for verification of any future Cogent-C system. In addition, our proofs connect C arrays
+to plain old Isabelle/HOL lists and loops to an Isabelle/HOL repeat function that allows early termination.
+These proofs are reusable even beyond the context of Cogent in verification of C code.
+Our code and proofs are online (4).
+
+Similar to many high-level languages, Cogent’s foreign function interface connects a high-level language with strong static guarantees to an unsafe imperative language.
+This work provides our community with a case-study demonstrating how to equip such a foreign function interface with proof requirements such that those static guarantees are maintained for the overall system.
+In particular, our work supports, and is well-described by, Ahmed’s claim that:
+
+“Compositional compiler correctness is, in essence, a language interoperability problem: for viable solutions in the long term, high-level languages must be equipped with principled foreign-function interfaces that specify safe interoperability between high-level and low-level components, and between more precisely and less precisely typed code.” (1)
+
+Our approach to language interoperability does not rely on how the refinement theorems of the languages are obtained nor on whether they are manually or automatically proven. As such, we believe that this approach is likely reusable in the context of verified compilers.
+
+2. Cogent
+
+The Cogent language (17, 15, 16) was originally designed for the implementation of systems components such as file systems (3). It is a purely functional language, but it is compiled into efficient C code suitable for systems programming11
+1
+
+While Cogent is ideally suited for applications that involve minimal sharing and where efficiency matters, it is not specific to the systems domain..
+
+The Cogent compiler produces three artefacts:
+C code,
+a shallow embedding of the Cogent code in Isabelle/HOL (14), and
+a formal refinement proof relating the two (16, 21).
+The refinement theorem and proof rely on several intermediate embeddings also generated by the Cogent compiler,
+some related through language level proofs, and others through translation validation phases (Section 2.5).
+The compiler certificate guarantees that correctness theorems proven on top of the shallow embedding also hold for the generated C,
+which eases verification,
+and serves as the basis for further functional correctness proofs.
+
+A key part of the compiler certificate depends on Cogent’s uniqueness type system,
+which enforces that each mutable heap object has exactly one active pointer in scope at any point in time.
+This uniqueness invariant allows modelling imperative computations as pure functions:
+the allocations and repeated copying commonly found in functional programming
+can be replaced with destructive updates, and the need for garbage collection is eliminated,
+resulting in predictable and efficient code.
+
+Well-typed Cogent programs have two interpretations: a purely functional value semantics, which has no notion of a heap and treats all objects as immutable values, and
+an imperative update semantics, describing the destructive mutation of heap objects. These two semantic interpretations correspond (Section 2.5), meaning that any correctness proofs about the value semantics also apply to the update semantics. As we shall see, this correspondence further guarantees that well-typed Cogent programs are memory safe.
+
+2.1. Language Design and Examples
+
+Cogent has unit, numeric, and boolean primitive types,
+as well as functions,
+sum types (i.e., variants) and product types (i.e., tuples and records).
+Users can declare additional abstract types in Cogent,
+and define them externally (i.e., in C). Abstract and record types may be
+boxed, that is, stored on the heap, in which case they are mutable
+and subject to the uniqueness restrictions of Cogent’s type system.
+Cogent does not support closures,
+so partial application via currying is not common. Thus,
+functions of multiple arguments
+take a tuple or record of those arguments.
+
+type 𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa
+
+𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} : (𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa)!! →\rightarrow 𝚄𝟹𝟸\mathtt{U32}
+
+𝗀𝖾𝗍\mathsf{get} : ((𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa)!, U32, a!) →\rightarrow aa!
+
+𝗉𝗎𝗍\mathsf{put} : ((𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa, 𝚄𝟹𝟸\mathtt{U32}, 𝚊\mathtt{a})) →\rightarrow 𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa
+
+𝗆𝖺𝗉\mathsf{map} : ((aa →\rightarrow aa, 𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa)) →\rightarrow 𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa
+
+𝖿𝗈𝗅𝖽\mathsf{fold} : ((((aa!!, bb)) →\rightarrow bb, bb, (𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa)!! )) →\rightarrow bb
+
+𝖺𝖽𝖽\mathsf{add} : ((𝚄𝟹𝟸\mathtt{U32}, 𝚄𝟹𝟸\mathtt{U32})) →\rightarrow 𝚄𝟹𝟸\mathtt{U32}
+
+𝖺𝖽𝖽\mathsf{add} ((x\mathit{x}, y\mathit{y})) = x\mathit{x} ++ y\mathit{y}
+
+𝗌𝗎𝗆\mathsf{sum} : ((𝐴𝑟𝑟𝑎𝑦\mathit{Array} 𝚄𝟹𝟸\mathtt{U32})) !! →\rightarrow 𝚄𝟹𝟸\mathtt{U32}
+
+𝗌𝗎𝗆\mathsf{sum} 𝑎𝑟𝑟\mathit{arr} = 𝖿𝗈𝗅𝖽\mathsf{fold} ((𝖺𝖽𝖽\mathsf{add}, 00, 𝑎𝑟𝑟\mathit{arr}))
+
+Figure 1. A Cogent 𝗌𝗎𝗆\mathsf{sum} program that makes use of an abstract array type and operations.
+
+Figure 1 includes an example of Cogent signatures for an externally-defined array library interface, where array indices and length are unsigned 32-bit integers (𝚄𝟹𝟸\mathtt{U32}).
+
+Like ML, Cogent supports parametric polymorphism for top-level functions,
+and implements it via monomorphisation. For imported code,
+the compiler generates specialised C implementations from a polymorphic template,
+one for each concrete instantiation used in the Cogent code.
+Variables of polymorphic type are by default linear, which means they must be used exactly once (22).
+Thus a polymorphic type variable may be instantiated to any type, including types that
+contain pointers, while preserving the uniqueness invariant.
+
+As mentioned, types and functions provided in external C code are called abstract in Cogent. The Cogent compiler has infrastructure for linking the C implementations and the compiled Cogent code.
+Users write template C code, that can include embedded Cogent types and expressions via quasi-quotation,
+and the Cogent compiler translates the template C into ordinary C that it links with the C code generated from Cogent.
+To represent containers, abstract types may be given type parameters. These parameterised types, as well as polymorphic functions, are translated into a family of automatically generated C functions and types; one for each concrete type used in the Cogent program.
+
+Though the 𝐴𝑟𝑟𝑎𝑦\mathit{Array} type interface may appear purely functional,
+Cogent assumes that all abstract types are by default linear, ensuring that
+the uniqueness invariant applies to
+variables of type 𝐴𝑟𝑟𝑎𝑦\mathit{Array}.
+Therefore, any implementation of the abstract 𝗉𝗎𝗍\mathsf{put} function
+is free to destructively update the provided array,
+without contradicting the purely functional semantics of Cogent.
+
+When functions only need to read from a data structure,
+uniqueness types can complicate a program unnecessarily
+by requiring a programmer to thread through all state,
+even unchanged state.
+The !!-operator helps to avoid this
+by converting linear, writable types
+to read-only types that can be freely shared or discarded.
+This is analogous to a borrow in Rust.
+The 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} and 𝗀𝖾𝗍\mathsf{get} functions, presented in Figure 1,
+can read from the given array,
+but may not write to it.
+
+As Cogent does not support recursion,
+iteration is expressed using abstract higher-order functions,
+providing basic traversal combinators
+such as 𝗆𝖺𝗉\mathsf{map} and 𝖿𝗈𝗅𝖽\mathsf{fold} for abstract types, as
+can be seen in Figure 1.
+Note that 𝗆𝖺𝗉\mathsf{map} is passed a function of type a→a\text{$a$}\rightarrow\text{$a$}.
+As such, 𝗆𝖺𝗉\mathsf{map} is able to destructively overwrite the array with the result of the function applied to each element.
+
+While Cogent supports higher-order functions,
+it does not support nested lambda abstractions or closures,
+as these can require allocation if they capture variables.
+Thus, to invoke the 𝗆𝖺𝗉\mathsf{map} or 𝖿𝗈𝗅𝖽\mathsf{fold} functions,
+a separate top-level function must be defined, such as 𝖺𝖽𝖽\mathsf{add} in our example.
+
+𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} : (𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa)! →\rightarrow 𝚄𝟹𝟸\mathtt{U32}
+
+𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆\mathsf{mapAccum} :
+(((aa, bb, cc!!) →\rightarrow (aa, bb),
+bb,
+(𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa)!!,
+𝚄𝟹𝟸\mathtt{U32},
+𝚄𝟹𝟸\mathtt{U32},
+cc!! ))
+
+→\rightarrow (𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa, bb)
+
+𝖿𝗈𝗅𝖽\mathsf{fold} :
+(((aa, bb, cc!!) →\rightarrow bb,
+bb,
+(𝐴𝑟𝑟𝑎𝑦\mathit{Array} aa)!!,
+𝚄𝟹𝟸\mathtt{U32},
+𝚄𝟹𝟸\mathtt{U32},
+cc!! ))
+
+𝖺𝖽𝖽\mathsf{add} : ((𝚄𝟹𝟸\mathtt{U32}, 𝚄𝟹𝟸\mathtt{U32}, (()) )) →\rightarrow 𝚄𝟹𝟸\mathtt{U32}
+
+𝖺𝖽𝖽\mathsf{add} ((x\mathit{x}, y\mathit{y}, z\mathit{z})) = x\mathit{x} ++ y\mathit{y}
+
+𝗌𝗎𝗆\mathsf{sum} : (𝐴𝑟𝑟𝑎𝑦\mathit{Array} 𝚄𝟹𝟸\mathtt{U32})! →\rightarrow 𝚄𝟹𝟸\mathtt{U32}
+
+𝗌𝗎𝗆\mathsf{sum} 𝑎𝑟𝑟\mathit{arr} =
+𝖿𝗈𝗅𝖽\mathsf{fold}
+((𝖺𝖽𝖽\mathsf{add},
+0,
+𝑎𝑟𝑟\mathit{arr},
+0,
+𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} 𝑎𝑟𝑟\mathit{arr},
+(()) ))
+
+Figure 2. The 𝗌𝗎𝗆\mathsf{sum} function now written against the interace from Cogent’s C library.
+
+The array interface from Cogent’s C library used in the implementation of the Cogent file systems, part of which is given in Figure 2, is
+more complex than that of Figure 1: The higher-order functions are given two additional index parameters
+to operate over only a subsection of an array; and
+instead of relying on closure captures, which are not available in Cogent,
+we provide alternative iterator functions which carry an
+additional observer read-only input (of type c!\mathit{c!}).
+In addition, the function 𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆\mathsf{mapAccum} is a generalised version of 𝗆𝖺𝗉\mathsf{map},
+which allows threading an accumulating argument through the 𝗆𝖺𝗉\mathsf{map} function, similar to
+the same function in Haskell.
+We present the verification of these iterators in Section 3.
+
+2.2. Dynamic Semantics
+
+Cogent’s big-step value semantics is defined through the judgement
+V⊢e​
+{}{}}}{
+{}{}}
+This judgement states that the expression ee under environment VV evaluates to the value
+vv. The environment VV maps variables to their values.
+The imperative update semantics, which additionally may manipulate a mutable store μ\mu, is defined through the judgement
+U⊢e​|μ​
+{}{}}}{
+{}{}}
+store μ\mu the expression ee will evaluate under the environment UU to a final store μ′\mu^{\prime} and a result value uu. Unlike
+the values in the value semantics, values in the update semantics may be pointers to locations in the store.
+
+Both of these semantics are further parameterised by additional functions and types of values that are
+provided externally to Cogent, to model the semantics of abstract functions and types.
+More formally, the value semantics is parameterised by a function ξ𝗏:f𝑖𝑑→(v→v)\xi_{\mathsf{v}}:f_{\mathit{id}}\rightarrow(v\rightarrow v)
+and the update semantics by a function ξ𝗎:f𝑖𝑑→(μ×u→μ×u)\xi_{\mathsf{u}}:f_{\mathit{id}}\rightarrow(\mu\times u\rightarrow\mu\times u). Both of these are essentially an environment providing a
+pure HOL function on Cogent values (and stores, for the update semantics) for each abstract function. The definitions of
+values in the value semantics (vv) and update semantics (uu) are also extended with parameters a𝗏a_{\mathsf{v}} and a𝗎a_{\mathsf{u}} respectively
+which represent values of abstract types.
+
+Along with C code for all abstract functions and types, the user must also manually provide
+Isabelle/HOL abstractions of this C code to instantiate these environments.
+
+To verify Cogent systems, three main proof obligations must be discharged: type preservation, which ensures the uniqueness invariant is maintained;
+the frame requirements, which ensures that memory safety is maintained; and refinement, which ensures that functional correctness theorems are preserved down to the
+C level via the provided abstractions. Cogent proves all three of these requirements automatically for Cogent code: both type preservation and the frame requirements are simple corollaries of
+the key semantic correspondence theorem (Theorem 2.5) that makes up part of the Cogent refinement chain. For linked C code, however, the user must discharge these obligations manually.
+We discuss our verification of these requirements for C code in Section 3.
+
+2.3. Typing and Type Preservation
+
+Cogent’s static semantics are defined through a standard typing judgement A;Γ⊢e:τA;\Gamma\vdash e:\tau, which states that
+ee has type τ\tau under context Γ\Gamma,
+with an additional context AA that tracks assumptions about the linearity of type variables in τ\tau. To accommodate
+abstract types, we allow the type system to be extended with types A​τ¯\texttt{A}\ \overline{\tau} and (A​τ¯)!(\texttt{A}\ \overline{\tau})!, referring
+to linear abstract types and read-only abstract types respectively, where 𝙰\mathtt{A} is a type constructor parameterised by zero or more type
+parameters τ¯\overline{\tau}.
+
+Dynamic values in the value semantics are typed by the simple judgement v:τv:\tau, whereas update semantics values must be typed with the store μ\mu to type the parts of the value that are stored there.
+Update semantics values are typed by the judgement u|μ:τ⁡[r∗w]u|\mu:\tau\ [r\ast w],
+which additionally includes the heap footprint,
+consisting of the sets of read-only (rr) and writable (ww) pointers the value can contain.
+We use the same notation for value typing on environments.
+
+This heap footprint annotation is crucial to ensuring that Cogent maintains its uniqueness invariant,
+as it places constraints on the footprints of subcomponents of a value to rule out aliasing of live pointers.
+Thus, our theorem of type preservation
+across evaluation in the update semantics also shows that this invariant is preserved.
+More
+details on these constraints are discussed in earlier work (17, 16).
+When the heap footprints are not relevant and merely existentially quantified, we shall omit them:
+
+u|μ:τ≡∃rw.u|μ:τ[r∗w]u|\mu:\tau\ \equiv\ \exists r\ w.\ u|\mu:\tau\ [r\ast w]
+
+Theorem 2.1 (Type Preservation).
+
+For both update and value semantics:
+
+∙A;Γ⊢e:τ∧U|μ:Γ∧U⊢e​|μ​
+𝗎 ​u|​μ′⟶u|μ′:τ∙A;Γ⊢e:τ∧V:Γ∧V⊢e​
+{}{}}}{
+{}{}}
+{}{}}}{
+{}{}}
+\end{array}
+
+This states that the value typing relation for either semantics is preserved across the evaluation relation for
+well-typed expressions. Because the value typing relations of the update and value semantics are later combined into one
+refinement relation, which is shown to be preserved across evaluation in Theorem 2.5, type preservation
+is obtained by simply erasing one of the semantics from Theorem 2.5.
+
+Because the set of types is extensible, the value-typing relation for both semantics must also be
+extensible. To ensure that the user’s extensions to the value-typing relation do not violate the uniqueness
+invariant, Cogent places a number of proof obligations on abstract types that must be discharged by the user.
+These requirements are outlined in Section 2.7.
+
+2.4. Frame Requirements
+
+In addition to type preservation, which ensures that each Cogent value is well-formed and
+does not contain internal aliasing, we must also show that the mutable store μ\mu is
+in good order throughout evaluation — memory should not be leaked, and programs should not write
+to memory to which they have no access. These memory safety requirements are summed
+up by Cogent’s frame relation, which describes how a program may affect the store.
+
+Given an input set of writable pointers wiw_{i},
+an input store μi\mu_{i},
+an output set of pointers wow_{o} and
+an output store μo\mu_{o},
+the relation, wi​|μi​frame​wo|​μow_{i}\ |\ \mu_{i}\ \textbf{frame}\ w_{o}\ |\ \mu_{o},
+ensures three properties for any pointer pp:
+
+inertia:
+p∉wi∪wo⟶μi​(p)=μo​(p)\displaystyle p\notin w_{i}\cup w_{o}\longrightarrow\mu_{i}(p)=\mu_{o}(p)
+
+leak freedom:
+p∈wi⟶p∉wo⟶μo(p)=⊥\displaystyle p\in w_{i}\longrightarrow p\notin w_{o}\longrightarrow\mu_{o}(p)=\bot
+
+fresh allocation:
+p∉wi⟶p∈wo⟶μi(p)=⊥\displaystyle p\notin w_{i}\longrightarrow p\in w_{o}\longrightarrow\mu_{i}(p)=\bot
+
+Inertia ensures that
+pointers not in the frame remain unchanged;
+leak freedom ensures that
+pointers removed from the frame no longer point to anything; and
+fresh allocation ensures that
+pointers added to the frame were not already used.
+The frame relation implies that
+any property of a given value
+is unaffected by updates to unrelated parts of the heap.
+The frame relation holds for all Cogent computations,
+ensuring memory safety along with type safety:
+
+Theorem 2.2 (Preservation and Frame Relation).
+
+A;Γ⊢e:τ∧U|μ:Γ⁡[r∗w]∧U⊢e​|μ​
+{}{}}}{
+{}{}}
+\ \quad\exists r^{\prime}\ w^{\prime}.\ r^{\prime}\subseteq r\ \land\ w|\mu\ \mathbf{frame}\ w^{\prime}|\mu^{\prime}\ \land\ u|\mu:\tau\ [r^{\prime}\ast w^{\prime}]\end{array}
+
+This states that a well-typed program will evaluate in the update
+semantics to a well-typed value, and that the frame relation holds
+between the writable pointers of the input environment and the output value.
+Note that this theorem implies update semantics type preservation
+(Theorem 2.1), because this theorem too is a simplification of Theorem 2.5.
+
+2.5. Refinement
+
+σ\sigma||aca_{\textsf{c}}{}fcf_{\textsf{c}}{}rcr_{\textsf{c}}{}⊢\vdash||σ′\sigma^{\prime}
+cμ\mu||(x↦au)(x\mapsto a_{\textsf{u}}{})fmf_{\textsf{m}}{}rur_{\textsf{u}}{}⊢\vdash||μ′\mu^{\prime}
+u(x↦am)(x\mapsto a_{\textsf{m}}{})fmf_{\textsf{m}}{}rmr_{\textsf{m}}{}⊢\vdash
+v(x↦ap)(x\mapsto a_{\textsf{p}}{})fpf_{\textsf{p}}{}rpr_{\textsf{p}}{}⊢\vdash
+vasa_{\textsf{s}}{}fsf_{\textsf{s}}{}rsr_{\textsf{s}}{}⊢\vdash
+s
+
+AutoCorres CUpdate SemanticsValue Semantics, MonomorphicValue Semantics, PolymorphicShallow HOL Embedding(Theorem 2.9)(Theorem 2.7)(Theorem 2.5)(Theorem 2.4)
+Figure 3. Cogent’s semantic levels and refinement theorems.
+
+The overall proof that the C code refines the purely functional shallow embedding in Isabelle/HOL
+is broken into a number of sub-proofs and translation validation phases.
+Figure 3 gives an overview of Cogent’s refinement theorems for a function f⁡(x)f(x) applied
+to an argument aa.
+The compiler generates four embeddings:
+a top-level shallow embedding in terms of pure functions;
+a polymorphic deep embedding of the Cogent program,
+which is interpreted using the value semantics;
+a monomorphic deep embedding of the Cogent program,
+which can be interpreted using either the value or update semantics;
+and an Isabelle/HOL representation of the C code generated by the compiler,
+imported into Isabelle/HOL by the C-parser (24)
+used in the seL4 project (8).
+The C-parser generates a deep embedding of C in Isabelle/HOL,
+and, using AutoCorres (5, 6),
+is then abstracted to a corresponding state-monadic embedding of the C code in HOL.
+
+Each of these semantic layers is connected by a refinement proof by forward
+simulation: Given a refinement relation that relates corresponding values
+between two layers, we prove that if the more concrete (lower in the hierarchy)
+layer evaluates, then the more abstract (higher in the hierarchy) layer, given corresponding inputs, will
+also evaluate to corresponding outputs. The composition of all these refinements
+means that any property preserved by refinement,
+such as functional correctness, proved about all executions of the most abstract embedding — the Shallow HOL embedding — will also apply to the most concrete embedding, i.e. the C code.
+
+2.5.1. Update to C Refinement
+
+In the first stage, Cogent proves refinement between the C implementation and the deep
+embedding in the update semantics. AutoCorres imports C as a nondeterministic
+state-monadic program
+shallowly embedded in Isabelle/HOL. To make our definitions more symmetrical with those of
+Cogent, we define a C evaluation relation as follows:
+
+Definition 2.3 (C Evaluation Relation).
+
+ac⊢σ​|fc​
+{}{}}}{
+{}{}}
+\quad\ (r_{\textsf{c}},\sigma^{\prime})\in\mathit{results}(f_{\textsf{c}}\ a_{\textsf{c}}\ \sigma)\land\lnot\mathit{failed}(f_{\textsf{c}}\ a_{\textsf{c}}\ \sigma)\end{array}
+
+This states that given an input aca_{c} and C heap σ\sigma, the C function fcf_{c} evaluates to rcr_{c} and an output
+heap σ′\sigma^{\prime} and that no undefined behaviour occurred (indicated by ¬𝑓𝑎𝑖𝑙𝑒𝑑\neg\mathit{failed}).
+
+The Cogent compiler additionally generates a value relation 𝒱cu{\color[rgb]{0.2469,0.6063,0.7281}\mathcal{V}}_{\textsf{c}}^{\textsf{u}} and a heap relation ℋcu{\color[rgb]{0.5406,0.4594,0.7375}\mathcal{H}}_{\textsf{c}}^{\textsf{u}}, which together form the refinement relation
+for this refinement lemma. Using an automated technique described elsewhere (21),
+the Cogent proof then automatically discharges this proof obligation on a per-program basis
+via translation validation, while leaving open proof obligations for the user to discharge for abstract functions implemented in C.
+
+Theorem 2.4 (Update ⇒\Rightarrow C refinement).
+
+For any function f⁡(x)f(x) with monomorphic Cogent embedding fmf_{\textsf{m}} and C embedding fcf_{\textsf{c}},
+given an argument represented in the update semantics of Cogent as aua_{\textsf{u}} and in C as aca_{\textsf{c}}, we have:
+
+𝒱cu​(ac,au)∧ℋcu​(σ,μ)∧ac⊢σ​|fc​
+𝖼 ​rc|​σ′⟶∃ru​μ′.(x↦au)⊢fm​|μ​
+{}{}}}{
+{}{}}
+{}{}}}{
+{}{}}
+\qquad\qquad\land\ {\color[rgb]{0.2469,0.6063,0.7281}\mathcal{V}}_{\textsf{c}}^{\textsf{u}}(r_{\textsf{c}},r_{\textsf{u}})\land{\color[rgb]{0.5406,0.4594,0.7375}\mathcal{H}}_{\textsf{c}}^{\textsf{u}}(\sigma^{\prime},\mu^{\prime})\end{array}
+
+This states that
+if the C embedding evaluates to a result, then the corresponding Cogent update semantics will, given
+corresponding input values and heaps, evaluate to corresponding output values and heaps.
+
+2.5.2. Semantic Correspondence
+
+For the second stage, we must bridge the gap between the update
+semantics and value semantics. This is accomplished by Cogent’s proof
+for all well-typed programs that the two semantics correspond.
+As previously mentioned, this theorem combines both of the value typing relations
+from the two semantics v:τv:\tau and u|μ:τ⁡[r∗w]u|\mu:\tau\ [r\ast w] into one
+one combined relation u|μ∼ℛv:τ⁡[r∗w]u|\mu\ {\color[rgb]{0.4402,0.5852,0.2844}\stackrel{{\scriptstyle\mathcal{R}}}{{\sim}}}\ v:\ \tau\ [r\ast w]. In addition to typing both
+values, uu and vv, this relation also requires that they represent the same conceptual value.
+Prior work (17, 16) proves that the update semantics refines
+the value semantics by proving that this relation is preserved across the evaluation of both, and furthermore
+that evaluation in the update semantics implies the evaluation in the value semantics. As mentioned in Section 2.4,
+this also simultaneously proves the frame requirements hold for Cogent code.
+
+Theorem 2.5 (Value ⇒\Rightarrow Update refinement).
+
+For any ee where A;Γ⊢e:τA;\Gamma\vdash e:\tau, if U|μ∼ℛV:Γ⁡[r∗w]\ U|\mu\ {\color[rgb]{0.4402,0.5852,0.2844}\stackrel{{\scriptstyle\mathcal{R}}}{{\sim}}}\ V:\ \Gamma\ [r\ast w] and U⊢e​|μ​
+{}{}}}{
+{}{}}
+{}{}}}{
+{}{}}
+
+This proof is parameterised by the assumption that the same holds for abstract functions.
+We discuss how to discharge this assumption in Section 3.
+
+2.5.3. Monomorphisation
+
+Recall that the Cogent compiler eliminates polymorphism by monomorphising, that is,
+replacing polymorphic functions with specialised copies, one for each type used in the program.
+Using template C, the Cogent compiler can do the same for the user-supplied C code.
+To prove that this elimination of polymorphism preserves correctness we must show that the monomorphic
+program refines the polymorphic program. This is accomplished by replicating the compiler’s monomorphisation
+operations in Isabelle/HOL as functions on deep embeddings: ℳe\mathcal{M}_{e} to monomorphise expressions and ℳv\mathcal{M}_{v} to monomorphise values.
+Then, the refinement relation is simply defined:
+
+Definition 2.6 (Monomorphisation Relation).
+
+ℛmp​(vm,vp)≡(vm=ℳv​(N,vp)){\color[rgb]{0.8,0.6469,0.2625}\mathcal{R}}_{\textsf{m}}^{\textsf{p}}(v_{\textsf{m}},v_{\textsf{p}})\equiv(v_{\textsf{m}}=\mathcal{M}_{v}(N,v_{\textsf{p}}))
+
+where NN is a name mapping, supplied by the compiler, indicating which set of monomorphic functions correspond to which polymorphic functions.
+
+Proving refinement, then, proceeds on much the same lines as the other layers:
+
+Theorem 2.7 (Polymorphic ⇒\Rightarrow Monomorphic refinement).
+
+For any function f⁡(x)f(x) with a polymorphic embedding fpf_{\textsf{p}} and argument apa_{\textsf{p}}, let fm=ℳe​(N,fp)f_{\textsf{m}}=\mathcal{M}_{e}(N,f_{\textsf{p}})
+and am=ℳv​(ap)a_{\textsf{m}}=\mathcal{M}_{v}(a_{\textsf{p}}).
+Then we have:
+
+ℛmp​(am,ap)∧(x↦am)⊢fm​
+𝗏 ​rm⟶∃rp.(x↦ap)⊢fp​
+{}{}}}{
+{}{}}
+{}{}}}{
+{}{}}
+
+2.5.4. Shallow Embedding
+
+Having reached the top of the refinement tower, we must cross the bridge back to shallow embeddings, i.e., our pure
+HOL functions that serve as an executable specification. Because this embedding is just pure functions, our
+“evaluation” relation is just function application:
+
+Definition 2.8 (Shallow Evaluation Relation).
+
+as⊢fs​
+{}{}}}{
+{}{}}
+
+To show refinement, the compiler must once again connect deep and shallow embeddings, just as with
+the Cogent to C refinement (Theorem 2.4). Therefore, as with C, the compiler automatically produces a proof
+of this theorem on a per-program basis via translation validation. The compiler generates a refinement relation ℛps{\color[rgb]{0.7438,0.2656,0.3125}\mathcal{R}}_{\textsf{p}}^{\textsf{s}} for all types used in the program, and then proves:
+
+Theorem 2.9 (Shallow ⇒\Rightarrow Polymorphic refinement).
+
+For any function f⁡(x)f(x) with a shallow embedding fsf_{\textsf{s}} and polymorphic deep embedding fpf_{\textsf{p}},
+and arguments asa_{\textsf{s}} and apa_{\textsf{p}} respectively, we have:
+
+ℛps​(ap,as)∧(x↦ap)⊢fp​
+𝗏 ​rp⟶∃rs.as⊢fs​
+{}{}}}{
+{}{}}
+{}{}}}{
+{}{}}
+
+2.6. Overall Refinement
+
+To combine all of these refinement phases, we first define a refinement relation
+for all the layers of refinement:
+
+Definition 2.10 (Combined Relation).
+
+ℛcs​(vc,σ,vu,μ,vm,vp,vs,τ,r,w)≡ℛps​(vp,vs)∧ℛmp​(vm,vp)∧vu|μ∼ℛvm:τ⁡[r∗w]∧𝒱cu​(vc,vu)∧ℋcu​(σ,μ)\begin{array}[]{l}{\color[rgb]{0,0,0}\mathcal{R}}_{\textsf{c}}^{\textsf{s}}(v_{\textsf{c}},\sigma,v_{\textsf{u}},\mu,v_{\textsf{m}},v_{\textsf{p}},v_{\textsf{s}},\tau,r,w)\\[1.99997pt]
+\qquad\equiv{\color[rgb]{0.7438,0.2656,0.3125}\mathcal{R}}_{\textsf{p}}^{\textsf{s}}(v_{\textsf{p}},v_{\textsf{s}})\land{\color[rgb]{0.8,0.6469,0.2625}\mathcal{R}}_{\textsf{m}}^{\textsf{p}}(v_{\textsf{m}},v_{\textsf{p}})\\
+\qquad\land\ v_{\textsf{u}}|\mu\ {\color[rgb]{0.4402,0.5852,0.2844}\stackrel{{\scriptstyle\mathcal{R}}}{{\sim}}}\ v_{\textsf{m}}:\ \tau\ [r\ast w]\\[1.99997pt]
+\qquad\land\ {\color[rgb]{0.2469,0.6063,0.7281}\mathcal{V}}_{\textsf{c}}^{\textsf{u}}(v_{\textsf{c}},v_{\textsf{u}})\land{\color[rgb]{0.5406,0.4594,0.7375}\mathcal{H}}_{\textsf{c}}^{\textsf{u}}(\sigma,\mu)\end{array}
+
+Theorem 2.11 (Combined Refinement).
+
+Given a function f⁡(x)f(x) with embeddings fcf_{\textsf{c}}, fmf_{\textsf{m}}, fpf_{\textsf{p}}, fsf_{\textsf{s}};
+argument value aca_{\textsf{c}}, aua_{\textsf{u}}, ama_{\textsf{m}}, apa_{\textsf{p}},asa_{\textsf{s}}; heap σ\sigma and store μ\mu, we show:
+
+ℛcs​(ac,σ,au,μ,am,ap,as,τ,r,w)∧ac⊢fc​|σ​
+𝖼 ​vc|​σ′⟶∃r′​w′​μ′.r′⊆r∧w​|μ​𝐟𝐫𝐚𝐦𝐞​w′|​μ′∧∃vuvmvpvs.∧(x↦au)⊢fm​|μ​
+𝗎 ​vu|​μ′∧(x↦am)⊢fm​
+𝗏 ​vm∧(x↦ap)⊢fp​
+𝗏 ​vp∧as⊢fs​
+{}{}}}{
+{}{}}
+\quad\exists\ r^{\prime}\ w^{\prime}\ \mu^{\prime}.\ r^{\prime}\subseteq r\land w|\mu\ \mathbf{frame}\ w^{\prime}|\mu^{\prime}\\
+\qquad\land\ \exists\ v_{\textsf{u}}\ v_{\textsf{m}}\ v_{\textsf{p}}\ v_{\textsf{s}}.\\
+{}{}}}{
+{}{}}
+{}{}}}{
+{}{}}
+{}{}}}{
+{}{}}
+{}{}}}{
+{}{}}
+\qquad\quad\land\ {\color[rgb]{0,0,0}\mathcal{R}}_{\textsf{c}}^{\textsf{s}}(v_{\textsf{c}},\sigma^{\prime},v_{\textsf{u}},\mu^{\prime},v_{\textsf{m}},v_{\textsf{p}},v_{\textsf{s}},\tau^{\prime},r^{\prime},w^{\prime})\end{array}
+
+Because this theorem encompasses all levels of refinement as well as type preservation and the frame requirements,
+it is sufficient to prove this theorem about (each embedding of) each abstract function, where the
+semantics of the deep embeddings fpf_{\textsf{p}} and fmf_{\textsf{m}} is given by the user-supplied environments ξv\xi_{v} and ξu\xi_{u}.
+A proof of this theorem for an abstract function is sufficient to integrate its verification with the
+Cogent verification chain.
+
+2.7. Requirements on Abstract Types
+
+Theorem 2.11 encompasses all requirements the Cogent FFI places on abstract functions,
+but users can also provide abstract types, extending the dynamic value typing rules as they
+see fit. Therefore, Cogent imposes several constraints on the value typing judgements which ensure
+that key type system invariants such as memory safety are maintained for abstract types.
+
+Consider an abstract type of the form `​`​A​τ¯​”{``\texttt{A}\ \overline{\tau}\text{''}}, where A is the name of
+the abstract type and τ¯\overline{\tau} is a list a type parameters. Because it is not surrounded with the !-operator,
+it is linear and therefore writable. The requirements of the user-defined value typing relation are as follows.
+
+Definition 2.12 (Value Typing Requirements).
+
+bang𝗏:\displaystyle\textrm{bang}_{\mathsf{v}}\textrm{:}\quad
+v:A​τ¯⟶v:(A​τ!¯)!\displaystyle v:\texttt{A}\ \overline{\tau}\longrightarrow v:(\texttt{A}\ \overline{\tau!})!
+
+bang𝗎:\displaystyle\textrm{bang}_{\mathsf{u}}\textrm{:}\quad
+u|μ:A​τ¯​[r∗w]⟶u|μ:(A​τ!¯)​[r∪w∗∅]\displaystyle u|\mu:\texttt{A}\ \overline{\tau}\ [r\ast w]\longrightarrow u|\mu:(\texttt{A}\ \overline{\tau!})\ [r\cup w\ast\emptyset]
+
+no-alias:
+u|μ:A​τ¯​[r∗w]⟶r∩w=∅\displaystyle u|\mu:\texttt{A}\ \overline{\tau}\ [r\ast w]\longrightarrow r\cap w=\emptyset
+
+valid:
+u|μ:Aτ¯[r∗w]⟶∀p∈r∪w.μ(p)≠⊥\displaystyle u|\mu:\texttt{A}\ \overline{\tau}\ [r\ast w]\longrightarrow\forall p\in r\cup w.\ \mu(p)\neq\bot
+
+frame:
+u|μi:A​τ¯​[r∗w]⟶wi​|μi​𝐟𝐫𝐚𝐦𝐞​wo|​μo\displaystyle u|\mu_{i}:\texttt{A}\ \overline{\tau}\ [r\ast w]\longrightarrow w_{i}|\mu_{i}\ \mathbf{frame}\ w_{o}|\mu_{o}
+
+⟶(r∪w)∩wi=∅⟶u|μo:A​τ¯​[r∗w]\displaystyle\longrightarrow(r\cup w)\cap w_{i}=\emptyset\longrightarrow u|\mu_{o}:\texttt{A}\ \overline{\tau}\ [r\ast w]
+
+The bang rules ensure that abstract values respect the
+!-operator, i.e., when !! is applied to a
+value, the value becomes read-only;
+no-alias ensures that there is no aliasing
+of writable pointers by readable pointers within a value;
+valid enforces that all pointers are valid, i.e., point to values;
+and frame ensures that an abstract
+value is unchanged if it is not part of the store that is currently being
+modified. For a read-only type (A​τ¯)!(\texttt{A}\ \overline{\tau})!, the requirements are the same, save that the writable pointer set ww must also be empty:
+
+read-only:
+u|μ:(A​τ¯)!​[r∗w]⟶w=∅\displaystyle u|\mu:(\texttt{A}\ \overline{\tau})!\ [r\ast w]\longrightarrow w=\emptyset
+
+2.8. Summary of Requirements
+
+As can be seen from the previous sections, proof engineers must provide a number of implementations, abstractions, and proofs for each function and type they import.
+We briefly summarise these here. For each abstract type imported from C, the proof engineer simply needs to prove the requirements of Definition 2.12. For each imported foreign
+function ff, proof engineers must define a version of the function for all semantic levels in the Cogent hierarchy. That is, they must define
+a C implementation, an update semantics (ξu​f\xi_{\textsf{u}}\ f), a monomorphic value semantics (ξm​f\xi_{\textsf{m}}\ f), a polymorphic value semantics (ξp​f\xi_{\textsf{p}}\ f),
+and a shallow embedding in HOL.
+Once all embeddings have been provided, overall refinement (Theorem 2.11) must be proven for the foreign function ff, which necessitates proofs of all
+of our other preservation and refinement theorems:
+
+•
+
+Type preservation in the update semantics (Theorem 2.2):
+required by all functions that call ff to prove type preservation (Theorem 2.2), and by ff and all functions that call it to prove refinement (Theorems 2.4 and 2.5).
+
+•
+
+Type preservation in the monomorphic value semantics (Theorem 2.1):
+required by all functions that call ff to prove type preservation (Theorem 2.1), and by ff and all functions that call it to prove refinement (Theorems 2.5 and 2.7).
+
+•
+
+Refinement from the update semantics to C (Theorem 2.4): required by all functions that call ff to prove refinement (Theorem 2.4).
+
+•
+
+Refinement from the value semantics to the update semantics (Theorem 2.5): required by all functions that call ff to prove refinement (Theorem 2.5).
+
+•
+
+Refinement from the polymorphic to monomorphic value semantics (Theorem 2.7): required by all functions that call ff to prove refinement (Theorem 2.7).
+
+•
+
+Refinement from the shallow embedding to the polymorphic value semantics (Theorem 2.9): required by all functions that call ff to prove refinement (Theorem 2.9).
+
+3. Arrays
+
+Arrays in Cogent are stored on the heap
+with elements having any unboxed type. Arrays of pointers are a
+separate data structure in Cogent, as their interface is complicated
+by the uniqueness type system.
+We verify five array operations:
+the 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length}, 𝗀𝖾𝗍\mathsf{get}, and 𝗉𝗎𝗍\mathsf{put} functions in Figure 1, and
+the 𝖿𝗈𝗅𝖽\mathsf{fold} and 𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆\mathsf{mapAccum} iterators in Figure 2.
+
+3.1. Specification and Implementation
+
+𝗅𝖾𝗇𝗀𝗍𝗁​s\mathsf{length\textsubscript{s}} : [aa] →\rightarrow 𝚠𝚘𝚛𝚍𝟹𝟸\mathtt{word32}
+
+𝗅𝖾𝗇𝗀𝗍𝗁​s\mathsf{length\textsubscript{s}} 𝑥𝑠\mathit{xs} =
+𝗈𝖿​_​𝗇𝖺𝗍\mathsf{of\_nat} ((𝖫𝗂𝗌𝗍.𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{List.length} 𝑥𝑠\mathit{xs}))
+
+𝗀𝖾𝗍​s\mathsf{get\textsubscript{s}} : [aa] →\rightarrow 𝚠𝚘𝚛𝚍𝟹𝟸\mathtt{word32}
+→\rightarrow aa
+
+𝗀𝖾𝗍​s\mathsf{get\textsubscript{s}} 𝑥𝑠\mathit{xs} i\mathit{i} d\mathit{d} = if 𝗎𝗇𝖺𝗍\mathsf{unat}
+i\mathit{i} < 𝖫𝗂𝗌𝗍.𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{List.length} 𝑥𝑠\mathit{xs}
+
+​​​​​​ ​ then 𝑥𝑠\mathit{xs} !
+((𝗎𝗇𝖺𝗍\mathsf{unat} i\mathit{i})) else d\mathit{d}
+
+𝗉𝗎𝗍​s\mathsf{put\textsubscript{s}}: [aa] →\rightarrow 𝚠𝚘𝚛𝚍𝟹𝟸\mathtt{word32}
+→\rightarrow aa →\rightarrow [aa]
+
+𝗉𝗎𝗍​s\mathsf{put\textsubscript{s}} 𝑥𝑠\mathit{xs} i\mathit{i} v\mathit{v} =
+𝑥𝑠\mathit{xs}[𝗎𝗇𝖺𝗍\mathsf{unat} i\mathit{i} ≔\coloneqq v\mathit{v}]
+
+𝖿𝗈𝗅𝖽​s\mathsf{fold\textsubscript{s}} : ((bb →\rightarrow aa
+→\rightarrow cc
+→\rightarrow bb )) →\rightarrow bb →\rightarrow [aa]
+
+​​​​
+→\rightarrow 𝚠𝚘𝚛𝚍𝟹𝟸\mathtt{word32} →\rightarrow 𝚠𝚘𝚛𝚍𝟹𝟸\mathtt{word32} →\rightarrow cc
+→\rightarrow bb
+
+𝖿𝗈𝗅𝖽​s\mathsf{fold\textsubscript{s}} f\mathit{f} 𝑎𝑐𝑐\mathit{acc} 𝑥𝑠\mathit{xs} 𝑓𝑟𝑚\mathit{frm} 𝑡𝑜\mathit{to}
+𝑜𝑏𝑠\mathit{obs} =
+
+𝖫𝗂𝗌𝗍.𝖿𝗈𝗅𝖽\mathsf{List.fold}
+((λ\lambda𝑎𝑐𝑐\mathit{acc} 𝑒𝑙\mathit{el}. f\mathit{f} 𝑎𝑐𝑐\mathit{acc} 𝑒𝑙\mathit{el}
+𝑜𝑏𝑠\mathit{obs} )) 𝑎𝑐𝑐\mathit{acc} ((𝗌𝗅𝗂𝖼𝖾\mathsf{slice} 𝑓𝑟𝑚\mathit{frm} 𝑡𝑜\mathit{to} 𝑥𝑠\mathit{xs} ))
+
+𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆​s\mathsf{mapAccum\textsubscript{s}} : ((bb →\rightarrow aa
+→\rightarrow cc
+→\rightarrow ((aa, bb )) )) →\rightarrow bb →\rightarrow [aa]
+
+​​​​
+→\rightarrow 𝚠𝚘𝚛𝚍𝟹𝟸\mathtt{word32} →\rightarrow 𝚠𝚘𝚛𝚍𝟹𝟸\mathtt{word32} →\rightarrow cc
+→\rightarrow (([aa], bb ))
+
+𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆​s\mathsf{mapAccum\textsubscript{s}} f\mathit{f} 𝑎𝑐𝑐\mathit{acc} 𝑥𝑠\mathit{xs} 𝑓𝑟𝑚\mathit{frm} 𝑡𝑜\mathit{to} 𝑜𝑏𝑠\mathit{obs} =
+
+let ((𝑥𝑠′\mathit{xs^{\prime}}, 𝑎𝑐𝑐′\mathit{acc^{\prime}} )) =
+𝖫𝗂𝗌𝗍.𝖿𝗈𝗅𝖽\mathsf{List.fold}
+
+((λ\lambda𝑒𝑙\mathit{el} ((𝑥𝑠\mathit{xs}, 𝑎𝑐𝑐\mathit{acc} )).
+let ((𝑒𝑙′\mathit{el^{\prime}}, 𝑎𝑐𝑐′\mathit{acc^{\prime}} )) = f\mathit{f}
+𝑎𝑐𝑐\mathit{acc} 𝑒𝑙\mathit{el} 𝑜𝑏𝑠\mathit{obs}
+
+​​​​in ((𝑥𝑠\mathit{xs} @ [𝑒𝑙′\mathit{el^{\prime}}],
+𝑎𝑐𝑐′\mathit{acc^{\prime}} )) ))
+
+((𝗌𝗅𝗂𝖼𝖾\mathsf{slice} 𝑓𝑟𝑚\mathit{frm}
+𝑡𝑜\mathit{to} 𝑥𝑠\mathit{xs} )) (([], 𝑎𝑐𝑐\mathit{acc}
+))
+
+in ((𝗍𝖺𝗄𝖾\mathsf{take} 𝑓𝑟𝑚\mathit{frm} 𝑥𝑠\mathit{xs} @ 𝑥𝑠′\mathit{xs^{\prime}} @
+𝖽𝗋𝗈𝗉\mathsf{drop} ((𝗆𝖺𝗑\mathsf{max} 𝑓𝑟𝑚\mathit{frm} 𝑡𝑜\mathit{to} )) 𝑥𝑠\mathit{xs}, 𝑎𝑐𝑐′\mathit{acc^{\prime}} ))
+
+Figure 4. Functional correctness specification of the
+array operations in Isabelle/HOL.
+
+Our operations on arrays are specified as Isabelle functions on lists.
+The specification for the array functions presented in Figures 1 and 2
+is provided in Figure 4.
+Most array operations have obvious analogues in Isabelle/HOL’s list library. The library functions
+𝗎𝗇𝖺𝗍\mathsf{unat} and 𝗈𝖿​-​𝗇𝖺𝗍\mathsf{of\mbox{-}{}nat} convert words and natural numbers,
+𝗍𝖺𝗄𝖾​n​x​s\mathsf{take}\ n\ xs and 𝖽𝗋𝗈𝗉​n​x​s\mathsf{drop}\ n\ xs return and remove the first nn elements of
+the list x​sxs respectively, 𝗌𝗅𝗂𝖼𝖾​n​m​x​s\mathsf{slice}\ n\ m\ xs returns the sublist
+that starts at index nn and ends at index mm of the list x​sxs, !! returns the it​hi^{th} element of a list and @@ appends two lists.
+
+The operations 𝗀𝖾𝗍\mathsf{get} and 𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆\mathsf{mapAccum} do not have straightforward analogues in the Isabelle library.
+𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆\mathsf{mapAccum} is not part of the library at all, and must be implemented in terms of 𝖿𝗈𝗅𝖽\mathsf{fold}, whereas
+𝗀𝖾𝗍\mathsf{get} behaves differently to its corresponding list operation:
+our implementation of 𝗀𝖾𝗍\mathsf{get} is not undefined when the given index is out of bounds,
+but instead returns the provided default value.
+
+struct 𝑊𝐴𝑟𝑟𝑎𝑦​T\mathit{WArray\textbf{{\color[rgb]{0,0,1}T}}} {\{
+
+𝚞𝟹𝟸\mathtt{u32} len\mathrm{len};
+
+T* vals\mathrm{vals};
+
+}\};
+
+𝚞𝟹𝟸\mathtt{u32}
+𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length}((𝑊𝐴𝑟𝑟𝑎𝑦​T\mathit{WArray\textbf{{\color[rgb]{0,0,1}T}}}
+*𝑎𝑟𝑟\mathit{arr})) {\{
+return 𝑎𝑟𝑟\mathit{arr}→\rightarrow𝑙𝑒𝑛\mathit{len};
+}\}
+
+T 𝗀𝖾𝗍\mathsf{get}((𝑊𝐴𝑟𝑟𝑎𝑦​T\mathit{WArray\textbf{{\color[rgb]{0,0,1}T}}}
+*𝑎𝑟𝑟\mathit{arr}, 𝚞𝟹𝟸\mathtt{u32} i\mathit{i}, T 𝑑𝑒𝑓\mathit{def})) {\{
+
+if((i\mathit{i} < 𝑎𝑟𝑟\mathit{arr}→\rightarrow𝑙𝑒𝑛\mathit{len})) {\{ return 𝑎𝑟𝑟\mathit{arr}→\rightarrow𝑣𝑎𝑙𝑠\mathit{vals}[i\mathit{i}];  }\}
+
+return 𝑑𝑒𝑓\mathit{def};
+
+}\}
+
+𝑊𝐴𝑟𝑟𝑎𝑦​T\mathit{WArray\textbf{{\color[rgb]{0,0,1}T}}} *𝗉𝗎𝗍\mathsf{put}((𝑊𝐴𝑟𝑟𝑎𝑦​T\mathit{WArray\textbf{{\color[rgb]{0,0,1}T}}}
+*𝑎𝑟𝑟\mathit{arr}, 𝚞𝟹𝟸\mathtt{u32} i\mathit{i}, T v\mathit{v})) {\{
+
+if((i\mathit{i} < 𝑎𝑟𝑟\mathit{arr}→\rightarrow𝑙𝑒𝑛\mathit{len})) {\{ 𝑎𝑟𝑟\mathit{arr}→\rightarrow𝑣𝑎𝑙𝑠\mathit{vals}[i\mathit{i}] = v\mathit{v}; }\}
+
+return 𝑎𝑟𝑟\mathit{arr};
+
+}\}
+
+A 𝖿𝗈𝗅𝖽\mathsf{fold}((𝚏𝚒𝚍\mathtt{fid} f\mathit{f},
+A 𝑎𝑐𝑐\mathit{acc},
+𝑊𝐴𝑟𝑟𝑎𝑦​T\mathit{WArray\textbf{{\color[rgb]{0,0,1}T}}} *𝑎𝑟𝑟\mathit{arr},
+𝚞𝟹𝟸\mathtt{u32} 𝑓𝑟𝑚\mathit{frm},
+𝚞𝟹𝟸\mathtt{u32} 𝑡𝑜\mathit{to},
+O 𝑜𝑏𝑠𝑣\mathit{obsv})) {\{
+
+𝚞𝟹𝟸\mathtt{u32} i,e\mathit{i,e};
+
+e\mathit{e} = 𝑎𝑟𝑟\mathit{arr}→\rightarrow𝑙𝑒𝑛\mathit{len};
+
+if((𝑡𝑜\mathit{to} < e)) {\{ e\mathit{e} = 𝑡𝑜\mathit{to}; }\}
+
+for((i\mathit{i} = 𝑓𝑟𝑚\mathit{frm}; i\mathit{i} < e\mathit{e};
+i\mathit{i}++))
+{\{𝑎𝑐𝑐\mathit{acc} =
+𝖽𝗂𝗌𝗉𝖺𝗍𝖼𝗁​_​𝖿𝗈𝗅𝖽\mathsf{{\color[rgb]{1,0,0}dispatch\_fold}}((f\mathit{f},
+𝑎𝑟𝑟\mathit{arr}→\rightarrow𝑣𝑎𝑙𝑠\mathit{vals}[i\mathit{i}], 𝑎𝑐𝑐\mathit{acc},
+𝑜𝑏𝑠𝑣\mathit{obsv})); }\}
+
+return 𝑎𝑐𝑐\mathit{acc};
+
+}\}
+
+𝐴𝑟𝑟𝑎𝑦𝐴𝑐𝑐\mathit{{\color[rgb]{0.5,0.5,0.5}ArrayAcc}} 𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆\mathsf{mapAccum}((𝚏𝚒𝚍\mathtt{fid} f\mathit{f},
+A 𝑎𝑐𝑐\mathit{acc},
+𝑊𝐴𝑟𝑟𝑎𝑦​T\mathit{WArray\textbf{{\color[rgb]{0,0,1}T}}} *𝑎𝑟𝑟\mathit{arr},
+𝚞𝟹𝟸\mathtt{u32} 𝑓𝑟𝑚\mathit{frm},
+𝚞𝟹𝟸\mathtt{u32} 𝑡𝑜\mathit{to},
+O 𝑜𝑏𝑠𝑣\mathit{obsv})) {\{
+
+𝚞𝟹𝟸\mathtt{u32} i,e\mathit{i,e};
+
+e\mathit{e} = 𝑎𝑟𝑟\mathit{arr}->𝑙𝑒𝑛\mathit{len};
+
+if((𝑡𝑜\mathit{to} < e)) {\{ e\mathit{e} = 𝑡𝑜\mathit{to}; }\}
+
+for((i\mathit{i} = 𝑓𝑟𝑚\mathit{frm}; i\mathit{i} < e\mathit{e};
+i\mathit{i}++)) {\{
+
+𝐸𝑙𝑒𝑚𝐴𝑐𝑐\mathit{{\color[rgb]{0.5,0.5,0.5}ElemAcc}} 𝑒𝑎\mathit{ea} =
+𝖽𝗂𝗌𝗉𝖺𝗍𝖼𝗁​_​𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆\mathsf{{\color[rgb]{1,0,0}dispatch\_mapAccum}}((f\mathit{f},
+𝑎𝑟𝑟\mathit{arr}→\rightarrow𝑣𝑎𝑙𝑠\mathit{vals}[i\mathit{i}], 𝑎𝑐𝑐\mathit{acc},
+𝑜𝑏𝑠𝑣\mathit{obsv}));
+
+𝑎𝑟𝑟\mathit{arr}→\rightarrow𝑣𝑎𝑙𝑠\mathit{vals}[i\mathit{i}] = 𝑒𝑎\mathit{ea}.𝑒𝑙𝑒𝑚\mathit{elem};
+
+𝑎𝑐𝑐\mathit{acc} = 𝑒𝑎\mathit{ea}.𝑎𝑐𝑐\mathit{acc};
+
+}\}
+
+𝐴𝑟𝑟𝑎𝑦𝐴𝑐𝑐\mathit{{\color[rgb]{0.5,0.5,0.5}ArrayAcc}} 𝑟𝑒𝑡\mathit{ret} = {\{.𝑎𝑟𝑟\mathit{arr} =
+𝑎𝑟𝑟\mathit{arr}, .𝑎𝑐𝑐\mathit{acc} = 𝑎𝑐𝑐\mathit{acc}}\};
+
+return 𝑟𝑒𝑡\mathit{ret};
+
+}\}
+
+Figure 5. C implementation of key operations on arrays.
+
+In Figure 5, we present a version of the template C
+implementation of arrays with some syntactic simplifications for presentation. Quoted type parameters that are later instantiated
+to concrete Cogent types, such as T or O, are highlighted in blue.
+Generated C structure types for Cogent records and tuples such as 𝐴𝑟𝑟𝑎𝑦𝐴𝑐𝑐\mathit{ArrayAcc}, which normally have compiler-generated
+names, are written with human-friendly names in grey. The dispatch functions highlighted in red
+are how Cogent deals with higher-order functions: Because the C-parser semantics do not accommodate
+function pointers, Cogent instead assigns a unique identifier to each function at compile time, and defines
+a dispatch function for each function type. This function takes a function identifier as an
+argument and calls the function that corresponds to that identifier.
+
+3.2. Proving Refinement
+
+As previously mentioned, to verify our abstract C library, we must additionally provide Isabelle/HOL abstractions of our C implementation
+that can connect with the automatically-generated Cogent embeddings. Specifically, we must provide
+Isabelle/HOL abstractions for each abstract function (i.e., 𝗉𝗎𝗍\mathsf{put}, 𝗀𝖾𝗍\mathsf{get}, etc.), as well as a combined
+value-update-type correspondence relation, analogous to the refinement relation for Theorem 2.5,
+for each abstract type (i.e., 𝑊𝐴𝑟𝑟𝑎𝑦​T\mathit{WArray\textbf{{\color[rgb]{0,0,1}T}}}).
+
+3.2.1. Abstractions
+
+𝗅𝖾𝗇𝗀𝗍𝗁​u\mathsf{length\textsubscript{u}} ((μ\mu, x\mathit{x})) ((μ\mu’,
+y\mathit{y})) =
+
+∃\existsτ\mathit{\tau} 𝑙𝑒𝑛\mathit{len} p\mathit{p}. ((μ\mathit{\mu} x\mathit{x} = 𝚄𝚆𝙰\mathtt{UWA} τ\mathit{\tau} 𝑙𝑒𝑛\mathit{len} p\mathit{p} )) ∧\land ((y\mathit{y} = 𝑙𝑒𝑛\mathit{len} )) ∧\land ((μ\mu = μ\mu’ ))
+
+𝗀𝖾𝗍​u\mathsf{get\textsubscript{u}} ((μ\mathit{\mu}, (x\mathit{x},
+i\mathit{i}, d\mathit{d}))) ((μ′\mathit{\mu^{\prime}}, y\mathit{y})) =
+
+∃\existsτ\mathit{\tau} 𝑙𝑒𝑛\mathit{len} p\mathit{p}. ((μ\mathit{\mu} x\mathit{x} = 𝚄𝚆𝙰\mathtt{UWA} τ\mathit{\tau} 𝑙𝑒𝑛\mathit{len}
+p\mathit{p}))
+
+∧\land ((i\mathit{i} < 𝑙𝑒𝑛\mathit{len}
+⟶\longrightarrow
+μ\mathit{\mu} (p\mathit{p}+(𝗌𝗂𝗓𝖾\mathsf{size} t\mathit{t})×\timesi\mathit{i}) = y\mathit{y}))
+
+∧\land ((i\mathit{i} ≥\geq 𝑙𝑒𝑛\mathit{len} ⟶\longrightarrow y\mathit{y} =
+d\mathit{d})) ∧\land ((μ\mathit{\mu} = μ′\mathit{\mu^{\prime}}))
+
+𝗉𝗎𝗍​u\mathsf{put\textsubscript{u}} ((μ\mathit{\mu}, (x\mathit{x}, i\mathit{i}, v\mathit{v}))) ((μ′\mathit{\mu^{\prime}}, y\mathit{y})) =
+
+∃\existsτ\mathit{\tau} 𝑙𝑒𝑛\mathit{len} p\mathit{p}.
+((μ\mathit{\mu} x\mathit{x} = 𝚄𝚆𝙰\mathtt{UWA} τ\mathit{\tau} 𝑙𝑒𝑛\mathit{len}
+p\mathit{p}))
+
+∧\land ((i\mathit{i} < 𝑙𝑒𝑛\mathit{len}
+⟶\longrightarrow
+μ\mathit{\mu}(p\mathit{p}+(𝗌𝗂𝗓𝖾\mathsf{size} τ\mathit{\tau})×\timesi\mathit{i} ↦\mapsto v\mathit{v}) = μ′\mathit{\mu^{\prime}}))
+
+∧\land ((i\mathit{i} ≥\geq 𝑙𝑒𝑛\mathit{len} ⟶\longrightarrow
+μ\mathit{\mu} = μ′\mathit{\mu^{\prime}})) ∧\land ((x\mathit{x} =
+y\mathit{y}))
+
+𝖿𝗈𝗅𝖽​u\mathsf{fold\textsubscript{u}} ((μ1\mathit{\mu_{1}},
+(f\mathit{f}, 𝑎𝑐𝑐\mathit{acc}, x\mathit{x}, s\mathit{s}, e\mathit{e}, 𝑜𝑏𝑠\mathit{obs}))) ((μ3\mathit{\mu_{3}}, y\mathit{y})) =
+
+∃\existsτ\mathit{\tau} 𝑙𝑒𝑛\mathit{len} p\mathit{p}.
+((μ1\mathit{\mu_{1}} x\mathit{x} = 𝚄𝚆𝙰\mathtt{UWA} τ\mathit{\tau} 𝑙𝑒𝑛\mathit{len}
+p\mathit{p}))
+
+∧\land ((s\mathit{s} < 𝑙𝑒𝑛\mathit{len} ∧\land
+s\mathit{s} < e\mathit{e}
+⟶\longrightarrow
+
+∃\existsv\mathit{v} 𝑎𝑐𝑐′\mathit{acc^{\prime}} μ2\mathit{\mu_{2}}.
+μ1\mathit{\mu_{1}} (p\mathit{p}+(𝗌𝗂𝗓𝖾\mathsf{size} τ\mathit{\tau})×\timess\mathit{s}) =
+v\mathit{v}
+
+∧\land
+[a↦(v,𝑎𝑐𝑐,𝑜𝑏𝑠)]⊢fa|μ1
+{}{}}}{
+{}{}}
+
+∧\land
+𝖿𝗈𝗅𝖽​u\mathsf{fold\textsubscript{u}} ((μ2\mathit{\mu_{2}},
+(f\mathit{f}, 𝑎𝑐𝑐′\mathit{acc^{\prime}}, x\mathit{x}, s\mathit{s}+1, e\mathit{e}, 𝑜𝑏𝑠\mathit{obs}))) ((μ3\mathit{\mu_{3}}, y\mathit{y})) ))
+
+∧\land ((s\mathit{s} ≥\geq 𝑙𝑒𝑛\mathit{len} ∨\lor s\mathit{s} ≥\geq
+e\mathit{e}⟶\longrightarrow
+μ1\mathit{\mu_{1}} = μ3\mathit{\mu_{3}} ∧\land y\mathit{y} = 𝑎𝑐𝑐\mathit{acc}))
+
+𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆​u\mathsf{mapAccum\textsubscript{u}} ((μ1\mathit{\mu_{1}},
+(f\mathit{f}, 𝑎𝑐𝑐\mathit{acc}, x\mathit{x}, s\mathit{s}, e\mathit{e}, 𝑜𝑏𝑠\mathit{obs}))) ((μ4\mathit{\mu_{4}}, y\mathit{y})) =
+
+∃\existsτ\mathit{\tau} 𝑙𝑒𝑛\mathit{len} p\mathit{p}.
+((μ1\mathit{\mu_{1}} x\mathit{x} = 𝚄𝚆𝙰\mathtt{UWA} τ\mathit{\tau} 𝑙𝑒𝑛\mathit{len}
+p\mathit{p}))
+
+∧\land ((s\mathit{s} < 𝑙𝑒𝑛\mathit{len} ∧\land
+s\mathit{s} < e\mathit{e}
+⟶\longrightarrow
+
+∃\existsv\mathit{v} v′\mathit{v^{\prime}} 𝑎𝑐𝑐′\mathit{acc^{\prime}} μ2\mathit{\mu_{2}}
+μ3\mathit{\mu_{3}}.
+μ1\mathit{\mu_{1}} (p\mathit{p}+(𝗌𝗂𝗓𝖾\mathsf{size} τ\mathit{\tau})×\timess\mathit{s}) =
+v\mathit{v}
+
+∧\land
+[a↦(v,𝑎𝑐𝑐,𝑜𝑏𝑠)]⊢fa|μ1
+{}{}}}{
+{}{}}
+
+∧\land
+μ3\mathit{\mu_{3}} = μ2\mathit{\mu_{2}}(p\mathit{p}+(𝗌𝗂𝗓𝖾\mathsf{size} t\mathit{t})×\timess\mathit{s}
+↦\mapsto v′\mathit{v^{\prime}})
+
+∧\land
+𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆​u\mathsf{mapAccum\textsubscript{u}} ((μ3\mathit{\mu_{3}},
+(f\mathit{f}, 𝑎𝑐𝑐′\mathit{acc^{\prime}}, x\mathit{x}, s\mathit{s}+1, e\mathit{e}, 𝑜𝑏𝑠\mathit{obs}))) ((μ4\mathit{\mu_{4}}, y\mathit{y})) ))
+
+∧\land ((s\mathit{s} ≥\geq 𝑙𝑒𝑛\mathit{len} ∨\lor s\mathit{s} ≥\geq
+e\mathit{e}⟶\longrightarrow
+μ1\mathit{\mu_{1}} = μ4\mathit{\mu_{4}} ∧\land y\mathit{y} = (x\mathit{x}, 𝑎𝑐𝑐\mathit{acc})))
+
+(a) C abstractions for the update semantics.
+
+𝗅𝖾𝗇𝗀𝗍𝗁​v\mathsf{length\textsubscript{v}} x\mathit{x} y\mathit{y} =
+
+∃\existsτ\mathit{\tau} 𝑥𝑠\mathit{xs}. ((x\mathit{x} = 𝚅𝚆𝙰\mathtt{VWA} τ\mathit{\tau} 𝑥𝑠\mathit{xs} )) ∧\land ((𝖫𝗂𝗌𝗍.𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{List.length} 𝑥𝑠\mathit{xs} =
+𝗎𝗇𝖺𝗍\mathsf{unat} y\mathit{y} ))
+
+𝗀𝖾𝗍​v\mathsf{get\textsubscript{v}} ((x\mathit{x}, i\mathit{i})) y\mathit{y} =
+
+∃\existsτ\mathit{\tau} 𝑥𝑠\mathit{xs}. ((x\mathit{x} = 𝚅𝚆𝙰\mathtt{VWA} τ\mathit{\tau} 𝑥𝑠\mathit{xs} ))
+
+∧\land
+((𝗎𝗇𝖺𝗍\mathsf{unat} i\mathit{i} < 𝖫𝗂𝗌𝗍.𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{List.length} 𝑥𝑠\mathit{xs}
+⟶\longrightarrow 𝑥𝑠\mathit{xs} ! i\mathit{i} = y\mathit{y} ))
+
+∧\land
+((𝗎𝗇𝖺𝗍\mathsf{unat} i\mathit{i} ≥\geq
+𝖫𝗂𝗌𝗍.𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{List.length} 𝑥𝑠\mathit{xs} ⟶\longrightarrow y\mathit{y} =
+0))
+
+𝗉𝗎𝗍​v\mathsf{put\textsubscript{v}} ((x\mathit{x}, i\mathit{i}, v\mathit{v})) y\mathit{y} =
+
+∃\existsτ\mathit{\tau} 𝑥𝑠\mathit{xs}. ((x\mathit{x} = 𝚅𝚆𝙰\mathtt{VWA} τ\mathit{\tau} 𝑥𝑠\mathit{xs} )) ∧\land
+((y\mathit{y} = 𝚅𝚆𝙰\mathtt{VWA} τ\mathit{\tau} 𝑥𝑠\mathit{xs}[𝗎𝗇𝖺𝗍\mathsf{unat} i\mathit{i}
+≔\coloneqq v\mathit{v}]))
+
+𝖿𝗈𝗅𝖽​v\mathsf{fold\textsubscript{v}}
+((f\mathit{f}, 𝑎𝑐𝑐\mathit{acc}, x\mathit{x}, s\mathit{s}, e\mathit{e}, 𝑜𝑏𝑠\mathit{obs})) y\mathit{y} =
+
+∃\existsτ\mathit{\tau} 𝑥𝑠\mathit{xs}. ((x\mathit{x} = 𝚅𝚆𝙰\mathtt{VWA} τ\mathit{\tau} 𝑥𝑠\mathit{xs} ))
+
+∧\land
+((𝗎𝗇𝖺𝗍\mathsf{unat} s\mathit{s} < 𝖫𝗂𝗌𝗍.𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{List.length} 𝑥𝑠\mathit{xs}
+∧\land s\mathit{s} < e\mathit{e} ⟶\longrightarrow
+
+∃\existsv\mathit{v} 𝑎𝑐𝑐′\mathit{acc^{\prime}}. (𝑥𝑠\mathit{xs} ! s\mathit{s} = v\mathit{v})
+
+∧\land
+[a↦(v,𝑎𝑐𝑐,𝑜𝑏𝑠)]⊢fa
+{}{}}}{
+{}{}}
+
+∧\land\ 𝖿𝗈𝗅𝖽​v\mathsf{fold\textsubscript{v}}
+((f\mathit{f}, 𝑎𝑐𝑐′\mathit{acc^{\prime}}, x\mathit{x}, s\mathit{s}+1, e\mathit{e}, 𝑜𝑏𝑠\mathit{obs})) y\mathit{y}))
+
+∧\land
+((𝗎𝗇𝖺𝗍\mathsf{unat} s\mathit{s} ≥\geq
+𝖫𝗂𝗌𝗍.𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{List.length} 𝑥𝑠\mathit{xs} ∨\lor s\mathit{s} ≥\geq e\mathit{e}
+⟶\longrightarrow y\mathit{y} = 𝑎𝑐𝑐\mathit{acc}))
+
+𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆​v\mathsf{mapAccum\textsubscript{v}}
+((f\mathit{f}, 𝑎𝑐𝑐\mathit{acc}, x\mathit{x}, s\mathit{s}, e\mathit{e}, 𝑜𝑏𝑠\mathit{obs})) y\mathit{y} =
+
+∃\existsτ\mathit{\tau} 𝑥𝑠\mathit{xs}. ((x\mathit{x} = 𝚅𝚆𝙰\mathtt{VWA} τ\mathit{\tau} 𝑥𝑠\mathit{xs} ))
+
+∧\land
+((𝗎𝗇𝖺𝗍\mathsf{unat} s\mathit{s} < 𝖫𝗂𝗌𝗍.𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{List.length} 𝑥𝑠\mathit{xs}
+∧\land s\mathit{s} < e\mathit{e} ⟶\longrightarrow
+
+∃\existsv\mathit{v} v′\mathit{v^{\prime}} 𝑎𝑐𝑐′\mathit{acc^{\prime}} x′\mathit{x^{\prime}}.
+𝑥𝑠\mathit{xs} ! s\mathit{s} = v\mathit{v}
+
+∧\land
+[a↦(v,𝑎𝑐𝑐,𝑜𝑏𝑠)]⊢fa
+{}{}}}{
+{}{}}
+
+∧\land
+x′\mathit{x^{\prime}} = 𝚅𝚆𝙰\mathtt{VWA} τ\mathit{\tau}
+𝑥𝑠\mathit{xs}[𝗎𝗇𝖺𝗍\mathsf{unat} s\mathit{s} ≔\coloneqq v′\mathit{v^{\prime}}]
+
+∧\land\ 𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆​v\mathsf{mapAccum\textsubscript{v}}
+((f\mathit{f}, 𝑎𝑐𝑐′\mathit{acc^{\prime}}, x′\mathit{x^{\prime}}, s\mathit{s}+1, e\mathit{e}, 𝑜𝑏𝑠\mathit{obs})) y\mathit{y}))
+
+∧\land
+((𝗎𝗇𝖺𝗍\mathsf{unat} s\mathit{s} ≥\geq
+𝖫𝗂𝗌𝗍.𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{List.length} 𝑥𝑠\mathit{xs} ∨\lor s\mathit{s} ≥\geq e\mathit{e}
+⟶\longrightarrow y\mathit{y} = (x\mathit{x}, 𝑎𝑐𝑐\mathit{acc})))
+
+(b) C abstractions for the value semantics.
+
+Figure 6. Cogent-compatible abstractions of C operations on arrays
+
+We extend the definition of Cogent values with a new constructor for arrays.
+In the update semantics, arrays take the form 𝚄𝚆𝙰​τ​𝑙𝑒𝑛​p\text{$\mathtt{UWA}$}\ \tau\ \mathit{len}\ \mathit{p}, where
+τ\tau is the type of the array elements, 𝑙𝑒𝑛\mathit{len} is the length of the array, and
+p\mathit{p} is a pointer to the first element of the array. This is quite similar to
+the representation used in C, where a struct containing the length and a pointer is used (see Figure 5).
+We additionally store the type in the Cogent value so that the same form of Cogent value can be
+used for all the different structs generated by the Cogent compiler from the C template.
+In the value semantics, however, arrays take the form 𝚅𝚆𝙰​τ​𝑥𝑠\text{$\mathtt{VWA}$}\ \tau\ \mathit{xs}, where 𝑥𝑠\mathit{xs} is simply
+an Isabelle/HOL list of Cogent values, similar to the representation used in the shallow embedding (see Figure 4).
+
+The various array function
+abstractions supplied to Cogent are defined as input-output relations that are later interpreted as functions, as shown in
+Figure 6. These abstractions are derived directly from the axiomatisation
+used in the verification of BilbyFs.
+In the update semantics (Figure 6(a)), the input is a pair of the Cogent store before the array operation and the argument(s) to the
+function, and the output is a pair of the store after the operation is complete and the return value.
+
+Note that the definitions for 𝖿𝗈𝗅𝖽\mathsf{fold} and 𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆\mathsf{mapAccum} are recursive in two ways. The most obvious is the direct structural recursion on the array indices,
+which is straightforward for Isabelle to show terminates. The other form of recursion is the mutual recursion with
+the Cogent semantics (note that 𝖿𝗈𝗅𝖽\mathsf{fold} and 𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆\mathsf{mapAccum} invoke the Cogent semantics to evaluate the argument function).
+This is because the Cogent semantics is itself parameterised
+by an environment (ξu\xi_{u} and ξv\xi_{v}) containing the abstractions we are currently defining.
+We cannot define these embeddings and the Cogent semantics simultaneously as is normally done for mutual definitions, however, since our abstractions are
+defined by users later in the process after the semantics of Cogent have already been defined. Thus, we cannot close the recursion before
+users have provided these definitions.
+Therefore we must impose an additional constraint22
+2
+
+This constraint is not a proof obligation, but merely a requirement for our framework to work automatically. that an nn-order abstract function can only
+call a function of an order less than nn.
+This forces us to prove refinement for all functions of order n−1n-1 or
+less, before we can prove refinement for an abstract function of order nn. By imposing this ordering, we can iteratively
+build up these environments in a staged way.
+This constraint is not burdensome, and is already satisfied by all Cogent codebases (see Rizkallah et al. (21)).
+
+Since Cogent supports polymorphism, we in fact need to provide two abstractions for
+our operations in the value semantics corresponding to the two value semantics layers
+in our refinement chain, monomorphic and polymorphic. Because our abstractions (and even our implementation)
+are entirely parametric in the element type, the abstractions
+that are shown in Figure 6(b) can be used for both the monomorphic
+and the polymorphic layers, which, as we will see, trivialises the refinement proof for the monomorphisation
+layer of the hierarchy.
+
+3.2.2. Value Typing
+
+Unlike the approach for native Cogent values, where the value
+typing relations are defined as erasures of the value-update refinement relation,
+we shall define individual value-typing relations for arrays in the two semantics,
+and then combine them into a refinement relation in Definition 3.5
+
+We define these typing relations with two equations, one for the
+writable arrays 𝙰𝚛𝚛𝚊𝚢​τ\mathtt{Array}\ \tau, and one for read-only arrays (𝙰𝚛𝚛𝚊𝚢​τ)!(\mathtt{Array}\ \tau)!.
+In the value semantics, these two types are identical, merely requiring that the list elements are
+well-typed:
+
+Definition 3.1 (Array: Value Semantics Value Typing).
+
+𝚅𝚆𝙰​τ​𝑥𝑠:𝙰𝚛𝚛𝚊𝚢​τ≡(∀i<𝖫𝗂𝗌𝗍.𝗅𝖾𝗇𝗀𝗍𝗁𝑥𝑠.𝑥𝑠!i:τ)𝚅𝚆𝙰​τ​𝑥𝑠:(𝙰𝚛𝚛𝚊𝚢​τ)!≡((𝚅𝚆𝙰​τ​𝑥𝑠):𝙰𝚛𝚛𝚊𝚢​τ)\begin{array}[]{lcl}\mathtt{VWA}\ \tau\ \mathit{xs}:\mathtt{Array}\ \tau&\equiv&\!\!\!\!(\forall i<\mathsf{List.length}\ \mathit{xs}.\ \mathit{xs}\ !\ i:\tau)\\
+\mathtt{VWA}\ \tau\ \mathit{xs}:(\mathtt{Array}\ \tau)!&\equiv&\!\!\!\!((\mathtt{VWA}\ \tau\ \mathit{xs}):\mathtt{Array}\ \tau)\end{array}
+
+For the update semantics, we define an auxiliary predicate 𝑜𝑘𝑎𝑦⁡(𝚄𝚆𝙰​τ​𝑙𝑒𝑛​p)\mathit{okay}(\mathtt{UWA}\ \tau\ \mathit{len}\ p) which states that
+each of the values in the array (located at successive pointers starting at pp) is well typed, as well as a necessary condition on 𝑙𝑒𝑛\mathit{len} to ensure that
+our pointer arithmetic will not result in overflow. This predicate is used in the typing relation for both the
+writable and read-only array types. The heap footprint [r∗w][r\ast w] must consist of not just the pointer pp but all of the
+successive pointers to each array element, because all of these memory locations are contained in the array, and ownership of all of them
+is passed along with the array. Because the array contains only unboxed types, we know that there are no other pointers in the heap footprint.
+For the read-only array type, rr contains the heap footprint and ww is empty, and vice versa for the writable array type.
+
+Definition 3.2 (Array: Update Semantics Value Typing).
+
+𝑜𝑘𝑎𝑦⁡(𝚄𝚆𝙰​τ​𝑙𝑒𝑛​p)≡(𝗎𝗇𝖺𝗍​𝑙𝑒𝑛×𝗌𝗂𝗓𝖾​τ≤𝚖𝚊𝚡​_​𝚠𝚘𝚛𝚍)∧(∀i<𝑙𝑒𝑛.∃v.μ(p+𝗌𝗂𝗓𝖾τ×i)=v∧v|μ:τ[∅∗∅])𝚄𝚆𝙰​τ​𝑙𝑒𝑛​p|μ:(𝙰𝚛𝚛𝚊𝚢​τ)!​[r∗w]≡𝑜𝑘𝑎𝑦⁡(𝚄𝚆𝙰​τ​𝑙𝑒𝑛​p)∧(r={p+i|∀i.i<𝑙𝑒𝑛}∧w=∅)𝚄𝚆𝙰​τ​𝑙𝑒𝑛​p|μ:(𝙰𝚛𝚛𝚊𝚢​τ)​[r∗w]≡𝑜𝑘𝑎𝑦⁡(𝚄𝚆𝙰​τ​𝑙𝑒𝑛​p)∧(w={p+i|∀i.i<𝑙𝑒𝑛}∧r=∅)\begin{array}[]{l}\mathit{okay}\ (\mathtt{UWA}\ \tau\ \mathit{len}\ p)\equiv(\mathsf{unat}\ \mathit{len}\times\mathsf{size}\ \tau\leq\mathtt{max\_word})\\
+\land\ (\forall i<\mathit{len}.\ \exists v.\ \mu\ (p+\mathsf{size}\ \tau\times i)=v\ \land\ v|\mu:\tau\ [\emptyset\ast\emptyset])\\[2.5pt]
+\mathtt{UWA}\ \tau\ \mathit{len}\ p\ |\mu:(\mathtt{Array}\ \tau)!\ [r\ast w]\equiv\mathit{okay}\ (\mathtt{UWA}\ \tau\ \mathit{len}\ p)\\
+\qquad\qquad\qquad\quad\quad\land\ (r=\{p+i\ |\ \forall i.\ i<\mathit{len}\}\land w=\emptyset)\\[1.00006pt]
+\mathtt{UWA}\ \tau\ \mathit{len}\ p\ |\mu:(\mathtt{Array}\ \tau)\ [r\ast w]\equiv\mathit{okay}\ (\mathtt{UWA}\ \tau\ \mathit{len}\ p)\\
+\qquad\qquad\qquad\qquad\land\ (w=\{p+i\ |\ \forall i.\ i<\mathit{len}\}\land r=\emptyset)\end{array}
+
+where 𝚖𝚊𝚡​_​𝚠𝚘𝚛𝚍\mathtt{max\_word} is 232−12^{32}-1 (as we are using 32-bit pointers).
+
+Recall that these the value typing relations for abstract types must
+satisfy the constraints of Definition 2.12. Because arrays
+only have elements which are of unboxed types, these constraints are
+trivial to discharge.
+
+3.2.3. Refinement Relations
+
+Just as Cogent’s typing relations and semantics are extended by our rules for arrays,
+so too are the various refinement relations in each layer of the semantics.
+Because, as previously mentioned, the C implementation of our arrays bears a strong resemblance
+to our update semantics values, and our value semantics values bear a strong resemblance to our
+Isabelle/HOL list representation, the value relations 𝒱cu{\color[rgb]{0.2469,0.6063,0.7281}\mathcal{V}}_{\textsf{c}}^{\textsf{u}} and ℛps{\color[rgb]{0.7438,0.2656,0.3125}\mathcal{R}}_{\textsf{p}}^{\textsf{s}} for arrays are very simple.
+In the former, the two a related
+if the length values and the pointer values are equal.
+In the latter, the two are related if the length of the lists
+are the same and the elements are pairwise related.
+
+Definition 3.3 (U32 Array: Update ⇒\Rightarrow C Value Relation).
+
+𝒱cu​(xc,𝚄𝚆𝙰​𝚄𝟹𝟸​𝑙𝑒𝑛u​pu)≡(𝑙𝑒𝑛u=𝚕𝚎𝚗c​xc∧pu=𝚊𝚛𝚛c​xc){\color[rgb]{0.2469,0.6063,0.7281}\mathcal{V}}_{\textsf{c}}^{\textsf{u}}(x_{\textsf{c}},{\mathtt{UWA}\ \mathtt{U32}\ \mathit{len}_{\textsf{u}}\ p_{\textsf{u}}})\equiv(\mathit{len}_{\textsf{u}}=\mathtt{len_{\textsf{c}}}\ x_{\textsf{c}}\ \land\ p_{\textsf{u}}=\mathtt{arr_{\textsf{c}}}\ x_{\textsf{c}})
+
+where 𝚕𝚎𝚗c\mathtt{len_{\textsf{c}}} and 𝚊𝚛𝚛c\mathtt{arr_{\textsf{c}}} are the struct projections generated by
+AutoCorres for the array type.
+
+Definition 3.4 (Array: Shallow ⇒\Rightarrow Polymorphic Relation).
+
+ℛps​(xs,𝚅𝚆𝙰​τ​𝑥𝑠p)≡(𝗅𝖾𝗇𝗀𝗍𝗁​𝑥𝑠p=𝗅𝖾𝗇𝗀𝗍𝗁​xs)∧(∀i<𝗅𝖾𝗇𝗀𝗍𝗁𝑥𝑠p.ℛps(xs!i,𝑥𝑠p!i))\begin{array}[]{l}{\color[rgb]{0.7438,0.2656,0.3125}\mathcal{R}}_{\textsf{p}}^{\textsf{s}}(x_{\textsf{s}},\mathtt{VWA}\ \tau\ \mathit{xs}_{\textsf{p}})\equiv(\mathsf{length}\ \mathit{xs}_{\textsf{p}}=\mathsf{length}\ x_{\textsf{s}})\\
+\qquad\land\ (\forall i<\mathsf{length}\ \mathit{xs}_{\textsf{p}}.\ {\color[rgb]{0.7438,0.2656,0.3125}\mathcal{R}}_{\textsf{p}}^{\textsf{s}}(x_{\textsf{s}}\ !\ i,\mathit{xs}_{\textsf{p}}\ !\ i))\end{array}
+
+Because we use the same abstractions for both monomorphic and polymorphic layers,
+the refinement relation ℛmp{\color[rgb]{0.8,0.6469,0.2625}\mathcal{R}}_{\textsf{m}}^{\textsf{p}} is just equality and its refinement
+theorem is trivial.
+
+Lastly, it remains to define the value relation for arrays between the two Cogent semantics, update and value.
+As previously mentioned, we make use of the two value typing relations here with additional conditions to pairwise relate the corresponding elements
+of the two values:
+
+Definition 3.5 (Array: Value (Mono) ⇒\Rightarrow Update Relation).
+
+𝚄𝚆𝙰​t​𝑙𝑒𝑛u​pu|μ∼ℛ𝚅𝚆𝙰​t​𝑥𝑠m:τ⁡[r∗w]≡(𝗎𝗇𝖺𝗍​𝑙𝑒𝑛u=𝗅𝖾𝗇𝗀𝗍𝗁​𝑥𝑠m)∧(∀i<𝑙𝑒𝑛u.∃vu.μ(pu+(𝗌𝗂𝗓𝖾t)×i)=vu∧vu|μ∼ℛ(𝑥𝑠m!𝗎𝗇𝖺𝗍i):t[∅∗∅])∧(𝚅𝚆𝙰t𝑥𝑠m:τ)∧(𝚄𝚆𝙰t𝑙𝑒𝑛upu|μ:τ[r∗w])\begin{array}[]{l}\mathtt{UWA}\ t\ \mathit{len}_{\textsf{u}}\ p_{\textsf{u}}\ |\ \mu\ {\color[rgb]{0.4402,0.5852,0.2844}\stackrel{{\scriptstyle\mathcal{R}}}{{\sim}}}\ \mathtt{VWA}\ t\ \mathit{xs}_{\textsf{m}}:\ \tau\ [r\ast w]\equiv\\
+\quad\quad(\mathsf{unat}\ \mathit{len}_{\textsf{u}}=\mathsf{length}\ \mathit{xs}_{\textsf{m}})\\
+\quad\land\ (\forall i<\mathit{len}_{\textsf{u}}.\ \exists\mathit{v}_{\textsf{u}}.\ \mu(p_{\textsf{u}}+(\mathsf{size}\ t)\times i)=\mathit{v}_{\textsf{u}}\\
+\qquad\qquad\land\ \mathit{v}_{\textsf{u}}\ |\ \mu\ {\color[rgb]{0.4402,0.5852,0.2844}\stackrel{{\scriptstyle\mathcal{R}}}{{\sim}}}\ (\mathit{xs}_{\textsf{m}}\ !\ \mathsf{unat}\ i):\ t\ [\emptyset\ast\emptyset])\\
+\quad\land\ (\mathtt{VWA}\ t\ \mathit{xs}_{\textsf{m}}:\tau)\ \land\ (\mathtt{UWA}\ t\ \mathit{len}_{\textsf{u}}\ p_{\textsf{u}}\ |\ \mu:\tau\ [r\ast w])\end{array}
+
+Note the heap footprints of elements are always empty, as the array can only contain unboxed values.
+
+3.2.4. Refinement
+
+Now that we have all our abstractions, value typing and refinement relations, we have all the
+ingredients we need to prove refinement for our array operations.
+
+The theorems structurally resemble the refinement theorems presented in Section 2.5.
+For first order functions 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length}, 𝗀𝖾𝗍\mathsf{get} and 𝗉𝗎𝗍\mathsf{put}, the
+proofs tend to
+follow easily from the definition of their abstractions, implementation, refinement relation
+and value typing relation — the creativity is largely in the definitions, not the proofs.
+This is because we want the proofs to be easily automatable in future. Nonetheless
+we shall sketch the proofs for our 𝗉𝗎𝗍\mathsf{put} operation, specifically for arrays of U32, as an illustrative example.
+
+We first show that the update semantics abstraction is
+refined by the embedding of the C implementation that is automatically
+generated by AutoCorres. This appears similar to Theorem 2.4, but instead of invoking the Cogent update semantics we instead appeal to our abstract function from the environment
+ξu​(𝗉𝗎𝗍U32)\xi_{\textsf{u}}(\mathsf{put}_{\texttt{U32}}):
+
+Theorem 3.6 (Verifying 𝗉𝗎𝗍\mathsf{put}: Update ⇒\Rightarrow C refinement).
+
+Where the C embedding of 𝗉𝗎𝗍𝖴𝟥𝟤\mathsf{put}_{\mathsf{U32}} is 𝑝𝑢𝑡c\mathit{put}_{\textsf{c}}:
+
+𝒱cu​(ac,au)∧ℋcu​(σ,μ)∧ac⊢σ​|𝑝𝑢𝑡c​
+{}{}}}{
+{}{}}
+\qquad\exists\ \mu^{\prime}\ r_{\textsf{u}}.\ \xi_{u}(\mathsf{put}_{\texttt{U32}})(\mu,a_{\textsf{u}})=(\mu^{\prime},r_{\textsf{u}})\\
+\qquad\qquad\land\ {\color[rgb]{0.2469,0.6063,0.7281}\mathcal{V}}_{\textsf{c}}^{\textsf{u}}(r_{\textsf{c}},r_{\textsf{u}})\land{\color[rgb]{0.5406,0.4594,0.7375}\mathcal{H}}_{\textsf{c}}^{\textsf{u}}(\sigma^{\prime},\mu^{\prime})\end{array}
+
+Proof.
+
+Recall that the argument to 𝗉𝗎𝗍\mathsf{put} for arrays of 32-bit words is a tuple that
+contains an index, the array, and a 32-bit word to write to it.
+We take cases on the index.
+In the case that the index is out of bounds, both the abstraction
+(6(a)) and the implementation (Figure 5) return the array
+unmodified with the store unmodified as well, and so the theorem is trivial.
+In the case where the index is within bounds, our value relation 𝒱cu{\color[rgb]{0.2469,0.6063,0.7281}\mathcal{V}}_{\textsf{c}}^{\textsf{u}} on the arguments
+implies that the two argument words and indices are the same.
+Writing the same value to the same index within bounds only writes corresponding
+values to the same store locations,
+so it follows that our heap relation ℋcu{\color[rgb]{0.5406,0.4594,0.7375}\mathcal{H}}_{\textsf{c}}^{\textsf{u}} is preserved.
+As it is destructively updated, the actual location of the array in memory is not changed, so
+the relation 𝒱cu{\color[rgb]{0.2469,0.6063,0.7281}\mathcal{V}}_{\textsf{c}}^{\textsf{u}} is trivially preserved to the output array.
+∎
+
+For the next level up in the refinement hierarchy, we must show refinement from
+our value semantics abstraction (Figure 6(b)) to our update semantics abstraction (Figure 6(a)).
+Even though this refinement step is below monomorphisation in our hierarchy, our
+abstractions for 𝗉𝗎𝗍​\mathsf{put\textsubscript{}} are agnostic to the element type of
+the array, so we can generalise the proof to arrays of any
+element type. The theorem resembles Theorem 2.5, but with
+the Cogent semantics replaced with our supplied abstractions in ξ𝗏\xi_{\mathsf{v}} and ξ𝗎\xi_{\mathsf{u}}.
+
+Theorem 3.7 (Verifying 𝗉𝗎𝗍\mathsf{put}: Value ⇒\Rightarrow Update refinement).
+
+For an element type tt,
+if au|μ∼ℛam:(𝙰𝚛𝚛𝚊𝚢​t,𝚄𝟹𝟸,t)​[r∗w]\ a_{\textsf{u}}|\mu\ {\color[rgb]{0.4402,0.5852,0.2844}\stackrel{{\scriptstyle\mathcal{R}}}{{\sim}}}\ a_{\textsf{m}}:\ (\mathtt{Array}\ t,\mathtt{U32},t)\ [r\ast w] and
+ξu​(𝗉𝗎𝗍t)​(μ,au)=(μ′,vu)\xi_{\textsf{u}}(\mathsf{put}_{t})(\mu,a_{\textsf{u}})=(\mu^{\prime},v_{\textsf{u}}), then there exists a value vmv_{\textsf{m}} and pointer sets r′⊆rr^{\prime}\subseteq r and w′w^{\prime} such that ξ𝗏​(𝗉𝗎𝗍t)​(am)=vm\xi_{\mathsf{v}}(\mathsf{put}_{t})(a_{\textsf{m}})=v_{\textsf{m}}, and vu|μ′∼ℛvm:𝙰𝚛𝚛𝚊𝚢​t​[r′∗w′]\ v_{\textsf{u}}|\mu^{\prime}\ {\color[rgb]{0.4402,0.5852,0.2844}\stackrel{{\scriptstyle\mathcal{R}}}{{\sim}}}\ v_{\textsf{m}}:\ \mathtt{Array}\ t\ [r^{\prime}\ast w^{\prime}] and w​|μ​frame​w′|​μ′w\ |\ \mu\ \textbf{frame}\ w^{\prime}\ |\ \mu^{\prime}.
+
+Proof.
+
+We also prove this by cases on
+the index. In the case where the index is out of bounds, we trivially have
+correspondence. In
+the case where the index is within bounds, we prove that modifying the
+element at the given index from the pointer on the store is equivalent to modifying the
+element at the given index in the corresponding list. To prove this, we
+need to show that there is a one-to-one mapping between store addresses of elements to
+list indices. This is why we include in our typing relation that the array element addresses
+do not overflow the heap (Definition 3.2).
+Since this tells us the array cannot wrap around itself, each
+element in the array has a unique address, giving us our mapping. We also
+need to show that that the frame
+conditions are satisfied, but because our implementation is memory safe, these follow easily from
+our definitions.
+∎
+
+Next, we must show refinement from the polymorphic layer to the monomorphic layer, but because 𝗉𝗎𝗍\mathsf{put} is a first-order function (neither taking functions as arguments nor returning them),
+the value relations for its arguments and return values simplify to equality. Furthermore, as our Cogent abstractions for monomorphic and polymorphic layers are identical, the proof of refinement is trivialised to
+showing that identical functions will give equal results given equal inputs.
+
+Monomorphisation thus easily dispatched, we must now make the final shift to the specification level (Figure 4).
+We must prove a theorem analogous to Theorem 2.9. Note that this theorem is also generic for any element type:
+
+Theorem 3.8 (Verifying 𝗉𝗎𝗍\mathsf{put}: Shallow ⇒\Rightarrow Polymorphic Value).
+
+The shallow embedding of 𝗉𝗎𝗍\mathsf{put} is called 𝗉𝗎𝗍s\mathsf{put}_{\textsf{s}}.
+Given arguments asa_{\textsf{s}} and apa_{\textsf{p}}, we have:
+
+ℛps​(ap,as)∧ξ𝗏​(𝗉𝗎𝗍)​(ap)=rp⟶∃rs.as⊢𝗉𝗎𝗍s​
+𝗌 ​rs∧ℛps​(rp,rs)\begin{array}[]{ll}{\color[rgb]{0.7438,0.2656,0.3125}\mathcal{R}}_{\textsf{p}}^{\textsf{s}}(a_{\textsf{p}},a_{\textsf{s}})\land\xi_{\mathsf{v}}(\mathsf{put})(a_{\textsf{p}})=r_{\textsf{p}}\longrightarrow\\
+{}{}}}{
+{}{}}
+
+Proof.
+
+Follows from the definitions of 𝗉𝗎𝗍​v\mathsf{put\textsubscript{v}} (in ξ𝗏\xi_{\mathsf{v}}) and 𝗉𝗎𝗍​s\mathsf{put\textsubscript{s}}, as well as the value relation
+from Definition 3.4.
+∎
+
+The above theorems are all we need to compose the correctness of 𝗉𝗎𝗍\mathsf{put} with
+Cogent’s refinement hierarchy. For higher-order functions 𝖿𝗈𝗅𝖽\mathsf{fold} and 𝗆𝖺𝗉𝖠𝖼𝖼𝗎𝗆\mathsf{mapAccum} the proofs are broadly similar, but
+slightly complicated by the presence of functions as arguments. Our theorems assume
+that type preservation and refinement hold for all of their argument functions — an assumption that is discharged
+by the Cogent compiler (for Cogent functions) or by manual proofs (for C functions).
+As always with looping functions, the majority of the proof effort was
+concentrated on proving that loop invariants are maintained, and not on any aspect of the Cogent framework.
+
+4. Generic Loops
+
+Aside from arrays and their associated iterators and operations, the most commonly used library functions in
+BilbyFs are generic loop functions. These are used to write loops that do not simply iterate over a particular data structure,
+and are often used to accommodate non-standard search patterns over data structures. For example, in Section 5.2 we
+shall use such a function in a binary search.
+
+We shall verify the function 𝗋𝖾𝗉𝖾𝖺𝗍\mathsf{repeat}, which is given the following type signature in Cogent:
+
+𝗋𝖾𝗉𝖾𝖺𝗍\mathsf{repeat} : ((𝚄𝟹𝟸\mathtt{U32},
+(aa, bb!!) →\rightarrow 𝙱𝚘𝚘𝚕\mathtt{Bool},
+(aa, bb!!) →\rightarrow aa,
+aa, bb!! )) →\rightarrow aa
+
+The expression 𝗋𝖾𝗉𝖾𝖺𝗍​n​𝑠𝑡𝑜𝑝​𝑠𝑡𝑒𝑝​𝑎𝑐𝑐​𝑜𝑏𝑠\text{$\mathsf{repeat}$}\ \mathit{n}\ \mathit{stop}\ \mathit{step}\ \mathit{acc}\ \mathit{obs} operates on some mutable state 𝑎𝑐𝑐\mathit{acc} (of linear type) and some observer data 𝑜𝑏𝑠\mathit{obs} (of read-only type),
+and runs the loop body 𝑠𝑡𝑒𝑝\mathit{step} on it at most nn times, or until 𝑠𝑡𝑜𝑝\mathit{stop} returns true.
+Figure 7 gives the Isabelle/HOL shallow embedding and Figure 8 gives the template C implementation. Figure 9 gives the Cogent-compatible
+embeddings for the environments ξu\xi_{u} and ξ𝗏\xi_{\mathsf{v}}. Note that these must invoke the Cogent semantics twice, once to evaluate each of the argument functions.
+Discharging the required proof obligations connecting all of these embeddings and maintaining Cogent’s invariants is even more straightforward than for
+other higher-order functions such as mapAccum, as here we do not even need to consider custom data structures such as arrays.
+This means that we can even define a polymorphic abstraction of the C code compatible with AutoCorres, enabling us to prove the entire refinement chain polymorphically and thereby largely eliminate the boilerplate of multiple type instantiations.
+
+𝗋𝖾𝗉𝖾𝖺𝗍​s\mathsf{repeat\textsubscript{s}} : 𝚗𝚊𝚝\mathtt{nat} →\rightarrow ((aa →\rightarrow bb →\rightarrow 𝚋𝚘𝚘𝚕\mathtt{bool})) →\rightarrow ((aa →\rightarrow bb →\rightarrow aa))
+
+​​​​​
+→\rightarrow aa →\rightarrow bb
+→\rightarrow aa
+
+𝗋𝖾𝗉𝖾𝖺𝗍​s\mathsf{repeat\textsubscript{s}} 0 _ _ 𝑎𝑐𝑐\mathit{acc} _ = 𝑎𝑐𝑐\mathit{acc}
+
+𝗋𝖾𝗉𝖾𝖺𝗍​s\mathsf{repeat\textsubscript{s}} ((𝖲𝗎𝖼\mathsf{Suc} n\mathit{n})) f\mathit{f} g\mathit{g} 𝑎𝑐𝑐\mathit{acc} 𝑜𝑏𝑠𝑣\mathit{obsv} =
+if ((f\mathit{f} 𝑎𝑐𝑐\mathit{acc} 𝑜𝑏𝑠𝑣\mathit{obsv} ))
+
+then 𝑎𝑐𝑐\mathit{acc}
+else 𝗋𝖾𝗉𝖾𝖺𝗍​s\mathsf{repeat\textsubscript{s}} n\mathit{n} f\mathit{f} g\mathit{g} ((g\mathit{g} 𝑎𝑐𝑐\mathit{acc} 𝑜𝑏𝑠𝑣\mathit{obsv})) 𝑜𝑏𝑠𝑣\mathit{obsv}
+
+Figure 7. Shallow embedding of the generic loop
+
+5. Composing Verification of Cogent and C
+
+Now that we have demonstrated how to prove the obligations placed on C code, we shall illustrate
+how to integrate these proofs with proofs about Cogent code.
+Firstly, as a simple example, we return to the sum function presented in Figure 2.
+
+After compiling this program and linking it to our C library, the compiler produces a refinement theorem similar to
+Theorem 2.11, however the phases that are generated per-program via translation validation such as the final refinement to C
+leave open proof obligations for the user to discharge about abstract functions33
+3
+
+At the time of writing, Cogent’s shallow phase (Theorem 2.9) implicitly assumes abstract function correctness rather than doing so explicitly as done in other phases. So for now, we just copy and discharge these.. In our sum example, Cogent will generate obligations
+about 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} and about 𝖿𝗈𝗅𝖽\mathsf{fold}. The obligation about 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} is exactly our C refinement theorem for 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} (the 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} analogue of Theorem 3.6), and the obligation for 𝖿𝗈𝗅𝖽\mathsf{fold} is an instance of our theorem for 𝖿𝗈𝗅𝖽\mathsf{fold}: the obligation requires showing refinement under the assumption that the argument function is 𝖺𝖽𝖽\mathsf{add}, whereas our theorem is generically proven for any function that maintains Cogent’s invariants and refinement.
+Because 𝖺𝖽𝖽\mathsf{add} is defined in Cogent, Cogent generates the required theorem for the argument function for us, allowing us to easily discharge this obligation.
+
+We additionally must instantiate our sets of abstract values and types with arrays, and the environments ξv\xi_{\textsf{v}} and ξu\xi_{\textsf{u}} with our abstractions from Figure 6. This instantiation
+requires us to additionally provide proofs similar to that of Theorem 3.7 for each function, as well as proofs that all the type conditions from Section 2.7. These proofs ultimately connect our C code to
+the generated shallow embedding, which strongly resembles the original Cogent code:
+
+𝖺𝖽𝖽s​x​y=x+y𝗌𝗎𝗆s​𝑥𝑠=𝖿𝗈𝗅𝖽s​𝖺𝖽𝖽s​ 0​𝑥𝑠​ 0​(𝗅𝖾𝗇𝗀𝗍𝗁s​𝑥𝑠)​()\begin{array}[]{l}\mathsf{add}_{\textsf{s}}\ x\ y=x+y\\
+\mathsf{sum}_{\textsf{s}}\ \mathit{xs}=\mathsf{fold}_{\textsf{s}}\ \mathsf{add}_{\textsf{s}}\ 0\ \mathit{xs}\ 0\ (\mathsf{length}_{s}\ \mathit{xs})\ ()\\
+\end{array}
+
+With all of these proofs in place, we get a refinement theorem like Theorem 2.11 for the function 𝗌𝗎𝗆\mathsf{sum}, which leaves no function unverified. This refinement theorem
+allows us to prove properties of 𝗌𝗎𝗆s\mathsf{sum}_{\textsf{s}} just by equational reasoning, and have these proofs also apply to the C implementation.
+
+A 𝗋𝖾𝗉𝖾𝖺𝗍\mathsf{repeat}((𝚞𝟹𝟸\mathtt{u32} n\mathit{n},
+𝚏𝚒𝚍\mathtt{fid} f\mathit{f}, 𝚏𝚍\mathtt{fd} g\mathit{g},
+A 𝑎𝑐𝑐\mathit{acc}, O 𝑜𝑏𝑠𝑣\mathit{obsv})) {\{
+
+for((𝚞𝟹𝟸\mathtt{u32} i\mathit{i} = 0; i\mathit{i} < n\mathit{n}; i\mathit{i}++))
+
+if ((𝖽𝗂𝗌𝗉𝖺𝗍𝖼𝗁​_​𝖿\mathsf{{\color[rgb]{1,0,0}dispatch\_f}}((f\mathit{f}, 𝑎𝑐𝑐\mathit{acc}, 𝑜𝑏𝑠𝑣\mathit{obsv})) )) break;
+
+else 𝑎𝑐𝑐\mathit{acc} = 𝖽𝗂𝗌𝗉𝖺𝗍𝖼𝗁​_​𝗀\mathsf{{\color[rgb]{1,0,0}dispatch\_g}}((g\mathit{g}, 𝑎𝑐𝑐\mathit{acc}, 𝑜𝑏𝑠𝑣\mathit{obsv}));
+
+return 𝑎𝑐𝑐\mathit{acc};
+
+}\}
+
+Figure 8. C implementation of the generic loop.
+
+5.1. Verifying C Parts of BilbyFs
+
+As mentioned, the previous verification of the functional correctness of key operations in BilbyFs (3)
+simply assumed the correctness of abstract functions, including an axiomatisation of array operations (2).
+We removed the axiomatisation for the five core array operations that we verified,
+and were able to show that the functional correctness proofs compose for the combined system.
+The array operations that remain unverified are functions like create, set,
+copy, cmp, that depend on platform-specific
+functions such as malloc.
+
+𝗋𝖾𝗉𝖾𝖺𝗍​u\mathsf{repeat\textsubscript{u}} ((μ1\mathit{\mu_{1}}, (n\mathit{n}, f\mathit{f}, g\mathit{g}, 𝑎𝑐𝑐\mathit{acc}, 𝑜𝑏𝑠\mathit{obs}))) ((μ3\mathit{\mu_{3}}, y\mathit{y})) =
+
+((n\mathit{n} > 0 ⟶\longrightarrow
+
+∃\existsb\mathit{b}.
+[a↦(𝑎𝑐𝑐,𝑜𝑏𝑠)]⊢fa|μ1
+{}{}}}{
+{}{}}
+
+((b\mathit{b} ⟶\longrightarrow μ1\mathit{\mu_{1}} = μ3\mathit{\mu_{3}} ∧\land y\mathit{y} = 𝑎𝑐𝑐\mathit{acc})) ∧\land
+
+((¬\lnotb\mathit{b} ⟶\longrightarrow ∃\existsμ2\mathit{\mu_{2}} 𝑎𝑐𝑐′\mathit{acc^{\prime}}.
+
+[a↦(𝑎𝑐𝑐,𝑜𝑏𝑠)]⊢ga|μ1
+{}{}}}{
+{}{}}
+
+𝗋𝖾𝗉𝖾𝖺𝗍​u\mathsf{repeat\textsubscript{u}} ((μ2\mathit{\mu_{2}}, (n\mathit{n}-1, f\mathit{f}, g\mathit{g}, 𝑎𝑐𝑐′\mathit{acc^{\prime}}, 𝑜𝑏𝑠𝑣\mathit{obsv}))) ((μ3\mathit{\mu_{3}}, y\mathit{y})) )) )) ∧\land
+
+((n\mathit{n} = 0 ⟶\longrightarrow
+μ1\mathit{\mu_{1}} = μ3\mathit{\mu_{3}} ∧\land y\mathit{y} = 𝑎𝑐𝑐\mathit{acc}))
+
+(a) C abstractions for the update semantics.
+
+𝗋𝖾𝗉𝖾𝖺𝗍​v\mathsf{repeat\textsubscript{v}} ((n\mathit{n}, f\mathit{f}, g\mathit{g}, 𝑎𝑐𝑐\mathit{acc}, 𝑜𝑏𝑠\mathit{obs})) y\mathit{y} =
+
+((n\mathit{n} > 0 ⟶\longrightarrow
+
+∃\existsb\mathit{b}.
+[a↦(𝑎𝑐𝑐,𝑜𝑏𝑠)]⊢fa
+{}{}}}{
+{}{}}
+
+((b\mathit{b} ⟶\longrightarrow y\mathit{y} = 𝑎𝑐𝑐\mathit{acc})) ∧\land
+
+((¬\lnotb\mathit{b} ⟶\longrightarrow ∃\exists𝑎𝑐𝑐′\mathit{acc^{\prime}}.
+
+[a↦(𝑎𝑐𝑐,𝑜𝑏𝑠)]⊢ga
+{}{}}}{
+{}{}}
+
+𝗋𝖾𝗉𝖾𝖺𝗍​v\mathsf{repeat\textsubscript{v}} ((n\mathit{n}-1, f\mathit{f}, g\mathit{g}, 𝑎𝑐𝑐′\mathit{acc^{\prime}}, 𝑜𝑏𝑠𝑣\mathit{obsv})) y\mathit{y})) )) ∧\land
+
+((n\mathit{n} = 0 ⟶\longrightarrow y\mathit{y} = 𝑎𝑐𝑐\mathit{acc}))
+
+(b) C abstractions for the value semantics.
+
+Figure 9. Cogent-compatible abstraction for the generic loop.
+
+5.2. Binary Search
+
+Figure 10 gives the Cogent code for binary search using our previously defined and verified
+array functions and 𝗋𝖾𝗉𝖾𝖺𝗍\mathsf{repeat}. Note that while we specify the maximum number of iterations to 𝗋𝖾𝗉𝖾𝖺𝗍\mathsf{repeat} as the length of the array,
+the algorithm is still 𝒪⁡(log⁡n)\mathcal{O}(\log n) as it will always exit early from the 𝗌𝗍𝗈𝗉\mathsf{stop} condition.
+This fuel argument is an easy way to ensure that Isabelle is convinced that our functions terminate.
+
+We firstly prove that the generated shallow embedding, which strongly resembles the Cogent code,
+is correct:
+
+type 𝑅𝑎𝑛𝑔𝑒\mathit{Range} = (𝚄𝟹𝟸\mathtt{U32}, 𝚄𝟹𝟸\mathtt{U32}, 𝙱𝚘𝚘𝚕\mathtt{Bool})
+
+𝗌𝗍𝗈𝗉\mathsf{stop} : (𝑅𝑎𝑛𝑔𝑒\mathit{Range},
+((𝐴𝑟𝑟𝑎𝑦\mathit{Array} 𝚄𝟹𝟸\mathtt{U32})!, 𝚄𝟹𝟸\mathtt{U32})) →\rightarrow 𝙱𝚘𝚘𝚕\mathtt{Bool}
+
+𝗌𝗍𝗈𝗉\mathsf{stop} ((l\mathit{l}, r\mathit{r}, b\mathit{b}), (𝑎𝑟𝑟\mathit{arr}, v\mathit{v})) = b∨l≥rb\lor l\geq r
+
+𝗌𝖾𝖺𝗋𝖼𝗁\mathsf{search} : (𝑅𝑎𝑛𝑔𝑒\mathit{Range},
+((𝐴𝑟𝑟𝑎𝑦\mathit{Array} 𝚄𝟹𝟸\mathtt{U32})!, 𝚄𝟹𝟸\mathtt{U32})) →\rightarrow 𝑅𝑎𝑛𝑔𝑒\mathit{Range}
+
+𝗌𝖾𝖺𝗋𝖼𝗁\mathsf{search} ((l\mathit{l}, r\mathit{r}, b\mathit{b}), (𝑎𝑟𝑟\mathit{arr}, v\mathit{v})) =
+
+let m\mathit{m} = l\mathit{l} + (r\mathit{r} - l\mathit{l}) ÷\div 2 and
+
+x\mathit{x} = 𝗀𝖾𝗍\mathsf{get} (𝑎𝑟𝑟\mathit{arr}, m\mathit{m}, 0)
+
+in
+if  ​| x\mathit{x} < v\mathit{v} →\rightarrow (m\mathit{m}+1, r\mathit{r}, b\mathit{b})
+
+​| x\mathit{x} > v\mathit{v} →\rightarrow (l\mathit{l}, m\mathit{m}, b\mathit{b})
+
+​| else →\rightarrow (m\mathit{m}, r\mathit{r}, True)
+
+𝖻𝗂𝗇𝖺𝗋𝗒​-​𝗌𝖾𝖺𝗋𝖼𝗁\mathsf{binary\mbox{-}{}search} : ((𝐴𝑟𝑟𝑎𝑦\mathit{Array} 𝚄𝟹𝟸\mathtt{U32})!, 𝚄𝟹𝟸\mathtt{U32}) →\rightarrow 𝚄𝟹𝟸\mathtt{U32}
+
+𝖻𝗂𝗇𝖺𝗋𝗒​-​𝗌𝖾𝖺𝗋𝖼𝗁\mathsf{binary\mbox{-}{}search} (𝑎𝑟𝑟\mathit{arr}, v\mathit{v}) =
+
+let 𝑙𝑒𝑛\mathit{len} = 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} 𝑎𝑟𝑟\mathit{arr} and
+
+(l\mathit{l}, r\mathit{r}, b\mathit{b}) = 𝗋𝖾𝗉𝖾𝖺𝗍\mathsf{repeat} (𝑙𝑒𝑛\mathit{len},
+𝗌𝗍𝗈𝗉\mathsf{stop}, 𝗌𝖾𝖺𝗋𝖼𝗁\mathsf{search}, (0, 𝑙𝑒𝑛\mathit{len}, False), (𝑎𝑟𝑟\mathit{arr}, v\mathit{v}))
+
+in if ​ b\mathit{b} then l\mathit{l} else →\rightarrow 𝑙𝑒𝑛\mathit{len}
+
+Figure 10. The binary search algorithm in Cogent.
+
+Theorem 5.1 (Correctness of Cogent binary search).
+
+Let i\mathit{i}= 𝗎𝗇𝖺𝗍\mathsf{unat} ((𝖻𝗂𝗇𝖺𝗋𝗒​-​𝗌𝖾𝖺𝗋𝖼𝗁​s\mathsf{binary\mbox{-}{}search\textsubscript{s}} ((𝑥𝑠\mathit{xs}, v\mathit{v})) )) in
+
+𝗌𝗈𝗋𝗍𝖾𝖽\mathsf{sorted} 𝑥𝑠\mathit{xs} ∧\land 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length}
+𝑥𝑠\mathit{xs} < 2322^{32} ⟶\longrightarrow
+
+((i\mathit{i} < 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} 𝑥𝑠\mathit{xs} ⟶\longrightarrow 𝑥𝑠\mathit{xs} !! i\mathit{i} = v\mathit{v}))
+
+∧\land ((¬\lnot i\mathit{i} < 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} 𝑥𝑠\mathit{xs} ⟶\longrightarrow v\mathit{v} ∉\notin 𝗌𝖾𝗍\mathsf{set} 𝑥𝑠\mathit{xs}))
+
+where 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length}, 𝗌𝖾𝗍\mathsf{set}, and 𝗌𝗈𝗋𝗍𝖾𝖽\mathsf{sorted} are Isabelle’s list library functions that return the length of a list, turn a list to a set, and check whether a list is sorted, respectively.
+We denote search failure by returning an index that is out of bounds.
+
+From our overall refinement theorem (Theorem 2.11), we can easily conclude that the C implementation is correct and remove any reference to Cogent:
+
+Corollary 5.2 (Correctness of the C binary search).
+
+Let 𝑥𝑠\mathit{xs} be the list abstraction of the array 𝑎𝑟𝑟\mathit{arr} for C heap σ\sigma,
+𝗏𝖺𝗅𝗂𝖽\mathsf{valid} ((σ\sigma, 𝑎𝑟𝑟\mathit{arr})) be the predicate that states that the array is valid,
+i.e., the array’s size (in bytes) is less than the size of memory (2322^{32} bytes) and is well-formed,
+and 𝗌𝖺𝗆𝖾\mathsf{same} ((σ\sigma, σ′\sigma^{\prime}, 𝑎𝑟𝑟\mathit{arr})) be the predicate that states that an array is the same for the given C heaps:
+
+𝗌𝗈𝗋𝗍𝖾𝖽\mathsf{sorted} 𝑥𝑠\mathit{xs} ∧\land
+𝗏𝖺𝗅𝗂𝖽\mathsf{valid} ((σ\sigma, 𝑎𝑟𝑟\mathit{arr})) ∧\land
+
+(𝑎𝑟𝑟,v)⊢σ​|𝖻𝗂𝗇𝖺𝗋𝗒​-​𝗌𝖾𝖺𝗋𝖼𝗁​c​
+{}{}}}{
+{}{}}
+
+𝗏𝖺𝗅𝗂𝖽\mathsf{valid} ((σ′\sigma^{\prime}, 𝑎𝑟𝑟\mathit{arr})) ∧\land
+𝗌𝖺𝗆𝖾\mathsf{same} ((σ\sigma, σ′\sigma^{\prime}, 𝑎𝑟𝑟\mathit{arr})) ∧\land
+
+((𝗎𝗇𝖺𝗍\mathsf{unat} i\mathit{i} < 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} 𝑥𝑠\mathit{xs} ⟶\longrightarrow
+𝑥𝑠\mathit{xs} !! ((𝗎𝗇𝖺𝗍\mathsf{unat} i\mathit{i})) = v\mathit{v})) ∧\land
+
+((¬\lnot 𝗎𝗇𝖺𝗍\mathsf{unat} i\mathit{i} < 𝗅𝖾𝗇𝗀𝗍𝗁\mathsf{length} 𝑥𝑠\mathit{xs} ⟶\longrightarrow v\mathit{v} ∉\notin 𝗌𝖾𝗍\mathsf{set} 𝑥𝑠\mathit{xs}))
+
+This theorem depends on no additional assumptions about any functions or any other part of the Cogent framework. With this, we have shown that the Cogent framework enables the verification of combined Cogent-C systems.
+
+6. Related Work
+
+Compiler Correctness
+
+Patterson and Ahmed (18) have defined a spectrum of compiler verification theorems focusing on compositional compiler correctness, extensible through linking. Cogent’s certifying compiler does not neatly fall on this spectrum as the compiler itself does the linking of the Cogent-C system, and we are linking with manually verified C rather than other compiler outputs.
+
+Like Cogent, the Cito language (23) allows cross-language linking and combined verification in a proof assistant. Unlike Cogent, Cito is a low-level C-like language without a sophisticated type system, so there are no FFI requirements to enforce static guarantees.
+Pit-Claudel et al. (19) use Cito as a target for verified compilation of relational queries, and support linking with foreign assembly code, but do not compose verification across languages for refinement from a common high-level spec, as we do.
+
+An important part of verified compilation is how the semantics
+of linking is defined for the source language. The simplest way to
+define linking on the source language is to require that
+a program may only be linked if it refines a program definable in the
+source language.
+SepCompCert (7) and Pilsner (13) take
+this approach. This approach is suitable for
+languages which, unlike Cogent, are expressive enough to encompass all programs,
+but we require C functions to refine more expressive specifications than what is definable natively in Cogent.
+The Cogent compiler instead generates shallow embeddings of Cogent programs in
+Isabelle/HOL, that enable linking at the Isabelle specification level. Hence,
+Cogent supports source-independent linking insofar as we can embed all source languages
+inside Isabelle/HOL.
+
+Verification Approach
+
+Arrays are widely used data structures, particularly in low level systems programming. AutoCorres (5, 6) simplifies the verification of C code by abstracting it into a monadic embedding of C in Isabelle/HOL. The Cogent compiler further simplifies reasoning about the Cogent parts of a system by abstracting AutoCorres’ monadic C into a purely functional Cogent embedding in Isabelle/HOL. For foreign functions, abstraction from AutoCorres’ monadic C embedding to a purely functional embedding is manually verified through intermediate Cogent embeddings.
+AutoCorres comes with a number of examples including binary search and QuickSort on 32-bit word arrays which use the 𝗀𝖾𝗍\mathsf{get} and 𝗉𝗎𝗍\mathsf{put} operations. Their proofs for these operations (roughly 250 lines) are about half the size of ours but ours are reusable for arrays with elements of any unboxed type.
+
+If we were only concerned with proving functional correctness of an
+array implementation, we could have taken a top down
+approach, i.e., generate an implementation from the specification, using
+existing tools or frameworks (9, 10, 11), rather than prove that an
+implementation refines its specification.
+While a top down approach would likely lessen the
+verification burden, our approach allows for more
+control over the implementation and is suitable for
+cases where an implementation already exists, as is the case for BilbyFs.
+
+As mentioned in the introduction, Cogent purposely lacks recursion and iteration in order to ensure totality. There is an ongoing effort to add a limited form of recursion to Cogent (12) while retaining totality through a termination checker (12, 20). Extending the proof infrastructure of Cogent to support recursive types and to certify termination for functions that pass the termination checker is non-trivial and still remains open.
+Additionally, we are exploring adding arrays as built in types in Cogent and extending the compiler certificate to account for a number of array operations. Even then, we believe that the language interoperability approach presented in this paper remains valuable. It serves as a reference for how Cogent users and system developers can contribute their own additional data structures with their preferred implementation to Cogent rather than relying solely on Cogent developers to extend the language with each desired additional data structure and data structure operation. Moreover, operations that are directly implemented in C and called through the FFI may occasionally be implemented more efficiently than if they were directly implemented in Cogent. This is because users can escape the Cogent type system when implementing operations in C and for instance use internal aliasing within a function’s implementation as long as they can prove that the overall C implementation respects the frame invariant.
+
+7. Conclusion
+
+We have demonstrated our cross-language approach to proving software correct.
+Our systems mix Cogent, a safe functional language with a compiler that proves most of the required theorems automatically, and C, an unsafe imperative language with few guarantees.
+Specifically, we verified the array implementation and general loop iterators provided in Cogent’s ADT library, which were used the implementation of real-world file systems,
+and we showed that they maintain the invariants required by Cogent. This enabled us to eliminate some key assumptions in the pre-existing verification of the BilbyFs file system in Cogent.
+These case-studies demonstrate that manual C verification can be straightforwardly composed with Cogent’s refinement chain, leading to a top-level shallow embedding that can be seamlessly connected with functional correctness specifications to ensure the correctness of an overall Cogent-C system.
+
+Acknowledgements.
+
+This research is partially supported by an Australian Government Research Training Program (RTP) Scholarship.
+
+References
+
+[1]
+
+Amal Ahmed.
+
+Compositional Compiler Verification for a Multi-Language World.
+
+In Delia Kesner and Brigitte Pientka, editors, 1st International
+Conference on Formal Structures for Computation and Deduction (FSCD 2016),
+volume 52 of Leibniz International Proceedings in Informatics (LIPIcs),
+pages 1:1–1:1, Dagstuhl, Germany, 2016. Schloss Dagstuhl–Leibniz-Zentrum
+fuer Informatik.
+
+[2]
+
+Sidney Amani.
+
+A Methodology for Trustworthy File Systems.
+
+PhD thesis, University of New South Wales, Sydney, Australia, August
+2016.
+
+[3]
+
+Sidney Amani, Alex Hixon, Zilin Chen, Christine Rizkallah, Peter Chubb, Liam
+O’Connor, Joel Beeren, Yutaka Nagashima, Japheth Lim, Thomas Sewell, Joseph
+Tuong, Gabriele Keller, Toby Murray, Gerwin Klein, and Gernot Heiser.
+
+Cogent: Verifying high-assurance file system implementations.
+
+In International Conference on Architectural Support for
+Programming Languages and Operating Systems, pages 175–188, Atlanta, GA,
+USA, April 2016. Association for Computer Machinery.
+
+[4]
+
+Cogent FFI examples (code and proofs), 2021.
+
+[5]
+
+David Greenaway, June Andronick, and Gerwin Klein.
+
+Bridging the gap: Automatic verified abstraction of C.
+
+In International Conference on Interactive Theorem Proving,
+pages 99–115, Princeton, New Jersey, USA, August 2012. Springer Berlin
+Heidelberg.
+
+[6]
+
+David Greenaway, Japheth Lim, June Andronick, and Gerwin Klein.
+
+Don’t sweat the small stuff: Formal verification of C code without
+the pain.
+
+In ACM SIGPLAN Conference on Programming Language Design and
+Implementation, pages 429–439, Edinburgh, UK, June 2014. ACM.
+
+[7]
+
+Jeehoon Kang, Yoonseung Kim, Chung-Kil Hur, Derek Dreyer, and Viktor Vafeiadis.
+
+Lightweight verification of separate compilation.
+
+In Proceedings of the 43rd Annual ACM SIGPLAN-SIGACT Symposium
+on Principles of Programming Languages, POPL ’16, page 178–190, New York,
+NY, USA, 2016. Association for Computing Machinery.
+
+[8]
+
+Gerwin Klein, Kevin Elphinstone, Gernot Heiser, June Andronick, David Cock,
+Philip Derrin, Dhammika Elkaduwe, Kai Engelhardt, Rafal Kolanski, Michael
+Norrish, Thomas Sewell, Harvey Tuch, and Simon Winwood.
+
+seL4: Formal verification of an OS kernel.
+
+In ACM Symposium on Operating Systems Principles, pages
+207–220, Big Sky, MT, USA, October 2009. Association for Computer Machinery.
+
+[9]
+
+Peter Lammich.
+
+Generating verified LLVM from Isabelle/HOL.
+
+In John Harrison, John O’Leary, and Andrew Tolmach, editors, 10th International Conference on Interactive Theorem Proving, ITP 2019,
+September 9-12, 2019, Portland, OR, USA, volume 141 of LIPIcs, pages
+22:1–22:19, Portland, 2019. Schloss Dagstuhl - Leibniz-Zentrum für
+Informatik.
+
+[10]
+
+Peter Lammich.
+
+Refinement to imperative HOL.
+
+Journal of Automated Reasoning, 62(4):481–503, Apr 2019.
+
+[11]
+
+Peter Lammich and Andreas Lochbihler.
+
+The Isabelle collections framework.
+
+In Matt Kaufmann and Lawrence C. Paulson, editors, Interactive
+Theorem Proving, pages 339–354, Berlin, Heidelberg, 2010. Springer Berlin
+Heidelberg.
+
+[12]
+
+Emmet Murray.
+
+Recursive types for Cogent, 2019.
+
+https://github.com/emmet-m/thesis. Accessed November 2021.
+
+[13]
+
+Georg Neis, Chung-Kil Hur, Jan-Oliver Kaiser, Craig McLaughlin, Derek Dreyer,
+and Viktor Vafeiadis.
+
+Pilsner: A compositionally verified compiler for a higher-order
+imperative language.
+
+In Proceedings of the 20th ACM SIGPLAN International Conference
+on Functional Programming, ICFP 2015, page 166–178, New York, NY, USA,
+2015. Association for Computing Machinery.
+
+[14]
+
+Tobias Nipkow, Lawrence C. Paulson, and Markus Wenzel.
+
+Isabelle/HOL - A Proof Assistant for Higher-Order Logic, volume
+2283 of Lecture Notes in Computer Science.
+
+Springer, 2002.
+
+[15]
+
+Liam O’Connor.
+
+Type Systems for Systems Types.
+
+PhD thesis, University of New South Wales, 2019.
+
+[16]
+
+Liam O’Connor, Zilin Chen, Christine Rizkallah, Sidney Amani, Japheth Lim, Toby
+Murray, Yutaka Nagashima, Thomas Sewell, and Gerwin Klein.
+
+September 2016.
+
+[17]
+
+Liam O’Connor, Zilin Chen, Christine Rizkallah, Vincent Jackson, Sidney Amani,
+Gerwin Klein, Toby Murray, Thomas Sewell, and Gabriele Keller.
+
+Cogent: Uniqueness types and certifying compilation.
+
+Journal of Functional Programming, 31:E25, 2021.
+
+[18]
+
+Daniel Patterson and Amal Ahmed.
+
+The next 700 compiler correctness theorems (functional pearl).
+
+Proc. ACM Program. Lang., 3(ICFP):85:1–85:29, 2019.
+
+[19]
+
+Clément Pit-Claudel, Peng Wang, Benjamin Delaware, Jason Gross, and Adam
+Chlipala.
+
+Extensible extraction of efficient imperative programs with foreign
+functions, manually managed memory, and proofs.
+
+In Nicolas Peltier and Viorica Sofronie-Stokkermans, editors, Automated Reasoning, pages 119–137, Cham, 2020. Springer International
+Publishing.
+
+[20]
+
+Lucy Qiu.
+
+Termination checker for recursive types in Cogent, 2020.
+
+[21]
+
+Christine Rizkallah, Japheth Lim, Yutaka Nagashima, Thomas Sewell, Zilin Chen,
+Liam O’Connor, Toby Murray, Gabriele Keller, and Gerwin Klein.
+
+A framework for the automatic formal verification of refinement from
+Cogent to C.
+
+In International Conference on Interactive Theorem Proving,
+pages 323–340, Nancy, France, August 2016. Springer, Cham.
+
+[22]
+
+Philip Wadler.
+
+Linear types can change the world!
+
+In Programming Concepts and Methods. North, 1990.
+
+[23]
+
+Peng Wang, Santiago Cuellar, and Adam Chlipala.
+
+Compiler verification meets cross-language linking via data
+abstraction.
+
+In Andrew P. Black and Todd D. Millstein, editors, Proceedings
+of the 2014 ACM International Conference on Object Oriented Programming
+Systems Languages & Applications, OOPSLA 2014, part of SPLASH 2014,
+Portland, OR, USA, October 20-24, 2014, pages 675–690. ACM, 2014.
+
+[24]
+
+Simon Winwood, Gerwin Klein, Thomas Sewell, June Andronick, David Cock, and
+Michael Norrish.
+
+Mind the gap: A verification framework for low-level C.
+
+In S. Berghofer, T. Nipkow, C. Urban, M. Wenzel, editor, International Conference on Theorem Proving in Higher Order Logics, pages
+500–515, Munich, Germany, August 2009. Springer.
+
+Experimental support, please
+view the build logs
+for errors. Generated by
+
+L
+A
+T
+E
+
+xml
+
+.
+
+Instructions for reporting errors
+
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+methods listed below:
+
+Click the "Report Issue" (
+
+) button, located in the page header.
+
+Tip: You can select the relevant text first, to include it in your report.
+
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+all.
+
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+
+We gratefully acknowledge support from
+our major funders,
+member institutions, ,
+and all contributors.
+
+About
+·
+Help
+·
+Contact
+·
+Subscribe
+·
+Copyright
+·
+Privacy
+·
+Accessibility
+·
+Operational Status (opens in new tab)
+
+Major funding support from
+
