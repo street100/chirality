@@ -22,6 +22,7 @@ Usage:
     tools/lens/lens.py author         what is awaiting a ruling, across all four
     tools/lens/lens.py overview       regenerate docs/definitions/OVERVIEW.md
     tools/lens/lens.py overview --check   compare only, write nothing, exit 1 on drift
+    tools/lens/lens.py chain          the census over goal -> arc -> element
     tools/lens/lens.py trace <unit>   what a goal/arc/row/element carries
     tools/lens/lens.py new <lens> <title>    append a scaffolded row, next id
 """
@@ -265,6 +266,238 @@ def lens_for(unit):
     return hits
 
 
+# ───────────────────────────────────────────────────────────────────── the chain
+# The model's spine is goal -> arc -> element, and docs/arcs/README.md states it.
+# Four gates stand on pieces of it and every one of them was green on 2026-09-13
+# while 99 catalog elements sat in no roster: check V on the goal-arc FILE link,
+# AF on a done-condition naming its arc, AG on a requirement and a row covering
+# each other, AE on an element's home. A gate reports an UNADMITTED hole, because
+# each one gives a hole an escape: AF takes `unopened`, AG takes a gap row, AE
+# takes an unspoken row. The census below counts the holes themselves, admitted
+# or not, so the shape of the spine is visible without reading four checks.
+#
+# It duplicates no gate's verdict. Every rung names the check that gates it, and
+# two rungs name that nothing does.
+#
+# One parser serves both. ledger-lint's `_homed`, `_minted`,
+# `_ledger_state`, `_lens_about` and `arc_req_section` are loaded through the
+# same importlib seam ledger-lint uses on pack.py, so a number here and the
+# number a check raises come from one definition and cannot drift.
+
+_LANE = re.compile(r"\b([EUSN])(\d+)([a-z]?)")
+
+
+def _sibling(name, relpath):
+    """One sibling tool, as a module. None when it is absent."""
+    import importlib.util
+    path = os.path.join(ROOT, relpath)
+    if not os.path.exists(path):
+        return None
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        return None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _gated_goals():
+    """Goals docs/goals/README.md marks `none open`, exactly as check AF reads it.
+
+    A goal held by a standing gate carries no arc and that is its finished
+    shape: goals/README.md, `Rules`. goals/self-hosting is the case and its
+    three done-conditions name no arc on purpose. Counting them as holes would
+    report the recorded reason check V already reads as a defect."""
+    p = os.path.join(GOALDIR, "README.md")
+    if not os.path.exists(p):
+        return set()
+    return set(re.findall(r"^\|\s*\[\[goals/([a-z0-9-]+)\]\].*?\|\s*none open",
+                          open(p).read(), re.M))
+
+
+def chain():
+    """The census over every rung of goal -> arc -> element.
+
+    Returns a list of rungs, each (title, covered, total, gate, [hole, ...]).
+    `gate` is the ledger-lint check that fails on this rung, or the sentence
+    saying nothing does."""
+    lint = _sibling("chirality_ledger_lint", "tools/ledger-lint/ledger-lint.py")
+    pack = _sibling("chirality_pack", "tools/pack/pack.py")
+    if lint is None or pack is None:
+        return None
+
+    gated = _gated_goals()
+    arc_text = dict(arcs())
+    goal_text = dict(goals())
+    out = []
+
+    # ── rung 1: a goal's done-condition reaches an arc
+    named, tot, cov, unop, held, blind = set(), 0, 0, 0, 0, []
+    for g, gtext in sorted(goal_text.items()):
+        for num, title, carcs, unopened in conditions(gtext)[1]:
+            tot += 1
+            if carcs:
+                cov += 1
+                named |= set(carcs)
+            elif unopened:
+                unop += 1
+            elif g in gated:
+                held += 1
+            else:
+                blind.append(f"goals/{g}.md condition {num} names no arc and "
+                             f"does not say unopened: {title}")
+    out.append(("goal done-condition -> arc", cov, tot, "check AF",
+                [f"{unop} condition(s) declare themselves unopened",
+                 f"{held} sit under a goal docs/goals/README.md marks `none "
+                 f"open`, held by a standing gate"] + blind))
+
+    # ── rung 2: the same link read from the arc's end
+    holes = []
+    for a in sorted(arc_text):
+        if a in named:
+            continue
+        g = arc_goal(arc_text[a])
+        cited = re.search(r"condition\s+(\d+)", pack.arc_field(arc_text[a], "goal"))
+        conds = {c[0]: c for c in conditions(goal_text.get(g, ""))[1]}
+        c = conds.get(cited.group(1)) if cited else None
+        if g not in goal_text:
+            why = (f"its `- goals:` field names goals/{g} and docs/goals/{g}.md "
+                   f"is absent, which is check V's finding")
+        elif c is None:
+            why = (f"it cites goals/{g} condition {cited.group(1)} and that goal "
+                   f"states no such condition" if cited else
+                   f"its `- goals:` field names goals/{g} and no condition in it")
+        elif c[3]:
+            why = (f"it serves goals/{g} condition {cited.group(1)}, and that "
+                   f"condition declares itself unopened")
+        else:
+            why = (f"it serves goals/{g} condition {cited.group(1)}, and that "
+                   f"condition names {', '.join(c[2])} instead")
+        holes.append(f"{a} is named by no goal condition: {why}")
+    out.append(("arc -> goal done-condition", len(arc_text) - len(holes),
+                len(arc_text), "NOTHING. No check reads this direction", holes))
+
+    # ── rung 3: a requirement and a roster row cover each other
+    admit = lint._lens_about("gaps.md") | lint._lens_about("unspoken.md")
+    reqs, rows, served = {}, {}, {}
+    for a, t in arc_text.items():
+        reqs[a] = set(re.findall(r"^(\d+)\.\s+\*\*", lint.arc_req_section(t), re.M))
+        rows[a] = [[c.strip() for c in ln.strip().strip("|").split("|")]
+                   for ln in pack.roster_all(t)]
+        served.setdefault(a, set())
+    for a, rs in rows.items():
+        for cells in rs:
+            if len(cells) < 7:
+                continue
+            # check AG's own two reads of a `req` cell, kept verbatim: the loose
+            # digit scan for this arc's own numbers, and `<arc>/req<N>` for a
+            # requirement DELEGATED to another arc's row.
+            served[a] |= set(re.findall(r"\d+", cells[-3]))
+            for other in arc_text:
+                on = other[:-4] if other.endswith("-arc") else other
+                served[other] |= set(re.findall(rf"{re.escape(on)}/req(\d+)",
+                                                cells[-3]))
+    tot = sum(len(v) for v in reqs.values())
+    holes, adm = [], 0
+    for a in sorted(reqs):
+        an = a[:-4] if a.endswith("-arc") else a
+        for r in sorted(reqs[a] - served[a], key=int):
+            if f"{an}/req{r}" in admit:
+                adm += 1
+            holes.append(f"{a} requirement {r} is served by no roster row"
+                         + (f", and a lens row is about `{an}/req{r}`"
+                            if f"{an}/req{r}" in admit else ""))
+    out.append(("arc requirement -> roster row", tot - len(holes), tot,
+                "check AG",
+                [f"admitted by a gap or unspoken row, the escape check AG "
+                 f"takes: {adm} of {len(holes)}"] + holes))
+
+    nrows = sum(len(v) for v in rows.values())
+    blind = [f"{a} row {c[0]} serves no numbered requirement"
+             for a in sorted(rows) for c in rows[a]
+             if len(c) >= 7 and not re.findall(r"\d+", c[-3])]
+    out.append(("roster row -> arc requirement", nrows - len(blind), nrows,
+                "check AG", blind))
+
+    # ── rung 4: an arc reaches a minted id
+    mint, zero = set(), []
+    for a in sorted(rows):
+        ids = {m for c in rows[a] if c[-1].strip() != "unminted"
+               for m in _LANE.findall(c[-1])}
+        mint |= {f"{l}{n}{s}" for l, n, s in ids}
+        if not ids:
+            zero.append(f"{a} rosters {len(rows[a])} row(s) and no minted id")
+    out.append(("arc -> minted id", len(rows) - len(zero), len(rows),
+                "NOTHING. An unminted arc is a stage, and no check reads it",
+                [f"{len(mint)} distinct minted id(s) across every roster, in the "
+                 f"four lanes E, U, S and N"] + zero))
+
+    # ── rung 5: a catalog element reaches an arc
+    cat, _led = lint._minted()
+    homed = lint._homed()
+    if homed is None:
+        out.append(("catalog element -> arc roster row", 0, 0,
+                    "check AE", ["tools/pack/pack.py is absent, so no roster "
+                                 "element cell parses and this rung is "
+                                 "UNMEASURED. The missing parser is the "
+                                 "finding"]))
+        return out
+    spoken, st = lint._lens_about("unspoken.md"), lint._ledger_state()
+    unhomed = [n for n in sorted(cat) if n not in homed]
+    # The author's two rulings of 2026-09-13, in records/author-calls.md: homing
+    # covers the whole catalog with `built` rows inside it, and `superseded` is
+    # exempt because the successor's row is the home.
+    sup = [n for n in unhomed if st.get(n) == "superseded"]
+    adm = [n for n in unhomed if f"E{n}" in spoken and st.get(n) != "superseded"]
+    owed = len(unhomed) - len(sup) - len(adm)
+    out.append(("catalog element -> arc roster row", len(cat) - len(unhomed),
+                len(cat), "check AE",
+                [f"`superseded` and exempt by the author's ruling of "
+                 f"2026-09-13: {len(sup)} of the {len(unhomed)} unhomed",
+                 f"admitted by a row in records/lenses/unspoken.md: "
+                 f"{len(adm)}",
+                 f"owed a home: {owed}, which is the count check AE raises. "
+                 f"records/homing-triage.md proposes one for each and rules on "
+                 f"none"]))
+    return out
+
+
+CHAIN_UNMEASURED = (
+    "Two author calls stand inside rung 2 and no tool can take either. "
+    "records/author-calls.md carries them: whether a design or a SPEC for an "
+    "`OT` element counts as planning, and the four new-arc proposals in "
+    "records/homing-triage.md. Until they are ruled, this rung reports which "
+    "arcs no condition names and says nothing about which of them is wrong.")
+
+
+def chain_view(width=2):
+    """The census as lines. `width` is how many holes per rung to enumerate,
+    or 0 for all of them: OVERVIEW.md takes the summary and the subcommand
+    takes the enumeration, from this one computation."""
+    rungs = chain()
+    if rungs is None:
+        return ["  tools/ledger-lint/ledger-lint.py or tools/pack/pack.py is "
+                "absent, so the chain cannot be walked. A view aimed at nothing "
+                "cannot report a hole: the missing parser is the finding"]
+    L = ["| rung | covered | of | gated by |", "|---|---|---|---|"]
+    for title, cov, tot, gate, _ in rungs:
+        L.append(f"| {title} | {cov} | {tot} | {gate} |")
+    L.append("")
+    for title, cov, tot, _gate, holes in rungs:
+        if not holes:
+            continue
+        L.append(f"**{title}**: {cov} of {tot}.")
+        show = holes if width == 0 else holes[:width]
+        for h in show:
+            L.append(f"- {h}")
+        if len(holes) > len(show):
+            L.append(f"- {len(holes) - len(show)} more, listed by "
+                     f"`python3 tools/lens/lens.py chain`")
+        L.append("")
+    L.append(CHAIN_UNMEASURED)
+    return L
+
+
 def overview_body():
     el_state = {}
     for ln in open(LEDGER):
@@ -331,6 +564,14 @@ def overview_body():
           f"{len(orph)} unbuilt element(s) named by no arc. Each is territory with "
           f"no ruling, and the unspoken lens is where that gets tracked.", "",
           "  " + ", ".join(orph) if orph else "  (none)", ""]
+
+    L += ["## The chain", "",
+          "goal -> arc -> element is the model docs/arcs/README.md states, and "
+          "this is its coverage, one rung at a time. Recipe: "
+          "`python3 tools/lens/lens.py chain`, which enumerates every hole "
+          "summarised here.", ""]
+    L += chain_view(width=4)
+    L += [""]
 
     L += ["## The lenses", ""]
     for lens in LENSES:
@@ -444,6 +685,9 @@ def main():
         author_view()
     elif cmd == "overview":
         sys.exit(overview(check="--check" in sys.argv[2:]))
+    elif cmd == "chain":
+        for ln in chain_view(width=0):
+            print(ln)
     elif cmd == "trace":
         trace(sys.argv[2] if len(sys.argv) > 2 else "")
     elif cmd == "new":

@@ -1209,14 +1209,14 @@
 
 ### PRB-86 nothing measures the goal-arc-element chain
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    source
 - about:    tools/lens/lens.py
 - claim:    `docs/arcs/README.md:28-29` makes the chain the model: an arc is elements assembled toward one goal, an element is one catalog item. `docs/definitions/OVERVIEW.md` is the generated view across every arc, and `ledger-lint` runs forty-odd checks.
-- measured: **The spine of the model is unmeasured.** 42 of 186 catalog elements hold a roster row and 144 hold none, measured 2026-09-10 at `d307682`; 106 of the 144 are named in no arc file at all. Nothing in the tree reported it, and it surfaced only because a session wrote a throwaway script. Both ends of the chain have holes: `docs/goals/self-hosting.md:70` says the goal carries no arc and none is owed, which by construction leaves 55 built elements with nowhere to sit, and `docs/arcs/terminal-arc.md` was opened 2026-09-10 serving a goal that states no terminal condition. PRB-83 is why the one check aimed at this reports nothing. A generated coverage view belongs beside `lens.py overview`, and the rungs it should report are settled by the author's rulings of 2026-09-10.
-- evidence: `docs/arcs/README.md:28-29`, `docs/goals/self-hosting.md:70`, `records/homing-triage.md`, `docs/arcs/terminal-arc.md` FLAG 1, [[records/lenses/problems]] PRB-83
-- checked:  2026-09-10
+- measured: **FIXED, measured 2026-09-13.** `python3 tools/lens/lens.py chain` walks the chain on six rungs and writes its summary into `docs/definitions/OVERVIEW.md` under `## The chain`. Covered of total: goal done-condition to arc 49 of 68, arc to goal done-condition 25 of 29, arc requirement to roster row 124 of 136, roster row to arc requirement 297 of 297, arc to minted id 12 of 29, catalog element to arc roster row 44 of 187. The census counts a hole and a gate counts an UNADMITTED one, so the two are expected to disagree: all 12 unserved requirements carry a gap or unspoken row and check AG is green, and 43 of the 143 unhomed elements carry an unspoken row while 1 is `superseded`, which is how 143 becomes the 99 check AE raises. This row recorded 42 of 186 elements holding a roster row; the same measurement today reads 44 of 187, taken with check AE's own parser, where the 42 came from a throwaway script. Both named ends print: the four arcs no goal condition names are `memory-discipline`, `part-split`, `terminal` and `tool-authority`, and `terminal-arc` prints as serving `goals/display` condition 2 while that condition declares itself unopened. **Residue: two of the six rungs carry a census and no gate.** Nothing fails when an arc sits under no goal condition or when an arc rosters no minted id, and gating the first presupposes the two author calls the view names.
+- evidence: re-runnable: `python3 tools/lens/lens.py chain` prints the six rungs and every hole, and `python3 tools/lens/lens.py overview --check` exits 0 against the written section. `tools/lens/lens.py` (`chain`, `chain_view`), `docs/definitions/OVERVIEW.md` `## The chain`, `records/homing-triage.md`, `records/author-calls.md`, [[records/lenses/problems]] PRB-83
+- checked:  2026-09-13
 - owner:    none
 - from:     none
