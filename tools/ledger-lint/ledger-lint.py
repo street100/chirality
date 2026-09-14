@@ -1862,14 +1862,76 @@ def _lens_about(lens_file):
             re.finditer(r"^- about:\s*(.+)$", f.read_text(), re.M)}
 
 
+def _load_pack():
+    """Load tools/pack/pack.py (hyphen-free, still a sibling tool -> importlib) so
+    this check and `pack.py --mint` share ONE definition of what a roster row
+    names. A second parser here would drift from the one the pipeline writes
+    through, which is the defect this check exists to catch one level up."""
+    import importlib.util
+    path = ROOT / "tools" / "pack" / "pack.py"
+    if not path.exists():
+        return None
+    spec = importlib.util.spec_from_file_location("chirality_pack", path)
+    if spec is None or spec.loader is None:
+        return None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _homed():
+    """{E number: [arc, ...]} over every roster row whose ELEMENT CELL names it.
+
+    One row can carry two elements (`bridge/C4` reads ``E40`, `E56``) and one
+    element can sit in two rosters (E183 is `diagnostics/W1` and `file-types/K2`),
+    so this is a number to a LIST of arcs. pack.py's `row_elements` takes a cell
+    that is a comma-separated list of E numbers and nothing else, so a cell
+    ending in prose parses as no elements and `unminted` parses as none.
+
+    None when pack.py is absent: belonging is then undecidable, which the caller
+    reports as a defect."""
+    pack = _load_pack()
+    if pack is None:
+        return None
+    out: dict[int, list[str]] = {}
+    for f in _arc_files():
+        arc = f.stem[:-4] if f.stem.endswith("-arc") else f.stem
+        for line in pack.roster_all(f.read_text()):
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            for eid in pack.row_elements(cells[-1]):
+                out.setdefault(int(eid[1:]), []).append(arc)
+    return out
+
+
 def check_ae() -> list[str]:
     """Element and arc, both directions.
 
-    docs/goals/README.md: "An element belongs to exactly one arc." That was
-    unsatisfiable until decision-four-lenses gave unspoken territory a home, so
-    the invariant now reads: an unbuilt element is named by an arc, OR it is
-    enumerated in the unspoken lens as territory with no ruling. Silence is the
-    only thing this refuses."""
+    docs/goals/README.md: "An element belongs to at least one arc, or the
+    unspoken lens says nobody has ruled on it." The sentence under it puts an
+    element whose components serve two goals in BOTH arcs, so multiplicity is
+    allowed and nothing here counts seats.
+
+    **Belonging is a roster row whose element cell carries the number.** An arc
+    that names an element in prose has not claimed it: `tool-authority-arc`
+    names E148 and E149 in its boundary section to REFUSE them, `scriba/S6` is
+    blocked on E132, `enforcement-arc` says of E169 that no arc names it, and
+    `display-calculus`'s own row ids spell E1 to E4. A `\\bE(\\d+)\\b` scan over
+    the arc file read all five as coverage and reported nothing on a tree where
+    143 of 187 elements hold no roster row.
+
+    **The scope is the whole catalog.** records/author-calls.md, "Whether homing
+    covers the whole catalog, built rows included", carries the author's ruling
+    of 2026-09-10: "yes we need to home them if that is the case". A `built` row
+    is inside this check.
+
+    The unhomed population is a REGISTER of work the tree owes, so it raises
+    Owed and is counted apart from the violations. records/homing-triage.md
+    holds one row per element and proposes a home for each. Enumerating a
+    hundred of them here would bury every other finding in the run, which is the
+    reading check AN already took on 151 lens rulings.
+
+    The two mint limbs stay violations: a catalog row with no ledger row is a
+    half-written mint, and a violation outranks the owed count."""
     errs = []
     cat, led = _minted()
     for n in sorted(cat - led):
@@ -1879,22 +1941,39 @@ def check_ae() -> list[str]:
         errs.append(f"[AE] E{n} is in docs/elements/ledger.md and not in "
                     f"docs/elements/catalog.md. A mint writes both rows")
 
-    named = set()
-    for f in _arc_files():
-        named |= {int(x) for x in re.findall(r"\bE(\d+)\b", f.read_text())}
-    spoken = {a for a in _lens_about("unspoken.md")}
+    homed = _homed()
+    if homed is None:
+        errs.append("[AE] tools/pack/pack.py is absent, so no roster element "
+                    "cell can be parsed and belonging cannot be decided. A gate "
+                    "aimed at nothing cannot fail: the missing parser is the "
+                    "defect")
+    if errs:
+        return errs
+
+    spoken = _lens_about("unspoken.md")
     st = _ledger_state()
-    for n in sorted(cat):
-        if st.get(n) not in ("design", "flight"):
-            continue                       # built and superseded rows are history
-        if n in named:
-            continue
-        if f"E{n}" in spoken:
-            continue
-        errs.append(f"[AE] E{n} is unbuilt (ledger `{st.get(n)}`), no arc names it, "
-                    f"and no row in records/lenses/unspoken.md is about it. "
-                    f"Unscheduled work has to be visible somewhere")
-    return errs
+    unhomed = [n for n in sorted(cat) if n not in homed]
+    # `superseded` is exempt, ruled by the author 2026-09-13. The element
+    # stopped being the thing that gets built and its work moved to the
+    # successor named in the Title cell, so the successor's row is the home and
+    # a second one would schedule the same work twice. records/author-calls.md
+    # carries the ruling. Every other state is inside the check.
+    owed = [n for n in unhomed
+            if f"E{n}" not in spoken and st.get(n) != "superseded"]
+    if not owed:
+        return []
+    buckets: dict[str, int] = {}
+    for n in owed:
+        k = st.get(n) or "no state this reads"
+        buckets[k] = buckets.get(k, 0) + 1
+    lines = [f"[AE] {c} catalog element(s) at ledger `{s}` hold no roster row "
+             f"and no row in records/lenses/unspoken.md"
+             for s, c in sorted(buckets.items(), key=lambda kv: (-kv[1], kv[0]))]
+    lines.append(f"[AE] {len(owed)} of {len(cat)} catalog element(s) are claimed "
+                 f"by no roster row and admitted by no unspoken row. {len(unhomed)} "
+                 f"hold no roster row at all, and records/homing-triage.md "
+                 f"proposes a home for each of those and rules on none")
+    raise Owed("element home", lines, count=len(owed))
 
 
 def check_af() -> list[str]:
@@ -2541,8 +2620,9 @@ GUIDE = {
            "cites a numbered condition, so an unnumbered goal cannot be served.",
            "AF"),
     "AE": (2, "docs/goals/README.md and docs/elements/README.md",
-           "A mint writes both the catalog row and the ledger row. An unbuilt "
-           "element is named by an arc, or enumerated in records/lenses/unspoken.md.",
+           "A mint writes both the catalog row and the ledger row. Every catalog "
+           "element holds a roster row whose ELEMENT CELL carries its number, or "
+           "a row in records/lenses/unspoken.md. A prose mention is a mention.",
            "AE"),
     "AC": (2, "docs/definitions/status-ledger.md",
            "The ledger's build state and the pipeline state agree, or the "
