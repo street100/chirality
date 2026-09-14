@@ -174,7 +174,8 @@ Four tiers. A **goal** is a broad thing the project claims it is doing. An
 roster and its own resume state. A **roster row** is one unit of work, cited as
 `<arc>/<id>` before it has a number. An **element** is one catalog item, an
 `E#`. An arc names every goal it serves, goals and arcs relate many to many, and
-an element belongs to exactly one arc.
+an element belongs to at least one arc: one whose components serve two goals
+sits in both.
 
 **Minting is the last step.** A roster row is worked up into a
 design under [`docs/arcs/parts/`](docs/arcs/parts/), and it gets an `E#` only

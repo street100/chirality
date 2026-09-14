@@ -7,7 +7,7 @@
 - note:     none
 - level:    element
 - about:    E22
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E22 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E22 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E22. Title: Memory allocator / region types / GC-outside-TCB (beyond the bump arena)
 - evidence: docs/elements/catalog.md:125, docs/elements/ledger.md:162
 - checked:  2026-09-05
@@ -21,7 +21,7 @@
 - note:     none
 - level:    element
 - about:    E35
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E35 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E35 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E35. Title: Wayland wire protocol
 - evidence: docs/elements/catalog.md:154, docs/elements/ledger.md:219
 - checked:  2026-09-05
@@ -35,7 +35,7 @@
 - note:     none
 - level:    element
 - about:    E36
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E36 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E36 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E36. Title: niri IPC event stream
 - evidence: docs/elements/catalog.md:155, docs/elements/ledger.md:220
 - checked:  2026-09-05
@@ -49,7 +49,7 @@
 - note:     none
 - level:    element
 - about:    E37
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E37 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E37 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E37. Title: PNG writer (test-only)
 - evidence: docs/elements/catalog.md:156, docs/elements/ledger.md:221
 - checked:  2026-09-05
@@ -63,7 +63,7 @@
 - note:     none
 - level:    element
 - about:    E38
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E38 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E38 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E38. Title: Graded cost / coeffect semiring (the load-bearing decision)
 - evidence: docs/elements/catalog.md:165, docs/elements/ledger.md:113
 - checked:  2026-09-05
@@ -77,7 +77,7 @@
 - note:     none
 - level:    element
 - about:    E39
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E39 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E39 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E39. Title: Effect algebra / typed rows (alarms, counter-effects)
 - evidence: docs/elements/catalog.md:166, docs/elements/ledger.md:114
 - checked:  2026-09-05
@@ -91,7 +91,7 @@
 - note:     none
 - level:    element
 - about:    E41
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E41 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E41 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E41. Title: Region types (retire runtime offset/bounds checks)
 - evidence: docs/elements/catalog.md:168, docs/elements/ledger.md:167
 - checked:  2026-09-05
@@ -105,7 +105,7 @@
 - note:     none
 - level:    element
 - about:    E43
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E43 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E43 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E43. Title: Component broker: AUTH/AUDIT, grant/revoke/audit
 - evidence: docs/elements/catalog.md:170, docs/elements/ledger.md:231
 - checked:  2026-09-05
@@ -119,7 +119,7 @@
 - note:     none
 - level:    element
 - about:    E44
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E44 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E44 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E44. Title: Whole-assembly conformance (totality, non-interference, tier weight)
 - evidence: docs/elements/catalog.md:171, docs/elements/ledger.md:232
 - checked:  2026-09-05
@@ -133,7 +133,7 @@
 - note:     none
 - level:    element
 - about:    E45
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E45 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E45 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E45. Title: Reflective floor (what is reconfigurable from inside)
 - evidence: docs/elements/catalog.md:172, docs/elements/ledger.md:233
 - checked:  2026-09-05
@@ -147,7 +147,7 @@
 - note:     none
 - level:    element
 - about:    E46
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E46 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E46 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E46. Title: Proof-presentation / auditor layer (Isar-equivalent)
 - evidence: docs/elements/catalog.md:173, docs/elements/ledger.md:234
 - checked:  2026-09-05
@@ -161,7 +161,7 @@
 - note:     none
 - level:    element
 - about:    E47
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E47 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E47 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E47. Title: Sized types (termination promotion)
 - evidence: docs/elements/catalog.md:174, docs/elements/ledger.md:103
 - checked:  2026-09-05
@@ -175,7 +175,7 @@
 - note:     none
 - level:    element
 - about:    E48
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E48 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E48 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E48. Title: Dependent records / telescopes (field dependence)
 - evidence: docs/elements/catalog.md:175, docs/elements/ledger.md:90
 - checked:  2026-09-05
@@ -189,7 +189,7 @@
 - note:     none
 - level:    element
 - about:    E49
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E49 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E49 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E49. Title: Real surface syntax (stage 4)
 - evidence: docs/elements/catalog.md:176, docs/elements/ledger.md:91
 - checked:  2026-09-05
@@ -203,7 +203,7 @@
 - note:     none
 - level:    element
 - about:    E54
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E54 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E54 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E54. Title: Split-provider / split-role: guarded combine over independent sources, per-axis tiers, agreement-or-certificat
 - evidence: docs/elements/catalog.md:193, docs/elements/ledger.md:237
 - checked:  2026-09-05
@@ -217,7 +217,7 @@
 - note:     none
 - level:    element
 - about:    E55
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E55 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E55 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E55. Title: C-bridge evidence elaborator (attestation first; freshness / audit / isolation / reflect-raw follow the same s
 - evidence: docs/elements/catalog.md:194, docs/elements/ledger.md:238
 - checked:  2026-09-05
@@ -231,7 +231,7 @@
 - note:     none
 - level:    element
 - about:    E57
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E57 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E57 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E57. Title: Staging / binding-time modality (Fork C): link/load vs runtime carried in the type
 - evidence: docs/elements/catalog.md:196, docs/elements/ledger.md:240
 - checked:  2026-09-05
@@ -245,7 +245,7 @@
 - note:     none
 - level:    element
 - about:    E58
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E58 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E58 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E58. Title: reflect-typed: staged metaprogramming over typed terms, bounded by the reflective floor (E45)
 - evidence: docs/elements/catalog.md:197, docs/elements/ledger.md:241
 - checked:  2026-09-05
@@ -259,7 +259,7 @@
 - note:     none
 - level:    element
 - about:    E59
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E59 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E59 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E59. Title: Taint tracking (security trio)
 - evidence: docs/elements/catalog.md:198, docs/elements/ledger.md:242
 - checked:  2026-09-05
@@ -273,7 +273,7 @@
 - note:     none
 - level:    element
 - about:    E60
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E60 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E60 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E60. Title: Constant-time enforcement as preserve-check's first customer (security trio; IFC is E44)
 - evidence: docs/elements/catalog.md:199, docs/elements/ledger.md:243
 - checked:  2026-09-05
@@ -287,7 +287,7 @@
 - note:     none
 - level:    element
 - about:    E61
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E61 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E61 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E61. Title: Adhikara: capability protocol mapped exactly to the capability-type discipline, over wire
 - evidence: docs/elements/catalog.md:200, docs/elements/ledger.md:244
 - checked:  2026-09-05
@@ -301,7 +301,7 @@
 - note:     none
 - level:    element
 - about:    E62
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E62 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E62 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E62. Title: Bootstrap-floor: a cross-checked set of independent runtimes (agreement over the unverifiable residue)
 - evidence: docs/elements/catalog.md:201, docs/elements/ledger.md:245
 - checked:  2026-09-05
@@ -315,7 +315,7 @@
 - note:     none
 - level:    element
 - about:    E63
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E63 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E63 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E63. Title: cheri-floor: the B mark carried into silicon on CHERI hardware
 - evidence: docs/elements/catalog.md:202, docs/elements/ledger.md:246
 - checked:  2026-09-05
@@ -329,7 +329,7 @@
 - note:     none
 - level:    element
 - about:    E73
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E73 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E73 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E73. Title: Outbound confinement membrane: the outbound half of the bridge — A emits into B only *confined* (no live capab
 - evidence: docs/elements/catalog.md:279, docs/elements/ledger.md:248
 - checked:  2026-09-05
@@ -343,7 +343,7 @@
 - note:     none
 - level:    element
 - about:    E74
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E74 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E74 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E74. Title: Tier carrier: how a per-axis split-role tier (containment/independence/verdict) rides the type — the represent
 - evidence: docs/elements/catalog.md:280, docs/elements/ledger.md:249
 - checked:  2026-09-05
@@ -357,7 +357,7 @@
 - note:     none
 - level:    element
 - about:    E75
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E75 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E75 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E75. Title: Typed ABI-layout abstraction above the tal floor: a layout descriptor + refinement bounds for the recurring sy
 - evidence: docs/elements/catalog.md:281, docs/elements/ledger.md:222
 - checked:  2026-09-05
@@ -371,7 +371,7 @@
 - note:     none
 - level:    element
 - about:    E77
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E77 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E77 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E77. Title: Rung-1 seccomp default-deny: a seccomp-bpf filter derived from the E76 permitted set, installed at process sta
 - evidence: docs/elements/catalog.md:295, docs/elements/ledger.md:195
 - checked:  2026-09-05
@@ -385,7 +385,7 @@
 - note:     none
 - level:    element
 - about:    E78
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E78 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E78 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E78. Title: Number-in-type attenuation: the `ti-sys` immediate carried in a refinement (E9 machinery over the number) so a
 - evidence: docs/elements/catalog.md:296, docs/elements/ledger.md:105
 - checked:  2026-09-05
@@ -399,7 +399,7 @@
 - note:     none
 - level:    element
 - about:    E80
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E80 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E80 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E80. Title: Capability reification to `main` (profile-grants-to-entry): the profile hands the entry point its reified ambi
 - evidence: docs/elements/catalog.md:178, docs/elements/ledger.md:250
 - checked:  2026-09-05
@@ -413,7 +413,7 @@
 - note:     none
 - level:    element
 - about:    E82
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E82 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E82 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E82. Title: **`alloc-region` discipline (phase-scoped).** `region-enter` marks heapptr, `region-exit` resets it; a phase r
 - evidence: docs/elements/catalog.md:329, docs/elements/ledger.md:169
 - checked:  2026-09-05
@@ -427,7 +427,7 @@
 - note:     none
 - level:    element
 - about:    E83
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E83 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E83 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E83. Title: **`alloc-reuse` discipline (FBIP / Perceus).** Linear drops become reuse tokens; a matching allocation reuses 
 - evidence: docs/elements/catalog.md:330, docs/elements/ledger.md:170
 - checked:  2026-09-05
@@ -441,7 +441,7 @@
 - note:     none
 - level:    element
 - about:    E84
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E84 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E84 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E84. Title: **`alloc-dps` discipline (destination-passing).** The emit phase builds one growing byte buffer by concatenati
 - evidence: docs/elements/catalog.md:331, docs/elements/ledger.md:171
 - checked:  2026-09-05
@@ -455,7 +455,7 @@
 - note:     none
 - level:    element
 - about:    E85
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E85 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E85 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E85. Title: **Per-phase profile composition + static size-bounding.** Extend the `(memory …)` profile clause to the value 
 - evidence: docs/elements/catalog.md:332, docs/elements/ledger.md:172
 - checked:  2026-09-05
@@ -469,7 +469,7 @@
 - note:     none
 - level:    element
 - about:    E94
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E94 is minted and carries ledger state `flight`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E94 is minted and carries ledger state `flight`.
 - measured: no file in docs/arcs/ names E94. Title: B1 form/type capacity: raise or remove hard limit on forms/data types in `parse.chiral`/`loader.chiral` so scr
 - evidence: docs/elements/catalog.md:396, docs/elements/ledger.md:138
 - checked:  2026-09-05
@@ -483,7 +483,7 @@
 - note:     none
 - level:    element
 - about:    E102
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E102 is minted and carries ledger state `flight`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E102 is minted and carries ledger state `flight`.
 - measured: no file in docs/arcs/ names E102. Title: Sexp-reader follow-up enhancements: per-function paren delta reporting (balance per `def`/`declare` boundary),
 - evidence: docs/elements/catalog.md:431, docs/elements/ledger.md:94
 - checked:  2026-09-05
@@ -497,7 +497,7 @@
 - note:     none
 - level:    element
 - about:    E128
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E128 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E128 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E128. Title: APC structured-side-channel **handshake**: the wire negotiation protocol that *sets* `term-structured?`'s bit 
 - evidence: docs/elements/catalog.md:454, docs/elements/ledger.md:224
 - checked:  2026-09-05
@@ -511,7 +511,7 @@
 - note:     none
 - level:    element
 - about:    E142
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E142 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E142 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E142. Title: **Trust-zone capability tokens (deferred target)**: `porttype LocalZone`/`CloudZone` as erased (`0`-quantity) 
 - evidence: docs/elements/catalog.md:248, docs/elements/ledger.md:275
 - checked:  2026-09-05
@@ -525,7 +525,7 @@
 - note:     none
 - level:    element
 - about:    E143
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E143 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E143 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E143. Title: **Dependent config-coverage type (deferred target)**: `Config (covers (List Str))` parameterized by the slots 
 - evidence: docs/elements/catalog.md:249, docs/elements/ledger.md:276
 - checked:  2026-09-05
@@ -539,7 +539,7 @@
 - note:     none
 - level:    element
 - about:    E149
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E149 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E149 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E149. Title: **Filesystem MUTATION crossings: `unlink` + `rename` + `mkdir`** — split from E148's READ on purpose: write au
 - evidence: docs/elements/catalog.md:464, docs/elements/ledger.md:211
 - checked:  2026-09-05
@@ -553,7 +553,7 @@
 - note:     none
 - level:    element
 - about:    E153
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E153 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E153 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E153. Title: **`F64` float tower** — the type, literal syntax in the reader, arithmetic + comparison externs, `i64↔f64` con
 - evidence: docs/elements/catalog.md:479, docs/elements/ledger.md:373
 - checked:  2026-09-05
@@ -567,7 +567,7 @@
 - note:     none
 - level:    element
 - about:    E162
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E162 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E162 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E162. Title: **Custody of a permitted set — who may WIDEN it, and how that is recorded.** E76's remainder made `target-linu
 - evidence: docs/elements/catalog.md:474, docs/elements/ledger.md:304
 - checked:  2026-09-05
@@ -581,7 +581,7 @@
 - note:     none
 - level:    element
 - about:    E164
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E164 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E164 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E164. Title: **C6 — make the governed path the cheap path.** `decision-deployment-custody` names dev-profile ambient thread
 - evidence: docs/elements/catalog.md:476, docs/elements/ledger.md:306
 - checked:  2026-09-05
@@ -595,7 +595,7 @@
 - note:     none
 - level:    element
 - about:    E165
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E165 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E165 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E165. Title: **The remaining private de-duplicators adopt their owners** — `closconv.chiral:39` `ins-uniq` (`(List I64)`, f
 - evidence: docs/elements/catalog.md:478, docs/elements/ledger.md:307
 - checked:  2026-09-05
@@ -609,7 +609,7 @@
 - note:     none
 - level:    element
 - about:    E167
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E167 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E167 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E167. Title: **`tal-c` — the SECOND C seam: emit C from `tal` instead of from `Mach` ops.** E166's leg branches at `Mach`, 
 - evidence: docs/elements/catalog.md:482, docs/elements/ledger.md:151
 - checked:  2026-09-05
@@ -623,7 +623,7 @@
 - note:     none
 - level:    element
 - about:    E169
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E169 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E169 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E169. Title: **Behavioural coverage of `lower.chiral` (407 L) — BOTH instruments, because neither subsumes the other.** (a)
 - evidence: docs/elements/catalog.md:484, docs/elements/ledger.md:153
 - checked:  2026-09-05
@@ -637,7 +637,7 @@
 - note:     none
 - level:    element
 - about:    E170
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E170 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E170 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E170. Title: **The corpus lands on the floor — the 709-function migration E168 exists to receive.** E168 builds the test fl
 - evidence: docs/elements/catalog.md:485, docs/elements/ledger.md:154
 - checked:  2026-09-05
@@ -651,7 +651,7 @@
 - note:     none
 - level:    element
 - about:    E171
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E171 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E171 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E171. Title: **The `->`/`=>` membrane, enforced at the CALL — the seam that lives only in the retired oracle.** The coarse 
 - evidence: docs/elements/catalog.md:486, docs/elements/ledger.md:119
 - checked:  2026-09-05
@@ -665,7 +665,7 @@
 - note:     none
 - level:    element
 - about:    E172
-- claim:    docs/goals/README.md states "An element belongs to exactly one arc." E172 is minted and carries ledger state `design`.
+- claim:    docs/goals/README.md states "An element belongs to at least one arc." E172 is minted and carries ledger state `design`.
 - measured: no file in docs/arcs/ names E172. Title: **Semantic file extensions, and the source tree by altitude** — `.chiral` is ONE extension over at least three
 - evidence: docs/elements/catalog.md:498, docs/elements/ledger.md:320
 - checked:  2026-09-05

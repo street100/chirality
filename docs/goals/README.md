@@ -24,10 +24,15 @@ goal it serves.
 **A goal states done as NUMBERED conditions, each checkable, each naming its arc
 or saying it is unopened.** `ledger-lint` check AF fails a goal that does not.
 
-**An element belongs to exactly one arc, or the unspoken lens says nobody has
+**An element belongs to at least one arc, or the unspoken lens says nobody has
 ruled on it.** That invariant was unsatisfiable while 48 unbuilt elements sat
 orphaned; [[decisions/decision-four-lenses]] gave territory with no ruling a
 home, and check AE now refuses only silence.
+
+**An element whose components serve two goals sits in both arcs.** The author
+ruled it on 2026-09-10 and `E44` is the case: totality belongs to
+[[goals/enforcement]], and non-interference and tier weight belong to
+[[goals/ownership-and-trust]]. Nothing here forces such an element to pick one.
 
 **Minting is the last step of the design stage**, per
 [[decisions/decision-design-before-mint]].

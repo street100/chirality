@@ -1196,14 +1196,14 @@
 ### PRB-85 the one-arc invariant is written in three places and the author ruled it wrong
 
 - state:    OPEN
-- author:   unreviewed
-- note:     none
+- author:   ruled 2026-09-10
+- note:     elements dont only belong to one arc fix that doc
 - level:    doc
 - about:    docs/goals/README.md
-- claim:    `docs/goals/README.md:27` states "An element belongs to exactly one arc, or the unspoken lens says nobody has ruled on it."
-- measured: **Ruled by the author 2026-09-10: elements do not belong to only one arc.** The sentence has three homes and correcting it is a migration rather than an edit. It is prose at `docs/goals/README.md:27`; it is logic in `ledger-lint` check AE; and it is quoted verbatim as the `claim` field of **48 rows** in `records/lenses/unspoken.md`, each of which then measures against it. E44 was flagged an author call only because of it, its three components being totality to enforcement and non-interference and tier weight to ownership-and-trust, and the ruling dissolves the flag rather than answering it. `CLAUDE.md` opens by saying a second statement of a rule drifts from the first; the discipline covers that file and stops at the door of every other.
-- evidence: `docs/goals/README.md:27`, `tools/ledger-lint/ledger-lint.py` `check_ae`, `records/lenses/unspoken.md` (48 rows carrying the sentence), `records/homing-triage.md` question G
-- checked:  2026-09-10
+- claim:    `docs/goals/README.md:27` states "An element belongs to at least one arc, or the unspoken lens says nobody has ruled on it", and `:32` states that an element whose components serve two goals sits in both arcs.
+- measured: **Ruled by the author 2026-09-10: elements do not belong to only one arc.** Two of the three homes were repaired 2026-09-13. The prose home now reads at-least-one, and `docs/goals/README.md:32` states the plural case outright with `E44` as its worked example, which dissolves the author call the old sentence created instead of answering it. The **48 `claim` fields** in `records/lenses/unspoken.md` re-quote the corrected sentence and all 48 rows stay open: each measures an element that no arc names at all, and zero arcs fails at-least-one as surely as it failed exactly-one. No `measured` field moved. The remaining home is `ledger-lint` check AE, where the defect is prose and never was behaviour: `check_ae` refuses only silence and carries no multiplicity test, so what still states the overturned invariant is the sentence quoted in its docstring at `tools/ledger-lint/ledger-lint.py:1868`. This row's count of three homes is low. `README.md:177` states the old rule live and outside the repair's write surface; `docs/decisions/decision-four-lenses.md:24` and `:60`, `records/author-calls.md:367`, `.planning/README-PLAN.md:108` and `.planning/BOUNDS-AUTHOR-CALLS.md:566` carry it as the argument of their own day.
+- evidence: `docs/goals/README.md:27`, `docs/goals/README.md:32`, `tools/ledger-lint/ledger-lint.py:1868`, `records/lenses/unspoken.md` (48 rows re-quoted), `README.md:177`, `records/homing-triage.md` question G, `README.md:177` (corrected on merge 2026-09-13), `docs/decisions/decision-primitive-with-consumer.md:125-128`, which is a LIVE dependency where the other five are history: it leaves "which arc holds a pair whose halves sit in different arcs" open **because** the invariant forced a single seat, so the ruling dissolves its premise and that open question is owed a `revisit`)
+- checked:  2026-09-13
 - owner:    none
 - from:     none
 
