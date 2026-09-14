@@ -4,7 +4,7 @@ layer: decision
 status: DECIDED
 decided: 2026-08-31
 related: [goals/ownership-and-trust, goals/self-hosting, goals/presentability, decisions/decision-self-verification, index]
-updated: 2026-09-01
+updated: 2026-09-13
 ---
 
 # Decision: the current track is self-hosting only
@@ -36,6 +36,9 @@ re-bootstrap climb, DDC, the secure datum model, the register root, the cascade.
 Do not pull any of the deferred track into current work, and do not audit its
 documents.
 
+The reach of that sentence is fixed in the next section. It defers the build and
+leaves the planning alone.
+
 ## What "deferred" means here, exactly
 
 **Deferred is not deleted.** Its documents stay, its content stays, and it is
@@ -45,6 +48,43 @@ and E72.
 
 This is the clause most likely to be misread by a pass that is trying to make the
 tree smaller, so it is stated here rather than left to inference.
+
+⚑ **Amended 2026-09-13: one word was carrying two deferrals and the tree read
+the wrong one.** This file said "deferred" and left the reach to inference. The
+author ruled it on 2026-09-10, at `d307682`: the deferral "is just an
+implementation work defer. says literally nothing about planning".
+[[records/author-calls]] records the ruling under "Whether the orphan program
+reaches the `OT` track". The tree had taken the other reading and acted on it.
+`docs/arcs/ownership-and-trust-arc.md:45-48` declines roster rows for seventeen
+elements because they "stay deferred with the track", and thirteen unrostered
+`design` elements were held out of a homing queue on the same reading. The
+deferral itself is unchanged and the author reaffirmed it in the same ruling.
+
+Two senses, and this decision carries only the first.
+
+| sense | means | this track |
+|---|---|---|
+| **build-deferred** | no element on the track is implemented | **yes**, and this is the whole of what the sentence above defers |
+| **plan-deferred** | the track's work stays out of the planning tier: it is named by no goal, it takes no roster row, it gets no design | **no** |
+
+Homing an element is planning, so a deferred element still takes a roster row.
+[[goals/ownership-and-trust]] and [[arcs/ownership-and-trust-arc]] exist because
+this track was planned while unbuilt, and the rest of its rows are owed the same
+treatment.
+
+A second pair comes with the author's instruction attached to the ruling. A
+deferred roster row records what is actually wanted when the track begins, and
+what stays deferred, and it names the blocking condition instead of the track.
+
+| why a row is unbuilt | lifts when |
+|---|---|
+| **track deferral**, the author's scope call and nothing else | the track resumes |
+| **blocking condition**, a material fact that stops the work on its own | the fact changes |
+
+E63 is the author's worked example. `docs/elements/catalog.md` carries it as
+"docs-only, hardware-dependent; out of the CPU/RAM-only sandbox". No CHERI
+hardware in the sandbox is a blocking condition, and it outlives the track
+deferral.
 
 ## Why it is cited so often
 
@@ -65,9 +105,11 @@ note exists.
 1. **External judgment is cut** — Rocq, CompCert, and the Python oracle. The
    replacement is three semantically distinct judgment cores that must agree, and
    the criterion is *different formulations*: three encodings of one rule set
-   would be worth nothing. [[goals/independent-judgment]] holds it, and it is
-   **unbuilt with zero arcs**. The `Mach`-to-C backend went with the cut on
-   2026-09-01 (`d8bcec5`, `d0c5dd5`).
+   would be worth nothing. [[goals/independent-judgment]] holds it. ⚑ **Amended
+   2026-09-13: this read "unbuilt with zero arcs" and
+   [[arcs/independent-judgment-arc]] opened 2026-09-01 at `5a58f2b`.** It is
+   unbuilt and it is planned, which is the split the section above names. The
+   `Mach`-to-C backend went with the cut on 2026-09-01 (`d8bcec5`, `d0c5dd5`).
 2. **Every rung reading ENFORCED is enforcement against error, not against an
    adversary**, because 1 is unbuilt. [[status-ledger]]'s rungs measure reach:
    SEEDED means nothing calls it, IMPLEMENTED means reached and ungated, ENFORCED
@@ -82,3 +124,9 @@ falls in neither. The user layer is the known instance: `docs/decisions/`
 legitimates it, no `U#` row exists in the catalog or ledger, and work on it
 stopped mid-audit on 2026-08-30. An unclassified body of work is not the same as
 a deferred one, and this decision does not cover it.
+
+The 2026-09-10 ruling reaches the first clause of the deferral instruction and
+stops there. "Do not audit its documents" is a second instruction standing on
+its own reason, and it is unchanged. The ruling named homing as planning and
+fixed no boundary past it, so whether a design or a SPEC for an `OT` element is
+planning under this decision is unsettled and belongs to the author.

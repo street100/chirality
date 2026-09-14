@@ -3,7 +3,7 @@ node: records-baseline-alignment
 layer: navigation
 related: [records/README, status-ledger, open-edges, testing-floors, index]
 status: current
-updated: 2026-09-04
+updated: 2026-09-13
 ---
 
 # Baseline alignment arc
@@ -486,3 +486,14 @@ closed, or a recorded reason that the file it cites contradicts.
 - evidence: `.gitignore:1-14`, `docs/elements/README.md:16`, `docs/arcs/enforcement-arc.md:17`, `records/README.md:113`, `records/lane-a-record.md:33`, `docs/benchmarks/test-suite-wall-clock.md:11`, `.planning/DOC-CLEANUP-PASS.md:17`
 - checked:  2026-09-04
 - element:  UNASSIGNED
+
+## A decision whose reach was read wider than it was, 2026-09-13
+
+### BA-45 one word in the scope decision carried two deferrals
+
+- state:    FIXED
+- claim:    `docs/decisions/decision-scope.md` defers the ownership-and-trust track and instructs "Do not pull any of the deferred track into current work". Its section "What \"deferred\" means here, exactly" fixed one sense of the word, that archiving a deferred file for inactivity is a defect, and fixed nothing about the word's reach.
+- measured: the document moved, in this revisit. The author ruled on 2026-09-10 at `d307682`, recorded in `records/author-calls.md` under "Whether the orphan program reaches the `OT` track", that the deferral "is just an implementation work defer. says literally nothing about planning". The tree had read it the other way and acted on the reading: `docs/arcs/ownership-and-trust-arc.md:47` declines roster rows for seventeen elements because they "stay deferred with the track", and thirteen unrostered `design` elements were held out of the homing queue on the same reading. Verdict AMEND, and the deferral itself is unchanged: the author reaffirmed it in the same ruling and only its reach moved. `docs/decisions/decision-scope.md:52-87` now names two senses, **build-deferred** and **plan-deferred**, and states that this decision carries only the first; `:79-87` carries the second pair the author's instruction needs, **track deferral** against **blocking condition**, with E63 and the absent CHERI hardware as the worked example; `:39-40` points the deferral instruction at that section; `:128-132` records what the ruling does not reach, the audit exemption and the boundary past homing. One correction outside the trigger's reach was taken in passing at `:108-111`: consequence 1 read "unbuilt with zero arcs" and `docs/arcs/independent-judgment-arc.md` opened 2026-09-01 at `5a58f2b`. Two files still carry the conflated reading and each is its own unit: `docs/arcs/ownership-and-trust-arc.md:45-48` and `docs/elements/ledger.md:36-38`. PRB-84 in `records/lenses/problems.md` stays OPEN until both are repaired.
+- evidence: `docs/decisions/decision-scope.md:39-40`, `:52-87`, `:108-111`, `:128-132`, `records/author-calls.md` the row "Whether the orphan program reaches the `OT` track", `docs/arcs/ownership-and-trust-arc.md:45-48`, `docs/elements/ledger.md:36-38`, `docs/arcs/independent-judgment-arc.md:16`
+- checked:  2026-09-13
+- element:  none
