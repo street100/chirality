@@ -35,8 +35,10 @@ wins** (this column is a pointer, not a snapshot to maintain in parallel).
 - **Cites**: cross-links to side-project ledgers (`TUI:T#`, `scriba`) — see §Z.
 - **Track** (added 2026-08-31, the last column of every table below): which of the
   author's two tracks the row is on, per `docs/decisions/decision-scope.md`. `SH` = the current self-hosting track. `OT` = the
-  deferred ownership-and-trust track, which is not to be pulled into current work and
-  whose documents are not to be audited. `?` = UNSORTED, an author call.
+  ownership-and-trust track, **build-deferred** in the sense
+  `docs/decisions/decision-scope.md` fixes under §What "deferred" means here, exactly.
+  That section settles what the deferral reaches and what it leaves alone, and the audit
+  exemption in the same file stands on its own reason. `?` = UNSORTED, an author call.
   The sourcing rule and the UNSORTED list live in `SELF-IMPLEMENT-CATALOG.md`; this
   column mirrors it row for row and adds nothing of its own. `SH` is a track marker
   and asserts nothing about whether a row is required, scheduled, or started.

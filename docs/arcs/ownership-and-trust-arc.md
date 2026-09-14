@@ -3,7 +3,7 @@ node: arc-ownership-and-trust
 layer: navigation
 related: [arcs/README, goals/ownership-and-trust, goals/independent-judgment, arcs/independent-judgment-arc, decision-scope, decision-work-ids, index]
 status: current
-updated: 2026-09-02
+updated: 2026-09-13
 ---
 
 # Arc: the ownership and trust track
@@ -20,10 +20,18 @@ updated: 2026-09-02
 and [[goals/ownership-and-trust]] repeats the instruction: do not pull any of it
 into current work, and do not audit its documents.
 
-**This arc is opened unscheduled.** Nothing below is queued, and no session
-picks it up. It exists because the goal's own file was already carrying an
-arc's content, three minted elements and a state for each, in the tier that
-holds goals. `docs/arcs/README.md` puts that content here.
+⚑ **Amended 2026-09-13.** That deferral is **build-deferred**, fixed under
+§What "deferred" means here, exactly in the same file. It defers the build and
+leaves the planning alone, so this arc holds rows while nothing on it is built.
+The author ruled it 2026-09-10 at `d307682` and [[records/author-calls]] carries
+the words, under "Whether the orphan program reaches the `OT` track". This file
+had read the deferral the other way and declined seventeen rows on it.
+
+**Nothing here is queued for build.** No session builds an `OT` element. Writing
+and homing its rows is planning and stays open to a session. This arc exists
+because the goal's own file was already carrying an arc's content, three minted
+elements and a state for each, in the tier that holds goals.
+`docs/arcs/README.md` puts that content here.
 
 ## Why this arc exists
 
@@ -44,18 +52,28 @@ Three, and each state is the catalog's, read 2026-09-02.
 
 The catalog's `OT` category holds 20 rows, measured 2026-09-02, and `E71`
 carries `?`. This arc names the three the track's own sentence in `README.md`
-points at. The other seventeen are unsorted and stay deferred with the track, so
-a row here claims no more than it says.
+points at. **The other seventeen are owed a row here.** The track deferral does
+not reach homing, per `docs/decisions/decision-scope.md` §What "deferred" means
+here, exactly, so being deferred is no reason for an element to sit outside the
+roster. Writing those rows is its own unit and this file schedules nothing.
+
+**What an owed row records.** The author attached an instruction to the
+2026-09-10 ruling: the row says what is actually wanted when the track begins,
+and what stays deferred, and it names the blocking condition instead of the
+track. `docs/decisions/decision-scope.md` separates the two and carries E63 and
+the absent CHERI hardware as the author's worked example. A row whose only
+reason for being unbuilt is the scope call says that and names no other.
 
 ### Coverage
 
 ⚑ **Requirement 3 is served by no row**, enumerated as `GAP-08`: reaching the
 reference semantics in `lib/lowering/tal/spec.chiral` is adoption of a built
-thing, and every row here is deferred, so nothing schedules it.
+thing, and every row here is build-deferred, so nothing builds it. The row
+`GAP-08` wants is owed on the same footing as the seventeen above.
 
 Requirements 1, 2 and 4 are served: 1 by O1, 2 by O2, 4 by O3. Every row serves
-one. **Every row is deferred by author call**, so the coverage states what would
-be scheduled if the track reopened.
+one. **Every row is build-deferred by author call**, so the coverage states what
+would be built if the track resumed.
 
 ## REQUIREMENTS
 
@@ -82,9 +100,10 @@ arc's rows stay `unminted` by their own choice.
 
 ## Resume state
 
-**Where a session picks up.** Nowhere, by author call. Resuming this arc is an
-author decision and it belongs in `docs/decisions/` before it is work.
+**Where a session picks up.** The owed roster rows, and nothing that builds.
+Resuming the build is an author decision and it belongs in `docs/decisions/`
+before it is work.
 
-**What would unblock it.** A ruling that lifts the 2026-08-31 deferral. Until
-then the honest state of all three rows is deferred, and the two that are
+**What would unblock the build.** A ruling that lifts the 2026-08-31 deferral.
+Until then the honest state of all three rows is deferred, and the two that are
 half-built say so above rather than reading as in flight.

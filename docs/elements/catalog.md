@@ -51,8 +51,11 @@ per `docs/decisions/decision-scope.md`:
   enough to write its own tooling, with zero Python. Every row the deferred track does not
   claim. SH is a track marker and carries no claim that a row is required for self-hosting,
   scheduled, or started.
-- **OT** — the deferred ownership-and-trust track. Do not pull it into current work, and do
-  not audit its documents.
+- **OT** — the ownership-and-trust track, **build-deferred** in the sense
+  `docs/decisions/decision-scope.md` fixes under §What "deferred" means here, exactly.
+  Do not pull it into current work, and do not audit its documents. The reach of that
+  first instruction is the decision's to state, and this bullet is the source the LEDGER's
+  Track column mirrors, so it carries the pointer rather than a second definition.
 - **?** — UNSORTED. Both tracks have a claim and only the author can settle it. Listed under
   §UNSORTED at the end of this file.
 

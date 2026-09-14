@@ -1181,15 +1181,15 @@
 
 ### PRB-84 one word carries two deferrals, and the tree reads the wrong one
 
-- state:    OPEN
+- state:    FIXED
 - author:   unreviewed
 - note:     none
 - level:    doc
 - about:    docs/decisions/decision-scope.md
 - claim:    `docs/decisions/decision-scope.md` defers the ownership-and-trust track and `docs/elements/ledger.md:36-38` bars `OT` work from current work and its documents from audit.
-- measured: **Ruled by the author 2026-09-10: that deferral is an implementation deferral and says nothing about planning.** Homing an element is planning, so a deferred element still takes a roster row. The tree had read the single word the other way and acted on it: `docs/arcs/ownership-and-trust-arc.md:45-48` declines rows for seventeen elements because they "stay deferred with the track", and 13 unrostered `design` orphans were suppressed from the homing queue on the same reading. No vocabulary in the tree separates the two senses, so the next reader repeats it.
-- evidence: `docs/arcs/ownership-and-trust-arc.md:45-48`, `docs/elements/ledger.md:36-38`, `records/author-calls.md` the row "Whether the orphan program reaches the `OT` track", ruled at `d307682`
-- checked:  2026-09-10
+- measured: **Ruled by the author 2026-09-10: that deferral is an implementation deferral and says nothing about planning.** Homing an element is planning, so a deferred element still takes a roster row. The tree had read the single word the other way and acted on it: `docs/arcs/ownership-and-trust-arc.md:45-48` declines rows for seventeen elements because they "stay deferred with the track", and 13 unrostered `design` orphans were suppressed from the homing queue on the same reading. No vocabulary in the tree separates the two senses, so the next reader repeats it. **FIXED 2026-09-13.** The vocabulary landed at `eb70d68`: `docs/decisions/decision-scope.md:52-87` names **build-deferred** and **plan-deferred** and states that the scope call carries only the first, and `:79-87` separates the track deferral from a blocking condition, with E63 and the absent CHERI hardware as the worked example. This run carried that vocabulary into the two files that still contradicted it. `docs/elements/ledger.md:36-41` marks `OT` **build-deferred** and cites the section for the reach instead of restating one undifferentiated deferral; the audit exemption stands there on its own reason. `docs/arcs/ownership-and-trust-arc.md:53-66` replaces the sentence that declined rows for seventeen elements: those seventeen are owed a row, and the shape the author's attached instruction asks of each row is stated for whoever writes them. `:23-28`, `:71-75` and `:103-105` carry the same correction into the arc's header, its coverage and its resume state. No roster row was written and nothing was homed; that is its own unit. A search over `docs/` and `records/` found no third site declining to plan, name, roster or design on the strength of the track deferral. `docs/elements/catalog.md:54` repeats the decision's own instruction without a pointer to the reach section and declines no planning, so it is a restatement owed a pointer and no instance of this defect.
+- evidence: `docs/decisions/decision-scope.md:52-87` and `:79-87`, `docs/elements/ledger.md:36-41`, `docs/arcs/ownership-and-trust-arc.md:23-28`, `:53-66`, `:71-75`, `:103-105`, `records/author-calls.md` the row "Whether the orphan program reaches the `OT` track", ruled at `d307682`, `records/baseline-alignment.md` BA-45, `docs/elements/catalog.md:54` (the source bullet the LEDGER Track column mirrors, given the same pointer on merge)
+- checked:  2026-09-13
 - owner:    none
 - from:     none
 
