@@ -1220,3 +1220,101 @@
 - checked:  2026-09-13
 - owner:    none
 - from:     none
+
+### PRB-87 the crossing table declares an invariant against a file that does not exist
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/lowering/tal/crossing-wraps.chiral
+- claim:    `lib/lowering/tal/crossing-wraps.chiral:8-11` declares an invariant: *"this must agree with lib/sys-linkage.chiral `sys-bindings` (the linkage-side authority, consulted by native.py)"*, and names two tests that load `sys-linkage` to rebuild `sys-bindings` from the table. The same header at `:3-4` sends the reader to `native.py:294`, `_conv_code`'s `sys_bindings` branch, for the ERASE rewrite it describes.
+- measured: **Both named authorities are absent, and the real dependency runs the opposite way.** There is no `lib/sys-linkage.chiral`: `find lib -name sys-linkage.chiral` returns `lib/lowering/tal/sys-linkage.chiral` alone. `native.py` went out with the Python backend and `find . -name native.py` returns nothing. The file that does exist DERIVES what the header calls the authority. `lib/lowering/tal/sys-linkage.chiral:24` imports `lowering/tal/crossing-wraps`; `:90-92` define `cw->binds`; `:93` reads `(def sys-bindings (List SysBinding) (cw->binds crossing-wraps))`; and its own comment at `:87-89` says so, *"sys-bindings is DERIVED from crossing-wraps (the single authority the erase image also reads) -- so the erase-side routing and the linkage-side binding table cannot drift"*. A row added to `crossing-wraps` therefore owes no second edit anywhere, while the header instructs the next editor to make one against a path that resolves to nothing. The routing behaviour is correct and the stale header is the whole defect. Found by `E199`'s design run and recorded at `docs/arcs/native-window-arc.md:94-97`. **The owner is absent.** `E199` adds one row to this table and its SPEC is unwritten (`docs/arcs/native-window-arc.md:81-82`), so the comment repair has a natural carrier and no document assigns it.
+- evidence: re-runnable: `find lib -name sys-linkage.chiral` returns `lib/lowering/tal/sys-linkage.chiral` alone; `grep -c 'cw->binds' lib/lowering/tal/sys-linkage.chiral` returns 4. `lib/lowering/tal/crossing-wraps.chiral:3-4`, `:8-11`, `lib/lowering/tal/sys-linkage.chiral:24`, `:87-93`, `docs/arcs/native-window-arc.md:81-82`, `:94-97`
+- checked:  2026-09-15
+- owner:    none
+- from:     none
+
+### PRB-88 a def calling an unrouted extern is blamed on the wrong crossing
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/lowering/upper/lower.chiral:278
+- claim:    `lib/lowering/upper/lower.chiral:278` is the single site that builds this message, `(none (er-skip (str-cat "extern does not lower: " n)))`, where `n` is the head of the application whose signature lookup in `(ce-prims ce)` missed at `:277`. The message names the extern whose lookup failed.
+- measured: **The name it prints belongs to a crossing that lowers.** Two probe roots, measured 2026-09-15 against `bin/chirality-bin`: `socketpair` plus `pool-create` passes `bin/chirality check` at exit 0; the identical root with one `sock-send-fd` call added fails at exit 1 with `no emitted label for entry compile-main | skip chain for compile-main: compile-main: extern does not lower: socketpair`. `sock-send-fd` carries no `crossing-wraps` row (PRB-71); `socketpair` carries one at `lib/lowering/tal/crossing-wraps.chiral:39`, and the passing root proves it lowers. The blame therefore names the def's scrutinee crossing and says nothing about the call that failed. `E199`'s audit reproduced this from fresh sources at the byte-identical message, and `docs/arcs/native-window-arc.md:99-101` records it as one of two defects `E199` leaves standing. **The measurement this row owes, which no run has taken:** whether the string is wrong, or `(ce-prims ce)` genuinely lacks `socketpair` in the failing compile. The first repair sits in `lib/lowering/upper/lower.chiral` and the second in whatever populates the prim signature table, so the two have different fixes and this row cannot name one until that measurement lands. **The owner is absent:** `docs/arcs/native-window-arc.md:99` calls this a defect `E199` does not fix and owes it a row, and no roster row holds it. It survives any fix to `E199`, because the blame site is the lowering front end.
+- evidence: re-runnable: `printf '(import "prelude/prelude")\n(import "ports/sock")\n(import "ports/pool")\n(import "ports/fd")\n(def compile-main (=> I64 I64) (lam (_) (case (socketpair unit) ((sp-err m) 1) ((sp-ok a b) (case (pool-create 16384) ((pool-r pl fd) (do (sock-close a) (sock-close b) (fd-close fd) (pool-close 16384 pl) 42)))))))\n' > /tmp/pa.chiral && ORIG_DIR=/tmp bin/chirality check /tmp/pa.chiral` exits 0, and the same root with the `pool-r` arm's body replaced by `(case (sock-send-fd a (str->bytes "x") fd) ((sfd-err e s f) (do (sock-close s) (fd-close f) (sock-close b) (pool-close 16384 pl) 1)) ((sfd-ok s) (do (sock-close s) (sock-close b) (pool-close 16384 pl) 42)))` exits 1 printing `extern does not lower: socketpair`. `lib/lowering/upper/lower.chiral:275-278`, `lib/lowering/tal/crossing-wraps.chiral:39`, `docs/arcs/native-window-arc.md:99-101`, [[records/lenses/problems]] PRB-71
+- checked:  2026-09-15
+- owner:    none
+- from:     none
+
+### PRB-89 the environment crossing family does not lower and the catalog files it BUILT
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    element
+- about:    E107
+- claim:    `docs/elements/catalog.md:442` files E107, the porttype-consuming native close family, as **BUILT**, names `env-close` among the five members it covers, quotes it as declared at `lib/ports/clock.port:40`, and cites the crossing rows as `lib/lowering/tal/crossing-wraps.chiral:42-44`. `docs/elements/ledger.md:204` files E107 `built`.
+- measured: **The cited rows route three crossings and no environment crossing is among them.** `crossing-wraps.chiral:42-44` carry `sock-close`, `lsock-close` and `fd-close`, each to `nb-sys-close`. `grep -c 'env-' lib/lowering/tal/crossing-wraps.chiral` returns **0**, and `grep -rn 'nb-sys-env\|nb-env' lib/lowering/tal/` returns nothing, so the family lacks a floor crossing as well as a routing row. All three members sit in one file under one comment: `lib/ports/clock.port:34` declares `env-view`, `:39` `env-open` and `:40` `env-close`, with `:35-38` reading *"INTERIM ambient acquisition/disposal for the Env cap"*. Measured 2026-09-15: a root calling `env-open` and `env-close` fails `bin/chirality check` at exit 1 with `extern does not lower: env-open`, and **11 of the 24 files under `prog/demo/` name `env-open`**. So a BUILT cell names a member with no routing, on a citation that routes the other three. Found by `native-window/W6`'s design run. **The owner is absent for both halves.** No element owns the environment lowering: `docs/arcs/native-window-arc.md:57-58` rosters `W5` for `sock-send-fd` and `W6` for a gate over `prog/demo/`, and neither reaches `env-*`. The catalog cell correction has no row either.
+- evidence: re-runnable: `grep -c 'env-' lib/lowering/tal/crossing-wraps.chiral` returns 0; `grep -rln 'env-open' prog/demo/ | wc -l` returns 11; `printf '(import "prelude/prelude")\n(import "ports/clock")\n(def compile-main (=> I64 I64) (lam (_) (let (1 e0 (env-open unit)) (do (env-close e0) 42))))\n' > /tmp/pe.chiral && ORIG_DIR=/tmp bin/chirality check /tmp/pe.chiral` exits 1 printing `extern does not lower: env-open`. `docs/elements/catalog.md:442`, `docs/elements/ledger.md:204`, `lib/lowering/tal/crossing-wraps.chiral:42-44`, `docs/arcs/native-window-arc.md:57-58`
+- checked:  2026-09-15
+- owner:    none
+- from:     none
+
+### PRB-90 `chirality check` returns OK on files whose externs cannot lower
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    bin/chirality:171-172
+- claim:    `docs/definitions/working-discipline.md:97-99` carries the structural rule: a subcommand dispatching to a floor this tree lacks is a gate that cannot fail, and it reads on documents as well as on code, because a check aimed at a guess passes by looking at nothing.
+- measured: **`chirality check` is that gate, and the mechanism is one appended stub.** `bin/chirality:171-172` reads `grep -q '(def compile-main' "$blob" || printf '(def compile-main (=> I64 I64) (lam (chirality-check-arg) 0))\n' >>"$blob"`. The emit walk starts at `compile-main`, so on a file carrying no entry the walk starts at a constant-returning lambda, reaches no def in the module, and asks no extern to lower. Measured over `prog/demo/` 2026-09-15: **18 of 24 files return OK and 6 refuse**, and `_recurse-ceiling.prog` is the only one of the 24 carrying a `compile-main` of its own, so the stub is appended for the other 23. Nine of the 18 that return OK name `env-open`, which cannot lower (PRB-89). The mechanism reproduces in two files differing by one identifier: the same body under `(def compile-main ...)` refuses with `extern does not lower: env-open`, and under `(def env-probe ...)` returns OK. This is how the `sock-send-fd` blocker went unnoticed while the demos were described as running. `docs/arcs/native-window-arc.md:111-113` records that no gate reads `prog/demo/`, and the verb that does read them says OK. **The owner is absent for the `check` semantics.** `native-window/W6` (`docs/arcs/native-window-arc.md:58`) would put a gate over `prog/demo/` and catch the symptom; nothing rosters the appended stub. PRB-03 records a second and distinct defect at the same two lines, the bare `grep` over blob text.
+- evidence: re-runnable: `for f in prog/demo/*; do ORIG_DIR=$PWD bin/chirality check "$f" >/dev/null 2>&1 && echo OK || echo FAIL; done | sort | uniq -c` reads 18 OK and 6 FAIL; `grep -rl '^(def compile-main' prog/demo/` returns `prog/demo/_recurse-ceiling.prog` alone; `printf '(import "prelude/prelude")\n(import "ports/clock")\n(def compile-main (=> I64 I64) (lam (_) (let (1 e0 (env-open unit)) (do (env-close e0) 42))))\n' > /tmp/pe.chiral && ORIG_DIR=/tmp bin/chirality check /tmp/pe.chiral` exits 1, and the same file with the entry renamed `env-probe` exits 0. `bin/chirality:171-172`, `docs/definitions/working-discipline.md:97-99`, `docs/arcs/native-window-arc.md:58`, `:111-113`, [[records/lenses/problems]] PRB-03, PRB-89
+- checked:  2026-09-15
+- owner:    none
+- from:     none
+
+### PRB-91 `_recurse-ceiling.prog`'s stated exclusion reason is stale
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    tools/test/run-tests.sh:159-162
+- claim:    `tools/test/run-tests.sh:159-162` gives the reason for excluding `_recurse-ceiling`: *"a diagnostic that is SUPPOSED to fail. Its header says so: 'increment N until B1 produces a runnable ELF that segfaults or B1 itself fails'. It probes the native recursion ceiling by breaking."*
+- measured: **It never reaches the ceiling.** Reproduced 2026-09-15 through Phase 7's own route: `bin/chirality check prog/demo/_recurse-ceiling.prog` fails at exit 1 with `load: arrow needs at least a domain and codomain`, a load-time refusal on the root's own signature. `prog/demo/_recurse-ceiling.prog:15` declares `(def compile-main (-> I64)`, one type where the arrow demands a domain and a codomain, so the file is refused before any recursion runs and `recurse-n 500` at `:16` is never reached. The exclusion stays correct and the reason attached to it is wrong, which makes the entry unfalsifiable: repair the arrow and the root still fails, for a cause the comment does not describe. `tools/test/run-tests.sh:154-155` states the property this breaks, that a KNOWN root which starts passing is reported so the list cannot rot silently. **The owner is absent.** No roster row holds the suite's exclusion list.
+- evidence: re-runnable: `ORIG_DIR=$PWD bin/chirality check prog/demo/_recurse-ceiling.prog` exits 1 printing `load: arrow needs at least a domain and codomain`. `prog/demo/_recurse-ceiling.prog:15-16`, `tools/test/run-tests.sh:154-155`, `:159-162`, `:173`
+- checked:  2026-09-15
+- owner:    none
+- from:     none
+
+### PRB-92 the suite documents five excluded roots and excludes three
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    tools/test/run-tests.sh:157-166
+- claim:    `tools/test/run-tests.sh:157-166` names five excluded roots with their reasons: `t5_utf8`, `t5_vt_parser` and `t6_apc_roundtrip` as pre-existing TUI breakage carried over from the old tree's own KNOWN_FAIL list, `_recurse-ceiling` as a diagnostic supposed to fail, and `e42_supervisor_accept` for binding `sock-connect`. `:153-155` states the contract: every root in the tree is swept, the known-failing ones are listed by name and reason, and a KNOWN one that starts passing is reported so the list cannot rot silently.
+- measured: **`KNOWN_FAIL` carries three of the five.** `tools/test/run-tests.sh:173` reads `KNOWN_FAIL=" t5_utf8.prog _recurse-ceiling.prog e42_supervisor_accept.prog "`. `t5_vt_parser.prog` and `t6_apc_roundtrip.prog` are absent from it and both exist as sweepable roots: `grep -rl '^(def compile-main' lib prog` returns `prog/scriba/samples/t5_vt_parser.prog` and `prog/scriba/samples/t6_apc_roundtrip.prog`. Phase 7 matches by basename, `rb="$(basename "$rootf")"` at `:178` and `case "$KNOWN_FAIL" in *" $rb "*)` at `:183-184`, so a name the comment documents and the variable omits is silently inert: those two roots are graded as ordinary roots, and whether they pass or fail, no NEWPASS line can ever fire for them. Which side moves, the comment down to three or the variable up to five, turns on whether the two roots still break, which this row does not measure. **The owner is absent.** No roster row holds the suite's exclusion list.
+- evidence: re-runnable: `grep -c 't5_vt_parser' tools/test/run-tests.sh` returns 1, the comment line; `grep -n 'KNOWN_FAIL=' tools/test/run-tests.sh` returns `:173` with three entries; `grep -rl '^(def compile-main' lib prog | grep -E 't5_vt_parser|t6_apc_roundtrip'` returns both files. `tools/test/run-tests.sh:153-155`, `:157-166`, `:173`, `:178`, `:183-184`, `prog/scriba/samples/t5_vt_parser.prog`, `prog/scriba/samples/t6_apc_roundtrip.prog`
+- checked:  2026-09-15
+- owner:    none
+- from:     none
+
+### PRB-93 a ruled question is still documented as a standing author call
+
+- state:    OPEN
+- author:   unreviewed
+- note:     none
+- level:    doc
+- about:    docs/definitions/testing-floors.md:69
+- claim:    `docs/definitions/testing-floors.md:69`, in the tal floor checker's row, states *"Which suite phase a new gate takes is a standing author call, `records/author-calls.md`"*, and the same cell reports the number contested across four documents.
+- measured: **It was ruled nine days before this row, and the ruling names this file.** `tools/test/run-tests.sh:348-354` carries it: *"RULED 2026-09-06 by the author: native tests and harnesses, and this file is the only authority for a phase number"*, with the rule that a gate takes the first number colliding with nothing, 8 to 12 owed to unported old-tree phases and 21 to 23 held for Lane B. `records/author-calls.md:64` files the row `ruled` under the same date and quotes the same sentence. The comment at `:352-354` states the repair this row records as unmade: *"tal-check.sh, crypto.sh and testing-floors.md each stated a different answer for 21-23; they are corrected to point here rather than restate it"*. Two of the three were corrected and the third was left. `.planning/protocol/workflow.md` fixes the direction: source with its tests outranks a decision doc, so `testing-floors.md:69` is repointed at `run-tests.sh:348-354` and the standing-call sentence goes. **The owner is absent.** `presentability/D3` (`docs/arcs/presentability-arc.md:59`) covers `chirality verify` and its citations, one of which sits in this same file, and reaches no further; no row holds this sentence.
+- evidence: re-runnable: `grep -n 'standing author call' docs/definitions/testing-floors.md` returns 69. `docs/definitions/testing-floors.md:69`, `tools/test/run-tests.sh:348-354`, `:352-354`, `records/author-calls.md:64`, `docs/arcs/presentability-arc.md:59`
+- checked:  2026-09-15
+- owner:    none
+- from:     none
