@@ -55,7 +55,7 @@ Grepped 2026-09-03: zero hits for xdg, seat, pointer or keyboard across
 | `native-window/W3` | negotiated pool sizes, so resize is honored | shell | law | new | 4 | open | `unminted` |
 | `native-window/W4` | text on screen, bitmap font first | text | primitive | new | 3 | open | `unminted` |
 | `native-window/W5` | the fd-passing crossing lowers: `sock-send-fd` has no entry in `crossing-wraps.chiral`, so `wl-client.chiral:201` does not lower and nothing reaches a screen. The server half (`sock-listen`, `sock-accept`, and a `bind` extern that has never existed) is E29's and leaves this row for `W7`, per the E199 design | shell | port | connect | 1 | minted | `E199` |
-| `native-window/W6` | a gate reads `prog/demo/`, which is why W5 went unnoticed while the demos were described as running | shell | tool | new | 1 | open | `unminted` |
+| `native-window/W6` | a gate reads `prog/demo/`, which is why W5 went unnoticed while the demos were described as running | shell | tool | new | 1 | designed | `unminted` |
 
 ### Coverage
 
@@ -81,13 +81,17 @@ compositor: `records/author-calls.md` carries the ruling. `W5`'s design passed
 its audit at DESIGN level with no author-tier FLAG and minted `E199`. **Next:
 `W6`**, then `E199 --spec`.
 
-**What `W5`'s design measured, and the arc's own text was wrong on three
-counts.** The table carries 45 rows and not 44. The `sendmsg`+`SCM_RIGHTS`
+**What `W5`'s design measured, and the arc's own text was wrong on two
+counts.** The `sendmsg`+`SCM_RIGHTS`
 floor crossing is BUILT at `lib/lowering/tal/sys.chiral:366`, consed into
 `sys-lib` (`lib/lowering/tal/sys.chiral:1308`) at `:1338`, and permitted at
 `lib/lowering/tal/target-linux.manifest:40`, so the delta is one TAL wrapper
 plus one table row. The server half is E29's and leaves the row for a proposed
-`W7`. `crossing-wraps.chiral:8-11` declares an invariant against
+`W7`. The table's 44 routing rows are the honest count, re-verified 2026-09-15
+by `E199`'s design audit: `grep -c '(pair '` returns 45 because `cw-lookup`'s
+destructure at `crossing-wraps.chiral:64` matches the same pattern. Two runs
+and one orchestrator reported 45 off that grep before the audit opened the
+line. `crossing-wraps.chiral:8-11` declares an invariant against
 `lib/sys-linkage.chiral`, which does not exist:
 `lib/lowering/tal/sys-linkage.chiral:87-93` derives `sys-bindings` FROM
 `crossing-wraps`, so a row added there owes no second edit.
