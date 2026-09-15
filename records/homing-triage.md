@@ -126,7 +126,7 @@ Four new arcs are proposed across the 21 `new-arc` rows: `orchestration-engine`
 | E49 | `design` | `SH` | real surface syntax, stage 4 | NEW: surface-syntax | **new-arc** | serves [[goals/readable-surface]]; its two arcs are diagnostics and file-types and neither states surface syntax |
 | E50 | `built` | `SH` | bidirectional and mutual termination, lexicographic measures | - | **author-call** | Q2 |
 | E51 | `built` | `SH` | sys-face linkage: upper-effectful chirality reaches syscalls through `sys-tal` | - | **author-call** | Q1, `docs/goals/README.md:142` |
-| E52 | `design` | `?` | kernel-core certificate split: spec artifact plus a small re-checking core | [[arcs/module-split-arc]] or [[arcs/ownership-and-trust-arc]] | **author-call** | `docs/arcs/module-split-arc.md:68` against `docs/arcs/ownership-and-trust-arc.md:43` |
+| E52 | `design` | `OT` | kernel-core certificate split: spec artifact plus a small re-checking core | [[arcs/module-split-arc]] or [[arcs/ownership-and-trust-arc]] | **author-call** | `docs/arcs/module-split-arc.md:68` against `docs/arcs/ownership-and-trust-arc.md:43` |
 | E54 | `design` | `OT` | split-provider and split-role: guarded combine, per-axis tiers | [[arcs/ownership-and-trust-arc]] | **clear** | `docs/arcs/ownership-and-trust-arc.md:30` |
 | E55 | `design` | `OT` | C-bridge evidence elaborator, attestation first | [[arcs/bridge-arc]] | **clear** | `docs/arcs/bridge-arc.md:59` |
 | E57 | `design` | `OT` | staging and binding-time modality: link, load and runtime in the type | [[arcs/ownership-and-trust-arc]] | **clear** | `docs/arcs/ownership-and-trust-arc.md:30` |
@@ -146,8 +146,8 @@ Four new arcs are proposed across the 21 `new-arc` rows: `orchestration-engine`
 | E74 | `design` | `OT` | tier carrier: a per-axis split-role tier riding the type | [[arcs/ownership-and-trust-arc]] | **clear** | `docs/arcs/ownership-and-trust-arc.md:30` |
 | E75 | `design` | `SH` | typed ABI-layout abstraction above the tal floor | [[arcs/native-protocol-arc]] | **clear** | `docs/arcs/native-protocol-arc.md:41`, row `N9` at `:68` |
 | E76 | `built` | `SH` | syscall chokepoint: an enumerated crossing-to-number registry | NEW: syscall-custody | **new-arc** | serves [[goals/enforcement]]; `docs/arcs/tool-authority-arc.md:4` lists `decision-syscall-governance` and no arc claims it |
-| E77 | `design` | `?` | rung-1 seccomp default-deny derived from E76's permitted set | NEW: syscall-custody | **new-arc** | serves [[goals/enforcement]] |
-| E78 | `design` | `?` | number-in-type attenuation: the `ti-sys` immediate in a refinement | NEW: syscall-custody | **new-arc** | serves [[goals/enforcement]] |
+| E77 | `design` | `SH` | rung-1 seccomp default-deny derived from E76's permitted set | NEW: syscall-custody | **new-arc** | serves [[goals/enforcement]] |
+| E78 | `design` | `SH` | number-in-type attenuation: the `ti-sys` immediate in a refinement | NEW: syscall-custody | **new-arc** | serves [[goals/enforcement]] |
 | E79 | `built` | `SH` | mutual and forward data groups: SCC scan plus group judge | - | **author-call** | Q1, `docs/goals/README.md:142` |
 | E80 | `design` | `OT` | capability reification to `main`: the profile grants the entry point | [[arcs/tool-authority-arc]] or [[arcs/ownership-and-trust-arc]] | **author-call** | `docs/arcs/tool-authority-arc.md:166` against `docs/arcs/ownership-and-trust-arc.md:30` |
 | E86 | `superseded` | `SH` | generic 3-arg `ioctl` crossing and typed terminal wrappers | - | **author-call** | Q3, superseded by E99 |
@@ -313,7 +313,13 @@ no goal reaches.
   `**E42**` and it is the only bolded one in the file, so a parser anchored on a
   bare `E\d+` dropped it. Corrected on merge; the other 143 rows' state and track
   were cross-checked against the ledger and agree.
-- **Five elements carry `?` as their track**: E52, E77, E78, E166 and E167.
+- **Five elements carried `?` as their track when this ran**: E52, E77, E78, E166
+  and E167. ⚑ **Two still do.** The author sorted E52 to `OT` and E77 and E78 to
+  `SH` on 2026-09-15, each re-derived from the sourcing rule at
+  `docs/elements/catalog.md:59-63`, and this file's three Track cells are written
+  to match. E166 and E167 still read `?`: their 2026-09-01 parking ruling settles
+  whether the work happens and names neither track token, so
+  `records/author-calls.md:369` stays open on them.
 - **`ledger-lint` check AE reads 38 prose mentions as coverage.** Of those 38,
   the substantive ones resolve to 14 elements this triage could home from the
   mention; the rest are arc-local row ids that happen to spell `E1` to `E4`

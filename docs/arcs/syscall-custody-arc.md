@@ -35,8 +35,9 @@ proposed this arc; the author approved opening it 2026-09-14.
 
 Condition 1 is the goal's rung question and each of the five sits on it
 differently. E76's row reads `built (ENFORCED)` and names two artifacts that do
-not exist. E77 and E78 are `design` rows whose track cell is `?`, so their rows
-cannot yet state why the capability sits below ENFORCED. E162 has no mechanism at
+not exist. E77 and E78 are `design` rows and their track cells read `SH` since
+the author's ruling of 2026-09-15, so why each sits below ENFORCED is now the
+row's own to state. E162 has no mechanism at
 any rung. E164 is the SEEDED pattern the goal names, turned on a gate: the
 narrowing works and the tree declines to opt in.
 
@@ -144,7 +145,8 @@ Six, each with the observation beside it, measured 2026-09-14.
    seccomp-bpf filter derived from the permitted set and installed at process
    start, with a mutant that issues an unpermitted call and dies. Today
    `grep -rn seccomp` over `lib/`, `prog/`, `tools/` and `bin/` returns one
-   comment at `tools/test/linear-mint.sh:28`. ⚑ **Gated on the track call below.**
+   comment at `tools/test/linear-mint.sh:28`. ⚑ **The track call that gated this
+   requirement cleared 2026-09-15: `E77` reads `SH`.**
 
 5. **Widening the permitted set is attributable.** Observed as an artifact that
    records who authorised a `(sys-row ...)` addition, read where the set is
@@ -166,8 +168,8 @@ number.**
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
 | `syscall-custody/SC1` | the permitted set becomes an artifact the claim can rest on: rows distinguishable inside the file rather than by a comment `sexp.chiral` drops at the lexer, and a state claim whose cited artifacts resolve. The mechanism is built and runs on every compile (`lib/lowering/compile-emit.chiral:296`), and the residue is the artifact and the record. **Wanted when the row is taken up**: the seven `16` rows at `lib/lowering/tal/target-linux.manifest:30-35` and `:60` carrying the ioctl request as a field, and the six dead-name spans retired. **Blocking condition**: none measured. Nothing external gates this row | G1 | law | bind | 1, 2 | built | `E76` |
-| `syscall-custody/SC2` | the `ti-sys` immediate carried in a refinement, so a profile says which syscalls one component reaches as a subtyping fact. The two halves are built and unjoined: the refinement decision procedure at `lib/typing/refine.chiral:13-18` is inside the compiler blob, and the `subtype` relation at `lib/typing/kernel.chiral:799` is IMPLEMENTED and unapplied to grant narrowing (`docs/banks/capability.md:193-201`). The grain below H8, which stops at the program. **Blocking condition**: the track call below, and `SC5`, because a finer grain over a declaration nobody writes buys nothing | G2 | law | connect | 3 | open | `E78` |
-| `syscall-custody/SC3` | a seccomp-bpf default-deny filter derived from the permitted set and installed at process start, so the kernel refuses what a native-codegen bug might issue through a non-chirality path. Nothing exists: one comment at `tools/test/linear-mint.sh:28` is the whole tree. Vanishes at rung 2. **Blocking condition**: the track call below, which decides whether adversary-facing hardening is current work at all, and `SC2`, which decides what "the permitted set" names | G3 | primitive | new | 4 | open | `E77` |
+| `syscall-custody/SC2` | the `ti-sys` immediate carried in a refinement, so a profile says which syscalls one component reaches as a subtyping fact. The two halves are built and unjoined: the refinement decision procedure at `lib/typing/refine.chiral:13-18` is inside the compiler blob, and the `subtype` relation at `lib/typing/kernel.chiral:799` is IMPLEMENTED and unapplied to grant narrowing (`docs/banks/capability.md:193-201`). The grain below H8, which stops at the program. **Blocking condition**: `SC5`, because a finer grain over a declaration nobody writes buys nothing. ⚑ **The track call this row also waited on cleared 2026-09-15**: `E78` reads `SH` at `docs/elements/catalog.md:299` and `docs/elements/ledger.md:107` | G2 | law | connect | 3 | open | `E78` |
+| `syscall-custody/SC3` | a seccomp-bpf default-deny filter derived from the permitted set and installed at process start, so the kernel refuses what a native-codegen bug might issue through a non-chirality path. Nothing exists: one comment at `tools/test/linear-mint.sh:28` is the whole tree. Vanishes at rung 2. **Blocking condition**: `SC2`, which decides what "the permitted set" names. ⚑ **The track call this row also waited on cleared 2026-09-15**: `E77` reads `SH` at `docs/elements/catalog.md:298` and `docs/elements/ledger.md:197`, and the ruling settled the adversary question with it | G3 | primitive | new | 4 | open | `E77` |
 | `syscall-custody/SC4` | who may widen the permitted set, recorded where the set is read. E76's landing made `lib/lowering/tal/target-linux.manifest` load-bearing, so controlling it controls what can be built, and nothing records authorship or authority. The ledger's own four candidates are signed rows, a separate grant artifact, auth-to-widen as a profile the compiler checks, and attestation-at-staging per `decision-deployment-custody`. Must not reinvent the four grant operations at `docs/banks/capability.md:193-246`. **Blocking condition**: `SC1`, because every candidate keys on an artifact identity and FD-27 measured that identity as unstable | G4 | decision | new | 5 | open | `E162` |
 | `syscall-custody/SC5` | the governed path made the cheap one: a default profile, inference from the crossings a program already reaches, a dev relaxation, or generated scaffolding. `manifest-offender` (`lib/lowering/compile-emit.chiral:259`) already computes the set a program calls, which is the input an inference would need. Six declarations exist, all under `prog/demo/`, and no shipping path reaches one. **Blocking condition**: none measured. `decision-profiles` default-flipping is the shape and the choice among the four is the row | G5 | decision | connect | 6 | open | `E164` |
 
@@ -248,10 +250,15 @@ requirements are observable by `find` and by reading 40 lines, and `SC4` is
 blocked on it. `SC5` is the second for the same reason: no open call, and `SC2`
 is blocked on it.
 
-⚑ **`E77` and `E78` carry `?` as their track and this run does not sort it.**
-[[records/author-calls]] carries the row as "The six `?` UNSORTED tracks",
-raised 2026-08-31 by `docs/elements/catalog.md` §UNSORTED and tracked
-2026-09-10. The catalog's own words for each:
+⚑ **`E77` and `E78` carried `?` as their track when this arc opened, and both
+were sorted `SH` on 2026-09-15.** The author re-derived each from the catalog's
+own sourcing rule and neither fires a clause, so the rule's default stands;
+`docs/elements/catalog.md` §UNSORTED carries both derivations beside the words
+they replace. [[records/author-calls]] still carries the row as "The six `?`
+UNSORTED tracks", raised 2026-08-31 by `docs/elements/catalog.md` §UNSORTED and
+tracked 2026-09-10, and it stays open on `E166` and `E167` alone. The catalog's
+words at the time this arc drew its roster, kept because the roster was drawn
+against them:
 
 - **E77.** *"No clause reaches it: `docs/decisions/decision-scope.md` list does
   not name it, it is in §XII, and LEDGER files it **SYS**. But its whole content
@@ -266,11 +273,14 @@ raised 2026-08-31 by `docs/elements/catalog.md` §UNSORTED and tracked
   answer changes: *"Whether the refinement fragment carries syscall attenuation
   now."*
 
-The call is carried on `SC2` and `SC3` rather than treated as a gate, following
-[[arcs/tool-authority-arc]]'s three open calls and [[arcs/tuning-arc]]'s
-precedent for drawing a roster while a call is out. Homing is planning:
-`docs/decisions/decision-scope.md` §What "deferred" means here, exactly makes a
-scope deferral build-deferred, so a deferred element still takes a row.
+The call was carried on `SC2` and `SC3` as a blocking condition. It was never a
+gate, following [[arcs/tool-authority-arc]]'s three open calls and
+[[arcs/tuning-arc]]'s precedent for drawing a roster while a call is out. Both
+blocking conditions now record it cleared, and the precedent held: the roster
+drawn under the open call needed no row rewritten when the answer came. Homing
+is planning: `docs/decisions/decision-scope.md` §What "deferred" means here,
+exactly makes a scope deferral build-deferred, so a deferred element still
+takes a row.
 
 ⚑ **This arc is unanchored on `arc -> goal done-condition`.**
 `docs/goals/enforcement.md` condition 1 names `[[arcs/enforcement-arc]]` rows

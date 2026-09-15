@@ -372,10 +372,10 @@
 - level:    element
 - about:    E77
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E77 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E77. Title: Rung-1 seccomp default-deny: a seccomp-bpf filter derived from the E76 permitted set, installed at process sta
-- evidence: docs/elements/catalog.md:295, docs/elements/ledger.md:195
-- checked:  2026-09-05
-- owner:    none
+- measured: ⚑ CORRECTED 2026-09-15, and the row's state needs an author ruling to move. docs/arcs/syscall-custody-arc.md rosters E77 as `syscall-custody/SC3` since it opened 2026-09-14, so the claim above is satisfied and this measurement was stale. The original read: no file in docs/arcs/ names E77. Title: Rung-1 seccomp default-deny: a seccomp-bpf filter derived from the E76 permitted set, installed at process sta
+- evidence: docs/elements/catalog.md:298, docs/elements/ledger.md:197, docs/arcs/syscall-custody-arc.md:172
+- checked:  2026-09-15
+- owner:    `syscall-custody/SC3`
 - from:     none
 
 ### UNS-28 E78 is unbuilt and no arc names it
@@ -386,10 +386,10 @@
 - level:    element
 - about:    E78
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E78 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E78. Title: Number-in-type attenuation: the `ti-sys` immediate carried in a refinement (E9 machinery over the number) so a
-- evidence: docs/elements/catalog.md:296, docs/elements/ledger.md:105
-- checked:  2026-09-05
-- owner:    none
+- measured: ⚑ CORRECTED 2026-09-15, and the row's state needs an author ruling to move. docs/arcs/syscall-custody-arc.md rosters E78 as `syscall-custody/SC2` since it opened 2026-09-14, so the claim above is satisfied and this measurement was stale. The original read: no file in docs/arcs/ names E78. Title: Number-in-type attenuation: the `ti-sys` immediate carried in a refinement (E9 machinery over the number) so a
+- evidence: docs/elements/catalog.md:299, docs/elements/ledger.md:107, docs/arcs/syscall-custody-arc.md:171
+- checked:  2026-09-15
+- owner:    `syscall-custody/SC2`
 - from:     none
 
 ### UNS-29 E80 is unbuilt and no arc names it

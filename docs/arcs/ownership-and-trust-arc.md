@@ -50,10 +50,12 @@ Three, and each state is the catalog's, read 2026-09-02.
 | `ownership/O2` | the golden-semantics restructure: the kernel spec as the golden object, every executor first among executors. **PROVISIONAL 2026-07-26, revisitable.** `docs/definitions/tal-spec.md` shipped and the data form is live at `lib/lowering/tal/spec.chiral` with zero importers. Two chirality reference executors are built and unreached, `lib/evidence/interp.chiral` and `lib/lowering/tal/eval.chiral`. Its SPEC audit on 2026-08-31 returned BLOCKED | golden | decision | new | 2 | open | `E71` |
 | `ownership/O3` | the re-bootstrap artifact: the shipped form contains its own re-derivation, with no trusted binary in the forever story. **Requirement pinned in `.planning/SELF-HOST-PLAN.md`, nothing built.** Couples E71 and the E52 spec-size budget | bootstrap | primitive | new | 4 | open | `E72` |
 
-The catalog's `OT` category holds 20 rows, measured 2026-09-02, and `E71`
-carries `?`. This arc names the three the track's own sentence in `README.md`
-points at. **The other seventeen are owed a row here.** The track deferral does
-not reach homing, per `docs/decisions/decision-scope.md` §What "deferred" means
+The catalog's `OT` category holds 22 rows, counted 2026-09-15, and `E71` is one
+of them. This arc names the three the track's own sentence in `README.md`
+points at. **The other nineteen are owed a row here.** ⚑ The figure was 20 with
+`E71` at `?`; the author sorted `E52` and `E71` to `OT` on 2026-09-15 and
+`docs/elements/catalog.md` §UNSORTED carries both derivations. The track deferral
+does not reach homing, per `docs/decisions/decision-scope.md` §What "deferred" means
 here, exactly, so being deferred is no reason for an element to sit outside the
 roster. Writing those rows is its own unit and this file schedules nothing.
 
@@ -69,7 +71,7 @@ reason for being unbuilt is the scope call says that and names no other.
 ⚑ **Requirement 3 is served by no row**, enumerated as `GAP-08`: reaching the
 reference semantics in `lib/lowering/tal/spec.chiral` is adoption of a built
 thing, and every row here is build-deferred, so nothing builds it. The row
-`GAP-08` wants is owed on the same footing as the seventeen above.
+`GAP-08` wants is owed on the same footing as those nineteen.
 
 Requirements 1, 2 and 4 are served: 1 by O1, 2 by O2, 4 by O3. Every row serves
 one. **Every row is build-deferred by author call**, so the coverage states what

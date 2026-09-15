@@ -267,8 +267,10 @@ numbering is what is absent, which is that call's own diagnosis.
 homing.** Whether a design or a SPEC for an `OT` element counts as planning
 (`docs/decisions/decision-scope.md:131-132`) reaches `OT` rows alone, and all
 fourteen elements here are `SH` at `docs/elements/ledger.md:265-278`. The `?`
-track call names E52, E71, E77, E78, E166 and E167 (`records/author-calls.md:368`)
-and none of the fourteen is among them.
+track call is named for the six rows E52, E71, E77, E78, E166 and E167
+(`records/author-calls.md:369`) and none of the fourteen is among them. Four of
+the six were ruled 2026-09-15 and the call stands open on E166 and E167, which
+moves neither half of this paragraph.
 
 ⚑ **FLAG 4: the catalog's E138 signature and the live code disagree.**
 `docs/elements/catalog.md:247` gives `run-pipeline` as
