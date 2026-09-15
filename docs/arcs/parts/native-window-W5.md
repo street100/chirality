@@ -6,7 +6,7 @@ kind: port
 origin: connect
 req: 1
 status: draft
-updated: 2026-09-14
+updated: 2026-09-15
 ---
 
 # native-window/W5: `sock-send-fd` lowers
@@ -64,9 +64,13 @@ Measured in the working tree 2026-09-14 unless a line dates itself otherwise.
 exists in the tree."* `lib/lowering/tal/sys.chiral:366` is the `sendmsg` +
 `SCM_RIGHTS` body, `docs/elements/ledger.md:191` files E30 `built`, and
 `docs/elements/catalog.md:145` reads *"BUILT native: the `sendmsg`+`SCM_RIGHTS`
-body is `lib/lowering/tal/sys.chiral:359-360` and after."* Per the `origin`
-legend, `connect` is *"two built things need joining"*, and that is what this
-row is: a built floor crossing and a built port face with no join.
+body is `lib/lowering/tal/sys.chiral:359-360` and after."* The `origin` legend
+at `docs/arcs/README.md:74` reads `connect` as *"two built things need
+joining"*, and that is what this row is: a built floor crossing and a built
+port face with no join. **The mint does not carry this flip.**
+`tools/pack/pack.py:1181-1194` is `roster_flip`, which calls
+`set_roster_state` and touches the state cell alone, so the `origin` column is
+an arc-file edit the orchestrator owes (§3).
 
 **Two.** The count is stale. The row and the arc's resume state at
 `docs/arcs/native-window-arc.md:76` both say `crossing-wraps.chiral` carries 44
@@ -97,6 +101,13 @@ exit and the message.
 | D | `socketpair` + `pool-create` + `fd-close` + `pool-close` + two `sock-close` | compiles, 33,144 bytes |
 | C | probe D plus one `sock-send-fd` call | `no emitted label for entry compile-main \| skip chain for compile-main: compile-main: extern does not lower: socketpair` |
 
+⚑ **Reproduced at the design audit, 2026-09-15, from fresh sources.** D and C
+were rebuilt as new roots and compiled through `bin/chirality compile`: D emits
+33,144 bytes, and C fails with the byte-identical message above naming
+`socketpair`. `pool-create` sits in both roots and lowers in both, and the
+blame passes over it to name the outermost `case`'s scrutinee, which is the
+characterization the paragraph below states.
+
 A and B differ by one call. D and C differ by one call. `sock-send-fd` is the
 sole offender, and it is the offender at the **lower** stage: the refusal is an
 `le-skip` recorded as `sk-extern` (`lib/lowering/compile-back.chiral:269-271`,
@@ -108,16 +119,22 @@ finds no label for `compile-main`.
 both failing probes the recorded blame names the def's *scrutinee* crossing,
 which probes A and D prove lowers. The reason string reaching `sk-extern` is
 wrong about which extern refused. The apparatus that renders it is correct;
-what it is handed is not. That survives any fix to `sock-send-fd` and is owed a
-`PRB-` row of its own (§3).
+what it is handed is not: `lib/lowering/upper/lower.chiral:278` is the one site
+that builds the string, `(str-cat "extern does not lower: " n)`, where `n` is
+whichever name `sig-assoc` over `ce-prims` missed. That survives any fix to
+`sock-send-fd` and is owed a `PRB-` row of its own (§3). ⚑ The `PRB-` row owes
+one more measurement than this design took: whether the string is wrong about
+the name, or whether the prim signature table genuinely lacks `socketpair` in
+the failing compile and carries it in the passing one. The two have different
+repairs and the probes here do not separate them.
 
 ### The verification floor, and its ceiling
 
 `sendmsg`'s payload arrives at the peer as ordinary bytes, so the existing
 `sock-recv` (E125) reads it back over a `socketpair`. The **descriptor's**
 arrival is a different matter: `grep -rn 'recvmsg\|recv-fd\|SCM_RIGHTS' lib/
-prog/` returns exactly two comment lines in
-`lib/lowering/tal/sys.chiral:359-360` and nothing else, there is no `recvmsg`
+prog/` returns exactly one comment line,
+`lib/lowering/tal/sys.chiral:360`, and nothing else, there is no `recvmsg`
 row in `lib/lowering/tal/target-linux.manifest`, and no receive-fd extern in
 `lib/ports/`. **Nothing in this tree can receive a descriptor.** The
 `st_ino`-match round-trip that `docs/examples/E30-fd-passing.md:207-209` names
@@ -128,9 +145,11 @@ No gate reads `prog/demo/`. `tools/test/run-tests.sh:175-176` builds Phase 7's
 root list by `grep -rl '^(def compile-main' lib prog`, and
 `grep -rln '^(def compile-main' prog/demo/` returns one file,
 `prog/demo/_recurse-ceiling.prog`, which `KNOWN_FAIL` at
-`tools/test/run-tests.sh:173` excludes. `prog/demo/wl-client.chiral` and
-`prog/demo/tomodachi.chiral` each define an entry named `main`, which the grep
-does not match, so no phase compiles either one. `native-window/W6` is the row for that gate.
+`tools/test/run-tests.sh:173` excludes. `prog/demo/tomodachi.chiral:128`
+defines an entry named `main`, which the grep does not match, and
+`prog/demo/wl-client.chiral` defines no entry at all: `grep -n 'main'` over it
+returns nothing, and it is a module `prog/demo/tomodachi.chiral:16` imports. So
+no phase compiles either one. `native-window/W6` is the row for that gate.
 
 ## 3. The delta
 
@@ -175,9 +194,9 @@ mint does not absorb it:
 |---|---|
 | the E29 server half: `sock-listen`, `sock-accept`, and a `bind` extern that does not exist | a new roster row in this arc, `native-window/W7`. **Not opened by this run** (the arc file is not this run's to edit); the orchestrator owes the roster edit |
 | no crossing receives a descriptor, so a full fd round-trip is unconstructible in-tree | a `GAP-` row in `records/lenses/gaps.md`. Nothing schedules `recvmsg` today. A client never receives an fd, so requirement 1 does not want it |
-| the skip-chain blame names the scrutinee crossing instead of the one that refused | a `PRB-` row in `records/lenses/problems.md`, level `source`, about `lib/lowering/upper/lower.chiral` |
+| the skip-chain blame names the scrutinee crossing instead of the one that refused | a `PRB-` row in `records/lenses/problems.md`, level `source`, about `lib/lowering/upper/lower.chiral:278` |
 | `crossing-wraps.chiral:8-11` cites `lib/sys-linkage.chiral` and `native.py`, neither of which exists, and inverts the derivation direction | a `PRB-` row, level `source`. The comment edit is itself compiler source and owes the fixpoint, so it rides this element's rebuild or waits for one |
-| `44` in the roster row and at `docs/arcs/native-window-arc.md:76`, against 45 measured | the arc file, orchestrator-owed |
+| the arc file owes **two** cells, and the mint carries neither: `44` in the roster row and at `docs/arcs/native-window-arc.md:76` against 45 measured, and the roster row's `origin: new` against the `connect` §2 measures | the arc file, orchestrator-owed. `tools/pack/pack.py:1181-1194` writes the state cell alone |
 | no gate reads `prog/demo/` | `native-window/W6`, already on the roster |
 
 ## 4. The shapes
@@ -197,7 +216,7 @@ two built precedents in `sys.chiral` disagree with each other.
   number at the E76 chokepoint ... so a single body cannot carry 41 AND 42."*
   One `crossing-wraps` row, `"sock-send-fd" -> "nb-sock-send-fd"`.
 - **Costs.** One `TIFn` of roughly the size of `nb-sock-recv-t`
-  (`lib/lowering/tal/sys.chiral:834-862`, 29 lines), simpler by one nesting
+  (`lib/lowering/tal/sys.chiral:834-861`, 28 lines), simpler by one nesting
   level because `SendFdR` is two-way where `RecvR` is three-way. One
   `sys-lib` registration line. One table row.
 - **Forbids.** A short payload send is not retried: the wrapper reports what the
@@ -205,7 +224,10 @@ two built precedents in `sys.chiral` disagree with each other.
   resumable the way `write` is, because a retry after a partial send would hand
   the peer a second copy of the descriptor, and the linear `Fd` was already
   consumed. The payload at `prog/demo/wl-client.chiral:201-202` is one Wayland
-  `wl_shm.create_pool` message, a 16-byte body, far under any pipe buffer.
+  `wl_shm.create_pool` message, 16 bytes whole: `wenc`
+  (`lib/protocol/wire.chiral:13-17`) prepends an 8-byte object-id and
+  opcode-plus-size header to the two `pack-u32`s at
+  `prog/demo/wl-client.chiral:202`. Far under any pipe buffer.
 
 ### Shape B: map the extern straight at the raw crossing
 
@@ -240,15 +262,29 @@ two built precedents in `sys.chiral` disagree with each other.
   remainder with the same `msghdr` sends the descriptor twice, and one that
   clears `msg_control` after the first iteration has already consumed the linear
   `Fd` and cannot report a partial-transfer failure through `SendFdR`'s two arms.
-  The ABI rejects it, and cost never enters.
+  ⚑ The custody half stands on the tree: `lib/ports/sock.port:47-49` states that
+  the linear `Fd` is consumed on success. The duplication half is an unpinned
+  reading of the ABI (§4). So cost does enter here, and it still picks A.
 
 **The tree does not fully settle it, and A is what the measurement leaves
-standing.** Shape B is closed by `lib/lowering/tal/erase.chiral:217-221` and
-Shape C by the `SCM_RIGHTS` semantics in
-`docs/examples/E30-fd-passing.md:52-53`. Because the shapes were live before
-those two citations were read, this row is **not** `direct`: the element mints
-and takes a SPEC, which is where the register allocation, the tag order and the
-gate's exit codes get pinned against the three built siblings.
+standing.** Shape B is closed inside the tree by
+`lib/lowering/tal/erase.chiral:217-221`.
+
+**Shape C's correctness case is not closed inside the tree.**
+`docs/examples/E30-fd-passing.md:52-53` carries the one-fd arithmetic,
+`cmsg_len = CMSG_LEN(4) = 20` inside a `CMSG_SPACE(4) = 24` buffer, and says
+nothing about retry: `grep -n 'retry\|partial\|twice\|duplicate'` over that file
+returns nothing, and `SIGPIPE` and `MSG_NOSIGNAL` appear nowhere under `lib/`,
+`prog/` or `docs/`. That a re-sent `msghdr` passes the descriptor a second time
+is this design's reading of `SCM_RIGHTS` and owes a `research` run's `FD` row in
+`records/findings.md` before a gate may rest on it. `records/findings.md:23-24`
+is the rule: *"A citation nobody can open is not evidence."* Shape C's **cost**
+case stands on the tree alone and this leaves it standing.
+
+Because the shapes were live before these citations were read, this row is
+**not** `direct`: the element mints and takes a SPEC, which is where the
+register allocation, the tag order and the gate's exit codes get pinned against
+the three built siblings.
 
 ## 5. The call
 
@@ -256,8 +292,10 @@ gate's exit codes get pinned against the three built siblings.
   because it is the E125 / E126 / E127 wrapper family unchanged
   (`lib/lowering/tal/sys.chiral:820`, `:834`, `:919`), because E125's own design
   named this crossing as its follow-on at `docs/examples/E125-sock-use.md:4`, and
-  because `SCM_RIGHTS` makes the alternative send discipline incorrect rather
-  than merely more expensive.
+  because Shape C costs two `TIFn`s and a per-iteration `iovec` rebuild to move
+  a 16-byte message. The stronger claim, that `SCM_RIGHTS` makes the `sendall`
+  discipline outright incorrect, is this design's reading of the ABI and carries
+  no in-tree pin (§4). The choice stands without it.
 
 - **Scope:** **the client fd-passing path only.** This element lowers
   `sock-send-fd` and nothing else. The server half leaves the row.
@@ -272,10 +310,25 @@ gate's exit codes get pinned against the three built siblings.
     reported count matches. Discriminating in the sense
     `prog/samples/e127_sock_connect_err.prog:14` uses: the pre-fix compiler
     cannot compile the root at all.
-  - **the error arm.** `sock-send-fd` on a half whose peer is closed returns
-    `-errno`, the `sfd-err` arm is reached, and QTT forces the test to discharge
-    both the returned `Sock` and the returned `Fd`. This is
+  - **the error arm.** `sock-send-fd` returns `-errno`, the `sfd-err` arm is
+    reached, and QTT forces the test to discharge both the returned `Sock` and
+    the returned `Fd`. This is
     `prog/samples/e127_sock_connect_err.prog`'s exit-42 shape exactly.
+
+    ⚑ **The trigger is not settled and the SPEC owes it.** A closed peer is the
+    obvious trigger, and it carries a hazard: the floor crossing hardwires
+    `sendmsg`'s flags to zero.
+    `lib/lowering/tal/sys.chiral:413-414` is `(ti-const 48 0)` feeding
+    `(ti-sys 49 46 (cons 0 (cons 47 (cons 48 nil))))`, so no `MSG_NOSIGNAL`
+    rides the call, and `grep -rn 'NOSIGNAL\|SIGPIPE' lib/ prog/ docs/` returns
+    nothing: the tree has never met this. Whether a closed-peer send reaches
+    `sfd-err` or dies on a signal first is unmeasured here, and a root that
+    dies grades nothing. Three ways out, none picked by this design: a trigger
+    that raises no signal, a `signal` call ahead of the send (the crossing is
+    built, `lib/ports/process.port:18`, row at
+    `lib/lowering/tal/crossing-wraps.chiral:56`, number at
+    `lib/lowering/tal/target-linux.manifest:61`), or a flags argument on the
+    wrapper. The third widens the element and the first two do not.
 
   **Stated bound.** The gate verifies that the crossing lowers, runs, reports
   correctly, and moves its payload. It does **not** verify that the descriptor
@@ -293,7 +346,7 @@ gate's exit codes get pinned against the three built siblings.
 
 | # | Question | Disposition | Rationale / owner |
 |---|----------|-------------|-------------------|
-| 1 | One `sendmsg` or a `sendall` loop | RESOLVED | Shape A. `docs/examples/E30-fd-passing.md:52-53`: one fd is `cmsg_len = CMSG_LEN(4) = 20` in a `CMSG_SPACE(4) = 24` control buffer, one message. A retry duplicates the descriptor |
+| 1 | One `sendmsg` or a `sendall` loop | RESOLVED | Shape A, on the tree's side of the argument alone: Shape C costs two `TIFn`s and an `iovec` rebuild per iteration against Shape A's one, and the payload is one 16-byte Wayland message (`prog/demo/wl-client.chiral:201-202`, `lib/protocol/wire.chiral:13-17`). `docs/examples/E30-fd-passing.md:52-53` carries the one-fd arithmetic, `cmsg_len = CMSG_LEN(4) = 20` in a `CMSG_SPACE(4) = 24` buffer. ⚑ That a retry duplicates the descriptor is an unpinned reading of `SCM_RIGHTS` (§4) and the ruling does not rest on it |
 | 2 | Wrapper, or a straight row onto `nb-sys-send-fd` | RESOLVED | `lib/lowering/tal/erase.chiral:217-221`: the Unit arm is what makes the `sock-close` family's straight rows legal, and `SendFdR` is not `Unit` |
 | 3 | Does a second authority owe an edit beside `crossing-wraps` | RESOLVED | No. `lib/lowering/tal/sys-linkage.chiral:87-93` derives `sys-bindings` from `crossing-wraps`. The header's claim of a second authority at `crossing-wraps.chiral:8-11` cites two absent files and is itself a `PRB-` row |
 | 4 | Does this element carry `sock-listen`, `sock-accept` and `bind` | RESOLVED | No. Requirement 1 at `docs/arcs/native-window-arc.md:41-42` is a window on a compositor, and `prog/demo/wl-client.chiral` is a client whose acquisition path is `sock-connect` (built, E127). The server residue is recorded separately at `docs/elements/ledger.md:447` |
@@ -303,8 +356,16 @@ gate's exit codes get pinned against the three built siblings.
 | 8 | Does the roster row's `origin: new` change to `connect` | DEFERRED | The arc file, orchestrator-owed. §2 measures `connect` as the honest value and this run does not edit the arc |
 
 No NEEDS-AUTHOR. Every question above resolves against a settled doc or live
-code, or names the existing row that owns it. `records/author-calls.md` earns no
-row from this design.
+code, or names the existing row that owns it. The suite phase number §6 assigns
+was an open author call until 2026-09-06 and is now settled:
+`records/author-calls.md:63` carries it as `ruled` and
+`tools/test/run-tests.sh:348-354` states the rule the design applies.
+`records/author-calls.md` earns no row from this design.
+
+⚑ **Two questions are owed to a later stage, and neither is the author's.** The
+`SCM_RIGHTS` retry reading owes a `research` run's `FD` row before a gate may
+rest on it (§4), and the error arm's trigger owes a measurement in the SPEC
+(§5). Both were added at the design audit, 2026-09-15.
 
 ## 6. The mint packet
 
@@ -321,8 +382,9 @@ row from this design.
   range it landed in."* Measured 2026-09-14, the highest number in
   `docs/elements/catalog.md` and `docs/elements/ledger.md` is **E198**. The next
   free number lands inside the unit lane's reserved `E196-E239`, which the
-  2026-09-06 overlap ruling at `docs/decisions/decision-lane-split.md:38-51`
-  permits: the allocator and the roster stop a collision, and a band stops none.
+  2026-09-06 overlap ruling at `docs/decisions/decision-lane-split.md:38-58`
+  permits: the allocator and the roster stop a collision (`:52`), and a band
+  stops none.
   **The mint assigns the number, and this design names none.**
 
 - **Catalog row** (section SYS, columns `| E# | Element | State / location | Reference (class) | Track |`):
@@ -337,10 +399,10 @@ row from this design.
 
   | file | change | lines | basis |
   |---|---|---|---|
-  | `lib/lowering/tal/sys.chiral` | `nb-sock-send-fd-t` plus a header comment, and one entry appended to the crossing list that `lib/lowering/tal/sys.chiral:1308` defines | ~30 + 1 | `nb-sock-recv-t` is 29 lines at `:834-862` for a three-way sum; this is two-way with a three-field error arm |
+  | `lib/lowering/tal/sys.chiral` | `nb-sock-send-fd-t` plus a header comment, and one entry appended to the crossing list that `lib/lowering/tal/sys.chiral:1308` defines | ~30 + 1 | `nb-sock-recv-t` is 28 lines at `:834-861` for a three-way sum; this is two-way with a three-field error arm |
   | `lib/lowering/tal/crossing-wraps.chiral` | one `(pair …)` row, 45 to 46 | 1 | the rows at `:37-41` |
   | `prog/samples/` | two hermetic round-trip roots, success arm and error arm | ~70 | `prog/samples/e127_sock_connect_err.prog` is 25 lines; the success root adds `socketpair`, `pool-create` and a `sock-recv` comparison |
-  | `tools/test/run-tests.sh` (or a new `tools/test/send-fd.sh`) | one `run_phase` block. **Phase 33** is the first free number; `run_phase 32` is the highest present | ~20 | `transport.sh`'s compile-run-judge loop |
+  | `tools/test/run-tests.sh` (or a new `tools/test/send-fd.sh`) | one `run_phase` block. **Phase 33**, under the rule at `tools/test/run-tests.sh:348-354`: *"a gate takes the first number that collides with nothing"*, with 8-12 owed to unported old-tree phases and 21-23 Lane B's. `run_phase 32` is the highest present, so 33 is the first that collides with nothing. Not an author call: `records/author-calls.md:63` carries the question as `ruled` 2026-09-06 | ~20 | `transport.sh`'s compile-run-judge loop |
 
   **Total: roughly 120 lines across four files.**
 
@@ -348,7 +410,8 @@ row from this design.
   `lib/` files sit inside `prog/compiler.prog`'s closure, measured 2026-09-14:
   `chirality_blob_file "lib:prog" prog/compiler.prog` produces 17,797 lines, with
   `(def crossing-wraps …)` at blob line 10917 and `(def nb-sys-send-fd-t …)` at
-  16061. `lib/lowering/tal/erase.chiral:23` and
+  16061. **Re-measured at the design audit 2026-09-15: all three figures hold to
+  the line.** `lib/lowering/tal/erase.chiral:23` and
   `lib/lowering/compile-emit.chiral:17` are the two import paths that put them
   there. So this element owes `build-new → test → promote` per
   `docs/definitions/working-discipline.md:15-49`: generations from one blob until

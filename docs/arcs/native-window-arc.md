@@ -54,14 +54,18 @@ Grepped 2026-09-03: zero hits for xdg, seat, pointer or keyboard across
 | `native-window/W2` | seat input: pointer and keyboard events decoded | input | primitive | new | 2 | open | `unminted` |
 | `native-window/W3` | negotiated pool sizes, so resize is honored | shell | law | new | 4 | open | `unminted` |
 | `native-window/W4` | text on screen, bitmap font first | text | primitive | new | 3 | open | `unminted` |
-| `native-window/W5` | the fd-passing crossing lowers: `sock-send-fd` has no entry in `crossing-wraps.chiral`, so `wl-client.chiral:201` does not lower and nothing reaches a screen. `sock-listen`, `sock-accept` and `bind` are missing with it, and it is E29's unowned server half | shell | port | new | 1 | designed | `unminted` |
+| `native-window/W5` | the fd-passing crossing lowers: `sock-send-fd` has no entry in `crossing-wraps.chiral`, so `wl-client.chiral:201` does not lower and nothing reaches a screen. The server half (`sock-listen`, `sock-accept`, and a `bind` extern that has never existed) is E29's and leaves this row for `W7`, per the E199 design | shell | port | connect | 1 | minted | `E199` |
 | `native-window/W6` | a gate reads `prog/demo/`, which is why W5 went unnoticed while the demos were described as running | shell | tool | new | 1 | open | `unminted` |
 
 ### Coverage
 
 Every requirement is served: 1 by W1, W5 and W6; 2 by W2; 3 by W4; 4 by W3.
-Every row serves one, and every `origin` is `new`: none of this exists in the
-tree.
+Every row serves one. Five rows carry `origin: new`, and nothing they name is in
+the tree. `W5` reads `connect`, corrected 2026-09-15 by its own design: the
+`sendmsg`+`SCM_RIGHTS` floor crossing is built at
+`lib/lowering/tal/sys.chiral:366` and permitted at
+`lib/lowering/tal/target-linux.manifest:40`, so two built things need joining
+per [[arcs/README]].
 
 `W5` and `W6` were opened 2026-09-06. The fd-passing crossing sat as an author
 call reading "which arc owns it" when this is the arc whose whole subject is a
@@ -71,7 +75,31 @@ measurement.
 ## Resume state
 
 
-⚑ **2026-09-06: `W5` and `W6` opened.** The fd-passing crossing is this arc's: `sock-send-fd` has no entry in `crossing-wraps.chiral` while `wl-client.chiral:201` calls it, so **nothing in this tree reaches a screen**, and no gate reads `prog/demo/`, which is why it went unnoticed. `PRB-71` holds the measurement. **Next: `W5`.**
+⚑ **2026-09-15: the arc is scheduled and `W5` minted as `E199`.** The author
+scheduled this arc in session 2026-09-14, and the scope is a client on a stock
+compositor: `records/author-calls.md` carries the ruling. `W5`'s design passed
+its audit at DESIGN level with no author-tier FLAG and minted `E199`. **Next:
+`W6`**, then `E199 --spec`.
+
+**What `W5`'s design measured, and the arc's own text was wrong on three
+counts.** The table carries 45 rows and not 44. The `sendmsg`+`SCM_RIGHTS`
+floor crossing is BUILT at `lib/lowering/tal/sys.chiral:366`, consed into
+`sys-lib` (`lib/lowering/tal/sys.chiral:1308`) at `:1338`, and permitted at
+`lib/lowering/tal/target-linux.manifest:40`, so the delta is one TAL wrapper
+plus one table row. The server half is E29's and leaves the row for a proposed
+`W7`. `crossing-wraps.chiral:8-11` declares an invariant against
+`lib/sys-linkage.chiral`, which does not exist:
+`lib/lowering/tal/sys-linkage.chiral:87-93` derives `sys-bindings` FROM
+`crossing-wraps`, so a row added there owes no second edit.
+
+**Two defects `E199` does not fix, each owed a row.** A def calling
+`sock-send-fd` fails with the blame naming the def's scrutinee crossing, which
+compiles on its own in two probe roots. Nothing in this tree can receive a
+descriptor: no `recvmsg` row and no receive-fd extern, so the `st_ino`
+round-trip `docs/examples/E30-fd-passing.md:207-209` describes is unreachable
+and `E199`'s gate ships with that ceiling stated.
+
+⚑ **2026-09-06: `W5` and `W6` opened.** The fd-passing crossing is this arc's, and `wl-client.chiral:201` calls it. `PRB-71` holds the measurement.
 ⚑ **A blocker was measured 2026-09-05 and it sits under all four rows.**
 `lib/lowering/tal/crossing-wraps.chiral` carries 44 lowered crossings and
 `sock-send-fd` is absent from them, so `prog/demo/wl-client.chiral:201` does
@@ -81,8 +109,10 @@ gate reads `prog/demo/`, so the demos are described as running and were never
 compiled by the suite. **Nothing in this arc is reachable until that crossing
 has a body**, and [[arcs/canvas-arc]] carries the same blocker.
 
-Unopened. The design discussion is `.planning/NATIVE-STACK-EXPANSION.md`. The
-rung of the existing demos is the first thing to re-measure on opening. Nothing
+Scheduled 2026-09-14. The design discussion is
+`.planning/NATIVE-STACK-EXPANSION.md`. The rung of the existing demos is the
+first thing to re-measure, and `W6` is the row that makes a rung claim
+checkable. Nothing
 under `tools/test/` reads `prog/demo/`, measured 2026-09-03, so no gate defends
 them and none of them is a `compile-main` root Phase 7 would sweep. The agent
 sandbox hosts no compositor, so live verification runs on the host.
