@@ -54,7 +54,7 @@ Grepped 2026-09-03: zero hits for xdg, seat, pointer or keyboard across
 | `native-window/W2` | seat input: pointer and keyboard events decoded | input | primitive | new | 2 | open | `unminted` |
 | `native-window/W3` | negotiated pool sizes, so resize is honored | shell | law | new | 4 | open | `unminted` |
 | `native-window/W4` | text on screen, bitmap font first | text | primitive | new | 3 | open | `unminted` |
-| `native-window/W5` | the fd-passing crossing lowers: `sock-send-fd` has no entry in `crossing-wraps.chiral`, so `wl-client.chiral:201` does not lower and nothing reaches a screen. `sock-listen`, `sock-accept` and `bind` are missing with it, and it is E29's unowned server half | shell | port | new | 1 | open | `unminted` |
+| `native-window/W5` | the fd-passing crossing lowers: `sock-send-fd` has no entry in `crossing-wraps.chiral`, so `wl-client.chiral:201` does not lower and nothing reaches a screen. `sock-listen`, `sock-accept` and `bind` are missing with it, and it is E29's unowned server half | shell | port | new | 1 | designed | `unminted` |
 | `native-window/W6` | a gate reads `prog/demo/`, which is why W5 went unnoticed while the demos were described as running | shell | tool | new | 1 | open | `unminted` |
 
 ### Coverage
