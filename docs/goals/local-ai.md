@@ -3,7 +3,7 @@ node: goal-local-ai
 layer: navigation
 related: [goals/README, goals/self-tooling, goals/presentability, train-of-thought, records/author-calls, status-ledger, working-discipline, index]
 status: current
-updated: 2026-09-05
+updated: 2026-09-14
 ---
 
 # Goal: full genuine local AI on small models
@@ -50,13 +50,17 @@ this tree: match, gate, bind, fan out, combine, stop, and emit a typed
 `RunManifest` that a golden oracle accepts. It runs under `bin/chirality-bin`
 and the Linux syscall surface with no other language beneath it. Checkable by a
 phase in `tools/test/run-tests.sh` that runs the pipeline and asserts the
-conformance verdict. [[arcs/transport-arc]] carries the reachability half
-and [[arcs/unit-lane-arc]] the model of computation beneath it.
+conformance verdict. [[arcs/orchestration-engine-arc]] carries the engine
+itself, [[arcs/transport-arc]] the reachability half, [[arcs/unit-lane-arc]]
+the model of computation beneath it, and [[arcs/memory-discipline-arc]] the
+allocation that run has to survive.
 
 2. **TUI through scriba for full interaction.** Every part of a run is authored,
 composed, fired, watched and revised from `prog/scriba/`, with no step that
 requires leaving the editor. Checkable by the S-series gates: author (S14),
-compose (S16), run-view (S15), token streaming (S17). [[arcs/scriba-arc]].
+compose (S16), run-view (S15), token streaming (S17). [[arcs/scriba-arc]] owns
+the cockpit surfaces and [[arcs/runtime-loading-arc]] the runtime load `S11` is
+blocked on.
 
 3. **A full framework for entirely chirality AI.** The model of computation the
 agents run under is chirality's own. Done means the `Flow` algebra is total and
@@ -123,11 +127,15 @@ Measured 2026-09-01 against this tree.
 
 ## Arcs
 
-Four. Three were opened 2026-09-02 from
+Seven. Three were opened 2026-09-02 from
 `.planning/LOCAL-AI-ARC-REALIGNMENT.md`, which also records which existing arcs
 supply pieces of this goal while serving their own, and re-points nothing. The
 fourth was opened 2026-09-05 from `.planning/AI-LANE-GAP.md`, after the section
-below had already ruled that criterion 3 needed no arc.
+below had already ruled that criterion 3 needed no arc. Two more take criterion
+1 beside [[arcs/transport-arc]], [[arcs/memory-discipline-arc]] opened
+2026-09-06 and [[arcs/orchestration-engine-arc]] opened 2026-09-14, and a
+seventh takes criterion 2 beside [[arcs/scriba-arc]],
+[[arcs/runtime-loading-arc]] opened 2026-09-14.
 
 | arc | covers | state |
 |---|---|---|
@@ -135,6 +143,9 @@ below had already ruled that criterion 3 needed no arc.
 | [[arcs/scriba-arc]] | criterion 2, full interaction from the editor | open and unblocked. `S#` is its own namespace |
 | [[arcs/tuning-arc]] | criterion 4, fine tuning and the transformer verbs | opened blocked on author call A, with no row written |
 | [[arcs/unit-lane-arc]] | criterion 3, the model of computation the agents run under, extended to a neuron population and a transformer instance | 43 rows over eight layers, band `E196-E239`. `E196` and `E197` both built 2026-09-05, closing `N8`, `N9`, `N10` and `N43`; 39 rows open |
+| [[arcs/orchestration-engine-arc]] | criterion 1, the engine itself: match, gate, bind, fan out, combine, stop, and the typed `RunManifest` a golden oracle accepts | opened 2026-09-14, 18 rows. Fourteen hold a minted `E#`, `E66` to `E68` and `E133` to `E143`; four stand `unminted` on an author call |
+| [[arcs/memory-discipline-arc]] | criterion 1, the allocation the run has to survive: the value-cell heap's discipline | opened 2026-09-06, 7 rows. `M1` is built as `E81`; the projection it closes is ~6.3 GB against 3.85 GB with no swap |
+| [[arcs/runtime-loading-arc]] | criterion 2, the runtime load `S11` is blocked on: a resident binary loads a freshly-compiled artifact | opened 2026-09-14, 4 rows. One holds `E132`, minted 2026-08-14 and unbuilt; the other three carry `RL` ids |
 
 Criterion 3 held no arc until 2026-09-05, on the reading that the framework is
 largely built and naming a gap there would be a phantom feature: the `Flow`

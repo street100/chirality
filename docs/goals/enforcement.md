@@ -3,7 +3,7 @@ node: goal-enforcement
 layer: navigation
 related: [goals/README, arcs/enforcement-arc, status-ledger, testing-floors, index]
 status: current
-updated: 2026-09-05
+updated: 2026-09-14
 ---
 
 # Goal: what is built is gated, and what the compiler claims it checks
@@ -24,7 +24,8 @@ updated: 2026-09-05
 
 1. **A capability sits at ENFORCED, or its ledger row says why it does not.**
    Observed on the four rungs in [[status-ledger]].
-   [[arcs/enforcement-arc]] rows `N1` and `N4`.
+   [[arcs/enforcement-arc]] rows `N1` and `N4` for what the compiler states
+   about its own work, and [[arcs/syscall-custody-arc]] for the syscall surface.
 2. **A claim the compiler makes about its own work is carried as a value with
    evidence, and refused when it does not hold.** Observed by the judgment
    vocabulary carrying the claim rather than a string.
@@ -138,6 +139,11 @@ From [[records/enforcement-arc]]:
 ## Arcs
 
 [[arcs/enforcement-arc]].
+
+[[arcs/syscall-custody-arc]], opened 2026-09-14 on condition 1, over the
+syscall surface: the permitted set, who may widen it, and who declares the
+profile that narrows it. Five rows, each holding an element minted before the
+arc, with arc-local ids `SC1` and up.
 
 ## Honest limits
 

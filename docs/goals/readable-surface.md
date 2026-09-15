@@ -3,7 +3,7 @@ node: goal-readable-surface
 layer: navigation
 related: [goals/README, arcs/diagnostics-arc, arcs/file-types-arc, design-principles, index]
 status: current
-updated: 2026-09-05
+updated: 2026-09-14
 ---
 
 # Goal: the surface is convenient without buying it back in escape hatches
@@ -50,7 +50,7 @@ without either sacrificing values or leaving escape hatches.
 4. **Regularity holds at the surface.** One shape, one meaning. Observed on the
    three current instances: file kinds, syntax and the error vocabulary.
    [[arcs/file-types-arc]] for the kinds, [[arcs/diagnostics-arc]] for the
-   vocabulary.
+   vocabulary, [[arcs/surface-syntax-arc]] for the syntax.
 
 ## State
 
@@ -87,9 +87,12 @@ something you never consider again.
 - [[arcs/file-types-arc]] — file kinds and syntax. Kind-as-extension is a
   regularity claim before it is a tooling one, and today it is unchecked
   ([[records/baseline-alignment]] BA-30).
+- [[arcs/surface-syntax-arc]] holds the third instance condition 4 names,
+  syntax, which neither sibling states. Opened 2026-09-14.
 
-Both arcs also serve [[goals/self-tooling]]: that goal is what the work is built
-*out of*, this one is what it is built *for*. Both name both.
+[[arcs/diagnostics-arc]] and [[arcs/file-types-arc]] also serve
+[[goals/self-tooling]]: that goal is what the work is built *out of*, this one
+is what it is built *for*. Both name both.
 
 ## Honest limits
 

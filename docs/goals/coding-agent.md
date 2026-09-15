@@ -3,7 +3,7 @@ node: goal-coding-agent
 layer: navigation
 related: [goals/README, goals/local-ai, goals/self-tooling, arcs/scriba-arc, arcs/unit-lane-arc, permission-model, records/author-calls, status-ledger, working-discipline, decisions/decision-work-ids, index]
 status: current
-updated: 2026-09-08
+updated: 2026-09-14
 ---
 
 # Goal: chirality's own coding agent, acting on a codebase
@@ -116,8 +116,9 @@ Four conditions, one per area the author named. None holds an arc file.
    and `prog/prapanca/core/stop.chiral`'s `overflow-guard` (`:20`) and `stop-policy`
    (`:25`) have no caller outside their own file, so a coding turn that outgrows
    the context window has no guard on it. Done when the first two counts are
-   nonzero and a coding turn emits a `RunManifest`. **[[arcs/coding-turn-arc]]**,
-   opened 2026-09-08.
+   nonzero and a coding turn emits a `RunManifest`. **[[arcs/coding-turn-arc]]**
+   for the decomposition, opened 2026-09-08, and **[[arcs/tool-authority-arc]]**
+   for the grant, opened 2026-09-09.
 
 2. **Routes.** A coding request reaches the right step, the right tool grant and
    the right model, and the choice is a value that can be shown. Observable in
@@ -167,9 +168,9 @@ Four conditions, one per area the author named. None holds an arc file.
 | [[arcs/tool-authority-arc]] | condition 1, the grant | opened 2026-09-09, 12 rows |
 
 Conditions 2, 3 and 4 hold no arc file. That is not the standing-gate shape
-[[goals/self-hosting]] carries: no rule maintains them on every change, and the
-absence is scheduling owed rather than a finished shape. It is the first honest
-limit below.
+[[goals/self-hosting]] conditions 1 to 3 carry: no rule maintains them on every
+change, and the absence is scheduling owed rather than a finished shape. It is
+the first honest limit below.
 
 This section carries no element rows and no roster.
 

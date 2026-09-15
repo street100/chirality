@@ -3,7 +3,7 @@ node: goal-module-split
 layer: navigation
 related: [goals/README, splitting-law, joining-law, axis-typeability, decision-split-checker, category-bridge, module-map, status-ledger, index]
 status: current
-updated: 2026-09-05
+updated: 2026-09-14
 ---
 
 # Goal: each module is one thing, down to the trusted core
@@ -33,7 +33,9 @@ updated: 2026-09-05
    effect, cost or tier weight they are two modules, and where they do not the
    split stays unmade. Observed by `conv` leaving `kernel.chiral`, its
    `(-> I64 Value Value Bool)` against its neighbours' `(-> Sig Ctx Term ...)`.
-   [[arcs/module-split-arc]] row `S1`.
+   [[arcs/module-split-arc]] row `S1` for the type-shape cut, and
+   [[arcs/part-split-arc]] for the tier-weight cut, at namespace granularity
+   over `prog/prapanca/`.
 2. **The trusted core's boundary is stated and holds.** Which files are
    `kernel-core` and which are untrusted producers, decided by the law rather
    than by history. Observed by the file list being written down and matching
@@ -81,6 +83,10 @@ The core was further along than this session first assumed.
 
 [[arcs/module-split-arc]]. No reserved element block, so rows take arc-local ids
 `S1` and up per [[decisions/decision-work-ids]].
+
+[[arcs/part-split-arc]], opened 2026-09-09 on condition 1, cutting
+`prog/prapanca/` by tier weight: one namespace carries the frozen interface and
+one product's inhabitants of it. Its rows take arc-local ids `PS1` and up.
 
 ## Honest limits
 
