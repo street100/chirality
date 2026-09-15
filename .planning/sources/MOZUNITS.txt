@@ -1,0 +1,154 @@
+== Preamble ==
+
+''This work has landed on trunk.''  See [[Firefox3/Gecko Feature List#Layout]]
+
+See {{bug|177805}}.
+
+Read [http://www.w3.org/TR/CSS21/syndata.html#length-units the definition of a CSS pixel]. Note that it has two properties:
+* A CSS pixel is roughly the same visual size across all devices; the number of device pixels per CSS pixel varies.
+* For all devices, the number of device pixels per CSS pixel should be an integer.
+
+== Current status ==
+
+Layout manipulates values of type 'nscoord'. These values represent twips.
+From nsCoord.h:
+ /*
+  * Basic type used for the geometry classes. By making it a typedef we can
+  * easily change it in the future.
+  *
+  * All coordinates are maintained as signed 32-bit integers in the twips
+  * coordinate space. A twip is 1/20th of a point, and there are 72 points per
+  * inch.
+  *
+  * Twips are used because they are a device-independent unit of measure. See
+  * header file nsUnitConversion.h for many useful macros to convert between
+  * different units of measure.
+  */
+ typedef PRInt32 nscoord;
+
+== Problems with the status quo ==
+
+=== Twips per CSS pixel must be an integer, so we unnecessarily restrict screen DPI values ===
+
+The main problem is that, depending on the DPI setting for a screen, the number of twips per CSS pixel may not be an integer. This causes rounding errors to occur in layout. Consider the following
+markup:
+
+ &lt;div style='width:49px; height:10px; background:black;'&gt;
+   &lt;img style='width:7px; height:10px; background:blue;'&gt;
+   &lt;img style='width:7px; height:10px; background:blue;'&gt;
+   &lt;img style='width:7px; height:10px; background:blue;'&gt;
+   &lt;img style='width:7px; height:10px; background:blue;'&gt;
+   &lt;img style='width:7px; height:10px; background:blue;'&gt;
+   &lt;img style='width:7px; height:10px; background:blue;'&gt;
+   &lt;img style='width:7px; height:10px; background:blue;'&gt;
+ &lt;/div&gt;
+
+Clearly the author expects the inline images to exactly fill the box. But if the 7px width of the images is rounded down during conversion to twips, we will see black at the end of the line of images; if it is rounded up, we will see one image wrap to the next line of the div.
+
+Therefore ''the number of app units per CSS pixel must always be an
+integer''.
+
+Currently this constraint is enforced by forcing the user to specify a screen DPI value that makes it true. This is obviously undesirable. Users should be allowed to use arbitrary screen DPI values.
+
+We can generalize the above rule to the goal that, ''wherever possible, an author-specified CSS length should be exactly representable by an integral number of app units''. Here's a modified version of the above testcase:
+
+ &lt;div style='width:49mm; height:10mm; background:black;'&gt;
+   &lt;img style='width:7mm; height:10mm; background:blue;'&gt;
+   &lt;img style='width:7mm; height:10mm; background:blue;'&gt;
+   &lt;img style='width:7mm; height:10mm; background:blue;'&gt;
+   &lt;img style='width:7mm; height:10mm; background:blue;'&gt;
+   &lt;img style='width:7mm; height:10mm; background:blue;'&gt;
+   &lt;img style='width:7mm; height:10mm; background:blue;'&gt;
+   &lt;img style='width:7mm; height:10mm; background:blue;'&gt;
+ &lt;/div&gt;
+
+=== The mapping from CSS pixel values to twips is device dependent ===
+
+We keep preferences around in CSS pixel units. These can't be converted to twips
+without a device context around, nor can the converted values be used across devices without trickery.
+
+This suggests that a helpful constraint is ''the number of app units per CSS pixel should be constant for all devices''.
+
+== Other constraints ==
+
+Here are some other points to consider when selecting the units.
+
+=== Screen pixels per CSS pixel will be an integer ===
+
+Most of the Web displays graphics aligned at CSS pixel boundaries. For these pages to look crisp, the number of screen pixels per CSS pixel must be an integer. This is actually independent of the choice of app units. It is a hard
+requirement that we can never break.
+
+=== App units per screen pixel should be an integer ===
+
+Sometimes we need to lay out elements whose sizes are specified in screen pixels (e.g., native widgets, or elements whose sizes are based on platform preferences, or the Mozilla window size, or font metrics). These sizes must be representable exactly in app units. Therefore <strong>the number of app
+units per screen pixel should be an integer</strong>. This is not a problem currently because we force screen pixels to be the same as CSS pixels, and so the problem is solved by the measures mentioned above.
+
+=== Need plenty of resolution ===
+
+We need to choose app units that are fairly small, so that layout can take advantage of very high resolution output devices.
+
+== Summary of constraints ==
+
+Let me write out the constraints here:
+# ''The number of app units per CSS pixel must always be an integer.''
+# ''Wherever possible, an author-specified CSS length should be exactly representable by an integral number of app units.''
+# ''The number of app units per CSS pixel should be constant for all devices.''
+# ''The number of app units per screen pixel should be an integer.''
+
+== Proposal ==
+
+From constraints 1 and 3, it appears we should choose an integer constant N such that app units are always 1/N of a CSS pixel. We should choose N to satisfy constraints 2 and 4.
+
+The exact choice of N doesn't matter so much since it should be easy to change later. But for the sake of argument, I propose using N = 60. It has these advantages:
+
+* Any CSS length of the form ####.#px can be represented exactly.
+* If the nominal screen DPI is S dpi, where S is an integer, then one inch is S*60 app units, so CSS lengths of the form ####.#in can be represented exactly. I don't think we need to worry about screens with non-integral DPI.
+* If the ratio of screen pixels to CSS pixels is 1, 2, 3, 4, 5 or 6, then there are an integral number of app units per screen pixel. So we don't have any problems until we're looking at >600dpi screens.
+* We can represent at least 2^30/60 pixels, that is, documents can be 17,895,697 CSS pixels high. When we switch to floats, we'll lose mantissa bits so we can only represent up to 139,810 CSS pixels with full 1/60 precision, but we can still go up to 8,388,608 pixels with pixel precision.
+* Resolution is roughly 96*60 dots per inch, that is about 5760 dpi.
+
+== What this doesn't solve ==
+
+This does nothing to solve the problem of displaying a document which has features which are higher resolution than the output device (e.g., a lot of boxes of dimension 1.5px). See [[Mozilla2:Antialiasing]].
+
+== Implementation notes ==
+
+Conversion of CSS lengths of the form ####.#pt depends on the screen DPI, since a pt is (roughly) 1/72 of an inch. We should probably fudge a little and choose an app unit to pt ratio that is a multiple of 10 to represent these CSS lengths exactly. For example, we could use a ratio = 10*round(screenDPI*6.0/72.0).
+
+Likewise we can get good conversion of ####.#mm by using an app unit to mm ratio = 10*round(screenDPI*6.0/25.4).
+
+== How this affects GFX ==
+
+This means GFX provides two per-device constants to layout:
+
+# The number of app units per device pixel (must be an integer) (screens only)
+# The number of app units per inch (might as well be an integer too)
+
+Layout only needs constant #1 to translate native window system coordinates into layout coordinates. This value is not needed for printing.
+
+For rendering, layout should pass app units into GFX which then get scaled to device coordinates by GFX itself (because GFX will often need to do other scaling at the same time, e.g. for print preview, and this is how it already
+works). This also means that fonts should be specified in app units (and metrics returned in app units) and GFX will scale the fonts using the same scaling factors as all other drawing.
+
+Layout uses constant #2 to translate CSS physical lengths into app units.
+
+GFX computes these constants by examining the device's DPI value and deciding how many device pixels to use for each CSS pixel (recall that this should be an integer). A good formula would be "D = max(1, round(deviceDPI/96.0))". From this we can compute constants #1 = "round(60/D)" and #2 = "round(60*deviceDPI/D)".
+
+== Why bother ==
+
+This scheme is very simple compared to what we already have. Only two device
+specific constants need to be exported by GFX, and they're easy to calculate
+and understand for all devices. (And devices without windowing systems only need
+to export one constant.)
+
+No more print/print preview hacks in the style system.
+
+It becomes easy to specify how text zooming, print scaling, and print preview
+interact, because they can all be described as orthogonal features.
+
+We can allow users to set arbitrary DPI values again.
+
+If physical unit conversion is tweaked as I suggested above, it will solve
+rounding problems in layout when authors are specifying CSS lengths in inches, millimetres or points. See the example above, which currently doesn't work in Mozilla.
+
+It sets us up nicely for the coming world of high-DPI screens because it is
+designed to work well with multiple screen pixels per CSS pixel.

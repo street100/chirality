@@ -1,0 +1,104 @@
+[mailto:eae@chromium.org Emil A Eklund] (irc: eae), [mailto:leviw@chromium.org Levi Weintraub] (irc: leviw).
+
+= Background =
+
+To better support zooming, both on desktop and mobile devices, we are currently working on adding subpixel layout support WebKit. To do this we are changing the rendering tree to use subpixel units, called LayoutUnit, instead of integers to represent locations and sizes.
+
+= Status = 
+The feature is currently controlled by a flag, ENABLE_SUBPIXEL_LAYOUT. As of January 2013 it is enabled for the Apple and EFL ports.
+If you have any questions about LayoutUnits, or subpixel layout in general, or would like to enable the feature for another port please talk to
+either of us.
+
+= LayoutUnit & Subpixel Layout =
+
+LayoutUnit is an abstraction used to represent the location or size of a render object in fractions of a logical pixel, it is used primarily for layout and hit testing. The current implementation represents values as multiples of 1/64th pixel^1^. This allows us to use integer math and avoids floating point imprecision.
+
+Even though layout calculations are done using LayoutUnits the values are aligned to integer pixel values at paint time to line up with device pixels. While most modern graphics libraries support painting with subpixel precision, this results in unwanted anti-aliasing.
+When aligning to device pixels the edges are aligned to the nearest pixel and then the size is adjusted accordingly. This ensures that the bottom/right edge and the total width/height is at most off-by-one.
+[[BR]][[BR]]
+
+= Use cases =
+
+||'''Use case'''||'''Type'''||'''Justification'''||
+||location and size of render objects||subpixel||This is enables the goal of this patch: to accumulate subpixel position information through the render tree. There are a couple of exceptions though, such as tables and foreign objects. See the rest of this table for details.||
+||paddings||subpixel||''see above''||
+||margins||subpixel||''see above''||
+||borders||pixel||Using integers to ensure that all borders are the same width as specified.||
+||scroll width/height||subpixel||Based on actual content size, which is stored with subpixel precision.||
+||scroll offset||pixel, rounded||Scrolling by subpixel values would cause off-by-one errors when pixel snapping, and would expose the embedding application to LayoutUnits.||
+||clip rects||subpixel||Clip rects are repositioned based on the parent containers location and size.||
+||overflow rects||subpixel||Computed based on size and location of object, both of which are represented with subpixel precision.||
+||painting||pixel, snapped||To avoid unwanted anti-aliasing.||
+||InlineBoxes||float||''unchanged''||
+||Overflow rects for InlineBoxes||subpixel, enclosed||Smallest possible subpixel rectangle representation guaranteed to contain subtree.||
+||InlineBoxes in a RenderBlock||pixel, snapped||The line box tree uses floats for layout and painting, we snap to pixels when positioning and sizing the line box tree to ensure that text isn’t drawn outside the pixel snapped bounds of its block.||
+||SVG Boxes in a RenderBlock||subpixel, enclosed||Smallest possible subpixel rectangle representation guaranteed to contain subtree.||
+||tables||pixel||Using integers to ensure even distribution of available space across columns and to match specification.||
+||MathML||pixel||Continuing to use pixels now for ease of conversion. MathML should be revisited to really take advantage of sub-pixel layout after these changes are in.||
+||RenderLayers||subpixel||RenderLayers are positioned along with their renderer, and need to accumulate their offsets with subpixel precision.||
+||GraphicsLayers||pixel||Graphics layers and their compositing remain unchanged.||
+||floats||subpixel||These are always blocks and we'd otherwise be incapable of having 2 floats on the same line, each at 50% width on a line with an odd width.||
+||widgets, plugins, video, and foreign objects||pixel, rounded||These are either rendered outside of WebCore, or pass through an intermediary embedding layer. We align their location to integer boundaries, which means we can also round the sizes.||
+||windows coordinates and sizes||pixel||These communicate with the embedding layer, and represent actual pixels.||
+||hit testing||pixel, rounded||Hit testing is staying integer based for now. The eventual plan is to convert it to subpixel precision to fix long standing bugs such as [https://bugs.webkit.org/show_bug.cgi?id=23170 23170].||
+||RenderTreeAsText||pixel, snapped||Pixel snapping subpixel values makes the text output match what is painted.||
+||RenderTheme||pixel, snapped||Interfaces with the platform code.||
+||SVG||float||''unchanged''||
+
+NOTE: Pixels in the list above refers to device pixels, not css pixels.[[BR]][[BR]]
+
+= Interfacing with the inline box tree =
+
+Inline boxes continue to be at floating point offsets with text rendered at floating point distances. Because we pixel snap the render tree, we need use the pixel snapped integer values when laying out inline boxes to avoid having text bleed outside of their containing blocks. We also continue to need use enclosingIntRect for measurements originating in the inline box tree.[[BR]][[BR]]
+
+= Converting Subpixels to Pixels =
+
+When converting a rectangle with subpixel precision to one with integer precision one of two methods is used. The first, seen in the enclosingIntRect function, returns the smallest possible rectangle that fully contains the original subpixel one. As such the resulting rectangle is guaranteed to be the same size or larger than the original. This method has been in use to convert rects in floating point in WebKit for some time.
+
+The method used to align render objects to pixels is referred to as pixel snapping. Pixel snapping applies rounding to the logical top left point of the rectangle, then moves the resulting edges to the nearest pixel boundaries. This results in a rectangle aligned to pixel boundaries as close to the original as possible, but is not guaranteed to fully contain the original.
+
+[[Image(/raw-attachment/wiki/LayoutUnit/WebKitlayouttypes.png)]]
+
+The figure above illustrates the differences between the two methods. The light gray squares represents pixels, the blue square represents the original subpixel rectangle while the black outline represents the resulting rectangle returned by the two functions.
+
+== enclosingIntRect ==
+
+When computing the enclosing rectangle the left and top edges are floored and the right and bottom ones ceiled.
+
+The values are computed as follows:
+  x: floor(x)[[BR]]
+  y: floor(y)[[BR]]
+  maxX: ceil(x + width)[[BR]]
+  maxY: ceil(y + height)[[BR]]
+  width: ceil(x + width) - floor(x)[[BR]]
+  height: ceil(y + height) - floor(y)[[BR]]
+
+== pixelSnappedIntRect ==
+
+When snapping the left and top edge is simply rounded to the nearest device pixel.
+The right and bottom edges are computed by subtracting the rounded left/top edge from the precise location and size. This ensures that the edges all line up with device pixels and that the total size of an object, including borders, is at most one pixel off.
+
+The values are computed as follows:
+  x: round(x)[[BR]]
+  y: round(y)[[BR]]
+  maxX: round(x + width)[[BR]]
+  maxY: round(y + height)[[BR]]
+  width: round(x + width) - round(x)[[BR]]
+  height: round(y + height) - round(y)[[BR]]
+
+We use the term pixel snapped to indicate that the numbers are not merely rounded. Logical widths and heights, as well as right and bottom edges should never be rounded. When working with pairs of values instead of rects, the helper function snapSizeToPixel can be used to calculate these values. This also matches the naming used by the line box tree.
+[[BR]][[BR]]
+
+= Determining the right unit and conversion =
+
+When attempting to determine the proper unit and conversion for a new variable, here are some common types to help you decide:
+
+||A value passed in or out of the embedding layer.||Pixels: the embedding layer has no knowledge of WebKit’s subpixel units. This includes things in the render tree that are rendered outside of WebKit (like Widgets) or pass out of WebKit before being drawn (like SVG Foreign Objects). Values originating in subpixel units should be pixel snapped. Padding and margin rendered inside of objects rendered by platform code are truncated to integers.||
+||A value passed to the graphics context.||Float for text, otherwise pixels: LayoutUnits should always be pixel snapped before being drawn. This avoids painting off pixel boundaries, which causes the graphics system to use unwanted antialiasing.||
+||A point (or offset) in the render tree.||Subpixel, rounded if needed: Points in the render tree are often converted between absolute and relative coordinates, and need to accumulate sub-pixels. Points are ultimately rounded when passed into the embedding layer or to the graphics context.||
+||A size in the render tree.||Subpixel, snapped if needed: Sizes in the render tree are stored in subpixel units for precision, but should not be rounded. Rounding a size can result in objects bleeding over the boundaries of neighboring renderers when the neighbor’s positions are rounded. Instead, sizes should be snapped along with their corresponding position before being painted or passed to the embedding layer.||
+[[BR]]
+
+= Notes =
+
+1: Was originally 1/60 based on Mozilla’s implementation. See the proposal [https://wiki.mozilla.org/Mozilla2:Units here] which was landed in [https://bugzilla.mozilla.org/show_bug.cgi?id=177805 this bug]. We changed it to 1/64 in September 2012 to avoid loosing precision when converting between LayoutUnits and Lengths (which use floats internally) whenever possible and to avoid having to do integer division.
