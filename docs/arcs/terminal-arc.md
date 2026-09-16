@@ -1,9 +1,9 @@
 ---
 node: arc-terminal
 layer: navigation
-related: [arcs/README, goals/display, goals/own-web, goals/local-ai, arcs/native-window-arc, arcs/canvas-arc, arcs/display-calculus-arc, arcs/vocabulary-arc, arcs/diagnostics-arc, arcs/scriba-arc, arcs/tool-authority-arc, banks/render, banks/port, banks/capability, decisions/decision-work-ids, records/author-calls, records/homing-triage, status-ledger, index]
+related: [arcs/README, goals/display, goals/own-web, goals/local-ai, arcs/native-window-arc, arcs/canvas-arc, arcs/display-calculus-arc, arcs/vocabulary-arc, arcs/diagnostics-arc, arcs/scriba-arc, arcs/tool-authority-arc, banks/render, banks/port, banks/capability, decisions/decision-b-in-type, decisions/decision-work-ids, records/author-calls, records/homing-triage, status-ledger, index]
 status: current
-updated: 2026-09-10
+updated: 2026-09-15
 ---
 
 # Arc: the terminal
@@ -72,6 +72,25 @@ A fresh session's biggest risk is rebuilding the abandoned terminal/OS arc. **Do
 `TUI/docs/TERMINAL-PORT-DESIGN.md:109`, and neither that file nor the `TUI/`
 directory exists in this tree. Row `TM9` carries the call and answers none of it.
 
+**The vocabulary that states `TM9`'s question is
+[[decisions/decision-b-in-type]].** A pty and a tty fd are B referents, Linux
+facilities the language cannot type, and `lib/ports/pty.port:8-10` separates the
+two registries at that level. One level up they are two referents of one surface.
+`Terminal` is a C-side name: the supervisor every use routes through, which is
+why it survives a substrate change. `lib/lowering/tal/target-linux.manifest:18`
+declares `(cat B)` and its header at `:4-5` says a rung-2 backend *"replaces THIS
+FILE alone"*. So `.planning/MINI-RUSH-HANDOFF.md:45` does not reach a C-side
+port. It refused B-level indirection over one facility with no supervisor, and
+that refusal stands on its own terms.
+
+⚑ **FLAG, author tier: the repair this reading exposes is measured and
+unplaced.** `records/lenses/problems.md` PRB-94 records that the nine `.port`
+sheets under `lib/ports/` declare no module coordinate while
+`lib/ports/ports.chiral:55` declares the C supervisor, so the quarantine is
+unenforced across the crossing surface. Whether that repair is a `TM9` row, a
+port-tier row of its own, or belongs to an existing element is the placement call
+`records/author-calls.md` carries at `unreviewed`.
+
 ⚑ **FLAG, author tier: the lane ruling this arc sits beside.**
 `.planning/DISPLAY-LAYER-GAP.md:22-24`, verbatim: *"**Lane ruling, author,
 2026-09-04.** Terminal parsing, drawing, shading, layering and 3D are separate
@@ -130,9 +149,9 @@ Six groups, in dependency order.
 
 | edge | direction | what crosses |
 |---|---|---|
-| `negotiation` to `port` | against the order | `E128`'s signature takes `(1 t Terminal)` and `.planning/MINI-RUSH-HANDOFF.md:45` dropped that port. The negotiation decides how much of a port the arc needs, so `TM9` is settled by what `TM4` turns out to require |
+| `negotiation` to `port` | against the order | `E128`'s signature takes `(1 t Terminal)` and `.planning/MINI-RUSH-HANDOFF.md:45` refused B-level indirection over the host terminal. The negotiation decides how much of a port the arc needs, so `TM9` is settled by what `TM4` turns out to require |
 | `gate` to `disposal` | against the order | the gate sits last in dependency order and first in what the arc should do. `pty-close` has been declared and unlowered since E107 landed, and the reason nothing caught it is that no phase holds a pty. A gate built last measures a hole already closed |
-| `emulator` to `port` | against the order | whether the emulator draws through a held surface or writes fd 1 is `TM9`'s question arriving from the other side |
+| `emulator` to `port` | against the order | whether the emulator draws through the C supervisor or writes fd 1 directly is `TM9`'s question arriving from the other side |
 
 ## REQUIREMENTS
 
@@ -174,7 +193,7 @@ Six groups, in dependency order.
 | `terminal/TM6` | the grid and the parser reach a root outside `prog/scriba/samples/`. Both are built, both are SEEDED, and the four sample roots are reach into a gate | emulator | law | connect | 4 | open | `unminted` |
 | `terminal/TM7` | where the key decoder lives. `Key`, `KeySeq` and `Keymap` are declared at `lib/ports/tty.port:13-23` on the stated ground that a key is what the crossing yields, while the decode from `read-key`'s bytes sits in `prog/scriba/key-parser.chiral` | emulator | decision | connect | 4 | open | `unminted` |
 | `terminal/TM8` | every `→TUI:T#` cite resolves or retires. Nine ledger rows point into `TUI/CATALOG.md` and the directory is absent | record | decision | new | 5 | open | `unminted` |
-| `terminal/TM9` | whether the surface is a held value or stays fd 0 and fd 1 by convention. ⚑ **Author call, carried and unanswered.** `.planning/MINI-RUSH-HANDOFF.md:45` refused the port in 2026-08, `E128`'s signature needs one, and `canvas/G2` asks for a host that places a display list without owning the surface | port | decision | new | 3, 6 | open | `unminted` |
+| `terminal/TM9` | which category C supervisor the terminal's B referents route through, and what that signature names. ⚑ **Author call, carried and unanswered.** [[decisions/decision-b-in-type]] holds the vocabulary, and this arc reads it against the terminal under *Why this arc exists*: the tty fd and the `Pty` master at `lib/ports/pty.port:14` are two referents of one surface, and `Terminal` is the C-side name. `.planning/MINI-RUSH-HANDOFF.md:45` refused B-level indirection over the host terminal in 2026-08 and reaches no C-side port, `E128`'s signature needs a surface it can query and read a reply from, and `canvas/G2` asks for a host that places a display list without owning the surface | port | decision | new | 3, 6 | open | `unminted` |
 
 ### Coverage
 
@@ -202,9 +221,10 @@ this arc holds no reserved block.
 residue `docs/elements/catalog.md:439` has carried since E107 landed. `TM3` is
 what would have caught it. Neither waits on an author call.
 
-**What blocks the arc.** `TM4`, `TM5` and `TM9` stand behind the dropped
-`Terminal` port. `TM4`'s SPEC cannot be executed as written: 0 of 4 steps run at
-HEAD and every target is a `TUI/` path, per `records/spec-tier-triage.md:216`.
+**What blocks the arc.** `TM4`, `TM5` and `TM9` stand behind a `Terminal`
+supervisor that no signature names. `TM4`'s SPEC cannot be executed as written:
+0 of 4 steps run at HEAD and every target is a `TUI/` path, per
+`records/spec-tier-triage.md:216`.
 Replanning it against `lib/protocol/apc.chiral` is the first move on that side,
 and it cannot finish while `TM9` is open.
 

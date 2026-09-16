@@ -1,9 +1,9 @@
 ---
 node: arc-canvas
 layer: navigation
-related: [arcs/README, goals/own-web, goals/display, arcs/vocabulary-arc, arcs/display-calculus-arc, arcs/native-window-arc, arcs/binary-split-arc, banks/render, banks/profile, decisions/decision-profiles, decisions/decision-work-ids, records/author-calls, status-ledger, index]
+related: [arcs/README, goals/own-web, goals/display, arcs/vocabulary-arc, arcs/display-calculus-arc, arcs/native-window-arc, arcs/terminal-arc, arcs/binary-split-arc, banks/render, banks/profile, decisions/decision-profiles, decisions/decision-work-ids, records/author-calls, status-ledger, index]
 status: current
-updated: 2026-09-05
+updated: 2026-09-15
 ---
 
 # Arc: the canvas
@@ -121,6 +121,12 @@ either**, so `G1`, `G3`, `G4`, `G5`, `Q2` and `Q4` are all reachable now.
 `Z1` gets its second and third, `C9` and `H6` get the witness their open author
 call asks for, and `binary-split/B4` and `BA-10` get the `.profile` instance
 they are waiting on.
+
+**`G2`, `G3` and `G8` are one decision with `terminal/TM9`.** Who holds the
+surface is asked here from the canvas side and in [[arcs/terminal-arc]] from the
+terminal side. That arc states the question in the B and C vocabulary of
+[[decisions/decision-b-in-type]] and carries the author call. An element serving
+two goals sits in both arcs, `docs/goals/README.md:32`.
 
 **The design is `.planning/OWN-WEB-GAP.md`**, lanes G, P and Q, and its §5
 carries the decisions this arc waits on.
