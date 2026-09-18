@@ -1,9 +1,9 @@
 ---
 node: records-spec-tier-triage
 layer: record
-related: [records/README, records/doc-rot, records/findings, elements/ledger, examples/INDEX, decisions/decision-scope, status-ledger, index]
+related: [records/README, records/doc-rot, records/findings, records/author-calls, elements/ledger, examples/INDEX, decisions/decision-scope, status-ledger, index]
 status: current
-updated: 2026-09-04
+updated: 2026-09-18
 ---
 
 # SPEC-tier triage — is the change plan still executable?
@@ -126,7 +126,7 @@ reads `audited` is precisely the thing this triage exists to surface.
 | `E181-pretty-term-doc-SPEC` | audited | **DONE-ALREADY** | 0/4 | implemented | BUILT |
 | `E182-arity-evidence-SPEC` | audited | **DONE-ALREADY** | 0/5 | implemented | built |
 | `E185-type-preserving-upper-SPEC` | audited | **DONE-ALREADY** | 0/7 | built | built |
-| `E20-loader-SPEC` | audited | **NEEDS-REPLAN** | 1/4 | audited | built |
+| `E20-loader-SPEC` | audited | **NEEDS-REPLAN** | 1/4 | audited | ~~built~~ **`design`** (`a4d98ce`, 2026-09-18) |
 | `E21-arena-SPEC` | audited | **DONE-ALREADY** | 0/4 | audited | built |
 | `E22-regions-SPEC` | audited | **NEEDS-REPLAN** | 0/4 | audited | design |
 | `E24-i64-arith-SPEC` | audited | **NEEDS-REPLAN** | 1/2 | audited | built |
@@ -215,7 +215,7 @@ removed. None of these can be run, and none should be queued.
 |---|---|---|
 | `E128-apc-handshake-SPEC` | 0/4 | Every target is a `TUI/` path; repoint at `lib/protocol/apc.chiral` and `tools/test/samples/`. Intent survives whole. |
 | `E150-argv-SPEC` | 1/7 | Only B1 resolves. B3's stated home is wrong: `read`/`write-fd` are `lib/ports/fd.port:34-35`, not the process block. |
-| `E20-loader-SPEC` | 1/4 | Only Step 2 (`nb-blit`) survives; the code loader is unbuilt and the ledger's `built` is a mis-read of the module loader. |
+| `E20-loader-SPEC` | 1/4 | Only Step 2 (`nb-blit`) survives; the code loader is unbuilt and the ledger's `built` is a mis-read of the module loader. ⚑ **Corrected 2026-09-18.** The ledger stopped reading `built` at `a4d98ce`, which set E20 to `design` and moved its module cell from `loader` to `map-seal`, so the collision with `lib/module/loader.chiral` that this row names is closed. `records/author-calls.md:100` is the ruling, and it retitles E20 **Typed W^X loader: `MapRW` sealed to `MapRX`**. The unbuilt half stands as measured, and the ruling sends the SPEC to a `revisit` rather than to this replan. |
 | `E22-regions-SPEC` | 0/4 | Three steps name `lib/mem-region.chiral`, which moved to `lib/memory/`; the fourth is a cut test file. Intent survives. |
 | `E24-i64-arith-SPEC` | 1/2 | Step 1 is executable at `lib/prelude/prelude.chiral`; Step 2's gate must be rehomed on `tools/test/`. |
 | `E41-region-types-SPEC` | 2/4 | Steps 2-3 resolve; Step 1 (`refine.py`) and Step 4 (`scaffold/tests/`) need new homes. |
@@ -363,8 +363,12 @@ worst of the set, because `design` reads *nothing exists yet*.
 
 | element | ledger | measured at HEAD |
 |---|---|---|
-| E20 | `built` | The SPEC's loader is the RW-mmap → `mprotect` → executable code loader. `lib/module/loader.chiral` is a different thing — its own header calls it "the compiler LOADER … read → elaborate → bridge Core→Term". `nb-blit`, the SPEC's Step 2, is absent from `lib/`. The `built` cell looks like a name collision between two loaders. |
-| E24 | `built` | `div`, `mod`, `divmod` and `try-div` are absent from `lib/prelude/prelude.chiral`. The floor agreement under them is built; the refined safe path the SPEC delivers is not. |
+| E20 | ~~`built`~~ `design` | The SPEC's loader is the RW-mmap → `mprotect` → executable code loader. `lib/module/loader.chiral` is a different thing — its own header calls it "the compiler LOADER … read → elaborate → bridge Core→Term". `nb-blit`, the SPEC's Step 2, is absent from `lib/`. The `built` cell looks like a name collision between two loaders. ⚑ **Closed 2026-09-18.** The collision reading was right and the cell moved: `a4d98ce` sets the state to `design` and the module cell to `map-seal`, on the author ruling at `records/author-calls.md:100`. The measurement underneath is untouched, and `docs/elements/catalog.md:126` now opens `Not built.` on the same reading. |
+| E24 | `built` | `div`, `mod`, `divmod` and `try-div` are absent from `lib/prelude/prelude.chiral`. The floor agreement under them is built; the refined safe path the SPEC delivers is not. ⚑ **Closed 2026-09-18. The absence is real and the inference from it is not.** E24's subject is the x86-64 emitter, which `docs/elements/catalog.md:130` states and `records/ledger-reconciliation.md:67-70` re-measured at `138a3e3`: `x-div-guarded` and `x-mod-guarded` wrap `cqo`/`idiv` with the #DE guards at `lib/lowering/x64/mach.chiral:299` and `:305`, dispatched at `:367` and `:369` over the raw externs `/` and `%` at `lib/prelude/prelude.chiral:62-63`. The ledger's `built` therefore names work that is in the tree, and this row reached section B through a name lookup rather than through a disagreement. What it measured correctly is the SPEC's own deliverable, the refined wrappers over `(refine I64 (<> 0))` at `docs/elements/specs/E24-i64-arith-SPEC.md:26-27`, absent from `lib/` today, and that residue is the NEEDS-REPLAN row above rather than a ledger cell. |
+
+⚑ **Section B is empty as of 2026-09-18, and both rows stay for the record.**
+E20's cell moved on an author ruling; E24's held, and the reading that put it
+here was the wrong subject. Neither is now a build-state disagreement.
 
 **C. `docs/examples/INDEX.md` reads implement-ready and the work is in the tree.**
 31 rows, every ⚑ in the DONE-ALREADY table above. The four the repointing pass
@@ -437,6 +441,18 @@ steps are done — `lib/lowering/upper/closconv.chiral` carries the fix at :704,
 4. **Two ledger cells need an author's eye**, both in section B: E20's `built`
    against an absent `nb-blit`, and E24's `built` against an absent `div`/`mod`.
    Neither is a doc-rot repair; both are a build-state call.
+   ⚑ **Discharged 2026-09-18. Both halves are closed, by different routes.**
+   E20's half got its author's eye: `records/author-calls.md:100` rules E20 the
+   surviving element for the W^X work, retitled to the typed `MapRW`/`MapRX`
+   seal, and `a4d98ce` moved the cell `built` to `design` with the module cell
+   `loader` to `map-seal`. E24's half never needed one. It closed on
+   measurement at `138a3e3`, recorded at `records/ledger-reconciliation.md:67-70`
+   and `docs/elements/ledger.md:466`: E24's subject is the x86-64 emitter, the
+   emitter is built, and absent prelude wrappers say nothing about it.
+   Re-measured today and the closure holds. **The residue this item was right
+   about is the SPEC's, not the ledger's**: the refined wrappers over
+   `(refine I64 (<> 0))` are still absent from `lib/`, and the NEEDS-REPLAN row
+   above is where that sits.
 
 5. **N01 is the only queueable SPEC in the tier.** Slices 3 and 4 (BLAKE2s,
    X25519) are unbuilt, `lib/crypto/` exists with `chacha.chiral` and
