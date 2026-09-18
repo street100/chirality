@@ -214,16 +214,16 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 
 ### LIM-16 E20 ledger says built and the pipeline index says audited
 
-- state:    accepted
-- author:   unreviewed
-- note:     none
+- state:    planned
+- author:   ruled 2026-09-18
+- note:     RULED 2026-09-18 by the author, shape A of three: E20 survives, retitled to **Typed W^X loader: `MapRW` sealed to `MapRX`** with module cell `map-seal`, and its ledger state goes `built` to `design`. That is what closes this row's disagreement, because `docs/examples/INDEX.md:68` already reads `audited` and an audited SPEC over unbuilt work is `design`. The ruling and its thirteen carriers are `records/author-calls.md:100`. This row stays open until the propagation lands, which is what `planned` says.
 - level:    element
 - about:    E20
 - claim:    docs/elements/ledger.md marks E20 `built`; docs/examples/INDEX.md marks it `audited`, awaiting implementation.
 - measured: records/ledger-reconciliation.md measured the two cells as naming different things. There is no nb-blit and no mmap-to-mprotect code loader under lib/; lib/module/loader.chiral is the compiler's module loader by its own header and the name is a collision. The mmap/mprotect pair in compile-emit is E89/E91's arena reserve-commit, never a W-to-X transition, and the W^X half is not held: x64/elf.chiral:59-60 emits one RWX PT_LOAD. Naming the surviving element is an author call.
-- evidence: records/ledger-reconciliation.md, lib/lowering/x64/elf.chiral:59-60
-- checked:  2026-09-05
-- owner:    none
+- evidence: records/ledger-reconciliation.md, lib/lowering/x64/elf.chiral:59-60, records/author-calls.md:100
+- checked:  2026-09-18
+- owner:    `substrate-floor/SU1`
 - from:     none
 
 ### LIM-17 E26 ledger says built and the pipeline index says audited
