@@ -214,9 +214,9 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 
 ### LIM-16 E20 ledger says built and the pipeline index says audited
 
-- state:    planned
+- state:    covered
 - author:   ruled 2026-09-18
-- note:     RULED 2026-09-18 by the author, shape A of three: E20 survives, retitled to **Typed W^X loader: `MapRW` sealed to `MapRX`** with module cell `map-seal`, and its ledger state goes `built` to `design`. That is what closes this row's disagreement, because `docs/examples/INDEX.md:68` already reads `audited` and an audited SPEC over unbuilt work is `design`. The ruling and its thirteen carriers are `records/author-calls.md:100`. This row stays open until the propagation lands, which is what `planned` says.
+- note:     RULED 2026-09-18 by the author, shape A of three: E20 survives, retitled to **Typed W^X loader: `MapRW` sealed to `MapRX`** with module cell `map-seal`, and its ledger state goes `built` to `design`. That is what closes this row's disagreement, because `docs/examples/INDEX.md:68` already reads `audited` and an audited SPEC over unbuilt work is `design`. The ruling and its thirteen carriers are `records/author-calls.md:100`. The propagation closed 2026-09-18 across seventeen carriers, which is what `covered` says: the ledger reads `design`, `docs/examples/INDEX.md:68` reads `audited`, and an audited SPEC standing over unbuilt work is that state, so the two registries no longer disagree.
 - level:    element
 - about:    E20
 - claim:    docs/elements/ledger.md marks E20 `built`; docs/examples/INDEX.md marks it `audited`, awaiting implementation.
