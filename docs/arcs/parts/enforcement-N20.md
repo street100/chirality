@@ -134,7 +134,7 @@ value, a sentinel, a silent unrelated value, and process death.
 |---|---|---|---|
 | the 34 extern declarations | `lib/prelude/prelude.chiral:59-104` | IMPLEMENTED | the compiler, every compile |
 | `erase-prim`, the route authority | `lib/lowering/tal/erase.chiral:153-170` | IMPLEMENTED | `erase-instr`, `:181` |
-| `native-lib`, 28 TIFns as a readable `(List TIFn)` | `lib/lowering/tal/bytes.chiral:636` | IMPLEMENTED | emission |
+| `native-lib`, 28 TIFns as a readable `(List TIFn)` | `lib/lowering/tal/bytes.chiral:813` | IMPLEMENTED | emission |
 | `TIFn` / `TCode` / `TInstr` as ordinary data sums | `lib/lowering/tal/ir.chiral:19-49` | IMPLEMENTED | the whole tal path |
 | a native census over the compiler's own output | `prog/optimizer-census.prog` (225 L) | IMPLEMENTED | `tools/test/opt-census.sh`, `8 passed, 0 failed` at `38ecdba` |
 | the bug class, as one prose cell | `docs/definitions/bug-classes.md:46` | DESIGNED | nothing re-derives the cell |
@@ -211,7 +211,7 @@ one half and covers neither the extern enumeration nor the behavioural half.
   hardcoded. For each name it **calls `erase-prim`** with a synthetic operand
   list and reads the `XI` arm (`lib/lowering/tal/erase.chiral:26`): `en-prim` is
   a register op, `n-bget` is the inline read, `n-call fname` names the routine.
-  Then it folds `native-lib` (`lib/lowering/tal/bytes.chiral:636`, 28 `TIFn`s,
+  Then it folds `native-lib` (`lib/lowering/tal/bytes.chiral:813`, 28 `TIFn`s,
   an ordinary `(List TIFn)`) with a register-taint fixpoint: parameters
   `0..nparams-1` are tainted, `ti-prim` and `ti-const` propagate, `ti-call`
   propagates into the callee's parameter at the same position, and a hit is a
@@ -341,7 +341,7 @@ added to it. This design opens no new author call.
   band concurrently. Per [[decisions/decision-work-ids]] and the 2026-09-06
   ruling that a band is advisory, the mint step assigns the number.
 - **Catalog row:**
-  `| E<NN> | **The caller-indexed byte-access census: which of the prelude's 34 externs carry a caller-supplied value into a byte-cell seat, and what each does out of range** | Not built. Two committed roots and one gate. The structural root derives the extern list from `lib/prelude/prelude.chiral` through `lib/surface/sexp.chiral`, calls `erase-prim` (`lib/lowering/tal/erase.chiral:153`) per name to read the route off the `XI` arm rather than off `prim2lib-table`, and folds `native-lib` (`lib/lowering/tal/bytes.chiral:636`) with a register-taint fixpoint. The behavioural root is EN-31's probe method committed: one case per member, one process per case, exit code and stdout recorded. Measured 2026-09-10 and re-derived by neither: **7 of 34** externs carry a caller-supplied value to a byte-cell seat, six an index and `brepeat` an extent, over six routines, and **zero of the seven clamps**. Two carry a partial guard: `nb-bslice` on the inverted range alone (`bytes.chiral:150`), `nb-bfind-from` on the forward direction alone, to a `-1` sentinel (`:360`). `str-find-from`, `unpack-u32`, `unpack-u16` and `brepeat` are four members no lens row, catalog row or ledger row names. The outcome column is the observed behaviour over four values, so the instrument survives both answers to the clamp-against-trap author call. | `OURS`; the census `records/enforcement-arc.md` EN-31 could not size | SH |`
+  `| E<NN> | **The caller-indexed byte-access census: which of the prelude's 34 externs carry a caller-supplied value into a byte-cell seat, and what each does out of range** | Not built. Two committed roots and one gate. The structural root derives the extern list from `lib/prelude/prelude.chiral` through `lib/surface/sexp.chiral`, calls `erase-prim` (`lib/lowering/tal/erase.chiral:153`) per name to read the route off the `XI` arm rather than off `prim2lib-table`, and folds `native-lib` (`lib/lowering/tal/bytes.chiral:813`) with a register-taint fixpoint. The behavioural root is EN-31's probe method committed: one case per member, one process per case, exit code and stdout recorded. Measured 2026-09-10 and re-derived by neither: **7 of 34** externs carry a caller-supplied value to a byte-cell seat, six an index and `brepeat` an extent, over six routines, and **zero of the seven clamps**. Two carry a partial guard: `nb-bslice` on the inverted range alone (`bytes.chiral:150`), `nb-bfind-from` on the forward direction alone, to a `-1` sentinel (`:360`). `str-find-from`, `unpack-u32`, `unpack-u16` and `brepeat` are four members no lens row, catalog row or ledger row names. The outcome column is the observed behaviour over four values, so the instrument survives both answers to the clamp-against-trap author call. | `OURS`; the census `records/enforcement-arc.md` EN-31 could not size | SH |`
 - **Ledger row:**
   `| E<NN> | bounds-census | design | **The caller-indexed byte-access census over the prelude's 34 externs.** Requirement 1 of [[arcs/enforcement-arc]] cannot say why the capability is not at ENFORCED while its extent is uncounted. Two roots plus one gate; measures and asserts, repairs nothing. `E176` keeps `nb-bslice`'s repair. | `enforcement/N20`, EN-31, BR-06 | SH |`
   Category **MEM**, which owns byte cells per the legend at

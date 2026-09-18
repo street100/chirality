@@ -223,7 +223,7 @@ audited: 2026-08-31
     well-formed with U+FFFD resync, pure `->`. **A decoder only — there is no
     width function anywhere in `lib/` or `prog/`**, and `utf8.chiral:15` names
     *"the T4 wide-cell width computation"* as a **future** consumer.
-  - **`lib/prelude/prelude.chiral`** — `max` `:153`, `min` `:156`,
+  - **`lib/prelude/prelude.chiral`** — `max` `:179`, `min` `:182`,
     `str-len : (-> Str I64)` extern `:78` (**bytes**), `str-cat` `:86`,
     `i64->str` `:87`, `str->bytes` `:91`, `blen` `:96`, `str-sub` `:83`
     (**E176's hazard — E174 adds no call site**).

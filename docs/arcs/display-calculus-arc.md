@@ -210,7 +210,7 @@ build sequence.
 | `display-calculus/H6` | the property walk, run as a suite phase. not started; same witness gap as C9, which it instantiates | gate | tool | new | 5 | open | `unminted` |
 | `display-calculus/A1` | the `Doc` to `Rendering` path is reached. measured 2026-09-04, and re-measured the same day: `grep -rn '"protocol/render-doc"' lib/ prog/` returns zero, and `dg-doc` (`lib/typing/diag.chiral:561`) has zero consumers outside its own file. ⚑ The scope is load-bearing. Two importers live under `tools/`, `tools/test/samples/e158_render.prog:58` and a heredoc probe at `tools/test/render-doc.sh:423`, and Phase 17 (`tools/test/run-tests.sh:268`) builds the first and runs it (`tools/test/render-doc.sh:110`). What this row asks for is a SHIPPING producer, and there is none. No `d-tag` in this tree reaches `lookup-face`. **Precondition for any C1 gate that can fail** | adoption | law | connect | 2 | open | `unminted` |
 | `display-calculus/A2` | `Mode`'s `faces` reaches the renderer. measured 2026-09-04: `command-loop.chiral:96` discards it. The shard C5 cashes | adoption | law | connect | 4 | open | `unminted` |
-| `display-calculus/R3` | the span primitive: **eleven** externs touch `Bytes` (`lib/prelude/prelude.chiral:91-104`), re-counted 2026-09-18 against the twelve this cell carried, and `brepeat` (`:100`) is the only one that writes a span. A builder does exist, `bput-u8` (`lib/lowering/tal/bytes.chiral:610`), and it slices the prefix, slices the suffix and concatenates twice, so it copies the whole cell per byte and varying content still has no linear-time path. Cited by [[arcs/canvas-arc]] and [[goals/own-web]] as the wall in front of six raster rows, one text row and all of composite | adoption | primitive | new | 1 | specced | `E200` |
+| `display-calculus/R3` | the span primitive: **eleven** externs touch `Bytes` (`lib/prelude/prelude.chiral:91-104`), re-counted 2026-09-18 against the twelve this cell carried, and `brepeat` (`:100`) is the only one that writes a span. A builder does exist, `bput-u8` (`lib/lowering/tal/bytes.chiral:610`), and it slices the prefix, slices the suffix and concatenates twice, so it copies the whole cell per byte and varying content still has no linear-time path. Cited by [[arcs/canvas-arc]] and [[goals/own-web]] as the wall in front of six raster rows, one text row and all of composite. **Built 2026-09-18** at `30b288b`, `d2b8f05` and `f0de3cc`: `bover` is a twelfth `Bytes` extern, source-over of one premultiplied colour over a destination span through a coverage mask, one `ti-bnew` and one pass. Measured on the arena's own cursor (`lib/ports/process.port:36`): sixteen 1920-pixel spans cost 278,144 bytes against 118,824,960 through `bcat` per pixel, a 427x ratio. Phase 33 green at 19 rows, five mutants each moving exactly its pinned set | adoption | primitive | new | 1 | built | `E200` |
 | `display-calculus/R2` | the pixel encoding as a type: width, alpha state and transfer function, so an encoded sample and a linear one are different types. **Rostered by no arc until 2026-09-18**, existing only at `.planning/DISPLAY-LAYER-GAP.md:195`, which is the agent tier. `FD-37` (`records/findings.md:551`) hands it four corrections and the number it lacked. Unpremultiply precedes linearisation and the two fail to commute, Skia conditioning the elision on exactly that (`records/findings.md:559`), so three premultiplication states exist where the gap file's cell names two. The depth is 10 bits encoded against 12 linear, from CSS Color 4's own precision table (`:557`). Source-over with a coverage mask is integer-reachable at ±1 LSB while no surveyed implementation evaluates a transfer function in integers at any width (`:561`). Wayland's floor is a SHOULD over two 8-bit premultiplied encoded formats and accepts nothing linear and nothing wider (`:563`). Absence: a grep over `lib/` and `prog/` for `premultipl`, `srgb` and `gamma` returns three hits and every one is the type checker's `Gamma` environment or a trace string | raster | primitive | new | 1 | open | `unminted` |
 | `display-calculus/R10` | the fixed-point coordinate type, denominator a type parameter. `FD-39` build-list item (1) (`records/findings.md:625`). `FD-34` (`records/findings.md:523`) measures that nothing in the record argues for 1/64 specifically, that FreeType, cairo and Blink each made the denominator a parameter in their own language (`FT_PAD_FLOOR( x, n )`, `CAIRO_FIXED_FRAC_BITS`, `FixedPoint<fractional_bits, Storage>`), and that Gecko's 1/60 argues **against** a power of two on decimal-exactness grounds and still ships. Absence: a grep over `lib/` and `prog/` for `fixed point`, `26.6`, `24.8` and `frac-bits` returns one hit, a comment about Loihi 2 at `prog/unit/encoding.chiral:15`. Discovered by `E200`'s design (`docs/arcs/parts/display-calculus-R3.md:217`), which named it residue and could not open a row | raster | primitive | new | 1, 6 | open | `unminted` |
 | `display-calculus/R11` | the signed-area cell accumulator: one integer per pixel of the active band, updated by the two integer adds at `FTGRAYS:533`. `FD-39` item (2) (`records/findings.md:625`). It ships in FreeType `grays` and in Skia's analytic AA, two independent shipped proofs in integers. Absence: nothing under `lib/` holds a per-pixel accumulation buffer, and it never writes to the surface, so `E200` cannot deliver it and its design says so (`docs/arcs/parts/display-calculus-R3.md:218`) | raster | primitive | new | 6 | open | `unminted` |
@@ -270,6 +270,33 @@ above are a display measurement of a memory row, and they belong in that arc's
 resume state when someone next works it.
 
 ## Resume state
+
+⚑ **2026-09-18: `R3` is built and `E200` is closed.** Four commits: `30b288b`
+the primitive (two wrappers, one extern, one `prim2lib` row, two `TIFn`s
+appended last in `native-lib`, and the promoted compiler), `d2b8f05` the probe,
+`f0de3cc` phase 33, `8a47cc9` the E185 byte-identity pin repointed at `E200`'s
+promotion because `native-lib` grew and every root's image grew a page with it.
+The fixpoint ran from one blob to `C2 == C3` at 1,257,848 bytes, which is where
+`docs/definitions/working-discipline.md:35-41` puts the first agreement for a
+change that reaches emission.
+
+**What the run measured that the SPEC did not have.** Three things, each in the
+gate's own header with its citation. `ulimit -v` is not an RSS instrument here,
+because any `RLIMIT_AS` makes the entry stub's arena `mmap` fail at every cap
+from 96 MiB to 32 GiB, so G5 weighs `heap-allocated` instead and reads
+278,144 bytes against 118,824,960. `erase.chiral:169`'s refusal string never
+reaches stderr, because `filter-erasable`
+(`lib/lowering/compile-back.chiral:188-191`) discards it and records `sk-extern`,
+which prints as `extern does not lower: bover`. And the SPEC's own M2, the loop
+bound at `n + 1`, **moves no row**: the routine composites `[0, 4n)` and then
+copies `[4n, ld)` through, so an over-run lands either inside the copied
+remainder or past the output cell and nothing printed reads it. It is still run,
+ungraded, and the gate gained M5 for the direction the output can see.
+
+**What `R3` does not close.** The scale conditions in §3 above stand unchanged:
+`memory-discipline/M4` (`E84`) owns `nb-bcat`'s quadratic and
+`memory-discipline/M2` (`E82`) owns reclamation. `E200` composites one span at
+linear cost and joins nothing.
 
 ⚑ **2026-09-18: amended, seven rows added and two counts corrected.** Nine
 research findings and one design run had produced requirements this roster did

@@ -77,7 +77,7 @@ No NEEDS-AUTHOR items. `status: draft` (unblocked).
 
 ### Step 1 — add the `bput-u16-le` surface def
 - **Target:** `lib/lowering/tal/bytes.chiral` — new `def bput-u16-le`, inserted
-  immediately after `bput-u8` (after `:610`), before `native-lib` (`:636`).
+  immediately after `bput-u8` (after `:610`), before `native-lib` (`:813`).
 - **Change:** paste the example §5 def verbatim (mirrors `bput-u32-le` with two
   deltas: `pack-u16` instead of `pack-u32`, and `(+ off 2)` instead of
   `(+ off 4)` for the suffix start). Keep a short comment mirroring the
