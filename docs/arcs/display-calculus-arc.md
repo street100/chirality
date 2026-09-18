@@ -1,9 +1,9 @@
 ---
 node: arc-display-calculus
 layer: navigation
-related: [arcs/README, goals/display, arcs/native-document-arc, arcs/native-window-arc, banks/module, decisions/decision-display-numerics, decisions/decision-work-ids, decisions/decision-scope, records/author-calls, status-ledger, index]
+related: [arcs/README, goals/display, arcs/native-document-arc, arcs/native-window-arc, arcs/memory-discipline-arc, banks/module, decisions/decision-display-numerics, decisions/decision-work-ids, decisions/decision-scope, records/author-calls, records/findings, status-ledger, index]
 status: current
-updated: 2026-09-06
+updated: 2026-09-18
 ---
 
 # Arc: the style calculus
@@ -11,13 +11,18 @@ updated: 2026-09-06
 - goal: [[goals/display]]
 - reserved element block: **none**. Rows carry arc-local ids per
   [[decisions/decision-work-ids]] and map to an element or to `unminted`. This
-  arc keeps four letters instead of one, `C`, `E`, `H` and `A`, because the
-  first three are the roster's in `.planning/DISPLAY-LAYER-GAP.md` and
+  arc keeps five letters instead of one, `C`, `E`, `H`, `A` and `R`, because
+  three of them are the roster's in `.planning/DISPLAY-LAYER-GAP.md` and
   renumbering them would break every citation the roster already makes. ⚑ A
   row spelled `E1` here is arc-local, cited `display-calculus/E1`, and carries
   no claim on the element numbering. **`A` is the fourth letter, minted by the
   C01 EXAMPLE audit.** `A1` and `A2` measure reach into what already exists in
-  the tree rather than propose a goal, so no lane in the roster fits them.
+  the tree instead of proposing a goal, so no lane in the roster fits them.
+  **`R` is the fifth, taken from the gap file's raster lane with `R3` on
+  2026-09-06 and widened 2026-09-18.** That file spells `R1` through `R9` with
+  its own meanings, so an id in that span means here what it means there, and
+  a row this arc discovers for itself takes `R10` onward. `R10` through `R15`
+  were opened 2026-09-18 and no gap-file row carries those numbers.
 - build-state authority: [[status-ledger]]
 
 Opened 2026-09-04 by author statement, as the first of five conditions under
@@ -66,6 +71,23 @@ match that pattern, so a literal grep undercounts reach and the true orphan
 count is three rather than the five such a grep reports. The registry and its
 consumers have drifted apart in both directions and nothing reports it.
 
+### The raster surface, measured 2026-09-18
+
+The style calculus resolves a value and the raster lane writes it. `R3` minted
+as `E200` on 2026-09-06 and its design ran on 2026-09-18, which is what put the
+six rows below on this roster. Every cell here was re-opened in the file it
+cites.
+
+| part | where | today | the defect |
+|---|---|---|---|
+| the span surface | `lib/prelude/prelude.chiral:91-104` | **eleven** externs touch `Bytes`, and `brepeat` (`:100`) is the only one that writes a span | a repeated cell is all it writes, so varying content has no linear-time path. `E200` is minted against exactly this |
+| the byte write | `lib/lowering/tal/bytes.chiral:610` | `bput-u8` writes one byte and returns a fresh cell | it slices the prefix, slices the suffix and concatenates twice, so it copies the whole cell per byte |
+| the arithmetic | `lib/prelude/prelude.chiral:37-39` | **sixteen** `Op` constructors, every one integer | nothing is missing here. `FD-39` (`records/findings.md:625`) states positively that every operation in its six-item build list is one of these sixteen, and no float type exists anywhere in this tree |
+| the coordinate | nowhere | a grep over `lib/` and `prog/` for `fixed point`, `26.6`, `24.8` and `frac-bits` returns one hit, a comment about Loihi 2 at `prog/unit/encoding.chiral:15` | a coordinate is a bare `I64` and its denominator lives in a reader's head |
+| the pixel | nowhere | a grep over `lib/` and `prog/` for `premultipl`, `srgb` and `gamma` returns three hits, two of them the type checker's `Gamma` register environment (`lib/lowering/tal/check.chiral:5`, `:45`) and one a trace string (`prog/demo/e51-hello.chiral:8`) | no width, alpha state or transfer function sits in any type, so two samples in different encodings add |
+| reclamation | `lib/memory/alloc-growing.chiral:22-24`, `lib/memory/arena.chiral:29` | three empty instruction lists for `renter`, `rexit` and `adrop` over a fixed 67,108,864-byte arena | nothing a compiled program runs reclaims a byte. `E200`'s design prices one 1920-pixel scanline on the `bcat` route at 7,376,640 bytes and one frame at 7.97 GB (`docs/arcs/parts/display-calculus-R3.md:128-129`) |
+| the drawing that exists | `prog/demo/sprites.chiral` | 76 lines, the whole drawing surface of this tree | it draws solid sprite rows and `docs/arcs/canvas-arc.md:117` records the consequence as "Sprites work and real drawing does not" |
+
 ## What is missing
 
 Grepped 2026-09-04 across `lib/` and `prog/`: zero hits for `theme`, zero for
@@ -74,12 +96,53 @@ The one `(data Env` hit is `EnvR` at `lib/ports/clock.port:28`, the process
 environment. `cascade` appears four times and every one is a comment about
 dropped-definition propagation in `lib/lowering/compile-back.chiral`.
 
+### The raster group, and the three edges that run against its order
+
+`FD-39` (`records/findings.md:625`) lists six items and `E200` delivers item
+(5) alone. The other five plus the pixel type form one group whose dependency
+order reads `R10` then `R13` and `R11`, then `R12`, then `R14`, with `R2` and
+`R15` off to the side. Each row owns one thing: `R10` a coordinate whose
+denominator is a type parameter, `R11` one integer per pixel of the active
+band, `R12` the sum that turns those integers into coverage bytes, `R13` the
+subdivision that feeds curves in, `R14` the loop that hands `E200` its spans,
+`R2` what a pixel is, and `R15` the destination `E200`'s design refused.
+
+Three edges run backwards through that order and none of them is a schedule.
+
+**`R2` reaches back into an element already minted.** `E200`'s design resolved
+its operand question by minting two one-constructor wrappers and recorded that
+`R2` "widens the colour wrapper later without touching this signature"
+(`docs/arcs/parts/display-calculus-R3.md:334`, its decision 1). So the row latest
+in the pixel's own story edits the meaning of the row built first.
+
+**`R14` sits above `E200` and is consumed by it.** The emitter is the last
+item in the build list and the surface primitive it feeds is the first thing
+built, so the arithmetic arrives after its own consumer.
+
+**`R13`'s tolerance is re-derived from the device surface each frame.**
+`FD-39`'s own header (`records/findings.md:583`) measures that per-frame
+re-derivation as the single mechanism any surveyed renderer uses to keep a
+border exact while the zoom changes. That makes a pure arithmetic row depend on
+a port-lane fact, which is the one edge that stops this group being read as a
+build sequence.
+
 ## REQUIREMENTS
 
-1. **A property value carries its invariant.** Every property is a sum whose
+1. **A value in this lane carries its invariant.** Every property is a sum whose
    invalid states have no representation, so a construction the vocabulary
    forbids fails the checker. The `Face` record's four bare fields are the
-   baseline this replaces.
+   baseline this replaces. ⚑ **Widened 2026-09-18 from "a property value" to
+   "a value in this lane"**, because two more values here carry an invariant a
+   bare `I64` and a bare `Bytes` throw away. A coordinate carries the
+   denominator it is measured in, so two instantiations at 1/64 and 1/256 have
+   no sum. A pixel carries its width, its alpha state and its transfer
+   function, so `FD-37`'s four refusals hold by construction: an encoded sample
+   plus a linear one, a premultiplied sample plus a straight one, a linear
+   sample stored at 8 bits, and an unpremultiply at 8 bits, which is the one
+   operation Skia declines to implement in integers at all
+   (`records/findings.md:567`). The observation is the same in all three cases,
+   which is why this is one requirement: the checker refuses the program, and
+   today it accepts every one of them because the types are bare.
 2. **The cascade is a total ordered fold with a stated law.** The order is
    decidable from the value, the fold is total, and the law is asserted in a
    gate that reddens when the fold changes. `face-join` is the rule that exists
@@ -107,6 +170,22 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
    the evidence that the registry already carries a `manas-cursor` face for a
    navigable cursor row. ⚑ Its phase number is behind the standing
    suite-number call in [[records/author-calls]].
+6. **Each piece of the coverage arithmetic compiles alone, and none of it needs
+   a float type.** ⚑ **Added 2026-09-18.** `FD-39` (`records/findings.md:625`)
+   answers the zoom-exactness question with a six-item build list and states
+   positively that every arithmetic operation in it is one of the sixteen `Op`
+   constructors at `lib/prelude/prelude.chiral:37-39`. Five of those six items
+   and the pixel type they write through had no row on any arc's roster, which
+   is what [[working-discipline]] calls a discovered requirement. The
+   requirement has two halves and each has its own observation. The separation
+   half: the accumulator, the sum, the subdivision and the emitter each build
+   and run in a program holding none of the other three, which is
+   [[goals/display]] consequence 3 (`docs/goals/display.md:43`) stated for this
+   group. Observed as four module cells that each compile alone, and a design
+   that folds two of them together fails its audit on that clause, which is
+   exactly how `E200`'s design refused Shape D. The integer half: a grep for a
+   float type over the four cells returns zero, which today is true of the whole
+   tree and has to survive the rows landing.
 
 ## Roster
 
@@ -131,27 +210,99 @@ dropped-definition propagation in `lib/lowering/compile-back.chiral`.
 | `display-calculus/H6` | the property walk, run as a suite phase. not started; same witness gap as C9, which it instantiates | gate | tool | new | 5 | open | `unminted` |
 | `display-calculus/A1` | the `Doc` to `Rendering` path is reached. measured 2026-09-04, and re-measured the same day: `grep -rn '"protocol/render-doc"' lib/ prog/` returns zero, and `dg-doc` (`lib/typing/diag.chiral:561`) has zero consumers outside its own file. ⚑ The scope is load-bearing. Two importers live under `tools/`, `tools/test/samples/e158_render.prog:58` and a heredoc probe at `tools/test/render-doc.sh:423`, and Phase 17 (`tools/test/run-tests.sh:268`) builds the first and runs it (`tools/test/render-doc.sh:110`). What this row asks for is a SHIPPING producer, and there is none. No `d-tag` in this tree reaches `lookup-face`. **Precondition for any C1 gate that can fail** | adoption | law | connect | 2 | open | `unminted` |
 | `display-calculus/A2` | `Mode`'s `faces` reaches the renderer. measured 2026-09-04: `command-loop.chiral:96` discards it. The shard C5 cashes | adoption | law | connect | 4 | open | `unminted` |
-| `display-calculus/R3` | the span primitive: the pure `Bytes` surface is twelve externs with no `pack-u8`, no builder and no fill-with-function, so varying content has no linear-time path. `brepeat` makes a solid span and nothing else. Cited by [[arcs/canvas-arc]] and [[goals/own-web]] as the wall in front of six raster rows, one text row and all of composite | adoption | primitive | new | 1 | minted | `E200` |
+| `display-calculus/R3` | the span primitive: **eleven** externs touch `Bytes` (`lib/prelude/prelude.chiral:91-104`), re-counted 2026-09-18 against the twelve this cell carried, and `brepeat` (`:100`) is the only one that writes a span. A builder does exist, `bput-u8` (`lib/lowering/tal/bytes.chiral:610`), and it slices the prefix, slices the suffix and concatenates twice, so it copies the whole cell per byte and varying content still has no linear-time path. Cited by [[arcs/canvas-arc]] and [[goals/own-web]] as the wall in front of six raster rows, one text row and all of composite | adoption | primitive | new | 1 | minted | `E200` |
+| `display-calculus/R2` | the pixel encoding as a type: width, alpha state and transfer function, so an encoded sample and a linear one are different types. **Rostered by no arc until 2026-09-18**, existing only at `.planning/DISPLAY-LAYER-GAP.md:195`, which is the agent tier. `FD-37` (`records/findings.md:551`) hands it four corrections and the number it lacked. Unpremultiply precedes linearisation and the two fail to commute, Skia conditioning the elision on exactly that (`records/findings.md:559`), so three premultiplication states exist where the gap file's cell names two. The depth is 10 bits encoded against 12 linear, from CSS Color 4's own precision table (`:557`). Source-over with a coverage mask is integer-reachable at ±1 LSB while no surveyed implementation evaluates a transfer function in integers at any width (`:561`). Wayland's floor is a SHOULD over two 8-bit premultiplied encoded formats and accepts nothing linear and nothing wider (`:563`). Absence: a grep over `lib/` and `prog/` for `premultipl`, `srgb` and `gamma` returns three hits and every one is the type checker's `Gamma` environment or a trace string | raster | primitive | new | 1 | open | `unminted` |
+| `display-calculus/R10` | the fixed-point coordinate type, denominator a type parameter. `FD-39` build-list item (1) (`records/findings.md:625`). `FD-34` (`records/findings.md:523`) measures that nothing in the record argues for 1/64 specifically, that FreeType, cairo and Blink each made the denominator a parameter in their own language (`FT_PAD_FLOOR( x, n )`, `CAIRO_FIXED_FRAC_BITS`, `FixedPoint<fractional_bits, Storage>`), and that Gecko's 1/60 argues **against** a power of two on decimal-exactness grounds and still ships. Absence: a grep over `lib/` and `prog/` for `fixed point`, `26.6`, `24.8` and `frac-bits` returns one hit, a comment about Loihi 2 at `prog/unit/encoding.chiral:15`. Discovered by `E200`'s design (`docs/arcs/parts/display-calculus-R3.md:217`), which named it residue and could not open a row | raster | primitive | new | 1, 6 | open | `unminted` |
+| `display-calculus/R11` | the signed-area cell accumulator: one integer per pixel of the active band, updated by the two integer adds at `FTGRAYS:533`. `FD-39` item (2) (`records/findings.md:625`). It ships in FreeType `grays` and in Skia's analytic AA, two independent shipped proofs in integers. Absence: nothing under `lib/` holds a per-pixel accumulation buffer, and it never writes to the surface, so `E200` cannot deliver it and its design says so (`docs/arcs/parts/display-calculus-R3.md:218`) | raster | primitive | new | 6 | open | `unminted` |
+| `display-calculus/R12` | the row prefix sum with a truncating clamp to the coverage byte. `FD-39` item (3) (`records/findings.md:625`). `FTGRAYS` derives coverage as `area >> ( PIXEL_BITS * 2 + 1 - 8 )` and **compensates** its per-scanline division remainders instead of dropping them, so error does not accumulate along a slanted edge (`records/findings.md:611`); that non-accumulation is the property a gate on this row asserts. Absence: no prefix sum and no coverage byte exist in this tree. Discovered by `E200`'s design (`docs/arcs/parts/display-calculus-R3.md:219`) | raster | primitive | new | 6 | open | `unminted` |
+| `display-calculus/R13` | integer midpoint subdivision with a shift-derived segment count, over a flattening tolerance re-derived in device pixels each frame. `FD-39` item (4) (`records/findings.md:625`), at `FTGRAYS:1073-1074` where conics split on a second difference of `ONE_PIXEL / 4` and the count is taken as `count = 0x10000U >> shift`. The per-frame re-derivation is the load-bearing half: `FD-39`'s own header (`records/findings.md:583`) measures it as the single mechanism any surveyed renderer uses to keep a border exact while the zoom changes, and Vello states its tolerance as 0.25 device pixels. Absence: no curve type and no subdivision exist under `lib/`. Discovered by `E200`'s design (`docs/arcs/parts/display-calculus-R3.md:220`) | raster | primitive | new | 6 | open | `unminted` |
+| `display-calculus/R14` | the coverage-span emitter, the loop over `R12` that hands `E200` its spans. `FD-39` item (6) (`records/findings.md:625`) calls it "a loop over (3) and not a new primitive", so it may mint no element at all. `E200`'s design put it in residue because it cannot run until `R12` exists (`docs/arcs/parts/display-calculus-R3.md:222`). The row is here because the deferral needs a name: this is the one item of the build list that joins the arithmetic to the surface, and until it has an id the join is a phantom | raster | law | new | 6 | open | `unminted` |
+| `display-calculus/R15` | Shape D, the zero-allocation composite straight into a `(Pool n)`, **refused** by `E200`'s design (`docs/arcs/parts/display-calculus-R3.md:296-322`) because it binds the primitive to the port lane and `docs/goals/display.md:43` consequence 3 forbids that, making a glyph atlas, an offscreen layer and a unit test all unreachable without a live pool. It allocates nothing, which against an arena that reclaims nothing (`lib/memory/alloc-growing.chiral:22-24`, over the fixed 67,108,864 bytes at `lib/memory/arena.chiral:29`) is the strongest single property any shape in that design held, and the design keeps it "as the zero-allocation path a frame loop will want" (`docs/arcs/parts/display-calculus-R3.md:329`). That design routed it to [[arcs/native-window-arc]], whose roster carries no such row today; which arc seats it is an author call this amendment does not take | raster | port | new | 6 | open | `unminted` |
 
 The `kind` cell is the anti-monolith column of [[goals/display]]'s shape
 condition. A row that cannot say which half it is has not been scoped.
 
 ### Coverage
 
-Groups are the cascade (`C`), the element vocabulary (`E`), the gate (`H`) and
-adoption of what is already built (`A`). Every requirement is served: 1 by C1,
-C4, C6, C12, E1 and R3; 2 by C2, C3, C10, C11 and A1; 3 by E2, E3 and E4; 4 by
-C5, C7 and A2; 5 by C8, C9 and H6. Every row serves one. `A1` and `A2` are
-`connect`: both subjects are built and the gap is that nothing reaches them.
+Groups are the cascade (`C`), the element vocabulary (`E`), the gate (`H`),
+adoption of what is already built (`A`) and the raster arithmetic (`R2`, `R10`
+through `R15`). Every requirement is served: 1 by C1, C4, C6, C12, E1, R3, R2
+and R10; 2 by C2, C3, C10, C11 and A1; 3 by E2, E3 and E4; 4 by C5, C7 and A2;
+5 by C8, C9 and H6; 6 by R10, R11, R12, R13, R14 and R15. Every row serves one.
+`A1` and `A2` are `connect`: both subjects are built and the gap is that nothing
+reaches them. Twenty-seven rows, six requirements, none uncovered.
 
 `R3` was rostered here 2026-09-06. It was cited by [[arcs/canvas-arc]] and
 [[goals/own-web]] under a `display-calculus/` id and rostered by nothing, which
 is why "which arc owns it" stood as an author call: the id already said. It is a
-`Bytes` primitive rather than a cascade row, so it sits in `adoption` beside the
+`Bytes` primitive and no kind of cascade row, so it sits in `adoption` beside the
 other two rows about a surface that exists and does not reach far enough.
+
+**`R2` is here on `R3`'s precedent and nothing else.** It carries a
+`display-calculus/`-shaped id in `.planning/DISPLAY-LAYER-GAP.md:195`, it is
+that file's own "single highest-value invariant in this lane", and no arc's
+roster held it. `records/author-calls.md:72` records the argument that seated
+`R3`: the id already said. The seat question on `R3` itself stands open at that
+row and this amendment does not touch it.
+
+**Every `origin` above is `new` and §3 defends each one.** The raster table
+measures an absence for all seven: no fixed-point type, no accumulation buffer,
+no prefix sum, no subdivision, no emitter, no encoding in any type, and a
+zero-allocation destination that was designed and refused. `R15` is `new` in the
+sense that matters here, which is that the tree holds no such extern; its design
+exists and its verdict was against it.
+
+### Where the reclamation requirement landed, and why not here
+
+`E200`'s design priced the arithmetic: one 1920-pixel scanline on the `bcat`
+route costs 7,376,640 bytes and one 1080-row frame costs 7.97 GB, against a
+fixed 67,108,864-byte arena (`lib/memory/arena.chiral:29`) whose `renter`,
+`rexit` and `adrop` are three empty instruction lists
+(`lib/memory/alloc-growing.chiral:22-24`), so the arena is exhausted at roughly
+byte 3,100 of the first scanline (`docs/arcs/parts/display-calculus-R3.md:119`,
+`:128-129`). That is a discovered requirement and **it already holds a roster
+row.** [[arcs/memory-discipline-arc]] requirement 1 is "Peak is the live set",
+and `memory-discipline/M2` (`alloc-region`, minted `E82`) and
+`memory-discipline/M4` (`alloc-dps`, minted `E84`, whose stated target is
+"`nb-bcat`'s quadratic") both serve it. Opening a row here would be the same
+work under a second id. What this arc contributes is the workload: the numbers
+above are a display measurement of a memory row, and they belong in that arc's
+resume state when someone next works it.
 
 ## Resume state
 
+⚑ **2026-09-18: amended, seven rows added and two counts corrected.** Nine
+research findings and one design run had produced requirements this roster did
+not name. [[working-discipline]] (`docs/definitions/working-discipline.md:112-119`)
+rules that a capability the substrate lacks is a finding and is recorded as a
+discovered requirement with the workload that found it and the citation that
+proves the absence, and (`:76-81`) that a deferral to an unminted `E#` is a
+phantom dependency whose fix is a roster row. `E200`'s design named six owed
+rows and said outright that it could not open them
+(`docs/arcs/parts/display-calculus-R3.md:423-426`). This amendment opens them.
+
+**What changed.** `R2`, `R10`, `R11`, `R12`, `R13`, `R14` and `R15` are new, in
+a new `raster` group, and §3 gained a measured table for them. Requirement 1 was
+widened from "a property value" to "a value in this lane" so the coordinate's
+denominator and the pixel's encoding sit under the invariant clause that was
+already there. Requirement 6 is new and covers the four arithmetic pieces plus
+the refusal, on the separation clause of [[goals/display]] consequence 3 and on
+the no-float clause `FD-39` states positively. The reclamation requirement sits
+on `memory-discipline/M2` and `M4` already, so this amendment opens no row for
+it and records the workload instead.
+
+**Two counts corrected, both re-measured before the edit.** `R3`'s cell said
+twelve pure `Bytes` externs; `lib/prelude/prelude.chiral:91-104` holds
+**eleven**, out of 34 externs in that file. The same cell said "no builder";
+`bput-u8` at `lib/lowering/tal/bytes.chiral:610` is one, and the real defect is
+that it copies the whole cell per byte. The header said this arc keeps four
+letters; it keeps **five**, because `R` arrived with `R3` in 2026-09-06 and the
+paragraph was never updated.
+
+**What this amendment did not touch.** `R3`'s state, element and requirement
+cells stand as minted at `90cc9f0`. Its seat question stands open at
+`records/author-calls.md:72` and nothing was written to that file. No row was
+designed, no element minted, no audit run.
 
 ⚑ **2026-09-06: `R3` rostered here.** The span primitive was cited by [[arcs/canvas-arc]] and [[goals/own-web]] under a `display-calculus/` id and rostered by nothing. `C9`'s every-state witness is settled as `prog/scriba/`.
 ### Checkpoint, 2026-09-04, session paused mid-pipeline
