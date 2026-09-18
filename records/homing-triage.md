@@ -431,18 +431,18 @@ given in session and never written down that cost a later agent a wrong count.
 
 ### Author calls standing
 
-`ledger-lint` check AK reports 28 owed and every one of them is a row of
-`records/author-calls.md`. Every one of the six below is carried on an arc roster
-row, and three of them hold no register row, so AK cannot see those three.
+`ledger-lint` check AK reports 30 owed, measured 2026-09-18 once the W^X call
+was ruled, and every one of them is a row of `records/author-calls.md`. Each
+of the six below is carried on an arc roster row and holds a register row.
 
 | the call | carried on | register row |
 |---|---|---|
-| which element the surviving W^X work belongs to | `substrate-floor/SU1`, `docs/arcs/substrate-floor-arc.md:178` | none. The call is at `docs/elements/ledger.md:464`: "The row and the element disagree about what E20 is. Naming the survivor is an author call" |
+| which element the surviving W^X work belongs to | `substrate-floor/SU1`, `docs/arcs/substrate-floor-arc.md:178` | `records/author-calls.md:100`, `ruled` 2026-09-18: `E20` survives as the typed W^X loader, `MapRW` sealed to `MapRX`, module cell `map-seal`, state `design`. That row was opened from the unregistered state this cell used to record. The pointer this cell used to carry, `docs/elements/ledger.md:464`, is stale twice over: the reconciliation row it named sits at `:465` since an `E200` row landed above it at `:184`, and it reads CLOSED 2026-09-18 |
 | which arc owns the bounds and region class, question D of this file | `substrate-floor/SU15` and `SU16`, both `open` | `records/author-calls.md:85`, `unreviewed` |
 | E167's `?` track | `lowering-and-emit/LE21` | `records/author-calls.md:90`. Four of that row's six were ruled 2026-09-15; E166 and E167 hold it open |
 | E166 and E167's tracks generally | E166 is unhomed | the same row. The 2026-09-01 parking ruling settles whether the work happens and names neither track token, and the cut it records was of external judgment, a different axis from the `SH` and `OT` split |
-| what `E128`'s `(1 t Terminal)` names | `terminal/TM9`, `docs/arcs/terminal-arc.md:199` | none for the naming half. `records/author-calls.md:93` is that row's placement call, where the port tier's missing module coordinates get repaired, a different question |
-| where the fixpoint compare's phase sits | `lowering-and-emit/LE24`, `docs/arcs/lowering-and-emit-arc.md:224` | none. The arc carries it verbatim under FLAGs |
+| what `E128`'s `(1 t Terminal)` names | `terminal/TM9`, `docs/arcs/terminal-arc.md:199` | `records/author-calls.md:101`, `unreviewed`, opened 2026-09-18 on the naming half from the unregistered state this cell used to record. `records/author-calls.md:93` is that row's placement call, where the port tier's missing module coordinates get repaired, a different question |
+| where the fixpoint compare's phase sits | `lowering-and-emit/LE24`, `docs/arcs/lowering-and-emit-arc.md:224` | `records/author-calls.md:102`, `unreviewed`, opened 2026-09-18 from the unregistered state this cell used to record. The arc carries it verbatim under FLAGs as well |
 
 ⚑ **A claim that the author ruled question D to `enforcement` on 2026-09-14 was
 measured false.** `.planning/FAILURE-MODES-2026-09.md:16` records it as row A2,
