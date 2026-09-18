@@ -1,9 +1,9 @@
 ---
 node: arc-runtime-loading
 layer: navigation
-related: [arcs/README, goals/local-ai, arcs/scriba-arc, banks/runtime, banks/module, live-environment, decisions/decision-user-layer-extensibility, decisions/decision-scope, decisions/decision-work-ids, status-ledger, elements/catalog, elements/ledger, records/homing-triage, index]
+related: [arcs/README, goals/local-ai, arcs/scriba-arc, banks/runtime, banks/module, live-environment, decisions/decision-user-layer-extensibility, decisions/decision-scope, decisions/decision-work-ids, status-ledger, elements/catalog, elements/ledger, records/homing-triage, records/runtime-loading, records/author-calls, index]
 status: current
-updated: 2026-09-14
+updated: 2026-09-18
 ---
 
 # Arc: runtime-loading
@@ -18,7 +18,8 @@ updated: 2026-09-14
   returns nothing, verified 2026-09-14. `R` was already spelled by
   [[arcs/display-calculus-arc]].
 - build-state authority: [[status-ledger]]
-- checklist: none. No `records/runtime-loading.md` exists.
+- checklist: [[records/runtime-loading]], opened 2026-09-18 by the revisit that
+  answered the `E20` call. The prefix is `RL`.
 - sibling: [[arcs/scriba-arc]], same goal, same condition. That arc owns the
   cockpit surfaces and the editor's own state, including `S11`, the init-file
   load. This arc owns the mechanism `S11` is blocked on.
@@ -60,14 +61,14 @@ birth and the bank's residue list reaches it nowhere.
 | group | what exists today | where | rung |
 |---|---|---|---|
 | G1 the floor | the ruling this arc serves: the user layer is code compiled at runtime and linked into the resident binary, with the capability kernel as the floor. It names `E132` the real gate and refuses a data-config stopgap as scaffolding against a cataloged element | `docs/decisions/decision-user-layer-extensibility.md` §The decision, §What was rejected | DECIDED |
-| G1 | ⚑ **the floor `E132`'s cell cites is absent in the shape it cites.** `docs/elements/catalog.md:461` names *"the E20 loader floor"*, and `docs/elements/ledger.md:162` records of `E20` that *"There is no `nb-blit` and no mmap-to-mprotect *code loader* anywhere under `lib/`"*, that its `mmap`/`mprotect` pair is the E89/E91 arena reserve-commit, and that the W^X half is **NOT HELD** | `docs/elements/ledger.md:162` | contested |
+| G1 | ⚑ **the floor `E132`'s cell cites is named and unbuilt.** `docs/elements/catalog.md:463` names *"the E20 loader floor"* and `records/author-calls.md:100` ruled on 2026-09-18 that `E20` is that floor, titled **Typed W^X loader: `MapRW` sealed to `MapRX`**, so the citation resolves to an element. It resolves to unbuilt work: `docs/elements/ledger.md:162` files `E20` at state `design` and module `map-seal`, the file `docs/examples/E20-loader.md:30-31` scopes it around is `lib/loader.chiral` and no such file exists, and the `mprotect` the entry stub issues passes prot `3`, `PROT_READ`+`PROT_WRITE` (`lib/lowering/compile-emit.chiral:87`), so the `E89`/`E91` reserve-commit makes no W→X transition. The rung read `contested` while the catalog and the ledger disagreed about what `E20` is, and they agree as of `a4d98ce` and `b53a1f3` | `docs/elements/ledger.md:162`, `docs/elements/catalog.md:126` | absent |
 | G1 | the live image confirms the ledger. One `RWE` `PT_LOAD` of 0x12a178 bytes, and the emitter says why in its own words: *"RWX (PF_R\|PF_W\|PF_X = 7)"*, with the split named as *"the named W^X follow-on"* | `readelf -l bin/chirality-bin` run 2026-09-14, `lib/lowering/x64/elf.chiral:59-66` | IMPLEMENTED |
 | G1 | the real `mmap` users: the typed arena over `mmap`/`mremap`, and the entry stub that reserves a `PROT_NONE` range and commits `PROT_RW` | `lib/memory/arena.chiral:20-30`, `lib/lowering/compile-emit.chiral:36-43`, `:62` | ENFORCED |
 | G1 | the other half of the citation, and this half the catalog states honestly: symbol resolution is compile time. `E51` binds the port externs to the `sys.chiral` crossings inside the blob | `lib/lowering/tal/sys-linkage.chiral`, 112 lines, `docs/elements/catalog.md:149` | ENFORCED |
 | G2 the load | the compiler that would produce the fresh artifact, self-hosted and reachable from a program: `bin/chirality` compiles, and `proc-spawn` returns a linear `Reap` | `bin/chirality:211`, `lib/runtime/proc.chiral` | ENFORCED |
 | G2 | ⚑ **nothing maps a second artifact executable.** A grep for `mmap` over `lib/`, `prog/`, `bin/` and `tools/` returns the arena, the entry stub, the port declaration and the crossing row. Every hit is the process's own memory | measured 2026-09-14 | absent |
 | G2 | ⚑ **the one self-extend artifact reaches a new program by leaving the process, and its compiler path is gone.** `prog/samples/self-extend-probe.prog:18` drives the model to run `./scaffold/build/B1 < /tmp/selfext.chiral > /tmp/selfext.elf` and execute the result; `ls scaffold` reports no such directory, and a grep for the basename over `tools/` and `bin/` returns nothing, so no phase runs it and it asserts nothing | `prog/samples/self-extend-probe.prog:15-22` | SEEDED |
-| G2 | ⚑ **the catalog's two citations for the Knob 1 phantom are stale by 266 lines.** `docs/elements/catalog.md:461` gives `init-loader.chiral:360,369`; the two comments are at `:626` and `:635` of a 638-line file | `prog/scriba/init-loader.chiral:626`, `:635` | IMPLEMENTED |
+| G2 | ⚑ **the catalog's two citations for the Knob 1 phantom stood stale by 266 lines and were repaired at `b53a1f3`.** `docs/elements/catalog.md:463` gave `init-loader.chiral:360,369` and now gives `:626,635`, which is where the two comments sit in a 638-line file | `prog/scriba/init-loader.chiral:626`, `:635` | IMPLEMENTED |
 | G2 | ⚑ **the catalog's third citation names a file that holds nothing of the kind.** It gives `shilpa/turn.chiral` self-extend; a grep for `self-extend` and `hot-acquire` over `prog/` returns one comment in `prog/shilpa/tools-fs.chiral:13` and the probe above. `prog/shilpa/turn.chiral` is 452 lines and holds neither term | measured 2026-09-14 | absent |
 | G2 | the consumer, deferred in the source in the element's own words: `init-load` returns `init-default` and the comment reads *"Until the chirality runtime loads compiled artifacts, init-load returns init-default"* | `prog/scriba/init-loader.chiral:626-638` | SEEDED |
 | G3 the fence | the per-program port check the fence would extend: the crossings an object program calls must lie inside the declared frozen port set, computed over the program's own fns and refused at emit | `lib/lowering/compile-emit.chiral:200-202`, `manifest-offender` at `:259`, refused at `:299` | ENFORCED |
@@ -98,7 +99,7 @@ no shard to connect.
 |---|---|---|
 | G3 to G2 | against, and the loudest | the fence decides what a load may admit, so a load built first fixes an admission rule the fence then has to undo. `decision-user-layer-extensibility` item 4 states the stop condition in its own words: if building `S11` reveals a path from init code to kernel reconfiguration *"that is an `E45` defect and stops the work"*. A stop condition is a precondition, and G3 sits after G2 in dependency order alone |
 | G4 to G2 | against | the gate is the only thing that makes a claim here checkable, and the tree holds three artifacts of exactly the shape a missing gate produces: the self-extend probe with no assertion, and the two conform roots with a full exit contract and no phase. Ordering the gate last is how a fourth gets written |
-| G1 to outside the arc | out | which element the surviving W^X work belongs to is an author call carried on `E20`'s ledger row, and `E20` is `built`. G1 corrects a premise and mints nothing, so the arc cannot close that call and cannot wait on it either |
+| G1 to outside the arc | out, and discharged | which element the surviving W^X work belongs to was an author call carried on `E20`'s ledger row. `records/author-calls.md:100` ruled it 2026-09-18: `E20` survives as the typed W^X loader and its ledger state goes `built` to `design` (`docs/elements/ledger.md:162`). G1 still corrects a premise and mints nothing, and the premise it corrects now names a live element rather than an open call |
 | G3 to outside the arc | out | the structural floor is `E45`, which is `OT` and deferred by [[decisions/decision-scope]]. G3 cannot rest on a frozen judgment while nothing imports the file that freezes one, so the fence it builds is the emit-time check moved to load time |
 
 ## REQUIREMENTS
@@ -114,10 +115,12 @@ Five, each with the observation beside it, measured 2026-09-14.
 
 2. **Every artifact `E132`'s floor citation names resolves to code that does
    what the citation says.** Observed by reading each.
-   `docs/elements/catalog.md:461` names the `E20` mmap floor, and
-   `docs/elements/ledger.md:162` records that no mmap-to-mprotect code loader
-   exists under `lib/` and that the W^X half goes unheld. `readelf -l
-   bin/chirality-bin` reports one `RWE` segment, run 2026-09-14.
+   `docs/elements/catalog.md:463` names the `E20` mmap floor, and the ruling at
+   `records/author-calls.md:100` made that name resolve on 2026-09-18, which
+   leaves the requirement owing code rather than a name:
+   `docs/elements/ledger.md:162` files `E20` at `design` with no
+   `lib/loader.chiral` under it, and `readelf -l bin/chirality-bin` reports one
+   `RWE` segment, run 2026-09-14. The requirement stands unmet.
 
 3. **A fresh artifact's imports resolve against the image that loaded it.**
    Observed as a loaded artifact calling a function defined in the resident
@@ -147,7 +150,7 @@ mints nothing and allocates no number.**
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
-| `runtime-loading/RL1` | the floor stated from the code: what a resident load can stand on, given that the W^X code loader `E132`'s cell names does not exist, the image is one `RWE` segment, and `E51` is compile-time linkage. The three artifacts that do exist are the arena's checked `mmap` (`lib/memory/arena.chiral:20-30`), the entry stub's reserve-commit (`lib/lowering/compile-emit.chiral:36-43`) and the crossing vocabulary (`lib/lowering/tal/crossing-wraps.chiral`). **Blocking condition**: none measured. The `E20` naming call below is carried rather than waited on | G1 | decision | bind | 2 | open | `unminted` |
+| `runtime-loading/RL1` | the floor stated from the code: what a resident load can stand on, given that the W^X code loader `E132`'s cell names does not exist, the image is one `RWE` segment, and `E51` is compile-time linkage. The three artifacts that do exist are the arena's checked `mmap` (`lib/memory/arena.chiral:20-30`), the entry stub's reserve-commit (`lib/lowering/compile-emit.chiral:36-43`) and the crossing vocabulary (`lib/lowering/tal/crossing-wraps.chiral`). **Blocking condition**: none measured. The `E20` naming call this row carried was ruled 2026-09-18 at `records/author-calls.md:100`, and the floor it describes is unmoved by the ruling: `E20` is the element that owns the typed seal and `docs/elements/ledger.md:162` files it `design`, so what a resident load can stand on is still the three artifacts named above | G1 | decision | bind | 2 | open | `unminted` |
 | `runtime-loading/RL2` | runtime dynamic loading: a resident chirality binary maps a freshly compiled chirality artifact, resolves its imports against the resident image, enters it and keeps running. Retires the Knob 1 phantom at `prog/scriba/init-loader.chiral:626` and `:635`, and turns the self-extend loop from a spawn into an acquire. Nothing in the tree maps a second artifact. **Blocking condition**: `RL1`, because the design would otherwise be written against a floor the ledger records as absent, and `RL3`, because the admission rule decides what the load may accept | G2 | primitive | new | 1, 3, 5 | open | `E132` |
 | `runtime-loading/RL3` | the load-time fence: the crossings a loaded artifact calls must lie inside the resident process's frozen port set, refused at load with a mutant that tries to widen it. Both halves it joins are built, the per-program scan at `lib/lowering/compile-emit.chiral:259` and the declaration-side check at `lib/surface/parse.chiral:906`, and neither runs after the process is resident. **Blocking condition**: none measured. It does not wait on `E45`, which is `OT`, `design` and imported by nothing | G3 | law | connect | 4 | open | `unminted` |
 | `runtime-loading/RL4` | the gate: a registered phase that compiles an artifact, loads it into the running process, calls it, asserts the result, and carries a mutant that fails. `tools/test/transport.sh` is the worked shape, five roots each compiled, refused if empty, run under a `timeout` and judged against its header's exit code. **Blocking condition**: `RL2`, since there is nothing to run until the load exists. Named now because the tree holds three artifacts with a full exit contract and no phase | G4 | tool | new | 1, 5 | open | `unminted` |
@@ -161,10 +164,13 @@ Run 2026-09-14 against the table above.
 - **Every row serves a requirement.** All four name at least one. No row is out
   of scope.
 - **Every `origin` is defensible from the measurement.**
-  - `RL1` is `bind` because the three mechanisms exist and the claim over them
-    is wrong. The arena's `mmap`, the stub's reserve-commit and the single
-    `RWE` segment are all live, and `docs/elements/catalog.md:461` describes
-    them as a W^X code loader.
+  - `RL1` is `bind` because the three mechanisms exist and nothing states the
+    floor they make. The arena's `mmap`, the stub's reserve-commit and the
+    single `RWE` segment are all live. `docs/elements/catalog.md:126` described
+    them as a W^X code loader until `b53a1f3` re-derived that cell off BUILT,
+    and what the registries carry now is `E20` at `design` with the seal unbuilt
+    (`docs/elements/ledger.md:162`), which says what is absent and not what a
+    resident load stands on.
   - `RL2` is `new` because a grep for `mmap` over `lib/`, `prog/`, `bin/` and
     `tools/` returns four sites and every one of them is the process's own
     memory. No shard of a second-artifact load exists to bind or connect.
@@ -201,10 +207,14 @@ Run 2026-09-14 against the table above.
   rosters `E45` nowhere.
 - **The W^X split itself.** `lib/lowering/x64/elf.chiral:63-66` names a second
   `RW` `PT_LOAD` at the code-off page boundary as the follow-on, and
-  `docs/elements/ledger.md:162` puts naming the surviving element to the author.
-  `RL1` states what the floor is and proposes no element for the split.
+  `records/author-calls.md:100` files that split as `E34`'s, carried as a wanted
+  on `lowering-and-emit/LE15`. `RL1` states what the floor is and proposes no
+  element for the split.
 - **Repairing the catalog and the ledger.** Requirement 2 is what `RL1` buys and
-  this run edits neither file.
+  this arc edits neither file. Both moved on the author's side instead,
+  `docs/elements/ledger.md:162` at `a4d98ce` and `docs/elements/catalog.md:126`
+  and `:463` at `b53a1f3`, which leaves requirement 2 owing code and not a
+  registry repair.
 
 ## Resume state
 
@@ -218,20 +228,27 @@ content is reading four files and one `readelf` line, and `RL2` is blocked on
 it. `RL3` is the second: it turns on no open call either, and it is the other
 thing `RL2` waits on.
 
-⚑ **`E20`'s ledger row carries an open author call and this run does not take
-it.** The row's own words, `docs/elements/ledger.md:162`: *"Naming the surviving
-element is an author call."* Its context, from the same cell: *"the row and the
-element disagree about what E20 is, and the cell is left with this note rather
-than moved. The name in the title is a collision."* `RL1` is the row that
-carries it.
+⚑ **The `E20` author call `RL1` carried was ruled, and the row keeps its work.**
+`records/author-calls.md:100` ruled on 2026-09-18 that `E20` survives as the
+typed W^X loader, `MapRW` sealed to `MapRX`, with its module cell moving from
+`loader` to `map-seal` and its state from `built` to `design`.
+`docs/elements/ledger.md:162` carries all three at `a4d98ce`. The collision the
+old cell complained of is gone with the module cell: `map-seal` names neither
+the compiler's own `lib/module/loader.chiral` nor `E132`'s `loader` cell at
+`docs/elements/ledger.md:183`. Nothing in this arc's work is completed by the
+ruling. `E132` stays `design`, `RL2` stays `open`, and the floor `RL1` states is
+the same code it was.
 
-⚑ **[[banks/runtime]] and the `E20` ledger row disagree, and the code agrees
-with the ledger.** `docs/banks/runtime.md:380` lists the *"W^X loader"* among
-the shards that are built and instructs the reader *"Do not describe the built
-shards as missing"*. `docs/elements/ledger.md:162` records the W^X half as NOT
-HELD, and `readelf -l bin/chirality-bin` reports a single `RWE` segment on
-2026-09-14. The bank was outside that run's write scope. ⚑ Taken 2026-09-18:
-[[banks/runtime]] carries the demotion at all four mentions and at `:225-226`.
+⚑ **[[banks/runtime]] and the `E20` ledger row still disagree, and the
+disagreement inverted.** The bank carried the W^X half as built until `9302d5a`
+demoted all four mentions, which `docs/banks/runtime.md:225-226` records. What
+it says about the ledger is now false in the other direction:
+`docs/banks/runtime.md:215` calls the **E20 loader** *"`built` in LEDGER"* and
+that cell has read `design` since `a4d98ce`, while `:377` still lists *"the W^X
+loader whose W^X half is NOT HELD"* among the shards that are **built**, under
+*"Do not describe the built shards as missing"* at `:380`. The bank is one of
+the thirteen carriers `records/author-calls.md:100` names and it is outside this
+run's write scope.
 
 ⚑ **This arc is unanchored on `arc -> goal done-condition`.**
 `docs/goals/local-ai.md` condition 2 names `[[arcs/scriba-arc]]` and no second
@@ -251,8 +268,10 @@ figure by one.
 no example and no design artifact, checked 2026-09-14, and its catalog cell's
 own verdict is *"Not built"* with the grep it rests on stated as *"grep-clean
 for a second-artifact mmap/exec"*. That grep was re-run 2026-09-14 and still
-holds. Three of the cell's citations are stale in a direction that widens the
-work: `init-loader.chiral:360,369` are now `:626` and `:635`,
-`shilpa/turn.chiral` holds no self-extend term, and the E20 floor the cell
-stands on is the one the ledger contests. The fourth, `E51` symbol resolution
-being compile-time only, the cell states correctly and the tree agrees.
+holds. ⚑ **Two of the three citations recorded here as stale were repaired at
+`b53a1f3`**: the cell gives `init-loader.chiral:626,635`, and of the floor it
+now reads *"the E20 floor this row cites is itself unbuilt"*, so that floor is
+named and absent where this paragraph had it contested. The third stands, the
+Reference column naming `shilpa/turn.chiral` self-extend over a file holding no
+such term. The fourth citation, `E51` symbol resolution being compile-time only,
+the cell states correctly and the tree agrees.

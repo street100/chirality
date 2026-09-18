@@ -1,0 +1,28 @@
+---
+node: records-runtime-loading
+layer: navigation
+related: [records/README, arcs/runtime-loading-arc, records/author-calls, elements/catalog, elements/ledger, banks/runtime, goals/local-ai, index]
+status: current
+updated: 2026-09-18
+---
+
+# Runtime loading arc
+
+Every row is a claim [[arcs/runtime-loading-arc]] makes, beside what was
+measured against it. The prefix is `RL`. [[records/README]] fixes the six fields
+and the rule that a row whose `checked:` date predates the last change to the
+files it cites is unverified.
+
+The file opens with `RL-01`. From 2026-09-14 the arc's header read
+*"checklist: none. No `records/runtime-loading.md` exists"*, and the revisit
+below is the first run this arc's skill owed a row, so the file it named as
+absent is created by the run that needed it. The header now points here.
+
+### RL-01 the `E20` author call was answered and the arc's eleven claim spans moved
+
+- state:    FIXED
+- claim:    `docs/arcs/runtime-loading-arc.md` read the surviving W^X element as an open author call and the `E132` floor citation as broken, in eleven places at `a923cb8`. `:63` stood the G1 floor row at rung `contested` on *"the floor `E132`'s cell cites is absent in the shape it cites"*, citing `docs/elements/catalog.md:461` and quoting `docs/elements/ledger.md:162` verbatim. `:70` called the catalog's two Knob 1 citations stale by 266 lines. `:101`'s `G1 to outside the arc` edge said the call is carried on `E20`'s ledger row and *"`E20` is `built`"*. Requirement 2 at `:115-120` rested its observation on the same two registry lines. `:150`'s `RL1` row ended *"The `E20` naming call below is carried rather than waited on"*. The `origin: bind` bullet at `:164-167` justified the row by `docs/elements/catalog.md:461` describing the three live mechanisms as a W^X code loader. `:202-205` said `docs/elements/ledger.md:162` puts naming the surviving element to the author. `:206-207` said the arc edits neither registry. The FLAG at `:221-226` said the call is open and this run does not take it. The FLAG at `:228-234` said the bank and the ledger disagree with the code agreeing with the ledger. `:250-258` called three of the `E132` cell's four citations stale, the floor among them.
+- measured: the author side moved and the arc followed. `records/author-calls.md:100` was ruled 2026-09-18: `E20` survives as the typed W^X loader, titled **Typed W^X loader: `MapRW` sealed to `MapRX`**, module cell `loader` to `map-seal`, ledger state `built` to `design`. Four carriers had landed before this run: `docs/elements/ledger.md:162` and the reconciliation row at `:465` at `a4d98ce`, `docs/elements/catalog.md:126` and `:463` at `b53a1f3`, `docs/examples/INDEX.md:68` at `53502a8`, and `docs/arcs/substrate-floor-arc.md` at `26e6b03`. The floor citation now resolves and the floor is unbuilt, which is a different claim from the one the arc carried: `docs/elements/catalog.md:463` still names *"the E20 loader floor"* and `E20` is exactly that, while `docs/elements/ledger.md:162` files it `design`, `lib/loader.chiral` does not exist, and the entry stub's `mprotect` passes prot `3` at `lib/lowering/compile-emit.chiral:87`, so no W→X transition is made. The G1 rung goes `contested` to `absent`, the edge at `:102` reads discharged, requirement 2 stands unmet against code rather than against a name, and `RL1` keeps its work because the code it states the floor from is unchanged by a naming ruling. ⚑ **No roster row advances.** `RL1` through `RL4` stay `open`, `E132` stays `design` at `docs/elements/ledger.md:183`, and nothing this arc schedules is built by the call being answered. ⚑ **The `b53a1f3` carrier falsified two spans nobody had listed.** It repaired the catalog's Knob 1 citations from `:360,369` to `:626,635`, which made `:70` and one third of `:250-258` false, and both were found by re-reading the cited cell rather than by a lint. ⚑ **The second FLAG inverted instead of closing.** `docs/banks/runtime.md:215` calls the E20 loader *"`built` in LEDGER"* and `:377` lists *"the W^X loader whose W^X half is NOT HELD"* among the built shards under *"Do not describe the built shards as missing"* at `:380`; the first was true until `a4d98ce` and is false now, so the bank is wrong in the opposite direction from the FLAG that named it. The bank is one of the thirteen carriers the ruling lists and it is outside this run's write scope. ⚑ **The lint totals did not move.** Before and after: 179 violations, 18 element homes owed, 30 author calls owed, 159 lens rulings owed, 2 checks that checked nothing. Check U raised nothing on this file in either run, and it could not have: `tools/ledger-lint/ledger-lint.py:1273` requires the closing backtick immediately after the file extension, so both of this arc's stale ledger quotes hung off `docs/elements/ledger.md:162` were invisible to it, the same defect `records/homing-triage.md` §Known tool defects records at `207f68a`.
+- evidence: docs/arcs/runtime-loading-arc.md:21, :64, :71, :102, :116-123, :153, :167-173, :208-212, :213-217, :231-240, :242-251, :271-277; records/author-calls.md:100; docs/elements/ledger.md:162, :183; docs/elements/catalog.md:126, :463; docs/examples/E20-loader.md:30-31; lib/lowering/compile-emit.chiral:87; prog/scriba/init-loader.chiral:626, :635; docs/banks/runtime.md:215, :225-226, :377, :380; tools/ledger-lint/ledger-lint.py:1273
+- checked:  2026-09-18
+- element:  none. The verdict is AMEND and the correction is in place. The unbuilt work the ruling leaves is `E20`'s, held at `open` by `substrate-floor/SU1`; the unbuilt work this arc holds is `E132`'s, held at `open` by `runtime-loading/RL2`. Six of the ruling's thirteen carriers are unmoved and each is its own dispatch
