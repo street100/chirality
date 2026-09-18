@@ -26,7 +26,7 @@ updated: 2026-09-18
   verified 2026-09-18. The two-letter form follows `sys-face`'s `SF`,
   `syscall-custody`'s `SC` and `tool-authority`'s `TA`.
 - build-state authority: [[status-ledger]]
-- checklist: none. No `records/checker-core.md` exists.
+- checklist: [[records/checker-core]], prefix `CK`.
 - neighbour: [[arcs/diagnostics-arc]], stated in full under *What this arc does
   not take*. That arc owns the vocabulary a diagnostic is written in. This arc
   owns the register of judgments the checker can reach.
@@ -391,20 +391,20 @@ four drifted in the direction AB cannot see. Neither file is in this run's write
 scope. [[arcs/sys-face-arc]] found four of the same class on the same day, which
 makes eight in two arcs.
 
-⚑ **This arc is unanchored on `arc -> goal done-condition`.**
+⚑ **DISCHARGED 2026-09-18 at `749ce10`. This arc was unanchored on
+`arc -> goal done-condition` and is anchored now.** The FLAG read that
 `docs/goals/self-hosting.md` conditions 4 and 5 each name `[[arcs/sys-face-arc]]`
-and nothing else, and `tools/lens/lens.py:255` reads a condition's arc from the
-`[[arcs/...]]` links in its body. So `lens.py chain` reports this file in that
-rung's uncovered set, which was 34 of 34 before this run and is 34 of 35 after.
-The goal file is outside this run's write scope and the edit is owed: conditions
-4 and 5 each name `[[arcs/checker-core-arc]]` beside `[[arcs/sys-face-arc]]`, the
-table at `:91-96` moves this arc's row from unopened to opened with its element
-count corrected from 13 to 18, and three sentences reading "The other three
-subject arcs" become two: condition 4's at `:62-64`, condition 5's at `:71-73`,
-and the twin at `:88-89`. The list of arcs opened in this shape at `:104-108`
-names five and becomes six. The same `⚑` at
-`docs/goals/self-hosting.md:124` already records that `docs/goals/README.md:48`
-is owed the matching change.
+and nothing else, so `lens.py chain` reported this file in that rung's uncovered
+set at 34 of 35. That goal edit landed: condition 4 at
+`docs/goals/self-hosting.md:62-64` names `[[arcs/checker-core-arc]]` and the
+requirements carrying it, the table at `:102-107` carries this arc's row opened
+with 18 elements, and the rung reads **37 of 37** under `python3
+tools/lens/lens.py chain`, measured 2026-09-18. The spans this FLAG cited moved
+with the goal, replaced by the two named here. `tools/lens/lens.py:255` reads a
+condition's arc from the `[[arcs/...]]` links in its body. The `⚑` at
+`docs/goals/self-hosting.md:124` stands undischarged:
+`docs/goals/README.md:48` still reads *"none open, and see Rules"* for this
+goal, which is true of conditions 1 to 3 and false of 4 and 5.
 
 ⚑ **`ledger-lint` check AH raises thirteen violations against this roster and
 nine of them are a spelling artifact.** AH globs `f"{elem}-*-SPEC.md"` with the

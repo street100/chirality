@@ -25,7 +25,7 @@ updated: 2026-09-17
   and no row id, verified 2026-09-17. The two-letter form follows
   `syscall-custody`'s `SC` and `tool-authority`'s `TA`.
 - build-state authority: [[status-ledger]]
-- checklist: none. No `records/sys-face.md` exists.
+- checklist: [[records/sys-face]], prefix `SF`.
 - neighbour: [[arcs/syscall-custody-arc]], stated in full under *What this arc
   does not take*. That arc owns the permitted set and its custody. This arc owns
   the crossings the set governs.
@@ -336,15 +336,15 @@ write scope and the edit is owed.
 neither the routing row nor the build, so an answer on either side leaves it
 standing.
 
-⚑ **This arc is unanchored on `arc -> goal done-condition`.**
-`docs/goals/self-hosting.md` condition 5 reads *"Unopened, and it holds no arc
-file"*, and `tools/lens/lens.py:254` treats a condition declaring itself unopened
-as naming no arc whatever it links. So `lens.py chain` reports this file in that
-rung's uncovered set, which was 33 of 33 before this run and is 33 of 34 after.
-The goal file is outside this run's write scope and the edit is owed: conditions
-4 and 5 each name `[[arcs/sys-face-arc]]` and drop the word unopened. The same
-`⚑` at `docs/goals/self-hosting.md:124` already records that
-`docs/goals/README.md:48` is owed the matching change.
+⚑ **DISCHARGED 2026-09-18 at `749ce10`. This arc was unanchored on
+`arc -> goal done-condition` and is anchored now.** The FLAG read that
+`docs/goals/self-hosting.md` condition 5 declares itself unopened, which
+`tools/lens/lens.py:254` treats as naming no arc whatever the body links, so
+`lens.py chain` reported this file in that rung's uncovered set at 33 of 34. The
+word is gone from the goal: a grep for it over `docs/goals/self-hosting.md`
+returns nothing on 2026-09-18, condition 4 names this arc at `:63` and
+condition 5 at `:77`, and the rung reads **37 of 37**. The `⚑` at
+`docs/goals/self-hosting.md:124` stands, and `docs/goals/README.md:48` is owed.
 
 ⚑ **Four catalog state cells disagree with the code this arc measured**, listed
 under requirement 2. `docs/elements/catalog.md:143` for `E28`'s `munmap`, `:425`

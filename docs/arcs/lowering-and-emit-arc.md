@@ -32,7 +32,7 @@ updated: 2026-09-18
   two-letter form follows `sys-face`'s `SF`, `checker-core`'s `CK` and
   `tool-authority`'s `TA`.
 - build-state authority: [[status-ledger]]
-- checklist: none. No `records/lowering-and-emit.md` exists.
+- checklist: [[records/lowering-and-emit]], prefix `LE`.
 - neighbour: [[arcs/emitted-speed-arc]], stated in full under *What this arc does
   not take*. That arc owns what emitted code costs. This arc owns whether the
   emitter's own parts are reached and gated at all.
@@ -403,19 +403,19 @@ state the closed vocabulary has no name for, following
 [[arcs/checker-core-arc]]'s handling of `part` and `flight`, and its first
 deliverable is the number.
 
-⚑ **This arc is unanchored on `arc -> goal done-condition`.**
+⚑ **DISCHARGED 2026-09-18 at `749ce10`. This arc was unanchored on
+`arc -> goal done-condition` and is anchored now.** The FLAG read that
 `docs/goals/self-hosting.md` conditions 4 and 5 each name `[[arcs/sys-face-arc]]`
-and nothing else, and `tools/lens/lens.py:255` reads a condition's arc from the
-`[[arcs/...]]` links in its body. So `lens.py chain` reports this file in that
-rung's uncovered set beside [[arcs/checker-core-arc]], which `e50157f` already
-broke to 34 of 35. The goal file is outside this run's write scope and the edit is
-owed: conditions 4 and 5 each name this arc, the table at `:91-96` moves its row
-from unopened to opened with its element count corrected from 13 to 23, the
-sentences reading "The other three subject arcs" become one, the honest limit's
-"39 of the compiler's own built elements" falls by this roster's nineteen
-non-exempt rows, and the list of arcs opened in this shape at `:104-108` gains a
-seventh. The `⚑` at `docs/goals/self-hosting.md:124` already records that
-`docs/goals/README.md:48` is owed the matching change.
+and nothing else, so `lens.py chain` reported this file in that rung's uncovered
+set beside [[arcs/checker-core-arc]] at 34 of 35. Every owed edit landed:
+condition 4 at `docs/goals/self-hosting.md:62-64` names
+`[[arcs/lowering-and-emit-arc]]`, the subject-arc table at `:102-107` carries
+this arc's row opened with 23 elements, and the honest limit that read *"39 of
+the compiler's own built elements hold no roster row"* is corrected at `:173`.
+The rung reads **37 of 37** under `python3 tools/lens/lens.py chain`, measured
+2026-09-18. The `⚑` at `docs/goals/self-hosting.md:124` stands undischarged:
+`docs/goals/README.md:48` still reads *"none open, and see Rules"* for this
+goal, true of conditions 1 to 3 and false of 4 and 5.
 
 ⚑ **`ledger-lint` check AH raises eight violations against this roster and every
 one of them is real.** AH globs `f"{elem}-*-SPEC.md"` with the element cell's

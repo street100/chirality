@@ -30,7 +30,7 @@ updated: 2026-09-18
   follows `sys-face`'s `SF`, `checker-core`'s `CK` and `lowering-and-emit`'s
   `LE`.
 - build-state authority: [[status-ledger]]
-- checklist: none. No `records/substrate-floor.md` exists.
+- checklist: [[records/substrate-floor]], prefix `SU`.
 - neighbour: [[arcs/memory-discipline-arc]], stated in full under *What this arc
   does not take*. That arc owns the value-cell heap's reclamation discipline
   under [[goals/local-ai]]. This arc owns the substrate those cells sit in.
@@ -387,16 +387,16 @@ arc's requirement 2 and names no element, the element cells of that roster are
 [[arcs/lowering-and-emit-arc]] each found the same shape, which makes this the
 third arc in a row to disagree with a `clear` verdict for a measured reason.
 
-⚑ **`records/lenses/unspoken.md` UNS-01 and UNS-07 admit `E22` and `E41` as
-unhomed, both stand at `open` with `author: unreviewed`, and one of the two
-carries a false measurement.** `SU15` and `SU16` give each a home, so both rows
-are owed a state change and a `checked:` date. UNS-01's `measured` field reads
-*"no file in docs/arcs/ names E22"* and `docs/arcs/memory-discipline-arc.md:26`
-and `:39` name it, so that field was already false before this run. The two rows
-are also why the element homes owed count falls by fourteen and not by sixteen:
-check AE exempts an element an unspoken row admits, so neither was inside the
-owed 32. That file is outside this run's write scope and another session is
-editing it.
+⚑ **DISCHARGED 2026-09-18. `records/lenses/unspoken.md` UNS-01 and UNS-07
+admitted `E22` and `E41` as unhomed at `open` with `author: unreviewed`, and
+both read `ruled` now.** `SU15` and `SU16` gave each a home, and the rows took
+the state change and the date this arc said they were owed: UNS-01 at
+`records/lenses/unspoken.md:5` and UNS-07 at `:89` each read `state: ruled`
+with `checked: 2026-09-18` and an `owner:` naming this arc's row. The false
+measurement is corrected in place: UNS-01's `measured` field keeps *"no file in
+docs/arcs/ names E22"* and now carries the correction that
+`docs/arcs/memory-discipline-arc.md:26` and `:39` name it. Check AE exempts an
+element an unspoken row admits, so neither sat inside the owed count either way.
 
 ⚑ **[[banks/runtime]] carries the W^X loader among its built shards in four
 places and the code contradicts it.** `docs/banks/runtime.md:78`, `:215`, `:317`
