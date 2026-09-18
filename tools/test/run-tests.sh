@@ -367,6 +367,16 @@ run_phase 30 "the RecordRequest sum and its pricing (E197)"        recording.sh
 run_phase 31 "the crypto kernels (N1 slices 1 and 2)"              crypto.sh
 run_phase 32 "the widening multiply, both names (E189)"          mul-widen.sh
 
+# ---- Phase 33: the coverage composite (E200) --------------------------------
+# 33 on the same 2026-09-06 ruling the block above states: this file is the only
+# authority for a phase number and a gate takes the first one colliding with
+# nothing. Eight were registered, 25 through 32, so 33 is the first free.
+#
+# ⚑ Its five mutants each rebuild a compiler generation from a scratch lib/ and
+# compile the probe with it, so the rows grade the SOURCES rather than whatever
+# binary is shipped. That is four generations at about 40 s each.
+run_phase 33 "the coverage composite (E200 bover)"               span-over.sh
+
 # ---- registration: the witness for every dispatch line above ----------------
 # not-a-phase: this file IS the dispatch table; the block below invokes its witness.
 #
