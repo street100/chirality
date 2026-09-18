@@ -96,7 +96,7 @@ reads the cursor out. Four of the six modules have zero importers.
 
 | group | owns |
 |---|---|
-| S1 the image and its entry | the ELF the kernel enters, the two syscalls the prepended stub issues, and the FFI seam that evaporated with the oracle. All built and universal. What is absent is the name of the element the surviving W^X work belongs to, which is an author call carried on a `built` row, and any assertion over the stub |
+| S1 the image and its entry | the ELF the kernel enters, the two syscalls the prepended stub issues, and the FFI seam that evaporated with the oracle. All built and universal. What is absent is the typed W^X seal itself, `E20`'s unbuilt residue now that `records/author-calls.md:100` has named it the survivor, and any assertion over the stub |
 | S2 the arena and its growth | the arena's base and end, the TAL grow wrapper, the growing allocator instance, and the policy seam that selects it. All built and inside the closure. What is absent is a path that crosses the 256 KiB commit boundary, and two state cells read the opposite of what the code says |
 | S3 the value floor | I64 arithmetic, byte cells, and the map and set containers. Every compile runs all of it. What is absent is any assertion that discriminates one of them from a wrong version of itself |
 | S4 the `Pool` region | the porttype, its four crossings, their TAL bodies and their `crossing-wraps` rows. Built and inside the closure. What is absent is a caller a phase reaches: the only `pool-read` call in the tree sits outside the closure |
@@ -108,7 +108,7 @@ reads the cursor out. Four of the six modules have zero importers.
 | edge | direction | what crosses |
 |---|---|---|
 | S6 to S3 and S4 | against, and the loudest | S6 reads as last and its consumers are two groups below it. `docs/elements/specs/E41-region-types-SPEC.md` §3 decision 2 names `E22`'s cursor and `E25`'s byte-cell faces as the consumers of the linear sum it resolves, so the deferred group's first customers are `SU8` and `SU15`, both built. Reading S6 as last leaves `lib/memory/mem-region.chiral:41` a runtime branch and leaves the class unowned |
-| S2 to S1 | against | `E20`'s open author call asks which element the surviving W^X work belongs to, and the `mmap`/`mprotect` pair its title claims is S2's reserve-commit. So the S1 question is answered by measuring S2 rather than by opening S1, which is what `SU1`, `SU3` and `SU5` record and what [[arcs/runtime-loading-arc]]'s `RL1` already found |
+| S2 to S1 | against | `E20`'s author call asked which element the surviving W^X work belongs to, and the `mmap`/`mprotect` pair its old title claimed is S2's reserve-commit. So the S1 question was answered by measuring S2 rather than by opening S1, which is what `SU1`, `SU3` and `SU5` record and what [[arcs/runtime-loading-arc]]'s `RL1` already found. ⚑ **Ruled 2026-09-18** by `records/author-calls.md:100`, and the edge's reasoning is what produced the answer: the measurement that settles it is the prot the entry stub's `mprotect` passes, `3` for `PROT_READ`+`PROT_WRITE` at `lib/lowering/compile-emit.chiral:87`, which is S2's commit and no W→X transition |
 | S2 to S2 | against | the tree carries two arena growth stories. The shipped one commits more of a `PROT_NONE` reservation with `mprotect`; the unreached one doubles with `mremap`. `E90`'s row names the second mechanism and the first is what runs, so the cheapest-looking reconciliation is a state correction rather than a build |
 | S4 and S5 to outside this arc | out of reach | the phase machinery that would dispatch these roots is `lowering-and-emit/LE22`'s Phase 12, printed NOT PORTED at `tools/test/run-tests.sh:22` and `:413`. Requirement 1 cannot be finished from here, and the rows that serve it say what they need |
 | S2 to outside this arc | out of reach | whether `lib/memory/mem-region.chiral` is reached is `memory-discipline/M6`. `SU4` and `SU5`'s question is the sibling one over `lib/memory/arena.chiral`, and reading S2 as self-contained puts two arcs on one six-file directory |
@@ -175,7 +175,7 @@ number.**
 
 | row | what | group | kind | origin | req | state | element |
 |---|---|---|---|---|---|---|---|
-| `substrate-floor/SU1` | the loader that is no longer one, and the open author call sitting on it. `docs/elements/catalog.md:126` reads *"BUILT native and no longer a loader"* and cites the entry stub's `mmap` and `mprotect` at `lib/lowering/compile-emit.chiral:43,62,83`, which are `SU3`'s reserve-commit. The W^X half is absent: `lib/lowering/x64/elf.chiral:59-60` writes one `RWE` segment in its own words and `:64` calls the split *"the named W^X follow-on"*, and `readelf -l bin/chirality-bin` reports one `RWE` `PT_LOAD`, re-verified 2026-09-18. **Wanted**: the element the surviving W^X work belongs to, named. **Blocking condition**: **the author call carried on this element's ledger row**, verbatim under FLAGs. The mechanism is `E132`'s and [[arcs/runtime-loading-arc]] holds it | S1 | primitive | bind | 1, 3 | built | `E20` |
+| `substrate-floor/SU1` | the typed W^X seal, named by the author and unbuilt. `docs/elements/catalog.md:126` opens `Not built.` and cites the entry stub's `mmap` and `mprotect` at `lib/lowering/compile-emit.chiral:43,62,83`, which are `SU3`'s reserve-commit: the `mprotect` passes prot `3`, `PROT_READ`+`PROT_WRITE` at `:87`, so there is no W→X transition to read. The W^X half is absent: `lib/lowering/x64/elf.chiral:59-60` writes one `RWE` segment in its own words and `:64` calls the split *"the named W^X follow-on"*, and `readelf -l bin/chirality-bin` reports one `RWE` `PT_LOAD`, re-verified 2026-09-18. **Wanted**: the typed seal `docs/examples/E20-loader.md:30-31` scopes, a mapping taken writable and then sealed executable so that W^X holds as a type fact; no `MapRW` or `MapRX` appears under `lib/` or `prog/` and `lib/loader.chiral` does not exist, measured 2026-09-18. **Blocking condition**: none. ⚑ **The author call this row carried is ruled**, `records/author-calls.md:100` on 2026-09-18: `E20` survives as that seal, module cell `loader` to `map-seal`, ledger state `built` to `design` at `a4d98ce`, so this row goes `built` to `open` and `bind` to `new`. The static-ELF segment split is `E34`'s, carried as a wanted on `lowering-and-emit/LE15`, and this arc still mints nothing | S1 | primitive | new | 1, 3 | open | `E20` |
 | `substrate-floor/SU2` | the FFI trampoline, discharged by eviction and by no build, which is what the element asked for. `docs/elements/catalog.md:129` reads *"There is no FFI trampoline and no host to trampoline from"* and the ledger title reads *"evaporates on ELF"*; a grep for `ctypes` and `CFUNCTYPE` over `lib/` and `prog/` returns three comments about the evicted oracle and no binding, measured 2026-09-18. The artifact is an ELF entered at `_start`, written by `lib/lowering/x64/elf.chiral` at 82 lines, which the catalog cell counts correctly. **Wanted**: one assertion that no crossing enters through a host trampoline, so the discharge is gated rather than stated in prose. **Blocking condition**: none measured. This is the one element on the roster with no SPEC and no `docs/examples/` artifact, which is why it is the only row `ledger-lint` check AH raises | S1 | port | bind | 1, 3 | built | `E23` |
 | `substrate-floor/SU3` | the entry stub's reserve-commit split, built and universal, with its own name one version behind. `lib/lowering/compile-emit.chiral:36-37` describes the `PROT_NONE` reserve then the read-write commit, `:49` sets `reserve-bytes` to 68,719,476,736 and `:50` sets `init-commit` to 262,144, `:62` issues `mmap`(9) and `:83` issues `mprotect`(10), both checked with `exit_group` on failure. `docs/elements/catalog.md:356` records that the function is still *named* `entry-stub-v2` at `:59` and that its header cites the evicted oracle three times plus a byte-identity test that no longer exists. **Wanted**: the stale header and the version in the name repaired, and one assertion that the stub's two syscalls are the only two a program issues before its entry. **Blocking condition**: none measured | S1 | primitive | bind | 1, 3, 4 | built | `E89` |
 | `substrate-floor/SU4` | the arena as a bump region with a base and an end, built on both halves and pinned by no instrument. The stub stores the four cells at absolute vaddrs (`lib/lowering/compile-emit.chiral:37`), `x-fin` emits them page-aligned at `lib/lowering/x64/mach.chiral:537-543`, and `lib/memory/alloc.chiral` plus `lib/memory/alloc-growing.chiral` bump the cursor, all inside the closure through `lib/lowering/x64/emit.chiral:3-4`. `docs/elements/catalog.md:127` carries its own ⚑ that `lib/memory/arena.chiral` has **zero importers**, re-verified 2026-09-18. **Wanted**: the typed-arena bridge's status stated, and one assertion that reads `heapptr` back after a known allocation. **Blocking condition**: none measured. Whether `mem-region` is reached is `memory-discipline/M6` and this row takes neither it nor the reclamation question | S2 | primitive | bind | 1, 2, 5 | built | `E21` |
@@ -202,16 +202,21 @@ Run 2026-09-18 against the table above.
   `SU16`. No requirement is unscheduled.
 - **Every row serves a requirement.** All sixteen name at least one. No row is
   out of scope.
-- **Fourteen rows are `built` and two are `open`, and the requirements they
+- **Thirteen rows are `built` and three are `open`, and the requirements they
   serve are unmet, which is this arc's premise.** The state column is the
-  pipeline's authority for a row; the elements are built and what the rows carry
-  is the residue. Goal condition 4 is exactly the requirement that a built part
-  run on a path something asserts.
+  pipeline's authority for a row; those thirteen elements are built and what
+  their rows carry is the residue. Goal condition 4 is exactly the requirement
+  that a built part run on a path something asserts. ⚑ **`SU1` read `built`
+  here until 2026-09-18**, when `records/author-calls.md:100` ruled `E20` the
+  surviving typed seal and its ledger state went `built` to `design`. `open` is
+  the roster word for a row that holds a number and owes the pipeline.
 - **Every `origin` is defensible from the measurement.**
-  - `SU15` and `SU16` are `new` because the deliverable exists nowhere: no
-    type-level discharge of a capacity check anywhere in the tree, and
-    `lib/memory/mem-region.chiral:41` still branches at runtime.
-  - The other fourteen are `bind` because the code is built and what is absent
+  - `SU1`, `SU15` and `SU16` are `new` because the deliverable exists nowhere.
+    For `SU1` no `MapRW` or `MapRX` appears under `lib/` or `prog/` and
+    `lib/loader.chiral` does not exist, measured 2026-09-18. For the other two
+    there is no type-level discharge of a capacity check anywhere in the tree,
+    and `lib/memory/mem-region.chiral:41` still branches at runtime.
+  - The other thirteen are `bind` because the code is built and what is absent
     is a surface onto it: an assertion that discriminates it, a dispatch line
     for a root that already passes, or a state cell that matches the code. Each
     names the span measured.
@@ -262,11 +267,14 @@ Run 2026-09-18 against the table above.
 - **The W^X floor and the resident loader.** [[arcs/runtime-loading-arc]] rosters
   `E132` as `RL2` and owns a resident binary mapping a freshly compiled artifact
   with a load-time port fence. Its `RL1` names `E20` inside its `what` cell while
-  carrying `unminted`, and that arc's FLAGs at `:221-226` say in its own words
-  that the run leaves the call open. `SU1` homes the element, states the
-  `RWE` segment as the emitter writes it, and carries the same call. Under
-  [[goals/README]] at `:27` and `:32` an element sits in every arc that claims
-  it, so `RL1` adopting `E20` later is no competition.
+  carrying `unminted`. `SU1` homes the element and states the `RWE` segment as
+  the emitter writes it. Under [[goals/README]] at `:27` and `:32` an element
+  sits in every arc that claims it, so `RL1` adopting `E20` later is no
+  competition. ⚑ **The call both rows carried is ruled**,
+  `records/author-calls.md:100` on 2026-09-18: `E20` survives as the typed seal
+  and this row's half of the call is discharged. That arc's FLAGs at `:221-226`
+  still read the call as open, because `docs/arcs/runtime-loading-arc.md` is one
+  of the carriers the ruling names and it has not moved yet.
 - **The bounds class as an enforcement question.** [[arcs/enforcement-arc]]
   rosters `N1` through `N22` and owns what the compiler states about its own
   work. **Verified 2026-09-18 that its twenty-three element cells are `E184`
@@ -300,24 +308,26 @@ Run 2026-09-18 against the table above.
 
 ## FLAGs
 
-⚑ **`E20`'s ledger row carries an open author call and this run does not take
-it.** The row's own words, `docs/elements/ledger.md` §MEM: *"⚑ **FINDING
-2026-09-04, the row and the element disagree about what E20 is, and the cell is
-left with this note rather than moved.** The name in the title is a collision.
-There is no `nb-blit` and no mmap-to-mprotect *code loader* anywhere under
-`lib/`; `lib/module/loader.chiral` is the **compiler's** module loader by its
-own header, a different thing. What is real is the entry stub in
-`lib/lowering/compile-emit.chiral`, and its `mmap`(9) + `mprotect`(10) pair is
-the **E89/E91 arena reserve-commit** (PROT_NONE reserve, then
-PROT_READ|PROT_WRITE commit, `:36-38`, `:60-61`), never a W→X transition. **The
-W^X half is NOT HELD:** `lib/lowering/x64/elf.chiral:59-60` emits one RWX
-`PT_LOAD` in its own words (*"RWX (PF_R\|PF_W\|PF_X = 7), not RX"*) and names the
-split as *"the named W^X follow-on"*; `readelf -l bin/chirality-bin` reports a
-single `RWE` segment, re-verified 2026-09-04.
-`docs/definitions/status-ledger.md` already demoted its W^X loader row for this
-reason. Naming the surviving element is an author call."*
+⚑ **`E20`'s author call is ruled, and this roster's `SU1` moves with it.**
+`records/author-calls.md:100` rules on 2026-09-18 that `E20` survives as the
+typed W^X seal, a mapping taken writable and then sealed executable so that W^X
+holds as a type fact, with module cell `map-seal` and ledger state `design`.
+`docs/elements/ledger.md:162` carries the retitle and the demotion at `a4d98ce`,
+`docs/elements/catalog.md:126` opens `Not built.` at `b53a1f3`, and
+`docs/examples/INDEX.md:68` keeps `audited` at `53502a8`, an audited SPEC
+standing over work nobody has built. The static-ELF segment split is `E34`'s,
+carried as a wanted on `lowering-and-emit/LE15`, and mints nothing. **This run
+takes the call's reach into this file and nothing else**: ten of the ruling's
+thirteen carriers are unmoved and each is its own dispatch.
 
-**What this run measured against it, at HEAD on 2026-09-18.** Every limb holds.
+⚑ **This FLAG read that the call was open and that this run did not take it,
+and it quoted the `E20` ledger cell verbatim at length.** The quote went stale
+at `a4d98ce` and `ledger-lint` check U raised it against this file. The demotion
+the quote argued for is the one the ruling took, so the argument is not
+withdrawn, only spent.
+
+**What this run measured against the demotion, at HEAD on 2026-09-18.** Every
+limb holds.
 `readelf -l bin/chirality-bin` reports one program header, `LOAD` with flags
 `RWE` at `0x12a178`. `lib/lowering/x64/elf.chiral:70` writes `p_flags` 7 and
 `:59-64` gives the reason, the heap cells sharing the segment, and names the
@@ -326,11 +336,11 @@ second RW `PT_LOAD` as the follow-on. The `mmap`/`mprotect` pair is
 constants are `:49` and `:50`, so the pair is `SU3`'s reserve-commit rather than
 a W→X transition. A grep for a code loader under `lib/` returns
 `lib/module/loader.chiral`, the compiler's module loader, and nothing else.
-**The entanglement is three-way and its shape is now exact**: `E20`'s title
-describes work that does not exist, `E89` owns the reserve half, `E91` owns the
-commit-on-demand half, and the W^X mechanism is `E132`'s, rostered by
-[[arcs/runtime-loading-arc]]. `SU1`, `SU3` and `SU6` home the three elements and
-answer nothing.
+
+**The entanglement is three-way and its shape is now exact**: the work `E20`'s
+old title described does not exist, `E89` owns the reserve half, `E91` owns the
+commit-on-demand half, and the typed W^X seal is `E20`'s under the title the
+ruling gives it. `SU1`, `SU3` and `SU6` home the three elements.
 
 ⚑ **Which arc owns the bounds and region class is an open author call, and
 `SU15` and `SU16` are drawn while it is out.** `records/homing-triage.md:259-261`
@@ -431,11 +441,13 @@ in `specced`, `building` or `built` with no
 exposure to AH's known zero-padding misreport**: that misreport needs a
 single-digit element whose SPEC is zero-padded on disk while the cell is written
 bare, and the lowest element here is `E20`, every cell carrying two or three
-digits spelled the same way in both places. Measured 2026-09-18: thirteen of the
-fourteen `built` rows are suppressed on limb one by an existing `docs/examples/`
+digits spelled the same way in both places. Measured 2026-09-18: twelve of the
+thirteen `built` rows are suppressed on limb one by an existing `docs/examples/`
 artifact and each holds a SPEC, and `SU2`/`E23` holds neither, so it raises both
-limbs alone. `SU15` and `SU16` read `open`, a state AH does not read. That is why
-nine of [[arcs/checker-core-arc]]'s thirteen AH violations were padding
+limbs alone. `SU1`, `SU15` and `SU16` read `open`, a state AH does not read.
+`SU1` joined those two on the 2026-09-18 ruling while holding both a
+`docs/examples/E20-loader.md` artifact and a SPEC, so AH's count does not move.
+That is why nine of [[arcs/checker-core-arc]]'s thirteen AH violations were padding
 artifacts, none of [[arcs/lowering-and-emit-arc]]'s eight were, and two of these
 are.
 
@@ -451,10 +463,13 @@ element minted before this file and this run mints nothing.
 roster row already: `E81` through `E85` in [[arcs/memory-discipline-arc]] and
 `E132` in [[arcs/runtime-loading-arc]]. Sixteen hold none: `E20`, `E21`, `E22`,
 `E23`, `E24`, `E25`, `E27`, `E41`, `E89`, `E90`, `E91`, `E106`, `E111`, `E113`,
-`E120` and `E122`. All sixteen are rostered above, which is §MEM whole. Fourteen
-read `built`; `E22` and `E41` read `design`, which the roster's closed vocabulary
-has no word for and which is written `open`, following
-[[arcs/checker-core-arc]]'s handling of `part` and `flight`. No element of §MEM
+`E120` and `E122`. All sixteen are rostered above, which is §MEM whole. Thirteen
+read `built`; `E20`, `E22` and `E41` read `design`, which the roster's closed
+vocabulary has no word for and which is written `open`, following
+[[arcs/checker-core-arc]]'s handling of `part` and `flight`. ⚑ **`E20` read
+`built` when this arc opened.** `records/author-calls.md:100` ruled it the
+surviving typed seal on 2026-09-18 and `docs/elements/ledger.md:162` carries the
+demotion at `a4d98ce`. No element of §MEM
 is `superseded`. **The goal's own cell names thirteen and this arc takes
 sixteen**: `E111` is the `Pool`-backed cell store its subject sentence reaches
 under "linear containers", and `E22` and `E41` are the region-type floor under
