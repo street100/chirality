@@ -1,0 +1,32 @@
+The current piet-gpu rendering strategy uses exact-area pixel coverage calculations to derive an antialiased alpha mask, followed by Porter-Duff style compositing. This strategy has some definite advantages, notably very smooth rendering of shapes (especially compared to supersampling approaches with a small sampling factor), but is also susceptible to so-called "conflation artifacts." An excellent resource on this topic is [GPU-accelerated Path Rendering](https://developer.nvidia.com/gpu-accelerated-path-rendering), from which this terminology is taken. Quoting from section 4.1.2 of that paper, "Conflation is particularly noticeable when two opaque paths exactly seam at a shared boundary."
+
+Conflation artifacts are especially a problem for Flash rendering, see https://github.com/ruffle-rs/ruffle/issues/26 for one such discussion. While the most common source of such artifacts is compositing multiple shapes, it's also possible to occur within a shape. For example, the SVG path string "M0 0L0 4 4 4 0 0 4 0 4 4z" can render with a gap along the diagonal, as the winding number is of opposite signs on the lower and upper triangles. I believe (but do not have a link handy) that Skia goes to great lengths to avoid conflation artifacts within a path, but does not avoid them during compositing, as among other things the [HTML5 Canvas drawing model] seems to *require* that the final render is consistent with alpha compositing individual antialiased elements.
+
+There are other applications for which avoiding conflation artifacts would be an improvement, including [Flutter](https://github.com/flutter/flutter/issues/59701), [SVG rendering](https://graphicdesign.stackexchange.com/questions/65058/image-looks-embossed-when-converted-to-svg), [Export from InDesign](https://www.reddit.com/r/indesign/comments/2slo49/help_weird_antialiasing_artifacts/), [clipping in WPF](https://stackoverflow.com/questions/467331/anti-aliasing-artifacts-in-wpf) and no doubt many others.
+
+Many academic renderers, including [MPVG], [Li et al 2016](http://kunzhou.net/zjugaps/pathrendering/), and to some extent [RAVG] deal with conflation artifacts by doing some form of supersampling, as does the NV_path_rendering work cited above (NV_path_rendering uses GPU hardware MSAA, and so is limited by the sampling factor provided by the hardware, especially a problem on mobile and low-tier GPUs).
+
+I believe it is possible to render without conflation artifacts in the basic piet-gpu architecture, with some changes to the fine rasterization stage. Following is a proposal.
+
+Fine rasterization proceeds in two phases. The first phase is a straightforward non-AA render, but which also accumulates a bit per pixel indicating whether any path edge (fill, stroke, or clip) crosses the pixel in a way that requires antialiasing. A good way to get that bit is conservative rasterization of path segments, similar to what's already done in the coarse rasterization stage to determine which tiles intersect the given path segment.
+
+After the first phase, the bits are compacted (using prefix sum of the bit count within the workgroup, possibly also subgroup accelerated). A pixel is assigned to a group of threads, with the number of threads equal to the multisampling factor divided by the number of samples per thread (similar to CHUNK in k4.comp today). That loop then runs a variable number of times, depending on how many pixels need re-rendering vs the number of threads in the workgroup.
+
+For each such loop, the workgroup iterates over the per-tile command list again, each thread computing samples for at most a single pixel. If there are multiple threads per pixel (ie the multisampling factor exceeds CHUNK), then texture reads can be coalesced, either by relying on the hardware to do so, or manually using either threadgroup shared storage or subgroups to distributed the texture read across the threads. At the end of the loop over ptcl commands, the samples are summed and the average written to the output image (again using shared memory or subgroups if there is more than one thread per pixel).
+
+Note that to avoid artifacts during clipping (and compositing in general), the blend stack (see #36) needs to have a value per sample, which is potentially a pretty high bandwidth.
+
+Some more potential refinements. I think font rendering can still best be done with the exact-area approach; in the longer term evolution of piet-gpu, rendered glyphs would be cached in an atlas, so would be texture reads anyway. There may be a tiny quality improvement by avoiding conflation artifacts in glyph rendering, but only when the outlines have winding numbers other than 0 or 1, which basically means overlapping subpaths. Also, the multisampling factor needs to be quite high for good glyph rendering, otherwise it's a quality regression from the exact-area case.
+
+Also, the calculation of the "needs AA" bits can be done cleverly, so that edges exactly aligned to pixel boundaries need not count. This covers the case of clipping and filling of rectangles aligned to the pixel grid, which can accelerate common cases in UI.
+
+Another appealing aspect of this approach: the supersampling can be done in a linear-intensity space, improving antialiasing quality, even if alpha compositing is done in sRGB for compatibility reasons (see the RAVG paper for more discussion of this issue).
+
+Further, doing the equivalent to [stem darkening] on filled paths becomes straightforward, by doing a distance-field stroke of each path segment, and OR-ing that to the contribution from the summed signed winding numbers from the segments.
+
+There are other ways to address the details (see the papers cited above), but overall I'm hopeful that the specific approach I've outlined would work well as a compute shader within the piet-gpu architecture.
+
+[stem darkening]: https://www.freetype.org/freetype2/docs/text-rendering-general.html
+[RAVG]: http://hhoppe.com/ravg.pdf
+[MPVG]: http://w3.impa.br/~diego/projects/GanEtAl14/
+[HTML5 Canvas drawing model]: https://www.w3.org/TR/2dcontext/#drawing-model

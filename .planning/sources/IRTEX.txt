@@ -1,0 +1,3344 @@
+˙fififl/˝Ll˛LL˝˚
+L˘flL--L˘fl
+/fl˛-Z˚zflˇz˚i˝jfiLfli˚zfl-Z˝Lflˇ˛ffj˝l-˝˚
+fl-ffifl
+Z--ˇLffifflffl!=!=!=infzfiLfizlZ<=-fiinf
+fi-fflˇ˛ffj˝l-˝˚
+ffl>=d>=sum>=sumprodsumpi
+˙fifl/fi/˝Ll˛L˚
+˘-˝/
+filLZ˝-zL˚
+˙fifl/˝L˝fll˝˛˚
+˘˝L
+fl`fl'˛
+fifl d!pi
+"#$%$#&'˙
+d
+()%*˙
+!˘d+pi
+-˛
+ZzfiLˇ
+˘fl˝
+lj˛/˝
+<=ffi
+%jfi,
+/fizfl(fiLZfi-˚-
+'.#*#%
+ij
+fl
+/012#"%$#&'˙
+flflfl
+ffiffi
+fl
+"#$%$#&'˙
+flflfl
+˙))fl/(&3#2)
+%jjfll˚
+-fi
+-fli˚jj˚!=˝
+<=fl-Z˝Lflˇ<=fifl!=Lfl˛ˇj˚/fi/flff4fl
+%jfi,
+/fizfl(fiLZfi-˚-
+fl˚
+fl!5fl'˛
+fifl d!piinf
+$Zfifl˛LfizflZLflzfi6˛fiL-fi/flfi
+Z
+lfi7fi
+-fl˚ifl-Zfifl/˚!=
+j˚/fi/fli˝jfiinffl
+%jjfl˝
+8-fi,-flzfiifizfi
+lfiLfl
+˛
+/fizj˝
+fi/fl˝
+flffj˛fi
+flzfifl//fi/fl-˚fl-Zfifl˚z˝<=˝
+jfl/˚l˛7fi
+-
+/flzfiflj˝
+9fi/fl-˚flˇ˛ffj˝l-˝˚
+Lfl˚
+fl(fiLfizlZ:-fi˘fljfi--˝
+<=fl4˚˛flllfiLLfl
+/flzfi/fl-Zfi7fl˝77fi/˝-fij4inf
+High Performance Graphics (2016)
+Ulf Assarsson and Warren Hunt (Editors)
+Infinite Resolution Textures
+Alexander Reshetov and David Luebke
+NVIDIA
+Figure 1:
+left: the new IRT sampler (top) and a traditional raster sampler (bottom). The texture is mapped onto a waving flag. Right top:
+green color indicates areas where the IRT sampler is effectively blended with the raster sampler; in blue areas only the raster sampler is used.
+Right bottom: close-up. IRT chooses the sampler dynamically by analyzing texture coordinate differentials. In all cases, only a single texel
+from the raster image is fetched per pixel. The original texture resolution is 533
+fi
+606. The IRT sampling rate is about 6 billion texels per
+second on an NVIDIA GeForce GTX 980 graphics card. The image is a photograph of the airbrush painting “Celtic Deer” © CelticArt.
+Abstract
+We propose a new texture sampling approach that preserves crisp silhouette edges when magnifying during close-up viewing, and
+benefits from image pre-filtering when minifying for viewing at farther distances. During a pre-processing step, we extract curved
+silhouette edges from the underlying images. These edges are used to adjust the texture coordinates of the requested samples
+during magnification. The original image is then sampled — only once! — with the modified coordinates. The new technique
+provides a resolution-independent image representation capable of billions of texels per second on a mid-range graphics card.
+Categories and Subject Descriptors
+(according to ACM CCS)
+: Computer Graphics [I.3.3]: Three-Dimensional Graphics and
+Realism—Color, shading, shadowing, and texture; Computer Graphics [I.3.3]: Picture/Image Generation—Antialiasing; Image
+Processing and Computer Vision [I.4.3]: Enhancement—Sharpening and deblurring
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+A. Reshetov & D. Luebke / Infinite Resolution Textures
+1. Introduction
+Graphics applications such as games combine 3D geometric data
+and 2D textures. These assets behave differently under scaling. The
+3D data represents the shape of the objects in a scene and as such
+can be sampled at any resolution. 2D textures are typically used to
+represent material properties and minute geometric details, and have
+a limited resolution defined by the underlying image. Unlike 3D
+models, textures can be easily pre-filtered at multiple coarse levels
+and stored in a mipmapped format. This is a significant advantage,
+as it allows integrating over all subsamples in a pixel by issuing a
+single texel fetch. Using trilinear mipmapping [
+Wil83
+], the level of
+detail can vary smoothly, so when a computer graphics object moves
+away from the viewpoint, its texturing will change gradually from
+the fine to the coarse levels. Unfortunately, when we zoom in on
+such an object, the pixels in even the highest-detail texture image
+will eventually become larger than the pixels on the screen. When
+this happens we will see a familiar blotchy structure of the texture
+and the image will become over-blurred.
+Ironically, this wasn't always the case. The earliest 2D computer
+graphics were all based on such geometric primitives as straight
+and curved line segments, directly rendered on vector displays. The
+wide use of discrete raster images came later, supported by the rapid
+development of raster displays and hardware texture samplers.
+Vector graphics continue to proliferate in areas in which quality
+approximation is not acceptable, such as professional graphics. This
+includes, in particular, illustration and computer-aided design. Vector
+graphics allow storing data in a resolution-independent format which
+can then be rendered on any device or printed as a hard copy. Most
+vector graphics formats (such as PostScript or SVG) can be treated
+as programs prescribing the process of rendering an image composed
+of (potentially overlapping) geometric primitives. For this reason,
+computing a color at a single position might necessitate executing the
+whole program. This is not an issue in professional applications when
+the whole image emerges as a result of executing such a program,
+but it makes vector graphics a less efficient substitute for texture
+assets in games, where often only a portion of an image is accessed
+every frame and samples are irregularly distributed.
+Vector graphics formats, considered as programs, tend to be se-
+quential in nature. This hindered their hardware optimization, until
+the groundbreaking work of Loop and Blinn [
+LB05
+], Kilgard and
+Bolz [
+KB12
+], and Ganacim et al. [
+GLdFN14
+]. Kilgard and Bolz
+introduced a two-step “Stencil, then Cover” approach, allowing ef-
+ficient GPU rendering of vector textures as a whole. Ganacim et al.
+went further, employing an acceleration structure whose traversal
+enabled rendering parts of the image.
+Human visual perception relies on the ability to detect edges
+[
+Sha73
+] and most vector formats store and process silhouette edges
+natively. Vector graphics is also well-suited for close-ups, providing
+a theoretically infinite resolution. Yet rendering such images at a dis-
+tance is superfluous as multiple primitives overlap the same pixel. In
+principle, it is possible to pre-render vector graphics into a sequence
+of raster images at decreasing resolution and then blend vector and
+raster samples together, as suggested by Ray et al. [
+RCL05
+]. How-
+ever, this is still rather wasteful and can also exhibit ghosting.
+Instead, our approach (named “Infinite Resolution Textures” —
+IRT) unifies vector and raster representations by always computing
+the resulting color through a single texel fetch as
+f l o a t 4 c = t ex . S a m p l e L eve l ( s, u v + d u v, l o d ) ;
+(1)
+This HLSL example shows how an application would ordinarily
+fetch the color
+c
+from the texture
+t ex
+using the sampler
+s
+, except for
+the texture coordinate adjustment
+d u v
+. IRT computes
+d u v
+to produce
+crisp silhouette edges at close distances. When moving away from
+an object, this adjustment is scaled back until it completely vanishes,
+decreasing the
+d u v
+vector to zero magnitude. At this point, the IRT
+color is simply the conventional mipmapped raster color, taking
+advantage of the minification at the level of detail
+l o d
+.
+Our goal is to sample a color at a position that isa) close to
+the sample
+u v
+butb) farther away from any silhouette edge than a
+given distance (of a few pixels). In other words, we want to move the
+sample outside of the blurred area around the curves, but do it conser-
+vatively. This will not create any new image details, but, hopefully,
+sidestep the limitations of a fixed resolution of the original image. It
+is similar to the existing image deblurring techniques but executed
+on demand at run-time with just a small performance overhead.
+We compute
+d u v
+by accessing the curved silhouette data in the
+neighborhood of the sample point
+u v
+. These records are typically
+shared among multiple subsamples in the neighborhood of the curve,
+allowing a good memory cache utilization (section
+6.2
+).
+The stored curved silhouettes are either given, if the underlying
+image is provided in vector format, or have to be computed from
+the underlying raster image. There are many approaches to edge
+detection in raster images; we will describe one that is well suited
+for our purposes. Our ultimate goal is an efficient way to increase
+the resolution of a broad class of available texture assets, suitable for
+a drop-in replacement in games and 3D applications.
+The texture resampling was first used in thepinchmapsproposed
+by Tarini and Cignoni [
+TC05
+]. A similar approach was latter ex-
+ploited for antialiasing [
+Res12
+] and super-resolution [
+JP15
+]. We
+compare our implementation with pinchmaps in section
+2.1
+.
+2. Related Work
+The research community has long recognized the need for a
+resolution-independent texture representation that allows real-time
+sampling. This need can be directly addressed by devising ways
+to efficiently sample the existing vector formats such as SVG
+or PostScript. A significant corpus of work exists in this area,
+for a comprehensive review refer to the specialized publications
+[
+KL11
+,
+SXD
+fl
+12
+,
+KB12
+,
+GLdFN14
+,
+BKKL15
+].
+Approaches aspiring to represent a broader class of genuine raster
+images includebixels[
+TC04
+],silmaps[
+Sen04
+],pinchmaps[
+TC05
+],
+andVector Texture Maps (VTM)[
+RCL05
+]. A VTM decomposes tex-
+ture space into different regions delineated by a set of implicit cubic
+polynomials. Each region can be sampled by a different fragment
+shading function. Antialiased filtering is done for pixels straddling
+the borders of such regions by computing blending coefficients for
+the two colors returned by the shaders at the each side of the discon-
+tinuity. Bixels use the similar strategy by decomposing the texture
+plane into addressable tiles with straight boundary segments and
+using supersampling for antialiasing.
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+A. Reshetov & D. Luebke / Infinite Resolution Textures
+Figure 2:
+top: two pinchmap images [
+TC05
+]; bottom: IRT rendering
+of these images retrieved from the pinchmaps paper at 256
+fi
+256
+resolution.
+Silmaps were originally proposed to fight undersampling artifacts
+in shadow maps by constructing a piecewise-linear approximation to
+the true shadow [
+SCH03
+]. This work was latter extended to general
+textures [
+Sen04
+] and volumetric data [
+KHPS07
+]. Silmaps eliminate
+blurring during texture magnification by custom-filtering colors on
+the same side of the discontinuity. The algorithm supports six possi-
+ble configurations of the linear silhouette edges inside a pixel.
+Diffusion curve textures [
+OBW
+fl
+08
+] employ a different way to
+achieve a resolution-independent texture representation by constru-
+ing an image as a solution of radiative heat transport equation. Sun
+et al. [
+SXD
+fl
+12
+] proposed to use an explicit form of such solution
+for closed diffusion curves as a sum of Green's functions. Such re-
+duction allows a random access to the color of each texel (a few
+milliseconds per 1M texels in a typical image).
+Observing that infinite resolution of vector textures is rarely re-
+quired, Song et al. [
+SWWW15
+] introduced a variable resolution
+scheme in which an image is first partitioned into a kd-tree. Each
+leaf node is then compressed with an acyclic feed-forward neural
+network. Such representation byvector regression functions (VRF)
+allows very fast random access and filtering. VRF approximation
+can cause artifacts, in particular sharp features will appear as smooth
+gradients in close-ups. This behavior might still be more visually
+appealing than traditional pixelization artifacts.
+2.1. Comparison of IRT with Prior Art
+Pinchmaps [
+TC05
+] employ the same approach as IRT by resampling
+the original raster image near the edges. A single quadratic silhouette
+edge per pinchmap texel is reconstructed by bilinearly interpolating
+the four corner values that describe the edge orientation and position.
+These values are then used to compute the texture coordinate offsets
+that are thence limited by a pinchmap texel size.
+This method is attractive in its simplicity, always executing a
+single auxiliary fetch (from a 4-channel pinchmap) for each texel.
+However, it does not allow edge intersections and reconstructs only
+a single silhouette per pinchmap texel. Even more limiting, the
+pixels that are not intersected by edges will have
+u v
+offset equal to
+0
+by design — even if there are edges in close proximity passing
+through the neighboring pixels. Accordingly, the texture coordinate
+offsets across the pixels with zero and non-zero pinches will be
+discontinuous. This creates artifacts that cannot be easily avoided
+(Figure
+2
+).
+We address these problems by storing multiple contributing sil-
+houette edges per texel and not limiting the magnitude of the texture
+coordinate adjustment. This allows better image reconstruction and
+smoother silhouettes (third order) at the cost of the more complicated
+data structures (section
+5.6
+).
+In comparison with pinchmaps, silmaps [
+Sen04
+] can represent
+silhouette intersections. This is achieved by considering piecewise-
+linear segments with some mild restrictions on the edge topology
+(one silhouette edge per pixel side). Silmaps produce crisp edges by
+always interpolating colors on the same side of the edge. To avoid
+fetching four corner colors that are called for by a straightforward
+implementation of this custom interpolation scheme, a clever strategy
+is proposed that uses a single bilinear texel lookup for 1, 2, and 4-
+corner cases and needs three lookups only for the 3-corner case.
+This compares favorably with bixels [
+TC04
+], in which a sample is
+evaluated by a one of the proposed tenpatch functionsthat might
+necessitate fetching all colors at a patch boundary.
+However, these custom-made interpolations make mipmapping
+more complicated, requiring an explicit color blend in a shader. An
+edge antialiasing would also require an extra work, making multiple
+texel lookups unavoidable.
+In contrast, pinchmaps allow natural antialiasing and mipmapping
+by scaling the texture coordinate offset and we also employ a similar
+strategy (section
+4.2
+). The difference between pinchmaps and IRT in
+this respect is that the expressive power of pinchmaps is somewhat
+diluted by limiting the maximum magnitude of this adjustment; this
+also introduces additional frequencies pertinent to the resolution of
+the pinchmap.
+All these algorithms require a pre-processing step. Pinchmaps
+are extracted from either a vector-based representation or a high-
+resolution raster image. At run-time, the appropriately downsampled
+raster image is used as well. The same scheme would work for
+silmaps, except that for the better results the accompanying raster im-
+age would require special processing to recover distinct non-blurred
+colors on both sides of any stored silhouettes (to facilitate custom-
+made interpolation at run-time). This makes this algorithm better
+suited for man-made images with pronounced edges.
+Due to its less restrictive format (multiple curves per pixel, user-
+controlled offsets), IRT might also be suitable for some natural
+images as well (see Figures
+5
+,
+14
+,
+12
+,
+13
+). To facilitate this function-
+ality, we have designed an edge detection and smoothing scheme that
+converts a single raster image to a coordinated vector format (sec-
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+A. Reshetov & D. Luebke / Infinite Resolution Textures
+Figure 3:IRT flowchart.
+tion
+5
+). We conjecture that other texture magnification approaches
+would benefit from this functionality as well.
+3. Algorithm Outline
+Figure
+3
+shows the IRT data flow, with corresponding paper sections.
+To compute the texture coordinate adjustment
+d u v
+in (
+1
+), we need
+both a raster image and its silhouette edges. When starting from
+a raster image, those silhouettes have to be determined from the
+image; our approach to this task is described in sections
+5.1
+–
+5.4
+.
+Conversely, vector images do not have pairedrasterimages as such,
+so one has to be rendered from the vector format at the appropriate
+resolution (section
+5.5
+).
+We use a grid acceleration structure to store the relevant curved
+silhouettes in the neighborhood of a given
+u v
+query (section
+5.6
+).
+Note that a grid might not be an ideal structure, especially when
+different parts of an image have vastly contrasting scales (a 2D
+equivalent of the “teapot in a stadium” problem). We plan to continue
+exploring possible alternative approaches in this regard.
+We begin by explaining our chosen way of computing the
+u v
+7!
+d u v
+mapping, since this is at the core of IRT (section
+4.1
+).
+This mapping is continuous everywhere except on edges. To avoid
+aliasing near the edges, we must handle such samples differently;
+two pertinent approaches are described in section
+4.2
+.
+Finally, we discuss performance (section
+6.1
+) and limitations of
+the technique (
+6.3
+), then conclude with potential application areas
+and future work (
+6.4
+).
+4. Run-Time Computations
+All algorithms in this paper use the following two parameters:
+zs
+— the maximum distance in the RGB color space
+between similar pixels; we use
+s=25
+for all images in
+this paper (for 8-bit RGB colors).
+zh
+— an assumed size of a convolution kernel that distorts
+the colors around the edges; we use
+2
+p
+2
+, which is the
+length of the two pixel diagonals.
+(2)
+A sample IRT implementation is provided in Appendix
+A
+. IRT
+uses three types of values to compute the texture coordinate adjust-
+ment
+d u v
+in the statement (
+1
+):
+p
+0
+=q
+0
+q
+1
+q
+2
+p
+2
+=q
+3
+p
+1
+b
+a
+q
+0
+q
+2
+n
+0
+n
+3
+n
+b
+x
+d
+0
+d
+3
+n
+i
+Figure 4:
+a continuous silhouette consisting of two straight and
+two curved segments. Color shaded regions demarcate areas of
+influence of each segment. At shared vertices (
+b;q
+0
+;q
+3
+), bisectors
+split the angle between two adjacent tangent lines, separating the
+corresponding truncated Voronoi regions.
+zlevel of detail
+l o d
+for the given texture coordinates
+u v
+.
+z
+distances
+d c
+to all the silhouette edges closer to the
+sample than the supplied distancehabove.
+zvectors
+n i
+that point away from the found silhouettes.
+(3)
+To handle a broad class of images, we use smooth curves as
+silhouettes. Each curve is split into curved segments and we create
+truncated Voronoi regions for such segments delineated by curve's
+normals at its endpoints (Figure
+4
+).
+Our algorithm will work with any curve representation (including
+a piecewise linear format) for which there is an efficient way of com-
+puting the distance
+d c
+. Since IRT can use any curve format and it is
+not essential for the algorithm itself, we describe our implementation
+later in section
+5
+.
+For mipmapped textures,
+l o d
+is usually computed as
+l o g 2 ( p i x ra t i o )
+, using the ratio of a pixel size to a texel size,
+though IRT does not depend on it. We also use
+r e d u c e
+factor to
+smoothly fuse vector and raster textures by scaling the value of
+d u v
+(line
+15
+in Appendix
+A
+). For
+p i x ra t i o
+ffl1
+, i.e., when pixels become
+bigger than texels, we immediately return the mipmapped color, so
+there is a very little overhead during minification.
+Distance to the curve
+d c
+is a continuous function of
+u v
+coordinates,
+but the curve's normal at the closest point is not (and there could
+be multiple such points). Since we approximate the distance
+d c
+(section
+5.3.2
+) — and we want continuously sampled colors outside
+the curves — we can use an approximate “normal” as a value of
+n i
+.
+The simplest solution is to employ a 2D version of Phong normal
+[
+Pho75
+] by interpolating two normals defined by the side edges of
+the curve's Voronoi region. In Figure
+4
+, these are normals
+n
+0
+and
+n
+3
+for the curve
+q
+0;1;2;3
+. For the interpolation weights, we use distances
+to these edges since we already compute them during a clipping step
+(lines
+36
+and
+39
+). By design, such an interpolated normal will vary
+smoothly when moving across the side edges (i.e., between the two
+adjacent Voronoi regions).
+4.1. Computing the Adjustment for Texture Coordinates
+We want to conservatively move the sampling position
+u v
+(in the
+statement
+2
+) away from the edges. In a simplest possible implemen-
+tation, we just move by
+d u v = ( h - d c ) * n i
+along the interpolated
+normal
+n i
+for the closest curve. If the sample is overlapped by multi-
+ple areas of influence (
+x
+in Figure
+11
+), we sum all such adjustments,
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+A. Reshetov & D. Luebke / Infinite Resolution Textures
+Figure 5:
+from left to right: raster image with the detected edges;
+bilinearly interpolated image; crisp edges; smoothed out edges.
+given that those overlaps could only happen for samples at sizable
+distances from curves where any adjustment is small anyway.
+Only curves that are closer to the sample than
+h
+— and not oc-
+cluded by the other curves — influence
+d u v
+computations. This
+assures a continuous function of
+u v
+coordinates, i.e., small changes
+in
+u v
+result in small changes in
+d u v
+, unless
+u v
+passes through the
+curve. If edges of a Voronoi region were reduced to avoid overlaps
+with other such regions (as in Figure
+7
+g), we scale down the value of
+h
+accordingly. This ensures that the new sampling position will be
+inside the corresponding Voronoi region.
+This will create crisp edges. Depending on an application area
+or an image at hand, this might not be a desirable outcome. Instead
+of a strict linear
+d c
+7!
+d u v
+mapping, we could employ a different
+scheme, e.g., smoothing out areas near the edge similar to Optical
+Low Pass Filter (OLPF). A few such possible alterations are provided
+in comments to the code in Appendix
+A
+, see lines
+61
+–
+65
+,
+89
+, and
+104
+. In Figure
+5
+, the result of such OLPF-style filtering is shown on
+the right (the only change to the shader is to uncomment line
+65
+).
+4.2. Antialiasing Options
+Due to the discontinuous nature of
+u v
+7!
+u v + d u v
+mapping at edges,
+antialiasing is a requisite part of IRT.
+The most straightforward approach is to reproduce the behavior
+of an analytical box filter for all pixels closer to any curve than the
+screen pixel size. To detect this, we convert
+d c
+— that is computed
+in texture space — to screen space using screen-space derivatives
+of the texture coordinates as shown in Appendix
+A
+, line
+6
+. We then
+blend two colors, each one fetched with its own
+d u v
+. One vector
+is computed by the algorithm directly (lines
+50
+or
+55
+), another by
+negating the signed distance to the closest curve (i.e., considering
+the mirrored sample with respect to the edge). Two blending weights
+at line
+80
+approximate areas of the pixel split by the edge.
+This approach causes just a small overhead for the affected pixels
+by requiring two color fetches. Still, despite being at the core of the
+hardware texture filtering, box filters are subpar in removing aliasing,
+especially in a temporal domain. A detailed discussion is carried out
+by Ganacim et al. [
+GLdFN14
+].
+A better solution would require convolving resampled colors with
+a data-dependent smoothing kernel, a feat that might look unattain-
+able with our chosen mode of operations. Yet, we can approximate
+theresultof such convolution with just a single color fetch. The key
+idea is to use a higher LOD mipmap that already contains pre-filtered
+colors.
+A dashed green line in Figure
+6
+e shows the length of the vector
+d u v = ( h - d c ) * n i
+as a function of the distance to the curve. It is
+(a) (b)
+(c) (d) (e)
+Figure 6:
+(a) original image (as in Figure
+3
+) with the detected
+curved edges; (b) IRT without antialiasing; antialising with two (c)
+and one (d) fetches; (e) the modified
+kd u vk
+profile used for the
+antialiasing with a single fetch (section
+4.2
+).
+a monotonically decreasing function with a maximum at
+d c = 0
+.
+Vectors
+d u v
+for the two close samples on the different sides of an
+edge will have the same magnitude but opposite directions — this is
+why we actually need antialiasing for such samples.
+One way to dampen such discontinuity is to impose a
+^
+-shaped
+profile for
+kd u vk
+function (blue line), but this will not solve aliasing
+problems since color gradients in the immediate neighborhood of
+an edge are at local maximum as a matter of choice. This can be
+mitigated though by increasing
+l o d
+for samples that are close to an
+edge (red line). By adjusting the position of the threshold at which
+this adjustment is effected, we can create edges with different levels
+of blurriness (line
+72
+).
+In Figure
+6
+(cd) these two antialiasing modes are shown side-by-
+side.
+5. Preprocessing
+IRT accepts both vector and raster images as an input. After the
+preprocessing stage, the distinction between these two categories
+disappears and at run-time we use a uniform acceleration structure,
+as shown in Figure
+3
+.
+To extract curved silhouettes from a raster image, we pursue a
+three-prong approach to
+1. find pixels that lie on an edge (section
+5.1
+),
+2. connect such pixels (
+5.2
+), and
+3.
+convert the connected sequences to either Bézier
+curves (
+5.3
+) or rational polynomials (
+5.4
+).
+(4)
+These goals can be achieved by using existing software, such as
+Inkscape [
+Bah07
+] or several online tools including Adobe Creative
+Cloud
+®
+[
+SOT13
+]. Some of these systems aim at an artistic image
+depiction with exaggerated edges; others target a faithful image
+conversion, albeit in a restricted context (Computer Aided Design).
+Since we seek a representation of a wide range of images used in
+computer graphics, we opted for our own silhouette detector.
+5.1. Finding Edge Pixels
+Edge detection is one of the core problems in computer science. A
+multitude of approaches exist, targeting different applications with
+disparate requirements. Several researchers have reviewed the state
+of the art [
+MA09
+,
+PP11
+,
+SC12
+,
+MSH12
+].
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+A. Reshetov & D. Luebke / Infinite Resolution Textures
+(a)
+(b)
+(c)
+(d)
+(e)
+(f)
+(g)
+Figure 7:
+From left to right: improving the quality of the found
+edges. (a) tangent lines (orthogonal to gradients) with chosen edges
+in dark color; (b) tie breaking; (c) increasing sub-pixel accuracy
+through parabola fitting; (d) it still will result in wavering silhouettes,
+unless we apply (e) 3-tap or (f) 5-tap filter; (g) curved edges with the
+corresponding Voronoi regions.
+Maini and Aggarwali [
+MA09
+] show that the Canny edge detector
+[
+Can86
+] performs better than most other straightforward techniques
+under almost all scenarios. IRT generally follows the steps of the
+Canny edge detector. We will briefly describe our implementation,
+emphasizing the additional steps we introduced to smooth out the
+found continuous edges.
+Gradient detection.
+We use RGB colors, following the ideas of
+Novak and Shafer as described by Kanade in [
+Kan87
+]. This tech-
+nique requires computing the
+3fi2
+Jacobian
+J
+of the partial deriva-
+tives along
+x
+and
+y
+directions for each RGB component and then
+finding the largest eigenvalue of
+2fi2
+matrix
+J
+T
+J
+. The square root
+of this eigenvalue gives the edge strength and the corresponding
+eigenvector — its normal (with
+gradient=strengthflnormal
+). To
+compute partial derivatives, we use the Scharr operator [
+JSK99
+] due
+to its improved rotational symmetry.
+Non-maximum suppression.
+We elected to use a continuous ver-
+sion of the edge thinning step by invalidating all pixels for which
+the edge strength is less than either of the two values sampled in the
+positive or negative gradient direction.
+These steps are illustrated in Figure
+7
+. Initially, we compute the
+gradient at all pixels, but only some of them survive non-maximum
+suppression (a). In rare cases, such as the red box in the middle,
+colors will have an axial symmetry in some local neighborhood. This
+would result in detecting edges on both sides of the axis of symmetry,
+or (which is more likely due to numerical errors) randomly choosing
+edges on both sides. This ambiguity can be resolved by slightly
+decreasing gradients for brighter pixels (b).
+Edge positions can be tuned by fitting a parabola to the three
+strength values that were used for the non-maximum suppres-
+sion (c). Once we connect the found edge pixels (section
+5.2
+),
+we can further smooth out these curves by applying (e) 3-tap or
+(f) 5-tap filter. We found that the simplest 5-tap filter given by
+weights=
+[
+1;3;6;3;1
+]
+=10
+is quite adequate for our purposes.
+This is comparable with
+weights=
+[
+2;5;10;5;2
+]
+=16
+proposed
+by Dyn et al. [
+DLG87
+] except for somewhat reduced weights for the
+two farthermost points. More evolved topics are discussed by Nehab
+and Hoppe [
+NH12
+].
+p
+0
+p
+1
+p
+2
+p
+3
+e
+1
+e
+2
+g
+1
+g
+2
+Figure 8:
+choosing the best connections by maximizing the similarity
+measure (
+5
+). The result of a 3-tap filterig is shown as a green curve.
+5.2. Connecting Edge Pixels
+So far, we found points that we believe should lie on a silhouette,
+and the plausible silhouette orientation. We will refer to these values
+asexpectedto differentiate them from theadjustedpositions and
+directions. Now we have to connect such points.
+Our goal is to determine two neighbors for each edge pixel in such
+a way that directions to these neighbors will not differ too much
+from the expected edge orientation. To facilitate a possible parallel
+execution, we adopted the following procedure (which is somewhat
+different from the traditional hysteresis thresholding).
+Using notation in Figure
+8
+, for each edge pixel
+p
+1
+and edge pixel
+p
+2
+in its immediate neighborhood, we compute the similarity mea-
+sure
+m=
+(cosg
+1
++jcosg
+2
+j)
+kp
+2
+p
+1
+k
+p
+s
+2
+(5)
+where
+g
+1
+and
+g
+2
+are angles between
+p
+2
+p
+1
+and the expected tangent
+vectorse
+1
+ande
+2
+;s
+2
+is the strength of the edge at the pixelp
+2
+.
+We prefer smaller angles
+g
+1
+and
+g
+2
+and also prefer the adjusted
+silhouette to go through the stronger pixels that are closer to
+p
+1
+. We
+compute the maximum of
+m
+(ignoring negative values). It will yield
+us the best candidate pixel to continue the silhouette in the positive
+direction of
+e
+1
+. Together with a connection in the negative direction
+e1
+, we will have 2 candidate connections for pixel
+p
+1
+. If
+p
+1
+is
+in turn among the candidate connections for
+p
+2
+, we join these two
+pixels. This will give us sequences of the connected pixels.
+Once all the sequences are found, we eliminate those for which
+the average magnitude of the gradient is less than the predefinedparameter
+s
+in (
+2
+). This is a more relaxed form of the hysteresis
+thresholding, aimed at finding longer sequences and avoiding the
+sequential nature of the traditional approach (start at pixels with the
+gradient magnitude
+>s
+and keep connecting the points until the
+magnitude drops belowqswhereq<1).
+5.3. Extracting Bézier Curves
+Cubic Bézier curves are used in most vector graphics formats. It
+makes sense to approximate the found sequences of edge points
+with such curves in like manner. Our goal is to reduce the overall
+number of the used curves while keeping the approximation error
+below the given threshold. We also enforce an additional linearization
+constraint to allow using implicit representation of a Bézier curve as
+a proxy to a distance to such curve (see section
+5.3.2
+).
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+A. Reshetov & D. Luebke / Infinite Resolution Textures
+5.3.1. Bézier Curve Implicitization
+We compute the texture coordinate adjustment
+d u v
+in Equation (
+1
+),
+using distances to all curves in the neighborhood of sample
+u v
+. A
+direct approach requires solving an equation of fifth degree. Approx-
+imate algorithms [
+LB05
+,
+NH08
+] compute the distance with an error
+vanishing at the curve. We could use either technique, but we took
+another approach pursuing the lowest possible execution complexity.
+Following Floater [
+Flo95
+], for each planar cubic Bézier curve
+with control points
+q
+0;1;2;3
+(Figure
+4
+) we define
+l
+1
+and
+l
+2
+such as
+q
+1
+= (1l
+1
+)p
+0
++l
+1
+p
+1
+andq
+2
+= (1l
+2
+)p
+2
++l
+2
+p
+1
+and
+a
+i
+=3(1l
+i
+);b
+i
+=3l
+i
+;f
+i
+=b
+i
+a
+k
+b
+k
+;i=1;2;k=2;1
+A=b
+21
+f
+1
+;C=3b
+1
+b
+2
++2b
+21
+a
+1
++2b
+22
+a
+2
+b
+1
+b
+2
+a
+1
+a
+2
+B=b
+22
+f
+2
+;D=a
+2
+f
+1
+;E=a
+1
+f
+2
+;F=1a
+1
+a
+2
+f(x;y) =At
+20
+t
+2
++Bt
+0
+t
+22
++Ct
+0
+t
+1
+t
+2
++Dt
+0
+t
+21
++Et
+21
+t
+3
++Ft
+31
+(6)
+For any point [
+x;y
+], we compute its barycentric coordinates
+t
+0;1;2
+for the Bézier triangle
+p
+0;1;2
+. The function
+f
+is an implicit representa-
+tion of the Bézier curve (
+fi0
+at the curve). At run-time, computing
+f
+is just slightly more expensive than computing two dot products,
+see the fragment shader example in Appendix
+A
+(line
+50
+).
+5.3.2. Distance to Bézier Curve
+Floater proves that
+f
+in equation (
+6
+) is unique inside the Bézier
+triangle
+p
+0;1;2
+(i.e., equal to
+0
+only on the curve) if and only if
+f
+1
+f
+2
+>0
+. We want to be able to handle texels inside (the bigger)
+curve's Voronoi region, so this result is not directly applicable. We
+scale coefficients
+AF
+so that
+f
+approximate the distance to the
+curve for all such texels. Using
+f=jrfj
+would result in a better
+approximation, but is more expensive.
+To analyze typical errors of such approximation, we consider a
+plurality of Bézier curves with equispaced control points. Up to a
+uniform scaling, rotation, and translation, such curves are defined by
+two angles
+q
+0
+=
+6
+p
+1
+p
+0
+p
+2
+and
+q
+2
+=
+6
+p
+1
+p
+2
+p
+0
+in Figure
+4
+, reducing
+a search space. We found that if such angles are smaller than
+0:6
+,
+the error will not exceed
+0:1
+inside the Voronoi region with sideway
+edges equal to
+2kq
+0
+q
+3
+k
+. In turn, when we fetch the color with the
+adjusted
+d u v
+, it will result in color differences not exceeding
+10%
+of 255 in agreement with the suppliedsin (
+2
+).
+Each straight segment can be treated as a cubic Bézier curve with
+q
+1
+and
+q
+2
+lying on [
+q
+0
+;q
+3
+] and we intend to do so to minimize the
+code divergence. Yet, it would result in infinite barycentric coordi-
+nates, requiring a division by zero (area of the triangle
+p
+0;1;2
+). Since
+f
+is a uniform polynomial, we can avoid this problem by dropping
+the normalization requirement (
+t
+0
++t
+1
++t
+2
+i1
+). We can also di-
+rectly bake-in the distance scaling into
+AF
+coefficients in equation
+(
+6
+) arriving at a very simple way of computing
+t
+0;1;2
+using the two
+dot products with the Bézier triangle edges (line
+46
+in Appendix
+A
+),
+followed by the distance-to-the-curve computation in line
+50
+.
+5.3.3. Fitting Bézier Curves To Point Sequences
+The results of the previous section give us a simple way to fit se-
+quences of points to Bézier curves. First, at each point we find a
+direction of a tangent line by averaging unit vectors to two adjacent
+points. Then, starting with the first point in a sequence, we traverse
+the connected points until either of
+q
+0;2
+exceeds
+0:1radian>=34°
+or
+f
+1
+f
+2
+ffi0.
+The angles
+q
+0;2
+are uniquely identified by the tangent lines and
+q
+0;3
+endpoints which we acquire from the sequence; the exact posi-
+tion of
+q
+1;2
+on the tangent lines is computed by requiring a uniform
+split of the interval [q
+0
+;q
+3
+].
+This approach creates smoothly connected curve segments (with
+geometric G1 continuity) that are neither too big nor too small.
+However, situations could arise when an angle between the two
+vectors toward the neighbors is smaller than
+180°2fl34°=112°
+.
+In that case we will create a straight segment (see two left segments
+in Figure
+4
+). We also modify a tangent line to ensure smoothly
+connectedstraight-curvedsegments, so the only non-smooth (G0)
+connections are atstraight-straightjoints.
+5.4. Using Rational Curves
+A cubic polynomial is a bad choice for approximating a linear dis-
+tance far off the curve. To remedy this situation, we will consider a
+quotient of two multivariate polynomials. Floater theory holds for
+rational Bézier curves, but we instead derive a suitable representation
+from first principles using variables that are natural to the problem
+at hand and easy to compute. We consider (Figure
+4
+)
+d
+0;3
+– signed distances to the edges of curve's Voronoi region
+d
+n
+– distance from a samplexto the edgeq
+0;3
+along the interpolated directionn
+i
+(7)
+We compute
+n
+i
+=t
+3
+n
+0
++t
+0
+n
+3
+by interpolating normals to the curve
+at endpoints
+q
+0;3
+with weights
+t
+0;3
+=d
+0;3
+=(d
+0
++d
+3
+)
+. Variables
+d
+0;3
+can also be used to verify that a sample is inside the region (if and
+only if
+d
+0;3
+ffl0
+). We intend to use (non-normalized) interpolated
+vector
+n
+i
+for
+d u v
+adjustment since the modified texture coordinates
+always stay inside the Voronoi region delineated by
+q
+0
++t n
+0
+and
+q
+3
++t n
+3
+lines.
+The sought-after implicit function
+f
+should be
+0
+at
+q
+0;3
+and its gra-
+dient at these points should be collinear with normals
+n
+0;3
+. These Her-
+mite conditions guarantee a smooth stitching of silhouette segments
+by restricting numerical values of coefficients of given polynomials.
+For a variety of rational polynomials over
+d
+0;3;n
+(and a few other
+feasible variables) we eliminated those that cannot satisfy Hermite
+conditions. We then sorted out the remaining polynomials by how
+well they approximate random Bézier curves. One representation
+stands out. For better insight, we will deduce this representation by
+examining — and exploiting — its desired properties.
+We want
+f
+to behave like
+O(d
+n
+)
+afar from the curve. Without loss
+of generality,
+f=d
+n
++g(d
+0
+;d
+n
+;d
+3
+)t
+0
+t
+3
+. Both these terms equal to
+0
+at
+q
+0;3
+, so we only need
+f
+to satisfy the second Hermite condition.
+We will be interested in the simplest form of
+g
+that also has nice
+asymptotic properties at a distance from the curve (vary likeO(d)).
+The simplest such function that is also symmetric with respect to
+its variables is
+g=a
+3
+d
+0
++a
+0
+d
+3
+. The second Hermite condition leads
+toa
+0
+=tan(q
+0
+),a
+3
+=tan(q
+3
+).
+We have used all degrees of freedom (available coefficients) to
+satisfy Hermite conditions. In Figure
+9
+a, a yellow unit circle is ap-
+proximated by four such curves with the Hausdorff distance between
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+A. Reshetov & D. Luebke / Infinite Resolution Textures
+2 dof rational
+0.06
+(a)
+(b)
+0 5 10
+0
+2
+4
+6
+8
+10
+3 dof rational
+0.0020
+(c)
+(d)
+0 5 10
+0
+2
+4
+6
+8
+10
+Figure 9:
+(a) a circle approximation by four implicit rational curves
+(
+f=x+y1x y=(x+y)
+in the first quadrant); (b) contour lines for
+f= (x
+2
++y
+2
+1)=(x+y+1)
+that approximates a unit arc exactly; (cd)
+approximation by expression (
+8
+).
+the two sets equal to
+0:06
+. We can improve the approximation by
+adding
+f
+2
+=c(d
+0
++d
+3
+) (t
+0
+t
+3
+)
+2
+to
+f
+. This quadratic term automati-
+cally satisfies both Hermite conditions and asymptotically behaves
+as
+O(d
+0;3
+)
+. We can use the constant
+c
+to fit the given points between
+q
+0;3
+. For a unit arc in the first quadrant, the resulting function
+f=x+y1xy(1+0:664xy=(x+y)
+2
+)=(x+y)(8)
+deviates from the true distance to the arc by no more than
+0:2%
+at
+any distance from it, as shown in Figure
+9
+(cd). For comparison, the
+Hausdorff distance between a unit quarter arc and its cubic Bézier
+approximation is
+q
+71=62
+p
+2=31>=0:03% [
+AKS04
+].
+We could have approximated the arc exactly, e.g., by choos-
+ing
+f
+2
+=c d
+0
+d
+3
+d
+1
+=(d
+0
++d
+3
+)=(d
+0
++d
+3
++1)
+, where
+d
+1
+is a distance
+from
+x
+to a line passing through
+q
+0;3
+. Yet, the resulting function,
+f= (x
+2
++y
+2
+1)=(x+y+1)
+, significantly deviates from the true
+distance to the arc, as can be seen in Figure
+9
+b.
+In situations when we want a sharp edge (like the two green re-
+gions in Figure
+4
+or one of the triangle vertices in Figure
+7
+), tangent
+lines will be different on the two sides (G0 connectivity). Conse-
+quently, edges of the corresponding Voronoi regions will not be
+orthogonal to the tangent lines. Values of
+a
+0;3
+can be then computed
+as (using (
+˙
+) notation for a dot product and
+v
+?
+for an orthogonal
+vector) :
+a
+0
+=
+(q
+?10
+˙q
+30
+)
+(n
+?0
+˙q
+30
+) (n
+?0
+˙q
+10
+)
+;a
+3
+=
+(q
+?23
+˙q
+30
+)
+(n
+?3
+˙q
+30
+) (n
+?3
+˙q
+23
+)
+(9)
+whereq
+10
+andq
+23
+are two tangential vectors andq
+30
+=q
+3
+q
+0
+.
+To find the coefficient
+c
+that minimizes curve deviation from
+a given set of points, we solve the system of over-defined linear
+equations
+d
+n
++ (a
+0
+d
+3
++a
+3
+d
+0
+)t
+0
+t
+3
++c(d
+0
++d
+3
+) (t
+0
+t
+3
+)
+2
+=0
+where equation coefficients are computed at each given point (i.e.,
+perform a linear regression). Run-time evaluation of the distance to
+the curve
+d c
+from sample
+u v
+is given in Appendix
+A
+, lines
+52
+–
+55
+.
+5.5. Choosing Rendering Resolution for Vector Images
+When a vector image is rasterized and antialiased, a color of each
+pixel is obtained by averaging all relevant subsamples. A color of
+pixel
+p
+3
+in Figure
+11
+is influenced by colors on both sides of the
+blue curve that intersects it. The intent of the resampling offset
+d u v
+1542
+2
+(a)
+3084
+2
+(b)
+4112
+2
+(c)
+raster only
+(d)
+stored colors
+(e)
+Figure 10:
+(a-c) increasing a resolution of a companion raster
+image improves fidelity near very thin features (right part of the
+image); (d) reconstructing edges from
+1542
+2
+raster image (not using
+SVG data at all); (e) using stored colors together with raster image
+improves quality near sharp corners (bottom right).
+in the statement (
+1
+) is to move away from such pixels since they do
+not faithfully reproduce the colors of the original vector image.
+We choose a resolution of a raster image so that most of
+u v + d u v
+samples land in pixels that are not intersected by any curve; there
+are
+96%
+such samples for the Garfield image in Figure
+12
+with the
+resolution set to
+1542fi1542
+. Figure
+10
+illustrates effects of varying
+the resolution of a companion raster image.
+For some vector images with a significant amount of intersected
+curves or ones with a very thin strokes, the required resolution might
+be too high. For such images, we could store colors on both sides of
+curve segments in an acceleration structure. This will work though
+only for images with a piecewise flat colors (Figure
+10
+e).
+5.6. Acceleration Structure Layout and Optimization
+Formulae (
+6
+) and (
+9
+) provide us with an opportunity to trade band-
+width for computations, given that (smoothly) connected segments
+require very little storage as such. Analyzing such trade-offs on dif-
+ferent architectures is an interesting problem in itself, but for the
+sake of clarity in this paper we precompute and store all coefficients
+for each curve and its Voronoi region separately.
+Following Qin et al. [
+QMK08
+], we use a grid acceleration structure
+with the dimensions of the original raster image. Since each pixel can
+be overlapped by multiple regions, this would have required a double
+indirection: pixel index
+7!
+list of indices for overlapped regions
+7!
+region data (similar to indexed meshes in Computer Graphics).
+We opted for a single indirection with pixel index directly pointing
+into a sequence of the curves influencing this pixel. Referring toFigure
+11
+, pixel
+p
+0
+has three Voronoi regions covering some parts
+p
+0
+p
+1
+p
+2
+p
+3
+x
+green curve
+violet curve
+blue curve
+end
+Texture2D<uint2>
+curveIndexMap;
+Texture2D<float2>
+curveDataMap;
+uint2
+i = curveIndexMap.Load(int3(xy,0));
+if (i.x != 0xffff) do {
+// iterate
+// load curve's data
+q0 = curveDataMap.Load(int3(i.x++,i.y,0));
+on0 = curveDataMap.Load(int3(i.x++,i.y,0));
+// load more data...
+last = on0.x > 1;
+// is it the last entry?
+// compute uv adjustment...
+} while (!last);
+Figure 11:
+acceleration structure layout using two texture maps.
+For a given sample
+x
+with scaled texture coordinates
+x y
+, we use
+c u r ve I n d ex M a p
+to access a list of curve segments (
+c u r ve D a t a M a p
+)
+overlapping a texel that contains x.
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+A. Reshetov & D. Luebke / Infinite Resolution Textures
+of it and its index points into the start of the sequence of three such
+curves. Pixel
+p
+1
+is overlapped by only violet and blue regions and it
+points into the second entry in the same sequence, while
+p
+2;3
+share
+the blue region at the end of the sequence. At run time, we iterate
+over all corresponding curves until the end-of-the-sequence flag is
+read (see
+d o:::w h i l e
+loop at line
+21
+in Appendix
+A
+).
+To minimize the overlap of areas of influence for each curve (as
+for sample
+x
+in Figure
+11
+), we construct a Voronoi diagram for super-
+sampled edges and then consider intersections of normals at curves'
+endpoints with such a diagram to produce side edges for truncated
+Voronoi regions. We clip such vectors if their length exceeds the
+supplied parameter
+h
+in (
+2
+) and (optionally) reduce them for weak
+edges as defined by the gradient magnitude during the edge detection
+step (section
+5.1
+). If the intersection of these two vectors for each
+region is closer to
+q
+0;3
+than their assigned length, we reduce this
+length to exclude the intersection from the area of influence and
+avoid potential division by zero during the run-time computation
+(line
+37
+in Appendix
+A
+). By linearly interpolating the found edge
+vectors — considering both positive and negative directions — we
+will get an area of influence for a particular curve (line
+58
+). Such
+areas will contain points that are closer to the given curve than to
+any other (as in Figure
+7
+g). Small overlaps are still possible and we
+handle them by summing the corresponding
+d u v
+offsets so not to
+impair
+d u v
+continuity (line
+86
+).
+6. Discussion
+IRT combines the best traits of vector and raster textures in a unified
+arrangement. It smoothly blends vector and raster representations
+to exploit the pre-filtered accommodating properties of the tradi-
+tional textures at farther distances. This blending does not incur any
+additional penalty, besides computing the mipmap level. Thus, the
+infinite resolution textures are only slightly more expensive than
+traditional mipmapped textures for distant objects and exhibit rea-
+sonable performance for close-ups (section
+6.1
+).
+IRT textures differ from traditional textures at closer distances,
+revealing crisp edges that hopefully agree with human intuition.
+There are clearly limits to such detail hallucination (section
+6.3
+).
+6.1. Performance
+By creatively using hardware not originally designed for vector
+graphics per se, GPU-accelerated methods for vector textures [
+KB12
+,
+GLdFN14
+] achieve rendering times of 20+ milliseconds per 1M
+texels. This works well when the whole image has to be rendered,
+since certain operations are amortized over the whole image.
+Our goal is to complement such methods, targeting resource con-
+sumption by games with random texture sampling, rather than re-
+source creation. We measured the performance of our algorithm on
+a discrete GeForce
+TM
+GTX 980 using a Direct3D 11 viewer.
+For 24 images in the Kodak Image Suite, a single frame with 1M
+pixels runs from 140 to 412 microseconds. The slowest performance
+was observed for image
+
+13, for which almost all pixels are in close
+proximity to one or more curves. A fragment of this image is shown
+in Figure
+12
+c.
+The performance numbers for the USC-SIPI Image Database are
+(a) Bézier = [166,2021,2305], rational = [136,1655,1803]
+(b) Bézier = [161,2008,2065], rational = [138,1656,1728]
+(c) Bézier = [616,10275,8990], rational = [412,5560,5837]; edges shown on the left
+(d) Bézier = [456,7193,6979], rational = [305,4481,4653]
+(e) Bézier = [178,2587,1692], rational = [177,2603,1693]
+Figure 12:
+Details of various images rendered with bilinear (left
+column) and IRT sampling (right). Performance for the whole image
+is given in
+µ
+s per 1M texels for[discrete NVIDIA GeForce
+TM
+GTX 980,
+mobile GT 720, integrated Intel
+®
+HD Graphics 4400 (performance mode)]
+GPUs.
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+A. Reshetov & D. Luebke / Infinite Resolution Textures
+Figure 13:
+GeForce
+TM
+GTX 680 memory controller traffic in MB
+per a single 1024
+fi
+1024 frame at three different viewpoints. Four
+different texture sampling approaches were used: TX0 — sampling
+the original 512
+fi
+512 raster image with a hardware texture unit;
+IRT — the method in this paper; single map — IRT with a single
+record per pixel; TX
+1
+— mipmaped texture that achieves the same
+quality as IRT (shown at the bottom of the chart).
+in the range of 136 – 305
+µ
+s; the slowest image is, not surprisingly,
+the mandrill (a fragment of which is shown in Figure
+12
+d).
+Just sampling a raw raster texture incurs a performance overhead
+of about 90
+µ
+s per 1M texels for any image, so for simpler images
+the IRT cost roughly doubles texture unit timing. On the tested
+mobile platforms, this observation also holds true with the overall
+performance constrained by the texture sampler throughput.
+These measurements are for the rational polynomials (
+5.4
+); Bézier
+curves (
+5.1
+) are about 30% slower. For each image in Figure
+12
+, we
+give measurements for one desktop and two mobile cards.
+We believe the low cost of IRT during magnification and negligible
+cost during minification should allow it to be turned on all the time
+for all textures the artist deems appropriate.
+6.2. Bandwidth
+IRT uses two precomputed data structures (section
+5.6
+) supplement-
+ing a given raster image:
+z
+an array of the curved segments whose size is proportional to the
+number of the segments and
+zper-pixel indices into these segments.
+These two structures exhibit different memory utilization patterns.
+The index data is a constant overhead for all texels with LOD that
+is less than the IRT threshold (see line
+19
+in Appendix
+A
+). The
+segment data, however, is amortized over visible pixels, benefiting
+from the texture cache at closeups. This is illustrated in Figure
+13
+,
+for which we evaluated the GPU memory controller traffic by ren-
+dering a quad with Lenna image at three different viewpoints. This
+data was measured by GPU-Z — Video card GPU Information Util-
+ity [
+Tec16
+]. The third bar in the chart shows a hypothetical situation
+when there is only one 32-bit record per pixel that describes the sole
+segment overlapping the pixel. We did not implement this version
+of IRT per se, but simulated it to understand the bandwidth require-
+ments of the methods with the constant per-pixel overhead, such
+as pinchmaps [
+TC05
+] or silmaps [
+Sen04
+]. Pinchmaps always fetch
+a single record per texel, while for silmaps accessing neighboring
+records is necessary for texels with more than one border segment,
+but there could be only up to 4 boundary edges in each cell.
+The IRT segment data might cause a noticeable memory traffic
+increase, especially at midrange distances for images that are more
+complex than Lenna. On the positive side, this extra data provides a
+flexibility to describe multiple curved segments intersecting a given
+pixel.
+An obvious alternative to edge preserving techniques is a tradi-
+tional texture format that is mipmapped from a coarse to a very
+detailed representation (if such hi-res representation is available at
+all). The bandwidth data for such implementation is approximated in
+the fourth bar in Figure
+13
+by capturing IRT-rendered image and then
+reusing it as a bilinearly interpolated texture. This creates the same
+image that is rendered faster at the expense of increasing memory
+traffic at close-ups, even though only a single mipmapped level is
+used (trilinear interpolation is not necessary in this scenario due to
+1:1 correspondence between pixels and texels).
+Note that there are (hardware-specific) limitations on the max-
+imum texture size. The right image in Figure
+13
+requires a
+4096
+fi
+4096 texture to achieve the same level of quality as IRT with
+512
+fi
+512 base raster image. We did not use a 4096
+fi
+4096 texture
+as such, instead creating a 1024
+fi
+1024 snapshot by capturing the
+IRT-rendered framebuffer.
+Raster images, used in Figure
+13
+, were not compressed. Real
+applications, such as games, tend to use compressed formats to save
+memory and bandwidth. Rendering a single quad is not a good way to
+evaluate all possible trade-offs. Still, to get some insight into potential
+issues, we redid all measurements using DXT1 compression. This did
+not change the frame rate in any measurable way (since it is already
+near the limit of the graphics pipeline throughput), but reduced
+the memory controller load from 68% to 51% for the last image
+in the TX
+1
+mode. Even though this reduction is significant, the
+memory controller can be a limiting resource by itself, accentuating
+the complex nature of the modern GPUs.
+The most efficient compression techniques introduce artifacts, es-
+pecially near high-frequency edges. In this respect, splitting the im-
+age into a low-resolution raster and a high-resolution edge represen-
+tation might allow deeper compression levels for the low-resolution
+parts. We plan to explore all such trade-offs, also considering a po-
+tential curve data compression as well. Another bandwidth saving
+approach would require stealing a bit from the RGBA representation
+to indicate whether the particular pixel is influenced by any curve.
+This would significantly reduce the memory traffic due to the curve
+indexing but it is application-specific as those extra bits might not be
+readily available.
+6.3. Limitations
+IRT is only as good as the edge detection algorithm it uses. Underde-
+tected edges can lead to incorrect conclusions about object affinities:
+similarly-colored candies in Figure
+12
+a look melted. In a digital
+era, viewers tend to expect a correlation between an image acuity
+and visible details. IRT may break this correlation by slumping into
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+A. Reshetov & D. Luebke / Infinite Resolution Textures
+Figure 14:
+Both IRT (right) and 9
+X
+superresolution (middle) reduce
+blurring and aliasing near edges; such artifacts are symptomatic of
+the bilinear interpolation (left).
+an uncanny valley: the IRT-rendered eye in Figure
+5
+looks better
+than the bilinearly interpolated one, but individual eyelashes are not
+visible and neither is a reflection in the iris. To a certain degree, IRT
+creates an impression of a painted human figure at close proximity,
+rather than a high fidelity photograph (Figure
+12
+b). If needed, we
+could even exaggerate this effect by filtering a raster image that is
+used in tandem with IRT — high frequency details will be preserved
+in IRT curves anyway.
+It is interesting to note that for some objects, even widely used,
+there are no a priori expectations of the discernible details; IRT-based
+image magnification of a can in Figure
+14
+looks roughly equivalent
+to one obtained with a super-resolution technique — nonlocal au-
+toregressive modeling [
+DZLS13
+] — but significantly faster to render.
+Notably, the recently proposed super-resolution method based on
+subpixel shifting model [
+JP15
+], which is similar in spirit to IRT,
+achieves remarkable reconstruction results.
+When used for sampling genuine vector graphics, IRT images
+are somewhat different from ones obtained with the more evolved
+techniques [
+KB12
+,
+GLdFN14
+]. Away from edges, we rely on a trilin-
+ear mipmapping to compute a sample color, while SVG colors are
+analytically calculated for all samples. IRT colors are always derived
+from the corresponding raster image. A low resolution of this image
+could be a problem for samples that are close to multiple curves, see
+Figures
+10
+and
+12
+e.
+Our current implementation uses Matlab code for the edge detec-
+tion
+5.1
+, and requires a few minutes per image; we expect this to be
+drastically reduced by switching to a GPU version. We also have not
+yet explored any benefits of data compression; rational polynomial
+approximation (section
+5.4
+) looks more appealing in this regard as
+it operates on naturally compressible entities such as distances and
+angles.
+6.4. Future Work
+Texture sampling is ubiquitous in modern computer graphics. We
+anticipate that IRT can be used for a wide range of effects, including:
+zMaterial properties (colors).
+z
+Normal maps, which are typically used to represent minute ge-
+ometric detail. The prospect of providing infinite resolution and
+crisp edges for such maps is appealing.
+z
+Vegetation rendering. Traditionally, foliage is rendered by repre-
+senting individual leaves or branches as textures with an alpha
+channel for transparency. This works well at a distance but breaks
+at close-ups. A vector representation should help with this, see the
+leaf image in Figure
+3
+.
+z1D curve rendering (hair).
+z
+Video game decals (like bullet holes or char marks) and pellucid
+text on arbitrary surfaces.
+zUser interface elements for games and web pages.
+zShadow maps and light maps.
+Acknowledgements
+We would like to thank the anonymous reviewers for their detailed
+and helpful comments and suggestions. We gratefully acknowledge
+invaluable discussions with and assistance from Henry Moreton.
+We appreciate the opportunity to use the Kodak Lossless True
+Color Image Suite, the USC-SIPI Image Database, and Computer
+Vision Lab of the Weizmann Institute of Science repository. Averaged
+male face (Figure
+5
+) is taken from the “Beautycheck” homepage of
+the Universität Regensburg. Garfield is licensed under a Creative
+Commons license from Brands of the World site.
+References[AKS04]
+A
+HN
+Y., K
+IM
+Y., S
+HIN
+Y.: Approximation of circular arcs and
+offset curves by Bézier curves of high degree.Journal of Computational
+and Applied Mathematics 167, 2 (2004), 405–416.
+8
+[Bah07]
+B
+AH
+T.:Inkscape: Guide to a Vector Drawing Program, first ed.
+Prentice Hall Press, Upper Saddle River, NJ, USA, 2007.
+5
+[BKKL15]
+BATRAV., KILGARDM. J., KUMARH., LORACHT.: Accel-
+erating vector graphics rendering using the graphics hardware pipeline.
+ACM Trans. Graph. 34, 4 (July 2015), 146:1–146:15.
+2
+[Can86]
+C
+ANNY
+J.: A computational approach to edge detection.IEEE
+Trans. Pattern Anal. Mach. Intell. 8, 6 (June 1986), 679–698.
+6
+[DLG87]
+D
+YN
+N., L
+EVIN
+D., G
+REGORY
+J. A.: A 4-point interpolatory
+subdivision scheme for curve design.Comput. Aided Geom. Des. 4, 4
+(Dec. 1987), 257–268.
+6
+[DZLS13]
+D
+ONG
+W., Z
+HANG
+L., L
+UKAC
+R., S
+HI
+G.: Sparse represen-
+tation based image interpolation with nonlocal autoregressive modeling.
+IEEE Trans. on Image Processing 22, 4 (2013), 1382–1394.
+11
+[Flo95]
+F
+LOATER
+M. S.: Rational cubic implicitization. InMathemati-
+cal Methods for Curves and Surfaces(1995), Lyche, Schumaker, (Eds.),
+Vanderbilt University Press 1995, pp. 151–159.
+7
+[GLdFN14]
+GANACIMF., LIMAR. S.,DEFIGUEIREDOL. H., NEHAB
+D.: Massively-parallel vector graphics.ACM Trans. Graph. 33, 6 (Nov.
+2014), 229:1–229:14.
+2
+,
+5
+,
+9
+,
+11
+[JP15]
+J
+EON
+J., P
+AIK
+J.: Single image super-resolution based on subpixel
+shifting model.Optik - International Journal for Light and Electron Optics
+126, 24 (2015), 4954 – 4959.
+2
+,
+11
+[JSK99]
+JÄHNEB., SCHARRH., KÖRKELS.:Principles of Filter Design,
+vol. 2. Academic Press, 1999, p. 125–151.
+6
+[Kan87]
+K
+ANADE
+T.: Image understanding research at
+CMU
+. InProc.
+of the Image Understanding Workshop(Los Angeles, CA, 1987), vol. 2,
+pp. 32–40.
+6
+[KB12]
+KILGARDM. J., BOLZJ.: GPU-accelerated path rendering.ACM
+Trans. Graph. 31, 6 (Nov. 2012), 172:1–172:10.
+2
+,
+9
+,
+11
+[KHPS07]
+K
+NISS
+J., H
+UNT
+W., P
+OTTER
+K., S
+EN
+P.: IStar: A raster
+representation for scalable image and volume data.IEEE Transactions on
+Visualization and Computer Graphics 13, 6 (nov 2007), 1424–1431.
+3
+[KL11]
+K
+OPF
+J., L
+ISCHINSKI
+D.: Depixelizing pixel art.ACM Trans.
+Graph. 30, 4 (July 2011), 99:1–99:8.
+2
+[LB05]
+L
+OOP
+C., B
+LINN
+J.: Resolution independent curve rendering
+using programmable graphics hardware. InACM SIGGRAPH 2005 Papers
+(2005), SIGGRAPH '05, pp. 1000–1009.
+2
+,
+7
+[MA09]
+MAINIR., AGGARWALIH.: Study and comparison of various im-
+age edge detection techniques.International Journal of Image Processing
+(IJIP) 3, 1 (Feb. 2009), 1–11.
+5
+,
+6
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+A. Reshetov & D. Luebke / Infinite Resolution Textures
+[MSH12]
+M
+ITTAL
+A., S
+OFAT
+S., H
+ANCOCK
+E. R.: Detection of edges
+in color images: A review and evaluative comparison of state-of-the-art
+techniques. InProc. Autonomous and Intelligent Systems (AIS) 2012
+(2012), pp. 250–259.
+5
+[NH08]
+N
+EHAB
+D., H
+OPPE
+H.: Random-access rendering of general
+vector graphics.ACM Trans. Graph. 27, 5 (Dec. 2008), 135:1–135:10.
+7
+[NH12]
+N
+EHAB
+D., H
+OPPE
+H.: A fresh look at generalized sampling.
+Foundations and Trends in Computer Graphics and Vision 8, 1 (2012),
+1–84.
+6
+[OBW
+fl
+08]
+O
+RZAN
+A., B
+OUSSEAU
+A., W
+INNEMÖLLER
+H., B
+ARLA
+P.,
+T
+HOLLOT
+J., S
+ALESIN
+D.: Diffusion curves: A vector representation for
+smooth-shaded images.ACM Trans. Graph. 27, 3 (2008), 1–8. Special
+Issue: SIGGRAPH 2008.
+3
+[Pho75]
+P
+HONG
+B. T.: Illumination for computer generated pictures.
+Commun. ACM 18, 6 (June 1975), 311–317.
+4
+[PP11]
+P
+APARI
+G., P
+ETKOV
+N.: Review article: Edge and line oriented
+contour detection: State of the art.Image Vision Comput. 29, 2-3 (Feb.
+2011), 79–103.
+5
+[QMK08]
+Q
+IN
+Z., M
+C
+C
+OOL
+M. D., K
+APLAN
+C.: Precise vector textures
+for real-time 3D rendering. InProc. of the 2008 Symposium on Interactive
+3D Graphics and Games(2008), I3D '08, pp. 199–206.
+8
+[RCL05]
+R
+AY
+N., C
+AVIN
+X., L
+ÉVY
+B.:Vector texture maps on the
+GPU
+. Tech. rep., Laboratoire Lorrain de Recherche en Informatique et
+ses Applications, 2005.
+2
+[Res12]
+R
+ESHETOV
+A.: Reducing aliasing artifacts through resampling.
+InProc. of the Fourth ACM SIGGRAPH/Eurographics Conf. on High-
+Performance Graphics(2012), EGGH-HPG '12, pp. 77–86.
+2
+[SC12]
+S
+HRIVAKSHAN
+G. T., C
+HANDRASEKAR
+C.: A comparison of
+various edge detection techniques used in image processing. IJCSI Press.
+5
+[SCH03]
+SENP., CAMMARANOM., HANRAHANP.: Shadow silhouette
+maps. InACM SIGGRAPH 2003 Papers(2003), SIGGRAPH '03, pp. 521–
+526.
+3
+[Sen04]
+S
+EN
+P.: Silhouette maps for improved texture magnification. In
+Proc. of the ACM SIGGRAPH/Eurographics Conf. on Graphics Hardware
+(2004), HWWS '04, pp. 65–73.
+2
+,
+3
+,
+10
+[Sha73]
+S
+HAPLEY
+R. M.T
+OLHURST
+D. J.: Edge detectors in human
+vision.The Journal of Physiology 229, 1 (1973), 165–183.
+2
+[SOT13]
+S
+MITH
+J., O
+SBORN
+J., T
+EAM
+A. C.:Adobe Creative Cloud
+Design Tools Digital Classroom, 1st ed. Wiley Publishing, 2013.
+5
+[SWWW15]
+S
+ONG
+Y., W
+ANG
+J., W
+EI
+L.-Y., W
+ANG
+W.: Vector regres-
+sion functions for texture compression.ACM TOG 35, 1 (2015).
+3
+[SXD
+fl
+12]
+SUNX., XIEG., DONGY., LINS., XUW., WANGW., TONG
+X., G
+UO
+B.: Diffusion curve textures for resolution independent texture
+mapping.ACM Trans. Graph. 31, 4 (July 2012), 74:1–74:9.
+2
+,
+3
+[TC04]
+TUMBLINJ., CHOUDHURYP.: Bixels: Picture Samples with Sharp
+Embedded Boundaries.Eurographics Workshop on Rendering(2004).
+2
+,
+3
+[TC05]
+T
+ARINI
+M., C
+IGNONI
+P.: Pinchmaps: textures with customizable
+discontinuities.Comput. Graph. Forum 24, 3 (2005), 557–568.
+2
+,
+3
+,
+10
+[Tec16]
+T
+ECH
+P
+OWER
+U
+P
+:GPU-Z Video card GPU Information Utility,
+2016. URL:
+https://www.techpowerup.com/gpuz
+.
+10
+[Wil83]
+W
+ILLIAMS
+L.: Pyramidal parametrics.SIGGRAPH Comput.
+Graph. 17, 3 (July 1983), 1–11.
+2
+Appendix A:HLSL implementation of IRT.
+1
+Texture2D
+<
+uint2
+> curveIndexMap :
+r e g i s t e r
+( t 2 ) ;
+/ / s e e F i g u r e
+11
+2
+Texture2D
+<
+f l o a t 2
+> curveDataMap :
+r e g i s t e r
+( t 3 ) ;
+/ / i n s e c t i o n
+5.6
+4
+f l o a t 4
+Resample (
+f l o a t 2
+uv ) {
+5
+f l o a t 2
+xy = uv
+*
+texdim ;
+/ / texdim = t e x t u r e d i m e n s i o n s
+6
+f l o a t
+p i x r a t i o = 0 . 5 f
+*
+l e n g t h
+(
+f w i d t h
+( xy ) ) ;
+/ / p i x e l / t e x e l s i z e
+7
+f l o a t
+adc , w e i g h t = 1 , l o d =
+max
+( 0 ,
+l o g 2
+( p i x r a t i o ) ) ;
+8
+/ / l o d = t e x . C a l c u l a t e L e v e l O f D e t a i l U n c l a m p e d ( s , uv ) ; / / al t e r n a t i v e
+9
+/ / p i x r a t i o = exp ( l o d ) ; l o d = max ( 0 , l o d ) ; / / v e r s i o n
+10
+/ / s e e
+https://www.opengl.org/discussion_boards/showthread.php/171485
+11
+/ / ( T e x t u r e LOD c a l c u l a t i o n u s e f u l f o r a t l a s i n g )
+13
+/ / We s t a r t r e d u c i n g duv when p i x r a t i o >0.5 and c o m p l e t e l y s to p
+14
+/ / o f f s e t t i n g uv when p i x r a t i o >= 1 .
+15
+f l o a t 2
+r e d u c e =
+min
+( 1 , 2
+*
+( 1p i x r a t i o ) ) / texdim ;
+16
+f l o a t 2
+q0s , duv = {0 , 0 } ;
+18
+u i n t 2
+i = curveIndexMap . Load ( i n t 3 ( xy , 0 ) ) ;
+/ / c u r v e i n d e x
+19
+i f
+( i . x != 0 x f f f f && p i x r a t i o < 1 ) {
+/ /
+9curves near uv
+20
+bool
+l a s t ;
+/ / f l a g f o r t h e l a s t c u r v e i n t h e l i s t
+21
+do
+{
+/ / sampled e p e n d e n t number o f i t e r a t i o n s
+22
+f l o a t 2
+/ / r e a d c u r v e d a t a
+23
+q0 = curveDataMap . Load ( i n t 3 ( i . x ++ , i . y , 0 ) ) ,
+/ / e n d p o i n t
+24
+on0 = curveDataMap . Load ( i n t 3 ( i . x ++ , i . y , 0 ) ) ,
+/ / o r t ( n0 )
+25
+on3 = curveDataMap . Load ( i n t 3 ( i . x ++ , i . y , 0 ) ) ,
+/ / o r t ( n3 )
+26
+aux = curveDataMap . Load ( i n t 3 ( i . x ++ , i . y , 0 ) ) ,
+/ / aux d a t a
+27
+n30 = curveDataMap . Load ( i n t 3 ( i . x ++ , i . y , 0 ) ) ,
+/ / o r t ( q3q0 )
+28
+a03 = curveDataMap . Load ( i n t 3 ( i . x ++ , i . y , 0 ) ) ,
+/ / p1q0 o r t a n
+29
+n l 0 = curveDataMap . Load ( i n t 3 ( i . x ++ , i . y , 0 ) ) ,
+/ / Voronoi
+30
+n l 3 = curveDataMap . Load ( i n t 3 ( i . x ++ , i . y , 0 ) ) ;
+/ / s i z e s
+31
+l a s t = on0 . x > 1 ;
+/ / i s i t a l a s t c u r v e ?
+32
+i f
+( l a s t ) on0 . x= 3 ;
+/ / r e s t o r e o r i g i n a l v a l u e
+33
+q0s = q0xy ;
+/ / from sample t o q0
+34
+f l o a t
+d0 =
+d o t
+( on0 , q0s ) ;
+/ / b a r y c e n t r i c c o o r d i n a t e s
+35
+f l o a t
+d3 =
+d o t
+( on3 , xy ) + aux . x ;
+/ / i n Voronoi r e g i o n (VR)
+36
+bool
+o u t s i d e = d0 < 0 | | d3 < 0 ;
+/ / i f o u t s i d e , duv += 0 ;
+37
+f l o a t
+den = 1 / ( d0 + d3 ) ;
+/ / we a v o i d 1 / 0 by d e s i g n
+38
+f l o a t
+t = d0
+*
+den ;
+/ / d {03} > 0 i n s i d e VR
+39
+f l o a t 2
+o n i =
+l e r p
+( on0 , on3 , t ) ;
+/ / o r t ( n i )
+40
+f l o a t 2
+n i =
+f l o a t 2
+(o n i . y , o n i . x ) ;
+/ / i n t e r p o l a t e d normal
+42
+#
+i f d e f
+EXACT_BEZIER / /
+implementation of section
+5.3
+; a03 = p1-q0; (Figure
+4
+)
+43
+f l o a t 2
+ab = curveDataMap . Load ( i n t 3 ( i . x ++ , i . y , 0 ) ) ;
+/ / s i x
+44
+f l o a t 2
+cd = curveDataMap . Load ( i n t 3 ( i . x ++ , i . y , 0 ) ) ;
+/ / p o l y
+45
+f l o a t 2
+e f = curveDataMap . Load ( i n t 3 ( i . x ++ , i . y , 0 ) ) ;
+/ / c o e f f s
+46
+f l o a t
+w = ( xy . xq0 . x )
+*
+n30 . x + ( xy . yq0 . y )
+*
+n30 . y ;
+/ / Bary
+47
+f l o a t
+v = ( xy . xq0 . x )
+*
+a03 . y( xy . yq0 . y )
+*
+a03 . x ;
+/ / c e n t r i c
+48
+f l o a t
+u = aux . ywv ;
+/ / aux . y = 2
+*
+a r e a o f B e z i e r t r i
+49
+f l o a t
+dc = u
+*
+v
+*
+( ab . x
+*
+u + ab . y
+*
+v + cd . x
+*
+w) +
+/ / e v a l F l o a t e r
+50
+w
+*
+w
+*
+( cd . y
+*
+u + e f . x
+*
+v + e f . y
+*
+w) ;
+/ / p o l y n o m i a l
+51
+#
+e l s e
+/ /
+implementation of section
+5.4
+; a03 = equation
+9
+(>=tangents); aux.y = c;
+52
+f l o a t
+dc =
+d o t
+( q0s , n30 ) /
+d o t
+( ni , n30 ) ;
+/ / xy+dc
+*
+n i
+\
+[ q0 , q3 ]
+53
+f l o a t
+p o l q = t
+*
+d3 ;
+/ / p o l y n o m i a l r a t i o
+54
+f l o a t
+a i =
+l e r p
+( a03 . x , a03 . y , t ) ;
+/ / i n t e r p o l a t e d t a n
+55
+dc += ( a i + aux . y
+*
+p o l q
+*
+den )
+*
+p o l q ;
+/ / | xyc u r v e |
+56
+#
+e n d i f
+58
+f l o a t 2
+hs =
+l e r p
+( nl0 , nl3 , t ) ;
+/ / s c a l e d down h
+59
+f l o a t
+rim = dc > 0? hs . x : hs . y ;
+/ / choose s i d e o f c u r v e [ i ]
+60
+f l o a t
+d2r = rimdc ;
+/ / d i s t a n c e t o t h e rim
+61
+/ / s mo o t her a l t e r n a t i v e s
+62
+/ / f l o a t d2r = rim( dc + rim / 2 )
+*
+2 / ( 2 + 1 ) ; / / s o f t l a n d i n g
+63
+/ / f l o a t d2r = s q r t ( abs ( rim ) )
+*
+s i g n ( rim )dc ; / / a n o t h e r way
+64
+/ / edge smoothing = 1 / q ; no need f o r a n t i a l i a s i n g i n t h i s c a s e
+65
+/ / f l o a t q = 1 ; d2r
+*
+= min ( 1 , q
+*
+abs ( dc / rim ) ) ; p i x r a t i o =1;
+67
+adc = o u t s i d e
+*
+1 e6 +
+abs
+( dc ) ;
+/ / f o r c e duv += 0 o u t s i d e VR
+68
+p i x r a t i o= vismode & (1 < <4) ;
+/ / i g n o r e n e x t b l o c k i n !AA mode
+69
+i f
+( adc < p i x r a t i o ) {
+/ / a n t i a l i a s t h e sample ( 2 modes )
+70
+i f
+( vismode & (1 < <7) ) {
+/ / a s i n g l e sample
+71
+s t a t i c
+c o n s t f l o a t
+h = 2
+*
+s q r t
+( 2 . 0 ) ;
+72
+f l o a t
+f i x =
+min
+( 0 . 5 f , p i x r a t i o
+*
+f a l l o f f ) ;
+/ / edge w i d t h
+73
+f l o a t
+morph = f i x
+*
+h ;
+74
+i f
+( morphadc > 0 ) {
+75
+f l o a t
+l o d a = ( morphadc ) / morph ;
+/ / [ 0 , 1 ]
+76
+d2r
+*
+= 1l o d a ;
+/ / m o d i f i e d d i s t a n c e
+77
+l o d += l o d a ;
+/ / i n c r e a s e d L .O.D.
+78
+}
+79
+}
+e l s e
+{
+/ / b l e n d 2 s a m p l e s w i t h
+80
+w e i g h t = ( adc + p i x r a t i o ) / ( 2
+*
+p i x r a t i o ) ;
+81
+}
+82
+duv = 0 ;
+/ / o n l y use t h e
+83
+l a s t =
+t r u e
+;
+/ / c u r r e n t c u r v e
+84
+}
+85
+d2r
+*
+= adc <
+abs
+( rim ) ;
+/ / 0 f o r a f a r s a m p l e s
+86
+duv += d2r
+*
+n i ;
+/ / uv o f f s e t a l o n g t h e i n t e r p o l a t e d normal
+87
+}
+w h i l e
+( ! l a s t ) ;
+89
+i f
+( vismode & (1 < <2) ) {
+90
+f l o a t
+r =
+min
+( 1 ,
+l e n g t h
+( q0s ) / ( 5
+*
+p i x r a t i o ) ) ;
+91
+i f
+( adc < p i x r a t i o ) {
+/ / show c u r v e
+92
+f l o a t 4
+c = t e x . SampleLevel ( s , uv , l o d ) ;
+93
+return
+l e r p
+(
+f l o a t 4
+( r ,1r ,1r , 1 ) , c , adc / p i x r a t i o ) ;
+94
+}
+95
+f l o a t
+l o =
+abs
+( 0 . 5
+*
+l e n g t h
+( duv ) / p i x r a t i o1 ) ;
+96
+i f
+( l o < 1 ) {
+/ / show curve ' s i n f l u e n c e
+97
+f l o a t 4
+c = t e x . SampleLevel ( s , uv , l o d ) ;
+98
+return
+l e r p
+(
+f l o a t 4
+( 1 , 1 , 0 , 1 ) , c , l o ) ;
+99
+}
+100
+}
+101
+}
+103
+f l o a t 4
+c = t e x . SampleLevel ( s , uvr e d u c e
+*
+duv , l o d ) ;
+/ / eq
+(
+1
+)
+104
+/ / r e t u r n 1f l o a t 4 ( abs ( duv ) , 0 , 0 ) ; / / VR
+7!
+p s e u d o c o l o r s
+105
+i f
+( w e i g h t == 1 )
+return
+c ;
+/ / no need i n second sample
+106
+/ / b l e n d w i t h t h e second sample f o r edge a n t i a l i a s i n g
+107
+return
+l e r p
+( t e x . SampleLevel ( s , uv + r e d u c e
+*
+duv , l o d ) , c , w e i g h t ) ;
+108
+}
+This is the authors' version of the paper. The definitive version is available at
+diglib.eg.org
+.
+Eurographics Proceedings © 2016 The Eurographics Association.
+INPUT
+PRE-PROCESSING(SECTION5)
+raster image
+vector graphics
+RUN-TIME(SECTIONS4AND6)
+5.6 Create acceleration structure
+5.1
+-5.4
+Extract
+silhouettes
+6.4 Application: sample the texture
+//
+sample texture with the adjusted
+uv+duv
+float4
+c
+=
+tex
+.
+SampleLevel
+(
+s
+,
+uv
++
+duv
+,
+lod
+);
+4.1 IRT run-time: compute duv
+// TC offset along the interpolated
+normal
+duv
++=
+distance_to_rim
+*
+ni
+;
+5.5 Render
+raster image
+distance to a curve
+threshold h
+(convolution kernel size)
+threshold a
+(antialiasing kernel size)
+|duv|
+old |duv|
+lod adjustment
+modified |duv|
+
+
+
+
+
+
+
+‑＀＀ÿā＀ÿÿ˙āāāĀāĀĀĀāĀāā˙āĀĀĀĀ˙ā˙˙ĀĀĀ˙˙˙˙˙ĀĀāĀāĀĀ˙˙ĀĀĀ˙Ā˙˙˙˙簿ᨀÿ￿＀＀＀ÿ＀＀￿ÿ＀＀ÿÿ＀＀＀ÿ＀＀￿ÿ￿ÿ＀￿＀＀＀＀＀ÿÿ﻿￹﫽﫼﷾￿＀＀＀＀＀ÿ￿ÿÿÿÿ＀＀￿＀￿ÿ￿￿ÿÿ￿ÿ＀ÿÿ＀ÿÿÿā˙āĀ˙ā˙ĀĀ＀￿ÿÿÿ＀̂čࠄላ؂Āÿÿÿÿÿ＀＀āā˙Ā˙˙ĀĀĀĀ˙˙˙ĀĀĀĀĀĀ˙Ā＀￿ÿÿ￿ÿÿ＀￿ÿÿ￿￿Ā＀˙˙˙Ā＀ǰĀĀ＀ÿÿÿ＀＀ÿ￿￿ÿāāĀþ﻿ÿ﻿ÿÿ﻿ÿ˙āāāĂȂȂāȂȂȂȂȂāāĂĂāāāȁāĂāāāāāāÿ￿ÿ￿＀ÿÿ￿ÿ￿﷾﻿￿＀fl̃̂Ȃ̂ȁāȂȁāȁ￿￾﻿﻿﻾﻿﷿﻾﻿﻾﻾￿﷾﻾￿﻾￿￿﻿￿￿﻿￿￿﻿ÿ￿￿￾￿ÿ＀＀ÿÿÿ￿＀˙ÿÿĀ＀￿ÿÿÿ＀＀ÿ＀￿＀ĀĀĀ＀＀ÿĀĀĀÿā˙ĀĀĀĀĀ˙˙˙˙˙ĀĀ˙＀˙＀ÿ＀￿ÿÿ＀＀˙ÿĀ˙Ā˙ĀĀĀā˙āāfiāāāĀāāāāfiāāāāȁāāā˙˙＀ÿÿ￿￾﻿﻿￿￿﻾￾￿￿￿￿￿ÿ￿￿￿＀＀￿￿ÿ＀＀ÿ＀ÿ＀ÿ￿￿＀ÿĀĀĀāĀ˙˙Ā˙ā˙˙ā˙ā˙ĀĀ˙ĀĀ˙ā˙ĀĀ˙ĀāĀ˙आ̚ᄉ᠎؎अ˙˙˙Ā˙˙āāĂĀāā˙āāĀāĂāā˙āāāāĀfiāāāāāāĀ˙āā˙˙ĀĀĀāĀĀĀĀĀ˙˙ĀĀÿÿÿĀĀ￿＀＀＀＀ÿ˙˙˙˙˙＀＀￿è�ĀĀĀĀĀ˙ÿ￿﻿þ￿￿þ￿﻿˙˙˙˙˙ȁfiȁȁfiȁȂ＀＀ÿ˙Ā˙˙āā˙˙̃Ġ᠌⬢ᔊ܄ÿĀĀ＀＀ÿĀ˙˙āāĀĀāĀāā˙āĀĀā˙˙āāĀā˙˙ĀāĀĀ˙˙˙˙ĀĀ˙˙āĀĀ˙˙˙˙˙Ā˙ā簿ᨀÿ￿￿＀ÿ＀ÿÿ＀ÿÿÿ＀＀ÿ￿￿ÿÿ＀￿＀ÿ￿＀￿￿ÿÿû﷽炙﷼ﳾÿ＀￿ÿÿÿ＀ÿ＀￿＀￿ÿÿ￿ÿÿÿ＀＀ÿ￿＀＀＀ÿ＀ÿÿÿÿÿÿ˙˙ĀĀĀĀ˙ĀāĀ˙āÿ＀ÿÿ＀ÿ＀＀＀˛ԃ༊Ѝࠄÿÿÿ＀＀ÿ＀ĀāāĀ˙ā˙ĀĀĀ˙˙˙ā˙˙˙˙＀￿＀ÿÿÿÿÿ￿￿＀￿＀ÿ˙＀ĀĀĀĀÿ梨ﰀ˙Āÿ＀＀ÿÿÿ﻿￿＀︀ÿ﻿ÿ︀ÿ＀︀ÿĀĀĀĀĀĀ˙˙˙˙˙fiȂ̃ȂȂāĂȁȂȁāĂĂāāāȁāĂāāāāāāÿ￿＀ÿ￿ÿ￿＀�﻿﻿￿￿Ȃȃ̂ȂȂȂȂȂāĂāā￿￾￿﻾﻾﻿﷿﻾﻿﻾﻽￾﻾￾﻾﷿￿﻿﻿￿￿﻿￿￿﻿ÿ￿﻿￿￿ÿ＀＀＀ÿÿÿ￿ĀĀ＀ÿÿĀÿ￿ÿÿ＀ÿÿ￿ÿ＀ÿĀĀĀÿ＀＀ĀĀĀÿāĀāāĀ˙āāĀĀ˙˙˙＀ÿÿÿ＀ÿ＀＀＀＀＀Ā！ĀĀ˙˙ā˙ĀfiāāāĀāĂȁāāĀāĂāāĂāāĂāÿÿ￿ÿ﻿﻿￾﻾￿￾﻿﻿￿￿￿ÿ￿￿ÿ￿ÿ＀￿＀￿＀ÿ＀ÿ＀ÿÿÿ￿＀＀ÿĀ˙˙˙āĀĀĀ˙Āā˙āāā˙ā˙ĀĀfiāĀĀ˙˙˙˙Ā˙˙ఇЛᄉᜎ؋܄Ā˙˙˙ĀāĀ˙āāāā˙āȁāāā˙āāĂāĀ˙āāāāĀfiāāāāāĀāĀĀ˙āĀ˙ā˙ĀĀĀā˙˙ÿ＀ÿÿ＀˙＀＀＀￿＀ÿĀā˙＀＀＀ÿﳼﻞ�ĀĀĀÿ＀＀＀＀þ￿﻾þ￿﻿＀ȁĂȀȁfiȁȁ˙ȀĀāĀĀĀĀ˙˙˙˙ÿᤓ�
+
+‒ԄȀĀ＀＀＀ÿ＀˙āāĀāāā˙āāĀĀĀĀĀĀāĀĀ˙āāāĀ˙ā˙˙˙ĀĀ˙āāĀ˙˙āŻ㸚ÿ￿￿＀￿＀ÿÿÿ＀＀ÿÿÿÿ＀￿＀ÿ￿ÿ＀￿＀ﯼﷻﳽ﻾＀＀＀＀＀￿ÿ￿ÿ＀＀￿＀ÿ＀ÿ￿＀＀＀＀＀ÿ￿＀＀＀＀＀ÿĀāā˙˙˙ā˙āǿÿÿÿ￿ÿÿ/̂་،܅＀＀＀＀＀＀＀＀Ā˙ā˙Āā˙˙Ā˙Āÿ￿＀＀＀＀＀＀＀＀＀＀￿ÿÿÿÿ￿￿ǿÿ˙˙āĀﳞﴀ˙Ā＀ÿĀ＀￿þ＀︀þ＀￿þ＀＀ÿ˙ÿ˙！Ā＀˙āĂĀ￿￿ÿāĀā˙ĀÿÿĀĀǿÿĀÿ￿āĤ⌠㄰�
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+∀ā＀￿￿￿￿＀＀￿ÿÿÿÿÿ＀￿￿＀￿￿ÿ￿ÿ￿ÿÿ＀＀ĀāĀ˙āāāāĀāāāĀāāāāāā˙āāĀĀĀĀĀāĀĀĀĀĀāāĀāĀāĀĀĀāā˙˙ā˙āā˙ā˙ā˙āā˙˙˙˙˙˙ā˙˙˙Āāā˙āāĀāĀ˙˛؇ଉ଀˙ĀĂāāĂĂāĀÿ￿￿￿！ĀĀ˙˙ĀĀ˙Ǩ箓髝˙˙˙ÿ＀ÿÿ＀＀˙āā˙ȁā˙āā˙ĀL܂഍ЁĀ˙Ā˙Āā˙āā˙Ā！˙Āÿ￿ÿ＀ÿ＀ÿ＀ÿ＀￿＀￿￿ÿ￿ÿ＀＀＀￿ÿÿ￿ÿ＀￿ÿÿÿÿ＀￿ÿ￿￿＀ÿ＀￿ÿÿÿÿ＀＀ÿ￿＀＀＀＀＀＀￿＀ÿÿ＀ÿÿ＀＀ÿÿ！Ā˙ĀĀĀĀĀā˙˙˙˙āāāĀĀ˙Ā˙āĀĀ˙Āā˙āā˙ā˙ĀāāĀāĀĀāĀā˙āĀ˙Ā˙˙˙ā˙ĀāĀ˙ā˙ĀĀÿ＀￿ÿ＀＀＀＀ÿÿÿÿÿÿÿ＀ÿ＀ÿÿ￿ÿÿú什ﴀ＀￿￿＀￿￿＀￿ÿ﻿āȂȂĂȂĂȁ˙＀ÿĀE㬸晘吀ÿÿ＀ÿ＀flȂЃȃȂЃȁ￾﻿￿￿﻿﻿ûﯺÿÿ￿ÿ￿＀￿＀￿＀ÿ￿ÿ￿ÿÿÿ￿￿￿ÿÿÿÿ￿ÿÿÿ＀ÿÿ￿＀＀＀ÿÿ＀＀￿ÿÿÿÿ＀￿＀＀￿＀￿＀＀＀￿＀￿︀ÿ￿￿￿￿￿￿￿＀￾￿￾﻿￾﻾￾￾﻾﻿￿﻾﻾￾￿﻾﻿︁˙˙˙ĀĀ˙Ā˙ñĀ＀ÿ￿﻿￾￿﻾￿￿￿￿￿ÿ￿￿＀￿￿＀￿￿＀￿ÿ￿ÿÿÿÿÿÿý﻿ﷵﯾﻴﯽﻻ﷿āĀĀ˙Ā˙˙Ā˙Āā˙＀˙ĀĀĀ˙ā˙ā˙ĀĀ˙āĀ˙Āȁ˙ĀȀ˙Āȁ˙ĀāfiĀāĂĀȁfiĀȁĀĀĀĀĀāĀLЂᐍܓഇāĀĀ˙Ā˙āĀāāā˙˙āāĀāĀĀĀĀĀā˙ā˙ā˙˙ĀĀĀĀĀ˙ĀĀÿ˙Ā˙˙˙Ā˙˙ĀĀĀĀā˙āāĀ˙ā˙ĀĀāā轓⸀˙ā˙āÿ＀￿＀＀ÿ＀＀＀５ᘒ༎଀ÿÿÿ＀＀＀fiȁāĂāāāȁĀ！āÿÿ﻿﻾﻿﻾﻿＀￿ÿ￿￿ÿÿ￿ÿ﻾￿￾￿￾￿￿￿ÿ�폨ÿÿÿÿ￿ā˙āā˙ĀĀ˙ĀĀĀ﻿ÿ˙ā˙˙˙˙āāā￿＀￿￿￿￿￿ĀāĀĀÿÿĀĀ˙Ā＀ÿÿ༑ฟ∠⌧∍།￿￾￿￿￿￿＀￿￿￿ÿÿ￿＀＀＀＀＀＀＀ÿ￿￿＀＀￿＀￿＀＀＀￿˙˙˙āĀāāāā˙˙āāĀāĀ˙ā˙ā˙āāĀāĀĀĀĀĀāĀāĀĀāā˙āāāāĀ˙ā˙˙ā˙āā˙ā˙˙˙āĀāĀ˙˙˙˙˙ā˙˙˙˙˙˙˙˙˙āāĀāĀ˝ЅഊംāĀĀfiāāĂĂāĀ＀＀＀￿Āā˙ā˙˙Ā袜ꎷ쏇ĀāĀ＀＀ÿ＀￿＀˙āā˙ĀāāȀāāĀ＀flȁഎЅЁ˙˙˙Āȁ˙ā˙˙˙Ā！˙Āÿ＀＀￿￿￿ÿÿ￿ÿÿÿÿ＀＀ÿ＀￿￿ÿ＀＀￿＀￿ÿÿÿ￿￿ÿ￿ÿ￿ÿÿ￿ÿ＀￿＀￿ÿÿÿÿ￿ÿÿÿ＀＀＀＀ÿ￿ÿ＀ÿÿ＀＀˙˙˙āĀĀ˙ĀĀĀĀĀĀĀ˙āĀĀā˙āĀ˙ĀāĀĀāĀā˙Āā˙āā˙ā˙āā˙Ā˙āā˙āāĀ˙ĀāĀ˙˙˙Ā˙Āÿ＀￿ÿ＀＀＀＀＀＀ÿÿ￿ÿ＀ÿÿÿÿ￿ÿÿ÷ﯺ︀ÿ￿￿ÿ＀￿￿＀￾￿āȂȂȂȂȂȀÿ＀˙a呐䭀㷿ÿ＀￿flȂЂȃ̂ЂȀÿ￿＀﻾￿￿﻾ûﯺ￿￿￿︀ÿ￿￿＀￿＀ÿ￿ÿ＀￿＀￿＀＀ÿÿÿÿ￿ÿ＀￿ÿÿÿ＀＀￿＀ÿ＀＀￿ÿÿÿ＀ÿ￿ÿ＀￿＀ÿÿÿÿÿÿÿÿ￿￿￿￿￿￿＀￾￿￿￿￿￿￾﻾￿﻾﻿﻿﻿￾﻾﻾￿﻾﻿ĀĀ˙Ā˙˙çﳳ！ÿ￾￾￿﷿﻿﻿￿￿￿ÿ￿￿￿ÿ￿￿￿ÿ＀￿ÿ￿ÿÿÿÿÿÿÿÿĀý￿ﻳ﫽ﻳ﫾︀˙˙˙˙Ā˙Ā˙āĀ˙Ā￿˙Ā˙ĀĀĀ˙ĀĀ˙Ā˙ĀĀāĀĀfiĀāfiĀā˙ĀȀ˙Āȁ˙āȁfiĀȁfiĀ˙Ā˙˙ĀĀĀĀĀĀjఆግࠇԂĀĀĀ˙Āāāā˙˙āāāā˙Ā˙ā˙ā˙āĀāĀĀĀā˙Ā˙ĀĀĀĀ˙˙ĀĀĀ˙˙˙ĀāĀ˙āĀĀĀ˙ā˙ā˙˙ā達⼀˙āāǿÿ＀￿ÿÿ￿ÿÿÿ＀ᐔ༐ဍ￿＀＀＀！˙Ă˙āȁāāāāȀĀ＀＀ÿĀ￾﻿﻾﻿﻾＀￿ÿ￿＀＀＀￿￿￾￾￿￾￿￿￿ￔ헥췒ÿ＀＀ÿ￿˙ĀāĂĀāā˙˙＀ÿ＀￿˙Ā˙˙˙˙āĀĀāāĀÿ＀＀￿￿＀ÿ￿￿＀˙ĀĀĀĀÿÿĀ˙˙Āÿ＀＀ฏพℝ℥ℕ᜕￿﻾￿￿￾￿￿￿￿￿￾￿＀＀￿＀ÿ￿ÿÿ￿ÿÿ￿＀ÿ￿ÿ￿＀￿＀ÿÿ˙ā˙āĀĀāĀ˙āĀĀāā˙˙˙āāĀāĀ˙āāĀĀĀĀĀāĀāĀĀāā˙˙˙āā˙āāā˙˙˙˙āĀĀĀāā˙āĀāĀāĀ˙˙ā˙˙˙˙˙˙˙˙˙˙˙āĀāĀfiĂซคЄĀ˙āāĂĂāĀ＀＀Ā˙Ā˙ā˙ÿ꾼손꒩ĀĀĀĀ￿￿＀ÿ￿＀˙ȀāāĀāĀĀāāȀਉ̋ଃ˙Ā˙Āā˙ĀĀāĀ˙ÿ˙˙˙˙˙ÿÿÿÿÿ＀ÿ＀＀＀＀＀ÿ＀＀＀￿￿￿￿ÿ＀￿ÿ￿￿＀ÿ＀￿￿＀＀ÿ＀ÿÿÿ￿ÿ＀ÿ＀￿￿ÿÿÿÿÿÿÿÿÿÿÿ＀ÿ＀＀￿＀＀ÿÿÿ˙＀˙˙˙ĀĀ˙˙Ā˙ā˙˙˙˙āā˙ĀĀāĀ˙˙ĀĀ˙āā˙ĀĀĀāāĀā˙ĀāāĀĀ˙ĀāĀā˙ĀĀāĀāāĀĀ˙˙ĀĀ˙ÿ＀￿ÿ＀＀＀＀＀＀ÿÿÿÿÿ＀ÿÿ￿￿＀＀￿ö﷽︀ÿ＀￿ÿ＀￿￿︀￿￿＀ĀĂȂȂȂȂĂȀ܆ٷ桢ⴧ─ÿ＀＀ÿ＃ȂЃȃȂ̃ȁ＀￿﻿﻾￿￿￾ÿûﯺ￿￿ÿ￿ÿ￿￿￿ÿ￿ÿ＀￿＀￿＀￿＀＀＀＀＀＀ÿÿÿ＀ÿ＀＀＀＀＀ÿÿÿ＀ÿ￿ÿÿ￿＀＀ÿÿÿÿ＀￿＀ÿ￿＀￿￿￿￿￿￿￿￿￿￿￿￿ÿ￾﻾￿﻾﻿￾﻿￾﻾￿﻾﻾︀ĀĀĀﯳ˙˙ÿ￿￾￿﷾￿￿￿﻿﻿￿￿￿￿＀＀￿￿￿ÿ＀ÿÿÿÿÿÿ￿￿ÿÿĀ！õﯾﻲ﫽ﻷﳾĀĀ˙Ā˙˙ĀĀ˙˙ĀĀ˙ĀĀĀ˙Ā˙ĀĀā˙˙ā˙Āȁ˙āfiĀā˙ĀȀ˙Āȁfiāȁ˙Āȁ˙ĀĀ˙˙Ā˙˙˙˙ĀଈГఇഊԁĀĀ˙˙˙āāĀĀāāāĀāā˙˙˙Ā˙ā˙ā˙˙āĀĀĀā˙˙˙˙ĀĀĀĀ˙˙ĀĀāāĀ˙āāĀ˙ā˙ā˙Āā酕　āĀÿ￿ÿ＀＀￿ÿ＀＀＀iဍᄑข̂ÿ＀ÿ￿˙āȁ˙āāāāĂfiā￿ÿÿÿÿ＀ÿ￿﻿﻿﻿￿ÿÿÿ＀＀ÿ￿ÿÿ￿￿￾￿￾￶탒탢ā＀ÿÿ￿＀ȁāĀā˙ĀĀĀĀ﻿ÿ＀￿āāĀĀĀĀāāĀāā˙ĀĀ￿ÿÿ￿＀ÿ￿￿￿￿āĀĀ˙ÿ˙˙Āÿጔም“Ḣ἗ᤗ￿﻾￿﻾﻿￿﻿￿￾￿￿￿︀￿￿￿ÿÿ￿＀￿￿￿＀＀＀ÿ￿＀＀￿￿ÿÿ￿ĀāĀ˙āāāĀ˙ā˙˙˙āĀĀĀāĀāā˙˙˙āāĀāā˙āāĀ˙ā˙˙āā˙ā˙Ȃ˙˙āĀĀĀĀāĀāāĀāĀĀĀĀĀĀā˙˙˙˙˙˙˙˙˙˙˙˙āāĀ˙ഊఇ؇Ā˙āāĂĂȁĀĀāĀā＀ÿ헝�鎚Ā˙˙＀þ￿＀ÿ￿＀˙ĀāāȀ˙āĀāāĀ˙Єȏ༄ȂĀ˙ā˙ȀĀĀĀā˙˙˙˙˙ÿÿ＀￿￿ÿÿÿ￿ÿ￿￿ÿ＀＀＀＀ÿ￿￿ÿ￿ÿ￿￿￿ÿ＀＀￿＀ÿÿ＀＀ÿ￿ÿÿ￿ÿ￿ÿ＀ÿ＀ÿ￿ÿ＀ÿÿ￿ÿ＀ÿ￿＀ÿ￿Ā＀＀ĀĀā˙˙˙˙āĀĀĀĀĀĀĀ˙Āā˙ā˙ĀĀ˙ĀāĀā˙Āā˙āā˙ĀĀ˙āāĀā˙˙ā˙ĀĀāā˙ā˙āĀĀĀāĀ˙￿＀￿ÿ＀＀ÿ＀＀＀ÿÿÿÿÿÿÿÿ＀＀￿ÿﳻﻶ￿＀＀￿ÿ﻿￿ÿ＀￿￿＀ĀĂȂȃȂȃāĀ☡ί杣༎ఀ＀＀＀＀￿ĀflȂЃȃȂ̂Ȁÿþ﻿￿￾﻿￿＀ú﫻ÿ￿￿ÿ￿ÿ￿￿￿￿＀￿￿＀￿＀￿＀＀＀＀＀＀＀＀￿＀ÿ＀＀ÿÿÿÿ＀＀＀￿ÿ＀￿＀ÿÿÿ￿ÿÿ￿￿＀＀＀＀￿￿ÿ￿￿￿￿￿ÿ￿￿＀￿﻾﻾﻿﻾￿￾﻾￾￿￾￿＀！＀ĀĀ＀þ﻿﷿￾﻾￿￿￿￾﻿￿￿￿￿ÿ￿￿ÿ＀￿＀ÿ＀＀＀＀＀￿Ā！ﻱ茶ﷲ茶什︀Ā˙˙˙Ā˙Ā˙āĀ˙˙Ā＀Ā˙ĀĀĀĀĀā˙ā˙āĀfiĀā˙ĀĀfiĀā˙ĀȁfiĀȁāȁfiĀāĀāĀ˙āĀ˙˙˝̂ᄌܓഇȁĀ˙ĀĀ˙˙āĀāĀāā˙āāĀāāāĀāĀĀĀĀĀ˙˙˙ĀĀāĀ˙˙˙Ā˙ĀĀ˙˙˙˙˙āāĀ˙āāĀ˙ā˙Āā鉖㄀āĀÿ＀＀￿＀￿ÿÿ＀＀ÿÿญऒሏЅЀ￿￿＀ȁāāā˙ȁāĂĀāāāÿ＀ÿ￿ÿÿ＀＀＀￿￿﻿￿ÿÿ￿＀＀＀￿ÿ￿＀＀￿￿￿컥ퟘĀā˙Āÿ＀＀ÿ￿＀˙ā˙āā˙ā˙Ā￿￿ÿ＀＀āāāāāĀāāāāāĀ＀￿ā￿ÿ￿＀﻿￿￿￿＀ā˙˙˙＀＀˙ĀĀ˙˙Ȃᰞᬚᰚḡᴑ጑￿＀＀￾﻾﻿￿￿﻿﻿￿￿￾￿￿￿￿＀￿￿￿ÿÿ＀＀＀＀＀￿ÿ＀￿￿￿＀＀＀＀＀ĀĀāĀ˙˙˙˙˙˙āĀĀĀĀĀāā˙ā˙ā˙˙˙ā˙āāā˙āāĀ˙ā˙˙āĀāĀĂȂ˙āĀĀĀĀāĀāā˙āĀĀĀĀĀĀĀĀĀ˙˙˙˙˙˙˙˙˙˙˙ā˙ā˙˙ࠇࠌऋĀāāĂĂȂĀ˙˙ĀāĀÿ﷽ﵽ鎛에툁Ā＀ÿ￿︀ÿ￿＀˙ĀāĀĀāāĀĂāāఄࠉ̀˙ā˙Āāāā˙˙˙˙˙Āÿ＀ÿÿ￿＀＀ÿÿÿÿ￿ÿ＀ÿ＀＀＀￿ÿ￿￿＀＀ÿ＀￿ÿ￿ÿ＀￿ÿÿÿÿ＀＀ÿ＀ÿ￿＀＀ÿ＀ÿ￿ÿ＀＀＀＀￿＀＀ÿ＀ÿÿ￿＀＀＀＀＀＀＀ĀĀĀĀĀā˙ā˙˙˙˙˙˙āāāĀĀ˙Ā˙˙˙ā˙Āā˙˙āĀā˙ĀāāĀā˙āāĀ˙Āāā˙˙āĀā˙˙Ā˙ā˙ÿÿ＀￿ÿÿ＀ÿ＀＀＀＀ÿÿÿÿÿÿÿ＀＀￿＀立ﷸÿÿ＀ÿÿ￿￿ÿ＀￿￿＀ĀĂ̂Ȃ̃ȂĀĀ䘼㥧婖ÿ＀＀ÿ＀＀āflȂЂȃȁ̂Ȁÿ￾￿￾￾﻿￿û﫺ÿ＀ÿ＀￿＀￿￿￿＀ÿ￿￿＀￿＀＀＀￿＀ÿ￿ÿÿÿ￿＀ÿ＀＀＀￿ÿÿÿ＀＀＀＀ÿ￿ÿ＀ÿ￿ÿÿ＀＀￿ÿ￿ÿ￿ÿ￿＀￿￿￿￿￿＀ÿ￿￿￿￿￿﻿￿﻾﻾￾￿￾￾﻿￿＀ùÿĀǿ！ÿ￿﷿￾﻿﻾﻿￿￾￿￾￿￿￿ÿ￿￿ÿ＀￿＀＀＀＀＀＀＀＀＀˙Ā＀ó﫾ﷱ什﻿ÿ˙Ā˙˙˙Ā˙Ā˙˙āĀā￿˙ā˙Ā˙˙Āā˙ā˙ĀĀāĀȁ˙āfiĀāfiĀāfiĀȀāĀȁ˙ĀĀ˙ĀĀĀ˙Ā˙˙Ā˙zଆሌ܉؄Ā˙ĀĀĀāāā˙˙āāĀ˙āĀāĀ˙ā˙˙ā˙˙˙˙ĀĀ˙Ā˙ā˙ĀĀĀĀ˙ĀĀ˙ĀĀ˙āāĀ˙āāĀā˙˙Āā鍗㈀āĀ￿＀＀￿ÿ＀＀￿＀￿ÿ˚इጓ༇܆ÿ＀˙āā˙āȁ˙āāāĀāāĀÿÿÿÿ＀￿＀＀￿￿＀ÿÿ￿￿＀＀￿￿ÿÿÿ＀＀ÿ￿￿￦죋˙˙˙āĀāÿ＀＀￿＀˙ĀāāĀā＀＀ÿÿÿ￿˙āĂȁāāāȁȁĀāĀÿ￿￿ÿ￾￿￿￿￿˙ā˙Ā＀ÿĀĀĀi጑ᬝᨚᰚᴟᰆ܆￿￿ÿ＀ÿ￿＀ÿ￾﻿￿￿﻿﻿￿﻿￿￿￿￿￿￿￿ÿ￿￿＀＀￿ÿÿÿÿÿ＀￿ÿ￿￿￿ÿÿĀ˙ā˙Ā˙ā˙ĀāĀ˙ā˙ā˙˙˙˙āāĀā˙āāĀāāāĀ˙ā˙˙āĀĀȂȁā˙āāĀĀĀĀĀāĀ˙ā˙ĀĀĀĀĀĀĀĀĀāĀ˙˙˙˙˙˙˙˙ā˙āā˙ЃЎ଍̂̀ĀāĀ˙ĂȂĀ˙˙ĀĀĀĀāÿ＀ÿ£늸鶮대þ＀＀￾￿＀˙Ā˙āĀāāĀ˙˙āāĀL؂༏Ԁ˙Ā˙Āā˙˙˙ā˙ā˙˙˙ÿÿ˙＀＀ÿÿ＀＀￿＀＀＀ÿ＀ÿ＀￿ÿÿÿ￿ÿ＀＀￿＀￿＀＀￿＀￿ÿÿÿ￿￿ÿÿÿ＀￿￿ÿÿÿÿÿ￿￿￿＀￿ÿ＀ÿ＀￿ÿ＀ÿÿÿÿÿ˙ĀĀ˙˙˙ĀāĀ˙ĀĀĀĀĀĀĀ˙āā˙˙˙ĀĀāĀ˙˙ā˙āā˙Āā˙˙˙˙Āā˙ĀāāāāāĀĀĀĀāĀ˙˙ĀāĀ˙ÿ＀＀￿ÿÿ＀ÿ＀＀＀＀＀ÿÿÿÿÿÿ＀￿＀ÿﯻﯾÿÿ＀￿￿＀ÿÿ＀￿￿＀ĀĂ̂̂̂Ȃā晙呈㸼＀ÿ＀ÿ＀＀āflȂ̂ăȂЂȀ￿￿﻿﻾￿￿﻾ÿû﫺ÿ＀＀þ￿￿￿￿＀￿＀￿＀￿＀￿￿＀ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿ＀＀＀ÿ￿ÿÿ＀＀＀＀ÿÿ＀＀＀＀＀￿ÿ＀￿＀ÿ￿￿＀￿￿ÿ￿￿￿＀￿＀￿﻾﻾￿￾￾﻿﻿﻿︀ÿÿÿë！ÿ˙˙ÿ﻾�￾￾￾﻾﻿￿﻾￿￿￿￿＀﻿＀￿＀＀＀＀＀＀＀＀＀˙ÿĀ˙＀˙ü￿﷯ﻹ﷾˙˙ĀĀ˙˙˙ĀĀā˙˙ĀĀĀÿÿÿĀ˙ĀĀ˙ĀȀ˙Āā˙ā˙ĀĀ˙ĀĀfiāāfiĀāfiĀāfiāĂĀȁ˙Ā˙˙˙˙ĀāĀĀ˙आ̑ఇ་؀Ā˙˙˙Ā˙āāĀĀĀĀĀāĀĀāĀ˙āāĀĀāĀĀĀĀā˙ā˙ā˙ĀĀĀ˙āĀĀ˙˙āĀāĀ˙āāĀā˙Āā˙鑘㌀ÿ￿￿＀￿ÿÿ＀￿＀ԅ̕ᔑउ܀￿Ȃāāā˙˙ā˙āāāĀāāĀÿ￿￿ÿ￿￿＀＀￿￿＀￿ÿ￿￿￿＀＀＀＀＀￿＀˙ÿ＀�쯡ĀĀāĀ˙ĀĀ＀ÿÿ￿＀ā˙ā＀＀＀ÿ˙˙āĂĂāĂȁāȂĀ˙ÿÿ￿ÿ￿﻿￿￿￿！ĀĀĀĀÿऊछᰚᤜᨛᴚጕ᏿ÿÿÿÿ＀￿＀￿￿￿ÿ﻿￿￾﻾￿￿﻿￿￾￿￿￿︀￿＀￿￿ÿ￿＀￿＀＀＀＀＀＀＀ÿ￿￿＀˙˙ā˙ĀāĀāāĀāĀāĀāĀāĀāĀāĀĀĀāā˙ā˙ā˙āā˙Ȃȁā˙āāĀĀĀĀāā˙ā˙āĀĀĀĀĀĀĀāĀāĀ˙ā˙˙ā˙āā˙Z଎܅؀ĀāĀ˙ȂȁĀĀĀā˙˙˙āÿÿÿÿÌ험纓鯶ÿ﻿￾￿￿˙ĀfiāĀāāāāā˙Ā˙ĀญІ܃ĀĀ˙Āā˙˙˙ā˙ā˙˙˙！ÿ＀＀＀ÿÿ￿ÿÿÿ￿￿ÿÿÿ￿＀ÿ＀￿ÿÿ￿＀＀ÿ＀￿￿＀ÿ＀￿￿＀＀＀￿ÿÿÿÿ￿￿＀＀＀ÿ＀ÿÿ＀￿￿ÿ＀＀＀＀ÿÿÿÿÿ˙āĀā˙āā˙˙˙˙˙˙˙˙Āā˙ĀĀ˙ā˙˙ā˙ĀĀĀĀā˙ĀāāĀā˙ĀĀāā˙ĀĀ˙ā˙ĀĀ˙āāĀĀ˙˙˙ĀĀÿÿ＀￿ÿÿ＀＀ÿ＀＀＀＀ÿÿÿ＀￿＀￿＀＀ýﳿﯾ﻿￿＀￿￿＀ÿÿ＀￿￿＀ĀẵȂȁĂāāZఌ硩挨∡ÿ＀ÿÿāăȂ́ăȂ̂Ā￿￿￿﻾￿﻿￾ÿúﯺ＀￿＀ÿ￿￿￿￿＀ÿ￿＀￿＀￿ÿ￿￿＀￿＀＀ÿ￿＀ÿ￿ÿ＀ÿ＀＀＀＀ÿÿÿÿÿÿ＀￿＀ÿ＀￿＀ÿÿÿ＀￿￿＀￿￿￿＀＀￿￿ÿÿ￿￿￿￿￾￾￿﻾﻿﻿﻿＀＀＀＀ÿÿÿﳺ﫯Ā＀！＀ǿĀ￿￾￿﻾﻿﻿﻾﻾￿￾﻾￿￾︀＀＀＀＀＀＀ÿ￿ÿÿ＀＀˙ÿĀĀ﷯ﷴ﫾˙Ā˙Ā˙ā˙˙˙ĀĀā˙˙Ā＀＀ĀĀĀā˙ĀĀ˙ĀĀ˙Āā˙āfiĀĀfiāāfiĀāfiĀĀfiĀāĂĀȁ˙āĀ˙Ā˙˙˙āflĀဌܑఇԄȀĀ˙ĀĀ˙ĀĀāāā˙ā˙˙ā˙ā˙˙ā˙ā˙˙˙˙ĀĀ˙Ā˙āĀĀ˙˙˙Ā˙˙˙Ā˙˙ĀĀ˙āāĀ˙˙˙āĀā˙Ā˙镙㐀ÿ￿￿＀ÿ￿￿＀￿˙ĀᔕᄌఉfiāȂāāāĀāāĀĀ˙āā˙ā￿￿￾￿￿￿ÿ￿￾￿ÿÿ￿￿￿￿ÿÿÿÿÿ＀Öퟦ짊￿þ＀＀āāĀĀ˙˙ÿ＀＀ÿ￿ǿÿ˙＀fiȁȁȁȁȂȁȁĀ˙ĀĀĀÿ˙ÿÿÿ￿￿￾￿￾﻿āĀĀ˙ÿᬝᬛᴛᬝᨛᰚ˙Āÿ＀ÿ￿ÿÿÿ￿＀￿￿￿￿￿￾﻿￿￿﻿﻿￿￿￾￿￿￿￿＀￿＀＀￿￿ÿ￿＀ÿ￿ÿÿÿ＀Āā˙Āā˙˙ĀāĀ˙ā˙ā˙āāĀāĀĀĀĀĀāĀāāĀ˙ā˙˙˙˙ȃ̀˙ā˙āāĀāĀāā˙ā˙āĀāĀāĀāĀāĀāā˙ā˙˙˙˙˙˚܈ఊ଀˙˙ā˙āȁĀāāā˙˙˙˙ā￿＀＀ÿÿö纓髍험ÿÿ﻿￾＀￿！Ā˙āĀ˙˙ā˙˙ĀāĀĀāࠇȍฅĀĀ˙ĀĀĀĀ˙Āā˙ā˙āĀÿĀ＀＀ÿ＀＀￿ÿÿÿ＀＀＀＀ÿ＀ÿ＀￿￿￿ÿ＀＀￿￿ÿ￿ÿ￿＀＀￿ÿ＀＀＀＀￿ÿ＀ÿ￿＀＀＀ÿ￿ÿ＀ÿ＀ÿ＀￿＀￿＀＀ÿÿ＀＀￿ÿ＀Ā˙˙Ā˙ĀāĀ˙ĀĀĀāĀĀĀā˙Āā˙˙āĀĀ˙Ā˙˙˙ā˙Āā˙ā˙Āā˙ĀāāĀĀĀĀāĀāā˙˙ā˙Ā˙ĀĀĀĀÿÿ＀￿ÿÿ＀＀ÿÿ＀＀＀ÿ＀ÿ＀￿＀￿＀ùﰀ￿ÿ￿ÿÿ＀￿＀￿￿＀ĀẵȂ́ĀĀĀĀ˙Ā˙.⤧硨挈܇＀＀＀ÿÿ́ĂĂ̂ăȁ́Ȁÿ￾﻿￾￾﻿￿＀ÿú狀＀￿￿￿￿￿￿￿￿＀ÿ￿ÿ￿ÿÿÿ￿＀＀＀＀＀￿＀ÿÿÿ￿＀＀＀ÿÿÿ＀ÿÿ＀ÿ＀ÿ￿ÿ＀￿＀ÿÿ￿＀＀￿￿￿ÿ￿ÿ￿＀￿￿＀￿￿﻾﻾﻿￿￾﻿￿＀＀＀ÿ＀ÿÿ˙ÿÿĀ＀Ā！þ﻾￿￾﻾￾￾￾￾￾﻾﻿￿﻿￿￿￿ÿÿÿÿÿÿĀ˙ÿĀ˙ÿ￮ﳲ茶˙˙Ā˙Ā˙Āā˙āāÿĀĀÿāā˙ā˙ā˙˙˙ĀĀfiĀāfiĀĀ˙āȁ˙ĀȀ˙ĀȁfiĀāĂĀĀ˙Ā˙˙Ā˙˙˙ā˙-ࠄဍ܌ࠅ˙Ā˙˙ā˙˙ā˙āĀĀĀĀāĀāĀĀāĀāĀāĀā˙˙ĀāĀā˙˙ĀĀ˙Ā˙˙ā˙˙˙āāĀ˙āāĀā˙ā˙陚㓿＀￿＀ÿ￿￿＀ÿ￿ffiᐏഎ଀＀ȁ˙ĂȂāĀĀāĀ˙Āā˙˙ā˙￿￿￿￿﻿﻿￿﻿Āÿ＀＀ÿ￿￿￿＀＀＀＀＀￿탐쯡ﯾ￿þ＀￿ÿ˙Ā˙ā˙ā＀ÿÿ￿￿ĀǿĀ˙fiȂĂĂȂȂā˙˙˙˙˙ÿ＀˙˙￿＀￿￿￿﻿￾﻾˙ā˙zဏᰞᰜḜᰞᰊଊ￿＀＀ÿ＀＀＀＀＀￿ÿ￿ÿ＀ÿ￿＀￿￿﻿￿￾﻿￿￿﻿￿￿￿￿￿￿￿ÿ￿￿＀＀￿ÿ￿￿＀＀Ā＀āĀ˙ĀāāĀāĀĀĀĀ˙ā˙āāĀĀĀĀĀāā˙āĀ˙ā˙˙ȁȂ̀˙˙˙˙āāĀāĀāā˙ā˙āĀāĀāĀāĀāĀāā˙āĀĀĀ˙˙˙flȃ་ค̃ā˙āȁĀāāāĀĀĀĀĀĀ˙￿︀ÿÿĀÿÿ龰뒢놶＀＀﻿þ￿﻿！Ā˙āĀ˙˙ā˙˙Ā˙˙āā̂čค؅ȀĀĀĀ˙ĀĀ˙Ā˙āĀ˙Āā˙！ÿ＀ÿÿ＀ÿ＀＀＀＀ÿ＀ÿ＀ÿ＀￿ÿ￿￿＀＀＀￿￿￿ÿ＀￿ÿ￿ÿ＀￿ÿ￿ÿ＀ÿ＀＀＀＀＀ÿ＀ÿ￿￿ÿ＀ÿ￿ÿ＀ÿÿ＀ÿ￿￿￿ÿ＀˙˙ĀĀ˙Āā˙˙ĀāāĀ˙˙˙āĀ˙Ā˙āā˙āĀĀāĀ˙˙āāĀā˙Āā˙ā˙Āā˙˙˙˙ā˙˙āā˙˙āā˙ÿ＀＀￿ÿÿ＀＀ÿÿ＀＀＀ÿ＀ÿ＀￿＀￿￵ﯻ︀ÿÿÿ￿＀￿＀￿＀＀￿＀Āẵ̃̀āĀ˙˙ĀQ䝃幒伀＀＀＀￿＀́Ăȁ̂ăāȂȀ￿￾﻿￾￾﻿￿ù粒ÿ￿￿￿￿￿￿￿ÿÿÿÿ￿ÿ￿ÿÿÿ￿ÿ￿ÿ＀￿＀＀＀＀ÿ＀ÿÿÿ＀＀￿＀＀＀￿￿＀￿ÿ￿＀＀￿ÿ＀￿＀￿￿￿ÿÿ￿￿￿￿＀￿﻾￾﻾￿ÿ＀＀￿＀＀＀＀＀＀þ﷼˙ǿĀ＀！ÿ˙＀ÿ￾﻾￿￾﻾￿﻾￿￾﻾￿￾﻿＀＀￿￿ÿÿÿÿÿÿÿĀ！˙ĀĀÿ﫽￭ﷲ什˙˙ĀĀ˙Ā˙˙Ā˙Ā˙ÿ˙˙Ā＀ĀĀĀ˙ĀĀā˙āāfiĀĀ˙Āȁ˙ĀĀĂĀā˙ȁfiĀāfiāȁ˙ĀĀāĀĀ˙āĀĀԄȐఇဋ؂ȁ˙˙Ā˙˙āāĀĀāĀ˙ā˙āāā˙ā˙ā˙ā˙ĀĀā˙ā˙ĀāĀĀ˙ĀĀĀ˙Ā˙Ā˙āāĀ˙ā˙ĀĀā˙ā˙陚㔀￿＀ÿ￿＀￿ÿ＀＀ฎଐᄍ̂Ȁÿ￿˙ĀȁĂȁāā˙āāā˙˙ā￾﻿￿￾﻾￾ÿĀ˙＀ÿÿÿ￿￿￿ÿÿÿÿÿﯺﳐ탣쫊�﻿＀ÿ＀﻿ÿ﻿ÿ＀＀āĀĀĀĀ˙Ā＀ÿÿþ︀˙ĀĀĀ˙ĀĂȁȂȂ̂ȁǿ＀ÿĀĀāÿ！āÿÿÿ￿￿￿￾￿﻾︝Ἕἡḝ἞ᔗᔀ˙￿ÿ＀ÿÿ￿＀＀＀￿￿ÿ＀ÿ￿ÿÿ﻿￿﻾﻿￿￿﻿﻿￿￿￿ÿ￿￾＀￿＀ÿ￿ÿÿ＀＀＀＀＀ÿĀĀĀāĀ˙˙˙˙ĀāĀĀĀĀāĀāĀāā˙˙āĀāĀāĀfiȃĂȀ˙ā˙āāĀāĀāā˙ā˙āāĀĀāĀāĀāĀ˙ā˙˙āāĀ˙˙Āāఊଉ܉˙ā˙āĀāā˙˙˙˙ā˙˙˙ā﻾＀ÿÿ˙쫓홿钚切￿＀Ā￿�￿﻿！Ā˙āĀ˙˙ĀĀĀāĀȁĀĀ˚ः഍Ѐ˙Ā˙˙˙ā˙āĀ˙Ā˙Ā˙˙＀ÿ＀˙ÿ￿￿￿ÿÿÿÿ￿￿ÿ￿ÿ￿＀＀￿ÿ￿￿＀￿￿￿＀￿￿￿＀ÿ＀＀￿￿ÿÿÿÿ￿￿ÿ＀￿＀ÿ＀ÿ＀＀ÿÿ＀ÿ＀ÿ＀˙˙Ā˙āāĀā˙˙˙˙˙˙˙˙˙āāāĀĀĀā˙˙āĀĀ˙ĀāāĀ˙ĀāāĀā˙˙āĀĀĀĀ˙āĀĀĀĀĀ˙Ā˙Ā˙ÿÿ＀￿ÿÿ＀＀ÿÿÿÿÿ＀＀ÿ￿￿ÿ＀﷽ﻵ﻽＀ÿÿ￿＀￿＀￿ÿ＀￿＀Āă̄ȂĀ˙āāĀ˙˙u晡㰴㋿ÿÿ＀＀＀ÿȁăāȂăāȂȀ￿￾﻿￾￾﻿￿ù笠ÿ￿￿￿￿￿￿￿ÿ￿ÿ￿＀＀＀＀￿＀＀ÿÿ￿ÿÿÿÿÿÿÿ￿＀＀＀ÿÿÿÿÿÿ＀ÿ＀ÿ￿ÿ＀ÿ￿＀＀＀￿ÿ￿＀￿￿￿￿￿￿￿＀￿￿￿￿￾﻿￿ÿÿ＀＀￿ÿÿÿðā＀˙ÿ！˙＀￾﻿￿﻾﻿￾﻿￿﻾﻿￿﻾﻿￿＀￿￿ÿÿ￿￿ÿÿĀ！˙˙˙＀＀＀ﯾ￭ﷴ﫽˙˙˙ĀāāĀ＀ĀĀĀĀ˙Ā＀˙˙˙ĀĀĀ˙Ā˙ĀĀ˙ĀĀ˙Āȁ˙ā˙āȀ˙ĀāfiĀȁ˙āȁfiā˙Ā˙˙˙ā˙ĀĀĀชԐଈࠇЀ˙ĀĀĀ˙āā˙˙āāĀ˙ā˙ā˙āĀ˙āāĀ˙ĀĀĀĀā˙ā˙āĀ˙ĀĀĀ˙˙˙ĀāĀ˙āāĀ˙āā˙ā˙靛㗿＀ÿ￿ÿ￿￿＀￿
+ਆሒ༅؄ÿ￿ÿāfiāāĂȁāā˙˙˙˙˙˙￿﻾﻿﻾︀￿˙Āÿ＀＀＀ÿ￿￿＀＀＀￶쿎쿠＀ÿ￿ÿ￿þ＀＀þ＀￿ÿ˙˙˙˙˙Āāÿ＀﻿þ＀˙˙˙˙Ā˙ā˙Ā˙ĂȂȂȃȂ˙ÿÿÿ＀˙˙ĀĀÿÿ￿￿＠⌠ℤ∠∟܈ࠁ˙Ā˙ÿ￿ÿ￿ÿÿÿÿÿ＀￿＀￿￿￿ÿ￿þ￾￿￿￿﻿﻿￿￿￾￿￿￿ÿ￿￿＀＀￿￿ÿ￿＀ĀÿĀĀĀĀāĀā˙˙ā˙ĀĀĀĀĀĀā˙˙˙˙˙˙˙ā˙āāfĩȁȀāĀāĀĀĀĀĀĀāĀ˙ā˙˙āāĀĀāĀāĀāĀ˙ā˙ā˙āā˙ĀĀĀ؅Ԏ଍ȁȀā˙˙˙Āāā˙āĀāā˙ā˙ā﷾︀＀＀āĀ钚쯔휀ÿ＀ÿ￾﻿﻿＀Ā˙˙āĀāā˙˙ĀāāĀ/́ฏЄЂ˙˙＀Āā˙ā˙āĀĀĀ˙Ā˙ĀĀ˙￿ÿÿÿÿÿÿÿÿ￿￿ÿÿÿÿ＀＀ÿ＀￿￿ÿÿ＀＀ÿ￿￿￿ÿ￿￿￿ÿ￿＀＀￿￿￿ÿÿ￿＀￿￿＀￿＀＀ÿÿÿ￿＀￿ÿ＀￿˙ĀĀĀ˙˙˙āā˙ĀĀĀĀĀĀĀĀĀĀĀāā˙˙˙ĀĀāĀ˙Āā˙ā˙Āā˙āĀĀā˙āĀĀĀ˙Ā˙˙˙āāĀā˙˙˙ÿ＀＀￿ÿÿÿ＀ÿÿÿÿÿ￿￿ÿ￿ÿ＀笠ﳷÿÿÿ￿ÿÿ＀ÿ＀ÿÿ＀￿＀āȄ̃āĀĀĀĀāĀ˙Ἓ᥹武ᤖᔀ￿＀＀＀ÿ￿˙ȂăāȁĂā̂ÿ￿￾￿￾￾﻿￿￸ÿ￿￿￿＀ÿ￿￿￿ÿ￿￿＀＀＀＀＀＀￿＀＀￿＀＀＀＀＀＀＀＀ÿ＀ÿÿÿ＀＀＀￿＀ÿÿ＀＀＀＀ÿÿ￿＀￿ÿ￿ÿ￿＀￿￿￿￿ÿ￿ÿÿ￿￿￿￿﻿￿＀ÿÿ＀＀＀￿＀￿￿￭ā˙ǿ˙ÿÿĀ￿ÿ￾﻾￿﻾￿￾￾￾￿￿﻾﻿￿￿ÿ￿ÿÿÿÿ￿＀￿˙！Āā＀＀＀﫽￬ﷶﯾā˙˙ĀĀĀ˙！ĀĀ˙āĀāĀ＀＀ÿĀĀāĀĀĀĀĀ˙ĀĀ˙ĀȀ˙Āā˙āāȁ˙ĀȁfiĀāĂĀāfiĀ˙˙˙ā˙˙˙˙˙lԃ༌܏ਇā˙˙Āā˙āĀāĀāĀāĀĀĀĀĀāĀ˙āĀĀĀāāĀ˙ĀĀ˙ĀāĀĀ˙ĀĀĀĀ˙ĀĀāĀ˙āāĀ˙ā˙ĀĀā˙靛㘀￿＀￿＀￿＀ÿ￿Є̔ᐐࠉ܀ÿ＀ÿ＀＀˙ĀāĂāĂĂāāā＀ĀĀ˙＀￾﻾﻾￿＀＀Ā˙＀ÿÿÿ￿￿￿췡훔ÿ＀ÿ＀＀þ＀￿þ＀＀þ＀＀˙ĀĀĀĀāĀĀ＀ÿ＀﻿ÿ＀ĀāāāĀĀĀāĀ˙˙ăȁȃȂȂÿ￿＀＀＀ÿ˙ā˙˙>=ᨘ�
+
+
+❡嵝㼻㴀ÿ˙˙˙￿￿ÿÿÿ＀ÿ￿ÿÿÿÿ￿＀＀˙ÿÿ＀￿﻿￿﻾﻿￿﻾﻿￿﻾﻾＀ÿÿÿòﳻ切＀＀￿＀￿＀＀￿￿＀￿￿￿￿ÿ￿ÿ￿￾ÿ＀￿￿＀￿￿＀￿ÿ＀＀ĀĀĀĀ˙āĀ＀＀＀ÿþﻻﯧ￿ÿ˙ÿÿ＀＀＀＀＀ÿÿ￿ÿ＀￿＀￿ÿ＀ÿ＀￿ÿ＀＀Ā˙ĀĀÿ˙ĀĀĀ＀Ā˙＀˙˙Ā＀Ā￿˙ĀĀÿÿĀÿ＀￿＀＀＀ÿ￿ÿÿÿ＀＀ÿ＀＀＀ÿÿÿÿ＀ÿÿÿĀāĀĀā˙˙˙˙ĀĀāĀÿÿ＀＀￿Āā˙āĀāĀā˙āāĀ˙āāĀā˙āāĀāĀāā롷䋿￿﻾￿￿＀＀ÿÿ＀＀＀�샘＀＀ÿ˙þ﻿﻿þ︀﻾�︀ā˙˙āĀ˙ĀĀĀĂĂȂĂȂ̂ȂāȂȁĀĀfiĀĀ˙ĀȁāĀȁĂāā˙āȁ˙āȁĀÿ˙ÿ˙ÿÿÿÿÿÿ＀＀ÿÿÿÿÿÿ￿ÿ￿￿＀ÿÿÿÿÿ￿˙ā˙āāउࠈई܈ࠉइ܉आࠈ܉ऄ؆āȀāfiȁĂĂȁȂĂȁȂĂȁĂĂȁȂāāā˙ĀāāĀā˙Ā˙āĀā˙ÿ￿＀ÿ￿＀￿＀＀￿＀￿￿ÿ￿ÿ＀ÿ＀＀＀＀ÿÿ￿ĀāāāāāĀ˙āāāĀā˙āāĀĀ˙ĀāĀĀ˙˙˙ĀĀ˙˙ĀĀĀ˙āĀĀĀĀĀĀĀ˙ā˙Ā˙Ā˙ā˙Āā˙āĀāā˙˙ĀāāĀ˙＀￿￿￾ÿ￿￿￿ÿ￿ÿ￿ÿ˙ȁ˙ȁ˙˙āĀĀāāȂȁāāā˙āāĀā
+؉ጙᴀ￿ÿ￿ÿÿÿ＀＀þ￿ÿ˙ȁȁȁȁȁȂȂ́ĂȁȁȂȁȂȂāȂȂāĀĀĀ˙＀ÿĀ˙˙˙˙˙ā＀āāāāāÿ￿＀＀ￇ쫉麤ꇉ쳋＀＀ÿĀāāÿāĀĀ＀ÿÿ＀＀＀＀﻿＀Ā＀˙˙˙˙˙ĀĀĀĀĀĀāĀ˙˙ÿ＀˙ā̃ăȁ̃ĄЁЄȂȀÿ＀＀＀＀＀ÿÿÿÿĀ˙ĀĀĀĀĀĀĀĀĀĀĀ﻽￼ﳿﳼﻼ﷿﻽�﷿￿Ā＀＀ÿ￿＀ÿ＀ÿ￿ÿÿ＀￿＀ĀÿāāāāĀÿĀĀĀāĀÿ＀˙˙˙Āÿÿÿÿÿ￿￿︱〰慝崷㐵￿āĀÿ￿＀￿＀ÿ￿￿＀＀￿＀ÿÿĀ＀ÿ￿￿﻾￿￾﻾￿﻾﻿￿﻾﻿＀￿ÿÿÿóﯺ豈˙＀ÿÿ￿￿￿ÿ￿￿ÿ￿￿￿＀￿￿＀￿￿＀￿￿＀￿ÿ￿￾＀＀＀˙˙˙˙˙˙˙˙ÿÿüﯨÿ＀￿ÿ＀ĀĀ＀＀＀￿ÿÿÿÿÿ＀￿＀＀ÿ＀ÿÿ＀ÿ＀￿￿˙＀ĀĀĀ˙Āÿā˙！Ā˙ÿĀĀ＀Āÿ˙＀˙Ā＀ÿÿ＀＀＀ÿ￿ÿÿÿ＀ÿÿÿÿ＀＀ÿ￿＀＀Ā˙˙˙˙˙ĀĀāĀÿÿÿÿÿ＀˙ĀĀ˙Ā˙˙Āā˙ĀāĀ˙āāĀ˙āāĀā˙ā˙˙Āāā띶䇿￿﻾＀＀＀ÿ＀＀＀＀ÿÿ뷖ﳼ︀＀＀˙˙ÿ＀﻾￾︀﻾ý﻿āĀ˙˙āĀ˙fiĂȂĂĂȂĂȂȁĂȂĀ˙ĀāfiāȀ˙āȁ˙āȁ˙āāfiāāĀÿ˙ÿĀÿÿ＀ÿÿÿ＀＀ÿÿÿÿÿÿÿÿÿ￿ÿ＀＀＀￿＀￿＀˙ā˙ĀĀĀĀĀāĀĆ܆؇؅܇؆܇ࠆԇࠆࠇԇࠆ܇ԇ܅܇ĂȁĂȂȀȂāāā˙ĀāāĀā˙Ā˙āĀā˙ÿ￿＀ÿ￿＀￿＀￿￿￿￿ÿ￿ÿ＀ÿ＀＀＀＀ÿÿ￿ĀāāāāāĀ˙āāāĀā˙āāĀĀ˙ĀāĀĀ˙˙˙ĀĀ˙˙ĀĀĀ˙ĀĀĀĀĀĀĀĀĀ˙ā˙Ā˙Ā˙ā˙ĀāāĀ˙Ā˙āĀ˙āā˙Ā˙＀￿﻿￿￿＀￿￿￿￿￿ÿ˙ȁ˙ā˙˙Ā˙āĀ˙āȂȁāā˙āāĀĀĀāĉԈጙḀÿ￿ÿÿÿ＀＀ÿ￿＀āĂĂāāāȁĂȁāȂāȁāȁĀĂȁȂȂāā˙˙ā˙āĀ＀˙ĀĀĀĀāĀÿ˙āāāāĀ￿￿ÿÿþ﻾헗힡Ꞥ릾묀˙ā˙Ā˙˙＀＀￿ÿ￿ÿ￿＀āāā￿＀￿ÿ˙ĀāĀĀĀĀĀ˙ā˙Ā˙˙＀＀ÿĀ̂ẮȂĄ́̃ắȂÿ￿ÿ＀＀ÿĀĀĀĀ˙Ā˙Ā˙Āÿ＀﷽�ﳿﳼ�﷿﻾￾﷿＀！￿￿＀＀＀＀＀＀＀￿￿＀ĀĀ˙ĀĀ˙˙Āāā￿＀˙ĀĀā￿˙ĀĀ＀＀￿㨸㥟孛⴫⬁āÿ＀ĀĀ˙￿￿ÿ￿＀ÿ＀ÿ￿ÿÿ￿＀＀￿＀＀＀＀＀﻾﻿￿﻾﻿﻾﻿￿﻾﻾＀＀＀＀÷￿＀ÿ＀＀＀￿￿＀￿￿￿￿ÿ￿￿ÿ﻿￿ÿ￿￿ÿ￿￾þ＀˙˙＀￿˙˙˙˙āāýﯨ￸ÿ＀＀˙ÿ￿ÿÿÿÿǿÿÿ＀￿＀￿ÿÿÿ＀￿￿ÿ˙˙＀˙Ā˙ĀÿĀĀĀÿ˙˙＀ĀÿĀ˙＀ǿĀ！＀ÿÿÿ＀＀＀ÿÿ＀＀ÿÿÿ＀＀＀￿￿＀˙˙˙＀Ā˙ĀĀāĀÿÿ＀˙˙Ā˙Āā˙˙˙āĀĀĀ˙ā˙ā˙ā˙ĀāĀ˙ā˙ā˙뙵䇿￿￾￿ÿ＀ÿÿÿÿÿÿÿ뷗＀ĀĀĀ﻾þ﻿﷾þ﻿Āā˙˙˙ĂāĂĂāȁȂȁȁāȂȁĂāāfiāāfiāāfiāā˙˙ȁāĀĀĀĀÿ˙＀Āÿ＀＀ÿÿÿ＀＀＀＀＀ÿÿÿ￿＀＀＀ÿ￿＀￿＀ÿ￿˙ā˙ĀĀĀĀĀāĀĀĀĀĀĀ˙˙˙˙Ѕԅ؅ЅԄԆЅԄԅ̅ԅ؅ЄԃԄȃЃЃȃ̂̃Ă̂̂ĂȁȂ˙Ā￿￿ÿ￿ÿ﻿￿￿￿￿￿￿￾￿￿￿￿￿￿￿￿＀ÿ￿￿ĀĀĀāĀāāāā˙ȁȁāāȂāȁȁĂȁȂẮ̂Ȃȁ̃Ă̂̃ắȂĀĀ˙˙˙ĀĀ˙˙ĀĀĀ˙ĀāĀĀĀĀĀĀĀāĀĀĀĀĀāĀĀāāĀ˙Ā˙āĀ˙āā˙Āā￾￿￿￿￿＀￿￿￿￿￿˙āāā˙Ā˙˙˙˙˙Ā˙ȂāāāĀāāā˙ĉԉᐚỿ￿ÿÿÿ￿￿þ￾āĂāāȁāāĂāāĂāĂĂāāĂĂĀĀĀĂȁāāāĀfiāāĀĀĀ˙˙˙˙˙ā＀āāāāāÿ￿＀＀￿＀￿﻾﻾﷽ﻩꎩꞨ궪˙āĀĀĀ＀ĀĀĀÿ＀￿ÿ￿＀ÿ￿Āāāā˙Ā＀＀＀￿＀ÿ＀￿˙Āā˙ā˙ĀĀāĀĀĀĀĀÿÿÿÿāfiȁȂĂȀЃẮ̂Ắāÿÿ＀＀ÿÿ˙ĀĀĀ˙˙Ā˙Ā﷾￾ﴀ﷽�﷿﷾￾﷿﻾￾︀Ā˙ÿĀ￿￿＀＀ÿ＀ÿÿÿ￿￿ā˙˙āĀāĀāā￿＀ÿ￿ā˙˙˙ÿ＀ā˙˙＀F䍃嵙娡†ĀĀāĀ￿˙˙Āÿ￿＀￿＀ÿ＀＀￿＀＀￿＀￿ÿ￿ÿ＀￿＀￿﻾﻿￿﻾﻿﻿﻿﻿﻿﻾︀ÿ￿ú＀＀ÿÿÿÿÿÿ￿ÿ￿￾￿＀￿￿＀￿￿＀￾￿＀￿￿︀＀āÿÿ＀ĀĀĀĀĀĀĀǿﳻﯨﷰ˙ÿ＀ÿ˙ÿÿ＀ÿ＀ÿÿ＀￿￿＀￿ÿÿÿ＀ÿ＀￿ĀĀ＀Ā˙ĀĀ＀˙˙˙ÿĀ＀Āāÿ˙＀Āÿ˙ÿĀÿ˙＀ÿÿ＀＀＀ÿÿ＀＀＀＀＀＀＀￿￿ÿÿÿĀ˙˙ĀĀāĀ＀＀˙Āāā˙˙˙ĀĀā˙ĀĀĀāĀāĀā˙˙ĀāĀ˙ā˙뙵䃿￿﻾￿＀＀ÿ＀＀＀＀ÿ＀＀＀﷾ﺺ뷘˙˙˙￿ý﻿﻾þ￿ÿĀĀĀĀ＀ĂāāĂȁāĂāāĂȂȁāāȁĂȁȁāāȁ˙āȁāĀāĂ˙Āÿ˙ÿĀÿ＀＀＀ÿÿ＀＀＀＀＀ÿÿ￿＀＀＀＀ÿ￿＀＀＀＀￿＀āĀĀĀĀĀĀā˙ĀĀĀĀĀĀ˙˙˙˙˙ĀĀ˙˙˙˙Ā˙ȁĂȁāāȁāāĀÿÿ＀＀＀＀￿￿￿￿￿￿￿￿＀＀￿＀＀＀Ā˙˙˙ā˙āā˙āāĂāāĂȁĂĂāȂĂȁȂĂ̂̂Ă̂̂ă̂̄ă̂ЃȃЄЃȄԃԅȅԃԅ̅ԃ؆̅؃؆І؂Ѕ˙ĀāĀĀĀĀĀĀĀāĀĀĀĀĀāĀĀāāĀ˙Ā˙āĀĀāā˙Ā˙￿￿￿￿￿￿￿ÿ￿￿￿˙āāā˙Āāāā˙ĂāāĀāāā˙˙
+؉ጚỿÿ＀ÿÿÿ＀ÿ￿ÿ！ĂāāāāāāāĂāāĂāāāāȁāāĀāĀĀfiāāĂāāĂāāĀĀĀĀāĀÿ˙āāāāĀ￿￿ÿÿ￿ÿ￿﻾﷾﻾﻾￾﻾ﳼﲨ꺫ꞭꫭĀÿ˙˙Ā＀ÿÿ＀＀＀＀￿＀˙ā˙˙˙ā˙ÿ＀＀￿￿￿＀˙˙Ā˙˙˙Ā˙ā˙˙˙ĀĀ＀＀＀ÿĀĂĂĀȂāȀЂĂȁȂfíĂ˙˙￿ÿÿĀā˙˙ĀĀÿ︀﻾þ﻿﻾�ﴀ﻾￾﻿﻾￾＀￾＀˙˙Ā＀Āÿ＀＀＀＀＀＀＀ÿÿ＀ÿ＀￿˙˙āāĀāĀāāāǿ￿￿＀￿＀ĀĀĀĀĀ˙＀＀˙˙˙呐兘夔ጓĀāā￿˙˙Āÿ￿＀￿＀ÿ＀ÿ￿＀￿￿ÿ￿＀￿￿ÿ￿￿￿￿﻿﻿﻿﻿￾﻾￿￾﻾﻿￿＀ÿ﷼ﷷﳺ﫿ÿÿ＀＀＀＀￿ÿ￿￿￿＀￿￿＀￾￿￿￿ÿ￿﻾ÿ＀˙˙＀ÿÿ˙˙ĀĀǼﯨ＀＀Āÿ＀ÿ˙ÿÿÿ＀￿ÿ＀ÿ＀ÿÿÿÿ＀ÿ！ÿ＀￿＀Ā˙ÿ˙˙˙ǿ˙ǿĀĀ＀˙˙ÿ˙＀Āÿÿ˙Āÿ˙ÿÿÿÿÿÿÿÿ＀ÿ＀＀＀￿￿￿＀ĀĀĀ˙˙ÿÿ˙˙˙Ā˙˙˙˙˙ĀĀā˙˙˙ĀĀĀĀāĀ˙˙˙˙ĀāĀ˙ā˙āƵ瑀￿￾﻾ÿÿÿÿ＀ÿ￿＀￿ÿÿÿ죊�Ā˙﻿þ﻿﻾＀˙＀Āÿ˙ĀĂāāĂāāāāȁāāāĂȁȁāāȂĂāȁĂȁāĂāĀĀ˙＀Āÿ˙￿＀ÿÿ＀＀＀ÿÿÿÿÿÿ￿ÿ￿ÿÿ＀ÿÿÿÿÿ￿˙ā˙ĀāĀ˙ĀĀĀ˙˙˙˙˙˙ĀĀĀĀĀ˙Āāā˙＀ÿÿ＀＀ÿ＀＀˙ĀĀĀĀĀĀāĀĀ˙ĀfiЄȄЂԅ̄ԂԄ̅؃ԅ̅؃؆؇؄܈Їࠄࠈ̇ࠅࠈЈंԆā˙˙˙˙ā˙Ā˙āāĀĀāā˙ĀāĀĂÿ￿￿￿￿￿￿＀￿￿￿￿ĀāĀ˙āĀ˙˙˙˙˙˙āāāāāĀāāā˙ਆऒ᨞ÿÿ＀＀￿ÿÿÿ˙āāāāāāāāāāȁ˙āāĂāāāāĀāĀāĀĀāȁĂāȂȁāȁĀāĀÿ˙āāāāĀ￿￿ÿÿ￿ÿ￿﻾﻾﻾﻾﻾￾￾￿￿￿ﾽ솿ꢯ곖�＀˙˙Āÿÿÿ＀￿＀￿＀ĀĀāā˙˙˙Ā＀＀＀￿￿ÿ￿＀˙˙＀ĀĀĀ˙ĀĀĀĀ˙˙ĀĀĀÿÿÿÿ˙ĀȂāĀĂ˙ā́˙ȁȁ˙ȁā˙ȀȁāĀÿĀĀĀÿ＀￿þ︀￿￾︀￾￾︀︀ÿ﻿￿þ￿￾ÿ＀＀ĀĀĀÿĀ＀＀ÿ＀￿＀ÿÿÿÿ＀＀ÿ˙āāȁāāāā￿＀ÿ￿￿＀āāĀ˙＀-ଌ坕啝塙ЄЀ˙˙āĀ＀＀ĀĀ˙￿￿ÿ￿＀ÿ￿￿ÿ￿ÿ￿￿￿￿￿ÿ￿￿￿￿﻾﻿￿﻾￾￾￾￾￾﻾￿︀＀Āôﳺ切＀＀＀＀＀￿￿ÿ￿￿ÿ﻿￿ÿ￿﻿￿︀￿￿＀ÿÿāÿÿ＀ĀĀǽﯩ￻ﬁĀÿÿ˙￿ÿĀ＀＀￿ÿ＀￿˙￿￿ÿÿ＀ÿ＀ÿ＀ÿ＀ā＀˙˙ÿ˙˙ĀÿĀ˙！Āÿ˙＀ĀÿĀ˙＀＀Ā˙＀ÿ＀ÿ＀ÿ＀ÿ＀ÿ＀ÿ＀ÿ＀ÿ￿ĀĀ˙˙ĀĀ˙ĀĀĀĀ˙˙˙ĀĀĀ˙˙˙ĀĀĀĀĀĀā˙˙ĀāĀ˙āƴ琿￾￿﻿＀＀＀ÿ￿＀ÿÿ＀＀￿ÿ�죞Ā˙˙＀￿ÿ￿﻾＀ÿÿĀ＀ǿĀāāȁ˙āāāāĀāĀȁāāȁāāȂāāȁāāȁāāȁĀĀĀ˙ĀĀāĀÿĀÿ￿ÿÿÿ＀＀ÿÿÿÿÿÿÿÿÿ￿ÿ＀＀ÿÿÿÿÿ￿˙ā˙ĀāĀĀĀĀĀ˙˙˙˙˙˙āĀĀĀ˙Āāā˙＀ÿÿ＀＀ÿ＀＀˙ĀĀĀĀĀĀāĀÿĀĀĀ˙Ā˙Ā˙fiЃ̅؃؇̆؃܇Ї܄܈ऊ਄उЉਅऊԉଅਊȅ؁āĀĀāā˙Ā˙āĀāÿ￿﻿￿￿￿￿￿￿￿￿āā˙˙ā˙Ā˙˙āā˙āāāā˙āāଆ਑᨞ÿÿÿ＀￿﻿！āĀāāāāāāāāĀ˙āāĂāāāāāfiāāĀĀĀĀĀĀĀĀāāȂĂȂȁĂā＀āāāāāÿ￿＀＀＀＀＀￿￾﻾﻾﻾﻾￿﻾﻿￿￿￿헗횩낭뷁뼀Ā˙˙＀ÿ￿￿￿ÿ＀˙˙˙āĀĀĀ˙˙＀＀＀＀￿￿￿＀˙＀Ā˙˙ĀĀ˙āĀ˙˙˙˙˙＀ÿ＀＀＀Āā˙ĀāāĀ˙˙ā˙ĀĀāĀāāĀĀĀ˙ĀĀÿÿÿÿÿÿ￿￿￿ÿ￿ÿ＀ÿÿ￿＀ÿ＀￿＀˙˙＀＀ā＀ÿ＀ÿ￿ÿ＀＀＀＀＀＀āȁȁāĂāĀÿ￿ÿ￿Ā＀ÿ￿˙ĀĀĀĀ˙ÿᰛᱚ块偍仿￿ÿ￿￿ā˙˙˙ÿÿ˙˙Āÿ￿＀￿＀ÿ＀＀￿￿￿￿￿￿ÿ￿￾￿￿﻿￿￿﻾﻿￿﻾﻾￿￾￾￾﻾￿￿￿˙˙õﳺ豈＀＀＀ÿ＀＀＀＀￿￿＀￾￿＀﻿￿﻿￿ÿ﻿＀＀＀āÿ＀＀Ā˙þﯩﻷ˙āÿÿĀ￿ÿ＀ĀĀÿÿ＀￿￿ÿ＀＀＀＀＀＀ÿ＀ÿ＀˙˙＀˙Ā＀˙ĀĀÿĀ！˙ÿ˙ĀÿĀ＀˙＀Ā˙＀＀˙ÿÿ＀ÿ＀ÿÿ＀ÿ＀＀ÿÿÿÿ＀˙ĀĀ˙ĀāĀĀ˙ĀĀ˙˙˙ĀĀ˙˙˙˙āĀĀĀā˙āāĀƴ猿￿￾﻾￿ÿ＀＀＀￿ÿ＀＀＀＀＀＀療쓜ĀĀĀ＀ÿ＀￿￿＀＀ÿ˙￿ÿÿĀāĀāā˙ā˙āĀāĀāāāĀĂĀāāāȁāāȁāāā˙Āāāāāāÿ˙ÿ＀ÿ￿ÿÿÿÿÿ＀￿ÿ＀＀＀￿＀￿＀˙ā˙ĀāĀĀĀĀĀā˙˙˙˙āĀĀĀĀĀāā˙＀ÿÿÿ＀＀˙ÿ＀＀˙ĀĀĀĀĀĀ˙˙ĀĀĀ˙ĀĀĀĀÿāÿ˙Ą܇̇ࠄ܈Јऄࠉଌଅ਌ԋଆ਌ԋఅଌ̄؀āþ￿￿￿￿￿￿￿￿ÿ￿ÿāā˙˙ā˙ĀĀĀĀĀ˙ĀāāāāĀāఈఐᤝÿÿÿ＀＀＀￿˙āāĀāāāāāĀ˙āāāāāāĀĀĂāāāāĀĀĀĀĀ˙āĀāāāĂȂȂĂĂ＀˙āāāāĀÿ￿ÿÿÿÿÿÿ﷽﻾﻾﻾﻿￿￿﻾﻿ÿ￿Ǯꮱ꺭뎯˙ÿÿ＀￿ÿ￿＀￿ĀĀĀĀĀāĀĀĀÿÿÿ￿￿￿＀＀＀ÿĀĀĀĀ˙ĀĀĀĀĀ˙Ā˙˙˙ÿÿ＀ÿÿ˙ā＀＀Ā˙Ā˙＀˙Āÿÿ＀ÿÿ＀ÿÿ￿￿＀＀Ā˙ĂĂĂā˙ā˙￿＀ÿ＀ÿÿ＀˙˙˙˙Āį⸮奖嘽㨻˙Ā＀￿＀ÿ￿＀˙ĀĀĀĀ＀＀ĀĀ˙￿￿ÿ￿＀￾﻿￿￿￿￿￾﻿￿￿￿￿￾﻾﻿￿﻿﻿﻾﻿￿￾﻾﻿￾﻿￿˙˙˙úÿÿÿ￿ÿ＀￿￿￿￾þ﻿￿￿＀￾ÿÿ＀ÿ˙Ā＀￿ÿ﫸ﳫﷲ＀˙˙˙˙˙＀＀Āÿ＀＀˙ÿ＀ÿÿ＀＀＀￿＀ÿÿ˙＀＀￿ÿ˙ĀÿĀĀ＀˙Ā˙ÿĀ＀Ā＀Ā˙＀Āÿÿ˙˙ÿ！＀ÿĀÿ＀＀ÿ＀ÿ＀＀＀ÿ￿ĀĀ˙ÿ˙ĀĀĀ˙ĀĀ˙˙ĀĀ˙˙˙ĀāĀ˙˙˙˙Ā˙ā˙āƳ爾￿￾﻿ÿ￿￿＀ÿÿ＀＀ÿÿÿ＀＀＀Î탣퓗āĀÿ＀ÿÿÿ￿ÿ˙＀＀＀ÿ＀＀āĀāĀĀāĀĀĀĀĀāĀāāāȀ˙āāāāā˙˙āāāāĀĀ˙ĀāĀ￿＀Āÿÿ＀￿＀￿＀ÿ￿˙ā˙ĀĀĀĀĀāĀĀĀĀ˙˙˙āĀĀĀ˙Āāā˙˙＀＀ÿÿÿ＀＀˙ÿ＀＀˙ĀĀĀĀĀĀ˙ĀĀĀ˙˙ĀĀĀĀÿ˙＀˙/܈ЈअऊԉਅऊఎคଌЊఅ਌ЉଂԆ＀￿＀ÿāā˙˙ā˙ĀĀāĀāāāā˙āఉฐ᠜＀ÿÿÿÿÿĀāā˙āāā˙˙˙āĂāā˙˙āāāāāĀāā˙ā˙ā˙āĀ˙āāȁȁāĂȂāĀ˙āāāā￿＀＀＀＀＀＀þ﻽﷽﻿￾﻾￿￿￿￿￿￿＀˙ā˙￿ﺶ몹궳꿙�＀ÿÿÿ＀￿＀￿＀˙˙˙˙ā˙˙˙Āÿÿÿÿÿ￿ÿ￿ÿ＀ÿǿ＀ĀĀĀĀ˙˙˙˙˙˙ĀĀĀĀĀÿÿÿ＀˙˙Ā˙Ā＀ÿÿ＀ÿ￿＀＀＀ÿÿ＀ÿ＀＀˙ĀĀĀ˙ā˙ĂāāĀāĀ˙˙˙ÿ＀ÿ￿￿˙Ā￿＀￿˙āĀĀ˙䑃䍖兒
+
+
+
+
+
+
+ᘢ⨏᜜þ﻾﻾﻿￿﻾＀ÿ￿ā˙āĀ￿﷽ﳼﳼ﷼ﳾ﷼﷽﷾﷽﻽﷾﻽﻾﻿﻾﻿﻾﷽﷽﷽﷽﻾﷾﻾￾﻾﻾￾﻿￿￿︀￿﻾￿￾﻾﻾﷽﷽﷾﷼﻾﻾﷽﻾﷾﻾￾﷾﷾﻾﷾﻽￾ﻱ��＀ĀĀÿÿÿ＀＀＀ÿ˙āāā˙āāĀ˙ā˙˙ā˙ā˙˙ĀĀ˙˙˙ÿÿ＀＀＀＀ÿ＀＀＀ÿ＀＀Ā˙āĀāĀ˙ā˙āÿ￿＀ÿÿÿÿÿÿÿÿ￿￿ÿ￿￿＀￿＀˙˙˙ā˙āĀĀĀÿ＀āˇฎ⬤␬☥Ⱖ━ȂāȂȂĂȁĂĂĂȂĂȂȃȂȂ̃ȂȂ̃ȃ̂ȂĂȂȂĂ̂ȂĂȁ˙āāāāȁȁȀ˙˙ā˙˙āāāĀ˙āāĀ￿āĀāāāĀĀāāāā＀ÿ￿￿﻿￿￿＀￿￿￿＀￿￿￿￿￿￿￿￿ÿ￾﻽﻽﻽﷽﻽﷾﷽�﻾﻽﻽﷾﻽þ￿＀＀＀＀＀￳क᧻﫶￾저￿Āā˙Ā＀＀＀＀ÿ＀˙˙＀！ÿ＀ÿ＀＀ÿĀÿĀĀ˙˙ÿ˙Ā＀˙Ā˙ÿÿ˙˙＀ĀÿĀÿǿĀ＀˙ÿĀÿ˙Āÿ˙＀ĀĀĀĀ˙ĀĀĀ˙ĀĀā˙˙˙Ā˙˙ĀĀāĀ˙ĀĀƫ氹ÿ￿￿￿￿＀ÿ￿￿￿＀＀￿￿￿￿￿＀＀＀ā˙ā˙ā˙˙āā˙ā˙ā˙ĀĀĀĀā÷﫷ﳼ︁˙ĀāĀĀ＀˙＀˙＀˙˙ā˙˙˙˙Ā˙＀＀Āÿ＀Ā！ÿĀ˙˙˙˙āĀ˙˙˙˙˙Ā˙˙˙Ā˙˙ā˙Āā˙āĀĀ˙Ā˙˙āāĀāāĀāāā˙ĀāāĀĂāĀȁāȀāāĀĂāĀā˙ȁĀ＀āĀāĀĀĀĀĀĀĀĀāāā˙āĀā˙˙˙＀˙āĀĀĀഓ᜕�
+
+
+
+
+
+
+
+13.9
+12.0
+11.5
+18.9
+13.0
+11.7
+14.9
+12.6
+12.4
+17.2
+17.2
+16.9
+TX0
+IRT
+single map
+7;’
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+YfiÄüpi(TM)Q02˙cafi^ÿçfløflü'?ff47676767!=inf!=inf!=inf!=infLlLlLlL#"'&'&'&7ffiinf!=inf!=inf!=327676767&'&'&'&#"lLlLlL^&%A?SR][TRA?&%˙˙%&?ART[]RS?A%&®fflff'%74@?64'%!=ff˙˙ff!=%'46?@47%'ffffl˙ó{a`DC#"˙˙"#CD`a{}abCB$##$BCba}WEG12prodsumsumprod21GEWUGF32piprodprodpi23FG˙¨flÈflü<=3i3inf36767!=inf!=ffli#i4'&#"lLli¨ˇLHONiJIª--cN:<KflãF0.˙˙acÀýfib??''Lý-˙`þ¤˙ ×fflinf676&#"'&547672inf!=fflLlLl`U31Lz2#$&&6C
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+˙$$CB]^sdeEE$$ <cÞ9<=infsumsum31JIRCC00sumsumfi...ÿç˙oflÌz'74763!=inf!=infLlL#"'&i4763!=inf!=infLlL#"'&...#!2.#"˙˙"#.2!##!2.#"˙˙"#.2!#f:%$˙"$<8#$$#flsum:%$˙"$<8#$$#˙ffiþ¸fiÉ˝®flff˙7˙ffifi.ýÒþ¸LÍ
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+97?E>=/.`prodfl>QSQªde;:|>JIBiIK|/**' ˇifl]ML86 `''NNvvÅWW()˙˙
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

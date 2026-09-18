@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang='en' class='h-100' data-color-scheme='light'>
+  <head>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="csrf-param" content="authenticity_token" />
+<meta name="csrf-token" content="0sOSXRqtFyA5x-KKwepucG2rNCSEaJWu2ExPsHHIpb-kLWSwjztHYl9P4w8lxCOKkFWLt_BPJL0TOgSQl6_VLw" />
+    <meta name="csp-nonce" />
+    <title>Chapter 25. Rendering Vector Art on the GPU | NVIDIA Developer</title>
+<meta property="og:site_name" content="NVIDIA Developer">
+<meta property="og:title" content="Chapter 25. Rendering Vector Art on the GPU">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://developer.download.nvidia.com/images/og-default.jpg">
+<meta property="og:url" content="https://developer.nvidia.com/gpugems/gpugems3/part-iv-image-effects/chapter-25-rendering-vector-art-gpu">
+<meta name="twitter:title" content="Chapter 25. Rendering Vector Art on the GPU">
+<meta name="twitter:image" content="https://developer.download.nvidia.com/images/og-default.jpg">
+<meta name="twitter:site" content="@NVIDIA">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:creator" content="@NVIDIA">
+
+    <link rel="stylesheet" href="https://developer.nvidia.com/assets/application-9e4a823de8771e59cf1ae04de333e5e14d86a990b878d196a65779d7140a6415.css" media="all" />
+      <link rel="stylesheet" href="https://developer.nvidia.com/assets/highlight-7c6157fe69da4cc401cddeb387737d6991b2012dc14e90f3d52764a3a58fd3da.css" />
+
+    <script>
+  const NvAssets = {
+    CSS: {
+      highlightJs: "https://developer.nvidia.com/assets/highlight-7c6157fe69da4cc401cddeb387737d6991b2012dc14e90f3d52764a3a58fd3da.css",
+    }
+  }
+</script>
+
+
+    
+  <link rel="stylesheet" href="https://developer.nvidia.com/assets/one-trust-bea625cf16a072ce5fdb0707a19f2645daf63c05eb1a016db72773eba008fc07.css" />
+  <script src="https://cdn.cookielaw.org/scripttemplates/otSDKStub.js" charset="UTF-8" data-document-language="true" data-domain-script="3e2b62ff-7ae7-4ac5-87c8-d5949ecafff5"></script>
+
+<script src="https://images.nvidia.com/aem-dam/Solutions/ot-js/ot-custom.js"></script>
+
+<script>
+  function OptanonWrapper() {
+    let event = new Event('bannerLoaded');
+    window.dispatchEvent(event);
+
+      if (window.OnetrustActiveGroups && window.OnetrustActiveGroups.includes("C0002")) {
+        window.DD_RUM && window.DD_RUM.init({
+          clientToken: 'pub0430c74fae5d2b467bcb8d48b13e5b32',
+          applicationId: '9fc963c7-14e6-403d-bdec-ee671550bb7f',
+          site: 'datadoghq.com',
+          service: 'devzone',
+          env: 'prod',
+          version: 'v2.60.0',
+          sessionSampleRate: 10,
+          sessionReplaySampleRate: 5,
+          trackUserInteractions: true,
+          trackResources: true,
+          trackLongTasks: true,
+          defaultPrivacyLevel: 'mask-user-input',
+        });
+      }
+  }
+</script>
+
+
+    <script>
+  (function() {
+    var didInit = false;
+    function initMunchkin() {
+      if(didInit === false) {
+        didInit = true;
+        Munchkin.init('156-OFN-742');
+      }
+    }
+    function loadMunchkin() {
+      // Munchkin falls under the OneTrust "Advertising" category (C0004); only
+      // load it once the user has consented to that category.
+      if (!window.OnetrustActiveGroups || !window.OnetrustActiveGroups.includes("C0004")) {
+        return;
+      }
+      // bannerLoaded re-fires on every consent change; once we have consent we
+      // only need to inject the script tag once.
+      window.removeEventListener('bannerLoaded', loadMunchkin);
+      var s = document.createElement('script');
+      s.type = 'text/javascript';
+      s.async = true;
+      s.src = '//munchkin.marketo.net/munchkin.js';
+      s.onreadystatechange = function() {
+        if (this.readyState == 'complete' || this.readyState == 'loaded') {
+          initMunchkin();
+        }
+      };
+      s.onload = initMunchkin;
+      document.getElementsByTagName('head')[0].appendChild(s);
+    }
+    // OnetrustActiveGroups is populated asynchronously after the OneTrust SDK
+    // loads, which dispatches "bannerLoaded" (see layouts/_one_trust). Wait for
+    // that signal so consenting users still get Munchkin, then re-check on each
+    // consent change (the didInit guard keeps init idempotent).
+    window.addEventListener('bannerLoaded', loadMunchkin);
+})();
+</script>
+
+    <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "NVIDIA Developer",
+    "url": "https://developer.nvidia.com",
+    "logo": "https://www.nvidia.com/en-us/about-nvidia/legal-info/logo-brand-usage/_jcr_content/root/responsivegrid/nv_container_392921705/nv_container_412055486/nv_image.coreimg.100.630.png/1703060329095/nvidia-logo-horz.png",
+    "sameAs": [
+      "https://github.com/nvidia",
+      "https://www.linkedin.com/company/nvidia/",
+      "https://x.com/nvidiadeveloper"
+    ]
+  }
+</script>
+
+      <link rel="stylesheet" href="https://developer.nvidia.com/assets/gpu_gems-a881bfce95294488891610c871683bdc3a6792c1c85df1bbe502a32d4a9e4d2c.css" media="all" />
+
+    <script src="https://assets.adobedtm.com/5d4962a43b79/c1061d2c5e7b/launch-191c2462b890.min.js" data-ot-ignore="true"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.3/jquery.min.js" integrity="sha512-STof4xm1wgkfm7heWqFJVn58Hm3EtS31XFaagaa8VMReCXAkQnJZ+jEy8PCC/iT18dFy95WcExNHFTqLyp72eQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="https://developer.nvidia.com/assets/bootstrap/5.1.3/bootstrap.bundle.min-51ad1d8cab4ebd9873a0429f5e67ca717a71fd96daf8025bc04a88848e5b375c.js"></script>
+
+
+    <link rel="icon" type="image/x-icon" href="https://developer.nvidia.com/assets/favicon-81bff16cada05fcff11e5711f7e6212bdc2e0a32ee57cd640a8cf66c87a6cbe6.ico" />
+  </head>
+
+  <body class='d-flex flex-column h-100'>
+    
+    
+
+      <div id='header'></div>
+
+
+
+
+    <div class='container page gpugems_page'>
+  <div class='row'>
+    <div class='col-md-8'>
+      <div id="book_switch">
+  <a href="/gpugems/gpugems" class="btn-cta">GPUGems</a>
+  <a href="/gpugems/gpugems2" class="btn-cta">GPUGems2</a>
+  <a href="/gpugems/gpugems3" class="btn-cta">GPUGems3</a>
+</div>
+
+
+<div id="book_header">
+  <a href="https://developer.nvidia.com/gpugems3">
+    <img alt="GPU Gems 3" src="https://developer.nvidia.com/assets/gpu_gems/gpugems/GPU_Gems_3-1132ba3f12933db490097519b92b556e2a69ee58422c2fb9cf06a2d9fe00924c.jpg" />
+  </a>
+
+  <h2 class="h--huge">
+    <a href="https://developer.nvidia.com/gpugems3">GPU Gems 3</a>
+  </h2>
+
+  <p>
+    <b>GPU Gems 3</b> is now available for free online!<br><br>The CD content, including demos and content, is available on the <a target="_blank" href="https://http.download.nvidia.com/developer/GPU_Gems_3/CD/">web</a> and for <a href="https://http.download.nvidia.com/developer/GPU_Gems_3/CD/GPU_Gems_3_code.zip">download</a>.
+  </p>
+
+  <p>You can also subscribe to our <a href="http://news.developer.nvidia.com/rss.xml">Developer News Feed</a> to get notifications of new material on the site.</p>
+</div>
+
+      <h1 class="docChapterTitle" data-parent="Part IV: Image Effects">Chapter 25. Rendering Vector Art on the GPU</h1>
+
+      <p><em>Charles Loop<br>
+        Microsoft Research</em></p>
+
+      <p><em>Jim Blinn<br>
+        Microsoft Research</em></p>
+
+      <h2>25.1 Introduction</h2>
+
+      <p>Vector representations are a resolution-independent means of specifying shape. They have the advantage that at
+        any scale, content can be displayed without tessellation or sampling artifacts. This is in stark contrast to a
+        raster representation consisting of an array of color values. Raster images quickly show artifacts under scale
+        or perspective mappings. Our goal in this chapter is to present a method for accelerating the rendering of
+        vector representations on the GPU.</p>
+
+      <p>Modern graphics processing units excel at rendering triangles and triangular approximations to smooth objects.
+        It is somewhat surprising to realize that the same architecture is ideally suited to rendering smooth
+        vector-based objects as well. A vector object contains layers of closed paths and curves. These paths and curves
+        are generally quadratic and cubic Bézier spline curves, emitted by a drawing program. We present algorithms for
+        rendering these spline curves directly in terms of their mathematical descriptions, so that they are resolution
+        independent and have a minimal geometric representation.</p>
+
+      <p>The main ingredient of our algorithm is the notion of <em>implicitization</em>: the transformation from a
+        parametric [<em>x</em>(<em>t</em>) <em>y</em>(<em>t</em>)] to implicit <em>f</em> (<em>x</em>, <em>y</em>) = 0
+        plane curve. We render the convex hull of the Bézier control points as polygons, and a pixel shader program
+        determines pixel inclusion by evaluating the curve's implicit form. This process becomes highly efficient by
+        leveraging GPU interpolation functionality and choosing just the right implicit form. In addition to resolving
+        in/out queries at pixels, we demonstrate a mechanism for performing antialiasing on these curves using hardware
+        gradients. Much of this work originally appeared in Loop and Blinn 2005.</p>
+
+      <h2>25.2 Quadratic Splines</h2>
+
+      <p>The best way to understand our algorithm is to show how it works with a simple example. Consider the letter "e"
+        shown in <a href="javascript:popUp('elementLinks/25fig01.jpg')">Figure 25-1</a>.
+        <a href="javascript:popUp('elementLinks/25fig01.jpg')">Figure 25-1a</a> shows the TrueType data used to describe
+        this font glyph. TrueType uses a combination of quadratic B-splines and line segments to specify an oriented
+        vector outline. The region on the right0hand side of the curve is considered inside by convention. The hollow
+        dots are B-spline control points that define curves; the solid dots are points on the curve that can define
+        discontinuities such as sharp corners. As a preprocess, we convert the B-spline representation to Bézier form by
+        inserting new points at the midpoint of adjacent B-spline control points. Each B-spline control point will
+        correspond to a quadratic Bézier curve. Next, we triangulate the interior of the closed path and form a triangle
+        for each quadratic Bézier curve. After triangulation, we will have interior triangles (shown in green) and
+        boundary triangles that contain curves (shown in red and blue), as you can see in
+        <a href="javascript:popUp('elementLinks/25fig01.jpg')">Figure 25-1b</a>.</p>
+
+      <div class="figure">
+        <a href="javascript:popUp('elementLinks/25fig01.jpg')"><img src="https://developer.download.nvidia.com/books/gpugems3/25fig01.jpg" alt="25fig01.jpg"></a>
+        <p><a href="javascript:popUp('elementLinks/25fig01.jpg')">Figure 25-1</a> Rendering Quadratic Splines</p>
+      </div>
+
+      <p>The interior triangles are filled and rendered normally. Triangles that contain curves are either convex or
+        concave, depending on which side of the curve is inside the closed region. See the red and blue curves in
+        <a href="javascript:popUp('elementLinks/25fig01.jpg')">Figure 25-1b</a>.</p>
+
+      <p>We use a shader program to determine if pixels are on the inside or outside of a closed region. Before getting
+        to this shader, we must assign [<em>u v</em>] coordinates to the vertices of the triangles that contain curves.
+        An example is shown in <a href="javascript:popUp('elementLinks/25fig02.jpg')">Figure 25-2</a>. When these
+        triangles are rendered under an arbitrary 3D projective transform, the GPU will perform perspective-correct
+        interpolation of these coordinates and provide the resulting [<em>uv</em>] values to a pixel shader program.
+        Instead of looking up a color value as in texture mapping, we use the [<em>u v</em>] coordinate to evaluate a
+        procedural texture. The pixel shader computes the expression</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>u</em> <sup>2</sup> - <em>v</em>,</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <div class="figure">
+        <a href="javascript:popUp('elementLinks/25fig02.jpg')"><img src="https://developer.download.nvidia.com/books/gpugems3/25fig02.jpg" alt="25fig02.jpg"></a>
+        <p><a href="javascript:popUp('elementLinks/25fig02.jpg')">Figure 25-2</a> Procedural Texture Coordinate
+          Assignment</p>
+      </div>
+
+      <p>using the sign of the result to determine pixel inclusion. For convex curves, a positive result means the pixel
+        is outside the curve; otherwise it is inside. For concave curves, this test is reversed.</p>
+
+      <p>The size of the resulting representation is proportional to the size of the boundary curve description. The
+        resulting image is free of any artifacts caused by tessellation or undersampling because all the pixel centers
+        that lie under the curved region are colored and no more.</p>
+
+      <p>The intuition behind why this algorithm works is as follows. The procedural texture coordinates [0 0], [½ 0],
+        and [1 1] (as shown in <a href="javascript:popUp('elementLinks/25fig02.jpg')">Figure 25-2</a>) are themselves
+        Bézier control points of the curve</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>u</em>(<em>t</em>) = <em>t</em>,</p>
+          </td>
+
+          <td>
+            <p><em>v</em>(<em>t</em>) = <em>t</em> <sup>2</sup>.</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>This is clearly a parameterization for the algebraic (implicit) curve <em>u</em> <sup>2</sup> - <em>v</em> = 0.
+        Suppose <strong>P</strong> is the composite transform from <em>u</em>, <em>v</em> space to curve design (glyph)
+        space to viewing and perspective space to screen space. Ultimately this will be a projective mapping from 2D
+        onto 2D. Any quadratic curve segment projected to screen space will have such a <strong>P</strong>. When the GPU
+        interpolates the texture coordinates, it is in effect computing the value of P<sup>-1</sup> for each pixel.
+        Therefore, we can resolve the inside/outside test in <em>u</em>, <em>v</em> space where the implicit equation is
+        simple, needing only one multiply and one add.</p>
+
+      <p>As an alternative, we could find the algebraic equation of each curve segment in screen space. However, this
+        would require dozens of arithmetic operations to compute the general second-order algebraic curve coefficients
+        and require many operations to evaluate in the corresponding pixel shader. Furthermore, the coefficients of this
+        curve will change as the viewing transform changes, requiring recomputation. Our approach requires no such
+        per-frame processing, other than the interpolation of [<em>u v</em>] procedural texture coordinates done by the
+        GPU.</p>
+
+      <p>Quadratic curves turn out to be a very simple special case. Assignment of the procedural texture coordinates is
+        the same for all (integral) quadratic curves, and the shader equation is simple and compact. However, drawing
+        packages that produce vector artwork often use more-flexible and smooth cubic splines. Next, we extend our
+        rendering algorithm to handle cubic curves. The good news is that the runtime shader equation is also simple and
+        compact. The bad news is that the preprocessing—assignment of procedural texture coordinates—is nontrivial.</p>
+
+      <h2>25.3 Cubic Splines</h2>
+
+      <p>Our algorithm for rendering cubic spline curves is similar in spirit to the one for rendering quadratic curves.
+        An oriented closed path is defined by cubic Bézier curve segments, each consisting of four control points. See
+        <a href="javascript:popUp('elementLinks/25fig03.jpg')">Figure 25-3a</a>. We assume the right-hand side of the
+        curve to be considered inside. The convex hull of these control points forms either a quadrilateral consisting
+        of two triangles, or a single triangle. As before, we triangulate the interior of the path, as shown in
+        <a href="javascript:popUp('elementLinks/25fig03.jpg')">Figure 25-3b</a>. The interior triangles are filled and
+        rendered normally. The interesting part is how to generalize the procedural texture technique we used for
+        quadratics.</p>
+
+      <div class="figure">
+        <a href="javascript:popUp('elementLinks/25fig03.jpg')"><img src="https://developer.download.nvidia.com/books/gpugems3/25fig03.jpg" alt="25fig03.jpg"></a>
+        <p><a href="javascript:popUp('elementLinks/25fig03.jpg')">Figure 25-3</a> Rendering Cubic Splines</p>
+      </div>
+
+      <p>Unlike parametric quadratic curves, parametric cubic plane curves are not all projectively equivalent. That is,
+        there is no single proto-curve that all others can be projected from. It is well known that all rational
+        parametric plane curves have a corresponding algebraic curve of the same degree. It turns out that the algebraic
+        form of a parametric cubic belongs to one of three projective types (Blinn 2003), as shown in
+        <a href="javascript:popUp('elementLinks/25fig04.jpg')">Figure 25-4</a>. Any arbitrary cubic curve can be
+        classified as a serpentine, cusp, or loop. Furthermore, a projective mapping exists that will transform an
+        arbitrary parametric cubic curve onto one of these three curves. If we map the Bézier control points of the
+        curve under this transform, we will get a Bézier parameterization of some segment of one of these three curves.
+      </p>
+
+      <div class="figure">
+        <a href="javascript:popUp('elementLinks/25fig04.jpg')"><img src="https://developer.download.nvidia.com/books/gpugems3/25fig04.jpg" alt="25fig04.jpg"></a>
+        <p><a href="javascript:popUp('elementLinks/25fig04.jpg')">Figure 25-4</a> All Parametric Cubic Plane Curves Can
+          Be Classified as the Parameterization of Some Segment of One of These Three Curve Types</p>
+      </div>
+
+      <p>A very old result (Salmon 1852) on cubic curves states that all three types of cubic curves will have an
+        algebraic representation that can be written</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>k</em> <sup>3</sup> - <em>lmn</em> = 0,</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>where <em>k</em>, <em>l</em>, <em>m</em>, and <em>n</em> are linear functionals corresponding to lines
+        <strong>k</strong>, <strong>l</strong>, <strong>m</strong>, and <strong>n</strong> as in
+        <a href="javascript:popUp('elementLinks/25fig04.jpg')">Figure 25-4</a>. (The reason line <strong>n</strong> does
+        not appear in <a href="javascript:popUp('elementLinks/25fig04.jpg')">Figure 25-4</a> will be made clear
+        shortly.) More specifically, <em>k</em> = <em>au</em> + <em>bv</em> + <em>cw</em>, where [<em>u v w</em>] are
+        the homogeneous coordinates of a point in the plane, and <strong>k</strong> = [<em>a b c</em>]
+        <em><sup>T</sup></em> are the coordinates of a line; and similarly for <em>l</em>, <em>m</em>, and <em>n</em>.
+        The relationship of the lines <strong>k</strong>, <strong>l</strong>, <strong>m</strong>, and <strong>n</strong>
+        to the curve <strong>C</strong>(<em>s</em>, <em>t</em>) has important geometric significance. A serpentine curve
+        has inflection points at <strong>k</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2229.GIF" class="articleIcon" alt="U2229.GIF">
+        <strong>l</strong>, <strong>k</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2229.GIF" class="articleIcon" alt="U2229.GIF">
+        <strong>m</strong>, and <strong>k</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2229.GIF" class="articleIcon" alt="U2229.GIF">
+        <strong>n</strong> and is tangent to lines <strong>l</strong>, <strong>m</strong>, and <strong>n</strong>,
+        respectively. A loop curve has a double point at <strong>k</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2229.GIF" class="articleIcon" alt="U2229.GIF">
+        <strong>l</strong> and <strong>k</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2229.GIF" class="articleIcon" alt="U2229.GIF">
+        <strong>m</strong> and is tangent to lines <strong>l</strong> and <strong>m</strong> at this point;
+        <strong>k</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2229.GIF" class="articleIcon" alt="U2229.GIF">
+        <strong>n</strong> corresponds to an inflection point. A cusp curve has a cusp at the point where coincident
+        lines <strong>l</strong> and <strong>m</strong> intersect <strong>k</strong>, and it is tangent to line
+        <strong>l</strong> = <strong>m</strong> at this point; and <strong>k</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2229.GIF" class="articleIcon" alt="U2229.GIF">
+        <strong>n</strong> corresponds to an inflection point.</p>
+
+      <p>The procedural texture coordinates are the values of the <em>k</em>, <em>l</em>, <em>m</em>, and <em>n</em>
+        functionals at each cubic Bézier control point. When the (triangulated) Bézier convex hull is rendered, these
+        coordinates are interpolated by the GPU and a pixel shader program is called that evaluates the shader equation
+        <em>k</em> <sup>3</sup> - <em>lmn</em>. This will determine if a pixel is inside or outside the curve based on
+        the sign of the result.</p>
+
+      <p>We work in homogeneous coordinates where points in the plane are represented by 3-tuples [<em>x y w</em>]; the
+        2D Cartesian coordinates are <em>x</em>/<em>w</em> and <em>y</em>/<em>w</em>. We also work with a homogeneous
+        curve parameterization where the parameter value is represented by the pair [<em>s t</em>]; the 1D scalar
+        parameter is <em>s</em>/<em>t</em>. We use homogeneous representations because the projective geometric notion
+        of points at infinity is captured by <em>w</em> = 0; similarly, an infinite parameter value occurs when
+        <em>t</em> = 0.</p>
+
+      <p>In principle, we can render any planar cubic Bézier curve defined this way; however, we make some simplifying
+        assumptions to ease the derivation and implementation of our algorithm. The first is that the Bézier control
+        points are affine, so <em>w</em> = 1. This means that curves must be integral as opposed to rational. This is
+        not a severe limitation, because most drawing tools support only integral curves. We will still be able to
+        render the correct projected image of an integral cubic plane curve, but in the plane where the curve is defined
+        it cannot be rational. For integral curves the line <strong>n</strong> = [0 0 1]; that is, the line at infinity.
+        All three cubic proto-curves in <a href="javascript:popUp('elementLinks/25fig04.jpg')">Figure 25-4</a> have
+        integral representations, so line <strong>n</strong> does not appear. The linear functional corresponding to the
+        line at infinity is <em>n</em> = 1, so the shader equation simplifies to</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>k</em> <sup>3</sup> - <em>lm</em>.</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>Although this saves only one multiply in the shader, it removes an entire texture coordinate from a vertex,
+        leading to potentially more-efficient code. The primary reason for assuming integral curves, however, is to
+        simplify curve classification. Our second assumption is that the control point coordinates are exact
+        floating-point numbers. This assumption is not strictly necessary, but we can avoid floating-point round-off
+        errors that might crop up in tests for equality. This corresponds to an interactive drawing scenario where
+        control points lie on a regular grid.</p>
+
+      <p>A cubic Bézier curve in homogeneous parametric form is written</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0549equ01.jpg" alt="0549equ01.jpg"></p>
+
+      <p>where the <strong>b</strong> <em><sub>i</sub></em> are cubic Bézier control points.</p>
+
+      <p>The first step is to compute the coefficients of the function <em>I</em>(<em>s</em>, <em>t</em>) whose roots
+        correspond to inflection points of <strong>C</strong>(<em>s</em>, <em>t</em>). An inflection point is where the
+        curve changes its bending direction, defined mathematically as parameter values where the first and second
+        derivatives of <strong>C</strong>(<em>s</em>, <em>t</em>) are linearly dependent. The derivation of the function
+        <em>I</em> is not needed for our current purposes; see Blinn 2003 for a thorough discussion. For integral cubic
+        curves,</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>I</em>(<em>s</em>, <em>t</em>) = <em>t</em>(3<em>d</em> <sub>1</sub> <em>s</em> <sup>2</sup> -
+              3<em>d</em> <sub>2</sub> <em>st</em> + <em>d</em> <sub>3</sub> <em>t</em> <sup>2</sup>),</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>where</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>d</em> <sub>1</sub> = <em>a</em> <sub>1</sub> - 2<em>a</em> <sub>2</sub> + 3<em>a</em> <sub>3</sub>,
+            </p>
+          </td>
+
+          <td>
+            <p><em>d</em> <sub>2</sub> = -<em>a</em> <sub>2</sub> + 3<em>a</em> <sub>3</sub>,</p>
+          </td>
+
+          <td>
+            <p><em>d</em> <sub>3</sub> = 3<em>a</em> <sub>3</sub></p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>and</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>a</em> <sub>1</sub> = <strong>b</strong> <sub>0</sub> · (<strong>b</strong> <sub>3</sub> x
+              <strong>b</strong> <sub>2</sub>),</p>
+          </td>
+
+          <td>
+            <p><em>a</em> <sub>2</sub> = <strong>b</strong> <sub>1</sub> · (<strong>b</strong> <sub>0</sub> x
+              <strong>b</strong> <sub>3</sub>),</p>
+          </td>
+
+          <td>
+            <p><em>a</em> <sub>3</sub> = <strong>b</strong> <sub>2</sub> · (<strong>b</strong> <sub>1</sub> x
+              <strong>b</strong> <sub>1</sub>).</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>The function <em>I</em> is a cubic with three roots, not all necessarily real. It is the number of distinct
+        real roots of <em>I</em>(<em>s</em>, <em>t</em>) that determines the type of the cubic curve. For integral cubic
+        curves, [<em>s t</em>] = [1 0] is always a root of <em>I</em>(<em>s</em>, <em>t</em>). This means that the
+        remaining roots of <em>I</em>(<em>s</em>, <em>t</em>) can be found using the quadratic formula, rather than by
+        the more general solution of a cubic—a significant simplification over the general rational curve algorithm.</p>
+
+      <p>Our cubic curve classification reduces to knowing the sign of the discriminant of <em>I</em>(<em>s</em>,
+        <em>t</em>), defined as</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0550equ01.jpg" alt="0550equ01.jpg"></p>
+
+      <p>If <em>discr</em>(<em>I</em>) is positive, the curve is a serpentine; if negative, it is a loop; and if zero, a
+        cusp. Although it is true that all <em>cubic</em> curves are one of these three types, not all configurations of
+        four Bézier control points result in cubic curves. It is possible to represent quadratic curves, lines, or even
+        single points in cubic Bézier form. Our procedure will detect these cases, and our rendering algorithm can
+        handle them. We don't need to consider (or render) lines or points, because the convex hull of the Bézier
+        control points in these cases has zero area and, therefore, no pixel coverage. The general classification of
+        cubic Bézier curves is given by Table 25-1.</p>
+
+      <h4>Table 25-1. Cubic Curve Classification</h4>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><strong>Serpentine</strong></p>
+          </td>
+
+          <td>
+            <p><em>discr</em>(<em>I</em>) &gt; 0</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td>
+            <p><strong>Cusp</strong></p>
+          </td>
+
+          <td>
+            <p><em>discr</em>(<em>I</em>) = 0</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td>
+            <p><strong>Loop</strong></p>
+          </td>
+
+          <td>
+            <p><em>discr</em>(<em>I</em>) &lt; 0</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td>
+            <p><strong>Quadratic</strong></p>
+          </td>
+
+          <td>
+            <p><em>d</em> <sub>1</sub> = <em>d</em> <sub>2</sub> = 0</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td>
+            <p><strong>Line</strong></p>
+          </td>
+
+          <td>
+            <p><em>d</em> <sub>1</sub> = <em>d</em> <sub>2</sub> = <em>d</em> <sub>3</sub> = 0</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td>
+            <p><strong>Point</strong></p>
+          </td>
+
+          <td>
+            <p><strong>b</strong> <sub>0</sub> = <strong>b</strong> <sub>1</sub> = <strong>b</strong> <sub>2</sub> =
+              <strong>b</strong> <sub>3</sub></p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>If our Bézier control points have exact floating-point coordinates, the classification given in Table 25-1 can
+        be done exactly. That is, there is no ambiguity between cases, because <em>discr</em>(<em>I</em>) and all
+        intermediate variables can be derived from exact floating representations.</p>
+
+      <p>Once a curve has been classified, we must find the texture coordinates [<em>k<sub>i</sub></em>
+        <em>l<sub>i</sub></em> <em>m<sub>i</sub></em> ] corresponding to each Bézier control point <strong>b</strong>
+        <em><sub>i</sub></em> , <em>i</em> = 0, 1, 2, 3. Our approach is to find scalarvalued cubic functions</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>k</em>(<em>s</em>, <em>t</em>) = <strong>k . C</strong>(<em>s</em>, <em>t</em>),</p>
+          </td>
+
+          <td>
+            <p><em>l</em>(<em>s</em>, <em>t</em>), = <strong>l . C</strong>(<em>s</em>, <em>t</em>),</p>
+          </td>
+
+          <td>
+            <p><em>m</em>(<em>s</em>, <em>t</em>) = <strong>m . C</strong>(<em>s</em>, <em>t</em>),</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>in Bézier form; the coefficients of these functions will correspond to our procedural texture coordinates.
+        Because we know the geometry of the lines <strong>k</strong>, <strong>l</strong>, and <strong>m</strong> in
+        <a href="javascript:popUp('elementLinks/25fig04.jpg')">Figure 25-4</a>, we could find points and tangent vectors
+        of <strong>C</strong>(<em>s</em>, <em>t</em>) and from these construct the needed lines. But lines are
+        homogeneous, scale-invariant objects; what we need are the corresponding linear functionals, where (relative)
+        scale matters.</p>
+
+      <p>Our strategy will be to construct <em>k</em>(<em>s</em>, <em>t</em>), <em>l</em>(<em>s</em>, <em>t</em>), and
+        <em>m</em>(<em>s</em>, <em>t</em>) by taking products of their linear factors. These linear factors are found by
+        solving for the roots of <em>I</em>(<em>s</em>, <em>t</em>) and a related polynomial called the <em>Hessian</em>
+        of <em>I</em>(<em>s</em>, <em>t</em>). For each curve type, we find the parameter values [<em>l<sub>s</sub></em>
+        <em>l<sub>t</sub></em> ] and [<em>m<sub>s</sub></em> <em>m<sub>t</sub></em> ] of <em>I</em>(<em>s</em>,
+        <em>t</em>) where <strong>k</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2229.GIF" class="articleIcon" alt="U2229.GIF">
+        <strong>l</strong> and <strong>k</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2229.GIF" class="articleIcon" alt="U2229.GIF">
+        <strong>m</strong>. We denote these linear factors by the following:</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>L</em>
+              <img src="https://developer.download.nvidia.com/books/gpugems3/U2190.GIF" class="articleIcon" alt="U2190.GIF">
+              (<em>sl<sub>t</sub></em> - <em>tl<sub>s</sub></em> ),</p>
+          </td>
+
+          <td>
+            <p><em>M</em>
+              <img src="https://developer.download.nvidia.com/books/gpugems3/U2190.GIF" class="articleIcon" alt="U2190.GIF">
+              (<em>sm<sub>t</sub></em> - <em>tm<sub>s</sub></em> ).</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>We can reason about how to construct <em>k</em>(<em>s</em>, <em>t</em>), <em>l</em>(<em>s</em>, <em>t</em>),
+        and <em>m</em>(<em>s</em>, <em>t</em>) from <em>L</em> and <em>M</em> by studying the geometric relationship of
+        <strong>C</strong>(<em>s</em>, <em>t</em>) to lines <strong>k</strong>, <strong>l</strong>, and
+        <strong>m</strong>. For example, <strong>k</strong>(<em>s</em>, <em>t</em>) will have roots at
+        [<em>l<sub>s</sub></em> <em>l<sub>t</sub></em> ], [<em>m<sub>s</sub></em> <em>m<sub>t</sub></em> ], and a root
+        at infinity [1 0]. Therefore, for all cubic curves:</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>k</em>(<em>s</em>, <em>t</em>) = <em>LM</em>.</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>Finding the cubic functions <em>l</em>(<em>s</em>, <em>t</em>) and <em>m</em>(<em>s</em>, <em>t</em>) for each
+        of the three curve types has its own reasoning, to be described shortly.</p>
+
+      <p>Once the functions <em>k</em>(<em>s</em>, <em>t</em>), <em>l</em>(<em>s</em>, <em>t</em>), and
+        <em>m</em>(<em>s</em>, <em>t</em>) are known, we convert them to cubic Bézier form to obtain</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0551equ01.jpg" alt="0551equ01.jpg"></p>
+
+      <p>where [<em>k<sub>i</sub></em> <em>l<sub>i</sub></em> <em>m<sub>i</sub></em> ] are the procedural texture
+        coordinates associated with <strong>b</strong> <em><sub>i</sub></em> , <em>i</em> = 0, 1, 2, 3.</p>
+
+      <p>Finally, to make sure that the curve has the correct orientation—to the right is inside—we may need to reverse
+        orientation by multiplying the implicit equation by -1. This is equivalent to setting <strong>M</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2190.GIF" class="articleIcon" alt="U2190.GIF">
+        <strong>M</strong> · <strong>O</strong>, where</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0552equ01.jpg" alt="0552equ01.jpg"></p>
+
+      <p>The conditions for correcting orientation depend on curve type, described next.</p>
+
+      <h4>25.3.1 Serpentine</h4>
+
+      <p>For a serpentine curve, <strong>C</strong>(<em>s</em>, <em>t</em>) is tangent to line <strong>l</strong> at the
+        inflection point where <strong>k</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2229.GIF" class="articleIcon" alt="U2229.GIF">
+        <strong>l</strong>. The scalar-valued function <em>l</em>(<em>s</em>, <em>t</em>) will also have an inflection
+        point at this parameter value; meaning that <em>l</em>(<em>s</em>, <em>t</em>) will have a triple root there. A
+        similar analysis applies for <em>m</em>(<em>s</em>, <em>t</em>). We form products of the linear factors to get
+      </p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>k</em>(<em>s</em>, <em>t</em>) = <em>LM</em>,</p>
+          </td>
+
+          <td>
+            <p><em>l</em>(<em>s</em>, <em>t</em>) = <em>L</em> <sup>3</sup>,</p>
+          </td>
+
+          <td>
+            <p><em>m</em>(<em>s</em>, <em>t</em>) = <em>M</em> <sup>3</sup>.</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>To find the parameter value of these linear factors, we compute the roots of <em>I</em>(<em>s</em>, <em>t</em>):
+      </p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0552equ02.jpg" alt="0552equ02.jpg"></p>
+
+      <p>We convert <em>k</em>(<em>s</em>, <em>t</em>), <em>l</em>(<em>s</em>, <em>t</em>), and <em>m</em>(<em>s</em>,
+        <em>t</em>) to cubic Bézier form and form the coefficient matrix</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0552equ03.jpg" alt="0552equ03.jpg"></p>
+
+      <p>Each row of the <strong>M</strong> matrix corresponds to the procedural texture coordinate associated with the
+        Bézier curve control points. If <em>d</em> <sub>1</sub> &lt; 0, then we must reverse orientation by setting
+        <strong>M</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2190.GIF" class="articleIcon" alt="U2190.GIF">
+        <strong>M</strong> · <strong>O</strong>.</p>
+
+      <h4>25.3.2 Loop</h4>
+
+      <p>For a loop curve, <strong>C</strong>(<em>s</em>, <em>t</em>) is tangent to line <strong>l</strong> and crosses
+        line <strong>m</strong> at one of the double point parameters. This means that <em>l</em>(<em>s</em>, <em>t</em>)
+        will have a double root at [<em>l<sub>s</sub></em> <em>l<sub>t</sub></em> ] and a single root at
+        [<em>m<sub>s</sub></em> <em>m<sub>t</sub></em> ]. A similar analysis holds for <em>m</em>(<em>s</em>, <em>t</em>).
+        We then take products of the linear factors to get</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>k</em>(<em>s</em>, <em>t</em>) = <em>LM</em>,</p>
+          </td>
+
+          <td>
+            <p><em>l</em>(<em>s</em>, <em>t</em>) = <em>L</em> <sup>2</sup> <em>M</em>,</p>
+          </td>
+
+          <td>
+            <p><em>m</em>(<em>s</em>, <em>t</em>) = <em>LM</em> <sup>2</sup>.</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>The parameter values of the double point are found as roots of the Hessian of <em>I</em>(<em>s</em>, <em>t</em>),
+        defined as</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0553equ01.jpg" alt="0553equ01.jpg"></p>
+
+      <p>Because <em>H</em>(<em>s</em>, <em>t</em>) is quadratic, we use the quadratic formula to find the roots:</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0553equ02.jpg" alt="0553equ02.jpg"></p>
+
+      <p>We convert <em>k</em>(<em>s</em>, <em>t</em>), <em>l</em>(<em>s</em>, <em>t</em>), and <em>m</em>(<em>s</em>,
+        <em>t</em>) to cubic Bézier form to get</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0553equ03.jpg" alt="0553equ03.jpg"></p>
+
+      <p>A rendering artifact will occur if one of the double point parameters lies in the interval [0/1, 1/1]. To solve
+        this problem, we subdivide the curve at the double point parameter—see
+        <a href="javascript:popUp('elementLinks/25fig05.jpg')">Figure 25-5</a>—and reverse the orientation of one of the
+        subcurves. Note that the procedural texture coordinates of the subcurves can be found by subdividing the
+        procedural texture coordinates of the original curve. Once a loop curve has been sub divided at its double
+        point, the procedural texture coordinates <em>k<sub>i</sub></em> , <em>i</em> = 0, . . ., 3 will have the same
+        sign. Orientation reversal (<strong>M</strong>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2190.GIF" class="articleIcon" alt="U2190.GIF">
+        <strong>M</strong> · <strong>O</strong>) is needed if (<em>d</em> <sub>1</sub> &gt; 0 and sign(<em>k</em>
+        <sub>1</sub>) &lt; 0) or (<em>d</em> <sub>1</sub> &lt; 0 and sign(<em>k</em> <sub>1</sub>) &gt; 0).</p>
+
+      <div class="figure">
+        <a href="javascript:popUp('elementLinks/25fig05.jpg')"><img src="https://developer.download.nvidia.com/books/gpugems3/25fig05.jpg" alt="25fig05.jpg"></a>
+        <p><a href="javascript:popUp('elementLinks/25fig05.jpg')">Figure 25-5</a> Cubic Curve with a Double Point</p>
+      </div>
+
+      <h4>25.3.3 Cusp</h4>
+
+      <p>A cusp occurs when <em>discr</em>(<em>I</em>) = 0. This is the boundary between the serpentine and loop cases.
+        Geometrically, the lines <strong>l</strong> and <strong>m</strong> are coincident; therefore [<em>l<sub>s</sub></em>
+        <em>l<sub>t</sub></em> ] = [<em>m<sub>s</sub></em> <em>m<sub>t</sub></em> ]. We could use the procedure for
+        either the loop or the serpentine case, because the texture coordinate matrices will turn out to be the same.
+      </p>
+
+      <p>There is an exception: when <em>d</em> <sub>1</sub> = 0. In the serpentine and loop cases, it must be that
+        <em>d</em> <sub>1</sub>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2260.GIF" class="articleIcon" alt="U2260.GIF">
+        0; otherwise <em>discr</em>(<em>I</em>) = 0 and we would have a cusp. The case where <em>d</em> <sub>1</sub> = 0
+        and <em>d</em> <sub>2</sub>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2260.GIF" class="articleIcon" alt="U2260.GIF"> 0
+        corresponds to a cubic curve that has a cusp at the parametric value [1 0]—that is, homogeneous infinity. In
+        this case, the inflection point polynomial reduces to</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>I</em>(<em>s</em>, <em>t</em>) = <em>t</em> <sup>2</sup>(<em>d</em> <sub>3</sub> <em>t</em> -
+              3<em>d</em> <sub>2</sub> <em>s</em>),</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>which has a double root at infinity and a single root [<em>l<sub>s</sub></em> <em>l<sub>t</sub></em> ] =
+        [<em>d</em> <sub>3</sub> 3<em>d</em> <sub>2</sub>]. We find</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>k</em>(<em>s</em>, <em>t</em>) = <em>L</em>,</p>
+          </td>
+
+          <td>
+            <p><em>l</em>(<em>s</em>, <em>t</em>) = <em>L</em> <sup>3</sup>,</p>
+          </td>
+
+          <td>
+            <p><em>m</em>(<em>s</em>, <em>t</em>) = 1.</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>Converting these to Bézier form gives us the columns of the matrix:</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0554equ01.jpg" alt="0554equ01.jpg"></p>
+
+      <p>The orientation will never need to be reversed in this case. An example of a cubic curve whose inflection point
+        polynomial has a cusp at infinity is [<em>t t</em> <sup>3</sup>].</p>
+
+      <h4>25.3.4 Quadratic</h4>
+
+      <p>We showed earlier that quadratic curves could be rendered by a pixel shader that evaluated the expression
+        <em>u</em> <sup>2</sup> - <em>v</em>. Switching away from the cubic shader would be inefficient for the GPU, and
+        therefore undesirable. However, if we equate the cubic function <em>k</em>(<em>s</em>, <em>t</em>)
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2261.GIF" class="articleIcon" alt="U2261.GIF">
+        <em>m</em>(<em>s</em>, <em>t</em>), our cubic shader expression can be written as</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>k</em> <sup>3</sup> - <em>kl</em> = <em>k</em>(<em>k</em> <sup>2</sup> - <em>l</em>).</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>We see that the part inside the parentheses is the quadratic shader expression with <em>u</em> and <em>v</em>
+        replaced with <em>k</em> and <em>l</em>. The sign of this expression will agree with the quadratic shader,
+        provided the value of <em>k</em> does not change sign inside the convex hull of the curve. We can degree-elevate
+        the quadratic procedural texture coordinates to get</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0555equ01.jpg" alt="0555equ01.jpg"></p>
+
+      <p>Interpolation will not change the sign of <em>k</em> in this case. Finally, we reverse orientation if
+        <em>d</em> <sub>3</sub> &lt; 0.</p>
+
+      <h2>25.4 Triangulation</h2>
+
+      <p>Our triangulation procedure was only briefly discussed in Sections 25.2 and 25.3 in the interest of simplicity.
+        An important detail not previously mentioned is that Bézier convex hulls cannot overlap. There are two reasons
+        for this: one is that overlapping triangles cause problems for triangulation code; the other is that unwanted
+        portions of one filled region might show through to the other, resulting in a visual artifact. This problem can
+        be resolved by subdividing one of the offending curves so that Bézier curve convex hulls no longer overlap, as
+        shown in <a href="javascript:popUp('elementLinks/25fig06.jpg')">Figure 25-6</a>.</p>
+
+      <div class="figure">
+        <a href="javascript:popUp('elementLinks/25fig06.jpg')"><img src="https://developer.download.nvidia.com/books/gpugems3/25fig06.jpg" alt="25fig06.jpg"></a>
+        <p><a href="javascript:popUp('elementLinks/25fig06.jpg')">Figure 25-6</a> Handling Overlapping Triangles</p>
+      </div>
+
+      <p>We locally triangulate all non-overlapping Bézier convex hulls. For quadratics, the Bézier convex hull is
+        uniquely a triangle. For cubics, the Bézier convex hull may be a quad or a triangle. If it is a quad, we
+        triangulate by choosing either diagonal. Next, the interior of the entire boundary is triangulated. The details
+        of this procedure are beyond the scope of this chapter. Any triangulation procedure for a multicontour polygon
+        will work.</p>
+
+      <p>Recently, Kokojima et al. 2006 presented a variant on our approach for quadratic splines that used the stencil
+        buffer to avoid triangulation. Their idea is to connect all points on the curve path and draw them as a triangle
+        fan into the stencil buffer with the invert operator. Only pixels drawn an odd number of times will be nonzero,
+        thus giving the correct image of concavities and holes. Next, they draw the curve segments, treating them all as
+        convex quadratic elements. This will either add to or carve away a curved portion of the shape. A quad large
+        enough to cover the extent of the stencil buffer is then drawn to the frame buffer with a stencil test. The
+        result is the same as ours without triangulation or subdivision, and needing only one quadratic curve
+        orientation. Furthermore, eliminating the triangulation steps makes high-performance rendering of dynamic curves
+        possible. The disadvantage of their approach is that two passes over the curve data are needed. For static
+        curves, they are trading performance for implementation overhead.</p>
+
+      <h2>25.5 Antialiasing</h2>
+
+      <p>We present an approach to antialiasing in the pixel shader based on a signed distance approximation to a curve
+        boundary. By reducing pixel opacity within a narrow band that contains the boundary, we can approximate
+        convolution with a filter kernel. However, this works only when pixel samples lie on both sides of a boundary,
+        such as points well inside the Bézier convex hull of a curve. For points near triangle edges, or when the edge
+        of a triangle is the boundary, this scheme breaks down. Fortunately, this is exactly the case that is handled by
+        hardware <em>multisample antialiasing</em> (MSAA). MSAA uses a coverage mask derived as the percentage of
+        samples (from a hardware-dependent sample pattern) covered by a triangle. Only one pixel shader call is
+        initiated, and this is optionally located at the centroid of the covered samples, as opposed to the pixel
+        center, to avoid sampling outside the triangle's image in texture space. In our case, out-of-gamut sampling is
+        not a problem, because we use a procedural definition of a texture (an algebraic equation). Therefore, centroid
+        sampling is not recommended.</p>
+
+      <p>For antialiasing of curved boundaries on the interior of the Bézier convex hull, we need to know the
+        screen-space signed distance from the current pixel to the boundary. If this distance is ±½ a pixel (an
+        empirically determined choice; this could be less or more), then the opacity of the pixel color is changed
+        relative to the pixel's distance to the curved boundary. Computing the true distance to a degree <em>d</em>
+        polynomial curve requires the solution to a degree 2<em>d</em> - 1 equation. This is impractical on today's
+        hardware, for performance reasons.</p>
+
+      <p>Instead, we use an approximate signed distance based on gradients. For a function <em>f</em> (<em>x</em>,
+        <em>y</em>), the gradient of <em>f</em> is a vector operator
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2207.GIF" class="articleIcon" alt="U2207.GIF"><em>f</em>
+        = [d<em>f</em>/<em>x</em> <em>f</em>/<em>y</em>]. The GPU has hardware support for taking gradients of variables
+        in pixel shader programs via the <tt>ddx()</tt> and <tt>ddy()</tt> functions. We define the signed distance
+        function to the screen-space curve <em>f</em> (<em>x</em>, <em>y</em>) = 0 to be</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0557equ01.jpg" alt="0557equ01.jpg"></p>
+
+      <p>In our case, the implicit function is not defined in screen (pixel) space. However, the process of
+        interpolating procedural texture coordinates in screen space is, in effect, mapping screen [<em>x y</em>] space
+        to procedural texture coordinate space ([<em>u v</em>] for quadratics, [<em>k l m</em>] for cubics). In other
+        words, we can think of the interpolated procedural texture coordinates as vector functions</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p>[<em>u</em>(<em>x</em>, <em>y</em>)</p>
+          </td>
+
+          <td>
+            <p><em>v</em>(<em>x</em>, <em>y</em>)]</p>
+          </td>
+
+          <td>
+            <p>or</p>
+          </td>
+
+          <td>
+            <p>[<em>k</em>(<em>x</em>, <em>y</em>)</p>
+          </td>
+
+          <td>
+            <p><em>l</em>(<em>x</em>, <em>y</em>)</p>
+          </td>
+
+          <td>
+            <p><em>m</em>(<em>x</em>, <em>y</em>)].</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>Each of these coordinate functions is actually the ratio of linear functionals whose quotient is taken in
+        hardware (that is, perspective correction). An implicit function of these coordinate functions is a composition,
+        defining a screen-space implicit function. Therefore, our signed distance function correctly measures
+        approximate distance in pixel units.</p>
+
+      <p>Hardware gradients are based on differences between values of adjacent pixels, so they can only approximate the
+        derivatives of higher-order functions. Although this rarely (if ever) results in artifacts, with only a few
+        additional math operations, we can get exact derivatives by applying the chain rule to our shader equations. Let
+        the following,</p>
+
+      <table>
+        <tbody>
+        <tr>
+          <td>
+            <p><em>q</em>(<em>x</em>, <em>y</em>) = <em>u</em>(<em>x</em>, <em>y</em>)<sup>2</sup> -
+              <em>v</em>(<em>x</em>, <em>y</em>) = 0 and</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td>
+            <p><em>c</em>(<em>x</em>, <em>y</em>) = <em>k</em>(<em>x</em>, <em>y</em>)<sup>3</sup> -
+              <em>l</em>(<em>x</em>, <em>y</em>)<em>m</em>(<em>x</em>, <em>y</em>) = 0,</p>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+
+      <p>be our quadratic and cubic shader equations, respectively. Applying the chain rule, we get</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0558equ01.jpg" alt="0558equ01.jpg"></p>
+
+      <p>We can write our signed distance function as</p>
+
+      <p><img src="https://developer.download.nvidia.com/books/gpugems3/0558equ02.jpg" alt="0558equ02.jpg"></p>
+
+      <p>where <em>f</em>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2190.GIF" class="articleIcon" alt="U2190.GIF">
+        <em>q</em> for quadratics and <em>f</em>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2190.GIF" class="articleIcon" alt="U2190.GIF">
+        <em>c</em> for cubics. For a boundary interval of ±½ pixel, we map signed distance to opacity by <em>a</em> = ½
+        - <em>sd</em>. This is based on a linear ramp blending; higher-order blending could be used at higher cost. If
+        <em></em> &gt; 1, we set <em></em>
+        <img src="https://developer.download.nvidia.com/books/gpugems3/U2190.GIF" class="articleIcon" alt="U2190.GIF">
+        1; if <em>a</em> &lt; 0, we abort the pixel.</p>
+
+      <h2>25.6 Code</h2>
+
+      <p>Listing 25-1 is HLSL code for our quadratic shader. The code for the cubic shader is similar.</p>
+
+      <h4>Example 25-1. Quadratic Curve Pixel Shader</h4>
+
+      <pre><code class="language-cpp">
+float4 QuadraticPS(float2 p : TEXCOORD0, float4 color : COLOR0) : COLOR
+{
+  // Gradients
+  float2 px = ddx(p);
+  float2 py = ddy(p);
+  // Chain rule
+  float fx = (2 * p.x) * px.x - px.y;
+  float fy = (2 * p.x) * py.x - py.y;
+  // Signed distance
+  float sd = (p.x * p.x - p.y) / sqrt(fx * fx + fy * fy);
+  // Linear alpha
+  float alpha = 0.5 - sd;
+  if (alpha &gt; 1)
+    // Inside
+    color.a = 1;
+  else if (alpha &lt; 0)
+    // Outside
+    clip(-1);
+  else
+    // Near boundary
+    color.a = alpha;
+  return color;
+}</code></pre>
+
+      <h2>25.7 Conclusion</h2>
+
+      <p>We have presented an algorithm for rendering vector art defined by closed paths containing quadratic and cubic
+        Bézier curves. We locally triangulate each Bézier convex hull and globally triangulate the interior (right-hand
+        side) of each path. We assign procedural texture coordinates to the vertices of each Bézier convex hull. These
+        coordinates encode linear functionals and are interpolated by the hardware during rasterization. The process of
+        interpolation maps the procedural texture coordinates to a space where the implicit equation of the curve has a
+        simple form: <em>u</em> <sup>2</sup> - <em>v</em> = 0 for quadratics and <em>k</em> <sup>3</sup> - <em>lm</em> =
+        0 for cubics. A pixel shader program evaluates the implicit equation. The sign of the result will determine if a
+        pixel is inside (negative) or outside (positive). We use hardware gradients to approximate a screen-space signed
+        distance to the curve boundary. This signed distance is used for antialiasing the curved boundaries. We can
+        apply an arbitrary projective transform to view our plane curves in 3D. The result has a small and static memory
+        footprint, and the resulting image is resolution independent.
+        <a href="javascript:popUp('elementLinks/25fig07.jpg')">Figure 25-7</a> shows an example of some text rendered in
+        perspective using our technique.</p>
+
+      <div class="figure">
+        <a href="javascript:popUp('elementLinks/25fig07.jpg')"><img src="https://developer.download.nvidia.com/books/gpugems3/25fig07.jpg" alt="25fig07.jpg"></a>
+        <p><a href="javascript:popUp('elementLinks/25fig07.jpg')">Figure 25-7</a> Our Algorithm Is Used to Render 2D
+          Text with Antialiasing Under a 3D Perspective Transform</p>
+      </div>
+
+      <p>In the future, we would like to extend this rendering paradigm to curves of degree 4 and higher. This would
+        allow us to apply freeform deformations to low-order shapes (such as font glyphs) and have the resulting
+        higher-order curve be resolution independent. The work of Kokojima et al. 2006 showed how to render dynamic
+        quadratic curves; we would like to extend their approach to handle cubic curves as well. This is significantly
+        more complicated than the quadratic case, because of the procedural texture-coordinate-assignment phase.
+        However, it should be possible to do this entirely on the GPU using DirectX 10-class hardware equipped with a
+        geometry shader (Blythe 2006).</p>
+
+      <h2>25.8 References</h2>
+
+      <p>Blinn, Jim. 2003. <em>Jim Blinn's Corner: Notation, Notation, Notation</em>. Morgan Kaufmann.</p>
+
+      <p>Blythe, David. 2006. "The Direct3D 10 System." In
+        <em>ACM Transactions on Graphics (Proceedings of SIGGRAPH 2006)</em> 25(3), pp. 724–734.</p>
+
+      <p>Kokojima, Yoshiyuki, Kaoru Sugita, Takahiro Saito, and Takashi Takemoto. 2006. "Resolution Independent
+        Rendering of Deformable Vector Objects using Graphics Hardware." In <em>ACM SIGGRAPH 2006 Sketches</em>.</p>
+
+      <p>Loop, Charles, and Jim Blinn. 2005. "Resolution Independent Curve Rendering using Programmable Graphics
+        Hardware." In <em>ACM Transactions on Graphics (Proceedings of SIGGRAPH 2005)</em> 24(3), pp. 1000–1008.</p>
+
+      <p>Salmon, George. 1852. <em>A Treatise on the Higher Order Plane Curves</em>. Hodges &amp; Smith.</p>
+      <!-- generated html end -->       <!-- <div align="right" style=" color:#999999;">Last Update: 12:39 07/17/2009</div> -->
+    </div>
+    <div class='col-md-4'>
+      
+<ul class='nv-list'>
+    <li class="">
+      <a href="/gpugems/gpugems3/contributors">Contributors</a>
+    </li>
+    <li class="">
+      <a href="/gpugems/gpugems3/foreword">Foreword</a>
+    </li>
+    <li class="">
+      <a href="/gpugems/gpugems3/part-i-geometry">Part I: Geometry</a>
+    </li>
+      <li>
+        <ul>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-i-geometry/chapter-1-generating-complex-procedural-terrains-using-gpu">Chapter 1. Generating Complex Procedural Terrains Using the GPU</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-i-geometry/chapter-2-animated-crowd-rendering">Chapter 2. Animated Crowd Rendering</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-i-geometry/chapter-3-directx-10-blend-shapes-breaking-limits">Chapter 3. DirectX 10 Blend Shapes: Breaking the Limits</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-i-geometry/chapter-4-next-generation-speedtree-rendering">Chapter 4. Next-Generation SpeedTree Rendering</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-i-geometry/chapter-5-generic-adaptive-mesh-refinement">Chapter 5. Generic Adaptive Mesh Refinement</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-i-geometry/chapter-6-gpu-generated-procedural-wind-animations-trees">Chapter 6. GPU-Generated Procedural Wind Animations for Trees</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-i-geometry/chapter-7-point-based-visualization-metaballs-gpu">Chapter 7. Point-Based Visualization of Metaballs on a GPU</a>
+          </li>
+        </ul>
+      </li>
+    <li class="">
+      <a href="/gpugems/gpugems3/part-ii-light-and-shadows">Part II: Light and Shadows</a>
+    </li>
+      <li>
+        <ul>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-ii-light-and-shadows/chapter-8-summed-area-variance-shadow-maps">Chapter 8. Summed-Area Variance Shadow Maps</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-ii-light-and-shadows/chapter-9-interactive-cinematic-relighting-global">Chapter 9. Interactive Cinematic Relighting with Global Illumination</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-ii-light-and-shadows/chapter-10-parallel-split-shadow-maps-programmable-gpus">Chapter 10. Parallel-Split Shadow Maps on Programmable GPUs</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-ii-light-and-shadows/chapter-11-efficient-and-robust-shadow-volumes-using">Chapter 11. Efficient and Robust Shadow Volumes Using Hierarchical Occlusion Culling and Geometry Shaders</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-ii-light-and-shadows/chapter-12-high-quality-ambient-occlusion">Chapter 12. High-Quality Ambient Occlusion</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-ii-light-and-shadows/chapter-13-volumetric-light-scattering-post-process">Chapter 13. Volumetric Light Scattering as a Post-Process</a>
+          </li>
+        </ul>
+      </li>
+    <li class="">
+      <a href="/gpugems/gpugems3/part-iii-rendering">Part III: Rendering</a>
+    </li>
+      <li>
+        <ul>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iii-rendering/chapter-14-advanced-techniques-realistic-real-time-skin">Chapter 14. Advanced Techniques for Realistic Real-Time Skin Rendering</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iii-rendering/chapter-15-playable-universal-capture">Chapter 15. Playable Universal Capture</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iii-rendering/chapter-16-vegetation-procedural-animation-and-shading-crysis">Chapter 16. Vegetation Procedural Animation and Shading in Crysis</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iii-rendering/chapter-17-robust-multiple-specular-reflections-and-refractions">Chapter 17. Robust Multiple Specular Reflections and Refractions</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iii-rendering/chapter-18-relaxed-cone-stepping-relief-mapping">Chapter 18. Relaxed Cone Stepping for Relief Mapping</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iii-rendering/chapter-19-deferred-shading-tabula-rasa">Chapter 19. Deferred Shading in Tabula Rasa</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iii-rendering/chapter-20-gpu-based-importance-sampling">Chapter 20. GPU-Based Importance Sampling</a>
+          </li>
+        </ul>
+      </li>
+    <li class="">
+      <a href="/gpugems/gpugems3/part-iv-image-effects">Part IV: Image Effects</a>
+    </li>
+      <li>
+        <ul>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iv-image-effects/chapter-21-true-impostors">Chapter 21. True Impostors</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iv-image-effects/chapter-22-baking-normal-maps-gpu">Chapter 22. Baking Normal Maps on the GPU</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iv-image-effects/chapter-23-high-speed-screen-particles">Chapter 23. High-Speed, Off-Screen Particles</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iv-image-effects/chapter-24-importance-being-linear">Chapter 24. The Importance of Being Linear</a>
+          </li>
+          <li class="active">
+            <a href="/gpugems/gpugems3/part-iv-image-effects/chapter-25-rendering-vector-art-gpu">Chapter 25. Rendering Vector Art on the GPU</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iv-image-effects/chapter-26-object-detection-color-using-gpu-real-time-video">Chapter 26. Object Detection by Color: Using the GPU for Real-Time Video Image Processing</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iv-image-effects/chapter-27-motion-blur-post-processing-effect">Chapter 27. Motion Blur as a Post-Processing Effect</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-iv-image-effects/chapter-28-practical-post-process-depth-field">Chapter 28. Practical Post-Process Depth of Field</a>
+          </li>
+        </ul>
+      </li>
+    <li class="">
+      <a href="/gpugems/gpugems3/part-v-physics-simulation">Part V: Physics Simulation</a>
+    </li>
+      <li>
+        <ul>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-v-physics-simulation/chapter-29-real-time-rigid-body-simulation-gpus">Chapter 29. Real-Time Rigid Body Simulation on GPUs</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-v-physics-simulation/chapter-30-real-time-simulation-and-rendering-3d-fluids">Chapter 30. Real-Time Simulation and Rendering of 3D Fluids</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-v-physics-simulation/chapter-31-fast-n-body-simulation-cuda">Chapter 31. Fast N-Body Simulation with CUDA</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-v-physics-simulation/chapter-32-broad-phase-collision-detection-cuda">Chapter 32. Broad-Phase Collision Detection with CUDA</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-v-physics-simulation/chapter-33-lcp-algorithms-collision-detection-using-cuda">Chapter 33. LCP Algorithms for Collision Detection Using CUDA</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-v-physics-simulation/chapter-34-signed-distance-fields-using-single-pass-gpu">Chapter 34. Signed Distance Fields Using Single-Pass GPU Scan Conversion of Tetrahedra</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-v-physics-simulation/chapter-35-fast-virus-signature-matching-gpu">Chapter 35. Fast Virus Signature Matching on the GPU</a>
+          </li>
+        </ul>
+      </li>
+    <li class="">
+      <a href="/gpugems/gpugems3/part-vi-gpu-computing">Part VI: GPU Computing</a>
+    </li>
+      <li>
+        <ul>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-vi-gpu-computing/chapter-36-aes-encryption-and-decryption-gpu">Chapter 36. AES Encryption and Decryption on the GPU</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-vi-gpu-computing/chapter-37-efficient-random-number-generation-and-application">Chapter 37. Efficient Random Number Generation and Application Using CUDA</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-vi-gpu-computing/chapter-38-imaging-earths-subsurface-using-cuda">Chapter 38. Imaging Earth&#39;s Subsurface Using CUDA</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda">Chapter 39. Parallel Prefix Sum (Scan) with CUDA</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-vi-gpu-computing/chapter-40-incremental-computation-gaussian">Chapter 40. Incremental Computation of the Gaussian</a>
+          </li>
+          <li class="">
+            <a href="/gpugems/gpugems3/part-vi-gpu-computing/chapter-41-using-geometry-shader-compact-and-variable-length">Chapter 41. Using the Geometry Shader for Compact and Variable-Length GPU Feedback</a>
+          </li>
+        </ul>
+      </li>
+    <li class="">
+      <a href="/gpugems/gpugems3/preface">Preface</a>
+    </li>
+</ul>
+
+    </div>
+  </div>
+</div>
+
+
+
+    
+    <script src="https://developer.nvidia.com/assets/nv-developer-menu-8ae864e49d5d53c328146a66e7ad6d73242af7511f642a7d1aa1ffedd496f826.js"></script>
+  <div id='footer' class='mt-auto'></div>
+  <script src="https://www.nvidia.com/content/dam/en-zz/Solutions/librarian/bundle-search-prod-pub-v3.1.js"></script>
+  <div id="librarian-overlay"></div>
+  <script defer>
+    setTimeout(() => {
+      LIBRARIAN.Home.mount({
+        elementId: 'librarian-overlay',
+        searchPage: false,
+        placeholder: '',
+        site: 'https://developer.nvidia.com',
+        retainFilters: true,
+        overlay: true,
+        pillsOpen: true,
+        suggestedSearchPills: []
+      })
+    }, 1000)
+  </script>
+<script>
+  let menuLocale = 'en';
+
+  if (menuLocale == 'en') {
+    menuLocale = 'en-US';
+  }
+
+  function mountHeader(data = false) {
+    const headerTarget = document.getElementById('header');
+    if (!headerTarget) {
+      return;
+    }
+    let options = {
+      baseURL: window.location.origin,
+      signedIn: false,
+      locale: menuLocale
+    };
+
+    if (data) {
+      options.secondaryMenu = data;
+    }
+
+
+    options.showMembershipCardLink = true;
+
+    new NVDeveloperHeader({
+      target: headerTarget,
+      props: options
+    });
+  }
+
+  function mountFooter(data = false) {
+    const footerTarget = document.getElementById('footer');
+    if (!footerTarget) {
+      return;
+    }
+    let options = {
+      menu: data,
+      locale: menuLocale
+    };
+
+    new NVDeveloperFooter({
+      target: document.getElementById('footer'),
+      props: options
+    });
+  }
+
+  let url = 'd29g4g2dyqv443.cloudfront.net';
+  let headerMenuURL = "https://d29g4g2dyqv443.cloudfront.net/menu/en-US/header-secondary.json";
+
+  if (headerMenuURL) {
+    fetch(headerMenuURL)
+      .then(response => response.json())
+      .then(data => {
+        mountHeader(data);
+      })
+      .catch((error) => {
+        mountHeader();
+        window.nv.tracing.addError('menu', error);
+      });
+  } else {
+    mountHeader();
+  }
+
+  fetch(`https://${url}/menu/${menuLocale}/footer.json`)
+    .then(response => response.json())
+    .then(data => {
+      mountFooter(data);
+    })
+    .catch((error) => {
+      mountFooter();
+      window.nv.tracing.addError('menu', error);
+    });
+</script>
+
+      <script src="https://www.datadoghq-browser-agent.com/us1/v5/datadog-rum.js"></script>
+
+    
+    
+      <script>
+  let silentAuthHost = 'www.nvidia.com';
+  let crossOriginPageUrl = `https://${silentAuthHost}/auth/hints/`;
+
+  function readHint() {
+    return new Promise((resolve) => {
+      const { origin: targetOrigin } = new URL(crossOriginPageUrl);
+
+      const iframe = document.createElement('iframe');
+      iframe.hidden = true;
+      iframe.src = crossOriginPageUrl;
+
+      function responseHandler(event) {
+        if (event.origin === targetOrigin) {
+          iframe.parentNode.removeChild(iframe);
+          return resolve(event.data);
+        }
+      }
+
+      window.addEventListener('message', responseHandler, { once: true });
+
+      iframe.onload = () => {
+        iframe.contentWindow.postMessage({ type: 'read' }, targetOrigin);
+      }
+
+      document.body.appendChild(iframe);
+    });
+  }
+
+  function writeHint(login_hint, idp_id, timestamp, sub) {
+    const { origin: targetOrigin } = new URL(crossOriginPageUrl);
+
+    const iframe = document.createElement('iframe');
+    iframe.hidden = true;
+    iframe.src = crossOriginPageUrl;
+
+    iframe.onload = () => {
+      const message = { type: 'write', login_hint, idp_id, timestamp, sub };
+      iframe.contentWindow.postMessage(message, targetOrigin);
+    }
+
+    document.body.appendChild(iframe);
+  }
+
+  function deleteHint() {
+    const { origin: targetOrigin } = new URL(crossOriginPageUrl);
+
+    const iframe = document.createElement('iframe');
+    iframe.hidden = true;
+    iframe.src = crossOriginPageUrl;
+
+    iframe.onload = () => {
+      iframe.contentWindow.postMessage({ type: 'delete' }, targetOrigin);
+    }
+
+    document.body.appendChild(iframe);
+  }
+
+
+</script>
+
+    <script>_satellite.pageBottom();</script>
+    <script src="https://api-prod.nvidia.com/search/nvidia-search-library.js"></script>
+
+    <script src="https://developer.nvidia.com/assets/nv-gallery-widget-d1571cad15d961fd3ba013f57119be04a2adf32aa31b16be44a0f10f4671c37b.js"></script>
+    <script src="https://developer.nvidia.com/packs/js/runtime-f904b50470fcb0ec9bf4.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/4692-e2ed051c68e93113bb58.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/2681-6ac336ff34441936c0fb.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/2778-e8f3c5f27fbb1956fdb2.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/9878-baa65d618824b708a55b.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/8465-f321c9c28242e4383fa8.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/4622-1cd0dbd2a0f0b5243900.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/3566-c56dfeed5cc4ed4a9b8f.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/486-1ddc749b634c231b0122.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/8311-71b2da0387dad11f356f.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/1252-6d8bb3f37b33aca41843.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/8823-bac8f579788282b3f2cd.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/2104-29621183e9a96bb055ad.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/6900-b1b00a8ef19d3868862c.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/application-afbb46c9b6cc3093d8f1.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/ls_track-d4505a41101e752062c8.js" defer="defer"></script>
+<script src="https://developer.nvidia.com/packs/js/highlight-94c491bbd748f7a71f70.js" defer="defer"></script>
+  </body>
+</html>
