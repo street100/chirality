@@ -1,0 +1,133 @@
+
+<!doctype html>
+<html dir="ltr" lang="en-US">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" media="all"
+	  href="style.css?v=970e63c7adfc" />
+    <link rel="stylesheet" type="text/css" media="all"
+	  href="mathjax.css?v=7b9f9ea4f236" />
+    <link rel="alternate" type="application/rss+xml"
+	  title="RSS Feed for ssp.impulsetrain.com"
+	  href="rss.xml">
+    <link rel="alternate" type="application/atom+xml"
+	  title="Atom Feed for ssp.impulsetrain.com"
+	  href="atom.xml">
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <title>Gamma Correction vs. Premultiplied Pixels &ndash; Søren Sandmann Pedersen</title>
+  </head>
+
+  <body class="home blog">
+    <div id="wrapper">
+      <div id="header">
+	<div id="titlecontainer">
+	  <h1 id="site-title">
+	    <span>
+	      <a href="/" class="title">
+		Søren Sandmann Pedersen
+	      </a>
+	    </span>
+	  </h1>
+	</div>
+      </div>
+      
+      <div id="main">
+	<div id="container">
+	  <div id="content" role="main">
+	    
+
+
+
+<div class="post">
+  <h1 class="entry-title">Gamma Correction vs. Premultiplied Pixels</h1>
+  <div class="entry-meta">
+    August 2011
+  </div>
+  <div class="entry-content">
+    <p>Pixels with 8 bits per channel are normally sRGB encoded because that
+allocates more bits to darker colors where human vision is the most
+sensitive. (Actually, it&rsquo;s really more of a historical accident, but
+sRGB nevertheless remains useful for this reason). The relationship
+between sRGB and linear RGB is that you get an sRGB pixel by raising
+each component of a linear pixel to the power of <span class="math-with-punctuation"><mjx-container class="MathJax" jax="CHTML"><mjx-math class=" MJX-TEX"><mjx-mn class="mjx-n"><mjx-c class="mjx-c31"></mjx-c></mjx-mn><mjx-TeXAtom texclass="ORD"><mjx-mo class="mjx-n"><mjx-c class="mjx-c2F"></mjx-c></mjx-mo></mjx-TeXAtom><mjx-mn class="mjx-n"><mjx-c class="mjx-c32"></mjx-c><mjx-c class="mjx-c2E"></mjx-c><mjx-c class="mjx-c32"></mjx-c></mjx-mn></mjx-math></mjx-container>.</span></p>
+<p>It is common for graphics software to perform alpha blending directly
+on these sRGB pixels using alpha values that are linearly coded (ie.,
+an alpha value of 0 means no coverage, 0.5 means half coverage, and 1
+means full coverage). Because alpha blending is best done with
+premultiplied pixels, such systems store pixels in this format:</p>
+<blockquote>
+<p><span class="math-with-punctuation"><mjx-container class="MathJax" jax="CHTML"><mjx-math class=" MJX-TEX"><mjx-mrow><mjx-mo class="mjx-lop"><mjx-c class="mjx-c5B TEX-S2"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.167em;"></mjx-mspace></mjx-mstyle><mjx-mi class="mjx-i"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n"><mjx-c class="mjx-c2C"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.5em;"></mjx-mspace></mjx-mstyle><mjx-mi class="mjx-i" space="2"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n" space="3"><mjx-c class="mjx-c22C5"></mjx-c></mjx-mo><mjx-msup space="3"><mjx-mtext class="mjx-n"><mjx-c class="mjx-c52"></mjx-c></mjx-mtext><mjx-script style="vertical-align: 0.41em;"><mjx-TeXAtom size="s" texclass="ORD"><mjx-mn class="mjx-n"><mjx-c class="mjx-c31"></mjx-c></mjx-mn><mjx-TeXAtom texclass="ORD"><mjx-mo class="mjx-n"><mjx-c class="mjx-c2F"></mjx-c></mjx-mo></mjx-TeXAtom><mjx-mn class="mjx-n"><mjx-c class="mjx-c32"></mjx-c><mjx-c class="mjx-c2E"></mjx-c><mjx-c class="mjx-c32"></mjx-c></mjx-mn></mjx-TeXAtom></mjx-script></mjx-msup><mjx-mo class="mjx-n"><mjx-c class="mjx-c2C"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.5em;"></mjx-mspace></mjx-mstyle><mjx-mi class="mjx-i" space="2"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n" space="3"><mjx-c class="mjx-c22C5"></mjx-c></mjx-mo><mjx-msup space="3"><mjx-mtext class="mjx-n"><mjx-c class="mjx-c47"></mjx-c></mjx-mtext><mjx-script style="vertical-align: 0.432em;"><mjx-TeXAtom size="s" texclass="ORD"><mjx-mn class="mjx-n"><mjx-c class="mjx-c31"></mjx-c></mjx-mn><mjx-TeXAtom texclass="ORD"><mjx-mo class="mjx-n"><mjx-c class="mjx-c2F"></mjx-c></mjx-mo></mjx-TeXAtom><mjx-mn class="mjx-n"><mjx-c class="mjx-c32"></mjx-c><mjx-c class="mjx-c2E"></mjx-c><mjx-c class="mjx-c32"></mjx-c></mjx-mn></mjx-TeXAtom></mjx-script></mjx-msup><mjx-mo class="mjx-n"><mjx-c class="mjx-c2C"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.5em;"></mjx-mspace></mjx-mstyle><mjx-mi class="mjx-i" space="2"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n" space="3"><mjx-c class="mjx-c22C5"></mjx-c></mjx-mo><mjx-msup space="3"><mjx-mtext class="mjx-n"><mjx-c class="mjx-c42"></mjx-c></mjx-mtext><mjx-script style="vertical-align: 0.41em;"><mjx-TeXAtom size="s" texclass="ORD"><mjx-mn class="mjx-n"><mjx-c class="mjx-c31"></mjx-c></mjx-mn><mjx-TeXAtom texclass="ORD"><mjx-mo class="mjx-n"><mjx-c class="mjx-c2F"></mjx-c></mjx-mo></mjx-TeXAtom><mjx-mn class="mjx-n"><mjx-c class="mjx-c32"></mjx-c><mjx-c class="mjx-c2E"></mjx-c><mjx-c class="mjx-c32"></mjx-c></mjx-mn></mjx-TeXAtom></mjx-script></mjx-msup><mjx-mstyle><mjx-mspace style="width: 0.167em;"></mjx-mspace></mjx-mstyle><mjx-mo class="mjx-lop"><mjx-c class="mjx-c5D TEX-S2"></mjx-c></mjx-mo></mjx-mrow></mjx-math></mjx-container>,</span></p>
+</blockquote>
+<p>that is, the alpha channel is linearly coded, while the R, G, and B
+channels are first sRGB coded, then premultiplied with the linear
+alpha.  This works well as long as you are happy with blending in
+sRGB. And if you discard the alpha channel of such pixels and display
+them directly on a monitor, it will look as if the pixels were alpha
+blended (in sRGB space) on top of a black background, which is the
+desired result.</p>
+<p>But what if you want to blend in linear RGB? If you use the format
+above, some expensive conversions will be required. To convert to
+premultiplied linear, you have to first divide by alpha, then raise
+each color to 2.2, then multiply by alpha. To convert back, you must
+divide by alpha, raise to <span class="math-with-punctuation"><mjx-container class="MathJax" jax="CHTML"><mjx-math class=" MJX-TEX"><mjx-mn class="mjx-n"><mjx-c class="mjx-c31"></mjx-c></mjx-mn><mjx-TeXAtom texclass="ORD"><mjx-mo class="mjx-n"><mjx-c class="mjx-c2F"></mjx-c></mjx-mo></mjx-TeXAtom><mjx-mn class="mjx-n"><mjx-c class="mjx-c32"></mjx-c><mjx-c class="mjx-c2E"></mjx-c><mjx-c class="mjx-c32"></mjx-c></mjx-mn></mjx-math></mjx-container>,</span> then multiply with alpha.</p>
+<p>Those conversions can be avoided if you store the pixels linearly,
+ie., keeping the premultiplication, but coding red, green, and blue
+linearly instead of as sRGB:</p>
+<blockquote>
+<p><span class="math-with-punctuation"><mjx-container class="MathJax" jax="CHTML"><mjx-math class=" MJX-TEX"><mjx-mrow><mjx-mo class="mjx-n"><mjx-c class="mjx-c5B"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.167em;"></mjx-mspace></mjx-mstyle><mjx-mi class="mjx-i"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n"><mjx-c class="mjx-c2C"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.5em;"></mjx-mspace></mjx-mstyle><mjx-mi class="mjx-i" space="2"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n" space="3"><mjx-c class="mjx-c22C5"></mjx-c></mjx-mo><mjx-mtext class="mjx-n" space="3"><mjx-c class="mjx-c52"></mjx-c></mjx-mtext><mjx-mo class="mjx-n"><mjx-c class="mjx-c2C"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.5em;"></mjx-mspace></mjx-mstyle><mjx-mi class="mjx-i" space="2"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n" space="3"><mjx-c class="mjx-c22C5"></mjx-c></mjx-mo><mjx-mtext class="mjx-n" space="3"><mjx-c class="mjx-c47"></mjx-c></mjx-mtext><mjx-mo class="mjx-n"><mjx-c class="mjx-c2C"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.5em;"></mjx-mspace></mjx-mstyle><mjx-mi class="mjx-i" space="2"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n" space="3"><mjx-c class="mjx-c22C5"></mjx-c></mjx-mo><mjx-mtext class="mjx-n" space="3"><mjx-c class="mjx-c42"></mjx-c></mjx-mtext><mjx-mstyle><mjx-mspace style="width: 0.167em;"></mjx-mspace></mjx-mstyle><mjx-mo class="mjx-n"><mjx-c class="mjx-c5D"></mjx-c></mjx-mo></mjx-mrow></mjx-math></mjx-container>.</span></p>
+</blockquote>
+<p>This makes blending fast, but 8 bits per channel is no longer good
+enough. Without the sRBG encoding, too much resolution will be lost in
+darker tones. And to display these pixels on a monitor, they have to
+first be converted to sRGB, either manually, or, if the video card can
+scan them out directly, by setting the gamma ramp appropriately.</p>
+<p>Can we get the best of both worlds? Yes. The format to use is this:</p>
+<blockquote>
+<p><span class="math-with-punctuation"><mjx-container class="MathJax" jax="CHTML"><mjx-math class=" MJX-TEX"><mjx-mrow><mjx-mo class="mjx-lop"><mjx-c class="mjx-c5B TEX-S2"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.167em;"></mjx-mspace></mjx-mstyle><mjx-mi class="mjx-i"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n"><mjx-c class="mjx-c2C"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.5em;"></mjx-mspace></mjx-mstyle><mjx-mo class="mjx-n" space="2"><mjx-c class="mjx-c28"></mjx-c></mjx-mo><mjx-mi class="mjx-i"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n" space="3"><mjx-c class="mjx-c22C5"></mjx-c></mjx-mo><mjx-mtext class="mjx-n" space="3"><mjx-c class="mjx-c52"></mjx-c></mjx-mtext><mjx-msup><mjx-mo class="mjx-n"><mjx-c class="mjx-c29"></mjx-c></mjx-mo><mjx-script style="vertical-align: 0.363em;"><mjx-TeXAtom size="s" texclass="ORD"><mjx-mn class="mjx-n"><mjx-c class="mjx-c31"></mjx-c></mjx-mn><mjx-TeXAtom texclass="ORD"><mjx-mo class="mjx-n"><mjx-c class="mjx-c2F"></mjx-c></mjx-mo></mjx-TeXAtom><mjx-mn class="mjx-n"><mjx-c class="mjx-c32"></mjx-c><mjx-c class="mjx-c2E"></mjx-c><mjx-c class="mjx-c32"></mjx-c></mjx-mn></mjx-TeXAtom></mjx-script></mjx-msup><mjx-mo class="mjx-n"><mjx-c class="mjx-c2C"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.5em;"></mjx-mspace></mjx-mstyle><mjx-mo class="mjx-n" space="2"><mjx-c class="mjx-c28"></mjx-c></mjx-mo><mjx-mi class="mjx-i"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n" space="3"><mjx-c class="mjx-c22C5"></mjx-c></mjx-mo><mjx-mtext class="mjx-n" space="3"><mjx-c class="mjx-c47"></mjx-c></mjx-mtext><mjx-msup><mjx-mo class="mjx-n"><mjx-c class="mjx-c29"></mjx-c></mjx-mo><mjx-script style="vertical-align: 0.363em;"><mjx-TeXAtom size="s" texclass="ORD"><mjx-mn class="mjx-n"><mjx-c class="mjx-c31"></mjx-c></mjx-mn><mjx-TeXAtom texclass="ORD"><mjx-mo class="mjx-n"><mjx-c class="mjx-c2F"></mjx-c></mjx-mo></mjx-TeXAtom><mjx-mn class="mjx-n"><mjx-c class="mjx-c32"></mjx-c><mjx-c class="mjx-c2E"></mjx-c><mjx-c class="mjx-c32"></mjx-c></mjx-mn></mjx-TeXAtom></mjx-script></mjx-msup><mjx-mo class="mjx-n"><mjx-c class="mjx-c2C"></mjx-c></mjx-mo><mjx-mstyle><mjx-mspace style="width: 0.5em;"></mjx-mspace></mjx-mstyle><mjx-msup space="2"><mjx-mrow><mjx-mo class="mjx-n"><mjx-c class="mjx-c28"></mjx-c></mjx-mo><mjx-mi class="mjx-i"><mjx-c class="mjx-c1D6FC TEX-I"></mjx-c></mjx-mi><mjx-mo class="mjx-n" space="3"><mjx-c class="mjx-c22C5"></mjx-c></mjx-mo><mjx-mtext class="mjx-n" space="3"><mjx-c class="mjx-c42"></mjx-c></mjx-mtext><mjx-mo class="mjx-n"><mjx-c class="mjx-c29"></mjx-c></mjx-mo></mjx-mrow><mjx-script style="vertical-align: 0.477em;"><mjx-TeXAtom size="s" texclass="ORD"><mjx-mn class="mjx-n"><mjx-c class="mjx-c31"></mjx-c></mjx-mn><mjx-TeXAtom texclass="ORD"><mjx-mo class="mjx-n"><mjx-c class="mjx-c2F"></mjx-c></mjx-mo></mjx-TeXAtom><mjx-mn class="mjx-n"><mjx-c class="mjx-c32"></mjx-c><mjx-c class="mjx-c2E"></mjx-c><mjx-c class="mjx-c32"></mjx-c></mjx-mn></mjx-TeXAtom></mjx-script></mjx-msup><mjx-mstyle><mjx-mspace style="width: 0.167em;"></mjx-mspace></mjx-mstyle><mjx-mo class="mjx-lop"><mjx-c class="mjx-c5D TEX-S2"></mjx-c></mjx-mo></mjx-mrow></mjx-math></mjx-container>,</span></p>
+</blockquote>
+<p>The alpha channel is stored linearly, and the color channels are first
+premultiplied with the linear alpha, then raised to <span class="math-with-punctuation"><mjx-container class="MathJax" jax="CHTML"><mjx-math class=" MJX-TEX"><mjx-mn class="mjx-n"><mjx-c class="mjx-c31"></mjx-c></mjx-mn><mjx-TeXAtom texclass="ORD"><mjx-mo class="mjx-n"><mjx-c class="mjx-c2F"></mjx-c></mjx-mo></mjx-TeXAtom><mjx-mn class="mjx-n"><mjx-c class="mjx-c32"></mjx-c><mjx-c class="mjx-c2E"></mjx-c><mjx-c class="mjx-c32"></mjx-c></mjx-mn></mjx-math></mjx-container>.</span></p>
+<p>With this format, 8 bits per channel is sufficient. Discarding the
+alpha channel and displaying the pixels directly on a monitor will
+look as if the pixels were alpha blended (in linear space) against
+black, as desired.</p>
+<p>You can convert to linear RGB simply by raising the R, G, and B
+components to 2.2, and back by raising to <span class="math-with-punctuation"><mjx-container class="MathJax" jax="CHTML"><mjx-math class=" MJX-TEX"><mjx-mn class="mjx-n"><mjx-c class="mjx-c31"></mjx-c></mjx-mn><mjx-TeXAtom texclass="ORD"><mjx-mo class="mjx-n"><mjx-c class="mjx-c2F"></mjx-c></mjx-mo></mjx-TeXAtom><mjx-mn class="mjx-n"><mjx-c class="mjx-c32"></mjx-c><mjx-c class="mjx-c2E"></mjx-c><mjx-c class="mjx-c32"></mjx-c></mjx-mn></mjx-math></mjx-container>.</span> Or, if you feel
+like cheating, use an exponent of 2 so that the conversions become a
+multiplication and a square root respectively.</p>
+<p>This is also the pixel format to use with texture samplers that
+implement the sRGB OpenGL extensions
+(<a href="http://www.opengl.org/registry/specs/EXT/texture_sRGB.txt">textures</a>
+and
+<a href="http://www.opengl.org/registry/specs/ARB/framebuffer_sRGB.txt">framebuffers</a>). These
+extensions say precisely that the R, G, and B components are raised to
+2.2 before texture filtering, and raised to 1/2.2 after the final
+raster operation.</p>
+  </div>
+  <footer class="post-navigation">
+    <div><a class="next-post" href="translucency.html">Over is not Translucency</a></div>
+    <div><a class="prev-post" href="16bit.html">Fast Multiplication of Normalized 16 bit Numbers with SSE2</a></div>
+    <div class="post-footer-links">
+      <a href="mailto:soren.sandmann@gmail.com">soren.sandmann@gmail.com</a>
+      <span class="post-footer-site-links">
+        <a href="rss.xml">RSS</a>
+        <a href="atom.xml">Atom</a>
+        <a href="/">Archive</a>
+      </span>
+    </div>
+  </footer>
+</div>
+
+	  </div>
+	</div>
+	
+      </div>
+    </div>
+    <script src="//static.getclicky.com/js" type="text/javascript"></script>
+    <script type="text/javascript">try{ clicky.init(100629850); }catch(e){}</script>
+    <noscript><p><img alt="Clicky" width="1" height="1"
+		      src="//in.getclicky.com/100629850ns.gif"
+		      /></p></noscript>
+  </body>
+</html>
