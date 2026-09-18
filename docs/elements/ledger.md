@@ -181,6 +181,7 @@ element a side-project consumes tags `→TUI`; a side-project's core-delta
 | E120 | pool | built | Native `Pool` write/read/close bodies + `[base\|size]` cell witness — needs the E122 mint; shared by E107/E111/E113 | →TUI | SH |
 | E122 | pool | built | Native `pool-create` (memfd→ftruncate→mmap→box `[base\|size\|fd]`) — split from E120; the mint E120/E107/E111/E113 gate on | →TUI | SH |
 | E132 | loader | design | Runtime dynamic loading ("Knob 1"): a resident binary loads a freshly-compiled artifact at runtime (E20 mmap floor + E51 symbol resolve) — unblocks I3 self-extend hot-acquire and scriba S11 init-file load | →TUI | SH |
+| E200 | bytes | design | The coverage composite: one span write, one allocation | ←E25, →E82 | SH |
 
 ## SYS · Syscall crossings
 
