@@ -8,8 +8,8 @@
 - level:    element
 - about:    E22
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E22 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E22. Title: Memory allocator / region types / GC-outside-TCB (beyond the bump arena) ⚑ RULED 2026-09-18 under the author's homing call of 2026-09-10: E22 now holds a named roster row, `substrate-floor/SU15`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E22 is false as of the commit that homed it.
-- evidence: docs/elements/catalog.md:125, docs/elements/ledger.md:162, docs/arcs/substrate-floor-arc.md:192
+- measured: no file in docs/arcs/ names E22. Title: Memory allocator / region types / GC-outside-TCB (beyond the bump arena) ⚑ RULED 2026-09-18 under the author's homing call of 2026-09-10: E22 now holds a named roster row, `substrate-floor/SU15`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E22 is false as of the commit that homed it. ⚑ CORRECTED 2026-09-18, and the ruling above is untouched: the field was already false when it was written. `docs/arcs/memory-discipline-arc.md:26` and `:39` name E22, and that file carries `updated: 2026-09-06`, so a file under docs/arcs/ named E22 before `substrate-floor/SU15` homed it. The homing changed the claim above. This measurement was false before it.
+- evidence: docs/elements/catalog.md:128, docs/elements/ledger.md:164, docs/arcs/substrate-floor-arc.md:192, docs/arcs/memory-discipline-arc.md:26, :39
 - checked:  2026-09-18
 - owner:    `substrate-floor/SU15`
 - from:     none

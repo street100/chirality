@@ -8,16 +8,16 @@ updated: 2026-09-18
 
 # Arc: checker-core
 
-- goals: [[goals/self-hosting]], condition 5: "Every built element of the
-  compiler holds a roster row in an arc." The same goal's condition 4 is served
-  by requirements 1, 2 and 6 below, which state over this arc's own code the
-  reach and assertion the condition names. `docs/goals/self-hosting.md:91-96` is
-  the table that names this arc, unopened, as one of four subject arcs, and
-  `:83-89` gives it both conditions in one sentence: each would "roster the
-  elements of that subject that no arc rosters today, and state over the same
-  code the reach and assertion requirements condition 4 names". No second goal is
-  served. [[goals/readable-surface]] and [[goals/enforcement]] were each tested
-  against this roster and each is refused under *What this arc does not take*.
+- goals: [[goals/self-hosting]], condition 5: "Every built element of the compiler
+  holds a roster row in an arc." The same goal's condition 4 is served by
+  requirements 1, 2 and 6 below, which state over this arc's own code the reach
+  and assertion the condition names. `docs/goals/self-hosting.md:102-107` is the
+  table that names this arc as one of four subject arcs, opened 2026-09-18, and
+  `:92-100` gives it both conditions in one sentence: each "rosters the elements
+  of that subject that no other arc rosters, and states over the same code the
+  reach and assertion requirements condition 4 names". No second goal is served.
+  [[goals/readable-surface]] and [[goals/enforcement]] were each tested against
+  this roster and each is refused under *What this arc does not take*.
 - reserved element block: **none**. Every homeable row carries an element minted
   long before this file, and the arc-local ids per [[decisions/decision-work-ids]]
   spell the letters `CK`, for checker core, which is also this subject's category
@@ -403,7 +403,7 @@ count corrected from 13 to 18, and three sentences reading "The other three
 subject arcs" become two: condition 4's at `:62-64`, condition 5's at `:71-73`,
 and the twin at `:88-89`. The list of arcs opened in this shape at `:104-108`
 names five and becomes six. The same `⚑` at
-`docs/goals/self-hosting.md:110` already records that `docs/goals/README.md:48`
+`docs/goals/self-hosting.md:124` already records that `docs/goals/README.md:48`
 is owed the matching change.
 
 ⚑ **`ledger-lint` check AH raises thirteen violations against this roster and

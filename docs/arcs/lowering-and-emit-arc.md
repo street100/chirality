@@ -11,14 +11,14 @@ updated: 2026-09-18
 - goals: [[goals/self-hosting]], condition 5: "Every built element of the
   compiler holds a roster row in an arc." The same goal's condition 4 is served
   by requirements 1, 2 and 3 below, which state over this arc's own code the
-  reach and assertion that condition names. `docs/goals/self-hosting.md:91-96`
-  is the table that names this arc, unopened, as one of four subject arcs, and
-  `:83-89` gives it both conditions in one sentence: each would "roster the
-  elements of that subject that no arc rosters today, and state over the same
-  code the reach and assertion requirements condition 4 names". No second goal
-  is served. [[goals/enforcement]], [[goals/emitted-speed]] and
-  [[goals/independent-judgment]] were each tested against this roster and each is
-  refused under *What this arc does not take*. **Conditions 1 to 3 are not
+  reach and assertion that condition names. `docs/goals/self-hosting.md:102-107`
+  is the table that names this arc as one of four subject arcs, opened
+  2026-09-18, and `:92-100` gives it both conditions in one sentence: each
+  "rosters the elements of that subject that no other arc rosters, and states
+  over the same code the reach and assertion requirements condition 4 names". No
+  second goal is served. [[goals/enforcement]], [[goals/emitted-speed]] and
+  [[goals/independent-judgment]] were each tested against this roster and each
+  is refused under *What this arc does not take*. **Conditions 1 to 3 are not
   claimed**, and `LE24` states why while taking the phase that would gate them.
 - reserved element block: **none**. Twenty-three of the twenty-four rows carry an
   element minted long before this file, and the arc-local ids per
@@ -330,7 +330,7 @@ Run 2026-09-18 against the table above.
 ## FLAGs
 
 ⚑ **The compare's phase is argued here and its placement is the author's.**
-`docs/goals/self-hosting.md:199-208` carries the call, and its words are:
+`docs/goals/self-hosting.md:216-225` carries the call, and its words are:
 *"**The compare's phase has no owner, and `enforcement` does not hold it.** Read
 2026-09-17. [[goals/enforcement]]'s five conditions and [[arcs/enforcement-arc]]'s
 six requirements reach ENFORCED ledger rows, the typed-assembly floor on the
@@ -391,8 +391,8 @@ closure. `ledger-lint` check AB pairs the catalog's build column against the
 ledger's state column and reports zero issues, so both drifted in the direction AB
 cannot see. Four further citations are stale, listed under requirement 4. Neither
 file is in this run's write scope. [[arcs/sys-face-arc]] found four of this class
-on 2026-09-17 and [[arcs/checker-core-arc]] four on 2026-09-18, which makes
-fourteen in three arcs.
+on 2026-09-17, [[arcs/checker-core-arc]] four and [[arcs/substrate-floor-arc]] two
+on 2026-09-18, which makes twelve in four arcs.
 
 ⚑ **`E94`'s two authorities disagree and neither carries a measurement.** The
 ledger reads `flight` and the catalog reads *"Not built"*. No count of forms or
@@ -414,7 +414,7 @@ from unopened to opened with its element count corrected from 13 to 23, the
 sentences reading "The other three subject arcs" become one, the honest limit's
 "39 of the compiler's own built elements" falls by this roster's nineteen
 non-exempt rows, and the list of arcs opened in this shape at `:104-108` gains a
-seventh. The `⚑` at `docs/goals/self-hosting.md:110` already records that
+seventh. The `⚑` at `docs/goals/self-hosting.md:124` already records that
 `docs/goals/README.md:48` is owed the matching change.
 
 ⚑ **`ledger-lint` check AH raises eight violations against this roster and every

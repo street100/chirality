@@ -42,6 +42,21 @@ finding never lands on an identifier or on a check name quoted in a doc. This
 section would trip `slop-word` if it spelled the eight words out, which is how
 that rule got written.
 
+### Citations
+
+A citation is outside `prose-lint`'s reach and `ledger-lint` reaches part of it.
+Check R content-checks a bare symbol against the file span cited beside it and
+fires where the span has drifted past the definition, which is the one citation
+defect the mechanical tier can decide. Check U checks that a quotation
+attributed to a file appears in that file. Check A checks that a cited path
+exists and check G checks that a cited line is inside it.
+
+**Nothing measures density, and density is the rule.** A claim about the tree
+carries the file and the line it was read off, inside the sentence that makes
+the claim. A count, a state, a behaviour and a quotation each owe one, so a
+paragraph of six claims owes six citations. No tool can tell that paragraph from
+one that owes none, which leaves the count to the writer and to the reviewer.
+
 ## What the linter cannot check
 
 It sorts, and a person decides each line. Every check matches a shape and a
@@ -66,6 +81,29 @@ These carry no check and still apply:
   measured. `docs/definitions/working-discipline.md` carries the reporting rule:
   failures with their output, skipped work named, "done" only when a gate ran.
 - **Commit messages.** What changed, what was verified, what was skipped.
+- **A citation reads as part of the sentence.** Appended as a mark it is
+  decoration: the sentence reads the same without it and nothing in the claim
+  breaks when the target moves. `docs/definitions/testing-floors.md:333` ends
+  *"where it refuses to rest a row on the promoted pair
+  (`scaffold/tests/test-module-kind.sh:504-508`)"*, and this tree holds no
+  `scaffold/` directory. That sentence survived its own evidence being deleted,
+  which is why nobody caught it and why `ledger-lint`'s 163 violations of
+  2026-09-18 name neither span. Woven in, a citation is the claim's subject or
+  its object and cutting it leaves no sentence:
+  `docs/decisions/decision-dispatch-cadence.md:89` opens
+  *"`docs/arcs/presentability-arc.md` says its two working queues "run serial,
+  one document and one agent at a time, by standing user directive""*. Write the
+  second kind, everywhere.
+- **Why the form is a correctness rule.** `records/findings.md` FD-28 surveyed
+  fifteen mechanisms for holding one rule single-sourced and found one that
+  fires on a carrier reasoning from a changed rule. The other fourteen see a
+  carrier that quotes the rule and miss a carrier that reasons from it.
+  `records/lenses/problems.md` PRB-85 is the worked instance: the one-arc
+  invariant was repaired at its prose home and in `ledger-lint`, and
+  `docs/decisions/decision-primitive-with-consumer.md:125-128` still argues from
+  the dead rule in the present tense under `## What this does not rule on`. An
+  appended citation is what lets a claim and its evidence drift apart with
+  nothing to catch it.
 
 ## The iteration
 

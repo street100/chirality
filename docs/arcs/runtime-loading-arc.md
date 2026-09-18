@@ -230,8 +230,8 @@ with the ledger.** `docs/banks/runtime.md:380` lists the *"W^X loader"* among
 the shards that are built and instructs the reader *"Do not describe the built
 shards as missing"*. `docs/elements/ledger.md:162` records the W^X half as NOT
 HELD, and `readelf -l bin/chirality-bin` reports a single `RWE` segment on
-2026-09-14. The bank is outside this run's write scope and the correction is
-owed.
+2026-09-14. The bank was outside that run's write scope. ⚑ Taken 2026-09-18:
+[[banks/runtime]] carries the demotion at all four mentions and at `:225-226`.
 
 ⚑ **This arc is unanchored on `arc -> goal done-condition`.**
 `docs/goals/local-ai.md` condition 2 names `[[arcs/scriba-arc]]` and no second

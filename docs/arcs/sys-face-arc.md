@@ -9,14 +9,14 @@ updated: 2026-09-17
 # Arc: sys-face
 
 - goals: [[goals/self-hosting]], condition 5: "Every built element of the
-  compiler holds a roster row in an arc." The same goal's condition 4 is served
-  by requirements 2 and 3 below, which state over this arc's own code the reach
-  and assertion the condition names. `docs/goals/self-hosting.md:86-91` is the
-  table that names this arc, unopened, as one of four subject arcs, and
-  `:79-84` gives it both conditions in one sentence: each would "roster the
-  elements of that subject that no arc rosters today, and state over the same
-  code the reach and assertion requirements condition 4 names". No second goal
-  is served.
+  compiler holds a roster row in an arc." The same goal's condition 4 is
+  served by requirements 2 and 3 below, which state over this arc's own code
+  the reach and assertion the condition names.
+  `docs/goals/self-hosting.md:102-107` is the table that names this arc as one
+  of four subject arcs, opened 2026-09-17, and `:92-100` gives it both
+  conditions in one sentence: each "rosters the elements of that subject that
+  no other arc rosters, and states over the same code the reach and assertion
+  requirements condition 4 names". No second goal is served.
 - reserved element block: **none**. Every homeable row carries an element minted
   long before this file, and the arc-local ids per [[decisions/decision-work-ids]]
   spell the letters `SF`, for sys-face: `sys-face/SF1` upward. A grep for `SF`
@@ -70,7 +70,7 @@ group G5 turns on. None is re-derived below.
 | G1 | the fd-passing floor, built and bound to nothing: `nb-sys-send-fd`, consed at `:1338`, permitted at `target-linux.manifest:40` | `lib/lowering/tal/sys.chiral:366` | IMPLEMENTED |
 | G1 | nothing for filesystem mutation. `unlink`, `rename` and `mkdir` have no TAL body, no registered number and no extern | measured 2026-09-17 | absent |
 | G2 the sheets | nine `.port` registries declaring **51 externs and 8 porttypes** between them, each with a header stating why its crossings live together | `lib/ports/clock.port`, `fd.port`, `file.port`, `pool.port`, `process.port`, `pty.port`, `sock.port`, `stdio.port`, `tty.port` | IMPLEMENTED |
-| G2 | all ten files of `lib/ports/` sit inside the compiler's import closure, which is 62 import targets resolved from `prog/compiler.prog` over `lib:prog` | measured 2026-09-17, method at `docs/goals/self-hosting.md:150-155` | ENFORCED |
+| G2 | all ten files of `lib/ports/` sit inside the compiler's import closure, which is 62 import targets resolved from `prog/compiler.prog` over `lib:prog` | measured 2026-09-17, method at `docs/goals/self-hosting.md:179-182` | ENFORCED |
 | G2 | `nb-read-key` is a real raw read: allocate one byte, take its pointer, `read(0, ptr, 1)`, branch on the return. ⚑ `docs/elements/catalog.md:425` still states E98 as "Partially built" over stubs that "issue `read(fd,cell,0)` with NO bptr" | `lib/lowering/tal/sys.chiral:543-558` | IMPLEMENTED |
 | G2 | the per-family ioctl surface allocates inside and returns a fresh cell: `nb-sys-tcgets` sets its 60-byte length as a slot, `ti-bnew`s the cell, passes its pointer. No generic `ioctl` extern survives anywhere in `lib/` or `prog/`. ⚑ `docs/elements/catalog.md:426` still states E99 as "Partially built" over "one generic 3-arg ioctl crossing" | `lib/lowering/tal/sys.chiral`, `nb-sys-tcgets-t` | IMPLEMENTED |
 | G2 | `termios-set-raw` is the full `cfmakeraw` equivalent: all four flag words masked, `CS8` set, `VMIN=1` and `VTIME=0` written, a fresh cell at every step. ⚑ `docs/elements/catalog.md:435` still states E103 as "Not built" and "clears only `c_lflag`" | `lib/protocol/term.chiral:97-108` | IMPLEMENTED |
@@ -343,7 +343,7 @@ as naming no arc whatever it links. So `lens.py chain` reports this file in that
 rung's uncovered set, which was 33 of 33 before this run and is 33 of 34 after.
 The goal file is outside this run's write scope and the edit is owed: conditions
 4 and 5 each name `[[arcs/sys-face-arc]]` and drop the word unopened. The same
-`⚑` at `docs/goals/self-hosting.md:104` already records that
+`⚑` at `docs/goals/self-hosting.md:124` already records that
 `docs/goals/README.md:48` is owed the matching change.
 
 ⚑ **Four catalog state cells disagree with the code this arc measured**, listed

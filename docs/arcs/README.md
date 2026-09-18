@@ -3,7 +3,7 @@ node: arcs
 layer: navigation
 related: [goals/README, index, records/README, status-ledger, elements/README]
 status: current
-updated: 2026-09-05
+updated: 2026-09-18
 ---
 
 # Arcs

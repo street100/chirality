@@ -4,7 +4,7 @@ layer: bank
 tier: depth
 related: [process-and-runtime, node-architecture, modules-broker, error-and-alarm, banks/profile, banks/module, vocabulary, glossary, status-ledger, open-edges]
 status: draft
-updated: 2026-09-04
+updated: 2026-09-18
 ---
 
 # Bank: runtime
@@ -75,7 +75,7 @@ artifact and a *designed* one:
 | **The supervisor** — critical sections, register-root custody, the scheduler | E42: the [[modules-broker]] component-broker as specified | **DESIGNED** for those three. ⚑ `lib/runtime/supervisor.chiral` exists as E42 v1, a coarse-`=>` supervised event loop with alarm-as-crossing; the three named halves have no referent in it ([[status-ledger]] line 208-211) |
 | **The node** — the running system as a peer in the graph | the process-at-system-scale of [[node-architecture]] | a *view*, not a separate artifact |
 | **The staged configuration** — this particular live wiring of modules | what a [[banks/profile]] stages via the CLI staging connector | the *result* of staging; changes per profile |
-| **The native execution substrate** — "what actually runs the metal" | the tal floor + W^X loader + sys-face, over the untyped B substrate | **BUILT** (host-mediated), see §2 |
+| **The native execution substrate** — "what actually runs the metal" | the tal floor + the E20 loader + sys-face, over the untyped B substrate | **BUILT** (host-mediated) and the loader's W^X half NOT HELD, see Shard F |
 
 The **hazard is named in the ledger itself**. [[status-ledger]] states what
 `lib/runtime/` actually holds: `poll.chiral`, `proc.chiral` and
@@ -212,8 +212,8 @@ runtime" need not be one place: a remote node is one you hold a port to.
 
 "What actually drives the metal." Refracted again into: the **tal floor** (typed
 assembly + trusted interpreter, E18/E19, BUILT/CONFORMS), the **x86-64 Mach
-emitter** (E19, BUILT), the **W^X loader** (E20, IMPLEMENTED but Python-mediated —
-REFACTOR to self-host), and the **sys-face syscall crossings** (E28,
+emitter** (E19, BUILT), the **E20 loader** (`built` in LEDGER, its
+W^X half demoted, measured below), and the **sys-face syscall crossings** (E28,
 `lib/lowering/tal/sys.chiral`,
 write/read/lseek/memfd/ftruncate/mmap/munmap built; mprotect/close missing). The
 untyped reality underneath — devices, RAM, the register root — is **category B
@@ -222,8 +222,8 @@ substrate is owned by nothing"). Note the honest TCB caveat from [[status-ledger
 even ENFORCED properties rest on the Linux-syscall host, and adversarial
 enforcement arrives with self-hosting (E51). ⚑ The CPython half of that caveat is
 spent: the oracle is cut and `bin/chirality-bin` is the compiler that compiles
-everything. The W^X row is separately demoted in [[status-ledger]], which measures
-the built path emitting one RWX `PT_LOAD`.
+everything. ⚑ **The W^X half is NOT HELD and every mention of the loader in this bank now says so**, which is the PRB-85 shape of `records/lenses/problems.md`: one invariant in four places and the correction reaching one. `docs/definitions/status-ledger.md:214` demotes the row, [[status-ledger]] measures the built path emitting one RWX `PT_LOAD` at `lib/lowering/x64/elf.chiral:59-60`, `readelf -l bin/chirality-bin` prints that one segment's flags as `RWE` and reports no other `LOAD`, measured 2026-09-18, and `docs/elements/ledger.md:464` files the same fact against `E20`.
+The loader's other half, `load-extern` link-at-load, is untouched by the demotion.
 
 ---
 
@@ -314,8 +314,8 @@ configuration-relative sum, mostly already built:
   the load-time half is `load-extern` (`lib/module/loader.chiral:457`);
 - **the staging connector that births it from a profile** — ⚑ **no live referent**
   (Shard C); `bin/chirality` knows nothing about profiles;
-- **the native execution substrate** (tal floor + Mach emitter + W^X loader +
-  sys-face) — BUILT, host-mediated (E18/E19/E20/E28);
+- **the native execution substrate** (tal floor + Mach emitter + the E20 loader +
+  sys-face) — BUILT, host-mediated (E18/E19/E20/E28), W^X NOT HELD (Shard F);
 - **the supervisor** (scheduler, critical sections, register-root custody) —
   those three **DESIGNED and absent** (E42), over a built v1 event loop
   (`lib/runtime/supervisor.chiral`), and it is the component **broker**, not a
@@ -374,7 +374,7 @@ Only the true gaps, with gradients preserved.
   extension).
 
 Everything else the word "runtime" reaches — evaluator, linker, staging connector,
-tal floor, Mach emitter, W^X loader, present sys-face crossings — is **built**. The
+tal floor, Mach emitter, the W^X loader whose W^X half is NOT HELD (Shard F), present sys-face crossings — is **built**. The
 residue is: the supervisor's scheduler/crit-sections/register-root, the
 broker's grant/revoke/audit, the binding-time modality, cross-node alarms, and
 self-hosting. Do not describe the built shards as missing; do not describe the

@@ -11,15 +11,15 @@ updated: 2026-09-18
 - goals: [[goals/self-hosting]], condition 5: "Every built element of the
   compiler holds a roster row in an arc." The same goal's condition 4 is served
   by requirements 1 and 2 below, which state over this arc's own code the reach
-  and assertion that condition names. `docs/goals/self-hosting.md:97-102` is the
-  table that names this arc, unopened, as the last of four subject arcs, and
-  `:83-89` gives it both conditions in one sentence: each would "roster the
-  elements of that subject that no arc rosters today, and state over the same
-  code the reach and assertion requirements condition 4 names". No second goal
-  is served. [[goals/local-ai]] and [[goals/enforcement]] were each tested
-  against this roster and each is refused under *What this arc does not take*.
-  **This arc claims conditions 4 and 5 alone.** A standing rule holds conditions
-  1 to 3 and that goal's §Arcs says so.
+  and assertion that condition names. `docs/goals/self-hosting.md:102-107` is
+  the table that names this arc as the last of four subject arcs, opened
+  2026-09-18, and `:92-100` gives it both conditions in one sentence: each
+  "rosters the elements of that subject that no other arc rosters, and states
+  over the same code the reach and assertion requirements condition 4 names".
+  No second goal is served. [[goals/local-ai]] and [[goals/enforcement]] were
+  each tested against this roster and each is refused under *What this arc does
+  not take*. **This arc claims conditions 4 and 5 alone.** A standing rule
+  holds conditions 1 to 3 and that goal's §Arcs says so.
 - reserved element block: **none**. All sixteen rows carry an element minted long
   before this file, and the arc-local ids per [[decisions/decision-work-ids]]
   spell the letters `SU`, for substrate: `substrate-floor/SU1` upward. `SB` was
@@ -405,8 +405,8 @@ substrate built; `:225-226` already records the demotion in [[status-ledger]] an
 *"the built path emitting one RWX `PT_LOAD`"*, so the bank disagrees with itself
 across its own sections. `readelf -l bin/chirality-bin` reports one `RWE`
 segment, re-verified 2026-09-18. [[arcs/runtime-loading-arc]] raised the same
-disagreement on 2026-09-14 and the correction is still owed. The bank is outside
-this run's write scope.
+disagreement on 2026-09-14. The bank was outside both runs' write scope. ⚑ Taken
+2026-09-18: all four mentions now carry the demotion `:225-226` already recorded.
 
 ⚑ **This arc is unanchored on `arc -> goal done-condition`.**
 `docs/goals/self-hosting.md` conditions 4 and 5 each name

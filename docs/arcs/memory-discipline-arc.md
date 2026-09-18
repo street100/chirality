@@ -3,7 +3,7 @@ node: arc-memory-discipline
 layer: navigation
 related: [arcs/README, goals/local-ai, goals/self-hosting, benchmarks/text-matcher-allocation, records/author-calls, status-ledger, index]
 status: current
-updated: 2026-09-06
+updated: 2026-09-18
 ---
 
 # Arc: the value-cell heap's discipline
@@ -23,7 +23,7 @@ allocation gap" with two arguable routes, when what it needed was an arc file.
 ## Why this arc exists
 
 chirality has two heaps and only one has a discipline seam. The byte-`Pool` heap
-is governed by `(memory linear|region)` profile clauses and was built as `E22`.
+is governed by `(memory linear|region)` profile clauses, which `E22` does not carry.
 The value-cell heap is governed by nothing. Every constructor bumps `heapptr`
 with no reclamation on any path a compiled program takes, so peak RSS equals
 total bytes ever allocated where it should equal the live set.
@@ -36,7 +36,7 @@ run survives it.
 | what | where | rung |
 |---|---|---|
 | the `Alloc` policy seam and `alloc-bump` | `E81`, built at `d6ad519` | IMPLEMENTED |
-| the byte-`Pool` discipline it parallels | `E22`, `(memory linear\|region)` | IMPLEMENTED |
+| the byte-`Pool` discipline it parallels | `lib/memory/mem-linear.chiral`, `(memory linear\|region)` | SEEDED, zero importers. ⚑ **This row read `E22` at IMPLEMENTED and §2 above said the discipline *"was built as `E22`"*, both corrected 2026-09-18.** `docs/elements/ledger.md:164` reads `design` and `docs/elements/catalog.md:128` reads *"bump arena only; region *types* deferred"*, so `E22` is the allocator, region types and GC-outside-TCB beyond the bump arena and carries neither profile clause. The clauses' home module has zero importers |
 | `mem-region`, the only reclamation discipline in the tree | `lib/memory/` | SEEDED, zero importers |
 | the `Mach` record-of-functions precedent the seam copies | `mach-x64`, `mach-listing` | ENFORCED |
 
