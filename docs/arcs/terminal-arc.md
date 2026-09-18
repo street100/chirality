@@ -3,7 +3,7 @@ node: arc-terminal
 layer: navigation
 related: [arcs/README, goals/display, goals/own-web, goals/local-ai, arcs/native-window-arc, arcs/canvas-arc, arcs/display-calculus-arc, arcs/vocabulary-arc, arcs/diagnostics-arc, arcs/scriba-arc, arcs/tool-authority-arc, banks/render, banks/port, banks/capability, decisions/decision-b-in-type, decisions/decision-work-ids, records/author-calls, records/homing-triage, status-ledger, index]
 status: current
-updated: 2026-09-15
+updated: 2026-09-17
 ---
 
 # Arc: the terminal
@@ -70,7 +70,10 @@ A fresh session's biggest risk is rebuilding the abandoned terminal/OS arc. **Do
 `E128`'s SPEC is implement-gated on that dropped port.
 `docs/elements/specs/E128-apc-handshake-SPEC.md:52` cites its signature to
 `TUI/docs/TERMINAL-PORT-DESIGN.md:109`, and neither that file nor the `TUI/`
-directory exists in this tree. Row `TM9` carries the call and answers none of it.
+directory exists in this tree. Row `TM9` carries the call. ⚑ **Half of it is
+answered as of 2026-09-17: the supervisor is `ports/ports`, declared at
+`lib/ports/ports.chiral:55` and the only `(cat C)` in the port tier.** What the
+signature names is the half that stands, and the row states it.
 
 **The vocabulary that states `TM9`'s question is
 [[decisions/decision-b-in-type]].** A pty and a tty fd are B referents, Linux
@@ -193,7 +196,7 @@ Six groups, in dependency order.
 | `terminal/TM6` | the grid and the parser reach a root outside `prog/scriba/samples/`. Both are built, both are SEEDED, and the four sample roots are reach into a gate | emulator | law | connect | 4 | open | `unminted` |
 | `terminal/TM7` | where the key decoder lives. `Key`, `KeySeq` and `Keymap` are declared at `lib/ports/tty.port:13-23` on the stated ground that a key is what the crossing yields, while the decode from `read-key`'s bytes sits in `prog/scriba/key-parser.chiral` | emulator | decision | connect | 4 | open | `unminted` |
 | `terminal/TM8` | every `→TUI:T#` cite resolves or retires. Nine ledger rows point into `TUI/CATALOG.md` and the directory is absent | record | decision | new | 5 | open | `unminted` |
-| `terminal/TM9` | which category C supervisor the terminal's B referents route through, and what that signature names. ⚑ **Author call, carried and unanswered.** [[decisions/decision-b-in-type]] holds the vocabulary, and this arc reads it against the terminal under *Why this arc exists*: the tty fd and the `Pty` master at `lib/ports/pty.port:14` are two referents of one surface, and `Terminal` is the C-side name. `.planning/MINI-RUSH-HANDOFF.md:45` refused B-level indirection over the host terminal in 2026-08 and reaches no C-side port, `E128`'s signature needs a surface it can query and read a reply from, and `canvas/G2` asks for a host that places a display list without owning the surface | port | decision | new | 3, 6 | open | `unminted` |
+| `terminal/TM9` | what the signature names, once the supervisor is fixed. ⚑ **The supervisor half is answered, 2026-09-17.** `lib/ports/ports.chiral:55` declares `(module ports/ports (cat C) (alt upper))`, and `grep -rn '(cat C)' lib/ports/` returns that line alone, so the category C supervisor the terminal's B referents route through is `ports/ports` and no second candidate was ever on offer. [[decisions/decision-b-in-type]] at `:26-29` requires every B use to route through a category C supervisor and names none itself, so the vocabulary asks for one and the port tier declares exactly one. **What stays with this row.** A `Terminal` is nothing in this tree, measured under *What the tree already holds*, and `E128`'s `(1 t Terminal)` needs a name over the two referents that section separates: the tty fd, and the `Pty` master at `lib/ports/pty.port:14`. Declaring a module coordinate on `tty.port` and `pty.port` routes them through `ports/ports` and mints no `Terminal`, which is why requirement 6 still has nothing holding it. `.planning/MINI-RUSH-HANDOFF.md:45` refused B-level indirection over the host terminal in 2026-08 and reaches no C-side port, and `canvas/G2` asks for a host that places a display list without owning the surface. **The adoption work belongs elsewhere.** `sys-face/SF20` at `docs/arcs/sys-face-arc.md:197` takes the coordinate across all nine `.port` sheets, measured by `records/lenses/problems.md` PRB-94, and that row is carried as blocked on the placement author call this arc quotes under FLAGs | port | decision | new | 3, 6 | open | `unminted` |
 
 ### Coverage
 
@@ -222,9 +225,10 @@ residue `docs/elements/catalog.md:439` has carried since E107 landed. `TM3` is
 what would have caught it. Neither waits on an author call.
 
 **What blocks the arc.** `TM4`, `TM5` and `TM9` stand behind a `Terminal`
-supervisor that no signature names. `TM4`'s SPEC cannot be executed as written:
-0 of 4 steps run at HEAD and every target is a `TUI/` path, per
-`records/spec-tier-triage.md:216`.
+that no signature names. The supervisor they route through is settled and is
+`ports/ports`; the name over the terminal's two referents is what is absent.
+`TM4`'s SPEC cannot be executed as written: 0 of 4 steps run at HEAD and every
+target is a `TUI/` path, per `records/spec-tier-triage.md:216`.
 Replanning it against `lib/protocol/apc.chiral` is the first move on that side,
 and it cannot finish while `TM9` is open.
 

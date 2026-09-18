@@ -4,7 +4,7 @@ layer: decision
 status: DECIDED
 decided: 2026-08-31
 related: [goals/ownership-and-trust, goals/self-hosting, goals/presentability, decisions/decision-self-verification, index]
-updated: 2026-09-13
+updated: 2026-09-17
 ---
 
 # Decision: the current track is self-hosting only
@@ -72,6 +72,16 @@ Homing an element is planning, so a deferred element still takes a roster row.
 this track was planned while unbuilt, and the rest of its rows are owed the same
 treatment.
 
+**The boundary past homing, ruled 2026-09-17.** A design under
+`docs/arcs/parts/` and a SPEC under `docs/elements/specs/` are planning too.
+`docs/decisions/decision-design-before-mint.md:75-86` lists the pipeline's
+stages and puts `implement` last at `:83`. A design and a SPEC both sit above
+that stage and neither one writes to `lib/` or `prog/`, so neither one
+implements an element. `build-deferred` in the table above is the whole of what
+the scope sentence defers. An `OT` element may therefore be designed and
+specced while its build waits for the track. The audit instruction is separate
+and stays as it is.
+
 A second pair comes with the author's instruction attached to the ruling. A
 deferred roster row records what is actually wanted when the track begins, and
 what stays deferred, and it names the blocking condition instead of the track.
@@ -127,6 +137,9 @@ a deferred one, and this decision does not cover it.
 
 The 2026-09-10 ruling reaches the first clause of the deferral instruction and
 stops there. "Do not audit its documents" is a second instruction standing on
-its own reason, and it is unchanged. The ruling named homing as planning and
-fixed no boundary past it, so whether a design or a SPEC for an `OT` element is
-planning under this decision is unsettled and belongs to the author.
+its own reason, and it is unchanged. ⚑ **Amended 2026-09-17: the boundary
+past homing is stated.** That ruling named homing as planning and fixed no
+boundary past it, so whether a design or a SPEC for an `OT` element is planning
+under this decision stood open here and belonged to the author. It is ruled,
+the section above carries the boundary, and [[records/author-calls]] carries
+the call beside its derivation.

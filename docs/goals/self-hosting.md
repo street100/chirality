@@ -185,10 +185,38 @@ answer is to promote the fixpoint rather than generation one
   built, N failed -- gates, but asserts nothing"*.
 - **No phase runs the fixpoint compare**, so conditions 1 to 3 are held by a
   discipline a person executes rather than by a check that fails. The BUILD RULE
-  is real and every compiler-source change owes it. Whether that still counts as
-  the standing-gate shape [[goals/README]] records under Rules is a call this
-  goal does not take, and it decides whether conditions 1 to 3 keep the
-  `none open` cell.
+  is real and every compiler-source change owes it. ⚑ **Ruled 2026-09-17: the
+  BUILD RULE is a discipline, and the compare owes a phase.** The vocabulary
+  holds as written. `docs/definitions/status-ledger.md:136-140` fixes ENFORCED
+  as gated and IMPLEMENTED as load-bearing with nothing failing when it breaks,
+  so a compare a person runs holds conditions 1 to 3 at IMPLEMENTED, and
+  [[goals/README]]'s standing-gate shape under Rules already names this goal's
+  case and already states that the first condition records the absent phase.
+  **The residue is work.** A phase that builds two generations from one blob and
+  compares them is what makes these three gate-held, and `docs/goals/README.md:48`
+  keeps `none open` until it exists: `26bf3be` measured that removing the cell
+  drops this goal from check AF's gated set and raises three fresh violations.
+- **The compare's phase has no owner, and `enforcement` does not hold it.** Read
+  2026-09-17. [[goals/enforcement]]'s five conditions and
+  [[arcs/enforcement-arc]]'s six requirements reach ENFORCED ledger rows, the
+  typed-assembly floor on the shipping path, the check agreeing with the compiler
+  it checks, the optimizer's re-check, the tooling ratio, and a named mutant per
+  gate row. None of the eleven names the fixpoint, the blob, or the BUILD RULE.
+  The nearest candidate in §Arcs is the unopened `lowering-and-emit`, whose
+  subject is whether the emitter's own parts are reached and gated at all. ⚑
+  **FLAG, author tier: naming that arc the owner is a placement call, and this
+  goal does not take it.** The phase is owed and unplaced.
+- **Phase 11's stated reason for being unported does not hold, measured
+  2026-09-17.** `tools/test/run-tests.sh:412` gives it as *"no committed blob
+  artifact to cmp against"*, and the compare
+  `docs/definitions/working-discipline.md:26-33` states puts two generations
+  built inside the run against each other, so the compare takes no committed
+  blob as an input. Both inputs it does take are tracked: `bin/chirality-bin` at
+  1,220,984 B, and `bin/chirality-resolve.sh`, whose `chirality_blob_file` at
+  `:269` regenerates the blob from the source tree. The owed phase is therefore a
+  wrapper over an existing procedure and existing artifacts, and its cost is the
+  compile time of two generations. The other half of that line, the unreachable
+  basename-collision class, is untested here and stands.
 - **A fixpoint shows stability. It says nothing about correctness.** That gap is
   [[goals/independent-judgment]].
 - **A `built` state cell is a claim, and its binding to evidence can miss
