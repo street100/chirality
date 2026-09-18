@@ -115,9 +115,9 @@ Five, each with the observation beside it, measured 2026-09-14.
 
 2. **Every artifact `E132`'s floor citation names resolves to code that does
    what the citation says.** Observed by reading each.
-   `docs/elements/catalog.md:463` names the `E20` mmap floor, and the ruling at
-   `records/author-calls.md:100` made that name resolve on 2026-09-18, which
-   leaves the requirement owing code rather than a name:
+   `docs/elements/catalog.md:463` names *"the E20 loader floor"*, and the
+   ruling at `records/author-calls.md:100` made that name resolve on
+   2026-09-18, which leaves the requirement owing code rather than a name:
    `docs/elements/ledger.md:162` files `E20` at `design` with no
    `lib/loader.chiral` under it, and `readelf -l bin/chirality-bin` reports one
    `RWE` segment, run 2026-09-14. The requirement stands unmet.
@@ -239,16 +239,18 @@ the compiler's own `lib/module/loader.chiral` nor `E132`'s `loader` cell at
 ruling. `E132` stays `design`, `RL2` stays `open`, and the floor `RL1` states is
 the same code it was.
 
-⚑ **[[banks/runtime]] and the `E20` ledger row still disagree, and the
-disagreement inverted.** The bank carried the W^X half as built until `9302d5a`
-demoted all four mentions, which `docs/banks/runtime.md:225-226` records. What
-it says about the ledger is now false in the other direction:
-`docs/banks/runtime.md:215` calls the **E20 loader** *"`built` in LEDGER"* and
-that cell has read `design` since `a4d98ce`, while `:377` still lists *"the W^X
-loader whose W^X half is NOT HELD"* among the shards that are **built**, under
-*"Do not describe the built shards as missing"* at `:380`. The bank is one of
-the thirteen carriers `records/author-calls.md:100` names and it is outside this
-run's write scope.
+⚑ **[[banks/runtime]] and the `E20` ledger row agree, and the disagreement this
+arc raised is closed.** The bank read the loader as built until `9302d5a`, then
+read the ledger the other way round for one day, calling the **E20 loader**
+*"`built` in LEDGER"* after `a4d98ce` had moved that cell to `design`. Both
+halves are repaired in place. `docs/banks/runtime.md:227-244` is the
+re-derivation: *"There is no loader in this shard"*, `E20` filed `map-seal` and
+`design` off `docs/elements/ledger.md:162`, and the shard rated **BUILT
+(host-mediated)** on what runs with the seal carried in §5 as residue. `:430-431`
+keeps *"Do not describe the built shards as missing"* and `:433-447` records the
+eighteen days that instruction stood over a list naming the loader among them.
+The bank was one of the carriers `records/author-calls.md:100` names and it has
+landed.
 
 ⚑ **This arc is unanchored on `arc -> goal done-condition`.**
 `docs/goals/local-ai.md` condition 2 names `[[arcs/scriba-arc]]` and no second
