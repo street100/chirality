@@ -75,7 +75,7 @@ artifact and a *designed* one:
 | **The supervisor** — critical sections, register-root custody, the scheduler | E42: the [[modules-broker]] component-broker as specified | **DESIGNED** for those three. ⚑ `lib/runtime/supervisor.chiral` exists as E42 v1, a coarse-`=>` supervised event loop with alarm-as-crossing; the three named halves have no referent in it ([[status-ledger]] line 208-211) |
 | **The node** — the running system as a peer in the graph | the process-at-system-scale of [[node-architecture]] | a *view*, not a separate artifact |
 | **The staged configuration** — this particular live wiring of modules | what a [[banks/profile]] stages via the CLI staging connector | the *result* of staging; changes per profile |
-| **The native execution substrate** — "what actually runs the metal" | the tal floor + the E20 loader + sys-face, over the untyped B substrate | **BUILT** (host-mediated) and the loader's W^X half NOT HELD, see Shard F |
+| **The native execution substrate** — "what actually runs the metal" | the tal floor + the x86-64 Mach emitter + sys-face, over the untyped B substrate | **BUILT** (host-mediated): `bin/chirality-bin` runs, and what loads it is the kernel. `E20` is not one of its parts — since `a4d98ce` that number names the *unbuilt* typed seal, `design`. W^X does not hold in the built path, see Shard F |
 
 The **hazard is named in the ledger itself**. [[status-ledger]] states what
 `lib/runtime/` actually holds: `poll.chiral`, `proc.chiral` and
@@ -170,7 +170,7 @@ in ([[banks/profile]] owns the detail):
   at `lib/memory/mem-linear.chiral` / `lib/memory/mem-region.chiral` (E22);
 - **`(total)` gate** — whether per-def termination is *enforced* for this staging
   (`tot-gate`, `lib/typing/totality-check.chiral:153`, reached from
-  `lib/lowering/compile-front.chiral:340`, E11).
+  `lib/lowering/compile-front.chiral:371`, E11).
 
 Two profiles over the same target stage two different runtimes. That is the axis in
 one sentence: *the runtime is a value of the staging function, and the profile is
@@ -208,22 +208,53 @@ node "*works the same whether the other node is on this CPU or across the mesh*"
 (Adhikara carries the capability over the wire — designed). This is why "the
 runtime" need not be one place: a remote node is one you hold a port to.
 
-### Shard F — the native execution substrate · **BUILT (host-mediated) / mixed**
+### Shard F — the native execution substrate · **BUILT (host-mediated) / the W^X seal unbuilt**
 
 "What actually drives the metal." Refracted again into: the **tal floor** (typed
 assembly + trusted interpreter, E18/E19, BUILT/CONFORMS), the **x86-64 Mach
-emitter** (E19, BUILT), the **E20 loader** (`built` in LEDGER, its
-W^X half demoted, measured below), and the **sys-face syscall crossings** (E28,
-`lib/lowering/tal/sys.chiral`,
-write/read/lseek/memfd/ftruncate/mmap/munmap built; mprotect/close missing). The
-untyped reality underneath — devices, RAM, the register root — is **category B
-substrate**, owned by nothing ([[modules-substrate]], [[node-architecture]] "The
-substrate is owned by nothing"). Note the honest TCB caveat from [[status-ledger]]:
-even ENFORCED properties rest on the Linux-syscall host, and adversarial
-enforcement arrives with self-hosting (E51). ⚑ The CPython half of that caveat is
-spent: the oracle is cut and `bin/chirality-bin` is the compiler that compiles
-everything. ⚑ **The W^X half is NOT HELD and every mention of the loader in this bank now says so**, which is the PRB-85 shape of `records/lenses/problems.md`: one invariant in four places and the correction reaching one. `docs/definitions/status-ledger.md:214` demotes the row, [[status-ledger]] measures the built path emitting one RWX `PT_LOAD` at `lib/lowering/x64/elf.chiral:59-60`, `readelf -l bin/chirality-bin` prints that one segment's flags as `RWE` and reports no other `LOAD`, measured 2026-09-18, and `docs/elements/ledger.md:464` files the same fact against `E20`.
-The loader's other half, `load-extern` link-at-load, is untouched by the demotion.
+emitter** (E19, BUILT), and the **sys-face syscall crossings** (E28,
+`lib/lowering/tal/sys.chiral`, all nine present —
+write/read/lseek/memfd/ftruncate/mmap/munmap/mprotect/close, `nb-sys-mprotect-t`
+at `:113` and `nb-sys-close-t` at `:200`; CONFORMANCE-MAP E28 CONFORMS since
+2026-07-28). The untyped reality underneath — devices, RAM, the register
+root — is **category B substrate**, owned by nothing ([[modules-substrate]],
+[[node-architecture]] "The substrate is owned by nothing"). Note the honest TCB
+caveat from [[status-ledger]]: even ENFORCED properties rest on the
+Linux-syscall host, and adversarial enforcement arrives with self-hosting (E51).
+⚑ The CPython half of that caveat is spent: the oracle is cut and
+`bin/chirality-bin` is the compiler that compiles everything.
+
+⚑ **There is no loader in this shard, and that is the 2026-09-18
+re-derivation.** The list above carried an **E20 loader** among the built parts
+and described it as `built` in LEDGER. Both halves are false now, and they went
+false in opposite directions, so the repair is a re-measurement rather than a
+second demotion. What loads `bin/chirality-bin` is the **kernel**: `readelf -l`
+reports one `PT_LOAD` and file type `EXEC`, and nothing chirality-side maps or
+seals code at run time. `E20` names the work that would — a mapping taken
+writable and then sealed executable so that W^X holds as a *type* fact — and
+that work is **unbuilt**. `docs/elements/ledger.md:162` files it module
+`map-seal`, state `design`, titled *"Typed W^X loader: `MapRW` sealed to
+`MapRX`"*; `docs/elements/catalog.md:126` opens `Not built.`;
+`docs/examples/INDEX.md:68` keeps `audited`, an audited SPEC standing over work
+nobody has built. `records/author-calls.md:100` is the ruling that named the
+surviving element, on 2026-09-18, and `docs/elements/ledger.md:465` closes the
+reconciliation row. So the shard is rated **BUILT (host-mediated)** on what runs
+and the seal is carried in §5 as residue; the substrate being built and the
+seal being unbuilt are two claims, and this shard spent its whole life
+conflating them.
+
+⚑ **W^X does not hold in the built path.** `docs/definitions/status-ledger.md:214`
+demotes that row to **NOT HELD in the built path**. The emitter writes `p_flags`
+`7`, `PF_R|PF_W|PF_X`, at `lib/lowering/x64/elf.chiral:70`, under the comment at
+`:59-64` naming the segment split *"the named W^X follow-on"*; `readelf -l
+bin/chirality-bin` prints that one segment's flags as `RWE` and reports no other
+`LOAD`, measured 2026-09-18. `nb-sys-mprotect-t` does exist and the entry stub
+does call `mprotect`, at `lib/lowering/compile-emit.chiral:83`, but the prot it
+passes is `3` at `:87`, `PROT_READ`+`PROT_WRITE`, which is `E89`/`E91`'s arena
+reserve-commit and makes no W→X transition (`docs/elements/catalog.md:126`).
+The static-ELF segment split that would is `E34`'s, carried as a wanted on
+`lowering-and-emit/LE15`. The load-time seam that *is* built, `load-extern`
+link-at-load, is Shard B's and is a third thing again.
 
 ---
 
@@ -314,8 +345,11 @@ configuration-relative sum, mostly already built:
   the load-time half is `load-extern` (`lib/module/loader.chiral:457`);
 - **the staging connector that births it from a profile** — ⚑ **no live referent**
   (Shard C); `bin/chirality` knows nothing about profiles;
-- **the native execution substrate** (tal floor + Mach emitter + the E20 loader +
-  sys-face) — BUILT, host-mediated (E18/E19/E20/E28), W^X NOT HELD (Shard F);
+- **the native execution substrate** (tal floor + Mach emitter + sys-face) —
+  BUILT, host-mediated (E18/E19/E28); `bin/chirality-bin` is a static ELF the
+  kernel enters, no chirality-side loader stands in that path, and W^X does not
+  hold in it (Shard F). The typed seal that would hold it is `E20`, `design`
+  and unbuilt (§5);
 - **the supervisor** (scheduler, critical sections, register-root custody) —
   those three **DESIGNED and absent** (E42), over a built v1 event loop
   (`lib/runtime/supervisor.chiral`), and it is the component **broker**, not a
@@ -326,8 +360,10 @@ So the correct sentence is: *chirality has an evaluator + linker + staging conne
 native substrate (built), a supervisor (designed as the broker, E42), and a node
 view; "the runtime" is what a particular profile stages, not one engine beneath
 everything.* If the concern is scheduling / GC-roots / critical sections
-specifically, that is the one genuinely-unbuilt shard (E42) — name it precisely,
-don't call the whole thing missing.
+specifically, that is the supervisor's three named halves (E42) — name it
+precisely, don't call the whole thing missing. If the concern is W^X, that is
+`E20`'s typed seal, `design` and unbuilt — name that precisely too, and do not
+let it take the running substrate down with it.
 
 ---
 
@@ -363,6 +399,20 @@ Only the true gaps, with gradients preserved.
   (master secret in CPU registers, never in RAM — [[modules-substrate]]) is part
   of the E42 supervisor's job and is docs-only.
 
+- **The typed W^X seal — DESIGNED, not built (`E20`).** The built substrate
+  emits one RWX `PT_LOAD` and the kernel loads it; a mapping taken writable and
+  then sealed executable, so that W^X holds as a *type* fact, is the unbuilt
+  residue. `docs/elements/ledger.md:162` reads state `design`, module
+  `map-seal`; `docs/elements/catalog.md:126` opens `Not built.`; the file the
+  worked example names, `lib/loader.chiral`, does not exist, and no
+  `MapRW`/`MapRX` porttype exists anywhere. `docs/examples/INDEX.md:68` keeps
+  `audited`: the SPEC passed its audit and nobody built it, which is what
+  `design` and `audited` say together. ⚑ Two neighbours are *not* this one: the
+  `REFACTOR` at `records/conformance-map.md:115` records the 2026-07-29
+  mechanism refactor that put memory mapping chirality-side, and the static-ELF
+  segment split is `E34`'s wanted on `lowering-and-emit/LE15`. Ruled 2026-09-18,
+  `records/author-calls.md:100`.
+
 - **True self-hosting of the native substrate — REFACTOR (E51; edge 16 settled
   by [[decision-effect-facets]] 2026-07-21, so the gate is now *implementing*
   that decision, not awaiting it).** The execution substrate is built but runs
@@ -374,11 +424,27 @@ Only the true gaps, with gradients preserved.
   extension).
 
 Everything else the word "runtime" reaches — evaluator, linker, staging connector,
-tal floor, Mach emitter, the W^X loader whose W^X half is NOT HELD (Shard F), present sys-face crossings — is **built**. The
-residue is: the supervisor's scheduler/crit-sections/register-root, the
-broker's grant/revoke/audit, the binding-time modality, cross-node alarms, and
-self-hosting. Do not describe the built shards as missing; do not describe the
-residue as present.
+tal floor, Mach emitter, the nine sys-face crossings — is **built**. The
+residue is: the typed W^X seal (`E20`), the supervisor's
+scheduler/crit-sections/register-root, the broker's grant/revoke/audit, the
+binding-time modality, cross-node alarms, and self-hosting. Do not describe the
+built shards as missing; do not describe the residue as present.
+
+⚑ **That instruction spent eighteen days protecting a false claim, so read it
+with its history.** The list above named "W^X loader" among the built shards
+from `6707f1f` (2026-08-31, the doc-tier hoist) to `9302d5a` (2026-09-18), and
+the sentence beside it told the next reader not to call the built shards
+missing. `docs/definitions/status-ledger.md:214` had demoted the W^X row on
+2026-08-31, the same day, so the loader was the one item in the list nobody had
+built for every day the instruction stood over it.
+The instruction is right and the list was wrong, which is the failure mode worth
+naming: a *do-not-say-X* rule inherits whatever list stands next to it, so the
+list is the half that has to be re-measured. Both halves of the `E20` claim
+moved in opposite directions — `9302d5a` demoted the W^X half here while the
+ledger still read `built`, and `a4d98ce` then moved the ledger to `design`, so
+re-applying either correction unchanged would have landed the error the other
+way round. The standing rule for this bank: **the substrate is built, the seal
+is not, and those are two claims.**
 
 ---
 
