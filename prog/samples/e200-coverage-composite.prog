@@ -1,0 +1,137 @@
+; e200-coverage-composite.prog -- the E200 probe: five rows of the coverage
+; composite, each printed with its own output bytes.
+;
+; It ASSERTS NOTHING and always exits 0. Every comparison lives in bash, in
+; `tools/test/span-over.sh`, which carries the same operands as its own
+; literals and recomputes every output byte from them. A probe that derives its
+; own verdict is green under any mutant that changes what the verdict says
+; (`tools/test/mul-widen.sh:9-12`), so this one derives nothing.
+;
+; ⚑ THE FIXTURE IS BUILT IN SOURCE. Nothing upstream of `bover` has to exist:
+; the coverage bytes are laid down here by `pack-u32`, so the element is
+; checkable before the accumulator, the prefix sum and the span emitter
+; (display-calculus R11 through R14) are built.
+;
+; ⚑ EVERY OPERAND IS WRITTEN AS FOUR SEPARATE BYTES. `e200-quad` packs four
+; 0..255 bytes little-endian, so a quad written (10 120 200 255) lands in memory
+; as bytes 10, 120, 200, 255 in that order. The colour is premultiplied
+; ARGB8888 in DRM memory order, so byte 3 is the alpha channel.
+;
+; ⚑ IT IMPORTS ONLY `prelude/prelude` AND `ports/stdio`. E154's colliding
+; top-level names are why `prog/e188-apply-spine.prog:17-19` stays clear of the
+; lowering tier, and this probe needs nothing from it.
+(import "prelude/prelude")
+(import "ports/stdio")
+
+; ---------------------------------------------------------------- printing
+; unsigned hex, most significant nibble first. `shr` is the logical shift.
+; `i64->str` is avoided on the wide field for the reason
+; `prog/e189-widening-multiply.prog:16-22` measured: it segfaults on a wide
+; operand, and that defect belongs to `i64->str`.
+(declare e200-nib (-> I64 Str))
+(def e200-nib (lam (d) (str-sub "0123456789abcdef" d (+ d 1))))
+
+(declare e200-hex8 (-> I64 Str))
+(def e200-hex8 (lam (v)
+  (str-cat (e200-nib (band (shr v 4) 15)) (e200-nib (band v 15)))))
+
+(declare e200-hex16-go (-> I64 I64 Str))
+(def e200-hex16-go (lam (v i)
+  (case (=i i 0)
+    (true "")
+    (false (str-cat (e200-hex16-go (shr v 4) (- i 1)) (e200-nib (band v 15)))))))
+
+(declare e200-hex16 (-> I64 Str))
+(def e200-hex16 (lam (v) (e200-hex16-go v 16)))
+
+; every byte of a cell, two nibbles each, no separator
+(declare e200-bytes-go (-> Bytes I64 I64 Str))
+(def e200-bytes-go (lam (b i n)
+  (case (=i i n)
+    (true "")
+    (false (str-cat (e200-hex8 (bget b i)) (e200-bytes-go b (+ i 1) n))))))
+
+(declare e200-bytes (-> Bytes Str))
+(def e200-bytes (lam (b) (e200-bytes-go b 0 (blen b))))
+
+; a position-weighted fold, so a permutation of the same bytes moves it
+(declare e200-fold-go (-> Bytes I64 I64 I64 I64))
+(def e200-fold-go (lam (b i n acc)
+  (case (=i i n)
+    (true acc)
+    (false (e200-fold-go b (+ i 1) n (+ acc (* (+ i 1) (bget b i))))))))
+
+(declare e200-fold (-> Bytes I64))
+(def e200-fold (lam (b) (e200-fold-go b 0 (blen b) 0)))
+
+; ---------------------------------------------------------------- fixtures
+; four bytes, little-endian, so the arguments read in memory order
+(declare e200-quad (-> I64 I64 I64 I64 Bytes))
+(def e200-quad (lam (b0 b1 b2 b3)
+  (pack-u32 (bor b0 (bor (shl b1 8) (bor (shl b2 16) (shl b3 24)))))))
+
+; the one colour every row composites: opaque premultiplied (10, 120, 200, 255)
+(declare e200-colour (-> I64 Bytes))
+(def e200-colour (lam (n) (e200-quad 10 120 200 255)))
+
+(declare e200-line (-> Str Str Str))
+(def e200-line (lam (tag body)
+  (str-cat "==E200== " (str-cat tag (str-cat " " (str-cat body "\n"))))))
+
+(def compile-main (=> I64 I64)
+  (lam (n)
+    ; R1: four pixels, four distinct coverage bytes (0, 85, 170, 255). Every
+    ; output byte is the source-over value and the gate recomputes all sixteen.
+    (do (put (e200-line "R1"
+          (e200-bytes
+            (bover (bcat (bcat (e200-quad 10 20 30 40) (e200-quad 200 150 100 255))
+                         (bcat (e200-quad 0 0 0 0)     (e200-quad 255 255 255 255)))
+                   (cover (e200-quad 0 85 170 255))
+                   (pix (e200-colour n))))))
+    ; R2: the coverage-0 extreme ON ITS OWN, and the shorter-mask arm beside it.
+    ; A two-pixel span against a ONE-byte mask: pixel 0 is composited at
+    ; coverage 0 and must come out byte-identical, pixel 1 is past the extent
+    ; and must be copied through. ti-bnew does not zero its payload, so the
+    ; second half is evidence the tail copy ran.
+    (do (put (e200-line "R2"
+          (e200-bytes
+            (bover (bcat (e200-quad 10 20 30 40) (e200-quad 200 150 100 255))
+                   (cover (bslice (e200-quad 0 0 0 0) 0 1))
+                   (pix (e200-colour n))))))
+    ; R3: the coverage-255 extreme on its own. The colour is opaque, so the
+    ; four output bytes must equal the colour exactly.
+    (do (put (e200-line "R3"
+          (e200-bytes
+            (bover (e200-quad 10 20 30 40)
+                   (cover (bslice (e200-quad 255 0 0 0) 0 1))
+                   (pix (e200-colour n))))))
+    ; R4: an OVER-LONG mask. Eight coverage bytes against a sixteen-byte
+    ; destination that admits four pixels, so the extent is the span's and the
+    ; second half of the mask is never read. The destination and the first four
+    ; mask bytes are R1's, so R4's sixteen bytes must equal R1's.
+    (do (put (e200-line "R4"
+          (str-cat (i64->str (blen
+            (bover (bcat (bcat (e200-quad 10 20 30 40) (e200-quad 200 150 100 255))
+                         (bcat (e200-quad 0 0 0 0)     (e200-quad 255 255 255 255)))
+                   (cover (bcat (e200-quad 0 85 170 255) (e200-quad 17 34 51 68)))
+                   (pix (e200-colour n)))))
+          (str-cat " "
+            (e200-bytes
+              (bover (bcat (bcat (e200-quad 10 20 30 40) (e200-quad 200 150 100 255))
+                           (bcat (e200-quad 0 0 0 0)     (e200-quad 255 255 255 255)))
+                     (cover (bcat (e200-quad 0 85 170 255) (e200-quad 17 34 51 68)))
+                     (pix (e200-colour n))))))))
+    ; R5: a 1920-pixel span. 7,680 destination bytes from one repeated quad,
+    ; 1,920 mask bytes from one repeated quad, ONE allocation of 7,680 bytes.
+    ; Prints the output length and the position-weighted fold.
+    (do (put (e200-line "R5"
+          (str-cat (i64->str (blen
+            (bover (brepeat (e200-quad 1 2 3 4) 1920)
+                   (cover (brepeat (e200-quad 0 85 170 255) 480))
+                   (pix (e200-colour n)))))
+          (str-cat " "
+            (e200-hex16 (e200-fold
+              (bover (brepeat (e200-quad 1 2 3 4) 1920)
+                     (cover (brepeat (e200-quad 0 85 170 255) 480))
+                     (pix (e200-colour n)))))))))
+    0)))))))
