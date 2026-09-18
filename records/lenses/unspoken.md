@@ -184,16 +184,16 @@
 
 ### UNS-14 E49 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E49
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E49 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E49. Title: Real surface syntax (stage 4)
-- evidence: docs/elements/catalog.md:176, docs/elements/ledger.md:91
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E49. Title: Real surface syntax (stage 4) ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10: E49 now holds a named roster row, `surface-syntax/SY3`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E49 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:176, docs/elements/ledger.md:91, docs/arcs/surface-syntax-arc.md:156
+- checked:  2026-09-17
+- owner:    `surface-syntax/SY3`
 - from:     none
 
 ### UNS-15 E54 is unbuilt and no arc names it
@@ -366,29 +366,29 @@
 
 ### UNS-27 E77 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E77
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E77 is minted and carries ledger state `design`.
-- measured: ⚑ CORRECTED 2026-09-15, and the row's state needs an author ruling to move. docs/arcs/syscall-custody-arc.md rosters E77 as `syscall-custody/SC3` since it opened 2026-09-14, so the claim above is satisfied and this measurement was stale. The original read: no file in docs/arcs/ names E77. Title: Rung-1 seccomp default-deny: a seccomp-bpf filter derived from the E76 permitted set, installed at process sta
+- measured: ⚑ CORRECTED 2026-09-15, and the row's state needs an author ruling to move. docs/arcs/syscall-custody-arc.md rosters E77 as `syscall-custody/SC3` since it opened 2026-09-14, so the claim above is satisfied and this measurement was stale. The original read: no file in docs/arcs/ names E77. Title: Rung-1 seccomp default-deny: a seccomp-bpf filter derived from the E76 permitted set, installed at process sta ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10, and `syscall-custody/SC3` stands as the home.
 - evidence: docs/elements/catalog.md:298, docs/elements/ledger.md:197, docs/arcs/syscall-custody-arc.md:172
-- checked:  2026-09-15
+- checked:  2026-09-17
 - owner:    `syscall-custody/SC3`
 - from:     none
 
 ### UNS-28 E78 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E78
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E78 is minted and carries ledger state `design`.
-- measured: ⚑ CORRECTED 2026-09-15, and the row's state needs an author ruling to move. docs/arcs/syscall-custody-arc.md rosters E78 as `syscall-custody/SC2` since it opened 2026-09-14, so the claim above is satisfied and this measurement was stale. The original read: no file in docs/arcs/ names E78. Title: Number-in-type attenuation: the `ti-sys` immediate carried in a refinement (E9 machinery over the number) so a
+- measured: ⚑ CORRECTED 2026-09-15, and the row's state needs an author ruling to move. docs/arcs/syscall-custody-arc.md rosters E78 as `syscall-custody/SC2` since it opened 2026-09-14, so the claim above is satisfied and this measurement was stale. The original read: no file in docs/arcs/ names E78. Title: Number-in-type attenuation: the `ti-sys` immediate carried in a refinement (E9 machinery over the number) so a ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10, and `syscall-custody/SC2` stands as the home.
 - evidence: docs/elements/catalog.md:299, docs/elements/ledger.md:107, docs/arcs/syscall-custody-arc.md:171
-- checked:  2026-09-15
+- checked:  2026-09-17
 - owner:    `syscall-custody/SC2`
 - from:     none
 
@@ -408,58 +408,58 @@
 
 ### UNS-30 E82 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E82
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E82 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E82. Title: **`alloc-region` discipline (phase-scoped).** `region-enter` marks heapptr, `region-exit` resets it; a phase r
-- evidence: docs/elements/catalog.md:329, docs/elements/ledger.md:169
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E82. Title: **`alloc-region` discipline (phase-scoped).** `region-enter` marks heapptr, `region-exit` resets it; a phase r ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10: E82 now holds a named roster row, `memory-discipline/M2`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E82 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:329, docs/elements/ledger.md:169, docs/arcs/memory-discipline-arc.md:79
+- checked:  2026-09-17
+- owner:    `memory-discipline/M2`
 - from:     none
 
 ### UNS-31 E83 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E83
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E83 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E83. Title: **`alloc-reuse` discipline (FBIP / Perceus).** Linear drops become reuse tokens; a matching allocation reuses 
-- evidence: docs/elements/catalog.md:330, docs/elements/ledger.md:170
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E83. Title: **`alloc-reuse` discipline (FBIP / Perceus).** Linear drops become reuse tokens; a matching allocation reuses ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10: E83 now holds a named roster row, `memory-discipline/M3`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E83 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:330, docs/elements/ledger.md:170, docs/arcs/memory-discipline-arc.md:80
+- checked:  2026-09-17
+- owner:    `memory-discipline/M3`
 - from:     none
 
 ### UNS-32 E84 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E84
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E84 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E84. Title: **`alloc-dps` discipline (destination-passing).** The emit phase builds one growing byte buffer by concatenati
-- evidence: docs/elements/catalog.md:331, docs/elements/ledger.md:171
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E84. Title: **`alloc-dps` discipline (destination-passing).** The emit phase builds one growing byte buffer by concatenati ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10: E84 now holds a named roster row, `memory-discipline/M4`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E84 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:331, docs/elements/ledger.md:171, docs/arcs/memory-discipline-arc.md:81
+- checked:  2026-09-17
+- owner:    `memory-discipline/M4`
 - from:     none
 
 ### UNS-33 E85 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E85
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E85 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E85. Title: **Per-phase profile composition + static size-bounding.** Extend the `(memory …)` profile clause to the value 
-- evidence: docs/elements/catalog.md:332, docs/elements/ledger.md:172
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E85. Title: **Per-phase profile composition + static size-bounding.** Extend the `(memory …)` profile clause to the value ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10: E85 now holds a named roster row, `memory-discipline/M5`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E85 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:332, docs/elements/ledger.md:172, docs/arcs/memory-discipline-arc.md:82
+- checked:  2026-09-17
+- owner:    `memory-discipline/M5`
 - from:     none
 
 ### UNS-34 E94 is unbuilt and no arc names it
@@ -492,58 +492,58 @@
 
 ### UNS-36 E128 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E128
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E128 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E128. Title: APC structured-side-channel **handshake**: the wire negotiation protocol that *sets* `term-structured?`'s bit 
-- evidence: docs/elements/catalog.md:454, docs/elements/ledger.md:224
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E128. Title: APC structured-side-channel **handshake**: the wire negotiation protocol that *sets* `term-structured?`'s bit ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10: E128 now holds a named roster row, `terminal/TM4`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E128 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:454, docs/elements/ledger.md:224, docs/arcs/terminal-arc.md:191
+- checked:  2026-09-17
+- owner:    `terminal/TM4`
 - from:     none
 
 ### UNS-37 E142 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E142
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E142 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E142. Title: **Trust-zone capability tokens (deferred target)**: `porttype LocalZone`/`CloudZone` as erased (`0`-quantity) 
-- evidence: docs/elements/catalog.md:248, docs/elements/ledger.md:275
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E142. Title: **Trust-zone capability tokens (deferred target)**: `porttype LocalZone`/`CloudZone` as erased (`0`-quantity) ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10: E142 now holds a named roster row, `orchestration-engine/OE13`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E142 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:248, docs/elements/ledger.md:275, docs/arcs/orchestration-engine-arc.md:175
+- checked:  2026-09-17
+- owner:    `orchestration-engine/OE13`
 - from:     none
 
 ### UNS-38 E143 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E143
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E143 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E143. Title: **Dependent config-coverage type (deferred target)**: `Config (covers (List Str))` parameterized by the slots 
-- evidence: docs/elements/catalog.md:249, docs/elements/ledger.md:276
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E143. Title: **Dependent config-coverage type (deferred target)**: `Config (covers (List Str))` parameterized by the slots ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10: E143 now holds a named roster row, `orchestration-engine/OE14`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E143 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:249, docs/elements/ledger.md:276, docs/arcs/orchestration-engine-arc.md:176
+- checked:  2026-09-17
+- owner:    `orchestration-engine/OE14`
 - from:     none
 
 ### UNS-39 E149 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E149
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E149 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E149. Title: **Filesystem MUTATION crossings: `unlink` + `rename` + `mkdir`** — split from E148's READ on purpose: write au
-- evidence: docs/elements/catalog.md:464, docs/elements/ledger.md:211
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E149. Title: **Filesystem MUTATION crossings: `unlink` + `rename` + `mkdir`** — split from E148's READ on purpose: write au ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10: E149 now holds a named roster row, `sys-face/SF19`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E149 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:464, docs/elements/ledger.md:211, docs/arcs/sys-face-arc.md:196
+- checked:  2026-09-17
+- owner:    `sys-face/SF19`
 - from:     none
 
 ### UNS-40 E153 is unbuilt and no arc names it
@@ -562,30 +562,30 @@
 
 ### UNS-41 E162 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E162
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E162 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E162. Title: **Custody of a permitted set — who may WIDEN it, and how that is recorded.** E76's remainder made `target-linu
-- evidence: docs/elements/catalog.md:474, docs/elements/ledger.md:304
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E162. Title: **Custody of a permitted set — who may WIDEN it, and how that is recorded.** E76's remainder made `target-linu ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10: E162 now holds a named roster row, `syscall-custody/SC4`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E162 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:474, docs/elements/ledger.md:304, docs/arcs/syscall-custody-arc.md:173
+- checked:  2026-09-17
+- owner:    `syscall-custody/SC4`
 - from:     none
 
 ### UNS-42 E164 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E164
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E164 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E164. Title: **C6 — make the governed path the cheap path.** `decision-deployment-custody` names dev-profile ambient thread
-- evidence: docs/elements/catalog.md:476, docs/elements/ledger.md:306
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E164. Title: **C6 — make the governed path the cheap path.** `decision-deployment-custody` names dev-profile ambient thread ⚑ RULED 2026-09-17 under the author's homing call of 2026-09-10: E164 now holds a named roster row, `syscall-custody/SC5`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E164 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:476, docs/elements/ledger.md:306, docs/arcs/syscall-custody-arc.md:174
+- checked:  2026-09-17
+- owner:    `syscall-custody/SC5`
 - from:     none
 
 ### UNS-43 E165 is unbuilt and no arc names it
