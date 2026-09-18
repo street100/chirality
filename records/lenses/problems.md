@@ -222,7 +222,7 @@
 - measured: two mutually-referencing nullary datatypes are accepted, compile, and diverge at run time. The variance walk at `lib/surface/data.chiral:270`, `:284` recurses into a type constructor's arguments only, and a nullary type constructor has none, so the negative occurrence is never visited. This is a false ENFORCED row rather than a stale one: the check runs and returns the wrong answer.
 - evidence: `lib/surface/data.chiral:247-294`, `:270`, `:284`
 - checked:  2026-09-01
-- owner:    E07
+- owner:    E07 and E79, jointly
 - from:     BA-27
 
 ### PRB-17 refinement bounds wrap at the I64 extremes

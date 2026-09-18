@@ -199,15 +199,23 @@ when this table and an arc file disagree.
 | [[arcs/lowering-and-emit-arc]] | [[goals/self-hosting]] | 24 rows, 18 `built`, one `building` and five `open`, one of the twenty-four unminted. Opened 2026-09-18 on condition 5 from the `lowering-and-emit` proposal in [[records/homing-triage]], homing the twenty §CG elements no roster held plus the three the goal's own cell names from §FMT and §EF. Takes surface to ELF: the upper pipeline and both defunctionalization levels, the porttype carriers and the primitive families, the x86-64 encoder and the executable format, the two resolvers and the flat label space, and the instruments that would read the emitter a second time. [[arcs/emitted-speed-arc]] owns what emitted code costs and this arc owns whether the emitter's own parts are reached and gated at all. Rows spell `LE`. Nine roots written to verify these elements are dispatched by nothing and six of them pass by hand, the fixpoint compare was measured running in under three seconds with no phase performing it, and its placement is an author call carried on `LE24` | none |
 | [[arcs/substrate-floor-arc]] | [[goals/self-hosting]] | 16 rows, 14 `built` and two `open`, every one carrying an element minted before the file. Opened 2026-09-18 on condition 5 from the `substrate-floor` proposal in [[records/homing-triage]], homing the sixteen §MEM elements no roster held, which is that category whole minus the six [[arcs/memory-discipline-arc]] and [[arcs/runtime-loading-arc]] already hold. Takes what a compiled program stands on: the single `RWE` image and its entry stub, the arena and its `mprotect` growth, the FFI seam that evaporated, I64 arithmetic, byte cells and the container registries, the `Pool` region and its four crossings, the linear cap container and the `Pool`-backed cell store, and the region types that would retire the runtime capacity branch. [[arcs/memory-discipline-arc]] owns the value-cell heap's reclamation discipline and this arc owns the substrate those cells sit in. Rows spell `SU`. Two `built` state cells were measured reading *"Not built"* over code the shipping emitter selects, the tree carries two arena growth stories and only one runs, the `E20` naming call is carried on `SU1`, and homing-triage question D over which arc owns the bounds and region class is open and carried on `SU15` and `SU16` | none |
 
-Four of the twenty hold a reserved `E` band, [[arcs/scriba-arc]] holds the
+Nine of the thirty-seven hold a reserved `E` band, [[arcs/scriba-arc]] holds the
 `S` namespace and [[arcs/native-protocol-arc]] holds the `N` namespace.
 [[arcs/unit-lane-arc]] holds a band and still spells its own rows with the
-same `N` letter, arc-local. The other fourteen cannot mint an element today,
+same `N` letter, arc-local. The other twenty-six cannot mint an element today,
 and
 `docs/decisions/decision-work-ids.md` settles the arc-local row id that lets
-them name their work anyway. Every one of the fourteen spells its scheme in its own
+them name their work anyway. Every one of the twenty-six spells its scheme in its own
 `reserved element block:` field, and `ledger-lint` check V fails an arc that
 holds neither a band nor a scheme.
+
+⚑ **The nine are counted 2026-09-18 from each arc file's own `reserved element
+block:` field, and the table above reads `none` for four of them.**
+[[arcs/coding-turn-arc]], [[arcs/part-split-arc]] and
+[[arcs/tool-authority-arc]] each reserve `E240-E259` and
+[[arcs/text-tools-arc]] reserves `E260-E263`, all four under
+`docs/decisions/decision-lane-split.md`, so four cells above are owed a change.
+The count reads the arc files because that field is what check V reads.
 
 A goal with no arc is a different shape and `docs/goals/README.md` states when
 it is legitimate.

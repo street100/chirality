@@ -463,11 +463,13 @@ def chain():
 
 
 CHAIN_UNMEASURED = (
-    "Two author calls stand inside rung 2 and no tool can take either. "
-    "records/author-calls.md carries them: whether a design or a SPEC for an "
-    "`OT` element counts as planning, and the four new-arc proposals in "
-    "records/homing-triage.md. Until they are ruled, this rung reports which "
-    "arcs no condition names and says nothing about which of them is wrong.")
+    "No author call stands inside rung 2 today. records/author-calls.md "
+    "carries the one about whether a design or a SPEC for an `OT` element "
+    "counts as planning, ruled 2026-09-17 that both are planning, and the "
+    "four new-arc proposals of records/homing-triage.md opened as arcs on "
+    "2026-09-14. This rung still reports which arcs no condition names and "
+    "says nothing about which of them is wrong: an arc whose condition does "
+    "not name it and a condition naming the wrong arc read the same here.")
 
 
 def chain_view(width=2):

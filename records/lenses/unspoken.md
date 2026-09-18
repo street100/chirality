@@ -2,16 +2,16 @@
 
 ### UNS-01 E22 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E22
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E22 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E22. Title: Memory allocator / region types / GC-outside-TCB (beyond the bump arena)
-- evidence: docs/elements/catalog.md:125, docs/elements/ledger.md:162
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E22. Title: Memory allocator / region types / GC-outside-TCB (beyond the bump arena) ⚑ RULED 2026-09-18 under the author's homing call of 2026-09-10: E22 now holds a named roster row, `substrate-floor/SU15`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E22 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:125, docs/elements/ledger.md:162, docs/arcs/substrate-floor-arc.md:192
+- checked:  2026-09-18
+- owner:    `substrate-floor/SU15`
 - from:     none
 
 ### UNS-02 E35 is unbuilt and no arc names it
@@ -86,16 +86,16 @@
 
 ### UNS-07 E41 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E41
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E41 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E41. Title: Region types (retire runtime offset/bounds checks)
-- evidence: docs/elements/catalog.md:168, docs/elements/ledger.md:167
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E41. Title: Region types (retire runtime offset/bounds checks) ⚑ RULED 2026-09-18 under the author's homing call of 2026-09-10: E41 now holds a named roster row, `substrate-floor/SU16`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E41 is false as of the commit that homed it. ⚑ FLAG, author tier: `records/homing-triage.md:259-261` is still an open call on this element, verbatim: *"**D. Which arc owns the bounds and region class?** E41 region types. `docs/arcs/enforcement-arc.md:572` is already an open call of this shape for the bounds class, and E41 is the type-level half the same question reaches."* The homing ruling does not take it.
+- evidence: docs/elements/catalog.md:168, docs/elements/ledger.md:167, docs/arcs/substrate-floor-arc.md:193
+- checked:  2026-09-18
+- owner:    `substrate-floor/SU16`
 - from:     none
 
 ### UNS-08 E43 is unbuilt and no arc names it
@@ -170,16 +170,16 @@
 
 ### UNS-13 E48 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E48
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E48 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E48. Title: Dependent records / telescopes (field dependence)
-- evidence: docs/elements/catalog.md:175, docs/elements/ledger.md:90
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E48. Title: Dependent records / telescopes (field dependence) ⚑ RULED 2026-09-18 under the author's homing call of 2026-09-10: E48 now holds a named roster row, `checker-core/CK17`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E48 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:175, docs/elements/ledger.md:90, docs/arcs/checker-core-arc.md:205
+- checked:  2026-09-18
+- owner:    `checker-core/CK17`
 - from:     none
 
 ### UNS-14 E49 is unbuilt and no arc names it
@@ -464,30 +464,30 @@
 
 ### UNS-34 E94 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E94
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E94 is minted and carries ledger state `flight`.
-- measured: no file in docs/arcs/ names E94. Title: B1 form/type capacity: raise or remove hard limit on forms/data types in `parse.chiral`/`loader.chiral` so scr
-- evidence: docs/elements/catalog.md:396, docs/elements/ledger.md:138
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E94. Title: B1 form/type capacity: raise or remove hard limit on forms/data types in `parse.chiral`/`loader.chiral` so scr ⚑ RULED 2026-09-18 under the author's homing call of 2026-09-10: E94 now holds a named roster row, `lowering-and-emit/LE6`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E94 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:396, docs/elements/ledger.md:138, docs/arcs/lowering-and-emit-arc.md:206
+- checked:  2026-09-18
+- owner:    `lowering-and-emit/LE6`
 - from:     none
 
 ### UNS-35 E102 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E102
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E102 is minted and carries ledger state `flight`.
-- measured: no file in docs/arcs/ names E102. Title: Sexp-reader follow-up enhancements: per-function paren delta reporting (balance per `def`/`declare` boundary),
-- evidence: docs/elements/catalog.md:431, docs/elements/ledger.md:94
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E102. Title: Sexp-reader follow-up enhancements: per-function paren delta reporting (balance per `def`/`declare` boundary), ⚑ RULED 2026-09-18 under the author's homing call of 2026-09-10: E102 now holds a named roster row, `checker-core/CK3`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E102 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:431, docs/elements/ledger.md:94, docs/arcs/checker-core-arc.md:191
+- checked:  2026-09-18
+- owner:    `checker-core/CK3`
 - from:     none
 
 ### UNS-36 E128 is unbuilt and no arc names it
@@ -604,44 +604,44 @@
 
 ### UNS-44 E167 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E167
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E167 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E167. Title: **`tal-c` — the SECOND C seam: emit C from `tal` instead of from `Mach` ops.** E166's leg branches at `Mach`, 
-- evidence: docs/elements/catalog.md:482, docs/elements/ledger.md:151
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E167. Title: **`tal-c` — the SECOND C seam: emit C from `tal` instead of from `Mach` ops.** E166's leg branches at `Mach`,  ⚑ RULED 2026-09-18 under the author's homing call of 2026-09-10: E167 now holds a named roster row, `lowering-and-emit/LE21`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E167 is false as of the commit that homed it. ⚑ FLAG, author tier: this element's track cell reads `?` and the call stands, carried by `records/author-calls.md:90` and quoted at `docs/arcs/lowering-and-emit-arc.md:369-380`: *"E167 is the one named orphan the call still gates."* The homing ruling does not sort the track.
+- evidence: docs/elements/catalog.md:482, docs/elements/ledger.md:151, docs/arcs/lowering-and-emit-arc.md:221
+- checked:  2026-09-18
+- owner:    `lowering-and-emit/LE21`
 - from:     none
 
 ### UNS-45 E169 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E169
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E169 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E169. Title: **Behavioural coverage of `lower.chiral` (407 L) — BOTH instruments, because neither subsumes the other.** (a)
-- evidence: docs/elements/catalog.md:484, docs/elements/ledger.md:153
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E169. Title: **Behavioural coverage of `lower.chiral` (407 L) — BOTH instruments, because neither subsumes the other.** (a) ⚑ RULED 2026-09-18 under the author's homing call of 2026-09-10: E169 now holds a named roster row, `lowering-and-emit/LE20`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E169 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:484, docs/elements/ledger.md:153, docs/arcs/lowering-and-emit-arc.md:220
+- checked:  2026-09-18
+- owner:    `lowering-and-emit/LE20`
 - from:     none
 
 ### UNS-46 E170 is unbuilt and no arc names it
 
-- state:    open
-- author:   unreviewed
-- note:     none
+- state:    ruled
+- author:   ruled 2026-09-10
+- note:     "like they arent listed in any arcs? yes we need to home them if that is the case" (2026-09-10). Applied to this row on the author's direction of 2026-09-17: "review state and assimilate the answers are obvious for all of these"
 - level:    element
 - about:    E170
 - claim:    docs/goals/README.md states "An element belongs to at least one arc." E170 is minted and carries ledger state `design`.
-- measured: no file in docs/arcs/ names E170. Title: **The corpus lands on the floor — the 709-function migration E168 exists to receive.** E168 builds the test fl
-- evidence: docs/elements/catalog.md:485, docs/elements/ledger.md:154
-- checked:  2026-09-05
-- owner:    none
+- measured: no file in docs/arcs/ names E170. Title: **The corpus lands on the floor — the 709-function migration E168 exists to receive.** E168 builds the test fl ⚑ RULED 2026-09-18 under the author's homing call of 2026-09-10: E170 now holds a named roster row, `lowering-and-emit/LE23`, so the claim above is satisfied and this row's own measurement that no file in docs/arcs/ names E170 is false as of the commit that homed it.
+- evidence: docs/elements/catalog.md:485, docs/elements/ledger.md:154, docs/arcs/lowering-and-emit-arc.md:223
+- checked:  2026-09-18
+- owner:    `lowering-and-emit/LE23`
 - from:     none
 
 ### UNS-47 E171 is unbuilt and no arc names it
