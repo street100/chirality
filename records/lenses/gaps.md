@@ -337,3 +337,17 @@ One row per entry. The schema, the states and the two axes are in `README.md`.
 - checked:  2026-09-09
 - owner:    none
 - from:     none
+
+### GAP-25 nothing refuses an out-of-bounds `ti-bput`, so an over-extent is invisible to every output-based gate
+
+- state:    open
+- author:   unreviewed
+- note:     none
+- level:    source
+- about:    lib/lowering/tal/ir.chiral
+- claim:    `lib/lowering/tal/ir.chiral:28` declares `(ti-bput (ptr I64) (idx I64) (val I64))` as "initialization write into a fresh cell", and `:19-34` gives the twelve-constructor `TInstr` sum in which it sits. The byte-cell floor it belongs to is described at `:14-18` as the vocabulary the chirality-authored byte library uses.
+- measured: **2026-09-18, by `E200`'s implementation run: the instruction carries no bound and neither does anything under it.** `lib/lowering/x64/mach.chiral:713` is the whole of `x-bpt`: load the pointer, load the index, load the value, store the byte. There is no comparison against the cell's length word and no trap, where `x-alo` (`:483`) and `x-bnw` (`:657`) both compare the bump against `heapend` and emit `x-trap`. The length lives in the cell (`ti-blen` reads it, `x-bln`), so the information a check needs is present and unread. `lib/lowering/tal/sys-check.chiral:48-57` walks every instruction of every hand-authored routine for the syscall chokepoint and looks at no index. Consequence, measured rather than argued: `E200`'s gate built the SPEC's own `n + 1` mutant, ran it, and it moved none of five probe rows, because `nb-bover` composites `[0, 4n)` and then copies `[4n, ld)` through, so an over-run lands either inside the copied remainder or past the output cell, and a write past the cell is neither refused nor printed (`tools/test/span-over.sh`, the ungraded over-extent block; `records/gate-audit.md` GA-26). So an off-by-one in hand-authored TAL is silently a heap write into the next allocation. What is absent is a refusal, at any of three seats: a bound in the type (`lib/typing/refine.chiral:11`, `:13-18` admit five `SymOp`s over a constant or an operand level and cannot relate an index to a cell's length), a check in the checker (`lib/lowering/tal/check.chiral` types the register file and not the index), or a trap in the emitter beside the two that already exist. **`E198`** (`docs/elements/catalog.md:649`) is the census over the prelude's unclamped byte-cell seats and is the nearest owner, but its subject is the surface externs' length arguments and this is the TAL instruction underneath them, so the seat is named here and claimed by nothing.
+- evidence: `lib/lowering/tal/ir.chiral:28`, `lib/lowering/x64/mach.chiral:713`, `lib/lowering/x64/mach.chiral:483`, `lib/lowering/x64/mach.chiral:657`, `lib/lowering/tal/sys-check.chiral:48-57`, `lib/typing/refine.chiral:11`, `tools/test/span-over.sh`, `records/gate-audit.md` GA-26
+- checked:  2026-09-18
+- owner:    none
+- from:     none
