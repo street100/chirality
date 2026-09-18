@@ -136,7 +136,11 @@
   (cons (pair "brepeat" "nb-brepeat")
   (cons (pair "pack-u32" "nb-pack32") (cons (pair "unpack-u32" "nb-unpack32")
   (cons (pair "pack-u16" "nb-pack16") (cons (pair "unpack-u16" "nb-unpack16")
-    nil))))))))))))))))))))))))
+  ; E200: the coverage composite. A pure `->` extern, so no crossing-wraps row
+  ; is owed on the grounds the be-peek and backend-close comments above state:
+  ; it crosses no membrane and issues no syscall.
+  (cons (pair "bover" "nb-bover")
+    nil)))))))))))))))))))))))))
 (def prim2lib (-> Str (Maybe Str)) (lam (op) (str-assoc op prim2lib-table)))
 
 ; erase one i-prim, in native.py's precedence: native binary op, then the

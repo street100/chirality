@@ -103,6 +103,32 @@
 (extern pack-u16 (-> I64 Bytes))
 (extern unpack-u16 (-> Bytes I64 I64))
 
+; ------------------------------------------------------- the coverage composite
+; E200. `bover` is source-over (pixman's PIXMAN_OP_OVER, FD-33) of ONE
+; premultiplied colour over a destination span, modulated per pixel by a
+; coverage byte. One allocation and one pass: the result is a fresh cell of
+; (blen dst) bytes, so the call is length-preserving on the destination.
+;
+; The two wrappers exist so no call site can swap the mask for the colour.
+; `Color` is taken (lib/protocol/grid.chiral:6) and a second declaration of it
+; collides in the flat blob, which is why these are Cover and Pix.
+;
+; Cover carries one coverage byte per pixel: 0 leaves the destination alone,
+; 255 replaces it with the colour. Pix carries ONE pixel, four bytes, 8-bit
+; premultiplied ARGB8888 in DRM memory order, so the alpha channel is byte 3.
+; FD-37 records 8-bit premultiplied as Wayland's own floor and prices the
+; div255 rounding this implies at one LSB.
+;
+; The extent is NOT in the type. A refinement atom is one of five SymOps over a
+; constant or an operand level (lib/typing/refine.chiral:11, :13-18), and
+; `blen dst == 4 * blen cover` has no spelling there. The routine derives
+; n = min(blen cover, blen dst / 4) instead, composites those n pixels, and
+; copies the rest of the destination through unchanged. E200's gate row G4
+; asserts that behaviour, because no type states it.
+(data Cover () (cover (bs Bytes)))
+(data Pix () (pix (bs Bytes)))
+(extern bover (-> Bytes Cover Pix Bytes))
+
 ; ---------------------------------------------------------------- str->i64
 ; Pure decimal fold, junk -> 0 (E100 follow-up). Plain -?[0-9]+ to I64,
 ; mirroring sexp.chiral's digits->i64 fold (whose comment asserts equivalence

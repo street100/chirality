@@ -632,6 +632,183 @@
         (let (suffix (bslice cell (+ off 2) (blen cell)))
           (bcat prefix (bcat word suffix)))))))
 
+; ---------------------------------------------------------------- E200: bover
+; The coverage composite, source-over of one premultiplied colour over a
+; destination span, modulated per pixel by a coverage byte. The surface
+; declaration is (extern bover (-> Bytes Cover Pix Bytes)) at
+; lib/prelude/prelude.chiral, and prim2lib-table rewrites the prim to this call.
+;
+; Shape: nb-brepeat-t (:179) is the allocate-once-then-loop precedent and
+; nb-copy-t (:60) is the recursion precedent. ONE ti-bnew, of the destination's
+; own length, and one pass over the pixels.
+;
+; THIS IS THE FIRST HAND-AUTHORED TAL TO DESTRUCTURE A BOXED CELL. Every other
+; ti-tcase in this file, in sys.chiral and in sys-linkage.chiral reads an
+; immediate tag (boxed = false). Cover and Pix are one-constructor data with one
+; field each, so both are pointers to a [tag][field] cell: the tag is at [ptr]
+; and the field at [ptr+8]. `ti-tcase src true` is the door -- emit-core.chiral
+; loads the tag through mach-lsb (:514) rather than mach-lsc, and emit-binds
+; (:193-196) issues the field load through mach-fld. One branch, tag 0, one
+; bind, field index 0.
+;
+; The arithmetic, per channel, with a the coverage byte, s the colour channel,
+; sA the colour's alpha channel (byte 3, DRM memory order) and d the
+; destination channel:
+;   ca  = div255(sA * a)
+;   out = div255(s * a) + div255(d * (255 - ca))
+; with div255(x) = ((x + 128) + ((x + 128) >> 8)) >> 8. Every operation is a
+; member of the sixteen-op sum: op-add, op-sub, op-mul, op-shr. The colour is
+; premultiplied, so s <= sA and the sum never exceeds 255.
+;
+; nb-bover-go(out, dst, mask, pix, i, n) composites pixel i and recurses.
+; Bool at this floor is the enum tag 0=true 1=false, so the tag-0 arm of the
+; eqi is the arm where i HAS reached n -- the same inversion nb-bslice's
+; comment (:134-147) calls the whole trap of this file.
+(def nb-bover-go-t TIFn
+  (ti-fn "nb-bover-go" 6 83
+    (t-seq (ti-prim 6 (op-eqi) 4 5)
+      (ti-tcase 6 false
+        (cons (pair (pair 0 nil) (ti-ret 0))
+        (cons (pair (pair 1 nil)
+          (t-seq (ti-const 7 4)
+          (t-seq (ti-prim 8 (op-mul) 4 7)      ; b = 4i, the pixel's byte offset
+          (t-seq (ti-bget 9 2 4)               ; a  = mask[i]
+          (t-seq (ti-const 10 3)
+          (t-seq (ti-bget 11 3 10)             ; sA = pix[3]
+          (t-seq (ti-const 12 128)
+          (t-seq (ti-const 13 8)
+          (t-seq (ti-const 14 255)
+          (t-seq (ti-prim 15 (op-mul) 11 9)    ; ca = div255(sA * a)
+          (t-seq (ti-prim 16 (op-add) 15 12)
+          (t-seq (ti-prim 17 (op-shr) 16 13)
+          (t-seq (ti-prim 18 (op-add) 16 17)
+          (t-seq (ti-prim 19 (op-shr) 18 13)
+          (t-seq (ti-prim 20 (op-sub) 14 19)   ; inv = 255 - ca
+          ; ---- channel 0
+          (t-seq (ti-const 21 0)
+          (t-seq (ti-prim 22 (op-add) 8 21)    ; off = b + 0
+          (t-seq (ti-bget 23 3 21)             ; s
+          (t-seq (ti-bget 24 1 22)             ; d
+          (t-seq (ti-prim 25 (op-mul) 23 9)
+          (t-seq (ti-prim 26 (op-add) 25 12)
+          (t-seq (ti-prim 27 (op-shr) 26 13)
+          (t-seq (ti-prim 28 (op-add) 26 27)
+          (t-seq (ti-prim 29 (op-shr) 28 13)   ; div255(s * a)
+          (t-seq (ti-prim 30 (op-mul) 24 20)
+          (t-seq (ti-prim 31 (op-add) 30 12)
+          (t-seq (ti-prim 32 (op-shr) 31 13)
+          (t-seq (ti-prim 33 (op-add) 31 32)
+          (t-seq (ti-prim 34 (op-shr) 33 13)   ; div255(d * inv)
+          (t-seq (ti-prim 35 (op-add) 29 34)
+          (t-seq (ti-bput 0 22 35)
+          ; ---- channel 1
+          (t-seq (ti-const 36 1)
+          (t-seq (ti-prim 37 (op-add) 8 36)
+          (t-seq (ti-bget 38 3 36)
+          (t-seq (ti-bget 39 1 37)
+          (t-seq (ti-prim 40 (op-mul) 38 9)
+          (t-seq (ti-prim 41 (op-add) 40 12)
+          (t-seq (ti-prim 42 (op-shr) 41 13)
+          (t-seq (ti-prim 43 (op-add) 41 42)
+          (t-seq (ti-prim 44 (op-shr) 43 13)
+          (t-seq (ti-prim 45 (op-mul) 39 20)
+          (t-seq (ti-prim 46 (op-add) 45 12)
+          (t-seq (ti-prim 47 (op-shr) 46 13)
+          (t-seq (ti-prim 48 (op-add) 46 47)
+          (t-seq (ti-prim 49 (op-shr) 48 13)
+          (t-seq (ti-prim 50 (op-add) 44 49)
+          (t-seq (ti-bput 0 37 50)
+          ; ---- channel 2
+          (t-seq (ti-const 51 2)
+          (t-seq (ti-prim 52 (op-add) 8 51)
+          (t-seq (ti-bget 53 3 51)
+          (t-seq (ti-bget 54 1 52)
+          (t-seq (ti-prim 55 (op-mul) 53 9)
+          (t-seq (ti-prim 56 (op-add) 55 12)
+          (t-seq (ti-prim 57 (op-shr) 56 13)
+          (t-seq (ti-prim 58 (op-add) 56 57)
+          (t-seq (ti-prim 59 (op-shr) 58 13)
+          (t-seq (ti-prim 60 (op-mul) 54 20)
+          (t-seq (ti-prim 61 (op-add) 60 12)
+          (t-seq (ti-prim 62 (op-shr) 61 13)
+          (t-seq (ti-prim 63 (op-add) 61 62)
+          (t-seq (ti-prim 64 (op-shr) 63 13)
+          (t-seq (ti-prim 65 (op-add) 59 64)
+          (t-seq (ti-bput 0 52 65)
+          ; ---- channel 3, the alpha channel: r10 already holds the index 3
+          (t-seq (ti-prim 66 (op-add) 8 10)
+          (t-seq (ti-bget 67 3 10)
+          (t-seq (ti-bget 68 1 66)
+          (t-seq (ti-prim 69 (op-mul) 67 9)
+          (t-seq (ti-prim 70 (op-add) 69 12)
+          (t-seq (ti-prim 71 (op-shr) 70 13)
+          (t-seq (ti-prim 72 (op-add) 70 71)
+          (t-seq (ti-prim 73 (op-shr) 72 13)
+          (t-seq (ti-prim 74 (op-mul) 68 20)
+          (t-seq (ti-prim 75 (op-add) 74 12)
+          (t-seq (ti-prim 76 (op-shr) 75 13)
+          (t-seq (ti-prim 77 (op-add) 75 76)
+          (t-seq (ti-prim 78 (op-shr) 77 13)
+          (t-seq (ti-prim 79 (op-add) 73 78)
+          (t-seq (ti-bput 0 66 79)
+          ; ---- next pixel
+          (t-seq (ti-const 80 1)
+          (t-seq (ti-prim 81 (op-add) 4 80)
+          (t-seq (ti-call 82 "nb-bover-go" (cons 0 (cons 1 (cons 2 (cons 3 (cons 81 (cons 5 nil)))))))
+            (ti-ret 82))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+        nil))
+        none))))
+
+; nb-bover(dst, cover, pix): unwrap both boxed operands, derive the extent,
+; allocate ONCE, composite, then copy the destination's tail through.
+;
+; The extent is min(blen cover, blen dst / 4) and it lives here rather than in
+; the type: lib/typing/refine.chiral:11 and :13-18 admit five SymOps over a
+; constant or an operand level, and a bound relating two arguments through blen
+; and a multiply has no spelling in that fragment. The min is taken by a BRANCH
+; and not by arithmetic, for the reason nb-bslice's comment (:130) gives: an
+; op-lti result is a Bool, so it is not an operand of a multiply here. The two
+; arms differ only in which slot carries n.
+;
+; ti-bnew does not zero its payload (x-bnw bumps and stores the length only), so
+; the bytes at and beyond 4n are NOT left alone by default -- nb-copy writes them
+; through from the destination, which is what makes the call length-preserving
+; when the mask is shorter than the span.
+(def nb-bover-t TIFn
+  (ti-fn "nb-bover" 3 22
+    (ti-tcase 1 true                              ; unwrap Cover: tag 0, field 0
+      (cons (pair (pair 0 (cons 3 nil))
+        (ti-tcase 2 true                          ; unwrap Pix: tag 0, field 0
+          (cons (pair (pair 0 (cons 4 nil))
+            (t-seq (ti-blen 5 0)                  ; ld = blen dst
+            (t-seq (ti-blen 6 3)                  ; lm = blen mask
+            (t-seq (ti-const 7 4)
+            (t-seq (ti-prim 8 (op-div) 5 7)       ; ld4 = ld / 4
+            (t-seq (ti-prim 9 (op-lti) 6 8)       ; lm < ld4 ?  (true = tag 0)
+              (ti-tcase 9 false
+                (cons (pair (pair 0 nil)          ; the mask is shorter: n = lm
+                  (t-seq (ti-bnew 10 5)
+                  (t-seq (ti-const 11 0)
+                  (t-seq (ti-call 12 "nb-bover-go" (cons 10 (cons 0 (cons 3 (cons 4 (cons 11 (cons 6 nil)))))))
+                  (t-seq (ti-prim 13 (op-mul) 6 7)
+                  (t-seq (ti-prim 14 (op-sub) 5 13)
+                  (t-seq (ti-call 15 "nb-copy" (cons 12 (cons 0 (cons 13 (cons 13 (cons 14 nil))))))
+                    (ti-ret 15))))))))
+                (cons (pair (pair 1 nil)          ; the span is shorter: n = ld4
+                  (t-seq (ti-bnew 16 5)
+                  (t-seq (ti-const 17 0)
+                  (t-seq (ti-call 18 "nb-bover-go" (cons 16 (cons 0 (cons 3 (cons 4 (cons 17 (cons 8 nil)))))))
+                  (t-seq (ti-prim 19 (op-mul) 8 7)
+                  (t-seq (ti-prim 20 (op-sub) 5 19)
+                  (t-seq (ti-call 21 "nb-copy" (cons 18 (cons 0 (cons 19 (cons 19 (cons 20 nil))))))
+                    (ti-ret 21))))))))
+                nil))
+                none)))))))
+          nil)
+          none))
+      nil)
+      none)))
+
 ; the whole library, in emission order
 (def native-lib (List TIFn)
   (cons nb-cell-i64-t (cons nb-cell-put-i64-t
@@ -642,4 +819,7 @@
   (cons nb-put-u32-t (cons nb-get-u64-t (cons nb-put-u64-t (cons nb-put-ptr-t
   ; E145: appended LAST so it does not shift the addresses of the other runtime
   ; routines (existing programs that never call be-peek keep their layout).
-  (cons nb-bfind-from-t (cons nb-bfind-t (cons nb-be-peek-t (cons nb-be-close-t nil)))))))))))))))))))))))))))))
+  ; E200: nb-bover-t and its loop follow the same rule, appended after
+  ; nb-be-close-t at the very end of the chain.
+  (cons nb-bfind-from-t (cons nb-bfind-t (cons nb-be-peek-t (cons nb-be-close-t
+  (cons nb-bover-go-t (cons nb-bover-t nil)))))))))))))))))))))))))))))))
