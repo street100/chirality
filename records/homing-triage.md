@@ -1,23 +1,23 @@
 ---
 node: homing-triage
 layer: measurement
-related: [arcs/README, elements/catalog, elements/ledger, records/author-calls, goals/README, index]
+related: [arcs/README, elements/catalog, elements/ledger, records/author-calls, records/findings, goals/README, goals/self-hosting, index]
 status: current
-updated: 2026-09-10
+updated: 2026-09-18
 ---
 
 # Homing triage: the catalog elements no arc rosters
 
-144 of the 186 catalog elements hold no roster row. This file proposes a home for
-each and rules on none of them.
+144 of the 186 catalog elements hold no roster row, measured 2026-09-10. This
+file proposes a home for each and rules on none. §Where this stands is current.
 
 ## Method
 
 **Homed means a roster row whose element cell carries the number.** An arc that
-names an element in prose has not claimed it. `ledger-lint` check AE conflates
-the two: `tools/ledger-lint/ledger-lint.py:1883` matches `\bE(\d+)\b` over a
-whole arc file, so a boundary section, a dependency note and a rejection all read
-as coverage.
+names an element in prose has not claimed it. ⚑ **The rest of this paragraph is
+the tool before `8a7b644`.** `ledger-lint` check AE conflated the two:
+`tools/ledger-lint/ledger-lint.py:1883` matched `\bE(\d+)\b` over a whole arc
+file, so a boundary section, a dependency note and a rejection read as coverage.
 
 The worklist came from the roster cells alone:
 
@@ -74,7 +74,7 @@ each arc's stated scope was read rather than its roster inferred from.
 | **total** | **144** |
 
 Four new arcs are proposed across the 21 `new-arc` rows: `orchestration-engine`
-(13), `syscall-custody` (5), `surface-syntax` (1) and `runtime-loading` (1).
+(14), `syscall-custody` (5), `surface-syntax` (1) and `runtime-loading` (1).
 
 ## The triage
 
@@ -324,3 +324,210 @@ no goal reaches.
   the substantive ones resolve to 14 elements this triage could home from the
   mention; the rest are arc-local row ids that happen to spell `E1` to `E4`
   (`docs/arcs/display-calculus-arc.md:127-130`) or a rejection.
+
+## Where this stands, 2026-09-18
+
+Every figure in this section was measured in one run on 2026-09-18 against
+`d9ff2cd`. The triage table above keeps its 2026-09-10 verdicts and every one of
+its line numbers, because thirteen files cite this file by line: seven arc files,
+`docs/elements/catalog.md`, `docs/goals/self-hosting.md`,
+`records/author-calls.md` and three `records/` lens and findings files. A
+`grep -rl 'homing-triage\.md:[0-9]'` over the tree lists them.
+
+| the rung | 2026-09-10 | today | command |
+|---|---|---|---|
+| catalog element to arc roster row | 42 of 187 | **142 of 188** | `python3 tools/lens/lens.py chain` |
+| element homes owed | 99 | **18** | `python3 tools/ledger-lint/ledger-lint.py` |
+| catalog elements holding no roster row | 144 of 186 | **46 of 188** | the recipe at `:24-37` |
+| arcs | 28 | **37** | `ls docs/arcs/*-arc.md \| wc -l` |
+
+Of the 46 that hold no roster row, one is exempt by the author's ruling of
+2026-09-13 and 27 are admitted by a row in `records/lenses/unspoken.md`, which
+leaves the 18 owed. `ledger-lint` reports 163 violations, 18 element homes owed,
+28 author calls owed, 160 lens rulings owed and 2 checks that check nothing.
+`python3 tools/lens/lens.py check` reports 191 rows and 0 findings.
+
+**Nine arcs opened after this file landed**, and the four it proposed are four of
+them. The file landed at `9045060`, 2026-09-10 22:46.
+
+| arc | commit | date |
+|---|---|---|
+| `terminal` | `ec0a7ec` | 2026-09-10, 53 minutes after this file |
+| `orchestration-engine` | `f15499c` | 2026-09-14 |
+| `syscall-custody` | `394484a` | 2026-09-14 |
+| `surface-syntax` | `7e0eb24` | 2026-09-14 |
+| `runtime-loading` | `7e0eb24` | 2026-09-14 |
+| `sys-face` | `68d0b3c` | 2026-09-17 |
+| `checker-core` | `e50157f` | 2026-09-18 |
+| `lowering-and-emit` | `1ee6990` | 2026-09-18 |
+| `substrate-floor` | `9d3d5cd` | 2026-09-18 |
+
+### What the 144 rows did
+
+98 of the 144 hold a roster row today and 46 do not. Measured by the recipe at
+`:24-37`, with each row's proposed home read against the arc that now carries it.
+
+| verdict | rows | landed where proposed | landed in another arc | still unhomed |
+|---|---|---|---|---|
+| `clear` | 42 | **0** | 15 | 27 |
+| `author-call` | 81 | 0 | 62 | 19 |
+| `new-arc` | 21 | 21 | 0 | 0 |
+
+⚑ **Not one `clear` row landed in the arc this file proposed.** Fifteen of the
+forty-two are homed and every one went somewhere else. Each of those verdicts
+read `clear` because the proposed arc named the element in prose, and belonging
+is a roster row's element cell. Three arc-opening runs each measured the trap,
+the one that hid E149:
+
+| element | proposed | landed | what the arc measured |
+|---|---|---|---|
+| E87 | `enforcement` | `lowering-and-emit` | `docs/arcs/lowering-and-emit-arc.md:216`: that arc's element cells are `E16`, `E17`, `E18`, `E70`, `E184` through `E188` and `E198`, and hold no `E87` |
+| E15, E154, E168, E170 | `enforcement` | `lowering-and-emit` | the same roster measurement |
+| E96, E108 | `emitted-speed` | `lowering-and-emit` | that arc's roster carries one element cell, `E189` |
+| E22 | `memory-discipline` | `substrate-floor/SU15` | `docs/arcs/substrate-floor-arc.md:192`: that arc names E22 in prose and in its §3 table and rosters `E81` through `E85` instead |
+| E111 | `display-calculus` | `substrate-floor/SU14` | `docs/arcs/substrate-floor-arc.md:191`: that arc rosters no element at all, its twenty element cells reading `unminted`, and `display-calculus/C1` names E111 inside a `what` cell |
+| E14, E101, E102 | `diagnostics` | `checker-core` | diagnostics rosters `E157`, `E158` and `E174` through `E183`, and holds none of the three |
+| E29, E127, E129 | `native-window`, `native-protocol`, `transport` | `sys-face` | that arc took the crossings whole |
+
+⚑ **E41's proposal hit the same trap from the `author-call` side.**
+`docs/arcs/substrate-floor-arc.md:270-282` measured enforcement's twenty-three
+element cells and found no `E41` and no `E22`; E41's two appearances in that file
+sit inside `enforcement/N22`'s `what` cell and in a resume state. The element is
+`substrate-floor/SU16` and question D behind it is unruled.
+
+### The `author-call` questions, re-read
+
+| question | rows | where it stands today |
+|---|---|---|
+| **A.** does a built element under a goal that carries no arc owe a roster row | 55 | **answered by the tree, and the answer is yes.** All 55 are homed across `checker-core`, `sys-face`, `lowering-and-emit` and `substrate-floor`, with no author ruling given. `docs/goals/self-hosting.md:71-73` states it: homing is planning, "so a `built` element still takes a row" |
+| **B.** is a goal owed before these four can be scheduled | 4 | open for three. E48 is `checker-core/CK17`; E47, E50 and E153 are unhomed |
+| **C.** is a `superseded` row exempt from homing | 1 | **ruled exempt 2026-09-13**, `records/author-calls.md:92`. E86 stays unhomed and check AE excludes it |
+| **D.** which arc owns the bounds and region class | 1 | **unruled.** E41 is `substrate-floor/SU16` and the class is unseated. Register row `records/author-calls.md:85`, `unreviewed` |
+| **E.** where does the cost grading go | 1 | open. E38 unhomed |
+| **F.** does the surface effect algebra belong to enforcement | 1 | open. E39 unhomed |
+| **G.** straddles inside the `OT` track | 7 | open, all seven unhomed: E42, E44, E52, E59, E61, E62, E80 |
+| **H.** the two C legs | 2 | half moved. E167 is `lowering-and-emit/LE21` and E166 is unhomed. Both tracks still read `?` |
+| **I.** adopt or mint for E169 | 1 | **resolved by adoption.** E169 is `lowering-and-emit/LE20` |
+| **J.** the remaining pairwise straddles | 8 | three moved: E30 and E149 to `sys-face`, E128 to `terminal/TM4`. E36, E37, E64, E161 and E165 are unhomed |
+
+### Corrections to this file, with what was wrong
+
+| where | what it said | the correction |
+|---|---|---|
+| `:16-20` | check AE matches `\bE(\d+)\b` over a whole arc file | AE was rewritten at `8a7b644`, 2026-09-13. `tools/ledger-lint/ledger-lint.py:1882-1903` builds its homed set from each roster row's element cell through `pack.row_elements`, so prose homes nothing. The paragraph is marked in place as historical |
+| `:62` | class `Q1` cites `docs/goals/self-hosting.md:70` for that goal carrying no arc and owing none | the goal was amended at `2d8dbac` and again at `749ce10`. `:70` now sits inside condition 4, and `:86-101` says conditions 1 to 3 carry no arc while conditions 4 and 5 are open and name four arcs. `docs/goals/self-hosting.md:97` cites `:62` back and `:176` already records the count as pre-arc, so the pair is mutually stale |
+| `:77` | `orchestration-engine` (13) | 14, corrected in place 2026-09-18. The proposal row at `:234` lists fourteen elements and the arithmetic at `:239` reads 14. `docs/arcs/orchestration-engine-arc.md:284` found the contradiction on 2026-09-14 |
+| `:58-65` | the four classes with their counts | a 2026-09-10 population. All 55 `Q1` rows are homed and the one `Q3` row is ruled exempt |
+| `:55` | 18 of the 28 arcs roster no minted element | 16 of 37 today, from `python3 tools/lens/lens.py chain`, rung `arc -> minted id`, which reports 21 of 37 |
+
+## The queue this program carries
+
+Recorded 2026-09-18 from an orchestrating session's context before it was lost.
+Nothing here is ruled and nothing here is closed. `records/findings.md` FD-29
+measured why this section exists: no surveyed mechanism reaches a decision made
+out of band, and the moment a person speaks emits no key a tool can index.
+`.planning/FAILURE-MODES-2026-09.md:21` is the local instance, row A7, a ruling
+given in session and never written down that cost a later agent a wrong count.
+
+### Author calls standing
+
+`ledger-lint` check AK reports 28 owed and every one of them is a row of
+`records/author-calls.md`. Every one of the six below is carried on an arc roster
+row, and three of them hold no register row, so AK cannot see those three.
+
+| the call | carried on | register row |
+|---|---|---|
+| which element the surviving W^X work belongs to | `substrate-floor/SU1`, `docs/arcs/substrate-floor-arc.md:178` | none. The call is at `docs/elements/ledger.md:464`: "The row and the element disagree about what E20 is. Naming the survivor is an author call" |
+| which arc owns the bounds and region class, question D of this file | `substrate-floor/SU15` and `SU16`, both `open` | `records/author-calls.md:85`, `unreviewed` |
+| E167's `?` track | `lowering-and-emit/LE21` | `records/author-calls.md:90`. Four of that row's six were ruled 2026-09-15; E166 and E167 hold it open |
+| E166 and E167's tracks generally | E166 is unhomed | the same row. The 2026-09-01 parking ruling settles whether the work happens and names neither track token, and the cut it records was of external judgment, a different axis from the `SH` and `OT` split |
+| what `E128`'s `(1 t Terminal)` names | `terminal/TM9`, `docs/arcs/terminal-arc.md:199` | none for the naming half. `records/author-calls.md:93` is that row's placement call, where the port tier's missing module coordinates get repaired, a different question |
+| where the fixpoint compare's phase sits | `lowering-and-emit/LE24`, `docs/arcs/lowering-and-emit-arc.md:224` | none. The arc carries it verbatim under FLAGs |
+
+⚑ **A claim that the author ruled question D to `enforcement` on 2026-09-14 was
+measured false.** `.planning/FAILURE-MODES-2026-09.md:16` records it as row A2,
+an author ruling no tracked document carried, caught by the dispatched agent
+because the prompt said to re-verify. `records/lenses/unspoken.md`'s E41 row
+records the homing as ruled 2026-09-18 and flags question D as untaken by it.
+
+A `Terminal` is nothing in this tree. `terminal/TM9`'s two referents are the tty
+fd and the `Pty` master at `lib/ports/pty.port:14`, and a coordinate on
+`tty.port` and `pty.port` routes them through `ports/ports` while minting no
+`Terminal`, which is why that arc's requirement 6 has nothing holding it.
+
+### Owed work with no owner
+
+| the work | what is known |
+|---|---|
+| the fixpoint compare as a phase | `lowering-and-emit/LE24` takes it, `unminted` and `open`. Measured 2026-09-18 at `docs/arcs/lowering-and-emit-arc.md:107`: the blob regenerates in 1.193 s at 17,797 lines, generation one builds in 0.765 s at 1,220,984 B and is byte-identical to the committed `bin/chirality-bin`, generation two builds in 0.766 s, and `cmp` reports `C1 == C2`. `tools/test/run-tests.sh:412` gives Phase 11's blocker as "no committed blob artifact to cmp against" and the compare takes no committed blob: both inputs are tracked. `.planning/FAILURE-MODES-2026-09.md:59` states the same as row C10 and rounds the two generations to 1.6 s |
+| FD-29's `element:` field | it still reads that the row leaves four things in the author's hands. All four were ruled at `7fc6eb0`, 2026-09-17, and `records/author-calls.md:99` records the owed FD-29 update in its own text. `records/findings.md` was outside this run's write scope and another session was appending to it |
+| a citation rule in `.planning/protocol/tone.md` | the file carries none. `grep -niE 'cite|citation|file:line'` over its 95 lines returns nothing, and its §What the linter cannot check lists five rules of which none is about citations. The author asked on 2026-09-18 for one covering density and the distinction between a citation that is part of a sentence and one appended as a mark. ⚑ **No tracked document carries that request.** It reached this file through a session prompt, which is FD-29's class exactly |
+| `.planning/FAILURE-MODES-2026-09.md` shaped into `records/` rows | 69 lines, 28 rows in three sections, covering one orchestrating session 2026-09-10 to 2026-09-18. Its own header says `records/` is where a claim sits beside its measurement and that this file is the unshaped material a later pass turns into rows there |
+
+### Known tool defects, each with its measurement
+
+| defect | measurement |
+|---|---|
+| check AH globs the bare element form while single-digit SPECs are zero-padded on disk | 32 AH findings in the 2026-09-18 run. Nine of them name `E1` through `E9` absent in `checker-core`, against `docs/elements/specs/E01-sexp-reader-SPEC.md` through `E09-refinement-SPEC.md` on disk. All nine are in one arc |
+| check AI is keyed on a file, so refreshing one row's date clears findings on rows that did not move | 110 of the run's 163 violations are AI. `.planning/FAILURE-MODES-2026-09.md:51` records the other direction: 13 ruled rows cleared 8 violations at once |
+| `docs/arcs/README.md` frontmatter reads `updated: 2026-09-05` | its table gained rows through 2026-09-18, the nine arcs listed above among them, at `:193-200` |
+| the four subject arcs cite stale and mutually inconsistent spans for one table in `docs/goals/self-hosting.md` | each arc's `- goals:` field at `:14` calls its span "the table that names this arc, unopened, as one of four subject arcs". `sys-face` reads `:86-91`, `checker-core` and `lowering-and-emit` `:91-96`, `substrate-floor` `:97-102`. The table begins at `:102` today and the spans disagreed with each other before `749ce10` moved it |
+
+### Catalog cells stale in the direction check AB cannot read
+
+Twelve, named by the four arcs that found them. AB pairs the catalog's build
+column against the ledger's state column and reports zero issues on every one.
+Do not re-measure these here; each arc carries the measurement.
+
+| arc | cells |
+|---|---|
+| `sys-face`, `docs/arcs/sys-face-arc.md:349-354` | `docs/elements/catalog.md:143` for E28's `munmap`, `:425` for E98, `:426` for E99, `:435` for E103 |
+| `checker-core`, `docs/arcs/checker-core-arc.md:385-392` | `:108` for E14's file, `:434` for E102's four enhancements, `:109` for E79's group pass, and E2's residue list |
+| `lowering-and-emit`, `docs/arcs/lowering-and-emit-arc.md:385-395` | `:419` for E95, `:263` for E69 |
+| `substrate-floor`, `docs/arcs/substrate-floor-arc.md:356-370` | `:357` for E90, `:358` for E91 |
+
+⚑ **Two counts of this population disagree and both are wrong.**
+`.planning/FAILURE-MODES-2026-09.md:56` reads eight as row C7, which was the
+figure after `sys-face` and `checker-core`.
+`docs/arcs/lowering-and-emit-arc.md:395` reads "fourteen in three arcs", where
+those three name ten between them, and it omits `substrate-floor`, which landed
+the same day with two more. Every one of the four arcs states the direction in
+its own words: the catalog understating what is built.
+
+## Where this program resumes
+
+`CLAUDE.md`'s pointer table says a session resumes from the arc file in
+`docs/arcs/` and that there is no root state file. The homing program spans every
+arc and belongs to none, so no arc file can hold its state without the same
+state being written in nine places, which is the regularity
+violation `docs/definitions/design-principles.md` names as the worst class of
+defect.
+
+**This file is the resume point.** Four authorities already treat it as the
+register and cite it by path:
+
+| authority | what it says |
+|---|---|
+| `tools/ledger-lint/ledger-lint.py:1928` and `:1974` | check AE's own text: the unhomed population is a register of work the tree owes, and "records/homing-triage.md proposes a home for each of those and rules on none". The check prints this path in its output |
+| `tools/lens/lens.py:460` and `:469` | rung `catalog element -> arc roster row` prints the same sentence, and rung `arc -> minted id` names the four new-arc proposals as opened |
+| `docs/goals/self-hosting.md:97`, `:113` and `:176` | condition 4's seam is checked against class `Q1` of this file, and `:113` says this file proposes an existing arc for some of the 18 |
+| `records/author-calls.md:90` and `:92` | the `?` track row cites `:129` for E52's proposal, and the `superseded` ruling is recorded as given on question C of this file |
+
+Ten arc files cite it, seven of them by line, and
+`records/lenses/unspoken.md`'s E41 row quotes question D verbatim out of it.
+
+**`.planning/protocol/placement.md` does not disagree.** Its human-tier table
+sends "a claim beside what was measured" to `records/<arc>.md` and this file is
+already there with `layer: measurement`. Its agent-tier table sends "a live
+queue, a handoff, a capture" to `.planning/`, top level, which is the one reading
+that would move the queue out. That reading loses on placement's own first
+question, who reads it: a queue two tools print the path of, and that a goal
+checks a seam against, is read by a person and by the harness. Placement's four
+overriding rules settle the rest. Say it once sends the state to the document
+that already holds it. Writing is mostly amending sends a thing learned mid-task
+to where it belongs in the same move.
+
+**The split that stands.** The measured state and the owed queue live here. The
+raw session capture lives in `.planning/FAILURE-MODES-2026-09.md` until a pass
+shapes it into `records/` rows, which that file's own header asks for and which
+is listed above as owed work with no owner.
