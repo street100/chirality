@@ -16,6 +16,44 @@ updated: 2026-08-01
 > `records/spec-tier-triage.md`. This file was not rewritten and its `status:`
 > was not changed.
 
+> ⚑ **REOPEN 2026-09-18**, against `records/author-calls.md:100`. That ruling
+> makes `E20` the surviving element, retitled **Typed W^X loader: `MapRW` sealed
+> to `MapRX`**, module cell `map-seal`, ledger state `design`, at
+> `docs/elements/ledger.md:162`. It inverts the triage above. The element is now
+> the typed seal `docs/examples/E20-loader.md:30-31` scopes, which is Step 1's
+> subject, and the ruling's statement of the element names no blit routine, so
+> the one step the triage called the survivor carries none of it. The banner's
+> other clause is closed: the ledger stopped reading `built` at `a4d98ce`, which
+> `records/spec-tier-triage.md:218` records.
+>
+> The change plan cannot be patched onto that element. Measured 2026-09-18:
+> seven of the eight `file:line` this file cites name `scaffold/chirality/native.py`
+> or `lib/sys-tal.chiral` and neither path exists, and the eighth,
+> `lib/ports.chiral:70-72`, names a path that does not exist while the
+> `pool-create` idiom it describes sits at `lib/ports/pool.port:26`. §2, headed
+> the reference being ported, measures only that cut host. Decisions 1, 2 and 4
+> each derive their disposition from it. §4 Step 1 targets
+> `scaffold/lib/loader.chiral` while §1 names `lib/module/loader.chiral`, a file
+> that exists and holds the compiler's module loader, which is the collision the
+> ruling's move to `map-seal` closes. §5's entire oracle is `tests/test_native.py`
+> and a `ctypes.memmove` differential. `nb-blit` appears nowhere under `lib/` or
+> `prog/`, `lib/loader.chiral` does not exist, and no `MapRW` or `MapRX` appears
+> under either tree.
+>
+> **What re-runs.** `substrate-floor/SU1` stands `open` and `new` at
+> `docs/arcs/substrate-floor-arc.md:178` with its blocking condition cleared, and
+> `docs/arcs/parts/` holds no design for it. So `element-design` on that row runs
+> first, and `design-to-spec` rewrites this file from the design it produces.
+> Nothing below this banner was edited, because a rewrite of §2 through §5 is
+> that re-spec and belongs to its own stage.
+>
+> **`status:` is unchanged, deliberately.** `records/spec-tier-triage.md:51`
+> fixes that a pass over this tier changes no `status:` field, because a SPEC
+> whose plan is dead while its frontmatter reads `audited` is what that triage
+> exists to surface. `docs/examples/INDEX.md:68` is the pipeline authority and
+> reads `audited`, and the ruling read it there to derive the `design` state.
+> The record is `records/substrate-floor.md` SU-03.
+
 > Implementation contract produced by the `example-to-spec` run. Bridges the
 > drafted worked example into an executable change plan. An implementation run
 > follows THIS file; the example remains the design rationale behind it.
