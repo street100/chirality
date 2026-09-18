@@ -49,20 +49,20 @@ on 2026-09-18.
 | `lib/protocol/grid.chiral:6` | the colour wrapper is a new one-constructor type | **`Color` is taken.** `(data Color ()` sits there with `color-default` and `color-rgb` at `:9`. A second `Color` in `prelude/prelude` collides in the flat blob, which is the E154 shape the E189 probe steers around (`prog/e189-widening-multiply.prog:32-35`) | **constrains** |
 | `lib/lowering/tal/erase.chiral:112-139` | one `prim2lib-table` row | twenty-three rows, one `cons` pair per surface name, terminated at `:139`. `erase-prim` reaches it last, at `:167-169`, and an absent row is the error `prim not in native subset:` at `:169` | agrees |
 | `lib/lowering/compile-back.chiral:62-64`, `:335` | nothing stated | **no further table is owed.** `prim-table` holds five rows and they are the i64 arithmetic ops. Every other extern's `TalSig` is derived from the program's own declarations by `nprims->table` (`:147-148`) and appended at `:335`, so the `(extern bover …)` line is the single source of the signature | agrees |
-| `lib/lowering/tal/ir.chiral:19-34` | `ti-bnew` plus `ti-bput` carry the routine | thirteen `TInstr` constructors and **no field-load instruction**. A boxed cell is read only by binding its fields through `ti-tcase src true`, whose branch form is `((tag, binds), code)` at `:44-46` | **constrains** |
-| `lib/lowering/tal/bytes.chiral`, `lib/lowering/tal/sys.chiral`, `lib/lowering/tal/sys-linkage.chiral` | the shape is settled by what `native-lib` already holds | **59 of 59 `ti-tcase` forms in hand-written TAL carry `boxed = false`.** Not one hand-written routine destructures a boxed cell today. `nb-be-peek-t` (`bytes.chiral:35-38`) *builds* one with `ti-cona` and reads none | **constrains** |
+| `lib/lowering/tal/ir.chiral:19-34` | `ti-bnew` plus `ti-bput` carry the routine | twelve `TInstr` constructors and **no field-load instruction**. A boxed cell is read only by binding its fields through `ti-tcase src true`, whose branch form is `((tag, binds), code)` at `:44-46` | **constrains** |
+| `lib/lowering/tal/bytes.chiral`, `lib/lowering/tal/sys.chiral`, `lib/lowering/tal/sys-linkage.chiral` | the shape is settled by what `native-lib` already holds | **58 of 58 `ti-tcase` forms in hand-written TAL carry `boxed = false`**, 14 in `bytes.chiral`, 44 in `sys.chiral`, none in `sys-linkage.chiral`. Not one hand-written routine destructures a boxed cell today. `nb-be-peek-t` (`bytes.chiral:35-38`) *builds* one with `ti-cona` and reads none | **constrains** |
 | `lib/lowering/tal/bytes.chiral:636-645` | one `TIFn` appended LAST, twenty-eight members today | twenty-eight exactly, and the E145 note is at `:643-644` verbatim: "appended LAST so it does not shift the addresses of the other runtime routines" | agrees, with the ordering carried to §3 |
 | `lib/lowering/tal/bytes.chiral:60-76`, `:163-186` | `nb-copy-t` is 17 lines, `nb-rep-go-t` is 15 | both hold. `nb-brepeat-t` at `:179-186` is the entry that allocates once with `ti-bnew` at `:183` and hands a recursive loop the extent, which is the two-routine shape this element copies | agrees |
 | `lib/lowering/tal/bytes.chiral:610-619` | `bput-u8` costs six allocations per byte | six, read off the body: `bslice` prefix, `pack-u32`, `bslice` of that, the suffix `bslice` or `cell-new 0`, the inner `bcat`, the outer `bcat`. The comment at `:603-609` states the fresh-cell discipline that forces them | agrees |
 | `lib/typing/refine.chiral:11`, `:13-18` | the length seat carries a refinement on its own signature | the atom language is five `SymOp`s over **a constant or an operand level**, held in `sym` as `(List (Pair SymOp I64))`. A bound relating two arguments through `blen` and a multiply has no spelling in it | **constrains** |
 | `lib/ports/sock.port:69` | a refinement-typed extern argument is ordinary | **it is the tree's only one**, and it is `=>`. Zero pure `->` externs carry a refinement. They do lower: `lib/lowering/compile-front.chiral:69` erases a refinement to its base and names `sock-recv`'s `n` as the case | **constrains** |
 | `lib/memory/arena.chiral:29`, `lib/memory/alloc-growing.chiral:22-24`, `lib/memory/alloc.chiral:18-24` | a 64 MB arena that reclaims nothing | `67108864` at `arena.chiral:29`, doubling by `mremap` at `:40-41`. `alloc-growing`'s `renter`, `rexit` and `adrop` are three `(the (List Asm) nil)` lists, reaching the fields declared at `alloc.chiral:22-24` | agrees, and §1's operating condition rests on it |
-| `prog/compiler.prog`'s closure | sixty modules | **sixty-one**, measured today by `chirality_blob_file "lib:prog" prog/compiler.prog` and counting `^(end-module` lines: 61 lines, 61 distinct names. `prelude/prelude`, `lowering/tal/bytes` and `lowering/tal/erase` are all three inside it | agrees; the fixpoint is owed |
+| `prog/compiler.prog`'s closure | nothing stated; the tree records sixty (`records/baseline-alignment.md:199`) | **sixty-one**, measured today by `chirality_blob_file "lib:prog" prog/compiler.prog` and counting `^(end-module` lines: 61 lines, 61 distinct names. `prelude/prelude`, `lowering/tal/bytes` and `lowering/tal/erase` are all three inside it | agrees; the fixpoint is owed |
 | `tools/test/run-tests.sh:345-368` | seven gates registered at 25 through 31, so the next free number follows them | **eight**, through 32: `mul-widen.sh` took 32 at `:368`. `records/author-calls.md:64` still says seven and is one gate behind the file it points at. The ruling at `:348-354` makes this file the only authority, so **33 is the first free number** | **constrains** |
 | `tools/test/run-tests.sh:171-197` | Phase 7 sweeps every root and the element owes a phase of its own | Phase 7 compiles and does not run: `:150-151` says "Compile only (no run)". `:199-207` removes its rows from the assertion count because "A compile carries NO expected value". A sample root's exit code is asserted by nothing | agrees, and sharpens §4 |
 | `prog/samples/e109_bput_u16_le.prog:21-45`, against `tools/test/mul-widen.sh:9-12` | the consumer follows the `e109` precedent | the two precedents disagree and the newer one rules. `e109`'s `compile-main` returns its own verdict as an exit code. `mul-widen.sh:9-12` states the rule that supersedes it: "a probe that derives its own verdict is green under any mutant that changes what the verdict says" | **constrains** |
 | `tools/test/mul-widen.sh:76-81` | a mutant is a `sed` over a scratch `lib/` | a mutated `lib/` alone proves nothing, because the probe is compiled by a binary embedding the old backend. Each such mutant assembles `prog/compiler.prog` from the scratch `lib/`, builds **one generation**, and compiles the probe with that generation, at about 2 s per generation | **constrains** |
-| `tools/test/mul-widen.sh` and its four registered siblings | the phase costs about 25 lines | the five registered gates that carry run mutants are 435, 414, 378, 306 and 259 lines. A gate with four run mutants, three of which rebuild a generation, runs to hundreds of lines | **constrains** |
+| `tools/test/mul-widen.sh` and every registered gate beside it | the phase costs about 25 lines | **fifteen registered gates carry a scratch-`lib/` mutant runner and the smallest is 259 lines**, the largest 781: `capture-fields` 259, `apply-word` 281, `encoding` 306, `apply-spine` 378, `defunc-blame` 397, `crypto` 403, `recording` 414, `mul-widen` 435, `render-doc` 582, `matcher` 593, `arity` 598, `doc` 629, `face` 706, `pretty` 715, `row` 781. A gate with four run mutants, three of which rebuild a generation, runs to hundreds of lines | **constrains** |
 
 ### Constraints carried into §3
 
@@ -73,11 +73,19 @@ on 2026-09-18.
    extern's signature mentions `Cover` and `Pix`, both one-constructor data with
    a field, so both are boxed by `ir.chiral:5-7` and `erase.chiral:75`, and the
    only way into the field is `ti-tcase src true` with one branch at tag 0. The
-   mechanism is live: `boxed-of` (`erase.chiral:79-83`) computes the flag for
-   compiled code and `emit-core.chiral:204` emits the branches. Zero precedents
-   in hand-written TAL is a sequencing risk. No target refuses the shape, and
-   §3 step 1 puts
-   the unwrap first with its own evidence line.
+   mechanism is live along its whole length, and hand-written TAL enters it by
+   the same door compiled code does: `boxed-of` (`erase.chiral:79-83`) computes
+   the flag for compiled code, `emit-core.chiral:514` reads the flag and loads
+   the tag through `mach-lsb` rather than `mach-lsc`, `emit-core.chiral:204`
+   emits the branches, and `emit-binds` (`:193-196`) issues the field loads
+   through `mach-fld`. Both `lsb` and `fld` are declared at
+   `lib/lowering/mach/mach.chiral:39-40` and both are implemented on x64,
+   `fld` at `lib/lowering/x64/mach.chiral:1716` and `lsb` at `:1718`.
+   Zero precedents in hand-written TAL is a sequencing risk and
+   not a refusal: nothing on the path refuses `boxed = true`, it is only that
+   no hand-authored routine has taken it, so the tag and bind indices are
+   checked by the gate rather than by a precedent. §3 step 1 puts the unwrap
+   first with its own evidence line.
 3. **The length guarantee moves from the type to the routine.** The relation the
    seat needs is `blen dst == 4 * blen cover`, and the refinement fragment holds
    constants and operand levels only. The extent is therefore derived inside
@@ -196,9 +204,12 @@ on 2026-09-18.
 
 **Total projection: ~400 lines added across six files, 1 changed.** The design
 sized this at "~120 lines added and ~2 changed" over five files
-(`docs/arcs/parts/display-calculus-R3.md` §6). The gap is the gate: the design
-allowed 25 lines for a phase and the five registered gates carrying run mutants
-are 259 to 435 lines. The primitive itself lands inside the design's estimate.
+(`docs/arcs/parts/display-calculus-R3.md` §6). The gap is the gate, and **the
+design's estimate is the wrong one.** It allowed 25 lines on the basis "the
+phase-script floor", and no such floor exists: the fifteen registered gates
+carrying a scratch-`lib/` mutant runner are 259 to 781 lines. The primitive
+itself lands inside the design's estimate. The sixth file is `run-tests.sh`, one
+line.
 
 ## 4. Conformance gate
 
@@ -223,7 +234,7 @@ are 259 to 435 lines. The primitive itself lands inside the design's estimate.
 | row | asserts | why it cannot be satisfied by looking at nothing |
 |---|---|---|
 | G1 | the probe resolves, compiles to a non-empty ELF, exits 0 and prints five tagged rows | it is the precondition every row below reads, and `mul-widen.sh:212-217` aborts the whole gate when it fails |
-| G2 | every output byte of `R1` equals the source-over value **recomputed in bash** from that row's own destination, mask and colour bytes, by §3 step 1's formula | no golden is pinned. A golden cut by running the code pins a wrong answer as correct for good, which is `mul-widen.sh:45-51`'s G4 shape |
+| G2 | every output byte of `R1` equals the source-over value **recomputed in bash** from the row's destination, mask and colour bytes, which the gate script carries as its own literals beside the probe's, by §3 step 1's formula | no golden is pinned. A golden cut by running the code pins a wrong answer as correct for good, which is `mul-widen.sh:45-51`'s G4 shape. The gate holding the operands rather than reading them back out of the probe is also what lets M4 convict |
 | G3 | the two extremes are exact: `R2`'s coverage-0 pixel leaves all four destination bytes byte-identical, and `R3`'s coverage-255 pixel leaves all four equal to the colour | these are the two points where a rounding error cannot hide, and they are the rows a dropped mask term moves in opposite directions |
 | G4 | `R4`'s output length equals the destination length, its first sixteen bytes are the composite of the four pixels the destination admits, and the run does not fault | the extent bound lives in the routine and not in the type (§2 constraint 3), so this is the only place the length discipline is checked at all |
 | G5 | `R5`'s 1920-pixel span completes, and the probe's max RSS is at most one eighth of a control root doing the same sixteen spans through `bcat` per pixel | the arithmetic sets the threshold and no observation pins it: sixteen spans cost 122,880 B here and 118,026,240 B through `bcat`, against a 67,108,864 B arena (`lib/memory/arena.chiral:29`). The control must grow the arena and this must stay inside it |
@@ -236,7 +247,7 @@ are 259 to 435 lines. The primitive itself lands inside the design's estimate.
 | **M1 `coverage-dropped`** | in a scratch `lib/`, `nb-bover-go-t`'s multiply by the mask byte becomes a multiply by 255 | one generation | **G2 and G3's coverage-0 row.** G3's coverage-255 row stays green by construction, and that asymmetry is what makes the mutant informative rather than a blanket failure |
 | **M2 `extent-off-by-one`** | the loop bound becomes `n + 1`, so the routine reads one pixel past the shorter cell | one generation | **G4, and G1 where it faults.** G2, G3 and G6 stay green, so a red outside that set says the blast radius was wrong |
 | **M3 `prim2lib-row-dropped`** | the `(pair "bover" "nb-bover")` row is deleted from `prim2lib-table` | one generation | **G1, with the exact refusal `prim not in native subset: bover` off stderr**, which `erase.chiral:169` constructs. It proves the rewrite table is load-bearing and that the extern does not lower by some other path |
-| **M4 `fixture-mask-collapsed`** | the probe's `R1` mask becomes four 255 bytes | nothing | **G2 and G3's coverage-0 row.** It convicts the fixture rather than the backend, on `mul-widen.sh:104-106`'s M4 shape, and proves the five rows come from five distinct coverage values |
+| **M4 `fixture-mask-collapsed`** | the probe's `R1` mask becomes four 255 bytes | nothing | **G2 alone.** `R2` and `R3` carry their own mask literals and this mutation does not reach them, so G3 stays green and a red there says the blast radius was wrong. It convicts the fixture rather than the backend, on `mul-widen.sh:104-106`'s M4 shape, and proves `R1`'s four coverage bytes are load-bearing rather than echoed from the destination |
 
 ⚑ **Each mutant pins the whole set of rows it moves**, and a row moving outside
 its set fails the mutant. `records/gate-audit.md` GA-21 and GA-22 both convict a
@@ -270,8 +281,9 @@ one pass, against 7,376,640 bytes for the `bcat` route
 (`lib/lowering/tal/bytes.chiral:610-619` at `3n - off + 4` each). Against the
 67,108,864-byte arena (`lib/memory/arena.chiral:29`), whose `renter`, `rexit`
 and `adrop` are three empty instruction lists
-(`lib/memory/alloc-growing.chiral:22-24`) reaching the `re`, `rx` and `dr`
-fields declared at `lib/memory/alloc.chiral:22-24`, the three routes read:
+(`lib/memory/alloc-growing.chiral:22-24`) reaching the `renter`, `rexit` and
+`adrop` fields declared at `lib/memory/alloc.chiral:22-24` and bound as `re`,
+`rx` and `dr` by the accessors at `:27-35`, the three routes read:
 
 | route | one 1920-pixel scanline | one 1080-row frame | arena reach |
 |---|---|---|---|
@@ -286,8 +298,9 @@ arithmetic never touches `bcat`.
 
 **What it cannot do.** Assemble many spans into one surface. Every caller that
 joins spans with `bcat` re-enters the quadratic that belongs to `bcat` and not
-to this element, and at 1,920 pieces the 8.5x it costs at 16 pieces is 1,920x.
-`docs/elements/catalog.md:308-311` records the same site trapping mid-emit at
+to this element, and at 1,920 pieces the 8.5x it costs at 16 pieces is 960x:
+right-recursive `bcat` over k pieces costs `(k + 1) / 2` times the linear route.
+`docs/elements/catalog.md:308-312` records the same site trapping mid-emit at
 compiler scale. **`memory-discipline/M4` owns the fix and it is minted:**
 `docs/arcs/memory-discipline-arc.md:81` reads "`alloc-dps`: a destination-passing
 emit buffer, and `nb-bcat`'s quadratic goes", state `open`, element **`E84`**,
@@ -310,15 +323,18 @@ and not this primitive: `memory-discipline/M2`, element **`E82`**, minted, state
 ### Deliberately unbuilt
 
 - **The zero-allocation pool composite**, the design's Shape D. Kept as the path
-  a frame loop will want. No roster row holds it; `docs/arcs/native-window-arc.md`
-  is the lane and the row is owed.
+  a frame loop will want. `display-calculus/R15` holds it
+  (`docs/arcs/display-calculus-arc.md:220`), added at `2f3d691`, and records the
+  design's refusal with it.
 - **The encoding as a type**, `display-calculus/R2`. `bover`'s signature does not
   move when `R2` widens the colour wrapper, which is the design's §5 question 1.
 - **The fixed-point coordinate type**, `display-calculus/R10`.
 - **The accumulator, the prefix sum, the subdivision, the span emitter and Shape
   D**, `display-calculus/R11` through `R15`, added at `2f3d691`. This SPEC
-  reaches into none of them. The coverage bytes `bover` consumes are `R13`'s
-  output and this element constructs them in its own fixture instead.
+  reaches into none of them. The coverage bytes `bover` consumes are `R12`'s
+  output, the row prefix sum with its truncating clamp to the coverage byte
+  (`docs/arcs/display-calculus-arc.md:217`), handed over by `R14`'s span emitter
+  (`:219`), and this element constructs them in its own fixture instead.
 - **The eighth unclamped byte-cell seat.** `E198`
   (`docs/elements/catalog.md:649`) is the census over the prelude's 34 externs
   and it is minted. `bover` takes no explicit length argument, so it adds no
@@ -336,8 +352,10 @@ and not this primitive: `memory-discipline/M2`, element **`E82`**, minted, state
 - `docs/definitions/testing-floors.md:69` calls the phase number a standing
   author call after it was ruled. Already `PRB-93`
   (`records/lenses/problems.md:1308`).
-- `records/baseline-alignment.md:430` and the design both say the compiler's
-  closure is sixty modules. Measured today it is sixty-one.
+- `records/baseline-alignment.md:199`, `BA-16`'s 2026-09-04 re-measure, says the
+  compiler's closure is sixty modules. Measured today it is sixty-one.
+- `records/author-calls.md:72` says the pure `Bytes` surface is twelve externs.
+  §2 counts eleven at `lib/prelude/prelude.chiral:91-92` and `:96-104`.
 - `docs/decisions/decision-display-numerics.md:26-28` lists the `Op` sum as
   fifteen and omits `op-mulhu`. The sum at `lib/prelude/prelude.chiral:36-39` is
   sixteen. Named by the design and left to a `doc-audit` run.
