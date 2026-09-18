@@ -121,7 +121,11 @@ sum, so there is one vocabulary rather than two.
 ## Residue
 
 - `E132` (runtime dynamic loading) is `design`, unbuilt — the real gate. It cites the
-  `E20` mmap floor + `E51` symbol resolve.
+  `E20` floor + `E51` symbol resolve. `records/author-calls.md:100` ruled that floor on
+  2026-09-18: `E20` survives as the typed W^X loader, `MapRW` sealed to `MapRX`, filed
+  at state `design` and module `map-seal` (`docs/elements/ledger.md:162`). The citation
+  resolves, and what it resolves to is unbuilt, which `docs/arcs/runtime-loading-arc.md:64`
+  reads as the floor rung `absent`.
 - The exact A/B line *inside* the kernel module — which parts are immutable from
   inside a running chirality — is `E45`/edge 5: direction resolved, **line not drawn, no
   code** (`docs/banks/module.md` §5 item 4). `S11` does not need the line drawn to
