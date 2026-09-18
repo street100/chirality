@@ -62,8 +62,8 @@ a `Pool` in any script names a file that does not exist.
 Measured 2026-09-18 against the working tree. [[banks/INDEX]] holds thirteen and
 two own pieces of this territory. [[banks/memory]] refracts space-as-a-port
 across eight shards and its first six are this arc's; [[banks/runtime]] carries
-the native execution substrate and lists the W^X loader among the shards it
-calls built.
+the native execution substrate and holds the typed W^X seal as unbuilt residue:
+`docs/banks/runtime.md:78` reads that `E20` is no part of that substrate.
 
 | group | what exists today | where | rung |
 |---|---|---|---|

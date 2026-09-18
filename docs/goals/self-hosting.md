@@ -241,8 +241,8 @@ answer is to promote the fixpoint rather than generation one
   naming `target-linux.chiral` and `test-syscall-manifest.sh`; `find . -name
   'target-linux*'` returns only `lib/lowering/tal/target-linux.manifest` and
   `find . -name 'test-syscall-manifest*'` returns nothing, both measured
-  2026-09-14. `docs/banks/runtime.md:377` lists the W^X loader among its built
-  shards while `readelf -l bin/chirality-bin` reports a single `RWE` PT_LOAD.
+  2026-09-14. The W^X instance this bullet also carried is repaired: `bfb863b`
+  moved the typed seal to unbuilt residue at `docs/banks/runtime.md:402`.
   [[records/findings]] FD-27 is the general statement and E76 is its worked
   failure. That class is condition 1 of [[goals/presentability]], so this goal
   names it and leaves it there.

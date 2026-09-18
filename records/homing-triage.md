@@ -96,7 +96,7 @@ Four new arcs are proposed across the 21 `new-arc` rows: `orchestration-engine`
 | E14 | `built` | `SH` | pretty-printer, display and non-trusted, zero importers | [[arcs/diagnostics-arc]] | **clear** | `docs/arcs/diagnostics-arc.md:59` |
 | E15 | `built` | `SH` | reference interpreter, golden semantics, zero importers | [[arcs/enforcement-arc]] | **clear** | `docs/arcs/enforcement-arc.md:49` |
 | E19 | `built` | `SH` | x86-64 codegen: encoding, SysV, relocation, Mach interface | - | **author-call** | Q1, `docs/goals/README.md:142` |
-| E20 | `built` | `SH` | loader: RW mmap, W^X mprotect, executable | - | **author-call** | Q1, `docs/goals/README.md:142` |
+| E20 | `design` | `SH` | typed W^X seal: `MapRW` sealed to `MapRX`, unbuilt | - (now `substrate-floor/SU1`) | **author-call**, ruled 2026-09-18 | `records/author-calls.md:100`; Q1 no longer holds |
 | E21 | `built` | `SH` | mmap as the arena, bump-allocator base and end | - | **author-call** | Q1, `docs/goals/README.md:142` |
 | E22 | `design` | `SH` | memory allocator, region types, GC outside the TCB, beyond the bump arena | [[arcs/memory-discipline-arc]] | **clear** | `docs/arcs/memory-discipline-arc.md:67` |
 | E23 | `built` | `SH` | FFI trampoline, discharged by the oracle's eviction | - | **author-call** | Q1, `docs/goals/README.md:142` |
