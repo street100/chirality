@@ -1,7 +1,7 @@
 ---
 row: display-calculus/R3
 arc: display-calculus
-title: the span primitive is one primitive wide, the coverage composite. The fill half already ships as `brepeat`, the pure `Bytes` surface is eleven externs and not twelve, `bput-u8` is a builder at six allocations per byte, and no surface extern reaches the `ti-bnew`/`ti-bput` pair the IR already carries
+title: the span primitive is one primitive wide, the coverage composite. The fill half already ships as `brepeat`, the pure `Bytes` surface is eleven externs and not twelve, `bput-u8` is a builder at six allocations per byte, and no extern composites anything anywhere in the tree
 kind: primitive
 origin: pair
 req: 1
@@ -56,7 +56,7 @@ Measured 2026-09-18 in the working tree at `fd973da`.
 | no `pack-u8` | **holds.** No extern of that name exists tree-wide | the eleven above are `str->bytes`, `bytes->str`, `blen`, `bget`, `bslice`, `bcat`, `brepeat`, `pack-u32`, `unpack-u32`, `pack-u16`, `unpack-u16` |
 | no builder | **refuted.** `bput-u8` is a surface def and it is live | `lib/lowering/tal/bytes.chiral:610`, called at `lib/protocol/grid.chiral:76-78` and `:105`, `:108`, and at `lib/runtime/poll.chiral:53` |
 | no fill-with-function | **holds**, and the name in the tree is a trap. `nb-fill` writes decimal digits backwards for `nb-i64s` and fills nothing | `lib/lowering/tal/bytes.chiral:274-292`, reached from `:316` and `:323` |
-| `brepeat` makes a solid span and nothing else | **holds, and it is already the fill half.** One `ti-bnew` of `len * n`, then one copy loop | `nb-brepeat-t` at `lib/lowering/tal/bytes.chiral:179-187` over `nb-rep-go-t` at `:163` |
+| `brepeat` makes a solid span and nothing else | **holds, and it is already the fill half.** One `ti-bnew` of `len * n`, then one copy loop | `nb-brepeat-t` at `lib/lowering/tal/bytes.chiral:179-186` over `nb-rep-go-t` at `:163-177` |
 
 Every other `Bytes`-typed extern in the tree is a `=>` crossing: `pool-write`
 (`lib/ports/pool.port:27`), `sock-send` (`lib/ports/sock.port:67`), `read`
@@ -69,13 +69,13 @@ membrane.
 
 | what exists | where | rung | reached by |
 |---|---|---|---|
-| a solid span in one allocation, linear in output | `brepeat`, `lib/prelude/prelude.chiral:100` | IMPLEMENTED | ten live call sites, six of them in the compiler itself: `lib/lowering/x64/mach.chiral:751`, `lib/lowering/mach/asm-reloc.chiral:47`, `lib/lowering/tal/eval.chiral:65`, `lib/protocol/wire.chiral:26`, `lib/protocol/inet.chiral:46`, `lib/text/matcher.chiral:573`. A break reddens the fixpoint. No phase asserts its semantics; `tools/test/samples/e173_matcher.prog` is the only file under `tools/test/` naming it |
-| allocate n bytes, then write byte i | `ti-bnew` and `ti-bput`, `lib/lowering/tal/ir.chiral:26` and `:28` | IMPLEMENTED | hand-written TAL only: `lib/lowering/tal/bytes.chiral`, `lib/lowering/tal/sys.chiral:41`, `lib/lowering/tal/sys-linkage.chiral:44-47`. **No surface extern reaches either.** `ti-bput` is commented "initialization write into a fresh cell" |
+| a solid span in one allocation, linear in output | `brepeat`, `lib/prelude/prelude.chiral:100` | IMPLEMENTED | twelve `(brepeat ` applications under `lib/` and `prog/`, ten of them under `lib/` and two in `prog/demo/sprites.chiral` that no root reaches. **Four sit inside `prog/compiler.prog`'s import closure**, a 60-file closure measured here: `lib/lowering/tal/bytes.chiral:581-582`, `lib/lowering/mach/asm-reloc.chiral:47`, `lib/lowering/x64/mach.chiral:751`, `lib/surface/pretty.chiral:214`. A break in any of those four reddens the fixpoint. The other six are outside the compiler, and `lib/lowering/tal/eval.chiral:65` is reached by nothing. No phase asserts its semantics; `tools/test/samples/e173_matcher.prog` is the only file under `tools/test/` naming it |
+| allocate n bytes, then write byte i | `ti-bnew` and `ti-bput`, `lib/lowering/tal/ir.chiral:26` and `:28` | IMPLEMENTED | the hand-written TAL that emits them, `lib/lowering/tal/bytes.chiral`, `lib/lowering/tal/sys.chiral:41`, `lib/lowering/tal/sys-linkage.chiral:44-47`, plus three consumers of the IR, `lib/lowering/mach/emit-core.chiral`, `lib/lowering/tal/reify.chiral` and `lib/typing/erased-nf.chiral`. **Every `Bytes` extern reaches both transitively and none exposes the pair.** `brepeat` reaches `ti-bnew` at `lib/lowering/tal/bytes.chiral:183` and `ti-bput` at `:68`, through `nb-brepeat` to `nb-rep-go` to `nb-copy`; `bcat` reaches them at `:121` and `:68` the same way. What no extern does is hand the surface an uninitialized cell or a write into one: each `Bytes` extern lowers to a complete `TIFn` that allocates and fills in one routine. `ti-bput` is commented "initialization write into a fresh cell" |
 | the freshness rule that makes `ti-bput` sound | nothing | DESIGNED | `lib/lowering/tal/check.chiral:13` names byte typed-init, the linear bput-before-read discipline, and `:14` says of it "is scaffold-honest residue (decision #a)". The checker's rule at `:217` types the three operands and asserts nothing about the cell |
-| a byte builder | `bput-u8`, `lib/lowering/tal/bytes.chiral:610-626` | IMPLEMENTED | `lib/protocol/grid.chiral`, `lib/runtime/poll.chiral`. **Six allocations per byte written**, priced below |
+| a byte builder | `bput-u8`, `lib/lowering/tal/bytes.chiral:610-619` | IMPLEMENTED | five files: `lib/protocol/grid.chiral:76-78`, `:105`, `:108`, `lib/runtime/poll.chiral:53`, `lib/protocol/term.chiral:108`, `prog/scriba/command-loop.chiral:150`, `prog/samples/e103_termios_raw.prog:21-24`. **Six allocations per byte written**, priced below |
 | the destination surface | `pool-write`, `lib/ports/pool.port:27`, and `pool-read` at `:30` | IMPLEMENTED | both carry a `crossing-wraps` row, `lib/lowering/tal/crossing-wraps.chiral:51-52`, so a read-modify-write of a pool is expressible today |
-| the integer arithmetic a composite needs | the `Op` sum, `lib/prelude/prelude.chiral:36-39` | ENFORCED | every compile. ⚑ **The sum is sixteen**, and `docs/decisions/decision-display-numerics.md:24-27` says fifteen and lists fifteen, omitting `op-mulhu`. That doc defect is named here and left to a `doc-audit` run |
-| the existing consumer | `prog/demo/sprites.chiral`, 76 lines | SEEDED | **nothing.** 103 roots in the tree carry `(def compile-main` and none reaches anything under `demo/`, transitively closed over `(import "...")`, so Phase 7's sweep at `tools/test/run-tests.sh:176-177` never reaches it |
+| the integer arithmetic a composite needs | the `Op` sum, `lib/prelude/prelude.chiral:36-39` | ENFORCED | every compile. ⚑ **The sum is sixteen**, and `docs/decisions/decision-display-numerics.md:26-28` says fifteen and lists fifteen, omitting `op-mulhu`. That doc defect is named here and left to a `doc-audit` run |
+| the existing consumer | `prog/demo/sprites.chiral`, 76 lines | SEEDED | **nothing.** 103 roots in the tree carry `(def compile-main` and none reaches anything under `demo/`, transitively closed over `(import "...")`, so Phase 7's sweep at `tools/test/run-tests.sh:175-177` never reaches it |
 
 ### The allocation floor, which is arithmetic and not an estimate
 
@@ -91,20 +91,32 @@ bound on a compiler that no longer exists: `docs/benchmarks/text-matcher-allocat
 records that `9f46c6c` cut the matcher's allocation 58% per input byte, and that
 the attributions hold where the absolutes do not.
 
-**One `bput-u8` call costs six allocations.** Reading `lib/lowering/tal/bytes.chiral:610-626`:
+**One `bput-u8` call costs six allocations.** Reading `lib/lowering/tal/bytes.chiral:610-619`:
 `bslice cell 0 off` is `off` bytes, `pack-u32 val` is 4, `bslice` of that is 1,
 the suffix is `n - off - 1`, the inner `bcat` is `n - off`, the outer `bcat` is
 `n`. Total `3n - off + 4`.
 
 | destination span | bytes written | arena consumed, `bput-u8` per byte | cells |
 |---|---|---|---|
-| a 16-byte `Cell` (`lib/protocol/grid.chiral:43-44`) | 8 | ~356 B plus 48 headers, ~46x the record | 48 |
+| a 16-byte `Cell` (`lib/protocol/grid.chiral:43-44`), the whole `cell->bytes` at `:103-108` on its widest arm | 13 | **499 B** plus 66 headers, 31x the record on payload alone | 66 |
 | a 1920-pixel ARGB8888 scanline | 7,680 | **147,490,560 B** | 46,080 |
+
+The `Cell` row is measured through the file rather than assumed. `cell->bytes`
+(`lib/protocol/grid.chiral:103-108`) runs one `cell-new 16`, one `bput-u32-le` at
+offset 0, and, on the `color-rgb`/`color-rgb` arm, ten `bput-u8` calls at offsets
+4 through 13: one at `:105`, four from `enc-color` at `:106`, four from
+`enc-color` at `:107`, one at `:108`. At `n = 16` the ten cost
+`sum(52 - off)` for `off` in 4 to 13, which is **435 B over 60 cells**;
+`bput-u32-le` (`lib/lowering/tal/bytes.chiral:596-601`) adds 48 B over 5 cells
+and the `cell-new` adds 16 B over 1. The `color-default`/`color-default` arm
+writes four bytes instead of ten and costs 241 B over 30 cells.
 
 `grid.chiral:44` calls its codec "allocation-bounded (one `cell-new 16` + fixed
 `bput-*`/`bget-*`)" and that claim is true: the bound is a constant. The constant
-is 46x the output, which is invisible at 16 bytes and exhausts the 64 MB arena
-partway through the first scanline at 7,680.
+is 31x the output on payload alone and 64x with a one-word cell header
+([[banks/memory]] Shard 6 spells a cell `[len][payload]`,
+`docs/banks/memory.md:173-182`). It is invisible at 16 bytes and exhausts the
+64 MiB arena at roughly byte 3,100 of the first 7,680-byte scanline.
 
 **The `bcat`-accumulate route is 20x better and dies at the same place.**
 `prog/demo/sprites.chiral:58-63` is right-recursive `bcat` over k pieces of s
@@ -173,10 +185,13 @@ Subtract §2 from §1:
 one colour, over a destination span, in one allocation and one pass. Three parts
 are missing and all three are small:
 
-1. **A surface that reaches `ti-bnew` plus `ti-bput`.** The IR pair exists
-   (`lib/lowering/tal/ir.chiral:26`, `:28`) and no extern reaches it. This is why
-   the row's `origin` of `new` is wrong: the primitive exists one altitude down
-   and needs a surface, which `docs/arcs/README.md:74` spells `bind`.
+1. **A `TIFn` over `ti-bnew` plus `ti-bput`, and the extern that names it.**
+   The IR pair exists (`lib/lowering/tal/ir.chiral:26`, `:28`) and every `Bytes`
+   extern already reaches it through a hand-written routine, so what is new here
+   is the routine and not the pair. The shape is settled by the twenty-eight
+   members `native-lib` already holds (`lib/lowering/tal/bytes.chiral:636-645`)
+   and the work is one more. `docs/arcs/README.md:74` would spell that half `bind`; §6 carries
+   `pair` instead, on the consumer.
 2. **The composite itself**, as one `TIFn` in the byte library. `FD-37`
    (`records/findings.md:561`) priced the arithmetic: source-over with a
    coverage mask ships in 16-bit integers at ±1 LSB, with `premul` and `lerp`
@@ -191,9 +206,10 @@ are missing and all three are small:
 
 `FD-39`'s build list (`records/findings.md:625`) has six items. **This row is the
 surface primitive: what writes bytes.** It delivers item **(5)**, the two
-rectangle primitives, of which one already ships, and item **(6)**, the
-coverage-span emitter, which that finding already says "is a loop over (3) and
-not a new primitive" and which therefore needs no element of its own. Items (1)
+rectangle primitives, of which one already ships. Item **(6)**, the
+coverage-span emitter, needs no element at all, because that finding says it
+"is a loop over (3) and not a new primitive"; it is also unreachable until item
+(3) lands, so it goes to residue with (3) rather than shipping here. Items (1)
 through (4) never write a pixel and are named as residue in §6:
 
 | `FD-39` item | this row | why |
@@ -203,7 +219,7 @@ through (4) never write a pixel and are named as residue in §6:
 | (3) a row prefix sum | **residue** | produces the coverage bytes this primitive consumes |
 | (4) integer curve subdivision | **residue** | `FTGRAYS:1073-1074` midpoint splitting with a shift-derived count, pure arithmetic |
 | (5) the two rectangle primitives | **this row.** One ships, one mints | |
-| (6) a coverage-span emitter | **this row**, and no element | a loop over (3) by that finding's own words |
+| (6) a coverage-span emitter | **no element**, and it waits on (3) | a loop over (3) by that finding's own words, so it mints nothing, and it cannot run until (3) exists |
 
 A design that absorbed (1) through (4) would take four rows' work. This one does
 not.
@@ -216,8 +232,8 @@ not.
   `brepeat`, taking the destination span, the coverage mask, and the colour, and
   returning a fresh span of the destination's length. One `prim2lib-table` row in
   `lib/lowering/tal/erase.chiral:111-138`. One `TIFn` in
-  `lib/lowering/tal/bytes.chiral` of the shape `nb-copy-t` (`:60-76`, 19 lines)
-  and `nb-rep-go-t` (`:163-177`, 16 lines) already have: one `ti-bnew` of the
+  `lib/lowering/tal/bytes.chiral` of the shape `nb-copy-t` (`:60-76`, 17 lines)
+  and `nb-rep-go-t` (`:163-177`, 15 lines) already have: one `ti-bnew` of the
   length, then a recursive body doing four `ti-bget`, the source-over arithmetic
   in `Op` members, and four `ti-bput`. Two one-constructor wrappers so the mask
   and the colour are distinct types. The signature matches the reference class's
@@ -226,8 +242,9 @@ not.
   glyph->pix, pix`, both quoted in `records/findings.md:518`.
 - **Costs:** one allocation of the span length per span, one pass. A 1920-pixel
   scanline is 7,680 bytes and one cell, 19,200x less than `bput-u8` per byte and
-  960x less than `bcat` per pixel. A 1080-row frame is 8.3 MB, so the 64 MB arena
-  holds 7.7 frames before it grows. Compiler source changes, so the build rule
+  960x less than `bcat` per pixel. A 1080-row frame is 8,294,400 B, so the
+  67,108,864-byte arena (`lib/memory/arena.chiral:29`) holds 8.0 frames before it
+  grows. Compiler source changes, so the build rule
   applies and a byte-identical fixpoint is owed
   (`docs/definitions/working-discipline.md:15-45`). Appending to `native-lib`
   must go LAST, per the note at `lib/lowering/tal/bytes.chiral:643-644`, because
@@ -334,16 +351,25 @@ or a pinned finding, and `status` stays `draft`.
   each other and cannot be committed apart. The extern's declaration is what
   `erase-prim` dispatches on (`lib/lowering/tal/erase.chiral:153-154`), the
   `prim2lib-table` row is what names the routine, the `TIFn` is the routine, and
-  the two wrappers are the operand types the extern's signature mentions. Four
-  files, one commit, one fixpoint. The `origin` is `pair`, per
-  [[decisions/decision-primitive-with-consumer]], with the primitive half a
-  `bind` of `ti-bnew` plus `ti-bput`.
+  the two wrappers are the operand types the extern's signature mentions. Those
+  four parts land in three compiler files; the sample root and the phase script
+  are two more, so the Size table below reads five. One commit, one fixpoint. The
+  `origin` is `pair` because [[decisions/decision-primitive-with-consumer]] gives
+  that value to "a primitive and the consumer that exercises it, both named in
+  its `what` cell", and both halves are named and cited here: the composite
+  extern, and the `prog/samples/` root of §5 question 8. That decision also
+  rules that a `pair` "mints as one element where the halves are unbuildable
+  apart", which is this case, since the root cannot compile without the extern.
+  ⚑ **The roster's `what` cell names no consumer**, so the mint owes it the
+  consumer half along with the `origin` flip.
 - **Band:** `UNASSIGNED`. `docs/arcs/display-calculus-arc.md` states its reserved
   element block as **none**, and `docs/decisions/decision-lane-split.md:60-62`
   rules that an arc with no band mints the next free number tree-wide and records
   the range it landed in.
-- **Catalog row**, for a new section following XIX, in the file's own five-column
-  form:
+- **Catalog row**, for a new section **XX** appended at the file tail after
+  `## OWED` (`docs/elements/catalog.md:599`), which is where `E198` landed at
+  `:648`. `## XIX.` is at `:403` and is followed by three `###` waves, so a
+  section inserted there would split them off. The file's own five-column form:
 
 ```
 | E<NN> | **The coverage composite: one span write, one allocation.** Composite a rectangle of coverage against one colour over a destination span, in one `ti-bnew` and one pass, with the mask and the colour as distinct one-constructor types. The fill half is `brepeat` and needs nothing. `FD-33` measured eleven systems and found these two writes and no third; `FD-37` priced the arithmetic at ±1 LSB inside the sixteen-op sum. Today the only builder is `bput-u8` (`lib/lowering/tal/bytes.chiral:610`) at six allocations per byte, which is 147 MB for one 1920-pixel scanline against a 64 MB arena that reclaims nothing | Not built. New extern in `lib/prelude/prelude.chiral`, one `prim2lib-table` row, one `TIFn` appended LAST to `native-lib`, one sample root, one phase | `pixman` `PIXMAN_OP_OVER` with a mask (`FOOTRENDER:1080`), kitty's CPU `alpha_mask`/`color_rgb` signature (`KITTYFONTSH:73`) (`OURS`/`IMPL`) | SH |
@@ -362,9 +388,9 @@ or a pinned finding, and `status` stays `draft`.
   |---|---|---|---|
   | `lib/prelude/prelude.chiral` | one extern beside `brepeat` at `:100`, two one-constructor data decls | ~8 | the decls follow `PoolReadR` (`lib/ports/pool.port:19`), one line each |
   | `lib/lowering/tal/erase.chiral` | one `prim2lib-table` row | 1 | the table at `:111-138` is one `cons` pair per name |
-  | `lib/lowering/tal/bytes.chiral` | one `TIFn`, plus one `native-lib` entry appended LAST | ~40 | `nb-copy-t` is 19 lines (`:60-76`) and `nb-rep-go-t` is 16 (`:163-177`); this body adds four `ti-bget`, the source-over arithmetic and four `ti-bput` |
+  | `lib/lowering/tal/bytes.chiral` | one `TIFn`, plus one `native-lib` entry appended LAST | ~40 | `nb-copy-t` is 17 lines (`:60-76`) and `nb-rep-go-t` is 15 (`:163-177`); this body adds four `ti-bget`, the source-over arithmetic and four `ti-bput` |
   | `prog/samples/` | one new root, the consumer | ~50 | `prog/samples/e109_bput_u16_le.prog` is 45 lines for one byte primitive |
-  | `tools/test/` | one phase asserting the composited bytes and the length refusal | ~25 | the phase-script floor, and ⚑ its number is behind the standing suite-number call in `records/author-calls.md` |
+  | `tools/test/` | one phase asserting the composited bytes and the length refusal | ~25 | the phase-script floor. The suite-number call is **ruled**, 2026-09-06, at `records/author-calls.md:64`: a gate takes the first number colliding with nothing, with seven registered at 25 through 31, so the phase takes the next free number and waits on nothing |
 
   Plus the build rule: `build-new → test → promote` with generations until two
   agree, expected at `C2 == C3` because the change reaches emission
@@ -383,8 +409,8 @@ or a pinned finding, and `status` stays `draft`.
   | `R2`, the encoding as a type | `.planning/DISPLAY-LAYER-GAP.md:195`, rostered by **no** arc. `FD-37` already hands it four corrections | unrostered |
   | reclamation across a frame loop | `E82`, `memory-discipline/M2`, minted, `design` | scheduled |
   | the `nb-bcat` quadratic, for any caller that keeps using `bcat` | `E84`, `memory-discipline/M4`, minted, `design` | scheduled |
-  | the unclamped byte-cell seats, 7 of 34 with zero clamping | `E198` and `enforcement/N20` | one minted, one rostered |
-  | the `Op` sum written as fifteen at `docs/decisions/decision-display-numerics.md:24-27` | a `doc-audit` run on that decision | unscheduled |
+  | the unclamped byte-cell seats, 7 of 34 with zero clamping | `enforcement/N20` (`docs/arcs/enforcement-arc.md:512`), the single row that **is** `E198` | minted |
+  | the `Op` sum written as fifteen at `docs/decisions/decision-display-numerics.md:26-28` | a `doc-audit` run on that decision | unscheduled |
   | `.planning/DISPLAY-LAYER-GAP.md:196` giving `R3` `kind: port` against the roster's `primitive` | the same gap file, on its next pass | unscheduled |
   | the prelude header at `lib/prelude/prelude.chiral:10` saying 38 externs against 34 | `E198`, whose own title already says 34 | minted |
 
