@@ -339,9 +339,13 @@ not.
 | 6 | Is a float type needed anywhere in this row | **RESOLVED** | No, and positively. `FD-39` verified analytic coverage shipping in fixed point twice, FreeType `grays` at 1/256 and Skia in `SkFixed` 16.16 across 137 occurrences, and states that every operation in items (1) to (6) is a member of the sixteen-op sum (`records/findings.md:625`). [[decisions/decision-display-numerics]] settles fixed point by author directive |
 | 7 | Does the change owe a byte-identical fixpoint | **RESOLVED** | Yes. The extern is in `lib/prelude/prelude.chiral` and the `TIFn` is in `native-lib`, both compiler source, so `docs/definitions/working-discipline.md:15-45` applies. The change touches emission, so the first agreement is expected at `C2 == C3` and not at `C1 == C2` |
 | 8 | Who is the consumer, given that a primitive may not mint alone | **RESOLVED** | [[decisions/decision-primitive-with-consumer]] rejects "a primitive minted alone, with no named consumer". The consumer is a root under `prog/samples/` on the `e109_bput_u16_le.prog` precedent (45 lines, carries `compile-main`, swept by Phase 7), compositing a coverage mask against a colour into a `(Pool n)` and asserting the resulting bytes. ⚑ Its honest limit is the precedent's: Phase 7 compiles that file and no phase runs it, so the element owes a phase of its own |
+| 9 | Which arc owns this row, and therefore which roster the mint writes into | **NEEDS-AUTHOR** | `records/author-calls.md:72` stands `unreviewed`: *Which arc owns `display-calculus/R3`*. It was closed 2026-09-06 and reopened the next day, the row recording that the closure rested *"on the ground that the id already said"* and that such a ground fails as a ruling, over a body that already read *"[[arcs/display-calculus-arc]] rosters it and no arc is working it."* This design's §6 mints into that roster, which is the seat the id names and the seat the author declined to let the id settle. [[decisions/decision-primitive-with-consumer]], the document this row's `origin` of `pair` comes from, leaves the same question open in its own words under *What this does not rule on*: *"Which arc holds a pair whose halves sit in different arcs … the seat has to be picked and this document does not pick it."* `docs/goals/README.md:27` requires the seat. **Raised by this audit and not answered here.** |
 
-**No NEEDS-AUTHOR is surfaced.** Every fork above is closed by a settled document
-or a pinned finding, and `status` stays `draft`.
+**One NEEDS-AUTHOR is surfaced**, question 9, raised by the DESIGN audit at
+`e6d678d` and not by the design run. Questions 1 through 8 are each closed by a
+settled document or a pinned finding. Question 9 is the arc seat, it is the
+author's alone, and the mint cannot run past it, because writing the roster row
+answers it. `status` stays `draft`.
 
 ## 6. The mint packet
 
