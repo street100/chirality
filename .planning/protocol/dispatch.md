@@ -63,11 +63,41 @@ exist to prevent, and so is stalling the queue over a rule that was already met.
 | the element, the stage, and the single artifact it may write | a second element or a second artifact is the failure the skills prevent |
 | what it may not read or touch | the bundle replaces the glossary, `PRINCIPLES.md`, and the sibling artifacts |
 | every attempt already ruled out, with the trap that killed it | so a re-dispatch does not repeat what the last one learned |
+| every measured fact the prompt asserts, each with the file and line it was measured at | the next section. The agent re-verifies each one at that location and reports drift |
 | the exact verification command, and the expected output | the agent proves its own claim before returning |
 | the stop condition, spelled out | end by naming the next element, then stop |
 
 A prompt that names the skill and the command is short. The length lives in the
 ruled-out attempts, which is the part a fresh agent cannot reconstruct.
+
+## A prompt is untrusted input
+
+The orchestrator writes the prompt, so the orchestrator's errors reach the agent
+as its starting facts, and no step of the loop checks the prompt. That is what
+the re-verify row above buys: a measured fact handed to an agent carries the
+source that measured it, and the agent treats it as a claim to test at that
+source before building on it. [[certificate-discipline]] is the tree's own name
+for this shape: a producer is trusted for nothing and hands over a re-checkable
+derivation. A stage prompt is a producer's output and the agent's re-verification
+is the checker.
+
+`.planning/FAILURE-MODES-2026-09.md` holds the measurement. This section holds
+the rule, and the two are kept apart on purpose. Over twenty dispatches its §A
+records eleven orchestrator failures, three of which are premises handed to an
+agent that the tree did not carry: `A2`, an author ruling no tracked document
+held; `A3`, a figure taken with a grep that counted comments; `A7`, a ruling
+given in session and never written down. The agent caught all three, each time
+because the prompt said to re-verify. The one prompt that omitted the
+instruction let `A2`'s error through into an arc file, which the capture states
+and does not locate.
+
+`A7` is the one whose consequence is tracked. `records/lenses/problems.md`
+PRB-83 records the agent refusing to exempt a `superseded` row from homing on a
+ruling no document carried, so check AE refused `E86` on the written rule and
+reported a count wrong by one. The ruling existed, and the correction landed as a
+`ruled` row in `records/author-calls.md` that the check reads today. An agent
+that had trusted its prompt would have compiled the exemption into a tool with
+nothing behind it.
 
 ## Verifying a return
 
@@ -82,7 +112,39 @@ itself.
 | a gate is green | run `tools/test/run-tests.sh` and read the phase, including its mutants |
 | the compiler was promoted | the build rule end to end, with the non-empty guard before the `cmp` |
 | a citation is right | open the cited file at the cited line |
+| a claim is true | read the authority the claim appeals to, and test the claim's own predicate against what that authority says |
 | nothing else moved | `git status --short` |
+
+**Two questions hide in the citation row.** Every other check above tests
+presence or resolution. Opening a cited file at its line proves the citation
+points somewhere. Whether the sentence standing beside it is true is a second
+question, and the claim row is the only one that asks it.
+[[working-discipline]] §Reporting carries the half of this the whole tree owes: a
+check aimed at a guess passes by looking at nothing.
+
+**The case.** On 2026-09-10 a design run on `docs/arcs/parts/file-types-K1.md`
+named `lib/lowering/tal/target-linux.manifest` as the conforming `.manifest`
+instance. The orchestrating session opened every citation in that artifact,
+including the sharp one: `bin/chirality:171-172` does append a `compile-main`
+stub and refuses nothing. The design passed. The file does not conform.
+`.planning/MANIFEST-DESIGN-MAP.md:112-121` holds the six requirements and the
+file fails two of them. Requirement 3 wants named fields on a constructor and
+every `sys-row` entry in the file is positional. Requirement 4 wants anything
+that distinguishes two rows to be a field, and its justification is measured in
+that same file: seven rows carry the syscall number `16`
+(`lib/lowering/tal/target-linux.manifest:30-35` and `:60`), told apart only by
+comments that `sexp.chiral` drops at the lexer. Every citation resolved and the
+claim was false. Reverted at `9325095`, and recorded as `A1` in
+`.planning/FAILURE-MODES-2026-09.md`, which notes it was done twice on the same
+artifact before the author caught it.
+
+**The same shape lives in a tool.** Check AE, which the mint row above names,
+tested whether an element number appeared anywhere in an arc file, so
+`docs/arcs/tool-authority-arc.md:274` naming `E148` and `E149` in order to refuse
+them counted as ownership. It reported nothing on a tree where 143 of 187 catalog
+elements held no roster row. `records/lenses/problems.md` PRB-83 holds that
+measurement and the rewrite at `8a7b644`; `C1` of the capture puts it beside nine
+more of the same shape.
 
 Then `python3 tools/ledger-lint/ledger-lint.py` and compare the count and the
 per-check distribution against the run before. A stage that adds findings has
