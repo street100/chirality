@@ -36,17 +36,28 @@
 # string constant held here.  The pretty.sh / tal-check.sh idiom.
 #
 # ─── R6 NEEDS A BASELINE BINARY ─────────────────────────────────────────────
-# `bin/chirality-bin` is tracked, so the pre-change compiler is recoverable from
-# git.  E185_BASE_REV names the revision and defaults to `ccff8e8`, the last
-# commit before E185's promotion, whose `bin/chirality-bin` is generation one.
-# E185_BASE_CC overrides it with a path.  With neither, R6 scores `nobase` and
-# this script exits 1: an unscored control is not a passing one.
+# `bin/chirality-bin` is tracked, so the last promoted compiler is recoverable
+# from git.  E185_BASE_REV names the revision and defaults to `30b288b`, E200's
+# promotion.  It defaulted to `ccff8e8`, the last commit before E185's own
+# promotion, until E200 moved every root's bytes.  E185_BASE_CC overrides it
+# with a path.  With neither, R6 scores `nobase` and this script exits 1: an
+# unscored control is not a passing one.
 #
 # ⚑ THE DEFAULT REVISION IS PINNED ON PURPOSE AND IT WILL AGE.  R6 asks whether
 # THIS change moved a byte, so its baseline is THIS change's predecessor.  A
 # later compiler change moves the fixture's bytes for its own reasons and R6
 # goes red saying so; that red is a stale pin, and the fix is a fresh
 # E185_BASE_REV, never a widened comparison.
+#
+# ⚑ E200 IS THE FIRST SUCH CHANGE AND THE PIN MOVED, NOT THE COMPARISON.
+# `bover` added two routines to `native-lib`, which bytes.chiral:643-644 says is
+# the runtime routines' address table, so every root's image grew by a page:
+# under E200's compiler the fixture is 37,240 bytes where ccff8e8's binary emits
+# 33,144.  Measured 2026-09-18.  R6 now asks whether anything has moved the
+# fixture's bytes SINCE E200's promotion, which is the same question one pin
+# later.  The mutant rows below are where it has teeth: each builds a compiler
+# from a mutated lib/, and their pins say the $apply mutations leave the
+# fixture's bytes alone.
 #
 # ─── THE MUTANTS, AND ALL FIVE ARE SUBSTITUTIONS ────────────────────────────
 # `records/gate-audit.md` GA-19: deleting an arm makes the module non-exhaustive,
@@ -100,7 +111,7 @@ bad() { echo "  FAIL  $1"; fail=$((fail+1)); }
 
 # ─── the baseline compiler for R6 ───────────────────────────────────────────
 BASE_CC="${E185_BASE_CC:-}"
-BASE_REV="${E185_BASE_REV:-ccff8e8}"
+BASE_REV="${E185_BASE_REV:-30b288b}"
 if [ -z "$BASE_CC" ] && [ -n "$BASE_REV" ]; then
   BASE_CC="$TMP/base-cc"
   if ! ( cd "$REPO" && git show "$BASE_REV:bin/chirality-bin" ) >"$BASE_CC" 2>/dev/null || [ ! -s "$BASE_CC" ]; then
