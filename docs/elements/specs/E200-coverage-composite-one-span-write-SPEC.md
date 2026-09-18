@@ -3,7 +3,7 @@ element: E200
 slug: coverage-composite-one-span-write
 title: "**The coverage composite: one span write, one allocation**"
 design: arcs/parts/display-calculus-R3.md
-status: draft
+status: audited
 updated: 2026-09-18
 ---
 
