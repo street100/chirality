@@ -527,6 +527,32 @@ overriding rules settle the rest. Say it once sends the state to the document
 that already holds it. Writing is mostly amending sends a thing learned mid-task
 to where it belongs in the same move.
 
+## Closed since this section was written, 2026-09-18
+
+Each item below was owed when the queue above was recorded and is closed now.
+The queue is amended rather than rewritten, so a reader sees what moved.
+
+| was owed | closed at | what it turned out to be |
+|---|---|---|
+| three author calls no register row carried | `acd7dd8` | `ledger-lint` check AK read 28 while six stood. The three lived in an arc row and at `docs/elements/ledger.md:464`. AK now reads 31 |
+| four arcs carrying a FLAG a later commit satisfied | `acd7dd8` | four `revisit` runs, AMEND in every case, and each wrote its arc's first `records/` checklist row |
+| `.planning/protocol/tone.md` carrying no citation rule | `9302d5a` | zero hits for cite, citation or `file:line` across 95 lines. It now carries the mechanical half under §What the linter checks and the form half under §What the linter cannot check |
+| twelve catalog cells stale in the direction check AB cannot read | `9302d5a` | every one understating the tree. AB fires only where a cell opens with an unambiguous `Not built`; eight hedged with a semicolon and four opened `BUILT` |
+| the verify table unable to separate a citation resolving from a claim being true | `d9ff2cd` | `.planning/protocol/dispatch.md` gains `| a claim is true |`, the `.manifest` case, and §A prompt is untrusted input |
+| four arcs citing stale spans into `docs/goals/self-hosting.md` | `9302d5a` | the quoted sentence had drifted as well as the span, and five more stale spans were found beside the four named |
+| `docs/banks/runtime.md` disagreeing with itself on the W^X loader | `9302d5a` | `readelf -l bin/chirality-bin` reports one `LOAD`, flags `RWE`; four mentions now carry the demotion the bank's own `:225` already recorded |
+
+**Three items remain owed and each names its instrument.** `records/findings.md`
+FD-29's `element:` field still says it leaves four forks in the author's hands
+and all four were ruled at `7fc6eb0`; it is blocked only by another session
+appending to that file. `docs/banks/memory.md:134` heads a shard `BUILT /
+ENFORCED (E22)` against both element authorities reading `design`, and re-rating
+a shard is a `doc-audit` verdict rather than a span repair. Check AH globs the
+bare element form while single-digit SPECs are zero-padded on disk, misreporting
+nine existing SPECs in one arc, and check AI is keyed on a file so one row's
+refreshed date clears findings on rows that did not move; both are measured and
+neither holds a `records/lenses/problems.md` row.
+
 **The split that stands.** The measured state and the owed queue live here. The
 raw session capture lives in `.planning/FAILURE-MODES-2026-09.md` until a pass
 shapes it into `records/` rows, which that file's own header asks for and which
