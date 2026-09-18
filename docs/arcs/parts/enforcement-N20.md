@@ -6,7 +6,7 @@ kind: tool
 origin: new
 req: 1
 status: draft
-updated: 2026-09-10
+updated: 2026-09-18
 ---
 
 # enforcement/N20: the census of caller-indexed byte access across the prelude's externs
@@ -319,11 +319,12 @@ two answers. This one is not.
 ### Author calls carried, and none answered here
 
 Neither blocks this row, because §5's chosen shape is invariant under both
-answers. Both stay `unreviewed`.
+answers. ⚑ **2026-09-18: the first is ruled and the second is still
+`unreviewed`.**
 
 | call | where | bearing |
 |---|---|---|
-| **Which arc owns the bounds class** | `records/author-calls.md:363` | If it goes against enforcement this row moves whole with `N18`, `N19` and `N21`, keeping its id. The instrument and its contents do not change |
+| **Which arc owns the bounds class** | `records/author-calls.md:85`, `ruled` | **RULED 2026-09-18 by the author: BOTH.** *"probably can give to enforcement and diagnostics its really part of both realistically"*. It did not go against enforcement, so **this row does not move and keeps its id**, and the instrument and its contents do not change, which is what the conditional said either way. ⚑ The underlying split, diagnostics owning the ROUTINE and enforcement the JUDGMENT AND THE GATE, is the register row's derivation from the call's two readings and not the author's words. ⚑ The region half is not ruled: `E22` and `E41` stay unseated. This cell cited `:363` until this pass, which is a different section |
 | **Is a clamp an enforcement outcome, or does it discharge the class by hiding it** | `records/author-calls.md:364`, and `docs/arcs/parts/diagnostics-L5.md:520` question 9 | Decides what `docs/definitions/bug-classes.md:46` may read after `E176` builds. The ⚑ block above states how this instrument prints the same column under either ruling |
 
 `records/author-calls.md` was outside this run's write surface and no row was

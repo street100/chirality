@@ -115,7 +115,7 @@ Four new arcs are proposed across the 21 `new-arc` rows: `orchestration-engine`
 | E37 | `design` | `SH` | PNG writer, test-only | - | **author-call** | no arc states an image-output requirement |
 | E38 | `design` | `SH` | graded cost and coeffect semiring | [[arcs/emitted-speed-arc]] or [[arcs/memory-discipline-arc]] | **author-call** | `docs/arcs/emitted-speed-arc.md:224` against `docs/arcs/memory-discipline-arc.md:67` |
 | E39 | `design` | `SH` | effect algebra and typed rows, alarms and counter-effects | [[arcs/enforcement-arc]] or a goal that is owed | **author-call** | `docs/arcs/enforcement-arc.md:49` holds the tal shadow of the effect row; the surface algebra has no goal |
-| E41 | `design` | `SH` | region types, retiring runtime offset and bounds checks | [[arcs/memory-discipline-arc]] or [[arcs/enforcement-arc]] | **author-call** | `docs/arcs/enforcement-arc.md:572` is already an open call on which arc owns the bounds class |
+| E41 | `design` | `SH` | region types, retiring runtime offset and bounds checks | [[arcs/memory-discipline-arc]] or [[arcs/enforcement-arc]] | **author-call** | `docs/arcs/enforcement-arc.md:572`'s call on the bounds class was ruled BOTH 2026-09-18, `records/author-calls.md:85`; the region half is untaken and this element is unseated |
 | E42 | `built` | `SH` | runtime supervisor: critical sections, register-root custody, scheduler | [[arcs/bridge-arc]] or [[arcs/ownership-and-trust-arc]] | **author-call** | `docs/arcs/bridge-arc.md:89` assigns it to `bridge/C4` and the roster cell at `:88` carries only `E40`, `E56` |
 | E43 | `design` | `OT` | component broker: AUTH and AUDIT, grant, revoke, audit | [[arcs/ownership-and-trust-arc]] | **clear** | `docs/arcs/ownership-and-trust-arc.md:30`, and `docs/arcs/tool-authority-arc.md:268` declines it |
 | E44 | `design` | `OT` | whole-assembly conformance: totality, non-interference, tier weight | [[arcs/enforcement-arc]] and [[arcs/ownership-and-trust-arc]] | **author-call** | totality is `docs/arcs/enforcement-arc.md:42`; the other two are `docs/arcs/ownership-and-trust-arc.md:30` |
@@ -256,9 +256,9 @@ line against `F64` reaching the surface at all.
 
 **C. Is a `superseded` row exempt from homing?** E86, superseded by E99.
 
-**D. Which arc owns the bounds and region class?** E41 region types.
-`docs/arcs/enforcement-arc.md:572` is already an open call of this shape for the
-bounds class, and E41 is the type-level half the same question reaches.
+**D. Which arc owns the bounds and region class?** E41 region types, the
+type-level half. ⚑ **The BOUNDS half is RULED BOTH, enforcement and diagnostics,
+2026-09-18, `records/author-calls.md:85`. The REGION half is untaken.**
 
 **E. Where does the cost grading go?** E38, the coeffect semiring.
 `docs/arcs/emitted-speed-arc.md:224` grades every transformation;
@@ -402,7 +402,7 @@ sit inside `enforcement/N22`'s `what` cell and in a resume state. The element is
 | **A.** does a built element under a goal that carries no arc owe a roster row | 55 | **answered by the tree, and the answer is yes.** All 55 are homed across `checker-core`, `sys-face`, `lowering-and-emit` and `substrate-floor`, with no author ruling given. `docs/goals/self-hosting.md:71-73` states it: homing is planning, "so a `built` element still takes a row" |
 | **B.** is a goal owed before these four can be scheduled | 4 | open for three. E48 is `checker-core/CK17`; E47, E50 and E153 are unhomed |
 | **C.** is a `superseded` row exempt from homing | 1 | **ruled exempt 2026-09-13**, `records/author-calls.md:92`. E86 stays unhomed and check AE excludes it |
-| **D.** which arc owns the bounds and region class | 1 | **unruled.** E41 is `substrate-floor/SU16` and the class is unseated. Register row `records/author-calls.md:85`, `unreviewed` |
+| **D.** which arc owns the bounds and region class | 1 | **half ruled 2026-09-18.** The bounds class went BOTH, enforcement and diagnostics, register row `records/author-calls.md:85`, `ruled`. The region class is untaken: E41 is `substrate-floor/SU16` and still unseated |
 | **E.** where does the cost grading go | 1 | open. E38 unhomed |
 | **F.** does the surface effect algebra belong to enforcement | 1 | open. E39 unhomed |
 | **G.** straddles inside the `OT` track | 7 | open, all seven unhomed: E42, E44, E52, E59, E61, E62, E80 |
@@ -431,14 +431,14 @@ given in session and never written down that cost a later agent a wrong count.
 
 ### Author calls standing
 
-`ledger-lint` check AK reports 30 owed, measured 2026-09-18 once the W^X call
-was ruled, and every one of them is a row of `records/author-calls.md`. Each
-of the six below is carried on an arc roster row and holds a register row.
+`ledger-lint` check AK reported 30 owed, measured 2026-09-18 once the W^X call
+was ruled, and 29 once the bounds class was ruled the same day. Each of the six
+below is carried on an arc roster row and holds a `records/author-calls.md` row.
 
 | the call | carried on | register row |
 |---|---|---|
 | which element the surviving W^X work belongs to | `substrate-floor/SU1`, `docs/arcs/substrate-floor-arc.md:178` | `records/author-calls.md:100`, `ruled` 2026-09-18: `E20` survives as the typed W^X loader, `MapRW` sealed to `MapRX`, module cell `map-seal`, state `design`. That row was opened from the unregistered state this cell used to record. The pointer this cell used to carry, `docs/elements/ledger.md:464`, is stale twice over: the reconciliation row it named sits at `:465` since an `E200` row landed above it at `:184`, and it reads CLOSED 2026-09-18 |
-| which arc owns the bounds and region class, question D of this file | `substrate-floor/SU15` and `SU16`, both `open` | `records/author-calls.md:85`, `unreviewed` |
+| which arc owns the bounds and region class, question D of this file | `substrate-floor/SU15` and `SU16`, both `open` | `records/author-calls.md:85`, `ruled` 2026-09-18 for the BOUNDS class only: BOTH, enforcement and diagnostics. The region half of question D is untaken, so both roster rows stay `open` on the narrowed condition |
 | E167's `?` track | `lowering-and-emit/LE21` | `records/author-calls.md:90`. Four of that row's six were ruled 2026-09-15; E166 and E167 hold it open |
 | E166 and E167's tracks generally | E166 is unhomed | the same row. The 2026-09-01 parking ruling settles whether the work happens and names neither track token, and the cut it records was of external judgment, a different axis from the `SH` and `OT` split |
 | what `E128`'s `(1 t Terminal)` names | `terminal/TM9`, `docs/arcs/terminal-arc.md:199` | `records/author-calls.md:101`, `unreviewed`, opened 2026-09-18 on the naming half from the unregistered state this cell used to record. `records/author-calls.md:93` is that row's placement call, where the port tier's missing module coordinates get repaired, a different question |

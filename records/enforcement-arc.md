@@ -3,7 +3,7 @@ node: records-enforcement-arc
 layer: navigation
 related: [records/README, status-ledger, arcs/enforcement-arc, arcs/diagnostics-arc, decisions/decision-erased-word-level, decisions/decision-def-partition, index]
 status: current
-updated: 2026-09-10
+updated: 2026-09-18
 ---
 
 # Enforcement arc
@@ -355,6 +355,22 @@ the pipeline after it.
 - evidence: `docs/arcs/enforcement-arc.md` (requirement 2 gains one ⚑; requirement 6 gains one ⚑; the roster preamble gains the `safety` group and reads twenty-one rows; `enforcement/N17`'s `what` cell gains one ⚑ moving its boundary; `enforcement/N18` through `N21` added; the Coverage paragraph re-derived and the stale `arcs/README:74` line reported; the Resume state gains the RESCOPE block and the five author calls; frontmatter `updated:` already 2026-09-10 and unchanged). Read at HEAD `0ffa1ae` during this run: `lib/lowering/tal/bytes.chiral:54-77`, `:120-160`, `lib/lowering/tal/ssa.chiral:17-45`, `lib/lowering/tal/check.chiral:205-218`, `lib/lowering/tal/erase.chiral:113-117`, `lib/prelude/prelude.chiral:83`, `:95-101`, `lib/memory/mem-linear.chiral:26-28`, `lib/typing/refine.chiral`, `lib/typing/kernel.chiral:18`, `lib/typing/diag.chiral:97-110`, `lib/surface/syntax.chiral:29`, `docs/definitions/bug-classes.md`, `docs/banks/text.md:47`, `:138-139`, `docs/banks/memory.md:118-131`, `docs/goals/enforcement.md:100`, `docs/elements/catalog.md:100`. Nothing under `lib/`, `prog/` or `tools/` was changed. Re-runnable: `grep -cin 'bounds\|overread\|memory safety\|str-sub\|bslice\|out-of-range' docs/arcs/enforcement-arc.md` returned 0 before this run; `grep -rn 'str-sub\|bslice' tools/test/` returns nine files, every hit in range; the five `bget` probes above rebuild from `(import "prelude/prelude")` plus one `compile-main` and run under `./bin/chirality run`.
 - checked:  2026-09-10
 - element:  `unminted`, four times. `enforcement/N18` (safety · primitive · `pair`), `N19` (floor · law · `pair`), `N20` (safety · tool · `new`) and `N21` (tooling · tool · `new`) all carry `unminted` in their `element:` cell per [[decisions/decision-work-ids]]: the arc's band `E184-E189` is spent and `docs/decisions/decision-lane-split.md:327` bars two focuses minting from it concurrently, so an `E#` here would be the phantom dependency [[working-discipline]] `:78` forbids. **`N18` is the row to design first**, because it is the one whose subject the tree has already built for another carrier and the one the other four are stated against. `E176` and `diagnostics/L5` keep the routine's repair whole; nothing here duplicates that gate. **A repair to `nb-bslice-t` is compiler source and emission**: `prog/compiler.prog:13` → `lib/lowering/compile-all.chiral:15` → `lib/lowering/compile-emit.chiral:16` → `lowering/tal/bytes`, so [[working-discipline]]'s build rule makes the first agreement **`C2 == C3`, not `C1 == C2`**, and `lib/lowering/tal/bytes.chiral:134-144` forces gen3 as mandatory evidence. No build was run by this revisit.
+
+⚑ **ONE of the five calls this row raised is RULED, 2026-09-18, and the other
+four stand.** `records/author-calls.md:85`, **which arc owns the bounds class:
+BOTH, enforcement and diagnostics each own it**, on the author's words
+*"probably can give to enforcement and diagnostics its really part of both
+realistically"*. `enforcement/N18` does not move and keeps its id. The
+`measured:` field above is what that pass found and none of it moved; what
+closed is its **NOT RULED HERE** ⚑ for this one call, and its neighbouring
+claim that rows in [[records/author-calls]] are owed, since all five hold rows
+there at `:84-88`. ⚑ The division underneath the ruling, diagnostics owning the
+ROUTINE and enforcement the JUDGMENT AND THE GATE, is the register row's
+derivation from the call's two candidate readings and not the author's words.
+⚑ **The bounds class only.** `records/homing-triage.md:259-261` widened the same
+question to the bounds and region class; `E22` and `E41` are unseated,
+`substrate-floor/SU15` and `SU16` stay `open`, and their blocking condition is
+narrowed rather than cleared.
 
 ### EN-32 the partition document's ordering was backwards on both halves, and its identity claim and its home both survive the ruled domain
 

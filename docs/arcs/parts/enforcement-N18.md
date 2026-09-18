@@ -6,7 +6,7 @@ kind: primitive
 origin: pair
 req: 1
 status: blocked
-updated: 2026-09-11
+updated: 2026-09-18
 ---
 
 # enforcement/N18: the bounds relation has no carrier, and the vocabulary already refuses the half that has one
@@ -394,8 +394,12 @@ row is opened.** `docs/elements/specs/E41-region-types-SPEC.md` puts both halves
 of Shape 3 outside `E41`, §2's ⚑ carries it, and `enforcement/N22` was opened on
 2026-09-10. So the cells read `enforcement/N22`'s, with no second row owed
 beside it. Whether `N22` itself moves arc under author call 2 in this table,
-`records/author-calls.md:363`, is that call's and this run does not take it. The
+`records/author-calls.md:85`, is that call's and this run does not take it. The
 other five rows are untouched by this trigger.
+
+⚑ **2026-09-18: author call 2 is ruled BOTH, so this table's second column is
+history.** Column 1 is the live one, and no shape moves arc. The citation above
+read `:363` until this pass. Call 3's two columns are untouched and still open.
 
 ## 5. The call
 
@@ -448,7 +452,7 @@ other five rows are untouched by this trigger.
 | 5 | Whether a saturated application, as against inter-variable arithmetic, is inside `E41`'s scope | **ROSTER ROW OWED, and this run does not open one** | Named by no artifact in the tree. `docs/definitions/status-ledger.md:188` records the fragment's edge as *"only arithmetic-expression bounds (`v<n+1`) remain out"*, which does not reach an application. Per [[working-discipline]]'s deferral rule this names a row rather than an `E#`, and it does not coin an id: `records/bounds-residue.md` `BR-03` measured what coining `text-tools/L6` cost |
 | 6 | The stale `38` in this row's `what` cell and in `records/enforcement-arc.md` EN-31 | **REPORTED, not edited** | `Judg` holds 36 (`lib/typing/diag.chiral:99-111`). `records/author-calls.md:356-360` tabulates the 38-to-36 shrink and [[goals/enforcement]] `:97-100` already reads 36. A design run may not write the arc file or an append-only record |
 | 7 | The stale `250` in this row's `what` cell | **REPORTED, not edited**, and routed | `records/bounds-residue.md` `BR-06` measured 134 + 108 = **242** with the method stated, re-verified here, and routes the count to `E176`'s SPEC stage together with two other stale statements in the same cells |
-| 8 | **Which arc owns the bounds class** | **NEEDS-AUTHOR** | `records/author-calls.md:363`, `unreviewed`. Carried verbatim below. The §4 table states what each shape does under either answer. If the call goes against enforcement this artifact moves with the row |
+| 8 | **Which arc owns the bounds class** | **RULED 2026-09-18 by the author: BOTH**, enforcement and diagnostics each own it | `records/author-calls.md:85`, `ruled`. The author's words: *"probably can give to enforcement and diagnostics its really part of both realistically"*. **This artifact does not move and keeps its id**, so the §4 table's first column is the one that applies. ⚑ The division underneath, diagnostics owning the ROUTINE and enforcement the JUDGMENT AND THE GATE, is the register row's derivation from the call's two candidate readings and not the author's words, so a later pass tests it rather than inherits it. ⚑ The region half is untouched: `E22` and `E41` stay unseated and `substrate-floor/SU15` and `SU16` stay `open`. This cell read `records/author-calls.md:363` until 2026-09-18, which is a different section and was wrong before the ruling too |
 | 9 | **Is a clamp an enforcement outcome, or does it discharge the class by hiding it** | **NEEDS-AUTHOR** | `records/author-calls.md:364`, `unreviewed`, and the same fork as `docs/arcs/parts/diagnostics-L5.md` §5 question 9, clamp against trap. It governs `E176`'s repair shape, which is a different row. It governs this row only in one place: whether anything beyond Shape 6 is owed here after `E176` builds. §6 states the packet under both answers |
 
 ⚑ **2026-09-11: questions 4 and 5 are re-dispositioned, and the other seven are
@@ -463,9 +467,14 @@ measurement on 2026-09-10. The reason this design declined to coin an id stands
 and was the right call: `BR-03` measured what coining `text-tools/L6` cost, and
 the id that landed came from the arc that owns it. §2's ⚑ carries the citations.
 
-### NEEDS-AUTHOR, carried verbatim
+### The two calls, carried verbatim
 
-From `records/author-calls.md:363`:
+⚑ **The first of the two was RULED on 2026-09-18. The second is still
+NEEDS-AUTHOR.** Both are kept as they were put, because an answer is read
+against the question it answered.
+
+From `records/author-calls.md:85`, now `ruled`. Until 2026-09-18 this citation
+read `:363`, which is a different section:
 
 > **Which arc owns the bounds class** · Opened 2026-09-10 by the same revisit. |
 > Enforcement: the missing artifacts are a judgment and a gate, requirements 1
@@ -477,6 +486,15 @@ From `records/author-calls.md:363`:
 > pair whose halves sit in different arcs. `enforcement/N18` is written on the
 > judgment-and-gate reading; if the call goes the other way the row moves whole
 > and keeps its id
+
+⚑ **RULED 2026-09-18: BOTH.** *"probably can give to enforcement and diagnostics
+its really part of both realistically"*. The call's own first two branches are
+seated together, and the third, text-tools, was measured false before the call
+reached the author: there is no `text-tools/L6` and no length-indexed `Str`, and
+`docs/arcs/text-tools-arc.md` rosters `P1` through `P4`. `N18` does not move and
+keeps its id. ⚑ **The ruling takes the bounds class only.** The region half,
+`E22` and `E41`, is unseated, and `substrate-floor/SU15` and `SU16` stay `open`
+on the narrowed condition.
 
 **One fact bears on that row and is recorded without answering it.** Its
 text-tools branch rests on `text-tools/L6`, and `records/bounds-residue.md`

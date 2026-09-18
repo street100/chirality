@@ -189,8 +189,8 @@ number.**
 | `substrate-floor/SU12` | the `Pool` read crossing, built under `E120`'s number, with the one caller in the tree sitting outside the closure. `pool-read` is declared at `lib/ports/pool.port:30` with its result carrier `PoolReadR` at `:19` naming this element in the comment above it, and `lib/protocol/grid.chiral:194` calls it to scroll the grid, which is the only `pool-read` call anywhere. `docs/elements/ledger.md` records the rung and the reason: `grid.chiral` is reached only by `lib/protocol/vt-parser.chiral` and four `prog/scriba/samples/` roots, which Phase 7 compiles and executes none of. Re-verified 2026-09-18: `t4_grid` exits 42 when run by hand and no script names it. **Wanted**: that root under a phase, which is the one assertion that would catch a `pool-read` returning the wrong span. **Blocking condition**: the phase is `lowering-and-emit/LE22`'s Phase 12 | S4 | port | bind | 1, 2 | built | `E113` |
 | `substrate-floor/SU13` | the linear collection of caps, built on the branch the element's own Stage 1 predicted, with the sharpest negative fixtures on this roster and no phase behind them. `lib/capability/lincoll.chiral:26-28` declares `SockVec` with `(1 hd Sock)` and `(1 tl SockVec)`, so the whole value registers linear and `sv-push` at `:31` preserves it by construction. Measured 2026-09-18: `e106_reject_drop_tail`, `e106_reject_length`, `e106_reject_list_cap` and `e106_reject_nonlinear_field` each refuse with a distinct message and exit 1, `e106_drain_control` exits 42, and `e106_sockvec_accept` exits 1 for the reason its header at `:10-12` states, that `sock-close` has no `crossing-wraps` row. No script names one of the six. The module is outside the closure at 91 lines. **Wanted**: the four refusals and the accept under a phase, which is the only place in the tree where a linearity rule has a purpose-built negative corpus. **Blocking condition**: the phase is `lowering-and-emit/LE22`'s Phase 12 | S5 | law | bind | 1, 2 | built | `E106` |
 | `substrate-floor/SU14` | the `Pool`-backed cell store, built as the thing its own cell said the language could not express, and undispatched. `lib/protocol/grid.chiral:28` declares `(data Grid ((n I64)) (grid (rows I64) (cols I64) (1 store (Pool n)) (cur Cursor) (pen Attrs)))`, a linear size-indexed native region with `cell-bytes` 16 at `:52` and one O(1) `pool-write` per cell; `lib/protocol/vt-parser.chiral:57` is the membrane that threads the linear grid. Measured 2026-09-18: `t4_codec` exits 42, `t4_grid` 42, `t4_minimal` 0, and no `tools/test/*.sh` names any of the three. `records/homing-triage.md:177` proposes [[arcs/display-calculus-arc]] and reads `clear`; **verified 2026-09-18 that that arc rosters no element at all**, its twenty element cells all reading `unminted`, and `display-calculus/C1` names this element inside its `what` cell while carrying `unminted`. **Wanted**: the three roots under a phase. **Blocking condition**: the phase is `lowering-and-emit/LE22`'s Phase 12 | S5 | primitive | bind | 1, 2 | built | `E111` |
-| `substrate-floor/SU15` | the allocator beyond the bump arena: region types and a collector outside the TCB. `docs/elements/catalog.md:128` reads *"bump arena only; region types deferred (edge 3)"* and the ledger reads `design`, which the roster's closed vocabulary has no word for and which is written `open` here. `records/lenses/unspoken.md` UNS-01 admits it as unhomed and stands at `open` with `author: unreviewed`; that row's `measured` field reads *"no file in docs/arcs/ names E22"* and is false as of `docs/arcs/memory-discipline-arc.md:26,39`, where that arc names the element in its prose and in its §3 table and rosters `E81` through `E85` instead. **Wanted when the class has an owner**: the profile's memory clause, linear or region, given a type-level meaning, with `E41`'s linear sum as the mechanism. **Blocking condition**: **which arc owns the bounds and region class**, an open author call carried verbatim under FLAGs. The reclamation discipline over the value-cell heap is `memory-discipline/M2` through `M5` and this row takes none of it | S6 | law | new | 6 | open | `E22` |
-| `substrate-floor/SU16` | region types retiring the runtime offset and bounds checks, the type-level half of the same class. `lib/memory/mem-region.chiral:41` is the branch it would discharge, `(<=i (+ used len) cap)` against a runtime witness, in a 75-line module with zero importers. `docs/elements/specs/E41-region-types-SPEC.md` reads `status: audited` and §1 scopes the element's refinement half to a linear arith-expression bound, a sum of atoms against an atom, with the general solver a non-goal. `records/lenses/problems.md` PRB-82 stands `OPEN` on `lib/typing/refine.chiral:7`, which routes a solver refactor here and is compiler source inside the blob. `records/lenses/unspoken.md` UNS-07 admits the element as unhomed. **Wanted when the class has an owner**: the linear sum `(<= (+ o s) cap)` decided at compile time for a constant offset. **Blocking condition**: **the same author call as `SU15`**. The application operand and the `=>` binder scope are `enforcement/N22`'s by PRB-82's 2026-09-10 settlement and this row takes neither | S6 | law | new | 6 | open | `E41` |
+| `substrate-floor/SU15` | the allocator beyond the bump arena: region types and a collector outside the TCB. `docs/elements/catalog.md:128` reads *"bump arena only; region types deferred (edge 3)"* and the ledger reads `design`, which the roster's closed vocabulary has no word for and which is written `open` here. `records/lenses/unspoken.md` UNS-01 admits it as unhomed and stands at `open` with `author: unreviewed`; that row's `measured` field reads *"no file in docs/arcs/ names E22"* and is false as of `docs/arcs/memory-discipline-arc.md:26,39`, where that arc names the element in its prose and in its §3 table and rosters `E81` through `E85` instead. **Wanted when the class has an owner**: the profile's memory clause, linear or region, given a type-level meaning, with `E41`'s linear sum as the mechanism. **Blocking condition**: **which arc owns the REGION class**, narrowed 2026-09-18 and not cleared: `records/author-calls.md:85` ruled the **bounds** half BOTH, enforcement and diagnostics, and left `E22` and `E41` unseated, so what remains is an open author call carried verbatim under FLAGs. The reclamation discipline over the value-cell heap is `memory-discipline/M2` through `M5` and this row takes none of it | S6 | law | new | 6 | open | `E22` |
+| `substrate-floor/SU16` | region types retiring the runtime offset and bounds checks, the type-level half of the same class. `lib/memory/mem-region.chiral:41` is the branch it would discharge, `(<=i (+ used len) cap)` against a runtime witness, in a 75-line module with zero importers. `docs/elements/specs/E41-region-types-SPEC.md` reads `status: audited` and §1 scopes the element's refinement half to a linear arith-expression bound, a sum of atoms against an atom, with the general solver a non-goal. `records/lenses/problems.md` PRB-82 stands `OPEN` on `lib/typing/refine.chiral:7`, which routes a solver refactor here and is compiler source inside the blob. `records/lenses/unspoken.md` UNS-07 admits the element as unhomed. **Wanted when the class has an owner**: the linear sum `(<= (+ o s) cap)` decided at compile time for a constant offset. **Blocking condition**: **the same author call as `SU15`**, still out for the region half after the 2026-09-18 bounds ruling. The application operand and the `=>` binder scope are `enforcement/N22`'s by PRB-82's 2026-09-10 settlement and this row takes neither | S6 | law | new | 6 | open | `E41` |
 
 ### Coverage
 
@@ -284,9 +284,9 @@ Run 2026-09-18 against the table above.
   its resume state, both stating what `E41`'s SPEC settles rather than claiming
   the element. `records/homing-triage.md:118` proposes that arc or
   [[arcs/memory-discipline-arc]] for `E41` and reads **author-call**, citing
-  `docs/arcs/enforcement-arc.md:572` as an open call of the same shape.
-  `enforcement/N22` owns the refinement-atom widening by PRB-82's 2026-09-10
-  settlement, and `SU16` takes the region half and no part of the solver.
+  `docs/arcs/enforcement-arc.md:572`, RULED 2026-09-18 for the **bounds** class
+  only (`records/author-calls.md:85`, BOTH arcs), which leaves `E41` unseated.
+  `enforcement/N22` owns the widening by PRB-82, and `SU16` the region half.
 - **The display tier over the cell store.** [[arcs/display-calculus-arc]] rosters
   twenty rows and no element. `display-calculus/C1` names `E111` in its `what`
   cell as the tier its typed property values are built in, with `unminted` in its
@@ -342,9 +342,9 @@ old title described does not exist, `E89` owns the reserve half, `E91` owns the
 commit-on-demand half, and the typed W^X seal is `E20`'s under the title the
 ruling gives it. `SU1`, `SU3` and `SU6` home the three elements.
 
-⚑ **Which arc owns the bounds and region class is an open author call, and
-`SU15` and `SU16` are drawn while it is out.** `records/homing-triage.md:259-261`
-carries it, and its words are: *"**D. Which arc owns the bounds and region
+⚑ **The bounds class is ruled and the region class is not, so `SU15` and `SU16`
+stay drawn while half the call is out.** `records/homing-triage.md:259-261`
+widened it, and its words are: *"**D. Which arc owns the bounds and region
 class?** E41 region types. `docs/arcs/enforcement-arc.md:572` is already an open
 call of this shape for the bounds class, and E41 is the type-level half the same
 question reaches."* The same file's row for the element, at `:118`, reads
@@ -352,16 +352,16 @@ question reaches."* The same file's row for the element, at `:118`, reads
 and the row for `E22` at `:101` proposes [[arcs/memory-discipline-arc]] and reads
 `clear`.
 
-**No ruling on question D is recorded anywhere in the tree, measured
-2026-09-18.** `records/author-calls.md` carries six named calls and none is this
-one; a grep over that file for `E41`, `question D` and `bounds and region`
-returns nothing. Four homing rulings are recorded there and each answers a
-different question: that homing covers built rows, that `superseded` is exempt,
-that the orphan program reaches the `OT` track, and that a design and a SPEC for
-an `OT` element are planning. The two rows are drawn here on the same footing
-[[arcs/sys-face-arc]] drew `SF20` and [[arcs/lowering-and-emit-arc]] drew `LE24`:
-the element is homed, the call is carried, and if the author seats the class
-elsewhere both rows retire and the ids follow the elements.
+**RULED 2026-09-18, and the narrow half only.** `records/author-calls.md:85`
+reads BOTH: enforcement and diagnostics each own the **bounds** class, on the
+author's *"probably can give to enforcement and diagnostics its really part of
+both realistically"*. That register row is the narrow question and question D is
+the wide one, so **no ruling on the region half is recorded anywhere, measured
+2026-09-18.** `E22` and `E41` stay unseated, `:101`'s memory-discipline reading
+is a fourth candidate the register row never lists, and these two rows stay
+`open` with the condition narrowed rather than cleared. The footing is the one
+[[arcs/sys-face-arc]] drew `SF20` and [[arcs/lowering-and-emit-arc]] drew `LE24`
+on: seat the region class elsewhere and both rows retire with their elements.
 
 ⚑ **Two state cells read the opposite of what a grep returns, and both are in
 one group.** `E90`: `docs/elements/catalog.md:357` reads *"Not built;
