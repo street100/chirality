@@ -3,7 +3,7 @@ node: goal-coding-agent
 layer: navigation
 related: [goals/README, goals/local-ai, goals/self-tooling, arcs/scriba-arc, arcs/unit-lane-arc, permission-model, records/author-calls, status-ledger, working-discipline, decisions/decision-work-ids, index]
 status: current
-updated: 2026-09-14
+updated: 2026-09-17
 ---
 
 # Goal: chirality's own coding agent, acting on a codebase
@@ -102,7 +102,8 @@ own. A second statement of a rule drifts from the first.
 
 ## What done means
 
-Four conditions, one per area the author named. None holds an arc file.
+Four conditions, one per area the author named. Condition 1 holds two arcs and
+the other three hold no arc file.
 
 1. **Orchestration.** The area the author named as the one they care most about.
    A coding turn is decomposed across the engine rather than run as one loop, and

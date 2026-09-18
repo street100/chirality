@@ -3,7 +3,7 @@ node: goals
 layer: navigation
 related: [index, arcs/README, records/README, status-ledger, open-edges]
 status: current
-updated: 2026-09-08
+updated: 2026-09-17
 ---
 
 # Goals
@@ -47,18 +47,18 @@ arc's `goal` field as `UNWRITTEN`, and it is an author call.
 |---|---|---|
 | [[goals/self-hosting]] | held since 2026-08-05, maintained by the BUILD RULE | none open, and see Rules |
 | [[goals/self-tooling]] | in flight | [[arcs/zero-python-arc]], [[arcs/text-tools-arc]] |
-| [[goals/readable-surface]] | in flight | [[arcs/diagnostics-arc]], [[arcs/file-types-arc]] |
+| [[goals/readable-surface]] | in flight | [[arcs/diagnostics-arc]], [[arcs/file-types-arc]], [[arcs/surface-syntax-arc]] |
 | [[goals/presentability]] | in flight | [[arcs/baseline-alignment-arc]], [[arcs/presentability-arc]], [[arcs/binary-split-arc]] |
-| [[goals/enforcement]] | in flight | [[arcs/enforcement-arc]] |
+| [[goals/enforcement]] | in flight | [[arcs/enforcement-arc]], [[arcs/syscall-custody-arc]] |
 | [[goals/independent-judgment]] | stated, unbuilt | [[arcs/independent-judgment-arc]] |
 | [[goals/bridge]] | stated 2026-09-02, unbuilt | [[arcs/bridge-arc]] |
-| [[goals/module-split]] | in flight, one measured miss | [[arcs/module-split-arc]] |
-| [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | [[arcs/transport-arc]], [[arcs/scriba-arc]], [[arcs/tuning-arc]], [[arcs/unit-lane-arc]] |
-| [[goals/native-stack]] | in flight: protocol arc opened 2026-09-03, window and document unopened | [[arcs/native-protocol-arc]], [[arcs/native-window-arc]], [[arcs/native-document-arc]] |
-| [[goals/display]] | stated 2026-09-04, unbuilt: the calculus arc opened, four conditions unopened | [[arcs/display-calculus-arc]] |
-| [[goals/own-web]] | stated 2026-09-05, unbuilt: two arcs opened, three conditions unopened | [[arcs/vocabulary-arc]], [[arcs/canvas-arc]] |
+| [[goals/module-split]] | in flight, one measured miss | [[arcs/module-split-arc]], [[arcs/part-split-arc]] |
+| [[goals/local-ai]] | stated 2026-09-01, unbuilt in this tree | [[arcs/transport-arc]], [[arcs/scriba-arc]], [[arcs/tuning-arc]], [[arcs/unit-lane-arc]], [[arcs/orchestration-engine-arc]], [[arcs/memory-discipline-arc]], [[arcs/runtime-loading-arc]] |
+| [[goals/native-stack]] | in flight: all four conditions hold an arc | [[arcs/native-protocol-arc]], [[arcs/native-window-arc]], [[arcs/native-document-arc]] |
+| [[goals/display]] | stated 2026-09-04, unbuilt: two arcs opened, three conditions unopened | [[arcs/display-calculus-arc]], [[arcs/terminal-arc]] |
+| [[goals/own-web]] | stated 2026-09-05, unbuilt: three arcs opened, two conditions unopened | [[arcs/vocabulary-arc]], [[arcs/canvas-arc]], [[arcs/crypto-primitives-arc]] |
 | [[goals/emitted-speed]] | stated 2026-09-08, unbuilt: one arc opened, four conditions unopened | [[arcs/emitted-speed-arc]] |
-| [[goals/coding-agent]] | stated 2026-09-08, half built: one arc opened, three conditions unopened | [[arcs/coding-turn-arc]] |
+| [[goals/coding-agent]] | stated 2026-09-08, half built: two arcs opened, three conditions unopened | [[arcs/coding-turn-arc]], [[arcs/tool-authority-arc]] |
 | [[goals/ownership-and-trust]] | deferred out of scope 2026-08-31 | [[arcs/ownership-and-trust-arc]], deferred with the track |
 
 `independent-judgment` carries an arc as of 2026-09-01 and still has no element.
@@ -86,9 +86,9 @@ it. Its arc has no reserved block, so its rows take arc-local ids.
 
 [[goals/display]] was stated 2026-09-04 and is an author call, the fourth
 after [[goals/presentability]], [[goals/readable-surface]] and
-[[goals/local-ai]]. It says so in its own first section. Four of its five
+[[goals/local-ai]]. It says so in its own first section. Three of its five
 done-conditions hold no arc file and stay conditions in the goal, so this
-table lists the one arc that exists. [[goals/native-stack]] condition 3 becomes
+table lists the two arcs that exist. [[goals/native-stack]] condition 3 becomes
 a consumer of it, and whether [[arcs/native-document-arc]] survives the overlap
 is a row in [[records/author-calls]].
 
@@ -106,10 +106,11 @@ campaign the author closed on 2026-08-02, [[benchmarks/language-performance]]
 publishes its band as a standing claim, and [[goals/own-web]] condition 4
 depends on a crypto floor that [[benchmarks/crypto-kernel-allocation]] measured
 as violated on 2026-09-07. It is separate from [[goals/self-hosting]] because
-that goal claims a fixpoint and is held by a standing gate with no arc, and
-separate from [[goals/enforcement]] because that one claims a check runs rather
-than what a compiled program costs. [[arcs/emitted-speed-arc]] takes conditions 1 and 2, and
-four of the six stand unopened. [[arcs/memory-discipline-arc]] holds the nearest
+that goal claims a fixpoint, which its conditions 1 to 3 hold by a standing
+gate with no arc, and separate from [[goals/enforcement]] because that one
+claims a check runs rather than what a compiled program costs.
+[[arcs/emitted-speed-arc]] takes conditions 1 and 2, and four of the six stand
+unopened. [[arcs/memory-discipline-arc]] holds the nearest
 scheduled work, under [[goals/local-ai]] and against peak RSS, and the goal file
 states the overlap.
 
@@ -123,10 +124,12 @@ filesystem reach, least-privilege over what a step may touch, and the routes and
 keybinds that make it usable. The tree cuts them apart in code:
 `prog/shilpa/turn.chiral` runs a tool-call turn and uses none of the engine, and
 no file under `prog/prapanca/` reads the `tools` field it declares. Its arcs column
-carries [[arcs/coding-turn-arc]], opened the same day against condition 1.
+carries [[arcs/coding-turn-arc]], opened the same day against condition 1, and
+[[arcs/tool-authority-arc]], opened 2026-09-09 against the same condition.
 Conditions 2, 3 and 4 hold no arc, which is **not** the standing-gate shape
-[[goals/self-hosting]] carries: no rule maintains them on every change, and the
-goal's own first honest limit says the absence is scheduling owed.
+[[goals/self-hosting]] conditions 1 to 3 carry: no rule maintains them on every
+change, and the goal's own first honest limit says the absence is scheduling
+owed.
 
 [[goals/ownership-and-trust]] carries an arc as of 2026-09-02 and every row in
 it is deferred. The arc holds three minted elements, `E53`, `E71` and `E72`,
@@ -144,14 +147,16 @@ and the arc says so in its own resume state.
   new ambition is an author call.
 - Changing what a goal claims changes what its arcs are for, so it is a decision
   and belongs in `docs/decisions/` first.
-- **A goal held by a standing gate carries no arc, and that is its finished
-  shape.** An arc schedules work toward a goal that is open. Where a goal is
-  maintained on every change by a rule that already runs, there is no work to
-  schedule and an arc would be an empty file. [[goals/self-hosting]] is the
-  case: the BUILD RULE in [[working-discipline]] holds it on every change whose
-  deliverable enters the compiler's import closure, and
-  `tools/test/map-integrity.sh` and `bin/chirality test` measure it. Its goal
-  file names the gates and its honest limits say what a fixpoint does not
-  prove. A goal in this shape says `none open` in the table above, and
-  `ledger-lint` check V reads that as the recorded reason rather than a hole.
-  A goal with neither an arc nor a gate is a hole and check V fails it.
+- **A condition held by a standing gate carries no arc, and that is its
+  finished shape.** An arc schedules work toward a condition that is open. Where
+  a rule that already runs maintains it on every change, there is no work to
+  schedule and an arc would be an empty file. [[goals/self-hosting]] conditions
+  1 to 3 are the case: the BUILD RULE in [[working-discipline]] holds them on
+  every change whose deliverable enters the compiler's import closure. That
+  goal's conditions 4 and 5 are open and both name [[arcs/sys-face-arc]]. Its
+  goal file names the gates, its first condition records that no suite phase
+  runs the fixpoint compare, and its honest limits say what a fixpoint does not
+  prove. A goal carrying such a condition says `none open` in the table above:
+  `ledger-lint` check V reads that as the recorded reason for a goal no arc
+  serves, and check AF reads it as the reason a condition there names no arc. A
+  goal with neither an arc nor a gate is a hole and check V fails it.

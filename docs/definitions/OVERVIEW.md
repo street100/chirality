@@ -2,7 +2,7 @@
 node: overview
 layer: generated
 tier: orientation
-updated: 2026-09-13
+updated: 2026-09-17
 ---
 
 # Overview: goal to element, with what each level carries
@@ -30,7 +30,7 @@ updated: 2026-09-13
 ## coding-agent
 
 - **1.** Orchestration. The area the author named as the one they care most about. A coding turn is
-      arc: coding-turn-arc
+      arc: coding-turn-arc, tool-authority-arc
 - **2.** Routes. A coding request reaches the right step, the right tool grant and the right model,
       arc: UNOPENED
 - **3.** Features. The agent reaches a codebase rather than a path it was handed. Two counts are ze
@@ -49,7 +49,7 @@ updated: 2026-09-13
 - **1.** The calculus. Style is a typed value resolved by total functions, and a property holds in 
       arc: display-calculus-arc
 - **2.** The seam. One document reaches more than one surface, and no theme or render changes silen
-      arc: UNOPENED
+      arc: terminal-arc
 - **3.** Geometry. A box and a glyph have positions, and hit testing inverts them. Unopened, and it
       arc: UNOPENED
 - **4.** The pixel. A pixel has a correct value by type. Unopened, and it holds no arc file. Behind
@@ -84,7 +84,7 @@ updated: 2026-09-13
 ## enforcement
 
 - **1.** A capability sits at ENFORCED, or its ledger row says why it does not. Observed on the fou
-      arc: enforcement-arc
+      arc: enforcement-arc, syscall-custody-arc
 - **2.** A claim the compiler makes about its own work is carried as a value with evidence, and ref
       arc: enforcement-arc
 - **3.** The typed-assembly floor runs on the shipping path. Observed by the floor checker and the 
@@ -96,6 +96,9 @@ updated: 2026-09-13
 
 ### arc `enforcement-arc`: 22 roster row(s)
   state: built 3, designed 2, minted 1, open 16
+
+### arc `syscall-custody-arc`: 5 roster row(s)
+  state: built 1, open 4
 
 ## independent-judgment
 
@@ -118,9 +121,9 @@ updated: 2026-09-13
   PRB-31[OPEN/unreviewed]
 
 - **1.** Full orchestration. A gated multi-agent run executes end to end inside this tree: match, g
-      arc: transport-arc, unit-lane-arc
+      arc: orchestration-engine-arc, transport-arc, unit-lane-arc, memory-discipline-arc
 - **2.** TUI through scriba for full interaction. Every part of a run is authored, composed, fired,
-      arc: scriba-arc
+      arc: scriba-arc, runtime-loading-arc
 - **3.** A full framework for entirely chirality AI. The model of computation the agents run under 
       arc: unit-lane-arc
 - **4.** A wrap to use Python for fine tuning, creating, and a growing and changing set of interact
@@ -132,6 +135,12 @@ updated: 2026-09-13
 
 ### arc `memory-discipline-arc`: 7 roster row(s)
   state: built 1, open 6
+
+### arc `orchestration-engine-arc`: 18 roster row(s)
+  state: built 12, open 6
+
+### arc `runtime-loading-arc`: 4 roster row(s)
+  state: open 4
 
 ### arc `scriba-arc`: 6 roster row(s)
   state: open 6
@@ -148,7 +157,7 @@ updated: 2026-09-13
 ## module-split
 
 - **1.** A module's pieces have one type shape each. Where two halves differ in effect, cost or tie
-      arc: module-split-arc
+      arc: module-split-arc, part-split-arc
 - **2.** The trusted core's boundary is stated and holds. Which files are `kernel-core` and which a
       arc: module-split-arc
 - **3.** Cut modules rejoin through a typed connector, per [[joining-law]], rather than by a bare i
@@ -180,7 +189,7 @@ updated: 2026-09-13
   state: building 1, open 9
 
 ### arc `native-window-arc`: 6 roster row(s)
-  state: open 6
+  state: designed 1, minted 1, open 4
 
 ## own-web
 
@@ -249,7 +258,7 @@ updated: 2026-09-13
 - **3.** No escape hatch that everyone takes. An opt-out annotation whose usage rate is high is a f
       arc: UNOPENED
 - **4.** Regularity holds at the surface. One shape, one meaning. Observed on the three current ins
-      arc: file-types-arc, diagnostics-arc
+      arc: file-types-arc, diagnostics-arc, surface-syntax-arc
 
 ### arc `diagnostics-arc`: 14 roster row(s)
   state: built 6, designed 1, open 7
@@ -257,14 +266,24 @@ updated: 2026-09-13
 ### arc `file-types-arc`: 4 roster row(s)
   state: open 4
 
+### arc `surface-syntax-arc`: 4 roster row(s)
+  state: open 4
+
 ## self-hosting
 
 - **1.** `bin/chirality-bin` compiles the blob to a binary that compiles the same blob to a byte-id
       arc: NO ARC, NOT MARKED UNOPENED
-- **2.** The binary is committed, with the tree and harness that rebuild it. Held by the same gates
+- **2.** The binary is committed, with the tree and harness that rebuild it. Held by the same rule,
       arc: NO ARC, NOT MARKED UNOPENED
 - **3.** Nothing replaces itself in place. Build-new, test, promote. Held by the BUILD RULE, which 
       arc: NO ARC, NOT MARKED UNOPENED
+- **4.** Every checking rule the compiler ships runs on a path something asserts. `docs/definitions
+      arc: sys-face-arc
+- **5.** Every built element of the compiler holds a roster row in an arc. Homing is planning, whic
+      arc: sys-face-arc
+
+### arc `sys-face-arc`: 20 roster row(s)
+  state: built 18, open 2
 
 ## self-tooling
 
@@ -286,9 +305,9 @@ updated: 2026-09-13
 
 ## Unscheduled
 
-35 unbuilt element(s) named by no arc. Each is territory with no ruling, and the unspoken lens is where that gets tracked.
+24 unbuilt element(s) named by no arc. Each is territory with no ruling, and the unspoken lens is where that gets tracked.
 
-  E35, E36, E37, E39, E44, E45, E46, E47, E48, E49, E54, E55, E57, E58, E59, E60, E61, E62, E73, E74, E75, E77, E78, E80, E94, E102, E142, E143, E153, E162, E164, E165, E167, E170, E171
+  E35, E36, E37, E44, E46, E47, E48, E54, E57, E58, E59, E60, E61, E62, E73, E74, E75, E80, E94, E102, E153, E165, E170, E171
 
 ## The chain
 
@@ -296,49 +315,43 @@ goal -> arc -> element is the model docs/arcs/README.md states, and this is its 
 
 | rung | covered | of | gated by |
 |---|---|---|---|
-| goal done-condition -> arc | 49 | 68 | check AF |
-| arc -> goal done-condition | 25 | 29 | NOTHING. No check reads this direction |
-| arc requirement -> roster row | 124 | 136 | check AG |
-| roster row -> arc requirement | 297 | 297 | check AG |
-| arc -> minted id | 12 | 29 | NOTHING. An unminted arc is a stage, and no check reads it |
-| catalog element -> arc roster row | 44 | 187 | check AE |
+| goal done-condition -> arc | 52 | 70 | check AF |
+| arc -> goal done-condition | 34 | 34 | NOTHING. No check reads this direction |
+| arc requirement -> roster row | 152 | 164 | check AG |
+| roster row -> arc requirement | 348 | 348 | check AG |
+| arc -> minted id | 18 | 34 | NOTHING. An unminted arc is a stage, and no check reads it |
+| catalog element -> arc roster row | 85 | 188 | check AE |
 
-**goal done-condition -> arc**: 49 of 68.
-- 16 condition(s) declare themselves unopened
+**goal done-condition -> arc**: 52 of 70.
+- 15 condition(s) declare themselves unopened
 - 3 sit under a goal docs/goals/README.md marks `none open`, held by a standing gate
 
-**arc -> goal done-condition**: 25 of 29.
-- memory-discipline-arc is named by no goal condition: it serves goals/local-ai condition 1, and that condition names transport-arc, unit-lane-arc instead
-- part-split-arc is named by no goal condition: it serves goals/module-split condition 1, and that condition names module-split-arc instead
-- terminal-arc is named by no goal condition: it serves goals/display condition 2, and that condition declares itself unopened
-- tool-authority-arc is named by no goal condition: it serves goals/coding-agent condition 1, and that condition names coding-turn-arc instead
-
-**arc requirement -> roster row**: 124 of 136.
+**arc requirement -> roster row**: 152 of 164.
 - admitted by a gap or unspoken row, the escape check AG takes: 12 of 12
 - bridge-arc requirement 3 is served by no roster row, and a lens row is about `bridge/req3`
 - file-types-arc requirement 3 is served by no roster row, and a lens row is about `file-types/req3`
 - file-types-arc requirement 4 is served by no roster row, and a lens row is about `file-types/req4`
 - 9 more, listed by `python3 tools/lens/lens.py chain`
 
-**arc -> minted id**: 12 of 29.
-- 50 distinct minted id(s) across every roster, in the four lanes E, U, S and N
+**arc -> minted id**: 18 of 34.
+- 91 distinct minted id(s) across every roster, in the four lanes E, U, S and N
 - baseline-alignment-arc rosters 9 row(s) and no minted id
 - binary-split-arc rosters 5 row(s) and no minted id
 - canvas-arc rosters 16 row(s) and no minted id
-- 14 more, listed by `python3 tools/lens/lens.py chain`
+- 13 more, listed by `python3 tools/lens/lens.py chain`
 
-**catalog element -> arc roster row**: 44 of 187.
-- `superseded` and exempt by the author's ruling of 2026-09-13: 1 of the 143 unhomed
-- admitted by a row in records/lenses/unspoken.md: 43
-- owed a home: 99, which is the count check AE raises. records/homing-triage.md proposes one for each and rules on none
+**catalog element -> arc roster row**: 85 of 188.
+- `superseded` and exempt by the author's ruling of 2026-09-13: 1 of the 103 unhomed
+- admitted by a row in records/lenses/unspoken.md: 35
+- owed a home: 67, which is the count check AE raises. records/homing-triage.md proposes one for each and rules on none
 
 Two author calls stand inside rung 2 and no tool can take either. records/author-calls.md carries them: whether a design or a SPEC for an `OT` element counts as planning, and the four new-arc proposals in records/homing-triage.md. Until they are ruled, this rung reports which arcs no condition names and says nothing about which of them is wrong.
 
 ## The lenses
 
-- **problem** (PRB-): 86 row(s), 82 unreviewed. FIXED 21, OPEN 65
+- **problem** (PRB-): 94 row(s), 90 unreviewed. FIXED 21, OPEN 73
 - **gap** (GAP-): 24 row(s), 18 unreviewed. closed 6, open 17, scheduled 1
 - **limit** (LIM-): 22 row(s), 22 unreviewed. accepted 20, to-plan 2
 - **unspoken** (UNS-): 51 row(s), 51 unreviewed. open 51
 
-Roster rows across every arc: 297. Minted from them: 46.
+Roster rows across every arc: 348. Minted from them: 87.

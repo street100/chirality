@@ -3,7 +3,7 @@ node: goal-display
 layer: navigation
 related: [goals/README, goals/native-stack, arcs/display-calculus-arc, arcs/terminal-arc, arcs/native-window-arc, arcs/native-document-arc, decisions/decision-display-numerics, decisions/decision-scope, decisions/decision-work-ids, records/author-calls, status-ledger, index]
 status: current
-updated: 2026-09-15
+updated: 2026-09-17
 ---
 
 # Goal: the display layer, every surface drawn from one typed value
@@ -145,7 +145,3 @@ of its nine rows. `E128` is the only element either arc has minted.
   condition in any goal, and the section above carries the arc's FLAG on it.
   Whether this goal grows a sixth condition, whether a terminal goal opens, or
   whether those rows stay unscheduled, is the author's.
-- **The [[goals/README]] row for this goal is owed.** Its arcs column lists
-  [[arcs/display-calculus-arc]] alone and its paragraph reads "Four of its five
-  done-conditions hold no arc file", both true before this amendment and false
-  after it. This run's write surface was this file.

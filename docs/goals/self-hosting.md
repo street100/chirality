@@ -3,7 +3,7 @@ node: goal-self-hosting
 layer: navigation
 related: [goals/README, status-ledger, testing-floors, bug-classes, records/homing-triage, records/findings, index]
 status: current
-updated: 2026-09-14
+updated: 2026-09-17
 ---
 
 # Goal: the language compiles and checks itself
@@ -58,15 +58,19 @@ it."*
    observed by the closure assertion `docs/definitions/bug-classes.md:183-188`
    describes and says no element covers. **(b)** A phase asserts a value over
    the root rather than only compiling it, observed by the root's name appearing
-   in some `tools/test/*.sh` script. **Unopened, and it holds no arc file.** The
-   four arcs below would carry it.
+   in some `tools/test/*.sh` script. [[arcs/sys-face-arc]] states both
+   observations over the crossing subject, as its requirements 2 and 3. The
+   other three subject arcs below have yet to open, so this condition is
+   served over one subject of four.
 5. **Every built element of the compiler holds a roster row in an arc.** Homing
    is planning, which `docs/decisions/decision-scope.md:42-63` fixes and the
    author ruled on 2026-09-10, so a `built` element still takes a row.
    [[goals/README]] at `:27` is the invariant. Observed by `python3
    tools/lens/lens.py chain`, rung `catalog element -> arc roster row`, with no
-   `built` element left among the unhomed. **Unopened, and it holds no arc
-   file.** The four arcs below would carry it.
+   `built` element left among the unhomed. [[arcs/sys-face-arc]] serves it over
+   the crossing subject and rosters nineteen elements. The other three subject
+   arcs below have yet to open, so this condition is served over one subject of
+   four.
 
 ## Arcs
 
@@ -76,36 +80,41 @@ closure. An arc schedules work toward a condition that is open, and a condition 
 standing rule maintains on every change has nothing to schedule.
 [[goals/README]] states that shape once, under Rules.
 
-**Conditions 4 and 5 are open and hold no arc file.** Four arcs are named below
-and this run opens none of them. Each would own one subject of the compiler,
-roster the elements of that subject that no arc rosters today, and state over the
-same code the reach and assertion requirements condition 4 names. The seam is
-subject, read off the categories in `docs/elements/ledger.md` and checked against
-the 53 elements in class `Q1` of `records/homing-triage.md:62`.
+**Conditions 4 and 5 are open and one of their four arcs exists.** Each would
+own one subject of the compiler, roster the elements of that subject that no arc
+rosters today, and state over the same code the reach and assertion requirements
+condition 4 names. The seam is subject, read off the categories in
+`docs/elements/ledger.md` and checked against class `Q1` of
+`records/homing-triage.md:62`. [[arcs/sys-face-arc]] opened 2026-09-17 and took
+the crossings. The other three are named below and unopened.
 
-| arc, unopened | subject | elements it would roster | the nearest standing arc, and the boundary |
+| arc | subject | its elements | the nearest standing arc, and the boundary |
 |---|---|---|---|
-| `checker-core` | the reader and the type theory: reader, NbE, bidirectional infer and check, QTT, data and coverage, positivity, linear kinds, de Bruijn, mutual data groups, refinement, narrowing, totality, linear-result externs | 13. E1, E3, E4, E5, E6, E7, E8, E9, E10, E11, E13, E79, E159 | [[arcs/enforcement-arc]] owns what the compiler states about its own work. This arc owns the rules that decide it |
-| `lowering-and-emit` | surface to ELF: x64 codegen, the B1 passes, defunctionalization, porttype carriers, closure conversion, effectful mutual recursion, the module search path, the executable format | 13. E19, E34, E69, E93, E95, E97, E100, E109, E123, E144, E145, E147, E155 | [[arcs/emitted-speed-arc]] owns what emitted code costs. This arc owns whether the emitter's own parts are reached and gated at all |
-| `substrate-floor` | what a compiled program stands on: the loader, the mmap arena and its growth, byte cells, I64 arithmetic, the FFI trampoline, collections, the `Pool` region, linear containers | 13. E20, E21, E23, E24, E25, E27, E89, E90, E91, E106, E113, E120, E122 | [[arcs/memory-discipline-arc]] owns the value-cell heap's reclamation discipline under [[goals/local-ai]]. This arc owns the substrate those cells sit in |
-| `sys-face` | the crossings themselves: mmap and its family, poll, clock and exit, the sys-face linkage, tty and termios, pty acquisition and hygiene, fd adoption and close, sockets and socketpair | 14. E28, E31, E32, E51, E98, E99, E103, E104, E107, E110, E121, E124, E125, E126 | [[arcs/syscall-custody-arc]] owns the permitted set and who may widen it. This arc owns the crossings that set governs |
+| `checker-core`, unopened | the reader and the type theory: reader, NbE, bidirectional infer and check, QTT, data and coverage, positivity, linear kinds, de Bruijn, mutual data groups, refinement, narrowing, totality, linear-result externs | 13. E1, E3, E4, E5, E6, E7, E8, E9, E10, E11, E13, E79, E159 | [[arcs/enforcement-arc]] owns what the compiler states about its own work. This arc owns the rules that decide it |
+| `lowering-and-emit`, unopened | surface to ELF: x64 codegen, the B1 passes, defunctionalization, porttype carriers, closure conversion, effectful mutual recursion, the module search path, the executable format | 13. E19, E34, E69, E93, E95, E97, E100, E109, E123, E144, E145, E147, E155 | [[arcs/emitted-speed-arc]] owns what emitted code costs. This arc owns whether the emitter's own parts are reached and gated at all |
+| `substrate-floor`, unopened | what a compiled program stands on: the loader, the mmap arena and its growth, byte cells, I64 arithmetic, the FFI trampoline, collections, the `Pool` region, linear containers | 13. E20, E21, E23, E24, E25, E27, E89, E90, E91, E106, E113, E120, E122 | [[arcs/memory-discipline-arc]] owns the value-cell heap's reclamation discipline under [[goals/local-ai]]. This arc owns the substrate those cells sit in |
+| [[arcs/sys-face-arc]], opened 2026-09-17 | the crossings themselves: mmap and its family, poll, clock and exit, the sys-face linkage, tty and termios, pty acquisition and hygiene, fd adoption and close, sockets and socketpair, filesystem mutation | 19. E28, E29, E30, E31, E32, E51, E98, E99, E103, E104, E107, E110, E121, E124, E125, E126, E127, E129, E149 | [[arcs/syscall-custody-arc]] owns the permitted set and who may widen it. This arc owns the crossings that set governs |
 
-Those four cover 53 of the 81 `built` elements that hold no roster row today. The
-other 28 are unhomed for a different reason: `records/homing-triage.md` proposes
-an existing arc for some and records the rest as straddles awaiting a ruling, so
-they belong to the arcs and the calls that file already names.
+The three unopened arcs cover 39 of the 63 `built` elements that hold no roster
+row, measured 2026-09-17 by `python3 tools/lens/lens.py chain`. The other 24 are
+unhomed for a different reason: `records/homing-triage.md` proposes an existing
+arc for some and records the rest as straddles awaiting a ruling, so they belong
+to the arcs and the calls that file already names.
 
-**Opening any of the four is a separate unit of work, and naming them here is
-not opening them.** Four arcs opened this week in exactly this shape, each homing
+**Opening any of the three is a separate unit of work, and naming them here is
+not opening them.** Five arcs have opened in exactly this shape, each homing
 elements that had no arc: [[arcs/orchestration-engine-arc]],
-[[arcs/syscall-custody-arc]], [[arcs/runtime-loading-arc]] and
-[[arcs/surface-syntax-arc]].
+[[arcs/syscall-custody-arc]], [[arcs/runtime-loading-arc]],
+[[arcs/surface-syntax-arc]] and [[arcs/sys-face-arc]].
 
 ⚑ **`docs/goals/README.md:48` still gives this goal `none open, and see Rules`,
-and that cell is now owed a change.** `ledger-lint` check V reads it as the
-recorded reason for having no arc, and it reads the README rather than this file,
-so the amendment moves no check. The cell is true of conditions 1 to 3 and false
-of 4 and 5.
+and that cell is now owed a change.** It is true of conditions 1 to 3 and false
+of 4 and 5. `ledger-lint` check V stopped reading it once [[arcs/sys-face-arc]]
+opened, because V reads the cell only for a goal no arc serves. Check AF reads
+it instead, as the reason conditions 1 to 3 name no arc, so replacing the cell
+outright raises three AF violations against three conditions a standing rule
+holds. Whatever the cell becomes has to keep the words `none open` at its
+head.
 
 ## State
 
@@ -139,14 +148,16 @@ answer is to promote the fixpoint rather than generation one
 
 ## Honest limits
 
-- **53 of the compiler's own built elements hold no roster row anywhere**,
-  against condition 5. Tree-wide the figure is 81 of the 187 catalog elements,
-  measured 2026-09-14 by `python3 tools/lens/lens.py chain` on the rung `catalog
-  element -> arc roster row`. By ledger category the 81 split SYS 18, CG 15,
-  MEM 14, CK 11, VAL 7, EF 5, ORCH 4, RF 3, FMT 2, APP 2. The 53 are class `Q1`
-  at `records/homing-triage.md:62`, which that file defines as a built
-  self-hosting-core element whose residue no arc's requirement names. The four
-  arcs in §Arcs are what would close it, and this run opens none.
+- **39 of the compiler's own built elements hold no roster row anywhere**,
+  against condition 5. Tree-wide the figure is 63 of the 188 catalog elements,
+  measured 2026-09-17 by `python3 tools/lens/lens.py chain` on the rung `catalog
+  element -> arc roster row`. It read 81 of 187 on 2026-09-14, split by ledger
+  category SYS 18, CG 15, MEM 14, CK 11, VAL 7, EF 5, ORCH 4, RF 3, FMT 2,
+  APP 2, and [[arcs/sys-face-arc]] homed nineteen of the SYS rows on 2026-09-17.
+  The 39 are the three unopened arcs of §Arcs, 13 elements each, and they fall
+  in class `Q1` at `records/homing-triage.md:62`, which that file defines as a
+  built self-hosting-core element whose residue no arc's requirement names and
+  counts at 55. Opening those three is what would close the condition.
 - **44 of `lib/`'s 95 `.chiral` modules sit outside the compiler's import
   closure**, against condition 4(a). Measured 2026-09-14 by resolving `(import
   ...)` transitively from `prog/compiler.prog` over `lib:prog` across the three
