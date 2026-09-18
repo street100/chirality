@@ -1,9 +1,9 @@
 ---
 node: records-ledger-reconciliation
 layer: record
-related: [records/README, elements/README, status-ledger, records/spec-tier-triage, goals/enforcement]
+related: [records/README, elements/README, status-ledger, records/spec-tier-triage, records/author-calls, goals/enforcement]
 status: current
-updated: 2026-09-05
+updated: 2026-09-18
 ---
 
 # Ledger reconciliation, 2026-09-04
@@ -47,6 +47,14 @@ reserve-commit, never a W→X transition. **The W^X half is not held:**
 `readelf -l bin/chirality-bin` reports a single `RWE` segment.
 `docs/definitions/status-ledger.md` already demoted its W^X loader row for this
 reason. Naming the surviving element is an author call.
+
+⚑ **ANSWERED 2026-09-18, and the finding became cell edits after all.**
+`records/author-calls.md:100` names `E20` the survivor: retitled **Typed W^X
+loader: `MapRW` sealed to `MapRX`**, module cell `loader` to `map-seal`, state
+`built` to `design`. Every measurement above is what the ruling was decided on
+and none of it moved, so the closing sentence is the only part that closed.
+`docs/elements/ledger.md:162` carries the retitled row at `a4d98ce`, and
+`docs/elements/catalog.md:126` opens `Not built.` at `b53a1f3`.
 
 ## What the triage got wrong
 
@@ -281,6 +289,14 @@ and check AC keeps reporting all three.
 row and the element disagree about what E20 is. Naming the survivor is an author
 call, so the INDEX row was given the finding and left at `audited`.
 
+⚑ **CLOSED 2026-09-18 on the terms §A finding rather than a cell edit records**,
+so `E20` leaves this section's three and the two below keep it. The INDEX row's
+finding is marked RESOLVED at `53502a8` and `docs/examples/INDEX.md:68` still
+reads `audited`, which is correct rather than residual: the ruling built nothing,
+and an audited SPEC standing over unbuilt work is what the `design` at
+`docs/elements/ledger.md:162` says. What that does to check AC is at the end of
+this section.
+
 **E26.** The ledger's `built` is already qualified PARTIAL and covers the
 crossing half: `halt` at `lib/ports/process.port:14` beside `exit` at `:13`. The
 typed alarm the INDEX row is still waiting on is hard-gated on E39, which reads
@@ -298,6 +314,19 @@ reported on every run, not failing the gate. Pulling it for E20, E26 or E101
 would take AC to 0. It was left alone deliberately, because in all three the
 disposition is an author call and a self-issued `UNRESOLVED` would retire the
 worklist entry on the strength of an agent's reading. **Author call.**
+
+⚑ **Narrowed 2026-09-18 to E26 and E101, and the call above still stands on
+both.** Neither disposition has been ruled, so the escape hatch and the reason
+for refusing it are unchanged for the pair. `E20` left the set by a different
+door than the hatch: check AC's loop tests `ls != "built"` before it reads the
+flagged set (`tools/ledger-lint/ledger-lint.py:1771`), so the `design` the ruling
+put in `docs/elements/ledger.md:162` makes the check skip the element before the
+escape is ever consulted. A run on 2026-09-18 prints `[AC]` for E26 and E101 and
+for nothing else. `records/lenses/limits.md` LIM-16 carries `about: E20`, which
+is the lens entry feeding that flagged set at
+`tools/ledger-lint/ledger-lint.py:1755`, and for this element it is now dead
+code. Pulling `UNRESOLVED` on the remaining two would still take AC to 0 and is
+still not an agent's to issue.
 
 ### What this pass found beside the cells
 
