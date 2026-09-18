@@ -24,7 +24,7 @@ updated: 2026-09-18
   following FreeType's input, with the subpixel denominator a type parameter per
   `FD-34`"* (`records/findings.md:625`).
 - **Serves:** requirement 1 of [[arcs/display-calculus-arc]]
-  (`docs/arcs/display-calculus-arc.md:131-137`), whose widening on 2026-09-18
+  (`docs/arcs/display-calculus-arc.md:131-138`), whose widening on 2026-09-18
   put this row inside it: *"A coordinate carries the denominator it is measured
   in, so two instantiations at 1/64 and 1/256 have no sum."* Also requirement 6
   (`:173`), both halves: the piece compiles alone, and a grep for a float type
@@ -37,7 +37,10 @@ updated: 2026-09-18
 ## 2. What the tree holds
 
 Measured 2026-09-18 against the working tree, with `bin/chirality-bin`
-(1,257,848 bytes) for the four probes marked below.
+(1,257,848 bytes) for the six numbered probes: 1 through 5 below, and 6 in §3.
+⚑ **All six were re-run from source by the DESIGN audit 2026-09-18 against the
+same binary and each reproduced**, with the one correction carried into probe 3's
+program cell.
 
 - **Bank:** [[banks/render]], which refracts the renderer, the style engine, the
   display list and the terminal emulator into twenty-four shards across thirteen
@@ -46,7 +49,7 @@ Measured 2026-09-18 against the working tree, with `bin/chirality-bin`
   (`docs/banks/render.md:291`). Its residue section lists seven items
   (`:299-324`) and none of them is a coordinate, and `:329` states that those
   seven *"are the whole of what the display tier owes"*. The bank reads
-  `updated: 2026-09-04` (`:6`), which predates `E200`, `FD-39` and the six
+  `updated: 2026-09-04` (`:7`), which predates `E200`, `FD-39` and the six
   raster rows this roster opened on 2026-09-18, so that sentence is stale rather
   than wrong about a coordinate. Nothing in the bank covers this row.
 
@@ -72,7 +75,7 @@ unaffected and the number is wrong in both places.
 |---|---|---|---|
 | the sixteen integer ops, closed | `lib/prelude/prelude.chiral:36-39` | ENFORCED | every emitted binary op; the sum's header states why it is closed (`:31-35`) |
 | the surface names of the arithmetic externs | `lib/prelude/prelude.chiral:59-74` | ENFORCED | `+ - * / % =i <i <=i band bor bxor shl shr sar mulhi mulhu` |
-| division is Euclidean, so it floors for a positive divisor | `lib/lowering/x64/mach.chiral:163`: *"idiv alone truncates toward zero; chirality division is EUCLIDEAN (0 <= r < \|b\|)"*, with the branchless correction at `:301` | ENFORCED | **Probe 1**, this compiler: `(/ -32 64)` exits 99 against a `+ 100` base, so the quotient is `-1`; `(sar -32 6)` exits 99 too. `(/ -96 64)` exits 98, so the quotient is `-2`. Division and arithmetic shift agree on negatives at a positive power-of-two divisor, which C's `/` does not do |
+| division is Euclidean, so it floors for a positive divisor | `lib/lowering/x64/mach.chiral:161-163`: *"idiv alone truncates toward zero; chirality division is EUCLIDEAN (0 <= r < \|b\|)"*, with the branchless correction at `:301` | ENFORCED | **Probe 1**, this compiler: `(/ -32 64)` exits 99 against a `+ 100` base, so the quotient is `-1`; `(sar -32 6)` exits 99 too. `(/ -96 64)` exits 98, so the quotient is `-2`. Division and arithmetic shift agree on negatives at a positive power-of-two divisor, which C's `/` does not do |
 | the widening multiply, both names | externs at `lib/prelude/prelude.chiral:73-74`, parsed at `lib/lowering/tal/erase.chiral:100-101`, emitted at `lib/lowering/x64/mach.chiral:377` and `:379` | built, E189 (`docs/elements/ledger.md:331`) | `prog/e189-widening-multiply.prog`, twelve call sites, gated by Phase 32 (`tools/test/run-tests.sh:368`) |
 | a float type | nowhere | absent | a grep over `lib/` and `prog/` for `subpixel`, `denominator` and `fractional` returns one hit, `lib/protocol/json.chiral:358`, which records that numbers with a fractional part have no `I64` form |
 
@@ -97,7 +100,7 @@ and run, exit code reported.
 | probe | program | result |
 |---|---|---|
 | **2. a phantom index compiles, lowers and runs** | `(data Fix ((d I64)) (fix (v I64)))` with `mk : (-> (0 d I64) I64 (Fix d))` and `unfix : (-> (0 d I64) (Fix d) I64)`, `compile-main` returning `(unfix 64 (mk 64 42))` | compile exit 0, **run exit 42** |
-| **3. two instantiations are refused, and the twin is accepted** | the same declarations with `use256 : (-> (Fix 256) I64)` reached through an erased binder; the accepting form returns 42, and changing the single literal `256` to `64` at the construction | the mismatched form fails at load with **`load: type mismatch`**. One integer inside a type is the whole difference |
+| **3. two instantiations are refused, and the twin is accepted** | the same declarations with `use : (-> (0 d I64) (Fix d) I64)`, the consumer's index arriving through the erased binder. The accepting form is `(use 256 (mk 256 42))`; the mismatched one changes the single literal `256` to `64` at the construction | the accepting form runs, **exit 42**. The mismatched form fails at load with **`load: type mismatch`**. One integer inside a type is the whole difference. ⚑ Spelling the consumer `(-> (Fix 256) I64)` instead type-checks and then fails to lower, which is probe 5, so the consumer writes the binder here too |
 | **4. a construction with no expected type is refused** | `(case (fix 42) ((fix v) v))` with no annotation and no declared return type | **`load: cannot infer type parameters of fix`**, which is `jg-ctor-infer-params` reaching the surface |
 | **5. a value-indexed type at a concrete literal index does not lower** | `(def useV (-> (Vec 16) I64) …)` over `(data Vec ((n I64)) (vec (len I64) (bs Bytes)))`, against the identical body declared `(-> (0 n I64) (Vec n) I64)` | the literal form fails with **`extern does not lower: call target not lowered: useV`**; the erased-binder form exits 42. The same pair over a `(type 0)` parameter, `(-> (Box I64) I64)`, lowers and runs, so the defect is specific to a **value** index written as a literal in a `->` signature |
 
@@ -267,16 +270,26 @@ of them are refused by measurement rather than by argument.
 | 3 | Which denominator | **RESOLVED**: none, by the shape | The parameter defers it to each instantiation site, which is what the roster row asks for and what `FD-34` calls the shape the pins support (`records/findings.md:527`). `FD-34` also measures that no surveyed source gives a reason for 64 over 256 or 16, so a number picked here would rest on nothing |
 | 4 | The denominator or the exponent as the index | **RESOLVED**: the denominator, Shape A over Shape E | Gecko's 1/60 is the one denominator with a published reason and the reason argues against a power of two; it still ships (`records/findings.md:527`). A power-of-two index is expressible under Shape A and the reverse does not hold |
 | 5 | What the rounding rule is at ties and at negatives | **RESOLVED**: `fix-round` rounds ties away from zero, `fix-floor` floors toward minus infinity | `fix-floor v = (/ v d)`, which is one op, because `lib/lowering/x64/mach.chiral:163` makes division Euclidean, so it floors for a positive divisor. Probe 1 measured `(/ -96 64)` as `-2` and `(/ -32 64)` as `-1`, agreeing with `(sar -32 6)`. `fix-round v = (/ (+ v (- (/ d 2) (b2i (<i v 0)))) d)`, which is FreeType's corrected macro `((x) + 32 - (x < 0)) & -64` (`FTCALC:468`, `records/findings.md:527`) written for a general `d`. Probe 6 measured the naive form sending `-32` to `0` and `+32` to `+1` at `d = 64`, and the corrected form sending them to `-1` and `+1`. Pango publishes the naive form's asymmetry as a defect, so adopting it knowingly is the failure this question exists to prevent |
-| 6 | What a multiply of two `Fix d` compiles to, and where it stops | **RESOLVED for the shipped form, with a discovered requirement recorded beside it** | The exact answer is `a*b/d`. At `d = 2^k` it is `(bor (shl (mulhi a b) (- 64 k)) (shr (* a b) k))`, four of the sixteen ops, with `mulhi` built and gated at Phase 32. At a general `d` the 128-bit product needs a 128-by-64 divide and `lib/prelude/prelude.chiral:36-39` contains none, so the element ships the single-word form `(/ (* a b) d)`, exact whenever `\|a\|·\|b\| < 2^63` and stated as such. **Discovered requirement, per `docs/definitions/working-discipline.md:112-124`**: a full-range fixed-point multiply at a non-power-of-two denominator is the first workload to ask this substrate for a 128-by-64 divide, and the citation proving the absence is the sixteen-constructor sum. The element is buildable without it, and `docs/definitions/working-discipline.md:120-124` rules the word `blocked` wrong for a requirement of this kind |
+| 6 | What a multiply of two `Fix d` compiles to, and where it stops | **RESOLVED for the shipped form, with a discovered requirement recorded beside it** | The exact answer is `a*b/d`. At `d = 2^k` it is `(bor (shl (mulhi a b) (- 64 k)) (shr (* a b) k))`, five of the sixteen ops, `mulhi` `*` `shl` `shr` `bor`, six counting the `-` on the shift amount, with `mulhi` built and gated at Phase 32. At a general `d` the 128-bit product needs a 128-by-64 divide and `lib/prelude/prelude.chiral:36-39` contains none, so the element ships the single-word form `(/ (* a b) d)`, exact whenever `\|a\|·\|b\| < 2^63` and stated as such. **Discovered requirement, per `docs/definitions/working-discipline.md:112-124`**: a full-range fixed-point multiply at a non-power-of-two denominator is the first workload to ask this substrate for a 128-by-64 divide, and the citation proving the absence is the sixteen-constructor sum. The element is buildable without it, and `docs/definitions/working-discipline.md:120-124` rules the word `blocked` wrong for a requirement of this kind |
 | 7 | Does a value-indexed type at a concrete literal index lower | **RESOLVED**: no, measured, and the shape routes around it | Probe 5: `(-> (Vec 16) I64)` fails with `extern does not lower: call target not lowered`, while the identical body at `(-> (0 n I64) (Vec n) I64)` runs. The same pair over a `(type 0)` parameter lowers, so the defect is specific to a value index written as a literal in a `->` signature. Every existing consumer in the tree already writes the erased binder (`lib/protocol/grid.chiral:130-139`, `lib/memory/mem-region.chiral:27-75`), which is why this has never been hit. **A second discovered requirement**, recorded with its minimal pair and routed to residue in §6 |
 | 8 | The word size, and where the scale runs out | **RESOLVED** | The integer is `I64`, so at denominator `d` the range is ±(2^63−1)/d whole units: ±1.44e17 at 1/64, ±3.60e16 at 1/256, ±1.41e14 at 1/65536. `FD-34`'s four measured run-out cases are all 32-bit: Blink's 1/65536 at ±32,767 px forced a widening to `int64_t`, cairo is ±8,388,607 px and says its 32 cannot move, Skia drops antialiasing above 8,191 device pixels (`records/findings.md:527`). None reproduces at `I64`. The element states the formula in the module header rather than a number, because `decision-numeric-width-pluggable` makes the width a moduleset axis (`docs/decisions/decision-display-numerics.md:74-76`) |
 | 9 | Who is the consumer | **RESOLVED** | [[decisions/decision-primitive-with-consumer]] `:100` rejects a primitive minted alone and `:84` gives `origin` the value `pair`. The consumer is a root under `prog/samples/` that places a sprite row at a fractional y, rounds it to a device row through `fix-round`, and draws through `brepeat` (`lib/prelude/prelude.chiral:100`) and `bover` (`lib/prelude/prelude.chiral:130`), both built. It needs no accumulator and no subdivision, so `docs/goals/display.md:43-45` consequence 3 holds: the primitive is reachable without the rest of its lane. The precedent for the root is `prog/samples/e200-coverage-composite.prog`, 137 lines |
 | 10 | Does the change owe a byte-identical fixpoint | **RESOLVED**: no | The element adds one new module under `lib/prelude/` and one root under `prog/samples/`, and no compiler module imports either. `docs/definitions/working-discipline.md:23` scopes the generation loop to *"When the compiler's own sources changed"*. The element declares no extern, writes no `prim2lib-table` row and adds no `TIFn`, which is what distinguishes it from `E200`. The check is a grep for importers of the new module, and the SPEC's gate carries it |
 | 11 | Does this row absorb `R11` or `R13` | **RESOLVED**: no | The ten functions are the coordinate's own arithmetic. `R11` is the per-pixel signed-area accumulator and `R13` is midpoint subdivision; both consume this type and neither is here. A design that built either would fail the same clause `E200`'s design used to refuse Shape D (`docs/arcs/parts/display-calculus-R3.md:296-322`) |
 
-**No NEEDS-AUTHOR is surfaced.** Questions 1 through 11 are each closed by a
-settled document, a pinned finding, or a probe run here and reported with its
-exit code. The two discovered requirements in questions 6 and 7 are recorded
+⚑ **One NEEDS-AUTHOR, raised by the DESIGN audit 2026-09-18 and unanswered.**
+Question 6 says *"the element ships the single-word form `(/ (* a b) d)`"*, and
+the ten operations listed above carry no `Fix d` times `Fix d`: `fix-scale` is a
+`Fix d` times a plain `I64` and reaches for no divide at all. **Does the element
+ship an eleventh operation, a `Fix d` times `Fix d` at `(/ (* a b) d)` with its
+`|a|·|b| < 2^63` exactness bound stated in the header, or does it ship no such
+multiply, question 6 recording the form it would take when one is wanted?** §6's
+size basis moves by a few lines either way, so this is a scope call. The audit
+does not take it.
+
+**Otherwise no NEEDS-AUTHOR is surfaced.** Questions 1 through 11 are each
+closed by a settled document, a pinned finding, or a probe run here and reported
+with its exit code. The two discovered requirements in questions 6 and 7 are recorded
 with the citations proving the absence and neither is called a blocker, per
 `docs/definitions/working-discipline.md:120-124`. `status` stays `draft`.
 
@@ -290,7 +303,7 @@ with the citations proving the absence and neither is called a blocker, per
   as one element where the halves are unbuildable apart"*. The roster's `what`
   cell names no consumer, so the mint owes it the consumer half along with the
   `origin` flip from `new` to `pair`.
-- **Band:** `UNASSIGNED`. `docs/arcs/display-calculus-arc.md:7` states the arc's
+- **Band:** `UNASSIGNED`. `docs/arcs/display-calculus-arc.md:12` states the arc's
   reserved element block as **none**, and
   `docs/decisions/decision-lane-split.md:60-62` rules that such an arc *"takes
   the next free number and records the range it landed in"*. The next free
@@ -300,7 +313,7 @@ with the citations proving the absence and neither is called a blocker, per
   carries is the deferral rule's own defect (`docs/definitions/working-discipline.md:78`).
 - **Catalog row**, for a new section **XX** appended at the file tail after the
   `## OWED` block (`docs/elements/catalog.md:600`, file ends at 649). E200
-  landed inside section XIII, the value-heap discipline seam (`:329`), and a
+  landed inside section XIII, the value-heap discipline seam (`:303`), and a
   pure numeric type does not belong under that heading. The file's five-column
   form (`:329-330`):
 
@@ -341,7 +354,7 @@ with the citations proving the absence and neither is called a blocker, per
   | the 128-by-64 divide a full-range fixed-point multiply needs at a non-power-of-two denominator | the same. `docs/definitions/working-discipline.md:134-140` rules that an operation the backend can express and the language does not name is a hole one level down | unrostered |
   | `docs/decisions/decision-display-numerics.md:27-28` writes the `Op` sum as fifteen and omits `op-mulhu` | a `doc-audit` run on that decision. `E200`'s design named the same defect and it is still there | unscheduled |
   | `docs/banks/render.md:329` states seven residue rows as *"the whole of what the display tier owes"*, against `FD-39`'s six-item build list and the six raster rows opened 2026-09-18 | a `doc-audit` run on [[banks/render]], whose `updated` is 2026-09-04 | unscheduled |
-  | `tools/test/samples/e170_reject_pool_size.prog` and five sibling refusals are gated by nothing | the Phase 12 port, named at `tools/test/run-tests.sh:423` | unscheduled |
+  | `tools/test/samples/e170_reject_pool_size.prog` and the ten other `*_reject_*` fixtures under `tools/test/samples/`, eleven in all, are gated by nothing | the Phase 12 port, named at `tools/test/run-tests.sh:423` | unscheduled |
   | the accumulator, the prefix sum, the subdivision and the emitter | `R11`, `R12`, `R13`, `R14`, rostered on this arc | rostered, `unminted` |
   | what a pixel is | `R2`, rostered on this arc | rostered, `unminted` |
 
