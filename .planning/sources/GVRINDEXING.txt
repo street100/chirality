@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html dir='ltr'>
+<head>
+<link href='https://www.blogger.com/static/v1/widgets/4165133002-widget_css_bundle.css' rel='stylesheet' type='text/css'/>
+<meta content='text/html; charset=UTF-8' http-equiv='Content-Type'/>
+<meta content='blogger' name='generator'/>
+<link href='https://python-history.blogspot.com/favicon.ico' rel='icon' type='image/x-icon'/>
+<link href='http://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html' rel='canonical'/>
+<link rel="alternate" type="application/atom+xml" title="The History of Python - Atom" href="https://python-history.blogspot.com/feeds/posts/default" />
+<link rel="alternate" type="application/rss+xml" title="The History of Python - RSS" href="https://python-history.blogspot.com/feeds/posts/default?alt=rss" />
+<link rel="service.post" type="application/atom+xml" title="The History of Python - Atom" href="https://www.blogger.com/feeds/8699431508730375743/posts/default" />
+
+<link rel="alternate" type="application/atom+xml" title="The History of Python - Atom" href="https://python-history.blogspot.com/feeds/8737672053383472671/comments/default" />
+<!--Can't find substitution for tag [blog.ieCssRetrofitLinks]-->
+<meta content='http://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html' property='og:url'/>
+<meta content='Why Python uses 0-based indexing' property='og:title'/>
+<meta content='I was asked on Twitter why Python uses 0-based indexing, with a link to a new (fascinating) post on the subject ( http://exple.tive.org/blar...' property='og:description'/>
+<title>The History of Python: Why Python uses 0-based indexing</title>
+<style id='page-skin-1' type='text/css'><!--
+/*
+Blogger Template Style
+Name:     TicTac
+Date:     1 March 2004
+Updated by: Blogger Team
+*/
+/* Variable definitions
+====================
+<Variable name="textcolor" description="Text Color"
+type="color" default="#333">
+<Variable name="pagetitlecolor" description="Page Header Color"
+type="color" default="#FFF">
+<Variable name="datecolor" description="Date Header Color"
+type="color" default="#f93">
+<Variable name="titlecolor" description="Post Title Color"
+type="color" default="#f63">
+<Variable name="footercolor" description="Post Footer Color"
+type="color" default="#999">
+<Variable name="sidebartextcolor" description="Sidebar Text Color"
+type="color" default="#999">
+<Variable name="sidebarcolor" description="Sidebar Title Color"
+type="color" default="#666">
+<Variable name="linkcolor" description="Link Color"
+type="color" default="#69c">
+<Variable name="visitedlinkcolor" description="Visited Link Color"
+type="color" default="#666699">
+<Variable name="bodyfont" description="Text Font"
+type="font"
+default="normal normal 100% Verdana, sans-serif">
+<Variable name="pagetitlefont" description="Page Header Font"
+type="font" default="normal normal 100% 'Lucida Grande','Trebuchet MS'">
+<Variable name="titlefont" description="Post Title Font"
+type="font" default="normal bold 130% 'Lucida Grande','Trebuchet MS'">
+<Variable name="sidebarheaderfont" description="Sidebar Title Font"
+type="font" default="normal bold 130% 'Lucida Grande','Trebuchet MS'">
+<Variable name="startSide" description="Start side in blog language"
+type="automatic" default="left">
+<Variable name="endSide" description="End side in blog language"
+type="automatic" default="right">
+*/
+/* ---( page defaults )--- */
+body {
+margin: 0;
+padding: 0;
+font-size: small;
+text-align: center;
+color: #333333;
+background: #e0e0e0;
+}
+blockquote {
+margin-top: 0;
+margin-right: 0;
+margin-bottom: 0;
+margin-left: 30px;
+padding-top: 10px;
+padding-right: 0;
+padding-bottom: 0;
+padding-left: 20px;
+font-size: 88%;
+line-height: 1.5em;
+color: #666;
+/* background: url(http://www.blogblog.com/tictac/quotes.gif) no-repeat top left; */
+}
+blockquote p {
+margin-top: 0;
+}
+abbr, acronym {
+cursor: help;
+font-style: normal;
+border-bottom: 1px dotted;
+}
+code {
+color: #f63;
+}
+hr {
+display: none;
+}
+img {
+border: none;
+}
+/* unordered list style */
+ul {
+list-style: none;
+margin-left: 10px;
+padding: 0;
+}
+li {
+list-style: none;
+padding-left: 14px;
+margin-bottom: 3px;
+background: url(//www.blogblog.com/tictac/tictac_orange.gif) no-repeat left 6px;
+}
+/* links */
+a:link {
+color: #6699cc;
+}
+a:visited {
+color: #666699;
+}
+a:hover {
+color: #693;
+}
+a:active {
+color: #cc3333;
+text-decoration: none;
+}
+/* ---( layout structure )---*/
+#outer-wrapper {
+width: 847px;
+margin: 0px auto 0;
+text-align: left;
+font: normal normal 100% Verdana, sans-serif;
+background: url(//www.blogblog.com/tictac/tile_left.gif) repeat-y;
+}
+#content-wrapper {
+margin-left: 42px; /* to avoid the border image */
+width: 763px;
+}
+#main {
+float: left;
+width: 460px;
+margin-top: 20px;
+margin-right: 0;
+margin-bottom: 0;
+margin-left: 0;
+padding-top: 0;
+padding-right: 0;
+padding-bottom: 0;
+padding-left: 1em;
+line-height: 1.5em;
+word-wrap: break-word; /* fix for long text breaking sidebar float in IE */
+overflow: hidden;     /* fix for long non-text content breaking IE sidebar float */
+}
+#sidebar {
+float: right;
+width: 259px;
+padding-top: 20px;
+padding-right: 0px;
+padding-bottom: 0;
+padding-left: 0;
+font-size: 85%;
+line-height: 1.4em;
+color: #999999;
+background: url(//www.blogblog.com/tictac/sidebar_bg.gif) no-repeat left top;
+word-wrap: break-word; /* fix for long text breaking sidebar float in IE */
+overflow: hidden;     /* fix for long non-text content breaking IE sidebar float */
+}
+/* ---( header and site name )--- */
+#header-wrapper {
+margin: 0;
+padding: 0;
+font: normal normal 100% 'Lucida Grande','Trebuchet MS';
+background: #e0e0e0 url(//www.blogblog.com/tictac/top_div_left.gif) no-repeat left top;
+}
+#header {
+margin: 0;
+padding-top: 25px;
+padding-right: 60px;
+padding-bottom: 35px;
+padding-left: 160px;
+color: #FFFFFF;
+background: url(//www.blogblog.com/tictac/top_h1.gif) no-repeat bottom left;
+}
+#header h1 {
+font-size: 200%;
+text-shadow: #81A75B 2px 2px 2px;
+}
+#header h1 a {
+text-decoration: none;
+color: #FFFFFF;
+}
+#header h1 a:hover {
+color: #eee;
+}
+/* ---( main column )--- */
+h2.date-header {
+margin-top: 0;
+padding-left: 14px;
+font-size: 90%;
+color: #ff9933;
+background: url(//www.blogblog.com/tictac/date_icon.gif) no-repeat left 50%;
+}
+.post h3 {
+margin-top: 0;
+font: normal bold 130% 'Lucida Grande','Trebuchet MS';
+letter-spacing: -1px;
+color: #ff6633;
+}
+.post {
+margin-top: 0;
+margin-right: 0;
+margin-bottom: 1.5em;
+margin-left: 0;
+padding-top: 0;
+padding-right: 0;
+padding-bottom: 1.5em;
+padding-left: 14px;
+border-bottom: 1px solid #ddd;
+}
+.post h3 a,
+.post h3 a:visited {
+color: #ff6633;
+text-decoration: none;
+}
+.post-footer {
+margin: 0;
+padding-top: 0;
+padding-right: 0;
+padding-bottom: 0;
+padding-left: 14px;
+font-size: 88%;
+color: #999999;
+background: url(//www.blogblog.com/tictac/tictac_grey.gif) no-repeat left 8px;
+}
+.post img, table.tr-caption-container {
+padding: 6px;
+border-top: 1px solid #ddd;
+border-left: 1px solid #ddd;
+border-bottom: 1px solid #c0c0c0;
+border-right: 1px solid #c0c0c0;
+}
+.tr-caption-container img {
+border: none;
+padding: 0;
+}
+.feed-links {
+clear: both;
+line-height: 2.5em;
+}
+#blog-pager-newer-link {
+float: left;
+}
+#blog-pager-older-link {
+float: right;
+}
+#blog-pager {
+text-align: center;
+}
+/* comment styles */
+#comments {
+padding: 10px 10px 0px 10px;
+font-size: 85%;
+line-height: 1.5em;
+color: #666;
+background: #eee url(//www.blogblog.com/tictac/comments_curve.gif) no-repeat top left;
+}
+#comments h4 {
+margin-top: 20px;
+margin-right: 0;
+margin-bottom: 15px;
+margin-left: 0;
+padding-top: 8px;
+padding-right: 0;
+padding-bottom: 0;
+padding-left: 40px;
+font-family: "Lucida Grande", "Trebuchet MS";
+font-size: 130%;
+color: #666;
+background: url(//www.blogblog.com/tictac/bubbles.gif) no-repeat 10px 0;
+height: 29px !important; /* for most browsers */
+height /**/:37px; /* for IE5/Win */
+}
+#comments ul {
+margin-left: 0;
+}
+#comments li {
+background: none;
+padding-left: 0;
+}
+.comment-body {
+padding-top: 0;
+padding-right: 10px;
+padding-bottom: 0;
+padding-left: 25px;
+background: url(//www.blogblog.com/tictac/tictac_orange.gif) no-repeat 10px 5px;
+}
+.comment-body p {
+margin-bottom: 0;
+}
+.comment-author {
+margin-top: 4px;
+margin-right: 0;
+margin-bottom: 0;
+margin-left: 0;
+padding-top: 0;
+padding-right: 10px;
+padding-bottom: 0;
+padding-left: 60px;
+color: #999;
+background: url(//www.blogblog.com/tictac/comment_arrow.gif) no-repeat 44px 2px;
+}
+.comment-footer {
+border-bottom: 1px solid #ddd;
+padding-bottom: 1em;
+}
+.deleted-comment {
+font-style:italic;
+color:gray;
+}
+/* ---( sidebar )--- */
+.sidebar h2 {
+margin-top: 0;
+margin-right: 0;
+margin-bottom: 0;
+margin-left: 0;
+padding-top: 25px;
+padding-right: 0;
+padding-bottom: 0;
+padding-left: 40px;
+font: normal bold 130% 'Lucida Grande','Trebuchet MS';
+color: #666666;
+height: 32px;
+background: url(//www.blogblog.com/tictac/sidebar_icon.gif) no-repeat 10px 15px;
+height: 32px !important; /* for most browsers */
+height /**/:57px; /* for IE5/Win */
+}
+.sidebar .widget {
+margin: 0;
+padding-top: 0;
+padding-right: 0;
+padding-bottom: 10px;
+padding-left: 10px;
+border-bottom: 1px solid #ddd;
+}
+.sidebar li {
+background: url(//www.blogblog.com/tictac/tictac_green.gif) no-repeat left 5px;
+}
+.profile-textblock {
+clear: both;
+margin-left: 0;
+}
+.profile-img {
+float: left;
+margin-top: 0;
+margin-right: 5px;
+margin-bottom: 5px;
+margin-left: 0;
+border: 1px solid #ddd;
+padding: 4px;
+}
+/* ---( footer )--- */
+.clear { /* to fix IE6 padding-top issue */
+clear: both;
+}
+#footer-wrapper {
+margin: 0;
+padding-top: 0;
+padding-right: 0;
+padding-bottom: 9px;
+padding-left: 0;
+font-size: 85%;
+color: #ddd;
+background: url(//www.blogblog.com/tictac/bottom_sill.gif) no-repeat bottom left;
+}
+#footer {
+margin: 0;
+padding-top: 20px;
+padding-right: 320px;
+padding-bottom: 20px;
+padding-left: 95px;
+background: url(//www.blogblog.com/tictac/bottom_sash_left.gif) no-repeat top left;
+}
+/** Page structure tweaks for layout editor wireframe */
+body#layout #outer-wrapper,
+body#layout #main,
+body#layout #sidebar {
+padding-top: 0;
+margin-top: 0;
+}
+body#layout #outer-wrapper,
+body#layout #content-wrapper {
+width: 740px;
+}
+body#layout #sidebar {
+margin-right: 0;
+margin-bottom: 1em;
+}
+body#layout #header,
+body#layout #footer,
+body#layout #main {
+padding: 0;
+}
+body#layout #content-wrapper {
+margin: 0px;
+}
+
+--></style>
+<link href='https://www.blogger.com/dyncss/8699431508730375743/authorization.css?zx=d7f6c41e-0994-427b-9f31-d858843f8b3d' media='none' onload='if(media!=&#39;all&#39;)media=&#39;all&#39;' rel='stylesheet'/><noscript><link href='https://www.blogger.com/dyncss/8699431508730375743/authorization.css?zx=d7f6c41e-0994-427b-9f31-d858843f8b3d' rel='stylesheet'/></noscript>
+<meta name='google-adsense-platform-account' content='ca-host-pub-1556223355139109'/>
+<meta name='google-adsense-platform-domain' content='blogspot.com'/>
+
+</head>
+<body>
+<div class='navbar section' id='navbar'><div class='widget Navbar' data-version='1' id='Navbar1'><script type="text/javascript">
+    function setAttributeOnload(object, attribute, val) {
+      if(window.addEventListener) {
+        window.addEventListener('load',
+          function(){ object[attribute] = val; }, false);
+      } else {
+        window.attachEvent('onload', function(){ object[attribute] = val; });
+      }
+    }
+  </script>
+<div id="navbar-iframe-container"></div>
+<script type="text/javascript" src="https://apis.google.com/js/platform.js"></script>
+<script type="text/javascript">
+      gapi.load("gapi.iframes:gapi.iframes.style.bubble", function() {
+        if (gapi.iframes && gapi.iframes.getContext) {
+          gapi.iframes.getContext().openChild({
+              url: 'https://www.blogger.com/navbar/8699431508730375743?po\x3d8737672053383472671\x26origin\x3dhttps://python-history.blogspot.com',
+              where: document.getElementById("navbar-iframe-container"),
+              id: "navbar-iframe"
+          });
+        }
+      });
+    </script><script type="text/javascript">
+(function() {
+var script = document.createElement('script');
+script.type = 'text/javascript';
+script.src = '//pagead2.googlesyndication.com/pagead/js/google_top_exp.js';
+var head = document.getElementsByTagName('head')[0];
+if (head) {
+head.appendChild(script);
+}})();
+</script>
+</div></div>
+<div id='outer-wrapper'><div id='wrap2'>
+<!-- skip links for text browsers -->
+<span id='skiplinks' style='display:none;'>
+<a href='#main'>skip to main </a> |
+      <a href='#sidebar'>skip to sidebar</a>
+</span>
+<div id='header-wrapper'>
+<div class='header section' id='header'><div class='widget Header' data-version='1' id='Header1'>
+<div id='header-inner'>
+<div class='titlewrapper'>
+<h1 class='title'>
+<a href='https://python-history.blogspot.com/'>
+The History of Python
+</a>
+</h1>
+</div>
+<div class='descriptionwrapper'>
+<p class='description'><span>A series of articles on the history of the Python programming language and its community.</span></p>
+</div>
+</div>
+</div></div>
+</div>
+<div id='content-wrapper'>
+<div id='crosscol-wrapper' style='text-align:center'>
+<div class='crosscol no-items section' id='crosscol'></div>
+</div>
+<div id='main-wrapper'>
+<div class='main section' id='main'><div class='widget Blog' data-version='1' id='Blog1'>
+<div class='blog-posts hfeed'>
+
+          <div class="date-outer">
+        
+<h2 class='date-header'><span>Thursday, October 24, 2013</span></h2>
+
+          <div class="date-posts">
+        
+<div class='post-outer'>
+<div class='post hentry uncustomized-post-template' itemprop='blogPost' itemscope='itemscope' itemtype='http://schema.org/BlogPosting'>
+<meta content='8699431508730375743' itemprop='blogId'/>
+<meta content='8737672053383472671' itemprop='postId'/>
+<a name='8737672053383472671'></a>
+<h3 class='post-title entry-title' itemprop='name'>
+Why Python uses 0-based indexing
+</h3>
+<div class='post-header'>
+<div class='post-header-line-1'></div>
+</div>
+<div class='post-body entry-content' id='post-body-8737672053383472671' itemprop='description articleBody'>
+I was asked on Twitter why Python uses 0-based indexing, with a link to a new (fascinating) post on the subject (<a class="ot-anchor" href="http://exple.tive.org/blarg/2013/10/22/citation-needed/" rel="nofollow">http://exple.tive.org/blarg/2013/10/22/citation-needed/</a>).
+ I recall thinking about it a lot; ABC, one of Python's predecessors, 
+used 1-based indexing, while C, the other big influence, used 0-based. 
+My first few programming languages (Algol, Fortran, Pascal) used 1-based
+ or variable-based. I think that one of the issues that helped me decide
+ was slice notation.<br /><br />Let's first look at use cases. Probably the 
+most common use cases for slicing are "get the first n items" and "get 
+the next n items starting at i" (the first is a special case of that for
+ i == the first index). It would be nice if both of these could be 
+expressed as without awkward +1 or -1 compensations.<br /><br />Using 
+0-based indexing, half-open intervals, and suitable defaults (as Python 
+ended up having), they are beautiful: a[:n] and a[i:i+n]; the former is 
+long for a[0:n].<br /><br />Using 1-based indexing, if you want a[:n] to 
+mean the first n elements, you either have to use closed intervals or 
+you can use a slice notation that uses start and length as the slice 
+parameters. Using half-open intervals just isn't very elegant when 
+combined with 1-based indexing. Using closed intervals, you'd have to 
+write a[i:i+n-1] for the n items starting at i. So perhaps using the 
+slice length would be more elegant with 1-based indexing? Then you could
+ write a[i:n]. And this is in fact what ABC did -- it used a different 
+notation so you could write a@i|n.(See <a class="ot-anchor" href="http://homepages.cwi.nl/%7Esteven/abc/qr.html#EXPRESSIONS" rel="nofollow">http://homepages.cwi.nl/~steven/abc/qr.html#EXPRESSIONS</a>.)<br /><br />But
+ how does the index:length convention work out for other use cases? TBH 
+this is where my memory gets fuzzy, but I think I was swayed by the 
+elegance of half-open intervals. Especially the invariant that when two 
+slices are adjacent, the first slice's end index is the second slice's 
+start index is just too beautiful to ignore. For example, suppose you 
+split a string into three parts at indices i and j -- the parts would be
+ a[:i], a[i:j], and a[j:].<br /><br />So that's why Python uses 0-based indexing.
+<div style='clear: both;'></div>
+</div>
+<div class='post-footer'>
+<div class='post-footer-line post-footer-line-1'>
+<span class='post-author vcard'>
+Posted by
+<span class='fn' itemprop='author' itemscope='itemscope' itemtype='http://schema.org/Person'>
+<meta content='https://www.blogger.com/profile/12821714508588242516' itemprop='url'/>
+<a class='g-profile' href='https://www.blogger.com/profile/12821714508588242516' rel='author' title='author profile'>
+<span itemprop='name'>Guido van Rossum</span>
+</a>
+</span>
+</span>
+<span class='post-timestamp'>
+at
+<meta content='http://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html' itemprop='url'/>
+<a class='timestamp-link' href='https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html' rel='bookmark' title='permanent link'><abbr class='published' itemprop='datePublished' title='2013-10-24T08:44:00-07:00'>8:44&#8239;AM</abbr></a>
+</span>
+<span class='post-comment-link'>
+</span>
+<span class='post-icons'>
+<span class='item-control blog-admin pid-1067882746'>
+<a href='https://www.blogger.com/post-edit.g?blogID=8699431508730375743&postID=8737672053383472671&from=pencil' title='Edit Post'>
+<img alt='' class='icon-action' height='18' src='https://resources.blogblog.com/img/icon18_edit_allbkg.gif' width='18'/>
+</a>
+</span>
+</span>
+<div class='post-share-buttons goog-inline-block'>
+</div>
+</div>
+<div class='post-footer-line post-footer-line-2'>
+<span class='post-labels'>
+</span>
+</div>
+<div class='post-footer-line post-footer-line-3'>
+<span class='post-location'>
+</span>
+</div>
+</div>
+</div>
+<div class='comments' id='comments'>
+<a name='comments'></a>
+<h4>15 comments:</h4>
+<div class='comments-content'>
+<script async='async' src='' type='text/javascript'></script>
+<script type='text/javascript'>
+    (function() {
+      var items = null;
+      var msgs = null;
+      var config = {};
+
+// <![CDATA[
+      var cursor = null;
+      if (items && items.length > 0) {
+        cursor = parseInt(items[items.length - 1].timestamp) + 1;
+      }
+
+      var bodyFromEntry = function(entry) {
+        var text = (entry &&
+                    ((entry.content && entry.content.$t) ||
+                     (entry.summary && entry.summary.$t))) ||
+            '';
+        if (entry && entry.gd$extendedProperty) {
+          for (var k in entry.gd$extendedProperty) {
+            if (entry.gd$extendedProperty[k].name == 'blogger.contentRemoved') {
+              return '<span class="deleted-comment">' + text + '</span>';
+            }
+          }
+        }
+        return text;
+      }
+
+      var parse = function(data) {
+        cursor = null;
+        var comments = [];
+        if (data && data.feed && data.feed.entry) {
+          for (var i = 0, entry; entry = data.feed.entry[i]; i++) {
+            var comment = {};
+            // comment ID, parsed out of the original id format
+            var id = /blog-(\d+).post-(\d+)/.exec(entry.id.$t);
+            comment.id = id ? id[2] : null;
+            comment.body = bodyFromEntry(entry);
+            comment.timestamp = Date.parse(entry.published.$t) + '';
+            if (entry.author && entry.author.constructor === Array) {
+              var auth = entry.author[0];
+              if (auth) {
+                comment.author = {
+                  name: (auth.name ? auth.name.$t : undefined),
+                  profileUrl: (auth.uri ? auth.uri.$t : undefined),
+                  avatarUrl: (auth.gd$image ? auth.gd$image.src : undefined)
+                };
+              }
+            }
+            if (entry.link) {
+              if (entry.link[2]) {
+                comment.link = comment.permalink = entry.link[2].href;
+              }
+              if (entry.link[3]) {
+                var pid = /.*comments\/default\/(\d+)\?.*/.exec(entry.link[3].href);
+                if (pid && pid[1]) {
+                  comment.parentId = pid[1];
+                }
+              }
+            }
+            comment.deleteclass = 'item-control blog-admin';
+            if (entry.gd$extendedProperty) {
+              for (var k in entry.gd$extendedProperty) {
+                if (entry.gd$extendedProperty[k].name == 'blogger.itemClass') {
+                  comment.deleteclass += ' ' + entry.gd$extendedProperty[k].value;
+                } else if (entry.gd$extendedProperty[k].name == 'blogger.displayTime') {
+                  comment.displayTime = entry.gd$extendedProperty[k].value;
+                }
+              }
+            }
+            comments.push(comment);
+          }
+        }
+        return comments;
+      };
+
+      var paginator = function(callback) {
+        if (hasMore()) {
+          var url = config.feed + '?alt=json&v=2&orderby=published&reverse=false&max-results=50';
+          if (cursor) {
+            url += '&published-min=' + new Date(cursor).toISOString();
+          }
+          window.bloggercomments = function(data) {
+            var parsed = parse(data);
+            cursor = parsed.length < 50 ? null
+                : parseInt(parsed[parsed.length - 1].timestamp) + 1
+            callback(parsed);
+            window.bloggercomments = null;
+          }
+          url += '&callback=bloggercomments';
+          var script = document.createElement('script');
+          script.type = 'text/javascript';
+          script.src = url;
+          document.getElementsByTagName('head')[0].appendChild(script);
+        }
+      };
+      var hasMore = function() {
+        return !!cursor;
+      };
+      var getMeta = function(key, comment) {
+        if ('iswriter' == key) {
+          var matches = !!comment.author
+              && comment.author.name == config.authorName
+              && comment.author.profileUrl == config.authorUrl;
+          return matches ? 'true' : '';
+        } else if ('deletelink' == key) {
+          return config.baseUri + '/comment/delete/'
+               + config.blogId + '/' + comment.id;
+        } else if ('deleteclass' == key) {
+          return comment.deleteclass;
+        }
+        return '';
+      };
+
+      var replybox = null;
+      var replyUrlParts = null;
+      var replyParent = undefined;
+
+      var onReply = function(commentId, domId) {
+        if (replybox == null) {
+          // lazily cache replybox, and adjust to suit this style:
+          replybox = document.getElementById('comment-editor');
+          if (replybox != null) {
+            replybox.height = '250px';
+            replybox.style.display = 'block';
+            replyUrlParts = replybox.src.split('#');
+          }
+        }
+        if (replybox && (commentId !== replyParent)) {
+          replybox.src = '';
+          document.getElementById(domId).insertBefore(replybox, null);
+          replybox.src = replyUrlParts[0]
+              + (commentId ? '&parentID=' + commentId : '')
+              + '#' + replyUrlParts[1];
+          replyParent = commentId;
+        }
+      };
+
+      var hash = (window.location.hash || '#').substring(1);
+      var startThread, targetComment;
+      if (/^comment-form_/.test(hash)) {
+        startThread = hash.substring('comment-form_'.length);
+      } else if (/^c[0-9]+$/.test(hash)) {
+        targetComment = hash.substring(1);
+      }
+
+      // Configure commenting API:
+      var configJso = {
+        'maxDepth': config.maxThreadDepth
+      };
+      var provider = {
+        'id': config.postId,
+        'data': items,
+        'loadNext': paginator,
+        'hasMore': hasMore,
+        'getMeta': getMeta,
+        'onReply': onReply,
+        'rendered': true,
+        'initComment': targetComment,
+        'initReplyThread': startThread,
+        'config': configJso,
+        'messages': msgs
+      };
+
+      var render = function() {
+        if (window.goog && window.goog.comments) {
+          var holder = document.getElementById('comment-holder');
+          window.goog.comments.render(holder, provider);
+        }
+      };
+
+      // render now, or queue to render when library loads:
+      if (window.goog && window.goog.comments) {
+        render();
+      } else {
+        window.goog = window.goog || {};
+        window.goog.comments = window.goog.comments || {};
+        window.goog.comments.loadQueue = window.goog.comments.loadQueue || [];
+        window.goog.comments.loadQueue.push(render);
+      }
+    })();
+// ]]>
+  </script>
+<div id='comment-holder'>
+<div class="comment-thread toplevel-thread"><ol id="top-ra"><li class="comment" id="c4277495934613807815"><div class="avatar-image-container"><img src="//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgCLa1yGwmPzpl0byaqgJqq_HuE3fURSs-RMJstE-2n3Ld4FVh7JcWK8kE6KE3To94J7IiB2VxppOPsxeOsHwBOQJRwsxJrlwCzaC1n45ruBsSAzwfZEQkm3FBPORFmog/s45-c/IMG_2192.jpg" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/12821714508588242516" rel="nofollow">Guido van Rossum</a></cite><span class="icon user blog-author"></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382629798907#c4277495934613807815">October 24, 2013 at 8:49&#8239;AM</a></span></div><p class="comment-content">To anyone who prefers 1-based indexing: you are the same people who screwed up the calendar, starting at year 1 and calling the 1900s the 20th century (and arguing that the year 2001 ought to be the start of the next millennium). Haven&#39;t you done enough damage? :-)</p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="4277495934613807815">Reply</a><span class="item-control blog-admin blog-admin pid-1067882746"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/4277495934613807815">Delete</a></span></span></div><div class="comment-replies"><div id="c4277495934613807815-rt" class="comment-thread inline-thread"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c4277495934613807815-ra" class="thread-chrome thread-expanded"><div><li class="comment" id="c8240457977887179874"><div class="avatar-image-container"><img src="//www.blogger.com/img/blogger_logo_round_35.png" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/12493104900973331346" rel="nofollow">Phaedrus</a></cite><span class="icon user "></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382815494971#c8240457977887179874">October 26, 2013 at 12:24&#8239;PM</a></span></div><p class="comment-content">You seriously think it makes more sense to have a year 0?  If the FIRST year isn&#39;t year 1, then you end up with the SECOND year being year 1.  Yeah, that makes sense.  NOT.</p><span class="comment-actions secondary-text"><span class="item-control blog-admin blog-admin pid-706741210"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/8240457977887179874">Delete</a></span></span></div><div class="comment-replies"><div id="c8240457977887179874-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c8240457977887179874-ra" class="thread-chrome thread-expanded"><div></div><div id="c8240457977887179874-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="8240457977887179874">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c8240457977887179874-ce"></div></li><li class="comment" id="c4142908193160371746"><div class="avatar-image-container"><img src="//1.bp.blogspot.com/_juxBCYjkE_0/SarQwM84hEI/AAAAAAAAAWg/mQLcjxcBOG4/S45-s35/logo.png" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/11533512875002547507" rel="nofollow">Harald Hoyer</a></cite><span class="icon user "></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1435043533691#c4142908193160371746">June 23, 2015 at 12:12&#8239;AM</a></span></div><p class="comment-content">Time has the notation of 1:?? in the second hour of the day. What&#39;s your issue with the years again? </p><span class="comment-actions secondary-text"><span class="item-control blog-admin blog-admin pid-2047153341"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/4142908193160371746">Delete</a></span></span></div><div class="comment-replies"><div id="c4142908193160371746-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c4142908193160371746-ra" class="thread-chrome thread-expanded"><div></div><div id="c4142908193160371746-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="4142908193160371746">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c4142908193160371746-ce"></div></li></div><div id="c4277495934613807815-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="4277495934613807815">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c4277495934613807815-ce"></div></li><li class="comment" id="c3427285418092916751"><div class="avatar-image-container"><img src="//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjT-GMp6e31wW4qsVjOAVc8LNR3vdlfN_YKtfn7jAt5X-bfLIiwe90qWyLiZmhukYdR0boFIPEJnBYVK84OJsq4OQseyfGcGZmGIIcUbClC0hvariYFKoGes85La221IgI/s45-c/Lawrence.jpg" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/08175600004629340681" rel="nofollow">Lawrence Kesteloot</a></cite><span class="icon user "></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382635460616#c3427285418092916751">October 24, 2013 at 10:24&#8239;AM</a></span></div><p class="comment-content">Dijkstra had a monograph about this: https://www.cs.utexas.edu/~EWD/transcriptions/EWD08xx/EWD831.html<br><br>Also I should point out that the correct first number is zero, and kids should be taught to count &quot;0, 1, 2, ...&quot;. It fixes a lot of problems that you get if you start a 1. In this light, there&#39;s no argument at all for starting indexing at 1.</p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="3427285418092916751">Reply</a><span class="item-control blog-admin blog-admin pid-1640452407"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/3427285418092916751">Delete</a></span></span></div><div class="comment-replies"><div id="c3427285418092916751-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c3427285418092916751-ra" class="thread-chrome thread-expanded"><div></div><div id="c3427285418092916751-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="3427285418092916751">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c3427285418092916751-ce"></div></li><li class="comment" id="c199763835766243294"><div class="avatar-image-container"><img src="//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgCLa1yGwmPzpl0byaqgJqq_HuE3fURSs-RMJstE-2n3Ld4FVh7JcWK8kE6KE3To94J7IiB2VxppOPsxeOsHwBOQJRwsxJrlwCzaC1n45ruBsSAzwfZEQkm3FBPORFmog/s45-c/IMG_2192.jpg" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/12821714508588242516" rel="nofollow">Guido van Rossum</a></cite><span class="icon user blog-author"></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382636216259#c199763835766243294">October 24, 2013 at 10:36&#8239;AM</a></span></div><p class="comment-content">As I pointed out in my G+ post, Dijkstra did not consider start:size as an option. Sadly, that&#39;s the way C++ seems to be going (https://www.cilkplus.org/tutorial-array-notation). </p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="199763835766243294">Reply</a><span class="item-control blog-admin blog-admin pid-1067882746"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/199763835766243294">Delete</a></span></span></div><div class="comment-replies"><div id="c199763835766243294-rt" class="comment-thread inline-thread"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c199763835766243294-ra" class="thread-chrome thread-expanded"><div><li class="comment" id="c171077878010566698"><div class="avatar-image-container"><img src="//resources.blogblog.com/img/blank.gif" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user">Anonymous</cite><span class="icon user "></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382871032381#c171077878010566698">October 27, 2013 at 3:50&#8239;AM</a></span></div><p class="comment-content">That Cilk thing goes against the entire STL by not using .start() .end() half-closed intervals. What were these guys thinking, or were they even thinking at all.</p><span class="comment-actions secondary-text"><span class="item-control blog-admin blog-admin pid-207008185"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/171077878010566698">Delete</a></span></span></div><div class="comment-replies"><div id="c171077878010566698-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c171077878010566698-ra" class="thread-chrome thread-expanded"><div></div><div id="c171077878010566698-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="171077878010566698">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c171077878010566698-ce"></div></li></div><div id="c199763835766243294-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="199763835766243294">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c199763835766243294-ce"></div></li><li class="comment" id="c7509646093011734278"><div class="avatar-image-container"><img src="//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgCLa1yGwmPzpl0byaqgJqq_HuE3fURSs-RMJstE-2n3Ld4FVh7JcWK8kE6KE3To94J7IiB2VxppOPsxeOsHwBOQJRwsxJrlwCzaC1n45ruBsSAzwfZEQkm3FBPORFmog/s45-c/IMG_2192.jpg" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/12821714508588242516" rel="nofollow">Guido van Rossum</a></cite><span class="icon user blog-author"></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382636259427#c7509646093011734278">October 24, 2013 at 10:37&#8239;AM</a></span></div><p class="comment-content">Y combinator&#39;s thread on this topic mention that in 1985 Inside Macintosh explained why graphics coordinates are 0-based: https://news.ycombinator.com/item?id=6601515 (search for &quot;Macintosh&quot;).</p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="7509646093011734278">Reply</a><span class="item-control blog-admin blog-admin pid-1067882746"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/7509646093011734278">Delete</a></span></span></div><div class="comment-replies"><div id="c7509646093011734278-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c7509646093011734278-ra" class="thread-chrome thread-expanded"><div></div><div id="c7509646093011734278-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="7509646093011734278">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c7509646093011734278-ce"></div></li><li class="comment" id="c3823854601261437732"><div class="avatar-image-container"><img src="//www.blogger.com/img/blogger_logo_round_35.png" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/11452247999156925669" rel="nofollow">John Cowan</a></cite><span class="icon user "></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382660230313#c3823854601261437732">October 24, 2013 at 5:17&#8239;PM</a></span></div><p class="comment-content">If you count objects 0, 1, 2 you wind up with a value that&#39;s smaller than the number of objects.  0-based indexing works because it is <i>not</i> ordinal.</p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="3823854601261437732">Reply</a><span class="item-control blog-admin blog-admin pid-948296581"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/3823854601261437732">Delete</a></span></span></div><div class="comment-replies"><div id="c3823854601261437732-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c3823854601261437732-ra" class="thread-chrome thread-expanded"><div></div><div id="c3823854601261437732-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="3823854601261437732">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c3823854601261437732-ce"></div></li><li class="comment" id="c7130079749557690548"><div class="avatar-image-container"><img src="//www.blogger.com/img/blogger_logo_round_35.png" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/11501483710006076616" rel="nofollow">MLW</a></cite><span class="icon user "></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382691216667#c7130079749557690548">October 25, 2013 at 1:53&#8239;AM</a></span></div><p class="comment-content">Your mention of graphics coordinates reminds of another index holy war about the location of the origin: top-left or bottom-left?<br><br>I like ot&#39;s description of indices as boundaries rather than labels. I think it gives both the 0th and 1st camps something to hang their hats on :).</p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="7130079749557690548">Reply</a><span class="item-control blog-admin blog-admin pid-2048563238"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/7130079749557690548">Delete</a></span></span></div><div class="comment-replies"><div id="c7130079749557690548-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c7130079749557690548-ra" class="thread-chrome thread-expanded"><div></div><div id="c7130079749557690548-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="7130079749557690548">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c7130079749557690548-ce"></div></li><li class="comment" id="c8358877314330219275"><div class="avatar-image-container"><img src="//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhrNPBolT95MQXJ--7PnuIAy7l05t8mZBjhJdsnCpVQwLRZs_BCPD6HVI40uyaP7VMlRms4nt_HFutMg7vfSbdQl1XKIFLa6ubAT6a7IS3O3TizgsJJ0Dda5W5KNnkcqxc/s45-c/P1020199.JPG" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/12207072339468136950" rel="nofollow">Veky</a></cite><span class="icon user "></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382693285556#c8358877314330219275">October 25, 2013 at 2:28&#8239;AM</a></span></div><p class="comment-content">Except the indices as boundaries analogy is broken. :-(<br><br>&quot;abcdefghijklmnop&quot;[:3:-1]<br><br>Note that it ends in e, not in d as it should if you consider 3 as a boundary.<br><br>When I first encountered this, I thought it was a bug. Boundaries metaphor was something I deeply embraced.<br><br>Maybe it could stay that way? Guido, can slice semantics with negative stride be changed?</p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="8358877314330219275">Reply</a><span class="item-control blog-admin blog-admin pid-102236691"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/8358877314330219275">Delete</a></span></span></div><div class="comment-replies"><div id="c8358877314330219275-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c8358877314330219275-ra" class="thread-chrome thread-expanded"><div></div><div id="c8358877314330219275-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="8358877314330219275">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c8358877314330219275-ce"></div></li><li class="comment" id="c391270916557943362"><div class="avatar-image-container"><img src="//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgCLa1yGwmPzpl0byaqgJqq_HuE3fURSs-RMJstE-2n3Ld4FVh7JcWK8kE6KE3To94J7IiB2VxppOPsxeOsHwBOQJRwsxJrlwCzaC1n45ruBsSAzwfZEQkm3FBPORFmog/s45-c/IMG_2192.jpg" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/12821714508588242516" rel="nofollow">Guido van Rossum</a></cite><span class="icon user blog-author"></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382716394876#c391270916557943362">October 25, 2013 at 8:53&#8239;AM</a></span></div><p class="comment-content">I agree that slices with negative strides are confusing. We can&#39;t change them (it would break too much code) but you can usually avoid them by using the reversed() function instead, e.g. &#39;&#39;.join(reversed(&quot;abcdefghijklmnop&quot;[3:])). Still not ideal, but how often do you need a string backwards (apart from palindrome puzzles :-)?</p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="391270916557943362">Reply</a><span class="item-control blog-admin blog-admin pid-1067882746"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/391270916557943362">Delete</a></span></span></div><div class="comment-replies"><div id="c391270916557943362-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c391270916557943362-ra" class="thread-chrome thread-expanded"><div></div><div id="c391270916557943362-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="391270916557943362">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c391270916557943362-ce"></div></li><li class="comment" id="c4717382709090848584"><div class="avatar-image-container"><img src="//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhrNPBolT95MQXJ--7PnuIAy7l05t8mZBjhJdsnCpVQwLRZs_BCPD6HVI40uyaP7VMlRms4nt_HFutMg7vfSbdQl1XKIFLa6ubAT6a7IS3O3TizgsJJ0Dda5W5KNnkcqxc/s45-c/P1020199.JPG" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/12207072339468136950" rel="nofollow">Veky</a></cite><span class="icon user "></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382810039042#c4717382709090848584">October 26, 2013 at 10:53&#8239;AM</a></span></div><p class="comment-content">You&#39;ve seen my code on CheckIO. More often than you think. :-P<br><br>But seriously... not only strings, any indexable iterables have same problem. And you haven&#39;t seem to have problems with breaking code (especially without any confirmed examples) before. At least in Py4K? :-)</p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="4717382709090848584">Reply</a><span class="item-control blog-admin blog-admin pid-102236691"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/4717382709090848584">Delete</a></span></span></div><div class="comment-replies"><div id="c4717382709090848584-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c4717382709090848584-ra" class="thread-chrome thread-expanded"><div></div><div id="c4717382709090848584-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="4717382709090848584">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c4717382709090848584-ce"></div></li><li class="comment" id="c5702830276691152361"><div class="avatar-image-container"><img src="//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgCLa1yGwmPzpl0byaqgJqq_HuE3fURSs-RMJstE-2n3Ld4FVh7JcWK8kE6KE3To94J7IiB2VxppOPsxeOsHwBOQJRwsxJrlwCzaC1n45ruBsSAzwfZEQkm3FBPORFmog/s45-c/IMG_2192.jpg" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/12821714508588242516" rel="nofollow">Guido van Rossum</a></cite><span class="icon user blog-author"></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1382898868516#c5702830276691152361">October 27, 2013 at 11:34&#8239;AM</a></span></div><p class="comment-content">Over on python-ideas we&#39;re discussing negative strides now. The best way to use them is to also use negative indexes. E.g. a[::-1] == a[-1:-1-len(a):-1].</p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="5702830276691152361">Reply</a><span class="item-control blog-admin blog-admin pid-1067882746"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/5702830276691152361">Delete</a></span></span></div><div class="comment-replies"><div id="c5702830276691152361-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c5702830276691152361-ra" class="thread-chrome thread-expanded"><div></div><div id="c5702830276691152361-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="5702830276691152361">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c5702830276691152361-ce"></div></li><li class="comment" id="c4251845305075300023"><div class="avatar-image-container"><img src="//www.blogger.com/img/blogger_logo_round_35.png" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/10771737847473635757" rel="nofollow">Eric MacDonald</a></cite><span class="icon user "></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1456103041409#c4251845305075300023">February 21, 2016 at 5:04&#8239;PM</a></span></div><p class="comment-content">This is an old post and interesting, but I think there is a hardware angle you aren&#39;t considering in indexing.  I&#39;m a EE prof, worked at IBM and Motorola previously.  Hardware wants zero indexing.  Think about a logical decoder (heart of SRAM memory driving word lines for instance).  If you have a four bit decoder, you have options of 0 to 15 as the input so you drive out wordline0 to wordline15.  16 doesn&#39;t fit.  Also, in a reverse FOR loop with a terminating value of zero, you can use the Z bit (zero flag - NAND of all index bits) for free.  Many early assembly languages had instructions for this to avoid an explicit check for termination.    Interesting to hear the CS perspective.</p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="4251845305075300023">Reply</a><span class="item-control blog-admin blog-admin pid-1431728246"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/4251845305075300023">Delete</a></span></span></div><div class="comment-replies"><div id="c4251845305075300023-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c4251845305075300023-ra" class="thread-chrome thread-expanded"><div></div><div id="c4251845305075300023-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="4251845305075300023">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c4251845305075300023-ce"></div></li><li class="comment" id="c3605368058569474360"><div class="avatar-image-container"><img src="//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgCLa1yGwmPzpl0byaqgJqq_HuE3fURSs-RMJstE-2n3Ld4FVh7JcWK8kE6KE3To94J7IiB2VxppOPsxeOsHwBOQJRwsxJrlwCzaC1n45ruBsSAzwfZEQkm3FBPORFmog/s45-c/IMG_2192.jpg" alt=""/></div><div class="comment-block"><div class="comment-header"><cite class="user"><a href="https://www.blogger.com/profile/12821714508588242516" rel="nofollow">Guido van Rossum</a></cite><span class="icon user blog-author"></span><span class="datetime secondary-text"><a rel="nofollow" href="https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html?showComment=1456117046581#c3605368058569474360">February 21, 2016 at 8:57&#8239;PM</a></span></div><p class="comment-content">Hi Eric, thanks for adding that point. In high school I built and used simple digital logic and in college I used CDC assembler, so I&#39;m well aware of the hardware preference for 0-based indexing. This is also of course where C&#39;s 0-base indexing comes from. But Python, priding itself in being a high-level language, needs to be able to motivate its position in this matter without reference to the implementation.</p><span class="comment-actions secondary-text"><a class="comment-reply" target="_self" data-comment-id="3605368058569474360">Reply</a><span class="item-control blog-admin blog-admin pid-1067882746"><a target="_self" href="https://www.blogger.com/comment/delete/8699431508730375743/3605368058569474360">Delete</a></span></span></div><div class="comment-replies"><div id="c3605368058569474360-rt" class="comment-thread inline-thread hidden"><span class="thread-toggle thread-expanded"><span class="thread-arrow"></span><span class="thread-count"><a target="_self">Replies</a></span></span><ol id="c3605368058569474360-ra" class="thread-chrome thread-expanded"><div></div><div id="c3605368058569474360-continue" class="continue"><a class="comment-reply" target="_self" data-comment-id="3605368058569474360">Reply</a></div></ol></div></div><div class="comment-replybox-single" id="c3605368058569474360-ce"></div></li></ol><div id="top-continue" class="continue"><a class="comment-reply" target="_self">Add comment</a></div><div class="comment-replybox-thread" id="top-ce"></div><div class="loadmore hidden" data-post-id="8737672053383472671"><a target="_self">Load more...</a></div></div>
+</div>
+</div>
+<p class='comment-footer'>
+<div class='comment-form'>
+<a name='comment-form'></a>
+<p>
+</p>
+<p>Note: Only a member of this blog may post a comment.</p>
+<a href='https://www.blogger.com/comment/frame/8699431508730375743?po=8737672053383472671&hl=en&saa=85391&origin=https://python-history.blogspot.com' id='comment-editor-src'></a>
+<iframe allowtransparency='true' class='blogger-iframe-colorize blogger-comment-from-post' frameborder='0' height='410px' id='comment-editor' name='comment-editor' src='' width='100%'></iframe>
+<script src='https://www.blogger.com/static/v1/jsbin/3790099508-comment_from_post_iframe.js' type='text/javascript'></script>
+<script type='text/javascript'>
+      BLOG_CMT_createIframe('https://www.blogger.com/rpc_relay.html');
+    </script>
+</div>
+</p>
+<div id='backlinks-container'>
+<div id='Blog1_backlinks-container'>
+</div>
+</div>
+</div>
+</div>
+
+        </div></div>
+      
+</div>
+<div class='blog-pager' id='blog-pager'>
+<span id='blog-pager-newer-link'>
+<a class='blog-pager-newer-link' href='https://python-history.blogspot.com/2013/10/origin-of-metaclasses-in-python.html' id='Blog1_blog-pager-newer-link' title='Newer Post'>Newer Post</a>
+</span>
+<span id='blog-pager-older-link'>
+<a class='blog-pager-older-link' href='https://python-history.blogspot.com/2011/07/karin-dewar-indentation-and-colon.html' id='Blog1_blog-pager-older-link' title='Older Post'>Older Post</a>
+</span>
+<a class='home-link' href='https://python-history.blogspot.com/'>Home</a>
+</div>
+<div class='clear'></div>
+<div class='post-feeds'>
+<div class='feed-links'>
+Subscribe to:
+<a class='feed-link' href='https://python-history.blogspot.com/feeds/8737672053383472671/comments/default' target='_blank' type='application/atom+xml'>Post Comments (Atom)</a>
+</div>
+</div>
+</div></div>
+</div>
+<div id='sidebar-wrapper'>
+<div class='sidebar section' id='sidebar'><div class='widget Followers' data-version='1' id='Followers2'>
+<h2 class='title'>Followers</h2>
+<div class='widget-content'>
+<div id='Followers2-wrapper'>
+<div style='margin-right:2px;'>
+<div><script type="text/javascript" src="https://apis.google.com/js/platform.js"></script>
+<div id="followers-iframe-container"></div>
+<script type="text/javascript">
+    window.followersIframe = null;
+    function followersIframeOpen(url) {
+      gapi.load("gapi.iframes", function() {
+        if (gapi.iframes && gapi.iframes.getContext) {
+          window.followersIframe = gapi.iframes.getContext().openChild({
+            url: url,
+            where: document.getElementById("followers-iframe-container"),
+            messageHandlersFilter: gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER,
+            messageHandlers: {
+              '_ready': function(obj) {
+                window.followersIframe.getIframeEl().height = obj.height;
+              },
+              'reset': function() {
+                window.followersIframe.close();
+                followersIframeOpen("https://www.blogger.com/followers/frame/8699431508730375743?colors\x3dCgt0cmFuc3BhcmVudBILdHJhbnNwYXJlbnQaByM5OTk5OTkiByM2Njk5Y2MqByNGRkZGRkYyByNmZjY2MzM6ByM5OTk5OTlCByM2Njk5Y2NKByMwMDAwMDBSByM2Njk5Y2NaC3RyYW5zcGFyZW50\x26pageSize\x3d21\x26hl\x3den\x26origin\x3dhttps://python-history.blogspot.com");
+              },
+              'open': function(url) {
+                window.followersIframe.close();
+                followersIframeOpen(url);
+              }
+            }
+          });
+        }
+      });
+    }
+    followersIframeOpen("https://www.blogger.com/followers/frame/8699431508730375743?colors\x3dCgt0cmFuc3BhcmVudBILdHJhbnNwYXJlbnQaByM5OTk5OTkiByM2Njk5Y2MqByNGRkZGRkYyByNmZjY2MzM6ByM5OTk5OTlCByM2Njk5Y2NKByMwMDAwMDBSByM2Njk5Y2NaC3RyYW5zcGFyZW50\x26pageSize\x3d21\x26hl\x3den\x26origin\x3dhttps://python-history.blogspot.com");
+  </script></div>
+</div>
+</div>
+<div class='clear'></div>
+</div>
+</div><div class='widget BlogArchive' data-version='1' id='BlogArchive2'>
+<h2>Blog Archive</h2>
+<div class='widget-content'>
+<div id='ArchiveList'>
+<div id='BlogArchive2_ArchiveList'>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2018/'>
+2018
+</a>
+<span class='post-count' dir='ltr'>(1)</span>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2018/05/'>
+May
+</a>
+<span class='post-count' dir='ltr'>(1)</span>
+</li>
+</ul>
+</li>
+</ul>
+<ul class='hierarchy'>
+<li class='archivedate expanded'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy toggle-open'>
+
+        &#9660;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2013/'>
+2013
+</a>
+<span class='post-count' dir='ltr'>(4)</span>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2013/11/'>
+November
+</a>
+<span class='post-count' dir='ltr'>(2)</span>
+</li>
+</ul>
+<ul class='hierarchy'>
+<li class='archivedate expanded'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy toggle-open'>
+
+        &#9660;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2013/10/'>
+October
+</a>
+<span class='post-count' dir='ltr'>(2)</span>
+<ul class='posts'>
+<li><a href='https://python-history.blogspot.com/2013/10/origin-of-metaclasses-in-python.html'>Origin of metaclasses in Python</a></li>
+<li><a href='https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html'>Why Python uses 0-based indexing</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2011/'>
+2011
+</a>
+<span class='post-count' dir='ltr'>(1)</span>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2011/07/'>
+July
+</a>
+<span class='post-count' dir='ltr'>(1)</span>
+</li>
+</ul>
+</li>
+</ul>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2010/'>
+2010
+</a>
+<span class='post-count' dir='ltr'>(7)</span>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2010/08/'>
+August
+</a>
+<span class='post-count' dir='ltr'>(1)</span>
+</li>
+</ul>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2010/06/'>
+June
+</a>
+<span class='post-count' dir='ltr'>(6)</span>
+</li>
+</ul>
+</li>
+</ul>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2009/'>
+2009
+</a>
+<span class='post-count' dir='ltr'>(19)</span>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2009/04/'>
+April
+</a>
+<span class='post-count' dir='ltr'>(4)</span>
+</li>
+</ul>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2009/03/'>
+March
+</a>
+<span class='post-count' dir='ltr'>(5)</span>
+</li>
+</ul>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2009/02/'>
+February
+</a>
+<span class='post-count' dir='ltr'>(4)</span>
+</li>
+</ul>
+<ul class='hierarchy'>
+<li class='archivedate collapsed'>
+<a class='toggle' href='javascript:void(0)'>
+<span class='zippy'>
+
+        &#9658;&#160;
+      
+</span>
+</a>
+<a class='post-count-link' href='https://python-history.blogspot.com/2009/01/'>
+January
+</a>
+<span class='post-count' dir='ltr'>(6)</span>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class='clear'></div>
+</div>
+</div><div class='widget Profile' data-version='1' id='Profile2'>
+<h2>About Me</h2>
+<div class='widget-content'>
+<a href='https://www.blogger.com/profile/12821714508588242516'><img alt='My photo' class='profile-img' height='80' src='//blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgCLa1yGwmPzpl0byaqgJqq_HuE3fURSs-RMJstE-2n3Ld4FVh7JcWK8kE6KE3To94J7IiB2VxppOPsxeOsHwBOQJRwsxJrlwCzaC1n45ruBsSAzwfZEQkm3FBPORFmog/s220/IMG_2192.jpg' width='53'/></a>
+<dl class='profile-datablock'>
+<dt class='profile-data'>
+<a class='profile-name-link g-profile' href='https://www.blogger.com/profile/12821714508588242516' rel='author' style='background-image: url(//www.blogger.com/img/logo-16.png);'>
+Guido van Rossum
+</a>
+</dt>
+<dd class='profile-textblock'>Python's BDFL</dd>
+</dl>
+<a class='profile-link' href='https://www.blogger.com/profile/12821714508588242516' rel='author'>View my complete profile</a>
+<div class='clear'></div>
+</div>
+</div></div>
+</div>
+<!-- spacer for skins that want sidebar and main to be the same height-->
+<div class='clear'>&#160;</div>
+</div>
+<!-- end content-wrapper -->
+<div id='footer-wrapper'>
+<div class='footer no-items section' id='footer'></div>
+</div>
+</div></div>
+<!-- end outer-wrapper -->
+
+<script type="text/javascript" src="https://www.blogger.com/static/v1/widgets/851759228-widgets.js"></script>
+<script type='text/javascript'>
+window['__wavt'] = 'AAPvtVkmsS2k5URHpWJF4HrYiZXi:1789786052420';_WidgetManager._Init('//www.blogger.com/rearrange?blogID\x3d8699431508730375743','//python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html','8699431508730375743');
+_WidgetManager._SetDataContext([{'name': 'blog', 'data': {'blogId': '8699431508730375743', 'title': 'The History of Python', 'url': 'https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html', 'canonicalUrl': 'http://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html', 'homepageUrl': 'https://python-history.blogspot.com/', 'searchUrl': 'https://python-history.blogspot.com/search', 'canonicalHomepageUrl': 'http://python-history.blogspot.com/', 'blogspotFaviconUrl': 'https://python-history.blogspot.com/favicon.ico', 'bloggerUrl': 'https://www.blogger.com', 'hasCustomDomain': false, 'httpsEnabled': true, 'enabledCommentProfileImages': true, 'gPlusViewType': 'FILTERED_POSTMOD', 'adultContent': false, 'analyticsAccountNumber': '', 'encoding': 'UTF-8', 'locale': 'en', 'localeUnderscoreDelimited': 'en', 'languageDirection': 'ltr', 'isPrivate': false, 'isMobile': false, 'isMobileRequest': false, 'mobileClass': '', 'isPrivateBlog': false, 'isDynamicViewsAvailable': true, 'feedLinks': '\x3clink rel\x3d\x22alternate\x22 type\x3d\x22application/atom+xml\x22 title\x3d\x22The History of Python - Atom\x22 href\x3d\x22https://python-history.blogspot.com/feeds/posts/default\x22 /\x3e\n\x3clink rel\x3d\x22alternate\x22 type\x3d\x22application/rss+xml\x22 title\x3d\x22The History of Python - RSS\x22 href\x3d\x22https://python-history.blogspot.com/feeds/posts/default?alt\x3drss\x22 /\x3e\n\x3clink rel\x3d\x22service.post\x22 type\x3d\x22application/atom+xml\x22 title\x3d\x22The History of Python - Atom\x22 href\x3d\x22https://www.blogger.com/feeds/8699431508730375743/posts/default\x22 /\x3e\n\n\x3clink rel\x3d\x22alternate\x22 type\x3d\x22application/atom+xml\x22 title\x3d\x22The History of Python - Atom\x22 href\x3d\x22https://python-history.blogspot.com/feeds/8737672053383472671/comments/default\x22 /\x3e\n', 'meTag': '', 'adsenseHostId': 'ca-host-pub-1556223355139109', 'adsenseHasAds': false, 'adsenseAutoAds': false, 'boqCommentIframeForm': true, 'loginRedirectParam': '', 'view': '', 'dynamicViewsCommentsSrc': '//www.blogblog.com/dynamicviews/4224c15c4e7c9321/js/comments.js', 'dynamicViewsScriptSrc': '//www.blogblog.com/dynamicviews/7ce469edaf870342', 'plusOneApiSrc': 'https://apis.google.com/js/platform.js', 'disableGComments': true, 'interstitialAccepted': false, 'sharing': {'platforms': [{'name': 'Get link', 'key': 'link', 'shareMessage': 'Get link', 'target': ''}, {'name': 'Facebook', 'key': 'facebook', 'shareMessage': 'Share to Facebook', 'target': 'facebook'}, {'name': 'BlogThis!', 'key': 'blogThis', 'shareMessage': 'BlogThis!', 'target': 'blog'}, {'name': 'X', 'key': 'twitter', 'shareMessage': 'Share to X', 'target': 'twitter'}, {'name': 'Pinterest', 'key': 'pinterest', 'shareMessage': 'Share to Pinterest', 'target': 'pinterest'}, {'name': 'Email', 'key': 'email', 'shareMessage': 'Email', 'target': 'email'}], 'disableGooglePlus': true, 'googlePlusShareButtonWidth': 0, 'googlePlusBootstrap': '\x3cscript type\x3d\x22text/javascript\x22\x3ewindow.___gcfg \x3d {\x27lang\x27: \x27en\x27};\x3c/script\x3e'}, 'hasCustomJumpLinkMessage': false, 'jumpLinkMessage': 'Read more', 'pageType': 'item', 'postId': '8737672053383472671', 'pageName': 'Why Python uses 0-based indexing', 'pageTitle': 'The History of Python: Why Python uses 0-based indexing'}}, {'name': 'features', 'data': {}}, {'name': 'messages', 'data': {'edit': 'Edit', 'linkCopiedToClipboard': 'Link copied to clipboard!', 'ok': 'Ok', 'postLink': 'Post Link'}}, {'name': 'template', 'data': {'isResponsive': false, 'isAlternateRendering': false, 'isCustom': false}}, {'name': 'view', 'data': {'classic': {'name': 'classic', 'url': '?view\x3dclassic'}, 'flipcard': {'name': 'flipcard', 'url': '?view\x3dflipcard'}, 'magazine': {'name': 'magazine', 'url': '?view\x3dmagazine'}, 'mosaic': {'name': 'mosaic', 'url': '?view\x3dmosaic'}, 'sidebar': {'name': 'sidebar', 'url': '?view\x3dsidebar'}, 'snapshot': {'name': 'snapshot', 'url': '?view\x3dsnapshot'}, 'timeslide': {'name': 'timeslide', 'url': '?view\x3dtimeslide'}, 'isMobile': false, 'title': 'Why Python uses 0-based indexing', 'description': 'I was asked on Twitter why Python uses 0-based indexing, with a link to a new (fascinating) post on the subject ( http://exple.tive.org/blar...', 'url': 'https://python-history.blogspot.com/2013/10/why-python-uses-0-based-indexing.html', 'type': 'item', 'isSingleItem': true, 'isMultipleItems': false, 'isError': false, 'isPage': false, 'isPost': true, 'isHomepage': false, 'isArchive': false, 'isLabelSearch': false, 'postId': 8737672053383472671}}]);
+_WidgetManager._RegisterWidget('_NavbarView', new _WidgetInfo('Navbar1', 'navbar', document.getElementById('Navbar1'), {}, 'displayModeFull'));
+_WidgetManager._RegisterWidget('_HeaderView', new _WidgetInfo('Header1', 'header', document.getElementById('Header1'), {}, 'displayModeFull'));
+_WidgetManager._RegisterWidget('_BlogView', new _WidgetInfo('Blog1', 'main', document.getElementById('Blog1'), {'cmtInteractionsEnabled': false, 'lightboxEnabled': true, 'lightboxModuleUrl': 'https://www.blogger.com/static/v1/jsbin/120969204-lbx.js', 'lightboxCssUrl': 'https://www.blogger.com/static/v1/v-css/828616780-lightbox_bundle.css'}, 'displayModeFull'));
+_WidgetManager._RegisterWidget('_FollowersView', new _WidgetInfo('Followers2', 'sidebar', document.getElementById('Followers2'), {}, 'displayModeFull'));
+_WidgetManager._RegisterWidget('_BlogArchiveView', new _WidgetInfo('BlogArchive2', 'sidebar', document.getElementById('BlogArchive2'), {'languageDirection': 'ltr', 'loadingMessage': 'Loading\x26hellip;'}, 'displayModeFull'));
+_WidgetManager._RegisterWidget('_ProfileView', new _WidgetInfo('Profile2', 'sidebar', document.getElementById('Profile2'), {}, 'displayModeFull'));
+</script>
+</body>
+</html>

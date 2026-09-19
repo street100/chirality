@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>7.2. How to View GNATprove Output &mdash; SPARK User&#39;s Guide 27.0w</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/table-wrap.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="7.2.7.1. Messages reported by Proof" href="proof_checks_table.html" />
+    <link rel="prev" title="7.1. How to Run GNATprove" href="how_to_run_gnatprove.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #12284c" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            SPARK User's Guide
+              <img src="../../_static/adacore-logo-white.png" class="logo" alt="Logo"/>
+          </a>
+              <div class="version">
+                27.0w
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+    
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">1. Getting Started with SPARK</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">2. Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">3. Installation of GNATprove</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../spark_mode.html">4. Identifying SPARK Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../spark_2014.html">5. Overview of SPARK Language</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">6. SPARK Tutorial</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../gnatprove.html">7. Formal Verification with GNATprove</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="how_to_run_gnatprove.html">7.1. How to Run GNATprove</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">7.2. How to View GNATprove Output</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-analysis-report-panel">7.2.1. The Analysis Report Panel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-analysis-results-summary-file">7.2.2. The Analysis Results Summary File</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#results-in-sarif-format">7.2.3. Results in SARIF format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#categories-of-messages">7.2.4. Categories of Messages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#errors-and-completeness-of-analysis">7.2.5. Errors and Completeness of Analysis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#effect-of-mode-on-output">7.2.6. Effect of Mode on Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#description-of-messages">7.2.7. Description of Messages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="proof_checks_table.html">7.2.7.1. Messages reported by Proof</a></li>
+<li class="toctree-l4"><a class="reference internal" href="flow_checks_table.html">7.2.7.2. Messages reported by Flow Analysis</a></li>
+<li class="toctree-l4"><a class="reference internal" href="misc_warnings_table.html">7.2.7.3. Miscellaneous warnings reported by GNATprove</a></li>
+<li class="toctree-l4"><a class="reference internal" href="annotation_errors_table.html">7.2.7.4. Errors Related To Annotations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="violation_table.html">7.2.7.5. Error Messages For SPARK Violations</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#understanding-counterexamples">7.2.8. Understanding Counterexamples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="how_to_use_gnatprove_in_a_team.html">7.3. How to Use GNATprove in a Team</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to_write_subprogram_contracts.html">7.4. How to Write Subprogram Contracts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to_write_object_oriented_contracts.html">7.5. How to Write Object Oriented Contracts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to_write_package_contracts.html">7.6. How to Write Package Contracts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to_write_loop_invariants.html">7.7. How to Write Loop Invariants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="how_to_investigate_unproved_checks.html">7.8. How to Investigate Unproved Checks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gnatprove_by_example.html">7.9. GNATprove by Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../usage_scenarios.html">8. Applying SPARK in Practice</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../appendix/command_line_invocation.html">A. Command Line Invocation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../appendix/alternative_provers.html">B. Alternative Provers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../appendix/project_attributes.html">C. Project Attributes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../appendix/implementation_defined_pragmas.html">D. Implementation Defined Pragmas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../appendix/additional_annotate_pragmas.html">E. Additional Annotate Pragmas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../appendix/env_vars.html">F. Environment Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../appendix/gnatprove_limitations.html">G. GNATprove Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../appendix/portability_issues.html">H. Portability Issues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../appendix/semantics_of_floating_point_operations.html">I. Semantics of Floating Point Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../appendix/quality_assurance.html">J. SPARK Architecture, Quality Assurance and Maturity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../gfdl.html">K. GNU Free Documentation License</a></li>
+</ul>
+
+        <li class="toctree-l1"><a href= "../../genindex.html">Index</a></li>
+  
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #12284c" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">SPARK User's Guide</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../gnatprove.html"><span class="section-number">7. </span>Formal Verification with GNATprove</a></li>
+      <li class="breadcrumb-item active"><span class="section-number">7.2. </span>How to View GNATprove Output</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/en/source/how_to_view_gnatprove_output.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="how-to-view-gnatprove-output">
+<span id="how-to-view-gnatprove-output-l2"></span><h1 id="how-to-view-gnatprove-output-l2"><span class="section-number">7.2. </span>How to View GNATprove Output<a class="headerlink" href="#how-to-view-gnatprove-output" title="Permalink to this heading"></a></h1>
+<p>GNATprove produces two kinds of outputs: the one which is echoed to standard
+output or displayed in your IDE (GNAT Studio or GNATbench), and a textual summary of
+the analysis results.</p>
+<section id="the-analysis-report-panel">
+<span id="index-0"></span><span id="the-analysis-report-panel-l11"></span><h2 id="the-analysis-report-panel-l11"><span class="section-number">7.2.1. </span>The Analysis Report Panel<a class="headerlink" href="#the-analysis-report-panel" title="Permalink to this heading"></a></h2>
+<p>GNAT Studio can display an interactive view reporting the results of the analysis, with
+a count of issues per file, subprogram and severity, as well as filters to
+selectively view a subset of the issues only. This interactive view is
+displayed using the menu <span class="menuselection">SPARK ‣ Show Report</span>. This menu
+becomes available after the checkbox <code class="docutils literal notranslate"><span class="pre">Display</span> <span class="pre">analysis</span> <span class="pre">report</span></code> is checked in
+the SPARK section of the Preferences dialog - menu <span class="menuselection">Edit ‣
+Preferences</span>, and only if GNATprove was run so that there are results to
+display.</p>
+<p>Here is an example of this view:</p>
+<img alt="../../_images/analysis_report_panel.png" src="../../_images/analysis_report_panel.png" />
+</section>
+<section id="the-analysis-results-summary-file">
+<span id="index-1"></span><span id="the-analysis-results-summary-file-l29"></span><h2 id="the-analysis-results-summary-file-l29"><span class="section-number">7.2.2. </span>The Analysis Results Summary File<a class="headerlink" href="#the-analysis-results-summary-file" title="Permalink to this heading"></a></h2>
+<p>GNATprove generates global project statistics in file <code class="docutils literal notranslate"><span class="pre">gnatprove.out</span></code>,
+which can be displayed in GNAT Studio using the menu <span class="menuselection">SPARK ‣ Show
+Log</span>. The file <code class="docutils literal notranslate"><span class="pre">gnatprove.out</span></code> is generated in the <code class="docutils literal notranslate"><span class="pre">gnatprove</span></code> subdirectory
+of the object directory of the project.</p>
+<p id="index-2">When switch <code class="docutils literal notranslate"><span class="pre">--output-header</span></code> is used, this file starts with a header
+containing extra information about the run including:</p>
+<ul class="simple">
+<li><p>The date and time of GNATprove run</p></li>
+<li><p>The GNATprove version that has generated this report</p></li>
+<li><p>The host for which GNATprove is configured (e.g. Windows 32 bits)</p></li>
+<li><p>The full command-line of the GNATprove invocation, including project file</p></li>
+<li><p>The GNATprove switches specified in the project file</p></li>
+</ul>
+<p>A summary table at the start of file <code class="docutils literal notranslate"><span class="pre">gnatprove.out</span></code> provides an overview of
+the verification results for all checks in the project. The table may look like
+this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-------------------------------------------------------------------------------------------------------------------</span>
+<span class="n">SPARK</span> <span class="n">Analysis</span> <span class="n">results</span>        <span class="n">Total</span>          <span class="n">Flow</span>   <span class="n">Interval</span>                         <span class="n">Provers</span>   <span class="n">Justified</span>   <span class="n">Unproved</span>
+<span class="o">-------------------------------------------------------------------------------------------------------------------</span>
+<span class="n">Data</span> <span class="n">Dependencies</span>               <span class="mi">281</span>           <span class="mi">281</span>          <span class="o">.</span>                               <span class="o">.</span>           <span class="o">.</span>          <span class="o">.</span>
+<span class="n">Flow</span> <span class="n">Dependencies</span>               <span class="mi">228</span>           <span class="mi">228</span>          <span class="o">.</span>                               <span class="o">.</span>           <span class="o">.</span>          <span class="o">.</span>
+<span class="n">Initialization</span>                  <span class="mi">693</span>           <span class="mi">692</span>          <span class="o">.</span>                               <span class="o">.</span>           <span class="mi">1</span>          <span class="o">.</span>
+<span class="n">Non</span><span class="o">-</span><span class="n">Aliasing</span>                      <span class="o">.</span>             <span class="o">.</span>          <span class="o">.</span>                               <span class="o">.</span>           <span class="o">.</span>          <span class="o">.</span>
+<span class="n">Run</span><span class="o">-</span><span class="n">time</span> <span class="n">Checks</span>                 <span class="mi">474</span>             <span class="o">.</span>          <span class="o">.</span>      <span class="mi">458</span> <span class="p">(</span><span class="n">CVC5</span> <span class="mi">95</span><span class="o">%</span><span class="p">,</span> <span class="n">Trivial</span> <span class="mi">5</span><span class="o">%</span><span class="p">)</span>          <span class="mi">16</span>          <span class="o">.</span>
+<span class="n">Assertions</span>                       <span class="mi">45</span>             <span class="o">.</span>          <span class="o">.</span>      <span class="mi">45</span> <span class="p">(</span><span class="n">CVC5</span> <span class="mi">82</span><span class="o">%</span><span class="p">,</span> <span class="n">Trivial</span> <span class="mi">18</span><span class="o">%</span><span class="p">)</span>           <span class="o">.</span>          <span class="o">.</span>
+<span class="n">Functional</span> <span class="n">Contracts</span>            <span class="mi">304</span>             <span class="o">.</span>          <span class="o">.</span>     <span class="mi">302</span> <span class="p">(</span><span class="n">CVC5</span> <span class="mi">82</span><span class="o">%</span><span class="p">,</span> <span class="n">Trivial</span> <span class="mi">18</span><span class="o">%</span><span class="p">)</span>           <span class="mi">2</span>          <span class="o">.</span>
+<span class="n">LSP</span> <span class="n">Verification</span>                  <span class="o">.</span>             <span class="o">.</span>          <span class="o">.</span>                               <span class="o">.</span>           <span class="o">.</span>          <span class="o">.</span>
+<span class="n">Termination</span>                       <span class="o">.</span>             <span class="o">.</span>          <span class="o">.</span>                               <span class="o">.</span>           <span class="o">.</span>          <span class="o">.</span>
+<span class="n">Concurrency</span>                       <span class="o">.</span>             <span class="o">.</span>          <span class="o">.</span>                               <span class="o">.</span>           <span class="o">.</span>          <span class="o">.</span>
+<span class="o">-------------------------------------------------------------------------------------------------------------------</span>
+<span class="n">Total</span>                          <span class="mi">2025</span>    <span class="mi">1201</span> <span class="p">(</span><span class="mi">59</span><span class="o">%</span><span class="p">)</span>          <span class="o">.</span>                       <span class="mi">805</span> <span class="p">(</span><span class="mi">40</span><span class="o">%</span><span class="p">)</span>     <span class="mi">19</span> <span class="p">(</span><span class="mi">1</span><span class="o">%</span><span class="p">)</span>          <span class="o">.</span>
+</pre></div>
+</div>
+<p>The following table explains the lines of the summary table:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 17%" />
+<col style="width: 83%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Line Description</p></th>
+<th class="head"><p>Explanation</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Data Dependencies</p></td>
+<td><p>Verification of <a class="reference internal" href="subprogram_contracts.html#data-dependencies"><span class="std std-ref">Data Dependencies</span></a> and parameter modes</p></td>
+</tr>
+<tr class="row-odd"><td><p>Flow Dependencies</p></td>
+<td><p>Verification of <a class="reference internal" href="subprogram_contracts.html#flow-dependencies"><span class="std std-ref">Flow Dependencies</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Initialization</p></td>
+<td><p>Verification of <a class="reference internal" href="language_restrictions.html#data-initialization-policy"><span class="std std-ref">Data Initialization Policy</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Non-Aliasing</p></td>
+<td><p>Verification of <a class="reference internal" href="language_restrictions.html#absence-of-interferences"><span class="std std-ref">Absence of Interferences</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Run-time Checks</p></td>
+<td><p>Verification of absence of run-time errors (AoRTE) (except those raising <code class="docutils literal notranslate"><span class="pre">Storage_Error</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Assertions</p></td>
+<td><p>Verification of <a class="reference internal" href="assertion_pragmas.html#assertion-pragmas"><span class="std std-ref">Assertion Pragmas</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Functional Contracts</p></td>
+<td><p>Verification of functional contracts (includes <a class="reference internal" href="subprogram_contracts.html#subprogram-contracts"><span class="std std-ref">Subprogram Contracts</span></a>, <a class="reference internal" href="package_contracts.html#package-contracts"><span class="std std-ref">Package Contracts</span></a> and <a class="reference internal" href="type_contracts.html#type-contracts"><span class="std std-ref">Type Contracts</span></a>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>LSP Verification</p></td>
+<td><p>Verification related to <a class="reference internal" href="object_oriented_programming.html#object-oriented-programming-and-liskov-substitution-principle"><span class="std std-ref">Object Oriented Programming and Liskov Substitution Principle</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Termination</p></td>
+<td><p>Verification related to <a class="reference internal" href="assertion_pragmas.html#loop-variants"><span class="std std-ref">Loop Variants</span></a> and <a class="reference internal" href="how_to_write_subprogram_contracts.html#subprogram-termination"><span class="std std-ref">Subprogram Termination</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Concurrency</p></td>
+<td><p>Verification related to <a class="reference internal" href="concurrency.html#concurrency-and-ravenscar-profile"><span class="std std-ref">Concurrency and Ravenscar Profile</span></a></p></td>
+</tr>
+</tbody>
+</table>
+<p>We now explain the columns of the table.</p>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">Total</span></code> column describes the total number of checks in this category.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">Flow</span></code> column describes the number of checks proved by flow analysis.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">Interval</span></code> column describes the number of checks (overflow and range
+checks) proved by a simple static analysis of bounds for floating-point
+expressions based on type bounds of sub-expressions.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">Provers</span></code> column describes the number of checks proved by automatic or
+manual provers. The column also gives information on the provers used, and
+the percentage of checks proved by each prover. Note that sometimes a check
+is proved by a combination of provers, hence the use of percentage instead of
+an absolute count. Also note that generally the prover which is run first (as
+determined by the <code class="docutils literal notranslate"><span class="pre">--prover</span></code> command line switch) proves the most checks,
+because each prover is called only on those checks that were not previously
+proved. The prover percentages are provided in alphabetical order. The special
+name <code class="docutils literal notranslate"><span class="pre">Trivial</span></code> is used to refer to an internal simplification that discards
+checks that are trivially true.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">Justified</span></code> column contains the number of checks for which the user has
+provided a <a class="reference internal" href="how_to_use_gnatprove_in_a_team.html#direct-justification-with-pragma-annotate"><span class="std std-ref">Direct Justification with Pragma Annotate</span></a>.</p></li>
+<li><p>Finally, the column <code class="docutils literal notranslate"><span class="pre">Unproved</span></code> counts the checks which have neither been
+proved nor justified.</p></li>
+</ul>
+<p>After the summary table, a line states the maximal steps that were consumed by
+automated provers. The line may look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">max</span> <span class="n">steps</span> <span class="n">used</span> <span class="k">for</span> <span class="n">successful</span> <span class="n">proof</span><span class="p">:</span> <span class="mi">1234</span>
+</pre></div>
+</div>
+<p id="index-3">The use of this line is to help with reproducibility of a run of GNATprove
+that proved all checks and properties. If the user provides the given number
+via the <code class="docutils literal notranslate"><span class="pre">--steps</span></code> option to GNATprove, and disables the time and memory
+limits, (if enabled directly or indirectly such as via the <code class="docutils literal notranslate"><span class="pre">--level</span></code>
+switch), then GNATprove will again prove all checks and properties. For
+example, if a user has proved all checks in a project using an invocation of
+GNATprove as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gnatprove</span> <span class="o">-</span><span class="n">P</span> <span class="o">&lt;</span><span class="n">projectfile</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">level</span><span class="o">=</span><span class="mi">2</span>
+</pre></div>
+</div>
+<p>then the following command will also prove all checks:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gnatprove</span> <span class="o">-</span><span class="n">P</span> <span class="o">&lt;</span><span class="n">projectfile</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">level</span><span class="o">=</span><span class="mi">2</span> <span class="o">--</span><span class="n">timeout</span><span class="o">=</span><span class="mi">0</span> <span class="o">--</span><span class="n">memlimit</span><span class="o">=</span><span class="mi">0</span> <span class="o">--</span><span class="n">steps</span><span class="o">=</span><span class="mi">1234</span>
+</pre></div>
+</div>
+<p>The next contents in the file are statistics describing:</p>
+<ul class="simple">
+<li><p>which units were analyzed (with flow analysis, proof, or both)</p></li>
+<li><p>if the analysis for a given unit was incomplete because of errors</p></li>
+<li><p>which subprograms in these units were analyzed (with flow analysis, proof, or
+both)</p></li>
+<li><p>the results of this analysis</p></li>
+</ul>
+</section>
+<section id="results-in-sarif-format">
+<span id="results-in-sarif-format-l143"></span><h2 id="results-in-sarif-format-l143"><span class="section-number">7.2.3. </span>Results in SARIF format<a class="headerlink" href="#results-in-sarif-format" title="Permalink to this heading"></a></h2>
+<p>GNATprove generates a result file <code class="docutils literal notranslate"><span class="pre">gnatprove.sarif</span></code> in the <code class="docutils literal notranslate"><span class="pre">gnatprove</span></code>
+subdirectory of the object directory of the project. This file contains the
+analysis results in SARIF format.</p>
+<p id="index-4">By default, source file locations in the SARIF report are expressed as paths
+relative to the root project directory, identified by the <code class="docutils literal notranslate"><span class="pre">%SRCROOT%</span></code> base
+URI. The <code class="docutils literal notranslate"><span class="pre">run.originalUriBaseIds</span></code> field in the report maps <code class="docutils literal notranslate"><span class="pre">%SRCROOT%</span></code> to
+the absolute path of that directory, which allows SARIF viewers to reconstruct
+full paths regardless of where the report file is opened.</p>
+<p>Switch <code class="docutils literal notranslate"><span class="pre">--sarif-base-uri=ID:PATH</span></code> adds a mapping from the identifier <code class="docutils literal notranslate"><span class="pre">ID</span></code>
+to the absolute base path <code class="docutils literal notranslate"><span class="pre">PATH</span></code> in <code class="docutils literal notranslate"><span class="pre">originalUriBaseIds</span></code>. Each source file
+location is then expressed relative to the longest matching base path, with the
+corresponding identifier recorded as its <code class="docutils literal notranslate"><span class="pre">uriBaseId</span></code>. This switch can be
+repeated to declare several base URIs: for example, one for the project sources
+and another for a shared library. If <code class="docutils literal notranslate"><span class="pre">--sarif-base-uri=%SRCROOT%:PATH</span></code> is
+supplied, it overrides the default <code class="docutils literal notranslate"><span class="pre">%SRCROOT%</span></code> mapping. Source files that
+cannot be resolved to any declared base path are recorded as absolute
+<code class="docutils literal notranslate"><span class="pre">file://</span></code> URIs.</p>
+</section>
+<section id="categories-of-messages">
+<span id="categories-of-messages-l169"></span><h2 id="categories-of-messages-l169"><span class="section-number">7.2.4. </span>Categories of Messages<a class="headerlink" href="#categories-of-messages" title="Permalink to this heading"></a></h2>
+<p>GNATprove issues four different kinds of messages: errors, warnings,
+check messages and information messages.</p>
+<ul class="simple" id="index-5">
+<li><p>Errors are issued for SPARK violations or other language legality problems,
+or any other problem which does not allow to proceed to analysis.  Errors
+cannot be suppressed and must be fixed to proceed with analysis.</p></li>
+</ul>
+<ul class="simple" id="index-6">
+<li><p>Warnings are issued for any suspicious situation like unused values of
+variables, useless assignments, etc. Warnings are prefixed with the text
+<code class="docutils literal notranslate"><span class="pre">&quot;warning:</span> <span class="pre">&quot;</span></code> and can be suppressed with <code class="docutils literal notranslate"><span class="pre">pragma</span> <span class="pre">Warnings</span></code>, see section
+<a class="reference internal" href="how_to_use_gnatprove_in_a_team.html#suppressing-warnings"><span class="std std-ref">Suppressing Warnings</span></a>.</p></li>
+</ul>
+<ul class="simple" id="index-7">
+<li><p>Check messages are issued for any potential problem in the code which could
+affect the correctness of the program, such as missing initialization,
+possible failing run-time checks or unproved assertions. Checks come with a
+severity, and depending on the severity the message text is prefixed with
+<code class="docutils literal notranslate"><span class="pre">&quot;low:</span> <span class="pre">&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;medium:</span> <span class="pre">&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;high:</span> <span class="pre">&quot;</span></code>. Check messages cannot be
+suppressed like warnings, but they can be individually justified with pragma
+<code class="docutils literal notranslate"><span class="pre">Annotate</span></code>, see section <a class="reference internal" href="how_to_use_gnatprove_in_a_team.html#justifying-check-messages"><span class="std std-ref">Justifying Check Messages</span></a>.</p></li>
+</ul>
+<ul class="simple" id="index-8">
+<li><p>Information messages are issued to notify the user of limitations of
+GNATprove on some constructs, or to prevent possible confusion in
+understanding the output of GNATprove. They are also issued to report
+proved checks in some modes of GNATprove.</p></li>
+</ul>
+</section>
+<section id="errors-and-completeness-of-analysis">
+<span id="index-9"></span><span id="errors-and-completeness-of-analysis-l207"></span><h2 id="errors-and-completeness-of-analysis-l207"><span class="section-number">7.2.5. </span>Errors and Completeness of Analysis<a class="headerlink" href="#errors-and-completeness-of-analysis" title="Permalink to this heading"></a></h2>
+<p>As mentioned in the previous section, if errors are encountered (manifested by
+an error message), the analysis may not be complete.</p>
+<p>At the project level, GNATprove analyzes the units of a project independently,
+and stops when a unit contains an error. Other units may not be analyzed in
+this case. You can use the command line switch <code class="docutils literal notranslate"><span class="pre">-k</span></code> to analyze all units even
+in the presence of errors. Of course this may take more time.</p>
+<p>At the unit level, errors in earlier phases stop the analysis and block the
+display of other errors. If this happens, the <code class="docutils literal notranslate"><span class="pre">gnatprove.out</span></code> file contains
+information about this, for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">flow</span> <span class="n">analysis</span> <span class="ow">and</span> <span class="n">proof</span> <span class="n">skipped</span> <span class="k">for</span> <span class="n">this</span> <span class="n">unit</span> <span class="p">(</span><span class="n">error</span> <span class="n">during</span> <span class="n">ownership</span> <span class="n">checking</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>It can be confusing to try to fix errors that come from later stages (e.g.
+proof) while errors in earlier stages are still present (e.g. in other units).
+Therefore we recommend a gradual approach, eliminating simpler errors before
+going to more advanced errors. This can be achieved by using the <code class="docutils literal notranslate"><span class="pre">--mode</span></code>
+switch, which is explained in detail in the next section.</p>
+</section>
+<section id="effect-of-mode-on-output">
+<span id="effect-of-mode-on-output-l230"></span><h2 id="effect-of-mode-on-output-l230"><span class="section-number">7.2.6. </span>Effect of Mode on Output<a class="headerlink" href="#effect-of-mode-on-output" title="Permalink to this heading"></a></h2>
+<p>GNATprove can be run in five different modes, as selected with the switch
+<code class="docutils literal notranslate"><span class="pre">--mode=&lt;mode&gt;</span></code>, whose possible values are <code class="docutils literal notranslate"><span class="pre">check</span></code>, <code class="docutils literal notranslate"><span class="pre">check_all</span></code>,
+<code class="docutils literal notranslate"><span class="pre">flow</span></code>, <code class="docutils literal notranslate"><span class="pre">prove</span></code> and <code class="docutils literal notranslate"><span class="pre">all</span></code> (see <a class="reference internal" href="how_to_run_gnatprove.html#running-gnatprove-from-the-command-line"><span class="std std-ref">Running GNATprove from the Command Line</span></a>). The output depends on the selected mode.</p>
+<p>In modes <code class="docutils literal notranslate"><span class="pre">check</span></code> and <code class="docutils literal notranslate"><span class="pre">check_all</span></code>, GNATprove prints on the standard output
+a list of error messages for violations of SPARK restrictions on all the code
+for which <code class="docutils literal notranslate"><span class="pre">SPARK_Mode</span></code> is <code class="docutils literal notranslate"><span class="pre">On</span></code>.</p>
+<p>In modes <code class="docutils literal notranslate"><span class="pre">flow</span></code> and <code class="docutils literal notranslate"><span class="pre">prove</span></code>, this checking is done as a first phase.</p>
+<p>In mode <code class="docutils literal notranslate"><span class="pre">flow</span></code>, GNATprove prints on the standard output messages for
+possible reads of uninitialized data, mismatches between the specified data
+dependencies and flow dependencies and the implementation, and suspicious
+situations such as unused assignments and missing return statements. These
+messages are all based on flow analysis.</p>
+<p>In mode <code class="docutils literal notranslate"><span class="pre">prove</span></code>, GNATprove prints on the standard output messages for
+possible reads of uninitialized data (using flow analysis), possible run-time
+errors and mismatches between the specified functional contracts and the
+implementation (using proof).</p>
+<p>In mode <code class="docutils literal notranslate"><span class="pre">all</span></code>, GNATprove prints on the standard output both messages for
+mode <code class="docutils literal notranslate"><span class="pre">flow</span></code> and for mode <code class="docutils literal notranslate"><span class="pre">prove</span></code>.</p>
+<p id="index-10">If switch <code class="docutils literal notranslate"><span class="pre">--report=all</span></code>, <code class="docutils literal notranslate"><span class="pre">--report=provers</span></code> or <code class="docutils literal notranslate"><span class="pre">--report=statistics</span></code> is
+specified, GNATprove additionally prints on the standard output information
+messages for proved checks.</p>
+<p>When switch <code class="docutils literal notranslate"><span class="pre">--report=provers</span></code> is used, the information message for each
+proved check includes which provers were used to discharge the proof obligation.
+It also indicates whether the result was retrieved from a proof cache rather
+than computed fresh: either a session file (see <a class="reference internal" href="how_to_use_gnatprove_in_a_team.html#sharing-proof-results-with-others"><span class="std std-ref">Sharing Proof Results with Others</span></a>) or a Memcached-based cache (see <a class="reference internal" href="how_to_use_gnatprove_in_a_team.html#sharing-proof-results-via-a-cache"><span class="std std-ref">Sharing Proof Results Via a Cache</span></a>).</p>
+</section>
+<section id="description-of-messages">
+<span id="description-of-messages-l271"></span><h2 id="description-of-messages-l271"><span class="section-number">7.2.7. </span>Description of Messages<a class="headerlink" href="#description-of-messages" title="Permalink to this heading"></a></h2>
+<p>This section lists the different messages which GNATprove may output. Each
+message points to a very specific place in the source code.  For example, if a
+source file <code class="docutils literal notranslate"><span class="pre">file.adb</span></code> contains a division as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">X</span> <span class="o">/</span> <span class="n">Y</span> <span class="o">&gt;</span> <span class="n">Z</span> <span class="n">then</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>GNATprove may output a message such as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">file</span><span class="o">.</span><span class="n">adb</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="mi">37</span><span class="p">:</span> <span class="n">medium</span><span class="p">:</span> <span class="n">divide</span> <span class="n">by</span> <span class="n">zero</span> <span class="n">might</span> <span class="n">fail</span>
+</pre></div>
+</div>
+<p>where the division sign <code class="docutils literal notranslate"><span class="pre">/</span></code> is precisely on line 12, column 37. Looking at
+the explanation in the first table below, which states that a division check
+verifies that the divisor is different from zero, it is clear that the message
+is about <code class="docutils literal notranslate"><span class="pre">Y</span></code>, and that GNATprove was unable to prove that <code class="docutils literal notranslate"><span class="pre">Y</span></code> cannot be
+zero. The explanations in the table below should be read with the context that
+is given by the source location.</p>
+<p id="index-11">When switch <code class="docutils literal notranslate"><span class="pre">--cwe</span></code> is used, a corresponding CWE id is included in the
+message when relevant. For example, on the example above, GNATprove will
+output a message such as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">file</span><span class="o">.</span><span class="n">adb</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="mi">37</span><span class="p">:</span> <span class="n">medium</span><span class="p">:</span> <span class="n">divide</span> <span class="n">by</span> <span class="n">zero</span> <span class="n">might</span> <span class="n">fail</span> <span class="p">[</span><span class="n">CWE</span> <span class="mi">369</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Note that CWE ids are only included in check messages and warnings, never in
+information messages about proved checks. For more information on CWE, see the
+MITRE Corporation’s Common Weakness Enumeration (CWE) Compatibility and
+Effectiveness Program (<a class="reference external" href="http://cwe.mitre.org/">http://cwe.mitre.org/</a>). The
+CWE identifiers reported by GNATprove are based on the CWE version 4 list.</p>
+<p id="index-12">For unproved check messages, GNATprove may append additional information in
+square brackets explaining why the provers failed to complete the proof. The
+phrase <code class="docutils literal notranslate"><span class="pre">[provers</span> <span class="pre">reached</span> <span class="pre">&lt;limit&gt;</span> <span class="pre">limit</span> <span class="pre">before</span> <span class="pre">completing</span> <span class="pre">the</span> <span class="pre">proof]</span></code>, where
+<code class="docutils literal notranslate"><span class="pre">&lt;limit&gt;</span></code> is one or more of <code class="docutils literal notranslate"><span class="pre">time</span></code>, <code class="docutils literal notranslate"><span class="pre">step</span></code>, and <code class="docutils literal notranslate"><span class="pre">memory</span></code> (e.g.
+<code class="docutils literal notranslate"><span class="pre">[provers</span> <span class="pre">reached</span> <span class="pre">time</span> <span class="pre">and</span> <span class="pre">step</span> <span class="pre">limit</span> <span class="pre">before</span> <span class="pre">completing</span> <span class="pre">the</span> <span class="pre">proof]</span></code>),
+indicates that the provers consumed all allocated resources. The corresponding
+limits can be increased using switches <code class="docutils literal notranslate"><span class="pre">--timeout</span></code>, <code class="docutils literal notranslate"><span class="pre">--steps</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">--memlimit</span></code> respectively. The phrase <code class="docutils literal notranslate"><span class="pre">[provers</span> <span class="pre">gave</span> <span class="pre">up</span> <span class="pre">before</span> <span class="pre">completing</span>
+<span class="pre">the</span> <span class="pre">proof]</span></code> indicates that the provers stopped without reaching any resource
+limit, typically because a heuristic determined the goal is too difficult to
+pursue further; in this case, increasing resource limits will not help.</p>
+<div class="toctree-wrapper compound" id="index-13">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="proof_checks_table.html">7.2.7.1. Messages reported by Proof</a></li>
+<li class="toctree-l1"><a class="reference internal" href="flow_checks_table.html">7.2.7.2. Messages reported by Flow Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="misc_warnings_table.html">7.2.7.3. Miscellaneous warnings reported by GNATprove</a></li>
+<li class="toctree-l1"><a class="reference internal" href="annotation_errors_table.html">7.2.7.4. Errors Related To Annotations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="violation_table.html">7.2.7.5. Error Messages For SPARK Violations</a></li>
+</ul>
+</div>
+<p>Messages of a specific category or related to a specific CWE can be filtered
+inside GNAT Studio by typing the desired substring in the search bar of the
+<code class="docutils literal notranslate"><span class="pre">Locations</span></code> panel. For example, search for “CWE” to get all messages with a
+corresponding CWE, or “CWE 369” to get all messages related to division by zero
+vulnerability.</p>
+</section>
+<section id="understanding-counterexamples">
+<span id="index-14"></span><span id="understanding-counterexamples-l342"></span><h2 id="understanding-counterexamples-l342"><span class="section-number">7.2.8. </span>Understanding Counterexamples<a class="headerlink" href="#understanding-counterexamples" title="Permalink to this heading"></a></h2>
+<p>When a check cannot be proved, GNATprove may generate a counterexample when
+switch <code class="docutils literal notranslate"><span class="pre">--counterexamples=on</span></code> is used, either explicitly or implicitly
+through the use of switch <code class="docutils literal notranslate"><span class="pre">--level</span></code>. A counterexample consists of two parts:</p>
+<ul class="simple">
+<li><p>a path (or set of paths) through the subprogram</p></li>
+<li><p>an assignment of values to variables that appear on that path</p></li>
+</ul>
+<p>The best way to look at a counterexample is to display it in GNAT Studio by clicking on
+the icon to the left of the failed proof message, or to the left of the
+corresponding line in the editor (see <a class="reference internal" href="how_to_run_gnatprove.html#running-gnatprove-from-gnat-studio"><span class="std std-ref">Running GNATprove from GNAT Studio</span></a>). GNATprove then displays the path in one color, and the values of
+variables on the path by inserting lines in the editor only (not in the file)
+which display these values. For example, consider procedure <code class="docutils literal notranslate"><span class="pre">Counterex</span></code>:</p>
+<div class="highlight-ada notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="k">procedure </span><span class="nf">Counterex</span> <span class="o">(</span><span class="n">Cond</span> <span class="o">:</span> <span class="n">Boolean</span><span class="p">;</span> <span class="n">In1</span><span class="p">,</span> <span class="n">In2</span> <span class="o">:</span> <span class="n">Integer</span><span class="p">;</span> <span class="n">R</span> <span class="o">:</span> <span class="kr">out</span><span class="p"> </span><span class="n">Integer</span><span class="o">)</span> <span class="kr">with</span>
+<span class="linenos"> 2</span>  <span class="n">SPARK_Mode</span><span class="p">,</span>
+<span class="linenos"> 3</span>  <span class="n">Pre</span> <span class="o">=&gt;</span> <span class="n">In1</span> <span class="o">&lt;=</span> <span class="mi">25</span> <span class="kr">and</span><span class="p"> </span><span class="n">In2</span> <span class="o">&lt;=</span> <span class="mi">25</span>
+<span class="linenos"> 4</span><span class="kr">is</span>
+<span class="linenos"> 5</span><span class="kr">begin</span>
+<span class="linenos"> 6</span>   <span class="n">R</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="linenos"> 7</span>   <span class="kr">if</span><span class="p"> </span><span class="n">Cond</span> <span class="kr">then</span>
+<span class="linenos"> 8</span>      <span class="n">R</span> <span class="o">:=</span> <span class="n">R</span> <span class="o">+</span> <span class="n">In1</span><span class="p">;</span>
+<span class="linenos"> 9</span>      <span class="kr">if</span><span class="p"> </span><span class="n">In1</span> <span class="o">&lt;</span> <span class="n">In2</span> <span class="kr">then</span>
+<span class="linenos">10</span>         <span class="n">R</span> <span class="o">:=</span> <span class="n">R</span> <span class="o">+</span> <span class="n">In2</span><span class="p">;</span>
+<span class="linenos">11</span>         <span class="kr">pragma</span><span class="p"> </span><span class="n">Assert</span> <span class="o">(</span><span class="n">R</span> <span class="o">&lt;</span> <span class="mi">42</span><span class="o">)</span><span class="p">;</span>
+<span class="linenos">12</span>      <span class="k">end if</span><span class="p">;</span>
+<span class="linenos">13</span>   <span class="k">end if</span><span class="p">;</span>
+<span class="linenos">14</span><span class="k">end </span><span class="nf">Counterex</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>The assertion on line 11 may fail when input parameter <code class="docutils literal notranslate"><span class="pre">Cond</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> and
+input parameters <code class="docutils literal notranslate"><span class="pre">I1</span></code> and <code class="docutils literal notranslate"><span class="pre">I2</span></code> are too big. The counterexample generated by
+GNATprove is displayed as follows in GNAT Studio, where each line highlighted in the
+path is followed by a line showing the value of variables from the previous
+line:</p>
+<a class="reference internal image-reference" href="../../_images/counterexample.png"><img alt="Counterexample in GNAT Studio" src="../../_images/counterexample.png" style="width: 800px;" /></a>
+<p>GNATprove also completes the message for the failed proof with an explanation
+giving the values of variables from the checked expression for the
+counterexample. Here, the message issued by GNATprove on line 11 gives the
+value of output parameter <code class="docutils literal notranslate"><span class="pre">R</span></code>:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span> high: assertion might fail
+--&gt; counterex.adb:11:25
+   11 |             pragma Assert (R &lt; 42);
+      |                            ^~~~~~
+      + e.g. when R = 42
+</pre></div>
+</div>
+<p>To limit the time spent trying to generate counterexamples, GNATprove sets a
+small timeout to prover cvc5 for generating counterexamples. It can be replaced
+by a number of reasoning steps in the prover by using the switch
+<code class="docutils literal notranslate"><span class="pre">--ce-steps</span></code>. Generation of counterexamples is deterministic, hence the use
+of <code class="docutils literal notranslate"><span class="pre">--ce-steps</span></code> ensures that results are repeatable.</p>
+<p>By default, GNATprove internally checks that counterexamples correctly point
+to a problem in the code or in the contracts (which includes missing
+preconditions, loop invariants, etc.) so that only interesting counterexamples
+are displayed to the user. As a result, some counterexamples from cvc5 are not
+displayed to the user, while in other cases the ranking of messages might be
+promoted from <code class="docutils literal notranslate"><span class="pre">medium</span></code> to <code class="docutils literal notranslate"><span class="pre">high</span></code> after checking that the counterexample
+points to an actual problem in the code. In cases where the counterexample
+generated by cvc5 is dropped, this checking phase also tries to generate a
+candidate counterexample by fuzzing input values of the subprogram, based on
+extreme values of input types. If a candidate counterexample passes the
+checking phase, it is displayed in place of the original counterexample. This
+checking phase can be skipped with the switch <code class="docutils literal notranslate"><span class="pre">--check-counterexamples=off</span></code>.</p>
+<p>The counterexample generated by GNATprove does not always correspond to a
+feasible execution of the program, in particular when using the switch
+<code class="docutils literal notranslate"><span class="pre">--check-counterexamples=off</span></code>:</p>
+<ol class="arabic">
+<li><p>When some contracts or loop invariants are missing, thus causing the
+property to become unprovable (see details in section on <a class="reference internal" href="how_to_investigate_unproved_checks.html#investigating-unprovable-properties"><span class="std std-ref">Investigating Unprovable Properties</span></a>), the counterexample may help point to the missing
+contract or loop invariant. For example, the postcondition of procedure
+<code class="docutils literal notranslate"><span class="pre">Double_In_Call</span></code> is not provable because the postcondition of the function
+<code class="docutils literal notranslate"><span class="pre">Double</span></code> that it calls is too weak, and the postcondition of procedure
+<code class="docutils literal notranslate"><span class="pre">Double_In_Loop</span></code> is not provable because its loop does not have a loop
+invariant:</p>
+<div class="highlight-ada notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="k">package </span><span class="nf">Counterex_Unprovable</span> <span class="kr">with</span>
+<span class="linenos"> 2</span>  <span class="n">SPARK_Mode</span>
+<span class="linenos"> 3</span><span class="kr">is</span>
+<span class="linenos"> 4</span>
+<span class="linenos"> 5</span>   <span class="kr">type</span><span class="p"> </span><span class="n">Int</span> <span class="kr">is</span><span class="p"> </span><span class="kr">new</span><span class="p"> </span><span class="n">Integer</span> <span class="kr">range</span><span class="p"> </span><span class="o">-</span><span class="mi">100</span> <span class="o">..</span> <span class="mi">100</span><span class="p">;</span>
+<span class="linenos"> 6</span>
+<span class="linenos"> 7</span>   <span class="k">function </span><span class="nf">Double</span> <span class="o">(</span><span class="n">X</span> <span class="o">:</span> <span class="n">Int</span><span class="o">)</span> <span class="kr">return</span><span class="p"> </span><span class="n">Int</span> <span class="kr">with</span>
+<span class="linenos"> 8</span>     <span class="n">Pre</span>  <span class="o">=&gt;</span> <span class="kr">abs</span><span class="p"> </span><span class="n">X</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">,</span>
+<span class="linenos"> 9</span>     <span class="n">Post</span> <span class="o">=&gt;</span> <span class="kr">abs</span><span class="p"> </span><span class="n">Double</span><span class="na">&#39;Result</span> <span class="o">&lt;=</span> <span class="mi">20</span><span class="p">;</span>
+<span class="linenos">10</span>
+<span class="linenos">11</span>   <span class="k">procedure </span><span class="nf">Double_In_Call</span> <span class="o">(</span><span class="n">X</span> <span class="o">:</span> <span class="kr">in</span><span class="p"> </span><span class="kr">out</span><span class="p"> </span><span class="n">Int</span><span class="o">)</span> <span class="kr">with</span>
+<span class="linenos">12</span>     <span class="n">Pre</span>  <span class="o">=&gt;</span> <span class="kr">abs</span><span class="p"> </span><span class="n">X</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">,</span>
+<span class="linenos">13</span>     <span class="n">Post</span> <span class="o">=&gt;</span> <span class="n">X</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">X</span><span class="na">&#39;Old</span><span class="p">;</span>
+<span class="linenos">14</span>
+<span class="linenos">15</span>   <span class="k">procedure </span><span class="nf">Double_In_Loop</span> <span class="o">(</span><span class="n">X</span> <span class="o">:</span> <span class="kr">in</span><span class="p"> </span><span class="kr">out</span><span class="p"> </span><span class="n">Int</span><span class="o">)</span> <span class="kr">with</span>
+<span class="linenos">16</span>     <span class="n">Pre</span>  <span class="o">=&gt;</span> <span class="kr">abs</span><span class="p"> </span><span class="n">X</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">,</span>
+<span class="linenos">17</span>     <span class="n">Post</span> <span class="o">=&gt;</span> <span class="n">X</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">X</span><span class="na">&#39;Old</span><span class="p">;</span>
+<span class="linenos">18</span>
+<span class="linenos">19</span><span class="k">end </span><span class="nf">Counterex_Unprovable</span><span class="p">;</span>
+</pre></div>
+</div>
+<div class="highlight-ada notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="k">package body </span><span class="nf">Counterex_Unprovable</span> <span class="kr">with</span>
+<span class="linenos"> 2</span>  <span class="n">SPARK_Mode</span>
+<span class="linenos"> 3</span><span class="kr">is</span>
+<span class="linenos"> 4</span>
+<span class="linenos"> 5</span>   <span class="k">function </span><span class="nf">Double</span> <span class="o">(</span><span class="n">X</span> <span class="o">:</span> <span class="n">Int</span><span class="o">)</span> <span class="kr">return</span><span class="p"> </span><span class="n">Int</span> <span class="kr">is</span>
+<span class="linenos"> 6</span>   <span class="kr">begin</span>
+<span class="linenos"> 7</span>      <span class="kr">return</span><span class="p"> </span><span class="mi">2</span> <span class="o">*</span> <span class="n">X</span><span class="p">;</span>
+<span class="linenos"> 8</span>   <span class="k">end </span><span class="nf">Double</span><span class="p">;</span>
+<span class="linenos"> 9</span>
+<span class="linenos">10</span>   <span class="k">procedure </span><span class="nf">Double_In_Call</span> <span class="o">(</span><span class="n">X</span> <span class="o">:</span> <span class="kr">in</span><span class="p"> </span><span class="kr">out</span><span class="p"> </span><span class="n">Int</span><span class="o">)</span> <span class="kr">is</span>
+<span class="linenos">11</span>   <span class="kr">begin</span>
+<span class="linenos">12</span>      <span class="n">X</span> <span class="o">:=</span> <span class="n">Double</span> <span class="o">(</span><span class="n">X</span><span class="o">)</span><span class="p">;</span>
+<span class="linenos">13</span>   <span class="k">end </span><span class="nf">Double_In_Call</span><span class="p">;</span>
+<span class="linenos">14</span>
+<span class="linenos">15</span>   <span class="k">procedure </span><span class="nf">Double_In_Loop</span> <span class="o">(</span><span class="n">X</span> <span class="o">:</span> <span class="kr">in</span><span class="p"> </span><span class="kr">out</span><span class="p"> </span><span class="n">Int</span><span class="o">)</span> <span class="kr">is</span>
+<span class="linenos">16</span>      <span class="n">Result</span> <span class="o">:</span> <span class="n">Int</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="linenos">17</span>      <span class="n">J</span>      <span class="o">:</span> <span class="n">Integer</span> <span class="o">:=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="linenos">18</span>   <span class="kr">begin</span>
+<span class="linenos">19</span>      <span class="kr">while</span><span class="p"> </span><span class="n">J</span> <span class="o">&lt;=</span> <span class="mi">2</span> <span class="kr">loop</span>
+<span class="linenos">20</span>         <span class="n">Result</span> <span class="o">:=</span> <span class="n">Result</span> <span class="o">+</span> <span class="n">X</span><span class="p">;</span>
+<span class="linenos">21</span>         <span class="n">J</span>      <span class="o">:=</span> <span class="n">J</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+<span class="linenos">22</span>      <span class="k">end loop</span><span class="p">;</span>
+<span class="linenos">23</span>      <span class="n">X</span> <span class="o">:=</span> <span class="n">Result</span><span class="p">;</span>
+<span class="linenos">24</span>   <span class="k">end </span><span class="nf">Double_In_Loop</span><span class="p">;</span>
+<span class="linenos">25</span>
+<span class="linenos">26</span><span class="k">end </span><span class="nf">Counterex_Unprovable</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>The counterexample generated by GNATprove in the first case shows that the
+prover could deduce wrongly that <code class="docutils literal notranslate"><span class="pre">X</span></code> on output is 0 when its value is 1 on
+input, due to a missing contract in the called function:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span> medium: postcondition might fail
+--&gt; counterex_unprovable.ads:13:14
+   13 |         Post =&gt; X = 2 * X&#39;Old;
+      |                 ^~~~~~~~~~~~~
+      + e.g. when X&#39;Old = 0
+      + possible fix: add or complete related loop invariants or postconditions
+
+ medium: postcondition might fail
+--&gt; counterex_unprovable.ads:17:14
+   17 |         Post =&gt; X = 2 * X&#39;Old;
+      |                 ^~~~~~~~~~~~~
+      + e.g. when X&#39;Old = -1
+      + possible fix: add or complete related loop invariants or postconditions
+</pre></div>
+</div>
+<p>Similarly, the counterexample generated by GNATprove in the second case
+shows that the prover could deduce wrongly that <code class="docutils literal notranslate"><span class="pre">X</span></code> on output is -1 when its
+value is 0 on input, due to a missing loop invariant in the executed loop.</p>
+</li>
+<li><p>When some property cannot be proved due to prover shortcomings (see details
+in section on <a class="reference internal" href="how_to_investigate_unproved_checks.html#investigating-prover-shortcomings"><span class="std std-ref">Investigating Prover Shortcomings</span></a>), the counterexample
+may explain why the prover cannot prove the property. However, note that
+since the counterexample is always generated only using cvc5 prover, it can
+just explain why this prover cannot prove the property. Also note that if
+cvc5 is not selected and generating of a counterexample is enabled by
+<code class="docutils literal notranslate"><span class="pre">--counterexamples=on</span></code> switch (explicitly or implicitly through the use of
+<code class="docutils literal notranslate"><span class="pre">--level</span></code> switch), a counterexample is still attempted to be generated
+using cvc5, but the proof result of cvc5 is not taken into account in this
+case.</p></li>
+<li><p>When using a short value of timeout or steps, the prover may hit the
+resource bound before it has produced a full counterexample. In such a case,
+the counterexample produced may not correspond to a feasible execution.</p></li>
+<li><p>When the value of <code class="docutils literal notranslate"><span class="pre">--proof</span></code> switch is <code class="docutils literal notranslate"><span class="pre">per_check</span></code> (the default value),
+then the counterexample may give values to variables on all paths through the
+subprogram, not only the path which corresponds to the feasible
+execution. One can rerun GNATprove with value <code class="docutils literal notranslate"><span class="pre">progressive</span></code> or
+<code class="docutils literal notranslate"><span class="pre">per_path</span></code> to separate possible execution paths in the counterexample.</p></li>
+</ol>
+<p>If <a class="reference external" href="https://docs.adacore.com/live/wave/gnatdas/html/gnatdas_ug/gnattest/gnattest_part.html">GNATtest</a>
+and (optionally) <a class="reference external" href="https://docs.adacore.com/live/wave/gnatdas/html/gnatdas_ug/gnatfuzz/gnatfuzz_part.html">GNATfuzz</a>
+are available on your PATH, it is possible to delegate the generation of
+counterexample candidates to these tools using GNAT Studio. See the section
+<a class="reference internal" href="how_to_run_gnatprove.html#counterexamples-and-gnattest"><span class="std std-ref">Additional Functionalities for Counterexamples</span></a>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="how_to_run_gnatprove.html" class="btn btn-neutral float-left" title="7.1. How to Run GNATprove" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="proof_checks_table.html" class="btn btn-neutral float-right" title="7.2.7.1. Messages reported by Proof" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2011-2026, AdaCore and Capgemini Engineering.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
